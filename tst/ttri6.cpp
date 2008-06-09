@@ -68,15 +68,15 @@ int main(int argc, char **argv) try
 	FEM::GeometryType = 2; // 2D
 
 	// 1) Nodes
-	FEM::AddNode(0.0, 0.0, 0.0); // 0
-	FEM::AddNode(0.5, 0.0, 0.0); // 1
-	FEM::AddNode(1.0, 0.0, 0.0); // 2
-	FEM::AddNode(0.5, 0.5, 0.0); // 3
-	FEM::AddNode(0.0, 1.0, 0.0); // 4
-	FEM::AddNode(0.0, 0.5, 0.0); // 5
-	FEM::AddNode(1.0, 0.5, 0.0); // 6
-	FEM::AddNode(1.0, 1.0, 0.0); // 7
-	FEM::AddNode(0.5, 1.0, 0.0); // 8
+	FEM::AddNode(0.0, 0.0); // 0
+	FEM::AddNode(0.5, 0.0); // 1
+	FEM::AddNode(1.0, 0.0); // 2
+	FEM::AddNode(0.5, 0.5); // 3
+	FEM::AddNode(0.0, 1.0); // 4
+	FEM::AddNode(0.0, 0.5); // 5
+	FEM::AddNode(1.0, 0.5); // 6
+	FEM::AddNode(1.0, 1.0); // 7
+	FEM::AddNode(0.5, 1.0); // 8
 
 	// 2) Elements
 	FEM::AddElem("Tri6Equilib", /*IsActive*/true);

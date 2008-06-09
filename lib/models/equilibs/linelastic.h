@@ -95,10 +95,15 @@ inline void LinElastic::SetPrms(String const & Prms)
 	// Check
 	if (names.Size()==2 && values.Size()==2)
 	{
-		if (names[0]=="E" && names[1]=="nu")
+		int    count = 0;
+		double E, nu;
+		for (size_t i=0; i<names.Size(); ++i)
 		{
-			double E  = values[0];
-			double nu = values[1];
+			     if (names[i]=="E" ) { E  = values[0];  count++; }
+			else if (names[i]=="nu") { nu = values[1];  count++; }
+		}
+		if (count==2)
+		{
 			double c  = E/((1.0+nu)*(1.0-2.0*nu));
 			double c1 = c*(1.0-nu);
 			double c2 = c*(1.0-2.0*nu)/2.0;
@@ -112,7 +117,9 @@ inline void LinElastic::SetPrms(String const & Prms)
 			return;
 		}
 	}
-	else throw Fatal("LinElastic::SetPrms: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0 nu=0.25\n");
+
+	// Wrong parameters
+	throw Fatal("LinElastic::SetPrms: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0 nu=0.25\n");
 }
 
 inline void LinElastic::SetInis(String const & Inis)
@@ -139,7 +146,9 @@ inline void LinElastic::SetInis(String const & Inis)
 		}
 		return;
 	}
-	else throw Fatal("LinElastic::SetInis: Initial values definition is incorrect. The syntax must be as in:\n\t Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0 Syz=0.0 Szx=0.0\n");
+
+	// Wrong parameters
+	throw Fatal("LinElastic::SetInis: Initial values definition is incorrect. The syntax must be as in:\n\t Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0 Syz=0.0 Szx=0.0\n");
 }
 
 inline int LinElastic::StressUpdate(Vector<double> const & DEps, Vector<double> & DSig)

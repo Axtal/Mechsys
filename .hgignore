@@ -1,4 +1,6 @@
 tst/ttri6
+tst/ttruss01
+tst/tsolid01
 
 syntax: glob
 CMakeCache.txt

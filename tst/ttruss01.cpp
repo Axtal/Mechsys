@@ -21,9 +21,9 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/ele/elasticrod.h"
-#include "fem/solver/forwardeuler.h"
-#include "fem/solver/autome.h"
+#include "fem/elems/elasticrod.h"
+#include "fem/solvers/forwardeuler.h"
+#include "fem/solvers/autome.h"
 #include "util/exception.h"
 
 using FEM::Nodes;
@@ -41,7 +41,7 @@ int main(int argc, char **argv) try
 	                                ,'|
 	                              ,'  |
 	                   E=200    ,'    |
-	                   A=sq2  ,'      | E=50
+	                   A=SQ2  ,'      | E=50
 	                    [2] ,'        | A=1
 	                      ,'          | [1]
 	                    ,'            |
@@ -60,10 +60,13 @@ int main(int argc, char **argv) try
 	if (input_ok) linsol = static_cast<LinAlg::LinSol_T>(atoi(argv[1]));
 	else throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \t1 => LAPACK_T  : DENSE\n \t2 => UMFPACK_T : SPARSE\n \t3 => SuperLU_T : SPARSE\n"),argv[0]);
 
+	// 0) Geometry type
+	FEM::GeometryType = 2; // 2D
+
 	// 1) Nodes
-	FEM::AddNode( 0.0,  0.0, 0.0); // 0
-	FEM::AddNode(10.0,  0.0, 0.0); // 1
-	FEM::AddNode(10.0, 10.0, 0.0); // 2
+	FEM::AddNode( 0.0,  0.0); // 0
+	FEM::AddNode(10.0,  0.0); // 1
+	FEM::AddNode(10.0, 10.0); // 2
 
 	// 2) Elements
 	FEM::AddElem("ElasticRod", /*IsActive*/true); // 0
@@ -82,13 +85,9 @@ int main(int argc, char **argv) try
 	Nodes[2]->Bry("Dfx", 2.0)->Bry("Dfy",  1.0);                  // Natural
 
 	// 5) Parameters and initial values
-	Array<double>          prm;  prm.Resize(1);
-	Array<double>          ini;  ini.Resize(18);
-	Array<Array<double> >  ain;
-	//   E(Young)  N(normal stress)  A(area)
-	prm[0]=100.0;  ini[0]=0.0;       ini[8]=1.0;        ain.Resize(0); ain.Push(ini);  Elems[0]->ReAllocateModel("", prm, ain);
-	prm[0]= 50.0;  ini[0]=0.0;       ini[8]=1.0;        ain.Resize(0); ain.Push(ini);  Elems[1]->ReAllocateModel("", prm, ain);
-	prm[0]=200.0;  ini[0]=0.0;       ini[8]=sqrt(2.0);  ain.Resize(0); ain.Push(ini);  Elems[2]->ReAllocateModel("", prm, ain);
+	Elems[0]->ReAllocateModel("", "E=100.0", "N=0.0  A=1.0");
+	Elems[1]->ReAllocateModel("", "E= 50.0", "N=0.0  A=1.0");
+	Elems[2]->ReAllocateModel("", "E=200.0", "N=0.0  A=1.414213562373095");
 
 	// Stiffness
 	Array<size_t>          map;

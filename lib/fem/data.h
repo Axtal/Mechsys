@@ -59,7 +59,7 @@ Array<int>  OutMyElems; ///< Indexes inside MyElements of the elemens to output
 
 // Global methods
 
-inline Node * AddNode (double X, double Y, double Z)
+inline Node * AddNode (double X, double Y, double Z=0.0)
 {
 	Node * tmp = new Node;
 	tmp->Initialize (Nodes.Size(), X, Y, Z);

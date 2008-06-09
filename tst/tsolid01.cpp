@@ -24,7 +24,7 @@
 #include "fem/elems/hex8equilib.h"
 #include "fem/solvers/autome.h"
 #include "fem/solvers/forwardeuler.h"
-#include "models/equilib/linearelastic.h"
+#include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 
 using FEM::Nodes;
@@ -59,6 +59,9 @@ int main(int argc, char **argv) try
 	if (argc==2) { if (atoi(argv[1])>=1 && atoi(argv[1])<=3) input_ok = true; }
 	if (input_ok) linsol = static_cast<LinAlg::LinSol_T>(atoi(argv[1]));
 	else throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \t1 => LAPACK_T  : DENSE\n \t2 => UMFPACK_T : SPARSE\n \t3 => SuperLU_T : SPARSE\n"),argv[0]);
+
+	// 0) Geometry type
+	FEM::GeometryType = 3; // 3D
 
 	// 1) Nodes
 	FEM::AddNode(0.0, 0.0, 0.0);
@@ -97,17 +100,14 @@ int main(int argc, char **argv) try
 	Nodes[7]->Bry("Dfz", -25.0);
 
 	// 5) Parameters and initial values
-	Array<double>          prm;  prm.Push(2000.0); prm.Push(0.2);
-	Array<double>          ini;  ini.Resize(18); ini[0]=10.0; ini[1]=10.0; ini[2]=10.0;
-	Array<Array<double> >  ain;  ain.Push(ini);
-	Elems[0]->ReAllocateModel ("LinearElastic", prm, ain);
+	Elems[0]->ReAllocateModel("LinElastic", "E=2000.0 nu=0.2", "Sx=10.0 Sy=10.0 Sz=10");
 
 	// Stiffness
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> ke;
 	Elems[0]->Order1Matrix(0,ke);
-	//cout << ke << endl;
+	cout << ke << endl;
 
 	// 6) Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");

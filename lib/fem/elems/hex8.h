@@ -75,6 +75,7 @@ public:
 inline Hex8::Hex8()
 {
 	// Setup nodes number
+	_n_dim          = 3;
 	_n_nodes        = HEX8_NNODES;
 	_n_int_pts      = HEX8_NINTPTS;
 	_n_face_nodes   = HEX8_NFACENODES;

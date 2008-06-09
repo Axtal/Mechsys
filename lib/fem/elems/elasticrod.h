@@ -21,6 +21,7 @@
 
 // MechSys
 #include "fem/element.h"
+#include "util/lineparser.h"
 
 using std::cout;
 using std::endl;
@@ -51,11 +52,12 @@ public:
 	// Derived methods
 	String    Name            () const { return "ElasticRod"; }
 	bool      IsEssential     (String const & DOFName) const;
-	void      ReAllocateModel (String const & ModelName, Array<double> const & ModelPrms, Array<Array<double> > const & AIniData);
+	void      ReAllocateModel (String const & ModelName, String const & Prms, String const & Inis);
 	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     () { _N_bkp = _N; }
 	void      RestoreState    () { _N = _N_bkp; }
+	void      SetGeometryType (int Geom) { _geom = Geom; }
 	void      SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
 	String    OutCenter       (bool PrintCaptionOnly) const { String res; res.Printf("%f",_N); return res; }
 	void      OutNodes        (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
@@ -127,50 +129,38 @@ inline bool ElasticRod::IsEssential(String const & DOFName) const
 	else return false;
 }
 
-inline void ElasticRod::ReAllocateModel(String const & ModelName, Array<double> const & ModelPrms, Array<Array<double> > const & AIniData)
+inline void ElasticRod::ReAllocateModel(String const & ModelName, String const & Prms, String const & Inis)
 {
-	// ##################################################################### Setup Parameters
-	
-	/* example.mat
+	/* Prms   "E=20000.0" */
+	LineParser lp(Prms);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
 
-        #--------------
-        #             E
-        ElasticRod  100
+	// Check parameters
+	int count = 0;
+	if (names.Size()==1 && values.Size()==1)
+		if (names[0]=="E") { _E = values[0];  count++; }
+	if (count!=1) throw Fatal("ElasticRod::ReAllocateModel: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0\n");
 
-	 */
+	/* Inis   "N=0.0  A=1.0" */
+	lp.Reset(Inis);
+	lp.BreakExpressions(names,values);
 
-	// Save model parameters
-	if (ModelPrms.Size()!=1)
-		throw new Fatal(_("ElasticRod::ReAllocateModel: The number of parameters must be equal to 1 (E => Young)"));
-
-	_E = ModelPrms[0];
-
-	// ##################################################################### Setup Initial State
-
-	/*
-	    ** Standard soil-water coupled problems with internal variables **
-	    
-	    Example:
-		         _ put normal stress here      _ put cross-sectional area here
-                |                             |
-				N                             A
-	     #     Sx Sy Sz  Sxy Syz Szx  Pp  v  z0  z1  z2  z3  z4  z5  z6  z7  z8  z9 
-	     1 1 {  0  1  2    3   4   5   6  7   8   9  10  11  12  13  14  15  16  17 }
-	*/
-
-	// Check size of AIniData
-	if (AIniData.Size()!=1)
-		throw new Fatal(_("ElasticRod::ReAllocateModel: Array of array of initial data (with the normal stress) must have size==1"));
-
-	if (AIniData[0].Size()!=18)
-		throw new Fatal(_("ElasticRod::ReAllocateModel: The number of initial data for the ElasticRod is not sufficient.\nIt must be equal to 18 (standard soil-water coupled problems with internal variables).\n\tExample:\n\t# Sx Sy Sz  Sxy Syz Szx  Pp  v  z0  z1  z2  z3  z4  z5  z6  z7  z8  z9\n\t{  0  1  2    3   4   5   6  7   8   0  10  11  12  13  14  15  16  17 }\n"));
-
-	_N = AIniData[0][0]; // Initial normal stress
-	_A = AIniData[0][8]; // Cross-sectional area
+	// Check initial values
+	count = 0;
+	if (names.Size()==2 && values.Size()==2)
+	{
+		for (size_t i=0; i<names.Size(); ++i)
+		{
+				 if (names[i]=="N") { _N = values[i];  count++; }
+			else if (names[i]=="A") { _A = values[i];  count++; }
+		}
+	}
+	if (count!=2) throw Fatal("LinElastic::SetInis: Initial values definition is incorrect. The syntax must be as in:\n\t N=0.0  A=1.0\n");
 
 	// If the initial state was not set, compute initial internal forces
 	if (!_initial_state_set) _calc_initial_internal_forces();
-
 }
 
 inline Element * ElasticRod::SetNode(int iNodeLocal, int iNodeGlobal)
