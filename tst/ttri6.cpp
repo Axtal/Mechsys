@@ -23,6 +23,7 @@
 #include "fem/data.h"
 #include "fem/node.h"
 #include "fem/elems/tri6equilib.h"
+#include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
 #include "util/exception.h"

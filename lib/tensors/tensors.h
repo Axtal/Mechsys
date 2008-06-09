@@ -19,9 +19,6 @@
 #ifndef MECHSYS_TENSORS_H
 #define MECHSYS_TENSORS_H
 
-// STL
-#include <cfloat> // for DBL_EPSILON
-
 // Blitz++
 #include <blitz/tinyvec-et.h>
 #include <blitz/tinymat.h>
@@ -29,6 +26,7 @@
 // MechSys
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
+#include "util/util.h"
 
 /** \namespace Tensors %Tensors with components according to the Mandel's basis.
  
@@ -297,13 +295,6 @@ Tensor4 Psd;
  * \f[ \isotropic{\TeSe{a}} =\Dc{\Piso}{\TeSe{a}} =\TeSe{a}^{iso} =\frac{\tr{\TeSe{a} }}{3}\I \f]
  */
 Tensor4 Piso;
-
-// Constants
-const double ZERO   = sqrt(DBL_EPSILON); ///< Machine epsilon (smaller positive)
-const double SQ2    = sqrt(2.0);         ///< \f$ \sqrt{2} \f$
-const double SQ3    = sqrt(3.0);         ///< \f$ \sqrt{3} \f$
-const double SQ6    = sqrt(6.0);         ///< \f$ \sqrt{6} \f$
-const double SQ2BY3 = sqrt(2.0/3.0);     ///< \f$ \sqrt{2/3} \f$
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

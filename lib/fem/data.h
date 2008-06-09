@@ -71,6 +71,7 @@ inline Element * AddElem (String const & Type, bool IsActive=true)
 {
 	Element * tmp = AllocElement(Type);
 	tmp->SetID(Elems.Size());
+	tmp->SetGeometryType (GeometryType);
 	if (IsActive) tmp->Activate  ();
 	else          tmp->Deactivate();
 	Elems.Push(tmp);

@@ -25,12 +25,12 @@
 
 // MechSys
 #include "fem/element.h"
-#include "models/equilib/equilibmodel.h"
+#include "models/equilibmodel.h"
 #include "util/string.h"
+#include "util/util.h"
 #include "linalg/laexpr.h"
 
-using Tensors::Stress_p_q_S_sin3th; // Mean and deviatoric Cambridge stress invariants
-using Tensors::Strain_Ev_Ed;        // Volumetric and deviatoric strain invariants
+using Util::SQ2;
 
 namespace FEM
 {
@@ -113,11 +113,16 @@ inline void EquilibElem::SetGeometryType(int Geom)
 {
 	_geom = Geom;
 
-	// Set the number of stresses associated to the geometry type
-	switch(Geom)
+	// Set the number of stresses associated with the geometry type
+	switch (_geom)
 	{
-		case 2: _n_stress = 3; break;
-		case 3: _n_stress = 6; break;
+		case 2: { _n_stress = 3; return; }
+		case 3: { _n_stress = 6; return; }
+		case 1:
+		case 4:
+		case 5:
+		default:
+			throw new Fatal("EquilibElem::SetGeometryType: GeometryType==%d is not implemented yet",_geom);
 	}
 }
 
@@ -128,7 +133,7 @@ inline bool EquilibElem::IsEssential(String const & DOFName) const
 	return false;
 }
 
-inline void EquilibElem2D::ReAllocateModel(String const & ModelName, String const & Prms, String const & Inis)
+inline void EquilibElem::ReAllocateModel(String const & ModelName, String const & Prms, String const & Inis)
 {
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
@@ -140,7 +145,8 @@ inline void EquilibElem2D::ReAllocateModel(String const & ModelName, String cons
 		for (int i=0; i<_n_int_pts; ++i)
 		{
 			// Allocate a new model and set parameters
-			_a_model[i] = AllocEquilibModel2D(ModelName);
+			_a_model[i] = AllocEquilibModel(ModelName);
+			_a_model[i]->SetGeom(_geom);
 			_a_model[i]->SetPrms(Prms);
 			_a_model[i]->SetInis(Inis);
 		}
@@ -302,10 +308,9 @@ inline String EquilibElem::OutCenter(bool PrintCaptionOnly=false) const
 		Strain_Ev_Ed(eps_cen,Ev,Ed);
 
 		// Output
-		double sq2 = sqrt(2.0);
 		oss << Util::_8s<< p          << Util::_8s<< q          << Util::_8s<< sin3th << Util::_8s<< Ev*100.0       << Util::_8s<< Ed*100.0;
-		oss << Util::_8s<< sig_cen(0) << Util::_8s<< sig_cen(1) << Util::_8s<< sig_cen(2)         << Util::_8s<< sig_cen(3)/sq2 << Util::_8s<< sig_cen(4)/sq2 << Util::_8s<< sig_cen(5)/sq2;
-		oss << Util::_8s<< eps_cen(0) << Util::_8s<< eps_cen(1) << Util::_8s<< eps_cen(2)         << Util::_8s<< eps_cen(3)/sq2 << Util::_8s<< eps_cen(4)/sq2 << Util::_8s<< eps_cen(5)/sq2;
+		oss << Util::_8s<< sig_cen(0) << Util::_8s<< sig_cen(1) << Util::_8s<< sig_cen(2)         << Util::_8s<< sig_cen(3)/SQ2 << Util::_8s<< sig_cen(4)/SQ2 << Util::_8s<< sig_cen(5)/SQ2;
+		oss << Util::_8s<< eps_cen(0) << Util::_8s<< eps_cen(1) << Util::_8s<< eps_cen(2)         << Util::_8s<< eps_cen(3)/SQ2 << Util::_8s<< eps_cen(4)/SQ2 << Util::_8s<< eps_cen(5)/SQ2;
 		for (int j=0; j<n_int_state_vals; ++j)
 			oss << Util::_8s<< int_state_vals_cen[j];
 		oss << std::endl;
@@ -344,6 +349,7 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 			{
 				Vector<double> eps;
 				_a_model[j_ip]->Eps(eps);
+				eps(2) /= SQ2;
 				ip_values(j_ip) = eps(i_comp); //getting IP values
 			}
 			Extrapolate(ip_values, nodal_values);
@@ -358,6 +364,7 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 			{
 				Vector<double> sig;
 				_a_model[j_ip]->Sig(sig);
+				sig(2) /= SQ2;
 				ip_values(j_ip) = sig(i_comp); //getting IP values
 			}
 			Extrapolate(ip_values, nodal_values);
@@ -394,6 +401,9 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 			{
 				Vector<double> eps;
 				_a_model[j_ip]->Eps(eps);
+				eps(3) /= SQ2;
+				eps(4) /= SQ2;
+				eps(5) /= SQ2;
 				ip_values(j_ip) = eps(i_comp); //getting IP values
 			}
 			Extrapolate(ip_values, nodal_values);
@@ -408,6 +418,9 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 			{
 				Vector<double> sig;
 				_a_model[j_ip]->Sig(sig);
+				sig(3) /= SQ2;
+				sig(4) /= SQ2;
+				sig(5) /= SQ2;
 				ip_values(j_ip) = sig(i_comp); //getting IP values
 			}
 			Extrapolate(ip_values, nodal_values);
@@ -420,7 +433,7 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 
 inline void EquilibElem::Deactivate()
 {
-	throw new Fatal("EquilibElem2D::Deactivate: Feature not implemented yet");
+	throw new Fatal("EquilibElem::Deactivate: Feature not implemented yet");
 }
 
 inline void EquilibElem::FaceNodalVals(String const & FaceDOFName, double const   FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double>& NodalValues) const
@@ -532,7 +545,7 @@ inline void EquilibElem::OutTensor1(String & Str) const
 	s = s / _n_int_pts;
 
 	// Output
-	double sq2 = sqrt(2.0);
+	double SQ2 = sqrt(2.0);
 	Str.Printf(_(" %e %e %e  %e %e %e  %e %e %e "), s(0),s(3)/sq2,s(5)/sq2,  s(3)/sq2,s(1),s(4)/sq2,  s(5)/sq2,s(4)/sq2,s(2));
 */
 }
@@ -599,8 +612,6 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 	LinAlg::Matrix<double> cart_derivs;
 	cart_derivs = inv(J)*derivs;
 
-	double sq2 = sqrt(2.0);
-
 	if (_n_dim==2)
 	{
 		// Loop along all nodes of the element
@@ -609,11 +620,11 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 		for (int i=0; i<_n_nodes; ++i) // i row of B
 		{
 			// Assemble B matrix
-			j=i*NDIM;
+			j = i*_n_dim;
 			dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
 			B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;     
 			B(1,0+j) =       0.0;   B(1,1+j) = dNdY;     
-			B(2,0+j) =  dNdY/sq2;   B(2,1+j) = dNdX/sq2;  // sq2 => Mandel representation
+			B(2,0+j) =  dNdY/SQ2;   B(2,1+j) = dNdX/SQ2;  // SQ2 => Mandel representation
 		}
 	}
 	else
@@ -624,14 +635,14 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 		for (int i=0; i<_n_nodes; ++i) // i row of B
 		{
 			// Assemble B matrix
-			j=i*_n_dim;
+			j = i*_n_dim;
 			dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  dNdZ=-cart_derivs(2,i); // Negative values => Soil mechanics convention
 			B(0,0+j) =     dNdX;     B(0,1+j) =      0.0;     B(0,2+j) =      0.0;
 			B(1,0+j) =      0.0;     B(1,1+j) =     dNdY;     B(1,2+j) =      0.0;
 			B(2,0+j) =      0.0;     B(2,1+j) =      0.0;     B(2,2+j) =     dNdZ;
-			B(3,0+j) = dNdY/sq2;     B(3,1+j) = dNdX/sq2;     B(3,2+j) =      0.0; // sq2 => Mandel representation
-			B(4,0+j) =      0.0;     B(4,1+j) = dNdZ/sq2;     B(4,2+j) = dNdY/sq2; // sq2 => Mandel representation
-			B(5,0+j) = dNdZ/sq2;     B(5,1+j) =      0.0;     B(5,2+j) = dNdX/sq2; // sq2 => Mandel representation
+			B(3,0+j) = dNdY/SQ2;     B(3,1+j) = dNdX/SQ2;     B(3,2+j) =      0.0; // SQ2 => Mandel representation
+			B(4,0+j) =      0.0;     B(4,1+j) = dNdZ/SQ2;     B(4,2+j) = dNdY/SQ2; // SQ2 => Mandel representation
+			B(5,0+j) = dNdZ/SQ2;     B(5,1+j) =      0.0;     B(5,2+j) = dNdX/SQ2; // SQ2 => Mandel representation
 		}
 	}
 }

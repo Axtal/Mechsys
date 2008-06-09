@@ -21,6 +21,7 @@
 
 // STL
 #include <cmath>
+#include <cfloat> // for DBL_EPSILON
 
 // MechSys
 #include "util/string.h"
@@ -28,6 +29,15 @@
 namespace Util
 {
 
+// Constants
+const double ZERO   = sqrt(DBL_EPSILON); ///< Machine epsilon (smaller positive)
+const double SQ2    = sqrt(2.0);         ///< \f$ \sqrt{2} \f$
+const double SQ3    = sqrt(3.0);         ///< \f$ \sqrt{3} \f$
+const double SQ6    = sqrt(6.0);         ///< \f$ \sqrt{6} \f$
+const double SQ2BY3 = sqrt(2.0/3.0);     ///< \f$ \sqrt{2/3} \f$
+const double PI     = 4.0*atan(1.0);     ///< \f$ \pi \f$
+
+/*
 inline double Pi         ()                        { return 3.14159265358979323846264338327950288419716939937510582; } ///< The constant PI
 inline double ToRad      (double deg_angle)        { return 0.0174532925199433*deg_angle;                            } ///< Converts degrees to radians
 inline double ToDeg      (double rad_angle)        { return 57.2957795130823*rad_angle;                              } ///< Converts radians to degrees
@@ -44,6 +54,7 @@ template <typename Type>
 inline Type   Min        (Type a, Type b)          { return (a<b ? a : b); } ///< Minimum between a and b
 template <typename Type>
 inline Type   Max        (Type a, Type b)          { return (a>b ? a : b); } ///< Maximum between a and b
+*/
 
 /** Swap two values. */
 inline void Swap(double & x, double & y)

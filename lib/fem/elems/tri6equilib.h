@@ -21,12 +21,12 @@
 
 // MechSys
 #include "fem/elems/tri6.h"
-#include "fem/elems/equilibelem2d.h"
+#include "fem/elems/equilibelem.h"
 
 namespace FEM
 {
 
-class Tri6Equilib : public Tri6, public EquilibElem2D
+class Tri6Equilib : public Tri6, public EquilibElem
 {
 public:
 	// Constants

@@ -71,7 +71,7 @@ public:
 	virtual void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;               ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      BackupState     () =0;                                                                                                ///< Backup internal state
 	virtual void      RestoreState    () =0;                                                                                                ///< Restore internal state from a previously backup state
-	virtual void      SetGeometryType (int Geom);                                                                                           ///< Set geometry type. Ex. 1:1D  2:2D  3:3D  4:Ax
+	virtual void      SetGeometryType (int Geom) =0;                                                                                        ///< Set geometry type. Ex. 1:1D  2:2D  3:3D  4:Ax
 	virtual void      SetProperties   (Array<double> const & EleProps) =0;                                                                  ///< Set interal properties
 	virtual String    OutCenter       (bool PrintCaptionOnly=false) const =0;                                                               ///< Output internal values computed (averaged) in the center of the element
 
@@ -84,17 +84,17 @@ public:
 	virtual void Dist2FaceNodes (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const =0; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes. NodalValues => Out:The resultant nodal values
 
 	// Methods that MAY be overriden by derived classes
-	virtual void InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
-	virtual void Jacobian      (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const;                                  ///< Jacobian matrix
-	virtual void Jacobian      (double r, double s, double t, LinAlg::Matrix<double> & J) const;                                           ///< (alternative) method to compute the Jacobian matrix
-	virtual void FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, double const s, LinAlg::Matrix<double> & J) const; ///< Jacobian matrix of a face
-	virtual void FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, LinAlg::Matrix<double> & J) const;                 ///< Jacobian matrix of a edge
-	virtual void Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
-	virtual void Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
-	virtual void OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const {};                                         ///< Output values at nodes
-	virtual void Deactivate    () { _is_active = false; }                                                                                  ///< Deactivate this element
-	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                      ///< ???
-	virtual void FaceNodalVals (String const & FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const {} ///< Return the array with nodal values in a face
+	virtual void   InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
+	virtual void   Jacobian      (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const;                                  ///< Jacobian matrix
+	virtual void   Jacobian      (double r, double s, double t, LinAlg::Matrix<double> & J) const;                                           ///< (alternative) method to compute the Jacobian matrix
+	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, double const s, LinAlg::Matrix<double> & J) const; ///< Jacobian matrix of a face
+	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, LinAlg::Matrix<double> & J) const;                 ///< Jacobian matrix of a edge
+	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
+	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
+	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const {};                                         ///< Output values at nodes
+	virtual void   Deactivate    () { _is_active = false; }                                                                                  ///< Deactivate this element
+	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
+	virtual void   FaceNodalVals (String const & FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const {} ///< Return the array with nodal values in a face
 
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
@@ -142,8 +142,8 @@ public:
 protected:
 	// Data (may be accessed by derived classes)
 	int                _my_id;          ///< The ID of this element
-	int                _n_dim           ///< Number of dimensions
-	int                _geom            ///< Geometry type
+	int                _n_dim;          ///< Number of dimensions
+	int                _geom;           ///< Geometry type
 	int                _n_nodes;        ///< Number of nodes in the element
 	int	               _n_int_pts;      ///< Number of integration (Gauss) points
 	int                _n_face_nodes;   ///< Number of nodes in a face

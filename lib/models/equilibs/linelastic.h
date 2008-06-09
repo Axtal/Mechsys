@@ -35,7 +35,7 @@ using Tensors::Tensor4;
 using Tensors::VectorToTensor2;
 using Tensors::Tensor2ToVector;
 using Tensors::Tensor4ToMatrix;
-using Tensors::SQ2;
+using Util::SQ2;
 using LinAlg::Vector;
 using LinAlg::Matrix;
 
@@ -101,7 +101,7 @@ inline void LinElastic::SetPrms(String const & Prms)
 			double nu = values[1];
 			double c  = E/((1.0+nu)*(1.0-2.0*nu));
 			double c1 = c*(1.0-nu);
-			double c2 = c*(1.0-2.0*nu);
+			double c2 = c*(1.0-2.0*nu)/2.0;
 			double c3 = c*nu;
 			_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
 			      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
