@@ -63,6 +63,9 @@ int main(int argc, char **argv) try
 	if (input_ok) linsol = static_cast<LinAlg::LinSol_T>(atoi(argv[1]));
 	else throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \t1 => LAPACK_T  : DENSE\n \t2 => UMFPACK_T : SPARSE\n \t3 => SuperLU_T : SPARSE\n"),argv[0]);
 
+	// 0) Geometry type
+	FEM::GeometryType = 2; // 2D
+
 	// 1) Nodes
 	FEM::AddNode(0.0, 0.0, 0.0); // 0
 	FEM::AddNode(0.5, 0.0, 0.0); // 1
@@ -91,8 +94,8 @@ int main(int argc, char **argv) try
 	Nodes[7]->Bry("Dfy", 1.0);
 
 	// 5) Parameters and initial values
-	Elems[0]->ReAllocateModel("LinElastic2D", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
-	Elems[1]->ReAllocateModel("LinElastic2D", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
+	Elems[0]->ReAllocateModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
+	Elems[1]->ReAllocateModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;

@@ -27,6 +27,9 @@
 namespace FEM
 {
 
+// Geometry type
+int GeometryType = 3; ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+
 // Solver constants
 int    GFE_nSI   = 1;
 double GFE_Resid = 0.0;
@@ -56,7 +59,7 @@ Array<int>  OutMyElems; ///< Indexes inside MyElements of the elemens to output
 
 // Global methods
 
-Node * AddNode (double X, double Y, double Z)
+inline Node * AddNode (double X, double Y, double Z)
 {
 	Node * tmp = new Node;
 	tmp->Initialize (Nodes.Size(), X, Y, Z);
@@ -64,7 +67,7 @@ Node * AddNode (double X, double Y, double Z)
 	return tmp;
 }
 
-Element * AddElem (String const & Type, bool IsActive=true)
+inline Element * AddElem (String const & Type, bool IsActive=true)
 {
 	Element * tmp = AllocElement(Type);
 	tmp->SetID(Elems.Size());

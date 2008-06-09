@@ -26,6 +26,10 @@
 #include <blitz/tinyvec-et.h>
 #include <blitz/tinymat.h>
 
+// MechSys
+#include "linalg/vector.h"
+#include "linalg/matrix.h"
+
 /** \namespace Tensors %Tensors with components according to the Mandel's basis.
  
     2nd and 4th order tensors are reprsented according to the Mandel basis
@@ -77,6 +81,74 @@ typedef blitz::TinyVector<double,3> Tensor1;
  */
 typedef blitz::TinyVector<double,6> Tensor2;
 
+inline void VectorToTensor2(int GeomType, LinAlg::Vector<double> const & V, Tensor2 & T)
+{
+	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+	switch (GeomType)
+	{
+		case 1: // 1D
+		{
+			//    x    y    z    xy   yz   zx
+			T = V(0), 0.0, 0.0, 0.0, 0.0, 0.0;
+			return;
+		}
+		case 2: // 2D(plane-strain)
+		{
+			//    x     y    z     xy   yz   zx
+			T = V(0), V(1), 0.0, V(2), 0.0, 0.0;
+			return;
+		}
+		case 3:
+		{
+			//    x     y     z     xy    yz    zx
+			T = V(0), V(1), V(2), V(3), V(4), V(5);
+			return;
+		}
+		case 4:
+		case 5:
+		{
+			throw new Fatal("Tensors::Vector2Tensor2: Feature not available");
+			return;
+		}
+		default: throw new Fatal("Tensors::Vector2Tensor2: GeomType==%d is invalid.",GeomType);
+	}
+}
+
+inline void Tensor2ToVector(int GeomType, Tensor2 const & T, LinAlg::Vector<double> & V)
+{
+	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+	switch (GeomType)
+	{
+		case 1: // 1D
+		{
+			V.Resize(1);
+			V(0) = T(0);
+			return;
+		}
+		case 2: // 2D(plane-strain)
+		{
+			V.Resize(3);
+			//    x     y    xy
+			V = T(0), T(1), T(3);
+			return;
+		}
+		case 3:
+		{
+			V.Resize(6);
+			//    x     y     z     xy    yz    zx
+			V = T(0), T(1), T(2), T(3), T(4), T(5);
+			return;
+		}
+		case 4:
+		case 5:
+		{
+			throw new Fatal("Tensors::Tensor2ToVector: Feature not available");
+			return;
+		}
+		default: throw new Fatal("Tensors::Tensor2ToVector: GeomType==%d is invalid.",GeomType);
+	}
+}
+
 /** Fourth-order symmetric tensor represented as a 6x6 matrix (6D second order tensor).
  * Introducing a base of nine second order tensors, known as \em Mandel's \em basis
  * (<a href="http://www.me.unm.edu/~rmbrann/gobag.html">Brannon, 2000</a>),
@@ -96,6 +168,48 @@ typedef blitz::TinyVector<double,6> Tensor2;
  * \f]
  */
 typedef blitz::TinyMatrix<double,6,6> Tensor4;
+
+inline void Tensor4ToMatrix(int GeomType, Tensor4 const & T, LinAlg::Matrix<double> & M)
+{
+	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+	switch (GeomType)
+	{
+		case 1: // 1D
+		{
+			M.Resize(1,1);
+			M(0,0) = T(0,0);
+			return;
+		}
+		case 2: // 2D(plane-strain)
+		{
+			M.Resize(3,3);
+			//      x       y      xy 
+			M = T(0,0), T(0,1), T(0,3),  // x
+			    T(1,0), T(1,1), T(1,3),  // y
+			    T(3,0), T(3,1), T(3,3);  // xy
+			return;
+		}
+		case 3:
+		{
+			M.Resize(6,6);
+			//       x       y       z      xy      yz      zx
+			M =  T(0,0), T(0,1), T(0,2), T(0,3), T(0,4), T(0,5),  // x
+			     T(1,0), T(1,1), T(1,2), T(1,3), T(1,4), T(1,5),  // y
+			     T(2,0), T(2,1), T(2,2), T(2,3), T(2,4), T(2,5),  // z
+			     T(3,0), T(3,1), T(3,2), T(3,3), T(3,4), T(3,5),  // xy
+			     T(4,0), T(4,1), T(4,2), T(4,3), T(4,4), T(4,5),  // yz
+			     T(5,0), T(5,1), T(5,2), T(5,3), T(5,4), T(5,5);  // zx
+			return;
+		}
+		case 4:
+		case 5:
+		{
+			throw new Fatal("Tensors::Vector2Tensor2: Feature not available");
+			return;
+		}
+		default: throw new Fatal("Tensors::Vector2Tensor2: GeomType==%d is invalid.",GeomType);
+	}
+}
 
 /** Second order identity tensor (symmetric/Mandel's basis) \f$ \TeSe{I} \f$.
  * \f[ \{\TeSe{I}\} =

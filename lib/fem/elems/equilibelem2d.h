@@ -25,7 +25,7 @@
 
 // MechSys
 #include "fem/element.h"
-#include "models/equilibs/linelastic2d.h"
+#include "models/equilibs/linelastic.h"
 #include "tensors/tensors.h"
 #include "tensors/functions.h"
 #include "util/numstreams.h"
@@ -79,8 +79,8 @@ public:
 
 private:
 	// Data
-	Array<EquilibModel2D*> _a_model;
-	double                 _unit_weight;
+	Array<EquilibModel*> _a_model;
+	double               _unit_weight;
 
 	// Private methods
 	void _calc_initial_internal_forces ();
@@ -123,7 +123,8 @@ inline void EquilibElem2D::ReAllocateModel(String const & ModelName, String cons
 		for (int i=0; i<_n_int_pts; ++i)
 		{
 			// Allocate a new model and set parameters
-			_a_model[i] = AllocEquilibModel2D(ModelName);
+			_a_model[i] = AllocEquilibModel(ModelName);
+			_a_model[i]->SetGeom(2);
 			_a_model[i]->SetPrms(Prms);
 			_a_model[i]->SetInis(Inis);
 		}
