@@ -71,6 +71,7 @@ public:
 	virtual void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;               ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      BackupState     () =0;                                                                                                ///< Backup internal state
 	virtual void      RestoreState    () =0;                                                                                                ///< Restore internal state from a previously backup state
+	virtual void      SetGeometryType (int Geom);                                                                                           ///< Set geometry type. Ex. 1:1D  2:2D  3:3D  4:Ax
 	virtual void      SetProperties   (Array<double> const & EleProps) =0;                                                                  ///< Set interal properties
 	virtual String    OutCenter       (bool PrintCaptionOnly=false) const =0;                                                               ///< Output internal values computed (averaged) in the center of the element
 
@@ -141,6 +142,8 @@ public:
 protected:
 	// Data (may be accessed by derived classes)
 	int                _my_id;          ///< The ID of this element
+	int                _n_dim           ///< Number of dimensions
+	int                _geom            ///< Geometry type
 	int                _n_nodes;        ///< Number of nodes in the element
 	int	               _n_int_pts;      ///< Number of integration (Gauss) points
 	int                _n_face_nodes;   ///< Number of nodes in a face
