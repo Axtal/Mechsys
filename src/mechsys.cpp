@@ -61,7 +61,8 @@ void add_elem    (str Type, bool IsActive)      { FEM::AddElem (extract<char con
 class data
 {
 public:
-	void set_geometry_type (int gtype) { FEM::GeometryType = gtype; }
+	void geometry_type (int  gtype) { FEM::GeometryType = gtype; }
+	void FE_nSI        (long value) { FEM::GFE_nSI      = value; }
 
 };
 
@@ -104,7 +105,8 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	// Class data
 	class_<data>("data")
-	    .def("set_geometry_type", &data::set_geometry_type)
+	    .def("geometry_type", &data::geometry_type)
+	    .def("FE_nSI"       , &data::FE_nSI)
 	    ;
 	
 
