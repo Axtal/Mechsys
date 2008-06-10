@@ -57,6 +57,13 @@ void add_elem    (str Type, bool IsActive)      { FEM::AddElem (extract<char con
 
 ////////////////////////////////////////////////////////////////////////////////////////// Wrapper classes
 
+class data
+{
+public:
+	void set_geometry_type(int gtype) { FEM:GeometryType = gtype}
+
+};
+
 /////////////////////////////////////////////////////////////////////////////////// Extra Python functions
 
 void except_translator (Exception * e)
@@ -92,6 +99,14 @@ void print_models ()
 
 BOOST_PYTHON_MODULE (mechsys)
 {
+	// Global classes
+
+	// Class data
+	class_<data>("data")
+	    .def("set_geometry_type", &data::set_geometry_type)
+	    ;
+	
+
 	// Global functions
     def ("add_node",     add_node_2d );
     def ("add_node",     add_node_3d );

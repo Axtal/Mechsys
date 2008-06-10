@@ -31,15 +31,15 @@ namespace FEM
 int GeometryType = 3; ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
 
 // Solver constants
-int    GFE_nSI   = 1;
-double GFE_Resid = 0.0;
-int    GME_maxSI = 200;
-double GME_DTOL  = 1.0e-2;
-double GME_dTini = 0.001;
-double GME_mMin  = 0.01;
-double GME_mMax  = 10;
-double GME_mCoef = 0.7;
-double GME_ZTOL  = 1.0e-5;
+int    GFE_nSI   = 1;      ///< Global FE solver: number of sub-increments
+double GFE_Resid = 0.0;    ///< Global FE solver:  
+int    GME_maxSI = 200;    ///< Global ME solver:
+double GME_DTOL  = 1.0e-2; ///< Global ME solver:
+double GME_dTini = 0.001;  ///< Global ME solver:  
+double GME_mMin  = 0.01;   ///< Global ME solver:  
+double GME_mMax  = 10;     ///< Global ME solver:  
+double GME_mCoef = 0.7;    ///< Global ME solver:  
+double GME_ZTOL  = 1.0e-5; ///< Global FE solver:
 bool   GME_Cconv = true;   ///< Check convergence ?
 double GME_Rerr  = 0.0;    ///< Relative error
 
