@@ -67,7 +67,8 @@ inline Node * AddNode (double X, double Y, double Z=0.0)
 	return tmp;
 }
 
-inline Element * AddElem (String const & Type, bool IsActive=true)
+//inline Element * AddElem (String const & Type, bool IsActive=true)
+inline Element * AddElem (char const * Type, bool IsActive=true)
 {
 	Element * tmp = AllocElement(Type);
 	tmp->SetID(Elems.Size());

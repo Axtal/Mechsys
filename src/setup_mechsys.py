@@ -6,7 +6,9 @@ from distutils.extension import Extension
 themodule = Extension("mechsys",
                       ["mechsys.cpp"],
                       include_dirs = ['../lib'],
-                      libraries    = ['lapack','boost_python'])
+                      library_dirs = ['.'],
+                      libraries    = ['lapack', 'boost_python'])
+                      #libraries    = ['msysfem', 'lapack', 'boost_python'])
  
 setup(name        = "MechSys",
       description = "Open library for mechanics",

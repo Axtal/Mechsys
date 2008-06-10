@@ -96,7 +96,8 @@ inline void LinElastic::SetPrms(String const & Prms)
 	if (names.Size()==2 && values.Size()==2)
 	{
 		int    count = 0;
-		double E, nu;
+		double E     = 0;
+		double nu    = 0;
 		for (size_t i=0; i<names.Size(); ++i)
 		{
 			     if (names[i]=="E" ) { E  = values[0];  count++; }

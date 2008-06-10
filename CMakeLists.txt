@@ -45,4 +45,4 @@ ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single
 
 INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
 
-SUBDIRS (tst)
+SUBDIRS (src tst)

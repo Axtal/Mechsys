@@ -22,47 +22,67 @@
 // Boost-Python
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python.hpp>
 
 // MechSys
 #include "fem/data.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
+#include "fem/element.h"
+#include "fem/solver.h"
 #include "util/exception.h"
+
+// MechSys -- Solvers
+#include "fem/solvers/autome.h"
+#include "fem/solvers/forwardeuler.h"
+
+// MechSys -- Elements
+#include "fem/elems/elasticrod.h"
+#include "fem/elems/tri6equilib.h"
+#include "fem/elems/hex8equilib.h"
+
+// MechSys -- Models
+#include "models/equilibs/linelastic.h"
 
 using FEM::Nodes;
 using FEM::Elems;
 using std::cout;
 using std::endl;
 
-void addnode (double X, double Y, double Z=0.0)
+using namespace boost::python;
+
+// Wrapper functions
+void addnode_2d (double X, double Y)           { FEM::AddNode (X,Y);   }
+void addnode_3d (double X, double Y, double Z) { FEM::AddNode (X,Y,Z); }
+void addelem    (str Type, bool IsActive)      { FEM::AddElem (extract<char const *>(Type),IsActive); }
+
+// Exceptions
+void except_translator (Exception * e)
 {
-	FEM::AddNode (X,Y,Z);
+	String msg;
+	msg.Printf("[1;31m%s[0m",e->Msg().GetSTL().c_str());
+	PyErr_SetString(PyExc_UserWarning, msg.GetSTL().c_str());
+	//if (e->IsFatal()) {delete e; exit(1);}
+	delete e;
+}
+
+// Extra Python functions
+void printelems ()
+{
+	cout << "[1;34mMechSys:[0m Elements available: " << endl;
+	FEM::ElementFactory_t::const_iterator it;
+	for (it=FEM::ElementFactory.begin(); it!=FEM::ElementFactory.end(); it++)
+	{
+		cout << "\t" << it->first << endl;
+	}
 }
 
 BOOST_PYTHON_MODULE (mechsys)
 {
-    using namespace boost::python;
-    def ("addnode", addnode);
-}
+	// Global functions
+    def ("addnode",    addnode_2d);
+    def ("addnode",    addnode_3d);
+    def ("addelem",    addelem   );
+    def ("printelems", printelems);
 
-/*
-int main(int argc, char **argv) try
-{
-	cout << "oi" << endl;
+	// Exceptions
+	register_exception_translator<Exception *>(&except_translator);
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
-*/
