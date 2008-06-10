@@ -24,10 +24,11 @@
 #include <boost/python/def.hpp>
 #include <boost/python.hpp>
 
-// MechSys
+// MechSys -- basic
 #include "fem/data.h"
 #include "fem/element.h"
 #include "fem/solver.h"
+#include "models/model.h"
 #include "util/exception.h"
 
 // MechSys -- Solvers
@@ -60,7 +61,7 @@ void add_elem    (str Type, bool IsActive)      { FEM::AddElem (extract<char con
 class data
 {
 public:
-	void set_geometry_type(int gtype) { FEM:GeometryType = gtype}
+	void set_geometry_type (int gtype) { FEM::GeometryType = gtype; }
 
 };
 
@@ -88,11 +89,11 @@ void print_elems ()
 void print_models ()
 {
 	cout << "[1;34mMechSys:[0m Models available: " << endl;
-	//FEM::ModelFactory_t::const_iterator it;
-	//for (it=FEM::ModelFactory.begin(); it!=FEM::ModelFactory.end(); it++)
-	//{
-	//	cout << "\t" << it->first << endl;
-	//}
+	ModelFactory_t::const_iterator it;
+	for (it=ModelFactory.begin(); it!=ModelFactory.end(); it++)
+	{
+		cout << "\t" << it->first << endl;
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////// Define Module
