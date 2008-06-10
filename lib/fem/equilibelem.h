@@ -145,7 +145,7 @@ inline void EquilibElem::ReAllocateModel(String const & ModelName, String const 
 		for (int i=0; i<_n_int_pts; ++i)
 		{
 			// Allocate a new model and set parameters
-			_a_model[i] = AllocEquilibModel(ModelName);
+			_a_model[i] = static_cast<EquilibModel*>(AllocModel(ModelName));
 			_a_model[i]->SetGeom(_geom);
 			_a_model[i]->SetPrms(Prms);
 			_a_model[i]->SetInis(Inis);

@@ -29,7 +29,7 @@ using std::endl;
 namespace FEM
 {
 
-class ElasticRod : public virtual Element
+class ElasticRod : public Element
 {
 
 public:

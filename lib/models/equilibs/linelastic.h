@@ -181,7 +181,7 @@ inline void LinElastic::RestoreState()
 
 
 // Allocate a new LinElastic model
-EquilibModel * LinElasticMaker()
+Model * LinElasticMaker()
 {
 	return new LinElastic();
 }
@@ -189,7 +189,7 @@ EquilibModel * LinElasticMaker()
 // Register an LinElastic model into ModelFactory array map
 int LinearElasticRegister()
 {
-	EquilibModelFactory["LinElastic"] = LinElasticMaker;
+	ModelFactory["LinElastic"] = LinElasticMaker;
 	return 0;
 }
 

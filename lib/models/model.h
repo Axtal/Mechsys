@@ -16,45 +16,44 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_EQUILIBMODEL_H
-#define MECHSYS_EQUILIBMODEL_H
+#ifndef MECHSYS_MODEL_H
+#define MECHSYS_MODEL_H
 
 // MechSys
-#include "models/model.h"
 #include "util/string.h"
 #include "util/util.h"
 
-using LinAlg::Vector;
-using LinAlg::Matrix;
-
-class EquilibModel : public Model
+class Model
 {
 public:
-	// Constructor
-	EquilibModel () : _geom(3) {}
-
 	// Destructor
-	virtual ~EquilibModel () {}
+	virtual ~Model () {}
+}; // class Model
 
-	// Set geometry type
-	void SetGeom (int Type) { _geom=Type; } ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
 
-	// Derived Methods
-	virtual void SetPrms      (String const & Prms) =0;
-	virtual void SetInis      (String const & Inis) =0;
-	virtual void TgStiffness  (Matrix<double> & D) const =0;
-	virtual int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig) =0;
-	virtual void BackupState  () =0;
-	virtual void RestoreState () =0;
+////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
-	// Access Methods
-	virtual void Sig (Vector<double> & Stress ) const =0;
-	virtual void Eps (Vector<double> & Strain ) const =0;
-	virtual void Ivs (Array<double>  & IntVals) const =0;
 
-protected:
-	int _geom; ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+// Define a pointer to a function that makes (allocate) a new Model
+typedef Model * (*ModelMakerPtr)();
 
-}; // class EquilibModel
+// Typdef of the array map that contains all the pointers to the functions that makes Models
+typedef std::map<String, ModelMakerPtr, std::less<String> > ModelFactory_t;
 
-#endif // MECHSYS_EQUILIBMODEL_H
+// Instantiate the array map that contains all the pointers to the functions that makes Models
+ModelFactory_t ModelFactory;
+
+// Allocate a new Models according to a string giving the name of the Model
+Model * AllocModel(String const & Name)
+{
+	// Check if there is Name model implemented
+	ModelMakerPtr ptr=NULL;
+	ptr = ModelFactory[Name];
+	if (ptr==NULL)
+		throw new Fatal(_("FEM::AllocModel: There is no < %s > implemented in this library"), Name.GetSTL().c_str());
+
+	return (*ptr)();
+}
+
+
+#endif // MECHSYS_MODEL_H

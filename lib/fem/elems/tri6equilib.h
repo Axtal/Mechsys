@@ -20,8 +20,8 @@
 #define MECHSYS_FEM_TRI6EQUILIB_H
 
 // MechSys
+#include "fem/equilibelem.h"
 #include "fem/elems/tri6.h"
-#include "fem/elems/equilibelem.h"
 
 namespace FEM
 {

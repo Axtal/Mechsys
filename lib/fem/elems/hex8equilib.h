@@ -20,8 +20,8 @@
 #define MECHSYS_FEM_HEX8EQUILIB_H
 
 // MechSys
+#include "fem/equilibelem.h"
 #include "fem/elems/hex8.h"
-#include "fem/elems/equilibelem.h"
 
 namespace FEM
 {
