@@ -110,7 +110,7 @@ inline ElasticRod::ElasticRod()
 
 inline bool ElasticRod::IsEssential(char const * DOFName) const
 {
-	if (DOFName=="ux" || DOFName=="uy" || DOFName=="uz") return true;
+	if (strncmp(DOFName,"ux",2)==0 || strncmp(DOFName,"uy",2)==0 || strncmp(DOFName,"uz",2)==0) return true;
 	else return false;
 }
 
