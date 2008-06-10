@@ -86,6 +86,7 @@ public:
 	size_t nDOF      ()          const { return _dofs.Size();      } ///< TODO
 	size_t nSharedBy ()          const { return _shared_by.Size(); } ///< Return the array with the elements that share this node
 	int    SharedBy  (int Index) const { return _shared_by[Index]; } ///< Return the array with the elements that share this node
+	double Val       (char const * Name) const;                      ///< Return the essential or natural value (computed/current). Ex.: Name="ux", "fx", etc.
 
 	// Set methods
 	Node * Bry(const char * DOFName, double Value);
@@ -143,6 +144,15 @@ inline Node::DOF & Node::DOFVar(char const * Name)
 	if (idx<0) // not added
 		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node"), Name);
 	return _dofs[idx];
+}
+
+inline double Node::Val(char const * Name) const
+{
+	long idx = _find_var(Name);
+	if (idx<0) // not added
+		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node"), Name);
+	if (_dofs[idx].EssentialBryName==Name) return _dofs[idx].EssentialVal;
+	else                                   return _dofs[idx].NaturalVal;
 }
 
 inline void Node::SetSharedBy(int ElementID)

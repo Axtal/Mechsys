@@ -68,6 +68,9 @@ public:
 	void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
 	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; // Stiffness
 
+	// Access methods
+	double ElasticRod::Val(int iNodeLocal, char const * Name) const;
+
 private:
 	// Data
 	double _E;                 ///< Young modulus
@@ -213,6 +216,11 @@ inline void ElasticRod::OutNodes(LinAlg::Matrix<double> & Values, Array<String> 
 		Values(i_node,4) = _connects[i_node]->DOFVar("fy").NaturalVal;
 		Values(i_node,5) = _connects[i_node]->DOFVar("fz").NaturalVal;
 	}
+}
+
+inline double ElasticRod::Val(int iNodeLocal, char const * Name) const
+{
+	throw new Fatal("ElasticRod::Val: Feature not implemented yet",Name);
 }
 
 // Derived methods to assemble DAS matrices

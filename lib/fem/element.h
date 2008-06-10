@@ -105,6 +105,9 @@ public:
 	virtual void   Order0Vector    (size_t Index, LinAlg::Vector<double> & V)                                                                                   const {} ///< Zero order vector such as [U P]^T, where U is displacement and P, porepressure.
 	virtual void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
 	virtual void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< First order matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
+
+	// Access methods
+	virtual double Val (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
 	
 	// Methods
 	double Volume () const
@@ -158,7 +161,7 @@ inline Array<Node*> const & Element::Connects() const
 	return _connects;
 }
 
-bool Element::IsInside(double x, double y, double z) const
+inline bool Element::IsInside(double x, double y, double z) const
 {
 	double tiny = 1e-4;
 	double huge = 1e+20;
@@ -194,7 +197,7 @@ bool Element::IsInside(double x, double y, double z) const
 	else return false;
 }
 
-void Element::InverseMap(double x, double y, double z, double & r, double & s, double & t) const
+inline void Element::InverseMap(double x, double y, double z, double & r, double & s, double & t) const
 {
 	LinAlg::Vector<double> shape;
 	LinAlg::Matrix<double> derivs;
@@ -340,7 +343,7 @@ inline void Element::Coords(LinAlg::Matrix<double> & coords) const
 	}
 }
 
-void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 
+inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 
 {
 	//Extrapolation:
 	//                  IPValues = E * NodalValues;

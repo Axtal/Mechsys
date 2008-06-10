@@ -58,11 +58,7 @@ int main(int argc, char **argv) try
 	 */
 
 	// Input
-	LinAlg::LinSol_T linsol;
-	bool input_ok = false;
-	if (argc==2) { if (atoi(argv[1])>=1 && atoi(argv[1])<=3) input_ok = true; }
-	if (input_ok) linsol = static_cast<LinAlg::LinSol_T>(atoi(argv[1]));
-	else throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \t1 => LAPACK_T  : DENSE\n \t2 => UMFPACK_T : SPARSE\n \t3 => SuperLU_T : SPARSE\n"),argv[0]);
+	if (argc!=2) throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n"),argv[0]);
 
 	// 0) Geometry type
 	FEM::GeometryType = 2; // 2D
@@ -111,14 +107,8 @@ int main(int argc, char **argv) try
 	// 6) Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol->Solve(linsol, /*iStage*/0, /*NumDiv*/1, /*DeltaTime*/0);
-
-	// Output
-	String fn;
-	     if (linsol==LinAlg::LAPACK_T  ) fn.append("LP");
-	else if (linsol==LinAlg::UMFPACK_T ) fn.append("UM");
-	else if (linsol==LinAlg::SuperLU_T ) fn.append("SLU");
-	else if (linsol==LinAlg::SuperLUd_T) fn.append("SLUd");
+	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> Solve();
 
 	// Check
 	LinAlg::Matrix<double> nodeinfo0;
@@ -146,12 +136,12 @@ int main(int argc, char **argv) try
     double errors = 0.0;
 
 	// Element 0
-	errors += fabs(nodeinfo0(0, sx_idx) - ( 1.56432140e-01));
-	errors += fabs(nodeinfo0(1, sx_idx) - (-3.19109076e-01));
-	errors += fabs(nodeinfo0(2, sx_idx) - (-3.00686928e-01));
-	errors += fabs(nodeinfo0(3, sx_idx) - (-3.31286428e-01));
-	errors += fabs(nodeinfo0(4, sx_idx) - ( 1.44254788e-01));
-	errors += fabs(nodeinfo0(5, sx_idx) - ( 1.25832639e-01));
+	errors += fabs(Elems[0]->Val(0, "Sx") - ( 1.56432140e-01));
+	errors += fabs(Elems[0]->Val(1, "Sx") - (-3.19109076e-01));
+	errors += fabs(Elems[0]->Val(2, "Sx") - (-3.00686928e-01));
+	errors += fabs(Elems[0]->Val(3, "Sx") - (-3.31286428e-01));
+	errors += fabs(Elems[0]->Val(4, "Sx") - ( 1.44254788e-01));
+	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
 
 	errors += fabs(nodeinfo0(0, sy_idx) - (-2.05141549e-01));
 	errors += fabs(nodeinfo0(1, sy_idx) - (-2.22127394e+00));
@@ -189,8 +179,8 @@ int main(int argc, char **argv) try
 	errors += fabs(nodeinfo1(4, sxy_idx) - (-3.00686928e-01));
 	errors += fabs(nodeinfo1(5, sxy_idx) - (-1.47127394e+00));
 
-	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << fn << ") = " << errors << "[0m\n" << endl;
-	else                     cout << "[1;32mErrors(" << fn << ") = " << errors << "[0m\n" << endl;
+	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
+	else                     cout << "[1;32mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
 
 	return 0;
 }

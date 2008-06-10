@@ -56,24 +56,35 @@ using namespace boost::python;
 class PyNode
 {
 public:
-	//PyNode (int iNode) : _id(iNode) {}
-	//PyNode & bry (str DOFName, double Value) { FEM::Nodes[_id]->Bry(S2C(DOFName), Value);  return (*this); }
-	void bry () { cout << "Hello\n" << endl; }
+	PyNode (int iNode) : _id(iNode) {}
+	PyNode & bry (str Name, double Value) { FEM::Nodes[_id]->Bry(S2C(Name), Value);  return (*this); }
+	double   val (str Name)               { return FEM::Nodes[_id]->Val(S2C(Name)); }
 private:
 	int _id;
 }; // class PyNode
 
-/*
 class PyElement
 {
 public:
 	PyElement (int iElem) : _id(iElem) {}
 	PyElement & set_node  (int iNodeLocal, int iNodeGlobal) { FEM::Elems[_id]->SetNode(iNodeLocal, iNodeGlobal);        return (*this); }
 	PyElement & set_model (str Name, str Prms, str Inis)    { FEM::Elems[_id]->SetModel(S2C(Name),S2C(Prms),S2C(Inis)); return (*this); }
+	double      val       (int iNodeLocal, str Name)        { return FEM::Elems[_id]->Val(iNodeLocal,S2C(Name)); }
 private:
 	int _id;
 }; // class PyElement
-*/
+
+class PySolver
+{
+public:
+	PySolver (str Name) { sol = FEM::AllocSolver(S2C(Name)); }
+	void       solve          ()                 { sol->Solve(); }
+	PySolver & set_lin_sol    (str Key)          { sol->SetLinSol   (S2C(Key));  return (*this); }
+	PySolver & set_num_div    (int Numdiv)       { sol->SetNumDiv   (Numdiv);    return (*this); }
+	PySolver & set_delta_time (double DeltaTime) { sol->SetDeltaTime(DeltaTime); return (*this); }
+private:
+	FEM::Solver * sol;
+}; // class PySolver
 
 //////////////////////////////////////////////////////////////////////////////////////// Wrapper functions
 
@@ -81,8 +92,8 @@ void      add_node_2d   (double X, double Y)           { FEM::AddNode (X,Y); }
 void      add_node_3d   (double X, double Y, double Z) { FEM::AddNode (X,Y,Z); }
 void      add_elem      (str Type, bool IsActive)      { FEM::AddElem (S2C(Type),IsActive); }
 void      geometry_type (int  GType)                   { FEM::GeometryType = GType; }
-//PyNode    nodes         (int  iNode)                   { PyNode    tmp(iNode); return tmp; }
-//PyElement elems         (int  iElem)                   { PyElement tmp(iElem); return tmp; }
+PyNode    nodes         (int  iNode)                   { PyNode    tmp(iNode); return tmp; }
+PyElement elems         (int  iElem)                   { PyElement tmp(iElem); return tmp; }
 
 /////////////////////////////////////////////////////////////////////////////////// Extra Python functions
 
@@ -121,22 +132,31 @@ BOOST_PYTHON_MODULE (mechsys)
 {
 	// Global classes
 
-	class_<PyNode>("node")
-	    .def("bry", &PyNode::bry)
+	class_<PyNode>("node", init<int>())
+	    .def("bry", &PyNode::bry, return_internal_reference<>())
+	    .def("val", &PyNode::val)
 	    ;
 
-	//class_<PyElement>("element")
-	//    .def("set_node",  &PyElement::set_node)
-	//    .def("set_model", &PyElement::set_model)
-	//    ;
+	class_<PyElement>("element", init<int>())
+	    .def("set_node",  &PyElement::set_node , return_internal_reference<>())
+	    .def("set_model", &PyElement::set_model, return_internal_reference<>())
+	    .def("val",       &PyElement::val)
+	    ;
+
+	class_<PySolver>("solver", init<str>())
+	    .def("solve",          &PySolver::solve)
+	    .def("set_lin_sol",    &PySolver::set_lin_sol,    return_internal_reference<>())
+	    .def("set_num_div",    &PySolver::set_num_div,    return_internal_reference<>())
+	    .def("set_delta_time", &PySolver::set_delta_time, return_internal_reference<>())
+	    ;
 
 	// Global functions
 	def ("add_node",      add_node_2d  );
 	def ("add_node",      add_node_3d  );
 	def ("add_elem",      add_elem     );
 	def ("geometry_type", geometry_type);
-	//def ("nodes",         nodes        );
-	//def ("elems",         elems        );
+	def ("nodes",         nodes        );
+	def ("elems",         elems        );
 	def ("print_elems",   print_elems  );
 	def ("print_models",  print_models );
 

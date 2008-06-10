@@ -54,11 +54,7 @@ int main(int argc, char **argv) try
 	*/
 
 	// Input
-	LinAlg::LinSol_T linsol;
-	bool input_ok = false;
-	if (argc==2) { if (atoi(argv[1])>=1 && atoi(argv[1])<=3) input_ok = true; }
-	if (input_ok) linsol = static_cast<LinAlg::LinSol_T>(atoi(argv[1]));
-	else throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \t1 => LAPACK_T  : DENSE\n \t2 => UMFPACK_T : SPARSE\n \t3 => SuperLU_T : SPARSE\n"),argv[0]);
+	if (argc!=2) throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n"),argv[0]);
 
 	// 0) Geometry type
 	FEM::GeometryType = 3; // 3D
@@ -112,7 +108,8 @@ int main(int argc, char **argv) try
 	// 6) Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol->Solve(linsol, /*iStage*/0, /*NumDiv*/1, /*DeltaTime*/0);
+	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> Solve();
 
 	return 0;
 }

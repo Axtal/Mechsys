@@ -83,22 +83,27 @@ class Solver
 public:
 
 	// Constructor
-	Solver(bool DoOutput=true) : _do_output(DoOutput) {}
+	Solver() : _num_div(1), _delta_time(0.0), _do_output(false) {}
 
 	// Destructor
 	virtual ~Solver() {}
 
 	// Methods
-	void Solve(LinAlg::LinSol_T LinSol, int iStage, int NumDiv, double DeltaTime); ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array and for the stage iStage.
+	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
+	Solver * SetLinSol    (char const * Key);                                        ///< LinSolName: LA=LAPACK, UM=UMFPACK, SLU=SuperLU, SLUd=SuperLUd
+	Solver * SetNumDiv    (int    NumDiv)    { _num_div   =NumDiv;    return this; } ///< TODO
+	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< TODO
 
 protected:
 	// Data
-	bool                     _do_output; ///< Do output?
-	LinAlg::Vector<double>   _dF_ext;    ///< Increment of natural values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
-	LinAlg::Vector<double>   _dU_ext;    ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
-	LinAlg::Vector<double>   _dF_int;    ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
-	LinAlg::Vector<double>   _hKU;       ///< Linearized independent term of the differential equation.
-	bool                     _has_hKU;   ///< Flag which says if any element has to contribute to the hKU vector. If _has_hKU==false, there is no need for the hKU vector, because there are no Order0Matrices in this stage of the simulation.
+	int                      _num_div;    ///< TODO
+	double                   _delta_time; ///< TODO
+	bool                     _do_output;  ///< Do output?
+	LinAlg::Vector<double>   _dF_ext;     ///< Increment of natural values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
+	LinAlg::Vector<double>   _dU_ext;     ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
+	LinAlg::Vector<double>   _dF_int;     ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
+	LinAlg::Vector<double>   _hKU;        ///< Linearized independent term of the differential equation.
+	bool                     _has_hKU;    ///< Flag which says if any element has to contribute to the hKU vector. If _has_hKU==false, there is no need for the hKU vector, because there are no Order0Matrices in this stage of the simulation.
 
 	// Methods
 	void   _inv_G_times_dF_minus_hKU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU); ///< Compute (linear solver) inv(G)*(dF-hKU), where G may be assembled by Order1 and Order0 matrices
@@ -153,13 +158,22 @@ private:
 
 /* public */
 
-inline void Solver::Solve(LinAlg::LinSol_T LinSol, int iStage, int NumDiv, double DeltaTime)
+inline Solver * Solver::SetLinSol(char const * Key)
+{
+	     if (strncmp(Key,"LA",  2)==0) _linsol=LinAlg::LAPACK_T;
+	else if (strncmp(Key,"UM",  2)==0) _linsol=LinAlg::UMFPACK_T;
+	else if (strncmp(Key,"SLU", 2)==0) _linsol=LinAlg::SuperLU_T;
+	else if (strncmp(Key,"SLUd",2)==0) _linsol=LinAlg::SuperLU_T;
+	else throw new Fatal("Solver::SetLinSol: Solver key==%s is invalid",Key);
+	return this;
+}
+
+inline void Solver::Solve()
 {
 	// Solve:    ([C] + alpha*h*[K]) * {dU} = {dF} - h*[K]*{U}
-	_linsol = LinSol;
 
 	// Number of divisions for each increment
-	double dTime = DeltaTime / NumDiv; // Time increment
+	double dTime = _delta_time / _num_div; // Time increment
 
 	// Number of DOFs
 	_ndofs  = 0; // total
@@ -206,13 +220,13 @@ inline void Solver::Solve(LinAlg::LinSol_T LinSol, int iStage, int NumDiv, doubl
 	// Set the vectors with increments of boundary conditions
 	for (int i=0; i<_nudofs; ++i)
 	{
-		_dF_ext(_udofs[i]->EqID) = _udofs[i]->NaturalBry   / NumDiv;
-		_dU_ext(_udofs[i]->EqID) = _udofs[i]->EssentialBry / NumDiv;
+		_dF_ext(_udofs[i]->EqID) = _udofs[i]->NaturalBry   / _num_div;
+		_dU_ext(_udofs[i]->EqID) = _udofs[i]->EssentialBry / _num_div;
 	}
 	for (int i=0; i<_npdofs; ++i)
 	{
-		_dF_ext(_pdofs[i]->EqID) = _pdofs[i]->NaturalBry   / NumDiv;
-		_dU_ext(_pdofs[i]->EqID) = _pdofs[i]->EssentialBry / NumDiv;
+		_dF_ext(_pdofs[i]->EqID) = _pdofs[i]->NaturalBry   / _num_div;
+		_dU_ext(_pdofs[i]->EqID) = _pdofs[i]->EssentialBry / _num_div;
 	}
 
 	// Allocate stifness DENSE matrix G or Allocate stifness SPARSE matrix G
@@ -235,8 +249,8 @@ inline void Solver::Solve(LinAlg::LinSol_T LinSol, int iStage, int NumDiv, doubl
 	// Output initial state
 	//if (iStage==0 && _do_output) OutputIncrement(iStage, -1);
 
-	// Loop over increments (0<increment<NumDiv)
-	for (int increment=0; increment<NumDiv; ++increment)
+	// Loop over increments (0<increment<_num_div)
+	for (int increment=0; increment<_num_div; ++increment)
 	{
 		// Solve for increment
 		_do_solve_for_an_increment(dTime);
@@ -789,12 +803,12 @@ typedef std::map<String, SolverMakerPtr, std::less<String> > SolverFactory_t;
 SolverFactory_t SolverFactory;
 
 // Allocate a new solver according to a string giving the name of the solver
-Solver * AllocSolver(String const & SolverName)
+Solver * AllocSolver(char const * SolverName)
 {
 	SolverMakerPtr ptr=NULL;
 	ptr = SolverFactory[SolverName];
 	if (ptr==NULL)
-		throw new Fatal(_("FEM::AllocSolver: There is no < %s > solver implemented in this library"), SolverName.c_str());
+		throw new Fatal(_("FEM::AllocSolver: There is no < %s > solver implemented in this library"), SolverName);
 	return (*ptr)();
 }
 

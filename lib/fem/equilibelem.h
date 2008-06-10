@@ -74,6 +74,9 @@ public:
 	// Methods
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
 
+	// Access methods
+	double Val (int iNodeLocal, char const * Name) const; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
+
 private:
 	// Data
 	int                  _n_stress;
@@ -310,8 +313,8 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		int const DATA_COMPS=10;
 		Values.Resize(_n_nodes,DATA_COMPS);
 		Labels.Resize(DATA_COMPS);
-		Labels[ 0] = "ux" ; Labels[ 1] = "uy" ;  
-		Labels[ 2] = "fx" ; Labels[ 3] = "fy" ; 
+		Labels[ 0] = "ux"; Labels[ 1] = "uy";  
+		Labels[ 2] = "fx"; Labels[ 3] = "fy"; 
 		Labels[ 4] = "Ex"; Labels[ 5] = "Ey"; Labels[ 6] = "Exy";
 		Labels[ 7] = "Sx"; Labels[ 8] = "Sy"; Labels[ 9] = "Sxy";
 		for (int i_node=0; i_node<_n_nodes; i_node++)
@@ -413,6 +416,29 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		}
 
 	}
+}
+
+inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
+{
+	//Extrapolation
+	LinAlg::Vector<double> ip_values(_n_int_pts);
+	LinAlg::Vector<double> nodal_values(_n_nodes);
+
+	// Stresses
+	if (strncmp(Name,"Sx",2)==0)
+	{
+
+		for (int j_ip=0; j_ip<_n_int_pts; j_ip++)
+		{
+			Vector<double> sig;  _a_model[j_ip]->Sig(sig);  sig(2) /= SQ2;
+			ip_values(j_ip) = sig(0); //getting IP values
+		}
+		Extrapolate (ip_values, nodal_values);
+		return nodal_values(iNodeLocal);
+	}
+	else throw new Fatal("EquilibElem::Val: Feature (%s) not implemented yet",Name);
+
+	//if (_n_dim==3)
 }
 
 inline void EquilibElem::Deactivate()

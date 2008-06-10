@@ -54,11 +54,7 @@ int main(int argc, char **argv) try
 	*/
 
 	// Input
-	LinAlg::LinSol_T linsol;
-	bool input_ok = false;
-	if (argc==2) { if (atoi(argv[1])>=1 && atoi(argv[1])<=3) input_ok = true; }
-	if (input_ok) linsol = static_cast<LinAlg::LinSol_T>(atoi(argv[1]));
-	else throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \t1 => LAPACK_T  : DENSE\n \t2 => UMFPACK_T : SPARSE\n \t3 => SuperLU_T : SPARSE\n"),argv[0]);
+	if (argc!=2) throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n"),argv[0]);
 
 	// 0) Geometry type
 	FEM::GeometryType = 2; // 2D
@@ -105,40 +101,34 @@ int main(int argc, char **argv) try
 	// 6) Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol->Solve(linsol, /*iStage*/0, /*NumDiv*/1, /*DeltaTime*/0);
-
-	// Output
-	String fn;
-	     if (linsol==LinAlg::LAPACK_T  ) fn.append("LP");
-	else if (linsol==LinAlg::UMFPACK_T ) fn.append("UM");
-	else if (linsol==LinAlg::SuperLU_T ) fn.append("SLU");
-	else if (linsol==LinAlg::SuperLUd_T) fn.append("SLUd");
+	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> Solve();
 
 	// Check
 	double errors = 0;
 
-	errors += fabs(Nodes[0]->DOFVar("ux").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[0]->DOFVar("uy").EssentialVal - (-0.5));
-	errors += fabs(Nodes[0]->DOFVar("uz").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("ux").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("uy").EssentialVal - ( 0.4));
-	errors += fabs(Nodes[1]->DOFVar("uz").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[2]->DOFVar("ux").EssentialVal - (-0.5));
-	errors += fabs(Nodes[2]->DOFVar("uy").EssentialVal - ( 0.2));
-	errors += fabs(Nodes[2]->DOFVar("uz").EssentialVal - ( 0.0));
+	errors += fabs(Nodes[0]->Val("ux") - ( 0.0));
+	errors += fabs(Nodes[0]->Val("uy") - (-0.5));
+	errors += fabs(Nodes[0]->Val("uz") - ( 0.0));
+	errors += fabs(Nodes[1]->Val("ux") - ( 0.0));
+	errors += fabs(Nodes[1]->Val("uy") - ( 0.4));
+	errors += fabs(Nodes[1]->Val("uz") - ( 0.0));
+	errors += fabs(Nodes[2]->Val("ux") - (-0.5));
+	errors += fabs(Nodes[2]->Val("uy") - ( 0.2));
+	errors += fabs(Nodes[2]->Val("uz") - ( 0.0));
 
-	errors += fabs(Nodes[0]->DOFVar("fx").NaturalVal - (-2.0));
-	errors += fabs(Nodes[0]->DOFVar("fy").NaturalVal - (-2.0));
-	errors += fabs(Nodes[0]->DOFVar("fz").NaturalVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("fx").NaturalVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("fy").NaturalVal - ( 1.0));
-	errors += fabs(Nodes[1]->DOFVar("fz").NaturalVal - ( 0.0));
-	errors += fabs(Nodes[2]->DOFVar("fx").NaturalVal - ( 2.0));
-	errors += fabs(Nodes[2]->DOFVar("fy").NaturalVal - ( 1.0));
-	errors += fabs(Nodes[2]->DOFVar("fz").NaturalVal - ( 0.0));
+	errors += fabs(Nodes[0]->Val("fx") - (-2.0));
+	errors += fabs(Nodes[0]->Val("fy") - (-2.0));
+	errors += fabs(Nodes[0]->Val("fz") - ( 0.0));
+	errors += fabs(Nodes[1]->Val("fx") - ( 0.0));
+	errors += fabs(Nodes[1]->Val("fy") - ( 1.0));
+	errors += fabs(Nodes[1]->Val("fz") - ( 0.0));
+	errors += fabs(Nodes[2]->Val("fx") - ( 2.0));
+	errors += fabs(Nodes[2]->Val("fy") - ( 1.0));
+	errors += fabs(Nodes[2]->Val("fz") - ( 0.0));
 
-	if (fabs(errors)>1.0e-14) cout << "[1;31mErrors(" << fn << ") = " << errors << "[0m\n" << endl;
-	else                      cout << "[1;32mErrors(" << fn << ") = " << errors << "[0m\n" << endl;
+	if (fabs(errors)>1.0e-14) cout << "[1;31mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
+	else                      cout << "[1;32mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
 
 	return 0;
 }
