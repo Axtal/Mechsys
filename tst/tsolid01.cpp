@@ -100,7 +100,7 @@ int main(int argc, char **argv) try
 	Nodes[7]->Bry("Dfz", -25.0);
 
 	// 5) Parameters and initial values
-	Elems[0]->ReAllocateModel("LinElastic", "E=2000.0 nu=0.2", "Sx=10.0 Sy=10.0 Sz=10");
+	Elems[0]->SetModel("LinElastic", "E=2000.0 nu=0.2", "Sx=10.0 Sy=10.0 Sz=10");
 
 	// Stiffness
 	Array<size_t>          map;

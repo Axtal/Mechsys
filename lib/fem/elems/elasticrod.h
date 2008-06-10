@@ -52,7 +52,7 @@ public:
 	// Derived methods
 	String    Name            () const { return "ElasticRod"; }
 	bool      IsEssential     (String const & DOFName) const;
-	void      ReAllocateModel (String const & ModelName, String const & Prms, String const & Inis);
+	void      SetModel        (String const & ModelName, String const & Prms, String const & Inis);
 	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     () { _N_bkp = _N; }
@@ -129,7 +129,7 @@ inline bool ElasticRod::IsEssential(String const & DOFName) const
 	else return false;
 }
 
-inline void ElasticRod::ReAllocateModel(String const & ModelName, String const & Prms, String const & Inis)
+inline void ElasticRod::SetModel(String const & ModelName, String const & Prms, String const & Inis)
 {
 	/* Prms   "E=20000.0" */
 	LineParser lp(Prms);
@@ -141,7 +141,7 @@ inline void ElasticRod::ReAllocateModel(String const & ModelName, String const &
 	int count = 0;
 	if (names.Size()==1 && values.Size()==1)
 		if (names[0]=="E") { _E = values[0];  count++; }
-	if (count!=1) throw Fatal("ElasticRod::ReAllocateModel: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0\n");
+	if (count!=1) throw Fatal("ElasticRod::SetModel: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0\n");
 
 	/* Inis   "N=0.0  A=1.0" */
 	lp.Reset(Inis);

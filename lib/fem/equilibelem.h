@@ -54,7 +54,7 @@ public:
 
 	// Derived methods
 	bool      IsEssential     (String const & DOFName) const;
-	void      ReAllocateModel (String const & ModelName, String const & Prms, String const & Inis);
+	void      SetModel        (String const & ModelName, String const & Prms, String const & Inis);
 	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     ();
@@ -133,7 +133,7 @@ inline bool EquilibElem::IsEssential(String const & DOFName) const
 	return false;
 }
 
-inline void EquilibElem::ReAllocateModel(String const & ModelName, String const & Prms, String const & Inis)
+inline void EquilibElem::SetModel(String const & ModelName, String const & Prms, String const & Inis)
 {
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
@@ -154,7 +154,7 @@ inline void EquilibElem::ReAllocateModel(String const & ModelName, String const 
 		// Calculate initial internal forces
 		_calc_initial_internal_forces();
 	}
-	else throw new Fatal("EquilibElem::ReAllocateModel: Feature not implemented.");
+	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
 }
 
 inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)

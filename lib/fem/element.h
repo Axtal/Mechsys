@@ -66,7 +66,7 @@ public:
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
 	virtual bool      IsEssential     (String const & DOFName) const =0;                                                                    ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
-	virtual void      ReAllocateModel (String const & ModelName, String const & Prms, String const & Inis) =0;                              ///< (Re)allocate model with parameters and initial values
+	virtual void      SetModel        (String const & ModelName, String const & Prms, String const & Inis) =0;                              ///< (Re)allocate model with parameters and initial values
 	virtual Element * SetNode         (int iNodeLocal, int iNodeGlobal) =0;                                                                 ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
 	virtual void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;               ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      BackupState     () =0;                                                                                                ///< Backup internal state

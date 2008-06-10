@@ -85,9 +85,9 @@ int main(int argc, char **argv) try
 	Nodes[2]->Bry("Dfx", 2.0)->Bry("Dfy",  1.0);                  // Natural
 
 	// 5) Parameters and initial values
-	Elems[0]->ReAllocateModel("", "E=100.0", "N=0.0  A=1.0");
-	Elems[1]->ReAllocateModel("", "E= 50.0", "N=0.0  A=1.0");
-	Elems[2]->ReAllocateModel("", "E=200.0", "N=0.0  A=1.414213562373095");
+	Elems[0]->SetModel("", "E=100.0", "N=0.0  A=1.0");
+	Elems[1]->SetModel("", "E= 50.0", "N=0.0  A=1.0");
+	Elems[2]->SetModel("", "E=200.0", "N=0.0  A=1.414213562373095");
 
 	// Stiffness
 	Array<size_t>          map;
