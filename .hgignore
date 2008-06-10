@@ -1,6 +1,7 @@
 tst/ttri6
 tst/ttruss01
 tst/tsolid01
+src/build
 
 syntax: glob
 CMakeCache.txt
@@ -8,5 +9,8 @@ CMakeFiles
 Makefile
 cmake_install.cmake
 *.swp
+*.a
+*.so
+*.o
 .cproject
 .project
