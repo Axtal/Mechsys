@@ -49,12 +49,16 @@ using std::endl;
 
 using namespace boost::python;
 
-// Wrapper functions
-void addnode_2d (double X, double Y)           { FEM::AddNode (X,Y);   }
-void addnode_3d (double X, double Y, double Z) { FEM::AddNode (X,Y,Z); }
-void addelem    (str Type, bool IsActive)      { FEM::AddElem (extract<char const *>(Type),IsActive); }
+//////////////////////////////////////////////////////////////////////////////////////// Wrapper functions
 
-// Exceptions
+void add_node_2d (double X, double Y)           { FEM::AddNode (X,Y);   }
+void add_node_3d (double X, double Y, double Z) { FEM::AddNode (X,Y,Z); }
+void add_elem    (str Type, bool IsActive)      { FEM::AddElem (extract<char const *>(Type),IsActive); }
+
+////////////////////////////////////////////////////////////////////////////////////////// Wrapper classes
+
+/////////////////////////////////////////////////////////////////////////////////// Extra Python functions
+
 void except_translator (Exception * e)
 {
 	String msg;
@@ -64,8 +68,7 @@ void except_translator (Exception * e)
 	delete e;
 }
 
-// Extra Python functions
-void printelems ()
+void print_elems ()
 {
 	cout << "[1;34mMechSys:[0m Elements available: " << endl;
 	FEM::ElementFactory_t::const_iterator it;
@@ -75,13 +78,26 @@ void printelems ()
 	}
 }
 
+void print_models ()
+{
+	cout << "[1;34mMechSys:[0m Models available: " << endl;
+	//FEM::ModelFactory_t::const_iterator it;
+	//for (it=FEM::ModelFactory.begin(); it!=FEM::ModelFactory.end(); it++)
+	//{
+	//	cout << "\t" << it->first << endl;
+	//}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////// Define Module
+
 BOOST_PYTHON_MODULE (mechsys)
 {
 	// Global functions
-    def ("addnode",    addnode_2d);
-    def ("addnode",    addnode_3d);
-    def ("addelem",    addelem   );
-    def ("printelems", printelems);
+    def ("add_node",     add_node_2d );
+    def ("add_node",     add_node_3d );
+    def ("add_elem",     add_elem    );
+    def ("print_elems",  print_elems );
+    def ("print_models", print_models);
 
 	// Exceptions
 	register_exception_translator<Exception *>(&except_translator);
