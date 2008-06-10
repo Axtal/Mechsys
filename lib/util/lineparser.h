@@ -34,7 +34,13 @@ class LineParser : public std::istringstream
 public:
 	LineParser(std::string const & Line) : std::istringstream(Line)          {}
 	LineParser(     String const & Line) : std::istringstream(Line.GetSTL()) {}
+	LineParser(       char const * Line) : std::istringstream(Line)          {}
 	void Reset(     String const & Line) { Reset(Line.GetSTL()); }
+	void Reset(       char const * Line)
+	{
+		(*this).clear();
+		(*this).str(Line);
+	}
 	void Reset(std::string const & Line)
 	{
 		(*this).clear();

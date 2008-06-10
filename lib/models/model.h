@@ -44,13 +44,13 @@ typedef std::map<String, ModelMakerPtr, std::less<String> > ModelFactory_t;
 ModelFactory_t ModelFactory;
 
 // Allocate a new Models according to a string giving the name of the Model
-Model * AllocModel(String const & Name)
+Model * AllocModel(char const * Name)
 {
 	// Check if there is Name model implemented
 	ModelMakerPtr ptr=NULL;
 	ptr = ModelFactory[Name];
 	if (ptr==NULL)
-		throw new Fatal(_("FEM::AllocModel: There is no < %s > implemented in this library"), Name.GetSTL().c_str());
+		throw new Fatal(_("FEM::AllocModel: There is no < %s > implemented in this library"), Name);
 
 	return (*ptr)();
 }

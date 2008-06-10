@@ -87,17 +87,17 @@ int main(int argc, char **argv) try
 	Elems[0]->SetNode(7, 7);
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("Dux" ,0.0)->Bry("Duy" ,0.0)->Bry("Duz" ,0.0);
-	Nodes[1]->Bry("Duz" ,0.0)->Bry("Duy" ,0.0);
-	Nodes[2]->Bry("Duz" ,0.0);
-	Nodes[3]->Bry("Duz" ,0.0)->Bry("Dux" ,0.0);
-	Nodes[4]->Bry("Dux" ,0.0)->Bry("Duy" ,0.0);
-	Nodes[5]->Bry("Duy" ,0.0);
-	Nodes[7]->Bry("Dux" ,0.0);
-	Nodes[4]->Bry("Dfz", -10.0);
-	Nodes[5]->Bry("Dfz", -15.0);
-	Nodes[6]->Bry("Dfz", -20.0);
-	Nodes[7]->Bry("Dfz", -25.0);
+	Nodes[0]->Bry("ux",   0.0)->Bry("uy" ,0.0)->Bry("uz" ,0.0);
+	Nodes[1]->Bry("uz",   0.0)->Bry("uy" ,0.0);
+	Nodes[2]->Bry("uz",   0.0);
+	Nodes[3]->Bry("uz",   0.0)->Bry("ux" ,0.0);
+	Nodes[4]->Bry("ux",   0.0)->Bry("uy" ,0.0);
+	Nodes[5]->Bry("uy",   0.0);
+	Nodes[7]->Bry("ux",   0.0);
+	Nodes[4]->Bry("fz", -10.0);
+	Nodes[5]->Bry("fz", -15.0);
+	Nodes[6]->Bry("fz", -20.0);
+	Nodes[7]->Bry("fz", -25.0);
 
 	// 5) Parameters and initial values
 	Elems[0]->SetModel("LinElastic", "E=2000.0 nu=0.2", "Sx=10.0 Sy=10.0 Sz=10");

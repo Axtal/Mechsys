@@ -66,16 +66,16 @@ public:
 	};
 
 	// Methods
-	void   Initialize     (int ID, double X, double Y, double Z);                                ///< Set the ID of this node and its coordinates
-	void   AddDOF         (String const & StrEssentialBry, String const & StrNaturalBry);        ///< TODO
-	bool   IsEssential    (String const & Name) const;                                           ///< TODO
-	void   SetSharedBy    (int ElementID);                                                       ///< Set a new element which shares this node
-	void   RemoveSharedBy (int ElementID);                                                       ///< Remove an element which shares this node
-	bool   HasVar         (String const & Name) const { return (_find_var(Name)<0?false:true); } ///< TODO
-	void   ClearBryValues ();                                                                    ///< Clear only boundary information, but does NOT change (calculated) EssentialVal and NaturalVal (U and F values)
+	void   Initialize     (int ID, double X, double Y, double Z);                              ///< Set the ID of this node and its coordinates
+	void   AddDOF         (char const * StrEssentialBry, char const * StrNaturalBry);          ///< TODO
+	bool   IsEssential    (char const * Name) const;                                           ///< TODO
+	void   SetSharedBy    (int ElementID);                                                     ///< Set a new element which shares this node
+	void   RemoveSharedBy (int ElementID);                                                     ///< Remove an element which shares this node
+	bool   HasVar         (char const * Name) const { return (_find_var(Name)<0?false:true); } ///< TODO
+	void   ClearBryValues ();                                                                  ///< Clear only boundary information, but does NOT change (calculated) EssentialVal and NaturalVal (U and F values)
 
 	// DOFs access methods
-	DOF & DOFVar(String const & Name);
+	DOF & DOFVar(char const * Name);
 	DOF & DOFVar(int Index) { return _dofs[Index]; }
 
 	// Access methods
@@ -88,7 +88,7 @@ public:
 	int    SharedBy  (int Index) const { return _shared_by[Index]; } ///< Return the array with the elements that share this node
 
 	// Set methods
-	Node * Bry(String const & DOFName, double Value);
+	Node * Bry(const char * DOFName, double Value);
 
 private:
 	// Data
@@ -100,7 +100,7 @@ private:
 	Array<DOF> _dofs;      ///< TODO
 
 	// Private methods
-	long _find_var(String const & Name) const;
+	long _find_var(char const * Name) const;
 
 }; // class Node
 
@@ -120,7 +120,7 @@ inline void Node::Initialize(int ID, double X, double Y, double Z)
 	_z     = Z;
 }
 
-inline void Node::AddDOF(String const & EssentialBryName, String const & NaturalBryName)
+inline void Node::AddDOF(char const * EssentialBryName, char const * NaturalBryName)
 {
 	if (HasVar(EssentialBryName)==false) // not added yet
 	{
@@ -129,19 +129,19 @@ inline void Node::AddDOF(String const & EssentialBryName, String const & Natural
 	}
 }
 
-inline bool Node::IsEssential(String const & Name) const
+inline bool Node::IsEssential(char const * Name) const
 {
 	long idx = _find_var(Name);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::IsEssential: Could not find DOF variable name < %s > inside Node"), Name.c_str());
+		throw new Fatal(_("Node::IsEssential: Could not find DOF variable name < %s > inside Node"), Name);
 	return _dofs[idx].EssentialBryName==Name;
 }
 
-inline Node::DOF & Node::DOFVar(String const & Name)
+inline Node::DOF & Node::DOFVar(char const * Name)
 {
 	long idx = _find_var(Name);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node"), Name.c_str());
+		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node"), Name);
 	return _dofs[idx];
 }
 
@@ -173,11 +173,11 @@ inline void Node::ClearBryValues()
 }
 
 // Set methods
-inline Node * Node::Bry(String const & DOFName, double Value)
+inline Node * Node::Bry(const char * DOFName, double Value)
 {
 	long idx = _find_var(DOFName);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::Bry: Could not find DOF variable name < %s > inside Node"), DOFName.c_str());
+		throw new Fatal(_("Node::Bry: Could not find DOF variable name < %s > inside Node"), DOFName);
 	if (_dofs[idx].EssentialBryName==DOFName) // is essential
 	{
 		_dofs[idx].EssentialBry = Value;
@@ -192,7 +192,7 @@ inline Node * Node::Bry(String const & DOFName, double Value)
 }
 
 // Private
-inline long Node::_find_var(String const & Name) const
+inline long Node::_find_var(char const * Name) const
 {
 	long found = -1;
 	for (size_t i=0; i<_dofs.Size(); i++)

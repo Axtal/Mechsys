@@ -65,8 +65,8 @@ public:
 	virtual String Name() const =0;
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
-	virtual bool      IsEssential     (String const & DOFName) const =0;                                                                    ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
-	virtual void      SetModel        (String const & ModelName, String const & Prms, String const & Inis) =0;                              ///< (Re)allocate model with parameters and initial values
+	virtual bool      IsEssential     (char const * DOFName) const =0;                                                                      ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
+	virtual void      SetModel        (char const * ModelName, char const * Prms, char const * Inis) =0;                                    ///< (Re)allocate model with parameters and initial values
 	virtual Element * SetNode         (int iNodeLocal, int iNodeGlobal) =0;                                                                 ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
 	virtual void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;               ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      BackupState     () =0;                                                                                                ///< Backup internal state
@@ -94,7 +94,7 @@ public:
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const {};                                         ///< Output values at nodes
 	virtual void   Deactivate    () { _is_active = false; }                                                                                  ///< Deactivate this element
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
-	virtual void   FaceNodalVals (String const & FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const {} ///< Return the array with nodal values in a face
+	virtual void   FaceNodalVals (char const * FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const {} ///< Return the array with nodal values in a face
 
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
@@ -106,13 +106,6 @@ public:
 	virtual void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
 	virtual void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< First order matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
 	
-	// Output Scalars and Tensors; MAY be overriden by derived classes
-	virtual double OutScalar1 ()             const { return 0;                           } ///< Internal scalar, may be, for example, Pore-pressure
-	virtual double OutScalar2 ()             const { return 0;                           } ///< Internal scalar, may be, for example, Ed
-	virtual void   OutTensor1 (String & Str) const { Str.Printf(_("0 0 0 0 0 0 0 0 0")); } ///< Internal tensor, may be, for example, Stress
-	virtual void   OutTensor2 (String & Str) const { Str.Printf(_("0 0 0 0 0 0 0 0 0")); } ///< Internal tensor, may be, for example, Strain
-	virtual void   OutTensor3 (String & Str) const { Str.Printf(_("0 0 0 0 0 0 0 0 0")); } ///< Internal tensor, may be, for example, Plastic Strain
-
 	// Methods
 	double Volume () const
 	{
@@ -400,12 +393,12 @@ typedef std::map<String, ElementMakerPtr, std::less<String> > ElementFactory_t;
 ElementFactory_t ElementFactory;
 
 // Allocate a new element according to a string giving the name of the element
-Element * AllocElement(String const & ElementName)
+Element * AllocElement(char const * ElementName)
 {
 	ElementMakerPtr ptr=NULL;
 	ptr = ElementFactory[ElementName];
 	if (ptr==NULL)
-		throw new Fatal(_("FEM::AllocElement: There is no < %s > implemented in this library"), ElementName.c_str());
+		throw new Fatal(_("FEM::AllocElement: There is no < %s > implemented in this library"), ElementName);
 	return (*ptr)();
 }
 

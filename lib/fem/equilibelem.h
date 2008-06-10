@@ -17,8 +17,19 @@
  ************************************************************************/
 
 
-/* __ Equilibrium capable element __ */
+/* __ Equilibrium capable element __
 
+ux = Nodal displacement increment in x direction
+uy = Nodal displacement increment in y direction
+uz = Nodal displacement increment in z direction
+fx = Nodal force increment in x direction
+fy = Nodal force increment in y direction
+fz = Nodal force increment in z direction
+tx = Traction increment in x direction on face
+ty = Traction increment in y direction on face
+tz = Traction increment in z direction on face
+
+*/
 
 #ifndef MECHSYS_FEM_EQUILIB_H
 #define MECHSYS_FEM_EQUILIB_H
@@ -38,23 +49,12 @@ namespace FEM
 class EquilibElem : public virtual Element
 {
 public:
-	// EquilibElem constants
-	static String DUX;
-	static String DUY;
-	static String DUZ;
-	static String DFX;
-	static String DFY;
-	static String DFZ;
-	static String DTX;
-	static String DTY;
-	static String DTZ;
-
 	// Destructor
 	virtual ~EquilibElem() {}
 
 	// Derived methods
-	bool      IsEssential     (String const & DOFName) const;
-	void      SetModel        (String const & ModelName, String const & Prms, String const & Inis);
+	bool      IsEssential     (char const * DOFName) const;
+	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
 	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     ();
@@ -64,17 +64,12 @@ public:
 	String    OutCenter       (bool PrintCaptionOnly) const;
 	void      OutNodes        (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
 	void      Deactivate      ();
-	void      FaceNodalVals   (String const & FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const;
+	void      FaceNodalVals   (char const * FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const;
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder1Matrices () const { return 1; }
 	void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
 	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; // Stiffness
-
-	// Derived methods to output
-	double OutScalar2 ()             const; ///< Ed
-	void   OutTensor1 (String & Str) const; ///< Stress
-	void   OutTensor2 (String & Str) const; ///< Strain
 
 	// Methods
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
@@ -89,17 +84,6 @@ private:
 	void _calc_initial_internal_forces ();
 
 }; // class EquilibElem
-
-// EquilibElem constants
-String EquilibElem::DUX          = _T("Dux");
-String EquilibElem::DUY          = _T("Duy");
-String EquilibElem::DUZ          = _T("Duz");
-String EquilibElem::DFX          = _T("Dfx");
-String EquilibElem::DFY          = _T("Dfy");
-String EquilibElem::DFZ          = _T("Dfz");
-String EquilibElem::DTX          = _T("Dtx");
-String EquilibElem::DTY          = _T("Dty");
-String EquilibElem::DTZ          = _T("Dtz");
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -126,14 +110,14 @@ inline void EquilibElem::SetGeometryType(int Geom)
 	}
 }
 
-inline bool EquilibElem::IsEssential(String const & DOFName) const
+inline bool EquilibElem::IsEssential(char const * DOFName) const
 {
-	if (DOFName==DUX || DOFName==DUY) return true;
-	if (_n_dim ==3   && DOFName==DUZ) return true;
+	if (DOFName=="ux" || DOFName=="uy") return true;
+	if (_n_dim ==3    && DOFName=="uz") return true;
 	return false;
 }
 
-inline void EquilibElem::SetModel(String const & ModelName, String const & Prms, String const & Inis)
+inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
@@ -163,10 +147,10 @@ inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)
 	_connects[iNodeLocal] = Nodes[iNodeGlobal];
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	Nodes[iNodeGlobal]->AddDOF(DUX, DFX);
-	Nodes[iNodeGlobal]->AddDOF(DUY, DFY);
+	Nodes[iNodeGlobal]->AddDOF("ux", "fx");
+	Nodes[iNodeGlobal]->AddDOF("uy", "fy");
 	if (_n_dim==3)
-	Nodes[iNodeGlobal]->AddDOF(DUZ, DFZ);
+	Nodes[iNodeGlobal]->AddDOF("uz", "fz");
 
 	// Shared
 	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
@@ -182,10 +166,10 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	// Assemble (local/element) displacements vector
 	for (int i=0; i<_n_nodes; ++i)
 	{
-		dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar(DUX).EqID);
-		dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar(DUY).EqID);
+		dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
 		if (_n_dim==3)
-		dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar(DUZ).EqID);
+		dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
@@ -228,10 +212,10 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	for (int i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		dFint(_connects[i]->DOFVar(DFX).EqID) += dF(i*_n_dim  );
-		dFint(_connects[i]->DOFVar(DFY).EqID) += dF(i*_n_dim+1);
+		dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_n_dim  );
+		dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_n_dim+1);
 		if (_n_dim==3)
-		dFint(_connects[i]->DOFVar(DFZ).EqID) += dF(i*_n_dim+2);
+		dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_n_dim+2);
 	}
 }
 
@@ -326,16 +310,16 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		int const DATA_COMPS=10;
 		Values.Resize(_n_nodes,DATA_COMPS);
 		Labels.Resize(DATA_COMPS);
-		Labels[ 0] = DUX ; Labels[ 1] = DUY ;  
-		Labels[ 2] = DFX ; Labels[ 3] = DFY ; 
+		Labels[ 0] = "ux" ; Labels[ 1] = "uy" ;  
+		Labels[ 2] = "fx" ; Labels[ 3] = "fy" ; 
 		Labels[ 4] = "Ex"; Labels[ 5] = "Ey"; Labels[ 6] = "Exy";
 		Labels[ 7] = "Sx"; Labels[ 8] = "Sy"; Labels[ 9] = "Sxy";
 		for (int i_node=0; i_node<_n_nodes; i_node++)
 		{
-			Values(i_node,0) = _connects[i_node]->DOFVar(DUX).EssentialVal;
-			Values(i_node,1) = _connects[i_node]->DOFVar(DUY).EssentialVal;
-			Values(i_node,2) = _connects[i_node]->DOFVar(DFX).NaturalVal;
-			Values(i_node,3) = _connects[i_node]->DOFVar(DFY).NaturalVal;
+			Values(i_node,0) = _connects[i_node]->DOFVar("ux").EssentialVal;
+			Values(i_node,1) = _connects[i_node]->DOFVar("uy").EssentialVal;
+			Values(i_node,2) = _connects[i_node]->DOFVar("fx").NaturalVal;
+			Values(i_node,3) = _connects[i_node]->DOFVar("fy").NaturalVal;
 		}
 
 		//Extrapolation
@@ -377,18 +361,18 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		int const DATA_COMPS=18;
 		Values.Resize(_n_nodes,DATA_COMPS);
 		Labels.Resize(DATA_COMPS);
-		Labels[ 0] = DUX ; Labels[ 1] = DUY ; Labels[ 2] = DUZ; 
-		Labels[ 3] = DFX ; Labels[ 4] = DFY ; Labels[ 5] = DFZ;
+		Labels[ 0] = "ux" ; Labels[ 1] = "uy" ; Labels[ 2] = "uz"; 
+		Labels[ 3] = "fx" ; Labels[ 4] = "fy" ; Labels[ 5] = "fz";
 		Labels[ 6] = "Ex"; Labels[ 7] = "Ey"; Labels[ 8] = "Ez"; Labels[ 9] = "Exy"; Labels[10] = "Eyz"; Labels[11] = "Exz";
 		Labels[12] = "Sx"; Labels[13] = "Sy"; Labels[14] = "Sz"; Labels[15] = "Sxy"; Labels[16] = "Syz"; Labels[17] = "Sxz";
 		for (int i_node=0; i_node<_n_nodes; i_node++)
 		{
-			Values(i_node,0) = _connects[i_node]->DOFVar(DUX).EssentialVal;
-			Values(i_node,1) = _connects[i_node]->DOFVar(DUY).EssentialVal;
-			Values(i_node,2) = _connects[i_node]->DOFVar(DUZ).EssentialVal;
-			Values(i_node,3) = _connects[i_node]->DOFVar(DFX).NaturalVal;
-			Values(i_node,4) = _connects[i_node]->DOFVar(DFY).NaturalVal;
-			Values(i_node,5) = _connects[i_node]->DOFVar(DFZ).NaturalVal;
+			Values(i_node,0) = _connects[i_node]->DOFVar("ux").EssentialVal;
+			Values(i_node,1) = _connects[i_node]->DOFVar("uy").EssentialVal;
+			Values(i_node,2) = _connects[i_node]->DOFVar("uz").EssentialVal;
+			Values(i_node,3) = _connects[i_node]->DOFVar("fx").NaturalVal;
+			Values(i_node,4) = _connects[i_node]->DOFVar("fy").NaturalVal;
+			Values(i_node,5) = _connects[i_node]->DOFVar("fz").NaturalVal;
 		}
 		//Extrapolation
 		LinAlg::Vector<double> ip_values(_n_int_pts);
@@ -436,13 +420,13 @@ inline void EquilibElem::Deactivate()
 	throw new Fatal("EquilibElem::Deactivate: Feature not implemented yet");
 }
 
-inline void EquilibElem::FaceNodalVals(String const & FaceDOFName, double const   FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double>& NodalValues) const
+inline void EquilibElem::FaceNodalVals(char const * FaceDOFName, double const   FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double>& NodalValues) const
 {
-	if (FaceDOFName==DTX || FaceDOFName==DTY || FaceDOFName==DTZ)
+	if (FaceDOFName=="tx" || FaceDOFName=="ty" || FaceDOFName=="tz")
 	{
-		if (FaceDOFName==DTX) NodalDOFName=DFX;
-		if (FaceDOFName==DTY) NodalDOFName=DFY;
-		if (FaceDOFName==DTZ) NodalDOFName=DFZ;
+		if (FaceDOFName=="tx") NodalDOFName="fx";
+		if (FaceDOFName=="ty") NodalDOFName="fy";
+		if (FaceDOFName=="tz") NodalDOFName="fz";
 		Dist2FaceNodes(APtrFaceNodes, FaceDOFValue, NodalValues);
 	}
 	else
@@ -450,8 +434,7 @@ inline void EquilibElem::FaceNodalVals(String const & FaceDOFName, double const 
 		std::ostringstream oss; oss << "Face nodes coordinates:\n";
 		for (size_t i_node=0; i_node<APtrFaceNodes.Size(); ++i_node)
 			oss << "X=" << APtrFaceNodes[i_node]->X() << ", Y=" << APtrFaceNodes[i_node]->Y() << ", Z=" << APtrFaceNodes[i_node]->Z() << std::endl;
-		throw new Fatal(_("EquilibElem::CalcFaceNodalValues: This method must only be called for FaceDOFName< %s > equal to Dtx, Dty or Dtz.\n %s"),
-				FaceDOFName.c_str(), oss.str().c_str());
+		throw new Fatal(_("EquilibElem::CalcFaceNodalValues: This method must only be called for FaceDOFName< %s > equal to Dtx, Dty or Dtz.\n %s"), FaceDOFName, oss.str().c_str());
 	}
 }
 
@@ -470,16 +453,16 @@ inline void EquilibElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Arr
 	// Fill map of Ke position to K position of DOFs components
 	for (int i_node=0; i_node<_n_nodes; ++i_node)
 	{
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar(DUX).EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar(DUX).IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("ux").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("ux").IsEssenPresc; 
 		idx_Ke++;
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar(DUY).EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar(DUY).IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uy").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uy").IsEssenPresc; 
 		idx_Ke++;
 		if (_n_dim==3)
 		{
-			RowsMap        [idx_Ke] = _connects[i_node]->DOFVar(DUZ).EqID; 
-			RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar(DUZ).IsEssenPresc; 
+			RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uz").EqID; 
+			RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uz").IsEssenPresc; 
 			idx_Ke++;
 		}
 	}
@@ -530,67 +513,6 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 	}
 }
 	
-// Derived methods to output
-
-inline void EquilibElem::OutTensor1(String & Str) const
-{ /*
-	// Stress evaluated at the center of the element
-	Tensors::Tensor2 s(0.0);
-
-	// Loop over integration points
-	for (int i_ip=0; i_ip<_n_int_pts; ++i_ip)
-		s += _a_model[i_ip]->Sig();
-	
-	// Average stress
-	s = s / _n_int_pts;
-
-	// Output
-	double SQ2 = sqrt(2.0);
-	Str.Printf(_(" %e %e %e  %e %e %e  %e %e %e "), s(0),s(3)/sq2,s(5)/sq2,  s(3)/sq2,s(1),s(4)/sq2,  s(5)/sq2,s(4)/sq2,s(2));
-*/
-}
-
-inline void EquilibElem::OutTensor2(String & Str) const
-{/*
-	// Strains evaluated at the center of the element
-	Tensors::Tensor2 e(0.0);
-
-	// Loop over integration points
-	for (int i_ip=0; i_ip<_n_int_pts; ++i_ip)
-		e += 100.0*_a_model[i_ip]->Eps();
-	
-	// Average strains
-	e = e / _n_int_pts;
-
-	// Output
-	double sq2 = sqrt(2.0);
-	Str.Printf(_(" %e %e %e  %e %e %e  %e %e %e "), e(0),e(3)/sq2,e(5)/sq2,  e(3)/sq2,e(1),e(4)/sq2,  e(5)/sq2,e(4)/sq2,e(2));
-*/
-}
-
-inline double EquilibElem::OutScalar2() const
-{ /*
-	// Strains evaluated at the center of the element
-	Tensors::Tensor2 e(0.0);
-
-	// Loop over integration points
-	for (int i_ip=0; i_ip<_n_int_pts; ++i_ip)
-		e += 100.0*_a_model[i_ip]->Eps();
-	
-	// Average strains
-	e = e / _n_int_pts;
-
-	// Calculate strain invariants
-	double   Ev,Ed;
-	Strain_Ev_Ed(e,Ev,Ed);
-
-	// Output
-	return Ed;
-*/
-	return 0;
-
-}
-
 // Methods
 
 inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
@@ -687,10 +609,10 @@ inline void EquilibElem::_calc_initial_internal_forces()
 	for (int i_node=0; i_node<_n_nodes; ++i_node)
 	{
 		// Assemble (local/element) displacements vector.
-		_connects[i_node]->DOFVar(DFX).NaturalVal += F(i_node*_n_dim  ); // NaturalVal must be set to zero during AddDOF routine
-		_connects[i_node]->DOFVar(DFY).NaturalVal += F(i_node*_n_dim+1);
+		_connects[i_node]->DOFVar("fx").NaturalVal += F(i_node*_n_dim  ); // NaturalVal must be set to zero during AddDOF routine
+		_connects[i_node]->DOFVar("fy").NaturalVal += F(i_node*_n_dim+1);
 		if (_n_dim==3)
-		_connects[i_node]->DOFVar(DFZ).NaturalVal += F(i_node*_n_dim+2);
+		_connects[i_node]->DOFVar("fz").NaturalVal += F(i_node*_n_dim+2);
 	}
 }
 
@@ -705,20 +627,6 @@ int EquilibDOFInfoRegister()
 	DOFInfo D; 
 
 	// Nodal
-	D.NodeEssential.Push(EquilibElem::DUX + _("@Nodal displacement increment in x direction"));
-	D.NodeEssential.Push(EquilibElem::DUY + _("@Nodal displacement increment in y direction"));
-	D.NodeEssential.Push(EquilibElem::DUZ + _("@Nodal displacement increment in z direction"));
-	D.NodeNatural  .Push(EquilibElem::DFX + _("@Nodal force increment in x direction"));
-	D.NodeNatural  .Push(EquilibElem::DFY + _("@Nodal force increment in y direction"));
-	D.NodeNatural  .Push(EquilibElem::DFZ + _("@Nodal force increment in z direction"));
-
-	// Face
-	D.FaceEssential.Push(EquilibElem::DUX + _("@Displacement increment in x direction on face"));
-	D.FaceEssential.Push(EquilibElem::DUY + _("@Displacement increment in y direction on face"));
-	D.FaceEssential.Push(EquilibElem::DUZ + _("@Displacement increment in z direction on face"));
-	D.FaceNatural  .Push(EquilibElem::DTX + _("@Traction increment in x direction on face"));
-	D.FaceNatural  .Push(EquilibElem::DTY + _("@Traction increment in y direction on face"));
-	D.FaceNatural  .Push(EquilibElem::DTZ + _("@Traction increment in z direction on face"));
 
 	// Insert into DOFInfoMap
 	DOFInfoMap["Equilibrium"] = D;

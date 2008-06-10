@@ -33,15 +33,8 @@ class ElasticRod : public Element
 {
 
 public:
-	// EquilibElem constants
-	static int    NDIM;
-	static int    NSTRESSCOMPS;
-	static String DUX;
-	static String DUY;
-	static String DUZ;
-	static String DFX;
-	static String DFY;
-	static String DFZ;
+	// Constants
+	static int NDIM;
 	
 	// Constructor
 	ElasticRod();
@@ -51,8 +44,8 @@ public:
 
 	// Derived methods
 	String    Name            () const { return "ElasticRod"; }
-	bool      IsEssential     (String const & DOFName) const;
-	void      SetModel        (String const & ModelName, String const & Prms, String const & Inis);
+	bool      IsEssential     (char const * DOFName) const;
+	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
 	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     () { _N_bkp = _N; }
@@ -89,15 +82,7 @@ private:
 
 }; // class ElasticRod
 
-// ElasticRod constants
-int    ElasticRod::NDIM         = 3;
-int    ElasticRod::NSTRESSCOMPS = 1;
-String ElasticRod::DUX          = _T("Dux");
-String ElasticRod::DUY          = _T("Duy");
-String ElasticRod::DUZ          = _T("Duz");
-String ElasticRod::DFX          = _T("Dfx");
-String ElasticRod::DFY          = _T("Dfy");
-String ElasticRod::DFZ          = _T("Dfz");
+int ElasticRod::NDIM = 3;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -123,13 +108,13 @@ inline ElasticRod::ElasticRod()
 
 // Derived methods
 
-inline bool ElasticRod::IsEssential(String const & DOFName) const
+inline bool ElasticRod::IsEssential(char const * DOFName) const
 {
-	if (DOFName==DUX || DOFName==DUY || DOFName==DUZ) return true;
+	if (DOFName=="ux" || DOFName=="uy" || DOFName=="uz") return true;
 	else return false;
 }
 
-inline void ElasticRod::SetModel(String const & ModelName, String const & Prms, String const & Inis)
+inline void ElasticRod::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
 	/* Prms   "E=20000.0" */
 	LineParser lp(Prms);
@@ -169,9 +154,9 @@ inline Element * ElasticRod::SetNode(int iNodeLocal, int iNodeGlobal)
 	_connects[iNodeLocal] = Nodes[iNodeGlobal];
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	Nodes[iNodeGlobal]->AddDOF(DUX, DFX);
-	Nodes[iNodeGlobal]->AddDOF(DUY, DFY);
-	Nodes[iNodeGlobal]->AddDOF(DUZ, DFZ);
+	Nodes[iNodeGlobal]->AddDOF("ux", "fx");
+	Nodes[iNodeGlobal]->AddDOF("uy", "fy");
+	Nodes[iNodeGlobal]->AddDOF("uz", "fz");
 
 	// Shared
 	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
@@ -187,9 +172,9 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	// Assemble (local/element) displacements vector
 	for (int i=0; i<_n_nodes; ++i)
 	{
-		dU(i*NDIM  ) = dUglobal(_connects[i]->DOFVar(DUX).EqID);
-		dU(i*NDIM+1) = dUglobal(_connects[i]->DOFVar(DUY).EqID);
-		dU(i*NDIM+2) = dUglobal(_connects[i]->DOFVar(DUZ).EqID);
+		dU(i*NDIM  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		dU(i*NDIM+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
+		dU(i*NDIM+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
@@ -206,9 +191,9 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	for (int i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		dFint(_connects[i]->DOFVar(DFX).EqID) += dF(i*NDIM  );
-		dFint(_connects[i]->DOFVar(DFY).EqID) += dF(i*NDIM+1);
-		dFint(_connects[i]->DOFVar(DFZ).EqID) += dF(i*NDIM+2);
+		dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*NDIM  );
+		dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*NDIM+1);
+		dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*NDIM+2);
 	}
 }
 
@@ -217,16 +202,16 @@ inline void ElasticRod::OutNodes(LinAlg::Matrix<double> & Values, Array<String> 
 	int const DATA_COMPS=6;
 	Values.Resize(_n_nodes,DATA_COMPS);
 	Labels.Resize(DATA_COMPS);
-	Labels[ 0] = DUX; Labels[ 1] = DUY; Labels[ 2] = DUZ; 
-	Labels[ 3] = DFX; Labels[ 4] = DFY; Labels[ 5] = DFZ;
+	Labels[ 0] = "ux"; Labels[ 1] = "uy"; Labels[ 2] = "uz"; 
+	Labels[ 3] = "fx"; Labels[ 4] = "fy"; Labels[ 5] = "fz";
 	for (int i_node=0; i_node<_n_nodes; i_node++)
 	{
-		Values(i_node,0) = _connects[i_node]->DOFVar(DUX).EssentialVal;
-		Values(i_node,1) = _connects[i_node]->DOFVar(DUY).EssentialVal;
-		Values(i_node,2) = _connects[i_node]->DOFVar(DUZ).EssentialVal;
-		Values(i_node,3) = _connects[i_node]->DOFVar(DFX).NaturalVal;
-		Values(i_node,4) = _connects[i_node]->DOFVar(DFY).NaturalVal;
-		Values(i_node,5) = _connects[i_node]->DOFVar(DFZ).NaturalVal;
+		Values(i_node,0) = _connects[i_node]->DOFVar("ux").EssentialVal;
+		Values(i_node,1) = _connects[i_node]->DOFVar("uy").EssentialVal;
+		Values(i_node,2) = _connects[i_node]->DOFVar("uz").EssentialVal;
+		Values(i_node,3) = _connects[i_node]->DOFVar("fx").NaturalVal;
+		Values(i_node,4) = _connects[i_node]->DOFVar("fy").NaturalVal;
+		Values(i_node,5) = _connects[i_node]->DOFVar("fz").NaturalVal;
 	}
 }
 
@@ -245,14 +230,14 @@ inline void ElasticRod::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Arra
 	// Fill map of Ke position to K position of DOFs components
 	for (int i_node=0; i_node<_n_nodes; ++i_node)
 	{
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar(DUX).EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar(DUX).IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("ux").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("ux").IsEssenPresc; 
 		idx_Ke++;
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar(DUY).EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar(DUY).IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uy").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uy").IsEssenPresc; 
 		idx_Ke++;
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar(DUZ).EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar(DUZ).IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uz").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uz").IsEssenPresc; 
 		idx_Ke++;
 	}
 	ColsMap        = RowsMap;

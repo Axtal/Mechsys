@@ -43,28 +43,46 @@
 // MechSys -- Models
 #include "models/equilibs/linelastic.h"
 
-using FEM::Nodes;
-using FEM::Elems;
+// Python string to char const *
+#define S2C(py_str) extract<char const *>(py_str)
+
 using std::cout;
 using std::endl;
 
 using namespace boost::python;
 
-//////////////////////////////////////////////////////////////////////////////////////// Wrapper functions
-
-void add_node_2d (double X, double Y)           { FEM::AddNode (X,Y);   }
-void add_node_3d (double X, double Y, double Z) { FEM::AddNode (X,Y,Z); }
-void add_elem    (str Type, bool IsActive)      { FEM::AddElem (extract<char const *>(Type),IsActive); }
-
 ////////////////////////////////////////////////////////////////////////////////////////// Wrapper classes
 
-class data
+class PyNode
 {
 public:
-	void geometry_type (int  gtype) { FEM::GeometryType = gtype; }
-	void FE_nSI        (long value) { FEM::GFE_nSI      = value; }
+	//PyNode (int iNode) : _id(iNode) {}
+	//PyNode & bry (str DOFName, double Value) { FEM::Nodes[_id]->Bry(S2C(DOFName), Value);  return (*this); }
+	void bry () { cout << "Hello\n" << endl; }
+private:
+	int _id;
+}; // class PyNode
 
-};
+/*
+class PyElement
+{
+public:
+	PyElement (int iElem) : _id(iElem) {}
+	PyElement & set_node  (int iNodeLocal, int iNodeGlobal) { FEM::Elems[_id]->SetNode(iNodeLocal, iNodeGlobal);        return (*this); }
+	PyElement & set_model (str Name, str Prms, str Inis)    { FEM::Elems[_id]->SetModel(S2C(Name),S2C(Prms),S2C(Inis)); return (*this); }
+private:
+	int _id;
+}; // class PyElement
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////// Wrapper functions
+
+void      add_node_2d   (double X, double Y)           { FEM::AddNode (X,Y); }
+void      add_node_3d   (double X, double Y, double Z) { FEM::AddNode (X,Y,Z); }
+void      add_elem      (str Type, bool IsActive)      { FEM::AddElem (S2C(Type),IsActive); }
+void      geometry_type (int  GType)                   { FEM::GeometryType = GType; }
+//PyNode    nodes         (int  iNode)                   { PyNode    tmp(iNode); return tmp; }
+//PyElement elems         (int  iElem)                   { PyElement tmp(iElem); return tmp; }
 
 /////////////////////////////////////////////////////////////////////////////////// Extra Python functions
 
@@ -103,19 +121,24 @@ BOOST_PYTHON_MODULE (mechsys)
 {
 	// Global classes
 
-	// Class data
-	class_<data>("data")
-	    .def("geometry_type", &data::geometry_type)
-	    .def("FE_nSI"       , &data::FE_nSI)
+	class_<PyNode>("node")
+	    .def("bry", &PyNode::bry)
 	    ;
-	
+
+	//class_<PyElement>("element")
+	//    .def("set_node",  &PyElement::set_node)
+	//    .def("set_model", &PyElement::set_model)
+	//    ;
 
 	// Global functions
-    def ("add_node",     add_node_2d );
-    def ("add_node",     add_node_3d );
-    def ("add_elem",     add_elem    );
-    def ("print_elems",  print_elems );
-    def ("print_models", print_models);
+	def ("add_node",      add_node_2d  );
+	def ("add_node",      add_node_3d  );
+	def ("add_elem",      add_elem     );
+	def ("geometry_type", geometry_type);
+	//def ("nodes",         nodes        );
+	//def ("elems",         elems        );
+	def ("print_elems",   print_elems  );
+	def ("print_models",  print_models );
 
 	// Exceptions
 	register_exception_translator<Exception *>(&except_translator);

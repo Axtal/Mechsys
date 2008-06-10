@@ -40,8 +40,8 @@ public:
 	void SetGeom (int Type) { _geom=Type; } ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
 
 	// Derived Methods
-	virtual void SetPrms      (String const & Prms) =0;
-	virtual void SetInis      (String const & Inis) =0;
+	virtual void SetPrms      (char const * Prms) =0;
+	virtual void SetInis      (char const * Inis) =0;
 	virtual void TgStiffness  (Matrix<double> & D) const =0;
 	virtual int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig) =0;
 	virtual void BackupState  () =0;

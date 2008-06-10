@@ -79,10 +79,10 @@ int main(int argc, char **argv) try
 	Elems[2]->SetNode(0, 0)->SetNode(1, 2);
 
 	// 4) Boundary conditions (must be after set connectivity)
-	Nodes[0]->Bry("Dux", 0.0)->Bry("Duy", -0.5)->Bry("Duz", 0.0); // Essential
-	Nodes[1]->                 Bry("Duy",  0.4)->Bry("Duz", 0.0); // Essential
-	Nodes[2]                                   ->Bry("Duz", 0.0); // Essential
-	Nodes[2]->Bry("Dfx", 2.0)->Bry("Dfy",  1.0);                  // Natural
+	Nodes[0]->Bry("ux", 0.0)->Bry("uy", -0.5)->Bry("uz", 0.0); // Essential
+	Nodes[1]->                Bry("uy",  0.4)->Bry("uz", 0.0); // Essential
+	Nodes[2]                                 ->Bry("uz", 0.0); // Essential
+	Nodes[2]->Bry("fx", 2.0)->Bry("fy",  1.0);                 // Natural
 
 	// 5) Parameters and initial values
 	Elems[0]->SetModel("", "E=100.0", "N=0.0  A=1.0");
@@ -117,25 +117,25 @@ int main(int argc, char **argv) try
 	// Check
 	double errors = 0;
 
-	errors += fabs(Nodes[0]->DOFVar("Dux").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[0]->DOFVar("Duy").EssentialVal - (-0.5));
-	errors += fabs(Nodes[0]->DOFVar("Duz").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("Dux").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("Duy").EssentialVal - ( 0.4));
-	errors += fabs(Nodes[1]->DOFVar("Duz").EssentialVal - ( 0.0));
-	errors += fabs(Nodes[2]->DOFVar("Dux").EssentialVal - (-0.5));
-	errors += fabs(Nodes[2]->DOFVar("Duy").EssentialVal - ( 0.2));
-	errors += fabs(Nodes[2]->DOFVar("Duz").EssentialVal - ( 0.0));
+	errors += fabs(Nodes[0]->DOFVar("ux").EssentialVal - ( 0.0));
+	errors += fabs(Nodes[0]->DOFVar("uy").EssentialVal - (-0.5));
+	errors += fabs(Nodes[0]->DOFVar("uz").EssentialVal - ( 0.0));
+	errors += fabs(Nodes[1]->DOFVar("ux").EssentialVal - ( 0.0));
+	errors += fabs(Nodes[1]->DOFVar("uy").EssentialVal - ( 0.4));
+	errors += fabs(Nodes[1]->DOFVar("uz").EssentialVal - ( 0.0));
+	errors += fabs(Nodes[2]->DOFVar("ux").EssentialVal - (-0.5));
+	errors += fabs(Nodes[2]->DOFVar("uy").EssentialVal - ( 0.2));
+	errors += fabs(Nodes[2]->DOFVar("uz").EssentialVal - ( 0.0));
 
-	errors += fabs(Nodes[0]->DOFVar("Dfx").NaturalVal - (-2.0));
-	errors += fabs(Nodes[0]->DOFVar("Dfy").NaturalVal - (-2.0));
-	errors += fabs(Nodes[0]->DOFVar("Dfz").NaturalVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("Dfx").NaturalVal - ( 0.0));
-	errors += fabs(Nodes[1]->DOFVar("Dfy").NaturalVal - ( 1.0));
-	errors += fabs(Nodes[1]->DOFVar("Dfz").NaturalVal - ( 0.0));
-	errors += fabs(Nodes[2]->DOFVar("Dfx").NaturalVal - ( 2.0));
-	errors += fabs(Nodes[2]->DOFVar("Dfy").NaturalVal - ( 1.0));
-	errors += fabs(Nodes[2]->DOFVar("Dfz").NaturalVal - ( 0.0));
+	errors += fabs(Nodes[0]->DOFVar("fx").NaturalVal - (-2.0));
+	errors += fabs(Nodes[0]->DOFVar("fy").NaturalVal - (-2.0));
+	errors += fabs(Nodes[0]->DOFVar("fz").NaturalVal - ( 0.0));
+	errors += fabs(Nodes[1]->DOFVar("fx").NaturalVal - ( 0.0));
+	errors += fabs(Nodes[1]->DOFVar("fy").NaturalVal - ( 1.0));
+	errors += fabs(Nodes[1]->DOFVar("fz").NaturalVal - ( 0.0));
+	errors += fabs(Nodes[2]->DOFVar("fx").NaturalVal - ( 2.0));
+	errors += fabs(Nodes[2]->DOFVar("fy").NaturalVal - ( 1.0));
+	errors += fabs(Nodes[2]->DOFVar("fz").NaturalVal - ( 0.0));
 
 	if (fabs(errors)>1.0e-14) cout << "[1;31mErrors(" << fn << ") = " << errors << "[0m\n" << endl;
 	else                      cout << "[1;32mErrors(" << fn << ") = " << errors << "[0m\n" << endl;

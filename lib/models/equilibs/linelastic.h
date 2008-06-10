@@ -49,8 +49,8 @@ public:
 	virtual ~LinElastic () {}
 
 	// Derived Methods
-	void SetPrms      (String const & Prms);
-	void SetInis      (String const & Inis);
+	void SetPrms      (char const * Prms);
+	void SetInis      (char const * Inis);
 	void TgStiffness  (Matrix<double> & D) const { Tensor4ToMatrix (_geom, _De, D); }
 	int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig);
 	void BackupState  ();
@@ -84,7 +84,7 @@ inline LinElastic::LinElastic()
 	SetInis ("Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0 Syz=0.0 Szx=0.0");
 }
 
-inline void LinElastic::SetPrms(String const & Prms)
+inline void LinElastic::SetPrms(char const * Prms)
 {
 	/* "E=20000.0 nu=0.2" */
 	LineParser lp(Prms);
@@ -123,7 +123,7 @@ inline void LinElastic::SetPrms(String const & Prms)
 	throw Fatal("LinElastic::SetPrms: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0 nu=0.25\n");
 }
 
-inline void LinElastic::SetInis(String const & Inis)
+inline void LinElastic::SetInis(char const * Inis)
 {
 	/* "Sx=0.0 Sy=0.0 Sxy=0.0" */
 	LineParser lp(Inis);

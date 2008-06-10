@@ -87,12 +87,12 @@ int main(int argc, char **argv) try
 	Elems[1]->SetNode(0, 7)->SetNode(1, 8)->SetNode(2, 4)->SetNode(3, 3)->SetNode(4, 2)->SetNode(5, 6);
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("Dux", 0.0)->Bry("Duy", 0.0);
-	Nodes[1]->Bry("Duy", 0.0);
-	Nodes[2]->Bry("Duy", 0.0);
-	Nodes[4]->Bry("Dfy", 1.0);
-	Nodes[8]->Bry("Dfy", 1.0);
-	Nodes[7]->Bry("Dfy", 1.0);
+	Nodes[0]->Bry("ux", 0.0)->Bry("uy", 0.0);
+	Nodes[1]->Bry("uy", 0.0);
+	Nodes[2]->Bry("uy", 0.0);
+	Nodes[4]->Bry("fy", 1.0);
+	Nodes[8]->Bry("fy", 1.0);
+	Nodes[7]->Bry("fy", 1.0);
 
 	// 5) Parameters and initial values
 	Elems[0]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
