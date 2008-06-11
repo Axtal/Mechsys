@@ -69,7 +69,7 @@ public:
 	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; // Stiffness
 
 	// Access methods
-	double ElasticRod::Val(int iNodeLocal, char const * Name) const;
+	double Val(int iNodeLocal, char const * Name) const;
 
 private:
 	// Data
