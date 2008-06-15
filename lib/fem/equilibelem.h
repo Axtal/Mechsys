@@ -316,11 +316,6 @@ inline String EquilibElem::OutCenter(bool PrintCaptionOnly=false) const
 
 inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & Labels) const
 {
-	Values.Resize(0,0);
-	Labels.Resize(0);
-	return;
-
-	/*
 	if (_n_dim==2)
 	{
 		int const DATA_COMPS=10;
@@ -330,6 +325,7 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		Labels[ 2] = "fx"; Labels[ 3] = "fy"; 
 		Labels[ 4] = "Ex"; Labels[ 5] = "Ey"; Labels[ 6] = "Exy";
 		Labels[ 7] = "Sx"; Labels[ 8] = "Sy"; Labels[ 9] = "Sxy";
+
 		for (int i_node=0; i_node<_n_nodes; i_node++)
 		{
 			Values(i_node,0) = _connects[i_node]->DOFVar("ux").EssentialVal;
@@ -341,35 +337,19 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		//Extrapolation
 		LinAlg::Vector<double> ip_values(_n_int_pts);
 		LinAlg::Vector<double> nodal_values(_n_nodes);
-		
-		// Strains
-		for (int i_comp=0; i_comp<_n_stress; i_comp++)
+
+		// Stress & Strain
+		for (int i_comp=0; i_comp<6; i_comp++) // six values: stress + strain
 		{
-			for (int j_ip=0; j_ip<_n_int_pts; j_ip++)
-			{
-				Vector<double> eps;
-				_a_model[j_ip]->Eps(eps);
-				eps(2) /= SQ2;
-				ip_values(j_ip) = eps(i_comp); //getting IP values
-			}
+			// Get integration point values
+			for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
+				ip_values(i_ip) = _a_model[i_ip]->Val(Labels[i_comp+4].c_str());
+
 			Extrapolate(ip_values, nodal_values);
+
+			// Place nodal values
 			for (int j_node=0; j_node<_n_nodes; j_node++)
 				Values(j_node,i_comp+4) = nodal_values(j_node);
-		}
-		
-		// Stresses
-		for (int i_comp=0; i_comp<_n_stress; i_comp++)
-		{
-			for (int j_ip=0; j_ip<_n_int_pts; j_ip++)
-			{
-				Vector<double> sig;
-				_a_model[j_ip]->Sig(sig);
-				sig(2) /= SQ2;
-				ip_values(j_ip) = sig(i_comp); //getting IP values
-			}
-			Extrapolate(ip_values, nodal_values);
-			for (int j_node=0; j_node<_n_nodes; j_node++)
-				Values(j_node,i_comp+7) = nodal_values(j_node);
 		}
 	}
 	else // _n_dim==3
@@ -381,6 +361,7 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		Labels[ 3] = "fx" ; Labels[ 4] = "fy" ; Labels[ 5] = "fz";
 		Labels[ 6] = "Ex"; Labels[ 7] = "Ey"; Labels[ 8] = "Ez"; Labels[ 9] = "Exy"; Labels[10] = "Eyz"; Labels[11] = "Exz";
 		Labels[12] = "Sx"; Labels[13] = "Sy"; Labels[14] = "Sz"; Labels[15] = "Sxy"; Labels[16] = "Syz"; Labels[17] = "Sxz";
+
 		for (int i_node=0; i_node<_n_nodes; i_node++)
 		{
 			Values(i_node,0) = _connects[i_node]->DOFVar("ux").EssentialVal;
@@ -394,42 +375,20 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		LinAlg::Vector<double> ip_values(_n_int_pts);
 		LinAlg::Vector<double> nodal_values(_n_nodes);
 		
-		// Strains
-		for (int i_comp=0; i_comp<_n_stress; i_comp++)
+		// Stress & Strain
+		for (int i_comp=0; i_comp<12; i_comp++) // six values: stress + strain
 		{
-			for (int j_ip=0; j_ip<_n_int_pts; j_ip++)
-			{
-				Vector<double> eps;
-				_a_model[j_ip]->Eps(eps);
-				eps(3) /= SQ2;
-				eps(4) /= SQ2;
-				eps(5) /= SQ2;
-				ip_values(j_ip) = eps(i_comp); //getting IP values
-			}
+			// Get integration point values
+			for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
+				ip_values(i_ip) = _a_model[i_ip]->Val(Labels[i_comp+6].c_str());
+
 			Extrapolate(ip_values, nodal_values);
+
+			// Place nodal values
 			for (int j_node=0; j_node<_n_nodes; j_node++)
 				Values(j_node,i_comp+6) = nodal_values(j_node);
 		}
-		
-		// Stresses
-		for (int i_comp=0; i_comp<_n_stress; i_comp++)
-		{
-			for (int j_ip=0; j_ip<_n_int_pts; j_ip++)
-			{
-				Vector<double> sig;
-				_a_model[j_ip]->Sig(sig);
-				sig(3) /= SQ2;
-				sig(4) /= SQ2;
-				sig(5) /= SQ2;
-				ip_values(j_ip) = sig(i_comp); //getting IP values
-			}
-			Extrapolate(ip_values, nodal_values);
-			for (int j_node=0; j_node<_n_nodes; j_node++)
-				Values(j_node,i_comp+12) = nodal_values(j_node);
-		}
-
 	}
-	*/
 }
 
 inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
