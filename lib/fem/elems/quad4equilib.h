@@ -16,45 +16,50 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_EQUILIBMODEL_H
-#define MECHSYS_EQUILIBMODEL_H
+#ifndef MECHSYS_FEM_QUAD4EQUILIB_H
+#define MECHSYS_FEM_QUAD4EQUILIB_H
 
 // MechSys
-#include "models/model.h"
-#include "util/string.h"
-#include "util/util.h"
+#include "fem/equilibelem.h"
+#include "fem/elems/quad4.h"
 
-using LinAlg::Vector;
-using LinAlg::Matrix;
+namespace FEM
+{
 
-class EquilibModel : public Model
+class Quad4Equilib : public Quad4, public EquilibElem
 {
 public:
-	// Constructor
-	EquilibModel () : _geom(3) {}
+	// Constants
+	static String NAME;
 
-	// Destructor
-	virtual ~EquilibModel () {}
+	// Derived methods
+	String Name() const { return NAME; };
 
-	// Set geometry type
-	void SetGeom (int Type) { _geom=Type; } ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+private:
+}; // class Quad4Equilib
 
-	// Derived Methods
-	virtual void SetPrms      (char const * Prms) =0;
-	virtual void SetInis      (char const * Inis) =0;
-	virtual void TgStiffness  (Matrix<double> & D) const =0;
-	virtual int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig) =0;
-	virtual void BackupState  () =0;
-	virtual void RestoreState () =0;
+// Quad4Equilib constants
+String Quad4Equilib::NAME = "Quad4Equilib";
 
-	// Access Methods
-	virtual void Sig (Vector<double> & Stress ) const =0;
-	virtual void Eps (Vector<double> & Strain ) const =0;
-	virtual void Ivs (Array<double>  & IntVals) const =0;
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
-protected:
-	int _geom; ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
 
-}; // class EquilibModel
+// Allocate a new Quad4Equilib element
+Element * Quad4EquilibMaker()
+{
+	return new Quad4Equilib();
+}
 
-#endif // MECHSYS_EQUILIBMODEL_H
+// Register a Quad4Equilib element into ElementFactory array map
+int Quad4EquilibRegister()
+{
+	ElementFactory[Quad4Equilib::NAME] = Quad4EquilibMaker;
+	return 0;
+}
+
+// Execute the autoregistration
+int __Quad4Equilib_dummy_int  = Quad4EquilibRegister();
+
+}; // namespace FEM
+
+#endif // MECHSYS_FEM_QUAD4EQUILIB_H

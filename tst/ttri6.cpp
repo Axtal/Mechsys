@@ -58,7 +58,7 @@ int main(int argc, char **argv) try
 	if (argc!=2) throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n"),argv[0]);
 
 	// 0) Geometry type
-	FEM::GeometryType = 2; // 2D
+	FEM::GeometryType = 2; // 2D(plane-strain)
 
 	// 1) Nodes
 	FEM::AddNode(0.0, 0.0); // 0
@@ -88,8 +88,8 @@ int main(int argc, char **argv) try
 	Nodes[6]->Bry("fy",1.0);
 
 	// 5) Parameters and initial values
-	Elems[0]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
-	Elems[1]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
+	Elems[0]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	Elems[1]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;

@@ -81,29 +81,34 @@ typedef blitz::TinyVector<double,6> Tensor2;
 
 inline void VectorToTensor2(int GeomType, LinAlg::Vector<double> const & V, Tensor2 & T)
 {
-	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	switch (GeomType)
 	{
-		case 1: // 1D
+		case 1: // 1D  ==>  1 component
 		{
 			//    x    y    z    xy   yz   zx
 			T = V(0), 0.0, 0.0, 0.0, 0.0, 0.0;
 			return;
 		}
-		case 2: // 2D(plane-strain)
+		case 2: // 2D(plane-strain)  ==>  4 components
 		{
-			//    x     y    z     xy   yz   zx
-			T = V(0), V(1), 0.0, V(2), 0.0, 0.0;
+			//    x     y     z    xy    yz   zx
+			T = V(0), V(1), V(2), V(3), 0.0, 0.0;
 			return;
 		}
-		case 3:
+		case 3: // 3D  ==>  6 components
 		{
-			//    x     y     z     xy    yz    zx
+			//    x     y     z    xy    yz    zx
 			T = V(0), V(1), V(2), V(3), V(4), V(5);
 			return;
 		}
+		case 5: // 2D(plane-stress)  ==>  3 components
+		{
+			//    x     y    z    xy     yz   zx
+			T = V(0), V(1), 0.0, V(2),  0.0, 0.0;
+			return;
+		}
 		case 4:
-		case 5:
 		{
 			throw new Fatal("Tensors::Vector2Tensor2: Feature not available");
 			return;
@@ -114,31 +119,37 @@ inline void VectorToTensor2(int GeomType, LinAlg::Vector<double> const & V, Tens
 
 inline void Tensor2ToVector(int GeomType, Tensor2 const & T, LinAlg::Vector<double> & V)
 {
-	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	switch (GeomType)
 	{
-		case 1: // 1D
+		case 1: // 1D  ==>  1 component
 		{
 			V.Resize(1);
 			V(0) = T(0);
 			return;
 		}
-		case 2: // 2D(plane-strain)
+		case 2: // 2D(plane-strain)  ==>  4 components
 		{
-			V.Resize(3);
-			//    x     y    xy
-			V = T(0), T(1), T(3);
+			V.Resize(4);
+			//    x     y     z    xy
+			V = T(0), T(1), T(2), T(3);
 			return;
 		}
-		case 3:
+		case 3: // 3D  ==>  6 components
 		{
 			V.Resize(6);
 			//    x     y     z     xy    yz    zx
 			V = T(0), T(1), T(2), T(3), T(4), T(5);
 			return;
 		}
+		case 5: // 2D(plane-stress)  ==>  3 components
+		{
+			V.Resize(3);
+			//    x     y    xy
+			V = T(0), T(1), T(3);
+			return;
+		}
 		case 4:
-		case 5:
 		{
 			throw new Fatal("Tensors::Tensor2ToVector: Feature not available");
 			return;
@@ -169,25 +180,26 @@ typedef blitz::TinyMatrix<double,6,6> Tensor4;
 
 inline void Tensor4ToMatrix(int GeomType, Tensor4 const & T, LinAlg::Matrix<double> & M)
 {
-	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+	// Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	switch (GeomType)
 	{
-		case 1: // 1D
+		case 1: // 1D  ==>  1 component
 		{
 			M.Resize(1,1);
 			M(0,0) = T(0,0);
 			return;
 		}
-		case 2: // 2D(plane-strain)
+		case 2: // 2D(plane-strain)  ==>  4x4 components
 		{
-			M.Resize(3,3);
-			//      x       y      xy 
-			M = T(0,0), T(0,1), T(0,3),  // x
-			    T(1,0), T(1,1), T(1,3),  // y
-			    T(3,0), T(3,1), T(3,3);  // xy
+			M.Resize(4,4);
+			//      x       y       z      xy 
+			M = T(0,0), T(0,1), T(0,2), T(0,3),  // x
+			    T(1,0), T(1,1), T(1,2), T(1,3),  // y
+			    T(2,0), T(2,1), T(2,2), T(2,3),  // z
+			    T(3,0), T(3,1), T(3,2), T(3,3);  // xy
 			return;
 		}
-		case 3:
+		case 3: // 3D  ==>  6x6 components
 		{
 			M.Resize(6,6);
 			//       x       y       z      xy      yz      zx
@@ -199,8 +211,16 @@ inline void Tensor4ToMatrix(int GeomType, Tensor4 const & T, LinAlg::Matrix<doub
 			     T(5,0), T(5,1), T(5,2), T(5,3), T(5,4), T(5,5);  // zx
 			return;
 		}
+		case 5: // 2D(plane-stress)  ==>  3x3 components
+		{
+			M.Resize(3,3);
+			//      x       y      xy 
+			M = T(0,0), T(0,1), T(0,3),  // x
+			    T(1,0), T(1,1), T(1,3),  // y
+			    T(3,0), T(3,1), T(3,3);  // xy
+			return;
+		}
 		case 4:
-		case 5:
 		{
 			throw new Fatal("Tensors::Vector2Tensor2: Feature not available");
 			return;

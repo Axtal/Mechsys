@@ -98,16 +98,17 @@ private:
 
 inline void EquilibElem::SetGeometryType(int Geom)
 {
+	// Set geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	_geom = Geom;
 
 	// Set the number of stresses associated with the geometry type
 	switch (_geom)
 	{
-		case 2: { _n_stress = 3; return; }
-		case 3: { _n_stress = 6; return; }
-		case 1:
-		case 4:
-		case 5:
+		case 2: { _n_stress = 4; return; } // 2D(plane-strain)
+		case 3: { _n_stress = 6; return; } // 3D
+		case 5: { _n_stress = 3; return; } // 2D(plane-stress)
+		case 1: // 1D
+		case 4: // 2D(axis-symmetric)
 		default:
 			throw new Fatal("EquilibElem::SetGeometryType: GeometryType==%d is not implemented yet",_geom);
 	}
@@ -308,6 +309,11 @@ inline String EquilibElem::OutCenter(bool PrintCaptionOnly=false) const
 
 inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & Labels) const
 {
+	Values.Resize(0,0);
+	Labels.Resize(0);
+	return;
+
+	/*
 	if (_n_dim==2)
 	{
 		int const DATA_COMPS=10;
@@ -416,6 +422,7 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 		}
 
 	}
+	*/
 }
 
 inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
