@@ -35,10 +35,8 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	/*       F1        F2       F3    F1=F2=F3 = 1.0
-	          ^         ^         ^
-	          |         |         |
-	
+	/*        | | | | | | | | | | |  q=1
+	          V V V V V V V V V V V 
 	        3 @---------@---------@ 2
 	          |         6         |
 	          |                   |
@@ -51,24 +49,24 @@ int main(int argc, char **argv) try
 	          |         4         |
 	        0 @---------@---------@ 1
 	         /_\       /_\       /_\
-	         ///       o o       o o
+	         o o       ///       o o
 	 */
 
 	// Input
 	if (argc!=2) throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n"),argv[0]);
 
 	// 0) Geometry type
-	FEM::GeometryType = 2; // 2D
+	FEM::GeometryType = 2; // 2D(plane-strain)
 
 	// 1) Nodes
 	FEM::AddNode(0.0, 0.0); // 0
-	FEM::AddNode(1.0, 0.0); // 1
-	FEM::AddNode(1.0, 1.0); // 2
-	FEM::AddNode(0.0, 1.0); // 3
-	FEM::AddNode(0.5, 0.0); // 4
-	FEM::AddNode(1.0, 0.5); // 5
-	FEM::AddNode(0.5, 1.0); // 6
-	FEM::AddNode(0.0, 0.5); // 7
+	FEM::AddNode(2.0, 0.0); // 1
+	FEM::AddNode(2.0, 2.0); // 2
+	FEM::AddNode(0.0, 2.0); // 3
+	FEM::AddNode(1.0, 0.0); // 4
+	FEM::AddNode(2.0, 1.0); // 5
+	FEM::AddNode(1.0, 2.0); // 6
+	FEM::AddNode(0.0, 1.0); // 7
 
 	// 2) Elements
 	FEM::AddElem("Quad8Equilib", /*IsActive*/true);
@@ -77,15 +75,13 @@ int main(int argc, char **argv) try
 	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5)->SetNode(6,6)->SetNode(7,7);
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("ux",0.0)->Bry("uy",0.0);
+	Nodes[0]->Bry("uy",0.0);
+	Nodes[4]->Bry("uy",0.0)->Bry("ux",0.0);
 	Nodes[1]->Bry("uy",0.0);
-	Nodes[4]->Bry("uy",0.0);
-	Nodes[3]->Bry("fy",1.0);
-	Nodes[6]->Bry("fy",1.0);
-	Nodes[2]->Bry("fy",1.0);
+	Elems[0]->Bry("fy",-1.0, 3, 3,6,2); // Actually, fy is traction == ty
 
 	// 5) Parameters and initial values
-	Elems[0]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
+	Elems[0]->SetModel("LinElastic", "E=207.0 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;

@@ -58,12 +58,11 @@ public:
 	virtual ~Hex8() {}
 
 	// Derived methods
-	int  VTKCellType     () const { return 12; } // VTK_HEXAHEDRON
-	void Shape           (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs          (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape       (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs      (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	void Dist2FaceNodes  (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const;
+	int    VTKCellType   () const { return 12; } // VTK_HEXAHEDRON
+	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
+	void   Derivs        (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
+	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
+	void   FaceDerivs    (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
 	double BoundDistance (double r, double s, double t) const;
 
 }; // class Hex8
@@ -85,13 +84,12 @@ inline Hex8::Hex8()
 	_connects.Resize(_n_nodes);
 
 	// Setup pointer to the array of Integration Points
-	_a_int_pts = HEX8_INTPTS;
-
+	_a_int_pts      = HEX8_INTPTS;
+	_a_face_int_pts = HEX8_FACEINTPTS;
 }
 
 inline void Hex8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
 {
-
 	/*                    t
 	 *                    ^
 	 *                    |     
@@ -166,7 +164,6 @@ inline void Hex8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	FaceShape(1) = 0.25*(1.0+r-s-r*s);
 	FaceShape(2) = 0.25*(1.0+r+s+r*s);
 	FaceShape(3) = 0.25*(1.0-r+s-r*s);
-
 }
 
 inline void Hex8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
@@ -184,26 +181,6 @@ inline void Hex8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDe
 	FaceDerivs(0,1) = 0.25*(+1.0-s);   FaceDerivs(1,1) = 0.25*(-1.0-r);
 	FaceDerivs(0,2) = 0.25*(+1.0+s);   FaceDerivs(1,2) = 0.25*(+1.0+r);
 	FaceDerivs(0,3) = 0.25*(-1.0-s);   FaceDerivs(1,3) = 0.25*(+1.0-r);
-
-}
-
-inline void Hex8::Dist2FaceNodes(Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const
-{
-	// Dimensioning NodalValues
-	NodalValues.Resize(_n_face_nodes);
-	NodalValues.SetValues(0.0);
-	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = 2 x 3
-	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face. size = _n_face_nodes
-	// Integration along the face
-	for (int i=0; i<_n_face_int_pts; i++)
-	{
-		double r = HEX8_FACEINTPTS[i].r;
-		double s = HEX8_FACEINTPTS[i].s;
-		double w = HEX8_FACEINTPTS[i].w;
-		FaceShape    (r, s, face_shape);
-		FaceJacobian (FaceConnects, r, s, J);
-		NodalValues += FaceValue*face_shape*det(J)*w;
-	}
 }
 
 inline double Hex8::BoundDistance(double r, double s, double t) const

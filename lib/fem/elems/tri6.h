@@ -51,12 +51,11 @@ public:
 	virtual ~Tri6() {}
 
 	// Derived methods
-	int  VTKCellType    () const { return 22; } // VTK_QUADRATIC_TRIANGLE
-	void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	void Dist2FaceNodes (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const;
+	int  VTKCellType () const { return 22; } // VTK_QUADRATIC_TRIANGLE
+	void Shape       (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
+	void Derivs      (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
+	void FaceShape   (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
+	void FaceDerivs  (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
 
 }; // class Tri6
 
@@ -77,7 +76,8 @@ inline Tri6::Tri6()
 	_connects.Resize(_n_nodes);
 
 	// Setup pointer to the array of Integration Points
-	_a_int_pts = TRI6_INTPTS;
+	_a_int_pts      = TRI6_INTPTS;
+	_a_face_int_pts = TRI6_FACEINTPTS;
 }
 
 inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
@@ -156,23 +156,6 @@ inline void Tri6::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDe
 	FaceDerivs(0,2) =  r  + 0.5;
 }
 
-inline void Tri6::Dist2FaceNodes(Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const
-{
-	// Dimensioning NodalValues
-	NodalValues.Resize(_n_face_nodes);
-	NodalValues.SetValues(0.0);
-	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = 1 x 2
-	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face. size = _n_face_nodes
-	// Integration along the face
-	for (int i=0; i<_n_face_int_pts; i++)
-	{
-		double r = TRI6_FACEINTPTS[i].r;
-		double w = TRI6_FACEINTPTS[i].w;
-		FaceShape    (r, 0.0, face_shape);
-		FaceJacobian (FaceConnects, r, J);
-		NodalValues += FaceValue*face_shape*det(J)*w;
-	}
-}
 
 }; // namespace FEM
 

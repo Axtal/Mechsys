@@ -20,6 +20,7 @@
 #define MECHSYS_FEM_QUAD4_H
 
 // MechSys
+#include "fem/node.h"
 #include "fem/element.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
@@ -58,12 +59,11 @@ public:
 	virtual ~Quad4() {}
 
 	// Derived methods
-	int  VTKCellType    () const { return 9; } // VTK_QUAD
-	void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	void Dist2FaceNodes (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const;
+	int  VTKCellType () const { return 9; } // VTK_QUAD
+	void Shape       (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
+	void Derivs      (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
+	void FaceShape   (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
+	void FaceDerivs  (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
 
 }; // class Quad4
 
@@ -84,7 +84,8 @@ inline Quad4::Quad4()
 	_connects.Resize(_n_nodes);
 
 	// Setup pointer to the array of Integration Points
-	_a_int_pts = QUAD4_INTPTS;
+	_a_int_pts      = QUAD4_INTPTS;
+	_a_face_int_pts = QUAD4_FACEINTPTS;
 }
 
 inline void Quad4::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
@@ -160,23 +161,6 @@ inline void Quad4::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceD
 	FaceDerivs(0,1) =  0.5;
 }
 
-inline void Quad4::Dist2FaceNodes(Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const
-{
-	// Dimensioning NodalValues
-	NodalValues.Resize(_n_face_nodes);
-	NodalValues.SetValues(0.0);
-	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = 1 x 2
-	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face. size = _n_face_nodes
-	// Integration along the face
-	for (int i=0; i<_n_face_int_pts; i++)
-	{
-		double r = QUAD4_FACEINTPTS[i].r;
-		double w = QUAD4_FACEINTPTS[i].w;
-		FaceShape    (r, 0.0, face_shape);
-		FaceJacobian (FaceConnects, r, J);
-		NodalValues += FaceValue*face_shape*det(J)*w;
-	}
-}
 
 }; // namespace FEM
 

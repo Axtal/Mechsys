@@ -21,6 +21,7 @@
 
 // STL
 #include <map>
+#include <cstdarg>  // for va_list, va_start, va_end
 
 // MechSys
 #include "util/string.h"
@@ -51,15 +52,16 @@ public:
 	};
 
 	// Methods
-	void                 SetID       (int ID) { _my_id = ID;        }                     ///< Set the ID of this element
-	int                  GetID       () const { return _my_id;      }                     ///< Return the ID of this element
-	void                 Activate    ()       { _is_active = true;  }                     ///< Activate the element
-	bool                 IsActive    () const { return _is_active;  }                     ///< Check if this element is active
-	int                  nNodes      () const { return _n_nodes;    }                     ///< Return the number of nodes in this element
-	size_t               nIntPoints  () const { return _n_int_pts;  }                     ///< Return the number of integration points in this element
-	void                 IntegPoints (IntegPoint const * & IPs) const { IPs=_a_int_pts; } ///< Return a pointer to the array of integration points
-	Array<Node*> const & Connects    () const;                                            ///< Return an array containing pointers to nodes
-	bool                 IsInside    (double x, double y, double z) const;                ///< Check if a node is inside the element
+	void   SetID          (int ID) { _my_id = ID;        }                                           ///< Set the ID of this element
+	int    GetID          () const { return _my_id;      }                                           ///< Return the ID of this element
+	void   Activate       ()       { _is_active = true;  }                                           ///< Activate the element
+	bool   IsActive       () const { return _is_active;  }                                           ///< Check if this element is active
+	int    nNodes         () const { return _n_nodes;    }                                           ///< Return the number of nodes in this element
+	size_t nIntPoints     () const { return _n_int_pts;  }                                           ///< Return the number of integration points in this element
+	void   IntegPoints    (IntegPoint const * & IPs) const { IPs=_a_int_pts; }                       ///< Return a pointer to the array of integration points
+	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
+	void   Dist2FaceNodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
+	void   Bry            (char const * Key, double Value, int nNodesFace, ...);                     ///< Set Face/Edge boundary conditions. The variable argument list must include exactly the local node numbers of the face/edge
 
 	// Methods that MUST be overriden by derived classes
 	virtual String Name() const =0;
@@ -82,7 +84,6 @@ public:
 	virtual void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const =0;                                   ///< Derivatives
 	virtual void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape) const =0;                                          ///< Face shape functions
 	virtual void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const =0;                                         ///< Face derivatives
-	virtual void Dist2FaceNodes (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const =0; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes. NodalValues => Out:The resultant nodal values
 
 	// Methods that MAY be overriden by derived classes
 	virtual void   InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
@@ -95,7 +96,7 @@ public:
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const {};                                         ///< Output values at nodes
 	virtual void   Deactivate    () { _is_active = false; }                                                                                  ///< Deactivate this element
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
-	virtual void   FaceNodalVals (char const * FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const {} ///< Return the array with nodal values in a face
+	virtual void   FaceNodalVals (char const * Key, double Value, Array<Node*> const & FaceConnects) const {}                                ///< Distribute Value of Key variable to the nodes of a Face/Edge
 
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
@@ -148,6 +149,7 @@ protected:
 	Array<Node*>       _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
 	bool               _is_active;      ///< Flag for active/inactive condition
 	IntegPoint const * _a_int_pts;      ///< Array of Integration Points
+	IntegPoint const * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 
 }; // class Element
 
@@ -156,10 +158,6 @@ Array<Element*> Elems; ///< Array with all elements (or only the elements in thi
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-inline Array<Node*> const & Element::Connects() const
-{
-	return _connects;
-}
 
 inline bool Element::IsInside(double x, double y, double z) const
 {
@@ -195,6 +193,47 @@ inline bool Element::IsInside(double x, double y, double z) const
 	InverseMap(x,y,z,r,s,t);
 	if (BoundDistance(r,s,t)>-tiny) return true;
 	else return false;
+}
+
+inline void Element::Dist2FaceNodes(char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const
+{
+	// Compute face nodal values (integration along the face)
+	LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
+	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
+	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
+	for (int i=0; i<_n_face_int_pts; i++)
+	{
+		double r = _a_face_int_pts[i].r;
+		double s = _a_face_int_pts[i].s;
+		double w = _a_face_int_pts[i].w;
+		FaceShape    (r, s, face_shape);
+		FaceJacobian (FaceConnects, r, s, J);
+		values += FaceValue*face_shape*det(J)*w;
+	}
+
+	// Set nodes Brys
+	for (int i=0; i<_n_face_nodes; ++i)
+		FaceConnects[i]->Bry(Key,values(i));
+}
+
+inline void Element::Bry(char const * Key, double Value, int nNodesFace, ...)
+{
+	// Check
+	if (nNodesFace!=_n_face_nodes) throw new Fatal("Element::Bry: Setting up of Bry with Key==%s and Value=%g failed.\n The number of nodes in a face/edge of this element must be equal to %d",Key,Value,_n_face_nodes);
+
+	// Set array with pointers to the nodes on a face/edge
+	va_list   arg_list;
+	va_start (arg_list, nNodesFace); // initialize arg_list with parameters AFTER nNodesFace
+	Array<Node*> fnodes; fnodes.Resize(_n_face_nodes);
+	for (int i=0; i<_n_face_nodes; ++i)
+	{
+		int inode_local = va_arg(arg_list,int);
+		fnodes[i]       = _connects[inode_local];
+	}
+	va_end (arg_list);
+
+	// Distribute value to nodes
+	Dist2FaceNodes (Key, Value, fnodes);
 }
 
 inline void Element::InverseMap(double x, double y, double z, double & r, double & s, double & t) const

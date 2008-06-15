@@ -57,12 +57,11 @@ public:
 	void      OutNodes        (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
 
 	// Derived methods (GEOMETRIC)
-	int  VTKCellType    () const { return 4; } // VTK_
-	void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape) const {}
-	void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const {}
-	void FaceShape      (double r, double s, LinAlg::Vector<double> & Shape) const {}
-	void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & Derivs) const {}
-	void Dist2FaceNodes (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const {}
+	int  VTKCellType () const { return 4; } // VTK_
+	void Shape       (double r, double s, double t, LinAlg::Vector<double> & Shape) const {}
+	void Derivs      (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const {}
+	void FaceShape   (double r, double s, LinAlg::Vector<double> & Shape) const {}
+	void FaceDerivs  (double r, double s, LinAlg::Matrix<double> & Derivs) const {}
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder1Matrices () const { return 1; };

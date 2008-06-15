@@ -65,7 +65,6 @@ public:
 	String    OutCenter       (bool PrintCaptionOnly) const;
 	void      OutNodes        (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
 	void      Deactivate      ();
-	void      FaceNodalVals   (char const * FaceDOFName, double const FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double> & NodalValues) const;
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder1Matrices () const { return 1; }
@@ -409,24 +408,6 @@ inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 inline void EquilibElem::Deactivate()
 {
 	throw new Fatal("EquilibElem::Deactivate: Feature not implemented yet");
-}
-
-inline void EquilibElem::FaceNodalVals(char const * FaceDOFName, double const   FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double>& NodalValues) const
-{
-	if (strcmp(FaceDOFName,"tx")==0 || strcmp(FaceDOFName,"ty")==0 || strcmp(FaceDOFName,"tz")==0)
-	{
-		if (strcmp(FaceDOFName,"tx")==0) NodalDOFName="fx";
-		if (strcmp(FaceDOFName,"ty")==0) NodalDOFName="fy";
-		if (strcmp(FaceDOFName,"tz")==0) NodalDOFName="fz";
-		Dist2FaceNodes(APtrFaceNodes, FaceDOFValue, NodalValues);
-	}
-	else
-	{
-		std::ostringstream oss; oss << "Face nodes coordinates:\n";
-		for (size_t i_node=0; i_node<APtrFaceNodes.Size(); ++i_node)
-			oss << "X=" << APtrFaceNodes[i_node]->X() << ", Y=" << APtrFaceNodes[i_node]->Y() << ", Z=" << APtrFaceNodes[i_node]->Z() << std::endl;
-		throw new Fatal(_("EquilibElem::CalcFaceNodalValues: This method must only be called for FaceDOFName< %s > equal to Dtx, Dty or Dtz.\n %s"), FaceDOFName, oss.str().c_str());
-	}
 }
 
 // Derived methods to assemble DAS matrices
