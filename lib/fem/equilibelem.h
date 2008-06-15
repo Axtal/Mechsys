@@ -123,8 +123,8 @@ inline void EquilibElem::SetGeometryType(int Geom)
 
 inline bool EquilibElem::IsEssential(char const * DOFName) const
 {
-	if (strncmp(DOFName,"ux",2)==0 || strncmp(DOFName,"uy",2)==0) return true;
-	if (_n_dim==3                  && strncmp(DOFName,"uz",2)==0) return true;
+	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
+	if (_n_dim==3               && strcmp(DOFName,"uz")==0) return true;
 	return false;
 }
 
@@ -413,11 +413,11 @@ inline void EquilibElem::Deactivate()
 
 inline void EquilibElem::FaceNodalVals(char const * FaceDOFName, double const   FaceDOFValue, Array<FEM::Node*> const & APtrFaceNodes, String & NodalDOFName, LinAlg::Vector<double>& NodalValues) const
 {
-	if (strncmp(FaceDOFName,"tx",2)==0 || strncmp(FaceDOFName,"ty",2)==0 || strncmp(FaceDOFName,"tz",2)==0)
+	if (strcmp(FaceDOFName,"tx")==0 || strcmp(FaceDOFName,"ty")==0 || strcmp(FaceDOFName,"tz")==0)
 	{
-		if (strncmp(FaceDOFName,"tx",2)==0) NodalDOFName="fx";
-		if (strncmp(FaceDOFName,"ty",2)==0) NodalDOFName="fy";
-		if (strncmp(FaceDOFName,"tz",2)==0) NodalDOFName="fz";
+		if (strcmp(FaceDOFName,"tx")==0) NodalDOFName="fx";
+		if (strcmp(FaceDOFName,"ty")==0) NodalDOFName="fy";
+		if (strcmp(FaceDOFName,"tz")==0) NodalDOFName="fz";
 		Dist2FaceNodes(APtrFaceNodes, FaceDOFValue, NodalValues);
 	}
 	else
