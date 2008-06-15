@@ -44,6 +44,7 @@ public:
 
 	// Derived methods
 	String    Name            () const { return "ElasticRod"; }
+	bool      IsReady         ()const;
 	bool      IsEssential     (char const * DOFName) const;
 	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
 	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
@@ -110,6 +111,12 @@ inline ElasticRod::ElasticRod()
 }
 
 // Derived methods
+
+inline bool ElasticRod::IsReady() const
+{
+	if (_connects.Size()==static_cast<size_t>(_n_nodes)) return true;
+	else return false;
+}
 
 inline bool ElasticRod::IsEssential(char const * DOFName) const
 {
