@@ -274,7 +274,7 @@ inline void Element::Jacobian(LinAlg::Matrix<double> const & derivs, LinAlg::Mat
 		}
 	}
 
-	// Calculate the Jacobian; Size = NumLocalCoords x 3
+	// Calculate the Jacobian; 
 	J = derivs * cmatrix;
 }
 
