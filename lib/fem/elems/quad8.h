@@ -105,8 +105,8 @@ inline void Quad8::Shape(double r, double s, double t, LinAlg::Vector<double> & 
 	 */
 	Shape.Resize (QUAD8_NNODES);
 
-	double rp1=r+1.0; double rm1=r-1.0;
-	double sp1=s+1.0; double sm1=s-1.0;
+	double rp1=1.0+r; double rm1=1.0-r;
+	double sp1=1.0+s; double sm1=1.0-s;
 
 	Shape(0) = 0.25*rm1*sm1*(rm1+sm1-3.0);
 	Shape(1) = 0.25*rp1*sm1*(rp1+sm1-3.0);
@@ -129,8 +129,8 @@ inline void Quad8::Derivs(double r, double s, double t, LinAlg::Matrix<double> &
 	 */
 	Derivs.Resize (2, QUAD8_NNODES);
 
-	double rp1=r+1.0; double rm1=r-1.0;
-	double sp1=s+1.0; double sm1=s-1.0;
+	double rp1=1.0+r; double rm1=1.0-r;
+	double sp1=1.0+s; double sm1=1.0-s;
 
 	Derivs(0,0) = - 0.25 * sm1 * (rm1 + rm1 + sm1 - 3.0);
 	Derivs(0,1) =   0.25 * sm1 * (rp1 + rp1 + sm1 - 3.0);
