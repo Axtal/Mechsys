@@ -39,7 +39,7 @@ class Element
 public:
 
 	// Destructor
-	virtual ~Element() {}
+	virtual ~Element() { }
 
 	// Auxiliar structure (integration point)
 	struct IntegPoint
@@ -55,6 +55,7 @@ public:
 	int                  GetID       () const { return _my_id;      }                     ///< Return the ID of this element
 	void                 Activate    ()       { _is_active = true;  }                     ///< Activate the element
 	bool                 IsActive    () const { return _is_active;  }                     ///< Check if this element is active
+	bool                 IsReady     () const;                                            ///< Check if element is ready for analysis
 	int                  nNodes      () const { return _n_nodes;    }                     ///< Return the number of nodes in this element
 	size_t               nIntPoints  () const { return _n_int_pts;  }                     ///< Return the number of integration points in this element
 	void                 IntegPoints (IntegPoint const * & IPs) const { IPs=_a_int_pts; } ///< Return a pointer to the array of integration points
@@ -154,7 +155,6 @@ Array<Element*> Elems; ///< Array with all elements (or only the elements in thi
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
 
 inline Array<Node*> const & Element::Connects() const
 {

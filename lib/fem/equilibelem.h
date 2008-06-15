@@ -53,6 +53,7 @@ public:
 	virtual ~EquilibElem() {}
 
 	// Derived methods
+	bool      IsReady         () const;
 	bool      IsEssential     (char const * DOFName) const;
 	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
 	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
@@ -95,6 +96,12 @@ private:
 /* public */
 	
 // Derived methods
+
+inline bool EquilibElem::IsReady() const
+{
+	if (_a_model.Size()==static_cast<size_t>(_n_int_pts) && _connects.Size()==static_cast<size_t>(_n_nodes)) return true;
+	else return false;
+}
 
 inline void EquilibElem::SetGeometryType(int Geom)
 {
