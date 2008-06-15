@@ -71,14 +71,14 @@ int main(int argc, char **argv) try
 	// 2) Elements
 	FEM::AddElem("Quad8Equilib", /*IsActive*/true);
 
-	// 3) Set connectivity
+	// 3) Set connectivity (list of nodes must be LOCAL)
 	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5)->SetNode(6,6)->SetNode(7,7);
 
 	// 4) Boundary conditions (must be after connectivity)
 	Nodes[0]->Bry("uy",0.0);
 	Nodes[4]->Bry("uy",0.0)->Bry("ux",0.0);
 	Nodes[1]->Bry("uy",0.0);
-	Elems[0]->Bry("fy",-1.0, 3, 3,6,2); // Actually, fy is traction == ty
+	Elems[0]->Bry("fy",-1.0, 3, 3,6,2); // Actually, fy is traction == ty (list of nodes must be LOCAL)
 
 	// 5) Parameters and initial values
 	Elems[0]->SetModel("LinElastic", "E=207.0 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
@@ -91,10 +91,16 @@ int main(int argc, char **argv) try
 	cout << "Ke0=\n" << Ke0 << endl;
 
 	// 6) Solve
-	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
+
+	// Output
+	LinAlg::Matrix<double> values;
+	Array<String>          labels;
+	Elems[0]->OutNodes(values,labels);
+	std::cout << labels << std::endl;
+	std::cout << values << std::endl;
 
 	// Check
     double errors = 1.0;

@@ -107,29 +107,19 @@ int main(int argc, char **argv) try
 	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
+	// Output
+	LinAlg::Matrix<double> values0;
+	LinAlg::Matrix<double> values1;
+	Array<String>          labels0;
+	Array<String>          labels1;
+	Elems[0]->OutNodes(values0, labels0);
+	Elems[1]->OutNodes(values1, labels1);
+	std::cout << labels0 << std::endl;
+	std::cout << values0 << std::endl;
+	std::cout << labels1 << std::endl;
+	std::cout << values1 << std::endl;
+
 	// Check
-	LinAlg::Matrix<double> nodeinfo0;
-	LinAlg::Matrix<double> nodeinfo1;
-	Array<String> labels; 
-
-	Elems[0]->OutNodes(nodeinfo0, labels);
-	Elems[1]->OutNodes(nodeinfo1, labels);
-
-	std::cout << labels    << std::endl;
-	std::cout << nodeinfo0 << std::endl;
-	std::cout << labels    << std::endl;
-	std::cout << nodeinfo1 << std::endl;
-
-	size_t sx_idx;
-	size_t sy_idx;
-	size_t sxy_idx;
-	for (size_t i=0; i<labels.Size(); i++)
-	{
-		if (labels[i]=="Sx")  sx_idx  = i;
-		if (labels[i]=="Sy")  sy_idx  = i;
-		if (labels[i]=="Sxy") sxy_idx = i;
-	} 
-
     double errors = 0.0;
 
 	// Element 0 : using Element::Val
@@ -155,26 +145,26 @@ int main(int argc, char **argv) try
 	errors += fabs(Elems[0]->Val(5, "Sxy") - ( 2.42298085e-01));
 
 	// Element 1 : using Element OutNodes
-	errors += fabs(nodeinfo1(0, sx_idx)  - ( 9.95732723e-01));
-	errors += fabs(nodeinfo1(1, sx_idx)  - ( 2.23875937e-01));
-	errors += fabs(nodeinfo1(2, sx_idx)  - (-1.21960866e+00));
-	errors += fabs(nodeinfo1(3, sx_idx)  - ( 1.39446295e+00));
-	errors += fabs(nodeinfo1(4, sx_idx)  - (-8.20878435e-01));
-	errors += fabs(nodeinfo1(5, sx_idx)  - (-4.90216486e-02));
-                                      
-	errors += fabs(nodeinfo1(0, sy_idx)  - (-1.25426728e+00));
-	errors += fabs(nodeinfo1(1, sy_idx)  - ( 1.68328476e+00));
-	errors += fabs(nodeinfo1(2, sy_idx)  - (-4.29017485e-01));
-	errors += fabs(nodeinfo1(3, sy_idx)  - (-2.39612823e+00));
-	errors += fabs(nodeinfo1(4, sy_idx)  - (-1.57087843e+00));
-	errors += fabs(nodeinfo1(5, sy_idx)  - (-4.50843047e+00));
-                                      
-	errors += fabs(nodeinfo1(0, sxy_idx) - (-9.95732723e-01));
-	errors += fabs(nodeinfo1(1, sxy_idx) - ( 1.29641965e+00));
-	errors += fabs(nodeinfo1(2, sxy_idx) - (-3.00686928e-01));
-	errors += fabs(nodeinfo1(3, sxy_idx) - ( 1.25832639e-01));
-	errors += fabs(nodeinfo1(4, sxy_idx) - ( 8.20878435e-01));
-	errors += fabs(nodeinfo1(5, sxy_idx) - (-1.47127394e+00));
+	errors += fabs(Elems[1]->Val(0, "Sx")  - ( 9.95732723e-01));
+	errors += fabs(Elems[1]->Val(1, "Sx")  - ( 2.23875937e-01));
+	errors += fabs(Elems[1]->Val(2, "Sx")  - (-1.21960866e+00));
+	errors += fabs(Elems[1]->Val(3, "Sx")  - ( 1.39446295e+00));
+	errors += fabs(Elems[1]->Val(4, "Sx")  - (-8.20878435e-01));
+	errors += fabs(Elems[1]->Val(5, "Sx")  - (-4.90216486e-02));
+
+	errors += fabs(Elems[1]->Val(0, "Sy")  - (-1.25426728e+00));
+	errors += fabs(Elems[1]->Val(1, "Sy")  - ( 1.68328476e+00));
+	errors += fabs(Elems[1]->Val(2, "Sy")  - (-4.29017485e-01));
+	errors += fabs(Elems[1]->Val(3, "Sy")  - (-2.39612823e+00));
+	errors += fabs(Elems[1]->Val(4, "Sy")  - (-1.57087843e+00));
+	errors += fabs(Elems[1]->Val(5, "Sy")  - (-4.50843047e+00));
+
+	errors += fabs(Elems[1]->Val(0, "Sxy") - (-9.95732723e-01));
+	errors += fabs(Elems[1]->Val(1, "Sxy") - ( 1.29641965e+00));
+	errors += fabs(Elems[1]->Val(2, "Sxy") - (-3.00686928e-01));
+	errors += fabs(Elems[1]->Val(3, "Sxy") - ( 1.25832639e-01));
+	errors += fabs(Elems[1]->Val(4, "Sxy") - ( 8.20878435e-01));
+	errors += fabs(Elems[1]->Val(5, "Sxy") - (-1.47127394e+00));
 
 	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
 	else                     cout << "[1;32mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
