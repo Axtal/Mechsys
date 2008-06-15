@@ -31,7 +31,7 @@ class EquilibModel : public Model
 {
 public:
 	// Constructor
-	EquilibModel () : _geom(3) {}
+	EquilibModel () : _geom(-1) {}
 
 	// Destructor
 	virtual ~EquilibModel () {}

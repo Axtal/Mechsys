@@ -64,8 +64,8 @@ int main(int argc, char **argv) try
 	// 1) Nodes
 	FEM::AddNode(0.0, 0.0); // 0
 	FEM::AddNode(1.0, 0.0); // 1
-	FEM::AddNode(1.0, 1.0); // 2
-	FEM::AddNode(0.0, 1.0); // 3
+	FEM::AddNode(1.0, 0.5); // 2
+	FEM::AddNode(0.0, 0.5); // 3
 
 	// 2) Elements
 	FEM::AddElem("Quad4Equilib", /*IsActive*/true);

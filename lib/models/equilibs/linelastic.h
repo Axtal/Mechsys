@@ -42,9 +42,6 @@ using LinAlg::Matrix;
 class LinElastic : public EquilibModel
 {
 public:
-	// Constructor
-	LinElastic ();
-	
 	// Destructor
 	virtual ~LinElastic () {}
 
@@ -75,17 +72,10 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline LinElastic::LinElastic()
-{
-	// Parameters
-	SetPrms ("E=10000.0 nu=0.25");
-
-	// Initial values
-	SetInis ("Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0 Syz=0.0 Szx=0.0");
-}
-
 inline void LinElastic::SetPrms(char const * Prms)
 {
+	if (_geom<0) throw new Fatal("LinElastic::SetPrms: Geometry type:\n\t[1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)] must be set via SetGeom before calling this method");
+
 	/* "E=20000.0 nu=0.2" */
 	LineParser lp(Prms);
 	Array<String> names;
@@ -105,9 +95,9 @@ inline void LinElastic::SetPrms(char const * Prms)
 		}
 		if (count==2)
 		{
-			double c  = E/((1.0+nu)*(1.0-2.0*nu));
-			double c1 = c*(1.0-nu);
-			double c2 = c*(1.0-2.0*nu)/2.0;
+			double c  = (_geom==5 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // plane-stress != (plane-strain=3D)
+			double c1 = (_geom==5 ? c*1.0          : c*(1.0-nu)                ); // plane-stress != (plane-strain=3D)
+			double c2 = (_geom==5 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // plane-stress != (plane-strain=3D)
 			double c3 = c*nu;
 			_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
 			      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
