@@ -434,25 +434,22 @@ inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String>
 
 inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 {
-	//Extrapolation
 	LinAlg::Vector<double> ip_values(_n_int_pts);
 	LinAlg::Vector<double> nodal_values(_n_nodes);
 
-	// Stresses
-	if (strncmp(Name,"Sx",2)==0)
-	{
+	// Get integration point values
+	for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
+		ip_values(i_ip) = _a_model[i_ip]->Val(Name);
 
-		for (int j_ip=0; j_ip<_n_int_pts; j_ip++)
-		{
-			Vector<double> sig;  _a_model[j_ip]->Sig(sig);  sig(2) /= SQ2;
-			ip_values(j_ip) = sig(0); //getting IP values
-		}
-		Extrapolate (ip_values, nodal_values);
-		return nodal_values(iNodeLocal);
-	}
-	else throw new Fatal("EquilibElem::Val: Feature (%s) not implemented yet",Name);
+	// Correction due Mandel Notation
+	if (strncmp(Name,"Sx",2)==0 || strncmp(Name,"Sy",2)==0 || strncmp(Name,"Sz",2)==0)
+		for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
+			ip_values(i_ip) /= SQ2; 
 
-	//if (_n_dim==3)
+	// Extrapolation
+	Extrapolate (ip_values, nodal_values);
+
+	return nodal_values(iNodeLocal);
 }
 
 inline void EquilibElem::Deactivate()
