@@ -40,19 +40,14 @@ int main(int argc, char **argv) try
 	          ^                   ^
 	          |                   |
 	
-	        3 @-------------------@ 2
-	          |                   |
-	          |                   |
-	          |                   |
-	          |                   |
-	          |        e[0]       |
-	          |                   |
-	          |                   |
-	          |                   |
+	        3 @-------------------@ 2    Prof. Carlos Felippa
+	          |                   |      IFEM.Ch23.pdf
+	          |                   |      Pag. 23-7
+	   L/2    |                   |
 	          |                   |
 	        0 @-------------------@ 1
 	         /_\                 /_\
-	         ///                 o o
+	         ///       L         o o
 	 */
 
 	// Input
@@ -69,7 +64,6 @@ int main(int argc, char **argv) try
 
 	// 2) Elements
 	FEM::AddElem("Quad4Equilib", /*IsActive*/true);
-	FEM::AddElem("Quad4Equilib", /*IsActive*/true);
 
 	// 3) Set connectivity
 	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3);
@@ -81,6 +75,11 @@ int main(int argc, char **argv) try
 	// 5) Parameters and initial values
 	Elems[0]->SetModel("LinElastic", "E=96.0 nu=0.333333333333333333333333", "Sx=0.0 Sy=0.0 Sxy=0.0");
 
+	// 6) Solve
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> Solve();
+
 	// Stiffness
 	Array<size_t>          map;
 	Array<bool>            pre;
@@ -88,28 +87,25 @@ int main(int argc, char **argv) try
 	Elems[0]->Order1Matrix(0,Ke0);
 	cout << "Ke0=\n" << Ke0 << endl;
 
-	/*
-	// 6) Solve
-	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	sol -> Solve();
+	// Check
+	LinAlg::Matrix<double> Ke_correct; Ke_correct.Resize(8,8);
+	Ke_correct =  42.0,  18.0,  -6.0,   0.0, -21.0, -18.0, -15.0,   0.0,
+	              18.0,  78.0,   0.0,  30.0, -18.0, -39.0,   0.0, -69.0,
+	              -6.0,   0.0,  42.0, -18.0, -15.0,   0.0, -21.0,  18.0,
+	               0.0,  30.0, -18.0,  78.0,   0.0, -69.0,  18.0, -39.0,
+	             -21.0, -18.0, -15.0,   0.0,  42.0,  18.0,  -6.0,   0.0,
+	             -18.0, -39.0,   0.0, -69.0,  18.0,  78.0,   0.0,  30.0,
+	             -15.0,   0.0, -21.0,  18.0,  -6.0,   0.0,  42.0, -18.0,
+	               0.0, -69.0,  18.0, -39.0,   0.0,  30.0, -18.0,  78.0;
 
 	// Check
-    double errors = 1.0;
-	*/
-	/*
-	errors += fabs(Elems[0]->Val(0, "Sx") - ( 1.56432140e-01));
-	errors += fabs(Elems[0]->Val(1, "Sx") - (-3.00686928e-01));
-	errors += fabs(Elems[0]->Val(2, "Sx") - ( 1.44254788e-01));
-	errors += fabs(Elems[0]->Val(3, "Sx") - (-3.19109076e-01));
-	errors += fabs(Elems[0]->Val(4, "Sx") - (-3.31286428e-01));
-	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
-	*/
-	/*
-	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
-	else                     cout << "[1;32mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
-	*/
+    double errors = 0.0;
+	for (int i=0; i<8; ++i)
+	for (int j=0; j<8; ++j)
+		errors += fabs(Ke0(i,j)-Ke_correct(i,j));
+
+	if (fabs(errors)>1.0e-10) cout << "[1;31mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
+	else                      cout << "[1;32mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
 
 	return 0;
 }
