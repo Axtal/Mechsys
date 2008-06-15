@@ -171,6 +171,11 @@ inline Solver * Solver::SetLinSol(char const * Key)
 inline void Solver::Solve()
 {
 	// Solve:    ([C] + alpha*h*[K]) * {dU} = {dF} - h*[K]*{U}
+	
+	// Check the integrity of active elements
+	for (size_t i=0; i<Elems.Size(); ++i)
+		if (Elems[i]->IsActive() && Elems[i]->IsReady()==false)
+			throw new Fatal(_("FEM::Solver: Element < %d > was not totally configured."), i);
 
 	// Number of divisions for each increment
 	double dTime = _delta_time / _num_div; // Time increment
