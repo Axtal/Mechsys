@@ -72,7 +72,6 @@ int main(int argc, char **argv) try
 
 	// 2) Elements
 	FEM::AddElem("Quad8Equilib", /*IsActive*/true);
-	FEM::AddElem("Quad8Equilib", /*IsActive*/true);
 
 	// 3) Set connectivity
 	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5)->SetNode(6,6)->SetNode(7,7);
