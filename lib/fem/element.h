@@ -55,7 +55,6 @@ public:
 	int                  GetID       () const { return _my_id;      }                     ///< Return the ID of this element
 	void                 Activate    ()       { _is_active = true;  }                     ///< Activate the element
 	bool                 IsActive    () const { return _is_active;  }                     ///< Check if this element is active
-	bool                 IsReady     () const;                                            ///< Check if element is ready for analysis
 	int                  nNodes      () const { return _n_nodes;    }                     ///< Return the number of nodes in this element
 	size_t               nIntPoints  () const { return _n_int_pts;  }                     ///< Return the number of integration points in this element
 	void                 IntegPoints (IntegPoint const * & IPs) const { IPs=_a_int_pts; } ///< Return a pointer to the array of integration points
@@ -66,6 +65,7 @@ public:
 	virtual String Name() const =0;
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
+	virtual bool      IsReady         () const=0;                                          ///< Check if element is ready for analysis
 	virtual bool      IsEssential     (char const * DOFName) const =0;                                                                      ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel        (char const * ModelName, char const * Prms, char const * Inis) =0;                                    ///< (Re)allocate model with parameters and initial values
 	virtual Element * SetNode         (int iNodeLocal, int iNodeGlobal) =0;                                                                 ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
