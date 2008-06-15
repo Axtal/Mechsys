@@ -35,26 +35,23 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	/*                    
-	          F1         F2        F3    F1=F2=F3 = 1.0
-	          ^          ^         ^
-	          |          |         | 
-
-	          4          8
-	          @----------@---------@ 7
-	          |  \                 |
-	          |    \               |
-	          |      \             |
-	          |        \           |
-	        5 @          @ 3       @ 6
-	          |            \       |   
-	          |              \     |  
-	          |                \   |
-	          |                  \ |
-	          @---------@----------@  
-	          0         1          2  
-	         /_\       /_\        /_\
-			 ///       o o        o o
+	/*       F1        F2       F3    F1=F2=F3 = 1.0
+	          ^         ^         ^
+	          |         |         |
+	
+	        2 @---------@---------@ 6
+	          |',       7         |
+	          |  ',        e[1]   |
+	          |    ',             |
+	          |      ',  4        |
+	        5 @        '@         @ 8
+	          |          ',       |
+	          |   e[0]     ',     |
+	          |              ',   |
+	          |         3      ', |
+	        0 @---------@---------@ 1
+	         /_\       /_\       /_\
+	         ///       o o       o o
 	 */
 
 	// Input
@@ -65,30 +62,30 @@ int main(int argc, char **argv) try
 
 	// 1) Nodes
 	FEM::AddNode(0.0, 0.0); // 0
-	FEM::AddNode(0.5, 0.0); // 1
-	FEM::AddNode(1.0, 0.0); // 2
-	FEM::AddNode(0.5, 0.5); // 3
-	FEM::AddNode(0.0, 1.0); // 4
+	FEM::AddNode(1.0, 0.0); // 1
+	FEM::AddNode(0.0, 1.0); // 2
+	FEM::AddNode(0.5, 0.0); // 3
+	FEM::AddNode(0.5, 0.5); // 4
 	FEM::AddNode(0.0, 0.5); // 5
-	FEM::AddNode(1.0, 0.5); // 6
-	FEM::AddNode(1.0, 1.0); // 7
-	FEM::AddNode(0.5, 1.0); // 8
+	FEM::AddNode(1.0, 1.0); // 6
+	FEM::AddNode(0.5, 1.0); // 7
+	FEM::AddNode(1.0, 0.5); // 8
 
 	// 2) Elements
 	FEM::AddElem("Tri6Equilib", /*IsActive*/true);
 	FEM::AddElem("Tri6Equilib", /*IsActive*/true);
 
 	// 3) Set connectivity
-	Elems[0]->SetNode(0, 0)->SetNode(1, 1)->SetNode(2, 2)->SetNode(3, 3)->SetNode(4, 4)->SetNode(5, 5);
-	Elems[1]->SetNode(0, 7)->SetNode(1, 8)->SetNode(2, 4)->SetNode(3, 3)->SetNode(4, 2)->SetNode(5, 6);
+	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5);
+	Elems[1]->SetNode(0,6)->SetNode(1,2)->SetNode(2,1)->SetNode(3,7)->SetNode(4,4)->SetNode(5,8);
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("ux", 0.0)->Bry("uy", 0.0);
-	Nodes[1]->Bry("uy", 0.0);
-	Nodes[2]->Bry("uy", 0.0);
-	Nodes[4]->Bry("fy", 1.0);
-	Nodes[8]->Bry("fy", 1.0);
-	Nodes[7]->Bry("fy", 1.0);
+	Nodes[0]->Bry("ux",0.0)->Bry("uy",0.0);
+	Nodes[1]->Bry("uy",0.0);
+	Nodes[3]->Bry("uy",0.0);
+	Nodes[2]->Bry("fy",1.0);
+	Nodes[7]->Bry("fy",1.0);
+	Nodes[6]->Bry("fy",1.0);
 
 	// 5) Parameters and initial values
 	Elems[0]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
@@ -137,46 +134,46 @@ int main(int argc, char **argv) try
 
 	// Element 0
 	errors += fabs(Elems[0]->Val(0, "Sx") - ( 1.56432140e-01));
-	errors += fabs(Elems[0]->Val(1, "Sx") - (-3.19109076e-01));
-	errors += fabs(Elems[0]->Val(2, "Sx") - (-3.00686928e-01));
-	errors += fabs(Elems[0]->Val(3, "Sx") - (-3.31286428e-01));
-	errors += fabs(Elems[0]->Val(4, "Sx") - ( 1.44254788e-01));
+	errors += fabs(Elems[0]->Val(1, "Sx") - (-3.00686928e-01));
+	errors += fabs(Elems[0]->Val(2, "Sx") - ( 1.44254788e-01));
+	errors += fabs(Elems[0]->Val(3, "Sx") - (-3.19109076e-01));
+	errors += fabs(Elems[0]->Val(4, "Sx") - (-3.31286428e-01));
 	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
 
 	errors += fabs(nodeinfo0(0, sy_idx) - (-2.05141549e-01));
-	errors += fabs(nodeinfo0(1, sy_idx) - (-2.22127394e+00));
-	errors += fabs(nodeinfo0(2, sy_idx) - ( 1.15872190e+00));
-	errors += fabs(nodeinfo0(3, sy_idx) - (-2.96971274e+00));
-	errors += fabs(nodeinfo0(4, sy_idx) - (-9.53580350e-01));
+	errors += fabs(nodeinfo0(1, sy_idx) - ( 1.15872190e+00));
+	errors += fabs(nodeinfo0(2, sy_idx) - (-9.53580350e-01));
+	errors += fabs(nodeinfo0(3, sy_idx) - (-2.22127394e+00));
+	errors += fabs(nodeinfo0(4, sy_idx) - (-2.96971274e+00));
 	errors += fabs(nodeinfo0(5, sy_idx) - (-4.33357619e+00));
 
 	errors += fabs(nodeinfo0(0, sxy_idx) - (-1.56432140e-01));
-	errors += fabs(nodeinfo0(1, sxy_idx) - (-4.90216486e-02));
-	errors += fabs(nodeinfo0(2, sxy_idx) - (-6.74437968e-02));
-	errors += fabs(nodeinfo0(3, sxy_idx) - ( 3.31286428e-01));
-	errors += fabs(nodeinfo0(4, sxy_idx) - ( 2.23875937e-01));
+	errors += fabs(nodeinfo0(1, sxy_idx) - (-6.74437968e-02));
+	errors += fabs(nodeinfo0(2, sxy_idx) - ( 2.23875937e-01));
+	errors += fabs(nodeinfo0(3, sxy_idx) - (-4.90216486e-02));
+	errors += fabs(nodeinfo0(4, sxy_idx) - ( 3.31286428e-01));
 	errors += fabs(nodeinfo0(5, sxy_idx) - ( 2.42298085e-01));
 
 	// Element 1
 	errors += fabs(nodeinfo1(0, sx_idx)  - ( 9.95732723e-01));
-	errors += fabs(nodeinfo1(1, sx_idx)  - ( 1.39446295e+00));
-	errors += fabs(nodeinfo1(2, sx_idx)  - ( 2.23875937e-01));
-	errors += fabs(nodeinfo1(3, sx_idx)  - (-8.20878435e-01));
-	errors += fabs(nodeinfo1(4, sx_idx)  - (-1.21960866e+00));
+	errors += fabs(nodeinfo1(1, sx_idx)  - ( 2.23875937e-01));
+	errors += fabs(nodeinfo1(2, sx_idx)  - (-1.21960866e+00));
+	errors += fabs(nodeinfo1(3, sx_idx)  - ( 1.39446295e+00));
+	errors += fabs(nodeinfo1(4, sx_idx)  - (-8.20878435e-01));
 	errors += fabs(nodeinfo1(5, sx_idx)  - (-4.90216486e-02));
                                       
 	errors += fabs(nodeinfo1(0, sy_idx)  - (-1.25426728e+00));
-	errors += fabs(nodeinfo1(1, sy_idx)  - (-2.39612823e+00));
-	errors += fabs(nodeinfo1(2, sy_idx)  - ( 1.68328476e+00));
-	errors += fabs(nodeinfo1(3, sy_idx)  - (-1.57087843e+00));
-	errors += fabs(nodeinfo1(4, sy_idx)  - (-4.29017485e-01));
+	errors += fabs(nodeinfo1(1, sy_idx)  - ( 1.68328476e+00));
+	errors += fabs(nodeinfo1(2, sy_idx)  - (-4.29017485e-01));
+	errors += fabs(nodeinfo1(3, sy_idx)  - (-2.39612823e+00));
+	errors += fabs(nodeinfo1(4, sy_idx)  - (-1.57087843e+00));
 	errors += fabs(nodeinfo1(5, sy_idx)  - (-4.50843047e+00));
                                       
 	errors += fabs(nodeinfo1(0, sxy_idx) - (-9.95732723e-01));
-	errors += fabs(nodeinfo1(1, sxy_idx) - ( 1.25832639e-01));
-	errors += fabs(nodeinfo1(2, sxy_idx) - ( 1.29641965e+00));
-	errors += fabs(nodeinfo1(3, sxy_idx) - ( 8.20878435e-01));
-	errors += fabs(nodeinfo1(4, sxy_idx) - (-3.00686928e-01));
+	errors += fabs(nodeinfo1(1, sxy_idx) - ( 1.29641965e+00));
+	errors += fabs(nodeinfo1(2, sxy_idx) - (-3.00686928e-01));
+	errors += fabs(nodeinfo1(3, sxy_idx) - ( 1.25832639e-01));
+	errors += fabs(nodeinfo1(4, sxy_idx) - ( 8.20878435e-01));
 	errors += fabs(nodeinfo1(5, sxy_idx) - (-1.47127394e+00));
 
 	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
