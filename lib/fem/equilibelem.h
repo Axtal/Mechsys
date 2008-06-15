@@ -441,11 +441,6 @@ inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 	for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
 		ip_values(i_ip) = _a_model[i_ip]->Val(Name);
 
-	// Correction due Mandel Notation
-	if (strncmp(Name,"Sx",2)==0 || strncmp(Name,"Sy",2)==0 || strncmp(Name,"Sz",2)==0)
-		for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
-			ip_values(i_ip) /= SQ2; 
-
 	// Extrapolation
 	Extrapolate (ip_values, nodal_values);
 

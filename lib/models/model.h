@@ -28,6 +28,10 @@ class Model
 public:
 	// Destructor
 	virtual ~Model () {}
+
+	// Access methods to be derived
+	virtual double Val (char const * Name) const =0; ///< Value: Sx, Sy, Ex, Ey, Wp, z0, etc.
+
 }; // class Model
 
 

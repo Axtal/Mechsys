@@ -54,17 +54,14 @@ public:
 	void RestoreState ();
 
 	// Access Methods
-	void Sig (Vector<double> & Stress)  const { Tensor2ToVector(_geom, _sig, Stress); }
-	void Eps (Vector<double> & Strain)  const { Tensor2ToVector(_geom, _eps, Strain); }
-	void Ivs (Array<double>  & IntVals) const { IntVals.Resize(0); } ///< No internal values
+	void Ivs (Array<double> & IntVals) const { IntVals.Resize(0); } ///< No internal values
 
 private:
 	// Data
-	Tensor2 _sig;
-	Tensor2 _eps;
-	Tensor2 _sig_bkp;
-	Tensor2 _eps_bkp;
 	Tensor4 _De;
+
+	// Private methods
+	double _val (char const * Name) const { throw new Fatal("LinElastic::_val The Name==%s is invalid",Name); }
 
 }; // class LinElastic
 
