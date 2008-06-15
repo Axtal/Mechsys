@@ -34,12 +34,12 @@ const int TRI6_NINTPTS     = 3;
 const int TRI6_NFACENODES  = 3;
 const int TRI6_NFACEINTPTS = 2;
 const Element::IntegPoint TRI6_INTPTS[]=
-{{ 0.166666666666667,  0.166666666666667,  0.0,  0.166666666666667 }, 
- { 0.666666666666667,  0.166666666666667,  0.0,  0.166666666666667 },
- { 0.166666666666667,  0.666666666666667,  0.0,  0.166666666666667 }};
+{{  0.166666666666666666666667,  0.166666666666666666666667,  0.0,  0.166666666666666666666667 }, 
+ {  0.666666666666666666666667,  0.166666666666666666666667,  0.0,  0.166666666666666666666667 },
+ {  0.166666666666666666666667,  0.666666666666666666666667,  0.0,  0.166666666666666666666667 }};
 const Element::IntegPoint TRI6_FACEINTPTS[]=
-{{  -0.577350,   0.0,  0.0,  1. },
- {   0.577350,   0.0,  0.0,  1. }};
+{{ -0.577350269189625764509149, 0.0, 0.0, 1.0 },
+ {  0.577350269189625764509149, 0.0, 0.0, 1.0 }};
 
 class Tri6: public virtual Element
 {
@@ -51,12 +51,12 @@ public:
 	virtual ~Tri6() {}
 
 	// Derived methods
-	int  VTKCellType     () const { return 22; } // VTK_HEXAHEDRON
-	void Shape           (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs          (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape       (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs      (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	void Dist2FaceNodes  (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const;
+	int  VTKCellType    () const { return 22; } // VTK_QUADRATIC_TRIANGLE
+	void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
+	void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
+	void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
+	void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
+	void Dist2FaceNodes (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const;
 
 }; // class Tri6
 
@@ -78,42 +78,35 @@ inline Tri6::Tri6()
 
 	// Setup pointer to the array of Integration Points
 	_a_int_pts = TRI6_INTPTS;
-
 }
 
 inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
 {
 
-	/*                    
-	 *
-	 *        s
-	 *        ^
-	 *        |
-	 *        4
-	 *        @
-	 *        |  \
-	 *        |    \
-	 *        |      \
-	 *        |        \
-	 *      5 @          @ 3
-	 *        |            \ 
-	 *        |              \ 
-	 *        |                \ 
-	 *        |                  \ 
-	 *        @---------@----------@   --> r
-	 *        0         1           2  
-	 *
-	 *
+	/*    s
+	 *    ^
+	 *    |
+	 *  2 
+	 *    @,(0,1)
+	 *    | ',
+	 *    |   ',
+	 *    |     ',
+	 *    |       ',   4
+	 *  5 @          @
+	 *    |           ', 
+	 *    |             ', 
+	 *    |               ', 
+	 *    |(0,0)            ', (1,0)
+	 *    @---------@---------@  --> r
+	 *  0           3          1
 	 */
-
 	Shape.Resize(TRI6_NNODES);
-    Shape(0) = 1.-(r+s)*(3.-2.*(r+s));
-    Shape(1) = 4.*r*(1.-(r+s));
-    Shape(2) = r*(2.*r-1.);
-    Shape(3) = 4*r*s;
-    Shape(4) = s*(2.*s-1.);
-    Shape(5) = 4.*s*(1.-(r+s));
-	
+    Shape(0) = 1.0-(r+s)*(3.0-2.0*(r+s));
+    Shape(1) = r*(2.0*r-1.0);
+    Shape(2) = s*(2.0*s-1.0);
+    Shape(3) = 4.0*r*(1.0-(r+s));
+    Shape(4) = 4.0*r*s;
+    Shape(5) = 4.0*s*(1.0-(r+s));
 }
 
 inline void Tri6::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
@@ -128,10 +121,10 @@ inline void Tri6::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	Derivs.Resize(2, TRI6_NNODES);
 
     Derivs(0,0) = -3.0 + 4.0 * (r + s);       Derivs(1,0) = -3.0 + 4.0*(r + s);
-    Derivs(0,1) =  4.0 - 8.0 * r - 4.0 * s;   Derivs(1,1) = -4.0 * r;
-    Derivs(0,2) =  4.0 * r - 1.;              Derivs(1,2) =  0.0 ; 
-    Derivs(0,3) =  4.0 * s;                   Derivs(1,3) =  4.0 * r;
-	Derivs(0,4) =  0.0;                       Derivs(1,4) =  4.0 * s - 1.0;   
+    Derivs(0,1) =  4.0 * r - 1.;              Derivs(1,1) =  0.0 ; 
+	Derivs(0,2) =  0.0;                       Derivs(1,2) =  4.0 * s - 1.0;   
+    Derivs(0,3) =  4.0 - 8.0 * r - 4.0 * s;   Derivs(1,3) = -4.0 * r;
+    Derivs(0,4) =  4.0 * s;                   Derivs(1,4) =  4.0 * r;
     Derivs(0,5) = -4.0 * s;                   Derivs(1,5) =  4.0 - 4.0 * r - 8.0*s;
 }
 
@@ -142,12 +135,10 @@ inline void Tri6::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	 *       @-----------@-----------@-> r
 	 *       0           1           2
 	 */
-
 	FaceShape.Resize(TRI6_NFACENODES);
 	FaceShape(0) = 0.5 * (r*r-r);
 	FaceShape(1) = 1.0 -  r*r;
 	FaceShape(2) = 0.5 * (r*r+r);
-
 }
 
 inline void Tri6::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
@@ -159,12 +150,10 @@ inline void Tri6::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDe
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-
 	FaceDerivs.Resize(1,TRI6_NFACENODES);
 	FaceDerivs(0,0) =  r  - 0.5;
 	FaceDerivs(0,1) = -2.0* r;
 	FaceDerivs(0,2) =  r  + 0.5;
-	
 }
 
 inline void Tri6::Dist2FaceNodes(Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const
