@@ -103,7 +103,7 @@ inline void Quadri8::Shape(double r, double s, double t, LinAlg::Vector<double> 
 	 *        @---------@----------@
 	 *      0           4            1
 	 */
-	Shape.Resize (QUADRI8_NNODEr);
+	Shape.Resize (QUADRI8_NNODES);
 
 	double rp1=r+1.0; double rm1=r-1.0;
 	double sp1=s+1.0; double sm1=s-1.0;
