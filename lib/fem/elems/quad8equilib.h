@@ -16,17 +16,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_QUADRI8EQUILIB_H
-#define MECHSYS_FEM_QUADRI8EQUILIB_H
+#ifndef MECHSYS_FEM_QUAD8EQUILIB_H
+#define MECHSYS_FEM_QUAD8EQUILIB_H
 
 // MechSys
 #include "fem/equilibelem.h"
-#include "fem/elems/quadri8.h"
+#include "fem/elems/quad8.h"
 
 namespace FEM
 {
 
-class Quadri8Equilib : public Quadri8, public EquilibElem
+class Quad8Equilib : public Quad8, public EquilibElem
 {
 public:
 	// Constants
@@ -36,30 +36,30 @@ public:
 	String Name() const { return NAME; };
 
 private:
-}; // class Quadri8Equilib
+}; // class Quad8Equilib
 
-// Quadri8Equilib constants
-String Quadri8Equilib::NAME = "Quadri8Equilib";
+// Quad8Equilib constants
+String Quad8Equilib::NAME = "Quad8Equilib";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Quadri8Equilib element
-Element * Quadri8EquilibMaker()
+// Allocate a new Quad8Equilib element
+Element * Quad8EquilibMaker()
 {
-	return new Quadri8Equilib();
+	return new Quad8Equilib();
 }
 
-// Register a Quadri8Equilib element into ElementFactory array map
-int Quadri8EquilibRegister()
+// Register a Quad8Equilib element into ElementFactory array map
+int Quad8EquilibRegister()
 {
-	ElementFactory[Quadri8Equilib::NAME] = Quadri8EquilibMaker;
+	ElementFactory[Quad8Equilib::NAME] = Quad8EquilibMaker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __Quadri8Equilib_dummy_int  = Quadri8EquilibRegister();
+int __Quad8Equilib_dummy_int  = Quad8EquilibRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_QUADRI8EQUILIB_H
+#endif // MECHSYS_FEM_QUAD8EQUILIB_H

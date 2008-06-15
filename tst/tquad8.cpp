@@ -22,7 +22,7 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/node.h"
-#include "fem/elems/quadri8equilib.h"
+#include "fem/elems/quad8equilib.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -71,8 +71,8 @@ int main(int argc, char **argv) try
 	FEM::AddNode(0.0, 0.5); // 7
 
 	// 2) Elements
-	FEM::AddElem("Quadri8Equilib", /*IsActive*/true);
-	FEM::AddElem("Quadri8Equilib", /*IsActive*/true);
+	FEM::AddElem("Quad8Equilib", /*IsActive*/true);
+	FEM::AddElem("Quad8Equilib", /*IsActive*/true);
 
 	// 3) Set connectivity
 	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5)->SetNode(6,6)->SetNode(7,7);

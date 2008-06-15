@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_QUADRI8_H
-#define MECHSYS_FEM_QUADRI8_H
+#ifndef MECHSYS_FEM_QUAD8_H
+#define MECHSYS_FEM_QUAD8_H
 
 // MechSys
 #include "fem/element.h"
@@ -28,12 +28,12 @@
 namespace FEM
 {
 
-// Quadri8 Constants
-const int QUADRI8_NNODES      = 8;
-const int QUADRI8_NINTPTS     = 9;
-const int QUADRI8_NFACENODES  = 3;
-const int QUADRI8_NFACEINTPTS = 3;
-const Element::IntegPoint QUADRI8_INTPTS[]=
+// Quad8 Constants
+const int QUAD8_NNODES      = 8;
+const int QUAD8_NINTPTS     = 9;
+const int QUAD8_NFACENODES  = 3;
+const int QUAD8_NFACEINTPTS = 3;
+const Element::IntegPoint QUAD8_INTPTS[]=
 {{ -0.774596669241483377035835, -0.774596669241483377035835, 0.0, 0.55555555555555555555556*0.55555555555555555555556 },
  {  0.0                       , -0.774596669241483377035835, 0.0, 0.88888888888888888888889*0.55555555555555555555556 },
  {  0.774596669241483377035835, -0.774596669241483377035835, 0.0, 0.55555555555555555555556*0.55555555555555555555556 },
@@ -43,19 +43,19 @@ const Element::IntegPoint QUADRI8_INTPTS[]=
  { -0.774596669241483377035835,  0.774596669241483377035835, 0.0, 0.55555555555555555555556*0.55555555555555555555556 },
  {  0.0                       ,  0.774596669241483377035835, 0.0, 0.88888888888888888888889*0.55555555555555555555556 },
  {  0.774596669241483377035835,  0.774596669241483377035835, 0.0, 0.55555555555555555555556*0.55555555555555555555556 }};
-const Element::IntegPoint QUADRI8_FACEINTPTS[]=
+const Element::IntegPoint QUAD8_FACEINTPTS[]=
 {{ -0.774596669241483377035835, 0.0, 0.0, 0.55555555555555555555556 },
  {  0.0                       , 0.0, 0.0, 0.88888888888888888888889 },
  {  0.774596669241483377035835, 0.0, 0.0, 0.55555555555555555555556 }};
 
-class Quadri8: public virtual Element
+class Quad8: public virtual Element
 {
 public:
 	// Constructor
-	Quadri8();
+	Quad8();
 
 	// Destructor
-	virtual ~Quadri8() {}
+	virtual ~Quad8() {}
 
 	// Derived methods
 	int  VTKCellType    () const { return 23; } // VTK_QUADRATIC_QUAD
@@ -65,29 +65,29 @@ public:
 	void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
 	void Dist2FaceNodes (Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const;
 
-}; // class Quadri8
+}; // class Quad8
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Quadri8::Quadri8()
+inline Quad8::Quad8()
 {
 	// Setup nodes number
 	_n_dim          = 2;
-	_n_nodes        = QUADRI8_NNODES;
-	_n_int_pts      = QUADRI8_NINTPTS;
-	_n_face_nodes   = QUADRI8_NFACENODES;
-	_n_face_int_pts = QUADRI8_NFACEINTPTS;
+	_n_nodes        = QUAD8_NNODES;
+	_n_int_pts      = QUAD8_NINTPTS;
+	_n_face_nodes   = QUAD8_NFACENODES;
+	_n_face_int_pts = QUAD8_NFACEINTPTS;
 
 	// Allocate nodes (connectivity)
 	_connects.Resize(_n_nodes);
 
 	// Setup pointer to the array of Integration Points
-	_a_int_pts = QUADRI8_INTPTS;
+	_a_int_pts = QUAD8_INTPTS;
 }
 
-inline void Quadri8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
+inline void Quad8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
 {
 	/*      3           6            2
 	 *        @---------@----------@
@@ -103,7 +103,7 @@ inline void Quadri8::Shape(double r, double s, double t, LinAlg::Vector<double> 
 	 *        @---------@----------@
 	 *      0           4            1
 	 */
-	Shape.Resize (QUADRI8_NNODES);
+	Shape.Resize (QUAD8_NNODES);
 
 	double rp1=r+1.0; double rm1=r-1.0;
 	double sp1=s+1.0; double sm1=s-1.0;
@@ -118,7 +118,7 @@ inline void Quadri8::Shape(double r, double s, double t, LinAlg::Vector<double> 
 	Shape(7) = 0.50*rm1*(1.0-s*s);
 }
 
-inline void Quadri8::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
+inline void Quad8::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
 {
 	/*           _     _ T
 	 *          |  dNi  |
@@ -127,7 +127,7 @@ inline void Quadri8::Derivs(double r, double s, double t, LinAlg::Matrix<double>
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize (2, QUADRI8_NNODES);
+	Derivs.Resize (2, QUAD8_NNODES);
 
 	double rp1=r+1.0; double rm1=r-1.0;
 	double sp1=s+1.0; double sm1=s-1.0;
@@ -151,20 +151,20 @@ inline void Quadri8::Derivs(double r, double s, double t, LinAlg::Matrix<double>
 	Derivs(1,7) = - s * rm1;
 }
 
-inline void Quadri8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
+inline void Quad8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
 {
 	/*  
 	 *  
 	 *       @-----------@-----------@-> r
 	 *       0           2           1
 	 */
-	FaceShape.Resize(QUADRI8_NFACENODES);
+	FaceShape.Resize(QUAD8_NFACENODES);
 	FaceShape(0) = 0.5 * (r*r-r);
 	FaceShape(1) = 0.5 * (r*r+r);
 	FaceShape(2) = 1.0 -  r*r;
 }
 
-inline void Quadri8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
+inline void Quad8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
 {
 	/*           _     _ T
 	 *          |  dNi  |
@@ -173,13 +173,13 @@ inline void Quadri8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & Fac
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	FaceDerivs.Resize(1,QUADRI8_NFACENODES);
+	FaceDerivs.Resize(1,QUAD8_NFACENODES);
 	FaceDerivs(0,0) =  r  - 0.5;
 	FaceDerivs(0,1) =  r  + 0.5;
 	FaceDerivs(0,2) = -2.0* r;
 }
 
-inline void Quadri8::Dist2FaceNodes(Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const
+inline void Quad8::Dist2FaceNodes(Array<Node*> const & FaceConnects, double const FaceValue, LinAlg::Vector<double> & NodalValues) const
 {
 	// Dimensioning NodalValues
 	NodalValues.Resize(_n_face_nodes);
@@ -189,8 +189,8 @@ inline void Quadri8::Dist2FaceNodes(Array<Node*> const & FaceConnects, double co
 	// Integration along the face
 	for (int i=0; i<_n_face_int_pts; i++)
 	{
-		double r = QUADRI8_FACEINTPTS[i].r;
-		double w = QUADRI8_FACEINTPTS[i].w;
+		double r = QUAD8_FACEINTPTS[i].r;
+		double w = QUAD8_FACEINTPTS[i].w;
 		FaceShape    (r, 0.0, face_shape);
 		FaceJacobian (FaceConnects, r, J);
 		NodalValues += FaceValue*face_shape*det(J)*w;
@@ -199,4 +199,4 @@ inline void Quadri8::Dist2FaceNodes(Array<Node*> const & FaceConnects, double co
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_QUADRI8_H
+#endif // MECHSYS_FEM_QUAD8_H
