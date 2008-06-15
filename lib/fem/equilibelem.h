@@ -567,38 +567,65 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 	LinAlg::Matrix<double> cart_derivs;
 	cart_derivs = inv(J)*derivs;
 
-	if (_n_dim==2)
+	// geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	switch (_geom)
 	{
-		// Loop along all nodes of the element
-		double dNdX,dNdY;
-		int  j=0; // j column of B
-		for (int i=0; i<_n_nodes; ++i) // i row of B
+		case 2: // 2D(plane-strain)
 		{
-			// Assemble B matrix
-			j = i*_n_dim;
-			dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
-			B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;     
-			B(1,0+j) =       0.0;   B(1,1+j) = dNdY;     
-			B(2,0+j) =  dNdY/SQ2;   B(2,1+j) = dNdX/SQ2;  // SQ2 => Mandel representation
+			// Loop along all nodes of the element
+			double dNdX,dNdY;
+			int  j=0; // j column of B
+			for (int i=0; i<_n_nodes; ++i) // i row of B
+			{
+				// Assemble B matrix
+				j = i*_n_dim;
+				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
+				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
+				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
+				B(2,0+j) =       0.0;   B(2,1+j) =  0.0;
+				B(3,0+j) =  dNdY/SQ2;   B(3,1+j) = dNdX/SQ2;  // SQ2 => Mandel representation
+			}
+			return;
 		}
-	}
-	else
-	{
-		// Loop along all nodes of the element
-		double dNdX,dNdY,dNdZ;
-		int  j=0; // j column of B
-		for (int i=0; i<_n_nodes; ++i) // i row of B
+		case 3: // 3D
 		{
-			// Assemble B matrix
-			j = i*_n_dim;
-			dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  dNdZ=-cart_derivs(2,i); // Negative values => Soil mechanics convention
-			B(0,0+j) =     dNdX;     B(0,1+j) =      0.0;     B(0,2+j) =      0.0;
-			B(1,0+j) =      0.0;     B(1,1+j) =     dNdY;     B(1,2+j) =      0.0;
-			B(2,0+j) =      0.0;     B(2,1+j) =      0.0;     B(2,2+j) =     dNdZ;
-			B(3,0+j) = dNdY/SQ2;     B(3,1+j) = dNdX/SQ2;     B(3,2+j) =      0.0; // SQ2 => Mandel representation
-			B(4,0+j) =      0.0;     B(4,1+j) = dNdZ/SQ2;     B(4,2+j) = dNdY/SQ2; // SQ2 => Mandel representation
-			B(5,0+j) = dNdZ/SQ2;     B(5,1+j) =      0.0;     B(5,2+j) = dNdX/SQ2; // SQ2 => Mandel representation
+			// Loop along all nodes of the element
+			double dNdX,dNdY,dNdZ;
+			int  j=0; // j column of B
+			for (int i=0; i<_n_nodes; ++i) // i row of B
+			{
+				// Assemble B matrix
+				j = i*_n_dim;
+				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  dNdZ=-cart_derivs(2,i); // Negative values => Soil mechanics convention
+				B(0,0+j) =     dNdX;     B(0,1+j) =      0.0;     B(0,2+j) =      0.0;
+				B(1,0+j) =      0.0;     B(1,1+j) =     dNdY;     B(1,2+j) =      0.0;
+				B(2,0+j) =      0.0;     B(2,1+j) =      0.0;     B(2,2+j) =     dNdZ;
+				B(3,0+j) = dNdY/SQ2;     B(3,1+j) = dNdX/SQ2;     B(3,2+j) =      0.0; // SQ2 => Mandel representation
+				B(4,0+j) =      0.0;     B(4,1+j) = dNdZ/SQ2;     B(4,2+j) = dNdY/SQ2; // SQ2 => Mandel representation
+				B(5,0+j) = dNdZ/SQ2;     B(5,1+j) =      0.0;     B(5,2+j) = dNdX/SQ2; // SQ2 => Mandel representation
+			}
+			return;
 		}
+		case 5: // 2D(plane-stress)
+		{
+			// Loop along all nodes of the element
+			double dNdX,dNdY;
+			int  j=0; // j column of B
+			for (int i=0; i<_n_nodes; ++i) // i row of B
+			{
+				// Assemble B matrix
+				j = i*_n_dim;
+				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
+				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
+				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
+				B(2,0+j) =  dNdY/SQ2;   B(2,1+j) = dNdX/SQ2;  // SQ2 => Mandel representation
+			}
+			return;
+		}
+		case 1: // 1D
+		case 4: // 2D(axis-symmetric)
+		default:
+			throw new Fatal("EquilibElem::B_Matrix: GeometryType==%d is not implemented yet",_geom);
 	}
 }
 
