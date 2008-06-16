@@ -31,9 +31,18 @@ namespace FEM
 
 // Quad4 Constants
 const int QUAD4_NNODES      = 4;
-const int QUAD4_NINTPTS     = 9;
+const int QUAD4_NINTPTS     = 4;
 const int QUAD4_NFACENODES  = 2;
-const int QUAD4_NFACEINTPTS = 3;
+const int QUAD4_NFACEINTPTS = 2;
+const Element::IntegPoint QUAD4_INTPTS[]=
+{{ -sqrt(3.0)/3.0, -sqrt(3.0)/3.0, 0.0, 1.0 },
+ {  sqrt(3.0)/3.0, -sqrt(3.0)/3.0, 0.0, 1.0 },
+ { -sqrt(3.0)/3.0,  sqrt(3.0)/3.0, 0.0, 1.0 },
+ {  sqrt(3.0)/3.0,  sqrt(3.0)/3.0, 0.0, 1.0 }};
+const Element::IntegPoint QUAD4_FACEINTPTS[]=
+{{ -sqrt(3.0)/3.0, 0.0, 0.0, 1.0 },
+ {  sqrt(3.0)/3.0, 0.0, 0.0, 1.0 }};
+/*
 const Element::IntegPoint QUAD4_INTPTS[]=
 {{ -sqrt(3.0/5.0), -sqrt(3.0/5.0), 0.0, 25.0/81.0 },
  {           0.0 , -sqrt(3.0/5.0), 0.0, 40.0/81.0 },
@@ -48,6 +57,7 @@ const Element::IntegPoint QUAD4_FACEINTPTS[]=
 {{ -sqrt(3.0/5.0), 0.0, 0.0, 5.0/9.0 },
  {           0.0 , 0.0, 0.0, 8.0/9.0 },
  {  sqrt(3.0/5.0), 0.0, 0.0, 5.0/9.0 }};
+*/
 
 class Quad4: public virtual Element
 {
