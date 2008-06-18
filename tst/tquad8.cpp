@@ -35,21 +35,29 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+	double H  = 2.0;   // height
+	double L  = 2.0;   // length
+	double E  = 207.0; // Young
+	double nu = 0.3;   // Poisson
+	double q  = 1.0;   // Load
+
 	/*        | | | | | | | | | | |  q=1
 	          V V V V V V V V V V V 
-	        3 @---------@---------@ 2
-	          |         6         |
+	  ---   3 @---------@---------@ 2
+	   |      |         6         |
+	   |      |                   |
+	   |      |                   |
 	          |                   |
+	   H    7 @        e[0]       @ 5
 	          |                   |
-	          |                   |
-	        7 @        e[0]       @ 5
-	          |                   |
-	          |                   |
-	          |                   |
-	          |         4         |
-	        0 @---------@---------@ 1
+	   |      |                   |
+	   |      |                   |
+	   |      |         4         |
+	  ---   0 @---------@---------@ 1
 	         /_\       /_\       /_\
 	         o o       ///       o o
+	
+	          |-------- L --------|
 	 */
 
 	// Input
@@ -61,14 +69,14 @@ int main(int argc, char **argv) try
 	FEM::GeometryType = 2; // 2D(plane-strain)
 
 	// 1) Nodes
-	FEM::AddNode(0.0, 0.0); // 0
-	FEM::AddNode(2.0, 0.0); // 1
-	FEM::AddNode(2.0, 2.0); // 2
-	FEM::AddNode(0.0, 2.0); // 3
-	FEM::AddNode(1.0, 0.0); // 4
-	FEM::AddNode(2.0, 1.0); // 5
-	FEM::AddNode(1.0, 2.0); // 6
-	FEM::AddNode(0.0, 1.0); // 7
+	FEM::AddNode(  0.0 ,   0.0); // 0
+	FEM::AddNode(    L ,   0.0); // 1
+	FEM::AddNode(    L ,     H); // 2
+	FEM::AddNode(  0.0 ,     H); // 3
+	FEM::AddNode(L/2.0 ,   0.0); // 4
+	FEM::AddNode(    L , H/2.0); // 5
+	FEM::AddNode(L/2.0 ,     H); // 6
+	FEM::AddNode(  0.0 , H/2.0); // 7
 
 	// 2) Elements
 	FEM::AddElem("Quad8Equilib", /*IsActive*/true);
@@ -80,10 +88,11 @@ int main(int argc, char **argv) try
 	Nodes[0]->Bry("uy",0.0);
 	Nodes[4]->Bry("uy",0.0)->Bry("ux",0.0);
 	Nodes[1]->Bry("uy",0.0);
-	Elems[0]->Bry("fy",-1.0, 3, 2,3,6); // Actually, fy is traction == ty (list of nodes must be LOCAL)
+	Elems[0]->Bry("fy",-q, 3, 2,3,6); // Actually, fy is traction == ty (list of nodes must be LOCAL)
 
 	// 5) Parameters and initial values
-	Elems[0]->SetModel("LinElastic", "E=207.0 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	String prms; prms.Printf("E=%f  nu=%f",E,nu);
+	Elems[0]->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;
@@ -98,32 +107,55 @@ int main(int argc, char **argv) try
 	sol -> Solve();
 
 	// Output
-	LinAlg::Matrix<double> values;
-	Array<String>          labels;
-	Elems[0]->OutNodes(values,labels);
-	//std::cout << labels << std::endl;
-	//std::cout << values << std::endl;
-
-	cout << "Node 3:  fy = " << Nodes[3]->Val("fy") << endl;
-	cout << "Node 6:  fy = " << Nodes[6]->Val("fy") << endl;
-	cout << "Node 2:  fy = " << Nodes[2]->Val("fy") << endl;
+	cout << "Node 3: ux = " << Nodes[3]->Val("ux") << " : uy = " << Nodes[3]->Val("uy") << " : fy = "  << Nodes[3]->Val("fy")  << endl;
+	cout << "Node 6: ux = " << Nodes[6]->Val("ux") << " : uy = " << Nodes[6]->Val("uy") << " : fy = "  << Nodes[6]->Val("fy")  << endl;
+	cout << "Node 2: ux = " << Nodes[2]->Val("ux") << " : uy = " << Nodes[2]->Val("uy") << " : fy = "  << Nodes[2]->Val("fy")  << endl << endl;;
+	cout << "Node 0: ux = " << Nodes[0]->Val("ux") << " : uy = " << Nodes[0]->Val("uy") << " : fy = "  << Nodes[0]->Val("fy")  << endl;
+	cout << "Node 4: ux = " << Nodes[4]->Val("ux") << " : uy = " << Nodes[4]->Val("uy") << " : fy = "  << Nodes[4]->Val("fy")  << endl;
+	cout << "Node 1: ux = " << Nodes[1]->Val("ux") << " : uy = " << Nodes[1]->Val("uy") << " : fy = "  << Nodes[1]->Val("fy")  << endl << endl;;
+	cout << "Elem 0: Sx = " << Elems[0]->Val("Sx") << " : Sy = " << Elems[0]->Val("Sy") << " : Sxy = " << Elems[0]->Val("Sxy") << endl;
+	cout << "Elem 0: Ex = " << Elems[0]->Val("Ex") << " : Ey = " << Elems[0]->Val("Ey") << " : Exy = " << Elems[0]->Val("Exy") << endl;
 
 	// Check
     double errors = 0.0;
 
-	errors += fabs(Nodes[3]->Val("fy") - (-1.0/3.0));
-	errors += fabs(Nodes[6]->Val("fy") - (-4.0/3.0));
-	errors += fabs(Nodes[2]->Val("fy") - (-1.0/3.0));
-	/*
-	errors += fabs(Elems[0]->Val(0, "Sx") - ( 1.56432140e-01));
-	errors += fabs(Elems[0]->Val(1, "Sx") - (-3.00686928e-01));
-	errors += fabs(Elems[0]->Val(2, "Sx") - ( 1.44254788e-01));
-	errors += fabs(Elems[0]->Val(3, "Sx") - (-3.19109076e-01));
-	errors += fabs(Elems[0]->Val(4, "Sx") - (-3.31286428e-01));
-	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
-	*/
-	if (fabs(errors)>1.0e-7) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
-	else                     cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	double Sy = q;
+	double Ex = -nu*(1.0+nu)*Sy/E;
+	double Ey =  (1.0-nu*nu)*Sy/E;
+
+	errors += fabs(Elems[0]->Val("Ex" ) - (Ex));
+	errors += fabs(Elems[0]->Val("Ey" ) - (Ey));
+	errors += fabs(Elems[0]->Val("Exy") - (0.0));
+	errors += fabs(Elems[0]->Val("Sx" ) - (0.0));
+	errors += fabs(Elems[0]->Val("Sy" ) - (Sy ));
+	errors += fabs(Elems[0]->Val("Sxy") - (0.0));
+
+	errors += fabs(Nodes[0]->Val("ux") - ( 0.5*L*Ex));
+	errors += fabs(Nodes[1]->Val("ux") - (-0.5*L*Ex));
+	errors += fabs(Nodes[2]->Val("ux") - (-0.5*L*Ex));
+	errors += fabs(Nodes[3]->Val("ux") - ( 0.5*L*Ex));
+	errors += fabs(Nodes[4]->Val("ux") - (      0.0));
+	errors += fabs(Nodes[5]->Val("ux") - (-0.5*L*Ex));
+	errors += fabs(Nodes[6]->Val("ux") - (      0.0));
+	errors += fabs(Nodes[7]->Val("ux") - ( 0.5*L*Ex));
+
+	errors += fabs(Nodes[0]->Val("uy") - (      0.0));
+	errors += fabs(Nodes[1]->Val("uy") - (      0.0));
+	errors += fabs(Nodes[2]->Val("uy") - (    -H*Ey));
+	errors += fabs(Nodes[3]->Val("uy") - (    -H*Ey));
+	errors += fabs(Nodes[4]->Val("uy") - (      0.0));
+	errors += fabs(Nodes[5]->Val("uy") - (-0.5*H*Ey));
+	errors += fabs(Nodes[6]->Val("uy") - (    -H*Ey));
+	errors += fabs(Nodes[7]->Val("uy") - (-0.5*H*Ey));
+
+	errors += fabs(Nodes[3]->Val("fy") - (    -q*L/6.0));
+	errors += fabs(Nodes[6]->Val("fy") - (-2.0*q*L/3.0));
+	errors += fabs(Nodes[2]->Val("fy") - (    -q*L/6.0));
+
+	errors += fabs(Nodes[3]->Val("fy")+Nodes[6]->Val("fy")+Nodes[2]->Val("fy")-(-q*L));
+
+	if (fabs(errors)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	else                      cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	return 0;
 }
