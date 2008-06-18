@@ -107,7 +107,7 @@ inline void LinElastic::SetPrms(char const * Prms)
 	}
 
 	// Wrong parameters
-	throw Fatal("LinElastic::SetPrms: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0 nu=0.25\n");
+	throw new Fatal("LinElastic::SetPrms: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0 nu=0.25\n");
 }
 
 inline void LinElastic::SetInis(char const * Inis)
@@ -136,7 +136,7 @@ inline void LinElastic::SetInis(char const * Inis)
 	}
 
 	// Wrong parameters
-	throw Fatal("LinElastic::SetInis: Initial values definition is incorrect. The syntax must be as in:\n\t Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0 Syz=0.0 Szx=0.0\n");
+	throw new Fatal("LinElastic::SetInis: Initial values definition is incorrect. The syntax must be as in:\n\t Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0 Syz=0.0 Szx=0.0\n");
 }
 
 inline int LinElastic::StressUpdate(Vector<double> const & DEps, Vector<double> & DSig)
