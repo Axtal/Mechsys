@@ -26,6 +26,9 @@
 #include "fem/solvers/autome.h"
 #include "util/exception.h"
 
+#include "fem/elems/lin2equilib.h"
+#include "models/equilibs/linelastic.h"
+
 using FEM::Nodes;
 using FEM::Elems;
 using std::cout;
@@ -62,6 +65,104 @@ int main(int argc, char **argv) try
 	//////////////////////////////////////////////////////////////////////////////////////////////// 2D
 	
 	{
+		// 0) Geometry type
+		FEM::GeometryType = 2; // 2D
+
+		// 1) Nodes
+		FEM::AddNode( 0.0,  0.0); // 0
+		FEM::AddNode(10.0,  0.0); // 1
+		FEM::AddNode(10.0, 10.0); // 2
+
+		// 2) Elements
+		FEM::AddElem("Lin2Equilib", /*IsActive*/true); // 0
+		FEM::AddElem("Lin2Equilib", /*IsActive*/true); // 1
+		FEM::AddElem("Lin2Equilib", /*IsActive*/true); // 2
+
+		// 3) Set connectivity
+		Elems[0]->SetNode(0, 0)->SetNode(1, 1);
+		Elems[1]->SetNode(0, 1)->SetNode(1, 2);
+		Elems[2]->SetNode(0, 0)->SetNode(1, 2);
+
+		// 4) Boundary conditions (must be after set connectivity)
+		Nodes[0]->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
+		Nodes[1]->                Bry("uy",  0.4); // Essential
+		Nodes[2]->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
+
+		// 5) Parameters and initial values
+		Elems[0]->SetModel("LinElastic", "E=100.0  nu=0.0", "Sx=0.0");
+		Elems[1]->SetModel("LinElastic", "E= 50.0  nu=0.0", "Sx=0.0");
+		Elems[2]->SetModel("LinElastic", "E=200.0  nu=0.0", "Sx=0.0");
+
+		// Check
+		double errors = 0;
+
+		// Stiffness
+		Array<size_t>  map;
+		Array<bool>    pre;
+		Matrix<double> Ke0;
+		Matrix<double> Ke1;
+		Matrix<double> Ke2;
+		Elems[0]->Order1Matrix(0,Ke0);
+		Elems[1]->Order1Matrix(0,Ke1);
+		Elems[2]->Order1Matrix(0,Ke2);
+		cout << "Ke0=\n" << Ke0 << endl;
+		cout << "Ke1=\n" << Ke1 << endl;
+		cout << "Ke2=\n" << Ke2 << endl;
+
+		Matrix<double> Ke0_correct;  Ke0_correct.Resize(4,4);
+		Ke0_correct =  10.0,   0.0, -10.0,   0.0,
+		                0.0,   0.0,   0.0,   0.0,
+		              -10.0,   0.0,  10.0,   0.0,
+		                0.0,   0.0,   0.0,   0.0;
+		Matrix<double> Ke1_correct;  Ke1_correct.Resize(4,4);
+		Ke1_correct =   0.0,   0.0,   0.0,   0.0,
+		                0.0,   5.0,   0.0,  -5.0,
+		                0.0,   0.0,   0.0,   0.0,
+		                0.0,  -5.0,   0.0,   5.0;
+		Matrix<double> Ke2_correct;  Ke2_correct.Resize(4,4);
+		Ke2_correct =  10.0,  10.0, -10.0, -10.0,
+		               10.0,  10.0, -10.0, -10.0,
+		              -10.0, -10.0,  10.0,  10.0,
+		              -10.0, -10.0,  10.0,  10.0;
+
+		for (int i=0; i<4; ++i)
+		for (int j=0; j<4; ++j)
+		{
+			errors += fabs(Ke0(i,j)-Ke0_correct(i,j));
+			errors += fabs(Ke1(i,j)-Ke1_correct(i,j));
+			errors += fabs(Ke2(i,j)-Ke2_correct(i,j));
+		}
+
+		// 6) Solve
+		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+		//FEM::Solver * sol = FEM::AllocSolver("AutoME");
+		sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+		sol -> Solve();
+		cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
+
+		errors += fabs(Nodes[0]->Val("ux") - ( 0.0));
+		errors += fabs(Nodes[0]->Val("uy") - (-0.5));
+		errors += fabs(Nodes[1]->Val("ux") - ( 0.0));
+		errors += fabs(Nodes[1]->Val("uy") - ( 0.4));
+		errors += fabs(Nodes[2]->Val("ux") - (-0.5));
+		errors += fabs(Nodes[2]->Val("uy") - ( 0.2));
+
+		errors += fabs(Nodes[0]->Val("fx") - (-2.0));
+		errors += fabs(Nodes[0]->Val("fy") - (-2.0));
+		errors += fabs(Nodes[1]->Val("fx") - ( 0.0));
+		errors += fabs(Nodes[1]->Val("fy") - ( 1.0));
+		errors += fabs(Nodes[2]->Val("fx") - ( 2.0));
+		errors += fabs(Nodes[2]->Val("fy") - ( 1.0));
+
+		if (fabs(errors)>1.0e-13) cout << "[1;31m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
+		else                      cout << "[1;32m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////// 2D ElasticRod
+	
+	{
+		return 0;
+
 		// 0) Geometry type
 		FEM::GeometryType = 2; // 2D
 
