@@ -39,7 +39,7 @@ class Element
 {
 public:
 	// Default constructor
-	Element() : _geom(-1) {} // geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	Element() : _ndim_prob(-1), _ndim_elem(-1), _geom(-1) {} // geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
 	// Destructor
 	virtual ~Element() { }
@@ -118,7 +118,8 @@ public:
 protected:
 	// Data (may be accessed by derived classes)
 	int                _my_id;          ///< The ID of this element
-	int                _n_dim;          ///< Number of dimensions
+	int                _ndim_prob;      ///< Number of dimensions of the problem
+	int                _ndim_elem;      ///< Number of dimensions of the element
 	int                _geom;           ///< Geometry type
 	int                _n_nodes;        ///< Number of nodes in the element
 	int	               _n_int_pts;      ///< Number of integration (Gauss) points

@@ -67,7 +67,7 @@ public:
 inline Quad8::Quad8()
 {
 	// Setup nodes number
-	_n_dim          = 2;
+	_ndim_elem      = 2;
 	_n_nodes        = QUAD8_NNODES;
 	_n_int_pts      = QUAD8_NINTPTS;
 	_n_face_nodes   = QUAD8_NFACENODES;

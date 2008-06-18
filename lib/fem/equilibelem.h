@@ -110,9 +110,9 @@ inline void EquilibElem::SetGeometryType(int Geom)
 	// Set the number of stresses associated with the geometry type
 	switch (_geom)
 	{
-		case 2: { _n_stress = 4; return; } // 2D(plane-strain)
-		case 3: { _n_stress = 6; return; } // 3D
-		case 5: { _n_stress = 3; return; } // 2D(plane-stress)
+		case 2: { _ndim_prob=2; _n_stress=4; return; } // 2D(plane-strain)
+		case 3: { _ndim_prob=3; _n_stress=6; return; } // 3D
+		case 5: { _ndim_prob=2; _n_stress=3; return; } // 2D(plane-stress)
 		case 1: // 1D
 		case 4: // 2D(axis-symmetric)
 		default:
@@ -123,7 +123,7 @@ inline void EquilibElem::SetGeometryType(int Geom)
 inline bool EquilibElem::IsEssential(char const * DOFName) const
 {
 	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
-	if (_n_dim==3               && strcmp(DOFName,"uz")==0) return true;
+	if (_ndim_prob==3           && strcmp(DOFName,"uz")==0) return true;
 	return false;
 }
 
@@ -157,9 +157,9 @@ inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)
 	_connects[iNodeLocal] = Nodes[iNodeGlobal];
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	               Nodes[iNodeGlobal]->AddDOF("ux", "fx");
-	               Nodes[iNodeGlobal]->AddDOF("uy", "fy");
-	if (_n_dim==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
+	                   Nodes[iNodeGlobal]->AddDOF("ux", "fx");
+	                   Nodes[iNodeGlobal]->AddDOF("uy", "fy");
+	if (_ndim_prob==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
 
 	// Shared
 	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
@@ -170,18 +170,18 @@ inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)
 inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> dU(_n_dim*_n_nodes); // Delta disp. of this element
+	LinAlg::Vector<double> dU(_ndim_prob*_n_nodes); // Delta disp. of this element
 	
 	// Assemble (local/element) displacements vector
 	for (int i=0; i<_n_nodes; ++i)
 	{
-		               dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
-		               dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
-		if (_n_dim==3) dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
+		                   dU(i*_ndim_prob  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		                   dU(i*_ndim_prob+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
+		if (_ndim_prob==3) dU(i*_ndim_prob+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> dF(_n_dim*_n_nodes); // Delta internal force of this element
+	LinAlg::Vector<double> dF(_ndim_prob*_n_nodes); // Delta internal force of this element
 	dF.SetValues(0.0);
 	
 	// Allocate entities used for every integration point
@@ -218,9 +218,9 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	for (int i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		               dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_n_dim  );
-		               dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_n_dim+1);
-		if (_n_dim==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_n_dim+2);
+		                   dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_ndim_prob  );
+		                   dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_ndim_prob+1);
+		if (_ndim_prob==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_ndim_prob+2);
 	}
 }
 
@@ -325,7 +325,7 @@ inline void EquilibElem::Deactivate()
 inline void EquilibElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
 {
 	// Size of Ke
-	int n_rows = _n_dim*_n_nodes; // == n_cols
+	int n_rows = _ndim_prob*_n_nodes; // == n_cols
 
 	// Mounting a map of positions from Ke to Global
 	int idx_Ke = 0;                // position (idx) inside Ke matrix
@@ -341,7 +341,7 @@ inline void EquilibElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Arr
 		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uy").EqID; 
 		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uy").IsEssenPresc; 
 		idx_Ke++;
-		if (_n_dim==3)
+		if (_ndim_prob==3)
 		{
 			RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uz").EqID; 
 			RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uz").IsEssenPresc; 
@@ -363,7 +363,7 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 	*/
 
 	// Resize Ke
-	Ke.Resize(_n_dim*_n_nodes, _n_dim*_n_nodes); // sum(Bt*D*B*det(J)*w)
+	Ke.Resize(_ndim_prob*_n_nodes, _ndim_prob*_n_nodes); // sum(Bt*D*B*det(J)*w)
 	Ke.SetValues(0.0);
 
 	// Allocate entities used for every integration point
@@ -404,7 +404,7 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 	 */
 	
 	// Resize B matrix
-	B.Resize(_n_stress,_n_dim*_n_nodes);
+	B.Resize(_n_stress,_ndim_prob*_n_nodes);
 
 	// Cartesian derivatives
 	LinAlg::Matrix<double> cart_derivs;
@@ -421,7 +421,7 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 			for (int i=0; i<_n_nodes; ++i) // i row of B
 			{
 				// Assemble B matrix
-				j = i*_n_dim;
+				j = i*_ndim_prob;
 				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
 				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
 				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
@@ -438,7 +438,7 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 			for (int i=0; i<_n_nodes; ++i) // i row of B
 			{
 				// Assemble B matrix
-				j = i*_n_dim;
+				j = i*_ndim_prob;
 				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  dNdZ=-cart_derivs(2,i); // Negative values => Soil mechanics convention
 				B(0,0+j) =     dNdX;     B(0,1+j) =      0.0;     B(0,2+j) =      0.0;
 				B(1,0+j) =      0.0;     B(1,1+j) =     dNdY;     B(1,2+j) =      0.0;
@@ -457,7 +457,7 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 			for (int i=0; i<_n_nodes; ++i) // i row of B
 			{
 				// Assemble B matrix
-				j = i*_n_dim;
+				j = i*_ndim_prob;
 				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
 				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
 				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
@@ -478,7 +478,7 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 inline void EquilibElem::_calc_initial_internal_forces()
 {
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> F(_n_dim*_n_nodes);
+	LinAlg::Vector<double> F(_ndim_prob*_n_nodes);
 	F.SetValues(0.0);
 
 	// Allocate entities used for every integration point
@@ -510,9 +510,9 @@ inline void EquilibElem::_calc_initial_internal_forces()
 	for (int i_node=0; i_node<_n_nodes; ++i_node)
 	{
 		// Assemble (local/element) displacements vector.
-		               _connects[i_node]->DOFVar("fx").NaturalVal += F(i_node*_n_dim  ); // NaturalVal must be set to zero during AddDOF routine
-		               _connects[i_node]->DOFVar("fy").NaturalVal += F(i_node*_n_dim+1);
-		if (_n_dim==3) _connects[i_node]->DOFVar("fz").NaturalVal += F(i_node*_n_dim+2);
+		                   _connects[i_node]->DOFVar("fx").NaturalVal += F(i_node*_ndim_prob  ); // NaturalVal must be set to zero during AddDOF routine
+		                   _connects[i_node]->DOFVar("fy").NaturalVal += F(i_node*_ndim_prob+1);
+		if (_ndim_prob==3) _connects[i_node]->DOFVar("fz").NaturalVal += F(i_node*_ndim_prob+2);
 	}
 }
 

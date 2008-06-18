@@ -48,7 +48,7 @@ public:
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     () { _Sa_bkp=_Sa;  _Ea_bkp=_Ea; }
 	void      RestoreState    () { _Sa=_Sa_bkp;  _Ea=_Ea_bkp; }
-	void      SetGeometryType (int Geom) { _geom=Geom;  _n_dim=(_geom==3?3:2); }
+	void      SetGeometryType (int Geom) { _geom=Geom;  _ndim_prob=(_geom==3?3:2); }
 	void      SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
 	void      GetLabels       (Array<String> & Labels) const;
 
@@ -77,7 +77,7 @@ private:
 	double _Ea_bkp;      ///< Backup axial strain
 	double _A;           ///< Cross-sectional area
 	double _unit_weight; ///< Unit weight
-	int    _n_dim;       ///< Space dimension 2D or 3D
+	int    _ndim_prob;   ///< Problem dimension
 
 	// Private methods
 	void _calc_initial_internal_forces ();
@@ -123,7 +123,7 @@ inline bool ElasticRod::IsReady() const
 inline bool ElasticRod::IsEssential(char const * DOFName) const
 {
 	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
-	if (_n_dim==3               && strcmp(DOFName,"uz")==0) return true;
+	if (_ndim_prob==3           && strcmp(DOFName,"uz")==0) return true;
 	else return false;
 }
 
@@ -167,9 +167,9 @@ inline Element * ElasticRod::SetNode(int iNodeLocal, int iNodeGlobal)
 	_connects[iNodeLocal] = Nodes[iNodeGlobal];
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	               Nodes[iNodeGlobal]->AddDOF("ux", "fx");
-	               Nodes[iNodeGlobal]->AddDOF("uy", "fy");
-	if (_n_dim==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
+	                   Nodes[iNodeGlobal]->AddDOF("ux", "fx");
+	                   Nodes[iNodeGlobal]->AddDOF("uy", "fy");
+	if (_ndim_prob==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
 
 	// Shared
 	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
@@ -180,18 +180,18 @@ inline Element * ElasticRod::SetNode(int iNodeLocal, int iNodeGlobal)
 inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> dU(_n_dim*_n_nodes); // Delta disp. of this element
+	LinAlg::Vector<double> dU(_ndim_prob*_n_nodes); // Delta disp. of this element
 	
 	// Assemble (local/element) displacements vector
 	for (int i=0; i<_n_nodes; ++i)
 	{
-		               dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
-		               dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
-		if (_n_dim==3) dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
+		                   dU(i*_ndim_prob  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		                   dU(i*_ndim_prob+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
+		if (_ndim_prob==3) dU(i*_ndim_prob+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> dF(_n_dim*_n_nodes); // Delta internal force of this element
+	LinAlg::Vector<double> dF(_ndim_prob*_n_nodes); // Delta internal force of this element
 	dF.SetValues(0.0);
 
 	/*
@@ -206,8 +206,8 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	/*
 	// Conversion matrix
 	double L;
-	LinAlg::Matrix<double> Te(_n_dim*_n_nodes, _n_dim*_n_nodes);
-	if (_n_dim==2)
+	LinAlg::Matrix<double> Te(_ndim_prob*_n_nodes, _ndim_prob*_n_nodes);
+	if (_ndim_prob==2)
 	{
 		double x21 = _connects[1]->X()-_connects[0]->X();
 		double y21 = _connects[1]->Y()-_connects[0]->Y();
@@ -226,8 +226,8 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	}
 
 	// Local coordinates
-	LinAlg::Vector<double>    dU_loc(_n_dim*_n_nodes);
-	LinAlg::Vector<double> dFint_loc(_n_dim*_n_nodes); dFint_loc.SetValues(0.0);
+	LinAlg::Vector<double>    dU_loc(_ndim_prob*_n_nodes);
+	LinAlg::Vector<double> dFint_loc(_ndim_prob*_n_nodes); dFint_loc.SetValues(0.0);
 	dU_loc = Te*dU;
 	double elongation = dU_loc(0);
 	_Sa += _E*elongation;
@@ -240,9 +240,9 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	for (int i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		               dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_n_dim  );
-		               dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_n_dim+1);
-		if (_n_dim==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_n_dim+2);
+		                   dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_ndim_prob  );
+		                   dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_ndim_prob+1);
+		if (_ndim_prob==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_ndim_prob+2);
 	}
 }
 
@@ -308,7 +308,7 @@ inline double ElasticRod::Val(char const * Name) const
 inline void ElasticRod::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
 {
 	// Size of Ke
-	int n_rows = _n_dim*_n_nodes; // == n_cols
+	int n_rows = _ndim_prob*_n_nodes; // == n_cols
 
 	// Mounting a map of positions from Ke to Global
 	int idx_Ke = 0;                // position (idx) inside Ke matrix
@@ -324,7 +324,7 @@ inline void ElasticRod::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Arra
 		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uy").EqID; 
 		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uy").IsEssenPresc; 
 		idx_Ke++;
-		if (_n_dim==3)
+		if (_ndim_prob==3)
 		{
 			RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uz").EqID; 
 			RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uz").IsEssenPresc; 
@@ -338,11 +338,11 @@ inline void ElasticRod::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Arra
 inline void ElasticRod::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) const
 {
 	// Resize Ke
-	Ke.Resize(_n_dim*_n_nodes, _n_dim*_n_nodes); // sum(Bt*D*B*det(J)*w)
+	Ke.Resize(_ndim_prob*_n_nodes, _ndim_prob*_n_nodes); // sum(Bt*D*B*det(J)*w)
 	Ke.SetValues(0.0);
 
 	double L;
-	if (_n_dim==2) // 2D
+	if (_ndim_prob==2) // 2D
 	{
 		double x21 = _connects[1]->X()-_connects[0]->X();
 		double y21 = _connects[1]->Y()-_connects[0]->Y();
