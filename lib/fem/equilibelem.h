@@ -123,7 +123,7 @@ inline void EquilibElem::SetGeometryType(int Geom)
 inline bool EquilibElem::IsEssential(char const * DOFName) const
 {
 	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
-	if (_n_dim==3 && strcmp(DOFName,"uz")==0)               return true;
+	if (_n_dim==3               && strcmp(DOFName,"uz")==0) return true;
 	return false;
 }
 
@@ -157,10 +157,9 @@ inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)
 	_connects[iNodeLocal] = Nodes[iNodeGlobal];
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	Nodes[iNodeGlobal]->AddDOF("ux", "fx");
-	Nodes[iNodeGlobal]->AddDOF("uy", "fy");
-	if (_n_dim==3)
-	Nodes[iNodeGlobal]->AddDOF("uz", "fz");
+	               Nodes[iNodeGlobal]->AddDOF("ux", "fx");
+	               Nodes[iNodeGlobal]->AddDOF("uy", "fy");
+	if (_n_dim==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
 
 	// Shared
 	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
@@ -176,10 +175,9 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	// Assemble (local/element) displacements vector
 	for (int i=0; i<_n_nodes; ++i)
 	{
-		dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
-		dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
-		if (_n_dim==3)
-		dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
+		               dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		               dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
+		if (_n_dim==3) dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
@@ -220,10 +218,9 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	for (int i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_n_dim  );
-		dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_n_dim+1);
-		if (_n_dim==3)
-		dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_n_dim+2);
+		               dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_n_dim  );
+		               dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_n_dim+1);
+		if (_n_dim==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_n_dim+2);
 	}
 }
 
@@ -446,8 +443,8 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 		double w = _a_int_pts[i_ip].w;
 
 		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian(derivs, J);      // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix(derivs,J, B);    // Calculate B matrix for i_ip Integration Point
+		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
+		B_Matrix (derivs,J, B);   // Calculate B matrix for i_ip Integration Point
 
 		// Constitutive tensor 
 		_a_model[i_ip]->TgStiffness(D); 
@@ -564,9 +561,9 @@ inline void EquilibElem::_calc_initial_internal_forces()
 		double t = _a_int_pts[i_ip].t; // only for 3D
 		double w = _a_int_pts[i_ip].w;
 
-		Derivs(r,s,t, derivs);   // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian(derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix(derivs, J, B);  // Calculate B matrix for i_ip Integration Point
+		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
+		B_Matrix (derivs, J, B);  // Calculate B matrix for i_ip Integration Point
 
 		_a_model[i_ip]->Sig(sig); 
 
@@ -578,10 +575,9 @@ inline void EquilibElem::_calc_initial_internal_forces()
 	for (int i_node=0; i_node<_n_nodes; ++i_node)
 	{
 		// Assemble (local/element) displacements vector.
-		_connects[i_node]->DOFVar("fx").NaturalVal += F(i_node*_n_dim  ); // NaturalVal must be set to zero during AddDOF routine
-		_connects[i_node]->DOFVar("fy").NaturalVal += F(i_node*_n_dim+1);
-		if (_n_dim==3)
-		_connects[i_node]->DOFVar("fz").NaturalVal += F(i_node*_n_dim+2);
+		               _connects[i_node]->DOFVar("fx").NaturalVal += F(i_node*_n_dim  ); // NaturalVal must be set to zero during AddDOF routine
+		               _connects[i_node]->DOFVar("fy").NaturalVal += F(i_node*_n_dim+1);
+		if (_n_dim==3) _connects[i_node]->DOFVar("fz").NaturalVal += F(i_node*_n_dim+2);
 	}
 }
 
