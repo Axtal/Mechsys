@@ -53,7 +53,9 @@ int main(int argc, char **argv) try
 	 */
 
 	// Input
-	if (argc!=2) throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n"),argv[0]);
+	String linsol("LA");
+	if (argc==2) linsol.Printf("%s",argv[1]);
+	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	// 0) Geometry type
 	FEM::GeometryType = 2; // 2D(plane-strain)
@@ -92,7 +94,7 @@ int main(int argc, char **argv) try
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	// Output
@@ -112,8 +114,8 @@ int main(int argc, char **argv) try
 	errors += fabs(Elems[0]->Val(4, "Sx") - (-3.31286428e-01));
 	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
 	*/
-	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
-	else                     cout << "[1;32mErrors(" << argv[1] << ") = " << errors << "[0m\n" << endl;
+	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	else                     cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	return 0;
 }

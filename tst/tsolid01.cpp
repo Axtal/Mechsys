@@ -54,7 +54,9 @@ int main(int argc, char **argv) try
 	*/
 
 	// Input
-	if (argc!=2) throw new Message(_("Please, call this program as in:\n\t\t %s LinSol\n  where:\n   LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n"),argv[0]);
+	String linsol("LA");
+	if (argc==2) linsol.Printf("%s",argv[1]);
+	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	// 0) Geometry type
 	FEM::GeometryType = 3; // 3D
@@ -108,7 +110,7 @@ int main(int argc, char **argv) try
 	// 6) Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetLinSol(argv[1]) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	return 0;
