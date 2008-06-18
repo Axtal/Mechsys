@@ -62,7 +62,6 @@ public:
 	void      RestoreState    ();
 	void      SetGeometryType (int Geom);  
 	void      SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
-	String    OutCenter       (bool PrintCaptionOnly) const;
 	void      GetLabels       (Array<String> & Labels) const;
 	void      Deactivate      ();
 
@@ -75,7 +74,8 @@ public:
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
 
 	// Access methods
-	double Val (int iNodeLocal, char const * Name) const; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
+	double Val (int iNodeLocal, char const * Name) const;
+	double Val (                char const * Name) const;
 
 private:
 	// Data
@@ -236,78 +236,6 @@ inline void EquilibElem::RestoreState()
 		_a_model[i]->RestoreState();
 }
 
-inline String EquilibElem::OutCenter(bool PrintCaptionOnly=false) const
-{
-	// Auxiliar variables
-	std::ostringstream oss;
-	/*
-	// Number of state values
-	int n_int_state_vals = _a_model[0]->nInternalStateValues();
-	
-	// Print caption
-	if (PrintCaptionOnly)
-	{
-		// Stress and strains
-		oss << Util::_8s<< "p"  << Util::_8s<< "q"  << Util::_8s<< "sin3th" << Util::_8s<< "Ev"  << Util::_8s<< "Ed";
-		oss << Util::_8s<< "Sx" << Util::_8s<< "Sy" << Util::_8s<< "Sz" << Util::_8s<< "Sxy" << Util::_8s<< "Syz" << Util::_8s<< "Sxz";
-		oss << Util::_8s<< "Ex" << Util::_8s<< "Ey" << Util::_8s<< "Ez" << Util::_8s<< "Exy" << Util::_8s<< "Eyz" << Util::_8s<< "Exz";
-
-		// Internal state values
-		Array<String> str_state_names;   _a_model[0]->InternalStateNames(str_state_names);
-		for (int i=0; i<n_int_state_vals; ++i)
-			oss << Util::_8s<< str_state_names[i];
-		oss << std::endl;
-	}
-	else
-	{
-		// Stress, strains and internal state values evaluated at the center of the element
-		Tensors::Tensor2 sig_cen(0.0);
-		Tensors::Tensor2 eps_cen(0.0);
-		Array<double> int_state_vals_cen(n_int_state_vals);
-		int_state_vals_cen = 0.0;
-
-		// Loop over integration points
-		for (int i_ip=0; i_ip<_n_int_pts; ++i_ip)
-		{
-			// Stress and strains
-			sig_cen += _a_model[i_ip]->Sig();
-			eps_cen += _a_model[i_ip]->Eps();
-
-			// Internal state values
-			Array<double> int_state_vals;    _a_model[i_ip]->InternalStateValues(int_state_vals);
-			for (int j=0; j<n_int_state_vals; ++j)
-				int_state_vals_cen[j] += int_state_vals[j];
-		}
-		
-		// Average stress and strains
-		sig_cen = sig_cen / _n_int_pts;
-		eps_cen = eps_cen / _n_int_pts;
-		
-		// Average internal state values
-		for (int j=0; j<n_int_state_vals; ++j)
-			int_state_vals_cen[j] = int_state_vals_cen[j] / _n_int_pts;;
-
-		// Calculate stress invariants
-		double            p,q,sin3th;
-		Tensors::Tensor2  S;
-		Stress_p_q_S_sin3th(sig_cen,p,q,S,sin3th);
-
-		// Calculate strain invariants
-		double     Ev,Ed;
-		Strain_Ev_Ed(eps_cen,Ev,Ed);
-
-		// Output
-		oss << Util::_8s<< p          << Util::_8s<< q          << Util::_8s<< sin3th << Util::_8s<< Ev*100.0       << Util::_8s<< Ed*100.0;
-		oss << Util::_8s<< sig_cen(0) << Util::_8s<< sig_cen(1) << Util::_8s<< sig_cen(2)         << Util::_8s<< sig_cen(3)/SQ2 << Util::_8s<< sig_cen(4)/SQ2 << Util::_8s<< sig_cen(5)/SQ2;
-		oss << Util::_8s<< eps_cen(0) << Util::_8s<< eps_cen(1) << Util::_8s<< eps_cen(2)         << Util::_8s<< eps_cen(3)/SQ2 << Util::_8s<< eps_cen(4)/SQ2 << Util::_8s<< eps_cen(5)/SQ2;
-		for (int j=0; j<n_int_state_vals; ++j)
-			oss << Util::_8s<< int_state_vals_cen[j];
-		oss << std::endl;
-	} */
-
-	return oss.str(); 
-}
-
 inline void EquilibElem::GetLabels(Array<String> & Labels) const
 {
 	// Get labels of all values to output
@@ -374,6 +302,17 @@ inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 		// Output single value
 		return nodal_values (iNodeLocal);
 	}
+}
+
+inline double EquilibElem::Val(char const * Name) const
+{
+	// Get integration point values
+	double sum = 0.0;
+	for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
+		sum += _a_model[i_ip]->Val(Name);
+
+	// Output single value at CG
+	return sum/_n_int_pts;
 }
 
 inline void EquilibElem::Deactivate()

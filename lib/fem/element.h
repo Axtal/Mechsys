@@ -79,7 +79,6 @@ public:
 	virtual void      RestoreState    () =0;                                                                                                ///< Restore internal state from a previously backup state
 	virtual void      SetGeometryType (int Geom) =0;                                                                                        ///< Set geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	virtual void      SetProperties   (Array<double> const & EleProps) =0;                                                                  ///< Set interal properties
-	virtual String    OutCenter       (bool PrintCaptionOnly=false) const =0;                                                               ///< Output internal values computed (averaged) in the center of the element
 	virtual void      GetLabels       (Array<String> & Labels) const =0;                                                                    ///< Get the labels of all values to be output
 
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
@@ -112,8 +111,9 @@ public:
 	virtual void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
 	virtual void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< First order matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
 
-	// Access methods
-	virtual double Val (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
+	// Access methods that MUST be overriden
+	virtual double Val (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the Nodes of the element. Ex.: Name="ux", "fx", "Sx", "Sxy", "Ex", etc.
+	virtual double Val (                char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
 
 protected:
 	// Data (may be accessed by derived classes)

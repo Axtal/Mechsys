@@ -80,7 +80,7 @@ int main(int argc, char **argv) try
 	Nodes[0]->Bry("uy",0.0);
 	Nodes[4]->Bry("uy",0.0)->Bry("ux",0.0);
 	Nodes[1]->Bry("uy",0.0);
-	Elems[0]->Bry("fy",-1.0, 3, 3,6,2); // Actually, fy is traction == ty (list of nodes must be LOCAL)
+	Elems[0]->Bry("fy",-1.0, 3, 2,3,6); // Actually, fy is traction == ty (list of nodes must be LOCAL)
 
 	// 5) Parameters and initial values
 	Elems[0]->SetModel("LinElastic", "E=207.0 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
@@ -93,7 +93,7 @@ int main(int argc, char **argv) try
 	//cout << "Ke0=\n" << Ke0 << endl;
 
 	// 6) Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
@@ -104,8 +104,16 @@ int main(int argc, char **argv) try
 	//std::cout << labels << std::endl;
 	//std::cout << values << std::endl;
 
+	cout << "Node 3:  fy = " << Nodes[3]->Val("fy") << endl;
+	cout << "Node 6:  fy = " << Nodes[6]->Val("fy") << endl;
+	cout << "Node 2:  fy = " << Nodes[2]->Val("fy") << endl;
+
 	// Check
-    double errors = 1.0;
+    double errors = 0.0;
+
+	errors += fabs(Nodes[3]->Val("fy") - (-1.0/3.0));
+	errors += fabs(Nodes[6]->Val("fy") - (-4.0/3.0));
+	errors += fabs(Nodes[2]->Val("fy") - (-1.0/3.0));
 	/*
 	errors += fabs(Elems[0]->Val(0, "Sx") - ( 1.56432140e-01));
 	errors += fabs(Elems[0]->Val(1, "Sx") - (-3.00686928e-01));
@@ -114,8 +122,8 @@ int main(int argc, char **argv) try
 	errors += fabs(Elems[0]->Val(4, "Sx") - (-3.31286428e-01));
 	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
 	*/
-	//if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
-	//else                     cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	if (fabs(errors)>1.0e-7) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	else                     cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	return 0;
 }

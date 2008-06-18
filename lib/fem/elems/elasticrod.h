@@ -50,7 +50,6 @@ public:
 	void      RestoreState    () { _Sa=_Sa_bkp;  _Ea=_Ea_bkp; }
 	void      SetGeometryType (int Geom) { _geom=Geom;  _n_dim=(_geom==3?3:2); }
 	void      SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
-	String    OutCenter       (bool PrintCaptionOnly) const { String res; res.Printf("%f",_Sa); return res; }
 	void      GetLabels       (Array<String> & Labels) const;
 
 	// Derived methods (GEOMETRIC)
@@ -67,6 +66,7 @@ public:
 
 	// Access methods
 	double Val(int iNodeLocal, char const * Name) const;
+	double Val(                char const * Name) const;
 
 private:
 	// Data
@@ -294,6 +294,13 @@ inline double ElasticRod::Val(int iNodeLocal, char const * Name) const
 		else if (strcmp(Name,"Ea")==0) return _Ea;
 		else throw new Fatal("ElasticRod::Val: value named %s is not available for this element",Name);
 	}
+}
+
+inline double ElasticRod::Val(char const * Name) const
+{
+		 if (strcmp(Name,"Sa")==0) return _Sa;
+	else if (strcmp(Name,"Ea")==0) return _Ea;
+	else throw new Fatal("ElasticRod::Val: value named %s is not available for this element",Name);
 }
 
 // Derived methods to assemble DAS matrices
