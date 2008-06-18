@@ -103,6 +103,13 @@ inline ElasticRod::ElasticRod()
 
 	// Setup pointer to the array of Integration Points
 	_a_int_pts = NULL;
+
+	// Default values
+	_E           = 10000.0;
+	_Sa          = 0.0;
+	_Ea          = 0.0;
+	_A           = 1.0;
+	_unit_weight = 0.0;
 }
 
 // Derived methods
@@ -116,7 +123,7 @@ inline bool ElasticRod::IsReady() const
 inline bool ElasticRod::IsEssential(char const * DOFName) const
 {
 	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
-	if (_n_dim==3 && strcmp(DOFName,"uz")==0)               return true;
+	if (_n_dim==3               && strcmp(DOFName,"uz")==0) return true;
 	else return false;
 }
 
@@ -160,10 +167,9 @@ inline Element * ElasticRod::SetNode(int iNodeLocal, int iNodeGlobal)
 	_connects[iNodeLocal] = Nodes[iNodeGlobal];
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	Nodes[iNodeGlobal]->AddDOF("ux", "fx");
-	Nodes[iNodeGlobal]->AddDOF("uy", "fy");
-	if (_n_dim==3)
-	Nodes[iNodeGlobal]->AddDOF("uz", "fz");
+	               Nodes[iNodeGlobal]->AddDOF("ux", "fx");
+	               Nodes[iNodeGlobal]->AddDOF("uy", "fy");
+	if (_n_dim==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
 
 	// Shared
 	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
@@ -179,10 +185,9 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	// Assemble (local/element) displacements vector
 	for (int i=0; i<_n_nodes; ++i)
 	{
-		dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
-		dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
-		if (_n_dim==3)
-		dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
+		               dU(i*_n_dim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		               dU(i*_n_dim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
+		if (_n_dim==3) dU(i*_n_dim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
@@ -199,10 +204,9 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	for (int i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_n_dim  );
-		dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_n_dim+1);
-		if (_n_dim==3)
-		dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_n_dim+2);
+		               dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_n_dim  );
+		               dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_n_dim+1);
+		if (_n_dim==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_n_dim+2);
 	}
 }
 
