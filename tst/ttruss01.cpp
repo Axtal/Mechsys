@@ -131,10 +131,11 @@ int main(int argc, char **argv) try
 		}
 
 		// 6) Solve
-		//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		FEM::Solver * sol = FEM::AllocSolver("AutoME");
+		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+		//FEM::Solver * sol = FEM::AllocSolver("AutoME");
 		sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 		sol -> Solve();
+		cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
 
 		errors += fabs(Nodes[0]->Val("ux") - ( 0.0));
 		errors += fabs(Nodes[0]->Val("uy") - (-0.5));

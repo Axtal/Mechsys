@@ -194,11 +194,47 @@ inline void ElasticRod::UpdateState(double TimeInc, LinAlg::Vector<double> const
 	LinAlg::Vector<double> dF(_n_dim*_n_nodes); // Delta internal force of this element
 	dF.SetValues(0.0);
 
+	/*
 	// Compute dF
 	LinAlg::Matrix<double> Ke;
 	Order1Matrix(0,Ke);
 	LinAlg::Gemv(1.0,Ke,dU, 0.0,dF); // dF <- Ke*dU
 	_Sa += dF(1)-dF(0);
+	*/
+
+
+	/*
+	// Conversion matrix
+	double L;
+	LinAlg::Matrix<double> Te(_n_dim*_n_nodes, _n_dim*_n_nodes);
+	if (_n_dim==2)
+	{
+		double x21 = _connects[1]->X()-_connects[0]->X();
+		double y21 = _connects[1]->Y()-_connects[0]->Y();
+		       L   = sqrt(x21*x21+y21*y21);
+		       Te  =  x21/L, y21/L,   0.0,   0.0,
+		             -y21/L, x21/L,   0.0,   0.0,
+		                0.0,   0.0, x21/L, y21/L,
+		                0.0,   0.0,-y21/L, x21/L;
+	}
+	else
+	{
+		double x21 = _connects[1]->X()-_connects[0]->X();
+		double y21 = _connects[1]->Y()-_connects[0]->Y();
+		double z21 = _connects[1]->Z()-_connects[0]->Z();
+		       L   = sqrt(x21*x21+y21*y21+z21*z21);
+	}
+
+	// Local coordinates
+	LinAlg::Vector<double>    dU_loc(_n_dim*_n_nodes);
+	LinAlg::Vector<double> dFint_loc(_n_dim*_n_nodes); dFint_loc.SetValues(0.0);
+	dU_loc = Te*dU;
+	double elongation = dU_loc(0);
+	_Sa += _E*elongation;
+	dFint_loc(0) = _A*_E*elongation;
+	dF = inv(Te)*dFint_loc;
+	*/
+
 
 	// Return internal forces
 	for (int i=0; i<_n_nodes; ++i)
