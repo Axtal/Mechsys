@@ -116,9 +116,9 @@ int main(int argc, char **argv) try
 	Array<String>          labels1;
 	Elems[0]->OutNodes(values0, labels0);
 	Elems[1]->OutNodes(values1, labels1);
-	std::cout << labels0 << std::endl;
+	std::cout << labels0;
 	std::cout << values0 << std::endl;
-	std::cout << labels1 << std::endl;
+	std::cout << labels1;
 	std::cout << values1 << std::endl;
 
 	// Check

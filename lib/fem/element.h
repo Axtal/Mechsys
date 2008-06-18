@@ -38,6 +38,8 @@ namespace FEM
 class Element
 {
 public:
+	// Default constructor
+	Element() : _geom(-1) {} // geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
 	// Destructor
 	virtual ~Element() { }
@@ -62,12 +64,13 @@ public:
 	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
 	void   Dist2FaceNodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
 	void   Bry            (char const * Key, double Value, int nNodesFace, ...);                     ///< Set Face/Edge boundary conditions. The variable argument list must include exactly the local node numbers of the face/edge
+	double Volume         () const;                                                                  ///< Return the volume/area/length of the element
 
 	// Methods that MUST be overriden by derived classes
 	virtual String Name() const =0;
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
-	virtual bool      IsReady         () const=0;                                          ///< Check if element is ready for analysis
+	virtual bool      IsReady         () const=0;                                                                                           ///< Check if element is ready for analysis
 	virtual bool      IsEssential     (char const * DOFName) const =0;                                                                      ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel        (char const * ModelName, char const * Prms, char const * Inis) =0;                                    ///< (Re)allocate model with parameters and initial values
 	virtual Element * SetNode         (int iNodeLocal, int iNodeGlobal) =0;                                                                 ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
@@ -77,6 +80,7 @@ public:
 	virtual void      SetGeometryType (int Geom) =0;                                                                                        ///< Set geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	virtual void      SetProperties   (Array<double> const & EleProps) =0;                                                                  ///< Set interal properties
 	virtual String    OutCenter       (bool PrintCaptionOnly=false) const =0;                                                               ///< Output internal values computed (averaged) in the center of the element
+	virtual void      GetLabels       (Array<String> & Labels) const =0;                                                                    ///< Get the labels of all values to be output
 
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual int  VTKCellType    () const =0;                                                                                                ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
@@ -92,11 +96,11 @@ public:
 	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, double const s, LinAlg::Matrix<double> & J) const; ///< Jacobian matrix of a face
 	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, LinAlg::Matrix<double> & J) const;                 ///< Jacobian matrix of a edge
 	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
-	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
-	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const {};                                         ///< Output values at nodes
+	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
 	virtual void   Deactivate    () { _is_active = false; }                                                                                  ///< Deactivate this element
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
 	virtual void   FaceNodalVals (char const * Key, double Value, Array<Node*> const & FaceConnects) const {}                                ///< Distribute Value of Key variable to the nodes of a Face/Edge
+	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
 
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
@@ -110,32 +114,6 @@ public:
 
 	// Access methods
 	virtual double Val (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
-	
-	// Methods
-	double Volume () const
-	{
-		// Allocate entities used for every integration point
-		LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-		LinAlg::Matrix<double> J;       // Jacobian matrix
-
-		// Loop along integration points
-		double vol = 0.0;
-		for (int i=0; i<_n_int_pts; ++i)
-		{
-			// Temporary Integration Points
-			double r = _a_int_pts[i].r;
-			double s = _a_int_pts[i].s;
-			double t = _a_int_pts[i].t;
-
-			// Jacobian
-			Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-			Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
-
-			// Calculate internal force vector;
-			vol += det(J);
-		}
-		return vol;
-	}
 
 protected:
 	// Data (may be accessed by derived classes)
@@ -367,7 +345,6 @@ inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double
 	}
 }
 
-
 inline void Element::Coords(LinAlg::Matrix<double> & coords) const
 {
 	// Calculate a matrix with nodal coordinates
@@ -380,6 +357,46 @@ inline void Element::Coords(LinAlg::Matrix<double> & coords) const
 		coords(i,1) = _connects[i]->Y();
 		coords(i,2) = _connects[i]->Z();
 	}
+}
+
+inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & Labels) const
+{
+	// Get the labels of all values to output from derived elements
+	GetLabels (Labels);
+
+	// Resize matrix with values at nodes
+	int nlabels = Labels.Size();
+	Values.Resize (_n_nodes,nlabels);
+
+	// Fill matrix with values
+	for (int i=0; i<_n_nodes; ++i)
+	for (int j=0; j< nlabels; ++j)
+		Values(i,j) = Val(i, Labels[j].GetSTL().c_str());
+}
+
+inline double Element::Volume () const
+{
+	// Allocate entities used for every integration point
+	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
+	LinAlg::Matrix<double> J;       // Jacobian matrix
+
+	// Loop along integration points
+	double vol = 0.0;
+	for (int i=0; i<_n_int_pts; ++i)
+	{
+		// Temporary Integration Points
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+
+		// Jacobian
+		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
+
+		// Calculate internal force vector;
+		vol += det(J);
+	}
+	return vol;
 }
 
 inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 

@@ -90,7 +90,7 @@ int main(int argc, char **argv) try
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;
 	Elems[0]->Order1Matrix(0,Ke0);
-	cout << "Ke0=\n" << Ke0 << endl;
+	//cout << "Ke0=\n" << Ke0 << endl;
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -101,8 +101,8 @@ int main(int argc, char **argv) try
 	LinAlg::Matrix<double> values;
 	Array<String>          labels;
 	Elems[0]->OutNodes(values,labels);
-	std::cout << labels << std::endl;
-	std::cout << values << std::endl;
+	//std::cout << labels << std::endl;
+	//std::cout << values << std::endl;
 
 	// Check
     double errors = 1.0;
@@ -114,8 +114,8 @@ int main(int argc, char **argv) try
 	errors += fabs(Elems[0]->Val(4, "Sx") - (-3.31286428e-01));
 	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
 	*/
-	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
-	else                     cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	//if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	//else                     cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	return 0;
 }

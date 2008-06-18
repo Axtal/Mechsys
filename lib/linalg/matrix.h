@@ -426,7 +426,6 @@ inline const Value_T & Matrix<Value_T>::operator() (int i, int j) const
 template<typename Value_T>
 std::ostream & operator<< (std::ostream & os, const Matrix<Value_T> & M)
 {
-	os << std:: endl;
 	for (int i=0; i<M.Rows(); ++i)
 	{
 		for (int j=0; j<M.Cols(); ++j)

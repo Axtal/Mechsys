@@ -63,7 +63,7 @@ public:
 	void      SetGeometryType (int Geom);  
 	void      SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
 	String    OutCenter       (bool PrintCaptionOnly) const;
-	void      OutNodes        (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
+	void      GetLabels       (Array<String> & Labels) const;
 	void      Deactivate      ();
 
 	// Derived methods to assemble DAS matrices
@@ -98,7 +98,7 @@ private:
 
 inline bool EquilibElem::IsReady() const
 {
-	if (_a_model.Size()==static_cast<size_t>(_n_int_pts) && _connects.Size()==static_cast<size_t>(_n_nodes)) return true;
+	if (_a_model.Size()==static_cast<size_t>(_n_int_pts) && _connects.Size()==static_cast<size_t>(_n_nodes) && _geom>0) return true;
 	else return false;
 }
 
@@ -123,7 +123,7 @@ inline void EquilibElem::SetGeometryType(int Geom)
 inline bool EquilibElem::IsEssential(char const * DOFName) const
 {
 	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
-	if (_n_dim==3               && strcmp(DOFName,"uz")==0) return true;
+	if (_n_dim==3 && strcmp(DOFName,"uz")==0)               return true;
 	return false;
 }
 
@@ -202,9 +202,7 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 		double t = _a_int_pts[i_ip].t; // only for 3D cases
 		double w = _a_int_pts[i_ip].w;
 
-		Derivs   (r,s,0.0, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		if (_n_dim==3)
-		Derivs   (r,s,t, derivs);  
+		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
 		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i_ip Integration Point
 		B_Matrix (derivs, J, B);   // Calculate B matrix for i_ip Integration Point
 
@@ -313,96 +311,72 @@ inline String EquilibElem::OutCenter(bool PrintCaptionOnly=false) const
 	return oss.str(); 
 }
 
-inline void EquilibElem::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & Labels) const
+inline void EquilibElem::GetLabels(Array<String> & Labels) const
 {
-	if (_n_dim==2)
+	// Get labels of all values to output
+	switch (_geom) // 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	{
-		int const DATA_COMPS=10;
-		Values.Resize(_n_nodes,DATA_COMPS);
-		Labels.Resize(DATA_COMPS);
-		Labels[ 0] = "ux"; Labels[ 1] = "uy";  
-		Labels[ 2] = "fx"; Labels[ 3] = "fy"; 
-		Labels[ 4] = "Ex"; Labels[ 5] = "Ey"; Labels[ 6] = "Exy";
-		Labels[ 7] = "Sx"; Labels[ 8] = "Sy"; Labels[ 9] = "Sxy";
-
-		for (int i_node=0; i_node<_n_nodes; i_node++)
+		case 2: // 2D(plane-strain)
 		{
-			Values(i_node,0) = _connects[i_node]->DOFVar("ux").EssentialVal;
-			Values(i_node,1) = _connects[i_node]->DOFVar("uy").EssentialVal;
-			Values(i_node,2) = _connects[i_node]->DOFVar("fx").NaturalVal;
-			Values(i_node,3) = _connects[i_node]->DOFVar("fy").NaturalVal;
+			Labels.Resize(12); // 14 values to output
+			Labels[0]="ux"; Labels[1]="uy";                                    // Displacements
+			Labels[2]="fx"; Labels[3]="fy";                                    // Forces
+			Labels[4]="Ex"; Labels[5]="Ey"; Labels[ 6]="Ez"; Labels[ 7]="Exy"; // Strains
+			Labels[8]="Sx"; Labels[9]="Sy"; Labels[10]="Sz"; Labels[11]="Sxy"; // Stress
+			return;
 		}
-
-		//Extrapolation
-		LinAlg::Vector<double> ip_values(_n_int_pts);
-		LinAlg::Vector<double> nodal_values(_n_nodes);
-
-		// Stress & Strain
-		for (int i_comp=0; i_comp<6; i_comp++) // six values: stress + strain
+		case 3: // 3D
 		{
-			// Get integration point values
-			for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
-				ip_values(i_ip) = _a_model[i_ip]->Val(Labels[i_comp+4].c_str());
-
-			Extrapolate(ip_values, nodal_values);
-
-			// Place nodal values
-			for (int j_node=0; j_node<_n_nodes; j_node++)
-				Values(j_node,i_comp+4) = nodal_values(j_node);
+			Labels.Resize(18); // 18 values to output
+			Labels[ 0]="ux"; Labels[ 1]="uy"; Labels[ 2]="uz";                                                       // Displacements
+			Labels[ 3]="fx"; Labels[ 4]="fy"; Labels[ 5]="fz";                                                       // Forces
+			Labels[ 6]="Ex"; Labels[ 7]="Ey"; Labels[ 8]="Ez"; Labels[ 9]="Exy"; Labels[10]="Eyz"; Labels[11]="Exz"; // Strains
+			Labels[12]="Sx"; Labels[13]="Sy"; Labels[14]="Sz"; Labels[15]="Sxy"; Labels[16]="Syz"; Labels[17]="Sxz"; // Stress
+			return;
 		}
-	}
-	else // _n_dim==3
-	{
-		int const DATA_COMPS=18;
-		Values.Resize(_n_nodes,DATA_COMPS);
-		Labels.Resize(DATA_COMPS);
-		Labels[ 0] = "ux" ; Labels[ 1] = "uy" ; Labels[ 2] = "uz"; 
-		Labels[ 3] = "fx" ; Labels[ 4] = "fy" ; Labels[ 5] = "fz";
-		Labels[ 6] = "Ex"; Labels[ 7] = "Ey"; Labels[ 8] = "Ez"; Labels[ 9] = "Exy"; Labels[10] = "Eyz"; Labels[11] = "Exz";
-		Labels[12] = "Sx"; Labels[13] = "Sy"; Labels[14] = "Sz"; Labels[15] = "Sxy"; Labels[16] = "Syz"; Labels[17] = "Sxz";
-
-		for (int i_node=0; i_node<_n_nodes; i_node++)
+		case 5: // 2D(plane-stress)
 		{
-			Values(i_node,0) = _connects[i_node]->DOFVar("ux").EssentialVal;
-			Values(i_node,1) = _connects[i_node]->DOFVar("uy").EssentialVal;
-			Values(i_node,2) = _connects[i_node]->DOFVar("uz").EssentialVal;
-			Values(i_node,3) = _connects[i_node]->DOFVar("fx").NaturalVal;
-			Values(i_node,4) = _connects[i_node]->DOFVar("fy").NaturalVal;
-			Values(i_node,5) = _connects[i_node]->DOFVar("fz").NaturalVal;
+			Labels.Resize(10); // 10 values to output
+			Labels[0]="ux"; Labels[1]="uy";                  // Displacements
+			Labels[2]="fx"; Labels[3]="fy";                  // Forces
+			Labels[4]="Ex"; Labels[5]="Ey"; Labels[6]="Exy"; // Strains
+			Labels[7]="Sx"; Labels[8]="Sy"; Labels[9]="Sxy"; // Stress
+			return;
 		}
-		//Extrapolation
-		LinAlg::Vector<double> ip_values(_n_int_pts);
-		LinAlg::Vector<double> nodal_values(_n_nodes);
-		
-		// Stress & Strain
-		for (int i_comp=0; i_comp<12; i_comp++) // six values: stress + strain
-		{
-			// Get integration point values
-			for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
-				ip_values(i_ip) = _a_model[i_ip]->Val(Labels[i_comp+6].c_str());
-
-			Extrapolate(ip_values, nodal_values);
-
-			// Place nodal values
-			for (int j_node=0; j_node<_n_nodes; j_node++)
-				Values(j_node,i_comp+6) = nodal_values(j_node);
-		}
+		case 1: // 1D
+		case 4: // 2D(axis-symmetric)
+		default:
+			throw new Fatal("EquilibElem::GetLabels: GeometryType==%d is not implemented yet",_geom);
 	}
 }
 
 inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 {
-	LinAlg::Vector<double> ip_values(_n_int_pts);
-	LinAlg::Vector<double> nodal_values(_n_nodes);
+	// Displacements
+	if (strcmp(Name,"ux")==0 || strcmp(Name,"uy")==0 || strcmp(Name,"uz")==0)
+		return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
 
-	// Get integration point values
-	for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
-		ip_values(i_ip) = _a_model[i_ip]->Val(Name);
+	// Forces
+	else if (strcmp(Name,"fx")==0 || strcmp(Name,"fy")==0 || strcmp(Name,"fz")==0)
+		return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 
-	// Extrapolation
-	Extrapolate (ip_values, nodal_values);
+	// Stress, strains, internal values, etc.
+	else
+	{
+		// Vectors for extrapolation
+		LinAlg::Vector<double>    ip_values (_n_int_pts);
+		LinAlg::Vector<double> nodal_values (_n_nodes);
 
-	return nodal_values(iNodeLocal);
+		// Get integration point values
+		for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
+			ip_values(i_ip) = _a_model[i_ip]->Val(Name);
+
+		// Extrapolation
+		Extrapolate (ip_values, nodal_values);
+
+		// Output single value
+		return nodal_values (iNodeLocal);
+	}
 }
 
 inline void EquilibElem::Deactivate()
@@ -471,11 +445,9 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 		double t = _a_int_pts[i_ip].t;
 		double w = _a_int_pts[i_ip].w;
 
-		Derivs(r,s,0.0, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		if (_n_dim==3)
-		Derivs   (r,s,t, derivs);  
-		Jacobian(derivs, J);          // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix(derivs,J, B);        // Calculate B matrix for i_ip Integration Point
+		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian(derivs, J);      // Calculate J (Jacobian) matrix for i_ip Integration Point
+		B_Matrix(derivs,J, B);    // Calculate B matrix for i_ip Integration Point
 
 		// Constitutive tensor 
 		_a_model[i_ip]->TgStiffness(D); 
@@ -592,11 +564,9 @@ inline void EquilibElem::_calc_initial_internal_forces()
 		double t = _a_int_pts[i_ip].t; // only for 3D
 		double w = _a_int_pts[i_ip].w;
 
-		Derivs(r,s,0.0, derivs);      // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		if (_n_dim==3)
-		Derivs(r,s,t, derivs);
-		Jacobian(derivs, J);          // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix(derivs, J, B);       // Calculate B matrix for i_ip Integration Point
+		Derivs(r,s,t, derivs);   // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian(derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
+		B_Matrix(derivs, J, B);  // Calculate B matrix for i_ip Integration Point
 
 		_a_model[i_ip]->Sig(sig); 
 
