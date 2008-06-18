@@ -467,10 +467,6 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 	// Resize B matrix
 	B.Resize(_n_stress,_n_dim*_n_nodes);
 
-	// Inverse of Jacobian
-	LinAlg::Matrix<double> inv_J(J.Rows(),J.Cols());
-	J.Inv(inv_J);
-
 	// Cartesian derivatives
 	LinAlg::Matrix<double> cart_derivs;
 	cart_derivs = inv(J)*derivs;
