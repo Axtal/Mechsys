@@ -402,6 +402,21 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 	 *          Ex.: Compressive stresses/strains are positive
 	 *          The B Matrix returns strains in Mandel notation
 	 */
+
+	// Matrix B for one dimensional elements.
+	if (_ndim_elem == 1 and _geom != 4) // one dimensional shaped elements
+	{
+		LinAlg::Matrix<double> nat_derivs(_ndim_prob, _ndim_prob*_n_nodes); 
+		nat_derivs.SetValues(0.0);
+		double det_J = det(J);
+
+		// re-arranging derivatives
+		for(int i=0; i<_n_nodes; i++) for(int j=0; j<_ndim_prob; j++) nat_derivs(j, i*_ndim_prob+j) = derivs(0,i);
+
+		B = -1.0/(det_J*det_J)*J*nat_derivs; // B matrix for a rod element in 1D, 2D and 3D.
+		
+		return;
+	}
 	
 	// Resize B matrix
 	B.Resize(_n_stress,_ndim_prob*_n_nodes);
