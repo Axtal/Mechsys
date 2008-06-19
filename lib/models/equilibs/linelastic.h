@@ -76,35 +76,28 @@ inline void LinElastic::SetPrms(char const * Prms)
 	Array<double> values;
 	lp.BreakExpressions(names,values);
 
-	// Check
-	if (names.Size()==2 && values.Size()==2)
+	// Set
+	double E  = 0.0;
+	double nu = 0.0;
+	for (size_t i=0; i<names.Size(); ++i)
 	{
-		int    count = 0;
-		double E     = 0;
-		double nu    = 0;
-		for (size_t i=0; i<names.Size(); ++i)
-		{
-			     if (names[i]=="E" ) { E  = values[0];  count++; }
-			else if (names[i]=="nu") { nu = values[1];  count++; }
-		}
-		if (count==2)
-		{
-			double c  = (_geom==5 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // plane-stress != (plane-strain=3D)
-			double c1 = (_geom==5 ? c*1.0          : c*(1.0-nu)                ); // plane-stress != (plane-strain=3D)
-			double c2 = (_geom==5 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // plane-stress != (plane-strain=3D)
-			double c3 = c*nu;
-			_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-			      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-			      c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-			      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
-			      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
-			      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
-			return;
-		}
+			 if (names[i]=="E" ) E  = values[i];
+		else if (names[i]=="nu") nu = values[i];
 	}
-
-	// Wrong parameters
-	throw new Fatal("LinElastic::SetPrms: Parameters definition is incorrect. The syntax must be as in:\n\t E=10000.0 nu=0.25\n");
+	if (_geom==1) _De(0,0) = E;
+	else
+	{
+		double c  = (_geom==5 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // plane-stress != (plane-strain=3D)
+		double c1 = (_geom==5 ? c*1.0          : c*(1.0-nu)                ); // plane-stress != (plane-strain=3D)
+		double c2 = (_geom==5 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // plane-stress != (plane-strain=3D)
+		double c3 = c*nu;
+		_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+		      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+		      c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
+		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
+		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
+	}
 }
 
 inline void LinElastic::SetInis(char const * Inis)
@@ -116,35 +109,38 @@ inline void LinElastic::SetInis(char const * Inis)
 	lp.BreakExpressions(names,values);
 
 	// Check
-	if (names.Size()==values.Size() && names.Size()>0)
+	_sig = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+	_eps = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+	for (size_t i=0; i<names.Size(); i++)
 	{
-		_sig = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-		_eps = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-		for (size_t i=0; i<names.Size(); i++)
-		{
-			     if (names[i]=="Sx")                     _sig(0) = values[i];
-			else if (names[i]=="Sy")                     _sig(1) = values[i];
-			else if (names[i]=="Sz")                     _sig(2) = values[i];
-			else if (names[i]=="Sxy" || names[i]=="Syx") _sig(3) = values[i]*SQ2;
-			else if (names[i]=="Syz" || names[i]=="Szy") _sig(4) = values[i]*SQ2;
-			else if (names[i]=="Szx" || names[i]=="Sxz") _sig(5) = values[i]*SQ2;
-		}
-		return;
+			 if (names[i]=="Sx")                     _sig(0) = values[i];
+		else if (names[i]=="Sy")                     _sig(1) = values[i];
+		else if (names[i]=="Sz")                     _sig(2) = values[i];
+		else if (names[i]=="Sxy" || names[i]=="Syx") _sig(3) = values[i]*SQ2;
+		else if (names[i]=="Syz" || names[i]=="Szy") _sig(4) = values[i]*SQ2;
+		else if (names[i]=="Szx" || names[i]=="Sxz") _sig(5) = values[i]*SQ2;
 	}
-
-	// Wrong parameters
-	throw new Fatal("LinElastic::SetInis: Initial values definition is incorrect. The syntax must be as in:\n\t Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0 Syz=0.0 Szx=0.0\n");
 }
 
 inline int LinElastic::StressUpdate(Vector<double> const & DEps, Vector<double> & DSig)
 {
-	Tensor2 deps;  deps = 0.0;
-	Tensor2 dsig;  dsig = 0.0;
-	VectorToTensor2 (_geom, DEps, deps);
-	dsig = blitz::product(_De, deps);
-	Tensor2ToVector (_geom, dsig, DSig);
-	_sig += dsig;
-	_eps += deps;
+	if (_geom==1)
+	{
+		DSig.Resize(1);
+		DSig(0) = _De(0,0) * DEps(0);
+		_sig(0) += DSig(0);
+		_eps(0) += DEps(0);
+	}
+	else
+	{
+		Tensor2 deps;  deps = 0.0;
+		Tensor2 dsig;  dsig = 0.0;
+		VectorToTensor2 (_geom, DEps, deps);
+		dsig = blitz::product(_De, deps);
+		Tensor2ToVector (_geom, dsig, DSig);
+		_sig += dsig;
+		_eps += deps;
+	}
 	return 1;
 }
 

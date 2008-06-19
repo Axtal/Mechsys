@@ -87,9 +87,9 @@ int main(int argc, char **argv) try
 		Nodes[2]->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
 
 		// 5) Parameters and initial values
-		Elems[0]->SetModel("LinElastic", "E=100.0  nu=0.0", "Sx=0.0");
-		Elems[1]->SetModel("LinElastic", "E= 50.0  nu=0.0", "Sx=0.0");
-		Elems[2]->SetModel("LinElastic", "E=200.0  nu=0.0", "Sx=0.0");
+		Elems[0]->SetModel("LinElastic", "E=100.0", "Sx=0.0");
+		Elems[1]->SetModel("LinElastic", "E= 50.0", "Sx=0.0");
+		Elems[2]->SetModel("LinElastic", "E=200.0", "Sx=0.0");
 
 		// Check
 		double errors = 0;
