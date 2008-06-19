@@ -84,7 +84,6 @@ public:
 inline Quad4::Quad4()
 {
 	// Setup nodes number
-	_ndim_elem      = 2;
 	_n_nodes        = QUAD4_NNODES;
 	_n_int_pts      = QUAD4_NINTPTS;
 	_n_face_nodes   = QUAD4_NFACENODES;

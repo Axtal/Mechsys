@@ -66,7 +66,6 @@ public:
 inline Tri6::Tri6()
 {
 	// Setup nodes number
-	_ndim_elem      = 2;
 	_n_nodes        = TRI6_NNODES;
 	_n_int_pts      = TRI6_NINTPTS;
 	_n_face_nodes   = TRI6_NFACENODES;

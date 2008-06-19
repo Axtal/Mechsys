@@ -36,6 +36,9 @@ public:
 	// Destructor
 	virtual ~EquilibModel () {}
 
+	// Methods
+	void SetGeom (int Type) { _geom = Type; } ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+
 	// Methods that MUST be derived
 	virtual void TgStiffness  (Matrix<double> & D) const =0;
 	virtual int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig) =0;
@@ -49,6 +52,7 @@ public:
 
 protected:
 	// Data
+	int     _geom;    ///< Geometry type (in FEM must be the ELEMENT geometry):  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
 	Tensor2 _sig;     ///< Stress
 	Tensor2 _eps;     ///< Strain
 	Tensor2 _sig_bkp; ///< Backup stress

@@ -39,7 +39,7 @@ class Element
 {
 public:
 	// Default constructor
-	Element() : _ndim_prob(-1), _ndim_elem(-1), _geom(-1) {} // geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	Element() : _my_id(-1), _ndim(-1) {}
 
 	// Destructor
 	virtual ~Element() { }
@@ -54,39 +54,39 @@ public:
 	};
 
 	// Methods
-	void   SetID          (int ID) { _my_id = ID;        }                                           ///< Set the ID of this element
-	int    GetID          () const { return _my_id;      }                                           ///< Return the ID of this element
-	void   Activate       ()       { _is_active = true;  }                                           ///< Activate the element
-	bool   IsActive       () const { return _is_active;  }                                           ///< Check if this element is active
-	int    nNodes         () const { return _n_nodes;    }                                           ///< Return the number of nodes in this element
-	size_t nIntPoints     () const { return _n_int_pts;  }                                           ///< Return the number of integration points in this element
+	void   SetID          (long ID) { _my_id = ID;        }                                          ///< Set the ID of this element
+	long   GetID          () const  { return _my_id;      }                                          ///< Return the ID of this element
+	void   Activate       ()        { _is_active = true;  }                                          ///< Activate the element
+	bool   IsActive       () const  { return _is_active;  }                                          ///< Check if this element is active
+	size_t nNodes         () const  { return _n_nodes;    }                                          ///< Return the number of nodes in this element
+	size_t nIntPoints     () const  { return _n_int_pts;  }                                          ///< Return the number of integration points in this element
 	void   IntegPoints    (IntegPoint const * & IPs) const { IPs=_a_int_pts; }                       ///< Return a pointer to the array of integration points
 	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
 	void   Dist2FaceNodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
-	void   Bry            (char const * Key, double Value, int nNodesFace, ...);                     ///< Set Face/Edge boundary conditions. The variable argument list must include exactly the local node numbers of the face/edge
+	void   Bry            (char const * Key, double Value, size_t nNodesFace, ...);                  ///< Set Face/Edge boundary conditions. The variable argument list must include exactly the local node numbers of the face/edge
 	double Volume         () const;                                                                  ///< Return the volume/area/length of the element
+	void   SetDim         (int nDim) { _ndim = nDim; }                                               ///< Set the number of dimension of the problem
 
 	// Methods that MUST be overriden by derived classes
 	virtual String Name() const =0;
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
-	virtual bool      IsReady         () const=0;                                                                                           ///< Check if element is ready for analysis
-	virtual bool      IsEssential     (char const * DOFName) const =0;                                                                      ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
-	virtual void      SetModel        (char const * ModelName, char const * Prms, char const * Inis) =0;                                    ///< (Re)allocate model with parameters and initial values
-	virtual Element * SetNode         (int iNodeLocal, int iNodeGlobal) =0;                                                                 ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
-	virtual void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;               ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
-	virtual void      BackupState     () =0;                                                                                                ///< Backup internal state
-	virtual void      RestoreState    () =0;                                                                                                ///< Restore internal state from a previously backup state
-	virtual void      SetGeometryType (int Geom) =0;                                                                                        ///< Set geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	virtual void      SetProperties   (Array<double> const & EleProps) =0;                                                                  ///< Set interal properties
-	virtual void      GetLabels       (Array<String> & Labels) const =0;                                                                    ///< Get the labels of all values to be output
+	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis
+	virtual bool      IsEssential   (char const * DOFName) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
+	virtual void      SetModel      (char const * ModelName, char const * Prms, char const * Inis) =0;                                       ///< (Re)allocate model with parameters and initial values
+	virtual Element * SetNode       (int iNodeLocal, int iNodeGlobal) =0;                                                                    ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
+	virtual void      UpdateState   (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;                  ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
+	virtual void      BackupState   () =0;                                                                                                   ///< Backup internal state
+	virtual void      RestoreState  () =0;                                                                                                   ///< Restore internal state from a previously backup state
+	virtual void      SetProperties (Array<double> const & EleProps) =0;                                                                     ///< Set interal properties
+	virtual void      GetLabels     (Array<String> & Labels) const =0;                                                                       ///< Get the labels of all values to be output
 
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
-	virtual int  VTKCellType    () const =0;                                                                                                ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
-	virtual void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape) const =0;                                    ///< Shape functions
-	virtual void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const =0;                                   ///< Derivatives
-	virtual void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape) const =0;                                          ///< Face shape functions
-	virtual void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const =0;                                         ///< Face derivatives
+	virtual int  VTKCellType    () const =0;                                                                                                 ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
+	virtual void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape) const =0;                                     ///< Shape functions
+	virtual void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const =0;                                    ///< Derivatives
+	virtual void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape) const =0;                                           ///< Face shape functions
+	virtual void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const =0;                                          ///< Face derivatives
 
 	// Methods that MAY be overriden by derived classes
 	virtual void   InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
@@ -117,14 +117,13 @@ public:
 
 protected:
 	// Data (may be accessed by derived classes)
-	int                _my_id;          ///< The ID of this element
-	int                _ndim_prob;      ///< Number of dimensions of the problem
-	int                _ndim_elem;      ///< Number of dimensions of the element
-	int                _geom;           ///< Geometry type
-	int                _n_nodes;        ///< Number of nodes in the element
-	int	               _n_int_pts;      ///< Number of integration (Gauss) points
-	int                _n_face_nodes;   ///< Number of nodes in a face
-	int	               _n_face_int_pts; ///< Number of integration points in a face
+	long               _my_id;          ///< The ID of this element
+	int                _ndim;           ///< Number of dimensions of the problem
+	int                _geom;           ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	size_t             _n_nodes;        ///< Number of nodes in the element
+	size_t             _n_int_pts;      ///< Number of integration (Gauss) points
+	size_t             _n_face_nodes;   ///< Number of nodes in a face
+	size_t             _n_face_int_pts; ///< Number of integration points in a face
 	Array<Node*>       _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
 	bool               _is_active;      ///< Flag for active/inactive condition
 	IntegPoint const * _a_int_pts;      ///< Array of Integration Points
@@ -146,26 +145,26 @@ inline bool Element::IsInside(double x, double y, double z) const
 	
 	//fast search in X -----------------------------------------------------------------------
 	max = -huge;
-	for (int i=0; i < nNodes(); i++) if (_connects[i]->X() > max) max=_connects[i]->X();
+	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->X() > max) max=_connects[i]->X();
 	if ( x > max ) return false;
 	min = +huge;
-	for (int i=0; i < nNodes(); i++) if (_connects[i]->X() < min) min=_connects[i]->X();
+	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->X() < min) min=_connects[i]->X();
 	if ( x < min ) return false;
 
 	//fast search in Y -----------------------------------------------------------------------
 	max = -huge;
-	for (int i=0; i < nNodes(); i++) if (_connects[i]->Y() > max) max=_connects[i]->Y();
+	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Y() > max) max=_connects[i]->Y();
 	if ( y > max ) return false;
 	min = +huge;
-	for (int i=0; i < nNodes(); i++) if (_connects[i]->Y() < min) min=_connects[i]->Y();
+	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Y() < min) min=_connects[i]->Y();
 	if ( y < min ) return false;
 	
 	//fast search in Z -----------------------------------------------------------------------
 	max = -huge;
-	for (int i=0; i < nNodes(); i++) if (_connects[i]->Z() > max) max=_connects[i]->Z();
+	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Z() > max) max=_connects[i]->Z();
 	if ( z > max ) return false;
 	min = +huge;
-	for (int i=0; i < nNodes(); i++) if (_connects[i]->Z() < min) min=_connects[i]->Z();
+	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Z() < min) min=_connects[i]->Z();
 	if ( z < min ) return false;
 	
 	double r, s, t;
@@ -180,7 +179,7 @@ inline void Element::Dist2FaceNodes(char const * Key, double const FaceValue, Ar
 	LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
 	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
 	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
-	for (int i=0; i<_n_face_int_pts; i++)
+	for (size_t i=0; i<_n_face_int_pts; i++)
 	{
 		double r = _a_face_int_pts[i].r;
 		double s = _a_face_int_pts[i].s;
@@ -191,11 +190,11 @@ inline void Element::Dist2FaceNodes(char const * Key, double const FaceValue, Ar
 	}
 
 	// Set nodes Brys
-	for (int i=0; i<_n_face_nodes; ++i)
+	for (size_t i=0; i<_n_face_nodes; ++i)
 		FaceConnects[i]->Bry(Key,values(i));
 }
 
-inline void Element::Bry(char const * Key, double Value, int nNodesFace, ...)
+inline void Element::Bry(char const * Key, double Value, size_t nNodesFace, ...)
 {
 	// Check
 	if (nNodesFace!=_n_face_nodes) throw new Fatal("Element::Bry: Setting up of Bry with Key==%s and Value=%g failed.\n The number of nodes in a face/edge of this element must be equal to %d",Key,Value,_n_face_nodes);
@@ -204,10 +203,10 @@ inline void Element::Bry(char const * Key, double Value, int nNodesFace, ...)
 	va_list   arg_list;
 	va_start (arg_list, nNodesFace); // initialize arg_list with parameters AFTER nNodesFace
 	Array<Node*> fnodes; fnodes.Resize(_n_face_nodes);
-	for (int i=0; i<_n_face_nodes; ++i)
+	for (size_t i=0; i<_n_face_nodes; ++i)
 	{
-		int inode_local = va_arg(arg_list,int);
-		fnodes[i]       = _connects[inode_local];
+		size_t inode_local = va_arg(arg_list,size_t);
+		fnodes[i]          = _connects[inode_local];
 	}
 	va_end (arg_list);
 
@@ -236,7 +235,7 @@ inline void Element::InverseMap(double x, double y, double z, double & r, double
 		Jacobian(derivs, J);
 		tx = ty = tz = 0; 
 		//calculate trial of real coordinates
-		for (int j=0; j<_n_nodes; j++) 
+		for (size_t j=0; j<_n_nodes; j++) 
 		{
 			tx += shape(j)*_connects[j]->X(); //ok
 			ty += shape(j)*_connects[j]->Y(); //ok
@@ -273,7 +272,7 @@ inline void Element::Jacobian(LinAlg::Matrix<double> const & derivs, LinAlg::Mat
 		cmatrix.Resize(_n_nodes,3);   // 3 => X,Y,Z (all nodes have X,Y and Z)
 
 		// Loop along all nodes of this element
-		for (int i=0; i<_n_nodes; i++)
+		for (size_t i=0; i<_n_nodes; i++)
 		{
 			cmatrix(i,0) = _connects[i]->X();
 			cmatrix(i,1) = _connects[i]->Y();
@@ -285,7 +284,7 @@ inline void Element::Jacobian(LinAlg::Matrix<double> const & derivs, LinAlg::Mat
 		cmatrix.Resize(_n_nodes,2);   // 2 => X,Y (all nodes have X and Z)
 
 		// Loop along all nodes of this element
-		for (int i=0; i<_n_nodes; i++)
+		for (size_t i=0; i<_n_nodes; i++)
 		{
 			cmatrix(i,0) = _connects[i]->X();
 			cmatrix(i,1) = _connects[i]->Y();
@@ -313,7 +312,7 @@ inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double
 
 		// Get the face coordinates
 		LinAlg::Matrix<double> m_face_coords(_n_face_nodes,3);
-		for (int i=0; i<_n_face_nodes; i++)
+		for (size_t i=0; i<_n_face_nodes; i++)
 		{
 			m_face_coords(i,0) = FaceConnects[i]->X();
 			m_face_coords(i,1) = FaceConnects[i]->Y();
@@ -335,7 +334,7 @@ inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double
 
 		// Get the face coordinates
 		LinAlg::Matrix<double> m_face_coords(_n_face_nodes,2);
-		for (int i=0; i<_n_face_nodes; i++)
+		for (size_t i=0; i<_n_face_nodes; i++)
 		{
 			m_face_coords(i,0) = FaceConnects[i]->X();
 			m_face_coords(i,1) = FaceConnects[i]->Y();
@@ -352,7 +351,7 @@ inline void Element::Coords(LinAlg::Matrix<double> & coords) const
 	coords.Resize(_n_nodes,3);   // 3 => X,Y,Z (all nodes have X,Y and Z)
 
 	// Loop along all nodes of this element
-	for (int i=0; i<_n_nodes; i++)
+	for (size_t i=0; i<_n_nodes; i++)
 	{
 		coords(i,0) = _connects[i]->X();
 		coords(i,1) = _connects[i]->Y();
@@ -366,12 +365,12 @@ inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & L
 	GetLabels (Labels);
 
 	// Resize matrix with values at nodes
-	int nlabels = Labels.Size();
+	size_t nlabels = Labels.Size();
 	Values.Resize (_n_nodes,nlabels);
 
 	// Fill matrix with values
-	for (int i=0; i<_n_nodes; ++i)
-	for (int j=0; j< nlabels; ++j)
+	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t j=0; j< nlabels; ++j)
 		Values(i,j) = Val(i, Labels[j].GetSTL().c_str());
 }
 
@@ -383,7 +382,7 @@ inline double Element::Volume () const
 
 	// Loop along integration points
 	double vol = 0.0;
-	for (int i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -402,7 +401,7 @@ inline double Element::Volume () const
 
 inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 
 {
-	//Extrapolation:
+	// Extrapolation:
 	//                  IPValues = E * NodalValues;
 	//  where:
 	//                              t           t
@@ -415,28 +414,30 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 	//	               :	 [
 	//	              nIP	 [N_ ...					]]
 
+	// Check
+	if (_n_nodes<_n_int_pts)
+		throw new Fatal("Element::Extrapolate: Number of nodes (%d) must be greater than or equal to the number of integration points (%d) of an element.",_n_nodes,_n_int_pts);
+
 	LinAlg::Matrix<double> N(_n_int_pts, _n_nodes);  // matrix of all IP shape functions
 	LinAlg::Matrix<double> E(_n_nodes, _n_int_pts);  // Extrapolator matrix
 	LinAlg::Vector<double> shape(_n_nodes);
 	
-	//filling N matrix
-	for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
+	// Filling N matrix
+	for (size_t i_ip=0; i_ip<_n_int_pts; i_ip++)
 	{
 		double r = _a_int_pts[i_ip].r;
 		double s = _a_int_pts[i_ip].s;
 		double t = _a_int_pts[i_ip].t;
 		Shape(r, s, t, shape);
-		for (int j_node=0; j_node<_n_nodes; j_node++)
+		for (size_t j_node=0; j_node<_n_nodes; j_node++)
 			N(i_ip, j_node) = shape(j_node);
 	}
 
-	//calculate extrapolator matrix
-	assert(_n_nodes>=_n_int_pts); // TODO: replace with trow
+	// Calculate extrapolator matrix
 	E = trn(N)*inv(N*trn(N));
 
-	//perform extrapolation
+	// Perform extrapolation
 	NodalValues = E*IPValues;
-	
 };
 
 

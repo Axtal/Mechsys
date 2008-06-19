@@ -65,7 +65,6 @@ public:
 inline Lin2::Lin2()
 {
 	// Setup nodes number
-	_ndim_elem      = 1;
 	_n_nodes        = LIN2_NNODES;
 	_n_int_pts      = LIN2_NINTPTS;
 	_n_face_nodes   = LIN2_NFACENODES;

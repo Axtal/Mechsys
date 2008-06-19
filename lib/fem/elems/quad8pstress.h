@@ -16,17 +16,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_HEX8EQUILIB_H
-#define MECHSYS_FEM_HEX8EQUILIB_H
+#ifndef MECHSYS_FEM_QUAD8PSTRESS_H
+#define MECHSYS_FEM_QUAD8PSTRESS_H
 
 // MechSys
 #include "fem/equilibelem.h"
-#include "fem/elems/hex8.h"
+#include "fem/elems/quad8.h"
 
 namespace FEM
 {
 
-class Hex8Equilib : public Hex8, public EquilibElem
+class Quad8PStress : public Quad8, public EquilibElem
 {
 public:
 	// Constants
@@ -37,32 +37,32 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 3;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int _geom() const { return 5;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
-}; // class Hex8Equilib
+}; // class Quad8PStress
 
-// Hex8Equilib constants
-String Hex8Equilib::NAME = "Hex8Equilib";
+// Quad8PStress constants
+String Quad8PStress::NAME = "Quad8PStress";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Hex8Equilib element
-Element * Hex8EquilibMaker()
+// Allocate a new Quad8PStress element
+Element * Quad8PStressMaker()
 {
-	return new Hex8Equilib();
+	return new Quad8PStress();
 }
 
-// Register a Hex8Equilib element into ElementFactory array map
-int Hex8EquilibRegister()
+// Register a Quad8PStress element into ElementFactory array map
+int Quad8PStressRegister()
 {
-	ElementFactory[Hex8Equilib::NAME] = Hex8EquilibMaker;
+	ElementFactory[Quad8PStress::NAME] = Quad8PStressMaker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __Hex8Equilib_dummy_int  = Hex8EquilibRegister();
+int __Quad8PStress_dummy_int  = Quad8PStressRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_HEX8EQUILIB_H
+#endif // MECHSYS_FEM_QUAD8PSTRESS_H

@@ -16,17 +16,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_HEX8EQUILIB_H
-#define MECHSYS_FEM_HEX8EQUILIB_H
+#ifndef MECHSYS_FEM_TRI6PSTRAIN_H
+#define MECHSYS_FEM_TRI6PSTRAIN_H
 
 // MechSys
 #include "fem/equilibelem.h"
-#include "fem/elems/hex8.h"
+#include "fem/elems/tri6.h"
 
 namespace FEM
 {
 
-class Hex8Equilib : public Hex8, public EquilibElem
+class Tri6PStrain : public Tri6, public EquilibElem
 {
 public:
 	// Constants
@@ -37,32 +37,32 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 3;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int _geom() const { return 2;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
-}; // class Hex8Equilib
+}; // class Tri6PStrain
 
-// Hex8Equilib constants
-String Hex8Equilib::NAME = "Hex8Equilib";
+// Tri6PStrain constants
+String Tri6PStrain::NAME = "Tri6PStrain";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Hex8Equilib element
-Element * Hex8EquilibMaker()
+// Allocate a new Tri6PStrain element
+Element * Tri6PStrainMaker()
 {
-	return new Hex8Equilib();
+	return new Tri6PStrain();
 }
 
-// Register a Hex8Equilib element into ElementFactory array map
-int Hex8EquilibRegister()
+// Register a Tri6PStrain element into ElementFactory array map
+int Tri6PStrainRegister()
 {
-	ElementFactory[Hex8Equilib::NAME] = Hex8EquilibMaker;
+	ElementFactory[Tri6PStrain::NAME] = Tri6PStrainMaker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __Hex8Equilib_dummy_int  = Hex8EquilibRegister();
+int __Tri6PStrain_dummy_int  = Tri6PStrainRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_HEX8EQUILIB_H
+#endif // MECHSYS_FEM_TRI6PSTRAIN_H

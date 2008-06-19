@@ -27,8 +27,8 @@
 namespace FEM
 {
 
-// Geometry type
-int GeometryType = 3; ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
+// Problem
+int Dim = 3; ///< Space dimension
 
 // Solver constants
 int    GFE_nSI   = 1;      ///< Global FE solver: number of sub-increments
@@ -71,8 +71,8 @@ inline Node * AddNode (double X, double Y, double Z=0.0)
 inline Element * AddElem (char const * Type, bool IsActive=true)
 {
 	Element * tmp = AllocElement(Type);
-	tmp->SetID(Elems.Size());
-	tmp->SetGeometryType (GeometryType);
+	tmp->SetID  (Elems.Size());
+	tmp->SetDim (Dim);
 	if (IsActive) tmp->Activate  ();
 	else          tmp->Deactivate();
 	Elems.Push(tmp);

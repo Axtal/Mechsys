@@ -16,17 +16,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_HEX8EQUILIB_H
-#define MECHSYS_FEM_HEX8EQUILIB_H
+#ifndef MECHSYS_FEM_ROD_H
+#define MECHSYS_FEM_ROD_H
 
 // MechSys
 #include "fem/equilibelem.h"
-#include "fem/elems/hex8.h"
+#include "fem/elems/lin2.h"
 
 namespace FEM
 {
 
-class Hex8Equilib : public Hex8, public EquilibElem
+class Rod : public Lin2, public EquilibElem
 {
 public:
 	// Constants
@@ -37,32 +37,32 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 3;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int _geom() const { return 1;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
-}; // class Hex8Equilib
+}; // class Rod
 
-// Hex8Equilib constants
-String Hex8Equilib::NAME = "Hex8Equilib";
+// Rod constants
+String Rod::NAME = "Rod";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Hex8Equilib element
-Element * Hex8EquilibMaker()
+// Allocate a new Rod element
+Element * RodMaker()
 {
-	return new Hex8Equilib();
+	return new Rod();
 }
 
-// Register a Hex8Equilib element into ElementFactory array map
-int Hex8EquilibRegister()
+// Register a Rod element into ElementFactory array map
+int RodRegister()
 {
-	ElementFactory[Hex8Equilib::NAME] = Hex8EquilibMaker;
+	ElementFactory[Rod::NAME] = RodMaker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __Hex8Equilib_dummy_int  = Hex8EquilibRegister();
+int __Rod_dummy_int  = RodRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_HEX8EQUILIB_H
+#endif // MECHSYS_FEM_LIN2EQUILIB_H

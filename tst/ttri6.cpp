@@ -22,7 +22,7 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/node.h"
-#include "fem/elems/tri6equilib.h"
+#include "fem/elems/tri6pstrain.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -59,8 +59,8 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
-	// 0) Geometry type
-	FEM::GeometryType = 2; // 2D(plane-strain)
+	// 0) Problem dimension
+	FEM::Dim = 2; // 2D
 
 	// 1) Nodes
 	FEM::AddNode(0.0, 0.0); // 0
@@ -74,8 +74,8 @@ int main(int argc, char **argv) try
 	FEM::AddNode(1.0, 0.5); // 8
 
 	// 2) Elements
-	FEM::AddElem("Tri6Equilib", /*IsActive*/true);
-	FEM::AddElem("Tri6Equilib", /*IsActive*/true);
+	FEM::AddElem("Tri6PStrain", /*IsActive*/true);
+	FEM::AddElem("Tri6PStrain", /*IsActive*/true);
 
 	// 3) Set connectivity
 	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5);

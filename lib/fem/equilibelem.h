@@ -79,12 +79,14 @@ public:
 
 private:
 	// Data
-	int                  _n_stress;
 	Array<EquilibModel*> _a_model;
 	double               _unit_weight;
 
 	// Private methods
 	void _calc_initial_internal_forces ();
+
+	// Private methods that MUST be derived
+	virtual int _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
 }; // class EquilibElem
 
@@ -98,32 +100,14 @@ private:
 
 inline bool EquilibElem::IsReady() const
 {
-	if (_a_model.Size()==static_cast<size_t>(_n_int_pts) && _connects.Size()==static_cast<size_t>(_n_nodes) && _geom>0) return true;
+	if (_a_model.Size()==_n_int_pts && _connects.Size()==_n_nodes) return true;
 	else return false;
-}
-
-inline void EquilibElem::SetGeometryType(int Geom)
-{
-	// Set geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	_geom = Geom;
-
-	// Set the number of stresses associated with the geometry type
-	switch (_geom)
-	{
-		case 2: { _ndim_prob=2; _n_stress=4; return; } // 2D(plane-strain)
-		case 3: { _ndim_prob=3; _n_stress=6; return; } // 3D
-		case 5: { _ndim_prob=2; _n_stress=3; return; } // 2D(plane-stress)
-		case 1: // 1D
-		case 4: // 2D(axis-symmetric)
-		default:
-			throw new Fatal("EquilibElem::SetGeometryType: GeometryType==%d is not implemented yet",_geom);
-	}
 }
 
 inline bool EquilibElem::IsEssential(char const * DOFName) const
 {
 	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
-	if (_ndim_prob==3           && strcmp(DOFName,"uz")==0) return true;
+	if (_ndim==3                && strcmp(DOFName,"uz")==0) return true;
 	return false;
 }
 
@@ -136,13 +120,13 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 		_a_model.Resize(_n_int_pts);
 
 		// Loop along integration points
-		for (int i=0; i<_n_int_pts; ++i)
+		for (size_t i=0; i<_n_int_pts; ++i)
 		{
 			// Allocate a new model and set parameters
 			_a_model[i] = static_cast<EquilibModel*>(AllocModel(ModelName));
-			_a_model[i]->SetGeom(_geom);
-			_a_model[i]->SetPrms(Prms);
-			_a_model[i]->SetInis(Inis);
+			_a_model[i]->SetGeom (_geom());
+			_a_model[i]->SetPrms (Prms);
+			_a_model[i]->SetInis (Inis);
 		}
 
 		// Calculate initial internal forces
@@ -157,9 +141,9 @@ inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)
 	_connects[iNodeLocal] = Nodes[iNodeGlobal];
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	                   Nodes[iNodeGlobal]->AddDOF("ux", "fx");
-	                   Nodes[iNodeGlobal]->AddDOF("uy", "fy");
-	if (_ndim_prob==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
+	              Nodes[iNodeGlobal]->AddDOF("ux", "fx");
+	              Nodes[iNodeGlobal]->AddDOF("uy", "fy");
+	if (_ndim==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
 
 	// Shared
 	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
@@ -170,18 +154,18 @@ inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)
 inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> dU(_ndim_prob*_n_nodes); // Delta disp. of this element
+	LinAlg::Vector<double> dU(_ndim*_n_nodes); // Delta disp. of this element
 	
 	// Assemble (local/element) displacements vector
-	for (int i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<_n_nodes; ++i)
 	{
-		                   dU(i*_ndim_prob  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
-		                   dU(i*_ndim_prob+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
-		if (_ndim_prob==3) dU(i*_ndim_prob+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
+		              dU(i*_ndim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		              dU(i*_ndim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
+		if (_ndim==3) dU(i*_ndim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> dF(_ndim_prob*_n_nodes); // Delta internal force of this element
+	LinAlg::Vector<double> dF(_ndim*_n_nodes); // Delta internal force of this element
 	dF.SetValues(0.0);
 	
 	// Allocate entities used for every integration point
@@ -192,54 +176,54 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	LinAlg::Vector<double> DSig;    // Stress vector 
 
 	// Loop along integration points
-	for (int i_ip=0; i_ip<_n_int_pts; ++i_ip)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
-		double r = _a_int_pts[i_ip].r;
-		double s = _a_int_pts[i_ip].s;
-		double t = _a_int_pts[i_ip].t; // only for 3D cases
-		double w = _a_int_pts[i_ip].w;
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t; // only for 3D cases
+		double w = _a_int_pts[i].w;
 
 		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix (derivs, J, B);   // Calculate B matrix for i_ip Integration Point
+		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
+		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
 
 		// Calculate a tensor for the increments of strain
 		DEps = B*dU;
 		
 		// Update model
-		_a_model[i_ip]->StressUpdate(DEps, DSig);
+		_a_model[i]->StressUpdate(DEps, DSig);
 
 		// Calculate internal force vector;
 		dF += trn(B)*DSig*det(J)*w;
 	}
 
 	// Return internal forces
-	for (int i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		                   dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_ndim_prob  );
-		                   dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_ndim_prob+1);
-		if (_ndim_prob==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_ndim_prob+2);
+		              dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_ndim  );
+		              dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_ndim+1);
+		if (_ndim==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_ndim+2);
 	}
 }
 
 inline void EquilibElem::BackupState()
 {
-	for (int i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 		_a_model[i]->BackupState();
 }
 
 inline void EquilibElem::RestoreState()
 {
-	for (int i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 		_a_model[i]->RestoreState();
 }
 
 inline void EquilibElem::GetLabels(Array<String> & Labels) const
 {
 	// Get labels of all values to output
-	switch (_geom) // 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	switch (_geom()) // 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	{
 		case 2: // 2D(plane-strain)
 		{
@@ -271,7 +255,7 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 		case 1: // 1D
 		case 4: // 2D(axis-symmetric)
 		default:
-			throw new Fatal("EquilibElem::GetLabels: GeometryType==%d is not implemented yet",_geom);
+			throw new Fatal("EquilibElem::GetLabels: GeometryType==%d is not implemented yet",_geom());
 	}
 }
 
@@ -293,8 +277,8 @@ inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 		LinAlg::Vector<double> nodal_values (_n_nodes);
 
 		// Get integration point values
-		for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
-			ip_values(i_ip) = _a_model[i_ip]->Val(Name);
+		for (size_t i=0; i<_n_int_pts; i++)
+			ip_values(i) = _a_model[i]->Val(Name);
 
 		// Extrapolation
 		Extrapolate (ip_values, nodal_values);
@@ -308,8 +292,8 @@ inline double EquilibElem::Val(char const * Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
-	for (int i_ip=0; i_ip<_n_int_pts; i_ip++)
-		sum += _a_model[i_ip]->Val(Name);
+	for (size_t i=0; i<_n_int_pts; i++)
+		sum += _a_model[i]->Val(Name);
 
 	// Output single value at CG
 	return sum/_n_int_pts;
@@ -325,7 +309,7 @@ inline void EquilibElem::Deactivate()
 inline void EquilibElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
 {
 	// Size of Ke
-	int n_rows = _ndim_prob*_n_nodes; // == n_cols
+	int n_rows = _ndim*_n_nodes; // == n_cols
 
 	// Mounting a map of positions from Ke to Global
 	int idx_Ke = 0;                // position (idx) inside Ke matrix
@@ -333,18 +317,18 @@ inline void EquilibElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Arr
 	RowsEssenPresc.Resize(n_rows); // size=Ke.Rows()=Ke.Cols()
 
 	// Fill map of Ke position to K position of DOFs components
-	for (int i_node=0; i_node<_n_nodes; ++i_node)
+	for (size_t i=0; i<_n_nodes; ++i)
 	{
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("ux").EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("ux").IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i]->DOFVar("ux").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i]->DOFVar("ux").IsEssenPresc; 
 		idx_Ke++;
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uy").EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uy").IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i]->DOFVar("uy").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i]->DOFVar("uy").IsEssenPresc; 
 		idx_Ke++;
-		if (_ndim_prob==3)
+		if (_ndim==3)
 		{
-			RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("uz").EqID; 
-			RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("uz").IsEssenPresc; 
+			RowsMap        [idx_Ke] = _connects[i]->DOFVar("uz").EqID; 
+			RowsEssenPresc [idx_Ke] = _connects[i]->DOFVar("uz").IsEssenPresc; 
 			idx_Ke++;
 		}
 	}
@@ -363,7 +347,7 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 	*/
 
 	// Resize Ke
-	Ke.Resize(_ndim_prob*_n_nodes, _ndim_prob*_n_nodes); // sum(Bt*D*B*det(J)*w)
+	Ke.Resize(_ndim*_n_nodes, _ndim*_n_nodes); // sum(Bt*D*B*det(J)*w)
 	Ke.SetValues(0.0);
 
 	// Allocate entities used for every integration point
@@ -373,20 +357,20 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 	LinAlg::Matrix<double> D;      // Constitutive matrix
 
 	// Loop along integration points
-	for (int i_ip=0; i_ip<_n_int_pts; ++i_ip)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
-		double r = _a_int_pts[i_ip].r;
-		double s = _a_int_pts[i_ip].s;
-		double t = _a_int_pts[i_ip].t;
-		double w = _a_int_pts[i_ip].w;
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+		double w = _a_int_pts[i].w;
 
 		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix (derivs,J, B);   // Calculate B matrix for i_ip Integration Point
+		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
+		B_Matrix (derivs,J, B);   // Calculate B matrix for i Integration Point
 
 		// Constitutive tensor 
-		_a_model[i_ip]->TgStiffness(D); 
+		_a_model[i]->TgStiffness(D); 
 
 		// Calculate Tangent Stiffness
 		Ke += trn(B)*D*B*det(J)*w;
@@ -403,40 +387,37 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 	 *          The B Matrix returns strains in Mandel notation
 	 */
 
-	// Matrix B for one dimensional elements.
-	if (_ndim_elem == 1 and _geom != 4) // one dimensional shaped elements
-	{
-		LinAlg::Matrix<double> nat_derivs(_ndim_prob, _ndim_prob*_n_nodes); 
-		nat_derivs.SetValues(0.0);
-		double det_J = det(J);
-
-		// re-arranging derivatives
-		for(int i=0; i<_n_nodes; i++) for(int j=0; j<_ndim_prob; j++) nat_derivs(j, i*_ndim_prob+j) = derivs(0,i);
-
-		B = -1.0/(det_J*det_J)*J*nat_derivs; // B matrix for a rod element in 1D, 2D and 3D.
-		
-		return;
-	}
-	
-	// Resize B matrix
-	B.Resize(_n_stress,_ndim_prob*_n_nodes);
-
-	// Cartesian derivatives
-	LinAlg::Matrix<double> cart_derivs;
-	cart_derivs = inv(J)*derivs;
-
 	// geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	switch (_geom)
+	switch (_geom())
 	{
+		case 1: // 1D
+		{
+			// Derivatives and determinand of Jacobian
+			LinAlg::Matrix<double> nat_derivs(_ndim, _ndim*_n_nodes); 
+			nat_derivs.SetValues(0.0);
+			double det_J = det(J);
+			for (size_t i=0; i<_n_nodes; i++)
+			for (int    j=0; j<_ndim;    j++)
+				nat_derivs(j, i*_ndim+j) = derivs(0,i);
+			// Assemble B matrix
+			B = -1.0/(det_J*det_J)*J*nat_derivs; // B matrix for a linear element in 1D, 2D and 3D.
+			return;
+		}
 		case 2: // 2D(plane-strain)
 		{
+			// Cartesian derivatives
+			LinAlg::Matrix<double> cart_derivs;
+			cart_derivs = inv(J)*derivs;
+			// Resize B matrix
+			const int n_scomps = 4; // number of stress compoments
+			B.Resize(n_scomps,_ndim*_n_nodes);
 			// Loop along all nodes of the element
 			double dNdX,dNdY;
 			int  j=0; // j column of B
-			for (int i=0; i<_n_nodes; ++i) // i row of B
+			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
 				// Assemble B matrix
-				j = i*_ndim_prob;
+				j = i*_ndim;
 				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
 				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
 				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
@@ -447,13 +428,19 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 		}
 		case 3: // 3D
 		{
+			// Cartesian derivatives
+			LinAlg::Matrix<double> cart_derivs;
+			cart_derivs = inv(J)*derivs;
+			// Resize B matrix
+			const int n_scomps = 6; // number of stress compoments
+			B.Resize(n_scomps,_ndim*_n_nodes);
 			// Loop along all nodes of the element
 			double dNdX,dNdY,dNdZ;
 			int  j=0; // j column of B
-			for (int i=0; i<_n_nodes; ++i) // i row of B
+			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
 				// Assemble B matrix
-				j = i*_ndim_prob;
+				j = i*_ndim;
 				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  dNdZ=-cart_derivs(2,i); // Negative values => Soil mechanics convention
 				B(0,0+j) =     dNdX;     B(0,1+j) =      0.0;     B(0,2+j) =      0.0;
 				B(1,0+j) =      0.0;     B(1,1+j) =     dNdY;     B(1,2+j) =      0.0;
@@ -466,13 +453,19 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 		}
 		case 5: // 2D(plane-stress)
 		{
+			// Cartesian derivatives
+			LinAlg::Matrix<double> cart_derivs;
+			cart_derivs = inv(J)*derivs;
+			// Resize B matrix
+			const int n_scomps = 3; // number of stress compoments
+			B.Resize(n_scomps,_ndim*_n_nodes);
 			// Loop along all nodes of the element
 			double dNdX,dNdY;
 			int  j=0; // j column of B
-			for (int i=0; i<_n_nodes; ++i) // i row of B
+			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
 				// Assemble B matrix
-				j = i*_ndim_prob;
+				j = i*_ndim;
 				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
 				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
 				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
@@ -480,10 +473,9 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 			}
 			return;
 		}
-		case 1: // 1D
 		case 4: // 2D(axis-symmetric)
 		default:
-			throw new Fatal("EquilibElem::B_Matrix: GeometryType==%d is not implemented yet",_geom);
+			throw new Fatal("EquilibElem::B_Matrix: GeometryType==%d is not implemented yet",_geom());
 	}
 }
 
@@ -493,7 +485,7 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 inline void EquilibElem::_calc_initial_internal_forces()
 {
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> F(_ndim_prob*_n_nodes);
+	LinAlg::Vector<double> F(_ndim*_n_nodes);
 	F.SetValues(0.0);
 
 	// Allocate entities used for every integration point
@@ -503,31 +495,31 @@ inline void EquilibElem::_calc_initial_internal_forces()
 	LinAlg::Vector<double> sig;     // Stress vector in Mandel's notation 
 
 	// Loop along integration points
-	for (int i_ip=0; i_ip<_n_int_pts; ++i_ip)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
-		double r = _a_int_pts[i_ip].r;
-		double s = _a_int_pts[i_ip].s;
-		double t = _a_int_pts[i_ip].t; // only for 3D
-		double w = _a_int_pts[i_ip].w;
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t; // only for 3D
+		double w = _a_int_pts[i].w;
 
 		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix (derivs, J, B);  // Calculate B matrix for i_ip Integration Point
+		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
+		B_Matrix (derivs, J, B);  // Calculate B matrix for i Integration Point
 
-		_a_model[i_ip]->Sig(sig); 
+		_a_model[i]->Sig(sig); 
 
 		// Calculate internal force vector;
 		F += trn(B)*sig*det(J)*w;
 	}
 
 	// Update nodal NaturVals
-	for (int i_node=0; i_node<_n_nodes; ++i_node)
+	for (size_t i=0; i<_n_nodes; ++i)
 	{
 		// Assemble (local/element) displacements vector.
-		                   _connects[i_node]->DOFVar("fx").NaturalVal += F(i_node*_ndim_prob  ); // NaturalVal must be set to zero during AddDOF routine
-		                   _connects[i_node]->DOFVar("fy").NaturalVal += F(i_node*_ndim_prob+1);
-		if (_ndim_prob==3) _connects[i_node]->DOFVar("fz").NaturalVal += F(i_node*_ndim_prob+2);
+		              _connects[i]->DOFVar("fx").NaturalVal += F(i*_ndim  ); // NaturalVal must be set to zero during AddDOF routine
+		              _connects[i]->DOFVar("fy").NaturalVal += F(i*_ndim+1);
+		if (_ndim==3) _connects[i]->DOFVar("fz").NaturalVal += F(i*_ndim+2);
 	}
 }
 
