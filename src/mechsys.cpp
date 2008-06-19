@@ -36,8 +36,13 @@
 #include "fem/solvers/forwardeuler.h"
 
 // MechSys -- Elements
-#include "fem/elems/elasticrod.h"
-#include "fem/elems/tri6equilib.h"
+#include "fem/elems/rod.h"
+#include "fem/elems/tri6pstrain.h"
+#include "fem/elems/tri6pstress.h"
+#include "fem/elems/quad4pstrain.h"
+#include "fem/elems/quad4pstress.h"
+#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad8pstress.h"
 #include "fem/elems/hex8equilib.h"
 
 // MechSys -- Models
@@ -91,7 +96,7 @@ private:
 void      add_node_2d   (double X, double Y)           { FEM::AddNode (X,Y); }
 void      add_node_3d   (double X, double Y, double Z) { FEM::AddNode (X,Y,Z); }
 void      add_elem      (str Type, bool IsActive)      { FEM::AddElem (S2C(Type),IsActive); }
-void      geometry_type (int  GType)                   { FEM::GeometryType = GType; }
+void      dim           (int  nDim)                    { FEM::Dim = nDim; }
 PyNode    nodes         (int  iNode)                   { PyNode    tmp(iNode); return tmp; }
 PyElement elems         (int  iElem)                   { PyElement tmp(iElem); return tmp; }
 
@@ -154,7 +159,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	def ("add_node",      add_node_2d  );
 	def ("add_node",      add_node_3d  );
 	def ("add_elem",      add_elem     );
-	def ("geometry_type", geometry_type);
+	def ("dim",           dim          );
 	def ("nodes",         nodes        );
 	def ("elems",         elems        );
 	def ("print_elems",   print_elems  );

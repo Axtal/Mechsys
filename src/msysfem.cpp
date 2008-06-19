@@ -27,8 +27,13 @@
 #include "fem/solvers/forwardeuler.h"
 
 // Elements
-#include "fem/elems/elasticrod.h"
-#include "fem/elems/tri6equilib.h"
+#include "fem/elems/rod.h"
+#include "fem/elems/tri6pstrain.h"
+#include "fem/elems/tri6pstress.h"
+#include "fem/elems/quad4pstrain.h"
+#include "fem/elems/quad4pstress.h"
+#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad8pstress.h"
 #include "fem/elems/hex8equilib.h"
 
 // Models
