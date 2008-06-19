@@ -26,11 +26,24 @@
 class Model
 {
 public:
+	// Constructor
+	Model () : _geom(-1) {}
+
 	// Destructor
 	virtual ~Model () {}
 
-	// Access methods to be derived
+	// Methods
+	void SetGeom (int Type) { _geom=Type; } ///< Geometry type (in FEM must be the ELEMENT geometry):  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+
+	// Methods that MUST be derived
+	virtual void SetPrms (char const * Prms) =0;
+	virtual void SetInis (char const * Inis) =0;
+
+	// Access methods that MUST be derived
 	virtual double Val (char const * Name) const =0; ///< Value: Sx, Sy, Ex, Ey, Wp, z0, etc.
+
+protected:
+	int _geom; ///< Geometry type (in FEM must be the ELEMENT geometry):  1:1D, 2:2D(plane-strain), 3:3D, 4:Axis-symmetric, 5:2D(plane-stress)
 
 }; // class Model
 

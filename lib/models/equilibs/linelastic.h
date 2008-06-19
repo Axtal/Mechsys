@@ -53,9 +53,6 @@ public:
 	void BackupState  ();
 	void RestoreState ();
 
-	// Access Methods
-	void Ivs (Array<double> & IntVals) const { IntVals.Resize(0); } ///< No internal values
-
 private:
 	// Data
 	Tensor4 _De;
