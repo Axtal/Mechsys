@@ -86,10 +86,10 @@ int main(int argc, char **argv) try
 		Nodes[1]->                Bry("uy",  0.4); // Essential
 		Nodes[2]->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
 
-		// 5) Parameters and initial values
-		Elems[0]->SetModel("LinElastic", "E=100.0", "Sx=0.0");
-		Elems[1]->SetModel("LinElastic", "E= 50.0", "Sx=0.0");
-		Elems[2]->SetModel("LinElastic", "E=200.0", "Sx=0.0");
+		// 5) Parameters and initial value
+		Elems[0]->SetModel("LinElastic", "E=100.0 A=1.0"              , "Sx=0.0");
+		Elems[1]->SetModel("LinElastic", "E= 50.0 A=1.0"              , "Sx=0.0");
+		Elems[2]->SetModel("LinElastic", "E=200.0 A=1.414213562373095", "Sx=0.0");
 
 		// Check
 		double errors = 0;
@@ -131,7 +131,6 @@ int main(int argc, char **argv) try
 			errors += fabs(Ke2(i,j)-Ke2_correct(i,j));
 		}
 
-		/*
 		// 6) Solve
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 		//FEM::Solver * sol = FEM::AllocSolver("AutoME");
@@ -152,7 +151,6 @@ int main(int argc, char **argv) try
 		errors += fabs(Nodes[1]->Val("fy") - ( 1.0));
 		errors += fabs(Nodes[2]->Val("fx") - ( 2.0));
 		errors += fabs(Nodes[2]->Val("fy") - ( 1.0));
-		*/
 
 		if (fabs(errors)>1.0e-13) cout << "[1;31m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
 		else                      cout << "[1;32m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
