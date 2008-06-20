@@ -48,7 +48,7 @@ public:
 	// Derived Methods
 	void SetPrms      (char const * Prms);
 	void SetInis      (char const * Inis);
-	void TgStiffness  (Matrix<double> & D) const;
+	void TgStiffness  (Matrix<double> & D) const { Tensor4ToMatrix (_geom, _De, D); };
 	int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig);
 	void BackupState  ();
 	void RestoreState ();
@@ -100,17 +100,6 @@ inline void LinElastic::SetPrms(char const * Prms)
 		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
 		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
 	}
-}
-
-inline void LinElastic::TgStiffness  (Matrix<double> & D) const 
-{
-	if (_geom==1) // one-dimensional case
-	{
-		D.Resize(1,1);
-		D(0,0) = _De(0,0);
-	}
-	else // other cases
-		Tensor4ToMatrix (_geom, _De, D);
 }
 
 inline void LinElastic::SetInis(char const * Inis)
