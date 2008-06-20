@@ -79,8 +79,8 @@ int main(int argc, char **argv) try
 	// 1) Nodes
 	double xmin  = 0.0;
 	double ymin  = 0.0;
-	int    ndivx = 4;
-	int    ndivy = 4;
+	int    ndivx = 20;   // must be even for this problem
+	int    ndivy = 30;
 	double dx    = L/ndivx;
 	double dy    = H/ndivy;
 	for (int j=0; j<ndivy+1; ++j)
@@ -104,7 +104,7 @@ int main(int argc, char **argv) try
 		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
 		{
 			Nodes[i]->Bry("uy",0.0);
-			if (fabs(Nodes[i]->X()-L/2.0)<1.0e-5) // central node
+			if (fabs(Nodes[i]->X()-(xmin+L/2.0))<1.0e-5) // central node
 				Nodes[i]->Bry("ux",0.0);
 		}
 	}
@@ -144,38 +144,37 @@ int main(int argc, char **argv) try
 	double Ex = -nu*(1.0+nu)*Sy/E;
 	double Ey =  (1.0-nu*nu)*Sy/E;
 
-	errors += fabs(Elems[9]->Val("Ex" ) - (Ex));
-	errors += fabs(Elems[9]->Val("Ey" ) - (Ey));
-	errors += fabs(Elems[9]->Val("Exy") - (0.0));
-	errors += fabs(Elems[9]->Val("Sx" ) - (0.0));
-	errors += fabs(Elems[9]->Val("Sy" ) - (Sy ));
-	errors += fabs(Elems[9]->Val("Sxy") - (0.0));
+	// Stress and strains
+	for (size_t i=0; i<Elems.Size(); ++i)
+	{
+		errors += fabs(Elems[i]->Val("Ex" ) - (Ex));
+		errors += fabs(Elems[i]->Val("Ey" ) - (Ey));
+		errors += fabs(Elems[i]->Val("Exy") - (0.0));
+		errors += fabs(Elems[i]->Val("Sx" ) - (0.0));
+		errors += fabs(Elems[i]->Val("Sy" ) - (Sy ));
+		errors += fabs(Elems[i]->Val("Sxy") - (0.0));
+	}
 
-	//errors += fabs(Nodes[0]->Val("ux") - ( 0.5*L*Ex));
-	//errors += fabs(Nodes[1]->Val("ux") - (-0.5*L*Ex));
-	//errors += fabs(Nodes[2]->Val("ux") - (-0.5*L*Ex));
-	//errors += fabs(Nodes[3]->Val("ux") - ( 0.5*L*Ex));
-	//errors += fabs(Nodes[4]->Val("ux") - (      0.0));
-	//errors += fabs(Nodes[5]->Val("ux") - (-0.5*L*Ex));
-	//errors += fabs(Nodes[6]->Val("ux") - (      0.0));
-	//errors += fabs(Nodes[7]->Val("ux") - ( 0.5*L*Ex));
-//
-	//errors += fabs(Nodes[0]->Val("uy") - (      0.0));
-	//errors += fabs(Nodes[1]->Val("uy") - (      0.0));
-	//errors += fabs(Nodes[2]->Val("uy") - (    -H*Ey));
-	//errors += fabs(Nodes[3]->Val("uy") - (    -H*Ey));
-	//errors += fabs(Nodes[4]->Val("uy") - (      0.0));
-	//errors += fabs(Nodes[5]->Val("uy") - (-0.5*H*Ey));
-	//errors += fabs(Nodes[6]->Val("uy") - (    -H*Ey));
-	//errors += fabs(Nodes[7]->Val("uy") - (-0.5*H*Ey));
-//
-	//errors += fabs(Nodes[3]->Val("fy") - (    -q*L/6.0));
-	//errors += fabs(Nodes[6]->Val("fy") - (-2.0*q*L/3.0));
-	//errors += fabs(Nodes[2]->Val("fy") - (    -q*L/6.0));
-//
-	//errors += fabs(Nodes[3]->Val("fy")+Nodes[6]->Val("fy")+Nodes[2]->Val("fy")-(-q*L));
+	// Displacements
+	for (size_t i=0; i<Nodes.Size(); ++i)
+	{
+		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
+		{
+			errors += fabs(Nodes[i]->Val("uy") - (0.0));
+			if (fabs(Nodes[i]->X()-(xmin+L/2.0))<1.0e-5) // central node
+				errors += fabs(Nodes[i]->Val("ux") - (0.0));
+		}
+		else if (fabs(Nodes[i]->Y()-(ymin+H/2.0))<1.0e-5) // mid nodes
+			errors += fabs(Nodes[i]->Val("uy") - (-0.5*H*Ey));
+		else if (fabs(Nodes[i]->Y()-(ymin+H))<1.0e-5) // top nodes
+			errors += fabs(Nodes[i]->Val("uy") - (-H*Ey));
+		if (fabs(Nodes[i]->X()-(xmin))<1.0e-5) // left nodes
+			errors += fabs(Nodes[i]->Val("ux") - (0.5*L*Ex));
+		if (fabs(Nodes[i]->X()-(xmin+L))<1.0e-5) // right nodes
+			errors += fabs(Nodes[i]->Val("ux") - (-0.5*L*Ex));
+	}
 
-	if (fabs(errors)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	if (fabs(errors)>1.0e-12) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	else                      cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	// Write file
