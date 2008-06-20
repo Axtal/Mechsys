@@ -89,7 +89,7 @@ public:
 	double Val       (char const * Name) const;                      ///< Return the essential or natural value (computed/current). Ex.: Name="ux", "fx", etc.
 
 	// Set methods
-	Node * Bry(const char * DOFName, double Value);
+	Node * Bry(const char * DOFName, double Value); ///< Set boundary value. If it is Natural, it will be accumulated. If it is Essential, it will just be set.
 
 private:
 	// Data
@@ -195,8 +195,8 @@ inline Node * Node::Bry(const char * DOFName, double Value)
 	}
 	else
 	{
-		_dofs[idx].NaturalBry   = Value;
-		_dofs[idx].IsEssenPresc = false;
+		_dofs[idx].NaturalBry   += Value;
+		_dofs[idx].IsEssenPresc  = false;
 	}
 	return this;
 }

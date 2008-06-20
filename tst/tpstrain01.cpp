@@ -99,7 +99,6 @@ int main(int argc, char **argv) try
 	}
 
 	// 4) Boundary conditions (must be after connectivity)
-	/*
 	for (size_t i=0; i<Nodes.Size(); ++i)
 	{
 		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
@@ -114,27 +113,8 @@ int main(int argc, char **argv) try
 		Matrix<double> c;
 		Elems[i]->Coords(c);
 		if (fabs(c(2,1)-H)<1.0e-5) // top element
-			Elems[i]->Bry("fy", -q, 2, 3,2); // Actually, fy is traction == ty (list of nodes must be GLOBAL)
+			Elems[i]->BryL("fy", -q, 2, 3,2); // Actually, fy is traction == ty (list of nodes is LOCAL)
 	}
-	*/
-	Nodes[0]->Bry("uy", 0.0);
-	Nodes[1]->Bry("uy", 0.0);
-	Nodes[2]->Bry("uy", 0.0)->Bry("ux", 0.0);
-	Nodes[3]->Bry("uy", 0.0);
-	Nodes[4]->Bry("uy", 0.0);
-
-	Nodes[20]->Bry("fy", -0.25);
-	Nodes[21]->Bry("fy", -0.50);
-	Nodes[22]->Bry("fy", -0.50);
-	Nodes[23]->Bry("fy", -0.50);
-	Nodes[24]->Bry("fy", -0.25);
-
-	/*
-	Elems[12]->Bry("fy", -q, 2, 20,21);
-	Elems[13]->Bry("fy", -q, 2, 21,22);
-	Elems[14]->Bry("fy", -q, 2, 22,23);
-	Elems[15]->Bry("fy", -q, 2, 23,24);
-	*/
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
