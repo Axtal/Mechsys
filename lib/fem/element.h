@@ -54,12 +54,13 @@ public:
 	};
 
 	// Methods
-	void   SetID          (long ID) { _my_id = ID;        }                                          ///< Set the ID of this element
-	long   GetID          () const  { return _my_id;      }                                          ///< Return the ID of this element
-	void   Activate       ()        { _is_active = true;  }                                          ///< Activate the element
-	bool   IsActive       () const  { return _is_active;  }                                          ///< Check if this element is active
-	size_t nNodes         () const  { return _n_nodes;    }                                          ///< Return the number of nodes in this element
-	size_t nIntPoints     () const  { return _n_int_pts;  }                                          ///< Return the number of integration points in this element
+	void   SetID          (long ID)  { _my_id = ID;         }                                        ///< Set the ID of this element
+	long   GetID          () const   { return _my_id;       }                                        ///< Return the ID of this element
+	void   Activate       ()         { _is_active = true;   }                                        ///< Activate the element
+	bool   IsActive       () const   { return _is_active;   }                                        ///< Check if this element is active
+	size_t nNodes         () const   { return _n_nodes;     }                                        ///< Return the number of nodes in this element
+	Node * N              (size_t i) { return _connects[i]; }                                        ///< Return a pointer to a node in the connects list
+	size_t nIntPoints     () const   { return _n_int_pts;   }                                        ///< Return the number of integration points in this element
 	void   IntegPoints    (IntegPoint const * & IPs) const { IPs=_a_int_pts; }                       ///< Return a pointer to the array of integration points
 	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
 	void   Dist2FaceNodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
@@ -83,6 +84,7 @@ public:
 
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual int  VTKCellType    () const =0;                                                                                                 ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
+	virtual void VTKConnect     (String & Nodes) const =0;                                                                                   ///< Return the VTK list of connectivities with global nodes IDs
 	virtual void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape) const =0;                                     ///< Shape functions
 	virtual void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const =0;                                    ///< Derivatives
 	virtual void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape) const =0;                                           ///< Face shape functions

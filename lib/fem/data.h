@@ -19,10 +19,18 @@
 #ifndef MECHSYS_FEM_DATA_H
 #define MECHSYS_FEM_DATA_H
 
+// STL
+#include <iostream>
+#include <fstream>
+
 // MechSys
-#include "util/array.h"
 #include "fem/node.h"
 #include "fem/element.h"
+#include "util/array.h"
+#include "util/numstreams.h"
+#include "util/exception.h"
+
+#define VTU_NEWLINE(I,K,N,KMAX,OF) if (K>KMAX) { OF<<(I<N-1?"\n        ":"\n"); K=0; } else if (I==N-1) { OF<<"\n"; }
 
 namespace FEM
 {
@@ -77,6 +85,191 @@ inline Element * AddElem (char const * Type, bool IsActive=true)
 	else          tmp->Deactivate();
 	Elems.Push(tmp);
 	return tmp;
+}
+
+inline void WriteVTU (char const * FileName)
+{
+	// Open File
+	std::ofstream      of(FileName, std::ios::out);
+	std::ostringstream oss;
+
+	// Data
+	size_t nn = Nodes.Size(); // Number of Nodes
+	size_t ne = Elems.Size(); // Number of Elements
+
+	// Constants
+	size_t          nimax = 40;        // number of integers in a line
+	size_t          nfmax = 12;        // number of floats in a line
+	Util::NumStream nsflo = Util::_8s; // number format for floats
+
+	// Header
+	oss << "<?xml version=\"1.0\"?>\n";
+	oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+	oss << "  <UnstructuredGrid>\n";
+	oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << ne << "\">\n";
+
+	// Nodes: coordinates
+	oss << "      <Points>\n";
+	oss << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+	size_t k = 0; oss << "        ";
+	for (size_t i=0; i<nn; ++i)
+	{
+		oss << "  " << nsflo << Nodes[i]->X() << " ";
+		oss <<         nsflo << Nodes[i]->Y() << " ";
+		oss <<         nsflo << Nodes[i]->Z();
+		k++;
+		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "      </Points>\n";
+
+	// Elements: connectivity, offsets, types
+	oss << "      <Cells>\n";
+	oss << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		String con;  Elems[i]->VTKConnect(con);
+		oss << "  " << con;
+		k++;
+		VTU_NEWLINE (i,k,ne,nimax/Elems[i]->nNodes(),oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	size_t ossfset = 0;
+	for (size_t i=0; i<ne; ++i)
+	{
+		ossfset += Elems[i]->nNodes();
+		oss << (k==0?"  ":" ") << ossfset;
+		k++;
+		VTU_NEWLINE (i,k,ne,nimax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		oss << (k==0?"  ":" ") << Elems[i]->VTKCellType();
+		k++;
+		VTU_NEWLINE (i,k,ne,nimax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "      </Cells>\n";
+
+	// Data -- nodes
+	oss << "      <PointData Vectors=\"TheVectors\">\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"" << "displ" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<nn; ++i)
+	{
+		oss << " " << nsflo << (Nodes[i]->HasVar("ux") ? Nodes[i]->Val("ux"): 0.0) << " ";
+		oss <<        nsflo << (Nodes[i]->HasVar("uy") ? Nodes[i]->Val("uy"): 0.0) << " ";
+		oss <<        nsflo << (Nodes[i]->HasVar("uz") ? Nodes[i]->Val("uz"): 0.0) << " ";
+		k++;
+		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"" << "force" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<nn; ++i)
+	{
+		oss << " " << nsflo << (Nodes[i]->HasVar("fx") ? Nodes[i]->Val("fx"): 0.0) << " ";
+		oss <<        nsflo << (Nodes[i]->HasVar("fy") ? Nodes[i]->Val("fy"): 0.0) << " ";
+		oss <<        nsflo << (Nodes[i]->HasVar("fz") ? Nodes[i]->Val("fz"): 0.0) << " ";
+		k++;
+		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "      </PointData>\n";
+
+	// Data -- elements
+	oss << "      <CellData Scalars=\"TheScalars\">\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"active\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		oss << (k==0?"  ":" ") << Elems[i]->IsActive();
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"Sx\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		double val = 0.0;
+		try { val = Elems[i]->Val("Sx"); } catch (Exception * e) { delete e; }
+		oss << (k==0?"  ":" ") << val;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"Sy\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		double val = 0.0;
+		try { val = Elems[i]->Val("Sy"); } catch (Exception * e) { delete e; }
+		oss << (k==0?"  ":" ") << val;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"Sz\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		double val = 0.0;
+		try { val = Elems[i]->Val("Sz"); } catch (Exception * e) { delete e; }
+		oss << (k==0?"  ":" ") << val;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"Sxy\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		double val = 0.0;
+		try { val = Elems[i]->Val("Sxy"); } catch (Exception * e) { delete e; }
+		oss << (k==0?"  ":" ") << val;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"Syz\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		double val = 0.0;
+		try { val = Elems[i]->Val("Syz"); } catch (Exception * e) { delete e; }
+		oss << (k==0?"  ":" ") << val;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"Szx\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		double val = 0.0;
+		try { val = Elems[i]->Val("Szx"); } catch (Exception * e) { delete e; }
+		oss << (k==0?"  ":" ") << val;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "      </CellData>\n";
+
+	// Bottom
+	oss << "    </Piece>\n";
+	oss << "  </UnstructuredGrid>\n";
+	oss << "</VTKFile>" << std::endl;
+
+	// Write to file
+	of << oss.str();
+	of.close();
 }
 
 }; // namespace FEM

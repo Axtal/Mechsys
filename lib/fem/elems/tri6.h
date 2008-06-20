@@ -52,6 +52,7 @@ public:
 
 	// Derived methods
 	int  VTKCellType () const { return 22; } // VTK_QUADRATIC_TRIANGLE
+	void VTKConnect  (String & Nodes) const;
 	void Shape       (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
 	void Derivs      (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
 	void FaceShape   (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
@@ -77,6 +78,16 @@ inline Tri6::Tri6()
 	// Setup pointer to the array of Integration Points
 	_a_int_pts      = TRI6_INTPTS;
 	_a_face_int_pts = TRI6_FACEINTPTS;
+}
+
+inline void Tri6::VTKConnect(String & Nodes) const
+{
+	Nodes.Printf("%d %d %d %d %d %d",_connects[0]->GetID(),
+	                                 _connects[1]->GetID(),
+	                                 _connects[2]->GetID(),
+	                                 _connects[3]->GetID(),
+	                                 _connects[4]->GetID(),
+	                                 _connects[5]->GetID());
 }
 
 inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const

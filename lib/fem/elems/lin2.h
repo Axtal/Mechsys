@@ -51,6 +51,7 @@ public:
 
 	// Derived methods
 	int  VTKCellType () const { return 3; } // VTK_LINE
+	void VTKConnect  (String & Nodes) const;
 	void Shape       (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
 	void Derivs      (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
 	void FaceShape   (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
@@ -76,6 +77,11 @@ inline Lin2::Lin2()
 	// Setup pointer to the array of Integration Points
 	_a_int_pts      = LIN2_INTPTS;
 	_a_face_int_pts = LIN2_FACEINTPTS;
+}
+
+inline void Lin2::VTKConnect(String & Nodes) const
+{
+	Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID());
 }
 
 inline void Lin2::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
