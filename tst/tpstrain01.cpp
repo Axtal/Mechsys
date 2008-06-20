@@ -126,6 +126,7 @@ int main(int argc, char **argv) try
 	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
+	cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
 
 	// Output
 	cout << "Node 20: ux = " << Nodes[20]->Val("ux") << " : uy = " << Nodes[20]->Val("uy") << " : fx = "  << Nodes[20]->Val("fx")  << " : fy = "  << Nodes[20]->Val("fy")  << endl;
@@ -143,6 +144,7 @@ int main(int argc, char **argv) try
 	double Sy = q;
 	double Ex = -nu*(1.0+nu)*Sy/E;
 	double Ey =  (1.0-nu*nu)*Sy/E;
+	double Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 
 	// Stress and strains
 	for (size_t i=0; i<Elems.Size(); ++i)
@@ -152,6 +154,7 @@ int main(int argc, char **argv) try
 		errors += fabs(Elems[i]->Val("Exy") - (0.0));
 		errors += fabs(Elems[i]->Val("Sx" ) - (0.0));
 		errors += fabs(Elems[i]->Val("Sy" ) - (Sy ));
+		errors += fabs(Elems[i]->Val("Sz" ) - (Sz ));
 		errors += fabs(Elems[i]->Val("Sxy") - (0.0));
 	}
 
@@ -174,11 +177,11 @@ int main(int argc, char **argv) try
 			errors += fabs(Nodes[i]->Val("ux") - (-0.5*L*Ex));
 	}
 
-	if (fabs(errors)>1.0e-12) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	if (fabs(errors)>1.0e-10) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	else                      cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	// Write file
-	FEM::WriteVTU ("tpstrain01.vtu");
+	FEM::WriteVTUEquilib ("tpstrain01.vtu");
 	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m" << endl;
 
 	return 0;

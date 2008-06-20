@@ -75,7 +75,6 @@ inline Node * AddNode (double X, double Y, double Z=0.0)
 	return tmp;
 }
 
-//inline Element * AddElem (String const & Type, bool IsActive=true)
 inline Element * AddElem (char const * Type, bool IsActive=true)
 {
 	Element * tmp = AllocElement(Type);
@@ -87,7 +86,22 @@ inline Element * AddElem (char const * Type, bool IsActive=true)
 	return tmp;
 }
 
-inline void WriteVTU (char const * FileName)
+inline void _write_elem_val (size_t ne, size_t nfmax, char const * Key, std::ostringstream & oss)
+{
+	oss << "        <DataArray type=\"Float32\" Name=\""<< Key <<"\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	size_t k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		double val = 0.0;
+		try { val = Elems[i]->Val(Key); } catch (Exception * e) { delete e; }
+		oss << (k==0?"  ":" ") << val;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+}
+
+inline void WriteVTUEquilib (char const * FileName)
 {
 	// Open File
 	std::ofstream      of(FileName, std::ios::out);
@@ -194,72 +208,22 @@ inline void WriteVTU (char const * FileName)
 		VTU_NEWLINE (i,k,ne,nfmax,oss);
 	}
 	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"Sx\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		double val = 0.0;
-		try { val = Elems[i]->Val("Sx"); } catch (Exception * e) { delete e; }
-		oss << (k==0?"  ":" ") << val;
-		k++;
-		VTU_NEWLINE (i,k,ne,nfmax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"Sy\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		double val = 0.0;
-		try { val = Elems[i]->Val("Sy"); } catch (Exception * e) { delete e; }
-		oss << (k==0?"  ":" ") << val;
-		k++;
-		VTU_NEWLINE (i,k,ne,nfmax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"Sz\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		double val = 0.0;
-		try { val = Elems[i]->Val("Sz"); } catch (Exception * e) { delete e; }
-		oss << (k==0?"  ":" ") << val;
-		k++;
-		VTU_NEWLINE (i,k,ne,nfmax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"Sxy\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		double val = 0.0;
-		try { val = Elems[i]->Val("Sxy"); } catch (Exception * e) { delete e; }
-		oss << (k==0?"  ":" ") << val;
-		k++;
-		VTU_NEWLINE (i,k,ne,nfmax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"Syz\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		double val = 0.0;
-		try { val = Elems[i]->Val("Syz"); } catch (Exception * e) { delete e; }
-		oss << (k==0?"  ":" ") << val;
-		k++;
-		VTU_NEWLINE (i,k,ne,nfmax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"Szx\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		double val = 0.0;
-		try { val = Elems[i]->Val("Szx"); } catch (Exception * e) { delete e; }
-		oss << (k==0?"  ":" ") << val;
-		k++;
-		VTU_NEWLINE (i,k,ne,nfmax,oss);
-	}
-	oss << "        </DataArray>\n";
+	_write_elem_val(ne, nfmax, "Sx", oss);
+	_write_elem_val(ne, nfmax, "Sy", oss);
+	_write_elem_val(ne, nfmax, "Sz", oss);
+	_write_elem_val(ne, nfmax, "Sxy",oss);
+	_write_elem_val(ne, nfmax, "Syz",oss);
+	_write_elem_val(ne, nfmax, "Szx",oss);
+	_write_elem_val(ne, nfmax, "p",  oss);
+	_write_elem_val(ne, nfmax, "q",  oss);
+	_write_elem_val(ne, nfmax, "Ex", oss);
+	_write_elem_val(ne, nfmax, "Ey", oss);
+	_write_elem_val(ne, nfmax, "Ez", oss);
+	_write_elem_val(ne, nfmax, "Exy",oss);
+	_write_elem_val(ne, nfmax, "Eyz",oss);
+	_write_elem_val(ne, nfmax, "Ezx",oss);
+	_write_elem_val(ne, nfmax, "Ev", oss);
+	_write_elem_val(ne, nfmax, "Ed", oss);
 	oss << "      </CellData>\n";
 
 	// Bottom
