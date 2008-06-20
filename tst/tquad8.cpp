@@ -85,10 +85,10 @@ int main(int argc, char **argv) try
 	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5)->SetNode(6,6)->SetNode(7,7);
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("uy",0.0);
-	Nodes[4]->Bry("uy",0.0)->Bry("ux",0.0);
-	Nodes[1]->Bry("uy",0.0);
-	Elems[0]->Bry("fy",-q, 3, 2,3,6); // Actually, fy is traction == ty (list of nodes must be LOCAL)
+	Nodes[0]->Bry ("uy",0.0);
+	Nodes[4]->Bry ("uy",0.0)->Bry("ux",0.0);
+	Nodes[1]->Bry ("uy",0.0);
+	Elems[0]->BryL("fy",-q, 3, 2,3,6); // Actually, fy is traction == ty (list of nodes is LOCAL)
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);

@@ -99,6 +99,7 @@ int main(int argc, char **argv) try
 	}
 
 	// 4) Boundary conditions (must be after connectivity)
+	/*
 	for (size_t i=0; i<Nodes.Size(); ++i)
 	{
 		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
@@ -113,8 +114,27 @@ int main(int argc, char **argv) try
 		Matrix<double> c;
 		Elems[i]->Coords(c);
 		if (fabs(c(2,1)-H)<1.0e-5) // top element
-			Elems[i]->Bry("fy", -q, 2, 2,3); // Actually, fy is traction == ty (list of nodes must be LOCAL)
+			Elems[i]->Bry("fy", -q, 2, 3,2); // Actually, fy is traction == ty (list of nodes must be GLOBAL)
 	}
+	*/
+	Nodes[0]->Bry("uy", 0.0);
+	Nodes[1]->Bry("uy", 0.0);
+	Nodes[2]->Bry("uy", 0.0)->Bry("ux", 0.0);
+	Nodes[3]->Bry("uy", 0.0);
+	Nodes[4]->Bry("uy", 0.0);
+
+	Nodes[20]->Bry("fy", -0.25);
+	Nodes[21]->Bry("fy", -0.50);
+	Nodes[22]->Bry("fy", -0.50);
+	Nodes[23]->Bry("fy", -0.50);
+	Nodes[24]->Bry("fy", -0.25);
+
+	/*
+	Elems[12]->Bry("fy", -q, 2, 20,21);
+	Elems[13]->Bry("fy", -q, 2, 21,22);
+	Elems[14]->Bry("fy", -q, 2, 22,23);
+	Elems[15]->Bry("fy", -q, 2, 23,24);
+	*/
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
@@ -122,17 +142,18 @@ int main(int argc, char **argv) try
 		Elems[i]->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// 6) Solve
-	FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	// Output
-	cout << "Node 20: ux = " << Nodes[20]->Val("ux") << " : uy = " << Nodes[20]->Val("uy") << " : fy = "  << Nodes[20]->Val("fy")  << endl;
-	cout << "Node 22: ux = " << Nodes[22]->Val("ux") << " : uy = " << Nodes[22]->Val("uy") << " : fy = "  << Nodes[22]->Val("fy")  << endl;
-	cout << "Node 24: ux = " << Nodes[24]->Val("ux") << " : uy = " << Nodes[24]->Val("uy") << " : fy = "  << Nodes[24]->Val("fy")  << endl << endl;
-	cout << "Node 0:  ux = " << Nodes[ 0]->Val("ux") << " : uy = " << Nodes[ 0]->Val("uy") << " : fy = "  << Nodes[ 0]->Val("fy")  << endl;
-	cout << "Node 2:  ux = " << Nodes[ 2]->Val("ux") << " : uy = " << Nodes[ 2]->Val("uy") << " : fy = "  << Nodes[ 2]->Val("fy")  << endl;
-	cout << "Node 4:  ux = " << Nodes[ 4]->Val("ux") << " : uy = " << Nodes[ 4]->Val("uy") << " : fy = "  << Nodes[ 4]->Val("fy")  << endl << endl;
+	cout << "Node 20: ux = " << Nodes[20]->Val("ux") << " : uy = " << Nodes[20]->Val("uy") << " : fx = "  << Nodes[20]->Val("fx")  << " : fy = "  << Nodes[20]->Val("fy")  << endl;
+	cout << "Node 22: ux = " << Nodes[22]->Val("ux") << " : uy = " << Nodes[22]->Val("uy") << " : fx = "  << Nodes[22]->Val("fx")  << " : fy = "  << Nodes[22]->Val("fy")  << endl;
+	cout << "Node 24: ux = " << Nodes[24]->Val("ux") << " : uy = " << Nodes[24]->Val("uy") << " : fx = "  << Nodes[24]->Val("fx")  << " : fy = "  << Nodes[24]->Val("fy")  << endl << endl;
+	cout << "Node 0:  ux = " << Nodes[ 0]->Val("ux") << " : uy = " << Nodes[ 0]->Val("uy") << " : fx = "  << Nodes[ 0]->Val("fx")  << " : fy = "  << Nodes[ 0]->Val("fy")  << endl;
+	cout << "Node 2:  ux = " << Nodes[ 2]->Val("ux") << " : uy = " << Nodes[ 2]->Val("uy") << " : fx = "  << Nodes[ 2]->Val("fx")  << " : fy = "  << Nodes[ 2]->Val("fy")  << endl;
+	cout << "Node 4:  ux = " << Nodes[ 4]->Val("ux") << " : uy = " << Nodes[ 4]->Val("uy") << " : fx = "  << Nodes[ 4]->Val("fx")  << " : fy = "  << Nodes[ 4]->Val("fy")  << endl << endl;
 	cout << "Elem 9:  Sx = " << Elems[ 9]->Val("Sx") << " : Sy = " << Elems[ 9]->Val("Sy") << " : Sxy = " << Elems[ 9]->Val("Sxy") << endl;
 	cout << "Elem 9:  Ex = " << Elems[ 9]->Val("Ex") << " : Ey = " << Elems[ 9]->Val("Ey") << " : Exy = " << Elems[ 9]->Val("Exy") << endl << endl;
 
