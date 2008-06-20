@@ -48,7 +48,7 @@ public:
 	// Derived Methods
 	void SetPrms      (char const * Prms);
 	void SetInis      (char const * Inis);
-	void TgStiffness  (Matrix<double> & D) const { Tensor4ToMatrix (_geom, _De, D); }
+	void TgStiffness  (Matrix<double> & D) const { Tensor4ToMatrix (_geom, _De, D); };
 	int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig);
 	void BackupState  ();
 	void RestoreState ();
@@ -79,12 +79,14 @@ inline void LinElastic::SetPrms(char const * Prms)
 	// Set
 	double E  = 0.0;
 	double nu = 0.0;
+	double A  = 0.0;
 	for (size_t i=0; i<names.Size(); ++i)
 	{
 			 if (names[i]=="E" ) E  = values[i];
 		else if (names[i]=="nu") nu = values[i];
+		else if (names[i]=="A" )  A = values[i];
 	}
-	if (_geom==1) _De(0,0) = E;
+	if (_geom==1) _De(0,0) = E*A;
 	else
 	{
 		double c  = (_geom==5 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // plane-stress != (plane-strain=3D)
