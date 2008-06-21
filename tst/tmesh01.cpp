@@ -18,6 +18,7 @@
 
 // STL
 #include <iostream>
+#include <ctime>  // for std::clock()
 
 // MechSys
 #include "mesh/structured.h"
@@ -43,8 +44,8 @@ int main(int argc, char **argv) try
 		double H     = 1.0;   // height
 		double hL    = L/2.0; // half-length
 		double hH    = H/2.0; // half-height
-		size_t ndivx = 2;     // divisions along x
-		size_t ndivy = 2;     // divisions along y
+		size_t ndivx = 30;    // divisions along x
+		size_t ndivy = 40;    // divisions along y
 
 		// Coordinates
 		Matrix<double> c(2,8);
@@ -61,12 +62,15 @@ int main(int argc, char **argv) try
 		blocks[0].Set (c, w, ndivx, ndivy);
 
 		// Generate
+		std::clock_t start = std::clock(); // Initial time
 		Mesh::Structured m;
-		m.Generate (blocks);
+		size_t ne = m.Generate (blocks);
+		std::clock_t total = std::clock() - start; // Time elapsed
+		std::cout << "2D("<<ne<<" elements): Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
 		// Output
 		m.WriteVTU ("tmesh01_2D.vtu");
-		cout << "[1;34mFile <tmesh01_2D.vtu> created[0m" << endl;
+		cout << "[1;34mFile <tmesh01_2D.vtu> created[0m" << endl << endl;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////// 3D /////
@@ -79,9 +83,9 @@ int main(int argc, char **argv) try
 		double hL    = L/2.0; // half-length
 		double hH    = H/2.0; // half-height
 		double hD    = D/2.0; // half-depth
-		size_t ndivx = 2;     // divisions along x
-		size_t ndivy = 3;     // divisions along y
-		size_t ndivz = 4;     // divisions along z
+		size_t ndivx = 18;    // divisions along x
+		size_t ndivy = 18;    // divisions along y
+		size_t ndivz = 18;    // divisions along z
 
 		// Coordinates
 		Matrix<double> c(3,20);
@@ -100,8 +104,11 @@ int main(int argc, char **argv) try
 		blocks[0].Set (c, w, ndivx, ndivy, ndivz);
 
 		// Generate
+		std::clock_t start = std::clock(); // Initial time
 		Mesh::Structured m(/*Is3D*/true);
-		m.Generate (blocks);
+		size_t ne = m.Generate (blocks);
+		std::clock_t total = std::clock() - start; // Time elapsed
+		std::cout << "3D:("<<ne<<" elements) Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
 		// Output
 		m.WriteVTU ("tmesh01_3D.vtu");

@@ -18,6 +18,7 @@
 
 // STL
 #include <iostream>
+#include <ctime>  // for std::clock()
 
 // MechSys
 #include "mesh/structured.h"
@@ -77,8 +78,8 @@ int main(int argc, char **argv) try
 		     0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.);
 
 		// Lower block -- weights
-		int ndivx0 = 8;
-		int ndivy0 = 20;
+		int ndivx0 = 20;
+		int ndivy0 = 30;
 		Matrix<double> w0(2,Max2(ndivx0,ndivy0)+1);
 		for (int i=0; i<ndivx0; ++i) w0(0,i) = 1.0;
 		for (int i=0; i<ndivy0; ++i) w0(1,i) = 1.0;
@@ -88,11 +89,11 @@ int main(int argc, char **argv) try
 		c1 =  b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
 		      e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.);
 
-		for (int i=0; i<8; ++i) c1(1,i) += 1.;
+		//for (int i=0; i<8; ++i) c1(1,i) += 1.;
 
 		// Upper block -- weights
 		int ndivx1 = ndivx0;
-		int ndivy1 = 20;
+		int ndivy1 = 40;
 		Matrix<double> w1(2,Max2(ndivx1,ndivy1)+1);
 		for (int i=0; i<ndivx1; ++i) w1(0,i) = 1.0;
 		for (int i=0; i<ndivy1; ++i) w1(1,i) = 1.0;
@@ -103,8 +104,11 @@ int main(int argc, char **argv) try
 		blocks[1].Set (c1, w1, ndivx1, ndivy1);
 
 		// Generate
+		std::clock_t start = std::clock(); // Initial time
 		Mesh::Structured m;
-		m.Generate (blocks);
+		size_t ne = m.Generate (blocks);
+		std::clock_t total = std::clock() - start; // Time elapsed
+		std::cout << "2D:("<<ne<<" elements) Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
 		// Output
 		m.WriteVTU ("tmesh02_2D.vtu");

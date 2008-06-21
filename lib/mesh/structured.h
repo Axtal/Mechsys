@@ -22,6 +22,7 @@
 // STL
 #include <iostream>
 #include <fstream>
+#include <cfloat>
 
 // MechSys
 #include "util/array.h"
@@ -41,20 +42,37 @@ using LinAlg::Matrix;
 namespace Mesh
 {
 
+	/* TODO:
+	 *        1) Add additional checks, especially for 3D meshes
+	 *        2) Remove boundary information for nodes duplicated not on boundary
+	 *        3) Add boundary marks evaluation
+	 *        4) Extend to second-order (o2) elements
+	 *        5) Add quality check and improvement
+	 */
+
+struct Elem;
+
+struct Share
+{
+	Elem* E; ///< The element
+	int   N; ///< Local node index: 2D=>0,1,2,3, 3D=>0,1,2,3,4,5,6,7
+};
+
 struct Vertex
 {
 	long           MyID;   ///< ID
 	bool           OnBry;  ///< On boundary?
 	int            BryMrk; ///< Boundary mark
-	int            Count;  ///< How many times this vertex was defined (repeated)
+	bool           Dupl;   ///< Is this a duplicated node?
 	Vector<double> C;      ///< X, Y, and Z coordinates
+	Array<Share>   Shares; ///< Shared elements
 };
 
 struct Elem
 {
 	long           MyID;  ///< ID
 	bool           OnBry; ///< On boundary?
-	Array<Vertex*> C;     ///< Connectivity
+	Array<Vertex*> V;     ///< Connectivity
 };
 
 class Block
@@ -110,18 +128,25 @@ class Structured
 {
 public:
 	// Constructor
-	Structured (bool Is3D=false) : _is_3d(Is3D) { _s.Resize((Is3D?20:8)); }
+	Structured (bool Is3D=false, double Tol=10.*DBL_EPSILON) : _is_3d(Is3D), _tol(Tol) { _s.Resize((Is3D?20:8)); }
+
+	// Destructor
+	~Structured ();
 
 	// Methods
-	void Generate (Array<Block> const & Blocks);
-	void WriteVTU (char const * FileName) const;
+	size_t Generate (Array<Block> const & Blocks); ///< Returns the number of elements
+	void   WriteVTU (char const * FileName) const;
 
 private:
 	// Data
-	bool           _is_3d;  ///< Is 3D mesh?
-	Array<Vertex*> _verts;  ///< Vertices
-	Array<Elem*>   _elems;  ///< Elements
-	Vector<double> _s;      ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
+	bool           _is_3d;   ///< Is 3D mesh?
+	double         _tol;     ///< Tolerance to remove duplicate nodes
+	Array<Vertex*> _verts_d; ///< Vertices (with duplicates)
+	Array<Vertex*> _vbry_d;  ///< Vertices on boundary (with duplicates)
+	Array<Vertex*> _verts;   ///< Vertices
+	Array<Elem*>   _elems;   ///< Elements
+	Array<Elem*>   _ebry;    ///< Elements on boundary
+	Vector<double> _s;       ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
 
 	// Private methods
 	void _shape_2d (double r, double s);
@@ -151,9 +176,17 @@ inline void Block::Set(Matrix<double> const & C, Matrix<double> const & W, int n
 	for (int i=0; i<_n_div_z; ++i) _sum_weight_z += _W(2,i);
 }
 
+// Destructor -- Structured
+
+inline Structured::~Structured()
+{
+	for (size_t i=0; i<_verts_d.Size(); ++i) if (_verts_d[i]!=NULL) delete _verts_d[i]; // it is only necessary to delete nodes in _verts_d array
+	for (size_t i=0; i<_elems.  Size(); ++i) if (_elems  [i]!=NULL) delete _elems  [i];
+}
+
 // Methods -- Structured
 
-inline void Structured::Generate(Array<Block> const & Blocks)
+inline size_t Structured::Generate(Array<Block> const & Blocks)
 {
 	// Generate vertices and elements (with duplicates)
 	for (size_t b=0; b<Blocks.Size(); ++b)
@@ -173,40 +206,53 @@ inline void Structured::Generate(Array<Block> const & Blocks)
 
 					// New vertex
 					Vertex * v = new Vertex;
-					v->MyID = _verts.Size();
-					v->C    = Blocks[b].C() * _s;
+					v->MyID  = _verts_d.Size();    // id
+					v->C     = Blocks[b].C() * _s; // new x-y-z coordinates
+					v->Dupl  = false;              // is this a duplicated node?
 					if (_is_3d) v->OnBry = (i==0 || j==0 || k==0 || i==Blocks[b].nDivX() || j==Blocks[b].nDivY() || k==Blocks[b].nDivZ());
 					else        v->OnBry = (i==0 || j==0 ||         i==Blocks[b].nDivX() || j==Blocks[b].nDivY());
-					_verts.Push(v);
+					_verts_d.Push(v);
+					if (v->OnBry) _vbry_d.Push(v); // on boundary?
 
 					// New element
 					if (i!=0 && j!=0 && (_is_3d ? k!=0 : true))
 					{
 						Elem * e = new Elem;
-						e->MyID = _elems.Size();
+						e->MyID = _elems.Size(); // id
 						if (_is_3d)
 						{
-							e->C.Resize(8);
-							e->C[0] = _verts[v->MyID - 1 - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->C[1] = _verts[v->MyID     - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->C[2] = _verts[v->MyID                             - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->C[3] = _verts[v->MyID - 1                         - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->C[4] = _verts[v->MyID - 1 - (Blocks[b].nDivX()+1)];
-							e->C[5] = _verts[v->MyID -     (Blocks[b].nDivX()+1)];
-							e->C[6] = _verts[v->MyID];
-							e->C[7] = _verts[v->MyID - 1];
-							e->OnBry = (e->C[0]->OnBry || e->C[1]->OnBry || e->C[2]->OnBry || e->C[3]->OnBry || e->C[4]->OnBry || e->C[5]->OnBry || e->C[6]->OnBry || e->C[7]->OnBry);
+							e->V.Resize(8);
+							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->V[1] = _verts_d[v->MyID     - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->V[2] = _verts_d[v->MyID                             - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->V[3] = _verts_d[v->MyID - 1                         - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->V[4] = _verts_d[v->MyID - 1 - (Blocks[b].nDivX()+1)];
+							e->V[5] = _verts_d[v->MyID -     (Blocks[b].nDivX()+1)];
+							e->V[6] = _verts_d[v->MyID];
+							e->V[7] = _verts_d[v->MyID - 1];
+							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry || e->V[4]->OnBry || e->V[5]->OnBry || e->V[6]->OnBry || e->V[7]->OnBry); // if any node is on Bry, yes
+							for (size_t m=0; m<8; ++m)
+							{
+								Share s = {e,m}; // The node shares information will have this element and the local node index
+								e->V[m]->Shares.Push(s);
+							}
 						}
 						else
 						{
-							e->C.Resize(4);
-							e->C[0] = _verts[v->MyID - 1 - (Blocks[b].nDivX()+1)];
-							e->C[1] = _verts[v->MyID     - (Blocks[b].nDivX()+1)];
-							e->C[2] = _verts[v->MyID];
-							e->C[3] = _verts[v->MyID - 1];
-							e->OnBry = (e->C[0]->OnBry || e->C[1]->OnBry || e->C[2]->OnBry || e->C[3]->OnBry);
+							e->V.Resize(4);
+							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b].nDivX()+1)];
+							e->V[1] = _verts_d[v->MyID     - (Blocks[b].nDivX()+1)];
+							e->V[2] = _verts_d[v->MyID];
+							e->V[3] = _verts_d[v->MyID - 1];
+							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry); // if any node is on Bry, yes
+							for (size_t m=0; m<4; ++m)
+							{
+								Share s = {e,m};
+								e->V[m]->Shares.Push(s);
+							}
 						}
 						_elems.Push(e);
+						if (e->OnBry) _ebry.Push(e);
 					}
 					// Next r
 					r += (2.0/Blocks[b].SumWeightX()) * Blocks[b].W(0,i);
@@ -220,13 +266,53 @@ inline void Structured::Generate(Array<Block> const & Blocks)
 	}
 
 	// Remove duplicates
-	for (size_t i=0; i<_verts.Size(); ++i)
+	long ncomp = 0; // number of comparisons
+	long ndupl = 0; // number of duplicates
+	for (size_t i=0; i<_vbry_d.Size(); ++i)
 	{
+		for (size_t j=i+1; j<_vbry_d.Size(); ++j)
+		{
+			// check distance
+			double dist = sqrt(          pow(_vbry_d[i]->C(0)-_vbry_d[j]->C(0),2.0)+
+										 pow(_vbry_d[i]->C(1)-_vbry_d[j]->C(1),2.0)+
+							   (_is_3d ? pow(_vbry_d[i]->C(2)-_vbry_d[j]->C(2),2.0) : 0.0));
+			if (dist<_tol)
+			{
+				/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
+				// If this node is duplicated, than it is not on-boundary any longer
+				_vbry_d[i]->OnBry = false;
+				*/
+				// Mark duplicated
+				_vbry_d[j]->Dupl = true;
+				// Chage elements' connectivities
+				for (size_t k=0; k<_vbry_d[j]->Shares.Size(); ++k)
+				{
+					Elem * e = _vbry_d[j]->Shares[k].E;
+					int    n = _vbry_d[j]->Shares[k].N;
+					e->V[n] = _vbry_d[i];
+				}
+				ndupl++;
+			}
+			ncomp++;
+		}
 	}
 
-	if (!_is_3d)
+	// Set new array with non-duplicated vertices
+	size_t k = 0;
+	_verts.Resize(_verts_d.Size()-ndupl);
+	for (size_t i=0; i<_verts_d.Size(); ++i)
 	{
+		if (_verts_d[i]->Dupl==false)
+		{
+			_verts[k]       = _verts_d[i]; // copy pointer
+			_verts[k]->MyID = k;           // new ID
+			k++;
+		}
 	}
+
+	std::cout << "number of comparisons = " << ncomp << ", number of duplicates = " << ndupl << std::endl;
+
+	return _verts.Size();
 }
 
 inline void Structured::WriteVTU(char const * FileName) const
@@ -242,7 +328,7 @@ inline void Structured::WriteVTU(char const * FileName) const
 	// Constants
 	size_t          nimax = 40;        // number of integers in a line
 	size_t          nfmax = 12;        // number of floats in a line
-	Util::NumStream nsflo = Util::_6_3; // number format for floats
+	Util::NumStream nsflo = Util::_8s; // number format for floats
 
 	// Header
 	oss << "<?xml version=\"1.0\"?>\n";
@@ -313,6 +399,24 @@ inline void Structured::WriteVTU(char const * FileName) const
 		VTU_NEWLINE (i,k,nn,nfmax,oss);
 	}
 	oss << "        </DataArray>\n";
+
+	/* TODO:
+	 * remove this, because, after the removal of duplicates,
+	 * the shares information is not valid any longer
+	 * I kept this here because it may be useful for debugging purposes
+	 * (before the removal of duplicates)*/
+	/*
+	oss << "        <DataArray type=\"Float32\" Name=\"" << "shares" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<nn; ++i)
+	{
+		oss << (k==0?"  ":" ") << _verts[i]->Shares.Size();
+		k++;
+		VTU_NEWLINE (i,k,nn,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	*/
+
 	oss << "      </PointData>\n";
 
 	// Data -- elements
@@ -422,21 +526,21 @@ inline void Structured::_vtk_con(Elem const * E, String & Connect) const
 {
 	if (_is_3d)
 	{
-		Connect.Printf("%d %d %d %d %d %d %d %d",E->C[1]->MyID,
-		                                         E->C[2]->MyID,
-		                                         E->C[3]->MyID,
-		                                         E->C[0]->MyID,
-		                                         E->C[5]->MyID,
-		                                         E->C[6]->MyID,
-		                                         E->C[7]->MyID,
-		                                         E->C[4]->MyID);
+		Connect.Printf("%d %d %d %d %d %d %d %d",E->V[1]->MyID,
+		                                         E->V[2]->MyID,
+		                                         E->V[3]->MyID,
+		                                         E->V[0]->MyID,
+		                                         E->V[5]->MyID,
+		                                         E->V[6]->MyID,
+		                                         E->V[7]->MyID,
+		                                         E->V[4]->MyID);
 	}
 	else
 	{
-		Connect.Printf("%d %d %d %d",E->C[0]->MyID,
-		                             E->C[1]->MyID,
-		                             E->C[2]->MyID,
-		                             E->C[3]->MyID);
+		Connect.Printf("%d %d %d %d",E->V[0]->MyID,
+		                             E->V[1]->MyID,
+		                             E->V[2]->MyID,
+		                             E->V[3]->MyID);
 	}
 }
 
