@@ -1,4 +1,3 @@
-
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raúl D. D. Farfan             *
@@ -53,8 +52,9 @@ struct Vertex
 
 struct Elem
 {
-	long       MyID; ///< ID
-	Array<int> C;    ///< Connectivity
+	long           MyID;  ///< ID
+	bool           OnBry; ///< On boundary?
+	Array<Vertex*> C;     ///< Connectivity
 };
 
 class Block
@@ -119,14 +119,14 @@ public:
 private:
 	// Data
 	bool           _is_3d;  ///< Is 3D mesh?
-	Array<Vertex>  _verts;  ///< Vertices
-	Array<Elem>    _elems;  ///< Elements
+	Array<Vertex*> _verts;  ///< Vertices
+	Array<Elem*>   _elems;  ///< Elements
 	Vector<double> _s;      ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
 
 	// Private methods
 	void _shape_2d (double r, double s);
 	void _shape_3d (double r, double s, double t);
-	void _vtk_con  (Elem const & E, String & Connect) const;
+	void _vtk_con  (Elem const * E, String & Connect) const;
 
 }; // class Structured
 
@@ -155,6 +155,7 @@ inline void Block::Set(Matrix<double> const & C, Matrix<double> const & W, int n
 
 inline void Structured::Generate(Array<Block> const & Blocks)
 {
+	// Generate vertices and elements (with duplicates)
 	for (size_t b=0; b<Blocks.Size(); ++b)
 	{
 		double t = -1.0; // initial Z natural coordinate
@@ -171,41 +172,42 @@ inline void Structured::Generate(Array<Block> const & Blocks)
 					else        _shape_2d (r,s);
 
 					// New vertex
-					Vertex v;
-					v.MyID = _verts.Size();
-					v.C    = Blocks[b].C() * _s;
-					if (_is_3d) v.OnBry = (i==0 || j==0 || k==0 || i==Blocks[b].nDivX() || j==Blocks[b].nDivY() || k==Blocks[b].nDivZ());
-					else        v.OnBry = (i==0 || j==0 ||         i==Blocks[b].nDivX() || j==Blocks[b].nDivY());
+					Vertex * v = new Vertex;
+					v->MyID = _verts.Size();
+					v->C    = Blocks[b].C() * _s;
+					if (_is_3d) v->OnBry = (i==0 || j==0 || k==0 || i==Blocks[b].nDivX() || j==Blocks[b].nDivY() || k==Blocks[b].nDivZ());
+					else        v->OnBry = (i==0 || j==0 ||         i==Blocks[b].nDivX() || j==Blocks[b].nDivY());
 					_verts.Push(v);
 
 					// New element
 					if (i!=0 && j!=0 && (_is_3d ? k!=0 : true))
 					{
-						Elem e;
-						e.MyID = _elems.Size();
+						Elem * e = new Elem;
+						e->MyID = _elems.Size();
 						if (_is_3d)
 						{
-							e.C.Resize(8);
-							e.C[0] = v.MyID - 1 - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1);
-							e.C[1] = v.MyID     - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1);
-							e.C[2] = v.MyID                             - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1);
-							e.C[3] = v.MyID - 1                         - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1);
-							e.C[4] = v.MyID - 1 - (Blocks[b].nDivX()+1);
-							e.C[5] = v.MyID -     (Blocks[b].nDivX()+1);
-							e.C[6] = v.MyID;
-							e.C[7] = v.MyID - 1;
+							e->C.Resize(8);
+							e->C[0] = _verts[v->MyID - 1 - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->C[1] = _verts[v->MyID     - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->C[2] = _verts[v->MyID                             - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->C[3] = _verts[v->MyID - 1                         - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
+							e->C[4] = _verts[v->MyID - 1 - (Blocks[b].nDivX()+1)];
+							e->C[5] = _verts[v->MyID -     (Blocks[b].nDivX()+1)];
+							e->C[6] = _verts[v->MyID];
+							e->C[7] = _verts[v->MyID - 1];
+							e->OnBry = (e->C[0]->OnBry || e->C[1]->OnBry || e->C[2]->OnBry || e->C[3]->OnBry || e->C[4]->OnBry || e->C[5]->OnBry || e->C[6]->OnBry || e->C[7]->OnBry);
 						}
 						else
 						{
-							e.C.Resize(4);
-							e.C[0] = v.MyID - 1 - (Blocks[b].nDivX()+1);
-							e.C[1] = v.MyID     - (Blocks[b].nDivX()+1);
-							e.C[2] = v.MyID;
-							e.C[3] = v.MyID - 1;
+							e->C.Resize(4);
+							e->C[0] = _verts[v->MyID - 1 - (Blocks[b].nDivX()+1)];
+							e->C[1] = _verts[v->MyID     - (Blocks[b].nDivX()+1)];
+							e->C[2] = _verts[v->MyID];
+							e->C[3] = _verts[v->MyID - 1];
+							e->OnBry = (e->C[0]->OnBry || e->C[1]->OnBry || e->C[2]->OnBry || e->C[3]->OnBry);
 						}
 						_elems.Push(e);
 					}
-
 					// Next r
 					r += (2.0/Blocks[b].SumWeightX()) * Blocks[b].W(0,i);
 				}
@@ -215,6 +217,15 @@ inline void Structured::Generate(Array<Block> const & Blocks)
 			// Next t
 			t += (_is_3d ? (2.0/Blocks[b].SumWeightZ()) * Blocks[b].W(2,k) : 0.0);
 		}
+	}
+
+	// Remove duplicates
+	for (size_t i=0; i<_verts.Size(); ++i)
+	{
+	}
+
+	if (!_is_3d)
+	{
 	}
 }
 
@@ -245,9 +256,9 @@ inline void Structured::WriteVTU(char const * FileName) const
 	size_t k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << "  " << nsflo <<         _verts[i].C(0) << " ";
-		oss <<         nsflo <<         _verts[i].C(1) << " ";
-		oss <<         nsflo << (_is_3d?_verts[i].C(2):0.0);
+		oss << "  " << nsflo <<         _verts[i]->C(0) << " ";
+		oss <<         nsflo <<         _verts[i]->C(1) << " ";
+		oss <<         nsflo << (_is_3d?_verts[i]->C(2):0.0);
 		k++;
 		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
 	}
@@ -297,12 +308,25 @@ inline void Structured::WriteVTU(char const * FileName) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << (k==0?"  ":" ") << _verts[i].OnBry;
+		oss << (k==0?"  ":" ") << _verts[i]->OnBry;
 		k++;
 		VTU_NEWLINE (i,k,nn,nfmax,oss);
 	}
 	oss << "        </DataArray>\n";
 	oss << "      </PointData>\n";
+
+	// Data -- elements
+	oss << "      <CellData Scalars=\"TheScalars\">\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"" << "onbry" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		oss << (k==0?"  ":" ") << _elems[i]->OnBry;
+		k++;
+		VTU_NEWLINE (i,k,ne,nfmax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "      </CellData>\n";
 
 	// Bottom
 	oss << "    </Piece>\n";
@@ -394,25 +418,25 @@ inline void Structured::_shape_3d(double r, double s, double t)
 	_s(19) = 0.25 *(1.0-r)  *(1.0+s)  *(1.0-t*t);
 }
 
-inline void Structured::_vtk_con(Elem const & E, String & Connect) const
+inline void Structured::_vtk_con(Elem const * E, String & Connect) const
 {
 	if (_is_3d)
 	{
-		Connect.Printf("%d %d %d %d %d %d %d %d",E.C[1],
-		                                         E.C[2],
-		                                         E.C[3],
-		                                         E.C[0],
-		                                         E.C[5],
-		                                         E.C[6],
-		                                         E.C[7],
-		                                         E.C[4]);
+		Connect.Printf("%d %d %d %d %d %d %d %d",E->C[1]->MyID,
+		                                         E->C[2]->MyID,
+		                                         E->C[3]->MyID,
+		                                         E->C[0]->MyID,
+		                                         E->C[5]->MyID,
+		                                         E->C[6]->MyID,
+		                                         E->C[7]->MyID,
+		                                         E->C[4]->MyID);
 	}
 	else
 	{
-		Connect.Printf("%d %d %d %d",E.C[0],
-		                             E.C[1],
-		                             E.C[2],
-		                             E.C[3]);
+		Connect.Printf("%d %d %d %d",E->C[0]->MyID,
+		                             E->C[1]->MyID,
+		                             E->C[2]->MyID,
+		                             E->C[3]->MyID);
 	}
 }
 
