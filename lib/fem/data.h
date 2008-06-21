@@ -30,7 +30,10 @@
 #include "util/numstreams.h"
 #include "util/exception.h"
 
-#define VTU_NEWLINE(I,K,N,KMAX,OF) if (K>KMAX) { OF<<(I<N-1?"\n        ":"\n"); K=0; } else if (I==N-1) { OF<<"\n"; }
+#ifndef VTU_NEWLINE_DEFINED
+  #define VTU_NEWLINE_DEFINED
+  #define VTU_NEWLINE(I,K,N,KMAX,OF) if (K>KMAX) { OF<<(I<N-1?"\n        ":"\n"); K=0; } else if (I==N-1) { OF<<"\n"; }
+#endif
 
 namespace FEM
 {
