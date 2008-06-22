@@ -26,12 +26,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python.hpp> // this includes everything
 
-// MechSys -- util
-#include "util/array.h"
-
-// MechSys -- linalg
-#include "linalg/matrix.h"
-
 // MechSys -- mesh
 #include "mesh/structured.h"
 
@@ -148,20 +142,17 @@ BOOST_PYTHON_MODULE (mechsys)
 {
 	// Global classes
 
-	// --------------------------------------------------------------------------- Util
-	
-	class_<PyArrayD>("array_d", init<list&>())
-	    ;
-
-	// ------------------------------------------------------------------------- LinAlg
-	
-	class_<PyMatrix>("matrix", init<list&>())
-	    ;
-
 	// --------------------------------------------------------------------------- Mesh
 
 	class_<PyMeshBlock>("mesh_block")
-	    .def("set", &PyMeshBlock::Set)
+	    .def("set", PMBSet1)
+	    .def("set", PMBSet2)
+	    ;
+
+	class_<PyMeshStruct>("mesh_struct")
+	    .def(init<double>())
+	    .def("generate",  &PyMeshStruct::Generate)
+	    .def("write_vtu", &PyMeshStruct::WriteVTU)
 	    ;
 
 	// ---------------------------------------------------------------------------- FEM

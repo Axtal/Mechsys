@@ -55,8 +55,8 @@ int main(int argc, char **argv) try
 		Array<double> wy(ndivy);  wy = 1.0;
 
 		// Blocks
-		Array<Mesh::Block> blocks;  blocks.Resize(1);
-		blocks[0].Set (c, wx, wy);
+		Mesh::Block b;  b.Set (&c, &wx, &wy);
+		Array<Mesh::Block*> blocks;  blocks.Push(&b);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
@@ -96,12 +96,12 @@ int main(int argc, char **argv) try
 		Array<double> wz(ndivz);  wz = 1.0;
 
 		// Blocks
-		Array<Mesh::Block> blocks;  blocks.Resize(1);
-		blocks[0].Set (c, wx, wy, wz);
+		Mesh::Block b;  b.Set (&c, &wx, &wy, &wz);
+		Array<Mesh::Block*> blocks;  blocks.Push(&b);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
-		Mesh::Structured m(/*Is3D*/true);
+		Mesh::Structured m;
 		size_t ne = m.Generate (blocks);
 		std::clock_t total = std::clock() - start; // Time elapsed
 		std::cout << "3D:("<<ne<<" elements) Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;

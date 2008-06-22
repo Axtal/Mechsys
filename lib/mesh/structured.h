@@ -78,9 +78,11 @@ struct Elem
 class Block
 {
 public:
+	// Constructor
+	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0) {}
+
 	// Methods
-	void Set (Matrix<double> const & C, Array<double> const & Wx, Array<double> const & Wy);                           ///< C=coordinates, W=weights
-	void Set (Matrix<double> const & C, Array<double> const & Wx, Array<double> const & Wy, Array<double> const & Wz); ///< C=coordinates, W=weights
+	void Set (Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz=NULL); ///< C=coordinates, W=weights
 	/* 
 	 * 2D: 8 nodes => C. Resize(2, 8)
 	 *                Wx.Resize(nDivX)
@@ -101,49 +103,51 @@ public:
 	 */
 
 	// Access methods
+	bool   Is3D       ()         const { return _is_3d;        }
 	int    nDivX      ()         const { return _n_div_x;      }
 	int    nDivY      ()         const { return _n_div_y;      }
 	int    nDivZ      ()         const { return _n_div_z;      }
 	double SumWeightX ()         const { return _sum_weight_x; }
 	double SumWeightY ()         const { return _sum_weight_y; }
 	double SumWeightZ ()         const { return _sum_weight_z; }
-	double Wx         (int iDiv) const { return _wx[iDiv];     }
-	double Wy         (int iDiv) const { return _wy[iDiv];     }
-	double Wz         (int iDiv) const { return _wz[iDiv];     }
+	double Wx         (int iDiv) const { return (*_wx)[iDiv];  }
+	double Wy         (int iDiv) const { return (*_wy)[iDiv];  }
+	double Wz         (int iDiv) const { return (*_wz)[iDiv];  }
 
 	// Access the coordinates of all 8 or 20 nodes
-	Matrix<double> const & C() const { return _c; }
+	Matrix<double> const & C() const { return (*_c); }
 
 private:
-	Matrix<double> _c;            ///< X, Y, and Z coordinates of all 8 or 20 nodes of this block
-	Array <double> _wx;           ///< X weights
-	Array <double> _wy;           ///< Y weights
-	Array <double> _wz;           ///< Z weights
-	int            _n_div_x;      ///< number of divisions along X
-	int            _n_div_y;      ///< number of divisions along Y
-	int            _n_div_z;      ///< number of divisions along Z
-	double         _sum_weight_x; ///< sum of weights along X
-	double         _sum_weight_y; ///< sum of weights along Y
-	double         _sum_weight_z; ///< sum of weights along Z
+	Matrix<double> * _c;            ///< X, Y, and Z coordinates of all 8 or 20 nodes of this block
+	Array <double> * _wx;           ///< X weights
+	Array <double> * _wy;           ///< Y weights
+	Array <double> * _wz;           ///< Z weights
+	int              _n_div_x;      ///< number of divisions along X
+	int              _n_div_y;      ///< number of divisions along Y
+	int              _n_div_z;      ///< number of divisions along Z
+	double           _sum_weight_x; ///< sum of weights along X
+	double           _sum_weight_y; ///< sum of weights along Y
+	double           _sum_weight_z; ///< sum of weights along Z
+	bool             _is_3d;        ///< Is 3D block?
 }; // class Block
 
 class Structured
 {
 public:
 	// Constructor
-	Structured (bool Is3D=false, double Tol=10.*DBL_EPSILON) : _is_3d(Is3D), _tol(Tol) { _s.Resize((Is3D?20:8)); }
+	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol) {}
 
 	// Destructor
 	~Structured ();
 
 	// Methods
-	size_t Generate (Array<Block> const & Blocks); ///< Returns the number of elements
+	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements
 	void   WriteVTU (char const * FileName) const;
 
 private:
 	// Data
-	bool           _is_3d;   ///< Is 3D mesh?
 	double         _tol;     ///< Tolerance to remove duplicate nodes
+	bool           _is_3d;   ///< Is 3D mesh?
 	Array<Vertex*> _verts_d; ///< Vertices (with duplicates)
 	Array<Vertex*> _vbry_d;  ///< Vertices on boundary (with duplicates)
 	Array<Vertex*> _verts;   ///< Vertices
@@ -164,43 +168,34 @@ private:
 
 // Methods -- Block
 
-inline void Block::Set(Matrix<double> const & C, Array<double> const & Wx, Array<double> const & Wy)
+inline void Block::Set(Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz)
 {
-	_c            = C;
+	// Coordinates
+	_c     = C;
+	_is_3d = (C->Rows()>2 ? true : false);
+
+	// 2D data
 	_wx           = Wx;
 	_wy           = Wy;
-	_n_div_x      = _wx.Size();
-	_n_div_y      = _wy.Size();
+	_n_div_x      = _wx->Size();
+	_n_div_y      = _wy->Size();
 	_sum_weight_x = 0.0;
 	_sum_weight_y = 0.0;
-	for (int i=0; i<_n_div_x; ++i) _sum_weight_x += _wx[i];
-	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += _wy[i];
-	_wx.Push(0.0);
-	_wy.Push(0.0);
+	for (int i=0; i<_n_div_x; ++i) _sum_weight_x += (*_wx)[i];
+	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += (*_wy)[i];
+	_wx->Push(0.0); // extra value just to allow looping over weights
+	_wy->Push(0.0);
 
-	std::cout << C  << std::endl;
-	std::cout << Wx << std::endl;
-	std::cout << Wy << std::endl;
-}
-
-inline void Block::Set(Matrix<double> const & C, Array<double> const & Wx, Array<double> const & Wy, Array<double> const & Wz)
-{
-	_c            = C;
-	_wx           = Wx;
-	_wy           = Wy;
-	_wz           = Wz;
-	_n_div_x      = _wx.Size();
-	_n_div_y      = _wy.Size();
-	_n_div_z      = _wz.Size();
-	_sum_weight_x = 0.0;
-	_sum_weight_y = 0.0;
-	_sum_weight_z = 0.0;
-	for (int i=0; i<_n_div_x; ++i) _sum_weight_x += _wx[i];
-	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += _wy[i];
-	for (int i=0; i<_n_div_z; ++i) _sum_weight_z += _wz[i];
-	_wx.Push(0.0);
-	_wy.Push(0.0);
-	_wz.Push(0.0);
+	// 3D data
+	if (_is_3d)
+	{
+		if (Wz==NULL) throw new Fatal("Block::Set: For 3D blocks, Wz must be given (not NULL)");
+		_wz           = Wz;
+		_n_div_z      = _wz->Size();
+		_sum_weight_z = 0.0;
+		for (int i=0; i<_n_div_z; ++i) _sum_weight_z += (*_wz)[i];
+		_wz->Push(0.0);
+	}
 }
 
 // Destructor -- Structured
@@ -213,19 +208,30 @@ inline Structured::~Structured()
 
 // Methods -- Structured
 
-inline size_t Structured::Generate(Array<Block> const & Blocks)
+inline size_t Structured::Generate(Array<Block*> const & Blocks)
 {
+	// Check
+	if (Blocks.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",Blocks.Size());
+
+	// Check if the first block is 3D
+	_is_3d = Blocks[0]->Is3D();
+	_s.Resize((_is_3d ? 20 : 8)); // resize the shape values vector
+
 	// Generate vertices and elements (with duplicates)
 	for (size_t b=0; b<Blocks.Size(); ++b)
 	{
+		// Check if all blocks have the same space dimension
+		if (Blocks[b]->Is3D()!=_is_3d) throw new Fatal("Structured::Generate: All blocks must have the same space dimension");
+		
+		// Generate
 		double t = -1.0; // initial Z natural coordinate
-		for (int k=0; k<(_is_3d ? Blocks[b].nDivZ()+1 : 1); ++k)
+		for (int k=0; k<(_is_3d ? Blocks[b]->nDivZ()+1 : 1); ++k)
 		{
 			double s = -1.0; // initial Y natural coordinate
-			for (int j=0; j<Blocks[b].nDivY()+1; ++j)
+			for (int j=0; j<Blocks[b]->nDivY()+1; ++j)
 			{
 				double r = -1.0; // initial X natural coordinate
-				for (int i=0; i<Blocks[b].nDivX()+1; ++i)
+				for (int i=0; i<Blocks[b]->nDivX()+1; ++i)
 				{
 					// Compute shape (interpolation) functions
 					if (_is_3d) _shape_3d (r,s,t);
@@ -233,11 +239,11 @@ inline size_t Structured::Generate(Array<Block> const & Blocks)
 
 					// New vertex
 					Vertex * v = new Vertex;
-					v->MyID  = _verts_d.Size();    // id
-					v->C     = Blocks[b].C() * _s; // new x-y-z coordinates
-					v->Dupl  = false;              // is this a duplicated node?
-					if (_is_3d) v->OnBry = (i==0 || j==0 || k==0 || i==Blocks[b].nDivX() || j==Blocks[b].nDivY() || k==Blocks[b].nDivZ());
-					else        v->OnBry = (i==0 || j==0 ||         i==Blocks[b].nDivX() || j==Blocks[b].nDivY());
+					v->MyID  = _verts_d.Size();     // id
+					v->C     = Blocks[b]->C() * _s; // new x-y-z coordinates
+					v->Dupl  = false;               // is this a duplicated node?
+					if (_is_3d) v->OnBry = (i==0 || j==0 || k==0 || i==Blocks[b]->nDivX() || j==Blocks[b]->nDivY() || k==Blocks[b]->nDivZ());
+					else        v->OnBry = (i==0 || j==0 ||         i==Blocks[b]->nDivX() || j==Blocks[b]->nDivY());
 					_verts_d.Push(v);
 					if (v->OnBry) _vbry_d.Push(v); // on boundary?
 
@@ -249,12 +255,12 @@ inline size_t Structured::Generate(Array<Block> const & Blocks)
 						if (_is_3d)
 						{
 							e->V.Resize(8);
-							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->V[1] = _verts_d[v->MyID     - (Blocks[b].nDivX()+1) - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->V[2] = _verts_d[v->MyID                             - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->V[3] = _verts_d[v->MyID - 1                         - (Blocks[b].nDivX()+1)*(Blocks[b].nDivY()+1)];
-							e->V[4] = _verts_d[v->MyID - 1 - (Blocks[b].nDivX()+1)];
-							e->V[5] = _verts_d[v->MyID -     (Blocks[b].nDivX()+1)];
+							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
+							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
+							e->V[2] = _verts_d[v->MyID                              - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
+							e->V[3] = _verts_d[v->MyID - 1                          - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
+							e->V[4] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1)];
+							e->V[5] = _verts_d[v->MyID -     (Blocks[b]->nDivX()+1)];
 							e->V[6] = _verts_d[v->MyID];
 							e->V[7] = _verts_d[v->MyID - 1];
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry || e->V[4]->OnBry || e->V[5]->OnBry || e->V[6]->OnBry || e->V[7]->OnBry); // if any node is on Bry, yes
@@ -267,8 +273,8 @@ inline size_t Structured::Generate(Array<Block> const & Blocks)
 						else
 						{
 							e->V.Resize(4);
-							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b].nDivX()+1)];
-							e->V[1] = _verts_d[v->MyID     - (Blocks[b].nDivX()+1)];
+							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1)];
+							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1)];
 							e->V[2] = _verts_d[v->MyID];
 							e->V[3] = _verts_d[v->MyID - 1];
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry); // if any node is on Bry, yes
@@ -282,13 +288,13 @@ inline size_t Structured::Generate(Array<Block> const & Blocks)
 						if (e->OnBry) _ebry.Push(e);
 					}
 					// Next r
-					r += (2.0/Blocks[b].SumWeightX()) * Blocks[b].Wx(i);
+					r += (2.0/Blocks[b]->SumWeightX()) * Blocks[b]->Wx(i);
 				}
 				// Next s
-				s += (2.0/Blocks[b].SumWeightY()) * Blocks[b].Wy(j);
+				s += (2.0/Blocks[b]->SumWeightY()) * Blocks[b]->Wy(j);
 			}
 			// Next t
-			t += (_is_3d ? (2.0/Blocks[b].SumWeightZ()) * Blocks[b].Wz(k) : 0.0);
+			t += (_is_3d ? (2.0/Blocks[b]->SumWeightZ()) * Blocks[b]->Wz(k) : 0.0);
 		}
 	}
 
@@ -339,7 +345,7 @@ inline size_t Structured::Generate(Array<Block> const & Blocks)
 
 	std::cout << "number of comparisons = " << ncomp << ", number of duplicates = " << ndupl << std::endl;
 
-	return _verts.Size();
+	return _elems.Size();
 }
 
 inline void Structured::WriteVTU(char const * FileName) const
@@ -582,35 +588,95 @@ namespace boopy = boost::python;
 class PyMeshBlock
 {
 public:
-	void Set (PyMatrix const & C, PyArrayD const & Wx, PyArrayD const & Wy)
+	void Set (boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)
 	{
-		_block.Set (C.GetMatrix(), Wx.GetArray(), Wy.GetArray());
+		// Read C
+		int nrow = boopy::len(C); if (nrow<1) throw new Fatal("PyMeshBlock: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
+		int ncol = boopy::len(C[0]);
+		_c.Resize (nrow,ncol);
+		for (int i=0; i<nrow; ++i)
+		{
+			boopy::list row = boopy::extract<boopy::list>(C[i])();
+			if (boopy::len(row)!=ncol) throw new Fatal("PyMeshBlock: All rows of C matrix must have the same number of columns (%d is invalid)",boopy::len(row));
+			for (int j=0; j<ncol; ++j) _c(i,j) = boopy::extract<double>(row[j])();
+		}
+
+		// Read Wx
+		int sz_wx = boopy::len(Wx); if (sz_wx<1) throw new Fatal("PyMeshBlock: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
+		_wx.Resize (sz_wx);
+		for (int i=0; i<sz_wx; ++i) _wx[i] = boopy::extract<double>(Wx[i])();
+
+		// Read Wy
+		int sz_wy = boopy::len(Wy); if (sz_wy<1) throw new Fatal("PyMeshBlock: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
+		_wy.Resize (sz_wy);
+		for (int i=0; i<sz_wy; ++i) _wy[i] = boopy::extract<double>(Wy[i])();
+
+		// Set _block
+		_block.Set (&_c, &_wx, &_wy);
 	}
+	void Set (boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz)
+	{
+		// Read C
+		int nrow = boopy::len(C); if (nrow<1) throw new Fatal("PyMeshBlock: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
+		int ncol = boopy::len(C[0]);
+		_c.Resize (nrow,ncol);
+		for (int i=0; i<nrow; ++i)
+		{
+			boopy::list row = boopy::extract<boopy::list>(C[i])();
+			if (boopy::len(row)!=ncol) throw new Fatal("PyMeshBlock: All rows of C matrix must have the same number of columns (%d is invalid)",boopy::len(row));
+			for (int j=0; j<ncol; ++j) _c(i,j) = boopy::extract<double>(row[j])();
+		}
+
+		// Read Wx
+		int sz_wx = boopy::len(Wx); if (sz_wx<1) throw new Fatal("PyMeshBlock: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
+		_wx.Resize (sz_wx);
+		for (int i=0; i<sz_wx; ++i) _wx[i] = boopy::extract<double>(Wx[i])();
+
+		// Read Wy
+		int sz_wy = boopy::len(Wy); if (sz_wy<1) throw new Fatal("PyMeshBlock: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
+		_wy.Resize (sz_wy);
+		for (int i=0; i<sz_wy; ++i) _wy[i] = boopy::extract<double>(Wy[i])();
+
+		// Read Wz
+		int sz_wz = boopy::len(Wz); if (sz_wz<1) throw new Fatal("PyMeshBlock: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
+		_wz.Resize (sz_wz);
+		for (int i=0; i<sz_wz; ++i) _wz[i] = boopy::extract<double>(Wz[i])();
+
+		// Set _block
+		_block.Set (&_c, &_wx, &_wy, &_wz);
+	}
+	Mesh::Block * GetBlock () { return &_block; }
 private:
-	Mesh::Block _block;
+	LinAlg::Matrix<double> _c;
+	Array<double>          _wx;
+	Array<double>          _wy;
+	Array<double>          _wz;
+	Mesh::Block            _block;
 }; // class PyMeshBlock
+
+void (PyMeshBlock::*PMBSet1)(boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)                         = &PyMeshBlock::Set;
+void (PyMeshBlock::*PMBSet2)(boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz) = &PyMeshBlock::Set;
 
 class PyMeshStruct
 {
 public:
-	PyMeshStruct (boopy::list & L)
+	PyMeshStruct ()           : _ms(sqrt(DBL_EPSILON)) {}
+	PyMeshStruct (double Tol) : _ms(Tol)               {}
+	size_t Generate (boopy::list & ListOfPyMeshBlock)
 	{
-		//int nrow = boopy::len(L); if (nrow<1) throw new Fatal("PyMatrix: Number of rows of a matrix must be greater than 0 (%d is invalid)",nrow);
-		//int ncol = boopy::len(L[0]); // TODO: check here if L[0] exists. If not, Python throws an TypeError: object of type 'int' has no len()
-		//_matrix.Resize(nrow,ncol);
-		//_matrix.SetNS(Util::_6_3);
-		//for (int i=0; i<nrow; ++i)
-		//{
-			//boopy::list row = boopy::extract<boopy::list>(L[i])();
-			//if (len(row)!=ncol) throw new Fatal("PyMatrix: All rows must have the same number of columns");
-			//for (int j=0; j<ncol; ++j)
-				//_matrix(i,j) = boopy::extract<double>(row[j])();
-		//}
-		//std::cout << nrow << " " << ncol << std::endl;
-		//std::cout << _matrix << std::endl;
+		int nb = boopy::len(ListOfPyMeshBlock); if (nb<1) throw new Fatal("PyMeshStruct: Number of blocks must be greater than 0 (%d is invalid)",nb);
+		Array<Mesh::Block*> blocks;
+		blocks.Resize (nb);
+		for (int i=0; i<nb; ++i)
+		{
+			PyMeshBlock * blk = boopy::extract<PyMeshBlock*>(ListOfPyMeshBlock[i])();
+			blocks[i] = blk->GetBlock();
+		}
+		return _ms.Generate (blocks);
 	}
+	void WriteVTU (boopy::str FileName) { _ms.WriteVTU(boopy::extract<char const *>(FileName)()); }
 private:
-	Mesh::Structured _mesh;
+	Mesh::Structured _ms;
 }; // class PyMeshStruct
 
 #endif

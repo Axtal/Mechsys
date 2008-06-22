@@ -222,29 +222,4 @@ std::ostream & operator<< (std::ostream & os, const Array<Value_T> & V)
 	return os;
 }
 
-
-#ifdef USE_BOOST_PYTHON
-
-namespace boopy = boost::python;
-
-class PyArrayD
-{
-public:
-	PyArrayD (boopy::list & L)
-	{
-		int size = boopy::len(L); if (size<1) throw new Fatal("PyArrayD: Number of elements must be greater than 0 (%d is invalid)",size);
-		_array.Resize(size);
-		for (int i=0; i<size; ++i)
-			_array[i] = boopy::extract<double>(L[i])();
-		std::cout << size << std::endl;
-		std::cout << _array << std::endl;
-	}
-	Array<double> const & GetArray() const { return _array; }
-private:
-	Array<double> _array;
-}; // class PyArray
-
-#endif
-
-
 #endif // MECHSYS_ARRAY_H
