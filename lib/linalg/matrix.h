@@ -438,4 +438,34 @@ std::ostream & operator<< (std::ostream & os, const Matrix<Value_T> & M)
 
 }; // namespace LinAlg
 
+
+#ifdef USE_BOOST_PYTHON
+
+namespace boopy = boost::python;
+
+class PyMatrix
+{
+public:
+	PyMatrix (boopy::list & L)
+	{
+		int nrow = len(L); if (nrow<1) throw new Fatal("PyMatrix: Number of rows of a matrix must be greater than 0 (%d is invalid)",nrow);
+		int ncol = len(L[0]); // TODO: check here if L[0] exists. If not, Python throws an TypeError: object of type 'int' has no len()
+		_matrix.Resize(nrow,ncol);
+		_matrix.SetNS(Util::_6_3);
+		for (int i=0; i<nrow; ++i)
+		{
+			boopy::list row = boopy::extract<boopy::list>(L[i])();
+			if (len(row)!=ncol) throw new Fatal("PyMatrix: All rows must have the same number of columns");
+			for (int j=0; j<ncol; ++j)
+				_matrix(i,j) = boopy::extract<double>(row[j])();
+		}
+		std::cout << nrow << " " << ncol << std::endl;
+		std::cout << _matrix << std::endl;
+	}
+private:
+	LinAlg::Matrix<double> _matrix;
+}; // class PyMatrix
+
+#endif
+
 #endif // MECHSYS_LINALG_MATRIX_H
