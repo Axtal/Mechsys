@@ -3,6 +3,7 @@ import Blender
 import bpy
 import math
 import msys_dict
+import mechsys as ms
 
 def add_point(xyz):
     scn = bpy.data.scenes.active
@@ -296,3 +297,23 @@ def read_2d_mesh(filename):
     Blender.Window.RedrawAll()
     Blender.Window.WaitCursor(0)
 
+def gen_struct_mesh():
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    edm = Blender.Window.EditMode()
+    bks = []
+    for obj in obs:
+        if obj!=None and obj.type=='Mesh':
+            if edm: Blender.Window.EditMode(0)
+            msh = obj.getData(mesh=1)
+            if len(msh.verts)==8: # 2D
+                c = [[],[]] # coordinates
+                for v in msh.verts:
+                    c[0].append(v.co[0])
+                    c[1].append(v.co[1])
+                print c
+                #b = ms.mesh_block()
+                #b.set ()
+                #bks.append(ms.mesh_block())
+            else: Blender.Draw.PupMenu('ERROR%t|Each block must have 8 nodes exactly')
+    if edm: Blender.Window.EditMode(1)

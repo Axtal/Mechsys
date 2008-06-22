@@ -25,7 +25,8 @@ EVT_FPOINT   = 2 # read points from file
 EVT_FSPLINE  = 3 # create a spline from points in a file
 EVT_FILLET   = 4 # 3D fillet
 EVT_BREAK    = 5 # break edge
-EVT_READ_2DM = 6 # read 2D mesh from Triangle
+EVT_READ_TRI = 6 # read 2D mesh from Triangle
+EVT_GEN_STRU = 7 # generate structured mesh using MechSys module
 
 # Handle input events
 def event(evt, val):
@@ -52,7 +53,8 @@ def button_event(evt):
     elif evt==EVT_FSPLINE:  Blender.Window.FileSelector(dr.add_spline_from_file, "Read X Y Z cols")
     elif evt==EVT_FILLET:   dr.fillet(dict['fillet_radius'],dict['fillet_steps'])
     elif evt==EVT_BREAK:    dr.break_edge()
-    elif evt==EVT_READ_2DM: Blender.Window.FileSelector(dr.read_2d_mesh, "Read 2D mesh")
+    elif evt==EVT_READ_TRI: Blender.Window.FileSelector(dr.read_2d_mesh, "Read 2D mesh")
+    elif evt==EVT_GEN_STRU: dr.gen_struct_mesh()
 
 def fillet_radius_callback(evt,val):
     dict = di.load_dict()
@@ -81,13 +83,14 @@ def gui():
     Blender.BGL.glClear      (Blender.BGL.GL_COLOR_BUFFER_BIT)
 
     # Buttons
-    Draw.PushButton("Point(s) x y z" , EVT_VPOINT   ,   0 , row , 100 , rh , "Type in values to define point(s)")
-    Draw.PushButton("Point(s) [file]", EVT_FPOINT   , 100 , row , 100 , rh , "Read point list from file")          ; row=row+rh
-    Draw.PushButton("Spline [file]"  , EVT_FSPLINE  ,   0 , row , 100 , rh , "Add a spline with points from file") ; row=row+rh
-    Draw.PushButton("Fillet edge"    , EVT_FILLET   ,   0 , row , 100 , rh , "Fillet two edges")                   ;
-    Draw.Number    ("Radius"         , 1000         , 100 , row , 100 , rh , d['fillet_radius'],0.0,1.0e+9,"Set radius for fillet operation",fillet_radius_callback)
-    Draw.Number    ("Steps"          , 1000         , 200 , row , 100 , rh , d['fillet_steps' ],1  ,100   ,"Set steps for fillet operation" ,fillet_steps_callback) ; row=row+rh
-    Draw.PushButton("Break edge"     , EVT_BREAK    ,   0 , row , 100 , rh , "Break an edge")                      ; row=row+rh
-    Draw.PushButton("Read 2D mesh"   , EVT_READ_2DM ,   0 , row , 100 , rh , "Read 2D mesh from Triangle")         ; row=row+rh
+    Draw.PushButton("Point(s) x y z"    , EVT_VPOINT   ,   0 , row , 100 , rh , "Type in values to define point(s)")
+    Draw.PushButton("Point(s) [file]"   , EVT_FPOINT   , 100 , row , 100 , rh , "Read point list from file")          ; row=row+rh
+    Draw.PushButton("Spline [file]"     , EVT_FSPLINE  ,   0 , row , 100 , rh , "Add a spline with points from file") ; row=row+rh
+    Draw.PushButton("Fillet edge"       , EVT_FILLET   ,   0 , row , 100 , rh , "Fillet two edges")                   ;
+    Draw.Number    ("Radius"            , 1000         , 100 , row , 100 , rh , d['fillet_radius'],0.0,1.0e+9,"Set radius for fillet operation",fillet_radius_callback)
+    Draw.Number    ("Steps"             , 1000         , 200 , row , 100 , rh , d['fillet_steps' ],1  ,100   ,"Set steps for fillet operation" ,fillet_steps_callback) ; row=row+rh
+    Draw.PushButton("Break edge"        , EVT_BREAK    ,   0 , row , 100 , rh , "Break an edge")                      ; row=row+rh
+    Draw.PushButton("Read from triangle", EVT_READ_TRI ,   0 , row , 120 , rh , "Read 2D mesh from Triangle")         ;
+    Draw.PushButton("Gen structured"    , EVT_GEN_STRU , 120 , row , 100 , rh , "Generated structured mesh")          ; row=row+rh
 
 Draw.Register (gui, event, button_event)
