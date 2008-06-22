@@ -448,8 +448,8 @@ class PyMatrix
 public:
 	PyMatrix (boopy::list & L)
 	{
-		int nrow = len(L); if (nrow<1) throw new Fatal("PyMatrix: Number of rows of a matrix must be greater than 0 (%d is invalid)",nrow);
-		int ncol = len(L[0]); // TODO: check here if L[0] exists. If not, Python throws an TypeError: object of type 'int' has no len()
+		int nrow = boopy::len(L); if (nrow<1) throw new Fatal("PyMatrix: Number of rows of a matrix must be greater than 0 (%d is invalid)",nrow);
+		int ncol = boopy::len(L[0]); // TODO: check here if L[0] exists. If not, Python throws an TypeError: object of type 'int' has no len()
 		_matrix.Resize(nrow,ncol);
 		_matrix.SetNS(Util::_6_3);
 		for (int i=0; i<nrow; ++i)
@@ -462,6 +462,7 @@ public:
 		std::cout << nrow << " " << ncol << std::endl;
 		std::cout << _matrix << std::endl;
 	}
+	LinAlg::Matrix<double> const & GetMatrix() const { return _matrix; }
 private:
 	LinAlg::Matrix<double> _matrix;
 }; // class PyMatrix

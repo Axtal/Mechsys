@@ -34,7 +34,7 @@
 #      /_\       /_\       /_\
 #      ///       o o       o o
 #
-import msysfem as m
+import mechsys as m
 
 # 0) Geometry type
 m.dim(2) # 2D

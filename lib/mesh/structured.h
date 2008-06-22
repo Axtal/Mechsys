@@ -177,6 +177,10 @@ inline void Block::Set(Matrix<double> const & C, Array<double> const & Wx, Array
 	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += _wy[i];
 	_wx.Push(0.0);
 	_wy.Push(0.0);
+
+	std::cout << C  << std::endl;
+	std::cout << Wx << std::endl;
+	std::cout << Wy << std::endl;
 }
 
 inline void Block::Set(Matrix<double> const & C, Array<double> const & Wx, Array<double> const & Wy, Array<double> const & Wz)
@@ -569,5 +573,47 @@ inline void Structured::_vtk_con(Elem const * E, String & Connect) const
 
 
 }; // namespace Mesh
+
+
+#ifdef USE_BOOST_PYTHON
+
+namespace boopy = boost::python;
+
+class PyMeshBlock
+{
+public:
+	void Set (PyMatrix const & C, PyArrayD const & Wx, PyArrayD const & Wy)
+	{
+		_block.Set (C.GetMatrix(), Wx.GetArray(), Wy.GetArray());
+	}
+private:
+	Mesh::Block _block;
+}; // class PyMeshBlock
+
+class PyMeshStruct
+{
+public:
+	PyMeshStruct (boopy::list & L)
+	{
+		//int nrow = boopy::len(L); if (nrow<1) throw new Fatal("PyMatrix: Number of rows of a matrix must be greater than 0 (%d is invalid)",nrow);
+		//int ncol = boopy::len(L[0]); // TODO: check here if L[0] exists. If not, Python throws an TypeError: object of type 'int' has no len()
+		//_matrix.Resize(nrow,ncol);
+		//_matrix.SetNS(Util::_6_3);
+		//for (int i=0; i<nrow; ++i)
+		//{
+			//boopy::list row = boopy::extract<boopy::list>(L[i])();
+			//if (len(row)!=ncol) throw new Fatal("PyMatrix: All rows must have the same number of columns");
+			//for (int j=0; j<ncol; ++j)
+				//_matrix(i,j) = boopy::extract<double>(row[j])();
+		//}
+		//std::cout << nrow << " " << ncol << std::endl;
+		//std::cout << _matrix << std::endl;
+	}
+private:
+	Mesh::Structured _mesh;
+}; // class PyMeshStruct
+
+#endif
+
 
 #endif // MECHSYS_MESH_STRUCTURED_H
