@@ -22,6 +22,7 @@
 
 // MechSys
 #include "mesh/structured.h"
+#include "util/array.h"
 #include "util/util.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -31,9 +32,6 @@ using std::cout;
 using std::endl;
 using LinAlg::Matrix;
 using Util::PI;
-
-inline int Max2(int A, int B)        { return (A>B ? A       : B      ); }
-inline int Max3(int A, int B, int C) { return (A>B ? A>C?A:C : B>C?B:C); }
 
 int main(int argc, char **argv) try
 {
@@ -80,9 +78,8 @@ int main(int argc, char **argv) try
 		// Lower block -- weights
 		int ndivx0 = 20;
 		int ndivy0 = 30;
-		Matrix<double> w0(2,Max2(ndivx0,ndivy0)+1);
-		for (int i=0; i<ndivx0; ++i) w0(0,i) = 1.0;
-		for (int i=0; i<ndivy0; ++i) w0(1,i) = 1.0;
+		Array<double> wx0(ndivx0);  wx0 = 1.0;
+		Array<double> wy0(ndivy0);  wy0 = 1.0;
 
 		// Upper block -- coordinates
 		Matrix<double> c1(2,8);
@@ -94,14 +91,13 @@ int main(int argc, char **argv) try
 		// Upper block -- weights
 		int ndivx1 = ndivx0;
 		int ndivy1 = 40;
-		Matrix<double> w1(2,Max2(ndivx1,ndivy1)+1);
-		for (int i=0; i<ndivx1; ++i) w1(0,i) = 1.0;
-		for (int i=0; i<ndivy1; ++i) w1(1,i) = 1.0;
+		Array<double> wx1(ndivx1);  wx1 = 1.0;
+		Array<double> wy1(ndivy1);  wy1 = 1.0;
 
 		// Blocks
 		Array<Mesh::Block> blocks;  blocks.Resize(2);
-		blocks[0].Set (c0, w0, ndivx0, ndivy0);
-		blocks[1].Set (c1, w1, ndivx1, ndivy1);
+		blocks[0].Set (c0, wx0, wy0);
+		blocks[1].Set (c1, wx1, wy1);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time

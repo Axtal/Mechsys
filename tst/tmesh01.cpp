@@ -22,6 +22,7 @@
 
 // MechSys
 #include "mesh/structured.h"
+#include "util/array.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
 #include "linalg/matrix.h"
@@ -29,9 +30,6 @@
 using std::cout;
 using std::endl;
 using LinAlg::Matrix;
-
-inline int Max2(int A, int B)        { return (A>B ? A       : B      ); }
-inline int Max3(int A, int B, int C) { return (A>B ? A>C?A:C : B>C?B:C); }
 
 int main(int argc, char **argv) try
 {
@@ -53,13 +51,12 @@ int main(int argc, char **argv) try
 			0., 0., H,  H,    0., hH,  H, hH;
 
 		// Weights
-		Matrix<double> w(2,Max2(ndivx,ndivy)+1);
-		for (size_t i=0; i<ndivx; ++i) w(0,i) = 1.0;
-		for (size_t i=0; i<ndivy; ++i) w(1,i) = 1.0;
+		Array<double> wx(ndivx);  wx = 1.0;
+		Array<double> wy(ndivy);  wy = 1.0;
 
 		// Blocks
 		Array<Mesh::Block> blocks;  blocks.Resize(1);
-		blocks[0].Set (c, w, ndivx, ndivy);
+		blocks[0].Set (c, wx, wy);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
@@ -94,14 +91,13 @@ int main(int argc, char **argv) try
 		    0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD;
 
 		// Weights
-		Matrix<double> w(3,Max3(ndivx,ndivy,ndivz)+1);
-		for (size_t i=0; i<ndivx; ++i) w(0,i) = 1.0;
-		for (size_t i=0; i<ndivy; ++i) w(1,i) = 1.0;
-		for (size_t i=0; i<ndivz; ++i) w(2,i) = 1.0;
+		Array<double> wx(ndivx);  wx = 1.0;
+		Array<double> wy(ndivy);  wy = 1.0;
+		Array<double> wz(ndivz);  wz = 1.0;
 
 		// Blocks
 		Array<Mesh::Block> blocks;  blocks.Resize(1);
-		blocks[0].Set (c, w, ndivx, ndivy, ndivz);
+		blocks[0].Set (c, wx, wy, wz);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
