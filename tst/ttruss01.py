@@ -36,10 +36,10 @@
 #             ##        A=1       ___  
 #    
 
-import mechsys as m
+import msysfem as m
 
 # 0) Geometry type
-m.geometry_type(2) # 2D
+m.dim(2) # 2D
 
 # 1) Nodes
 m.add_node( 0.0,  0.0) # 0
@@ -47,9 +47,9 @@ m.add_node(10.0,  0.0) # 1
 m.add_node(10.0, 10.0) # 2
 
 # 2) Elements
-m.add_elem("ElasticRod", 1) # 0
-m.add_elem("ElasticRod", 1) # 1
-m.add_elem("ElasticRod", 1) # 2
+m.add_elem("Rod", 1) # 0
+m.add_elem("Rod", 1) # 1
+m.add_elem("Rod", 1) # 2
 
 # 3) Set connectivity
 m.elems(0).set_node(0, 0).set_node(1, 1)
@@ -57,15 +57,15 @@ m.elems(1).set_node(0, 1).set_node(1, 2)
 m.elems(2).set_node(0, 0).set_node(1, 2)
 
 # 4) Boundary conditions (must be after set connectivity)
-m.nodes(0).bry("ux", 0.0).bry("uy", -0.5).bry("uz", 0.0) # Essential
-m.nodes(1).               bry("uy",  0.4).bry("uz", 0.0) # Essential
-m.nodes(2)                               .bry("uz", 0.0) # Essential
-m.nodes(2).bry("fx", 2.0).bry("fy",  1.0)                # Natural
+m.nodes(0).bry("ux", 0.0).bry("uy", -0.5) # Essential
+m.nodes(1).               bry("uy",  0.4) # Essential
+m.nodes(2)                                # Essential
+m.nodes(2).bry("fx", 2.0).bry("fy",  1.0) # Natural
 
 # 5) Parameters and initial values
-m.elems(0).set_model("", "E=100.0", "N=0.0  A=1.0")
-m.elems(1).set_model("", "E= 50.0", "N=0.0  A=1.0")
-m.elems(2).set_model("", "E=200.0", "N=0.0  A=1.414213562373095")
+m.elems(0).set_model("LinElastic", "E=100.0  A=1.0              ", "Sx=0.0")
+m.elems(1).set_model("LinElastic", "E= 50.0  A=1.0              ", "Sx=0.0")
+m.elems(2).set_model("LinElastic", "E=200.0  A=1.414213562373095", "Sx=0.0")
 
 # 6) Solve
 sol = m.solver('AutoME')
@@ -77,22 +77,16 @@ errors = 0.0
 
 errors += abs(m.nodes(0).val('ux') - ( 0.0))
 errors += abs(m.nodes(0).val('uy') - (-0.5))
-errors += abs(m.nodes(0).val('uz') - ( 0.0))
 errors += abs(m.nodes(1).val('ux') - ( 0.0))
 errors += abs(m.nodes(1).val('uy') - ( 0.4))
-errors += abs(m.nodes(1).val('uz') - ( 0.0))
 errors += abs(m.nodes(2).val('ux') - (-0.5))
 errors += abs(m.nodes(2).val('uy') - ( 0.2))
-errors += abs(m.nodes(2).val('uz') - ( 0.0))
 
 errors += abs(m.nodes(0).val('fx') - (-2.0))
 errors += abs(m.nodes(0).val('fy') - (-2.0))
-errors += abs(m.nodes(0).val('fz') - ( 0.0))
 errors += abs(m.nodes(1).val('fx') - ( 0.0))
 errors += abs(m.nodes(1).val('fy') - ( 1.0))
-errors += abs(m.nodes(1).val('fz') - ( 0.0))
 errors += abs(m.nodes(2).val('fx') - ( 2.0))
 errors += abs(m.nodes(2).val('fy') - ( 1.0))
-errors += abs(m.nodes(2).val('fz') - ( 0.0))
 
 print 'Errors = ', errors

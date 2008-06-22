@@ -133,7 +133,7 @@ void print_models ()
 
 //////////////////////////////////////////////////////////////////////////////////////////// Define Module
 
-BOOST_PYTHON_MODULE (mechsys)
+BOOST_PYTHON_MODULE (msysfem)
 {
 	// Global classes
 
