@@ -26,6 +26,8 @@ if dict['display_props']:
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
             msh = obj.getData(mesh=1)
+            ori = msh.verts[:]
+            msh.transform(obj.matrix)
             for v in msh.verts:
                 BGL.glColor4f     (1.0,0.5,0.0,1.0)
                 BGL.glRasterPos3f (v.co[0],v.co[1],v.co[2])
@@ -38,19 +40,19 @@ if dict['display_props']:
             if len(obj.getAllProperties())>0:
                 pro = di.get_all_props(obj)
                 if pro['edge_x'].data>=0 and pro['edge_y'].data>=0:
-                    xyz = obj.getLocation()
                     ex  = msh.edges[pro['edge_x'].data]
                     ey  = msh.edges[pro['edge_y'].data]
                     BGL.glColor3f  (1.0, 0.0, 0.0)
                     BGL.glBegin    (BGL.GL_LINES)
-                    BGL.glVertex3f (xyz[0]+ex.v1.co[0], xyz[1]+ex.v1.co[1], xyz[2]+ex.v1.co[2])
-                    BGL.glVertex3f (xyz[0]+ex.v2.co[0], xyz[1]+ex.v2.co[1], xyz[2]+ex.v2.co[2])
+                    BGL.glVertex3f (ex.v1.co[0], ex.v1.co[1], ex.v1.co[2])
+                    BGL.glVertex3f (ex.v2.co[0], ex.v2.co[1], ex.v2.co[2])
                     BGL.glEnd      ()
                     BGL.glColor3f  (0.1, 1.0, 0.1)
                     BGL.glBegin    (BGL.GL_LINES)
-                    BGL.glVertex3f (xyz[0]+ey.v1.co[0], xyz[1]+ey.v1.co[1], xyz[2]+ey.v1.co[2])
-                    BGL.glVertex3f (xyz[0]+ey.v2.co[0], xyz[1]+ey.v2.co[1], xyz[2]+ey.v2.co[2])
+                    BGL.glVertex3f (ey.v1.co[0], ey.v1.co[1], ey.v1.co[2])
+                    BGL.glVertex3f (ey.v2.co[0], ey.v2.co[1], ey.v2.co[2])
                     BGL.glEnd      ()
+            msh.verts = ori
 
     # Restore
     BGL.glPopMatrix ()

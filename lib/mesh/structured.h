@@ -135,7 +135,7 @@ class Structured
 {
 public:
 	// Constructor
-	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol) {}
+	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol), _is_3d(false) {}
 
 	// Destructor
 	~Structured ();
@@ -143,6 +143,11 @@ public:
 	// Methods
 	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements
 	void   WriteVTU (char const * FileName) const;
+
+	// Access methods
+	bool                   Is3D  () const { return _is_3d; }
+	Array<Vertex*> const & Verts () const { return _verts; }
+	Array<Elem*>   const & Elems () const { return _elems; }
 
 private:
 	// Data
@@ -675,6 +680,29 @@ public:
 		return _ms.Generate (blocks);
 	}
 	void WriteVTU (boopy::str FileName) { _ms.WriteVTU(boopy::extract<char const *>(FileName)()); }
+	void GetVerts (boopy::list & V)
+	{
+		if (_ms.Is3D())
+		{
+			for (size_t i=0; i<_ms.Verts().Size(); ++i)
+				V.append (boopy::make_tuple(_ms.Verts()[i]->C(0), _ms.Verts()[i]->C(1), _ms.Verts()[i]->C(2)));
+		}
+		else
+		{
+			for (size_t i=0; i<_ms.Verts().Size(); ++i)
+				V.append (boopy::make_tuple(_ms.Verts()[i]->C(0), _ms.Verts()[i]->C(1), 0.0));
+		}
+	}
+	void GetElems (boopy::list & E)
+	{
+		for (size_t i=0; i<_ms.Elems().Size(); ++i)
+		{
+			boopy::list conn;
+			for (size_t j=0; j<_ms.Elems()[i]->V.Size(); ++j)
+				conn.append (_ms.Elems()[i]->V[j]->MyID);
+			E.append (conn);
+		}
+	}
 private:
 	Mesh::Structured _ms;
 }; // class PyMeshStruct

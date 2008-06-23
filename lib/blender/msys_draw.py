@@ -394,8 +394,11 @@ def gen_struct_mesh():
                     eds, ids = sort_edges_and_verts (msh,[e.index for e in msh.edges if e.index!=ex_idx],r_idx)
                     if len(ids)!=7 or ids[len(ids)-1]!=origin: Blender.Draw.PupMenu('ERROR| There is a problem with the connections in block %s' % obj.name)
                     ids = [origin, ids[0], ids[2], ids[4], r_idx, ids[1], ids[3], ids[5]]
+                    ori = msh.verts[:]
+                    msh.transform(obj.matrix)
                     cox = [msh.verts[iv].co[0] for iv in ids]
                     coy = [msh.verts[iv].co[1] for iv in ids]
+                    msh.verts = ori
                     wx, wy = gen_xy_weights()
                     bks.append(ms.mesh_block())
                     bks[len(bks)-1].set ([cox,coy], wx, wy)
@@ -405,11 +408,22 @@ def gen_struct_mesh():
             elif len(msh.faces)==24: #3D - o2
                 print '3D - o2 => not yet'
             else: Blender.Draw.PupMenu('ERROR|Each block must have 0 (4,8 edges) faces => 2D or 6,24 faces => 3D')
-    if edm: Blender.Window.EditMode(1)
     if len(bks)>0:
         Blender.Window.WaitCursor(1)
         mms = ms.mesh_struct()
         ne  = mms.generate (bks)
-        mms.write_vtu ('temp.vtu')
         print '[1;34mMechSysCAD[0m: %d elements generated' % ne
+        vs  = []
+        es  = []
+        mms.get_verts(vs)
+        mms.get_elems(es)
+        bfile   = Blender.sys.expandpath(Blender.Get('filename'))
+        key     = Blender.sys.basename(Blender.sys.splitext(bfile)[0])
+        new_msh = bpy.data.meshes.new(key+'_structured')
+        new_obj = scn.objects.new(new_msh, key+'_structured')
+        for vert in vs: new_msh.verts.extend(vert[0], vert[1], vert[2])
+        for conn in es: new_msh.faces.extend(conn)
+        new_obj.select(1)
+        Blender.Window.QRedrawAll()
         Blender.Window.WaitCursor(0)
+    if edm: Blender.Window.EditMode(1)

@@ -153,6 +153,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def(init<double>())
 	    .def("generate",  &PyMeshStruct::Generate)
 	    .def("write_vtu", &PyMeshStruct::WriteVTU)
+	    .def("get_verts", &PyMeshStruct::GetVerts)
+	    .def("get_elems", &PyMeshStruct::GetElems)
 	    ;
 
 	// ---------------------------------------------------------------------------- FEM
