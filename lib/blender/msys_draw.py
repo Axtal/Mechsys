@@ -2,8 +2,8 @@
 import Blender
 import bpy
 import math
-import msys_dict
 import mechsys as ms
+import msys_dict as di
 
 def add_point(xyz):
     scn = bpy.data.scenes.active
@@ -20,7 +20,7 @@ def add_point(xyz):
         obj.select(1)
         Blender.Window.RedrawAll()
     else:
-        Blender.Draw.PupMenu('ERROR%t|Select a Mesh object before calling this function')
+        Blender.Draw.PupMenu('ERROR|Select a Mesh object before calling this function')
 
 def add_points_from_file(filename):
     Blender.Window.WaitCursor(1)
@@ -113,7 +113,7 @@ def fillet(radius,steps):
             # intersection
             i1, i2 = Blender.Mathutils.LineIntersect(v1.co,v2.co,v3.co,v4.co)
             # fillet
-            if i1!=i2: Blender.Draw.PupMenu('ERROR%t|These two edges do not intersect')
+            if i1!=i2: Blender.Draw.PupMenu('ERROR|These two edges do not intersect (obj=%s)' % obj.name)
             else:
                 #
                 #                   ep  _,--* p2
@@ -161,9 +161,9 @@ def fillet(radius,steps):
                     msh.edges.extend(msh.verts[len(msh.verts)-1],p2)
                     msh.verts.delete(p1)
                 Blender.Window.RedrawAll()
-        else: Blender.Draw.PupMenu('ERROR%t|Please, select (only) two edges')
+        else: Blender.Draw.PupMenu('ERROR|Please, select (only) two edges (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
-    else: Blender.Draw.PupMenu('ERROR%t|Please, select a Mesh object before calling this function')
+    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
 
 def break_edge():
     scn = bpy.data.scenes.active
@@ -184,9 +184,9 @@ def break_edge():
                 msh.verts.extend(v2.co)
                 msh.edges[msh.edges.selected()[0]].v2 = new
                 msh.edges.extend(new,msh.verts[len(msh.verts)-1])
-        else: Blender.Draw.PupMenu('ERROR%t|Please, select only one edge')
+        else: Blender.Draw.PupMenu('ERROR|Please, select only one edge (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
-    else: Blender.Draw.PupMenu('ERROR%t|Please, select a Mesh object before calling this function')
+    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
 
 def read_2d_mesh(filename):
     Blender.Window.WaitCursor(1)
@@ -297,6 +297,85 @@ def read_2d_mesh(filename):
     Blender.Window.RedrawAll()
     Blender.Window.WaitCursor(0)
 
+#  2+       r_idx    = 0        # start right vertex index
+#   |\      edge_ids = [0,1,2]  # indexes of all edges to search for r_idx
+#  0| \1    v1_ids   = [1,0,0]  # v1 vertex indexes
+#   |  \    v2_ids   = [2,2,1]  # v2 vertex indexes
+#  1+---+0  eds      = [1,0,2]  # result: edge indexes
+#     2     ids      = [2,1,0]  # result: vertex indexes
+def sort_edges_and_verts(msh, edge_ids, r_idx):
+    # loop over all connected edges
+    eds = []
+    ids = []
+    while len(edge_ids)>0:
+        v1_ids = [msh.edges[ie].v1.index for ie in edge_ids] # ie => index of an edge
+        v2_ids = [msh.edges[ie].v2.index for ie in edge_ids]
+        if r_idx in v1_ids:
+            idx   = v1_ids.index(r_idx)
+            r_idx = v2_ids[idx]
+            eds.append   (edge_ids[idx])
+            ids.append   (r_idx)
+            edge_ids.pop (idx)
+        elif r_idx in v2_ids:
+            idx   = v2_ids.index(r_idx)
+            r_idx = v1_ids[idx]
+            eds.append   (edge_ids[idx])
+            ids.append   (r_idx)
+            edge_ids.pop (idx)
+        else: break
+    return eds, ids
+
+def set_local_system(str_edge_xyz):
+    scn = bpy.data.scenes.active
+    obj = scn.objects.active
+    if obj!=None and obj.type=='Mesh':
+        edm = Blender.Window.EditMode()
+        if edm: Blender.Window.EditMode(0)
+        msh = obj.getData(mesh=1)
+        if len(msh.edges.selected())==1:
+            pro = di.get_all_props(obj)
+            pro[str_edge_xyz].setData(msh.edges[msh.edges.selected()[0]].index)
+            Blender.Window.QRedrawAll()
+        else: Blender.Draw.PupMenu('ERROR|Please, select only one edge (obj=%s)' % obj.name)
+        if edm: Blender.Window.EditMode(1)
+    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
+
+# returns:
+#         origin vertex index = left (x=0)
+#         right vertex index (x>0)
+#         x-axis edge index
+def get_local_x_axis(props, msh):
+    if props['edge_x'].data>=0 and props['edge_y'].data>=0:
+        ex = msh.edges[props['edge_x'].data]
+        ey = msh.edges[props['edge_y'].data]
+        origin = -1
+        if ex.v1.index==ey.v1.index or ex.v1.index==ey.v2.index:
+            origin = ex.v1.index
+            right  = ex.v2.index
+        elif ex.v2.index==ey.v1.index or ex.v2.index==ey.v2.index:
+            origin = ex.v2.index
+            right  = ex.v1.index
+        else: Blender.Draw.PupMenu('ERROR|local x-y axes must share the origin vertex (obj=%s)' % obj.name)
+        return origin, right, ex.index
+
+def gen_xy_weights():
+    d  = di.load_dict()
+    wx = []
+    wy = []
+    for i in range(d['ndivx']): wx.append(1)
+    for i in range(d['ndivy']): wy.append(1)
+    return wx, wy
+
+def gen_xyz_weights():
+    d  = di.load_dict()
+    wx = []
+    wy = []
+    wz = []
+    for i in range(d['ndivx']): wx.append(1)
+    for i in range(d['ndivy']): wy.append(1)
+    for i in range(d['ndivz']): wz.append(1)
+    return wx, wy, wz
+
 def gen_struct_mesh():
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
@@ -305,15 +384,32 @@ def gen_struct_mesh():
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
             if edm: Blender.Window.EditMode(0)
+            if len(obj.getAllProperties())==0: Blender.Draw.PupMenu('ERROR|Please, assign all mesh properties to this object(%s) first' % obj.name)
             msh = obj.getData(mesh=1)
-            if len(msh.verts)==8: # 2D
-                c = [[],[]] # coordinates
-                for v in msh.verts:
-                    c[0].append(v.co[0])
-                    c[1].append(v.co[1])
-                print c
-                #b = ms.mesh_block()
-                #b.set ()
-                #bks.append(ms.mesh_block())
-            else: Blender.Draw.PupMenu('ERROR%t|Each block must have 8 nodes exactly')
+            if len(msh.faces)==0: #2D
+                if len(msh.edges)==4: #2D - linear
+                    print '2D - linear => not yet'
+                elif len(msh.edges)==8: #2D - o2
+                    origin, r_idx, ex_idx = get_local_x_axis (di.get_all_props(obj), msh)
+                    eds, ids = sort_edges_and_verts (msh,[e.index for e in msh.edges if e.index!=ex_idx],r_idx)
+                    if len(ids)!=7 or ids[len(ids)-1]!=origin: Blender.Draw.PupMenu('ERROR| There is a problem with the connections in block %s' % obj.name)
+                    ids = [origin, ids[0], ids[2], ids[4], r_idx, ids[1], ids[3], ids[5]]
+                    cox = [msh.verts[iv].co[0] for iv in ids]
+                    coy = [msh.verts[iv].co[1] for iv in ids]
+                    wx, wy = gen_xy_weights()
+                    bks.append(ms.mesh_block())
+                    bks[len(bks)-1].set ([cox,coy], wx, wy)
+                else: Blender.Draw.PupMenu('ERROR|2D blocks must have 0 faces and 4(lin) or 8(o2) edges')
+            elif len(msh.faces)==6: #3D - linear
+                print '3D - linear => not yet'
+            elif len(msh.faces)==24: #3D - o2
+                print '3D - o2 => not yet'
+            else: Blender.Draw.PupMenu('ERROR|Each block must have 0 (4,8 edges) faces => 2D or 6,24 faces => 3D')
     if edm: Blender.Window.EditMode(1)
+    if len(bks)>0:
+        Blender.Window.WaitCursor(1)
+        mms = ms.mesh_struct()
+        ne  = mms.generate (bks)
+        mms.write_vtu ('temp.vtu')
+        print '[1;34mMechSysCAD[0m: %d elements generated' % ne
+        Blender.Window.WaitCursor(0)
