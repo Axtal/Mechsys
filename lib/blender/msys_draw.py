@@ -458,7 +458,18 @@ def gen_struct_mesh():
                     msh.verts = ori
                     wx, wy = gen_xy_weights(obj)
                     bks.append(ms.mesh_block())
-                    bks[len(bks)-1].set ([cox,coy], wx, wy)
+                    bks[len(bks)-1].set([cox,coy], wx, wy)
+                    ep = di.get_e_bry_props(obj)
+                    if len(ep['e_bry_ids'].data)>0:
+                        e_bry = [0,0,0,0]
+                        ids = [int(i) for i in ep['e_bry_ids'].data.split()]
+                        mks = [int(i) for i in ep['e_bry_mks'].data.split()]
+                        for i, e in enumerate([ex_idx, eds[1], eds[3], eds[5]]): # loop over all global edges IDs
+                            try:
+                                idx = ids.index(e)
+                                e_bry[i] = mks[idx]
+                            except: pass
+                        bks[len(bks)-1].set_e_tags(e_bry)
                 else: Blender.Draw.PupMenu('ERROR|2D blocks must have 0 faces and 4(lin) or 8(o2) edges')
             elif len(msh.faces)==6: #3D - linear
                 print '3D - linear => not yet'
@@ -486,6 +497,24 @@ def gen_struct_mesh():
         new_msh.verts.extend (vs)
         new_msh.faces.extend (es)
         new_obj.select (1)
+        # properties (bry mrks)
+        ps = []
+        mms.get_props (ps)
+        global_edge_ids = ''
+        global_edge_mks = ''
+        for p in ps:
+            face_id         = p[0]
+            eds             = new_msh.faces[face_id].edge_keys
+            local_edge_ids  = [int(i) for i in p[1].split()]
+            local_edge_mks  = [int(i) for i in p[2].split()]
+            for i, ieloc in enumerate(local_edge_ids):
+                if local_edge_mks[i]!=0:
+                    ieglob = new_msh.findEdges(eds[ieloc][0], eds[ieloc][1])
+                    global_edge_ids = '%s %d' % (global_edge_ids, ieglob           )
+                    global_edge_mks = '%s %d' % (global_edge_mks, local_edge_mks[i])
+        new_obj.addProperty ('e_bry_ids', global_edge_ids, 'STRING')
+        new_obj.addProperty ('e_bry_mks', global_edge_mks, 'STRING')
+        # redraw
         Blender.Window.QRedrawAll()
         Blender.Window.WaitCursor(0)
     if edm: Blender.Window.EditMode(1)

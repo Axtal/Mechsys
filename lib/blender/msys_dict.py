@@ -39,7 +39,7 @@ def get_ndivs_props(obj):
             props[k] = obj.getProperty(k)
     return props
 
-# IDs and marks of vertices on boundary
+# Global IDs and marks of vertices on boundary
 def get_v_bry_props(obj):
     props = {}
     keys  = ['v_bry_ids','v_bry_mks']
@@ -50,7 +50,7 @@ def get_v_bry_props(obj):
             props[k] = obj.getProperty(k)
     return props
 
-# IDs and marks of edges on boundary
+# Global IDs and marks of edges on boundary
 def get_e_bry_props(obj):
     props = {}
     keys  = ['e_bry_ids','e_bry_mks']
@@ -61,7 +61,7 @@ def get_e_bry_props(obj):
             props[k] = obj.getProperty(k)
     return props
 
-# IDs and marks of faces on boundary
+# Global IDs and marks of faces on boundary
 def get_f_bry_props(obj):
     props = {}
     keys  = ['f_bry_ids','f_bry_mks']

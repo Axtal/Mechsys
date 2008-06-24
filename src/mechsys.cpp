@@ -145,8 +145,9 @@ BOOST_PYTHON_MODULE (mechsys)
 	// --------------------------------------------------------------------------- Mesh
 
 	class_<PyMeshBlock>("mesh_block")
-	    .def("set", PMBSet1)
-	    .def("set", PMBSet2)
+	    .def("set",        PMBSet1)
+	    .def("set",        PMBSet2)
+	    .def("set_e_tags", &PyMeshBlock::SetETags)
 	    ;
 
 	class_<PyMeshStruct>("mesh_struct")
@@ -155,6 +156,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("write_vtu", &PyMeshStruct::WriteVTU)
 	    .def("get_verts", &PyMeshStruct::GetVerts)
 	    .def("get_elems", &PyMeshStruct::GetElems)
+	    .def("get_props", &PyMeshStruct::GetProps)
 	    ;
 
 	// ---------------------------------------------------------------------------- FEM

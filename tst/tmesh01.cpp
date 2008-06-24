@@ -42,8 +42,8 @@ int main(int argc, char **argv) try
 		double H     = 1.0;   // height
 		double hL    = L/2.0; // half-length
 		double hH    = H/2.0; // half-height
-		size_t ndivx = 30;    // divisions along x
-		size_t ndivy = 40;    // divisions along y
+		size_t ndivx = 2;    // divisions along x
+		size_t ndivy = 2;    // divisions along y
 
 		// Coordinates
 		Matrix<double> c(2,8);
@@ -54,19 +54,35 @@ int main(int argc, char **argv) try
 		Array<double> wx(ndivx);  wx = 1.0;
 		Array<double> wy(ndivy);  wy = 1.0;
 
+		// Tags
+		Vector<int> e_tags(4);
+		e_tags = -10, -11, -12, -13;
+
 		// Blocks
-		Mesh::Block b;  b.Set (&c, &wx, &wy);
+		Mesh::Block b;
+		b.Set      (&c, &wx, &wy);
+		b.SetETags (&e_tags);
 		Array<Mesh::Block*> blocks;  blocks.Push(&b);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
-		Mesh::Structured m;
-		size_t ne = m.Generate (blocks);
+		Mesh::Structured ms;
+		size_t ne = ms.Generate (blocks);
 		std::clock_t total = std::clock() - start; // Time elapsed
 		std::cout << "2D("<<ne<<" elements): Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
+		// Check
+		cout << "Local edge IDs where each vertex is located:" << endl;
+		for (size_t i=0; i<ms.Verts().Size(); ++i) cout << ms.Verts()[i]->Edge << " ";  cout << endl;
+		cout << "ETags:" << endl;
+		for (size_t i=0; i<ms.ElemsBry().Size(); ++i)
+		{
+			ms.ElemsBry()[i]->ETags.SetNS(Util::_6_3);
+			cout << ms.ElemsBry()[i]->ETags;
+		}
+
 		// Output
-		m.WriteVTU ("tmesh01_2D.vtu");
+		ms.WriteVTU ("tmesh01_2D.vtu");
 		cout << "[1;34mFile <tmesh01_2D.vtu> created[0m" << endl << endl;
 	}
 
@@ -80,9 +96,9 @@ int main(int argc, char **argv) try
 		double hL    = L/2.0; // half-length
 		double hH    = H/2.0; // half-height
 		double hD    = D/2.0; // half-depth
-		size_t ndivx = 18;    // divisions along x
-		size_t ndivy = 18;    // divisions along y
-		size_t ndivz = 18;    // divisions along z
+		size_t ndivx = 2;     // divisions along x
+		size_t ndivy = 2;     // divisions along y
+		size_t ndivz = 2;     // divisions along z
 
 		// Coordinates
 		Matrix<double> c(3,20);
@@ -95,19 +111,35 @@ int main(int argc, char **argv) try
 		Array<double> wy(ndivy);  wy = 1.0;
 		Array<double> wz(ndivz);  wz = 1.0;
 
+		// Tags
+		Vector<int> e_tags(12);
+		e_tags = -100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111;
+
 		// Blocks
-		Mesh::Block b;  b.Set (&c, &wx, &wy, &wz);
+		Mesh::Block b;
+		b.Set      (&c, &wx, &wy, &wz);
+		b.SetETags (&e_tags);
 		Array<Mesh::Block*> blocks;  blocks.Push(&b);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
-		Mesh::Structured m;
-		size_t ne = m.Generate (blocks);
+		Mesh::Structured ms;
+		size_t ne = ms.Generate (blocks);
 		std::clock_t total = std::clock() - start; // Time elapsed
 		std::cout << "3D:("<<ne<<" elements) Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
+		// Check
+		cout << "Local edge IDs where each vertex is located:" << endl;
+		for (size_t i=0; i<ms.Verts().Size(); ++i) cout << ms.Verts()[i]->Edge << " ";  cout << endl;
+		cout << "ETags:" << endl;
+		for (size_t i=0; i<ms.ElemsBry().Size(); ++i)
+		{
+			ms.ElemsBry()[i]->ETags.SetNS(Util::_6_3);
+			cout << ms.ElemsBry()[i]->ETags;
+		}
+
 		// Output
-		m.WriteVTU ("tmesh01_3D.vtu");
+		ms.WriteVTU ("tmesh01_3D.vtu");
 		cout << "[1;34mFile <tmesh01_3D.vtu> created[0m" << endl;
 	}
 

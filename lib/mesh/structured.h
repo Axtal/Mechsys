@@ -19,6 +19,42 @@
 #ifndef MECHSYS_MESH_STRUCTURED_H
 #define MECHSYS_MESH_STRUCTURED_H
 
+/* LOCAL indexes of Vertices, Edges, and Faces
+
+  2D:
+                Vertices                               Edges
+   y
+   |        3      6      2                             y+
+   +--x      @-----@-----@                        +----(3)----+
+             |           |                        |           |
+             |           |                        |           |
+           7 @           @ 5                  x- (0)         (1) x+
+             |           |                        |           |
+             |           |                        |           |
+             @-----@-----@                        +----(2)----+
+            0      4      1                             y-
+
+  3D:
+                  Vertices                             Edges                              Faces
+    z
+    |           4        15        7
+   ,+--y         @_______@________@                 +_______(4)______+                 +________________+ 
+ x'            ,'|              ,'|               ,'|              ,'|               ,'|              ,'| 
+          12 @'  |         14 ,'  |             ,'  |            ,'  |             ,'  |  ___       ,'  | 
+           ,'    |16        ,@    |19         (6)  (8)         (7)   |           ,'    |,'5,'  [0],'    | 
+     5   ,'      @      6 ,'      @         ,'      |        ,'     (11)       ,'      |~~~     ,'      | 
+       @'=======@=======@'        |       +'==========(5)==+'        |       +'===============+'  ,'|   | 
+       |      13 |      |         |       |         |      |         |       |   ,'|   |      |   |3|   | 
+       |         |      |  11     |       |         |      |         |       |   |2|   |      |   |,'   | 
+    17 |       0 @______|_@_______@       |         +______|_(0)_____+       |   |,'   +______|_________+ 
+       @       ,'       @       ,' 3     (9)      ,'       |       ,'        |       ,'       |       ,'  
+       |   8 @'      18 |     ,'          |    (2)        (10)   ,'          |     ,' [1]  ___|     ,'    
+       |   ,'           |   ,@ 10         |   ,'           |   (3)           |   ,'      ,'4,'|   ,'      
+       | ,'             | ,'              | ,'             | ,'              | ,'        ~~~  | ,'        
+       @_______@________@'                +______(1)_______+'                +________________+'          
+     1         9         2
+*/
+
 // STL
 #include <iostream>
 #include <fstream>
@@ -61,8 +97,7 @@ struct Share
 struct Vertex
 {
 	long           MyID;   ///< ID
-	bool           OnBry;  ///< On boundary?
-	int            BryMrk; ///< Boundary mark
+	int            Edge;   ///< Local index of what edge this vertex is located on (from 0 to 12). -1 => Not on boundary
 	bool           Dupl;   ///< Is this a duplicated node?
 	Vector<double> C;      ///< X, Y, and Z coordinates
 	Array<Share>   Shares; ///< Shared elements
@@ -73,13 +108,15 @@ struct Elem
 	long           MyID;  ///< ID
 	bool           OnBry; ///< On boundary?
 	Array<Vertex*> V;     ///< Connectivity
+	Vector<int>    ETags; ///< Edge tags (size==nLocalEdges)
+	Vector<int>    FTags; ///< Face tags (size==nLocalFaces)
 };
 
 class Block
 {
 public:
 	// Constructor
-	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0) {}
+	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _e_tags(NULL), _f_tags(NULL) {}
 
 	// Methods
 	void Set (Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz=NULL); ///< C=coordinates, W=weights
@@ -101,6 +138,8 @@ public:
 	 *    C = |  y0 y1 y2 y3 y4 y5 y6 y7 ... y17 y18 y19  |
 	 *        |_ z0 z1 z2 z3 z4 z5 z6 z7 ... z17 z18 z19 _|
 	 */
+	void SetETags (Vector<int> * Tags) { _e_tags = Tags; } ///< Set edges tags: size == 2D:4, 3D:12
+	void SetFTags (Vector<int> * Tags) { _f_tags = Tags; } ///< Set faces tags: size == 2D:0, 3D: 6
 
 	// Access methods
 	bool   Is3D       ()         const { return _is_3d;        }
@@ -113,6 +152,23 @@ public:
 	double Wx         (int iDiv) const { return (*_wx)[iDiv];  }
 	double Wy         (int iDiv) const { return (*_wy)[iDiv];  }
 	double Wz         (int iDiv) const { return (*_wz)[iDiv];  }
+
+	/* Find in which edge a vertex will be located, for given the indexes
+	 * of the natural coordinates corresponding to each division.
+	 *
+	 * Ex.:  i=0 => r=-1    i=nDivX() => r=+1
+	 *       j=0 => s=-1    j=nDivY() => s=+1
+	 *       k=0 => t=-1    k=nDivZ() => t=+1
+	 */
+	int FindLocalEdgeID (int i, int j, int k) const;
+
+	/* Apply tags to Vertices, Edges, or Faces (LOCAL indexes)
+	 *
+	 * i, j, k, are indexes corresponding to the r, s, t natural coordinates just generated
+	 *
+	 */
+	void ETag (Elem const * E, Vector<int> & ETags) const;
+	void FTag (Elem const * E, Vector<int> & FTags) const;
 
 	// Access the coordinates of all 8 or 20 nodes
 	Matrix<double> const & C() const { return (*_c); }
@@ -129,6 +185,8 @@ private:
 	double           _sum_weight_y; ///< sum of weights along Y
 	double           _sum_weight_z; ///< sum of weights along Z
 	bool             _is_3d;        ///< Is 3D block?
+	Vector<int>    * _e_tags;       ///< Edges tags
+	Vector<int>    * _f_tags;       ///< Faces tags
 }; // class Block
 
 class Structured
@@ -141,24 +199,25 @@ public:
 	~Structured ();
 
 	// Methods
-	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements
+	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
 	void   WriteVTU (char const * FileName) const;
 
 	// Access methods
-	bool                   Is3D  () const { return _is_3d; }
-	Array<Vertex*> const & Verts () const { return _verts; }
-	Array<Elem*>   const & Elems () const { return _elems; }
+	bool                   Is3D     () const { return _is_3d;     }
+	Array<Vertex*> const & Verts    () const { return _verts;     }
+	Array<Elem*>   const & Elems    () const { return _elems;     }
+	Array<Elem*>   const & ElemsBry () const { return _elems_bry; } ///< Elements on boundary
 
 private:
 	// Data
-	double         _tol;     ///< Tolerance to remove duplicate nodes
-	bool           _is_3d;   ///< Is 3D mesh?
-	Array<Vertex*> _verts_d; ///< Vertices (with duplicates)
-	Array<Vertex*> _vbry_d;  ///< Vertices on boundary (with duplicates)
-	Array<Vertex*> _verts;   ///< Vertices
-	Array<Elem*>   _elems;   ///< Elements
-	Array<Elem*>   _ebry;    ///< Elements on boundary
-	Vector<double> _s;       ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
+	double         _tol;         ///< Tolerance to remove duplicate nodes
+	bool           _is_3d;       ///< Is 3D mesh?
+	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
+	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
+	Array<Vertex*> _verts;       ///< Vertices
+	Array<Elem*>   _elems;       ///< Elements
+	Array<Elem*>   _elems_bry;   ///< Elements on boundary
+	Vector<double> _s;           ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
 
 	// Private methods
 	void _shape_2d (double r, double s);
@@ -203,6 +262,65 @@ inline void Block::Set(Matrix<double> * C, Array<double> * Wx, Array<double> * W
 	}
 }
 
+inline int Block::FindLocalEdgeID(int i, int j, int k) const
+{
+	if (_is_3d)
+	{
+		if (k==0) // bottom
+		{
+			     if (i==0)        return 0; // behind
+			else if (i==_n_div_x) return 1; // front
+			else if (j==0)        return 2; // left
+			else if (j==_n_div_y) return 3; // right
+		}
+		else if (k==_n_div_z) // top
+		{
+			     if (i==0)        return 4; // behind
+			else if (i==_n_div_x) return 5; // front
+			else if (j==0)        return 6; // left
+			else if (j==_n_div_y) return 7; // right
+		}
+		else if (i==0        && j==0       ) return  8; // vertical: left-behind
+		else if (i==_n_div_x && j==0       ) return  9; // vertical: left-front
+		else if (i==_n_div_x && j==_n_div_y) return 10; // vertical: right-front
+		else if (i==0        && j==_n_div_y) return 11; // vertical: right-behind
+	}
+	else
+	{
+		     if (i==0)        return 0; // left
+		else if (i==_n_div_x) return 1; // right
+		else if (j==0)        return 2; // bottom
+		else if (j==_n_div_y) return 3; // top
+	}
+	return -1; // not on boundary
+}
+
+inline void Block::ETag(Elem const * E, Vector<int> & ETags) const
+{
+	// TODO: this may fail for nDivX=1, or nDivY=1, or nDivZ=1
+	if (_is_3d)
+	{
+		ETags.Resize(12);
+		if (_e_tags==NULL) { ETags = 0; return; }
+		for (int i=0; i<8; ++i)
+			if (E->V[i]->Edge>=0)
+				ETags(E->V[i]->Edge) = (*_e_tags)(E->V[i]->Edge);
+	}
+	else
+	{
+		ETags.Resize(4);
+		if (_e_tags==NULL) { ETags = 0; return; }
+		for (int i=0; i<4; ++i)
+			if (E->V[i]->Edge>=0)
+				ETags(E->V[i]->Edge) = (*_e_tags)(E->V[i]->Edge);
+	}
+}
+
+inline void Block::FTag(Elem const * E, Vector<int> & FTags) const
+{
+	throw new Fatal("Block::FTag: Feature not implemented yet");
+}
+
 // Destructor -- Structured
 
 inline Structured::~Structured()
@@ -244,21 +362,22 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 
 					// New vertex
 					Vertex * v = new Vertex;
-					v->MyID  = _verts_d.Size();     // id
-					v->C     = Blocks[b]->C() * _s; // new x-y-z coordinates
-					v->Dupl  = false;               // is this a duplicated node?
-					if (_is_3d) v->OnBry = (i==0 || j==0 || k==0 || i==Blocks[b]->nDivX() || j==Blocks[b]->nDivY() || k==Blocks[b]->nDivZ());
-					else        v->OnBry = (i==0 || j==0 ||         i==Blocks[b]->nDivX() || j==Blocks[b]->nDivY());
+					v->MyID = _verts_d.Size();                   // id
+					v->C    = Blocks[b]->C() * _s;               // new x-y-z coordinates
+					v->Dupl = false;                             // is this a duplicated node?
+					v->Edge = Blocks[b]->FindLocalEdgeID(i,j,k); // check if it is on boundary and find Edge
 					_verts_d.Push(v);
-					if (v->OnBry) _vbry_d.Push(v); // on boundary?
+					if (v->Edge>=0) _verts_d_bry.Push(v); // array with vertices on boundary
 
 					// New element
 					if (i!=0 && j!=0 && (_is_3d ? k!=0 : true))
 					{
 						Elem * e = new Elem;
-						e->MyID = _elems.Size(); // id
+						e->MyID  = _elems.Size(); // id
+						e->OnBry = false;         // not on boundary
 						if (_is_3d)
 						{
+							// connectivity
 							e->V.Resize(8);
 							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
 							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
@@ -268,29 +387,43 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 							e->V[5] = _verts_d[v->MyID -     (Blocks[b]->nDivX()+1)];
 							e->V[6] = _verts_d[v->MyID];
 							e->V[7] = _verts_d[v->MyID - 1];
-							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry || e->V[4]->OnBry || e->V[5]->OnBry || e->V[6]->OnBry || e->V[7]->OnBry); // if any node is on Bry, yes
+							// shares information
 							for (size_t m=0; m<8; ++m)
 							{
 								Share s = {e,m}; // The node shares information will have this element and the local node index
 								e->V[m]->Shares.Push(s);
 							}
+							// boundary marks
+							e->OnBry = (e->V[0]->Edge>=0 || e->V[1]->Edge>=0 || e->V[2]->Edge>=0 || e->V[3]->Edge>=0 || e->V[4]->Edge>=0 || e->V[5]->Edge>=0 || e->V[6]->Edge>=0 || e->V[7]->Edge>=0); // if any node is on Bry, yes
+							if (e->OnBry)
+							{
+								Blocks[b]->ETag (e, e->ETags);
+								Blocks[b]->FTag (e, e->FTags);
+							}
 						}
 						else
 						{
+							// connectivity
 							e->V.Resize(4);
 							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1)];
 							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1)];
 							e->V[2] = _verts_d[v->MyID];
 							e->V[3] = _verts_d[v->MyID - 1];
-							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry); // if any node is on Bry, yes
+							// shares information
 							for (size_t m=0; m<4; ++m)
 							{
 								Share s = {e,m};
 								e->V[m]->Shares.Push(s);
 							}
+							// boundary marks
+							e->OnBry = (e->V[0]->Edge>=0 || e->V[1]->Edge>=0 || e->V[2]->Edge>=0 || e->V[3]->Edge>=0); // if any node is on Bry, yes
+							if (e->OnBry)
+							{
+								Blocks[b]->ETag (e, e->ETags);
+							}
 						}
 						_elems.Push(e);
-						if (e->OnBry) _ebry.Push(e);
+						if (e->OnBry) _elems_bry.Push(e); // array with elements on boundary
 					}
 					// Next r
 					r += (2.0/Blocks[b]->SumWeightX()) * Blocks[b]->Wx(i);
@@ -306,28 +439,28 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 	// Remove duplicates
 	long ncomp = 0; // number of comparisons
 	long ndupl = 0; // number of duplicates
-	for (size_t i=0; i<_vbry_d.Size(); ++i)
+	for (size_t i=0; i<_verts_d_bry.Size(); ++i)
 	{
-		for (size_t j=i+1; j<_vbry_d.Size(); ++j)
+		for (size_t j=i+1; j<_verts_d_bry.Size(); ++j)
 		{
 			// check distance
-			double dist = sqrt(          pow(_vbry_d[i]->C(0)-_vbry_d[j]->C(0),2.0)+
-										 pow(_vbry_d[i]->C(1)-_vbry_d[j]->C(1),2.0)+
-							   (_is_3d ? pow(_vbry_d[i]->C(2)-_vbry_d[j]->C(2),2.0) : 0.0));
+			double dist = sqrt(          pow(_verts_d_bry[i]->C(0)-_verts_d_bry[j]->C(0),2.0)+
+										 pow(_verts_d_bry[i]->C(1)-_verts_d_bry[j]->C(1),2.0)+
+							   (_is_3d ? pow(_verts_d_bry[i]->C(2)-_verts_d_bry[j]->C(2),2.0) : 0.0));
 			if (dist<_tol)
 			{
 				/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
 				// If this node is duplicated, than it is not on-boundary any longer
-				_vbry_d[i]->OnBry = false;
+				_verts_d_bry[i]->OnBry = false;
 				*/
 				// Mark duplicated
-				_vbry_d[j]->Dupl = true;
+				_verts_d_bry[j]->Dupl = true;
 				// Chage elements' connectivities
-				for (size_t k=0; k<_vbry_d[j]->Shares.Size(); ++k)
+				for (size_t k=0; k<_verts_d_bry[j]->Shares.Size(); ++k)
 				{
-					Elem * e = _vbry_d[j]->Shares[k].E;
-					int    n = _vbry_d[j]->Shares[k].N;
-					e->V[n] = _vbry_d[i];
+					Elem * e = _verts_d_bry[j]->Shares[k].E;
+					int    n = _verts_d_bry[j]->Shares[k].N;
+					e->V[n] = _verts_d_bry[i];
 				}
 				ndupl++;
 			}
@@ -428,11 +561,11 @@ inline void Structured::WriteVTU(char const * FileName) const
 
 	// Data -- nodes
 	oss << "      <PointData Scalars=\"TheScalars\">\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "onbry" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"" << "local_edge_id" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
 	k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << (k==0?"  ":" ") << _verts[i]->OnBry;
+		oss << (k==0?"  ":" ") << _verts[i]->Edge;
 		k++;
 		VTU_NEWLINE (i,k,nn,nfmax,oss);
 	}
@@ -513,27 +646,24 @@ inline void Structured::_shape_2d(double r, double s)
 
 inline void Structured::_shape_3d(double r, double s, double t)
 {
-	/*                   t                         
-	 *                   ^                         
-	 *                   |                         
-	 *                 4         15         7      
-	 *                   o_______o________o        
-	 *                 ,'|              ,'|        
-	 *            12 o'  |         14 ,'  |        
-	 *             ,'    |16        ,o    |19      
-	 *       5   ,'      o      6 ,'      o        
-	 *         o'=======o=======o'        |        
+	/*     t            
+	 *     |             
+	 *     +---s       4         15         7
+	 *   ,'              @_______@________@
+	 *  r              ,'|              ,'|     The origin is in the
+	 *            12 @'  |         14 ,'  |     centre of the cube:
+	 *             ,'    |16        ,@    |19      0 => (-1,-1)
+	 *       5   ,'      @      6 ,'      @        6 => ( 1, 1)
+	 *         @'=======@=======@'        |        
 	 *         |      13 |      |         |        
 	 *         |         |      |  11     |        
-	 *      17 |       0 o______|_o_______o  ---> s
-	 *         o       ,'       o       ,'  3      
-	 *         |   8 o'      18 |     ,'           
-	 *         |   ,'           |   ,o 10          
+	 *      17 |       0 @______|_@_______@
+	 *         @       ,'       @       ,' 3      
+	 *         |   8 @'      18 |     ,'           
+	 *         |   ,'           |   ,@ 10          
 	 *         | ,'             | ,'               
-	 *      1  o_______o________o'                 
-	 *       ,'        9         2                 
-	 *     ,'                                      
-	 *    r                                        
+	 *         @_______@________@'                 
+	 *        1        9         2                 
 	 */
 	_s( 0) = 0.125*(1.0-r)  *(1.0-s)  *(1.0-t)  *(-r-s-t-2.0);
 	_s( 1) = 0.125*(1.0+r)  *(1.0-s)  *(1.0-t)  *( r-s-t-2.0);
@@ -619,6 +749,7 @@ public:
 		// Set _block
 		_block.Set (&_c, &_wx, &_wy);
 	}
+
 	void Set (boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz)
 	{
 		// Read C
@@ -650,13 +781,28 @@ public:
 		// Set _block
 		_block.Set (&_c, &_wx, &_wy, &_wz);
 	}
+
+	void SetETags (boopy::list const & Tags)
+	{
+		int n_local_nodes = boopy::len(Tags);
+		_e_tags.Resize(n_local_nodes);
+		for (int i=0; i<n_local_nodes; ++i) _e_tags(i) = boopy::extract<int>(Tags[i])();
+		_block.SetETags (&_e_tags);
+		std::cout << _e_tags << std::endl;
+	}
+
 	Mesh::Block * GetBlock () { return &_block; }
+
 private:
-	LinAlg::Matrix<double> _c;
-	Array<double>          _wx;
-	Array<double>          _wy;
-	Array<double>          _wz;
-	Mesh::Block            _block;
+	Matrix<double> _c;
+	Array<double> _wx;
+	Array<double> _wy;
+	Array<double> _wz;
+	Vector<int>   _v_tags;
+	Vector<int>   _e_tags;
+	Vector<int>   _f_tags;
+	Mesh::Block   _block;
+
 }; // class PyMeshBlock
 
 void (PyMeshBlock::*PMBSet1)(boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)                         = &PyMeshBlock::Set;
@@ -667,6 +813,7 @@ class PyMeshStruct
 public:
 	PyMeshStruct ()           : _ms(sqrt(DBL_EPSILON)) {}
 	PyMeshStruct (double Tol) : _ms(Tol)               {}
+
 	size_t Generate (boopy::list & ListOfPyMeshBlock)
 	{
 		int nb = boopy::len(ListOfPyMeshBlock); if (nb<1) throw new Fatal("PyMeshStruct: Number of blocks must be greater than 0 (%d is invalid)",nb);
@@ -679,7 +826,9 @@ public:
 		}
 		return _ms.Generate (blocks);
 	}
+
 	void WriteVTU (boopy::str FileName) { _ms.WriteVTU(boopy::extract<char const *>(FileName)()); }
+
 	void GetVerts (boopy::list & V)
 	{
 		if (_ms.Is3D())
@@ -693,6 +842,7 @@ public:
 				V.append (boopy::make_tuple(_ms.Verts()[i]->C(0), _ms.Verts()[i]->C(1), 0.0));
 		}
 	}
+
 	void GetElems (boopy::list & E)
 	{
 		for (size_t i=0; i<_ms.Elems().Size(); ++i)
@@ -703,8 +853,36 @@ public:
 			E.append (conn);
 		}
 	}
+
+	void GetProps (boopy::list & P)
+	{
+		/* Returns a list of lists: [[int,string,string], [int,string,string], ..., num of elems on boundary]
+		 *
+		 *   Each sublist has three information:
+		 *
+		 *     [ element_id, string with edges local IDs, string with edges tags ]
+		 */
+		for (size_t i=0; i<_ms.ElemsBry().Size(); ++i) // elements on boundary
+		{
+			// edge tags
+			String e_local_ids; // local indexes of edges with tags
+			String e_tags;      // tags of all edges with tags
+			for (int j=0; j<_ms.ElemsBry()[i]->ETags.Size(); ++j)
+			{
+				e_local_ids.Printf("%s %d", e_local_ids.GetSTL().c_str(), j);
+				e_tags     .Printf("%s %d", e_tags     .GetSTL().c_str(), _ms.ElemsBry()[i]->ETags(j));
+			}
+			boopy::list tmp;
+			tmp.append (i);
+			tmp.append (e_local_ids.GetSTL().c_str());
+			tmp.append (e_tags     .GetSTL().c_str());
+			P  .append (tmp);
+		}
+	}
+
 private:
 	Mesh::Structured _ms;
+
 }; // class PyMeshStruct
 
 #endif
