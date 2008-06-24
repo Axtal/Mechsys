@@ -59,7 +59,7 @@ public:
 	void   Activate       ()         { _is_active = true;   }                                        ///< Activate the element
 	bool   IsActive       () const   { return _is_active;   }                                        ///< Check if this element is active
 	size_t nNodes         () const   { return _n_nodes;     }                                        ///< Return the number of nodes in this element
-	Node * N              (size_t i) { return _connects[i]; }                                        ///< Return a pointer to a node in the connects list
+	Node * GetNode        (size_t i) { return _connects[i]; }                                        ///< Return a pointer to a node in the connects list
 	size_t nIntPoints     () const   { return _n_int_pts;   }                                        ///< Return the number of integration points in this element
 	void   IntegPoints    (IntegPoint const * & IPs) const { IPs=_a_int_pts; }                       ///< Return a pointer to the array of integration points
 	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
