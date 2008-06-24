@@ -333,8 +333,8 @@ def set_local_system(str_edge_xyz):
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
         if len(msh.edges.selected())==1:
-            pro = di.get_all_props(obj)
-            pro[str_edge_xyz].setData(msh.edges[msh.edges.selected()[0]].index)
+            p = di.get_local_axes_props(obj)
+            p[str_edge_xyz].data = msh.edges[msh.edges.selected()[0]].index
             Blender.Window.QRedrawAll()
         else: Blender.Draw.PupMenu('ERROR|Please, select only one edge (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
@@ -345,10 +345,10 @@ def set_ndivs(ndivx, ndivy, ndivz):
     obj = scn.objects.active
     if obj!=None and obj.type=='Mesh':
         if len(obj.getAllProperties())>0:
-            pro = di.get_all_props(obj)
-            if pro['edge_x'].data>=0: pro['ndiv_x'].data = ndivx
-            if pro['edge_y'].data>=0: pro['ndiv_y'].data = ndivy
-            if pro['edge_z'].data>=0: pro['ndiv_z'].data = ndivz
+            p = di.get_ndivs_props(obj)
+            p['ndiv_x'].data = ndivx
+            p['ndiv_y'].data = ndivy
+            p['ndiv_z'].data = ndivz
             Blender.Window.QRedrawAll()
         else: Blender.Draw.PupMenu('ERROR|Please, set properties (such as local axis) to this object first (obj=%s)', obj.name)
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
@@ -357,10 +357,11 @@ def set_ndivs(ndivx, ndivy, ndivz):
 #         origin vertex index = left (x=0)
 #         right vertex index (x>0)
 #         x-axis edge index
-def get_local_x_axis(props, msh):
-    if props['edge_x'].data>=0 and props['edge_y'].data>=0:
-        ex = msh.edges[props['edge_x'].data]
-        ey = msh.edges[props['edge_y'].data]
+def get_local_x_axis(obj, msh):
+    p = di.get_local_axes_props(obj)
+    if p['edge_x'].data>=0 and p['edge_y'].data>=0:
+        ex = msh.edges[p['edge_x'].data]
+        ey = msh.edges[p['edge_y'].data]
         origin = -1
         if ex.v1.index==ey.v1.index or ex.v1.index==ey.v2.index:
             origin = ex.v1.index
@@ -375,9 +376,9 @@ def gen_xy_weights(obj):
     wx = []
     wy = []
     if len(obj.getAllProperties())>0:
-        pro = di.get_all_props(obj)
-        for i in range(pro['ndiv_x'].data): wx.append(1)
-        for i in range(pro['ndiv_y'].data): wy.append(1)
+        p = di.get_ndivs_props(obj)
+        for i in range(p['ndiv_x'].data): wx.append(1)
+        for i in range(p['ndiv_y'].data): wy.append(1)
     return wx, wy
 
 def gen_xyz_weights(obj):
@@ -385,11 +386,51 @@ def gen_xyz_weights(obj):
     wy = []
     wz = []
     if len(obj.getAllProperties())>0:
-        pro = di.get_all_props(obj)
-        for i in range(pro['ndiv_x'].data): wx.append(1)
-        for i in range(pro['ndiv_y'].data): wy.append(1)
-        for i in range(pro['ndiv_z'].data): wz.append(1)
+        p = di.get_ndivs_props(obj)
+        for i in range(p['ndiv_x'].data): wx.append(1)
+        for i in range(p['ndiv_y'].data): wy.append(1)
+        for i in range(p['ndiv_z'].data): wz.append(1)
     return wx, wy, wz
+
+# v_e_f:
+#   vertex = 0
+#   edge   = 1
+#   face   = 2
+def set_bry_mark(v_e_f, mark):
+    scn = bpy.data.scenes.active
+    obj = scn.objects.active
+    edm = Blender.Window.EditMode()
+    if obj!=None and obj.type=='Mesh':
+        if edm: Blender.Window.EditMode(0)
+        msh = obj.getData(mesh=1)
+        if v_e_f==0: # vertex
+            ids = ''
+            mks = ''
+            for i in msh.verts.selected(): ids = '%s %d' % (ids,i   ) # encoding vertex indexes
+            for i in msh.verts.selected(): mks = '%s %d' % (mks,mark) # encoding marks
+            p = di.get_v_bry_props(obj)
+            p['v_bry_ids'].data = ids
+            p['v_bry_mks'].data = mks
+            Blender.Window.QRedrawAll()
+        if v_e_f==1: # edge
+            ids = ''
+            mks = ''
+            for i in msh.edges.selected(): ids = '%s %d' % (ids,i   ) # encoding edge indexes
+            for i in msh.edges.selected(): mks = '%s %d' % (mks,mark) # encoding marks
+            p = di.get_e_bry_props(obj)
+            p['e_bry_ids'].data = ids
+            p['e_bry_mks'].data = mks
+            Blender.Window.QRedrawAll()
+        if v_e_f==2: # face
+            ids = ''
+            mks = ''
+            for i in msh.faces.selected(): ids = '%s %d' % (ids,i   ) # encoding face indexes
+            for i in msh.faces.selected(): mks = '%s %d' % (mks,mark) # encoding marks
+            p = di.get_f_bry_props(obj)
+            p['f_bry_ids'].data = ids
+            p['f_bry_mks'].data = mks
+            Blender.Window.QRedrawAll()
+    if edm: Blender.Window.EditMode(1)
 
 def gen_struct_mesh():
     scn = bpy.data.scenes.active
@@ -406,7 +447,7 @@ def gen_struct_mesh():
                 if len(msh.edges)==4: #2D - linear
                     print '2D - linear => not yet'
                 elif len(msh.edges)==8: #2D - o2
-                    origin, r_idx, ex_idx = get_local_x_axis (di.get_all_props(obj), msh)
+                    origin, r_idx, ex_idx = get_local_x_axis (obj, msh)
                     eds, ids = sort_edges_and_verts (msh,[e.index for e in msh.edges if e.index!=ex_idx],r_idx)
                     if len(ids)!=7 or ids[len(ids)-1]!=origin: Blender.Draw.PupMenu('ERROR| There is a problem with the connections in block %s' % obj.name)
                     ids = [origin, ids[0], ids[2], ids[4], r_idx, ids[1], ids[3], ids[5]]

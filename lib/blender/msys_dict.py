@@ -5,55 +5,69 @@ import Blender
 def load_dict():
     dict = Blender.Registry.GetKey('MechSysDict')
     if not dict:
-        dict                   = {}
-        dict['fillet_radius']  = 0.0
-        dict['fillet_steps']   = 10
-        dict['display_props']  = 1
-        dict['vertex_ids']     = 1
-        dict['edge_ids']       = 1
-        dict['face_ids']       = 1
-        dict['disp_ndivs']     = 1
+        dict                  = {}
+        dict['fillet_radius'] = 0.0
+        dict['fillet_steps']  = 10
+        dict['show_props']    = 1
+        dict['show_v_ids']    = 1
+        dict['show_e_ids']    = 1
+        dict['show_f_ids']    = 1
+        dict['show_ndivs']    = 1
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
     return dict
 
-def get_all_props(obj):
+ # IDs of the edges corresponding to the local x, y and z axes
+def get_local_axes_props(obj):
     props = {}
+    keys  = ['edge_x','edge_y','edge_z']
+    for k in keys:
+        try: props[k] = obj.getProperty(k)
+        except:
+            obj.addProperty (k, -1, 'INT')
+            props[k] = obj.getProperty(k)
+    return props
 
-    # ID of the edge corresponding to the local x axis
-    try: props['edge_x'] = obj.getProperty('edge_x')
-    except:
-        obj.addProperty('edge_x',-1,'INT')
-        props['edge_x'] = obj.getProperty('edge_x')
+# Number of divisions along x, y, and z local axes
+def get_ndivs_props(obj):
+    props = {}
+    keys  = ['ndiv_x','ndiv_y','ndiv_z']
+    for k in keys:
+        try: props[k] = obj.getProperty(k)
+        except:
+            obj.addProperty (k, 2, 'INT')
+            props[k] = obj.getProperty(k)
+    return props
 
-    # ID of the edge corresponding to the local y ayis
-    try: props['edge_y'] = obj.getProperty('edge_y')
-    except:
-        obj.addProperty('edge_y',-1,'INT')
-        props['edge_y'] = obj.getProperty('edge_y')
+# IDs and marks of vertices on boundary
+def get_v_bry_props(obj):
+    props = {}
+    keys  = ['v_bry_ids','v_bry_mks']
+    for k in keys:
+        try: props[k] = obj.getProperty(k)
+        except:
+            obj.addProperty (k, '', 'STRING')
+            props[k] = obj.getProperty(k)
+    return props
 
-    # ID of the edge corresponding to the local z azis
-    try: props['edge_z'] = obj.getProperty('edge_z')
-    except:
-        obj.addProperty('edge_z',-1,'INT')
-        props['edge_z'] = obj.getProperty('edge_z')
+# IDs and marks of edges on boundary
+def get_e_bry_props(obj):
+    props = {}
+    keys  = ['e_bry_ids','e_bry_mks']
+    for k in keys:
+        try: props[k] = obj.getProperty(k)
+        except:
+            obj.addProperty (k, '', 'STRING')
+            props[k] = obj.getProperty(k)
+    return props
 
-    # number of divisions along x
-    try: props['ndiv_x'] = obj.getProperty('ndiv_x')
-    except:
-        obj.addProperty('ndiv_x',2,'INT')
-        props['ndiv_x'] = obj.getProperty('ndiv_x')
-
-    # number of divisions along x
-    try: props['ndiv_y'] = obj.getProperty('ndiv_y')
-    except:
-        obj.addProperty('ndiv_y',2,'INT')
-        props['ndiv_y'] = obj.getProperty('ndiv_y')
-
-    # number of divisions along x
-    try: props['ndiv_z'] = obj.getProperty('ndiv_z')
-    except:
-        obj.addProperty('ndiv_z',2,'INT')
-        props['ndiv_z'] = obj.getProperty('ndiv_z')
-
+# IDs and marks of faces on boundary
+def get_f_bry_props(obj):
+    props = {}
+    keys  = ['f_bry_ids','f_bry_mks']
+    for k in keys:
+        try: props[k] = obj.getProperty(k)
+        except:
+            obj.addProperty (k, '', 'STRING')
+            props[k] = obj.getProperty(k)
     return props
