@@ -13,7 +13,7 @@ def load_dict():
         dict['ndivy']          = 2
         dict['ndivz']          = 2
         Blender.Registry.SetKey('MechSysDict', dict)
-        print '[1;34mMechSysCAD[0m: dictionary created'
+        print '[1;34mMechSys[0m: dictionary created'
     return dict
 
 def get_all_props(obj):

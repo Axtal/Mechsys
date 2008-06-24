@@ -1,10 +1,10 @@
 #!BPY
 
 """
-Name: 'MechSysCAD'
+Name: 'MechSys'
 Blender: 2.45
 Group: 'Themes'
-Tooltip: 'CAD in Blender'
+Tooltip: 'CAD, Mesh generator, and FEM in Blender'
 """
 __author__  = "Dorival Pedroso"
 __version__ = "06.05.08"
@@ -16,6 +16,7 @@ TODO
 #   /Applications/blender.app/Contents/MacOS/.blender/scripts/
 
 # Modules
+import timeit
 import Blender
 from   Blender import Draw, BGL
 from   Blender.Mathutils import Vector
@@ -64,7 +65,11 @@ def button_event(evt):
     elif evt==EVT_FILLET:     dr.fillet(dict['fillet_radius'],dict['fillet_steps'])
     elif evt==EVT_BREAK:      dr.break_edge()
     elif evt==EVT_READ_TRI:   Blender.Window.FileSelector(dr.read_2d_mesh, "Read 2D mesh")
-    elif evt==EVT_GEN_STRU:   dr.gen_struct_mesh()
+    elif evt==EVT_GEN_STRU:
+        #dr.gen_struct_mesh()
+        tt = timeit.Timer('msys_draw.gen_struct_mesh()', 'import msys_draw')
+        t  = tt.timeit(number=1)
+        print '[1;34mMechSys[0m: time spent on generation and drawing = [1;31m', t , '[0m [1;32mseconds[0m'
     elif evt==EVT_DISP_PROPS: dr.disp_props()
     elif evt==EVT_SET_X:      dr.set_local_system('edge_x')
     elif evt==EVT_SET_Y:      dr.set_local_system('edge_y')
@@ -147,7 +152,7 @@ script_lnk = 'msys_3dlink.py'
 script_dir = Blender.Get('scriptsdir')+Blender.sys.sep
 if script_lnk in [t.name for t in Blender.Text.Get()]:
     Blender.Text.unlink(Blender.Text.Get(script_lnk))
-print '[1;34mMechSysCAD[0m: loading <'+script_dir+script_lnk+'>'
+print '[1;34mMechSys[0m: loading <'+script_dir+script_lnk+'>'
 Blender.Text.Load(script_dir+script_lnk)
 
 # Connect View3D drawing script

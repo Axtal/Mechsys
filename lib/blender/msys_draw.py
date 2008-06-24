@@ -211,7 +211,7 @@ def read_2d_mesh(filename):
         if len(words)==0 or words[0].startswith('#'): pass
         elif idx==1:
             fnod.write('%s\n' % (words[0]))
-            print '[1;34mMechSysCAD[0m: reading ' + words[0] + ' nodes'
+            print '[1;34mMechSys[0m: reading ' + words[0] + ' nodes'
             nnod = int(words[0])
         else:
             # read
@@ -228,7 +228,7 @@ def read_2d_mesh(filename):
         if len(words)==0 or words[0].startswith('#'): pass
         elif idx==1:
             fele.write('%s\n' % (words[0]))
-            print '[1;34mMechSysCAD[0m: reading ' + words[0] + ' elements'
+            print '[1;34mMechSys[0m: reading ' + words[0] + ' elements'
             nele = int(words[0])
         else:
             # read
@@ -248,7 +248,7 @@ def read_2d_mesh(filename):
         idx  += 1
         words = line.split()
         if len(words)==0 or words[0].startswith('#'): pass
-        elif idx==1: print '[1;34mMechSysCAD[0m: reading the neighbours of ' + words[0] + ' triangles'
+        elif idx==1: print '[1;34mMechSys[0m: reading the neighbours of ' + words[0] + ' triangles'
         else:
             verts = []
             for i in words[1:4]: verts.append(int(i)-1) # 1,2,3
@@ -261,7 +261,7 @@ def read_2d_mesh(filename):
         if len(words)==0 or words[0].startswith('#'): pass
         elif idx==1:
             fedg.write('%s\n' % (words[0]))
-            print '[1;34mMechSysCAD[0m: reading ' + words[0] + ' edges'
+            print '[1;34mMechSys[0m: reading ' + words[0] + ' edges'
             nedg = int(words[0])
         else:
             # read
@@ -381,6 +381,7 @@ def gen_struct_mesh():
     obs = scn.objects.selected
     edm = Blender.Window.EditMode()
     bks = []
+    # generate blocks
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
             if edm: Blender.Window.EditMode(0)
@@ -408,22 +409,26 @@ def gen_struct_mesh():
             elif len(msh.faces)==24: #3D - o2
                 print '3D - o2 => not yet'
             else: Blender.Draw.PupMenu('ERROR|Each block must have 0 (4,8 edges) faces => 2D or 6,24 faces => 3D')
+    # generate mesh
     if len(bks)>0:
+        # key
+        bfn = Blender.sys.expandpath (Blender.Get('filename'))
+        key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
+        # generate
         Blender.Window.WaitCursor(1)
         mms = ms.mesh_struct()
         ne  = mms.generate (bks)
-        print '[1;34mMechSysCAD[0m: %d elements generated' % ne
-        vs  = []
-        es  = []
-        mms.get_verts(vs)
-        mms.get_elems(es)
-        bfile   = Blender.sys.expandpath(Blender.Get('filename'))
-        key     = Blender.sys.basename(Blender.sys.splitext(bfile)[0])
-        new_msh = bpy.data.meshes.new(key+'_structured')
-        new_obj = scn.objects.new(new_msh, key+'_structured')
-        for vert in vs: new_msh.verts.extend(vert[0], vert[1], vert[2])
-        for conn in es: new_msh.faces.extend(conn)
-        new_obj.select(1)
+        print '[1;34mMechSys[0m: %d elements generated' % ne
+        # draw
+        vs = []
+        es = []
+        mms.get_verts (vs)
+        mms.get_elems (es)
+        new_msh = bpy.data.meshes.new      (key+'_structured')
+        new_obj = scn.objects.new (new_msh, key+'_structured')
+        new_msh.verts.extend (vs)
+        new_msh.faces.extend (es)
+        new_obj.select (1)
         Blender.Window.QRedrawAll()
         Blender.Window.WaitCursor(0)
     if edm: Blender.Window.EditMode(1)
