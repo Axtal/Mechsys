@@ -240,11 +240,11 @@ inline void WriteVTUEquilib (char const * FileName)
 }
 
 
-inline void  WriteVTK(char const * FileName)
+inline void WriteVTK(char const * FileName)
 {
 
 	// Filter elements
-	Array<Element *> act_elems;
+	Array<Element *> act_elems; // Array for active elements
 	for (size_t i=0; i < Elems.Size(); ++i)
 	{
 		if (Elems[i]->IsActive()     == false) continue; // Inactive elements are not considered!
@@ -252,29 +252,29 @@ inline void  WriteVTK(char const * FileName)
 	}
 
 	// Data
-	size_t n_nodes = Nodes.Size(); // Number of Nodes
+	size_t n_nodes = Nodes.Size();     // Number of Nodes
 	size_t n_elems = act_elems.Size(); // Number of Elements
-	std::map<String, int>  index_map;
+	std::map<String, int>  index_map;  // Map to associate labels with indexes
 
 	// Getting all possible labels from elements
 	for (size_t i_elem=0; i_elem<n_elems; ++i_elem)
 	{
-		Array<String>            elem_labels;
+		Array<String>  elem_labels;
 		act_elems[i_elem]->GetLabels(elem_labels);
-		int n_labels           = elem_labels.Size();
+		int n_labels = elem_labels.Size();
 		for (int j_label=0; j_label<n_labels; ++j_label)
 		{
 			String & current_label = elem_labels[j_label];
 			if (index_map.find(current_label) == index_map.end()) 
-				index_map[current_label] = index_map.size()-1;
+				index_map[current_label] = index_map.size()-1; // add a new entry
 		}
 	}
 
 	size_t n_comps = index_map.size();
 
 	// Collect nodal values
-	LinAlg::Matrix<double> values(n_nodes, n_comps); values.SetValues(0.0);
-	LinAlg::Matrix<size_t> refs  (n_nodes, n_comps); refs  .SetValues(0);
+	LinAlg::Matrix<double> values(n_nodes, n_comps); values.SetValues(0.0);  // Matrix for nodal values collected from elements
+	LinAlg::Matrix<size_t> refs  (n_nodes, n_comps); refs  .SetValues(0);    // Matrix for nodal references of variablea
 	for (size_t i_elem=0; i_elem<n_elems; ++i_elem)
 	{
 		LinAlg::Matrix<double> elem_values;
@@ -286,12 +286,11 @@ inline void  WriteVTK(char const * FileName)
 		{
 			String & current_label = elem_labels[j_label];
 			int index = index_map[current_label];
-			
 			for (int j_node=0; j_node<n_elem_nodes; ++j_node)
 			{
 				int node_number            = act_elems[i_elem]->GetNode(j_node)->GetID();
-				values(node_number,index) += elem_values(j_node, j_label);
-				refs  (node_number,index) ++;
+				values(node_number,index) += elem_values(j_node, j_label);  // accumulate values
+				refs  (node_number,index) ++;                               // update references number
 			}
 		}
 	}
@@ -303,18 +302,6 @@ inline void  WriteVTK(char const * FileName)
 		if   (refs(i,j)!=0) values(i,j) /= refs(i,j);
 		else                values(i,j)  = 0.0;
 	}
-	
-	// Map for hex20 element connectivities (mapped for vtk)
-	std::map<int, int> hex20map;
-	hex20map[ 0] =  0;   hex20map[ 8] =  1;   hex20map[ 1] =  2;   hex20map[ 9] =  3;   hex20map[ 2] =  4;   
-	hex20map[10] =  5;   hex20map[ 3] =  6;   hex20map[11] =  7;   hex20map[16] =  8;   hex20map[17] =  9;   
-	hex20map[18] = 10;   hex20map[19] = 11;   hex20map[ 4] = 12;   hex20map[12] = 13;   hex20map[ 5] = 14;
-	hex20map[13] = 15;   hex20map[ 6] = 16;   hex20map[14] = 17;   hex20map[ 7] = 18;   hex20map[15] = 19;
-	
-	// Map for tri6 element connectivities (mapped for vtk)
-	std::map<int, int> tri6map;
-	tri6map[ 0] =  0;    tri6map[ 3] =  1;    tri6map[ 1] =  2;   
-	tri6map[ 4] =  3;    tri6map[ 2] =  4;    tri6map[ 5] =  5;   
 	
 	// Total number of CELLS data = Sum {1 + nNodes}; 1 for the numPts label
 	int n_data = 0;
@@ -344,70 +331,76 @@ inline void  WriteVTK(char const * FileName)
 
 	std::ostringstream oss;
 	Util::NumStream nsflo = Util::_8s; // number format for floats
-	// Write VTK file
-	                                                 oss << "# vtk DataFile Version 3.0"                              << std::endl;
-	                                                 oss << "MechSys/FEM - "                                          << std::endl;
-	                                                 oss << "ASCII"                                                   << std::endl;
-	                                                 oss << "DATASET UNSTRUCTURED_GRID"                               << std::endl;
-	                                                 oss <<                                                              std::endl;
-	// Node coordinates
-	                                                 oss << "POINTS " << n_nodes << " float"                          << std::endl;
-	for (size_t i=0; i<n_nodes; ++i)               { oss << nsflo<<Nodes[i]->X() << nsflo << Nodes[i]->Y() << nsflo << Nodes[i]->Z() << std::endl; }
 
-	                                                 oss <<                                                              std::endl;
+	// Write VTK file
+	oss << "# vtk DataFile Version 3.0"     << std::endl;
+	oss << "MechSys/FEM - "                 << std::endl;
+	oss << "ASCII"                          << std::endl;
+	oss << "DATASET UNSTRUCTURED_GRID"      << std::endl;
+	oss <<                                     std::endl;
+
+	// Node coordinates
+	oss << "POINTS " << n_nodes << " float" << std::endl;
+	for (size_t i=0; i<n_nodes; ++i)
+		oss << nsflo << Nodes[i]->X() << nsflo << Nodes[i]->Y() << nsflo << Nodes[i]->Z() << std::endl; 
+	oss << std::endl;
+
 	// Elements connectivities
-	                                                 oss << "CELLS "<< n_elems << " " << n_data                       << std::endl; 
-	for (size_t i=0; i<n_elems; ++i)               { 
-		oss << act_elems[i]->nNodes() << " ";  
-		
-		if (act_elems[i]->Name().find("Hex20")!=std::string::npos) 
-			for (size_t j=0; j<act_elems[i]->nNodes(); ++j){ oss << act_elems[i]->GetNode(hex20map[j])->GetID() << " ";                          }
-		if (act_elems[i]->Name().find("Tri6")!=std::string::npos) 
-			for (size_t j=0; j<act_elems[i]->nNodes(); ++j){ oss << act_elems[i]->GetNode(tri6map[j])->GetID() << " ";                          }
-		else
-			for (size_t j=0; j<act_elems[i]->nNodes(); ++j){ oss << act_elems[i]->GetNode(j)->GetID() << " ";                          }  
-	                                                 oss <<                                                              std::endl; }
-	                                                 oss <<                                                              std::endl;
+	oss << "CELLS "<< n_elems << " " << n_data << std::endl; 
+	for (size_t i=0; i<n_elems; ++i)               
+	{
+		String connect; act_elems[i]->VTKConnect(connect);
+		oss << act_elems[i]->nNodes() << " " << connect <<   std::endl; 
+	}
+	oss << std::endl;
+
 	// Cell types
-	                                                 oss << "CELL_TYPES " << n_elems                                  << std::endl; 
-	for (size_t i=0; i<n_elems; ++i)               { oss << act_elems[i]->VTKCellType()                                << std::endl; }
-	                                                 oss <<                                                              std::endl;
-	                                                 oss << "POINT_DATA " << n_nodes                                  << std::endl;
+	oss << "CELL_TYPES " << n_elems << std::endl; 
+	for (size_t i=0; i<n_elems; ++i)               
+		oss << act_elems[i]->VTKCellType() << std::endl; 
+	oss << std::endl;
+
+	oss << "POINT_DATA " << n_nodes << std::endl;
+
     // Vectors
 	if (has_disp)
-	                                               { oss << "VECTORS "    << "Disp float"                             << std::endl;
+	{ 
+		oss << "VECTORS " << "Disp float" << std::endl;
 	    for (size_t j=0; j<n_nodes; ++j)
-	                                               { oss << nsflo << values(j, index_map[UX])   
-			                                             << nsflo << values(j, index_map[UY])
-		                                                 << nsflo << ((index_map.find(UZ)==index_map.end())?0.0:values(j, index_map[UZ]))    << std::endl; }
-	                                                 oss <<                                                              std::endl; }
+	    {
+			oss << nsflo << values(j, index_map[UX]) << nsflo << values(j, index_map[UY])
+		    << nsflo << ((index_map.find(UZ)==index_map.end())?0.0:values(j, index_map[UZ])) << std::endl; 
+		}
+	    oss << std::endl; 
+	}
 	if (has_vel)
-	                                               { oss << "VECTORS "    << "Vel float"                              << std::endl;
+	{
+		oss << "VECTORS " << "Vel float" << std::endl;
 	    for (size_t j=0; j<n_nodes; ++j)
-	                                               { oss << nsflo << values(j, index_map[VX])   
-			                                             << nsflo << values(j, index_map[VY])
-		                                                 << nsflo << ((index_map.find(VZ)==index_map.end())?0.0:values(j, index_map[VZ]))      << std::endl; }
-	                                                 oss <<                                                              std::endl; }
+	    { 
+			oss << nsflo << values(j, index_map[VX]) << nsflo << values(j, index_map[VY])
+		    << nsflo << ((index_map.find(VZ)==index_map.end())?0.0:values(j, index_map[VZ])) << std::endl; 
+		}
+	    oss << std::endl; 
+	}
+
     // Scalars
 	std::map<String,int>::iterator iter; 
 	for (iter = index_map.begin(); iter != index_map.end(); iter++)
-	                                               { 
-													 oss << "SCALARS "    << iter->first << " float 1"                  << std::endl;
-	                                                 oss << "LOOKUP_TABLE default"                                    << std::endl; 
-	    for (size_t j=0; j<n_nodes; ++j)           { 
-		                                             oss << nsflo << values(j,iter->second)                              << std::endl; }
-	                                                 oss <<                                                              std::endl; }
-	// Open/create file
+	{ 
+		oss << "SCALARS " << iter->first << " float 1" << std::endl;
+		oss << "LOOKUP_TABLE default" << std::endl; 
+		for (size_t j=0; j<n_nodes; ++j)           
+			oss << nsflo << values(j,iter->second) << std::endl; 
+	    oss << std::endl; 
+	}
+
+	// Open/create & write & close file
 	std::ofstream ofile;
 	ofile.open    (FileName, std::ios::out);
-
 	ofile << oss.str();
-	// Close file
 	ofile.close();
-	
-
 }
-
 
 
 }; // namespace FEM
