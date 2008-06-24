@@ -309,20 +309,29 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 		LinAlg::Matrix<double> G21,G22;
 		LinAlg::Vector<double> dU2;
 		LinAlg::Vector<double> dF1;
+		
+		if (_nudofs > 0)
+		{
 
-		// 3) Scatter global G, dF and dU values into smaller pieces
-		_do_scatter(_G,dF,dU, G11,G12,G21,G22, dU2, dF1);
+			// 3) Scatter global G, dF and dU values into smaller pieces
+			_do_scatter(_G,dF,dU, G11,G12,G21,G22, dU2, dF1);
 
-		// 4) Solve for {dU1} and {dF2}
-		LinAlg::Vector<double> W(dF1);                    // W <- dF1 (workspace)
-		LinAlg::Gemv(-1.0,G12,dU2,1.0,W);               // W <- -1.0*G12*dU2 + 1.0*dF1
-		LinAlg::Gesv(G11, W);                           // W <- inv(G11)*W  (G11 is lost)
-		LinAlg::Vector<double> & dU1 = W;                 // dU1 <- W (reference)
-		LinAlg::Vector<double> dF2(dU2.Size());           // allocate dF2
-		LinAlg::Gemvpmv(1.0,G21,dU1, 1.0,G22,dU2, dF2); // dF2 <- 1*G21*dU1 + 1*G22*dU2
+			// 4) Solve for {dU1} and {dF2}
+			LinAlg::Vector<double> W(dF1);                    // W <- dF1 (workspace)
+			LinAlg::Gemv(-1.0,G12,dU2,1.0,W);               // W <- -1.0*G12*dU2 + 1.0*dF1
+			LinAlg::Gesv(G11, W);                           // W <- inv(G11)*W  (G11 is lost)
+			LinAlg::Vector<double> & dU1 = W;                 // dU1 <- W (reference)
+			LinAlg::Vector<double> dF2(dU2.Size());           // allocate dF2
+			LinAlg::Gemvpmv(1.0,G21,dU1, 1.0,G22,dU2, dF2); // dF2 <- 1*G21*dU1 + 1*G22*dU2
 
-		// 5) Gather dU1, dU2, dF1 and dF2 into dU and dF
-		_do_gather(dU1,dU2, dF1,dF2, dU,dF);
+			// 5) Gather dU1, dU2, dF1 and dF2 into dU and dF
+			_do_gather(dU1,dU2, dF1,dF2, dU,dF);
+		}
+		else
+		{
+			LinAlg::Gemv(1.0, _G, dU, 0.0, dF);
+		}
+
 	}
 	else
 	{
