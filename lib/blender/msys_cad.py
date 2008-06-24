@@ -38,6 +38,7 @@ EVT_DISP_PROPS =  9 # display mesh properties
 EVT_SET_X      = 10 # set local x-y coordinates of a block (need two edges pre-selected)
 EVT_SET_Y      = 11 # set local x-y coordinates of a block (need two edges pre-selected)
 EVT_SET_Z      = 12 # set local x-y coordinates of a block (need two edges pre-selected)
+EVT_SET_NDIV   = 13 # set number of divisons along x, y and z
 
 # Handle input events
 def event(evt, val):
@@ -71,9 +72,20 @@ def button_event(evt):
         t  = tt.timeit(number=1)
         print '[1;34mMechSys[0m: time spent on generation and drawing = [1;31m', t , '[0m [1;32mseconds[0m'
     elif evt==EVT_DISP_PROPS: dr.disp_props()
-    elif evt==EVT_SET_X:      dr.set_local_system('edge_x')
-    elif evt==EVT_SET_Y:      dr.set_local_system('edge_y')
-    elif evt==EVT_SET_Z:      dr.set_local_system('edge_z')
+    elif evt==EVT_SET_X: dr.set_local_system ('edge_x')
+    elif evt==EVT_SET_Y: dr.set_local_system ('edge_y')
+    elif evt==EVT_SET_Z: dr.set_local_system ('edge_z')
+    elif evt==EVT_SET_NDIV:
+        ndivx = Blender.Draw.Create(1)
+        ndivy = Blender.Draw.Create(1)
+        ndivz = Blender.Draw.Create(0)
+        block = []
+        block.append("Number of divisons")
+        block.append(("nDivX = ", ndivx, 2, 100000))
+        block.append(("nDivY = ", ndivy, 2, 100000))
+        block.append(("nDivZ = ", ndivz, 0, 100000))
+        if Blender.Draw.PupBlock("Set number of divisions", block)==1:
+            dr.set_ndivs (ndivx.val, ndivy.val, ndivz.val)
 
 def fillet_radius_callback(evt,val):
     dict = di.load_dict()
@@ -86,6 +98,26 @@ def fillet_steps_callback(evt,val):
 def disp_props_callback(evt,val):
     dict = di.load_dict()
     dict['display_props'] = val
+    Blender.Window.QRedrawAll()
+
+def vertex_ids_callback(evt,val):
+    dict = di.load_dict()
+    dict['vertex_ids'] = val
+    Blender.Window.QRedrawAll()
+
+def edge_ids_callback(evt,val):
+    dict = di.load_dict()
+    dict['edge_ids'] = val
+    Blender.Window.QRedrawAll()
+
+def face_ids_callback(evt,val):
+    dict = di.load_dict()
+    dict['face_ids'] = val
+    Blender.Window.QRedrawAll()
+
+def disp_ndivs_callback(evt,val):
+    dict = di.load_dict()
+    dict['disp_ndivs'] = val
     Blender.Window.QRedrawAll()
 
 def ndivx_callback(evt,val):
@@ -134,14 +166,16 @@ def gui():
     BGL.glColor3f     (1,1,1)
     BGL.glRasterPos2i (3,hei-14)
     Draw.Text         ('Mesh properties:'); row = hei-rh
-    Draw.Toggle       ('Display props'    , EVT_NONE     , 120 , row , 100 , rh, d['display_props'], 'Diplay mesh properties', disp_props_callback) ; row=row-rh
-    Draw.PushButton   ('Set local x-axis' , EVT_SET_X    ,   0 , row , 100 , rh , 'Set local x axis (needs one edge selected)')
-    Draw.PushButton   ('Set local y-axis' , EVT_SET_Y    , 100 , row , 100 , rh , 'Set local y axis (needs one edge selected)')
-    Draw.PushButton   ('Set local z-axis' , EVT_SET_Z    , 200 , row , 100 , rh , 'Set local z axis (needs one edge selected)') ; row=row-rh
-    Draw.Number       ('nDivX'            , EVT_NONE     ,   0 , row , 100 , rh , d['ndivx'],2,1000,'Set the number of divisions along x',ndivx_callback)
-    Draw.Number       ('nDivY'            , EVT_NONE     , 100 , row , 100 , rh , d['ndivy'],2,1000,'Set the number of divisions along y',ndivy_callback)
-    Draw.Number       ('nDivZ'            , EVT_NONE     , 200 , row , 100 , rh , d['ndivz'],2,1000,'Set the number of divisions along z',ndivz_callback) ; row=row-rh
-    Draw.PushButton   ('Gen structured'   , EVT_GEN_STRU ,   0 , row , 100 , rh , "Generated structured mesh") ; row=row+rh
+    Draw.Toggle       ('Display props'  , EVT_NONE     , 120 , row , 100 , rh, d['display_props'], 'Diplay mesh properties'   , disp_props_callback) ; row=row-rh
+    Draw.Toggle       ('Vertex IDs'     , EVT_NONE     ,   0 , row ,  80 , rh, d['vertex_ids'],    'Diplay vertex ids'        , vertex_ids_callback) ;
+    Draw.Toggle       ('Edge IDs'       , EVT_NONE     ,  80 , row ,  80 , rh, d['edge_ids'],      'Diplay edge ids'          , edge_ids_callback  ) ;
+    Draw.Toggle       ('Face IDs'       , EVT_NONE     , 160 , row ,  80 , rh, d['face_ids'],      'Diplay face ids'          , face_ids_callback  ) ;
+    Draw.Toggle       ('nDivs'          , EVT_NONE     , 240 , row ,  80 , rh, d['disp_ndivs'],    'Diplay nuber of divisions', disp_ndivs_callback) ; row=row-rh
+    Draw.PushButton   ('Set local x'    , EVT_SET_X    ,   0 , row ,  80 , rh , 'Set local x axis (needs one edge selected)')
+    Draw.PushButton   ('Set local y'    , EVT_SET_Y    ,  80 , row ,  80 , rh , 'Set local y axis (needs one edge selected)')
+    Draw.PushButton   ('Set local z'    , EVT_SET_Z    , 160 , row ,  80 , rh , 'Set local z axis (needs one edge selected)')
+    Draw.PushButton   ('Set nDivs'      , EVT_SET_NDIV , 240 , row ,  80 , rh , 'Set set number of divisions along x, y, and z') ; row=row-rh
+    Draw.PushButton   ('Gen structured' , EVT_GEN_STRU ,   0 , row , 100 , rh , "Generated structured mesh") ; row=row+rh
 
 # Register GUI
 Draw.Register (gui, event, button_event)

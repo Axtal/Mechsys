@@ -340,6 +340,19 @@ def set_local_system(str_edge_xyz):
         if edm: Blender.Window.EditMode(1)
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
 
+def set_ndivs(ndivx, ndivy, ndivz):
+    scn = bpy.data.scenes.active
+    obj = scn.objects.active
+    if obj!=None and obj.type=='Mesh':
+        if len(obj.getAllProperties())>0:
+            pro = di.get_all_props(obj)
+            if pro['edge_x'].data>=0: pro['ndiv_x'].data = ndivx
+            if pro['edge_y'].data>=0: pro['ndiv_y'].data = ndivy
+            if pro['edge_z'].data>=0: pro['ndiv_z'].data = ndivz
+            Blender.Window.QRedrawAll()
+        else: Blender.Draw.PupMenu('ERROR|Please, set properties (such as local axis) to this object first (obj=%s)', obj.name)
+    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
+
 # returns:
 #         origin vertex index = left (x=0)
 #         right vertex index (x>0)
@@ -358,22 +371,24 @@ def get_local_x_axis(props, msh):
         else: Blender.Draw.PupMenu('ERROR|local x-y axes must share the origin vertex (obj=%s)' % obj.name)
         return origin, right, ex.index
 
-def gen_xy_weights():
-    d  = di.load_dict()
+def gen_xy_weights(obj):
     wx = []
     wy = []
-    for i in range(d['ndivx']): wx.append(1)
-    for i in range(d['ndivy']): wy.append(1)
+    if len(obj.getAllProperties())>0:
+        pro = di.get_all_props(obj)
+        for i in range(pro['ndiv_x'].data): wx.append(1)
+        for i in range(pro['ndiv_y'].data): wy.append(1)
     return wx, wy
 
-def gen_xyz_weights():
-    d  = di.load_dict()
+def gen_xyz_weights(obj):
     wx = []
     wy = []
     wz = []
-    for i in range(d['ndivx']): wx.append(1)
-    for i in range(d['ndivy']): wy.append(1)
-    for i in range(d['ndivz']): wz.append(1)
+    if len(obj.getAllProperties())>0:
+        pro = di.get_all_props(obj)
+        for i in range(pro['ndiv_x'].data): wx.append(1)
+        for i in range(pro['ndiv_y'].data): wy.append(1)
+        for i in range(pro['ndiv_z'].data): wz.append(1)
     return wx, wy, wz
 
 def gen_struct_mesh():
@@ -400,7 +415,7 @@ def gen_struct_mesh():
                     cox = [msh.verts[iv].co[0] for iv in ids]
                     coy = [msh.verts[iv].co[1] for iv in ids]
                     msh.verts = ori
-                    wx, wy = gen_xy_weights()
+                    wx, wy = gen_xy_weights(obj)
                     bks.append(ms.mesh_block())
                     bks[len(bks)-1].set ([cox,coy], wx, wy)
                 else: Blender.Draw.PupMenu('ERROR|2D blocks must have 0 faces and 4(lin) or 8(o2) edges')
@@ -418,7 +433,8 @@ def gen_struct_mesh():
         Blender.Window.WaitCursor(1)
         mms = ms.mesh_struct()
         ne  = mms.generate (bks)
-        print '[1;34mMechSys[0m: %d elements generated' % ne
+        mms.write_vtu (key+'.vtu')
+        print '[1;34mMechSys[0m: %d elements generated. File <[1;33m%s[0m> created' % (ne, key+'.vtu')
         # draw
         vs = []
         es = []
