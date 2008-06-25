@@ -496,7 +496,7 @@ def draw_struct_mesh(key, mms):
     for res in etags_list:
         face_id, v1, v2, etag = res
         edge_id = new_msh.findEdges (v1, v2)
-        di.set_tags (new_obj, 'edge', edge_id, etag)
+        di.set_tag (new_obj, 'edge', edge_id, etag)
 
     # redraw
     Blender.Window.QRedrawAll()

@@ -152,7 +152,7 @@ def button_event(evt):
         block.append(("Tag = ", tag, -10000, 0))
         if Blender.Draw.PupBlock("Set edges tag", block)==1:
             for id in msh.edges.selected():
-                di.set_tags (obj, 'edge', id, tag.val)
+                di.set_tag (obj, 'edge', id, tag.val)
             Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1) # return to EditMode
 
@@ -164,7 +164,7 @@ def button_event(evt):
         block.append(("Tag = ", tag, -10000, 0))
         if Blender.Draw.PupBlock("Set faces tag", block)==1:
             for id in msh.faces.selected():
-                di.set_tags (obj, 'face', id, tag.val)
+                di.set_tag (obj, 'face', id, tag.val)
             Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1) # return to EditMode
 
@@ -180,6 +180,7 @@ def button_event(evt):
         obs = scn.objects.selected
         for o in obs:
             for p in o.getAllProperties():
+                print o.name, p.name, p.data
                 o.removeProperty(p)
             Blender.Window.QRedrawAll()
 

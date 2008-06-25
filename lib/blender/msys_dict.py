@@ -115,38 +115,12 @@ def get_ndiv(obj, key):
     return ndiv
 
 
-def set_tags(obj, key, id, tag):
-    # TODO:
-    #       This routine is limited since strings have size restrictions
-    #       Then, then many edges have tags, the string won't be able
-    #       to hold all information
+def set_tag(obj, key, id, tag):
     # In:
     #      key = 'edge' or 'face'
     #      id  = global ID of edge or face with tag
     #      tag = the tag of edge or face with tag
-
-    # get properties
-    try:    prop_ids  = obj.getProperty(key+'_ids')
-    except: prop_ids  = False
-    try:    prop_tags = obj.getProperty(key+'_tags')
-    except: prop_tags = False
-
-    # existent properties
-    if prop_ids and prop_tags:
-        ids = [int(v) for v in prop_ids.data.split()]
-        if id in ids: # id already defined
-            idx       = ids.index(id)
-            tags      = [int(v) for v in prop_tags.data.split()]
-            tags[idx] = tag
-            prop_tags.data = string.join([str(v) for v in tags], ' ')
-        else: # new id
-            prop_ids .data += ' '+str(id)
-            prop_tags.data += ' '+str(tag)
-
-    # new properties
-    else:
-        obj.addProperty (key+'_ids' , str(id) , 'STRING')
-        obj.addProperty (key+'_tags', str(tag), 'STRING')
+    set_int_property (obj, key+'_'+str(id), tag)
 
 
 def get_tags(obj, key):
@@ -156,8 +130,8 @@ def get_tags(obj, key):
     #      [ [edge_global_id, tag], ... num edges with tags]
     # or
     #      [ [face_global_id, tag], ... num faces with tags]
-    try:    ids  = [int(v) for v in obj.getProperty(key+'_ids' ).data.split()]
-    except: ids  = []
-    try:    tags = [int(v) for v in obj.getProperty(key+'_tags').data.split()]
-    except: tags = []
-    return [[id,tags[i]] for i, id in enumerate(ids)]
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]==key:
+            res.append ([int(p.name[5:]), p.data])
+    return res 
