@@ -157,7 +157,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("write_vtu", &PyMeshStruct::WriteVTU)
 	    .def("get_verts", &PyMeshStruct::GetVerts)
 	    .def("get_elems", &PyMeshStruct::GetElems)
-	    .def("get_props", &PyMeshStruct::GetProps)
+	    .def("get_etags", &PyMeshStruct::GetETags)
 	    ;
 
 	// ---------------------------------------------------------------------------- FEM

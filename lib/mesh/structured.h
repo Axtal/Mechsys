@@ -90,6 +90,27 @@ namespace Mesh
 	 *        5) Add quality check and improvement
 	 */
 
+
+struct Edge
+{
+	int L; // Left vertex id
+	int R; // Right vertex id
+};
+
+const Edge EDGE2VERT[]= // Map between local edge ID to local vertex ID
+{{ 0, 3 },
+ { 1, 2 },
+ { 0, 1 },
+ { 2, 3 },
+ { 4, 7 },
+ { 5, 6 },
+ { 4, 5 },
+ { 6, 7 },
+ { 0, 4 },
+ { 1, 5 },
+ { 2, 6 },
+ { 3, 7 }};
+
 struct Elem;
 
 struct Share
@@ -858,7 +879,6 @@ public:
 		_e_tags.Resize(n_edges);
 		for (int i=0; i<n_edges; ++i) _e_tags(i) = boopy::extract<int>(Tags[i])();
 		_block.SetETags (&_e_tags);
-		std::cout << _e_tags;
 	}
 
 	void SetFTags (boopy::list const & Tags)
@@ -868,7 +888,6 @@ public:
 		_f_tags.Resize(n_faces);
 		for (int i=0; i<n_faces; ++i) _f_tags(i) = boopy::extract<int>(Tags[i])();
 		_block.SetFTags (&_f_tags);
-		std::cout << _f_tags;
 	}
 
 	Mesh::Block * GetBlock () { return &_block; }
@@ -934,29 +953,30 @@ public:
 		}
 	}
 
-	void GetProps (boopy::list & P)
+	void GetETags (boopy::list & Tags)
 	{
-		/* Returns a list of lists: [[int,string,string], [int,string,string], ..., num of elems on boundary]
+		/* Returns a list of tuples: [(int,int,int,int), (int,int,int,int), ..., num of elems with tags]
 		 *
-		 *   Each sublist has three information:
+		 *   Each tuple has three values: (eid, L, R, tag)
 		 *
-		 *     [ element_id, string with edges local IDs, string with edges tags ]
+		 *   where:  eid: element ID
+		 *           L:   global ID of the left vertex on edge
+		 *           R:   global ID of the right vertex on edge
+		 *           tag: edge tag
 		 */
 		for (size_t i=0; i<_ms.ElemsBry().Size(); ++i) // elements on boundary
 		{
-			// edge tags
-			String e_local_ids; // local indexes of edges with tags
-			String e_tags;      // tags of all edges with tags
-			for (int j=0; j<_ms.ElemsBry()[i]->ETags.Size(); ++j)
+			for (int j=0; j<_ms.ElemsBry()[i]->ETags.Size(); ++j) // j is the local_edge_id
 			{
-				e_local_ids.Printf("%s %d", e_local_ids.GetSTL().c_str(), j);
-				e_tags     .Printf("%s %d", e_tags     .GetSTL().c_str(), _ms.ElemsBry()[i]->ETags(j));
+				int tag = _ms.ElemsBry()[i]->ETags(j);
+				if (tag<0)
+				{
+					int eid = _ms.ElemsBry()[i]->MyID;
+					int L   = _ms.ElemsBry()[i]->V[Mesh::EDGE2VERT[j].L]->MyID;
+					int R   = _ms.ElemsBry()[i]->V[Mesh::EDGE2VERT[j].R]->MyID;
+					Tags.append (boopy::make_tuple(eid, L, R, tag));
+				}
 			}
-			boopy::list tmp;
-			tmp.append (i);
-			tmp.append (e_local_ids.GetSTL().c_str());
-			tmp.append (e_tags     .GetSTL().c_str());
-			P  .append (tmp);
 		}
 	}
 
