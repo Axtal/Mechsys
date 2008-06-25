@@ -72,14 +72,12 @@ int main(int argc, char **argv) try
 		std::cout << "2D("<<ne<<" elements): Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
 		// Check
-		cout << "Local edge IDs where each vertex is located:" << endl;
-		for (size_t i=0; i<ms.Verts().Size(); ++i) cout << ms.Verts()[i]->Edge << " ";  cout << endl;
-		cout << "ETags:" << endl;
-		for (size_t i=0; i<ms.ElemsBry().Size(); ++i)
-		{
-			ms.ElemsBry()[i]->ETags.SetNS(Util::_6_3);
-			cout << ms.ElemsBry()[i]->ETags;
-		}
+		//cout << "ETags:" << endl;
+		//for (size_t i=0; i<ms.ElemsBry().Size(); ++i)
+		//{
+			//ms.ElemsBry()[i]->ETags.SetNS(Util::_6_3);
+			//cout << ms.ElemsBry()[i]->ETags;
+		//}
 
 		// Output
 		ms.WriteVTU ("tmesh01_2D.vtu");
@@ -113,12 +111,15 @@ int main(int argc, char **argv) try
 
 		// Tags
 		Vector<int> e_tags(12);
+		Vector<int> f_tags(6);
 		e_tags = -100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111;
+		f_tags = -10, -11, -12, -13, -14, -15;
 
 		// Blocks
 		Mesh::Block b;
 		b.Set      (&c, &wx, &wy, &wz);
 		b.SetETags (&e_tags);
+		b.SetFTags (&f_tags);
 		Array<Mesh::Block*> blocks;  blocks.Push(&b);
 
 		// Generate
@@ -129,14 +130,18 @@ int main(int argc, char **argv) try
 		std::cout << "3D:("<<ne<<" elements) Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
 		// Check
-		cout << "Local edge IDs where each vertex is located:" << endl;
-		for (size_t i=0; i<ms.Verts().Size(); ++i) cout << ms.Verts()[i]->Edge << " ";  cout << endl;
-		cout << "ETags:" << endl;
-		for (size_t i=0; i<ms.ElemsBry().Size(); ++i)
-		{
-			ms.ElemsBry()[i]->ETags.SetNS(Util::_6_3);
-			cout << ms.ElemsBry()[i]->ETags;
-		}
+		//cout << "ETags:" << endl;
+		//for (size_t i=0; i<ms.ElemsBry().Size(); ++i)
+		//{
+			//ms.ElemsBry()[i]->ETags.SetNS(Util::_6_3);
+			//cout << ms.ElemsBry()[i]->ETags;
+		//}
+		//cout << "FTags:" << endl;
+		//for (size_t i=0; i<ms.ElemsBry().Size(); ++i)
+		//{
+			//ms.ElemsBry()[i]->FTags.SetNS(Util::_6_3);
+			//cout << ms.ElemsBry()[i]->FTags;
+		//}
 
 		// Output
 		ms.WriteVTU ("tmesh01_3D.vtu");

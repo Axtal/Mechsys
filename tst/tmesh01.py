@@ -35,6 +35,9 @@ def test_2D():
                    [2,4,8,16,32],                        # weights x
                    [2,4,8,16,32,64])                     # weights y
 
+    # Tags
+    blocks[0].set_etags ([-10, -11, -12, -13])
+
     # Generate
     ms = m.mesh_struct()
     ne = ms.generate (blocks)
@@ -63,6 +66,10 @@ def test_3D():
                    [2,4,8,16,32],                                                                                 # weights x
                    [2,4,8,16,32,64],                                                                              # weights y
                    [2,4,8,16,32,64,128])                                                                          # weights y
+
+    # Tags
+    blocks[0].set_etags ([-100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111])
+    blocks[0].set_ftags ([-10, -11, -12, -13, -14, -15])
 
     # Generate
     ms = m.mesh_struct()

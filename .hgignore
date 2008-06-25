@@ -6,6 +6,7 @@ tst/tquad8
 tst/ttruss01
 tst/tsolid01
 tst/tpstrain01
+tst/theat
 src/build
 
 syntax: glob

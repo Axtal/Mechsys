@@ -145,9 +145,10 @@ BOOST_PYTHON_MODULE (mechsys)
 	// --------------------------------------------------------------------------- Mesh
 
 	class_<PyMeshBlock>("mesh_block")
-	    .def("set",        PMBSet1)
-	    .def("set",        PMBSet2)
-	    .def("set_e_tags", &PyMeshBlock::SetETags)
+	    .def("set",       PMBSet1)
+	    .def("set",       PMBSet2)
+	    .def("set_etags", &PyMeshBlock::SetETags)
+	    .def("set_ftags", &PyMeshBlock::SetFTags)
 	    ;
 
 	class_<PyMeshStruct>("mesh_struct")
