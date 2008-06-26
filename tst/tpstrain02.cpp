@@ -28,6 +28,7 @@
 #include "fem/solvers/autome.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
+#include "mesh/structured.h"
 
 using std::cout;
 using std::endl;
@@ -37,11 +38,13 @@ using LinAlg::Matrix;
 
 int main(int argc, char **argv) try
 {
-	double H  = 2.0;   // height
-	double L  = 2.0;   // length
-	double E  = 207.0; // Young
-	double nu = 0.3;   // Poisson
-	double q  = 1.0;   // Load
+	double H     = 2.0;   // height
+	double L     = 2.0;   // length
+	double E     = 207.0; // Young
+	double nu    = 0.3;   // Poisson
+	double q     = 1.0;   // Load
+	size_t ndivx = 2;     // divisions along x (must be even)
+	size_t ndivy = 2;     // divisions along y
 
 	/*        | | | | | | | | | | | | | | | | |  q
 	          V V V V V V V V V V V V V V V V V 
@@ -70,73 +73,89 @@ int main(int argc, char **argv) try
 
 	// Input
 	String linsol("LA");
-	if (argc==2) linsol.Printf("%s",argv[1]);
-	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
+	if (argc==2)   linsol.Printf("%s",argv[1]);
+	if (argc==3) { linsol.Printf("%s",argv[1]); ndivx = ndivy = atoi(argv[2]); }
+	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol nDiv\n  where LinSol:\n \tLA   => LAPACK_T  : DENSE\n \tUM   => UMFPACK_T : SPARSE\n \tSLU  => SuperLU_T : SPARSE\n \tnDiv => Number of division along x and y (must be even)\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
+
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+
+	// Block coordinates
+	Matrix<double> c(2,8);
+	c = 0.,  L, L, 0.,    L/2.,    L, L/2.,   0.,
+		0., 0., H,  H,      0., H/2.,    H, H/2.;
+
+	// Block weights
+	Array<double> wx(ndivx);  wx = 1.0;
+	Array<double> wy(ndivy);  wy = 1.0;
+
+	// Block tags
+	Vector<int> e_tags(4);
+	e_tags = 0, 0, -10, -20;
+
+	// Blocks
+	Mesh::Block b;
+	b.Set      (&c, &wx, &wy);
+	b.SetETags (&e_tags);
+	Array<Mesh::Block*> blocks;  blocks.Push(&b);
+
+	// Generate
+	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
+	Mesh::Structured ms;
+	clock_t start = std::clock(); // Initial time
+	size_t  ne    = ms.Generate (blocks);
+	clock_t total = std::clock() - start; // Time elapsed
+	cout << "[1;33m"<<ne<<" elements[0m. Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
+
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// 0) Problem dimension
 	FEM::Dim = 2; // 2D
 
 	// 1) Nodes
-	double xmin  = 0.0;
-	double ymin  = 0.0;
-	int    ndivx = 20;   // must be even for this problem
-	int    ndivy = 30;
-	double dx    = L/ndivx;
-	double dy    = H/ndivy;
-	for (int j=0; j<ndivy+1; ++j)
-	for (int i=0; i<ndivx+1; ++i)
-		FEM::AddNode (xmin+i*dx, ymin+j*dy);
+	for (size_t i=0; i<ms.Verts().Size(); ++i)
+		FEM::AddNode (ms.Verts()[i]->C(0), ms.Verts()[i]->C(1));
 
-	// 2,3) Elements and connectivity
-	for (int j=0; j<ndivy; ++j)
-	for (int i=0; i<ndivx; ++i)
+	for (size_t i=0; i<ms.Elems().Size(); ++i)
 	{
-		int I =  i    +  j   *(ndivx+1);
-		int J = (i+1) +  j   *(ndivx+1);
-		int K = (i+1) + (j+1)*(ndivx+1);
-		int L =  i    + (j+1)*(ndivx+1);
-		FEM::AddElem("Quad4PStrain")->SetNode(0,I)->SetNode(1,J)->SetNode(2,K)->SetNode(3,L);
+		// 2) Elements
+		FEM::Element * e = FEM::AddElem("Quad4PStrain");
+
+		// 3) Connectivity
+		Mesh::Elem * me = ms.Elems()[i];
+		e->SetNode(0, me->V[0]->MyID);
+		e->SetNode(1, me->V[1]->MyID);
+		e->SetNode(2, me->V[2]->MyID);
+		e->SetNode(3, me->V[3]->MyID);
+
+		// 5) Parameters and initial values
+		String prms; prms.Printf("E=%f  nu=%f",E,nu);
+		e->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 	}
 
-	// 4) Boundary conditions (must be after connectivity)
-	for (size_t i=0; i<Nodes.Size(); ++i)
-	{
-		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
-		{
-			Nodes[i]->Bry("uy",0.0);
-			if (fabs(Nodes[i]->X()-(xmin+L/2.0))<1.0e-5) // central node
-				Nodes[i]->Bry("ux",0.0);
-		}
-	}
-	for (size_t i=0; i<Elems.Size(); ++i)
-	{
-		Matrix<double> c;
-		Elems[i]->Coords(c);
-		if (fabs(c(2,1)-H)<1.0e-5) // top element
-			Elems[i]->Bry("fy", -q, 3); // 3=> top face/edge
-	}
-
-	// 5) Parameters and initial values
-	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	for (size_t i=0; i<Elems.Size(); ++i)
-		Elems[i]->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	// 4) Boundary conditions
+	// Nodes
+	Array<double>       X, Y, Z;
+	Array<char const *> node_vars;
+	Array<double>       node_vals;
+	X.Push(L/2.0);  Y.Push(0.0);  Z.Push(0.0);  node_vars.Push("ux");  node_vals.Push(0.0);
+	FEM::SetNodeBrys (&ms, &X, &Y, &Z, &node_vars, &node_vals);
+	// Faces
+	Array<int>          face_tags;
+	Array<char const *> face_vars;
+	Array<double>       face_vals;
+	face_tags.Push(-10);  face_vars.Push("uy");  face_vals.Push(0.0);
+	face_tags.Push(-20);  face_vars.Push("fy");  face_vals.Push( -q);
+	FEM::SetFaceBrys (&ms, &face_tags, &face_vars, &face_vals);
 
 	// 6) Solve
+	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	start = std::clock(); // Initial time
 	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
-	cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
-
-	// Output
-	cout << "Node 20: ux = " << Nodes[20]->Val("ux") << " : uy = " << Nodes[20]->Val("uy") << " : fx = "  << Nodes[20]->Val("fx")  << " : fy = "  << Nodes[20]->Val("fy")  << endl;
-	cout << "Node 22: ux = " << Nodes[22]->Val("ux") << " : uy = " << Nodes[22]->Val("uy") << " : fx = "  << Nodes[22]->Val("fx")  << " : fy = "  << Nodes[22]->Val("fy")  << endl;
-	cout << "Node 24: ux = " << Nodes[24]->Val("ux") << " : uy = " << Nodes[24]->Val("uy") << " : fx = "  << Nodes[24]->Val("fx")  << " : fy = "  << Nodes[24]->Val("fy")  << endl << endl;
-	cout << "Node 0:  ux = " << Nodes[ 0]->Val("ux") << " : uy = " << Nodes[ 0]->Val("uy") << " : fx = "  << Nodes[ 0]->Val("fx")  << " : fy = "  << Nodes[ 0]->Val("fy")  << endl;
-	cout << "Node 2:  ux = " << Nodes[ 2]->Val("ux") << " : uy = " << Nodes[ 2]->Val("uy") << " : fx = "  << Nodes[ 2]->Val("fx")  << " : fy = "  << Nodes[ 2]->Val("fy")  << endl;
-	cout << "Node 4:  ux = " << Nodes[ 4]->Val("ux") << " : uy = " << Nodes[ 4]->Val("uy") << " : fx = "  << Nodes[ 4]->Val("fx")  << " : fy = "  << Nodes[ 4]->Val("fy")  << endl << endl;
-	cout << "Elem 9:  Sx = " << Elems[ 9]->Val("Sx") << " : Sy = " << Elems[ 9]->Val("Sy") << " : Sxy = " << Elems[ 9]->Val("Sxy") << endl;
-	cout << "Elem 9:  Ex = " << Elems[ 9]->Val("Ex") << " : Ey = " << Elems[ 9]->Val("Ey") << " : Exy = " << Elems[ 9]->Val("Exy") << endl << endl;
+	total = std::clock() - start; // Time elapsed
+	cout << "GFE_Resid = "<<FEM::GFE_Resid<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
 
 	// Check
     double errors = 0.0;
@@ -161,19 +180,19 @@ int main(int argc, char **argv) try
 	// Displacements
 	for (size_t i=0; i<Nodes.Size(); ++i)
 	{
-		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
+		if (fabs(Nodes[i]->Y())<1.0e-5) // bottom nodes
 		{
 			errors += fabs(Nodes[i]->Val("uy") - (0.0));
-			if (fabs(Nodes[i]->X()-(xmin+L/2.0))<1.0e-5) // central node
+			if (fabs(Nodes[i]->X()-(L/2.0))<1.0e-5) // central node
 				errors += fabs(Nodes[i]->Val("ux") - (0.0));
 		}
-		else if (fabs(Nodes[i]->Y()-(ymin+H/2.0))<1.0e-5) // mid nodes
+		else if (fabs(Nodes[i]->Y()-(H/2.0))<1.0e-5) // mid nodes
 			errors += fabs(Nodes[i]->Val("uy") - (-0.5*H*Ey));
-		else if (fabs(Nodes[i]->Y()-(ymin+H))<1.0e-5) // top nodes
+		else if (fabs(Nodes[i]->Y()-(H))<1.0e-5) // top nodes
 			errors += fabs(Nodes[i]->Val("uy") - (-H*Ey));
-		if (fabs(Nodes[i]->X()-(xmin))<1.0e-5) // left nodes
+		if (fabs(Nodes[i]->X())<1.0e-5) // left nodes
 			errors += fabs(Nodes[i]->Val("ux") - (0.5*L*Ex));
-		if (fabs(Nodes[i]->X()-(xmin+L))<1.0e-5) // right nodes
+		if (fabs(Nodes[i]->X()-L)<1.0e-5) // right nodes
 			errors += fabs(Nodes[i]->Val("ux") - (-0.5*L*Ex));
 	}
 
@@ -181,8 +200,13 @@ int main(int argc, char **argv) try
 	else                      cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	// Write file
-	FEM::WriteVTUEquilib ("tpstrain01.vtu");
-	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m" << endl;
+	cout << "Write output file: ------------------------------------------------------------" << endl;
+	start = std::clock(); // Initial time
+	FEM::WriteVTUEquilib ("tpstrain02.vtu");
+	total = std::clock() - start; // Time elapsed
+	cout << "[1;34mFile <tpstrain02.vtu> saved.[0m" << endl;
+	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+	cout << endl;
 
 	return 0;
 }

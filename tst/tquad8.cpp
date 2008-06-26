@@ -88,7 +88,7 @@ int main(int argc, char **argv) try
 	Nodes[0]->Bry ("uy",0.0);
 	Nodes[4]->Bry ("uy",0.0)->Bry("ux",0.0);
 	Nodes[1]->Bry ("uy",0.0);
-	Elems[0]->BryL("fy",-q, 3, 2,3,6); // Actually, fy is traction == ty (list of nodes is LOCAL)
+	Elems[0]->Bry ("fy",-q, 3); // 3 => top edge/face
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
