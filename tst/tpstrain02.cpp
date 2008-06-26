@@ -108,31 +108,13 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// 0) Problem dimension
+	// Problem dimension
 	FEM::Dim = 2; // 2D
 
-	// 1) Nodes
-	for (size_t i=0; i<ms.Verts().Size(); ++i)
-		FEM::AddNode (ms.Verts()[i]->C(0), ms.Verts()[i]->C(1));
+	// Nodes and elements
+	FEM::AddNodesElems (&ms, "Quad4PStrain");
 
-	for (size_t i=0; i<ms.Elems().Size(); ++i)
-	{
-		// 2) Elements
-		FEM::Element * e = FEM::AddElem("Quad4PStrain");
-
-		// 3) Connectivity
-		Mesh::Elem * me = ms.Elems()[i];
-		e->SetNode(0, me->V[0]->MyID);
-		e->SetNode(1, me->V[1]->MyID);
-		e->SetNode(2, me->V[2]->MyID);
-		e->SetNode(3, me->V[3]->MyID);
-
-		// 5) Parameters and initial values
-		String prms; prms.Printf("E=%f  nu=%f",E,nu);
-		e->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
-	}
-
-	// 4) Boundary conditions
+	// Boundary conditions
 	// Nodes
 	Array<double>       X, Y, Z;
 	Array<char const *> node_vars;
@@ -147,7 +129,12 @@ int main(int argc, char **argv) try
 	face_tags.Push(-20);  face_vars.Push("fy");  face_vals.Push( -q);
 	FEM::SetFaceBrys (&ms, &face_tags, &face_vars, &face_vals);
 
-	// 6) Solve
+	// Parameters and initial values
+	String prms; prms.Printf("E=%f  nu=%f",E,nu);
+	for (size_t i=0; i<Elems.Size(); ++i)
+		Elems[i]->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+
+	// Solve
 	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
@@ -156,6 +143,8 @@ int main(int argc, char **argv) try
 	sol -> Solve();
 	total = std::clock() - start; // Time elapsed
 	cout << "GFE_Resid = "<<FEM::GFE_Resid<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+
+	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Check
     double errors = 0.0;

@@ -91,6 +91,23 @@ inline Element * AddElem (char const * Type, bool IsActive=true)
 	return tmp;
 }
 
+inline void AddNodesElems (Mesh::Structured const * MStruct, char const * ElementType)
+{
+	for (size_t i=0; i<MStruct->Verts().Size(); ++i)
+		FEM::AddNode (MStruct->Verts()[i]->C(0), MStruct->Verts()[i]->C(1), (MStruct->Is3D() ? MStruct->Verts()[i]->C(2) : 0.0));
+
+	for (size_t i=0; i<MStruct->Elems().Size(); ++i)
+	{
+		// New elements
+		FEM::Element * e = FEM::AddElem(ElementType);
+
+		// Connectivity
+		Mesh::Elem * me = MStruct->Elems()[i];
+		for (size_t j=0; j<me->V.Size(); ++j)
+			e->SetNode (j, me->V[j]->MyID);
+	}
+}
+
 inline void SetNodeBrys (Mesh::Structured const * MStruct, Array<double> const * X, Array<double> const * Y, Array<double> const * Z, Array<char const *> const * Vars, Array<double> const * Values, double DistTol=sqrt(DBL_EPSILON))
 {
 	/* Ex.:

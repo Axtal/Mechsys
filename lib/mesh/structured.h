@@ -922,6 +922,8 @@ public:
 	PyMeshStruct ()           : _ms(sqrt(DBL_EPSILON)) {}
 	PyMeshStruct (double Tol) : _ms(Tol)               {}
 
+	Mesh::Structured const * MStruct () const { return &_ms; }
+
 	size_t Generate (boopy::list & ListOfPyMeshBlock)
 	{
 		int nb = boopy::len(ListOfPyMeshBlock); if (nb<1) throw new Fatal("PyMeshStruct: Number of blocks must be greater than 0 (%d is invalid)",nb);

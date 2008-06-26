@@ -20,6 +20,7 @@
 
 // STL
 #include <iostream>
+#include <cfloat>    // for DBL_EPSILON
 
 // Boost-Python
 #include <boost/python/module.hpp>
@@ -54,7 +55,7 @@
 #include "models/equilibs/linelastic.h"
 
 // Python string to char const *
-#define S2C(py_str) extract<char const *>(py_str)
+#define S2C(py_str) extract<char const *>(py_str)()
 
 using std::cout;
 using std::endl;
@@ -104,6 +105,55 @@ void      add_elem      (str Type, bool IsActive)      { FEM::AddElem (S2C(Type)
 void      dim           (int  nDim)                    { FEM::Dim = nDim; }
 PyNode    nodes         (int  iNode)                   { PyNode    tmp(iNode); return tmp; }
 PyElement elems         (int  iElem)                   { PyElement tmp(iElem); return tmp; }
+
+void write_vtu_equilib (str FileName) { FEM::WriteVTUEquilib(S2C(FileName)); }
+void write_vtk         (str FileName) { FEM::WriteVTK       (S2C(FileName)); }
+
+int  n_elems         () { return FEM::Elems.Size(); }
+void add_nodes_elems (PyMeshStruct const & MS, str ElemType) { FEM::AddNodesElems (MS.MStruct(), S2C(ElemType)); }
+
+void set_node_brys (PyMeshStruct const & MS, list & X, list & Y, list & Z, list & Vars, list & Values)
+{
+	for (size_t i=0; i<MS.MStruct()->VertsBry().Size(); ++i) // loop over elements on boundary
+	{
+		Mesh::Vertex * mv = MS.MStruct()->VertsBry()[i];
+		for (int j=0; j<len(X); ++j)
+		{
+			double x = extract<double>(X[j])();
+			double y = extract<double>(Y[j])();
+			double z = extract<double>(Z[j])();
+			double d = sqrt(pow(x-mv->C(0),2.0) + pow(y-mv->C(1),2.0) + (MS.MStruct()->Is3D() ? pow(z-mv->C(2),2.0) : 0.0));
+			if (d<sqrt(DBL_EPSILON))
+			{
+				FEM::Node * n = FEM::Nodes[mv->MyID];
+				n->Bry (extract<char const *>(Vars[j])(), extract<double>(Values[j])());
+			}
+		}
+	}
+}
+
+void set_face_brys (PyMeshStruct const & MS, list & Tags, list & Vars, list & Values)
+{
+	for (size_t i=0; i<MS.MStruct()->ElemsBry().Size(); ++i) // loop over elements on boundary
+	{
+		Mesh::Elem * me = MS.MStruct()->ElemsBry()[i];
+		for (int j=0; j<me->ETags.Size(); ++j) // j is the local_edge_id
+		{
+			int tag = me->ETags(j);
+			if (tag<0)
+			{
+				long idx = Tags.index(tag);
+				if (idx>=0)
+				{
+					FEM::Element * e = FEM::Elems[me->MyID];
+					e->Bry (extract<char const*>(Vars[idx])(), extract<double>(Values[idx])(), j);
+				}
+				else throw new Fatal("set_face_brys: Could not find tag==%d inside Tags array. This tag is set in Elem.ID==%d",tag,me->MyID);
+			}
+		}
+	}
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////// Extra Python functions
 
@@ -189,6 +239,13 @@ BOOST_PYTHON_MODULE (mechsys)
 	def ("elems",         elems        );
 	def ("print_elems",   print_elems  );
 	def ("print_models",  print_models );
+
+	def ("write_vtk",         write_vtk        );
+	def ("write_vtu_equilib", write_vtu_equilib);
+	def ("n_elems",           n_elems          );
+	def ("add_nodes_elems",   add_nodes_elems  );
+	def ("set_node_brys",     set_node_brys    );
+	def ("set_face_brys",     set_face_brys    );
 
 	// Exceptions
 	register_exception_translator<Exception *>(&except_translator);
