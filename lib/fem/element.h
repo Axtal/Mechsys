@@ -64,8 +64,7 @@ public:
 	void   IntegPoints    (IntegPoint const * & IPs) const { IPs=_a_int_pts; }                       ///< Return a pointer to the array of integration points
 	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
 	void   Dist2FaceNodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
-	void   BryG           (char const * Key, double Value, size_t nNodesFace, ...);                  ///< Set Face/Edge boundary conditions. The variable argument list must include exactly the GLOBAL node numbers of the face/edge
-	void   BryL           (char const * Key, double Value, size_t nNodesFace, ...);                  ///< Set Face/Edge boundary conditions. The variable argument list must include exactly the LOCAL node numbers of the face/edge
+	void   Bry            (char const * Key, double Value, int FaceLocalID);                         ///< Set Face/Edge boundary conditions
 	double Volume         () const;                                                                  ///< Return the volume/area/length of the element
 	void   SetDim         (int nDim) { _ndim = nDim; }                                               ///< Set the number of dimension of the problem
 
@@ -86,6 +85,7 @@ public:
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual int  VTKCellType    () const =0;                                                                                                 ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
 	virtual void VTKConnect     (String & Nodes) const =0;                                                                                   ///< Return the VTK list of connectivities with global nodes IDs
+	virtual void GetFaceNodes   (int FaceID, Array<Node*> & FaceConnects) const =0;                                                          ///< Return the connectivity of a face, given the local face ID
 	virtual void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape) const =0;                                     ///< Shape functions
 	virtual void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const =0;                                    ///< Derivatives
 	virtual void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape) const =0;                                           ///< Face shape functions
@@ -196,43 +196,10 @@ inline void Element::Dist2FaceNodes(char const * Key, double const FaceValue, Ar
 		FaceConnects[i]->Bry(Key,values(i));
 }
 
-inline void Element::BryG(char const * Key, double Value, size_t nNodesFace, ...)
+inline void Element::Bry(char const * Key, double Value, int FaceLocalID)
 {
-	// Check
-	if (nNodesFace!=_n_face_nodes) throw new Fatal("Element::Bry: Setting up of Bry with Key==%s and Value=%g failed.\n The number of nodes in a face/edge of this element must be equal to %d",Key,Value,_n_face_nodes);
-
-	// Set array with pointers to the nodes on a face/edge
-	va_list   arg_list;
-	va_start (arg_list, nNodesFace); // initialize arg_list with parameters AFTER nNodesFace
-	Array<Node*> fnodes; fnodes.Resize(_n_face_nodes);
-	for (size_t i=0; i<_n_face_nodes; ++i)
-	{
-		size_t inode_global = va_arg(arg_list,size_t);
-		fnodes[i]           = Nodes[inode_global];
-	}
-	va_end (arg_list);
-
-	// Distribute value to nodes
-	Dist2FaceNodes (Key, Value, fnodes);
-}
-
-inline void Element::BryL(char const * Key, double Value, size_t nNodesFace, ...)
-{
-	// Check
-	if (nNodesFace!=_n_face_nodes) throw new Fatal("Element::Bry: Setting up of Bry with Key==%s and Value=%g failed.\n The number of nodes in a face/edge of this element must be equal to %d",Key,Value,_n_face_nodes);
-
-	// Set array with pointers to the nodes on a face/edge
-	va_list   arg_list;
-	va_start (arg_list, nNodesFace); // initialize arg_list with parameters AFTER nNodesFace
-	Array<Node*> fnodes; fnodes.Resize(_n_face_nodes);
-	for (size_t i=0; i<_n_face_nodes; ++i)
-	{
-		size_t inode_local = va_arg(arg_list,size_t);
-		fnodes[i]          = _connects[inode_local];
-	}
-	va_end (arg_list);
-
-	// Distribute value to nodes
+	Array<Node*> fnodes;
+	GetFaceNodes   (FaceLocalID, fnodes);
 	Dist2FaceNodes (Key, Value, fnodes);
 }
 

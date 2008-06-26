@@ -45,6 +45,15 @@ const Element::IntegPoint QUAD8_FACEINTPTS[]=
 class Quad8: public virtual Element
 {
 public:
+	// Auxiliar structure to map local face IDs to local node IDs
+	struct FaceMap
+	{
+		int L; // Left node local id
+		int R; // Right node local id
+		int M; // Mid node local id
+	};
+	static FaceMap Face2Node[];
+
 	// Constructor
 	Quad8();
 
@@ -52,15 +61,33 @@ public:
 	virtual ~Quad8() {}
 
 	// Derived methods
-	int  VTKCellType () const { return 23; } // VTK_QUADRATIC_QUAD
-	void VTKConnect  (String & Nodes) const;
-	void Shape       (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs      (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape   (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs  (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
+	int  VTKCellType  () const { return 23; } // VTK_QUADRATIC_QUAD
+	void VTKConnect   (String & Nodes) const;
+	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
+	void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
+	void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
+	void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
+	void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
 
 }; // class Quad8
 
+/* Local IDs
+                 Nodes                  Faces(edges)
+   y
+   |        3      6      2                  y+
+   +--x      @-----@-----@             +----(3)----+
+             |           |             |           |
+             |           |             |           |
+           7 @           @ 5       x- (0)         (1) x+
+             |           |             |           |
+             |           |             |           |
+             @-----@-----@             +----(2)----+
+            0      4      1                  y-
+*/
+Quad8::FaceMap Quad8::Face2Node[]= {{ 0, 3, 7 },
+                                    { 1, 2, 5 },
+                                    { 0, 1, 4 },
+                                    { 2, 3, 6 }};
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -91,6 +118,14 @@ inline void Quad8::VTKConnect(String & Nodes) const
 	                                       _connects[5]->GetID(),
 	                                       _connects[6]->GetID(),
 	                                       _connects[7]->GetID());
+}
+
+inline void Quad8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
+{
+	FaceConnects.Resize(3);
+	FaceConnects[0] = _connects[Face2Node[FaceID].L];
+	FaceConnects[1] = _connects[Face2Node[FaceID].R];
+	FaceConnects[2] = _connects[Face2Node[FaceID].M];
 }
 
 inline void Quad8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const

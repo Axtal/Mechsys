@@ -44,6 +44,15 @@ const Element::IntegPoint TRI6_FACEINTPTS[]=
 class Tri6: public virtual Element
 {
 public:
+	// Auxiliar structure to map local face IDs to local node IDs
+	struct FaceMap
+	{
+		int L; // Left node local id
+		int R; // Right node local id
+		int M; // Mid node local id
+	};
+	static FaceMap Face2Node[];
+
 	// Constructor
 	Tri6();
 
@@ -51,14 +60,32 @@ public:
 	virtual ~Tri6() {}
 
 	// Derived methods
-	int  VTKCellType () const { return 22; } // VTK_QUADRATIC_TRIANGLE
-	void VTKConnect  (String & Nodes) const;
-	void Shape       (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs      (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape   (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs  (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
+	int  VTKCellType  () const { return 22; } // VTK_QUADRATIC_TRIANGLE
+	void VTKConnect   (String & Nodes) const;
+	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
+	void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
+	void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
+	void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
+	void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
 
 }; // class Tri6
+
+/* Local IDs
+             Nodes                 Faces 
+                           
+   y           2                                                        
+   |           @                     @                                  
+   +--x       / \                   / \                                  
+           5 /   \ 4               /   \                                 
+            @     @             2 /     \ 1                              
+           /       \             /       \                               
+          /         \           /         \                              
+         @-----@-----@         @-----------@                             
+        0      3      1              0               
+*/
+Tri6::FaceMap Tri6::Face2Node[]= {{ 0, 1, 3 },
+                                  { 1, 2, 4 },
+                                  { 0, 2, 5 }};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -88,6 +115,14 @@ inline void Tri6::VTKConnect(String & Nodes) const
 	                                 _connects[3]->GetID(),
 	                                 _connects[4]->GetID(),
 	                                 _connects[5]->GetID());
+}
+
+inline void Tri6::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
+{
+	FaceConnects.Resize(3);
+	FaceConnects[0] = _connects[Face2Node[FaceID].L];
+	FaceConnects[1] = _connects[Face2Node[FaceID].R];
+	FaceConnects[2] = _connects[Face2Node[FaceID].M];
 }
 
 inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const

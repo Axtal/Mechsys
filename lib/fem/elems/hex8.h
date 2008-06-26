@@ -51,6 +51,16 @@ const Element::IntegPoint HEX8_FACEINTPTS[]=
 class Hex8 : public virtual Element
 {
 public:
+	// Auxiliar structure to map local face IDs to local node IDs
+	struct FaceMap
+	{
+		int n0; // node #0 local id
+		int n1; // node #1 local id
+		int n2; // node #2 local id
+		int n3; // node #3 local id
+	};
+	static FaceMap Face2Node[];
+
 	// Constructor
 	Hex8();
 
@@ -60,6 +70,7 @@ public:
 	// Derived methods
 	int    VTKCellType   () const { return 12; } // VTK_HEXAHEDRON
 	void   VTKConnect    (String & Nodes) const;
+	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
 	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
 	void   Derivs        (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
 	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
@@ -68,6 +79,30 @@ public:
 
 }; // class Hex8
 
+/* Local IDs
+                  Vertices                             Edges                              Faces
+    z
+    |           4                  7
+   ,+--y         @________________@                 +_______(4)______+                 +________________+ 
+ x'            ,'|              ,'|               ,'|              ,'|               ,'|              ,'| 
+             ,'  |            ,'  |             ,'  |            ,'  |             ,'  |  ___       ,'  | 
+           ,'    |          ,'    |           (6)  (8)         (7)   |           ,'    |,'5,'  [0],'    | 
+     5   ,'      |      6 ,'      |         ,'      |        ,'     (11)       ,'      |~~~     ,'      | 
+       @'===============@'        |       +'==========(5)==+'        |       +'===============+'  ,'|   | 
+       |         |      |         |       |         |      |         |       |   ,'|   |      |   |3|   | 
+       |         |      |         |       |         |      |         |       |   |2|   |      |   |,'   | 
+       |       0 @______|_________@       |         +______|_(0)_____+       |   |,'   +______|_________+ 
+       |       ,'       |       ,' 3     (9)      ,'       |       ,'        |       ,'       |       ,'  
+       |     ,'         |     ,'          |    (2)        (10)   ,'          |     ,' [1]  ___|     ,'    
+       |   ,'           |   ,'            |   ,'           |   (3)           |   ,'      ,'4,'|   ,'      
+       | ,'             | ,'              | ,'             | ,'              | ,'        ~~~  | ,'        
+       @________________@'                +______(1)_______+'                +________________+'          
+     1                   2
+*/
+Hex8::FaceMap Hex8::Face2Node[]= {{ 0, 3, 7, 4 },
+                                  { 1, 2, 6, 5 },
+                                  { 0, 1, 5, 4 },
+                                  { 2, 3, 7, 6 }};
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -98,6 +133,15 @@ inline void Hex8::VTKConnect(String & Nodes) const
 	                                       _connects[6]->GetID(),
 	                                       _connects[7]->GetID(),
 	                                       _connects[4]->GetID());
+}
+
+inline void Hex8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
+{
+	FaceConnects.Resize(4);
+	FaceConnects[0] = _connects[Face2Node[FaceID].n0];
+	FaceConnects[1] = _connects[Face2Node[FaceID].n1];
+	FaceConnects[2] = _connects[Face2Node[FaceID].n2];
+	FaceConnects[4] = _connects[Face2Node[FaceID].n3];
 }
 
 inline void Hex8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
