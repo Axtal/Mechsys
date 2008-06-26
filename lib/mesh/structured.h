@@ -58,7 +58,7 @@
 // STL
 #include <iostream>
 #include <fstream>
-#include <cfloat>
+#include <cfloat>   // for DBL_EPSILON
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
@@ -233,6 +233,7 @@ public:
 	Array<Vertex*> const & Verts    () const { return _verts;     }
 	Array<Elem*>   const & Elems    () const { return _elems;     }
 	Array<Elem*>   const & ElemsBry () const { return _elems_bry; } ///< Elements on boundary
+	Array<Vertex*> const & VertsBry () const { return _verts_bry; } ///< Vertices on boundary
 
 private:
 	// Data
@@ -243,6 +244,7 @@ private:
 	Array<Vertex*> _verts;       ///< Vertices
 	Array<Elem*>   _elems;       ///< Elements
 	Array<Elem*>   _elems_bry;   ///< Elements on boundary
+	Array<Vertex*> _verts_bry;   ///< Vertices on boundary
 	Vector<double> _s;           ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
 
 	// Private methods
@@ -542,13 +544,20 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 
 	// Set new array with non-duplicated vertices
 	size_t k = 0;
-	_verts.Resize(_verts_d.Size()-ndupl);
+	size_t m = 0;
+	_verts    .Resize (_verts_d    .Size()-ndupl);
+	_verts_bry.Resize (_verts_d_bry.Size()-ndupl);
 	for (size_t i=0; i<_verts_d.Size(); ++i)
 	{
 		if (_verts_d[i]->Dupl==false)
 		{
 			_verts[k]       = _verts_d[i]; // copy pointer
 			_verts[k]->MyID = k;           // new ID
+			if (_verts[k]->OnBry)
+			{
+				_verts_bry[m] = _verts[k]; // copy pointer
+				m++;
+			}
 			k++;
 		}
 	}
