@@ -222,7 +222,7 @@ public:
 	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol), _is_3d(false) {}
 
 	// Destructor
-	~Structured ();
+	~Structured () { _erase(); }
 
 	// Methods
 	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
@@ -251,6 +251,7 @@ private:
 	void _shape_2d (double r, double s);
 	void _shape_3d (double r, double s, double t);
 	void _vtk_con  (Elem const * E, String & Connect) const;
+	void _erase    ();
 
 }; // class Structured
 
@@ -398,13 +399,6 @@ inline void Block::Alright() const
 	}
 }
 
-// Destructor -- Structured
-
-inline Structured::~Structured()
-{
-	for (size_t i=0; i<_verts_d.Size(); ++i) if (_verts_d[i]!=NULL) delete _verts_d[i]; // it is only necessary to delete nodes in _verts_d array
-	for (size_t i=0; i<_elems.  Size(); ++i) if (_elems  [i]!=NULL) delete _elems  [i];
-}
 
 // Methods -- Structured
 
@@ -412,6 +406,9 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 {
 	// Check
 	if (Blocks.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",Blocks.Size());
+
+	// Erase previous mesh
+	_erase();
 
 	// Check if the first block is 3D
 	_is_3d = Blocks[0]->Is3D();
@@ -811,6 +808,18 @@ inline void Structured::_vtk_con(Elem const * E, String & Connect) const
 	}
 }
 
+inline void Structured::_erase()
+{
+	for (size_t i=0; i<_verts_d.Size(); ++i) if (_verts_d[i]!=NULL) delete _verts_d[i]; // it is only necessary to delete nodes in _verts_d array
+	for (size_t i=0; i<_elems.  Size(); ++i) if (_elems  [i]!=NULL) delete _elems  [i]; // it is only necessary to delete elems in _elems array
+	_is_3d = false;
+	_verts_d    .Resize(0);
+	_verts_d_bry.Resize(0);
+	_verts      .Resize(0);
+	_elems      .Resize(0);
+	_elems_bry  .Resize(0);
+	_verts_bry  .Resize(0);
+}
 
 }; // namespace Mesh
 
