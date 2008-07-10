@@ -224,4 +224,25 @@ std::ostream & operator<< (std::ostream & os, Array<FEM::Node> const & nodes)
 
 }; //namespace FEM
 
+
+#ifdef USE_BOOST_PYTHON
+// {
+
+namespace boopy = boost::python;
+
+class PyNode
+{
+public:
+	PyNode (FEM::Node * ptNode) : _node(ptNode) {}
+	PyNode    & Bry     (boopy::str const & Name, double Value) { _node->Bry(boopy::extract<char const *>(Name)(), Value); return (*this); }
+	double      Val     (boopy::str const & Name)               { return _node->Val(boopy::extract<char const *>(Name)()); }
+	FEM::Node * GetNode () { return _node; }
+private:
+	FEM::Node * _node;
+}; // class PyNode
+
+// }
+#endif // USE_BOOST_PYTHON
+
+
 #endif // MECHSYS_FEM_NODE_H

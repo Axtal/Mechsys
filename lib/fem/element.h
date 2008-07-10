@@ -471,4 +471,32 @@ typedef std::map<String, DOFInfo, std::less<String> > DOFInfoMap_t;
 // Instantiate the map that contains all dof info from problem type elements
 DOFInfoMap_t DOFInfoMap;
 
+
+#ifdef USE_BOOST_PYTHON
+// {
+
+namespace boopy = boost::python;
+
+class PyElem
+{
+public:
+	PyElem (FEM::Element * ptElem) : _elem(ptElem) {}
+	PyElem & SetNode  (int iNodeLocal, PyNode & refNode) { _elem->SetNode(iNodeLocal, refNode.GetNode()); return (*this); }
+	PyElem & SetModel (boopy::str const & Name, boopy::str const & Prms, boopy::str const & Inis)
+	{
+		_elem->SetModel(boopy::extract<char const *>(Name)(),
+		                boopy::extract<char const *>(Prms)(),
+		                boopy::extract<char const *>(Inis)());
+		return (*this);
+	}
+	PyElem & Bry      (boopy::str const & Key, double Value, int FaceLocalID) { _elem->Bry(boopy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
+	double   Val      (int iNodeLocal, boopy::str const & Name) { return _elem->Val(iNodeLocal, boopy::extract<char const *>(Name)()); }
+private:
+	FEM::Element * _elem;
+}; // class PyElement
+
+// }
+#endif // USE_BOOST_PYTHON
+
+
 #endif // MECHSYS_FEM_ELEMENT

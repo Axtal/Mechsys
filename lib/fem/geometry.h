@@ -101,4 +101,48 @@ inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
 
 }; // namespace FEM
 
+
+#ifdef USE_BOOST_PYTHON
+// {
+
+namespace boopy = boost::python;
+
+class PyGeom
+{
+public:
+	// Constructor
+	PyGeom(int nDim) : _geom(nDim) {}
+
+	// Set methods
+	void   SetNNodes (size_t nNodes)                                    { _geom.SetNNodes(nNodes); }
+	void   SetNElems (size_t nElems)                                    { _geom.SetNElems(nElems); }
+	PyNode SetNode   (size_t i, double X, double Y)                     { return PyNode(_geom.SetNode(i,X,Y)  ); }
+	PyNode SetNode   (size_t i, double X, double Y, double Z)           { return PyNode(_geom.SetNode(i,X,Y,Z)); }
+	PyElem SetElem   (size_t i, boopy::str const & Type)                { return PyElem(_geom.SetElem(i,boopy::extract<char const *>(Type)())         ); }
+	PyElem SetElem   (size_t i, boopy::str const & Type, bool IsActive) { return PyElem(_geom.SetElem(i,boopy::extract<char const *>(Type)(),IsActive)); }
+
+	// Access methods
+	size_t            NNodes    ()         const { return _geom.NNodes(); }
+	size_t            NElems    ()         const { return _geom.NElems(); }
+	PyNode            Nod       (size_t i)       { return PyNode(_geom.Nod(i)); }
+	PyElem            Ele       (size_t i)       { return PyElem(_geom.Ele(i)); }
+	FEM::Geom       * GetGeom   ()               { return &_geom; }
+	FEM::Geom const * GetGeom   ()         const { return &_geom; }
+
+private:
+	// Data
+	FEM::Geom _geom;
+
+}; // class PyGeom 
+
+PyNode (PyGeom::*PGSetNode1)(size_t i, double X, double Y)           = &PyGeom::SetNode;
+PyNode (PyGeom::*PGSetNode2)(size_t i, double X, double Y, double Z) = &PyGeom::SetNode;
+
+PyElem (PyGeom::*PGSetElem1)(size_t i, boopy::str const & Type)                = &PyGeom::SetElem;
+PyElem (PyGeom::*PGSetElem2)(size_t i, boopy::str const & Type, bool IsActive) = &PyGeom::SetElem;
+
+// }
+#endif // USE_BOOST_PYTHON
+
+
 #endif // MECHSYS_FEM_GEOMETRY_H

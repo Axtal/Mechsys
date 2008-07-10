@@ -100,4 +100,21 @@ inline Fatal::Fatal(String const & Fmt, ...)
 	va_end       (arg_list);
 }
 
+
+#ifdef USE_BOOST_PYTHON
+// {
+
+void PyExceptTranslator (Exception * e)
+{
+	String msg;
+	msg.Printf("[1;31m%s[0m",e->Msg().GetSTL().c_str());
+	PyErr_SetString(PyExc_UserWarning, msg.GetSTL().c_str());
+	//if (e->IsFatal()) {delete e; exit(1);}
+	delete e;
+}
+
+// }
+#endif // USE_BOOST_PYTHON
+
+
 #endif // MECHSYS_EXCEPTION_H

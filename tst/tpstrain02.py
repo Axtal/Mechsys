@@ -48,26 +48,26 @@ print
 
 # ------------------------------------------------------------------------------ FEM
 
-# Problem dimension
-m.dim (2)
+# Geometry
+g = m.geom(2)
 
 # Nodes and elements
-m.add_nodes_elems (ms, 'Quad4PStrain')
+m.add_nodes_elems (ms, 'Quad4PStrain', g)
 
 # Boundary conditions
-m.set_node_brys (ms, [L/2.], [0.0], [0.0], ['ux'], [0.0])
-m.set_face_brys (ms, [-10, -20], ['uy', 'fy'], [0.0, -1])
+m.set_node_brys (ms, [L/2.], [0.0], [0.0], ['ux'], [0.0], g)
+m.set_face_brys (ms, [-10, -20], ['uy', 'fy'], [0.0, -1], g)
 
 # Parameters and initial values
-for i in range(m.n_elems()):
-    m.elems(i).set_model('LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0')
+for i in range(g.nelems()):
+    g.ele(i).set_model('LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0')
 
 # Solve
 print 'Solution: ---------------------------------------------------------------------'
 sol = m.solver('ForwardEuler')
-sol.set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
+sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
 sol.solve()
 
 # Output file
-m.write_vtu_equilib('tpstrain02_py.vtu')
+m.write_vtu_equilib(g, 'tpstrain02_py.vtu')
 print 'File <tpstrain02_py.vtu> generated'

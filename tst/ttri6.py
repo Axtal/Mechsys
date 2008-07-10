@@ -36,67 +36,69 @@
 #
 import mechsys as m
 
-# 0) Geometry type
-m.dim(2) # 2D
+# 0) Geometry
+g = m.geom(2)
 
 # 1) Nodes
-m.add_node(0.0, 0.0) # 0
-m.add_node(1.0, 0.0) # 1
-m.add_node(0.0, 1.0) # 2
-m.add_node(0.5, 0.0) # 3
-m.add_node(0.5, 0.5) # 4
-m.add_node(0.0, 0.5) # 5
-m.add_node(1.0, 1.0) # 6
-m.add_node(0.5, 1.0) # 7
-m.add_node(1.0, 0.5) # 8
+g.set_nnodes (9)
+g.set_node   (0, 0.0, 0.0)
+g.set_node   (1, 1.0, 0.0)
+g.set_node   (2, 0.0, 1.0)
+g.set_node   (3, 0.5, 0.0)
+g.set_node   (4, 0.5, 0.5)
+g.set_node   (5, 0.0, 0.5)
+g.set_node   (6, 1.0, 1.0)
+g.set_node   (7, 0.5, 1.0)
+g.set_node   (8, 1.0, 0.5)
 
 # 2) Elements
-m.add_elem('Tri6PStrain', 1) # 0: 1=>Active
-m.add_elem('Tri6PStrain', 1) # 1: 1=>Active
+g.set_nelems (2)
+g.set_elem   (0, 'Tri6PStrain', 1) # 1=>Active
+g.set_elem   (1, 'Tri6PStrain', 1) # 1=>Active
 
 # 3) Set connectivity
-m.elems(0).set_node(0,0).set_node(1,1).set_node(2,2).set_node(3,3).set_node(4,4).set_node(5,5)
-m.elems(1).set_node(0,6).set_node(1,2).set_node(2,1).set_node(3,7).set_node(4,4).set_node(5,8)
+g.ele(0).set_node(0, g.nod(0)).set_node(1, g.nod(1)).set_node(2, g.nod(2)).set_node(3, g.nod(3)).set_node(4, g.nod(4)).set_node(5, g.nod(5))
+g.ele(1).set_node(0, g.nod(6)).set_node(1, g.nod(2)).set_node(2, g.nod(1)).set_node(3, g.nod(7)).set_node(4, g.nod(4)).set_node(5, g.nod(8))
 
 # 4) Boundary conditions (must be after connectivity)
-m.nodes(0).bry('ux', 0.0).bry('uy', 0.0)
-m.nodes(1).bry('uy', 0.0)
-m.nodes(3).bry('uy', 0.0)
-m.nodes(2).bry('fy', 1.0)
-m.nodes(7).bry('fy', 1.0)
-m.nodes(6).bry('fy', 1.0)
+g.nod(0).bry('ux', 0.0).bry('uy', 0.0)
+g.nod(1).bry('uy', 0.0)
+g.nod(3).bry('uy', 0.0)
+g.nod(2).bry('fy', 1.0)
+g.nod(7).bry('fy', 1.0)
+g.nod(6).bry('fy', 1.0)
 
 # 5) Parameters and initial values
-m.elems(0).set_model('LinElastic', 'E=10000.0 nu=0.25', 'Sx=0.0 Sy=0.0 Sxy=0.0')
-m.elems(1).set_model('LinElastic', 'E=10000.0 nu=0.25', 'Sx=0.0 Sy=0.0 Sxy=0.0')
+g.ele(0).set_model('LinElastic', 'E=10000.0 nu=0.25', 'Sx=0.0 Sy=0.0 Sxy=0.0')
+g.ele(1).set_model('LinElastic', 'E=10000.0 nu=0.25', 'Sx=0.0 Sy=0.0 Sxy=0.0')
 
 # 6) Solve
 sol = m.solver('ForwardEuler')
-sol.set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
+sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
 sol.solve()
 
 # Check
 errors = 0.0;
 
-errors += abs(m.elems(0).val(0, "Sx") - ( 1.56432140e-01))
-errors += abs(m.elems(0).val(1, "Sx") - (-3.00686928e-01))
-errors += abs(m.elems(0).val(2, "Sx") - ( 1.44254788e-01))
-errors += abs(m.elems(0).val(3, "Sx") - (-3.19109076e-01))
-errors += abs(m.elems(0).val(4, "Sx") - (-3.31286428e-01))
-errors += abs(m.elems(0).val(5, "Sx") - ( 1.25832639e-01))
+errors += abs(g.ele(0).val(0, "Sx") - ( 1.56432140e-01))
+errors += abs(g.ele(0).val(1, "Sx") - (-3.00686928e-01))
+errors += abs(g.ele(0).val(2, "Sx") - ( 1.44254788e-01))
+errors += abs(g.ele(0).val(3, "Sx") - (-3.19109076e-01))
+errors += abs(g.ele(0).val(4, "Sx") - (-3.31286428e-01))
+errors += abs(g.ele(0).val(5, "Sx") - ( 1.25832639e-01))
 
-errors += abs(m.elems(0).val(0, "Sy") - (-2.05141549e-01))
-errors += abs(m.elems(0).val(1, "Sy") - ( 1.15872190e+00))
-errors += abs(m.elems(0).val(2, "Sy") - (-9.53580350e-01))
-errors += abs(m.elems(0).val(3, "Sy") - (-2.22127394e+00))
-errors += abs(m.elems(0).val(4, "Sy") - (-2.96971274e+00))
-errors += abs(m.elems(0).val(5, "Sy") - (-4.33357619e+00))
+errors += abs(g.ele(0).val(0, "Sy") - (-2.05141549e-01))
+errors += abs(g.ele(0).val(1, "Sy") - ( 1.15872190e+00))
+errors += abs(g.ele(0).val(2, "Sy") - (-9.53580350e-01))
+errors += abs(g.ele(0).val(3, "Sy") - (-2.22127394e+00))
+errors += abs(g.ele(0).val(4, "Sy") - (-2.96971274e+00))
+errors += abs(g.ele(0).val(5, "Sy") - (-4.33357619e+00))
 
-errors += abs(m.elems(0).val(0, "Sxy") - (-1.56432140e-01))
-errors += abs(m.elems(0).val(1, "Sxy") - (-6.74437968e-02))
-errors += abs(m.elems(0).val(2, "Sxy") - ( 2.23875937e-01))
-errors += abs(m.elems(0).val(3, "Sxy") - (-4.90216486e-02))
-errors += abs(m.elems(0).val(4, "Sxy") - ( 3.31286428e-01))
-errors += abs(m.elems(0).val(5, "Sxy") - ( 2.42298085e-01))
+errors += abs(g.ele(0).val(0, "Sxy") - (-1.56432140e-01))
+errors += abs(g.ele(0).val(1, "Sxy") - (-6.74437968e-02))
+errors += abs(g.ele(0).val(2, "Sxy") - ( 2.23875937e-01))
+errors += abs(g.ele(0).val(3, "Sxy") - (-4.90216486e-02))
+errors += abs(g.ele(0).val(4, "Sxy") - ( 3.31286428e-01))
+errors += abs(g.ele(0).val(5, "Sxy") - ( 2.42298085e-01))
 
 print 'Errors = ', errors

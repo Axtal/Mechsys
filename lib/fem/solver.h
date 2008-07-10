@@ -839,4 +839,28 @@ Solver * AllocSolver(char const * SolverName)
 
 }; // namespace FEM
 
+
+#ifdef USE_BOOST_PYTHON
+// {
+
+namespace boopy = boost::python;
+
+class PySolver
+{
+public:
+	 PySolver (boopy::str const & Name) { _sol = FEM::AllocSolver (boopy::extract<char const *>(Name)()); }
+	~PySolver ()                        { if (_sol!=NULL) delete _sol; }
+	PySolver & SetGeom      (PyGeom & G)             { _sol->SetGeom     (G.GetGeom()); return (*this); }
+	PySolver & SetLinSol    (boopy::str const & Key) { _sol->SetLinSol   (boopy::extract<char const *>(Key)()); return (*this); }
+	PySolver & SetNumDiv    (int Numdiv)             { _sol->SetNumDiv   (Numdiv);    return (*this); }
+	PySolver & SetDeltaTime (double DeltaTime)       { _sol->SetDeltaTime(DeltaTime); return (*this); }
+	void       Solve        ()                       { _sol->Solve(); }
+private:
+	FEM::Solver * _sol;
+}; // class PySolver
+
+// }
+#endif // USE_BOOST_PYTHON
+
+
 #endif // MECHSYS_FEM_SOLVER_H

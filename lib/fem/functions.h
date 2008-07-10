@@ -430,4 +430,58 @@ inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 
 }; // namespace FEM
 
+
+#ifdef USE_BOOST_PYTHON
+// {
+
+namespace boopy = boost::python;
+
+void PyAddNodesElems   (PyMeshStruct const & MS, boopy::str const & ElemType, PyGeom & G) { FEM::AddNodesElems (MS.MStruct(), boopy::extract<char const *>(ElemType)(), G.GetGeom()); }
+void PySetNodeBrys     (PyMeshStruct const & MS, boopy::list & X, boopy::list & Y, boopy::list & Z, boopy::list & Vars, boopy::list & Values, PyGeom & G)
+{
+	for (size_t i=0; i<MS.MStruct()->VertsBry().Size(); ++i) // loop over elements on boundary
+	{
+		Mesh::Vertex * mv = MS.MStruct()->VertsBry()[i];
+		for (int j=0; j<len(X); ++j)
+		{
+			double x = boopy::extract<double>(X[j])();
+			double y = boopy::extract<double>(Y[j])();
+			double z = boopy::extract<double>(Z[j])();
+			double d = sqrt(pow(x-mv->C(0),2.0) + pow(y-mv->C(1),2.0) + (MS.MStruct()->Is3D() ? pow(z-mv->C(2),2.0) : 0.0));
+			if (d<sqrt(DBL_EPSILON))
+			{
+				FEM::Node * n = G.GetGeom()->Nod(mv->MyID);
+				n->Bry (boopy::extract<char const *>(Vars[j])(), boopy::extract<double>(Values[j])());
+			}
+		}
+	}
+}
+void PySetFaceBrys     (PyMeshStruct const & MS, boopy::list & Tags, boopy::list & Vars, boopy::list & Values, PyGeom & G)
+{
+	for (size_t i=0; i<MS.MStruct()->ElemsBry().Size(); ++i) // loop over elements on boundary
+	{
+		Mesh::Elem * me = MS.MStruct()->ElemsBry()[i];
+		for (int j=0; j<me->ETags.Size(); ++j) // j is the local_edge_id
+		{
+			int tag = me->ETags(j);
+			if (tag<0)
+			{
+				long idx = Tags.index(tag);
+				if (idx>=0)
+				{
+					FEM::Element * e = G.GetGeom()->Ele(me->MyID);
+					e->Bry (boopy::extract<char const*>(Vars[idx])(), boopy::extract<double>(Values[idx])(), j);
+				}
+				else throw new Fatal("PySetFaceBrys: Could not find tag==%d inside Tags array. This tag is set in Elem.ID==%d",tag,me->MyID);
+			}
+		}
+	}
+}
+void PyWriteVTUEquilib (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTUEquilib((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
+void PyWriteVTK        (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTK       ((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
+
+// }
+#endif // USE_BOOST_PYTHON
+
+
 #endif // MECHSYS_FEM_FUNCTIONS_H

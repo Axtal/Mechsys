@@ -1005,7 +1005,7 @@ private:
 
 }; // class PyMeshStruct
 
-#endif
+#endif // USE_BOOST_PYTHON
 
 
 #endif // MECHSYS_MESH_STRUCTURED_H
