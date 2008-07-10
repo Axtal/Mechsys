@@ -94,6 +94,10 @@ public:
 	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< TODO
 	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
 
+	// Methods to be overloaded by derived classes
+	virtual Solver * SetCte (char const * Key, double Value) =0; ///< Set solver constant such as number of subincrements, DTOL, etc.
+	virtual double   GetVar (char const * Key) const         =0; ///< Get solver variable such as Residuals or Relative error
+
 protected:
 	// Data
 	int                      _num_div;    ///< TODO

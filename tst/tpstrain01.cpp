@@ -137,7 +137,7 @@ int main(int argc, char **argv) try
 	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
-	cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
+	cout << "NormResid = " << sol->GetVar("NormResid") << endl;
 
 	// Output
 	cout << "Node 20: ux = " << g.Nod(20)->Val("ux") << " : uy = " << g.Nod(20)->Val("uy") << " : fx = "  << g.Nod(20)->Val("fx")  << " : fy = "  << g.Nod(20)->Val("fy")  << endl;

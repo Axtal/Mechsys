@@ -134,13 +134,15 @@ int main(int argc, char **argv) try
 
 	// Solve
 	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	start = std::clock(); // Initial time
 	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetCte("DTOL", 1.0e-10);
 	sol -> Solve();
 	total = std::clock() - start; // Time elapsed
-	cout << "GFE_Resid = "<<FEM::GFE_Resid<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+	//cout << "NormResid = "<<sol->GetVar("NormResid")<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+	cout << "RelError  = "<<sol->GetVar("RelError" )<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

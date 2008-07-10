@@ -82,6 +82,7 @@ int main(int argc, char **argv) try
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
@@ -92,7 +93,7 @@ int main(int argc, char **argv) try
 	g.Ele(0)->Order1Matrix(0,Ke0);
 	cout << "Ke0=\n" << Ke0 << endl;
 
-	cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
+	cout << "NormResid = " << sol->GetVar("NormResid") << endl;
 
 	FEM::WriteVTK(g, "out.vtk");
 	

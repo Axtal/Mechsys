@@ -27,7 +27,19 @@ namespace FEM
 
 class ForwardEuler: public Solver
 {
+public:
+	// Constructor
+	ForwardEuler ();
+
+	// Methods
+	Solver * SetCte (char const * Key, double Value); ///< Set solver constant such as number of subincrements, DTOL, etc.
+	double   GetVar (char const * Key) const;         ///< Get solver variable such as Residuals or Relative error
+
 private:
+	// Constants
+	int    _nSI;        ///< Number of sub-increments
+	double _norm_resid; ///< Residual Norm(dFext - dFint)
+
 	// Data
 	LinAlg::Vector<double> _resid;
 
@@ -40,6 +52,29 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
+/* Constructor */
+inline ForwardEuler::ForwardEuler()
+	: _nSI        (1),
+	  _norm_resid (0.0)
+{}
+
+
+/* public */
+
+inline Solver * ForwardEuler::SetCte(char const * Key, double Value)
+{
+	if (strcmp(Key,"nSI")==0) _nSI = Value;
+	else throw new Fatal("ForwardEuler::SetCte: This solver does not have a constant named %s",Key);
+	return this;
+}
+
+inline double ForwardEuler::GetVar(char const * Key) const
+{
+	if (strcmp(Key,"NormResid")==0) return _norm_resid;
+	else throw new Fatal("ForwardEuler::GetVar: This solver does not have a variable named %s",Key);
+}
+
+
 /* private */
 
 inline void ForwardEuler::_do_solve_for_an_increment(double dTime)
@@ -48,15 +83,15 @@ inline void ForwardEuler::_do_solve_for_an_increment(double dTime)
 	int ndofs = _dF_ext.Size();
 	LinAlg::Vector<double> dF_ext(ndofs);
 	LinAlg::Vector<double> dU_ext(ndofs);
-	LinAlg::CopyScal(1.0/GFE_nSI,_dF_ext, dF_ext); // dF_ext <- _dF_ext/GFE_nSI
-	LinAlg::CopyScal(1.0/GFE_nSI,_dU_ext, dU_ext); // dU_ext <- _dU_ext/GFE_nSI
-	double h = dTime/GFE_nSI;
+	LinAlg::CopyScal(1.0/_nSI,_dF_ext, dF_ext); // dF_ext <- _dF_ext/_nSI
+	LinAlg::CopyScal(1.0/_nSI,_dU_ext, dU_ext); // dU_ext <- _dU_ext/_nSI
+	double h = dTime/_nSI;
 
 	// Allocate auxiliar vector
 	if (_resid.Size()==0) _resid.Resize(ndofs);
 
 	// Start
-	for (int i=0; i<GFE_nSI; ++i)
+	for (int i=0; i<_nSI; ++i)
 	{
 		// Assemble G matrix and calculate dU_ext
 		_inv_G_times_dF_minus_hKU(h, dF_ext, dU_ext); // dU_ext <- inv(G)*(dF_ext - hKU)
@@ -70,7 +105,7 @@ inline void ForwardEuler::_do_solve_for_an_increment(double dTime)
 		LinAlg::AddScaled (1.0,dF_ext, -1.0,_dF_int, _resid); // _resid <- dF_ext - dF_int
 		double denom = 0.0;                                   // Normalizer
 		for (int i=0; i<ndofs; i++) denom += pow((dF_ext(i)+_dF_int(i))/2.0, 2.0);
-		GFE_Resid = LinAlg::Norm(_resid)/(sqrt(denom)+1.0);
+		_norm_resid = LinAlg::Norm(_resid)/(sqrt(denom)+1.0);
 	}
 }
 
