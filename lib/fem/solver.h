@@ -54,10 +54,10 @@
 #define MECHSYS_FEM_SOLVER_H
 
 // MechSys
-#include "fem/data.h"
-//#include "fem/output.h"
 #include "fem/node.h"
 #include "fem/element.h"
+#include "fem/geometry.h"
+#include "fem/parallel.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
@@ -82,13 +82,14 @@ class Solver
 {
 public:
 	// Constructor
-	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL) {}
+	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL), _pd(NULL) {}
 
 	// Destructor
 	virtual ~Solver() {}
 
 	// Methods
-	Solver * SetGeom      (FEM::Geom * G)    { _g = G; return this; }                ///< Set the geometry (Nodes/Elements) to be used during solution
+	Solver * SetGeom      (FEM::Geom * G)    { _g  = G;  return this; }              ///< Set the geometry (Nodes/Elements) to be used during solution
+	Solver * SetPData     (FEM::PData * PD)  { _pd = PD; return this; }              ///< Set structure with data for parallel computation
 	Solver * SetLinSol    (char const * Key);                                        ///< LinSolName: LA=LAPACK, UM=UMFPACK, SLU=SuperLU, SLUd=SuperLUd
 	Solver * SetNumDiv    (int    NumDiv)    { _num_div   =NumDiv;    return this; } ///< TODO
 	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< TODO
@@ -123,6 +124,7 @@ protected:
 private:
 	// Data
 	FEM::Geom            * _g;      ///< Geometry: Nodes and Elements to be used during solution
+	FEM::PData           * _pd;     ///< Structure with data for parallel computation
 	LinAlg::LinSol_T       _linsol; ///< The type of the linear solver to be used in the inversion of G11. Solves: X<-inv(A)*B
 	int                    _nudofs; ///< Total number of unknown DOFs of a current stage
 	int                    _npdofs; ///< Total number of prescribed DOFs of a current stage
@@ -219,6 +221,7 @@ inline void Solver::Solve()
 	_npdofs = static_cast<int>(_pdofs.Size());
 
 #ifdef HAVE_SUPERLUD
+	if (_pd==NULL)     throw new Fatal(_("Solve::Solve: For parallel computation, PData (ParallelData) must be set before calling this method"));
 	if (_ndofs!=nDOFs) throw new Fatal(_("Solver::Solve: Just computed _ndofs (%d) must be equal to nDOFs (%d)"),_ndofs,DOFs);
 #endif
 
@@ -403,20 +406,20 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 
 			#ifdef HAVE_SUPERLUD
 			// 6) Solve for essential (displacements) values: dU <- inv(G11)*W
-			LinAlg::Copy    (W, dU);                                              // dU <- W
-			SuperLUd::Solve (MyMinEq, MyMaxEq, MyNumEqs, nProcs, nDOFs, G11, dU); // dU <- inv(G11)*dU
+			LinAlg::Copy    (W, dU);                                                                       // dU <- W
+			SuperLUd::Solve (_pd->MyMinEq, _pd->MyMaxEq, _pd->MyNumEqs, _pd->nProcs, _pd->nDOFs, G11, dU); // dU <- inv(G11)*dU
 
 			// 7) Distribute all pieces of dU to all processors
 			MPI::COMM_WORLD.Barrier();
-			MPI::COMM_WORLD.Allgatherv(&dU.GetPtr()[MyMinEq], MyNumEqs, MPI::DOUBLE, dU.GetPtr(), &AllNumEqs[0], &AllMinEq[0], MPI::DOUBLE);
+			MPI::COMM_WORLD.Allgatherv(&dU.GetPtr()[_pd->MyMinEq], _pd->MyNumEqs, MPI::DOUBLE, dU.GetPtr(), &_pd->AllNumEqs[0], &_pd->AllMinEq[0], MPI::DOUBLE);
 
 			// 8) Solve for natural (forces) values dF2
-			for (int k=0; k<_T21_size; ++k) { int I=_T21.Ai(k); if (I>=MyMinEq && I<=MyMaxEq) dF(I) += _T21.Ax(k)*dU(_T21.Aj(k)); } // dF <- dF + G21*dU
-			for (int k=0; k<_T22_size; ++k) { int I=_T22.Ai(k); if (I>=MyMinEq && I<=MyMaxEq) dF(I) += _T22.Ax(k)*dU(_T22.Aj(k)); } // dF <- dF + G22*dU
+			for (int k=0; k<_T21_size; ++k) { int I=_T21.Ai(k); if (I>=_pd->MyMinEq && I<=MyMaxEq) dF(I) += _T21.Ax(k)*dU(_T21.Aj(k)); } // dF <- dF + G21*dU
+			for (int k=0; k<_T22_size; ++k) { int I=_T22.Ai(k); if (I>=_pd->MyMinEq && I<=MyMaxEq) dF(I) += _T22.Ax(k)*dU(_T22.Aj(k)); } // dF <- dF + G22*dU
 
 			// 9) Distribute all pieces of dF to all processors
 			MPI::COMM_WORLD.Barrier();
-			MPI::COMM_WORLD.Allgatherv(&dF.GetPtr()[MyMinEq], MyNumEqs, MPI::DOUBLE, dF.GetPtr(), &AllNumEqs[0], &AllMinEq[0], MPI::DOUBLE);
+			MPI::COMM_WORLD.Allgatherv(&dF.GetPtr()[_pd->MyMinEq], _pd->MyNumEqs, MPI::DOUBLE, dF.GetPtr(), &_pd->AllNumEqs[0], &_pd->AllMinEq[0], MPI::DOUBLE);
 			#else
 			throw new Fatal(_("Solve::_inv_G_times_dF_minus_hKU: SuperLUd is not available"));
 			#endif
@@ -445,7 +448,7 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 		if (_linsol==LinAlg::SuperLUd_T)
 		{
 			oss<<"[1;33mProcessor #"<<MyID<<"[0m";
-			oss<<" MyNumEqs="<<MyNumEqs<<" MyMinEq="<<MyMinEq<<" MyMaxEq="<<MyMaxEq<<" MyElements.size="<<MyElements.Size();
+			oss<<" MyNumEqs="<<_pd->MyNumEqs<<" MyMinEq="<<_pd->MyMinEq<<" MyMaxEq="<<MyMaxEq<<" MyElements.size="<<MyElements.Size();
 			oss<<" MyElements={"; for (size_t i=0; i<MyElements.Size(); ++i) {oss<<MyElements[i];if(i!=MyElements.Size()-1)oss<<",";}; oss<<"}";
 		}
 		//oss<<"A11 ([1;33m#"<<MyID<<"[0m) == G11 =\n"<<D11<<"\n";
@@ -477,7 +480,7 @@ inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> 
 	// Distribute all pieces of _dF_int to all processors
 	#ifdef HAVE_SUPERLUD
 	MPI::COMM_WORLD.Barrier();
-	MPI::COMM_WORLD.Allgatherv(&_dF_int.GetPtr()[MyMinEq], MyNumEqs, MPI::DOUBLE, _dF_int.GetPtr(), &AllNumEqs[0], &AllMinEq[0], MPI::DOUBLE);
+	MPI::COMM_WORLD.Allgatherv(&_dF_int.GetPtr()[_pd->MyMinEq], _pd->MyNumEqs, MPI::DOUBLE, _dF_int.GetPtr(), &_pd->AllNumEqs[0], &_pd->AllMinEq[0], MPI::DOUBLE);
 	#endif
 
 	// Update all natural values
@@ -618,7 +621,7 @@ inline void Solver::_assemb_G_and_hKU(double h)
 	{
 		// Distribute all pieces of _hKU to all processors
 		MPI::COMM_WORLD.Barrier();
-		MPI::COMM_WORLD.Allgatherv(&_hKU.GetPtr()[MyMinEq], MyNumEqs, MPI::DOUBLE, _hKU.GetPtr(), &AllNumEqs[0], &AllMinEq[0], MPI::DOUBLE);
+		MPI::COMM_WORLD.Allgatherv(&_hKU.GetPtr()[_pd->MyMinEq], _pd->MyNumEqs, MPI::DOUBLE, _hKU.GetPtr(), &_pd->AllNumEqs[0], &_pd->AllMinEq[0], MPI::DOUBLE);
 	}
 	#endif
 

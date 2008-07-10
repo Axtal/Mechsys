@@ -20,8 +20,8 @@
 #include <iostream>
 
 // MechSys
-#include "fem/data.h"
-#include "fem/node.h"
+#include "fem/geometry.h"
+#include "fem/functions.h"
 #include "fem/elems/quad4heat.h"
 #include "models/heats/linheat.h"
 #include "fem/solvers/forwardeuler.h"

@@ -20,7 +20,8 @@
 #include <iostream>
 
 // MechSys
-#include "fem/data.h"
+#include "fem/geometry.h"
+#include "fem/functions.h"
 #include "fem/elems/hex8equilib.h"
 #include "fem/solvers/autome.h"
 #include "fem/solvers/forwardeuler.h"

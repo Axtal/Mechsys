@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_DATA_H
-#define MECHSYS_FEM_DATA_H
+#ifndef MECHSYS_FEM_FUNCTIONS_H
+#define MECHSYS_FEM_FUNCTIONS_H
 
 // STL
 #include <iostream>
@@ -27,6 +27,7 @@
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
+#include "fem/geometry.h"
 #include "util/array.h"
 #include "util/numstreams.h"
 #include "util/exception.h"
@@ -39,45 +40,6 @@
 
 namespace FEM
 {
-
-/* Geometry */
-class Geom
-{
-public:
-	Geom (int nDim) : _dim(nDim) {}
-	void              SetNNodes (size_t nNodes)                                   { for (size_t i=0; i<_nodes.Size(); ++i) { if (_nodes[i]!=NULL) delete _nodes[i]; } _nodes.Resize(nNodes); _nodes = NULL; }
-	void              SetNElems (size_t nElems)                                   { for (size_t i=0; i<_elems.Size(); ++i) { if (_elems[i]!=NULL) delete _elems[i]; } _elems.Resize(nElems); _elems = NULL; }
-	size_t            NNodes    () const                                          { return _nodes.Size(); }
-	size_t            NElems    () const                                          { return _elems.Size(); }
-	Node            * SetNode   (size_t i, double X, double Y, double Z=0.0)      { if (_nodes[i]==NULL) { _nodes[i] = new Node;           } _nodes[i]->Initialize (i,X,Y,Z);  return _nodes[i]; }
-	Element         * SetElem   (size_t i, char const * Type, bool IsActive=true) { if (_elems[i]==NULL) { _elems[i] = AllocElement(Type); } _elems[i]->SetID      (i); _elems[i]->SetDim (_dim); if (IsActive) _elems[i]->Activate(); else _elems[i]->Deactivate(); return _elems[i]; }
-	Node            * Nod       (size_t i)                                        { return _nodes[i]; }
-	Element         * Ele       (size_t i)                                        { return _elems[i]; }
-	Node      const * Nod       (size_t i) const                                  { return _nodes[i]; }
-	Element   const * Ele       (size_t i) const                                  { return _elems[i]; }
-	Array<Node*>    & Nodes     ()                                                { return _nodes;    }
-	Array<Element*> & Elems     ()                                                { return _elems;    }
-private:
-	int             _dim;
-	Array<Node*>    _nodes;
-	Array<Element*> _elems;
-}; // class Geom
-
-// Required for parallel processing
-int         MyID;       ///< ID (rank) of this processor
-int         nProcs;     ///< The number of processors
-int         nDOFs;      ///< Current total number of DOFs
-int         nDOFsMin;   ///< Mininum total number of DOFs
-int         nDOFsMax;   ///< Maximum total number of DOFs
-int         MyNumEqs;   ///< The number of equations of this processor
-int         MyMinEq;    ///< The mininum equation ID of this processor
-int         MyMaxEq;    ///< The maximum equation ID of this processor
-Array<int>  MyElements; ///< The ID of the elements of this processor
-Array<int>  AllNumEqs;  ///< The number of equations of all processors
-Array<int>  AllMinEq;   ///< All min equation ID of all processors
-Array<int>  OutMyElems; ///< Indexes inside MyElements of the elemens to output
-
-// Global methods
 
 inline void AddNodesElems (Mesh::Structured const * MStruct, char const * ElementType, FEM::Geom * G)
 {
@@ -466,7 +428,6 @@ inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 	ofile.close();
 }
 
-
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_DATA_H
+#endif // MECHSYS_FEM_FUNCTIONS_H
