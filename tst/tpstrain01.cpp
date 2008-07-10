@@ -31,8 +31,6 @@
 
 using std::cout;
 using std::endl;
-using FEM::Nodes;
-using FEM::Elems;
 using LinAlg::Matrix;
 
 int main(int argc, char **argv) try
@@ -73,8 +71,8 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
-	// 0) Problem dimension
-	FEM::Dim = 2; // 2D
+	// 0) Geometry
+	FEM::Geom g(2); // 2D
 
 	// 1) Nodes
 	double xmin  = 0.0;
@@ -83,11 +81,20 @@ int main(int argc, char **argv) try
 	int    ndivy = 30;
 	double dx    = L/ndivx;
 	double dy    = H/ndivy;
+	int    nn    = (ndivx+1)*(ndivy+1);
+	size_t k     = 0;
+	g.SetNNodes (nn);
 	for (int j=0; j<ndivy+1; ++j)
 	for (int i=0; i<ndivx+1; ++i)
-		FEM::AddNode (xmin+i*dx, ymin+j*dy);
+	{
+		g.SetNode (k, xmin+i*dx, ymin+j*dy);
+		k++;
+	}
 
 	// 2,3) Elements and connectivity
+	int ne = ndivx*ndivy;
+	g.SetNElems (ne);
+	k = 0;
 	for (int j=0; j<ndivy; ++j)
 	for (int i=0; i<ndivx; ++i)
 	{
@@ -95,48 +102,52 @@ int main(int argc, char **argv) try
 		int J = (i+1) +  j   *(ndivx+1);
 		int K = (i+1) + (j+1)*(ndivx+1);
 		int L =  i    + (j+1)*(ndivx+1);
-		FEM::AddElem("Quad4PStrain")->SetNode(0,I)->SetNode(1,J)->SetNode(2,K)->SetNode(3,L);
+		g.SetElem (k, "Quad4PStrain")->SetNode(0, g.Nod(I))
+		                             ->SetNode(1, g.Nod(J))
+		                             ->SetNode(2, g.Nod(K))
+		                             ->SetNode(3, g.Nod(L));
+		k++;
 	}
 
 	// 4) Boundary conditions (must be after connectivity)
-	for (size_t i=0; i<Nodes.Size(); ++i)
+	for (size_t i=0; i<g.NNodes(); ++i)
 	{
-		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
+		if (fabs(g.Nod(i)->Y()-ymin)<1.0e-5) // bottom nodes
 		{
-			Nodes[i]->Bry("uy",0.0);
-			if (fabs(Nodes[i]->X()-(xmin+L/2.0))<1.0e-5) // central node
-				Nodes[i]->Bry("ux",0.0);
+			g.Nod(i)->Bry("uy",0.0);
+			if (fabs(g.Nod(i)->X()-(xmin+L/2.0))<1.0e-5) // central node
+				g.Nod(i)->Bry("ux",0.0);
 		}
 	}
-	for (size_t i=0; i<Elems.Size(); ++i)
+	for (size_t i=0; i<g.NElems(); ++i)
 	{
 		Matrix<double> c;
-		Elems[i]->Coords(c);
+		g.Ele(i)->Coords(c);
 		if (fabs(c(2,1)-H)<1.0e-5) // top element
-			Elems[i]->Bry("fy", -q, 3); // 3=> top face/edge
+			g.Ele(i)->Bry("fy", -q, 3); // 3=> top face/edge
 	}
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	for (size_t i=0; i<Elems.Size(); ++i)
-		Elems[i]->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	for (size_t i=0; i<g.NElems(); ++i)
+		g.Ele(i)->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 	cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
 
 	// Output
-	cout << "Node 20: ux = " << Nodes[20]->Val("ux") << " : uy = " << Nodes[20]->Val("uy") << " : fx = "  << Nodes[20]->Val("fx")  << " : fy = "  << Nodes[20]->Val("fy")  << endl;
-	cout << "Node 22: ux = " << Nodes[22]->Val("ux") << " : uy = " << Nodes[22]->Val("uy") << " : fx = "  << Nodes[22]->Val("fx")  << " : fy = "  << Nodes[22]->Val("fy")  << endl;
-	cout << "Node 24: ux = " << Nodes[24]->Val("ux") << " : uy = " << Nodes[24]->Val("uy") << " : fx = "  << Nodes[24]->Val("fx")  << " : fy = "  << Nodes[24]->Val("fy")  << endl << endl;
-	cout << "Node 0:  ux = " << Nodes[ 0]->Val("ux") << " : uy = " << Nodes[ 0]->Val("uy") << " : fx = "  << Nodes[ 0]->Val("fx")  << " : fy = "  << Nodes[ 0]->Val("fy")  << endl;
-	cout << "Node 2:  ux = " << Nodes[ 2]->Val("ux") << " : uy = " << Nodes[ 2]->Val("uy") << " : fx = "  << Nodes[ 2]->Val("fx")  << " : fy = "  << Nodes[ 2]->Val("fy")  << endl;
-	cout << "Node 4:  ux = " << Nodes[ 4]->Val("ux") << " : uy = " << Nodes[ 4]->Val("uy") << " : fx = "  << Nodes[ 4]->Val("fx")  << " : fy = "  << Nodes[ 4]->Val("fy")  << endl << endl;
-	cout << "Elem 9:  Sx = " << Elems[ 9]->Val("Sx") << " : Sy = " << Elems[ 9]->Val("Sy") << " : Sxy = " << Elems[ 9]->Val("Sxy") << endl;
-	cout << "Elem 9:  Ex = " << Elems[ 9]->Val("Ex") << " : Ey = " << Elems[ 9]->Val("Ey") << " : Exy = " << Elems[ 9]->Val("Exy") << endl << endl;
+	cout << "Node 20: ux = " << g.Nod(20)->Val("ux") << " : uy = " << g.Nod(20)->Val("uy") << " : fx = "  << g.Nod(20)->Val("fx")  << " : fy = "  << g.Nod(20)->Val("fy")  << endl;
+	cout << "Node 22: ux = " << g.Nod(22)->Val("ux") << " : uy = " << g.Nod(22)->Val("uy") << " : fx = "  << g.Nod(22)->Val("fx")  << " : fy = "  << g.Nod(22)->Val("fy")  << endl;
+	cout << "Node 24: ux = " << g.Nod(24)->Val("ux") << " : uy = " << g.Nod(24)->Val("uy") << " : fx = "  << g.Nod(24)->Val("fx")  << " : fy = "  << g.Nod(24)->Val("fy")  << endl << endl;
+	cout << "Node 0:  ux = " << g.Nod( 0)->Val("ux") << " : uy = " << g.Nod( 0)->Val("uy") << " : fx = "  << g.Nod( 0)->Val("fx")  << " : fy = "  << g.Nod( 0)->Val("fy")  << endl;
+	cout << "Node 2:  ux = " << g.Nod( 2)->Val("ux") << " : uy = " << g.Nod( 2)->Val("uy") << " : fx = "  << g.Nod( 2)->Val("fx")  << " : fy = "  << g.Nod( 2)->Val("fy")  << endl;
+	cout << "Node 4:  ux = " << g.Nod( 4)->Val("ux") << " : uy = " << g.Nod( 4)->Val("uy") << " : fx = "  << g.Nod( 4)->Val("fx")  << " : fy = "  << g.Nod( 4)->Val("fy")  << endl << endl;
+	cout << "Elem 9:  Sx = " << g.Ele( 9)->Val("Sx") << " : Sy = " << g.Ele( 9)->Val("Sy") << " : Sxy = " << g.Ele( 9)->Val("Sxy") << endl;
+	cout << "Elem 9:  Ex = " << g.Ele( 9)->Val("Ex") << " : Ey = " << g.Ele( 9)->Val("Ey") << " : Exy = " << g.Ele( 9)->Val("Exy") << endl << endl;
 
 	// Check
     double errors = 0.0;
@@ -147,41 +158,41 @@ int main(int argc, char **argv) try
 	double Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 
 	// Stress and strains
-	for (size_t i=0; i<Elems.Size(); ++i)
+	for (size_t i=0; i<g.NElems(); ++i)
 	{
-		errors += fabs(Elems[i]->Val("Ex" ) - (Ex));
-		errors += fabs(Elems[i]->Val("Ey" ) - (Ey));
-		errors += fabs(Elems[i]->Val("Exy") - (0.0));
-		errors += fabs(Elems[i]->Val("Sx" ) - (0.0));
-		errors += fabs(Elems[i]->Val("Sy" ) - (Sy ));
-		errors += fabs(Elems[i]->Val("Sz" ) - (Sz ));
-		errors += fabs(Elems[i]->Val("Sxy") - (0.0));
+		errors += fabs(g.Ele(i)->Val("Ex" ) - (Ex));
+		errors += fabs(g.Ele(i)->Val("Ey" ) - (Ey));
+		errors += fabs(g.Ele(i)->Val("Exy") - (0.0));
+		errors += fabs(g.Ele(i)->Val("Sx" ) - (0.0));
+		errors += fabs(g.Ele(i)->Val("Sy" ) - (Sy ));
+		errors += fabs(g.Ele(i)->Val("Sz" ) - (Sz ));
+		errors += fabs(g.Ele(i)->Val("Sxy") - (0.0));
 	}
 
 	// Displacements
-	for (size_t i=0; i<Nodes.Size(); ++i)
+	for (size_t i=0; i<g.NNodes(); ++i)
 	{
-		if (fabs(Nodes[i]->Y()-ymin)<1.0e-5) // bottom nodes
+		if (fabs(g.Nod(i)->Y()-ymin)<1.0e-5) // bottom nodes
 		{
-			errors += fabs(Nodes[i]->Val("uy") - (0.0));
-			if (fabs(Nodes[i]->X()-(xmin+L/2.0))<1.0e-5) // central node
-				errors += fabs(Nodes[i]->Val("ux") - (0.0));
+			errors += fabs(g.Nod(i)->Val("uy") - (0.0));
+			if (fabs(g.Nod(i)->X()-(xmin+L/2.0))<1.0e-5) // central node
+				errors += fabs(g.Nod(i)->Val("ux") - (0.0));
 		}
-		else if (fabs(Nodes[i]->Y()-(ymin+H/2.0))<1.0e-5) // mid nodes
-			errors += fabs(Nodes[i]->Val("uy") - (-0.5*H*Ey));
-		else if (fabs(Nodes[i]->Y()-(ymin+H))<1.0e-5) // top nodes
-			errors += fabs(Nodes[i]->Val("uy") - (-H*Ey));
-		if (fabs(Nodes[i]->X()-(xmin))<1.0e-5) // left nodes
-			errors += fabs(Nodes[i]->Val("ux") - (0.5*L*Ex));
-		if (fabs(Nodes[i]->X()-(xmin+L))<1.0e-5) // right nodes
-			errors += fabs(Nodes[i]->Val("ux") - (-0.5*L*Ex));
+		else if (fabs(g.Nod(i)->Y()-(ymin+H/2.0))<1.0e-5) // mid nodes
+			errors += fabs(g.Nod(i)->Val("uy") - (-0.5*H*Ey));
+		else if (fabs(g.Nod(i)->Y()-(ymin+H))<1.0e-5) // top nodes
+			errors += fabs(g.Nod(i)->Val("uy") - (-H*Ey));
+		if (fabs(g.Nod(i)->X()-(xmin))<1.0e-5) // left nodes
+			errors += fabs(g.Nod(i)->Val("ux") - (0.5*L*Ex));
+		if (fabs(g.Nod(i)->X()-(xmin+L))<1.0e-5) // right nodes
+			errors += fabs(g.Nod(i)->Val("ux") - (-0.5*L*Ex));
 	}
 
 	if (fabs(errors)>1.0e-10) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	else                      cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	// Write file
-	FEM::WriteVTUEquilib ("tpstrain01.vtu");
+	FEM::WriteVTUEquilib (g, "tpstrain01.vtu");
 	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m" << endl;
 
 	return 0;

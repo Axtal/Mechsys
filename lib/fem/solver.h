@@ -81,18 +81,18 @@ namespace FEM
 class Solver
 {
 public:
-
 	// Constructor
-	Solver() : _num_div(1), _delta_time(0.0), _do_output(false) {}
+	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL) {}
 
 	// Destructor
 	virtual ~Solver() {}
 
 	// Methods
-	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
+	Solver * SetGeom      (FEM::Geom * G)    { _g = G; return this; }                ///< Set the geometry (Nodes/Elements) to be used during solution
 	Solver * SetLinSol    (char const * Key);                                        ///< LinSolName: LA=LAPACK, UM=UMFPACK, SLU=SuperLU, SLUd=SuperLUd
 	Solver * SetNumDiv    (int    NumDiv)    { _num_div   =NumDiv;    return this; } ///< TODO
 	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< TODO
+	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
 
 protected:
 	// Data
@@ -118,6 +118,7 @@ protected:
 
 private:
 	// Data
+	FEM::Geom            * _g;      ///< Geometry: Nodes and Elements to be used during solution
 	LinAlg::LinSol_T       _linsol; ///< The type of the linear solver to be used in the inversion of G11. Solves: X<-inv(A)*B
 	int                    _nudofs; ///< Total number of unknown DOFs of a current stage
 	int                    _npdofs; ///< Total number of prescribed DOFs of a current stage
@@ -172,10 +173,13 @@ inline void Solver::Solve()
 {
 	// Solve:    ([C] + alpha*h*[K]) * {dU} = {dF} - h*[K]*{U}
 	
+	// Check geometry
+	if (_g==NULL) throw new Fatal(_("Solver::Solve: Solver::SetGeom(FEM::Geom * G) must be called before calling this method (Solver::Solve())"));
+
 	// Check the integrity of active elements
-	for (size_t i=0; i<Elems.Size(); ++i)
-		if (Elems[i]->IsActive() && Elems[i]->IsReady()==false)
-			throw new Fatal(_("FEM::Solver: Element < %d > was not properly configured."), i);
+	for (size_t i=0; i<_g->NElems(); ++i)
+		if (_g->Ele(i)->IsActive() && _g->Ele(i)->IsReady()==false)
+			throw new Fatal(_("Solver::Solve: Element < %d > was not properly configured."), i);
 
 	// Number of divisions for each increment
 	double dTime = _delta_time / _num_div; // Time increment
@@ -188,19 +192,19 @@ inline void Solver::Solve()
 	// Set the ID (equation number) of all DOFs and setup _dF_ext and _dU_ext vectors
 	_udofs.Resize (0);
 	_pdofs.Resize (0);
-	for (size_t i=0; i<Nodes.Size(); ++i)
+	for (size_t i=0; i<_g->NNodes(); ++i)
 	{
-		if (Nodes[i]->nSharedBy()>0)
+		if (_g->Nod(i)->nSharedBy()>0)
 		{
 			// Loop along DOFs inside Node [i]
-			for (size_t j=0; j<Nodes[i]->nDOF(); ++j)
+			for (size_t j=0; j<_g->Nod(i)->nDOF(); ++j)
 			{
 				// Save pointers to the DOFs
-				if (Nodes[i]->DOFVar(j).IsEssenPresc) _pdofs.Push(&Nodes[i]->DOFVar(j));
-				else                                  _udofs.Push(&Nodes[i]->DOFVar(j));
+				if (_g->Nod(i)->DOFVar(j).IsEssenPresc) _pdofs.Push(&_g->Nod(i)->DOFVar(j));
+				else                                    _udofs.Push(&_g->Nod(i)->DOFVar(j));
 				
 				// Assing an equation ID to DOF [j]
-				Nodes[i]->DOFVar(j).EqID = _ndofs;
+				_g->Nod(i)->DOFVar(j).EqID = _ndofs;
 
 				// Next EqID
 				_ndofs++;
@@ -460,10 +464,10 @@ inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> 
 
 	// Update all elements
 	_dF_int.SetValues(0.0);
-	for (size_t i=0; i<Elems.Size(); ++i)
+	for (size_t i=0; i<_g->NElems(); ++i)
 	{
-		if (Elems[i]->IsActive())
-			Elems[i]->UpdateState(h,dU, _dF_int); // sum results into dF_int
+		if (_g->Ele(i)->IsActive())
+			_g->Ele(i)->UpdateState(h,dU, _dF_int); // sum results into dF_int
 	}
 
 	// Distribute all pieces of _dF_int to all processors
@@ -493,8 +497,8 @@ inline void Solver::_backup_nodes_and_elements()
 	}
 
 	// Backup all elements
-	for (size_t i=0; i<Elems.Size(); ++i)
-		Elems[i]->BackupState();
+	for (size_t i=0; i<_g->NElems(); ++i)
+		_g->Ele(i)->BackupState();
 
 }
 
@@ -513,8 +517,8 @@ inline void Solver::_restore_nodes_and_elements()
 	}
 
 	// Restore all elements
-	for (size_t i=0; i<Elems.Size(); ++i)
-		Elems[i]->RestoreState();
+	for (size_t i=0; i<_g->NElems(); ++i)
+		_g->Ele(i)->RestoreState();
 
 }
 
@@ -565,10 +569,10 @@ inline void Solver::_assemb_G_and_hKU(double h)
 	Array<bool>            cols_pre; // Map for col positions correspondent to prescribed essential DOFs
 	
 	// Loop along elements
-	for (size_t i_ele=0; i_ele<Elems.Size(); ++i_ele)
+	for (size_t i_ele=0; i_ele<_g->NElems(); ++i_ele)
 	{
 		// Get a poniter to the element
-		FEM::Element const * const elem = Elems[i_ele];
+		FEM::Element const * const elem = _g->Ele(i_ele);
 		if (elem->IsActive())
 		{
 			// Assemble zero order matrices
@@ -680,10 +684,10 @@ inline void Solver::_compute_global_size()
 	Array<bool>   cols_pre; // Map for col positions correspondent to prescribed essential DOFs
 	
 	// Loop along elements
-	for (size_t i_ele=0; i_ele<Elems.Size(); ++i_ele)
+	for (size_t i_ele=0; i_ele<_g->NElems(); ++i_ele)
 	{
 		// Get a poniter to an element
-		FEM::Element const * const elem = Elems[i_ele];
+		FEM::Element const * const elem = _g->Ele(i_ele);
 		if (elem->IsActive())
 		{
 			// Compute zero order matrices size

@@ -56,7 +56,7 @@ public:
 	bool      IsReady         () const;
 	bool      IsEssential     (char const * DOFName) const;
 	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
-	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
+	Element * SetNode         (int iNodeLocal, FEM::Node * ptNode);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     ();
 	void      RestoreState    ();
@@ -113,6 +113,9 @@ inline bool EquilibElem::IsEssential(char const * DOFName) const
 
 inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
+	// Check _ndim
+	if (_ndim<1) throw new Fatal("EquilibElem::SetModel: The space dimension (SetDim) must be set before calling this method");
+
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
 	{
@@ -135,18 +138,18 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
 }
 
-inline Element * EquilibElem::SetNode(int iNodeLocal, int iNodeGlobal)
+inline Element * EquilibElem::SetNode(int iNodeLocal, FEM::Node * ptNode)
 {
 	// Connects
-	_connects[iNodeLocal] = Nodes[iNodeGlobal];
+	_connects[iNodeLocal] = ptNode;
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	              Nodes[iNodeGlobal]->AddDOF("ux", "fx");
-	              Nodes[iNodeGlobal]->AddDOF("uy", "fy");
-	if (_ndim==3) Nodes[iNodeGlobal]->AddDOF("uz", "fz");
+	              _connects[iNodeLocal]->AddDOF("ux", "fx");
+	              _connects[iNodeLocal]->AddDOF("uy", "fy");
+	if (_ndim==3) _connects[iNodeLocal]->AddDOF("uz", "fz");
 
 	// Shared
-	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
+	_connects[iNodeLocal]->SetSharedBy(_my_id);
 
 	return this;
 }

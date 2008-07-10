@@ -28,8 +28,6 @@
 #include "fem/solvers/autome.h"
 #include "util/exception.h"
 
-using FEM::Nodes;
-using FEM::Elems;
 using std::cout;
 using std::endl;
 
@@ -60,53 +58,65 @@ int main(int argc, char **argv) try
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	// 0) Problem dimension
-	FEM::Dim = 2; // 2D
+	FEM::Geom g(2); // 2D
 
 	// 1) Nodes
-	FEM::AddNode(0.0, 0.0); // 0
-	FEM::AddNode(1.0, 0.0); // 1
-	FEM::AddNode(0.0, 1.0); // 2
-	FEM::AddNode(0.5, 0.0); // 3
-	FEM::AddNode(0.5, 0.5); // 4
-	FEM::AddNode(0.0, 0.5); // 5
-	FEM::AddNode(1.0, 1.0); // 6
-	FEM::AddNode(0.5, 1.0); // 7
-	FEM::AddNode(1.0, 0.5); // 8
+	g.SetNNodes (9);
+	g.SetNode   (0, 0.0, 0.0);
+	g.SetNode   (1, 1.0, 0.0);
+	g.SetNode   (2, 0.0, 1.0);
+	g.SetNode   (3, 0.5, 0.0);
+	g.SetNode   (4, 0.5, 0.5);
+	g.SetNode   (5, 0.0, 0.5);
+	g.SetNode   (6, 1.0, 1.0);
+	g.SetNode   (7, 0.5, 1.0);
+	g.SetNode   (8, 1.0, 0.5);
 
 	// 2) Elements
-	FEM::AddElem("Tri6PStrain", /*IsActive*/true);
-	FEM::AddElem("Tri6PStrain", /*IsActive*/true);
+	g.SetNElems (2);
+	g.SetElem   (0, "Tri6PStrain", /*IsActive*/true);
+	g.SetElem   (1, "Tri6PStrain", /*IsActive*/true);
 
 	// 3) Set connectivity
-	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3)->SetNode(4,4)->SetNode(5,5);
-	Elems[1]->SetNode(0,6)->SetNode(1,2)->SetNode(2,1)->SetNode(3,7)->SetNode(4,4)->SetNode(5,8);
+	g.Ele(0)->SetNode(0, g.Nod(0))
+	        ->SetNode(1, g.Nod(1))
+			->SetNode(2, g.Nod(2))
+			->SetNode(3, g.Nod(3))
+			->SetNode(4, g.Nod(4))
+			->SetNode(5, g.Nod(5));
+	g.Ele(1)->SetNode(0, g.Nod(6))
+	        ->SetNode(1, g.Nod(2))
+	        ->SetNode(2, g.Nod(1))
+	        ->SetNode(3, g.Nod(7))
+	        ->SetNode(4, g.Nod(4))
+	        ->SetNode(5, g.Nod(8));
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("ux",0.0)->Bry("uy",0.0);
-	Nodes[1]->Bry("uy",0.0);
-	Nodes[3]->Bry("uy",0.0);
-	Nodes[2]->Bry("fy",1.0);
-	Nodes[7]->Bry("fy",1.0);
-	Nodes[6]->Bry("fy",1.0);
+	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
+	g.Nod(1)->Bry("uy",0.0);
+	g.Nod(3)->Bry("uy",0.0);
+	g.Nod(2)->Bry("fy",1.0);
+	g.Nod(7)->Bry("fy",1.0);
+	g.Nod(6)->Bry("fy",1.0);
 
 	// 5) Parameters and initial values
-	Elems[0]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
-	Elems[1]->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	g.Ele(0)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	g.Ele(1)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;
 	LinAlg::Matrix<double> Ke1;
-	Elems[0]->Order1Matrix(0,Ke0);
-	Elems[1]->Order1Matrix(0,Ke1);
+	g.Ele(0)->Order1Matrix(0,Ke0);
+	g.Ele(1)->Order1Matrix(0,Ke1);
 	cout << "Ke0=\n" << Ke0 << endl;
 	cout << "Ke1=\n" << Ke1 << endl;
 
 	// 6) Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	// Output
@@ -114,8 +124,8 @@ int main(int argc, char **argv) try
 	LinAlg::Matrix<double> values1;
 	Array<String>          labels0;
 	Array<String>          labels1;
-	Elems[0]->OutNodes(values0, labels0);
-	Elems[1]->OutNodes(values1, labels1);
+	g.Ele(0)->OutNodes (values0, labels0);
+	g.Ele(1)->OutNodes (values1, labels1);
 	std::cout << labels0;
 	std::cout << values0 << std::endl;
 	std::cout << labels1;
@@ -124,49 +134,49 @@ int main(int argc, char **argv) try
 	// Check
     double errors = 0.0;
 
-	// Element 0 : using Element::Val
-	errors += fabs(Elems[0]->Val(0, "Sx") - ( 1.56432140e-01));
-	errors += fabs(Elems[0]->Val(1, "Sx") - (-3.00686928e-01));
-	errors += fabs(Elems[0]->Val(2, "Sx") - ( 1.44254788e-01));
-	errors += fabs(Elems[0]->Val(3, "Sx") - (-3.19109076e-01));
-	errors += fabs(Elems[0]->Val(4, "Sx") - (-3.31286428e-01));
-	errors += fabs(Elems[0]->Val(5, "Sx") - ( 1.25832639e-01));
+	// Element 0
+	errors += fabs(g.Ele(0)->Val(0, "Sx") - ( 1.56432140e-01));
+	errors += fabs(g.Ele(0)->Val(1, "Sx") - (-3.00686928e-01));
+	errors += fabs(g.Ele(0)->Val(2, "Sx") - ( 1.44254788e-01));
+	errors += fabs(g.Ele(0)->Val(3, "Sx") - (-3.19109076e-01));
+	errors += fabs(g.Ele(0)->Val(4, "Sx") - (-3.31286428e-01));
+	errors += fabs(g.Ele(0)->Val(5, "Sx") - ( 1.25832639e-01));
 
-	errors += fabs(Elems[0]->Val(0, "Sy") - (-2.05141549e-01));
-	errors += fabs(Elems[0]->Val(1, "Sy") - ( 1.15872190e+00));
-	errors += fabs(Elems[0]->Val(2, "Sy") - (-9.53580350e-01));
-	errors += fabs(Elems[0]->Val(3, "Sy") - (-2.22127394e+00));
-	errors += fabs(Elems[0]->Val(4, "Sy") - (-2.96971274e+00));
-	errors += fabs(Elems[0]->Val(5, "Sy") - (-4.33357619e+00));
+	errors += fabs(g.Ele(0)->Val(0, "Sy") - (-2.05141549e-01));
+	errors += fabs(g.Ele(0)->Val(1, "Sy") - ( 1.15872190e+00));
+	errors += fabs(g.Ele(0)->Val(2, "Sy") - (-9.53580350e-01));
+	errors += fabs(g.Ele(0)->Val(3, "Sy") - (-2.22127394e+00));
+	errors += fabs(g.Ele(0)->Val(4, "Sy") - (-2.96971274e+00));
+	errors += fabs(g.Ele(0)->Val(5, "Sy") - (-4.33357619e+00));
 
-	errors += fabs(Elems[0]->Val(0, "Sxy") - (-1.56432140e-01));
-	errors += fabs(Elems[0]->Val(1, "Sxy") - (-6.74437968e-02));
-	errors += fabs(Elems[0]->Val(2, "Sxy") - ( 2.23875937e-01));
-	errors += fabs(Elems[0]->Val(3, "Sxy") - (-4.90216486e-02));
-	errors += fabs(Elems[0]->Val(4, "Sxy") - ( 3.31286428e-01));
-	errors += fabs(Elems[0]->Val(5, "Sxy") - ( 2.42298085e-01));
+	errors += fabs(g.Ele(0)->Val(0, "Sxy") - (-1.56432140e-01));
+	errors += fabs(g.Ele(0)->Val(1, "Sxy") - (-6.74437968e-02));
+	errors += fabs(g.Ele(0)->Val(2, "Sxy") - ( 2.23875937e-01));
+	errors += fabs(g.Ele(0)->Val(3, "Sxy") - (-4.90216486e-02));
+	errors += fabs(g.Ele(0)->Val(4, "Sxy") - ( 3.31286428e-01));
+	errors += fabs(g.Ele(0)->Val(5, "Sxy") - ( 2.42298085e-01));
 
-	// Element 1 : using Element OutNodes
-	errors += fabs(Elems[1]->Val(0, "Sx")  - ( 9.95732723e-01));
-	errors += fabs(Elems[1]->Val(1, "Sx")  - ( 2.23875937e-01));
-	errors += fabs(Elems[1]->Val(2, "Sx")  - (-1.21960866e+00));
-	errors += fabs(Elems[1]->Val(3, "Sx")  - ( 1.39446295e+00));
-	errors += fabs(Elems[1]->Val(4, "Sx")  - (-8.20878435e-01));
-	errors += fabs(Elems[1]->Val(5, "Sx")  - (-4.90216486e-02));
+	// Element 1
+	errors += fabs(g.Ele(1)->Val(0, "Sx")  - ( 9.95732723e-01));
+	errors += fabs(g.Ele(1)->Val(1, "Sx")  - ( 2.23875937e-01));
+	errors += fabs(g.Ele(1)->Val(2, "Sx")  - (-1.21960866e+00));
+	errors += fabs(g.Ele(1)->Val(3, "Sx")  - ( 1.39446295e+00));
+	errors += fabs(g.Ele(1)->Val(4, "Sx")  - (-8.20878435e-01));
+	errors += fabs(g.Ele(1)->Val(5, "Sx")  - (-4.90216486e-02));
 
-	errors += fabs(Elems[1]->Val(0, "Sy")  - (-1.25426728e+00));
-	errors += fabs(Elems[1]->Val(1, "Sy")  - ( 1.68328476e+00));
-	errors += fabs(Elems[1]->Val(2, "Sy")  - (-4.29017485e-01));
-	errors += fabs(Elems[1]->Val(3, "Sy")  - (-2.39612823e+00));
-	errors += fabs(Elems[1]->Val(4, "Sy")  - (-1.57087843e+00));
-	errors += fabs(Elems[1]->Val(5, "Sy")  - (-4.50843047e+00));
+	errors += fabs(g.Ele(1)->Val(0, "Sy")  - (-1.25426728e+00));
+	errors += fabs(g.Ele(1)->Val(1, "Sy")  - ( 1.68328476e+00));
+	errors += fabs(g.Ele(1)->Val(2, "Sy")  - (-4.29017485e-01));
+	errors += fabs(g.Ele(1)->Val(3, "Sy")  - (-2.39612823e+00));
+	errors += fabs(g.Ele(1)->Val(4, "Sy")  - (-1.57087843e+00));
+	errors += fabs(g.Ele(1)->Val(5, "Sy")  - (-4.50843047e+00));
 
-	errors += fabs(Elems[1]->Val(0, "Sxy") - (-9.95732723e-01));
-	errors += fabs(Elems[1]->Val(1, "Sxy") - ( 1.29641965e+00));
-	errors += fabs(Elems[1]->Val(2, "Sxy") - (-3.00686928e-01));
-	errors += fabs(Elems[1]->Val(3, "Sxy") - ( 1.25832639e-01));
-	errors += fabs(Elems[1]->Val(4, "Sxy") - ( 8.20878435e-01));
-	errors += fabs(Elems[1]->Val(5, "Sxy") - (-1.47127394e+00));
+	errors += fabs(g.Ele(1)->Val(0, "Sxy") - (-9.95732723e-01));
+	errors += fabs(g.Ele(1)->Val(1, "Sxy") - ( 1.29641965e+00));
+	errors += fabs(g.Ele(1)->Val(2, "Sxy") - (-3.00686928e-01));
+	errors += fabs(g.Ele(1)->Val(3, "Sxy") - ( 1.25832639e-01));
+	errors += fabs(g.Ele(1)->Val(4, "Sxy") - ( 8.20878435e-01));
+	errors += fabs(g.Ele(1)->Val(5, "Sxy") - (-1.47127394e+00));
 
 	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	else                     cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;

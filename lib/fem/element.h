@@ -59,7 +59,7 @@ public:
 	void   Activate       ()         { _is_active = true;   }                                        ///< Activate the element
 	bool   IsActive       () const   { return _is_active;   }                                        ///< Check if this element is active
 	size_t nNodes         () const   { return _n_nodes;     }                                        ///< Return the number of nodes in this element
-	Node * GetNode        (size_t i) { return _connects[i]; }                                        ///< Return a pointer to a node in the connects list
+	Node const * GetNode  (size_t i) const { return _connects[i]; }                                  ///< Return a pointer to a node in the connects list
 	size_t nIntPoints     () const   { return _n_int_pts;   }                                        ///< Return the number of integration points in this element
 	void   IntegPoints    (IntegPoint const * & IPs) const { IPs=_a_int_pts; }                       ///< Return a pointer to the array of integration points
 	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
@@ -75,7 +75,7 @@ public:
 	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis
 	virtual bool      IsEssential   (char const * DOFName) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel      (char const * ModelName, char const * Prms, char const * Inis) =0;                                       ///< (Re)allocate model with parameters and initial values
-	virtual Element * SetNode       (int iNodeLocal, int iNodeGlobal) =0;                                                                    ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
+	virtual Element * SetNode       (int iNodeLocal, FEM::Node * ptNode) =0;                                                                 ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
 	virtual void      UpdateState   (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;                  ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      BackupState   () =0;                                                                                                   ///< Backup internal state
 	virtual void      RestoreState  () =0;                                                                                                   ///< Restore internal state from a previously backup state
@@ -132,8 +132,6 @@ protected:
 	IntegPoint const * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 
 }; // class Element
-
-Array<Element*> Elems; ///< Array with all elements (or only the elements in this processor)
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

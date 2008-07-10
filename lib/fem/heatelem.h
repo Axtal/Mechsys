@@ -46,7 +46,7 @@ public:
 	bool      IsReady         () const;
 	bool      IsEssential     (char const * DOFName) const;
 	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
-	Element * SetNode         (int iNodeLocal, int iNodeGlobal);
+	Element * SetNode         (int iNodeLocal, FEM::Node * ptNode);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     ();
 	void      RestoreState    ();
@@ -100,6 +100,9 @@ inline bool HeatElem::IsEssential(char const * DOFName) const
 
 inline void HeatElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
+	// Check _ndim
+	if (_ndim<1) throw new Fatal("HeatElem::SetModel: The space dimension (SetDim) must be set before calling this method");
+
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
 	{
@@ -121,16 +124,16 @@ inline void HeatElem::SetModel(char const * ModelName, char const * Prms, char c
 	else throw new Fatal("HeatElem::SetModel: Feature not implemented.");
 }
 
-inline Element * HeatElem::SetNode(int iNodeLocal, int iNodeGlobal)
+inline Element * HeatElem::SetNode(int iNodeLocal, FEM::Node * ptNode)
 {
 	// Connects
-	_connects[iNodeLocal] = Nodes[iNodeGlobal];
+	_connects[iNodeLocal] = ptNode;
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	Nodes[iNodeGlobal]->AddDOF("T", "F"); // T stands for temperature and F for nodal heat source
+	_connects[iNodeLocal]->AddDOF("T", "F"); // T stands for temperature and F for nodal heat source
 
 	// Shared
-	Nodes[iNodeGlobal]->SetSharedBy(_my_id);
+	_connects[iNodeLocal]->SetSharedBy(_my_id);
 
 	return this;
 }

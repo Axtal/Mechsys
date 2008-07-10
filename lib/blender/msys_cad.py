@@ -2,7 +2,7 @@
 
 """
 Name: 'MechSys'
-Blender: 2.45
+Blender: 2.46
 Group: 'Themes'
 Tooltip: 'CAD, Mesh generator, and FEM in Blender'
 """
@@ -23,6 +23,7 @@ from   Blender.Mathutils import Vector
 import bpy
 import msys_draw as dr
 import msys_dict as di
+import msys_fem  as fem
 
 # Constants
 EVT_NONE       =  0 # used for buttons with callbacks
@@ -40,6 +41,7 @@ EVT_SET_NDIV   = 11 # set number of divisons along x, y and z
 EVT_ETAG       = 12 # set edges tag
 EVT_FTAG       = 13 # set faces tag
 EVT_DEL_PROP   = 14 # delete all properties
+EVT_FE_RUN     = 15 # run a FE simulation
 
 # Get current active mesh (will exit edit mode)
 # Returns:
@@ -184,6 +186,10 @@ def button_event(evt):
                 o.removeProperty(p)
             Blender.Window.QRedrawAll()
 
+    # run a FE simulation
+    elif evt==EVT_FE_RUN:
+        fem.set_geometry()
+
 
 def fillet_radius_callback(evt,val):
     dict = di.load_dict()
@@ -272,6 +278,11 @@ def gui():
     Draw.PushButton   ('Set F tag'      , EVT_FTAG      ,  80 , row ,  80 , rh , 'Set faces tag')              ; row -= rh
     Draw.PushButton   ('Gen structured' , EVT_GEN_STRU  ,   0 , row , 100 , rh , 'Generated structured mesh')
     Draw.PushButton   ('Del properties' , EVT_DEL_PROP  , 100 , row , 100 , rh , 'Delete all properties')      ; row -= rh
+
+    # FE simulation
+    row -= rh
+    Draw.PushButton ('Run FE', EVT_FE_RUN , 0 , row , 100 , rh , 'Run a FE simulation') ; row -= rh
+
 
 # Register GUI
 Draw.Register (gui, event, button_event)

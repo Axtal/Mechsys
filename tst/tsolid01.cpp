@@ -27,8 +27,6 @@
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 
-using FEM::Nodes;
-using FEM::Elems;
 using std::cout;
 using std::endl;
 
@@ -59,58 +57,60 @@ int main(int argc, char **argv) try
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	// 0) Problem dimension
-	FEM::Dim = 3; // 3D
+	FEM::Geom g(3); // 3D
 
 	// 1) Nodes
-	FEM::AddNode(0.0, 0.0, 0.0);
-	FEM::AddNode(1.0, 0.0, 0.0);
-	FEM::AddNode(1.0, 1.0, 0.0);
-	FEM::AddNode(0.0, 1.0, 0.0);
-	FEM::AddNode(0.0, 0.0, 1.0);
-	FEM::AddNode(1.0, 0.0, 1.0);
-	FEM::AddNode(1.0, 1.0, 1.0);
-	FEM::AddNode(0.0, 1.0, 1.0);
+	g.SetNNodes (8);
+	g.SetNode   (0, 0.0, 0.0, 0.0);
+	g.SetNode   (1, 1.0, 0.0, 0.0);
+	g.SetNode   (2, 1.0, 1.0, 0.0);
+	g.SetNode   (3, 0.0, 1.0, 0.0);
+	g.SetNode   (4, 0.0, 0.0, 1.0);
+	g.SetNode   (5, 1.0, 0.0, 1.0);
+	g.SetNode   (6, 1.0, 1.0, 1.0);
+	g.SetNode   (7, 0.0, 1.0, 1.0);
 
 	// 2) Elements
-	FEM::AddElem("Hex8Equilib", /*IsActive*/true); // 0
+	g.SetNElems (1);
+	g.SetElem   (0, "Hex8Equilib", /*IsActive*/true);
 
 	// 3) Set connectivity
-	Elems[0]->SetNode(0, 0);
-	Elems[0]->SetNode(1, 1);
-	Elems[0]->SetNode(2, 2);
-	Elems[0]->SetNode(3, 3);
-	Elems[0]->SetNode(4, 4);
-	Elems[0]->SetNode(5, 5);
-	Elems[0]->SetNode(6, 6);
-	Elems[0]->SetNode(7, 7);
+	g.Ele(0)->SetNode(0, g.Nod(0))
+	        ->SetNode(1, g.Nod(1))
+	        ->SetNode(2, g.Nod(2))
+	        ->SetNode(3, g.Nod(3))
+	        ->SetNode(4, g.Nod(4))
+	        ->SetNode(5, g.Nod(5))
+	        ->SetNode(6, g.Nod(6))
+	        ->SetNode(7, g.Nod(7));
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("ux",   0.0)->Bry("uy" ,0.0)->Bry("uz" ,0.0);
-	Nodes[1]->Bry("uz",   0.0)->Bry("uy" ,0.0);
-	Nodes[2]->Bry("uz",   0.0);
-	Nodes[3]->Bry("uz",   0.0)->Bry("ux" ,0.0);
-	Nodes[4]->Bry("ux",   0.0)->Bry("uy" ,0.0);
-	Nodes[5]->Bry("uy",   0.0);
-	Nodes[7]->Bry("ux",   0.0);
-	Nodes[4]->Bry("fz", -10.0);
-	Nodes[5]->Bry("fz", -15.0);
-	Nodes[6]->Bry("fz", -20.0);
-	Nodes[7]->Bry("fz", -25.0);
+	g.Nod(0)->Bry("ux",   0.0)->Bry("uy" ,0.0)->Bry("uz" ,0.0);
+	g.Nod(1)->Bry("uz",   0.0)->Bry("uy" ,0.0);
+	g.Nod(2)->Bry("uz",   0.0);
+	g.Nod(3)->Bry("uz",   0.0)->Bry("ux" ,0.0);
+	g.Nod(4)->Bry("ux",   0.0)->Bry("uy" ,0.0);
+	g.Nod(5)->Bry("uy",   0.0);
+	g.Nod(7)->Bry("ux",   0.0);
+	g.Nod(4)->Bry("fz", -10.0);
+	g.Nod(5)->Bry("fz", -15.0);
+	g.Nod(6)->Bry("fz", -20.0);
+	g.Nod(7)->Bry("fz", -25.0);
 
 	// 5) Parameters and initial values
-	Elems[0]->SetModel("LinElastic", "E=2000.0 nu=0.2", "Sx=10.0 Sy=10.0 Sz=10");
+	g.Ele(0)->SetModel("LinElastic", "E=2000.0 nu=0.2", "Sx=10.0 Sy=10.0 Sz=10");
 
 	// Stiffness
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> ke;
-	Elems[0]->Order1Matrix(0,ke);
+	g.Ele(0)->Order1Matrix(0,ke);
 	cout << ke << endl;
 
 	// 6) Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	return 0;

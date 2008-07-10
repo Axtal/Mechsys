@@ -40,6 +40,29 @@
 namespace FEM
 {
 
+/* Geometry */
+class Geom
+{
+public:
+	Geom (int nDim) : _dim(nDim) {}
+	void              SetNNodes (size_t nNodes)                                   { for (size_t i=0; i<_nodes.Size(); ++i) { if (_nodes[i]!=NULL) delete _nodes[i]; } _nodes.Resize(nNodes); _nodes = NULL; }
+	void              SetNElems (size_t nElems)                                   { for (size_t i=0; i<_elems.Size(); ++i) { if (_elems[i]!=NULL) delete _elems[i]; } _elems.Resize(nElems); _elems = NULL; }
+	size_t            NNodes    () const                                          { return _nodes.Size(); }
+	size_t            NElems    () const                                          { return _elems.Size(); }
+	Node            * SetNode   (size_t i, double X, double Y, double Z=0.0)      { if (_nodes[i]==NULL) { _nodes[i] = new Node;           } _nodes[i]->Initialize (i,X,Y,Z);  return _nodes[i]; }
+	Element         * SetElem   (size_t i, char const * Type, bool IsActive=true) { if (_elems[i]==NULL) { _elems[i] = AllocElement(Type); } _elems[i]->SetID      (i); _elems[i]->SetDim (_dim); if (IsActive) _elems[i]->Activate(); else _elems[i]->Deactivate(); return _elems[i]; }
+	Node            * Nod       (size_t i)                                        { return _nodes[i]; }
+	Element         * Ele       (size_t i)                                        { return _elems[i]; }
+	Node      const * Nod       (size_t i) const                                  { return _nodes[i]; }
+	Element   const * Ele       (size_t i) const                                  { return _elems[i]; }
+	Array<Node*>    & Nodes     ()                                                { return _nodes;    }
+	Array<Element*> & Elems     ()                                                { return _elems;    }
+private:
+	int             _dim;
+	Array<Node*>    _nodes;
+	Array<Element*> _elems;
+}; // class Geom
+
 // Problem
 int Dim = 3; ///< Space dimension
 
@@ -72,43 +95,30 @@ Array<int>  OutMyElems; ///< Indexes inside MyElements of the elemens to output
 
 // Global methods
 
-inline Node * AddNode (double X, double Y, double Z=0.0)
+inline void AddNodesElems (Mesh::Structured const * MStruct, char const * ElementType, FEM::Geom * G)
 {
-	Node * tmp = new Node;
-	tmp->Initialize (Nodes.Size(), X, Y, Z);
-	Nodes.Push(tmp);
-	return tmp;
-}
+	// Nodes
+	size_t nn = MStruct->Verts().Size();
+	G->SetNNodes (nn);
+	for (size_t i=0; i<nn; ++i)
+		G->SetNode (i, MStruct->Verts()[i]->C(0), MStruct->Verts()[i]->C(1), (MStruct->Is3D() ? MStruct->Verts()[i]->C(2) : 0.0));
 
-inline Element * AddElem (char const * Type, bool IsActive=true)
-{
-	Element * tmp = AllocElement(Type);
-	tmp->SetID  (Elems.Size());
-	tmp->SetDim (Dim);
-	if (IsActive) tmp->Activate  ();
-	else          tmp->Deactivate();
-	Elems.Push(tmp);
-	return tmp;
-}
-
-inline void AddNodesElems (Mesh::Structured const * MStruct, char const * ElementType)
-{
-	for (size_t i=0; i<MStruct->Verts().Size(); ++i)
-		FEM::AddNode (MStruct->Verts()[i]->C(0), MStruct->Verts()[i]->C(1), (MStruct->Is3D() ? MStruct->Verts()[i]->C(2) : 0.0));
-
-	for (size_t i=0; i<MStruct->Elems().Size(); ++i)
+	// Elements
+	size_t ne = MStruct->Elems().Size();
+	G->SetNElems (ne);
+	for (size_t i=0; i<ne; ++i)
 	{
 		// New elements
-		FEM::Element * e = FEM::AddElem(ElementType);
+		FEM::Element * e = G->SetElem (i, ElementType);
 
 		// Connectivity
 		Mesh::Elem * me = MStruct->Elems()[i];
 		for (size_t j=0; j<me->V.Size(); ++j)
-			e->SetNode (j, me->V[j]->MyID);
+			e->SetNode (j, G->Nod(me->V[j]->MyID));
 	}
 }
 
-inline void SetNodeBrys (Mesh::Structured const * MStruct, Array<double> const * X, Array<double> const * Y, Array<double> const * Z, Array<char const *> const * Vars, Array<double> const * Values, double DistTol=sqrt(DBL_EPSILON))
+inline void SetNodeBrys (Mesh::Structured const * MStruct, Array<double> const * X, Array<double> const * Y, Array<double> const * Z, Array<char const *> const * Vars, Array<double> const * Values, FEM::Geom * G, double DistTol=sqrt(DBL_EPSILON))
 {
 	/* Ex.:
 	 *                Coords   Tags    Vars   Values
@@ -125,14 +135,14 @@ inline void SetNodeBrys (Mesh::Structured const * MStruct, Array<double> const *
 			double d = sqrt(pow((*X)[j]-mv->C(0),2.0) + pow((*Y)[j]-mv->C(1),2.0) + (MStruct->Is3D() ? pow((*Z)[j]-mv->C(2),2.0) : 0.0));
 			if (d<DistTol)
 			{
-				FEM::Node * n = FEM::Nodes[mv->MyID];
+				FEM::Node * n = G->Nod(mv->MyID);
 				n->Bry ((*Vars)[j], (*Values)[j]);
 			}
 		}
 	}
 }
 
-inline void SetFaceBrys (Mesh::Structured const * MStruct, Array<int> const * Tags, Array<char const *> const * Vars, Array<double> const * Values)
+inline void SetFaceBrys (Mesh::Structured const * MStruct, Array<int> const * Tags, Array<char const *> const * Vars, Array<double> const * Values, FEM::Geom * G)
 {
 	/* Ex.:
 	 *                 Tags    Vars   Values
@@ -152,7 +162,7 @@ inline void SetFaceBrys (Mesh::Structured const * MStruct, Array<int> const * Ta
 				int idx = Tags->Find(tag);
 				if (idx>=0)
 				{
-					FEM::Element * e = FEM::Elems[me->MyID];
+					FEM::Element * e = G->Ele(me->MyID);
 					e->Bry ((*Vars)[idx], (*Values)[idx], j);
 				}
 				else throw new Fatal("FEM::ApplyEdgeBry: Could not find tag==%d inside Tags array. This tag is set in Elem.ID==%d",tag,me->MyID);
@@ -161,14 +171,14 @@ inline void SetFaceBrys (Mesh::Structured const * MStruct, Array<int> const * Ta
 	}
 }
 
-inline void _write_elem_val (size_t ne, size_t nfmax, char const * Key, std::ostringstream & oss)
+inline void _write_elem_val (FEM::Geom const & G, size_t ne, size_t nfmax, char const * Key, std::ostringstream & oss)
 {
 	oss << "        <DataArray type=\"Float32\" Name=\""<< Key <<"\" NumberOfComponents=\"1\" format=\"ascii\">\n";
 	size_t k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
 		double val = 0.0;
-		try { val = Elems[i]->Val(Key); } catch (Exception * e) { delete e; }
+		try { val = G.Ele(i)->Val(Key); } catch (Exception * e) { delete e; }
 		oss << (k==0?"  ":" ") << val;
 		k++;
 		VTU_NEWLINE (i,k,ne,nfmax,oss);
@@ -176,15 +186,15 @@ inline void _write_elem_val (size_t ne, size_t nfmax, char const * Key, std::ost
 	oss << "        </DataArray>\n";
 }
 
-inline void WriteVTUEquilib (char const * FileName)
+inline void WriteVTUEquilib (FEM::Geom const & G, char const * FileName)
 {
 	// Open File
 	std::ofstream      of(FileName, std::ios::out);
 	std::ostringstream oss;
 
 	// Data
-	size_t nn = Nodes.Size(); // Number of Nodes
-	size_t ne = Elems.Size(); // Number of Elements
+	size_t nn = G.NNodes(); // Number of Nodes
+	size_t ne = G.NElems(); // Number of Elements
 
 	// Constants
 	size_t          nimax = 40;        // number of integers in a line
@@ -203,9 +213,9 @@ inline void WriteVTUEquilib (char const * FileName)
 	size_t k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << "  " << nsflo << Nodes[i]->X() << " ";
-		oss <<         nsflo << Nodes[i]->Y() << " ";
-		oss <<         nsflo << Nodes[i]->Z();
+		oss << "  " << nsflo << G.Nod(i)->X() << " ";
+		oss <<         nsflo << G.Nod(i)->Y() << " ";
+		oss <<         nsflo << G.Nod(i)->Z();
 		k++;
 		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
 	}
@@ -218,10 +228,10 @@ inline void WriteVTUEquilib (char const * FileName)
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		String con;  Elems[i]->VTKConnect(con);
+		String con;  G.Ele(i)->VTKConnect(con);
 		oss << "  " << con;
 		k++;
-		VTU_NEWLINE (i,k,ne,nimax/Elems[i]->nNodes(),oss);
+		VTU_NEWLINE (i,k,ne,nimax/G.Ele(i)->nNodes(),oss);
 	}
 	oss << "        </DataArray>\n";
 	oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
@@ -229,7 +239,7 @@ inline void WriteVTUEquilib (char const * FileName)
 	size_t ossfset = 0;
 	for (size_t i=0; i<ne; ++i)
 	{
-		ossfset += Elems[i]->nNodes();
+		ossfset += G.Ele(i)->nNodes();
 		oss << (k==0?"  ":" ") << ossfset;
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
@@ -239,7 +249,7 @@ inline void WriteVTUEquilib (char const * FileName)
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		oss << (k==0?"  ":" ") << Elems[i]->VTKCellType();
+		oss << (k==0?"  ":" ") << G.Ele(i)->VTKCellType();
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
@@ -252,9 +262,9 @@ inline void WriteVTUEquilib (char const * FileName)
 	k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << " " << nsflo << (Nodes[i]->HasVar("ux") ? Nodes[i]->Val("ux"): 0.0) << " ";
-		oss <<        nsflo << (Nodes[i]->HasVar("uy") ? Nodes[i]->Val("uy"): 0.0) << " ";
-		oss <<        nsflo << (Nodes[i]->HasVar("uz") ? Nodes[i]->Val("uz"): 0.0) << " ";
+		oss << " " << nsflo << (G.Nod(i)->HasVar("ux") ? G.Nod(i)->Val("ux"): 0.0) << " ";
+		oss <<        nsflo << (G.Nod(i)->HasVar("uy") ? G.Nod(i)->Val("uy"): 0.0) << " ";
+		oss <<        nsflo << (G.Nod(i)->HasVar("uz") ? G.Nod(i)->Val("uz"): 0.0) << " ";
 		k++;
 		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
 	}
@@ -263,9 +273,9 @@ inline void WriteVTUEquilib (char const * FileName)
 	k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << " " << nsflo << (Nodes[i]->HasVar("fx") ? Nodes[i]->Val("fx"): 0.0) << " ";
-		oss <<        nsflo << (Nodes[i]->HasVar("fy") ? Nodes[i]->Val("fy"): 0.0) << " ";
-		oss <<        nsflo << (Nodes[i]->HasVar("fz") ? Nodes[i]->Val("fz"): 0.0) << " ";
+		oss << " " << nsflo << (G.Nod(i)->HasVar("fx") ? G.Nod(i)->Val("fx"): 0.0) << " ";
+		oss <<        nsflo << (G.Nod(i)->HasVar("fy") ? G.Nod(i)->Val("fy"): 0.0) << " ";
+		oss <<        nsflo << (G.Nod(i)->HasVar("fz") ? G.Nod(i)->Val("fz"): 0.0) << " ";
 		k++;
 		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
 	}
@@ -278,27 +288,27 @@ inline void WriteVTUEquilib (char const * FileName)
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		oss << (k==0?"  ":" ") << Elems[i]->IsActive();
+		oss << (k==0?"  ":" ") << G.Ele(i)->IsActive();
 		k++;
 		VTU_NEWLINE (i,k,ne,nfmax,oss);
 	}
 	oss << "        </DataArray>\n";
-	_write_elem_val(ne, nfmax, "Sx", oss);
-	_write_elem_val(ne, nfmax, "Sy", oss);
-	_write_elem_val(ne, nfmax, "Sz", oss);
-	_write_elem_val(ne, nfmax, "Sxy",oss);
-	_write_elem_val(ne, nfmax, "Syz",oss);
-	_write_elem_val(ne, nfmax, "Szx",oss);
-	_write_elem_val(ne, nfmax, "p",  oss);
-	_write_elem_val(ne, nfmax, "q",  oss);
-	_write_elem_val(ne, nfmax, "Ex", oss);
-	_write_elem_val(ne, nfmax, "Ey", oss);
-	_write_elem_val(ne, nfmax, "Ez", oss);
-	_write_elem_val(ne, nfmax, "Exy",oss);
-	_write_elem_val(ne, nfmax, "Eyz",oss);
-	_write_elem_val(ne, nfmax, "Ezx",oss);
-	_write_elem_val(ne, nfmax, "Ev", oss);
-	_write_elem_val(ne, nfmax, "Ed", oss);
+	_write_elem_val(G, ne, nfmax, "Sx", oss);
+	_write_elem_val(G, ne, nfmax, "Sy", oss);
+	_write_elem_val(G, ne, nfmax, "Sz", oss);
+	_write_elem_val(G, ne, nfmax, "Sxy",oss);
+	_write_elem_val(G, ne, nfmax, "Syz",oss);
+	_write_elem_val(G, ne, nfmax, "Szx",oss);
+	_write_elem_val(G, ne, nfmax, "p",  oss);
+	_write_elem_val(G, ne, nfmax, "q",  oss);
+	_write_elem_val(G, ne, nfmax, "Ex", oss);
+	_write_elem_val(G, ne, nfmax, "Ey", oss);
+	_write_elem_val(G, ne, nfmax, "Ez", oss);
+	_write_elem_val(G, ne, nfmax, "Exy",oss);
+	_write_elem_val(G, ne, nfmax, "Eyz",oss);
+	_write_elem_val(G, ne, nfmax, "Ezx",oss);
+	_write_elem_val(G, ne, nfmax, "Ev", oss);
+	_write_elem_val(G, ne, nfmax, "Ed", oss);
 	oss << "      </CellData>\n";
 
 	// Bottom
@@ -311,18 +321,18 @@ inline void WriteVTUEquilib (char const * FileName)
 	of.close();
 }
 
-inline void WriteVTK (char const * FileName)
+inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 {
 	// Filter elements
-	Array<Element*> act_elems; // Array for active elements
-	for (size_t i=0; i<Elems.Size(); ++i)
+	Array<Element const*> act_elems; // Array for active elements
+	for (size_t i=0; i<G.NElems(); ++i)
 	{
-		if (Elems[i]->IsActive()) // Only active elements are considered
-			act_elems.Push(Elems[i]);
+		if (G.Ele(i)->IsActive()) // Only active elements are considered
+			act_elems.Push(G.Ele(i));
 	}
 
 	// Data
-	size_t n_nodes = Nodes.Size();     // Number of Nodes
+	size_t n_nodes = G.NNodes();       // Number of Nodes
 	size_t n_elems = act_elems.Size(); // Number of Elements
 	std::map<String, int>  index_map;  // Map to associate labels with indexes
 
@@ -412,7 +422,7 @@ inline void WriteVTK (char const * FileName)
 	// Node coordinates
 	oss << "POINTS " << n_nodes << " float" << std::endl;
 	for (size_t i=0; i<n_nodes; ++i)
-		oss << nsflo << Nodes[i]->X() << nsflo << Nodes[i]->Y() << nsflo << Nodes[i]->Z() << std::endl;
+		oss << nsflo << G.Nod(i)->X() << nsflo << G.Nod(i)->Y() << nsflo << G.Nod(i)->Z() << std::endl;
 	oss << std::endl;
 
 	// Elements connectivities

@@ -29,8 +29,6 @@
 #include "util/exception.h"
 #include "util/numstreams.h"
 
-using FEM::Nodes;
-using FEM::Elems;
 using std::cout;
 using std::endl;
 
@@ -54,44 +52,49 @@ int main(int argc, char **argv) try
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	// 0) Problem dimension
-	FEM::Dim = 2; // 2D
+	FEM::Geom g(2); // 2D
 
 	// 1) Nodes
-	FEM::AddNode(0.0, 0.0); // 0
-	FEM::AddNode(1.0, 0.0); // 1
-	FEM::AddNode(1.0, 0.5); // 2
-	FEM::AddNode(0.0, 0.5); // 3
+	g.SetNNodes (4);
+	g.SetNode   (0, 0.0, 0.0);
+	g.SetNode   (1, 1.0, 0.0);
+	g.SetNode   (2, 1.0, 0.5);
+	g.SetNode   (3, 0.0, 0.5);
 
 	// 2) Elements
-	FEM::AddElem("Quad4Heat", /*IsActive*/true);
+	g.SetNElems (1);
+	g.SetElem   (0, "Quad4Heat", /*IsActive*/true);
 
 	// 3) Set connectivity
-	Elems[0]->SetNode(0,0)->SetNode(1,1)->SetNode(2,2)->SetNode(3,3);
+	g.Ele(0)->SetNode(0, g.Nod(0))
+	        ->SetNode(1, g.Nod(1))
+	        ->SetNode(2, g.Nod(2))
+	        ->SetNode(3, g.Nod(3));
 
 	// 4) Boundary conditions (must be after connectivity)
-	Nodes[0]->Bry("T",0.0);
-	Nodes[1]->Bry("T",0.0);
-	Nodes[2]->Bry("T",1.0);
-	Nodes[3]->Bry("T",1.0);
+	g.Nod(0)->Bry("T",0.0);
+	g.Nod(1)->Bry("T",0.0);
+	g.Nod(2)->Bry("T",1.0);
+	g.Nod(3)->Bry("T",1.0);
 
 	// 5) Parameters and initial values
-	Elems[0]->SetModel("LinHeat", "k=1.0", "");
+	g.Ele(0)->SetModel("LinHeat", "k=1.0", "");
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	// Stiffness
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;  Ke0.SetNS(Util::_6_3);
-	Elems[0]->Order1Matrix(0,Ke0);
+	g.Ele(0)->Order1Matrix(0,Ke0);
 	cout << "Ke0=\n" << Ke0 << endl;
 
 	cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
 
-	FEM::WriteVTK("out.vtk");
+	FEM::WriteVTK(g, "out.vtk");
 	
 
 	// Check

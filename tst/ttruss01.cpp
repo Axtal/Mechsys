@@ -27,8 +27,6 @@
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 
-using FEM::Nodes;
-using FEM::Elems;
 using std::cout;
 using std::endl;
 using LinAlg::Matrix;
@@ -64,32 +62,34 @@ int main(int argc, char **argv) try
 	
 	{
 		// 0) Problem dimension
-		FEM::Dim = 2; // 2D
+		FEM::Geom g(2); // 2D
 
 		// 1) Nodes
-		FEM::AddNode( 0.0,  0.0); // 0
-		FEM::AddNode(10.0,  0.0); // 1
-		FEM::AddNode(10.0, 10.0); // 2
+		g.SetNNodes (3);
+		g.SetNode   (0,  0.0,  0.0);
+		g.SetNode   (1, 10.0,  0.0);
+		g.SetNode   (2, 10.0, 10.0);
 
 		// 2) Elements
-		FEM::AddElem("Rod", /*IsActive*/true); // 0
-		FEM::AddElem("Rod", /*IsActive*/true); // 1
-		FEM::AddElem("Rod", /*IsActive*/true); // 2
+		g.SetNElems (3);
+		g.SetElem   (0, "Rod", /*IsActive*/true);
+		g.SetElem   (1, "Rod", /*IsActive*/true);
+		g.SetElem   (2, "Rod", /*IsActive*/true);
 
 		// 3) Set connectivity
-		Elems[0]->SetNode(0, 0)->SetNode(1, 1);
-		Elems[1]->SetNode(0, 1)->SetNode(1, 2);
-		Elems[2]->SetNode(0, 0)->SetNode(1, 2);
+		g.Ele(0)->SetNode(0, g.Nod(0))->SetNode(1, g.Nod(1));
+		g.Ele(1)->SetNode(0, g.Nod(1))->SetNode(1, g.Nod(2));
+		g.Ele(2)->SetNode(0, g.Nod(0))->SetNode(1, g.Nod(2));
 
 		// 4) Boundary conditions (must be after set connectivity)
-		Nodes[0]->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
-		Nodes[1]->                Bry("uy",  0.4); // Essential
-		Nodes[2]->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
+		g.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
+		g.Nod(1)->                Bry("uy",  0.4); // Essential
+		g.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
 
 		// 5) Parameters and initial value
-		Elems[0]->SetModel("LinElastic", "E=100.0 A=1.0"              , "Sx=0.0");
-		Elems[1]->SetModel("LinElastic", "E= 50.0 A=1.0"              , "Sx=0.0");
-		Elems[2]->SetModel("LinElastic", "E=200.0 A=1.414213562373095", "Sx=0.0");
+		g.Ele(0)->SetModel("LinElastic", "E=100.0 A=1.0"              , "Sx=0.0");
+		g.Ele(1)->SetModel("LinElastic", "E= 50.0 A=1.0"              , "Sx=0.0");
+		g.Ele(2)->SetModel("LinElastic", "E=200.0 A=1.414213562373095", "Sx=0.0");
 
 		// Check
 		double errors = 0;
@@ -100,9 +100,9 @@ int main(int argc, char **argv) try
 		Matrix<double> Ke0;
 		Matrix<double> Ke1;
 		Matrix<double> Ke2;
-		Elems[0]->Order1Matrix(0,Ke0);
-		Elems[1]->Order1Matrix(0,Ke1);
-		Elems[2]->Order1Matrix(0,Ke2);
+		g.Ele(0)->Order1Matrix(0,Ke0);
+		g.Ele(1)->Order1Matrix(0,Ke1);
+		g.Ele(2)->Order1Matrix(0,Ke2);
 		cout << "Ke0=\n" << Ke0 << endl;
 		cout << "Ke1=\n" << Ke1 << endl;
 		cout << "Ke2=\n" << Ke2 << endl;
@@ -134,23 +134,23 @@ int main(int argc, char **argv) try
 		// 6) Solve
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 		//FEM::Solver * sol = FEM::AllocSolver("AutoME");
-		sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+		sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 		sol -> Solve();
 		cout << "GFE_Resid = " << FEM::GFE_Resid << endl;
 
-		errors += fabs(Nodes[0]->Val("ux") - ( 0.0));
-		errors += fabs(Nodes[0]->Val("uy") - (-0.5));
-		errors += fabs(Nodes[1]->Val("ux") - ( 0.0));
-		errors += fabs(Nodes[1]->Val("uy") - ( 0.4));
-		errors += fabs(Nodes[2]->Val("ux") - (-0.5));
-		errors += fabs(Nodes[2]->Val("uy") - ( 0.2));
+		errors += fabs(g.Nod(0)->Val("ux") - ( 0.0));
+		errors += fabs(g.Nod(0)->Val("uy") - (-0.5));
+		errors += fabs(g.Nod(1)->Val("ux") - ( 0.0));
+		errors += fabs(g.Nod(1)->Val("uy") - ( 0.4));
+		errors += fabs(g.Nod(2)->Val("ux") - (-0.5));
+		errors += fabs(g.Nod(2)->Val("uy") - ( 0.2));
 
-		errors += fabs(Nodes[0]->Val("fx") - (-2.0));
-		errors += fabs(Nodes[0]->Val("fy") - (-2.0));
-		errors += fabs(Nodes[1]->Val("fx") - ( 0.0));
-		errors += fabs(Nodes[1]->Val("fy") - ( 1.0));
-		errors += fabs(Nodes[2]->Val("fx") - ( 2.0));
-		errors += fabs(Nodes[2]->Val("fy") - ( 1.0));
+		errors += fabs(g.Nod(0)->Val("fx") - (-2.0));
+		errors += fabs(g.Nod(0)->Val("fy") - (-2.0));
+		errors += fabs(g.Nod(1)->Val("fx") - ( 0.0));
+		errors += fabs(g.Nod(1)->Val("fy") - ( 1.0));
+		errors += fabs(g.Nod(2)->Val("fx") - ( 2.0));
+		errors += fabs(g.Nod(2)->Val("fy") - ( 1.0));
 
 		if (fabs(errors)>1.0e-13) cout << "[1;31m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
 		else                      cout << "[1;32m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;

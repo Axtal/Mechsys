@@ -62,6 +62,18 @@ using std::endl;
 
 using namespace boost::python;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////// FEM
+
+class PyGeom
+{
+public:
+	void SetNNodes (int nNodes) {}
+	void SetNElems (int nElems) {}
+	void SetDim    (int Dim)    {}
+private:
+}; // class PyGeom
+
+
 ////////////////////////////////////////////////////////////////////////////////////////// Wrapper classes
 
 class PyNode
@@ -212,6 +224,12 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	// ---------------------------------------------------------------------------- FEM
 	
+	class_<PyGeom>("geom")
+	    .def("set_nnodes", &PyGeom::SetNNodes)
+	    .def("set_nelems", &PyGeom::SetNElems)
+	    .def("set_dim",    &PyGeom::SetDim   )
+	    ;
+
 	class_<PyNode>("node", init<int>())
 	    .def("bry", &PyNode::bry, return_internal_reference<>())
 	    .def("val", &PyNode::val)

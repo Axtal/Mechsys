@@ -32,8 +32,6 @@
 
 using std::cout;
 using std::endl;
-using FEM::Nodes;
-using FEM::Elems;
 using LinAlg::Matrix;
 
 int main(int argc, char **argv) try
@@ -109,10 +107,10 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Problem dimension
-	FEM::Dim = 2; // 2D
+	FEM::Geom g(2); // 2D
 
 	// Nodes and elements
-	FEM::AddNodesElems (&ms, "Quad4PStrain");
+	FEM::AddNodesElems (&ms, "Quad4PStrain", &g);
 
 	// Boundary conditions
 	// Nodes
@@ -120,26 +118,26 @@ int main(int argc, char **argv) try
 	Array<char const *> node_vars;
 	Array<double>       node_vals;
 	X.Push(L/2.0);  Y.Push(0.0);  Z.Push(0.0);  node_vars.Push("ux");  node_vals.Push(0.0);
-	FEM::SetNodeBrys (&ms, &X, &Y, &Z, &node_vars, &node_vals);
+	FEM::SetNodeBrys (&ms, &X, &Y, &Z, &node_vars, &node_vals, &g);
 	// Faces
 	Array<int>          face_tags;
 	Array<char const *> face_vars;
 	Array<double>       face_vals;
 	face_tags.Push(-10);  face_vars.Push("uy");  face_vals.Push(0.0);
 	face_tags.Push(-20);  face_vars.Push("fy");  face_vals.Push( -q);
-	FEM::SetFaceBrys (&ms, &face_tags, &face_vars, &face_vals);
+	FEM::SetFaceBrys (&ms, &face_tags, &face_vars, &face_vals, &g);
 
 	// Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	for (size_t i=0; i<Elems.Size(); ++i)
-		Elems[i]->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	for (size_t i=0; i<g.NElems(); ++i)
+		g.Ele(i)->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Solve
 	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	start = std::clock(); // Initial time
-	sol -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 	total = std::clock() - start; // Time elapsed
 	cout << "GFE_Resid = "<<FEM::GFE_Resid<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
@@ -155,34 +153,34 @@ int main(int argc, char **argv) try
 	double Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 
 	// Stress and strains
-	for (size_t i=0; i<Elems.Size(); ++i)
+	for (size_t i=0; i<g.NElems(); ++i)
 	{
-		errors += fabs(Elems[i]->Val("Ex" ) - (Ex));
-		errors += fabs(Elems[i]->Val("Ey" ) - (Ey));
-		errors += fabs(Elems[i]->Val("Exy") - (0.0));
-		errors += fabs(Elems[i]->Val("Sx" ) - (0.0));
-		errors += fabs(Elems[i]->Val("Sy" ) - (Sy ));
-		errors += fabs(Elems[i]->Val("Sz" ) - (Sz ));
-		errors += fabs(Elems[i]->Val("Sxy") - (0.0));
+		errors += fabs(g.Ele(i)->Val("Ex" ) - (Ex));
+		errors += fabs(g.Ele(i)->Val("Ey" ) - (Ey));
+		errors += fabs(g.Ele(i)->Val("Exy") - (0.0));
+		errors += fabs(g.Ele(i)->Val("Sx" ) - (0.0));
+		errors += fabs(g.Ele(i)->Val("Sy" ) - (Sy ));
+		errors += fabs(g.Ele(i)->Val("Sz" ) - (Sz ));
+		errors += fabs(g.Ele(i)->Val("Sxy") - (0.0));
 	}
 
 	// Displacements
-	for (size_t i=0; i<Nodes.Size(); ++i)
+	for (size_t i=0; i<g.NNodes(); ++i)
 	{
-		if (fabs(Nodes[i]->Y())<1.0e-5) // bottom nodes
+		if (fabs(g.Nod(i)->Y())<1.0e-5) // bottom nodes
 		{
-			errors += fabs(Nodes[i]->Val("uy") - (0.0));
-			if (fabs(Nodes[i]->X()-(L/2.0))<1.0e-5) // central node
-				errors += fabs(Nodes[i]->Val("ux") - (0.0));
+			errors += fabs(g.Nod(i)->Val("uy") - (0.0));
+			if (fabs(g.Nod(i)->X()-(L/2.0))<1.0e-5) // central node
+				errors += fabs(g.Nod(i)->Val("ux") - (0.0));
 		}
-		else if (fabs(Nodes[i]->Y()-(H/2.0))<1.0e-5) // mid nodes
-			errors += fabs(Nodes[i]->Val("uy") - (-0.5*H*Ey));
-		else if (fabs(Nodes[i]->Y()-(H))<1.0e-5) // top nodes
-			errors += fabs(Nodes[i]->Val("uy") - (-H*Ey));
-		if (fabs(Nodes[i]->X())<1.0e-5) // left nodes
-			errors += fabs(Nodes[i]->Val("ux") - (0.5*L*Ex));
-		if (fabs(Nodes[i]->X()-L)<1.0e-5) // right nodes
-			errors += fabs(Nodes[i]->Val("ux") - (-0.5*L*Ex));
+		else if (fabs(g.Nod(i)->Y()-(H/2.0))<1.0e-5) // mid nodes
+			errors += fabs(g.Nod(i)->Val("uy") - (-0.5*H*Ey));
+		else if (fabs(g.Nod(i)->Y()-(H))<1.0e-5) // top nodes
+			errors += fabs(g.Nod(i)->Val("uy") - (-H*Ey));
+		if (fabs(g.Nod(i)->X())<1.0e-5) // left nodes
+			errors += fabs(g.Nod(i)->Val("ux") - (0.5*L*Ex));
+		if (fabs(g.Nod(i)->X()-L)<1.0e-5) // right nodes
+			errors += fabs(g.Nod(i)->Val("ux") - (-0.5*L*Ex));
 	}
 
 	if (fabs(errors)>1.0e-10) cout << "[1;31m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
@@ -191,7 +189,7 @@ int main(int argc, char **argv) try
 	// Write file
 	cout << "Write output file: ------------------------------------------------------------" << endl;
 	start = std::clock(); // Initial time
-	FEM::WriteVTUEquilib ("tpstrain02.vtu");
+	FEM::WriteVTUEquilib (g, "tpstrain02.vtu");
 	total = std::clock() - start; // Time elapsed
 	cout << "[1;34mFile <tpstrain02.vtu> saved.[0m" << endl;
 	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
