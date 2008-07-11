@@ -81,13 +81,17 @@ BOOST_PYTHON_MODULE (mechsys)
 	class_<PyNode>("node", init<FEM::Node *>())
 	    .def("bry", &PyNode::Bry, return_internal_reference<>())
 	    .def("val", &PyNode::Val)
+	    .def("x",   &PyNode::X)
+	    .def("y",   &PyNode::Y)
+	    .def("z",   &PyNode::Z)
 	    ;
 
 	class_<PyElem>("elem", init<FEM::Element *>())
 	    .def("connect",   &PyElem::Connect,  return_internal_reference<>())
 	    .def("set_model", &PyElem::SetModel, return_internal_reference<>())
 	    .def("bry",       &PyElem::Bry,      return_internal_reference<>())
-	    .def("val",       &PyElem::Val)
+	    .def("val",       PElemVal1)
+	    .def("val",       PElemVal2)
 	    ;
 
 	class_<PyGeom>("geom", init<int>())

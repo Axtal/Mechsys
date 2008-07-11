@@ -71,3 +71,45 @@ sol.solve()
 # Output file
 m.write_vtu_equilib(g, 'tpstrain02_py.vtu')
 print 'File <tpstrain02_py.vtu> generated'
+
+#----------------------------------------------------------------------------- Check
+
+# Check
+errors = 0.0
+
+Sy = q
+Ex = -nu*(1.0+nu)*Sy/E
+Ey =  (1.0-nu*nu)*Sy/E
+Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey)
+
+# Stress and strains
+for i in range(g.nelems()):
+    errors += abs(g.ele(i).val("Ex" ) - (Ex))
+    errors += abs(g.ele(i).val("Ey" ) - (Ey))
+    errors += abs(g.ele(i).val("Exy") - (0.0))
+    errors += abs(g.ele(i).val("Sx" ) - (0.0))
+    errors += abs(g.ele(i).val("Sy" ) - (Sy ))
+    errors += abs(g.ele(i).val("Sz" ) - (Sz ))
+    errors += abs(g.ele(i).val("Sxy") - (0.0))
+
+# Displacements
+for i in range(g.nnodes()):
+    # bottom nodes
+    if (abs(g.nod(i).y())<1.0e-5): errors += abs(g.nod(i).val("uy") - (0.0))
+
+    # fixed bottom (central) node
+    if (abs(g.nod(i).y())<1.0e-5) and (abs(g.nod(i).x()-(L/2.0))<1.0e-5): errors += abs(g.nod(i).val("ux") - (0.0))
+
+    # half-height nodes
+    if (abs(g.nod(i).y()-(H/2.0))<1.0e-5): errors += abs(g.nod(i).val("uy") - (-0.5*H*Ey))
+
+    # top nodes
+    if (abs(g.nod(i).y()-(H))<1.0e-5): errors += abs(g.nod(i).val("uy") - (-H*Ey))
+
+    # left nodes
+    if (abs(g.nod(i).x())<1.0e-5): errors += abs(g.nod(i).val("ux") - (0.5*L*Ex))
+
+    # right nodes
+    if (abs(g.nod(i).x()-L)<1.0e-5): errors += abs(g.nod(i).val("ux") - (-0.5*L*Ex))
+
+print 'Py:Errors = ', errors

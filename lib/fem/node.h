@@ -236,6 +236,9 @@ public:
 	PyNode (FEM::Node * ptNode) : _node(ptNode) {}
 	PyNode    & Bry     (boopy::str const & Name, double Value) { _node->Bry(boopy::extract<char const *>(Name)(), Value); return (*this); }
 	double      Val     (boopy::str const & Name)               { return _node->Val(boopy::extract<char const *>(Name)()); }
+	double      X       ()                                const { return _node->X(); }
+	double      Y       ()                                const { return _node->Y(); }
+	double      Z       ()                                const { return _node->Z(); }
 	FEM::Node * GetNode () { return _node; }
 private:
 	FEM::Node * _node;

@@ -53,20 +53,20 @@ public:
 		double w; ///< weight (coeficient) W 
 	};
 
-	// Methods
-	void   SetID          (long ID)  { _my_id = ID;         }                                        ///< Set the ID of this element
-	long   GetID          () const   { return _my_id;       }                                        ///< Return the ID of this element
-	void   Activate       ()         { _is_active = true;   }                                        ///< Activate the element
-	bool   IsActive       () const   { return _is_active;   }                                        ///< Check if this element is active
-	size_t nNodes         () const   { return _n_nodes;     }                                        ///< Return the number of nodes in this element
-	Node const * GetNode  (size_t i) const { return _connects[i]; }                                  ///< Return a pointer to a node in the connects list
-	size_t nIntPoints     () const   { return _n_int_pts;   }                                        ///< Return the number of integration points in this element
-	void   IntegPoints    (IntegPoint const * & IPs) const { IPs=_a_int_pts; }                       ///< Return a pointer to the array of integration points
-	bool   IsInside       (double x, double y, double z) const;                                      ///< Check if a node is inside the element
-	void   Dist2FaceNodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
-	void   Bry            (char const * Key, double Value, int FaceLocalID);                         ///< Set Face/Edge boundary conditions
-	double Volume         () const;                                                                  ///< Return the volume/area/length of the element
-	void   SetDim         (int nDim) { _ndim = nDim; }                                               ///< Set the number of dimension of the problem
+	// Set methods
+	void SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
+	void SetDim    (int nDim)           { _ndim      = nDim;     }    ///< Set the number of dimension of the problem
+	void SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
+	void Bry       (char const * Key, double Value, int FaceLocalID); ///< Set Face/Edge boundary conditions
+	
+	// Get methods
+	long         GetID      ()         const { return _my_id;       } ///< Return the ID of this element
+	bool         IsActive   ()         const { return _is_active;   } ///< Check if this element is active
+	size_t       nNodes     ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
+	size_t       nIntPoints ()         const { return _n_int_pts;   } ///< Return the number of integration points in this element
+	Node const * GetNode    (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list
+	double       Volume     ()         const;                         ///< Return the volume/area/length of the element
+	bool         IsInside   (double x, double y, double z) const;     ///< Check if a node is inside the element
 
 	// Methods that MUST be overriden by derived classes
 	virtual String Name() const =0;
@@ -99,7 +99,6 @@ public:
 	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, LinAlg::Matrix<double> & J) const;                 ///< Jacobian matrix of a edge
 	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
-	virtual void   Deactivate    () { _is_active = false; }                                                                                  ///< Deactivate this element
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
 	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
 
@@ -131,11 +130,50 @@ protected:
 	IntegPoint const * _a_int_pts;      ///< Array of Integration Points
 	IntegPoint const * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 
+private:
+	void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
+
 }; // class Element
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+/* public */
+
+// Set and get methods
+
+inline void Element::Bry(char const * Key, double Value, int FaceLocalID)
+{
+	Array<Node*> fnodes;
+	GetFaceNodes        (FaceLocalID, fnodes);
+	_dist_to_face_nodes (Key, Value, fnodes);
+}
+
+inline double Element::Volume() const
+{
+	// Allocate entities used for every integration point
+	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
+	LinAlg::Matrix<double> J;       // Jacobian matrix
+
+	// Loop along integration points
+	double vol = 0.0;
+	for (size_t i=0; i<_n_int_pts; ++i)
+	{
+		// Temporary Integration Points
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+
+		// Jacobian
+		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
+
+		// Calculate internal force vector;
+		vol += det(J);
+	}
+	return vol;
+}
 
 inline bool Element::IsInside(double x, double y, double z) const
 {
@@ -173,33 +211,7 @@ inline bool Element::IsInside(double x, double y, double z) const
 	else return false;
 }
 
-inline void Element::Dist2FaceNodes(char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const
-{
-	// Compute face nodal values (integration along the face)
-	LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
-	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
-	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
-	for (size_t i=0; i<_n_face_int_pts; i++)
-	{
-		double r = _a_face_int_pts[i].r;
-		double s = _a_face_int_pts[i].s;
-		double w = _a_face_int_pts[i].w;
-		FaceShape    (r, s, face_shape);
-		FaceJacobian (FaceConnects, r, s, J);
-		values += FaceValue*face_shape*det(J)*w;
-	}
-
-	// Set nodes Brys
-	for (size_t i=0; i<_n_face_nodes; ++i)
-		FaceConnects[i]->Bry(Key,values(i));
-}
-
-inline void Element::Bry(char const * Key, double Value, int FaceLocalID)
-{
-	Array<Node*> fnodes;
-	GetFaceNodes   (FaceLocalID, fnodes);
-	Dist2FaceNodes (Key, Value, fnodes);
-}
+// Methods that MAY be overriden by derived classes
 
 inline void Element::InverseMap(double x, double y, double z, double & r, double & s, double & t) const
 {
@@ -361,31 +373,6 @@ inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & L
 		Values(i,j) = Val(i, Labels[j].GetSTL().c_str());
 }
 
-inline double Element::Volume () const
-{
-	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;       // Jacobian matrix
-
-	// Loop along integration points
-	double vol = 0.0;
-	for (size_t i=0; i<_n_int_pts; ++i)
-	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i].r;
-		double s = _a_int_pts[i].s;
-		double t = _a_int_pts[i].t;
-
-		// Jacobian
-		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
-
-		// Calculate internal force vector;
-		vol += det(J);
-	}
-	return vol;
-}
-
 inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 
 {
 	// Extrapolation:
@@ -426,6 +413,30 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 	// Perform extrapolation
 	NodalValues = E*IPValues;
 };
+
+
+/* private */
+
+inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const
+{
+	// Compute face nodal values (integration along the face)
+	LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
+	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
+	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
+	for (size_t i=0; i<_n_face_int_pts; i++)
+	{
+		double r = _a_face_int_pts[i].r;
+		double s = _a_face_int_pts[i].s;
+		double w = _a_face_int_pts[i].w;
+		FaceShape    (r, s, face_shape);
+		FaceJacobian (FaceConnects, r, s, J);
+		values += FaceValue*face_shape*det(J)*w;
+	}
+
+	// Set nodes Brys
+	for (size_t i=0; i<_n_face_nodes; ++i)
+		FaceConnects[i]->Bry(Key,values(i));
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
@@ -472,9 +483,13 @@ public:
 	}
 	PyElem & Bry      (boopy::str const & Key, double Value, int FaceLocalID) { _elem->Bry(boopy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
 	double   Val      (int iNodeLocal, boopy::str const & Name) { return _elem->Val(iNodeLocal, boopy::extract<char const *>(Name)()); }
+	double   Val      (                boopy::str const & Name) { return _elem->Val(            boopy::extract<char const *>(Name)()); }
 private:
 	FEM::Element * _elem;
 }; // class PyElement
+
+double (PyElem::*PElemVal1)(int iNodeLocal, boopy::str const & Name) = &PyElem::Val;
+double (PyElem::*PElemVal2)(                boopy::str const & Name) = &PyElem::Val;
 
 // }
 #endif // USE_BOOST_PYTHON

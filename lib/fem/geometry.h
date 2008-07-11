@@ -92,10 +92,9 @@ inline Node * Geom::SetNode(size_t i, double X, double Y, double Z)
 inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
 {
 	if (_elems[i]==NULL) _elems[i] = AllocElement(Type);
-	_elems[i]->SetID  (i);
-	_elems[i]->SetDim (_dim);
-	if (IsActive) _elems[i]->Activate  ();
-	else          _elems[i]->Deactivate();
+	_elems[i]->SetID     (i);
+	_elems[i]->SetDim    (_dim);
+	_elems[i]->SetActive (IsActive);
 	return _elems[i];
 }
 

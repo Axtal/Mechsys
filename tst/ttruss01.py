@@ -33,9 +33,10 @@
 #     |         0,'        [0]       |1
 #     |         o--------------------o
 #    (z)___x   /_\        E=100     /_\
-#             ##        A=1       ___  
+#              ///        A=1       ___  
 #    
 
+import math
 import mechsys as m
 
 # 0) Geometry
@@ -61,13 +62,12 @@ g.ele(2).connect(0, g.nod(0)).connect(1, g.nod(2))
 # 4) Boundary conditions (must be after set connectivity)
 g.nod(0).bry("ux", 0.0).bry("uy", -0.5) # Essential
 g.nod(1).               bry("uy",  0.4) # Essential
-g.nod(2)                                # Essential
 g.nod(2).bry("fx", 2.0).bry("fy",  1.0) # Natural
 
 # 5) Parameters and initial values
-g.ele(0).set_model("LinElastic", "E=100.0  A=1.0              ", "Sx=0.0")
-g.ele(1).set_model("LinElastic", "E= 50.0  A=1.0              ", "Sx=0.0")
-g.ele(2).set_model("LinElastic", "E=200.0  A=1.414213562373095", "Sx=0.0")
+g.ele(0).set_model("LinElastic", "E=100.0  A=1.0",             "Sx=0.0")
+g.ele(1).set_model("LinElastic", "E= 50.0  A=1.0",             "Sx=0.0")
+g.ele(2).set_model("LinElastic", "E=200.0  A=%f"%math.sqrt(2), "Sx=0.0")
 
 # 6) Solve
 sol = m.solver('AutoME')
@@ -91,4 +91,4 @@ errors += abs(g.nod(1).val('fy') - ( 1.0))
 errors += abs(g.nod(2).val('fx') - ( 2.0))
 errors += abs(g.nod(2).val('fy') - ( 1.0))
 
-print 'Errors = ', errors
+print 'Py:Errors = ', errors
