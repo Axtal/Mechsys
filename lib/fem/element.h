@@ -64,7 +64,8 @@ public:
 	bool         IsActive   ()         const { return _is_active;   } ///< Check if this element is active
 	size_t       nNodes     ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
 	size_t       nIntPoints ()         const { return _n_int_pts;   } ///< Return the number of integration points in this element
-	Node const * GetNode    (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list
+	Node       * Nod        (size_t i)       { return _connects[i]; } ///< Return a pointer to a node in the connects list (read/write)
+	Node const * Nod        (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list (read-only)
 	double       Volume     ()         const;                         ///< Return the volume/area/length of the element
 	bool         IsInside   (double x, double y, double z) const;     ///< Check if a node is inside the element
 
@@ -484,6 +485,8 @@ public:
 	PyElem & Bry      (boopy::str const & Key, double Value, int FaceLocalID) { _elem->Bry(boopy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
 	double   Val      (int iNodeLocal, boopy::str const & Name) { return _elem->Val(iNodeLocal, boopy::extract<char const *>(Name)()); }
 	double   Val      (                boopy::str const & Name) { return _elem->Val(            boopy::extract<char const *>(Name)()); }
+	size_t   nNodes   ()         const { return _elem->nNodes(); }
+	PyNode   Nod      (size_t i) const { return PyNode(_elem->Nod(i)); }
 private:
 	FEM::Element * _elem;
 }; // class PyElement

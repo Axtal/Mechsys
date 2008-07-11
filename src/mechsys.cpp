@@ -92,6 +92,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("bry",       &PyElem::Bry,      return_internal_reference<>())
 	    .def("val",       PElemVal1)
 	    .def("val",       PElemVal2)
+	    .def("nnodes",    &PyElem::nNodes)
+	    .def("nod",       &PyElem::Nod)
 	    ;
 
 	class_<PyGeom>("geom", init<int>())

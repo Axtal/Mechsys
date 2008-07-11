@@ -313,7 +313,7 @@ inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 			int index = index_map[current_label];
 			for (int j_node=0; j_node<n_elem_nodes; ++j_node)
 			{
-				int node_number            = act_elems[i_elem]->GetNode(j_node)->GetID();
+				int node_number            = act_elems[i_elem]->Nod(j_node)->GetID();
 				values(node_number,index) += elem_values(j_node, j_label);  // accumulate values
 				refs  (node_number,index) ++;                               // update references number
 			}

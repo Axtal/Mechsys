@@ -95,21 +95,27 @@ for i in range(g.nelems()):
 # Displacements
 for i in range(g.nnodes()):
     # bottom nodes
-    if (abs(g.nod(i).y())<1.0e-5): errors += abs(g.nod(i).val("uy") - (0.0))
+    if (abs(g.nod(i).y())<1.0e-5):
+        errors += abs(g.nod(i).val("uy") - (0.0))
 
     # fixed bottom (central) node
-    if (abs(g.nod(i).y())<1.0e-5) and (abs(g.nod(i).x()-(L/2.0))<1.0e-5): errors += abs(g.nod(i).val("ux") - (0.0))
+    if (abs(g.nod(i).y())<1.0e-5) and (abs(g.nod(i).x()-(L/2.0))<1.0e-5):
+        errors += abs(g.nod(i).val("ux") - (0.0))
 
     # half-height nodes
-    if (abs(g.nod(i).y()-(H/2.0))<1.0e-5): errors += abs(g.nod(i).val("uy") - (-0.5*H*Ey))
+    if (abs(g.nod(i).y()-(H/2.0))<1.0e-5):
+        errors += abs(g.nod(i).val("uy") - (-0.5*H*Ey))
 
     # top nodes
-    if (abs(g.nod(i).y()-(H))<1.0e-5): errors += abs(g.nod(i).val("uy") - (-H*Ey))
+    if (abs(g.nod(i).y()-(H))<1.0e-5):
+        errors += abs(g.nod(i).val("uy") - (-H*Ey))
 
     # left nodes
-    if (abs(g.nod(i).x())<1.0e-5): errors += abs(g.nod(i).val("ux") - (0.5*L*Ex))
+    if (abs(g.nod(i).x())<1.0e-5):
+        errors += abs(g.nod(i).val("ux") - (0.5*L*Ex))
 
     # right nodes
-    if (abs(g.nod(i).x()-L)<1.0e-5): errors += abs(g.nod(i).val("ux") - (-0.5*L*Ex))
+    if (abs(g.nod(i).x()-L)<1.0e-5):
+        errors += abs(g.nod(i).val("ux") - (-0.5*L*Ex))
 
 print 'Py:Errors = ', errors
