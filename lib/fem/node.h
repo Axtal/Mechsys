@@ -60,7 +60,7 @@ public:
 		double EssentialBry;      ///< (U) Applied essential boundary condition for a stage
 		double NaturalBry;        ///< (F) Applied natural boundary condition for a stage
 		bool   IsEssenPresc;      ///< Is EssentialBry Prescribed?
-		int    EqID;              ///< Position inside the system of equations
+		long   EqID;              ///< Position inside the system of equations
 		double EssentialVal;      ///< Calculated essential value for the current state of this node
 		double NaturalVal;        ///< Calculated natural value for the current state of this node
 	};
@@ -79,13 +79,13 @@ public:
 	DOF & DOFVar(int Index) { return _dofs[Index]; }
 
 	// Access methods
-	int    GetID     ()          const { return _my_id; }            ///< Return the ID of this node
+	long   GetID     ()          const { return _my_id; }            ///< Return the ID of this node
 	double X         ()          const { return _x;     }            ///< X coordinate
 	double Y         ()          const { return _y;     }            ///< Y coordinate
 	double Z         ()          const { return _z;     }            ///< Z coordinate
 	size_t nDOF      ()          const { return _dofs.Size();      } ///< TODO
 	size_t nSharedBy ()          const { return _shared_by.Size(); } ///< Return the array with the elements that share this node
-	int    SharedBy  (int Index) const { return _shared_by[Index]; } ///< Return the array with the elements that share this node
+	long   SharedBy  (int Index) const { return _shared_by[Index]; } ///< Return the array with the elements that share this node
 	double Val       (char const * Name) const;                      ///< Return the essential or natural value (computed/current). Ex.: Name="ux", "fx", etc.
 
 	// Set methods
@@ -93,12 +93,12 @@ public:
 
 private:
 	// Data
-	int        _my_id;     ///< The ID of this node
-	Array<int> _shared_by; ///< IDs of the elements that share this node
-	double     _x;         ///< X coordinate
-	double     _y;         ///< Y coordinate
-	double     _z;         ///< Z coordinate
-	Array<DOF> _dofs;      ///< TODO
+	long        _my_id;     ///< The ID of this node
+	Array<long> _shared_by; ///< IDs of the elements that share this node
+	double      _x;         ///< X coordinate
+	double      _y;         ///< Y coordinate
+	double      _z;         ///< Z coordinate
+	Array<DOF>  _dofs;      ///< Array with degrees of freedom
 
 	// Private methods
 	long _find_var(char const * Name) const;
@@ -239,6 +239,7 @@ public:
 	double      X       ()                                const { return _node->X(); }
 	double      Y       ()                                const { return _node->Y(); }
 	double      Z       ()                                const { return _node->Z(); }
+	long        GetID   ()                                const { return _node->GetID(); }
 	FEM::Node * GetNode () { return _node; }
 private:
 	FEM::Node * _node;

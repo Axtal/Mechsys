@@ -487,6 +487,7 @@ public:
 	double   Val      (                boopy::str const & Name) { return _elem->Val(            boopy::extract<char const *>(Name)()); }
 	size_t   nNodes   ()         const { return _elem->nNodes(); }
 	PyNode   Nod      (size_t i) const { return PyNode(_elem->Nod(i)); }
+	long     GetID    ()         const { return _elem->GetID(); }
 private:
 	FEM::Element * _elem;
 }; // class PyElement

@@ -280,8 +280,10 @@ inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 		LinAlg::Vector<double> nodal_values (_n_nodes);
 
 		// Get integration point values
-		for (size_t i=0; i<_n_int_pts; i++)
-			ip_values(i) = _a_model[i]->Val(Name);
+		if (_a_model.Size()==_n_int_pts)
+			for (size_t i=0; i<_n_int_pts; i++)
+				ip_values(i) = _a_model[i]->Val(Name);
+		else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
 		// Extrapolation
 		Extrapolate (ip_values, nodal_values);
@@ -295,8 +297,10 @@ inline double EquilibElem::Val(char const * Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
-	for (size_t i=0; i<_n_int_pts; i++)
-		sum += _a_model[i]->Val(Name);
+	if (_a_model.Size()==_n_int_pts)
+		for (size_t i=0; i<_n_int_pts; i++)
+			sum += _a_model[i]->Val(Name);
+	else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
 	// Output single value at CG
 	return sum/_n_int_pts;
