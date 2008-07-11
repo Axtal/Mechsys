@@ -31,7 +31,8 @@ ndivy = 2     # Divisions along y
 
 # Blocks
 blocks = [m.mesh_block()]
-blocks[0].set ([[0.,  L, L, 0.,    L/2.,    L, L/2.,   0.] , # coordinates: x values
+blocks[0].set (-1,                                           # tag to be inherited by all elements inside this block
+               [[0.,  L, L, 0.,    L/2.,    L, L/2.,   0.] , # coordinates: x values
                 [0., 0., H,  H,      0., H/2.,    H, H/2.]], # coordinates: y values
                [1 for i in range(ndivx)],                    # weights x
                [1 for i in range(ndivy)])                    # weights y
@@ -48,21 +49,22 @@ print
 
 # ------------------------------------------------------------------------------ FEM
 
-# Geometry
+# 0) Geometry
 g = m.geom(2)
 
-# Nodes and elements
-m.add_nodes_elems (ms, 'Quad4PStrain', g)
+# 1) Nodes brys
+nodes_brys = [[(L/2., 0.0, 0.0)], ['ux'], [0.0]] # [(x,y,z)], [key], [val]
 
-# Boundary conditions
-m.set_node_brys (ms, [L/2.], [0.0], [0.0], ['ux'], [0.0], g)
-m.set_face_brys (ms, [-10, -20], ['uy', 'fy'], [0.0, -1], g)
+# 2) Faces brys
+faces_brys = [[-10, -20], ['uy', 'fy'], [0.0, -1]] # [tag], [key], [val]
 
-# Parameters and initial values
-for i in range(g.nelems()):
-    g.ele(i).set_model('LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0')
+# 3) Elements attributes
+elem_atts = [[-1], ['Quad4PStrain'], ['LinElastic'], ['E=%f nu=%f'%(E,nu)], ['Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [prms], [inis]
 
-# Solve
+# 4) Set geometry: nodes, elements and boundaries
+m.set_geom (ms, nodes_brys, faces_brys, elem_atts, g)
+
+# 5) Solve
 print 'Solution: ---------------------------------------------------------------------'
 sol = m.solver('ForwardEuler')
 sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)

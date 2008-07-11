@@ -41,16 +41,16 @@
 namespace FEM
 {
 
-inline void AddNodesElems (Mesh::Structured const * MStruct, char const * ElementType, FEM::Geom * G)
+inline void AddNodesElems (Mesh::Structured const * M, char const * ElementType, FEM::Geom * G)
 {
 	// Nodes
-	size_t nn = MStruct->Verts().Size();
+	size_t nn = M->Verts().Size();
 	G->SetNNodes (nn);
 	for (size_t i=0; i<nn; ++i)
-		G->SetNode (i, MStruct->Verts()[i]->C(0), MStruct->Verts()[i]->C(1), (MStruct->Is3D() ? MStruct->Verts()[i]->C(2) : 0.0));
+		G->SetNode (i, M->Verts()[i]->C(0), M->Verts()[i]->C(1), (M->Is3D() ? M->Verts()[i]->C(2) : 0.0));
 
 	// Elements
-	size_t ne = MStruct->Elems().Size();
+	size_t ne = M->Elems().Size();
 	G->SetNElems (ne);
 	for (size_t i=0; i<ne; ++i)
 	{
@@ -58,13 +58,13 @@ inline void AddNodesElems (Mesh::Structured const * MStruct, char const * Elemen
 		FEM::Element * e = G->SetElem (i, ElementType);
 
 		// Connectivity
-		Mesh::Elem * me = MStruct->Elems()[i];
+		Mesh::Elem * me = M->Elems()[i];
 		for (size_t j=0; j<me->V.Size(); ++j)
 			e->Connect (j, G->Nod(me->V[j]->MyID));
 	}
 }
 
-inline void SetNodeBrys (Mesh::Structured const * MStruct, Array<double> const * X, Array<double> const * Y, Array<double> const * Z, Array<char const *> const * Vars, Array<double> const * Values, FEM::Geom * G, double DistTol=sqrt(DBL_EPSILON))
+inline void SetNodeBrys (Mesh::Structured const * M, Array<double> const * X, Array<double> const * Y, Array<double> const * Z, Array<char const *> const * Vars, Array<double> const * Values, FEM::Geom * G, double DistTol=sqrt(DBL_EPSILON))
 {
 	/* Ex.:
 	 *                Coords   Tags    Vars   Values
@@ -73,12 +73,12 @@ inline void SetNodeBrys (Mesh::Structured const * MStruct, Array<double> const *
 	 *                 ...                    
 	 *    [nNodes-1]   x y z    -30    "uy"      0.0
 	 */
-	for (size_t i=0; i<MStruct->VertsBry().Size(); ++i) // loop over elements on boundary
+	for (size_t i=0; i<M->VertsBry().Size(); ++i) // loop over elements on boundary
 	{
-		Mesh::Vertex * mv = MStruct->VertsBry()[i];
+		Mesh::Vertex * mv = M->VertsBry()[i];
 		for (size_t j=0; j<X->Size(); ++j)
 		{
-			double d = sqrt(pow((*X)[j]-mv->C(0),2.0) + pow((*Y)[j]-mv->C(1),2.0) + (MStruct->Is3D() ? pow((*Z)[j]-mv->C(2),2.0) : 0.0));
+			double d = sqrt(pow((*X)[j]-mv->C(0),2.0) + pow((*Y)[j]-mv->C(1),2.0) + (M->Is3D() ? pow((*Z)[j]-mv->C(2),2.0) : 0.0));
 			if (d<DistTol)
 			{
 				FEM::Node * n = G->Nod(mv->MyID);
@@ -88,7 +88,7 @@ inline void SetNodeBrys (Mesh::Structured const * MStruct, Array<double> const *
 	}
 }
 
-inline void SetFaceBrys (Mesh::Structured const * MStruct, Array<int> const * Tags, Array<char const *> const * Vars, Array<double> const * Values, FEM::Geom * G)
+inline void SetFaceBrys (Mesh::Structured const * M, Array<int> const * Tags, Array<char const *> const * Vars, Array<double> const * Values, FEM::Geom * G)
 {
 	/* Ex.:
 	 *                 Tags    Vars   Values
@@ -97,9 +97,9 @@ inline void SetFaceBrys (Mesh::Structured const * MStruct, Array<int> const * Ta
 	 *         ...                    
 	 *      [nTags-1]   -30    "uy"      0.0
 	 */
-	for (size_t i=0; i<MStruct->ElemsBry().Size(); ++i) // loop over elements on boundary
+	for (size_t i=0; i<M->ElemsBry().Size(); ++i) // loop over elements on boundary
 	{
-		Mesh::Elem * me = MStruct->ElemsBry()[i];
+		Mesh::Elem * me = M->ElemsBry()[i];
 		for (int j=0; j<me->ETags.Size(); ++j) // j is the local_edge_id
 		{
 			int tag = me->ETags(j);
@@ -139,8 +139,8 @@ inline void WriteVTUEquilib (FEM::Geom const & G, char const * FileName)
 	std::ostringstream oss;
 
 	// Data
-	size_t nn = G.NNodes(); // Number of Nodes
-	size_t ne = G.NElems(); // Number of Elements
+	size_t nn = G.nNodes(); // Number of Nodes
+	size_t ne = G.nElems(); // Number of Elements
 
 	// Constants
 	size_t          nimax = 40;        // number of integers in a line
@@ -271,14 +271,14 @@ inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 {
 	// Filter elements
 	Array<Element const*> act_elems; // Array for active elements
-	for (size_t i=0; i<G.NElems(); ++i)
+	for (size_t i=0; i<G.nElems(); ++i)
 	{
 		if (G.Ele(i)->IsActive()) // Only active elements are considered
 			act_elems.Push(G.Ele(i));
 	}
 
 	// Data
-	size_t n_nodes = G.NNodes();       // Number of Nodes
+	size_t n_nodes = G.nNodes();       // Number of Nodes
 	size_t n_elems = act_elems.Size(); // Number of Elements
 	std::map<String, int>  index_map;  // Map to associate labels with indexes
 
@@ -436,18 +436,18 @@ inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 
 namespace boopy = boost::python;
 
-void PyAddNodesElems   (PyMeshStruct const & MS, boopy::str const & ElemType, PyGeom & G) { FEM::AddNodesElems (MS.MStruct(), boopy::extract<char const *>(ElemType)(), G.GetGeom()); }
+void PyAddNodesElems   (PyMeshStruct const & MS, boopy::str const & ElemType, PyGeom & G) { FEM::AddNodesElems (MS.GetMesh(), boopy::extract<char const *>(ElemType)(), G.GetGeom()); }
 void PySetNodeBrys     (PyMeshStruct const & MS, boopy::list & X, boopy::list & Y, boopy::list & Z, boopy::list & Vars, boopy::list & Values, PyGeom & G)
 {
-	for (size_t i=0; i<MS.MStruct()->VertsBry().Size(); ++i) // loop over elements on boundary
+	for (size_t i=0; i<MS.GetMesh()->VertsBry().Size(); ++i) // loop over elements on boundary
 	{
-		Mesh::Vertex * mv = MS.MStruct()->VertsBry()[i];
+		Mesh::Vertex * mv = MS.GetMesh()->VertsBry()[i];
 		for (int j=0; j<len(X); ++j)
 		{
 			double x = boopy::extract<double>(X[j])();
 			double y = boopy::extract<double>(Y[j])();
 			double z = boopy::extract<double>(Z[j])();
-			double d = sqrt(pow(x-mv->C(0),2.0) + pow(y-mv->C(1),2.0) + (MS.MStruct()->Is3D() ? pow(z-mv->C(2),2.0) : 0.0));
+			double d = sqrt(pow(x-mv->C(0),2.0) + pow(y-mv->C(1),2.0) + (MS.GetMesh()->Is3D() ? pow(z-mv->C(2),2.0) : 0.0));
 			if (d<sqrt(DBL_EPSILON))
 			{
 				FEM::Node * n = G.GetGeom()->Nod(mv->MyID);
@@ -458,9 +458,9 @@ void PySetNodeBrys     (PyMeshStruct const & MS, boopy::list & X, boopy::list & 
 }
 void PySetFaceBrys     (PyMeshStruct const & MS, boopy::list & Tags, boopy::list & Vars, boopy::list & Values, PyGeom & G)
 {
-	for (size_t i=0; i<MS.MStruct()->ElemsBry().Size(); ++i) // loop over elements on boundary
+	for (size_t i=0; i<MS.GetMesh()->ElemsBry().Size(); ++i) // loop over elements on boundary
 	{
-		Mesh::Elem * me = MS.MStruct()->ElemsBry()[i];
+		Mesh::Elem * me = MS.GetMesh()->ElemsBry()[i];
 		for (int j=0; j<me->ETags.Size(); ++j) // j is the local_edge_id
 		{
 			int tag = me->ETags(j);
@@ -479,6 +479,188 @@ void PySetFaceBrys     (PyMeshStruct const & MS, boopy::list & Tags, boopy::list
 }
 void PyWriteVTUEquilib (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTUEquilib((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
 void PyWriteVTK        (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTK       ((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
+
+void PySetGeom (PyMeshStruct const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, PyGeom & G)
+{
+	/* Example:
+	 *          NodesBrys = [ [(0.,1.,2.), (0.,0.,2.)], ['ux','fy'], [0., -1.] ]
+	 *          FacesBrys = [ [-10, -20], ['uy', 'fy'], [0.0, -1] ]
+	 *          ElemAtts  = [ [-1, -2], ['Quad4PStrain', 'Tri6PStrain'], ['LinElastic', 'LinElastic'], ['E=10 nu=0.2', 'E=20 nu=0.3'], ['Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0'] ]
+	 *   where:
+	 *          NodesBrys = [ [(x1,y1,z1), (x2,y2,z2)], [key1, key2], [val1, val2] ]   // (z is optional)
+	 *          FacesBrys = [ [tag1, tag2], [key1, key2], [val1, val2] ]
+	 *          ElemAtts  = [ [tag1, tag2], [type1, type2], [mdl1, mdl2], [prms1, prms2], [inis1, inis2] ]
+	 */
+
+	// 3D mesh?
+	bool is3d = M.GetMesh()->Is3D();
+
+	// Extract list with nodes boundaries
+	int         nb_nxyz = 0;
+	int         nb_nkey = 0;
+	int         nb_nval = 0;
+	boopy::list nb_xyzs;
+	boopy::list nb_keys;
+	boopy::list nb_vals;
+	if (len(NodesBrys)==3) // 3 sublists: [[x,y,z], [key], [val]]
+	{
+		nb_nxyz = len(NodesBrys[0]);
+		nb_nkey = len(NodesBrys[1]);
+		nb_nval = len(NodesBrys[2]);
+		if (nb_nxyz==nb_nkey && nb_nkey==nb_nval)
+		{
+			nb_xyzs = boopy::extract<boopy::list>(NodesBrys[0])();
+			nb_keys = boopy::extract<boopy::list>(NodesBrys[1])();
+			nb_vals = boopy::extract<boopy::list>(NodesBrys[2])();
+		}
+		else throw new Fatal("PySetGeom: Each sublist of NodesBrys list must have the same number of items.\n\tExample: [ [(x1,y1,z1), (x2,y2,z2)] , [key1, key2] , [val1, val2] ]  where (z is optional).");
+	}
+	else if (len(NodesBrys)!=0) throw new Fatal("PySetGeom: The list with node boundaries must have 3 sublists.\n\tExample: [ [(x1,y1,z1), (x2,y2,z2)], [key1, key2], [val1, val2] ]  where (z is optional).");
+
+	// Extract list with faces boundaries
+	int         fb_ntag = 0;
+	int         fb_nkey = 0;
+	int         fb_nval = 0;
+	boopy::list fb_tags;
+	boopy::list fb_keys;
+	boopy::list fb_vals;
+	if (len(FacesBrys)==3) // 3 sublists: [[tag], [key], [val]]
+	{
+		fb_ntag = len(FacesBrys[0]);
+		fb_nkey = len(FacesBrys[1]);
+		fb_nval = len(FacesBrys[2]);
+		if (fb_ntag==fb_nkey && fb_nkey==fb_nval)
+		{
+			fb_tags = boopy::extract<boopy::list>(FacesBrys[0])();
+			fb_keys = boopy::extract<boopy::list>(FacesBrys[1])();
+			fb_vals = boopy::extract<boopy::list>(FacesBrys[2])();
+		}
+		else throw new Fatal("PySetGeom: Each sublist of FacesBrys list must have the same number of items.\n\tExample: [ [tag1, tag2] , [key1, key2] , [val1, val2] ].");
+	}
+	else if (len(FacesBrys)!=0) throw new Fatal("PySetGeom: The list with face boundaries must have 3 sublists.\n\tExample: [ [tag1, tag2], [key1, key2], [val1, val2] ].");
+
+	// Extract list with elements attributes
+	int         lb_ntag = 0; // (l) stands for eLement
+	int         lb_ntyp = 0;
+	int         lb_nmdl = 0;
+	int         lb_nprm = 0;
+	int         lb_nini = 0;
+	boopy::list lb_tags;
+	boopy::list lb_typs;
+	boopy::list lb_mdls;
+	boopy::list lb_prms;
+	boopy::list lb_inis;
+	if (len(ElemsAtts)==5) // 5 sublists: [[tag], [type], [model], [prms], [inis]]
+	{
+		lb_ntag = len(ElemsAtts[0]);
+		lb_ntyp = len(ElemsAtts[1]);
+		lb_nmdl = len(ElemsAtts[2]);
+		lb_nprm = len(ElemsAtts[3]);
+		lb_nini = len(ElemsAtts[4]);
+		if (lb_ntag==lb_ntyp && lb_ntyp==lb_nmdl && lb_nmdl==lb_nprm && lb_nprm==lb_nini)
+		{
+			lb_tags = boopy::extract<boopy::list>(ElemsAtts[0])();
+			lb_typs = boopy::extract<boopy::list>(ElemsAtts[1])();
+			lb_mdls = boopy::extract<boopy::list>(ElemsAtts[2])();
+			lb_prms = boopy::extract<boopy::list>(ElemsAtts[3])();
+			lb_inis = boopy::extract<boopy::list>(ElemsAtts[4])();
+		}
+		else throw new Fatal("PySetGeom: Each sublist of ElemsAtts list must have the same number of items.\n\tExample: [ [tag1, tag2], [typ1, typ2], [mdl1, mdl2], [prms1, prms2], [inis1, ini2s] ].");
+	}
+	else throw new Fatal("PySetGeom: The list with elements attributes must have 5 sublists.\n\tExample: [ [tag1, tag2], [typ1, typ2], [mdl1, mdl2], [prms1, prms2], [inis1, inis2] ].");
+
+	// Set nodes
+	size_t nn = M.GetMesh()->Verts().Size();
+	G.GetGeom()->SetNNodes (nn);
+	for (size_t i=0; i<nn; ++i) // loop over all vertices
+	{
+		// Current vertex
+		Mesh::Vertex const * v = M.GetMesh()->Verts()[i];
+
+		// New node
+		G.GetGeom()->SetNode (i, v->C(0), v->C(1), (is3d ? v->C(2) : 0.0));
+	}
+
+	// Set elements
+	size_t ne = M.GetMesh()->Elems().Size();
+	G.GetGeom()->SetNElems (ne);
+	for (size_t i=0; i<ne; ++i)
+	{
+		// Current mesh element
+		Mesh::Elem const * me = M.GetMesh()->Elems()[i];
+
+		// Set element
+		bool found = false;
+		for (int j=0; j<lb_ntag; ++j)
+		{
+			if (me->Tag==boopy::extract<int>(lb_tags[j])())
+			{
+				// New finite element
+				found = true;
+				FEM::Element * fe = G.GetGeom()->SetElem (i, boopy::extract<char const *>(lb_typs[j])());
+
+				// Set connectivity
+				for (size_t k=0; k<me->V.Size(); ++k)
+					fe->Connect (k, G.GetGeom()->Nod(me->V[k]->MyID));
+
+				// Set parameters and initial values
+				fe->SetModel (boopy::extract<char const *>(lb_mdls[j])(), boopy::extract<char const *>(lb_prms[j])(), boopy::extract<char const*>(lb_inis[j])());
+			}
+		}
+		if (found==false) throw new Fatal("PySetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",me->Tag,i);
+	}
+
+	// Set faces boundaries
+	if (fb_ntag>0)
+	{
+		for (size_t i=0; i<M.GetMesh()->ElemsBry().Size(); ++i) // loop over all elements on boundary
+		{
+			// Current mesh element
+			Mesh::Elem const * me = M.GetMesh()->ElemsBry()[i];
+
+			for (int j=0; j<me->ETags.Size(); ++j) // j is the local face id
+			{
+				int tag = me->ETags(j);
+				if (tag<0) // this element has a face tag
+				{
+					bool found = false;
+					for (int k=0; k<fb_ntag; ++k)
+					{
+						if (tag==boopy::extract<int>(fb_tags[k])())
+						{
+							found = true;
+							G.GetGeom()->Ele(me->MyID)->Bry (boopy::extract<char const *>(fb_keys[k])(), boopy::extract<double>(fb_vals[k])(), j);
+							break;
+						}
+					}
+					if (found==false) throw new Fatal("PySetGeom: Could not find Tag==%d for Face %d of Element %d in the FacesBrys list",tag,j,me->MyID);
+				}
+			}
+		}
+	}
+
+	// Set nodes boundaries
+	if (nb_nxyz>0)
+	{
+		for (size_t i=0; i<M.GetMesh()->VertsBry().Size(); ++i) // loop over all vertices on boundary
+		{
+			// Current vertex
+			Mesh::Vertex const * v = M.GetMesh()->VertsBry()[i];
+
+			for (int j=0; j<nb_nxyz; ++j)
+			{
+				double x =         boopy::extract<double>(boopy::extract<boopy::tuple>(nb_xyzs[j])()[0])();
+				double y =         boopy::extract<double>(boopy::extract<boopy::tuple>(nb_xyzs[j])()[1])();
+				double z = (is3d ? boopy::extract<double>(boopy::extract<boopy::tuple>(nb_xyzs[j])()[2])() : 0.0);
+				double d = sqrt(pow(x - v->C(0),2.0) + pow(y - v->C(1),2.0) + (is3d ? pow(z - v->C(2),2.0) : 0.0));
+				if (d<sqrt(DBL_EPSILON))
+					G.GetGeom()->Nod(v->MyID)->Bry (boopy::extract<char const *>(nb_keys[j])(), boopy::extract<double>(nb_vals[j])());
+			}
+		}
+	}
+
+	std::cout << "ok" << std::endl;
+}
 
 // }
 #endif // USE_BOOST_PYTHON

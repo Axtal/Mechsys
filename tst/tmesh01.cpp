@@ -60,7 +60,7 @@ int main(int argc, char **argv) try
 
 		// Blocks
 		Mesh::Block b;
-		b.Set      (&c, &wx, &wy);
+		b.Set      (-1, &c, &wx, &wy);
 		b.SetETags (&e_tags);
 		Array<Mesh::Block*> blocks;  blocks.Push(&b);
 
@@ -117,7 +117,7 @@ int main(int argc, char **argv) try
 
 		// Blocks
 		Mesh::Block b;
-		b.Set      (&c, &wx, &wy, &wz);
+		b.Set      (-2, &c, &wx, &wy, &wz);
 		b.SetETags (&e_tags);
 		b.SetFTags (&f_tags);
 		Array<Mesh::Block*> blocks;  blocks.Push(&b);

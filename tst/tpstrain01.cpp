@@ -110,7 +110,7 @@ int main(int argc, char **argv) try
 	}
 
 	// 4) Boundary conditions (must be after connectivity)
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<g.nNodes(); ++i)
 	{
 		if (fabs(g.Nod(i)->Y()-ymin)<1.0e-5) // bottom nodes
 		{
@@ -119,7 +119,7 @@ int main(int argc, char **argv) try
 				g.Nod(i)->Bry("ux",0.0);
 		}
 	}
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<g.nElems(); ++i)
 	{
 		Matrix<double> c;
 		g.Ele(i)->Coords(c);
@@ -129,7 +129,7 @@ int main(int argc, char **argv) try
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<g.nElems(); ++i)
 		g.Ele(i)->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// 6) Solve
@@ -158,7 +158,7 @@ int main(int argc, char **argv) try
 	double Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 
 	// Stress and strains
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<g.nElems(); ++i)
 	{
 		errors += fabs(g.Ele(i)->Val("Ex" ) - (Ex));
 		errors += fabs(g.Ele(i)->Val("Ey" ) - (Ey));
@@ -170,7 +170,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Displacements
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<g.nNodes(); ++i)
 	{
 		if (fabs(g.Nod(i)->Y()-ymin)<1.0e-5) // bottom nodes
 		{

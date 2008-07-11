@@ -44,8 +44,8 @@ public:
 	Element * SetElem   (size_t i, char const * Type, bool IsActive=true); ///< Set an element
 
 	// Access methods
-	size_t                  NNodes    ()         const { return _nodes.Size(); } ///< Return the number of nodes
-	size_t                  NElems    ()         const { return _elems.Size(); } ///< Return the number of elements
+	size_t                  nNodes    ()         const { return _nodes.Size(); } ///< Return the number of nodes
+	size_t                  nElems    ()         const { return _elems.Size(); } ///< Return the number of elements
 	Node                  * Nod       (size_t i)       { return _nodes[i];     } ///< Access (read/write) a node
 	Element               * Ele       (size_t i)       { return _elems[i];     } ///< Access (read/write) an element
 	Node            const * Nod       (size_t i) const { return _nodes[i];     } ///< Access (read-only) a node
@@ -121,8 +121,8 @@ public:
 	PyElem SetElem   (size_t i, boopy::str const & Type, bool IsActive) { return PyElem(_geom.SetElem(i,boopy::extract<char const *>(Type)(),IsActive)); }
 
 	// Access methods
-	size_t            NNodes    ()         const { return _geom.NNodes(); }
-	size_t            NElems    ()         const { return _geom.NElems(); }
+	size_t            nNodes    ()         const { return _geom.nNodes(); }
+	size_t            nElems    ()         const { return _geom.nElems(); }
 	PyNode            Nod       (size_t i)       { return PyNode(_geom.Nod(i)); }
 	PyElem            Ele       (size_t i)       { return PyElem(_geom.Ele(i)); }
 	FEM::Geom       * GetGeom   ()               { return &_geom; }

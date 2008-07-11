@@ -133,6 +133,7 @@ struct Vertex
 struct Elem
 {
 	long           MyID;  ///< ID
+	int            Tag;   ///< Element tag. Required for setting up of attributes, for example.
 	bool           OnBry; ///< On boundary?
 	Array<Vertex*> V;     ///< Connectivity
 	Vector<int>    ETags; ///< Edge tags (size==nLocalEdges)
@@ -143,10 +144,10 @@ class Block
 {
 public:
 	// Constructor
-	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _e_tags(NULL), _f_tags(NULL) {}
+	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _e_tags(NULL), _f_tags(NULL) {}
 
 	// Methods
-	void Set (Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz=NULL); ///< C=coordinates, W=weights
+	void Set (int Tag, Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz=NULL); ///< C=coordinates, W=weights
 	/* 
 	 * 2D: 8 nodes => C. Resize(2, 8)
 	 *                Wx.Resize(nDivX)
@@ -169,6 +170,7 @@ public:
 	void SetFTags (Vector<int> * Tags) { _f_tags = Tags; } ///< Set faces tags: size == 2D:0, 3D: 6
 
 	// Access methods
+	int    Tag        ()         const { return _tag;          }
 	bool   Is3D       ()         const { return _is_3d;        }
 	int    nDivX      ()         const { return _n_div_x;      }
 	int    nDivY      ()         const { return _n_div_y;      }
@@ -190,7 +192,7 @@ public:
 	void FindLocalEdgesFacesID (int i, int j, int k, Vertex * V) const;
 
 	// Apply tags to Edges or Faces on boundary
-	void Tag (Elem * E) const;
+	void ApplyTags (Elem * E) const;
 
 	// Access the coordinates of all 8 or 20 nodes
 	Matrix<double> const & C() const { return (*_c); }
@@ -210,6 +212,7 @@ private:
 	double           _sum_weight_y; ///< sum of weights along Y
 	double           _sum_weight_z; ///< sum of weights along Z
 	bool             _is_3d;        ///< Is 3D block?
+	int              _tag;          ///< A tag to be inherited by all elements generated inside this block
 	Vector<int>    * _e_tags;       ///< Edges tags: size = 2D:4, 3D:12
 	Vector<int>    * _f_tags;       ///< Faces tags: size = 2D:0, 3D: 6
 
@@ -261,8 +264,11 @@ private:
 
 // Methods -- Block
 
-inline void Block::Set(Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz)
+inline void Block::Set(int Tag, Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz)
 {
+	// Tag to be inherited by all elements inside this block
+	_tag = Tag;
+
 	// Coordinates
 	_c     = C;
 	_is_3d = (C->Rows()>2 ? true : false);
@@ -338,7 +344,7 @@ inline void Block::FindLocalEdgesFacesID(int i, int j, int k, Vertex * V) const
 	}
 }
 
-inline void Block::Tag(Elem * E) const
+inline void Block::ApplyTags(Elem * E) const
 {
 	if (_is_3d)
 	{
@@ -450,7 +456,8 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 					if (i!=0 && j!=0 && (_is_3d ? k!=0 : true))
 					{
 						Elem * e = new Elem;
-						e->MyID = _elems.Size(); // id
+						e->MyID = _elems.Size();    // id
+						e->Tag  = Blocks[b]->Tag(); // tag
 						if (_is_3d)
 						{
 							// connectivity
@@ -491,8 +498,8 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 						}
 						if (e->OnBry)
 						{
-							_elems_bry.Push(e); // array with elements on boundary
-							Blocks[b]->Tag(e);  // tag edges and faces of this element with boundary tags
+							_elems_bry.Push(e);      // array with elements on boundary
+							Blocks[b]->ApplyTags(e); // apply tags to edges and faces of this element with boundary tags
 						}
 						_elems.Push(e); // array with all elements
 					}
@@ -694,7 +701,16 @@ inline void Structured::WriteVTU(char const * FileName) const
 	{
 		oss << (k==0?"  ":" ") << _elems[i]->OnBry;
 		k++;
-		VTU_NEWLINE (i,k,ne,nfmax,oss);
+		VTU_NEWLINE (i,k,ne,nimax,oss);
+	}
+	oss << "        </DataArray>\n";
+	oss << "        <DataArray type=\"Float32\" Name=\"" << "tag" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+	k = 0; oss << "        ";
+	for (size_t i=0; i<ne; ++i)
+	{
+		oss << (k==0?"  ":" ") << _elems[i]->Tag;
+		k++;
+		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
 	oss << "        </DataArray>\n";
 	oss << "      </CellData>\n";
@@ -831,7 +847,7 @@ namespace boopy = boost::python;
 class PyMeshBlock
 {
 public:
-	void Set (boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)
+	void Set (int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)
 	{
 		// Read C
 		int nrow = boopy::len(C); if (nrow<1) throw new Fatal("PyMeshBlock: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
@@ -855,10 +871,10 @@ public:
 		for (int i=0; i<sz_wy; ++i) _wy[i] = boopy::extract<double>(Wy[i])();
 
 		// Set _block
-		_block.Set (&_c, &_wx, &_wy);
+		_block.Set (Tag, &_c, &_wx, &_wy);
 	}
 
-	void Set (boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz)
+	void Set (int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz)
 	{
 		// Read C
 		int nrow = boopy::len(C); if (nrow<1) throw new Fatal("PyMeshBlock: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
@@ -887,7 +903,7 @@ public:
 		for (int i=0; i<sz_wz; ++i) _wz[i] = boopy::extract<double>(Wz[i])();
 
 		// Set _block
-		_block.Set (&_c, &_wx, &_wy, &_wz);
+		_block.Set (Tag, &_c, &_wx, &_wy, &_wz);
 	}
 
 	void SetETags (boopy::list const & Tags)
@@ -922,8 +938,8 @@ private:
 
 }; // class PyMeshBlock
 
-void (PyMeshBlock::*PMBSet1)(boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)                         = &PyMeshBlock::Set;
-void (PyMeshBlock::*PMBSet2)(boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz) = &PyMeshBlock::Set;
+void (PyMeshBlock::*PMBSet1)(int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)                         = &PyMeshBlock::Set;
+void (PyMeshBlock::*PMBSet2)(int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz) = &PyMeshBlock::Set;
 
 class PyMeshStruct
 {
@@ -931,7 +947,7 @@ public:
 	PyMeshStruct ()           : _ms(sqrt(DBL_EPSILON)) {}
 	PyMeshStruct (double Tol) : _ms(Tol)               {}
 
-	Mesh::Structured const * MStruct () const { return &_ms; }
+	Mesh::Structured const * GetMesh () const { return &_ms; }
 
 	size_t Generate (boopy::list & ListOfPyMeshBlock)
 	{

@@ -105,8 +105,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_node",   PGSetNode2)
 	    .def("set_elem",   PGSetElem1)
 	    .def("set_elem",   PGSetElem2)
-	    .def("nnodes",     &PyGeom::NNodes)
-	    .def("nelems",     &PyGeom::NElems)
+	    .def("nnodes",     &PyGeom::nNodes)
+	    .def("nelems",     &PyGeom::nElems)
 	    .def("nod",        &PyGeom::Nod)
 	    .def("ele",        &PyGeom::Ele)
 	    ;
@@ -127,6 +127,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	def ("set_face_brys",     PySetFaceBrys    );
 	def ("write_vtu_equilib", PyWriteVTUEquilib);
 	def ("write_vtk",         PyWriteVTK       );
+	def ("set_geom",          PySetGeom        );
 
 	// ---------------------------------------------------------------------- Exceptions
 	

@@ -92,7 +92,7 @@ int main(int argc, char **argv) try
 
 	// Blocks
 	Mesh::Block b;
-	b.Set      (&c, &wx, &wy);
+	b.Set      (-1, &c, &wx, &wy);
 	b.SetETags (&e_tags);
 	Array<Mesh::Block*> blocks;  blocks.Push(&b);
 
@@ -129,7 +129,7 @@ int main(int argc, char **argv) try
 
 	// Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<g.nElems(); ++i)
 		g.Ele(i)->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Solve
@@ -155,7 +155,7 @@ int main(int argc, char **argv) try
 	double Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 
 	// Stress and strains
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<g.nElems(); ++i)
 	{
 		errors += fabs(g.Ele(i)->Val("Ex" ) - (Ex));
 		errors += fabs(g.Ele(i)->Val("Ey" ) - (Ey));
@@ -167,7 +167,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Displacements
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<g.nNodes(); ++i)
 	{
 		if (fabs(g.Nod(i)->Y())<1.0e-5) // bottom nodes
 		{

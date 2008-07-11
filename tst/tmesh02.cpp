@@ -95,8 +95,8 @@ int main(int argc, char **argv) try
 		Array<double> wy1(ndivy1);  wy1 = 1.0;
 
 		// Blocks
-		Mesh::Block b0;  b0.Set (&c0, &wx0, &wy0);
-		Mesh::Block b1;  b1.Set (&c1, &wx1, &wy1);
+		Mesh::Block b0;  b0.Set (-1, &c0, &wx0, &wy0);
+		Mesh::Block b1;  b1.Set (-2, &c1, &wx1, &wy1);
 		Array<Mesh::Block*> blocks;  blocks.Resize(2);
 		blocks[0] = &b0;
 		blocks[1] = &b1;
