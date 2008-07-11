@@ -84,7 +84,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<PyElem>("elem", init<FEM::Element *>())
-	    .def("set_node",  &PyElem::SetNode,  return_internal_reference<>())
+	    .def("connect",   &PyElem::Connect,  return_internal_reference<>())
 	    .def("set_model", &PyElem::SetModel, return_internal_reference<>())
 	    .def("bry",       &PyElem::Bry,      return_internal_reference<>())
 	    .def("val",       &PyElem::Val)

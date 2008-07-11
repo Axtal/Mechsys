@@ -60,7 +60,7 @@ inline void AddNodesElems (Mesh::Structured const * MStruct, char const * Elemen
 		// Connectivity
 		Mesh::Elem * me = MStruct->Elems()[i];
 		for (size_t j=0; j<me->V.Size(); ++j)
-			e->SetNode (j, G->Nod(me->V[j]->MyID));
+			e->Connect (j, G->Nod(me->V[j]->MyID));
 	}
 }
 

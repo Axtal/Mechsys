@@ -46,7 +46,7 @@ public:
 	bool      IsReady         () const;
 	bool      IsEssential     (char const * DOFName) const;
 	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
-	Element * SetNode         (int iNodeLocal, FEM::Node * ptNode);
+	Element * Connect         (int iNodeLocal, FEM::Node * ptNode);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     ();
 	void      RestoreState    ();
@@ -69,9 +69,9 @@ public:
 
 private:
 	// Data
-	int                  _n_stress;
+	int               _n_stress;
 	Array<HeatModel*> _a_model;
-	double               _unit_weight;
+	double            _unit_weight;
 
 	// Private methods
 	void _calc_initial_internal_forces ();
@@ -124,7 +124,7 @@ inline void HeatElem::SetModel(char const * ModelName, char const * Prms, char c
 	else throw new Fatal("HeatElem::SetModel: Feature not implemented.");
 }
 
-inline Element * HeatElem::SetNode(int iNodeLocal, FEM::Node * ptNode)
+inline Element * HeatElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 {
 	// Connects
 	_connects[iNodeLocal] = ptNode;

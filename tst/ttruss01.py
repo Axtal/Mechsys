@@ -54,9 +54,9 @@ g.set_elem   (1, "Rod", 1)
 g.set_elem   (2, "Rod", 1)
 
 # 3) Set connectivity
-g.ele(0).set_node(0, g.nod(0)).set_node(1, g.nod(1))
-g.ele(1).set_node(0, g.nod(1)).set_node(1, g.nod(2))
-g.ele(2).set_node(0, g.nod(0)).set_node(1, g.nod(2))
+g.ele(0).connect(0, g.nod(0)).connect(1, g.nod(1))
+g.ele(1).connect(0, g.nod(1)).connect(1, g.nod(2))
+g.ele(2).connect(0, g.nod(0)).connect(1, g.nod(2))
 
 # 4) Boundary conditions (must be after set connectivity)
 g.nod(0).bry("ux", 0.0).bry("uy", -0.5) # Essential

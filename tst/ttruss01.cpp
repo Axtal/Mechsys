@@ -78,9 +78,9 @@ int main(int argc, char **argv) try
 		g.SetElem   (2, "Rod", /*IsActive*/true);
 
 		// 3) Set connectivity
-		g.Ele(0)->SetNode(0, g.Nod(0))->SetNode(1, g.Nod(1));
-		g.Ele(1)->SetNode(0, g.Nod(1))->SetNode(1, g.Nod(2));
-		g.Ele(2)->SetNode(0, g.Nod(0))->SetNode(1, g.Nod(2));
+		g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
+		g.Ele(1)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
+		g.Ele(2)->Connect(0, g.Nod(0))->Connect(1, g.Nod(2));
 
 		// 4) Boundary conditions (must be after set connectivity)
 		g.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential

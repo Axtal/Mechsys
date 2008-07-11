@@ -75,7 +75,7 @@ public:
 	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis
 	virtual bool      IsEssential   (char const * DOFName) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel      (char const * ModelName, char const * Prms, char const * Inis) =0;                                       ///< (Re)allocate model with parameters and initial values
-	virtual Element * SetNode       (int iNodeLocal, FEM::Node * ptNode) =0;                                                                 ///< TODO: Setup the DOFs of a node according to the DOFs needed by this element  ***** Copy a pointer of node iNode to the internal connects array
+	virtual Element * Connect       (int iNodeLocal, FEM::Node * ptNode) =0;                                                                 ///< Set connectivity, by linking the local node ID with the pointer to the connection node
 	virtual void      UpdateState   (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;                  ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      BackupState   () =0;                                                                                                   ///< Backup internal state
 	virtual void      RestoreState  () =0;                                                                                                   ///< Restore internal state from a previously backup state
@@ -462,7 +462,7 @@ class PyElem
 {
 public:
 	PyElem (FEM::Element * ptElem) : _elem(ptElem) {}
-	PyElem & SetNode  (int iNodeLocal, PyNode & refNode) { _elem->SetNode(iNodeLocal, refNode.GetNode()); return (*this); }
+	PyElem & Connect  (int iNodeLocal, PyNode & refNode) { _elem->Connect(iNodeLocal, refNode.GetNode()); return (*this); }
 	PyElem & SetModel (boopy::str const & Name, boopy::str const & Prms, boopy::str const & Inis)
 	{
 		_elem->SetModel(boopy::extract<char const *>(Name)(),

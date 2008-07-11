@@ -82,14 +82,14 @@ int main(int argc, char **argv) try
 	g.SetElem   (0, "Quad8PStrain", /*IsActive*/true);
 
 	// 3) Set connectivity (list of nodes must be LOCAL)
-	g.Ele(0)->SetNode(0, g.Nod(0))
-	        ->SetNode(1, g.Nod(1))
-	        ->SetNode(2, g.Nod(2))
-	        ->SetNode(3, g.Nod(3))
-	        ->SetNode(4, g.Nod(4))
-	        ->SetNode(5, g.Nod(5))
-	        ->SetNode(6, g.Nod(6))
-	        ->SetNode(7, g.Nod(7));
+	g.Ele(0)->Connect(0, g.Nod(0))
+	        ->Connect(1, g.Nod(1))
+	        ->Connect(2, g.Nod(2))
+	        ->Connect(3, g.Nod(3))
+	        ->Connect(4, g.Nod(4))
+	        ->Connect(5, g.Nod(5))
+	        ->Connect(6, g.Nod(6))
+	        ->Connect(7, g.Nod(7));
 
 	// 4) Boundary conditions (must be after connectivity)
 	g.Nod(0)->Bry ("uy",0.0);

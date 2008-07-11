@@ -68,10 +68,10 @@ int main(int argc, char **argv) try
 	g.SetElem   (0, "Quad4PStress", /*IsActive*/true);
 
 	// 3) Set connectivity
-	g.Ele(0)->SetNode(0, g.Nod(0))
-	        ->SetNode(1, g.Nod(1))
-	        ->SetNode(2, g.Nod(2))
-	        ->SetNode(3, g.Nod(3));
+	g.Ele(0)->Connect(0, g.Nod(0))
+	        ->Connect(1, g.Nod(1))
+	        ->Connect(2, g.Nod(2))
+	        ->Connect(3, g.Nod(3));
 
 	// 4) Boundary conditions (must be after connectivity)
 	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);

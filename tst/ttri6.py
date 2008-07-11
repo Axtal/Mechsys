@@ -57,8 +57,8 @@ g.set_elem   (0, 'Tri6PStrain', 1) # 1=>Active
 g.set_elem   (1, 'Tri6PStrain', 1) # 1=>Active
 
 # 3) Set connectivity
-g.ele(0).set_node(0, g.nod(0)).set_node(1, g.nod(1)).set_node(2, g.nod(2)).set_node(3, g.nod(3)).set_node(4, g.nod(4)).set_node(5, g.nod(5))
-g.ele(1).set_node(0, g.nod(6)).set_node(1, g.nod(2)).set_node(2, g.nod(1)).set_node(3, g.nod(7)).set_node(4, g.nod(4)).set_node(5, g.nod(8))
+g.ele(0).connect(0, g.nod(0)).connect(1, g.nod(1)).connect(2, g.nod(2)).connect(3, g.nod(3)).connect(4, g.nod(4)).connect(5, g.nod(5))
+g.ele(1).connect(0, g.nod(6)).connect(1, g.nod(2)).connect(2, g.nod(1)).connect(3, g.nod(7)).connect(4, g.nod(4)).connect(5, g.nod(8))
 
 # 4) Boundary conditions (must be after connectivity)
 g.nod(0).bry('ux', 0.0).bry('uy', 0.0)

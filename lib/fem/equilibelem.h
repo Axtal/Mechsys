@@ -56,7 +56,7 @@ public:
 	bool      IsReady         () const;
 	bool      IsEssential     (char const * DOFName) const;
 	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
-	Element * SetNode         (int iNodeLocal, FEM::Node * ptNode);
+	Element * Connect         (int iNodeLocal, FEM::Node * ptNode);
 	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void      BackupState     ();
 	void      RestoreState    ();
@@ -138,7 +138,7 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
 }
 
-inline Element * EquilibElem::SetNode(int iNodeLocal, FEM::Node * ptNode)
+inline Element * EquilibElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 {
 	// Connects
 	_connects[iNodeLocal] = ptNode;

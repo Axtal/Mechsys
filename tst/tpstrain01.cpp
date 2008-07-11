@@ -102,10 +102,10 @@ int main(int argc, char **argv) try
 		int J = (i+1) +  j   *(ndivx+1);
 		int K = (i+1) + (j+1)*(ndivx+1);
 		int L =  i    + (j+1)*(ndivx+1);
-		g.SetElem (k, "Quad4PStrain")->SetNode(0, g.Nod(I))
-		                             ->SetNode(1, g.Nod(J))
-		                             ->SetNode(2, g.Nod(K))
-		                             ->SetNode(3, g.Nod(L));
+		g.SetElem (k, "Quad4PStrain")->Connect(0, g.Nod(I))
+		                             ->Connect(1, g.Nod(J))
+		                             ->Connect(2, g.Nod(K))
+		                             ->Connect(3, g.Nod(L));
 		k++;
 	}
 
