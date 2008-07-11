@@ -79,16 +79,16 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ---------------------------------------------------------------------------- FEM
 	
 	class_<PyNode>("node", init<FEM::Node *>())
-		.def("bry", &PyNode::Bry, return_internal_reference<>())
-		.def("val", &PyNode::Val)
-		;
+	    .def("bry", &PyNode::Bry, return_internal_reference<>())
+	    .def("val", &PyNode::Val)
+	    ;
 
 	class_<PyElem>("elem", init<FEM::Element *>())
-		.def("set_node",  &PyElem::SetNode,  return_internal_reference<>())
-		.def("set_model", &PyElem::SetModel, return_internal_reference<>())
-		.def("bry",       &PyElem::Bry,      return_internal_reference<>())
-		.def("val",       &PyElem::Val)
-		;
+	    .def("set_node",  &PyElem::SetNode,  return_internal_reference<>())
+	    .def("set_model", &PyElem::SetModel, return_internal_reference<>())
+	    .def("bry",       &PyElem::Bry,      return_internal_reference<>())
+	    .def("val",       &PyElem::Val)
+	    ;
 
 	class_<PyGeom>("geom", init<int>())
 	    .def("set_nnodes", &PyGeom::SetNNodes)
@@ -97,10 +97,10 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_node",   PGSetNode2)
 	    .def("set_elem",   PGSetElem1)
 	    .def("set_elem",   PGSetElem2)
-		.def("nnodes",     &PyGeom::NNodes)
-		.def("nelems",     &PyGeom::NElems)
-		.def("nod",        &PyGeom::Nod)
-		.def("ele",        &PyGeom::Ele)
+	    .def("nnodes",     &PyGeom::NNodes)
+	    .def("nelems",     &PyGeom::NElems)
+	    .def("nod",        &PyGeom::Nod)
+	    .def("ele",        &PyGeom::Ele)
 	    ;
 
 	class_<PySolver>("solver", init<str const &>())

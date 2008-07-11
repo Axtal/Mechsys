@@ -17,7 +17,7 @@
  ************************************************************************/
 
 
-/* __ Equilibrium capable element __
+/* __ Element for Heat transfer simulations __
 
 T = Nodal temperature [ temp ]     ex. C°
 F = Nodal heat flow   [ work/time] ex. Joules/sec
@@ -352,26 +352,6 @@ inline void HeatElem::_calc_initial_internal_forces() // TODO
 //	}
 }
 
-
-/////////////////////////////////////////////////////////////////////////////////////////// Map /////
-
-
-// Register the DOF information of HeatElement into DOFInfoMap
-int EquilibDOFInfoRegister()
-{
-	// Temporary 
-	DOFInfo D; 
-
-	// Nodal
-
-	// Insert into DOFInfoMap
-	DOFInfoMap["Equilibrium"] = D;
-
-	return 0;
-}
-
-// Execute the autoregistration
-int __HeatElemDOFInfo_dummy_int  = EquilibDOFInfoRegister();
 
 }; // namespace FEM
 

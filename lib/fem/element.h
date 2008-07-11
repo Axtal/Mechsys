@@ -453,25 +453,6 @@ Element * AllocElement(char const * ElementName)
 }; // namespace FEM
 
 
-/////////////////////////////////////////////////////////////////////////////////////// Maps ///////////////////////
-
-
-// Define a structure to contain DOF (Degree of Freedom) information from derived classes
-struct DOFInfo
-{
-	Array<String> NodeEssential;
-	Array<String> NodeNatural;
-	Array<String> FaceEssential;
-	Array<String> FaceNatural;
-};
-
-// Typdef of the map that contains all dof info from problem type elements
-typedef std::map<String, DOFInfo, std::less<String> > DOFInfoMap_t;
-
-// Instantiate the map that contains all dof info from problem type elements
-DOFInfoMap_t DOFInfoMap;
-
-
 #ifdef USE_BOOST_PYTHON
 // {
 

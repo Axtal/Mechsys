@@ -527,26 +527,6 @@ inline void EquilibElem::_calc_initial_internal_forces()
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////// Map /////
-
-
-// Register the DOF information of EquilibElement into DOFInfoMap
-int EquilibDOFInfoRegister()
-{
-	// Temporary 
-	DOFInfo D; 
-
-	// Nodal
-
-	// Insert into DOFInfoMap
-	DOFInfoMap["Equilibrium"] = D;
-
-	return 0;
-}
-
-// Execute the autoregistration
-int __EquilibElemDOFInfo_dummy_int  = EquilibDOFInfoRegister();
-
 }; // namespace FEM
 
 #endif // MECHSYS_FEM_EQUILIB_H
