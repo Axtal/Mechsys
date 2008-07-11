@@ -384,14 +384,8 @@ def gen_blk_2d(obj, msh):
         wy = [1 for i in range(ny)]
 
         # fill lists with tags
-        ets     = di.get_tags (obj, 'edge')
-        ord_eds = [eds[6], eds[2], eds[0], eds[4],  eds[5], eds[1], x_axis, eds[3]]
-        etags   = [0,0,0,0]
-        for t in ets:
-            if t[1]<0 and t[0] in ord_eds:
-                local_edge        = ord_eds.index(t[0]) % 4
-                etags[local_edge] = t[1]
-        if sum(etags)==0: etags=[]
+        eds   = [x_axis, eds[1], eds[3], eds[5]]
+        etags = di.get_tags_list (obj, 'edge', eds)
 
         # return list with block data
         return [[cox, coy], wx, wy, etags]

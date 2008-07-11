@@ -188,7 +188,9 @@ def button_event(evt):
 
     # run a FE simulation
     elif evt==EVT_FE_RUN:
-        fem.set_geometry()
+        edm, obj, msh = get_mesh()
+        fem.run_fea(obj, msh, [[-10, -20], ['uy', 'fy'], [0.0, -1]], '', '')
+        if edm: Blender.Window.EditMode(1) # return to EditMode
 
 
 def fillet_radius_callback(evt,val):

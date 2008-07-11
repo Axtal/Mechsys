@@ -135,3 +135,47 @@ def get_tags(obj, key):
         if p.name[:4]==key:
             res.append ([int(p.name[5:]), p.data])
     return res 
+
+
+def get_tags_list(obj, key, global_ids):
+    # In:
+    #      key        = 'edge' or 'face'
+    #      global_ids = edge/face global ids sorted in _Blender_ way
+    # Out:
+    #      tags_list  = list with tags sorted in _MechSys_ way
+    #
+    # MechSys:                Blender (returned by 'face.edge_keys')
+    #            3                            2
+    #      +-----------+                +-----------+   
+    #      |           |                |           |
+    #      |           |                |           |   
+    #    0 |           | 1    <<==    3 |           | 1
+    #      |           |                |           |
+    #      |           |                |           |   
+    #      +-----------+                +-----------+   
+    #            2                            0
+    #
+    # Examples:
+    #   2D (key=='edge'):
+    #                         3                           12 (-12)
+    #                   +-----------+                +-----------+   
+    #                   |           |                |           |
+    #                   |           |                |           |   
+    #                 0 |           | 1    <<==   13 |           | 11 (-11)
+    #                   |           |           (-13)|           |
+    #                   |           |                |           |   
+    #                   +-----------+                +-----------+   
+    #                         2                           10 (-10)
+    #                In:  global_ids = [10, 11, 12, 13]
+    #                Out: tags_list  = [-13, -11, -10, -12] (local/MechSys sorted)
+    #
+    ntags     = len(global_ids) # 4 for 2D or 12(edges) or 6(faces) for 3D
+    tags      = get_tags (obj, key)
+    tags_list = [0 for i in range(ntags)]
+    if ntags==4: map = [2, 1, 3, 0] # map Blender face edge local ID to MechSys edge local ID
+    for t in tags:
+        if t[0] in global_ids and t[1]<0:
+            local_id            = map[global_ids.index(t[0])]
+            tags_list[local_id] = t[1]
+    if sum(tags_list)==0: tags_list=[]
+    return tags_list
