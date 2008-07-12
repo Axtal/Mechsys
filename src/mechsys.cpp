@@ -122,9 +122,6 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ----------------------------------------------------------------------- functions
 	
 	// Global functions
-	def ("add_nodes_elems",   PyAddNodesElems  );
-	def ("set_node_brys",     PySetNodeBrys    );
-	def ("set_face_brys",     PySetFaceBrys    );
 	def ("write_vtu_equilib", PyWriteVTUEquilib);
 	def ("write_vtk",         PyWriteVTK       );
 	def ("set_geom",          PySetGeom        );

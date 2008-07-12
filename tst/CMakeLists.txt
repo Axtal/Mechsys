@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+INCLUDE(FindBoost)
 INCLUDE(FindThreads)
 INCLUDE(${MECHSYS_SOURCE_DIR}/Modules/FindUseBLITZ.cmake)
 INCLUDE(${MECHSYS_SOURCE_DIR}/Modules/FindGOTOBLAS.cmake)
@@ -31,6 +32,12 @@ SET(SERIAL_LIBS    "")
 SET(SERIAL_FLAGS   "-DDO_DEBUG")
 SET(PARALLEL_LIBS  "")
 SET(PARALLEL_FLAGS "-DDO_DEBUG")
+
+IF(Boost_FOUND)
+	INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+	SET(SERIAL_FLAGS   "${SERIAL_FLAGS} -DUSE_BOOST")
+	SET(PARALLEL_FLAGS "${SERIAL_FLAGS} -DUSE_BOOST")
+ENDIF(Boost_FOUND)
 
 IF(UMFPACK_FOUND)
 	INCLUDE_DIRECTORIES(${UMFPACK_INCLUDE_DIRS})

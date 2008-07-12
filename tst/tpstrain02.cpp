@@ -33,6 +33,7 @@
 using std::cout;
 using std::endl;
 using LinAlg::Matrix;
+using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
@@ -106,33 +107,27 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Problem dimension
+	// 0) Geometry
 	FEM::Geom g(2); // 2D
 
-	// Nodes and elements
-	FEM::AddNodesElems (&ms, "Quad4PStrain", &g);
+	// 1) Nodes brys
+	FEM::NBrys_T nbrys;
+	nbrys.Push (make_tuple(L/2., 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
 
-	// Boundary conditions
-	// Nodes
-	Array<double>       X, Y, Z;
-	Array<char const *> node_vars;
-	Array<double>       node_vals;
-	X.Push(L/2.0);  Y.Push(0.0);  Z.Push(0.0);  node_vars.Push("ux");  node_vals.Push(0.0);
-	FEM::SetNodeBrys (&ms, &X, &Y, &Z, &node_vars, &node_vals, &g);
-	// Faces
-	Array<int>          face_tags;
-	Array<char const *> face_vars;
-	Array<double>       face_vals;
-	face_tags.Push(-10);  face_vars.Push("uy");  face_vals.Push(0.0);
-	face_tags.Push(-20);  face_vars.Push("fy");  face_vals.Push( -q);
-	FEM::SetFaceBrys (&ms, &face_tags, &face_vars, &face_vals, &g);
+	// 2) Faces brys
+	FEM::FBrys_T fbrys;
+	fbrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
+	fbrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
 
-	// Parameters and initial values
-	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	for (size_t i=0; i<g.nElems(); ++i)
-		g.Ele(i)->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	// 3) Elements attributes
+	String prms; prms.Printf("E=%f nu=%f",E,nu);
+	FEM::EAtts_T eatts;
+	eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
 
-	// Solve
+	// 4) Set geometry: nodes, elements, attributes, and boundaries
+	FEM::SetGeom (&ms, nbrys, fbrys, eatts, &g);
+
+	// 5) Solve
 	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");

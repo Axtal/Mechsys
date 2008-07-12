@@ -53,16 +53,17 @@ print
 g = m.geom(2)
 
 # 1) Nodes brys
-nodes_brys = [[(L/2., 0.0, 0.0)], ['ux'], [0.0]] # [(x,y,z)], [key], [val]
+nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]] # x,y,z, key, val
 
 # 2) Faces brys
-faces_brys = [[-10, -20], ['uy', 'fy'], [0.0, -1]] # [tag], [key], [val]
+fbrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
+         [-20, 'fy',  -q]] # [tag], [key], [val]
 
 # 3) Elements attributes
-elem_atts = [[-1], ['Quad4PStrain'], ['LinElastic'], ['E=%f nu=%f'%(E,nu)], ['Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [prms], [inis]
+eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [model], [prms], [inis]
 
 # 4) Set geometry: nodes, elements and boundaries
-m.set_geom (ms, nodes_brys, faces_brys, elem_atts, g)
+m.set_geom (ms, nbrys, fbrys, eatts, g)
 
 # 5) Solve
 print 'Solution: ---------------------------------------------------------------------'

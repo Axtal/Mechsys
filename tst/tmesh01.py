@@ -30,7 +30,8 @@ def test_2D():
     
     # Blocks
     blocks = [m.mesh_block()]
-    blocks[0].set ([[0.,  L, L, 0.,    hL,  L, hL, 0.] , # coordinates: x values
+    blocks[0].set (-1,                                   # tag to be replicated to all elements
+                   [[0.,  L, L, 0.,    hL,  L, hL, 0.] , # coordinates: x values
                     [0., 0., H,  H,    0., hH,  H, hH]], # coordinates: y values
                    [2,4,8,16,32],                        # weights x
                    [2,4,8,16,32,64])                     # weights y
@@ -60,7 +61,8 @@ def test_3D():
     
     # Blocks
     blocks = [m.mesh_block()]
-    blocks[0].set ([[0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0.],  # coordinates: x values
+    blocks[0].set (-2,                                                                                            # tag to be replicated to all elements
+                   [[0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0.],  # coordinates: x values
                     [0., 0.,  H,  H,    0., 0., H,  H,    0., hH,  H, hH,    0., hH,  H, hH,    0., 0.,  H,  H],  # coordinates: y values
                     [0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD]], # coordinates: z values
                    [2,4,8,16,32],                                                                                 # weights x
