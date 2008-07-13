@@ -24,7 +24,12 @@
 
 // Boost-Python
 #include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/module_init.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/call_method.hpp>
+#include <boost/ref.hpp>
+#include <boost/utility.hpp>
 #include <boost/python.hpp> // this includes everything
 
 // MechSys -- mesh
@@ -57,16 +62,11 @@
 
 using namespace boost::python;
 
+
+
 BOOST_PYTHON_MODULE (mechsys)
 {
 	// --------------------------------------------------------------------------- Mesh
-
-	class_<Mesh::Block>("mesh_block")
-	    .def("set2d",     &Mesh::Block::PySet2D)
-	    .def("set3d",     &Mesh::Block::PySet3D)
-	    .def("set_etags", &Mesh::Block::PySetETags)
-	    .def("set_ftags", &Mesh::Block::PySetFTags)
-	    ;
 
 	class_<Mesh::Generic>("mesh_generic")
 	    .def(init<double>())
@@ -74,6 +74,13 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("get_verts", &Mesh::Generic::PyGetVerts)
 	    .def("get_elems", &Mesh::Generic::PyGetElems)
 	    .def("get_etags", &Mesh::Generic::PyGetETags)
+	    ;
+
+	class_<Mesh::Block>("mesh_block")
+	    .def("set2d",     &Mesh::Block::PySet2D)
+	    .def("set3d",     &Mesh::Block::PySet3D)
+	    .def("set_etags", &Mesh::Block::PySetETags)
+	    .def("set_ftags", &Mesh::Block::PySetFTags)
 	    ;
 
 	class_<Mesh::Structured>("mesh_structured")
@@ -87,38 +94,40 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	// ---------------------------------------------------------------------------- FEM
 	
-	class_<PyNode>("node", init<FEM::Node *>())
-	    .def("bry",     &PyNode::Bry, return_internal_reference<>())
-	    .def("val",     &PyNode::Val)
-	    .def("x",       &PyNode::X)
-	    .def("y",       &PyNode::Y)
-	    .def("z",       &PyNode::Z)
-	    .def("get_id",  &PyNode::GetID)
+	class_<FEM::Node>("node")
+	    .def("get_id",  &FEM::Node::GetID)
+	    .def("x",       &FEM::Node::X)
+	    .def("y",       &FEM::Node::Y)
+	    .def("z",       &FEM::Node::Z)
+	    .def("bry",     &FEM::Node::PyBry, return_internal_reference<>())
+	    .def("val",     &FEM::Node::PyVal)
+	    .def(self_ns::str(self))
 	    ;
 
 	class_<PyElem>("elem", init<FEM::Element *>())
+	    .def("get_id",    &PyElem::GetID)
+	    .def("nnodes",    &PyElem::nNodes)
+	    .def("nod",       &PyElem::Nod,      return_internal_reference<>())
 	    .def("connect",   &PyElem::Connect,  return_internal_reference<>())
 	    .def("set_model", &PyElem::SetModel, return_internal_reference<>())
 	    .def("bry",       &PyElem::Bry,      return_internal_reference<>())
-	    .def("val",       PElemVal1)
-	    .def("val",       PElemVal2)
-	    .def("nnodes",    &PyElem::nNodes)
-	    .def("nod",       &PyElem::Nod)
-	    .def("get_id",    &PyElem::GetID)
+	    .def("val",       &PyElem::Val1)
+	    .def("val",       &PyElem::Val2)
+	    .def(self_ns::str(self))
 	    ;
 
-	class_<PyGeom>("geom", init<int>())
-	    .def("set_nnodes", &PyGeom::SetNNodes)
-	    .def("set_nelems", &PyGeom::SetNElems)
-	    .def("set_node",   PGSetNode1)
-	    .def("set_node",   PGSetNode2)
-	    .def("set_elem",   PGSetElem1)
-	    .def("set_elem",   PGSetElem2)
-	    .def("nnodes",     &PyGeom::nNodes)
-	    .def("nelems",     &PyGeom::nElems)
-	    .def("nod",        &PyGeom::Nod)
-	    .def("ele",        &PyGeom::Ele)
-	    .def("out",        &PyGeom::Out)
+	class_<FEM::Geom>("geom", init<int>())
+	    .def("set_nnodes", &FEM::Geom::SetNNodes)
+	    .def("set_nelems", &FEM::Geom::SetNElems)
+	    .def("nnodes",     &FEM::Geom::nNodes)
+	    .def("nelems",     &FEM::Geom::nElems)
+	    .def("set_node",   &FEM::Geom::PySetNode2D, return_internal_reference<>())
+	    .def("set_node",   &FEM::Geom::PySetNode3D, return_internal_reference<>())
+	    .def("set_elem",   &FEM::Geom::PySetElem1)
+	    .def("set_elem",   &FEM::Geom::PySetElem2)
+	    .def("nod",        &FEM::Geom::PyNod,       return_internal_reference<>())
+	    .def("ele",        &FEM::Geom::PyEle)
+	    .def(self_ns::str(self))
 	    ;
 
 	class_<PySolver>("solver", init<str const &>())

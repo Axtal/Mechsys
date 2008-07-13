@@ -38,6 +38,12 @@
 #include <sstream>
 #include <algorithm>
 
+// Boost::Python
+#ifdef USE_BOOST_PYTHON
+  #include <boost/python.hpp> // this includes everything
+  namespace BPy = boost::python;
+#endif
+
 // MechSys
 #include "util/array.h"
 #include "util/string.h"
@@ -91,6 +97,13 @@ public:
 
 	// Set methods
 	Node * Bry(const char * DOFName, double Value); ///< Set boundary value. If it is Natural, it will be accumulated. If it is Essential, it will just be set.
+
+#ifdef USE_BOOST_PYTHON
+// {
+	Node & PyBry (BPy::str const & Name, double Value) { return (*Bry(BPy::extract<char const *>(Name)(), Value)); }
+	double PyVal (BPy::str const & Name)               { return Val(BPy::extract<char const *>(Name)()); }
+// }
+#endif // USE_BOOST_PYTHON
 
 private:
 	// Data
@@ -235,30 +248,5 @@ std::ostream & operator<< (std::ostream & os, FEM::Node const & N)
 }
 
 }; //namespace FEM
-
-
-#ifdef USE_BOOST_PYTHON
-// {
-
-namespace boopy = boost::python;
-
-class PyNode
-{
-public:
-	PyNode (FEM::Node * ptNode) : _node(ptNode) {}
-	PyNode    & Bry     (boopy::str const & Name, double Value) { _node->Bry(boopy::extract<char const *>(Name)(), Value); return (*this); }
-	double      Val     (boopy::str const & Name)               { return _node->Val(boopy::extract<char const *>(Name)()); }
-	double      X       ()                                const { return _node->X(); }
-	double      Y       ()                                const { return _node->Y(); }
-	double      Z       ()                                const { return _node->Z(); }
-	long        GetID   ()                                const { return _node->GetID(); }
-	FEM::Node * GetNode () { return _node; }
-private:
-	FEM::Node * _node;
-}; // class PyNode
-
-// }
-#endif // USE_BOOST_PYTHON
-
 
 #endif // MECHSYS_FEM_NODE_H

@@ -22,6 +22,12 @@
 // STL
 #include <iostream>
 
+// Boost::Python
+#ifdef USE_BOOST_PYTHON
+  #include <boost/python.hpp> // this includes everything
+  namespace BPy = boost::python;
+#endif
+
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
@@ -54,6 +60,17 @@ public:
 	Array<Element*>       & Elems     ()               { return _elems;        } ///< Access all elements (read/write)
 	Array<Node*>    const & Nodes     ()         const { return _nodes;        } ///< Access all nodes (read-only)
 	Array<Element*> const & Elems     ()         const { return _elems;        } ///< Access all elements (read-only)
+
+#ifdef USE_BOOST_PYTHON
+// {
+	Node          & PySetNode2D (size_t i, double X, double Y)              { return (*SetNode(i,X,Y));   }
+	Node          & PySetNode3D (size_t i, double X, double Y, double Z)    { return (*SetNode(i,X,Y,Z)); }
+	PyElem          PySetElem1  (size_t i, BPy::str const & Type)           { return PyElem(SetElem(i,BPy::extract<char const *>(Type)())); }
+	PyElem          PySetElem2  (size_t i, BPy::str const & Type, bool Act) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act)); }
+	Node    const & PyNod       (size_t i)                                  { return (*Nod(i)); }
+	PyElem          PyEle       (size_t i)                                  { return PyElem(Ele(i)); }
+// }
+#endif // USE_BOOST_PYTHON
 
 private:
 	// Data
@@ -102,56 +119,10 @@ inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
 std::ostream & operator<< (std::ostream & os, FEM::Geom const & G)
 {
 	for (size_t i=0; i<G.nElems(); ++i)
-		os << (*G.Ele(i));
+		if (G.Ele(i)!=NULL) os << (*G.Ele(i));
 	return os;
 }
 
 }; // namespace FEM
-
-
-#ifdef USE_BOOST_PYTHON
-// {
-
-namespace boopy = boost::python;
-
-class PyGeom
-{
-public:
-	// Constructor
-	PyGeom(int nDim) : _geom(nDim) {}
-
-	// Set methods
-	void   SetNNodes (size_t nNodes)                                    { _geom.SetNNodes(nNodes); }
-	void   SetNElems (size_t nElems)                                    { _geom.SetNElems(nElems); }
-	PyNode SetNode   (size_t i, double X, double Y)                     { return PyNode(_geom.SetNode(i,X,Y)  ); }
-	PyNode SetNode   (size_t i, double X, double Y, double Z)           { return PyNode(_geom.SetNode(i,X,Y,Z)); }
-	PyElem SetElem   (size_t i, boopy::str const & Type)                { return PyElem(_geom.SetElem(i,boopy::extract<char const *>(Type)())         ); }
-	PyElem SetElem   (size_t i, boopy::str const & Type, bool IsActive) { return PyElem(_geom.SetElem(i,boopy::extract<char const *>(Type)(),IsActive)); }
-
-	// Access methods
-	size_t            nNodes    ()         const { return _geom.nNodes(); }
-	size_t            nElems    ()         const { return _geom.nElems(); }
-	PyNode            Nod       (size_t i)       { return PyNode(_geom.Nod(i)); }
-	PyElem            Ele       (size_t i)       { return PyElem(_geom.Ele(i)); }
-	FEM::Geom       * GetGeom   ()               { return &_geom; }
-	FEM::Geom const * GetGeom   ()         const { return &_geom; }
-
-	void Out () const { std::cout << _geom << std::endl; }
-
-private:
-	// Data
-	FEM::Geom _geom;
-
-}; // class PyGeom 
-
-PyNode (PyGeom::*PGSetNode1)(size_t i, double X, double Y)           = &PyGeom::SetNode;
-PyNode (PyGeom::*PGSetNode2)(size_t i, double X, double Y, double Z) = &PyGeom::SetNode;
-
-PyElem (PyGeom::*PGSetElem1)(size_t i, boopy::str const & Type)                = &PyGeom::SetElem;
-PyElem (PyGeom::*PGSetElem2)(size_t i, boopy::str const & Type, bool IsActive) = &PyGeom::SetElem;
-
-// }
-#endif // USE_BOOST_PYTHON
-
 
 #endif // MECHSYS_FEM_GEOMETRY_H

@@ -70,8 +70,10 @@ public:
 	bool         IsInside   (double x, double y, double z) const;     ///< Check if a node is inside the element
 
 	// Methods that MUST be overriden by derived classes
-	virtual char const * Name      () const =0;
-	virtual char const * ModelName () const =0;
+	virtual double       Val       (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the Nodes of the element. Ex.: Name="ux", "fx", "Sx", "Sxy", "Ex", etc.
+	virtual double       Val       (                char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
+	virtual char const * Name      ()                                  const =0; ///< Return the name/type of this element
+	virtual char const * ModelName ()                                  const =0; ///< Return the name of the model of the first IP of this element
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
 	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis
@@ -113,10 +115,6 @@ public:
 	virtual void   Order0Vector    (size_t Index, LinAlg::Vector<double> & V)                                                                                   const {} ///< Zero order vector such as [U P]^T, where U is displacement and P, porepressure.
 	virtual void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
 	virtual void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< First order matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
-
-	// Access methods that MUST be overriden
-	virtual double Val (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the Nodes of the element. Ex.: Name="ux", "fx", "Sx", "Sxy", "Ex", etc.
-	virtual double Val (                char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
 
 protected:
 	// Data (may be accessed by derived classes)
@@ -446,7 +444,7 @@ std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 {
 	os << "[" << E.GetID() << "] " << E.Name() << " " << E.ModelName() << "\n";
 	for (size_t i=0; i<E.nNodes(); ++i)
-		os << "   " << (*E.Nod(i)) << "\n";
+		if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
 	return os;
 }
 
@@ -479,32 +477,25 @@ Element * AllocElement(char const * ElementName)
 #ifdef USE_BOOST_PYTHON
 // {
 
-namespace boopy = boost::python;
-
+namespace BPy = boost::python;
 class PyElem
 {
 public:
-	PyElem (FEM::Element * ptElem) : _elem(ptElem) {}
-	PyElem & Connect  (int iNodeLocal, PyNode & refNode) { _elem->Connect(iNodeLocal, refNode.GetNode()); return (*this); }
-	PyElem & SetModel (boopy::str const & Name, boopy::str const & Prms, boopy::str const & Inis)
-	{
-		_elem->SetModel(boopy::extract<char const *>(Name)(),
-		                boopy::extract<char const *>(Prms)(),
-		                boopy::extract<char const *>(Inis)());
-		return (*this);
-	}
-	PyElem & Bry      (boopy::str const & Key, double Value, int FaceLocalID) { _elem->Bry(boopy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
-	double   Val      (int iNodeLocal, boopy::str const & Name) { return _elem->Val(iNodeLocal, boopy::extract<char const *>(Name)()); }
-	double   Val      (                boopy::str const & Name) { return _elem->Val(            boopy::extract<char const *>(Name)()); }
-	size_t   nNodes   ()         const { return _elem->nNodes(); }
-	PyNode   Nod      (size_t i) const { return PyNode(_elem->Nod(i)); }
-	long     GetID    ()         const { return _elem->GetID(); }
+	                     PyElem   (FEM::Element * ptElem) : _elem(ptElem)                               { }
+	long                 GetID    ()                                                              const { return _elem->GetID();   }
+	size_t               nNodes   ()                                                              const { return _elem->nNodes();  }
+	FEM::Node const    & Nod      (size_t i)                                                      const { return (*_elem->Nod(i)); }
+	PyElem             & Connect  (int iNodeLocal, FEM::Node & refNode)                                 { _elem->Connect  (iNodeLocal, &refNode); return (*this); }
+	PyElem             & SetModel (BPy::str const & Name, BPy::str const & Prms, BPy::str const & Inis) { _elem->SetModel (BPy::extract<char const *>(Name)(), BPy::extract<char const *>(Prms)(), BPy::extract<char const *>(Inis)()); return (*this); }
+	PyElem             & Bry      (BPy::str const & Key, double Value, int FaceLocalID)                 { _elem->Bry      (BPy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
+	double               Val1     (int iNodeLocal, BPy::str const & Name)                               { return _elem->Val(iNodeLocal, BPy::extract<char const *>(Name)()); }
+	double               Val2     (                BPy::str const & Name)                               { return _elem->Val(            BPy::extract<char const *>(Name)()); }
+	FEM::Element const * GetElem  ()                                                              const { return _elem; }
 private:
 	FEM::Element * _elem;
 }; // class PyElement
 
-double (PyElem::*PElemVal1)(int iNodeLocal, boopy::str const & Name) = &PyElem::Val;
-double (PyElem::*PElemVal2)(                boopy::str const & Name) = &PyElem::Val;
+std::ostream & operator<< (std::ostream & os, PyElem const & E) { if (E.GetElem()!=NULL) os<<(*E.GetElem()); return os; }
 
 // }
 #endif // USE_BOOST_PYTHON

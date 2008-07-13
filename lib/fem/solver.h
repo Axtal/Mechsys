@@ -91,8 +91,8 @@ public:
 	Solver * SetGeom      (FEM::Geom * G)    { _g  = G;  return this; }              ///< Set the geometry (Nodes/Elements) to be used during solution
 	Solver * SetPData     (FEM::PData * PD)  { _pd = PD; return this; }              ///< Set structure with data for parallel computation
 	Solver * SetLinSol    (char const * Key);                                        ///< LinSolName: LA=LAPACK, UM=UMFPACK, SLU=SuperLU, SLUd=SuperLUd
-	Solver * SetNumDiv    (int    NumDiv)    { _num_div   =NumDiv;    return this; } ///< TODO
-	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< TODO
+	Solver * SetNumDiv    (int    NumDiv)    { _num_div   =NumDiv;    return this; } ///< Set the number of divisions to be used during each call of Solve
+	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< Set the time stepsize to be used during each call of Solve
 	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
 
 	// Methods to be overloaded by derived classes
@@ -101,8 +101,8 @@ public:
 
 protected:
 	// Data
-	int                      _num_div;    ///< TODO
-	double                   _delta_time; ///< TODO
+	int                      _num_div;    ///< The number of divisions to be used during each call of Solve
+	double                   _delta_time; ///< The time stepsize to be used during each call of Solve
 	bool                     _do_output;  ///< Do output?
 	LinAlg::Vector<double>   _dF_ext;     ///< Increment of natural values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dU_ext;     ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
@@ -839,28 +839,26 @@ Solver * AllocSolver(char const * SolverName)
 
 }; // namespace FEM
 
-
+// Boost::Python
 #ifdef USE_BOOST_PYTHON
-// {
+//{
 
-namespace boopy = boost::python;
-
+namespace BPy = boost::python;
 class PySolver
 {
 public:
-	 PySolver (boopy::str const & Name) { _sol = FEM::AllocSolver (boopy::extract<char const *>(Name)()); }
-	~PySolver ()                        { if (_sol!=NULL) delete _sol; }
-	PySolver & SetGeom      (PyGeom & G)             { _sol->SetGeom     (G.GetGeom()); return (*this); }
-	PySolver & SetLinSol    (boopy::str const & Key) { _sol->SetLinSol   (boopy::extract<char const *>(Key)()); return (*this); }
-	PySolver & SetNumDiv    (int Numdiv)             { _sol->SetNumDiv   (Numdiv);    return (*this); }
-	PySolver & SetDeltaTime (double DeltaTime)       { _sol->SetDeltaTime(DeltaTime); return (*this); }
-	void       Solve        ()                       { _sol->Solve(); }
+	           PySolver     (BPy::str const & Name) { _sol = FEM::AllocSolver (BPy::extract<char const *>(Name)()); }
+	          ~PySolver     ()                      { if (_sol!=NULL) delete _sol; }
+	PySolver & SetGeom      (FEM::Geom & G)         { _sol->SetGeom      (&G);                                return (*this); }
+	PySolver & SetLinSol    (BPy::str const & Key)  { _sol->SetLinSol    (BPy::extract<char const *>(Key)()); return (*this); }
+	PySolver & SetNumDiv    (int Numdiv)            { _sol->SetNumDiv    (Numdiv);                            return (*this); }
+	PySolver & SetDeltaTime (double DeltaTime)      { _sol->SetDeltaTime (DeltaTime);                         return (*this); }
+	void       Solve        ()                      { _sol->Solve        (); }
 private:
 	FEM::Solver * _sol;
 }; // class PySolver
 
-// }
+//}
 #endif // USE_BOOST_PYTHON
-
 
 #endif // MECHSYS_FEM_SOLVER_H

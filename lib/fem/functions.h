@@ -500,10 +500,10 @@ inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 
 namespace boopy = boost::python;
 
-void PyWriteVTUEquilib (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTUEquilib((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
-void PyWriteVTK        (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTK       ((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
+void PyWriteVTUEquilib (FEM::Geom const & G, boopy::str const & FileName) { FEM::WriteVTUEquilib(G, boopy::extract<char const *>(FileName)()); }
+void PyWriteVTK        (FEM::Geom const & G, boopy::str const & FileName) { FEM::WriteVTK       (G, boopy::extract<char const *>(FileName)()); }
 
-void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, PyGeom & G)
+void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, FEM::Geom & G)
 {
 	/* Example:
 	 *           # 1) Nodes brys
@@ -570,10 +570,10 @@ void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::l
 	}
 
 	// Set geometry
-	FEM::SetGeom (&M, nbrys, fbrys, eatts, G.GetGeom());
+	FEM::SetGeom (&M, nbrys, fbrys, eatts, &G);
 }
 
-void PySetGeomStructured (Mesh::Structured const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, PyGeom & G)
+void PySetGeomStructured (Mesh::Structured const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, FEM::Geom & G)
 {
 	PySetGeom (M, NodesBrys, FacesBrys, ElemsAtts, G);
 }
