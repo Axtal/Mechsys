@@ -92,6 +92,9 @@ int main(int argc, char **argv) try
 		g.Ele(1)->SetModel("LinElastic", "E= 50.0 A=1.0"              , "Sx=0.0");
 		g.Ele(2)->SetModel("LinElastic", "E=200.0 A=1.414213562373095", "Sx=0.0");
 
+		// Output
+		cout << g << endl;
+
 		// Check
 		double errors = 0;
 

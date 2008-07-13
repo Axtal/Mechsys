@@ -28,6 +28,7 @@
 #include <boost/python.hpp> // this includes everything
 
 // MechSys -- mesh
+#include "mesh/mesh.h"
 #include "mesh/structured.h"
 
 // MechSys -- fem -- basic
@@ -60,20 +61,28 @@ BOOST_PYTHON_MODULE (mechsys)
 {
 	// --------------------------------------------------------------------------- Mesh
 
-	class_<PyMeshBlock>("mesh_block")
-	    .def("set",       PMBSet1)
-	    .def("set",       PMBSet2)
-	    .def("set_etags", &PyMeshBlock::SetETags)
-	    .def("set_ftags", &PyMeshBlock::SetFTags)
+	class_<Mesh::Block>("mesh_block")
+	    .def("set2d",     &Mesh::Block::PySet2D)
+	    .def("set3d",     &Mesh::Block::PySet3D)
+	    .def("set_etags", &Mesh::Block::PySetETags)
+	    .def("set_ftags", &Mesh::Block::PySetFTags)
 	    ;
 
-	class_<PyMeshStruct>("mesh_struct")
+	class_<Mesh::Generic>("mesh_generic")
 	    .def(init<double>())
-	    .def("generate",  &PyMeshStruct::Generate)
-	    .def("write_vtu", &PyMeshStruct::WriteVTU)
-	    .def("get_verts", &PyMeshStruct::GetVerts)
-	    .def("get_elems", &PyMeshStruct::GetElems)
-	    .def("get_etags", &PyMeshStruct::GetETags)
+	    .def("write_vtu", &Mesh::Generic::PyWriteVTU)
+	    .def("get_verts", &Mesh::Generic::PyGetVerts)
+	    .def("get_elems", &Mesh::Generic::PyGetElems)
+	    .def("get_etags", &Mesh::Generic::PyGetETags)
+	    ;
+
+	class_<Mesh::Structured>("mesh_structured")
+	    .def(init<double>())
+	    .def("write_vtu", &Mesh::Structured::PyWriteVTU)
+	    .def("get_verts", &Mesh::Structured::PyGetVerts)
+	    .def("get_elems", &Mesh::Structured::PyGetElems)
+	    .def("get_etags", &Mesh::Structured::PyGetETags)
+	    .def("generate",  &Mesh::Structured::PyGenerate)
 	    ;
 
 	// ---------------------------------------------------------------------------- FEM
@@ -109,6 +118,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("nelems",     &PyGeom::nElems)
 	    .def("nod",        &PyGeom::Nod)
 	    .def("ele",        &PyGeom::Ele)
+	    .def("out",        &PyGeom::Out)
 	    ;
 
 	class_<PySolver>("solver", init<str const &>())
@@ -122,9 +132,10 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ----------------------------------------------------------------------- functions
 	
 	// Global functions
-	def ("write_vtu_equilib", PyWriteVTUEquilib);
-	def ("write_vtk",         PyWriteVTK       );
-	def ("set_geom",          PySetGeom        );
+	def ("write_vtu_equilib", PyWriteVTUEquilib  );
+	def ("write_vtk",         PyWriteVTK         );
+	def ("set_geom",          PySetGeom          );
+	def ("set_geom",          PySetGeomStructured);
 
 	// ---------------------------------------------------------------------- Exceptions
 	

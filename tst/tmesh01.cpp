@@ -38,31 +38,22 @@ int main(int argc, char **argv) try
 	
 	{
 		// Constants
-		double L     = 1.0;   // length
-		double H     = 1.0;   // height
-		double hL    = L/2.0; // half-length
-		double hH    = H/2.0; // half-height
-		size_t ndivx = 2;    // divisions along x
-		size_t ndivy = 2;    // divisions along y
-
-		// Coordinates
-		Matrix<double> c(2,8);
-		c = 0.,  L, L, 0.,    hL,  L, hL, 0.,
-			0., 0., H,  H,    0., hH,  H, hH;
-
-		// Weights
-		Array<double> wx(ndivx);  wx = 1.0;
-		Array<double> wy(ndivy);  wy = 1.0;
-
-		// Tags
-		Vector<int> e_tags(4);
-		e_tags = -10, -11, -12, -13;
+		double L  = 1.0;   // length
+		double H  = 1.0;   // height
+		double hL = L/2.0; // half-length
+		double hH = H/2.0; // half-height
 
 		// Blocks
 		Mesh::Block b;
-		b.Set      (-1, &c, &wx, &wy);
-		b.SetETags (&e_tags);
-		Array<Mesh::Block*> blocks;  blocks.Push(&b);
+		b.SetTag (-1); // tag to be replicated to all generated elements inside this block
+		b.Set2D  ();   // 2D
+		b.C      () = 0.,  L, L, 0.,    hL,  L, hL, 0., // x coordinates
+		              0., 0., H,  H,    0., hH,  H, hH; // y coordinates
+		b.ETags  () = -10, -11, -12, -13;               // edge tags
+		b.SetWx  ("1 1");                               // x weights and num of divisions along x
+		b.SetWy  ("1 1");                               // y weights and num of divisions along y
+		Array<Mesh::Block*> blocks;
+		blocks.Push (&b);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
@@ -88,39 +79,27 @@ int main(int argc, char **argv) try
 	
 	{
 		// Constants
-		double L     = 1.0;   // length
-		double H     = 1.0;   // height
-		double D     = 1.0;   // depth
-		double hL    = L/2.0; // half-length
-		double hH    = H/2.0; // half-height
-		double hD    = D/2.0; // half-depth
-		size_t ndivx = 2;     // divisions along x
-		size_t ndivy = 2;     // divisions along y
-		size_t ndivz = 2;     // divisions along z
+		double L  = 1.0;   // length
+		double H  = 1.0;   // height
+		double D  = 1.0;   // depth
+		double hL = L/2.0; // half-length
+		double hH = H/2.0; // half-height
+		double hD = D/2.0; // half-depth
 
 		// Coordinates
-		Matrix<double> c(3,20);
-		c = 0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0.,
-			0., 0.,  H,  H,    0., 0., H,  H,    0., hH,  H, hH,    0., hH,  H, hH,    0., 0.,  H,  H,
-		    0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD;
-
-		// Weights
-		Array<double> wx(ndivx);  wx = 1.0;
-		Array<double> wy(ndivy);  wy = 1.0;
-		Array<double> wz(ndivz);  wz = 1.0;
-
-		// Tags
-		Vector<int> e_tags(12);
-		Vector<int> f_tags(6);
-		e_tags = -100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111;
-		f_tags = -10, -11, -12, -13, -14, -15;
-
-		// Blocks
 		Mesh::Block b;
-		b.Set      (-2, &c, &wx, &wy, &wz);
-		b.SetETags (&e_tags);
-		b.SetFTags (&f_tags);
-		Array<Mesh::Block*> blocks;  blocks.Push(&b);
+		b.SetTag (-2); // tag to be replicated to all generated elements inside this block
+		b.Set3D  ();   // 3D
+		b.C () = 0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0., // x coordinates
+		         0., 0.,  H,  H,    0., 0., H,  H,    0., hH,  H, hH,    0., hH,  H, hH,    0., 0.,  H,  H, // y coordinates
+		         0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD; // z coordinates
+		b.SetWx ("1 1"); // x weights and num of divisions along x
+		b.SetWy ("1 1"); // y weights and num of divisions along y
+		b.SetWz ("1 1"); // z weights and num of divisions along z
+		b.ETags () = -100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111;
+		b.FTags () = -10, -11, -12, -13, -14, -15;
+		Array<Mesh::Block*> blocks;
+		blocks.Push(&b);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time

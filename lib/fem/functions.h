@@ -25,7 +25,7 @@
 #include <cfloat>  // for DBL_EPSILON
 
 // Boost
-#ifdef USE_BOOST
+#if defined(USE_BOOST) || defined(USE_BOOST_PYTHON)
   #include <boost/tuple/tuple_io.hpp>
 #endif
 
@@ -166,6 +166,16 @@ inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T
 			}
 		}
 	}
+
+	/*
+	// Debug
+	std::cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  DEBUG  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+	std::cout << "NodesBrys\n"; for (size_t i=0; i<NodesBrys.Size(); ++i) std::cout << NodesBrys[i] << std::endl;
+	std::cout << "FacesBrys\n"; for (size_t i=0; i<FacesBrys.Size(); ++i) std::cout << FacesBrys[i] << std::endl;
+	std::cout << "ElemsAtts\n"; for (size_t i=0; i<ElemsAtts.Size(); ++i) std::cout << ElemsAtts[i] << std::endl;
+	std::cout << "\n" << (*G) << "\n\n";
+	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  DEBUG  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
+	*/
 }
 
 #endif // USE_BOOST || USE_BOOST_PYTHON

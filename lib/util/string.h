@@ -54,6 +54,7 @@
 				return std::string(this->c_str());
 			#endif
 		}
+		char const * CStr() { return GetSTL().c_str(); }
 		String & operator= (wxChar const * psz)
 		{
 			(*this) = psz;
@@ -115,6 +116,7 @@
 		{
 			return std::string((*this));
 		}
+		char const * CStr() { return GetSTL().c_str(); }
 	private:
 		int _set_msg(char const * Fmt, va_list ArgList)
 		{

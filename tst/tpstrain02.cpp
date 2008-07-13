@@ -42,8 +42,8 @@ int main(int argc, char **argv) try
 	double E     = 207.0; // Young
 	double nu    = 0.3;   // Poisson
 	double q     = 1.0;   // Load
-	size_t ndivx = 2;     // divisions along x (must be even)
-	size_t ndivy = 2;     // divisions along y
+	int    ndivx = 2;     // number of divisions along x
+	int    ndivy = 2;     // number of divisions along y
 
 	/*        | | | | | | | | | | | | | | | | |  q
 	          V V V V V V V V V V V V V V V V V 
@@ -78,24 +78,19 @@ int main(int argc, char **argv) try
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// Block coordinates
-	Matrix<double> c(2,8);
-	c = 0.,  L, L, 0.,    L/2.,    L, L/2.,   0.,
-		0., 0., H,  H,      0., H/2.,    H, H/2.;
-
-	// Block weights
-	Array<double> wx(ndivx);  wx = 1.0;
-	Array<double> wy(ndivy);  wy = 1.0;
-
-	// Block tags
-	Vector<int> e_tags(4);
-	e_tags = 0, 0, -10, -20;
-
 	// Blocks
+	String wx; for (int i=0; i<ndivx; ++i) wx.Printf("%s %f",wx.CStr(),1.0);
+	String wy; for (int i=0; i<ndivy; ++i) wy.Printf("%s %f",wy.CStr(),1.0);
 	Mesh::Block b;
-	b.Set      (-1, &c, &wx, &wy);
-	b.SetETags (&e_tags);
-	Array<Mesh::Block*> blocks;  blocks.Push(&b);
+	b.SetTag (-1); // tag to be replicated to all generated elements inside this block
+	b.Set2D  ();   // 2D
+	b.C      () = 0.,  L, L, 0.,    L/2.,    L, L/2.,   0., // x coordinates
+	              0., 0., H,  H,      0., H/2.,    H, H/2.; // y coordinates
+	b.SetWx  (wx.CStr());                                   // x weights and num of divisions along x
+	b.SetWy  (wx.CStr());                                   // y weights and num of divisions along y
+	b.ETags  () = 0, 0, -10, -20;                           // edge tags
+	Array<Mesh::Block*> blocks;
+	blocks.Push (&b);
 
 	// Generate
 	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;

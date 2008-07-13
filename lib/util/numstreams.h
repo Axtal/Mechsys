@@ -47,6 +47,7 @@ NumStream _8s    = { false, false,  true,  0,  8 }; ///< Scientific
 NumStream _6_3   = { false, false, false,  6,  3 }; ///< General
 NumStream _6_4   = { false, false, false,  6,  4 }; ///< General
 NumStream _6_6   = { false, false, false,  6,  6 }; ///< General
+NumStream _8_4   = { false, false, false,  8,  4 }; ///< General
 NumStream _12_6  = { false, false, false, 12,  6 }; ///< General
 NumStream _20_15 = { false, false, false, 20, 15 }; ///< General
 

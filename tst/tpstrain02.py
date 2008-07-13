@@ -31,18 +31,18 @@ ndivy = 2     # Divisions along y
 
 # Blocks
 blocks = [m.mesh_block()]
-blocks[0].set (-1,                                           # tag to be inherited by all elements inside this block
-               [[0.,  L, L, 0.,    L/2.,    L, L/2.,   0.] , # coordinates: x values
-                [0., 0., H,  H,      0., H/2.,    H, H/2.]], # coordinates: y values
-               [1 for i in range(ndivx)],                    # weights x
-               [1 for i in range(ndivy)])                    # weights y
+blocks[0].set2d (-1,                                           # tag to be inherited by all elements inside this block
+                 [[0.,  L, L, 0.,    L/2.,    L, L/2.,   0.] , # coordinates: x values
+                  [0., 0., H,  H,      0., H/2.,    H, H/2.]], # coordinates: y values
+                 [1 for i in range(ndivx)],                    # weights x
+                 [1 for i in range(ndivy)])                    # weights y
 
 # Tags
 blocks[0].set_etags ([0, 0, -10, -20])
 
 # Generate
 print 'Mesh Generation: --------------------------------------------------------------'
-ms = m.mesh_struct()
+ms = m.mesh_structured()
 ne = ms.generate (blocks)
 print ne, ' elements generated '
 print

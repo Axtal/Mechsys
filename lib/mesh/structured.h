@@ -63,17 +63,20 @@
 // Blitz++
 #include <blitz/tinyvec-et.h>
 
+// Boost::Python
+#ifdef USE_BOOST_PYTHON
+  #include <boost/python.hpp> // this includes everything
+  namespace BPy = boost::python;
+#endif
+
 // MechSys
 #include "util/array.h"
 #include "util/exception.h"
+#include "util/lineparser.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/laexpr.h"
-
-#ifndef VTU_NEWLINE_DEFINED
-  #define VTU_NEWLINE_DEFINED
-  #define VTU_NEWLINE(I,K,N,KMAX,OF) if (K>KMAX) { OF<<(I<N-1?"\n        ":"\n"); K=0; } else if (I==N-1) { OF<<"\n"; }
-#endif
+#include "mesh/mesh.h"
 
 using LinAlg::Vector;
 using LinAlg::Matrix;
@@ -90,72 +93,15 @@ namespace Mesh
 	 *        5) Add quality check and improvement
 	 */
 
-
-struct Edge
-{
-	int L; // Left vertex id
-	int R; // Right vertex id
-};
-
-const Edge EDGE2VERT[]= // Map between local edge ID to local vertex ID
-{{ 0, 3 },
- { 1, 2 },
- { 0, 1 },
- { 2, 3 },
- { 4, 7 },
- { 5, 6 },
- { 4, 5 },
- { 6, 7 },
- { 0, 4 },
- { 1, 5 },
- { 2, 6 },
- { 3, 7 }};
-
-struct Elem;
-
-struct Share
-{
-	Elem* E; ///< The element
-	int   N; ///< Local node index: 2D=>0,1,2,3, 3D=>0,1,2,3,4,5,6,7
-};
-
-struct Vertex
-{
-	long              MyID;    ///< ID
-	bool              OnBry;   ///< Is on boundary?
-	TinyVector<int,3> EdgesID; ///< Local indexes (3) of what edges this vertex is located on (from 0 to 12). -1 => Not on boundary
-	TinyVector<int,3> FacesID; ///< Local indexes (3) of what faces this vertex is located on (from 0 to 6) . -1 => Not on boundary
-	bool              Dupl;    ///< Is this a duplicated node?
-	Vector<double>    C;       ///< X, Y, and Z coordinates
-	Array<Share>      Shares;  ///< Shared elements
-};
-
-struct Elem
-{
-	long           MyID;  ///< ID
-	int            Tag;   ///< Element tag. Required for setting up of attributes, for example.
-	bool           OnBry; ///< On boundary?
-	Array<Vertex*> V;     ///< Connectivity
-	Vector<int>    ETags; ///< Edge tags (size==nLocalEdges)
-	Vector<int>    FTags; ///< Face tags (size==nLocalFaces)
-};
-
 class Block
 {
 public:
-	// Constructor
-	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _e_tags(NULL), _f_tags(NULL) {}
-
-	// Methods
-	void Set (int Tag, Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz=NULL); ///< C=coordinates, W=weights
-	/* 
-	 * 2D: 8 nodes => C. Resize(2, 8)
+	/* 2D: 8 nodes => C. Resize(2, 8)
 	 *                Wx.Resize(nDivX)
 	 *                Wy.Resize(nDivY)
 	 *          _                         _
 	 *    C  = |  x0 x1 x2 x3 x4 x5 x6 x7  |
 	 *         |_ y0 y1 y2 y3 y4 y5 y6 y7 _|
-	 *
 	 *
 	 * 3D: 20 nodes => C. Resize(3, 20)
 	 *                 Wx.Resize(nDivX)
@@ -166,8 +112,22 @@ public:
 	 *    C = |  y0 y1 y2 y3 y4 y5 y6 y7 ... y17 y18 y19  |
 	 *        |_ z0 z1 z2 z3 z4 z5 z6 z7 ... z17 z18 z19 _|
 	 */
-	void SetETags (Vector<int> * Tags) { _e_tags = Tags; } ///< Set edges tags: size == 2D:4, 3D:12
-	void SetFTags (Vector<int> * Tags) { _f_tags = Tags; } ///< Set faces tags: size == 2D:0, 3D: 6
+
+	// Constructor
+	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _has_etags(false), _has_ftags(false) { Set2D(); }
+
+	// Set methods
+	void Set2D () { _c.Resize(2, 8); _etags.Resize( 4);                   _etags=0;           _is_3d=false; } ///< Set 2D
+	void Set3D () { _c.Resize(3,20); _etags.Resize(12); _ftags.Resize(6); _etags=0; _ftags=0; _is_3d=true;  } ///< Set 3D
+
+	// Set methods
+	void             SetTag (int Tag) { _tag = Tag; }                     ///< Set the tag to be replicated to all elements generated inside this block
+	Matrix<double> & C      ()        { return _c;  }                     ///< Set coordinates
+	Vector<int>    & ETags  ()        { _has_etags=true; return _etags; } ///< Set edge tags
+	Vector<int>    & FTags  ()        { _has_ftags=true; return _ftags; } ///< Set face tags
+	void             SetWx  (char const * Str);                           ///< Set x weights and the number of divisions along x. Ex: Str = "1 1 1 2 2 2 3 3 3"
+	void             SetWy  (char const * Str);                           ///< Set y weights and the number of divisions along y. Ex: Str = "1 2 3 4"
+	void             SetWz  (char const * Str);                           ///< Set z weights and the number of divisions along z. Ex: Str = "1 1 1 1"
 
 	// Access methods
 	int    Tag        ()         const { return _tag;          }
@@ -178,9 +138,9 @@ public:
 	double SumWeightX ()         const { return _sum_weight_x; }
 	double SumWeightY ()         const { return _sum_weight_y; }
 	double SumWeightZ ()         const { return _sum_weight_z; }
-	double Wx         (int iDiv) const { return (*_wx)[iDiv];  }
-	double Wy         (int iDiv) const { return (*_wy)[iDiv];  }
-	double Wz         (int iDiv) const { return (*_wz)[iDiv];  }
+	double Wx         (int iDiv) const { return _wx[iDiv];     }
+	double Wy         (int iDiv) const { return _wy[iDiv];     }
+	double Wz         (int iDiv) const { return _wz[iDiv];     }
 
 	/* Find in which edge a vertex will be located, for given the indexes
 	 * of the natural coordinates corresponding to each division.
@@ -195,68 +155,95 @@ public:
 	void ApplyTags (Elem * E) const;
 
 	// Access the coordinates of all 8 or 20 nodes
-	Matrix<double> const & C() const { return (*_c); }
+	Matrix<double> const & C() const { return _c; }
 
 	// Check if all arrays/vectors/matrices have the right sizes
 	void Alright() const;
 
+#ifdef USE_BOOST_PYTHON
+// {
+	void PySet2D    (int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy);
+	void PySet3D    (int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy, BPy::list const & Wz);
+	void PySetETags (BPy::list const & Tags);
+	void PySetFTags (BPy::list const & Tags);
+// }
+#endif
+
 private:
-	Matrix<double> * _c;            ///< X, Y, and Z coordinates of all 8 or 20 nodes of this block
-	Array <double> * _wx;           ///< X weights
-	Array <double> * _wy;           ///< Y weights
-	Array <double> * _wz;           ///< Z weights
-	int              _n_div_x;      ///< number of divisions along X
-	int              _n_div_y;      ///< number of divisions along Y
-	int              _n_div_z;      ///< number of divisions along Z
-	double           _sum_weight_x; ///< sum of weights along X
-	double           _sum_weight_y; ///< sum of weights along Y
-	double           _sum_weight_z; ///< sum of weights along Z
-	bool             _is_3d;        ///< Is 3D block?
-	int              _tag;          ///< A tag to be inherited by all elements generated inside this block
-	Vector<int>    * _e_tags;       ///< Edges tags: size = 2D:4, 3D:12
-	Vector<int>    * _f_tags;       ///< Faces tags: size = 2D:0, 3D: 6
+	Matrix<double> _c;            ///< X, Y, and Z coordinates of all 8 or 20 nodes of this block
+	Array <double> _wx;           ///< X weights
+	Array <double> _wy;           ///< Y weights
+	Array <double> _wz;           ///< Z weights
+	int            _n_div_x;      ///< number of divisions along X
+	int            _n_div_y;      ///< number of divisions along Y
+	int            _n_div_z;      ///< number of divisions along Z
+	double         _sum_weight_x; ///< sum of weights along X
+	double         _sum_weight_y; ///< sum of weights along Y
+	double         _sum_weight_z; ///< sum of weights along Z
+	bool           _is_3d;        ///< Is 3D block?
+	int            _tag;          ///< A tag to be inherited by all elements generated inside this block
+	bool           _has_etags;    ///< Has edge tags ?
+	bool           _has_ftags;    ///< Has face tags ?
+	Vector<int>    _etags;        ///< Edges tags: size = 2D:4, 3D:12
+	Vector<int>    _ftags;        ///< Faces tags: size = 2D:0, 3D: 6
+
+	void _set_wx();
+	void _set_wy();
+	void _set_wz();
 
 }; // class Block
 
-class Structured
+class Structured : public virtual Mesh::Generic
 {
 public:
+	// Constants
+	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
+
 	// Constructor
-	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol), _is_3d(false) {}
+	Structured (double Tol=sqrt(DBL_EPSILON)) : Mesh::Generic(Tol) {} ///< Tol is the tolerance to regard two vertices as coincident
 
 	// Destructor
 	~Structured () { _erase(); }
 
 	// Methods
 	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
-	void   WriteVTU (char const * FileName) const;
 
-	// Access methods
-	bool                   Is3D     () const { return _is_3d;     }
-	Array<Vertex*> const & Verts    () const { return _verts;     }
-	Array<Elem*>   const & Elems    () const { return _elems;     }
-	Array<Elem*>   const & ElemsBry () const { return _elems_bry; } ///< Elements on boundary
-	Array<Vertex*> const & VertsBry () const { return _verts_bry; } ///< Vertices on boundary
+#ifdef USE_BOOST_PYTHON
+// {
+	size_t PyGenerate (BPy::list const & ListOfMeshBlock);
+// }
+#endif
 
 private:
 	// Data
-	double         _tol;         ///< Tolerance to remove duplicate nodes
-	bool           _is_3d;       ///< Is 3D mesh?
 	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
 	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
-	Array<Vertex*> _verts;       ///< Vertices
-	Array<Elem*>   _elems;       ///< Elements
-	Array<Elem*>   _elems_bry;   ///< Elements on boundary
-	Array<Vertex*> _verts_bry;   ///< Vertices on boundary
 	Vector<double> _s;           ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
 
 	// Private methods
 	void _shape_2d (double r, double s);
 	void _shape_3d (double r, double s, double t);
-	void _vtk_con  (Elem const * E, String & Connect) const;
-	void _erase    ();
+
+	// Overloaded private methods
+	void _vtk_con          (Elem const * E, String & Connect) const;
+	void _erase            ();
+	int  _edge_to_lef_vert (int EdgeLocalID) const { return Edge2Vert[EdgeLocalID].L; }
+	int  _edge_to_rig_vert (int EdgeLocalID) const { return Edge2Vert[EdgeLocalID].R; }
 
 }; // class Structured
+
+Edge Structured::Edge2Vert[]= {{ 0, 3 },
+                               { 1, 2 },
+                               { 0, 1 },
+                               { 2, 3 },
+                               { 4, 7 },
+                               { 5, 6 },
+                               { 4, 5 },
+                               { 6, 7 },
+                               { 0, 4 },
+                               { 1, 5 },
+                               { 2, 6 },
+                               { 3, 7 }};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -264,37 +251,49 @@ private:
 
 // Methods -- Block
 
-inline void Block::Set(int Tag, Matrix<double> * C, Array<double> * Wx, Array<double> * Wy, Array<double> * Wz)
+inline void Block::SetWx(char const * Str)
 {
-	// Tag to be inherited by all elements inside this block
-	_tag = Tag;
+	LineParser lp(Str);
+	lp.ToArray (_wx);
+	_set_wx ();
+}
 
-	// Coordinates
-	_c     = C;
-	_is_3d = (C->Rows()>2 ? true : false);
+inline void Block::SetWy(char const * Str)
+{
+	LineParser lp(Str);
+	lp.ToArray (_wy);
+	_set_wy ();
+}
 
-	// 2D data
-	_wx           = Wx;
-	_wy           = Wy;
-	_n_div_x      = _wx->Size();
-	_n_div_y      = _wy->Size();
+inline void Block::SetWz(char const * Str)
+{
+	LineParser lp(Str);
+	lp.ToArray (_wz);
+	_set_wz ();
+}
+
+inline void Block::_set_wx()
+{
+	_n_div_x      = _wx.Size();
 	_sum_weight_x = 0.0;
-	_sum_weight_y = 0.0;
-	for (int i=0; i<_n_div_x; ++i) _sum_weight_x += (*_wx)[i];
-	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += (*_wy)[i];
-	_wx->Push(0.0); // extra value just to allow looping over weights
-	_wy->Push(0.0);
+	for (int i=0; i<_n_div_x; ++i) _sum_weight_x += _wx[i];
+	_wx.Push(0.0); // extra value just to allow looping over weights
+}
 
-	// 3D data
-	if (_is_3d)
-	{
-		if (Wz==NULL) throw new Fatal("Block::Set: For 3D blocks, Wz must be given (not NULL)");
-		_wz           = Wz;
-		_n_div_z      = _wz->Size();
-		_sum_weight_z = 0.0;
-		for (int i=0; i<_n_div_z; ++i) _sum_weight_z += (*_wz)[i];
-		_wz->Push(0.0);
-	}
+inline void Block::_set_wy()
+{
+	_n_div_y      = _wy.Size();
+	_sum_weight_y = 0.0;
+	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += _wy[i];
+	_wy.Push(0.0); // extra value just to allow looping over weights
+}
+
+inline void Block::_set_wz()
+{
+	_n_div_z      = _wz.Size();
+	_sum_weight_z = 0.0;
+	for (int i=0; i<_n_div_z; ++i) _sum_weight_z += _wz[i];
+	_wz.Push(0.0); // extra value just to allow looping over weights
 }
 
 inline void Block::FindLocalEdgesFacesID(int i, int j, int k, Vertex * V) const
@@ -350,37 +349,37 @@ inline void Block::ApplyTags(Elem * E) const
 	{
 		// ETags
 		E->ETags.Resize(12);
-		if (_e_tags!=NULL)
+		if (_has_etags)
 		{
 			for (size_t i=0; i<E->V.Size(); ++i)
 			{
-				if (E->V[i]->EdgesID(0)>-1) E->ETags(E->V[i]->EdgesID(0)) = (*_e_tags)(E->V[i]->EdgesID(0));
-				if (E->V[i]->EdgesID(1)>-1) E->ETags(E->V[i]->EdgesID(1)) = (*_e_tags)(E->V[i]->EdgesID(1));
-				if (E->V[i]->EdgesID(2)>-1) E->ETags(E->V[i]->EdgesID(2)) = (*_e_tags)(E->V[i]->EdgesID(2));
+				if (E->V[i]->EdgesID(0)>-1) E->ETags(E->V[i]->EdgesID(0)) = _etags(E->V[i]->EdgesID(0));
+				if (E->V[i]->EdgesID(1)>-1) E->ETags(E->V[i]->EdgesID(1)) = _etags(E->V[i]->EdgesID(1));
+				if (E->V[i]->EdgesID(2)>-1) E->ETags(E->V[i]->EdgesID(2)) = _etags(E->V[i]->EdgesID(2));
 			}
 		}
 		else E->ETags = 0;
 
 		// FTags
 		E->FTags.Resize(6);
-		if (_f_tags==NULL) { E->FTags = 0; return; }
+		if (_has_ftags==false) { E->FTags = 0; return; }
 		for (size_t i=0; i<E->V.Size(); ++i)
 		{
-			if (E->V[i]->FacesID(0)>-1) E->FTags(E->V[i]->FacesID(0)) = (*_f_tags)(E->V[i]->FacesID(0));
-			if (E->V[i]->FacesID(1)>-1) E->FTags(E->V[i]->FacesID(1)) = (*_f_tags)(E->V[i]->FacesID(1));
-			if (E->V[i]->FacesID(2)>-1) E->FTags(E->V[i]->FacesID(2)) = (*_f_tags)(E->V[i]->FacesID(2));
+			if (E->V[i]->FacesID(0)>-1) E->FTags(E->V[i]->FacesID(0)) = _ftags(E->V[i]->FacesID(0));
+			if (E->V[i]->FacesID(1)>-1) E->FTags(E->V[i]->FacesID(1)) = _ftags(E->V[i]->FacesID(1));
+			if (E->V[i]->FacesID(2)>-1) E->FTags(E->V[i]->FacesID(2)) = _ftags(E->V[i]->FacesID(2));
 		}
 	}
 	else
 	{
 		// ETags
 		E->ETags.Resize(4);
-		if (_e_tags==NULL) { E->ETags = 0; return; }
+		if (_has_etags==false) { E->ETags = 0; return; }
 		for (size_t i=0; i<E->V.Size(); ++i)
 		{
-			if (E->V[i]->EdgesID(0)>-1) E->ETags(E->V[i]->EdgesID(0)) = (*_e_tags)(E->V[i]->EdgesID(0));
-			if (E->V[i]->EdgesID(1)>-1) E->ETags(E->V[i]->EdgesID(1)) = (*_e_tags)(E->V[i]->EdgesID(1));
-			if (E->V[i]->EdgesID(2)>-1) E->ETags(E->V[i]->EdgesID(2)) = (*_e_tags)(E->V[i]->EdgesID(2));
+			if (E->V[i]->EdgesID(0)>-1) E->ETags(E->V[i]->EdgesID(0)) = _etags(E->V[i]->EdgesID(0));
+			if (E->V[i]->EdgesID(1)>-1) E->ETags(E->V[i]->EdgesID(1)) = _etags(E->V[i]->EdgesID(1));
+			if (E->V[i]->EdgesID(2)>-1) E->ETags(E->V[i]->EdgesID(2)) = _etags(E->V[i]->EdgesID(2));
 		}
 	}
 }
@@ -389,22 +388,103 @@ inline void Block::Alright() const
 {
 	if (_is_3d)
 	{
-		if (_c->Rows()!= 3) throw new Fatal("Block::Alright failed: C matrix of 3D blocks must have 3 rows (C.Rows==%d is invalid)",    _c->Rows());
-		if (_c->Cols()!=20) throw new Fatal("Block::Alright failed: C matrix of 3D blocks must have 20 columns (C.Cols==%d is invalid)",_c->Cols());
-		if (_e_tags!=NULL)
-			if (_e_tags->Size()!=12) throw new Fatal("Block::Alright failed: ETags array of 3D blocks must have 12 elements (ETags.Size==%d is invalid)",_e_tags->Size());
-		if (_f_tags!=NULL)
-			if (_f_tags->Size()!= 6) throw new Fatal("Block::Alright failed: ETags array of 3D blocks must have 6 elements (ETags.Size==%d is invalid)",_f_tags->Size());
+		if (_c.Rows()!= 3) throw new Fatal("Block::Alright failed: C matrix of 3D blocks must have 3 rows (C.Rows==%d is invalid)",    _c.Rows());
+		if (_c.Cols()!=20) throw new Fatal("Block::Alright failed: C matrix of 3D blocks must have 20 columns (C.Cols==%d is invalid)",_c.Cols());
 	}
 	else
 	{
-		if (_c->Rows()!=2) throw new Fatal("Block::Alright failed: C matrix of 2D blocks must have 2 rows (C.Rows==%d is invalid)",   _c->Rows());
-		if (_c->Cols()!=8) throw new Fatal("Block::Alright failed: C matrix of 2D blocks must have 8 columns (C.Cols==%d is invalid)",_c->Cols());
-		if (_e_tags!=NULL)
-			if (_e_tags->Size()!=4) throw new Fatal("Block::Alright failed: ETags array of 2D blocks must have 4 elements (ETags.Size==%d is invalid)",_e_tags->Size());
+		if (_c.Rows()!=2) throw new Fatal("Block::Alright failed: C matrix of 2D blocks must have 2 rows (C.Rows==%d is invalid)",   _c.Rows());
+		if (_c.Cols()!=8) throw new Fatal("Block::Alright failed: C matrix of 2D blocks must have 8 columns (C.Cols==%d is invalid)",_c.Cols());
 	}
 }
 
+#ifdef USE_BOOST_PYTHON
+// {
+
+inline void Block::PySet2D(int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy)
+{
+	SetTag (Tag);
+	Set2D  ();
+
+	// Read C
+	int nrow = BPy::len(C); if (nrow<1) throw new Fatal("Block::PySet2D: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
+	int ncol = BPy::len(C[0]);
+	for (int i=0; i<nrow; ++i)
+	{
+		BPy::list row = BPy::extract<BPy::list>(C[i])();
+		if (BPy::len(row)!=ncol) throw new Fatal("Block::PySet2D: All rows of C matrix must have the same number of columns (%d is invalid)",BPy::len(row));
+		for (int j=0; j<ncol; ++j) _c(i,j) = BPy::extract<double>(row[j])();
+	}
+
+	// Read Wx
+	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet2D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
+	_wx.Resize (sz_wx);
+	for (int i=0; i<sz_wx; ++i) _wx[i] = BPy::extract<double>(Wx[i])();
+	_set_wx();
+
+	// Read Wy
+	int sz_wy = BPy::len(Wy); if (sz_wy<1) throw new Fatal("Block::PySet2D: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
+	_wy.Resize (sz_wy);
+	for (int i=0; i<sz_wy; ++i) _wy[i] = BPy::extract<double>(Wy[i])();
+	_set_wy();
+}
+
+inline void Block::PySet3D(int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy, BPy::list const & Wz)
+{
+	SetTag (Tag);
+	Set3D  ();
+
+	// Read C
+	int nrow = BPy::len(C); if (nrow<1) throw new Fatal("Block::PySet3D: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
+	int ncol = BPy::len(C[0]);
+	for (int i=0; i<nrow; ++i)
+	{
+		BPy::list row = BPy::extract<BPy::list>(C[i])();
+		if (BPy::len(row)!=ncol) throw new Fatal("Block::PySet3D: All rows of C matrix must have the same number of columns (%d is invalid)",BPy::len(row));
+		for (int j=0; j<ncol; ++j) _c(i,j) = BPy::extract<double>(row[j])();
+	}
+
+	// Read Wx
+	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet3D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
+	_wx.Resize (sz_wx);
+	for (int i=0; i<sz_wx; ++i) _wx[i] = BPy::extract<double>(Wx[i])();
+	_set_wx();
+
+	// Read Wy
+	int sz_wy = BPy::len(Wy); if (sz_wy<1) throw new Fatal("Block::PySet3D: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
+	_wy.Resize (sz_wy);
+	for (int i=0; i<sz_wy; ++i) _wy[i] = BPy::extract<double>(Wy[i])();
+	_set_wy();
+
+	// Read Wz
+	int sz_wz = BPy::len(Wz); if (sz_wz<1) throw new Fatal("Block::PySet3D: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
+	_wz.Resize (sz_wz);
+	for (int i=0; i<sz_wz; ++i) _wz[i] = BPy::extract<double>(Wz[i])();
+	_set_wz();
+}
+
+inline void Block::PySetETags(BPy::list const & Tags)
+{
+	int n_edges = BPy::len(Tags); // 2D => 4,  3D => 12
+	if (_is_3d && n_edges!=12) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 12 (n_edges==%d is invalid)",n_edges);
+	else if      (n_edges!= 4) throw new Fatal("Block::PySetETags: For 2D meshes, the number of edges must be 4 (n_edges==%d is invalid)",n_edges);
+	for (int i=0; i<n_edges; ++i)
+		_etags(i) = BPy::extract<int>(Tags[i])();
+	_has_etags = true;
+}
+
+inline void Block::PySetFTags(BPy::list const & Tags)
+{
+	if (_is_3d==false) throw new Fatal("Block::PySetFTags: This block is not 3D");
+	int n_faces = BPy::len(Tags); // 3D => 6
+	if (n_faces!=6) throw new Fatal("Block::PySetFTags: For 3D meshes, the number of faces must be 6 (n_faces==%d is invalid)",n_faces);
+	for (int i=0; i<n_faces; ++i)
+		_ftags(i) = BPy::extract<int>(Tags[i])();
+	_has_ftags = true;
+}
+
+// }
+#endif
 
 // Methods -- Structured
 
@@ -571,161 +651,24 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 	return _elems.Size();
 }
 
-inline void Structured::WriteVTU(char const * FileName) const
+#ifdef USE_BOOST_PYTHON
+// {
+
+inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock)
 {
-	// Open File
-	std::ofstream      of(FileName, std::ios::out);
-	std::ostringstream oss;
-
-	// Data
-	size_t nn = _verts.Size(); // Number of Nodes
-	size_t ne = _elems.Size(); // Number of Elements
-
-	// Constants
-	size_t          nimax = 40;        // number of integers in a line
-	size_t          nfmax = 12;        // number of floats in a line
-	Util::NumStream nsflo = Util::_8s; // number format for floats
-
-	// Header
-	oss << "<?xml version=\"1.0\"?>\n";
-	oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
-	oss << "  <UnstructuredGrid>\n";
-	oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << ne << "\">\n";
-
-	// Nodes: coordinates
-	oss << "      <Points>\n";
-	oss << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-	size_t k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << "  " << nsflo <<         _verts[i]->C(0) << " ";
-		oss <<         nsflo <<         _verts[i]->C(1) << " ";
-		oss <<         nsflo << (_is_3d?_verts[i]->C(2):0.0);
-		k++;
-		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "      </Points>\n";
-
-	// Elements: connectivity, offsets, types
-	oss << "      <Cells>\n";
-	oss << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		String con; _vtk_con (_elems[i], con);
-		oss << "  " << con;
-		k++;
-		//VTU_NEWLINE (i,k,ne,nimax/(_is_3d?20:8),oss);
-		VTU_NEWLINE (i,k,ne,nimax/(_is_3d?8:4),oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	size_t ossfset = 0;
-	for (size_t i=0; i<ne; ++i)
-	{
-		//ossfset += (_is_3d?20:8);
-		ossfset += (_is_3d?8:4);
-		oss << (k==0?"  ":" ") << ossfset;
-		k++;
-		VTU_NEWLINE (i,k,ne,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		//oss << (k==0?"  ":" ") << (_is_3d?25:23); // VTK_QUADRATIC_HEXAHEDRON or VTK_QUADRATIC_QUAD
-		oss << (k==0?"  ":" ") << (_is_3d?12:9); // VTK_HEXAHEDRON or VTK_QUAD
-		k++;
-		VTU_NEWLINE (i,k,ne,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "      </Cells>\n";
-
-	// Data -- nodes
-	oss << "      <PointData Scalars=\"TheScalars\">\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "onbry" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << (k==0?"  ":" ") << _verts[i]->OnBry;
-		k++;
-		VTU_NEWLINE (i,k,ne,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "local_edge_id" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << (k==0?"  ":" ") << _verts[i]->EdgesID(0) << " " << _verts[i]->EdgesID(1) << " " << _verts[i]->EdgesID(2) << " ";
-		k++;
-		VTU_NEWLINE (i,k,nn,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "local_face_id" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << (k==0?"  ":" ") << _verts[i]->FacesID(0) << " " << _verts[i]->FacesID(1) << " " << _verts[i]->FacesID(2) << " ";
-		k++;
-		VTU_NEWLINE (i,k,nn,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-
-	/* TODO:
-	 * remove this, because, after the removal of duplicates,
-	 * the shares information is not valid any longer
-	 * I kept this here because it may be useful for debugging purposes
-	 * (before the removal of duplicates)*/
-	/*
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "shares" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << (k==0?"  ":" ") << _verts[i]->Shares.Size();
-		k++;
-		VTU_NEWLINE (i,k,nn,nfmax,oss);
-	}
-	oss << "        </DataArray>\n";
-	*/
-
-	oss << "      </PointData>\n";
-
-	// Data -- elements
-	oss << "      <CellData Scalars=\"TheScalars\">\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "onbry" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		oss << (k==0?"  ":" ") << _elems[i]->OnBry;
-		k++;
-		VTU_NEWLINE (i,k,ne,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "tag" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<ne; ++i)
-	{
-		oss << (k==0?"  ":" ") << _elems[i]->Tag;
-		k++;
-		VTU_NEWLINE (i,k,ne,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "      </CellData>\n";
-
-	// Bottom
-	oss << "    </Piece>\n";
-	oss << "  </UnstructuredGrid>\n";
-	oss << "</VTKFile>" << std::endl;
-
-	// Write to file
-	of << oss.str();
-	of.close();
+	int nb = BPy::len(ListOfMeshBlock);
+	if (nb<1) throw new Fatal("Structured::PyGenerate: Number of blocks must be greater than 0 (%d is invalid)",nb);
+	Array<Mesh::Block*> blocks;
+	blocks.Resize (nb);
+	for (int i=0; i<nb; ++i)
+		blocks[i] = BPy::extract<Mesh::Block*>(ListOfMeshBlock[i])();
+	return Mesh::Structured::Generate (blocks);
 }
 
-// Private methods
+// }
+#endif
+
+// Private methods -- Structured
 
 inline void Structured::_shape_2d(double r, double s)
 {
@@ -838,190 +781,5 @@ inline void Structured::_erase()
 }
 
 }; // namespace Mesh
-
-
-#ifdef USE_BOOST_PYTHON
-
-namespace boopy = boost::python;
-
-class PyMeshBlock
-{
-public:
-	void Set (int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)
-	{
-		// Read C
-		int nrow = boopy::len(C); if (nrow<1) throw new Fatal("PyMeshBlock: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
-		int ncol = boopy::len(C[0]);
-		_c.Resize (nrow,ncol);
-		for (int i=0; i<nrow; ++i)
-		{
-			boopy::list row = boopy::extract<boopy::list>(C[i])();
-			if (boopy::len(row)!=ncol) throw new Fatal("PyMeshBlock: All rows of C matrix must have the same number of columns (%d is invalid)",boopy::len(row));
-			for (int j=0; j<ncol; ++j) _c(i,j) = boopy::extract<double>(row[j])();
-		}
-
-		// Read Wx
-		int sz_wx = boopy::len(Wx); if (sz_wx<1) throw new Fatal("PyMeshBlock: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
-		_wx.Resize (sz_wx);
-		for (int i=0; i<sz_wx; ++i) _wx[i] = boopy::extract<double>(Wx[i])();
-
-		// Read Wy
-		int sz_wy = boopy::len(Wy); if (sz_wy<1) throw new Fatal("PyMeshBlock: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
-		_wy.Resize (sz_wy);
-		for (int i=0; i<sz_wy; ++i) _wy[i] = boopy::extract<double>(Wy[i])();
-
-		// Set _block
-		_block.Set (Tag, &_c, &_wx, &_wy);
-	}
-
-	void Set (int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz)
-	{
-		// Read C
-		int nrow = boopy::len(C); if (nrow<1) throw new Fatal("PyMeshBlock: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
-		int ncol = boopy::len(C[0]);
-		_c.Resize (nrow,ncol);
-		for (int i=0; i<nrow; ++i)
-		{
-			boopy::list row = boopy::extract<boopy::list>(C[i])();
-			if (boopy::len(row)!=ncol) throw new Fatal("PyMeshBlock: All rows of C matrix must have the same number of columns (%d is invalid)",boopy::len(row));
-			for (int j=0; j<ncol; ++j) _c(i,j) = boopy::extract<double>(row[j])();
-		}
-
-		// Read Wx
-		int sz_wx = boopy::len(Wx); if (sz_wx<1) throw new Fatal("PyMeshBlock: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
-		_wx.Resize (sz_wx);
-		for (int i=0; i<sz_wx; ++i) _wx[i] = boopy::extract<double>(Wx[i])();
-
-		// Read Wy
-		int sz_wy = boopy::len(Wy); if (sz_wy<1) throw new Fatal("PyMeshBlock: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
-		_wy.Resize (sz_wy);
-		for (int i=0; i<sz_wy; ++i) _wy[i] = boopy::extract<double>(Wy[i])();
-
-		// Read Wz
-		int sz_wz = boopy::len(Wz); if (sz_wz<1) throw new Fatal("PyMeshBlock: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
-		_wz.Resize (sz_wz);
-		for (int i=0; i<sz_wz; ++i) _wz[i] = boopy::extract<double>(Wz[i])();
-
-		// Set _block
-		_block.Set (Tag, &_c, &_wx, &_wy, &_wz);
-	}
-
-	void SetETags (boopy::list const & Tags)
-	{
-		int n_edges = boopy::len(Tags); // 2D => 4,  3D => 12
-		if (!(n_edges==4 || n_edges==12)) throw new Fatal("PyMeshBlock::SetETags: Number of edges must be 4 (2D) or 12 (3D) (n_edges==%d is invalid)",n_edges);
-		_e_tags.Resize(n_edges);
-		for (int i=0; i<n_edges; ++i) _e_tags(i) = boopy::extract<int>(Tags[i])();
-		_block.SetETags (&_e_tags);
-	}
-
-	void SetFTags (boopy::list const & Tags)
-	{
-		int n_faces = boopy::len(Tags); // 3D => 6
-		if (n_faces!=6) throw new Fatal("PyMeshBlock::SetETags: Number of faces must be 6 (n_faces==%d is invalid)",n_faces);
-		_f_tags.Resize(n_faces);
-		for (int i=0; i<n_faces; ++i) _f_tags(i) = boopy::extract<int>(Tags[i])();
-		_block.SetFTags (&_f_tags);
-	}
-
-	Mesh::Block * GetBlock () { return &_block; }
-
-private:
-	Matrix<double> _c;
-	Array<double> _wx;
-	Array<double> _wy;
-	Array<double> _wz;
-	Vector<int>   _v_tags;
-	Vector<int>   _e_tags;
-	Vector<int>   _f_tags;
-	Mesh::Block   _block;
-
-}; // class PyMeshBlock
-
-void (PyMeshBlock::*PMBSet1)(int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy)                         = &PyMeshBlock::Set;
-void (PyMeshBlock::*PMBSet2)(int Tag, boopy::list const & C, boopy::list const & Wx, boopy::list const & Wy, boopy::list const & Wz) = &PyMeshBlock::Set;
-
-class PyMeshStruct
-{
-public:
-	PyMeshStruct ()           : _ms(sqrt(DBL_EPSILON)) {}
-	PyMeshStruct (double Tol) : _ms(Tol)               {}
-
-	Mesh::Structured const * GetMesh () const { return &_ms; }
-
-	size_t Generate (boopy::list & ListOfPyMeshBlock)
-	{
-		int nb = boopy::len(ListOfPyMeshBlock); if (nb<1) throw new Fatal("PyMeshStruct: Number of blocks must be greater than 0 (%d is invalid)",nb);
-		Array<Mesh::Block*> blocks;
-		blocks.Resize (nb);
-		for (int i=0; i<nb; ++i)
-		{
-			PyMeshBlock * blk = boopy::extract<PyMeshBlock*>(ListOfPyMeshBlock[i])();
-			blocks[i] = blk->GetBlock();
-		}
-		return _ms.Generate (blocks);
-	}
-
-	void WriteVTU (boopy::str FileName) { _ms.WriteVTU(boopy::extract<char const *>(FileName)()); }
-
-	void GetVerts (boopy::list & V)
-	{
-		if (_ms.Is3D())
-		{
-			for (size_t i=0; i<_ms.Verts().Size(); ++i)
-				V.append (boopy::make_tuple(_ms.Verts()[i]->C(0), _ms.Verts()[i]->C(1), _ms.Verts()[i]->C(2)));
-		}
-		else
-		{
-			for (size_t i=0; i<_ms.Verts().Size(); ++i)
-				V.append (boopy::make_tuple(_ms.Verts()[i]->C(0), _ms.Verts()[i]->C(1), 0.0));
-		}
-	}
-
-	void GetElems (boopy::list & E)
-	{
-		for (size_t i=0; i<_ms.Elems().Size(); ++i)
-		{
-			boopy::list conn;
-			for (size_t j=0; j<_ms.Elems()[i]->V.Size(); ++j)
-				conn.append (_ms.Elems()[i]->V[j]->MyID);
-			E.append (conn);
-		}
-	}
-
-	void GetETags (boopy::list & Tags)
-	{
-		/* Returns a list of tuples: [(int,int,int,int), (int,int,int,int), ..., num of elems with tags]
-		 *
-		 *   Each tuple has three values: (eid, L, R, tag)
-		 *
-		 *   where:  eid: element ID
-		 *           L:   global ID of the left vertex on edge
-		 *           R:   global ID of the right vertex on edge
-		 *           tag: edge tag
-		 */
-		for (size_t i=0; i<_ms.ElemsBry().Size(); ++i) // elements on boundary
-		{
-			for (int j=0; j<_ms.ElemsBry()[i]->ETags.Size(); ++j) // j is the local_edge_id
-			{
-				int tag = _ms.ElemsBry()[i]->ETags(j);
-				if (tag<0)
-				{
-					int eid = _ms.ElemsBry()[i]->MyID;
-					int L   = _ms.ElemsBry()[i]->V[Mesh::EDGE2VERT[j].L]->MyID;
-					int R   = _ms.ElemsBry()[i]->V[Mesh::EDGE2VERT[j].R]->MyID;
-					Tags.append (boopy::make_tuple(eid, L, R, tag));
-				}
-			}
-		}
-	}
-
-private:
-	Mesh::Structured _ms;
-
-}; // class PyMeshStruct
-
-#endif // USE_BOOST_PYTHON
-
 
 #endif // MECHSYS_MESH_STRUCTURED_H

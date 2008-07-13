@@ -71,32 +71,20 @@ int main(int argc, char **argv) try
 		double f = H-e;
 
 		// Lower block -- coordinates
-		Matrix<double> c0(2,8);
-		c0 =  r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
-		     0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.);
-
-		// Lower block -- weights
-		int ndivx0 = 20;
-		int ndivy0 = 30;
-		Array<double> wx0(ndivx0);  wx0 = 1.0;
-		Array<double> wy0(ndivy0);  wy0 = 1.0;
+		Mesh::Block b0;
+		b0.C() =  r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
+		         0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.);
+		b0.SetWx ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
+		b0.SetWy ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
 
 		// Upper block -- coordinates
-		Matrix<double> c1(2,8);
-		c1 =  b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
-		      e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.);
-
-		//for (int i=0; i<8; ++i) c1(1,i) += 1.;
-
-		// Upper block -- weights
-		int ndivx1 = ndivx0;
-		int ndivy1 = 40;
-		Array<double> wx1(ndivx1);  wx1 = 1.0;
-		Array<double> wy1(ndivy1);  wy1 = 1.0;
+		Mesh::Block b1;
+		b1.C() =  b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
+		          e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.);
+		b1.SetWx ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
+		b1.SetWy ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
 
 		// Blocks
-		Mesh::Block b0;  b0.Set (-1, &c0, &wx0, &wy0);
-		Mesh::Block b1;  b1.Set (-2, &c1, &wx1, &wy1);
 		Array<Mesh::Block*> blocks;  blocks.Resize(2);
 		blocks[0] = &b0;
 		blocks[1] = &b1;

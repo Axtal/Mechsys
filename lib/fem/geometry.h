@@ -136,6 +136,8 @@ public:
 	FEM::Geom       * GetGeom   ()               { return &_geom; }
 	FEM::Geom const * GetGeom   ()         const { return &_geom; }
 
+	void Out () const { std::cout << _geom << std::endl; }
+
 private:
 	// Data
 	FEM::Geom _geom;
