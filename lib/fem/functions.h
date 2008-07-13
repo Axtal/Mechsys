@@ -498,12 +498,12 @@ inline void WriteVTK (FEM::Geom const & G, char const * FileName)
 #ifdef USE_BOOST_PYTHON
 // {
 
-namespace boopy = boost::python;
+namespace BPy = boost::python;
 
-void PyWriteVTUEquilib (FEM::Geom const & G, boopy::str const & FileName) { FEM::WriteVTUEquilib(G, boopy::extract<char const *>(FileName)()); }
-void PyWriteVTK        (FEM::Geom const & G, boopy::str const & FileName) { FEM::WriteVTK       (G, boopy::extract<char const *>(FileName)()); }
+void PyWriteVTUEquilib (FEM::Geom const & G, BPy::str const & FileName) { FEM::WriteVTUEquilib(G, BPy::extract<char const *>(FileName)()); }
+void PyWriteVTK        (FEM::Geom const & G, BPy::str const & FileName) { FEM::WriteVTK       (G, BPy::extract<char const *>(FileName)()); }
 
-void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, FEM::Geom & G)
+void PySetGeom (Mesh::Generic const & M, BPy::list const & NodesBrys, BPy::list const & FacesBrys, BPy::list const & ElemsAtts, FEM::Geom & G)
 {
 	/* Example:
 	 *           # 1) Nodes brys
@@ -525,12 +525,12 @@ void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::l
 	{
 		if (len(NodesBrys[i])==5)
 		{
-			boopy::list lst = boopy::extract<boopy::list>(NodesBrys[i])();
-			nbrys[i] = boost::make_tuple(boopy::extract<double     >(lst[0])(),
-			                             boopy::extract<double     >(lst[1])(),
-			                             boopy::extract<double     >(lst[2])(),
-			                             boopy::extract<char const*>(lst[3])(),
-			                             boopy::extract<double     >(lst[4])());
+			BPy::list lst = BPy::extract<BPy::list>(NodesBrys[i])();
+			nbrys[i] = boost::make_tuple(BPy::extract<double     >(lst[0])(),
+			                             BPy::extract<double     >(lst[1])(),
+			                             BPy::extract<double     >(lst[2])(),
+			                             BPy::extract<char const*>(lst[3])(),
+			                             BPy::extract<double     >(lst[4])());
 		}
 		else throw new Fatal("PySetGeom: Each sublist in NodesBrys must have 5 items: x,y,z, key, val\n\tExample: NodesBrys = [[1.0, 0.0, 0.0, 'ux', 0.0]]");
 	}
@@ -543,10 +543,10 @@ void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::l
 	{
 		if (len(FacesBrys[i])==3)
 		{
-			boopy::list lst = boopy::extract<boopy::list>(FacesBrys[i])();
-			fbrys[i] = boost::make_tuple(boopy::extract<int        >(lst[0])(),
-			                             boopy::extract<char const*>(lst[1])(),
-			                             boopy::extract<double     >(lst[2])());
+			BPy::list lst = BPy::extract<BPy::list>(FacesBrys[i])();
+			fbrys[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
+			                             BPy::extract<char const*>(lst[1])(),
+			                             BPy::extract<double     >(lst[2])());
 		}
 		else throw new Fatal("PySetGeom: Each sublist in FacesBrys must have 3 items: tag, key, val\n\tExample: FacesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
 	}
@@ -559,12 +559,12 @@ void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::l
 	{
 		if (len(ElemsAtts[i])==5)
 		{
-			boopy::list lst = boopy::extract<boopy::list>(ElemsAtts[i])();
-			eatts[i] = boost::make_tuple(boopy::extract<int        >(lst[0])(),
-			                             boopy::extract<char const*>(lst[1])(),
-			                             boopy::extract<char const*>(lst[2])(),
-			                             boopy::extract<char const*>(lst[3])(),
-			                             boopy::extract<char const*>(lst[4])());
+			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
+			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
+			                             BPy::extract<char const*>(lst[1])(),
+			                             BPy::extract<char const*>(lst[2])(),
+			                             BPy::extract<char const*>(lst[3])(),
+			                             BPy::extract<char const*>(lst[4])());
 		}
 		else throw new Fatal("PySetGeom: Each sublist in ElemsAtts must have 5 items: tag, type, model, prms, inis\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']]");
 	}
@@ -573,7 +573,7 @@ void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::l
 	FEM::SetGeom (&M, nbrys, fbrys, eatts, &G);
 }
 
-void PySetGeomStructured (Mesh::Structured const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, FEM::Geom & G)
+void PySetGeomStructured (Mesh::Structured const & M, BPy::list const & NodesBrys, BPy::list const & FacesBrys, BPy::list const & ElemsAtts, FEM::Geom & G)
 {
 	PySetGeom (M, NodesBrys, FacesBrys, ElemsAtts, G);
 }
