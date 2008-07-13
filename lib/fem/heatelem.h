@@ -43,17 +43,18 @@ public:
 	virtual ~HeatElem() {}
 
 	// Derived methods
-	bool      IsReady         () const;
-	bool      IsEssential     (char const * DOFName) const;
-	void      SetModel        (char const * ModelName, char const * Prms, char const * Inis);
-	Element * Connect         (int iNodeLocal, FEM::Node * ptNode);
-	void      UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	void      BackupState     ();
-	void      RestoreState    ();
-	void      SetGeometryType (int Geom) {};  
-	void      SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
-	void      GetLabels       (Array<String> & Labels) const;
-	void      Deactivate      ();
+	bool         IsReady         () const;
+	bool         IsEssential     (char const * DOFName) const;
+	void         SetModel        (char const * ModelName, char const * Prms, char const * Inis);
+	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
+	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void         BackupState     ();
+	void         RestoreState    ();
+	void         SetGeometryType (int Geom) {};  
+	void         SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
+	void         GetLabels       (Array<String> & Labels) const;
+	void         Deactivate      ();
+	char const * ModelName       () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder1Matrices () const { return 1; }

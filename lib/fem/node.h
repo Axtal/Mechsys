@@ -67,23 +67,24 @@ public:
 
 	// Methods
 	void   Initialize     (int ID, double X, double Y, double Z);                              ///< Set the ID of this node and its coordinates
-	void   AddDOF         (char const * StrEssentialBry, char const * StrNaturalBry);          ///< TODO
-	bool   IsEssential    (char const * Name) const;                                           ///< TODO
+	void   AddDOF         (char const * StrEssentialBry, char const * StrNaturalBry);          ///< Add a degree of freedom
+	bool   IsEssential    (char const * Name) const;                                           ///< Check if a degree of freedom is essential
 	void   SetSharedBy    (int ElementID);                                                     ///< Set a new element which shares this node
 	void   RemoveSharedBy (int ElementID);                                                     ///< Remove an element which shares this node
-	bool   HasVar         (char const * Name) const { return (_find_var(Name)<0?false:true); } ///< TODO
+	bool   HasVar         (char const * Name) const { return (_find_var(Name)<0?false:true); } ///< Check if this node has a variable, such as ux, fx, etc., named Name
 	void   ClearBryValues ();                                                                  ///< Clear only boundary information, but does NOT change (calculated) EssentialVal and NaturalVal (U and F values)
 
 	// DOFs access methods
-	DOF & DOFVar(char const * Name);
-	DOF & DOFVar(int Index) { return _dofs[Index]; }
+	DOF       & DOFVar (char const * Name);                       ///< Access a DOF structure by name (read/write)
+	DOF       & DOFVar (int Index)       { return _dofs[Index]; } ///< Access a DOF structure by index (read/write)
+	DOF const & DOFVar (int Index) const { return _dofs[Index]; } ///< Access a DOF structure by index (read-only)
 
 	// Access methods
 	long   GetID     ()          const { return _my_id; }            ///< Return the ID of this node
 	double X         ()          const { return _x;     }            ///< X coordinate
 	double Y         ()          const { return _y;     }            ///< Y coordinate
 	double Z         ()          const { return _z;     }            ///< Z coordinate
-	size_t nDOF      ()          const { return _dofs.Size();      } ///< TODO
+	size_t nDOF      ()          const { return _dofs.Size();      } ///< Return the number of degrees of freedom
 	size_t nSharedBy ()          const { return _shared_by.Size(); } ///< Return the array with the elements that share this node
 	long   SharedBy  (int Index) const { return _shared_by[Index]; } ///< Return the array with the elements that share this node
 	double Val       (char const * Name) const;                      ///< Return the essential or natural value (computed/current). Ex.: Name="ux", "fx", etc.
@@ -210,15 +211,26 @@ inline long Node::_find_var(char const * Name) const
 
 // operator <<
 
-/** Outputs nodes. */
-std::ostream & operator<< (std::ostream & os, Array<FEM::Node> const & nodes)
+/** Outputs a DOF. */
+std::ostream & operator<< (std::ostream & os, FEM::Node::DOF const & D)
 {
-	os << "Number of nodes = " << nodes.Size() << std::endl;
-	os << Util::_6 << "Name" << Util::_8s << "EssentialBry" << Util::_8s << "NaturalBry" << Util::_a << "Epresc?" << Util::_6 << "EqID" << Util::_8s << "EssentialVal" << Util::_8s << "NaturalVal" << std::endl;
-	for (size_t i=0; i<nodes.Size(); ++i)
-	{
-		os << "Node #" << i << " X=" << nodes[i].X() << " Y=" << nodes[i].Y() << " Z=" << nodes[i].Z() << std::endl;
-	}
+	os << "{" << D.EssentialBryName << ","
+	          << D.NaturalBryName   << ","
+	          << D.EssentialBry     << ","
+	          << D.NaturalBry       << ","
+	          << D.IsEssenPresc     << ","
+	          << D.EqID             << ","
+	          << D.EssentialVal     << ","
+	          << D.NaturalVal       << "}";
+	return os;
+}
+
+/** Outputs a node. */
+std::ostream & operator<< (std::ostream & os, FEM::Node const & N)
+{
+	os << "[" << N.GetID() << "] (" << Util::_8_4<<N.X() << "," << Util::_8_4<<N.Y() << "," << Util::_8_4<<N.Z() << ")";
+	for (size_t i=0; i<N.nDOF(); ++i)
+		os << " : " << N.DOFVar(i);
 	return os;
 }
 

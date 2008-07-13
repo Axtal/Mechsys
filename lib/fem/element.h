@@ -70,7 +70,8 @@ public:
 	bool         IsInside   (double x, double y, double z) const;     ///< Check if a node is inside the element
 
 	// Methods that MUST be overriden by derived classes
-	virtual String Name() const =0;
+	virtual char const * Name      () const =0;
+	virtual char const * ModelName () const =0;
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
 	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis
@@ -437,6 +438,16 @@ inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValu
 	// Set nodes Brys
 	for (size_t i=0; i<_n_face_nodes; ++i)
 		FaceConnects[i]->Bry(Key,values(i));
+}
+
+
+/** Outputs an element. */
+std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
+{
+	os << "[" << E.GetID() << "] " << E.Name() << " " << E.ModelName() << "\n";
+	for (size_t i=0; i<E.nNodes(); ++i)
+		os << "   " << (*E.Nod(i)) << "\n";
+	return os;
 }
 
 

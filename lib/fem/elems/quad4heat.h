@@ -30,10 +30,10 @@ class Quad4Heat : public Quad4, public HeatElem
 {
 public:
 	// Constants
-	static String NAME;
+	static char const * NAME;
 
 	// Derived methods
-	String Name() const { return NAME; };
+	char const * Name() const { return NAME; };
 
 private:
 	// Private methods
@@ -42,7 +42,7 @@ private:
 }; // class Quad4Heat
 
 // Quad4Heat constants
-String Quad4Heat::NAME = "Quad4Heat";
+char const * Quad4Heat::NAME = "Quad4Heat";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

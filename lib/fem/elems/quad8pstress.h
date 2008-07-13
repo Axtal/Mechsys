@@ -30,10 +30,10 @@ class Quad8PStress : public Quad8, public EquilibElem
 {
 public:
 	// Constants
-	static String NAME;
+	static char const * NAME;
 
 	// Derived methods
-	String Name() const { return NAME; };
+	char const * Name() const { return NAME; };
 
 private:
 	// Private methods
@@ -42,7 +42,7 @@ private:
 }; // class Quad8PStress
 
 // Quad8PStress constants
-String Quad8PStress::NAME = "Quad8PStress";
+char const * Quad8PStress::NAME = "Quad8PStress";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

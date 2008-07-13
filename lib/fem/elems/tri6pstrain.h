@@ -30,10 +30,10 @@ class Tri6PStrain : public Tri6, public EquilibElem
 {
 public:
 	// Constants
-	static String NAME;
+	static char const * NAME;
 
 	// Derived methods
-	String Name() const { return NAME; };
+	char const * Name() const { return NAME; };
 
 private:
 	// Private methods
@@ -42,7 +42,7 @@ private:
 }; // class Tri6PStrain
 
 // Tri6PStrain constants
-String Tri6PStrain::NAME = "Tri6PStrain";
+char const * Tri6PStrain::NAME = "Tri6PStrain";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

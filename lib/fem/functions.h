@@ -36,6 +36,7 @@
 #include "util/array.h"
 #include "util/numstreams.h"
 #include "util/exception.h"
+#include "mesh/mesh.h"
 #include "mesh/structured.h"
 
 #ifndef VTU_NEWLINE_DEFINED
@@ -53,7 +54,7 @@ typedef Array< boost::tuple<double,double,double, char const *,double> >        
 typedef Array< boost::tuple<                 int, char const *,double> >               FBrys_T; //   tag, key, val
 typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*> > EAtts_T; // tag, type, model, prms, inis
 
-inline void SetGeom (Mesh::Structured const * M, NBrys_T const & NodesBrys, FBrys_T const & FacesBrys, EAtts_T const & ElemsAtts, FEM::Geom * G)
+inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T const & FacesBrys, EAtts_T const & ElemsAtts, FEM::Geom * G)
 {
 	/* Example:
 	
@@ -492,7 +493,7 @@ namespace boopy = boost::python;
 void PyWriteVTUEquilib (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTUEquilib((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
 void PyWriteVTK        (PyGeom const & G, boopy::str const & FileName) { FEM::WriteVTK       ((*G.GetGeom()), boopy::extract<char const *>(FileName)()); }
 
-void PySetGeom (PyMeshStruct const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, PyGeom & G)
+void PySetGeom (Mesh::Generic const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, PyGeom & G)
 {
 	/* Example:
 	 *           # 1) Nodes brys
@@ -559,7 +560,12 @@ void PySetGeom (PyMeshStruct const & M, boopy::list const & NodesBrys, boopy::li
 	}
 
 	// Set geometry
-	FEM::SetGeom (M.GetMesh(), nbrys, fbrys, eatts, G.GetGeom());
+	FEM::SetGeom (&M, nbrys, fbrys, eatts, G.GetGeom());
+}
+
+void PySetGeomStructured (Mesh::Structured const & M, boopy::list const & NodesBrys, boopy::list const & FacesBrys, boopy::list const & ElemsAtts, PyGeom & G)
+{
+	PySetGeom (M, NodesBrys, FacesBrys, ElemsAtts, G);
 }
 
 // }

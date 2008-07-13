@@ -30,10 +30,10 @@ class Quad8PStrain : public Quad8, public EquilibElem
 {
 public:
 	// Constants
-	static String NAME;
+	static char const * NAME;
 
 	// Derived methods
-	String Name() const { return NAME; };
+	char const * Name() const { return NAME; };
 
 private:
 	// Private methods
@@ -42,7 +42,7 @@ private:
 }; // class Quad8PStrain
 
 // Quad8PStrain constants
-String Quad8PStrain::NAME = "Quad8PStrain";
+char const * Quad8PStrain::NAME = "Quad8PStrain";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

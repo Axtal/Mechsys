@@ -30,10 +30,10 @@ class Hex8Equilib : public Hex8, public EquilibElem
 {
 public:
 	// Constants
-	static String NAME;
+	static char const * NAME;
 
 	// Derived methods
-	String Name() const { return NAME; };
+	char const * Name() const { return NAME; };
 
 private:
 	// Private methods
@@ -42,7 +42,7 @@ private:
 }; // class Hex8Equilib
 
 // Hex8Equilib constants
-String Hex8Equilib::NAME = "Hex8Equilib";
+char const * Hex8Equilib::NAME = "Hex8Equilib";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

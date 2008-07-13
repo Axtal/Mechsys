@@ -98,6 +98,14 @@ inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
 	return _elems[i];
 }
 
+/** Outputs a geometry. */
+std::ostream & operator<< (std::ostream & os, FEM::Geom const & G)
+{
+	for (size_t i=0; i<G.nElems(); ++i)
+		os << (*G.Ele(i));
+	return os;
+}
+
 }; // namespace FEM
 
 

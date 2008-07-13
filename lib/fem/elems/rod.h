@@ -30,10 +30,10 @@ class Rod : public Lin2, public EquilibElem
 {
 public:
 	// Constants
-	static String NAME;
+	static char const * NAME;
 
 	// Derived methods
-	String Name() const { return NAME; };
+	char const * Name() const { return NAME; };
 
 private:
 	// Private methods
@@ -42,7 +42,7 @@ private:
 }; // class Rod
 
 // Rod constants
-String Rod::NAME = "Rod";
+char const * Rod::NAME = "Rod";
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
