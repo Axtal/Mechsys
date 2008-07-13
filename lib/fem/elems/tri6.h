@@ -101,6 +101,7 @@ inline Tri6::Tri6()
 
 	// Allocate nodes (connectivity)
 	_connects.Resize(_n_nodes);
+	_connects = NULL;
 
 	// Setup pointer to the array of Integration Points
 	_a_int_pts      = TRI6_INTPTS;
