@@ -39,12 +39,13 @@ public:
 	virtual ~LinHeat () {}
 
 	// Derived Methods
-	void SetPrms      (char const * Prms);
-	void SetInis      (char const * Inis);
-	void TgStiffness  (Matrix<double> & D) const { D = _K; };
-	int  UpdateState  (Vector<double> const & DEps, Vector<double> & DSig);
-	void BackupState  ();
-	void RestoreState ();
+	void         SetPrms      (char const * Prms);
+	void         SetInis      (char const * Inis);
+	void         TgStiffness  (Matrix<double> & D) const { D = _K; };
+	int          UpdateState  (Vector<double> const & DEps, Vector<double> & DSig);
+	void         BackupState  ();
+	void         RestoreState ();
+	char const * Name         () const { return "LinHeat"; }
 
 private:
 	// Data

@@ -46,12 +46,13 @@ public:
 	virtual ~LinElastic () {}
 
 	// Derived Methods
-	void SetPrms      (char const * Prms);
-	void SetInis      (char const * Inis);
-	void TgStiffness  (Matrix<double> & D) const { Tensor4ToMatrix (_geom, _De, D); };
-	int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig);
-	void BackupState  ();
-	void RestoreState ();
+	void         SetPrms      (char const * Prms);
+	void         SetInis      (char const * Inis);
+	void         TgStiffness  (Matrix<double> & D) const { Tensor4ToMatrix (_geom, _De, D); };
+	int          StressUpdate (Vector<double> const & DEps, Vector<double> & DSig);
+	void         BackupState  ();
+	void         RestoreState ();
+	char const * Name         () const { return "LinElastic"; }
 
 private:
 	// Data

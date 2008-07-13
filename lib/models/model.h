@@ -34,7 +34,8 @@ public:
 	virtual void SetInis (char const * Inis) =0;
 
 	// Access methods that MUST be derived
-	virtual double Val (char const * Name) const =0; ///< Value: Sx, Sy, Ex, Ey, Wp, z0, etc.
+	virtual double       Val  (char const * Name) const =0; ///< Value: Sx, Sy, Ex, Ey, Wp, z0, etc.
+	virtual char const * Name ()                  const =0; ///< Return the name of the constitutive model
 
 }; // class Model
 
