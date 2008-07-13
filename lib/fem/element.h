@@ -372,7 +372,7 @@ inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & L
 	// Fill matrix with values
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (size_t j=0; j< nlabels; ++j)
-		Values(i,j) = Val(i, Labels[j].GetSTL().c_str());
+		Values(i,j) = Val(i, Labels[j].CStr());
 }
 
 inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 

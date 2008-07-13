@@ -45,7 +45,7 @@ public:
 	// Constructor
 	Message(String const & Fmt, ...);
 	// Methods
-	void Cout     () const { std::cout << "[1;32m" << "Message: " << _msg.GetSTL() << "[0m" << std::endl; }
+	void Cout     () const { std::cout << "[1;32m" << "Message: " << _msg.CStr() << "[0m" << std::endl; }
 	bool IsFatal  () const { return false; }
 	bool IsWarning() const { return false; }
 }; // class Message
@@ -56,7 +56,7 @@ public:
 	// Constructor
 	Warning(String const & Fmt, ...);
 	// Methods
-	void Cout     () const { std::cout << "[34m" << "Warning: " << _msg.GetSTL() << "[0m" << std::endl; }
+	void Cout     () const { std::cout << "[34m" << "Warning: " << _msg.CStr() << "[0m" << std::endl; }
 	bool IsFatal  () const { return false; }
 	bool IsWarning() const { return true;  }
 }; // class Warning
@@ -67,7 +67,7 @@ public:
 	// Constructor
 	Fatal(String const & Fmt, ...);
 	// Methods
-	void Cout     () const { std::cout << "[1;31m" << "Fatal: " << _msg.GetSTL() << "[0m" << std::endl; }
+	void Cout     () const { std::cout << "[1;31m" << "Fatal: " << _msg.CStr() << "[0m" << std::endl; }
 	bool IsFatal  () const { return true;  }
 	bool IsWarning() const { return false; }
 }; // class Fatal
@@ -107,8 +107,8 @@ inline Fatal::Fatal(String const & Fmt, ...)
 void PyExceptTranslator (Exception * e)
 {
 	String msg;
-	msg.Printf("[1;31m%s[0m",e->Msg().GetSTL().c_str());
-	PyErr_SetString(PyExc_UserWarning, msg.GetSTL().c_str());
+	msg.Printf("[1;31m%s[0m",e->Msg().CStr());
+	PyErr_SetString(PyExc_UserWarning, msg.CStr());
 	//if (e->IsFatal()) {delete e; exit(1);}
 	delete e;
 }

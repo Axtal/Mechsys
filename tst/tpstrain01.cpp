@@ -130,12 +130,12 @@ int main(int argc, char **argv) try
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
 	for (size_t i=0; i<g.nElems(); ++i)
-		g.Ele(i)->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+		g.Ele(i)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 	cout << "NormResid = " << sol->GetVar("NormResid") << endl;
 

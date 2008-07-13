@@ -82,7 +82,7 @@ int main(int argc, char **argv) try
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	// Stiffness

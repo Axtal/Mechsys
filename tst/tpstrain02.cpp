@@ -117,7 +117,7 @@ int main(int argc, char **argv) try
 	// 3) Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
+	eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
 
 	// 4) Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetGeom (&ms, nbrys, fbrys, eatts, &g);
@@ -127,7 +127,7 @@ int main(int argc, char **argv) try
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	start = std::clock(); // Initial time
-	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> SetCte("DTOL", 1.0e-10);
 	sol -> Solve();
 	total = std::clock() - start; // Time elapsed

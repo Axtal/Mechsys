@@ -82,10 +82,10 @@ inline void Solve(Sparse::Matrix<double,int> const & A, LinAlg::Vector<double> c
 	double *null = (double *)NULL;
 	void *symbolic, *numeric;
 	int info = 0;
-	info = umfpack_di_symbolic      (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);              if (info<0) throw new Fatal(_("UMFPACK::Solve: umfpack_dl_symbolic failed. %s"),ErrorMsg(info).GetSTL().c_str());
-	info = umfpack_di_numeric       (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);                         if (info<0) throw new Fatal(_("UMFPACK::Solve: umfpack_dl_numeric failed. %s"),ErrorMsg(info).GetSTL().c_str());
+	info = umfpack_di_symbolic      (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);              if (info<0) throw new Fatal(_("UMFPACK::Solve: umfpack_dl_symbolic failed. %s"),ErrorMsg(info).CStr());
+	info = umfpack_di_numeric       (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);                         if (info<0) throw new Fatal(_("UMFPACK::Solve: umfpack_dl_numeric failed. %s"),ErrorMsg(info).CStr());
 	       umfpack_di_free_symbolic (&symbolic);
-	info = umfpack_di_solve         (UMFPACK_A, A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), X.GetPtr(), B.GetPtr(), numeric, null, null); if (info<0) throw new Fatal(_("UMFPACK::Solve: umfpack_dl_solve failed. %s"),ErrorMsg(info).GetSTL().c_str());
+	info = umfpack_di_solve         (UMFPACK_A, A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), X.GetPtr(), B.GetPtr(), numeric, null, null); if (info<0) throw new Fatal(_("UMFPACK::Solve: umfpack_dl_solve failed. %s"),ErrorMsg(info).CStr());
 	       umfpack_di_free_numeric  (&numeric);
 }
 

@@ -258,7 +258,7 @@ inline int Gesv(LinAlg::Matrix<double> const & A, LinAlg::Vector<double> & Y)
 		{
 			for (int j=0; j<A.Rows(); ++j)
 			{
-				buf.Printf("   %2s",letters[static_cast<int>(A(i,j))].GetSTL().c_str());
+				buf.Printf("   %2s",letters[static_cast<int>(A(i,j))].CStr());
 				msg.append(buf);
 			}
 			msg.append("\n");
@@ -307,7 +307,7 @@ inline int Gesv(LinAlg::Matrix<double> const & A, LinAlg::Vector<double> & Y)
 				int j_glob = IndxL2G(j_loc, nb, mycol, isrc, npcol);
 #ifdef DO_DEBUG
 				// Debug
-				buf.Printf("  [%d,%d]=A(%d,%d)=%2s",i_loc,j_loc,i_glob,j_glob,letters[static_cast<int>(A(i_glob,j_glob))].GetSTL().c_str());
+				buf.Printf("  [%d,%d]=A(%d,%d)=%2s",i_loc,j_loc,i_glob,j_glob,letters[static_cast<int>(A(i_glob,j_glob))].CStr());
 				msg.append(buf);
 #endif
 				// Fill [loc_A]

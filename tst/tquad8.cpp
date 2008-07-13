@@ -99,7 +99,7 @@ int main(int argc, char **argv) try
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	g.Ele(0)->SetModel("LinElastic", prms.GetSTL().c_str(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	g.Ele(0)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;
@@ -110,7 +110,7 @@ int main(int argc, char **argv) try
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.GetSTL().c_str()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	// Output

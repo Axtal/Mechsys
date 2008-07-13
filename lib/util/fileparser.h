@@ -70,7 +70,7 @@ public:
 	static bool CheckForFile(String const & Filename)
 	{
 		// returns true if file exists and false otherwise
-		std::ifstream file(Filename.GetSTL().c_str(),std::ios::in);
+		std::ifstream file(Filename.CStr(),std::ios::in);
 		if     (file.fail()) { return false; }
 		else { file.close();   return true;  }
 	}
@@ -160,7 +160,7 @@ inline void FileParser::JumpCommentsOrBlanks()
 {
 	do
 	{
-		std::istringstream iss(_str_current_line.GetSTL());
+		std::istringstream iss(_str_current_line.CStr());
 		String word;
 		if (iss>>word) // Comments or data
 		{
@@ -183,7 +183,7 @@ inline void FileParser::JumpCommentsOrBlanks()
 template<typename Type>
 inline void FileParser::ReadFirstWord(Type & Val)
 {
-	std::istringstream iss(_str_current_line.GetSTL());
+	std::istringstream iss(_str_current_line.CStr());
 	if (!(iss >> Val))
 		throw new Fatal(_("FileParser::ReadFirstWord: Invalid data value. _current_line_num = %d"), _current_line_num);
 }
@@ -194,7 +194,7 @@ inline void FileParser::_open(String const & Filename)
 	_is_EOF = false;
 
 	// Open file
-	_file.open(Filename.GetSTL().c_str(), std::ios::in);
+	_file.open(Filename.CStr(), std::ios::in);
 	if (_file.fail())
 		throw new Warning(_("FileParser::Constructor: Could not open file < %s >"), Filename.c_str());
 	

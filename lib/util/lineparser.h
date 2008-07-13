@@ -32,10 +32,10 @@
 class LineParser : public std::istringstream
 {
 public:
-	LineParser(std::string const & Line) : std::istringstream(Line)          {}
-	LineParser(     String const & Line) : std::istringstream(Line.GetSTL()) {}
-	LineParser(       char const * Line) : std::istringstream(Line)          {}
-	void Reset(     String const & Line) { Reset(Line.GetSTL()); }
+	LineParser(std::string const & Line) : std::istringstream(Line)        {}
+	LineParser(     String const & Line) : std::istringstream(Line.CStr()) {}
+	LineParser(       char const * Line) : std::istringstream(Line)        {}
+	void Reset(     String const & Line) { Reset(Line.CStr()); }
 	void Reset(       char const * Line)
 	{
 		(*this).clear();
@@ -55,7 +55,7 @@ public:
 
 	void Set(String const & S)
 	{
-		this->str(S.GetSTL());
+		this->str(S.CStr());
 	}
 
 	template<typename Type>
@@ -159,7 +159,7 @@ inline void LineParser::SeparatedLine(std::string const & Separator, Array<std::
 
 inline void LineParser::SeparatedLine(String const & Separator, Array<String> & Res)
 {
-	std::string        sep = Separator.GetSTL();
+	std::string        sep = Separator.CStr();
 	Array<std::string> arr;
 	SeparatedLine(sep,arr);
 	size_t len = arr.Size();
@@ -214,39 +214,39 @@ inline void LineParser::PathSubstituteEnv()
 	// Find if the string start with a slash "/" => fullpath
 	String path;
 	bool is_fullpath = ( this->str().c_str()[0]=='/' ? true : false );
-	if (is_fullpath) path.append(_T("/"));
+	if (is_fullpath) path.append("/");
 
 	// Substitute environmental variables
 	Array<String> pieces;
-	this->SeparatedLine(_T("/"),pieces);
+	this->SeparatedLine("/",pieces);
 
 
 	for (size_t k=0; k<pieces.Size(); ++k)
 	{
-		char const * piece = pieces[k].GetSTL().c_str();
+		char const * piece = pieces[k].CStr();
 		if (piece[0]=='$')
 		{
 			String envvar_name(pieces[k].substr(1).c_str()); // substr(1) to remove the "$"
-			char * envvar_res = getenv(envvar_name.GetSTL().c_str());
-			if (envvar_res==NULL) throw new Fatal(_("Could not find \"%s\" enviroment variable in this system."),envvar_name.GetSTL().c_str());
+			char * envvar_res = getenv(envvar_name.CStr());
+			if (envvar_res==NULL) throw new Fatal(_("Could not find \"%s\" enviroment variable in this system."),envvar_name.CStr());
 			String envvar_value(envvar_res);
 			//std::cout << "envvar_name  = " << envvar_name << std::endl;
 			//std::cout << "envvar_value = " << envvar_value << std::endl;
 			if (k==0)
 			{
-				char const * tmp_piece = envvar_value.GetSTL().c_str();
-				if (tmp_piece[0]!='/' && is_fullpath) path.append(_T("/"));
+				char const * tmp_piece = envvar_value.CStr();
+				if (tmp_piece[0]!='/' && is_fullpath) path.append("/");
 			}
-			else path.append(_T("/"));
+			else path.append("/");
 			path.append(envvar_value);
 		}
 		else
 		{
 			if (k==0)
 			{
-				if (piece[0]!='/' && is_fullpath) path.append(_T("/"));
+				if (piece[0]!='/' && is_fullpath) path.append("/");
 			}
-			else path.append(_T("/"));
+			else path.append("/");
 			path.append(pieces[k]);
 		}
 	}
@@ -264,12 +264,12 @@ inline void LineParser::FileBasename(String const & ExtensionToRemove, String & 
 	 */
 
 	Array<String> pieces;
-	this->SeparatedLine(_T("/"),pieces);
+	this->SeparatedLine("/",pieces);
 	Basename = pieces[pieces.Size()-1];
-	if (ExtensionToRemove!=String(_T("")))
+	if (ExtensionToRemove!=String(""))
 	{
 		if (ExtensionToRemove.size()!=3)
-			throw new Fatal(_("LineParser::FileBasename: The ExtensionToRemove (=%s) must have three characters, ex.: \"dat\""),ExtensionToRemove.GetSTL().c_str());
+			throw new Fatal(_("LineParser::FileBasename: The ExtensionToRemove (=%s) must have three characters, ex.: \"dat\""),ExtensionToRemove.CStr());
 		String extension(Basename.substr(Basename.size()-3).c_str());
 		if (extension==ExtensionToRemove)
 			Basename = Basename.substr(0,Basename.size()-4).c_str();
