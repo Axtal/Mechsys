@@ -62,18 +62,22 @@
 
 using namespace boost::python;
 
-
-
 BOOST_PYTHON_MODULE (mechsys)
 {
 	// --------------------------------------------------------------------------- Mesh
 
 	class_<Mesh::Generic>("mesh_generic")
 	    .def(init<double>())
-	    .def("write_vtu", &Mesh::Generic::PyWriteVTU)
-	    .def("get_verts", &Mesh::Generic::PyGetVerts)
-	    .def("get_elems", &Mesh::Generic::PyGetElems)
-	    .def("get_etags", &Mesh::Generic::PyGetETags)
+	    .def("write_vtu",  &Mesh::Generic::PyWriteVTU)
+	    .def("get_verts",  &Mesh::Generic::PyGetVerts)
+	    .def("get_elems",  &Mesh::Generic::PyGetElems)
+	    .def("get_etags",  &Mesh::Generic::PyGetETags)
+	    .def("set_nverts", &Mesh::Generic::PySetNVerts)
+	    .def("set_nelems", &Mesh::Generic::PySetNElems)
+	    .def("set_vert",   &Mesh::Generic::PySetVert2D)
+	    .def("set_vert",   &Mesh::Generic::PySetVert3D)
+	    .def("set_elem",   &Mesh::Generic::PySetElem)
+	    .def(self_ns::str(self))
 	    ;
 
 	class_<Mesh::Block>("mesh_block")
@@ -90,6 +94,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("get_elems", &Mesh::Structured::PyGetElems)
 	    .def("get_etags", &Mesh::Structured::PyGetETags)
 	    .def("generate",  &Mesh::Structured::PyGenerate)
+	    .def(self_ns::str(self))
 	    ;
 
 	// ---------------------------------------------------------------------------- FEM

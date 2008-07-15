@@ -100,6 +100,8 @@ int main(int argc, char **argv) try
 	clock_t total = std::clock() - start; // Time elapsed
 	cout << "[1;33m"<<ne<<" elements[0m. Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
+	cout << ms << endl;
+
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// 0) Geometry

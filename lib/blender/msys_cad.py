@@ -189,7 +189,22 @@ def button_event(evt):
     # run a FE simulation
     elif evt==EVT_FE_RUN:
         edm, obj, msh = get_mesh()
-        fem.run_fea(obj, msh, [[-10, -20], ['uy', 'fy'], [0.0, -1]], '', '')
+
+        # 1) Nodes brys
+        nbrys = [[1., 0.0, 0.0, 'ux', 0.0]] # x,y,z, key, val
+
+        # 2) Faces brys
+        fbrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
+                 [-20, 'fy',  -1]] # [tag], [key], [val]
+
+        # 3) Elements attributes
+        E = 207
+        nu = 0.3
+        eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [model], [prms], [inis]
+
+        fem.run_fea2d (obj, msh, nbrys, fbrys, eatts)
+
+        #fem.run_fea(obj, msh, [[-10, -20], ['uy', 'fy'], [0.0, -1]], '', '')
         if edm: Blender.Window.EditMode(1) # return to EditMode
 
 

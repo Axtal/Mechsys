@@ -414,8 +414,8 @@ def gen_struct_mesh():
                 elif len(msh.edges)==8: #2D - o2
                     res = gen_blk_2d (obj, msh)
                     if len(res)>0:
-                        bks.append  (ms.mesh_block())
-                        bks[-1].set (res[0], res[1], res[2])
+                        bks.append    (ms.mesh_block())
+                        bks[-1].set2d (-1, res[0], res[1], res[2])
                         if len(res[3]): bks[-1].set_etags (res[3])
                         print res[3]
                         obj.select (0)
@@ -437,7 +437,7 @@ def gen_struct_mesh():
         key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
 
         # generate mesh and write VTU file for ParaView
-        mms = ms.mesh_struct()
+        mms = ms.mesh_structured()
         ne  = mms.generate (bks)
         #mms.write_vtu (key+'.vtu')
         print '[1;34mMechSys[0m: [1;33m%d[0m elements generated' % ne

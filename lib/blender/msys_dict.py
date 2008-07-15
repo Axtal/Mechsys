@@ -137,6 +137,17 @@ def get_tags(obj, key):
     return res 
 
 
+def get_verts_on_edges_with_tags(obj, msh):
+    etags = get_tags (obj, 'edge')
+    verts = []
+    for e in etags:
+        idx1 = msh.edges[e[0]].v1.index
+        idx2 = msh.edges[e[0]].v2.index
+        if idx1 not in verts: verts.append(idx1)
+        if idx2 not in verts: verts.append(idx2)
+    return verts
+
+
 def get_tags_list(obj, key, global_ids):
     # In:
     #      key        = 'edge' or 'face'

@@ -1,6 +1,7 @@
 # Modules
 import Blender
 import bpy
+import os
 import math
 import mechsys as ms
 import msys_dict as di
@@ -46,21 +47,64 @@ def set_geometry(obj, msh, edge_brys):
     # return FE geometry structure
     return g
 
-def run_fea(obj, msh, edge_brys, prms, inis):
-    # geometry
-    g = set_geometry (obj, msh, edge_brys)
+def fill_mesh2d(obj, msh):
 
-    # parameters and initial values
-    for i in range(g.nelems()):
-        g.ele(i).set_model('LinElastic', 'E=1000 nu=0.25', 'Sx=0.0')
+    # MechSys::Mesh::Generic
+    mg = ms.mesh_generic()
+
+    # transform mesh to global coordinates
+    ori = msh.verts[:] # create a copy in local coordinates
+    msh.transform (obj.matrix)
+
+    # Vertices
+    res = di.get_verts_on_edges_with_tags (obj, msh)
+    mg.set_nverts (len(msh.verts))
+    for i, v in enumerate(msh.verts):
+        if i in res: onbry = True
+        else:        onbry = False
+        mg.set_vert (i, onbry, v.co[0], v.co[1]) # ,OnBry, Dupl, etc
+
+
+    # Elements
+    mg.set_nelems (len(msh.faces))
+    for i, f in enumerate(msh.faces):
+        eds            = f.edge_keys
+        eds_global_ids = [msh.findEdges(vs[0], vs[1]) for vs in eds]
+        eds_tags_list  = di.get_tags_list (obj, 'edge', eds_global_ids)
+        if len(eds_tags_list)>0: onbry = True
+        else:                    onbry = False
+        mg.set_elem (i, -1, onbry, [v.index for v in f.verts], eds_tags_list) # Tag, OnBry, ETags, etc
+
+    #mg.write_vtu('toto.vtu') # does NOT work because Mesh::General does not know the type of element (default is Lin2)
+
+    # restore local coordinates
+    msh.verts = ori
+
+    return mg
+
+def run_fea2d(obj, msh, nbrys, fbrys, eatts):
+    # set cursor
+    Blender.Window.WaitCursor(1)
+
+    # mesh
+    m2d = fill_mesh2d (obj, msh)
+
+    # set geometry
+    g2d = ms.geom(2)
+    ms.set_geom (m2d, nbrys, fbrys, eatts, g2d)
 
     # solve
     sol = ms.solver('ForwardEuler')
-    sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
+    sol.set_geom(g2d).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
     sol.solve()
 
     # output
     bfn = Blender.sys.expandpath (Blender.Get('filename'))
     key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
-    ms.write_vtu_equilib(g, key+'.vtu')
+    ms.write_vtu_equilib(g2d, key+'.vtu')
     print '[1;34mMechSys[0m: file <'+ key+'.vtu> generated'
+
+    os.popen('paraview --data='+key+'.vtu')
+
+    # restore cursor
+    Blender.Window.WaitCursor(0)

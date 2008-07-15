@@ -36,6 +36,7 @@
 // MechSys
 #include "util/array.h"
 #include "util/exception.h"
+#include "util/numstreams.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 
@@ -107,10 +108,15 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-	void PyWriteVTU (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
-	void PyGetVerts (BPy::list & V) const;
-	void PyGetElems (BPy::list & E) const;
-	void PyGetETags (BPy::list & T) const;
+	void PyWriteVTU  (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
+	void PyGetVerts  (BPy::list & V) const;
+	void PyGetElems  (BPy::list & E) const;
+	void PyGetETags  (BPy::list & T) const;
+	void PySetNVerts (size_t NumVerts);
+	void PySetNElems (size_t NumElems);
+	void PySetVert2D (int i, bool IsOnBry, double X, double Y);
+	void PySetVert3D (int i, bool IsOnBry, double X, double Y, double Z);
+	void PySetElem   (int i, int Tag, bool IsOnBry, BPy::list const & Conn, BPy::list const & EdgeTags);
 // }
 #endif
 
@@ -310,7 +316,7 @@ inline void Generic::PyGetElems(BPy::list & E) const
 	}
 }
 
-void Generic::PyGetETags(BPy::list & Tags) const
+inline void Generic::PyGetETags(BPy::list & Tags) const
 {
 	/* Returns a list of tuples: [(int,int,int,int), (int,int,int,int), ..., num of elems with tags]
 	 *
@@ -337,6 +343,81 @@ void Generic::PyGetETags(BPy::list & Tags) const
 	}
 }
 
+inline void Generic::PySetNVerts(size_t NumVerts)
+{
+	_erase();
+	_verts.Resize(NumVerts);
+	_verts = NULL;
+	_verts_bry.Resize(0);
+}
+
+inline void Generic::PySetNElems(size_t NumElems)
+{
+	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
+	_elems.Resize(NumElems);
+	_elems = NULL;
+	_elems_bry.Resize(0);
+}
+
+inline void Generic::PySetVert2D(int i, bool IsOnBry, double X, double Y)
+{
+	// Set _verts
+	if (_verts[i]==NULL) _verts[i] = new Vertex;
+	_verts[i]->MyID    = i;
+	_verts[i]->OnBry   = IsOnBry;
+	_verts[i]->EdgesID = -1;
+	_verts[i]->FacesID = -1;
+	_verts[i]->Dupl    = false;
+	_verts[i]->C.Resize(2);
+	_verts[i]->C = X, Y;
+
+	// Set _verts_bry
+	if (IsOnBry) _verts_bry.Push (_verts[i]);
+}
+
+inline void Generic::PySetVert3D(int i, bool IsOnBry, double X, double Y, double Z)
+{
+	// Set _verts
+	if (_verts[i]==NULL) _verts[i] = new Vertex;
+	_verts[i]->MyID    = i;
+	_verts[i]->OnBry   = IsOnBry;
+	_verts[i]->EdgesID = -1;
+	_verts[i]->FacesID = -1;
+	_verts[i]->Dupl    = false;
+	_verts[i]->C.Resize(3);
+	_verts[i]->C = X, Y, Z;
+
+	// Set _verts_bry
+	if (IsOnBry) _verts_bry.Push (_verts[i]);
+}
+
+inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, BPy::list const & Conn, BPy::list const & EdgeTags)
+{
+	// Set _elems
+	if (_elems[i]==NULL) _elems[i] = new Elem;
+	_elems[i]->MyID  = i;
+	_elems[i]->Tag   = Tag;
+	_elems[i]->OnBry = IsOnBry;
+
+	// Set connectivity
+	int nverts = len(Conn);
+	_elems[i]->V.Resize(nverts);
+	for (int j=0; j<nverts; ++j)
+		_elems[i]->V[j] = _verts[BPy::extract<int>(Conn[j])()];
+
+	// Set _elems_bry
+	if (IsOnBry) _elems_bry.Push(_elems[i]);
+
+	// Set edge tags
+	int netags = len(EdgeTags);
+	if (netags>0)
+	{
+		_elems[i]->ETags.Resize(netags);
+		for (int j=0; j<netags; ++j)
+			_elems[i]->ETags(j) = BPy::extract<int>(EdgeTags[j])();
+	}
+}
+
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -358,6 +439,33 @@ inline void Generic::_erase()
 	_elems      .Resize(0);
 	_elems_bry  .Resize(0);
 	_verts_bry  .Resize(0);
+}
+
+/* output */
+std::ostream & operator<< (std::ostream & os, Mesh::Vertex const & V)
+{
+	os << "[" << V.MyID << "] " << V.OnBry << " " << V.Dupl;
+	if (V.C.Size()==2) os << " (" << Util::_8_4<<V.C(0) << Util::_8_4<<V.C(1) << ")";
+	else               os << " (" << Util::_8_4<<V.C(0) << Util::_8_4<<V.C(1) << Util::_8_4<<V.C(2) << ")";
+	os << " {" << V.EdgesID(0) << "," << V.EdgesID(1) << "," << V.EdgesID(2) << "}";
+	os << " {" << V.FacesID(0) << "," << V.FacesID(1) << "," << V.FacesID(2) << "}";
+	return os;
+}
+std::ostream & operator<< (std::ostream & os, Mesh::Elem const & E)
+{
+	os << "[" << E.MyID << "] " << E.Tag << " " << E.OnBry;
+	os << " {"; for (int i=0; i<E.ETags.Size(); ++i) os << E.ETags(i) << (i==E.ETags.Size()-1?"":","); os << "}";
+	os << " {"; for (int i=0; i<E.FTags.Size(); ++i) os << E.FTags(i) << (i==E.FTags.Size()-1?"":","); os << "}";
+	os << "\n";
+	for (size_t i=0; i<E.V.Size(); ++i)
+		if (E.V[i]!=NULL) os << "   " << (*E.V[i]) << "\n";
+	return os;
+}
+std::ostream & operator<< (std::ostream & os, Mesh::Generic const & G)
+{
+	for (size_t i=0; i<G.Elems().Size(); ++i)
+		if (G.Elems()[i]!=NULL) os << (*G.Elems()[i]);
+	return os;
 }
 
 }; // namespace Mesh

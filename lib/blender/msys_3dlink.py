@@ -37,7 +37,7 @@ if dict['show_props']:
                 # draw vertices IDs
                 if dict['show_v_ids']:
                     for v in msh.verts:
-                        BGL.glColor3f     (1.0, 0.5, 0.0)
+                        BGL.glColor3f     (1.0, 1.0, 0.0)
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
                         Draw.Text         ('%d'% v.index)
 
