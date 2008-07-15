@@ -108,15 +108,16 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-	void PyWriteVTU  (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
-	void PyGetVerts  (BPy::list & V) const;
-	void PyGetElems  (BPy::list & E) const;
-	void PyGetETags  (BPy::list & T) const;
-	void PySetNVerts (size_t NumVerts);
-	void PySetNElems (size_t NumElems);
-	void PySetVert2D (int i, bool IsOnBry, double X, double Y);
-	void PySetVert3D (int i, bool IsOnBry, double X, double Y, double Z);
-	void PySetElem   (int i, int Tag, bool IsOnBry, BPy::list const & Conn, BPy::list const & EdgeTags);
+	void PyWriteVTU   (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
+	void PyGetVerts   (BPy::list & V) const;
+	void PyGetElems   (BPy::list & E) const;
+	void PyGetEleTags (BPy::list & T) const;
+	void PyGetETags   (BPy::list & T) const;
+	void PySetNVerts  (size_t NumVerts);
+	void PySetNElems  (size_t NumElems);
+	void PySetVert2D  (int i, bool IsOnBry, double X, double Y);
+	void PySetVert3D  (int i, bool IsOnBry, double X, double Y, double Z);
+	void PySetElem    (int i, int Tag, bool IsOnBry, BPy::list const & Conn, BPy::list const & EdgeTags);
 // }
 #endif
 
@@ -314,6 +315,16 @@ inline void Generic::PyGetElems(BPy::list & E) const
 			conn.append (_elems[i]->V[j]->MyID);
 		E.append (conn);
 	}
+}
+
+inline void Generic::PyGetEleTags(BPy::list & Tags) const
+{
+	/* Returns a list of tuples: [(int,int, (int,int), ..., num of elems with tags]
+	 *
+	 *   Each tuple has two values:  element ID, element tag
+	 */
+	for (size_t i=0; i<_elems.Size(); ++i)
+		Tags.append (BPy::make_tuple(_elems[i]->MyID, _elems[i]->Tag));
 }
 
 inline void Generic::PyGetETags(BPy::list & Tags) const

@@ -466,8 +466,14 @@ inline void Block::PySet3D(int Tag, BPy::list const & C, BPy::list const & Wx, B
 inline void Block::PySetETags(BPy::list const & Tags)
 {
 	int n_edges = BPy::len(Tags); // 2D => 4,  3D => 12
-	if (_is_3d && n_edges!=12) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 12 (n_edges==%d is invalid)",n_edges);
-	else if      (n_edges!= 4) throw new Fatal("Block::PySetETags: For 2D meshes, the number of edges must be 4 (n_edges==%d is invalid)",n_edges);
+	if (_is_3d)
+	{
+		if (n_edges!=12) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 12 (n_edges==%d is invalid)",n_edges);
+	}
+	else
+	{
+		if (n_edges!= 4) throw new Fatal("Block::PySetETags: For 2D meshes, the number of edges must be 4 (n_edges==%d is invalid)",n_edges);
+	}
 	for (int i=0; i<n_edges; ++i)
 		_etags(i) = BPy::extract<int>(Tags[i])();
 	_has_etags = true;

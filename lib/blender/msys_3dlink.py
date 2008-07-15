@@ -29,6 +29,14 @@ if dict['show_props']:
             # draw only if active layer corresponds to this object.Layer
             if Blender.Window.GetActiveLayer()==obj.Layer:
 
+                # draw block tags
+                btag = di.get_btag (obj)
+                if btag<0:
+                    loc = obj.getLocation()
+                    BGL.glColor3f     (0.0, 0.0, 0.0)
+                    BGL.glRasterPos3f (loc[0], loc[1], loc[2])
+                    Draw.Text         ('btag=%d'%btag)
+
                 # get mesh and transform to global coordinates
                 msh = obj.getData(mesh=1)
                 ori = msh.verts[:] # create a copy before transforming to global coordinates
@@ -51,10 +59,14 @@ if dict['show_props']:
 
                 # draw faces IDs
                 if dict['show_f_ids']:
+                    elts = di.get_tags (obj, 'elem')
+                    ids  = [t[0] for t in elts]
                     for f in msh.faces:
+                        if f.index in ids: t = str(elts[ids.index(f.index)][1])
+                        else:              t = ''
                         BGL.glColor3f     (1.0, 0.1, 0.2)
                         BGL.glRasterPos3f (f.cent[0], f.cent[1], f.cent[2])
-                        Draw.Text         ('%d'% f.index)
+                        Draw.Text         ('%d(%s)'%(f.index,t))
 
                 # if there are properties (local axes, ndivs, tags, etc.)
                 if len(obj.getAllProperties())>0:
@@ -71,12 +83,12 @@ if dict['show_props']:
                             BGL.glVertex3f (ex.v1.co[0], ex.v1.co[1], ex.v1.co[2])
                             BGL.glVertex3f (ex.v2.co[0], ex.v2.co[1], ex.v2.co[2])
                             BGL.glEnd      ()
-                            if dict['show_ndivs']:
-                                nx = di.get_ndiv (obj, 'x')
-                                if nx>-1:
-                                    pos = ex.v1.co + 0.40*(ex.v2.co-ex.v1.co)
-                                    BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                                    Draw.Text         (str(nx))
+                            # ndivs
+                            nx = di.get_ndiv (obj, 'x')
+                            if nx>-1:
+                                pos = ex.v1.co + 0.40*(ex.v2.co-ex.v1.co)
+                                BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                                Draw.Text         (str(nx))
 
                         # draw local y-axis
                         iy = di.get_local_axis (obj, 'y')
@@ -87,12 +99,12 @@ if dict['show_props']:
                             BGL.glVertex3f (ey.v1.co[0], ey.v1.co[1], ey.v1.co[2])
                             BGL.glVertex3f (ey.v2.co[0], ey.v2.co[1], ey.v2.co[2])
                             BGL.glEnd      ()
-                            if dict['show_ndivs']:
-                                ny = di.get_ndiv (obj, 'y')
-                                if ny>-1:
-                                    pos = ey.v1.co + 0.40*(ey.v2.co-ey.v1.co)
-                                    BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                                    Draw.Text         (str(ny))
+                            # ndivs
+                            ny = di.get_ndiv (obj, 'y')
+                            if ny>-1:
+                                pos = ey.v1.co + 0.40*(ey.v2.co-ey.v1.co)
+                                BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                                Draw.Text         (str(ny))
 
                         # draw local z-axis
                         iz = di.get_local_axis (obj, 'z')
@@ -103,12 +115,12 @@ if dict['show_props']:
                             BGL.glVertex3f (ez.v1.co[0], ez.v1.co[1], ez.v1.co[2])
                             BGL.glVertex3f (ez.v2.co[0], ez.v2.co[1], ez.v2.co[2])
                             BGL.glEnd      ()
-                            if dict['show_ndivs']:
-                                nz = di.get_ndiv (obj, 'z')
-                                if nz>-1:
-                                    pos = ez.v1.co + 0.40*(ez.v2.co-ez.v1.co)
-                                    BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                                    Draw.Text         (str(nz))
+                            # ndivs
+                            nz = di.get_ndiv (obj, 'z')
+                            if nz>-1:
+                                pos = ez.v1.co + 0.40*(ez.v2.co-ez.v1.co)
+                                BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                                Draw.Text         (str(nz))
 
                         # draw local system
                         origin, x_plus, y_plus, z_plus = di.get_local_system (obj)

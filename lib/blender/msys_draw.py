@@ -165,25 +165,27 @@ def fillet(radius,steps):
         if edm: Blender.Window.EditMode(1)
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
 
-def break_edge():
+def break_edge(at_mid=False):
     scn = bpy.data.scenes.active
     obj = scn.objects.active
     if obj!=None and obj.type=='Mesh':
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
-        if len(msh.edges.selected())==1:
-            # points (vertices)
-            v1 = msh.edges[msh.edges.selected()[0]].v1
-            v2 = msh.edges[msh.edges.selected()[0]].v2
-            # break-point
-            bp = Blender.Window.GetCursorPos()
-            if bp!=v1.co and bp!=v2.co:
-                msh.verts.extend(bp[0],bp[1],bp[2])
-                new = msh.verts[len(msh.verts)-1]
-                msh.verts.extend(v2.co)
-                msh.edges[msh.edges.selected()[0]].v2 = new
-                msh.edges.extend(new,msh.verts[len(msh.verts)-1])
+        if len(msh.edges.selected())==1 or at_mid:
+            for e in msh.edges.selected():
+                # points (vertices)
+                v1 = msh.edges[e].v1
+                v2 = msh.edges[e].v2
+                # break-point
+                if at_mid: bp = 0.5*(v1.co+v2.co)
+                else:      bp = Blender.Window.GetCursorPos()
+                if bp!=v1.co and bp!=v2.co:
+                    msh.verts.extend (bp[0],bp[1],bp[2])
+                    new = msh.verts[-1]
+                    v2  = msh.edges[e].v2
+                    msh.edges[e].v2 = new
+                    msh.edges.extend (new,v2)
         else: Blender.Draw.PupMenu('ERROR|Please, select only one edge (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
@@ -415,7 +417,7 @@ def gen_struct_mesh():
                     res = gen_blk_2d (obj, msh)
                     if len(res)>0:
                         bks.append    (ms.mesh_block())
-                        bks[-1].set2d (-1, res[0], res[1], res[2])
+                        bks[-1].set2d (di.get_btag(obj), res[0], res[1], res[2])
                         if len(res[3]): bks[-1].set_etags (res[3])
                         print res[3]
                         obj.select (0)
@@ -457,8 +459,8 @@ def draw_struct_mesh(key, mms):
     # get vertices and elements
     vs = []
     es = []
-    mms.get_verts (vs)
-    mms.get_elems (es)
+    mms.get_verts   (vs)
+    mms.get_elems   (es)
 
     # add new mesh to Blender
     #Blender.Window.ViewLayers([2])
@@ -470,6 +472,12 @@ def draw_struct_mesh(key, mms):
     new_msh.faces.extend    (es)
     new_obj.select          (1)
     #Blender.Window.EditMode (1)
+
+    # set element tags
+    elt = []
+    mms.get_eletags (elt)
+    for t in elt:
+        di.set_tag (new_obj, 'elem', t[0], t[1])
 
     # MechSys:                Blender:
     #                             returned by 'face.edge_keys'

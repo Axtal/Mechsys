@@ -7,13 +7,15 @@ def load_dict():
     dict = Blender.Registry.GetKey('MechSysDict')
     if not dict:
         dict                  = {}
+        dict['newpoint_x']    = 0.0
+        dict['newpoint_y']    = 0.0
+        dict['newpoint_z']    = 0.0
         dict['fillet_radius'] = 0.0
         dict['fillet_steps']  = 10
         dict['show_props']    = 1
         dict['show_v_ids']    = 1
         dict['show_e_ids']    = 1
         dict['show_f_ids']    = 1
-        dict['show_ndivs']    = 1
         dict['show_axes']     = 1
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
@@ -26,6 +28,18 @@ def set_int_property(obj, key, value):
         prop.data = value
     except:
         obj.addProperty (key, value, 'INT')
+
+
+def set_btag(obj, tag):
+    set_int_property (obj, 'btag', tag)
+
+
+def get_btag(obj):
+    tag = 0
+    for p in obj.getAllProperties():
+        if p.name[:4]=='btag':
+            tag = p.data
+    return tag
 
 
 def set_local_axis(obj, key, id):
@@ -117,19 +131,17 @@ def get_ndiv(obj, key):
 
 def set_tag(obj, key, id, tag):
     # In:
-    #      key = 'edge' or 'face'
-    #      id  = global ID of edge or face with tag
-    #      tag = the tag of edge or face with tag
+    #      key = 'edge', 'face', or 'elem'
+    #      id  = global ID of edge/face/elem with tag
+    #      tag = the tag of edge/face/elem with tag
     set_int_property (obj, key+'_'+str(id), tag)
 
 
 def get_tags(obj, key):
     # In:
-    #      key = 'edge' or 'face'
+    #      key = 'edge', 'face', or 'elem'
     # Out:
-    #      [ [edge_global_id, tag], ... num edges with tags]
-    # or
-    #      [ [face_global_id, tag], ... num faces with tags]
+    #      [ [e/f/e_global_id, tag], ... num edges/face/elem with tags]
     res = []
     for p in obj.getAllProperties():
         if p.name[:4]==key:
@@ -190,3 +202,165 @@ def get_tags_list(obj, key, global_ids):
             tags_list[local_id] = t[1]
     if sum(tags_list)==0: tags_list=[]
     return tags_list
+
+
+# ==================================================== Nodes boundaries
+
+def set_nbry(obj, id, x, y, z, key, value):
+    try:
+        prop      = obj.getProperty ('nbry_'+str(id))
+        prop.data = '%8.4f %8.4f %8.4f %s %12.6f'%(x,y,z,key,value)
+    except:
+        obj.addProperty ('nbry_'+str(id), '%8.4f %8.4f %8.4f %s %12.6f'%(x,y,z,key,value), 'STRING')
+
+def set_nbry_x(obj, id, val): # property must exist
+    p = obj.getProperty ('nbry_'+str(id))
+    d = p.data.split()
+    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(val,float(d[1]),float(d[2]), d[3] ,float(d[4]))
+
+def set_nbry_y(obj, id, val): # property must exist
+    p = obj.getProperty ('nbry_'+str(id))
+    d = p.data.split()
+    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),val,float(d[2]), d[3] ,float(d[4]))
+
+def set_nbry_z(obj, id, val): # property must exist
+    p = obj.getProperty ('nbry_'+str(id))
+    d = p.data.split()
+    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),float(d[1]),val, d[3] ,float(d[4]))
+
+def set_nbry_key(obj, id, val): # property must exist
+    p = obj.getProperty ('nbry_'+str(id))
+    d = p.data.split()
+    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),float(d[1]),float(d[2]), val ,float(d[4]))
+
+def set_nbry_val(obj, id, val): # property must exist
+    p = obj.getProperty ('nbry_'+str(id))
+    d = p.data.split()
+    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),float(d[1]),float(d[2]), d[3] ,val)
+
+def get_nbrys(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='nbry':
+            d = p.data.split()
+            res.append ([float(d[0]),float(d[1]),float(d[2]), d[3], float(d[4])])
+    return res 
+
+def del_all_nbrys(obj):
+    for p in obj.getAllProperties():
+        if p.name[:4]=='nbry': obj.removeProperty(p)
+
+def del_nbry(obj, id):
+    nbrys = get_nbrys (obj)
+    del_all_nbrys (obj)
+    k = 0
+    for i in range(len(nbrys)):
+        if i!=id:
+            set_nbry (obj, k, nbrys[i][0], nbrys[i][1], nbrys[i][2], nbrys[i][3], nbrys[i][4])
+            k += 1
+
+
+# ==================================================== Faces boundaries
+
+def set_fbry(obj, id, tag, key, value):
+    try:
+        prop      = obj.getProperty ('fbry_'+str(id))
+        prop.data = '%d %s %12.6f'%(tag,key,value)
+    except:
+        obj.addProperty ('fbry_'+str(id), '%d %s %12.6f'%(tag,key,value), 'STRING')
+
+def set_fbry_tag(obj, id, val): # property must exist
+    p = obj.getProperty ('fbry_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %12.6f'%(val, d[1] ,float(d[2]))
+
+def set_fbry_key(obj, id, val): # property must exist
+    p = obj.getProperty ('fbry_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %12.6f'%(int(d[0]), val ,float(d[2]))
+
+def set_fbry_val(obj, id, val): # property must exist
+    p = obj.getProperty ('fbry_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %12.6f'%(int(d[0]), d[1] ,val)
+
+def get_fbrys(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='fbry':
+            d = p.data.split()
+            res.append ([int(d[0]), d[1], float(d[2])])
+    return res 
+
+def del_all_fbrys(obj):
+    for p in obj.getAllProperties():
+        if p.name[:4]=='fbry': obj.removeProperty(p)
+
+def del_fbry(obj, id):
+    fbrys = get_fbrys (obj)
+    del_all_fbrys (obj)
+    k = 0
+    for i in range(len(fbrys)):
+        if i!=id:
+            set_fbry (obj, k, fbrys[i][0], fbrys[i][1], fbrys[i][2])
+            k += 1
+
+
+# ==================================================== Elements attributes
+
+def set_eatt(obj, id, tag, type, model, prms, inis):
+    prms = '_'.join(prms.split())
+    inis = '_'.join(inis.split())
+    try:
+        prop      = obj.getProperty ('eatt_'+str(id))
+        prop.data = '%d %s %s %s %s'%(tag,type,model,prms,inis)
+    except:
+        obj.addProperty ('eatt_'+str(id), '%d %s %s %s %s'%(tag,type,model,prms,inis), 'STRING')
+
+def set_eatt_tag(obj, id, val): # property must exist
+    p = obj.getProperty ('eatt_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %s %s %s'%(val, d[1], d[2], d[3], d[4])
+
+def set_eatt_type(obj, id, val): # property must exist
+    p = obj.getProperty ('eatt_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %s %s %s'%(int(d[0]), val, d[2], d[3], d[4])
+
+def set_eatt_model(obj, id, val): # property must exist
+    p = obj.getProperty ('eatt_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %s %s %s'%(int(d[0]), d[1], val, d[3], d[4])
+
+def set_eatt_prms(obj, id, val): # property must exist
+    val = '_'.join(val.split())
+    p = obj.getProperty ('eatt_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %s %s %s'%(int(d[0]), d[1], d[2], val, d[4])
+
+def set_eatt_inis(obj, id, val): # property must exist
+    val = '_'.join(val.split())
+    p = obj.getProperty ('eatt_'+str(id))
+    d = p.data.split()
+    p.data = '%d %s %s %s %s'%(int(d[0]), d[1], d[2], d[3], val)
+
+def get_eatts(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='eatt':
+            d = p.data.split()
+            res.append ([int(d[0]), d[1], d[2], d[3].replace('_',' '), d[4].replace('_',' ')])
+    return res 
+
+def del_all_eatts(obj):
+    for p in obj.getAllProperties():
+        if p.name[:4]=='eatt': obj.removeProperty(p)
+
+def del_eatt(obj, id):
+    eatts = get_eatts (obj)
+    del_all_eatts (obj)
+    k = 0
+    for i in range(len(eatts)):
+        if i!=id:
+            set_eatt (obj, k, eatts[i][0], eatts[i][1], eatts[i][2], eatts[i][3], eatts[i][4])
+            k += 1

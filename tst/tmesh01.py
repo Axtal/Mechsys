@@ -30,17 +30,17 @@ def test_2D():
     
     # Blocks
     blocks = [m.mesh_block()]
-    blocks[0].set (-1,                                   # tag to be replicated to all elements
-                   [[0.,  L, L, 0.,    hL,  L, hL, 0.] , # coordinates: x values
-                    [0., 0., H,  H,    0., hH,  H, hH]], # coordinates: y values
-                   [2,4,8,16,32],                        # weights x
-                   [2,4,8,16,32,64])                     # weights y
+    blocks[0].set2d (-1,                                   # tag to be replicated to all elements
+                     [[0.,  L, L, 0.,    hL,  L, hL, 0.] , # coordinates: x values
+                      [0., 0., H,  H,    0., hH,  H, hH]], # coordinates: y values
+                     [2,4,8,16,32],                        # weights x
+                     [2,4,8,16,32,64])                     # weights y
 
     # Tags
     blocks[0].set_etags ([-10, -11, -12, -13])
 
     # Generate
-    ms = m.mesh_struct()
+    ms = m.mesh_structured()
     ne = ms.generate (blocks)
     print '2D => Generated ', ne, ' elements'
 
@@ -61,20 +61,20 @@ def test_3D():
     
     # Blocks
     blocks = [m.mesh_block()]
-    blocks[0].set (-2,                                                                                            # tag to be replicated to all elements
-                   [[0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0.],  # coordinates: x values
-                    [0., 0.,  H,  H,    0., 0., H,  H,    0., hH,  H, hH,    0., hH,  H, hH,    0., 0.,  H,  H],  # coordinates: y values
-                    [0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD]], # coordinates: z values
-                   [2,4,8,16,32],                                                                                 # weights x
-                   [2,4,8,16,32,64],                                                                              # weights y
-                   [2,4,8,16,32,64,128])                                                                          # weights y
+    blocks[0].set3d (-2,                                                                                            # tag to be replicated to all elements
+                     [[0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0.],  # coordinates: x values
+                      [0., 0.,  H,  H,    0., 0., H,  H,    0., hH,  H, hH,    0., hH,  H, hH,    0., 0.,  H,  H],  # coordinates: y values
+                      [0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD]], # coordinates: z values
+                     [2,4,8,16,32],                                                                                 # weights x
+                     [2,4,8,16,32,64],                                                                              # weights y
+                     [2,4,8,16,32,64,128])                                                                          # weights y
 
     # Tags
     blocks[0].set_etags ([-100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111])
     blocks[0].set_ftags ([-10, -11, -12, -13, -14, -15])
 
     # Generate
-    ms = m.mesh_struct()
+    ms = m.mesh_structured()
     ne = ms.generate (blocks)
     print '3D => Generated ', ne, ' elements'
 
