@@ -88,14 +88,14 @@ inline void Geom::SetNNodes(size_t nNodes)
 {
 	for (size_t i=0; i<_nodes.Size(); ++i) if (_nodes[i]!=NULL) delete _nodes[i];
 	_nodes.Resize(nNodes);
-	_nodes = NULL;
+	_nodes.SetValues(NULL);
 }
 
 inline void Geom::SetNElems(size_t nElems)
 {
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
 	_elems.Resize(nElems);
-	_elems = NULL;
+	_elems.SetValues(NULL);
 }
 
 

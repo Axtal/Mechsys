@@ -39,16 +39,17 @@ public:
 	~Array() { if (_values!=NULL) delete [] _values; }
 
 	// Methods
-	void                    SetNS  (Util::NumStream & NS)         { _ns = &NS; } ///< Set the NumStream, a structure to aid format output of numbers
-	Util::NumStream const & NS     () const                   { return (*_ns); } ///< Return the NumStream, a structure to aid format output of numbers
-	size_t                  Size   () const                    { return _size; } ///< Returns the size
-	Value_T *               GetPtr ()                        { return _values; } ///< Returns a pointer to the values
-	void                    Resize (size_t  Size,  double SzFactor=1.2);         ///< Resize the array
-	void                    Push   (Value_T const & Value, double SzFactor=1.2); ///< Add a new entry increasing the size if necessary
-	void                    Remove (size_t i, size_t Length=1);                  ///< Remove item i from the array
-	long                    Find   (Value_T const & Value) const;                ///< Find a value: returns -1 if not found, otherwise, returns the index of the element found
-	long                    Min    () const;                                     ///< Find the minimum value: returns the index of the minimum element
-	long                    Max    () const;                                     ///< Find the maximum value: returns the index of the maximum element
+	void                    SetNS     (Util::NumStream & NS)         { _ns = &NS; } ///< Set the NumStream, a structure to aid format output of numbers
+	Util::NumStream const & NS        () const                   { return (*_ns); } ///< Return the NumStream, a structure to aid format output of numbers
+	size_t                  Size      () const                    { return _size; } ///< Returns the size
+	Value_T *               GetPtr    ()                        { return _values; } ///< Returns a pointer to the values
+	void                    Resize    (size_t  Size,  double SzFactor=1.2);         ///< Resize the array
+	void                    Push      (Value_T const & Value, double SzFactor=1.2); ///< Add a new entry increasing the size if necessary
+	void                    Remove    (size_t i, size_t Length=1);                  ///< Remove item i from the array
+	long                    Find      (Value_T const & Value) const;                ///< Find a value: returns -1 if not found, otherwise, returns the index of the element found
+	long                    Min       () const;                                     ///< Find the minimum value: returns the index of the minimum element
+	long                    Max       () const;                                     ///< Find the maximum value: returns the index of the maximum element
+	void                    SetValues (Value_T const & V);                          ///< Set all values to be equal to V
 
 	// Operators
 	Value_T       & operator[] (size_t i);                 ///< Access operator (write)
@@ -56,7 +57,28 @@ public:
 	void            operator=  (Array<Value_T> const & R); ///< Assignment operator (needed when using Array< Array<...> >)
 	void            operator+= (Array<Value_T> const & R); ///< Plus-assignment operator
 	void            operator-= (Array<Value_T> const & R); ///< Minus-assignment operator
-	void            operator=  (Value_T        const & V); ///< Set all values equal to V
+
+	// Assign values separated by commas
+	class CommaAssign
+	{
+	public:
+		CommaAssign (Array<Value_T> * ptArray, Value_T const & FirstValue) : _ptarray(ptArray), _i(0)
+		{
+			if (_ptarray->Size()>_i) (*_ptarray)[_i] = FirstValue;
+			else throw new Fatal("Array::CommaAssign: The array must be resized with a size greater than or equal to %d before calling this method.",_i+1);
+		}
+		CommaAssign & operator, (Value_T const & Value)
+		{
+			_i++;
+			if (_ptarray->Size()>_i) (*_ptarray)[_i] = Value;
+			else throw new Fatal("Array::CommaAssign: The array must be resized with a size greater than or equal to %d before calling this method.",_i+1);
+			return *this;
+		}
+	private:
+		Array<Value_T> * _ptarray;
+		size_t           _i;
+	};
+	CommaAssign operator= (Value_T const & Value) { return CommaAssign(this, Value); }
 
 private:
 	// Variables
@@ -151,8 +173,16 @@ inline long Array<Value_T>::Max() const
 	return res-_values;
 }
 
+template<typename Value_T>
+inline void Array<Value_T>::SetValues(Value_T const & V)
+{
+	// Set all values to be equal to V
+	for (size_t i=0; i<_size; ++i) _values[i] = V;
+}
+
 
 // Operators
+
 template<typename Value_T>
 inline Value_T & Array<Value_T>::operator[] (size_t i)
 {
@@ -202,13 +232,6 @@ inline void Array<Value_T>::operator-= (Array<Value_T> const & R)
 #endif
 	// Subtract values
 	for (int i=0; i<_size; ++i) _values[i] -= R[i];
-}
-
-template<typename Value_T>
-inline void Array<Value_T>::operator= (Value_T const & V)
-{
-	// Set all values equal to V
-	for (size_t i=0; i<_size; ++i) _values[i] = V;
 }
 
 

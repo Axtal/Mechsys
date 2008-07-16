@@ -120,7 +120,7 @@ inline Quad4::Quad4()
 
 	// Allocate nodes (connectivity)
 	_connects.Resize(_n_nodes);
-	_connects = NULL;
+	_connects.SetValues(NULL);
 
 	// Setup pointer to the array of Integration Points
 	_a_int_pts      = QUAD4_INTPTS;

@@ -358,7 +358,7 @@ inline void Generic::PySetNVerts(size_t NumVerts)
 {
 	_erase();
 	_verts.Resize(NumVerts);
-	_verts = NULL;
+	_verts.SetValues(NULL);
 	_verts_bry.Resize(0);
 }
 
@@ -366,7 +366,7 @@ inline void Generic::PySetNElems(size_t NumElems)
 {
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
 	_elems.Resize(NumElems);
-	_elems = NULL;
+	_elems.SetValues(NULL);
 	_elems_bry.Resize(0);
 }
 
