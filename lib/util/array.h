@@ -241,7 +241,6 @@ std::ostream & operator<< (std::ostream & os, const Array<Value_T> & V)
 {
 	for (size_t i=0; i<V.Size(); ++i)
 		os << V.NS()<< V[i];
-	os << std::endl;
 	return os;
 }
 
