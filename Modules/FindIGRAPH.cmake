@@ -20,14 +20,14 @@
 #####################################################################################
 
 SET(IGRAPH_INCLUDE_SEARCH_PATH
-  /usr/include/igraph
-  /usr/local/include/igraph)
+  /usr/include
+  /usr/local/include)
 
 SET(IGRAPH_LIBRARY_SEARCH_PATH
   /usr/lib
   /usr/local/lib)
 
-FIND_PATH(IGRAPH_IGRAPH_H igraph.h ${IGRAPH_INCLUDE_SEARCH_PATH})
+FIND_PATH(IGRAPH_IGRAPH_H igraph/igraph.h ${IGRAPH_INCLUDE_SEARCH_PATH})
 
 FIND_LIBRARY(IGRAPH_IGRAPH NAMES igraph PATHS ${IGRAPH_LIBRARY_SEARCH_PATH})
 

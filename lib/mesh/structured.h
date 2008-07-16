@@ -788,4 +788,79 @@ inline void Structured::_erase()
 
 }; // namespace Mesh
 
+#ifdef USE_BOOST_PYTHON
+#include "util/tree.h"
+inline void PyBlock3DSort (long OrigID, long XPlusID, long YPlusID, long ZPlusID, BPy::list const & EdgesList, BPy::list & VertsList)
+{
+	/* In:
+	 * 	   OrigID: ID of the vertex at origin
+	 * 	   XPlusID, YPlusID, ZPlusID: IDs of the vertices at the positive corner of each local axis
+	 *     EdgesList = [(v1,v2), (v1,v2), ... 24 edges]
+	 */
+
+	// Check
+	if (len(EdgesList)!=24) throw new Fatal("PySortBlock3D:: List with edges must have 24 items. Ex.: EdgesList = [(v1,v2), (v1,v2), ... 24 edges]. (%d is invalid)",len(EdgesList));
+
+	// Edges
+	Array<long> edges(48);
+	int k = 0;
+	for (int i=0; i<24; ++i)
+	{
+		BPy::tuple ed = BPy::extract<BPy::tuple>(EdgesList[i])();
+		edges[k  ] = BPy::extract<long>(ed[0])();
+		edges[k+1] = BPy::extract<long>(ed[1])();
+		k += 2;
+	}
+
+	// Tree
+	Util::Tree tree(edges);
+
+	Array<long> eds; eds.Resize(24); eds.SetNS(Util::_4);
+	Array<long> vrs; vrs.Resize(20); vrs.SetNS(Util::_4);
+	vrs[0] = OrigID;
+
+	// Bottom nodes
+	Array<long> path; path.SetNS(Util::_4);
+	tree.DelEdge   (OrigID, XPlusID);
+	tree.ShortPath (XPlusID, YPlusID, path);
+	vrs[ 1] = path[1];
+	vrs[ 2] = path[3];
+	vrs[ 3] = path[5];
+	vrs[ 8] = path[0];
+	vrs[ 9] = path[2];
+	vrs[10] = path[4];
+	vrs[11] = path[6];
+
+	// Behind nodes
+	tree.DelEdge   (OrigID, YPlusID);
+	tree.ShortPath (YPlusID, ZPlusID, path);
+	vrs[19] = path[2];
+	vrs[ 7] = path[3];
+	vrs[15] = path[4];
+	vrs[ 4] = path[5];
+	vrs[16] = path[6];
+
+	// Left nodes
+	tree.DelEdge   (OrigID, ZPlusID);
+	tree.ShortPath (ZPlusID, XPlusID, path);
+	vrs[12] = path[2];
+	vrs[ 5] = path[3];
+	vrs[17] = path[4];
+
+	// Corner-front nodes
+	tree.DelEdge   (vrs[7], vrs[15]);
+	tree.DelEdge   (vrs[7], vrs[19]);
+	tree.ShortPath (vrs[7], vrs[ 5], path);
+	vrs[14] = path[1];
+	vrs[ 6] = path[2];
+	vrs[13] = path[3];
+	tree.ShortPath (vrs[7], vrs[2], path);
+	vrs[18] = path[3];
+
+	// Result
+	for (int i=0; i<20; ++i) VertsList.append(vrs[i]);
+
+}
+#endif // USE_BOOST_PYTHON
+
 #endif // MECHSYS_MESH_STRUCTURED_H

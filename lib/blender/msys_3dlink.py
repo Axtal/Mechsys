@@ -59,14 +59,16 @@ if dict['show_props']:
 
                 # draw faces IDs
                 if dict['show_f_ids']:
-                    elts = di.get_tags (obj, 'elem')
+                    if dict['show_ele_tags']: elts = di.get_tags (obj, 'elem')
+                    else:                     elts = []
                     ids  = [t[0] for t in elts]
                     for f in msh.faces:
                         if f.index in ids: t = str(elts[ids.index(f.index)][1])
                         else:              t = ''
                         BGL.glColor3f     (1.0, 0.1, 0.2)
                         BGL.glRasterPos3f (f.cent[0], f.cent[1], f.cent[2])
-                        Draw.Text         ('%d(%s)'%(f.index,t))
+                        if dict['show_ele_tags']: Draw.Text ('%d(%s)'%(f.index,t))
+                        else:                     Draw.Text ('%d'%f.index)
 
                 # if there are properties (local axes, ndivs, tags, etc.)
                 if len(obj.getAllProperties())>0:

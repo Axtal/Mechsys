@@ -16,6 +16,7 @@ def load_dict():
         dict['show_v_ids']    = 1
         dict['show_e_ids']    = 1
         dict['show_f_ids']    = 1
+        dict['show_ele_tags'] = 0
         dict['show_axes']     = 1
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'

@@ -397,6 +397,88 @@ def gen_blk_2d(obj, msh):
         return []
 
 
+def gen_blk_3d(obj, msh):
+
+    # get local system
+    origin, x_plus, y_plus, z_plus = di.get_local_system (obj)
+    if origin>-1:
+        # sort vertices
+        vs = []
+        ms.block3d_sort (origin, x_plus, y_plus, z_plus, [ed.key for ed in msh.edges], vs)
+
+        # transform mesh to global coordinates
+        ori = msh.verts[:] # create a copy in local coordinates
+        msh.transform (obj.matrix)
+
+        # generate list with coordinates
+        cox = [msh.verts[iv].co[0] for iv in vs]
+        coy = [msh.verts[iv].co[1] for iv in vs]
+        coz = [msh.verts[iv].co[2] for iv in vs]
+
+        # restore local coordinates
+        msh.verts = ori
+
+        # generate weights
+        nx = di.get_ndiv (obj, 'x')
+        ny = di.get_ndiv (obj, 'y')
+        nz = di.get_ndiv (obj, 'z')
+        if nx<1: nx = 1
+        if ny<1: ny = 1
+        if nz<1: nz = 1
+        wx = [1 for i in range(nx)]
+        wy = [1 for i in range(ny)]
+        wz = [1 for i in range(nz)]
+
+        # return list with block data
+        return [[cox, coy, coz], wx, wy, wz]
+
+
+        #eds_eds = dict([(ed.key, []) for ed in msh.edges])
+        #for ed in msh.edges:
+            #ed.v1.index
+            #ed.v2.index
+        # Dictionary where the vertex index is the key, and a list of edges that share this vertex are the value
+        #verts_edges = dict([(v.index, []) for v in msh.verts])
+        #for ed in msh.edges:
+            #verts_edges[ed.v1.index].append(ed.key)
+            #verts_edges[ed.v2.index].append(ed.key)
+#
+        #x_axis = di.get_local_axis (obj, 'x')
+        #y_axis = di.get_local_axis (obj, 'y')
+        #z_axis = di.get_local_axis (obj, 'z')
+#
+        #curr_ed = (origin, x_plus)
+        #res     = verts_edges[x_plus]
+        #res.remove(curr_ed)
+        #print res
+        #res     = filter(lambda key: key!=curr_ed, verts_edges[x_plus])
+        #if (len(res)==1): next_ed = res[0]
+        #else: Blender.Draw.PupMenu('ERROR|sort_faces algorithm failed')
+        #print next_ed
+#
+    else:
+        Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
+        return []
+
+    #edge_faces = dict([(ed.key, []) for ed in msh.edges])
+
+    # Add the faces to the dict
+    #for f in msh.faces:
+        #for key in f.edge_keys:
+            #edge_faces[key].append(f) # add this face to the edge as a user
+
+    #fx = edge_faces[xaxis]
+    #fy = edge_faces[yaxis]
+    #print filter(lambda face: face in fx, fy)
+    # Print the edges and the number of face users
+    #for key, face_users in edge_faces.iteritems():
+        #print 'Edge:', key, 'uses:', len(face_users),'faces'
+
+
+
+
+
+
 def gen_struct_mesh():
     # get objects
     scn = bpy.data.scenes.active
@@ -408,26 +490,39 @@ def gen_struct_mesh():
     bks = []
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
+            # Mesh
             if len(obj.getAllProperties())==0: Blender.Draw.PupMenu('ERROR|Please, assign all mesh properties to this object(%s) first' % obj.name)
             msh = obj.getData(mesh=1)
-            if len(msh.faces)==0: #2D
-                if len(msh.edges)==4: #2D - linear
-                    print '2D - linear => not yet'
-                elif len(msh.edges)==8: #2D - o2
-                    res = gen_blk_2d (obj, msh)
-                    if len(res)>0:
-                        bks.append    (ms.mesh_block())
-                        bks[-1].set2d (di.get_btag(obj), res[0], res[1], res[2])
-                        if len(res[3]): bks[-1].set_etags (res[3])
-                        print res[3]
-                        obj.select (0)
-                    else: return
-                else: Blender.Draw.PupMenu('ERROR|2D blocks must have 0 faces and 4(lin) or 8(o2) edges')
-            elif len(msh.faces)==6: #3D - linear
+
+            # 2D - linear
+            if len(msh.edges)==4:
+                print '2D - linear => not yet'
+
+            # 2D - o2
+            elif len(msh.edges)==8:
+                res = gen_blk_2d (obj, msh)
+                if len(res)>0:
+                    bks.append    (ms.mesh_block())
+                    bks[-1].set2d (di.get_btag(obj), res[0], res[1], res[2])
+                    if len(res[3]): bks[-1].set_etags (res[3])
+                    obj.select (0)
+                else: return
+
+            # 3D - linear
+            elif len(msh.edges)==12:
                 print '3D - linear => not yet'
-            elif len(msh.faces)==24: #3D - o2
+
+            # 3D - o2
+            elif len(msh.edges)==24:
                 print '3D - o2 => not yet'
-            else: Blender.Draw.PupMenu('ERROR|Each block must have 0 (4,8 edges) faces => 2D or 6,24 faces => 3D')
+                res = gen_blk_3d (obj, msh)
+                if len(res)>0:
+                    bks.append    (ms.mesh_block())
+                    bks[-1].set3d (di.get_btag(obj), res[0], res[1], res[2], res[3])
+                    obj.select (0)
+                else: return
+
+            else: Blender.Draw.PupMenu('ERROR|Each block must have: 2D=8 edges, 3D=24 edges')
 
     # generate mesh and draw results
     if len(bks)>0:
@@ -441,10 +536,11 @@ def gen_struct_mesh():
         # generate mesh and write VTU file for ParaView
         mms = ms.mesh_structured()
         ne  = mms.generate (bks)
-        #mms.write_vtu (key+'.vtu')
+        mms.write_vtu (key+'.vtu')
         print '[1;34mMechSys[0m: [1;33m%d[0m elements generated' % ne
-        #print 'File <[1;33m%s[0m> created' % key+'.vtu'
+        print '[1;34mMechSys[0m: File <[1;33m%s[0m> created' % (key+'.vtu')
 
+        return
         # draw generated mesh
         draw_struct_mesh (key, mms)
 

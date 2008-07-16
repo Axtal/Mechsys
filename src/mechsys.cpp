@@ -152,6 +152,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	def ("write_vtk",         PyWriteVTK         );
 	def ("set_geom",          PySetGeom          );
 	def ("set_geom",          PySetGeomStructured);
+	def ("block3d_sort",      PyBlock3DSort      );
 
 	// ---------------------------------------------------------------------- Exceptions
 	

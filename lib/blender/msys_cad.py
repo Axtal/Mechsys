@@ -301,6 +301,11 @@ def show_f_ids_callback(evt,val):
     dict['show_f_ids'] = val
     Blender.Window.QRedrawAll()
 
+def show_ele_tags_callback(evt,val):
+    dict = di.load_dict()
+    dict['show_ele_tags'] = val
+    Blender.Window.QRedrawAll()
+
 def ndivx_callback(evt,val):
     edm, obj, msh = get_mesh()
     di.set_ndiv (obj, 'x', val)
@@ -518,11 +523,12 @@ def gui():
     BGL.glColor3f     (0.0, 0.0, 0.0)
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Show:')
-    Draw.Toggle       ('Props', EVT_NONE, dx    , row, 60, rh, d['show_props'], 'Show mesh properties'  , show_props_callback)
-    Draw.Toggle       ('Axes' , EVT_NONE, dx+ 60, row, 60, rh, d['show_axes'],  'Show local system axes', show_axes_callback )
-    Draw.Toggle       ('V IDs', EVT_NONE, dx+120, row, 60, rh, d['show_v_ids'], 'Show vertex IDs'       , show_v_ids_callback)
-    Draw.Toggle       ('E IDs', EVT_NONE, dx+180, row, 60, rh, d['show_e_ids'], 'Show edge IDs'         , show_e_ids_callback)
-    Draw.Toggle       ('F IDs', EVT_NONE, dx+240, row, 60, rh, d['show_f_ids'], 'Show face IDs'         , show_f_ids_callback); row -= rh
+    Draw.Toggle       ('Props', EVT_NONE, dx    , row, 60, rh, d['show_props'],    'Show mesh properties'  , show_props_callback)
+    Draw.Toggle       ('Axes' , EVT_NONE, dx+ 60, row, 60, rh, d['show_axes'],     'Show local system axes', show_axes_callback )
+    Draw.Toggle       ('V IDs', EVT_NONE, dx+120, row, 60, rh, d['show_v_ids'],    'Show vertex IDs'       , show_v_ids_callback)
+    Draw.Toggle       ('E IDs', EVT_NONE, dx+180, row, 60, rh, d['show_e_ids'],    'Show edge IDs'         , show_e_ids_callback)
+    Draw.Toggle       ('F IDs', EVT_NONE, dx+240, row, 60, rh, d['show_f_ids'],    'Show face IDs'         , show_f_ids_callback)
+    Draw.Toggle       ('Ele T', EVT_NONE, dx+300, row, 60, rh, d['show_ele_tags'], 'Show elements tags'    , show_ele_tags_callback); row -= rh
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Set tags:')
     Draw.PushButton   ('Edge', EVT_MESH_SETETAG,  dx,    row, 80, rh, 'Set edges tag')
