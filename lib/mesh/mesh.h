@@ -39,6 +39,7 @@
 #include "util/numstreams.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
+#include "fem/elems/vtkCellType.h"
 
 #ifndef VTU_NEWLINE_DEFINED
   #define VTU_NEWLINE_DEFINED
@@ -79,12 +80,13 @@ struct Vertex
 
 struct Elem
 {
-	long           MyID;  ///< ID
-	int            Tag;   ///< Element tag. Required for setting up of attributes, for example.
-	bool           OnBry; ///< On boundary?
-	Array<Vertex*> V;     ///< Connectivity
-	Vector<int>    ETags; ///< Edge tags (size==nLocalEdges)
-	Vector<int>    FTags; ///< Face tags (size==nLocalFaces)
+	long           MyID;        ///< ID
+	int            Tag;         ///< Element tag. Required for setting up of attributes, for example.
+	bool           OnBry;       ///< On boundary?
+	int            VTKCellType; ///< VTK cell type such as VTK_LINE, VTK_TRIANGLE, VTK_QUAD, VTK_HEXAHEDRON, etc.
+	Array<Vertex*> V;           ///< Connectivity
+	Vector<int>    ETags;       ///< Edge tags (size==nLocalEdges)
+	Vector<int>    FTags;       ///< Face tags (size==nLocalFaces)
 };
 
 class Generic
@@ -117,7 +119,7 @@ public:
 	void PySetNElems  (size_t NumElems);
 	void PySetVert2D  (int i, bool IsOnBry, double X, double Y);
 	void PySetVert3D  (int i, bool IsOnBry, double X, double Y, double Z);
-	void PySetElem    (int i, int Tag, bool IsOnBry, BPy::list const & Conn, BPy::list const & EdgeTags);
+	void PySetElem    (int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags);
 // }
 #endif
 
@@ -130,7 +132,7 @@ protected:
 	Array<Elem*>   _elems_bry; ///< Elements on boundary
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
 
-	// Methods that MAY be overloaded (otherwise, these work for linear elements such as Rods)
+	// Methods that MAY be overloaded (otherwise, these work for linear elements such as Rods VTK_LINE)
 	virtual void _vtk_con          (Elem const * E, String & Connect) const; ///< Returns a string with the connectivites (global vertices IDs) of an element
 	virtual void _erase            ();                                       ///< Erase current mesh (deallocate memory)
 	virtual int  _edge_to_lef_vert (int EdgeLocalID) const { return 0; }     ///< Returns the local left vertex ID for a given Local Edge ID
@@ -188,18 +190,16 @@ inline void Generic::WriteVTU(char const * FileName) const
 		String con; _vtk_con (_elems[i], con);
 		oss << "  " << con;
 		k++;
-		//VTU_NEWLINE (i,k,ne,nimax/(_is_3d?20:8),oss);
-		VTU_NEWLINE (i,k,ne,nimax/(_is_3d?8:4),oss);
+		VTU_NEWLINE (i,k,ne,nimax/_elems[i]->V.Size(),oss);
 	}
 	oss << "        </DataArray>\n";
 	oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
 	k = 0; oss << "        ";
-	size_t ossfset = 0;
+	size_t offset = 0;
 	for (size_t i=0; i<ne; ++i)
 	{
-		//ossfset += (_is_3d?20:8);
-		ossfset += (_is_3d?8:4);
-		oss << (k==0?"  ":" ") << ossfset;
+		offset += _elems[i]->V.Size();
+		oss << (k==0?"  ":" ") << offset;
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
@@ -208,8 +208,7 @@ inline void Generic::WriteVTU(char const * FileName) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		//oss << (k==0?"  ":" ") << (_is_3d?25:23); // VTK_QUADRATIC_HEXAHEDRON or VTK_QUADRATIC_QUAD
-		oss << (k==0?"  ":" ") << (_is_3d?12:9); // VTK_HEXAHEDRON or VTK_QUAD
+		oss << (k==0?"  ":" ") << _elems[i]->VTKCellType;
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
@@ -224,7 +223,7 @@ inline void Generic::WriteVTU(char const * FileName) const
 	{
 		oss << (k==0?"  ":" ") << _verts[i]->OnBry;
 		k++;
-		VTU_NEWLINE (i,k,ne,nimax,oss);
+		VTU_NEWLINE (i,k,nn,nimax,oss);
 	}
 	oss << "        </DataArray>\n";
 	oss << "        <DataArray type=\"Float32\" Name=\"" << "local_edge_id" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
@@ -402,13 +401,14 @@ inline void Generic::PySetVert3D(int i, bool IsOnBry, double X, double Y, double
 	if (IsOnBry) _verts_bry.Push (_verts[i]);
 }
 
-inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, BPy::list const & Conn, BPy::list const & EdgeTags)
+inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags)
 {
 	// Set _elems
 	if (_elems[i]==NULL) _elems[i] = new Elem;
-	_elems[i]->MyID  = i;
-	_elems[i]->Tag   = Tag;
-	_elems[i]->OnBry = IsOnBry;
+	_elems[i]->MyID        = i;
+	_elems[i]->Tag         = Tag;
+	_elems[i]->OnBry       = IsOnBry;
+	_elems[i]->VTKCellType = VTKCellType;
 
 	// Set connectivity
 	int nverts = len(Conn);

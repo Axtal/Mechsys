@@ -19,6 +19,16 @@
 #ifndef MECHSYS_FEM_ELEMENT_H
 #define MECHSYS_FEM_ELEMENT_H
 
+
+/* OBS.:
+ *          For 2D meshes, FACE means EDGES
+ *          and EDGES related arrays are unavailable.
+ *
+ *          For 3D meshes, FACE and EDGES correspond to the normal
+ *          meanings.
+ */
+
+
 // STL
 #include <map>
 #include <cstdarg>  // for va_list, va_start, va_end

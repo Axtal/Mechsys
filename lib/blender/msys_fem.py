@@ -30,6 +30,10 @@ def fill_mesh(obj):
 
 
         # Elements
+        VTK_TRIANGLE   =  5
+        VTK_QUAD       =  9
+        VTK_TETRA      = 10
+        VTK_HEXAHEDRON = 12
         mg.set_nelems (len(msh.faces))
         for i, f in enumerate(msh.faces):
             eds            = f.edge_keys
@@ -37,9 +41,13 @@ def fill_mesh(obj):
             eds_tags_list  = di.get_tags_list (obj, 'edge', eds_global_ids)
             if len(eds_tags_list)>0: onbry = True
             else:                    onbry = False
-            mg.set_elem (i, -1, onbry, [v.index for v in f.verts], eds_tags_list) # Tag, OnBry, ETags, etc
+            mg.set_elem (i, -1, onbry, VTK_QUAD, [v.index for v in f.verts], eds_tags_list) # Tag, OnBry, ETags, etc
 
-        #mg.write_vtu('toto.vtu') # does NOT work because Mesh::General does not know the type of element (default is Lin2)
+        # Write VTU
+        bfn = Blender.sys.expandpath (Blender.Get('filename'))
+        key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
+        mg.write_vtu (key+'_mesh.vtu')
+        print '[1;34mMechSys[0m: file <'+ key+'_mesh.vtu> generated'
 
         # restore local coordinates
         msh.verts = ori

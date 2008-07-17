@@ -564,6 +564,8 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 							}
 							// is on boundary ?
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry || e->V[4]->OnBry || e->V[5]->OnBry || e->V[6]->OnBry || e->V[7]->OnBry); // if any node is on Bry, yes
+							// VTK cell type
+							e->VTKCellType = VTK_HEXAHEDRON;
 						}
 						else
 						{
@@ -581,6 +583,8 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 							}
 							// is on boundary ?
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry); // if any node is on Bry, yes
+							// VTK cell type
+							e->VTKCellType = VTK_QUAD;
 						}
 						if (e->OnBry)
 						{
@@ -789,7 +793,10 @@ inline void Structured::_erase()
 }; // namespace Mesh
 
 #ifdef USE_BOOST_PYTHON
+// {
+
 #include "util/tree.h"
+
 inline void PyBlock3DSort (long OrigID, long XPlusID, long YPlusID, long ZPlusID, BPy::list const & EdgesList, BPy::list & VertsList)
 {
 	/* In:
@@ -861,6 +868,8 @@ inline void PyBlock3DSort (long OrigID, long XPlusID, long YPlusID, long ZPlusID
 	for (int i=0; i<20; ++i) VertsList.append(vrs[i]);
 
 }
+
+// }
 #endif // USE_BOOST_PYTHON
 
 #endif // MECHSYS_MESH_STRUCTURED_H
