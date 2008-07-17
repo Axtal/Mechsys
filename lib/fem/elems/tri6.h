@@ -24,6 +24,7 @@
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
+#include "vtkCellType.h"
 
 namespace FEM
 {
@@ -60,7 +61,7 @@ public:
 	virtual ~Tri6() {}
 
 	// Derived methods
-	int  VTKCellType  () const { return 22; } // VTK_QUADRATIC_TRIANGLE
+	int  VTKCellType  () const { return VTK_QUADRATIC_TRIANGLE; }
 	void VTKConnect   (String & Nodes) const;
 	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
 	void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;

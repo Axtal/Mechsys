@@ -25,6 +25,7 @@
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
+#include "vtkCellType.h"
 
 namespace FEM
 {
@@ -50,7 +51,7 @@ public:
 	virtual ~Lin2() {}
 
 	// Derived methods
-	int  VTKCellType  () const { return 3; } // VTK_LINE
+	int  VTKCellType  () const { return VTK_LINE; }
 	void VTKConnect   (String & Nodes) const;
 	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const { throw new Fatal("Lin2::GetFaceNodes: Method is not available for this element"); }
 	void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;

@@ -24,6 +24,7 @@
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
+#include "vtkCellType.h"
 
 namespace FEM
 {
@@ -68,7 +69,7 @@ public:
 	virtual ~Hex8() {}
 
 	// Derived methods
-	int    VTKCellType   () const { return 12; } // VTK_HEXAHEDRON
+	int    VTKCellType   () const { return VTK_HEXAHEDRON; }
 	void   VTKConnect    (String & Nodes) const;
 	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
 	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
