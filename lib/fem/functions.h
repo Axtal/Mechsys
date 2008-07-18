@@ -246,11 +246,11 @@ inline void WriteVTUEquilib (FEM::Geom const & G, char const * FileName)
 	oss << "        </DataArray>\n";
 	oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
 	k = 0; oss << "        ";
-	size_t ossfset = 0;
+	size_t offset = 0;
 	for (size_t i=0; i<ne; ++i)
 	{
-		ossfset += G.Ele(i)->nNodes();
-		oss << (k==0?"  ":" ") << ossfset;
+		offset += G.Ele(i)->nNodes();
+		oss << (k==0?"  ":" ") << offset;
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
