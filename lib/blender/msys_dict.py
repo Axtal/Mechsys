@@ -12,7 +12,7 @@ def load_dict():
         dict['newpoint_z']    = 0.0
         dict['fillet_radius'] = 0.0
         dict['fillet_steps']  = 10
-        dict['show_props']    = 1
+        dict['show_props']    = 0
         dict['show_v_ids']    = 1
         dict['show_e_ids']    = 1
         dict['show_f_ids']    = 1
@@ -23,12 +23,26 @@ def load_dict():
     return dict
 
 
+def get_key():
+    bfn = Blender.sys.expandpath (Blender.Get('filename'))
+    key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
+    return key
+
+
 def set_int_property(obj, key, value):
     try:
         prop      = obj.getProperty (key)
         prop.data = value
     except:
         obj.addProperty (key, value, 'INT')
+
+
+def set_str_property(obj, key, value):
+    try:
+        prop      = obj.getProperty (key)
+        prop.data = value
+    except:
+        obj.addProperty (key, value, 'STRING')
 
 
 def set_btag(obj, tag):

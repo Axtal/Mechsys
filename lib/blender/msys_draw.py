@@ -1,9 +1,22 @@
 # Modules
+import math
+import time
+import pickle
 import Blender
 import bpy
-import math
 import mechsys as ms
 import msys_dict as di
+
+
+def print_timing(func):
+    def wrapper(*arg):
+        t1  = time.time ()
+        res = func      (*arg)
+        t2  = time.time ()
+        print '[1;34mMechSys[0m: %s took [1;31m%f[0m [1;32mseconds[0m' % (func.func_name, (t2-t1))
+        return res
+    return wrapper
+
 
 def add_point(xyz):
     scn = bpy.data.scenes.active
@@ -21,6 +34,7 @@ def add_point(xyz):
         Blender.Window.RedrawAll()
     else:
         Blender.Draw.PupMenu('ERROR|Select a Mesh object before calling this function')
+
 
 def add_points_from_file(filename):
     Blender.Window.WaitCursor(1)
@@ -41,6 +55,7 @@ def add_points_from_file(filename):
     if edm: Blender.Window.EditMode(1) # enter edm
     Blender.Window.RedrawAll()
     Blender.Window.WaitCursor(0)
+
 
 def add_spline_from_file(filename):
     Blender.Window.WaitCursor(1)
@@ -71,9 +86,11 @@ def add_spline_from_file(filename):
     Blender.Window.RedrawAll()
     Blender.Window.WaitCursor(0)
 
+
 def distance(p1,p2):
     d = p1 - p2
     return math.sqrt(math.pow(d[0],2)+math.pow(d[1],2)+math.pow(d[2],2))
+
 
 def closest(pt,pointlist):
     idx = 0
@@ -84,6 +101,7 @@ def closest(pt,pointlist):
             min = d
             idx = i
     return min, idx
+
 
 def arc_point(msh,cen,sp,ep,steps):
     dr1 = sp-cen
@@ -96,6 +114,7 @@ def arc_point(msh,cen,sp,ep,steps):
         msh.verts.extend(pt)
         msh.edges.extend(msh.verts[len(msh.verts)-2],msh.verts[len(msh.verts)-1])
         dr1 = pt-cen
+
 
 def fillet(radius,steps):
     scn = bpy.data.scenes.active
@@ -165,6 +184,7 @@ def fillet(radius,steps):
         if edm: Blender.Window.EditMode(1)
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
 
+
 def break_edge(at_mid=False):
     scn = bpy.data.scenes.active
     obj = scn.objects.active
@@ -189,6 +209,7 @@ def break_edge(at_mid=False):
         else: Blender.Draw.PupMenu('ERROR|Please, select only one edge (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
+
 
 def read_2d_mesh(filename):
     Blender.Window.WaitCursor(1)
@@ -514,7 +535,6 @@ def gen_struct_mesh():
 
             # 3D - o2
             elif len(msh.edges)==24:
-                print '3D - o2 => not yet'
                 res = gen_blk_3d (obj, msh)
                 if len(res)>0:
                     bks.append    (ms.mesh_block())
@@ -529,72 +549,66 @@ def gen_struct_mesh():
         # set cursor
         Blender.Window.WaitCursor(1)
 
-        # key
-        bfn = Blender.sys.expandpath (Blender.Get('filename'))
-        key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
-
         # generate mesh and write VTU file for ParaView
         mms = ms.mesh_structured()
         ne  = mms.generate (bks)
-        mms.write_vtu (key+'.vtu')
+        fn  = Blender.sys.makename(ext='_MESH_'+obj.name+'.vtu')
+        mms.write_vtu (fn)
         print '[1;34mMechSys[0m: [1;33m%d[0m elements generated' % ne
-        print '[1;34mMechSys[0m: File <[1;33m%s[0m> created' % (key+'.vtu')
+        print '[1;34mMechSys[0m: File <[1;33m%s[0m> created' % fn
 
-        return
         # draw generated mesh
-        draw_struct_mesh (key, mms)
+        draw_struct_mesh (mms)
 
         # restore cursor
         Blender.Window.WaitCursor(0)
 
 
-def draw_struct_mesh(key, mms):
+@print_timing
+def set_elems(obj, nelems, elems):
+    obj.properties['nelems'] = nelems
+    pickle.dump (elems, open(Blender.sys.makename(ext='_ELEMS_'+obj.name+'.pickle'),'w'), pickle.HIGHEST_PROTOCOL)
+    print '[1;34mMechSys[0m: Element tags and connectivity read'
+
+
+@print_timing
+def set_etags(obj, msh, elems):
+    for et in elems['etags']:
+        edge_id = msh.findEdges (et[0], et[1])
+        di.set_tag (obj, 'edge', edge_id, elems['etags'][et])
+
+
+@print_timing
+def draw_struct_mesh(mms):
     # In:
     #     mms: A MechSys::PyMeshStruct object
 
-    # get vertices and elements
-    vs = []
-    es = []
-    mms.get_verts   (vs)
-    mms.get_elems   (es)
+    # get vertices and edges
+    verts = []
+    edges = []
+    mms.get_verts (verts)
+    mms.get_edges (edges)
 
     # add new mesh to Blender
     #Blender.Window.ViewLayers([2])
     #Blender.Window.SetActiveLayer(1<<1)
+    key     = di.get_key()
     scn     = bpy.data.scenes.active
     new_msh = bpy.data.meshes.new      (key+'_structured')
     new_obj = scn.objects.new (new_msh, key+'_structured')
-    new_msh.verts.extend    (vs)
-    new_msh.faces.extend    (es)
-    new_obj.select          (1)
+    new_msh.verts.extend (verts)
+    new_msh.edges.extend (edges)
+    new_obj.select       (1)
     #Blender.Window.EditMode (1)
+    print '[1;34mMechSys[0m: Mesh extended'
 
-    # set element tags
-    elt = []
-    mms.get_eletags (elt)
-    for t in elt:
-        di.set_tag (new_obj, 'elem', t[0], t[1])
-
-    # MechSys:                Blender:
-    #                             returned by 'face.edge_keys'
-    #            3                            2
-    #      +-----------+                +-----------+   
-    #      |           |                |           |
-    #      |           |                |           |   
-    #    0 |           | 1            3 |           | 1
-    #      |           |                |           |
-    #      |           |                |           |   
-    #      +-----------+                +-----------+   
-    #            2                            0
+    # set elements
+    elems  = {}
+    nelems = mms.get_elems(elems)
+    set_elems (new_obj, nelems, elems)
 
     # set tags
-    etags_list = []
-    mms.get_etags (etags_list)
-    map = [3, 1, 0, 2] # map MechSys edge local ID to Blender face edge local ID
-    for res in etags_list:
-        face_id, v1, v2, etag = res
-        edge_id = new_msh.findEdges (v1, v2)
-        di.set_tag (new_obj, 'edge', edge_id, etag)
+    set_etags (new_obj, new_msh, elems)
 
     # redraw
     Blender.Window.QRedrawAll()

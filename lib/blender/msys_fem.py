@@ -1,13 +1,16 @@
 # Modules
-import Blender
-import bpy
+
 import os
 import math
+import pickle
+import Blender
+import bpy
 import mechsys as ms
 import msys_dict as di
 
 def fill_mesh(obj):
     if obj!=None and obj.type=='Mesh':
+
         # Mesh
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
@@ -28,13 +31,15 @@ def fill_mesh(obj):
             else:        onbry = False
             mg.set_vert (i, onbry, v.co[0], v.co[1]) # ,OnBry, Dupl, etc
 
+        # read elements properties
+        nelems = obj.properties['nelems']
+        elems  = pickle.load (open(Blender.sys.makename(ext='_elems_'+obj.name+'.pickle'),'r'))
+        print elems
 
         # Elements
-        VTK_TRIANGLE   =  5
-        VTK_QUAD       =  9
-        VTK_TETRA      = 10
-        VTK_HEXAHEDRON = 12
-        mg.set_nelems (len(msh.faces))
+        mg.set_nelems (nelems)
+        for i in range(nelems):
+
         for i, f in enumerate(msh.faces):
             eds            = f.edge_keys
             eds_global_ids = [msh.findEdges(vs[0], vs[1]) for vs in eds]

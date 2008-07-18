@@ -80,6 +80,7 @@ def event(evt, val):
 
 
 # Handle button events
+@dr.print_timing
 def button_event(evt):
 
     # load dictionary
