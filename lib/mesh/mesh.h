@@ -110,16 +110,15 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-	void PyWriteVTU   (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
-	void PyGetVerts   (BPy::list & V) const;
-	void PyGetElems   (BPy::list & E) const;
-	void PyGetEleTags (BPy::list & T) const;
-	void PyGetETags   (BPy::list & T) const;
-	void PySetNVerts  (size_t NumVerts);
-	void PySetNElems  (size_t NumElems);
-	void PySetVert2D  (int i, bool IsOnBry, double X, double Y);
-	void PySetVert3D  (int i, bool IsOnBry, double X, double Y, double Z);
-	void PySetElem    (int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags);
+	void   PyWriteVTU  (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
+	size_t PyGetVerts  (BPy::list & Verts) const; ///< return the number of vertices
+	size_t PyGetEdges  (BPy::list & Edges) const; ///< return the number of edges
+	size_t PyGetElems  (BPy::dict & Elems) const; ///< return the number of elements
+	void   PySetNVerts (size_t NumVerts);
+	void   PySetNElems (size_t NumElems);
+	void   PySetVert2D (int i, bool IsOnBry, double X, double Y);
+	void   PySetVert3D (int i, bool IsOnBry, double X, double Y, double Z);
+	void   PySetElem   (int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags);
 // }
 #endif
 
@@ -137,6 +136,10 @@ protected:
 	virtual void _erase            ();                                       ///< Erase current mesh (deallocate memory)
 	virtual int  _edge_to_lef_vert (int EdgeLocalID) const { return 0; }     ///< Returns the local left vertex ID for a given Local Edge ID
 	virtual int  _edge_to_rig_vert (int EdgeLocalID) const { return 1; }     ///< Returns the local right vertex ID for a given Local Edge ID
+
+private:
+	// Private methods
+	int _nedges (int VTKCellType) const;
 
 }; // class Generic
 
@@ -291,66 +294,102 @@ inline void Generic::WriteVTU(char const * FileName) const
 #ifdef USE_BOOST_PYTHON
 // {
 
-inline void Generic::PyGetVerts(BPy::list & V) const
+inline size_t Generic::PyGetVerts(BPy::list & Verts) const
 {
+	/* Out:
+	 *      Verts = [(x,y,z), (x,y,z), ... num verts]
+	 */
 	if (Is3D())
 	{
 		for (size_t i=0; i<_verts.Size(); ++i)
-			V.append (BPy::make_tuple(_verts[i]->C(0), _verts[i]->C(1), _verts[i]->C(2)));
+			Verts.append (BPy::make_tuple(_verts[i]->C(0), _verts[i]->C(1), _verts[i]->C(2)));
 	}
 	else
 	{
 		for (size_t i=0; i<_verts.Size(); ++i)
-			V.append (BPy::make_tuple(_verts[i]->C(0), _verts[i]->C(1), 0.0));
+			Verts.append (BPy::make_tuple(_verts[i]->C(0), _verts[i]->C(1), 0.0));
 	}
+	return len(Verts);
 }
 
-inline void Generic::PyGetElems(BPy::list & E) const
+inline size_t Generic::PyGetEdges(BPy::list & Edges) const
 {
-	for (size_t i=0; i<_elems.Size(); ++i)
-	{
-		BPy::list conn;
-		for (size_t j=0; j<_elems[i]->V.Size(); ++j)
-			conn.append (_elems[i]->V[j]->MyID);
-		E.append (conn);
-	}
-}
-
-inline void Generic::PyGetEleTags(BPy::list & Tags) const
-{
-	/* Returns a list of tuples: [(int,int, (int,int), ..., num of elems with tags]
-	 *
-	 *   Each tuple has two values:  element ID, element tag
+	/* Out:
+	 *      E = [[v1,v2], [v1,v2], ... num edges]
 	 */
 	for (size_t i=0; i<_elems.Size(); ++i)
-		Tags.append (BPy::make_tuple(_elems[i]->MyID, _elems[i]->Tag));
-}
-
-inline void Generic::PyGetETags(BPy::list & Tags) const
-{
-	/* Returns a list of tuples: [(int,int,int,int), (int,int,int,int), ..., num of elems with tags]
-	 *
-	 *   Each tuple has three values: (eid, L, R, tag)
-	 *
-	 *   where:  eid: element ID
-	 *           L:   global ID of the left vertex on edge
-	 *           R:   global ID of the right vertex on edge
-	 *           tag: edge tag
-	 */
-	for (size_t i=0; i<_elems_bry.Size(); ++i) // elements on boundary
 	{
-		for (int j=0; j<_elems_bry[i]->ETags.Size(); ++j) // j is the local_edge_id
+		for (int j=0; j<_nedges(_elems[i]->VTKCellType); ++j)
 		{
-			int tag = _elems_bry[i]->ETags(j);
-			if (tag<0)
-			{
-				int eid = _elems_bry[i]->MyID;
-				int L   = _elems_bry[i]->V[_edge_to_lef_vert(j)]->MyID;
-				int R   = _elems_bry[i]->V[_edge_to_rig_vert(j)]->MyID;
-				Tags.append (BPy::make_tuple(eid, L, R, tag));
-			}
+			BPy::list pair;
+			pair.append  (_elems[i]->V[_edge_to_lef_vert(j)]->MyID);
+			pair.append  (_elems[i]->V[_edge_to_rig_vert(j)]->MyID);
+			Edges.append (pair);
 		}
 	}
+	return len(Edges);
+}
+
+inline size_t Generic::PyGetElems(BPy::dict & Elems) const
+{
+	/* Out:
+	 *    
+	 *    Elems = {
+	 *      'tags'  : [t1,t2,t3, ... num elements]
+	 *      'onbs'  : [ 1, 0, 1, ... num elements]
+	 *      'vtks'  : [ 9, 9,12, ... num elements]
+	 *      'etags' : [(L,R,tag), (L,R,tag), ... num elements]
+	 *      'ftags' : [t1,t2,t3, ... num elements]
+	 *      'offs'  : [4,4,4,4, ... num elements]  // offsets
+	 *      'cons'  : [node0, node1, node3, num nodes in element 0,
+	 *                 node0, node1, node3, num nodes in element 1,
+	 *                 ...
+	 *                 node0, node1, node3, num nodes in element num_elem-1]
+	 *            }
+	 */
+	BPy::list tags,  onbs,  vtks,  offs,  cons;
+	BPy::dict etags, ftags;
+	for (size_t i=0; i<_elems.Size(); ++i)
+	{
+		// Data
+		tags.append (_elems[i]->Tag);
+		onbs.append (_elems[i]->OnBry ? 1 : 0);
+		vtks.append (_elems[i]->VTKCellType);
+
+		// ETags
+		for (int j=0; j<_elems[i]->ETags.Size(); ++j) // j is the local edge id
+		{
+			int tag = _elems[i]->ETags(j);
+			if (tag<0)
+			{
+				int L = _elems[i]->V[_edge_to_lef_vert(j)]->MyID;
+				int R = _elems[i]->V[_edge_to_rig_vert(j)]->MyID;
+				etags[BPy::make_tuple(L, R)] = tag;
+			}
+		}
+
+		// FTags
+		for (int j=0; j<_elems[i]->FTags.Size(); ++j) // j is the local face id
+		{
+			int tag = _elems[i]->FTags(j);
+			//if (tag<0) ftags.append (tag);
+		}
+
+		// Offsets
+		offs.append (_elems[i]->V.Size());
+
+		// Connectivities
+		for (size_t j=0; j<_elems[i]->V.Size(); ++j)
+			cons.append (_elems[i]->V[j]->MyID);
+	}
+	Elems["tags" ] = tags;
+	Elems["onbs" ] = onbs;
+	Elems["vtks" ] = vtks;
+	Elems["etags"] = etags;
+	Elems["ftags"] = ftags;
+	Elems["offs" ] = offs;
+	Elems["cons" ] = cons;
+	return _elems.Size();
 }
 
 inline void Generic::PySetNVerts(size_t NumVerts)
@@ -433,7 +472,7 @@ inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, int VTKCellType, BP
 #endif // USE_BOOST_PYTHON
 
 
-/* private */
+/* protected */
 
 inline void Generic::_vtk_con(Elem const * E, String & Connect) const
 {
@@ -451,6 +490,28 @@ inline void Generic::_erase()
 	_elems_bry  .Resize(0);
 	_verts_bry  .Resize(0);
 }
+
+
+/* private */
+
+inline int Generic::_nedges(int VTKCellType) const
+{
+	switch (VTKCellType)
+	{
+		case VTK_LINE:                 { return  1; }
+		case VTK_TRIANGLE:             { return  3; }
+		case VTK_QUAD:                 { return  4; }
+		case VTK_TETRA:                { return  6; }
+		case VTK_HEXAHEDRON:           { return 12; }
+		case VTK_QUADRATIC_EDGE:       { return  2; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  6; }
+		case VTK_QUADRATIC_QUAD:       { return  8; }
+		case VTK_QUADRATIC_TETRA:      { return 12; }
+		case VTK_QUADRATIC_HEXAHEDRON: { return 24; }
+		default: throw new Fatal("Generic::_nedges: VTKCellType==%d is invalid", VTKCellType);
+	}
+}
+
 
 /* output */
 std::ostream & operator<< (std::ostream & os, Mesh::Vertex const & V)

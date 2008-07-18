@@ -607,32 +607,35 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 	// Remove duplicates
 	long ncomp = 0; // number of comparisons
 	long ndupl = 0; // number of duplicates
-	for (size_t i=0; i<_verts_d_bry.Size(); ++i)
+	if (Blocks.Size()>1)
 	{
-		for (size_t j=i+1; j<_verts_d_bry.Size(); ++j)
+		for (size_t i=0; i<_verts_d_bry.Size(); ++i)
 		{
-			// check distance
-			double dist = sqrt(          pow(_verts_d_bry[i]->C(0)-_verts_d_bry[j]->C(0),2.0)+
-										 pow(_verts_d_bry[i]->C(1)-_verts_d_bry[j]->C(1),2.0)+
-							   (_is_3d ? pow(_verts_d_bry[i]->C(2)-_verts_d_bry[j]->C(2),2.0) : 0.0));
-			if (dist<_tol)
+			for (size_t j=i+1; j<_verts_d_bry.Size(); ++j)
 			{
-				/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
-				// If this node is duplicated, than it is not on-boundary any longer
-				_verts_d_bry[i]->OnBry = false;
-				*/
-				// Mark duplicated
-				_verts_d_bry[j]->Dupl = true;
-				// Chage elements' connectivities
-				for (size_t k=0; k<_verts_d_bry[j]->Shares.Size(); ++k)
+				// check distance
+				double dist = sqrt(          pow(_verts_d_bry[i]->C(0)-_verts_d_bry[j]->C(0),2.0)+
+											 pow(_verts_d_bry[i]->C(1)-_verts_d_bry[j]->C(1),2.0)+
+								   (_is_3d ? pow(_verts_d_bry[i]->C(2)-_verts_d_bry[j]->C(2),2.0) : 0.0));
+				if (dist<_tol)
 				{
-					Elem * e = _verts_d_bry[j]->Shares[k].E;
-					int    n = _verts_d_bry[j]->Shares[k].N;
-					e->V[n] = _verts_d_bry[i];
+					/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
+					// If this node is duplicated, than it is not on-boundary any longer
+					_verts_d_bry[i]->OnBry = false;
+					*/
+					// Mark duplicated
+					_verts_d_bry[j]->Dupl = true;
+					// Chage elements' connectivities
+					for (size_t k=0; k<_verts_d_bry[j]->Shares.Size(); ++k)
+					{
+						Elem * e = _verts_d_bry[j]->Shares[k].E;
+						int    n = _verts_d_bry[j]->Shares[k].N;
+						e->V[n] = _verts_d_bry[i];
+					}
+					ndupl++;
 				}
-				ndupl++;
+				ncomp++;
 			}
-			ncomp++;
 		}
 	}
 
