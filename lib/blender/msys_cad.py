@@ -44,6 +44,8 @@ EVT_MESH_SETX     = 11 # set local x-y coordinates of a block (need two edges pr
 EVT_MESH_SETY     = 12 # set local x-y coordinates of a block (need two edges pre-selected)
 EVT_MESH_SETZ     = 13 # set local x-y coordinates of a block (need two edges pre-selected)
 EVT_MESH_GENSTRU  = 14 # generate structured mesh using MechSys module
+# Mesh -- triangle
+EVT_MESH_GENTRI   = 144 # generate structured mesh using MechSys module
 # FEA
 EVT_FEA_ADDNBRY    = 15 # add nodes boundary
 EVT_FEA_DELALLNBRY = 16 # delete all nodes boundary
@@ -181,6 +183,14 @@ def button_event(evt):
     # generate structured mesh via MechSys
     elif evt==EVT_MESH_GENSTRU:
         tt = timeit.Timer('msys_draw.gen_struct_mesh()', 'import msys_draw')
+        t  = tt.timeit(number=1)
+        print '[1;34mMechSys[0m: time spent on generation and drawing = [1;31m',t,'[0m [1;32mseconds[0m'
+
+    # ------------------------------------------------------------------------------- Triangle
+
+    # generate triangle mesh via MechSys
+    elif evt==EVT_MESH_GENTRI:
+        tt = timeit.Timer('msys_draw.gen_triangle_mesh()', 'import msys_draw')
         t  = tt.timeit(number=1)
         print '[1;34mMechSys[0m: time spent on generation and drawing = [1;31m',t,'[0m [1;32mseconds[0m'
 
@@ -513,7 +523,7 @@ def gui():
     # Mesh
     dx   = 2*gx+55;
     row -= ggy
-    h    = 8*rh+ggy+5*gy
+    h    = 15*rh+ggy+5*gy
     BGL.glColor3f     (0.4, 0.4, 0.4)
     BGL.glRecti       (gx, row, wid-gx, row-ch); row -= ch
     BGL.glColor3f     (1.0, 1.0, 1.0)
@@ -564,7 +574,37 @@ def gui():
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Block:')
     Draw.Number       ('Tag=',     EVT_NONE,          dx,  row, 100, rh, btag, -1000, 0,'Set the block tag (to be replicated to all elements)',btag_callback); row -= rh+gy
-    Draw.PushButton   ('Generate', EVT_MESH_GENSTRU,  ggx, row, 200, rh, 'Generated structured mesh')
+    Draw.PushButton   ('Generate', EVT_MESH_GENSTRU,  ggx, row, 200, rh, 'Generated structured mesh'); row -= gy
+
+    # Mesh -- triangles
+    dx   = 2*gx+70;
+    ggx += gx
+    dx  += gx
+    row -= gy
+    h    = 3*rh+ggy+3*gy
+    BGL.glColor3f     (0.431, 0.443, 0.514)
+    BGL.glRecti       (2*gx, row, wid-2*gx, row-rh); row -= rh
+    BGL.glColor3f     (1.0, 1.0, 1.0)
+    BGL.glRasterPos2i (ggx, row+5)
+    Draw.Text         ('Triangles')
+    BGL.glColor3f     (0.72, 0.72, 0.8)
+    BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
+    BGL.glColor3f     (0.0, 0.0, 0.0)
+    Draw.PushButton   ('Refresh', EVT_REFRESH, ggx+120, row+2, 60, rh-4, 'Refresh GUI'); row -= rh+gy
+    BGL.glRasterPos2i (ggx, row+4)
+    Draw.Text         ('Local Axes:')
+    Draw.PushButton   ('Set x', EVT_MESH_SETX, dx    , row, 60, rh , 'Set local x axis (one edge must be previously selected)')
+    Draw.PushButton   ('Set y', EVT_MESH_SETY, dx+ 60, row, 60, rh , 'Set local y axis (one edge must be previously selected)')
+    Draw.PushButton   ('Set z', EVT_MESH_SETZ, dx+120, row, 60, rh , 'Set local z axis (one edge must be previously selected)'); row -= rh
+    BGL.glRasterPos2i (ggx, row+4)
+    Draw.Text         ('Divisions:')
+    Draw.Number       ('nX=',  EVT_NONE, dx,     row, 80, rh, ndivx, 1, 10000,'Set number of divisions along x (local axis)',ndivx_callback)
+    Draw.Number       ('nY=',  EVT_NONE, dx+ 80, row, 80, rh, ndivy, 1, 10000,'Set number of divisions along y (local axis)',ndivy_callback)
+    Draw.Number       ('nZ=',  EVT_NONE, dx+160, row, 80, rh, ndivz, 1, 10000,'Set number of divisions along z (local axis)',ndivz_callback); row -= rh
+    BGL.glRasterPos2i (ggx, row+4)
+    Draw.Text         ('Block:')
+    Draw.Number       ('Tag=',     EVT_NONE,          dx,  row, 100, rh, btag, -1000, 0,'Set the block tag (to be replicated to all elements)',btag_callback); row -= rh+gy
+    Draw.PushButton   ('Generate', EVT_MESH_GENTRI ,  ggx, row, 200, rh, 'Generated structured mesh')
 
     # FEA
     dx   = 2*gx+55;

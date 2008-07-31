@@ -19,7 +19,7 @@ def fill_mesh(obj):
         # MechSys::Mesh::Generic
         mg = ms.mesh_generic()
 
-        # transform mesh to global coordinates
+        # Transform mesh to global coordinates
         ori = msh.verts[:] # create a copy in local coordinates
         msh.transform (obj.matrix)
 
@@ -31,33 +31,20 @@ def fill_mesh(obj):
             else:        onbry = False
             mg.set_vert (i, onbry, v.co[0], v.co[1]) # ,OnBry, Dupl, etc
 
-        # read elements properties
+        # Read elements properties
         nelems = obj.properties['nelems']
         elems  = pickle.load (open(Blender.sys.makename(ext='_elems_'+obj.name+'.pickle'),'r'))
-        print elems
 
         # Elements
         mg.set_nelems (nelems)
+        start = 0
         for i in range(nelems):
+            mg.set_elem (i, elems['tags'][i], elems['onbs'][i], elems['vtks'][i], elems['cons'][i], elems['etags'][i])
 
-        for i, f in enumerate(msh.faces):
-            eds            = f.edge_keys
-            eds_global_ids = [msh.findEdges(vs[0], vs[1]) for vs in eds]
-            eds_tags_list  = di.get_tags_list (obj, 'edge', eds_global_ids)
-            if len(eds_tags_list)>0: onbry = True
-            else:                    onbry = False
-            mg.set_elem (i, -1, onbry, VTK_QUAD, [v.index for v in f.verts], eds_tags_list) # Tag, OnBry, ETags, etc
-
-        # Write VTU
-        bfn = Blender.sys.expandpath (Blender.Get('filename'))
-        key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
-        mg.write_vtu (key+'_mesh.vtu')
-        print '[1;34mMechSys[0m: file <'+ key+'_mesh.vtu> generated'
-
-        # restore local coordinates
+        # Restore local coordinates
         msh.verts = ori
 
-        # end
+        # End
         if edm: Blender.Window.EditMode(1)
         return mg
 
@@ -79,12 +66,12 @@ def run_fea(obj, nbrys, fbrys, eatts):
     sol.solve()
 
     # output
-    bfn = Blender.sys.expandpath (Blender.Get('filename'))
-    key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
-    ms.write_vtu_equilib(g, key+'.vtu')
-    print '[1;34mMechSys[0m: file <'+ key+'.vtu> generated'
+    fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
+    ms.write_vtu_equilib (g, fn)
+    print '[1;34mMechSys[0m: file <'+fn+'> generated'
 
-    os.popen('paraview --data='+key+'.vtu')
+    # call ParaView
+    os.popen('paraview --data='+fn)
 
     # restore cursor
     Blender.Window.WaitCursor(0)
@@ -92,8 +79,7 @@ def run_fea(obj, nbrys, fbrys, eatts):
 
 def gen_script(obj, nbrys, fbrys, eatts):
     # text
-    bfn = Blender.sys.expandpath (Blender.Get('filename'))
-    key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
+    fn  = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
     txt = Blender.Text.New(obj.name+'_script')
     txt.write ('import bpy\n')
     txt.write ('import mechsys\n')
@@ -109,4 +95,4 @@ def gen_script(obj, nbrys, fbrys, eatts):
     txt.write ('sol.set_geom(geom)\n')
     txt.write ('sol.set_lin_sol("LA").set_num_div(1).set_delta_time(0.0)\n')
     txt.write ('sol.solve()\n')
-    txt.write ('mechsys.write_vtu_equilib(geom, "'+key+'.vtu")\n')
+    txt.write ('mechsys.write_vtu_equilib(geom, "'+fn+'")\n')

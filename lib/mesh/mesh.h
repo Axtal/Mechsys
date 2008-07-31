@@ -335,20 +335,20 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 	/* Out:
 	 *    
 	 *    Elems = {
-	 *      'tags'  : [t1,t2,t3, ... num elements]
-	 *      'onbs'  : [ 1, 0, 1, ... num elements]
-	 *      'vtks'  : [ 9, 9,12, ... num elements]
-	 *      'etags' : [(L,R,tag), (L,R,tag), ... num elements]
-	 *      'ftags' : [t1,t2,t3, ... num elements]
-	 *      'offs'  : [4,4,4,4, ... num elements]  // offsets
-	 *      'cons'  : [node0, node1, node3, num nodes in element 0,
-	 *                 node0, node1, node3, num nodes in element 1,
-	 *                 ...
-	 *                 node0, node1, node3, num nodes in element num_elem-1]
-	 *            }
+	 *      'tags'    : [t1,t2,t3, ... num elements]
+	 *      'onbs'    : [ 1, 0, 1, ... num elements]
+	 *      'vtks'    : [ 9, 9,12, ... num elements]
+	 *      'cons'    : {id0:[node0, node1, node3, num nodes in element 0],
+	 *                   id1:[n0,n1,n2,n3,n4,n5,n6,n7], ... num elems}
+	 *      'etags'   : {id0:[tag_edge_0, tag_edge_1, tag_edge_2, tag_edge_3],
+	 *                   id1:[t0,t1,t2,t3], ... num elems]}
+	 *      'ftags'   : {id0:[tag_face_0, tag_face_1, tag_face_2, tag_face_3, tag_face_4, tag_face_5],
+	 *                   id1:[t0,t1,t2,t3,t4,t5], ... num elems]}
+	 *      'etags_g' : {(L,R):tag, (L,R):tag, ... num edge tags]
+	 *    }
 	 */
-	BPy::list tags,  onbs,  vtks,  offs,  cons;
-	BPy::dict etags, ftags;
+	BPy::list tags,  onbs,  vtks;
+	BPy::dict cons, etags, ftags, etags_g;
 	for (size_t i=0; i<_elems.Size(); ++i)
 	{
 		// Data
@@ -356,39 +356,43 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 		onbs.append (_elems[i]->OnBry ? 1 : 0);
 		vtks.append (_elems[i]->VTKCellType);
 
-		// ETags
+		// Connectivities
+		BPy::list co;
+		for (size_t j=0; j<_elems[i]->V.Size(); ++j)
+			co.append (_elems[i]->V[j]->MyID);
+		cons[i] = co;
+
+		// ETags and Global ETags
+		BPy::list et;
 		for (int j=0; j<_elems[i]->ETags.Size(); ++j) // j is the local edge id
 		{
 			int tag = _elems[i]->ETags(j);
+			et.append (tag);
 			if (tag<0)
 			{
 				int L = _elems[i]->V[_edge_to_lef_vert(j)]->MyID;
 				int R = _elems[i]->V[_edge_to_rig_vert(j)]->MyID;
-				etags[BPy::make_tuple(L, R)] = tag;
+				etags_g[BPy::make_tuple(L, R)] = tag;
 			}
 		}
+		etags[i] = et;
 
 		// FTags
+		BPy::list ft;
 		for (int j=0; j<_elems[i]->FTags.Size(); ++j) // j is the local face id
 		{
 			int tag = _elems[i]->FTags(j);
-			//if (tag<0) ftags.append (tag);
+			ft.append (tag);
 		}
-
-		// Offsets
-		offs.append (_elems[i]->V.Size());
-
-		// Connectivities
-		for (size_t j=0; j<_elems[i]->V.Size(); ++j)
-			cons.append (_elems[i]->V[j]->MyID);
+		ftags[i] = ft;
 	}
-	Elems["tags" ] = tags;
-	Elems["onbs" ] = onbs;
-	Elems["vtks" ] = vtks;
-	Elems["etags"] = etags;
-	Elems["ftags"] = ftags;
-	Elems["offs" ] = offs;
-	Elems["cons" ] = cons;
+	Elems["tags" ]   = tags;
+	Elems["onbs" ]   = onbs;
+	Elems["vtks" ]   = vtks;
+	Elems["cons" ]   = cons;
+	Elems["etags"]   = etags;
+	Elems["etags_g"] = etags_g;
+	Elems["ftags"]   = ftags;
 	return _elems.Size();
 }
 

@@ -573,9 +573,9 @@ def set_elems(obj, nelems, elems):
 
 @print_timing
 def set_etags(obj, msh, elems):
-    for et in elems['etags']:
+    for et in elems['etags_g']:
         edge_id = msh.findEdges (et[0], et[1])
-        di.set_tag (obj, 'edge', edge_id, elems['etags'][et])
+        di.set_tag (obj, 'edge', edge_id, elems['etags_g'][et])
 
 
 @print_timing
@@ -612,3 +612,18 @@ def draw_struct_mesh(mms):
 
     # redraw
     Blender.Window.QRedrawAll()
+
+
+def gen_triangle_mesh():
+    # get objects
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    edm = Blender.Window.EditMode()
+    if edm: Blender.Window.EditMode(0)
+
+    # generate blocks
+    for obj in obs:
+        if obj!=None and obj.type=='Mesh':
+            print 'mesh'
+        elif obj!=None and obj.type=='Text':
+            print 'text'
