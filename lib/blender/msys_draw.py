@@ -626,4 +626,15 @@ def gen_triangle_mesh():
         if obj!=None and obj.type=='Mesh':
             print 'mesh'
         elif obj!=None and obj.type=='Text':
-            print 'text'
+            dat = obj.getData()
+            txt = dat.getText()
+            arr = txt.split("_")
+            if len(arr)>1:
+                key = arr[0]
+                val = arr[1]
+                loc = obj.matrixWorld[3][0:3]
+                if key=='att' or key=='lay':
+                    if len(arr)>2: area = arr[2]
+                    print 'hi'
+                elif key=='hol':
+                    print 'hi'
