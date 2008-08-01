@@ -93,13 +93,22 @@ class Generic
 {
 public:
 	// Constructor
-	Generic (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol), _is_3d(false) {} ///< Tol is the tolerance to regard two vertices as coincident
+	Generic (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol), _is_3d(false), _is_o2(false) {} ///< Tol is the tolerance to regard two vertices as coincident
 
 	// Destructor
 	virtual ~Generic () { _erase(); }
 
 	// Methods
 	void WriteVTU (char const * FileName) const;
+
+	// Set methods
+	void SetO2      (bool IsO2=true) { _is_o2=IsO2; }                               ///< (Un)set quadratic elements
+	void SetNVerts  (size_t NumVerts);                                              ///< Erase old mesh and set number of vertices
+	void SetNElems  (size_t NumElems);                                              ///< Set number of elements
+	void SetVert2D  (int i, bool IsOnBry, double X, double Y);                      ///< Set 2D vertex
+	void SetVert3D  (int i, bool IsOnBry, double X, double Y, double Z);            ///< Set 3D vertex
+	void SetElem    (int i, int Tag, bool IsOnBry, int VTKCellType, size_t NVerts); ///< Set element
+	void SetElemCon (int i, int j, size_t iVert);                                   ///< Set element connectivity
 
 	// Access methods
 	bool                   Is3D     () const { return _is_3d;     } ///< Is 3D mesh ?
@@ -114,10 +123,6 @@ public:
 	size_t PyGetVerts  (BPy::list & Verts) const; ///< return the number of vertices
 	size_t PyGetEdges  (BPy::list & Edges) const; ///< return the number of edges
 	size_t PyGetElems  (BPy::dict & Elems) const; ///< return the number of elements
-	void   PySetNVerts (size_t NumVerts);
-	void   PySetNElems (size_t NumElems);
-	void   PySetVert2D (int i, bool IsOnBry, double X, double Y);
-	void   PySetVert3D (int i, bool IsOnBry, double X, double Y, double Z);
 	void   PySetElem   (int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags);
 // }
 #endif
@@ -126,6 +131,7 @@ protected:
 	// Data
 	double         _tol;       ///< Tolerance to remove duplicate nodes
 	bool           _is_3d;     ///< Is 3D mesh?
+	bool           _is_o2;     ///< Is quadratic element?
 	Array<Vertex*> _verts;     ///< Vertices
 	Array<Elem*>   _elems;     ///< Elements
 	Array<Elem*>   _elems_bry; ///< Elements on boundary
@@ -291,6 +297,74 @@ inline void Generic::WriteVTU(char const * FileName) const
 	of.close();
 }
 
+inline void Generic::SetNVerts(size_t NumVerts)
+{
+	_erase            ();
+	_verts.Resize     (NumVerts);
+	_verts.SetValues  (NULL);
+	_verts_bry.Resize (0);
+}
+
+inline void Generic::SetNElems(size_t NumElems)
+{
+	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
+	_elems.Resize     (NumElems);
+	_elems.SetValues  (NULL);
+	_elems_bry.Resize (0);
+}
+
+inline void Generic::SetVert2D(int i, bool IsOnBry, double X, double Y)
+{
+	// Set _verts
+	if (_verts[i]==NULL) _verts[i] = new Vertex;
+	_verts[i]->MyID    = i;
+	_verts[i]->OnBry   = IsOnBry;
+	_verts[i]->EdgesID = -1;
+	_verts[i]->FacesID = -1;
+	_verts[i]->Dupl    = false;
+	_verts[i]->C.Resize(2);
+	_verts[i]->C = X, Y;
+
+	// Set _verts_bry
+	if (IsOnBry) _verts_bry.Push (_verts[i]);
+}
+
+inline void Generic::SetVert3D(int i, bool IsOnBry, double X, double Y, double Z)
+{
+	// Set _verts
+	if (_verts[i]==NULL) _verts[i] = new Vertex;
+	_verts[i]->MyID    = i;
+	_verts[i]->OnBry   = IsOnBry;
+	_verts[i]->EdgesID = -1;
+	_verts[i]->FacesID = -1;
+	_verts[i]->Dupl    = false;
+	_verts[i]->C.Resize(3);
+	_verts[i]->C = X, Y, Z;
+
+	// Set _verts_bry
+	if (IsOnBry) _verts_bry.Push (_verts[i]);
+}
+
+inline void Generic::SetElem(int i, int Tag, bool IsOnBry, int VTKCellType, size_t NVerts)
+{
+	// Set _elems
+	if (_elems[i]==NULL) _elems[i] = new Elem;
+	_elems[i]->MyID        = i;
+	_elems[i]->Tag         = Tag;
+	_elems[i]->OnBry       = IsOnBry;
+	_elems[i]->VTKCellType = VTKCellType;
+	_elems[i]->V.Resize (NVerts);
+
+	// Set _elems_bry
+	if (IsOnBry) _elems_bry.Push (_elems[i]);
+}
+
+inline void Generic::SetElemCon(int i, int j, size_t iVert)
+{
+	_elems[i]->V[j] = _verts[iVert];
+}
+
+
 #ifdef USE_BOOST_PYTHON
 // {
 
@@ -344,7 +418,7 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 	 *                   id1:[t0,t1,t2,t3], ... num elems]}
 	 *      'ftags'   : {id0:[tag_face_0, tag_face_1, tag_face_2, tag_face_3, tag_face_4, tag_face_5],
 	 *                   id1:[t0,t1,t2,t3,t4,t5], ... num elems]}
-	 *      'etags_g' : {(L,R):tag, (L,R):tag, ... num edge tags]
+	 *      'etags_g' : {(L,R):tag, (L,R):tag, ... num edge tags]}
 	 *    }
 	 */
 	BPy::list tags,  onbs,  vtks;
@@ -396,71 +470,13 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 	return _elems.Size();
 }
 
-inline void Generic::PySetNVerts(size_t NumVerts)
-{
-	_erase();
-	_verts.Resize(NumVerts);
-	_verts.SetValues(NULL);
-	_verts_bry.Resize(0);
-}
-
-inline void Generic::PySetNElems(size_t NumElems)
-{
-	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
-	_elems.Resize(NumElems);
-	_elems.SetValues(NULL);
-	_elems_bry.Resize(0);
-}
-
-inline void Generic::PySetVert2D(int i, bool IsOnBry, double X, double Y)
-{
-	// Set _verts
-	if (_verts[i]==NULL) _verts[i] = new Vertex;
-	_verts[i]->MyID    = i;
-	_verts[i]->OnBry   = IsOnBry;
-	_verts[i]->EdgesID = -1;
-	_verts[i]->FacesID = -1;
-	_verts[i]->Dupl    = false;
-	_verts[i]->C.Resize(2);
-	_verts[i]->C = X, Y;
-
-	// Set _verts_bry
-	if (IsOnBry) _verts_bry.Push (_verts[i]);
-}
-
-inline void Generic::PySetVert3D(int i, bool IsOnBry, double X, double Y, double Z)
-{
-	// Set _verts
-	if (_verts[i]==NULL) _verts[i] = new Vertex;
-	_verts[i]->MyID    = i;
-	_verts[i]->OnBry   = IsOnBry;
-	_verts[i]->EdgesID = -1;
-	_verts[i]->FacesID = -1;
-	_verts[i]->Dupl    = false;
-	_verts[i]->C.Resize(3);
-	_verts[i]->C = X, Y, Z;
-
-	// Set _verts_bry
-	if (IsOnBry) _verts_bry.Push (_verts[i]);
-}
-
 inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags)
 {
-	// Set _elems
-	if (_elems[i]==NULL) _elems[i] = new Elem;
-	_elems[i]->MyID        = i;
-	_elems[i]->Tag         = Tag;
-	_elems[i]->OnBry       = IsOnBry;
-	_elems[i]->VTKCellType = VTKCellType;
-
-	// Set connectivity
+	// Set Elements & Connectivity
 	int nverts = len(Conn);
-	_elems[i]->V.Resize(nverts);
+	SetElem (i, Tag, IsOnBry, VTKCellType, nverts);
 	for (int j=0; j<nverts; ++j)
-		_elems[i]->V[j] = _verts[BPy::extract<int>(Conn[j])()];
-
-	// Set _elems_bry
-	if (IsOnBry) _elems_bry.Push(_elems[i]);
+		SetElemCon (i, j, BPy::extract<int>(Conn[j])());
 
 	// Set edge tags
 	int netags = len(EdgeTags);

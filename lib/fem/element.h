@@ -68,6 +68,22 @@ public:
 	void SetDim    (int nDim)           { _ndim      = nDim;     }    ///< Set the number of dimension of the problem
 	void SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
 	void Bry       (char const * Key, double Value, int FaceLocalID); ///< Set Face/Edge boundary conditions
+	void Bry       (char const * Key, double Value, Array<Node*> & FaceNodes);
+
+
+	void Bry (char const * Key, double Value, ...)
+	{
+		// Set array with pointers to the nodes on a face/edge
+		va_list   arg_list;
+		va_start (arg_list, Value); // initialize arg_list with parameters AFTER Value
+		Array<Node*> fnodes; fnodes.Resize(_n_face_nodes);
+		for (size_t i=0; i<_n_face_nodes; ++i)
+			fnodes[i] = va_arg (arg_list, Node*);
+		va_end (arg_list);
+
+		// Distribute to face-nodes
+		_dist_to_face_nodes (Key, Value, fnodes);
+	}
 	
 	// Get methods
 	long         GetID      ()         const { return _my_id;       } ///< Return the ID of this element
@@ -158,6 +174,11 @@ inline void Element::Bry(char const * Key, double Value, int FaceLocalID)
 	Array<Node*> fnodes;
 	GetFaceNodes        (FaceLocalID, fnodes);
 	_dist_to_face_nodes (Key, Value, fnodes);
+}
+
+inline void Element::Bry(char const * Key, double Value, Array<Node*> & FaceNodes)
+{
+	_dist_to_face_nodes (Key, Value, FaceNodes);
 }
 
 inline double Element::Volume() const
