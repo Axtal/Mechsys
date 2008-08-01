@@ -95,7 +95,7 @@ public:
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
 
 	// Constructor
-	Unstructured (double Tol=sqrt(DBL_EPSILON)) : Mesh::Generic(Tol) {} ///< Tol is the tolerance to regard two vertices as coincident
+	Unstructured (double Tol=sqrt(DBL_EPSILON)); ///< Tol is the tolerance to regard two vertices as coincident
 
 	// Destructor
 	~Unstructured () { _erase(); }
@@ -103,9 +103,13 @@ public:
 	// Methods
 	void   SetNVerts (size_t NVerts) ///< Erase any previous mesh and set the number of vertices.
 	{
-		
+		_tri_deallocate_all      (_tin);
+		_tri_deallocate_all      (_tou);
+		_tri_allocate_point_list (NVerts, _tin);
 	}
-	size_t Generate () { return 0; }
+
+	void   SetVert  (size_t i, double X, double Y) { _tin.pointlist[i*2]=X; _tin.pointlist[i*2+1]=Y; } ///< Set the cordinates of vertex i. SetNVerts MUST be called first.
+	size_t Generate ();
 	//size_t Generate  (Array<Region*> const & Regions, Array<Hole*> const & Holes); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
 
 #ifdef USE_BOOST_PYTHON
@@ -217,6 +221,21 @@ Edge Unstructured::Edge2Vert[]= {{ 0, 1 },
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+/* public */
+
+inline Unstructured::Unstructured(double Tol)
+	: Mesh::Generic (Tol)
+{
+	_tri_set_all_to_null (_tin);
+	_tri_set_all_to_null (_tou);
+}
+
+inline size_t Unstructured::Generate()
+{
+	triangulate ("Qze", &_tin, &_tou, NULL);
+	return _tou.numberoftriangles;
+}
 
 #ifdef USE_BOOST_PYTHON
 // {

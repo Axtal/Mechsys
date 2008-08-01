@@ -354,7 +354,7 @@
 #include <fpu_control.h>
 #endif /* LINUX */
 #ifdef TRILIBRARY
-#include "triangle.h"
+#include "jrs_triangle.h"
 #endif /* TRILIBRARY */
 
 /* A few forward declarations.                                               */
@@ -5355,6 +5355,7 @@ REAL permanent;
   int cxtaalen, cxtbblen, cytaalen, cytbblen;
   REAL axtbc[8], aytbc[8], bxtca[8], bytca[8], cxtab[8], cytab[8];
   int axtbclen, aytbclen, bxtcalen, bytcalen, cxtablen, cytablen;
+  axtbclen = aytbclen = bxtcalen = bytcalen = cxtablen = cytablen = 0;
   REAL axtbct[16], aytbct[16], bxtcat[16], bytcat[16], cxtabt[16], cytabt[16];
   int axtbctlen, aytbctlen, bxtcatlen, bytcatlen, cxtabtlen, cytabtlen;
   REAL axtbctt[8], aytbctt[8], bxtcatt[8];
@@ -8218,6 +8219,8 @@ int triflaws;
   struct otri newtopright;
   struct otri botlcasing, botrcasing;
   struct otri toplcasing, toprcasing;
+  toprcasing.orient = 0;
+  toprcasing.tri    = NULL;
   struct otri testtri;
   struct osub botlsubseg, botrsubseg;
   struct osub toplsubseg, toprsubseg;
@@ -10803,6 +10806,10 @@ struct behavior *b;
   struct otri searchtri;
   struct otri fliptri;
   struct otri lefttri, righttri, farlefttri, farrighttri;
+  farlefttri.orient  = 0;
+  farlefttri.tri     = NULL;
+  farrighttri.orient = 0;
+  farrighttri.tri    = NULL;
   struct otri inserttri;
   vertex firstvertex, secondvertex;
   vertex nextvertex, lastvertex;
