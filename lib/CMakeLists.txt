@@ -16,33 +16,4 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-PROJECT (MECHSYS)
-
-CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
-
-OPTION(MAKE_VERBOSE       "Show additional messages during compilation/link?" OFF)
-OPTION(MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    ON )
-OPTION(MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g3)"                     ON )
-OPTION(MAKE_OPTIMIZED     "Make optimized (-O3)"                              OFF)
-
-IF(MAKE_VERBOSE)
-	SET(CMAKE_VERBOSE_MAKEFILE TRUE)
-ENDIF(MAKE_VERBOSE)
-
-IF(MAKE_ALL_WARNINGS)
-	ADD_DEFINITIONS(-Wall)
-ENDIF(MAKE_ALL_WARNINGS)
-
-IF(MAKE_DEBUG_SYMBOLS)
-	ADD_DEFINITIONS(-g3)
-ENDIF(MAKE_DEBUG_SYMBOLS)
-
-IF(MAKE_OPTIMIZED)
-	ADD_DEFINITIONS(-O3)
-ENDIF(MAKE_OPTIMIZED)
-
-ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
-
-INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
-
-SUBDIRS (lib tst)
+SUBDIRS (mesh)

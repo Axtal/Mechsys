@@ -37,9 +37,18 @@ int main(int argc, char **argv) try
 	/////////////////////////////////////////////////////////////////////////////////////////// 2D /////
 	
 	{
+		// Set geometry
+		Mesh::Unstructured mu;
+		mu.SetNVerts (4);
+		mu.SetVert   (0, 0,0);
+		mu.SetVert   (1, 1,0);
+		mu.SetVert   (2, 1,1);
+		mu.SetVert   (3, 0,1);
+
+		cout << mu << endl;
+
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
-		Mesh::Unstructured mu;
 		size_t ne = mu.Generate ();
 		std::clock_t total = std::clock() - start; // Time elapsed
 		std::cout << "2D("<<ne<<" elements): Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
