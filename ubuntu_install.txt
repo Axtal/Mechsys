@@ -15,7 +15,16 @@
 ~/pkg/cmake-2.6.1 $  sudo make install
 
 
-2) Dependencies (Ubuntu 8.04)    #################################
+2) IGraph (http://cneurocvs.rmki.kfki.hu/igraph)    ##############
+
+~/pkg $             tar xzvf igraph-0.5.tar.gz
+~/pkg $             cd igraph-0.5
+~/pkg/igraph-0.5 $  ./configure
+~/pkg/igraph-0.5 $  make
+~/pkg/igraph-0.5 $  sudo make install
+
+
+3) Dependencies (Ubuntu 8.04)    #################################
 
 ~/mechsys $  sh ubuntu_deps.sh
 
@@ -23,21 +32,21 @@ Will install:  g++ make gfortran libblitz0-dev libsuitesparse-dev
                libgsl0-dev libboost-python-dev libsuperlu3-dev
 
 
-3) Tests    ######################################################
+4) Tests    ######################################################
 
 ~/mechsys $      ccmake .                              [c] [c] [g]
 ~/mechsys $      make
 ~/mechsys/tst $  sh check_all.sh
 
 
-4) Python module    ##############################################
+5) Python module    ##############################################
 
 ~/mechsys/src $  sudo python setup_mechsys.py install
 
 
-5) Blender    ####################################################
+6) Blender    ####################################################
 
-sudo apt-get install blender
+~/mechsys $  sudo apt-get install blender
 ~/mechsys $  sh ubuntu_blender_links.sh
 
 
