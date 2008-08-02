@@ -101,7 +101,7 @@ public:
 	~Unstructured () { _tri_deallocate_all(_tin); _tri_deallocate_all(_tou); }
 
 	// Set Methods
-	void SetPolySize    (size_t NPoints, size_t NSegments, size_t NRegions=0, size_t NHoles=0);                                                                                                 ///< Erase any previous input PSLG and set the number of points and segments of the polygon. Also set the number of holes and regions.
+	void SetPolySize    (size_t NPoints, size_t NSegments, size_t NRegions, size_t NHoles);                                                                                                 ///< Erase any previous input PSLG and set the number of points and segments of the polygon. Also set the number of holes and regions.
 	void SetPolyPoint   (size_t i, double X, double Y)                                { _tin.pointlist  [i*2]=X;          _tin.pointlist  [i*2+1]=Y;           }                                ///< Set the coordinates of point i of input PSLG. SetPolySize MUST be called first.
 	void SetPolySegment (size_t i, size_t iPointLeft, size_t iPointRight, long Tag=0) { _tin.segmentlist[i*2]=iPointLeft; _tin.segmentlist[i*2+1]=iPointRight; _tin.segmentmarkerlist[i]=Tag; } ///< Set the left and right points of a segment i of input PSLG. SetPolySize MUST be called first.
 	void SetPolyRegion  (size_t i, double X, double Y)                                { _tin.regionlist [i*2]=X;          _tin.regionlist [i*2+1]=Y;           }                                ///< Set the coordinates of a point defining a region i.

@@ -95,13 +95,10 @@ int main(int argc, char **argv) try
 
 	cout << "NormResid = " << sol->GetVar("NormResid") << endl;
 
-	FEM::WriteVTK(g, "out.vtk");
+	FEM::WriteVTK(g, "theat01.vtk");
 	
-
+    double errors = 0.0;
 	// Check
-
-	// Check
-    //double errors = 0.0;
 	//for (int i=0; i<4; ++i)
 	//for (int j=0; j<4; ++j)
 	//	errors += fabs(Ke0(i,j)-Ke_correct(i,j));
@@ -109,7 +106,9 @@ int main(int argc, char **argv) try
 	//if (fabs(errors)>1.0e-10) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	//else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-13) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

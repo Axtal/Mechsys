@@ -33,6 +33,7 @@ using LinAlg::Matrix;
 
 int main(int argc, char **argv) try
 {
+	double errors = 0.0;
 	
 	/////////////////////////////////////////////////////////////////////////////////////////// 2D /////
 	
@@ -127,7 +128,9 @@ int main(int argc, char **argv) try
 		cout << "[1;34mFile <tmesh01_3D.vtu> created[0m" << endl;
 	}
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-13) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

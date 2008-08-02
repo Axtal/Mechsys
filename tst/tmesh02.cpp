@@ -35,7 +35,8 @@ using Util::PI;
 
 int main(int argc, char **argv) try
 {
-	
+	double errors = 0.0;
+
 	/////////////////////////////////////////////////////////////////////////////////////////// 2D /////
 	
 	{
@@ -103,7 +104,9 @@ int main(int argc, char **argv) try
 
 	/////////////////////////////////////////////////////////////////////////////////////////// 3D /////
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-13) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

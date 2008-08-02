@@ -181,7 +181,9 @@ int main(int argc, char **argv) try
 	if (fabs(errors)>1.0e-7) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	else                     cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-7) return 1;
+	else                     return 0;
 }
 catch (Exception * e) 
 {

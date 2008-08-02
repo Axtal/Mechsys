@@ -123,7 +123,6 @@ public:
 	size_t PyGetVerts  (BPy::list & Verts) const; ///< return the number of vertices
 	size_t PyGetEdges  (BPy::list & Edges) const; ///< return the number of edges
 	size_t PyGetElems  (BPy::dict & Elems) const; ///< return the number of elements
-	void   PySetElem   (int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags);
 // }
 #endif
 
@@ -470,6 +469,7 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 	return _elems.Size();
 }
 
+/*
 inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags)
 {
 	// Set Elements & Connectivity
@@ -487,6 +487,7 @@ inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, int VTKCellType, BP
 			_elems[i]->ETags(j) = BPy::extract<int>(EdgeTags[j])();
 	}
 }
+*/
 
 // }
 #endif // USE_BOOST_PYTHON

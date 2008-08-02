@@ -59,6 +59,8 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
+	double errors = 0.0;
+
 	//////////////////////////////////////////////////////////////////////////////////////////////// 2D
 	
 	{
@@ -94,9 +96,6 @@ int main(int argc, char **argv) try
 
 		// Output
 		cout << g << endl;
-
-		// Check
-		double errors = 0;
 
 		// Stiffness
 		Array<size_t>  map;
@@ -158,6 +157,7 @@ int main(int argc, char **argv) try
 
 		if (fabs(errors)>1.0e-13) cout << "[1;31m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
 		else                      cout << "[1;32m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
+
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////// 3D
@@ -165,7 +165,9 @@ int main(int argc, char **argv) try
 	{
 	}
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-13) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

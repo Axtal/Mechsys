@@ -195,7 +195,9 @@ int main(int argc, char **argv) try
 	FEM::WriteVTUEquilib (g, "tpstrain01.vtu");
 	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m" << endl;
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-10) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

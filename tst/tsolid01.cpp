@@ -114,7 +114,12 @@ int main(int argc, char **argv) try
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
-	return 0;
+	// Check
+	double errors = 0.0;
+
+	// Return error flag
+	if (fabs(errors)>1.0e-13) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

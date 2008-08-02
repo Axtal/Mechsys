@@ -189,7 +189,9 @@ int main(int argc, char **argv) try
 	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
 	cout << endl;
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-10) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

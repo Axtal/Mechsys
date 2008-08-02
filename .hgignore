@@ -8,15 +8,17 @@ tst/ttruss01
 tst/tsolid01
 tst/tpstrain01
 tst/tpstrain02
-tst/theat
+tst/theat01
 tst/ttree01
-src/build
 
 syntax: glob
+CTestTestfile.cmake
+Testing
 CMakeCache.txt
 CMakeFiles
 Makefile
 cmake_install.cmake
+install_manifest.txt
 *.swp
 *.a
 *.so
@@ -25,3 +27,4 @@ cmake_install.cmake
 .project
 .DS_Store
 *.vtu
+*.vtk

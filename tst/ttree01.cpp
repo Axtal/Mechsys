@@ -30,6 +30,8 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+	double errors = 0.0;
+
 	{
 		cout << "------------------------------------------------ Test 1 ---\n";
 
@@ -101,7 +103,6 @@ int main(int argc, char **argv) try
 		Array<long> cor2; cor2.Resize(7);
 		cor1 =  8,  1,  9,  2, 10,  3, 11;
 		cor2 = 12,  5, 13,  6, 14,  7, 15;
-		double errors = 0;
 
 		// Path 1
 		Util::Tree tree(edges);
@@ -118,11 +119,13 @@ int main(int argc, char **argv) try
 		for (size_t i=0; i<path.Size(); ++i) errors += fabs(path[i]-cor2[i]);
 
 		// Errors
-		if (fabs(errors)>1.0e-10) cout << "[1;31m\nErrors = " << errors << "[0m\n" << endl;
+		if (fabs(errors)>1.0e-14) cout << "[1;31m\nErrors = " << errors << "[0m\n" << endl;
 		else                      cout << "[1;32m\nErrors = " << errors << "[0m\n" << endl;
 	}
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-14) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {

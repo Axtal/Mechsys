@@ -33,6 +33,7 @@ using LinAlg::Matrix;
 
 int main(int argc, char **argv) try
 {
+	double errors = 0.0;
 	
 	/////////////////////////////////////////////////////////////////////////////////////////// 2D - 1 /////
 	
@@ -41,7 +42,7 @@ int main(int argc, char **argv) try
 		Mesh::Unstructured mu;
 
 		// Define PSLG polygon sizes
-		mu.SetPolySize (/*NPoints*/4, /*NSegments*/4);
+		mu.SetPolySize (/*NPoints*/4, /*NSegments*/4, /*NRegions*/0, /*NHoles*/0);
 
 		// Points
 		mu.SetPolyPoint (0, 0, 0); // iPoint, X, Y
@@ -158,7 +159,9 @@ int main(int argc, char **argv) try
 	{
 	}
 
-	return 0;
+	// Return error flag
+	if (fabs(errors)>1.0e-13) return 1;
+	else                      return 0;
 }
 catch (Exception * e) 
 {
