@@ -32,16 +32,16 @@ Will install:  g++ make gfortran libblitz0-dev libsuitesparse-dev
                libgsl0-dev libboost-python-dev libsuperlu3-dev
 
 
-4) Tests    ######################################################
+4) Python module    ##############################################
+
+~/mechsys/src $  sudo python setup_mechsys.py install
+
+
+5) Tests    ######################################################
 
 ~/mechsys $      ccmake .                              [c] [c] [g]
 ~/mechsys $      make
 ~/mechsys/tst $  sh check_all.sh
-
-
-5) Python module    ##############################################
-
-~/mechsys/src $  sudo python setup_mechsys.py install
 
 
 6) Blender    ####################################################
