@@ -43,12 +43,6 @@
 // Blitz++
 #include <blitz/tinyvec-et.h>
 
-// Boost::Python
-#ifdef USE_BOOST_PYTHON
-  #include <boost/python.hpp> // this includes everything
-  namespace BPy = boost::python;
-#endif
-
 // Jonathan R Shewchuk' Triangle
 extern "C"
 {
@@ -77,14 +71,6 @@ using blitz::TinyVector;
 namespace Mesh
 {
 
-class Region
-{
-}; // class Region
-
-class Hole
-{
-}; // class Hole
-
 /** JRS' Triangle Input/Output structure. */
 typedef triangulateio TriIO;
 
@@ -95,26 +81,40 @@ public:
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
 
 	// Constructor
-	Unstructured (double Tol=sqrt(DBL_EPSILON)); ///< Tol is the tolerance to regard two vertices as coincident
+	Unstructured ();
 
 	// Destructor
 	~Unstructured () { _tri_deallocate_all(_tin); _tri_deallocate_all(_tou); }
 
 	// Set Methods
-	void SetPolySize    (size_t NPoints, size_t NSegments, size_t NRegions, size_t NHoles);                                                                                                 ///< Erase any previous input PSLG and set the number of points and segments of the polygon. Also set the number of holes and regions.
-	void SetPolyPoint   (size_t i, double X, double Y)                                { _tin.pointlist  [i*2]=X;          _tin.pointlist  [i*2+1]=Y;           }                                ///< Set the coordinates of point i of input PSLG. SetPolySize MUST be called first.
-	void SetPolySegment (size_t i, size_t iPointLeft, size_t iPointRight, long Tag=0) { _tin.segmentlist[i*2]=iPointLeft; _tin.segmentlist[i*2+1]=iPointRight; _tin.segmentmarkerlist[i]=Tag; } ///< Set the left and right points of a segment i of input PSLG. SetPolySize MUST be called first.
-	void SetPolyRegion  (size_t i, double X, double Y)                                { _tin.regionlist [i*2]=X;          _tin.regionlist [i*2+1]=Y;           }                                ///< Set the coordinates of a point defining a region i.
-	void SetPolyHole    (size_t i, double X, double Y)                                { _tin.holelist   [i*2]=X;          _tin.holelist   [i*2+1]=Y;           }                                ///< Set the coordinates of a point defining a hole i.
+	void SetPolySize    (size_t NPoints, size_t NSegments, size_t NRegions=0, size_t NHoles=0); ///< Erase any previous input PSLG and set the number of points and segments of the polygon. Also set the number of holes and regions.
+	void SetPolyPoint   (size_t i, double X, double Y, double Z=0);                             ///< Set the coordinates of point i of input PSLG. SetPolySize MUST be called first.
+	void SetPolySegment (size_t i, size_t iPointLeft, size_t iPointRight, int Tag=0);           ///< Set the left and right points of a segment i of input PSLG. SetPolySize MUST be called first.
+	void SetPolyRegion  (size_t i, int Tag, double MaxArea, double X, double Y, double Z=0);    ///< Set the coordinates of a point defining a region i.
+	void SetPolyHole    (size_t i, double X, double Y);                                         ///< Set the coordinates of a point defining a hole i.
+
+	// Get methods -- derived
+	size_t NVerts          ()                   const { return _tou.numberofpoints; }
+	size_t NVertsBry       ()                   const { return 0; } ///< TODO
+	size_t NElems          ()                   const { return _tou.numberoftriangles; }
+	size_t NElemsBry       ()                   const { return 0; } ///< TODO
+	long   VertBry         (size_t i)           const { return 0; } ///< TODO
+	long   ElemBry         (size_t i)           const { return 0; } ///< TODO
+	bool   IsVertOnBry     (size_t i)           const { return false; } ///< TODO
+	double VertX           (size_t i)           const { return _tou.pointlist[i*2  ]; }
+	double VertY           (size_t i)           const { return _tou.pointlist[i*2+1]; }
+	double VertZ           (size_t i)           const { return 0; }
+	int    ElemTag         (size_t i)           const { return (_tou.numberoftriangleattributes>0 ? _tou.triangleattributelist[i*_tou.numberoftriangleattributes] : -1); }
+	bool   IsElemOnBry     (size_t i)           const { return (_tou.triedgemarks[i*3]+_tou.triedgemarks[i*3+1]+_tou.triedgemarks[i*3+2]==0 ? false : true); }
+	int    ElemVTKCellType (size_t i)           const { return (_is_o2?VTK_QUADRATIC_TRIANGLE:VTK_TRIANGLE); }
+	size_t ElemNVerts      (size_t i)           const { return _tou.numberofcorners; }
+	size_t ElemCon         (size_t i, size_t j) const { return _tou.trianglelist[i*_tou.numberofcorners+j]; }
+	size_t ElemNETags      (size_t i)           const { return 3; }
+	size_t ElemNFTags      (size_t i)           const { return 0; }
+	int    ElemETag        (size_t i, size_t j) const { return _tou.triedgemarks[i*3+j]; }
 
 	// Methods
-	size_t Generate ();
-
-#ifdef USE_BOOST_PYTHON
-// {
-	//size_t PyGenerate (BPy::list const & Regions, BPy::list const & Holes);
-// }
-#endif
+	size_t Generate (double MaxAreaGlobal=-1); ///< [opt] MaxAreaGlobal = Uniform maximum area constraint
 
 private:
 	// Data
@@ -122,9 +122,9 @@ private:
 	TriIO _tou; ///< Triangle IO's output structure
 
 	// Overloaded private methods
-	void _vtk_con          (Elem const * E, String & Connect) const;
-	int  _edge_to_lef_vert (int EdgeLocalID) const { return Edge2Vert[EdgeLocalID].L; }
-	int  _edge_to_rig_vert (int EdgeLocalID) const { return Edge2Vert[EdgeLocalID].R; }
+	void _vtk_con          (size_t i, String & Connect) const;
+	int  _edge_to_lef_vert (int EdgeLocalID)            const { return Edge2Vert[EdgeLocalID].L; }
+	int  _edge_to_rig_vert (int EdgeLocalID)            const { return Edge2Vert[EdgeLocalID].R; }
 
 	// Private methods
 	void _tri_set_all_to_null (TriIO & Tio); ///< Set all elements of Triangle's IO structure to NULL and 0
@@ -142,8 +142,7 @@ Edge Unstructured::Edge2Vert[]= {{ 0, 1 },
 
 /* public */
 
-inline Unstructured::Unstructured(double Tol)
-	: Mesh::Generic (Tol)
+inline Unstructured::Unstructured()
 {
 	_tri_set_all_to_null (_tin);
 	_tri_set_all_to_null (_tou);
@@ -168,7 +167,7 @@ inline void Unstructured::SetPolySize(size_t NPoints, size_t NSegments, size_t N
 	// Regions
 	if (NRegions>0)
 	{
-		_tin.regionlist      = (double*)malloc(NRegions*2*sizeof(double));
+		_tin.regionlist      = (double*)malloc(NRegions*4*sizeof(double));
 		_tin.numberofregions = NRegions;
 	}
 
@@ -180,10 +179,56 @@ inline void Unstructured::SetPolySize(size_t NPoints, size_t NSegments, size_t N
 	}
 }
 
-inline size_t Unstructured::Generate()
+inline void Unstructured::SetPolyPoint(size_t i, double X, double Y, double Z)
+{
+	_tin.pointlist[i*2  ] = X;
+	_tin.pointlist[i*2+1] = Y;
+}
+
+inline void Unstructured::SetPolySegment(size_t i, size_t iPointLeft, size_t iPointRight, int Tag)
+{
+	_tin.segmentlist[i*2  ]   = iPointLeft;
+	_tin.segmentlist[i*2+1]   = iPointRight;
+	_tin.segmentmarkerlist[i] = Tag;
+}
+
+inline void Unstructured::SetPolyRegion(size_t i, int Tag, double MaxArea, double X, double Y, double Z)
+{
+	_tin.regionlist[i*4  ] = X;
+	_tin.regionlist[i*4+1] = Y;
+	_tin.regionlist[i*4+2] = Tag;
+	_tin.regionlist[i*4+3] = MaxArea;
+}
+
+inline void Unstructured::SetPolyHole(size_t i, double X, double Y)
+{
+	_tin.holelist[i*2  ] = X;
+	_tin.holelist[i*2+1] = Y;
+}
+
+inline size_t Unstructured::Generate(double MaxAreaGlobal)
 {
 	// Generate (via JRS' triangle)
-	triangulate ("pqz", &_tin, &_tou, NULL); // Q=quiet, p=poly, q=quality, z=zero
+	String prms;
+	if (MaxAreaGlobal<0) prms.Printf("pqzAa");
+	else                 prms.Printf("pqzAa%fa", MaxAreaGlobal); // Q=quiet, p=poly, q=quality, z=zero
+	triangulate (prms.CStr(), &_tin, &_tou, NULL);
+
+	/*
+	for (int i=0; i<_tou.numberofpoints; ++i)
+	{
+	   for (int j=0; j<_tou.numberofpointattributes; j++)
+		std::cout << _tou.pointattributelist[i*_tou.numberofpointattributes+j] << "  ";
+	   std::cout << std::endl;
+	}
+
+	for (int i=0; i<_tou.numberoftriangles; ++i)
+	{
+	   for (int j=0; j<_tou.numberoftriangleattributes; j++)
+		std::cout << _tou.triangleattributelist[i*_tou.numberoftriangleattributes+j] << "  ";
+	   std::cout << std::endl;
+	}
+	*/
 
 	/* After triangulate (with -p switch), _tou.regionlist gets the content of _tin.regionlist and
 	 * _tou.holelist gets the content of _tin.regionlist. Thus, these output variables must be set
@@ -193,6 +238,7 @@ inline size_t Unstructured::Generate()
 	_tou.holelist        = NULL;
 	_tou.numberofholes   = 0;
 
+	/*
 	// Set Vertices
 	SetNVerts (_tou.numberofpoints);
 	for (int i=0; i<_tou.numberofpoints; ++i)
@@ -202,10 +248,17 @@ inline size_t Unstructured::Generate()
 	SetNElems (_tou.numberoftriangles);
 	for (int i=0; i<_tou.numberoftriangles; ++i)
 	{
-		SetElem (i, -1, false, VTK_TRIANGLE, _tou.numberofcorners);
+		bool onbry = (_tou.triedgemarks[i*3]+_tou.triedgemarks[i*3+1]+_tou.triedgemarks[i*3+2]==0 ? false : true);
+		SetElem (i, -1, onbry, VTK_TRIANGLE, _tou.numberofcorners);
+		// Connectivity
 		for (int j=0; j<_tou.numberofcorners; ++j)
 			SetElemCon (i, j, _tou.trianglelist[i*_tou.numberofcorners+j]);
+		// ETags
+		SetElemETag (i, 0, _tou.triedgemarks[i*3]  );
+		SetElemETag (i, 1, _tou.triedgemarks[i*3+1]);
+		SetElemETag (i, 2, _tou.triedgemarks[i*3+2]);
 	}
+	*/
 
 	// Return number of elements==triangles
 	return _tou.numberoftriangles;
@@ -223,7 +276,7 @@ inline void Unstructured::_tri_set_all_to_null(TriIO & Tio)
 	Tio.numberofpoints          = 0;
 	Tio.numberofpointattributes = 0;
 
-	// Unstructureds
+	// Triangles
 	Tio.trianglelist               = NULL;
 	Tio.triangleattributelist      = NULL;
 	Tio.trianglearealist           = NULL;
@@ -231,6 +284,7 @@ inline void Unstructured::_tri_set_all_to_null(TriIO & Tio)
 	Tio.numberoftriangles          = 0;
 	Tio.numberofcorners            = 0;
 	Tio.numberoftriangleattributes = 0;
+	Tio.triedgemarks               = NULL;
 
 	// Segments
 	Tio.segmentlist       = NULL;
@@ -264,6 +318,7 @@ inline void Unstructured::_tri_deallocate_all(TriIO & Tio)
 	if (Tio.triangleattributelist != NULL) free(Tio.triangleattributelist);
 	if (Tio.trianglearealist      != NULL) free(Tio.trianglearealist);
 	if (Tio.neighborlist          != NULL) free(Tio.neighborlist);
+	if (Tio.triedgemarks          != NULL) free(Tio.triedgemarks);
 
 	// Segments
 	if (Tio.segmentlist       != NULL) free(Tio.segmentlist);
@@ -284,53 +339,6 @@ inline void Unstructured::_tri_deallocate_all(TriIO & Tio)
 	_tri_set_all_to_null (Tio);
 }
 
-
-#ifdef USE_BOOST_PYTHON
-// {
-
-/*
-inline size_t Unstructured::PyGenerate(BPy::list const & ListOfMeshBlock)
-{
-	int nb = BPy::len(ListOfMeshBlock);
-	if (nb<1) throw new Fatal("Unstructured::PyGenerate: Number of blocks must be greater than 0 (%d is invalid)",nb);
-	Array<Mesh::Block*> blocks;
-	blocks.Resize (nb);
-	for (int i=0; i<nb; ++i)
-		blocks[i] = BPy::extract<Mesh::Block*>(ListOfMeshBlock[i])();
-	return Mesh::Unstructured::Generate (blocks);
-}
-*/
-
-// }
-#endif
-
-// Private methods -- Unstructured
-
-inline void Unstructured::_vtk_con(Elem const * E, String & Connect) const
-{
-	if (_is_3d) // Tetrahedrons
-	{
-		throw new Fatal("Unstructured::_vtk_con: 3D elements (Tetrahedrons) are not implemented yet");
-	}
-	else // Triangles
-	{
-		if (_is_o2) // quadratic
-		{
-			Connect.Printf("%d %d %d %d %d %d",E->V[0]->MyID,
-			                                   E->V[1]->MyID,
-			                                   E->V[2]->MyID,
-			                                   E->V[3]->MyID,
-			                                   E->V[4]->MyID,
-			                                   E->V[5]->MyID);
-		}
-		else // linear
-		{
-			Connect.Printf("%d %d %d",E->V[0]->MyID,
-			                          E->V[1]->MyID,
-			                          E->V[2]->MyID);
-		}
-	}
-}
 
 }; // namespace Mesh
 

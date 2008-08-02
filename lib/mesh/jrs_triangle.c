@@ -14500,13 +14500,14 @@ struct behavior *b;
 
 #ifdef ANSI_DECLARATORS
 void writeelements(struct mesh *m, struct behavior *b,
-                   int **trianglelist, REAL **triangleattriblist)
+                   int **trianglelist, REAL **triangleattriblist, int **triedgemarks)
 #else /* not ANSI_DECLARATORS */
-void writeelements(m, b, trianglelist, triangleattriblist)
+void writeelements(m, b, trianglelist, triangleattriblist, triedgemarks)
 struct mesh *m;
 struct behavior *b;
 int **trianglelist;
 REAL **triangleattriblist;
+int **triedgemarks;
 #endif /* not ANSI_DECLARATORS */
 
 #else /* not TRILIBRARY */
@@ -14529,6 +14530,7 @@ char **argv;
 #ifdef TRILIBRARY
   int *tlist;
   REAL *talist;
+  int *temarks;
   int vertexindex;
   int attribindex;
 #else /* not TRILIBRARY */
@@ -14539,6 +14541,9 @@ char **argv;
   vertex mid1, mid2, mid3;
   long elementnumber;
   int i;
+  long en;
+  struct osub checkmark;
+  subseg sptr;                      /* Temporary variable used by tspivot(). */
 
 #ifdef TRILIBRARY
   if (!b->quiet) {
@@ -14556,8 +14561,12 @@ char **argv;
                                                     m->eextras *
                                                     sizeof(REAL)));
   }
+  if (*triedgemarks == (int *) NULL) {
+    *triedgemarks = (int *) trimalloc((int) (m->triangles.items * 3 * sizeof(int)));
+  }
   tlist = *trianglelist;
   talist = *triangleattriblist;
+  temarks = *triedgemarks;
   vertexindex = 0;
   attribindex = 0;
 #else /* not TRILIBRARY */
@@ -14579,6 +14588,12 @@ char **argv;
   triangleloop.orient = 0;
   elementnumber = b->firstnumber;
   while (triangleloop.tri != (triangle *) NULL) {
+    en = elementnumber - b->firstnumber;
+    for (triangleloop.orient=0; triangleloop.orient<3; triangleloop.orient++) {
+      tspivot(triangleloop, checkmark);
+      temarks[en*3+triangleloop.orient] = mark(checkmark);
+    }
+    triangleloop.orient = 0;
     org(triangleloop, p1);
     dest(triangleloop, p2);
     apex(triangleloop, p3);
@@ -15913,7 +15928,7 @@ char **argv;
     }
   } else {
 #ifdef TRILIBRARY
-    writeelements(&m, &b, &out->trianglelist, &out->triangleattributelist);
+    writeelements(&m, &b, &out->trianglelist, &out->triangleattributelist, &out->triedgemarks);
 #else /* not TRILIBRARY */
     writeelements(&m, &b, b.outelefilename, argc, argv);
 #endif /* not TRILIBRARY */

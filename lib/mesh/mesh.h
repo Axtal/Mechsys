@@ -93,42 +93,58 @@ class Generic
 {
 public:
 	// Constructor
-	Generic (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol), _is_3d(false), _is_o2(false) {} ///< Tol is the tolerance to regard two vertices as coincident
+	Generic () : _is_3d(false), _is_o2(false) {}
 
 	// Destructor
 	virtual ~Generic () { _erase(); }
 
 	// Methods
-	void WriteVTU (char const * FileName) const;
+	void WriteVTU (char const * FileName) const; ///< Write output file for ParaView
 
 	// Set methods
-	void SetO2      (bool IsO2=true) { _is_o2=IsO2; }                               ///< (Un)set quadratic elements
-	void SetNVerts  (size_t NumVerts);                                              ///< Erase old mesh and set number of vertices
-	void SetNElems  (size_t NumElems);                                              ///< Set number of elements
-	void SetVert2D  (int i, bool IsOnBry, double X, double Y);                      ///< Set 2D vertex
-	void SetVert3D  (int i, bool IsOnBry, double X, double Y, double Z);            ///< Set 3D vertex
-	void SetElem    (int i, int Tag, bool IsOnBry, int VTKCellType, size_t NVerts); ///< Set element
-	void SetElemCon (int i, int j, size_t iVert);                                   ///< Set element connectivity
+	virtual void Set3D       (bool Is3D=true) { _is_3d=Is3D; }                               ///< (Un)set 3D mesh
+	virtual void SetO2       (bool IsO2=true) { _is_o2=IsO2; }                               ///< (Un)set quadratic elements
+	virtual void SetNVerts   (size_t NumVerts);                                              ///< Erase old mesh and set number of vertices
+	virtual void SetNElems   (size_t NumElems);                                              ///< Set number of elements
+	virtual void SetVert     (int i, bool IsOnBry, double X, double Y, double Z=0);          ///< Set vertex
+	virtual void SetElem     (int i, int Tag, bool IsOnBry, int VTKCellType, size_t NVerts); ///< Set element
+	virtual void SetElemCon  (int i, int j, size_t iVert);                                   ///< Set element connectivity
+	virtual void SetElemETag (int i, int j, int Tag);                                        ///< Set element's edge tag
+	virtual void SetElemFTag (int i, int j, int Tag);                                        ///< Set element's face tag
 
-	// Access methods
-	bool                   Is3D     () const { return _is_3d;     } ///< Is 3D mesh ?
-	Array<Vertex*> const & Verts    () const { return _verts;     } ///< Access all vertices
-	Array<Elem*>   const & Elems    () const { return _elems;     } ///< Access all elements
-	Array<Elem*>   const & ElemsBry () const { return _elems_bry; } ///< Access all elements on boundary
-	Array<Vertex*> const & VertsBry () const { return _verts_bry; } ///< Access all vertices on boundary
+	// Get methods
+	        bool   Is3D            ()                   const { return _is_3d;                  } ///< Is 3D mesh ?
+	virtual size_t NVerts          ()                   const { return _verts.Size();           } ///< Return the number of vertices
+	virtual size_t NVertsBry       ()                   const { return _verts_bry.Size();       } ///< Return the number of elements on boundary
+	virtual size_t NElems          ()                   const { return _elems.Size();           } ///< Return the number of elements
+	virtual size_t NElemsBry       ()                   const { return _elems_bry.Size();       } ///< Return the number of elements on boundary
+	virtual long   VertBry         (size_t i)           const { return _verts_bry[i]->MyID;     } ///< Return the ID of a vertex on boundary
+	virtual long   ElemBry         (size_t i)           const { return _elems_bry[i]->MyID;     } ///< Return the ID of an element on boundary
+	virtual bool   IsVertOnBry     (size_t i)           const { return _verts[i]->OnBry;        } ///< Return whether a vertex in on boundary or not
+	virtual double VertX           (size_t i)           const { return _verts[i]->C(0);         } ///< Return the X coordinate of a vertex i
+	virtual double VertY           (size_t i)           const { return _verts[i]->C(1);         } ///< Return the Y coordinate of a vertex i
+	virtual double VertZ           (size_t i)           const { return _verts[i]->C(2);         } ///< Return the Z coordinate of a vertex i
+	virtual int    ElemTag         (size_t i)           const { return _elems[i]->Tag;          } ///< Return the Tag of a element i
+	virtual bool   IsElemOnBry     (size_t i)           const { return _elems[i]->OnBry;        } ///< Return whether an element is on boundary or not
+	virtual int    ElemVTKCellType (size_t i)           const { return _elems[i]->VTKCellType;  } ///< Return the VTKCellType of an element i
+	virtual size_t ElemNVerts      (size_t i)           const { return _elems[i]->V.Size();     } ///< Return the number of vertices of an element
+	virtual size_t ElemCon         (size_t i, size_t j) const { return _elems[i]->V[j]->MyID;   } ///< Return the vertex j of an element i
+	virtual size_t ElemNETags      (size_t i)           const { return _elems[i]->ETags.Size(); } ///< Return the number of edge tags of an element i
+	virtual size_t ElemNFTags      (size_t i)           const { return _elems[i]->FTags.Size(); } ///< Return the number of face tags of an element i
+	virtual int    ElemETag        (size_t i, size_t j) const { return _elems[i]->ETags(j);     } ///< Return the edge tag j of an element i
+	virtual int    ElemFTag        (size_t i, size_t j) const { return _elems[i]->FTags(j);     } ///< Return the face tag j of an element i
 
 #ifdef USE_BOOST_PYTHON
 // {
-	void   PyWriteVTU  (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
-	size_t PyGetVerts  (BPy::list & Verts) const; ///< return the number of vertices
-	size_t PyGetEdges  (BPy::list & Edges) const; ///< return the number of edges
-	size_t PyGetElems  (BPy::dict & Elems) const; ///< return the number of elements
+	void   PyWriteVTU (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
+	size_t PyGetVerts (BPy::list & Verts) const;
+	size_t PyGetEdges (BPy::list & Edges) const;
+	size_t PyGetElems (BPy::dict & Elems) const;
 // }
-#endif
+#endif // USE_BOOST_PYTHON
 
 protected:
 	// Data
-	double         _tol;       ///< Tolerance to remove duplicate nodes
 	bool           _is_3d;     ///< Is 3D mesh?
 	bool           _is_o2;     ///< Is quadratic element?
 	Array<Vertex*> _verts;     ///< Vertices
@@ -136,15 +152,16 @@ protected:
 	Array<Elem*>   _elems_bry; ///< Elements on boundary
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
 
-	// Methods that MAY be overloaded (otherwise, these work for linear elements such as Rods VTK_LINE)
-	virtual void _vtk_con          (Elem const * E, String & Connect) const; ///< Returns a string with the connectivites (global vertices IDs) of an element
-	virtual void _erase            ();                                       ///< Erase current mesh (deallocate memory)
-	virtual int  _edge_to_lef_vert (int EdgeLocalID) const { return 0; }     ///< Returns the local left vertex ID for a given Local Edge ID
-	virtual int  _edge_to_rig_vert (int EdgeLocalID) const { return 1; }     ///< Returns the local right vertex ID for a given Local Edge ID
+	// Private methods to be overloaded
+	virtual void _erase            ();                                   ///< Erase current mesh (deallocate memory)
+	virtual int  _edge_to_lef_vert (int EdgeLocalID) const { return 0; } ///< Returns the local left vertex ID for a given Local Edge ID
+	virtual int  _edge_to_rig_vert (int EdgeLocalID) const { return 0; } ///< Returns the local right vertex ID for a given Local Edge ID
 
 private:
 	// Private methods
-	int _nedges (int VTKCellType) const;
+	void _vtk_con (size_t i, String & Connect) const; ///< Returns a string with the connectivites (global vertices IDs) of an element
+	int  _nedges  (int VTKCellType)            const; ///< Returns the number of edges of a VTKCell
+	int  _nfaces  (int VTKCellType)            const; ///< Returns the number of faces of a VTKCell
 
 }; // class Generic
 
@@ -160,8 +177,8 @@ inline void Generic::WriteVTU(char const * FileName) const
 	std::ostringstream oss;
 
 	// Data
-	size_t nn = _verts.Size(); // Number of Nodes
-	size_t ne = _elems.Size(); // Number of Elements
+	size_t nn = NVerts(); // Number of Nodes
+	size_t ne = NElems(); // Number of Elements
 
 	// Constants
 	size_t          nimax = 40;        // number of integers in a line
@@ -180,9 +197,9 @@ inline void Generic::WriteVTU(char const * FileName) const
 	size_t k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << "  " << nsflo <<         _verts[i]->C(0) << " ";
-		oss <<         nsflo <<         _verts[i]->C(1) << " ";
-		oss <<         nsflo << (_is_3d?_verts[i]->C(2):0.0);
+		oss << "  " << nsflo <<         VertX(i) << " ";
+		oss <<         nsflo <<         VertY(i) << " ";
+		oss <<         nsflo << (_is_3d?VertZ(i):0.0);
 		k++;
 		VTU_NEWLINE (i,k,nn,nfmax/3,oss);
 	}
@@ -195,10 +212,10 @@ inline void Generic::WriteVTU(char const * FileName) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		String con; _vtk_con (_elems[i], con);
+		String con; _vtk_con (i, con);
 		oss << "  " << con;
 		k++;
-		VTU_NEWLINE (i,k,ne,nimax/_elems[i]->V.Size(),oss);
+		VTU_NEWLINE (i,k,ne,nimax/ElemNVerts(i),oss);
 	}
 	oss << "        </DataArray>\n";
 	oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
@@ -206,7 +223,7 @@ inline void Generic::WriteVTU(char const * FileName) const
 	size_t offset = 0;
 	for (size_t i=0; i<ne; ++i)
 	{
-		offset += _elems[i]->V.Size();
+		offset += ElemNVerts(i);
 		oss << (k==0?"  ":" ") << offset;
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
@@ -216,7 +233,7 @@ inline void Generic::WriteVTU(char const * FileName) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		oss << (k==0?"  ":" ") << _elems[i]->VTKCellType;
+		oss << (k==0?"  ":" ") << ElemVTKCellType(i);
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
@@ -229,34 +246,7 @@ inline void Generic::WriteVTU(char const * FileName) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<nn; ++i)
 	{
-		oss << (k==0?"  ":" ") << _verts[i]->OnBry;
-		k++;
-		VTU_NEWLINE (i,k,nn,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "local_edge_id" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << (k==0?"  ":" ") << _verts[i]->EdgesID(0) << " " << _verts[i]->EdgesID(1) << " " << _verts[i]->EdgesID(2) << " ";
-		k++;
-		VTU_NEWLINE (i,k,nn,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "local_face_id" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << (k==0?"  ":" ") << _verts[i]->FacesID(0) << " " << _verts[i]->FacesID(1) << " " << _verts[i]->FacesID(2) << " ";
-		k++;
-		VTU_NEWLINE (i,k,nn,nimax,oss);
-	}
-	oss << "        </DataArray>\n";
-	oss << "        <DataArray type=\"Float32\" Name=\"" << "shares" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-	k = 0; oss << "        ";
-	for (size_t i=0; i<nn; ++i)
-	{
-		oss << (k==0?"  ":" ") << _verts[i]->Shares.Size();
+		oss << (k==0?"  ":" ") << IsVertOnBry(i);
 		k++;
 		VTU_NEWLINE (i,k,nn,nimax,oss);
 	}
@@ -269,7 +259,7 @@ inline void Generic::WriteVTU(char const * FileName) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		oss << (k==0?"  ":" ") << _elems[i]->OnBry;
+		oss << (k==0?"  ":" ") << IsElemOnBry(i);
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
@@ -278,7 +268,7 @@ inline void Generic::WriteVTU(char const * FileName) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<ne; ++i)
 	{
-		oss << (k==0?"  ":" ") << _elems[i]->Tag;
+		oss << (k==0?"  ":" ") << ElemTag(i);
 		k++;
 		VTU_NEWLINE (i,k,ne,nimax,oss);
 	}
@@ -312,23 +302,7 @@ inline void Generic::SetNElems(size_t NumElems)
 	_elems_bry.Resize (0);
 }
 
-inline void Generic::SetVert2D(int i, bool IsOnBry, double X, double Y)
-{
-	// Set _verts
-	if (_verts[i]==NULL) _verts[i] = new Vertex;
-	_verts[i]->MyID    = i;
-	_verts[i]->OnBry   = IsOnBry;
-	_verts[i]->EdgesID = -1;
-	_verts[i]->FacesID = -1;
-	_verts[i]->Dupl    = false;
-	_verts[i]->C.Resize(2);
-	_verts[i]->C = X, Y;
-
-	// Set _verts_bry
-	if (IsOnBry) _verts_bry.Push (_verts[i]);
-}
-
-inline void Generic::SetVert3D(int i, bool IsOnBry, double X, double Y, double Z)
+inline void Generic::SetVert(int i, bool IsOnBry, double X, double Y, double Z)
 {
 	// Set _verts
 	if (_verts[i]==NULL) _verts[i] = new Vertex;
@@ -354,6 +328,12 @@ inline void Generic::SetElem(int i, int Tag, bool IsOnBry, int VTKCellType, size
 	_elems[i]->VTKCellType = VTKCellType;
 	_elems[i]->V.Resize (NVerts);
 
+	// Resize ETags and FTags
+	int ned = _nedges (VTKCellType);
+	int nfa = _nfaces (VTKCellType);
+	if (ned>0) _elems[i]->ETags.Resize (ned);
+	if (nfa>0) _elems[i]->FTags.Resize (nfa);
+
 	// Set _elems_bry
 	if (IsOnBry) _elems_bry.Push (_elems[i]);
 }
@@ -361,6 +341,16 @@ inline void Generic::SetElem(int i, int Tag, bool IsOnBry, int VTKCellType, size
 inline void Generic::SetElemCon(int i, int j, size_t iVert)
 {
 	_elems[i]->V[j] = _verts[iVert];
+}
+
+inline void Generic::SetElemETag(int i, int j, int Tag)
+{
+	_elems[i]->ETags(j) = Tag;
+}
+
+inline void Generic::SetElemFTag(int i, int j, int Tag)
+{
+	_elems[i]->FTags(j) = Tag;
 }
 
 
@@ -374,13 +364,13 @@ inline size_t Generic::PyGetVerts(BPy::list & Verts) const
 	 */
 	if (Is3D())
 	{
-		for (size_t i=0; i<_verts.Size(); ++i)
-			Verts.append (BPy::make_tuple(_verts[i]->C(0), _verts[i]->C(1), _verts[i]->C(2)));
+		for (size_t i=0; i<NVerts(); ++i)
+			Verts.append (BPy::make_tuple(VertX(i), VertY(i), VertZ(i)));
 	}
 	else
 	{
 		for (size_t i=0; i<_verts.Size(); ++i)
-			Verts.append (BPy::make_tuple(_verts[i]->C(0), _verts[i]->C(1), 0.0));
+			Verts.append (BPy::make_tuple(VertX(i), VertY(i), 0.0));
 	}
 	return len(Verts);
 }
@@ -390,13 +380,13 @@ inline size_t Generic::PyGetEdges(BPy::list & Edges) const
 	/* Out:
 	 *      E = [[v1,v2], [v1,v2], ... num edges]
 	 */
-	for (size_t i=0; i<_elems.Size(); ++i)
+	for (size_t i=0; i<NElems(); ++i)
 	{
-		for (int j=0; j<_nedges(_elems[i]->VTKCellType); ++j)
+		for (int j=0; j<_nedges(ElemVTKCellType(i)); ++j)
 		{
 			BPy::list pair;
-			pair.append  (_elems[i]->V[_edge_to_lef_vert(j)]->MyID);
-			pair.append  (_elems[i]->V[_edge_to_rig_vert(j)]->MyID);
+			pair.append  (ElemCon(i, _edge_to_lef_vert(j)));
+			pair.append  (ElemCon(i, _edge_to_rig_vert(j)));
 			Edges.append (pair);
 		}
 	}
@@ -422,29 +412,29 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 	 */
 	BPy::list tags,  onbs,  vtks;
 	BPy::dict cons, etags, ftags, etags_g;
-	for (size_t i=0; i<_elems.Size(); ++i)
+	for (size_t i=0; i<NElems(); ++i)
 	{
 		// Data
-		tags.append (_elems[i]->Tag);
-		onbs.append (_elems[i]->OnBry ? 1 : 0);
-		vtks.append (_elems[i]->VTKCellType);
+		tags.append (ElemTag(i));
+		onbs.append (IsElemOnBry(i) ? 1 : 0);
+		vtks.append (ElemVTKCellType(i));
 
 		// Connectivities
 		BPy::list co;
-		for (size_t j=0; j<_elems[i]->V.Size(); ++j)
-			co.append (_elems[i]->V[j]->MyID);
+		for (size_t j=0; j<ElemNVerts(i); ++j)
+			co.append (ElemCon(i,j));
 		cons[i] = co;
 
 		// ETags and Global ETags
 		BPy::list et;
-		for (int j=0; j<_elems[i]->ETags.Size(); ++j) // j is the local edge id
+		for (size_t j=0; j<ElemNETags(i); ++j) // j is the local edge id
 		{
-			int tag = _elems[i]->ETags(j);
+			int tag = ElemETag(i,j);
 			et.append (tag);
 			if (tag<0)
 			{
-				int L = _elems[i]->V[_edge_to_lef_vert(j)]->MyID;
-				int R = _elems[i]->V[_edge_to_rig_vert(j)]->MyID;
+				int L = ElemCon(i, _edge_to_lef_vert(j));
+				int R = ElemCon(i, _edge_to_rig_vert(j));
 				etags_g[BPy::make_tuple(L, R)] = tag;
 			}
 		}
@@ -452,9 +442,9 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 
 		// FTags
 		BPy::list ft;
-		for (int j=0; j<_elems[i]->FTags.Size(); ++j) // j is the local face id
+		for (size_t j=0; j<ElemNFTags(i); ++j) // j is the local face id
 		{
-			int tag = _elems[i]->FTags(j);
+			int tag = ElemFTag(i,j);
 			ft.append (tag);
 		}
 		ftags[i] = ft;
@@ -466,7 +456,7 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 	Elems["etags"]   = etags;
 	Elems["etags_g"] = etags_g;
 	Elems["ftags"]   = ftags;
-	return _elems.Size();
+	return NElems();
 }
 
 /*
@@ -493,27 +483,25 @@ inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, int VTKCellType, BP
 #endif // USE_BOOST_PYTHON
 
 
-/* protected */
-
-inline void Generic::_vtk_con(Elem const * E, String & Connect) const
-{
-	Connect.Printf("%d %d",E->V[0]->MyID,
-	                       E->V[1]->MyID);
-}
+/* private */
 
 inline void Generic::_erase()
 {
 	for (size_t i=0; i<_verts.Size(); ++i) if (_verts[i]!=NULL) delete _verts[i]; // it is only necessary to delete nodes in _verts array
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i]; // it is only necessary to delete elems in _elems array
 	_is_3d = false;
-	_verts      .Resize(0);
-	_elems      .Resize(0);
-	_elems_bry  .Resize(0);
-	_verts_bry  .Resize(0);
+	if (_verts    .Size()>0) _verts      .Resize(0);
+	if (_elems    .Size()>0) _elems      .Resize(0);
+	if (_elems_bry.Size()>0) _elems_bry  .Resize(0);
+	if (_verts_bry.Size()>0) _verts_bry  .Resize(0);
 }
 
-
-/* private */
+inline void Generic::_vtk_con(size_t i, String & Connect) const
+{
+	Connect = "";
+	for (size_t j=0; j<ElemNVerts(i); j++)
+		Connect.Printf ("%s %d ", Connect.CStr(), ElemCon(i,j));
+}
 
 inline int Generic::_nedges(int VTKCellType) const
 {
@@ -524,40 +512,53 @@ inline int Generic::_nedges(int VTKCellType) const
 		case VTK_QUAD:                 { return  4; }
 		case VTK_TETRA:                { return  6; }
 		case VTK_HEXAHEDRON:           { return 12; }
-		case VTK_QUADRATIC_EDGE:       { return  2; }
-		case VTK_QUADRATIC_TRIANGLE:   { return  6; }
-		case VTK_QUADRATIC_QUAD:       { return  8; }
-		case VTK_QUADRATIC_TETRA:      { return 12; }
-		case VTK_QUADRATIC_HEXAHEDRON: { return 24; }
+		case VTK_QUADRATIC_EDGE:       { return  1; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  3; }
+		case VTK_QUADRATIC_QUAD:       { return  4; }
+		case VTK_QUADRATIC_TETRA:      { return  6; }
+		case VTK_QUADRATIC_HEXAHEDRON: { return 12; }
 		default: throw new Fatal("Generic::_nedges: VTKCellType==%d is invalid", VTKCellType);
+	}
+}
+
+inline int Generic::_nfaces(int VTKCellType) const
+{
+	switch (VTKCellType)
+	{
+		case VTK_LINE:                 { return 0; }
+		case VTK_TRIANGLE:             { return 0; }
+		case VTK_QUAD:                 { return 0; }
+		case VTK_TETRA:                { return 4; }
+		case VTK_HEXAHEDRON:           { return 6; }
+		case VTK_QUADRATIC_EDGE:       { return 0; }
+		case VTK_QUADRATIC_TRIANGLE:   { return 0; }
+		case VTK_QUADRATIC_QUAD:       { return 0; }
+		case VTK_QUADRATIC_TETRA:      { return 4; }
+		case VTK_QUADRATIC_HEXAHEDRON: { return 6; }
+		default: throw new Fatal("Generic::_nfaces: VTKCellType==%d is invalid", VTKCellType);
 	}
 }
 
 
 /* output */
-std::ostream & operator<< (std::ostream & os, Mesh::Vertex const & V)
-{
-	os << "[" << V.MyID << "] " << V.OnBry << " " << V.Dupl;
-	if (V.C.Size()==2) os << " (" << Util::_8_4<<V.C(0) << Util::_8_4<<V.C(1) << ")";
-	else               os << " (" << Util::_8_4<<V.C(0) << Util::_8_4<<V.C(1) << Util::_8_4<<V.C(2) << ")";
-	os << " {" << V.EdgesID(0) << "," << V.EdgesID(1) << "," << V.EdgesID(2) << "}";
-	os << " {" << V.FacesID(0) << "," << V.FacesID(1) << "," << V.FacesID(2) << "}";
-	return os;
-}
-std::ostream & operator<< (std::ostream & os, Mesh::Elem const & E)
-{
-	os << "[" << E.MyID << "] " << E.Tag << " " << E.OnBry;
-	os << " {"; for (int i=0; i<E.ETags.Size(); ++i) os << E.ETags(i) << (i==E.ETags.Size()-1?"":","); os << "}";
-	os << " {"; for (int i=0; i<E.FTags.Size(); ++i) os << E.FTags(i) << (i==E.FTags.Size()-1?"":","); os << "}";
-	os << "\n";
-	for (size_t i=0; i<E.V.Size(); ++i)
-		if (E.V[i]!=NULL) os << "   " << (*E.V[i]) << "\n";
-	return os;
-}
+
 std::ostream & operator<< (std::ostream & os, Mesh::Generic const & G)
 {
-	for (size_t i=0; i<G.Elems().Size(); ++i)
-		if (G.Elems()[i]!=NULL) os << (*G.Elems()[i]);
+	for (size_t i=0; i<G.NElems(); ++i)
+	{
+		os << "[" << i << "] " << G.ElemTag(i) << " " << G.IsElemOnBry(i);
+		os << " {"; for (size_t j=0; j<G.ElemNETags(i); ++j) os << G.ElemETag(i,j) << (j==G.ElemNETags(i)-1?"":","); os << "}";
+		os << " {"; for (size_t j=0; j<G.ElemNFTags(i); ++j) os << G.ElemFTag(i,j) << (j==G.ElemNFTags(i)-1?"":","); os << "}";
+		os << "\n";
+		for (size_t j=0; j<G.ElemNVerts(i); ++j)
+		{
+			size_t k = G.ElemCon (i, j);
+			os << "   [" << k << "] " << G.IsVertOnBry(k);
+			if (G.Is3D()) os << " (" << Util::_8_4<< G.VertX(k) << Util::_8_4<< G.VertY(k) << Util::_8_4<< G.VertZ(k) << ")";
+			else          os << " (" << Util::_8_4<< G.VertX(k) << Util::_8_4<< G.VertY(k) << ")";
+			os << "\n";
+		}
+	}
 	return os;
 }
 

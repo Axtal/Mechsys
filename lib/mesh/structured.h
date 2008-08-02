@@ -200,7 +200,7 @@ public:
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
 
 	// Constructor
-	Structured (double Tol=sqrt(DBL_EPSILON)) : Mesh::Generic(Tol) {} ///< Tol is the tolerance to regard two vertices as coincident
+	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol) {} ///< Tol is the tolerance to regard two vertices as coincident
 
 	// Destructor
 	~Structured () { _erase(); }
@@ -216,6 +216,7 @@ public:
 
 private:
 	// Data
+	double         _tol;         ///< Tolerance to remove duplicate nodes
 	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
 	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
 	Vector<double> _s;           ///< Current shape (interpolation) values, computed just after _shape(r,s,t)

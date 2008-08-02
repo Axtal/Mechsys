@@ -621,20 +621,38 @@ def gen_triangle_mesh():
     edm = Blender.Window.EditMode()
     if edm: Blender.Window.EditMode(0)
 
-    # generate blocks
+    # get regions and holes
+    regions = {}
+    holes   = []
     for obj in obs:
-        if obj!=None and obj.type=='Mesh':
-            print 'mesh'
-        elif obj!=None and obj.type=='Text':
+        if obj!=None and obj.type=='Text':
             dat = obj.getData()
             txt = dat.getText()
             arr = txt.split("_")
-            if len(arr)>1:
-                key = arr[0]
-                val = arr[1]
-                loc = obj.matrixWorld[3][0:3]
+            loc = obj.matrixWorld[3][0:3]
+            if len(arr)==1:
+                if arr[0]=='hol':
+                    holes.append((loc[0], loc[1], loc[2]))
+            elif len(arr)>1:
+                key =      arr[0]
+                val = -int(arr[1])
                 if key=='att' or key=='lay':
-                    if len(arr)>2: area = arr[2]
-                    print 'hi'
-                elif key=='hol':
-                    print 'hi'
+                    area = 1.0
+                    if len(arr)>2: area = float(arr[2])
+                    regions[val] = (area, loc[0], loc[1], loc[2])
+
+    # set input polygon
+    for obj in obs:
+        if obj!=None and obj.type=='Mesh':
+            msh = obj.getData(mesh=1)
+            mu  = ms.mesh_unstructured()
+            #mu.set_3d(0)
+            mu.set_poly_size (len(msh.verts), len(msh.edges), len(regions), len(holes))
+            for i, v in enumerate(msh.verts):
+                mu.set_poly_point (i, v.co[0], v.co[1], v.co[2])
+            for i, e in enumerate(msh.edges):
+                mu.set_poly_segment (i, e.v1.index, e.v2.index)
+            for i, r in enumerate(regions):
+                mu.set_poly_region (i, r, regions[r][0], regions[r][1], regions[r][2], regions[r][3])
+            mu.generate()
+            return

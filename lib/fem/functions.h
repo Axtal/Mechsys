@@ -77,58 +77,50 @@ inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T
 	bool is3d = M->Is3D();
 
 	// Set nodes
-	size_t nn = M->Verts().Size();
+	size_t nn = M->NVerts();
 	G->SetNNodes (nn);
 	for (size_t i=0; i<nn; ++i) // loop over all vertices
 	{
-		// Current vertex
-		Mesh::Vertex const * v = M->Verts()[i];
-
 		// New node
-		G->SetNode (v->MyID, v->C(0), v->C(1), (is3d ? v->C(2) : 0.0));
+		G->SetNode (i, M->VertX(i), M->VertY(i), (is3d ? M->VertZ(i) : 0.0));
 	}
 
 	// Set elements
-	size_t ne = M->Elems().Size();
+	size_t ne = M->NElems();
 	G->SetNElems (ne);
 	for (size_t i=0; i<ne; ++i)
 	{
-		// Current mesh element
-		Mesh::Elem const * me = M->Elems()[i];
-
 		// Set element
 		bool found = false;
 		for (size_t j=0; j<ElemsAtts.Size(); ++j)
 		{
-			if (me->Tag==ElemsAtts[j].get<0>())
+			if (M->ElemTag(i)==ElemsAtts[j].get<0>())
 			{
 				// New finite element
 				found = true;
-				FEM::Element * fe = G->SetElem (me->MyID, ElemsAtts[j].get<1>());
+				FEM::Element * fe = G->SetElem (i, ElemsAtts[j].get<1>());
 
 				// Set connectivity
-				for (size_t k=0; k<me->V.Size(); ++k)
-					fe->Connect (k, G->Nod(me->V[k]->MyID));
+				for (size_t k=0; k<M->ElemNVerts(i); ++k)
+					fe->Connect (k, G->Nod(M->ElemCon(i,k)));
 
 				// Set parameters and initial values
 				fe->SetModel (ElemsAtts[j].get<2>(), ElemsAtts[j].get<3>(), ElemsAtts[j].get<4>());
 				break;
 			}
 		}
-		if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",me->Tag,i);
+		if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",M->ElemTag(i),i);
 	}
 
 	// Set faces boundaries
 	if (FacesBrys.Size()>0)
 	{
-		for (size_t i=0; i<M->ElemsBry().Size(); ++i) // loop over all elements on boundary
+		for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
 		{
-			// Current mesh element on boundary
-			Mesh::Elem const * me = M->ElemsBry()[i];
-
-			for (int j=0; j<me->ETags.Size(); ++j) // j is the local face id
+			int i = M->ElemBry(b);
+			for (size_t j=0; j<M->ElemNETags(i); ++j) // j is the local face id
 			{
-				int tag = me->ETags(j);
+				int tag = M->ElemETag(i, j);
 				if (tag<0) // this element has a face tag
 				{
 					bool found = false;
@@ -137,11 +129,11 @@ inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T
 						if (tag==FacesBrys[k].get<0>())
 						{
 							found = true;
-							G->Ele(me->MyID)->Bry (FacesBrys[k].get<1>(), FacesBrys[k].get<2>(), j);
+							G->Ele(i)->Bry (FacesBrys[k].get<1>(), FacesBrys[k].get<2>(), j);
 							break;
 						}
 					}
-					if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Face %d of Element %d in the FacesBrys list",tag,j,me->MyID);
+					if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Face %d of Element %d in the FacesBrys list",tag,j,i);
 				}
 			}
 		}
@@ -150,19 +142,17 @@ inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T
 	// Set nodes boundaries
 	if (NodesBrys.Size()>0)
 	{
-		for (size_t i=0; i<M->VertsBry().Size(); ++i) // loop over all vertices on boundary
+		for (size_t b=0; b<M->NVertsBry(); ++b) // loop over all vertices on boundary
 		{
-			// Current vertex
-			Mesh::Vertex const * v = M->VertsBry()[i];
-
+			int i = M->VertBry(b);
 			for (size_t j=0; j<NodesBrys.Size(); ++j)
 			{
 				double x =         NodesBrys[j].get<0>();
 				double y =         NodesBrys[j].get<1>();
 				double z = (is3d ? NodesBrys[j].get<2>() : 0.0);
-				double d = sqrt(pow(x - v->C(0),2.0) + pow(y - v->C(1),2.0) + (is3d ? pow(z - v->C(2),2.0) : 0.0));
+				double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
 				if (d<sqrt(DBL_EPSILON))
-					G->Nod(v->MyID)->Bry (NodesBrys[j].get<3>(), NodesBrys[j].get<4>());
+					G->Nod(i)->Bry (NodesBrys[j].get<3>(), NodesBrys[j].get<4>());
 			}
 		}
 	}

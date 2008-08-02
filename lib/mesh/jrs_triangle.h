@@ -262,6 +262,7 @@ struct triangulateio {
   int numberoftriangles;                                         /* In / out */
   int numberofcorners;                                           /* In / out */
   int numberoftriangleattributes;                                /* In / out */
+  int *triedgemarks;                     /* Out (size = 3*numberoftriangles) */
 
   int *segmentlist;                                              /* In / out */
   int *segmentmarkerlist;                                        /* In / out */

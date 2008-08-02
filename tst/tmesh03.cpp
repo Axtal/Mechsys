@@ -42,19 +42,26 @@ int main(int argc, char **argv) try
 		Mesh::Unstructured mu;
 
 		// Define PSLG polygon sizes
-		mu.SetPolySize (/*NPoints*/4, /*NSegments*/4, /*NRegions*/0, /*NHoles*/0);
+		mu.SetPolySize (/*NPoints*/6, /*NSegments*/5, /*NRegions*/2);
 
 		// Points
 		mu.SetPolyPoint (0, 0, 0); // iPoint, X, Y
 		mu.SetPolyPoint (1, 1, 0);
 		mu.SetPolyPoint (2, 1, 1);
 		mu.SetPolyPoint (3, 0, 1);
+		mu.SetPolyPoint (4, 0, 0.5);
+		mu.SetPolyPoint (5, 1, 0.5);
 
 		// Segments
 		mu.SetPolySegment (0, 0, 1, -10); // iSegment, iPointLeft, iPointRight, Tag
 		mu.SetPolySegment (1, 1, 2, -20);
 		mu.SetPolySegment (2, 2, 3, -30);
 		mu.SetPolySegment (3, 3, 0, -40);
+		mu.SetPolySegment (4, 4, 5);
+
+		// Regions
+		mu.SetPolyRegion (0, -123, 0.01,  0.5, 0.25); // iRegion, Tag, MaxArea, X, Y
+		mu.SetPolyRegion (1, -321,  0.1,  0.5, 0.75);
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
@@ -110,35 +117,35 @@ int main(int argc, char **argv) try
 		mu.SetPolyPoint (28, 0.200000, -0.792400);
 
 		// Segments
-		mu.SetPolySegment ( 0,28, 0); // iSegment, iPointLeft, iPointRight
-		mu.SetPolySegment ( 1, 0, 1);
-		mu.SetPolySegment ( 2, 1, 2);
-		mu.SetPolySegment ( 3, 2, 3);
-		mu.SetPolySegment ( 4, 3, 4);
-		mu.SetPolySegment ( 5, 4, 5);
-		mu.SetPolySegment ( 6, 5, 6);
-		mu.SetPolySegment ( 7, 6, 7);
-		mu.SetPolySegment ( 8, 7, 8);
-		mu.SetPolySegment ( 9, 8, 9);
-		mu.SetPolySegment (10, 9,10);
-		mu.SetPolySegment (11,10,11);
-		mu.SetPolySegment (12,11,12);
-		mu.SetPolySegment (13,12,13);
-		mu.SetPolySegment (14,13,14);
-		mu.SetPolySegment (15,14,15);
-		mu.SetPolySegment (16,15,16);
-		mu.SetPolySegment (17,16,17);
-		mu.SetPolySegment (18,17,18);
-		mu.SetPolySegment (19,18,19);
-		mu.SetPolySegment (20,19,20);
-		mu.SetPolySegment (21,20,21);
-		mu.SetPolySegment (22,21,22);
-		mu.SetPolySegment (23,22,23);
-		mu.SetPolySegment (24,23,24);
-		mu.SetPolySegment (25,24,28);
-		mu.SetPolySegment (26,25,26);
-		mu.SetPolySegment (27,26,27);
-		mu.SetPolySegment (28,27,25);
+		mu.SetPolySegment ( 0,28, 0, 0); // iSegment, iPointLeft, iPointRight, Tag
+		mu.SetPolySegment ( 1, 0, 1, 0);
+		mu.SetPolySegment ( 2, 1, 2, 0);
+		mu.SetPolySegment ( 3, 2, 3, 0);
+		mu.SetPolySegment ( 4, 3, 4, 0);
+		mu.SetPolySegment ( 5, 4, 5, 0);
+		mu.SetPolySegment ( 6, 5, 6, 0);
+		mu.SetPolySegment ( 7, 6, 7, 0);
+		mu.SetPolySegment ( 8, 7, 8, 0);
+		mu.SetPolySegment ( 9, 8, 9, 0);
+		mu.SetPolySegment (10, 9,10, 0);
+		mu.SetPolySegment (11,10,11, 0);
+		mu.SetPolySegment (12,11,12, 0);
+		mu.SetPolySegment (13,12,13, 0);
+		mu.SetPolySegment (14,13,14, 0);
+		mu.SetPolySegment (15,14,15, 0);
+		mu.SetPolySegment (16,15,16, 0);
+		mu.SetPolySegment (17,16,17, 0);
+		mu.SetPolySegment (18,17,18, 0);
+		mu.SetPolySegment (19,18,19, 0);
+		mu.SetPolySegment (20,19,20, 0);
+		mu.SetPolySegment (21,20,21, 0);
+		mu.SetPolySegment (22,21,22, 0);
+		mu.SetPolySegment (23,22,23, 0);
+		mu.SetPolySegment (24,23,24, 0);
+		mu.SetPolySegment (25,24,28, 0);
+		mu.SetPolySegment (26,25,26, 0);
+		mu.SetPolySegment (27,26,27, 0);
+		mu.SetPolySegment (28,27,25, 0);
 
 		// Holes
 		mu.SetPolyHole (0, 0.47, -0.5); // iHole, X, Y

@@ -63,23 +63,29 @@
 
 using namespace boost::python;
 
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,        /*min args*/4, /*max args*/5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Set3D,          Set3D,          /*min args*/0, /*max args*/1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment, /*min args*/3, /*max args*/4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  /*min args*/5, /*max args*/6)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       /*min args*/0, /*max args*/1)
+
 BOOST_PYTHON_MODULE (mechsys)
 {
 	// --------------------------------------------------------------------------- Mesh
 
 	class_<Mesh::Generic>("mesh_generic")
-	    .def(init<double>())
-	    .def("set_o2",       &Mesh::Generic::SetO2)
-	    .def("set_nverts",   &Mesh::Generic::SetNVerts)
-	    .def("set_nelems",   &Mesh::Generic::SetNElems)
-	    .def("set_vert2d",   &Mesh::Generic::SetVert2D)
-	    .def("set_vert3d",   &Mesh::Generic::SetVert3D)
-	    .def("set_elem",     &Mesh::Generic::SetElem)
-	    .def("set_elem_con", &Mesh::Generic::SetElemCon)
-	    .def("write_vtu",    &Mesh::Generic::PyWriteVTU)
-	    .def("get_verts",    &Mesh::Generic::PyGetVerts)
-	    .def("get_edges",    &Mesh::Generic::PyGetEdges)
-	    .def("get_elems",    &Mesh::Generic::PyGetElems)
+	    .def("set_o2",        &Mesh::Generic::SetO2)
+	    .def("set_nverts",    &Mesh::Generic::SetNVerts)
+	    .def("set_nelems",    &Mesh::Generic::SetNElems)
+	    .def("set_vert",      &Mesh::Generic::SetVert, MG_SetVert())
+	    .def("set_elem",      &Mesh::Generic::SetElem)
+	    .def("set_elem_con",  &Mesh::Generic::SetElemCon)
+	    .def("set_elem_etag", &Mesh::Generic::SetElemETag)
+	    .def("set_elem_ftag", &Mesh::Generic::SetElemFTag)
+	    .def("write_vtu",     &Mesh::Generic::PyWriteVTU)
+	    .def("get_verts",     &Mesh::Generic::PyGetVerts)
+	    .def("get_edges",     &Mesh::Generic::PyGetEdges)
+	    .def("get_elems",     &Mesh::Generic::PyGetElems)
 	    .def(self_ns::str(self))
 	    ;
 
@@ -101,13 +107,13 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<Mesh::Unstructured>("mesh_unstructured")
-	    .def(init<double>())
+	    .def("set_3d",           &Mesh::Unstructured::Set3D, MU_Set3D())
 	    .def("set_poly_size",    &Mesh::Unstructured::SetPolySize)
 	    .def("set_poly_point",   &Mesh::Unstructured::SetPolyPoint)
-	    .def("set_poly_segment", &Mesh::Unstructured::SetPolySegment)
+	    .def("set_poly_segment", &Mesh::Unstructured::SetPolySegment, MU_SetPolySegment())
 	    .def("set_poly_region",  &Mesh::Unstructured::SetPolyRegion)
 	    .def("set_poly_hole",    &Mesh::Unstructured::SetPolyHole)
-	    .def("generate",         &Mesh::Unstructured::Generate)
+	    .def("generate",         &Mesh::Unstructured::Generate, MU_Generate())
 	    .def("write_vtu",        &Mesh::Unstructured::PyWriteVTU)
 	    .def("get_verts",        &Mesh::Unstructured::PyGetVerts)
 	    .def("get_edges",        &Mesh::Unstructured::PyGetEdges)
