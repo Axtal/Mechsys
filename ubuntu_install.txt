@@ -1,0 +1,44 @@
+##################################################################
+#                                                                #
+#     MechSys - Instructions for installation for developers     #
+#                                                                #
+##################################################################
+
+
+1) CMake 2.6 (www.cmake.org)    ##################################
+
+~/pkg $              sudo apt-get install libncurses5-dev
+~/pkg $              tar xzvf cmake-2.6.1.tar.gz
+~/pkg $              cd cmake-2.6.1
+~/pkg/cmake-2.6.1 $  ./bootstrap
+~/pkg/cmake-2.6.1 $  make
+~/pkg/cmake-2.6.1 $  sudo make install
+
+
+2) Dependencies (Ubuntu 8.04)    #################################
+
+~/mechsys $  sh ubuntu_deps.sh
+
+Will install:  g++ make gfortran libblitz0-dev libsuitesparse-dev
+               libgsl0-dev libboost-python-dev libsuperlu3-dev
+
+
+3) Tests    ######################################################
+
+~/mechsys $      ccmake .                              [c] [c] [g]
+~/mechsys $      make
+~/mechsys/tst $  sh check_all.sh
+
+
+4) Python module    ##############################################
+
+~/mechsys/src $  sudo python setup_mechsys.py install
+
+
+5) Blender    ####################################################
+
+sudo apt-get install blender
+~/mechsys $  sh ubuntu_blender_links.sh
+
+
+##################################################################
