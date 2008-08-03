@@ -63,11 +63,15 @@
 
 using namespace boost::python;
 
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,        /*min args*/4, /*max args*/5)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Set3D,          Set3D,          /*min args*/0, /*max args*/1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment, /*min args*/3, /*max args*/4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  /*min args*/5, /*max args*/6)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       /*min args*/0, /*max args*/1)
+// Overloadings                                                      minargs  maxargs
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,        4, 5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Set3D,          Set3D,          0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,    2, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyPoint,   SetPolyPoint,   3, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment, 3, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  5, 6)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,    3, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 2)
 
 BOOST_PYTHON_MODULE (mechsys)
 {
@@ -107,13 +111,13 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<Mesh::Unstructured>("mesh_unstructured")
-	    .def("set_3d",           &Mesh::Unstructured::Set3D, MU_Set3D())
-	    .def("set_poly_size",    &Mesh::Unstructured::SetPolySize)
-	    .def("set_poly_point",   &Mesh::Unstructured::SetPolyPoint)
+	    .def("set_3d",           &Mesh::Unstructured::Set3D,          MU_Set3D())
+	    .def("set_poly_size",    &Mesh::Unstructured::SetPolySize,    MU_SetPolySize())
+	    .def("set_poly_point",   &Mesh::Unstructured::SetPolyPoint,   MU_SetPolyPoint())
 	    .def("set_poly_segment", &Mesh::Unstructured::SetPolySegment, MU_SetPolySegment())
-	    .def("set_poly_region",  &Mesh::Unstructured::SetPolyRegion)
-	    .def("set_poly_hole",    &Mesh::Unstructured::SetPolyHole)
-	    .def("generate",         &Mesh::Unstructured::Generate, MU_Generate())
+	    .def("set_poly_region",  &Mesh::Unstructured::SetPolyRegion,  MU_SetPolyRegion())
+	    .def("set_poly_hole",    &Mesh::Unstructured::SetPolyHole,    MU_SetPolyHole())
+	    .def("generate",         &Mesh::Unstructured::Generate,       MU_Generate())
 	    .def("write_vtu",        &Mesh::Unstructured::PyWriteVTU)
 	    .def("get_verts",        &Mesh::Unstructured::PyGetVerts)
 	    .def("get_edges",        &Mesh::Unstructured::PyGetEdges)

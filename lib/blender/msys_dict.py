@@ -7,6 +7,7 @@ def load_dict():
     dict = Blender.Registry.GetKey('MechSysDict')
     if not dict:
         dict                  = {}
+        dict['inirow']        = 0
         dict['newpoint_x']    = 0.0
         dict['newpoint_y']    = 0.0
         dict['newpoint_z']    = 0.0
@@ -43,6 +44,34 @@ def set_str_property(obj, key, value):
         prop.data = value
     except:
         obj.addProperty (key, value, 'STRING')
+
+
+def set_float_property(obj, key, value):
+    try:
+        prop      = obj.getProperty (key)
+        prop.data = value
+    except:
+        obj.addProperty (key, value, 'FLOAT')
+
+
+def set_minangle(obj, value):
+    set_float_property (obj, 'minangle', value)
+
+
+def get_minangle(obj):
+    try:    value = obj.getProperty('minangle').data
+    except: value = -1.0
+    return value
+
+
+def set_maxarea(obj, value):
+    set_float_property (obj, 'maxarea', value)
+
+
+def get_maxarea(obj):
+    try:    value = obj.getProperty('maxarea').data
+    except: value = -1.0
+    return value
 
 
 def set_btag(obj, tag):
@@ -164,6 +193,19 @@ def get_tags(obj, key):
     return res 
 
 
+def get_tags_(obj, key):
+    # In:
+    #      key = 'edge', 'face', or 'elem'
+    # Out:
+    #         {edge_id1: tag1,  edge_id2: tag2,  ... num edges with tags}
+    #      or {face_id1: tag1,  face_id2: tag2,  ... num faces with tags}
+    res = {}
+    for p in obj.getAllProperties():
+        if p.name[:4]==key:
+            res[int(p.name[5:])] = p.data
+    return res 
+
+
 def get_verts_on_edges_with_tags(obj, msh):
     etags = get_tags (obj, 'edge')
     verts = []
@@ -217,6 +259,103 @@ def get_tags_list(obj, key, global_ids):
             tags_list[local_id] = t[1]
     if sum(tags_list)==0: tags_list=[]
     return tags_list
+
+
+# ==================================================== Regions
+
+def set_reg(obj, id, maxarea, x, y, z):
+    try:
+        prop      = obj.getProperty ('reg_'+str(id))
+        prop.data = '%12.6f %12.6f %12.6f %12.6f'%(maxarea,x,y,z)
+    except:
+        obj.addProperty ('reg_'+str(id), '%12.6f %12.6f %12.6f %12.6f'%(maxarea,x,y,z), 'STRING')
+
+def set_reg_maxarea(obj, id, maxarea): # property must exist
+    p = obj.getProperty ('reg_'+str(id))
+    d = p.data.split()
+    p.data = '%12.6f %12.6f %12.6f %12.6f'%(maxarea, float(d[1]), float(d[2]), float(d[3]))
+
+def set_reg_x(obj, id, x): # property must exist
+    p = obj.getProperty ('reg_'+str(id))
+    d = p.data.split()
+    p.data = '%12.6f %12.6f %12.6f %12.6f'%(float(d[0]), x, float(d[2]), float(d[3]))
+
+def set_reg_y(obj, id, y): # property must exist
+    p = obj.getProperty ('reg_'+str(id))
+    d = p.data.split()
+    p.data = '%12.6f %12.6f %12.6f %12.6f'%(float(d[0]), float(d[1]), y, float(d[3]))
+
+def set_reg_z(obj, id, z): # property must exist
+    p = obj.getProperty ('reg_'+str(id))
+    d = p.data.split()
+    p.data = '%12.6f %12.6f %12.6f %12.6f'%(float(d[0]), float(d[1]), float(d[2]), z)
+
+def get_regs(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:3]=='reg':
+            d = p.data.split()
+            res.append ([float(d[0]), float(d[1]), float(d[2]), float(d[3])])
+    return res 
+
+def del_all_regs(obj):
+    for p in obj.getAllProperties():
+        if p.name[:3]=='reg': obj.removeProperty(p)
+
+def del_reg(obj, id):
+    regs = get_regs (obj)
+    del_all_regs (obj)
+    k = 0
+    for i in range(len(regs)):
+        if i!=id:
+            set_reg (obj, k, regs[i][0], regs[i][1], regs[i][2], regs[i][3])
+            k += 1
+
+
+# ==================================================== Holes
+
+def set_hol(obj, id, x, y, z):
+    try:
+        prop      = obj.getProperty ('hol_'+str(id))
+        prop.data = '%12.6f %12.6f %12.6f'%(x,y,z)
+    except:
+        obj.addProperty ('hol_'+str(id), '%12.6f %12.6f %12.6f'%(x,y,z), 'STRING')
+
+def set_hol_x(obj, id, x): # property must exist
+    p = obj.getProperty ('hol_'+str(id))
+    d = p.data.split()
+    p.data = '%12.6f %12.6f %12.6f'%(x, float(d[1]), float(d[2]))
+
+def set_hol_y(obj, id, y): # property must exist
+    p = obj.getProperty ('hol_'+str(id))
+    d = p.data.split()
+    p.data = '%12.6f %12.6f %12.6f'%(float(d[0]), y, float(d[2]))
+
+def set_hol_z(obj, id, z): # property must exist
+    p = obj.getProperty ('hol_'+str(id))
+    d = p.data.split()
+    p.data = '%12.6f %12.6f %12.6f'%(float(d[0]), float(d[1]), z)
+
+def get_hols(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:3]=='hol':
+            d = p.data.split()
+            res.append ([float(d[0]), float(d[1]), float(d[2])])
+    return res 
+
+def del_all_hols(obj):
+    for p in obj.getAllProperties():
+        if p.name[:3]=='hol': obj.removeProperty(p)
+
+def del_hol(obj, id):
+    hols = get_hols (obj)
+    del_all_hols (obj)
+    k = 0
+    for i in range(len(hols)):
+        if i!=id:
+            set_hol (obj, k, hols[i][0], hols[i][1], hols[i][2])
+            k += 1
 
 
 # ==================================================== Nodes boundaries

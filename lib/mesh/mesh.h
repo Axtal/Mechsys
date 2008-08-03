@@ -369,7 +369,7 @@ inline size_t Generic::PyGetVerts(BPy::list & Verts) const
 	}
 	else
 	{
-		for (size_t i=0; i<_verts.Size(); ++i)
+		for (size_t i=0; i<NVerts(); ++i)
 			Verts.append (BPy::make_tuple(VertX(i), VertY(i), 0.0));
 	}
 	return len(Verts);

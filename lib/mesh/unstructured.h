@@ -91,7 +91,7 @@ public:
 	void SetPolyPoint   (size_t i, double X, double Y, double Z=0);                             ///< Set the coordinates of point i of input PSLG. SetPolySize MUST be called first.
 	void SetPolySegment (size_t i, size_t iPointLeft, size_t iPointRight, int Tag=0);           ///< Set the left and right points of a segment i of input PSLG. SetPolySize MUST be called first.
 	void SetPolyRegion  (size_t i, int Tag, double MaxArea, double X, double Y, double Z=0);    ///< Set the coordinates of a point defining a region i.
-	void SetPolyHole    (size_t i, double X, double Y);                                         ///< Set the coordinates of a point defining a hole i.
+	void SetPolyHole    (size_t i, double X, double Y, double Z=0);                             ///< Set the coordinates of a point defining a hole i.
 
 	// Get methods -- derived
 	size_t NVerts          ()                   const { return _tou.numberofpoints; }
@@ -114,7 +114,7 @@ public:
 	int    ElemETag        (size_t i, size_t j) const { return _tou.triedgemarks[i*3+j]; }
 
 	// Methods
-	size_t Generate (double MaxAreaGlobal=-1); ///< [opt] MaxAreaGlobal = Uniform maximum area constraint
+	size_t Generate (double MaxAreaGlobal=-1, double MinAngle=-1); ///< [opt] MaxAreaGlobal = Uniform maximum area constraint, [opt] MinAngle = Minium angle constraint
 
 private:
 	// Data
@@ -200,18 +200,21 @@ inline void Unstructured::SetPolyRegion(size_t i, int Tag, double MaxArea, doubl
 	_tin.regionlist[i*4+3] = MaxArea;
 }
 
-inline void Unstructured::SetPolyHole(size_t i, double X, double Y)
+inline void Unstructured::SetPolyHole(size_t i, double X, double Y, double Z)
 {
 	_tin.holelist[i*2  ] = X;
 	_tin.holelist[i*2+1] = Y;
 }
 
-inline size_t Unstructured::Generate(double MaxAreaGlobal)
+inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 {
 	// Generate (via JRS' triangle)
-	String prms;
-	if (MaxAreaGlobal<0) prms.Printf("pqzAa");
-	else                 prms.Printf("pqzAa%fa", MaxAreaGlobal); // Q=quiet, p=poly, q=quality, z=zero
+	String prms("pzA"); // Q=quiet, p=poly, q=quality, z=zero
+	if (MaxAreaGlobal>0) prms.Printf("%sa%f", prms.CStr(), MaxAreaGlobal);
+	if (MinAngle     >0) prms.Printf("%sq%f", prms.CStr(), MinAngle);
+	else                 prms.Printf("%sq",   prms.CStr());
+	prms.Printf("%sa", prms.CStr());
+	std::cout << "JRS' triangle parameters = " << prms << std::endl;
 	triangulate (prms.CStr(), &_tin, &_tou, NULL);
 
 	/*

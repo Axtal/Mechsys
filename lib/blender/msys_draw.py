@@ -614,45 +614,35 @@ def draw_struct_mesh(mms):
     Blender.Window.QRedrawAll()
 
 
-def gen_triangle_mesh():
+def gen_unstruct_mesh():
     # get objects
     scn = bpy.data.scenes.active
-    obs = scn.objects.selected
+    obj = scn.objects.active
     edm = Blender.Window.EditMode()
     if edm: Blender.Window.EditMode(0)
 
-    # get regions and holes
-    regions = {}
-    holes   = []
-    for obj in obs:
-        if obj!=None and obj.type=='Text':
-            dat = obj.getData()
-            txt = dat.getText()
-            arr = txt.split("_")
-            loc = obj.matrixWorld[3][0:3]
-            if len(arr)==1:
-                if arr[0]=='hol':
-                    holes.append((loc[0], loc[1], loc[2]))
-            elif len(arr)>1:
-                key =      arr[0]
-                val = -int(arr[1])
-                if key=='att' or key=='lay':
-                    area = 1.0
-                    if len(arr)>2: area = float(arr[2])
-                    regions[val] = (area, loc[0], loc[1], loc[2])
-
     # set input polygon
-    for obj in obs:
-        if obj!=None and obj.type=='Mesh':
-            msh = obj.getData(mesh=1)
-            mu  = ms.mesh_unstructured()
-            #mu.set_3d(0)
-            mu.set_poly_size (len(msh.verts), len(msh.edges), len(regions), len(holes))
-            for i, v in enumerate(msh.verts):
-                mu.set_poly_point (i, v.co[0], v.co[1], v.co[2])
-            for i, e in enumerate(msh.edges):
-                mu.set_poly_segment (i, e.v1.index, e.v2.index)
-            for i, r in enumerate(regions):
-                mu.set_poly_region (i, r, regions[r][0], regions[r][1], regions[r][2], regions[r][3])
-            mu.generate()
-            return
+    if obj!=None and obj.type=='Mesh':
+        msh = obj.getData(mesh=1)
+        mu  = ms.mesh_unstructured()
+        ets = di.get_tags_ (obj, 'edge')
+        rgs = di.get_regs (obj)
+        hls = di.get_hols (obj)
+        #mu.set_3d(0)
+        mu.set_poly_size (len(msh.verts), len(msh.edges), len(rgs), len(hls))
+        for v in msh.verts:
+            mu.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
+        for e in msh.edges:
+            if e.index in ets: mu.set_poly_segment (e.index, e.v1.index, e.v2.index, ets[e.index])
+            else:              mu.set_poly_segment (e.index, e.v1.index, e.v2.index)
+        print rgs
+        print hls
+        for i, r in enumerate(rgs):
+            mu.set_poly_region (i, r[0], r[1], r[2], r[3])
+        for i, h in enumerate(hls):
+            mu.set_poly_hole (i, h[0], h[1], h[2])
+        maxarea  = di.get_maxarea  (obj)
+        minangle = di.get_minangle (obj)
+        mu.generate      (maxarea, minangle)
+        draw_struct_mesh (mu)
+        return
