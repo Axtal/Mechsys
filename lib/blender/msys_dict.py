@@ -1,27 +1,62 @@
 # Modules
 import Blender
+import bpy
 import string
 
-# Dictionary
+
+# ================================================================================ Dictionary
+
 def load_dict():
     dict = Blender.Registry.GetKey('MechSysDict')
     if not dict:
         dict                  = {}
         dict['inirow']        = 0
-        dict['newpoint_x']    = 0.0
-        dict['newpoint_y']    = 0.0
-        dict['newpoint_z']    = 0.0
-        dict['fillet_radius'] = 0.0
+        dict['newpoint_x']    = '0.0'
+        dict['newpoint_y']    = '0.0'
+        dict['newpoint_z']    = '0.0'
+        dict['newetag']       = -10
+        dict['newftag']       = -100
+        dict['fillet_radius'] = '0.0'
         dict['fillet_steps']  = 10
         dict['show_props']    = 0
         dict['show_v_ids']    = 1
         dict['show_e_ids']    = 1
         dict['show_f_ids']    = 1
-        dict['show_ele_tags'] = 0
+        dict['show_elems']    = 1
         dict['show_axes']     = 1
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
     return dict
+
+
+# ====================================================================================== Util
+
+def get_cg(msh, vids, vtkcelltype):
+    # In:   vids = verts_ids
+    x, y, z = 0, 0, 0
+    if   vtkcelltype== 5: # VTK_TRIANGLE
+        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[1]].co[0]+msh.verts[vids[2]].co[0])/3.0
+        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[1]].co[1]+msh.verts[vids[2]].co[1])/3.0
+        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[1]].co[2]+msh.verts[vids[2]].co[2])/3.0
+    elif vtkcelltype== 9: # VTK_QUAD
+        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[2]].co[0])/2.0
+        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[2]].co[1])/2.0
+        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[2]].co[2])/2.0
+    elif vtkcelltype==10: # VTK_TETRA
+        pass
+    elif vtkcelltype==12: # VTK_HEXAHEDRON
+        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[6]].co[0])/2.0
+        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[6]].co[1])/2.0
+        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[6]].co[2])/2.0
+    elif vtkcelltype==22: # VTK_QUADRATIC_TRIANGLE
+        pass
+    elif vtkcelltype==23: # VTK_QUADRATIC_QUAD
+        pass
+    elif vtkcelltype==24: # VTK_QUADRATIC_TETRA
+        pass
+    elif vtkcelltype==25: # VTK_QUADRATIC_HEXAHEDRON
+        pass
+    return x, y, z
 
 
 def get_key():
@@ -30,6 +65,33 @@ def get_key():
     return key
 
 
+# Get current active object
+def get_obj():
+    scn = bpy.data.scenes.active
+    obj = scn.objects.active
+    return obj
+
+
+# Get current active mesh (will exit edit mode)
+# Returns:
+#          edm: edit mode == True or False
+#          obj: current object
+#          msh: current mesh
+def get_msh(with_error=True):
+    edm = Blender.Window.EditMode()
+    scn = bpy.data.scenes.active
+    obj = scn.objects.active
+    if obj!=None and obj.type=='Mesh':
+        if edm: Blender.Window.EditMode(0)
+        msh = obj.getData(mesh=1)
+        return edm, obj, msh
+    else:
+        if with_error: Blender.Draw.PupMenu('ERROR|Please, select an object of type Mesh')
+        else: return None,None,None
+
+
+# ================================================================================ Properties
+
 def set_int_property(obj, key, value):
     try:
         prop      = obj.getProperty (key)
@@ -37,14 +99,12 @@ def set_int_property(obj, key, value):
     except:
         obj.addProperty (key, value, 'INT')
 
-
 def set_str_property(obj, key, value):
     try:
         prop      = obj.getProperty (key)
         prop.data = value
     except:
         obj.addProperty (key, value, 'STRING')
-
 
 def set_float_property(obj, key, value):
     try:
@@ -54,37 +114,7 @@ def set_float_property(obj, key, value):
         obj.addProperty (key, value, 'FLOAT')
 
 
-def set_minangle(obj, value):
-    set_float_property (obj, 'minangle', value)
-
-
-def get_minangle(obj):
-    try:    value = obj.getProperty('minangle').data
-    except: value = -1.0
-    return value
-
-
-def set_maxarea(obj, value):
-    set_float_property (obj, 'maxarea', value)
-
-
-def get_maxarea(obj):
-    try:    value = obj.getProperty('maxarea').data
-    except: value = -1.0
-    return value
-
-
-def set_btag(obj, tag):
-    set_int_property (obj, 'btag', tag)
-
-
-def get_btag(obj):
-    tag = 0
-    for p in obj.getAllProperties():
-        if p.name[:4]=='btag':
-            tag = p.data
-    return tag
-
+# ====================================================== Local system and number of divisions
 
 def set_local_axis(obj, key, id):
     # In:
@@ -133,7 +163,6 @@ def set_local_axis(obj, key, id):
                 return
             set_int_property (obj, 'z_plus', z_plus)
 
-
 def get_local_axis(obj, key):
     # In:
     #      key = 'x', 'y', or 'z'
@@ -142,7 +171,6 @@ def get_local_axis(obj, key):
     try:    id = obj.getProperty(key+'_axis').data
     except: id = -1
     return id
-
 
 def get_local_system(obj):
     try:    origin = obj.getProperty('origin').data
@@ -155,13 +183,11 @@ def get_local_system(obj):
     except: z_plus = -1
     return origin, x_plus, y_plus, z_plus
 
-
 def set_ndiv(obj, key, ndiv):
     # In:
     #      key  = 'x', 'y', or 'z'
     #      ndiv = number of divisions along 'x', 'y', or 'z'
     set_int_property (obj, 'ndiv_'+key, ndiv)
-
 
 def get_ndiv(obj, key):
     # In:
@@ -173,13 +199,25 @@ def get_ndiv(obj, key):
     return ndiv
 
 
+# ================================================================================ Block tags
+
+def set_btag(obj, tag):
+    set_int_property (obj, 'btag', tag)
+
+def get_btag(obj):
+    try:    tag = obj.getProperty('btag').data
+    except: tag = -1
+    return tag
+
+
+# ====================================================================================== Tags
+
 def set_tag(obj, key, id, tag):
     # In:
     #      key = 'edge', 'face', or 'elem'
     #      id  = global ID of edge/face/elem with tag
     #      tag = the tag of edge/face/elem with tag
     set_int_property (obj, key+'_'+str(id), tag)
-
 
 def get_tags(obj, key):
     # In:
@@ -191,7 +229,6 @@ def get_tags(obj, key):
         if p.name[:4]==key:
             res.append ([int(p.name[5:]), p.data])
     return res 
-
 
 def get_tags_(obj, key):
     # In:
@@ -205,7 +242,6 @@ def get_tags_(obj, key):
             res[int(p.name[5:])] = p.data
     return res 
 
-
 def get_verts_on_edges_with_tags(obj, msh):
     etags = get_tags (obj, 'edge')
     verts = []
@@ -215,7 +251,6 @@ def get_verts_on_edges_with_tags(obj, msh):
         if idx1 not in verts: verts.append(idx1)
         if idx2 not in verts: verts.append(idx2)
     return verts
-
 
 def get_tags_list(obj, key, global_ids):
     # In:
@@ -261,41 +296,60 @@ def get_tags_list(obj, key, global_ids):
     return tags_list
 
 
-# ==================================================== Regions
+# ====================================================================== Minangle and maxarea
+
+def set_minangle(obj, value):
+    set_str_property (obj, 'minangle', value)
+
+def get_minangle(obj):
+    try:    value = obj.getProperty('minangle').data
+    except: value = '-1.0'
+    return value
+
+def set_maxarea(obj, value):
+    set_str_property (obj, 'maxarea', value)
+
+def get_maxarea(obj):
+    try:    value = obj.getProperty('maxarea').data
+    except: value = '-1.0'
+    return value
+
+
+# =================================================================================== Regions
 
 def set_reg(obj, id, maxarea, x, y, z):
     try:
         prop      = obj.getProperty ('reg_'+str(id))
-        prop.data = '%12.6f %12.6f %12.6f %12.6f'%(maxarea,x,y,z)
+        prop.data = maxarea+' '+x+' '+y+' '+z
     except:
-        obj.addProperty ('reg_'+str(id), '%12.6f %12.6f %12.6f %12.6f'%(maxarea,x,y,z), 'STRING')
+        obj.addProperty ('reg_'+str(id), maxarea+' '+x+' '+y+' '+z, 'STRING')
 
 def set_reg_maxarea(obj, id, maxarea): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = '%12.6f %12.6f %12.6f %12.6f'%(maxarea, float(d[1]), float(d[2]), float(d[3]))
+    p.data = maxarea+' '+d[1]+' '+d[2]+' '+d[3]
 
 def set_reg_x(obj, id, x): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = '%12.6f %12.6f %12.6f %12.6f'%(float(d[0]), x, float(d[2]), float(d[3]))
+    p.data = d[0]+' '+x+' '+d[2]+' '+d[3]
 
 def set_reg_y(obj, id, y): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = '%12.6f %12.6f %12.6f %12.6f'%(float(d[0]), float(d[1]), y, float(d[3]))
+    p.data = d[0]+' '+d[1]+' '+y+' '+d[3]
 
 def set_reg_z(obj, id, z): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = '%12.6f %12.6f %12.6f %12.6f'%(float(d[0]), float(d[1]), float(d[2]), z)
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+z
 
 def get_regs(obj):
     res = []
     for p in obj.getAllProperties():
         if p.name[:3]=='reg':
             d = p.data.split()
-            res.append ([float(d[0]), float(d[1]), float(d[2]), float(d[3])])
+            res.append ([d[0], d[1], d[2], d[3]])
     return res 
 
 def del_all_regs(obj):
@@ -312,36 +366,36 @@ def del_reg(obj, id):
             k += 1
 
 
-# ==================================================== Holes
+# ===================================================================================== Holes
 
 def set_hol(obj, id, x, y, z):
     try:
         prop      = obj.getProperty ('hol_'+str(id))
-        prop.data = '%12.6f %12.6f %12.6f'%(x,y,z)
+        prop.data = x+' '+y+' '+z
     except:
-        obj.addProperty ('hol_'+str(id), '%12.6f %12.6f %12.6f'%(x,y,z), 'STRING')
+        obj.addProperty ('hol_'+str(id), x+' '+y+' '+z, 'STRING')
 
 def set_hol_x(obj, id, x): # property must exist
     p = obj.getProperty ('hol_'+str(id))
     d = p.data.split()
-    p.data = '%12.6f %12.6f %12.6f'%(x, float(d[1]), float(d[2]))
+    p.data = x+' '+d[1]+' '+d[2]
 
 def set_hol_y(obj, id, y): # property must exist
     p = obj.getProperty ('hol_'+str(id))
     d = p.data.split()
-    p.data = '%12.6f %12.6f %12.6f'%(float(d[0]), y, float(d[2]))
+    p.data = d[0]+' '+y+' '+d[2]
 
 def set_hol_z(obj, id, z): # property must exist
     p = obj.getProperty ('hol_'+str(id))
     d = p.data.split()
-    p.data = '%12.6f %12.6f %12.6f'%(float(d[0]), float(d[1]), z)
+    p.data = d[0]+' '+d[1]+' '+z
 
 def get_hols(obj):
     res = []
     for p in obj.getAllProperties():
         if p.name[:3]=='hol':
             d = p.data.split()
-            res.append ([float(d[0]), float(d[1]), float(d[2])])
+            res.append ([d[0], d[1], d[2]])
     return res 
 
 def del_all_hols(obj):
@@ -358,46 +412,54 @@ def del_hol(obj, id):
             k += 1
 
 
-# ==================================================== Nodes boundaries
+# ========================================================================== Nodes boundaries
 
 def set_nbry(obj, id, x, y, z, key, value):
     try:
         prop      = obj.getProperty ('nbry_'+str(id))
-        prop.data = '%8.4f %8.4f %8.4f %s %12.6f'%(x,y,z,key,value)
+        prop.data = x+' '+y+' '+z+' '+key+' '+value
     except:
-        obj.addProperty ('nbry_'+str(id), '%8.4f %8.4f %8.4f %s %12.6f'%(x,y,z,key,value), 'STRING')
+        obj.addProperty ('nbry_'+str(id), x+' '+y+' '+z+' '+key+' '+value, 'STRING')
 
-def set_nbry_x(obj, id, val): # property must exist
+def set_nbry_x(obj, id, x): # property must exist
     p = obj.getProperty ('nbry_'+str(id))
     d = p.data.split()
-    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(val,float(d[1]),float(d[2]), d[3] ,float(d[4]))
+    p.data = x+' '+d[1]+' '+d[2]+' '+d[3]+' '+d[4]
 
-def set_nbry_y(obj, id, val): # property must exist
+def set_nbry_y(obj, id, y): # property must exist
     p = obj.getProperty ('nbry_'+str(id))
     d = p.data.split()
-    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),val,float(d[2]), d[3] ,float(d[4]))
+    p.data = d[0]+' '+y+' '+d[2]+' '+d[3]+' '+d[4]
 
-def set_nbry_z(obj, id, val): # property must exist
+def set_nbry_z(obj, id, z): # property must exist
     p = obj.getProperty ('nbry_'+str(id))
     d = p.data.split()
-    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),float(d[1]),val, d[3] ,float(d[4]))
+    p.data = d[0]+' '+d[1]+' '+z+' '+d[3]+' '+d[4]
 
-def set_nbry_key(obj, id, val): # property must exist
+def set_nbry_key(obj, id, key): # property must exist
     p = obj.getProperty ('nbry_'+str(id))
     d = p.data.split()
-    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),float(d[1]),float(d[2]), val ,float(d[4]))
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+key+' '+d[4]
 
 def set_nbry_val(obj, id, val): # property must exist
     p = obj.getProperty ('nbry_'+str(id))
     d = p.data.split()
-    p.data = '%8.4f %8.4f %8.4f %s %12.6f'%(float(d[0]),float(d[1]),float(d[2]), d[3] ,val)
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+d[3]+' '+value
 
 def get_nbrys(obj):
     res = []
     for p in obj.getAllProperties():
         if p.name[:4]=='nbry':
             d = p.data.split()
-            res.append ([float(d[0]),float(d[1]),float(d[2]), d[3], float(d[4])])
+            res.append ([d[0], d[1], d[2], d[3], d[4]])
+    return res 
+
+def get_nbrys_numeric(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='nbry':
+            d = p.data.split()
+            res.append ([float(d[0]), float(d[1]), float(d[2]), d[3], float(d[4])])
     return res 
 
 def del_all_nbrys(obj):
@@ -414,31 +476,93 @@ def del_nbry(obj, id):
             k += 1
 
 
-# ==================================================== Faces boundaries
+# ========================================================================== Edges boundaries
+
+def set_ebry(obj, id, tag, key, value):
+    try:
+        prop      = obj.getProperty ('ebry_'+str(id))
+        prop.data = tag+' '+key+' '+value
+    except:
+        obj.addProperty ('ebry_'+str(id), tag+' '+key+' '+value, 'STRING')
+
+def set_ebry_tag(obj, id, tag): # property must exist
+    p = obj.getProperty ('ebry_'+str(id))
+    d = p.data.split()
+    p.data = tag+' '+d[1]+' '+d[2]
+
+def set_ebry_key(obj, id, key): # property must exist
+    p = obj.getProperty ('ebry_'+str(id))
+    d = p.data.split()
+    p.data = d[0]+' '+key+' '+d[2]
+
+def set_ebry_val(obj, id, val): # property must exist
+    p = obj.getProperty ('ebry_'+str(id))
+    d = p.data.split()
+    p.data = d[0]+' '+d[1]+' '+val
+
+def get_ebrys(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='ebry':
+            d = p.data.split()
+            res.append ([d[0], d[1], d[2]])
+    return res 
+
+def get_ebrys_numeric(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='ebry':
+            d = p.data.split()
+            res.append ([int(d[0]), d[1], float(d[2])])
+    return res 
+
+def del_all_ebrys(obj):
+    for p in obj.getAllProperties():
+        if p.name[:4]=='ebry': obj.removeProperty(p)
+
+def del_ebry(obj, id):
+    ebrys = get_ebrys (obj)
+    del_all_ebrys (obj)
+    k = 0
+    for i in range(len(ebrys)):
+        if i!=id:
+            set_ebry (obj, k, ebrys[i][0], ebrys[i][1], ebrys[i][2])
+            k += 1
+
+
+# ========================================================================== Faces boundaries
 
 def set_fbry(obj, id, tag, key, value):
     try:
         prop      = obj.getProperty ('fbry_'+str(id))
-        prop.data = '%d %s %12.6f'%(tag,key,value)
+        prop.data = tag+' '+key+' '+value
     except:
-        obj.addProperty ('fbry_'+str(id), '%d %s %12.6f'%(tag,key,value), 'STRING')
+        obj.addProperty ('fbry_'+str(id), tag+' '+key+' '+value, 'STRING')
 
-def set_fbry_tag(obj, id, val): # property must exist
+def set_fbry_tag(obj, id, tag): # property must exist
     p = obj.getProperty ('fbry_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %12.6f'%(val, d[1] ,float(d[2]))
+    p.data = tag+' '+d[1]+' '+d[2]
 
-def set_fbry_key(obj, id, val): # property must exist
+def set_fbry_key(obj, id, key): # property must exist
     p = obj.getProperty ('fbry_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %12.6f'%(int(d[0]), val ,float(d[2]))
+    p.data = d[0]+' '+key+' '+d[2]
 
 def set_fbry_val(obj, id, val): # property must exist
     p = obj.getProperty ('fbry_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %12.6f'%(int(d[0]), d[1] ,val)
+    p.data = d[0]+' '+d[1]+' '+val
 
 def get_fbrys(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='fbry':
+            d = p.data.split()
+            res.append ([d[0], d[1], d[2]])
+    return res 
+
+def get_fbrys_numeric(obj):
     res = []
     for p in obj.getAllProperties():
         if p.name[:4]=='fbry':
@@ -460,45 +584,53 @@ def del_fbry(obj, id):
             k += 1
 
 
-# ==================================================== Elements attributes
+# ======================================================================= Elements attributes
 
 def set_eatt(obj, id, tag, type, model, prms, inis):
     prms = '_'.join(prms.split())
     inis = '_'.join(inis.split())
     try:
         prop      = obj.getProperty ('eatt_'+str(id))
-        prop.data = '%d %s %s %s %s'%(tag,type,model,prms,inis)
+        prop.data = tag+' '+type+' '+model+' '+prms+' '+inis
     except:
-        obj.addProperty ('eatt_'+str(id), '%d %s %s %s %s'%(tag,type,model,prms,inis), 'STRING')
+        obj.addProperty ('eatt_'+str(id), tag+' '+type+' '+model+' '+prms+' '+inis, 'STRING')
 
-def set_eatt_tag(obj, id, val): # property must exist
+def set_eatt_tag(obj, id, tag): # property must exist
     p = obj.getProperty ('eatt_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %s %s %s'%(val, d[1], d[2], d[3], d[4])
+    p.data = tag+' '+d[1]+' '+d[2]+' '+d[3]+' '+d[4]
 
-def set_eatt_type(obj, id, val): # property must exist
+def set_eatt_type(obj, id, type): # property must exist
     p = obj.getProperty ('eatt_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %s %s %s'%(int(d[0]), val, d[2], d[3], d[4])
+    p.data = d[0]+' '+type+' '+d[2]+' '+d[3]+' '+d[4]
 
-def set_eatt_model(obj, id, val): # property must exist
+def set_eatt_model(obj, id, model): # property must exist
     p = obj.getProperty ('eatt_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %s %s %s'%(int(d[0]), d[1], val, d[3], d[4])
+    p.data = d[0]+' '+d[1]+' '+model+' '+d[3]+' '+d[4]
 
-def set_eatt_prms(obj, id, val): # property must exist
+def set_eatt_prms(obj, id, prms): # property must exist
     val = '_'.join(val.split())
     p = obj.getProperty ('eatt_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %s %s %s'%(int(d[0]), d[1], d[2], val, d[4])
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+prms+' '+d[4]
 
-def set_eatt_inis(obj, id, val): # property must exist
+def set_eatt_inis(obj, id, inis): # property must exist
     val = '_'.join(val.split())
     p = obj.getProperty ('eatt_'+str(id))
     d = p.data.split()
-    p.data = '%d %s %s %s %s'%(int(d[0]), d[1], d[2], d[3], val)
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+d[3]+' '+inis
 
 def get_eatts(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='eatt':
+            d = p.data.split()
+            res.append ([d[0], d[1], d[2], d[3].replace('_',' '), d[4].replace('_',' ')])
+    return res 
+
+def get_eatts_numeric(obj):
     res = []
     for p in obj.getAllProperties():
         if p.name[:4]=='eatt':

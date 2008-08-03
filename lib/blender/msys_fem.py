@@ -29,17 +29,21 @@ def fill_mesh(obj):
         for i, v in enumerate(msh.verts):
             if i in res: onbry = True
             else:        onbry = False
-            mg.set_vert (i, onbry, v.co[0], v.co[1]) # ,OnBry, Dupl, etc
-
-        # Read elements properties
-        nelems = obj.properties['nelems']
-        elems  = pickle.load (open(Blender.sys.makename(ext='_elems_'+obj.name+'.pickle'),'r'))
+            mg.set_vert (i, onbry, v.co[0], v.co[1])
 
         # Elements
+        nelems = obj.properties['nelems']
         mg.set_nelems (nelems)
-        start = 0
         for i in range(nelems):
-            mg.set_elem (i, elems['tags'][i], elems['onbs'][i], elems['vtks'][i], elems['cons'][i], elems['etags'][i])
+            mg.set_elem (i, obj.properties['elems']['tags'][i],
+                            obj.properties['elems']['onbs'][i],
+                            obj.properties['elems']['vtks'][i])
+            for j in range(len(obj.properties['elems']['cons'] [str(i)])): mg.set_elem_con  (i, j, obj.properties['elems']['cons'] [str(i)][j])
+            for j in range(len(obj.properties['elems']['etags'][str(i)])): mg.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
+            try:
+                for j in range(len(obj.properties['elems']['ftags'][str(i)])): mg.set_elem_ftag (i, j, obj.properties['elems']['etags'][str(i)][j])
+            except:
+                pass
 
         # Restore local coordinates
         msh.verts = ori

@@ -47,7 +47,7 @@ if dict['show_props']:
                     for v in msh.verts:
                         BGL.glColor3f     (1.0, 1.0, 0.0)
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
-                        Draw.Text         ('%d'% v.index)
+                        Draw.Text         (str(v.index))
 
                 # draw edges IDs
                 if dict['show_e_ids']:
@@ -55,20 +55,14 @@ if dict['show_props']:
                         mid = 0.5*(e.v1.co+e.v2.co)
                         BGL.glColor3f     (1.0, 1.0, 1.0)
                         BGL.glRasterPos3f (mid[0], mid[1], mid[2])
-                        Draw.Text         ('%d'% e.index)
+                        Draw.Text         (str(e.index))
 
                 # draw faces IDs
                 if dict['show_f_ids']:
-                    if dict['show_ele_tags']: elts = di.get_tags (obj, 'elem')
-                    else:                     elts = []
-                    ids  = [t[0] for t in elts]
                     for f in msh.faces:
-                        if f.index in ids: t = str(elts[ids.index(f.index)][1])
-                        else:              t = ''
                         BGL.glColor3f     (1.0, 0.1, 0.2)
                         BGL.glRasterPos3f (f.cent[0], f.cent[1], f.cent[2])
-                        if dict['show_ele_tags']: Draw.Text ('%d(%s)'%(f.index,t))
-                        else:                     Draw.Text ('%d'%f.index)
+                        Draw.Text         (str(f.index))
 
                 # if there are properties (local axes, ndivs, tags, etc.)
                 if len(obj.getAllProperties())>0:
@@ -153,6 +147,31 @@ if dict['show_props']:
                             BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (pos[0], pos[1], pos[2])
                             Draw.Text         (str(t[1]))
+
+                    # draw regions
+                    rgs = di.get_regs (obj)
+                    for r in rgs:
+                        BGL.glColor3f     (0.0, 0.0, 0.0)
+                        BGL.glRasterPos3f (float(r[1]), float(r[2]), float(r[3]))
+                        Draw.Text         ('region_'+r[0])
+
+                    # draw holes
+                    hls = di.get_hols (obj)
+                    for h in hls:
+                        BGL.glColor3f     (0.0, 0.0, 0.0)
+                        BGL.glRasterPos3f (float(h[0]), float(h[1]), float(h[2]))
+                        Draw.Text         ('hole')
+
+                # draw elements information
+                if dict['show_elems']:
+                    try:    nelems = obj.properties['nelems']
+                    except: nelems = 0
+                    if nelems>0:
+                        for id in obj.properties['elems']['cons']:
+                            x, y, z = di.get_cg (msh, obj.properties['elems']['cons'][id], obj.properties['elems']['vtks'][int(id)])
+                            BGL.glColor3f     (0.0, 0.0, 0.0)
+                            BGL.glRasterPos3f (x, y, z)
+                            Draw.Text         (str(id)+'('+str(obj.properties['elems']['tags'][int(id)])+')')
 
                 # Resore mesh to local coordinates
                 msh.verts = ori

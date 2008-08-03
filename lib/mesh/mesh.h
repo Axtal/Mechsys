@@ -102,15 +102,15 @@ public:
 	void WriteVTU (char const * FileName) const; ///< Write output file for ParaView
 
 	// Set methods
-	virtual void Set3D       (bool Is3D=true) { _is_3d=Is3D; }                               ///< (Un)set 3D mesh
-	virtual void SetO2       (bool IsO2=true) { _is_o2=IsO2; }                               ///< (Un)set quadratic elements
-	virtual void SetNVerts   (size_t NumVerts);                                              ///< Erase old mesh and set number of vertices
-	virtual void SetNElems   (size_t NumElems);                                              ///< Set number of elements
-	virtual void SetVert     (int i, bool IsOnBry, double X, double Y, double Z=0);          ///< Set vertex
-	virtual void SetElem     (int i, int Tag, bool IsOnBry, int VTKCellType, size_t NVerts); ///< Set element
-	virtual void SetElemCon  (int i, int j, size_t iVert);                                   ///< Set element connectivity
-	virtual void SetElemETag (int i, int j, int Tag);                                        ///< Set element's edge tag
-	virtual void SetElemFTag (int i, int j, int Tag);                                        ///< Set element's face tag
+	virtual void Set3D       (bool Is3D=true) { _is_3d=Is3D; }                      ///< (Un)set 3D mesh
+	virtual void SetO2       (bool IsO2=true) { _is_o2=IsO2; }                      ///< (Un)set quadratic elements
+	virtual void SetNVerts   (size_t NumVerts);                                     ///< Erase old mesh and set number of vertices
+	virtual void SetNElems   (size_t NumElems);                                     ///< Set number of elements
+	virtual void SetVert     (int i, bool IsOnBry, double X, double Y, double Z=0); ///< Set vertex
+	virtual void SetElem     (int i, int Tag, bool IsOnBry, int VTKCellType);       ///< Set element
+	virtual void SetElemCon  (int i, int j, size_t iVert);                          ///< Set element connectivity
+	virtual void SetElemETag (int i, int j, int Tag);                               ///< Set element's edge tag
+	virtual void SetElemFTag (int i, int j, int Tag);                               ///< Set element's face tag
 
 	// Get methods
 	        bool   Is3D            ()                   const { return _is_3d;                  } ///< Is 3D mesh ?
@@ -139,6 +139,7 @@ public:
 	void   PyWriteVTU (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
 	size_t PyGetVerts (BPy::list & Verts) const;
 	size_t PyGetEdges (BPy::list & Edges) const;
+	void   PyGetETags (BPy::dict & ETags) const;
 	size_t PyGetElems (BPy::dict & Elems) const;
 // }
 #endif // USE_BOOST_PYTHON
@@ -160,6 +161,7 @@ protected:
 private:
 	// Private methods
 	void _vtk_con (size_t i, String & Connect) const; ///< Returns a string with the connectivites (global vertices IDs) of an element
+	int  _nverts  (int VTKCellType)            const; ///< Returns the number of vertices of a VTKCell
 	int  _nedges  (int VTKCellType)            const; ///< Returns the number of edges of a VTKCell
 	int  _nfaces  (int VTKCellType)            const; ///< Returns the number of faces of a VTKCell
 
@@ -318,7 +320,7 @@ inline void Generic::SetVert(int i, bool IsOnBry, double X, double Y, double Z)
 	if (IsOnBry) _verts_bry.Push (_verts[i]);
 }
 
-inline void Generic::SetElem(int i, int Tag, bool IsOnBry, int VTKCellType, size_t NVerts)
+inline void Generic::SetElem(int i, int Tag, bool IsOnBry, int VTKCellType)
 {
 	// Set _elems
 	if (_elems[i]==NULL) _elems[i] = new Elem;
@@ -326,7 +328,7 @@ inline void Generic::SetElem(int i, int Tag, bool IsOnBry, int VTKCellType, size
 	_elems[i]->Tag         = Tag;
 	_elems[i]->OnBry       = IsOnBry;
 	_elems[i]->VTKCellType = VTKCellType;
-	_elems[i]->V.Resize (NVerts);
+	_elems[i]->V.Resize (_nverts(VTKCellType));
 
 	// Resize ETags and FTags
 	int ned = _nedges (VTKCellType);
@@ -393,6 +395,25 @@ inline size_t Generic::PyGetEdges(BPy::list & Edges) const
 	return len(Edges);
 }
 
+inline void Generic::PyGetETags(BPy::dict & ETags) const
+{
+	/* Out:
+	 *       ETags = {(L,R):tag, (L,R):tag, ... num edge tags]}
+	 */
+	for (size_t i=0; i<NElems(); ++i)
+	{
+		for (size_t j=0; j<ElemNETags(i); ++j) // j is the local edge id
+		{
+			if (ElemETag(i,j)<0)
+			{
+				int L = ElemCon(i, _edge_to_lef_vert(j));
+				int R = ElemCon(i, _edge_to_rig_vert(j));
+				ETags[BPy::make_tuple(L, R)] = ElemETag(i,j);
+			}
+		}
+	}
+}
+
 inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 {
 	/* Out:
@@ -401,17 +422,16 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 	 *      'tags'    : [t1,t2,t3, ... num elements]
 	 *      'onbs'    : [ 1, 0, 1, ... num elements]
 	 *      'vtks'    : [ 9, 9,12, ... num elements]
-	 *      'cons'    : {id0:[node0, node1, node3, num nodes in element 0],
-	 *                   id1:[n0,n1,n2,n3,n4,n5,n6,n7], ... num elems}
-	 *      'etags'   : {id0:[tag_edge_0, tag_edge_1, tag_edge_2, tag_edge_3],
-	 *                   id1:[t0,t1,t2,t3], ... num elems]}
-	 *      'ftags'   : {id0:[tag_face_0, tag_face_1, tag_face_2, tag_face_3, tag_face_4, tag_face_5],
-	 *                   id1:[t0,t1,t2,t3,t4,t5], ... num elems]}
-	 *      'etags_g' : {(L,R):tag, (L,R):tag, ... num edge tags]}
+	 *      'cons'    : {'id0':[node0, node1, node3, num nodes in element 0],
+	 *                   'id1':[n0,n1,n2,n3,n4,n5,n6,n7], ... num elems}
+	 *      'etags'   : {'id0':[tag_edge_0, tag_edge_1, tag_edge_2, tag_edge_3],
+	 *                   'id1':[t0,t1,t2,t3], ... num elems]}
+	 *      'ftags'   : {'id0':[tag_face_0, tag_face_1, tag_face_2, tag_face_3, tag_face_4, tag_face_5],
+	 *                   'id1':[t0,t1,t2,t3,t4,t5], ... num elems]}
 	 *    }
 	 */
 	BPy::list tags,  onbs,  vtks;
-	BPy::dict cons, etags, ftags, etags_g;
+	BPy::dict cons, etags, ftags;
 	for (size_t i=0; i<NElems(); ++i)
 	{
 		// Data
@@ -423,61 +443,37 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 		BPy::list co;
 		for (size_t j=0; j<ElemNVerts(i); ++j)
 			co.append (ElemCon(i,j));
-		cons[i] = co;
+		cons[BPy::str(i)] = co;
 
-		// ETags and Global ETags
+		// ETags
 		BPy::list et;
 		for (size_t j=0; j<ElemNETags(i); ++j) // j is the local edge id
 		{
 			int tag = ElemETag(i,j);
 			et.append (tag);
-			if (tag<0)
-			{
-				int L = ElemCon(i, _edge_to_lef_vert(j));
-				int R = ElemCon(i, _edge_to_rig_vert(j));
-				etags_g[BPy::make_tuple(L, R)] = tag;
-			}
 		}
-		etags[i] = et;
+		etags[BPy::str(i)] = et;
 
 		// FTags
-		BPy::list ft;
-		for (size_t j=0; j<ElemNFTags(i); ++j) // j is the local face id
+		if (Is3D())
 		{
-			int tag = ElemFTag(i,j);
-			ft.append (tag);
+			BPy::list ft;
+			for (size_t j=0; j<ElemNFTags(i); ++j) // j is the local face id
+			{
+				int tag = ElemFTag(i,j);
+				ft.append (tag);
+			}
+			ftags[BPy::str(i)] = ft;
 		}
-		ftags[i] = ft;
 	}
-	Elems["tags" ]   = tags;
-	Elems["onbs" ]   = onbs;
-	Elems["vtks" ]   = vtks;
-	Elems["cons" ]   = cons;
-	Elems["etags"]   = etags;
-	Elems["etags_g"] = etags_g;
-	Elems["ftags"]   = ftags;
+	Elems["tags" ] = tags;
+	Elems["onbs" ] = onbs;
+	Elems["vtks" ] = vtks;
+	Elems["cons" ] = cons;
+	Elems["etags"] = etags;
+	Elems["ftags"] = ftags;
 	return NElems();
 }
-
-/*
-inline void Generic::PySetElem(int i, int Tag, bool IsOnBry, int VTKCellType, BPy::list const & Conn, BPy::list const & EdgeTags)
-{
-	// Set Elements & Connectivity
-	int nverts = len(Conn);
-	SetElem (i, Tag, IsOnBry, VTKCellType, nverts);
-	for (int j=0; j<nverts; ++j)
-		SetElemCon (i, j, BPy::extract<int>(Conn[j])());
-
-	// Set edge tags
-	int netags = len(EdgeTags);
-	if (netags>0)
-	{
-		_elems[i]->ETags.Resize(netags);
-		for (int j=0; j<netags; ++j)
-			_elems[i]->ETags(j) = BPy::extract<int>(EdgeTags[j])();
-	}
-}
-*/
 
 // }
 #endif // USE_BOOST_PYTHON
@@ -501,6 +497,24 @@ inline void Generic::_vtk_con(size_t i, String & Connect) const
 	Connect = "";
 	for (size_t j=0; j<ElemNVerts(i); j++)
 		Connect.Printf ("%s %d ", Connect.CStr(), ElemCon(i,j));
+}
+
+inline int Generic::_nverts(int VTKCellType) const
+{
+	switch (VTKCellType)
+	{
+		case VTK_LINE:                 { return  2; }
+		case VTK_TRIANGLE:             { return  3; }
+		case VTK_QUAD:                 { return  4; }
+		case VTK_TETRA:                { return  4; }
+		case VTK_HEXAHEDRON:           { return  8; }
+		case VTK_QUADRATIC_EDGE:       { return  3; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  6; }
+		case VTK_QUADRATIC_QUAD:       { return  8; }
+		case VTK_QUADRATIC_TETRA:      { return 10; }
+		case VTK_QUADRATIC_HEXAHEDRON: { return 20; }
+		default: throw new Fatal("Generic::_nverts: VTKCellType==%d is invalid", VTKCellType);
+	}
 }
 
 inline int Generic::_nedges(int VTKCellType) const

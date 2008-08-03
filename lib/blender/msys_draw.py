@@ -18,7 +18,9 @@ def print_timing(func):
     return wrapper
 
 
-def add_point(xyz):
+# ======================================================================================= CAD
+
+def add_point(x, y, z):
     scn = bpy.data.scenes.active
     obj = scn.objects.active
     if obj==None:
@@ -28,7 +30,7 @@ def add_point(xyz):
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
-        msh.verts.extend(xyz)
+        msh.verts.extend(x,y,z)
         if edm: Blender.Window.EditMode(1)
         obj.select(1)
         Blender.Window.RedrawAll()
@@ -50,7 +52,8 @@ def add_points_from_file(filename):
         if len(words)==0 or words[0].startswith('#'): pass
         elif words[0]=='x' or words[0]=='X': pass
         else:
-            x, y, z = float(words[0]), float(words[1]), float(words[2])
+            if len(words)>2: x, y, z = float(words[0]), float(words[1]), float(words[2])
+            else:            x, y, z = float(words[0]), float(words[1]), 0
             msh.verts.extend(x,y,z)
     if edm: Blender.Window.EditMode(1) # enter edm
     Blender.Window.RedrawAll()
@@ -72,7 +75,9 @@ def add_spline_from_file(filename):
         if len(words)==0 or words[0].startswith('#'): pass
         elif words[0]=='x' or words[0]=='X': pass
         else:
-            point = Blender.BezTriple.New((float(words[0]), float(words[1]), float(words[2])))
+            if len(words)>2: x, y, z = float(words[0]), float(words[1]), float(words[2])
+            else:            x, y, z = float(words[0]), float(words[1]), 0
+            point = Blender.BezTriple.New((x, y, z))
             if first==1:
                 spl.appendNurb(point)
                 path  = spl[0]
@@ -123,6 +128,7 @@ def fillet(radius,steps):
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
+        print '[1;34mMechSys:[0m', msh.edges.selected(), 'edges selected' # TODO: check why sometimes 3 edges are selected
         if len(msh.edges.selected())==2:
             # points (vertices)
             v1 = msh.edges[msh.edges.selected()[0]].v1
@@ -211,115 +217,7 @@ def break_edge(at_mid=False):
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
 
 
-def read_2d_mesh(filename):
-    Blender.Window.WaitCursor(1)
-    edm   = Blender.Window.EditMode()
-    if edm: Blender.Window.EditMode(0) # exit edm
-    key   = Blender.sys.basename(Blender.sys.splitext(filename)[0])
-    fnode = open(Blender.sys.splitext(filename)[0]+".node",'r')
-    felem = open(Blender.sys.splitext(filename)[0]+".ele" ,'r')
-    fedge = open(Blender.sys.splitext(filename)[0]+".edge",'r')
-    fneig = open(Blender.sys.splitext(filename)[0]+".neigh",'r')
-    fnod  = open(Blender.sys.splitext(filename)[0]+".out.node",'w')
-    fele  = open(Blender.sys.splitext(filename)[0]+".out.ele" ,'w')
-    fedg  = open(Blender.sys.splitext(filename)[0]+".out.face",'w')
-    msh   = bpy.data.meshes.new('mesh2d')
-    scn   = bpy.data.scenes.active
-    obj   = scn.objects.new(msh,key)
-    # read nodes
-    idx = 0
-    for line in fnode.readlines():
-        idx  += 1
-        words = line.split()
-        if len(words)==0 or words[0].startswith('#'): pass
-        elif idx==1:
-            fnod.write('%s\n' % (words[0]))
-            print '[1;34mMechSys[0m: reading ' + words[0] + ' nodes'
-            nnod = int(words[0])
-        else:
-            # read
-            x, y, z = float(words[1]), float(words[2]), 0.0
-            msh.verts.extend(x,y,z)
-            # write
-            fnod.write('  %s   %s  %s   %s\n' % (words[0],words[1],words[2],words[3]))
-    # read elements
-    idx = 0
-    elems = []
-    for line in felem.readlines():
-        idx  += 1
-        words = line.split()
-        if len(words)==0 or words[0].startswith('#'): pass
-        elif idx==1:
-            fele.write('%s\n' % (words[0]))
-            print '[1;34mMechSys[0m: reading ' + words[0] + ' elements'
-            nele = int(words[0])
-        else:
-            # read
-            verts    = []
-            allverts = []
-            for i in words[1:4]:    verts.append(int(i)-1) # 1,2,3
-            for i in words[1:7]: allverts.append(int(i)-1) # 1,2,3,4,5,6
-            elems.append(verts)
-            msh.faces.extend(verts)
-            # write
-            fele.write('  %s   6   %s %s %s %s %s %s\n' % (words[0],words[1],words[2],words[3],words[4],words[5],words[6]))
-    print elems
-    # read neighbours
-    idx   = 0
-    neigh = []
-    for line in fneig.readlines():
-        idx  += 1
-        words = line.split()
-        if len(words)==0 or words[0].startswith('#'): pass
-        elif idx==1: print '[1;34mMechSys[0m: reading the neighbours of ' + words[0] + ' triangles'
-        else:
-            verts = []
-            for i in words[1:4]: verts.append(int(i)-1) # 1,2,3
-            neigh.append(verts)
-    # read edges
-    idx = 0
-    for line in fedge.readlines():
-        idx  += 1
-        words = line.split()
-        if len(words)==0 or words[0].startswith('#'): pass
-        elif idx==1:
-            fedg.write('%s\n' % (words[0]))
-            print '[1;34mMechSys[0m: reading ' + words[0] + ' edges'
-            nedg = int(words[0])
-        else:
-            # read
-            verts = []
-            for i in words[1:3]: verts.append(int(i)-1) # 1,2
-            # write
-            fedg.write('  %s   %s %s %s   %s %s\n' % (words[0],words[1],words[2],words[3],words[4],words[5]))
-            # joints
-            if words[4]=='-9999':
-                # new nodes
-                nnod += 1; fnod.write('  %d   %f  %f   %s\n' % (nnod,msh.verts[int(words[1])-1].co[0],msh.verts[int(words[1])-1].co[1],words[4]))
-                nnod += 1; fnod.write('  %d   %f  %f   %s\n' % (nnod,msh.verts[int(words[2])-1].co[0],msh.verts[int(words[2])-1].co[1],words[4]))
-                nnod += 1; fnod.write('  %d   %f  %f   %s\n' % (nnod,msh.verts[int(words[3])-1].co[0],msh.verts[int(words[3])-1].co[1],words[4]))
-                # new elements
-                nele += 1; fele.write('  %d   6   %s %d %d %d %s %s\n' % (nele,words[1],nnod-2,nnod,nnod-1,words[2],words[3]))
-                # new edges
-                nedg += 1; fedg.write('  %d   3   %s %s %s   %s %d\n' % (nedg,nnod-2,nnod-1,nnod,words[4],nele))
-                # new connectivity
-                own1 = int(words[5])-1
-                for i in neigh[own1]:
-                    if i>=0:
-                        l = int(words[1])-1
-                        r = int(words[2])-1
-                        for j in elems[i]:
-                            if j==l: print 'left'
-                            if j==r: print 'right'
-                        #if elems[i].count(l)+elems[i].count(r)==2:
-                            #fele.write('  %s   6   %s %s %s %s %s %s\n' % (i+1,words[1],words[2],words[3],words[4],words[5],words[6]))
-    if edm: Blender.Window.EditMode(1) # enter edm
-    fnod.close()
-    fele.close()
-    fedg.close()
-    Blender.Window.RedrawAll()
-    Blender.Window.WaitCursor(0)
-
+# =========================================================================== Structured mesh
 
 #  2+       r_idx    = 0        # start right vertex index
 #   |\      edge_ids = [0,1,2]  # indexes of all edges to search for r_idx
@@ -452,52 +350,9 @@ def gen_blk_3d(obj, msh):
 
         # return list with block data
         return [[cox, coy, coz], wx, wy, wz]
-
-
-        #eds_eds = dict([(ed.key, []) for ed in msh.edges])
-        #for ed in msh.edges:
-            #ed.v1.index
-            #ed.v2.index
-        # Dictionary where the vertex index is the key, and a list of edges that share this vertex are the value
-        #verts_edges = dict([(v.index, []) for v in msh.verts])
-        #for ed in msh.edges:
-            #verts_edges[ed.v1.index].append(ed.key)
-            #verts_edges[ed.v2.index].append(ed.key)
-#
-        #x_axis = di.get_local_axis (obj, 'x')
-        #y_axis = di.get_local_axis (obj, 'y')
-        #z_axis = di.get_local_axis (obj, 'z')
-#
-        #curr_ed = (origin, x_plus)
-        #res     = verts_edges[x_plus]
-        #res.remove(curr_ed)
-        #print res
-        #res     = filter(lambda key: key!=curr_ed, verts_edges[x_plus])
-        #if (len(res)==1): next_ed = res[0]
-        #else: Blender.Draw.PupMenu('ERROR|sort_faces algorithm failed')
-        #print next_ed
-#
     else:
         Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
         return []
-
-    #edge_faces = dict([(ed.key, []) for ed in msh.edges])
-
-    # Add the faces to the dict
-    #for f in msh.faces:
-        #for key in f.edge_keys:
-            #edge_faces[key].append(f) # add this face to the edge as a user
-
-    #fx = edge_faces[xaxis]
-    #fy = edge_faces[yaxis]
-    #print filter(lambda face: face in fx, fy)
-    # Print the edges and the number of face users
-    #for key, face_users in edge_faces.iteritems():
-        #print 'Edge:', key, 'uses:', len(face_users),'faces'
-
-
-
-
 
 
 def gen_struct_mesh():
@@ -558,62 +413,15 @@ def gen_struct_mesh():
         print '[1;34mMechSys[0m: File <[1;33m%s[0m> created' % fn
 
         # draw generated mesh
-        draw_struct_mesh (mms)
+        draw_mesh (mms)
 
         # restore cursor
         Blender.Window.WaitCursor(0)
 
 
-@print_timing
-def set_elems(obj, nelems, elems):
-    obj.properties['nelems'] = nelems
-    pickle.dump (elems, open(Blender.sys.makename(ext='_ELEMS_'+obj.name+'.pickle'),'w'), pickle.HIGHEST_PROTOCOL)
-    print '[1;34mMechSys[0m: Element tags and connectivity read'
-
+# ========================================================================= Unstructured mesh
 
 @print_timing
-def set_etags(obj, msh, elems):
-    for et in elems['etags_g']:
-        edge_id = msh.findEdges (et[0], et[1])
-        di.set_tag (obj, 'edge', edge_id, elems['etags_g'][et])
-
-
-@print_timing
-def draw_struct_mesh(mms):
-    # In:
-    #     mms: A MechSys::PyMeshStruct object
-
-    # get vertices and edges
-    verts = []
-    edges = []
-    mms.get_verts (verts)
-    mms.get_edges (edges)
-
-    # add new mesh to Blender
-    #Blender.Window.ViewLayers([2])
-    #Blender.Window.SetActiveLayer(1<<1)
-    key     = di.get_key()
-    scn     = bpy.data.scenes.active
-    new_msh = bpy.data.meshes.new      (key+'_structured')
-    new_obj = scn.objects.new (new_msh, key+'_structured')
-    new_msh.verts.extend (verts)
-    new_msh.edges.extend (edges)
-    new_obj.select       (1)
-    #Blender.Window.EditMode (1)
-    print '[1;34mMechSys[0m: Mesh extended'
-
-    # set elements
-    elems  = {}
-    nelems = mms.get_elems(elems)
-    set_elems (new_obj, nelems, elems)
-
-    # set tags
-    set_etags (new_obj, new_msh, elems)
-
-    # redraw
-    Blender.Window.QRedrawAll()
-
-
 def gen_unstruct_mesh():
     # get objects
     scn = bpy.data.scenes.active
@@ -623,6 +431,7 @@ def gen_unstruct_mesh():
 
     # set input polygon
     if obj!=None and obj.type=='Mesh':
+        Blender.Window.WaitCursor(1)
         msh = obj.getData(mesh=1)
         mu  = ms.mesh_unstructured()
         ets = di.get_tags_ (obj, 'edge')
@@ -638,11 +447,58 @@ def gen_unstruct_mesh():
         print rgs
         print hls
         for i, r in enumerate(rgs):
-            mu.set_poly_region (i, r[0], r[1], r[2], r[3])
+            mu.set_poly_region (i, int(r[0]), float(r[1]), float(r[2]), float(r[3]))
         for i, h in enumerate(hls):
-            mu.set_poly_hole (i, h[0], h[1], h[2])
+            mu.set_poly_hole (i, float(h[0]), float(h[1]), float(h[2]))
         maxarea  = di.get_maxarea  (obj)
         minangle = di.get_minangle (obj)
-        mu.generate      (maxarea, minangle)
-        draw_struct_mesh (mu)
-        return
+        mu.generate      (float(maxarea), float(minangle))
+        draw_mesh (mu)
+        Blender.Window.WaitCursor(0)
+
+
+# ====================================================================================== Draw
+
+@print_timing
+def set_elems(obj, nelems, elems):
+    obj.properties['nelems'] = nelems
+    obj.properties['elems']  = elems
+
+
+@print_timing
+def set_etags(obj, msh, etags):
+    for et in etags:
+        edge_id = msh.findEdges (et[0], et[1])
+        di.set_tag (obj, 'edge', edge_id, etags[et])
+
+
+@print_timing
+def draw_mesh(mms):
+    # get vertices and edges
+    verts = []
+    edges = []
+    mms.get_verts (verts)
+    mms.get_edges (edges)
+
+    # add new mesh to Blender
+    key     = di.get_key()
+    scn     = bpy.data.scenes.active
+    new_msh = bpy.data.meshes.new      (key+'_structured')
+    new_obj = scn.objects.new (new_msh, key+'_structured')
+    new_msh.verts.extend (verts)
+    new_msh.edges.extend (edges)
+    new_obj.select       (1)
+    print '[1;34mMechSys[0m: Mesh extended'
+
+    # set elements
+    elems  = {}
+    nelems = mms.get_elems (elems)
+    set_elems (new_obj, nelems, elems)
+
+    # set etags
+    etags = {}
+    mms.get_etags (etags)
+    set_etags (new_obj, new_msh, etags)
+
+    # redraw
+    Blender.Window.QRedrawAll()

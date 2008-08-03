@@ -112,6 +112,8 @@ inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T
 		if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",M->ElemTag(i),i);
 	}
 
+	return;
+
 	// Set faces boundaries
 	if (FacesBrys.Size()>0)
 	{
