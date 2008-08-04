@@ -67,23 +67,8 @@ public:
 	void SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
 	void SetDim    (int nDim)           { _ndim      = nDim;     }    ///< Set the number of dimension of the problem
 	void SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
-	void Bry       (char const * Key, double Value, int FaceLocalID); ///< Set Face/Edge boundary conditions
-	void Bry       (char const * Key, double Value, Array<Node*> & FaceNodes);
-
-
-	void Bry (char const * Key, double Value, ...)
-	{
-		// Set array with pointers to the nodes on a face/edge
-		va_list   arg_list;
-		va_start (arg_list, Value); // initialize arg_list with parameters AFTER Value
-		Array<Node*> fnodes; fnodes.Resize(_n_face_nodes);
-		for (size_t i=0; i<_n_face_nodes; ++i)
-			fnodes[i] = va_arg (arg_list, Node*);
-		va_end (arg_list);
-
-		// Distribute to face-nodes
-		_dist_to_face_nodes (Key, Value, fnodes);
-	}
+	void EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
+	void FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
 	
 	// Get methods
 	long         GetID      ()         const { return _my_id;       } ///< Return the ID of this element
@@ -169,16 +154,29 @@ private:
 
 // Set and get methods
 
-inline void Element::Bry(char const * Key, double Value, int FaceLocalID)
+inline void Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)
 {
-	Array<Node*> fnodes;
-	GetFaceNodes        (FaceLocalID, fnodes);
-	_dist_to_face_nodes (Key, Value, fnodes);
+	if (_ndim==2) // For 2D meshes, edges correspond to faces
+	{
+		Array<Node*> fnodes;
+		GetFaceNodes        (EdgeLocalID, fnodes);
+		_dist_to_face_nodes (Key, Value, fnodes);
+	}
+	else
+	{
+		throw new Fatal("Element::EdgeBry: Method not yet implemented for 3D meshes.");
+	}
 }
 
-inline void Element::Bry(char const * Key, double Value, Array<Node*> & FaceNodes)
+inline void Element::FaceBry(char const * Key, double Value, int FaceLocalID)
 {
-	_dist_to_face_nodes (Key, Value, FaceNodes);
+	if (_ndim==2) throw new Fatal("Element::FaceBry: This method must be called only for 3D meshes.");
+	else
+	{
+		Array<Node*> fnodes;
+		GetFaceNodes        (FaceLocalID, fnodes);
+		_dist_to_face_nodes (Key, Value, fnodes);
+	}
 }
 
 inline double Element::Volume() const

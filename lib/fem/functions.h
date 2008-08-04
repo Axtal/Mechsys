@@ -50,24 +50,35 @@ namespace FEM
 
 #if defined(USE_BOOST) || defined(USE_BOOST_PYTHON)
 
-typedef Array< boost::tuple<double,double,double, char const *,double> >               NBrys_T; // x,y,z, key, val
-typedef Array< boost::tuple<                 int, char const *,double> >               FBrys_T; //   tag, key, val
-typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*> > EAtts_T; // tag, type, model, prms, inis
+typedef Array< boost::tuple<double,double,double, char const *,double> >               NBrys_T; // Node: x,y,z, key, val
+typedef Array< boost::tuple<                 int, char const *,double> >               EBrys_T; // Edge:   tag, key, val
+typedef Array< boost::tuple<                 int, char const *,double> >               FBrys_T; // Face:   tag, key, val
+typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*> > EAtts_T; // Elem:   tag, type, model, prms, inis
 
-inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T const & FacesBrys, EAtts_T const & ElemsAtts, FEM::Geom * G)
+inline void SetGeom (Mesh::Generic const * M,          ///< In: The mesh
+                     NBrys_T       const * NodesBrys,  ///< In: Give NULL when there are no nodes boundary conditions
+                     EBrys_T       const * EdgesBrys,  ///< In: Give NULL for 3D meshes without edges boundary conditions
+                     FBrys_T       const * FacesBrys,  ///< In: Give NULL for 2D meshes
+                     EAtts_T       const * ElemsAtts,  ///< In: Elements attributes
+                     FEM::Geom           * G)          ///< Out: The FE geometry
 {
 	/* Example:
 	
-		// 1) Nodes brys
+		// Nodes brys
 		FEM::NBrys_T nbrys;
 		nbrys.Push (make_tuple(L/2., 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
 
-		// 2) Faces brys
-		FEM::FBrys_T fbrys;
-		fbrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
-		fbrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
+		// Edges brys
+		FEM::EBrys_T ebrys;
+		ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
+		ebrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
 
-		// 3) Elements attributes
+		// Faces brys
+		FEM::FBrys_T fbrys;
+		fbrys.Push (make_tuple(-100, "uy", 0.0)); // tag, key, val
+		fbrys.Push (make_tuple(-200, "fy",  -q)); // tag, key, val
+
+		// Elements attributes
 		FEM::EAtts_T eatts;
 		eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
 
@@ -92,82 +103,106 @@ inline void SetGeom (Mesh::Generic const * M, NBrys_T const & NodesBrys, FBrys_T
 	{
 		// Set element
 		bool found = false;
-		for (size_t j=0; j<ElemsAtts.Size(); ++j)
+		for (size_t j=0; j<ElemsAtts->Size(); ++j)
 		{
-			if (M->ElemTag(i)==ElemsAtts[j].get<0>())
+			if (M->ElemTag(i)==(*ElemsAtts)[j].get<0>())
 			{
 				// New finite element
 				found = true;
-				FEM::Element * fe = G->SetElem (i, ElemsAtts[j].get<1>());
+				FEM::Element * fe = G->SetElem (i, (*ElemsAtts)[j].get<1>());
 
 				// Set connectivity
 				for (size_t k=0; k<M->ElemNVerts(i); ++k)
 					fe->Connect (k, G->Nod(M->ElemCon(i,k)));
 
 				// Set parameters and initial values
-				fe->SetModel (ElemsAtts[j].get<2>(), ElemsAtts[j].get<3>(), ElemsAtts[j].get<4>());
+				fe->SetModel ((*ElemsAtts)[j].get<2>(), (*ElemsAtts)[j].get<3>(), (*ElemsAtts)[j].get<4>());
 				break;
 			}
 		}
 		if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",M->ElemTag(i),i);
 	}
 
-	return;
-
 	// Set faces boundaries
-	if (FacesBrys.Size()>0)
+	if (is3d && FacesBrys!=NULL)
 	{
-		for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
+		if (FacesBrys->Size()>0)
 		{
-			int i = M->ElemBry(b);
-			for (size_t j=0; j<M->ElemNETags(i); ++j) // j is the local face id
+			for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
 			{
-				int tag = M->ElemETag(i, j);
-				if (tag<0) // this element has a face tag
+				int i = M->ElemBry(b);
+				for (size_t j=0; j<M->ElemNFTags(i); ++j) // j is the local face id
 				{
-					bool found = false;
-					for (size_t k=0; k<FacesBrys.Size(); ++k)
+					int tag = M->ElemFTag(i, j);
+					if (tag<0) // this element has a face tag
 					{
-						if (tag==FacesBrys[k].get<0>())
+						bool found = false;
+						for (size_t k=0; k<FacesBrys->Size(); ++k)
 						{
-							found = true;
-							G->Ele(i)->Bry (FacesBrys[k].get<1>(), FacesBrys[k].get<2>(), j);
-							break;
+							if (tag==(*FacesBrys)[k].get<0>())
+							{
+								found = true;
+								G->Ele(i)->FaceBry ((*FacesBrys)[k].get<1>(), (*FacesBrys)[k].get<2>(), j);
+								break;
+							}
 						}
+						if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Face %d of Element %d in the FacesBrys list",tag,j,i);
 					}
-					if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Face %d of Element %d in the FacesBrys list",tag,j,i);
+				}
+			}
+		}
+	}
+
+	// Set edges boundaries
+	if (EdgesBrys!=NULL)
+	{
+		if (EdgesBrys->Size()>0)
+		{
+			for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
+			{
+				int i = M->ElemBry(b);
+				for (size_t j=0; j<M->ElemNETags(i); ++j) // j is the local edge id
+				{
+					int tag = M->ElemETag(i, j);
+					if (tag<0) // this element has an edge tag
+					{
+						bool found = false;
+						for (size_t k=0; k<EdgesBrys->Size(); ++k)
+						{
+							if (tag==(*EdgesBrys)[k].get<0>())
+							{
+								found = true;
+								G->Ele(i)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), j);
+								break;
+							}
+						}
+						if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Face %d of Element %d in the EdgesBrys list",tag,j,i);
+					}
 				}
 			}
 		}
 	}
 
 	// Set nodes boundaries
-	if (NodesBrys.Size()>0)
+	if (NodesBrys!=NULL)
 	{
-		for (size_t b=0; b<M->NVertsBry(); ++b) // loop over all vertices on boundary
+		if (NodesBrys->Size()>0)
 		{
-			int i = M->VertBry(b);
-			for (size_t j=0; j<NodesBrys.Size(); ++j)
+			for (size_t b=0; b<M->NVertsBry(); ++b) // loop over all vertices on boundary
 			{
-				double x =         NodesBrys[j].get<0>();
-				double y =         NodesBrys[j].get<1>();
-				double z = (is3d ? NodesBrys[j].get<2>() : 0.0);
-				double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
-				if (d<sqrt(DBL_EPSILON))
-					G->Nod(i)->Bry (NodesBrys[j].get<3>(), NodesBrys[j].get<4>());
+				int i = M->VertBry(b);
+				for (size_t j=0; j<NodesBrys->Size(); ++j)
+				{
+					double x =         (*NodesBrys)[j].get<0>();
+					double y =         (*NodesBrys)[j].get<1>();
+					double z = (is3d ? (*NodesBrys)[j].get<2>() : 0.0);
+					double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
+					if (d<sqrt(DBL_EPSILON))
+						G->Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
+				}
 			}
 		}
 	}
-
-	/*
-	// Debug
-	std::cout << "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  DEBUG  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-	std::cout << "NodesBrys\n"; for (size_t i=0; i<NodesBrys.Size(); ++i) std::cout << NodesBrys[i] << std::endl;
-	std::cout << "FacesBrys\n"; for (size_t i=0; i<FacesBrys.Size(); ++i) std::cout << FacesBrys[i] << std::endl;
-	std::cout << "ElemsAtts\n"; for (size_t i=0; i<ElemsAtts.Size(); ++i) std::cout << ElemsAtts[i] << std::endl;
-	std::cout << "\n" << (*G) << "\n\n";
-	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  DEBUG  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-	*/
 }
 
 #endif // USE_BOOST || USE_BOOST_PYTHON

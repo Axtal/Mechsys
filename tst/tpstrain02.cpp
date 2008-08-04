@@ -111,10 +111,10 @@ int main(int argc, char **argv) try
 	FEM::NBrys_T nbrys;
 	nbrys.Push (make_tuple(L/2., 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
 
-	// 2) Faces brys
-	FEM::FBrys_T fbrys;
-	fbrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
-	fbrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
+	// 2) Edges brys
+	FEM::EBrys_T ebrys;
+	ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
+	ebrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
 
 	// 3) Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -122,7 +122,7 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
 
 	// 4) Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetGeom (&ms, nbrys, fbrys, eatts, &g);
+	FEM::SetGeom (&ms, &nbrys, &ebrys, NULL, &eatts, &g);
 
 	// 5) Solve
 	cout << "\nSolution: ---------------------------------------------------------------------" << endl;

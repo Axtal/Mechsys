@@ -219,6 +219,10 @@ inline void Solver::Solve()
 	}
 	_nudofs = static_cast<int>(_udofs.Size());
 	_npdofs = static_cast<int>(_pdofs.Size());
+	
+	// Check
+	if (_nudofs==0) throw new Fatal("Solver::Solve: The number of Unknowns DOFs must be greater than zero.\nThere might be an error with the boundary conditions setting up.");
+	if (_npdofs==0) throw new Fatal("Solver::Solve: The number of Prescribed DOFs must be greater than zero.\nThere might be an error with the boundary conditions setting up.");
 
 #ifdef HAVE_SUPERLUD
 	if (_pd==NULL)     throw new Fatal(_("Solve::Solve: For parallel computation, PData (ParallelData) must be set before calling this method"));

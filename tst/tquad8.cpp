@@ -92,10 +92,10 @@ int main(int argc, char **argv) try
 	        ->Connect(7, g.Nod(7));
 
 	// 4) Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry ("uy",0.0);
-	g.Nod(4)->Bry ("uy",0.0)->Bry("ux",0.0);
-	g.Nod(1)->Bry ("uy",0.0);
-	g.Ele(0)->Bry ("fy",-q, g.Nod(3), g.Nod(2), g.Nod(6)); // 3 => top edge/face
+	g.Nod(0)->Bry     ("uy",0.0);
+	g.Nod(4)->Bry     ("uy",0.0)->Bry("ux",0.0);
+	g.Nod(1)->Bry     ("uy",0.0);
+	g.Ele(0)->EdgeBry ("fy",-q,3); // 3 => top edge
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);

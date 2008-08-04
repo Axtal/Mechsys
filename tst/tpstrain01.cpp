@@ -124,7 +124,7 @@ int main(int argc, char **argv) try
 		Matrix<double> c;
 		g.Ele(i)->Coords(c);
 		if (fabs(c(2,1)-H)<1.0e-5) // top element
-			g.Ele(i)->Bry("fy", -q, 3); // 3=> top face/edge
+			g.Ele(i)->EdgeBry("fy", -q, 3); // 3=> top edge
 	}
 
 	// 5) Parameters and initial values
