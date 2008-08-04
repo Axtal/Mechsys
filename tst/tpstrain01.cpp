@@ -193,7 +193,9 @@ int main(int argc, char **argv) try
 	else                      cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	// Write file
-	Output::VTU o; o.Equilib (&g, "tpstrain01.vtu");
+	Output o; o.VTK (&g, "tpstrain01.vtk");
+	          o.VTU (&g, "tpstrain01.vtu");
+	cout << "[1;34mFile <tpstrain01.vtk> saved.[0m" << endl;
 	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m" << endl;
 
 	// Return error flag

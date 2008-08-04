@@ -141,9 +141,13 @@ int main(int argc, char **argv) try
 	// Write file
 	cout << "Write output file: ------------------------------------------------------------" << endl;
 	start = std::clock(); // Initial time
-	Output::VTU o; o.Heat (&g, "theat01.vtu");
+	Output o; o.VTK   (&g, "theat01.vtk");
+	          o.VTU   (&g, "theat01.vtu");
+	          o.VTUcg (&g, "theat01_cg.vtu");
 	total = std::clock() - start; // Time elapsed
+	cout << "[1;34mFile <theat01.vtk> saved.[0m" << endl;
 	cout << "[1;34mFile <theat01.vtu> saved.[0m" << endl;
+	cout << "[1;34mFile <theat01_cg.vtu> saved.[0m" << endl;
 	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
 	cout << endl;
 

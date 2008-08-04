@@ -142,7 +142,7 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	class_<PyElem>("elem", init<FEM::Element *>())
 	    .def("get_id",    &PyElem::GetID)
-	    .def("nnodes",    &PyElem::nNodes)
+	    .def("nnodes",    &PyElem::NNodes)
 	    .def("nod",       &PyElem::Nod,      return_internal_reference<>())
 	    .def("connect",   &PyElem::Connect,  return_internal_reference<>())
 	    .def("set_model", &PyElem::SetModel, return_internal_reference<>())
@@ -155,8 +155,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	class_<FEM::Geom>("geom", init<int>())
 	    .def("set_nnodes", &FEM::Geom::SetNNodes)
 	    .def("set_nelems", &FEM::Geom::SetNElems)
-	    .def("nnodes",     &FEM::Geom::nNodes)
-	    .def("nelems",     &FEM::Geom::nElems)
+	    .def("nnodes",     &FEM::Geom::NNodes)
+	    .def("nelems",     &FEM::Geom::NElems)
 	    .def("set_node",   &FEM::Geom::PySetNode2D, return_internal_reference<>())
 	    .def("set_node",   &FEM::Geom::PySetNode3D, return_internal_reference<>())
 	    .def("set_elem",   &FEM::Geom::PySetElem1)
@@ -177,11 +177,12 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ----------------------------------------------------------------------- functions
 	
 	// Global functions
-	def ("write_vtu_equilib", PyWriteVTUEquilib  );
-	def ("write_vtk",         PyWriteVTK         );
-	def ("set_geom",          PySetGeom          );
-	def ("set_geom",          PySetGeomStructured);
-	def ("block3d_sort",      PyBlock3DSort      );
+	def ("out_vtu_equilib", PyOutputVTUEquilib );
+	def ("out_vtu_heat",    PyOutputVTUHeat    );
+	def ("out_vtk",         PyOutputVTK        );
+	def ("set_geom",        PySetGeom          );
+	def ("set_geom",        PySetGeomStructured);
+	def ("block3d_sort",    PyBlock3DSort      );
 
 	// ---------------------------------------------------------------------- Exceptions
 	
