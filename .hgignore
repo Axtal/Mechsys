@@ -10,6 +10,7 @@ tst/tpstrain01
 tst/tpstrain02
 tst/theat01
 tst/ttree01
+src/libmechsys.*
 
 syntax: glob
 CTestTestfile.cmake
