@@ -26,6 +26,7 @@
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
+#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -147,7 +148,7 @@ int main(int argc, char **argv) try
 	double Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 
 	// Stress and strains
-	for (size_t i=0; i<g.nElems(); ++i)
+	for (size_t i=0; i<g.NElems(); ++i)
 	{
 		errors += fabs(g.Ele(i)->Val("Ex" ) - (Ex));
 		errors += fabs(g.Ele(i)->Val("Ey" ) - (Ey));
@@ -159,7 +160,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Displacements
-	for (size_t i=0; i<g.nNodes(); ++i)
+	for (size_t i=0; i<g.NNodes(); ++i)
 	{
 		if (fabs(g.Nod(i)->Y())<1.0e-5) // bottom nodes
 		{
@@ -183,7 +184,7 @@ int main(int argc, char **argv) try
 	// Write file
 	cout << "Write output file: ------------------------------------------------------------" << endl;
 	start = std::clock(); // Initial time
-	FEM::WriteVTUEquilib (g, "tpstrain02.vtu");
+	Output::VTU o; o.Equilib (&g, "tpstrain02.vtu");
 	total = std::clock() - start; // Time elapsed
 	cout << "[1;34mFile <tpstrain02.vtu> saved.[0m" << endl;
 	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;

@@ -73,7 +73,7 @@ public:
 	// Get methods
 	long         GetID      ()         const { return _my_id;       } ///< Return the ID of this element
 	bool         IsActive   ()         const { return _is_active;   } ///< Check if this element is active
-	size_t       nNodes     ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
+	size_t       NNodes     ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
 	size_t       nIntPoints ()         const { return _n_int_pts;   } ///< Return the number of integration points in this element
 	Node       * Nod        (size_t i)       { return _connects[i]; } ///< Return a pointer to a node in the connects list (read/write)
 	Node const * Nod        (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list (read-only)
@@ -212,26 +212,26 @@ inline bool Element::IsInside(double x, double y, double z) const
 	
 	//fast search in X -----------------------------------------------------------------------
 	max = -huge;
-	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->X() > max) max=_connects[i]->X();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->X() > max) max=_connects[i]->X();
 	if ( x > max ) return false;
 	min = +huge;
-	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->X() < min) min=_connects[i]->X();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->X() < min) min=_connects[i]->X();
 	if ( x < min ) return false;
 
 	//fast search in Y -----------------------------------------------------------------------
 	max = -huge;
-	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Y() > max) max=_connects[i]->Y();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Y() > max) max=_connects[i]->Y();
 	if ( y > max ) return false;
 	min = +huge;
-	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Y() < min) min=_connects[i]->Y();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Y() < min) min=_connects[i]->Y();
 	if ( y < min ) return false;
 	
 	//fast search in Z -----------------------------------------------------------------------
 	max = -huge;
-	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Z() > max) max=_connects[i]->Z();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Z() > max) max=_connects[i]->Z();
 	if ( z > max ) return false;
 	min = +huge;
-	for (size_t i=0; i < nNodes(); i++) if (_connects[i]->Z() < min) min=_connects[i]->Z();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Z() < min) min=_connects[i]->Z();
 	if ( z < min ) return false;
 	
 	double r, s, t;
@@ -411,7 +411,7 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 	//                         E = N * inv(N * N )
 	//
 	//  and            N = [shape functions matrix]
-	//	                	  1		2		...		nNodes
+	//	                	  1		2		...		NNodes
 	//	               1	[[N_11 N_12
 	//	               2	 [N_21
 	//	               :	 [
@@ -472,7 +472,7 @@ inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValu
 std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 {
 	os << "[" << E.GetID() << "] " << E.Name() << " " << E.ModelName() << "\n";
-	for (size_t i=0; i<E.nNodes(); ++i)
+	for (size_t i=0; i<E.NNodes(); ++i)
 		if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
 	return os;
 }
@@ -512,7 +512,7 @@ class PyElem
 public:
 	                     PyElem   (FEM::Element * ptElem) : _elem(ptElem)                               { }
 	long                 GetID    ()                                                              const { return _elem->GetID();   }
-	size_t               nNodes   ()                                                              const { return _elem->nNodes();  }
+	size_t               NNodes   ()                                                              const { return _elem->NNodes();  }
 	FEM::Node const    & Nod      (size_t i)                                                      const { return (*_elem->Nod(i)); }
 	PyElem             & Connect  (int iNodeLocal, FEM::Node & refNode)                                 { _elem->Connect  (iNodeLocal, &refNode); return (*this); }
 	PyElem             & SetModel (BPy::str const & Name, BPy::str const & Prms, BPy::str const & Inis) { _elem->SetModel (BPy::extract<char const *>(Name)(), BPy::extract<char const *>(Prms)(), BPy::extract<char const *>(Inis)()); return (*this); }

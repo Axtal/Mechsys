@@ -183,7 +183,7 @@ inline void Solver::Solve()
 	if (_g==NULL) throw new Fatal(_("Solver::Solve: Solver::SetGeom(FEM::Geom * G) must be called before calling this method (Solver::Solve())"));
 
 	// Check the integrity of active elements
-	for (size_t i=0; i<_g->nElems(); ++i)
+	for (size_t i=0; i<_g->NElems(); ++i)
 		if (_g->Ele(i)->IsActive() && _g->Ele(i)->IsReady()==false)
 			throw new Fatal(_("Solver::Solve: Element < %d > was not properly configured."), i);
 
@@ -198,7 +198,7 @@ inline void Solver::Solve()
 	// Set the ID (equation number) of all DOFs and setup _dF_ext and _dU_ext vectors
 	_udofs.Resize (0);
 	_pdofs.Resize (0);
-	for (size_t i=0; i<_g->nNodes(); ++i)
+	for (size_t i=0; i<_g->NNodes(); ++i)
 	{
 		if (_g->Nod(i)->nSharedBy()>0)
 		{
@@ -475,7 +475,7 @@ inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> 
 
 	// Update all elements
 	_dF_int.SetValues(0.0);
-	for (size_t i=0; i<_g->nElems(); ++i)
+	for (size_t i=0; i<_g->NElems(); ++i)
 	{
 		if (_g->Ele(i)->IsActive())
 			_g->Ele(i)->UpdateState(h,dU, _dF_int); // sum results into dF_int
@@ -508,7 +508,7 @@ inline void Solver::_backup_nodes_and_elements()
 	}
 
 	// Backup all elements
-	for (size_t i=0; i<_g->nElems(); ++i)
+	for (size_t i=0; i<_g->NElems(); ++i)
 		_g->Ele(i)->BackupState();
 
 }
@@ -528,7 +528,7 @@ inline void Solver::_restore_nodes_and_elements()
 	}
 
 	// Restore all elements
-	for (size_t i=0; i<_g->nElems(); ++i)
+	for (size_t i=0; i<_g->NElems(); ++i)
 		_g->Ele(i)->RestoreState();
 
 }
@@ -580,7 +580,7 @@ inline void Solver::_assemb_G_and_hKU(double h)
 	Array<bool>            cols_pre; // Map for col positions correspondent to prescribed essential DOFs
 	
 	// Loop along elements
-	for (size_t i_ele=0; i_ele<_g->nElems(); ++i_ele)
+	for (size_t i_ele=0; i_ele<_g->NElems(); ++i_ele)
 	{
 		// Get a poniter to the element
 		FEM::Element const * const elem = _g->Ele(i_ele);
@@ -695,7 +695,7 @@ inline void Solver::_compute_global_size()
 	Array<bool>   cols_pre; // Map for col positions correspondent to prescribed essential DOFs
 	
 	// Loop along elements
-	for (size_t i_ele=0; i_ele<_g->nElems(); ++i_ele)
+	for (size_t i_ele=0; i_ele<_g->NElems(); ++i_ele)
 	{
 		// Get a poniter to an element
 		FEM::Element const * const elem = _g->Ele(i_ele);

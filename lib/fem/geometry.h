@@ -44,14 +44,14 @@ public:
 	Geom (int nDim) : _dim(nDim) {}
 
 	// Set methods
-	void      SetNNodes (size_t nNodes);                                   ///< Set the number of nodes
-	void      SetNElems (size_t nElems);                                   ///< Set the number of elements
+	void      SetNNodes (size_t NNodes);                                   ///< Set the number of nodes
+	void      SetNElems (size_t NElems);                                   ///< Set the number of elements
 	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0);      ///< Set a node
 	Element * SetElem   (size_t i, char const * Type, bool IsActive=true); ///< Set an element
 
 	// Access methods
-	size_t                  nNodes    ()         const { return _nodes.Size(); } ///< Return the number of nodes
-	size_t                  nElems    ()         const { return _elems.Size(); } ///< Return the number of elements
+	size_t                  NNodes    ()         const { return _nodes.Size(); } ///< Return the number of nodes
+	size_t                  NElems    ()         const { return _elems.Size(); } ///< Return the number of elements
 	Node                  * Nod       (size_t i)       { return _nodes[i];     } ///< Access (read/write) a node
 	Element               * Ele       (size_t i)       { return _elems[i];     } ///< Access (read/write) an element
 	Node            const * Nod       (size_t i) const { return _nodes[i];     } ///< Access (read-only) a node
@@ -84,17 +84,17 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline void Geom::SetNNodes(size_t nNodes)
+inline void Geom::SetNNodes(size_t NNodes)
 {
 	for (size_t i=0; i<_nodes.Size(); ++i) if (_nodes[i]!=NULL) delete _nodes[i];
-	_nodes.Resize(nNodes);
+	_nodes.Resize(NNodes);
 	_nodes.SetValues(NULL);
 }
 
-inline void Geom::SetNElems(size_t nElems)
+inline void Geom::SetNElems(size_t NElems)
 {
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
-	_elems.Resize(nElems);
+	_elems.Resize(NElems);
 	_elems.SetValues(NULL);
 }
 
@@ -118,7 +118,7 @@ inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
 /** Outputs a geometry. */
 std::ostream & operator<< (std::ostream & os, FEM::Geom const & G)
 {
-	for (size_t i=0; i<G.nElems(); ++i)
+	for (size_t i=0; i<G.NElems(); ++i)
 		if (G.Ele(i)!=NULL) os << (*G.Ele(i));
 	return os;
 }

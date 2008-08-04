@@ -26,24 +26,46 @@
 #include "models/heats/linheat.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
+#include "fem/output.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
+#include "util/util.h"
 
+using boost::make_tuple;
 using std::cout;
 using std::endl;
+using Util::PI;
 
 int main(int argc, char **argv) try
 {
-	/*       
-	        
-	
-	          (T=1.0)  3 @-------------------@ 2  (T=1.0)
-	                     |                   |      
-	                     |                   |      
-	              L/2    |                   |
-	                     |                   |
-	          (T=0.0)  0 @-------------------@ 1  (T=0.0)
-	                              L            
+	// Constants
+	double k  = 1.0;
+	double a  = 1.0;
+	double T0 = 1.0;
+	double L  = 3.0*a;
+	double H  = 2.0*a;
+	int    nx = 3;
+	int    ny = 2;
+
+	/* J N Reddy's FEM book -- Example 8.5.1, page 464
+	 *
+	 *               y ^
+	 *                 | 
+	 *                    T=T0*cos(Pi*x/6a)
+	 *                #@------@------@------@
+	 *                #|      |      |      |
+	 *                #|      |      |      |
+	 *                #|      |  a   |      |
+	 *    (insulated) #@------@------@------@  T=0
+	 *       F=0.0    #|      |      |      |
+	 *                #|      |a     |      |  -20
+	 *        -10     #|      |      |      |
+	 *                #@------@------@------@  --> x
+	 *                #######################
+	 *                      (insulated)
+	 *                         F=0.0
+	 *
+	 *                         -10
 	 */
 
 	// Input
@@ -51,57 +73,83 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
-	// 0) Problem dimension
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+
+	// Blocks
+	String wx; for (int i=0; i<nx; ++i) wx.Printf("%s %f",wx.CStr(),1.0);
+	String wy; for (int i=0; i<ny; ++i) wy.Printf("%s %f",wy.CStr(),1.0);
+	Mesh::Block b;
+	b.SetTag (-1); // tag to be replicated to all generated elements inside this block
+	b.Set2D  ();   // 2D
+	b.C      () = 0.,  L, L, 0.,    L/2.,    L, L/2.,   0., // x coordinates
+	              0., 0., H,  H,      0., H/2.,    H, H/2.; // y coordinates
+	b.SetWx  (wx.CStr());                                   // x weights and num of divisions along x
+	b.SetWy  (wx.CStr());                                   // y weights and num of divisions along y
+	b.ETags  () = -10, -20, -10, 0;                         // edge tags
+	Array<Mesh::Block*> blocks;
+	blocks.Push (&b);
+
+	// Generate
+	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
+	Mesh::Structured ms;
+	clock_t start = std::clock(); // Initial time
+	size_t  ne    = ms.Generate (blocks);
+	clock_t total = std::clock() - start; // Time elapsed
+	cout << "[1;33m"<<ne<<" elements[0m. Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
+
+	////////////////////////////////////////////////////////////////////////////////////////// FEA /////
+
+	// Geometry
 	FEM::Geom g(2); // 2D
 
-	// 1) Nodes
-	g.SetNNodes (4);
-	g.SetNode   (0, 0.0, 0.0);
-	g.SetNode   (1, 1.0, 0.0);
-	g.SetNode   (2, 1.0, 0.5);
-	g.SetNode   (3, 0.0, 0.5);
+	// Edges brys
+	FEM::EBrys_T ebrys;
+	ebrys.Push (make_tuple(-10, "F", 0.0)); // tag, key, val
+	ebrys.Push (make_tuple(-20, "T", 0.0)); // tag, key, val
 
-	// 2) Elements
-	g.SetNElems (1);
-	g.SetElem   (0, "Quad4Heat", /*IsActive*/true);
+	// Elements attributes
+	String prms; prms.Printf("k=%f", k);
+	FEM::EAtts_T eatts;
+	eatts.Push (make_tuple(-1, "Quad4Heat", "LinHeat", prms.CStr(), "")); // tag, type, model, prms, inis
 
-	// 3) Set connectivity
-	g.Ele(0)->Connect(0, g.Nod(0))
-	        ->Connect(1, g.Nod(1))
-	        ->Connect(2, g.Nod(2))
-	        ->Connect(3, g.Nod(3));
+	// Set geometry: nodes, elements, attributes, and boundaries
+	FEM::SetGeom (&ms, NULL, &ebrys, NULL, &eatts, &g);
 
-	// 4) Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry("T",0.0);
-	g.Nod(1)->Bry("T",0.0);
-	g.Nod(2)->Bry("T",1.0);
-	g.Nod(3)->Bry("T",1.0);
+	// Set upper nodes boundary condition
+	for (size_t i=0; i<g.NNodes(); ++i)
+	{
+		double x = g.Nod(i)->X();
+		double y = g.Nod(i)->Y();
+		if (fabs(y-H)<1.0e-5) // top node
+			g.Nod(i)->Bry ("T", T0*cos(PI*x/(6.0*a)));
+	}
 
-	// 5) Parameters and initial values
-	g.Ele(0)->SetModel("LinHeat", "k=1.0", "");
-
-	// 6) Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	//FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	// Solve
+	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
+	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	start = std::clock(); // Initial time
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> SetCte("DTOL", 1.0e-10);
 	sol -> Solve();
+	total = std::clock() - start; // Time elapsed
+	//cout << "NormResid = "<<sol->GetVar("NormResid")<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+	cout << "RelError  = "<<sol->GetVar("RelError" )<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
 
-	// Stiffness
-	Array<size_t>          map;
-	Array<bool>            pre;
-	LinAlg::Matrix<double> Ke0;  Ke0.SetNS(Util::_6_3);
-	g.Ele(0)->Order1Matrix(0,Ke0);
-	cout << "Ke0=\n" << Ke0 << endl;
+	////////////////////////////////////////////////////////////////////////////////// Output File /////
 
-	cout << "NormResid = " << sol->GetVar("NormResid") << endl;
+	// Write file
+	cout << "Write output file: ------------------------------------------------------------" << endl;
+	start = std::clock(); // Initial time
+	Output::VTU o; o.Heat (&g, "theat01.vtu");
+	total = std::clock() - start; // Time elapsed
+	cout << "[1;34mFile <theat01.vtu> saved.[0m" << endl;
+	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+	cout << endl;
 
-	FEM::WriteVTK(g, "theat01.vtk");
+	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 	
     double errors = 0.0;
-	// Check
-	//for (int i=0; i<4; ++i)
-	//for (int j=0; j<4; ++j)
-	//	errors += fabs(Ke0(i,j)-Ke_correct(i,j));
 
 	//if (fabs(errors)>1.0e-10) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	//else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;

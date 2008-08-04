@@ -26,6 +26,7 @@
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
+#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 
@@ -110,7 +111,7 @@ int main(int argc, char **argv) try
 	}
 
 	// 4) Boundary conditions (must be after connectivity)
-	for (size_t i=0; i<g.nNodes(); ++i)
+	for (size_t i=0; i<g.NNodes(); ++i)
 	{
 		if (fabs(g.Nod(i)->Y()-ymin)<1.0e-5) // bottom nodes
 		{
@@ -119,7 +120,7 @@ int main(int argc, char **argv) try
 				g.Nod(i)->Bry("ux",0.0);
 		}
 	}
-	for (size_t i=0; i<g.nElems(); ++i)
+	for (size_t i=0; i<g.NElems(); ++i)
 	{
 		Matrix<double> c;
 		g.Ele(i)->Coords(c);
@@ -129,7 +130,7 @@ int main(int argc, char **argv) try
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	for (size_t i=0; i<g.nElems(); ++i)
+	for (size_t i=0; i<g.NElems(); ++i)
 		g.Ele(i)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// 6) Solve
@@ -158,7 +159,7 @@ int main(int argc, char **argv) try
 	double Sz = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 
 	// Stress and strains
-	for (size_t i=0; i<g.nElems(); ++i)
+	for (size_t i=0; i<g.NElems(); ++i)
 	{
 		errors += fabs(g.Ele(i)->Val("Ex" ) - (Ex));
 		errors += fabs(g.Ele(i)->Val("Ey" ) - (Ey));
@@ -170,7 +171,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Displacements
-	for (size_t i=0; i<g.nNodes(); ++i)
+	for (size_t i=0; i<g.NNodes(); ++i)
 	{
 		if (fabs(g.Nod(i)->Y()-ymin)<1.0e-5) // bottom nodes
 		{
@@ -192,7 +193,7 @@ int main(int argc, char **argv) try
 	else                      cout << "[1;32m\nErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	// Write file
-	FEM::WriteVTUEquilib (g, "tpstrain01.vtu");
+	Output::VTU o; o.Equilib (&g, "tpstrain01.vtu");
 	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m" << endl;
 
 	// Return error flag
