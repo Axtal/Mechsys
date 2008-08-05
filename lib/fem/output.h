@@ -267,7 +267,7 @@ inline void Output::_fill_map()
 			if (_map.find(labels[j])==_map.end())
 			{
 				size_t icomp = _map.size();
-				_map[labels[j]] = icomp;
+				_map[labels[j]] = icomp; // _map.size()-1 trick was not working on Mac OS X. Now it's ok.
 			}
 		}
 	}
