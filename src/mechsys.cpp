@@ -41,6 +41,7 @@
 #include "fem/geometry.h"
 #include "fem/functions.h"
 #include "fem/solver.h"
+#include "fem/output.h"
 #include "models/model.h"
 #include "util/exception.h"
 
@@ -146,7 +147,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("nod",       &PyElem::Nod,      return_internal_reference<>())
 	    .def("connect",   &PyElem::Connect,  return_internal_reference<>())
 	    .def("set_model", &PyElem::SetModel, return_internal_reference<>())
-	    .def("bry",       &PyElem::Bry,      return_internal_reference<>())
+	    .def("bry",       &PyElem::EdgeBry,  return_internal_reference<>())
+	    .def("bry",       &PyElem::FaceBry,  return_internal_reference<>())
 	    .def("val",       &PyElem::Val1)
 	    .def("val",       &PyElem::Val2)
 	    .def(self_ns::str(self))
@@ -177,12 +179,14 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ----------------------------------------------------------------------- functions
 	
 	// Global functions
-	def ("out_vtu_equilib", PyOutputVTUEquilib );
-	def ("out_vtu_heat",    PyOutputVTUHeat    );
-	def ("out_vtk",         PyOutputVTK        );
-	def ("set_geom",        PySetGeom          );
-	def ("set_geom",        PySetGeomStructured);
-	def ("block3d_sort",    PyBlock3DSort      );
+	def ("out_vtk",      PyOutputVTK          );
+	def ("out_vtu",      PyOutputVTU          );
+	def ("out_vtu_cg",   PyOutputVTUcg        );
+	def ("out_vtk",      PyOutputVTK          );
+	def ("set_geom",     PySetGeom            );
+	def ("set_geom",     PySetGeomStructured  );
+	def ("set_geom",     PySetGeomUnstructured);
+	def ("block3d_sort", PyBlock3DSort        );
 
 	// ---------------------------------------------------------------------- Exceptions
 	

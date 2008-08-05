@@ -516,7 +516,8 @@ public:
 	FEM::Node const    & Nod      (size_t i)                                                      const { return (*_elem->Nod(i)); }
 	PyElem             & Connect  (int iNodeLocal, FEM::Node & refNode)                                 { _elem->Connect  (iNodeLocal, &refNode); return (*this); }
 	PyElem             & SetModel (BPy::str const & Name, BPy::str const & Prms, BPy::str const & Inis) { _elem->SetModel (BPy::extract<char const *>(Name)(), BPy::extract<char const *>(Prms)(), BPy::extract<char const *>(Inis)()); return (*this); }
-	PyElem             & Bry      (BPy::str const & Key, double Value, int FaceLocalID)                 { _elem->Bry      (BPy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
+	PyElem             & EdgeBry  (BPy::str const & Key, double Value, int FaceLocalID)                 { _elem->EdgeBry  (BPy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
+	PyElem             & FaceBry  (BPy::str const & Key, double Value, int FaceLocalID)                 { _elem->FaceBry  (BPy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
 	double               Val1     (int iNodeLocal, BPy::str const & Name)                               { return _elem->Val(iNodeLocal, BPy::extract<char const *>(Name)()); }
 	double               Val2     (                BPy::str const & Name)                               { return _elem->Val(            BPy::extract<char const *>(Name)()); }
 	FEM::Element const * GetElem  ()                                                              const { return _elem; }

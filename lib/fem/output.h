@@ -96,9 +96,9 @@ inline void Output::VTK(FEM::Geom const * G, char const * FileName)
 	_ne = _aes.Size(); // Number of Elements
 	_g  = G;           // geometry
 
-	_fill_map        ();       // fill map
-	_calc_nodal_vals ();       // Calculate averaged nodal values
 	std::ostringstream oss;    // Output structure
+	_fill_map           ();    // fill map
+	_calc_nodal_vals    ();    // Calculate averaged nodal values
 	_vtk_write_header   (oss); // Header
 	_vtk_write_geometry (oss); // Geometry
 
@@ -137,9 +137,9 @@ inline void Output::VTU(FEM::Geom const * G, char const * FileName)
 	_ne = _aes.Size(); // Number of Elements
 	_g  = G;           // geometry
 
-	_fill_map        ();       // fill map
-	_calc_nodal_vals ();       // Calculate averaged nodal values
 	std::ostringstream oss;    // Output structure
+	_fill_map           ();    // fill map
+	_calc_nodal_vals    ();    // Calculate averaged nodal values
 	_vtu_write_header   (oss); // Header
 	_vtu_write_geometry (oss); // Geometry
 
@@ -167,7 +167,7 @@ inline void Output::VTU(FEM::Geom const * G, char const * FileName)
 		oss << "        </DataArray>\n";
 	}
 
-	// Data -- elements
+	// Data -- nodes -- scalars
 	_vtu_write_vals_at_nodes (oss);
 	oss << "      </PointData>\n";
 
@@ -187,13 +187,13 @@ inline void Output::VTUcg(FEM::Geom const * G, char const * FileName)
 	_ne = _aes.Size(); // Number of Elements
 	_g  = G;           // geometry
 
-	_fill_map ();              // fill map
 	std::ostringstream oss;    // Output structure
+	_fill_map           ();    // fill map
 	_vtu_write_header   (oss); // Header
 	_vtu_write_geometry (oss); // Geometry
 
 	// Data -- nodes -- temperature and heat
-	oss << "      <PointData Scalars=\"TheScalars\">\n";
+	oss << "      <PointData Scalars=\"TheScalars\" Vectors=\"TheVectors\">\n";
 	if (_map.find("T")!=_map.end())
 	{
 		oss << "        <DataArray type=\"Float32\" Name=\"" << "T" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
@@ -215,10 +215,8 @@ inline void Output::VTUcg(FEM::Geom const * G, char const * FileName)
 		}
 		oss << "        </DataArray>\n";
 	}
-	oss << "      </PointData>\n";
 
 	// Data -- nodes -- displacements and forces
-	oss << "      <PointData Vectors=\"TheVectors\">\n";
 	if (_map.find("ux")!=_map.end())
 	{
 		oss << "        <DataArray type=\"Float32\" Name=\"" << "displ" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
@@ -267,7 +265,10 @@ inline void Output::_fill_map()
 		for (size_t j=0; j<labels.Size(); ++j)
 		{
 			if (_map.find(labels[j])==_map.end())
-				_map[labels[j]] = _map.size()-1; // add a new entry
+			{
+				size_t icomp = _map.size();
+				_map[labels[j]] = icomp;
+			}
 		}
 	}
 }
