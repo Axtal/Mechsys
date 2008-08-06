@@ -18,6 +18,7 @@
 
 // STL
 #include <iostream>
+#include <cmath>
 
 // MechSys
 #include "fem/geometry.h"
@@ -155,8 +156,17 @@ int main(int argc, char **argv) try
 	
     double errors = 0.0;
 
-	//if (fabs(errors)>1.0e-10) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
-	//else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	for (size_t i=0; i<g.NNodes(); ++i)
+	{
+		double x  = g.Nod(i)->X();
+		double y  = g.Nod(i)->Y();
+		double Tc = T0*(cosh(PI*y/(6.0*a))*cos(PI*x/(6.0*a)))/cosh(PI/3.0); // correct T
+		if (fabs(y-H)<1.0e-7)
+		errors += fabs(g.Nod(i)->Val("T")-Tc);
+	}
+
+	if (fabs(errors)>1.0e-13) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
 	// Return error flag
 	if (fabs(errors)>1.0e-13) return 1;
