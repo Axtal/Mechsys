@@ -322,17 +322,23 @@ def gen_blk_3d(obj, msh):
     origin, x_plus, y_plus, z_plus = di.get_local_system (obj)
     if origin>-1:
         # sort vertices
-        vs = []
-        ms.block3d_sort (origin, x_plus, y_plus, z_plus, [ed.key for ed in msh.edges], vs)
+        verts   = []
+        etags   = []
+        etags_g = di.get_tags_ (obj, 'edge')
+        edges   = dict([(ed.key, ed.index) for ed in msh.edges])
+        for key, eidx in edges.iteritems():
+            edges[key] = etags_g[eidx] if etags_g.has_key(eidx) else 0
+        print edges
+        ms.block3d_sort (origin, x_plus, y_plus, z_plus, edges, verts, etags)
 
         # transform mesh to global coordinates
         ori = msh.verts[:] # create a copy in local coordinates
         msh.transform (obj.matrix)
 
         # generate list with coordinates
-        cox = [msh.verts[iv].co[0] for iv in vs]
-        coy = [msh.verts[iv].co[1] for iv in vs]
-        coz = [msh.verts[iv].co[2] for iv in vs]
+        cox = [msh.verts[iv].co[0] for iv in verts]
+        coy = [msh.verts[iv].co[1] for iv in verts]
+        coz = [msh.verts[iv].co[2] for iv in verts]
 
         # restore local coordinates
         msh.verts = ori
@@ -349,7 +355,7 @@ def gen_blk_3d(obj, msh):
         wz = [1 for i in range(nz)]
 
         # return list with block data
-        return [[cox, coy, coz], wx, wy, wz]
+        return [[cox, coy, coz], wx, wy, wz, etags]
     else:
         Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
         return []
@@ -376,11 +382,12 @@ def gen_struct_mesh():
 
             # 2D - o2
             elif len(msh.edges)==8:
-                res = gen_blk_2d (obj, msh)
+                res  = gen_blk_2d   (obj, msh)
+                btag = di.get_btag (obj)
                 if len(res)>0:
-                    bks.append    (ms.mesh_block())
-                    bks[-1].set2d (di.get_btag(obj), res[0], res[1], res[2])
-                    if len(res[3]): bks[-1].set_etags (res[3])
+                    bks.append      (ms.mesh_block())
+                    bks[btag].set2d (di.get_btag(obj), res[0], res[1], res[2])
+                    if len(res[3]): bks[btag].set_etags (res[3])
                     obj.select (0)
                 else: return
 
@@ -390,10 +397,12 @@ def gen_struct_mesh():
 
             # 3D - o2
             elif len(msh.edges)==24:
-                res = gen_blk_3d (obj, msh)
+                res  = gen_blk_3d (obj, msh)
+                btag = di.get_btag (obj)
                 if len(res)>0:
-                    bks.append    (ms.mesh_block())
-                    bks[-1].set3d (di.get_btag(obj), res[0], res[1], res[2], res[3])
+                    bks.append      (ms.mesh_block())
+                    bks[btag].set3d (di.get_btag(obj), res[0], res[1], res[2], res[3])
+                    if len(res[4]): bks[btag].set_etags (res[4])
                     obj.select (0)
                 else: return
 

@@ -143,10 +143,17 @@ if dict['show_props']:
                     # draw face tags
                     for t in di.get_tags (obj, 'face'):
                         if t[1]<0:
-                            pos = msh.faces[t[0]].cent
-                            BGL.glColor3f     (0.0, 0.0, 0.0)
-                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                            Draw.Text         (str(t[1]))
+                            # draw selected 'face'
+                            if len(msh.verts.selected())==8:
+                                BGL.glColor4f (1.0, 1.0, 0.0, 0.5)
+                                BGL.glBegin   (BGL.GL_POLYGON)
+                                for i in msh.verts.selected():
+                                    BGL.glVertex3f (msh.verts[i].co[0], msh.verts[i].co[1], msh.verts[i].co[2])
+                                BGL.glEnd ()
+                            #pos = msh.faces[t[0]].cent
+                            #BGL.glColor3f     (0.0, 0.0, 0.0)
+                            #BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                            #Draw.Text         (str(t[1]))
 
                     # draw regions
                     rgs = di.get_regs (obj)

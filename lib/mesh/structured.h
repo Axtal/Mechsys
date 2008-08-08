@@ -469,15 +469,37 @@ inline void Block::PySetETags(BPy::list const & Tags)
 	int n_edges = BPy::len(Tags); // 2D => 4,  3D => 12
 	if (_is_3d)
 	{
-		if (n_edges!=12) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 12 (n_edges==%d is invalid)",n_edges);
+		if (n_edges==12)
+		{
+			for (int i=0; i<n_edges; ++i)
+				_etags(i) = BPy::extract<int>(Tags[i])();
+			_has_etags = true;
+		}
+		else
+		{
+			if (n_edges!=24) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 24 (n_edges==%d is invalid)",n_edges);
+			for (int i=0; i<12; ++i)
+				_etags(i) = BPy::extract<int>(Tags[i*2])();
+			_has_etags = true;
+		}
+		/*
+		if (_is_o2)
+		{
+			if (n_edges==24) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 24 (n_edges==%d is invalid)",n_edges);
+		}
+		else
+		{
+			if (n_edges!=12) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 12 (n_edges==%d is invalid)",n_edges);
+		}
+		*/
 	}
 	else
 	{
 		if (n_edges!= 4) throw new Fatal("Block::PySetETags: For 2D meshes, the number of edges must be 4 (n_edges==%d is invalid)",n_edges);
+		for (int i=0; i<n_edges; ++i)
+			_etags(i) = BPy::extract<int>(Tags[i])();
+		_has_etags = true;
 	}
-	for (int i=0; i<n_edges; ++i)
-		_etags(i) = BPy::extract<int>(Tags[i])();
-	_has_etags = true;
 }
 
 inline void Block::PySetFTags(BPy::list const & Tags)
@@ -801,31 +823,32 @@ inline void Structured::_erase()
 
 #include "util/tree.h"
 
-inline void PyBlock3DSort (long OrigID, long XPlusID, long YPlusID, long ZPlusID, BPy::list const & EdgesList, BPy::list & VertsList)
+inline void PyBlock3DSort (long              OrigID,    ///< ID of the vertex at origin
+                           long              XPlusID,   ///< ID of the vertex at the positive corner of the local x-axis
+                           long              YPlusID,   ///< ID of the vertex at the positive corner of the local y-axis
+                           long              ZPlusID,   ///< ID of the vertex at the positive corner of the local z-axis
+                           BPy::dict const & Edges,     ///< {(v1,v2):tag1, (v1,v2):tag2, ... 24 edges}
+                           BPy::list       & Verts,     ///< [4, 3, 2, 0, 8, ... twenty global vertex IDs]
+                           BPy::list       & ETags)     ///< [0,0,-10,0,-20, ... 24 edge tags]
 {
-	/* In:
-	 * 	   OrigID: ID of the vertex at origin
-	 * 	   XPlusID, YPlusID, ZPlusID: IDs of the vertices at the positive corner of each local axis
-	 *     EdgesList = [(v1,v2), (v1,v2), ... 24 edges]
-	 */
-
 	// Check
-	if (len(EdgesList)!=24) throw new Fatal("PySortBlock3D:: List with edges must have 24 items. Ex.: EdgesList = [(v1,v2), (v1,v2), ... 24 edges]. (%d is invalid)",len(EdgesList));
+	if (len(Edges)!=24) throw new Fatal("PySortBlock3D:: List with edges must have 24 items. Ex.: Edges = {(v1,v2):tag1, (v1,v2):tag2, ... 24 edges}. (%d is invalid)",len(Edges));
 
 	// Edges
-	Array<long> edges(48);
+	Array<long> edges(48); // 48 => we have to serialize for Util::Tree
+	Array<int>  etags(24);
 	int k = 0;
 	for (int i=0; i<24; ++i)
 	{
-		BPy::tuple ed = BPy::extract<BPy::tuple>(EdgesList[i])();
+		BPy::tuple ed = BPy::extract<BPy::tuple>(Edges.keys()[i])();
 		edges[k  ] = BPy::extract<long>(ed[0])();
 		edges[k+1] = BPy::extract<long>(ed[1])();
+		etags[i  ] = BPy::extract<long>(Edges.values()[i])();
 		k += 2;
 	}
 
 	// Tree
 	Util::Tree tree(edges);
-
 	Array<long> eds; eds.Resize(24); eds.SetNS(Util::_4);
 	Array<long> vrs; vrs.Resize(20); vrs.SetNS(Util::_4);
 	vrs[0] = OrigID;
@@ -868,9 +891,34 @@ inline void PyBlock3DSort (long OrigID, long XPlusID, long YPlusID, long ZPlusID
 	tree.ShortPath (vrs[7], vrs[2], path);
 	vrs[18] = path[3];
 
-	// Result
-	for (int i=0; i<20; ++i) VertsList.append(vrs[i]);
+	// Vertices (global IDs)
+	for (int i=0; i<20; ++i) Verts.append(vrs[i]);
 
+	// Edge tags
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[0],vrs[11])])()); //  0
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[3],vrs[11])])()); //  1
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[1],vrs[ 9])])()); //  2
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[2],vrs[ 9])])()); //  3
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[0],vrs[ 8])])()); //  4
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[1],vrs[ 8])])()); //  5
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[3],vrs[10])])()); //  6
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[2],vrs[10])])()); //  7
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[4],vrs[15])])()); //  8
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[7],vrs[15])])()); //  9
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[5],vrs[13])])()); // 10
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[6],vrs[13])])()); // 11
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[4],vrs[12])])()); // 12
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[5],vrs[12])])()); // 13
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[7],vrs[14])])()); // 14
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[6],vrs[14])])()); // 15
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[0],vrs[16])])()); // 16
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[4],vrs[16])])()); // 17
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[1],vrs[17])])()); // 18
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[5],vrs[17])])()); // 19
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[2],vrs[18])])()); // 20
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[6],vrs[18])])()); // 21
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[3],vrs[19])])()); // 22
+	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[7],vrs[19])])()); // 23
 }
 
 // }
