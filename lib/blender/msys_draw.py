@@ -435,9 +435,16 @@ def set_etags(obj, msh, etags):
 
 @print_timing
 def set_ftags(obj, msh, ftags):
+    obj.properties['ftags'] = {}
     for ft in ftags:
-        edge_id = msh.findEdges (et[0], et[1])
-        di.set_etag (obj, edge_id, ftags[et])
+        eids = ''
+        vids = ft.split('_')
+        for i, pair in enumerate(vids):
+            vs = pair.split(',')
+            edge_id = msh.findEdges (int(vs[0]), int(vs[1]))
+            if i>0: eids += '_'+str(edge_id)
+            else:   eids +=     str(edge_id)
+        obj.properties['ftags'][eids] = ftags[ft]
 
 
 @print_timing
@@ -471,7 +478,6 @@ def draw_mesh(mms):
     # set ftags
     ftags = {}
     mms.get_ftags (ftags)
-    print ftags
     set_ftags (new_obj, new_msh, ftags)
 
     # redraw

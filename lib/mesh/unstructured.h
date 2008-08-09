@@ -80,6 +80,7 @@ public:
 	// Constants
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
 	static Face Face2Vert[]; ///< Map from local face ID to local vertex ID
+	static Face Face2Edge[]; ///< Map from local face ID to local edge ID
 
 	// Constructor
 	Unstructured ();
@@ -127,6 +128,7 @@ private:
 	size_t _edge_to_lef_vert (size_t EdgeLocalID)         const { return Edge2Vert[EdgeLocalID].L; }
 	size_t _edge_to_rig_vert (size_t EdgeLocalID)         const { return Edge2Vert[EdgeLocalID].R; }
 	void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const;
+	void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const;
 
 	// Private methods
 	void _tri_set_all_to_null (TriIO & Tio); ///< Set all elements of Triangle's IO structure to NULL and 0
@@ -138,10 +140,16 @@ Edge Unstructured::Edge2Vert[]= {{ 0, 1 },
                                  { 1, 2 },
                                  { 0, 2 }};
 
-Face Unstructured::Face2Vert[]= {{  0,  2,  3,  6,  9,  7 },
-                                 {  0,  1,  3,  4,  8,  7 },
-                                 {  0,  1,  2,  4,  5,  6 },
-                                 {  1,  2,  3,  5,  9,  8 }};
+Face Unstructured::Face2Vert[]= {{  0,  2,  3,  6,  9,  7 },  // Face # 0 => Vertices 0,2,3...
+                                 {  0,  1,  3,  4,  8,  7 },  // Face # 1
+                                 {  0,  1,  2,  4,  5,  6 },  // Face # 2
+                                 {  1,  2,  3,  5,  9,  8 }}; // Face # 3
+
+Face Unstructured::Face2Edge[]= {{  0,  3,  5,  6,  9, 11 },  // Face # 0 => Edges 0,4,8
+                                 {  1,  3,  4,  7,  9, 10 },  // Face # 1
+                                 {  0,  1,  2,  6,  7,  8 },  // Face # 2
+                                 {  2,  4,  5,  8, 10, 11 }}; // Face # 3
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -281,19 +289,40 @@ inline void Unstructured::_face_to_verts(size_t FaceLocalID, Array<size_t> & Ver
 	if (_is_o2)
 	{
 		Verts.Resize(6);
-		Verts[0] = Face2Vert[FaceLocalID].v0;
-		Verts[1] = Face2Vert[FaceLocalID].v1;
-		Verts[2] = Face2Vert[FaceLocalID].v2;
-		Verts[3] = Face2Vert[FaceLocalID].v3;
-		Verts[4] = Face2Vert[FaceLocalID].v4;
-		Verts[5] = Face2Vert[FaceLocalID].v5;
+		Verts[0] = Face2Vert[FaceLocalID].I0;
+		Verts[1] = Face2Vert[FaceLocalID].I1;
+		Verts[2] = Face2Vert[FaceLocalID].I2;
+		Verts[3] = Face2Vert[FaceLocalID].I3;
+		Verts[4] = Face2Vert[FaceLocalID].I4;
+		Verts[5] = Face2Vert[FaceLocalID].I5;
 	}
 	else
 	{
 		Verts.Resize(3);
-		Verts[0] = Face2Vert[FaceLocalID].v0;
-		Verts[1] = Face2Vert[FaceLocalID].v1;
-		Verts[2] = Face2Vert[FaceLocalID].v2;
+		Verts[0] = Face2Vert[FaceLocalID].I0;
+		Verts[1] = Face2Vert[FaceLocalID].I1;
+		Verts[2] = Face2Vert[FaceLocalID].I2;
+	}
+}
+
+inline void Unstructured::_face_to_edges(size_t FaceLocalID, Array<size_t> & Edges) const
+{
+	if (_is_o2)
+	{
+		Edges.Resize(6);
+		Edges[0] = Face2Edge[FaceLocalID].I0;
+		Edges[1] = Face2Edge[FaceLocalID].I1;
+		Edges[2] = Face2Edge[FaceLocalID].I2;
+		Edges[3] = Face2Edge[FaceLocalID].I3;
+		Edges[4] = Face2Edge[FaceLocalID].I4;
+		Edges[5] = Face2Edge[FaceLocalID].I5;
+	}
+	else
+	{
+		Edges.Resize(3);
+		Edges[0] = Face2Edge[FaceLocalID].I0;
+		Edges[1] = Face2Edge[FaceLocalID].I1;
+		Edges[2] = Face2Edge[FaceLocalID].I2;
 	}
 }
 

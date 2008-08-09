@@ -94,6 +94,8 @@ namespace Mesh
 	 *        5) Add quality check and improvement
 	 */
 
+struct Pair { int L; int R; };
+
 class Block
 {
 public:
@@ -113,6 +115,8 @@ public:
 	 *    C = |  y0 y1 y2 y3 y4 y5 y6 y7 ... y17 y18 y19  |
 	 *        |_ z0 z1 z2 z3 z4 z5 z6 z7 ... z17 z18 z19 _|
 	 */
+	// Constants
+	static Pair Edge2Face[]; ///< Map from local edge ID to a pair of faces (local ID) that share this edge
 
 	// Constructor
 	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _has_etags(false), _has_ftags(false) { Set2D(); }
@@ -210,7 +214,8 @@ class Structured : public virtual Mesh::Generic
 public:
 	// Constants
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
-	static Face Face2Vert[]; ///< Map from local face ID to local vertex ID
+	static Face Face2Vert[]; ///< Map from local face ID to local vertex IDs
+	static Face Face2Edge[]; ///< Map from local face ID to local edge IDs
 
 	// Constructor
 	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol) {} ///< Tol is the tolerance to regard two vertices as coincident
@@ -244,6 +249,7 @@ private:
 	size_t _edge_to_lef_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].L; }
 	size_t _edge_to_rig_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].R; }
 	void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const;
+	void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const;
 
 }; // class Structured
 
@@ -260,13 +266,44 @@ Edge Structured::Edge2Vert[]= {{ 0, 3 },  // Edge #  0
                                { 2, 6 },  // Edge # 10
                                { 3, 7 }}; // Edge # 11
 
-Face Structured::Face2Vert[]= {{  0,  3,  7,  4, 11, 19, 15, 16 },  // Face # 0
+Face Structured::Face2Vert[]= {{  0,  3,  7,  4, 11, 19, 15, 16 },  // Face # 0 => Vertices 0,3,7...
                                {  1,  2,  6,  5,  9, 18, 13, 17 },  // Face # 1
                                {  0,  1,  5,  4,  8, 17, 12, 16 },  // Face # 2
                                {  2,  3,  7,  6, 10, 19, 14, 18 },  // Face # 3
                                {  0,  1,  2,  3,  8,  9, 10, 11 },  // Face # 4
                                {  4,  5,  6,  7, 12, 13, 14, 15 }}; // Face # 5
 
+Face Structured::Face2Edge[]= {{  0,  4,  8, 11, 12, 16, 20, 23 },  // Face # 0 => Edges 0,4,8
+                               {  1,  5,  9, 10, 13, 17, 21, 22 },  // Face # 1
+                               {  2,  6,  8,  9, 14, 18, 20, 21 },  // Face # 2
+                               {  3,  7, 10, 11, 15, 19, 22, 23 },  // Face # 3
+                               {  0,  1,  2,  3, 12, 13, 14, 15 },  // Face # 4
+                               {  4,  5,  6,  7, 16, 17, 18, 19 }}; // Face # 5
+
+Pair Block::Edge2Face[] = {{ 0, 4},  // Edge #  0 is shared among Faces # 0 and 4
+                           { 1, 4},  // Edge #  1 ...
+                           { 2, 4},  // Edge #  2
+                           { 3, 4},  // Edge #  3
+                           { 0, 5},  // Edge #  4
+                           { 1, 5},  // Edge #  5
+                           { 2, 5},  // Edge #  6
+                           { 3, 5},  // Edge #  7
+                           { 0, 2},  // Edge #  8
+                           { 2, 1},  // Edge #  9
+                           { 1, 3},  // Edge # 10
+                           { 3, 0},  // Edge # 11
+                           { 0, 4},  // Edge # 12
+                           { 1, 4},  // Edge # 13
+                           { 2, 4},  // Edge # 14
+                           { 3, 4},  // Edge # 15
+                           { 0, 5},  // Edge # 16
+                           { 1, 5},  // Edge # 17
+                           { 2, 5},  // Edge # 18
+                           { 3, 5},  // Edge # 19
+                           { 0, 2},  // Edge # 20
+                           { 2, 1},  // Edge # 21
+                           { 1, 3},  // Edge # 22
+                           { 3, 0}}; // Edge # 23
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -600,9 +637,8 @@ inline void Block::PySet3D(int               Tag,
 	for (int i=0; i<net; ++i)
 	{
 		BPy::tuple ed = BPy::extract<BPy::tuple>(ETags.keys()[i])();
-		size_t eid = tree.GetEdge (BPy::extract<double>(ed[0])(), BPy::extract<double>(ed[1])());
-		long   tag = BPy::extract<long>(ETags.values()[i])();
-		_etags(eg2l[eid]) = tag;
+		size_t eid = tree.GetEdge (BPy::extract<long>(ed[0])(), BPy::extract<long>(ed[1])());
+		_etags(eg2l[eid]) = BPy::extract<int>(ETags.values()[i])();
 	}
 
 	// Face tags
@@ -610,19 +646,25 @@ inline void Block::PySet3D(int               Tag,
 	for (int i=0; i<nft; ++i)
 	{
 		BPy::tuple fa = BPy::extract<BPy::tuple>(FTags.keys()[i])();
-		bool found = false;
-		for (size_t j=0; j<len(fa); ++j)
+		long ed0 = eg2l[BPy::extract<long>(fa[0])()];
+		long ed1 = eg2l[BPy::extract<long>(fa[1])()];
+		long ed2 = eg2l[BPy::extract<long>(fa[2])()];
+		int  sum[6] = {0,0,0,0,0,0};
+		sum[Edge2Face[ed0].L] += 1;   sum[Edge2Face[ed0].R] += 1;
+		sum[Edge2Face[ed1].L] += 1;   sum[Edge2Face[ed1].R] += 1;
+		sum[Edge2Face[ed2].L] += 1;   sum[Edge2Face[ed2].R] += 1;
+		for (int j=0; j<6; ++j)
 		{
-			//long ed0 = tree.GetEdge (BPy::extract<double>(fa[0])(), BPy::extract<double>(fa[1])());
-			std::cout << BPy::extract<double>(fa[0])() << ", " << BPy::extract<double>(fa[1])() << std::endl;
+			if (sum[j]==3) // found
+			{
+				//std::cout << j << ", " <<  BPy::extract<int>(FTags.values()[i])() << std::endl;
+				_ftags(j) = BPy::extract<int>(FTags.values()[i])();
+				//std::cout << _ftags(j) << std::endl;
+				break;
+			}
 		}
-		//long ed1 = tree.GetEdge (BPy::extract<double>(fa[1])(), BPy::extract<double>(fa[2])());
-		//long ed2 = tree.GetEdge (BPy::extract<double>(fa[2])(), BPy::extract<double>(fa[3])());
-		//size_t fid = tree.GetEdge (BPy::extract<double>(ed[0])(), BPy::extract<double>(ed[1])());
-		//long   tag = BPy::extract<long>(ETags.values()[i])();
-		//_etags(eg2l[eid]) = tag;
 	}
-
+	//std::cout << "end -------------------------------" << std::endl;
 }
 
 inline void Block::PySetETags(BPy::list const & Tags)
@@ -982,22 +1024,46 @@ inline void Structured::_face_to_verts(size_t FaceLocalID, Array<size_t> & Verts
 	if (_is_o2)
 	{
 		Verts.Resize(8);
-		Verts[0] = Face2Vert[FaceLocalID].v0;
-		Verts[1] = Face2Vert[FaceLocalID].v1;
-		Verts[2] = Face2Vert[FaceLocalID].v2;
-		Verts[3] = Face2Vert[FaceLocalID].v3;
-		Verts[4] = Face2Vert[FaceLocalID].v4;
-		Verts[5] = Face2Vert[FaceLocalID].v5;
-		Verts[6] = Face2Vert[FaceLocalID].v6;
-		Verts[7] = Face2Vert[FaceLocalID].v7;
+		Verts[0] = Face2Vert[FaceLocalID].I0;
+		Verts[1] = Face2Vert[FaceLocalID].I1;
+		Verts[2] = Face2Vert[FaceLocalID].I2;
+		Verts[3] = Face2Vert[FaceLocalID].I3;
+		Verts[4] = Face2Vert[FaceLocalID].I4;
+		Verts[5] = Face2Vert[FaceLocalID].I5;
+		Verts[6] = Face2Vert[FaceLocalID].I6;
+		Verts[7] = Face2Vert[FaceLocalID].I7;
 	}
 	else
 	{
 		Verts.Resize(4);
-		Verts[0] = Face2Vert[FaceLocalID].v0;
-		Verts[1] = Face2Vert[FaceLocalID].v1;
-		Verts[2] = Face2Vert[FaceLocalID].v2;
-		Verts[3] = Face2Vert[FaceLocalID].v3;
+		Verts[0] = Face2Vert[FaceLocalID].I0;
+		Verts[1] = Face2Vert[FaceLocalID].I1;
+		Verts[2] = Face2Vert[FaceLocalID].I2;
+		Verts[3] = Face2Vert[FaceLocalID].I3;
+	}
+}
+
+inline void Structured::_face_to_edges(size_t FaceLocalID, Array<size_t> & Edges) const
+{
+	if (_is_o2)
+	{
+		Edges.Resize(8);
+		Edges[0] = Face2Edge[FaceLocalID].I0;
+		Edges[1] = Face2Edge[FaceLocalID].I1;
+		Edges[2] = Face2Edge[FaceLocalID].I2;
+		Edges[3] = Face2Edge[FaceLocalID].I3;
+		Edges[4] = Face2Edge[FaceLocalID].I4;
+		Edges[5] = Face2Edge[FaceLocalID].I5;
+		Edges[6] = Face2Edge[FaceLocalID].I6;
+		Edges[7] = Face2Edge[FaceLocalID].I7;
+	}
+	else
+	{
+		Edges.Resize(4);
+		Edges[0] = Face2Edge[FaceLocalID].I0;
+		Edges[1] = Face2Edge[FaceLocalID].I1;
+		Edges[2] = Face2Edge[FaceLocalID].I2;
+		Edges[3] = Face2Edge[FaceLocalID].I3;
 	}
 }
 

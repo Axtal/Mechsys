@@ -303,7 +303,7 @@ def get_etags(obj, msh):
     return res
 
 def get_ftags(obj, msh):
-    # Out:   {(v1,v2,v3,v4,..):tag1,  (v1,v2,v3,v4..):tag2,  ... num faces with tags}
+    # Out:   {(e1,e2,e3,e4,..):tag1,  (e1,e2,e3,e4..):tag2,  ... num faces with tags}
     res = {}
     if obj.properties.has_key('ftags'):
         for eids in obj.properties['ftags']:

@@ -61,14 +61,14 @@ struct Edge
 
 struct Face
 {
-	size_t v0;
-	size_t v1;
-	size_t v2;
-	size_t v3;
-	size_t v4;
-	size_t v5;
-	size_t v6;
-	size_t v7;
+	size_t I0; // Edge or Vertex local id
+	size_t I1;
+	size_t I2;
+	size_t I3;
+	size_t I4;
+	size_t I5;
+	size_t I6;
+	size_t I7;
 };
 
 struct Elem;
@@ -170,7 +170,8 @@ protected:
 	virtual void   _erase            ();                                                  ///< Erase current mesh (deallocate memory)
 	virtual size_t _edge_to_lef_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local left vertex ID for a given Local Edge ID
 	virtual size_t _edge_to_rig_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local right vertex ID for a given Local Edge ID
-	virtual void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const {} ///< Returns the local face vertex IDs for a given Local Edge ID
+	virtual void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const {} ///< Returns the local vertex IDs for a given Local Face ID
+	virtual void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const {} ///< Returns the local edge IDs for a given Local Face ID
 
 private:
 	// Private methods
@@ -431,7 +432,8 @@ inline void Generic::PyGetETags(BPy::dict & ETags) const
 inline void Generic::PyGetFTags(BPy::dict & FTags) const
 {
 	/* Out:
-	 *       FTags = {'v1_v2_v3_v4_...':tag, 'v1_v2_v3_v4_...':tag, ... num face tags]}
+	 *                 edg0   edg1            edg1  edg2
+	 *       FTags = {'v1,v2_v3,v4'...:tag, 'v1,v2_v3,v4'...:tag, ... num face tags]}
 	 */
 	for (size_t i=0; i<NElems(); ++i)
 	{
@@ -439,10 +441,15 @@ inline void Generic::PyGetFTags(BPy::dict & FTags) const
 		{
 			if (ElemFTag(i,j)<0)
 			{
-				Array<size_t> fv; // face verts
-				_face_to_verts (j, fv);
-				String key; for (size_t k=0; k<fv.Size(); ++k) key.Printf("%s_%d", fv[k]);
-				FTags[key] = ElemFTag(i,j);
+				Array<size_t> fe; // face-edges
+				_face_to_edges (j, fe);
+				String key;
+				for (size_t k=0; k<fe.Size(); ++k)
+				{
+					if (k==0) key.Printf(   "%d,%d",             ElemCon(i, _edge_to_lef_vert(fe[k])), ElemCon(i, _edge_to_rig_vert(fe[k])));
+					else      key.Printf("%s_%d,%d", key.CStr(), ElemCon(i, _edge_to_lef_vert(fe[k])), ElemCon(i, _edge_to_rig_vert(fe[k])));
+				}
+				FTags[key.CStr()] = ElemFTag(i,j);
 			}
 		}
 	}
