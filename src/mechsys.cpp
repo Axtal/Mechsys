@@ -91,13 +91,14 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("get_verts",     &Mesh::Generic::PyGetVerts)
 	    .def("get_edges",     &Mesh::Generic::PyGetEdges)
 	    .def("get_etags",     &Mesh::Generic::PyGetETags)
+	    .def("get_ftags",     &Mesh::Generic::PyGetFTags)
 	    .def("get_elems",     &Mesh::Generic::PyGetElems)
 	    .def(self_ns::str(self))
 	    ;
 
 	class_<Mesh::Block>("mesh_block")
-	    .def("set2d",     &Mesh::Block::PySet2D)
-	    .def("set3d",     &Mesh::Block::PySet3D)
+	    .def("set_2d",    &Mesh::Block::PySet2D)
+	    .def("set_3d",    &Mesh::Block::PySet3D)
 	    .def("set_etags", &Mesh::Block::PySetETags)
 	    .def("set_ftags", &Mesh::Block::PySetFTags)
 	    ;
@@ -108,6 +109,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("get_verts",   &Mesh::Structured::PyGetVerts)
 	    .def("get_edges",   &Mesh::Structured::PyGetEdges)
 	    .def("get_etags",   &Mesh::Structured::PyGetETags)
+	    .def("get_ftags",   &Mesh::Structured::PyGetFTags)
 	    .def("get_elems",   &Mesh::Structured::PyGetElems)
 	    .def("generate",    &Mesh::Structured::PyGenerate)
 	    .def(self_ns::str(self))
@@ -125,6 +127,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("get_verts",        &Mesh::Unstructured::PyGetVerts)
 	    .def("get_edges",        &Mesh::Unstructured::PyGetEdges)
 	    .def("get_etags",        &Mesh::Unstructured::PyGetETags)
+	    .def("get_ftags",        &Mesh::Unstructured::PyGetFTags)
 	    .def("get_elems",        &Mesh::Unstructured::PyGetElems)
 	    .def(self_ns::str(self))
 	    ;
@@ -186,7 +189,6 @@ BOOST_PYTHON_MODULE (mechsys)
 	def ("set_geom",     PySetGeom            );
 	def ("set_geom",     PySetGeomStructured  );
 	def ("set_geom",     PySetGeomUnstructured);
-	def ("block3d_sort", PyBlock3DSort        );
 
 	// ---------------------------------------------------------------------- Exceptions
 	

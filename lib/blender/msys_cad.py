@@ -122,15 +122,15 @@ def button_event(evt):
     elif evt==EVT_MESH_SETETAG:
         edm, obj, msh = di.get_msh()
         for id in msh.edges.selected():
-            di.set_tag (obj, 'edge', id, dict['newetag'])
+            di.set_etag (obj, id, dict['newetag'])
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1) # return to EditMode
 
     # set faces tag
     elif evt==EVT_MESH_SETFTAG:
         edm, obj, msh = di.get_msh()
-        for id in msh.faces.selected():
-            di.set_tag (obj, 'face', id, dict['newftag'])
+        if len(msh.edges.selected())==8:
+            di.set_ftag (obj, msh.edges.selected(), dict['newftag'])
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1) # return to EditMode
 
@@ -349,6 +349,16 @@ def show_e_ids_callback(evt,val):
 def show_f_ids_callback(evt,val):
     dict = di.load_dict()
     dict['show_f_ids'] = val
+    Blender.Window.QRedrawAll()
+
+def show_etags_callback(evt,val):
+    dict = di.load_dict()
+    dict['show_etags'] = val
+    Blender.Window.QRedrawAll()
+
+def show_ftags_callback(evt,val):
+    dict = di.load_dict()
+    dict['show_ftags'] = val
     Blender.Window.QRedrawAll()
 
 def show_elems_callback(evt,val):
@@ -695,11 +705,13 @@ def gui():
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Show:')
     Draw.Toggle       ('Props', EVT_NONE, dx    , row, 60, rh, d['show_props'], 'Show mesh properties'      , show_props_callback)
-    Draw.Toggle       ('Axes' , EVT_NONE, dx+ 60, row, 60, rh, d['show_axes'],  'Show local system axes'    , show_axes_callback )
-    Draw.Toggle       ('V IDs', EVT_NONE, dx+120, row, 60, rh, d['show_v_ids'], 'Show vertex IDs'           , show_v_ids_callback)
-    Draw.Toggle       ('E IDs', EVT_NONE, dx+180, row, 60, rh, d['show_e_ids'], 'Show edge IDs'             , show_e_ids_callback)
-    Draw.Toggle       ('F IDs', EVT_NONE, dx+240, row, 60, rh, d['show_f_ids'], 'Show face IDs'             , show_f_ids_callback)
-    Draw.Toggle       ('Elems', EVT_NONE, dx+300, row, 60, rh, d['show_elems'], 'Show elements information' , show_elems_callback); row -= rh
+    Draw.Toggle       ('V IDs', EVT_NONE, dx+ 60, row, 60, rh, d['show_v_ids'], 'Show vertex IDs'           , show_v_ids_callback)
+    Draw.Toggle       ('E IDs', EVT_NONE, dx+120, row, 60, rh, d['show_e_ids'], 'Show edge IDs'             , show_e_ids_callback)
+    Draw.Toggle       ('F IDs', EVT_NONE, dx+180, row, 60, rh, d['show_f_ids'], 'Show face IDs'             , show_f_ids_callback); row -= rh
+    Draw.Toggle       ('Axes' , EVT_NONE, dx    , row, 60, rh, d['show_axes'],  'Show local system axes'    , show_axes_callback )
+    Draw.Toggle       ('ETags', EVT_NONE, dx+ 60, row, 60, rh, d['show_etags'], 'Show edge tags'            , show_etags_callback)
+    Draw.Toggle       ('FTags', EVT_NONE, dx+120, row, 60, rh, d['show_ftags'], 'Show face tags'            , show_ftags_callback)
+    Draw.Toggle       ('Elems', EVT_NONE, dx+180, row, 60, rh, d['show_elems'], 'Show elements information' , show_elems_callback); row -= rh
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Set tags:')
     Draw.Number       ('',     EVT_NONE,          dx,     row, 80, rh, d['newetag'], -1000, 0,'New edge tag',etag_callback)

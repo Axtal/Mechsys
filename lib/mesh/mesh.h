@@ -55,8 +55,20 @@ namespace Mesh
 
 struct Edge
 {
-	int L; // Left vertex id
-	int R; // Right vertex id
+	size_t L; // Left vertex id
+	size_t R; // Right vertex id
+};
+
+struct Face
+{
+	size_t v0;
+	size_t v1;
+	size_t v2;
+	size_t v3;
+	size_t v4;
+	size_t v5;
+	size_t v6;
+	size_t v7;
 };
 
 struct Elem;
@@ -140,6 +152,7 @@ public:
 	size_t PyGetVerts (BPy::list & Verts) const;
 	size_t PyGetEdges (BPy::list & Edges) const;
 	void   PyGetETags (BPy::dict & ETags) const;
+	void   PyGetFTags (BPy::dict & FTags) const;
 	size_t PyGetElems (BPy::dict & Elems) const;
 // }
 #endif // USE_BOOST_PYTHON
@@ -154,16 +167,17 @@ protected:
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
 
 	// Private methods to be overloaded
-	virtual void _erase            ();                                   ///< Erase current mesh (deallocate memory)
-	virtual int  _edge_to_lef_vert (int EdgeLocalID) const { return 0; } ///< Returns the local left vertex ID for a given Local Edge ID
-	virtual int  _edge_to_rig_vert (int EdgeLocalID) const { return 0; } ///< Returns the local right vertex ID for a given Local Edge ID
+	virtual void   _erase            ();                                                  ///< Erase current mesh (deallocate memory)
+	virtual size_t _edge_to_lef_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local left vertex ID for a given Local Edge ID
+	virtual size_t _edge_to_rig_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local right vertex ID for a given Local Edge ID
+	virtual void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const {} ///< Returns the local face vertex IDs for a given Local Edge ID
 
 private:
 	// Private methods
-	void _vtk_con (size_t i, String & Connect) const; ///< Returns a string with the connectivites (global vertices IDs) of an element
-	int  _nverts  (int VTKCellType)            const; ///< Returns the number of vertices of a VTKCell
-	int  _nedges  (int VTKCellType)            const; ///< Returns the number of edges of a VTKCell
-	int  _nfaces  (int VTKCellType)            const; ///< Returns the number of faces of a VTKCell
+	void   _vtk_con (size_t i, String & Connect) const; ///< Returns a string with the connectivites (global vertices IDs) of an element
+	size_t _nverts  (int VTKCellType)            const; ///< Returns the number of vertices of a VTKCell
+	size_t _nedges  (int VTKCellType)            const; ///< Returns the number of edges of a VTKCell
+	size_t _nfaces  (int VTKCellType)            const; ///< Returns the number of faces of a VTKCell
 
 }; // class Generic
 
@@ -384,7 +398,7 @@ inline size_t Generic::PyGetEdges(BPy::list & Edges) const
 	 */
 	for (size_t i=0; i<NElems(); ++i)
 	{
-		for (int j=0; j<_nedges(ElemVTKCellType(i)); ++j)
+		for (size_t j=0; j<_nedges(ElemVTKCellType(i)); ++j)
 		{
 			BPy::list pair;
 			pair.append  (ElemCon(i, _edge_to_lef_vert(j)));
@@ -409,6 +423,26 @@ inline void Generic::PyGetETags(BPy::dict & ETags) const
 				int L = ElemCon(i, _edge_to_lef_vert(j));
 				int R = ElemCon(i, _edge_to_rig_vert(j));
 				ETags[BPy::make_tuple(L, R)] = ElemETag(i,j);
+			}
+		}
+	}
+}
+
+inline void Generic::PyGetFTags(BPy::dict & FTags) const
+{
+	/* Out:
+	 *       FTags = {'v1_v2_v3_v4_...':tag, 'v1_v2_v3_v4_...':tag, ... num face tags]}
+	 */
+	for (size_t i=0; i<NElems(); ++i)
+	{
+		for (size_t j=0; j<ElemNFTags(i); ++j) // j is the local face id
+		{
+			if (ElemFTag(i,j)<0)
+			{
+				Array<size_t> fv; // face verts
+				_face_to_verts (j, fv);
+				String key; for (size_t k=0; k<fv.Size(); ++k) key.Printf("%s_%d", fv[k]);
+				FTags[key] = ElemFTag(i,j);
 			}
 		}
 	}
@@ -499,7 +533,7 @@ inline void Generic::_vtk_con(size_t i, String & Connect) const
 		Connect.Printf ("%s %d ", Connect.CStr(), ElemCon(i,j));
 }
 
-inline int Generic::_nverts(int VTKCellType) const
+inline size_t Generic::_nverts(int VTKCellType) const
 {
 	switch (VTKCellType)
 	{
@@ -517,7 +551,7 @@ inline int Generic::_nverts(int VTKCellType) const
 	}
 }
 
-inline int Generic::_nedges(int VTKCellType) const
+inline size_t Generic::_nedges(int VTKCellType) const
 {
 	switch (VTKCellType)
 	{
@@ -535,7 +569,7 @@ inline int Generic::_nedges(int VTKCellType) const
 	}
 }
 
-inline int Generic::_nfaces(int VTKCellType) const
+inline size_t Generic::_nfaces(int VTKCellType) const
 {
 	switch (VTKCellType)
 	{

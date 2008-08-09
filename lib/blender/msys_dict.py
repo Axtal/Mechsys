@@ -21,7 +21,9 @@ def load_dict():
         dict['show_props']    = 0
         dict['show_v_ids']    = 1
         dict['show_e_ids']    = 1
-        dict['show_f_ids']    = 1
+        dict['show_f_ids']    = 0
+        dict['show_etags']    = 1
+        dict['show_ftags']    = 1
         dict['show_elems']    = 1
         dict['show_axes']     = 1
         Blender.Registry.SetKey('MechSysDict', dict)
@@ -57,6 +59,60 @@ def get_cg(msh, vids, vtkcelltype):
     elif vtkcelltype==25: # VTK_QUADRATIC_HEXAHEDRON
         pass
     return x, y, z
+
+
+def get_poly_area(msh, vids):
+    a = 0.0
+    n = len(vids)
+    for i in range(n):
+        j  = (i+1) % n
+        a += msh.verts[vids[i]].co[0] * msh.verts[vids[j]].co[1] - msh.verts[vids[j]].co[0] * msh.verts[vids[i]].co[1]
+    return a/2.0
+
+
+def get_poly_cg(msh, vids):
+    x, y, z = 0, 0, 0
+    n = len(vids)
+    for i in range(n):
+        j  = (i+1) % n
+        p  =  msh.verts[vids[i]].co[0] * msh.verts[vids[j]].co[1] - msh.verts[vids[j]].co[0] * msh.verts[vids[i]].co[1]
+        x += (msh.verts[vids[i]].co[0] + msh.verts[vids[j]].co[0]) * p 
+        y += (msh.verts[vids[i]].co[1] + msh.verts[vids[j]].co[1]) * p 
+        z +=  msh.verts[vids[i]].co[2]
+    area = get_poly_area (msh, vids)
+    x /= 6.0*area
+    y /= 6.0*area
+    z /= n
+    return x, y, z
+
+
+#  2+       r_idx    = 0        # start right vertex index
+#   |\      edge_ids = [0,1,2]  # indexes of all edges to search for r_idx
+#  0| \1    v1_ids   = [1,0,0]  # v1 vertex indexes
+#   |  \    v2_ids   = [2,2,1]  # v2 vertex indexes
+#  1+---+0  eds      = [1,0,2]  # result: edge indexes
+#     2     ids      = [2,1,0]  # result: vertex indexes
+def sort_edges_and_verts(msh, edge_ids, r_idx):
+    # loop over all connected edges
+    eds = []
+    ids = []
+    while len(edge_ids)>0:
+        v1_ids = [msh.edges[ie].v1.index for ie in edge_ids] # ie => index of an edge
+        v2_ids = [msh.edges[ie].v2.index for ie in edge_ids]
+        if r_idx in v1_ids:
+            idx   = v1_ids.index(r_idx)
+            r_idx = v2_ids[idx]
+            eds.append   (edge_ids[idx])
+            ids.append   (r_idx)
+            edge_ids.pop (idx)
+        elif r_idx in v2_ids:
+            idx   = v2_ids.index(r_idx)
+            r_idx = v1_ids[idx]
+            eds.append   (edge_ids[idx])
+            ids.append   (r_idx)
+            edge_ids.pop (idx)
+        else: break
+    return eds, ids
 
 
 def get_key():
@@ -205,19 +261,26 @@ def set_btag(obj, tag):
     set_int_property (obj, 'btag', tag)
 
 def get_btag(obj):
-    try:    tag = obj.getProperty('btag').data
-    except: tag = -1
-    return tag
+    try:    return obj.getProperty('btag').data
+    except: return 0
 
 
 # ====================================================================================== Tags
 
-def set_tag(obj, key, id, tag):
+def set_etag(obj, id, tag):
     # In:
-    #      key = 'edge', 'face', or 'elem'
     #      id  = global ID of edge/face/elem with tag
     #      tag = the tag of edge/face/elem with tag
-    set_int_property (obj, key+'_'+str(id), tag)
+    set_int_property (obj, 'edge_'+str(id), tag)
+
+def set_ftag(obj, edges_ids, tag):
+    # In:
+    #      edges_ids = global IDs of edges on selected face
+    #      tag       = the tag of face
+    eids = '_'.join([str(id) for id in edges_ids])
+    if not obj.properties.has_key('ftags'): obj.properties['ftags'] = {}
+    if tag==0: obj.properties['ftags'].pop(eids)
+    else:      obj.properties['ftags'].update({eids:tag})
 
 def get_tags(obj, key):
     # In:
@@ -230,17 +293,23 @@ def get_tags(obj, key):
             res.append ([int(p.name[5:]), p.data])
     return res 
 
-def get_tags_(obj, key):
-    # In:
-    #      key = 'edge', 'face', or 'elem'
-    # Out:
-    #         {edge_id1: tag1,  edge_id2: tag2,  ... num edges with tags}
-    #      or {face_id1: tag1,  face_id2: tag2,  ... num faces with tags}
+def get_etags(obj, msh):
+    # Out:   {(v1,v2):tag1,  (v1,v2):tag2,  ... num edges with tags}
     res = {}
     for p in obj.getAllProperties():
-        if p.name[:4]==key:
-            res[int(p.name[5:])] = p.data
-    return res 
+        if p.name[:4]=='edge':
+            eid = int(p.name[5:])
+            res[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = p.data
+    return res
+
+def get_ftags(obj, msh):
+    # Out:   {(v1,v2,v3,v4,..):tag1,  (v1,v2,v3,v4..):tag2,  ... num faces with tags}
+    res = {}
+    if obj.properties.has_key('ftags'):
+        for eids in obj.properties['ftags']:
+            ids = [int(id) for id in eids.split('_')]
+            res[tuple(ids)] = obj.properties['ftags'][eids]
+    return res
 
 def get_verts_on_edges_with_tags(obj, msh):
     etags = get_tags (obj, 'edge')

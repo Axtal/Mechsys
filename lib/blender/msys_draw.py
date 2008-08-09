@@ -219,35 +219,6 @@ def break_edge(at_mid=False):
 
 # =========================================================================== Structured mesh
 
-#  2+       r_idx    = 0        # start right vertex index
-#   |\      edge_ids = [0,1,2]  # indexes of all edges to search for r_idx
-#  0| \1    v1_ids   = [1,0,0]  # v1 vertex indexes
-#   |  \    v2_ids   = [2,2,1]  # v2 vertex indexes
-#  1+---+0  eds      = [1,0,2]  # result: edge indexes
-#     2     ids      = [2,1,0]  # result: vertex indexes
-def sort_edges_and_verts(msh, edge_ids, r_idx):
-    # loop over all connected edges
-    eds = []
-    ids = []
-    while len(edge_ids)>0:
-        v1_ids = [msh.edges[ie].v1.index for ie in edge_ids] # ie => index of an edge
-        v2_ids = [msh.edges[ie].v2.index for ie in edge_ids]
-        if r_idx in v1_ids:
-            idx   = v1_ids.index(r_idx)
-            r_idx = v2_ids[idx]
-            eds.append   (edge_ids[idx])
-            ids.append   (r_idx)
-            edge_ids.pop (idx)
-        elif r_idx in v2_ids:
-            idx   = v2_ids.index(r_idx)
-            r_idx = v1_ids[idx]
-            eds.append   (edge_ids[idx])
-            ids.append   (r_idx)
-            edge_ids.pop (idx)
-        else: break
-    return eds, ids
-
-
 def gen_blk_2d(obj, msh):
 
     # Local verts indexes:      Global verts idxs:         
@@ -282,7 +253,7 @@ def gen_blk_2d(obj, msh):
 
         # sort edges
         edge_ids = [e.index for e in msh.edges if e.index!=x_axis]
-        eds, ids = sort_edges_and_verts (msh, edge_ids, x_plus)
+        eds, ids = di.sort_edges_and_verts (msh, edge_ids, x_plus)
 
         # transform mesh to global coordinates
         ori = msh.verts[:] # create a copy in local coordinates
@@ -317,31 +288,14 @@ def gen_blk_2d(obj, msh):
 
 
 def gen_blk_3d(obj, msh):
-
     # get local system
     origin, x_plus, y_plus, z_plus = di.get_local_system (obj)
     if origin>-1:
-        # sort vertices
-        verts   = []
-        etags   = []
-        etags_g = di.get_tags_ (obj, 'edge')
-        edges   = dict([(ed.key, ed.index) for ed in msh.edges])
-        for key, eidx in edges.iteritems():
-            edges[key] = etags_g[eidx] if etags_g.has_key(eidx) else 0
-        print edges
-        ms.block3d_sort (origin, x_plus, y_plus, z_plus, edges, verts, etags)
-
-        # transform mesh to global coordinates
-        ori = msh.verts[:] # create a copy in local coordinates
-        msh.transform (obj.matrix)
-
-        # generate list with coordinates
-        cox = [msh.verts[iv].co[0] for iv in verts]
-        coy = [msh.verts[iv].co[1] for iv in verts]
-        coz = [msh.verts[iv].co[2] for iv in verts]
-
-        # restore local coordinates
-        msh.verts = ori
+        # vertices coordinates
+        ori = msh.verts[:]                                       # create a copy in local coordinates
+        msh.transform (obj.matrix)                               # transform mesh to global coordinates
+        verts = [(v.co[0], v.co[1], v.co[2]) for v in msh.verts] # list of tuples
+        msh.verts = ori                                          # restore local coordinates
 
         # generate weights
         nx = di.get_ndiv (obj, 'x')
@@ -354,11 +308,16 @@ def gen_blk_3d(obj, msh):
         wy = [1 for i in range(ny)]
         wz = [1 for i in range(nz)]
 
-        # return list with block data
-        return [[cox, coy, coz], wx, wy, wz, etags]
+        # edges
+        edges = [(ed.v1.index, ed.v2.index) for ed in msh.edges]
+        
+        # new block
+        blk = ms.mesh_block();
+        blk.set_3d (di.get_btag(obj), verts, wx, wy, wz, origin, x_plus, y_plus, z_plus, edges, di.get_etags(obj,msh), di.get_ftags(obj,msh))
+        return blk
     else:
         Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
-        return []
+        return None
 
 
 def gen_struct_mesh():
@@ -397,14 +356,7 @@ def gen_struct_mesh():
 
             # 3D - o2
             elif len(msh.edges)==24:
-                res  = gen_blk_3d (obj, msh)
-                btag = di.get_btag (obj)
-                if len(res)>0:
-                    bks.append      (ms.mesh_block())
-                    bks[btag].set3d (di.get_btag(obj), res[0], res[1], res[2], res[3])
-                    if len(res[4]): bks[btag].set_etags (res[4])
-                    obj.select (0)
-                else: return
+                bks.append (gen_blk_3d(obj, msh))
 
             else: Blender.Draw.PupMenu('ERROR|Each block must have: 2D=8 edges, 3D=24 edges')
 
@@ -443,9 +395,9 @@ def gen_unstruct_mesh():
         Blender.Window.WaitCursor(1)
         msh = obj.getData(mesh=1)
         mu  = ms.mesh_unstructured()
-        ets = di.get_tags_ (obj, 'edge')
-        rgs = di.get_regs (obj)
-        hls = di.get_hols (obj)
+        ets = di.get_etags (obj)
+        rgs = di.get_regs  (obj)
+        hls = di.get_hols  (obj)
         #mu.set_3d(0)
         mu.set_poly_size (len(msh.verts), len(msh.edges), len(rgs), len(hls))
         for v in msh.verts:
@@ -478,7 +430,14 @@ def set_elems(obj, nelems, elems):
 def set_etags(obj, msh, etags):
     for et in etags:
         edge_id = msh.findEdges (et[0], et[1])
-        di.set_tag (obj, 'edge', edge_id, etags[et])
+        di.set_etag (obj, edge_id, etags[et])
+
+
+@print_timing
+def set_ftags(obj, msh, ftags):
+    for ft in ftags:
+        edge_id = msh.findEdges (et[0], et[1])
+        di.set_etag (obj, edge_id, ftags[et])
 
 
 @print_timing
@@ -508,6 +467,12 @@ def draw_mesh(mms):
     etags = {}
     mms.get_etags (etags)
     set_etags (new_obj, new_msh, etags)
+
+    # set ftags
+    ftags = {}
+    mms.get_ftags (ftags)
+    print ftags
+    set_ftags (new_obj, new_msh, ftags)
 
     # redraw
     Blender.Window.QRedrawAll()

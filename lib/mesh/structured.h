@@ -73,6 +73,7 @@
 #include "util/array.h"
 #include "util/exception.h"
 #include "util/lineparser.h"
+#include "util/tree.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/laexpr.h"
@@ -118,7 +119,6 @@ public:
 
 	// Set methods
 	void Set2D () { _c.Resize(2, 8); _etags.Resize( 4);                   _etags=0;           _is_3d=false; } ///< Set 2D
-	void Set3D () { _c.Resize(3,20); _etags.Resize(12); _ftags.Resize(6); _etags=0; _ftags=0; _is_3d=true;  } ///< Set 3D
 
 	// Set methods
 	void             SetTag (int Tag) { _tag = Tag; }                     ///< Set the tag to be replicated to all elements generated inside this block
@@ -162,8 +162,20 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
+//
 	void PySet2D    (int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy);
-	void PySet3D    (int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy, BPy::list const & Wz);
+	void PySet3D    (int               Tag,     ///< Tag to be replicated to elements
+	                 BPy::list const & Verts,   ///< [(x1,y1,z1), (x2,y2,z2), ... 8 or 20 vertices]
+	                 BPy::list const & Wx,      ///< Weights along x
+	                 BPy::list const & Wy,      ///< Weights along y
+	                 BPy::list const & Wz,      ///< Weights along z
+	                 long              OrigID,  ///< ID of the vertex at origin
+	                 long              XPlusID, ///< ID of the vertex at the positive corner of the local x-axis
+	                 long              YPlusID, ///< ID of the vertex at the positive corner of the local y-axis
+	                 long              ZPlusID, ///< ID of the vertex at the positive corner of the local z-axis
+	                 BPy::list const & Edges,   ///< [(v1,v2), (v1,v2), ... 12 or 24 edges]
+	                 BPy::dict const & ETags,   ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
+	                 BPy::dict const & FTags);  ///< {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
 	void PySetETags (BPy::list const & Tags);
 	void PySetFTags (BPy::list const & Tags);
 // }
@@ -184,7 +196,7 @@ private:
 	int            _tag;          ///< A tag to be inherited by all elements generated inside this block
 	bool           _has_etags;    ///< Has edge tags ?
 	bool           _has_ftags;    ///< Has face tags ?
-	Vector<int>    _etags;        ///< Edges tags: size = 2D:4, 3D:12
+	Vector<int>    _etags;        ///< Edges tags: size = 2D:4, 3D:12 or 24
 	Vector<int>    _ftags;        ///< Faces tags: size = 2D:0, 3D: 6
 
 	void _set_wx();
@@ -198,6 +210,7 @@ class Structured : public virtual Mesh::Generic
 public:
 	// Constants
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
+	static Face Face2Vert[]; ///< Map from local face ID to local vertex ID
 
 	// Constructor
 	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol) {} ///< Tol is the tolerance to regard two vertices as coincident
@@ -226,31 +239,39 @@ private:
 	void _shape_3d (double r, double s, double t);
 
 	// Overloaded private methods
-	void _vtk_con          (Elem const * E, String & Connect) const;
-	void _erase            ();
-	int  _edge_to_lef_vert (int EdgeLocalID) const { return Edge2Vert[EdgeLocalID].L; }
-	int  _edge_to_rig_vert (int EdgeLocalID) const { return Edge2Vert[EdgeLocalID].R; }
+	void   _vtk_con          (Elem const * E, String & Connect) const;
+	void   _erase            ();
+	size_t _edge_to_lef_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].L; }
+	size_t _edge_to_rig_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].R; }
+	void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const;
 
 }; // class Structured
 
-Edge Structured::Edge2Vert[]= {{ 0, 3 },
-                               { 1, 2 },
-                               { 0, 1 },
-                               { 2, 3 },
-                               { 4, 7 },
-                               { 5, 6 },
-                               { 4, 5 },
-                               { 6, 7 },
-                               { 0, 4 },
-                               { 1, 5 },
-                               { 2, 6 },
-                               { 3, 7 }};
+Edge Structured::Edge2Vert[]= {{ 0, 3 },  // Edge #  0
+                               { 1, 2 },  // Edge #  1
+                               { 0, 1 },  // Edge #  2
+                               { 2, 3 },  // Edge #  3
+                               { 4, 7 },  // Edge #  4
+                               { 5, 6 },  // Edge #  5
+                               { 4, 5 },  // Edge #  6
+                               { 6, 7 },  // Edge #  7
+                               { 0, 4 },  // Edge #  8
+                               { 1, 5 },  // Edge #  9
+                               { 2, 6 },  // Edge # 10
+                               { 3, 7 }}; // Edge # 11
+
+Face Structured::Face2Vert[]= {{  0,  3,  7,  4, 11, 19, 15, 16 },  // Face # 0
+                               {  1,  2,  6,  5,  9, 18, 13, 17 },  // Face # 1
+                               {  0,  1,  5,  4,  8, 17, 12, 16 },  // Face # 2
+                               {  2,  3,  7,  6, 10, 19, 14, 18 },  // Face # 3
+                               {  0,  1,  2,  3,  8,  9, 10, 11 },  // Face # 4
+                               {  4,  5,  6,  7, 12, 13, 14, 15 }}; // Face # 5
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-// Methods -- Block
+// Methods ----------------------------------------------------------------------------------------------- Block
 
 inline void Block::SetWx(char const * Str)
 {
@@ -430,20 +451,27 @@ inline void Block::PySet2D(int Tag, BPy::list const & C, BPy::list const & Wx, B
 	_set_wy();
 }
 
-inline void Block::PySet3D(int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy, BPy::list const & Wz)
+inline void Block::PySet3D(int               Tag,    
+                           BPy::list const & Verts,  
+                           BPy::list const & Wx,     
+                           BPy::list const & Wy,     
+                           BPy::list const & Wz,     
+                           long              OrigID, 
+                           long              XPlusID,
+                           long              YPlusID,
+                           long              ZPlusID,
+                           BPy::list const & Edges,  
+                           BPy::dict const & ETags,  
+                           BPy::dict const & FTags)  
 {
-	SetTag (Tag);
-	Set3D  ();
-
-	// Read C
-	int nrow = BPy::len(C); if (nrow<1) throw new Fatal("Block::PySet3D: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
-	int ncol = BPy::len(C[0]);
-	for (int i=0; i<nrow; ++i)
-	{
-		BPy::list row = BPy::extract<BPy::list>(C[i])();
-		if (BPy::len(row)!=ncol) throw new Fatal("Block::PySet3D: All rows of C matrix must have the same number of columns (%d is invalid)",BPy::len(row));
-		for (int j=0; j<ncol; ++j) _c(i,j) = BPy::extract<double>(row[j])();
-	}
+	// Basic information
+	_tag   = Tag;
+	_is_3d = true;
+	_c    .Resize    (3,20);
+	_etags.Resize    (24);
+	_ftags.Resize    (6);
+	_etags.SetValues (0);
+	_ftags.SetValues (0);
 
 	// Read Wx
 	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet3D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
@@ -462,6 +490,139 @@ inline void Block::PySet3D(int Tag, BPy::list const & C, BPy::list const & Wx, B
 	_wz.Resize (sz_wz);
 	for (int i=0; i<sz_wz; ++i) _wz[i] = BPy::extract<double>(Wz[i])();
 	_set_wz();
+
+	// Check
+	if (len(Edges)!=24) throw new Fatal("PySortBlock3D:: List with edges must have 24 items. Ex.: Edges = {(v1,v2):tag1, (v1,v2):tag2, ... 24 edges}. (%d is invalid)",len(Edges));
+
+	// Edges
+	Array<long> edges(48); // 48 => we have to serialize for Util::Tree
+	int k = 0;
+	for (int i=0; i<24; ++i)
+	{
+		BPy::tuple ed = BPy::extract<BPy::tuple>(Edges[i])();
+		edges[k  ] = BPy::extract<long>(ed[0])();
+		edges[k+1] = BPy::extract<long>(ed[1])();
+		k += 2;
+	}
+
+	// Tree
+	Util::Tree tree(edges);
+	Array<long> eds;   eds.Resize(24);  eds.SetNS(Util::_4);
+	Array<long> vg2l; vg2l.Resize(20); vg2l.SetNS(Util::_4); // map: global vertex to local vertex IDs
+	Array<long> vl2g; vl2g.Resize(20); vl2g.SetNS(Util::_4); // map: local vertex to global vertex IDs
+	vl2g[0] = OrigID;
+
+	// Bottom nodes
+	Array<long> path; path.SetNS(Util::_4);
+	tree.DelEdge   (OrigID, XPlusID);
+	tree.ShortPath (XPlusID, YPlusID, path);
+	vl2g[ 1] = path[1];   vg2l[path[1]] =  1;
+	vl2g[ 2] = path[3];   vg2l[path[3]] =  2;
+	vl2g[ 3] = path[5];   vg2l[path[5]] =  3;
+	vl2g[ 8] = path[0];   vg2l[path[0]] =  8;
+	vl2g[ 9] = path[2];   vg2l[path[2]] =  9;
+	vl2g[10] = path[4];   vg2l[path[4]] = 10;
+	vl2g[11] = path[6];   vg2l[path[6]] = 11;
+
+	// Behind nodes
+	tree.DelEdge   (OrigID, YPlusID);
+	tree.ShortPath (YPlusID, ZPlusID, path);
+	vl2g[19] = path[2];   vg2l[path[2]] = 19;
+	vl2g[ 7] = path[3];   vg2l[path[3]] =  7;
+	vl2g[15] = path[4];   vg2l[path[4]] = 15;
+	vl2g[ 4] = path[5];   vg2l[path[5]] =  4;
+	vl2g[16] = path[6];   vg2l[path[6]] = 16;
+
+	// Left nodes
+	tree.DelEdge   (OrigID, ZPlusID);
+	tree.ShortPath (ZPlusID, XPlusID, path);
+	vl2g[12] = path[2];   vg2l[path[2]] = 12;
+	vl2g[ 5] = path[3];   vg2l[path[3]] =  5;
+	vl2g[17] = path[4];   vg2l[path[4]] = 17;
+
+	// Corner-front nodes
+	tree.DelEdge   (vl2g[7], vl2g[15]);
+	tree.DelEdge   (vl2g[7], vl2g[19]);
+	tree.ShortPath (vl2g[7], vl2g[ 5], path);
+	vl2g[14] = path[1];   vg2l[path[1]] = 14;
+	vl2g[ 6] = path[2];   vg2l[path[2]] =  6;
+	vl2g[13] = path[3];   vg2l[path[3]] = 13;
+	tree.ShortPath (vl2g[7], vl2g[2], path);
+	vl2g[18] = path[3];   vg2l[path[3]] = 18;
+
+	// 
+	int net = BPy::len(ETags); // number of edges with tags
+	int nft = BPy::len(FTags); // number of faces with tags
+	Array<long> eg2l; eg2l.SetNS(Util::_4); // map: global edge to local edge IDs
+	if (net>0 || nft>0)
+	{
+		eg2l.Resize(24);
+		tree.Reset (edges);
+		eg2l[tree.GetEdge(vl2g[0],vl2g[11])] =  0;
+		eg2l[tree.GetEdge(vl2g[1],vl2g[ 9])] =  1;
+		eg2l[tree.GetEdge(vl2g[0],vl2g[ 8])] =  2;
+		eg2l[tree.GetEdge(vl2g[3],vl2g[10])] =  3;
+		eg2l[tree.GetEdge(vl2g[4],vl2g[15])] =  4;
+		eg2l[tree.GetEdge(vl2g[5],vl2g[13])] =  5;
+		eg2l[tree.GetEdge(vl2g[4],vl2g[12])] =  6;
+		eg2l[tree.GetEdge(vl2g[7],vl2g[14])] =  7;
+		eg2l[tree.GetEdge(vl2g[0],vl2g[16])] =  8;
+		eg2l[tree.GetEdge(vl2g[1],vl2g[17])] =  9;
+		eg2l[tree.GetEdge(vl2g[2],vl2g[18])] = 10;
+		eg2l[tree.GetEdge(vl2g[3],vl2g[19])] = 11;
+		eg2l[tree.GetEdge(vl2g[3],vl2g[11])] = 12;
+		eg2l[tree.GetEdge(vl2g[2],vl2g[ 9])] = 13;
+		eg2l[tree.GetEdge(vl2g[1],vl2g[ 8])] = 14;
+		eg2l[tree.GetEdge(vl2g[2],vl2g[10])] = 15;
+		eg2l[tree.GetEdge(vl2g[7],vl2g[15])] = 16;
+		eg2l[tree.GetEdge(vl2g[6],vl2g[13])] = 17;
+		eg2l[tree.GetEdge(vl2g[5],vl2g[12])] = 18;
+		eg2l[tree.GetEdge(vl2g[6],vl2g[14])] = 19;
+		eg2l[tree.GetEdge(vl2g[4],vl2g[16])] = 20;
+		eg2l[tree.GetEdge(vl2g[5],vl2g[17])] = 21;
+		eg2l[tree.GetEdge(vl2g[6],vl2g[18])] = 22;
+		eg2l[tree.GetEdge(vl2g[7],vl2g[19])] = 23;
+	}
+
+	// Read coordinates
+	int nverts = BPy::len(Verts);
+	if (nverts!=20) throw new Fatal("Block::PySet3D: Number of Verts must be either 8 or 20 (%d is invalid)",nverts);
+	for (int i=0; i<20; ++i)
+	{
+		BPy::tuple xyz = BPy::extract<BPy::tuple>(Verts[vl2g[i]])();
+		_c(0,i) = BPy::extract<double>(xyz[0])();
+		_c(1,i) = BPy::extract<double>(xyz[1])();
+		_c(2,i) = BPy::extract<double>(xyz[2])();
+	}
+
+	// Edge tags
+	_has_etags = (net>0 ? true : false);
+	for (int i=0; i<net; ++i)
+	{
+		BPy::tuple ed = BPy::extract<BPy::tuple>(ETags.keys()[i])();
+		size_t eid = tree.GetEdge (BPy::extract<double>(ed[0])(), BPy::extract<double>(ed[1])());
+		long   tag = BPy::extract<long>(ETags.values()[i])();
+		_etags(eg2l[eid]) = tag;
+	}
+
+	// Face tags
+	_has_ftags = (nft>0 ? true : false);
+	for (int i=0; i<nft; ++i)
+	{
+		BPy::tuple fa = BPy::extract<BPy::tuple>(FTags.keys()[i])();
+		bool found = false;
+		for (size_t j=0; j<len(fa); ++j)
+		{
+			//long ed0 = tree.GetEdge (BPy::extract<double>(fa[0])(), BPy::extract<double>(fa[1])());
+			std::cout << BPy::extract<double>(fa[0])() << ", " << BPy::extract<double>(fa[1])() << std::endl;
+		}
+		//long ed1 = tree.GetEdge (BPy::extract<double>(fa[1])(), BPy::extract<double>(fa[2])());
+		//long ed2 = tree.GetEdge (BPy::extract<double>(fa[2])(), BPy::extract<double>(fa[3])());
+		//size_t fid = tree.GetEdge (BPy::extract<double>(ed[0])(), BPy::extract<double>(ed[1])());
+		//long   tag = BPy::extract<long>(ETags.values()[i])();
+		//_etags(eg2l[eid]) = tag;
+	}
+
 }
 
 inline void Block::PySetETags(BPy::list const & Tags)
@@ -515,7 +676,7 @@ inline void Block::PySetFTags(BPy::list const & Tags)
 // }
 #endif
 
-// Methods -- Structured
+// Methods ------------------------------------------------------------------------------------------- Structured
 
 inline size_t Structured::Generate(Array<Block*> const & Blocks)
 {
@@ -816,112 +977,30 @@ inline void Structured::_erase()
 	_verts_bry  .Resize(0);
 }
 
-}; // namespace Mesh
-
-#ifdef USE_BOOST_PYTHON
-// {
-
-#include "util/tree.h"
-
-inline void PyBlock3DSort (long              OrigID,    ///< ID of the vertex at origin
-                           long              XPlusID,   ///< ID of the vertex at the positive corner of the local x-axis
-                           long              YPlusID,   ///< ID of the vertex at the positive corner of the local y-axis
-                           long              ZPlusID,   ///< ID of the vertex at the positive corner of the local z-axis
-                           BPy::dict const & Edges,     ///< {(v1,v2):tag1, (v1,v2):tag2, ... 24 edges}
-                           BPy::list       & Verts,     ///< [4, 3, 2, 0, 8, ... twenty global vertex IDs]
-                           BPy::list       & ETags)     ///< [0,0,-10,0,-20, ... 24 edge tags]
+inline void Structured::_face_to_verts(size_t FaceLocalID, Array<size_t> & Verts) const
 {
-	// Check
-	if (len(Edges)!=24) throw new Fatal("PySortBlock3D:: List with edges must have 24 items. Ex.: Edges = {(v1,v2):tag1, (v1,v2):tag2, ... 24 edges}. (%d is invalid)",len(Edges));
-
-	// Edges
-	Array<long> edges(48); // 48 => we have to serialize for Util::Tree
-	Array<int>  etags(24);
-	int k = 0;
-	for (int i=0; i<24; ++i)
+	if (_is_o2)
 	{
-		BPy::tuple ed = BPy::extract<BPy::tuple>(Edges.keys()[i])();
-		edges[k  ] = BPy::extract<long>(ed[0])();
-		edges[k+1] = BPy::extract<long>(ed[1])();
-		etags[i  ] = BPy::extract<long>(Edges.values()[i])();
-		k += 2;
+		Verts.Resize(8);
+		Verts[0] = Face2Vert[FaceLocalID].v0;
+		Verts[1] = Face2Vert[FaceLocalID].v1;
+		Verts[2] = Face2Vert[FaceLocalID].v2;
+		Verts[3] = Face2Vert[FaceLocalID].v3;
+		Verts[4] = Face2Vert[FaceLocalID].v4;
+		Verts[5] = Face2Vert[FaceLocalID].v5;
+		Verts[6] = Face2Vert[FaceLocalID].v6;
+		Verts[7] = Face2Vert[FaceLocalID].v7;
 	}
-
-	// Tree
-	Util::Tree tree(edges);
-	Array<long> eds; eds.Resize(24); eds.SetNS(Util::_4);
-	Array<long> vrs; vrs.Resize(20); vrs.SetNS(Util::_4);
-	vrs[0] = OrigID;
-
-	// Bottom nodes
-	Array<long> path; path.SetNS(Util::_4);
-	tree.DelEdge   (OrigID, XPlusID);
-	tree.ShortPath (XPlusID, YPlusID, path);
-	vrs[ 1] = path[1];
-	vrs[ 2] = path[3];
-	vrs[ 3] = path[5];
-	vrs[ 8] = path[0];
-	vrs[ 9] = path[2];
-	vrs[10] = path[4];
-	vrs[11] = path[6];
-
-	// Behind nodes
-	tree.DelEdge   (OrigID, YPlusID);
-	tree.ShortPath (YPlusID, ZPlusID, path);
-	vrs[19] = path[2];
-	vrs[ 7] = path[3];
-	vrs[15] = path[4];
-	vrs[ 4] = path[5];
-	vrs[16] = path[6];
-
-	// Left nodes
-	tree.DelEdge   (OrigID, ZPlusID);
-	tree.ShortPath (ZPlusID, XPlusID, path);
-	vrs[12] = path[2];
-	vrs[ 5] = path[3];
-	vrs[17] = path[4];
-
-	// Corner-front nodes
-	tree.DelEdge   (vrs[7], vrs[15]);
-	tree.DelEdge   (vrs[7], vrs[19]);
-	tree.ShortPath (vrs[7], vrs[ 5], path);
-	vrs[14] = path[1];
-	vrs[ 6] = path[2];
-	vrs[13] = path[3];
-	tree.ShortPath (vrs[7], vrs[2], path);
-	vrs[18] = path[3];
-
-	// Vertices (global IDs)
-	for (int i=0; i<20; ++i) Verts.append(vrs[i]);
-
-	// Edge tags
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[0],vrs[11])])()); //  0
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[3],vrs[11])])()); //  1
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[1],vrs[ 9])])()); //  2
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[2],vrs[ 9])])()); //  3
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[0],vrs[ 8])])()); //  4
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[1],vrs[ 8])])()); //  5
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[3],vrs[10])])()); //  6
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[2],vrs[10])])()); //  7
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[4],vrs[15])])()); //  8
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[7],vrs[15])])()); //  9
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[5],vrs[13])])()); // 10
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[6],vrs[13])])()); // 11
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[4],vrs[12])])()); // 12
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[5],vrs[12])])()); // 13
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[7],vrs[14])])()); // 14
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[6],vrs[14])])()); // 15
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[0],vrs[16])])()); // 16
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[4],vrs[16])])()); // 17
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[1],vrs[17])])()); // 18
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[5],vrs[17])])()); // 19
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[2],vrs[18])])()); // 20
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[6],vrs[18])])()); // 21
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[3],vrs[19])])()); // 22
-	ETags.append (BPy::extract<long>(Edges[BPy::make_tuple(vrs[7],vrs[19])])()); // 23
+	else
+	{
+		Verts.Resize(4);
+		Verts[0] = Face2Vert[FaceLocalID].v0;
+		Verts[1] = Face2Vert[FaceLocalID].v1;
+		Verts[2] = Face2Vert[FaceLocalID].v2;
+		Verts[3] = Face2Vert[FaceLocalID].v3;
+	}
 }
 
-// }
-#endif // USE_BOOST_PYTHON
+}; // namespace Mesh
 
 #endif // MECHSYS_MESH_STRUCTURED_H

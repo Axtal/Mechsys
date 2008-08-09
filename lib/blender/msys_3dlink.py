@@ -33,7 +33,7 @@ if dict['show_props']:
                 btag = di.get_btag (obj)
                 if btag<0:
                     loc = obj.getLocation()
-                    BGL.glColor3f     (0.0, 0.0, 0.0)
+                    BGL.glColor3f     (0.0, 1.0, 0.0)
                     BGL.glRasterPos3f (loc[0], loc[1], loc[2])
                     Draw.Text         ('btag=%d'%btag)
 
@@ -133,27 +133,13 @@ if dict['show_props']:
                                 Draw.Text         ('+')
 
                     # draw edge tags
-                    for t in di.get_tags (obj, 'edge'):
-                        if t[1]<0:
-                            pos = msh.edges[t[0]].v1.co + 0.60*(msh.edges[t[0]].v2.co-msh.edges[t[0]].v1.co)
-                            BGL.glColor3f     (0.0, 0.0, 0.0)
-                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                            Draw.Text         (str(t[1]))
-
-                    # draw face tags
-                    for t in di.get_tags (obj, 'face'):
-                        if t[1]<0:
-                            # draw selected 'face'
-                            if len(msh.verts.selected())==8:
-                                BGL.glColor4f (1.0, 1.0, 0.0, 0.5)
-                                BGL.glBegin   (BGL.GL_POLYGON)
-                                for i in msh.verts.selected():
-                                    BGL.glVertex3f (msh.verts[i].co[0], msh.verts[i].co[1], msh.verts[i].co[2])
-                                BGL.glEnd ()
-                            #pos = msh.faces[t[0]].cent
-                            #BGL.glColor3f     (0.0, 0.0, 0.0)
-                            #BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                            #Draw.Text         (str(t[1]))
+                    if dict['show_etags']:
+                        for t in di.get_tags (obj, 'edge'):
+                            if t[1]<0:
+                                pos = msh.edges[t[0]].v1.co + 0.60*(msh.edges[t[0]].v2.co-msh.edges[t[0]].v1.co)
+                                BGL.glColor3f     (0.0, 0.0, 0.0)
+                                BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                                Draw.Text         (str(t[1]))
 
                     # draw regions
                     rgs = di.get_regs (obj)
@@ -169,6 +155,56 @@ if dict['show_props']:
                         BGL.glRasterPos3f (float(h[0]), float(h[1]), float(h[2]))
                         Draw.Text         ('hole')
 
+                # draw face tags
+                if dict['show_ftags']:
+                    if obj.properties.has_key('ftags'):
+                        BGL.glBlendFunc (BGL.GL_SRC_ALPHA, BGL.GL_ONE)
+                        for eids in obj.properties['ftags']:
+                            ids      = [int(id) for id in eids.split('_')]
+                            eds, vds = di.sort_edges_and_verts (msh, ids, msh.edges[ids[0]].v1.index) # will erase ids
+                            BGL.glColor4f (1.0, 1.0, 0.0, 0.3)
+                            BGL.glEnable  (BGL.GL_BLEND)
+                            BGL.glDisable (BGL.GL_DEPTH_TEST)
+                            if len(eds)==8:
+                                cen = (msh.verts[vds[1]].co + msh.verts[vds[5]].co)/2.0
+                                BGL.glBegin    (BGL.GL_POLYGON)
+                                BGL.glVertex3f (msh.verts[vds[7]].co[0], msh.verts[vds[7]].co[1], msh.verts[vds[7]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[0]].co[0], msh.verts[vds[0]].co[1], msh.verts[vds[0]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[1]].co[0], msh.verts[vds[1]].co[1], msh.verts[vds[1]].co[2])
+                                BGL.glVertex3f (                 cen[0],                  cen[1],                  cen[2])
+                                BGL.glEnd      ()
+                                BGL.glBegin    (BGL.GL_POLYGON)
+                                BGL.glVertex3f (msh.verts[vds[1]].co[0], msh.verts[vds[1]].co[1], msh.verts[vds[1]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[2]].co[0], msh.verts[vds[2]].co[1], msh.verts[vds[2]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[3]].co[0], msh.verts[vds[3]].co[1], msh.verts[vds[3]].co[2])
+                                BGL.glVertex3f (                 cen[0],                  cen[1],                  cen[2])
+                                BGL.glEnd      ()
+                                BGL.glBegin    (BGL.GL_POLYGON)
+                                BGL.glVertex3f (msh.verts[vds[3]].co[0], msh.verts[vds[3]].co[1], msh.verts[vds[3]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[4]].co[0], msh.verts[vds[4]].co[1], msh.verts[vds[4]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[5]].co[0], msh.verts[vds[5]].co[1], msh.verts[vds[5]].co[2])
+                                BGL.glVertex3f (                 cen[0],                  cen[1],                  cen[2])
+                                BGL.glEnd      ()
+                                BGL.glBegin    (BGL.GL_POLYGON)
+                                BGL.glVertex3f (msh.verts[vds[5]].co[0], msh.verts[vds[5]].co[1], msh.verts[vds[5]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[6]].co[0], msh.verts[vds[6]].co[1], msh.verts[vds[6]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[7]].co[0], msh.verts[vds[7]].co[1], msh.verts[vds[7]].co[2])
+                                BGL.glVertex3f (                 cen[0],                  cen[1],                  cen[2])
+                                BGL.glEnd      ()
+                            else:
+                                cen = (msh.verts[vds[0]].co + msh.verts[vds[2]].co)/2.0
+                                BGL.glBegin    (BGL.GL_POLYGON)
+                                BGL.glVertex3f (msh.verts[vds[0]].co[0], msh.verts[vds[0]].co[1], msh.verts[vds[0]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[1]].co[0], msh.verts[vds[1]].co[1], msh.verts[vds[1]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[2]].co[0], msh.verts[vds[2]].co[1], msh.verts[vds[2]].co[2])
+                                BGL.glVertex3f (msh.verts[vds[3]].co[0], msh.verts[vds[3]].co[1], msh.verts[vds[3]].co[2])
+                                BGL.glEnd      ()
+                            BGL.glDisable     (BGL.GL_BLEND)
+                            BGL.glEnable      (BGL.GL_DEPTH_TEST)
+                            BGL.glColor3f     (0.0, 0.0, 0.0)
+                            BGL.glRasterPos3f (cen[0], cen[1], cen[2])
+                            Draw.Text         (str(obj.properties['ftags'][eids]))
+
                 # draw elements information
                 if dict['show_elems']:
                     try:    nelems = obj.properties['nelems']
@@ -176,7 +212,7 @@ if dict['show_props']:
                     if nelems>0:
                         for id in obj.properties['elems']['cons']:
                             x, y, z = di.get_cg (msh, obj.properties['elems']['cons'][id], obj.properties['elems']['vtks'][int(id)])
-                            BGL.glColor3f     (0.0, 0.0, 0.0)
+                            BGL.glColor3f     (0.0, 1.0, 0.0)
                             BGL.glRasterPos3f (x, y, z)
                             Draw.Text         (str(id)+'('+str(obj.properties['elems']['tags'][int(id)])+')')
 

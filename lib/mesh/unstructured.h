@@ -79,6 +79,7 @@ class Unstructured : public virtual Mesh::Generic
 public:
 	// Constants
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
+	static Face Face2Vert[]; ///< Map from local face ID to local vertex ID
 
 	// Constructor
 	Unstructured ();
@@ -122,9 +123,10 @@ private:
 	TriIO _tou; ///< Triangle IO's output structure
 
 	// Overloaded private methods
-	void _vtk_con          (size_t i, String & Connect) const;
-	int  _edge_to_lef_vert (int EdgeLocalID)            const { return Edge2Vert[EdgeLocalID].L; }
-	int  _edge_to_rig_vert (int EdgeLocalID)            const { return Edge2Vert[EdgeLocalID].R; }
+	void   _vtk_con          (size_t i, String & Connect) const;
+	size_t _edge_to_lef_vert (size_t EdgeLocalID)         const { return Edge2Vert[EdgeLocalID].L; }
+	size_t _edge_to_rig_vert (size_t EdgeLocalID)         const { return Edge2Vert[EdgeLocalID].R; }
+	void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const;
 
 	// Private methods
 	void _tri_set_all_to_null (TriIO & Tio); ///< Set all elements of Triangle's IO structure to NULL and 0
@@ -136,6 +138,10 @@ Edge Unstructured::Edge2Vert[]= {{ 0, 1 },
                                  { 1, 2 },
                                  { 0, 2 }};
 
+Face Unstructured::Face2Vert[]= {{  0,  2,  3,  6,  9,  7 },
+                                 {  0,  1,  3,  4,  8,  7 },
+                                 {  0,  1,  2,  4,  5,  6 },
+                                 {  1,  2,  3,  5,  9,  8 }};
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -269,6 +275,27 @@ inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 
 
 /* private */
+
+inline void Unstructured::_face_to_verts(size_t FaceLocalID, Array<size_t> & Verts) const
+{
+	if (_is_o2)
+	{
+		Verts.Resize(6);
+		Verts[0] = Face2Vert[FaceLocalID].v0;
+		Verts[1] = Face2Vert[FaceLocalID].v1;
+		Verts[2] = Face2Vert[FaceLocalID].v2;
+		Verts[3] = Face2Vert[FaceLocalID].v3;
+		Verts[4] = Face2Vert[FaceLocalID].v4;
+		Verts[5] = Face2Vert[FaceLocalID].v5;
+	}
+	else
+	{
+		Verts.Resize(3);
+		Verts[0] = Face2Vert[FaceLocalID].v0;
+		Verts[1] = Face2Vert[FaceLocalID].v1;
+		Verts[2] = Face2Vert[FaceLocalID].v2;
+	}
+}
 
 inline void Unstructured::_tri_set_all_to_null(TriIO & Tio)
 {
