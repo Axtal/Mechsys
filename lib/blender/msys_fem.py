@@ -41,7 +41,7 @@ def fill_mesh(obj):
             for j in range(len(obj.properties['elems']['cons'] [str(i)])): mg.set_elem_con  (i, j, obj.properties['elems']['cons'] [str(i)][j])
             for j in range(len(obj.properties['elems']['etags'][str(i)])): mg.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
             try:
-                for j in range(len(obj.properties['elems']['ftags'][str(i)])): mg.set_elem_ftag (i, j, obj.properties['elems']['etags'][str(i)][j])
+                for j in range(len(obj.properties['elems']['ftags'][str(i)])): mg.set_elem_ftag (i, j, obj.properties['elems']['ftags'][str(i)][j])
             except:
                 pass
 
@@ -53,16 +53,22 @@ def fill_mesh(obj):
         return mg
 
 
-def run_fea(obj, nbrys, fbrys, eatts):
+def run_fea(obj):
     # set cursor
     Blender.Window.WaitCursor(1)
 
     # mesh
     m = fill_mesh (obj)
 
+    # boundary conditions
+    nbrys = di.get_nbrys_numeric (obj)
+    ebrys = di.get_ebrys_numeric (obj)
+    fbrys = di.get_fbrys_numeric (obj)
+    eatts = di.get_eatts_numeric (obj)
+
     # set geometry
     g = ms.geom(2)
-    ms.set_geom (m, nbrys, fbrys, eatts, g)
+    ms.set_geom (m, nbrys, ebrys, fbrys, eatts, g)
 
     # solve
     sol = ms.solver('ForwardEuler')
@@ -71,7 +77,7 @@ def run_fea(obj, nbrys, fbrys, eatts):
 
     # output
     fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
-    ms.write_vtu_equilib (g, fn)
+    ms.out_vtu (g, fn)
     print '[1;34mMechSys[0m: file <'+fn+'> generated'
 
     # call ParaView
@@ -81,7 +87,13 @@ def run_fea(obj, nbrys, fbrys, eatts):
     Blender.Window.WaitCursor(0)
 
 
-def gen_script(obj, nbrys, fbrys, eatts):
+def gen_script(obj):
+    # boundary conditions
+    nbrys = di.get_nbrys_numeric (obj)
+    ebrys = di.get_ebrys_numeric (obj)
+    fbrys = di.get_fbrys_numeric (obj)
+    eatts = di.get_eatts_numeric (obj)
+
     # text
     fn  = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
     txt = Blender.Text.New(obj.name+'_script')
@@ -91,12 +103,13 @@ def gen_script(obj, nbrys, fbrys, eatts):
     txt.write ('obj   = bpy.data.objects["'+obj.name+'"]\n')
     txt.write ('mesh  = msys_fem.fill_mesh (obj)\n')
     txt.write ('nbrys = '+nbrys.__str__()+'\n')
+    txt.write ('ebrys = '+ebrys.__str__()+'\n')
     txt.write ('fbrys = '+fbrys.__str__()+'\n')
     txt.write ('eatts = '+eatts.__str__()+'\n')
     txt.write ('geom  = mechsys.geom(2)\n')
-    txt.write ('mechsys.set_geom (mesh, nbrys, fbrys, eatts, geom)\n')
+    txt.write ('mechsys.set_geom (mesh, nbrys, ebrys, fbrys, eatts, geom)\n')
     txt.write ('sol   = mechsys.solver("ForwardEuler")\n')
     txt.write ('sol.set_geom(geom)\n')
     txt.write ('sol.set_lin_sol("LA").set_num_div(1).set_delta_time(0.0)\n')
     txt.write ('sol.solve()\n')
-    txt.write ('mechsys.write_vtu_equilib(geom, "'+fn+'")\n')
+    txt.write ('mechsys.out_vtu(geom, "'+fn+'")\n')

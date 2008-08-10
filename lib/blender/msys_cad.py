@@ -284,18 +284,12 @@ def button_event(evt):
     # run a FE simulation
     elif evt==EVT_FEA_RUN:
         edm, obj, msh = di.get_msh()
-        nbrys = di.get_nbrys_numeric (obj)
-        fbrys = di.get_fbrys_numeric (obj)
-        eatts = di.get_eatts_numeric (obj)
-        fem.run_fea (obj, nbrys, fbrys, eatts)
+        fem.run_fea (obj)
         if edm: Blender.Window.EditMode(1) # return to EditMode
 
     elif evt==EVT_FEA_SCRIPT:
         edm, obj, msh = di.get_msh()
-        nbrys = di.get_nbrys_numeric (obj)
-        fbrys = di.get_fbrys_numeric (obj)
-        eatts = di.get_eatts_numeric (obj)
-        fem.gen_script (obj, nbrys, fbrys, eatts)
+        fem.gen_script (obj)
         Blender.Window.Redraw(Blender.Window.Types.TEXT)
 
 
@@ -588,7 +582,7 @@ def elematt_setinis_callback(evt,val):
 def elematt_deloneeatt_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        di.del_eatt (obj,evt-5000)
+        di.del_eatt (obj,evt-6000)
         Blender.Window.QRedrawAll()
 
 
@@ -647,12 +641,12 @@ def gui():
     h_unst_regs = (1+len(regs))*rh+sgy
     h_unst_hols = (1+len(hols))*rh+sgy
     h_unstruct  = ggy+3*sgy+2*rh + rh+h_unst_regs + rh+h_unst_hols
-    h_mesh      = 2*ggy+3*rh+sgy + rh+h_struct + rh+h_unstruct
+    h_mesh      = 2*ggy+4*rh+sgy + rh+h_struct + rh+h_unstruct
     h_fea_nbrys = (1+len(nbrys))*rh+sgy
     h_fea_ebrys = (1+len(ebrys))*rh+sgy
     h_fea_fbrys = (1+len(fbrys))*rh+sgy
     h_fea_eatts = (1+len(eatts))*rh+sgy
-    h_fea       = ggy+3*sgy+rh + rh+h_fea_nbrys + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
+    h_fea       = ggy+3*rh + rh+h_fea_nbrys + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
 
     # Background color
     BGL.glClearColor (0.531, 0.543, 0.614, 0.0)
@@ -719,7 +713,7 @@ def gui():
     Draw.Number       ('',     EVT_NONE,          dx+160, row, 80, rh, d['newftag'], -1000, 0,'New face tag',ftag_callback)
     Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+240, row, 80, rh,                        'Set faces tag (0 => remove tag)'); row -= rh+sgy
     Draw.PushButton   ('Delete all properties', EVT_MESH_DELPROP, ggx, row, 200, rh , 'Delete all properties')
-    
+
     # Mesh -- structured
     row -= gy
     dx   = 2*gx+70
@@ -844,12 +838,12 @@ def gui():
     Draw.PushButton   ('Delete all', EVT_FEA_DELALLNBRY, ggx+200, row+2, 80, rh-4, 'Delete all nodes boundary'); row -= rh
     BGL.glRasterPos2i (ggx, row+5); Draw.Text('         X                  Y                  Z           Key        Value'); row -= rh
     for i, nb in enumerate(nbrys):
-        Draw.String     ('',    3000+i, ggx    , row, 80, rh, nb[0],128,'X of the node with boundary condition',nodebry_setx_callback)
-        Draw.String     ('',    3000+i, ggx+ 80, row, 80, rh, nb[1],128,'Y of the node with boundary condition',nodebry_sety_callback)
-        Draw.String     ('',    3000+i, ggx+160, row, 80, rh, nb[2],128,'Z of the node with boundary condition',nodebry_setz_callback)
-        Draw.String     ('',    3000+i, ggx+240, row, 40, rh, nb[3],  2,'Key such as ux, uy, fx, fz corresponding to the essential/natural variable',nodebry_setkey_callback)
-        Draw.String     ('',    3000+i, ggx+280, row, 80, rh, nb[4],128,'Value of essential/natural boundary condition',nodebry_setval_callback)
-        Draw.PushButton ('Del', 3000+i, ggx+360, row, 40, rh, 'Delete this row', nodebry_delonenbry_callback); row -= rh
+        Draw.String     ('',    3000+i, ggx    , row, 80, rh, nb[0],128,'X of the node with boundary condition',                                      nodebry_setx_callback)
+        Draw.String     ('',    3000+i, ggx+ 80, row, 80, rh, nb[1],128,'Y of the node with boundary condition',                                      nodebry_sety_callback)
+        Draw.String     ('',    3000+i, ggx+160, row, 80, rh, nb[2],128,'Z of the node with boundary condition',                                      nodebry_setz_callback)
+        Draw.String     ('',    3000+i, ggx+240, row, 40, rh, nb[3],  2,'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', nodebry_setkey_callback)
+        Draw.String     ('',    3000+i, ggx+280, row, 80, rh, nb[4],128,'Value of essential/natural boundary condition',                              nodebry_setval_callback)
+        Draw.PushButton ('Del', 3000+i, ggx+360, row, 40, rh, 'Delete this row',                                                                      nodebry_delonenbry_callback); row -= rh
 
     # FEA -- edges bry
     h = h_fea_ebrys
@@ -865,10 +859,10 @@ def gui():
     Draw.PushButton   ('Delete all', EVT_FEA_DELALLEBRY, ggx+200, row+2, 80, rh-4, 'Delete all edges boundary'); row -= rh
     BGL.glRasterPos2i (ggx, row+5); Draw.Text('        Tag         Key        Value'); row -= rh
     for i, eb in enumerate(ebrys):
-        Draw.Number     ('',    4000+i, ggx    , row, 80, rh, int(eb[0]),-1000,0,'Set the edge tag',facebry_settag_callback)
+        Draw.Number     ('',    4000+i, ggx    , row, 80, rh, int(eb[0]),-1000,0,'Set the edge tag',                                                          edgebry_settag_callback)
         Draw.String     ('',    4000+i, ggx+ 80, row, 40, rh, eb[1],  2,         'Key such as ux, uy, fx, fz corresponding to the essential/natural variable',edgebry_setkey_callback)
-        Draw.String     ('',    4000+i, ggx+120, row, 80, rh, eb[2],128,         'Value of essential/natural boundary condition',edgebry_setval_callback)
-        Draw.PushButton ('Del', 4000+i, ggx+200, row, 40, rh, 'Delete this row', edgebry_deloneebry_callback); row -= rh
+        Draw.String     ('',    4000+i, ggx+120, row, 80, rh, eb[2],128,         'Value of essential/natural boundary condition',                             edgebry_setval_callback)
+        Draw.PushButton ('Del', 4000+i, ggx+200, row, 40, rh, 'Delete this row',                                                                              edgebry_deloneebry_callback); row -= rh
 
     # FEA -- faces bry
     h = h_fea_fbrys
@@ -884,10 +878,10 @@ def gui():
     Draw.PushButton   ('Delete all', EVT_FEA_DELALLFBRY, ggx+200, row+2, 80, rh-4, 'Delete all faces boundary'); row -= rh
     BGL.glRasterPos2i (ggx, row+5); Draw.Text('        Tag         Key        Value'); row -= rh
     for i, fb in enumerate(fbrys):
-        Draw.Number     ('',    5000+i, ggx    , row, 80, rh, int(fb[0]),-1000,0,'Set the face tag',facebry_settag_callback)
-        Draw.String     ('',    5000+i, ggx+ 80, row, 40, rh, fb[1],  2,         'Key such as ux, uy, fx, fz corresponding to the essential/natural variable',facebry_setkey_callback)
-        Draw.String     ('',    5000+i, ggx+120, row, 80, rh, fb[2],128,         'Value of essential/natural boundary condition',facebry_setval_callback)
-        Draw.PushButton ('Del', 5000+i, ggx+200, row, 40, rh, 'Delete this row', facebry_delonefbry_callback); row -= rh
+        Draw.Number     ('',    5000+i, ggx    , row, 80, rh, int(fb[0]),-1000,0,'Set the face tag',                                                           facebry_settag_callback)
+        Draw.String     ('',    5000+i, ggx+ 80, row, 40, rh, fb[1],  2,         'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', facebry_setkey_callback)
+        Draw.String     ('',    5000+i, ggx+120, row, 80, rh, fb[2],128,         'Value of essential/natural boundary condition',                              facebry_setval_callback)
+        Draw.PushButton ('Del', 5000+i, ggx+200, row, 40, rh, 'Delete this row',                                                                               facebry_delonefbry_callback); row -= rh
 
     # FEA -- elems bry
     h = h_fea_eatts
@@ -903,12 +897,12 @@ def gui():
     Draw.PushButton   ('Delete all', EVT_FEA_DELALLEATT, ggx+200, row+2, 80, rh-4, 'Delete all elems attributes'); row -= rh
     BGL.glRasterPos2i (ggx, row+5); Draw.Text('      Tag           Type                Model           Parameters        Initial Vals'); row -= rh
     for i, ea in enumerate(eatts):
-        Draw.Number     ('',    6000+i, ggx    , row,  60, rh, int(ea[0]),-1000,0,'Set the element tag',                elematt_settag_callback)
-        Draw.String     ('',    6000+i, ggx+ 60, row, 100, rh, ea[1], 20,         'Element type: ex.: Quad4PStrain',          elematt_settype_callback)
-        Draw.String     ('',    6000+i, ggx+160, row,  80, rh, ea[2], 20,         'Constitutive model: ex.: LinElastic',      elematt_setmodel_callback)
-        Draw.String     ('',    6000+i, ggx+240, row, 100, rh, ea[3],128,         'Parameters: ex.: E=207_nu=0.3',            elematt_setprms_callback)
-        Draw.String     ('',    6000+i, ggx+340, row,  80, rh, ea[4],128,         'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0',elematt_setinis_callback)
-        Draw.PushButton ('Del', 6000+i, ggx+420, row,  40, rh, 'Delete this row', elematt_deloneeatt_callback); row -= rh
+        Draw.Number     ('',    6000+i, ggx    , row,  60, rh, int(ea[0]),-1000,0,'Set the element tag',                       elematt_settag_callback)
+        Draw.String     ('',    6000+i, ggx+ 60, row, 100, rh, ea[1], 20,         'Element type: ex.: Quad4PStrain',           elematt_settype_callback)
+        Draw.String     ('',    6000+i, ggx+160, row,  80, rh, ea[2], 20,         'Constitutive model: ex.: LinElastic',       elematt_setmodel_callback)
+        Draw.String     ('',    6000+i, ggx+240, row, 100, rh, ea[3],128,         'Parameters: ex.: E=207_nu=0.3',             elematt_setprms_callback)
+        Draw.String     ('',    6000+i, ggx+340, row,  80, rh, ea[4],128,         'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', elematt_setinis_callback)
+        Draw.PushButton ('Del', 6000+i, ggx+420, row,  40, rh, 'Delete this row',                                              elematt_deloneeatt_callback); row -= rh
 
     # FEA -- main
     row -= 2*sgy

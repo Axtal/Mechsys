@@ -53,6 +53,7 @@
 #include "fem/elems/rod.h"
 #include "fem/elems/tri6pstrain.h"
 #include "fem/elems/tri6pstress.h"
+#include "fem/elems/tri3pstrain.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad4pstress.h"
 #include "fem/elems/quad8pstrain.h"

@@ -344,8 +344,8 @@ def gen_struct_mesh():
                 res  = gen_blk_2d   (obj, msh)
                 btag = di.get_btag (obj)
                 if len(res)>0:
-                    bks.append      (ms.mesh_block())
-                    bks[btag].set2d (di.get_btag(obj), res[0], res[1], res[2])
+                    bks.append       (ms.mesh_block())
+                    bks[btag].set_2d (di.get_btag(obj), res[0], res[1], res[2])
                     if len(res[3]): bks[btag].set_etags (res[3])
                     obj.select (0)
                 else: return
@@ -395,7 +395,7 @@ def gen_unstruct_mesh():
         Blender.Window.WaitCursor(1)
         msh = obj.getData(mesh=1)
         mu  = ms.mesh_unstructured()
-        ets = di.get_etags (obj)
+        ets = di.get_etags (obj,msh)
         rgs = di.get_regs  (obj)
         hls = di.get_hols  (obj)
         #mu.set_3d(0)
@@ -403,12 +403,11 @@ def gen_unstruct_mesh():
         for v in msh.verts:
             mu.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
         for e in msh.edges:
-            if e.index in ets: mu.set_poly_segment (e.index, e.v1.index, e.v2.index, ets[e.index])
-            else:              mu.set_poly_segment (e.index, e.v1.index, e.v2.index)
-        print rgs
-        print hls
+            key = (e.v1.index, e.v2.index)
+            if key in ets: mu.set_poly_segment (e.index, e.v1.index, e.v2.index, ets[key])
+            else:          mu.set_poly_segment (e.index, e.v1.index, e.v2.index)
         for i, r in enumerate(rgs):
-            mu.set_poly_region (i, int(r[0]), float(r[1]), float(r[2]), float(r[3]))
+            mu.set_poly_region (i, -(i+1), float(r[0]), float(r[1]), float(r[2]), float(r[3]))
         for i, h in enumerate(hls):
             mu.set_poly_hole (i, float(h[0]), float(h[1]), float(h[2]))
         maxarea  = di.get_maxarea  (obj)
