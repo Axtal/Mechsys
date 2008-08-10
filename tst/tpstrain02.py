@@ -31,11 +31,11 @@ ndivy = 2     # Divisions along y
 
 # Blocks
 blocks = [m.mesh_block()]
-blocks[0].set2d (-1,                                           # tag to be inherited by all elements inside this block
-                 [[0.,  L, L, 0.,    L/2.,    L, L/2.,   0.] , # coordinates: x values
-                  [0., 0., H,  H,      0., H/2.,    H, H/2.]], # coordinates: y values
-                 [1 for i in range(ndivx)],                    # weights x
-                 [1 for i in range(ndivy)])                    # weights y
+blocks[0].set_2d (-1,                                           # tag to be inherited by all elements inside this block
+                  [[0.,  L, L, 0.,    L/2.,    L, L/2.,   0.] , # coordinates: x values
+                   [0., 0., H,  H,      0., H/2.,    H, H/2.]], # coordinates: y values
+                  [1 for i in range(ndivx)],                    # weights x
+                  [1 for i in range(ndivy)])                    # weights y
 
 # Tags
 blocks[0].set_etags ([0, 0, -10, -20])
@@ -49,30 +49,30 @@ print
 
 # ------------------------------------------------------------------------------ FEM
 
-# 0) Geometry
+# Geometry
 g = m.geom(2)
 
-# 1) Nodes brys
+# Nodes brys
 nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]] # x,y,z, key, val
 
-# 2) Faces brys
-fbrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
+# Edges brys
+ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
          [-20, 'fy',  -q]] # [tag], [key], [val]
 
-# 3) Elements attributes
+# Elements attributes
 eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [model], [prms], [inis]
 
-# 4) Set geometry: nodes, elements and boundaries
-m.set_geom (ms, nbrys, fbrys, eatts, g)
+# Set geometry: nodes, elements and boundaries
+m.set_geom (ms, nbrys, ebrys, [], eatts, g) # [] => no face brys
 
-# 5) Solve
+# Solve
 print 'Solution: ---------------------------------------------------------------------'
 sol = m.solver('ForwardEuler')
 sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
 sol.solve()
 
 # Output file
-m.write_vtu_equilib(g, 'tpstrain02_py.vtu')
+m.out_vtu(g, 'tpstrain02_py.vtu')
 print 'File <tpstrain02_py.vtu> generated'
 
 #----------------------------------------------------------------------------- Check

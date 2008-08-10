@@ -122,9 +122,8 @@ public:
 	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _has_etags(false), _has_ftags(false) { Set2D(); }
 
 	// Set methods
-	void Set2D () { _c.Resize(2, 8); _etags.Resize( 4);                   _etags=0;           _is_3d=false; } ///< Set 2D
-
-	// Set methods
+	void             Set2D  ();                                           ///< Set 2D
+	void             Set3D  ();                                           ///< Set 2D
 	void             SetTag (int Tag) { _tag = Tag; }                     ///< Set the tag to be replicated to all elements generated inside this block
 	Matrix<double> & C      ()        { return _c;  }                     ///< Set coordinates
 	Vector<int>    & ETags  ()        { _has_etags=true; return _etags; } ///< Set edge tags
@@ -165,8 +164,6 @@ public:
 	void Alright() const;
 
 #ifdef USE_BOOST_PYTHON
-// {
-//
 	void PySet2D    (int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy);
 	void PySet3D    (int               Tag,     ///< Tag to be replicated to elements
 	                 BPy::list const & Verts,   ///< [(x1,y1,z1), (x2,y2,z2), ... 8 or 20 vertices]
@@ -182,7 +179,6 @@ public:
 	                 BPy::dict const & FTags);  ///< {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
 	void PySetETags (BPy::list const & Tags);
 	void PySetFTags (BPy::list const & Tags);
-// }
 #endif
 
 private:
@@ -227,9 +223,7 @@ public:
 	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
 
 #ifdef USE_BOOST_PYTHON
-// {
 	size_t PyGenerate (BPy::list const & ListOfMeshBlock);
-// }
 #endif
 
 private:
@@ -305,10 +299,29 @@ Pair Block::Edge2Face[] = {{ 0, 4},  // Edge #  0 is shared among Faces # 0 and 
                            { 1, 3},  // Edge # 22
                            { 3, 0}}; // Edge # 23
 
+
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
 // Methods ----------------------------------------------------------------------------------------------- Block
+
+inline void Block::Set2D()
+{
+	_is_3d = false;
+	_c.Resize        (2,8);
+	_etags.Resize    (4);
+	_etags.SetValues (0);
+}
+
+inline void Block::Set3D()
+{
+	_is_3d = true;
+	_c    .Resize    (3,20);
+	_etags.Resize    (24);
+	_ftags.Resize    (6);
+	_etags.SetValues (0);
+	_ftags.SetValues (0);
+}
 
 inline void Block::SetWx(char const * Str)
 {
@@ -457,11 +470,12 @@ inline void Block::Alright() const
 	}
 }
 
+
 #ifdef USE_BOOST_PYTHON
-// {
 
 inline void Block::PySet2D(int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy)
 {
+	// Basic information
 	SetTag (Tag);
 	Set2D  ();
 
@@ -502,13 +516,8 @@ inline void Block::PySet3D(int               Tag,
                            BPy::dict const & FTags)  
 {
 	// Basic information
-	_tag   = Tag;
-	_is_3d = true;
-	_c    .Resize    (3,20);
-	_etags.Resize    (24);
-	_ftags.Resize    (6);
-	_etags.SetValues (0);
-	_ftags.SetValues (0);
+	SetTag (Tag);
+	Set3D  ();
 
 	// Read Wx
 	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet3D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
@@ -649,7 +658,7 @@ inline void Block::PySet3D(int               Tag,
 		long ed0 = eg2l[BPy::extract<long>(fa[0])()];
 		long ed1 = eg2l[BPy::extract<long>(fa[1])()];
 		long ed2 = eg2l[BPy::extract<long>(fa[2])()];
-		int  sum[6] = {0,0,0,0,0,0};
+		int  sum[6] = { 0,0,0,0,0,0 };
 		sum[Edge2Face[ed0].L] += 1;   sum[Edge2Face[ed0].R] += 1;
 		sum[Edge2Face[ed1].L] += 1;   sum[Edge2Face[ed1].R] += 1;
 		sum[Edge2Face[ed2].L] += 1;   sum[Edge2Face[ed2].R] += 1;
@@ -657,14 +666,11 @@ inline void Block::PySet3D(int               Tag,
 		{
 			if (sum[j]==3) // found
 			{
-				//std::cout << j << ", " <<  BPy::extract<int>(FTags.values()[i])() << std::endl;
 				_ftags(j) = BPy::extract<int>(FTags.values()[i])();
-				//std::cout << _ftags(j) << std::endl;
 				break;
 			}
 		}
 	}
-	//std::cout << "end -------------------------------" << std::endl;
 }
 
 inline void Block::PySetETags(BPy::list const & Tags)
@@ -715,8 +721,8 @@ inline void Block::PySetFTags(BPy::list const & Tags)
 	_has_ftags = true;
 }
 
-// }
-#endif
+#endif // USE_BOOST_PYTHON
+
 
 // Methods ------------------------------------------------------------------------------------------- Structured
 
@@ -890,8 +896,8 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 	return _elems.Size();
 }
 
+
 #ifdef USE_BOOST_PYTHON
-// {
 
 inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock)
 {
@@ -904,8 +910,8 @@ inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock)
 	return Mesh::Structured::Generate (blocks);
 }
 
-// }
-#endif
+#endif // USE_BOOST_PYTHON
+
 
 // Private methods -- Structured
 
@@ -1066,6 +1072,7 @@ inline void Structured::_face_to_edges(size_t FaceLocalID, Array<size_t> & Edges
 		Edges[3] = Face2Edge[FaceLocalID].I3;
 	}
 }
+
 
 }; // namespace Mesh
 
