@@ -93,13 +93,10 @@ int main(int argc, char **argv) try
 	g.Nod(4)->Bry("ux",   0.0)->Bry("uy" ,0.0);
 	g.Nod(5)->Bry("uy",   0.0);
 	g.Nod(7)->Bry("ux",   0.0);
-	g.Nod(4)->Bry("fz", -10.0);
-	g.Nod(5)->Bry("fz", -15.0);
-	g.Nod(6)->Bry("fz", -20.0);
-	g.Nod(7)->Bry("fz", -25.0);
 
 	// 5) Parameters and initial values
 	g.Ele(0)->SetModel("LinElastic", "E=2000.0 nu=0.2", "Sx=10.0 Sy=10.0 Sz=10");
+	g.Ele(0)->FaceBry("fz", -1.0, 5); // 5 => top face
 
 	// Stiffness
 	Array<size_t>          map;

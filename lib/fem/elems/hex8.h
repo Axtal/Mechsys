@@ -139,11 +139,11 @@ inline void Hex8::VTKConnect(String & Nodes) const
 
 inline void Hex8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
-	FaceConnects.Resize(4);
+	FaceConnects.Resize(HEX8_NFACENODES);
 	FaceConnects[0] = _connects[Face2Node[FaceID].n0];
 	FaceConnects[1] = _connects[Face2Node[FaceID].n1];
 	FaceConnects[2] = _connects[Face2Node[FaceID].n2];
-	FaceConnects[4] = _connects[Face2Node[FaceID].n3];
+	FaceConnects[3] = _connects[Face2Node[FaceID].n3];
 }
 
 inline void Hex8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
@@ -171,7 +171,7 @@ inline void Hex8::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	 *    |_
 	 *   r
 	 */
-	Shape.Resize(8);
+	Shape.Resize(HEX8_NNODES);
 	Shape(0) = 0.125*(1.0-r-s+r*s-t+s*t+r*t-r*s*t);
 	Shape(1) = 0.125*(1.0+r-s-r*s-t+s*t-r*t+r*s*t);
 	Shape(2) = 0.125*(1.0+r+s+r*s-t-s*t-r*t-r*s*t);
@@ -191,7 +191,7 @@ inline void Hex8::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(3,8);
+	Derivs.Resize(3,HEX8_NNODES);
 	Derivs(0,0) = 0.125*(-1.0+s+t-s*t);   Derivs(1,0)=0.125*(-1.0+r+t-r*t);   Derivs(2,0)=0.125*(-1.0+r+s-r*s);
 	Derivs(0,1) = 0.125*(+1.0-s-t+s*t);   Derivs(1,1)=0.125*(-1.0-r+t+r*t);   Derivs(2,1)=0.125*(-1.0-r+s+r*s);
 	Derivs(0,2) = 0.125*(+1.0+s-t-s*t);   Derivs(1,2)=0.125*(+1.0+r-t-r*t);   Derivs(2,2)=0.125*(-1.0-r-s-r*s);
@@ -217,7 +217,7 @@ inline void Hex8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	 *           0           1
 	 */
 
-	FaceShape.Resize(4);
+	FaceShape.Resize(HEX8_NFACENODES);
 	FaceShape(0) = 0.25*(1.0-r-s+r*s);
 	FaceShape(1) = 0.25*(1.0+r-s-r*s);
 	FaceShape(2) = 0.25*(1.0+r+s+r*s);
@@ -234,7 +234,7 @@ inline void Hex8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDe
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
 
-	FaceDerivs.Resize(2,4);
+	FaceDerivs.Resize(2,HEX8_NFACENODES);
 	FaceDerivs(0,0) = 0.25*(-1.0+s);   FaceDerivs(1,0) = 0.25*(-1.0+r);
 	FaceDerivs(0,1) = 0.25*(+1.0-s);   FaceDerivs(1,1) = 0.25*(-1.0-r);
 	FaceDerivs(0,2) = 0.25*(+1.0+s);   FaceDerivs(1,2) = 0.25*(+1.0+r);
