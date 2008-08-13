@@ -73,17 +73,19 @@ int main(int argc, char **argv) try
 
 		// Lower block -- coordinates
 		Mesh::Block b0;
-		b0.C() =  r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
-		         0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.);
-		b0.SetWx ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
-		b0.SetWy ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
+		b0.SetCoords(false, 8, // Is3D, NNodes
+		              r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
+		             0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.));
+		b0.SetNx (10);
+		b0.SetNy (10);
 
 		// Upper block -- coordinates
 		Mesh::Block b1;
-		b1.C() =  b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
-		          e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.);
-		b1.SetWx ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
-		b1.SetWy ("1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1");
+		b1.SetCoords(false, 8,
+		              b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
+		              e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.));
+		b1.SetNx (10);
+		b1.SetNy (10);
 
 		// Blocks
 		Array<Mesh::Block*> blocks;  blocks.Resize(2);

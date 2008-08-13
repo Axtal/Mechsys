@@ -28,34 +28,42 @@
 #include "fem/solvers/forwardeuler.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
+#include "mesh/structured.h"
 
 using std::cout;
 using std::endl;
+using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
 	// constants
-	double E  = 20.0; // Young
-	double nu = 0.001;  // Poisson
-	double q  = 10.0;   // Downward vertical pressure
+	double E  = 200.0; // Young
+	double nu = 0.25;  // Poisson
+	double q  = 2.0;   // Downward vertical pressure
+	int    nx = 2;     // number of divisions along x
+	int    ny = 2;     // number of divisions along y
+	int    nz = 2;     // number of divisions along z
+	double Lx = 1.0;   // x edge length
+	double Ly = 1.0;   // y edge length
+	double Lz = 1.0;   // z edge length
 
-	/*  Unit cube
+	/* Cube with a uniform pressure at the top
 	 
 	      z
-	      |__y      4________________7
+	      |__y      +________________+
 	   x,'        ,'|              ,'|
 	            ,'               ,'  |
 	          ,'    |          ,'    |
-	        ,'      .        ,'      |
-	      5'_______________6'        |
+	        ,'      .        ,'      | Lz
+	      +'_______________+'        |
 	      |                |         |
 	      |         |      |         |
-	      |         0 -  - | -  -  - 3
+	      |         + -  - | -  -  - +
 	      |       ,        |       ,' 
 	      |     ,          |     ,'   
-	      |   ,            |   ,'     
-	      | ,              | ,'       
-	      1________________2'         
+	      |   ,            |   ,'  Lx 
+	      | ,       Ly     | ,'       
+	      +________________+'         
 	*/
 
 	// Input
@@ -63,51 +71,50 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+	
+	Mesh::Block b;
+	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
+	b.SetCoords (true, 8,                          // Is3D, NNodes
+	             0., Lx, Lx, 0.,  0., Lx, Lx, 0.,  // x coordinates
+	             0., 0., Ly, Ly,  0., 0., Ly, Ly,  // y coordinates
+	             0., 0., 0., 0.,  Lz, Lz, Lz, Lz); // z coordinates
+	b.SetFTags  (6, -100,0,-102,0,-104,-105);      // face tags
+	b.SetNx     (nx);                              // num of divisions along x
+	b.SetNy     (ny);                              // num of divisions along y
+	b.SetNz     (nz);                              // num of divisions along z
+	Array<Mesh::Block*> blocks;
+	blocks.Push (&b);
+
+	// Generate
+	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
+	Mesh::Structured ms;
+	clock_t start = std::clock(); // Initial time
+	size_t  ne    = ms.Generate (blocks);
+	clock_t total = std::clock() - start; // Time elapsed
+	cout << "[1;33m"<<ne<<" elements[0m. Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
+
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// 0) Geometry
+	// Geometry
 	FEM::Geom g(3); // 3D
 
-	// 1) Nodes
-	g.SetNNodes (8);
-	g.SetNode   (0, 0.0, 0.0, 0.0);
-	g.SetNode   (1, 1.0, 0.0, 0.0);
-	g.SetNode   (2, 1.0, 1.0, 0.0);
-	g.SetNode   (3, 0.0, 1.0, 0.0);
-	g.SetNode   (4, 0.0, 0.0, 1.0);
-	g.SetNode   (5, 1.0, 0.0, 1.0);
-	g.SetNode   (6, 1.0, 1.0, 1.0);
-	g.SetNode   (7, 0.0, 1.0, 1.0);
+	// Faces brys
+	FEM::FBrys_T fbrys;
+	fbrys.Push (make_tuple(-100, "ux", 0.0)); // tag, key, val
+	fbrys.Push (make_tuple(-102, "uy", 0.0)); // tag, key, val
+	fbrys.Push (make_tuple(-104, "uz", 0.0)); // tag, key, val
+	fbrys.Push (make_tuple(-105, "fz",  -q)); // tag, key, val
 
-	// 2) Elements
-	g.SetNElems (1);
-	g.SetElem   (0, "Hex8Equilib", /*IsActive*/true);
-
-	// 3) Set connectivity
-	g.Ele(0)->Connect(0, g.Nod(0))
-	        ->Connect(1, g.Nod(1))
-	        ->Connect(2, g.Nod(2))
-	        ->Connect(3, g.Nod(3))
-	        ->Connect(4, g.Nod(4))
-	        ->Connect(5, g.Nod(5))
-	        ->Connect(6, g.Nod(6))
-	        ->Connect(7, g.Nod(7));
-
-	// 4) Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0)->Bry("uz",0.0);
-	g.Nod(1)               ->Bry("uy",0.0)->Bry("uz",0.0);
-	g.Nod(2)                              ->Bry("uz",0.0);
-	g.Nod(3)->Bry("ux",0.0)               ->Bry("uz",0.0);
-	g.Nod(4)->Bry("ux",0.0)->Bry("uy",0.0);
-	g.Nod(5)               ->Bry("uy",0.0);
-	g.Nod(7)->Bry("ux",0.0);
-                                          
-	// 5) Parameters and initial values
+	// Element attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	g.Ele(0)->SetModel ("LinElastic", prms.CStr(), "ZERO");
-	g.Ele(0)->FaceBry  ("fz", -q, 5); // 5 => top face
+	FEM::EAtts_T eatts;
+	eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", prms.CStr(), "ZERO")); // tag, type, model, prms, inis
 
-	// 6) Solve
+	// Set geometry
+	FEM::SetGeom (&ms, NULL, NULL, &fbrys, &eatts, &g);
+
+	// Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
@@ -160,9 +167,9 @@ int main(int argc, char **argv) try
 		err2 += fabs(g.Nod(i)->Val("uz")-(-Ez*g.Nod(i)->Z()));
 	}
 
-	if (fabs(err1)>1.0e-14) cout << "[1;31m\nErrors(" << linsol << ") stress/strain = " << err1 << "[0m";
+	if (fabs(err1)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") stress/strain = " << err1 << "[0m";
 	else                    cout << "[1;32m\nErrors(" << linsol << ") stress/strain = " << err1 << "[0m";
-	if (fabs(err2)>1.0e-14) cout << "[1;31m\nErrors(" << linsol << ") displacements = " << err2 << "[0m\n" << endl;
+	if (fabs(err2)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") displacements = " << err2 << "[0m\n" << endl;
 	else                    cout << "[1;32m\nErrors(" << linsol << ") displacements = " << err2 << "[0m\n" << endl;
 
 	// Return error flag

@@ -77,16 +77,14 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Blocks
-	String wx; for (int i=0; i<nx; ++i) wx.Printf("%s %f",wx.CStr(),1.0);
-	String wy; for (int i=0; i<ny; ++i) wy.Printf("%s %f",wy.CStr(),1.0);
 	Mesh::Block b;
-	b.SetTag (-1); // tag to be replicated to all generated elements inside this block
-	b.Set2D  ();   // 2D
-	b.C      () = 0.,  L, L, 0.,    L/2.,    L, L/2.,   0., // x coordinates
-	              0., 0., H,  H,      0., H/2.,    H, H/2.; // y coordinates
-	b.SetWx  (wx.CStr());                                   // x weights and num of divisions along x
-	b.SetWy  (wx.CStr());                                   // y weights and num of divisions along y
-	b.ETags  () = -10, -20, -10, 0;                         // edge tags
+	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
+	b.SetCoords (false, 4,              // Is3D, NNodes
+	             0.,  L, L, 0.,         // x coordinates
+	             0., 0., H,  H);        // y coordinates
+	b.SetNx     (nx);                   // x weights and num of divisions along x
+	b.SetNy     (ny);                   // y weights and num of divisions along y
+	b.SetETags  (4,  -10, -20, -10, 0); // edge tags
 	Array<Mesh::Block*> blocks;
 	blocks.Push (&b);
 

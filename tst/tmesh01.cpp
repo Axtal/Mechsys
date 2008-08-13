@@ -46,13 +46,13 @@ int main(int argc, char **argv) try
 
 		// Blocks
 		Mesh::Block b;
-		b.SetTag (-1); // tag to be replicated to all generated elements inside this block
-		b.Set2D  ();   // 2D
-		b.C      () = 0.,  L, L, 0.,    hL,  L, hL, 0., // x coordinates
-		              0., 0., H,  H,    0., hH,  H, hH; // y coordinates
-		b.ETags  () = -10, -11, -12, -13;               // edge tags
-		b.SetWx  ("1 1");                               // x weights and num of divisions along x
-		b.SetWy  ("1 1");                               // y weights and num of divisions along y
+		b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
+		b.SetCoords (false, 8,                          // Is3D, NNodes
+		             0.,  L, L, 0.,    hL,  L, hL, 0.,  // x coordinates
+		             0., 0., H,  H,    0., hH,  H, hH); // y coordinates
+		b.SetETags  (4,  -10, -11, -12, -13);           // edge tags
+		b.SetWx     (2, 1.0,1.0);                       // x weights and num of divisions along x
+		b.SetWy     (2, 1.0,1.0);                       // y weights and num of divisions along y
 		Array<Mesh::Block*> blocks;
 		blocks.Push (&b);
 
@@ -89,16 +89,16 @@ int main(int argc, char **argv) try
 
 		// Coordinates
 		Mesh::Block b;
-		b.SetTag (-2); // tag to be replicated to all generated elements inside this block
-		b.Set3D  ();   // 3D
-		b.C () = 0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0., // x coordinates
-		         0., 0.,  H,  H,    0., 0., H,  H,    0., hH,  H, hH,    0., hH,  H, hH,    0., 0.,  H,  H, // y coordinates
-		         0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD; // z coordinates
-		b.SetWx ("1 1"); // x weights and num of divisions along x
-		b.SetWy ("1 1"); // y weights and num of divisions along y
-		b.SetWz ("1 1"); // z weights and num of divisions along z
-		b.ETags () = -100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111;
-		b.FTags () = -10, -11, -12, -13, -14, -15;
+		b.SetTag    (-2); // tag to be replicated to all generated elements inside this block
+		b.SetCoords (true, 20, // Is3D, NNodes
+		             0.,  L,  L, 0.,    0.,  L, L, 0.,    hL,  L, hL, 0.,    hL,  L, hL, 0.,    0.,  L,  L, 0.,  // x coordinates
+		             0., 0.,  H,  H,    0., 0., H,  H,    0., hH,  H, hH,    0., hH,  H, hH,    0., 0.,  H,  H,  // y coordinates
+		             0., 0., 0., 0.,     D,  D, D,  D,    0., 0., 0., 0.,     D,  D,  D,  D,    hD, hD, hD, hD); // z coordinates
+		b.SetWx     (2, 1.0,1.0); // x weights and num of divisions along x
+		b.SetWy     (2, 1.0,1.0); // y weights and num of divisions along y
+		b.SetWz     (2, 1.0,1.0); // z weights and num of divisions along z
+		b.SetETags  (12, -100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111);
+		b.SetFTags  (6,  -10, -11, -12, -13, -14, -15);
 		Array<Mesh::Block*> blocks;
 		blocks.Push(&b);
 

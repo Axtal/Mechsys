@@ -19,46 +19,47 @@
 #ifndef MECHSYS_MESH_STRUCTURED_H
 #define MECHSYS_MESH_STRUCTURED_H
 
-/* LOCAL indexes of Vertices, Edges, and Faces
+/* LOCAL indexes of VERTICES, EDGES, and FACES
 
   2D:
-                Vertices                               Edges
-   y
-   |        3      6      2                             y+
-   +--x      @-----@-----@                        +----(3)----+
+                Vertices                              Edges
+   y                                                                                         
+   |        3      6      2                         3       7
+   +--x      @-----@-----@                        +-----+-----+
              |           |                        |           |
+             |           |                      4 |           |5
+           7 @           @ 5                      +           +
              |           |                        |           |
-           7 @           @ 5                  x- (0)         (1) x+
-             |           |                        |           |
-             |           |                        |           |
-             @-----@-----@                        +----(2)----+
-            0      4      1                             y-
+             |           |                       0|           |1
+             @-----@-----@                        +-----+-----+
+            0      4      1                         2       6
 
   3D:
-                  Vertices                             Edges                              Faces
+                  Vertices                            Edges                              Faces
     z
-    |           4        15        7
-   ,+--y         @_______@________@                 +_______(4)______+                 +________________+ 
- x'            ,'|              ,'|               ,'|              ,'|               ,'|              ,'| 
-          12 @'  |         14 ,'  |             ,'  |            ,'  |             ,'  |  ___       ,'  | 
-           ,'    |16        ,@    |19         (6)  (8)         (7)   |           ,'    |,'5,'  [0],'    | 
-     5   ,'      @      6 ,'      @         ,'      |        ,'     (11)       ,'      |~~~     ,'      | 
-       @'=======@=======@'        |       +'==========(5)==+'        |       +'===============+'  ,'|   | 
-       |      13 |      |         |       |         |      |         |       |   ,'|   |      |   |3|   | 
-       |         |      |  11     |       |         |      |         |       |   |2|   |      |   |,'   | 
-    17 |       0 @______|_@_______@       |         +______|_(0)_____+       |   |,'   +______|_________+ 
-       @       ,'       @       ,' 3     (9)      ,'       |       ,'        |       ,'       |       ,'  
-       |   8 @'      18 |     ,'          |    (2)        (10)   ,'          |     ,' [1]  ___|     ,'    
-       |   ,'           |   ,@ 10         |   ,'           |   (3)           |   ,'      ,'4,'|   ,'      
-       | ,'             | ,'              | ,'             | ,'              | ,'        ~~~  | ,'        
-       @_______@________@'                +______(1)_______+'                +________________+'          
-     1         9         2
+    |           4        15        7                   4      16
+   ,+--y         @-------@--------@                 +-------+--------+                 +----------------+ 
+ x'            ,'|              ,'|              6,'|            7 ,'|               ,'|              ,'| 
+          12 @'  |         14 ,'  |             +'  |            ,'  |23           ,'  |  ___       ,'  | 
+           ,'    |16        ,@    |19      18 ,'  20|          ,+    |           ,'    |,'5,'  [0],'    | 
+     5   ,'      @      6 ,'      @         ,'      +  17    ,19     +         ,'      |~~~     ,'      | 
+       @'=======@=======@'        |       +'=======+=======+'        |       +'===============+'  ,'|   | 
+       |      13 |      |         |       |    5    |      |         |11     |   ,'|   |      |   |3|   | 
+       |         |      |  11     |     21|        8|  0   |22  12   |       |   |2|   |      |   |,'   | 
+    17 |       0 @- - - | @- - - -@       |         +- - - | +- - - -+       |   |,'   +- - - | +- - - -+ 
+       @       ,'       @       ,' 3      +      2,'       +       ,'        |       ,'       |       ,'  
+       |   8 @'      18 |     ,'          |     +'         |     ,'3         |     ,' [1]  ___|     ,'    
+       |   ,'           |   ,@ 10        9|   14         10|   ,+            |   ,'      ,'4,'|   ,'      
+       | ,'             | ,'              | ,'             | ,15             | ,'        ~~~  | ,'        
+       @-------@--------@'                +-------+--------+'                +----------------+'          
+     1         9         2                    1       13
 */
 
 // STL
 #include <iostream>
 #include <fstream>
 #include <cfloat>   // for DBL_EPSILON
+#include <cstdarg>  // for va_list, va_start, va_end
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
@@ -99,38 +100,41 @@ struct Pair { int L; int R; };
 class Block
 {
 public:
-	/* 2D: 8 nodes => C. Resize(2, 8)
-	 *                Wx.Resize(nDivX)
-	 *                Wy.Resize(nDivY)
-	 *          _                         _
-	 *    C  = |  x0 x1 x2 x3 x4 x5 x6 x7  |
-	 *         |_ y0 y1 y2 y3 y4 y5 y6 y7 _|
+	/* 2D:           _             _
+	 *     Coords = |  x0 x1 x2 x3  |
+	 *              |_ y0 y1 y2 y3 _|
+	 *     or       
+	 *               _                          _
+	 *     Coords = |  x0 x1 x2 x3  x4 x5 x6 x7  |
+	 *              |_ y0 y1 y2 y3  y4 y5 y6 y7 _|
 	 *
-	 * 3D: 20 nodes => C. Resize(3, 20)
-	 *                 Wx.Resize(nDivX)
-	 *                 Wy.Resize(nDivY)
-	 *                 Wz.Resize(nDivZ)
-	 *         _                                         _
-	 *        |  x0 x1 x2 x3 x4 x5 x6 x7 ... x17 x18 x19  |
-	 *    C = |  y0 y1 y2 y3 y4 y5 y6 y7 ... y17 y18 y19  |
-	 *        |_ z0 z1 z2 z3 z4 z5 z6 z7 ... z17 z18 z19 _|
+	 * 3D:           _                          _
+	 *              |  x0 x1 x2 x3 x4 x5 x6 x7   |
+	 *     Coords = |  y0 y1 y2 y3 y4 y5 y6 y7   |
+	 *              |_ z0 z1 z2 z3 z4 z5 z6 z7  _|
+	 *     
+	 *     or        _                                         _
+	 *              |  x0 x1 x2 x3 x4 x5 x6 x7 ... x17 x18 x19  |
+	 *     Coords = |  y0 y1 y2 y3 y4 y5 y6 y7 ... y17 y18 y19  |
+	 *              |_ z0 z1 z2 z3 z4 z5 z6 z7 ... z17 z18 z19 _|
 	 */
 	// Constants
 	static Pair Edge2Face[]; ///< Map from local edge ID to a pair of faces (local ID) that share this edge
 
 	// Constructor
-	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _has_etags(false), _has_ftags(false) { Set2D(); }
+	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _has_etags(false), _has_ftags(false) {}
 
 	// Set methods
-	void             Set2D  ();                                           ///< Set 2D
-	void             Set3D  ();                                           ///< Set 2D
-	void             SetTag (int Tag) { _tag = Tag; }                     ///< Set the tag to be replicated to all elements generated inside this block
-	Matrix<double> & C      ()        { return _c;  }                     ///< Set coordinates
-	Vector<int>    & ETags  ()        { _has_etags=true; return _etags; } ///< Set edge tags
-	Vector<int>    & FTags  ()        { _has_ftags=true; return _ftags; } ///< Set face tags
-	void             SetWx  (char const * Str);                           ///< Set x weights and the number of divisions along x. Ex: Str = "1 1 1 2 2 2 3 3 3"
-	void             SetWy  (char const * Str);                           ///< Set y weights and the number of divisions along y. Ex: Str = "1 2 3 4"
-	void             SetWz  (char const * Str);                           ///< Set z weights and the number of divisions along z. Ex: Str = "1 1 1 1"
+	void SetTag    (int Tag)        { _tag = Tag; } ///< Set the tag to be replicated to all elements generated inside this block
+	void SetCoords (bool Is3D, size_t NNodes, ...); ///< Set coordinates. 2D:NNodes=4 or 8. 3D:NNodes=8 or 20
+	void SetETags  (size_t NETags, ...);            ///< Set edge tags. 2D:NETags=4 or 8. 3D:NETags=12 or 24
+	void SetFTags  (size_t NFTags, ...);            ///< Set face tags. 2D:NFTags=0. 3D:NFTags=6
+	void SetNx     (size_t Nx);                     ///< Set number of x divisions with all x weights equal to 1.0
+	void SetNy     (size_t Ny);                     ///< Set number of y divisions with all y weights equal to 1.0
+	void SetNz     (size_t Nz);                     ///< Set number of z divisions with all z weights equal to 1.0
+	void SetWx     (size_t Nx, ...);                ///< Set x weights and the number of divisions along x. Ex: SetWx(4, 1,2,3,4)
+	void SetWy     (size_t Ny, ...);                ///< Set y weights and the number of divisions along y. Ex: SetWy(3, 1,2,3)
+	void SetWz     (size_t Nz, ...);                ///< Set z weights and the number of divisions along z. Ex: SetWz(2, 1,2)
 
 	// Access methods
 	int    Tag        ()         const { return _tag;          }
@@ -196,9 +200,11 @@ private:
 	int            _tag;          ///< A tag to be inherited by all elements generated inside this block
 	bool           _has_etags;    ///< Has edge tags ?
 	bool           _has_ftags;    ///< Has face tags ?
-	Vector<int>    _etags;        ///< Edges tags: size = 2D:4, 3D:12 or 24
-	Vector<int>    _ftags;        ///< Faces tags: size = 2D:0, 3D: 6
+	Vector<int>    _etags;        ///< Edges tags: size = 2D:8, 3D:24
+	Vector<int>    _ftags;        ///< Faces tags: size = 2D:0, 3D:6
 
+	void _set_2d();
+	void _set_3d();
 	void _set_wx();
 	void _set_wy();
 	void _set_wz();
@@ -303,69 +309,172 @@ Pair Block::Edge2Face[] = {{ 0, 4},  // Edge #  0 is shared among Faces # 0 and 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-// Methods ----------------------------------------------------------------------------------------------- Block
+// ------------------------------------------------------------------------------------------------------- Block
 
-inline void Block::Set2D()
+/* public */
+
+inline void Block::SetCoords(bool Is3D, size_t NNodes, ...)
 {
-	_is_3d = false;
-	_c.Resize        (2,8);
-	_etags.Resize    (4);
-	_etags.SetValues (0);
+	// Allocate arrays
+	size_t ncomps;
+	bool   set_mid = false;
+	if (Is3D)
+	{
+		if (!(NNodes==8 || NNodes==20)) throw new Fatal("Block::SetCoords: For 3D blocks, the number of nodes must be either 8 or 20. (NNodes==%d is invalid)",NNodes);
+		_set_3d ();
+		ncomps = 3*NNodes;
+		if (NNodes==8) set_mid = true;
+	}
+	else
+	{
+		if (!(NNodes==4 || NNodes==8)) throw new Fatal("Block::SetCoords: For 2D blocks, the number of nodes must be either 4 or 8. (NNodes==%d is invalid)",NNodes);
+		_set_2d ();
+		ncomps = 2*NNodes;
+		if (NNodes==4) set_mid = true;
+	}
+
+	// Set coordinates
+	va_list arg_list;
+	va_start (arg_list, NNodes); // initialize arg_list with parameters AFTER NNodes
+	for (size_t comp=0; comp<ncomps; ++comp)
+	{
+		size_t i = comp / NNodes;
+		size_t j = comp % NNodes;
+		_c(i, j) = va_arg (arg_list, double);
+	}
+	va_end (arg_list);
+
+	// Set mid nodes
+	if (set_mid)
+	{
+		if (_is_3d)
+		{
+			for (size_t i=0; i<3; ++i)
+			{
+				_c(i, 8) = (_c(i,0) + _c(i,1))/2.0;
+				_c(i, 9) = (_c(i,1) + _c(i,2))/2.0;
+				_c(i,10) = (_c(i,2) + _c(i,3))/2.0;
+				_c(i,11) = (_c(i,3) + _c(i,0))/2.0;
+
+				_c(i,12) = (_c(i,4) + _c(i,5))/2.0;
+				_c(i,13) = (_c(i,5) + _c(i,6))/2.0;
+				_c(i,14) = (_c(i,6) + _c(i,7))/2.0;
+				_c(i,15) = (_c(i,7) + _c(i,4))/2.0;
+
+				_c(i,16) = (_c(i,0) + _c(i,4))/2.0;
+				_c(i,17) = (_c(i,1) + _c(i,5))/2.0;
+				_c(i,18) = (_c(i,2) + _c(i,6))/2.0;
+				_c(i,19) = (_c(i,3) + _c(i,7))/2.0;
+			}
+		}
+		else
+		{
+			for (size_t i=0; i<2; ++i)
+			{
+				_c(i,4) = (_c(i,0) + _c(i,1))/2.0;
+				_c(i,5) = (_c(i,1) + _c(i,2))/2.0;
+				_c(i,6) = (_c(i,2) + _c(i,3))/2.0;
+				_c(i,7) = (_c(i,3) + _c(i,0))/2.0;
+			}
+		}
+	}
 }
 
-inline void Block::Set3D()
+inline void Block::SetETags(size_t NETags, ...)
 {
-	_is_3d = true;
-	_c    .Resize    (3,20);
-	_etags.Resize    (24);
-	_ftags.Resize    (6);
-	_etags.SetValues (0);
-	_ftags.SetValues (0);
+	// Check
+	if (_is_3d)
+	{
+		if (!(NETags==12 || NETags==24)) throw new Fatal("Block::SetETags: For 3D blocks, the number of edge tags must be either 12 or 24. (NETags==%d is invalid)",NETags);
+	}
+	else
+	{
+		if (!(NETags==4 || NETags==8)) throw new Fatal("Block::SetETags: For 2D blocks, the number of edge tags must be either 4 or 8. (NETags==%d is invalid)",NETags);
+	}
+
+	// Set face tags
+	_has_etags = true;
+	va_list arg_list;
+	va_start (arg_list, NETags); // initialize arg_list with parameters AETER NETags
+	for (size_t i=0; i<NETags; ++i)
+		_etags(i) = va_arg (arg_list, int);
+	va_end (arg_list);
+
+	// Set correspondent edges' tags
+	if (NETags<static_cast<size_t>(_etags.Size()))
+	{
+		for (size_t i=0; i<NETags; ++i)
+			_etags(i+NETags) = _etags(i);
+	}
 }
 
-inline void Block::SetWx(char const * Str)
+inline void Block::SetFTags(size_t NFTags, ...)
 {
-	LineParser lp(Str);
-	lp.ToArray (_wx);
+	// Check
+	if (_is_3d==false) throw new Fatal("Block::SetFTags: This method is not available for 2D blocks.");
+	if (NFTags!=6)     throw new Fatal("Block::SetFTags: For 3D blocks, the number of edge tags must be equal to 6. (NFTags==%d is invalid)",NFTags);
+
+	// Set face tags
+	_has_ftags = true;
+	va_list arg_list;
+	va_start (arg_list, NFTags); // initialize arg_list with parameters AFTER NFTags
+	for (size_t i=0; i<NFTags; ++i)
+		_ftags(i) = va_arg (arg_list, int);
+	va_end (arg_list);
+}
+
+inline void Block::SetNx(size_t Nx)
+{
+	_wx.Resize    (Nx);
+	_wx.SetValues (1.0);
+	_set_wx       ();
+}
+
+inline void Block::SetNy(size_t Ny)
+{
+	_wy.Resize    (Ny);
+	_wy.SetValues (1.0);
+	_set_wy       ();
+}
+
+inline void Block::SetNz(size_t Nz)
+{
+	_wz.Resize    (Nz);
+	_wz.SetValues (1.0);
+	_set_wz       ();
+}
+
+inline void Block::SetWx(size_t Nx, ...)
+{
+	_wx.Resize (Nx);
+	va_list arg_list;
+	va_start (arg_list, Nx); // initialize arg_list with parameters AFTER Nx
+	for (size_t i=0; i<Nx; ++i)
+		_wx[i] = va_arg (arg_list, double);
+	va_end  (arg_list);
 	_set_wx ();
 }
 
-inline void Block::SetWy(char const * Str)
+inline void Block::SetWy(size_t Ny, ...)
 {
-	LineParser lp(Str);
-	lp.ToArray (_wy);
+	_wy.Resize (Ny);
+	va_list arg_list;
+	va_start (arg_list, Ny); // initialize arg_list with parameters AFTER Ny
+	for (size_t i=0; i<Ny; ++i)
+		_wy[i] = va_arg (arg_list, double);
+	va_end  (arg_list);
 	_set_wy ();
 }
 
-inline void Block::SetWz(char const * Str)
+inline void Block::SetWz(size_t Nz, ...)
 {
-	LineParser lp(Str);
-	lp.ToArray (_wz);
+	_wz.Resize (Nz);
+	va_list arg_list;
+	va_start (arg_list, Nz); // initialize arg_list with parameters AFTER Nz
+	for (size_t i=0; i<Nz; ++i)
+		_wz[i] = va_arg (arg_list, double);
+	va_end  (arg_list);
 	_set_wz ();
-}
-
-inline void Block::_set_wx()
-{
-	_n_div_x      = _wx.Size();
-	_sum_weight_x = 0.0;
-	for (int i=0; i<_n_div_x; ++i) _sum_weight_x += _wx[i];
-	_wx.Push(0.0); // extra value just to allow looping over weights
-}
-
-inline void Block::_set_wy()
-{
-	_n_div_y      = _wy.Size();
-	_sum_weight_y = 0.0;
-	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += _wy[i];
-	_wy.Push(0.0); // extra value just to allow looping over weights
-}
-
-inline void Block::_set_wz()
-{
-	_n_div_z      = _wz.Size();
-	_sum_weight_z = 0.0;
-	for (int i=0; i<_n_div_z; ++i) _sum_weight_z += _wz[i];
-	_wz.Push(0.0); // extra value just to allow looping over weights
 }
 
 inline void Block::FindLocalEdgesFacesID(int i, int j, int k, Vertex * V) const
@@ -476,8 +585,8 @@ inline void Block::Alright() const
 inline void Block::PySet2D(int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy)
 {
 	// Basic information
-	SetTag (Tag);
-	Set2D  ();
+	SetTag  (Tag);
+	_set_2d ();
 
 	// Read C
 	int nrow = BPy::len(C); if (nrow<1) throw new Fatal("Block::PySet2D: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
@@ -516,8 +625,8 @@ inline void Block::PySet3D(int               Tag,
                            BPy::dict const & FTags)  
 {
 	// Basic information
-	SetTag (Tag);
-	Set3D  ();
+	SetTag  (Tag);
+	_set_3d ();
 
 	// Read Wx
 	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet3D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
@@ -724,7 +833,54 @@ inline void Block::PySetFTags(BPy::list const & Tags)
 #endif // USE_BOOST_PYTHON
 
 
-// Methods ------------------------------------------------------------------------------------------- Structured
+/* private */
+
+inline void Block::_set_3d()
+{
+	_is_3d = true;
+	_c    .Resize    (3,20);
+	_etags.Resize    (24);
+	_ftags.Resize    (6);
+	_etags.SetValues (0);
+	_ftags.SetValues (0);
+}
+
+inline void Block::_set_2d()
+{
+	_is_3d = false;
+	_c.Resize        (2,8);
+	_etags.Resize    (8);
+	_etags.SetValues (0);
+}
+
+inline void Block::_set_wx()
+{
+	_n_div_x      = _wx.Size();
+	_sum_weight_x = 0.0;
+	for (int i=0; i<_n_div_x; ++i) _sum_weight_x += _wx[i];
+	_wx.Push(0.0); // extra value just to allow looping over weights
+}
+
+inline void Block::_set_wy()
+{
+	_n_div_y      = _wy.Size();
+	_sum_weight_y = 0.0;
+	for (int i=0; i<_n_div_y; ++i) _sum_weight_y += _wy[i];
+	_wy.Push(0.0); // extra value just to allow looping over weights
+}
+
+inline void Block::_set_wz()
+{
+	_n_div_z      = _wz.Size();
+	_sum_weight_z = 0.0;
+	for (int i=0; i<_n_div_z; ++i) _sum_weight_z += _wz[i];
+	_wz.Push(0.0); // extra value just to allow looping over weights
+}
+
+
+// --------------------------------------------------------------------------------------------------- Structured
+
+/* public */
 
 inline size_t Structured::Generate(Array<Block*> const & Blocks)
 {
@@ -913,7 +1069,7 @@ inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock)
 #endif // USE_BOOST_PYTHON
 
 
-// Private methods -- Structured
+/* private */
 
 inline void Structured::_shape_2d(double r, double s)
 {

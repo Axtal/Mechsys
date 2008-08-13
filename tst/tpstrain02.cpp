@@ -38,13 +38,13 @@ using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
-	double H     = 2.0;   // height
-	double L     = 2.0;   // length
-	double E     = 207.0; // Young
-	double nu    = 0.3;   // Poisson
-	double q     = 1.0;   // Load
-	int    ndivx = 2;     // number of divisions along x
-	int    ndivy = 2;     // number of divisions along y
+	double H  = 2.0;   // height
+	double L  = 2.0;   // length
+	double E  = 207.0; // Young
+	double nu = 0.3;   // Poisson
+	double q  = 1.0;   // Load
+	int    nx = 2;     // number of divisions along x
+	int    ny = 2;     // number of divisions along y
 
 	/*        | | | | | | | | | | | | | | | | |  q
 	          V V V V V V V V V V V V V V V V V 
@@ -74,22 +74,20 @@ int main(int argc, char **argv) try
 	// Input
 	String linsol("LA");
 	if (argc==2)   linsol.Printf("%s",argv[1]);
-	if (argc==3) { linsol.Printf("%s",argv[1]); ndivx = ndivy = atoi(argv[2]); }
+	if (argc==3) { linsol.Printf("%s",argv[1]); nx = ny = atoi(argv[2]); }
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol nDiv\n  where LinSol:\n \tLA   => LAPACK_T  : DENSE\n \tUM   => UMFPACK_T : SPARSE\n \tSLU  => SuperLU_T : SPARSE\n \tnDiv => Number of division along x and y (must be even)\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Blocks
-	String wx; for (int i=0; i<ndivx; ++i) wx.Printf("%s %f",wx.CStr(),1.0);
-	String wy; for (int i=0; i<ndivy; ++i) wy.Printf("%s %f",wy.CStr(),1.0);
 	Mesh::Block b;
-	b.SetTag (-1); // tag to be replicated to all generated elements inside this block
-	b.Set2D  ();   // 2D
-	b.C      () = 0.,  L, L, 0.,    L/2.,    L, L/2.,   0., // x coordinates
-	              0., 0., H,  H,      0., H/2.,    H, H/2.; // y coordinates
-	b.SetWx  (wx.CStr());                                   // x weights and num of divisions along x
-	b.SetWy  (wx.CStr());                                   // y weights and num of divisions along y
-	b.ETags  () = 0, 0, -10, -20;                           // edge tags
+	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
+	b.SetCoords (false, 4,            // Is3D, NNodes
+	             0.,  L, L, 0.,       // x coordinates
+	             0., 0., H,  H);      // y coordinates
+	b.SetNx     (nx);                 // x weights and num of divisions along x
+	b.SetNy     (ny);                 // y weights and num of divisions along y
+	b.SetETags  (4,  0, 0, -10, -20); // edge tags
 	Array<Mesh::Block*> blocks;
 	blocks.Push (&b);
 
