@@ -116,12 +116,14 @@ inline void LinElastic::SetInis(char const * Inis)
 	_eps = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
 	for (size_t i=0; i<names.Size(); i++)
 	{
-			 if (names[i]=="Sx")                     _sig(0) = values[i];
+		     if (names[i]=="ZERO")                   break;
+		else if (names[i]=="Sx")                     _sig(0) = values[i];
 		else if (names[i]=="Sy")                     _sig(1) = values[i];
 		else if (names[i]=="Sz")                     _sig(2) = values[i];
 		else if (names[i]=="Sxy" || names[i]=="Syx") _sig(3) = values[i]*SQ2;
 		else if (names[i]=="Syz" || names[i]=="Szy") _sig(4) = values[i]*SQ2;
 		else if (names[i]=="Szx" || names[i]=="Sxz") _sig(5) = values[i]*SQ2;
+		else throw new Fatal("LinElastic::SetInis: '%s' component of stress is invalid",names[i].CStr());
 	}
 }
 
