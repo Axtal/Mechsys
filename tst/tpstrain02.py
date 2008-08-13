@@ -19,26 +19,28 @@
 import mechsys as m
 
 # Constants
-L     = 2.0   # Length
-H     = 2.0   # Height
-E     = 207.0 # Young
-nu    = 0.3   # Poisson
-q     = 1.0   # Load
-ndivx = 2     # Divisions along x (must be even)
-ndivy = 2     # Divisions along y
+L  = 2.0   # Length
+H  = 2.0   # Height
+E  = 207.0 # Young
+nu = 0.3   # Poisson
+q  = 1.0   # Load
+nx = 20    # Divisions along x (must be even)
+ny = 20    # Divisions along y
 
 # ----------------------------------------------------------------------------- Mesh
 
 # Blocks
 blocks = [m.mesh_block()]
-blocks[0].set_2d (-1,                                           # tag to be inherited by all elements inside this block
-                  [[0.,  L, L, 0.,    L/2.,    L, L/2.,   0.] , # coordinates: x values
-                   [0., 0., H,  H,      0., H/2.,    H, H/2.]], # coordinates: y values
-                  [1 for i in range(ndivx)],                    # weights x
-                  [1 for i in range(ndivy)])                    # weights y
-
-# Tags
-blocks[0].set_etags ([0, 0, -10, -20])
+blocks[0].set_coords (-1,                           # tag to be replicated to all elements
+                      False,                        # is 3D
+                      [(0,0), (L,0), (L,H), (0,H)], # vertices' coordinates
+                      [(0,1), (1,2), (2,3), (3,0)], # edges
+                      {(0,1):-10, (2,3):-20},       # edge tags
+                      {},                           # face tags
+                      [1 for i in range(nx)],       # weights x
+                      [1 for i in range(ny)],       # weights y
+                      [],                           # weights z
+                      0, 1, 3, 0)                   # Origin, XPlus, YPlus, None
 
 # Generate
 print 'Mesh Generation: --------------------------------------------------------------'

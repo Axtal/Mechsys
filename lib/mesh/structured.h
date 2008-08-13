@@ -206,6 +206,7 @@ private:
 	void _set_wx();
 	void _set_wy();
 	void _set_wz();
+	void _gen_mid_nodes();
 
 }; // class Block
 
@@ -315,20 +316,20 @@ inline void Block::SetCoords(bool Is3D, size_t NNodes, ...)
 {
 	// Allocate arrays
 	size_t ncomps;
-	bool   set_mid = false;
+	bool   gen_mid = false; // generate mid vertices ?
 	if (Is3D)
 	{
 		if (!(NNodes==8 || NNodes==20)) throw new Fatal("Block::SetCoords: For 3D blocks, the number of nodes must be either 8 or 20. (NNodes==%d is invalid)",NNodes);
 		_set_3d ();
 		ncomps = 3*NNodes;
-		if (NNodes==8) set_mid = true;
+		if (NNodes==8) gen_mid = true;
 	}
 	else
 	{
 		if (!(NNodes==4 || NNodes==8)) throw new Fatal("Block::SetCoords: For 2D blocks, the number of nodes must be either 4 or 8. (NNodes==%d is invalid)",NNodes);
 		_set_2d ();
 		ncomps = 2*NNodes;
-		if (NNodes==4) set_mid = true;
+		if (NNodes==4) gen_mid = true;
 	}
 
 	// Set coordinates
@@ -342,40 +343,8 @@ inline void Block::SetCoords(bool Is3D, size_t NNodes, ...)
 	}
 	va_end (arg_list);
 
-	// Set mid nodes
-	if (set_mid)
-	{
-		if (_is_3d)
-		{
-			for (size_t i=0; i<3; ++i)
-			{
-				_c(i, 8) = (_c(i,0) + _c(i,1))/2.0;
-				_c(i, 9) = (_c(i,1) + _c(i,2))/2.0;
-				_c(i,10) = (_c(i,2) + _c(i,3))/2.0;
-				_c(i,11) = (_c(i,3) + _c(i,0))/2.0;
-
-				_c(i,12) = (_c(i,4) + _c(i,5))/2.0;
-				_c(i,13) = (_c(i,5) + _c(i,6))/2.0;
-				_c(i,14) = (_c(i,6) + _c(i,7))/2.0;
-				_c(i,15) = (_c(i,7) + _c(i,4))/2.0;
-
-				_c(i,16) = (_c(i,0) + _c(i,4))/2.0;
-				_c(i,17) = (_c(i,1) + _c(i,5))/2.0;
-				_c(i,18) = (_c(i,2) + _c(i,6))/2.0;
-				_c(i,19) = (_c(i,3) + _c(i,7))/2.0;
-			}
-		}
-		else
-		{
-			for (size_t i=0; i<2; ++i)
-			{
-				_c(i,4) = (_c(i,0) + _c(i,1))/2.0;
-				_c(i,5) = (_c(i,1) + _c(i,2))/2.0;
-				_c(i,6) = (_c(i,2) + _c(i,3))/2.0;
-				_c(i,7) = (_c(i,3) + _c(i,0))/2.0;
-			}
-		}
-	}
+	// Generate mid nodes
+	if (gen_mid) _gen_mid_nodes ();
 }
 
 inline void Block::SetETags(size_t NETags, ...)
@@ -621,13 +590,15 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 	}
 
 	// Check
-	int nedges = BPy::len(Edges);
-	int nverts = BPy::len(Verts);
+	bool gen_mid = false; // generate mid vertices ?
+	int  nedges = BPy::len(Edges);
+	int  nverts = BPy::len(Verts);
 	if (_is_3d)
 	{
 		if (nedges==12)
 		{
 			if (nverts!=8) throw new Fatal("Block::PySet3D:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+			gen_mid = true;
 		}
 		else if (nedges==24)
 		{
@@ -640,6 +611,7 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 		if (nedges==4)
 		{
 			if (nverts!=4) throw new Fatal("Block::PySet3D:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
+			gen_mid = true;
 		}
 		else if (nedges==8)
 		{
@@ -671,31 +643,7 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 	tree.ShortPath (XPlusID, YPlusID, path);
 	if (_is_3d)
 	{
-		if (nedges==12)
-		{
-			// Bottom nodes
-			vl2g[1] = path[0];
-			vl2g[2] = path[1];
-			vl2g[3] = path[2];
-
-			// Behind nodes
-			tree.DelEdge   (OrigID, YPlusID);
-			tree.ShortPath (YPlusID, ZPlusID, path);
-			vl2g[7] = path[0];
-			vl2g[4] = path[1];
-
-			// Left nodes
-			tree.DelEdge   (OrigID, ZPlusID);
-			tree.ShortPath (ZPlusID, XPlusID, path);
-			vl2g[5] = path[0];
-
-			// Corner-front nodes
-			tree.DelEdge   (vl2g[4], vl2g[7]);
-			tree.DelEdge   (vl2g[7], vl2g[3]);
-			tree.ShortPath (vl2g[7], vl2g[5], path);
-			vl2g[6] = path[0];
-		}
-		else // nedges == 24
+		if (nedges==24)
 		{
 			// Bottom nodes
 			vl2g[ 8] = path[0];
@@ -732,26 +680,51 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 			tree.ShortPath (vl2g[7], vl2g[2], path);
 			vl2g[18] = path[3];
 		}
+		else // nedges==12
+		{
+			// Bottom nodes
+			vl2g[1] = path[0];
+			vl2g[2] = path[1];
+			vl2g[3] = path[2];
+
+			// Behind nodes
+			tree.DelEdge   (OrigID, YPlusID);
+			tree.ShortPath (YPlusID, ZPlusID, path);
+			vl2g[7] = path[1];
+			vl2g[4] = path[2];
+
+			// Left nodes
+			tree.DelEdge   (OrigID, ZPlusID);
+			tree.ShortPath (ZPlusID, XPlusID, path);
+			vl2g[5] = path[1];
+
+			// Corner-front nodes
+			tree.DelEdge   (vl2g[4], vl2g[7]);
+			tree.DelEdge   (vl2g[7], vl2g[3]);
+			tree.ShortPath (vl2g[7], vl2g[5], path);
+			vl2g[6] = path[1];
+		}
 	}
 	else
 	{
-		if (nedges==4)
+		if (nedges==8)
 		{
-			vl2g[1] = XPlusID;
-			vl2g[2] = YPlusID;
-			vl2g[3] = path[0];
+			vl2g[4] = path[0];
+			vl2g[1] = path[1];
+			vl2g[5] = path[2];
+			vl2g[2] = path[3];
+			vl2g[6] = path[4];
+			vl2g[3] = path[5];
+			vl2g[7] = path[6];
 		}
-		else
+		else // nedges==4
 		{
-			vl2g[ 8] = path[0];
-			vl2g[ 1] = path[1];
-			vl2g[ 9] = path[2];
-			vl2g[ 2] = path[3];
-			vl2g[10] = path[4];
-			vl2g[ 3] = path[5];
-			vl2g[11] = path[6];
+			vl2g[1] = path[0];
+			vl2g[2] = path[1];
+			vl2g[3] = path[2];
 		}
 	}
+	//std::cout << "vl2g = " << vl2g << std::endl;
 
 	// Edge and face tags
 	int net = BPy::len(ETags); // number of edges with tags
@@ -763,32 +736,72 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 		tree.Reset (edges);
 		if (_is_3d)
 		{
-			eg2l[tree.GetEdge(vl2g[0],vl2g[11])] =  0;
-			eg2l[tree.GetEdge(vl2g[1],vl2g[ 9])] =  1;
-			eg2l[tree.GetEdge(vl2g[0],vl2g[ 8])] =  2;
-			eg2l[tree.GetEdge(vl2g[3],vl2g[10])] =  3;
-			eg2l[tree.GetEdge(vl2g[4],vl2g[15])] =  4;
-			eg2l[tree.GetEdge(vl2g[5],vl2g[13])] =  5;
-			eg2l[tree.GetEdge(vl2g[4],vl2g[12])] =  6;
-			eg2l[tree.GetEdge(vl2g[7],vl2g[14])] =  7;
-			eg2l[tree.GetEdge(vl2g[0],vl2g[16])] =  8;
-			eg2l[tree.GetEdge(vl2g[1],vl2g[17])] =  9;
-			eg2l[tree.GetEdge(vl2g[2],vl2g[18])] = 10;
-			eg2l[tree.GetEdge(vl2g[3],vl2g[19])] = 11;
-			eg2l[tree.GetEdge(vl2g[3],vl2g[11])] = 12;
-			eg2l[tree.GetEdge(vl2g[2],vl2g[ 9])] = 13;
-			eg2l[tree.GetEdge(vl2g[1],vl2g[ 8])] = 14;
-			eg2l[tree.GetEdge(vl2g[2],vl2g[10])] = 15;
-			eg2l[tree.GetEdge(vl2g[7],vl2g[15])] = 16;
-			eg2l[tree.GetEdge(vl2g[6],vl2g[13])] = 17;
-			eg2l[tree.GetEdge(vl2g[5],vl2g[12])] = 18;
-			eg2l[tree.GetEdge(vl2g[6],vl2g[14])] = 19;
-			eg2l[tree.GetEdge(vl2g[4],vl2g[16])] = 20;
-			eg2l[tree.GetEdge(vl2g[5],vl2g[17])] = 21;
-			eg2l[tree.GetEdge(vl2g[6],vl2g[18])] = 22;
-			eg2l[tree.GetEdge(vl2g[7],vl2g[19])] = 23;
+			if (nedges==24)
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[11])] =  0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[ 9])] =  1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[ 8])] =  2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[10])] =  3;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[15])] =  4;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[13])] =  5;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[12])] =  6;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[14])] =  7;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[16])] =  8;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[17])] =  9;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[18])] = 10;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[19])] = 11;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[11])] = 12;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[ 9])] = 13;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[ 8])] = 14;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[10])] = 15;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[15])] = 16;
+				eg2l[tree.GetEdge(vl2g[6],vl2g[13])] = 17;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[12])] = 18;
+				eg2l[tree.GetEdge(vl2g[6],vl2g[14])] = 19;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[16])] = 20;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[17])] = 21;
+				eg2l[tree.GetEdge(vl2g[6],vl2g[18])] = 22;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[19])] = 23;
+			}
+			else // nedges==12
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[3])] =  0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[2])] =  1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[1])] =  2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[2])] =  3;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[7])] =  4;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[6])] =  5;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[5])] =  6;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[6])] =  7;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[4])] =  8;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[5])] =  9;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[6])] = 10;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[7])] = 11;
+			}
+		}
+		else
+		{
+			if (nedges==8)
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[7])] = 0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[5])] = 1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[4])] = 2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[6])] = 3;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[7])] = 4;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[5])] = 5;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[4])] = 6;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[6])] = 7;
+			}
+			else // nedges==4
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[3])] = 0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[2])] = 1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[1])] = 2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[2])] = 3;
+			}
 		}
 	}
+	//std::cout << "eg2l = " << eg2l << std::endl;
 
 	// Read coordinates
 	for (int i=0; i<nverts; ++i)
@@ -798,6 +811,9 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 		            _c(1,i) = BPy::extract<double>(xyz[1])();
 		if (_is_3d) _c(2,i) = BPy::extract<double>(xyz[2])();
 	}
+
+	// Generate mid nodes
+	if (gen_mid) _gen_mid_nodes ();
 
 	// Edge tags
 	_has_etags = (net>0 ? true : false);
@@ -809,9 +825,9 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 	}
 
 	// Face tags
-	_has_ftags = (nft>0 ? true : false);
 	if (_is_3d)
 	{
+		_has_ftags = (nft>0 ? true : false);
 		for (int i=0; i<nft; ++i)
 		{
 			BPy::tuple fa = BPy::extract<BPy::tuple>(FTags.keys()[i])();
@@ -832,7 +848,10 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 			}
 		}
 	}
-	else throw new Fatal("Block::SetCoords: For 2D blocks, FTags must be null == []");
+	else
+	{
+		if (nft>0) throw new Fatal("Block::SetCoords: For 2D blocks, FTags must be null == []");
+	}
 }
 
 #endif // USE_BOOST_PYTHON
@@ -882,6 +901,39 @@ inline void Block::_set_wz()
 	_wz.Push(0.0); // extra value just to allow looping over weights
 }
 
+inline void Block::_gen_mid_nodes()
+{
+	if (_is_3d)
+	{
+		for (size_t i=0; i<3; ++i)
+		{
+			_c(i, 8) = (_c(i,0) + _c(i,1))/2.0;
+			_c(i, 9) = (_c(i,1) + _c(i,2))/2.0;
+			_c(i,10) = (_c(i,2) + _c(i,3))/2.0;
+			_c(i,11) = (_c(i,3) + _c(i,0))/2.0;
+
+			_c(i,12) = (_c(i,4) + _c(i,5))/2.0;
+			_c(i,13) = (_c(i,5) + _c(i,6))/2.0;
+			_c(i,14) = (_c(i,6) + _c(i,7))/2.0;
+			_c(i,15) = (_c(i,7) + _c(i,4))/2.0;
+
+			_c(i,16) = (_c(i,0) + _c(i,4))/2.0;
+			_c(i,17) = (_c(i,1) + _c(i,5))/2.0;
+			_c(i,18) = (_c(i,2) + _c(i,6))/2.0;
+			_c(i,19) = (_c(i,3) + _c(i,7))/2.0;
+		}
+	}
+	else
+	{
+		for (size_t i=0; i<2; ++i)
+		{
+			_c(i,4) = (_c(i,0) + _c(i,1))/2.0;
+			_c(i,5) = (_c(i,1) + _c(i,2))/2.0;
+			_c(i,6) = (_c(i,2) + _c(i,3))/2.0;
+			_c(i,7) = (_c(i,3) + _c(i,0))/2.0;
+		}
+	}
+}
 
 // --------------------------------------------------------------------------------------------------- Structured
 

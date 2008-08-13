@@ -41,14 +41,14 @@ class Tree
 {
 public:
 	// Constructors
-	Tree (Array<long> const & NodesPairs) { _init_graph(NodesPairs); _init_path(); } ///< Size(NodesPairs)/2 == number of edges
+	Tree (Array<long> const & NodesPairs, bool Directed=false) { _init_graph(NodesPairs,Directed); _init_path(); } ///< Size(NodesPairs)/2 == number of edges
 
 	// Destructor
 	~Tree ();
 
 	// Set methods
-	void Reset   (Array<long> const & NodesPairs);    ///< Re-initialize the tree with a new set of edges
-	void DelEdge (long LeftNodeID, long RightNodeID); ///< Remove an edge from current tree
+	void Reset   (Array<long> const & NodesPairs, bool Directed=false); ///< Re-initialize the tree with a new set of edges
+	void DelEdge (long LeftNodeID, long RightNodeID);                   ///< Remove an edge from current tree
 
 	// Get methods
 	size_t nEdges    () const { return igraph_ecount (&_graph); }              ///< Return the number of edges (size) of this tree (graph)
@@ -68,7 +68,7 @@ private:
 	igraph_vector_ptr_t _path;  ///< Array with path
 
 	// Methods
-	void _init_graph (Array<long> const & NodesPairs);
+	void _init_graph (Array<long> const & NodesPairs, bool Directed);
 	void _init_path  ();
 
 }; // class Tree
@@ -93,11 +93,11 @@ inline Tree::~Tree()
 	igraph_destroy            (&_graph);
 }
 
-inline void Tree::Reset(Array<long> const & NodesPairs)
+inline void Tree::Reset(Array<long> const & NodesPairs, bool Directed)
 {
 	igraph_vector_destroy (&_edges);
 	igraph_destroy        (&_graph);
-	_init_graph           (NodesPairs);
+	_init_graph           (NodesPairs, Directed);
 }
 
 inline void Tree::DelEdge(long LeftNodeID, long RightNodeID)
@@ -118,7 +118,7 @@ inline void Tree::GetNodes(size_t i, long & LeftNodeID, long & RightNodeID) cons
 inline size_t Tree::GetEdge(long LeftNodeID, long RightNodeID) const
 {
 	igraph_integer_t eid;
-	igraph_get_eid (&_graph, &eid, LeftNodeID, RightNodeID, 1);
+	igraph_get_eid (&_graph, &eid, LeftNodeID, RightNodeID, /*directed*/1);
 	return eid;
 }
 
@@ -155,12 +155,12 @@ inline void Tree::operator= (Tree const & Other)
 
 /* private */
 
-inline void Tree::_init_graph(Array<long> const & NodesPairs)
+inline void Tree::_init_graph(Array<long> const & NodesPairs, bool Directed)
 {
 	igraph_vector_init (&_edges, NodesPairs.Size());
 	for (size_t i=0; i<NodesPairs.Size(); ++i)
 		VECTOR(_edges)[i] = NodesPairs[i];
-	igraph_create (&_graph, &_edges, /*nVerts=auto*/0, /*Directed*/1);
+	igraph_create (&_graph, &_edges, /*nVerts=auto*/0, /*Directed*/Directed);
 }
 
 inline void Tree::_init_path()
