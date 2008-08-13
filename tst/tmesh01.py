@@ -23,21 +23,21 @@ import timeit
 
 def test_2D():
     # Constants
-    L  = 1.0   # length
-    H  = 1.0   # height
-    hL = L/2.0 # half-length
-    hH = H/2.0 # half-height
+    L = 1.0   # length
+    H = 1.0   # height
     
     # Blocks
     blocks = [m.mesh_block()]
-    blocks[0].set_2d (-1,                                   # tag to be replicated to all elements
-                      [[0.,  L, L, 0.,    hL,  L, hL, 0.] , # coordinates: x values
-                       [0., 0., H,  H,    0., hH,  H, hH]], # coordinates: y values
-                      [2,4,8,16,32],                        # weights x
-                      [2,4,8,16,32,64])                     # weights y
-
-    # Tags
-    blocks[0].set_etags ([-10, -11, -12, -13])
+    blocks[0].set_coords (-1,                                       # tag to be replicated to all elements
+                          False,                                    # is 3D
+                          [(0,0), (L,0), (L,H), (0,H)],             # vertices
+                          [(0,1), (1,2), (2,3), (3,0)],             # edges
+                          {(0,1):-1, (1,2):-2, (2,3):-3, (3,0):-4}, # edge tags
+                          {},                                       # face tags
+                          [1,1],                                    # weights x
+                          [1,1],                                    # weights y
+                          [],                                       # weights z
+                          0, 1, 3, 0)                               # Origin, XPlus, YPlus, None
 
     # Generate
     ms = m.mesh_structured()

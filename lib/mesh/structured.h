@@ -168,21 +168,19 @@ public:
 	void Alright() const;
 
 #ifdef USE_BOOST_PYTHON
-	void PySet2D    (int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy);
-	void PySet3D    (int               Tag,     ///< Tag to be replicated to elements
-	                 BPy::list const & Verts,   ///< [(x1,y1,z1), (x2,y2,z2), ... 8 or 20 vertices]
-	                 BPy::list const & Wx,      ///< Weights along x
-	                 BPy::list const & Wy,      ///< Weights along y
-	                 BPy::list const & Wz,      ///< Weights along z
-	                 long              OrigID,  ///< ID of the vertex at origin
-	                 long              XPlusID, ///< ID of the vertex at the positive corner of the local x-axis
-	                 long              YPlusID, ///< ID of the vertex at the positive corner of the local y-axis
-	                 long              ZPlusID, ///< ID of the vertex at the positive corner of the local z-axis
-	                 BPy::list const & Edges,   ///< [(v1,v2), (v1,v2), ... 12 or 24 edges]
-	                 BPy::dict const & ETags,   ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
-	                 BPy::dict const & FTags);  ///< {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
-	void PySetETags (BPy::list const & Tags);
-	void PySetFTags (BPy::list const & Tags);
+	void PySetCoords (int               Tag,      ///< Tag to be replicated to elements
+	                  bool              Is3D,     ///< Is 3D?
+	                  BPy::list const & Verts,    ///< [(x1,y1,z1), (x2,y2,z2), ... (4)8 or (8)20 vertices]
+	                  BPy::list const & Edges,    ///< [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
+	                  BPy::dict const & ETags,    ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
+	                  BPy::dict const & FTags,    ///< {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
+	                  BPy::list const & Wx,       ///< Weights along x
+	                  BPy::list const & Wy,       ///< Weights along y
+	                  BPy::list const & Wz,       ///< Weights along z
+	                  long              OrigID,   ///< ID of the vertex at origin
+	                  long              XPlusID,  ///< ID of the vertex at the positive corner of the local x-axis
+	                  long              YPlusID,  ///< ID of the vertex at the positive corner of the local y-axis
+	                  long              ZPlusID); ///< ID of the vertex at the positive corner of the local z-axis
 #endif
 
 private:
@@ -582,51 +580,24 @@ inline void Block::Alright() const
 
 #ifdef USE_BOOST_PYTHON
 
-inline void Block::PySet2D(int Tag, BPy::list const & C, BPy::list const & Wx, BPy::list const & Wy)
+void Block::PySetCoords(int               Tag,     // Tag to be replicated to elements
+                        bool              Is3D,    // Is 3D?
+                        BPy::list const & Verts,   // [(x1,y1,z1), (x2,y2,z2), ... (4)8 or (8)20 vertices]
+                        BPy::list const & Edges,   // [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
+                        BPy::dict const & ETags,   // {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
+                        BPy::dict const & FTags,   // {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
+                        BPy::list const & Wx,      // Weights along x
+                        BPy::list const & Wy,      // Weights along y
+                        BPy::list const & Wz,      // Weights along z
+                        long              OrigID,  // ID of the vertex at origin
+                        long              XPlusID, // ID of the vertex at the positive corner of the local x-axis
+                        long              YPlusID, // ID of the vertex at the positive corner of the local y-axis
+                        long              ZPlusID) // ID of the vertex at the positive corner of the local z-axis
 {
 	// Basic information
-	SetTag  (Tag);
-	_set_2d ();
-
-	// Read C
-	int nrow = BPy::len(C); if (nrow<1) throw new Fatal("Block::PySet2D: Number of rows of C matrix must be greater than 0 (%d is invalid)",nrow);
-	int ncol = BPy::len(C[0]);
-	for (int i=0; i<nrow; ++i)
-	{
-		BPy::list row = BPy::extract<BPy::list>(C[i])();
-		if (BPy::len(row)!=ncol) throw new Fatal("Block::PySet2D: All rows of C matrix must have the same number of columns (%d is invalid)",BPy::len(row));
-		for (int j=0; j<ncol; ++j) _c(i,j) = BPy::extract<double>(row[j])();
-	}
-
-	// Read Wx
-	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet2D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
-	_wx.Resize (sz_wx);
-	for (int i=0; i<sz_wx; ++i) _wx[i] = BPy::extract<double>(Wx[i])();
-	_set_wx();
-
-	// Read Wy
-	int sz_wy = BPy::len(Wy); if (sz_wy<1) throw new Fatal("Block::PySet2D: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
-	_wy.Resize (sz_wy);
-	for (int i=0; i<sz_wy; ++i) _wy[i] = BPy::extract<double>(Wy[i])();
-	_set_wy();
-}
-
-inline void Block::PySet3D(int               Tag,    
-                           BPy::list const & Verts,  
-                           BPy::list const & Wx,     
-                           BPy::list const & Wy,     
-                           BPy::list const & Wz,     
-                           long              OrigID, 
-                           long              XPlusID,
-                           long              YPlusID,
-                           long              ZPlusID,
-                           BPy::list const & Edges,  
-                           BPy::dict const & ETags,  
-                           BPy::dict const & FTags)  
-{
-	// Basic information
-	SetTag  (Tag);
-	_set_3d ();
+	SetTag (Tag);
+	if (Is3D) _set_3d();
+	else      _set_2d();
 
 	// Read Wx
 	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet3D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
@@ -641,18 +612,46 @@ inline void Block::PySet3D(int               Tag,
 	_set_wy();
 
 	// Read Wz
-	int sz_wz = BPy::len(Wz); if (sz_wz<1) throw new Fatal("Block::PySet3D: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
-	_wz.Resize (sz_wz);
-	for (int i=0; i<sz_wz; ++i) _wz[i] = BPy::extract<double>(Wz[i])();
-	_set_wz();
+	if (_is_3d)
+	{
+		int sz_wz = BPy::len(Wz); if (sz_wz<1) throw new Fatal("Block::PySet3D: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
+		_wz.Resize (sz_wz);
+		for (int i=0; i<sz_wz; ++i) _wz[i] = BPy::extract<double>(Wz[i])();
+		_set_wz();
+	}
 
 	// Check
-	if (len(Edges)!=24) throw new Fatal("PySortBlock3D:: List with edges must have 24 items. Ex.: Edges = {(v1,v2):tag1, (v1,v2):tag2, ... 24 edges}. (%d is invalid)",len(Edges));
+	int nedges = BPy::len(Edges);
+	int nverts = BPy::len(Verts);
+	if (_is_3d)
+	{
+		if (nedges==12)
+		{
+			if (nverts!=8) throw new Fatal("Block::PySet3D:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		}
+		else if (nedges==24)
+		{
+			if (nverts!=20) throw new Fatal("Block::PySet3D:: For 3D blocks with 24 edges, the number of vertices must be 20. (nverts==%d is invalid)",nverts);
+		}
+		else throw new Fatal("Block::PySetCoords:: For 3D blocks, the List with edges must have either 12 or 24 items. Ex.: Edges = [(v1,v2), (v1,v2), ... 12 or 24 edges]. (nedges==%d is invalid)",nedges);
+	}
+	else
+	{
+		if (nedges==4)
+		{
+			if (nverts!=4) throw new Fatal("Block::PySet3D:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
+		}
+		else if (nedges==8)
+		{
+			if (nverts!=8) throw new Fatal("Block::PySet3D:: For 2D blocks with 8 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		}
+		else throw new Fatal("Block::PySetCoords:: For 2D blocks, the list with edges must have either 12 or 24 items. Ex.: Edges = [(v1,v2), (v1,v2), ... 4 or 8 edges]. (nedges==%d is invalid)",nedges);
+	}
 
 	// Edges
-	Array<long> edges(48); // 48 => we have to serialize for Util::Tree
+	Array<long> edges(nedges*2); // *2 => we have to serialize for Util::Tree
 	int k = 0;
-	for (int i=0; i<24; ++i)
+	for (int i=0; i<nedges; ++i)
 	{
 		BPy::tuple ed = BPy::extract<BPy::tuple>(Edges[i])();
 		edges[k  ] = BPy::extract<long>(ed[0])();
@@ -662,92 +661,142 @@ inline void Block::PySet3D(int               Tag,
 
 	// Tree
 	Util::Tree tree(edges);
-	Array<long> eds;   eds.Resize(24);  eds.SetNS(Util::_4);
-	Array<long> vg2l; vg2l.Resize(20); vg2l.SetNS(Util::_4); // map: global vertex to local vertex IDs
-	Array<long> vl2g; vl2g.Resize(20); vl2g.SetNS(Util::_4); // map: local vertex to global vertex IDs
-	vl2g[0] = OrigID;
+	Array<long> eds;   eds.Resize(nedges);  eds.SetNS(Util::_4);
+	Array<long> vl2g; vl2g.Resize(nverts); vl2g.SetNS(Util::_4); // map: local vertex to global vertex IDs
 
-	// Bottom nodes
-	Array<long> path; path.SetNS(Util::_4);
+	// Sort
+	vl2g[0] = OrigID;
+	Array<long> path;
 	tree.DelEdge   (OrigID, XPlusID);
 	tree.ShortPath (XPlusID, YPlusID, path);
-	vl2g[ 1] = path[1];   vg2l[path[1]] =  1;
-	vl2g[ 2] = path[3];   vg2l[path[3]] =  2;
-	vl2g[ 3] = path[5];   vg2l[path[5]] =  3;
-	vl2g[ 8] = path[0];   vg2l[path[0]] =  8;
-	vl2g[ 9] = path[2];   vg2l[path[2]] =  9;
-	vl2g[10] = path[4];   vg2l[path[4]] = 10;
-	vl2g[11] = path[6];   vg2l[path[6]] = 11;
+	if (_is_3d)
+	{
+		if (nedges==12)
+		{
+			// Bottom nodes
+			vl2g[1] = path[0];
+			vl2g[2] = path[1];
+			vl2g[3] = path[2];
 
-	// Behind nodes
-	tree.DelEdge   (OrigID, YPlusID);
-	tree.ShortPath (YPlusID, ZPlusID, path);
-	vl2g[19] = path[2];   vg2l[path[2]] = 19;
-	vl2g[ 7] = path[3];   vg2l[path[3]] =  7;
-	vl2g[15] = path[4];   vg2l[path[4]] = 15;
-	vl2g[ 4] = path[5];   vg2l[path[5]] =  4;
-	vl2g[16] = path[6];   vg2l[path[6]] = 16;
+			// Behind nodes
+			tree.DelEdge   (OrigID, YPlusID);
+			tree.ShortPath (YPlusID, ZPlusID, path);
+			vl2g[7] = path[0];
+			vl2g[4] = path[1];
 
-	// Left nodes
-	tree.DelEdge   (OrigID, ZPlusID);
-	tree.ShortPath (ZPlusID, XPlusID, path);
-	vl2g[12] = path[2];   vg2l[path[2]] = 12;
-	vl2g[ 5] = path[3];   vg2l[path[3]] =  5;
-	vl2g[17] = path[4];   vg2l[path[4]] = 17;
+			// Left nodes
+			tree.DelEdge   (OrigID, ZPlusID);
+			tree.ShortPath (ZPlusID, XPlusID, path);
+			vl2g[5] = path[0];
 
-	// Corner-front nodes
-	tree.DelEdge   (vl2g[7], vl2g[15]);
-	tree.DelEdge   (vl2g[7], vl2g[19]);
-	tree.ShortPath (vl2g[7], vl2g[ 5], path);
-	vl2g[14] = path[1];   vg2l[path[1]] = 14;
-	vl2g[ 6] = path[2];   vg2l[path[2]] =  6;
-	vl2g[13] = path[3];   vg2l[path[3]] = 13;
-	tree.ShortPath (vl2g[7], vl2g[2], path);
-	vl2g[18] = path[3];   vg2l[path[3]] = 18;
+			// Corner-front nodes
+			tree.DelEdge   (vl2g[4], vl2g[7]);
+			tree.DelEdge   (vl2g[7], vl2g[3]);
+			tree.ShortPath (vl2g[7], vl2g[5], path);
+			vl2g[6] = path[0];
+		}
+		else // nedges == 24
+		{
+			// Bottom nodes
+			vl2g[ 8] = path[0];
+			vl2g[ 1] = path[1];
+			vl2g[ 9] = path[2];
+			vl2g[ 2] = path[3];
+			vl2g[10] = path[4];
+			vl2g[ 3] = path[5];
+			vl2g[11] = path[6];
 
-	// 
+			// Behind nodes
+			tree.DelEdge   (OrigID, YPlusID);
+			tree.ShortPath (YPlusID, ZPlusID, path);
+			vl2g[19] = path[2];
+			vl2g[ 7] = path[3];
+			vl2g[15] = path[4];
+			vl2g[ 4] = path[5];
+			vl2g[16] = path[6];
+
+			// Left nodes
+			tree.DelEdge   (OrigID, ZPlusID);
+			tree.ShortPath (ZPlusID, XPlusID, path);
+			vl2g[12] = path[2];
+			vl2g[ 5] = path[3];
+			vl2g[17] = path[4];
+
+			// Corner-front nodes
+			tree.DelEdge   (vl2g[7], vl2g[15]);
+			tree.DelEdge   (vl2g[7], vl2g[19]);
+			tree.ShortPath (vl2g[7], vl2g[ 5], path);
+			vl2g[14] = path[1];
+			vl2g[ 6] = path[2];
+			vl2g[13] = path[3];
+			tree.ShortPath (vl2g[7], vl2g[2], path);
+			vl2g[18] = path[3];
+		}
+	}
+	else
+	{
+		if (nedges==4)
+		{
+			vl2g[1] = XPlusID;
+			vl2g[2] = YPlusID;
+			vl2g[3] = path[0];
+		}
+		else
+		{
+			vl2g[ 8] = path[0];
+			vl2g[ 1] = path[1];
+			vl2g[ 9] = path[2];
+			vl2g[ 2] = path[3];
+			vl2g[10] = path[4];
+			vl2g[ 3] = path[5];
+			vl2g[11] = path[6];
+		}
+	}
+
+	// Edge and face tags
 	int net = BPy::len(ETags); // number of edges with tags
 	int nft = BPy::len(FTags); // number of faces with tags
 	Array<long> eg2l; eg2l.SetNS(Util::_4); // map: global edge to local edge IDs
 	if (net>0 || nft>0)
 	{
-		eg2l.Resize(24);
+		eg2l.Resize(nedges);
 		tree.Reset (edges);
-		eg2l[tree.GetEdge(vl2g[0],vl2g[11])] =  0;
-		eg2l[tree.GetEdge(vl2g[1],vl2g[ 9])] =  1;
-		eg2l[tree.GetEdge(vl2g[0],vl2g[ 8])] =  2;
-		eg2l[tree.GetEdge(vl2g[3],vl2g[10])] =  3;
-		eg2l[tree.GetEdge(vl2g[4],vl2g[15])] =  4;
-		eg2l[tree.GetEdge(vl2g[5],vl2g[13])] =  5;
-		eg2l[tree.GetEdge(vl2g[4],vl2g[12])] =  6;
-		eg2l[tree.GetEdge(vl2g[7],vl2g[14])] =  7;
-		eg2l[tree.GetEdge(vl2g[0],vl2g[16])] =  8;
-		eg2l[tree.GetEdge(vl2g[1],vl2g[17])] =  9;
-		eg2l[tree.GetEdge(vl2g[2],vl2g[18])] = 10;
-		eg2l[tree.GetEdge(vl2g[3],vl2g[19])] = 11;
-		eg2l[tree.GetEdge(vl2g[3],vl2g[11])] = 12;
-		eg2l[tree.GetEdge(vl2g[2],vl2g[ 9])] = 13;
-		eg2l[tree.GetEdge(vl2g[1],vl2g[ 8])] = 14;
-		eg2l[tree.GetEdge(vl2g[2],vl2g[10])] = 15;
-		eg2l[tree.GetEdge(vl2g[7],vl2g[15])] = 16;
-		eg2l[tree.GetEdge(vl2g[6],vl2g[13])] = 17;
-		eg2l[tree.GetEdge(vl2g[5],vl2g[12])] = 18;
-		eg2l[tree.GetEdge(vl2g[6],vl2g[14])] = 19;
-		eg2l[tree.GetEdge(vl2g[4],vl2g[16])] = 20;
-		eg2l[tree.GetEdge(vl2g[5],vl2g[17])] = 21;
-		eg2l[tree.GetEdge(vl2g[6],vl2g[18])] = 22;
-		eg2l[tree.GetEdge(vl2g[7],vl2g[19])] = 23;
+		if (_is_3d)
+		{
+			eg2l[tree.GetEdge(vl2g[0],vl2g[11])] =  0;
+			eg2l[tree.GetEdge(vl2g[1],vl2g[ 9])] =  1;
+			eg2l[tree.GetEdge(vl2g[0],vl2g[ 8])] =  2;
+			eg2l[tree.GetEdge(vl2g[3],vl2g[10])] =  3;
+			eg2l[tree.GetEdge(vl2g[4],vl2g[15])] =  4;
+			eg2l[tree.GetEdge(vl2g[5],vl2g[13])] =  5;
+			eg2l[tree.GetEdge(vl2g[4],vl2g[12])] =  6;
+			eg2l[tree.GetEdge(vl2g[7],vl2g[14])] =  7;
+			eg2l[tree.GetEdge(vl2g[0],vl2g[16])] =  8;
+			eg2l[tree.GetEdge(vl2g[1],vl2g[17])] =  9;
+			eg2l[tree.GetEdge(vl2g[2],vl2g[18])] = 10;
+			eg2l[tree.GetEdge(vl2g[3],vl2g[19])] = 11;
+			eg2l[tree.GetEdge(vl2g[3],vl2g[11])] = 12;
+			eg2l[tree.GetEdge(vl2g[2],vl2g[ 9])] = 13;
+			eg2l[tree.GetEdge(vl2g[1],vl2g[ 8])] = 14;
+			eg2l[tree.GetEdge(vl2g[2],vl2g[10])] = 15;
+			eg2l[tree.GetEdge(vl2g[7],vl2g[15])] = 16;
+			eg2l[tree.GetEdge(vl2g[6],vl2g[13])] = 17;
+			eg2l[tree.GetEdge(vl2g[5],vl2g[12])] = 18;
+			eg2l[tree.GetEdge(vl2g[6],vl2g[14])] = 19;
+			eg2l[tree.GetEdge(vl2g[4],vl2g[16])] = 20;
+			eg2l[tree.GetEdge(vl2g[5],vl2g[17])] = 21;
+			eg2l[tree.GetEdge(vl2g[6],vl2g[18])] = 22;
+			eg2l[tree.GetEdge(vl2g[7],vl2g[19])] = 23;
+		}
 	}
 
 	// Read coordinates
-	int nverts = BPy::len(Verts);
-	if (nverts!=20) throw new Fatal("Block::PySet3D: Number of Verts must be either 8 or 20 (%d is invalid)",nverts);
-	for (int i=0; i<20; ++i)
+	for (int i=0; i<nverts; ++i)
 	{
 		BPy::tuple xyz = BPy::extract<BPy::tuple>(Verts[vl2g[i]])();
-		_c(0,i) = BPy::extract<double>(xyz[0])();
-		_c(1,i) = BPy::extract<double>(xyz[1])();
-		_c(2,i) = BPy::extract<double>(xyz[2])();
+		            _c(0,i) = BPy::extract<double>(xyz[0])();
+		            _c(1,i) = BPy::extract<double>(xyz[1])();
+		if (_is_3d) _c(2,i) = BPy::extract<double>(xyz[2])();
 	}
 
 	// Edge tags
@@ -761,73 +810,29 @@ inline void Block::PySet3D(int               Tag,
 
 	// Face tags
 	_has_ftags = (nft>0 ? true : false);
-	for (int i=0; i<nft; ++i)
+	if (_is_3d)
 	{
-		BPy::tuple fa = BPy::extract<BPy::tuple>(FTags.keys()[i])();
-		long ed0 = eg2l[BPy::extract<long>(fa[0])()];
-		long ed1 = eg2l[BPy::extract<long>(fa[1])()];
-		long ed2 = eg2l[BPy::extract<long>(fa[2])()];
-		int  sum[6] = { 0,0,0,0,0,0 };
-		sum[Edge2Face[ed0].L] += 1;   sum[Edge2Face[ed0].R] += 1;
-		sum[Edge2Face[ed1].L] += 1;   sum[Edge2Face[ed1].R] += 1;
-		sum[Edge2Face[ed2].L] += 1;   sum[Edge2Face[ed2].R] += 1;
-		for (int j=0; j<6; ++j)
+		for (int i=0; i<nft; ++i)
 		{
-			if (sum[j]==3) // found
+			BPy::tuple fa = BPy::extract<BPy::tuple>(FTags.keys()[i])();
+			long ed0 = eg2l[BPy::extract<long>(fa[0])()];
+			long ed1 = eg2l[BPy::extract<long>(fa[1])()];
+			long ed2 = eg2l[BPy::extract<long>(fa[2])()];
+			int  sum[6] = { 0,0,0,0,0,0 };
+			sum[Edge2Face[ed0].L] += 1;   sum[Edge2Face[ed0].R] += 1;
+			sum[Edge2Face[ed1].L] += 1;   sum[Edge2Face[ed1].R] += 1;
+			sum[Edge2Face[ed2].L] += 1;   sum[Edge2Face[ed2].R] += 1;
+			for (int j=0; j<6; ++j)
 			{
-				_ftags(j) = BPy::extract<int>(FTags.values()[i])();
-				break;
+				if (sum[j]==3) // found
+				{
+					_ftags(j) = BPy::extract<int>(FTags.values()[i])();
+					break;
+				}
 			}
 		}
 	}
-}
-
-inline void Block::PySetETags(BPy::list const & Tags)
-{
-	int n_edges = BPy::len(Tags); // 2D => 4,  3D => 12
-	if (_is_3d)
-	{
-		if (n_edges==12)
-		{
-			for (int i=0; i<n_edges; ++i)
-				_etags(i) = BPy::extract<int>(Tags[i])();
-			_has_etags = true;
-		}
-		else
-		{
-			if (n_edges!=24) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 24 (n_edges==%d is invalid)",n_edges);
-			for (int i=0; i<12; ++i)
-				_etags(i) = BPy::extract<int>(Tags[i*2])();
-			_has_etags = true;
-		}
-		/*
-		if (_is_o2)
-		{
-			if (n_edges==24) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 24 (n_edges==%d is invalid)",n_edges);
-		}
-		else
-		{
-			if (n_edges!=12) throw new Fatal("Block::PySetETags: For 3D meshes, the number of edges must be 12 (n_edges==%d is invalid)",n_edges);
-		}
-		*/
-	}
-	else
-	{
-		if (n_edges!= 4) throw new Fatal("Block::PySetETags: For 2D meshes, the number of edges must be 4 (n_edges==%d is invalid)",n_edges);
-		for (int i=0; i<n_edges; ++i)
-			_etags(i) = BPy::extract<int>(Tags[i])();
-		_has_etags = true;
-	}
-}
-
-inline void Block::PySetFTags(BPy::list const & Tags)
-{
-	if (_is_3d==false) throw new Fatal("Block::PySetFTags: This block is not 3D");
-	int n_faces = BPy::len(Tags); // 3D => 6
-	if (n_faces!=6) throw new Fatal("Block::PySetFTags: For 3D meshes, the number of faces must be 6 (n_faces==%d is invalid)",n_faces);
-	for (int i=0; i<n_faces; ++i)
-		_ftags(i) = BPy::extract<int>(Tags[i])();
-	_has_ftags = true;
+	else throw new Fatal("Block::SetCoords: For 2D blocks, FTags must be null == []");
 }
 
 #endif // USE_BOOST_PYTHON

@@ -98,10 +98,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<Mesh::Block>("mesh_block")
-	    .def("set_2d",    &Mesh::Block::PySet2D)
-	    .def("set_3d",    &Mesh::Block::PySet3D)
-	    .def("set_etags", &Mesh::Block::PySetETags)
-	    .def("set_ftags", &Mesh::Block::PySetFTags)
+	    .def("set_coords", &Mesh::Block::PySetCoords)
 	    ;
 
 	class_<Mesh::Structured>("mesh_structured")
