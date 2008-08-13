@@ -666,9 +666,9 @@ def gui():
     BGL.glColor3f     (0.0, 0.0, 0.0)
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Points:')
-    Draw.String       ('X=',        EVT_NONE      , dx    , row, 80, rh, '0.0',128,'Set the X value of the new point to be added',setx_callback)
-    Draw.String       ('Y=',        EVT_NONE      , dx+ 80, row, 80, rh, '0.0',128,'Set the Y value of the new point to be added',sety_callback)
-    Draw.String       ('Z=',        EVT_NONE      , dx+160, row, 80, rh, '0.0',128,'Set the Z value of the new point to be added',setz_callback)
+    Draw.String       ('X=',        EVT_NONE      , dx    , row, 80, rh, d['newpoint_x'],128,'Set the X value of the new point to be added',setx_callback)
+    Draw.String       ('Y=',        EVT_NONE      , dx+ 80, row, 80, rh, d['newpoint_y'],128,'Set the Y value of the new point to be added',sety_callback)
+    Draw.String       ('Z=',        EVT_NONE      , dx+160, row, 80, rh, d['newpoint_z'],128,'Set the Z value of the new point to be added',setz_callback)
     Draw.PushButton   ('Add x y z', EVT_CAD_ADDXYZ, dx+240, row, 80, rh, 'Add point from coordinates'); row -= rh
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Edges:');

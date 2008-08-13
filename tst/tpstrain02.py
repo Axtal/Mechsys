@@ -32,7 +32,6 @@ ny = 20    # Divisions along y
 # Blocks
 blocks = [m.mesh_block()]
 blocks[0].set_coords (-1,                           # tag to be replicated to all elements
-                      False,                        # is 3D
                       [(0,0), (L,0), (L,H), (0,H)], # vertices' coordinates
                       [(0,1), (1,2), (2,3), (3,0)], # edges
                       {(0,1):-10, (2,3):-20},       # edge tags

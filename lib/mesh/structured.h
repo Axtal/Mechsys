@@ -169,7 +169,6 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 	void PySetCoords (int               Tag,      ///< Tag to be replicated to elements
-	                  bool              Is3D,     ///< Is 3D?
 	                  BPy::list const & Verts,    ///< [(x1,y1,z1), (x2,y2,z2), ... (4)8 or (8)20 vertices]
 	                  BPy::list const & Edges,    ///< [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
 	                  BPy::dict const & ETags,    ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
@@ -550,7 +549,6 @@ inline void Block::Alright() const
 #ifdef USE_BOOST_PYTHON
 
 void Block::PySetCoords(int               Tag,     // Tag to be replicated to elements
-                        bool              Is3D,    // Is 3D?
                         BPy::list const & Verts,   // [(x1,y1,z1), (x2,y2,z2), ... (4)8 or (8)20 vertices]
                         BPy::list const & Edges,   // [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
                         BPy::dict const & ETags,   // {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
@@ -563,10 +561,38 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
                         long              YPlusID, // ID of the vertex at the positive corner of the local y-axis
                         long              ZPlusID) // ID of the vertex at the positive corner of the local z-axis
 {
-	// Basic information
+	// Check
+	bool gen_mid = false; // generate mid vertices ?
+	int  nedges  = BPy::len(Edges);
+	int  nverts  = BPy::len(Verts);
+	if (nedges==24)
+	{
+		if (nverts!=20) throw new Fatal("Block::PySet3D:: For 3D blocks with 24 edges, the number of vertices must be 20. (nverts==%d is invalid)",nverts);
+		_is_3d = true;
+	}
+	else if (nedges==12)
+	{
+		if (nverts!=8) throw new Fatal("Block::PySet3D:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		_is_3d  = true;
+		gen_mid = true;
+	}
+	else if (nedges==8)
+	{
+		if (nverts!=8) throw new Fatal("Block::PySet3D:: For 2D blocks with 8 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		_is_3d = false;
+	}
+	else if (nedges==4)
+	{
+		if (nverts!=4) throw new Fatal("Block::PySet3D:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
+		_is_3d  = false;
+		gen_mid = true;
+	}
+	else throw new Fatal("Block::PySetCoords:: The list with edges must have 4(2D), 8(2D), 12(3D), or 24(3D) items. Ex.: Edges = [(v1,v2), (v1,v2), ... 4,8,12 or 24 edges]. (nedges==%d is invalid)",nedges);
+
+	// Alloc arrays
 	SetTag (Tag);
-	if (Is3D) _set_3d();
-	else      _set_2d();
+	if (_is_3d) _set_3d();
+	else        _set_2d();
 
 	// Read Wx
 	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet3D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
@@ -587,37 +613,6 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 		_wz.Resize (sz_wz);
 		for (int i=0; i<sz_wz; ++i) _wz[i] = BPy::extract<double>(Wz[i])();
 		_set_wz();
-	}
-
-	// Check
-	bool gen_mid = false; // generate mid vertices ?
-	int  nedges = BPy::len(Edges);
-	int  nverts = BPy::len(Verts);
-	if (_is_3d)
-	{
-		if (nedges==12)
-		{
-			if (nverts!=8) throw new Fatal("Block::PySet3D:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
-			gen_mid = true;
-		}
-		else if (nedges==24)
-		{
-			if (nverts!=20) throw new Fatal("Block::PySet3D:: For 3D blocks with 24 edges, the number of vertices must be 20. (nverts==%d is invalid)",nverts);
-		}
-		else throw new Fatal("Block::PySetCoords:: For 3D blocks, the List with edges must have either 12 or 24 items. Ex.: Edges = [(v1,v2), (v1,v2), ... 12 or 24 edges]. (nedges==%d is invalid)",nedges);
-	}
-	else
-	{
-		if (nedges==4)
-		{
-			if (nverts!=4) throw new Fatal("Block::PySet3D:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
-			gen_mid = true;
-		}
-		else if (nedges==8)
-		{
-			if (nverts!=8) throw new Fatal("Block::PySet3D:: For 2D blocks with 8 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
-		}
-		else throw new Fatal("Block::PySetCoords:: For 2D blocks, the list with edges must have either 12 or 24 items. Ex.: Edges = [(v1,v2), (v1,v2), ... 4 or 8 edges]. (nedges==%d is invalid)",nedges);
 	}
 
 	// Edges

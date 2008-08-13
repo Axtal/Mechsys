@@ -37,7 +37,6 @@ def test_2D_1():
     # Blocks
     blocks = [m.mesh_block()]
     blocks[0].set_coords (-1,                                       # tag to be replicated to all elements
-                          False,                                    # is 3D
                           [(0,0), (L,0), (L,H), (0,H)],             # vertices' coordinates
                           [(0,1), (1,2), (2,3), (3,0)],             # edges
                           {(0,1):-1, (1,2):-2, (2,3):-3, (3,0):-4}, # edge tags
@@ -73,7 +72,6 @@ def test_2D_2():
     # Blocks
     blocks = [m.mesh_block()]
     blocks[0].set_coords (-1,                                                                               # tag to be replicated to all elements
-                          False,                                                                            # is 3D
                           [(0,0), (L,0), (L,H), (0,H), (L/2,0.1), (L-0.1,H/2), (L/2,H-0.1), (0.1,H/2)],     # vertices' coordinates
                           [(0,4), (4,1), (1,5), (5,2), (2,6), (6,3), (3,7), (7,0)],                         # edges
                           {(0,4):-1, (4,1):-2, (1,5):-3, (5,2):-4, (2,6):-5, (6,3):-6, (3,7):-7, (7,0):-8}, # edge tags

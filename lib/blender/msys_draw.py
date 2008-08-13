@@ -219,106 +219,6 @@ def break_edge(at_mid=False):
 
 # =========================================================================== Structured mesh
 
-def gen_blk_2d(obj, msh):
-
-    # Local verts indexes:      Global verts idxs:         
-    #                                                       
-    #     3      6      2          ids[4]   ids[3]   ids[2] 
-    #      @-----@-----@                @-----@-----@       
-    #      |           |                |           |       
-    #      |           |                |           |       
-    #    7 @           @ 5       ids[5] @           @ ids[1]
-    #      ^y          |                ^y          |       
-    #      |  x        |                |  x        |       
-    #      @-->--@-----@                @-->--@-----@       
-    #    0      4      1          origin   x_plus   ids[0] 
-    #                         
-    #                         
-    # Local edges indexes:      Global edges idxs:
-    #                            
-    #            y+                    eds[4]   eds[3]
-    #      +----(3)----+                @-----@-----@   
-    #      |           |                |           |eds[2]
-    #      |           |          eds[5]|           |   
-    #  x- (0)         (1) x+            @           @
-    #      |           |                |           |eds[1]
-    #      |           |          eds[6]|           |   
-    #      +----(2)----+                @-----@-----@   
-    #            y-                    x_axis  eds[0]
-
-    # get local system
-    origin, x_plus, y_plus, z_plus = di.get_local_system (obj)
-    if origin>-1:
-        x_axis = di.get_local_axis (obj, 'x')
-
-        # sort edges
-        edge_ids = [e.index for e in msh.edges if e.index!=x_axis]
-        eds, ids = di.sort_edges_and_verts (msh, edge_ids, x_plus)
-
-        # transform mesh to global coordinates
-        ori = msh.verts[:] # create a copy in local coordinates
-        msh.transform (obj.matrix)
-
-        # generate lists with coordinates
-        ord_ids = [origin, ids[0], ids[2], ids[4], x_plus, ids[1], ids[3], ids[5]]
-        cox     = [msh.verts[iv].co[0] for iv in ord_ids]
-        coy     = [msh.verts[iv].co[1] for iv in ord_ids]
-
-        # restore local coordinates
-        msh.verts = ori
-
-        # generate weights
-        nx = di.get_ndiv (obj, 'x')
-        ny = di.get_ndiv (obj, 'y')
-        if nx<1: nx = 1
-        if ny<1: ny = 1
-        wx = [1 for i in range(nx)]
-        wy = [1 for i in range(ny)]
-
-        # fill lists with tags
-        eds   = [x_axis, eds[1], eds[3], eds[5]]
-        etags = di.get_tags_list (obj, 'edge', eds)
-
-        # return list with block data
-        return [[cox, coy], wx, wy, etags]
-
-    else:
-        Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
-        return []
-
-
-def gen_blk_3d(obj, msh):
-    # get local system
-    origin, x_plus, y_plus, z_plus = di.get_local_system (obj)
-    if origin>-1:
-        # vertices coordinates
-        ori = msh.verts[:]                                       # create a copy in local coordinates
-        msh.transform (obj.matrix)                               # transform mesh to global coordinates
-        verts = [(v.co[0], v.co[1], v.co[2]) for v in msh.verts] # list of tuples
-        msh.verts = ori                                          # restore local coordinates
-
-        # generate weights
-        nx = di.get_ndiv (obj, 'x')
-        ny = di.get_ndiv (obj, 'y')
-        nz = di.get_ndiv (obj, 'z')
-        if nx<1: nx = 1
-        if ny<1: ny = 1
-        if nz<1: nz = 1
-        wx = [1 for i in range(nx)]
-        wy = [1 for i in range(ny)]
-        wz = [1 for i in range(nz)]
-
-        # edges
-        edges = [(ed.v1.index, ed.v2.index) for ed in msh.edges]
-        
-        # new block
-        blk = ms.mesh_block();
-        blk.set_3d (di.get_btag(obj), verts, wx, wy, wz, origin, x_plus, y_plus, z_plus, edges, di.get_etags(obj,msh), di.get_ftags(obj,msh))
-        return blk
-    else:
-        Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
-        return None
-
 
 def gen_struct_mesh():
     # get objects
@@ -331,34 +231,43 @@ def gen_struct_mesh():
     bks = []
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
-            # Mesh
+            # get mesh
             if len(obj.getAllProperties())==0: Blender.Draw.PupMenu('ERROR|Please, assign all mesh properties to this object(%s) first' % obj.name)
             msh = obj.getData(mesh=1)
 
-            # 2D - linear
-            if len(msh.edges)==4:
-                print '2D - linear => not yet'
+            # set block
+            origin, x_plus, y_plus, z_plus = di.get_local_system (obj)
+            if origin>-1:
+                # vertices coordinates
+                ori = msh.verts[:]                                       # create a copy in local coordinates
+                msh.transform (obj.matrix)                               # transform mesh to global coordinates
+                verts = [(v.co[0], v.co[1], v.co[2]) for v in msh.verts] # list of tuples
+                msh.verts = ori                                          # restore local coordinates
 
-            # 2D - o2
-            elif len(msh.edges)==8:
-                res  = gen_blk_2d   (obj, msh)
-                btag = di.get_btag (obj)
-                if len(res)>0:
-                    bks.append       (ms.mesh_block())
-                    bks[btag].set_2d (di.get_btag(obj), res[0], res[1], res[2])
-                    if len(res[3]): bks[btag].set_etags (res[3])
-                    obj.select (0)
-                else: return
+                # number of divisions
+                nx = di.get_ndiv (obj, 'x')
+                ny = di.get_ndiv (obj, 'y')
+                nz = di.get_ndiv (obj, 'z')
+                if nx<1: nx = 1
+                if ny<1: ny = 1
+                if nz<1: nz = 1
 
-            # 3D - linear
-            elif len(msh.edges)==12:
-                print '3D - linear => not yet'
-
-            # 3D - o2
-            elif len(msh.edges)==24:
-                bks.append (gen_blk_3d(obj, msh))
-
-            else: Blender.Draw.PupMenu('ERROR|Each block must have: 2D=8 edges, 3D=24 edges')
+                # edges
+                edges = [(ed.v1.index, ed.v2.index) for ed in msh.edges]
+                
+                # new block
+                bks.append(ms.mesh_block());
+                bks[0].set_coords (di.get_btag(obj),               # tag to be replicated to all elements
+                                   verts,                          # vertices' coordinates
+                                   edges,                          # edges
+                                   di.get_etags(obj,msh),          # edge tags
+                                   di.get_ftags(obj,msh),          # face tags
+                                   [1 for i in range(nx)],         # weights x
+                                   [1 for i in range(ny)],         # weights y
+                                   [1 for i in range(nz)],         # weights y
+                                   origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
+            else:
+                Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
 
     # generate mesh and draw results
     if len(bks)>0:
