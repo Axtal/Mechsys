@@ -53,6 +53,11 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (tsolid01   ${LIBS})
 	SET_TARGET_PROPERTIES (tsolid01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
+	ADD_EXECUTABLE        (tsolid02   tsolid02.cpp)
+	ADD_TEST              (tsolid02   tsolid02)
+	TARGET_LINK_LIBRARIES (tsolid02   ${LIBS})
+	SET_TARGET_PROPERTIES (tsolid02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (theat01    theat01.cpp)
 	ADD_TEST              (theat01    theat01)
 	TARGET_LINK_LIBRARIES (theat01    ${LIBS})

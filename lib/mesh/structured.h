@@ -1224,7 +1224,6 @@ inline void Structured::_erase()
 {
 	for (size_t i=0; i<_verts_d.Size(); ++i) if (_verts_d[i]!=NULL) delete _verts_d[i]; // it is only necessary to delete nodes in _verts_d array
 	for (size_t i=0; i<_elems.  Size(); ++i) if (_elems  [i]!=NULL) delete _elems  [i]; // it is only necessary to delete elems in _elems array
-	_is_3d = false;
 	_verts_d    .Resize(0);
 	_verts_d_bry.Resize(0);
 	_verts      .Resize(0);

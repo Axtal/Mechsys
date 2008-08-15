@@ -18,35 +18,43 @@ def fill_mesh(obj):
 
         # MechSys::Mesh::Generic
         mg = ms.mesh_generic()
+        if obj.properties['is3d']: mg.set_3d()
 
         # Transform mesh to global coordinates
         ori = msh.verts[:] # create a copy in local coordinates
         msh.transform (obj.matrix)
 
         # Vertices
-        res = di.get_verts_on_edges_with_tags (obj, msh)
         mg.set_nverts (len(msh.verts))
         for i, v in enumerate(msh.verts):
-            if i in res: onbry = True
-            else:        onbry = False
-            mg.set_vert (i, onbry, v.co[0], v.co[1])
+            onbry = True if (i in obj.properties['verts_bry']) else False
+            if mg.is_3d(): mg.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
+            else:          mg.set_vert (i, onbry, v.co[0], v.co[1])
+
+        # Restore local coordinates
+        msh.verts = ori
 
         # Elements
         nelems = obj.properties['nelems']
         mg.set_nelems (nelems)
         for i in range(nelems):
+            # element
             mg.set_elem (i, obj.properties['elems']['tags'][i],
                             obj.properties['elems']['onbs'][i],
                             obj.properties['elems']['vtks'][i])
-            for j in range(len(obj.properties['elems']['cons'] [str(i)])): mg.set_elem_con  (i, j, obj.properties['elems']['cons'] [str(i)][j])
-            for j in range(len(obj.properties['elems']['etags'][str(i)])): mg.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
-            try:
-                for j in range(len(obj.properties['elems']['ftags'][str(i)])): mg.set_elem_ftag (i, j, obj.properties['elems']['ftags'][str(i)][j])
-            except:
-                pass
 
-        # Restore local coordinates
-        msh.verts = ori
+            # connectivities
+            for j in range(len(obj.properties['elems']['cons'] [str(i)])):
+                mg.set_elem_con (i, j, obj.properties['elems']['cons'] [str(i)][j])
+
+            # edge tags
+            for j in range(len(obj.properties['elems']['etags'][str(i)])):
+                mg.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
+
+            # face tags
+            if obj.properties['is3d']:
+                for j in range(len(obj.properties['elems']['ftags'][str(i)])):
+                    mg.set_elem_ftag (i, j, obj.properties['elems']['ftags'][str(i)][j])
 
         # End
         if edm: Blender.Window.EditMode(1)
@@ -67,7 +75,7 @@ def run_fea(obj):
     eatts = di.get_eatts_numeric (obj)
 
     # set geometry
-    g = ms.geom(2)
+    g = ms.geom(3) if m.is_3d() else ms.geom(2)
     ms.set_geom (m, nbrys, ebrys, fbrys, eatts, g)
 
     # solve
@@ -95,8 +103,9 @@ def gen_script(obj):
     eatts = di.get_eatts_numeric (obj)
 
     # text
-    fn  = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
-    txt = Blender.Text.New(obj.name+'_script')
+    ndim = 3 if obj.properties['is3d'] else 2
+    fn   = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
+    txt  = Blender.Text.New(obj.name+'_script')
     txt.write ('import bpy\n')
     txt.write ('import mechsys\n')
     txt.write ('import msys_fem\n')
@@ -106,7 +115,7 @@ def gen_script(obj):
     txt.write ('ebrys = '+ebrys.__str__()+'\n')
     txt.write ('fbrys = '+fbrys.__str__()+'\n')
     txt.write ('eatts = '+eatts.__str__()+'\n')
-    txt.write ('geom  = mechsys.geom(2)\n')
+    txt.write ('geom  = mechsys.geom('+str(ndim)+')\n')
     txt.write ('mechsys.set_geom (mesh, nbrys, ebrys, fbrys, eatts, geom)\n')
     txt.write ('sol   = mechsys.solver("ForwardEuler")\n')
     txt.write ('sol.set_geom(geom)\n')

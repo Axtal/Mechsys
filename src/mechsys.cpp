@@ -67,6 +67,8 @@ using namespace boost::python;
 
 // Overloadings                                                      minargs  maxargs
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,        4, 5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_Set3D,          Set3D,          0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Set3D,          Set3D,          0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Set3D,          Set3D,          0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,    2, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyPoint,   SetPolyPoint,   3, 4)
@@ -75,11 +77,15 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  5, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,    3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 2)
 
+BOOST_PYTHON_FUNCTION_OVERLOADS (PySetGeom_Overloads, PySetGeom, 6, 7)
+
 BOOST_PYTHON_MODULE (mechsys)
 {
 	// --------------------------------------------------------------------------- Mesh
 
 	class_<Mesh::Generic>("mesh_generic")
+	    .def("is_3d",         &Mesh::Generic::Is3D)
+	    .def("set_3d",        &Mesh::Generic::Set3D,   MG_Set3D())
 	    .def("set_o2",        &Mesh::Generic::SetO2)
 	    .def("set_nverts",    &Mesh::Generic::SetNVerts)
 	    .def("set_nelems",    &Mesh::Generic::SetNElems)
@@ -90,6 +96,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_elem_ftag", &Mesh::Generic::SetElemFTag)
 	    .def("write_vtu",     &Mesh::Generic::PyWriteVTU)
 	    .def("get_verts",     &Mesh::Generic::PyGetVerts)
+	    .def("get_verts_bry", &Mesh::Generic::PyGetVertsBry)
 	    .def("get_edges",     &Mesh::Generic::PyGetEdges)
 	    .def("get_etags",     &Mesh::Generic::PyGetETags)
 	    .def("get_ftags",     &Mesh::Generic::PyGetFTags)
@@ -103,17 +110,21 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	class_<Mesh::Structured>("mesh_structured")
 	    .def(init<double>())
-	    .def("write_vtu",   &Mesh::Structured::PyWriteVTU)
-	    .def("get_verts",   &Mesh::Structured::PyGetVerts)
-	    .def("get_edges",   &Mesh::Structured::PyGetEdges)
-	    .def("get_etags",   &Mesh::Structured::PyGetETags)
-	    .def("get_ftags",   &Mesh::Structured::PyGetFTags)
-	    .def("get_elems",   &Mesh::Structured::PyGetElems)
-	    .def("generate",    &Mesh::Structured::PyGenerate)
+	    .def("is_3d",         &Mesh::Structured::Is3D)
+	    .def("set_3d",        &Mesh::Structured::Set3D, MS_Set3D())
+	    .def("write_vtu",     &Mesh::Structured::PyWriteVTU)
+	    .def("get_verts",     &Mesh::Structured::PyGetVerts)
+	    .def("get_verts_bry", &Mesh::Structured::PyGetVertsBry)
+	    .def("get_edges",     &Mesh::Structured::PyGetEdges)
+	    .def("get_etags",     &Mesh::Structured::PyGetETags)
+	    .def("get_ftags",     &Mesh::Structured::PyGetFTags)
+	    .def("get_elems",     &Mesh::Structured::PyGetElems)
+	    .def("generate",      &Mesh::Structured::PyGenerate)
 	    .def(self_ns::str(self))
 	    ;
 
 	class_<Mesh::Unstructured>("mesh_unstructured")
+	    .def("is_3d",            &Mesh::Unstructured::Is3D)
 	    .def("set_3d",           &Mesh::Unstructured::Set3D,          MU_Set3D())
 	    .def("set_poly_size",    &Mesh::Unstructured::SetPolySize,    MU_SetPolySize())
 	    .def("set_poly_point",   &Mesh::Unstructured::SetPolyPoint,   MU_SetPolyPoint())
@@ -123,6 +134,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("generate",         &Mesh::Unstructured::Generate,       MU_Generate())
 	    .def("write_vtu",        &Mesh::Unstructured::PyWriteVTU)
 	    .def("get_verts",        &Mesh::Unstructured::PyGetVerts)
+	    .def("get_verts_bry",    &Mesh::Unstructured::PyGetVertsBry)
 	    .def("get_edges",        &Mesh::Unstructured::PyGetEdges)
 	    .def("get_etags",        &Mesh::Unstructured::PyGetETags)
 	    .def("get_ftags",        &Mesh::Unstructured::PyGetFTags)
@@ -180,13 +192,11 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ----------------------------------------------------------------------- functions
 	
 	// Global functions
-	def ("out_vtk",      PyOutputVTK          );
-	def ("out_vtu",      PyOutputVTU          );
-	def ("out_vtu_cg",   PyOutputVTUcg        );
-	def ("out_vtk",      PyOutputVTK          );
-	def ("set_geom",     PySetGeom            );
-	def ("set_geom",     PySetGeomStructured  );
-	def ("set_geom",     PySetGeomUnstructured);
+	def ("out_vtk",    PyOutputVTK   );
+	def ("out_vtu",    PyOutputVTU   );
+	def ("out_vtu_cg", PyOutputVTUcg );
+	def ("out_vtk",    PyOutputVTK   );
+	def ("set_geom",   PySetGeom, PySetGeom_Overloads());
 
 	// ---------------------------------------------------------------------- Exceptions
 	

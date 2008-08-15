@@ -6,6 +6,7 @@ tst/tquad4
 tst/tquad8
 tst/ttruss01
 tst/tsolid01
+tst/tsolid02
 tst/tpstrain01
 tst/tpstrain02
 tst/theat01

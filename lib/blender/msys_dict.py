@@ -311,16 +311,6 @@ def get_ftags(obj, msh):
             res[tuple(ids)] = obj.properties['ftags'][eids]
     return res
 
-def get_verts_on_edges_with_tags(obj, msh):
-    etags = get_tags (obj, 'edge')
-    verts = []
-    for e in etags:
-        idx1 = msh.edges[e[0]].v1.index
-        idx2 = msh.edges[e[0]].v2.index
-        if idx1 not in verts: verts.append(idx1)
-        if idx2 not in verts: verts.append(idx2)
-    return verts
-
 def get_tags_list(obj, key, global_ids):
     # In:
     #      key        = 'edge' or 'face'
@@ -680,13 +670,13 @@ def set_eatt_model(obj, id, model): # property must exist
     p.data = d[0]+' '+d[1]+' '+model+' '+d[3]+' '+d[4]
 
 def set_eatt_prms(obj, id, prms): # property must exist
-    val = '_'.join(val.split())
+    prms = '_'.join(prms.split())
     p = obj.getProperty ('eatt_'+str(id))
     d = p.data.split()
     p.data = d[0]+' '+d[1]+' '+d[2]+' '+prms+' '+d[4]
 
 def set_eatt_inis(obj, id, inis): # property must exist
-    val = '_'.join(val.split())
+    inis = '_'.join(inis.split())
     p = obj.getProperty ('eatt_'+str(id))
     d = p.data.split()
     p.data = d[0]+' '+d[1]+' '+d[2]+' '+d[3]+' '+inis

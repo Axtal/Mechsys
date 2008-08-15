@@ -148,12 +148,13 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-	void   PyWriteVTU (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
-	size_t PyGetVerts (BPy::list & Verts) const;
-	size_t PyGetEdges (BPy::list & Edges) const;
-	void   PyGetETags (BPy::dict & ETags) const;
-	void   PyGetFTags (BPy::dict & FTags) const;
-	size_t PyGetElems (BPy::dict & Elems) const;
+	void   PyWriteVTU    (BPy::str const & FileName) { WriteVTU (BPy::extract<char const *>(FileName)()); }
+	size_t PyGetVerts    (BPy::list & Verts)      const;
+	size_t PyGetVertsBry (BPy::list & VertsOnBry) const;
+	size_t PyGetEdges    (BPy::list & Edges)      const;
+	void   PyGetETags    (BPy::dict & ETags)      const;
+	void   PyGetFTags    (BPy::dict & FTags)      const;
+	size_t PyGetElems    (BPy::dict & Elems)      const;
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -392,6 +393,16 @@ inline size_t Generic::PyGetVerts(BPy::list & Verts) const
 	return len(Verts);
 }
 
+inline size_t Generic::PyGetVertsBry(BPy::list & VertsOnBry) const
+{
+	/* Out:
+	 *      Verts = [id0, id1, ... num verts on bry]
+	 */
+	for (size_t i=0; i<NVertsBry(); ++i)
+		VertsOnBry.append (VertBry(i));
+	return NVertsBry();
+}
+
 inline size_t Generic::PyGetEdges(BPy::list & Edges) const
 {
 	/* Out:
@@ -526,7 +537,6 @@ inline void Generic::_erase()
 {
 	for (size_t i=0; i<_verts.Size(); ++i) if (_verts[i]!=NULL) delete _verts[i]; // it is only necessary to delete nodes in _verts array
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i]; // it is only necessary to delete elems in _elems array
-	_is_3d = false;
 	if (_verts    .Size()>0) _verts      .Resize(0);
 	if (_elems    .Size()>0) _elems      .Resize(0);
 	if (_elems_bry.Size()>0) _elems_bry  .Resize(0);

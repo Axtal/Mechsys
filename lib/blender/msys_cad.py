@@ -129,7 +129,8 @@ def button_event(evt):
     # set faces tag
     elif evt==EVT_MESH_SETFTAG:
         edm, obj, msh = di.get_msh()
-        if len(msh.edges.selected())==8:
+        nedges = len(msh.edges.selected())
+        if nedges==3 or nedges==6 or nedges==4 or nedges==8:
             di.set_ftag (obj, msh.edges.selected(), dict['newftag'])
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1) # return to EditMode

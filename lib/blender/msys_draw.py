@@ -373,6 +373,14 @@ def draw_mesh(mms):
     new_obj.select       (1)
     print '[1;34mMechSys[0m: Mesh extended'
 
+    # Vertices on boundary
+    verts_bry = []
+    mms.get_verts_bry (verts_bry)
+    new_obj.properties['verts_bry'] = verts_bry;
+
+    # 2D or 3D mesh ?
+    new_obj.properties['is3d'] = mms.is_3d()
+
     # set elements
     elems  = {}
     nelems = mms.get_elems (elems)

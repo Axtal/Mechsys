@@ -22,7 +22,6 @@
 // STL
 #include <iostream>
 #include <fstream>
-#include <cfloat>  // for DBL_EPSILON
 
 // Boost
 #if defined(USE_BOOST) || defined(USE_BOOST_PYTHON)
@@ -54,7 +53,8 @@ inline void SetGeom (Mesh::Generic const * M,          ///< In: The mesh
                      EBrys_T       const * EdgesBrys,  ///< In: Give NULL for 3D meshes without edges boundary conditions
                      FBrys_T       const * FacesBrys,  ///< In: Give NULL for 2D meshes
                      EAtts_T       const * ElemsAtts,  ///< In: Elements attributes
-                     FEM::Geom           * G)          ///< Out: The FE geometry
+                     FEM::Geom           * G,          ///< Out: The FE geometry
+                     double                Tol=1.0e-5) ///< In: Tolerance to be used when comparing Nodes
 {
 	/* Example:
 	
@@ -190,8 +190,7 @@ inline void SetGeom (Mesh::Generic const * M,          ///< In: The mesh
 					double y =         (*NodesBrys)[j].get<1>();
 					double z = (is3d ? (*NodesBrys)[j].get<2>() : 0.0);
 					double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
-					if (d<sqrt(DBL_EPSILON))
-						G->Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
+					if (d<Tol) G->Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
 				}
 			}
 		}
@@ -207,12 +206,13 @@ inline void SetGeom (Mesh::Generic const * M,          ///< In: The mesh
 
 namespace BPy = boost::python;
 
-void PySetGeom (Mesh::Generic const & M,         ///< In: The mesh
-                BPy::list     const & NodesBrys, ///< In: Give [] when there are no nodes boundary conditions
-                BPy::list     const & EdgesBrys, ///< In: Give [] for 3D mesh without edge boundary conditions
-                BPy::list     const & FacesBrys, ///< In: Give [] for 2D meshes
-                BPy::list     const & ElemsAtts, ///< In: Elements attributes
-                FEM::Geom           & G)         ///< Out: The FE geometry
+void PySetGeom (Mesh::Generic const & M,          ///< In: The mesh
+                BPy::list     const & NodesBrys,  ///< In: Give [] when there are no nodes boundary conditions
+                BPy::list     const & EdgesBrys,  ///< In: Give [] for 3D mesh without edge boundary conditions
+                BPy::list     const & FacesBrys,  ///< In: Give [] for 2D meshes
+                BPy::list     const & ElemsAtts,  ///< In: Elements attributes
+                FEM::Geom           & G,          ///< Out: The FE geometry
+                double                Tol=1.0e-5) ///< In: Tolerance to be used when comparing Nodes
 {
 	/* Example:
 	 *           # Nodes brys
@@ -299,22 +299,12 @@ void PySetGeom (Mesh::Generic const & M,         ///< In: The mesh
 	}
 
 	// Set geometry
-	FEM::SetGeom (&M, nbrys, ebrys, fbrys, &eatts, &G);
+	FEM::SetGeom (&M, nbrys, ebrys, fbrys, &eatts, &G, Tol);
 
 	// Clean up
 	if (nbrys!=NULL) delete nbrys;
 	if (ebrys!=NULL) delete ebrys;
 	if (fbrys!=NULL) delete fbrys;
-}
-
-void PySetGeomStructured (Mesh::Structured const & M, BPy::list const & NodesBrys, BPy::list const & EdgesBrys, BPy::list const & FacesBrys, BPy::list const & ElemsAtts, FEM::Geom & G)
-{
-	PySetGeom (M, NodesBrys, EdgesBrys, FacesBrys, ElemsAtts, G);
-}
-
-void PySetGeomUnstructured (Mesh::Unstructured const & M, BPy::list const & NodesBrys, BPy::list const & EdgesBrys, BPy::list const & FacesBrys, BPy::list const & ElemsAtts, FEM::Geom & G)
-{
-	PySetGeom (M, NodesBrys, EdgesBrys, FacesBrys, ElemsAtts, G);
 }
 
 // }
