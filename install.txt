@@ -42,4 +42,12 @@ Will install:  g++ make gfortran libblitz0-dev libsuitesparse-dev
 ~/mechsys $  sudo apt-get install blender
 ~/mechsys $  sh ubuntu_blender_links.sh
 
+#  6) Paraview (http://www.paraview.org)   ##########################
+
+~/pkg $ tar xzvf paraview-3.3.1-Linux-i686.tar.gz
+~/pkg $ sudo ln -s ~/pkg/paraview-3.3.1-Linux-i686/bin/paraview
+        /usr/local/bin
+~/pkg $ sudo ln -s ~/pkg/paraview-3.3.1-Linux-i686/lib/paraview-3.3
+        /usr/local/lib
+
 #####################################################################
