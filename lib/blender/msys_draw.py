@@ -257,15 +257,15 @@ def gen_struct_mesh():
                 
                 # new block
                 bks.append(ms.mesh_block());
-                bks[0].set_coords (di.get_btag(obj),               # tag to be replicated to all elements
-                                   verts,                          # vertices' coordinates
-                                   edges,                          # edges
-                                   di.get_etags(obj,msh),          # edge tags
-                                   di.get_ftags(obj,msh),          # face tags
-                                   [1 for i in range(nx)],         # weights x
-                                   [1 for i in range(ny)],         # weights y
-                                   [1 for i in range(nz)],         # weights y
-                                   origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
+                bks[-1].set_coords (di.get_btag(obj),               # tag to be replicated to all elements
+                                    verts,                          # vertices' coordinates
+                                    edges,                          # edges
+                                    di.get_etags(obj,msh),          # edge tags
+                                    di.get_ftags(obj,msh),          # face tags
+                                    [1 for i in range(nx)],         # weights x
+                                    [1 for i in range(ny)],         # weights y
+                                    [1 for i in range(nz)],         # weights y
+                                    origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
             else:
                 Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
 
