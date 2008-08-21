@@ -362,21 +362,57 @@ def show_elems_callback(evt,val):
     Blender.Window.QRedrawAll()
 
 def ndivx_callback(evt,val):
-    edm, obj, msh = di.get_msh()
-    di.set_ndiv (obj, 'x', val)
-    if edm: Blender.Window.EditMode(1)
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_ndiv (o, 'x', val)
     Blender.Window.QRedrawAll()
 
 def ndivy_callback(evt,val):
-    edm, obj, msh = di.get_msh()
-    di.set_ndiv (obj, 'y', val)
-    if edm: Blender.Window.EditMode(1)
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_ndiv (o, 'y', val)
     Blender.Window.QRedrawAll()
 
 def ndivz_callback(evt,val):
-    edm, obj, msh = di.get_msh()
-    di.set_ndiv (obj, 'z', val)
-    if edm: Blender.Window.EditMode(1)
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_ndiv (o, 'z', val)
+    Blender.Window.QRedrawAll()
+
+def acoefx_callback(evt,val):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_acoef (o, 'x', val)
+    Blender.Window.QRedrawAll()
+
+def acoefy_callback(evt,val):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_acoef (o, 'y', val)
+    Blender.Window.QRedrawAll()
+
+def acoefz_callback(evt,val):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_acoef (o, 'z', val)
+    Blender.Window.QRedrawAll()
+
+def nonlinx_callback(evt,val):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_nonlin (o, 'x', val)
+    Blender.Window.QRedrawAll()
+
+def nonliny_callback(evt,val):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_nonlin (o, 'y', val)
+    Blender.Window.QRedrawAll()
+
+def nonlinz_callback(evt,val):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_nonlin (o, 'z', val)
     Blender.Window.QRedrawAll()
 
 
@@ -391,9 +427,9 @@ def ftag_callback(evt,val):
     dict['newftag'] = val
 
 def btag_callback(evt,val):
-    edm, obj, msh = di.get_msh()
-    di.set_btag (obj, val)
-    if edm: Blender.Window.EditMode(1)
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for o in obs: di.set_btag (o, val)
     Blender.Window.QRedrawAll()
 
 
@@ -599,6 +635,12 @@ def gui():
     ndivx    = 2
     ndivy    = 2
     ndivz    = 1
+    acoefx   = '0'
+    acoefy   = '0'
+    acoefz   = '0'
+    nonlinx  = 0
+    nonliny  = 0
+    nonlinz  = 0
     minangle = '-1.0'
     maxarea  = '-1.0'
     regs     = []
@@ -613,6 +655,12 @@ def gui():
         ndivx    = di.get_ndiv     (obj,'x')
         ndivy    = di.get_ndiv     (obj,'y')
         ndivz    = di.get_ndiv     (obj,'z')
+        acoefx   = di.get_acoef    (obj,'x')
+        acoefy   = di.get_acoef    (obj,'y')
+        acoefz   = di.get_acoef    (obj,'z')
+        nonlinx  = di.get_nonlin   (obj,'x')
+        nonliny  = di.get_nonlin   (obj,'y')
+        nonlinz  = di.get_nonlin   (obj,'z')
         minangle = di.get_minangle (obj)
         maxarea  = di.get_maxarea  (obj)
         regs     = di.get_regs     (obj)
@@ -638,7 +686,7 @@ def gui():
 
     # Heights of windows
     h_cad       = 4*rh+ggy
-    h_struct    = 4*rh+ggy+sgy
+    h_struct    = 6*rh+ggy+sgy
     h_unst_regs = (1+len(regs))*rh+sgy
     h_unst_hols = (1+len(hols))*rh+sgy
     h_unstruct  = ggy+3*sgy+2*rh + rh+h_unst_regs + rh+h_unst_hols
@@ -737,9 +785,15 @@ def gui():
     Draw.PushButton   ('Set z', EVT_MESH_SETZ, dx+120, row, 60, rh , 'Set local z axis (one edge must be previously selected)'); row -= rh
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Divisions:')
-    Draw.Number       ('nX=',  EVT_NONE, dx,     row, 80, rh, ndivx, 1, 1000,'Set number of divisions along x (local axis)',ndivx_callback)
-    Draw.Number       ('nY=',  EVT_NONE, dx+ 80, row, 80, rh, ndivy, 1, 1000,'Set number of divisions along y (local axis)',ndivy_callback)
-    Draw.Number       ('nZ=',  EVT_NONE, dx+160, row, 80, rh, ndivz, 1, 1000,'Set number of divisions along z (local axis)',ndivz_callback); row -= rh
+    Draw.Number       ('nX=',    EVT_NONE, dx,     row, 80, rh, ndivx,  1, 1000,'Set number of divisions along x (local axis)',ndivx_callback)
+    Draw.Number       ('nY=',    EVT_NONE, dx+ 80, row, 80, rh, ndivy,  1, 1000,'Set number of divisions along y (local axis)',ndivy_callback)
+    Draw.Number       ('nZ=',    EVT_NONE, dx+160, row, 80, rh, ndivz,  1, 1000,'Set number of divisions along z (local axis)',ndivz_callback); row -= rh
+    Draw.String       ('aX=',    EVT_NONE, dx    , row, 80, rh, acoefx, 32,'Set the a coeficient of the divisions function for the x direction (0 => equal size divisions)',acoefx_callback)
+    Draw.String       ('aY=',    EVT_NONE, dx+ 80, row, 80, rh, acoefy, 32,'Set the a coeficient of the divisions function for the x direction (0 => equal size divisions)',acoefy_callback)
+    Draw.String       ('aZ=',    EVT_NONE, dx+160, row, 80, rh, acoefz, 32,'Set the a coeficient of the divisions function for the x direction (0 => equal size divisions)',acoefz_callback); row -= rh
+    Draw.Toggle       ('NonLinX',EVT_NONE, dx,     row, 80, rh, nonlinx, 'Set non-linear divisions along x', nonlinx_callback)
+    Draw.Toggle       ('NonLinY',EVT_NONE, dx+ 80, row, 80, rh, nonliny, 'Set non-linear divisions along y', nonliny_callback)
+    Draw.Toggle       ('NonLinZ',EVT_NONE, dx+160, row, 80, rh, nonlinz, 'Set non-linear divisions along z', nonlinz_callback); row -= rh
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Block:')
     Draw.Number       ('Tag=', EVT_NONE, dx, row, 100, rh, btag, -1000, 0,'Set the block tag (to be replicated to all elements)',btag_callback); row -= rh+sgy

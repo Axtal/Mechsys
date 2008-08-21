@@ -239,6 +239,7 @@ def get_local_system(obj):
     except: z_plus = -1
     return origin, x_plus, y_plus, z_plus
 
+
 def set_ndiv(obj, key, ndiv):
     # In:
     #      key  = 'x', 'y', or 'z'
@@ -253,6 +254,38 @@ def get_ndiv(obj, key):
     try:    ndiv = obj.getProperty('ndiv_'+key).data
     except: ndiv = -1
     return ndiv
+
+
+def set_acoef(obj, key, acoef):
+    # In:
+    #      key  = 'x', 'y', or 'z'
+    #      acoef = a coefficient for the divisions function along 'x', 'y', or 'z'
+    set_str_property (obj, 'acoef_'+key, acoef)
+
+def get_acoef(obj, key):
+    # In:
+    #      key = 'x', 'y', or 'z'
+    # Out:
+    #      acoef = a coefficient for the divisions function along 'x', 'y', or 'z'
+    try:    acoef = obj.getProperty('acoef_'+key).data
+    except: acoef = '0'
+    return acoef
+
+
+def set_nonlin(obj, key, nonlin):
+    # In:
+    #      key    = 'x', 'y', or 'z'
+    #      nonlin = 0 or 1
+    set_int_property (obj, 'nonlin_'+key, nonlin)
+
+def get_nonlin(obj, key):
+    # In:
+    #      key = 'x', 'y', or 'z'
+    # Out:
+    #      nonlin = 0 or 1
+    try:    nonlin = obj.getProperty('nonlin_'+key).data
+    except: nonlin = 0
+    return nonlin
 
 
 # ================================================================================ Block tags

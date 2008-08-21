@@ -251,6 +251,15 @@ def gen_struct_mesh():
                 if nx<1: nx = 1
                 if ny<1: ny = 1
                 if nz<1: nz = 1
+                ax = float(di.get_acoef (obj, 'x'))
+                ay = float(di.get_acoef (obj, 'y'))
+                az = float(di.get_acoef (obj, 'z'))
+                if di.get_nonlin (obj, 'x')==0: wx = [1.0+ax*float(i)  for i in range(nx)]
+                else:                           wx = [float(i+1.0)**ax for i in range(nx)]
+                if di.get_nonlin (obj, 'y')==0: wy = [1.0+ay*float(i)  for i in range(ny)]
+                else:                           wy = [float(i+1.0)**ay for i in range(ny)]
+                if di.get_nonlin (obj, 'z')==0: wz = [1.0+az*float(i)  for i in range(nz)]
+                else:                           wz = [float(i+1.0)**az for i in range(nz)]
 
                 # edges
                 edges = [(ed.v1.index, ed.v2.index) for ed in msh.edges]
@@ -262,9 +271,7 @@ def gen_struct_mesh():
                                     edges,                          # edges
                                     di.get_etags(obj,msh),          # edge tags
                                     di.get_ftags(obj,msh),          # face tags
-                                    [1 for i in range(nx)],         # weights x
-                                    [1 for i in range(ny)],         # weights y
-                                    [1 for i in range(nz)],         # weights y
+                                    wx, wy, wz,                     # weigths x, y, and z
                                     origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
             else:
                 Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
