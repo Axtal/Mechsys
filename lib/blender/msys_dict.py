@@ -409,39 +409,44 @@ def get_maxarea(obj):
 
 # =================================================================================== Regions
 
-def set_reg(obj, id, maxarea, x, y, z):
+def set_reg(obj, id, tag, maxarea, x, y, z):
     try:
         prop      = obj.getProperty ('reg_'+str(id))
-        prop.data = maxarea+' '+x+' '+y+' '+z
+        prop.data = str(tag)+' '+maxarea+' '+x+' '+y+' '+z
     except:
-        obj.addProperty ('reg_'+str(id), maxarea+' '+x+' '+y+' '+z, 'STRING')
+        obj.addProperty ('reg_'+str(id), str(tag)+' '+maxarea+' '+x+' '+y+' '+z, 'STRING')
+
+def set_reg_tag(obj, id, tag): # property must exist
+    p = obj.getProperty ('reg_'+str(id))
+    d = p.data.split()
+    p.data = str(tag)+' '+d[1]+' '+d[2]+' '+d[3]+' '+d[4]
 
 def set_reg_maxarea(obj, id, maxarea): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = maxarea+' '+d[1]+' '+d[2]+' '+d[3]
+    p.data = d[0]+' '+maxarea+' '+d[2]+' '+d[3]+' '+d[4]
 
 def set_reg_x(obj, id, x): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = d[0]+' '+x+' '+d[2]+' '+d[3]
+    p.data = d[0]+' '+d[1]+' '+x+' '+d[3]+' '+d[4]
 
 def set_reg_y(obj, id, y): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+y+' '+d[3]
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+y+' '+d[4]
 
 def set_reg_z(obj, id, z): # property must exist
     p = obj.getProperty ('reg_'+str(id))
     d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+d[2]+' '+z
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+d[3]+' '+z
 
 def get_regs(obj):
     res = []
     for p in obj.getAllProperties():
         if p.name[:3]=='reg':
             d = p.data.split()
-            res.append ([d[0], d[1], d[2], d[3]])
+            res.append ([d[0], d[1], d[2], d[3], d[4]])
     return res 
 
 def del_all_regs(obj):
@@ -454,7 +459,7 @@ def del_reg(obj, id):
     k = 0
     for i in range(len(regs)):
         if i!=id:
-            set_reg (obj, k, regs[i][0], regs[i][1], regs[i][2], regs[i][3])
+            set_reg (obj, k, regs[i][0], regs[i][1], regs[i][2], regs[i][3], regs[i][4])
             k += 1
 
 

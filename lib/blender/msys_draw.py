@@ -323,7 +323,9 @@ def gen_unstruct_mesh():
             if key in ets: mu.set_poly_segment (e.index, e.v1.index, e.v2.index, ets[key])
             else:          mu.set_poly_segment (e.index, e.v1.index, e.v2.index)
         for i, r in enumerate(rgs):
-            mu.set_poly_region (i, -(i+1), float(r[0]), float(r[1]), float(r[2]), float(r[3]))
+            print r
+            #                   i      Tag      MaxArea          X           Y            Z
+            mu.set_poly_region (i, int(r[0]), float(r[1]), float(r[2]), float(r[3]), float(r[4]))
         for i, h in enumerate(hls):
             mu.set_poly_hole (i, float(h[0]), float(h[1]), float(h[2]))
         maxarea  = di.get_maxarea  (obj)

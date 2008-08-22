@@ -188,7 +188,7 @@ def button_event(evt):
         if obj!=None:
             x, y, z = Blender.Window.GetCursorPos()
             regs = di.get_regs (obj)
-            di.set_reg (obj, len(regs), '-1', str(x),str(y),str(z))
+            di.set_reg (obj, len(regs), -1, '-1', str(x),str(y),str(z))
             Blender.Window.QRedrawAll()
 
     # delete all regions
@@ -449,6 +449,11 @@ def maxarea_callback(evt,val):
 
 
 # ---------------------------------- Regions
+
+def regs_tag_callback(evt,val):
+    obj = di.get_obj()
+    if obj!=None:
+        di.set_reg_tag (obj, evt-1000, val)
 
 def regs_maxarea_callback(evt,val):
     obj = di.get_obj()
@@ -832,13 +837,14 @@ def gui():
     BGL.glColor3f     (0.0, 0.0, 0.0)
     Draw.PushButton   ('Add',        EVT_MESH_ADDREG,     ggx+120, row+2, 60, rh-4, 'Add region')
     Draw.PushButton   ('Delete all', EVT_MESH_DELALLREGS, ggx+200, row+2, 80, rh-4, 'Delete all regions'); row -= rh
-    BGL.glRasterPos2i (ggx, row+5); Draw.Text('    Max area            X                  Y                  Z'); row -= rh
+    BGL.glRasterPos2i (ggx, row+5); Draw.Text('     Tag        Max area            X                  Y                  Z'); row -= rh
     for i, reg in enumerate(regs):
-        Draw.String     ('',    1000+i, ggx    , row, 80, rh, reg[0],128,'Max area (-1 => use default)',regs_maxarea_callback)
-        Draw.String     ('',    1000+i, ggx+ 80, row, 80, rh, reg[1],128,'X of the rege',regs_setx_callback)
-        Draw.String     ('',    1000+i, ggx+160, row, 80, rh, reg[2],128,'Y of the rege',regs_sety_callback)
-        Draw.String     ('',    1000+i, ggx+240, row, 80, rh, reg[3],128,'Z of the rege',regs_setz_callback)
-        Draw.PushButton ('Del', 1000+i, ggx+320, row, 40, rh, 'Delete this row', regs_delonereg_callback); row -= rh
+        Draw.Number     ('',    1000+i, ggx    , row, 60, rh, int(reg[0]), -1000, 0,'Region tag',                  regs_tag_callback)
+        Draw.String     ('',    1000+i, ggx+ 60, row, 80, rh,     reg[1],    128,   'Max area (-1 => use default)',regs_maxarea_callback)
+        Draw.String     ('',    1000+i, ggx+140, row, 80, rh,     reg[2],    128,   'X of the rege',               regs_setx_callback)
+        Draw.String     ('',    1000+i, ggx+220, row, 80, rh,     reg[3],    128,   'Y of the rege',               regs_sety_callback)
+        Draw.String     ('',    1000+i, ggx+300, row, 80, rh,     reg[4],    128,   'Z of the rege',               regs_setz_callback)
+        Draw.PushButton ('Del', 1000+i, ggx+380, row, 40, rh,                       'Delete this row',             regs_delonereg_callback); row -= rh
 
     # Mesh -- unstructured -- holes
     h = h_unst_hols

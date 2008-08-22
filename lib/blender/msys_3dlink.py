@@ -145,7 +145,7 @@ if dict['show_props']:
                     rgs = di.get_regs (obj)
                     for r in rgs:
                         BGL.glColor3f     (0.0, 0.0, 0.0)
-                        BGL.glRasterPos3f (float(r[1]), float(r[2]), float(r[3]))
+                        BGL.glRasterPos3f (float(r[2]), float(r[3]), float(r[4]))
                         Draw.Text         ('region_'+r[0])
 
                     # draw holes
