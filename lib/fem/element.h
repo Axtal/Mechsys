@@ -448,23 +448,32 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 
 inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const
 {
-	// Compute face nodal values (integration along the face)
-	LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
-	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
-	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
-	for (size_t i=0; i<_n_face_int_pts; i++)
+	if (IsEssential(Key)) // Assign directly
 	{
-		double r = _a_face_int_pts[i].r;
-		double s = _a_face_int_pts[i].s;
-		double w = _a_face_int_pts[i].w;
-		FaceShape    (r, s, face_shape);
-		FaceJacobian (FaceConnects, r, s, J);
-		values += FaceValue*face_shape*det(J)*w;
+		// Set nodes Brys
+		for (size_t i=0; i<_n_face_nodes; ++i)
+			FaceConnects[i]->Bry(Key,FaceValue);
 	}
+	else // Integrate along area/length
+	{
+		// Compute face nodal values (integration along the face)
+		LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
+		LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
+		LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
+		for (size_t i=0; i<_n_face_int_pts; i++)
+		{
+			double r = _a_face_int_pts[i].r;
+			double s = _a_face_int_pts[i].s;
+			double w = _a_face_int_pts[i].w;
+			FaceShape    (r, s, face_shape);
+			FaceJacobian (FaceConnects, r, s, J);
+			values += FaceValue*face_shape*det(J)*w;
+		}
 
-	// Set nodes Brys
-	for (size_t i=0; i<_n_face_nodes; ++i)
-		FaceConnects[i]->Bry(Key,values(i));
+		// Set nodes Brys
+		for (size_t i=0; i<_n_face_nodes; ++i)
+			FaceConnects[i]->Bry(Key,values(i));
+	}
 }
 
 
