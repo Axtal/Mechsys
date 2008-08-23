@@ -97,12 +97,12 @@ public:
 
 	// Get methods -- derived
 	size_t NVerts          ()                   const { return _tou.numberofpoints; }
-	size_t NVertsBry       ()                   const { return 0; } ///< TODO
+	size_t NVertsBry       ()                   const { return _vbry.Size(); }
 	size_t NElems          ()                   const { return _tou.numberoftriangles; }
 	size_t NElemsBry       ()                   const { return 0; } ///< TODO
-	long   VertBry         (size_t i)           const { return 0; } ///< TODO
+	long   VertBry         (size_t i)           const { return _vbry[i]; }
 	long   ElemBry         (size_t i)           const { return 0; } ///< TODO
-	bool   IsVertOnBry     (size_t i)           const { return false; } ///< TODO
+	bool   IsVertOnBry     (size_t i)           const { return (_vbry.Find(i)<0 ? false : true); }
 	double VertX           (size_t i)           const { return _tou.pointlist[i*2  ]; }
 	double VertY           (size_t i)           const { return _tou.pointlist[i*2+1]; }
 	double VertZ           (size_t i)           const { return 0; }
@@ -120,8 +120,9 @@ public:
 
 private:
 	// Data
-	TriIO _tin; ///< Triangle IO's input structure
-	TriIO _tou; ///< Triangle IO's output structure
+	TriIO        _tin;  ///< Triangle IO's input structure
+	TriIO        _tou;  ///< Triangle IO's output structure
+	Array<long>  _vbry; ///< Array with IDs of vertices on boundary
 
 	// Overloaded private methods
 	void   _vtk_con          (size_t i, String & Connect) const;
@@ -231,14 +232,25 @@ inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 	std::cout << "JRS' triangle parameters = " << prms << std::endl;
 	triangulate (prms.CStr(), &_tin, &_tou, NULL);
 
-	/*
+	/* Find vertices on boundary
+	 * _tou.pointmarkerlist[ipoint] will be equal to:
+	 * == edgeTag (<0) => on edge with tag
+	 * == 0            => internal vertex (not on boundary)
+	 * == 1            => on boundary
+	 */
+	_vbry.Resize(0);
 	for (int i=0; i<_tou.numberofpoints; ++i)
 	{
-	   for (int j=0; j<_tou.numberofpointattributes; j++)
-		std::cout << _tou.pointattributelist[i*_tou.numberofpointattributes+j] << "  ";
-	   std::cout << std::endl;
+		int mark = _tou.pointmarkerlist[i];
+		if (mark<0 || mark==1) _vbry.Push(i);
+		/*
+		for (int j=0; j<_tou.numberofpointattributes; j++)
+			std::cout << _tou.pointattributelist[i*_tou.numberofpointattributes+j] << "  ";
+		std::cout << std::endl;
+		*/
 	}
 
+	/*
 	for (int i=0; i<_tou.numberoftriangles; ++i)
 	{
 	   for (int j=0; j<_tou.numberoftriangleattributes; j++)
