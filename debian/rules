@@ -1,0 +1,44 @@
+#!/usr/bin/make -f
+
+PYVERS=$(shell pyversions -vr)
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f *-stamp
+	rm -rf build*
+	find . -name *\.py[co] -exec rm {} \;
+	dh_clean
+
+build: $(PYVERS:%=build-python%)
+	touch $@
+
+build-python%:
+	dh_testdir
+	python$* setup.py build
+	touch $@
+
+install: build $(PYVERS:%=install-python%)
+
+install-python%:
+	python$* setup.py install --root $(CURDIR)/debian/mechsys/
+
+binary-indep: build install
+
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs 
+	dh_installdocs
+	dh_pycentral
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install

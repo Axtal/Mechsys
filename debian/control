@@ -1,0 +1,18 @@
+Source: mechsys
+Section: science
+Priority: optional
+Maintainer: Dorival Pedroso <dorival.pedroso@gmail.com>
+Build-Depends: debhelper (>= 6.0), python2.5 (>= 2.5)
+Standards-Version: 3.7.2
+XS-Python-Version: >= 2.5
+
+Package: mechsys
+Architecture: any
+Depends: ${python:Depends}, ${shlibs:Depends}
+Provides: ${python:Provides}
+XB-Python-Version: ${python:Versions}
+Description: Open Library for Mechanics
+ Open Library for Mechanics
+ Includes a 3D FEM program with CAD and mesh generation via Blender
+ .
+  Homepage: http://mechsys.nongnu.org
