@@ -2,7 +2,7 @@ Source: mechsys
 Section: science
 Priority: optional
 Maintainer: Dorival Pedroso <dorival.pedroso@gmail.com>
-Build-Depends: debhelper (>= 6.0), python2.5 (>= 2.5)
+Build-Depends: debhelper, python2.5 (>= 2.5), libboost-python-dev, libsuitesparse-dev
 Standards-Version: 3.7.2
 XS-Python-Version: >= 2.5
 
