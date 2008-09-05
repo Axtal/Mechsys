@@ -35,6 +35,7 @@ EVT_CAD_ADDXYZ       =  2 # type in values to define point(s)
 EVT_CAD_FILLET       =  3 # 3D fillet
 EVT_CAD_EDGEBREAK    =  4 # break edge
 EVT_CAD_EDGEBREAKM   =  5 # break edge at middle point
+EVT_CAD_EDGEINTERS   = 55 # edge closest distance
 EVT_CAD_FPOINT       =  6 # read points from file
 EVT_CAD_FSPLINE      =  7 # create a spline from points in a file
 # Mesh
@@ -109,6 +110,9 @@ def button_event(evt):
 
     # break an edge at middle point
     elif evt==EVT_CAD_EDGEBREAKM: dr.break_edge(True)
+
+    # edge closest distance
+    elif evt==EVT_CAD_EDGEINTERS: dr.edge_intersect()
 
     # read vertices from file
     elif evt==EVT_CAD_FPOINT: Blender.Window.FileSelector(dr.add_points_from_file, "Read X Y Z cols")
@@ -731,8 +735,9 @@ def gui():
     Draw.PushButton   ('Fillet',  EVT_CAD_FILLET, dx+240 , row ,  80 , rh , 'Create a fillet between two edges'); row -= rh
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('Edges:');
-    Draw.PushButton   ('Break edge',      EVT_CAD_EDGEBREAK , dx,      row ,  120, rh , 'Break an edge at a previously selected point')
-    Draw.PushButton   ('Break at middle', EVT_CAD_EDGEBREAKM, dx+120 , row ,  120, rh , 'Break an edge at its middle point'); row -= rh
+    Draw.PushButton   ('Break edge',        EVT_CAD_EDGEBREAK , dx,      row ,  120, rh , 'Break an edge at a previously selected point')
+    Draw.PushButton   ('Break at middle',   EVT_CAD_EDGEBREAKM, dx+120 , row ,  120, rh , 'Break an edge at its middle point')
+    Draw.PushButton   ('Edge intersection', EVT_CAD_EDGEINTERS, dx+240 , row ,  120, rh , 'Find the intersection (smaller distance) between two edges'); row -= rh
     BGL.glRasterPos2i (ggx, row+4)
     Draw.Text         ('File:')
     Draw.PushButton   ('Read Points', EVT_CAD_FPOINT,  dx,     row, 120, rh, 'Add points by reading a list from file')
