@@ -121,6 +121,50 @@ def arc_point(msh,cen,sp,ep,steps):
         dr1 = pt-cen
 
 
+def edge_intersect():
+    scn = bpy.data.scenes.active
+    obj = scn.objects.active
+    if obj!=None and obj.type=='Mesh':
+        edm = Blender.Window.EditMode()
+        if edm: Blender.Window.EditMode(0)
+        msh = obj.getData(mesh=1)
+        print '[1;34mMechSys:[0m', msh.edges.selected(), 'edges selected' # TODO: check why sometimes 3 edges are selected
+        if len(msh.edges.selected())==2:
+            # points (vertices)
+            e1 = msh.edges.selected()[0]
+            e2 = msh.edges.selected()[1]
+            v1 = msh.edges[e1].v1
+            v2 = msh.edges[e1].v2
+            v3 = msh.edges[e2].v1
+            v4 = msh.edges[e2].v2
+            # intersection
+            res = Blender.Mathutils.LineIntersect(v1.co,v2.co,v3.co,v4.co)
+            if res==None: Blender.Draw.PupMenu('ERROR|These edges are parallel (obj=%s)' % obj.name)
+            else:
+                i1, i2 = res
+                if i1!=v1.co and i1!=v2.co and i1!=v3.co and i1!=v4.co and i2!=v1.co and i2!=v2.co and i2!=v3.co and i2!=v4.co:
+                    e1v2 = msh.edges[e1].v2
+                    e2v2 = msh.edges[e2].v2
+                    if i1!=i2:
+                        msh.verts.extend (i1)
+                        msh.verts.extend (i2)
+                        msh.edges[e1].v2 = msh.verts[-2]
+                        msh.edges.extend (msh.verts[-2],e1v2)
+                        msh.edges.extend (msh.verts[-2], msh.verts[-1])
+                        msh.edges[e2].v2 = msh.verts[-1]
+                        msh.edges.extend (msh.verts[-1],e2v2)
+                    else:
+                        msh.verts.extend (i1)
+                        msh.edges[e1].v2 = msh.verts[-1]
+                        msh.edges.extend (msh.verts[-1],e1v2)
+                        msh.edges[e2].v2 = msh.verts[-1]
+                        msh.edges.extend (msh.verts[-1],e2v2)
+                Blender.Window.RedrawAll()
+        else: Blender.Draw.PupMenu('ERROR|Please, select exaclty two edges (obj=%s)' % obj.name)
+        if edm: Blender.Window.EditMode(1)
+    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
+
+
 def fillet(radius,steps):
     scn = bpy.data.scenes.active
     obj = scn.objects.active
@@ -136,57 +180,60 @@ def fillet(radius,steps):
             v3 = msh.edges[msh.edges.selected()[1]].v1
             v4 = msh.edges[msh.edges.selected()[1]].v2
             # intersection
-            i1, i2 = Blender.Mathutils.LineIntersect(v1.co,v2.co,v3.co,v4.co)
-            # fillet
-            if i1!=i2: Blender.Draw.PupMenu('ERROR|These two edges do not intersect (obj=%s)' % obj.name)
+            res = Blender.Mathutils.LineIntersect(v1.co,v2.co,v3.co,v4.co)
+            if res==None: Blender.Draw.PupMenu('ERROR|These edges are parallel (obj=%s)' % obj.name)
             else:
-                #
-                #                   ep  _,--* p2
-                #                  _,-*'
-                #     a=|ep-p1|,--' /
-                #        _,--'     /radius  cen
-                #    p1 *_--------|----------*-  d=|c-p1|
-                #         `--,_    \
-                #              `--,_\
-                #                   `-*,_
-                #                   sp   `--* p3
-                di, i = closest(i1,[v1.co,v2.co])
-                dj, j = closest(i1,[v3.co,v4.co])
-                if i==0:
-                    v1.co = i1
-                    p1,p2 = v1,v2
+                i1, i2 = res
+                # fillet
+                if i1!=i2: Blender.Draw.PupMenu('ERROR|These two edges do not intersect (obj=%s)' % obj.name)
                 else:
-                    v2.co = i1
-                    p1,p2 = v2,v1
-                if j==0:
-                    msh.edges[msh.edges.selected()[1]].v1 = p1
-                    if v3!=p1: msh.verts.delete(v3)
-                    p3 = msh.edges[msh.edges.selected()[1]].v2
-                else:
-                    msh.edges[msh.edges.selected()[1]].v2 = p1
-                    if v4!=p1: msh.verts.delete(v4)
-                    p3 = msh.edges[msh.edges.selected()[1]].v1
-                if radius>0.0:
-                    # vectors along the edges
-                    e1  = p2.co-p1.co; e1.normalize()
-                    e2  = p3.co-p1.co; e2.normalize()
-                    alp = Blender.Mathutils.AngleBetweenVecs(e1,e2)/2.0
-                    a   = radius/math.tan(math.radians(alp))
-                    d   = math.sqrt(math.pow(a,2)+math.pow(radius,2))
-                    ep  = p1.co+a*e1
-                    sp  = p1.co+a*e2
-                    mid = Blender.Mathutils.MidpointVecs(sp,ep); mid-=p1.co; mid.normalize()
-                    cen = p1.co+d*mid
-                    # add points to the arch
-                    msh.verts.extend(sp)
-                    msh.edges.extend(p3,msh.verts[len(msh.verts)-1])
-                    arc_point(msh,cen,sp,ep,steps)
-                    msh.verts.extend(ep)
-                    msh.edges.extend(msh.verts[len(msh.verts)-2],msh.verts[len(msh.verts)-1])
-                    msh.edges.extend(msh.verts[len(msh.verts)-1],p2)
-                    msh.verts.delete(p1)
-                Blender.Window.RedrawAll()
-        else: Blender.Draw.PupMenu('ERROR|Please, select (only) two edges (obj=%s)' % obj.name)
+                    #
+                    #                   ep  _,--* p2
+                    #                  _,-*'
+                    #     a=|ep-p1|,--' /
+                    #        _,--'     /radius  cen
+                    #    p1 *_--------|----------*-  d=|c-p1|
+                    #         `--,_    \
+                    #              `--,_\
+                    #                   `-*,_
+                    #                   sp   `--* p3
+                    di, i = closest(i1,[v1.co,v2.co])
+                    dj, j = closest(i1,[v3.co,v4.co])
+                    if i==0:
+                        v1.co = i1
+                        p1,p2 = v1,v2
+                    else:
+                        v2.co = i1
+                        p1,p2 = v2,v1
+                    if j==0:
+                        msh.edges[msh.edges.selected()[1]].v1 = p1
+                        if v3!=p1: msh.verts.delete(v3)
+                        p3 = msh.edges[msh.edges.selected()[1]].v2
+                    else:
+                        msh.edges[msh.edges.selected()[1]].v2 = p1
+                        if v4!=p1: msh.verts.delete(v4)
+                        p3 = msh.edges[msh.edges.selected()[1]].v1
+                    if radius>0.0:
+                        # vectors along the edges
+                        e1  = p2.co-p1.co; e1.normalize()
+                        e2  = p3.co-p1.co; e2.normalize()
+                        alp = Blender.Mathutils.AngleBetweenVecs(e1,e2)/2.0
+                        a   = radius/math.tan(math.radians(alp))
+                        d   = math.sqrt(math.pow(a,2)+math.pow(radius,2))
+                        ep  = p1.co+a*e1
+                        sp  = p1.co+a*e2
+                        mid = Blender.Mathutils.MidpointVecs(sp,ep); mid-=p1.co; mid.normalize()
+                        cen = p1.co+d*mid
+                        # add points to the arch
+                        msh.verts.extend(sp)
+                        msh.edges.extend(p3,msh.verts[len(msh.verts)-1])
+                        arc_point(msh,cen,sp,ep,steps)
+                        msh.verts.extend(ep)
+                        msh.edges.extend(msh.verts[-2],msh.verts[-1])
+                        msh.edges.extend(msh.verts[-1],p2)
+                        msh.verts.delete(p1)
+                    Blender.Window.RedrawAll()
+        else: Blender.Draw.PupMenu('ERROR|Please, select exaclty two edges (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
     else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
 
