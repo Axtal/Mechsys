@@ -2,7 +2,7 @@
 
 # SETTING PBUILDER
 # ================
-#   sudo apt-get install pbuilder debootstrap devscripts lintian
+#   sudo apt-get install pbuilder fakeroot devscripts dh-make lintian
 #   sudo pbuilder create
 #   gvim ~/.pbuilderrc
 #      COMPONENTS="main universe"
