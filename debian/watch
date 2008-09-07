@@ -1,3 +1,0 @@
-# Compulsory line, this is a version 3 file
-version=3
-opts="uversionmangle=s/^(\d)/$1./" http://qa.debian.org/watch/sf.php/mechsys/mechsys-sources-(.*)\.zip
