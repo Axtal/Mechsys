@@ -19,6 +19,8 @@ build-python%:
 	touch $@
 
 install: build $(PYVERS:%=install-python%)
+	test -d $(CURDIR)/debian/mechsys/usr/share/blender/scripts/ || mkdir -p $(CURDIR)/debian/mechsys/usr/share/blender/scripts/
+	cp lib/blender/*.py $(CURDIR)/debian/mechsys/usr/share/blender/scripts/
 
 install-python%:
 	python$* setup.py install --root $(CURDIR)/debian/mechsys/

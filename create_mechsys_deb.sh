@@ -9,17 +9,18 @@
 #      OTHERMIRROR="deb http://cneurocvs.rmki.kfki.hu /packages/binary/"
 #   sudo pbuilder update --override-config
 
-if [ "$#" -ne 1 ]; then
+if [ "$#" -ne 2 ]; then
 	echo
 	echo "Usage:"
-	echo "        [1;34msh $0[0m [1;31mVERSION[0m"
+	echo "        [1;34msh $0[0m [1;31mVERSION REV[0m"
 	echo
-	echo " where VERSION = 0.1, for example"
+	echo " where [1;31mVERSION=1.0[0m and [1;31mREV=1[0m, for example"
 	echo
 	exit 1
 fi
 
 VERSION=$1
+REV=$2
 
 set -e
 
@@ -35,26 +36,29 @@ rm .hgignore
 find . -iname "*.swp" -exec rm {} \;
 find . -iname "*.vtu" -exec rm {} \;
 find . -iname "*.vtk" -exec rm {} \;
+cd ..
+tar czvf mechsys_$VERSION.orig.tar.gz mechsys-$VERSION/
 
 echo
 echo "[1;34m########################################## Generating source package[0m"
 echo
+cd mechsys-$VERSION
 debuild -S
 
 echo
 echo "[1;34m########################################### Verifying source package[0m"
 echo
 cd ..
-lintian -i mechsys_$VERSION.dsc
+lintian -i mechsys_$VERSION-$REV.dsc
 
 echo
 echo "[1;34m############################################# Generating deb package[0m"
 echo
-sudo pbuilder build mechsys_$VERSION.dsc
+sudo pbuilder build mechsys_$VERSION-$REV.dsc
 echo
 
 echo
 echo "[1;34m############################################# Cleaning up temp files[0m"
 echo
-rm -f *.changes *.build
+rm -f *.build
 rm -rf ./mechsys-$VERSION/
