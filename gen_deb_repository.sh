@@ -30,14 +30,11 @@ if [ -f mechsys_$VERSION-$REV.dsc ]; then
 		mv mechsys_"$VERSION-$REV"_source.changes sources/
 		# binary
 		dpkg-scanpackages binary /dev/null \
-		 | sed 's@Filename: binary/@Filename: releases/mechsys/binary/@' \
-		 | sed 's@libboost-python1.34.1 (>= 1.34.1-2.1), @@' \
-		 | sed 's@liblapack3gf | liblapack.so.3gf | libatlas3gf-base, @@' \
-		 | sed 's@python (<< 2.6), @@' \
+		 | sed 's@Filename: binary/@Filename: /releases/mechsys/binary/@' \
 		 | gzip -9c > binary/Packages.gz
 		# sources
 		dpkg-scansources sources /dev/null \
-		 | sed 's@Directory: sources@Directory: releases/mechsys/sources@' \
+		 | sed 's@Directory: sources@Directory: /releases/mechsys/sources@' \
 		 | gzip -9c > sources/Sources.gz
 		# upload
 		echo

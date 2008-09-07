@@ -11,7 +11,6 @@ Package: mechsys
 Architecture: any
 Depends: ${python:Depends}, ${shlibs:Depends}, blender, libboost-python-dev, libsuitesparse-dev, libigraph-dev
 Recommends: paraview
-Provides: ${python:Provides}
 XB-Python-Version: ${python:Versions}
 Description: Open Library for Mechanics
  MechSys is a comprehensive library (through C++ or Python) to the
