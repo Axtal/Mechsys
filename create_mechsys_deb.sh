@@ -58,14 +58,3 @@ echo "[1;34m############################################# Cleaning up temp file
 echo
 rm -f *.changes *.build
 rm -rf ./mechsys-$VERSION/
-
-echo
-echo "[1;34m############################################## Setting up repository[0m"
-echo
-test -d binary || mkdir binary
-test -d sources || mkdir sources
-cp /var/cache/pbuilder/result/mechsys_"$VERSION"_i386.deb binary/
-mv mechsys_$VERSION.dsc sources/
-mv *.tar.gz sources/
-dpkg-scanpackages binary | gzip -9c > binary/Packages.gz
-dpkg-scansources sources | gzip -9c > sources/Packages.gz
