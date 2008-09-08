@@ -30,15 +30,6 @@
 #include "util/util.h"
 #include "util/lineparser.h"
 
-using Tensors::Tensor2;
-using Tensors::Tensor4;
-using Tensors::VectorToTensor2;
-using Tensors::Tensor2ToVector;
-using Tensors::Tensor4ToMatrix;
-using Util::SQ2;
-using LinAlg::Vector;
-using LinAlg::Matrix;
-
 class LinElastic : public EquilibModel
 {
 public:
@@ -46,26 +37,25 @@ public:
 	virtual ~LinElastic () {}
 
 	// Derived Methods
-	void         SetPrms      (char const * Prms);
-	void         SetInis      (char const * Inis);
-	void         TgStiffness  (Matrix<double> & D) const { Tensor4ToMatrix (_geom, _De, D); };
-	int          StressUpdate (Vector<double> const & DEps, Vector<double> & DSig);
-	void         BackupState  ();
-	void         RestoreState ();
-	char const * Name         () const { return "LinElastic"; }
+	void         SetPrms (char const * Prms);
+	void         SetInis (char const * Inis);
+	char const * Name    () const { return "LinElastic"; }
 
 private:
 	// Data
 	Tensor4 _De;
 
 	// Private methods
-	double _val (char const * Name) const { throw new Fatal("LinElastic::_val The Name==%s is invalid",Name); }
+	void   _stiffness (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
+	double _val       (char const * Name) const { throw new Fatal("LinElastic::_val The Name==%s is invalid",Name); }
 
 }; // class LinElastic
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+/* public */
 
 inline void LinElastic::SetPrms(char const * Prms)
 {
@@ -87,7 +77,11 @@ inline void LinElastic::SetPrms(char const * Prms)
 		else if (names[i]=="nu") nu = values[i];
 		else if (names[i]=="A" )  A = values[i];
 	}
-	if (_geom==1) _De(0,0) = E*A;
+	if (_geom==1)
+	{
+		_De      = 0.0;
+		_De(0,0) = E*A;
+	}
 	else
 	{
 		double c  = (_geom==5 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // plane-stress != (plane-strain=3D)
@@ -127,38 +121,12 @@ inline void LinElastic::SetInis(char const * Inis)
 	}
 }
 
-inline int LinElastic::StressUpdate(Vector<double> const & DEps, Vector<double> & DSig)
-{
-	if (_geom==1)
-	{
-		DSig.Resize(1);
-		DSig(0) = _De(0,0) * DEps(0);
-		_sig(0) += DSig(0);
-		_eps(0) += DEps(0);
-	}
-	else
-	{
-		Tensor2 deps;  deps = 0.0;
-		Tensor2 dsig;  dsig = 0.0;
-		VectorToTensor2 (_geom, DEps, deps);
-		dsig = blitz::product(_De, deps);
-		Tensor2ToVector (_geom, dsig, DSig);
-		_sig += dsig;
-		_eps += deps;
-	}
-	return 1;
-}
 
-inline void LinElastic::BackupState()
-{
-	_sig_bkp = _sig;
-	_eps_bkp = _eps;
-}
+/* private */
 
-inline void LinElastic::RestoreState()
+inline void LinElastic::_stiffness(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
 {
-	_sig = _sig_bkp;
-	_eps = _eps_bkp;
+	D = _De;
 }
 
 

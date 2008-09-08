@@ -21,6 +21,7 @@
 
 // STL
 #include <cmath>  // for sqrt()
+#include <cfloat> // for DBL_EPSILON
 
 // MechSys
 #include "tensors/tensors.h"
@@ -28,6 +29,11 @@
 #include "tensors/jacobirot.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
+#include "util/util.h"
+
+using Util::SQ3;
+using Util::SQ6;
+using Util::SQ2BY3;
 
 namespace Tensors
 {
@@ -40,6 +46,7 @@ namespace Tensors
  */
 inline void Mult(Tensor2 const & S, Tensor2 const & T, Tensor2 & R)
 {
+	const double ZERO = sqrt(DBL_EPSILON);
 
 	R(0) = S(0)*T(0)     + S(3)*T(3)/2.0 + S(5)*T(5)/2.0;
 	R(1) = S(3)*T(3)/2.0 + S(1)*T(1)     + S(4)*T(4)/2.0;
@@ -81,6 +88,7 @@ inline double Det(Tensor2 const & T)
 /** Inverse of a tensor T  \f$ \TeSe{R} \gets \TeSe{T}^{-1} \f$. */
 inline void Inv(Tensor2 const & T, Tensor2 & R)
 {
+	const double ZERO = sqrt(DBL_EPSILON);
 
 	double det = Det(T);
 	
@@ -281,6 +289,7 @@ inline double Stress_q(Tensor2 const & Sig)
  */
 inline double Sin3ThDev(Tensor2 const & S)
 {
+	const double ZERO = sqrt(DBL_EPSILON);
 
 	double normS = Norm(S);
 	if (normS<=ZERO) return -1.0;
@@ -303,6 +312,7 @@ inline double Sin3ThDev(Tensor2 const & S)
  */
 inline void Stress_p_q_S_sin3th(Tensor2 const & Sig, double & p, double & q, Tensor2 & S, double & sin3th)
 {
+	const double ZERO = sqrt(DBL_EPSILON);
 
 	Stress_p_q(Sig,p,q);
 	S = Sig - I * p;
@@ -412,6 +422,7 @@ inline void Stress_p_q_S_t(Tensor2 const & Sig, double & p, double & q, Tensor2 
  */
 inline void Stress_tn_ts(Tensor2 const & Sig, double & tn, double & ts)
 {
+	const double ZERO = sqrt(DBL_EPSILON);
 
 	double I[3];
 	CharInvs(Sig,I);
@@ -457,6 +468,7 @@ inline void Stress_P_Q(Tensor2 const & Sig, double & P, double & Q)
 /** Stress Invariants (Professor Brannon's isomorphic invariants) \f$ (P,Q) \f$. */
 inline void Stress_P_Q_S_sin3th(Tensor2 const & Sig, double & P, double & Q, Tensor2 & S, double & sin3th)
 {
+	const double ZERO = sqrt(DBL_EPSILON);
 
 	Stress_P_Q(Sig,P,Q);
 	S = Sig - I * (P/SQ3);
@@ -539,6 +551,7 @@ inline void Hid2Sig_(double const & SX, double const &  SY, double const &    p,
  */
 inline void Stress_p_q_S_yao(Tensor2 const & Sig, double & p_yao, double & q_yao, Tensor2 & S_yao)
 {
+	const double ZERO = sqrt(DBL_EPSILON);
 
 	double Is[3];
 	Tensors::CharInvs(Sig,Is); // I1=Is[0]; I2=Is[1]; I3=Is[2];

@@ -21,6 +21,9 @@
 
 // MechSys
 #include "tensors/tensors.h"
+#include "util/util.h"
+
+using Util::SQ2;
 
 /* Operators:
  * sc: scalar
