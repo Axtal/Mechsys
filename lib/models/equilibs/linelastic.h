@@ -19,10 +19,6 @@
 #ifndef MECHSYS_LINELASTIC_H
 #define MECHSYS_LINELASTIC_H
 
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
-
 // MechSys
 #include "models/equilibmodel.h"
 #include "tensors/tensors.h"
@@ -139,7 +135,7 @@ Model * LinElasticMaker()
 	return new LinElastic();
 }
 
-// Register an LinElastic model into ModelFactory array map
+// Register LinElastic model into ModelFactory array map
 int LinearElasticRegister()
 {
 	ModelFactory["LinElastic"] = LinElasticMaker;

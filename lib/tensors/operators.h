@@ -152,6 +152,17 @@ inline void Dot (Tensor2 const & x, Tensor4 const & A, Tensor2  & y)
 	y(5) = x(0)*A(0,5) + x(1)*A(1,5) + x(2)*A(2,5) + x(3)*A(3,5) + x(4)*A(4,5) + x(5)*A(5,5);
 }
 
+// 2a) y = s * x * A
+inline void DotScaled (double s, Tensor2 const & x, Tensor4 const & A, Tensor2  & y)
+{
+	y(0) = s*x(0)*A(0,0) + s*x(1)*A(1,0) + s*x(2)*A(2,0) + s*x(3)*A(3,0) + s*x(4)*A(4,0) + s*x(5)*A(5,0);
+	y(1) = s*x(0)*A(0,1) + s*x(1)*A(1,1) + s*x(2)*A(2,1) + s*x(3)*A(3,1) + s*x(4)*A(4,1) + s*x(5)*A(5,1);
+	y(2) = s*x(0)*A(0,2) + s*x(1)*A(1,2) + s*x(2)*A(2,2) + s*x(3)*A(3,2) + s*x(4)*A(4,2) + s*x(5)*A(5,2);
+	y(3) = s*x(0)*A(0,3) + s*x(1)*A(1,3) + s*x(2)*A(2,3) + s*x(3)*A(3,3) + s*x(4)*A(4,3) + s*x(5)*A(5,3);
+	y(4) = s*x(0)*A(0,4) + s*x(1)*A(1,4) + s*x(2)*A(2,4) + s*x(3)*A(3,4) + s*x(4)*A(4,4) + s*x(5)*A(5,4);
+	y(5) = s*x(0)*A(0,5) + s*x(1)*A(1,5) + s*x(2)*A(2,5) + s*x(3)*A(3,5) + s*x(4)*A(4,5) + s*x(5)*A(5,5);
+}
+
 // 3) y = A * x
 inline void Dot (Tensor4 const & A, Tensor2 const & x, Tensor2 & y)
 {

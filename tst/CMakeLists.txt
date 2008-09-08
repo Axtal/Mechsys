@@ -18,6 +18,11 @@
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
 
+	ADD_EXECUTABLE        (tcamclay01   tcamclay01.cpp)
+	ADD_TEST              (tcamclay01   tcamclay01)
+	TARGET_LINK_LIBRARIES (tcamclay01   ${LIBS})
+	SET_TARGET_PROPERTIES (tcamclay01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (ttruss01   ttruss01.cpp)
 	ADD_TEST              (ttruss01   ttruss01)
 	TARGET_LINK_LIBRARIES (ttruss01   ${LIBS})
