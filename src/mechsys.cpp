@@ -77,7 +77,7 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  5, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,    3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 2)
 
-BOOST_PYTHON_FUNCTION_OVERLOADS (PySetGeom_Overloads, PySetGeom, 6, 7)
+BOOST_PYTHON_FUNCTION_OVERLOADS (PySetBrys_Overloads, PySetBrys, 5, 6)
 
 BOOST_PYTHON_MODULE (mechsys)
 {
@@ -108,37 +108,19 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_coords", &Mesh::Block::PySetCoords)
 	    ;
 
-	class_<Mesh::Structured>("mesh_structured")
+	class_<Mesh::Structured, bases<Mesh::Generic> >("mesh_structured")
 	    .def(init<double>())
-	    .def("is_3d",         &Mesh::Structured::Is3D)
-	    .def("set_3d",        &Mesh::Structured::Set3D, MS_Set3D())
-	    .def("write_vtu",     &Mesh::Structured::PyWriteVTU)
-	    .def("get_verts",     &Mesh::Structured::PyGetVerts)
-	    .def("get_verts_bry", &Mesh::Structured::PyGetVertsBry)
-	    .def("get_edges",     &Mesh::Structured::PyGetEdges)
-	    .def("get_etags",     &Mesh::Structured::PyGetETags)
-	    .def("get_ftags",     &Mesh::Structured::PyGetFTags)
-	    .def("get_elems",     &Mesh::Structured::PyGetElems)
-	    .def("generate",      &Mesh::Structured::PyGenerate)
+	    .def("generate", &Mesh::Structured::PyGenerate)
 	    .def(self_ns::str(self))
 	    ;
 
-	class_<Mesh::Unstructured>("mesh_unstructured")
-	    .def("is_3d",            &Mesh::Unstructured::Is3D)
-	    .def("set_3d",           &Mesh::Unstructured::Set3D,          MU_Set3D())
+	class_<Mesh::Unstructured, bases<Mesh::Generic> >("mesh_unstructured")
 	    .def("set_poly_size",    &Mesh::Unstructured::SetPolySize,    MU_SetPolySize())
 	    .def("set_poly_point",   &Mesh::Unstructured::SetPolyPoint,   MU_SetPolyPoint())
 	    .def("set_poly_segment", &Mesh::Unstructured::SetPolySegment, MU_SetPolySegment())
 	    .def("set_poly_region",  &Mesh::Unstructured::SetPolyRegion,  MU_SetPolyRegion())
 	    .def("set_poly_hole",    &Mesh::Unstructured::SetPolyHole,    MU_SetPolyHole())
 	    .def("generate",         &Mesh::Unstructured::Generate,       MU_Generate())
-	    .def("write_vtu",        &Mesh::Unstructured::PyWriteVTU)
-	    .def("get_verts",        &Mesh::Unstructured::PyGetVerts)
-	    .def("get_verts_bry",    &Mesh::Unstructured::PyGetVertsBry)
-	    .def("get_edges",        &Mesh::Unstructured::PyGetEdges)
-	    .def("get_etags",        &Mesh::Unstructured::PyGetETags)
-	    .def("get_ftags",        &Mesh::Unstructured::PyGetFTags)
-	    .def("get_elems",        &Mesh::Unstructured::PyGetElems)
 	    .def(self_ns::str(self))
 	    ;
 
@@ -192,11 +174,12 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ----------------------------------------------------------------------- functions
 	
 	// Global functions
-	def ("out_vtk",    PyOutputVTK   );
-	def ("out_vtu",    PyOutputVTU   );
-	def ("out_vtu_cg", PyOutputVTUcg );
-	def ("out_vtk",    PyOutputVTK   );
-	def ("set_geom",   PySetGeom, PySetGeom_Overloads());
+	def ("out_vtk",         PyOutputVTK   );
+	def ("out_vtu",         PyOutputVTU   );
+	def ("out_vtu_cg",      PyOutputVTUcg );
+	def ("out_vtk",         PyOutputVTK   );
+	def ("set_nodes_elems", PySetNodesElems);
+	def ("set_brys",        PySetBrys, PySetBrys_Overloads());
 
 	// ---------------------------------------------------------------------- Exceptions
 	

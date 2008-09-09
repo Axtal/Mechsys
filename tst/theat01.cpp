@@ -112,7 +112,8 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Quad4Heat", "LinHeat", prms.CStr(), "")); // tag, type, model, prms, inis
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetGeom (&ms, NULL, &ebrys, NULL, &eatts, &g);
+	FEM::SetNodesElems (&ms, &eatts, &g);
+	FEM::SetBrys       (&ms, NULL, &ebrys, NULL, &g);
 
 	// Set upper nodes boundary condition
 	for (size_t i=0; i<g.NNodes(); ++i)

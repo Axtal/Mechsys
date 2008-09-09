@@ -64,7 +64,8 @@ ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
 eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [model], [prms], [inis]
 
 # Set geometry: nodes, elements and boundaries
-m.set_geom (ms, nbrys, ebrys, [], eatts, g) # [] => no face brys
+m.set_nodes_elems (ms, eatts, g)
+m.set_brys        (ms, nbrys, ebrys, [], g) # [] => no face brys
 
 # Solve
 print 'Solution: ---------------------------------------------------------------------'

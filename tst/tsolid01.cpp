@@ -112,7 +112,8 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", prms.CStr(), "ZERO")); // tag, type, model, prms, inis
 
 	// Set geometry
-	FEM::SetGeom (&ms, NULL, NULL, &fbrys, &eatts, &g);
+	FEM::SetNodesElems (&ms, &eatts, &g);
+	FEM::SetBrys       (&ms, NULL, NULL, &fbrys, &g);
 
 	// Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");

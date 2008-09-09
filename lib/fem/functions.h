@@ -48,30 +48,12 @@ typedef Array< boost::tuple<                 int, char const *,double> >        
 typedef Array< boost::tuple<                 int, char const *,double> >               FBrys_T; // Face:   tag, key, val
 typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*> > EAtts_T; // Elem:   tag, type, model, prms, inis
 
-inline void SetGeom (Mesh::Generic const * M,          ///< In: The mesh
-                     NBrys_T       const * NodesBrys,  ///< In: Give NULL when there are no nodes boundary conditions
-                     EBrys_T       const * EdgesBrys,  ///< In: Give NULL for 3D meshes without edges boundary conditions
-                     FBrys_T       const * FacesBrys,  ///< In: Give NULL for 2D meshes
-                     EAtts_T       const * ElemsAtts,  ///< In: Elements attributes
-                     FEM::Geom           * G,          ///< Out: The FE geometry
-                     double                Tol=1.0e-5) ///< In: Tolerance to be used when comparing Nodes
+inline void SetNodesElems (Mesh::Generic const * M,         ///< In: The mesh
+                           EAtts_T       const * ElemsAtts, ///< In: Elements attributes
+                           FEM::Geom           * G)         ///< Out: The FE geometry
 {
 	/* Example:
 	
-		// Nodes brys
-		FEM::NBrys_T nbrys;
-		nbrys.Push (make_tuple(L/2., 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
-
-		// Edges brys
-		FEM::EBrys_T ebrys;
-		ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
-		ebrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
-
-		// Faces brys
-		FEM::FBrys_T fbrys;
-		fbrys.Push (make_tuple(-100, "uy", 0.0)); // tag, key, val
-		fbrys.Push (make_tuple(-200, "fy",  -q)); // tag, key, val
-
 		// Elements attributes
 		FEM::EAtts_T eatts;
 		eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
@@ -115,6 +97,35 @@ inline void SetGeom (Mesh::Generic const * M,          ///< In: The mesh
 		}
 		if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",M->ElemTag(i),i);
 	}
+}
+
+inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
+                     NBrys_T       const * NodesBrys,  ///< In: Give NULL when there are no nodes boundary conditions
+                     EBrys_T       const * EdgesBrys,  ///< In: Give NULL for 3D meshes without edges boundary conditions
+                     FBrys_T       const * FacesBrys,  ///< In: Give NULL for 2D meshes
+                     FEM::Geom           * G,          ///< Out: The FE geometry
+                     double                Tol=1.0e-5) ///< In: Tolerance to be used when comparing Nodes
+{
+	/* Example:
+	
+		// Nodes brys
+		FEM::NBrys_T nbrys;
+		nbrys.Push (make_tuple(L/2., 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
+
+		// Edges brys
+		FEM::EBrys_T ebrys;
+		ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
+		ebrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
+
+		// Faces brys
+		FEM::FBrys_T fbrys;
+		fbrys.Push (make_tuple(-100, "uy", 0.0)); // tag, key, val
+		fbrys.Push (make_tuple(-200, "fy",  -q)); // tag, key, val
+
+	*/
+
+	// 3D mesh?
+	bool is3d = M->Is3D();
 
 	// Set faces boundaries
 	if (is3d && FacesBrys!=NULL)
@@ -206,11 +217,42 @@ inline void SetGeom (Mesh::Generic const * M,          ///< In: The mesh
 
 namespace BPy = boost::python;
 
-void PySetGeom (Mesh::Generic const & M,          ///< In: The mesh
+void PySetNodesElems (Mesh::Generic const & M,         ///< In: The mesh
+                      BPy::list     const & ElemsAtts, ///< In: Elements attributes
+                      FEM::Geom           & G)         ///< Out: The FE geometry
+{
+	/* Example:
+	 *           
+	 *           # Elements attributes
+	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [model], [prms], [inis]
+	 */
+
+	// Extract list with elements attributes
+	FEM::EAtts_T eatts;
+	int eatts_size = len(ElemsAtts);
+	if (eatts_size>0) eatts.Resize(eatts_size);
+	for (int i=0; i<eatts_size; ++i)
+	{
+		if (len(ElemsAtts[i])==5)
+		{
+			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
+			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
+			                             BPy::extract<char const*>(lst[1])(),
+			                             BPy::extract<char const*>(lst[2])(),
+			                             BPy::extract<char const*>(lst[3])(),
+			                             BPy::extract<char const*>(lst[4])());
+		}
+		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 5 items: tag, type, model, prms, inis\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']]");
+	}
+
+	// Set geometry
+	FEM::SetNodesElems (&M, &eatts, &G);
+}
+
+void PySetBrys (Mesh::Generic const & M,          ///< In: The mesh
                 BPy::list     const & NodesBrys,  ///< In: Give [] when there are no nodes boundary conditions
                 BPy::list     const & EdgesBrys,  ///< In: Give [] for 3D mesh without edge boundary conditions
                 BPy::list     const & FacesBrys,  ///< In: Give [] for 2D meshes
-                BPy::list     const & ElemsAtts,  ///< In: Elements attributes
                 FEM::Geom           & G,          ///< Out: The FE geometry
                 double                Tol=1.0e-5) ///< In: Tolerance to be used when comparing Nodes
 {
@@ -225,9 +267,6 @@ void PySetGeom (Mesh::Generic const & M,          ///< In: The mesh
 	 *           # Faces brys
 	 *           fbrys = [[-100, 'uy', 0.0], # [tag], [key], [val]
 	 *                    [-200, 'fy',  -q]] # [tag], [key], [val]
-	 *           
-	 *           # Elements attributes
-	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [model], [prms], [inis]
 	 */
 
 	// Extract list with nodes boundaries
@@ -280,26 +319,8 @@ void PySetGeom (Mesh::Generic const & M,          ///< In: The mesh
 		else throw new Fatal("PySetGeom: Each sublist in FacesBrys must have 3 items: tag, key, val\n\tExample: FacesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
 	}
 
-	// Extract list with elements attributes
-	FEM::EAtts_T eatts;
-	int eatts_size = len(ElemsAtts);
-	if (eatts_size>0) eatts.Resize(eatts_size);
-	for (int i=0; i<eatts_size; ++i)
-	{
-		if (len(ElemsAtts[i])==5)
-		{
-			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
-			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
-			                             BPy::extract<char const*>(lst[1])(),
-			                             BPy::extract<char const*>(lst[2])(),
-			                             BPy::extract<char const*>(lst[3])(),
-			                             BPy::extract<char const*>(lst[4])());
-		}
-		else throw new Fatal("PySetGeom: Each sublist in ElemsAtts must have 5 items: tag, type, model, prms, inis\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']]");
-	}
-
 	// Set geometry
-	FEM::SetGeom (&M, nbrys, ebrys, fbrys, &eatts, &G, Tol);
+	FEM::SetBrys (&M, nbrys, ebrys, fbrys, &G, Tol);
 
 	// Clean up
 	if (nbrys!=NULL) delete nbrys;

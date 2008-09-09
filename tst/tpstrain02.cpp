@@ -121,7 +121,8 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
 
 	// 4) Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetGeom (&ms, &nbrys, &ebrys, NULL, &eatts, &g);
+	FEM::SetNodesElems (&ms, &eatts, &g);
+	FEM::SetBrys       (&ms, &nbrys, &ebrys, NULL, &g);
 
 	// 5) Solve
 	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
