@@ -76,7 +76,8 @@ def run_fea(obj):
 
     # set geometry
     g = ms.geom(3) if m.is_3d() else ms.geom(2)
-    ms.set_geom (m, nbrys, ebrys, fbrys, eatts, g)
+    ms.set_nodes_elems (m, eatts, g)
+    ms.set_brys        (m, nbrys, ebrys, fbrys, g)
 
     # solve
     sol = ms.solver('ForwardEuler')
@@ -116,7 +117,8 @@ def gen_script(obj):
     txt.write ('fbrys = '+fbrys.__str__()+'\n')
     txt.write ('eatts = '+eatts.__str__()+'\n')
     txt.write ('geom  = mechsys.geom('+str(ndim)+')\n')
-    txt.write ('mechsys.set_geom (mesh, nbrys, ebrys, fbrys, eatts, geom)\n')
+    txt.write ('mechsys.set_nodes_elems (mesh, eatts, geom)\n')
+    txt.write ('mechsys.set_brys        (mesh, nbrys, ebrys, fbrys, geom)\n')
     txt.write ('sol   = mechsys.solver("ForwardEuler")\n')
     txt.write ('sol.set_geom(geom)\n')
     txt.write ('sol.set_lin_sol("LA").set_num_div(1).set_delta_time(0.0)\n')
