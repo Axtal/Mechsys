@@ -41,13 +41,13 @@ public:
 	static int BRENT_MAXIT; ///< Max iterations for Brent's method
 
 	// Typedefs
-	typedef double (Instance::*pFun) (double x) const; ///< Callback function
+	typedef double (Instance::*pFun) (double x, void const * P1, void const * P2, void const * P3) const; ///< Callback function (P# => extra parameters)
 
 	/** Constructor. */
 	BrentRoot (Instance const * p2Inst, pFun p2Fun);
 
 	// Methods
-	double Solve  (double A, double B) const;  ///< Find root
+	double Solve  (double A, double B, void const * P1, void const * P2, void const * P3) const; ///< Find root (P# => extra parameters)
 	void   SetTol (double Tol) { _tol = Tol; } ///< Set tolerance
 
 private:
@@ -73,7 +73,7 @@ inline BrentRoot<Instance>::BrentRoot(Instance const * p2Inst, pFun p2Fun)
 }
 
 template<typename Instance>
-inline double BrentRoot<Instance>::Solve(double A, double B) const
+inline double BrentRoot<Instance>::Solve(double A, double B, void const * P1, void const * P2, void const * P3) const
 {
 	/* Based on ZEROIN C math library: http://www.netlib.org/c/
 	
@@ -102,8 +102,8 @@ inline double BrentRoot<Instance>::Solve(double A, double B) const
 	double a  = A; // the last but one approximation
 	double b  = B; // the last and the best approximation to the root
 	double c  = a; // the last but one or even earlier approximation than a that
-	double fa = (_p2inst->*_p2fun)(a);
-	double fb = (_p2inst->*_p2fun)(b);
+	double fa = (_p2inst->*_p2fun)(a,P1,P2,P3);
+	double fb = (_p2inst->*_p2fun)(b,P1,P2,P3);
 	double fc = fa;
 
 	// Check input
@@ -174,7 +174,7 @@ inline double BrentRoot<Instance>::Solve(double A, double B) const
 
 		// Do step to a new approxim.
 		b += new_step;
-		fb = (_p2inst->*_p2fun)(b);
+		fb = (_p2inst->*_p2fun)(b,P1,P2,P3);
 
 		// Adjust c for it to have a sign opposite to that of b
 		if ((fb>0.0 && fc>0.0) || (fb<0.0 && fc<0.0))

@@ -39,11 +39,11 @@ public:
 
 private:
 	// Data
-	Tensor4 _De;
+	Tensor4 _De; ///< Constant tangent stiffness
 
 	// Private methods
-	void   _stiffness (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
-	double _val       (char const * Name) const { throw new Fatal("LinElastic::_val The Name==%s is invalid",Name); }
+	void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const; ///< Tangent or secant stiffness
+	double _val   (char const * Name) const { throw new Fatal("LinElastic::_val The Name==%s is invalid",Name); }                                ///< Return internal values
 
 }; // class LinElastic
 
@@ -120,7 +120,7 @@ inline void LinElastic::SetInis(char const * Inis)
 
 /* private */
 
-inline void LinElastic::_stiffness(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
+inline void LinElastic::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
 {
 	D = _De;
 }

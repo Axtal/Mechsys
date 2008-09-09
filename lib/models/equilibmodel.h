@@ -86,8 +86,8 @@ protected:
 	size_t _maxSS;
 
 	// Private methods that MUST be derived
-	virtual void   _stiffness (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const =0;
-	virtual double _val       (char const * Name) const =0;
+	virtual void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const =0; ///< Tangent or secant stiffness
+	virtual double _val   (char const * Name) const =0; ///< Return internal values
 
 private:
 	// Private methods
@@ -106,7 +106,7 @@ inline void EquilibModel::TgStiffness(Matrix<double> & Dmat) const
 	Tensor2 deps; deps = 0.0;
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiffness (deps,_sig,_eps,_ivs, D,B);
+	_stiff (deps,_sig,_eps,_ivs, D,B);
 	Tensor4ToMatrix (_geom,D, Dmat);
 }
 
@@ -221,7 +221,7 @@ inline void EquilibModel::_tg_incs(Tensor2 const & DEps, Tensor2 const & Sig, Te
 	// Stiffness
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiffness (DEps,Sig,Eps,Ivs, D,B);
+	_stiff (DEps,Sig,Eps,Ivs, D,B);
 
 	// Increments
 	Tensors::Dot (D,DEps, DSig);      // DSig    = D:DEps
