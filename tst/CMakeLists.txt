@@ -90,3 +90,5 @@ IF(IGRAPH_FOUND)
 	ADD_TEST              (ttree01 ttree01)
 	TARGET_LINK_LIBRARIES (ttree01 ${LIBS})
 ENDIF(IGRAPH_FOUND)
+
+SUBDIRS(reddy)

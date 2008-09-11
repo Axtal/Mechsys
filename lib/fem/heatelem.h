@@ -280,7 +280,7 @@ inline void HeatElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) co
 	LinAlg::Matrix<double> derivs; // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
 	LinAlg::Matrix<double> J;      // Jacobian matrix
 	LinAlg::Matrix<double> B;      // strain-displacement matrix
-	LinAlg::Matrix<double> D;      // Constitutive matrix
+	LinAlg::Matrix<double> D;      // Conductivity matrix
 
 	// Loop along integration points
 	for (size_t i_ip=0; i_ip<_n_int_pts; ++i_ip)
@@ -296,7 +296,7 @@ inline void HeatElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) co
 		B_Matrix (derivs,J, B);   // Calculate B matrix for i_ip Integration Point
 
 		// Constitutive tensor 
-		_a_model[i_ip]->TgStiffness(D); 
+		_a_model[i_ip]->TgConductivity(D); 
 
 		// Calculate Tangent Stiffness
 		Ke += trn(B)*D*B*det(J)*w;
