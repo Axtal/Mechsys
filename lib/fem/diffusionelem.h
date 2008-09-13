@@ -17,30 +17,42 @@
  ************************************************************************/
 
 
-/* __ Element for Heat transfer simulations __
+/* __ Element for diffusion transport simulations __
 
-T = Nodal temperature [ temp ]     ex. C°
-F = Nodal heat flow   [ work/time] ex. Joules/sec
+   Primary variale:    u
+   Source variable:    f
+   Secondary variable: q
+
+   Heat transfer:
+      u = temperature
+      f = heat source
+	  q = heat flux due to conduction
+
+   Groundwater flow:
+      u = piezometric head
+      f = recharge (pumping => -f)
+	  q = water flux (seepage)
 
 */
 
-#ifndef MECHSYS_FEM_HEAT_H
-#define MECHSYS_FEM_HEAT_H
+
+#ifndef MECHSYS_FEM_DIFFUSION_H
+#define MECHSYS_FEM_DIFFUSION_H
 
 // MechSys
 #include "fem/element.h"
-#include "models/heatmodel.h"
+#include "models/diffusionmodel.h"
 #include "util/string.h"
 #include "linalg/laexpr.h"
 
 namespace FEM
 {
 
-class HeatElem : public virtual Element
+class DiffusionElem : public virtual Element
 {
 public:
 	// Destructor
-	virtual ~HeatElem() {}
+	virtual ~DiffusionElem() {}
 
 	// Derived methods
 	bool         IsReady         () const;
@@ -59,7 +71,7 @@ public:
 	// Derived methods to assemble DAS matrices
 	size_t nOrder1Matrices () const { return 1; }
 	void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
-	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; // Stiffness
+	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Permeability/Conductivity
 
 	// Methods
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
@@ -70,14 +82,14 @@ public:
 
 private:
 	// Data
-	int               _n_stress;
-	Array<HeatModel*> _a_model;
-	double            _unit_weight;
+	int                    _n_stress;
+	Array<DiffusionModel*> _a_model;
+	double                 _unit_weight;
 
 	// Private methods
-	void _calc_initial_internal_forces ();
+	void _calc_initial_internal_state ();
 
-}; // class HeatElem
+}; // class DiffusionElem
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -87,22 +99,22 @@ private:
 	
 // Derived methods
 
-inline bool HeatElem::IsReady() const
+inline bool DiffusionElem::IsReady() const
 {
 	if (_a_model.Size()==static_cast<size_t>(_n_int_pts) && _connects.Size()==static_cast<size_t>(_n_nodes)) return true;
 	else return false;
 }
 
-inline bool HeatElem::IsEssential(char const * DOFName) const
+inline bool DiffusionElem::IsEssential(char const * DOFName) const
 {
-	if (strcmp(DOFName,"T")==0) return true; // Temperature is the essential variable
+	if (strcmp(DOFName,"u")==0) return true;
 	return false;
 }
 
-inline void HeatElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
+inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
 	// Check _ndim
-	if (_ndim<1) throw new Fatal("HeatElem::SetModel: The space dimension (SetDim) must be set before calling this method");
+	if (_ndim<1) throw new Fatal("DiffusionElem::SetModel: The space dimension (SetDim) must be set before calling this method");
 
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
@@ -120,18 +132,18 @@ inline void HeatElem::SetModel(char const * ModelName, char const * Prms, char c
 		}
 
 		// Calculate initial internal forces
-		//_calc_initial_internal_forces(); TODO
+		_calc_initial_internal_state();
 	}
-	else throw new Fatal("HeatElem::SetModel: Feature not implemented.");
+	else throw new Fatal("DiffusionElem::SetModel: Feature not implemented.");
 }
 
-inline Element * HeatElem::Connect(int iNodeLocal, FEM::Node * ptNode)
+inline Element * DiffusionElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 {
 	// Connects
 	_connects[iNodeLocal] = ptNode;
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	_connects[iNodeLocal]->AddDOF("T", "F"); // T stands for temperature and F for nodal heat source
+	_connects[iNodeLocal]->AddDOF("u", "q");
 
 	// Shared
 	_connects[iNodeLocal]->SetSharedBy(_my_id);
@@ -139,91 +151,44 @@ inline Element * HeatElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 	return this;
 }
 
-inline void HeatElem::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
+inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
-	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> dT(_n_nodes); // Delta temp. of this element
-	
-	// Assemble (local/element) temperatures vector
-	for (size_t i=0; i<_n_nodes; ++i)
-	   dT(i) = dUglobal(_connects[i]->DOFVar("T").EqID);
-	
-	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> dF(_n_nodes); // Delta internal heat source of this element
-	dF.SetValues(0.0);
-	
-	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;       // Jacobian matrix
-	LinAlg::Matrix<double> B;       // strain-displacement matrix
-	LinAlg::Vector<double> DGrad;   // Gradient vector 
-	LinAlg::Vector<double> DFlow;   // Stress vector 
-
-	// Loop along integration points
-	for (size_t i_ip=0; i_ip<_n_int_pts; ++i_ip)
-	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i_ip].r;
-		double s = _a_int_pts[i_ip].s;
-		double t = _a_int_pts[i_ip].t; // only for 3D cases
-		double w = _a_int_pts[i_ip].w;
-
-		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix (derivs, J, B);   // Calculate B matrix for i_ip Integration Point
-
-		// Calculate the gradient
-		DGrad = B*dT;
-		
-		// Update model
-		_a_model[i_ip]->UpdateState(DGrad, DFlow);
-
-		// Calculate internal force vector;
-		dF += trn(B)*DFlow*det(J)*w;
-	}
-
-	// Return internal F
-	for (size_t i=0; i<_n_nodes; ++i)
-	{
-		// Sum up contribution to internal forces vector
-		dFint(_connects[i]->DOFVar("F").EqID) += dF(i);
-	}
 }
 
-inline void HeatElem::BackupState()
+inline void DiffusionElem::BackupState()
 {
 	for (size_t i=0; i<_n_int_pts; ++i)
 		_a_model[i]->BackupState();
 }
 
-inline void HeatElem::RestoreState()
+inline void DiffusionElem::RestoreState()
 {
 	for (size_t i=0; i<_n_int_pts; ++i)
 		_a_model[i]->RestoreState();
 }
 
-inline void HeatElem::GetLabels(Array<String> & Labels) const
+inline void DiffusionElem::GetLabels(Array<String> & Labels) const
 {
 	// Get labels of all values to output
 	Labels.Resize(2);
-	Labels[0]="T"; // Nodal temperature
-	Labels[1]="F"; // Nodal heat source
+	Labels[0]="u";
+	Labels[1]="q";
 }
 
-inline double HeatElem::Val(int iNodeLocal, char const * Name) const
+inline double DiffusionElem::Val(int iNodeLocal, char const * Name) const
 {
 	// Essential
-	if (strcmp(Name,"T")==0)
+	if (strcmp(Name,"q")==0)
 		return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Natural
-	else if (strcmp(Name,"F")==0)
+	else if (strcmp(Name,"f")==0)
 		return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 	else
-		return 0.0;
+		throw new Fatal("DiffusionElem::Val: This key==%s is invalid.",Name);
 }
 
-inline double HeatElem::Val(char const * Name) const
+inline double DiffusionElem::Val(char const * Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
@@ -234,14 +199,14 @@ inline double HeatElem::Val(char const * Name) const
 	return sum/_n_int_pts;
 }
 
-inline void HeatElem::Deactivate()
+inline void DiffusionElem::Deactivate()
 {
-	throw new Fatal("HeatElem::Deactivate: Feature not implemented in this element");
+	throw new Fatal("DiffusionElem::Deactivate: Feature not implemented in this element");
 }
 
 // Derived methods to assemble DAS matrices
 
-inline void HeatElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
+inline void DiffusionElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
 {
 	// Size of Ke
 	int n_rows = _n_nodes; // == n_cols
@@ -254,18 +219,18 @@ inline void HeatElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<
 	// Fill map of Ke position to K position of DOFs components
 	for (size_t i_node=0; i_node<_n_nodes; ++i_node)
 	{
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("T").EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("T").IsEssenPresc; 
+		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("u").EqID; 
+		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("u").IsEssenPresc; 
 		idx_Ke++;
 	}
 	ColsMap        = RowsMap;
 	ColsEssenPresc = RowsEssenPresc;
 }
 
-inline void HeatElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) const
+inline void DiffusionElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) const
 {
-	/* Stiffness:
-	   ==========
+	/* Conductivity:
+	   ============
 	
 	                 /    T
 	        [Ke]  =  | [B]  * [D] * [B]  * dV
@@ -279,7 +244,7 @@ inline void HeatElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) co
 	// Allocate entities used for every integration point
 	LinAlg::Matrix<double> derivs; // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
 	LinAlg::Matrix<double> J;      // Jacobian matrix
-	LinAlg::Matrix<double> B;      // strain-displacement matrix
+	LinAlg::Matrix<double> B;      // B matrix
 	LinAlg::Matrix<double> D;      // Conductivity matrix
 
 	// Loop along integration points
@@ -295,65 +260,30 @@ inline void HeatElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) co
 		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
 		B_Matrix (derivs,J, B);   // Calculate B matrix for i_ip Integration Point
 
-		// Constitutive tensor 
+		// Conductivity
 		_a_model[i_ip]->TgConductivity(D); 
 
-		// Calculate Tangent Stiffness
+		// Calculate Tangent Conductivity
 		Ke += trn(B)*D*B*det(J)*w;
 	}
 }
 	
 // Methods
 
-inline void HeatElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
+inline void DiffusionElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
 {
 	// Calculate Bp matrix (NDIM x _n_nodes)
-	B = inv(J)*derivs;     // equal to the cartesian derivatives matrix for flow elements
+	B = inv(J)*derivs; // equal to the cartesian derivatives matrix for diffusion elements
 }
 
 
 /* private */
 
-inline void HeatElem::_calc_initial_internal_forces() // TODO
+inline void DiffusionElem::_calc_initial_internal_state()
 {
-	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> F(_n_nodes);
-	F.SetValues(0.0);
-
-	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;       // Jacobian matrix
-	LinAlg::Matrix<double> B;       // strain-displacement matrix
-	LinAlg::Vector<double> sig;     // Stress vector in Mandel's notation 
-
-	// Loop along integration points
-	for (size_t i_ip=0; i_ip<_n_int_pts; ++i_ip)
-	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i_ip].r;
-		double s = _a_int_pts[i_ip].s;
-		double t = _a_int_pts[i_ip].t; // only for 3D
-		//double w = _a_int_pts[i_ip].w;
-
-		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix (derivs, J, B);  // Calculate B matrix for i_ip Integration Point
-
-		//_a_model[i_ip]->Sig(sig); 
-
-		// Calculate internal force vector;
-		//F += trn(B)*sig*det(J)*w;
-	}
-
-	// Update nodal NaturVals
-//	for (int i_node=0; i_node<_n_nodes; ++i_node)
-//	{
-//		// Assemble (local/element) displacements vector.
-//		if (_ndim_prob==3) _connects[i_node]->DOFVar("F").NaturalVal += F(i_node*_ndim_prob+2);
-//	}
 }
 
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_EQUILIB_H
+#endif // MECHSYS_FEM_DIFFUSIO_H

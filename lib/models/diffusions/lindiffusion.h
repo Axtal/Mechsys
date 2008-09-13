@@ -16,15 +16,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_LINHEAT_H
-#define MECHSYS_LINHEAT_H
-
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
+#ifndef MECHSYS_LINDIFFUSION_H
+#define MECHSYS_LINDIFFUSION_H
 
 // MechSys
-#include "models/heatmodel.h"
+#include "models/diffusionmodel.h"
 #include "util/string.h"
 #include "util/util.h"
 #include "util/lineparser.h"
@@ -32,11 +28,11 @@
 using LinAlg::Vector;
 using LinAlg::Matrix;
 
-class LinHeat : public HeatModel
+class LinDiffusion : public DiffusionModel
 {
 public:
 	// Destructor
-	virtual ~LinHeat () {}
+	virtual ~LinDiffusion () {}
 
 	// Derived Methods
 	void         SetPrms        (char const * Prms);
@@ -45,24 +41,24 @@ public:
 	int          UpdateState    (Vector<double> const & DEps, Vector<double> & DSig);
 	void         BackupState    ();
 	void         RestoreState   ();
-	char const * Name           () const { return "LinHeat"; }
+	char const * Name           () const { return "LinDiffusion"; }
 
 private:
 	// Data
 	Matrix<double> _K; // Conductivity
 
 	// Private methods
-	double _val (char const * Name) const { throw new Fatal("LinHeat::_val The Name==%s is invalid",Name); }
+	double _val (char const * Name) const { throw new Fatal("LinDiffusion::_val The Name==%s is invalid",Name); }
 
-}; // class LinHeat
+}; // class LinDiffusion
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline void LinHeat::SetPrms(char const * Prms)
+inline void LinDiffusion::SetPrms(char const * Prms)
 {
-	if (_geom<0) throw new Fatal("LinHeat::SetPrms: Geometry type:\n\t[1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)] must be set via SetGeom before calling this method");
+	if (_geom<0) throw new Fatal("LinDiffusion::SetPrms: Geometry type:\n\t[1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)] must be set via SetGeom before calling this method");
 
 	/* "kxx=1.0 kxy=0.0 kxz=0.0
 	            kyy=1.0 kxz=0.0
@@ -101,11 +97,11 @@ inline void LinHeat::SetPrms(char const * Prms)
 						   0.0,       0.0, values[0];
 			}
 		}
-		else throw new Fatal("LinHeat::SetPrms: Parameter key==%s for isotropic models is invalid. It must be equal to 'k'. Ex.: k=1.0",names[0].CStr());
+		else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s for isotropic models is invalid. It must be equal to 'k'. Ex.: k=1.0",names[0].CStr());
 	}
 	else
 	{
-		if (_geom==1) throw new Fatal("LinHeat::SetPrms: For unidimensional problems, only one parameter key (equal to 'k') must be given. Ex.: k=1.0 (%s is invalid)");
+		if (_geom==1) throw new Fatal("LinDiffusion::SetPrms: For unidimensional problems, only one parameter key (equal to 'k') must be given. Ex.: k=1.0 (%s is invalid)");
 		for (size_t i=0; i<names.Size(); ++i)
 		{
 			      if (names[i]=="kxx"                    && _geom> 1) _k(0,0) = values[i];
@@ -114,7 +110,7 @@ inline void LinHeat::SetPrms(char const * Prms)
 			 else if (names[i]=="kyy"                    && _geom> 1) _k(1,1) = values[i];
 			 else if (names[i]=="kyz" || names[i]=="kzy" && _geom==3) _k(1,2) = values[i];
 			 else if (names[i]=="kzz"                    && _geom==3) _k(2,2) = values[i];
-			 else throw new Fatal("LinHeat::SetPrms: Parameter key==%s is invalid. It must be: kxx, kxy, kxz,  kyy, kyz,  kzz  (or kyx, kzx, kzy).",names[i].CStr());
+			 else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s is invalid. It must be: kxx, kxy, kxz,  kyy, kyz,  kzz  (or kyx, kzx, kzy).",names[i].CStr());
 		}
 		_k(1,0) = _k(0,1);
 		_k(2,0) = _k(0,2);
@@ -122,7 +118,7 @@ inline void LinHeat::SetPrms(char const * Prms)
 	}
 }
 
-inline void LinHeat::SetInis(char const * Inis)
+inline void LinDiffusion::SetInis(char const * Inis)
 {
 	/* "T=0.0" */
 	LineParser lp(Inis);
@@ -134,21 +130,21 @@ inline void LinHeat::SetInis(char const * Inis)
 	for (size_t i=0; i<names.Size(); i++)
 	{
 		if (names[i]=="T") _T = values[i];
-		else throw new Fatal("LinHeat::SetInis: Initial value key==%s is invalid. It must be 'T'. Ex.: T=1.0",names[i]);
+		else throw new Fatal("LinDiffusion::SetInis: Initial value key==%s is invalid. It must be 'T'. Ex.: T=1.0",names[i]);
 	}
 }
 
-inline int LinHeat::UpdateState(Vector<double> const & DGrad, Vector<double> & DFlow)
+inline int LinDiffusion::UpdateState(Vector<double> const & DGrad, Vector<double> & DFlow)
 {
 	DFlow = _K*DGrad;
 	return 1;
 }
 
-inline void LinHeat::BackupState()
+inline void LinDiffusion::BackupState()
 {
 }
 
-inline void LinHeat::RestoreState()
+inline void LinDiffusion::RestoreState()
 {
 }
 
@@ -156,21 +152,21 @@ inline void LinHeat::RestoreState()
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new LinHeat model
-Model * LinHeatMaker()
+// Allocate a new LinDiffusion model
+Model * LinDiffusionMaker()
 {
-	return new LinHeat();
+	return new LinDiffusion();
 }
 
-// Register an LinHeat model into ModelFactory array map
-int LinearHeatRegister()
+// Register an LinDiffusion model into ModelFactory array map
+int LinearDiffusionRegister()
 {
-	ModelFactory["LinHeat"] = LinHeatMaker;
+	ModelFactory["LinDiffusion"] = LinDiffusionMaker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __LinearHeat_dummy_int = LinearHeatRegister();
+int __LinearDiffusion_dummy_int = LinearDiffusionRegister();
 
 
-#endif // MECHSYS_LINHEAT_H
+#endif // MECHSYS_LINDIFFUSION_H

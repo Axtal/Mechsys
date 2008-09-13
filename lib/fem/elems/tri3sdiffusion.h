@@ -16,17 +16,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_QUAD4HEAT_H
-#define MECHSYS_FEM_QUAD4HEAT_H
+#ifndef MECHSYS_FEM_TRI3DIFFUSION_H
+#define MECHSYS_FEM_TRI3DIFFUSION_H
 
 // MechSys
-#include "fem/heatelem.h"
-#include "fem/elems/quad4.h"
+#include "fem/diffusionelem.h"
+#include "fem/elems/tri3.h"
 
 namespace FEM
 {
 
-class Quad4Heat : public Quad4, public HeatElem
+class Tri3Diffusion : public Tri3, public DiffusionElem
 {
 public:
 	// Constants
@@ -37,32 +37,33 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 2;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int _geom() const { return 2; } ///< Geometry of the element: 1:1D, 2:2D, 3:3D
 
-}; // class Quad4Heat
+}; // class Tri3Diffusion
 
-// Quad4Heat constants
-char const * Quad4Heat::NAME = "Quad4Heat";
+// Tri3Diffusion constants
+char const * Tri3Diffusion::NAME = "Tri3Diffusion";
+
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Quad4Heat element
-Element * Quad4HeatMaker()
+// Allocate a new Tri3Diffusion element
+Element * Tri3DiffusionMaker()
 {
-	return new Quad4Heat();
+	return new Tri3Diffusion();
 }
 
-// Register a Quad4Heat element into ElementFactory array map
-int Quad4HeatRegister()
+// Register a Tri3Diffusion element into ElementFactory array map
+int Tri3DiffusionRegister()
 {
-	ElementFactory[Quad4Heat::NAME] = Quad4HeatMaker;
+	ElementFactory[Tri3Diffusion::NAME] = Tri3DiffusionMaker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __Quad4Heat_dummy_int  = Quad4HeatRegister();
+int __Tri3Diffusion_dummy_int  = Tri3DiffusionRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_QUAD4HEAT_H
+#endif // MECHSYS_FEM_TRI3DIFFUSION_H
