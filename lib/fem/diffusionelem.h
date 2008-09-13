@@ -62,16 +62,15 @@ public:
 	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void         BackupState     ();
 	void         RestoreState    ();
-	void         SetGeometryType (int Geom) {};  
 	void         SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
 	void         GetLabels       (Array<String> & Labels) const;
 	void         Deactivate      ();
 	char const * ModelName       () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
 
 	// Derived methods to assemble DAS matrices
-	size_t nOrder1Matrices () const { return 1; }
-	void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
-	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Permeability/Conductivity
+	size_t nOrder0Matrices () const { return 1; }
+	void   Order0MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
+	void   Order0Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Permeability/Conductivity
 
 	// Methods
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
@@ -88,6 +87,9 @@ private:
 
 	// Private methods
 	void _calc_initial_internal_state ();
+
+	// Private methods that MUST be derived
+	virtual int _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D, 3:3D
 
 }; // class DiffusionElem
 
@@ -127,8 +129,9 @@ inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, c
 		{
 			// Allocate a new model and set parameters
 			_a_model[i] = static_cast<DiffusionModel*>(AllocModel(ModelName));
-			_a_model[i]->SetPrms(Prms);
-			_a_model[i]->SetInis(Inis);
+			_a_model[i]->SetGeom (_geom());
+			_a_model[i]->SetPrms (Prms);
+			_a_model[i]->SetInis (Inis);
 		}
 
 		// Calculate initial internal forces
@@ -178,11 +181,11 @@ inline void DiffusionElem::GetLabels(Array<String> & Labels) const
 inline double DiffusionElem::Val(int iNodeLocal, char const * Name) const
 {
 	// Essential
-	if (strcmp(Name,"q")==0)
+	if (strcmp(Name,"u")==0)
 		return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Natural
-	else if (strcmp(Name,"f")==0)
+	else if (strcmp(Name,"q")==0)
 		return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 	else
 		throw new Fatal("DiffusionElem::Val: This key==%s is invalid.",Name);
@@ -206,7 +209,7 @@ inline void DiffusionElem::Deactivate()
 
 // Derived methods to assemble DAS matrices
 
-inline void DiffusionElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
+inline void DiffusionElem::Order0MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
 {
 	// Size of Ke
 	int n_rows = _n_nodes; // == n_cols
@@ -227,7 +230,7 @@ inline void DiffusionElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, A
 	ColsEssenPresc = RowsEssenPresc;
 }
 
-inline void DiffusionElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) const
+inline void DiffusionElem::Order0Matrix(size_t index, LinAlg::Matrix<double> & Ke) const
 {
 	/* Conductivity:
 	   ============

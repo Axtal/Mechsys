@@ -72,33 +72,46 @@ int main(int argc, char **argv) try
 	g.Ele(2)->SetModel("LinDiffusion", "k=1.0", "");
 	g.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
 
-	Output o; o.VTU (&g, "tex831.vtu");
-	return 0;
-
 	// Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry("u",0.0);
-	g.Nod(1)->Bry("u",0.0);
+	g.Ele(0)->EdgeBry("q", 0.0, 0)->EdgeBry("q", 0.0, 2);
+	g.Ele(2)->EdgeBry("q", 0.0, 0)->EdgeBry("u", 0.0, 1);
+	g.Ele(3)->EdgeBry("u", 0.0, 1)->EdgeBry("q", 0.0, 2);
 	g.Nod(3)->Bry("u",0.0);
-	g.Nod(2)->Bry("q",1.0);
-	g.Nod(7)->Bry("q",1.0);
-	g.Nod(6)->Bry("q",1.0);
-
+	g.Nod(5)->Bry("u",0.0);
 
 	// Stiffness
-	Array<size_t>          map;
-	Array<bool>            pre;
-	LinAlg::Matrix<double> Ke0;
-	LinAlg::Matrix<double> Ke1;
+	LinAlg::Matrix<double> Ke0, Ke1, Ke2, Ke3;
+	LinAlg::Matrix<double> Ke_correct;  Ke_correct.Resize(3,3);
 	g.Ele(0)->Order1Matrix(0,Ke0);
 	g.Ele(1)->Order1Matrix(0,Ke1);
-	cout << "Ke0=\n" << Ke0 << endl;
-	cout << "Ke1=\n" << Ke1 << endl;
+	g.Ele(2)->Order1Matrix(0,Ke2);
+	g.Ele(3)->Order1Matrix(0,Ke3);
+	Ke_correct =  0.5, -0.5,  0.0,
+	             -0.5,  1.0, -0.5,
+	              0.0, -0.5,  0.5;
+	
+	// Check
+	double errors = 0.0;
+	for (int i=0; i<3; ++i)
+	for (int j=0; j<3; ++j)
+	{
+		errors += fabs(Ke0(i,j)-Ke_correct(i,j));
+		errors += fabs(Ke1(i,j)-Ke_correct(i,j));
+		errors += fabs(Ke2(i,j)-Ke_correct(i,j));
+		errors += fabs(Ke3(i,j)-Ke_correct(i,j));
+	}
 
-	// 6) Solve
+	// Solve
 	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
+
+	if (fabs(errors)>1.0e-14) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+
+	Output o; o.VTU (&g, "tex831.vtu");
+	return 0;
 
 	// Output
 	LinAlg::Matrix<double> values0;
@@ -111,9 +124,6 @@ int main(int argc, char **argv) try
 	std::cout << values0 << std::endl;
 	std::cout << labels1;
 	std::cout << values1 << std::endl;
-
-	// Check
-    double errors = 0.0;
 
 	// Element 0
 	errors += fabs(g.Ele(0)->Val(0, "Sx") - ( 1.56432140e-01));

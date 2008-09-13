@@ -64,11 +64,11 @@ public:
 	};
 
 	// Set methods
-	void SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
-	void SetDim    (int nDim)           { _ndim      = nDim;     }    ///< Set the number of dimension of the problem
-	void SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
-	void EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
-	void FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
+	void      SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
+	void      SetDim    (int nDim)           { _ndim      = nDim;     }    ///< Set the number of dimension of the problem
+	void      SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
+	Element * EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
+	Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
 	
 	// Get methods
 	long         GetID      ()         const { return _my_id;       } ///< Return the ID of this element
@@ -154,7 +154,7 @@ private:
 
 // Set and get methods
 
-inline void Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)
+inline Element * Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)
 {
 	if (_ndim==2) // For 2D meshes, edges correspond to faces
 	{
@@ -166,9 +166,10 @@ inline void Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)
 	{
 		throw new Fatal("Element::EdgeBry: Method not yet implemented for 3D meshes.");
 	}
+	return this;
 }
 
-inline void Element::FaceBry(char const * Key, double Value, int FaceLocalID)
+inline Element * Element::FaceBry(char const * Key, double Value, int FaceLocalID)
 {
 	if (_ndim==2) throw new Fatal("Element::FaceBry: This method must be called only for 3D meshes.");
 	else
@@ -177,6 +178,7 @@ inline void Element::FaceBry(char const * Key, double Value, int FaceLocalID)
 		GetFaceNodes        (FaceLocalID, fnodes);
 		_dist_to_face_nodes (Key, Value, fnodes);
 	}
+	return this;
 }
 
 inline double Element::Volume() const

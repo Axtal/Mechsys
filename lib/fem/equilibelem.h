@@ -60,7 +60,6 @@ public:
 	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void         BackupState     ();
 	void         RestoreState    ();
-	void         SetGeometryType (int Geom);  
 	void         SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
 	void         GetLabels       (Array<String> & Labels) const;
 	void         Deactivate      ();
