@@ -30,12 +30,18 @@ public:
 	virtual ~Model () {}
 
 	// Methods that MUST be derived
-	virtual void SetPrms (char const * Prms) =0;
-	virtual void SetInis (char const * Inis) =0;
+	virtual void SetGeom      (int GeomType)      =0; ///< Set geometry type
+	virtual void SetPrms      (char const * Prms) =0; ///< Set parameters
+	virtual void SetInis      (char const * Inis) =0; ///< Set initial values
+	virtual void BackupState  ()                  =0; ///< Backup internal state
+	virtual void RestoreState ()                  =0; ///< Restore internal state
 
 	// Access methods that MUST be derived
 	virtual double       Val  (char const * Name) const =0; ///< Value: Sx, Sy, Ex, Ey, Wp, z0, etc.
 	virtual char const * Name ()                  const =0; ///< Return the name of the constitutive model
+
+protected:
+	int _geom; ///< Geometry type
 
 }; // class Model
 

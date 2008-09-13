@@ -23,8 +23,8 @@
 // MechSys
 #include "fem/geometry.h"
 #include "fem/functions.h"
-#include "fem/elems/quad4heat.h"
-#include "models/heats/linheat.h"
+#include "fem/elems/quad4diffusion.h"
+#include "models/diffusions/lindiffusion.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
 #include "fem/output.h"
@@ -103,13 +103,13 @@ int main(int argc, char **argv) try
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "F", 0.0)); // tag, key, val
-	ebrys.Push (make_tuple(-20, "T", 0.0)); // tag, key, val
+	ebrys.Push (make_tuple(-10, "q", 0.0)); // tag, key, val
+	ebrys.Push (make_tuple(-20, "u", 0.0)); // tag, key, val
 
 	// Elements attributes
 	String prms; prms.Printf("k=%f", k);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Quad4Heat", "LinHeat", prms.CStr(), "")); // tag, type, model, prms, inis
+	eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), "")); // tag, type, model, prms, inis
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&ms, &eatts, &g);
@@ -121,7 +121,7 @@ int main(int argc, char **argv) try
 		double x = g.Nod(i)->X();
 		double y = g.Nod(i)->Y();
 		if (fabs(y-H)<1.0e-5) // top node
-			g.Nod(i)->Bry ("T", T0*cos(PI*x/(6.0*a)));
+			g.Nod(i)->Bry ("u", T0*cos(PI*x/(6.0*a)));
 	}
 
 	// Solve
@@ -141,13 +141,9 @@ int main(int argc, char **argv) try
 	// Write file
 	cout << "Write output file: ------------------------------------------------------------" << endl;
 	start = std::clock(); // Initial time
-	Output o; o.VTK   (&g, "theat01.vtk");
-	          o.VTU   (&g, "theat01.vtu");
-	          o.VTUcg (&g, "theat01_cg.vtu");
+	Output o; o.VTU (&g, "theat01.vtu");
 	total = std::clock() - start; // Time elapsed
-	cout << "[1;34mFile <theat01.vtk> saved.[0m" << endl;
 	cout << "[1;34mFile <theat01.vtu> saved.[0m" << endl;
-	cout << "[1;34mFile <theat01_cg.vtu> saved.[0m" << endl;
 	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
 	cout << endl;
 
@@ -161,7 +157,7 @@ int main(int argc, char **argv) try
 		double y  = g.Nod(i)->Y();
 		double Tc = T0*(cosh(PI*y/(6.0*a))*cos(PI*x/(6.0*a)))/cosh(PI/3.0); // correct T
 		if (fabs(y-H)<1.0e-7)
-		errors += fabs(g.Nod(i)->Val("T")-Tc);
+		errors += fabs(g.Nod(i)->Val("u")-Tc);
 	}
 
 	if (fabs(errors)>1.0e-13) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;

@@ -24,8 +24,8 @@
 // MechSys
 #include "fem/geometry.h"
 #include "fem/functions.h"
-#include "fem/elems/tri3pstrain.h"
-#include "models/heats/linheat.h"
+#include "fem/elems/tri3diffusion.h"
+#include "models/diffusions/lindiffusion.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
 #include "fem/output.h"
@@ -39,7 +39,7 @@ int main(int argc, char **argv) try
 	// Input
 	String linsol("LA");
 	if (argc==2) linsol.Printf("%s",argv[1]);
-	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
+	else cout << "[1;32mYou can call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	// Geometry
 	FEM::Geom g(2); // 2D
@@ -55,10 +55,10 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (4);
-	g.SetElem   (0, "Tri3PStrain", /*IsActive*/true);
-	g.SetElem   (1, "Tri3PStrain", /*IsActive*/true);
-	g.SetElem   (2, "Tri3PStrain", /*IsActive*/true);
-	g.SetElem   (3, "Tri3PStrain", /*IsActive*/true);
+	g.SetElem   (0, "Tri3Diffusion");
+	g.SetElem   (1, "Tri3Diffusion");
+	g.SetElem   (2, "Tri3Diffusion");
+	g.SetElem   (3, "Tri3Diffusion");
 
 	// Set connectivity
 	g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1))->Connect(2, g.Nod(2));
@@ -67,20 +67,21 @@ int main(int argc, char **argv) try
 	g.Ele(3)->Connect(0, g.Nod(2))->Connect(1, g.Nod(4))->Connect(2, g.Nod(5));
 
 	// Parameters and initial values
-	g.Ele(0)->SetModel("LinHeat", "k=1.00", "");
-	g.Ele(1)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	g.Ele(0)->SetModel("LinDiffusion", "k=1.0", "");
+	g.Ele(1)->SetModel("LinDiffusion", "k=1.0", "");
+	g.Ele(2)->SetModel("LinDiffusion", "k=1.0", "");
+	g.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
 
 	Output o; o.VTU (&g, "tex831.vtu");
 	return 0;
 
-
-	// 4) Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
-	g.Nod(1)->Bry("uy",0.0);
-	g.Nod(3)->Bry("uy",0.0);
-	g.Nod(2)->Bry("fy",1.0);
-	g.Nod(7)->Bry("fy",1.0);
-	g.Nod(6)->Bry("fy",1.0);
+	// Boundary conditions (must be after connectivity)
+	g.Nod(0)->Bry("u",0.0);
+	g.Nod(1)->Bry("u",0.0);
+	g.Nod(3)->Bry("u",0.0);
+	g.Nod(2)->Bry("q",1.0);
+	g.Nod(7)->Bry("q",1.0);
+	g.Nod(6)->Bry("q",1.0);
 
 
 	// Stiffness

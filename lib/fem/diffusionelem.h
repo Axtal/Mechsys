@@ -126,7 +126,7 @@ inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, c
 		for (size_t i=0; i<_n_int_pts; ++i)
 		{
 			// Allocate a new model and set parameters
-			_a_model[i] = static_cast<HeatModel*>(AllocModel(ModelName));
+			_a_model[i] = static_cast<DiffusionModel*>(AllocModel(ModelName));
 			_a_model[i]->SetPrms(Prms);
 			_a_model[i]->SetInis(Inis);
 		}

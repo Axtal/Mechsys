@@ -38,17 +38,14 @@ public:
 	void         SetPrms        (char const * Prms);
 	void         SetInis        (char const * Inis);
 	void         TgConductivity (Matrix<double> & D) const { D = _K; };
-	int          UpdateState    (Vector<double> const & DEps, Vector<double> & DSig);
-	void         BackupState    ();
-	void         RestoreState   ();
 	char const * Name           () const { return "LinDiffusion"; }
 
 private:
 	// Data
-	Matrix<double> _K; // Conductivity
+	Matrix<double> _K; ///< Conductivity
 
 	// Private methods
-	double _val (char const * Name) const { throw new Fatal("LinDiffusion::_val The Name==%s is invalid",Name); }
+	double _val (char const * Name) const { throw new Fatal("LinDiffusion::_val: The Name==%s is invalid",Name); }
 
 }; // class LinDiffusion
 
@@ -58,7 +55,7 @@ private:
 
 inline void LinDiffusion::SetPrms(char const * Prms)
 {
-	if (_geom<0) throw new Fatal("LinDiffusion::SetPrms: Geometry type:\n\t[1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)] must be set via SetGeom before calling this method");
+	if (_geom<0) throw new Fatal("LinDiffusion::SetPrms: Geometry type:\n\t[1:1D, 2:2D, 3:3D] must be set via SetGeom before calling this method");
 
 	/* "kxx=1.0 kxy=0.0 kxz=0.0
 	            kyy=1.0 kxz=0.0
@@ -71,56 +68,45 @@ inline void LinDiffusion::SetPrms(char const * Prms)
 	lp.BreakExpressions(names,values);
 
 	// Conductivity matrix
-	     if (_geom==1)                         _k.Resize (1,1);
-	else if (_geom==2 || _geom==4 || _geom==5) _k.Resize (2,2);
-	else if (_geom==3)                         _k.Resize (3,3);
-	_k.SetValues (0.0);
+	     if (_geom==1) _K.Resize (1,1);
+	else if (_geom==2) _K.Resize (2,2);
+	else if (_geom==3) _K.Resize (3,3);
+	else throw new Fatal("LinDiffusion::SetPrms: Geometry==%d is invalid. The valid one must be one of [1:1D, 2:2D, 3:3D]",_geom);
+	_K.SetValues (0.0);
 
 	// Set
 	if (names.Size()==1)
 	{
 		if (names[0]=="k")
 		{
-			if (_geom==1)
-			{
-				_k(0,0) = values[0];
-			}
-			else if (_geom==2 || _geom==4 || _geom==5)
-			{
-				_k = values[0],       0.0,
-						   0.0, values[0];
-			}
-			else if (_geom==3)
-			{
-				_k = values[0],       0.0,       0.0,
-						   0.0, values[0],       0.0,
-						   0.0,       0.0, values[0];
-			}
+			     if (_geom==1) _K(0,0) = values[0];
+			else if (_geom==2) _K      = values[0],       0.0,
+			                                   0.0, values[0];
+			else if (_geom==3) _K      = values[0],       0.0,       0.0,
+			                                   0.0, values[0],       0.0,
+			                                   0.0,       0.0, values[0];
 		}
 		else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s for isotropic models is invalid. It must be equal to 'k'. Ex.: k=1.0",names[0].CStr());
 	}
 	else
 	{
-		if (_geom==1) throw new Fatal("LinDiffusion::SetPrms: For unidimensional problems, only one parameter key (equal to 'k') must be given. Ex.: k=1.0 (%s is invalid)");
+		if (_geom==1) throw new Fatal("LinDiffusion::SetPrms: For unidimensional problems, only one parameter key (equal to 'k') must be used. Ex.: k=1.0 (%s is invalid)");
 		for (size_t i=0; i<names.Size(); ++i)
 		{
-			      if (names[i]=="kxx"                    && _geom> 1) _k(0,0) = values[i];
-			 else if (names[i]=="kxy" || names[i]=="kyx" && _geom> 1) _k(0,1) = values[i];
-			 else if (names[i]=="kxz" || names[i]=="kzx" && _geom==3) _k(0,2) = values[i];
-			 else if (names[i]=="kyy"                    && _geom> 1) _k(1,1) = values[i];
-			 else if (names[i]=="kyz" || names[i]=="kzy" && _geom==3) _k(1,2) = values[i];
-			 else if (names[i]=="kzz"                    && _geom==3) _k(2,2) = values[i];
-			 else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s is invalid. It must be: kxx, kxy, kxz,  kyy, kyz,  kzz  (or kyx, kzx, kzy).",names[i].CStr());
+			      if (names[i]=="kxx")                                { _K(0,0) = values[i];                       }
+			 else if (names[i]=="kxy" || names[i]=="kyx")             { _K(0,1) = values[i];  _K(1,0) = values[i]; }
+			 else if (names[i]=="kxz" || names[i]=="kzx" && _geom==3) { _K(0,2) = values[i];  _K(2,0) = values[i]; }
+			 else if (names[i]=="kyy")                                { _K(1,1) = values[i];                       }
+			 else if (names[i]=="kyz" || names[i]=="kzy" && _geom==3) { _K(1,2) = values[i];  _K(2,1) = values[i]; }
+			 else if (names[i]=="kzz"                    && _geom==3) { _K(2,2) = values[i];                       }
+			 else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s is invalid. It must be: kxx, kxy, kxz,  kyy, kyz,  kzz  (or kyx, kzx, kzy), where the 'z-coefficients' are valid only for 3D problems.",names[i].CStr());
 		}
-		_k(1,0) = _k(0,1);
-		_k(2,0) = _k(0,2);
-		_k(2,1) = _k(1,2);
 	}
 }
 
 inline void LinDiffusion::SetInis(char const * Inis)
 {
-	/* "T=0.0" */
+	/* "ZERO" */
 	LineParser lp(Inis);
 	Array<String> names;
 	Array<double> values;
@@ -129,23 +115,8 @@ inline void LinDiffusion::SetInis(char const * Inis)
 	// Check
 	for (size_t i=0; i<names.Size(); i++)
 	{
-		if (names[i]=="T") _T = values[i];
-		else throw new Fatal("LinDiffusion::SetInis: Initial value key==%s is invalid. It must be 'T'. Ex.: T=1.0",names[i]);
+		if (names[i]!="ZERO") throw new Fatal("LinDiffusion::SetInis: Initial value key==%s is invalid.",names[i].CStr());
 	}
-}
-
-inline int LinDiffusion::UpdateState(Vector<double> const & DGrad, Vector<double> & DFlow)
-{
-	DFlow = _K*DGrad;
-	return 1;
-}
-
-inline void LinDiffusion::BackupState()
-{
-}
-
-inline void LinDiffusion::RestoreState()
-{
 }
 
 

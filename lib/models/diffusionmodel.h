@@ -34,7 +34,7 @@ public:
 	virtual ~DiffusionModel () {}
 
 	// Methods
-	void SetGeom      (int Type) { _geom = Type; } ///< Geometry type:  1:1D, 2:2D, 3:3D
+	void SetGeom      (int Type) { _geom = Type; if (_geom>3) throw new Fatal("DiffusionModel::SetGeom: Geometry type must be: 1:1D, 2:2D, 3:3D."); } ///< Geometry type:  1:1D, 2:2D, 3:3D
 	void BackupState  () {}
 	void RestoreState () {}
 
