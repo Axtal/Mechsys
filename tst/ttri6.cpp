@@ -120,16 +120,12 @@ int main(int argc, char **argv) try
 	sol -> Solve();
 
 	// Output
-	LinAlg::Matrix<double> values0;
-	LinAlg::Matrix<double> values1;
-	Array<String>          labels0;
-	Array<String>          labels1;
-	g.Ele(0)->OutNodes (values0, labels0);
-	g.Ele(1)->OutNodes (values1, labels1);
-	std::cout << labels0;
-	std::cout << values0 << std::endl;
-	std::cout << labels1;
-	std::cout << values1 << std::endl;
+	LinAlg::Matrix<double> vals0,vals1;
+	Array<String>          labs0,labs1;
+	g.Ele(0)->OutNodes (vals0, labs0);
+	g.Ele(1)->OutNodes (vals1, labs1);
+	std::cout << "Element # 0\n" << labs0 << "\n" << vals0 << std::endl;
+	std::cout << "Element # 1\n" << labs1 << "\n" << vals1 << std::endl;
 
 	// Check
     double errors = 0.0;

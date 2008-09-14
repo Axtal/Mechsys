@@ -13,6 +13,7 @@ tst/tpstrain02
 tst/theat01
 tst/ttree01
 tst/reddy/tex831
+tst/reddy/tex851
 src/libmechsys.*
 
 syntax: glob

@@ -35,23 +35,25 @@ public:
 	virtual ~LinDiffusion () {}
 
 	// Derived Methods
-	void         SetPrms        (char const * Prms);
-	void         SetInis        (char const * Inis);
-	void         TgConductivity (Matrix<double> & D) const { D = _K; };
-	char const * Name           () const { return "LinDiffusion"; }
+	void         SetPrms (char const * Prms);
+	void         SetInis (char const * Inis);
+	char const * Name    () const { return "LinDiffusion"; }
 
 private:
 	// Data
-	Matrix<double> _K; ///< Conductivity
+	TinyMat _K; ///< Conductivity
 
 	// Private methods
-	double _val (char const * Name) const { throw new Fatal("LinDiffusion::_val: The Name==%s is invalid",Name); }
+	void   _cond (TinyVec const & DuDx, TinyVec const & Vel, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const;
+	double _val  (char const * Name) const { throw new Fatal("LinDiffusion::_val: The Name==%s is invalid",Name); }
 
 }; // class LinDiffusion
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+/* public */
 
 inline void LinDiffusion::SetPrms(char const * Prms)
 {
@@ -68,23 +70,17 @@ inline void LinDiffusion::SetPrms(char const * Prms)
 	lp.BreakExpressions(names,values);
 
 	// Conductivity matrix
-	     if (_geom==1) _K.Resize (1,1);
-	else if (_geom==2) _K.Resize (2,2);
-	else if (_geom==3) _K.Resize (3,3);
-	else throw new Fatal("LinDiffusion::SetPrms: Geometry==%d is invalid. The valid one must be one of [1:1D, 2:2D, 3:3D]",_geom);
-	_K.SetValues (0.0);
+	if (_geom<1 || _geom>3) new Fatal("LinDiffusion::SetPrms: Geometry==%d is invalid. The valid one must be one of [1:1D, 2:2D, 3:3D]",_geom);
+	_K = 0.0;
 
 	// Set
 	if (names.Size()==1)
 	{
 		if (names[0]=="k")
 		{
-			     if (_geom==1) _K(0,0) = values[0];
-			else if (_geom==2) _K      = values[0],       0.0,
-			                                   0.0, values[0];
-			else if (_geom==3) _K      = values[0],       0.0,       0.0,
-			                                   0.0, values[0],       0.0,
-			                                   0.0,       0.0, values[0];
+			_K = values[0],       0.0,       0.0,
+			           0.0, values[0],       0.0,
+			           0.0,       0.0, values[0];
 		}
 		else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s for isotropic models is invalid. It must be equal to 'k'. Ex.: k=1.0",names[0].CStr());
 	}
@@ -117,6 +113,14 @@ inline void LinDiffusion::SetInis(char const * Inis)
 	{
 		if (names[i]!="ZERO") throw new Fatal("LinDiffusion::SetInis: Initial value key==%s is invalid.",names[i].CStr());
 	}
+}
+
+
+/* private */
+
+inline void LinDiffusion::_cond(TinyVec const & DuDx, TinyVec const & Vel, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const
+{
+	D = _K;
 }
 
 

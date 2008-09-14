@@ -322,7 +322,7 @@ inline void Output::_vtk_write_geometry(std::ostringstream & oss) const
 	// Node coordinates
 	oss << "POINTS " << _nn << " float" << std::endl;
 	for (size_t i=0; i<_nn; ++i)
-		oss << _nsflo << _g->Nod(i)->X() << _nsflo << _g->Nod(i)->Y() << _nsflo << _g->Nod(i)->Z() << std::endl;
+		oss << _nsflo << _g->Nod(i)->Coord(0) << _nsflo << _g->Nod(i)->Coord(1) << _nsflo << _g->Nod(i)->Coord(2) << std::endl;
 	oss << std::endl;
 
 	// Total number of CELLS data = Sum (1 + NNodes); 1 for the numPts label
@@ -382,9 +382,9 @@ inline void Output::_vtu_write_geometry(std::ostringstream & oss) const
 	size_t k = 0; oss << "        ";
 	for (size_t i=0; i<_nn; ++i)
 	{
-		oss << "  " << _nsflo << _g->Nod(i)->X() << " ";
-		oss <<         _nsflo << _g->Nod(i)->Y() << " ";
-		oss <<         _nsflo << _g->Nod(i)->Z();
+		oss << "  " << _nsflo << _g->Nod(i)->Coord(0) << " ";
+		oss <<         _nsflo << _g->Nod(i)->Coord(1) << " ";
+		oss <<         _nsflo << _g->Nod(i)->Coord(2);
 		k++;
 		OUT_NEWLINE (i,k,_nn,_nfmax/3,oss);
 	}

@@ -26,6 +26,7 @@
 #include "models/model.h"
 #include "util/string.h"
 #include "util/util.h"
+#include "tensors/tensors.h"
 #include "tensors/functions.h"
 
 using Tensors::Tensor2;
@@ -40,28 +41,13 @@ using LinAlg::Matrix;
 class EquilibModel : public Model
 {
 public:
-	// Typedefs
-	typedef Array<double> IntVals; ///< Internal values (specific volume, yield surface size, etc.)
-
-	// Constructor
-	EquilibModel () { STOL().dTini().mMin().mMax().maxSS(); }
-
 	// Destructor
 	virtual ~EquilibModel () {}
 
 	// Methods
-	void SetGeom      (int Type) { _geom = Type; }                          ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	void TgStiffness  (Matrix<double> & Dmat) const;                        ///< Tangent stiffness tensor
-	int  StressUpdate (Vector<double> const & DEps, Vector<double> & DSig); ///< Update stress/strain state for given strain increment
-	void BackupState  () { _sig_bkp=_sig; _eps_bkp=_eps; _ivs_bkp=_ivs; };  ///< Backup internal state (sig, eps, ivs; stress, strain, internal values)
-	void RestoreState () { _sig=_sig_bkp; _eps=_eps_bkp; _ivs=_ivs_bkp; };  ///< Restore internal state (sig, eps, ivs; stress, strain, internal values)
-
-	// Set methods
-	EquilibModel & STOL  (double Val=1.0e-5) { _STOL =Val; return (*this); }
-	EquilibModel & dTini (double Val=1.0   ) { _dTini=Val; return (*this); }
-	EquilibModel & mMin  (double Val=0.1   ) { _mMin =Val; return (*this); }
-	EquilibModel & mMax  (double Val=10.0  ) { _mMax =Val; return (*this); }
-	EquilibModel & maxSS (size_t Val=2000  ) { _maxSS=Val; return (*this); }
+	void SetGeom     (int Type) { _geom = Type; }                          ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	void TgStiffness (Matrix<double> & Dmat) const;                        ///< Tangent stiffness tensor
+	int  StateUpdate (Vector<double> const & DEps, Vector<double> & DSig); ///< Update stress/strain state for given strain increment
 
 	// Access methods
 	void   Sig (Vector<double> & Stress) const { Tensor2ToVector(_geom, _sig, Stress); }
@@ -72,25 +58,20 @@ protected:
 	// Data
 	Tensor2 _sig;     ///< Stress
 	Tensor2 _eps;     ///< Strain
-	IntVals _ivs;     ///< Internal values
 	Tensor2 _sig_bkp; ///< Backup stress
 	Tensor2 _eps_bkp; ///< Backup strain
-	IntVals _ivs_bkp; ///< Backup internal values
-
-	// Constants for the stress update algorithm
-	double _STOL;
-	double _dTini;
-	double _mMin;
-	double _mMax;
-	size_t _maxSS;
 
 	// Private methods that MUST be derived
 	virtual void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const =0; ///< Tangent or secant stiffness
 	virtual double _val   (char const * Name) const =0; ///< Return internal values
 
 private:
+	// Derived private methods
+	void _backup_state  () { _sig_bkp=_sig; _eps_bkp=_eps; } ///< Backup internal state (sig, eps, ivs; stress, strain, internal values)
+	void _restore_state () { _sig=_sig_bkp; _eps=_eps_bkp; } ///< Restore internal state (sig, eps, ivs; stress, strain, internal values)
+
 	// Private methods
-	void _tg_incs (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor2 & DSig, IntVals & DIvs);
+	void _tg_incs (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor2 & DSig, IntVals & DIvs) const; ///< Tangent increments
 
 }; // class EquilibModel
 
@@ -109,7 +90,7 @@ inline void EquilibModel::TgStiffness(Matrix<double> & Dmat) const
 	Tensor4ToMatrix (_geom,D, Dmat);
 }
 
-inline int EquilibModel::StressUpdate(Vector<double> const & DEps, Vector<double> & DSig)
+inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double> & DSig)
 {
 	// Auxiliar variables
 	Tensor2  sig_i; sig_i = _sig;  // Initial stress state
@@ -188,7 +169,7 @@ inline int EquilibModel::StressUpdate(Vector<double> const & DEps, Vector<double
 		dT = m * dT;
 		if (dT>1.0-T) dT = 1.0-T; // last step
 	}
-	throw new Fatal("EquilibModel::StressUpdate did not converge for %d steps",_maxSS);
+	throw new Fatal("EquilibModel::StateUpdate did not converge for %d steps",_maxSS);
 }
 
 inline double EquilibModel::Val(char const * Name) const
@@ -215,7 +196,7 @@ inline double EquilibModel::Val(char const * Name) const
 
 /* private */
 
-inline void EquilibModel::_tg_incs(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor2 & DSig, IntVals & DIvs)
+inline void EquilibModel::_tg_incs(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor2 & DSig, IntVals & DIvs) const
 {
 	// Stiffness
 	Tensor4        D;

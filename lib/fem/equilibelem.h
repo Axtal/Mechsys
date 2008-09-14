@@ -56,11 +56,11 @@ public:
 	bool         IsReady         () const;
 	bool         IsEssential     (char const * DOFName) const;
 	void         SetModel        (char const * ModelName, char const * Prms, char const * Inis);
+	void         SetProps        (Array<double> const & P);
 	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
 	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void         BackupState     ();
 	void         RestoreState    ();
-	void         SetProperties   (Array<double> const & EleProps) { _unit_weight=EleProps[0]; }
 	void         GetLabels       (Array<String> & Labels) const;
 	void         Deactivate      ();
 	char const * ModelName       () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
@@ -68,7 +68,7 @@ public:
 	// Derived methods to assemble DAS matrices
 	size_t nOrder1Matrices () const { return 1; }
 	void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
-	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; // Stiffness
+	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
 
 	// Methods
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
@@ -79,11 +79,11 @@ public:
 
 private:
 	// Data
-	Array<EquilibModel*> _a_model;
-	double               _unit_weight;
+	Array<EquilibModel*> _a_model;    ///< Array of pointers to constitutive models
+	Tensors::Tensor1     _body_force; ///< Body force
 
 	// Private methods
-	void _calc_initial_internal_forces ();
+	void _calc_initial_internal_state (); ///< Calculate initial internal state
 
 	// Private methods that MUST be derived
 	virtual int _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -132,10 +132,19 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 			_a_model[i]->SetInis (Inis);
 		}
 
-		// Calculate initial internal forces
-		_calc_initial_internal_forces();
+		// Calculate initial internal state
+		_calc_initial_internal_state ();
 	}
 	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
+}
+
+inline void EquilibElem::SetProps(Array<double> const & P)
+{
+	_body_force = 0.0;
+	     if (P.Size()==1 && _ndim==1) _body_force(0) = P[0];
+	else if (P.Size()==2 && _ndim==2) _body_force    = P[0], P[1];
+	else if (P.Size()==3 && _ndim==3) _body_force    = P[0], P[1], P[2];
+	else throw new Fatal("EquilibElem::SetProps: ElemProp(P)==BodyForce must have the same size as the number of dimensions (=%d)",_ndim);
 }
 
 inline Element * EquilibElem::Connect(int iNodeLocal, FEM::Node * ptNode)
@@ -195,7 +204,7 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 		DEps = B*dU;
 		
 		// Update model
-		_a_model[i]->StressUpdate(DEps, DSig);
+		_a_model[i]->StateUpdate(DEps, DSig);
 
 		// Calculate internal force vector;
 		dF += trn(B)*DSig*det(J)*w;
@@ -489,7 +498,7 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 
 /* private */
 
-inline void EquilibElem::_calc_initial_internal_forces()
+inline void EquilibElem::_calc_initial_internal_state()
 {
 	// Allocate (local/element) internal force vector
 	LinAlg::Vector<double> F(_ndim*_n_nodes);

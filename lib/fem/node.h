@@ -38,6 +38,9 @@
 #include <sstream>
 #include <algorithm>
 
+// Blitz++
+#include <blitz/tinyvec-et.h>
+
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
   #include <boost/python.hpp> // this includes everything
@@ -58,6 +61,9 @@ namespace FEM
 class Node
 {
 public:
+	// Typedefs
+	typedef blitz::TinyVector<double,3> TinyVec;
+
 	/** Degrees of freedom. */
 	struct DOF
 	{
@@ -87,9 +93,10 @@ public:
 
 	// Access methods
 	long   GetID     ()          const { return _my_id; }            ///< Return the ID of this node
-	double X         ()          const { return _x;     }            ///< X coordinate
-	double Y         ()          const { return _y;     }            ///< Y coordinate
-	double Z         ()          const { return _z;     }            ///< Z coordinate
+	double Coord     (size_t i)  const { return _coords(i); }        ///< Return coordinate x, y, or z
+	double X         ()          const { return _coords(0); }        ///< Return x coordinate
+	double Y         ()          const { return _coords(1); }        ///< Return y coordinate
+	double Z         ()          const { return _coords(2); }        ///< Return z coordinate
 	size_t nDOF      ()          const { return _dofs.Size();      } ///< Return the number of degrees of freedom
 	size_t nSharedBy ()          const { return _shared_by.Size(); } ///< Return the array with the elements that share this node
 	long   SharedBy  (int Index) const { return _shared_by[Index]; } ///< Return the array with the elements that share this node
@@ -109,9 +116,7 @@ private:
 	// Data
 	long        _my_id;     ///< The ID of this node
 	Array<long> _shared_by; ///< IDs of the elements that share this node
-	double      _x;         ///< X coordinate
-	double      _y;         ///< Y coordinate
-	double      _z;         ///< Z coordinate
+	TinyVec     _coords;    ///< Coordinates
 	Array<DOF>  _dofs;      ///< Array with degrees of freedom
 
 	// Private methods
@@ -127,10 +132,8 @@ private:
 
 inline void Node::Initialize(int ID, double X, double Y, double Z)
 {
-	_my_id = ID;
-	_x     = X;
-	_y     = Y;
-	_z     = Z;
+	_my_id  = ID;
+	_coords = X, Y, Z;
 }
 
 inline void Node::AddDOF(char const * EssentialBryName, char const * NaturalBryName)
@@ -241,7 +244,7 @@ std::ostream & operator<< (std::ostream & os, FEM::Node::DOF const & D)
 /** Outputs a node. */
 std::ostream & operator<< (std::ostream & os, FEM::Node const & N)
 {
-	os << "[" << N.GetID() << "] (" << Util::_8_4<<N.X() << "," << Util::_8_4<<N.Y() << "," << Util::_8_4<<N.Z() << ")";
+	os << "[" << N.GetID() << "] (" << Util::_8_4<<N.Coord(0) << "," << Util::_8_4<<N.Coord(1) << "," << Util::_8_4<<N.Coord(2) << ")";
 	for (size_t i=0; i<N.nDOF(); ++i)
 		os << " : " << N.DOFVar(i);
 	return os;

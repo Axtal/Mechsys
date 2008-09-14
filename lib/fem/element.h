@@ -90,11 +90,11 @@ public:
 	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis
 	virtual bool      IsEssential   (char const * DOFName) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel      (char const * ModelName, char const * Prms, char const * Inis) =0;                                       ///< (Re)allocate model with parameters and initial values
+	virtual void      SetProps      (Array<double> const & ElemProps) =0;                                                                    ///< Set element properties such as body forces, internal heat source, water pumping, etc.
 	virtual Element * Connect       (int iNodeLocal, FEM::Node * ptNode) =0;                                                                 ///< Set connectivity, by linking the local node ID with the pointer to the connection node
 	virtual void      UpdateState   (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;                  ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      BackupState   () =0;                                                                                                   ///< Backup internal state
 	virtual void      RestoreState  () =0;                                                                                                   ///< Restore internal state from a previously backup state
-	virtual void      SetProperties (Array<double> const & EleProps) =0;                                                                     ///< Set interal properties
 	virtual void      GetLabels     (Array<String> & Labels) const =0;                                                                       ///< Get the labels of all values to be output
 
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
@@ -116,6 +116,7 @@ public:
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
 	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
+	virtual bool   AddVolForces  (LinAlg::Vector<double> & FVol) const { return false; }
 
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
@@ -131,7 +132,6 @@ protected:
 	// Data (may be accessed by derived classes)
 	long               _my_id;          ///< The ID of this element
 	int                _ndim;           ///< Number of dimensions of the problem
-	int                _geom;           ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	size_t             _n_nodes;        ///< Number of nodes in the element
 	size_t             _n_int_pts;      ///< Number of integration (Gauss) points
 	size_t             _n_face_nodes;   ///< Number of nodes in a face
@@ -214,26 +214,26 @@ inline bool Element::IsInside(double x, double y, double z) const
 	
 	//fast search in X -----------------------------------------------------------------------
 	max = -huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->X() > max) max=_connects[i]->X();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(0) > max) max=_connects[i]->Coord(0);
 	if ( x > max ) return false;
 	min = +huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->X() < min) min=_connects[i]->X();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(0) < min) min=_connects[i]->Coord(0);
 	if ( x < min ) return false;
 
 	//fast search in Y -----------------------------------------------------------------------
 	max = -huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Y() > max) max=_connects[i]->Y();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(1) > max) max=_connects[i]->Coord(1);
 	if ( y > max ) return false;
 	min = +huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Y() < min) min=_connects[i]->Y();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(1) < min) min=_connects[i]->Coord(1);
 	if ( y < min ) return false;
 	
 	//fast search in Z -----------------------------------------------------------------------
 	max = -huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Z() > max) max=_connects[i]->Z();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(2) > max) max=_connects[i]->Coord(2);
 	if ( z > max ) return false;
 	min = +huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Z() < min) min=_connects[i]->Z();
+	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(2) < min) min=_connects[i]->Coord(2);
 	if ( z < min ) return false;
 	
 	double r, s, t;
@@ -267,9 +267,9 @@ inline void Element::InverseMap(double x, double y, double z, double & r, double
 		//calculate trial of real coordinates
 		for (size_t j=0; j<_n_nodes; j++) 
 		{
-			tx += shape(j)*_connects[j]->X(); //ok
-			ty += shape(j)*_connects[j]->Y(); //ok
-			tz += shape(j)*_connects[j]->Z(); //ok
+			tx += shape(j)*_connects[j]->Coord(0); //ok
+			ty += shape(j)*_connects[j]->Coord(1); //ok
+			tz += shape(j)*_connects[j]->Coord(2); //ok
 		}
 		
 		// calculate the error
@@ -295,31 +295,11 @@ inline void Element::InverseMap(double x, double y, double z, double & r, double
 inline void Element::Jacobian(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const
 {
 	// Calculate a matrix with nodal coordinates
-	LinAlg::Matrix<double> cmatrix; // size = _n_nodes x 3
-
-    if (derivs.Rows()==3)
-	{
-		cmatrix.Resize(_n_nodes,3);   // 3 => X,Y,Z (all nodes have X,Y and Z)
-
-		// Loop along all nodes of this element
-		for (size_t i=0; i<_n_nodes; i++)
-		{
-			cmatrix(i,0) = _connects[i]->X();
-			cmatrix(i,1) = _connects[i]->Y();
-			cmatrix(i,2) = _connects[i]->Z();
-		}
-	}
-	else
-	{
-		cmatrix.Resize(_n_nodes,2);   // 2 => X,Y (all nodes have X and Z)
-
-		// Loop along all nodes of this element
-		for (size_t i=0; i<_n_nodes; i++)
-		{
-			cmatrix(i,0) = _connects[i]->X();
-			cmatrix(i,1) = _connects[i]->Y();
-		}
-	}
+	LinAlg::Matrix<double> cmatrix;  // size = _n_nodes x _ndim
+	cmatrix.Resize(_n_nodes, _ndim);
+	for (size_t i=0; i<_n_nodes; i++)
+	for (int j=0; j<_ndim; ++j)
+		cmatrix(i,j) = _connects[i]->Coord(j);
 
 	// Calculate the Jacobian; 
 	J = derivs * cmatrix;
@@ -343,11 +323,8 @@ inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double
 		// Get the face coordinates
 		LinAlg::Matrix<double> m_face_coords(_n_face_nodes,3);
 		for (size_t i=0; i<_n_face_nodes; i++)
-		{
-			m_face_coords(i,0) = FaceConnects[i]->X();
-			m_face_coords(i,1) = FaceConnects[i]->Y();
-			m_face_coords(i,2) = FaceConnects[i]->Z();
-		}
+		for (int j=0; j<_ndim; ++j)
+			m_face_coords(i,j) = FaceConnects[i]->Coord(j);
 
 		// Determine face jacobian (2x3)
 		J = m_face_derivs*m_face_coords;
@@ -366,8 +343,8 @@ inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double
 		LinAlg::Matrix<double> m_face_coords(_n_face_nodes,2);
 		for (size_t i=0; i<_n_face_nodes; i++)
 		{
-			m_face_coords(i,0) = FaceConnects[i]->X();
-			m_face_coords(i,1) = FaceConnects[i]->Y();
+			m_face_coords(i,0) = FaceConnects[i]->Coord(0);
+			m_face_coords(i,1) = FaceConnects[i]->Coord(1);
 		}
 
 		// Determine face jacobian (1x2)
@@ -378,15 +355,12 @@ inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double
 inline void Element::Coords(LinAlg::Matrix<double> & coords) const
 {
 	// Calculate a matrix with nodal coordinates
-	coords.Resize(_n_nodes,3);   // 3 => X,Y,Z (all nodes have X,Y and Z)
+	coords.Resize(_n_nodes,_ndim);
 
 	// Loop along all nodes of this element
 	for (size_t i=0; i<_n_nodes; i++)
-	{
-		coords(i,0) = _connects[i]->X();
-		coords(i,1) = _connects[i]->Y();
-		coords(i,2) = _connects[i]->Z();
-	}
+	for (int j=0; j<_ndim; ++j)
+		coords(i,j) = _connects[i]->Coord(j);
 }
 
 inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & Labels) const

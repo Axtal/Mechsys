@@ -33,6 +33,7 @@
 
 using std::cout;
 using std::endl;
+using LinAlg::Vector;
 
 int main(int argc, char **argv) try
 {
@@ -62,7 +63,7 @@ int main(int argc, char **argv) try
 
 	// Set connectivity
 	g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1))->Connect(2, g.Nod(2));
-	g.Ele(1)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2))->Connect(2, g.Nod(4));
+	g.Ele(1)->Connect(0, g.Nod(4))->Connect(1, g.Nod(2))->Connect(2, g.Nod(1));
 	g.Ele(2)->Connect(0, g.Nod(1))->Connect(1, g.Nod(3))->Connect(2, g.Nod(4));
 	g.Ele(3)->Connect(0, g.Nod(2))->Connect(1, g.Nod(4))->Connect(2, g.Nod(5));
 
@@ -71,6 +72,15 @@ int main(int argc, char **argv) try
 	g.Ele(1)->SetModel("LinDiffusion", "k=1.0", "");
 	g.Ele(2)->SetModel("LinDiffusion", "k=1.0", "");
 	g.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
+	
+	// Properties (heat source)
+	Array<double> source(1);
+	//source.SetValues(6.0/0.25);
+	source.SetValues(1.0);
+	g.Ele(0)->SetProps(source);
+	g.Ele(1)->SetProps(source);
+	g.Ele(2)->SetProps(source);
+	g.Ele(3)->SetProps(source);
 
 	// Boundary conditions (must be after connectivity)
 	g.Ele(0)->EdgeBry("q", 0.0, 0)->EdgeBry("q", 0.0, 2);
@@ -89,7 +99,17 @@ int main(int argc, char **argv) try
 	Ke_correct =  0.5, -0.5,  0.0,
 	             -0.5,  1.0, -0.5,
 	              0.0, -0.5,  0.5;
-	
+
+	// Output
+	Ke0.SetNS(Util::_6_3);
+	Ke1.SetNS(Util::_6_3);
+	Ke2.SetNS(Util::_6_3);
+	Ke3.SetNS(Util::_6_3);
+	cout << Ke0 << endl;
+	cout << Ke1 << endl;
+	cout << Ke2 << endl;
+	cout << Ke3 << endl;
+
 	// Check
 	double errors = 0.0;
 	for (int i=0; i<3; ++i)
@@ -102,28 +122,34 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
 	if (fabs(errors)>1.0e-14) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 
+	// Output
+	cout << "  [ID](X,Y,Z) : {EssentialBryName,NaturalBryName,EssentialBry,NaturalBry,IsEssenPresc,EqID,EssentialVal,NaturalVal}" << endl;;
+	cout << g << endl;
 	Output o; o.VTU (&g, "tex831.vtu");
-	return 0;
 
 	// Output
-	LinAlg::Matrix<double> values0;
-	LinAlg::Matrix<double> values1;
-	Array<String>          labels0;
-	Array<String>          labels1;
-	g.Ele(0)->OutNodes (values0, labels0);
-	g.Ele(1)->OutNodes (values1, labels1);
-	std::cout << labels0;
-	std::cout << values0 << std::endl;
-	std::cout << labels1;
-	std::cout << values1 << std::endl;
+	LinAlg::Matrix<double> vals0,vals1,vals2,vals3;
+	Array<String>          labs0,labs1,labs2,labs3;
+	g.Ele(0)->OutNodes (vals0, labs0);
+	g.Ele(1)->OutNodes (vals1, labs1);
+	g.Ele(2)->OutNodes (vals2, labs2);
+	g.Ele(3)->OutNodes (vals3, labs3);
+	std::cout << "Element # 0\n" << labs0 << "\n" << vals0 << std::endl;
+	std::cout << "Element # 1\n" << labs1 << "\n" << vals1 << std::endl;
+	std::cout << "Element # 2\n" << labs2 << "\n" << vals2 << std::endl;
+	std::cout << "Element # 3\n" << labs3 << "\n" << vals3 << std::endl;
+
+	for (int i=0; i<6; ++i)
+		cout << "Node # " << i << ":  u=" << g.Nod(i)->Val("u") << ",  q=" << g.Nod(i)->Val("q") << endl;
+
+	return 1;
 
 	// Element 0
 	errors += fabs(g.Ele(0)->Val(0, "Sx") - ( 1.56432140e-01));
@@ -176,7 +202,7 @@ int main(int argc, char **argv) try
 	if (fabs(errors)>1.0e-7) return 1;
 	else                     return 0;
 }
-catch (Exception * e) 
+catch (Exception * e)
 {
 	e->Cout();
 	if (e->IsFatal()) {delete e; exit(1);}
@@ -190,4 +216,4 @@ catch (char const * m)
 catch (...)
 {
 	std::cout << "Some exception (...) ocurred\n";
-} 
+}
