@@ -4,7 +4,7 @@ make clean > /dev/null 2>&1
 
 FILES="CMakeCache.txt cmake_install.cmake Makefile CTestTestfile.cmake"
 SFILES="install_manifest.txt"
-DIRS="CMakeFiles build"
+DIRS="CMakeFiles build Testing"
 
 for f in $FILES; do
 	find . -name "$f" -exec rm {} \; > /dev/null 2>&1
