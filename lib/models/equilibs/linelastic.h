@@ -95,13 +95,13 @@ inline void LinElastic::SetPrms(char const * Prms)
 
 inline void LinElastic::SetInis(char const * Inis)
 {
-	/* "Sx=0.0 Sy=0.0 Sxy=0.0" */
+	/* "Sx=0.0 Sy=0.0 Sxy=0.0 ..." or "ZERO" */
 	LineParser lp(Inis);
 	Array<String> names;
 	Array<double> values;
 	lp.BreakExpressions(names,values);
 
-	// Check
+	// Parse input
 	_sig = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
 	_eps = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
 	for (size_t i=0; i<names.Size(); i++)

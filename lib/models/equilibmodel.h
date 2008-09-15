@@ -41,6 +41,9 @@ using LinAlg::Matrix;
 class EquilibModel : public Model
 {
 public:
+	// Constructor
+	EquilibModel () { _sig=0.0; _eps=0.0; _deps=0.0; }
+
 	// Destructor
 	virtual ~EquilibModel () {}
 
@@ -51,15 +54,16 @@ public:
 
 	// Access methods
 	void   Sig (Vector<double> & Stress) const { Tensor2ToVector(_geom, _sig, Stress); }
-	void   Eps (Vector<double> & Strain) const { Tensor2ToVector(_geom, _eps, Strain); }
-	double Val (char const     * Name  ) const;
+	double Val (char const * Name) const;
 
 protected:
 	// Data
-	Tensor2 _sig;     ///< Stress
-	Tensor2 _eps;     ///< Strain
-	Tensor2 _sig_bkp; ///< Backup stress
-	Tensor2 _eps_bkp; ///< Backup strain
+	Tensor2 _sig;      ///< Stress
+	Tensor2 _eps;      ///< Strain
+	Tensor2 _deps;     ///< Delta strain
+	Tensor2 _sig_bkp;  ///< Backup stress
+	Tensor2 _eps_bkp;  ///< Backup strain
+	Tensor2 _deps_bkp; ///< Backup delta strain
 
 	// Private methods that MUST be derived
 	virtual void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const =0; ///< Tangent or secant stiffness
@@ -67,8 +71,8 @@ protected:
 
 private:
 	// Derived private methods
-	void _backup_state  () { _sig_bkp=_sig; _eps_bkp=_eps; } ///< Backup internal state (sig, eps, ivs; stress, strain, internal values)
-	void _restore_state () { _sig=_sig_bkp; _eps=_eps_bkp; } ///< Restore internal state (sig, eps, ivs; stress, strain, internal values)
+	void _backup_state  () { _sig_bkp=_sig; _eps_bkp=_eps; _deps_bkp=_deps; } ///< Backup internal state (sig, eps, ivs; stress, strain, internal values)
+	void _restore_state () { _sig=_sig_bkp; _eps=_eps_bkp; _deps=_deps_bkp; } ///< Restore internal state (sig, eps, ivs; stress, strain, internal values)
 
 	// Private methods
 	void _tg_incs (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor2 & DSig, IntVals & DIvs) const; ///< Tangent increments
@@ -83,10 +87,9 @@ private:
 
 inline void EquilibModel::TgStiffness(Matrix<double> & Dmat) const
 {
-	Tensor2 deps; deps = 0.0;
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiff (deps,_sig,_eps,_ivs, D,B);
+	_stiff (_deps,_sig,_eps,_ivs, D,B);
 	Tensor4ToMatrix (_geom,D, Dmat);
 }
 
@@ -94,7 +97,6 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 {
 	// Auxiliar variables
 	Tensor2  sig_i; sig_i = _sig;  // Initial stress state
-	Tensor2  deps;                 // Strain increment tensor
 	Tensor2  deps_T;               // Driver increment of strain
 	Tensor2  dsig_1;               // FE increment of stress
 	IntVals  divs_1(_ivs.Size());  // FE increment of internal values
@@ -108,7 +110,7 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 	double   error;                // Estimated error
 
 	// Read input vector
-	VectorToTensor2 (_geom,DEps, deps);
+	VectorToTensor2 (_geom,DEps, _deps);
 
 	// Solve
 	double T  = 0.0;
@@ -125,7 +127,7 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 		}
 
 		// Driver increment
-		deps_T = deps*dT;
+		deps_T = _deps*dT;
 
 		// FE increments (dsig_1 & divs_1)
 		_tg_incs (deps_T,_sig,_eps,_ivs, dsig_1,divs_1);

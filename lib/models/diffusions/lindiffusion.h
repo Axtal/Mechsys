@@ -44,7 +44,7 @@ private:
 	TinyMat _K; ///< Conductivity
 
 	// Private methods
-	void   _cond (TinyVec const & DuDx, TinyVec const & Vel, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const;
+	void   _cond (TinyVec const & DGra, TinyVec const & Vel, TinyVec const & Gra, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const;
 	double _val  (char const * Name) const { throw new Fatal("LinDiffusion::_val: The Name==%s is invalid",Name); }
 
 }; // class LinDiffusion
@@ -102,23 +102,29 @@ inline void LinDiffusion::SetPrms(char const * Prms)
 
 inline void LinDiffusion::SetInis(char const * Inis)
 {
-	/* "ZERO" */
+	/* "Vx=0.0 Vy=0.0 Vxy=0.0 ..." or "ZERO" */
 	LineParser lp(Inis);
 	Array<String> names;
 	Array<double> values;
 	lp.BreakExpressions(names,values);
 
-	// Check
+	// Parse input
+	_vel = 0.0, 0.0, 0.0;
+	_gra = 0.0, 0.0, 0.0;
 	for (size_t i=0; i<names.Size(); i++)
 	{
-		if (names[i]!="ZERO") throw new Fatal("LinDiffusion::SetInis: Initial value key==%s is invalid.",names[i].CStr());
+		     if (names[i]=="ZERO") break;
+		else if (names[i]=="Vx")   _vel(0) = values[i];
+		else if (names[i]=="Vy")   _vel(1) = values[i];
+		else if (names[i]=="Vz")   _vel(2) = values[i];
+		else throw new Fatal("LinDiffusion::SetInis: '%s' component of velocity is invalid",names[i].CStr());
 	}
 }
 
 
 /* private */
 
-inline void LinDiffusion::_cond(TinyVec const & DuDx, TinyVec const & Vel, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const
+inline void LinDiffusion::_cond(TinyVec const & DGra, TinyVec const & Vel, TinyVec const & Gra, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const
 {
 	D = _K;
 }

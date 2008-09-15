@@ -125,6 +125,9 @@ int main(int argc, char **argv) try
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
+	cout << "DFext = \n"               << sol->DFext() << endl;
+	cout << "DFint = \n"               << sol->DFint() << endl;
+	cout << "Resid = DFext-DFint = \n" << sol->Resid() << endl;
 
 	if (fabs(errors)>1.0e-14) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
 	else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;

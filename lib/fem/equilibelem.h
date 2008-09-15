@@ -49,6 +49,9 @@ namespace FEM
 class EquilibElem : public virtual Element
 {
 public:
+	// Constructor
+	EquilibElem () : _body_force(0.0), _has_body_force(false) {}
+	
 	// Destructor
 	virtual ~EquilibElem() {}
 
@@ -59,6 +62,7 @@ public:
 	void         SetProps        (Array<double> const & P);
 	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
 	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	bool         AddVolForces    (LinAlg::Vector<double> & FVol) const;
 	void         BackupState     ();
 	void         RestoreState    ();
 	void         GetLabels       (Array<String> & Labels) const;
@@ -79,8 +83,9 @@ public:
 
 private:
 	// Data
-	Array<EquilibModel*> _a_model;    ///< Array of pointers to constitutive models
-	Tensors::Tensor1     _body_force; ///< Body force
+	Array<EquilibModel*> _a_model;        ///< Array of pointers to constitutive models
+	Tensors::Tensor1     _body_force;     ///< Body force
+	bool                 _has_body_force; ///< Has body force?
 
 	// Private methods
 	void _calc_initial_internal_state (); ///< Calculate initial internal state
@@ -100,8 +105,7 @@ private:
 
 inline bool EquilibElem::IsReady() const
 {
-	if (_a_model.Size()==_n_int_pts && _connects.Size()==_n_nodes) return true;
-	else return false;
+	return (_a_model.Size()==_n_int_pts && _connects.Size()==_n_nodes);
 }
 
 inline bool EquilibElem::IsEssential(char const * DOFName) const
@@ -166,26 +170,26 @@ inline Element * EquilibElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> dU(_ndim*_n_nodes); // Delta disp. of this element
+	LinAlg::Vector<double> du(_ndim*_n_nodes); // Delta disp. of this element
 	
 	// Assemble (local/element) displacements vector
 	for (size_t i=0; i<_n_nodes; ++i)
 	{
-		              dU(i*_ndim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
-		              dU(i*_ndim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
-		if (_ndim==3) dU(i*_ndim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
+		              du(i*_ndim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
+		              du(i*_ndim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
+		if (_ndim==3) du(i*_ndim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
 	}
 	
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> dF(_ndim*_n_nodes); // Delta internal force of this element
-	dF.SetValues(0.0);
+	LinAlg::Vector<double> df(_ndim*_n_nodes); // Delta internal force of this element
+	df.SetValues(0.0);
 	
 	// Allocate entities used for every integration point
 	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
 	LinAlg::Matrix<double> J;       // Jacobian matrix
 	LinAlg::Matrix<double> B;       // strain-displacement matrix
-	LinAlg::Vector<double> DEps;    // Strain vector 
-	LinAlg::Vector<double> DSig;    // Stress vector 
+	LinAlg::Vector<double> deps;    // delta strain vector 
+	LinAlg::Vector<double> dsig;    // delta stress vector 
 
 	// Loop along integration points
 	for (size_t i=0; i<_n_int_pts; ++i)
@@ -201,23 +205,73 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
 
 		// Calculate a tensor for the increments of strain
-		DEps = B*dU;
+		deps = B*du;
 		
 		// Update model
-		_a_model[i]->StateUpdate(DEps, DSig);
+		_a_model[i]->StateUpdate(deps, dsig);
 
 		// Calculate internal force vector;
-		dF += trn(B)*DSig*det(J)*w;
+		df += trn(B)*dsig*det(J)*w;
 	}
 
 	// Return internal forces
 	for (size_t i=0; i<_n_nodes; ++i)
 	{
 		// Sum up contribution to internal forces vector
-		              dFint(_connects[i]->DOFVar("fx").EqID) += dF(i*_ndim  );
-		              dFint(_connects[i]->DOFVar("fy").EqID) += dF(i*_ndim+1);
-		if (_ndim==3) dFint(_connects[i]->DOFVar("fz").EqID) += dF(i*_ndim+2);
+		              dFint(_connects[i]->DOFVar("fx").EqID) += df(i*_ndim  );
+		              dFint(_connects[i]->DOFVar("fy").EqID) += df(i*_ndim+1);
+		if (_ndim==3) dFint(_connects[i]->DOFVar("fz").EqID) += df(i*_ndim+2);
 	}
+}
+
+inline bool EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
+{
+	if (_has_body_force)
+	{
+		// Allocate (local/element) external volume force vector
+		LinAlg::Vector<double> fvol(_ndim*_n_nodes);
+		fvol.SetValues(0.0);
+
+		// Allocate entities used for every integration point
+		LinAlg::Vector<double> shape;
+		LinAlg::Matrix<double> derivs;
+		LinAlg::Matrix<double> J;
+
+		// Loop along integration points
+		for (size_t i=0; i<_n_int_pts; ++i)
+		{
+			// Temporary Integration Points
+			double r = _a_int_pts[i].r;
+			double s = _a_int_pts[i].s;
+			double t = _a_int_pts[i].t;
+			double w = _a_int_pts[i].w;
+
+			Shape    (r,s,t, shape);   // Calculate shape functions for i IP
+			Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
+			Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
+
+			// Calculate local external volume force
+			for (size_t j=0; j<_n_nodes; j++)
+			{
+				              fvol(j*_ndim  ) += _body_force(0)*shape(j)*det(J)*w;
+				              fvol(j*_ndim+1) += _body_force(1)*shape(j)*det(J)*w;
+				if (_ndim==3) fvol(j*_ndim+2) += _body_force(2)*shape(j)*det(J)*w;
+			}
+		}
+
+		// Add to external force vector
+		for (size_t i=0; i<_n_nodes; ++i)
+		{
+			// Sum up contribution to internal forces vector
+			              FVol(_connects[i]->DOFVar("fx").EqID) += fvol(i*_ndim  );
+			              FVol(_connects[i]->DOFVar("fy").EqID) += fvol(i*_ndim+1);
+			if (_ndim==3) FVol(_connects[i]->DOFVar("fz").EqID) += fvol(i*_ndim+2);
+		}
+
+		// Flag that there are volumetric forces
+		return true;
+	}
+	else return false; // there aren't volumetric forces
 }
 
 inline void EquilibElem::BackupState()
@@ -501,14 +555,16 @@ inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg:
 inline void EquilibElem::_calc_initial_internal_state()
 {
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> F(_ndim*_n_nodes);
-	F.SetValues(0.0);
+	LinAlg::Vector<double> f(_ndim*_n_nodes);
+	f.SetValues(0.0);
 
 	// Allocate entities used for every integration point
 	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
 	LinAlg::Matrix<double> J;       // Jacobian matrix
 	LinAlg::Matrix<double> B;       // strain-displacement matrix
 	LinAlg::Vector<double> sig;     // Stress vector in Mandel's notation 
+	sig.Resize    (_ndim);
+	sig.SetValues (0.0);
 
 	// Loop along integration points
 	for (size_t i=0; i<_n_int_pts; ++i)
@@ -523,19 +579,19 @@ inline void EquilibElem::_calc_initial_internal_state()
 		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
 		B_Matrix (derivs, J, B);  // Calculate B matrix for i Integration Point
 
-		_a_model[i]->Sig(sig); 
+		_a_model[i]->Sig(sig);
 
 		// Calculate internal force vector;
-		F += trn(B)*sig*det(J)*w;
+		f += trn(B)*sig*det(J)*w;
 	}
 
-	// Update nodal NaturVals
+	// Update nodal Natural values
 	for (size_t i=0; i<_n_nodes; ++i)
 	{
 		// Assemble (local/element) displacements vector.
-		              _connects[i]->DOFVar("fx").NaturalVal += F(i*_ndim  ); // NaturalVal must be set to zero during AddDOF routine
-		              _connects[i]->DOFVar("fy").NaturalVal += F(i*_ndim+1);
-		if (_ndim==3) _connects[i]->DOFVar("fz").NaturalVal += F(i*_ndim+2);
+		              _connects[i]->DOFVar("fx").NaturalVal += f(i*_ndim  ); // NaturalVal must be set to zero during AddDOF routine
+		              _connects[i]->DOFVar("fy").NaturalVal += f(i*_ndim+1);
+		if (_ndim==3) _connects[i]->DOFVar("fz").NaturalVal += f(i*_ndim+2);
 	}
 }
 

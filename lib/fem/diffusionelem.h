@@ -107,8 +107,7 @@ private:
 
 inline bool DiffusionElem::IsReady() const
 {
-	if (_a_model.Size()==static_cast<size_t>(_n_int_pts) && _connects.Size()==static_cast<size_t>(_n_nodes)) return true;
-	else return false;
+	return (_a_model.Size()==_n_int_pts && _connects.Size()==_n_nodes);
 }
 
 inline bool DiffusionElem::IsEssential(char const * DOFName) const
@@ -171,23 +170,22 @@ inline Element * DiffusionElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) temperature/head vector
-	LinAlg::Vector<double> du(_n_nodes); // Delta temperature/head of this element
+	LinAlg::Vector<double> du(_n_nodes); // Delta temperature/total head of this element
 	
 	// Assemble (local/element) temperature/head vector
 	for (size_t i=0; i<_n_nodes; ++i)
 		du(i) = dUglobal(_connects[i]->DOFVar("u").EqID);
-	
+
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> dF(_n_nodes); // Delta internal force of this element
-	dF.SetValues(0.0);
+	LinAlg::Vector<double> dq(_n_nodes); // Delta internal flow of this element
+	dq.SetValues(0.0);
 	
 	// Allocate entities used for every integration point
-	LinAlg::Vector<double> shape;   // shape functions
 	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
 	LinAlg::Matrix<double> J;       // Jacobian matrix
 	LinAlg::Matrix<double> B;       // strain-displacement matrix
-	LinAlg::Vector<double> du_dx;   // gradient
-	LinAlg::Vector<double> vel;     // velocity
+	LinAlg::Vector<double> dgra;    // delta gradient
+	LinAlg::Vector<double> dvel;    // delta velocity
 
 	// Loop along integration points
 	for (size_t i=0; i<_n_int_pts; ++i)
@@ -198,24 +196,29 @@ inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> co
 		double t = _a_int_pts[i].t;
 		double w = _a_int_pts[i].w;
 
-		Shape    (r,s,t, shape);   // Calculate shape functions
 		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
 		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
 		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
 
 		// Calculate gradient
-		du_dx = B*du;
+		dgra = B*du;
 		
 		// Update model
-		_a_model[i]->StateUpdate(du_dx, vel);
+		_a_model[i]->StateUpdate(dgra, dvel);
 
-		// Calculate internal force vector
-		//dF += trn(B)*vel*det(J)*w;
+		std::cout << "dgra = " << dgra;
+		std::cout << "dvel = " << dvel << std::endl;
+
+		// Calculate internal flow vector
+		dq += trn(B)*dvel*det(J)*w;
 	}
 
-	// Return internal forces
+	std::cout << "dq = " << dq << std::endl;
+	
+
+	// Return internal flow
 	for (size_t i=0; i<_n_nodes; ++i)
-		dFint(_connects[i]->DOFVar("q").EqID) += dF(i);
+		dFint(_connects[i]->DOFVar("q").EqID) += dq(i);
 }
 
 inline bool DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
@@ -244,7 +247,7 @@ inline bool DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 			Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
 			Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
 
-			// Calculate external volume force
+			// Calculate local external volume force
 			for (size_t j=0; j<_n_nodes; j++)
 				fvol(j) += _source*shape(j)*det(J)*w;
 		}
@@ -274,9 +277,36 @@ inline void DiffusionElem::RestoreState()
 inline void DiffusionElem::GetLabels(Array<String> & Labels) const
 {
 	// Get labels of all values to output
-	Labels.Resize(2);
-	Labels[0]="u";
-	Labels[1]="q";
+	switch (_geom())
+	{
+		case 1:
+		{
+			Labels.Resize(4);
+			Labels[0]="u";  // temperature/total heat
+			Labels[1]="q";  // volumetric flow
+			Labels[2]="Vx"; // flux rate/velocity
+			Labels[3]="Ix"; // gradient = du_dx
+			return;
+		}
+		case 2:
+		{
+			Labels.Resize(6);
+			Labels[0]="u";                  // temperature/total heat
+			Labels[1]="q";                  // volumetric flow
+			Labels[2]="Vx"; Labels[3]="Vy"; // flux rate/velocity
+			Labels[4]="Ix"; Labels[5]="Iy"; // gradient = du_dx
+			return;
+		}
+		case 3:
+		{
+			Labels.Resize(8);
+			Labels[0]="u";                                  // temperature/total heat
+			Labels[1]="q";                                  // volumetric flow
+			Labels[2]="Vx"; Labels[3]="Vy"; Labels[4]="Vz"; // flux rate/velocity
+			Labels[5]="Ix"; Labels[6]="Iy"; Labels[7]="Iz"; // gradient = du_dx
+			return;
+		}
+	}
 }
 
 inline double DiffusionElem::Val(int iNodeLocal, char const * Name) const
@@ -403,6 +433,39 @@ inline void DiffusionElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAl
 
 inline void DiffusionElem::_calc_initial_internal_state()
 {
+	// Allocate (local/element) internal force vector
+	LinAlg::Vector<double> q(_n_nodes); // internal flow of this element
+	q.SetValues(0.0);
+	
+	// Allocate entities used for every integration point
+	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
+	LinAlg::Matrix<double> J;       // Jacobian matrix
+	LinAlg::Matrix<double> B;       // strain-displacement matrix
+	LinAlg::Vector<double> vel;     // velocity
+
+	// Loop along integration points
+	for (size_t i=0; i<_n_int_pts; ++i)
+	{
+		// Temporary Integration Points
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+		double w = _a_int_pts[i].w;
+
+		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
+		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
+
+		_a_model[i]->Vel(vel);
+
+		// Calculate internal flow vector
+		q += trn(B)*vel*det(J)*w;
+
+	}
+
+	// Update nodal Natural values
+	for (size_t i=0; i<_n_nodes; ++i)
+		_connects[i]->DOFVar("q").NaturalVal += q(i); // NaturalVal must be set to zero during AddDOF routine
 }
 
 

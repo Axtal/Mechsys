@@ -95,6 +95,11 @@ public:
 	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< Set the time stepsize to be used during each call of Solve
 	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
 
+	// Access methods
+	LinAlg::Vector<double> const & DFext () const { return _dF_ext; } ///< Increment of external force
+	LinAlg::Vector<double> const & DFint () const { return _dF_int; } ///< Increment of internal force
+	LinAlg::Vector<double> const & Resid () const { return _resid;  } ///< Resid = dFext - dFint
+
 	// Methods to be overloaded by derived classes
 	virtual Solver * SetCte (char const * Key, double Value) =0; ///< Set solver constant such as number of subincrements, DTOL, etc.
 	virtual double   GetVar (char const * Key) const         =0; ///< Get solver variable such as Residuals or Relative error
@@ -108,6 +113,7 @@ protected:
 	LinAlg::Vector<double>   _dF_ext;     ///< Increment of natural values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dU_ext;     ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dF_int;     ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
+	LinAlg::Vector<double>   _resid;      ///< Residual: resid = dFext - dFint
 	LinAlg::Vector<double>   _hKU;        ///< Linearized independent term of the differential equation.
 	bool                     _has_hKU;    ///< Flag which says if any element has to contribute to the hKU vector. If _has_hKU==false, there is no need for the hKU vector, because there are no Order0Matrices in this stage of the simulation.
 	bool                     _has_FVol;   ///< Flag which says if any element has volumetric forces
@@ -239,6 +245,7 @@ inline void Solver::Solve()
 	_F_bkp .Resize (_ndofs);
 	_hKU   .Resize (_ndofs);
 	_dF_int.Resize (_ndofs);
+	_resid .Resize (_ndofs);
 
 	// Set the vectors with increments of boundary conditions
 	for (int i=0; i<_nudofs; ++i)
@@ -506,6 +513,9 @@ inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> 
 		if (_g->Ele(i)->IsActive())
 			_g->Ele(i)->UpdateState(h,dU, _dF_int); // sum results into dF_int
 	}
+
+	// Calculate residual: resid = dFext-dFint
+	_resid = _dF_ext - _dF_int;
 
 	// Distribute all pieces of _dF_int to all processors
 	#ifdef HAVE_SUPERLUD
