@@ -94,6 +94,7 @@ inline void ForwardEuler::_do_solve_for_an_increment(double dTime)
 	for (int i=0; i<_nSI; ++i)
 	{
 		// Assemble G matrix and calculate dU_ext
+		std::cout << "FE: dF_ext(before)\n" << dF_ext << std::endl;
 		_inv_G_times_dF_minus_hKU(h, dF_ext, dU_ext); // dU_ext <- inv(G)*(dF_ext - hKU)
 
 		std::cout << "FE: dU_ext\n" << dU_ext << std::endl;

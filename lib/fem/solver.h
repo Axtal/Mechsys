@@ -109,14 +109,12 @@ protected:
 	int                      _num_div;    ///< The number of divisions to be used during each call of Solve
 	double                   _delta_time; ///< The time stepsize to be used during each call of Solve
 	bool                     _do_output;  ///< Do output?
-	LinAlg::Vector<double>   _FVol;       ///< Compoment of external force due to volumetric forces
 	LinAlg::Vector<double>   _dF_ext;     ///< Increment of natural values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dU_ext;     ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dF_int;     ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
 	LinAlg::Vector<double>   _resid;      ///< Residual: resid = dFext - dFint
 	LinAlg::Vector<double>   _hKU;        ///< Linearized independent term of the differential equation.
 	bool                     _has_hKU;    ///< Flag which says if any element has to contribute to the hKU vector. If _has_hKU==false, there is no need for the hKU vector, because there are no Order0Matrices in this stage of the simulation.
-	bool                     _has_FVol;   ///< Flag which says if any element has volumetric forces
 
 	// Methods
 	void   _inv_G_times_dF_minus_hKU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU); ///< Compute (linear solver) inv(G)*(dF-hKU), where G may be assembled by Order1 and Order0 matrices
@@ -190,10 +188,19 @@ inline void Solver::Solve()
 	// Check geometry
 	if (_g==NULL) throw new Fatal(_("Solver::Solve: Solver::SetGeom(FEM::Geom * G) must be called before calling this method (Solver::Solve())"));
 
-	// Check the integrity of active elements
+	// Loop over all active elements
+	double has_fvol = false;
 	for (size_t i=0; i<_g->NElems(); ++i)
-		if (_g->Ele(i)->IsActive() && _g->Ele(i)->IsReady()==false)
-			throw new Fatal(_("Solver::Solve: Element < %d > was not properly configured."), i);
+	{
+		if (_g->Ele(i)->IsActive())
+		{
+			// Check if active elements are properly initialized
+			if (_g->Ele(i)->IsReady()==false) throw new Fatal("Solver::Solve: Element # %d was not properly initialized.", i);
+
+			// Check if any element has volumetric forces
+			has_fvol = _g->Ele(i)->HasVolForces();
+		}
+	}
 
 	// Number of divisions for each increment
 	double dTime = _delta_time / _num_div; // Time increment
@@ -238,7 +245,6 @@ inline void Solver::Solve()
 #endif
 
 	// Allocate vectors
-	_FVol  .Resize (_ndofs);
 	_dF_ext.Resize (_ndofs);
 	_dU_ext.Resize (_ndofs);
 	_U_bkp .Resize (_ndofs);
@@ -248,6 +254,8 @@ inline void Solver::Solve()
 	_resid .Resize (_ndofs);
 
 	// Set the vectors with increments of boundary conditions
+	_dF_ext.SetValues (0.0);
+	_dU_ext.SetValues (0.0);
 	for (int i=0; i<_nudofs; ++i)
 	{
 		_dF_ext(_udofs[i]->EqID) = _udofs[i]->NaturalBry   / _num_div;
@@ -260,22 +268,17 @@ inline void Solver::Solve()
 	}
 
 	// Set component of external forces due to volume forces such as body forces, heat source, etc.
-	_FVol.SetValues(0.0);
-	_has_FVol = false;
-	for (size_t i=0; i<_g->NElems(); ++i)
+	if (has_fvol)
 	{
-		if (_g->Ele(i)->IsActive())
-			_has_FVol = _g->Ele(i)->AddVolForces(_FVol); // add results to _Fvol, return false if there are no volumetric forces
-	}
+		// Calculate fvol
+		LinAlg::Vector<double> fvol;
+		fvol.Resize    (_ndofs);
+		fvol.SetValues (0.0);
+		for (size_t i=0; i<_g->NElems(); ++i)
+			if (_g->Ele(i)->IsActive()) _g->Ele(i)->AddVolForces(fvol); // add results to fvol
 
-	// Add volumetric forces to external forces vector
-	if (_has_FVol)
-	{
-		// Scale FVol
-		LinAlg::Scal(1.0/_num_div, _FVol); // FVol <- FVol/ndiv
-
-		// Add to Fext
-		_dF_ext += _FVol;
+		// Add to dFext vector
+		LinAlg::Axpy(1.0/_num_div,fvol, _dF_ext); // dFext <- dFext + fvol/numdiv
 	}
 
 	// Allocate stifness DENSE matrix G or Allocate stifness SPARSE matrix G
@@ -459,10 +462,6 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 		}
 		else throw new Fatal(_("Solve::_inv_G_times_dF_minus_hKU: Linear solver #%d is not available"),_linsol);
 	}
-
-	// Subtract volumetric forces from solution vector of forces
-	if (_has_FVol) LinAlg::Axpy(-1.0,_FVol, dF); // dF <- dF - FVol
-	std::cout << dF << std::endl;
 
 #ifdef DO_DEBUGx
 	std::ostringstream oss;
@@ -667,13 +666,12 @@ inline void Solver::_assemb_G_and_hKU(double h)
 
 	// Check
 	#ifndef DNDEBUG
+	_G.SetNS(Util::_6_3);
+	std::cout << "G(global stiffness) = \n" << _G << std::endl;
 	for (int i=0; i<_G.Rows(); ++i)
 	for (int j=0; j<_G.Cols(); ++j)
 		if (_G(i,j)!=_G(i,j)) throw new Fatal (_("Solver::_assemb_G_and_hKU: DENSE stiffness matrix has NaNs"));
 	#endif
-
-	_G.SetNS(Util::_6_3);
-	std::cout << _G << std::endl;
 }
 
 inline void Solver::_mount_into_hKU(LinAlg::Vector<double> const & V, Array<size_t> const & RowsMap)

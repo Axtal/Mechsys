@@ -64,7 +64,8 @@ public:
 	void         SetProps        (Array<double> const & P);
 	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
 	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	bool         AddVolForces    (LinAlg::Vector<double> & dFext) const;
+	bool         HasVolForces    () const { return _has_source; }
+	void         AddVolForces    (LinAlg::Vector<double> & dFext) const;
 	void         BackupState     ();
 	void         RestoreState    ();
 	void         GetLabels       (Array<String> & Labels) const;
@@ -221,7 +222,7 @@ inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> co
 		dFint(_connects[i]->DOFVar("q").EqID) += dq(i);
 }
 
-inline bool DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
+inline void DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 {
 	if (_has_source)
 	{
@@ -255,11 +256,8 @@ inline bool DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 		// Add to external force vector
 		for (size_t i=0; i<_n_nodes; ++i)
 			FVol(_connects[i]->DOFVar("q").EqID) += fvol(i);
-
-		// Flag that there are volumetric forces
-		return true;
 	}
-	else return false; // there aren't volumetric forces
+	else throw new Fatal("DiffusionElem::AddVolForces: This element (%s # %d) does not have volumetric forces.",Name(),_my_id);
 }
 
 inline void DiffusionElem::BackupState()

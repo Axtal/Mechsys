@@ -62,7 +62,8 @@ public:
 	void         SetProps        (Array<double> const & P);
 	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
 	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	bool         AddVolForces    (LinAlg::Vector<double> & FVol) const;
+	bool         HasVolForces    () const { return _has_body_force; }
+	void         AddVolForces    (LinAlg::Vector<double> & FVol) const;
 	void         BackupState     ();
 	void         RestoreState    ();
 	void         GetLabels       (Array<String> & Labels) const;
@@ -224,7 +225,7 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	}
 }
 
-inline bool EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
+inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 {
 	if (_has_body_force)
 	{
@@ -267,11 +268,8 @@ inline bool EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 			              FVol(_connects[i]->DOFVar("fy").EqID) += fvol(i*_ndim+1);
 			if (_ndim==3) FVol(_connects[i]->DOFVar("fz").EqID) += fvol(i*_ndim+2);
 		}
-
-		// Flag that there are volumetric forces
-		return true;
 	}
-	else return false; // there aren't volumetric forces
+	else throw new Fatal("EquilibElem::AddVolForces: This element (%s # %d) does not have volumetric forces.",Name(),_my_id);
 }
 
 inline void EquilibElem::BackupState()

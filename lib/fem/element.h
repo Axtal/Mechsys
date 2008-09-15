@@ -116,7 +116,8 @@ public:
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
 	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
-	virtual bool   AddVolForces  (LinAlg::Vector<double> & FVol) const { return false; }
+	virtual bool   HasVolForces  () const { return false; }
+	virtual void   AddVolForces  (LinAlg::Vector<double> & FVol) const {}
 
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
