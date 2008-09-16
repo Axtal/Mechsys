@@ -81,10 +81,11 @@ public:
 	bool         IsInside   (double x, double y, double z) const;     ///< Check if a node is inside the element
 
 	// Methods that MUST be overriden by derived classes
-	virtual double       Val       (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the Nodes of the element. Ex.: Name="ux", "fx", "Sx", "Sxy", "Ex", etc.
-	virtual double       Val       (                char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
-	virtual char const * Name      ()                                  const =0; ///< Return the name/type of this element
-	virtual char const * ModelName ()                                  const =0; ///< Return the name of the model of the first IP of this element
+	virtual void         CalcDepVars () const =0;                                  ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	virtual double       Val         (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the Nodes of the element. Ex.: Name="ux", "fx", "Sx", "Sxy", "Ex", etc.
+	virtual double       Val         (                char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
+	virtual char const * Name        ()                                  const =0; ///< Return the name/type of this element
+	virtual char const * ModelName   ()                                  const =0; ///< Return the name of the model of the first IP of this element
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
 	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis

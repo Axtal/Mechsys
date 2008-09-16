@@ -80,8 +80,9 @@ public:
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
 
 	// Access methods
-	double Val (int iNodeLocal, char const * Name) const;
-	double Val (                char const * Name) const;
+	void   CalcDepVars () const;                                  ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	double Val         (int iNodeLocal, char const * Name) const; ///< Return values at nodes
+	double Val         (                char const * Name) const; ///< Return values at the CG of the element
 
 private:
 	// Data
@@ -307,6 +308,15 @@ inline void DiffusionElem::GetLabels(Array<String> & Labels) const
 			return;
 		}
 	}
+}
+
+inline void DiffusionElem::CalcDepVars() const
+{
+	// Get integration point values
+	if (_a_model.Size()==_n_int_pts)
+		for (size_t i=0; i<_n_int_pts; i++)
+			_a_model[i]->CalcDepVars();
+	else throw new Fatal("DiffusionElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 }
 
 inline double DiffusionElem::Val(int iNodeLocal, char const * Name) const

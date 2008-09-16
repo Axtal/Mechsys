@@ -53,17 +53,20 @@ public:
 	int  StateUpdate (Vector<double> const & DEps, Vector<double> & DSig); ///< Update stress/strain state for given strain increment
 
 	// Access methods
-	void   Sig (Vector<double> & Stress) const { Tensor2ToVector(_geom, _sig, Stress); }
-	double Val (char const * Name) const;
+	void   CalcDepVars () const;                        ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	double Val         (char const * Name) const;       ///< Return stress/strain components, internal values, or principal components of stress/strain
+	void   Sig         (Vector<double> & Stress) const; ///< Return stress tensor
 
 protected:
 	// Data
-	Tensor2 _sig;      ///< Stress
-	Tensor2 _eps;      ///< Strain
-	Tensor2 _deps;     ///< Delta strain
-	Tensor2 _sig_bkp;  ///< Backup stress
-	Tensor2 _eps_bkp;  ///< Backup strain
-	Tensor2 _deps_bkp; ///< Backup delta strain
+	Tensor2        _sig;      ///< Stress
+	Tensor2        _eps;      ///< Strain
+	Tensor2        _deps;     ///< Delta strain
+	Tensor2        _sig_bkp;  ///< Backup stress
+	Tensor2        _eps_bkp;  ///< Backup strain
+	Tensor2        _deps_bkp; ///< Backup delta strain
+	mutable double _sigp[3];  ///< Principal components of stress (mutable => CalcDepVars can change it)
+	mutable double _epsp[3];  ///< Principal components of strain (mutable => CalcDepVars can change it)
 
 	// Private methods that MUST be derived
 	virtual void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const =0; ///< Tangent or secant stiffness
@@ -174,6 +177,17 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 	throw new Fatal("EquilibModel::StateUpdate did not converge for %d steps",_maxSS);
 }
 
+inline void EquilibModel::CalcDepVars() const
+{
+	// Calculate principal values
+	Tensors::Eigenvals (_sig, _sigp);
+	Tensors::Eigenvals (_eps, _epsp);
+
+	// Sort (increasing)
+	Util::Sort (_sigp, 3); // S1,S2,S3 = _sigp[2], _sigp[1], _sigp[0]
+	Util::Sort (_epsp, 3); // E1,E2,E3 = _epsp[2], _epsp[1], _epsp[0]
+}
+
 inline double EquilibModel::Val(char const * Name) const
 {
 	     if (strcmp(Name,"Sx" )==0)                          return _sig(0);
@@ -184,6 +198,9 @@ inline double EquilibModel::Val(char const * Name) const
 	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return _sig(5)/SQ2;
 	else if (strcmp(Name,"p"  )==0)                          return (_sig(0)+_sig(1)+_sig(2))/3.0;
 	else if (strcmp(Name,"q"  )==0)                          return sqrt(((_sig(0)-_sig(1))*(_sig(0)-_sig(1)) + (_sig(1)-_sig(2))*(_sig(1)-_sig(2)) + (_sig(2)-_sig(0))*(_sig(2)-_sig(0)) + 3.0*(_sig(3)*_sig(3) + _sig(4)*_sig(4) + _sig(5)*_sig(5)))/2.0);
+	else if (strcmp(Name,"S1" )==0)                          return _sigp[2];
+	else if (strcmp(Name,"S2" )==0)                          return _sigp[1];
+	else if (strcmp(Name,"S3" )==0)                          return _sigp[0];
 	else if (strcmp(Name,"Ex" )==0)                          return _eps(0);
 	else if (strcmp(Name,"Ey" )==0)                          return _eps(1);
 	else if (strcmp(Name,"Ez" )==0)                          return _eps(2);
@@ -192,7 +209,15 @@ inline double EquilibModel::Val(char const * Name) const
 	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return _eps(5)/SQ2;
 	else if (strcmp(Name,"Ev" )==0)                          return _eps(0)+_eps(1)+_eps(2); 
 	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_eps(0)-_eps(1))*(_eps(0)-_eps(1)) + (_eps(1)-_eps(2))*(_eps(1)-_eps(2)) + (_eps(2)-_eps(0))*(_eps(2)-_eps(0)) + 3.0*(_eps(3)*_eps(3) + _eps(4)*_eps(4) + _eps(5)*_eps(5))))/3.0;
+	else if (strcmp(Name,"E1" )==0)                          return _epsp[2];
+	else if (strcmp(Name,"E2" )==0)                          return _epsp[1];
+	else if (strcmp(Name,"E3" )==0)                          return _epsp[0];
 	else                                                     return _val(Name);
+}
+
+inline void EquilibModel::Sig(Vector<double> & Stress) const
+{
+	Tensor2ToVector(_geom, _sig, Stress);
 }
 
 

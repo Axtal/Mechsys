@@ -78,8 +78,9 @@ public:
 	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
 
 	// Access methods
-	double Val (int iNodeLocal, char const * Name) const;
-	double Val (                char const * Name) const;
+	void   CalcDepVars () const;                                  ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	double Val         (int iNodeLocal, char const * Name) const; ///< Return values at nodes
+	double Val         (                char const * Name) const; ///< Return values at the CG of the element
 
 private:
 	// Data
@@ -293,29 +294,35 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 	{
 		case 2: // 2D(plane-strain)
 		{
-			Labels.Resize(12); // 14 values to output
-			Labels[0]="ux"; Labels[1]="uy";                                    // Displacements
-			Labels[2]="fx"; Labels[3]="fy";                                    // Forces
-			Labels[4]="Ex"; Labels[5]="Ey"; Labels[ 6]="Ez"; Labels[ 7]="Exy"; // Strains
-			Labels[8]="Sx"; Labels[9]="Sy"; Labels[10]="Sz"; Labels[11]="Sxy"; // Stress
+			Labels.Resize(16);
+			Labels[ 0]="ux"; Labels[ 1]="uy";                                    // Displacements
+			Labels[ 2]="fx"; Labels[ 3]="fy";                                    // Forces
+			Labels[ 4]="Ex"; Labels[ 5]="Ey"; Labels[ 6]="Ez"; Labels[ 7]="Exy"; // Strains
+			Labels[ 8]="Sx"; Labels[ 9]="Sy"; Labels[10]="Sz"; Labels[11]="Sxy"; // Stress
+			Labels[12]="E1"; Labels[13]="E2";                                    // Principal strains
+			Labels[14]="S1"; Labels[15]="S2";                                    // Principal stresses
 			return;
 		}
 		case 3: // 3D
 		{
-			Labels.Resize(18); // 18 values to output
+			Labels.Resize(24);
 			Labels[ 0]="ux"; Labels[ 1]="uy"; Labels[ 2]="uz";                                                       // Displacements
 			Labels[ 3]="fx"; Labels[ 4]="fy"; Labels[ 5]="fz";                                                       // Forces
 			Labels[ 6]="Ex"; Labels[ 7]="Ey"; Labels[ 8]="Ez"; Labels[ 9]="Exy"; Labels[10]="Eyz"; Labels[11]="Exz"; // Strains
 			Labels[12]="Sx"; Labels[13]="Sy"; Labels[14]="Sz"; Labels[15]="Sxy"; Labels[16]="Syz"; Labels[17]="Sxz"; // Stress
+			Labels[18]="E1"; Labels[19]="E2"; Labels[20]="E3";                                                       // Principal strains
+			Labels[21]="S1"; Labels[22]="S2"; Labels[23]="S3";                                                       // Principal stresses
 			return;
 		}
 		case 5: // 2D(plane-stress)
 		{
-			Labels.Resize(10); // 10 values to output
-			Labels[0]="ux"; Labels[1]="uy";                  // Displacements
-			Labels[2]="fx"; Labels[3]="fy";                  // Forces
-			Labels[4]="Ex"; Labels[5]="Ey"; Labels[6]="Exy"; // Strains
-			Labels[7]="Sx"; Labels[8]="Sy"; Labels[9]="Sxy"; // Stress
+			Labels.Resize(14);
+			Labels[ 0]="ux"; Labels[ 1]="uy";                  // Displacements
+			Labels[ 2]="fx"; Labels[ 3]="fy";                  // Forces
+			Labels[ 4]="Ex"; Labels[ 5]="Ey"; Labels[6]="Exy"; // Strains
+			Labels[ 7]="Sx"; Labels[ 8]="Sy"; Labels[9]="Sxy"; // Stress
+			Labels[10]="E1"; Labels[11]="E2";                  // Principal strains
+			Labels[12]="S1"; Labels[13]="S2";                  // Principal stresses
 			return;
 		}
 		case 1: // 1D
@@ -323,6 +330,15 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 		default:
 			throw new Fatal("EquilibElem::GetLabels: GeometryType==%d is not implemented yet",_geom());
 	}
+}
+
+inline void EquilibElem::CalcDepVars() const
+{
+	// Get integration point values
+	if (_a_model.Size()==_n_int_pts)
+		for (size_t i=0; i<_n_int_pts; i++)
+			_a_model[i]->CalcDepVars();
+	else throw new Fatal("EquilibElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 }
 
 inline double EquilibElem::Val(int iNodeLocal, char const * Name) const

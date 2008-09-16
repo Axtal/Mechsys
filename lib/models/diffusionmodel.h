@@ -52,8 +52,9 @@ public:
 	int  StateUpdate    (Vector<double> const & DGra, Vector<double> & DVel); ///< Update internal state for given DGra = Delta(du_dx)
 
 	// Access methods
-	void   Vel (Vector<double> & Veloc) const { _tvec2vec(_vel, Veloc); }
-	double Val (char const * Name) const;
+	void   CalcDepVars () const {}                     ///< Calculate dependent variables (to be called before Val() or OutNodes() for example).
+	double Val         (char const * Name) const;      ///< Return stress/strain components, internal values, or principal components of stress/strain
+	void   Vel         (Vector<double> & Veloc) const; ///< Return stress tensor
 
 protected:
 	// Data
@@ -132,6 +133,11 @@ inline double DiffusionModel::Val(char const * Name) const
 	else if (strcmp(Name,"Iy" )==0) return _gra(1);
 	else if (strcmp(Name,"Iz" )==0) return _gra(2);
 	return _val(Name);
+}
+
+inline void DiffusionModel::Vel(Vector<double> & Veloc) const
+{
+	_tvec2vec(_vel, Veloc);
 }
 
 
