@@ -284,7 +284,8 @@ inline void Output::_calc_nodal_vals()
 	{
 		LinAlg::Matrix<double> values;
 		Array<String>          labels;
-		_aes[i]->OutNodes (values, labels);
+		_aes[i]->CalcDepVars ();
+		_aes[i]->OutNodes    (values, labels);
 		size_t elem_nnodes = _aes[i]->NNodes();
 		for (size_t j=0; j<labels.Size(); ++j)
 		{
