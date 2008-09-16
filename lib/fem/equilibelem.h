@@ -17,17 +17,23 @@
  ************************************************************************/
 
 
-/* __ Equilibrium capable element __
+/* __ Element for equilibrium simulations __
 
-ux = Nodal displacement increment in x direction
-uy = Nodal displacement increment in y direction
-uz = Nodal displacement increment in z direction
-fx = Nodal force increment in x direction
-fy = Nodal force increment in y direction
-fz = Nodal force increment in z direction
-tx = Traction increment in x direction on face
-ty = Traction increment in y direction on face
-tz = Traction increment in z direction on face
+  Solves:
+              dσ
+              --:I + ρb = 0
+              dx
+
+  where:                      1 du    duT
+             σ = D:ε       ε= -[-- + (--)]      t = σ . n
+                              2 dx    dx
+
+  Primary variale:     u == displacements
+  Volumetric variable: b == body forces
+  Secondary variable:  σ == stress
+  Secondary variable:  ε == strain
+  Secondary variable:  t == traction
+  Secondary variable:  n == unit normal on boundary
 
 */
 

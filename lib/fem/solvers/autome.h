@@ -55,6 +55,7 @@ private:
 	LinAlg::Vector<double> _dF_2;
 	LinAlg::Vector<double> _dU_2;
 	LinAlg::Vector<double> _dU_ME;
+	LinAlg::Vector<double> _dF_ME;
 	LinAlg::Vector<double> _Err_U;
 	LinAlg::Vector<double> _Err_F;
 
@@ -122,6 +123,7 @@ inline void AutoME::_do_solve_for_an_increment(double dTime)
 		_dF_2 .Resize (ndofs);
 		_dU_2 .Resize (ndofs);
 		_dU_ME.Resize (ndofs);
+		_dF_ME.Resize (ndofs);
 		_Err_U.Resize (ndofs);
 		_Err_F.Resize (ndofs);
 	}
@@ -149,7 +151,7 @@ inline void AutoME::_do_solve_for_an_increment(double dTime)
 		_inv_G_times_dF_minus_hKU(h, _dF_1, _dU_1); // _dU_1 <- inv(G)*(dF_ext - hKU)
 	
 		// Forward-Euler: update nodes and elements state
-		_update_nodes_and_elements(h, _dU_1);
+		_update_nodes_and_elements(h, _dF_1, _dU_1); // AND calculate _resid
 
 		// Modified-Euler: Assemble G matrix and calculate dU_2
 		_inv_G_times_dF_minus_hKU(h, _dF_2, _dU_2); // _dU_2 <- inv(G)*(dF_ext - hKun)
@@ -172,11 +174,12 @@ inline void AutoME::_do_solve_for_an_increment(double dTime)
 
 		if (_Rerr<=_DTOL)
 		{
-			// Calculate Modified-Euler displacement increment vector
+			// Calculate Modified-Euler force and displacement increment vectors
 			LinAlg::AddScaled(0.5,_dU_1, 0.5,_dU_2, _dU_ME);
+			LinAlg::AddScaled(0.5,_dF_1, 0.5,_dF_2, _dF_ME);
 
 			// Update nodes and elements state for a Modified-Euler evaluation of displacements
-			_update_nodes_and_elements(h, _dU_ME);
+			_update_nodes_and_elements(h, _dF_ME, _dU_ME); // AND calculate _resid
 
 			// Next pseudo time
 			T = T + dT;

@@ -19,19 +19,22 @@
 
 /* __ Element for diffusion transport simulations __
 
-   Primary variale:    u == temperature/head                    ~~ displacements
-   Source variable:    f == heat source/wate recharge (pumping) ~~ body forces
-   Secondary variable: q == heat flow/seepage                   ~~ tractions
+  Solves:
+             dv                       d   du
+           - --:I + s = 0    ==    - --(k.--):I = s
+             dx                      dx   dx
 
-   Heat transfer:
-      u = temperature
-      f = heat source
-	  q = heat flux due to conduction
+  where:
+                              du
+            v = -k.i      i = --      qn = v . n
+                              dx
 
-   Groundwater flow:
-      u = piezometric head
-      f = recharge (pumping => -f)
-	  q = water flux (seepage)
+  Primary variale:     u  == temperature/total head              ~~ displacements
+  Volumetric variable: s  == heat source/wate recharge (pumping) ~~ body forces
+  Secondary variable:  v  == heat flux/velocity                  ~~ stress
+  Secondary variable:  i  == gradient                            ~~ strain
+  Secondary variable:  qn == normal flow                         ~~ traction
+  Secondary variable:  n  == unit normal on boundary
 
 */
 
@@ -208,15 +211,9 @@ inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> co
 		// Update model
 		_a_model[i]->StateUpdate(dgra, dvel);
 
-		std::cout << "dgra = " << dgra;
-		std::cout << "dvel = " << dvel << std::endl;
-
 		// Calculate internal flow vector
-		dq += trn(B)*dvel*det(J)*w;
+		dq += -trn(B)*dvel*det(J)*w;
 	}
-
-	std::cout << "dq = " << dq << std::endl;
-	
 
 	// Return internal flow
 	for (size_t i=0; i<_n_nodes; ++i)
@@ -467,7 +464,7 @@ inline void DiffusionElem::_calc_initial_internal_state()
 		_a_model[i]->Vel(vel);
 
 		// Calculate internal flow vector
-		q += trn(B)*vel*det(J)*w;
+		q += -trn(B)*vel*det(J)*w;
 
 	}
 

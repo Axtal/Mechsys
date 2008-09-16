@@ -112,12 +112,12 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 		FEM::NBrys_T nbrys;
 		nbrys.Push (make_tuple(L/2., 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
 
-		// Edges brys
+		// Edges brys (the order matters!)
 		FEM::EBrys_T ebrys;
 		ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
 		ebrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
 
-		// Faces brys
+		// Faces brys (the order matters!)
 		FEM::FBrys_T fbrys;
 		fbrys.Push (make_tuple(-100, "uy", 0.0)); // tag, key, val
 		fbrys.Push (make_tuple(-200, "fy",  -q)); // tag, key, val
@@ -127,10 +127,10 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 	// 3D mesh?
 	bool is3d = M->Is3D();
 
-	// Set faces boundaries
+	// Set faces boundaries (the order matters)
 	if (is3d && FacesBrys!=NULL)
 	{
-		if (FacesBrys->Size()>0)
+		for (size_t k=0; k<FacesBrys->Size(); ++k)
 		{
 			for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
 			{
@@ -140,27 +140,21 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 					int tag = M->ElemFTag(i, j);
 					if (tag<0) // this element has a face tag
 					{
-						bool found = false;
-						for (size_t k=0; k<FacesBrys->Size(); ++k)
+						if (tag==(*FacesBrys)[k].get<0>())
 						{
-							if (tag==(*FacesBrys)[k].get<0>())
-							{
-								found = true;
-								G->Ele(i)->FaceBry ((*FacesBrys)[k].get<1>(), (*FacesBrys)[k].get<2>(), j);
-								break;
-							}
+							G->Ele(i)->FaceBry ((*FacesBrys)[k].get<1>(), (*FacesBrys)[k].get<2>(), j);
+							break; // go to the next element on boundary
 						}
-						if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Face %d of Element %d in the FacesBrys list",tag,j,i);
 					}
 				}
 			}
 		}
 	}
 
-	// Set edges boundaries
+	// Set edges boundaries (the order matters)
 	if (EdgesBrys!=NULL)
 	{
-		if (EdgesBrys->Size()>0)
+		for (size_t k=0; k<EdgesBrys->Size(); ++k)
 		{
 			for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
 			{
@@ -170,17 +164,11 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 					int tag = M->ElemETag(i, j);
 					if (tag<0) // this element has an edge tag
 					{
-						bool found = false;
-						for (size_t k=0; k<EdgesBrys->Size(); ++k)
+						if (tag==(*EdgesBrys)[k].get<0>())
 						{
-							if (tag==(*EdgesBrys)[k].get<0>())
-							{
-								found = true;
-								G->Ele(i)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), j);
-								break;
-							}
+							G->Ele(i)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), j);
+							break; // go to the next element on boundary
 						}
-						if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Face %d of Element %d in the EdgesBrys list",tag,j,i);
 					}
 				}
 			}
@@ -190,19 +178,16 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 	// Set nodes boundaries
 	if (NodesBrys!=NULL)
 	{
-		if (NodesBrys->Size()>0)
+		for (size_t j=0; j<NodesBrys->Size(); ++j)
 		{
 			for (size_t b=0; b<M->NVertsBry(); ++b) // loop over all vertices on boundary
 			{
 				int i = M->VertBry(b);
-				for (size_t j=0; j<NodesBrys->Size(); ++j)
-				{
-					double x =         (*NodesBrys)[j].get<0>();
-					double y =         (*NodesBrys)[j].get<1>();
-					double z = (is3d ? (*NodesBrys)[j].get<2>() : 0.0);
-					double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
-					if (d<Tol) G->Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
-				}
+				double x =         (*NodesBrys)[j].get<0>();
+				double y =         (*NodesBrys)[j].get<1>();
+				double z = (is3d ? (*NodesBrys)[j].get<2>() : 0.0);
+				double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
+				if (d<Tol) G->Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
 			}
 		}
 	}
@@ -260,11 +245,11 @@ void PySetBrys (Mesh::Generic const & M,          ///< In: The mesh
 	 *           # Nodes brys
 	 *           nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]] # x,y,z, key, val
 	 *
-	 *           # Edges brys
+	 *           # Edges brys (the order matters!)
 	 *           ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
 	 *                    [-20, 'fy',  -q]] # [tag], [key], [val]
 	 *           
-	 *           # Faces brys
+	 *           # Faces brys (the order matters!)
 	 *           fbrys = [[-100, 'uy', 0.0], # [tag], [key], [val]
 	 *                    [-200, 'fy',  -q]] # [tag], [key], [val]
 	 */

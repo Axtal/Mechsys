@@ -96,8 +96,6 @@ public:
 	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
 
 	// Access methods
-	LinAlg::Vector<double> const & DFext () const { return _dF_ext; } ///< Increment of external force
-	LinAlg::Vector<double> const & DFint () const { return _dF_int; } ///< Increment of internal force
 	LinAlg::Vector<double> const & Resid () const { return _resid;  } ///< Resid = dFext - dFint
 
 	// Methods to be overloaded by derived classes
@@ -117,12 +115,12 @@ protected:
 	bool                     _has_hKU;    ///< Flag which says if any element has to contribute to the hKU vector. If _has_hKU==false, there is no need for the hKU vector, because there are no Order0Matrices in this stage of the simulation.
 
 	// Methods
-	void   _inv_G_times_dF_minus_hKU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU); ///< Compute (linear solver) inv(G)*(dF-hKU), where G may be assembled by Order1 and Order0 matrices
-	void   _update_nodes_and_elements  (double h, LinAlg::Vector<double> const & dU);                        ///< Update nodes essential/natural values and elements internal values (such as stresses/strains)
-	void   _backup_nodes_and_elements  ();                                                                   ///< Backup nodes essential/natural values and elements internal values (such as stresses/strains)
-	void   _restore_nodes_and_elements ();                                                                   ///< Restore nodes essential/natural values and elements internal values (such as stresses/strains)
-	double _norm_essential_vector      ();                                                                   ///< Compute the Euclidian norm of the essential (displacements) vector
-	double _norm_natural_vector        ();                                                                   ///< Compute the Euclidian norm of the natural (forces) vector
+	void   _inv_G_times_dF_minus_hKU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU);            ///< Compute (linear solver) inv(G)*(dF-hKU), where G may be assembled by Order1 and Order0 matrices
+	void   _update_nodes_and_elements  (double h, LinAlg::Vector<double> const & dF,LinAlg::Vector<double> const & dU); ///< Update nodes essential/natural values and elements internal values (such as stresses/strains)
+	void   _backup_nodes_and_elements  ();                                                                              ///< Backup nodes essential/natural values and elements internal values (such as stresses/strains)
+	void   _restore_nodes_and_elements ();                                                                              ///< Restore nodes essential/natural values and elements internal values (such as stresses/strains)
+	double _norm_essential_vector      ();                                                                              ///< Compute the Euclidian norm of the essential (displacements) vector
+	double _norm_natural_vector        ();                                                                              ///< Compute the Euclidian norm of the natural (forces) vector
 
 	// To be overriden by derived classes
 	virtual void _do_solve_for_an_increment(double dTime) =0;
@@ -499,7 +497,7 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 
 }
 
-inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> const & dU)
+inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> const & dF, LinAlg::Vector<double> const & dU)
 {
 	// Update all essential values
 	for (int i=0; i<_nudofs; ++i) _udofs[i]->EssentialVal += dU(_udofs[i]->EqID);
@@ -514,7 +512,7 @@ inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> 
 	}
 
 	// Calculate residual: resid = dFext-dFint
-	_resid = _dF_ext - _dF_int;
+	_resid = dF - _dF_int;
 
 	// Distribute all pieces of _dF_int to all processors
 	#ifdef HAVE_SUPERLUD
@@ -666,8 +664,8 @@ inline void Solver::_assemb_G_and_hKU(double h)
 
 	// Check
 	#ifndef DNDEBUG
-	_G.SetNS(Util::_6_3);
-	std::cout << "G(global stiffness) = \n" << _G << std::endl;
+	//_G.SetNS(Util::_6_3);
+	//std::cout << "G(global stiffness) = \n" << _G << std::endl;
 	for (int i=0; i<_G.Rows(); ++i)
 	for (int j=0; j<_G.Cols(); ++j)
 		if (_G(i,j)!=_G(i,j)) throw new Fatal (_("Solver::_assemb_G_and_hKU: DENSE stiffness matrix has NaNs"));
