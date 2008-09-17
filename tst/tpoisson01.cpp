@@ -25,6 +25,7 @@
 #include "fem/geometry.h"
 #include "fem/functions.h"
 #include "fem/elems/tri3diffusion.h"
+#include "fem/elems/tri6diffusion.h"
 #include "models/diffusions/lindiffusion.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -78,6 +79,7 @@ int main(int argc, char **argv) try
 	// Generate
 	mesh.SetPolyRegion (0, /*Tag*/-1, maxarea1, /*X*/0.0, /*Y*/0.0);
 	mesh.SetPolyRegion (1, /*Tag*/-1, maxarea2, /*X*/0.9, /*Y*/0.0);
+	//mesh.SetO2    ();
 	mesh.Generate ();
 
 	// Geometry
@@ -89,6 +91,7 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	FEM::EAtts_T eatts;
+	//eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", ""));
 	eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", ""));
 
 	// Set geometry: nodes, elements, attributes, and boundaries

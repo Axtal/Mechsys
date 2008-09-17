@@ -167,7 +167,10 @@ protected:
 	Array<Elem*>   _elems_bry; ///< Elements on boundary
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
 
-	// Private methods to be overloaded
+	// Private methods that MUST be overloaded
+	virtual void _vtk_con (size_t i, String & Connect) const {}; ///< Returns a string with the connectivites (global vertices IDs) of an element
+
+	// Private methods that MAY be overloaded
 	virtual void   _erase            ();                                                  ///< Erase current mesh (deallocate memory)
 	virtual size_t _edge_to_lef_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local left vertex ID for a given Local Edge ID
 	virtual size_t _edge_to_rig_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local right vertex ID for a given Local Edge ID
@@ -176,10 +179,9 @@ protected:
 
 private:
 	// Private methods
-	void   _vtk_con (size_t i, String & Connect) const; ///< Returns a string with the connectivites (global vertices IDs) of an element
-	size_t _nverts  (int VTKCellType)            const; ///< Returns the number of vertices of a VTKCell
-	size_t _nedges  (int VTKCellType)            const; ///< Returns the number of edges of a VTKCell
-	size_t _nfaces  (int VTKCellType)            const; ///< Returns the number of faces of a VTKCell
+	size_t _nverts  (int VTKCellType) const; ///< Returns the number of vertices of a VTKCell
+	size_t _nedges  (int VTKCellType) const; ///< Returns the number of edges of a VTKCell
+	size_t _nfaces  (int VTKCellType) const; ///< Returns the number of faces of a VTKCell
 
 }; // class Generic
 
@@ -541,13 +543,6 @@ inline void Generic::_erase()
 	if (_elems    .Size()>0) _elems      .Resize(0);
 	if (_elems_bry.Size()>0) _elems_bry  .Resize(0);
 	if (_verts_bry.Size()>0) _verts_bry  .Resize(0);
-}
-
-inline void Generic::_vtk_con(size_t i, String & Connect) const
-{
-	Connect = "";
-	for (size_t j=0; j<ElemNVerts(i); j++)
-		Connect.Printf ("%s %d ", Connect.CStr(), ElemCon(i,j));
 }
 
 inline size_t Generic::_nverts(int VTKCellType) const

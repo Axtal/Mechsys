@@ -78,6 +78,7 @@ class Unstructured : public virtual Mesh::Generic
 {
 public:
 	// Constants
+	static size_t FEM2Tri[]; ///< Map MechSys/FEM nodes IDs to JRS Triangle nodes IDs
 	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
 	static Face Face2Vert[]; ///< Map from local face ID to local vertex ID
 	static Face Face2Edge[]; ///< Map from local face ID to local edge ID
@@ -110,7 +111,7 @@ public:
 	bool   IsElemOnBry     (size_t i)           const { return (_tou.triedgemarks[i*3]+_tou.triedgemarks[i*3+1]+_tou.triedgemarks[i*3+2]==0 ? false : true); }
 	int    ElemVTKCellType (size_t i)           const { return (_is_o2?VTK_QUADRATIC_TRIANGLE:VTK_TRIANGLE); }
 	size_t ElemNVerts      (size_t i)           const { return _tou.numberofcorners; }
-	size_t ElemCon         (size_t i, size_t j) const { return _tou.trianglelist[i*_tou.numberofcorners+j]; }
+	size_t ElemCon         (size_t i, size_t j) const { return _tou.trianglelist[i*_tou.numberofcorners+FEM2Tri[j]]; }
 	size_t ElemNETags      (size_t i)           const { return 3; }
 	size_t ElemNFTags      (size_t i)           const { return 0; }
 	int    ElemETag        (size_t i, size_t j) const { return _tou.triedgemarks[i*3+j]; }
@@ -136,6 +137,8 @@ private:
 	void _tri_deallocate_all  (TriIO & Tio); ///< Deallocate all arrays inside Triangle's IO structure
 
 }; // class Unstructured
+
+size_t Unstructured::FEM2Tri[]= {0,1,2,5,3,4};
 
 Edge Unstructured::Edge2Vert[]= {{ 0, 1 },
                                  { 1, 2 },
@@ -228,6 +231,7 @@ inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 	if (MaxAreaGlobal>0) prms.Printf("%sa%f", prms.CStr(), MaxAreaGlobal);
 	if (MinAngle     >0) prms.Printf("%sq%f", prms.CStr(), MinAngle);
 	else                 prms.Printf("%sq",   prms.CStr());
+	if (_is_o2)          prms.Printf("%so2",  prms.CStr());
 	prms.Printf("%sa", prms.CStr());
 	std::cout << "JRS' triangle parameters = " << prms << std::endl;
 	triangulate (prms.CStr(), &_tin, &_tou, NULL);
@@ -295,6 +299,29 @@ inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 
 
 /* private */
+
+inline void Unstructured::_vtk_con(size_t i, String & Connect) const
+{
+	if (_is_3d) throw new Fatal("Unstructured::_vtk_con: 3D unstructured elements are not available (yet).");
+	else
+	{
+		if (_is_o2)
+		{
+			Connect.Printf("%d %d %d %d %d %d",ElemCon(i,0),
+			                                   ElemCon(i,1),
+			                                   ElemCon(i,2),
+			                                   ElemCon(i,3),
+			                                   ElemCon(i,4),
+			                                   ElemCon(i,5));
+		}
+		else
+		{
+			Connect.Printf("%d %d %d",ElemCon(i,0),
+			                          ElemCon(i,1),
+			                          ElemCon(i,2));
+		}
+	}
+}
 
 inline void Unstructured::_face_to_verts(size_t FaceLocalID, Array<size_t> & Verts) const
 {

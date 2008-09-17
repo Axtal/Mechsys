@@ -242,7 +242,7 @@ private:
 	void _shape_3d (double r, double s, double t);
 
 	// Overloaded private methods
-	void   _vtk_con          (Elem const * E, String & Connect) const;
+	void   _vtk_con          (size_t i, String & Connect) const;
 	void   _erase            ();
 	size_t _edge_to_lef_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].L; }
 	size_t _edge_to_rig_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].R; }
@@ -1198,25 +1198,25 @@ inline void Structured::_shape_3d(double r, double s, double t)
 	_s(19) = 0.25 *(1.0-r)  *(1.0+s)  *(1.0-t*t);
 }
 
-inline void Structured::_vtk_con(Elem const * E, String & Connect) const
+inline void Structured::_vtk_con(size_t i, String & Connect) const
 {
 	if (_is_3d)
 	{
-		Connect.Printf("%d %d %d %d %d %d %d %d",E->V[1]->MyID,
-		                                         E->V[2]->MyID,
-		                                         E->V[3]->MyID,
-		                                         E->V[0]->MyID,
-		                                         E->V[5]->MyID,
-		                                         E->V[6]->MyID,
-		                                         E->V[7]->MyID,
-		                                         E->V[4]->MyID);
+		Connect.Printf("%d %d %d %d %d %d %d %d",ElemCon(i,1),
+		                                         ElemCon(i,2),
+		                                         ElemCon(i,3),
+		                                         ElemCon(i,0),
+		                                         ElemCon(i,5),
+		                                         ElemCon(i,6),
+		                                         ElemCon(i,7),
+		                                         ElemCon(i,4));
 	}
 	else
 	{
-		Connect.Printf("%d %d %d %d",E->V[0]->MyID,
-		                             E->V[1]->MyID,
-		                             E->V[2]->MyID,
-		                             E->V[3]->MyID);
+		Connect.Printf("%d %d %d %d",ElemCon(i,0),
+		                             ElemCon(i,1),
+		                             ElemCon(i,2),
+		                             ElemCon(i,3));
 	}
 }
 
