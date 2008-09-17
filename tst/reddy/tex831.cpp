@@ -256,12 +256,12 @@ int main(int argc, char **argv) try
 	cout << endl;
 	if (fabs(err_1)>1.0e-14) cout << "[1;31mErr_1(" << linsol << ") = " << err_1 << "[0m\n" << endl;
 	else                     cout << "[1;32mErr_1(" << linsol << ") = " << err_1 << "[0m\n" << endl;
-	if (fabs(err_2)>1.0e-14) cout << "[1;31mErr_2(" << linsol << ") = " << err_2 << "[0m\n" << endl;
+	if (fabs(err_2)>3.5e-2)  cout << "[1;31mErr_2(" << linsol << ") = " << err_2 << "[0m\n" << endl;
 	else                     cout << "[1;32mErr_2(" << linsol << ") = " << err_2 << "[0m\n" << endl;
 
 	// Return error flag
-	if (fabs(err_1)>1.0e-7) return 1;
-	else                    return 0;
+	if (fabs(err_1)>1.0e-14 || fabs(err_2)>3.5e-2) return 1;
+	else                                           return 0;
 }
 catch (Exception * e)
 {

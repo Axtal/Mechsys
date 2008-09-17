@@ -99,9 +99,9 @@ public:
 	size_t NVerts          ()                   const { return _tou.numberofpoints; }
 	size_t NVertsBry       ()                   const { return _vbry.Size(); }
 	size_t NElems          ()                   const { return _tou.numberoftriangles; }
-	size_t NElemsBry       ()                   const { return 0; } ///< TODO
+	size_t NElemsBry       ()                   const { return NElems(); } ///< TODO
 	long   VertBry         (size_t i)           const { return _vbry[i]; }
-	long   ElemBry         (size_t i)           const { return 0; } ///< TODO
+	long   ElemBry         (size_t i)           const { return i; } ///< TODO
 	bool   IsVertOnBry     (size_t i)           const { return (_vbry.Find(i)<0 ? false : true); }
 	double VertX           (size_t i)           const { return _tou.pointlist[i*2  ]; }
 	double VertY           (size_t i)           const { return _tou.pointlist[i*2+1]; }
