@@ -35,12 +35,12 @@ const int TRI6_NINTPTS     = 3;
 const int TRI6_NFACENODES  = 3;
 const int TRI6_NFACEINTPTS = 2;
 const Element::IntegPoint TRI6_INTPTS[]=
-{{  0.166666666666666666666667,  0.166666666666666666666667,  0.0,  0.166666666666666666666667 }, 
- {  0.666666666666666666666667,  0.166666666666666666666667,  0.0,  0.166666666666666666666667 },
- {  0.166666666666666666666667,  0.666666666666666666666667,  0.0,  0.166666666666666666666667 }};
+{{ 1.0/6.0, 1.0/6.0, 0.0, 1.0/6.0 },
+ { 2.0/3.0, 1.0/6.0, 0.0, 1.0/6.0 },
+ { 1.0/6.0, 2.0/3.0, 0.0, 1.0/6.0 }};
 const Element::IntegPoint TRI6_FACEINTPTS[]=
-{{ -0.577350269189625764509149, 0.0, 0.0, 1.0 },
- {  0.577350269189625764509149, 0.0, 0.0, 1.0 }};
+{{ -sqrt(3.0)/3.0, 0.0, 0.0, 1.0 },
+ {  sqrt(3.0)/3.0, 0.0, 0.0, 1.0 }};
 
 class Tri6: public virtual Element
 {
@@ -177,30 +177,24 @@ inline void Tri6::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 
 inline void Tri6::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
 {
-	/*  
-	 *  
+	/*
 	 *       @-----------@-----------@-> r
-	 *       0           1           2
+	 *       0           2           1
+	 *       |           |           |
+	 *      r=-1         r=0        r=+1
 	 */
 	FaceShape.Resize(TRI6_NFACENODES);
 	FaceShape(0) = 0.5 * (r*r-r);
-	FaceShape(1) = 1.0 -  r*r;
-	FaceShape(2) = 0.5 * (r*r+r);
+	FaceShape(1) = 0.5 * (r*r+r);
+	FaceShape(2) = 1.0 -  r*r;
 }
 
 inline void Tri6::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
-	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
-	 */
 	FaceDerivs.Resize(1,TRI6_NFACENODES);
 	FaceDerivs(0,0) =  r  - 0.5;
-	FaceDerivs(0,1) = -2.0* r;
-	FaceDerivs(0,2) =  r  + 0.5;
+	FaceDerivs(0,1) =  r  + 0.5;
+	FaceDerivs(0,2) = -2.0* r;
 }
 
 
