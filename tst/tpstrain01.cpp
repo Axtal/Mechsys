@@ -35,15 +35,15 @@
 // MechSys
 #include "fem/geometry.h"
 #include "fem/functions.h"
-#include "fem/elems/quad4pstrain.h"
-#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/tri3pstrain.h"
+#include "fem/elems/tri6pstrain.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
 #include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
-#include "mesh/structured.h"
+#include "mesh/unstructured.h"
 
 using std::cout;
 using std::endl;
@@ -55,42 +55,42 @@ using boost::make_tuple;
 int main(int argc, char **argv) try
 {
 	// Constants
-	double E     = 207.0; // Young
-	double nu    = 0.3;   // Poisson
-	double q     = 1.0;   // Load
-	int    nx    = 10;    // number of divisions along x
-	int    ny    = 10;    // number of divisions along y
-	bool   is_o2 = false; // use high order elements?
+	double E       = 207.0; // Young
+	double nu      = 0.3;   // Poisson
+	double q       = 1.0;   // Load
+	double maxarea = 0.015; // max area of triangles
+	bool   is_o2   = false; // use high order elements?
 	String linsol("LA");    // LAPACK
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2  nx  ny\n";
+	cout << "Input: " << argv[0] << "  is_o2  maxarea  linsol\n";
 	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
-	if (argc>=3) nx         =  atof(argv[2]);
-	if (argc>=4) ny         =  atof(argv[3]);
-	if (argc>=5) linsol.Printf("%s",argv[4]);
+	if (argc>=3) maxarea    =  atof(argv[2]);
+	if (argc>=4) linsol.Printf("%s",argv[3]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// Blocks
-	Mesh::Block b;
-	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (false, 4,            // Is3D, NNodes
-	             0.0, 1.0, 1.0, 0.0,  // x coordinates
-	             0.0, 0.0, 1.0, 1.0); // y coordinates
-	b.SetNx     (nx);                 // x weights and num of divisions along x
-	b.SetNy     (ny);                 // y weights and num of divisions along y
-	b.SetETags  (4,  0, 0, -10, -20); // edge tags
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b);
+	// Polygon
+	Mesh::Unstructured mesh;
+	mesh.SetPolySize    (/*NPoints*/5, /*NSegments*/5, /*NRegions*/1);
+	mesh.SetPolyPoint   (0, /*X*/ 0.0, /*Y*/0.0);
+	mesh.SetPolyPoint   (1, /*X*/ 0.5, /*Y*/0.0); // this point is required only for setting up the BCs
+	mesh.SetPolyPoint   (2, /*X*/ 1.0, /*Y*/0.0);
+	mesh.SetPolyPoint   (3, /*X*/ 1.0, /*Y*/1.0);
+	mesh.SetPolyPoint   (4, /*X*/ 0.0, /*Y*/1.0);
+	mesh.SetPolySegment (0, /*iPointLeft*/0, /*iPointRight*/1, /*Tag*/-10);
+	mesh.SetPolySegment (1, /*iPointLeft*/1, /*iPointRight*/2, /*Tag*/-10);
+	mesh.SetPolySegment (2, /*iPointLeft*/2, /*iPointRight*/3);
+	mesh.SetPolySegment (3, /*iPointLeft*/3, /*iPointRight*/4, /*Tag*/-20);
+	mesh.SetPolySegment (4, /*iPointLeft*/4, /*iPointRight*/0);
+	mesh.SetPolyRegion  (0, /*Tag*/-1, maxarea, /*X*/0.5, /*Y*/0.5);
 
 	// Generate
-	Mesh::Structured mesh;
-	if (is_o2) mesh.SetO2();                // Non-linear elements
-	clock_t start = std::clock();           // Initial time
-	size_t  ne    = mesh.Generate (blocks); // Discretize domain
-	clock_t total = std::clock() - start;   // Time elapsed
-	cout << "\nNumber of quadrangles   = " << ne << endl;
+	if (is_o2) mesh.SetO2();              // Non-linear elements
+	clock_t start = std::clock();         // Initial time
+	size_t  ne    = mesh.Generate();      // Discretize domain
+	clock_t total = std::clock() - start; // Time elapsed
+	cout << "\nNumber of triangles     = " << ne << endl;
 	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -110,8 +110,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
-	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
+	if (is_o2) eatts.Push (make_tuple(-1, "Tri6PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
+	else       eatts.Push (make_tuple(-1, "Tri3PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
@@ -128,8 +128,8 @@ int main(int argc, char **argv) try
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tpstrain02.vtu");
-	cout << "[1;34mFile <tpstrain02.vtu> saved.[0m\n\n";
+	Output o; o.VTU (&g, "tpstrain01.vtu");
+	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

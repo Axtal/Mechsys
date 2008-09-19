@@ -1099,7 +1099,7 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 		}
 	}
 
-	std::cout << "number of comparisons = " << ncomp << ", number of duplicates = " << ndupl << std::endl;
+	//std::cout << "number of comparisons = " << ncomp << ", number of duplicates = " << ndupl << std::endl;
 
 	return _elems.Size();
 }

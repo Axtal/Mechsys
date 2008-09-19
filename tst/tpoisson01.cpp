@@ -49,17 +49,18 @@ int main(int argc, char **argv) try
 	double maxarea1 = 0.01;              // maximum area for each triangle in the inner circle
 	double maxarea2 = 0.1;               // maximum area for each triangle in the outer circle
 	bool   is_o2    = false;             // use high order elements?
+	String linsol("LA");
 
 	// Input
-	String linsol("LA");
-	if (argc>=2)   is_o2    = (atoi(argv[1])>0 ? true : false);
-	if (argc>=3)   maxarea1 =  atof(argv[2]);
-	if (argc>=4)   maxarea2 =  atof(argv[3]);
+	cout << "Input: " << argv[0] << "  is_o2  maxarea1  maxarea2  linsol\n";
+	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3) maxarea1   =  atof(argv[2]);
+	if (argc>=4) maxarea2   =  atof(argv[3]);
 	if (argc>=5) linsol.Printf("%s",argv[4]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// Generate mesh
+	// Polygon
 	Mesh::Unstructured mesh;
 	mesh.SetPolySize (/*NPoints*/2*ndiv, /*NSegments*/2*ndiv, /*NRegions*/2);
 
@@ -84,7 +85,11 @@ int main(int argc, char **argv) try
 	mesh.SetPolyRegion (0, /*Tag*/-1, maxarea1, /*X*/0.0, /*Y*/0.0);
 	mesh.SetPolyRegion (1, /*Tag*/-1, maxarea2, /*X*/0.9, /*Y*/0.0);
 	if (is_o2) mesh.SetO2();
-	mesh.Generate ();
+	clock_t start = std::clock();         // Initial time
+	size_t  ne    = mesh.Generate();      // Discretize domain
+	clock_t total = std::clock() - start; // Time elapsed
+	cout << "\nNumber of triangles     = " << ne << endl;
+	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -112,13 +117,16 @@ int main(int argc, char **argv) try
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	start = std::clock();
 	sol -> Solve();
+	total = std::clock() - start;
 	double norm_resid = LinAlg::Norm(sol->Resid());
+	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 
 	// Output: VTU
 	Output o; o.VTU (&g, "tpoisson01.vtu");
-	cout << "[1;34mFile <tpoisson01.vtu> saved.[0m\n";
+	cout << "[1;34mFile <tpoisson01.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -134,11 +142,12 @@ int main(int argc, char **argv) try
 	}
 
 	// Error summary
-	double tol_u     = 1.0e-16;
+	double tol_u     = 1.0e-2;
 	double min_err_u = err_u[err_u.Min()];
 	double max_err_u = err_u[err_u.Max()];
 	cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
 	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
+	cout << endl;
 
 	// Return error flag
 	if (max_err_u>tol_u) return 1;

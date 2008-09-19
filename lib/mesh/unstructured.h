@@ -227,13 +227,13 @@ inline void Unstructured::SetPolyHole(size_t i, double X, double Y, double Z)
 inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 {
 	// Generate (via JRS' triangle)
-	String prms("pzA"); // Q=quiet, p=poly, q=quality, z=zero
+	String prms("QpzA"); // Q=quiet, p=poly, q=quality, z=zero
 	if (MaxAreaGlobal>0) prms.Printf("%sa%f", prms.CStr(), MaxAreaGlobal);
 	if (MinAngle     >0) prms.Printf("%sq%f", prms.CStr(), MinAngle);
 	else                 prms.Printf("%sq",   prms.CStr());
 	if (_is_o2)          prms.Printf("%so2",  prms.CStr());
 	prms.Printf("%sa", prms.CStr());
-	std::cout << "JRS' triangle parameters = " << prms << std::endl;
+	//std::cout << "JRS' triangle parameters = " << prms << std::endl;
 	triangulate (prms.CStr(), &_tin, &_tou, NULL);
 
 	/* Find vertices on boundary
