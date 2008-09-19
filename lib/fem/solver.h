@@ -400,6 +400,10 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 		//          ( {dU2} )   |_ 0    0   _|   ( {dU2} )   (        {dU2}        )
 		for (int k=0; k<_T12_size; ++k) W(_T12.Ai(k)) -= _T12.Ax(k)*dU(_T12.Aj(k));
 
+		// Clear dF at positions of prescribed displacements
+		for (int k=0; k<_T21_size; ++k) dF(_T21.Ai(k)) = 0.0;
+		for (int k=0; k<_T22_size; ++k) dF(_T22.Ai(k)) = 0.0;
+
 		if (_linsol==LinAlg::UMFPACK_T)
 		{
 			// 5) Allocate G11_augmented sparse matrix in compressed-COLUMN format (convert from triplet and remove duplicates)
