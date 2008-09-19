@@ -49,6 +49,8 @@ public:
 	long                    Find      (Value_T const & Value) const;                ///< Find a value: returns -1 if not found, otherwise, returns the index of the element found
 	long                    Min       () const;                                     ///< Find the minimum value: returns the index of the minimum element
 	long                    Max       () const;                                     ///< Find the maximum value: returns the index of the maximum element
+	Value_T                 Mean      () const;                                     ///< Calculate the mean value (Value_T must have addition operators)
+	Value_T                 Norm      () const;                                     ///< Calculate the norm value (Value_T must have addition operators)
 	void                    SetValues (Value_T const & V);                          ///< Set all values to be equal to V
 
 	// Operators
@@ -171,6 +173,22 @@ inline long Array<Value_T>::Max() const
 {
 	Value_T * res = std::max_element(_values, _values+_size);
 	return res-_values;
+}
+
+template<typename Value_T>
+inline Value_T Array<Value_T>::Mean() const
+{
+	Value_T sum = 0.0;
+	for (size_t i=0; i<_size; ++i) sum += _values[i];
+	return sum/_size;
+}
+
+template<typename Value_T>
+inline Value_T Array<Value_T>::Norm() const
+{
+	Value_T sum = 0.0;
+	for (size_t i=0; i<_size; ++i) sum += _values[i]*_values[i];
+	return sqrt(sum);
 }
 
 template<typename Value_T>

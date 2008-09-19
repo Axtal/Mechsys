@@ -38,6 +38,7 @@ using std::cout;
 using std::endl;
 using LinAlg::Vector;
 using boost::make_tuple;
+using Util::_4;
 using Util::_8s;
 
 int main(int argc, char **argv) try
@@ -47,13 +48,16 @@ int main(int argc, char **argv) try
 	double dalpha   = 2.0*Util::PI/ndiv; // delta alpha (increment angle on the circumference)
 	double maxarea1 = 0.01;              // maximum area for each triangle in the inner circle
 	double maxarea2 = 0.1;               // maximum area for each triangle in the outer circle
+	bool   is_o2    = false;             // use high order elements?
 
 	// Input
 	String linsol("LA");
-	if (argc>=2) maxarea1 = atof(argv[1]);
-	if (argc>=3) maxarea2 = atof(argv[2]);
-	if (argc>=4) linsol.Printf("%s",argv[3]);
-	else cout << "[1;32mYou can call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
+	if (argc>=2)   is_o2    = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3)   maxarea1 =  atof(argv[2]);
+	if (argc>=4)   maxarea2 =  atof(argv[3]);
+	if (argc>=5) linsol.Printf("%s",argv[4]);
+
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Generate mesh
 	Mesh::Unstructured mesh;
@@ -79,11 +83,13 @@ int main(int argc, char **argv) try
 	// Generate
 	mesh.SetPolyRegion (0, /*Tag*/-1, maxarea1, /*X*/0.0, /*Y*/0.0);
 	mesh.SetPolyRegion (1, /*Tag*/-1, maxarea2, /*X*/0.9, /*Y*/0.0);
-	//mesh.SetO2    ();
+	if (is_o2) mesh.SetO2();
 	mesh.Generate ();
 
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+
 	// Geometry
-	FEM::Geom g(2);
+	FEM::Geom g(2); // 2D
 
 	// Edges brys (the order matters!)
 	FEM::EBrys_T ebrys;
@@ -91,8 +97,8 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	FEM::EAtts_T eatts;
-	//eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", ""));
-	eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", ""));
+	if (is_o2) eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", ""));
+	else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", ""));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
@@ -108,27 +114,35 @@ int main(int argc, char **argv) try
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "Norm(Resid=DFext-DFint) = " << norm_resid << "\n\n";
+	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+
+	// Output: VTU
+	Output o; o.VTU (&g, "tpoisson01.vtu");
+	cout << "[1;34mFile <tpoisson01.vtu> saved.[0m\n";
+
+	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Check
-	double errors = 0.0;
+	Array<double> err_u;
 	for (size_t i=0; i<g.NNodes(); ++i)	
 	{
 		double x     = g.Nod(i)->X();
 		double y     = g.Nod(i)->Y();
 		double u     = g.Nod(i)->Val("u");
 		double ucorr = (1.0-x*x-y*y)/4.0;
-		errors += fabs(u-ucorr);
+		err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
 	}
 
-	// Output: VTU
-	Output o; o.VTU (&g, "tpoisson01.vtu");
+	// Error summary
+	double tol_u     = 1.0e-16;
+	double min_err_u = err_u[err_u.Min()];
+	double max_err_u = err_u[err_u.Max()];
+	cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
+	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
 
-	if (fabs(errors)>1.0e-14) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
-	else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
-
-	if (fabs(errors)>1.0e-14) return 1;
-
+	// Return error flag
+	if (max_err_u>tol_u) return 1;
+	else return 0;
 }
 catch (Exception * e)
 {
