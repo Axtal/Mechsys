@@ -10,6 +10,7 @@ tst/tsolid01
 tst/tsolid02
 tst/tpstrain01
 tst/tpstrain02
+tst/tpstrain03
 tst/theat01
 tst/ttree01
 tst/reddy/tex831
