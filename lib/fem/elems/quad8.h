@@ -196,10 +196,11 @@ inline void Quad8::Derivs(double r, double s, double t, LinAlg::Matrix<double> &
 
 inline void Quad8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
 {
-	/*  
-	 *  
+	/*
 	 *       @-----------@-----------@-> r
 	 *       0           2           1
+	 *       |           |           |
+	 *      r=-1         r=0        r=+1
 	 */
 	FaceShape.Resize(QUAD8_NFACENODES);
 	FaceShape(0) = 0.5 * (r*r-r);
