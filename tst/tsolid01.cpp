@@ -16,6 +16,25 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/* Unit cube with a uniform pressure at the top
+ 
+      z
+      |__y      +________________+
+   x,'        ,'|              ,'|
+            ,'               ,'  |
+          ,'    |          ,'    |
+        ,'      .        ,'      | 1.0
+      +'_______________+'        |
+      |                |         |
+      |         |      |         |
+      |         + -  - | -  -  - +
+      |       ,        |       ,' 
+      |     ,          |     ,'   
+      |   ,            |   ,'  1.0
+      | ,      1.0     | ,'       
+      +________________+'         
+*/
+
 // STL
 #include <iostream>
 
@@ -33,66 +52,49 @@
 using std::cout;
 using std::endl;
 using boost::make_tuple;
+using Util::_4;
+using Util::_8s;
 
 int main(int argc, char **argv) try
 {
 	// constants
-	double E  = 200.0; // Young
-	double nu = 0.25;  // Poisson
-	double q  = 2.0;   // Downward vertical pressure
-	int    nx = 2;     // number of divisions along x
-	int    ny = 2;     // number of divisions along y
-	int    nz = 2;     // number of divisions along z
-	double Lx = 1.0;   // x edge length
-	double Ly = 1.0;   // y edge length
-	double Lz = 1.0;   // z edge length
-
-	/* Cube with a uniform pressure at the top
-	 
-	      z
-	      |__y      +________________+
-	   x,'        ,'|              ,'|
-	            ,'               ,'  |
-	          ,'    |          ,'    |
-	        ,'      .        ,'      | Lz
-	      +'_______________+'        |
-	      |                |         |
-	      |         |      |         |
-	      |         + -  - | -  -  - +
-	      |       ,        |       ,' 
-	      |     ,          |     ,'   
-	      |   ,            |   ,'  Lx 
-	      | ,       Ly     | ,'       
-	      +________________+'         
-	*/
+	double E     = 200.0; // Young
+	double nu    = 0.25;  // Poisson
+	double q     = 2.0;   // Downward vertical pressure
+	int    ndiv  = 4;     // number of divisions along x, y, and z
+	bool   is_o2 = false; // use high order elements?
+	String linsol("LA");  // LAPACK
 
 	// Input
-	String linsol("LA");
-	if (argc==2) linsol.Printf("%s",argv[1]);
-	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
+	cout << "Input: " << argv[0] << "  is_o2  ndiv  linsol(LA,UM,SLU)\n";
+	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3) ndiv       =  atof(argv[2]);
+	if (argc>=4) linsol.Printf("%s",argv[3]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
 	Mesh::Block b;
 	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
 	b.SetCoords (true, 8,                          // Is3D, NNodes
-	             0., Lx, Lx, 0.,  0., Lx, Lx, 0.,  // x coordinates
-	             0., 0., Ly, Ly,  0., 0., Ly, Ly,  // y coordinates
-	             0., 0., 0., 0.,  Lz, Lz, Lz, Lz); // z coordinates
+	             0., 1., 1., 0.,  0., 1., 1., 0.,  // x coordinates
+	             0., 0., 1., 1.,  0., 0., 1., 1.,  // y coordinates
+	             0., 0., 0., 0.,  1., 1., 1., 1.); // z coordinates
 	b.SetFTags  (6, -100,0,-102,0,-104,-105);      // face tags
-	b.SetNx     (nx);                              // num of divisions along x
-	b.SetNy     (ny);                              // num of divisions along y
-	b.SetNz     (nz);                              // num of divisions along z
+	b.SetNx     (ndiv);                            // num of divisions along x
+	b.SetNy     (ndiv);                            // num of divisions along y
+	b.SetNz     (ndiv);                            // num of divisions along z
 	Array<Mesh::Block*> blocks;
 	blocks.Push (&b);
 
 	// Generate
-	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
-	Mesh::Structured ms;
-	clock_t start = std::clock(); // Initial time
-	size_t  ne    = ms.Generate (blocks);
-	clock_t total = std::clock() - start; // Time elapsed
-	cout << "[1;33m"<<ne<<" elements[0m. Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
+	Mesh::Structured mesh;
+	if (is_o2) mesh.SetO2();                // Non-linear elements
+	clock_t start = std::clock();           // Initial time
+	size_t  ne    = mesh.Generate (blocks); // Discretize domain
+	clock_t total = std::clock() - start;   // Time elapsed
+	if (is_o2) cout << "\nNumber of hexahedra(o2) = " << ne << endl;
+	else       cout << "\nNumber of hexahedra     = " << ne << endl;
+	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -109,23 +111,34 @@ int main(int argc, char **argv) try
 	// Element attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", prms.CStr(), "ZERO")); // tag, type, model, prms, inis
+	if (is_o2) eatts.Push (make_tuple(-1, "Hex20Equilib", "LinElastic", prms.CStr(), "ZERO")); // tag, type, model, prms, inis
+	else       eatts.Push (make_tuple(-1, "Hex8Equilib",  "LinElastic", prms.CStr(), "ZERO")); // tag, type, model, prms, inis
 
 	// Set geometry
-	FEM::SetNodesElems (&ms, &eatts, &g);
-	FEM::SetBrys       (&ms, NULL, NULL, &fbrys, &g);
+	FEM::SetNodesElems (&mesh, &eatts, &g);
+	FEM::SetBrys       (&mesh, NULL, NULL, &fbrys, &g);
 
 	// Solve
-	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	FEM::Solver * sol = FEM::AllocSolver("AutoME");
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	start = std::clock();
 	sol -> Solve();
+	total = std::clock() - start;
+	double norm_resid = LinAlg::Norm(sol->Resid());
+	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 
 	// Output
 	Output o; o.VTU (&g, "tsolid01.vtu");
-	cout << "[1;34mFile <tsolid01.vtu> saved.[0m" << endl;
+	cout << "[1;34mFile <tsolid01.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
+
+	// Check
+    Array<double> err_eps;
+    Array<double> err_sig;
+    Array<double> err_dis;
 
 	double Sx  = 0.0;
 	double Sy  = 0.0;
@@ -142,40 +155,54 @@ int main(int argc, char **argv) try
 	double Ezx = 0.0;
 
 	// Stress and strains
-	double err1 = 0.0;
 	for (size_t i=0; i<g.NElems(); ++i)
 	{
-		err1 += fabs(g.Ele(i)->Val("Sx" ) - (Sx ));
-		err1 += fabs(g.Ele(i)->Val("Sy" ) - (Sy ));
-		err1 += fabs(g.Ele(i)->Val("Sz" ) - (Sz ));
-		err1 += fabs(g.Ele(i)->Val("Sxy") - (Sxy));
-		err1 += fabs(g.Ele(i)->Val("Syz") - (Syz));
-		err1 += fabs(g.Ele(i)->Val("Szx") - (Szx));
-		err1 += fabs(g.Ele(i)->Val("Ex" ) - (Ex ));
-		err1 += fabs(g.Ele(i)->Val("Ey" ) - (Ey ));
-		err1 += fabs(g.Ele(i)->Val("Ez" ) - (Ez ));
-		err1 += fabs(g.Ele(i)->Val("Exy") - (Exy));
-		err1 += fabs(g.Ele(i)->Val("Eyz") - (Eyz));
-		err1 += fabs(g.Ele(i)->Val("Ezx") - (Ezx));
+		// eps
+		err_eps.Push( fabs(g.Ele(i)->Val("Ex" ) - Ex ) / (1.0+fabs(Ex )) );
+		err_eps.Push( fabs(g.Ele(i)->Val("Ey" ) - Ey ) / (1.0+fabs(Ey )) );
+		err_eps.Push( fabs(g.Ele(i)->Val("Ez" ) - Ez ) / (1.0+fabs(Ez )) );
+		err_eps.Push( fabs(g.Ele(i)->Val("Exy") - Exy) / (1.0+fabs(Exy)) );
+		err_eps.Push( fabs(g.Ele(i)->Val("Eyz") - Eyz) / (1.0+fabs(Eyz)) );
+		err_eps.Push( fabs(g.Ele(i)->Val("Ezx") - Ezx) / (1.0+fabs(Ezx)) );
+		// sig
+		err_sig.Push( fabs(g.Ele(i)->Val("Sx" ) - Sx ) / (1.0+fabs(Sx )) );
+		err_sig.Push( fabs(g.Ele(i)->Val("Sy" ) - Sy ) / (1.0+fabs(Sy )) );
+		err_sig.Push( fabs(g.Ele(i)->Val("Sz" ) - Sz ) / (1.0+fabs(Sz )) );
+		err_sig.Push( fabs(g.Ele(i)->Val("Sxy") - Sxy) / (1.0+fabs(Sxy)) );
+		err_sig.Push( fabs(g.Ele(i)->Val("Syz") - Syz) / (1.0+fabs(Syz)) );
+		err_sig.Push( fabs(g.Ele(i)->Val("Szx") - Szx) / (1.0+fabs(Szx)) );
 	}
 
 	// Displacements
-	double err2 = 0.0;
 	for (size_t i=0; i<g.NNodes(); ++i)
 	{
-		err2 += fabs(g.Nod(i)->Val("ux")-(-Ex*g.Nod(i)->X()));
-		err2 += fabs(g.Nod(i)->Val("uy")-(-Ey*g.Nod(i)->Y()));
-		err2 += fabs(g.Nod(i)->Val("uz")-(-Ez*g.Nod(i)->Z()));
+		double ux_correct = -Ex*g.Nod(i)->X();
+		double uy_correct = -Ey*g.Nod(i)->Y();
+		double uz_correct = -Ez*g.Nod(i)->Z();
+		err_dis.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
+		err_dis.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
+		err_dis.Push ( fabs(g.Nod(i)->Val("uz") - uz_correct) / (1.0+fabs(uz_correct)) );
 	}
 
-	if (fabs(err1)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") stress/strain = " << err1 << "[0m";
-	else                    cout << "[1;32m\nErrors(" << linsol << ") stress/strain = " << err1 << "[0m";
-	if (fabs(err2)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") displacements = " << err2 << "[0m\n" << endl;
-	else                    cout << "[1;32m\nErrors(" << linsol << ") displacements = " << err2 << "[0m\n" << endl;
+	// Error summary
+	double tol_eps     = 1.0e-16;
+	double tol_sig     = 1.0e-14;
+	double tol_dis     = 1.0e-16;
+	double min_err_eps = err_eps[err_eps.Min()];
+	double min_err_sig = err_sig[err_sig.Min()];
+	double min_err_dis = err_dis[err_dis.Min()];
+	double max_err_eps = err_eps[err_eps.Max()];
+	double max_err_sig = err_sig[err_sig.Max()];
+	double max_err_dis = err_dis[err_dis.Max()];
+	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
+	cout << _4<< "Eps" << _8s<<min_err_eps << _8s<<err_eps.Mean() << (max_err_eps>tol_eps?"[1;31m":"[1;32m") << _8s<<max_err_eps << "[0m" << _8s<<err_eps.Norm() << endl;
+	cout << _4<< "Sig" << _8s<<min_err_sig << _8s<<err_sig.Mean() << (max_err_sig>tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig << "[0m" << _8s<<err_sig.Norm() << endl;
+	cout << _4<< "Dis" << _8s<<min_err_dis << _8s<<err_dis.Mean() << (max_err_dis>tol_dis?"[1;31m":"[1;32m") << _8s<<max_err_dis << "[0m" << _8s<<err_dis.Norm() << endl;
+	cout << endl;
 
 	// Return error flag
-	if (fabs(err1+err2)>1.0e-13) return 1;
-	else                         return 0;
+	if (max_err_eps>tol_eps || max_err_sig>tol_sig || max_err_dis>tol_dis) return 1;
+	else return 0;
 }
 catch (Exception * e) 
 {

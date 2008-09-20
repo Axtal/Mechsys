@@ -58,17 +58,15 @@ int main(int argc, char **argv) try
 	double E     = 207.0; // Young
 	double nu    = 0.3;   // Poisson
 	double q     = 1.0;   // Load
-	int    nx    = 10;    // number of divisions along x
-	int    ny    = 10;    // number of divisions along y
+	int    ndiv  = 10;    // number of divisions along x and y
 	bool   is_o2 = false; // use high order elements?
-	String linsol("LA");    // LAPACK
+	String linsol("LA");  // LAPACK
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2  nx  ny\n";
+	cout << "Input: " << argv[0] << "  is_o2  ndiv  linsol(LA,UM,SLU)\n";
 	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
-	if (argc>=3) nx         =  atof(argv[2]);
-	if (argc>=4) ny         =  atof(argv[3]);
-	if (argc>=5) linsol.Printf("%s",argv[4]);
+	if (argc>=3) ndiv       =  atof(argv[2]);
+	if (argc>=4) linsol.Printf("%s",argv[3]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
@@ -78,8 +76,8 @@ int main(int argc, char **argv) try
 	b.SetCoords (false, 4,            // Is3D, NNodes
 	             0.0, 1.0, 1.0, 0.0,  // x coordinates
 	             0.0, 0.0, 1.0, 1.0); // y coordinates
-	b.SetNx     (nx);                 // x weights and num of divisions along x
-	b.SetNy     (ny);                 // y weights and num of divisions along y
+	b.SetNx     (ndiv);               // x weights and num of divisions along x
+	b.SetNy     (ndiv);               // y weights and num of divisions along y
 	b.SetETags  (4,  0, 0, -10, -20); // edge tags
 	Array<Mesh::Block*> blocks;
 	blocks.Push (&b);
@@ -90,7 +88,8 @@ int main(int argc, char **argv) try
 	clock_t start = std::clock();           // Initial time
 	size_t  ne    = mesh.Generate (blocks); // Discretize domain
 	clock_t total = std::clock() - start;   // Time elapsed
-	cout << "\nNumber of quadrangles   = " << ne << endl;
+	if (is_o2) cout << "\nNum of quadrangles (o2) = " << ne << endl;
+	else       cout << "\nNumber of quadrangles   = " << ne << endl;
 	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -126,6 +125,7 @@ int main(int argc, char **argv) try
 	double norm_resid = LinAlg::Norm(sol->Resid());
 	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 
 	// Output: VTU
 	Output o; o.VTU (&g, "tpstrain02.vtu");
@@ -147,7 +147,7 @@ int main(int argc, char **argv) try
 	double Sz  = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 	double Sxy = 0.0;
 
-	// Stress and epss
+	// Stress and strains
 	for (size_t i=0; i<g.NElems(); ++i)
 	{
 		err_eps.Push ( fabs(g.Ele(i)->Val("Ex" ) - Ex ) / (1.0+fabs(Ex )) );

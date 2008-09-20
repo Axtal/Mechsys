@@ -82,7 +82,7 @@ class Solver
 {
 public:
 	// Constructor
-	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL), _pd(NULL) {}
+	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL), _pd(NULL), _ndofs(0) {}
 
 	// Destructor
 	virtual ~Solver() {}
@@ -97,6 +97,7 @@ public:
 
 	// Access methods
 	LinAlg::Vector<double> const & Resid () const { return _resid;  } ///< Resid = dFext - dFint
+	size_t                         nDOF  () const { return _ndofs;  } ///< Number of DOFs
 
 	// Methods to be overloaded by derived classes
 	virtual Solver * SetCte (char const * Key, double Value) =0; ///< Set solver constant such as number of subincrements, DTOL, etc.

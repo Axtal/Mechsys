@@ -49,10 +49,10 @@ int main(int argc, char **argv) try
 	double maxarea1 = 0.01;              // maximum area for each triangle in the inner circle
 	double maxarea2 = 0.1;               // maximum area for each triangle in the outer circle
 	bool   is_o2    = false;             // use high order elements?
-	String linsol("LA");
+	String linsol("LA");                 // LAPACK
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2  maxarea1  maxarea2  linsol\n";
+	cout << "Input: " << argv[0] << "  is_o2  maxarea1  maxarea2  linsol(LA,UM,SLU)\n";
 	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
 	if (argc>=3) maxarea1   =  atof(argv[2]);
 	if (argc>=4) maxarea2   =  atof(argv[3]);
@@ -123,6 +123,7 @@ int main(int argc, char **argv) try
 	double norm_resid = LinAlg::Norm(sol->Resid());
 	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 
 	// Output: VTU
 	Output o; o.VTU (&g, "tpoisson01.vtu");

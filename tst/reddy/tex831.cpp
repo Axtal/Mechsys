@@ -40,6 +40,8 @@ using std::cout;
 using std::endl;
 using LinAlg::Vector;
 using boost::make_tuple;
+using Util::_4;
+using Util::_6;
 using Util::_8s;
 
 double u_correct(double s, double k, double x, double y)
@@ -59,23 +61,20 @@ double u_correct(double s, double k, double x, double y)
 int main(int argc, char **argv) try
 {
 	// Constants
-	double s  = 1.0; // heat source
-	double k  = 1.0; // isotropic conductivity
-	int    nx = 10;  // number of divisions along x
-	int    ny = 10;  // number of divisions along y
+	int    ndiv = 2;     // number of divisions along x and y
+	String linsol("LA"); // LAPACK
+	Array<double> source(1); source[0] = 1.0;
 	
-	// Heat source and parameters
-	Array<double> source(1);  source.SetValues (s);
-	String        prms;       prms.Printf ("k=%f",k);
-
 	// Input
-	String linsol("LA");
-	if (argc==2) linsol.Printf("%s",argv[1]);
-	else cout << "[1;32mYou can call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
+	cout << "Input: " << argv[0] << "  ndiv  linsol(LA,UM,SLU)\n";
+	if (argc==2) ndiv        = atoi(argv[1]);
+	if (argc==3) linsol.Printf("%s",argv[2]);
 
-	double err_1 = 0.0;
+	double err_Ke_1 = 0.0;
 	{
-		cout << "================================================================== Coarse triangular mesh\n\n";
+		cout << "\n[0;1m================================================================== Coarse triangular mesh[0m\n";
+
+		////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 		// Geometry
 		FEM::Geom g(2); // 2D
@@ -103,10 +102,10 @@ int main(int argc, char **argv) try
 		g.Ele(3)->Connect(0, g.Nod(2))->Connect(1, g.Nod(4))->Connect(2, g.Nod(5));
 
 		// Parameters and initial values
-		g.Ele(0)->SetModel("LinDiffusion", prms.CStr(), "");
-		g.Ele(1)->SetModel("LinDiffusion", prms.CStr(), "");
-		g.Ele(2)->SetModel("LinDiffusion", prms.CStr(), "");
-		g.Ele(3)->SetModel("LinDiffusion", prms.CStr(), "");
+		g.Ele(0)->SetModel("LinDiffusion", "k=1.0", "");
+		g.Ele(1)->SetModel("LinDiffusion", "k=1.0", "");
+		g.Ele(2)->SetModel("LinDiffusion", "k=1.0", "");
+		g.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
 		
 		// Properties (heat source)
 		g.Ele(0)->SetProps(source);
@@ -136,10 +135,10 @@ int main(int argc, char **argv) try
 		for (int i=0; i<3; ++i)
 		for (int j=0; j<3; ++j)
 		{
-			err_1 += fabs(Ke0(i,j)-Ke_correct(i,j));
-			err_1 += fabs(Ke1(i,j)-Ke_correct(i,j));
-			err_1 += fabs(Ke2(i,j)-Ke_correct(i,j));
-			err_1 += fabs(Ke3(i,j)-Ke_correct(i,j));
+			err_Ke_1 += fabs(Ke0(i,j)-Ke_correct(i,j));
+			err_Ke_1 += fabs(Ke1(i,j)-Ke_correct(i,j));
+			err_Ke_1 += fabs(Ke2(i,j)-Ke_correct(i,j));
+			err_Ke_1 += fabs(Ke3(i,j)-Ke_correct(i,j));
 		}
 
 		// Solve
@@ -147,29 +146,44 @@ int main(int argc, char **argv) try
 		sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 		sol -> Solve();
 		double norm_resid = LinAlg::Norm(sol->Resid());
-		cout << "Norm(Resid=DFext-DFint) = " << norm_resid << "\n\n";
-		err_1 += norm_resid;
-
-		// Output: Elements
-		LinAlg::Matrix<double> vals0,vals1,vals2,vals3;
-		Array<String>          labs0,labs1,labs2,labs3;
-		g.Ele(0)->OutNodes (vals0, labs0);
-		g.Ele(1)->OutNodes (vals1, labs1);
-		g.Ele(2)->OutNodes (vals2, labs2);
-		g.Ele(3)->OutNodes (vals3, labs3);
-		std::cout << "Element # 0\n" << labs0 << "\n" << vals0 << std::endl;
-		std::cout << "Element # 1\n" << labs1 << "\n" << vals1 << std::endl;
-		std::cout << "Element # 2\n" << labs2 << "\n" << vals2 << std::endl;
-		std::cout << "Element # 3\n" << labs3 << "\n" << vals3 << std::endl;
+		cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+		cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n\n";
 
 		// Output: Nodes
-		for (int i=0; i<6; ++i)
-			cout << "Node # " << i << ":  u=" << g.Nod(i)->Val("u") << ",  q=" << g.Nod(i)->Val("q") << endl;
+		cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
+		for (size_t i=0; i<g.NNodes(); ++i)
+			cout << _6<<i << _8s<<g.Nod(i)->Val("u") << _8s<<g.Nod(i)->Val("q") << endl;
+
+		//////////////////////////////////////////////////////////////////////////////////////// Check /////
+
+		std::ofstream of("tex831_1.cal", std::ios::out);
+		of << _8s<<"x" << _8s<<"u" << _8s<<"ucorr" << endl;
+		Array<double> err_u;
+		for (size_t i=0; i<g.NNodes(); ++i)	
+		{
+			double x     = g.Nod(i)->X();
+			double y     = g.Nod(i)->Y();
+			double u     = g.Nod(i)->Val("u");
+			double ucorr = u_correct(1.0,1.0,x,y);
+			err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
+			if (fabs(y)<=1e-5) of << _8s<<x << _8s<<u << _8s<<ucorr << endl;
+		}
+		of.close();
+
+		// Error summary
+		double tol_u     = 1.0e-2;
+		double min_err_u = err_u[err_u.Min()];
+		double max_err_u = err_u[err_u.Max()];
+		cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
+		cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
+		cout << endl;
 	}
 
-	double err_2 = 0.0;
+	double err_Ke_2 = 0.0;
 	{
-		cout << "\n================================================================== Fine quadrangular mesh\n\n";
+		cout << "\n[0;1m================================================================== Fine quadrangular mesh[0m\n";
+
+		///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 		// Blocks
 		Mesh::Block b;
@@ -177,15 +191,21 @@ int main(int argc, char **argv) try
 		b.SetCoords (false, 4,           // Is3D, NNodes
 					 0., 1., 1., 0.,     // x coordinates
 					 0., 0., 1., 1.);    // y coordinates
-		b.SetNx     (nx);                // x weights and num of divisions along x
-		b.SetNy     (ny);                // y weights and num of divisions along y
+		b.SetNx     (ndiv);                // x weights and num of divisions along x
+		b.SetNy     (ndiv);                // y weights and num of divisions along y
 		b.SetETags  (4,-10,-20,-30,-40); // edge tags
 		Array<Mesh::Block*> blocks;
 		blocks.Push (&b);
 
 		// Generate
-		Mesh::Structured ms;
-		ms.Generate (blocks);
+		Mesh::Structured mesh;
+		clock_t start = std::clock();           // Initial time
+		size_t  ne    = mesh.Generate (blocks); // Discretize domain
+		clock_t total = std::clock() - start;   // Time elapsed
+		cout << "\nNumber of quadrangles   = " << ne << endl;
+		cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+
+		////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 		// Geometry
 		FEM::Geom g(2);
@@ -199,11 +219,11 @@ int main(int argc, char **argv) try
 
 		// Elements attributes
 		FEM::EAtts_T eatts;
-		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), ""));
+		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", ""));
 
 		// Set geometry: nodes, elements, attributes, and boundaries
-		FEM::SetNodesElems (&ms, &eatts, &g);
-		FEM::SetBrys       (&ms, NULL, &ebrys, NULL, &g);
+		FEM::SetNodesElems (&mesh, &eatts, &g);
+		FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
 
 		// Set heat source
 		for (size_t i=0; i<g.NElems(); ++i)
@@ -215,53 +235,68 @@ int main(int argc, char **argv) try
 		             -1.0,  4.0, -1.0, -2.0,
 		             -2.0, -1.0,  4.0, -1.0,
 		             -1.0, -2.0, -1.0,  4.0;
-		Ke_correct = (k/6.0)*Ke_correct;
+		Ke_correct = (1.0/6.0)*Ke_correct;
 		for (size_t i=0; i<g.NElems(); ++i)
 		{
 			LinAlg::Matrix<double> Ke;
 			g.Ele(i)->Order1Matrix(0,Ke);
 			for (int i=0; i<4; ++i)
 			for (int j=0; j<4; ++j)
-				err_2 += fabs(Ke(i,j)-Ke_correct(i,j));
+				err_Ke_2 += fabs(Ke(i,j)-Ke_correct(i,j));
 		}
 
 		// Solve
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 		sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+		start = std::clock();
 		sol -> Solve();
+		total = std::clock() - start;
 		double norm_resid = LinAlg::Norm(sol->Resid());
-		cout << "Norm(Resid=DFext-DFint) = " << norm_resid << "\n\n";
-		err_2 += norm_resid;
+		cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+		cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+		cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+
+		// Output: VTU
+		Output o; o.VTU (&g, "tex831.vtu");
+		cout << "[1;34mFile <tex831.vtu> saved.[0m\n\n";
+
+		// Output: Nodes
+		if (ndiv<3)
+		{
+			cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
+			for (size_t i=0; i<g.NNodes(); ++i)
+				cout << _6<<i << _8s<<g.Nod(i)->Val("u") << _8s<<g.Nod(i)->Val("q") << endl;
+			cout << endl;
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 		// Check
-		std::ofstream of("tex831.cal", std::ios::out);
+		std::ofstream of("tex831_2.cal", std::ios::out);
 		of << _8s<<"x" << _8s<<"u" << _8s<<"ucorr" << endl;
+		Array<double> err_u;
 		for (size_t i=0; i<g.NNodes(); ++i)	
 		{
 			double x     = g.Nod(i)->X();
 			double y     = g.Nod(i)->Y();
 			double u     = g.Nod(i)->Val("u");
-			double ucorr = u_correct(s,k,x,y);
-			err_2 += fabs(u-ucorr);
-			if (fabs(y)<=1e-5)
-				of << _8s<<x << _8s<<u << _8s<<ucorr << endl;
+			double ucorr = u_correct(1.0,1.0,x,y);
+			err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
+			if (fabs(y)<=1e-5) of << _8s<<x << _8s<<u << _8s<<ucorr << endl;
 		}
 		of.close();
 
-		// Output: VTU
-		Output o; o.VTU (&g, "tex831.vtu");
+		// Error summary
+		double tol_u     = 1.0e-2;
+		double min_err_u = err_u[err_u.Min()];
+		double max_err_u = err_u[err_u.Max()];
+		cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
+		cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
+		cout << endl;
+
+
 	}
 
-	// Output
-	cout << endl;
-	if (fabs(err_1)>1.0e-14) cout << "[1;31mErr_1(" << linsol << ") = " << err_1 << "[0m\n" << endl;
-	else                     cout << "[1;32mErr_1(" << linsol << ") = " << err_1 << "[0m\n" << endl;
-	if (fabs(err_2)>3.5e-2)  cout << "[1;31mErr_2(" << linsol << ") = " << err_2 << "[0m\n" << endl;
-	else                     cout << "[1;32mErr_2(" << linsol << ") = " << err_2 << "[0m\n" << endl;
-
-	// Return error flag
-	if (fabs(err_1)>1.0e-14 || fabs(err_2)>3.5e-2) return 1;
-	else                                           return 0;
 }
 catch (Exception * e)
 {
