@@ -172,10 +172,10 @@ private:
 
 inline Solver * Solver::SetLinSol(char const * Key)
 {
-	     if (strncmp(Key,"LA",  2)==0) _linsol=LinAlg::LAPACK_T;
-	else if (strncmp(Key,"UM",  2)==0) _linsol=LinAlg::UMFPACK_T;
-	else if (strncmp(Key,"SLU", 2)==0) _linsol=LinAlg::SuperLU_T;
-	else if (strncmp(Key,"SLUd",2)==0) _linsol=LinAlg::SuperLU_T;
+	     if (strcmp(Key,"LA"  )==0) _linsol=LinAlg::LAPACK_T;
+	else if (strcmp(Key,"UM"  )==0) _linsol=LinAlg::UMFPACK_T;
+	else if (strcmp(Key,"SLU" )==0) _linsol=LinAlg::SuperLU_T;
+	else if (strcmp(Key,"SLUd")==0) _linsol=LinAlg::SuperLU_T;
 	else throw new Fatal("Solver::SetLinSol: Solver key==%s is invalid",Key);
 	return this;
 }

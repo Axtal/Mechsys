@@ -22,6 +22,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <cfloat> // for DBL_EPSILON
 
 // MechSys
 #include "fem/geometry.h"
@@ -61,16 +62,19 @@ double u_correct(double s, double k, double x, double y)
 int main(int argc, char **argv) try
 {
 	// Constants
-	int    ndiv = 2;     // number of divisions along x and y
+	size_t ndiv       = 2;     // number of divisions along x and y
+	bool   check_conv = false; // check convergence ?
 	String linsol("LA"); // LAPACK
 	Array<double> source(1); source[0] = 1.0;
 	
 	// Input
 	cout << "Input: " << argv[0] << "  ndiv  linsol(LA,UM,SLU)\n";
-	if (argc==2) ndiv        = atoi(argv[1]);
-	if (argc==3) linsol.Printf("%s",argv[2]);
+	if (argc>=2) ndiv        = atoi(argv[1]);
+	if (argc>=3) linsol.Printf("%s",argv[2]);
+	if (argc>=4) check_conv  = atoi(argv[3]);
 
-	double err_Ke_1 = 0.0;
+	double err_1 = 0.0;
+	if (check_conv==false)
 	{
 		cout << "\n[0;1m================================================================== Coarse triangular mesh[0m\n";
 
@@ -120,7 +124,8 @@ int main(int argc, char **argv) try
 		g.Nod(3)->Bry("u",0.0);
 		g.Nod(5)->Bry("u",0.0);
 
-		// Stiffness
+		// Check conductivity matrices
+		double err_ke = 0.0;
 		LinAlg::Matrix<double> Ke0, Ke1, Ke2, Ke3;
 		LinAlg::Matrix<double> Ke_correct;  Ke_correct.Resize(3,3);
 		g.Ele(0)->Order1Matrix(0,Ke0);
@@ -130,16 +135,15 @@ int main(int argc, char **argv) try
 		Ke_correct =  0.5, -0.5,  0.0,
 					 -0.5,  1.0, -0.5,
 					  0.0, -0.5,  0.5;
-
-		// Check conductivity matrices
 		for (int i=0; i<3; ++i)
 		for (int j=0; j<3; ++j)
 		{
-			err_Ke_1 += fabs(Ke0(i,j)-Ke_correct(i,j));
-			err_Ke_1 += fabs(Ke1(i,j)-Ke_correct(i,j));
-			err_Ke_1 += fabs(Ke2(i,j)-Ke_correct(i,j));
-			err_Ke_1 += fabs(Ke3(i,j)-Ke_correct(i,j));
+			err_ke += fabs(Ke0(i,j)-Ke_correct(i,j));
+			err_ke += fabs(Ke1(i,j)-Ke_correct(i,j));
+			err_ke += fabs(Ke2(i,j)-Ke_correct(i,j));
+			err_ke += fabs(Ke3(i,j)-Ke_correct(i,j));
 		}
+		if (err_ke>DBL_EPSILON) throw new Fatal("tex831: err_ke=%e for coarse triangular mesh is bigger than %e.",err_ke,DBL_EPSILON);
 
 		// Solve
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -148,6 +152,7 @@ int main(int argc, char **argv) try
 		double norm_resid = LinAlg::Norm(sol->Resid());
 		cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 		cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n\n";
+		if (norm_resid>DBL_EPSILON) throw new Fatal("tex831: norm_resid=%e for coarse triangular mesh is bigger than %e.",norm_resid,DBL_EPSILON);
 
 		// Output: Nodes
 		cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
@@ -177,11 +182,27 @@ int main(int argc, char **argv) try
 		cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
 		cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
 		cout << endl;
+		err_1 = max_err_u;
 	}
 
-	double err_Ke_2 = 0.0;
+	cout << endl;
+	double err_2  = 0.0;
+	size_t ntests = (check_conv ? 4 : 1);
+	Array<size_t> ndivs;   ndivs  .Resize(ntests);
+	Array<size_t> ndofs;   ndofs  .Resize(ntests);
+	Array<double> max_err; max_err.Resize(ntests);
+	if (check_conv)
 	{
-		cout << "\n[0;1m================================================================== Fine quadrangular mesh[0m\n";
+		ndivs[0] = 4;
+		if (ntests>=2) ndivs[1] =  38;
+		if (ntests>=3) ndivs[2] =  78;
+		if (ntests>=4) ndivs[3] = 100;
+		if (ntests>=5) ndivs[4] = 220;
+	}
+	else ndivs.SetValues(ndiv);
+	for (size_t k=0; k<ntests; ++k)
+	{
+		cout << "[0;1m================================================================== Fine quadrangular mesh[0m\n";
 
 		///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
@@ -191,8 +212,8 @@ int main(int argc, char **argv) try
 		b.SetCoords (false, 4,           // Is3D, NNodes
 					 0., 1., 1., 0.,     // x coordinates
 					 0., 0., 1., 1.);    // y coordinates
-		b.SetNx     (ndiv);                // x weights and num of divisions along x
-		b.SetNy     (ndiv);                // y weights and num of divisions along y
+		b.SetNx     (ndivs[k]);          // x weights and num of divisions along x
+		b.SetNy     (ndivs[k]);          // y weights and num of divisions along y
 		b.SetETags  (4,-10,-20,-30,-40); // edge tags
 		Array<Mesh::Block*> blocks;
 		blocks.Push (&b);
@@ -230,6 +251,7 @@ int main(int argc, char **argv) try
 			g.Ele(i)->SetProps(source);
 
 		// Check conductivity matrices
+		double max_err_ke = 0.0;
 		LinAlg::Matrix<double> Ke_correct;  Ke_correct.Resize(4,4);
 		Ke_correct =  4.0, -1.0, -2.0, -1.0,
 		             -1.0,  4.0, -1.0, -2.0,
@@ -240,10 +262,13 @@ int main(int argc, char **argv) try
 		{
 			LinAlg::Matrix<double> Ke;
 			g.Ele(i)->Order1Matrix(0,Ke);
+			double err_ke = 0.0;
 			for (int i=0; i<4; ++i)
 			for (int j=0; j<4; ++j)
-				err_Ke_2 += fabs(Ke(i,j)-Ke_correct(i,j));
+				err_ke += fabs(Ke(i,j)-Ke_correct(i,j));
+			if (err_ke>max_err_ke) max_err_ke = err_ke;
 		}
+		if (max_err_ke>1.0e-12) throw new Fatal("tex831: max_err_ke==%e for quadrangular mesh is bigger than %e.",max_err_ke,1.0e-12);
 
 		// Solve
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -255,13 +280,19 @@ int main(int argc, char **argv) try
 		cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 		cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 		cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+		if (norm_resid>sqrt(DBL_EPSILON)) throw new Fatal("tex831: norm_resid=%e for quadrangular mesh is bigger than %e.",norm_resid,sqrt(DBL_EPSILON));
+		ndofs[k] = sol->nDOF();
 
 		// Output: VTU
-		Output o; o.VTU (&g, "tex831.vtu");
-		cout << "[1;34mFile <tex831.vtu> saved.[0m\n\n";
+		if (check_conv==false)
+		{
+			Output o; o.VTU (&g, "tex831.vtu");
+			cout << "[1;34mFile <tex831.vtu> saved.[0m\n";
+		}
+		cout << endl;
 
 		// Output: Nodes
-		if (ndiv<3)
+		if (ndivs[k]<3)
 		{
 			cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
 			for (size_t i=0; i<g.NNodes(); ++i)
@@ -294,9 +325,33 @@ int main(int argc, char **argv) try
 		cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
 		cout << endl;
 
+		// Error -- convergence
+		max_err[k] = max_err_u;
+	}
+	err_2 = max_err[0];
 
+	// Check convergence
+	if (check_conv)
+	{
+		// Janicke, L. & Kost, A. (1999). Convergence properties of the finite element solutions. IEEE Transactions on Magnetics, 35(3), 1414-1417.
+		cout << _6<<"nDOF1" << _6 <<"nDOF2" << _8s<<"conv" << endl;
+		for (size_t k=1; k<ntests; ++k)
+		{
+			double conv = -2.0*(log(max_err[k-1])-log(max_err[k]))/(log(ndofs[k-1])-log(ndofs[k]));
+			cout << _6<<ndofs[k-1] << _6<<ndofs[k] << "[1;35m" << _8s<<conv << "[0m\n";
+		}
+		// First -> Last tests
+		double conv = -2.0*(log(max_err[0])-log(max_err[ntests-1]))/(log(ndofs[0])-log(ndofs[ntests-1]));
+		cout << _6<<ndofs[0] << _6<<ndofs[ntests-1] << "[1;35m" << _8s<<conv << "[0m\n";
 	}
 
+	// Return error flag
+	if (err_1>1.38e-2 || err_2>1.24e-2)
+	{
+		cout << "[1;31mERROR too big: err_1 = " << _8s<<err_1 << ",    err_2 = " << _8s<<err_2 << "[0m" << endl;
+		return 1;
+	}
+	else return 0;
 }
 catch (Exception * e)
 {
