@@ -34,8 +34,9 @@
 #include <cstdarg>  // for va_list, va_start, va_end
 
 // MechSys
-#include "util/string.h"
+#include "fem/quadrature.h"
 #include "fem/node.h"
+#include "util/string.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
@@ -52,16 +53,7 @@ public:
 	Element() : _my_id(-1), _ndim(-1) {}
 
 	// Destructor
-	virtual ~Element() { }
-
-	// Auxiliar structure (integration point)
-	struct IntegPoint
-	{
-		double r; ///< xsi coordinate
-		double s; ///< eta coordinate
-		double t; ///< zeta coordinate
-		double w; ///< weight (coeficient) W 
-	};
+	virtual ~Element() {}
 
 	// Set methods
 	void      SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
@@ -108,6 +100,7 @@ public:
 	virtual void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const =0;                                          ///< Face derivatives
 
 	// Methods that MAY be overriden by derived classes
+	virtual void   SetNIP        (int nIP) {}                                                                                                ///< Set the number of integration points
 	virtual void   InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
 	virtual void   Jacobian      (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const;                                  ///< Jacobian matrix
 	virtual void   Jacobian      (double r, double s, double t, LinAlg::Matrix<double> & J) const;                                           ///< (alternative) method to compute the Jacobian matrix
@@ -132,16 +125,16 @@ public:
 
 protected:
 	// Data (may be accessed by derived classes)
-	long               _my_id;          ///< The ID of this element
-	int                _ndim;           ///< Number of dimensions of the problem
-	size_t             _n_nodes;        ///< Number of nodes in the element
-	size_t             _n_int_pts;      ///< Number of integration (Gauss) points
-	size_t             _n_face_nodes;   ///< Number of nodes in a face
-	size_t             _n_face_int_pts; ///< Number of integration points in a face
-	Array<Node*>       _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
-	bool               _is_active;      ///< Flag for active/inactive condition
-	IntegPoint const * _a_int_pts;      ///< Array of Integration Points
-	IntegPoint const * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
+	long            _my_id;          ///< The ID of this element
+	int             _ndim;           ///< Number of dimensions of the problem
+	size_t          _n_nodes;        ///< Number of nodes in the element
+	size_t          _n_int_pts;      ///< Number of integration (Gauss) points
+	size_t          _n_face_nodes;   ///< Number of nodes in a face
+	size_t          _n_face_int_pts; ///< Number of integration points in a face
+	Array<Node*>    _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
+	bool            _is_active;      ///< Flag for active/inactive condition
+	IntegPoint    * _a_int_pts;      ///< Array of Integration Points
+	IntegPoint    * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 
 private:
 	void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes

@@ -31,34 +31,8 @@ namespace FEM
 {
 
 // Quad4 Constants
-const int QUAD4_NNODES      = 4;
-const int QUAD4_NINTPTS     = 4;
-const int QUAD4_NFACENODES  = 2;
-const int QUAD4_NFACEINTPTS = 2;
-const Element::IntegPoint QUAD4_INTPTS[]=
-{{ -sqrt(3.0)/3.0, -sqrt(3.0)/3.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0, -sqrt(3.0)/3.0, 0.0, 1.0 },
- { -sqrt(3.0)/3.0,  sqrt(3.0)/3.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0,  sqrt(3.0)/3.0, 0.0, 1.0 }};
-const Element::IntegPoint QUAD4_FACEINTPTS[]=
-{{ -sqrt(3.0)/3.0, 0.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0, 0.0, 0.0, 1.0 }};
-/*
-const Element::IntegPoint QUAD4_INTPTS[]=
-{{ -sqrt(3.0/5.0), -sqrt(3.0/5.0), 0.0, 25.0/81.0 },
- {           0.0 , -sqrt(3.0/5.0), 0.0, 40.0/81.0 },
- {  sqrt(3.0/5.0), -sqrt(3.0/5.0), 0.0, 25.0/81.0 },
- { -sqrt(3.0/5.0),           0.0 , 0.0, 40.0/81.0 },
- {           0.0 ,           0.0 , 0.0, 64.0/81.0 },
- {  sqrt(3.0/5.0),           0.0 , 0.0, 40.0/81.0 },
- { -sqrt(3.0/5.0),  sqrt(3.0/5.0), 0.0, 25.0/81.0 },
- {           0.0 ,  sqrt(3.0/5.0), 0.0, 40.0/81.0 },
- {  sqrt(3.0/5.0),  sqrt(3.0/5.0), 0.0, 25.0/81.0 }};
-const Element::IntegPoint QUAD4_FACEINTPTS[]=
-{{ -sqrt(3.0/5.0), 0.0, 0.0, 5.0/9.0 },
- {           0.0 , 0.0, 0.0, 8.0/9.0 },
- {  sqrt(3.0/5.0), 0.0, 0.0, 5.0/9.0 }};
-*/
+const int QUAD4_NNODES        =  4;
+const int QUAD4_NFACENODES    =  2;
 
 class Quad4: public virtual Element
 {
@@ -115,17 +89,20 @@ inline Quad4::Quad4()
 {
 	// Setup nodes number
 	_n_nodes        = QUAD4_NNODES;
-	_n_int_pts      = QUAD4_NINTPTS;
 	_n_face_nodes   = QUAD4_NFACENODES;
-	_n_face_int_pts = QUAD4_NFACEINTPTS;
 
 	// Allocate nodes (connectivity)
 	_connects.Resize(_n_nodes);
 	_connects.SetValues(NULL);
 
-	// Setup pointer to the array of Integration Points
-	_a_int_pts      = QUAD4_INTPTS;
-	_a_face_int_pts = QUAD4_FACEINTPTS;
+	// Integration points
+	size_t nips_1d  = 2;
+	_n_int_pts      = nips_1d*nips_1d;
+	_n_face_int_pts = nips_1d;
+	_a_int_pts      = new FEM::IntegPoint[_n_int_pts];
+	_a_face_int_pts = new FEM::IntegPoint[_n_face_int_pts];
+	FEM::SetGaussIP_2D(nips_1d, _a_int_pts);
+	FEM::SetGaussIP_1D(nips_1d, _a_face_int_pts);
 }
 
 inline void Quad4::VTKConnect(String & Nodes) const
