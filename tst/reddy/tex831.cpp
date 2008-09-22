@@ -68,7 +68,7 @@ int main(int argc, char **argv) try
 	Array<double> source(1); source[0] = 1.0;
 	
 	// Input
-	cout << "Input: " << argv[0] << "  ndiv  linsol(LA,UM,SLU)\n";
+	cout << "Input: " << argv[0] << "  ndiv  linsol(LA,UM,SLU) check_conv\n";
 	if (argc>=2) ndiv        = atoi(argv[1]);
 	if (argc>=3) linsol.Printf("%s",argv[2]);
 	if (argc>=4) check_conv  = atoi(argv[3]);

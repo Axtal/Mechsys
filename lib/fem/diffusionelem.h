@@ -112,7 +112,7 @@ private:
 
 inline bool DiffusionElem::IsReady() const
 {
-	return (_a_model.Size()==_n_int_pts && _connects.Size()==_n_nodes);
+	return (_a_model.Size()==_a_int_pts.Size() && _connects.Size()==_n_nodes);
 }
 
 inline bool DiffusionElem::IsEssential(char const * DOFName) const
@@ -130,10 +130,10 @@ inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, c
 	if (_a_model.Size()==0)
 	{
 		// Resize the array of model pointers
-		_a_model.Resize(_n_int_pts);
+		_a_model.Resize(_a_int_pts.Size());
 
 		// Loop along integration points
-		for (size_t i=0; i<_n_int_pts; ++i)
+		for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		{
 			// Allocate a new model and set parameters
 			_a_model[i] = static_cast<DiffusionModel*>(AllocModel(ModelName));
@@ -193,7 +193,7 @@ inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> co
 	LinAlg::Vector<double> dvel;    // delta velocity
 
 	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -234,7 +234,7 @@ inline void DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 		LinAlg::Matrix<double> J;
 
 		// Loop along integration points
-		for (size_t i=0; i<_n_int_pts; ++i)
+		for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		{
 			// Temporary Integration Points
 			double r = _a_int_pts[i].r;
@@ -260,13 +260,13 @@ inline void DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 
 inline void DiffusionElem::BackupState()
 {
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		_a_model[i]->BackupState();
 }
 
 inline void DiffusionElem::RestoreState()
 {
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		_a_model[i]->RestoreState();
 }
 
@@ -308,8 +308,8 @@ inline void DiffusionElem::GetLabels(Array<String> & Labels) const
 inline void DiffusionElem::CalcDepVars() const
 {
 	// Get integration point values
-	if (_a_model.Size()==_n_int_pts)
-		for (size_t i=0; i<_n_int_pts; i++)
+	if (_a_model.Size()==_a_int_pts.Size())
+		for (size_t i=0; i<_a_int_pts.Size(); i++)
 			_a_model[i]->CalcDepVars();
 	else throw new Fatal("DiffusionElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 }
@@ -328,12 +328,12 @@ inline double DiffusionElem::Val(int iNodeLocal, char const * Name) const
 	else
 	{
 		// Vectors for extrapolation
-		LinAlg::Vector<double>    ip_values (_n_int_pts);
+		LinAlg::Vector<double>    ip_values (_a_int_pts.Size());
 		LinAlg::Vector<double> nodal_values (_n_nodes);
 
 		// Get integration point values
-		if (_a_model.Size()==_n_int_pts)
-			for (size_t i=0; i<_n_int_pts; i++)
+		if (_a_model.Size()==_a_int_pts.Size())
+			for (size_t i=0; i<_a_int_pts.Size(); i++)
 				ip_values(i) = _a_model[i]->Val(Name);
 		else throw new Fatal("DiffusionElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
@@ -349,11 +349,11 @@ inline double DiffusionElem::Val(char const * Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
-	for (size_t i=0; i<_n_int_pts; i++)
+	for (size_t i=0; i<_a_int_pts.Size(); i++)
 		sum += _a_model[i]->Val(Name);
 
 	// Output single value at CG
-	return sum/_n_int_pts;
+	return sum/_a_int_pts.Size();
 }
 
 inline void DiffusionElem::Deactivate()
@@ -405,7 +405,7 @@ inline void DiffusionElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & K
 	LinAlg::Matrix<double> D;      // Conductivity matrix
 
 	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -449,7 +449,7 @@ inline void DiffusionElem::_calc_initial_internal_state()
 	LinAlg::Vector<double> vel;     // velocity
 
 	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;

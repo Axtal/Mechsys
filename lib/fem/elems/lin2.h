@@ -30,17 +30,6 @@
 namespace FEM
 {
 
-// Lin2 Constants
-const int LIN2_NNODES      = 2;
-const int LIN2_NINTPTS     = 2;
-const int LIN2_NFACENODES  = 1;
-const int LIN2_NFACEINTPTS = 1;
-const Element::IntegPoint LIN2_INTPTS[]=
-{{ -sqrt(3.0)/3.0, 0.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0, 0.0, 0.0, 1.0 }};
-const Element::IntegPoint LIN2_FACEINTPTS[]=
-{{ 1.0, 0.0, 0.0, 1.0 }};
-
 class Lin2: public virtual Element
 {
 public:
@@ -51,6 +40,7 @@ public:
 	virtual ~Lin2() {}
 
 	// Derived methods
+	void SetIntPoints (int NumGaussPoints1D);
 	int  VTKCellType  () const { return VTK_LINE; }
 	void VTKConnect   (String & Nodes) const;
 	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const { throw new Fatal("Lin2::GetFaceNodes: Method is not available for this element"); }
@@ -68,18 +58,20 @@ public:
 inline Lin2::Lin2()
 {
 	// Setup nodes number
-	_n_nodes        = LIN2_NNODES;
-	_n_int_pts      = LIN2_NINTPTS;
-	_n_face_nodes   = LIN2_NFACENODES;
-	_n_face_int_pts = LIN2_NFACEINTPTS;
+	_n_nodes        = 2;
+	_n_face_nodes   = 1;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
-	_connects.SetValues(NULL);
+	_connects.Resize    (_n_nodes);
+	_connects.SetValues (NULL);
 
-	// Setup pointer to the array of Integration Points
-	_a_int_pts      = LIN2_INTPTS;
-	_a_face_int_pts = LIN2_FACEINTPTS;
+	// Integration points
+	SetIntPoints (/*NumGaussPoints1D*/2);
+}
+
+inline void Lin2::SetIntPoints(int NumGaussPoints1D)
+{
+	FEM::SetGaussIP (/*NDim*/1, NumGaussPoints1D, _a_int_pts);
 }
 
 inline void Lin2::VTKConnect(String & Nodes) const
@@ -94,7 +86,7 @@ inline void Lin2::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	 *       @-----------+-----------@-> r
 	 *      -1           |          +1
 	 */
-	Shape.Resize(LIN2_NNODES);
+	Shape.Resize(/*NNodes*/2);
 	Shape(0) = 0.5*(1.0-r);
 	Shape(1) = 0.5*(1.0+r);
 }
@@ -108,23 +100,19 @@ inline void Lin2::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(1,LIN2_NNODES);
+	Derivs.Resize(1,/*NNodes*/2);
 	Derivs(0,0) = -0.5;
 	Derivs(0,1) =  0.5;
 }
 
 inline void Lin2::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
 {
-	/* Just a single point */
-	FaceShape.Resize(LIN2_NFACENODES);
-	FaceShape(0) = 1.0;
+	throw new Fatal("Lin2::FaceShape: This method is not available for this element (Lin2)");
 }
 
 inline void Lin2::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
 {
-	/* Just a single point */
-	FaceDerivs.Resize(1,LIN2_NFACENODES);
-	FaceDerivs(0,0) = 0.0;
+	throw new Fatal("Lin2::FaceDerivs: This method is not available for this element (Lin2)");
 }
 
 

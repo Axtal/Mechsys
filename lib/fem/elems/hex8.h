@@ -29,26 +29,6 @@
 namespace FEM
 {
 
-// Hex8 Constants
-const int HEX8_NNODES      = 8;
-const int HEX8_NINTPTS     = 8;
-const int HEX8_NFACENODES  = 4;
-const int HEX8_NFACEINTPTS = 4;
-const Element::IntegPoint HEX8_INTPTS[]=
-{{ -0.577350,  -0.577350,  -0.577350,  1. }, 
-{   0.577350,  -0.577350,  -0.577350,  1. },
-{   0.577350,   0.577350,  -0.577350,  1. },
-{  -0.577350,   0.577350,  -0.577350,  1. },
-{  -0.577350,  -0.577350,   0.577350,  1. },
-{   0.577350,  -0.577350,   0.577350,  1. },
-{   0.577350,   0.577350,   0.577350,  1. },
-{  -0.577350,   0.577350,   0.577350,  1. }};
-const Element::IntegPoint HEX8_FACEINTPTS[]=
-{{ -0.577350,  -0.577350,  0.0,  1. }, 
-{   0.577350,  -0.577350,  0.0,  1. },
-{   0.577350,   0.577350,  0.0,  1. },
-{  -0.577350,   0.577350,  0.0,  1. }};
-
 class Hex8 : public virtual Element
 {
 public:
@@ -69,6 +49,7 @@ public:
 	virtual ~Hex8() {}
 
 	// Derived methods
+	void   SetIntPoints  (int NumGaussPoints1D);
 	int    VTKCellType   () const { return VTK_HEXAHEDRON; }
 	void   VTKConnect    (String & Nodes) const;
 	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
@@ -114,18 +95,21 @@ Hex8::FaceMap Hex8::Face2Node[]= {{ 0, 3, 7, 4 },
 inline Hex8::Hex8()
 {
 	// Setup nodes number
-	_n_nodes        = HEX8_NNODES;
-	_n_int_pts      = HEX8_NINTPTS;
-	_n_face_nodes   = HEX8_NFACENODES;
-	_n_face_int_pts = HEX8_NFACEINTPTS;
+	_n_nodes      = 8;
+	_n_face_nodes = 4;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
-	_connects.SetValues(NULL);
+	_connects.Resize    (_n_nodes);
+	_connects.SetValues (NULL);
 
-	// Setup pointer to the array of Integration Points
-	_a_int_pts      = HEX8_INTPTS;
-	_a_face_int_pts = HEX8_FACEINTPTS;
+	// Integration Points
+	SetIntPoints (/*NumGaussPoints1D*/2);
+}
+
+inline void Hex8::SetIntPoints(int NumGaussPoints1D)
+{
+	FEM::SetGaussIP (/*NDim*/3, NumGaussPoints1D, _a_int_pts);
+	FEM::SetGaussIP (/*NDim*/2, NumGaussPoints1D, _a_face_int_pts);
 }
 
 inline void Hex8::VTKConnect(String & Nodes) const
@@ -142,7 +126,7 @@ inline void Hex8::VTKConnect(String & Nodes) const
 
 inline void Hex8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
-	FaceConnects.Resize(HEX8_NFACENODES);
+	FaceConnects.Resize(/*NumFaceNodes*/4);
 	FaceConnects[0] = _connects[Face2Node[FaceID].n0];
 	FaceConnects[1] = _connects[Face2Node[FaceID].n1];
 	FaceConnects[2] = _connects[Face2Node[FaceID].n2];
@@ -174,7 +158,7 @@ inline void Hex8::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	 *    |_
 	 *   r
 	 */
-	Shape.Resize(HEX8_NNODES);
+	Shape.Resize(/*NumNodes*/8);
 	Shape(0) = 0.125*(1.0-r-s+r*s-t+s*t+r*t-r*s*t);
 	Shape(1) = 0.125*(1.0+r-s-r*s-t+s*t-r*t+r*s*t);
 	Shape(2) = 0.125*(1.0+r+s+r*s-t-s*t-r*t-r*s*t);
@@ -194,7 +178,7 @@ inline void Hex8::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(3,HEX8_NNODES);
+	Derivs.Resize(3,/*NumNodes*/8);
 	Derivs(0,0) = 0.125*(-1.0+s+t-s*t);   Derivs(1,0)=0.125*(-1.0+r+t-r*t);   Derivs(2,0)=0.125*(-1.0+r+s-r*s);
 	Derivs(0,1) = 0.125*(+1.0-s-t+s*t);   Derivs(1,1)=0.125*(-1.0-r+t+r*t);   Derivs(2,1)=0.125*(-1.0-r+s+r*s);
 	Derivs(0,2) = 0.125*(+1.0+s-t-s*t);   Derivs(1,2)=0.125*(+1.0+r-t-r*t);   Derivs(2,2)=0.125*(-1.0-r-s-r*s);
@@ -220,7 +204,7 @@ inline void Hex8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	 *           0           1
 	 */
 
-	FaceShape.Resize(HEX8_NFACENODES);
+	FaceShape.Resize(/*NumFaceNodes*/4);
 	FaceShape(0) = 0.25*(1.0-r-s+r*s);
 	FaceShape(1) = 0.25*(1.0+r-s-r*s);
 	FaceShape(2) = 0.25*(1.0+r+s+r*s);
@@ -237,7 +221,7 @@ inline void Hex8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDe
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
 
-	FaceDerivs.Resize(2,HEX8_NFACENODES);
+	FaceDerivs.Resize(2,/*NumFaceNodes*/4);
 	FaceDerivs(0,0) = 0.25*(-1.0+s);   FaceDerivs(1,0) = 0.25*(-1.0+r);
 	FaceDerivs(0,1) = 0.25*(+1.0-s);   FaceDerivs(1,1) = 0.25*(-1.0-r);
 	FaceDerivs(0,2) = 0.25*(+1.0+s);   FaceDerivs(1,2) = 0.25*(+1.0+r);

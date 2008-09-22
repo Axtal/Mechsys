@@ -52,7 +52,7 @@ int main(int argc, char **argv) try
 	String linsol("LA");                 // LAPACK
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2  maxarea1  maxarea2  linsol(LA,UM,SLU)\n";
+	cout << "Input: " << argv[0] << "  is_o2  maxarea1_inner(0.01)  maxarea2_outer(0.1)  linsol(LA,UM,SLU)\n";
 	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
 	if (argc>=3) maxarea1   =  atof(argv[2]);
 	if (argc>=4) maxarea2   =  atof(argv[3]);

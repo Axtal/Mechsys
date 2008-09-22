@@ -19,6 +19,10 @@
 #ifndef MECHSYS_FEM_QUADRATURE_H
 #define MECHSYS_FEM_QUADRATURE_H
 
+// MechSys
+#include "util/array.h"
+#include "util/exception.h"
+
 namespace FEM
 {
 
@@ -159,66 +163,119 @@ const double WEIGHT_10[] = {  0.066671344308688137593570e+00,
                               0.21908636251598204399554e+00,
                               0.06667134430868813759357e+00 };
 
-// NumGP = 11  =>  precision = 21
-const double GAUSSP_11[] = { -0.987228658146056992803938e+00,
-                             -0.887062599768095299075158e+00,
-                             -0.730152005574049324093416e+00,
-                             -0.519096129206811815925726e+00,
-                             -0.269543155952344972331532e+00,
-                              0.000000000000000000000000e+00,
-                              0.269543155952344972331532e+00,
-                              0.519096129206811815925726e+00,
-                              0.730152005574049324093416e+00,
-                              0.887062599768095299075158e+00,
-                              0.987228658146056992803938e+00 };
-const double WEIGHT_11[] = {  0.055668567116173666482750e+00,
-                              0.12558036946490462463469e+00,
-                              0.18629021092773425142610e+00,
-                              0.23319376459199047991852e+00,
-                              0.26280454451024666218069e+00,
-                              0.27292508677790063071448e+00,
-                              0.26280454451024666218069e+00,
-                              0.23319376459199047991852e+00,
-                              0.18629021092773425142610e+00,
-                              0.12558036946490462463469e+00,
-                              0.05566856711617366648275e+00 };
-
-// NumGP = 12  =>  precision = 23
-const double GAUSSP_12[] = { -0.981560634246719250690549e+00,
-                             -0.904117256370474856678466e+00,
-                             -0.769002674194304687036894e+00,
-                             -0.587317954286617447296702e+00,
-                             -0.367831498998180193752692e+00,
-                             -0.125233408511468915472441e+00,
-                              0.125233408511468915472441e+00,
-                              0.367831498998180193752692e+00,
-                              0.587317954286617447296702e+00,
-                              0.769002674194304687036894e+00,
-                              0.904117256370474856678466e+00,
-                              0.981560634246719250690549e+00 };
-const double WEIGHT_12[] = {  0.047175336386511827194620e+00,
-                              0.10693932599531843096025e+00,
-                              0.16007832854334622633465e+00,
-                              0.20316742672306592174906e+00,
-                              0.23349253653835480876085e+00,
-                              0.24914704581340278500056e+00,
-                              0.24914704581340278500056e+00,
-                              0.23349253653835480876085e+00,
-                              0.20316742672306592174906e+00,
-                              0.16007832854334622633465e+00,
-                              0.10693932599531843096025e+00,
-                              0.04717533638651182719462e+00 };
-
-inline void SetGaussIP_1D (size_t NumGP, FEM::IntegPoint IPsArray[])
+inline void SetGaussIP (size_t NDim, size_t NumGP1D, Array<FEM::IntegPoint> & IPs, bool IsTriOrTet=false)
 {
-}
-
-inline void SetGaussIP_2D (size_t NumGP, FEM::IntegPoint IPsArray[])
-{
-}
-
-inline void SetGaussIP_3D (size_t NumGP, FEM::IntegPoint IPsArray[])
-{
+	if (IsTriOrTet)
+	{
+		if (NDim==2) // triangle
+		{
+			switch (NumGP1D) // NumGP1D==NumGPTotal for triangle/tetrahedron
+			{
+				case 3:
+				{
+					IPs.Resize(3);
+					IPs[0].r = 1.0/6.0;   IPs[0].s = 1.0/6.0;   IPs[0].t = 0.0;   IPs[0].w = 1.0/6.0;
+					IPs[1].r = 2.0/3.0;   IPs[1].s = 1.0/6.0;   IPs[1].t = 0.0;   IPs[1].w = 1.0/6.0;
+					IPs[2].r = 1.0/6.0;   IPs[2].s = 2.0/3.0;   IPs[2].t = 0.0;   IPs[2].w = 1.0/6.0;
+					return;
+				}
+				case 7:
+				{
+					IPs.Resize(7);
+					IPs[0].r = 0.1012865073235;   IPs[0].s = 0.1012865073235;   IPs[0].t = 0.0;   IPs[0].w = 0.0629695902724;
+					IPs[1].r = 0.7974269853531;   IPs[1].s = 0.1012865073235;   IPs[1].t = 0.0;   IPs[1].w = 0.0629695902724;
+					IPs[2].r = 0.1012865073235;   IPs[2].s = 0.7974269853531;   IPs[2].t = 0.0;   IPs[2].w = 0.0629695902724;
+					IPs[3].r = 0.4701420641051;   IPs[3].s = 0.0597158717898;   IPs[3].t = 0.0;   IPs[3].w = 0.0661970763942;
+					IPs[4].r = 0.4701420641051;   IPs[4].s = 0.4701420641051;   IPs[4].t = 0.0;   IPs[4].w = 0.0661970763942;
+					IPs[5].r = 0.0597158717898;   IPs[5].s = 0.4701420641051;   IPs[5].t = 0.0;   IPs[5].w = 0.0661970763942;
+					IPs[6].r = 0.3333333333333;   IPs[6].s = 0.3333333333333;   IPs[6].t = 0.0;   IPs[6].w = 0.1125000000000;
+					return;
+				}
+				case 13:
+				{
+					IPs.Resize(13);
+					IPs[ 0].r = 0.0651301029022;   IPs[ 0].s = 0.0651301029022;   IPs[ 0].t = 0.0;   IPs[ 0].w =  0.0266736178044;
+					IPs[ 1].r = 0.8697397941956;   IPs[ 1].s = 0.0651301029022;   IPs[ 1].t = 0.0;   IPs[ 1].w =  0.0266736178044;
+					IPs[ 2].r = 0.0651301029022;   IPs[ 2].s = 0.8697397941956;   IPs[ 2].t = 0.0;   IPs[ 2].w =  0.0266736178044;
+					IPs[ 3].r = 0.3128654960049;   IPs[ 3].s = 0.0486903154253;   IPs[ 3].t = 0.0;   IPs[ 3].w =  0.0385568804452;
+					IPs[ 4].r = 0.6384441885698;   IPs[ 4].s = 0.3128654960049;   IPs[ 4].t = 0.0;   IPs[ 4].w =  0.0385568804452;
+					IPs[ 5].r = 0.0486903154253;   IPs[ 5].s = 0.6384441885698;   IPs[ 5].t = 0.0;   IPs[ 5].w =  0.0385568804452;
+					IPs[ 6].r = 0.6384441885698;   IPs[ 6].s = 0.0486903154253;   IPs[ 6].t = 0.0;   IPs[ 6].w =  0.0385568804452;
+					IPs[ 7].r = 0.3128654960049;   IPs[ 7].s = 0.6384441885698;   IPs[ 7].t = 0.0;   IPs[ 7].w =  0.0385568804452;
+					IPs[ 8].r = 0.0486903154253;   IPs[ 8].s = 0.0486903154253;   IPs[ 8].t = 0.0;   IPs[ 8].w =  0.0385568804452;
+					IPs[ 9].r = 0.2603459660790;   IPs[ 9].s = 0.2603459660790;   IPs[ 9].t = 0.0;   IPs[ 9].w =  0.0878076287166;
+					IPs[10].r = 0.4793080678419;   IPs[10].s = 0.2603459660790;   IPs[10].t = 0.0;   IPs[10].w =  0.0878076287166;
+					IPs[11].r = 0.2603459660790;   IPs[11].s = 0.4793080678419;   IPs[11].t = 0.0;   IPs[11].w =  0.0878076287166;
+					IPs[12].r = 0.3333333333333;   IPs[12].s = 0.3333333333333;   IPs[12].t = 0.0;   IPs[12].w = -0.0747850222338;
+					return;
+				}
+				default: throw new Fatal("FEM::SetGaussIP: Total number of Gauss-Points for triangle (NumGPTotal==%d) is invalid.",NumGP1D);
+			}
+		}
+		else if (NDim==3) // tetrahedron
+		{
+		}
+		else throw new Fatal("FEM::SetGaussIP: NDim==%d for triangle/tetrahedron is invalid.",NDim);
+	}
+	else
+	{
+		double const * gps = NULL;
+		double const * wgt = NULL;
+		switch (NumGP1D)
+		{
+			case  2: { gps=GAUSSP_2;   wgt=WEIGHT_2;   break; }
+			case  3: { gps=GAUSSP_3;   wgt=WEIGHT_3;   break; }
+			case  4: { gps=GAUSSP_4;   wgt=WEIGHT_4;   break; }
+			case  5: { gps=GAUSSP_5;   wgt=WEIGHT_5;   break; }
+			case  6: { gps=GAUSSP_6;   wgt=WEIGHT_6;   break; }
+			case  7: { gps=GAUSSP_7;   wgt=WEIGHT_7;   break; }
+			case  8: { gps=GAUSSP_8;   wgt=WEIGHT_8;   break; }
+			case  9: { gps=GAUSSP_9;   wgt=WEIGHT_9;   break; }
+			case 10: { gps=GAUSSP_10;  wgt=WEIGHT_10;  break; }
+			default: throw new Fatal("FEM::SetGaussIP: Number of Gauss-Points 1D (NumGP1D==%d) is invalid.",NumGP1D);
+		}
+		if (NDim==1)
+		{
+			IPs.Resize (NumGP1D);
+			for (size_t i=0; i<NumGP1D; ++i)
+			{
+				IPs[i].r = gps[i];
+				IPs[i].s = 0.0;
+				IPs[i].t = 0.0;
+				IPs[i].w = wgt[i];
+			}
+		}
+		else if (NDim==2)
+		{
+			size_t m = 0;
+			IPs.Resize (NumGP1D*NumGP1D);
+			for (size_t i=0; i<NumGP1D; ++i)
+			for (size_t j=0; j<NumGP1D; ++j)
+			{
+				IPs[m].r = gps[j];
+				IPs[m].s = gps[i];
+				IPs[m].t = 0.0;
+				IPs[m].w = wgt[j]*wgt[i];
+				m++;
+			}
+		}
+		else if (NDim==3)
+		{
+			size_t m = 0;
+			IPs.Resize (NumGP1D*NumGP1D*NumGP1D);
+			for (size_t i=0; i<NumGP1D; ++i)
+			for (size_t j=0; j<NumGP1D; ++j)
+			for (size_t k=0; k<NumGP1D; ++k)
+			{
+				IPs[m].r = gps[k];
+				IPs[m].s = gps[j];
+				IPs[m].t = gps[i];
+				IPs[m].w = wgt[k]*wgt[j]*wgt[i];
+				m++;
+			}
+		}
+		else throw new Fatal("FEM::SetGaussIP: NDim==%d is invalid.",NDim);
+	}
 }
 
 }; // namespace FEM

@@ -29,19 +29,6 @@
 namespace FEM
 {
 
-// Tri6 Constants
-const int TRI6_NNODES      = 6;
-const int TRI6_NINTPTS     = 3;
-const int TRI6_NFACENODES  = 3;
-const int TRI6_NFACEINTPTS = 2;
-const Element::IntegPoint TRI6_INTPTS[]=
-{{ 1.0/6.0, 1.0/6.0, 0.0, 1.0/6.0 },
- { 2.0/3.0, 1.0/6.0, 0.0, 1.0/6.0 },
- { 1.0/6.0, 2.0/3.0, 0.0, 1.0/6.0 }};
-const Element::IntegPoint TRI6_FACEINTPTS[]=
-{{ -sqrt(3.0)/3.0, 0.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0, 0.0, 0.0, 1.0 }};
-
 class Tri6: public virtual Element
 {
 public:
@@ -61,6 +48,7 @@ public:
 	virtual ~Tri6() {}
 
 	// Derived methods
+	void SetIntPoints (int NumGaussPoints1D);
 	int  VTKCellType  () const { return VTK_QUADRATIC_TRIANGLE; }
 	void VTKConnect   (String & Nodes) const;
 	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
@@ -95,18 +83,21 @@ Tri6::FaceMap Tri6::Face2Node[]= {{ 0, 1, 3 },
 inline Tri6::Tri6()
 {
 	// Setup nodes number
-	_n_nodes        = TRI6_NNODES;
-	_n_int_pts      = TRI6_NINTPTS;
-	_n_face_nodes   = TRI6_NFACENODES;
-	_n_face_int_pts = TRI6_NFACEINTPTS;
+	_n_nodes      = 6;
+	_n_face_nodes = 3;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
-	_connects.SetValues(NULL);
+	_connects.Resize    (_n_nodes);
+	_connects.SetValues (NULL);
 
-	// Setup pointer to the array of Integration Points
-	_a_int_pts      = TRI6_INTPTS;
-	_a_face_int_pts = TRI6_FACEINTPTS;
+	// Integration Points
+	SetIntPoints (/*NumGaussPointsTotal*/3);
+}
+
+inline void Tri6::SetIntPoints(int NumGaussPointsTotal)
+{
+	FEM::SetGaussIP (/*NDim*/2, NumGaussPointsTotal,   _a_int_pts,      /*IsTriOrTet*/true);
+	FEM::SetGaussIP (/*NDim*/1, /*NumGaussPoints1D*/2, _a_face_int_pts);
 }
 
 inline void Tri6::VTKConnect(String & Nodes) const
@@ -147,7 +138,7 @@ inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	 *    @---------@---------@  --> r
 	 *  0           3          1
 	 */
-	Shape.Resize(TRI6_NNODES);
+	Shape.Resize(/*NumNodes*/6);
     Shape(0) = 1.0-(r+s)*(3.0-2.0*(r+s));
     Shape(1) = r*(2.0*r-1.0);
     Shape(2) = s*(2.0*s-1.0);
@@ -165,7 +156,7 @@ inline void Tri6::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(2, TRI6_NNODES);
+	Derivs.Resize(2, /*NumNodes*/6);
 
     Derivs(0,0) = -3.0 + 4.0 * (r + s);       Derivs(1,0) = -3.0 + 4.0*(r + s);
     Derivs(0,1) =  4.0 * r - 1.;              Derivs(1,1) =  0.0 ; 
@@ -183,7 +174,7 @@ inline void Tri6::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	 *       |           |           |
 	 *      r=-1         r=0        r=+1
 	 */
-	FaceShape.Resize(TRI6_NFACENODES);
+	FaceShape.Resize(/*NumFaceNodes*/3);
 	FaceShape(0) = 0.5 * (r*r-r);
 	FaceShape(1) = 0.5 * (r*r+r);
 	FaceShape(2) = 1.0 -  r*r;
@@ -191,7 +182,7 @@ inline void Tri6::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 
 inline void Tri6::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
 {
-	FaceDerivs.Resize(1,TRI6_NFACENODES);
+	FaceDerivs.Resize(1,/*NumFaceNodes*/3);
 	FaceDerivs(0,0) =  r  - 0.5;
 	FaceDerivs(0,1) =  r  + 0.5;
 	FaceDerivs(0,2) = -2.0* r;

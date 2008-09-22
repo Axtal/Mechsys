@@ -113,7 +113,7 @@ private:
 
 inline bool EquilibElem::IsReady() const
 {
-	return (_a_model.Size()==_n_int_pts && _connects.Size()==_n_nodes);
+	return (_a_model.Size()==_a_int_pts.Size() && _connects.Size()==_n_nodes);
 }
 
 inline bool EquilibElem::IsEssential(char const * DOFName) const
@@ -132,10 +132,10 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 	if (_a_model.Size()==0)
 	{
 		// Resize the array of model pointers
-		_a_model.Resize(_n_int_pts);
+		_a_model.Resize(_a_int_pts.Size());
 
 		// Loop along integration points
-		for (size_t i=0; i<_n_int_pts; ++i)
+		for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		{
 			// Allocate a new model and set parameters
 			_a_model[i] = static_cast<EquilibModel*>(AllocModel(ModelName));
@@ -200,7 +200,7 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	LinAlg::Vector<double> dsig;    // delta stress vector 
 
 	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -246,7 +246,7 @@ inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 		LinAlg::Matrix<double> J;
 
 		// Loop along integration points
-		for (size_t i=0; i<_n_int_pts; ++i)
+		for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		{
 			// Temporary Integration Points
 			double r = _a_int_pts[i].r;
@@ -281,13 +281,13 @@ inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 
 inline void EquilibElem::BackupState()
 {
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		_a_model[i]->BackupState();
 }
 
 inline void EquilibElem::RestoreState()
 {
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		_a_model[i]->RestoreState();
 }
 
@@ -339,8 +339,8 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 inline void EquilibElem::CalcDepVars() const
 {
 	// Get integration point values
-	if (_a_model.Size()==_n_int_pts)
-		for (size_t i=0; i<_n_int_pts; i++)
+	if (_a_model.Size()==_a_int_pts.Size())
+		for (size_t i=0; i<_a_int_pts.Size(); i++)
 			_a_model[i]->CalcDepVars();
 	else throw new Fatal("EquilibElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 }
@@ -359,12 +359,12 @@ inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 	else
 	{
 		// Vectors for extrapolation
-		LinAlg::Vector<double>    ip_values (_n_int_pts);
+		LinAlg::Vector<double>    ip_values (_a_int_pts.Size());
 		LinAlg::Vector<double> nodal_values (_n_nodes);
 
 		// Get integration point values
-		if (_a_model.Size()==_n_int_pts)
-			for (size_t i=0; i<_n_int_pts; i++)
+		if (_a_model.Size()==_a_int_pts.Size())
+			for (size_t i=0; i<_a_int_pts.Size(); i++)
 				ip_values(i) = _a_model[i]->Val(Name);
 		else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
@@ -380,13 +380,13 @@ inline double EquilibElem::Val(char const * Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
-	if (_a_model.Size()==_n_int_pts)
-		for (size_t i=0; i<_n_int_pts; i++)
+	if (_a_model.Size()==_a_int_pts.Size())
+		for (size_t i=0; i<_a_int_pts.Size(); i++)
 			sum += _a_model[i]->Val(Name);
 	else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
 	// Output single value at CG
-	return sum/_n_int_pts;
+	return sum/_a_int_pts.Size();
 }
 
 inline void EquilibElem::Deactivate()
@@ -447,7 +447,7 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 	LinAlg::Matrix<double> D;      // Constitutive matrix
 
 	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -587,7 +587,7 @@ inline void EquilibElem::_calc_initial_internal_state()
 	sig.SetValues (0.0);
 
 	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;

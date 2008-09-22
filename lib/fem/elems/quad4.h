@@ -30,10 +30,6 @@
 namespace FEM
 {
 
-// Quad4 Constants
-const int QUAD4_NNODES        =  4;
-const int QUAD4_NFACENODES    =  2;
-
 class Quad4: public virtual Element
 {
 public:
@@ -52,6 +48,7 @@ public:
 	virtual ~Quad4() {}
 
 	// Derived methods
+	void SetIntPoints (int NumGaussPoints1D);
 	int  VTKCellType  () const { return VTK_QUAD; }
 	void VTKConnect   (String & Nodes) const;
 	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
@@ -88,21 +85,21 @@ Quad4::FaceMap Quad4::Face2Node[]= {{ 0, 3 },
 inline Quad4::Quad4()
 {
 	// Setup nodes number
-	_n_nodes        = QUAD4_NNODES;
-	_n_face_nodes   = QUAD4_NFACENODES;
+	_n_nodes      = 4;
+	_n_face_nodes = 2;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
-	_connects.SetValues(NULL);
+	_connects.Resize    (_n_nodes);
+	_connects.SetValues (NULL);
 
 	// Integration points
-	size_t nips_1d  = 2;
-	_n_int_pts      = nips_1d*nips_1d;
-	_n_face_int_pts = nips_1d;
-	_a_int_pts      = new FEM::IntegPoint[_n_int_pts];
-	_a_face_int_pts = new FEM::IntegPoint[_n_face_int_pts];
-	FEM::SetGaussIP_2D(nips_1d, _a_int_pts);
-	FEM::SetGaussIP_1D(nips_1d, _a_face_int_pts);
+	SetIntPoints (/*NumGaussPoints1D*/2);
+}
+
+inline void Quad4::SetIntPoints(int NumGaussPoints1D)
+{
+	FEM::SetGaussIP (/*NDim*/2, NumGaussPoints1D, _a_int_pts);
+	FEM::SetGaussIP (/*NDim*/1, NumGaussPoints1D, _a_face_int_pts);
 }
 
 inline void Quad4::VTKConnect(String & Nodes) const
@@ -136,7 +133,7 @@ inline void Quad4::Shape(double r, double s, double t, LinAlg::Vector<double> & 
 	 *        @--------------------@
 	 *      0                        1
 	 */
-	Shape.Resize (QUAD4_NNODES);
+	Shape.Resize (/*NNodes*/4);
 
 	double rp=1.0+r; double rm=1.0-r;
 	double sp=1.0+s; double sm=1.0-s;
@@ -156,7 +153,7 @@ inline void Quad4::Derivs(double r, double s, double t, LinAlg::Matrix<double> &
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize (2, QUAD4_NNODES);
+	Derivs.Resize (2, /*NNodes*/4);
 
 	double rp=1.0+r; double rm=1.0-r;
 	double sp=1.0+s; double sm=1.0-s;
@@ -174,7 +171,7 @@ inline void Quad4::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSh
 	 *       @-----------+-----------@-> r
 	 *      -1           |          +1
 	 */
-	FaceShape.Resize(QUAD4_NFACENODES);
+	FaceShape.Resize(/*NumFaceNodes*/2);
 	FaceShape(0) = 0.5*(1.0-r);
 	FaceShape(1) = 0.5*(1.0+r);
 }
@@ -188,7 +185,7 @@ inline void Quad4::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceD
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	FaceDerivs.Resize(1,QUAD4_NFACENODES);
+	FaceDerivs.Resize(1,/*NumFaceNodes*/2);
 	FaceDerivs(0,0) = -0.5;
 	FaceDerivs(0,1) =  0.5;
 }

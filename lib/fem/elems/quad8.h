@@ -29,20 +29,6 @@
 namespace FEM
 {
 
-// Quad8 Constants
-const int QUAD8_NNODES      = 8;
-const int QUAD8_NINTPTS     = 4;
-const int QUAD8_NFACENODES  = 3;
-const int QUAD8_NFACEINTPTS = 2;
-const Element::IntegPoint QUAD8_INTPTS[]=
-{{ -sqrt(3.0)/3.0, -sqrt(3.0)/3.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0, -sqrt(3.0)/3.0, 0.0, 1.0 },
- { -sqrt(3.0)/3.0,  sqrt(3.0)/3.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0,  sqrt(3.0)/3.0, 0.0, 1.0 }};
-const Element::IntegPoint QUAD8_FACEINTPTS[]=
-{{ -sqrt(3.0)/3.0, 0.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0, 0.0, 0.0, 1.0 }};
-
 class Quad8: public virtual Element
 {
 public:
@@ -62,6 +48,7 @@ public:
 	virtual ~Quad8() {}
 
 	// Derived methods
+	void SetIntPoints (int NumGaussPoints1D);
 	int  VTKCellType  () const { return VTK_QUADRATIC_QUAD; }
 	void VTKConnect   (String & Nodes) const;
 	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
@@ -96,18 +83,21 @@ Quad8::FaceMap Quad8::Face2Node[]= {{ 0, 3, 7 },
 inline Quad8::Quad8()
 {
 	// Setup nodes number
-	_n_nodes        = QUAD8_NNODES;
-	_n_int_pts      = QUAD8_NINTPTS;
-	_n_face_nodes   = QUAD8_NFACENODES;
-	_n_face_int_pts = QUAD8_NFACEINTPTS;
+	_n_nodes      = 8;
+	_n_face_nodes = 3;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
-	_connects.SetValues(NULL);
+	_connects.Resize    (_n_nodes);
+	_connects.SetValues (NULL);
 
-	// Setup pointer to the array of Integration Points
-	_a_int_pts      = QUAD8_INTPTS;
-	_a_face_int_pts = QUAD8_FACEINTPTS;
+	// Integration Points
+	SetIntPoints (/*NumGaussPoints1D*/2);
+}
+
+inline void Quad8::SetIntPoints(int NumGaussPoints1D)
+{
+	FEM::SetGaussIP (/*NDim*/2, NumGaussPoints1D, _a_int_pts);
+	FEM::SetGaussIP (/*NDim*/1, NumGaussPoints1D, _a_face_int_pts);
 }
 
 inline void Quad8::VTKConnect(String & Nodes) const
@@ -146,7 +136,7 @@ inline void Quad8::Shape(double r, double s, double t, LinAlg::Vector<double> & 
 	 *        @---------@----------@
 	 *      0           4            1
 	 */
-	Shape.Resize (QUAD8_NNODES);
+	Shape.Resize (/*NumNodes*/8);
 
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
@@ -170,7 +160,7 @@ inline void Quad8::Derivs(double r, double s, double t, LinAlg::Matrix<double> &
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize (2, QUAD8_NNODES);
+	Derivs.Resize (2, /*NumNodes*/8);
 
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
@@ -202,7 +192,7 @@ inline void Quad8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSh
 	 *       |           |           |
 	 *      r=-1         r=0        r=+1
 	 */
-	FaceShape.Resize(QUAD8_NFACENODES);
+	FaceShape.Resize(/*NumFaceNodes*/3);
 	FaceShape(0) = 0.5 * (r*r-r);
 	FaceShape(1) = 0.5 * (r*r+r);
 	FaceShape(2) = 1.0 -  r*r;
@@ -217,7 +207,7 @@ inline void Quad8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceD
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	FaceDerivs.Resize(1,QUAD8_NFACENODES);
+	FaceDerivs.Resize(1,/*NumFaceNodes*/3);
 	FaceDerivs(0,0) =  r  - 0.5;
 	FaceDerivs(0,1) =  r  + 0.5;
 	FaceDerivs(0,2) = -2.0* r;

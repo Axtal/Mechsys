@@ -66,7 +66,6 @@ public:
 	long         GetID      ()         const { return _my_id;       } ///< Return the ID of this element
 	bool         IsActive   ()         const { return _is_active;   } ///< Check if this element is active
 	size_t       NNodes     ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
-	size_t       nIntPoints ()         const { return _n_int_pts;   } ///< Return the number of integration points in this element
 	Node       * Nod        (size_t i)       { return _connects[i]; } ///< Return a pointer to a node in the connects list (read/write)
 	Node const * Nod        (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list (read-only)
 	double       Volume     ()         const;                         ///< Return the volume/area/length of the element
@@ -91,6 +90,7 @@ public:
 	virtual void      GetLabels     (Array<String> & Labels) const =0;                                                                       ///< Get the labels of all values to be output
 
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
+	virtual void SetIntPoints   (int NumGaussPoints1D) =0;                                                                                   ///< Set the number of integration points using 1D information. Must NOT be called after allocation of Models.
 	virtual int  VTKCellType    () const =0;                                                                                                 ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
 	virtual void VTKConnect     (String & Nodes) const =0;                                                                                   ///< Return the VTK list of connectivities with global nodes IDs
 	virtual void GetFaceNodes   (int FaceID, Array<Node*> & FaceConnects) const =0;                                                          ///< Return the connectivity of a face, given the local face ID
@@ -100,7 +100,6 @@ public:
 	virtual void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const =0;                                          ///< Face derivatives
 
 	// Methods that MAY be overriden by derived classes
-	virtual void   SetNIP        (int nIP) {}                                                                                                ///< Set the number of integration points
 	virtual void   InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
 	virtual void   Jacobian      (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const;                                  ///< Jacobian matrix
 	virtual void   Jacobian      (double r, double s, double t, LinAlg::Matrix<double> & J) const;                                           ///< (alternative) method to compute the Jacobian matrix
@@ -125,16 +124,14 @@ public:
 
 protected:
 	// Data (may be accessed by derived classes)
-	long            _my_id;          ///< The ID of this element
-	int             _ndim;           ///< Number of dimensions of the problem
-	size_t          _n_nodes;        ///< Number of nodes in the element
-	size_t          _n_int_pts;      ///< Number of integration (Gauss) points
-	size_t          _n_face_nodes;   ///< Number of nodes in a face
-	size_t          _n_face_int_pts; ///< Number of integration points in a face
-	Array<Node*>    _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
-	bool            _is_active;      ///< Flag for active/inactive condition
-	IntegPoint    * _a_int_pts;      ///< Array of Integration Points
-	IntegPoint    * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
+	long              _my_id;          ///< The ID of this element
+	int               _ndim;           ///< Number of dimensions of the problem
+	size_t            _n_nodes;        ///< Number of nodes in the element
+	size_t            _n_face_nodes;   ///< Number of nodes in a face
+	Array<Node*>      _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
+	bool              _is_active;      ///< Flag for active/inactive condition
+	Array<IntegPoint> _a_int_pts;      ///< Array of Integration Points
+	Array<IntegPoint> _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 
 private:
 	void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
@@ -184,7 +181,7 @@ inline double Element::Volume() const
 
 	// Loop along integration points
 	double vol = 0.0;
-	for (size_t i=0; i<_n_int_pts; ++i)
+	for (size_t i=0; i<_a_int_pts.Size(); ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -375,44 +372,50 @@ inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & L
 
 inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 
 {
-	// Extrapolation:
-	//                  IPValues = E * NodalValues;
-	//  where:
-	//                              t           t
-	//                         E = N * inv(N * N )
-	//
-	//  and            N = [shape functions matrix]
-	//	                	  1		2		...		NNodes
-	//	               1	[[N_11 N_12
-	//	               2	 [N_21
-	//	               :	 [
-	//	              nIP	 [N_ ...					]]
-
 	// Check
-	if (_n_nodes<_n_int_pts)
-		throw new Fatal("Element::Extrapolate: Number of nodes (%d) must be greater than or equal to the number of integration points (%d) of an element.",_n_nodes,_n_int_pts);
+	if (IPValues.Size()!=static_cast<int>(_a_int_pts.Size())) throw new Fatal("Element::Extrapolate: IPValues.Size()==%d must be equal to _a_int_pts.Size()==%d",IPValues.Size(),_a_int_pts.Size());
+	if (NodalValues.Size()!=static_cast<int>(_n_nodes)) throw new Fatal("Element::Extrapolate: NodalValues.Size()==%d must be equal to _n_nodes==%d",NodalValues.Size(),_n_nodes);
 
-	LinAlg::Matrix<double> N(_n_int_pts, _n_nodes);  // matrix of all IP shape functions
-	LinAlg::Matrix<double> E(_n_nodes, _n_int_pts);  // Extrapolator matrix
-	LinAlg::Vector<double> shape(_n_nodes);
-	
-	// Filling N matrix
-	for (size_t i_ip=0; i_ip<_n_int_pts; i_ip++)
+	// Data
+	size_t m = IPValues   .Size();
+	size_t n = NodalValues.Size();
+
+	/* N: shape functions matrix:
+	          _                                                 _
+	         |   N11      N12      N13      ...  N1(nNode)       |
+	         |   N21      N22      N23      ...  N2(nNode)       |
+	     N = |   N31      N32      N33      ...  N3(nNode)       |
+	         |          ...............................          |
+	         |_  N(nIP)1  N(nIP)2  N(nIP)3  ...  N(nIP)(nNode)  _| [m=nIP x n=nNode]
+	*/
+	LinAlg::Matrix<double> N(m, n);
+	LinAlg::Vector<double> shape(n);
+	for (size_t i=0; i<m; i++)
 	{
-		double r = _a_int_pts[i_ip].r;
-		double s = _a_int_pts[i_ip].s;
-		double t = _a_int_pts[i_ip].t;
-		Shape(r, s, t, shape);
-		for (size_t j_node=0; j_node<_n_nodes; j_node++)
-			N(i_ip, j_node) = shape(j_node);
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+		Shape (r, s, t, shape);
+		for (size_t j=0; j<n; j++) N(i,j) = shape(j);
 	}
 
-	// Calculate extrapolator matrix
-	E = trn(N)*inv(N*trn(N));
+	// Extrapolate
+	if (m==n) NodalValues = N * IPValues;
+	else
+	{
+		// Transpose matrix
+		LinAlg::Matrix<double> Nt(n, m);
+		Nt = trn(N);
 
-	// Perform extrapolation
-	NodalValues = E*IPValues;
-};
+		// Extrapolator matrix
+		LinAlg::Matrix<double> E(n, m);
+		if (m>n) E = inv(Nt*N)*Nt;
+		else     E = Nt*inv(N*Nt);
+
+		// Extrapolate
+		NodalValues = E * IPValues;
+	}
+}
 
 
 /* private */
@@ -431,7 +434,7 @@ inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValu
 		LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
 		LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
 		LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
-		for (size_t i=0; i<_n_face_int_pts; i++)
+		for (size_t i=0; i<_a_face_int_pts.Size(); i++)
 		{
 			double r = _a_face_int_pts[i].r;
 			double s = _a_face_int_pts[i].s;

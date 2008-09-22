@@ -29,19 +29,6 @@
 namespace FEM
 {
 
-// Tri3 Constants
-const int TRI3_NNODES      = 3;
-const int TRI3_NINTPTS     = 3;
-const int TRI3_NFACENODES  = 2;
-const int TRI3_NFACEINTPTS = 2;
-const Element::IntegPoint TRI3_INTPTS[]=
-{{  1.0/6.0,  1.0/6.0,  0.0,  1.0/6.0 }, 
- {  2.0/3.0,  1.0/6.0,  0.0,  1.0/6.0 },
- {  1.0/6.0,  2.0/3.0,  0.0,  1.0/6.0 }};
-const Element::IntegPoint TRI3_FACEINTPTS[]=
-{{ -sqrt(3.0)/3.0, 0.0, 0.0, 1.0 },
- {  sqrt(3.0)/3.0, 0.0, 0.0, 1.0 }};
-
 class Tri3: public virtual Element
 {
 public:
@@ -60,6 +47,7 @@ public:
 	virtual ~Tri3() {}
 
 	// Derived methods
+	void SetIntPoints (int NumGaussPoints1D);
 	int  VTKCellType  () const { return VTK_TRIANGLE; }
 	void VTKConnect   (String & Nodes) const;
 	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
@@ -94,18 +82,21 @@ Tri3::FaceMap Tri3::Face2Node[]= {{ 0, 1 },
 inline Tri3::Tri3()
 {
 	// Setup nodes number
-	_n_nodes        = TRI3_NNODES;
-	_n_int_pts      = TRI3_NINTPTS;
-	_n_face_nodes   = TRI3_NFACENODES;
-	_n_face_int_pts = TRI3_NFACEINTPTS;
+	_n_nodes      = 3;
+	_n_face_nodes = 2;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
-	_connects.SetValues(NULL);
+	_connects.Resize    (_n_nodes);
+	_connects.SetValues (NULL);
 
-	// Setup pointer to the array of Integration Points
-	_a_int_pts      = TRI3_INTPTS;
-	_a_face_int_pts = TRI3_FACEINTPTS;
+	// Integration Points
+	SetIntPoints (/*NumGaussPointsTotal*/3);
+}
+
+inline void Tri3::SetIntPoints(int NumGaussPointsTotal)
+{
+	FEM::SetGaussIP (/*NDim*/2, NumGaussPointsTotal,   _a_int_pts,      /*IsTriOrTet*/true);
+	FEM::SetGaussIP (/*NDim*/1, /*NumGaussPoints1D*/2, _a_face_int_pts);
 }
 
 inline void Tri3::VTKConnect(String & Nodes) const
@@ -142,7 +133,7 @@ inline void Tri3::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	 *    @-------------------@  --> r
 	 *  0                      1
 	 */
-	Shape.Resize(TRI3_NNODES);
+	Shape.Resize(/*NumNodes*/3);
     Shape(0) = 1.0-r-s;
     Shape(1) = r;
     Shape(2) = s;
@@ -157,7 +148,7 @@ inline void Tri3::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(2, TRI3_NNODES);
+	Derivs.Resize(2, /*NumNodes*/3);
     Derivs(0,0) = -1.0;    Derivs(1,0) = -1.0;
     Derivs(0,1) =  1.0;    Derivs(1,1) =  0.0;
 	Derivs(0,2) =  0.0;    Derivs(1,2) =  1.0;
@@ -170,7 +161,7 @@ inline void Tri3::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	 *       @-----------+-----------@-> r
 	 *      -1           |          +1
 	 */
-	FaceShape.Resize(TRI3_NFACENODES);
+	FaceShape.Resize(/*NumFaceNodes*/2);
 	FaceShape(0) = 0.5*(1.0-r);
 	FaceShape(1) = 0.5*(1.0+r);
 }
@@ -184,7 +175,7 @@ inline void Tri3::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDe
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
-	FaceDerivs.Resize(1,TRI3_NFACENODES);
+	FaceDerivs.Resize(1,/*NumFaceNodes*/2);
 	FaceDerivs(0,0) = -0.5;
 	FaceDerivs(0,1) =  0.5;
 }
