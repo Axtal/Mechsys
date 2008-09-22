@@ -44,7 +44,7 @@ using Util::_8s;
 int main(int argc, char **argv) try
 {
 	// Constants
-	size_t ndiv     = 36;                // number of divisions on the circumference of the unit circle
+	size_t ndiv     = 360;               // number of divisions on the circumference of the unit circle
 	double dalpha   = 2.0*Util::PI/ndiv; // delta alpha (increment angle on the circumference)
 	double maxarea1 = 0.01;              // maximum area for each triangle in the inner circle
 	double maxarea2 = 0.1;               // maximum area for each triangle in the outer circle
