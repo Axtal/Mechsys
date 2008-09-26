@@ -28,11 +28,14 @@
 #include "fem/solvers/forwardeuler.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
+#include "util/numstreams.h"
 #include "mesh/structured.h"
 
 using std::cout;
 using std::endl;
 using boost::make_tuple;
+using Util::_4;
+using Util::_8s;
 
 int main(int argc, char **argv) try
 {
@@ -130,6 +133,11 @@ int main(int argc, char **argv) try
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
+	// Check
+    Array<double> err_eps;
+    Array<double> err_sig;
+    Array<double> err_dis;
+
 	double Sx  = 0.0;
 	double Sy  = 0.0;
 	double Sz  = q;
@@ -145,40 +153,57 @@ int main(int argc, char **argv) try
 	double Ezx = 0.0;
 
 	// Stress and strains
-	double err1 = 0.0;
 	for (size_t i=0; i<g.NElems(); ++i)
 	{
-		err1 += fabs(g.Ele(i)->Val("Sx" ) - (Sx ));
-		err1 += fabs(g.Ele(i)->Val("Sy" ) - (Sy ));
-		err1 += fabs(g.Ele(i)->Val("Sz" ) - (Sz ));
-		err1 += fabs(g.Ele(i)->Val("Sxy") - (Sxy));
-		err1 += fabs(g.Ele(i)->Val("Syz") - (Syz));
-		err1 += fabs(g.Ele(i)->Val("Szx") - (Szx));
-		err1 += fabs(g.Ele(i)->Val("Ex" ) - (Ex ));
-		err1 += fabs(g.Ele(i)->Val("Ey" ) - (Ey ));
-		err1 += fabs(g.Ele(i)->Val("Ez" ) - (Ez ));
-		err1 += fabs(g.Ele(i)->Val("Exy") - (Exy));
-		err1 += fabs(g.Ele(i)->Val("Eyz") - (Eyz));
-		err1 += fabs(g.Ele(i)->Val("Ezx") - (Ezx));
+		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		{
+			// eps
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Eyz") - Eyz) / (1.0+fabs(Eyz)) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ezx") - Ezx) / (1.0+fabs(Ezx)) );
+			// sig
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Syz") - Syz) / (1.0+fabs(Syz)) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Szx") - Szx) / (1.0+fabs(Szx)) );
+		}
 	}
 
 	// Displacements
-	double err2 = 0.0;
 	for (size_t i=0; i<g.NNodes(); ++i)
 	{
-		err2 += fabs(g.Nod(i)->Val("ux")-(-Ex*g.Nod(i)->X()));
-		err2 += fabs(g.Nod(i)->Val("uy")-(-Ey*g.Nod(i)->Y()));
-		err2 += fabs(g.Nod(i)->Val("uz")-(-Ez*g.Nod(i)->Z()));
+		double ux_correct = -Ex*g.Nod(i)->X();
+		double uy_correct = -Ey*g.Nod(i)->Y();
+		double uz_correct = -Ez*g.Nod(i)->Z();
+		err_dis.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
+		err_dis.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
+		err_dis.Push ( fabs(g.Nod(i)->Val("uz") - uz_correct) / (1.0+fabs(uz_correct)) );
 	}
 
-	if (fabs(err1)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") stress/strain = " << err1 << "[0m";
-	else                    cout << "[1;32m\nErrors(" << linsol << ") stress/strain = " << err1 << "[0m";
-	if (fabs(err2)>1.0e-13) cout << "[1;31m\nErrors(" << linsol << ") displacements = " << err2 << "[0m\n" << endl;
-	else                    cout << "[1;32m\nErrors(" << linsol << ") displacements = " << err2 << "[0m\n" << endl;
+	// Error summary
+	double tol_eps     = 1.0e-16;
+	double tol_sig     = 1.0e-14;
+	double tol_dis     = 1.0e-16;
+	double min_err_eps = err_eps[err_eps.Min()];
+	double min_err_sig = err_sig[err_sig.Min()];
+	double min_err_dis = err_dis[err_dis.Min()];
+	double max_err_eps = err_eps[err_eps.Max()];
+	double max_err_sig = err_sig[err_sig.Max()];
+	double max_err_dis = err_dis[err_dis.Max()];
+	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
+	cout << _4<< "Eps" << _8s<<min_err_eps << _8s<<err_eps.Mean() << (max_err_eps>tol_eps?"[1;31m":"[1;32m") << _8s<<max_err_eps << "[0m" << _8s<<err_eps.Norm() << endl;
+	cout << _4<< "Sig" << _8s<<min_err_sig << _8s<<err_sig.Mean() << (max_err_sig>tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig << "[0m" << _8s<<err_sig.Norm() << endl;
+	cout << _4<< "Dis" << _8s<<min_err_dis << _8s<<err_dis.Mean() << (max_err_dis>tol_dis?"[1;31m":"[1;32m") << _8s<<max_err_dis << "[0m" << _8s<<err_dis.Norm() << endl;
+	cout << endl;
 
 	// Return error flag
-	if (fabs(err1+err2)>1.0e-13) return 1;
-	else                         return 0;
+	if (max_err_eps>tol_eps || max_err_sig>tol_sig || max_err_dis>tol_dis) return 1;
+	else return 0;
 }
 catch (Exception * e) 
 {

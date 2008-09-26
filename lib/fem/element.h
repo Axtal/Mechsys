@@ -124,14 +124,15 @@ public:
 
 protected:
 	// Data (may be accessed by derived classes)
-	long              _my_id;          ///< The ID of this element
-	int               _ndim;           ///< Number of dimensions of the problem
-	size_t            _n_nodes;        ///< Number of nodes in the element
-	size_t            _n_face_nodes;   ///< Number of nodes in a face
-	Array<Node*>      _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
-	bool              _is_active;      ///< Flag for active/inactive condition
-	Array<IntegPoint> _a_int_pts;      ///< Array of Integration Points
-	Array<IntegPoint> _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
+	long                   _my_id;          ///< The ID of this element
+	int                    _ndim;           ///< Number of dimensions of the problem
+	size_t                 _n_nodes;        ///< Number of nodes in the element
+	size_t                 _n_face_nodes;   ///< Number of nodes in a face
+	Array<Node*>           _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
+	bool                   _is_active;      ///< Flag for active/inactive condition
+	Array<IntegPoint>      _a_int_pts;      ///< Array of Integration Points
+	Array<IntegPoint>      _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
+	LinAlg::Matrix<double> _extrap_mat;     ///< Extrapolation matrix. Converts integration point values to nodal values: [NodalValues]T = _extrap * [IPValues]T
 
 private:
 	void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
@@ -399,22 +400,22 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 		for (size_t j=0; j<n; j++) N(i,j) = shape(j);
 	}
 
+	// Transpose matrix
+	LinAlg::Matrix<double> Nt(n, m);
+	Nt = trn(N);
+
+	// Extrapolator matrix
+	LinAlg::Matrix<double> E(n, m);
+	E = Nt*inv(N*Nt);
+	//std::cout << "E = \n" << E << std::endl;
+	//std::cout << "_extrap_mat = \n" << _extrap_mat << std::endl;
+
 	// Extrapolate
-	if (m==n) NodalValues = N * IPValues;
-	else
-	{
-		// Transpose matrix
-		LinAlg::Matrix<double> Nt(n, m);
-		Nt = trn(N);
+	NodalValues = E * IPValues;
+	//std::cout << "E*IPValues = \n" << NodalValues << std::endl;
 
-		// Extrapolator matrix
-		LinAlg::Matrix<double> E(n, m);
-		if (m>n) E = inv(Nt*N)*Nt;
-		else     E = Nt*inv(N*Nt);
-
-		// Extrapolate
-		NodalValues = E * IPValues;
-	}
+	NodalValues = _extrap_mat * IPValues;
+	//std::cout << "_extrap_mat*IPValues = \n" << _extrap_mat*IPValues << std::endl;
 }
 
 

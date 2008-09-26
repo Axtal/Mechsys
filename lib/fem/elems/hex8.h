@@ -102,14 +102,33 @@ inline Hex8::Hex8()
 	_connects.Resize    (_n_nodes);
 	_connects.SetValues (NULL);
 
-	// Integration Points
+	// Integration Points and Extrapolation Matrix
 	SetIntPoints (/*NumGaussPoints1D*/2);
 }
 
 inline void Hex8::SetIntPoints(int NumGaussPoints1D)
 {
+	// Set IPs
 	FEM::SetGaussIP (/*NDim*/3, NumGaussPoints1D, _a_int_pts);
 	FEM::SetGaussIP (/*NDim*/2, NumGaussPoints1D, _a_face_int_pts);
+
+	// Evaluation matrix [E]
+	// [nodalvalues]T = [E] * [c0,c1,c2,c3]T
+	//  nodalvalue_i  = c0 + c1*r_i + c2*s_i + c3*t_i
+	// (i:node number)
+	LinAlg::Matrix<double> eval_mat;
+	eval_mat.Resize(_n_nodes, 4);
+	eval_mat = 1.0, -1.0, -1.0, -1.0,
+	           1.0,  1.0, -1.0, -1.0,
+	           1.0,  1.0,  1.0, -1.0,
+	           1.0, -1.0,  1.0, -1.0,
+	           1.0, -1.0, -1.0,  1.0,
+	           1.0,  1.0, -1.0,  1.0,
+	           1.0,  1.0,  1.0,  1.0,
+	           1.0, -1.0,  1.0,  1.0;
+
+	// Set extrapolation matrix
+	FEM::SetExtrapMatrix (/*NDim*/3, _a_int_pts, eval_mat, _extrap_mat);
 }
 
 inline void Hex8::VTKConnect(String & Nodes) const

@@ -90,14 +90,31 @@ inline Tri6::Tri6()
 	_connects.Resize    (_n_nodes);
 	_connects.SetValues (NULL);
 
-	// Integration Points
-	SetIntPoints (/*NumGaussPointsTotal*/3);
+	// Integration Points and Extrapolation Matrix
+	SetIntPoints (/*NumGaussPointsTotal*/6);
 }
 
 inline void Tri6::SetIntPoints(int NumGaussPointsTotal)
 {
-	FEM::SetGaussIP (/*NDim*/2, NumGaussPointsTotal,   _a_int_pts,      /*IsTriOrTet*/true);
-	FEM::SetGaussIP (/*NDim*/1, /*NumGaussPoints1D*/2, _a_face_int_pts);
+	// Set IPs
+	FEM::SetGaussIPTriTet (/*NDim*/2, NumGaussPointsTotal,   _a_int_pts);
+	FEM::SetGaussIP       (/*NDim*/1, /*NumGaussPoints1D*/2, _a_face_int_pts);
+
+	// Evaluation matrix [E] (see pag. 606 of Burnett, D. S. (1988). Finite Element Analysis: From Concepts to Applications. Addison-Wesley. 844p.)
+	// [nodalvalues]T = [E] * [c0,c1,c2]T
+	//  nodalvalue_i  = c0 + c1*r_i + c2*s_i
+	// (i:node number)
+	LinAlg::Matrix<double> eval_mat;
+	eval_mat.Resize(_n_nodes, 3);
+	eval_mat = 1.0, 0.0, 0.0,
+	           1.0, 1.0, 0.0,
+	           1.0, 0.0, 1.0,
+	           1.0, 0.5, 0.0,
+	           1.0, 0.5, 0.5,
+	           1.0, 0.0, 0.5;
+
+	// Set extrapolation matrix
+	FEM::SetExtrapMatrix (/*NDim*/2, _a_int_pts, eval_mat, _extrap_mat);
 }
 
 inline void Tri6::VTKConnect(String & Nodes) const

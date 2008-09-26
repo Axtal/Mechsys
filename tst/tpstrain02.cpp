@@ -150,14 +150,17 @@ int main(int argc, char **argv) try
 	// Stress and strains
 	for (size_t i=0; i<g.NElems(); ++i)
 	{
-		err_eps.Push ( fabs(g.Ele(i)->Val("Ex" ) - Ex ) / (1.0+fabs(Ex )) );
-		err_eps.Push ( fabs(g.Ele(i)->Val("Ey" ) - Ey ) / (1.0+fabs(Ey )) );
-		err_eps.Push ( fabs(g.Ele(i)->Val("Ez" ) - Ez ) / (1.0+fabs(Ez )) );
-		err_eps.Push ( fabs(g.Ele(i)->Val("Exy") - Exy) / (1.0+fabs(Exy)) );
-		err_sig.Push ( fabs(g.Ele(i)->Val("Sx" ) - Sx ) / (1.0+fabs(Sx )) );
-		err_sig.Push ( fabs(g.Ele(i)->Val("Sy" ) - Sy ) / (1.0+fabs(Sy )) );
-		err_sig.Push ( fabs(g.Ele(i)->Val("Sz" ) - Sz ) / (1.0+fabs(Sz )) );
-		err_sig.Push ( fabs(g.Ele(i)->Val("Sxy") - Sxy) / (1.0+fabs(Sxy)) );
+		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		{
+			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
+			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
+			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
+			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
+			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
+			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
+			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
+			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
+		}
 	}
 
 	// Displacements

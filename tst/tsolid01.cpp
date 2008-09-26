@@ -47,6 +47,7 @@
 #include "fem/solvers/forwardeuler.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
+#include "util/numstreams.h"
 #include "mesh/structured.h"
 
 using std::cout;
@@ -157,20 +158,23 @@ int main(int argc, char **argv) try
 	// Stress and strains
 	for (size_t i=0; i<g.NElems(); ++i)
 	{
-		// eps
-		err_eps.Push( fabs(g.Ele(i)->Val("Ex" ) - Ex ) / (1.0+fabs(Ex )) );
-		err_eps.Push( fabs(g.Ele(i)->Val("Ey" ) - Ey ) / (1.0+fabs(Ey )) );
-		err_eps.Push( fabs(g.Ele(i)->Val("Ez" ) - Ez ) / (1.0+fabs(Ez )) );
-		err_eps.Push( fabs(g.Ele(i)->Val("Exy") - Exy) / (1.0+fabs(Exy)) );
-		err_eps.Push( fabs(g.Ele(i)->Val("Eyz") - Eyz) / (1.0+fabs(Eyz)) );
-		err_eps.Push( fabs(g.Ele(i)->Val("Ezx") - Ezx) / (1.0+fabs(Ezx)) );
-		// sig
-		err_sig.Push( fabs(g.Ele(i)->Val("Sx" ) - Sx ) / (1.0+fabs(Sx )) );
-		err_sig.Push( fabs(g.Ele(i)->Val("Sy" ) - Sy ) / (1.0+fabs(Sy )) );
-		err_sig.Push( fabs(g.Ele(i)->Val("Sz" ) - Sz ) / (1.0+fabs(Sz )) );
-		err_sig.Push( fabs(g.Ele(i)->Val("Sxy") - Sxy) / (1.0+fabs(Sxy)) );
-		err_sig.Push( fabs(g.Ele(i)->Val("Syz") - Syz) / (1.0+fabs(Syz)) );
-		err_sig.Push( fabs(g.Ele(i)->Val("Szx") - Szx) / (1.0+fabs(Szx)) );
+		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		{
+			// eps
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Eyz") - Eyz) / (1.0+fabs(Eyz)) );
+			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ezx") - Ezx) / (1.0+fabs(Ezx)) );
+			// sig
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Syz") - Syz) / (1.0+fabs(Syz)) );
+			err_sig.Push( fabs(g.Ele(i)->Val(j,"Szx") - Szx) / (1.0+fabs(Szx)) );
+		}
 	}
 
 	// Displacements
