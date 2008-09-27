@@ -60,7 +60,7 @@ int main(int argc, char **argv) try
 	double q       = 1.0;   // Load
 	double maxarea = 0.015; // max area of triangles
 	bool   is_o2   = false; // use high order elements?
-	String linsol("LA");    // LAPACK
+	String linsol("UM");    // UMFPACK
 
 	// Input
 	cout << "Input: " << argv[0] << "  is_o2  maxarea  linsol(LA,UM,SLU)\n";

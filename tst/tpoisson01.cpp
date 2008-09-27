@@ -49,7 +49,7 @@ int main(int argc, char **argv) try
 	double maxarea1 = 0.01;              // maximum area for each triangle in the inner circle
 	double maxarea2 = 0.1;               // maximum area for each triangle in the outer circle
 	bool   is_o2    = false;             // use high order elements?
-	String linsol("LA");                 // LAPACK
+	String linsol("UM");                 // UMFPACK
 
 	// Input
 	cout << "Input: " << argv[0] << "  is_o2  maxarea1_inner(0.01)  maxarea2_outer(0.1)  linsol(LA,UM,SLU)\n";
