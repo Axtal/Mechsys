@@ -212,6 +212,8 @@ inline double EquilibModel::Val(char const * Name) const
 	else if (strcmp(Name,"E1" )==0)                          return _epsp[2];
 	else if (strcmp(Name,"E2" )==0)                          return _epsp[1];
 	else if (strcmp(Name,"E3" )==0)                          return _epsp[0];
+	else if (strcmp(Name,"Ea" )==0)                          return _eps(0); // axial strain
+	else if (strcmp(Name,"Sa" )==0)                          return _sig(0); // axial stress
 	else                                                     return _val(Name);
 }
 

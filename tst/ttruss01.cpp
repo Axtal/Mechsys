@@ -31,6 +31,8 @@
 using std::cout;
 using std::endl;
 using LinAlg::Matrix;
+using Util::_6;
+using Util::_8s;
 
 int main(int argc, char **argv) try
 {
@@ -139,7 +141,13 @@ int main(int argc, char **argv) try
 		//FEM::Solver * sol = FEM::AllocSolver("AutoME");
 		sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 		sol -> Solve();
-		cout << "NormResid = " << sol->GetVar("NormResid") << endl;
+		cout << "NormResid = " << sol->GetVar("NormResid") << endl << endl;
+
+		// Output: Nodes
+		cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
+		for (size_t i=0; i<g.NNodes(); ++i)
+			cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << endl;
+		cout << endl;
 
 		errors += fabs(g.Nod(0)->Val("ux") - ( 0.0));
 		errors += fabs(g.Nod(0)->Val("uy") - (-0.5));

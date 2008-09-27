@@ -113,6 +113,7 @@ private:
 
 inline bool EquilibElem::IsReady() const
 {
+	if (_extrap_mat.Rows()<1) throw new Fatal("EquilibElem::IsReady: Extrapolation matrix for Element # %d of Type==%s was not properly set",_my_id,Name());
 	return (_a_model.Size()==_a_int_pts.Size() && _connects.Size()==_n_nodes);
 }
 
@@ -296,6 +297,22 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 	// Get labels of all values to output
 	switch (_geom()) // 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	{
+		case 1: // 1D
+		{
+			switch (_ndim)
+			{
+				case 2:
+				{
+					Labels.Resize(6);
+					Labels[0] = "ux"; Labels[1] = "uy";
+					Labels[2] = "fx"; Labels[3] = "fy";
+					Labels[4] = "Ea"; // axial strain
+					Labels[5] = "Sa"; // axial stress
+					return;
+				}
+				default: throw new Fatal("EquilibElem::GetLabels: GeometryType==%d & NDim==%d is not implemented yet",_geom(),_ndim);
+			}
+		}
 		case 2: // 2D(plane-strain)
 		{
 			Labels.Resize(16);
@@ -329,7 +346,6 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 			Labels[12]="S1"; Labels[13]="S2";                  // Principal stresses
 			return;
 		}
-		case 1: // 1D
 		case 4: // 2D(axis-symmetric)
 		default:
 			throw new Fatal("EquilibElem::GetLabels: GeometryType==%d is not implemented yet",_geom());

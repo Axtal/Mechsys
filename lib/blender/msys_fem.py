@@ -61,41 +61,6 @@ def fill_mesh(obj):
         return mg
 
 
-def run_fea(obj):
-    # set cursor
-    Blender.Window.WaitCursor(1)
-
-    # mesh
-    m = fill_mesh (obj)
-
-    # boundary conditions
-    nbrys = di.get_nbrys_numeric (obj)
-    ebrys = di.get_ebrys_numeric (obj)
-    fbrys = di.get_fbrys_numeric (obj)
-    eatts = di.get_eatts_numeric (obj)
-
-    # set geometry
-    g = ms.geom(3) if m.is_3d() else ms.geom(2)
-    ms.set_nodes_elems (m, eatts, g)
-    ms.set_brys        (m, nbrys, ebrys, fbrys, g)
-
-    # solve
-    sol = ms.solver('ForwardEuler')
-    sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
-    sol.solve()
-
-    # output
-    fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
-    ms.out_vtu (g, fn)
-    print '[1;34mMechSys[0m: file <'+fn+'> generated'
-
-    # call ParaView
-    os.popen('paraview --data='+fn)
-
-    # restore cursor
-    Blender.Window.WaitCursor(0)
-
-
 def set_geo(obj,nbrys,ebrys,fbrys,eatts):
     ndim = 3 if obj.properties['is3d'] else 2
     mesh = fill_mesh   (obj)
@@ -105,11 +70,109 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts):
     return geom
 
 
-def set_truss(obj,nbrys,eatts):
-    ndim = 3 if obj.properties['is3d'] else 2
+def set_geo_linele(obj,nbrys,eatts):
+    if obj!=None and obj.type=='Mesh':
+
+        if len(obj.getAllProperties())<1:
+            Blender.Draw.PupMenu('ERROR|Please, set rods (edges) IDs first')
+            return
+
+        # Mesh
+        edm = Blender.Window.EditMode()
+        if edm: Blender.Window.EditMode(0)
+        msh = obj.getData(mesh=1)
+
+        # is 3d ?
+        is_3d = False
+        for i, v in enumerate(msh.verts):
+            if i>0:
+                if abs(v.co[2]-msh.verts[0].co[2])>1.0e-4:
+                    is_3d = true
+                    break
+        ndim = 3 if is_3d else 2
+
+        # FEM geometry
+        g = ms.geom (ndim)
+
+        # Transform mesh to global coordinates
+        ori = msh.verts[:] # create a copy in local coordinates
+        msh.transform (obj.matrix)
+
+        # Vertices
+        g.set_nnodes (len(msh.verts))
+        for i, v in enumerate(msh.verts):
+            g.set_node (i, v.co[0], v.co[1])
+
+        # Restore local coordinates
+        msh.verts = ori
+
+        # Elements
+        etags = di.get_etags_ (obj)
+        if len(etags)!=len(msh.edges): Blender.Draw.PupMenu('ERROR|All rods must have a edge tag')
+        g.set_nelems (len(msh.edges))
+        for i, e in enumerate(msh.edges):
+            tag = etags[i]
+            for ea in eatts:
+                if ea[0] == tag:
+                    g.set_elem         (i, ea[1], 1)
+                    g.ele(i).connect   (0, g.nod(e.v1.index)).connect(1, g.nod(e.v2.index))
+                    g.ele(i).set_model (ea[2],ea[3],ea[4])
+                    break
+
+        # Boundary conditions
+        for i in range(g.nnodes()):
+            x = g.nod(i).x()
+            y = g.nod(i).y()
+            for nb in nbrys:
+                d = math.sqrt((x-nb[0])**2+(y-nb[1])**2)
+                if d<1.0e-5:
+                    g.nod(i).bry(nb[3],nb[4])
+
+        # End
+        if edm: Blender.Window.EditMode(1)
+        return g
 
 
-def gen_script(obj):
+def run_fea(obj, linele=False):
+    # set cursor
+    Blender.Window.WaitCursor(1)
+
+    # check for properties
+    if (linele==False):
+        try: is_3d = obj.properties['is3d']
+        except:
+            Blender.Draw.PupMenu('ERROR|This mesh is not a valid 2D or 3D mesh')
+            return
+
+    # boundary conditions & properties
+    nbrys = di.get_nbrys_numeric (obj)
+    ebrys = di.get_ebrys_numeric (obj)
+    fbrys = di.get_fbrys_numeric (obj)
+    eatts = di.get_eatts_numeric (obj)
+
+    # problem geometry
+    if linele: geo = set_geo_linele (obj,nbrys,eatts)
+    else:      geo = set_geo        (obj,nbrys,ebrys,fbrys,eatts)
+
+    # solution
+    sol = ms.solver('ForwardEuler')
+    sol.set_geom(geo)
+    #sol.set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
+    sol.solve()
+
+    # output
+    fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
+    ms.out_vtu (geo, fn)
+    print '[1;34mMechSys[0m: file <'+fn+'> generated'
+
+    # call ParaView
+    os.popen('paraview --data='+fn)
+
+    # restore cursor
+    Blender.Window.WaitCursor(0)
+
+
+def gen_script(obj, linele=False):
     # boundary conditions
     nbrys = di.get_nbrys_numeric (obj)
     ebrys = di.get_ebrys_numeric (obj)
@@ -117,8 +180,8 @@ def gen_script(obj):
     eatts = di.get_eatts_numeric (obj)
 
     # text
-    fn   = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
-    txt  = Blender.Text.New(obj.name+'_script')
+    fn  = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
+    txt = Blender.Text.New(obj.name+'_script')
     txt.write ('import bpy\n')
     txt.write ('import mechsys\n')
     txt.write ('import msys_fem as mf\n')
@@ -129,7 +192,8 @@ def gen_script(obj):
     txt.write ('eatts = '+eatts.__str__()+'\n')
     txt.write ('\n# Problem geometry\n')
     txt.write ('obj = bpy.data.objects["'+obj.name+'"]\n')
-    txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
+    if linele: txt.write ('geo = mf.set_geo_linele(obj,nbrys,eatts)\n')
+    else:      txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
     txt.write ('\n# Solution\n')
     txt.write ('sol = mechsys.solver("ForwardEuler")\n')
     txt.write ('sol.set_geom(geo)\n')

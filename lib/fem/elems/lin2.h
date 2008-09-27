@@ -65,13 +65,26 @@ inline Lin2::Lin2()
 	_connects.Resize    (_n_nodes);
 	_connects.SetValues (NULL);
 
-	// Integration points
+	// Integration points and Extrapolation Matrix
 	SetIntPoints (/*NumGaussPoints1D*/2);
 }
 
 inline void Lin2::SetIntPoints(int NumGaussPoints1D)
 {
+	// Set IPs
 	FEM::SetGaussIP (/*NDim*/1, NumGaussPoints1D, _a_int_pts);
+
+	// Evaluation matrix [E]
+	// [nodalvalues]T = [E] * [c0,c1]T
+	//  nodalvalue_i  = c0 + c1*r_i
+	// (i:node number)
+	LinAlg::Matrix<double> eval_mat;
+	eval_mat.Resize(_n_nodes, 2);
+	eval_mat = 1.0, -1.0,
+	           1.0,  1.0;
+
+	// Set extrapolation matrix
+	FEM::SetExtrapMatrix (/*NDim*/1, _a_int_pts, eval_mat, _extrap_mat);
 }
 
 inline void Lin2::VTKConnect(String & Nodes) const

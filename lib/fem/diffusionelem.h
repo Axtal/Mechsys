@@ -112,6 +112,7 @@ private:
 
 inline bool DiffusionElem::IsReady() const
 {
+	if (_extrap_mat.Rows()<1) throw new Fatal("DiffusionElem::IsReady: Extrapolation matrix for Element # %d of Type==%s was not properly set",_my_id,Name());
 	return (_a_model.Size()==_a_int_pts.Size() && _connects.Size()==_n_nodes);
 }
 

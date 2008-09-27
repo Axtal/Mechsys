@@ -335,6 +335,15 @@ def get_etags(obj, msh):
             res[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = p.data
     return res
 
+def get_etags_(obj):
+    # Out:   {id1:tag1, id2:tag2, ... num edges with tags}
+    res = {}
+    for p in obj.getAllProperties():
+        if p.name[:4]=='edge':
+            eid      = int(p.name[5:])
+            res[eid] = p.data
+    return res 
+
 def get_ftags(obj, msh):
     # Out:   {(e1,e2,e3,e4,..):tag1,  (e1,e2,e3,e4..):tag2,  ... num faces with tags}
     res = {}
@@ -541,7 +550,7 @@ def set_nbry_key(obj, id, key): # property must exist
 def set_nbry_val(obj, id, val): # property must exist
     p = obj.getProperty ('nbry_'+str(id))
     d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+d[2]+' '+d[3]+' '+value
+    p.data = d[0]+' '+d[1]+' '+d[2]+' '+d[3]+' '+val
 
 def get_nbrys(obj):
     res = []
