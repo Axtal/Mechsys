@@ -70,7 +70,7 @@ m.set_brys        (ms, nbrys, ebrys, [], g) # [] => no face brys
 # Solve
 print 'Solution: ---------------------------------------------------------------------'
 sol = m.solver('ForwardEuler')
-sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
+sol.set_geom(g)
 sol.solve()
 
 # Output file

@@ -5,10 +5,10 @@ from distutils.extension import Extension
 
 mechsys = Extension("mechsys",
                     ["lib/mesh/jrs_triangle.c", "src/mechsys.cpp"],
-                    define_macros      = [('O3','1'), ('TRILIBRARY','1'), ('NDEBUG','1')],
-                    include_dirs       = ['lib', '/usr/local/include'],
+                    define_macros      = [('O3','1'), ('TRILIBRARY','1'), ('NDEBUG','1'), ('HAVE_UMFPACK','1')],
+                    include_dirs       = ['lib', '/usr/include/suitesparse', '/usr/local/include', '/usr/local/include/suitesparse'],
                     library_dirs       = ['.'],
-                    libraries          = ['lapack', 'boost_python', 'igraph'],
+                    libraries          = ['lapack', 'amd', 'umfpack', 'boost_python', 'igraph'],
                     extra_compile_args = ['-w'])
 
 setup(name        = "MechSys",

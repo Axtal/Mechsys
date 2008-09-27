@@ -96,6 +96,19 @@ def run_fea(obj):
     Blender.Window.WaitCursor(0)
 
 
+def set_geo(obj,nbrys,ebrys,fbrys,eatts):
+    ndim = 3 if obj.properties['is3d'] else 2
+    mesh = fill_mesh   (obj)
+    geom = ms.geom     (ndim)
+    ms.set_nodes_elems (mesh, eatts, geom)
+    ms.set_brys        (mesh, nbrys, ebrys, fbrys, geom)
+    return geom
+
+
+def set_truss(obj,nbrys,eatts):
+    ndim = 3 if obj.properties['is3d'] else 2
+
+
 def gen_script(obj):
     # boundary conditions
     nbrys = di.get_nbrys_numeric (obj)
@@ -104,23 +117,23 @@ def gen_script(obj):
     eatts = di.get_eatts_numeric (obj)
 
     # text
-    ndim = 3 if obj.properties['is3d'] else 2
     fn   = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
     txt  = Blender.Text.New(obj.name+'_script')
     txt.write ('import bpy\n')
     txt.write ('import mechsys\n')
-    txt.write ('import msys_fem\n')
-    txt.write ('obj   = bpy.data.objects["'+obj.name+'"]\n')
-    txt.write ('mesh  = msys_fem.fill_mesh (obj)\n')
+    txt.write ('import msys_fem as mf\n')
+    txt.write ('\n# Boundary conditions & properties\n')
     txt.write ('nbrys = '+nbrys.__str__()+'\n')
     txt.write ('ebrys = '+ebrys.__str__()+'\n')
     txt.write ('fbrys = '+fbrys.__str__()+'\n')
     txt.write ('eatts = '+eatts.__str__()+'\n')
-    txt.write ('geom  = mechsys.geom('+str(ndim)+')\n')
-    txt.write ('mechsys.set_nodes_elems (mesh, eatts, geom)\n')
-    txt.write ('mechsys.set_brys        (mesh, nbrys, ebrys, fbrys, geom)\n')
-    txt.write ('sol   = mechsys.solver("ForwardEuler")\n')
-    txt.write ('sol.set_geom(geom)\n')
-    txt.write ('sol.set_lin_sol("LA").set_num_div(1).set_delta_time(0.0)\n')
+    txt.write ('\n# Problem geometry\n')
+    txt.write ('obj = bpy.data.objects["'+obj.name+'"]\n')
+    txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
+    txt.write ('\n# Solution\n')
+    txt.write ('sol = mechsys.solver("ForwardEuler")\n')
+    txt.write ('sol.set_geom(geo)\n')
+    #txt.write ('sol.set_lin_sol("LA").set_num_div(1).set_delta_time(0.0)\n')
     txt.write ('sol.solve()\n')
-    txt.write ('mechsys.out_vtu(geom, "'+fn+'")\n')
+    txt.write ('\n# Output\n')
+    txt.write ('mechsys.out_vtu(geo, "'+fn+'")\n')

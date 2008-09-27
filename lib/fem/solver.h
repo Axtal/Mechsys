@@ -82,7 +82,7 @@ class Solver
 {
 public:
 	// Constructor
-	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL), _pd(NULL), _ndofs(0) {}
+	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL), _pd(NULL), _ndofs(0) { SetLinSol("UM"); }
 
 	// Destructor
 	virtual ~Solver() {}
