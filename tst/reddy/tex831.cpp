@@ -64,14 +64,14 @@ int main(int argc, char **argv) try
 	// Constants
 	size_t ndiv       = 2;     // number of divisions along x and y
 	bool   check_conv = false; // check convergence ?
-	String linsol("LA"); // LAPACK
+	String linsol("UM");       // linear solver: UMFPACK
 	Array<double> source(1); source[0] = 1.0;
 	
 	// Input
-	cout << "Input: " << argv[0] << "  ndiv  linsol(LA,UM,SLU) check_conv\n";
+	cout << "Input: " << argv[0] << "  ndiv  check_conv  linsol(LA,UM,SLU)\n";
 	if (argc>=2) ndiv        = atoi(argv[1]);
-	if (argc>=3) linsol.Printf("%s",argv[2]);
-	if (argc>=4) check_conv  = atoi(argv[3]);
+	if (argc>=3) check_conv  = atoi(argv[2]);
+	if (argc>=4) linsol.Printf("%s",argv[3]);
 
 	double err_1 = 0.0;
 	if (check_conv==false)

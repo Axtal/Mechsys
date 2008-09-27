@@ -16,6 +16,29 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/* J N Reddy's FEM book -- Example 8.5.1, page 464
+ *  
+ * Steady-state heat conduction in an isotropic region
+ *
+ *               y ^
+ *                 | 
+ *                    u=T=T0*cos(Pi*x/6a)
+ *                #@------@------@------@
+ *                #|      |      |      |
+ *                #|      |      |      |
+ *                #|      |  a   |      |
+ *    (insulated) #@------@------@------@  u=T=0
+ *       q=0.0    #|      |      |      |
+ *                #|      |a     |      |  edgetag=-20
+ *   edgetag=-10  #|      |      |      |
+ *                #@------@------@------@  --> x
+ *                #######################
+ *                      (insulated)
+ *                         q=0.0
+ *
+ *                      edgetag=-10
+ */
+
 // STL
 #include <iostream>
 #include <cmath>
@@ -36,43 +59,25 @@ using boost::make_tuple;
 using std::cout;
 using std::endl;
 using Util::PI;
+using Util::_4;
+using Util::_6;
+using Util::_8s;
 
 int main(int argc, char **argv) try
 {
 	// Constants
-	double k  = 1.0;
-	double a  = 1.0;
-	double T0 = 1.0;
-	double L  = 3.0*a;
-	double H  = 2.0*a;
-	int    nx = 3;
-	int    ny = 2;
-
-	/* J N Reddy's FEM book -- Example 8.5.1, page 464
-	 *
-	 *               y ^
-	 *                 | 
-	 *                    T=T0*cos(Pi*x/6a)
-	 *                #@------@------@------@
-	 *                #|      |      |      |
-	 *                #|      |      |      |
-	 *                #|      |  a   |      |
-	 *    (insulated) #@------@------@------@  T=0
-	 *       F=0.0    #|      |      |      |
-	 *                #|      |a     |      |  -20
-	 *        -10     #|      |      |      |
-	 *                #@------@------@------@  --> x
-	 *                #######################
-	 *                      (insulated)
-	 *                         F=0.0
-	 *
-	 *                         -10
-	 */
+	double k  = 1.0;     // isotropic conductivity
+	double a  = 1.0;     // cell size
+	double T0 = 1.0;     // initial temperature (at top)
+	double L  = 3.0*a;   // total length
+	double H  = 2.0*a;   // total height
+	int    nx = 3;       // number of divisions along x
+	int    ny = 2;       // number of divisions along y
+	String linsol("UM"); // linear solver: UMFPACK
 
 	// Input
-	String linsol("LA");
+	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
 	if (argc==2) linsol.Printf("%s",argv[1]);
-	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
@@ -89,12 +94,12 @@ int main(int argc, char **argv) try
 	blocks.Push (&b);
 
 	// Generate
-	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
-	Mesh::Structured ms;
+	Mesh::Structured mesh;
 	clock_t start = std::clock(); // Initial time
-	size_t  ne    = ms.Generate (blocks);
+	size_t  ne    = mesh.Generate (blocks);
 	clock_t total = std::clock() - start; // Time elapsed
-	cout << "[1;33m"<<ne<<" elements[0m. Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
+	cout << "\nNumber of quadrangles   = " << ne << endl;
+	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEA /////
 
@@ -112,8 +117,8 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), "")); // tag, type, model, prms, inis
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&ms, &eatts, &g);
-	FEM::SetBrys       (&ms, NULL, &ebrys, NULL, &g);
+	FEM::SetNodesElems (&mesh, &eatts, &g);
+	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
 
 	// Set upper nodes boundary condition
 	for (size_t i=0; i<g.NNodes(); ++i)
@@ -124,48 +129,69 @@ int main(int argc, char **argv) try
 			g.Nod(i)->Bry ("u", T0*cos(PI*x/(6.0*a)));
 	}
 
+	// Check conductivity matrices
+	double max_err_ke = 0.0;
+	LinAlg::Matrix<double> Ke_correct;  Ke_correct.Resize(4,4);
+	Ke_correct =  4.0, -1.0, -2.0, -1.0,
+				 -1.0,  4.0, -1.0, -2.0,
+				 -2.0, -1.0,  4.0, -1.0,
+				 -1.0, -2.0, -1.0,  4.0;
+	Ke_correct = (k/6.0)*Ke_correct;
+	for (size_t i=0; i<g.NElems(); ++i)
+	{
+		LinAlg::Matrix<double> Ke;
+		g.Ele(i)->Order1Matrix(0,Ke);
+		double err_ke = 0.0;
+		for (int i=0; i<4; ++i)
+		for (int j=0; j<4; ++j)
+			err_ke += fabs(Ke(i,j)-Ke_correct(i,j));
+		if (err_ke>max_err_ke) max_err_ke = err_ke;
+	}
+	if (max_err_ke>3.4e-5) throw new Fatal("tex831: max_err_ke==%e for quadrangular mesh is bigger than %e.",max_err_ke,3.4e-5);
+
 	// Solve
-	cout << "\nSolution: ---------------------------------------------------------------------" << endl;
-	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	start = std::clock(); // Initial time
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	start = std::clock();
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	sol -> SetCte("DTOL", 1.0e-10);
 	sol -> Solve();
-	total = std::clock() - start; // Time elapsed
-	//cout << "NormResid = "<<sol->GetVar("NormResid")<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
-	cout << "RelError  = "<<sol->GetVar("RelError" )<<". Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+	total = std::clock() - start;
+	double norm_resid = LinAlg::Norm(sol->Resid());
+	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	if (norm_resid>sqrt(DBL_EPSILON)) throw new Fatal("tex851: norm_resid=%e for quadrangular mesh is bigger than %e.",norm_resid,sqrt(DBL_EPSILON));
+	cout << endl;
 
-	////////////////////////////////////////////////////////////////////////////////// Output File /////
-
-	// Write file
-	cout << "Write output file: ------------------------------------------------------------" << endl;
-	start = std::clock(); // Initial time
-	Output o; o.VTU (&g, "theat01.vtu");
-	total = std::clock() - start; // Time elapsed
-	cout << "[1;34mFile <theat01.vtu> saved.[0m" << endl;
-	cout << "Time elapsed = [1;31m"<<static_cast<double>(total)/CLOCKS_PER_SEC<<"[0m [1;32mseconds[0m"<<std::endl;
+	// Output: Nodes
+	cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
+	for (size_t i=0; i<g.NNodes(); ++i)
+		cout << _6<<i << _8s<<g.Nod(i)->Val("u") << _8s<<g.Nod(i)->Val("q") << endl;
 	cout << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 	
-    double errors = 0.0;
-
-	for (size_t i=0; i<g.NNodes(); ++i)
+	// Check
+	Array<double> err_u;
+	for (size_t i=0; i<g.NNodes(); ++i)	
 	{
-		double x  = g.Nod(i)->X();
-		double y  = g.Nod(i)->Y();
-		double Tc = T0*(cosh(PI*y/(6.0*a))*cos(PI*x/(6.0*a)))/cosh(PI/3.0); // correct T
-		if (fabs(y-H)<1.0e-7)
-		errors += fabs(g.Nod(i)->Val("u")-Tc);
+		double x     = g.Nod(i)->X();
+		double y     = g.Nod(i)->Y();
+		double u     = g.Nod(i)->Val("u");
+		double ucorr = T0*cosh(PI*y/(6.0*a))*cos(PI*x/(6.0*a))/cosh(PI/3.0);
+		err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
 	}
 
-	if (fabs(errors)>1.0e-13) cout << "[1;31mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
-	else                      cout << "[1;32mErrors(" << linsol << ") = " << errors << "[0m\n" << endl;
+	// Error summary
+	double tol_u     = 7.5e-3;
+	double min_err_u = err_u[err_u.Min()];
+	double max_err_u = err_u[err_u.Max()];
+	cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
+	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
+	cout << endl;
 
 	// Return error flag
-	if (fabs(errors)>1.0e-13) return 1;
-	else                      return 0;
+	if (max_err_u>tol_u) return 1;
+	else return 0;
 }
 catch (Exception * e) 
 {
