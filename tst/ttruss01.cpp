@@ -16,6 +16,26 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/*  Small truss
+                              1.0 ^
+                                  |
+                                  |2
+                                  o----> 2.0
+                                ,'|
+                              ,'  |
+                   E=200    ,'    |
+                   A=SQ2  ,'      | E=50
+                    [2] ,'        | A=1
+                      ,'          | [1]
+                    ,'            |
+                  ,'              |
+   y            ,'                |
+   |         0,'        [0]       |1
+   |         o--------------------o
+  (z)___x   /_\        E=100     /_\
+           ////        A=1       ___  
+*/
+
 // STL
 #include <iostream>
 
@@ -31,151 +51,142 @@
 using std::cout;
 using std::endl;
 using LinAlg::Matrix;
+using Util::_4;
 using Util::_6;
 using Util::_8s;
 
 int main(int argc, char **argv) try
 {
-	/*  Small truss
-	                              1.0 ^
-	                                  |
-	                                  |2
-	                                  o----> 2.0
-	                                ,'|
-	                              ,'  |
-	                   E=200    ,'    |
-	                   A=SQ2  ,'      | E=50
-	                    [2] ,'        | A=1
-	                      ,'          | [1]
-	                    ,'            |
-	                  ,'              |
-	   y            ,'                |
-	   |         0,'        [0]       |1
-	   |         o--------------------o
-	  (z)___x   /_\        E=100     /_\
-	           ////        A=1       ___  
-	*/
-
 	// Input
 	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
 	String linsol("UM");
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
-	double errors = 0.0;
+	// Geometry
+	FEM::Geom g(2); // 2D
 
-	//////////////////////////////////////////////////////////////////////////////////////////////// 2D
-	
+	// Nodes
+	g.SetNNodes (3);
+	g.SetNode   (0,  0.0,  0.0);
+	g.SetNode   (1, 10.0,  0.0);
+	g.SetNode   (2, 10.0, 10.0);
+
+	// Elements
+	g.SetNElems (3);
+	g.SetElem   (0, "Rod", /*IsActive*/true);
+	g.SetElem   (1, "Rod", /*IsActive*/true);
+	g.SetElem   (2, "Rod", /*IsActive*/true);
+
+	// Set connectivity
+	g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
+	g.Ele(1)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
+	g.Ele(2)->Connect(0, g.Nod(0))->Connect(1, g.Nod(2));
+
+	// Parameters and initial value
+	g.Ele(0)->SetModel("LinElastic", "E=100.0 A=1.0"              , "Sx=0.0");
+	g.Ele(1)->SetModel("LinElastic", "E= 50.0 A=1.0"              , "Sx=0.0");
+	g.Ele(2)->SetModel("LinElastic", "E=200.0 A=1.414213562373095", "Sx=0.0");
+
+	// Boundary conditions (must be after set connectivity)
+	g.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
+	g.Nod(1)->                Bry("uy",  0.4); // Essential
+	g.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
+
+	// Check stiffness matrices
+	double err_ke = 0.0;
+	Array<size_t>  map;
+	Array<bool>    pre;
+	Matrix<double> Ke0,  Ke1,  Ke2;
+	Matrix<double> Ke0c, Ke1c, Ke2c; // correct matrices
+	Ke0c.Resize(4,4);
+	Ke1c.Resize(4,4);
+	Ke2c.Resize(4,4);
+	g.Ele(0)->Order1Matrix(0,Ke0);
+	g.Ele(1)->Order1Matrix(0,Ke1);
+	g.Ele(2)->Order1Matrix(0,Ke2);
+	Ke0c =  10.0,   0.0, -10.0,   0.0,
+	         0.0,   0.0,   0.0,   0.0,
+	       -10.0,   0.0,  10.0,   0.0,
+	         0.0,   0.0,   0.0,   0.0;
+	Ke1c =   0.0,   0.0,   0.0,   0.0,
+	         0.0,   5.0,   0.0,  -5.0,
+	         0.0,   0.0,   0.0,   0.0,
+	         0.0,  -5.0,   0.0,   5.0;
+	Ke2c =  10.0,  10.0, -10.0, -10.0,
+	        10.0,  10.0, -10.0, -10.0,
+	       -10.0, -10.0,  10.0,  10.0,
+	       -10.0, -10.0,  10.0,  10.0;
+	for (int i=0; i<4; ++i)
+	for (int j=0; j<4; ++j)
 	{
-		// 0) Problem dimension
-		FEM::Geom g(2); // 2D
+		err_ke += fabs(Ke0(i,j)-Ke0c(i,j));
+		err_ke += fabs(Ke1(i,j)-Ke1c(i,j));
+		err_ke += fabs(Ke2(i,j)-Ke2c(i,j));
+	}
+	if (err_ke>8.55e-14) throw new Fatal("ttruss01: err_ke=%e is bigger than %e.",err_ke,8.55e-14);
 
-		// 1) Nodes
-		g.SetNNodes (3);
-		g.SetNode   (0,  0.0,  0.0);
-		g.SetNode   (1, 10.0,  0.0);
-		g.SetNode   (2, 10.0, 10.0);
+	// Solve
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> Solve();
+	double norm_resid = LinAlg::Norm(sol->Resid());
+	cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	if (norm_resid>1.3e-15) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,1.3e-15);
+	cout << endl;
 
-		// 2) Elements
-		g.SetNElems (3);
-		g.SetElem   (0, "Rod", /*IsActive*/true);
-		g.SetElem   (1, "Rod", /*IsActive*/true);
-		g.SetElem   (2, "Rod", /*IsActive*/true);
+	// Output: Nodes
+	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
+	for (size_t i=0; i<g.NNodes(); ++i)
+		cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << endl;
+	cout << endl;
 
-		// 3) Set connectivity
-		g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
-		g.Ele(1)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
-		g.Ele(2)->Connect(0, g.Nod(0))->Connect(1, g.Nod(2));
-
-		// 4) Boundary conditions (must be after set connectivity)
-		g.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
-		g.Nod(1)->                Bry("uy",  0.4); // Essential
-		g.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
-
-		// 5) Parameters and initial value
-		g.Ele(0)->SetModel("LinElastic", "E=100.0 A=1.0"              , "Sx=0.0");
-		g.Ele(1)->SetModel("LinElastic", "E= 50.0 A=1.0"              , "Sx=0.0");
-		g.Ele(2)->SetModel("LinElastic", "E=200.0 A=1.414213562373095", "Sx=0.0");
-
-		// Output
-		cout << g << endl;
-
-		// Stiffness
-		Array<size_t>  map;
-		Array<bool>    pre;
-		Matrix<double> Ke0;
-		Matrix<double> Ke1;
-		Matrix<double> Ke2;
-		g.Ele(0)->Order1Matrix(0,Ke0);
-		g.Ele(1)->Order1Matrix(0,Ke1);
-		g.Ele(2)->Order1Matrix(0,Ke2);
-		cout << "Ke0=\n" << Ke0 << endl;
-		cout << "Ke1=\n" << Ke1 << endl;
-		cout << "Ke2=\n" << Ke2 << endl;
-
-		Matrix<double> Ke0_correct;  Ke0_correct.Resize(4,4);
-		Ke0_correct =  10.0,   0.0, -10.0,   0.0,
-		                0.0,   0.0,   0.0,   0.0,
-		              -10.0,   0.0,  10.0,   0.0,
-		                0.0,   0.0,   0.0,   0.0;
-		Matrix<double> Ke1_correct;  Ke1_correct.Resize(4,4);
-		Ke1_correct =   0.0,   0.0,   0.0,   0.0,
-		                0.0,   5.0,   0.0,  -5.0,
-		                0.0,   0.0,   0.0,   0.0,
-		                0.0,  -5.0,   0.0,   5.0;
-		Matrix<double> Ke2_correct;  Ke2_correct.Resize(4,4);
-		Ke2_correct =  10.0,  10.0, -10.0, -10.0,
-		               10.0,  10.0, -10.0, -10.0,
-		              -10.0, -10.0,  10.0,  10.0,
-		              -10.0, -10.0,  10.0,  10.0;
-
-		for (int i=0; i<4; ++i)
-		for (int j=0; j<4; ++j)
-		{
-			errors += fabs(Ke0(i,j)-Ke0_correct(i,j));
-			errors += fabs(Ke1(i,j)-Ke1_correct(i,j));
-			errors += fabs(Ke2(i,j)-Ke2_correct(i,j));
-		}
-
-		// 6) Solve
-		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		//FEM::Solver * sol = FEM::AllocSolver("AutoME");
-		sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-		sol -> Solve();
-		cout << "NormResid = " << sol->GetVar("NormResid") << endl << endl;
-
-		// Output: Nodes
-		cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
-		for (size_t i=0; i<g.NNodes(); ++i)
-			cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << endl;
+	// Output: Elements
+	cout << _6<<"Elem #" << _8s<<"Sa" << _8s<<"Ea" << _8s<<"Sa(left)" << _8s<<"Sa(right)" << _8s<<"Ea(left)" << _8s<<"Ea(right)" << endl;
+	for (size_t i=0; i<g.NElems(); ++i)
+	{
+		cout << _6<<i << _8s<<g.Ele(i)->Val("Sa") <<  _8s<<g.Ele(i)->Val("Ea");
+		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j) cout << _8s<<g.Ele(i)->Val(j, "Sa");
+		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j) cout << _8s<<g.Ele(i)->Val(j, "Ea");
 		cout << endl;
-
-		errors += fabs(g.Nod(0)->Val("ux") - ( 0.0));
-		errors += fabs(g.Nod(0)->Val("uy") - (-0.5));
-		errors += fabs(g.Nod(1)->Val("ux") - ( 0.0));
-		errors += fabs(g.Nod(1)->Val("uy") - ( 0.4));
-		errors += fabs(g.Nod(2)->Val("ux") - (-0.5));
-		errors += fabs(g.Nod(2)->Val("uy") - ( 0.2));
-
-		errors += fabs(g.Nod(0)->Val("fx") - (-2.0));
-		errors += fabs(g.Nod(0)->Val("fy") - (-2.0));
-		errors += fabs(g.Nod(1)->Val("fx") - ( 0.0));
-		errors += fabs(g.Nod(1)->Val("fy") - ( 1.0));
-		errors += fabs(g.Nod(2)->Val("fx") - ( 2.0));
-		errors += fabs(g.Nod(2)->Val("fy") - ( 1.0));
-
-		if (fabs(errors)>1.0e-13) cout << "[1;31m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
-		else                      cout << "[1;32m2D ==> Errors(" << linsol << ") = " << errors << "[0m\n" << endl;
-
 	}
+	cout << endl;
 
-	//////////////////////////////////////////////////////////////////////////////////////////////// 3D
+	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
-	{
-	}
+	// Displacements
+	Array<double> err_u(6);
+	err_u[0] =  fabs(g.Nod(0)->Val("ux") - ( 0.0));
+	err_u[1] =  fabs(g.Nod(0)->Val("uy") - (-0.5));
+	err_u[2] =  fabs(g.Nod(1)->Val("ux") - ( 0.0));
+	err_u[3] =  fabs(g.Nod(1)->Val("uy") - ( 0.4));
+	err_u[4] =  fabs(g.Nod(2)->Val("ux") - (-0.5));
+	err_u[5] =  fabs(g.Nod(2)->Val("uy") - ( 0.2));
+
+	// Forces
+	Array<double> err_f(6);
+	err_f[0] = fabs(g.Nod(0)->Val("fx") - (-2.0));
+	err_f[1] = fabs(g.Nod(0)->Val("fy") - (-2.0));
+	err_f[2] = fabs(g.Nod(1)->Val("fx") - ( 0.0));
+	err_f[3] = fabs(g.Nod(1)->Val("fy") - ( 1.0));
+	err_f[4] = fabs(g.Nod(2)->Val("fx") - ( 2.0));
+	err_f[5] = fabs(g.Nod(2)->Val("fy") - ( 1.0));
+
+	// Error summary
+	double tol_u     = DBL_EPSILON;
+	double tol_f     = 8.89e-16;
+	double min_err_u = err_u[err_u.Min()];
+	double max_err_u = err_u[err_u.Max()];
+	double min_err_f = err_f[err_f.Min()];
+	double max_err_f = err_f[err_f.Max()];
+	cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
+	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
+	cout << _4<< "f" << _8s<<min_err_f << _8s<<err_f.Mean() << (max_err_f>tol_f?"[1;31m":"[1;32m") << _8s<<max_err_f << "[0m" << _8s<<err_f.Norm() << endl;
+	cout << endl;
 
 	// Return error flag
-	if (fabs(errors)>1.0e-13) return 1;
-	else                      return 0;
+	if (max_err_u>tol_u || max_err_f>tol_f) return 1;
+	else return 0;
 }
 catch (Exception * e) 
 {
