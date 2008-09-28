@@ -133,16 +133,14 @@ def set_geo_linele(obj,nbrys,eatts):
         return g
 
 
-def run_fea(obj, linele=False):
+def run_fea(obj):
     # set cursor
     Blender.Window.WaitCursor(1)
 
     # check for properties
-    if (linele==False):
-        try: is_3d = obj.properties['is3d']
-        except:
-            Blender.Draw.PupMenu('ERROR|This mesh is not a valid 2D or 3D mesh')
-            return
+    linele = False
+    try:    is_3d  = obj.properties['is3d']
+    except: linele = True # assuming linear structures (trusses, beams)
 
     # boundary conditions & properties
     nbrys = di.get_nbrys_numeric (obj)
@@ -172,7 +170,15 @@ def run_fea(obj, linele=False):
     Blender.Window.WaitCursor(0)
 
 
-def gen_script(obj, linele=False):
+def gen_script(obj):
+    # set cursor
+    Blender.Window.WaitCursor(1)
+
+    # check for properties
+    linele = False
+    try:    is_3d  = obj.properties['is3d']
+    except: linele = True # assuming linear structures (trusses, beams)
+
     # boundary conditions
     nbrys = di.get_nbrys_numeric (obj)
     ebrys = di.get_ebrys_numeric (obj)
@@ -182,9 +188,12 @@ def gen_script(obj, linele=False):
     # text
     fn  = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
     txt = Blender.Text.New(obj.name+'_script')
+    txt.write ('import Blender\n')
     txt.write ('import bpy\n')
     txt.write ('import mechsys\n')
     txt.write ('import msys_fem as mf\n')
+    txt.write ('\n# Show running cursor\n')
+    txt.write ('Blender.Window.WaitCursor(1)\n')
     txt.write ('\n# Boundary conditions & properties\n')
     txt.write ('nbrys = '+nbrys.__str__()+'\n')
     txt.write ('ebrys = '+ebrys.__str__()+'\n')
@@ -201,3 +210,8 @@ def gen_script(obj, linele=False):
     txt.write ('sol.solve()\n')
     txt.write ('\n# Output\n')
     txt.write ('mechsys.out_vtu(geo, "'+fn+'")\n')
+    txt.write ('\n# Hide running cursor\n')
+    txt.write ('Blender.Window.WaitCursor(0)\n')
+
+    # restore cursor
+    Blender.Window.WaitCursor(0)

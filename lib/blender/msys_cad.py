@@ -64,8 +64,6 @@ EVT_FEA_ADDEATT      = 26 # add element attributes
 EVT_FEA_DELALLEATT   = 27 # delete all elements attributes
 EVT_FEA_RUN          = 28 # run a FE simulation
 EVT_FEA_SCRIPT       = 29 # generate script for FEA 
-EVT_FEA_LINELE       = 30 # run FE simulation with linear elements (truss, beam, ...)
-EVT_FEA_SCR_LINELE   = 31 # generate script for FE simulation with linear elements (truss, beam, ...)
 
 
 # ==================================================================================== Events
@@ -297,16 +295,6 @@ def button_event(evt):
     elif evt==EVT_FEA_SCRIPT:
         edm, obj, msh = di.get_msh()
         fem.gen_script (obj)
-        Blender.Window.Redraw(Blender.Window.Types.TEXT)
-
-    elif evt==EVT_FEA_LINELE:
-        edm, obj, msh = di.get_msh()
-        fem.run_fea(obj, True)
-        Blender.Window.Redraw(Blender.Window.Types.TEXT)
-
-    elif evt==EVT_FEA_SCR_LINELE:
-        edm, obj, msh = di.get_msh()
-        fem.gen_script(obj, True)
         Blender.Window.Redraw(Blender.Window.Types.TEXT)
 
 
@@ -716,7 +704,7 @@ def gui():
     h_fea_ebrys = (1+len(ebrys))*rh+sgy
     h_fea_fbrys = (1+len(fbrys))*rh+sgy
     h_fea_eatts = (1+len(eatts))*rh+sgy
-    h_fea       = ggy+4*rh + rh+h_fea_nbrys + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
+    h_fea       = ggy+3*rh + rh+h_fea_nbrys + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
 
     # Background color
     BGL.glClearColor (0.531, 0.543, 0.614, 0.0)
@@ -987,8 +975,6 @@ def gui():
     ggx -= gx
     Draw.PushButton ('Run analysis',          EVT_FEA_RUN,        ggx,     row, 150, rh, 'Run a FE analysis directly (without script)')
     Draw.PushButton ('Generate script',       EVT_FEA_SCRIPT,     ggx+150, row, 150, rh, 'Generate script for FEA'); row -= rh
-    Draw.PushButton ('Run with linear elems', EVT_FEA_LINELE,     ggx,     row, 150, rh, 'Run FE analysis with linear elements (truss, beams, etc.)')
-    Draw.PushButton ('Gen script lin elems' , EVT_FEA_SCR_LINELE, ggx+150, row, 150, rh, 'Generate script for analysis with linear elements (truss, beams, etc.)'); row -= rh
 
 
 # Register GUI
