@@ -109,14 +109,13 @@ def set_geo_linele(obj,nbrys,eatts):
 
         # Edge tags
         etags = di.get_etags_ (obj)
-        if len(etags)!=len(msh.edges): raise Exception('ERROR|All rods must have an edge tag')
+        if len(etags)!=len(msh.edges): raise Exception('All rods must have an edge tag')
 
         # Elements
         g.set_nelems (len(msh.edges))
         for i, e in enumerate(msh.edges):
             tag   = etags[i]
             found = False
-            print tag
             for ea in eatts:
                 if ea[0] == tag:
                     g.set_elem         (i, ea[1], 1)

@@ -144,9 +144,7 @@ def get_msh(with_error=True):
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
         return edm, obj, msh
-    else:
-        if with_error: Blender.Draw.PupMenu('ERROR|Please, select an object of type Mesh')
-        else: return None,None,None
+    else: raise Exception('The selected object must be of MESH type')
 
 
 # ================================================================================ Properties
@@ -205,8 +203,7 @@ def set_local_axis(obj, key, id):
             x_plus = ex.v1.index
             y_plus = ey.v1.index
         else:
-            Blender.Draw.PupMenu('ERROR|local x-y axes must share the same origin vertex (obj=%s)' % obj.name)
-            return
+            raise Exception('local x-y axes must share the same origin vertex (obj=%s)' % obj.name)
         set_int_property (obj, 'origin', origin)
         set_int_property (obj, 'x_plus', x_plus)
         set_int_property (obj, 'y_plus', y_plus)
@@ -218,8 +215,7 @@ def set_local_axis(obj, key, id):
             elif ez.v2.index==origin:
                 z_plus = ez.v1.index
             else:
-                Blender.Draw.PupMenu('ERROR|local x-y-z axes must share the same origin vertex (obj=%s)' % obj.name)
-                return
+                raise Exception('local x-y-z axes must share the same origin vertex (obj=%s)' % obj.name)
             set_int_property (obj, 'z_plus', z_plus)
 
 def get_local_axis(obj, key):

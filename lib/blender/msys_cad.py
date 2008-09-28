@@ -148,6 +148,7 @@ def button_event(evt):
             nedges = len(msh.edges.selected())
             if nedges==3 or nedges==6 or nedges==4 or nedges==8:
                 di.set_ftag (obj, msh.edges.selected(), dict['newftag'])
+            else: raise Exception('To set a face tag (FTAG): 3, 4, 6, or 8 edges must be selected')
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1) # return to EditMode
 
@@ -661,6 +662,13 @@ def gui():
     # load dictionary
     d = di.load_dict()
 
+    # Get current selected mesh
+    try: edm, obj, msh = di.get_msh (False)
+    except Exception, inst:
+        edm = 0
+        obj = None
+        msh = None
+
     # Data from current selected object
     btag     = -1
     ndivx    = 2
@@ -680,7 +688,7 @@ def gui():
     ebrys    = []
     fbrys    = []
     eatts    = []
-    edm, obj, msh = di.get_msh (False)
+    # Set default values
     if obj!=None:
         btag     = di.get_btag     (obj)
         ndivx    = di.get_ndiv     (obj,'x')
