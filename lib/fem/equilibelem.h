@@ -62,7 +62,7 @@ public:
 	virtual ~EquilibElem() {}
 
 	// Derived methods
-	bool         IsReady         () const;
+	bool         CheckModel      () const;
 	bool         IsEssential     (char const * DOFName) const;
 	void         SetModel        (char const * ModelName, char const * Prms, char const * Inis);
 	void         SetProps        (Array<double> const & P);
@@ -111,10 +111,11 @@ private:
 	
 // Derived methods
 
-inline bool EquilibElem::IsReady() const
+inline bool EquilibElem::CheckModel() const
 {
-	if (_extrap_mat.Rows()<1) throw new Fatal("EquilibElem::IsReady: Extrapolation matrix for Element # %d of Type==%s was not properly set",_my_id,Name());
-	return (_a_model.Size()==_a_int_pts.Size() && _connects.Size()==_n_nodes);
+	if (_a_model.Size()!=_a_int_pts.Size()) return false;
+	for (size_t i=0; i<_a_int_pts.Size(); ++i) if (_a_model[i]==NULL) return false;
+	return true;
 }
 
 inline bool EquilibElem::IsEssential(char const * DOFName) const
@@ -128,6 +129,7 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 {
 	// Check _ndim
 	if (_ndim<1) throw new Fatal("EquilibElem::SetModel: The space dimension (SetDim) must be set before calling this method");
+	if (CheckConnect()==false) throw new Fatal("EquilibElem::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
 
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)

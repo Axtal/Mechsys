@@ -186,6 +186,7 @@ inline void Solver::Solve()
 	
 	// Check geometry
 	if (_g==NULL) throw new Fatal(_("Solver::Solve: Solver::SetGeom(FEM::Geom * G) must be called before calling this method (Solver::Solve())"));
+	if (_g->Check()==false) throw new Fatal("Solver::Solve: FEM Geometry was not properly set (pointers may be NULL)");
 
 	// Loop over all active elements
 	double has_fvol = false;
@@ -194,7 +195,9 @@ inline void Solver::Solve()
 		if (_g->Ele(i)->IsActive())
 		{
 			// Check if active elements are properly initialized
-			if (_g->Ele(i)->IsReady()==false) throw new Fatal("Solver::Solve: Element # %d was not properly initialized.", i);
+			String msg;
+			if (_g->Ele(i)->Check(msg)==false)
+				throw new Fatal("Solver::Solve Element # %d was not properly initialized. Error: %s",i,msg.CStr());
 
 			// Check if any element has volumetric forces
 			has_fvol = _g->Ele(i)->HasVolForces();
@@ -235,8 +238,8 @@ inline void Solver::Solve()
 	_npdofs = static_cast<int>(_pdofs.Size());
 	
 	// Check
-	if (_nudofs==0) throw new Fatal("Solver::Solve: The number of Unknowns DOFs must be greater than zero.\nThere might be an error with the boundary conditions setting up.");
-	if (_npdofs==0) throw new Fatal("Solver::Solve: The number of Prescribed DOFs must be greater than zero.\nThere might be an error with the boundary conditions setting up.");
+	if (_nudofs==0) throw new Fatal("Solver::Solve: The number of Unknowns DOFs must be greater than zero.\n  There might be an error with the boundary conditions' setting up.");
+	if (_npdofs==0) throw new Fatal("Solver::Solve: The number of Prescribed DOFs must be greater than zero.\n  There might be an error with the boundary conditions' setting up.");
 
 #ifdef HAVE_SUPERLUD
 	if (_pd==NULL)     throw new Fatal(_("Solve::Solve: For parallel computation, PData (ParallelData) must be set before calling this method"));

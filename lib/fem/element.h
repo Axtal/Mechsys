@@ -63,23 +63,25 @@ public:
 	Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
 	
 	// Get methods
-	long         GetID      ()         const { return _my_id;       } ///< Return the ID of this element
-	bool         IsActive   ()         const { return _is_active;   } ///< Check if this element is active
-	size_t       NNodes     ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
-	Node       * Nod        (size_t i)       { return _connects[i]; } ///< Return a pointer to a node in the connects list (read/write)
-	Node const * Nod        (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list (read-only)
-	double       Volume     ()         const;                         ///< Return the volume/area/length of the element
-	bool         IsInside   (double x, double y, double z) const;     ///< Check if a node is inside the element
+	bool         CheckConnect ()         const;                         ///< Check if connectivity is OK
+	bool         Check        (String & Message) const;                 ///< Check if everything is OK and element is ready for simulations
+	long         GetID        ()         const { return _my_id;       } ///< Return the ID of this element
+	bool         IsActive     ()         const { return _is_active;   } ///< Check if this element is active
+	size_t       NNodes       ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
+	Node       * Nod          (size_t i)       { return _connects[i]; } ///< Return a pointer to a node in the connects list (read/write)
+	Node const * Nod          (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list (read-only)
+	double       Volume       ()         const;                         ///< Return the volume/area/length of the element
+	bool         IsInside     (double x, double y, double z) const;     ///< Check if a node is inside the element
 
 	// Methods that MUST be overriden by derived classes
-	virtual void         CalcDepVars () const =0;                                  ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	virtual bool         CheckModel  ()                                  const =0; ///< Check if constitutive models are OK
+	virtual void         CalcDepVars ()                                  const =0; ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
 	virtual double       Val         (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the Nodes of the element. Ex.: Name="ux", "fx", "Sx", "Sxy", "Ex", etc.
 	virtual double       Val         (                char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
 	virtual char const * Name        ()                                  const =0; ///< Return the name/type of this element
 	virtual char const * ModelName   ()                                  const =0; ///< Return the name of the model of the first IP of this element
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
-	virtual bool      IsReady       () const=0;                                                                                              ///< Check if element is ready for analysis
 	virtual bool      IsEssential   (char const * DOFName) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel      (char const * ModelName, char const * Prms, char const * Inis) =0;                                       ///< (Re)allocate model with parameters and initial values
 	virtual void      SetProps      (Array<double> const & ElemProps) =0;                                                                    ///< Set element properties such as body forces, internal heat source, water pumping, etc.
@@ -172,6 +174,21 @@ inline Element * Element::FaceBry(char const * Key, double Value, int FaceLocalI
 		_dist_to_face_nodes (Key, Value, fnodes);
 	}
 	return this;
+}
+
+inline bool Element::CheckConnect() const
+{
+	if (_connects.Size()!=_n_nodes) return false;
+	for (size_t i=0; i<_n_nodes; ++i) if (_connects[i]==NULL) return false;
+	return true;
+}
+
+inline bool Element::Check(String & Message) const
+{
+	if (_extrap_mat.Rows()<1)  { Message.Printf("\n  %s","EXTRAPOLATION MATRIX NOT DEFINED"); return false; }
+	if (CheckConnect()==false) { Message.Printf("\n  %s","CONNECTIVITY NOT SET");             return false; }
+	if (CheckModel()==false)   { Message.Printf("\n  %s","CONSTITUTIVE MODEL NOT SET");       return false; }
+	return true;
 }
 
 inline double Element::Volume() const

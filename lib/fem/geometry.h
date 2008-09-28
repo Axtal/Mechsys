@@ -50,6 +50,7 @@ public:
 	Element * SetElem   (size_t i, char const * Type, bool IsActive=true); ///< Set an element
 
 	// Access methods
+	bool                    Check     ();                                        ///< Check if Nodes and Elements were allocated properly. Should be called before accessing Nodes and Elements, since these may not had been allocated yet (and then causing Segfaults).
 	size_t                  NNodes    ()         const { return _nodes.Size(); } ///< Return the number of nodes
 	size_t                  NElems    ()         const { return _elems.Size(); } ///< Return the number of elements
 	Node                  * Nod       (size_t i)       { return _nodes[i];     } ///< Access (read/write) a node
@@ -113,6 +114,20 @@ inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
 	_elems[i]->SetDim    (_dim);
 	_elems[i]->SetActive (IsActive);
 	return _elems[i];
+}
+
+inline bool Geom::Check()
+{
+	// Check arrays
+	if (NNodes()==0 || NElems()==0) return false;
+
+	// Check nodes
+	for (size_t i=0; i<NNodes(); ++i) if (_nodes[i]==NULL) return false;
+
+	// Check elements
+	for (size_t i=0; i<NElems(); ++i) if (_elems[i]==NULL) return false;
+
+	return true; // OK
 }
 
 /** Outputs a geometry. */
