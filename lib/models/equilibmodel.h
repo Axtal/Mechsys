@@ -42,7 +42,7 @@ class EquilibModel : public Model
 {
 public:
 	// Constructor
-	EquilibModel () { _sig=0.0; _eps=0.0; _deps=0.0; }
+	EquilibModel () { _A=1.0; _sig=0.0; _eps=0.0; _deps=0.0; }
 
 	// Destructor
 	virtual ~EquilibModel () {}
@@ -59,7 +59,8 @@ public:
 
 protected:
 	// Data
-	Tensor2        _sig;      ///< Stress
+	double         _A;        ///< Cross-sectional area (for linear elements only)
+	Tensor2        _sig;      ///< Stress (or axial force for linear elements)
 	Tensor2        _eps;      ///< Strain
 	Tensor2        _deps;     ///< Delta strain
 	Tensor2        _sig_bkp;  ///< Backup stress
@@ -212,9 +213,17 @@ inline double EquilibModel::Val(char const * Name) const
 	else if (strcmp(Name,"E1" )==0)                          return _epsp[2];
 	else if (strcmp(Name,"E2" )==0)                          return _epsp[1];
 	else if (strcmp(Name,"E3" )==0)                          return _epsp[0];
-	else if (strcmp(Name,"Ea" )==0)                          return _eps(0); // axial strain
-	else if (strcmp(Name,"Sa" )==0)                          return _sig(0); // axial stress
-	else                                                     return _val(Name);
+	else if (strcmp(Name,"Ea" )==0)
+	{
+		if (_geom==1) return _eps(0); // axial strain
+		else throw new Fatal("EquilibModel::Val: Ea (axial strain) is only available for 1D elements");
+	}
+	else if (strcmp(Name,"Sa" )==0)
+	{
+		if (_geom==1) return _sig(0)/_A; // axial stress
+		else throw new Fatal("EquilibModel::Val: Sa (axial stress) is only available for 1D elements");
+	}
+	else return _val(Name);
 }
 
 inline void EquilibModel::Sig(Vector<double> & Stress) const

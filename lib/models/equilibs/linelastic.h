@@ -66,17 +66,16 @@ inline void LinElastic::SetPrms(char const * Prms)
 	// Set
 	double E  = 0.0;
 	double nu = 0.0;
-	double A  = 0.0;
 	for (size_t i=0; i<names.Size(); ++i)
 	{
 			 if (names[i]=="E" ) E  = values[i];
 		else if (names[i]=="nu") nu = values[i];
-		else if (names[i]=="A" )  A = values[i];
+		else if (names[i]=="A" ) _A = values[i];
 	}
 	if (_geom==1)
 	{
 		_De      = 0.0;
-		_De(0,0) = E*A;
+		_De(0,0) = E*_A;
 	}
 	else
 	{

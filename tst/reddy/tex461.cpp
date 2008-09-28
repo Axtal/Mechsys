@@ -16,6 +16,27 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/*  Reddy's book: Example 4.6.1
+    pag 196
+                                2 |
+                                  |
+                                  V 
+                                2 o----> 1
+                                ,'|
+                              ,'  |
+                   E=1.0    ,'    |
+                   A=1.0  ,'      | E=1.0
+                    [2] ,'        | A=1.0
+                      ,'          | [1]
+                    ,'            |
+                  ,'              |
+   y            ,'                |
+   |         0,'        [0]       |1
+   |         o--------------------o
+  (z)___x   /_\        E=1.0     /_\
+           ////        A=1.0     ///  
+*/
+
 // STL
 #include <iostream>
 
@@ -37,26 +58,6 @@ using Util::_8s;
 
 int main(int argc, char **argv) try
 {
-	/*  Small truss
-	                                2 |
-	                                  |
-	                                  V 
-	                                2 o----> 1
-	                                ,'|
-	                              ,'  |
-	                   E=1.0    ,'    |
-	                   A=1.0  ,'      | E=1.0
-	                    [2] ,'        | A=1.0
-	                      ,'          | [1]
-	                    ,'            |
-	                  ,'              |
-	   y            ,'                |
-	   |         0,'        [0]       |1
-	   |         o--------------------o
-	  (z)___x   /_\        E=1.0     /_\
-	           ////        A=1.0     ///  
-	*/
-
 	// Input
 	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
 	String linsol("LA");
@@ -137,10 +138,7 @@ int main(int argc, char **argv) try
 	cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 	if (norm_resid>1.1e-15) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,1.1e-15);
-
-	// Output: VTU
-	Output o; o.VTU (&g, "tex461.vtu");
-	cout << "[1;34mFile <tex461.vtu> saved.[0m\n\n";
+	cout << endl;
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
@@ -211,8 +209,9 @@ int main(int argc, char **argv) try
 	cout << _4<< "Eps" << _8s<<min_err_e << _8s<<err_e.Mean() << (max_err_e>tol_e?"[1;31m":"[1;32m") << _8s<<max_err_e << "[0m" << _8s<<err_e.Norm() << endl;
 	cout << endl;
 
-	return 0;
-
+	// Return error flag
+	if (max_err_u>tol_u || max_err_f>tol_f || max_err_s>tol_s || max_err_e>tol_e) return 1;
+	else return 0;
 }
 catch (Exception * e) 
 {

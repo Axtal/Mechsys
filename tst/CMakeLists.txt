@@ -28,6 +28,11 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (ttruss01   ${LIBS})
 	SET_TARGET_PROPERTIES (ttruss01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
+	ADD_EXECUTABLE        (ttruss02   ttruss02.cpp)
+	ADD_TEST              (ttruss02   ttruss02)
+	TARGET_LINK_LIBRARIES (ttruss02   ${LIBS})
+	SET_TARGET_PROPERTIES (ttruss02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (ttri6      ttri6.cpp)
 	ADD_TEST              (ttri6      ttri6)
 	TARGET_LINK_LIBRARIES (ttri6      ${LIBS})
