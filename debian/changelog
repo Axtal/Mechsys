@@ -1,3 +1,13 @@
+mechsys (1.0-2) unstable; urgency=low
+
+  * Diffusion element added. Steady-state heat tests added.
+  * Unstructured mesh can now generate O2 elements (tri6).
+  * UMFPACK is now default.
+  * Simulation of linear structures (trusses) in Blender is now possible.
+  * Output of principal stresses and strains added
+
+ -- Dorival Pedroso <dorival.pedroso@gmail.com>  Sun, 28 Sep 2008 19:21:36 +1000
+
 mechsys (1.0-1) unstable; urgency=low
 
   * Initial Release.
