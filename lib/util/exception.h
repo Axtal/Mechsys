@@ -106,10 +106,7 @@ inline Fatal::Fatal(String const & Fmt, ...)
 
 void PyExceptTranslator (Exception * e)
 {
-	String msg;
-	msg.Printf("[1;31m%s[0m",e->Msg().CStr());
-	PyErr_SetString(PyExc_UserWarning, msg.CStr());
-	//if (e->IsFatal()) {delete e; exit(1);}
+	PyErr_SetString(PyExc_UserWarning, e->Msg().CStr());
 	delete e;
 }
 

@@ -10,7 +10,6 @@ import msys_dict as di
 
 def fill_mesh(obj):
     if obj!=None and obj.type=='Mesh':
-
         # Mesh
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
@@ -60,8 +59,11 @@ def fill_mesh(obj):
         if edm: Blender.Window.EditMode(1)
         return mg
 
+    else: raise Exception('Object must be of type Mesh')
+
 
 def set_geo(obj,nbrys,ebrys,fbrys,eatts):
+    if (len(eatts)<1): raise Exception('Element attributes MUST be defined in order to run a simulation')
     ndim = 3 if obj.properties['is3d'] else 2
     mesh = fill_mesh   (obj)
     geom = ms.geom     (ndim)
@@ -71,11 +73,10 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts):
 
 
 def set_geo_linele(obj,nbrys,eatts):
+    if (len(eatts)<1): raise Exception('Element attributes MUST be defined in order to run a simulation')
     if obj!=None and obj.type=='Mesh':
-
-        if len(obj.getAllProperties())<1:
-            Blender.Draw.PupMenu('ERROR|Please, set rods (edges) IDs first')
-            return
+        # Check
+        if len(obj.getAllProperties())<1: raise Exception('Please, set rods (edges) IDs first')
 
         # Mesh
         edm = Blender.Window.EditMode()
@@ -106,18 +107,24 @@ def set_geo_linele(obj,nbrys,eatts):
         # Restore local coordinates
         msh.verts = ori
 
-        # Elements
+        # Edge tags
         etags = di.get_etags_ (obj)
-        if len(etags)!=len(msh.edges): Blender.Draw.PupMenu('ERROR|All rods must have a edge tag')
+        if len(etags)!=len(msh.edges): raise Exception('ERROR|All rods must have an edge tag')
+
+        # Elements
         g.set_nelems (len(msh.edges))
         for i, e in enumerate(msh.edges):
-            tag = etags[i]
+            tag   = etags[i]
+            found = False
+            print tag
             for ea in eatts:
                 if ea[0] == tag:
                     g.set_elem         (i, ea[1], 1)
                     g.ele(i).connect   (0, g.nod(e.v1.index)).connect(1, g.nod(e.v2.index))
                     g.ele(i).set_model (ea[2],ea[3],ea[4])
+                    found = True
                     break
+            if not found: raise Exception('Tag = %d MUST be defined in elements attributes'%tag)
 
         # Boundary conditions
         for i in range(g.nnodes()):
@@ -132,8 +139,10 @@ def set_geo_linele(obj,nbrys,eatts):
         if edm: Blender.Window.EditMode(1)
         return g
 
+    else: raise Exception('Object must be of type Mesh')
 
-def run_fea(obj):
+
+def run_analysis(obj):
     # set cursor
     Blender.Window.WaitCursor(1)
 
@@ -147,6 +156,7 @@ def run_fea(obj):
     ebrys = di.get_ebrys_numeric (obj)
     fbrys = di.get_fbrys_numeric (obj)
     eatts = di.get_eatts_numeric (obj)
+    if (len(eatts)<1): raise Exception('Element attributes MUST be defined in order to run a simulation')
 
     # problem geometry
     if linele: geo = set_geo_linele (obj,nbrys,eatts)

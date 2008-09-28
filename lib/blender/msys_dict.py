@@ -10,6 +10,9 @@ def load_dict():
     dict = Blender.Registry.GetKey('MechSysDict')
     if not dict:
         dict                  = {}
+        dict['gui_show_cad']  = 1
+        dict['gui_show_mesh'] = 1
+        dict['gui_show_fem']  = 1
         dict['inirow']        = 0
         dict['newpoint_x']    = '0.0'
         dict['newpoint_y']    = '0.0'
@@ -294,8 +297,10 @@ def set_btag(obj, tag):
     set_int_property (obj, 'btag', tag)
 
 def get_btag(obj):
-    try:    return obj.getProperty('btag').data
-    except: return 0
+    try: return obj.getProperty('btag').data
+    except:
+        set_btag(obj, -1)
+        return -1
 
 
 # ====================================================================================== Tags

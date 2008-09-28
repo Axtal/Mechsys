@@ -35,7 +35,7 @@ def add_point(x, y, z):
         obj.select(1)
         Blender.Window.RedrawAll()
     else:
-        Blender.Draw.PupMenu('ERROR|Select a Mesh object before calling this function')
+        raise Exception('Select a Mesh object before calling this function')
 
 
 def add_points_from_file(filename):
@@ -139,7 +139,7 @@ def edge_intersect():
             v4 = msh.edges[e2].v2
             # intersection
             res = Blender.Mathutils.LineIntersect(v1.co,v2.co,v3.co,v4.co)
-            if res==None: Blender.Draw.PupMenu('ERROR|These edges are parallel (obj=%s)' % obj.name)
+            if res==None: raise Exception('These edges are parallel (obj=%s)' % obj.name)
             else:
                 i1, i2 = res
                 if i1!=v1.co and i1!=v2.co and i1!=v3.co and i1!=v4.co and i2!=v1.co and i2!=v2.co and i2!=v3.co and i2!=v4.co:
@@ -160,9 +160,9 @@ def edge_intersect():
                         msh.edges[e2].v2 = msh.verts[-1]
                         msh.edges.extend (msh.verts[-1],e2v2)
                 Blender.Window.RedrawAll()
-        else: Blender.Draw.PupMenu('ERROR|Please, select exaclty two edges (obj=%s)' % obj.name)
+        else: raise Exception('Please, select exaclty two edges (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
-    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
+    else: raise Exception('Please, select a Mesh object before calling this function')
 
 
 def fillet(radius,steps):
@@ -181,11 +181,11 @@ def fillet(radius,steps):
             v4 = msh.edges[msh.edges.selected()[1]].v2
             # intersection
             res = Blender.Mathutils.LineIntersect(v1.co,v2.co,v3.co,v4.co)
-            if res==None: Blender.Draw.PupMenu('ERROR|These edges are parallel (obj=%s)' % obj.name)
+            if res==None: raise Exception('These edges are parallel (obj=%s)' % obj.name)
             else:
                 i1, i2 = res
                 # fillet
-                if i1!=i2: Blender.Draw.PupMenu('ERROR|These two edges do not intersect (obj=%s)' % obj.name)
+                if i1!=i2: raise Exception('These two edges do not intersect (obj=%s)' % obj.name)
                 else:
                     #
                     #                   ep  _,--* p2
@@ -233,9 +233,9 @@ def fillet(radius,steps):
                         msh.edges.extend(msh.verts[-1],p2)
                         msh.verts.delete(p1)
                     Blender.Window.RedrawAll()
-        else: Blender.Draw.PupMenu('ERROR|Please, select exaclty two edges (obj=%s)' % obj.name)
+        else: raise Exception('Please, select exaclty two edges (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
-    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
+    else: raise Exception('Please, select a Mesh object before calling this function')
 
 
 def break_edge(at_mid=False):
@@ -259,9 +259,9 @@ def break_edge(at_mid=False):
                     v2  = msh.edges[e].v2
                     msh.edges[e].v2 = new
                     msh.edges.extend (new,v2)
-        else: Blender.Draw.PupMenu('ERROR|Please, select only one edge (obj=%s)' % obj.name)
+        else: raise Exception('Please, select only one edge (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
-    else: Blender.Draw.PupMenu('ERROR|Please, select a Mesh object before calling this function')
+    else: raise Exception('Please, select a Mesh object before calling this function')
 
 
 # =========================================================================== Structured mesh
@@ -279,7 +279,7 @@ def gen_struct_mesh():
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
             # get mesh
-            if len(obj.getAllProperties())==0: Blender.Draw.PupMenu('ERROR|Please, assign all mesh properties to this object(%s) first' % obj.name)
+            if len(obj.getAllProperties())==0: raise Exception('Please, assign all mesh properties to this object(%s) first' % obj.name)
             msh = obj.getData(mesh=1)
 
             # set block
@@ -321,7 +321,7 @@ def gen_struct_mesh():
                                     wx, wy, wz,                     # weigths x, y, and z
                                     origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
             else:
-                Blender.Draw.PupMenu('ERROR|Please, define local axes first (obj=%s)' % obj.name)
+                raise Exception('Please, define local axes first (obj=%s)' % obj.name)
 
     # generate mesh and draw results
     if len(bks)>0:
