@@ -195,6 +195,9 @@ def run_analysis(obj):
     ms.out_vtu (geo, fn)
     print '[1;34mMechSys[0m: file <'+fn+'> generated'
 
+    # redraw
+    Blender.Window.QRedrawAll()
+
     # restore cursor
     Blender.Window.WaitCursor(0)
 
