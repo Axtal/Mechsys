@@ -5,8 +5,9 @@ from   Blender import BGL, Draw, Window
 import bpy
 import msys_dict as di
 
+# Transformation matrix
 dict = di.load_dict()
-if dict['show_props']:
+if dict['show_props'] or dict['show_scalar']:
     # Buffer
     view_matrix = Window.GetPerspMatrix()
     view_buffer = [view_matrix[i][j] for i in xrange(4) for j in xrange(4)]
@@ -19,6 +20,9 @@ if dict['show_props']:
     BGL.glMatrixMode   (Blender.BGL.GL_PROJECTION)
     BGL.glLoadMatrixf  (view_buffer)
 
+
+# Mesh properties
+if dict['show_props']:
     # Draw
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
@@ -219,6 +223,41 @@ if dict['show_props']:
                 # Resore mesh to local coordinates
                 msh.verts = ori
 
+
+# Results (visualisation)
+if dict['show_scalar']:
+    # Draw
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    edm = Blender.Window.EditMode()
+    for obj in obs:
+        if obj!=None and obj.type=='Mesh':
+
+            # draw only if active layer corresponds to this object.Layer
+            if Blender.Window.GetActiveLayer()==obj.Layer:
+
+                # get mesh and transform to global coordinates
+                msh = obj.getData(mesh=1)
+                ori = msh.verts[:] # create a copy before transforming to global coordinates
+                msh.transform(obj.matrix)
+
+                # Post-processing
+                if dict['show_scalar']:
+                    key = dict['scalar_key']
+                    try:
+                        vals = obj.properties['scalars'][key]
+                        BGL.glColor3f (0.0, 0.0, 0.0)
+                        for v in msh.verts:
+                            BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
+                            Draw.Text         (str(vals[v.index]))
+                    except: pass
+
+                # Resore mesh to local coordinates
+                msh.verts = ori
+
+
+# Restore transformation matrix
+if dict['show_props'] or dict['show_scalar']:
     # Restore
     BGL.glPopMatrix ()
     BGL.glDisable   (Blender.BGL.GL_DEPTH_TEST)

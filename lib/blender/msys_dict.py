@@ -13,6 +13,7 @@ def load_dict():
         dict['gui_show_cad']  = 1
         dict['gui_show_mesh'] = 1
         dict['gui_show_fem']  = 1
+        dict['gui_show_res']  = 1
         dict['inirow']        = 0
         dict['newpoint_x']    = '0.0'
         dict['newpoint_y']    = '0.0'
@@ -29,6 +30,8 @@ def load_dict():
         dict['show_ftags']    = 1
         dict['show_elems']    = 1
         dict['show_axes']     = 1
+        dict['show_scalar']   = 0
+        dict['scalar_key']    = 'uy'
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
     return dict

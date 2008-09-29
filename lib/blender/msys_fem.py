@@ -178,7 +178,21 @@ def run_analysis(obj):
     print '[1;34mMechSys[0m: file <'+fn+'> generated'
 
     # call ParaView
-    os.popen('paraview --data='+fn)
+    #os.popen('paraview --data='+fn)
+
+    # save results in object
+    ux = []
+    uy = []
+    uz = []
+    for i in range(geo.nnodes()):
+        try:
+            ux.append(geo.nod(i).val('ux'))
+            uy.append(geo.nod(i).val('uy'))
+            uz.append(geo.nod(i).val('uz'))
+        except: pass
+    if len(ux)>0: obj.properties['scalars']['ux'] = ux
+    if len(uy)>0: obj.properties['scalars']['uy'] = uy
+    if len(uz)>0: obj.properties['scalars']['uz'] = uz
 
     # restore cursor
     Blender.Window.WaitCursor(0)

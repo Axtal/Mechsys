@@ -69,6 +69,8 @@ EVT_FEM_ADDEATT      = 32 # add element attributes
 EVT_FEM_DELALLEATT   = 33 # delete all elements attributes
 EVT_FEM_RUN          = 34 # run a FE simulation
 EVT_FEM_SCRIPT       = 35 # generate script for FEM 
+# Results
+EVT_SHOWHIDE_RES     = 36 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -352,6 +354,14 @@ def button_event(evt):
             obj = di.get_obj ()
             fem.gen_script   (obj)
             Blender.Window.Redraw(Blender.Window.Types.TEXT)
+
+        # ----------------------------------------------------------------------------------- RES 
+
+        # show/hide RES box
+        elif evt==EVT_SHOWHIDE_RES:
+            dict['gui_show_res'] = 0 if dict['gui_show_res'] else 1
+            Blender.Window.QRedrawAll()
+
 
     except Exception, inst:
         msg = inst.args[0]
@@ -717,6 +727,19 @@ def elematt_deloneeatt_callback(evt,val):
         Blender.Window.QRedrawAll()
 
 
+# ---------------------------------- Results
+
+def set_scalar_callback(evt,val):
+    dict = di.load_dict()
+    dict['scalar_key'] = val
+    Blender.Window.QRedrawAll()
+
+def show_scalar_callback(evt,val):
+    dict = di.load_dict()
+    dict['show_scalar'] = val
+    Blender.Window.QRedrawAll()
+
+
 # ======================================================================================= GUI
 
 # Draw GUI
@@ -799,7 +822,8 @@ def gui():
     h_fea_ebrys   = (1+len(ebrys))*rh+sgy
     h_fea_fbrys   = (1+len(fbrys))*rh+sgy
     h_fea_eatts   = (1+len(eatts))*rh+sgy
-    h_fea         = ggy+3*rh + rh+h_fea_nbrys + rh+h_fea_nbryids + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
+    h_fea         = sgy+ggy+3*rh + rh+h_fea_nbrys + rh+h_fea_nbryids + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
+    h_res         = rh+ggy
 
     # Background color
     BGL.glClearColor (0.531, 0.543, 0.614, 0.0)
@@ -1106,10 +1130,33 @@ def gui():
         # FEM -- main
         row -= 2*sgy
         ggx -= gx
-        Draw.PushButton ('Run analysis',          EVT_FEM_RUN,        ggx,     row, 150, rh, 'Run a FE analysis directly (without script)')
-        Draw.PushButton ('Generate script',       EVT_FEM_SCRIPT,     ggx+150, row, 150, rh, 'Generate script for FEM'); row -= rh
+        Draw.PushButton ('Run analysis',    EVT_FEM_RUN,    ggx,     row, 150, rh, 'Run a FE analysis directly (without script)')
+        Draw.PushButton ('Generate script', EVT_FEM_SCRIPT, ggx+150, row, 150, rh, 'Generate script for FEM'); row -= rh
 
-    else: rh -= gy
+        # increments
+        row = row + rh - ggy
+
+    else: row -= gy
+
+
+    # Results ===========================================================================================================================================
+
+    h = h_res
+    BGL.glColor3f     (0.4, 0.4, 0.4)
+    BGL.glRecti       (gx, row, wid-gx, row-ch); row -= ch
+    BGL.glColor3f     (1.0, 1.0, 1.0)
+    BGL.glRasterPos2i (ggx, row+5)
+    Draw.Text         ('RESULTS')
+    Draw.PushButton   ('Refresh',   EVT_REFRESH,      wid-ggx-80-70, row+2, 60, rh-4, 'Refresh GUI')
+    Draw.PushButton   ('Show/Hide', EVT_SHOWHIDE_RES, wid-ggx-80,    row+2, 80, rh-4, 'Show/Hide this box')
+    if d['gui_show_res']:
+        BGL.glColor3f     (0.85, 0.85, 0.85)
+        BGL.glRecti       (gx, row, wid-gx, row-h); row -= gy+rh
+        BGL.glColor3f     (0.0, 0.0, 0.0)
+        BGL.glRasterPos2i (ggx, row+4)
+        Draw.Text         ('Show:')
+        Draw.String       ('Val=',   EVT_NONE, dx   , row, 80, rh, d['scalar_key'], 32,'Show result value',  set_scalar_callback)
+        Draw.Toggle       ('Scalar', EVT_NONE, dx+80, row, 60, rh, d['show_scalar'],   'Show scalar values', show_scalar_callback)
 
 
 # Register GUI
