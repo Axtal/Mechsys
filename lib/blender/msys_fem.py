@@ -1,6 +1,6 @@
 # Modules
 
-import os
+import subprocess
 import math
 import pickle
 import Blender
@@ -141,6 +141,21 @@ def set_geo_linele(obj,nbrys,eatts):
     else: raise Exception('Object must be of type Mesh')
 
 
+def store_scalars(geo,obj):
+    obj.properties['scalars'] = {}
+    keys    = ['ux','uy','uz','fx','fy','fz','u','q']
+    vals    = [[]   for i in range(len(keys))]
+    has_key = [True for i in range(len(keys))]
+    for i, key in enumerate(keys):
+        try:    val = geo.nod(0).val(key)
+        except: has_key[i] = False
+    for i in range(geo.nnodes()):
+        for j, key in enumerate(keys):
+            if has_key[j]: vals[j].append(geo.nod(i).val(key))
+    for i, key in enumerate(keys):
+        if has_key[i]: obj.properties['scalars'][key] = vals[i]
+
+
 def run_analysis(obj):
     # set cursor
     Blender.Window.WaitCursor(1)
@@ -172,27 +187,13 @@ def run_analysis(obj):
     #sol.set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
     sol.solve()
 
+    # save results in object
+    store_scalars(geo,obj)
+
     # output
     fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
     ms.out_vtu (geo, fn)
     print '[1;34mMechSys[0m: file <'+fn+'> generated'
-
-    # call ParaView
-    #os.popen('paraview --data='+fn)
-
-    # save results in object
-    ux = []
-    uy = []
-    uz = []
-    for i in range(geo.nnodes()):
-        try:
-            ux.append(geo.nod(i).val('ux'))
-            uy.append(geo.nod(i).val('uy'))
-            uz.append(geo.nod(i).val('uz'))
-        except: pass
-    if len(ux)>0: obj.properties['scalars']['ux'] = ux
-    if len(uy)>0: obj.properties['scalars']['uy'] = uy
-    if len(uz)>0: obj.properties['scalars']['uz'] = uz
 
     # restore cursor
     Blender.Window.WaitCursor(0)
@@ -240,6 +241,8 @@ def gen_script(obj):
     txt.write ('sol.set_geom(geo)\n')
     #txt.write ('sol.set_lin_sol("LA").set_num_div(1).set_delta_time(0.0)\n')
     txt.write ('sol.solve()\n')
+    txt.write ('\n# Store results in object\n')
+    txt.write ('mf.store_scalars(geo,obj)\n')
     txt.write ('\n# Output\n')
     txt.write ('mechsys.out_vtu(geo, "'+fn+'")\n')
     txt.write ('\n# Hide running cursor\n')
@@ -247,3 +250,12 @@ def gen_script(obj):
 
     # restore cursor
     Blender.Window.WaitCursor(0)
+
+
+def paraview(obj):
+    fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
+    if Blender.sys.exists(fn):
+        Blender.Window.WaitCursor(1)
+        pid = subprocess.Popen(['paraview', '--data='+fn]).pid
+        Blender.Window.WaitCursor(0)
+    else: raise Exception('File <'+fn+'> does not exist (please, run analysis first)')

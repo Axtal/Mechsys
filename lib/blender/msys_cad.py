@@ -69,8 +69,9 @@ EVT_FEM_ADDEATT      = 32 # add element attributes
 EVT_FEM_DELALLEATT   = 33 # delete all elements attributes
 EVT_FEM_RUN          = 34 # run a FE simulation
 EVT_FEM_SCRIPT       = 35 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 36 # view in ParaView
 # Results
-EVT_SHOWHIDE_RES     = 36 # show/hide results box
+EVT_SHOWHIDE_RES     = 37 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -354,6 +355,11 @@ def button_event(evt):
             obj = di.get_obj ()
             fem.gen_script   (obj)
             Blender.Window.Redraw(Blender.Window.Types.TEXT)
+
+        # view results in ParaView
+        elif evt==EVT_FEM_PARAVIEW:
+            obj = di.get_obj ()
+            fem.paraview (obj)
 
         # ----------------------------------------------------------------------------------- RES 
 
@@ -729,6 +735,11 @@ def elematt_deloneeatt_callback(evt,val):
 
 # ---------------------------------- Results
 
+def show_results_callback(evt,val):
+    dict = di.load_dict()
+    dict['show_results'] = val
+    Blender.Window.QRedrawAll()
+
 def set_scalar_callback(evt,val):
     dict = di.load_dict()
     dict['scalar_key'] = val
@@ -737,6 +748,16 @@ def set_scalar_callback(evt,val):
 def show_scalar_callback(evt,val):
     dict = di.load_dict()
     dict['show_scalar'] = val
+    Blender.Window.QRedrawAll()
+
+def set_warp_callback(evt,val):
+    dict = di.load_dict()
+    dict['warp_scale'] = val
+    Blender.Window.QRedrawAll()
+
+def show_warp_callback(evt,val):
+    dict = di.load_dict()
+    dict['show_warp'] = val
     Blender.Window.QRedrawAll()
 
 
@@ -1130,8 +1151,9 @@ def gui():
         # FEM -- main
         row -= 2*sgy
         ggx -= gx
-        Draw.PushButton ('Run analysis',    EVT_FEM_RUN,    ggx,     row, 150, rh, 'Run a FE analysis directly (without script)')
-        Draw.PushButton ('Generate script', EVT_FEM_SCRIPT, ggx+150, row, 150, rh, 'Generate script for FEM'); row -= rh
+        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      ggx,     row, 150, rh, 'Run a FE analysis directly (without script)')
+        Draw.PushButton ('Generate script',  EVT_FEM_SCRIPT,   ggx+150, row, 150, rh, 'Generate script for FEM')
+        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, ggx+300, row, 150, rh, 'View results in ParaView'); row -= rh
 
         # increments
         row = row + rh - ggy
@@ -1155,8 +1177,11 @@ def gui():
         BGL.glColor3f     (0.0, 0.0, 0.0)
         BGL.glRasterPos2i (ggx, row+4)
         Draw.Text         ('Show:')
-        Draw.String       ('Val=',   EVT_NONE, dx   , row, 80, rh, d['scalar_key'], 32,'Show result value',  set_scalar_callback)
-        Draw.Toggle       ('Scalar', EVT_NONE, dx+80, row, 60, rh, d['show_scalar'],   'Show scalar values', show_scalar_callback)
+        Draw.Toggle       ('Results',EVT_NONE, dx    , row, 60, rh, d['show_results'],     'Show results'               , show_results_callback)
+        Draw.String       ('Val='   ,EVT_NONE, dx+60 , row, 60, rh, d['scalar_key']  , 32, 'Set value to be shown'      , set_scalar_callback)
+        Draw.Toggle       ('Scalar' ,EVT_NONE, dx+120, row, 60, rh, d['show_scalar'] ,     'Show scalar values'         , show_scalar_callback)
+        Draw.String       ('M='     ,EVT_NONE, dx+180, row, 60, rh, d['warp_scale']  , 32, 'Set warp (deformed) scale'  , set_warp_callback)
+        Draw.Toggle       ('Warp'   ,EVT_NONE, dx+240, row, 60, rh, d['show_warp']   ,     'Show warped (deformed) mesh', show_warp_callback)
 
 
 # Register GUI

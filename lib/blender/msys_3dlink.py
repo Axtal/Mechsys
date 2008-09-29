@@ -7,7 +7,7 @@ import msys_dict as di
 
 # Transformation matrix
 dict = di.load_dict()
-if dict['show_props'] or dict['show_scalar']:
+if dict['show_props'] or dict['show_results']:
     # Buffer
     view_matrix = Window.GetPerspMatrix()
     view_buffer = [view_matrix[i][j] for i in xrange(4) for j in xrange(4)]
@@ -225,7 +225,7 @@ if dict['show_props']:
 
 
 # Results (visualisation)
-if dict['show_scalar']:
+if dict['show_results']:
     # Draw
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
@@ -252,12 +252,33 @@ if dict['show_scalar']:
                             Draw.Text         (str(vals[v.index]))
                     except: pass
 
+                if dict['show_warp']:
+                    ux = []
+                    uy = []
+                    uz = []
+                    try:
+                        ux = obj.properties['scalars']['ux']
+                        uy = obj.properties['scalars']['uy']
+                        uz = obj.properties['scalars']['uz']
+                    except: pass
+                    if len(ux)>0 or len(uy)>0 or len(uz)>0:
+                        if len(ux)<1: ux = [0 for i in range(len(msh.verts))]
+                        if len(uy)<1: uy = [0 for i in range(len(msh.verts))]
+                        if len(uz)<1: uz = [0 for i in range(len(msh.verts))]
+                        m = float(dict['warp_scale'])
+                        BGL.glColor3f (0.85, 0.85, 0.85)
+                        for e in msh.edges:
+                            BGL.glBegin    (BGL.GL_LINES)
+                            BGL.glVertex3f (e.v1.co[0]+m*ux[e.v1.index], e.v1.co[1]+m*uy[e.v1.index], e.v1.co[2]+m*uz[e.v1.index])
+                            BGL.glVertex3f (e.v2.co[0]+m*ux[e.v2.index], e.v2.co[1]+m*uy[e.v2.index], e.v2.co[2]+m*uz[e.v2.index])
+                            BGL.glEnd      ()
+
                 # Resore mesh to local coordinates
                 msh.verts = ori
 
 
 # Restore transformation matrix
-if dict['show_props'] or dict['show_scalar']:
+if dict['show_props'] or dict['show_results']:
     # Restore
     BGL.glPopMatrix ()
     BGL.glDisable   (Blender.BGL.GL_DEPTH_TEST)

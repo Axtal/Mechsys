@@ -30,8 +30,11 @@ def load_dict():
         dict['show_ftags']    = 1
         dict['show_elems']    = 1
         dict['show_axes']     = 1
+        dict['show_results']  = 0
         dict['show_scalar']   = 0
+        dict['show_warp']     = 1
         dict['scalar_key']    = 'uy'
+        dict['warp_scale']    = '10'
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
     return dict
