@@ -57,16 +57,18 @@ EVT_MESH_ADDHOLE     = 21 # add hole
 EVT_MESH_DELALLHOLES = 22 # delete all holes
 # FEM
 EVT_SHOWHIDE_FEM     = 23 # show/hide FEM box
-EVT_FEM_ADDNBRY      = 24 # add nodes boundary
+EVT_FEM_ADDNBRY      = 24 # add nodes boundary (given coordinates)
 EVT_FEM_DELALLNBRY   = 25 # delete all nodes boundary
-EVT_FEM_ADDEBRY      = 26 # add edges boundary
-EVT_FEM_DELALLEBRY   = 27 # delete all edges boundary
-EVT_FEM_ADDFBRY      = 28 # add faces boundary
-EVT_FEM_DELALLFBRY   = 29 # delete all faces boundary
-EVT_FEM_ADDEATT      = 30 # add element attributes
-EVT_FEM_DELALLEATT   = 31 # delete all elements attributes
-EVT_FEM_RUN          = 32 # run a FE simulation
-EVT_FEM_SCRIPT       = 33 # generate script for FEM 
+EVT_FEM_ADDNBRYID    = 26 # add nodes boundary (given nodes IDs)
+EVT_FEM_DELALLNBRYID = 27 # delete all nodes boundary
+EVT_FEM_ADDEBRY      = 28 # add edges boundary
+EVT_FEM_DELALLEBRY   = 29 # delete all edges boundary
+EVT_FEM_ADDFBRY      = 30 # add faces boundary
+EVT_FEM_DELALLFBRY   = 31 # delete all faces boundary
+EVT_FEM_ADDEATT      = 32 # add element attributes
+EVT_FEM_DELALLEATT   = 33 # delete all elements attributes
+EVT_FEM_RUN          = 34 # run a FE simulation
+EVT_FEM_SCRIPT       = 35 # generate script for FEM 
 
 
 # ==================================================================================== Events
@@ -212,8 +214,11 @@ def button_event(evt):
         elif evt==EVT_MESH_DELALLREGS:
             obj = di.get_obj()
             if obj!=None:
-                di.del_all_regs(obj)
-                Blender.Window.QRedrawAll()
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_regs(obj)
+                    Blender.Window.QRedrawAll()
 
         # add hole
         elif evt==EVT_MESH_ADDHOLE:
@@ -228,8 +233,11 @@ def button_event(evt):
         elif evt==EVT_MESH_DELALLHOLES:
             obj = di.get_obj()
             if obj!=None:
-                di.del_all_hols(obj)
-                Blender.Window.QRedrawAll()
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_hols(obj)
+                    Blender.Window.QRedrawAll()
 
         # generate unstructured mesh via MechSys
         elif evt==EVT_MESH_GENUNSTRU:
@@ -256,8 +264,29 @@ def button_event(evt):
         elif evt==EVT_FEM_DELALLNBRY:
             obj = di.get_obj()
             if obj!=None:
-                di.del_all_nbrys(obj)
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_nbrys(obj)
+                    Blender.Window.QRedrawAll()
+
+        # add nodes boundary (given tags)
+        elif evt==EVT_FEM_ADDNBRYID:
+            obj = di.get_obj()
+            if obj!=None:
+                nbryids = di.get_nbryids (obj)
+                di.set_nbryid (obj, len(nbryids), '0', 'ux', '0.0')
                 Blender.Window.QRedrawAll()
+
+        # delete all nodes boundary (given tags)
+        elif evt==EVT_FEM_DELALLNBRYID:
+            obj = di.get_obj()
+            if obj!=None:
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_nbryids(obj)
+                    Blender.Window.QRedrawAll()
 
         # add edges boundary
         elif evt==EVT_FEM_ADDEBRY:
@@ -271,8 +300,11 @@ def button_event(evt):
         elif evt==EVT_FEM_DELALLEBRY:
             obj = di.get_obj()
             if obj!=None:
-                di.del_all_ebrys(obj)
-                Blender.Window.QRedrawAll()
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_ebrys(obj)
+                    Blender.Window.QRedrawAll()
 
         # add faces boundary
         elif evt==EVT_FEM_ADDFBRY:
@@ -286,8 +318,11 @@ def button_event(evt):
         elif evt==EVT_FEM_DELALLFBRY:
             obj = di.get_obj()
             if obj!=None:
-                di.del_all_fbrys(obj)
-                Blender.Window.QRedrawAll()
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_fbrys(obj)
+                    Blender.Window.QRedrawAll()
 
         # add elems attributes
         elif evt==EVT_FEM_ADDEATT:
@@ -301,8 +336,11 @@ def button_event(evt):
         elif evt==EVT_FEM_DELALLEATT:
             obj = di.get_obj()
             if obj!=None:
-                di.del_all_eatts(obj)
-                Blender.Window.QRedrawAll()
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_eatts(obj)
+                    Blender.Window.QRedrawAll()
 
         # run a FE simulation
         elif evt==EVT_FEM_RUN:
@@ -573,6 +611,30 @@ def nodebry_delonenbry_callback(evt,val):
         Blender.Window.QRedrawAll()
 
 
+# ---------------------------------- nbrys (given nodes IDs)
+
+def nodebryid_settag_callback(evt,val):
+    obj = di.get_obj()
+    if obj!=None:
+        di.set_nbryid_nid (obj, evt-3000, str(val))
+
+def nodebryid_setkey_callback(evt,val):
+    obj = di.get_obj()
+    if obj!=None:
+        di.set_nbryid_key (obj, evt-3000, val)
+
+def nodebryid_setval_callback(evt,val):
+    obj = di.get_obj()
+    if obj!=None:
+        di.set_nbryid_val (obj, evt-3000, val)
+
+def nodebryid_deloneebry_callback(evt,val):
+    obj = di.get_obj()
+    if obj!=None:
+        di.del_nbryid (obj,evt-3000)
+        Blender.Window.QRedrawAll()
+
+
 # ---------------------------------- ebrys
 
 def edgebry_settag_callback(evt,val):
@@ -685,6 +747,7 @@ def gui():
     regs     = []
     hols     = []
     nbrys    = []
+    nbryids  = []
     ebrys    = []
     fbrys    = []
     eatts    = []
@@ -705,6 +768,7 @@ def gui():
         regs     = di.get_regs     (obj)
         hols     = di.get_hols     (obj)
         nbrys    = di.get_nbrys    (obj)
+        nbryids  = di.get_nbryids  (obj)
         ebrys    = di.get_ebrys    (obj)
         fbrys    = di.get_fbrys    (obj)
         eatts    = di.get_eatts    (obj)
@@ -724,17 +788,18 @@ def gui():
     ch  = rh+2 # caption height
 
     # Heights of windows
-    h_cad       = 4*rh+ggy
-    h_struct    = 6*rh+ggy+sgy
-    h_unst_regs = (1+len(regs))*rh+sgy
-    h_unst_hols = (1+len(hols))*rh+sgy
-    h_unstruct  = ggy+3*sgy+2*rh + rh+h_unst_regs + rh+h_unst_hols
-    h_mesh      = 2*ggy+4*rh+sgy + rh+h_struct + rh+h_unstruct
-    h_fea_nbrys = (1+len(nbrys))*rh+sgy
-    h_fea_ebrys = (1+len(ebrys))*rh+sgy
-    h_fea_fbrys = (1+len(fbrys))*rh+sgy
-    h_fea_eatts = (1+len(eatts))*rh+sgy
-    h_fea       = ggy+3*rh + rh+h_fea_nbrys + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
+    h_cad         = 4*rh+ggy
+    h_struct      = 6*rh+ggy+sgy
+    h_unst_regs   = (1+len(regs))*rh+sgy
+    h_unst_hols   = (1+len(hols))*rh+sgy
+    h_unstruct    = ggy+3*sgy+2*rh + rh+h_unst_regs + rh+h_unst_hols
+    h_mesh        = 2*ggy+4*rh+sgy + rh+h_struct + rh+h_unstruct
+    h_fea_nbrys   = (1+len(nbrys))*rh+sgy
+    h_fea_nbryids = (1+len(nbryids))*rh+sgy
+    h_fea_ebrys   = (1+len(ebrys))*rh+sgy
+    h_fea_fbrys   = (1+len(fbrys))*rh+sgy
+    h_fea_eatts   = (1+len(eatts))*rh+sgy
+    h_fea         = ggy+3*rh + rh+h_fea_nbrys + rh+h_fea_nbryids + rh+h_fea_ebrys + rh+h_fea_fbrys + rh+h_fea_eatts
 
     # Background color
     BGL.glClearColor (0.531, 0.543, 0.614, 0.0)
@@ -751,7 +816,7 @@ def gui():
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (ggx, row+5)
     Draw.Text         ('CAD')
-    Draw.PushButton   ('Refresh',   EVT_REFRESH,      wid-ggx-80-60, row+2, 60, rh-4, 'Refresh GUI')
+    Draw.PushButton   ('Refresh',   EVT_REFRESH,      wid-ggx-80-70, row+2, 60, rh-4, 'Refresh GUI')
     Draw.PushButton   ('Show/Hide', EVT_SHOWHIDE_CAD, wid-ggx-80,    row+2, 80, rh-4, 'Show/Hide this box')
     if d['gui_show_cad']:
         BGL.glColor3f     (0.85, 0.85, 0.85)
@@ -791,7 +856,7 @@ def gui():
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (ggx, row+5)
     Draw.Text         ('MESH')
-    Draw.PushButton   ('Refresh',   EVT_REFRESH,       wid-ggx-80-60, row+2, 60, rh-4, 'Refresh GUI')
+    Draw.PushButton   ('Refresh',   EVT_REFRESH,       wid-ggx-80-70, row+2, 60, rh-4, 'Refresh GUI')
     Draw.PushButton   ('Show/Hide', EVT_SHOWHIDE_MESH, wid-ggx-80,    row+2, 80, rh-4, 'Show/Hide this box')
     if d['gui_show_mesh']:
         BGL.glColor3f     (0.85, 0.85, 0.85)
@@ -880,8 +945,8 @@ def gui():
         BGL.glColor3f     (0.82, 0.82, 0.9)
         BGL.glRecti       (3*gx, row, wid-3*gx, row-h);
         BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_MESH_ADDREG,     ggx+120, row+2, 60, rh-4, 'Add region')
-        Draw.PushButton   ('Delete all', EVT_MESH_DELALLREGS, ggx+200, row+2, 80, rh-4, 'Delete all regions'); row -= rh
+        Draw.PushButton   ('Add',        EVT_MESH_ADDREG,     wid-ggx-70-80, row+2, 60, rh-4, 'Add region')
+        Draw.PushButton   ('Delete all', EVT_MESH_DELALLREGS, wid-ggx-80,    row+2, 80, rh-4, 'Delete all regions'); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('     Tag        Max area            X                  Y                  Z'); row -= rh
         for i, reg in enumerate(regs):
             Draw.Number     ('',    1000+i, ggx    , row, 60, rh, int(reg[0]), -1000, 0,'Region tag',                  regs_tag_callback)
@@ -901,8 +966,8 @@ def gui():
         BGL.glColor3f     (0.82, 0.82, 0.9)
         BGL.glRecti       (3*gx, row, wid-3*gx, row-h);
         BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_MESH_ADDHOLE,     ggx+120, row+2, 60, rh-4, 'Add hole')
-        Draw.PushButton   ('Delete all', EVT_MESH_DELALLHOLES, ggx+200, row+2, 80, rh-4, 'Delete all holes'); row -= rh
+        Draw.PushButton   ('Add',        EVT_MESH_ADDHOLE,     wid-ggx-70-80, row+2, 60, rh-4, 'Add hole')
+        Draw.PushButton   ('Delete all', EVT_MESH_DELALLHOLES, wid-ggx-80,    row+2, 80, rh-4, 'Delete all holes'); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('         X                  Y                  Z'); row -= rh
         for i, hol in enumerate(hols):
             Draw.String     ('',    2000+i, ggx    , row, 100, rh, hol[0],128,'X of the hole',holes_setx_callback)
@@ -931,13 +996,13 @@ def gui():
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (ggx, row+5)
     Draw.Text         ('FEM')
-    Draw.PushButton   ('Refresh',   EVT_REFRESH,      wid-ggx-80-60, row+2, 60, rh-4, 'Refresh GUI')
+    Draw.PushButton   ('Refresh',   EVT_REFRESH,      wid-ggx-80-70, row+2, 60, rh-4, 'Refresh GUI')
     Draw.PushButton   ('Show/Hide', EVT_SHOWHIDE_FEM, wid-ggx-80,    row+2, 80, rh-4, 'Show/Hide this box')
     if d['gui_show_fem']:
         BGL.glColor3f     (0.8, 0.8, 0.8)
         BGL.glRecti       (gx, row, wid-gx, row-h)
 
-        # FEM -- nodes bry
+        # FEM -- nodes bry (given coordinates)
         ggx += gx
         row -= gy
         h    = h_fea_nbrys
@@ -945,12 +1010,12 @@ def gui():
         BGL.glRecti       (2*gx, row, wid-2*gx, row-rh); row -= rh
         BGL.glColor3f     (1.0, 1.0, 1.0)
         BGL.glRasterPos2i (ggx, row+5)
-        Draw.Text         ('Nodes boundaries')
+        Draw.Text         ('Nodes boundaries (given X-Y-Z coordinates)')
         BGL.glColor3f     (0.72, 0.72, 0.8)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
         BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_FEM_ADDNBRY,    ggx+120, row+2, 60, rh-4, 'Add nodes boundary')
-        Draw.PushButton   ('Delete all', EVT_FEM_DELALLNBRY, ggx+200, row+2, 80, rh-4, 'Delete all nodes boundary'); row -= rh
+        Draw.PushButton   ('Add',        EVT_FEM_ADDNBRY,    wid-ggx-70-80, row+2, 60, rh-4, 'Add nodes boundary (given X-Y-Z coordinates)')
+        Draw.PushButton   ('Delete all', EVT_FEM_DELALLNBRY, wid-ggx-80,    row+2, 80, rh-4, 'Delete all nodes boundary (X-Y-Z)'); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('         X                  Y                  Z           Key        Value'); row -= rh
         for i, nb in enumerate(nbrys):
             Draw.String     ('',    3000+i, ggx    , row, 80, rh, nb[0],128,'X of the node with boundary condition',                                      nodebry_setx_callback)
@@ -959,6 +1024,25 @@ def gui():
             Draw.String     ('',    3000+i, ggx+240, row, 40, rh, nb[3],  2,'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', nodebry_setkey_callback)
             Draw.String     ('',    3000+i, ggx+280, row, 80, rh, nb[4],128,'Value of essential/natural boundary condition',                              nodebry_setval_callback)
             Draw.PushButton ('Del', 3000+i, ggx+360, row, 40, rh, 'Delete this row',                                                                      nodebry_delonenbry_callback); row -= rh
+
+        # FEM -- nodes bry (given nodes ID)
+        h = h_fea_nbryids
+        BGL.glColor3f     (0.431, 0.443, 0.514)
+        BGL.glRecti       (2*gx, row, wid-2*gx, row-rh); row -= rh
+        BGL.glColor3f     (1.0, 1.0, 1.0)
+        BGL.glRasterPos2i (ggx, row+5)
+        Draw.Text         ('Nodes boundaries (given nodes ID)')
+        BGL.glColor3f     (0.72, 0.72, 0.8)
+        BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
+        BGL.glColor3f     (0.0, 0.0, 0.0)
+        Draw.PushButton   ('Add',        EVT_FEM_ADDNBRYID,    wid-ggx-70-80, row+2, 60, rh-4, 'Add nodes boundary (given node ID)')
+        Draw.PushButton   ('Delete all', EVT_FEM_DELALLNBRYID, wid-ggx-80,    row+2, 80, rh-4, 'Delete all nodes boundary (node ID)'); row -= rh
+        BGL.glRasterPos2i (ggx, row+5); Draw.Text('         ID         Key        Value'); row -= rh
+        for i, nbid in enumerate(nbryids):
+            Draw.Number     ('',    3000+i, ggx    , row, 80, rh, int(nbid[0]),0,10000,'Set the node ID',                                                           nodebryid_settag_callback)
+            Draw.String     ('',    3000+i, ggx+ 80, row, 40, rh, nbid[1],  2,         'Key such as ux, uy, fx, fz corresponding to the essential/natural variable',nodebryid_setkey_callback)
+            Draw.String     ('',    3000+i, ggx+120, row, 80, rh, nbid[2],128,         'Value of essential/natural boundary condition',                             nodebryid_setval_callback)
+            Draw.PushButton ('Del', 3000+i, ggx+200, row, 40, rh, 'Delete this row',                                                                               nodebryid_deloneebry_callback); row -= rh
 
         # FEM -- edges bry
         h = h_fea_ebrys
@@ -970,8 +1054,8 @@ def gui():
         BGL.glColor3f     (0.72, 0.72, 0.8)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
         BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_FEM_ADDEBRY,    ggx+120, row+2, 60, rh-4, 'Add edges boundary')
-        Draw.PushButton   ('Delete all', EVT_FEM_DELALLEBRY, ggx+200, row+2, 80, rh-4, 'Delete all edges boundary'); row -= rh
+        Draw.PushButton   ('Add',        EVT_FEM_ADDEBRY,    wid-ggx-70-80, row+2, 60, rh-4, 'Add edges boundary')
+        Draw.PushButton   ('Delete all', EVT_FEM_DELALLEBRY, wid-ggx-80,    row+2, 80, rh-4, 'Delete all edges boundary'); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('        Tag         Key        Value'); row -= rh
         for i, eb in enumerate(ebrys):
             Draw.Number     ('',    4000+i, ggx    , row, 80, rh, int(eb[0]),-1000,0,'Set the edge tag',                                                          edgebry_settag_callback)
@@ -989,8 +1073,8 @@ def gui():
         BGL.glColor3f     (0.72, 0.72, 0.8)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
         BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_FEM_ADDFBRY,    ggx+120, row+2, 60, rh-4, 'Add faces boundary')
-        Draw.PushButton   ('Delete all', EVT_FEM_DELALLFBRY, ggx+200, row+2, 80, rh-4, 'Delete all faces boundary'); row -= rh
+        Draw.PushButton   ('Add',        EVT_FEM_ADDFBRY,    wid-ggx-70-80, row+2, 60, rh-4, 'Add faces boundary')
+        Draw.PushButton   ('Delete all', EVT_FEM_DELALLFBRY, wid-ggx-80,    row+2, 80, rh-4, 'Delete all faces boundary'); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('        Tag         Key        Value'); row -= rh
         for i, fb in enumerate(fbrys):
             Draw.Number     ('',    5000+i, ggx    , row, 80, rh, int(fb[0]),-1000,0,'Set the face tag',                                                           facebry_settag_callback)
@@ -1008,8 +1092,8 @@ def gui():
         BGL.glColor3f     (0.72, 0.72, 0.8)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
         BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_FEM_ADDEATT,    ggx+120, row+2, 60, rh-4, 'Add elems attributes')
-        Draw.PushButton   ('Delete all', EVT_FEM_DELALLEATT, ggx+200, row+2, 80, rh-4, 'Delete all elems attributes'); row -= rh
+        Draw.PushButton   ('Add',        EVT_FEM_ADDEATT,    wid-ggx-70-80, row+2, 60, rh-4, 'Add elems attributes')
+        Draw.PushButton   ('Delete all', EVT_FEM_DELALLEATT, wid-ggx-80,    row+2, 80, rh-4, 'Delete all elems attributes'); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('      Tag           Type                Model           Parameters        Initial Vals'); row -= rh
         for i, ea in enumerate(eatts):
             Draw.Number     ('',    6000+i, ggx    , row,  60, rh, int(ea[0]),-1000,0,'Set the element tag',                       elematt_settag_callback)

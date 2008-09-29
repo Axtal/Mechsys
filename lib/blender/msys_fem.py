@@ -161,6 +161,11 @@ def run_analysis(obj):
     if linele: geo = set_geo_linele (obj,nbrys,eatts)
     else:      geo = set_geo        (obj,nbrys,ebrys,fbrys,eatts)
 
+    # nodes boundary conditions
+    nbryids = di.get_nbryids_numeric (obj)
+    for nb in nbryids:
+        geo.nod(nb[0]).bry(nb[1],nb[2])
+
     # solution
     sol = ms.solver('ForwardEuler')
     sol.set_geom(geo)
@@ -212,6 +217,10 @@ def gen_script(obj):
     txt.write ('obj = bpy.data.objects["'+obj.name+'"]\n')
     if linele: txt.write ('geo = mf.set_geo_linele(obj,nbrys,eatts)\n')
     else:      txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
+    txt.write ('\n# nodes boundary conditions\n')
+    nbryids = di.get_nbryids(obj)
+    for nb in nbryids:
+        txt.write('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+nb[2]+')\n')
     txt.write ('\n# Solution\n')
     txt.write ('sol = mechsys.solver("ForwardEuler")\n')
     txt.write ('sol.set_geom(geo)\n')

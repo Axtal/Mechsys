@@ -583,6 +583,60 @@ def del_nbry(obj, id):
             k += 1
 
 
+# ========================================================== Nodes boundaries (given node ID)
+
+def set_nbryid(obj, id, nid, key, value):
+    try:
+        prop      = obj.getProperty ('nbid_'+str(id))
+        prop.data = nid+' '+key+' '+value
+    except:
+        obj.addProperty ('nbid_'+str(id), nid+' '+key+' '+value, 'STRING')
+
+def set_nbryid_nid(obj, id, nid): # property must exist
+    p = obj.getProperty ('nbid_'+str(id))
+    d = p.data.split()
+    p.data = nid+' '+d[1]+' '+d[2]
+
+def set_nbryid_key(obj, id, key): # property must exist
+    p = obj.getProperty ('nbid_'+str(id))
+    d = p.data.split()
+    p.data = d[0]+' '+key+' '+d[2]
+
+def set_nbryid_val(obj, id, val): # property must exist
+    p = obj.getProperty ('nbid_'+str(id))
+    d = p.data.split()
+    p.data = d[0]+' '+d[1]+' '+val
+
+def get_nbryids(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='nbid':
+            d = p.data.split()
+            res.append ([d[0], d[1], d[2]])
+    return res 
+
+def get_nbryids_numeric(obj):
+    res = []
+    for p in obj.getAllProperties():
+        if p.name[:4]=='nbid':
+            d = p.data.split()
+            res.append ([int(d[0]), d[1], float(d[2])])
+    return res 
+
+def del_all_nbryids(obj):
+    for p in obj.getAllProperties():
+        if p.name[:4]=='nbid': obj.removeProperty(p)
+
+def del_nbryid(obj, id):
+    nbryids = get_nbryids (obj)
+    del_all_nbryids (obj)
+    k = 0
+    for i in range(len(nbryids)):
+        if i!=id:
+            set_nbryid (obj, k, nbryids[i][0], nbryids[i][1], nbryids[i][2])
+            k += 1
+
+
 # ========================================================================== Edges boundaries
 
 def set_ebry(obj, id, tag, key, value):
