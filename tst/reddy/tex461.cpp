@@ -128,7 +128,7 @@ int main(int argc, char **argv) try
 		err_ke += fabs(Ke1(i,j)-Ke1c(i,j));
 		err_ke += fabs(Ke2(i,j)-Ke2c(i,j));
 	}
-	if (err_ke>8.9e-16) throw new Fatal("tex831: err_ke=%e is bigger than %e.",err_ke,8.9e-16);
+	if (err_ke>2.0e-15) throw new Fatal("tex831: err_ke=%e is bigger than %e.",err_ke,2.0e-15);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -137,7 +137,7 @@ int main(int argc, char **argv) try
 	double norm_resid = LinAlg::Norm(sol->Resid());
 	cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
-	if (norm_resid>1.1e-15) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,1.1e-15);
+	if (norm_resid>2.0e-15) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,2.0e-15);
 	cout << endl;
 
 	// Output: Nodes
@@ -190,10 +190,10 @@ int main(int argc, char **argv) try
 	err_e[2] = fabs(g.Ele(2)->Val("Sa")-(-sqrt(2.0)));
 
 	// Error summary
-	double tol_u     = DBL_EPSILON;
-	double tol_f     = 4.45e-16;
-	double tol_s     = 4.45e-16;
-	double tol_e     = 4.45e-16;
+	double tol_u     = 2.0e-15;
+	double tol_f     = 9.0e-16;
+	double tol_s     = 9.0e-16;
+	double tol_e     = 9.0e-16;
 	double min_err_u = err_u[err_u.Min()];
 	double max_err_u = err_u[err_u.Max()];
 	double min_err_f = err_f[err_f.Min()];
