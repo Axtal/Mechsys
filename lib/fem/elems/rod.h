@@ -37,12 +37,13 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 1;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int _geom() const { return 1; } ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
 }; // class Rod
 
 // Rod constants
 char const * Rod::NAME = "Rod";
+
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

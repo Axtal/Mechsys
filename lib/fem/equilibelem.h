@@ -89,7 +89,7 @@ public:
 	double Val         (int iNodeLocal, char const * Name) const; ///< Return values at nodes
 	double Val         (                char const * Name) const; ///< Return values at the CG of the element
 
-private:
+protected:
 	// Data
 	Array<EquilibModel*> _a_model;        ///< Array of pointers to constitutive models
 	Tensors::Tensor1     _body_force;     ///< Body force
