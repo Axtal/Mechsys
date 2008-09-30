@@ -329,7 +329,7 @@ def gen_struct_mesh():
         Blender.Window.WaitCursor(1)
 
         # generate mesh and write VTU file for ParaView
-        mms = ms.mesh_structured()
+        mms = ms.mesh_structured(1.0e-4)
         ne  = mms.generate (bks)
         fn  = Blender.sys.makename(ext='_MESH_'+obj.name+'.vtu')
         mms.write_vtu (fn)
