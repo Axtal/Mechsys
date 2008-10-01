@@ -35,6 +35,7 @@ public:
 	// Derived methods
 	char const * Name        () const { return NAME; };
 	bool         IsEssential (char const * DOFName) const;
+	void         SetModel    (char const * ModelName, char const * Prms, char const * Inis);
 	Element    * Connect     (int iNodeLocal, FEM::Node * ptNode);
 	void         UpdateState (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void         AddVolForces(LinAlg::Vector<double> & FVol) const;
@@ -48,6 +49,13 @@ public:
 	double Val (int iNodeLocal, char const * Name) const;
 
 private:
+	// Data
+	double _E;
+	double _A;
+	double _I3;
+	double _sig;
+	double _eps;
+
 	// Private methods
 	int  _geom () const { return 1; }     ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	void _calc_initial_internal_state (); ///< Calculate initial internal state
@@ -69,6 +77,50 @@ inline bool ElasticBeam::IsEssential(char const * DOFName) const
 	if (_ndim==3                && strcmp(DOFName,"uz")==0 || strcmp(DOFName,"rx") || strcmp(DOFName,"ry")) return true;
 	return false;
 }
+
+inline void ElasticBeam::SetModel(char const * ModelName, char const * Prms, char const * Inis)
+{
+	// Check _ndim
+	if (_ndim<1) throw new Fatal("ElasticBeam::SetModel: The space dimension (SetDim) must be set before calling this method");
+	if (CheckConnect()==false) throw new Fatal("ElasticBeam::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
+
+	// If pointers to model was not already defined => No model was allocated
+	if (_a_model.Size()==0)
+	{
+		/* "E=20000.0 nu=0.2" */
+		LineParser lp(Prms);
+		Array<String> names;
+		Array<double> values;
+		lp.BreakExpressions(names,values);
+
+		// Set parameters
+		for (size_t i=0; i<names.Size(); ++i)
+		{
+				 if (names[i]=="E" ) _E  = values[i];
+			else if (names[i]=="A" ) _A  = values[i];
+			else if (names[i]=="I3") _I3 = values[i];
+		}
+
+		/* "Sx=0.0 Sy=0.0 Sxy=0.0 ..." or "ZERO" */
+		lp.Reset(Inis);
+		lp.BreakExpressions(names,values);
+
+		// Parse input
+		_sig = 0.0;
+		_eps = 0.0;
+		for (size_t i=0; i<names.Size(); i++)
+		{
+				 if (names[i]=="ZERO") break;
+			else if (names[i]=="Sa")   _sig = values[i];
+			else throw new Fatal("ElasticBeam::SetModel: '%s' component of stress is invalid",names[i].CStr());
+		}
+
+		// Calculate initial internal state
+		_calc_initial_internal_state ();
+	}
+	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
+}
+
 
 inline Element * ElasticBeam::Connect(int iNodeLocal, FEM::Node * ptNode)
 {
@@ -180,40 +232,31 @@ inline void ElasticBeam::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 {
 	if (_ndim==3)
 	{
-		throw new Fatal("ElasticBeam:Order1Matrix: Feature not available yet");
+		throw new Fatal("ElasticBeam:Order1Matrix: Feature not available yet (ndim=3D)");
 	}
 	else
 	{
-		double h  = 1.0;
-		double I  = 1.0;
-		double A  = 1.0;
-		double E  = 1.0;
-		double G  = 1.0;
-		double Ks = 1.0;
-		double cc = 1.0;
-		double ss = 1.0;
-
-		double Lam = E*I/(G*A*Ks*h*h);
-		double mu0 = 12.0*Lam;
-		double mu  = 0.5*A*mu0*h*h/I;
-
-		/*
-		double a = mu*cc+6.0*ss;
-		double b = (mu-6.0)*c*s;
-		double c = 3.0*h*s;
-		double d = mu*ss+6.0*cc;
-		double e = 3.0*h*c;
-		double f = h*h*(1.5+6.0*Lam);
-
+		double l   = sqrt(pow(_connects[0]->X()-_connects[1]->X(),2.0)+pow(_connects[0]->Y()-_connects[1]->Y(),2.0));
+		double c   = (_connects[1]->X()-_connects[0]->X())/l;
+		double s   = (_connects[1]->Y()-_connects[0]->Y())/l;
+		double cc  = c*c;
+		double ss  = s*s;
+		double ll  = l*l;
+		double lll = l*l*l;
+		double a1  = (12.0*ss*_E*_I3)/lll+(cc*_A*_E)/l;
+		double a2  = (c*s*_A*_E)/l-(12.0*c*s*_E*_I3)/lll;
+		double a3  = -(6.0*s*_E*_I3)/ll;
+		double a4  = (12.0*cc*_E*_I3)/lll+(ss*_A*_E)/l;
+		double a5  = (6.0*c*_E*_I3)/ll;
+		double a6  = (4.0*_E*_I3)/l;
+		double a7  = (2.0*_E*_I3)/l;
 		Ke.Resize(6,6);
-		Ke =  a,  b,  c, -a, -b,  c,
-		      b,  d, -e, -b, -d, -e,
-		      c, -e,  f, -c,  e,  f,
-		     -a, -b, -c,  a,  b, -c,
-		     -b, -d,  e,  b,  d,  e,
-		      c, -e,  f, -c,  e,  f;
-			
-		*/
+		Ke =  a1,  a2,  a3, -a1, -a2,  a3,
+		      a2,  a4,  a5, -a2, -a4,  a5,
+		      a3,  a5,  a6, -a3, -a5,  a7,
+		     -a1, -a2, -a3,  a1,  a2, -a3,
+		     -a2, -a4, -a5,  a2,  a4, -a5,
+		      a3,  a5,  a7, -a3, -a5,  a6;
 	}
 }
 
