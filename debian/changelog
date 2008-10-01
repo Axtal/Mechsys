@@ -1,4 +1,4 @@
-mechsys (1.0-2) unstable; urgency=low
+mechsys (1.1-1) unstable; urgency=low
 
   * Diffusion element added. Steady-state heat tests added.
   * Unstructured mesh can now generate O2 elements (tri6).

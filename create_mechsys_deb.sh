@@ -43,7 +43,7 @@ echo
 echo "[1;34m########################################## Generating source package[0m"
 echo
 cd mechsys-$VERSION
-debuild -S
+debuild -sa -S
 
 echo
 echo "[1;34m########################################### Verifying source package[0m"

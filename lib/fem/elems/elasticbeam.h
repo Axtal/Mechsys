@@ -197,6 +197,7 @@ inline void ElasticBeam::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 		double mu0 = 12.0*Lam;
 		double mu  = 0.5*A*mu0*h*h/I;
 
+		/*
 		double a = mu*cc+6.0*ss;
 		double b = (mu-6.0)*c*s;
 		double c = 3.0*h*s;
@@ -212,6 +213,7 @@ inline void ElasticBeam::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 		     -b, -d,  e,  b,  d,  e,
 		      c, -e,  f, -c,  e,  f;
 			
+		*/
 	}
 }
 
