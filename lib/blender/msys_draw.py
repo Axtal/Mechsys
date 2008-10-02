@@ -357,6 +357,12 @@ def gen_unstruct_mesh():
     if obj!=None and obj.type=='Mesh':
         Blender.Window.WaitCursor(1)
         msh = obj.getData(mesh=1)
+
+        # Transform mesh to global coordinates
+        ori = msh.verts[:] # create a copy in local coordinates
+        msh.transform (obj.matrix)
+
+        # Set polygon
         mu  = ms.mesh_unstructured()
         ets = di.get_etags (obj,msh)
         rgs = di.get_regs  (obj)
@@ -375,6 +381,11 @@ def gen_unstruct_mesh():
             mu.set_poly_region (i, int(r[0]), float(r[1]), float(r[2]), float(r[3]), float(r[4]))
         for i, h in enumerate(hls):
             mu.set_poly_hole (i, float(h[0]), float(h[1]), float(h[2]))
+
+        # Restore local coordinates
+        msh.verts = ori
+
+        # Generate
         maxarea  = di.get_maxarea  (obj)
         minangle = di.get_minangle (obj)
         mu.generate      (float(maxarea), float(minangle))

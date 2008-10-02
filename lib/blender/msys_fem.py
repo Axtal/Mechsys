@@ -83,21 +83,21 @@ def set_geo_linele(obj,nbrys,eatts):
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
 
+        # Transform mesh to global coordinates
+        ori = msh.verts[:] # create a copy in local coordinates
+        msh.transform (obj.matrix)
+
         # is 3d ?
         is_3d = False
         for i, v in enumerate(msh.verts):
             if i>0:
                 if abs(v.co[2]-msh.verts[0].co[2])>1.0e-4:
-                    is_3d = true
+                    is_3d = True
                     break
         ndim = 3 if is_3d else 2
 
         # FEM geometry
         g = ms.geom (ndim)
-
-        # Transform mesh to global coordinates
-        ori = msh.verts[:] # create a copy in local coordinates
-        msh.transform (obj.matrix)
 
         # Vertices
         g.set_nnodes (len(msh.verts))
