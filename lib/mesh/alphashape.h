@@ -27,7 +27,7 @@
 #include <blitz/tinyvec-et.h>
 
 // CGAL
-#include <CGAL/cartesian.h>
+#include <CGAL/Cartesian.h>
 #include <CGAL/algorithm.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Alpha_shape_2.h>

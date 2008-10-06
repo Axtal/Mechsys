@@ -36,6 +36,7 @@
 #include "mesh/mesh.h"
 #include "mesh/structured.h"
 #include "mesh/unstructured.h"
+#include "mesh/alphashape.h"
 
 // MechSys -- fem -- basic
 #include "fem/geometry.h"
@@ -76,6 +77,8 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment, 3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  5, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,    3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,  2, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,       0, 1)
 
 BOOST_PYTHON_FUNCTION_OVERLOADS (PySetBrys_Overloads, PySetBrys, 5, 6)
 
@@ -121,6 +124,13 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_poly_region",  &Mesh::Unstructured::SetPolyRegion,  MU_SetPolyRegion())
 	    .def("set_poly_hole",    &Mesh::Unstructured::SetPolyHole,    MU_SetPolyHole())
 	    .def("generate",         &Mesh::Unstructured::Generate,       MU_Generate())
+	    .def(self_ns::str(self))
+	    ;
+
+	class_<Mesh::AlphaShape, bases<Mesh::Generic> >("mesh_alpha_shape")
+	    .def("reset_cloud",     &Mesh::AlphaShape::ResetCloud)
+	    .def("add_cloud_point", &Mesh::AlphaShape::AddCloudPoint, MA_AddCloudPoint())
+	    .def("generate",        &Mesh::AlphaShape::Generate,      MA_Generate())
 	    .def(self_ns::str(self))
 	    ;
 
