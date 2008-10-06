@@ -177,7 +177,6 @@ protected:
 	virtual void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const {} ///< Returns the local vertex IDs for a given Local Face ID
 	virtual void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const {} ///< Returns the local edge IDs for a given Local Face ID
 
-private:
 	// Private methods
 	size_t _nverts  (int VTKCellType) const; ///< Returns the number of vertices of a VTKCell
 	size_t _nedges  (int VTKCellType) const; ///< Returns the number of edges of a VTKCell

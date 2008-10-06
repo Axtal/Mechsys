@@ -20,6 +20,8 @@ tst/reddy/tex851
 tst/tpoisson01
 tst/tlaplace01
 tst/tsegfaults
+tst/talphashape01
+tst/midasgts/tstatic121
 src/libmechsys.*
 
 syntax: glob

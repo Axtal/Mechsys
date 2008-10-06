@@ -106,4 +106,11 @@ IF(IGRAPH_FOUND)
 	TARGET_LINK_LIBRARIES (ttree01 ${LIBS})
 ENDIF(IGRAPH_FOUND)
 
-SUBDIRS(reddy)
+IF(CGAL_FOUND)
+	ADD_EXECUTABLE        (talphashape01 talphashape01.cpp)
+	ADD_TEST              (talphashape01 talphashape01)
+	TARGET_LINK_LIBRARIES (talphashape01 ${LIBS})
+	SET_TARGET_PROPERTIES (talphashape01 PROPERTIES COMPILE_FLAGS "${FLAGS}")
+ENDIF(CGAL_FOUND)
+
+SUBDIRS(midasgts reddy)
