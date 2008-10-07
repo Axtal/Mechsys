@@ -65,7 +65,7 @@ public:
 	void AddCloudPoint (double X, double Y, double Z=0); ///< Add new point to the list of points i of input PSLG. SetCloudSize MUST be called first.
 
 	// Methods
-	size_t Generate (double Alpha=-1);
+	size_t Generate (double Alpha=-1, bool Regular=false);
 
 private:
 	// Data
@@ -99,7 +99,7 @@ inline void AlphaShape::AddCloudPoint(double X, double Y, double Z)
 	else        _pts_in_2.push_back(CGAL_K::Point_2(X,Y));
 }
 
-inline size_t AlphaShape::Generate(double Alpha)
+inline size_t AlphaShape::Generate(double Alpha, bool Regular)
 {
 	if (_is_3d)
 	{
@@ -109,7 +109,7 @@ inline size_t AlphaShape::Generate(double Alpha)
 	else
 	{
 		// Alpha-shape structure
-		CGAL_AlphaShape2 as(_pts_in_2.begin(), _pts_in_2.end());
+		CGAL_AlphaShape2 as(_pts_in_2.begin(), _pts_in_2.end(), 0, (Regular ? CGAL_AlphaShape2::REGULARIZED : CGAL_AlphaShape2::GENERAL));
 
 		// Find optimal alpha
 		double alp = Alpha;
