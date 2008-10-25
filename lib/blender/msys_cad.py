@@ -30,48 +30,50 @@ import msys_fem  as fem
 
 EVT_NONE             =  0 # used for buttons with callbacks
 EVT_REFRESH          =  1 # refresh all windows
+# SETTINGS
+EVT_SHOWHIDE_SET     =  2 # show/hide SET box
+EVT_SET_DELPROPS     =  3 # delete all properties
 # CAD
-EVT_SHOWHIDE_CAD     =  2 # show/hide CAD box
-EVT_CAD_ADDXYZ       =  3 # type in values to define point(s)
-EVT_CAD_FILLET       =  4 # 3D fillet
-EVT_CAD_EDGEBREAK    =  5 # break edge
-EVT_CAD_EDGEBREAKM   =  6 # break edge at middle point
-EVT_CAD_EDGEINTERS   =  7 # edge closest distance
-EVT_CAD_FPOINT       =  8 # read points from file
-EVT_CAD_FSPLINE      =  9 # create a spline from points in a file
+EVT_SHOWHIDE_CAD     =  4 # show/hide CAD box
+EVT_CAD_ADDXYZ       =  5 # type in values to define point(s)
+EVT_CAD_FILLET       =  6 # 3D fillet
+EVT_CAD_EDGEBREAK    =  7 # break edge
+EVT_CAD_EDGEBREAKM   =  8 # break edge at middle point
+EVT_CAD_EDGEINTERS   =  9 # edge closest distance
+EVT_CAD_FPOINT       = 10 # read points from file
+EVT_CAD_FSPLINE      = 11 # create a spline from points in a file
 # Mesh
-EVT_SHOWHIDE_MESH    = 10 # show/hide MESH box
-EVT_MESH_SETETAG     = 11 # set edges tag
-EVT_MESH_SETFTAG     = 12 # set faces tag
-EVT_MESH_DELPROP     = 13 # delete all properties
+EVT_SHOWHIDE_MESH    = 12 # show/hide MESH box
+EVT_MESH_SETETAG     = 13 # set edges tag
+EVT_MESH_SETFTAG     = 14 # set faces tag
 # Mesh -- structured
-EVT_MESH_SETX        = 14 # set local x-y coordinates of a block (need two edges pre-selected)
-EVT_MESH_SETY        = 15 # set local x-y coordinates of a block (need two edges pre-selected)
-EVT_MESH_SETZ        = 16 # set local x-y coordinates of a block (need two edges pre-selected)
-EVT_MESH_GENSTRU     = 17 # generate structured mesh using MechSys module
+EVT_MESH_SETX        = 15 # set local x-y coordinates of a block (need two edges pre-selected)
+EVT_MESH_SETY        = 16 # set local x-y coordinates of a block (need two edges pre-selected)
+EVT_MESH_SETZ        = 17 # set local x-y coordinates of a block (need two edges pre-selected)
+EVT_MESH_GENSTRU     = 18 # generate structured mesh using MechSys module
 # Mesh -- unstructured
-EVT_MESH_GENUNSTRU   = 18 # generate structured mesh using MechSys module
-EVT_MESH_ADDREG      = 19 # add region
-EVT_MESH_DELALLREGS  = 20 # delete all regions
-EVT_MESH_ADDHOLE     = 21 # add hole
-EVT_MESH_DELALLHOLES = 22 # delete all holes
+EVT_MESH_GENUNSTRU   = 19 # generate structured mesh using MechSys module
+EVT_MESH_ADDREG      = 20 # add region
+EVT_MESH_DELALLREGS  = 21 # delete all regions
+EVT_MESH_ADDHOLE     = 22 # add hole
+EVT_MESH_DELALLHOLES = 23 # delete all holes
 # FEM
-EVT_SHOWHIDE_FEM     = 23 # show/hide FEM box
-EVT_FEM_ADDNBRY      = 24 # add nodes boundary (given coordinates)
-EVT_FEM_DELALLNBRY   = 25 # delete all nodes boundary
-EVT_FEM_ADDNBRYID    = 26 # add nodes boundary (given nodes IDs)
-EVT_FEM_DELALLNBRYID = 27 # delete all nodes boundary
-EVT_FEM_ADDEBRY      = 28 # add edges boundary
-EVT_FEM_DELALLEBRY   = 29 # delete all edges boundary
-EVT_FEM_ADDFBRY      = 30 # add faces boundary
-EVT_FEM_DELALLFBRY   = 31 # delete all faces boundary
-EVT_FEM_ADDEATT      = 32 # add element attributes
-EVT_FEM_DELALLEATT   = 33 # delete all elements attributes
-EVT_FEM_RUN          = 34 # run a FE simulation
-EVT_FEM_SCRIPT       = 35 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 36 # view in ParaView
+EVT_SHOWHIDE_FEM     = 24 # show/hide FEM box
+EVT_FEM_ADDNBRY      = 25 # add nodes boundary (given coordinates)
+EVT_FEM_DELALLNBRY   = 26 # delete all nodes boundary
+EVT_FEM_ADDNBRYID    = 27 # add nodes boundary (given nodes IDs)
+EVT_FEM_DELALLNBRYID = 28 # delete all nodes boundary
+EVT_FEM_ADDEBRY      = 29 # add edges boundary
+EVT_FEM_DELALLEBRY   = 30 # delete all edges boundary
+EVT_FEM_ADDFBRY      = 31 # add faces boundary
+EVT_FEM_DELALLFBRY   = 32 # delete all faces boundary
+EVT_FEM_ADDEATT      = 33 # add element attributes
+EVT_FEM_DELALLEATT   = 34 # delete all elements attributes
+EVT_FEM_RUN          = 35 # run a FE simulation
+EVT_FEM_SCRIPT       = 36 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 37 # view in ParaView
 # Results
-EVT_SHOWHIDE_RES     = 37 # show/hide results box
+EVT_SHOWHIDE_RES     = 38 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -100,15 +102,42 @@ def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
     try:
+        # ----------------------------------------------------------------------------------- SETTINGS
+
+        # show/hide CAD box
+        if evt==EVT_SHOWHIDE_SET:
+            dict['gui_show_set'] = 0 if dict['gui_show_set'] else 1
+            Blender.Window.QRedrawAll()
+
+        # delete all properties
+        elif evt==EVT_SET_DELPROPS:
+            scn = bpy.data.scenes.active
+            obs = scn.objects.selected
+            if len(obs)>0:
+                message = 'Confirm delete ALL properties?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    for o in obs:
+                        for k, v in o.properties.iteritems():
+                        #print "Property name: " + k
+                        #print "Property value: " + str(v)
+                            print '[1;34mMechSys[0m: >> Object = ', o.name, ' Deleted property: ', k, str(v)
+                            o.properties.pop(k)
+                        #for p in o.properties:
+                        for p in o.getAllProperties():
+                            print '[1;34mMechSys[0m: Object = ', o.name, ' Deleted property: ', p.name, p.data
+                            o.removeProperty(p)
+                Blender.Window.QRedrawAll()
+
         # ----------------------------------------------------------------------------------- CAD
 
         # show/hide CAD box
-        if evt==EVT_SHOWHIDE_CAD:
+        elif evt==EVT_SHOWHIDE_CAD:
             dict['gui_show_cad'] = 0 if dict['gui_show_cad'] else 1
             Blender.Window.QRedrawAll()
 
         # add vertices
-        if evt==EVT_CAD_ADDXYZ:
+        elif evt==EVT_CAD_ADDXYZ:
             x = dict['newpoint_x']
             y = dict['newpoint_y']
             z = dict['newpoint_z']
@@ -152,20 +181,10 @@ def button_event(evt):
             edm, obj, msh = di.get_msh()
             nedges = len(msh.edges.selected())
             if nedges==3 or nedges==6 or nedges==4 or nedges==8:
-                di.set_ftag (obj, msh.edges.selected(), dict['newftag'])
+                di.set_ftag (obj, msh.edges.selected(), dict['newftag'], dict['newfclr'])
             else: raise Exception('To set a face tag (FTAG): 3, 4, 6, or 8 edges must be selected')
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1) # return to EditMode
-
-        # delete all properties
-        elif evt==EVT_MESH_DELPROP:
-            scn = bpy.data.scenes.active
-            obs = scn.objects.selected
-            for o in obs:
-                for p in o.getAllProperties():
-                    print '[1;34mMechSys[0m: Object = ', o.name, ' Deleted property: ', p.name, p.data
-                    o.removeProperty(p)
-                Blender.Window.QRedrawAll()
 
         # ---------------------------------------------------------------------------- Structured
 
@@ -503,6 +522,10 @@ def etag_callback(evt,val):
     dict = di.load_dict()
     dict['newetag'] = val
 
+def fclr_callback(evt,val):
+    dict = di.load_dict()
+    dict['newfclr'] = val
+
 def ftag_callback(evt,val):
     dict = di.load_dict()
     dict['newftag'] = val
@@ -832,12 +855,13 @@ def gui():
     ch  = rh+2 # caption height
 
     # Heights of windows
+    h_set         = 3*rh+sgy+ggy
     h_cad         = 4*rh+ggy
     h_struct      = 6*rh+ggy+sgy
     h_unst_regs   = (1+len(regs))*rh+sgy
     h_unst_hols   = (1+len(hols))*rh+sgy
     h_unstruct    = ggy+3*sgy+2*rh + rh+h_unst_regs + rh+h_unst_hols
-    h_mesh        = 2*ggy+4*rh+sgy + rh+h_struct + rh+h_unstruct
+    h_mesh        = 5*rh + rh+h_struct + rh+h_unstruct
     h_fea_nbrys   = (1+len(nbrys))*rh+sgy
     h_fea_nbryids = (1+len(nbryids))*rh+sgy
     h_fea_ebrys   = (1+len(ebrys))*rh+sgy
@@ -851,11 +875,41 @@ def gui():
     BGL.glClear      (Blender.BGL.GL_COLOR_BUFFER_BIT)
     
 
-    # CAD ==============================================================================================================================================
+    # SETTINGS ========================================================================================================================================
 
     dx  = 2*gx+50;
     row = hei-gy-d['inirow']
-    h   = h_cad
+    h   = h_set
+    BGL.glColor3f     (0.4, 0.4, 0.4)
+    BGL.glRecti       (gx, row, wid-gx, row-ch); row -= ch
+    BGL.glColor3f     (1.0, 1.0, 1.0)
+    BGL.glRasterPos2i (ggx, row+5)
+    Draw.Text         ('SETTINGS')
+    Draw.PushButton   ('Refresh',   EVT_REFRESH,      wid-ggx-80-70, row+3, 60, rh-4, 'Refresh GUI')
+    Draw.PushButton   ('Show/Hide', EVT_SHOWHIDE_SET, wid-ggx-80,    row+3, 80, rh-4, 'Show/Hide this box')
+    if d['gui_show_set']:
+        BGL.glColor3f     (0.85, 0.85, 0.85)
+        BGL.glRecti       (gx, row, wid-gx, row-h); row -= gy+rh
+        BGL.glColor3f     (0.0, 0.0, 0.0)
+        BGL.glRasterPos2i (ggx, row+4)
+        Draw.Text         ('Show:')
+        Draw.Toggle       ('Props', EVT_NONE, dx    , row, 60, rh, d['show_props'], 'Show mesh properties'      , show_props_callback)
+        Draw.Toggle       ('V IDs', EVT_NONE, dx+ 60, row, 60, rh, d['show_v_ids'], 'Show vertex IDs'           , show_v_ids_callback)
+        Draw.Toggle       ('E IDs', EVT_NONE, dx+120, row, 60, rh, d['show_e_ids'], 'Show edge IDs'             , show_e_ids_callback)
+        Draw.Toggle       ('F IDs', EVT_NONE, dx+180, row, 60, rh, d['show_f_ids'], 'Show face IDs'             , show_f_ids_callback); row -= rh
+        Draw.Toggle       ('Axes' , EVT_NONE, dx    , row, 60, rh, d['show_axes'],  'Show local system axes'    , show_axes_callback )
+        Draw.Toggle       ('ETags', EVT_NONE, dx+ 60, row, 60, rh, d['show_etags'], 'Show edge tags'            , show_etags_callback)
+        Draw.Toggle       ('FTags', EVT_NONE, dx+120, row, 60, rh, d['show_ftags'], 'Show face tags'            , show_ftags_callback)
+        Draw.Toggle       ('Elems', EVT_NONE, dx+180, row, 60, rh, d['show_elems'], 'Show elements information' , show_elems_callback); row -= rh+sgy
+        Draw.PushButton   ('Delete all properties', EVT_SET_DELPROPS, ggx, row, 200, rh , 'Delete all properties')
+        row -= ggy
+
+    else: row -= gy
+
+
+    # CAD ==============================================================================================================================================
+
+    h = h_cad
     BGL.glColor3f     (0.4, 0.4, 0.4)
     BGL.glRecti       (gx, row, wid-gx, row-ch); row -= ch
     BGL.glColor3f     (1.0, 1.0, 1.0)
@@ -908,25 +962,14 @@ def gui():
         BGL.glRecti       (gx, row, wid-gx, row-h); row -= gy+rh
         BGL.glColor3f     (0.0, 0.0, 0.0)
         BGL.glRasterPos2i (ggx, row+4)
-        Draw.Text         ('Show:')
-        Draw.Toggle       ('Props', EVT_NONE, dx    , row, 60, rh, d['show_props'], 'Show mesh properties'      , show_props_callback)
-        Draw.Toggle       ('V IDs', EVT_NONE, dx+ 60, row, 60, rh, d['show_v_ids'], 'Show vertex IDs'           , show_v_ids_callback)
-        Draw.Toggle       ('E IDs', EVT_NONE, dx+120, row, 60, rh, d['show_e_ids'], 'Show edge IDs'             , show_e_ids_callback)
-        Draw.Toggle       ('F IDs', EVT_NONE, dx+180, row, 60, rh, d['show_f_ids'], 'Show face IDs'             , show_f_ids_callback); row -= rh
-        Draw.Toggle       ('Axes' , EVT_NONE, dx    , row, 60, rh, d['show_axes'],  'Show local system axes'    , show_axes_callback )
-        Draw.Toggle       ('ETags', EVT_NONE, dx+ 60, row, 60, rh, d['show_etags'], 'Show edge tags'            , show_etags_callback)
-        Draw.Toggle       ('FTags', EVT_NONE, dx+120, row, 60, rh, d['show_ftags'], 'Show face tags'            , show_ftags_callback)
-        Draw.Toggle       ('Elems', EVT_NONE, dx+180, row, 60, rh, d['show_elems'], 'Show elements information' , show_elems_callback); row -= rh
-        BGL.glRasterPos2i (ggx, row+4)
         Draw.Text         ('Set tags:')
         Draw.Number       ('',     EVT_NONE,          dx,     row, 80, rh, d['newetag'], -1000, 0,'New edge tag',etag_callback)
         Draw.PushButton   ('Edge', EVT_MESH_SETETAG,  dx+80,  row, 80, rh,                        'Set edges tag (0 => remove tag)')
         Draw.Number       ('',     EVT_NONE,          dx+160, row, 80, rh, d['newftag'], -1000, 0,'New face tag',ftag_callback)
-        Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+240, row, 80, rh,                        'Set faces tag (0 => remove tag)'); row -= rh+sgy
-        Draw.PushButton   ('Delete all properties', EVT_MESH_DELPROP, ggx, row, 200, rh , 'Delete all properties')
+        Draw.ColorPicker  (        EVT_NONE,          dx+240, row, 40, rh, d['newfclr'], 'Select color to paint tagged face', fclr_callback)
+        Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+280, row, 80, rh,               'Set faces tag (0 => remove tag)'); row -= rh
 
         # Mesh -- structured
-        row -= gy
         dx   = 2*gx+70
         ggx += gx
         dx  += gx

@@ -10,6 +10,7 @@ def load_dict():
     dict = Blender.Registry.GetKey('MechSysDict')
     if not dict:
         dict                  = {}
+        dict['gui_show_set']  = 1
         dict['gui_show_cad']  = 1
         dict['gui_show_mesh'] = 1
         dict['gui_show_fem']  = 1
@@ -20,6 +21,7 @@ def load_dict():
         dict['newpoint_z']    = '0.0'
         dict['newetag']       = -10
         dict['newftag']       = -100
+        dict['newfclr']       = (0.0, 0.0, 1.0)
         dict['fillet_radius'] = '0.0'
         dict['fillet_steps']  = 10
         dict['show_props']    = 0
@@ -313,14 +315,15 @@ def set_etag(obj, id, tag):
     #      tag = the tag of edge/face/elem with tag
     set_int_property (obj, 'edge_'+str(id), tag)
 
-def set_ftag(obj, edges_ids, tag):
+def set_ftag(obj, edges_ids, tag, clr=(0.0,0.0,1.0)):
+    print clr
     # In:
     #      edges_ids = global IDs of edges on selected face
     #      tag       = the tag of face
     eids = '_'.join([str(id) for id in edges_ids])
     if not obj.properties.has_key('ftags'): obj.properties['ftags'] = {}
     if tag==0: obj.properties['ftags'].pop(eids)
-    else:      obj.properties['ftags'].update({eids:tag})
+    else:      obj.properties['ftags'].update({eids:[tag,clr[0],clr[1],clr[2]]})
 
 def get_tags(obj, key):
     # In:
@@ -357,7 +360,7 @@ def get_ftags(obj, msh):
     if obj.properties.has_key('ftags'):
         for eids in obj.properties['ftags']:
             ids = [int(id) for id in eids.split('_')]
-            res[tuple(ids)] = obj.properties['ftags'][eids]
+            res[tuple(ids)] = int(obj.properties['ftags'][eids][0])
     return res
 
 def get_tags_list(obj, key, global_ids):
