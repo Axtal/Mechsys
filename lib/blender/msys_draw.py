@@ -420,6 +420,8 @@ def set_ftags(obj, msh, ftags):
             if i>0: eids += '_'+str(edge_id)
             else:   eids +=     str(edge_id)
         obj.properties['ftags'][eids] = ftags[ft]
+        #fbrys = di.get_fbrys (obj)
+        #di.set_fbry (obj, len(fbrys), '%06x'%ftags[ft], 'uz', '0.0')
 
 
 @print_timing

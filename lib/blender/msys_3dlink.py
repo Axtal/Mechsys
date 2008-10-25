@@ -171,20 +171,22 @@ if dict['show_props']:
                             cen      = msh.verts[vds[0]].co/len(eds)
                             for i in range(1,len(eds)):
                                 cen += msh.verts[vds[i]].co/len(eds)
-                            BGL.glColor4f     (clr[0], clr[1], clr[2], 0.2)
-                            BGL.glEnable      (BGL.GL_BLEND)
-                            BGL.glDisable     (BGL.GL_DEPTH_TEST)
+                            BGL.glColor4f     (clr[0], clr[1], clr[2], dict['ftags_opac'])
+                            if dict['ftags_opac']<0.9:
+                                BGL.glEnable  (BGL.GL_BLEND)
+                                BGL.glDisable (BGL.GL_DEPTH_TEST)
                             BGL.glBegin       (BGL.GL_TRIANGLE_FAN)
                             BGL.glVertex3f    (cen[0], cen[1], cen[2])
                             for i in range(len(eds)):
                                 BGL.glVertex3f(msh.verts[vds[i]].co[0], msh.verts[vds[i]].co[1], msh.verts[vds[i]].co[2])
                             BGL.glVertex3f    (msh.verts[vds[0]].co[0], msh.verts[vds[0]].co[1], msh.verts[vds[0]].co[2])
                             BGL.glEnd         ()
-                            BGL.glDisable     (BGL.GL_BLEND)
-                            BGL.glEnable      (BGL.GL_DEPTH_TEST)
+                            if dict['ftags_opac']<0.9:
+                                BGL.glDisable (BGL.GL_BLEND)
+                                BGL.glEnable  (BGL.GL_DEPTH_TEST)
                             BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
-                            Draw.Text         ('#%06x'%ftag)
+                            if dict['show_tags_txt']: Draw.Text ('%06x'%ftag)
 
                 # draw elements information
                 if dict['show_elems']:

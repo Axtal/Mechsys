@@ -65,8 +65,6 @@ EVT_FEM_ADDNBRYID    = 27 # add nodes boundary (given nodes IDs)
 EVT_FEM_DELALLNBRYID = 28 # delete all nodes boundary
 EVT_FEM_ADDEBRY      = 29 # add edges boundary
 EVT_FEM_DELALLEBRY   = 30 # delete all edges boundary
-EVT_FEM_ADDFBRY      = 31 # add faces boundary
-EVT_FEM_DELALLFBRY   = 32 # delete all faces boundary
 EVT_FEM_ADDEATT      = 33 # add element attributes
 EVT_FEM_DELALLEATT   = 34 # delete all elements attributes
 EVT_FEM_RUN          = 35 # run a FE simulation
@@ -328,24 +326,6 @@ def button_event(evt):
                     di.del_all_ebrys(obj)
                     Blender.Window.QRedrawAll()
 
-        # add faces boundary
-        elif evt==EVT_FEM_ADDFBRY:
-            obj = di.get_obj()
-            if obj!=None:
-                fbrys = di.get_fbrys (obj)
-                di.set_fbry (obj, len(fbrys), '-100', 'uy', '0.0')
-                Blender.Window.QRedrawAll()
-
-        # delete all faces boundary
-        elif evt==EVT_FEM_DELALLFBRY:
-            obj = di.get_obj()
-            if obj!=None:
-                message = 'Confirm delete ALL?%t|Yes'
-                result  = Blender.Draw.PupMenu(message)
-                if result>0:
-                    di.del_all_fbrys(obj)
-                    Blender.Window.QRedrawAll()
-
         # add elems attributes
         elif evt==EVT_FEM_ADDEATT:
             obj = di.get_obj()
@@ -446,6 +426,11 @@ def show_f_ids_callback(evt,val):
     dict['show_f_ids'] = val
     Blender.Window.QRedrawAll()
 
+def ftags_opac_callback(evt,val):
+    dict = di.load_dict()
+    dict['ftags_opac'] = val
+    Blender.Window.QRedrawAll()
+
 def show_etags_callback(evt,val):
     dict = di.load_dict()
     dict['show_etags'] = val
@@ -454,6 +439,11 @@ def show_etags_callback(evt,val):
 def show_ftags_callback(evt,val):
     dict = di.load_dict()
     dict['show_ftags'] = val
+    Blender.Window.QRedrawAll()
+
+def show_tags_txt_callback(evt,val):
+    dict = di.load_dict()
+    dict['show_tags_txt'] = val
     Blender.Window.QRedrawAll()
 
 def show_elems_callback(evt,val):
@@ -845,6 +835,15 @@ def gui():
         ebrys    = di.get_ebrys    (obj)
         fbrys    = di.get_fbrys    (obj)
         eatts    = di.get_eatts    (obj)
+
+    # FEM data of current selected object
+    #if obj!=None:
+        #if obj.properties.has_key('nelems'):
+            #nelems = obj.properties['nelems']
+            #if nelems>0:
+                #print obj.properties['elems']['ftags']
+
+    # restore EditMode
     if edm: Blender.Window.EditMode(1)
 
     # Width and Height
@@ -899,14 +898,16 @@ def gui():
         BGL.glColor3f     (0.0, 0.0, 0.0)
         BGL.glRasterPos2i (ggx, row+4)
         Draw.Text         ('Show:')
-        Draw.Toggle       ('Props', EVT_NONE, dx    , row, 60, rh, d['show_props'], 'Show mesh properties'      , show_props_callback)
-        Draw.Toggle       ('V IDs', EVT_NONE, dx+ 60, row, 60, rh, d['show_v_ids'], 'Show vertex IDs'           , show_v_ids_callback)
-        Draw.Toggle       ('E IDs', EVT_NONE, dx+120, row, 60, rh, d['show_e_ids'], 'Show edge IDs'             , show_e_ids_callback)
-        Draw.Toggle       ('F IDs', EVT_NONE, dx+180, row, 60, rh, d['show_f_ids'], 'Show face IDs'             , show_f_ids_callback); row -= rh
-        Draw.Toggle       ('Axes' , EVT_NONE, dx    , row, 60, rh, d['show_axes'],  'Show local system axes'    , show_axes_callback )
-        Draw.Toggle       ('ETags', EVT_NONE, dx+ 60, row, 60, rh, d['show_etags'], 'Show edge tags'            , show_etags_callback)
-        Draw.Toggle       ('FTags', EVT_NONE, dx+120, row, 60, rh, d['show_ftags'], 'Show face tags'            , show_ftags_callback)
-        Draw.Toggle       ('Elems', EVT_NONE, dx+180, row, 60, rh, d['show_elems'], 'Show elements information' , show_elems_callback); row -= rh+sgy
+        Draw.Toggle       ('Props',     EVT_NONE, dx    , row, 60, rh, d['show_props'],   'Show mesh properties'      , show_props_callback)
+        Draw.Toggle       ('V IDs',     EVT_NONE, dx+ 60, row, 60, rh, d['show_v_ids'],   'Show vertex IDs'           , show_v_ids_callback)
+        Draw.Toggle       ('E IDs',     EVT_NONE, dx+120, row, 60, rh, d['show_e_ids'],   'Show edge IDs'             , show_e_ids_callback)
+        Draw.Toggle       ('F IDs',     EVT_NONE, dx+180, row, 60, rh, d['show_f_ids'],   'Show face IDs'             , show_f_ids_callback)
+        Draw.Slider       ('',          EVT_NONE, dx+240, row, 80, rh, d['ftags_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', ftags_opac_callback); row -= rh
+        Draw.Toggle       ('Axes' ,     EVT_NONE, dx    , row, 60, rh, d['show_axes'],    'Show local system axes'    , show_axes_callback )
+        Draw.Toggle       ('ETags',     EVT_NONE, dx+ 60, row, 60, rh, d['show_etags'],   'Show edge tags'            , show_etags_callback)
+        Draw.Toggle       ('FTags',     EVT_NONE, dx+120, row, 60, rh, d['show_ftags'],   'Show face tags'            , show_ftags_callback)
+        Draw.Toggle       ('Elems',     EVT_NONE, dx+180, row, 60, rh, d['show_elems'],   'Show elements information' , show_elems_callback)
+        Draw.Toggle       ('Tags text', EVT_NONE, dx+240, row, 80, rh, d['show_tags_txt'],'Show label (text) of tags' , show_tags_txt_callback); row -= rh+sgy
         Draw.PushButton   ('Delete all properties', EVT_SET_DELPROPS, ggx, row, 200, rh , 'Delete all properties')
         row -= ggy
 
@@ -971,8 +972,8 @@ def gui():
         Draw.Text         ('Set tags:')
         Draw.Number       ('',     EVT_NONE,          dx,     row, 80, rh, d['newetag'], -1000, 0,'New edge tag',etag_callback)
         Draw.PushButton   ('Edge', EVT_MESH_SETETAG,  dx+80,  row, 80, rh,                        'Set edges tag (0 => remove tag)')
-        Draw.String       ('#',    EVT_NONE,          dx+160, row, 80, rh, newftag, 6, 'New face tag (a hexadecimal number)', ftag_callback)
-        Draw.ColorPicker  (        EVT_NONE,          dx+240, row, 40, rh, newfclr,    'Select color to paint tagged face',   fclr_callback)
+        Draw.String       ('',     EVT_NONE,          dx+160, row, 60, rh, newftag, 6, 'New face tag (a hexadecimal number)', ftag_callback)
+        Draw.ColorPicker  (        EVT_NONE,          dx+220, row, 60, rh, newfclr,    'Select color to paint tagged face',   fclr_callback)
         Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+280, row, 80, rh,             'Set faces tag (0 => remove tag)'); row -= rh
 
         # Mesh -- structured
@@ -1166,9 +1167,7 @@ def gui():
         Draw.Text         ('Faces boundaries')
         BGL.glColor3f     (0.72, 0.72, 0.8)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
-        BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_FEM_ADDFBRY,    wid-ggx-70-80, row+2, 60, rh-4, 'Add faces boundary')
-        Draw.PushButton   ('Delete all', EVT_FEM_DELALLFBRY, wid-ggx-80,    row+2, 80, rh-4, 'Delete all faces boundary'); row -= rh
+        BGL.glColor3f     (0.0, 0.0, 0.0); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('        Tag         Key        Value'); row -= rh
         for i, fb in enumerate(fbrys):
             Draw.Number     ('',    5000+i, ggx    , row, 80, rh, int(fb[0]),-1000,0,'Set the face tag',                                                           facebry_settag_callback)

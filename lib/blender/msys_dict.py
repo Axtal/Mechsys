@@ -20,7 +20,7 @@ def load_dict():
         dict['newpoint_y']    = '0.0'
         dict['newpoint_z']    = '0.0'
         dict['newetag']       = -10
-        dict['newftag']       = 0x0000ff
+        dict['newftag']       = 0x000080
         dict['fillet_radius'] = '0.0'
         dict['fillet_steps']  = 10
         dict['show_props']    = 0
@@ -29,6 +29,8 @@ def load_dict():
         dict['show_f_ids']    = 0
         dict['show_etags']    = 1
         dict['show_ftags']    = 1
+        dict['show_tags_txt'] = 0
+        dict['ftags_opac']    = 0.2
         dict['show_elems']    = 1
         dict['show_axes']     = 1
         dict['show_results']  = 0
@@ -43,11 +45,13 @@ def load_dict():
 
 # ====================================================================================== Util
 
+def rgb2html(rgb):
+    # convert (R, G, B) tuple to a html value RRGGBB
+    return '%02x%02x%02x' % (int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255))
+
 def html2rgb(html):
-    # convert RRGGBB or #RRGGBB to a (R, G, B) tuple
-    html = html.strip()
-    if html[0] == '#': html = html[1:]
-    if len(html)!=6: raise Exception('hex2rgb_str: %s is not in RRGGBB format' % html)
+    # convert RRGGBB or a (R, G, B) tuple
+    if len(html)!=6: raise Exception('html2rgb: %s is not in RRGGBB format' % html)
     return tuple(float(int(html[i:i+2], 16)/255.0) for i in range(0, 6, 2))
 
 def rgb2hex(rgb):
