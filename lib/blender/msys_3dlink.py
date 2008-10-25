@@ -164,13 +164,14 @@ if dict['show_props']:
                     if obj.properties.has_key('ftags'):
                         BGL.glBlendFunc (BGL.GL_SRC_ALPHA, BGL.GL_ONE)
                         for eids in obj.properties['ftags']:
-                            ftag     = obj.properties['ftags'][eids][0]
+                            ftag     = obj.properties['ftags'][eids]
+                            clr      = di.hex2rgb(ftag)
                             ids      = [int(id) for id in eids.split('_')]
                             eds, vds = di.sort_edges_and_verts (msh, ids, msh.edges[ids[0]].v1.index) # will erase ids
                             cen      = msh.verts[vds[0]].co/len(eds)
                             for i in range(1,len(eds)):
                                 cen += msh.verts[vds[i]].co/len(eds)
-                            BGL.glColor4f     (obj.properties['ftags'][eids][1], obj.properties['ftags'][eids][2], obj.properties['ftags'][eids][3], 0.2)
+                            BGL.glColor4f     (clr[0], clr[1], clr[2], 0.2)
                             BGL.glEnable      (BGL.GL_BLEND)
                             BGL.glDisable     (BGL.GL_DEPTH_TEST)
                             BGL.glBegin       (BGL.GL_TRIANGLE_FAN)
@@ -183,7 +184,7 @@ if dict['show_props']:
                             BGL.glEnable      (BGL.GL_DEPTH_TEST)
                             BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
-                            Draw.Text         (str(int(ftag)))
+                            Draw.Text         ('#%06x'%ftag)
 
                 # draw elements information
                 if dict['show_elems']:

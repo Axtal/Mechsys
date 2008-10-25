@@ -20,8 +20,7 @@ def load_dict():
         dict['newpoint_y']    = '0.0'
         dict['newpoint_z']    = '0.0'
         dict['newetag']       = -10
-        dict['newftag']       = -100
-        dict['newfclr']       = (0.0, 0.0, 1.0)
+        dict['newftag']       = 0x0000ff
         dict['fillet_radius'] = '0.0'
         dict['fillet_steps']  = 10
         dict['show_props']    = 0
@@ -43,6 +42,22 @@ def load_dict():
 
 
 # ====================================================================================== Util
+
+def html2rgb(html):
+    # convert RRGGBB or #RRGGBB to a (R, G, B) tuple
+    html = html.strip()
+    if html[0] == '#': html = html[1:]
+    if len(html)!=6: raise Exception('hex2rgb_str: %s is not in RRGGBB format' % html)
+    return tuple(float(int(html[i:i+2], 16)/255.0) for i in range(0, 6, 2))
+
+def rgb2hex(rgb):
+    # convert (R, G, B) tuple to a hex value 0x000000
+    return int('0x%02x%02x%02x' % (int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255)), 16)
+
+def hex2rgb(hex):
+    # convert a hex value 0x000000 to a (R, G, B) tuple
+    return html2rgb('%06x' % hex)
+
 
 def get_cg(msh, vids, vtkcelltype):
     # In:   vids = verts_ids
@@ -315,15 +330,14 @@ def set_etag(obj, id, tag):
     #      tag = the tag of edge/face/elem with tag
     set_int_property (obj, 'edge_'+str(id), tag)
 
-def set_ftag(obj, edges_ids, tag, clr=(0.0,0.0,1.0)):
-    print clr
+def set_ftag(obj, edges_ids, tag):
     # In:
     #      edges_ids = global IDs of edges on selected face
     #      tag       = the tag of face
     eids = '_'.join([str(id) for id in edges_ids])
     if not obj.properties.has_key('ftags'): obj.properties['ftags'] = {}
     if tag==0: obj.properties['ftags'].pop(eids)
-    else:      obj.properties['ftags'].update({eids:[tag,clr[0],clr[1],clr[2]]})
+    else:      obj.properties['ftags'].update({eids:tag})
 
 def get_tags(obj, key):
     # In:
@@ -360,7 +374,7 @@ def get_ftags(obj, msh):
     if obj.properties.has_key('ftags'):
         for eids in obj.properties['ftags']:
             ids = [int(id) for id in eids.split('_')]
-            res[tuple(ids)] = int(obj.properties['ftags'][eids][0])
+            res[tuple(ids)] = obj.properties['ftags'][eids]
     return res
 
 def get_tags_list(obj, key, global_ids):

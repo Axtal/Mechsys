@@ -419,7 +419,7 @@ def set_ftags(obj, msh, ftags):
             edge_id = msh.findEdges (int(vs[0]), int(vs[1]))
             if i>0: eids += '_'+str(edge_id)
             else:   eids +=     str(edge_id)
-        obj.properties['ftags'][eids] = [ftags[ft], 0.0,0.0,1.0]
+        obj.properties['ftags'][eids] = ftags[ft]
 
 
 @print_timing

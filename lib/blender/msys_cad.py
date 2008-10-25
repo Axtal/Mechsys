@@ -181,7 +181,7 @@ def button_event(evt):
             edm, obj, msh = di.get_msh()
             nedges = len(msh.edges.selected())
             if nedges==3 or nedges==6 or nedges==4 or nedges==8:
-                di.set_ftag (obj, msh.edges.selected(), dict['newftag'], dict['newfclr'])
+                di.set_ftag (obj, msh.edges.selected(), dict['newftag'])
             else: raise Exception('To set a face tag (FTAG): 3, 4, 6, or 8 edges must be selected')
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1) # return to EditMode
@@ -522,13 +522,15 @@ def etag_callback(evt,val):
     dict = di.load_dict()
     dict['newetag'] = val
 
-def fclr_callback(evt,val):
-    dict = di.load_dict()
-    dict['newfclr'] = val
-
 def ftag_callback(evt,val):
     dict = di.load_dict()
-    dict['newftag'] = val
+    dict['newftag'] = int('0x'+val, 16)
+    Blender.Window.QRedrawAll()
+
+def fclr_callback(evt,val):
+    dict = di.load_dict()
+    dict['newftag'] = di.rgb2hex(val)
+    Blender.Window.QRedrawAll()
 
 def btag_callback(evt,val):
     scn = bpy.data.scenes.active
@@ -798,6 +800,10 @@ def gui():
         obj = None
         msh = None
 
+    # Data
+    newftag = '%06x' % d['newftag']
+    newfclr = di.hex2rgb(d['newftag'])
+
     # Data from current selected object
     btag     = -1
     ndivx    = 2
@@ -965,9 +971,9 @@ def gui():
         Draw.Text         ('Set tags:')
         Draw.Number       ('',     EVT_NONE,          dx,     row, 80, rh, d['newetag'], -1000, 0,'New edge tag',etag_callback)
         Draw.PushButton   ('Edge', EVT_MESH_SETETAG,  dx+80,  row, 80, rh,                        'Set edges tag (0 => remove tag)')
-        Draw.Number       ('',     EVT_NONE,          dx+160, row, 80, rh, d['newftag'], -1000, 0,'New face tag',ftag_callback)
-        Draw.ColorPicker  (        EVT_NONE,          dx+240, row, 40, rh, d['newfclr'], 'Select color to paint tagged face', fclr_callback)
-        Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+280, row, 80, rh,               'Set faces tag (0 => remove tag)'); row -= rh
+        Draw.String       ('#',    EVT_NONE,          dx+160, row, 80, rh, newftag, 6, 'New face tag (a hexadecimal number)', ftag_callback)
+        Draw.ColorPicker  (        EVT_NONE,          dx+240, row, 40, rh, newfclr,    'Select color to paint tagged face',   fclr_callback)
+        Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+280, row, 80, rh,             'Set faces tag (0 => remove tag)'); row -= rh
 
         # Mesh -- structured
         dx   = 2*gx+70
