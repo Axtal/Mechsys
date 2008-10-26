@@ -20,7 +20,7 @@ def load_dict():
         dict['newpoint_y']    = '0.0'
         dict['newpoint_z']    = '0.0'
         dict['newetag']       = -10
-        dict['newftag']       = 0x000080
+        dict['newftag']       = [-100, 0x000080]
         dict['fillet_radius'] = '0.0'
         dict['fillet_steps']  = 10
         dict['show_props']    = 0
@@ -29,8 +29,8 @@ def load_dict():
         dict['show_f_ids']    = 0
         dict['show_etags']    = 1
         dict['show_ftags']    = 1
-        dict['show_tags_txt'] = 0
-        dict['ftags_opac']    = 0.2
+        dict['show_tags_txt'] = 1
+        dict['ftags_opac']    = 0.3
         dict['show_elems']    = 1
         dict['show_axes']     = 1
         dict['show_results']  = 0
@@ -38,6 +38,11 @@ def load_dict():
         dict['show_warp']     = 1
         dict['scalar_key']    = 'uy'
         dict['warp_scale']    = '10'
+
+        dict['dofvars'] = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q' }
+
+        dict['dofvars_menu'] = 'DOF Vars %t|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
+
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
     return dict
@@ -334,15 +339,6 @@ def set_etag(obj, id, tag):
     #      tag = the tag of edge/face/elem with tag
     set_int_property (obj, 'edge_'+str(id), tag)
 
-def set_ftag(obj, edges_ids, tag):
-    # In:
-    #      edges_ids = global IDs of edges on selected face
-    #      tag       = the tag of face
-    eids = '_'.join([str(id) for id in edges_ids])
-    if not obj.properties.has_key('ftags'): obj.properties['ftags'] = {}
-    if tag==0: obj.properties['ftags'].pop(eids)
-    else:      obj.properties['ftags'].update({eids:tag})
-
 def get_tags(obj, key):
     # In:
     #      key = 'edge', 'face', or 'elem'
@@ -371,15 +367,6 @@ def get_etags_(obj):
             eid      = int(p.name[5:])
             res[eid] = p.data
     return res 
-
-def get_ftags(obj, msh):
-    # Out:   {(e1,e2,e3,e4,..):tag1,  (e1,e2,e3,e4..):tag2,  ... num faces with tags}
-    res = {}
-    if obj.properties.has_key('ftags'):
-        for eids in obj.properties['ftags']:
-            ids = [int(id) for id in eids.split('_')]
-            res[tuple(ids)] = obj.properties['ftags'][eids]
-    return res
 
 def get_tags_list(obj, key, global_ids):
     # In:
@@ -715,60 +702,6 @@ def del_ebry(obj, id):
     for i in range(len(ebrys)):
         if i!=id:
             set_ebry (obj, k, ebrys[i][0], ebrys[i][1], ebrys[i][2])
-            k += 1
-
-
-# ========================================================================== Faces boundaries
-
-def set_fbry(obj, id, tag, key, value):
-    try:
-        prop      = obj.getProperty ('fbry_'+str(id))
-        prop.data = tag+' '+key+' '+value
-    except:
-        obj.addProperty ('fbry_'+str(id), tag+' '+key+' '+value, 'STRING')
-
-def set_fbry_tag(obj, id, tag): # property must exist
-    p = obj.getProperty ('fbry_'+str(id))
-    d = p.data.split()
-    p.data = tag+' '+d[1]+' '+d[2]
-
-def set_fbry_key(obj, id, key): # property must exist
-    p = obj.getProperty ('fbry_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+key+' '+d[2]
-
-def set_fbry_val(obj, id, val): # property must exist
-    p = obj.getProperty ('fbry_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+val
-
-def get_fbrys(obj):
-    res = []
-    for p in obj.getAllProperties():
-        if p.name[:4]=='fbry':
-            d = p.data.split()
-            res.append ([d[0], d[1], d[2]])
-    return res 
-
-def get_fbrys_numeric(obj):
-    res = []
-    for p in obj.getAllProperties():
-        if p.name[:4]=='fbry':
-            d = p.data.split()
-            res.append ([int(d[0]), d[1], float(d[2])])
-    return res 
-
-def del_all_fbrys(obj):
-    for p in obj.getAllProperties():
-        if p.name[:4]=='fbry': obj.removeProperty(p)
-
-def del_fbry(obj, id):
-    fbrys = get_fbrys (obj)
-    del_all_fbrys (obj)
-    k = 0
-    for i in range(len(fbrys)):
-        if i!=id:
-            set_fbry (obj, k, fbrys[i][0], fbrys[i][1], fbrys[i][2])
             k += 1
 
 

@@ -155,6 +155,16 @@ def store_scalars(geo,obj):
     for i, key in enumerate(keys):
         if has_key[i]: obj.properties['scalars'][key] = vals[i]
 
+def get_brys_atts(obj):
+    d = di.load_dict()
+    nbrys = di.get_nbrys_numeric (obj)
+    ebrys = di.get_ebrys_numeric (obj)
+    fbrys = []
+    if obj.properties.has_key('fbrys'):
+        for k, v in obj.properties['fbrys'].iteritems():
+            fbrys.append([int(k), d['dofvars'][int(v[0])], v[1]])
+    eatts = di.get_eatts_numeric (obj)
+    return nbrys, ebrys, fbrys, eatts
 
 def run_analysis(obj):
     # set cursor
@@ -166,10 +176,7 @@ def run_analysis(obj):
     except: linele = True # assuming linear structures (trusses, beams)
 
     # boundary conditions & properties
-    nbrys = di.get_nbrys_numeric (obj)
-    ebrys = di.get_ebrys_numeric (obj)
-    fbrys = di.get_fbrys_numeric (obj)
-    eatts = di.get_eatts_numeric (obj)
+    nbrys, ebrys, fbrys, eatts = get_brys_atts (obj)
     if (len(eatts)<1): raise Exception('Element attributes MUST be defined in order to run a simulation')
 
     # problem geometry
@@ -212,10 +219,7 @@ def gen_script(obj):
     except: linele = True # assuming linear structures (trusses, beams)
 
     # boundary conditions
-    nbrys = di.get_nbrys_numeric (obj)
-    ebrys = di.get_ebrys_numeric (obj)
-    fbrys = di.get_fbrys_numeric (obj)
-    eatts = di.get_eatts_numeric (obj)
+    nbrys, ebrys, fbrys, eatts = get_brys_atts (obj)
 
     # text
     fn  = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')

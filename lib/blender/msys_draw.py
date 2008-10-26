@@ -275,7 +275,8 @@ def gen_struct_mesh():
     if edm: Blender.Window.EditMode(0)
 
     # generate blocks
-    bks = []
+    bks   = []
+    fclrs = {} # face colors {tag:color}
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
             # get mesh
@@ -310,14 +311,24 @@ def gen_struct_mesh():
 
                 # edges
                 edges = [(ed.v1.index, ed.v2.index) for ed in msh.edges]
-                
+
+                # face tags and colors
+                ftags = {}
+                if obj.properties.has_key('ftags'):
+                    for k, v in obj.properties['ftags'].iteritems():
+                        # tags
+                        ids = [int(id) for id in k.split('_')]
+                        ftags[tuple(ids)] = v[0]
+                        # colors
+                        fclrs[v[0]] = v[1]
+
                 # new block
                 bks.append(ms.mesh_block());
                 bks[-1].set_coords (di.get_btag(obj),               # tag to be replicated to all elements
                                     verts,                          # vertices' coordinates
                                     edges,                          # edges
                                     di.get_etags(obj,msh),          # edge tags
-                                    di.get_ftags(obj,msh),          # face tags
+                                    ftags,                          # face tags
                                     wx, wy, wz,                     # weigths x, y, and z
                                     origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
             else:
@@ -337,7 +348,7 @@ def gen_struct_mesh():
         print '[1;34mMechSys[0m: File <[1;33m%s[0m> created' % fn
 
         # draw generated mesh
-        draw_mesh (mms)
+        draw_mesh (mms, fclrs)
 
         # restore cursor
         Blender.Window.WaitCursor(0)
@@ -389,7 +400,7 @@ def gen_unstruct_mesh():
         maxarea  = di.get_maxarea  (obj)
         minangle = di.get_minangle (obj)
         mu.generate      (float(maxarea), float(minangle))
-        draw_mesh (mu)
+        draw_mesh (mu, {})
         Blender.Window.WaitCursor(0)
 
 
@@ -409,8 +420,9 @@ def set_etags(obj, msh, etags):
 
 
 @print_timing
-def set_ftags(obj, msh, ftags):
+def set_ftags(obj, msh, ftags, fclrs):
     obj.properties['ftags'] = {}
+    obj.properties['fbrys'] = {}
     for ft in ftags:
         eids = ''
         vids = ft.split('_')
@@ -419,13 +431,13 @@ def set_ftags(obj, msh, ftags):
             edge_id = msh.findEdges (int(vs[0]), int(vs[1]))
             if i>0: eids += '_'+str(edge_id)
             else:   eids +=     str(edge_id)
-        obj.properties['ftags'][eids] = ftags[ft]
-        #fbrys = di.get_fbrys (obj)
-        #di.set_fbry (obj, len(fbrys), '%06x'%ftags[ft], 'uz', '0.0')
+        obj.properties['ftags'][eids] = [ftags[ft], fclrs[ftags[ft]]]
+        if not obj.properties['fbrys'].has_key(str(ftags[ft])):
+            obj.properties['fbrys'][str(ftags[ft])] = [0, 0.0, fclrs[ftags[ft]]] # DOFVar==uz..., Val, Clr
 
 
 @print_timing
-def draw_mesh(mms):
+def draw_mesh(mms, fclrs):
     # get vertices and edges
     verts = []
     edges = []
@@ -463,7 +475,7 @@ def draw_mesh(mms):
     # set ftags
     ftags = {}
     mms.get_ftags (ftags)
-    set_ftags (new_obj, new_msh, ftags)
+    set_ftags (new_obj, new_msh, ftags, fclrs)
 
     # redraw
     Blender.Window.QRedrawAll()
