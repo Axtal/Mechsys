@@ -66,13 +66,11 @@ EVT_FEM_ADDNBRYID    = 27 # add nodes boundary (given nodes IDs)
 EVT_FEM_DELALLNBRYID = 28 # delete all nodes boundary
 EVT_FEM_ADDEBRY      = 29 # add edges boundary
 EVT_FEM_DELALLEBRY   = 30 # delete all edges boundary
-EVT_FEM_ADDEATT      = 33 # add element attributes
-EVT_FEM_DELALLEATT   = 34 # delete all elements attributes
-EVT_FEM_RUN          = 35 # run a FE simulation
-EVT_FEM_SCRIPT       = 36 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 37 # view in ParaView
+EVT_FEM_RUN          = 31 # run a FE simulation
+EVT_FEM_SCRIPT       = 32 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 33 # view in ParaView
 # Results
-EVT_SHOWHIDE_RES     = 38 # show/hide results box
+EVT_SHOWHIDE_RES     = 34 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -81,14 +79,23 @@ EVT_SHOWHIDE_RES     = 38 # show/hide results box
 def event(evt, val):
     if   evt==Draw.QKEY and not val: Draw.Exit()
     elif evt==Draw.ESCKEY: Draw.Redraw(1)
-    elif evt==Draw.WHEELDOWNMOUSE:
+    elif evt==Draw.WHEELDOWNMOUSE or evt==Draw.DOWNARROWKEY:
         d = di.load_dict()
         d['inirow'] -= 40
         Blender.Window.QRedrawAll()
-    elif evt==Draw.WHEELUPMOUSE:
+    elif evt==Draw.WHEELUPMOUSE or evt==Draw.UPARROWKEY:
         d = di.load_dict()
         if d['inirow']<0:
             d['inirow'] += 40
+            Blender.Window.QRedrawAll()
+    elif evt==Draw.PAGEDOWNKEY:
+        d = di.load_dict()
+        d['inirow'] -= 100
+        Blender.Window.QRedrawAll()
+    elif evt==Draw.PAGEUPKEY:
+        d = di.load_dict()
+        if d['inirow']<0:
+            d['inirow'] += 100
             Blender.Window.QRedrawAll()
 
 
@@ -326,24 +333,6 @@ def button_event(evt):
                 result  = Blender.Draw.PupMenu(message)
                 if result>0:
                     di.del_all_ebrys(obj)
-                    Blender.Window.QRedrawAll()
-
-        # add elems attributes
-        elif evt==EVT_FEM_ADDEATT:
-            obj = di.get_obj()
-            if obj!=None:
-                eatts = di.get_eatts (obj)
-                di.set_eatt (obj, len(eatts), '-1', 'Quad4PStrain', 'LinElastic', 'E=207 nu=0.3', 'Sx=0 Sy=0 Sz=0 Sxy=0')
-                Blender.Window.QRedrawAll()
-
-        # delete all elems attributes
-        elif evt==EVT_FEM_DELALLEATT:
-            obj = di.get_obj()
-            if obj!=None:
-                message = 'Confirm delete ALL?%t|Yes'
-                result  = Blender.Draw.PupMenu(message)
-                if result>0:
-                    di.del_all_eatts(obj)
                     Blender.Window.QRedrawAll()
 
         # run a FE simulation
@@ -697,48 +686,51 @@ def edgebry_deloneebry_callback(evt,val):
 def facebry_setkey_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        ftag = str(evt-EVT_DEL)
-        obj.properties['fbrys'][ftag][0] = val-1 # DOFVar==uz,fx,...
+        tag = str(evt-EVT_DEL)
+        obj.properties['fbrys'][tag][0] = val-1 # DOFVar==uz,fx,...
 
 def facebry_setval_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        ftag = str(evt-EVT_DEL)
-        obj.properties['fbrys'][ftag][1] = float(val) # Val
+        tag = str(evt-EVT_DEL)
+        obj.properties['fbrys'][tag][1] = float(val) # Val
 
 
 # ---------------------------------- eatts
 
-def elematt_settag_callback(evt,val):
-    obj = di.get_obj()
-    if obj!=None:
-        di.set_eatt_tag (obj, evt-EVT_DEL, str(val))
-
 def elematt_settype_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        di.set_eatt_type (obj, evt-EVT_DEL, val)
+        tag = str(evt-EVT_DEL)
+        res = di.sarray_set_val(obj.properties['eatts'][tag], 0, str(val-1))
+        obj.properties['eatts'].pop(tag)
+        obj.properties['eatts'][tag] = res
 
 def elematt_setmodel_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        di.set_eatt_model (obj, evt-EVT_DEL, val)
+        tag = str(evt-EVT_DEL)
+        res = di.sarray_set_val(obj.properties['eatts'][tag], 1, str(val-1))
+        obj.properties['eatts'].pop(tag)
+        obj.properties['eatts'][tag] = res
 
 def elematt_setprms_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        di.set_eatt_prms (obj, evt-EVT_DEL, val)
+        tag = str(evt-EVT_DEL)
+        val = '_'.join(val.split())
+        res = di.sarray_set_val(obj.properties['eatts'][tag], 2, val)
+        obj.properties['eatts'].pop(tag)
+        obj.properties['eatts'][tag] = res
 
 def elematt_setinis_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        di.set_eatt_inis (obj, evt-EVT_DEL, val)
-
-def elematt_deloneeatt_callback(evt,val):
-    obj = di.get_obj()
-    if obj!=None:
-        di.del_eatt (obj,evt-EVT_DEL)
-        Blender.Window.QRedrawAll()
+        tag = str(evt-EVT_DEL)
+        val = '_'.join(val.split())
+        res = di.sarray_set_val(obj.properties['eatts'][tag], 3, val)
+        obj.properties['eatts'].pop(tag)
+        obj.properties['eatts'][tag] = res
 
 
 # ---------------------------------- Results
@@ -771,6 +763,13 @@ def show_warp_callback(evt,val):
 
 # ======================================================================================= GUI
 
+def draw_label(x,y,w,h,txt):
+    BGL.glColor3f     (0.663, 0.663, 0.663)
+    BGL.glRecti       (x, y, x+w, y+h)
+    BGL.glColor3f     (0.0, 0.0, 0.0)
+    BGL.glRasterPos2i (x+5, y+5)
+    Draw.Text         (txt)
+
 # Draw GUI
 def gui():
     # load dictionary
@@ -802,7 +801,7 @@ def gui():
     nbryids  = []
     ebrys    = []
     fbrys    = {}
-    eatts    = []
+    eatts    = {}
     # Set default values
     if obj!=None:
         btag     = di.get_btag     (obj)
@@ -823,7 +822,7 @@ def gui():
         nbryids  = di.get_nbryids  (obj)
         ebrys    = di.get_ebrys    (obj)
         fbrys    = obj.properties['fbrys'] if obj.properties.has_key('fbrys') else {}
-        eatts    = di.get_eatts    (obj)
+        eatts    = obj.properties['eatts'] if obj.properties.has_key('eatts') else {}
 
     # restore EditMode
     if edm: Blender.Window.EditMode(1)
@@ -1154,18 +1153,15 @@ def gui():
         BGL.glColor3f     (0.0, 0.0, 0.0); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('        Tag         Key        Value'); row -= rh
         for k, v in fbrys.iteritems():
+            tag = int(k)
             clr = di.hex2rgb(v[2])
-            BGL.glColor3f     (0.663, 0.663, 0.663)
-            BGL.glRecti       (ggx, row, ggx+40, row+rh)
-            BGL.glColor3f     (0.0, 0.0, 0.0)
-            BGL.glRasterPos2i (ggx+5, row+5)
-            Draw.Text         (k)
+            draw_label        (ggx,row,40,rh, k)
             BGL.glColor3f     (clr[0], clr[1], clr[2])
             BGL.glRecti       (ggx+40, row, ggx+80, row+rh)
-            Draw.Menu   (d['dofvars_menu'], EVT_DEL+int(k), ggx+ 80, row, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', facebry_setkey_callback)
-            Draw.String ('',                EVT_DEL+int(k), ggx+120, row, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              facebry_setval_callback); row -= rh
+            Draw.Menu   (d['dofvars_menu'], EVT_DEL+tag, ggx+ 80, row, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', facebry_setkey_callback)
+            Draw.String ('',                EVT_DEL+tag, ggx+120, row, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              facebry_setval_callback); row -= rh
 
-        # FEM -- elems bry
+        # FEM -- elems atts
         h = h_fea_eatts
         BGL.glColor3f     (0.431, 0.443, 0.514)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-rh); row -= rh
@@ -1174,17 +1170,16 @@ def gui():
         Draw.Text         ('Elements attributes')
         BGL.glColor3f     (0.72, 0.72, 0.8)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
-        BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_FEM_ADDEATT,    wid-ggx-70-80, row+2, 60, rh-4, 'Add elems attributes')
-        Draw.PushButton   ('Delete all', EVT_FEM_DELALLEATT, wid-ggx-80,    row+2, 80, rh-4, 'Delete all elems attributes'); row -= rh
+        BGL.glColor3f     (0.0, 0.0, 0.0); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('      Tag           Type                Model           Parameters        Initial Vals'); row -= rh
-        for i, ea in enumerate(eatts):
-            Draw.Number     ('',    EVT_DEL+i, ggx    , row,  60, rh, int(ea[0]),-100,0,'Set the element tag',                       elematt_settag_callback)
-            Draw.String     ('',    EVT_DEL+i, ggx+ 60, row, 100, rh, ea[1], 20,        'Element type: ex.: Quad4PStrain',           elematt_settype_callback)
-            Draw.String     ('',    EVT_DEL+i, ggx+160, row,  80, rh, ea[2], 20,        'Constitutive model: ex.: LinElastic',       elematt_setmodel_callback)
-            Draw.String     ('',    EVT_DEL+i, ggx+240, row, 100, rh, ea[3],128,        'Parameters: ex.: E=207_nu=0.3',             elematt_setprms_callback)
-            Draw.String     ('',    EVT_DEL+i, ggx+340, row,  80, rh, ea[4],128,        'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', elematt_setinis_callback)
-            Draw.PushButton ('Del', EVT_DEL+i, ggx+420, row,  40, rh, 'Delete this row',                                              elematt_deloneeatt_callback); row -= rh
+        for k, v in eatts.iteritems():
+            tag = int(k)
+            r   = v.split()
+            draw_label      (ggx,row,40,rh, k)
+            Draw.Menu       (d['etypes_menu'], EVT_DEL+tag, ggx+ 40, row, 120, rh, int(r[0])+1,               'Element type: ex.: Quad4PStrain',           elematt_settype_callback)
+            Draw.Menu       (d['models_menu'], EVT_DEL+tag, ggx+160, row, 100, rh, int(r[1])+1,               'Constitutive model: ex.: LinElastic',       elematt_setmodel_callback)
+            Draw.String     ('',               EVT_DEL+tag, ggx+260, row, 100, rh, r[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            elematt_setprms_callback)
+            Draw.String     ('',               EVT_DEL+tag, ggx+360, row,  80, rh, r[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', elematt_setinis_callback); row -= rh
 
         # FEM -- main
         row -= 2*sgy

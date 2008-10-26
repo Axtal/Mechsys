@@ -410,6 +410,11 @@ def gen_unstruct_mesh():
 def set_elems(obj, nelems, elems):
     obj.properties['nelems'] = nelems
     obj.properties['elems']  = elems
+    obj.properties['eatts']  = {}
+    for t in obj.properties['elems']['tags']:
+        tag = str(t)
+        if not obj.properties['eatts'].has_key(tag):
+            obj.properties['eatts'][tag] = '0 0 E=200_nu=0.2 Sx=0_Sy=0_Sz=0_Sxy=0' # ElemType Model Prms Inis
 
 
 @print_timing

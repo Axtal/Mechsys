@@ -155,16 +155,26 @@ def store_scalars(geo,obj):
     for i, key in enumerate(keys):
         if has_key[i]: obj.properties['scalars'][key] = vals[i]
 
+
 def get_brys_atts(obj):
     d = di.load_dict()
     nbrys = di.get_nbrys_numeric (obj)
     ebrys = di.get_ebrys_numeric (obj)
+    # fbrys
     fbrys = []
     if obj.properties.has_key('fbrys'):
         for k, v in obj.properties['fbrys'].iteritems():
             fbrys.append([int(k), d['dofvars'][int(v[0])], v[1]])
-    eatts = di.get_eatts_numeric (obj)
+
+    # eatts
+    eatts = []
+    if obj.properties.has_key('eatts'):
+        for k, v in obj.properties['eatts'].iteritems():
+            r = v.split()
+            eatts.append([int(k), d['etypes'][int(r[0])], d['models'][int(r[1])], r[2].replace('_',' '), r[3].replace('_',' ')])
+
     return nbrys, ebrys, fbrys, eatts
+
 
 def run_analysis(obj):
     # set cursor

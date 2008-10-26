@@ -40,8 +40,13 @@ def load_dict():
         dict['warp_scale']    = '10'
 
         dict['dofvars'] = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q' }
-
         dict['dofvars_menu'] = 'DOF Vars %t|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
+
+        dict['etypes'] = { 0:'Hex8Equilib', 1:'Hex8Diffusion', 2:'Quad4PStrain', 3:'Quad4PStress', 4:'Quad4Diffusion', 5:'Tri3PStrain', 6:'Tri3PStress', 7:'Tri3Diffusion', 8:'Rod' }
+        dict['etypes_menu'] = 'Element Types %t|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
+
+        dict['models'] = { 0:'LinElastic', 1:'LinDiffusion' }
+        dict['models_menu'] = 'Constitutive Models %t|LinDiffusion %x2|LinElastic %x1'
 
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
@@ -49,6 +54,20 @@ def load_dict():
 
 
 # ====================================================================================== Util
+
+def sarray_set_val(strarr,item,value):
+    # Set value of item item in a StringArray of length len
+    # Ex.: Input: strarr = 'A BB CCC DD_DD' (len==4)
+    #             item   = 2
+    #             value  = 'XX'
+    # Output: 'A BB XX DD_DD'
+    d       = strarr.split()
+    d[item] = value
+    for i, v in enumerate(d):
+        if i==0: res  = v
+        else:    res += ' '+v
+    return res
+
 
 def rgb2html(rgb):
     # convert (R, G, B) tuple to a html value RRGGBB
@@ -702,72 +721,4 @@ def del_ebry(obj, id):
     for i in range(len(ebrys)):
         if i!=id:
             set_ebry (obj, k, ebrys[i][0], ebrys[i][1], ebrys[i][2])
-            k += 1
-
-
-# ======================================================================= Elements attributes
-
-def set_eatt(obj, id, tag, type, model, prms, inis):
-    prms = '_'.join(prms.split())
-    inis = '_'.join(inis.split())
-    try:
-        prop      = obj.getProperty ('eatt_'+str(id))
-        prop.data = tag+' '+type+' '+model+' '+prms+' '+inis
-    except:
-        obj.addProperty ('eatt_'+str(id), tag+' '+type+' '+model+' '+prms+' '+inis, 'STRING')
-
-def set_eatt_tag(obj, id, tag): # property must exist
-    p = obj.getProperty ('eatt_'+str(id))
-    d = p.data.split()
-    p.data = tag+' '+d[1]+' '+d[2]+' '+d[3]+' '+d[4]
-
-def set_eatt_type(obj, id, type): # property must exist
-    p = obj.getProperty ('eatt_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+type+' '+d[2]+' '+d[3]+' '+d[4]
-
-def set_eatt_model(obj, id, model): # property must exist
-    p = obj.getProperty ('eatt_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+model+' '+d[3]+' '+d[4]
-
-def set_eatt_prms(obj, id, prms): # property must exist
-    prms = '_'.join(prms.split())
-    p = obj.getProperty ('eatt_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+d[2]+' '+prms+' '+d[4]
-
-def set_eatt_inis(obj, id, inis): # property must exist
-    inis = '_'.join(inis.split())
-    p = obj.getProperty ('eatt_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+d[2]+' '+d[3]+' '+inis
-
-def get_eatts(obj):
-    res = []
-    for p in obj.getAllProperties():
-        if p.name[:4]=='eatt':
-            d = p.data.split()
-            res.append ([d[0], d[1], d[2], d[3].replace('_',' '), d[4].replace('_',' ')])
-    return res 
-
-def get_eatts_numeric(obj):
-    res = []
-    for p in obj.getAllProperties():
-        if p.name[:4]=='eatt':
-            d = p.data.split()
-            res.append ([int(d[0]), d[1], d[2], d[3].replace('_',' '), d[4].replace('_',' ')])
-    return res 
-
-def del_all_eatts(obj):
-    for p in obj.getAllProperties():
-        if p.name[:4]=='eatt': obj.removeProperty(p)
-
-def del_eatt(obj, id):
-    eatts = get_eatts (obj)
-    del_all_eatts (obj)
-    k = 0
-    for i in range(len(eatts)):
-        if i!=id:
-            set_eatt (obj, k, eatts[i][0], eatts[i][1], eatts[i][2], eatts[i][3], eatts[i][4])
             k += 1
