@@ -138,7 +138,7 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 				for (size_t j=0; j<M->ElemNFTags(i); ++j) // j is the local face id
 				{
 					int tag = M->ElemFTag(i, j);
-					if (tag<0) // this element has a face tag
+					if (tag!=0) // this element has a face tag
 					{
 						if (tag==(*FacesBrys)[k].get<0>())
 						{
@@ -162,7 +162,7 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 				for (size_t j=0; j<M->ElemNETags(i); ++j) // j is the local edge id
 				{
 					int tag = M->ElemETag(i, j);
-					if (tag<0) // this element has an edge tag
+					if (tag!=0) // this element has an edge tag
 					{
 						if (tag==(*EdgesBrys)[k].get<0>())
 						{
