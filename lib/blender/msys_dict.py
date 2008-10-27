@@ -19,7 +19,7 @@ def load_dict():
         dict['newpoint_x']    = '0.0'
         dict['newpoint_y']    = '0.0'
         dict['newpoint_z']    = '0.0'
-        dict['newetag']       = -10
+        dict['newetag']       = [-10, 0]
         dict['newftag']       = [-100, 0x000080]
         dict['fillet_radius'] = '0.0'
         dict['fillet_steps']  = 10
@@ -350,87 +350,6 @@ def get_btag(obj):
         return -1
 
 
-# ====================================================================================== Tags
-
-def set_etag(obj, id, tag):
-    # In:
-    #      id  = global ID of edge/face/elem with tag
-    #      tag = the tag of edge/face/elem with tag
-    set_int_property (obj, 'edge_'+str(id), tag)
-
-def get_tags(obj, key):
-    # In:
-    #      key = 'edge', 'face', or 'elem'
-    # Out:
-    #      [ [e/f/e_global_id, tag], ... num edges/face/elem with tags]
-    res = []
-    for p in obj.getAllProperties():
-        if p.name[:4]==key:
-            res.append ([int(p.name[5:]), p.data])
-    return res 
-
-def get_etags(obj, msh):
-    # Out:   {(v1,v2):tag1,  (v1,v2):tag2,  ... num edges with tags}
-    res = {}
-    for p in obj.getAllProperties():
-        if p.name[:4]=='edge':
-            eid = int(p.name[5:])
-            res[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = p.data
-    return res
-
-def get_etags_(obj):
-    # Out:   {id1:tag1, id2:tag2, ... num edges with tags}
-    res = {}
-    for p in obj.getAllProperties():
-        if p.name[:4]=='edge':
-            eid      = int(p.name[5:])
-            res[eid] = p.data
-    return res 
-
-def get_tags_list(obj, key, global_ids):
-    # In:
-    #      key        = 'edge' or 'face'
-    #      global_ids = edge/face global ids sorted in _Blender_ way
-    # Out:
-    #      tags_list  = list with tags sorted in _MechSys_ way
-    #
-    # MechSys:                Blender (returned by 'face.edge_keys')
-    #            3                            2
-    #      +-----------+                +-----------+   
-    #      |           |                |           |
-    #      |           |                |           |   
-    #    0 |           | 1    <<==    3 |           | 1
-    #      |           |                |           |
-    #      |           |                |           |   
-    #      +-----------+                +-----------+   
-    #            2                            0
-    #
-    # Examples:
-    #   2D (key=='edge'):
-    #                         3                           12 (-12)
-    #                   +-----------+                +-----------+   
-    #                   |           |                |           |
-    #                   |           |                |           |   
-    #                 0 |           | 1    <<==   13 |           | 11 (-11)
-    #                   |           |           (-13)|           |
-    #                   |           |                |           |   
-    #                   +-----------+                +-----------+   
-    #                         2                           10 (-10)
-    #                In:  global_ids = [10, 11, 12, 13]
-    #                Out: tags_list  = [-13, -11, -10, -12] (local/MechSys sorted)
-    #
-    ntags     = len(global_ids) # 4 for 2D or 12(edges) or 6(faces) for 3D
-    tags      = get_tags (obj, key)
-    tags_list = [0 for i in range(ntags)]
-    if ntags==4: map = [2, 1, 3, 0] # map Blender face edge local ID to MechSys edge local ID
-    for t in tags:
-        if t[0] in global_ids and t[1]<0:
-            local_id            = map[global_ids.index(t[0])]
-            tags_list[local_id] = t[1]
-    if sum(tags_list)==0: tags_list=[]
-    return tags_list
-
-
 # ====================================================================== Minangle and maxarea
 
 def set_minangle(obj, value):
@@ -672,28 +591,6 @@ def del_nbryid(obj, id):
 
 # ========================================================================== Edges boundaries
 
-def set_ebry(obj, id, tag, key, value):
-    try:
-        prop      = obj.getProperty ('ebry_'+str(id))
-        prop.data = tag+' '+key+' '+value
-    except:
-        obj.addProperty ('ebry_'+str(id), tag+' '+key+' '+value, 'STRING')
-
-def set_ebry_tag(obj, id, tag): # property must exist
-    p = obj.getProperty ('ebry_'+str(id))
-    d = p.data.split()
-    p.data = tag+' '+d[1]+' '+d[2]
-
-def set_ebry_key(obj, id, key): # property must exist
-    p = obj.getProperty ('ebry_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+key+' '+d[2]
-
-def set_ebry_val(obj, id, val): # property must exist
-    p = obj.getProperty ('ebry_'+str(id))
-    d = p.data.split()
-    p.data = d[0]+' '+d[1]+' '+val
-
 def get_ebrys(obj):
     res = []
     for p in obj.getAllProperties():
@@ -709,16 +606,3 @@ def get_ebrys_numeric(obj):
             d = p.data.split()
             res.append ([int(d[0]), d[1], float(d[2])])
     return res 
-
-def del_all_ebrys(obj):
-    for p in obj.getAllProperties():
-        if p.name[:4]=='ebry': obj.removeProperty(p)
-
-def del_ebry(obj, id):
-    ebrys = get_ebrys (obj)
-    del_all_ebrys (obj)
-    k = 0
-    for i in range(len(ebrys)):
-        if i!=id:
-            set_ebry (obj, k, ebrys[i][0], ebrys[i][1], ebrys[i][2])
-            k += 1

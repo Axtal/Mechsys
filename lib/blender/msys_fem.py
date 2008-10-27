@@ -108,7 +108,15 @@ def set_geo_linele(obj,nbrys,eatts):
         msh.verts = ori
 
         # Edge tags
-        etags = di.get_etags_ (obj)
+        #etags = di.get_edgetags_ (obj)
+        #def get_edgetags_(obj):
+            # Out:   {id1:tag1, id2:tag2, ... num edges with tags}
+            #res = {}
+            #for p in obj.getAllProperties():
+                #if p.name[:4]=='edge':
+                    #eid      = int(p.name[5:])
+                    #res[eid] = p.data
+        #return res 
         if len(etags)!=len(msh.edges): raise Exception('All rods must have an edge tag')
 
         # Elements
@@ -159,7 +167,13 @@ def store_scalars(geo,obj):
 def get_brys_atts(obj):
     d = di.load_dict()
     nbrys = di.get_nbrys_numeric (obj)
-    ebrys = di.get_ebrys_numeric (obj)
+
+    # ebrys
+    ebrys = []
+    if obj.properties.has_key('ebrys'):
+        for k, v in obj.properties['ebrys'].iteritems():
+            ebrys.append([int(k), d['dofvars'][int(v[0])], v[1]])
+
     # fbrys
     fbrys = []
     if obj.properties.has_key('fbrys'):
@@ -273,6 +287,9 @@ def paraview(obj):
     fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
     if Blender.sys.exists(fn):
         Blender.Window.WaitCursor(1)
-        pid = subprocess.Popen(['paraview', '--data='+fn]).pid
+        try: pid = subprocess.Popen(['paraview', '--data='+fn]).pid
+        except:
+            Blender.Window.WaitCursor(0)
+            raise Exception('Paraview is not available, please install it first')
         Blender.Window.WaitCursor(0)
     else: raise Exception('File <'+fn+'> does not exist (please, run analysis first)')

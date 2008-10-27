@@ -136,15 +136,6 @@ if dict['show_props']:
                                 BGL.glRasterPos3f (msh.verts[z_plus].co[0], msh.verts[z_plus].co[1], msh.verts[z_plus].co[2])
                                 Draw.Text         ('+')
 
-                    # draw edge tags
-                    if dict['show_etags']:
-                        for t in di.get_tags (obj, 'edge'):
-                            if t[1]<0:
-                                pos = msh.edges[t[0]].v1.co + 0.60*(msh.edges[t[0]].v2.co-msh.edges[t[0]].v1.co)
-                                BGL.glColor3f     (0.0, 0.0, 0.0)
-                                BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                                Draw.Text         (str(t[1]))
-
                     # draw regions
                     rgs = di.get_regs (obj)
                     for r in rgs:
@@ -159,14 +150,23 @@ if dict['show_props']:
                         BGL.glRasterPos3f (float(h[0]), float(h[1]), float(h[2]))
                         Draw.Text         ('hole')
 
+                # draw edge tags
+                if dict['show_etags']:
+                    if obj.properties.has_key('etags'):
+                        for k, v in obj.properties['etags'].iteritems():
+                            eid = int(k)
+                            pos = msh.edges[eid].v1.co + 0.60*(msh.edges[eid].v2.co-msh.edges[eid].v1.co)
+                            BGL.glColor3f     (0.0, 0.0, 0.0)
+                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                            Draw.Text         (str(v[0]))
+
                 # draw face tags
                 if dict['show_ftags']:
                     if obj.properties.has_key('ftags'):
                         BGL.glBlendFunc (BGL.GL_SRC_ALPHA, BGL.GL_ONE)
-                        for eids in obj.properties['ftags']:
-                            ftag     = obj.properties['ftags'][eids][0]
-                            clr      = di.hex2rgb(obj.properties['ftags'][eids][1])
-                            ids      = [int(id) for id in eids.split('_')]
+                        for k, v in obj.properties['ftags'].iteritems():
+                            clr      = di.hex2rgb(v[1])
+                            ids      = [int(id) for id in k.split('_')]
                             eds, vds = di.sort_edges_and_verts (msh, ids, msh.edges[ids[0]].v1.index) # will erase ids
                             cen      = msh.verts[vds[0]].co/len(eds)
                             for i in range(1,len(eds)):
@@ -186,7 +186,7 @@ if dict['show_props']:
                                 BGL.glEnable  (BGL.GL_DEPTH_TEST)
                             BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
-                            if dict['show_tags_txt']: Draw.Text (str(ftag))
+                            if dict['show_tags_txt']: Draw.Text (str(v[0]))
 
                 # draw elements information
                 if dict['show_elems']:

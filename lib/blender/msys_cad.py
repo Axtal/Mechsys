@@ -64,13 +64,11 @@ EVT_FEM_ADDNBRY      = 25 # add nodes boundary (given coordinates)
 EVT_FEM_DELALLNBRY   = 26 # delete all nodes boundary
 EVT_FEM_ADDNBRYID    = 27 # add nodes boundary (given nodes IDs)
 EVT_FEM_DELALLNBRYID = 28 # delete all nodes boundary
-EVT_FEM_ADDEBRY      = 29 # add edges boundary
-EVT_FEM_DELALLEBRY   = 30 # delete all edges boundary
-EVT_FEM_RUN          = 31 # run a FE simulation
-EVT_FEM_SCRIPT       = 32 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 33 # view in ParaView
+EVT_FEM_RUN          = 29 # run a FE simulation
+EVT_FEM_SCRIPT       = 30 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 31 # view in ParaView
 # Results
-EVT_SHOWHIDE_RES     = 34 # show/hide results box
+EVT_SHOWHIDE_RES     = 32 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -174,8 +172,11 @@ def button_event(evt):
         # set edges tag
         elif evt==EVT_MESH_SETETAG:
             edm, obj, msh = di.get_msh()
-            for id in msh.edges.selected():
-                di.set_etag (obj, id, dict['newetag'])
+            for eid in msh.edges.selected():
+                if not obj.properties.has_key('etags'): obj.properties['etags'] = {}
+                if dict['newetag'][0]==0: obj.properties['etags'].pop(str(eid))
+                else:                     obj.properties['etags'].update({str(eid):dict['newetag']})
+                if len(obj.properties['etags'])==0: obj.properties.pop('etags')
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1) # return to EditMode
 
@@ -315,24 +316,6 @@ def button_event(evt):
                 result  = Blender.Draw.PupMenu(message)
                 if result>0:
                     di.del_all_nbryids(obj)
-                    Blender.Window.QRedrawAll()
-
-        # add edges boundary
-        elif evt==EVT_FEM_ADDEBRY:
-            obj = di.get_obj()
-            if obj!=None:
-                ebrys = di.get_ebrys (obj)
-                di.set_ebry (obj, len(ebrys), '-10', 'uy', '0.0')
-                Blender.Window.QRedrawAll()
-
-        # delete all edges boundary
-        elif evt==EVT_FEM_DELALLEBRY:
-            obj = di.get_obj()
-            if obj!=None:
-                message = 'Confirm delete ALL?%t|Yes'
-                result  = Blender.Draw.PupMenu(message)
-                if result>0:
-                    di.del_all_ebrys(obj)
                     Blender.Window.QRedrawAll()
 
         # run a FE simulation
@@ -501,7 +484,8 @@ def nonlinz_callback(evt,val):
 
 def etag_callback(evt,val):
     dict = di.load_dict()
-    dict['newetag'] = val
+    dict['newetag'] = [val, dict['newetag'][1]]
+    Blender.Window.QRedrawAll()
 
 def ftag_callback(evt,val):
     dict = di.load_dict()
@@ -659,26 +643,17 @@ def nodebryid_deloneebry_callback(evt,val):
 
 # ---------------------------------- ebrys
 
-def edgebry_settag_callback(evt,val):
-    obj = di.get_obj()
-    if obj!=None:
-        di.set_ebry_tag (obj, evt-EVT_DEL, str(val))
-
 def edgebry_setkey_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        di.set_ebry_key (obj, evt-EVT_DEL, val)
+        tag = str(evt-EVT_DEL)
+        obj.properties['ebrys'][tag][0] = val-1 # DOFVar==uz,fx,...
 
 def edgebry_setval_callback(evt,val):
     obj = di.get_obj()
     if obj!=None:
-        di.set_ebry_val (obj, evt-EVT_DEL, val)
-
-def edgebry_deloneebry_callback(evt,val):
-    obj = di.get_obj()
-    if obj!=None:
-        di.del_ebry (obj,evt-EVT_DEL)
-        Blender.Window.QRedrawAll()
+        tag = str(evt-EVT_DEL)
+        obj.properties['ebrys'][tag][1] = float(val) # Val
 
 
 # ---------------------------------- fbrys
@@ -799,7 +774,7 @@ def gui():
     hols     = []
     nbrys    = []
     nbryids  = []
-    ebrys    = []
+    ebrys    = {}
     fbrys    = {}
     eatts    = {}
     # Set default values
@@ -820,7 +795,7 @@ def gui():
         hols     = di.get_hols     (obj)
         nbrys    = di.get_nbrys    (obj)
         nbryids  = di.get_nbryids  (obj)
-        ebrys    = di.get_ebrys    (obj)
+        ebrys    = obj.properties['ebrys'] if obj.properties.has_key('ebrys') else {}
         fbrys    = obj.properties['fbrys'] if obj.properties.has_key('fbrys') else {}
         eatts    = obj.properties['eatts'] if obj.properties.has_key('eatts') else {}
 
@@ -946,6 +921,7 @@ def gui():
     Draw.PushButton   ('Refresh',   EVT_REFRESH,       wid-ggx-80-70, row+2, 60, rh-4, 'Refresh GUI')
     Draw.PushButton   ('Show/Hide', EVT_SHOWHIDE_MESH, wid-ggx-80,    row+2, 80, rh-4, 'Show/Hide this box')
     if d['gui_show_mesh']:
+        netag = d['newetag'][0]
         nftag = d['newftag'][0]
         nfclr = d['newftag'][1]
         BGL.glColor3f     (0.85, 0.85, 0.85)
@@ -953,11 +929,11 @@ def gui():
         BGL.glColor3f     (0.0, 0.0, 0.0)
         BGL.glRasterPos2i (ggx, row+4)
         Draw.Text         ('Set tags:')
-        Draw.Number       ('',     EVT_NONE,          dx,     row, 80, rh, d['newetag'], -100, 0, 'New edge tag',etag_callback)
-        Draw.PushButton   ('Edge', EVT_MESH_SETETAG,  dx+80,  row, 80, rh,                        'Set edges tag (0 => remove tag)')
-        Draw.Number       ('',     EVT_NONE,          dx+160, row, 80, rh, nftag,       -1000, 0, 'New face tag', ftag_callback)
-        Draw.ColorPicker  (        EVT_NONE,          dx+240, row, 80, rh, di.hex2rgb(nfclr),     'Select color to paint tagged face',   fclr_callback)
-        Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+320, row, 80, rh,                        'Set faces tag (0 => remove tag)'); row -= rh
+        Draw.Number       ('',     EVT_NONE,          dx,     row, 80, rh, netag,    -100, 0, 'New edge tag', etag_callback)
+        Draw.PushButton   ('Edge', EVT_MESH_SETETAG,  dx+80,  row, 80, rh,                    'Set edges tag (0 => remove tag)')
+        Draw.Number       ('',     EVT_NONE,          dx+160, row, 80, rh, nftag,   -1000, 0, 'New face tag', ftag_callback)
+        Draw.ColorPicker  (        EVT_NONE,          dx+240, row, 80, rh, di.hex2rgb(nfclr), 'Select color to paint tagged face',   fclr_callback)
+        Draw.PushButton   ('Face', EVT_MESH_SETFTAG,  dx+320, row, 80, rh,                    'Set faces tag (0 => remove tag)'); row -= rh
 
         # Mesh -- structured
         dx   = 2*gx+70
@@ -1131,15 +1107,13 @@ def gui():
         Draw.Text         ('Edges boundaries')
         BGL.glColor3f     (0.72, 0.72, 0.8)
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h);
-        BGL.glColor3f     (0.0, 0.0, 0.0)
-        Draw.PushButton   ('Add',        EVT_FEM_ADDEBRY,    wid-ggx-70-80, row+2, 60, rh-4, 'Add edges boundary')
-        Draw.PushButton   ('Delete all', EVT_FEM_DELALLEBRY, wid-ggx-80,    row+2, 80, rh-4, 'Delete all edges boundary'); row -= rh
+        BGL.glColor3f     (0.0, 0.0, 0.0); row -= rh
         BGL.glRasterPos2i (ggx, row+5); Draw.Text('        Tag         Key        Value'); row -= rh
-        for i, eb in enumerate(ebrys):
-            Draw.Number     ('',    EVT_DEL+i, ggx    , row, 80, rh, int(eb[0]),-1000,0,'Set the edge tag',                                                          edgebry_settag_callback)
-            Draw.String     ('',    EVT_DEL+i, ggx+ 80, row, 40, rh, eb[1],  2,         'Key such as ux, uy, fx, fz corresponding to the essential/natural variable',edgebry_setkey_callback)
-            Draw.String     ('',    EVT_DEL+i, ggx+120, row, 80, rh, eb[2],128,         'Value of essential/natural boundary condition',                             edgebry_setval_callback)
-            Draw.PushButton ('Del', EVT_DEL+i, ggx+200, row, 40, rh, 'Delete this row',                                                                              edgebry_deloneebry_callback); row -= rh
+        for k, v in ebrys.iteritems():
+            tag = int(k)
+            draw_label  (ggx,row,40,rh, k)
+            Draw.Menu   (d['dofvars_menu'], EVT_DEL+tag, ggx+40, row, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', edgebry_setkey_callback)
+            Draw.String ('',                EVT_DEL+tag, ggx+80, row, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              edgebry_setval_callback); row -= rh
 
         # FEM -- faces bry
         h = h_fea_fbrys

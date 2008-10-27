@@ -264,8 +264,32 @@ def break_edge(at_mid=False):
     else: raise Exception('Please, select a Mesh object before calling this function')
 
 
-# =========================================================================== Structured mesh
+# ====================================================================================== Mesh
 
+def get_list_etags(obj,msh):
+    # edge tags
+    etags = {}
+    if obj.properties.has_key('etags'):
+        for k, v in obj.properties['etags'].iteritems():
+            eid = int(k)
+            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
+    return etags
+
+def get_list_ftags_fclrs(obj,msh):
+    # face tags and colors
+    ftags = {}
+    fclrs = {}
+    if obj.properties.has_key('ftags'):
+        for k, v in obj.properties['ftags'].iteritems():
+            # tags
+            ids = [int(id) for id in k.split('_')]
+            ftags[tuple(ids)] = v[0]
+            # colors
+            fclrs[v[0]] = v[1]
+    return ftags, fclrs
+
+
+# =========================================================================== Structured mesh
 
 def gen_struct_mesh():
     # get objects
@@ -312,22 +336,18 @@ def gen_struct_mesh():
                 # edges
                 edges = [(ed.v1.index, ed.v2.index) for ed in msh.edges]
 
+                # edge tags
+                etags = get_list_etags(obj,msh)
+
                 # face tags and colors
-                ftags = {}
-                if obj.properties.has_key('ftags'):
-                    for k, v in obj.properties['ftags'].iteritems():
-                        # tags
-                        ids = [int(id) for id in k.split('_')]
-                        ftags[tuple(ids)] = v[0]
-                        # colors
-                        fclrs[v[0]] = v[1]
+                ftags, fclrs = get_list_ftags_fclrs(obj,msh)
 
                 # new block
                 bks.append(ms.mesh_block());
                 bks[-1].set_coords (di.get_btag(obj),               # tag to be replicated to all elements
                                     verts,                          # vertices' coordinates
                                     edges,                          # edges
-                                    di.get_etags(obj,msh),          # edge tags
+                                    etags,                          # edge tags
                                     ftags,                          # face tags
                                     wx, wy, wz,                     # weigths x, y, and z
                                     origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
@@ -375,7 +395,7 @@ def gen_unstruct_mesh():
 
         # Set polygon
         mu  = ms.mesh_unstructured()
-        ets = di.get_etags (obj,msh)
+        ets = get_list_etags(obj,msh)
         rgs = di.get_regs  (obj)
         hls = di.get_hols  (obj)
         #mu.set_3d(0)
@@ -419,9 +439,13 @@ def set_elems(obj, nelems, elems):
 
 @print_timing
 def set_etags(obj, msh, etags):
+    obj.properties['etags'] = {}
+    obj.properties['ebrys'] = {}
     for et in etags:
         edge_id = msh.findEdges (et[0], et[1])
-        di.set_etag (obj, edge_id, etags[et])
+        obj.properties['etags'][str(edge_id)] = [etags[et], 0] # tag, type
+        if not obj.properties['ebrys'].has_key(str(etags[et])):
+            obj.properties['ebrys'][str(etags[et])] = [0, 0.0] # DOFVar==ux,uy,..., Val
 
 
 @print_timing
@@ -436,7 +460,7 @@ def set_ftags(obj, msh, ftags, fclrs):
             edge_id = msh.findEdges (int(vs[0]), int(vs[1]))
             if i>0: eids += '_'+str(edge_id)
             else:   eids +=     str(edge_id)
-        obj.properties['ftags'][eids] = [ftags[ft], fclrs[ftags[ft]]]
+        obj.properties['ftags'][eids] = [ftags[ft], fclrs[ftags[ft]]] # tag, color
         if not obj.properties['fbrys'].has_key(str(ftags[ft])):
             obj.properties['fbrys'][str(ftags[ft])] = [0, 0.0, fclrs[ftags[ft]]] # DOFVar==uz..., Val, Clr
 
