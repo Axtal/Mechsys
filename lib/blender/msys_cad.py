@@ -18,7 +18,9 @@
 
 import math
 import Blender
+from   Blender.Mathutils import Vector
 import bpy
+import msys_dict as di
 
 
 def add_point(x, y, z):
@@ -93,33 +95,21 @@ def add_spline_from_file(filename):
     Blender.Window.WaitCursor(0)
 
 
-def distance(p1,p2):
-    d = p1 - p2
-    return math.sqrt(math.pow(d[0],2)+math.pow(d[1],2)+math.pow(d[2],2))
-
-
-def closest(pt,pointlist):
-    idx = 0
-    min = distance(pt,pointlist[idx])
-    for i in range(1,len(pointlist)):
-        d = distance(pt,pointlist[i])
-        if d<min:
-            min = d
-            idx = i
-    return min, idx
-
-
-def arc_point(msh,cen,sp,ep,steps):
+def arc_point(msh,sp_idx,ep_idx,cen,sp,ep,steps):
+    spp = msh.verts[sp_idx]
+    epp = msh.verts[ep_idx]
     dr1 = sp-cen
     dr2 = ep-cen
-    axi = Blender.Mathutils.CrossVecs(dr2,dr1)
-    ang = Blender.Mathutils.AngleBetweenVecs(dr2,dr1)
-    rot = Blender.Mathutils.RotationMatrix(ang/steps, 3, 'r', axi)
+    axi = Blender.Mathutils.CrossVecs        (dr2,dr1)
+    ang = Blender.Mathutils.AngleBetweenVecs (dr2,dr1)
+    rot = Blender.Mathutils.RotationMatrix   (ang/steps, 3, 'r', axi)
     for i in range(steps-1):
         pt  = cen+rot*dr1
-        msh.verts.extend(pt)
-        msh.edges.extend(msh.verts[len(msh.verts)-2],msh.verts[len(msh.verts)-1])
         dr1 = pt-cen
+        msh.verts.extend(pt)
+        if i==0: msh.edges.extend (spp, msh.verts[len(msh.verts)-1])
+        else:    msh.edges.extend (msh.verts[len(msh.verts)-2], msh.verts[len(msh.verts)-1])
+    msh.edges.extend (msh.verts[len(msh.verts)-1], epp)
 
 
 def edge_intersect():
@@ -185,54 +175,49 @@ def fillet(radius,steps):
             if res==None: raise Exception('These edges are parallel (obj=%s)' % obj.name)
             else:
                 i1, i2 = res
-                # fillet
-                if i1!=i2: raise Exception('These two edges do not intersect (obj=%s)' % obj.name)
+                if i1!=i2: raise Exception('These two edges do not intersect (the edges must be coplanar) (obj=%s)' % obj.name)
                 else:
-                    #
-                    #                   ep  _,--* p2
-                    #                  _,-*'
-                    #     a=|ep-p1|,--' /
-                    #        _,--'     /radius  cen
-                    #    p1 *_--------|----------*-  d=|c-p1|
-                    #         `--,_    \
-                    #              `--,_\
-                    #                   `-*,_
-                    #                   sp   `--* p3
-                    di, i = closest(i1,[v1.co,v2.co])
-                    dj, j = closest(i1,[v3.co,v4.co])
-                    if i==0:
-                        v1.co = i1
-                        p1,p2 = v1,v2
-                    else:
-                        v2.co = i1
-                        p1,p2 = v2,v1
-                    if j==0:
-                        msh.edges[sel[1]].v1 = p1
-                        if v3!=p1: msh.verts.delete(v3)
-                        p3 = msh.edges[sel[1]].v2
-                    else:
-                        msh.edges[sel[1]].v2 = p1
-                        if v4!=p1: msh.verts.delete(v4)
-                        p3 = msh.edges[sel[1]].v1
+                    #                p1 ___o b
+                    #           a _,--@'
+                    #       _,-- @         p3
+                    #   i1 @_---------------@
+                    #        `-- @_   p2
+                    #           c  '--@,____@ d
+                    w1 = v1.co-i1
+                    w2 = v2.co-i1
+                    if w1.length>w2.length: a, b = v2, v1
+                    else:                   a, b = v1, v2
+                    w1 = v3.co-i1
+                    w2 = v4.co-i1
+                    if w1.length>w2.length: c, d, c_is_v4 = v4, v3, True
+                    else:                   c, d, c_is_v4 = v3, v4, False
                     if radius>0.0:
-                        # vectors along the edges
-                        e1  = p2.co-p1.co; e1.normalize()
-                        e2  = p3.co-p1.co; e2.normalize()
-                        alp = Blender.Mathutils.AngleBetweenVecs(e1,e2)/2.0
-                        a   = radius/math.tan(math.radians(alp))
-                        d   = math.sqrt(math.pow(a,2)+math.pow(radius,2))
-                        ep  = p1.co+a*e1
-                        sp  = p1.co+a*e2
-                        mid = Blender.Mathutils.MidpointVecs(sp,ep); mid-=p1.co; mid.normalize()
-                        cen = p1.co+d*mid
-                        # add points to the arch
-                        msh.verts.extend(sp)
-                        msh.edges.extend(p3,msh.verts[len(msh.verts)-1])
-                        arc_point(msh,cen,sp,ep,steps)
-                        msh.verts.extend(ep)
-                        msh.edges.extend(msh.verts[-2],msh.verts[-1])
-                        msh.edges.extend(msh.verts[-1],p2)
-                        msh.verts.delete(p1)
+                        if c==a:
+                            msh.verts.extend(c.co)
+                            if c_is_v4: msh.edges[sel[1]].v2 = msh.verts[-1]
+                            else:       msh.edges[sel[1]].v1 = msh.verts[-1]
+                            c = msh.verts[-1]
+                        a.co = i1
+                        c.co = i1
+                        e1   = b.co-a.co; e1.normalize()
+                        e2   = d.co-c.co; e2.normalize()
+                        e1e2 = e1+e2
+                        e3   = e1e2/e1e2.length
+                        alp  = math.radians(Blender.Mathutils.AngleBetweenVecs(e1,e2))/2.0
+                        l    = radius/math.sin(alp)
+                        m    = radius/math.tan(alp)
+                        p1   = i1+m*e1
+                        p2   = i1+m*e2
+                        p3   = i1+l*e3
+                        a.co = p1
+                        c.co = p2
+                        arc_point(msh,c.index,a.index,p3,p2,p1,steps)
+                    else:
+                        a.co = i1
+                        dcor = d.co
+                        msh.verts.extend (dcor[0], dcor[1], dcor[2])
+                        msh.edges.extend (a, d)
+                        msh.edges.delete (sel[1])
                     Blender.Window.RedrawAll()
         else: raise Exception('Please, select exaclty two edges (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
