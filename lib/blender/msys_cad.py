@@ -1,5 +1,24 @@
 #!BPY
 
+########################################################################
+# MechSys - Open Library for Mechanical Systems                        #
+# Copyright (C) 2005 Dorival M. Pedroso, Raul D. D. Farfan             #
+#                                                                      #
+# This program is free software: you can redistribute it and/or modify #
+# it under the terms of the GNU General Public License as published by #
+# the Free Software Foundation, either version 3 of the License, or    #
+# any later version.                                                   #
+#                                                                      #
+# This program is distributed in the hope that it will be useful,      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         #
+# GNU General Public License for more details.                         #
+#                                                                      #
+# You should have received a copy of the GNU General Public License    #
+# along with this program. If not, see <http://www.gnu.org/licenses/>  #
+########################################################################
+
+
 """
 Name: 'MechSys'
 Blender: 2.46
@@ -22,8 +41,9 @@ from   Blender import Draw, BGL
 from   Blender.Mathutils import Vector
 import bpy
 import msys_draw as dr
+import msys_mesh as me
 import msys_dict as di
-import msys_fem  as fem
+import msys_fem  as fe
 
 
 # ================================================================================= Constants
@@ -225,7 +245,7 @@ def button_event(evt):
 
         # generate structured mesh via MechSys
         elif evt==EVT_MESH_GENSTRU:
-            tt = timeit.Timer('msys_draw.gen_struct_mesh()', 'import msys_draw')
+            tt = timeit.Timer('msys_mesh.gen_struct_mesh()', 'import msys_mesh')
             t  = tt.timeit(number=1)
             print '[1;34mMechSys[0m: time spent on generation and drawing = [1;31m',t,'[0m [1;32mseconds[0m'
 
@@ -271,7 +291,7 @@ def button_event(evt):
 
         # generate unstructured mesh via MechSys
         elif evt==EVT_MESH_GENUNSTRU:
-            tt = timeit.Timer('msys_draw.gen_unstruct_mesh()', 'import msys_draw')
+            tt = timeit.Timer('msys_mesh.gen_unstruct_mesh()', 'import msys_mesh')
             t  = tt.timeit(number=1)
             print '[1;34mMechSys[0m: time spent on generation and drawing = [1;31m',t,'[0m [1;32mseconds[0m'
 
@@ -321,18 +341,18 @@ def button_event(evt):
         # run a FE simulation
         elif evt==EVT_FEM_RUN:
             obj = di.get_obj ()
-            fem.run_analysis (obj)
+            fe.run_analysis (obj)
 
         # generate FE script
         elif evt==EVT_FEM_SCRIPT:
             obj = di.get_obj ()
-            fem.gen_script   (obj)
+            fe.gen_script   (obj)
             Blender.Window.Redraw(Blender.Window.Types.TEXT)
 
         # view results in ParaView
         elif evt==EVT_FEM_PARAVIEW:
             obj = di.get_obj ()
-            fem.paraview (obj)
+            fe.paraview (obj)
 
         # ----------------------------------------------------------------------------------- RES 
 
