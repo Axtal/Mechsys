@@ -27,30 +27,34 @@ def load_dict():
     dict = Blender.Registry.GetKey('MechSysDict')
     if not dict:
         dict                  = {}
-        dict['gui_show_set']  = 1
-        dict['gui_show_cad']  = 1
-        dict['gui_show_mesh'] = 1
-        dict['gui_show_fem']  = 1
-        dict['gui_show_res']  = 1
-        dict['inirow']        = 0
+        # GUI
+        dict['gui_show_set']  = True
+        dict['gui_show_cad']  = True
+        dict['gui_show_mesh'] = True
+        dict['gui_show_fem']  = True
+        dict['gui_show_res']  = True
+        dict['gui_inirow']    = 0
+        # SETTINGS
+        dict['show_props']    = False
+        dict['show_blk_ids']  = True
+        dict['show_v_ids']    = True
+        dict['show_e_ids']    = True
+        dict['show_etags']    = True
+        dict['show_ftags']    = True
+        dict['show_elems']    = True
+        dict['show_axes']     = True
+        dict['ftags_opac']    = 0.3
+        # CAD
         dict['newpoint_x']    = '0.0'
         dict['newpoint_y']    = '0.0'
         dict['newpoint_z']    = '0.0'
+        dict['fillet_radius'] = '0.0'
+        dict['fillet_steps']  = 10
+        # MESH
         dict['newblk_3d']     = False
         dict['newetag']       = [-10, 0]
         dict['newftag']       = [-100, 0x000080]
-        dict['fillet_radius'] = '0.0'
-        dict['fillet_steps']  = 10
-        dict['show_props']    = 0
-        dict['show_v_ids']    = 1
-        dict['show_e_ids']    = 1
-        dict['show_f_ids']    = 0
-        dict['show_etags']    = 1
-        dict['show_ftags']    = 1
-        dict['show_tags_txt'] = 1
-        dict['ftags_opac']    = 0.3
-        dict['show_elems']    = 1
-        dict['show_axes']     = 1
+        # RESULTS
         dict['show_results']  = 0
         dict['show_scalar']   = 0
         dict['show_warp']     = 1
@@ -69,6 +73,17 @@ def load_dict():
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
     return dict
+
+def set_key(key,value):
+    Blender.Registry.GetKey('MechSysDict')[key] = value
+
+def set_key_and_redraw(key,value):
+    Blender.Registry.GetKey('MechSysDict')[key] = value
+    Blender.Window.QRedrawAll()
+
+def toggle_key_and_redraw(key):
+    Blender.Registry.GetKey('MechSysDict')[key] = not Blender.Registry.GetKey('MechSysDict')[key]
+    Blender.Window.QRedrawAll()
 
 
 # ====================================================================================== Util
@@ -249,134 +264,6 @@ def set_float_property(obj, key, value):
         prop.data = value
     except:
         obj.addProperty (key, value, 'FLOAT')
-
-
-# ====================================================== Local system and number of divisions
-
-def set_local_axis(obj, key, id):
-    # In:
-    #      key = 'x', 'y', or 'z'
-    #      id  = ID of the edge corresponding to the local x, y and z axes
-    set_int_property (obj, key+'_axis', id)
-
-    # set local system: origin and vertices on positive directions
-    ix = get_local_axis(obj, 'x')
-    iy = get_local_axis(obj, 'y')
-    if ix>-1 and iy>-1:
-        msh = obj.getData(mesh=1)
-        ex  = msh.edges[ix]
-        ey  = msh.edges[iy]
-        if ex.v1.index==ey.v1.index:
-            origin = ex.v1.index
-            x_plus = ex.v2.index
-            y_plus = ey.v2.index
-        elif ex.v1.index==ey.v2.index:
-            origin = ex.v1.index
-            x_plus = ex.v2.index
-            y_plus = ey.v1.index
-        elif ex.v2.index==ey.v1.index:
-            origin = ex.v2.index
-            x_plus = ex.v1.index
-            y_plus = ey.v2.index
-        elif ex.v2.index==ey.v2.index:
-            origin = ex.v2.index
-            x_plus = ex.v1.index
-            y_plus = ey.v1.index
-        else:
-            raise Exception('local x-y axes must share the same origin vertex (obj=%s)' % obj.name)
-        set_int_property (obj, 'origin', origin)
-        set_int_property (obj, 'x_plus', x_plus)
-        set_int_property (obj, 'y_plus', y_plus)
-        iz = get_local_axis(obj, 'z')
-        if iz>-1:
-            ez = msh.edges[iz]
-            if ez.v1.index==origin:
-                z_plus = ez.v2.index
-            elif ez.v2.index==origin:
-                z_plus = ez.v1.index
-            else:
-                raise Exception('local x-y-z axes must share the same origin vertex (obj=%s)' % obj.name)
-            set_int_property (obj, 'z_plus', z_plus)
-
-def get_local_axis(obj, key):
-    # In:
-    #      key = 'x', 'y', or 'z'
-    # Out:
-    #      ID of the edge corresponding to the local x, y and z axes
-    try:    id = obj.getProperty(key+'_axis').data
-    except: id = -1
-    return id
-
-def get_local_system(obj):
-    try:    origin = obj.getProperty('origin').data
-    except: origin = -1
-    try:    x_plus = obj.getProperty('x_plus').data
-    except: x_plus = -1
-    try:    y_plus = obj.getProperty('y_plus').data
-    except: y_plus = -1
-    try:    z_plus = obj.getProperty('z_plus').data
-    except: z_plus = -1
-    return origin, x_plus, y_plus, z_plus
-
-
-def set_ndiv(obj, key, ndiv):
-    # In:
-    #      key  = 'x', 'y', or 'z'
-    #      ndiv = number of divisions along 'x', 'y', or 'z'
-    set_int_property (obj, 'ndiv_'+key, ndiv)
-
-def get_ndiv(obj, key):
-    # In:
-    #      key = 'x', 'y', or 'z'
-    # Out:
-    #      ndiv = number of divisions along 'x', 'y', or 'z'
-    try:    ndiv = obj.getProperty('ndiv_'+key).data
-    except: ndiv = -1
-    return ndiv
-
-
-def set_acoef(obj, key, acoef):
-    # In:
-    #      key  = 'x', 'y', or 'z'
-    #      acoef = a coefficient for the divisions function along 'x', 'y', or 'z'
-    set_str_property (obj, 'acoef_'+key, acoef)
-
-def get_acoef(obj, key):
-    # In:
-    #      key = 'x', 'y', or 'z'
-    # Out:
-    #      acoef = a coefficient for the divisions function along 'x', 'y', or 'z'
-    try:    acoef = obj.getProperty('acoef_'+key).data
-    except: acoef = '0'
-    return acoef
-
-
-def set_nonlin(obj, key, nonlin):
-    # In:
-    #      key    = 'x', 'y', or 'z'
-    #      nonlin = 0 or 1
-    set_int_property (obj, 'nonlin_'+key, nonlin)
-
-def get_nonlin(obj, key):
-    # In:
-    #      key = 'x', 'y', or 'z'
-    # Out:
-    #      nonlin = 0 or 1
-    try:    nonlin = obj.getProperty('nonlin_'+key).data
-    except: nonlin = 0
-    return nonlin
-
-
-# ================================================================================ Block tags
-
-def set_btag(obj, tag):
-    set_int_property (obj, 'btag', tag)
-
-def get_btag(obj):
-    try: return obj.getProperty('btag').data
-    except:
-        set_btag(obj, -1)
-        return -1
 
 
 # ====================================================================== Minangle and maxarea
