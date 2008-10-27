@@ -228,9 +228,10 @@ def set_ftags(obj, msh, ftags, fclrs):
             edge_id = msh.findEdges (int(vs[0]), int(vs[1]))
             if i>0: eids += '_'+str(edge_id)
             else:   eids +=     str(edge_id)
-        obj.properties['ftags'][eids] = [ftags[ft], fclrs[ftags[ft]]] # tag, color
-        if not obj.properties['fbrys'].has_key(str(ftags[ft])):
-            obj.properties['fbrys'][str(ftags[ft])] = [0, 0.0, fclrs[ftags[ft]]] # DOFVar==uz..., Val, Clr
+        print fclrs
+        #obj.properties['ftags'][eids] = [ftags[ft], fclrs[ftags[ft]]] # tag, color
+        #if not obj.properties['fbrys'].has_key(str(ftags[ft])):
+            #obj.properties['fbrys'][str(ftags[ft])] = [0, 0.0, fclrs[ftags[ft]]] # DOFVar==uz..., Val, Clr
 
 
 @print_timing

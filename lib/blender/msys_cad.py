@@ -129,11 +129,11 @@ def edge_intersect():
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
-        print '[1;34mMechSys:[0m', msh.edges.selected(), 'edges selected' # TODO: check why sometimes 3 edges are selected
-        if len(msh.edges.selected())==2:
+        sel = di.get_selected_edges(msh)
+        if len(sel)==2:
             # points (vertices)
-            e1 = msh.edges.selected()[0]
-            e2 = msh.edges.selected()[1]
+            e1 = sel[0]
+            e2 = sel[1]
             v1 = msh.edges[e1].v1
             v2 = msh.edges[e1].v2
             v3 = msh.edges[e2].v1
@@ -173,13 +173,13 @@ def fillet(radius,steps):
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
-        print '[1;34mMechSys:[0m', msh.edges.selected(), 'edges selected' # TODO: check why sometimes 3 edges are selected
-        if len(msh.edges.selected())==2:
+        sel = di.get_selected_edges(msh)
+        if len(sel)==2:
             # points (vertices)
-            v1 = msh.edges[msh.edges.selected()[0]].v1
-            v2 = msh.edges[msh.edges.selected()[0]].v2
-            v3 = msh.edges[msh.edges.selected()[1]].v1
-            v4 = msh.edges[msh.edges.selected()[1]].v2
+            v1 = msh.edges[sel[0]].v1
+            v2 = msh.edges[sel[0]].v2
+            v3 = msh.edges[sel[1]].v1
+            v4 = msh.edges[sel[1]].v2
             # intersection
             res = Blender.Mathutils.LineIntersect(v1.co,v2.co,v3.co,v4.co)
             if res==None: raise Exception('These edges are parallel (obj=%s)' % obj.name)
@@ -207,13 +207,13 @@ def fillet(radius,steps):
                         v2.co = i1
                         p1,p2 = v2,v1
                     if j==0:
-                        msh.edges[msh.edges.selected()[1]].v1 = p1
+                        msh.edges[sel[1]].v1 = p1
                         if v3!=p1: msh.verts.delete(v3)
-                        p3 = msh.edges[msh.edges.selected()[1]].v2
+                        p3 = msh.edges[sel[1]].v2
                     else:
-                        msh.edges[msh.edges.selected()[1]].v2 = p1
+                        msh.edges[sel[1]].v2 = p1
                         if v4!=p1: msh.verts.delete(v4)
-                        p3 = msh.edges[msh.edges.selected()[1]].v1
+                        p3 = msh.edges[sel[1]].v1
                     if radius>0.0:
                         # vectors along the edges
                         e1  = p2.co-p1.co; e1.normalize()
@@ -246,8 +246,9 @@ def break_edge(at_mid=False):
         edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
-        if len(msh.edges.selected())==1 or at_mid:
-            for e in msh.edges.selected():
+        sel = di.get_selected_edges(msh)
+        if len(sel)==1 or at_mid:
+            for e in sel:
                 # points (vertices)
                 v1 = msh.edges[e].v1
                 v2 = msh.edges[e].v2

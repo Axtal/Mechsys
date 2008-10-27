@@ -192,7 +192,7 @@ def button_event(evt):
         # set edges tag
         elif evt==EVT_MESH_SETETAG:
             edm, obj, msh = di.get_msh()
-            for eid in msh.edges.selected():
+            for eid in di.get_selected_edges(msh):
                 if not obj.properties.has_key('etags'): obj.properties['etags'] = {}
                 if dict['newetag'][0]==0: obj.properties['etags'].pop(str(eid))
                 else:                     obj.properties['etags'].update({str(eid):dict['newetag']})
@@ -203,9 +203,10 @@ def button_event(evt):
         # set faces tag
         elif evt==EVT_MESH_SETFTAG:
             edm, obj, msh = di.get_msh()
-            nedges = len(msh.edges.selected())
+            sel    = di.get_selected_edges(msh)
+            nedges = len(sel)
             if nedges==3 or nedges==6 or nedges==4 or nedges==8:
-                eids = '_'.join([str(id) for id in msh.edges.selected()])
+                eids = '_'.join([str(id) for id in sel])
                 if not obj.properties.has_key('ftags'): obj.properties['ftags'] = {}
                 if dict['newftag'][0]==0: obj.properties['ftags'].pop(eids)
                 else:                     obj.properties['ftags'].update({eids:dict['newftag']})
@@ -219,8 +220,9 @@ def button_event(evt):
         # set local x-axis
         elif evt==EVT_MESH_SETX:
             edm, obj, msh = di.get_msh()
-            if len(msh.edges.selected())==1:
-                di.set_local_axis (obj, 'x', msh.edges.selected()[0])
+            sel = di.get_selected_edges(msh)
+            if len(sel)==1:
+                di.set_local_axis (obj, 'x', sel[0])
                 Blender.Window.QRedrawAll()
             else: raise Exception('Please, select only one edge (obj=%s)' % obj.name)
             if edm: Blender.Window.EditMode(1) # return to EditMode
@@ -228,8 +230,9 @@ def button_event(evt):
         # set local y-axis
         elif evt==EVT_MESH_SETY:
             edm, obj, msh = di.get_msh()
-            if len(msh.edges.selected())==1:
-                di.set_local_axis (obj, 'y', msh.edges.selected()[0])
+            sel = di.get_selected_edges(msh)
+            if len(sel)==1:
+                di.set_local_axis (obj, 'y', sel[0])
                 Blender.Window.QRedrawAll()
             else: raise Exception('Please, select only one edge (obj=%s)' % obj.name)
             if edm: Blender.Window.EditMode(1) # return to EditMode
@@ -237,8 +240,9 @@ def button_event(evt):
         # set local z-axis
         elif evt==EVT_MESH_SETZ:
             edm, obj, msh = di.get_msh()
-            if len(msh.edges.selected())==1:
-                di.set_local_axis (obj, 'z', msh.edges.selected()[0])
+            sel = di.get_selected_edges(msh)
+            if len(sel)==1:
+                di.set_local_axis (obj, 'z', sel[0])
                 Blender.Window.QRedrawAll()
             else: raise Exception('Please, select only one edge (obj=%s)' % obj.name)
             if edm: Blender.Window.EditMode(1) # return to EditMode

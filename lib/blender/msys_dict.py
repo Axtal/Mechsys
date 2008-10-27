@@ -72,6 +72,17 @@ def load_dict():
 
 # ====================================================================================== Util
 
+def get_selected_edges(msh):
+    # Output: the 'really' selected edges (those that have the 'sel' property == 1)
+    # Note: msh.edges.selected() == (selected + others) returns all possible selected
+    #       edges, including those that can be defined by conecting the 'real' selected ones,
+    #       since it returns 'edges for which BOTH vertices are selected'
+    sel = []
+    for eid in msh.edges.selected():
+        if msh.edges[eid].sel==True: sel.append(eid)
+    return sel
+
+
 def sarray_set_val(strarr,item,value):
     # Set value of item item in a StringArray of length len
     # Ex.: Input: strarr = 'A BB CCC DD_DD' (len==4)
