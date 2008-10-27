@@ -36,6 +36,7 @@ def load_dict():
         dict['newpoint_x']    = '0.0'
         dict['newpoint_y']    = '0.0'
         dict['newpoint_z']    = '0.0'
+        dict['newblk_3d']     = False
         dict['newetag']       = [-10, 0]
         dict['newftag']       = [-100, 0x000080]
         dict['fillet_radius'] = '0.0'

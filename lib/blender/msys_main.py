@@ -68,27 +68,29 @@ EVT_SHOWHIDE_MESH    = 12 # show/hide MESH box
 EVT_MESH_SETETAG     = 13 # set edges tag
 EVT_MESH_SETFTAG     = 14 # set faces tag
 # Mesh -- structured
-EVT_MESH_SETX        = 15 # set local x-y coordinates of a block (need two edges pre-selected)
-EVT_MESH_SETY        = 16 # set local x-y coordinates of a block (need two edges pre-selected)
-EVT_MESH_SETZ        = 17 # set local x-y coordinates of a block (need two edges pre-selected)
-EVT_MESH_GENSTRU     = 18 # generate structured mesh using MechSys module
+EVT_MESH_ADDBLK      = 15 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
+EVT_MESH_DELALLBLKS  = 16 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
+EVT_MESH_SETX        = 17 # set local x-y coordinates of a block (need two edges pre-selected)
+EVT_MESH_SETY        = 18 # set local x-y coordinates of a block (need two edges pre-selected)
+EVT_MESH_SETZ        = 19 # set local x-y coordinates of a block (need two edges pre-selected)
+EVT_MESH_GENSTRU     = 20 # generate structured mesh using MechSys module
 # Mesh -- unstructured
-EVT_MESH_GENUNSTRU   = 19 # generate structured mesh using MechSys module
-EVT_MESH_ADDREG      = 20 # add region
-EVT_MESH_DELALLREGS  = 21 # delete all regions
-EVT_MESH_ADDHOLE     = 22 # add hole
-EVT_MESH_DELALLHOLES = 23 # delete all holes
+EVT_MESH_GENUNSTRU   = 21 # generate structured mesh using MechSys module
+EVT_MESH_ADDREG      = 22 # add region
+EVT_MESH_DELALLREGS  = 23 # delete all regions
+EVT_MESH_ADDHOLE     = 24 # add hole
+EVT_MESH_DELALLHOLES = 25 # delete all holes
 # FEM
-EVT_SHOWHIDE_FEM     = 24 # show/hide FEM box
-EVT_FEM_ADDNBRY      = 25 # add nodes boundary (given coordinates)
-EVT_FEM_DELALLNBRY   = 26 # delete all nodes boundary
-EVT_FEM_ADDNBRYID    = 27 # add nodes boundary (given nodes IDs)
-EVT_FEM_DELALLNBRYID = 28 # delete all nodes boundary
-EVT_FEM_RUN          = 29 # run a FE simulation
-EVT_FEM_SCRIPT       = 30 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 31 # view in ParaView
+EVT_SHOWHIDE_FEM     = 26 # show/hide FEM box
+EVT_FEM_ADDNBRY      = 27 # add nodes boundary (given coordinates)
+EVT_FEM_DELALLNBRY   = 28 # delete all nodes boundary
+EVT_FEM_ADDNBRYID    = 29 # add nodes boundary (given nodes IDs)
+EVT_FEM_DELALLNBRYID = 30 # delete all nodes boundary
+EVT_FEM_RUN          = 31 # run a FE simulation
+EVT_FEM_SCRIPT       = 32 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 33 # view in ParaView
 # Results
-EVT_SHOWHIDE_RES     = 32 # show/hide results box
+EVT_SHOWHIDE_RES     = 34 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -211,11 +213,38 @@ def button_event(evt):
                 if dict['newftag'][0]==0: obj.properties['ftags'].pop(eids)
                 else:                     obj.properties['ftags'].update({eids:dict['newftag']})
                 if len(obj.properties['ftags'])==0: obj.properties.pop('ftags')
-            else: raise Exception('To set a face tag (FTAG): 3, 4, 6, or 8 edges must be selected')
+            else: raise Exception('To set a face tag (FTAG), 3, 4, 6, or 8 edges must be selected')
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1) # return to EditMode
 
         # ---------------------------------------------------------------------------- Structured
+
+        # add block
+        elif evt==EVT_MESH_ADDBLK:
+            edm, obj, msh = di.get_msh()
+            sel    = di.get_selected_edges(msh)
+            nedges = len(sel)
+            if dict['newblk_3d']:
+                if nedges==8 or nedges==20: pass
+                else: raise Exception('To set a 3D block, 8 or 20 edges must be selected')
+            else:
+                if nedges==4 or nedges==8: pass
+                else: raise Exception('To set a 2D block, 4 or 8 edges must be selected')
+            if not obj.properties.has_key('blks'): obj.properties['blks'] = {}
+            eids  = '_'.join([str(id) for id in sel])
+            nblks = len(obj.properties['blks'])
+            obj.properties['blks'][eids] = [nblks, -1, 0,0,0, 2,2,2, 0,0,0, 0,0,0] # ID, tag, x_eid,y_eid,z_eid, nx,ny,nz, ax,ay,az, linx,liny,linz
+            Blender.Window.QRedrawAll()
+
+        # delete all blocks
+        elif evt==EVT_MESH_DELALLBLKS:
+            obj = di.get_obj()
+            if obj!=None:
+                message = 'Confirm delete ALL?%t|Yes'
+                result  = Blender.Draw.PupMenu(message)
+                if result>0:
+                    di.del_all_regs(obj)
+                    Blender.Window.QRedrawAll()
 
         # set local x-axis
         elif evt==EVT_MESH_SETX:
@@ -782,6 +811,7 @@ def gui():
         msh = None
 
     # Data from current selected object
+    blks     = {}
     btag     = -1
     ndivx    = 2
     ndivy    = 2
@@ -803,6 +833,7 @@ def gui():
     eatts    = {}
     # Set default values
     if obj!=None:
+        blks     = obj.properties['blks'] if obj.properties.has_key('blks') else {}
         btag     = di.get_btag     (obj)
         ndivx    = di.get_ndiv     (obj,'x')
         ndivy    = di.get_ndiv     (obj,'y')
@@ -842,7 +873,8 @@ def gui():
     # Heights of windows
     h_set         = 3*rh+sgy+ggy
     h_cad         = 4*rh+ggy
-    h_struct      = 6*rh+ggy+sgy
+    h_struct_blks = (1+len(blks)*2)*rh+sgy
+    h_struct      = 6*rh+ggy+sgy + sgy + rh+h_struct_blks
     h_unst_regs   = (1+len(regs))*rh+sgy
     h_unst_hols   = (1+len(hols))*rh+sgy
     h_unstruct    = ggy+3*sgy+2*rh + rh+h_unst_regs + rh+h_unst_hols
@@ -973,6 +1005,9 @@ def gui():
         BGL.glRecti       (2*gx, row, wid-2*gx, row-h); row -= rh+gy
         BGL.glColor3f     (0.0, 0.0, 0.0)
         BGL.glRasterPos2i (ggx, row+4)
+        Draw.Text         ('Block:')
+        Draw.Number       ('Tag=', EVT_NONE, dx, row, 100, rh, btag, -100, 0,'Set the block tag (to be replicated to all elements)',btag_callback); row -= rh
+        BGL.glRasterPos2i (ggx, row+4)
         Draw.Text         ('Local Axes:')
         Draw.PushButton   ('Set x', EVT_MESH_SETX, dx    , row, 60, rh , 'Set local x axis (one edge must be previously selected)')
         Draw.PushButton   ('Set y', EVT_MESH_SETY, dx+ 60, row, 60, rh , 'Set local y axis (one edge must be previously selected)')
@@ -987,10 +1022,44 @@ def gui():
         Draw.String       ('aZ=',    EVT_NONE, dx+160, row, 80, rh, acoefz, 32,'Set the a coeficient of the divisions function for the x direction (0 => equal size divisions)',acoefz_callback); row -= rh
         Draw.Toggle       ('NonLinX',EVT_NONE, dx,     row, 80, rh, nonlinx, 'Set non-linear divisions along x', nonlinx_callback)
         Draw.Toggle       ('NonLinY',EVT_NONE, dx+ 80, row, 80, rh, nonliny, 'Set non-linear divisions along y', nonliny_callback)
-        Draw.Toggle       ('NonLinZ',EVT_NONE, dx+160, row, 80, rh, nonlinz, 'Set non-linear divisions along z', nonlinz_callback); row -= rh
-        BGL.glRasterPos2i (ggx, row+4)
-        Draw.Text         ('Block:')
-        Draw.Number       ('Tag=', EVT_NONE, dx, row, 100, rh, btag, -100, 0,'Set the block tag (to be replicated to all elements)',btag_callback); row -= rh+sgy
+        Draw.Toggle       ('NonLinZ',EVT_NONE, dx+160, row, 80, rh, nonlinz, 'Set non-linear divisions along z', nonlinz_callback)
+
+        # Mesh -- structured -- blocks
+        row -= sgy
+        ggx += gx
+        h    = h_struct_blks
+        BGL.glColor3f     (0.53, 0.54, 0.6)
+        BGL.glRecti       (3*gx, row, wid-3*gx, row-rh); row -= rh
+        BGL.glColor3f     (1.0, 1.0, 1.0)
+        BGL.glRasterPos2i (ggx, row+5)
+        Draw.Text         ('Blocks')
+        BGL.glColor3f     (0.82, 0.82, 0.9)
+        BGL.glRecti       (3*gx, row, wid-3*gx, row-h);
+        BGL.glColor3f     (0.0, 0.0, 0.0)
+        Draw.PushButton   ('Add',        EVT_MESH_ADDBLK,     wid-ggx-70-80, row+2, 60, rh-4, 'Add block')
+        Draw.PushButton   ('Delete all', EVT_MESH_DELALLBLKS, wid-ggx-80,    row+2, 80, rh-4, 'Delete all blocks'); row -= rh
+        BGL.glRasterPos2i (ggx, row+5); Draw.Text('     Tag     Local axes    nX         nY        nZ'); row -= rh
+        for k, v in blks.iteritems():
+            i     = int(v[0])
+            coefs = 'aX=%d aY=%d aZ=%d' % (v[8],v[9],v[10])
+            Draw.Number     ('',    EVT_DEL+i, ggx     , row, 60, rh, int(v[1]), -100, 0, 'Block tag')
+            Draw.PushButton ('X',   EVT_DEL+i, ggx+ 60 , row, 20, rh,                     'Set X-axis')
+            Draw.PushButton ('Y',   EVT_DEL+i, ggx+ 80 , row, 20, rh,                     'Set Y-axis')
+            Draw.PushButton ('Z',   EVT_DEL+i, ggx+100 , row, 20, rh,                     'Set Z-axis')
+            Draw.Number     ('',    EVT_DEL+i, ggx+120 , row, 50, rh, int(v[5]), 0, 1000, 'Number of divisions along X')
+            Draw.Number     ('',    EVT_DEL+i, ggx+170 , row, 50, rh, int(v[6]), 0, 1000, 'Number of divisions along X')
+            Draw.Number     ('',    EVT_DEL+i, ggx+220 , row, 50, rh, int(v[7]), 0, 1000, 'Number of divisions along X'); row -= rh
+            Draw.String     ('aX=', EVT_DEL+i, ggx+120 , row, 50, rh, str(v[8]),     128, 'Set division coefficient aX')
+            Draw.String     ('aY=', EVT_DEL+i, ggx+170 , row, 50, rh, str(v[9]),     128, 'Set division coefficient aY')
+            Draw.String     ('aZ=', EVT_DEL+i, ggx+220 , row, 50, rh, str(v[10]),    128, 'Set division coefficient aZ')
+            Draw.Toggle     ('X',   EVT_DEL+i, ggx+270 , row, 20, rh, int(v[11]),         'Set nonlinear divisions along X')
+            Draw.Toggle     ('Y',   EVT_DEL+i, ggx+290 , row, 20, rh, int(v[11]),         'Set nonlinear divisions along Y')
+            Draw.Toggle     ('Z',   EVT_DEL+i, ggx+310 , row, 20, rh, int(v[11]),         'Set nonlinear divisions along Z')
+            Draw.PushButton ('Del', EVT_DEL+i, ggx+330 , row, 40, rh,                     'Delete this row'); row -= rh
+
+        # Mesh -- structured -- main
+        row -= 2*sgy
+        ggx -= gx
         Draw.PushButton   ('Generate (quadrilaterals/hexahedrons)', EVT_MESH_GENSTRU,  ggx, row, 300, rh, 'Generated structured mesh')
 
         # Mesh -- unstructured
