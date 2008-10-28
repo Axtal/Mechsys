@@ -26,7 +26,7 @@ import msys_dict as di
 
 # Transformation matrix
 dict = di.load_dict()
-if dict['show_props'] or dict['show_results']:
+if dict['show_props'] or dict['res_show']:
     # Buffer
     view_matrix = Window.GetPerspMatrix()
     view_buffer = [view_matrix[i][j] for i in xrange(4) for j in xrange(4)]
@@ -73,7 +73,7 @@ if dict['show_props']:
                         Draw.Text         (str(e.index))
 
                 # draw block IDs
-                if dict['show_blk_ids']:
+                if dict['show_blks']:
                     if obj.properties.has_key('blks'):
                         for k, v in obj.properties['blks'].iteritems():
                             eds = [int(id) for id in k.split('_')]
@@ -82,7 +82,7 @@ if dict['show_props']:
                                 cen += 0.5*(msh.edges[eds[i]].v1.co+msh.edges[eds[i]].v2.co)/len(eds)
                             BGL.glColor3f     (0.2, 1.0, 0.2)
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
-                            Draw.Text         ('blk=%d'%int(v[1]))
+                            Draw.Text         ('blk:%d'%int(v[1]))
 
                 # draw local axes
                 if dict['show_axes']:
@@ -115,23 +115,6 @@ if dict['show_props']:
                                 BGL.glColor3f     (0.0, 0.0, 0.0)
                                 BGL.glRasterPos3f (msh.verts[zp].co[0], msh.verts[zp].co[1], msh.verts[zp].co[2])
                                 Draw.Text         ('+')
-
-
-                # if there are properties (local axes, ndivs, tags, etc.)
-                if len(obj.getAllProperties())>0:
-                    # draw regions
-                    rgs = di.get_regs (obj)
-                    for r in rgs:
-                        BGL.glColor3f     (0.0, 0.0, 0.0)
-                        BGL.glRasterPos3f (float(r[2]), float(r[3]), float(r[4]))
-                        Draw.Text         ('region_'+r[0])
-                    # draw holes
-                    hls = di.get_hols (obj)
-                    for h in hls:
-                        BGL.glColor3f     (0.0, 0.0, 0.0)
-                        BGL.glRasterPos3f (float(h[0]), float(h[1]), float(h[2]))
-                        Draw.Text         ('hole')
-
 
                 # draw edge tags
                 if dict['show_etags']:
@@ -171,6 +154,19 @@ if dict['show_props']:
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
                             Draw.Text         (str(v[0]))
 
+                # draw regions and holes
+                if dict['show_regs']:
+                    if obj.properties.has_key('regs'):
+                        for k, v in obj.properties['regs'].iteritems():
+                            BGL.glColor3f     (0.0, 0.0, 0.0)
+                            BGL.glRasterPos3f (v[1],v[2],v[3])
+                            Draw.Text         ('reg:%d'%int(v[0]))
+                    if obj.properties.has_key('hols'):
+                        for k, v in obj.properties['hols'].iteritems():
+                            BGL.glColor3f     (0.0, 0.0, 0.0)
+                            BGL.glRasterPos3f (v[0],v[1],v[2])
+                            Draw.Text         ('hol')
+
                 # draw elements information
                 if dict['show_elems']:
                     try:    nelems = obj.properties['nelems']
@@ -187,7 +183,7 @@ if dict['show_props']:
 
 
 # Results (visualisation)
-if dict['show_results']:
+if dict['res_show']:
     # Draw
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
@@ -204,8 +200,8 @@ if dict['show_results']:
                 msh.transform(obj.matrix)
 
                 # Post-processing
-                if dict['show_scalar']:
-                    key = dict['scalar_key']
+                if dict['res_show_scalar']:
+                    key = dict['res_scalar']
                     try:
                         vals = obj.properties['scalars'][key]
                         BGL.glColor3f (0.0, 0.0, 0.0)
@@ -214,7 +210,7 @@ if dict['show_results']:
                             Draw.Text         (str(vals[v.index]))
                     except: pass
 
-                if dict['show_warp']:
+                if dict['res_show_warp']:
                     ux = []
                     uy = []
                     uz = []
@@ -240,7 +236,7 @@ if dict['show_results']:
 
 
 # Restore transformation matrix
-if dict['show_props'] or dict['show_results']:
+if dict['show_props'] or dict['res_show']:
     # Restore
     BGL.glPopMatrix ()
     BGL.glDisable   (Blender.BGL.GL_DEPTH_TEST)

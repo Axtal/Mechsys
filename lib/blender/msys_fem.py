@@ -298,6 +298,7 @@ def gen_script(obj):
 
     # restore cursor
     Blender.Window.WaitCursor(0)
+    Blender.Window.Redraw(Blender.Window.Types.TEXT)
 
 
 def paraview(obj):
