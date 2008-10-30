@@ -59,68 +59,99 @@ def get_list_ftags_fclrs(obj,msh):
 
 # =========================================================================== Structured mesh
 
-def gen_struct_mesh():
-    # get objects
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    edm = Blender.Window.EditMode()
-    if edm: Blender.Window.EditMode(0)
+def gen_struct_mesh(gen_script=True):
+    # get selected object and mesh
+    edm, obj, msh = di.get_msh()
+    if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')
 
-    # generate blocks
+    # transform vertices coordinates
+    ori = msh.verts[:]         # create a copy in local coordinates
+    msh.transform (obj.matrix) # transform mesh to global coordinates
+
+    # create text for script
+    if gen_script:
+        txt = Blender.Text.New(obj.name+'_mesh')
+        txt.write('bks = []\n')
+
+    # generate list with blocks and face colors
     bks   = []
-    fclrs = {} # face colors {tag:color}
-    for obj in obs:
-        if obj!=None and obj.type=='Mesh':
-            # get mesh
-            if len(obj.getAllProperties())==0: raise Exception('Please, assign all mesh properties to this object(%s) first' % obj.name)
-            msh = obj.getData(mesh=1)
+    fclrs = {}
+    for k, v in obj.properties['blks'].iteritems():
+        # origin and local system
+        origin, xp, yp, zp = int(v[14]), int(v[15]), int(v[16]), int(v[17])
+        if origin<0:
+            msh.verts = ori # restore local coordinates
+            raise Exception('Please, assign local axes to this block ('+k.replace('_',' ')+') first')
+        #if obj.properties['is3d'] and zp<0: raise Exception('Please, define the Z-axix of this block ('+k.replace('_',' ')+') first')
 
-            # set block
-            origin, x_plus, y_plus, z_plus = di.get_local_system (obj)
-            if origin>-1:
-                # vertices coordinates
-                ori = msh.verts[:]                                       # create a copy in local coordinates
-                msh.transform (obj.matrix)                               # transform mesh to global coordinates
-                verts = [(v.co[0], v.co[1], v.co[2]) for v in msh.verts] # list of tuples
-                msh.verts = ori                                          # restore local coordinates
+        # divisions and weights
+        nx,   ny,   nz   =  int(v[5]),  int(v[6]),  int(v[7])
+        ax,   ay,   az   =      v[8],       v[9],      v[10]
+        linx, liny, linz = int(v[11]), int(v[12]), int(v[13])
+        if linx: wx = [1.0+ax*float(i)  for i in range(nx)]
+        else:    wx = [float(i+1.0)**ax for i in range(nx)]
+        if liny: wy = [1.0+ay*float(i)  for i in range(ny)]
+        else:    wy = [float(i+1.0)**ay for i in range(ny)]
+        if linz: wz = [1.0+az*float(i)  for i in range(nz)]
+        else:    wz = [float(i+1.0)**az for i in range(nz)]
 
-                # number of divisions
-                nx = di.get_ndiv (obj, 'x')
-                ny = di.get_ndiv (obj, 'y')
-                nz = di.get_ndiv (obj, 'z')
-                if nx<1: nx = 1
-                if ny<1: ny = 1
-                if nz<1: nz = 1
-                ax = float(di.get_acoef (obj, 'x'))
-                ay = float(di.get_acoef (obj, 'y'))
-                az = float(di.get_acoef (obj, 'z'))
-                if di.get_nonlin (obj, 'x')==0: wx = [1.0+ax*float(i)  for i in range(nx)]
-                else:                           wx = [float(i+1.0)**ax for i in range(nx)]
-                if di.get_nonlin (obj, 'y')==0: wy = [1.0+ay*float(i)  for i in range(ny)]
-                else:                           wy = [float(i+1.0)**ay for i in range(ny)]
-                if di.get_nonlin (obj, 'z')==0: wz = [1.0+az*float(i)  for i in range(nz)]
-                else:                           wz = [float(i+1.0)**az for i in range(nz)]
+        # vertices and edges
+        verts = {}
+        edges = []
+        eids  = [int(id) for id in k.split('_')]
+        for e in eids:
+            v1 = msh.edges[e].v1.index
+            v2 = msh.edges[e].v2.index
+            if not verts.has_key(v1): verts[v1] = (msh.verts[v1].co[0], msh.verts[v1].co[1], msh.verts[v1].co[2])
+            if not verts.has_key(v2): verts[v2] = (msh.verts[v2].co[0], msh.verts[v2].co[1], msh.verts[v2].co[2])
+            edges.append((v1,v2))
 
-                # edges
-                edges = [(ed.v1.index, ed.v2.index) for ed in msh.edges]
+        # etags
+        etags = {}
+        if obj.properties.has_key('etags'):
+            for m, n in obj.properties['etags'].iteritems():
+                e = int(m)
+                if e in eids: etags[(msh.edges[e].v1.index, msh.edges[e].v2.index)] = n[0]
 
-                # edge tags
-                etags = get_list_etags(obj,msh)
+        # ftags
+        ftags = {}
+        if obj.properties.has_key('ftags'):
+            for m, n in obj.properties['ftags'].iteritems():
+                # tags
+                ids = [int(id) for id in m.split('_')]
+                face_is_in_block = True
+                for i in ids:
+                    if not i in verts.keys():
+                        face_is_in_block = False
+                        break
+                if face_is_in_block: ftags[tuple(ids)] = n[0]
+                # colors
+                if not fclrs.has_key(n[0]): fclrs[n[0]] = n[1]
 
-                # face tags and colors
-                ftags, fclrs = get_list_ftags_fclrs(obj,msh)
-
-                # new block
-                bks.append(ms.mesh_block());
-                bks[-1].set_coords (di.get_btag(obj),               # tag to be replicated to all elements
-                                    verts,                          # vertices' coordinates
-                                    edges,                          # edges
-                                    etags,                          # edge tags
-                                    ftags,                          # face tags
-                                    wx, wy, wz,                     # weigths x, y, and z
-                                    origin, x_plus, y_plus, z_plus) # Origin, XPlus, YPlus, None
-            else:
-                raise Exception('Please, define local axes first (obj=%s)' % obj.name)
+        # new block
+        if gen_script:
+            txt.write('bks.append(ms.mesh_block())\n')
+            txt.write('bks[-1].set_coords('+str(int(v[1]))+',\n')
+            txt.write('                   '+str(verts)+',\n')
+            txt.write('                   '+str(edges)+',\n')
+            txt.write('                   '+str(etags)+',\n')
+            txt.write('                   '+str(ftags)+',\n')
+            txt.write('                   '+str(wx)+',\n')
+            txt.write('                   '+str(wy)+',\n')
+            txt.write('                   '+str(wz)+',\n')
+            txt.write('                   '+str(origin)+',\n')
+            txt.write('                   '+str(xp)+',\n')
+            txt.write('                   '+str(yp)+',\n')
+            txt.write('                   '+str(zp)+')\n')
+        else:
+            bks.append(ms.mesh_block())
+            bks[-1].set_coords (int(v[1]),          # tag to be replicated to all elements
+                                verts,              # vertices' coordinates
+                                edges,              # edges
+                                etags,              # edge tags
+                                ftags,              # face tags
+                                wx, wy, wz,         # weigths x, y, and z
+                                origin, xp, yp, zp) # Origin, XPlus, YPlus, ZPlus
 
     # generate mesh and draw results
     if len(bks)>0:
@@ -243,7 +274,7 @@ def add_mesh(mms, fclrs):
     mms.get_edges (edges)
 
     # add new mesh to Blender
-    key     = di.get_key()
+    key     = di.get_file_key()
     scn     = bpy.data.scenes.active
     new_msh = bpy.data.meshes.new      (key+'_structured')
     new_obj = scn.objects.new (new_msh, key+'_structured')

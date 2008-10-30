@@ -26,25 +26,25 @@ def test_2D_1():
     L = 1.0   # length
     H = 1.0   # height
 
-    #    3        2
+    #   33        7
     #    Y+-------@
     #    |        |
     #  H |        |
     #    |    L   |
     #    O--------X+
-    #    0        1
+    #   15        1
     
     # Blocks
     blocks = [m.mesh_block()]
-    blocks[0].set_coords (-1,                                       # tag to be replicated to all elements
-                          [(0,0), (L,0), (L,H), (0,H)],             # vertices' coordinates
-                          [(0,1), (1,2), (2,3), (3,0)],             # edges
-                          {(0,1):-1, (1,2):-2, (2,3):-3, (3,0):-4}, # edge tags
-                          {},                                       # face tags
-                          [1,1],                                    # weights x
-                          [1,1],                                    # weights y
-                          [],                                       # weights z
-                          0, 1, 3, 0)                               # Origin, XPlus, YPlus, None
+    blocks[0].set_coords (-1,                                           # tag to be replicated to all elements
+                          {15:(0,0), 1:(L,0), 7:(L,H), 33:(0,H)},       # vertices' coordinates
+                          [(15,1), (1,7), (7,33), (33,15)],             # edges
+                          {(15,1):-1, (1,7):-2, (7,33):-3, (33,15):-4}, # edge tags
+                          {},                                           # face tags
+                          [1,1],                                        # weights x
+                          [1,1],                                        # weights y
+                          [],                                           # weights z
+                          15, 1, 33, 0)                                 # Origin, XPlus, YPlus, None
 
     # Generate
     ms = m.mesh_structured()
@@ -72,7 +72,7 @@ def test_2D_2():
     # Blocks
     blocks = [m.mesh_block()]
     blocks[0].set_coords (-1,                                                                               # tag to be replicated to all elements
-                          [(0,0), (L,0), (L,H), (0,H), (L/2,0.1), (L-0.1,H/2), (L/2,H-0.1), (0.1,H/2)],     # vertices' coordinates
+                          {0:(0,0), 1:(L,0), 2:(L,H), 3:(0,H), 4:(L/2,0.1), 5:(L-0.1,H/2), 6:(L/2,H-0.1), 7:(0.1,H/2)}, # vertices' coordinates
                           [(0,4), (4,1), (1,5), (5,2), (2,6), (6,3), (3,7), (7,0)],                         # edges
                           {(0,4):-1, (4,1):-2, (1,5):-3, (5,2):-4, (2,6):-5, (6,3):-6, (3,7):-7, (7,0):-8}, # edge tags
                           {},                                                                               # face tags

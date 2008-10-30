@@ -45,6 +45,7 @@ import msys_dict as di
 import msys_fem  as fe
 import msys_gui  as gu
 
+#import rpdb2; rpdb2.start_embedded_debugger('msys')
 
 # ================================================================================= Constants
 

@@ -169,7 +169,7 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 	void PySetCoords (int               Tag,      ///< Tag to be replicated to elements
-	                  BPy::list const & Verts,    ///< [(x1,y1,z1), (x2,y2,z2), ... (4)8 or (8)20 vertices]
+	                  BPy::dict const & Verts,    ///< {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... (4)8 or (8)20 vertices}
 	                  BPy::list const & Edges,    ///< [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
 	                  BPy::dict const & ETags,    ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
 	                  BPy::dict const & FTags,    ///< {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
@@ -549,7 +549,7 @@ inline void Block::Alright() const
 #ifdef USE_BOOST_PYTHON
 
 void Block::PySetCoords(int               Tag,     // Tag to be replicated to elements
-                        BPy::list const & Verts,   // [(x1,y1,z1), (x2,y2,z2), ... (4)8 or (8)20 vertices]
+                        BPy::dict const & Verts,   // {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... (4)8 or (8)20 vertices]
                         BPy::list const & Edges,   // [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
                         BPy::dict const & ETags,   // {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
                         BPy::dict const & FTags,   // {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}

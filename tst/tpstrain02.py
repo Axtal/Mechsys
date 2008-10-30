@@ -29,17 +29,25 @@ ny = 20    # Divisions along y
 
 # ----------------------------------------------------------------------------- Mesh
 
+#                      55        1
+#                       Y+-------@
+#                       |        |
+#                     H |        |
+#                       |    L   |
+#                       O--------X+
+#                       8        4
+
 # Blocks
 blocks = [m.mesh_block()]
-blocks[0].set_coords (-1,                           # tag to be replicated to all elements
-                      [(0,0), (L,0), (L,H), (0,H)], # vertices' coordinates
-                      [(0,1), (1,2), (2,3), (3,0)], # edges
-                      {(0,1):-10, (2,3):-20},       # edge tags
-                      {},                           # face tags
-                      [1 for i in range(nx)],       # weights x
-                      [1 for i in range(ny)],       # weights y
-                      [],                           # weights z
-                      0, 1, 3, 0)                   # Origin, XPlus, YPlus, None
+blocks[0].set_coords (-1,                                    # tag to be replicated to all elements
+                      {8:(0,0), 4:(L,0), 1:(L,H), 55:(0,H)}, # vertices' coordinates
+                      [(8,4), (4,1), (1,55), (55,8)],        # edges
+                      {(8,4):-10, (1,55):-20},               # edge tags
+                      {},                                    # face tags
+                      [1 for i in range(nx)],                # weights x
+                      [1 for i in range(ny)],                # weights y
+                      [],                                    # weights z
+                      8, 4, 55, 0)                           # Origin, XPlus, YPlus, None
 
 # Generate
 print 'Mesh Generation: --------------------------------------------------------------'
