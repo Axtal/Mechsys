@@ -1082,8 +1082,8 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 	// Set new array with non-duplicated vertices
 	size_t k = 0;
 	size_t m = 0;
-	_verts    .Resize (_verts_d    .Size()-ndupl);
-	_verts_bry.Resize (_verts_d_bry.Size()-ndupl);
+	_verts    .Resize (_verts_d    .Size());// TODO: problem here: -ndupl);
+	_verts_bry.Resize (_verts_d_bry.Size());// TODO: there is a problem here ...-ndupl);
 	for (size_t i=0; i<_verts_d.Size(); ++i)
 	{
 		if (_verts_d[i]->Dupl==false)
