@@ -790,12 +790,12 @@ def gui():
         for k, v in eatts.iteritems():
             r  -= rh
             tag = int(k)
-            r   = v.split()
+            m   = v.split()
             gu.label    (c,r,40,rh, k)
-            Draw.Menu   (d['etypes_menu'], EVT_INC+tag, c+ 40, r, 120, rh, int(r[0])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
-            Draw.Menu   (d['models_menu'], EVT_INC+tag, c+160, r, 100, rh, int(r[1])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
-            Draw.String ('',               EVT_INC+tag, c+260, r, 100, rh, r[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            cb_eatt_setprms)
-            Draw.String ('',               EVT_INC+tag, c+360, r,  80, rh, r[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', cb_eatt_setinis)
+            Draw.Menu   (d['etypes_menu'], EVT_INC+tag, c+ 40, r, 120, rh, int(m[0])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
+            Draw.Menu   (d['models_menu'], EVT_INC+tag, c+160, r, 100, rh, int(m[1])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
+            Draw.String ('',               EVT_INC+tag, c+260, r, 100, rh, m[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            cb_eatt_setprms)
+            Draw.String ('',               EVT_INC+tag, c+360, r,  80, rh, m[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', cb_eatt_setinis)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
