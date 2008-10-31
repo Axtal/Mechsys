@@ -1064,14 +1064,17 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 					_verts_d_bry[i]->OnBry = false;
 					*/
 					// Mark duplicated
-					if (_verts_d_bry[j]->Dupl==false) ndupl++; // vertex not tagged as duplicated yet
-					_verts_d_bry[j]->Dupl = true;
-					// Chage elements' connectivities
-					for (size_t k=0; k<_verts_d_bry[j]->Shares.Size(); ++k)
+					if (_verts_d_bry[j]->Dupl==false) // vertex not tagged as duplicated yet
 					{
-						Elem * e = _verts_d_bry[j]->Shares[k].E;
-						int    n = _verts_d_bry[j]->Shares[k].N;
-						e->V[n] = _verts_d_bry[i];
+					   	ndupl++; 
+						_verts_d_bry[j]->Dupl = true;
+						// Chage elements' connectivities
+						for (size_t k=0; k<_verts_d_bry[j]->Shares.Size(); ++k)
+						{
+							Elem * e = _verts_d_bry[j]->Shares[k].E;
+							int    n = _verts_d_bry[j]->Shares[k].N;
+							e->V[n] = _verts_d_bry[i];
+						}
 					}
 				}
 				ncomp++;
