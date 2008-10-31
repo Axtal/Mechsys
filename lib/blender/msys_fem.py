@@ -183,7 +183,18 @@ def store_scalars(geo,obj):
 
 def get_brys_atts(obj):
     d = di.load_dict()
-    nbrys = di.get_nbrys_numeric (obj)
+
+    # nbrys
+    nbrys = []
+    if obj.properties.has_key('nbrys'):
+        for k, v in obj.properties['nbrys'].iteritems():
+            nbrys.append([v[0], v[1], v[2], d['dofvars'][int(v[3])], v[4]])
+
+    # nbrysID
+    nbrysID = []
+    if obj.properties.has_key('nbrysID'):
+        for k, v in obj.properties['nbrysID'].iteritems():
+            nbrysID.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
 
     # ebrys
     ebrys = []
@@ -204,10 +215,12 @@ def get_brys_atts(obj):
             r = v.split()
             eatts.append([int(k), d['etypes'][int(r[0])], d['models'][int(r[1])], r[2].replace('_',' '), r[3].replace('_',' ')])
 
-    return nbrys, ebrys, fbrys, eatts
+    return nbrys, nbrysID, ebrys, fbrys, eatts
 
 
-def run_analysis(obj):
+def run_analysis():
+    obj = di.get_obj()
+
     # set cursor
     Blender.Window.WaitCursor(1)
 
@@ -217,7 +230,7 @@ def run_analysis(obj):
     except: linele = True # assuming linear structures (trusses, beams)
 
     # boundary conditions & properties
-    nbrys, ebrys, fbrys, eatts = get_brys_atts (obj)
+    nbrys, nbrysID, ebrys, fbrys, eatts = get_brys_atts (obj)
     if (len(eatts)<1): raise Exception('Element attributes MUST be defined in order to run a simulation')
 
     # problem geometry
@@ -225,8 +238,7 @@ def run_analysis(obj):
     else:      geo = set_geo        (obj,nbrys,ebrys,fbrys,eatts)
 
     # nodes boundary conditions
-    nbryids = di.get_nbryids_numeric (obj)
-    for nb in nbryids:
+    for nb in nbrysID:
         geo.nod(nb[0]).bry(nb[1],nb[2])
 
     # solution
@@ -250,7 +262,9 @@ def run_analysis(obj):
     Blender.Window.WaitCursor(0)
 
 
-def gen_script(obj):
+def gen_script():
+    obj = di.get_obj()
+
     # set cursor
     Blender.Window.WaitCursor(1)
 
@@ -260,7 +274,7 @@ def gen_script(obj):
     except: linele = True # assuming linear structures (trusses, beams)
 
     # boundary conditions
-    nbrys, ebrys, fbrys, eatts = get_brys_atts (obj)
+    nbrys, nbrysID, ebrys, fbrys, eatts = get_brys_atts (obj)
 
     # text
     fn  = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
@@ -281,9 +295,8 @@ def gen_script(obj):
     if linele: txt.write ('geo = mf.set_geo_linele(obj,nbrys,eatts)\n')
     else:      txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
     txt.write ('\n# nodes boundary conditions\n')
-    nbryids = di.get_nbryids(obj)
-    for nb in nbryids:
-        txt.write('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+nb[2]+')\n')
+    for nb in nbrysID:
+        txt.write('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
     txt.write ('\n# Solution\n')
     txt.write ('sol = mechsys.solver("ForwardEuler")\n')
     txt.write ('sol.set_geom(geo)\n')

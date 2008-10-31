@@ -223,7 +223,7 @@ if dict['res_show']:
                         if len(ux)<1: ux = [0 for i in range(len(msh.verts))]
                         if len(uy)<1: uy = [0 for i in range(len(msh.verts))]
                         if len(uz)<1: uz = [0 for i in range(len(msh.verts))]
-                        m = float(dict['warp_scale'])
+                        m = float(dict['res_warp_scale'])
                         BGL.glColor3f (0.85, 0.85, 0.85)
                         for e in msh.edges:
                             BGL.glBegin    (BGL.GL_LINES)

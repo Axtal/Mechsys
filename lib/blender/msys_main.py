@@ -465,7 +465,6 @@ def cb_fbry_setval(evt,val): set_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC
 
 def set_eatt_and_redraw(tag,item,val):
     obj = di.get_obj()
-    tag = str(evt-EVT_INC)
     res = di.sarray_set_val(obj.properties['eatts'][tag], item, val)
     obj.properties['eatts'].pop(tag)
     obj.properties['eatts'][tag] = res
