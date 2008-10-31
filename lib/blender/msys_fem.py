@@ -314,7 +314,8 @@ def gen_script():
     Blender.Window.Redraw(Blender.Window.Types.TEXT)
 
 
-def paraview(obj):
+def paraview():
+    obj = di.get_obj()
     fn = Blender.sys.makename (ext='_FEA_'+obj.name+'.vtu')
     if Blender.sys.exists(fn):
         Blender.Window.WaitCursor(1)

@@ -193,11 +193,11 @@ def button_event(evt):
             sel           = di.get_selected_edges(msh)
             nedges        = len(sel)
             if di.key('newblk_3d'):
-                if not (nedges==8 or nedges==20):
-                    raise Exception('To set a 3D block, 8 or 20 edges must be selected')
+                if not (nedges==8 or nedges==24):
+                    raise Exception('To set a 3D block, 8 or 24 edges must be selected (%d is invalid)'%nedges)
             else:
                 if not (nedges==4 or nedges==8):
-                    raise Exception('To set a 2D block, 4 or 8 edges must be selected')
+                    raise Exception('To set a 2D block, 4 or 8 edges must be selected (%d is invalid)'%nedges)
             if not obj.properties.has_key('blks'): obj.properties['blks'] = {}
             eids = '_'.join([str(id) for id in sel])
             if obj.properties['blks'].has_key(eids): raise Exception('Block with edges '+eids.replace('_',' ')+' was already added')
@@ -367,6 +367,7 @@ def set_blk_axis(id,item):
     else: raise Exception('Please, select (only) one edge to define a local axis')
     if edm: Blender.Window.EditMode(1)
 
+def cb_blk_3d (evt,val): di.set_key   ('newblk_3d', val)
 def cb_blk_tag(evt,val): set_blk_prop (evt-EVT_INC,  1, val)
 def cb_blk_xax(evt,val): set_blk_axis (evt-EVT_INC,  2)
 def cb_blk_yax(evt,val): set_blk_axis (evt-EVT_INC,  3)
@@ -626,6 +627,7 @@ def gui():
         # ----------------------- Mesh -- structured -- blocks
 
         gu.caption3(c,r,w,rh, 'Blocks', EVT_MESH_ADDBLK,EVT_MESH_DELALLBLKS)
+        Draw.Toggle ('3D', EVT_NONE, c+w-5-60-80-40, r+2, 40, rh-4, d['newblk_3d'], 'Set 3D blocks', cb_blk_3d)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_stru_blks)
         gu.text(c,r,'     Tag     Local axes    nX         nY        nZ')
         for k, v in blks.iteritems():
