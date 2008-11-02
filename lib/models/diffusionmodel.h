@@ -19,6 +19,9 @@
 #ifndef MECHSYS_DIFFUSIONMODEL_H
 #define MECHSYS_DIFFUSIONMODEL_H
 
+// Std lib
+#include <cstring> // for strcmp
+
 // Blitz++
 #include <blitz/tinyvec-et.h>
 #include <blitz/tinymat.h>

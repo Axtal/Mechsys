@@ -53,6 +53,9 @@
 #ifndef MECHSYS_FEM_SOLVER_H
 #define MECHSYS_FEM_SOLVER_H
 
+// Std Lib
+#include <cstring> // for strcmp
+
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"

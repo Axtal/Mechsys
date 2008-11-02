@@ -21,6 +21,7 @@
 
 // STL
 #include <cmath> // for fabs, sqrt, etc.
+#include <cstring> // for strcmp
 
 // MechSys
 #include "models/model.h"
