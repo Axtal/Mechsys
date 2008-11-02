@@ -59,7 +59,7 @@ def get_list_ftags_fclrs(obj,msh):
 
 # =========================================================================== Structured mesh
 
-def gen_struct_mesh(gen_script=True):
+def gen_struct_mesh(gen_script=False):
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
     if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')

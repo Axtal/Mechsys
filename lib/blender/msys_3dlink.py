@@ -137,8 +137,8 @@ if dict['show_props']:
                             cen      = msh.verts[vds[0]].co/len(eds)
                             for i in range(1,len(eds)):
                                 cen += msh.verts[vds[i]].co/len(eds)
-                            BGL.glColor4f     (clr[0], clr[1], clr[2], dict['ftags_opac'])
-                            if dict['ftags_opac']<0.9:
+                            BGL.glColor4f     (clr[0], clr[1], clr[2], dict['show_opac'])
+                            if dict['show_opac']<0.9:
                                 BGL.glEnable  (BGL.GL_BLEND)
                                 BGL.glDisable (BGL.GL_DEPTH_TEST)
                             BGL.glBegin       (BGL.GL_TRIANGLE_FAN)
@@ -147,7 +147,7 @@ if dict['show_props']:
                                 BGL.glVertex3f(msh.verts[vds[i]].co[0], msh.verts[vds[i]].co[1], msh.verts[vds[i]].co[2])
                             BGL.glVertex3f    (msh.verts[vds[0]].co[0], msh.verts[vds[0]].co[1], msh.verts[vds[0]].co[2])
                             BGL.glEnd         ()
-                            if dict['ftags_opac']<0.9:
+                            if dict['show_opac']<0.9:
                                 BGL.glDisable (BGL.GL_BLEND)
                                 BGL.glEnable  (BGL.GL_DEPTH_TEST)
                             BGL.glColor3f     (0.0, 0.0, 0.0)
@@ -223,7 +223,7 @@ if dict['res_show']:
                         if len(ux)<1: ux = [0 for i in range(len(msh.verts))]
                         if len(uy)<1: uy = [0 for i in range(len(msh.verts))]
                         if len(uz)<1: uz = [0 for i in range(len(msh.verts))]
-                        m = float(dict['warp_scale'])
+                        m = float(dict['res_warp_scale'])
                         BGL.glColor3f (0.85, 0.85, 0.85)
                         for e in msh.edges:
                             BGL.glBegin    (BGL.GL_LINES)
