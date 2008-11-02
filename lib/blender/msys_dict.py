@@ -59,9 +59,12 @@ def load_dict():
         dict['cad_rad']       = '0.0'
         dict['cad_stp']       = 10
         # MESH
-        dict['newblk_3d']     = False
         dict['newetag']       = [-10, 0]
         dict['newftag']       = [-100, 0x000080]
+        # FEM
+        dict['fem_fullsc']    = False
+        dict['fem_struct']    = False
+        dict['fem_unstru']    = True
         # RESULTS
         dict['res_show']        = False
         dict['res_scalar']      = 0

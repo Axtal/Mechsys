@@ -72,23 +72,31 @@ EVT_MESH_SETFTAG     = 14 # set faces tag
 EVT_MESH_ADDBLK      = 15 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_DELALLBLKS  = 16 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_GENSTRU     = 17 # generate structured mesh using MechSys module
+EVT_MESH_GENSTRUS    = 18 # script for structured mesh generation
 # Mesh -- unstructured
-EVT_MESH_ADDREG      = 18 # add region
-EVT_MESH_DELALLREGS  = 19 # delete all regions
-EVT_MESH_ADDHOL      = 20 # add hole
-EVT_MESH_DELALLHOLS  = 21 # delete all holes
-EVT_MESH_GENUNSTRU   = 22 # generate structured mesh using MechSys module
+EVT_MESH_ADDREG      = 19 # add region
+EVT_MESH_DELALLREGS  = 20 # delete all regions
+EVT_MESH_ADDHOL      = 21 # add hole
+EVT_MESH_DELALLHOLS  = 22 # delete all holes
+EVT_MESH_GENUNSTRU   = 23 # generate unstructured mesh using MechSys module
+EVT_MESH_GENUNSTRUS  = 24 # script for unstructured mesh generation
 # FEM
-EVT_FEM_SHOWHIDE     = 23 # show/hide FEM box
-EVT_FEM_ADDNBRY      = 24 # add nodes boundary (given coordinates)
-EVT_FEM_DELALLNBRY   = 25 # delete all nodes boundary
-EVT_FEM_ADDNBRYID    = 26 # add nodes boundary (given nodes IDs)
-EVT_FEM_DELALLNBRYID = 27 # delete all nodes boundary
-EVT_FEM_RUN          = 28 # run a FE simulation
-EVT_FEM_SCRIPT       = 29 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 30 # view in ParaView
+EVT_FEM_SHOWHIDE     = 25 # show/hide FEM box
+EVT_FEM_ADDNBRY      = 26 # add nodes boundary (given coordinates)
+EVT_FEM_ADDNBRYID    = 27 # add nodes boundary (given nodes IDs)
+EVT_FEM_ADDEBRY      = 28 # add edges boundary
+EVT_FEM_ADDFBRY      = 29 # add faces boundary
+EVT_FEM_ADDEATT      = 30 # add element attributes
+EVT_FEM_DELALLNBRY   = 31 # delete all nodes boundary
+EVT_FEM_DELALLNBRYID = 32 # delete all nodes boundary (IDs)
+EVT_FEM_DELALLEBRY   = 33 # delete all edges boundary
+EVT_FEM_DELALLFBRY   = 34 # delete all faces boundary
+EVT_FEM_DELALLEATT   = 35 # delete all element attributes
+EVT_FEM_RUN          = 36 # run a FE simulation
+EVT_FEM_SCRIPT       = 37 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 38 # view in ParaView
 # Results
-EVT_RES_SHOWHIDE     = 31 # show/hide results box
+EVT_RES_SHOWHIDE     = 39 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -113,6 +121,14 @@ def event(evt, val):
         d = di.load_dict_for_scroll()
         if d['gui_inirow']<0: d['gui_inirow'] += 180
         Blender.Window.QRedrawAll()
+
+def props_push_new(key,props)
+    obj = di.get_obj()
+    if not obj.properties.has_key(key): obj.properties[key] = {}
+    id = 0
+    while obj.properties[key].has_key(str(id)): id += 1
+    obj.properties[key][str(id)] = props
+    Blender.Window.QRedrawAll()
 
 def props_del_all(key):
     obj = di.get_obj()
@@ -192,7 +208,7 @@ def button_event(evt):
             edm, obj, msh = di.get_msh()
             sel           = di.get_selected_edges(msh)
             nedges        = len(sel)
-            if di.key('newblk_3d'):
+            if obj.properties['3dmesh']:
                 if not (nedges==8 or nedges==24):
                     raise Exception('To set a 3D block, 8 or 24 edges must be selected (%d is invalid)'%nedges)
             else:
@@ -209,6 +225,7 @@ def button_event(evt):
 
         elif evt==EVT_MESH_DELALLBLKS: props_del_all('blks')
         elif evt==EVT_MESH_GENSTRU:    me.gen_struct_mesh()
+        elif evt==EVT_MESH_GENSTRUS:   me.gen_struct_mesh(True)
 
         # -------------------------------------------------------------------------- Unstructured
 
@@ -218,7 +235,7 @@ def button_event(evt):
             if not obj.properties.has_key('regs'): obj.properties['regs'] = {}
             id = 0
             while obj.properties['regs'].has_key(str(id)): id += 1
-            obj.properties['regs'][str(id)] = [-1, x,y,z, -1.0] # tag, x,y,z, max_area
+            obj.properties['regs'][str(id)] = [-1, -1.0, x,y,z] # tag, maxarea, x,y,z
             Blender.Window.QRedrawAll()
 
         elif evt==EVT_MESH_DELALLREGS: props_del_all('regs')
@@ -234,32 +251,26 @@ def button_event(evt):
 
         elif evt==EVT_MESH_DELALLHOLS: props_del_all('hols')
         elif evt==EVT_MESH_GENUNSTRU:   me.gen_unstruct_mesh()
+        elif evt==EVT_MESH_GENUNSTRUS:  me.gen_unstruct_mesh(True)
 
         # ----------------------------------------------------------------------------------- FEM 
 
         elif evt==EVT_FEM_SHOWHIDE: di.toggle_key_and_redraw('gui_show_fem')
 
-        elif evt==EVT_FEM_ADDNBRY:
-            obj = di.get_obj()
-            if not obj.properties.has_key('nbrys'): obj.properties['nbrys'] = {}
-            id = 0
-            while obj.properties['nbrys'].has_key(str(id)): id += 1
-            obj.properties['nbrys'][str(id)] = [0.0,0.0,0.0, 0, 0.0] # x,y,z, DOFVar=uz..., Val
-            Blender.Window.QRedrawAll()
+        elif evt==EVT_FEM_ADDNBRY:   props_push_new('nbrys',  [0.0,0.0,0.0, 0, 0.0]) # x,y,z, ux, val
+        elif evt==EVT_FEM_ADDNBRYID: props_push_new('nbrysID',[0, 0, 0.0])           # ID, ux, val
+        elif evt==EVT_FEM_ADDEBRY:   props_push_new('ebrys',  [-10, 0, 0.0])         # tag, ux, val
+        elif evt==EVT_FEM_ADDFBRY:   props_push_new('fbrys',  [-100, 0, 0.0])        # tag, ux, val
+        elif evt==EVT_FEM_ADDEATT:   props_push_new('eatts',  '-1 0 0 E=200_nu=0.2 Sx=0_Sy=0_Sz=0_Sxy=0') # tag ElemType Model Prms Inis
 
-        elif evt==EVT_FEM_DELALLNBRY: props_del_all('nbrys')
+        elif evt==EVT_FEM_DELALLNBRY:   props_del_all('nbrys')
+        elif evt==EVT_FEM_DELALLNBRYID: props_del_all('nbrysID')
+        elif evt==EVT_FEM_DELALLEBRY:   props_del_all('ebrys')
+        elif evt==EVT_FEM_DELALLFBRY:   props_del_all('fbrys')
+        elif evt==EVT_FEM_DELALLEATT:   props_del_all('eatts')
 
-        elif evt==EVT_FEM_ADDNBRYID:
-            obj = di.get_obj()
-            if not obj.properties.has_key('nbrysID'): obj.properties['nbrysID'] = {}
-            id = 0
-            while obj.properties['nbrysID'].has_key(str(id)): id += 1
-            obj.properties['nbrysID'][str(id)] = [0, 0, 0.0] # ID, DOFVar=uz..., Val
-            Blender.Window.QRedrawAll()
-
-        elif evt==EVT_FEM_DELALLNBRYID: props_del_all  ('nbrysID')
         elif evt==EVT_FEM_RUN:          fe.run_analysis()
-        elif evt==EVT_FEM_SCRIPT:       fe.gen_script  ()
+        elif evt==EVT_FEM_SCRIPT:       fe.run_analysis(True)
         elif evt==EVT_FEM_PARAVIEW:     fe.paraview    ()
 
         # ----------------------------------------------------------------------------------- RES 
@@ -297,9 +308,13 @@ def cb_fillet_stp(evt,val): di.set_key('cad_stp', val)
 
 # ---------------------------------- Mesh
 
-def cb_etag(evt,val): di.set_key_and_redraw('newetag', [val, di.key('newetag')[1]])
-def cb_ftag(evt,val): di.set_key_and_redraw('newftag', [val, di.key('newftag')[1]])
-def cb_fclr(evt,val): di.set_key_and_redraw('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
+def cb_3dmesh(evt,val):
+    obj = di.get_obj()
+    obj.properties['3dmesh'] = val
+
+def cb_etag  (evt,val): di.set_key_and_redraw('newetag', [val, di.key('newetag')[1]])
+def cb_ftag  (evt,val): di.set_key_and_redraw('newftag', [val, di.key('newftag')[1]])
+def cb_fclr  (evt,val): di.set_key_and_redraw('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
 
 # ---------------------------------- Mesh -- structured
 
@@ -367,7 +382,6 @@ def set_blk_axis(id,item):
     else: raise Exception('Please, select (only) one edge to define a local axis')
     if edm: Blender.Window.EditMode(1)
 
-def cb_blk_3d (evt,val): di.set_key   ('newblk_3d', val)
 def cb_blk_tag(evt,val): set_blk_prop (evt-EVT_INC,  1, val)
 def cb_blk_xax(evt,val): set_blk_axis (evt-EVT_INC,  2)
 def cb_blk_yax(evt,val): set_blk_axis (evt-EVT_INC,  3)
@@ -454,13 +468,17 @@ def cb_nbryID_del   (evt,val): del_obj_subprop_and_redraw('nbrysID', str(evt-EVT
 
 # ---------------------------------- FEM -- ebrys
 
+def cb_ebry_settag(evt,val): set_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC), 0, int(val))
 def cb_ebry_setkey(evt,val): set_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC), 0, val-1)
 def cb_ebry_setval(evt,val): set_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC), 1, float(val))
+def cb_ebry_del   (evt,val): del_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC))
 
 # ---------------------------------- FEM -- fbrys
 
+def cb_fbry_settag(evt,val): set_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC), 0, int(val))
 def cb_fbry_setkey(evt,val): set_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC), 0, val-1)
 def cb_fbry_setval(evt,val): set_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC), 1, float(val))
+def cb_fbry_del   (evt,val): del_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC))
 
 # ---------------------------------- FEM -- eatts
 
@@ -471,10 +489,26 @@ def set_eatt_and_redraw(tag,item,val):
     obj.properties['eatts'][tag] = res
     Blender.Window.QRedrawAll()
 
+def cb_eatt_settag(evt,val): set_obj_subprop_and_redraw('eatt', str(evt-EVT_INC), 0, int(val))
 def cb_eatt_settype (evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 0, str(val-1))
 def cb_eatt_setmodel(evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 1, str(val-1))
 def cb_eatt_setprms (evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 2, '_'.join(val.split()))
 def cb_eatt_setinis (evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 3, '_'.join(val.split()))
+def cb_eatt_del     (evt,val): del_obj_subprop_and_redraw('eatts', str(evt-EVT_INC))
+
+# ---------------------------------- FEM
+
+def cb_fem_fullsc(evt,val): di.set_key('fem_fullsc', val)
+
+def cb_fem_struct(evt,val):
+    di.set_key('fem_struct', val)
+    di.set_key('fem_unstru', not val)
+    Blender.Window.QRedrawAll()
+
+def cb_fem_unstru(evt,val):
+    di.set_key('fem_unstru', val)
+    di.set_key('fem_struct', not val)
+    Blender.Window.QRedrawAll()
 
 # ---------------------------------- Results
 
@@ -504,6 +538,7 @@ def gui():
     except Exception, inst: edm, obj, msh = 0, None, None
 
     # Data from current selected object
+    is3d    = False
     blks    = {}
     minang  = -1.0
     maxarea = -1.0
@@ -515,6 +550,10 @@ def gui():
     fbrys   = {}
     eatts   = {}
     if obj!=None:
+        if obj.properties.has_key('3dmesh'): is3d = obj.properties['3dmesh']
+        else:
+            obj.properties['3dmesh'] = False
+            is3d                     = False
         blks     = obj.properties['blks']    if obj.properties.has_key('blks')    else {}
         minang   = obj.properties['minang']  if obj.properties.has_key('minang')  else -1.0
         maxarea  = obj.properties['maxarea'] if obj.properties.has_key('maxarea') else -1.0
@@ -611,11 +650,12 @@ def gui():
     gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_MESH_SHOWHIDE)
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
-        Draw.Number      ('',     EVT_NONE,          c,     r, 60, rh, d['newetag'][0],    -100, 0, 'New edge tag',                      cb_etag)
-        Draw.PushButton  ('Edge', EVT_MESH_SETETAG,  c+ 60, r, 60, rh,                              'Set edges tag (0 => remove tag)')
-        Draw.Number      ('',     EVT_NONE,          c+120, r, 80, rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
-        Draw.ColorPicker (        EVT_NONE,          c+200, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
-        Draw.PushButton  ('Face', EVT_MESH_SETFTAG,  c+260, r, 60, rh,                              'Set faces tag (0 => remove tag)')
+        Draw.Toggle      ('3D mesh', EVT_NONE,          c,     r, 60, rh, is3d,                        'Set 3D mesh',                       cb_3dmesh)
+        Draw.Number      ('',        EVT_NONE,          c+ 60, r, 60, rh, d['newetag'][0],    -100, 0, 'New edge tag',                      cb_etag)
+        Draw.PushButton  ('Edge',    EVT_MESH_SETETAG,  c+120, r, 60, rh,                              'Set edges tag (0 => remove tag)')
+        Draw.Number      ('',        EVT_NONE,          c+180, r, 60, rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
+        Draw.ColorPicker (           EVT_NONE,          c+240, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
+        Draw.PushButton  ('Face',    EVT_MESH_SETFTAG,  c+300, r, 60, rh,                              'Set faces tag (0 => remove tag)')
         r -= rh
         r -= rh
 
@@ -627,7 +667,6 @@ def gui():
         # ----------------------- Mesh -- structured -- blocks
 
         gu.caption3(c,r,w,rh, 'Blocks', EVT_MESH_ADDBLK,EVT_MESH_DELALLBLKS)
-        Draw.Toggle ('3D', EVT_NONE, c+w-5-60-80-40, r+2, 40, rh-4, d['newblk_3d'], 'Set 3D blocks', cb_blk_3d)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_stru_blks)
         gu.text(c,r,'     Tag     Local axes    nX         nY        nZ')
         for k, v in blks.iteritems():
@@ -655,7 +694,8 @@ def gui():
         # ----------------------- Mesh -- structured -- END
 
         r -= srg
-        Draw.PushButton ('Generate (quadrilaterals/hexahedrons)', EVT_MESH_GENSTRU, c, r, 300, rh, 'Generated structured mesh')
+        Draw.PushButton ('Generate (quadrilaterals/hexahedrons)', EVT_MESH_GENSTRU,  c,     r, 240, rh, 'Generated structured mesh')
+        Draw.PushButton ('Write Script',                          EVT_MESH_GENSTRUS, c+240, r, 100, rh, 'Create script for structured mesh generation')
         r, c, w = gu.box2_out(W,cg,rh, c,r)
 
         # ----------------------- Mesh -- unstructured
@@ -705,7 +745,8 @@ def gui():
         # ----------------------- Mesh -- unstructured -- END
 
         r -= srg
-        Draw.PushButton ('Generate (triangles/tetrahedrons)', EVT_MESH_GENUNSTRU ,  c, r, 300, rh, 'Generated unstructured mesh')
+        Draw.PushButton ('Generate (triangles/tetrahedrons)', EVT_MESH_GENUNSTRU , c,     r, 240, rh, 'Generated unstructured mesh')
+        Draw.PushButton ('Write Script',                      EVT_MESH_GENUNSTRUS, c+240, r, 100, rh, 'Create script for unstructured mesh generation')
         r, c, w = gu.box2_out(W,cg,rh, c,r+rh)
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
@@ -753,59 +794,65 @@ def gui():
         # ----------------------- FEM -- ebrys
 
         r -= srg
-        gu.caption2(c,r,w,rh,'Edges boundary conditions')
+        gu.caption2_(c,r,w,rh,'Edges boundary conditions', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_ebrys)
         gu.text(c,r,'        Tag         Key        Value')
         for k, v in ebrys.iteritems():
             r  -= rh
             tag = int(k)
-            gu.label    (c,r,40,rh, k)
-            Draw.Menu   (d['dofvars_menu'], EVT_INC+tag, c+40, r, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
-            Draw.String ('',                EVT_INC+tag, c+80, r, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              cb_ebry_setval)
+            Draw.Number     ('',                EVT_INC+tag, c,     r, 60, rh, int(k),-1000,0, 'Set tag',                                                                    cb_ebry_settag)
+            Draw.Menu       (d['dofvars_menu'], EVT_INC+tag, c+ 60, r, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
+            Draw.String     ('',                EVT_INC+tag, c+100, r, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              cb_ebry_setval)
+            Draw.PushButton ('Del',             EVT_INC+tag, c+180, r, 40, rh,                 'Delete this row',                                                            cb_ebry_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
         # ----------------------- FEM -- fbrys
 
         r -= srg
-        gu.caption2(c,r,w,rh,'Faces boundary conditions')
+        gu.caption2_(c,r,w,rh,'Faces boundary conditions', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_fbrys)
         gu.text(c,r,'        Tag         Key        Value')
         for k, v in fbrys.iteritems():
             r  -= rh
             tag = int(k)
             clr = di.hex2rgb(v[2])
-            gu.label      (c,r,40,rh, k)
-            BGL.glColor3f (clr[0], clr[1], clr[2])
-            BGL.glRecti   (c+40, r, c+80, r+rh)
-            Draw.Menu     (d['dofvars_menu'], EVT_INC+tag, c+ 80, r, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
-            Draw.String   ('',                EVT_INC+tag, c+120, r, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              cb_fbry_setval)
+            Draw.Number     ('',                EVT_INC+tag, c,r,60,rh, int(k),-1000,0,        'Set tag',                                                                    cb_fbry_settag)
+            BGL.glColor3f   (clr[0], clr[1], clr[2])
+            BGL.glRecti     (c+60, r, c+80, r+rh)
+            Draw.Menu       (d['dofvars_menu'], EVT_INC+tag, c+100, r, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
+            Draw.String     ('',                EVT_INC+tag, c+140, r, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              cb_fbry_setval)
+            Draw.PushButton ('Del',             EVT_INC+tag, c+220, r, 40, rh,                 'Delete this row',                                                            cb_fbry_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
         # ----------------------- FEM -- eatts
 
         r -= srg
-        gu.caption2(c,r,w,rh,'Elements attributes')
+        gu.caption2_(c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_eatts)
         gu.text(c,r,'      Tag           Type                Model           Parameters        Initial Vals')
         for k, v in eatts.iteritems():
             r  -= rh
             tag = int(k)
             m   = v.split()
-            gu.label    (c,r,40,rh, k)
-            Draw.Menu   (d['etypes_menu'], EVT_INC+tag, c+ 40, r, 120, rh, int(m[0])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
-            Draw.Menu   (d['models_menu'], EVT_INC+tag, c+160, r, 100, rh, int(m[1])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
-            Draw.String ('',               EVT_INC+tag, c+260, r, 100, rh, m[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            cb_eatt_setprms)
-            Draw.String ('',               EVT_INC+tag, c+360, r,  80, rh, m[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', cb_eatt_setinis)
+            Draw.Number     ('',               EVT_INC+tag, c,     r,  60, rh, int(k),-1000,0,            'Set tag',                                   cb_eatt_settag)
+            Draw.Menu       (d['etypes_menu'], EVT_INC+tag, c+ 60, r, 120, rh, int(m[0])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
+            Draw.Menu       (d['models_menu'], EVT_INC+tag, c+180, r, 100, rh, int(m[1])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
+            Draw.String     ('',               EVT_INC+tag, c+280, r, 100, rh, m[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            cb_eatt_setprms)
+            Draw.String     ('',               EVT_INC+tag, c+380, r,  80, rh, m[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', cb_eatt_setinis)
+            Draw.PushButton ('Del',            EVT_INC+tag, c+460, r,  40, rh,                            'Delete this row',                           cb_eatt_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
         # ----------------------- FEM -- END
         r -= srg
-        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c,     r, 150, rh, 'Run a FE analysis directly (without script)')
-        Draw.PushButton ('Generate script',  EVT_FEM_SCRIPT,   c+150, r, 150, rh, 'Generate script for FEM')
-        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+300, r, 150, rh, 'View results in ParaView')
+        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c,     r, 100, rh, 'Run a FE analysis directly (without script)')
+        Draw.Toggle     ('Full script',      EVT_NONE,         c+100, r,  60, rh, d['fem_fullsc'], 'Show results', cb_fem_fullsc)
+        Draw.Toggle     ('Struct',           EVT_NONE,         c+160, r,  40, rh, d['fem_struct'], 'Show results', cb_fem_struct)
+        Draw.Toggle     ('Unstruct',         EVT_NONE,         c+200, r,  40, rh, d['fem_unstru'], 'Show results', cb_fem_unstru)
+        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+240, r,  80, rh, 'Generate script for FEM')
+        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+320, r, 120, rh, 'View results in ParaView')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
