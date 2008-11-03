@@ -132,7 +132,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
             txt.write('                   '+str(zp)+')\n')
         else:
             bks.append(ms.mesh_block())
-            bks[-1].set_coords (int(v[1]),          # tag to be replicated to all elements
+            bks[-1].set_coords (int(v[0]),          # tag to be replicated to all elements
                                 verts,              # vertices' coordinates
                                 edges,              # edges
                                 etags,              # edge tags
@@ -258,7 +258,8 @@ def set_elems(obj, nelems, elems):
     for tag in obj.properties['elems']['tags']:
         if not temp.has_key(tag):
             temp[tag] = True
-            obj.properties['eatts'][str(id)] = str(tag)+'0 0 E=200_nu=0.2 Sx=0_Sy=0_Sz=0_Sxy=0' # tag ElemType Model Prms Inis
+            obj.properties['eatts'][str(id)]    = di.new_eatt_props()
+            obj.properties['eatts'][str(id)][0] = tag
             id += 1
 
 
@@ -274,7 +275,8 @@ def set_etags(obj, msh, etags):
         obj.properties['etags'][str(eid)] = [tag, 0] # tag, type
         if not temp.has_key(tag):
             temp[tag] = True
-            obj.properties['ebrys'][str(id)] = [tag, 0, 0.0] # tag, ux, val
+            obj.properties['ebrys'][str(id)]    = di.new_ebry_props()
+            obj.properties['ebrys'][str(id)][0] = tag
             id += 1
 
 
@@ -296,7 +298,8 @@ def set_ftags(obj, msh, ftags, fclrs):
         obj.properties['ftags'][eids] = [tag, fclrs[tag]] # tag, colour
         if not temp.has_key(tag):
             temp[tag] = True
-            obj.properties['fbrys'][str(id)] = [tag, 0, 0.0, fclrs[tag]] # tag, ux, val, colour
+            obj.properties['fbrys'][str(id)]    = di.new_fbry_props()
+            obj.properties['fbrys'][str(id)][0] = tag
 
 
 @print_timing

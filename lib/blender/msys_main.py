@@ -670,7 +670,7 @@ def gui():
         for k, v in eatts.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     ('',               EVT_INC+i, c,     r,  60, rh, int(v[0]),-1000,-1,        'Set tag',                                   cb_eatt_settag)
+            Draw.Number     ('',               EVT_INC+i, c,     r,  60, rh, int(v[0]),-1000,0,         'Set tag',                                   cb_eatt_settag)
             Draw.Menu       (d['etypes_menu'], EVT_INC+i, c+ 60, r, 120, rh, int(v[1])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
             Draw.Menu       (d['models_menu'], EVT_INC+i, c+180, r, 100, rh, int(v[2])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
             Draw.PushButton ('Del',            EVT_INC+i, c+280, r,  40, rh,                            'Delete this row',                           cb_eatt_del)

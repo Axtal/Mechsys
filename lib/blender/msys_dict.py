@@ -192,7 +192,7 @@ def new_nbry_props(): return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props(): return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props(): return [-10, 0, 0.0]                     # tag, ux, val
 def new_fbry_props(): return [-100, 0, 0.0, key('newftag')[1]] # tag, ux, val, colour
-def new_eatt_props(): return [-1, 0, 0, -1, -1]                # tag ElemType Model MatID IniID
+def new_eatt_props(): return [-1, 2, 0, -1, -1]                # tag ElemType Model MatID IniID
 
 
 # ============================================================================== Object Properties
