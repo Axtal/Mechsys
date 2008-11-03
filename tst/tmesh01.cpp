@@ -98,7 +98,7 @@ int main(int argc, char **argv) try
 		b.SetWy     (2, 1.0,1.0); // y weights and num of divisions along y
 		b.SetWz     (2, 1.0,1.0); // z weights and num of divisions along z
 		b.SetETags  (12, -100, -101, -102, -103, -104, -105, -106, -107, -108, -109, -110, -111);
-		b.SetFTags  (6,  0x00000f, 0x0000f0, 0x000f00, 0x00f000, 0x0f0000, 0xf00000);
+		b.SetFTags  (6,  -10, -11, -12, -13, -14, -15);
 		Array<Mesh::Block*> blocks;
 		blocks.Push(&b);
 
@@ -110,7 +110,6 @@ int main(int argc, char **argv) try
 		std::cout << "3D:("<<ne<<" elements) Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
 
 		// Check
-		/*
 		cout << "FTags:" << endl;
 		for (size_t eb=0; eb<ms.NElemsBry(); ++eb)
 		{
@@ -118,11 +117,10 @@ int main(int argc, char **argv) try
 			for (size_t j=0; j<ms.ElemNFTags(i); ++j)
 			{
 				char buf[12];
-				sprintf(buf,"#%06x",ms.ElemFTag(i,j));
-				cout << "Elem # " << i << "\tFace # " << j << "\t FTag = " << buf << "\tFTag = " << ms.ElemFTag(i,j) << "\tFTag = " << std::hex << ms.ElemFTag(i,j) << std::dec << endl;
+				sprintf(buf,"%d",ms.ElemFTag(i,j));
+				cout << "Elem # " << i << "\tFace # " << j << "\t FTag = " << buf << endl;
 			}
 		}
-		*/
 
 		// Output
 		ms.WriteVTU ("tmesh01_3D.vtu");

@@ -431,7 +431,7 @@ inline void Generic::PyGetETags(BPy::dict & ETags) const
 	{
 		for (size_t j=0; j<ElemNETags(i); ++j) // j is the local edge id
 		{
-			if (ElemETag(i,j)!=0)
+			if (ElemETag(i,j)<0)
 			{
 				int L = ElemCon(i, _edge_to_lef_vert(j));
 				int R = ElemCon(i, _edge_to_rig_vert(j));
@@ -451,7 +451,7 @@ inline void Generic::PyGetFTags(BPy::dict & FTags) const
 	{
 		for (size_t j=0; j<ElemNFTags(i); ++j) // j is the local face id
 		{
-			if (ElemFTag(i,j)!=0)
+			if (ElemFTag(i,j)<0)
 			{
 				Array<size_t> fe; // face-edges
 				_face_to_edges (j, fe);
