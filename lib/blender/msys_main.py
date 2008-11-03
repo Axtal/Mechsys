@@ -83,12 +83,12 @@ EVT_MESH_GENUNSTRUS  = 24 # script for unstructured mesh generation
 # FEM
 EVT_FEM_SHOWHIDE     = 25 # show/hide FEM box
 EVT_FEM_ADDNBRY      = 26 # add nodes boundary (given coordinates)
-EVT_FEM_ADDNBRYID    = 27 # add nodes boundary (given nodes IDs)
+EVT_FEM_ADDNBID      = 27 # add nodes boundary (given nodes IDs)
 EVT_FEM_ADDEBRY      = 28 # add edges boundary
 EVT_FEM_ADDFBRY      = 29 # add faces boundary
 EVT_FEM_ADDEATT      = 30 # add element attributes
 EVT_FEM_DELALLNBRY   = 31 # delete all nodes boundary
-EVT_FEM_DELALLNBRYID = 32 # delete all nodes boundary (IDs)
+EVT_FEM_DELALLNBID   = 32 # delete all nodes boundary (IDs)
 EVT_FEM_DELALLEBRY   = 33 # delete all edges boundary
 EVT_FEM_DELALLFBRY   = 34 # delete all faces boundary
 EVT_FEM_DELALLEATT   = 35 # delete all element attributes
@@ -122,22 +122,6 @@ def event(evt, val):
         if d['gui_inirow']<0: d['gui_inirow'] += 180
         Blender.Window.QRedrawAll()
 
-def props_push_new(key,props)
-    obj = di.get_obj()
-    if not obj.properties.has_key(key): obj.properties[key] = {}
-    id = 0
-    while obj.properties[key].has_key(str(id)): id += 1
-    obj.properties[key][str(id)] = props
-    Blender.Window.QRedrawAll()
-
-def props_del_all(key):
-    obj = di.get_obj()
-    msg = 'Confirm delete ALL?%t|Yes'
-    res  = Blender.Draw.PupMenu(msg)
-    if res>0:
-        obj.properties.pop(key)
-        Blender.Window.QRedrawAll()
-
 # Handle button events
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
@@ -145,7 +129,7 @@ def button_event(evt):
     if True:#try:
         # ----------------------------------------------------------------------------------- Settings
 
-        if evt==EVT_SET_SHOWHIDE: di.toggle_key_and_redraw('gui_show_set')
+        if evt==EVT_SET_SHOWHIDE: di.toggle_key('gui_show_set')
 
         elif evt==EVT_SET_DELPROPS:
             scn = bpy.data.scenes.active
@@ -165,7 +149,7 @@ def button_event(evt):
 
         # ----------------------------------------------------------------------------------- CAD
 
-        elif evt==EVT_CAD_SHOWHIDE: di.toggle_key_and_redraw('gui_show_cad')
+        elif evt==EVT_CAD_SHOWHIDE: di.toggle_key('gui_show_cad')
         elif evt==EVT_CAD_ADDXYZ:   ca.add_point     (float(di.key('cad_x')), float(di.key('cad_y')), float(di.key('cad_z')))
         elif evt==EVT_CAD_FILLET:   ca.fillet        (float(di.key('cad_rad')), di.key('cad_stp'))
         elif evt==EVT_CAD_BREAK:    ca.break_edge    ()
@@ -176,28 +160,24 @@ def button_event(evt):
 
         # ---------------------------------------------------------------------------------- Mesh
 
-        elif evt==EVT_MESH_SHOWHIDE: di.toggle_key_and_redraw('gui_show_mesh')
+        elif evt==EVT_MESH_SHOWHIDE: di.toggle_key_('gui_show_mesh')
 
         elif evt==EVT_MESH_SETETAG:
+            tag = di.key('newetag')[0]
             edm, obj, msh = di.get_msh()
             for eid in di.get_selected_edges(msh):
-                if not obj.properties.has_key('etags'): obj.properties['etags'] = {}
-                if di.key('newetag')[0]==0: obj.properties['etags'].pop     (str(eid))
-                else:                       obj.properties['etags'].update ({str(eid):di.key('newetag')})
-                if len(obj.properties['etags'])==0: obj.properties.pop('etags')
+                di.props_set_with_tag ('etags', str(eid), tag, di.key('newetag'))
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1)
 
         elif evt==EVT_MESH_SETFTAG:
+            tag = di.key('newftag')[0]
             edm, obj, msh = di.get_msh()
             sel           = di.get_selected_edges(msh)
             nedges        = len(sel)
             if nedges==3 or nedges==6 or nedges==4 or nedges==8:
-                eids = '_'.join([str(id) for id in sel])
-                if not obj.properties.has_key('ftags'): obj.properties['ftags'] = {}
-                if di.key('newftag')[0]==0: obj.properties['ftags'].pop     (eids)
-                else:                       obj.properties['ftags'].update ({eids:di.key('newftag')})
-                if len(obj.properties['ftags'])==0: obj.properties.pop('ftags')
+                eids = '_'.join([str(eid) for eid in sel])
+                di.props_set_with_tag ('ftags', eids, tag, di.key('newftag'))
             else: raise Exception('To set a face tag (FTAG), 3, 4, 6, or 8 edges must be selected')
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1)
@@ -205,77 +185,45 @@ def button_event(evt):
         # -------------------------------------------------------------------- Mesh -- structured
 
         elif evt==EVT_MESH_ADDBLK:
-            edm, obj, msh = di.get_msh()
-            sel           = di.get_selected_edges(msh)
-            nedges        = len(sel)
-            if obj.properties['3dmesh']:
-                if not (nedges==8 or nedges==24):
-                    raise Exception('To set a 3D block, 8 or 24 edges must be selected (%d is invalid)'%nedges)
-            else:
-                if not (nedges==4 or nedges==8):
-                    raise Exception('To set a 2D block, 4 or 8 edges must be selected (%d is invalid)'%nedges)
-            if not obj.properties.has_key('blks'): obj.properties['blks'] = {}
-            eids = '_'.join([str(id) for id in sel])
-            if obj.properties['blks'].has_key(eids): raise Exception('Block with edges '+eids.replace('_',' ')+' was already added')
-            nblks = len(obj.properties['blks'])
-            #                                   0   1   2  3  4  5 6 7   8   9  10  11 12 13 14 15 16 17     0   1      2    3     4     5  6  7   8  9 10    11   12   13     14     15    16      17
-            obj.properties['blks'][eids] = [nblks, -1, -1,-1,-1, 2,2,2, 0.0,0.0,0.0,  0,0,0, -1,-1,-1,-1] # ID, tag, x_eid,y_eid,z_eid, nx,ny,nz, ax,ay,az, linx,liny,linz, origin,x_plus,y_plus,z_plus
-            Blender.Window.QRedrawAll()
-            if edm: Blender.Window.EditMode(1)
+            props = di.new_blk_props()
+            di.props_push_new('blks', props, True, 18, 18+int(props[17]))
 
-        elif evt==EVT_MESH_DELALLBLKS: props_del_all('blks')
+        elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
         elif evt==EVT_MESH_GENSTRU:    me.gen_struct_mesh()
         elif evt==EVT_MESH_GENSTRUS:   me.gen_struct_mesh(True)
 
         # -------------------------------------------------------------------------- Unstructured
 
-        elif evt==EVT_MESH_ADDREG:
-            obj     = di.get_obj()
-            x, y, z = Blender.Window.GetCursorPos()
-            if not obj.properties.has_key('regs'): obj.properties['regs'] = {}
-            id = 0
-            while obj.properties['regs'].has_key(str(id)): id += 1
-            obj.properties['regs'][str(id)] = [-1, -1.0, x,y,z] # tag, maxarea, x,y,z
-            Blender.Window.QRedrawAll()
-
-        elif evt==EVT_MESH_DELALLREGS: props_del_all('regs')
-
-        elif evt==EVT_MESH_ADDHOL:
-            obj     = di.get_obj()
-            x, y, z = Blender.Window.GetCursorPos()
-            if not obj.properties.has_key('hols'): obj.properties['hols'] = {}
-            id = 0
-            while obj.properties['hols'].has_key(str(id)): id += 1
-            obj.properties['hols'][str(id)] = [x,y,z] # x,y,z
-            Blender.Window.QRedrawAll()
-
-        elif evt==EVT_MESH_DELALLHOLS: props_del_all('hols')
-        elif evt==EVT_MESH_GENUNSTRU:   me.gen_unstruct_mesh()
-        elif evt==EVT_MESH_GENUNSTRUS:  me.gen_unstruct_mesh(True)
+        elif evt==EVT_MESH_ADDREG:     di.props_push_new('regs', di.new_reg_props())
+        elif evt==EVT_MESH_DELALLREGS: di.props_del_all ('regs')
+        elif evt==EVT_MESH_ADDHOL:     di.props_push_new('hols', di.new_hol_props())
+        elif evt==EVT_MESH_DELALLHOLS: di.props_del_all ('hols')
+        elif evt==EVT_MESH_GENUNSTRU:  me.gen_unstruct_mesh()
+        elif evt==EVT_MESH_GENUNSTRUS: me.gen_unstruct_mesh(True)
 
         # ----------------------------------------------------------------------------------- FEM 
 
-        elif evt==EVT_FEM_SHOWHIDE: di.toggle_key_and_redraw('gui_show_fem')
+        elif evt==EVT_FEM_SHOWHIDE: di.toggle_key('gui_show_fem')
 
-        elif evt==EVT_FEM_ADDNBRY:   props_push_new('nbrys',  [0.0,0.0,0.0, 0, 0.0]) # x,y,z, ux, val
-        elif evt==EVT_FEM_ADDNBRYID: props_push_new('nbrysID',[0, 0, 0.0])           # ID, ux, val
-        elif evt==EVT_FEM_ADDEBRY:   props_push_new('ebrys',  [-10, 0, 0.0])         # tag, ux, val
-        elif evt==EVT_FEM_ADDFBRY:   props_push_new('fbrys',  [-100, 0, 0.0])        # tag, ux, val
-        elif evt==EVT_FEM_ADDEATT:   props_push_new('eatts',  '-1 0 0 E=200_nu=0.2 Sx=0_Sy=0_Sz=0_Sxy=0') # tag ElemType Model Prms Inis
+        elif evt==EVT_FEM_ADDNBRY: di.props_push_new('nbrys', di.new_nbry_props())
+        elif evt==EVT_FEM_ADDNBID: di.props_push_new('nbsID', di.new_nbID_props())
+        elif evt==EVT_FEM_ADDEBRY: di.props_push_new('ebrys', di.new_ebry_props())
+        elif evt==EVT_FEM_ADDFBRY: di.props_push_new('fbrys', di.new_fbry_props())
+        elif evt==EVT_FEM_ADDEATT: di.props_push_new('eatts', di.new_eatt_props())
 
-        elif evt==EVT_FEM_DELALLNBRY:   props_del_all('nbrys')
-        elif evt==EVT_FEM_DELALLNBRYID: props_del_all('nbrysID')
-        elif evt==EVT_FEM_DELALLEBRY:   props_del_all('ebrys')
-        elif evt==EVT_FEM_DELALLFBRY:   props_del_all('fbrys')
-        elif evt==EVT_FEM_DELALLEATT:   props_del_all('eatts')
+        elif evt==EVT_FEM_DELALLNBRY: di.props_del_all('nbrys')
+        elif evt==EVT_FEM_DELALLNBID: di.props_del_all('nbsID')
+        elif evt==EVT_FEM_DELALLEBRY: di.props_del_all('ebrys')
+        elif evt==EVT_FEM_DELALLFBRY: di.props_del_all('fbrys')
+        elif evt==EVT_FEM_DELALLEATT: di.props_del_all('eatts')
 
-        elif evt==EVT_FEM_RUN:          fe.run_analysis()
-        elif evt==EVT_FEM_SCRIPT:       fe.run_analysis(True)
-        elif evt==EVT_FEM_PARAVIEW:     fe.paraview    ()
+        elif evt==EVT_FEM_RUN:      fe.run_analysis()
+        elif evt==EVT_FEM_SCRIPT:   fe.run_analysis(True)
+        elif evt==EVT_FEM_PARAVIEW: fe.paraview    ()
 
         # ----------------------------------------------------------------------------------- RES 
 
-        elif evt==EVT_RES_SHOWHIDE: di.toggle_key_and_redraw('gui_show_res')
+        elif evt==EVT_RES_SHOWHIDE: di.toggle_key('gui_show_res')
 
 
     #except Exception, inst:
@@ -288,15 +236,15 @@ def button_event(evt):
 
 # ---------------------------------- Settings
 
-def cb_show_props(evt,val): di.set_key_and_redraw('show_props', val)
-def cb_show_e_ids(evt,val): di.set_key_and_redraw('show_e_ids', val)
-def cb_show_v_ids(evt,val): di.set_key_and_redraw('show_v_ids', val)
-def cb_show_blks (evt,val): di.set_key_and_redraw('show_blks',  val)
-def cb_show_axes (evt,val): di.set_key_and_redraw('show_axes',  val)
-def cb_show_etags(evt,val): di.set_key_and_redraw('show_etags', val)
-def cb_show_ftags(evt,val): di.set_key_and_redraw('show_ftags', val)
-def cb_show_elems(evt,val): di.set_key_and_redraw('show_elems', val)
-def cb_show_opac (evt,val): di.set_key_and_redraw('show_opac',  val)
+def cb_show_props(evt,val): di.set_key ('show_props', val)
+def cb_show_e_ids(evt,val): di.set_key ('show_e_ids', val)
+def cb_show_v_ids(evt,val): di.set_key ('show_v_ids', val)
+def cb_show_blks (evt,val): di.set_key ('show_blks',  val)
+def cb_show_axes (evt,val): di.set_key ('show_axes',  val)
+def cb_show_etags(evt,val): di.set_key ('show_etags', val)
+def cb_show_ftags(evt,val): di.set_key ('show_ftags', val)
+def cb_show_elems(evt,val): di.set_key ('show_elems', val)
+def cb_show_opac (evt,val): di.set_key ('show_opac',  val)
 
 # ---------------------------------- CAD
 
@@ -308,193 +256,88 @@ def cb_fillet_stp(evt,val): di.set_key('cad_stp', val)
 
 # ---------------------------------- Mesh
 
-def cb_3dmesh(evt,val):
-    obj = di.get_obj()
-    obj.properties['3dmesh'] = val
-
-def cb_etag  (evt,val): di.set_key_and_redraw('newetag', [val, di.key('newetag')[1]])
-def cb_ftag  (evt,val): di.set_key_and_redraw('newftag', [val, di.key('newftag')[1]])
-def cb_fclr  (evt,val): di.set_key_and_redraw('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
+def cb_3dmesh(evt,val): di.props_set_val('3dmesh', val)
+def cb_etag  (evt,val): di.set_key      ('newetag', [val, di.key('newetag')[1]])
+def cb_ftag  (evt,val): di.set_key      ('newftag', [val, di.key('newftag')[1]])
+def cb_fclr  (evt,val): di.set_key      ('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
 
 # ---------------------------------- Mesh -- structured
 
-def set_local_system(obj,msh,blk):
-    # set local system: origin and vertices on positive directions
-    iex = int(obj.properties['blks'][blk][2])
-    iey = int(obj.properties['blks'][blk][3])
-    if iex>=0 and iey>=0:
-        ex     = msh.edges[iex]
-        ey     = msh.edges[iey]
-        origin = -1
-        x_plus = -1
-        y_plus = -1
-        if ex.v1.index==ey.v1.index:
-            origin = ex.v1.index
-            x_plus = ex.v2.index
-            y_plus = ey.v2.index
-        elif ex.v1.index==ey.v2.index:
-            origin = ex.v1.index
-            x_plus = ex.v2.index
-            y_plus = ey.v1.index
-        elif ex.v2.index==ey.v1.index:
-            origin = ex.v2.index
-            x_plus = ex.v1.index
-            y_plus = ey.v2.index
-        elif ex.v2.index==ey.v2.index:
-            origin = ex.v2.index
-            x_plus = ex.v1.index
-            y_plus = ey.v1.index
-        obj.properties['blks'][blk][14] = origin
-        obj.properties['blks'][blk][15] = x_plus
-        obj.properties['blks'][blk][16] = y_plus
-        iez = int(obj.properties['blks'][blk][4])
-        if iez>=0:
-            z_plus = -1
-            ez = msh.edges[iez]
-            if ez.v1.index==origin:
-                z_plus = ez.v2.index
-            elif ez.v2.index==origin:
-                z_plus = ez.v1.index
-            obj.properties['blks'][blk][17] = z_plus
-
-def set_blk_prop(id,item,val):
-    obj = di.get_obj()
-    for k, v in obj.properties['blks'].iteritems():
-        if int(v[0])==id:
-            obj.properties['blks'][k][item] = val
-            Blender.Window.QRedrawAll()
-            break
-
-def set_blk_axis(id,item):
-    edm, obj, msh = di.get_msh()
-    sel           = di.get_selected_edges(msh)
-    if len(sel)==1:
-        eid = sel[0]
-        for k, v in obj.properties['blks'].iteritems():
-            if int(v[0])==id:
-                eds = [int(i) for i in k.split('_')]
-                if eid in eds:
-                    obj.properties['blks'][k][item] = eid
-                    set_local_system(obj,msh,k)
-                else: raise Exception('This edge # '+str(eid)+' is not part of the block defined by edges '+k.replace('_',' '))
-                Blender.Window.QRedrawAll()
-                break
-    else: raise Exception('Please, select (only) one edge to define a local axis')
-    if edm: Blender.Window.EditMode(1)
-
-def cb_blk_tag(evt,val): set_blk_prop (evt-EVT_INC,  1, val)
-def cb_blk_xax(evt,val): set_blk_axis (evt-EVT_INC,  2)
-def cb_blk_yax(evt,val): set_blk_axis (evt-EVT_INC,  3)
-def cb_blk_zax(evt,val): set_blk_axis (evt-EVT_INC,  4)
-def cb_blk_nx (evt,val): set_blk_prop (evt-EVT_INC,  5, val)
-def cb_blk_ny (evt,val): set_blk_prop (evt-EVT_INC,  6, val)
-def cb_blk_nz (evt,val): set_blk_prop (evt-EVT_INC,  7, val)
-def cb_blk_ax (evt,val): set_blk_prop (evt-EVT_INC,  8, float(val))
-def cb_blk_ay (evt,val): set_blk_prop (evt-EVT_INC,  9, float(val))
-def cb_blk_az (evt,val): set_blk_prop (evt-EVT_INC, 10, float(val))
-def cb_blk_nlx(evt,val): set_blk_prop (evt-EVT_INC, 11, val)
-def cb_blk_nly(evt,val): set_blk_prop (evt-EVT_INC, 12, val)
-def cb_blk_nlz(evt,val): set_blk_prop (evt-EVT_INC, 13, val)
-
-def cb_blk_del(evt,val):
-    msg = 'Confirm delete this block?%t|Yes'
-    res = Blender.Draw.PupMenu(msg)
-    if res>0:
-        obj = di.get_obj()
-        id  = evt-EVT_INC
-        for k, v in obj.properties['blks'].iteritems():
-            if int(v[0])==id:
-                obj.properties['blks'].pop(k)
-                break
-        for k, v in obj.properties['blks'].iteritems():
-            if int(v[0])>id:
-                obj.properties['blks'][k][0] = int(v[0])-1
-        Blender.Window.QRedrawAll()
+def cb_blk_tag(evt,val): di.props_set_item ('blks', evt-EVT_INC,  0, val)
+def cb_blk_xax(evt,val): di.blk_set_axis   (        evt-EVT_INC,  1)
+def cb_blk_yax(evt,val): di.blk_set_axis   (        evt-EVT_INC,  2)
+def cb_blk_zax(evt,val): di.blk_set_axis   (        evt-EVT_INC,  3)
+def cb_blk_nx (evt,val): di.props_set_item ('blks', evt-EVT_INC,  8, val)
+def cb_blk_ny (evt,val): di.props_set_item ('blks', evt-EVT_INC,  9, val)
+def cb_blk_nz (evt,val): di.props_set_item ('blks', evt-EVT_INC, 10, val)
+def cb_blk_ax (evt,val): di.props_set_item ('blks', evt-EVT_INC, 11, float(val))
+def cb_blk_ay (evt,val): di.props_set_item ('blks', evt-EVT_INC, 12, float(val))
+def cb_blk_az (evt,val): di.props_set_item ('blks', evt-EVT_INC, 13, float(val))
+def cb_blk_nlx(evt,val): di.props_set_item ('blks', evt-EVT_INC, 14, val)
+def cb_blk_nly(evt,val): di.props_set_item ('blks', evt-EVT_INC, 15, val)
+def cb_blk_nlz(evt,val): di.props_set_item ('blks', evt-EVT_INC, 16, val)
+def cb_blk_del(evt,val): di.props_del      ('blks', evt-EVT_INC)
 
 # ---------------------------------- Mesh -- unstructured
 
-def set_obj_prop_and_redraw(key,val):
-    obj = di.get_obj()
-    obj.properties[key] = val
-    Blender.Window.QRedrawAll()
-
-def cb_minang (evt,val): set_obj_prop_and_redraw('minang', val)
-def cb_maxarea(evt,val): set_obj_prop_and_redraw('maxarea',val)
+def cb_minang (evt,val): di.props_set_val('minang', float(val))
+def cb_maxarea(evt,val): di.props_set_val('maxarea',float(val))
 
 # ---------------------------------- Mesh -- unstructured -- regions
 
-def set_obj_subprop_and_redraw(key,subkey,item,val):
-    obj = di.get_obj()
-    obj.properties[key][subkey][item] = val
-    Blender.Window.QRedrawAll()
-
-def del_obj_subprop_and_redraw(key,subkey):
-    msg = 'Confirm delete this?%t|Yes'
-    res = Blender.Draw.PupMenu(msg)
-    if res>0:
-        obj = di.get_obj()
-        obj.properties[key].pop(subkey)
-        Blender.Window.QRedrawAll()
-
-def cb_regs_tag    (evt,val): set_obj_subprop_and_redraw('regs', str(evt-EVT_INC), 0, val)
-def cb_regs_setx   (evt,val): set_obj_subprop_and_redraw('regs', str(evt-EVT_INC), 1, float(val))
-def cb_regs_sety   (evt,val): set_obj_subprop_and_redraw('regs', str(evt-EVT_INC), 2, float(val))
-def cb_regs_setz   (evt,val): set_obj_subprop_and_redraw('regs', str(evt-EVT_INC), 3, float(val))
-def cb_regs_maxarea(evt,val): set_obj_subprop_and_redraw('regs', str(evt-EVT_INC), 4, float(val))
-def cb_regs_del    (evt,val): del_obj_subprop_and_redraw('regs', str(evt-EVT_INC))
+def cb_regs_tag    (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 0, val)
+def cb_regs_maxarea(evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 1, float(val))
+def cb_regs_setx   (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 2, float(val))
+def cb_regs_sety   (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 3, float(val))
+def cb_regs_setz   (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 4, float(val))
+def cb_regs_del    (evt,val): di.props_del      ('regs', str(evt-EVT_INC))
 
 # ---------------------------------- Mesh -- unstructured -- holes
 
-def cb_hols_setx(evt,val): set_obj_subprop_and_redraw('hols', str(evt-EVT_INC), 0, float(val))
-def cb_hols_sety(evt,val): set_obj_subprop_and_redraw('hols', str(evt-EVT_INC), 1, float(val))
-def cb_hols_setz(evt,val): set_obj_subprop_and_redraw('hols', str(evt-EVT_INC), 2, float(val))
-def cb_hols_del (evt,val): del_obj_subprop_and_redraw('hols', str(evt-EVT_INC))
+def cb_hols_setx(evt,val): di.props_set_item ('hols', str(evt-EVT_INC), 0, float(val))
+def cb_hols_sety(evt,val): di.props_set_item ('hols', str(evt-EVT_INC), 1, float(val))
+def cb_hols_setz(evt,val): di.props_set_item ('hols', str(evt-EVT_INC), 2, float(val))
+def cb_hols_del (evt,val): di.props_del      ('hols', str(evt-EVT_INC))
 
 # ---------------------------------- FEM -- nbrys
 
-def cb_nbry_setx  (evt,val): set_obj_subprop_and_redraw('nbrys', str(evt-EVT_INC), 0, float(val))
-def cb_nbry_sety  (evt,val): set_obj_subprop_and_redraw('nbrys', str(evt-EVT_INC), 1, float(val))
-def cb_nbry_setz  (evt,val): set_obj_subprop_and_redraw('nbrys', str(evt-EVT_INC), 2, float(val))
-def cb_nbry_setkey(evt,val): set_obj_subprop_and_redraw('nbrys', str(evt-EVT_INC), 3, val-1)
-def cb_nbry_setval(evt,val): set_obj_subprop_and_redraw('nbrys', str(evt-EVT_INC), 4, float(val))
-def cb_nbry_del   (evt,val): del_obj_subprop_and_redraw('nbrys', str(evt-EVT_INC))
+def cb_nbry_setx  (evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 0, float(val))
+def cb_nbry_sety  (evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 1, float(val))
+def cb_nbry_setz  (evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 2, float(val))
+def cb_nbry_setkey(evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 3, val-1)
+def cb_nbry_setval(evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 4, float(val))
+def cb_nbry_del   (evt,val): di.props_del      ('nbrys', str(evt-EVT_INC))
 
-# ---------------------------------- FEM -- nbrysID
+# ---------------------------------- FEM -- nbsID
 
-def cb_nbryID_setID (evt,val): set_obj_subprop_and_redraw('nbrysID', str(evt-EVT_INC), 0, int(val))
-def cb_nbryID_setkey(evt,val): set_obj_subprop_and_redraw('nbrysID', str(evt-EVT_INC), 1, val-1)
-def cb_nbryID_setval(evt,val): set_obj_subprop_and_redraw('nbrysID', str(evt-EVT_INC), 2, float(val))
-def cb_nbryID_del   (evt,val): del_obj_subprop_and_redraw('nbrysID', str(evt-EVT_INC))
+def cb_nbID_setID (evt,val): di.props_set_item ('nbsID', str(evt-EVT_INC), 0, int(val))
+def cb_nbID_setkey(evt,val): di.props_set_item ('nbsID', str(evt-EVT_INC), 1, val-1)
+def cb_nbID_setval(evt,val): di.props_set_item ('nbsID', str(evt-EVT_INC), 2, float(val))
+def cb_nbID_del   (evt,val): di.props_del      ('nbsID', str(evt-EVT_INC))
 
 # ---------------------------------- FEM -- ebrys
 
-def cb_ebry_settag(evt,val): set_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC), 0, int(val))
-def cb_ebry_setkey(evt,val): set_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC), 0, val-1)
-def cb_ebry_setval(evt,val): set_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC), 1, float(val))
-def cb_ebry_del   (evt,val): del_obj_subprop_and_redraw('ebrys', str(evt-EVT_INC))
+def cb_ebry_settag(evt,val): di.props_set_item ('ebrys', str(evt-EVT_INC), 0, int(val))
+def cb_ebry_setkey(evt,val): di.props_set_item ('ebrys', str(evt-EVT_INC), 1, val-1)
+def cb_ebry_setval(evt,val): di.props_set_item ('ebrys', str(evt-EVT_INC), 2, float(val))
+def cb_ebry_del   (evt,val): di.props_del      ('ebrys', str(evt-EVT_INC))
 
 # ---------------------------------- FEM -- fbrys
 
-def cb_fbry_settag(evt,val): set_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC), 0, int(val))
-def cb_fbry_setkey(evt,val): set_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC), 0, val-1)
-def cb_fbry_setval(evt,val): set_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC), 1, float(val))
-def cb_fbry_del   (evt,val): del_obj_subprop_and_redraw('fbrys', str(evt-EVT_INC))
+def cb_fbry_settag(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 0, int(val))
+def cb_fbry_setkey(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 1, val-1)
+def cb_fbry_setval(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 2, float(val))
+def cb_fbry_setclr(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 3, di.rgb2hex(val))
+def cb_fbry_del   (evt,val): di.props_del      ('fbrys', str(evt-EVT_INC))
 
 # ---------------------------------- FEM -- eatts
 
-def set_eatt_and_redraw(tag,item,val):
-    obj = di.get_obj()
-    res = di.sarray_set_val(obj.properties['eatts'][tag], item, val)
-    obj.properties['eatts'].pop(tag)
-    obj.properties['eatts'][tag] = res
-    Blender.Window.QRedrawAll()
-
-def cb_eatt_settag(evt,val): set_obj_subprop_and_redraw('eatt', str(evt-EVT_INC), 0, int(val))
-def cb_eatt_settype (evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 0, str(val-1))
-def cb_eatt_setmodel(evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 1, str(val-1))
-def cb_eatt_setprms (evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 2, '_'.join(val.split()))
-def cb_eatt_setinis (evt,val): set_eatt_and_redraw(str(evt-EVT_INC), 3, '_'.join(val.split()))
-def cb_eatt_del     (evt,val): del_obj_subprop_and_redraw('eatts', str(evt-EVT_INC))
+def cb_eatt_settag  (evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 0, int(val))
+def cb_eatt_settype (evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 1, val-1)
+def cb_eatt_setmodel(evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 2, val-1)
+def cb_eatt_setmatID(evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 3, val)
+def cb_eatt_setiniID(evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 4, val)
+def cb_eatt_del     (evt,val): di.props_del      ('eatts', str(evt-EVT_INC))
 
 # ---------------------------------- FEM
 
@@ -512,21 +355,14 @@ def cb_fem_unstru(evt,val):
 
 # ---------------------------------- Results
 
-def cb_res_show       (evt,val): di.set_key_and_redraw('res_show',        val)
-def cb_res_scalar     (evt,val): di.set_key_and_redraw('res_scalar',      val)
-def cb_res_show_scalar(evt,val): di.set_key_and_redraw('res_show_scalar', val)
-def cb_res_warp_scale (evt,val): di.set_key_and_redraw('res_warp_scale',  val)
-def cb_res_show_warp  (evt,val): di.set_key_and_redraw('res_show_warp',   val)
+def cb_res_show       (evt,val): di.set_key ('res_show',        val)
+def cb_res_scalar     (evt,val): di.set_key ('res_scalar',      val)
+def cb_res_show_scalar(evt,val): di.set_key ('res_show_scalar', val)
+def cb_res_warp_scale (evt,val): di.set_key ('res_warp_scale',  val)
+def cb_res_show_warp  (evt,val): di.set_key ('res_show_warp',   val)
 
 
 # ======================================================================================= GUI
-
-def draw_label(x,y,w,h,txt):
-    BGL.glColor3f     (0.663, 0.663, 0.663)
-    BGL.glRecti       (x, y, x+w, y+h)
-    BGL.glColor3f     (0.0, 0.0, 0.0)
-    BGL.glRasterPos2i (x+5, y+5)
-    Draw.Text         (txt)
 
 # Draw GUI
 def gui():
@@ -545,7 +381,7 @@ def gui():
     regs    = {}
     hols    = {}
     nbrys   = {}
-    nbrysID = {}
+    nbsID   = {}
     ebrys   = {}
     fbrys   = {}
     eatts   = {}
@@ -560,7 +396,7 @@ def gui():
         regs     = obj.properties['regs']    if obj.properties.has_key('regs')    else {}
         hols     = obj.properties['hols']    if obj.properties.has_key('hols')    else {}
         nbrys    = obj.properties['nbrys']   if obj.properties.has_key('nbrys')   else {}
-        nbrysID  = obj.properties['nbrysID'] if obj.properties.has_key('nbrysID') else {}
+        nbsID    = obj.properties['nbsID']   if obj.properties.has_key('nbsID')   else {}
         ebrys    = obj.properties['ebrys']   if obj.properties.has_key('ebrys')   else {}
         fbrys    = obj.properties['fbrys']   if obj.properties.has_key('fbrys')   else {}
         eatts    = obj.properties['eatts']   if obj.properties.has_key('eatts')   else {}
@@ -590,11 +426,11 @@ def gui():
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
     h_msh           = 7*rh+h_msh_stru+h_msh_unst
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
-    h_fem_nbrysID   = rh+srg+rh*len(nbrysID)
+    h_fem_nbsID     = rh+srg+rh*len(nbsID)
     h_fem_ebrys     = rh+srg+rh*len(ebrys)
     h_fem_fbrys     = rh+srg+rh*len(fbrys)
     h_fem_eatts     = rh+srg+rh*len(eatts)
-    h_fem           = 8*rh+5*srg+h_fem_nbrys+h_fem_nbrysID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
+    h_fem           = 8*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
     h_res           = 3*rh
 
     # clear background
@@ -668,26 +504,25 @@ def gui():
 
         gu.caption3(c,r,w,rh, 'Blocks', EVT_MESH_ADDBLK,EVT_MESH_DELALLBLKS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_stru_blks)
-        gu.text(c,r,'     Tag     Local axes    nX         nY        nZ')
+        gu.text(c,r,'     ID:Tag     Local axes      nX           nY          nZ')
         for k, v in blks.iteritems():
-            r    -= rh
-            i     = int(v[0])
-            coefs = 'aX=%d aY=%d aZ=%d' % (v[8],v[9],v[10])
-            Draw.Number     ('',    EVT_INC+i, c     , r-rh, 60, 2*rh, int(v[1]), -100, 0,  'Block tag',                       cb_blk_tag)
-            Draw.PushButton ('X',   EVT_INC+i, c+ 60 , r,    20,   rh,                      'Set X-axis',                      cb_blk_xax)
-            Draw.PushButton ('Y',   EVT_INC+i, c+ 80 , r,    20,   rh,                      'Set Y-axis',                      cb_blk_yax)
-            Draw.PushButton ('Z',   EVT_INC+i, c+100 , r,    20,   rh,                      'Set Z-axis',                      cb_blk_zax)
-            Draw.Number     ('',    EVT_INC+i, c+120 , r,    60,   rh, int(v[ 5]), 1, 1000, 'Number of divisions along X',     cb_blk_nx)
-            Draw.Number     ('',    EVT_INC+i, c+180 , r,    60,   rh, int(v[ 6]), 1, 1000, 'Number of divisions along X',     cb_blk_ny)
-            Draw.Number     ('',    EVT_INC+i, c+240 , r,    60,   rh, int(v[ 7]), 1, 1000, 'Number of divisions along X',     cb_blk_nz)
+            r -= rh
+            i  = int(k)
+            Draw.Number     (str(i)+':', EVT_INC+i, c     , r-rh, 80, 2*rh, int(v[0]), -100, -1, 'Block tag',                       cb_blk_tag)
+            Draw.PushButton ('X',        EVT_INC+i, c+ 80 , r,    20,   rh,                      'Set X-axis',                      cb_blk_xax)
+            Draw.PushButton ('Y',        EVT_INC+i, c+100 , r,    20,   rh,                      'Set Y-axis',                      cb_blk_yax)
+            Draw.PushButton ('Z',        EVT_INC+i, c+120 , r,    20,   rh,                      'Set Z-axis',                      cb_blk_zax)
+            Draw.Number     ('',         EVT_INC+i, c+140 , r,    60,   rh, int(v[ 8]), 1, 1000, 'Number of divisions along X',     cb_blk_nx)
+            Draw.Number     ('',         EVT_INC+i, c+200 , r,    60,   rh, int(v[ 9]), 1, 1000, 'Number of divisions along Y',     cb_blk_ny)
+            Draw.Number     ('',         EVT_INC+i, c+260 , r,    60,   rh, int(v[10]), 1, 1000, 'Number of divisions along Z',     cb_blk_nz)
             r -= rh                                          
-            Draw.Toggle     ('X',   EVT_INC+i, c+ 60 , r,    20,   rh, int(v[11]),          'Set nonlinear divisions along X', cb_blk_nlx)
-            Draw.Toggle     ('Y',   EVT_INC+i, c+ 80 , r,    20,   rh, int(v[12]),          'Set nonlinear divisions along Y', cb_blk_nly)
-            Draw.Toggle     ('Z',   EVT_INC+i, c+100 , r,    20,   rh, int(v[13]),          'Set nonlinear divisions along Z', cb_blk_nlz)
-            Draw.String     ('aX=', EVT_INC+i, c+120 , r,    60,   rh, str(v[ 8]),     128, 'Set division coefficient aX',     cb_blk_ax)
-            Draw.String     ('aY=', EVT_INC+i, c+180 , r,    60,   rh, str(v[ 9]),     128, 'Set division coefficient aY',     cb_blk_ay)
-            Draw.String     ('aZ=', EVT_INC+i, c+240 , r,    60,   rh, str(v[10]),     128, 'Set division coefficient aZ',     cb_blk_az)
-            Draw.PushButton ('Del', EVT_INC+i, c+300 , r,    40, 2*rh,                      'Delete this row',                 cb_blk_del)
+            Draw.Toggle     ('X',        EVT_INC+i, c+ 80 , r,    20,   rh, int(v[14]),          'Set nonlinear divisions along X', cb_blk_nlx)
+            Draw.Toggle     ('Y',        EVT_INC+i, c+100 , r,    20,   rh, int(v[15]),          'Set nonlinear divisions along Y', cb_blk_nly)
+            Draw.Toggle     ('Z',        EVT_INC+i, c+120 , r,    20,   rh, int(v[16]),          'Set nonlinear divisions along Z', cb_blk_nlz)
+            Draw.String     ('aX=',      EVT_INC+i, c+140 , r,    60,   rh, str(v[11]),      32, 'Set division coefficient aX',     cb_blk_ax)
+            Draw.String     ('aY=',      EVT_INC+i, c+200 , r,    60,   rh, str(v[12]),      32, 'Set division coefficient aY',     cb_blk_ay)
+            Draw.String     ('aZ=',      EVT_INC+i, c+260 , r,    60,   rh, str(v[13]),      32, 'Set division coefficient aZ',     cb_blk_az)
+            Draw.PushButton ('Del',      EVT_INC+i, c+320 , r,    40, 2*rh,                      'Delete this row',                 cb_blk_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -704,8 +539,8 @@ def gui():
         gu.caption2(c,r,w,rh,'Unstructured mesh')
         r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_msh_unst)
         gu.text     (c,r,'Quality:')
-        Draw.String ('q=', EVT_NONE, c+ 50, r, 80, rh, str(minang),  128, 'Set the minimum angle between edges/faces (-1 => use default)',                        cb_minang)
-        Draw.String ('a=', EVT_NONE, c+130, r, 80, rh, str(maxarea), 128, 'Set the maximum area/volume (uniform) for triangles/tetrahedrons (-1 => use default)', cb_maxarea)
+        Draw.String ('q=', EVT_NONE, c+ 50, r, 80, rh, str(minang),  32, 'Set the minimum angle between edges/faces (-1 => use default)',                        cb_minang)
+        Draw.String ('a=', EVT_NONE, c+130, r, 80, rh, str(maxarea), 32, 'Set the maximum area/volume (uniform) for triangles/tetrahedrons (-1 => use default)', cb_maxarea)
         r -= rh
         r -= srg
 
@@ -713,16 +548,16 @@ def gui():
 
         gu.caption3(c,r,w,rh, 'Regions', EVT_MESH_ADDREG,EVT_MESH_DELALLREGS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_unst_regs)
-        gu.text(c,r,'    Tag           X             Y            Z        Max area')
+        gu.text(c,r,'     ID:Tag      max area        X             Y            Z')
         for k, v in regs.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     ('',    EVT_INC+i, c,     r, 60, rh, int(v[0]), -100, 0,'Region tag',                  cb_regs_tag)
-            Draw.String     ('',    EVT_INC+i, c+ 60, r, 60, rh, str(v[1]),   32,   'X of the region',             cb_regs_setx)
-            Draw.String     ('',    EVT_INC+i, c+120, r, 60, rh, str(v[2]),   32,   'Y of the region',             cb_regs_sety)
-            Draw.String     ('',    EVT_INC+i, c+180, r, 60, rh, str(v[3]),   32,   'Z of the region',             cb_regs_setz)
-            Draw.String     ('',    EVT_INC+i, c+240, r, 60, rh, str(v[4]),   32,   'Max area (-1 => use default)',cb_regs_maxarea)
-            Draw.PushButton ('Del', EVT_INC+i, c+300, r, 40, rh,                    'Delete this row',             cb_regs_del)
+            Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 80, rh, int(v[0]), -100,-1,'Region tag',                  cb_regs_tag)
+            Draw.String     ('',         EVT_INC+i, c+ 80, r, 60, rh, str(v[1]),   32,   'Max area (-1 => use default)',cb_regs_maxarea)
+            Draw.String     ('',         EVT_INC+i, c+140, r, 60, rh, str(v[2]),   32,   'X of the region',             cb_regs_setx)
+            Draw.String     ('',         EVT_INC+i, c+200, r, 60, rh, str(v[3]),   32,   'Y of the region',             cb_regs_sety)
+            Draw.String     ('',         EVT_INC+i, c+260, r, 60, rh, str(v[4]),   32,   'Z of the region',             cb_regs_setz)
+            Draw.PushButton ('Del',      EVT_INC+i, c+320, r, 40, rh,                    'Delete this row',             cb_regs_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -731,14 +566,15 @@ def gui():
         r -= srg
         gu.caption3(c,r,w,rh, 'Holes', EVT_MESH_ADDHOL,EVT_MESH_DELALLHOLS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_unst_hols)
-        gu.text(c,r,'      X            Y             Z')
+        gu.text(c,r,'   ID         X             Y             Z')
         for k, v in hols.iteritems():
             r -= rh
             i  = int(k)
-            Draw.String     ('',    EVT_INC+i, c    , r, 60, rh, str(v[0]), 32, 'X of the hole',   cb_hols_setx)
-            Draw.String     ('',    EVT_INC+i, c+ 60, r, 60, rh, str(v[1]), 32, 'Y of the hole',   cb_hols_sety)
-            Draw.String     ('',    EVT_INC+i, c+120, r, 60, rh, str(v[2]), 32, 'Z of the hole',   cb_hols_setz)
-            Draw.PushButton ('Del', EVT_INC+i, c+180, r, 40, rh,                'Delete this row', cb_hols_del)
+            gu.label        (str(i),            c    , r, 40, rh)
+            Draw.String     ('',     EVT_INC+i, c+ 40, r, 60, rh, str(v[0]), 32, 'X of the hole',   cb_hols_setx)
+            Draw.String     ('',     EVT_INC+i, c+100, r, 60, rh, str(v[1]), 32, 'Y of the hole',   cb_hols_sety)
+            Draw.String     ('',     EVT_INC+i, c+160, r, 60, rh, str(v[2]), 32, 'Z of the hole',   cb_hols_setz)
+            Draw.PushButton ('Del',  EVT_INC+i, c+220, r, 40, rh,                'Delete this row', cb_hols_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -775,19 +611,19 @@ def gui():
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
-        # ----------------------- FEM -- nbrysID
+        # ----------------------- FEM -- nbsID
 
         r -= srg
-        gu.caption2_(c,r,w,rh,'Nodes boundary conditions (given IDs)', EVT_FEM_ADDNBRYID,EVT_FEM_DELALLNBRYID)
-        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_nbrysID)
-        gu.text(c,r,'         ID         Key        Value')
-        for k, v in nbrysID.iteritems():
+        gu.caption2_(c,r,w,rh,'Nodes boundary conditions (given IDs)', EVT_FEM_ADDNBID,EVT_FEM_DELALLNBID)
+        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_nbsID)
+        gu.text(c,r,'     ID        Key     Value')
+        for k, v in nbsID.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     ('',                EVT_INC+i, c    , r, 60, rh, int(v[0]),0,10000, 'Set the node ID',                                                            cb_nbryID_setID)
-            Draw.Menu       (d['dofvars_menu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbryID_setkey)
-            Draw.String     ('',                EVT_INC+i, c+100, r, 60, rh, str(v[2]), 32,     'Value of essential/natural boundary condition',                              cb_nbryID_setval)
-            Draw.PushButton ('Del',             EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_nbryID_del)
+            Draw.Number     ('',                EVT_INC+i, c    , r, 60, rh, int(v[0]),0,10000, 'Set the node ID',                                                            cb_nbID_setID)
+            Draw.Menu       (d['dofvars_menu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbID_setkey)
+            Draw.String     ('',                EVT_INC+i, c+100, r, 60, rh, str(v[2]), 32,     'Value of essential/natural boundary condition',                              cb_nbID_setval)
+            Draw.PushButton ('Del',             EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_nbID_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
@@ -796,14 +632,14 @@ def gui():
         r -= srg
         gu.caption2_(c,r,w,rh,'Edges boundary conditions', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_ebrys)
-        gu.text(c,r,'        Tag         Key        Value')
+        gu.text(c,r,'    Tag       Key     Value')
         for k, v in ebrys.iteritems():
-            r  -= rh
-            tag = int(k)
-            Draw.Number     ('',                EVT_INC+tag, c,     r, 60, rh, int(k),-1000,0, 'Set tag',                                                                    cb_ebry_settag)
-            Draw.Menu       (d['dofvars_menu'], EVT_INC+tag, c+ 60, r, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
-            Draw.String     ('',                EVT_INC+tag, c+100, r, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              cb_ebry_setval)
-            Draw.PushButton ('Del',             EVT_INC+tag, c+180, r, 40, rh,                 'Delete this row',                                                            cb_ebry_del)
+            r -= rh
+            i  = int(k)
+            Draw.Number     ('',                EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_ebry_settag)
+            Draw.Menu       (d['dofvars_menu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
+            Draw.String     ('',                EVT_INC+i, c+100, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_ebry_setval)
+            Draw.PushButton ('Del',             EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_ebry_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
@@ -812,17 +648,16 @@ def gui():
         r -= srg
         gu.caption2_(c,r,w,rh,'Faces boundary conditions', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_fbrys)
-        gu.text(c,r,'        Tag         Key        Value')
+        gu.text(c,r,'    Tag        Colour     Key     Value')
         for k, v in fbrys.iteritems():
             r  -= rh
-            tag = int(k)
-            clr = di.hex2rgb(v[2])
-            Draw.Number     ('',                EVT_INC+tag, c,r,60,rh, int(k),-1000,0,        'Set tag',                                                                    cb_fbry_settag)
-            BGL.glColor3f   (clr[0], clr[1], clr[2])
-            BGL.glRecti     (c+60, r, c+80, r+rh)
-            Draw.Menu       (d['dofvars_menu'], EVT_INC+tag, c+100, r, 40, rh, int(v[0])+1,    'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
-            Draw.String     ('',                EVT_INC+tag, c+140, r, 80, rh, str(v[1]), 128, 'Value of essential/natural boundary condition',                              cb_fbry_setval)
-            Draw.PushButton ('Del',             EVT_INC+tag, c+220, r, 40, rh,                 'Delete this row',                                                            cb_fbry_del)
+            i   = int(k)
+            clr = di.hex2rgb(v[3])
+            Draw.Number      ('',                EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_fbry_settag)
+            Draw.ColorPicker (                   EVT_INC+i, c+ 60, r, 60, rh, clr,               'Select color to paint tagged face',                                          cb_fbry_setclr)
+            Draw.Menu        (d['dofvars_menu'], EVT_INC+i, c+120, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
+            Draw.String      ('',                EVT_INC+i, c+160, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
+            Draw.PushButton  ('Del',             EVT_INC+i, c+220, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
@@ -831,17 +666,16 @@ def gui():
         r -= srg
         gu.caption2_(c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_eatts)
-        gu.text(c,r,'      Tag           Type                Model           Parameters        Initial Vals')
+        gu.text(c,r,'    Tag               Type                    Model')
         for k, v in eatts.iteritems():
-            r  -= rh
-            tag = int(k)
-            m   = v.split()
-            Draw.Number     ('',               EVT_INC+tag, c,     r,  60, rh, int(k),-1000,0,            'Set tag',                                   cb_eatt_settag)
-            Draw.Menu       (d['etypes_menu'], EVT_INC+tag, c+ 60, r, 120, rh, int(m[0])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
-            Draw.Menu       (d['models_menu'], EVT_INC+tag, c+180, r, 100, rh, int(m[1])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
-            Draw.String     ('',               EVT_INC+tag, c+280, r, 100, rh, m[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            cb_eatt_setprms)
-            Draw.String     ('',               EVT_INC+tag, c+380, r,  80, rh, m[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', cb_eatt_setinis)
-            Draw.PushButton ('Del',            EVT_INC+tag, c+460, r,  40, rh,                            'Delete this row',                           cb_eatt_del)
+            r -= rh
+            i  = int(k)
+            Draw.Number     ('',               EVT_INC+i, c,     r,  60, rh, int(v[0]),-1000,-1,        'Set tag',                                   cb_eatt_settag)
+            Draw.Menu       (d['etypes_menu'], EVT_INC+i, c+ 60, r, 120, rh, int(v[1])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
+            Draw.Menu       (d['models_menu'], EVT_INC+i, c+180, r, 100, rh, int(v[2])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
+            Draw.PushButton ('Del',            EVT_INC+i, c+280, r,  40, rh,                            'Delete this row',                           cb_eatt_del)
+            #Draw.String     ('',               EVT_INC+i, c+280, r, 100, rh, m[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            cb_eatt_setprms)
+            #Draw.String     ('',               EVT_INC+i, c+380, r,  80, rh, m[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', cb_eatt_setinis)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 

@@ -72,50 +72,6 @@ if dict['show_props']:
                         BGL.glRasterPos3f (mid[0], mid[1], mid[2])
                         Draw.Text         (str(e.index))
 
-                # draw block IDs
-                if dict['show_blks']:
-                    if obj.properties.has_key('blks'):
-                        for k, v in obj.properties['blks'].iteritems():
-                            eds = [int(id) for id in k.split('_')]
-                            cen = 0.5*(msh.edges[eds[0]].v1.co+msh.edges[eds[0]].v2.co)/len(eds)
-                            for i in range(1,len(eds)):
-                                cen += 0.5*(msh.edges[eds[i]].v1.co+msh.edges[eds[i]].v2.co)/len(eds)
-                            BGL.glColor3f     (0.2, 1.0, 0.2)
-                            BGL.glRasterPos3f (cen[0], cen[1], cen[2])
-                            Draw.Text         ('blk:%d'%int(v[1]))
-
-                # draw local axes
-                if dict['show_axes']:
-                    if obj.properties.has_key('blks'):
-                        for k, v in obj.properties['blks'].iteritems():
-                            ids = [int(v[2]), int(v[3]), int(v[4])]
-                            clr = [(1.0,0.1,0.1), (0.1,1.0,0.1), (0.1,0.1,1.0)]
-                            for i, id in enumerate(ids):
-                                if id>=0:
-                                    ed = msh.edges[id]
-                                    BGL.glColor3f  (clr[i][0], clr[i][1], clr[i][2])
-                                    BGL.glBegin    (BGL.GL_LINES)
-                                    BGL.glVertex3f (ed.v1.co[0], ed.v1.co[1], ed.v1.co[2])
-                                    BGL.glVertex3f (ed.v2.co[0], ed.v2.co[1], ed.v2.co[2])
-                                    BGL.glEnd      ()
-                            origin, xp, yp, zp = int(v[14]), int(v[15]), int(v[16]), int(v[17])
-                            if origin>=0:
-                                BGL.glColor3f     (0.0, 0.0, 0.0)
-                                BGL.glRasterPos3f (msh.verts[origin].co[0], msh.verts[origin].co[1], msh.verts[origin].co[2])
-                                Draw.Text         ('o')
-                            if xp>=0:
-                                BGL.glColor3f     (0.0, 0.0, 0.0)
-                                BGL.glRasterPos3f (msh.verts[xp].co[0], msh.verts[xp].co[1], msh.verts[xp].co[2])
-                                Draw.Text         ('+')
-                            if yp>=0:
-                                BGL.glColor3f     (0.0, 0.0, 0.0)
-                                BGL.glRasterPos3f (msh.verts[yp].co[0], msh.verts[yp].co[1], msh.verts[yp].co[2])
-                                Draw.Text         ('+')
-                            if zp>=0:
-                                BGL.glColor3f     (0.0, 0.0, 0.0)
-                                BGL.glRasterPos3f (msh.verts[zp].co[0], msh.verts[zp].co[1], msh.verts[zp].co[2])
-                                Draw.Text         ('+')
-
                 # draw edge tags
                 if dict['show_etags']:
                     if obj.properties.has_key('etags'):
@@ -154,18 +110,62 @@ if dict['show_props']:
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
                             Draw.Text         (str(v[0]))
 
+                # draw block IDs
+                if dict['show_blks']:
+                    if obj.properties.has_key('blks'):
+                        for k, v in obj.properties['blks'].iteritems():
+                            neds = int(v[17])
+                            cen  = 0.5*(msh.edges[int(v[18])].v1.co+msh.edges[int(v[18])].v2.co)/neds
+                            for i in range(19,19+neds-1):
+                                cen += 0.5*(msh.edges[int(v[i])].v1.co+msh.edges[int(v[i])].v2.co)/neds
+                            BGL.glColor3f     (0.2, 1.0, 0.2)
+                            BGL.glRasterPos3f (cen[0], cen[1], cen[2])
+                            Draw.Text         ('blk:%d:%d'%(int(k),int(v[0])))
+
+                # draw local axes
+                if dict['show_axes']:
+                    if obj.properties.has_key('blks'):
+                        for k, v in obj.properties['blks'].iteritems():
+                            eids = [int(v[1]), int(v[2]), int(v[3])]
+                            clrs = [(1.0,0.1,0.1), (0.1,1.0,0.1), (0.1,0.1,1.0)]
+                            for i, eid in enumerate(eids):
+                                if eid>=0:
+                                    ed = msh.edges[eid]
+                                    BGL.glColor3f  (clrs[i][0], clrs[i][1], clrs[i][2])
+                                    BGL.glBegin    (BGL.GL_LINES)
+                                    BGL.glVertex3f (ed.v1.co[0], ed.v1.co[1], ed.v1.co[2])
+                                    BGL.glVertex3f (ed.v2.co[0], ed.v2.co[1], ed.v2.co[2])
+                                    BGL.glEnd      ()
+                            origin, xp, yp, zp = int(v[4]), int(v[5]), int(v[6]), int(v[7])
+                            if origin>=0:
+                                BGL.glColor3f     (0.0, 0.0, 0.0)
+                                BGL.glRasterPos3f (msh.verts[origin].co[0], msh.verts[origin].co[1], msh.verts[origin].co[2])
+                                Draw.Text         ('o')
+                            if xp>=0:
+                                BGL.glColor3f     (0.0, 0.0, 0.0)
+                                BGL.glRasterPos3f (msh.verts[xp].co[0], msh.verts[xp].co[1], msh.verts[xp].co[2])
+                                Draw.Text         ('+')
+                            if yp>=0:
+                                BGL.glColor3f     (0.0, 0.0, 0.0)
+                                BGL.glRasterPos3f (msh.verts[yp].co[0], msh.verts[yp].co[1], msh.verts[yp].co[2])
+                                Draw.Text         ('+')
+                            if zp>=0:
+                                BGL.glColor3f     (0.0, 0.0, 0.0)
+                                BGL.glRasterPos3f (msh.verts[zp].co[0], msh.verts[zp].co[1], msh.verts[zp].co[2])
+                                Draw.Text         ('+')
+
                 # draw regions and holes
                 if dict['show_regs']:
                     if obj.properties.has_key('regs'):
                         for k, v in obj.properties['regs'].iteritems():
                             BGL.glColor3f     (0.0, 0.0, 0.0)
-                            BGL.glRasterPos3f (v[1],v[2],v[3])
-                            Draw.Text         ('reg:%d'%int(v[0]))
+                            BGL.glRasterPos3f (v[2],v[3],v[4])
+                            Draw.Text         ('reg:%d:%d'%(int(k),int(v[0])))
                     if obj.properties.has_key('hols'):
                         for k, v in obj.properties['hols'].iteritems():
                             BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (v[0],v[1],v[2])
-                            Draw.Text         ('hol')
+                            Draw.Text         ('hol:%d'%int(k))
 
                 # draw elements information
                 if dict['show_elems']:

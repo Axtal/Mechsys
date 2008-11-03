@@ -40,7 +40,9 @@ def print_timing(func):
 def gen_struct_mesh(gen_script=False,txt=None):
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
-    if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')
+    if not obj.properties.has_key('blks'):
+        if edm: Blender.Window.EditMode(1)
+        raise Exception('Please, assign blocks first')
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -58,18 +60,20 @@ def gen_struct_mesh(gen_script=False,txt=None):
     fclrs = {}
     for k, v in obj.properties['blks'].iteritems():
         # origin and local system
-        origin, xp, yp, zp = int(v[14]), int(v[15]), int(v[16]), int(v[17])
+        origin, xp, yp, zp = int(v[4]), int(v[5]), int(v[6]), int(v[7])
         if origin<0:
             msh.verts = ori # restore local coordinates
-            raise Exception('Please, assign local axes to this block ('+k.replace('_',' ')+') first')
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('Please, assign local axes to this block (%d:%d)'%(int(k),int(v[0])))
         if obj.properties['3dmesh'] and zp<0:
             msh.verts = ori # restore local coordinates
-            raise Exception('Please, define the Z-axix of this (3D) block ('+k.replace('_',' ')+') first')
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('Please, define the Z-axis of this (3D) block (%d:%d)'%(int(k),int(v[0])))
 
         # divisions and weights
-        nx,   ny,   nz   =  int(v[5]),  int(v[6]),  int(v[7])
-        ax,   ay,   az   =      v[8],       v[9],      v[10]
-        linx, liny, linz = int(v[11]), int(v[12]), int(v[13])
+        nx,   ny,   nz   = int(v[ 8]), int(v[ 9]), int(v[10])
+        ax,   ay,   az   =     v[11],      v[12],      v[13]
+        linx, liny, linz = int(v[14]), int(v[15]), int(v[16])
         if linx: wx = [1.0+ax*float(i)  for i in range(nx)]
         else:    wx = [float(i+1.0)**ax for i in range(nx)]
         if liny: wy = [1.0+ay*float(i)  for i in range(ny)]
@@ -80,7 +84,8 @@ def gen_struct_mesh(gen_script=False,txt=None):
         # vertices and edges
         verts = {}
         edges = []
-        eids  = [int(id) for id in k.split('_')]
+        eids  = []
+        for i in range(18,18+int(v[17])): eids.append(int(v[i]))
         for e in eids:
             v1 = msh.edges[e].v1.index
             v2 = msh.edges[e].v2.index
@@ -100,13 +105,13 @@ def gen_struct_mesh(gen_script=False,txt=None):
         if obj.properties['3dmesh'] and obj.properties.has_key('ftags'):
             for m, n in obj.properties['ftags'].iteritems():
                 # tags
-                ids = [int(id) for id in m.split('_')]
+                vs = [int(id) for id in m.split('_')]
                 face_is_in_block = True
-                for i in ids:
+                for i in vs:
                     if not i in verts.keys():
                         face_is_in_block = False
                         break
-                if face_is_in_block: ftags[tuple(ids)] = n[0]
+                if face_is_in_block: ftags[tuple(vs)] = n[0]
                 # colors
                 if not fclrs.has_key(n[0]): fclrs[n[0]] = n[1]
 
@@ -196,10 +201,10 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
         # set regions and holes
         if obj.properties.has_key('regs'):
             for k, v in obj.properties['regs'].iteritems():
-                txt.write('msm.set_poly_region (%d,%d,%f,%f,%f,%f)'%(int(k), int(v[0]), v[1], v[2], v[3], v[4])+'\n')
+                txt.write('msm.set_poly_region  (%d,%d,%f,%f,%f,%f)'%(int(k), int(v[0]), v[1], v[2], v[3], v[4])+'\n')
         if obj.properties.has_key('hols'):
             for k, v in obj.properties['hols'].iteritems():
-                txt.write('msm.set_poly_hole (%d,%f,%f,%f)'%(int(k), v[0], v[1], v[2])+'\n')
+                txt.write('msm.set_poly_hole    (%d,%f,%f,%f)'%(int(k), v[0], v[1], v[2])+'\n')
 
     else:
         # unstructured mesh instance
@@ -263,10 +268,10 @@ def set_etags(obj, msh, etags):
     obj.properties['ebrys'] = {}
     temp                    = {}
     id                      = 0
-    for et in etags:
-        edge_id = msh.findEdges (et[0], et[1])
-        obj.properties['etags'][str(edge_id)] = [etags[et], 0] # tag, type
-        tag = etags[et]
+    for k, v in etags.iteritems():
+        tag = v
+        eid = msh.findEdges (k[0], k[1])
+        obj.properties['etags'][str(eid)] = [tag, 0] # tag, type
         if not temp.has_key(tag):
             temp[tag] = True
             obj.properties['ebrys'][str(id)] = [tag, 0, 0.0] # tag, ux, val
@@ -277,18 +282,21 @@ def set_etags(obj, msh, etags):
 def set_ftags(obj, msh, ftags, fclrs):
     obj.properties['ftags'] = {}
     obj.properties['fbrys'] = {}
-    for ft in ftags:
+    temp                    = {}
+    id                      = 0
+    for k, v in ftags.iteritems():
+        tag  = v
+        vids = k.split('_')
         eids = ''
-        vids = ft.split('_')
-        for i, pair in enumerate(vids):
-            vs = pair.split(',')
-            edge_id = msh.findEdges (int(vs[0]), int(vs[1]))
-            if i>0: eids += '_'+str(edge_id)
-            else:   eids +=     str(edge_id)
-        print fclrs
-        #obj.properties['ftags'][eids] = [ftags[ft], fclrs[ftags[ft]]] # tag, color
-        #if not obj.properties['fbrys'].has_key(str(ftags[ft])):
-            #obj.properties['fbrys'][str(ftags[ft])] = [0, 0.0, fclrs[ftags[ft]]] # DOFVar==uz..., Val, Clr
+        for i, vert_pair in enumerate(vids):
+            vs  = vert_pair.split(',')
+            eid = msh.findEdges (int(vs[0]), int(vs[1]))
+            if i>0: eids += '_'+str(eid)
+            else:   eids +=     str(eid)
+        obj.properties['ftags'][eids] = [tag, fclrs[tag]] # tag, colour
+        if not temp.has_key(tag):
+            temp[tag] = True
+            obj.properties['fbrys'][str(id)] = [tag, 0, 0.0, fclrs[tag]] # tag, ux, val, colour
 
 
 @print_timing

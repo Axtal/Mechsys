@@ -25,9 +25,7 @@ import string
 
 def load_dict_for_scroll():
     dict = Blender.Registry.GetKey('MechSysDict')
-    if not dict:
-        dict               = {}
-        dict['gui_inirow'] = 0
+    if not dict: dict, dict['gui_inirow'] = {}, 0
     return dict
 
 def load_dict():
@@ -59,8 +57,8 @@ def load_dict():
         dict['cad_rad']       = '0.0'
         dict['cad_stp']       = 10
         # MESH
-        dict['newetag']       = [-10, 0]
-        dict['newftag']       = [-100, 0x000080]
+        dict['newetag']       = [-10, 0]         # tag, type
+        dict['newftag']       = [-100, 0x000080] # tag, colour
         # FEM
         dict['fem_fullsc']    = False
         dict['fem_struct']    = False
@@ -87,12 +85,9 @@ def load_dict():
 
 def set_key(key,value):
     Blender.Registry.GetKey('MechSysDict')[key] = value
-
-def set_key_and_redraw(key,value):
-    Blender.Registry.GetKey('MechSysDict')[key] = value
     Blender.Window.QRedrawAll()
 
-def toggle_key_and_redraw(key):
+def toggle_key(key):
     Blender.Registry.GetKey('MechSysDict')[key] = not Blender.Registry.GetKey('MechSysDict')[key]
     Blender.Window.QRedrawAll()
 
@@ -133,6 +128,187 @@ def get_selected_edges(msh):
     return sel
 
 
+# ============================================================================== New Properties
+
+def new_blk_props():
+    edm, obj, msh = get_msh()
+    eids          = get_selected_edges(msh)
+    neds          = len(eids)
+    # check
+    if obj.properties['3dmesh']:
+        if not (neds==8 or neds==24):
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('To set a 3D block, 8 or 24 edges must be selected (%d is invalid)'%neds)
+    else:
+        if not (neds==4 or neds==8):
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('To set a 2D block, 4 or 8 edges must be selected (%d is invalid)'%neds)
+    if edm: Blender.Window.EditMode(1)
+    # new block properties
+    blk = [  -1, #   0:  block tag
+             -1, #   1:  edge ID: X-axis
+             -1, #   2:  edge ID: Y-axis
+             -1, #   3:  edge ID: Z-axis
+             -1, #   4:  vertex ID: Origin (local axes)
+             -1, #   5:  vertex ID: X-plus (local axes)
+             -1, #   6:  vertex ID: Y-plus (local axes)
+             -1, #   7:  vertex ID: Z-plus (local axes)
+              2, #   8:  nx: number of divisions along X-axis
+              2, #   9:  ny: number of divisions along Y-axis
+              2, #  10:  nz: number of divisions along Z-axis
+            0.0, #  11:  ax coefficient
+            0.0, #  12:  ay coefficient
+            0.0, #  13:  az coefficient
+              0, #  14:  linx: nonlinear X divisions ?
+              0, #  15:  liny: nonlinear Y divisions ?
+              0, #  16:  linz: nonlinear Z divisions ?
+           neds, #  17:  number of edges
+             -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1 ] # edges IDs
+    blk[18:18+neds] = eids
+    return blk
+
+def new_reg_props():
+    x, y, z = Blender.Window.GetCursorPos()
+    return [-1, -1.0, x,y,z] # 0:tag, 1:maxarea, 2:x, 3:y, 4:z
+
+def new_hol_props():
+    x, y, z = Blender.Window.GetCursorPos()
+    return [x,y,z] # 0:x, 1:y, 2:z
+
+def new_mat_props():
+    return [   200.0,     #   0:  E -- Young
+                 0.2,     #   1:  nu -- Poisson
+                 0.0891,  #   2:  lam -- lambda
+                 0.0196,  #   3:  kap -- kappa
+                31.6,     #   4:  phics -- shear angle at CS
+             18130.0 ]    #   5:  G -- shear modulus (kPa)
+
+def new_ini_props():
+    #                                       0  1  2    3   4   5
+    return [ 0.0,0.0,0.0, 0.0,0.0,0.0,  #  Sx,Sy,Sz, Sxy,Syz,Szx
+                              1.6910 ]  #  6:  v -- initial specific volume
+
+def new_nbry_props(): return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
+def new_nbID_props(): return [0, 0, 0.0]                       # ID, ux, val
+def new_ebry_props(): return [-10, 0, 0.0]                     # tag, ux, val
+def new_fbry_props(): return [-100, 0, 0.0, key('newftag')[1]] # tag, ux, val, colour
+def new_eatt_props(): return [-1, 0, 0, -1, -1]                # tag ElemType Model MatID IniID
+
+
+# ============================================================================== Object Properties
+
+def props_set_with_tag(key,subkey,tag,props):
+    obj = get_obj()
+    if not obj.properties.has_key(key): obj.properties[key] = {}
+    if tag==0: obj.properties[key].pop    (subkey)
+    else:      obj.properties[key].update({subkey:props})
+    if len(obj.properties[key])==0: obj.properties.pop(key)
+
+def props_push_new(key,props,check=False,ic=0,fc=0):
+    # ic(inicomp),fc(fincomp): initial and final indexes for comparision between props elements,
+    # in order to check whether the property was added or not
+    obj = get_obj()
+    if not obj.properties.has_key(key): obj.properties[key] = {}
+    if check:
+        for k, v in obj.properties[key].iteritems():
+            eds = []
+            for i in range(ic,fc): eds.append(v[i])
+            if props[ic:fc]==eds: raise Exception('Property was already added')
+    id = 0
+    while obj.properties[key].has_key(str(id)):
+        id += 1
+    obj.properties[key][str(id)] = props
+    Blender.Window.QRedrawAll()
+
+def props_set_item(key,id,item,val):
+    obj = get_obj()
+    obj.properties[key][str(id)][item] = val
+    Blender.Window.QRedrawAll()
+
+def props_del(key,id):
+    msg = 'Confirm delete this item?%t|Yes'
+    res = Blender.Draw.PupMenu(msg)
+    if res>0:
+        obj = get_obj()
+        obj.properties[key].pop(str(id))
+        if len(obj.properties[key])==0: obj.properties.pop(key)
+        Blender.Window.QRedrawAll()
+
+def props_set_val(key, val):
+    obj = get_obj()
+    obj.properties[key] = val
+    Blender.Window.QRedrawAll()
+
+def props_del_all(key):
+    obj = get_obj()
+    msg = 'Confirm delete ALL?%t|Yes'
+    res  = Blender.Draw.PupMenu(msg)
+    if res>0:
+        obj.properties.pop(key)
+        Blender.Window.QRedrawAll()
+
+def blk_set_local_system(obj,msh,id):
+    # set local system: origin and vertices on positive directions
+    key = str(id)
+    iex = int(obj.properties['blks'][key][1])
+    iey = int(obj.properties['blks'][key][2])
+    if iex>=0 and iey>=0:
+        ex     = msh.edges[iex]
+        ey     = msh.edges[iey]
+        origin = -1
+        x_plus = -1
+        y_plus = -1
+        if ex.v1.index==ey.v1.index:
+            origin = ex.v1.index
+            x_plus = ex.v2.index
+            y_plus = ey.v2.index
+        elif ex.v1.index==ey.v2.index:
+            origin = ex.v1.index
+            x_plus = ex.v2.index
+            y_plus = ey.v1.index
+        elif ex.v2.index==ey.v1.index:
+            origin = ex.v2.index
+            x_plus = ex.v1.index
+            y_plus = ey.v2.index
+        elif ex.v2.index==ey.v2.index:
+            origin = ex.v2.index
+            x_plus = ex.v1.index
+            y_plus = ey.v1.index
+        obj.properties['blks'][key][4] = origin
+        obj.properties['blks'][key][5] = x_plus
+        obj.properties['blks'][key][6] = y_plus
+        iez = int(obj.properties['blks'][key][3])
+        if iez>=0:
+            z_plus = -1
+            ez = msh.edges[iez]
+            if ez.v1.index==origin:
+                z_plus = ez.v2.index
+            elif ez.v2.index==origin:
+                z_plus = ez.v1.index
+            obj.properties['blks'][key][7] = z_plus
+
+def blk_set_axis(id,item):
+    edm, obj, msh = get_msh()
+    sel           = get_selected_edges(msh)
+    if len(sel)==1:
+        key  = str(id)
+        neds = int(obj.properties['blks'][key][17])
+        eid  = sel[0]
+        eds  = []
+        for i in range(18,18+neds): eds.append(int(obj.properties['blks'][key][i]))
+        if eid in eds:
+            obj.properties['blks'][key][item] = eid
+            blk_set_local_system(obj,msh,id)
+        else:
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('This edge # '+str(eid)+' is not part of this block')
+        Blender.Window.QRedrawAll()
+    else:
+        if edm: Blender.Window.EditMode(1)
+        raise Exception('Please, select (only) one edge to define the local axis')
+    if edm: Blender.Window.EditMode(1)
+
+
 # ====================================================================================== Util
 
 def sarray_set_val(strarr,item,value):
@@ -164,6 +340,10 @@ def rgb2hex(rgb):
 def hex2rgb(hex):
     # convert a hex value 0x000000 to a (R, G, B) tuple
     return html2rgb('%06x' % hex)
+
+
+
+
 
 
 def get_cg(msh, vids, vtkcelltype):

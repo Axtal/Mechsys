@@ -19,7 +19,7 @@
 import Blender
 from   Blender import Draw, BGL
 
-def label(c,r,w,h,txt):
+def label(txt, c,r,w,h):
     BGL.glColor3f     (0.663, 0.663, 0.663)
     BGL.glRecti       (c, r, c+w, r+h)
     BGL.glColor3f     (0.0, 0.0, 0.0)
