@@ -106,13 +106,13 @@ def gen_struct_mesh(gen_script=False,txt=None):
         if obj.properties['3dmesh'] and obj.properties.has_key('ftags'):
             for m, n in obj.properties['ftags'].iteritems():
                 # tags
-                vs = [int(id) for id in m.split('_')]
+                eds = [int(eid) for eid in m.split('_')]
                 face_is_in_block = True
-                for i in vs:
-                    if not i in verts.keys():
+                for i in eds:
+                    if not i in eids:
                         face_is_in_block = False
                         break
-                if face_is_in_block: ftags[tuple(vs)] = n[0]
+                if face_is_in_block: ftags[tuple(eds)] = n[0]
                 # colors
                 if not fclrs.has_key(n[0]): fclrs[n[0]] = n[1]
 
@@ -259,11 +259,12 @@ def set_elems(obj, nelems, elems):
     obj.properties['eatts']  = {}
     temp                     = {}
     id                       = 0
-    for tag in obj.properties['elems']['tags']:
+    for i, tag in enumerate(obj.properties['elems']['tags']):
         if not temp.has_key(tag):
             temp[tag] = True
             obj.properties['eatts'][str(id)]    = di.new_eatt_props()
             obj.properties['eatts'][str(id)][0] = tag
+            obj.properties['eatts'][str(id)][1] = di.key('vtk2ety')[obj.properties['elems']['vtks'][i]]
             id += 1
 
 
@@ -304,6 +305,8 @@ def set_ftags(obj, msh, ftags, fclrs):
             temp[tag] = True
             obj.properties['fbrys'][str(id)]    = di.new_fbry_props()
             obj.properties['fbrys'][str(id)][0] = tag
+            obj.properties['fbrys'][str(id)][3] = fclrs[tag]
+            id += 1
 
 
 @print_timing

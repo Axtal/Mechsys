@@ -285,59 +285,68 @@ def cb_maxarea(evt,val): di.props_set_val('maxarea',float(val))
 
 # ---------------------------------- Mesh -- unstructured -- regions
 
-def cb_regs_tag    (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 0, val)
-def cb_regs_maxarea(evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 1, float(val))
-def cb_regs_setx   (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 2, float(val))
-def cb_regs_sety   (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 3, float(val))
-def cb_regs_setz   (evt,val): di.props_set_item ('regs', str(evt-EVT_INC), 4, float(val))
-def cb_regs_del    (evt,val): di.props_del      ('regs', str(evt-EVT_INC))
+def cb_regs_tag    (evt,val): di.props_set_item ('regs', evt-EVT_INC, 0, val)
+def cb_regs_maxarea(evt,val): di.props_set_item ('regs', evt-EVT_INC, 1, float(val))
+def cb_regs_setx   (evt,val): di.props_set_item ('regs', evt-EVT_INC, 2, float(val))
+def cb_regs_sety   (evt,val): di.props_set_item ('regs', evt-EVT_INC, 3, float(val))
+def cb_regs_setz   (evt,val): di.props_set_item ('regs', evt-EVT_INC, 4, float(val))
+def cb_regs_del    (evt,val): di.props_del      ('regs', evt-EVT_INC)
 
 # ---------------------------------- Mesh -- unstructured -- holes
 
-def cb_hols_setx(evt,val): di.props_set_item ('hols', str(evt-EVT_INC), 0, float(val))
-def cb_hols_sety(evt,val): di.props_set_item ('hols', str(evt-EVT_INC), 1, float(val))
-def cb_hols_setz(evt,val): di.props_set_item ('hols', str(evt-EVT_INC), 2, float(val))
-def cb_hols_del (evt,val): di.props_del      ('hols', str(evt-EVT_INC))
+def cb_hols_setx(evt,val): di.props_set_item ('hols', evt-EVT_INC, 0, float(val))
+def cb_hols_sety(evt,val): di.props_set_item ('hols', evt-EVT_INC, 1, float(val))
+def cb_hols_setz(evt,val): di.props_set_item ('hols', evt-EVT_INC, 2, float(val))
+def cb_hols_del (evt,val): di.props_del      ('hols', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbrys
 
-def cb_nbry_setx  (evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 0, float(val))
-def cb_nbry_sety  (evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 1, float(val))
-def cb_nbry_setz  (evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 2, float(val))
-def cb_nbry_setkey(evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 3, val-1)
-def cb_nbry_setval(evt,val): di.props_set_item ('nbrys', str(evt-EVT_INC), 4, float(val))
-def cb_nbry_del   (evt,val): di.props_del      ('nbrys', str(evt-EVT_INC))
+def cb_nbry_setx  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 0, float(val))
+def cb_nbry_sety  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 1, float(val))
+def cb_nbry_setz  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 2, float(val))
+def cb_nbry_setkey(evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 3, val-1)
+def cb_nbry_setval(evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 4, float(val))
+def cb_nbry_del   (evt,val): di.props_del      ('nbrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbsID
 
-def cb_nbID_setID (evt,val): di.props_set_item ('nbsID', str(evt-EVT_INC), 0, int(val))
-def cb_nbID_setkey(evt,val): di.props_set_item ('nbsID', str(evt-EVT_INC), 1, val-1)
-def cb_nbID_setval(evt,val): di.props_set_item ('nbsID', str(evt-EVT_INC), 2, float(val))
-def cb_nbID_del   (evt,val): di.props_del      ('nbsID', str(evt-EVT_INC))
+def cb_nbID_setID (evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 0, int(val))
+def cb_nbID_setkey(evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 1, val-1)
+def cb_nbID_setval(evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 2, float(val))
+def cb_nbID_del   (evt,val): di.props_del      ('nbsID', evt-EVT_INC)
 
 # ---------------------------------- FEM -- ebrys
 
-def cb_ebry_settag(evt,val): di.props_set_item ('ebrys', str(evt-EVT_INC), 0, int(val))
-def cb_ebry_setkey(evt,val): di.props_set_item ('ebrys', str(evt-EVT_INC), 1, val-1)
-def cb_ebry_setval(evt,val): di.props_set_item ('ebrys', str(evt-EVT_INC), 2, float(val))
-def cb_ebry_del   (evt,val): di.props_del      ('ebrys', str(evt-EVT_INC))
+def cb_ebry_settag(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 0, int(val))
+def cb_ebry_setkey(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 1, val-1)
+def cb_ebry_setval(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 2, float(val))
+def cb_ebry_del   (evt,val): di.props_del      ('ebrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- fbrys
 
-def cb_fbry_settag(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 0, int(val))
-def cb_fbry_setkey(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 1, val-1)
-def cb_fbry_setval(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 2, float(val))
-def cb_fbry_setclr(evt,val): di.props_set_item ('fbrys', str(evt-EVT_INC), 3, di.rgb2hex(val))
-def cb_fbry_del   (evt,val): di.props_del      ('fbrys', str(evt-EVT_INC))
+def cb_fbry_settag(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 0, int(val))
+def cb_fbry_setkey(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 1, val-1)
+def cb_fbry_setval(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 2, float(val))
+def cb_fbry_del   (evt,val): di.props_del      ('fbrys', evt-EVT_INC)
+def cb_fbry_setclr(evt,val):
+    obj = di.get_obj()
+    id  = str(evt-EVT_INC)
+    tag = obj.properties['fbrys'][id][0]
+    clr = di.rgb2hex(val)
+    if obj.properties.has_key('ftags'):
+        for k, v in obj.properties['ftags'].iteritems():
+            if int(v[0])==tag: obj.properties['ftags'][k][1] = clr
+    obj.properties['fbrys'][id][3] = clr
+    Blender.Window.QRedrawAll()
 
 # ---------------------------------- FEM -- eatts
 
-def cb_eatt_settag  (evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 0, int(val))
-def cb_eatt_settype (evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 1, val-1)
-def cb_eatt_setmodel(evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 2, val-1)
-def cb_eatt_setmatID(evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 3, val)
-def cb_eatt_setiniID(evt,val): di.props_set_item ('eatts', str(evt-EVT_INC), 4, val)
-def cb_eatt_del     (evt,val): di.props_del      ('eatts', str(evt-EVT_INC))
+def cb_eatt_settag  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 0, int(val))
+def cb_eatt_settype (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 1, val-1)
+def cb_eatt_setmodel(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 2, val-1)
+def cb_eatt_setmatID(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 3, val)
+def cb_eatt_setiniID(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 4, val)
+def cb_eatt_del     (evt,val): di.props_del      ('eatts', evt-EVT_INC)
 
 # ---------------------------------- Results
 

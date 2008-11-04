@@ -71,12 +71,31 @@ def load_dict():
         dict['dfvmnu'] = 'DOF Vars %t|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
 
         # Element types
-        dict['ety']    = { 0:'Hex8Equilib', 1:'Hex8Diffusion', 2:'Quad4PStrain', 3:'Quad4PStress', 4:'Quad4Diffusion', 5:'Tri3PStrain', 6:'Tri3PStress', 7:'Tri3Diffusion', 8:'Rod' }
+        dict['ety']  = {  0:'Hex8Equilib',    1:'Hex8Diffusion',
+                          2:'Quad4PStrain',   3:'Quad4PStress',   4:'Quad4Diffusion',
+                          5:'Tri3PStrain',    6:'Tri3PStress',    7:'Tri3Diffusion',
+                          8:'Rod',
+                          9:'Quad8PStrain',  10:'Quad8PStress',  11:'Quad8Diffusion',
+                         12:'Tri6PStrain',   13:'Tri6PStress',   14:'Tri6Diffusion',
+                         15:'Hex20Equilib',  16:'Hex20Diffusion',
+                         17:'Tet4Equilib',   18:'Tet4Diffusion',
+                         19:'Tet10Equilib',  20:'Tet10Diffusion' }
+
         dict['etymnu'] = 'Element Types %t|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
 
         # Models
         dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion' }
         dict['mdlmnu'] = 'Constitutive Models %t|LinDiffusion %x2|LinElastic %x1'
+
+        # VTK Cell Type (tentative mapping)
+        dict['vtk2ety'] = {  5: 5,   # VTK_TRIANGLE             => Tri3PStrain
+                             9: 2,   # VTK_QUAD                 => Quad4PStrain
+                            10:17,   # VTK_TETRA                => Tet4Equilib
+                            12: 0,   # VTK_HEXAHEDRON           => Hex8Equilib
+                            22:12,   # VTK_QUADRATIC_TRIANGLE   => Tri6PStrain
+                            23: 9,   # VTK_QUADRATIC_QUAD       => Quad8PStrain
+                            24:19,   # VTK_QUADRATIC_TETRA      => Tet10Equilib
+                            25:15 }  # VTK_QUADRATIC_HEXAHEDRON => Hex20Equilib
 
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
@@ -135,9 +154,9 @@ def new_blk_props():
     neds          = len(eids)
     # check
     if obj.properties['3dmesh']:
-        if not (neds==8 or neds==24):
+        if not (neds==12 or neds==24):
             if edm: Blender.Window.EditMode(1)
-            raise Exception('To set a 3D block, 8 or 24 edges must be selected (%d is invalid)'%neds)
+            raise Exception('To set a 3D block, 12 or 24 edges must be selected (%d is invalid)'%neds)
     else:
         if not (neds==4 or neds==8):
             if edm: Blender.Window.EditMode(1)
