@@ -52,7 +52,8 @@ def gen_struct_mesh(gen_script=False,txt=None):
     if gen_script:
         if txt==None:
             txt = Blender.Text.New(obj.name+'_smesh')
-            txt.write('import mechsys as ms\n')
+            txt.write('import mechsys   as ms\n')
+            txt.write('import msys_mesh as me\n')
         txt.write('bks = []\n')
 
     # generate list with blocks and face colors
@@ -118,7 +119,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
         # new block
         if gen_script:
             txt.write('bks.append(ms.mesh_block())\n')
-            txt.write('bks[-1].set_coords('+str(int(v[1]))+',\n')
+            txt.write('bks[-1].set_coords('+str(int(v[0]))+',\n')
             txt.write('                   '+str(verts)+',\n')
             txt.write('                   '+str(edges)+',\n')
             txt.write('                   '+str(etags)+',\n')
@@ -147,6 +148,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
     if gen_script:
         txt.write('msm = ms.mesh_structured(1.0e-4)\n')
         txt.write('nel = msm.generate(bks)\n')
+        txt.write('me.add_mesh(msm)\n')
     else:
         if len(bks)>0:
             Blender.Window.WaitCursor(1)
@@ -183,7 +185,8 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
         # unstructured mesh instance
         if txt==None:
             txt = Blender.Text.New(obj.name+'_umesh')
-            txt.write('import mechsys as ms\n')
+            txt.write('import mechsys   as ms\n')
+            txt.write('import msys_mesh as me\n')
         txt.write('msm = ms.mesh_unstructured()\n')
         if obj.properties['3dmesh']: txt.write('msm.set_3d()\n')
 
@@ -238,11 +241,12 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
     mina = obj.properties['minang']  if obj.properties.has_key('minang')  else -1.0
     if gen_script:
         txt.write('nel = msm.generate   (%f,%f)'%(maxa, mina)+'\n')
+        txt.write('me.add_mesh(msm)\n')
     else:
         Blender.Window.WaitCursor(1)
         ne = msm.generate (maxa, mina)
         print '[1;34mMechSys[0m: [1;33m%d[0m elements generated' % ne
-        add_mesh (msm, {})
+        add_mesh (msm)
         Blender.Window.WaitCursor(0)
 
 
@@ -303,7 +307,7 @@ def set_ftags(obj, msh, ftags, fclrs):
 
 
 @print_timing
-def add_mesh(msm, fclrs):
+def add_mesh(msm, fclrs={}):
     # get vertices and edges
     verts = []
     edges = []
