@@ -171,8 +171,8 @@ public:
 	void PySetCoords (int               Tag,      ///< Tag to be replicated to elements
 	                  BPy::dict const & Verts,    ///< {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... (4)8 or (8)20 vertices}
 	                  BPy::list const & Edges,    ///< [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
-	                  BPy::dict const & ETags,    ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
-	                  BPy::dict const & FTags,    ///< {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
+	                  BPy::dict const & ETags,    ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags} v# => vertex number
+	                  BPy::dict const & FTags,    ///< {(e1,e2..e12):tag1, (e1,e2..e12):tag2, ... num faces with tags} e# => edge number
 	                  BPy::list const & Wx,       ///< Weights along x
 	                  BPy::list const & Wy,       ///< Weights along y
 	                  BPy::list const & Wz,       ///< Weights along z
@@ -551,8 +551,8 @@ inline void Block::Alright() const
 void Block::PySetCoords(int               Tag,     // Tag to be replicated to elements
                         BPy::dict const & Verts,   // {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... (4)8 or (8)20 vertices]
                         BPy::list const & Edges,   // [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
-                        BPy::dict const & ETags,   // {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags}
-                        BPy::dict const & FTags,   // {(v1,v2..v8):tag1, (v3,v4..v8):tag2, ... num faces with tags}
+                        BPy::dict const & ETags,   // {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags} v# => vertex number
+                        BPy::dict const & FTags,   // {(e1,e2..e12):tag1, (e1,e2..e12):tag2, ... num faces with tags} e# => edge number
                         BPy::list const & Wx,      // Weights along x
                         BPy::list const & Wy,      // Weights along y
                         BPy::list const & Wz,      // Weights along z
