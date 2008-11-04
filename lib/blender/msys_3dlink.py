@@ -32,10 +32,9 @@ if di.key('show_props') or di.key('show_res'):
     view_buffer = BGL.Buffer(BGL.GL_FLOAT, 16, view_buffer)
 
     # Initialize
-    BGL.glPushMatrix   ()
-    BGL.glEnable       (Blender.BGL.GL_DEPTH_TEST)
     BGL.glLoadIdentity ()
     BGL.glMatrixMode   (Blender.BGL.GL_PROJECTION)
+    BGL.glPushMatrix   ()
     BGL.glLoadMatrixf  (view_buffer)
 
 
@@ -225,10 +224,3 @@ if di.key('show_res'):
 
                 # Resore mesh to local coordinates
                 msh.verts = ori
-
-
-# Restore transformation matrix
-if di.key('show_props') or di.key('show_res'):
-    # Restore
-    BGL.glPopMatrix ()
-    BGL.glDisable   (Blender.BGL.GL_DEPTH_TEST)
