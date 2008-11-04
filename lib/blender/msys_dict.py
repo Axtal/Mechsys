@@ -60,7 +60,7 @@ def load_dict():
         dict['newetag']       = [-10, 0]         # tag, type
         dict['newftag']       = [-100, 0x000080] # tag, colour
         # RESULTS
-        dict['res_show']        = False
+        dict['show_res']        = False
         dict['res_dfv']         = 0
         dict['res_show_scalar'] = False
         dict['res_warp_scale']  = '10'

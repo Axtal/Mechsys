@@ -25,8 +25,7 @@ import msys_dict as di
 
 
 # Transformation matrix
-dict = di.load_dict()
-if dict['show_props'] or dict['res_show']:
+if di.key('show_props') or di.key('show_res'):
     # Buffer
     view_matrix = Window.GetPerspMatrix()
     view_buffer = [view_matrix[i][j] for i in xrange(4) for j in xrange(4)]
@@ -41,7 +40,7 @@ if dict['show_props'] or dict['res_show']:
 
 
 # Mesh properties
-if dict['show_props']:
+if di.key('show_props'):
     # Draw
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
@@ -58,14 +57,14 @@ if dict['show_props']:
                 msh.transform(obj.matrix)
 
                 # draw vertices IDs
-                if dict['show_v_ids']:
+                if di.key('show_v_ids'):
                     for v in msh.verts:
                         BGL.glColor3f     (1.0, 1.0, 0.0)
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
                         Draw.Text         (str(v.index))
 
                 # draw edges IDs
-                if dict['show_e_ids']:
+                if di.key('show_e_ids'):
                     for e in msh.edges:
                         mid = 0.5*(e.v1.co+e.v2.co)
                         BGL.glColor3f     (1.0, 1.0, 1.0)
@@ -73,7 +72,7 @@ if dict['show_props']:
                         Draw.Text         (str(e.index))
 
                 # draw edge tags
-                if dict['show_etags']:
+                if di.key('show_etags'):
                     if obj.properties.has_key('etags'):
                         for k, v in obj.properties['etags'].iteritems():
                             eid = int(k)
@@ -83,7 +82,7 @@ if dict['show_props']:
                             Draw.Text         (str(v[0]))
 
                 # draw face tags
-                if dict['show_ftags']:
+                if di.key('show_ftags'):
                     if obj.properties.has_key('ftags'):
                         BGL.glBlendFunc (BGL.GL_SRC_ALPHA, BGL.GL_ONE)
                         for k, v in obj.properties['ftags'].iteritems():
@@ -93,8 +92,8 @@ if dict['show_props']:
                             cen      = msh.verts[vds[0]].co/len(eds)
                             for i in range(1,len(eds)):
                                 cen += msh.verts[vds[i]].co/len(eds)
-                            BGL.glColor4f     (clr[0], clr[1], clr[2], dict['show_opac'])
-                            if dict['show_opac']<0.9:
+                            BGL.glColor4f     (clr[0], clr[1], clr[2], di.key('show_opac'))
+                            if di.key('show_opac')<0.9:
                                 BGL.glEnable  (BGL.GL_BLEND)
                                 BGL.glDisable (BGL.GL_DEPTH_TEST)
                             BGL.glBegin       (BGL.GL_TRIANGLE_FAN)
@@ -103,7 +102,7 @@ if dict['show_props']:
                                 BGL.glVertex3f(msh.verts[vds[i]].co[0], msh.verts[vds[i]].co[1], msh.verts[vds[i]].co[2])
                             BGL.glVertex3f    (msh.verts[vds[0]].co[0], msh.verts[vds[0]].co[1], msh.verts[vds[0]].co[2])
                             BGL.glEnd         ()
-                            if dict['show_opac']<0.9:
+                            if di.key('show_opac')<0.9:
                                 BGL.glDisable (BGL.GL_BLEND)
                                 BGL.glEnable  (BGL.GL_DEPTH_TEST)
                             BGL.glColor3f     (0.0, 0.0, 0.0)
@@ -111,7 +110,7 @@ if dict['show_props']:
                             Draw.Text         (str(v[0]))
 
                 # draw block IDs
-                if dict['show_blks']:
+                if di.key('show_blks'):
                     if obj.properties.has_key('blks'):
                         for k, v in obj.properties['blks'].iteritems():
                             neds = int(v[17])
@@ -123,7 +122,7 @@ if dict['show_props']:
                             Draw.Text         ('blk:%d:%d'%(int(k),int(v[0])))
 
                 # draw local axes
-                if dict['show_axes']:
+                if di.key('show_axes'):
                     if obj.properties.has_key('blks'):
                         for k, v in obj.properties['blks'].iteritems():
                             eids = [int(v[1]), int(v[2]), int(v[3])]
@@ -155,7 +154,7 @@ if dict['show_props']:
                                 Draw.Text         ('+')
 
                 # draw regions and holes
-                if dict['show_regs']:
+                if di.key('show_regs'):
                     if obj.properties.has_key('regs'):
                         for k, v in obj.properties['regs'].iteritems():
                             BGL.glColor3f     (0.0, 0.0, 0.0)
@@ -168,7 +167,7 @@ if dict['show_props']:
                             Draw.Text         ('hol:%d'%int(k))
 
                 # draw elements information
-                if dict['show_elems']:
+                if di.key('show_elems'):
                     try:    nelems = obj.properties['nelems']
                     except: nelems = 0
                     if nelems>0:
@@ -183,7 +182,7 @@ if dict['show_props']:
 
 
 # Results (visualisation)
-if dict['res_show']:
+if di.key('show_res'):
     # Draw
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
@@ -199,28 +198,24 @@ if dict['res_show']:
                 ori = msh.verts[:] # create a copy before transforming to global coordinates
                 msh.transform(obj.matrix)
 
-                # Post-processing
-                if dict['res_show_scalar'] and obj.properties.has_key('res'):
+                # draw scalars text
+                if di.key('res_show_scalar') and obj.properties.has_key('res'):
                     key = di.key('dfv')[obj.properties['res']['l2g'][str(di.key('res_dfv'))]]
                     BGL.glColor3f (0.0, 0.0, 0.0)
                     for v in msh.verts:
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
                         Draw.Text         ('%f' % obj.properties['res'][key][v.index])
 
-                if dict['res_show_warp']:
-                    ux = []
-                    uy = []
-                    uz = []
-                    try:
-                        ux = obj.properties['scalars']['ux']
-                        uy = obj.properties['scalars']['uy']
-                        uz = obj.properties['scalars']['uz']
-                    except: pass
+                # draw warped mesh
+                if di.key('res_show_warp') and obj.properties.has_key('res'):
+                    ux = obj.properties['res']['ux'] if obj.properties['res'].has_key('ux') else []
+                    uy = obj.properties['res']['uy'] if obj.properties['res'].has_key('uy') else []
+                    uz = obj.properties['res']['uz'] if obj.properties['res'].has_key('uz') else []
                     if len(ux)>0 or len(uy)>0 or len(uz)>0:
-                        if len(ux)<1: ux = [0 for i in range(len(msh.verts))]
-                        if len(uy)<1: uy = [0 for i in range(len(msh.verts))]
-                        if len(uz)<1: uz = [0 for i in range(len(msh.verts))]
-                        m = float(dict['res_warp_scale'])
+                        if len(ux)==0: ux = [0 for i in range(len(msh.verts))]
+                        if len(uy)==0: uy = [0 for i in range(len(msh.verts))]
+                        if len(uz)==0: uz = [0 for i in range(len(msh.verts))]
+                        m = float(di.key('res_warp_scale'))
                         BGL.glColor3f (0.85, 0.85, 0.85)
                         for e in msh.edges:
                             BGL.glBegin    (BGL.GL_LINES)
@@ -233,7 +228,7 @@ if dict['res_show']:
 
 
 # Restore transformation matrix
-if dict['show_props'] or dict['res_show']:
+if di.key('show_props') or di.key('show_res'):
     # Restore
     BGL.glPopMatrix ()
     BGL.glDisable   (Blender.BGL.GL_DEPTH_TEST)

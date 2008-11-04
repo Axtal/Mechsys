@@ -341,7 +341,7 @@ def cb_eatt_del     (evt,val): di.props_del      ('eatts', str(evt-EVT_INC))
 
 # ---------------------------------- Results
 
-def cb_res_show       (evt,val): di.set_key ('res_show',        val)
+def cb_res_show       (evt,val): di.set_key ('show_res',        val)
 def cb_res_dfv        (evt,val): di.set_key ('res_dfv',         val-1)
 def cb_res_show_scalar(evt,val): di.set_key ('res_show_scalar', val)
 def cb_res_warp_scale (evt,val): di.set_key ('res_warp_scale',  val)
@@ -679,7 +679,7 @@ def gui():
     gu.caption1(c,r,w,rh,'RESULTS',EVT_REFRESH,EVT_RES_SHOWHIDE)
     if d['gui_show_res']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_res)
-        Draw.Toggle ('ON/OFF', EVT_NONE, c    , r, 60, rh, d['res_show'],             'Show results'               , cb_res_show)
+        Draw.Toggle ('ON/OFF', EVT_NONE, c    , r, 60, rh, d['show_res'],             'Show results'               , cb_res_show)
         Draw.Menu   (r_dfvmnu, EVT_NONE, c+ 60, r, 40, rh, d['res_dfv']+1,            'Key such as ux, uy, fx, fz' , cb_res_dfv)
         Draw.Toggle ('Scalar', EVT_NONE, c+100, r, 60, rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
         Draw.String ('M=' ,    EVT_NONE, c+160, r, 60, rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
