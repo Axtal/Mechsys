@@ -62,7 +62,7 @@ inline void Mult(Tensor2 const & S, Tensor2 const & T, Tensor2 & R)
 	double C = S(5)*T(0)     + S(4)*T(3)/SQ2 + S(2)*T(5);
 	//std::cout << _15_8 R(3)-A << " | " << _15_8 R(4)-B << " | " << _15_8 R(5)-C << std::endl;
 	if (!(fabs(R(3)-A)<ZERO && fabs(R(4)-B)<ZERO && fabs(R(5)-C)<ZERO))
-		throw new Fatal(_("Tensors::Mult: Result of matrix multiplication is NOT symmetric.\n assert(fabs(R(3)-A)<0 & fabs(R(4)-B)<0 & fabs(R(5)-C)<0) failed.\n S=<%.6f %.6f %.6f %.6f %.6f %.6f>,\n R=<%.6f %.6f %.6f %.6f %.6f %.6f>"),
+		throw new Fatal(_("Tensors::Mult: Result of matrix multiplication is NOT symmetric.\n (fabs(R(3)-A)<0 & fabs(R(4)-B)<0 & fabs(R(5)-C)<0) failed.\n S=<%.6f %.6f %.6f %.6f %.6f %.6f>,\n R=<%.6f %.6f %.6f %.6f %.6f %.6f>"),
 		                S(0), S(1), S(2), S(3)/SQ2, S(4)/SQ2, S(5)/SQ2,
 		                R(0), R(1), R(2), R(3)/SQ2, R(4)/SQ2, R(5)/SQ2);
 #endif

@@ -30,6 +30,7 @@
 #include "linalg/vector.h"
 #include "linalg/lawrap.h"
 #include "tensors/tensors.h"
+#include "util/exception.h"
 
 namespace LinAlg
 {
@@ -102,7 +103,7 @@ void scale(type                a,
 		  Vector<type>       & Y)
 {
 	int n = X.Size();
-	assert(W.Size() == n);
+	if (W.Size()!=n) throw new Fatal("Internal Error: laexpr.h::scale: W.Size()==%d must be equal to %d",W.Size(),n);
 	Y.Resize(n);
 	type const * ptrX = X.GetPtr();
 	type const * ptrW = W.GetPtr();
@@ -133,7 +134,7 @@ void scale(type                a,
 		  Matrix<type> const & W,
 		  Matrix<type>       & Y)
 {
-	assert(X.Rows() == W.Rows() && X.Cols() == W.Cols());
+	if (!(X.Rows()==W.Rows() && X.Cols()==W.Cols())) throw new Fatal("Internal Error: laexpr.h::scale: X.Rows==%d must be equal to W.Rows==%d and X.Cols==%d must be equal to W.Cols==%d",X.Rows(),W.Rows(),X.Cols(),W.Cols());
 	size_t n = X.Rows()*X.Cols();
 	Y.Resize(X.Rows(), X.Cols());
 	type const * ptrX = X.GetPtr();
@@ -190,7 +191,7 @@ void scalei(type                 a,
 {
 	size_t m = A.Rows();
 	size_t n = A.Cols();
-	assert(m==n);
+	if (m!=n) throw new Fatal("Internal Error: laexpr:h::scalei: A(%d,%d) matrix must be square",m,n);
 	type const * ptrA;
 	ptrA = A.GetPtr();
 	B.Resize(n, m);
@@ -351,7 +352,7 @@ inline
 Vector<type> & _prod(Matrix<type> const & A, Vector<type> const & B, Vector<type> & R)
 {
 	R.Resize(A.Rows());
-	assert(A.Cols() == B.Size());
+	if (A.Cols()!=B.Size()) throw new Fatal("Internal Error: laexpr.h::_prod: A.Cols==%d must be equal to B.Size==%d",A.Cols(),B.Size());
 	Gemv(static_cast<type>(1), A, B, static_cast<type>(0), R);
 	return R;
 }
@@ -364,7 +365,7 @@ Matrix<type> & _prod(Vector<type> const & A, Matrix<type> const & B, Matrix<type
 	// this operation is appropriate only when B is a row matrix
 	size_t m = A.Size(); 
 	size_t n = B.Cols();
-	assert(B.Rows() == 1);
+	if (B.Rows()!=1) throw new Fatal("Internal Error: laexpr.h::_prod: B.Rows==%d must be equal to 1",B.Rows());
 	R.Resize(m, n);
 	type const * ptrA = A.GetPtr();
 	type const * ptrB = B.GetPtr();
@@ -456,7 +457,7 @@ template <class type>
 inline
 type & _prodt(Vector<type> const & A, Vector<type> const & B, type & R)
 {
-	assert(A.Size() == B.Size());
+	if (A.Size()!=B.Size()) throw new Fatal("Internal Error: laexpr.h::_prodt: A.Size==%d must be equal to B.Size==%d",A.Size(),B.Size());
 	R = Dot(A, B);
 	return R;
 }
@@ -1255,7 +1256,7 @@ template <class type>
 inline 
 void Copy(Matrix<type> const & M, Tensors::Tensor4 & T)
 {
-	assert(M.Rows() == 6 && M.Cols() == 6);
+	if (!(M.Rows()==6 && M.Cols()==6)) throw new Fatal("Internal Error: laexpr.h::Copy: M.Rows==%d and M.Cols==%d must be both equal to 6",M.Rows(),M.Cols());
 	for (int i=0; i<M.Rows(); ++i)
 	for (int j=0; j<M.Cols(); ++j)
 		T(i,j) = M(i,j);
@@ -1284,7 +1285,7 @@ template <class type>
 inline 
 void Copy(Vector<type> const & V, Tensors::Tensor2 & T)
 {
-	assert(V.Size() == 6);
+	if (V.Size()!=6) throw new Fatal("Internal Error: laexpr.h::Copy: V.Size==%d must be equal to 6",V.Size());
 	T(0) = V(0); T(1) = V(1); T(2) = V(2);	
 	T(3) = V(3); T(4) = V(4); T(5) = V(5);
 }
@@ -1301,7 +1302,7 @@ template <class type>
 inline 
 void Copy(Vector<type> const & V, Tensors::Tensor1 & T)
 {
-	assert(V.Size() == 3);
+	if (V.Size()!=3) throw new Fatal("Internal Error: laexpr.h::Copy: V.Size==%d must be equal to 3",V.Size());
 	T(0) = V(0); T(1) = V(1); T(2) = V(2);	
 }
 

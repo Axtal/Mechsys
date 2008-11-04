@@ -99,13 +99,13 @@ inline void TijTensor::Derivs(Tensor2 const & Sig,
 	// Characteristic invariants:  I1=Is[0], I2=Is[1], I3=Is[2]
 	CharInvs(Sig, Is);
 	if (fabs(Is[1])<ZERO)
-		throw new Fatal(_("TijTensor::Derivs: assert(I2>0.0) failed (I2=%.6f). Sig=<%.6f %.6f %.6f %.6f %.6f %.6f>"), Is[1],
+		throw new Fatal(_("TijTensor::Derivs: (I2>0.0) failed (I2=%.6f). Sig=<%.6f %.6f %.6f %.6f %.6f %.6f>"), Is[1],
 				Sig(0), Sig(1), Sig(2), Sig(3)/sqrt(2.0), Sig(4)/sqrt(2.0), Sig(5)/sqrt(2.0));
 
 	// Square root of I3/I2
 	sqrt_rz = Is[2]/Is[1];
 	if (fabs(sqrt_rz)<ZERO)
-		throw new Fatal(_("TijTensor::Derivs: assert(I3/I2>0) failed (I3/I2=%.6f). Sig=<%.6f %.6f %.6f %.6f %.6f %.6f>"), sqrt_rz,
+		throw new Fatal(_("TijTensor::Derivs: (I3/I2>0) failed (I3/I2=%.6f). Sig=<%.6f %.6f %.6f %.6f %.6f %.6f>"), sqrt_rz,
 				Sig(0), Sig(1), Sig(2), Sig(3)/sqrt(2.0), Sig(4)/sqrt(2.0), Sig(5)/sqrt(2.0));
 	sqrt_rz = sqrt(sqrt_rz); // sqrt_rz = sqrt(I3/I2)
 

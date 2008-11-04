@@ -35,6 +35,7 @@
 // MechSys
 #include "linalg/matrix.h"
 #include "linalg/vector.h"
+#include "util/exception.h"
 
 namespace LinAlg
 {
@@ -61,10 +62,10 @@ namespace Sym
 inline int JacobiRot(Matrix<double> & A, Matrix<double> & Q, Vector<double> & v)
 {
 	int N = A.Rows();
-	assert(N>1);         // at least 2x2 matrix
-	assert(A.Cols()==N);
-	assert(Q.Rows()==N);
-	assert(Q.Cols()==N);
+	if (N<2)         throw new Fatal("Sym::JacobiRot: A(%d,%d) matrix must be at least 2x2 on size",A.Rows(),A.Cols());
+	if (A.Cols()!=N) throw new Fatal("Sym::JacobiRot: A(%d,%d) matrix must be squared",A.Rows(),A.Cols());
+	if (Q.Rows()!=N) throw new Fatal("Sym::JacobiRot: Q(%d,%d) must have the same dimensions than A(%d,%d)",Q.Rows(),Q.Cols(),A.Rows(),A.Cols());
+	if (Q.Cols()!=N) throw new Fatal("Sym::JacobiRot: Q(%d,%d) must have the same dimensions than A(%d,%d)",Q.Rows(),Q.Cols(),A.Rows(),A.Cols());
 
 	const int    maxIt  = 30;      // Max number of iterations
 	const double errTol = 1.0e-15; // Tolerance

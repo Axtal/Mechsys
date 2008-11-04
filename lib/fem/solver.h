@@ -64,6 +64,7 @@
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
+#include "util/exception.h"
 #include "linalg/sparse_triplet.h"
 #include "linalg/sparse_matrix.h"
 #include "linalg/sparse_crmatrix.h"
@@ -788,9 +789,9 @@ inline void Solver::_copy_partial_matrix(LinAlg::Matrix<double> const & Source, 
 	int m = ValidRows.Size();
 	int n = ValidCols.Size();
 	int s = Source.Rows();
-	assert(Target.Rows()==m);
-	assert(Target.Cols()==n);
-	assert(Source.Cols()==s);
+	if (Target.Rows()!=m) throw new Fatal("Solver::_copy_partial_matrix: Target.Rows()==%d must be equal to %d",Target.Rows(),m);
+	if (Target.Cols()!=n) throw new Fatal("Solver::_copy_partial_matrix: Target.Cols()==%d must be equal to %d",Target.Cols(),n);
+	if (Source.Cols()!=s) throw new Fatal("Solver::_copy_partial_matrix: Source.Cols()==%d must be equal to %d",Source.Cols(),s);
 	double const * ptrSource = Source.GetPtr();
 	double       * ptrTarget = Target.GetPtr();
 	int    const * ptrVR     = ValidRows.GetPtr();
