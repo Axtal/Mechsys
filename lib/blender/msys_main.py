@@ -348,6 +348,10 @@ def cb_eatt_setmatID(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 3, val)
 def cb_eatt_setiniID(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 4, val)
 def cb_eatt_del     (evt,val): di.props_del      ('eatts', evt-EVT_INC)
 
+# ---------------------------------- FEM
+
+def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
+
 # ---------------------------------- Results
 
 def cb_res_show       (evt,val): di.set_key ('show_res',        val)
@@ -677,7 +681,8 @@ def gui():
         # ----------------------- FEM -- END
         r -= srg
         Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c,     r, 120, rh, 'Run a FE analysis directly (without script)')
-        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+120, r, 120, rh, 'Generate script for FEM')
+        Draw.Toggle     ('full',             EVT_NONE,         c+120, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
+        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+160, r,  80, rh, 'Generate script for FEM')
         Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+240, r, 120, rh, 'View results in ParaView')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh

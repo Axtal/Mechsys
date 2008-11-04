@@ -59,6 +59,8 @@ def load_dict():
         # MESH
         dict['newetag']       = [-10, 0]         # tag, type
         dict['newftag']       = [-100, 0x000080] # tag, colour
+        # FEM
+        dict['fullsc']        = False # generate full script (for FEA)
         # RESULTS
         dict['show_res']        = False
         dict['res_dfv']         = 0
