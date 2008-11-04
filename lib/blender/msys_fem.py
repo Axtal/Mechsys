@@ -32,25 +32,25 @@ def get_brys_atts(obj):
     nbrys = []
     if obj.properties.has_key('nbrys'):
         for k, v in obj.properties['nbrys'].iteritems():
-            nbrys.append([v[0], v[1], v[2], d['dofvars'][int(v[3])], v[4]])
+            nbrys.append([v[0], v[1], v[2], d['dfv'][int(v[3])], v[4]])
 
     # nbsID
     nbsID = []
     if obj.properties.has_key('nbsID'):
         for k, v in obj.properties['nbsID'].iteritems():
-            nbsID.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
+            nbsID.append([int(v[0]), d['dfv'][int(v[1])], v[2]])
 
     # ebrys
     ebrys = []
     if obj.properties.has_key('ebrys'):
         for k, v in obj.properties['ebrys'].iteritems():
-            ebrys.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
+            ebrys.append([int(v[0]), d['dfv'][int(v[1])], v[2]])
 
     # fbrys
     fbrys = []
     if obj.properties.has_key('fbrys'):
         for k, v in obj.properties['fbrys'].iteritems():
-            fbrys.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
+            fbrys.append([int(v[0]), d['dfv'][int(v[1])], v[2]])
 
     # eatts
     eatts = []
@@ -64,7 +64,7 @@ def get_brys_atts(obj):
             if obj.properties.has_key('inis'):
                 iniID = str(int(v[4]))
                 if obj.properties['inis'].has_key(iniID): inis = obj.properties['inis'][iniID]
-            eatts.append([int(v[0]), d['etypes'][int(v[1])], d['models'][int(v[2])], prms, inis])
+            eatts.append([int(v[0]), d['ety'][int(v[1])], d['mdl'][int(v[2])], prms, inis])
 
     return nbrys, nbsID, ebrys, fbrys, eatts
 
@@ -134,18 +134,27 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts):
 
 
 def save_results(geo,obj):
-    obj.properties['scalars'] = {}
-    keys    = ['ux','uy','uz','fx','fy','fz','u','q']
-    vals    = [[]   for i in range(len(keys))]
-    has_key = [True for i in range(len(keys))]
-    for i, key in enumerate(keys):
-        try:    val = geo.nod(0).val(key)
-        except: has_key[i] = False
-    for i in range(geo.nnodes()):
-        for j, key in enumerate(keys):
-            if has_key[j]: vals[j].append(geo.nod(i).val(key))
-    for i, key in enumerate(keys):
-        if has_key[i]: obj.properties['scalars'][key] = vals[i]
+    # check what variables are available
+    obj.properties['res']        = {}
+    obj.properties['res']['l2g'] = {}             # dof vars map: local to global
+    dfvmnu                       = 'DOF Vars %t|' # dof vars menu
+    i                            = 0
+    for k, v in di.key('dfv').iteritems():
+        try:
+            val = geo.nod(0).val(v)
+            obj.properties['res']['l2g'][str(i)] = k
+            dfvmnu += v+' %x'+str(i+1)+'|'
+            i += 1
+        except: pass
+    obj.properties['res']['dfvmnu'] = dfvmnu
+
+    # save values in object
+    for k, v in obj.properties['res']['l2g'].iteritems():
+        key  = di.key('dfv')[v]
+        vals = []
+        for i in range(geo.nnodes()):
+            vals.append(geo.nod(i).val(key))
+        obj.properties['res'][key] = vals
 
 
 def run_analysis(gen_script=False):
@@ -158,14 +167,9 @@ def run_analysis(gen_script=False):
 
     if gen_script:
         txt = Blender.Text.New(obj.name+'_fem')
-        txt.write ('import Blender\n')
-        txt.write ('import bpy\n')
+        txt.write ('import Blender, bpy\n')
         txt.write ('import mechsys  as ms\n')
         txt.write ('import msys_fem as mf\n')
-        if di.key('fem_fullsc'):
-            txt.write('\n# Generate mesh\n')
-            if di.key('fem_struct'): me.gen_struct_mesh  (True,txt)
-            else:                    me.gen_unstruct_mesh(True,txt)
         txt.write ('\n# Show running cursor\n')
         txt.write ('Blender.Window.WaitCursor(1)\n')
         txt.write ('\n# Boundary conditions & properties\n')
@@ -174,14 +178,8 @@ def run_analysis(gen_script=False):
         txt.write ('fbrys = '+fbrys.__str__()+'\n')
         txt.write ('eatts = '+eatts.__str__()+'\n')
         txt.write ('\n# FEM data\n')
-        if di.key('fem_fullsc'):
-            ndim = 3 if obj.properties['3dmesh'] else 2
-            txt.write('geo = ms.geom(%d'%ndim+')\n')
-            txt.write('ms.set_nodes_elems (msm, eatts, geo)\n')
-            txt.write('ms.set_brys        (msm, nbrys, ebrys, fbrys, geo)\n')
-        else:
-            txt.write ('obj = bpy.data.objects["'+obj.name+'"]\n')
-            txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
+        txt.write ('obj = bpy.data.objects["'+obj.name+'"]\n')
+        txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
         if len(nbsID)>0: txt.write ('\n# nodes boundary conditions\n')
         for nb in nbsID:
             txt.write('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
@@ -189,9 +187,8 @@ def run_analysis(gen_script=False):
         txt.write ('sol = ms.solver("ForwardEuler")\n')
         txt.write ('sol.set_geom(geo)\n')
         txt.write ('sol.solve()\n')
-        if not di.key('fem_fullsc'):
-            txt.write ('\n# Save results in object\n')
-            txt.write ('mf.save_results(geo,obj)\n')
+        txt.write ('\n# Save results in object\n')
+        txt.write ('mf.save_results(geo,obj)\n')
         txt.write ('\n# Output\n')
         txt.write ('ms.out_vtu(geo, \''+obj.name+'_FEM.vtu\')\n')
         txt.write ('\n# Hide running cursor\n')

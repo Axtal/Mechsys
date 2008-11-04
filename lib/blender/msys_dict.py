@@ -59,25 +59,24 @@ def load_dict():
         # MESH
         dict['newetag']       = [-10, 0]         # tag, type
         dict['newftag']       = [-100, 0x000080] # tag, colour
-        # FEM
-        dict['fem_fullsc']    = False
-        dict['fem_struct']    = False
-        dict['fem_unstru']    = True
         # RESULTS
         dict['res_show']        = False
-        dict['res_scalar']      = 0
+        dict['res_dfv']         = 0
         dict['res_show_scalar'] = False
         dict['res_warp_scale']  = '10'
         dict['res_show_warp']   = 1
 
-        dict['dofvars'] = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q' }
-        dict['dofvars_menu'] = 'DOF Vars %t|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
+        # DOF Vars
+        dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q' }
+        dict['dfvmnu'] = 'DOF Vars %t|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
 
-        dict['etypes'] = { 0:'Hex8Equilib', 1:'Hex8Diffusion', 2:'Quad4PStrain', 3:'Quad4PStress', 4:'Quad4Diffusion', 5:'Tri3PStrain', 6:'Tri3PStress', 7:'Tri3Diffusion', 8:'Rod' }
-        dict['etypes_menu'] = 'Element Types %t|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
+        # Element types
+        dict['ety']    = { 0:'Hex8Equilib', 1:'Hex8Diffusion', 2:'Quad4PStrain', 3:'Quad4PStress', 4:'Quad4Diffusion', 5:'Tri3PStrain', 6:'Tri3PStress', 7:'Tri3Diffusion', 8:'Rod' }
+        dict['etymnu'] = 'Element Types %t|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
 
-        dict['models'] = { 0:'LinElastic', 1:'LinDiffusion' }
-        dict['models_menu'] = 'Constitutive Models %t|LinDiffusion %x2|LinElastic %x1'
+        # Models
+        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion' }
+        dict['mdlmnu'] = 'Constitutive Models %t|LinDiffusion %x2|LinElastic %x1'
 
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'

@@ -200,15 +200,12 @@ if dict['res_show']:
                 msh.transform(obj.matrix)
 
                 # Post-processing
-                if dict['res_show_scalar']:
-                    key = dict['res_scalar']
-                    try:
-                        vals = obj.properties['scalars'][key]
-                        BGL.glColor3f (0.0, 0.0, 0.0)
-                        for v in msh.verts:
-                            BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
-                            Draw.Text         (str(vals[v.index]))
-                    except: pass
+                if dict['res_show_scalar'] and obj.properties.has_key('res'):
+                    key = di.key('dfv')[obj.properties['res']['l2g'][str(di.key('res_dfv'))]]
+                    BGL.glColor3f (0.0, 0.0, 0.0)
+                    for v in msh.verts:
+                        BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
+                        Draw.Text         ('%f' % obj.properties['res'][key][v.index])
 
                 if dict['res_show_warp']:
                     ux = []
