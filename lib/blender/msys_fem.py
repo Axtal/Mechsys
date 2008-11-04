@@ -34,32 +34,39 @@ def get_brys_atts(obj):
         for k, v in obj.properties['nbrys'].iteritems():
             nbrys.append([v[0], v[1], v[2], d['dofvars'][int(v[3])], v[4]])
 
-    # nbrysID
-    nbrysID = []
-    if obj.properties.has_key('nbrysID'):
-        for k, v in obj.properties['nbrysID'].iteritems():
-            nbrysID.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
+    # nbsID
+    nbsID = []
+    if obj.properties.has_key('nbsID'):
+        for k, v in obj.properties['nbsID'].iteritems():
+            nbsID.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
 
     # ebrys
     ebrys = []
     if obj.properties.has_key('ebrys'):
         for k, v in obj.properties['ebrys'].iteritems():
-            ebrys.append([int(k), d['dofvars'][int(v[0])], v[1]])
+            ebrys.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
 
     # fbrys
     fbrys = []
     if obj.properties.has_key('fbrys'):
         for k, v in obj.properties['fbrys'].iteritems():
-            fbrys.append([int(k), d['dofvars'][int(v[0])], v[1]])
+            fbrys.append([int(v[0]), d['dofvars'][int(v[1])], v[2]])
 
     # eatts
     eatts = []
     if obj.properties.has_key('eatts'):
         for k, v in obj.properties['eatts'].iteritems():
-            r = v.split()
-            eatts.append([int(k), d['etypes'][int(r[0])], d['models'][int(r[1])], r[2].replace('_',' '), r[3].replace('_',' ')])
+            prms = 'E=200 nu=0.2'
+            inis = 'ZERO'
+            if obj.properties.has_key('mats'):
+                matID = str(int(v[3]))
+                if obj.properties['mats'].has_key(matID): prms = obj.properties['mats'][matID]
+            if obj.properties.has_key('inis'):
+                iniID = str(int(v[4]))
+                if obj.properties['inis'].has_key(iniID): inis = obj.properties['inis'][iniID]
+            eatts.append([int(v[0]), d['etypes'][int(v[1])], d['models'][int(v[2])], prms, inis])
 
-    return nbrys, nbrysID, ebrys, fbrys, eatts
+    return nbrys, nbsID, ebrys, fbrys, eatts
 
 
 def set_geo(obj,nbrys,ebrys,fbrys,eatts):
@@ -80,36 +87,8 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts):
     ndim = 3 if obj.properties['3dmesh'] else 2
     geo  = ms.geom (ndim)
     if linele:
-        # TODO: this part is not working
-
-        # vertices
-        geo.set_nnodes (len(msh.verts))
-        for i, v in enumerate(msh.verts):
-            geo.set_node (i, v.co[0], v.co[1], v.co[2])
-
-        # elements
-        geo.set_nelems (len(msh.edges))
-        for i, e in enumerate(msh.edges):
-            tag   = etags[i]
-            found = False
-            for ea in eatts:
-                if ea[0] == tag:
-                    geo.set_elem         (i, ea[1], 1)
-                    geo.ele(i).connect   (0, geo.nod(e.v1.index)).connect(1, geo.nod(e.v2.index))
-                    geo.ele(i).set_model (ea[2],ea[3],ea[4])
-                    found = True
-                    break
-            if not found: raise Exception('Tag = %d MUST be defined in elements attributes'%tag)
-
-        # boundary conditions
-        for i in range(geo.nnodes()):
-            x = geo.nod(i).x()
-            y = geo.nod(i).y()
-            for nb in nbrys:
-                d = math.sqrt((x-nb[0])**2+(y-nb[1])**2)
-                if d<1.0e-5:
-                    geo.nod(i).bry(nb[3],nb[4])
-
+        if edm: Blender.Window.EditMode(1)
+        raise Exception('Simulation with linear elements is not available yet') # TODO: implement this
     else:
         # MechSys::Mesh::Generic
         mg = ms.mesh_generic()
@@ -175,9 +154,7 @@ def run_analysis(gen_script=False):
     Blender.Window.WaitCursor(1)
 
     # boundary conditions & properties
-    nbrys, nbrysID, ebrys, fbrys, eatts = get_brys_atts (obj)
-    if not gen_script:
-        if (len(eatts)<1): raise Exception('Element attributes must be defined before running the simulation')
+    nbrys, nbsID, ebrys, fbrys, eatts = get_brys_atts (obj)
 
     if gen_script:
         txt = Blender.Text.New(obj.name+'_fem')
@@ -205,25 +182,30 @@ def run_analysis(gen_script=False):
         else:
             txt.write ('obj = bpy.data.objects["'+obj.name+'"]\n')
             txt.write ('geo = mf.set_geo(obj,nbrys,ebrys,fbrys,eatts)\n')
-        if len(nbrysID)>0: txt.write ('\n# nodes boundary conditions\n')
-        for nb in nbrysID:
+        if len(nbsID)>0: txt.write ('\n# nodes boundary conditions\n')
+        for nb in nbsID:
             txt.write('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
         txt.write ('\n# Solution\n')
-        txt.write ('sol = mechsys.solver("ForwardEuler")\n')
+        txt.write ('sol = ms.solver("ForwardEuler")\n')
         txt.write ('sol.set_geom(geo)\n')
         txt.write ('sol.solve()\n')
-        txt.write ('\n# Save results in object\n')
-        txt.write ('mf.save_results(geo,obj)\n')
+        if not di.key('fem_fullsc'):
+            txt.write ('\n# Save results in object\n')
+            txt.write ('mf.save_results(geo,obj)\n')
         txt.write ('\n# Output\n')
-        txt.write ('mechsys.out_vtu(geo, '+obj.name+'_FEM.vtu)\n')
+        txt.write ('ms.out_vtu(geo, \''+obj.name+'_FEM.vtu\')\n')
         txt.write ('\n# Hide running cursor\n')
         txt.write ('Blender.Window.WaitCursor(0)\n')
     else:
+        if (len(eatts)<1):
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('Element attributes must be defined before running the simulation')
+
         # FEM data
         geo = set_geo (obj,nbrys,ebrys,fbrys,eatts)
 
         # nodes boundary conditions
-        for nb in nbrysID:
+        for nb in nbsID:
             geo.nod (nb[0]).bry(nb[1],nb[2])
 
         # solution
