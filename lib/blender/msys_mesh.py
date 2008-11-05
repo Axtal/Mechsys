@@ -44,6 +44,9 @@ def gen_struct_mesh(gen_script=False,txt=None):
         if edm: Blender.Window.EditMode(1)
         raise Exception('Please, assign blocks first')
 
+    # 3D mesh?
+    is3d = obj.properties['3dmesh']
+
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
     msh.transform (obj.matrix) # transform mesh to global coordinates
@@ -66,7 +69,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
             msh.verts = ori # restore local coordinates
             if edm: Blender.Window.EditMode(1)
             raise Exception('Please, assign local axes to this block (%d:%d)'%(int(k),int(v[0])))
-        if obj.properties['3dmesh'] and zp<0:
+        if is3d and zp<0:
             msh.verts = ori # restore local coordinates
             if edm: Blender.Window.EditMode(1)
             raise Exception('Please, define the Z-axis of this (3D) block (%d:%d)'%(int(k),int(v[0])))
@@ -103,7 +106,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
 
         # ftags
         ftags = {}
-        if obj.properties['3dmesh'] and obj.properties.has_key('ftags'):
+        if is3d and obj.properties.has_key('ftags'):
             for m, n in obj.properties['ftags'].iteritems():
                 # tags
                 eds = [int(eid) for eid in m.split('_')]
@@ -146,14 +149,15 @@ def gen_struct_mesh(gen_script=False,txt=None):
 
     # generate mesh and draw results
     if gen_script:
-        txt.write('msm = ms.mesh_structured(1.0e-4)\n')
-        txt.write('nel = msm.generate(bks)\n')
+        if is3d: txt.write('msm = ms.mesh_structured(True)\n')
+        else:    txt.write('msm = ms.mesh_structured(False)\n')
+        txt.write('nel = msm.generate(bks,1.0e-4)\n')
         txt.write('me.add_mesh(msm)\n')
     else:
         if len(bks)>0:
             Blender.Window.WaitCursor(1)
-            msm = ms.mesh_structured(1.0e-4)
-            nel = msm.generate (bks)
+            msm = ms.mesh_structured(is3d)
+            nel = msm.generate (bks,1.0e-4)
             print '[1;34mMechSys[0m: [1;33m%d[0m elements generated' % nel
             add_mesh (msm, fclrs)
             Blender.Window.WaitCursor(0)
@@ -165,6 +169,9 @@ def gen_struct_mesh(gen_script=False,txt=None):
 def gen_unstruct_mesh(gen_script=False,txt=None):
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
+
+    # 3D mesh?
+    is3d = obj.properties['3dmesh']
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -187,8 +194,8 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
             txt = Blender.Text.New(obj.name+'_umesh')
             txt.write('import mechsys   as ms\n')
             txt.write('import msys_mesh as me\n')
-        txt.write('msm = ms.mesh_unstructured()\n')
-        if obj.properties['3dmesh']: txt.write('msm.set_3d()\n')
+        if is3d: txt.write('msm = ms.mesh_unstructured(True)\n')
+        else:    txt.write('msm = ms.mesh_unstructured(False)\n')
 
         # set polygon
         txt.write('msm.set_poly_size    (%d,%d,%d,%d)'%(len(msh.verts), len(msh.edges), nregs, nhols)+'\n')
@@ -211,8 +218,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
 
     else:
         # unstructured mesh instance
-        msm = ms.mesh_unstructured()
-        if obj.properties['3dmesh']: msm.set_3d()
+        msm = ms.mesh_unstructured(is3d)
 
         # set polygon
         msm.set_poly_size (len(msh.verts), len(msh.edges), nregs, nhols)
