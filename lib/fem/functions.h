@@ -22,6 +22,7 @@
 // STL
 #include <iostream>
 #include <fstream>
+#include <cfloat> // for DBL_EPSILON
 
 // Boost
 #if defined(USE_BOOST) || defined(USE_BOOST_PYTHON)
@@ -48,9 +49,10 @@ typedef Array< boost::tuple<                 int, char const *,double> >        
 typedef Array< boost::tuple<                 int, char const *,double> >               FBrys_T; // Face:   tag, key, val
 typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*> > EAtts_T; // Elem:   tag, type, model, prms, inis
 
-inline void SetNodesElems (Mesh::Generic const * M,         ///< In: The mesh
-                           EAtts_T       const * ElemsAtts, ///< In: Elements attributes
-                           FEM::Geom           * G)         ///< Out: The FE geometry
+inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
+                           EAtts_T       const * ElemsAtts,  ///< In: Elements attributes
+                           FEM::Geom           * G,          ///< Out: The FE geometry
+                           double                Tol=1.0e-5) ///< In: Tolerance for defining whether X-Y-Z coordinates are in a same plane or not
 {
 	/* Example:
 	
@@ -65,10 +67,28 @@ inline void SetNodesElems (Mesh::Generic const * M,         ///< In: The mesh
 	// Set nodes
 	size_t nn = M->NVerts();
 	G->SetNNodes (nn);
+	double diff_x = 0.0; // used for verification (try to find which plane the problem is defined in)
+	double diff_y = 0.0;
+	double diff_z = 0.0;
 	for (size_t i=0; i<nn; ++i) // loop over all vertices
 	{
 		// New node
 		G->SetNode (i, M->VertX(i), M->VertY(i), (is3d ? M->VertZ(i) : 0.0));
+		          diff_x += fabs(M->VertX(0)-M->VertX(i));
+		          diff_y += fabs(M->VertY(0)-M->VertY(i));
+		if (is3d) diff_z += fabs(M->VertZ(0)-M->VertZ(i));
+	}
+
+	// Check working plane
+	if (is3d)
+	{
+		if (diff_x<Tol || diff_y<Tol || diff_z<Tol)
+			throw new Fatal("FEM::SetNodesElems: For 3D problems, vertices cannot be all in a same plane (diff_x=%f, diff_y=%f, diff_z=%f)",diff_x,diff_y,diff_z);
+	}
+	else
+	{
+		if (diff_z>Tol)
+			throw new Fatal("FEM::SetNodesElems: For 2D problems, only the X and Y coordinates must be used (diff_z=%f)",diff_z);
 	}
 
 	// Set elements
@@ -202,9 +222,10 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 
 namespace BPy = boost::python;
 
-void PySetNodesElems (Mesh::Generic const & M,         ///< In: The mesh
-                      BPy::list     const & ElemsAtts, ///< In: Elements attributes
-                      FEM::Geom           & G)         ///< Out: The FE geometry
+void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
+                      BPy::list     const & ElemsAtts,  ///< In: Elements attributes
+                      FEM::Geom           & G,          ///< Out: The FE geometry
+                      double                Tol=1.0e-5) ///< In: Tolerance for defining whether X-Y-Z coordinates are in a same plane or not
 {
 	/* Example:
 	 *           
@@ -231,7 +252,7 @@ void PySetNodesElems (Mesh::Generic const & M,         ///< In: The mesh
 	}
 
 	// Set geometry
-	FEM::SetNodesElems (&M, &eatts, &G);
+	FEM::SetNodesElems (&M, &eatts, &G, Tol);
 }
 
 void PySetBrys (Mesh::Generic const & M,          ///< In: The mesh

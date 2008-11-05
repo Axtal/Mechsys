@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Polygon
-	Mesh::Unstructured mesh;
+	Mesh::Unstructured mesh(/*Is3D*/false);
 	mesh.SetPolySize (/*NPoints*/2*ndiv, /*NSegments*/2*ndiv, /*NRegions*/2);
 
 	// Inner circle

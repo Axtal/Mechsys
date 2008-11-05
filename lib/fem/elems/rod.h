@@ -22,6 +22,7 @@
 // MechSys
 #include "fem/equilibelem.h"
 #include "fem/elems/lin2.h"
+#include "util/exception.h"
 
 namespace FEM
 {
@@ -37,7 +38,12 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 1; } ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int  _geom     () const { return 1; } ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	void _set_ndim (int nDim)             ///< Set space dimension
+	{
+		if (nDim<1) throw new Fatal("Rod::_set_ndim: For this element, nDim must be greater than or equal to 1 (%d is invalid)",nDim);
+		_ndim = nDim;
+	}
 
 }; // class Rod
 

@@ -84,7 +84,7 @@ public:
 	static Face Face2Edge[]; ///< Map from local face ID to local edge ID
 
 	// Constructor
-	Unstructured ();
+	Unstructured (bool Is3D);
 
 	// Destructor
 	~Unstructured () { _tri_deallocate_all(_tin); _tri_deallocate_all(_tou); }
@@ -160,7 +160,8 @@ Face Unstructured::Face2Edge[]= {{  0,  3,  5,  6,  9, 11 },  // Face # 0 => Edg
 
 /* public */
 
-inline Unstructured::Unstructured()
+inline Unstructured::Unstructured(bool Is3D)
+	: Mesh::Generic(Is3D)
 {
 	_tri_set_all_to_null (_tin);
 	_tri_set_all_to_null (_tou);

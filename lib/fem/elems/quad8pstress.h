@@ -22,6 +22,7 @@
 // MechSys
 #include "fem/equilibelem.h"
 #include "fem/elems/quad8.h"
+#include "util/exception.h"
 
 namespace FEM
 {
@@ -37,12 +38,18 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 5;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int  _geom     () const { return 5; } ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	void _set_ndim (int nDim)             ///< Set space dimension
+	{
+		if (nDim<2) throw new Fatal("Quad8PStress::_set_ndim: For this element, nDim must be greater than or equal to 2 (%d is invalid)",nDim);
+		_ndim = nDim;
+	}
 
 }; // class Quad8PStress
 
 // Quad8PStress constants
 char const * Quad8PStress::NAME = "Quad8PStress";
+
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

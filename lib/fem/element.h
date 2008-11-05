@@ -57,7 +57,7 @@ public:
 
 	// Set methods
 	void      SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
-	void      SetDim    (int nDim)           { _ndim      = nDim;     }    ///< Set the number of dimension of the problem
+	void      SetDim    (int nDim)           { _set_ndim(nDim);       }    ///< Set the number of dimension of the problem
 	void      SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
 	Element * EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
 	Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
@@ -135,6 +135,9 @@ protected:
 	Array<IntegPoint>      _a_int_pts;      ///< Array of Integration Points
 	Array<IntegPoint>      _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 	LinAlg::Matrix<double> _extrap_mat;     ///< Extrapolation matrix. Converts integration point values to nodal values: [NodalValues]T = _extrap * [IPValues]T
+
+	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
+	virtual void _set_ndim(int nDim) =0;
 
 private:
 	void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes

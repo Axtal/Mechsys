@@ -88,7 +88,7 @@ int main(int argc, char **argv) try
 
 	// Generate
 	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
-	Mesh::Structured ms;
+	Mesh::Structured ms(/*Is3D*/true);
 	clock_t start = std::clock(); // Initial time
 	size_t  ne    = ms.Generate (blocks);
 	clock_t total = std::clock() - start; // Time elapsed

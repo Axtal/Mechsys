@@ -68,9 +68,7 @@ using namespace boost::python;
 
 // Overloadings                                                      minargs  maxargs
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,        4, 5)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_Set3D,          Set3D,          0, 1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Set3D,          Set3D,          0, 1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Set3D,          Set3D,          0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,       PyGenerate,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,    2, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyPoint,   SetPolyPoint,   3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment, 3, 4)
@@ -80,15 +78,15 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,  2, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,       0, 2)
 
-BOOST_PYTHON_FUNCTION_OVERLOADS (PySetBrys_Overloads, PySetBrys, 5, 6)
+BOOST_PYTHON_FUNCTION_OVERLOADS (PySetNE_Overloads,   PySetNodesElems, 3, 4)
+BOOST_PYTHON_FUNCTION_OVERLOADS (PySetBrys_Overloads, PySetBrys,       5, 6)
 
 BOOST_PYTHON_MODULE (mechsys)
 {
 	// --------------------------------------------------------------------------- Mesh
 
-	class_<Mesh::Generic>("mesh_generic")
+	class_<Mesh::Generic>("mesh_generic","Class to hold mesh data",init<bool>())
 	    .def("is_3d",         &Mesh::Generic::Is3D)
-	    .def("set_3d",        &Mesh::Generic::Set3D,   MG_Set3D())
 	    .def("set_o2",        &Mesh::Generic::SetO2)
 	    .def("set_nverts",    &Mesh::Generic::SetNVerts)
 	    .def("set_nelems",    &Mesh::Generic::SetNElems)
@@ -111,13 +109,12 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_coords", &Mesh::Block::PySetCoords)
 	    ;
 
-	class_<Mesh::Structured, bases<Mesh::Generic> >("mesh_structured")
-	    .def(init<double>())
-	    .def("generate", &Mesh::Structured::PyGenerate)
+	class_<Mesh::Structured, bases<Mesh::Generic> >("mesh_structured","Class to generate structured meshes",init<bool>())
+	    .def("generate", &Mesh::Structured::PyGenerate, MS_Generate())
 	    .def(self_ns::str(self))
 	    ;
 
-	class_<Mesh::Unstructured, bases<Mesh::Generic> >("mesh_unstructured")
+	class_<Mesh::Unstructured, bases<Mesh::Generic> >("mesh_unstructured","Class to generate unstructured meshes",init<bool>())
 	    .def("set_poly_size",    &Mesh::Unstructured::SetPolySize,    MU_SetPolySize())
 	    .def("set_poly_point",   &Mesh::Unstructured::SetPolyPoint,   MU_SetPolyPoint())
 	    .def("set_poly_segment", &Mesh::Unstructured::SetPolySegment, MU_SetPolySegment())
@@ -127,7 +124,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def(self_ns::str(self))
 	    ;
 
-	class_<Mesh::AlphaShape, bases<Mesh::Generic> >("mesh_alpha_shape")
+	class_<Mesh::AlphaShape, bases<Mesh::Generic> >("mesh_alpha_shape","Class to generate meshes based on alpha-shape",init<bool>())
 	    .def("reset_cloud",     &Mesh::AlphaShape::ResetCloud)
 	    .def("add_cloud_point", &Mesh::AlphaShape::AddCloudPoint, MA_AddCloudPoint())
 	    .def("generate",        &Mesh::AlphaShape::Generate,      MA_Generate())
@@ -189,8 +186,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	def ("out_vtu",         PyOutputVTU   );
 	def ("out_vtu_cg",      PyOutputVTUcg );
 	def ("out_vtk",         PyOutputVTK   );
-	def ("set_nodes_elems", PySetNodesElems);
-	def ("set_brys",        PySetBrys, PySetBrys_Overloads());
+	def ("set_nodes_elems", PySetNodesElems, PySetNE_Overloads());
+	def ("set_brys",        PySetBrys,       PySetBrys_Overloads());
 
 	// ---------------------------------------------------------------------- Exceptions
 	

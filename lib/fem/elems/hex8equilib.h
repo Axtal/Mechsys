@@ -22,6 +22,7 @@
 // MechSys
 #include "fem/equilibelem.h"
 #include "fem/elems/hex8.h"
+#include "util/exception.h"
 
 namespace FEM
 {
@@ -37,12 +38,18 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 3;} ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	int  _geom     () const { return 3; } ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	void _set_ndim (int nDim)             ///< Set space dimension
+	{
+		if (nDim!=3) throw new Fatal("Hex8Equilib::_set_ndim: For this element, nDim must be equal to 3 (%d is invalid)",nDim);
+		_ndim = nDim;
+	}
 
 }; // class Hex8Equilib
 
 // Hex8Equilib constants
 char const * Hex8Equilib::NAME = "Hex8Equilib";
+
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

@@ -33,7 +33,7 @@ using LinAlg::Matrix;
 
 int main(int argc, char **argv) try
 {
-	Mesh::AlphaShape ma;
+	Mesh::AlphaShape ma(/*Is3D*/false);
 	ma.AddCloudPoint(0.084, 0.611); //  0, 
 	ma.AddCloudPoint(0.086, 0.444); //  1, 
 	ma.AddCloudPoint(0.133, 0.701); //  2, 

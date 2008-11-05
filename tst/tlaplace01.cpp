@@ -79,11 +79,12 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Mesh
-	Mesh::Generic * msh;
+	Mesh::Generic     * msh;
+	Mesh::Structured    mss(/*Is3D*/false);
+	Mesh::Unstructured  msu(/*Is3D*/false);
 	if (is_quad) // quadrangles
 	{
 		// Blocks
-		Mesh::Structured * mesh = new Mesh::Structured;
 		Mesh::Block b;
 		b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
 		b.SetCoords (false, 4,           // Is3D, NNodes
@@ -96,37 +97,36 @@ int main(int argc, char **argv) try
 		blocks.Push (&b);
 
 		// Generate
-		if (is_o2) mesh->SetO2();                // Non-linear elements
+		if (is_o2) mss.SetO2();                  // Non-linear elements
 		clock_t start = std::clock();            // Initial time
-		size_t  ne    = mesh->Generate (blocks); // Discretize domain
+		size_t  ne    = mss.Generate (blocks);   // Discretize domain
 		clock_t total = std::clock() - start;    // Time elapsed
 		cout << "\nNumber of quadrangles   = " << ne << endl;
 		cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-		msh = mesh;
+		msh = &mss;
 	}
 	else // triangles
 	{
 		// Polygon
-		Mesh::Unstructured * mesh = new Mesh::Unstructured;
-		mesh->SetPolySize    (/*NPoints*/4, /*NSegments*/4, /*NRegions*/1);
-		mesh->SetPolyPoint   (0, /*X*/ 0.0, /*Y*/ 0.0);
-		mesh->SetPolyPoint   (1, /*X*/ 5.0, /*Y*/ 0.0);
-		mesh->SetPolyPoint   (2, /*X*/ 5.0, /*Y*/10.0);
-		mesh->SetPolyPoint   (3, /*X*/ 0.0, /*Y*/10.0);
-		mesh->SetPolySegment (0, /*iPointLeft*/0, /*iPointRight*/1, /*Tag*/-10);
-		mesh->SetPolySegment (1, /*iPointLeft*/1, /*iPointRight*/2, /*Tag*/-20);
-		mesh->SetPolySegment (2, /*iPointLeft*/2, /*iPointRight*/3);
-		mesh->SetPolySegment (3, /*iPointLeft*/3, /*iPointRight*/0, /*Tag*/-10);
-		mesh->SetPolyRegion  (0, /*Tag*/-1, maxarea, /*X*/2.5, /*Y*/5.0);
+		msu.SetPolySize    (/*NPoints*/4, /*NSegments*/4, /*NRegions*/1);
+		msu.SetPolyPoint   (0, /*X*/ 0.0, /*Y*/ 0.0);
+		msu.SetPolyPoint   (1, /*X*/ 5.0, /*Y*/ 0.0);
+		msu.SetPolyPoint   (2, /*X*/ 5.0, /*Y*/10.0);
+		msu.SetPolyPoint   (3, /*X*/ 0.0, /*Y*/10.0);
+		msu.SetPolySegment (0, /*iPointLeft*/0, /*iPointRight*/1, /*Tag*/-10);
+		msu.SetPolySegment (1, /*iPointLeft*/1, /*iPointRight*/2, /*Tag*/-20);
+		msu.SetPolySegment (2, /*iPointLeft*/2, /*iPointRight*/3);
+		msu.SetPolySegment (3, /*iPointLeft*/3, /*iPointRight*/0, /*Tag*/-10);
+		msu.SetPolyRegion  (0, /*Tag*/-1, maxarea, /*X*/2.5, /*Y*/5.0);
 
 		// Generate
-		if (is_o2) mesh->SetO2();             // Non-linear elements
+		if (is_o2) msu.SetO2();               // Non-linear elements
 		clock_t start = std::clock();         // Initial time
-		size_t  ne    = mesh->Generate();     // Discretize domain
+		size_t  ne    = msu.Generate();       // Discretize domain
 		clock_t total = std::clock() - start; // Time elapsed
 		cout << "\nNumber of triangles     = " << ne << endl;
 		cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-		msh = mesh;
+		msh = &msu;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////

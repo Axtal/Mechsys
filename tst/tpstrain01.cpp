@@ -71,7 +71,7 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Polygon
-	Mesh::Unstructured mesh;
+	Mesh::Unstructured mesh(/*Is3D*/false);
 	mesh.SetPolySize    (/*NPoints*/5, /*NSegments*/5, /*NRegions*/1);
 	mesh.SetPolyPoint   (0, /*X*/ 0.0, /*Y*/0.0);
 	mesh.SetPolyPoint   (1, /*X*/ 0.5, /*Y*/0.0); // this point is required only for setting up the BCs

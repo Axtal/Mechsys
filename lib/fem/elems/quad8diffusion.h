@@ -22,6 +22,7 @@
 // MechSys
 #include "fem/diffusionelem.h"
 #include "fem/elems/quad8.h"
+#include "util/exception.h"
 
 namespace FEM
 {
@@ -37,12 +38,18 @@ public:
 
 private:
 	// Private methods
-	int _geom() const { return 2; } ///< Geometry of the element: 1:1D, 2:2D, 3:3D
+	int  _geom     () const { return 2; } ///< Geometry of the element: 1:1D, 2:2D, 3:3D
+	void _set_ndim (int nDim)             ///< Set space dimension
+	{
+		if (nDim<2) throw new Fatal("Quad8Diffusion::_set_ndim: For this element, nDim must be greater than or equal to 2 (%d is invalid)",nDim);
+		_ndim = nDim;
+	}
 
 }; // class Quad8Diffusion
 
 // Quad8Diffusion constants
 char const * Quad8Diffusion::NAME = "Quad8Diffusion";
+
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

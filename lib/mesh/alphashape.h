@@ -60,6 +60,9 @@ typedef CGAL::Alpha_shape_2<CGAL_DT>                                         CGA
 class AlphaShape : public virtual Mesh::Generic
 {
 public:
+	// Constructor
+	AlphaShape (bool Is3D) : Mesh::Generic(Is3D) {}
+
 	// Set Methods
 	void ResetCloud    ();                               ///< Reset cloud of points
 	void AddCloudPoint (double X, double Y, double Z=0); ///< Add new point to the list of points i of input PSLG. SetCloudSize MUST be called first.

@@ -39,7 +39,7 @@ int main(int argc, char **argv) try
 	
 	{
 		// Set input PSLG (polygon)
-		Mesh::Unstructured mu;
+		Mesh::Unstructured mu(/*Is3D*/false);
 
 		// Define PSLG polygon sizes
 		mu.SetPolySize (/*NPoints*/6, /*NSegments*/5, /*NRegions*/2);
@@ -80,7 +80,7 @@ int main(int argc, char **argv) try
 
 	{
 		// Set input PSLG (polygon)
-		Mesh::Unstructured mu;
+		Mesh::Unstructured mu(/*Is3D*/false);
 
 		// Define PSLG polygon sizes
 		mu.SetPolySize (/*NPoints*/29, /*NSegments*/29, /*NRegions*/0, /*NHoles*/1);

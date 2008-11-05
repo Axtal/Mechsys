@@ -79,7 +79,7 @@ int main(int argc, char **argv) try
 	blocks.Push (&b);
 
 	// Generate
-	Mesh::Structured mesh;
+	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();                // Non-linear elements
 	clock_t start = std::clock();           // Initial time
 	size_t  ne    = mesh.Generate (blocks); // Discretize domain

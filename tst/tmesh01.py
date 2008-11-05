@@ -47,7 +47,7 @@ def test_2D_1():
                           15, 1, 33, 0)                                 # Origin, XPlus, YPlus, None
 
     # Generate
-    ms = m.mesh_structured()
+    ms = m.mesh_structured(False) # Is3D==False
     ne = ms.generate (blocks)
     print '2D => Generated ', ne, ' elements'
 
@@ -82,7 +82,7 @@ def test_2D_2():
                           0, 4, 7, 0)                                                                       # Origin, XPlus, YPlus, None
 
     # Generate
-    ms = m.mesh_structured()
+    ms = m.mesh_structured(False) # Is3D==False
     ne = ms.generate (blocks)
     print '2D => Generated ', ne, ' elements'
 

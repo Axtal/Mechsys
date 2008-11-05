@@ -218,21 +218,20 @@ public:
 	static Face Face2Edge[]; ///< Map from local face ID to local edge IDs
 
 	// Constructor
-	Structured (double Tol=sqrt(DBL_EPSILON)) : _tol(Tol) {} ///< Tol is the tolerance to regard two vertices as coincident
+	Structured (bool Is3D) : Mesh::Generic(Is3D) {}
 
 	// Destructor
 	~Structured () { _erase(); }
 
 	// Methods
-	size_t Generate (Array<Block*> const & Blocks); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
+	size_t Generate (Array<Block*> const & Blocks, double Tol=sqrt(DBL_EPSILON)); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any). Tol is the tolerance to regard two vertices as coincident
 
 #ifdef USE_BOOST_PYTHON
-	size_t PyGenerate (BPy::list const & ListOfMeshBlock);
+	size_t PyGenerate (BPy::list const & ListOfMeshBlock, double Tol=sqrt(DBL_EPSILON));
 #endif
 
 private:
 	// Data
-	double         _tol;         ///< Tolerance to remove duplicate nodes
 	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
 	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
 	Vector<double> _s;           ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
@@ -567,23 +566,23 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 	int  nverts  = BPy::len(Verts);
 	if (nedges==24)
 	{
-		if (nverts!=20) throw new Fatal("Block::PySet3D:: For 3D blocks with 24 edges, the number of vertices must be 20. (nverts==%d is invalid)",nverts);
+		if (nverts!=20) throw new Fatal("Block::PySetCoords:: For 3D blocks with 24 edges, the number of vertices must be 20. (nverts==%d is invalid)",nverts);
 		_is_3d = true;
 	}
 	else if (nedges==12)
 	{
-		if (nverts!=8) throw new Fatal("Block::PySet3D:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		if (nverts!=8) throw new Fatal("Block::PySetCoords:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
 		_is_3d  = true;
 		gen_mid = true;
 	}
 	else if (nedges==8)
 	{
-		if (nverts!=8) throw new Fatal("Block::PySet3D:: For 2D blocks with 8 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		if (nverts!=8) throw new Fatal("Block::PySetCoords:: For 2D blocks with 8 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
 		_is_3d = false;
 	}
 	else if (nedges==4)
 	{
-		if (nverts!=4) throw new Fatal("Block::PySet3D:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
+		if (nverts!=4) throw new Fatal("Block::PySetCoords:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
 		_is_3d  = false;
 		gen_mid = true;
 	}
@@ -595,13 +594,13 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 	else        _set_2d();
 
 	// Read Wx
-	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySet3D: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
+	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySetCoords: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
 	_wx.Resize (sz_wx);
 	for (int i=0; i<sz_wx; ++i) _wx[i] = BPy::extract<double>(Wx[i])();
 	_set_wx();
 
 	// Read Wy
-	int sz_wy = BPy::len(Wy); if (sz_wy<1) throw new Fatal("Block::PySet3D: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
+	int sz_wy = BPy::len(Wy); if (sz_wy<1) throw new Fatal("Block::PySetCoords: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
 	_wy.Resize (sz_wy);
 	for (int i=0; i<sz_wy; ++i) _wy[i] = BPy::extract<double>(Wy[i])();
 	_set_wy();
@@ -609,7 +608,7 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 	// Read Wz
 	if (_is_3d)
 	{
-		int sz_wz = BPy::len(Wz); if (sz_wz<1) throw new Fatal("Block::PySet3D: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
+		int sz_wz = BPy::len(Wz); if (sz_wz<1) throw new Fatal("Block::PySetCoords: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
 		_wz.Resize (sz_wz);
 		for (int i=0; i<sz_wz; ++i) _wz[i] = BPy::extract<double>(Wz[i])();
 		_set_wz();
@@ -934,7 +933,7 @@ inline void Block::_gen_mid_nodes()
 
 /* public */
 
-inline size_t Structured::Generate(Array<Block*> const & Blocks)
+inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 {
 	// Check
 	if (Blocks.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",Blocks.Size());
@@ -1057,7 +1056,7 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 				double dist = sqrt(          pow(_verts_d_bry[i]->C(0)-_verts_d_bry[j]->C(0),2.0)+
 											 pow(_verts_d_bry[i]->C(1)-_verts_d_bry[j]->C(1),2.0)+
 								   (_is_3d ? pow(_verts_d_bry[i]->C(2)-_verts_d_bry[j]->C(2),2.0) : 0.0));
-				if (dist<_tol)
+				if (dist<Tol)
 				{
 					/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
 					// If this node is duplicated, than it is not on-boundary any longer
@@ -1110,7 +1109,7 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks)
 
 #ifdef USE_BOOST_PYTHON
 
-inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock)
+inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock, double Tol)
 {
 	int nb = BPy::len(ListOfMeshBlock);
 	if (nb<1) throw new Fatal("Structured::PyGenerate: Number of blocks must be greater than 0 (%d is invalid)",nb);
@@ -1118,7 +1117,7 @@ inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock)
 	blocks.Resize (nb);
 	for (int i=0; i<nb; ++i)
 		blocks[i] = BPy::extract<Mesh::Block*>(ListOfMeshBlock[i])();
-	return Mesh::Structured::Generate (blocks);
+	return Mesh::Structured::Generate (blocks, Tol);
 }
 
 #endif // USE_BOOST_PYTHON

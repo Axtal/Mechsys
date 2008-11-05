@@ -58,7 +58,7 @@ int main(int argc, char **argv) try
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
-		Mesh::Structured ms;
+		Mesh::Structured ms(/*Is3D*/false);
 		size_t ne = ms.Generate (blocks);
 		std::clock_t total = std::clock() - start; // Time elapsed
 		std::cout << "2D("<<ne<<" elements): Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
@@ -104,7 +104,7 @@ int main(int argc, char **argv) try
 
 		// Generate
 		std::clock_t start = std::clock(); // Initial time
-		Mesh::Structured ms;
+		Mesh::Structured ms(/*Is3D*/true);
 		size_t ne = ms.Generate (blocks);
 		std::clock_t total = std::clock() - start; // Time elapsed
 		std::cout << "3D:("<<ne<<" elements) Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;

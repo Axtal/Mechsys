@@ -105,7 +105,7 @@ class Generic
 {
 public:
 	// Constructor
-	Generic () : _is_3d(false), _is_o2(false) {}
+	Generic (bool Is3D) : _is_3d(Is3D), _is_o2(false) {}
 
 	// Destructor
 	virtual ~Generic () { _erase(); }
@@ -114,7 +114,6 @@ public:
 	void WriteVTU (char const * FileName) const; ///< Write output file for ParaView
 
 	// Set methods
-	virtual void Set3D       (bool Is3D=true) { _is_3d=Is3D; }                      ///< (Un)set 3D mesh
 	virtual void SetO2       (bool IsO2=true) { _is_o2=IsO2; }                      ///< (Un)set quadratic elements
 	virtual void SetNVerts   (size_t NumVerts);                                     ///< Erase old mesh and set number of vertices
 	virtual void SetNElems   (size_t NumElems);                                     ///< Set number of elements
