@@ -17,3 +17,5 @@ done
 for d in $DIRS; do
 	find . -name "$d" -exec rm -rf {} \; > /dev/null 2>&1
 done
+
+exit 0

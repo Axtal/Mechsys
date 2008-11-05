@@ -1,3 +1,14 @@
+mechsys (1.2-1) unstable; urgency=low
+
+  * Blender GUI improved: Blocks can now be defined in a single mesh
+  * Blender: Mesh generation automatically set nodes/faces boundary conditions
+  * Blender: Colours can be defined for faces boundary conditions
+  * Blender: Settings is now an independent box
+  * Blender: Scripts generation both for mesh and FE simulations added
+  * Check for errors in 2D and 3D meshes improved
+
+ -- Dorival Pedroso <dorival.pedroso@gmail.com>  Wed, 05 Nov 2008 17:35:11 +1000
+
 mechsys (1.1-1) unstable; urgency=low
 
   * Diffusion element added. Steady-state heat tests added.
@@ -11,5 +22,6 @@ mechsys (1.1-1) unstable; urgency=low
 mechsys (1.0-1) unstable; urgency=low
 
   * Initial Release.
+  * To get the date, use: date -R
 
  -- Dorival Pedroso <dorival.pedroso@gmail.com>  Sun, 07 Sep 2008 16:11:06 +1000

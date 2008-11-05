@@ -5,9 +5,10 @@
 #   sudo apt-get install pbuilder fakeroot devscripts dh-make lintian
 #   sudo pbuilder create
 #   gvim ~/.pbuilderrc
-#      COMPONENTS="main universe"
+#      COMPONENTS="main universe multiverse"
 #      OTHERMIRROR="deb http://cneurocvs.rmki.kfki.hu /packages/binary/"
 #   sudo pbuilder update --override-config
+#   gpg --gen-key
 
 if [ "$#" -ne 2 ]; then
 	echo
@@ -62,3 +63,5 @@ echo "[1;34m############################################# Cleaning up temp file
 echo
 rm -f *.build
 rm -rf ./mechsys-$VERSION/
+
+exit 0
