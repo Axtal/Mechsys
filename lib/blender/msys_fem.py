@@ -84,7 +84,8 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
     if obj.properties.has_key('linele'): linele = obj.properties['linele']
 
     # set geometry
-    ndim = 3 if obj.properties['3dmesh'] else 2
+    is3d = obj.properties['3dmesh']
+    ndim = 3 if is3d else 2
     if gen_script: txt.write('geo = ms.geom (%d)\n' % ndim)
     else: geo = ms.geom (ndim)
 
@@ -95,15 +96,15 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
     else:
         if gen_script:
             txt.write('\n# mesh structure\n')
-            txt.write('mg = ms.mesh_generic()\n')
-            if ndim==3: txt.write('mg.set_3d()\n')
+            if is3d: txt.write('mg = ms.mesh_generic(True)\n')
+            else:    txt.write('mg = ms.mesh_generic(False)\n')
 
             txt.write('\n# vertices\n')
             txt.write('mg.set_nverts (%d)\n' % len(msh.verts))
             for i, v in enumerate(msh.verts):
                 onbry = True if (i in obj.properties['verts_bry']) else False
-                if ndim==3: txt.write('mg.set_vert (%d,%d,%f,%f,%f)\n' % (i, onbry, v.co[0], v.co[1], v.co[2]))
-                else:       txt.write('mg.set_vert (%d,%d,%f,%f)\n'    % (i, onbry, v.co[0], v.co[1]))
+                if is3d: txt.write('mg.set_vert (%d,%d,%f,%f,%f)\n' % (i, onbry, v.co[0], v.co[1], v.co[2]))
+                else:    txt.write('mg.set_vert (%d,%d,%f,%f)\n'    % (i, onbry, v.co[0], v.co[1]))
 
             txt.write('\n# elements\n')
             nelems = obj.properties['nelems']
@@ -122,7 +123,7 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
                     tag = obj.properties['elems']['etags'][str(i)][j]
                     if tag<0: txt.write('mg.set_elem_etag (%d,%d,%d)\n' % (i, j, tag))
 
-            if obj.properties['3dmesh']:
+            if is3d:
                 txt.write('\n# face tags\n')
                 for i in range(nelems):
                     for j in range(len(obj.properties['elems']['ftags'][str(i)])):
@@ -134,15 +135,14 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
 
         else:
             # mesh structure
-            mg = ms.mesh_generic()
-            if ndim==3: mg.set_3d()
+            mg = ms.mesh_generic(is3d)
 
             # vertices
             mg.set_nverts (len(msh.verts))
             for i, v in enumerate(msh.verts):
                 onbry = True if (i in obj.properties['verts_bry']) else False
-                if ndim==3: mg.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
-                else:       mg.set_vert (i, onbry, v.co[0], v.co[1])
+                if is3d: mg.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
+                else:    mg.set_vert (i, onbry, v.co[0], v.co[1])
 
             # elements
             nelems = obj.properties['nelems']
@@ -162,7 +162,7 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
                     mg.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
 
                 # face tags
-                if obj.properties['3dmesh']:
+                if is3d:
                     for j in range(len(obj.properties['elems']['ftags'][str(i)])):
                         mg.set_elem_ftag (i, j, obj.properties['elems']['ftags'][str(i)][j])
 

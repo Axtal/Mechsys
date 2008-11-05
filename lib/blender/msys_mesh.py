@@ -152,7 +152,8 @@ def gen_struct_mesh(gen_script=False,txt=None):
         if is3d: txt.write('msm = ms.mesh_structured(True)\n')
         else:    txt.write('msm = ms.mesh_structured(False)\n')
         txt.write('nel = msm.generate(bks,1.0e-4)\n')
-        txt.write('me.add_mesh(msm)\n')
+        txt.write('face_colours = '+fclrs.__str__()+'\n')
+        txt.write('me.add_mesh(msm, face_colours)\n')
     else:
         if len(bks)>0:
             Blender.Window.WaitCursor(1)
@@ -339,7 +340,7 @@ def add_mesh(msm, fclrs={}):
     new_obj.properties['verts_bry'] = verts_bry;
 
     # 2D or 3D mesh ?
-    new_obj.properties['is3d'] = msm.is_3d()
+    new_obj.properties['3dmesh'] = msm.is_3d()
 
     # set elements
     elems  = {}
