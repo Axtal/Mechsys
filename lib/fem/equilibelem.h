@@ -55,6 +55,16 @@ namespace FEM
 class EquilibElem : public virtual Element
 {
 public:
+	// Constants
+	static const size_t ND [3];        ///< Number of DOFs to add to a node ==> ND[_ndim-1]
+	static const size_t NDB[3];        ///< (Beam) Number of DOFs to add to a node ==> NDB[_ndim-1]
+	static const char   UD [3][6][3];  ///< Essential DOF names ==> UD[_ndim-1][iDOF]
+	static const char   FD [3][6][3];  ///< Natural DOF names
+	static const size_t NL [5];        ///< Number of additional labels (exceeding ND)
+	static const char   LB [5][18][4]; ///< Additional labels
+
+// UD[_ndim+1][iDOF]
+
 	// Constructor
 	EquilibElem () : _body_force(0.0), _has_body_force(false) {}
 	
@@ -63,7 +73,7 @@ public:
 
 	// Derived methods
 	bool         CheckModel      () const;
-	bool         IsEssential     (char const * DOFName) const;
+	bool         IsEssential     (char const * Name) const;
 	void         SetModel        (char const * ModelName, char const * Prms, char const * Inis);
 	void         SetProps        (Array<double> const & P);
 	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
@@ -99,9 +109,29 @@ protected:
 	void _calc_initial_internal_state (); ///< Calculate initial internal state
 
 	// Private methods that MUST be derived
-	virtual int _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	virtual int  _geom() const =0;               ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	virtual bool _beam() const { return false; } ///< Is Beam element ?
+
+private:
+	void _equations_map(Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
 
 }; // class EquilibElem
+
+// UD[_ndim-1][iDOF]                       1D                         2D                          3D
+const size_t EquilibElem::ND [3]       = { 1,                         2,                          3};
+const size_t EquilibElem::NDB[3]       = { 2,                         3,                          6};
+const char   EquilibElem::UD [3][6][3] = {{"ux","wz","","","",""},  {"ux","uy","wz","","",""},  {"ux","uy","uz","wx","wy","wz"}};
+const char   EquilibElem::FD [3][6][3] = {{"fx","mz","","","",""},  {"fx","fy","mz","","",""},  {"fx","fy","fz","mx","my","mz"}};
+ 
+// LB[_geom-1][iLabel]
+const size_t EquilibElem::NL[5]        = { 2, 12, 18, 10, 18 };
+const char   EquilibElem::LB[5][18][4] = {
+	{"Ea", "Sa", ""  ,  ""   , ""   , ""   , ""  , ""   , ""  , ""   , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  }, // 1D
+	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , ""  , ""  , ""  , ""  , ""  , ""  }, // 2D (plane-strain)
+	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3"}, // 3D
+	{"Ex", "Ey", "Exy", "Sx" , "Sy" , "Sxy", "E1", "E2" , "S1", "S2" , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  }, // 2D (plane-stress)
+	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3"}  // 2D (axis-symmetric)
+};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -118,10 +148,11 @@ inline bool EquilibElem::CheckModel() const
 	return true;
 }
 
-inline bool EquilibElem::IsEssential(char const * DOFName) const
+inline bool EquilibElem::IsEssential(char const * Name) const
 {
-	if (strcmp(DOFName,"ux")==0 || strcmp(DOFName,"uy")==0) return true;
-	if (_ndim==3                && strcmp(DOFName,"uz")==0) return true;
+	const size_t m = _ndim-1;
+	const size_t n = (_beam() ? NDB[m] : ND[m]);
+	for (size_t i=0; i<n; ++i) if (strcmp(Name,UD[m][i])==0) return true;
 	return false;
 }
 
@@ -168,9 +199,9 @@ inline Element * EquilibElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 	_connects[iNodeLocal] = ptNode;
 
 	// Add Degree of Freedom to a node (Essential, Natural)
-	              _connects[iNodeLocal]->AddDOF("ux", "fx");
-	              _connects[iNodeLocal]->AddDOF("uy", "fy");
-	if (_ndim==3) _connects[iNodeLocal]->AddDOF("uz", "fz");
+	const size_t m = _ndim-1;
+	const size_t n = (_beam() ? NDB[m] : ND[m]);
+	for (size_t i=0; i<n; ++i) _connects[iNodeLocal]->AddDOF (UD[m][i], FD[m][i]);
 
 	// Shared
 	_connects[iNodeLocal]->SetSharedBy(_my_id);
@@ -184,12 +215,11 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	LinAlg::Vector<double> du(_ndim*_n_nodes); // Delta disp. of this element
 	
 	// Assemble (local/element) displacements vector
+	const size_t m = _ndim-1;
+	const size_t n = (_beam() ? NDB[m] : ND[m]);
 	for (size_t i=0; i<_n_nodes; ++i)
-	{
-		              du(i*_ndim  ) = dUglobal(_connects[i]->DOFVar("ux").EqID);
-		              du(i*_ndim+1) = dUglobal(_connects[i]->DOFVar("uy").EqID);
-		if (_ndim==3) du(i*_ndim+2) = dUglobal(_connects[i]->DOFVar("uz").EqID);
-	}
+	for (size_t j=0; j<n;        ++j)
+		du(i*_ndim+j) = dUglobal(_connects[i]->DOFVar(UD[m][j]).EqID);
 	
 	// Allocate (local/element) internal force vector
 	LinAlg::Vector<double> df(_ndim*_n_nodes); // Delta internal force of this element
@@ -225,14 +255,10 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 		df += trn(B)*dsig*det(J)*w;
 	}
 
-	// Return internal forces
+	// Sum up contribution to internal forces vector
 	for (size_t i=0; i<_n_nodes; ++i)
-	{
-		// Sum up contribution to internal forces vector
-		              dFint(_connects[i]->DOFVar("fx").EqID) += df(i*_ndim  );
-		              dFint(_connects[i]->DOFVar("fy").EqID) += df(i*_ndim+1);
-		if (_ndim==3) dFint(_connects[i]->DOFVar("fz").EqID) += df(i*_ndim+2);
-	}
+	for (size_t j=0; j<n;        ++j)
+		dFint(_connects[i]->DOFVar(UD[m][j]).EqID) += df(i*_ndim+j);
 }
 
 inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
@@ -249,6 +275,8 @@ inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 		LinAlg::Matrix<double> J;
 
 		// Loop along integration points
+		const size_t m = _ndim-1;
+		const size_t n = 3;
 		for (size_t i=0; i<_a_int_pts.Size(); ++i)
 		{
 			// Temporary Integration Points
@@ -262,22 +290,15 @@ inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 			Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
 
 			// Calculate local external volume force
-			for (size_t j=0; j<_n_nodes; j++)
-			{
-				              fvol(j*_ndim  ) += _body_force(0)*shape(j)*det(J)*w;
-				              fvol(j*_ndim+1) += _body_force(1)*shape(j)*det(J)*w;
-				if (_ndim==3) fvol(j*_ndim+2) += _body_force(2)*shape(j)*det(J)*w;
-			}
+			for (size_t j=0; j<_n_nodes; ++j)
+			for (size_t k=0; k<n;        ++k)
+				fvol(j*_ndim+k) += _body_force(k)*shape(j)*det(J)*w;
 		}
 
-		// Add to external force vector
+		// Sum up contribution to internal forces vector
 		for (size_t i=0; i<_n_nodes; ++i)
-		{
-			// Sum up contribution to internal forces vector
-			              FVol(_connects[i]->DOFVar("fx").EqID) += fvol(i*_ndim  );
-			              FVol(_connects[i]->DOFVar("fy").EqID) += fvol(i*_ndim+1);
-			if (_ndim==3) FVol(_connects[i]->DOFVar("fz").EqID) += fvol(i*_ndim+2);
-		}
+		for (size_t j=0; j<n;        ++j)
+			FVol(_connects[i]->DOFVar(UD[m][j]).EqID) += fvol(i*_ndim+j);
 	}
 	else throw new Fatal("EquilibElem::AddVolForces: This element (%s # %d) does not have volumetric forces.",Name(),_my_id);
 }
@@ -296,61 +317,22 @@ inline void EquilibElem::RestoreState()
 
 inline void EquilibElem::GetLabels(Array<String> & Labels) const
 {
-	// Get labels of all values to output
-	switch (_geom()) // 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	const size_t m  = _ndim-1;
+	const size_t n  = (_beam() ? NDB[m] : ND[m]); // number of DOFs
+	const size_t p  = _geom()-1;
+	const size_t q  = NL[p]; // number of additional labels
+	const size_t nl = 2*n+q; // total number of labels
+	Labels.Resize(nl);
+	size_t k = 0;
+	for (size_t i=0; i<n; ++i)
 	{
-		case 1: // 1D
-		{
-			switch (_ndim)
-			{
-				case 2:
-				{
-					Labels.Resize(6);
-					Labels[0] = "ux"; Labels[1] = "uy";
-					Labels[2] = "fx"; Labels[3] = "fy";
-					Labels[4] = "Ea"; // axial strain
-					Labels[5] = "Sa"; // axial stress
-					return;
-				}
-				default: throw new Fatal("EquilibElem::GetLabels: GeometryType==%d & NDim==%d is not implemented yet",_geom(),_ndim);
-			}
-		}
-		case 2: // 2D(plane-strain)
-		{
-			Labels.Resize(16);
-			Labels[ 0]="ux"; Labels[ 1]="uy";                                    // Displacements
-			Labels[ 2]="fx"; Labels[ 3]="fy";                                    // Forces
-			Labels[ 4]="Ex"; Labels[ 5]="Ey"; Labels[ 6]="Ez"; Labels[ 7]="Exy"; // Strains
-			Labels[ 8]="Sx"; Labels[ 9]="Sy"; Labels[10]="Sz"; Labels[11]="Sxy"; // Stress
-			Labels[12]="E1"; Labels[13]="E2";                                    // Principal strains
-			Labels[14]="S1"; Labels[15]="S2";                                    // Principal stresses
-			return;
-		}
-		case 3: // 3D
-		{
-			Labels.Resize(24);
-			Labels[ 0]="ux"; Labels[ 1]="uy"; Labels[ 2]="uz";                                                       // Displacements
-			Labels[ 3]="fx"; Labels[ 4]="fy"; Labels[ 5]="fz";                                                       // Forces
-			Labels[ 6]="Ex"; Labels[ 7]="Ey"; Labels[ 8]="Ez"; Labels[ 9]="Exy"; Labels[10]="Eyz"; Labels[11]="Exz"; // Strains
-			Labels[12]="Sx"; Labels[13]="Sy"; Labels[14]="Sz"; Labels[15]="Sxy"; Labels[16]="Syz"; Labels[17]="Sxz"; // Stress
-			Labels[18]="E1"; Labels[19]="E2"; Labels[20]="E3";                                                       // Principal strains
-			Labels[21]="S1"; Labels[22]="S2"; Labels[23]="S3";                                                       // Principal stresses
-			return;
-		}
-		case 5: // 2D(plane-stress)
-		{
-			Labels.Resize(14);
-			Labels[ 0]="ux"; Labels[ 1]="uy";                  // Displacements
-			Labels[ 2]="fx"; Labels[ 3]="fy";                  // Forces
-			Labels[ 4]="Ex"; Labels[ 5]="Ey"; Labels[6]="Exy"; // Strains
-			Labels[ 7]="Sx"; Labels[ 8]="Sy"; Labels[9]="Sxy"; // Stress
-			Labels[10]="E1"; Labels[11]="E2";                  // Principal strains
-			Labels[12]="S1"; Labels[13]="S2";                  // Principal stresses
-			return;
-		}
-		case 4: // 2D(axis-symmetric)
-		default:
-			throw new Fatal("EquilibElem::GetLabels: GeometryType==%d is not implemented yet",_geom());
+		Labels[k] = UD[m][i];  k++;
+		Labels[k] = FD[m][i];  k++;
+	}
+	for (size_t i=0; i<q; ++i)
+	{
+		Labels[k] = LB[p][i];
+		k++;
 	}
 }
 
@@ -366,32 +348,28 @@ inline void EquilibElem::CalcDepVars() const
 inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
-	if (strcmp(Name,"ux")==0 || strcmp(Name,"uy")==0 || strcmp(Name,"uz")==0)
-		return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
+	const size_t m = _ndim-1;
+	const size_t n = (_beam() ? NDB[m] : ND[m]);
+	for (size_t j=0; j<n; ++j) if (strcmp(Name,UD[m][j])==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	else if (strcmp(Name,"fx")==0 || strcmp(Name,"fy")==0 || strcmp(Name,"fz")==0)
-		return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (size_t j=0; j<n; ++j) if (strcmp(Name,FD[m][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	// Stress, strains, internal values, etc.
-	else
-	{
-		// Vectors for extrapolation
-		LinAlg::Vector<double>    ip_values (_a_int_pts.Size());
-		LinAlg::Vector<double> nodal_values (_n_nodes);
+	LinAlg::Vector<double>    ip_values (_a_int_pts.Size()); // Vectors for extrapolation
+	LinAlg::Vector<double> nodal_values (_n_nodes);
 
-		// Get integration point values
-		if (_a_model.Size()==_a_int_pts.Size())
-			for (size_t i=0; i<_a_int_pts.Size(); i++)
-				ip_values(i) = _a_model[i]->Val(Name);
-		else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
+	// Get integration point values
+	if (_a_model.Size()==_a_int_pts.Size())
+		for (size_t i=0; i<_a_int_pts.Size(); i++)
+			ip_values(i) = _a_model[i]->Val(Name);
+	else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
-		// Extrapolation
-		Extrapolate (ip_values, nodal_values);
+	// Extrapolation
+	Extrapolate (ip_values, nodal_values);
 
-		// Output single value
-		return nodal_values (iNodeLocal);
-	}
+	// Output single value
+	return nodal_values (iNodeLocal);
 }
 
 inline double EquilibElem::Val(char const * Name) const
@@ -416,32 +394,7 @@ inline void EquilibElem::Deactivate()
 
 inline void EquilibElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
 {
-	// Size of Ke
-	int n_rows = _ndim*_n_nodes; // == n_cols
-
-	// Mounting a map of positions from Ke to Global
-	int idx_Ke = 0;                // position (idx) inside Ke matrix
-	RowsMap       .Resize(n_rows); // size=Ke.Rows()=Ke.Cols()
-	RowsEssenPresc.Resize(n_rows); // size=Ke.Rows()=Ke.Cols()
-
-	// Fill map of Ke position to K position of DOFs components
-	for (size_t i=0; i<_n_nodes; ++i)
-	{
-		RowsMap        [idx_Ke] = _connects[i]->DOFVar("ux").EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i]->DOFVar("ux").IsEssenPresc; 
-		idx_Ke++;
-		RowsMap        [idx_Ke] = _connects[i]->DOFVar("uy").EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i]->DOFVar("uy").IsEssenPresc; 
-		idx_Ke++;
-		if (_ndim==3)
-		{
-			RowsMap        [idx_Ke] = _connects[i]->DOFVar("uz").EqID; 
-			RowsEssenPresc [idx_Ke] = _connects[i]->DOFVar("uz").IsEssenPresc; 
-			idx_Ke++;
-		}
-	}
-	ColsMap        = RowsMap;
-	ColsEssenPresc = RowsEssenPresc;
+	_equations_map(RowsMap, ColsMap, RowsEssenPresc, ColsEssenPresc);
 }
 
 inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) const
@@ -623,16 +576,38 @@ inline void EquilibElem::_calc_initial_internal_state()
 		f += trn(B)*sig*det(J)*w;
 	}
 
-	// Update nodal Natural values
+	// Assemble (local/element) displacements vector.
+	const size_t m = _ndim-1;
+	const size_t n = (_beam() ? NDB[m] : ND[m]);
 	for (size_t i=0; i<_n_nodes; ++i)
-	{
-		// Assemble (local/element) displacements vector.
-		              _connects[i]->DOFVar("fx").NaturalVal += f(i*_ndim  ); // NaturalVal must be set to zero during AddDOF routine
-		              _connects[i]->DOFVar("fy").NaturalVal += f(i*_ndim+1);
-		if (_ndim==3) _connects[i]->DOFVar("fz").NaturalVal += f(i*_ndim+2);
-	}
+	for (size_t j=0; j<n;        ++j)
+		_connects[i]->DOFVar(UD[m][j]).NaturalVal += f(i*_ndim+j);
 }
 
+inline void EquilibElem::_equations_map(Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
+{
+	// Size of Stiffness/Mass Matrix
+	int n_rows = _ndim*_n_nodes; // == n_cols
+
+	// Mounting a map of positions from Me to Global
+	RowsMap       .Resize(n_rows);
+	RowsEssenPresc.Resize(n_rows);
+
+	const size_t m = _ndim-1;
+	const size_t n = (_beam() ? NDB[m] : ND[m]);
+	int p = 0; // position inside matrix
+	for (size_t i=0; i<_n_nodes; ++i)
+	{
+		for (size_t j=0; j<n; ++j)
+		{
+			RowsMap        [p] = _connects[i]->DOFVar(UD[m][j]).EqID; 
+			RowsEssenPresc [p] = _connects[i]->DOFVar(UD[m][j]).IsEssenPresc; 
+			p++;
+		}
+	}
+	ColsMap        = RowsMap;
+	ColsEssenPresc = RowsEssenPresc;
+}
 
 }; // namespace FEM
 

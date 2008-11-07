@@ -82,7 +82,7 @@ public:
 	virtual char const * ModelName   ()                                  const =0; ///< Return the name of the model of the first IP of this element
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
-	virtual bool      IsEssential   (char const * DOFName) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
+	virtual bool      IsEssential   (char const * Name) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel      (char const * ModelName, char const * Prms, char const * Inis) =0;                                       ///< (Re)allocate model with parameters and initial values
 	virtual void      SetProps      (Array<double> const & ElemProps) =0;                                                                    ///< Set element properties such as body forces, internal heat source, water pumping, etc.
 	virtual Element * Connect       (int iNodeLocal, FEM::Node * ptNode) =0;                                                                 ///< Set connectivity, by linking the local node ID with the pointer to the connection node
