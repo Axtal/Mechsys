@@ -43,6 +43,8 @@ private:
 	{
 		if (nDim!=3) throw new Fatal("Hex8Equilib::_set_ndim: For this element, nDim must be equal to 3 (%d is invalid)",nDim);
 		_ndim = nDim;
+		_d    = _ndim-1;
+		_nd   = EquilibElem::ND[_d];
 	}
 
 }; // class Hex8Equilib

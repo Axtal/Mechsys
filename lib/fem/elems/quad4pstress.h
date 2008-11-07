@@ -43,6 +43,8 @@ private:
 	{
 		if (nDim<2) throw new Fatal("Quad4PStress::_set_ndim: For this element, nDim must be greater than or equal to 2 (%d is invalid)",nDim);
 		_ndim = nDim;
+		_d    = _ndim-1;
+		_nd   = EquilibElem::ND[_d];
 	}
 
 }; // class Quad4PStress

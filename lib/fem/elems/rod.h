@@ -43,6 +43,8 @@ private:
 	{
 		if (nDim<1) throw new Fatal("Rod::_set_ndim: For this element, nDim must be greater than or equal to 1 (%d is invalid)",nDim);
 		_ndim = nDim;
+		_d    = _ndim-1;
+		_nd   = EquilibElem::ND[_d];
 	}
 
 }; // class Rod

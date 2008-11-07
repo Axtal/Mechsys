@@ -43,6 +43,8 @@ private:
 	{
 		if (nDim<2) throw new Fatal("Tri6PStrain::_set_ndim: For this element, nDim must be greater than or equal to 2 (%d is invalid)",nDim);
 		_ndim = nDim;
+		_d    = _ndim-1;
+		_nd   = EquilibElem::ND[_d];
 	}
 
 }; // class Tri6PStrain
