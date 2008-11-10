@@ -97,7 +97,7 @@ inline void Beam::SetModel(char const * ModelName, char const * Prms, char const
 	// Set
 	for (size_t i=0; i<names.Size(); ++i)
 	{
-			 if (names[i]=="E")    _E   = values[i];
+		     if (names[i]=="E")    _E   = values[i];
 		else if (names[i]=="A")    _A   = values[i];
 		else if (names[i]=="Izz" ) _Izz = values[i];
 		else throw new Fatal("Beam::SetModel: Parameter name (%s) is invalid",names[i].CStr());
@@ -195,7 +195,7 @@ inline void Beam::_set_ndim(int nDim)
 	if (nDim<1) throw new Fatal("Beam::_set_ndim: For this element, nDim must be greater than or equal to 1 (%d is invalid)",nDim);
 	_ndim = nDim;
 	_d    = _ndim-1;
-	_nd   = Beam::NDB[_d];
+	_nd   = EquilibElem::NDB[_d];
 }
 
 inline void Beam::_calc_initial_internal_state()
