@@ -70,16 +70,16 @@ public:
 	virtual ~EquilibElem() {}
 
 	// Derived methods
-	bool         CheckModel      () const;
+	virtual bool CheckModel      () const;
 	bool         IsEssential     (char const * Name) const;
-	void         SetModel        (char const * ModelName, char const * Prms, char const * Inis);
+	virtual void SetModel        (char const * ModelName, char const * Prms, char const * Inis);
 	void         SetProps        (Array<double> const & P);
 	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
-	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	virtual void UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	bool         HasVolForces    () const { return _has_body_force; }
 	void         AddVolForces    (LinAlg::Vector<double> & FVol) const;
-	void         BackupState     ();
-	void         RestoreState    ();
+	virtual void BackupState     ();
+	virtual void RestoreState    ();
 	void         GetLabels       (Array<String> & Labels) const;
 	void         Deactivate      ();
 	char const * ModelName       () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
@@ -93,9 +93,9 @@ public:
 	virtual void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
 
 	// Access methods
-	void   CalcDepVars () const;                                  ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
-	double Val         (int iNodeLocal, char const * Name) const; ///< Return values at nodes
-	double Val         (                char const * Name) const; ///< Return values at the CG of the element
+	virtual void   CalcDepVars () const;                                  ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	virtual double Val         (int iNodeLocal, char const * Name) const; ///< Return values at nodes
+	virtual double Val         (                char const * Name) const; ///< Return values at the CG of the element
 
 protected:
 	// Data
@@ -545,7 +545,7 @@ inline void EquilibElem::_calc_initial_internal_state()
 inline void EquilibElem::_equations_map(Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
 {
 	// Size of Stiffness/Mass Matrix
-	int n_rows = _ndim*_n_nodes; // == n_cols
+	int n_rows = _nd*_n_nodes; // == n_cols
 
 	// Mounting a map of positions from Me to Global
 	RowsMap       .Resize(n_rows);

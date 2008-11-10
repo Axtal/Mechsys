@@ -48,27 +48,15 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
 	// Constants
-	double M = 20.0;   // kN*m
-	double P = 10.0;   // kN
-	double L = 1.0;    // m
-	double E = 2.1e+8; // kPa
-	double A = 4.0e-2; // m^2
-	double I = 4.0e-4; // m^4
+	double M   = 20.0;   // kN*m
+	double P   = 10.0;   // kN
+	double L   = 1.0;    // m
+	double E   = 2.1e+8; // kPa
+	double A   = 4.0e-2; // m^2
+	double Izz = 4.0e-4; // m^4
 
 	// Geometry
 	FEM::Geom g(2); // 2D
-
-	g.SetNNodes(2);
-	g.SetNode  (0, 0.0, 0.0);
-	g.SetNode  (1, 3.0, 4.0);
-	g.SetNElems(1);
-	g.SetElem  (0, "Beam")->Connect(0,g.Nod(0))->Connect(1,g.Nod(1));
-	Matrix<double> Ke;  Ke.SetNS(Util::_8_2);
-	g.Ele(0)->Order1Matrix(0, Ke);
-	cout << Ke << endl;
-
-
-	return 0;
 
 	// Nodes
 	g.SetNNodes (4);
@@ -84,7 +72,7 @@ int main(int argc, char **argv) try
 	g.SetElem   (2, "Beam")->Connect(0, g.Nod(2))->Connect(1, g.Nod(3));
 
 	// Parameters and initial value
-	String prms; prms.Printf("E=%f A=%f I=%f", E, A, I);
+	String prms; prms.Printf("E=%f A=%f Izz=%f", E, A, Izz);
 	g.Ele(0)->SetModel("LinElastic", prms.CStr(), "ZERO");
 	g.Ele(1)->SetModel("LinElastic", prms.CStr(), "ZERO");
 	g.Ele(2)->SetModel("LinElastic", prms.CStr(), "ZERO");
@@ -92,15 +80,27 @@ int main(int argc, char **argv) try
 	// Boundary conditions (must be after set connectivity)
 	g.Nod(0)->Bry("ux", 0.0)->Bry("uy", 0.0);
 	g.Nod(1)->Bry("fy", -P);
-	g.Nod(3)->Bry("wz", -M);
+	g.Nod(3)->Bry("uy", 0.0)->Bry("mz", -M);
 
-	g.Ele(0)->Order1Matrix(0, Ke);
+	cout << g << endl;
+
+	/*
+	Matrix<double> Ke;  Ke.SetNS(Util::_6_3);
+	g.Ele(2)->Order1Matrix(0, Ke);
+	Ke = Ke/1.0e+6;
 	cout << Ke << endl;
+	*/
 
 	// Solve
-	//FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	//sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	//sol -> Solve(/*tIni*/0.0, /*tFin*/1.0, /*hIni*/0.001, /*DtOut*/0.01);
+	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
+	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol -> Solve(); ///*tIni*/0.0, /*tFin*/1.0, /*hIni*/0.001, /*DtOut*/0.01);
+
+	// Output: Nodes
+	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << endl;
+	for (size_t i=0; i<g.NNodes(); ++i)
+		cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("wz") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << endl;
+	cout << endl;
 
 	/*
 	// Set number of prescribed and unknown DOFs
