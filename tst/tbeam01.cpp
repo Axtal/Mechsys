@@ -95,11 +95,16 @@ int main(int argc, char **argv) try
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve(); ///*tIni*/0.0, /*tFin*/1.0, /*hIni*/0.001, /*DtOut*/0.01);
+	double norm_resid = LinAlg::Norm(sol->Resid());
+	cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
+	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	if (norm_resid>1.0e-13) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,1.3e-15);
+	cout << endl;
 
 	// Output: Nodes
-	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << endl;
+	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << _8s<<"mz" << endl;
 	for (size_t i=0; i<g.NNodes(); ++i)
-		cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("wz") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << endl;
+		cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("wz") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << _8s<<g.Nod(i)->Val("mz") << endl;
 	cout << endl;
 
 	/*

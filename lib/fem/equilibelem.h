@@ -209,7 +209,7 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	// Assemble (local/element) displacements vector
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		du(i*_ndim+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
+		du(i*_nd+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
 
 	// Allocate (local/element) internal force vector
 	LinAlg::Vector<double> df(_nd*_n_nodes); // Delta internal force of this element
@@ -242,7 +242,7 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	// Sum up contribution to internal forces vector
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_ndim+j);
+		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
 inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
@@ -272,13 +272,13 @@ inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 
 			for (size_t j=0; j<_n_nodes; ++j)
 			for (size_t k=0; k<3;        ++k)
-				fvol(j*_ndim+k) += _body_force(k)*shape(j)*det(J)*w;
+				fvol(j*_nd+k) += _body_force(k)*shape(j)*det(J)*w;
 		}
 
 		// Sum up contribution to internal forces vector
 		for (size_t i=0; i<_n_nodes; ++i)
 		for (size_t j=0; j<3;        ++j)
-			FVol(_connects[i]->DOFVar(UD[_d][j]).EqID) += fvol(i*_ndim+j);
+			FVol(_connects[i]->DOFVar(UD[_d][j]).EqID) += fvol(i*_nd+j);
 	}
 	else throw new Fatal("EquilibElem::AddVolForces: This element (%s # %d) does not have volumetric forces.",Name(),_my_id);
 }
@@ -539,7 +539,7 @@ inline void EquilibElem::_calc_initial_internal_state()
 	// Assemble (local/element) displacements vector.
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		_connects[i]->DOFVar(UD[_d][j]).NaturalVal += f(i*_ndim+j);
+		_connects[i]->DOFVar(UD[_d][j]).NaturalVal += f(i*_nd+j);
 }
 
 inline void EquilibElem::_equations_map(Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const

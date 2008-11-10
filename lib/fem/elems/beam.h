@@ -112,18 +112,37 @@ inline void Beam::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUg
 	// Assemble (local/element) displacements vector
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		du(i*_ndim+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
+		du(i*_nd+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
 
 	// Allocate (local/element) internal force vector
 	LinAlg::Vector<double> df(_nd*_n_nodes); // Delta internal force of this element
 	df.SetValues(0.0);
 
+	double dx = _connects[1]->X()-_connects[0]->X();
+	double dy = _connects[1]->Y()-_connects[0]->Y();
+	double LL = dx*dx+dy*dy;
+	double L  = sqrt(LL);
+	double c  = dx/L;
+	double s  = dy/L;
+	LinAlg::Matrix<double> T(6,6);
+	LinAlg::Matrix<double> Ke;
+	T =    c,   s, 0.0, 0.0, 0.0, 0.0,
+	      -s,   c, 0.0, 0.0, 0.0, 0.0,
+	     0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+	     0.0, 0.0, 0.0,   c,   s, 0.0,
+	     0.0, 0.0, 0.0,  -s,   c, 0.0,
+	     0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
 
+	Order1Matrix(0,Ke);
+	df = Ke * du;
+//	du = T*du;
+
+	std::cout << df << std::endl;
 
 	// Sum up contribution to internal forces vector
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_ndim+j);
+		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
 inline void Beam::BackupState()
