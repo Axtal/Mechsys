@@ -8,7 +8,7 @@ mechsys = Extension("mechsys",
                     define_macros      = [('O3','1'), ('TRILIBRARY','1'), ('NDEBUG','1'), ('HAVE_UMFPACK','1')],
                     include_dirs       = ['lib', '/usr/include/suitesparse', '/usr/local/include', '/usr/local/include/suitesparse'],
                     library_dirs       = ['.'],
-                    libraries          = ['lapack', 'amd', 'umfpack', 'boost_python', 'igraph'],
+                    libraries          = ['lapack', 'amd', 'umfpack', 'boost_python', 'igraph', 'CGAL'],
                     extra_compile_args = ['-w'])
 
 setup(name        = "MechSys",
