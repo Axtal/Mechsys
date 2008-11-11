@@ -56,11 +56,14 @@ public:
 	virtual ~Element() {}
 
 	// Set methods
-	void      SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
-	void      SetDim    (int nDim)           { _set_ndim(nDim);       }    ///< Set the number of dimension of the problem
-	void      SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
-	Element * EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
-	Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
+	void              SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
+	void              SetDim    (int nDim)           { _set_ndim(nDim);       }    ///< Set the number of dimension of the problem
+	void              SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
+	virtual Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
+	virtual Element * EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
+
+	// Set methods
+	virtual Element * EdgeBry (char const * Key, double Value0, double Value1, int EdgeLocalID) { return this; } ///< Set edge boundary conditions (SetDim MUST be called first)
 	
 	// Get methods
 	bool         CheckConnect ()         const;                         ///< Check if connectivity is OK
@@ -154,7 +157,7 @@ private:
 
 inline Element * Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)
 {
-	if (_ndim==2) // For 2D meshes, edges correspond to faces
+	if (_ndim<3) // For 1D/2D meshes, edges correspond to faces
 	{
 		Array<Node*> fnodes;
 		GetFaceNodes        (EdgeLocalID, fnodes);

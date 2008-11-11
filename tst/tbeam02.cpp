@@ -25,6 +25,7 @@
 #include "fem/elems/beam.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
+#include "fem/output.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 
@@ -35,52 +36,71 @@ using Util::_4;
 using Util::_6;
 using Util::_8s;
 
-inline double fy (double t)
-{
-	return 0.0;
-}
-
 int main(int argc, char **argv) try
 {
+	/*  _  0             1     2     3     4      5
+	 *  _|\@-------------@-----@-----@-----@------@
+	 *  _|/       0      |  1     2     3,-|   4
+	 *                   |            ,-'  |
+	 *                  5|         ,-'     |
+	 *                   |      ,-'6       |7
+	 *                   |   ,-'           |
+	 *                   |,-'              |
+	 *                 6 @                 |
+	 *                  ###                @ 7
+	 *                                    ###
+	 */
 	// Input
 	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
 	String linsol("LA");
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
-	// Constants
-	double M   = -20.0;   // kN*m
-	double P   = -10.0;   // kN
-	double L   =  1.0;    // m
-	double E   =  2.1e+8; // kPa
-	double A   =  4.0e-2; // m^2
-	double Izz =  4.0e-4; // m^4
-
 	// Geometry
 	FEM::Geom g(2); // 2D
 
 	// Nodes
-	g.SetNNodes (4);
-	g.SetNode   (0, 0.0,   L);
-	g.SetNode   (1,   L,   L);
-	g.SetNode   (2,   L, 0.0);
-	g.SetNode   (3, L+L, 0.0);
+	g.SetNNodes (8);
+	g.SetNode   (0,  0.0, 5.0);
+	g.SetNode   (1,  6.0, 5.0);
+	g.SetNode   (2,  8.0, 5.0);
+	g.SetNode   (3, 10.0, 5.0);
+	g.SetNode   (4, 12.0, 5.0);
+	g.SetNode   (5, 14.0, 5.0);
+	g.SetNode   (6,  6.0, 1.0);
+	g.SetNode   (7, 12.0, 0.0);
 
 	// Elements
-	g.SetNElems (3);
+	g.SetNElems (8);
 	g.SetElem   (0, "Beam")->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
 	g.SetElem   (1, "Beam")->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
 	g.SetElem   (2, "Beam")->Connect(0, g.Nod(2))->Connect(1, g.Nod(3));
+	g.SetElem   (3, "Beam")->Connect(0, g.Nod(3))->Connect(1, g.Nod(4));
+	g.SetElem   (4, "Beam")->Connect(0, g.Nod(4))->Connect(1, g.Nod(5));
+	g.SetElem   (5, "Beam")->Connect(0, g.Nod(6))->Connect(1, g.Nod(1));
+	g.SetElem   (6, "Beam")->Connect(0, g.Nod(6))->Connect(1, g.Nod(4));
+	g.SetElem   (7, "Beam")->Connect(0, g.Nod(7))->Connect(1, g.Nod(4));
 
 	// Parameters and initial value
-	String prms; prms.Printf("E=%f A=%f Izz=%f", E, A, Izz);
-	g.Ele(0)->SetModel("LinElastic", prms.CStr(), "ZERO");
-	g.Ele(1)->SetModel("LinElastic", prms.CStr(), "ZERO");
-	g.Ele(2)->SetModel("LinElastic", prms.CStr(), "ZERO");
+	g.Ele(0)->SetModel("LinElastic", "E=1.0 A=5e+9 Izz=6e+4", "ZERO");
+	g.Ele(1)->SetModel("LinElastic", "E=1.0 A=5e+9 Izz=6e+4", "ZERO");
+	g.Ele(2)->SetModel("LinElastic", "E=1.0 A=5e+9 Izz=6e+4", "ZERO");
+	g.Ele(3)->SetModel("LinElastic", "E=1.0 A=5e+9 Izz=6e+4", "ZERO");
+	g.Ele(4)->SetModel("LinElastic", "E=1.0 A=5e+9 Izz=6e+4", "ZERO");
+	g.Ele(5)->SetModel("LinElastic", "E=1.0 A=1e+9 Izz=2e+4", "ZERO");
+	g.Ele(6)->SetModel("LinElastic", "E=1.0 A=1e+9 Izz=2e+4", "ZERO");
+	g.Ele(7)->SetModel("LinElastic", "E=1.0 A=1e+9 Izz=2e+4", "ZERO");
 
 	// Boundary conditions (must be after set connectivity)
+	g.Ele(0)->EdgeBry("q", -20.0, -20.0, 0);
+	g.Ele(1)->EdgeBry("q", -20.0, -20.0, 0);
+	g.Ele(2)->EdgeBry("q", -20.0, -20.0, 0);
+	g.Ele(3)->EdgeBry("q", -20.0, -20.0, 0);
+	g.Ele(4)->EdgeBry("q", -20.0, -20.0, 0);
+	g.Nod(2)->Bry("fy", -60.0);
+	g.Nod(3)->Bry("fy", -60.0);
 	g.Nod(0)->Bry("ux", 0.0)->Bry("uy", 0.0);
-	g.Nod(1)->Bry("fy", P);
-	g.Nod(3)->Bry("uy", 0.0)->Bry("mz", M);
+	g.Nod(6)->Bry("ux", 0.0)->Bry("uy", 0.0)->Bry("wz", 0.0);
+	g.Nod(7)->Bry("ux", 0.0)->Bry("uy", 0.0)->Bry("wz", 0.0);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -108,49 +128,24 @@ int main(int argc, char **argv) try
 	}
 	cout << endl;
 
+	// Output: VTU
+	Output o; o.VTU (&g, "tbeam02.vtu");
+	cout << "[1;34mFile <tbeam02.vtu> saved.[0m\n\n";
+
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
+	/*
 	// Displacements
-	Array<double> err_u(12);
+	Array<double> err_u(9);
 	err_u[ 0] = fabs(g.Nod(0)->Val("ux") - (0.0));
-	err_u[ 1] = fabs(g.Nod(0)->Val("uy") - (0.0));
-	err_u[ 2] = fabs(g.Nod(0)->Val("wz") - (7.84722222e-5));
-	err_u[ 3] = fabs(g.Nod(1)->Val("ux") - (0.0));
-	err_u[ 4] = fabs(g.Nod(1)->Val("uy") - (6.85515873e-05));
-	err_u[ 5] = fabs(g.Nod(1)->Val("wz") - (4.87103175e-05));
-	err_u[ 6] = fabs(g.Nod(2)->Val("ux") - (1.89484127e-05));
-	err_u[ 7] = fabs(g.Nod(2)->Val("uy") - (7.03373016e-05));
-	err_u[ 8] = fabs(g.Nod(2)->Val("wz") - (-1.08134921e-05));
-	err_u[ 9] = fabs(g.Nod(3)->Val("ux") - (1.89484127e-05));
-	err_u[10] = fabs(g.Nod(3)->Val("uy") - (0.0));
-	err_u[11] = fabs(g.Nod(3)->Val("wz") - (-1.59623016e-04));
 
 	// Forces
-	Array<double> err_f(12);
+	Array<double> err_f(9);
 	err_f[ 0] = fabs(g.Nod(0)->Val("fx") - (0.0));
-	err_f[ 1] = fabs(g.Nod(0)->Val("fy") - (-5.0));
-	err_f[ 2] = fabs(g.Nod(0)->Val("mz") - (0.0));
-	err_f[ 3] = fabs(g.Nod(1)->Val("fx") - (0.0));
-	err_f[ 4] = fabs(g.Nod(1)->Val("fy") - (-10.0));
-	err_f[ 5] = fabs(g.Nod(1)->Val("mz") - (0.0));
-	err_f[ 6] = fabs(g.Nod(2)->Val("fx") - (0.0));
-	err_f[ 7] = fabs(g.Nod(2)->Val("fy") - (0.0));
-	err_f[ 8] = fabs(g.Nod(2)->Val("mz") - (0.0));
-	err_f[ 9] = fabs(g.Nod(3)->Val("fx") - (0.0));
-	err_f[10] = fabs(g.Nod(3)->Val("fy") - (15.0));
-	err_f[11] = fabs(g.Nod(3)->Val("mz") - (-20.0));
 
 	// Stresses
-	Array<double> err_s(18);
-	err_s[ 0] = fabs(g.Ele(0)->Val(0,"N") - (  0.0));   err_s[ 9] = fabs(g.Ele(0)->Val(1,"N") - (  0.0));
-	err_s[ 1] = fabs(g.Ele(0)->Val(0,"M") - (  0.0));   err_s[10] = fabs(g.Ele(0)->Val(1,"M") - ( -5.0));
-	err_s[ 2] = fabs(g.Ele(0)->Val(0,"V") - ( -5.0));   err_s[11] = fabs(g.Ele(0)->Val(1,"V") - ( -5.0));
-	err_s[ 3] = fabs(g.Ele(1)->Val(0,"N") - (-15.0));   err_s[12] = fabs(g.Ele(1)->Val(1,"N") - (-15.0));
-	err_s[ 4] = fabs(g.Ele(1)->Val(0,"M") - ( -5.0));   err_s[13] = fabs(g.Ele(1)->Val(1,"M") - ( -5.0));
-	err_s[ 5] = fabs(g.Ele(1)->Val(0,"V") - (  0.0));   err_s[14] = fabs(g.Ele(1)->Val(1,"V") - (  0.0));
-	err_s[ 6] = fabs(g.Ele(2)->Val(0,"N") - (  0.0));   err_s[15] = fabs(g.Ele(2)->Val(1,"N") - (  0.0));
-	err_s[ 7] = fabs(g.Ele(2)->Val(0,"M") - ( -5.0));   err_s[16] = fabs(g.Ele(2)->Val(1,"M") - (-20.0));
-	err_s[ 8] = fabs(g.Ele(2)->Val(0,"V") - (-15.0));   err_s[17] = fabs(g.Ele(2)->Val(1,"V") - (-15.0));
+	Array<double> err_s(12);
+	err_s[ 0] = fabs(g.Ele(0)->Val(0,"N") - (  0.0));   err_s[ 6] = fabs(g.Ele(0)->Val(1,"N") - (  0.0));
 
 	// Error summary
 	double tol_u     = 1.0e-12;
@@ -171,8 +166,9 @@ int main(int argc, char **argv) try
 	// Return error flag
 	if (max_err_u>tol_u || max_err_f>tol_f || max_err_s>tol_s) return 1;
 	else return 0;
+	*/
 
-	return 0;
+	return 1;
 }
 catch (Exception * e) 
 {
