@@ -80,6 +80,10 @@ EVT_MESH_ADDHOL      = 21 # add hole
 EVT_MESH_DELALLHOLS  = 22 # delete all holes
 EVT_MESH_GENUNSTRU   = 23 # generate unstructured mesh using MechSys module
 EVT_MESH_GENUNSTRUS  = 24 # script for unstructured mesh generation
+# Materials
+EVT_MAT_SHOWHIDE     = 40 # show/hide CAD box
+EVT_MAT_ADDMAT       = 41 # add material
+EVT_MAT_DELALLMAT    = 42 # delete all materials
 # FEM
 EVT_FEM_SHOWHIDE     = 25 # show/hide FEM box
 EVT_FEM_ADDNBRY      = 26 # add nodes boundary (given coordinates)
@@ -126,7 +130,7 @@ def event(evt, val):
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
-    if True:#try:
+    try:
         # ----------------------------------------------------------------------------------- Settings
 
         if evt==EVT_SET_SHOWHIDE: di.toggle_key('gui_show_set')
@@ -160,7 +164,7 @@ def button_event(evt):
 
         # ---------------------------------------------------------------------------------- Mesh
 
-        elif evt==EVT_MESH_SHOWHIDE: di.toggle_key_('gui_show_mesh')
+        elif evt==EVT_MESH_SHOWHIDE: di.toggle_key('gui_show_mesh')
 
         elif evt==EVT_MESH_SETETAG:
             tag = di.key('newetag')[0]
@@ -181,6 +185,12 @@ def button_event(evt):
             else: raise Exception('To set a face tag (FTAG), 3, 4, 6, or 8 edges must be selected')
             Blender.Window.QRedrawAll()
             if edm: Blender.Window.EditMode(1)
+
+        # ---------------------------------------------------------------------------------- Materials
+
+        elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key    ('gui_show_mat')
+        elif evt==EVT_MAT_ADDMAT:    di.props_push_new('mats', di.new_mat_props())
+        elif evt==EVT_MAT_DELALLMAT: di.props_del_all ('mats')
 
         # -------------------------------------------------------------------- Mesh -- structured
 
@@ -226,10 +236,10 @@ def button_event(evt):
         elif evt==EVT_RES_SHOWHIDE: di.toggle_key('gui_show_res')
 
 
-    #except Exception, inst:
-        #msg = inst.args[0]
-        #print '[1;34mMechSys[0m: Error: '+'[1;31m'+msg+'[0m'
-        #Blender.Draw.PupMenu('ERROR|'+msg)
+    except Exception, inst:
+        msg = inst.args[0]
+        print '[1;34mMechSys[0m: Error: '+'[1;31m'+msg+'[0m'
+        Blender.Draw.PupMenu('ERROR|'+msg)
 
 
 # ================================================================================= Callbacks
@@ -299,6 +309,19 @@ def cb_hols_sety(evt,val): di.props_set_item ('hols', evt-EVT_INC, 1, float(val)
 def cb_hols_setz(evt,val): di.props_set_item ('hols', evt-EVT_INC, 2, float(val))
 def cb_hols_del (evt,val): di.props_del      ('hols', evt-EVT_INC)
 
+# ---------------------------------- Materials -- mats
+
+def cb_mat_setmodel (evt,val): di.props_set_item ('mats', evt-EVT_INC, 0, val-1)
+def cb_mat_setE     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 1, float(val))
+def cb_mat_setnu    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 2, float(val))
+def cb_mat_setk     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 3, float(val))
+def cb_mat_setlam   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 4, float(val))
+def cb_mat_setkap   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 5, float(val))
+def cb_mat_setphics (evt,val): di.props_set_item ('mats', evt-EVT_INC, 6, float(val))
+def cb_mat_setG     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 7, float(val))
+def cb_mat_setv     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 8, float(val))
+def cb_mat_del      (evt,val): di.props_del      ('mats', evt-EVT_INC)
+
 # ---------------------------------- FEM -- nbrys
 
 def cb_nbry_setx  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 0, float(val))
@@ -343,9 +366,7 @@ def cb_fbry_setclr(evt,val):
 
 def cb_eatt_settag  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 0, int(val))
 def cb_eatt_settype (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 1, val-1)
-def cb_eatt_setmodel(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 2, val-1)
-def cb_eatt_setmatID(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 3, val)
-def cb_eatt_setiniID(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 4, val)
+def cb_eatt_setmat  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 2, val-1)
 def cb_eatt_del     (evt,val): di.props_del      ('eatts', evt-EVT_INC)
 
 # ---------------------------------- FEM
@@ -379,6 +400,7 @@ def gui():
     maxarea  = -1.0
     regs     = {}
     hols     = {}
+    mats     = {}
     nbrys    = {}
     nbsID    = {}
     ebrys    = {}
@@ -393,12 +415,18 @@ def gui():
         if obj.properties.has_key('maxarea'): maxarea  = obj.properties['maxarea']
         if obj.properties.has_key('regs'):    regs     = obj.properties['regs']
         if obj.properties.has_key('hols'):    hols     = obj.properties['hols']
+        if obj.properties.has_key('mats'):    mats     = obj.properties['mats']
         if obj.properties.has_key('nbrys'):   nbrys    = obj.properties['nbrys']
         if obj.properties.has_key('nbsID'):   nbsID    = obj.properties['nbsID']
         if obj.properties.has_key('ebrys'):   ebrys    = obj.properties['ebrys']
         if obj.properties.has_key('fbrys'):   fbrys    = obj.properties['fbrys']
         if obj.properties.has_key('eatts'):   eatts    = obj.properties['eatts']
         if obj.properties.has_key('res'):     r_dfvmnu = obj.properties['res']['dfvmnu']
+
+    # materials menu
+    matmnu = 'Materials %t'
+    for k, v in mats.iteritems():
+        matmnu += '|ID:'+k+' %x'+str(int(k)+1)
 
     # restore EditMode
     if edm: Blender.Window.EditMode(1)
@@ -424,6 +452,8 @@ def gui():
     h_msh_unst_hols = rh+srg+rh*len(hols)
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
     h_msh           = 7*rh+h_msh_stru+h_msh_unst
+    h_mat_mats      = srg+2*rh*len(mats)
+    h_mat           = 3*rh+h_mat_mats
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
     h_fem_nbsID     = rh+srg+rh*len(nbsID)
     h_fem_ebrys     = rh+srg+rh*len(ebrys)
@@ -587,6 +617,48 @@ def gui():
     r -= rh
     r -= rg
 
+    # ======================================================== Materials
+
+    gu.caption1(c,r,w,rh,'Materials',EVT_REFRESH,EVT_MAT_SHOWHIDE)
+    if d['gui_show_mat']:
+        r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_mat)
+
+        # ----------------------- Mat -- parameters
+
+        gu.caption2_(c,r,w,rh,'Materials', EVT_MAT_ADDMAT,EVT_MAT_DELALLMAT)
+        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_mat_mats)
+        for k, v in mats.iteritems():
+            r  -= rh
+            i   = int(k)
+            gu.label  (str(k),c,r,40,rh)
+            Draw.Menu (d['mdlmnu'], EVT_INC+i, c+ 40, r, 80, rh, int(v[0])+1, 'Constitutive model: ex.: LinElastic', cb_mat_setmodel)
+            nlines = 0
+            if int(v[0])==0: # LinElastic
+                gu.text(c,r+rh,'   ID       Model             E             nu')
+                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, str(v[1]), 32, 'E: Young modulus',  cb_mat_setE)
+                Draw.String     ('',    EVT_INC+i, c+180, r,  60, rh, str(v[2]), 32, 'nu: Poisson ratio', cb_mat_setnu)
+                Draw.PushButton ('Del', EVT_INC+i, c+240, r,  40, rh,                'Delete this row',   cb_mat_del)
+            elif int(v[0])==1: # LinDiffusion
+                gu.text(c,r+rh,'   ID       Model             k')
+                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, str(v[3]), 32, 'k: Diffusion coefficient', cb_mat_setk)
+                Draw.PushButton ('Del', EVT_INC+i, c+180, r,  40, rh,                'Delete this row',          cb_mat_del)
+            elif int(v[0])==2: # CamClay
+                gu.text(c,r+rh,'   ID       Model            lam           kap        phics           G             v')
+                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, '%.4f'%v[4], 32, 'lam: Lambda',                          cb_mat_setlam)
+                Draw.String     ('',    EVT_INC+i, c+180, r,  60, rh, '%.4f'%v[5], 32, 'kap: Kappa',                           cb_mat_setkap)
+                Draw.String     ('',    EVT_INC+i, c+240, r,  60, rh, '%.2f'%v[6], 32, 'phics: Shear angle at critical state', cb_mat_setphics)
+                Draw.String     ('',    EVT_INC+i, c+300, r,  60, rh, '%.1f'%v[7], 32, 'G: Shear modulus',                     cb_mat_setG)
+                Draw.String     ('',    EVT_INC+i, c+360, r,  60, rh, '%.4f'%v[8], 32, 'v: Specific volume',                   cb_mat_setv)
+                Draw.PushButton ('Del', EVT_INC+i, c+420, r,  40, rh,                  'Delete this row',                      cb_mat_del)
+            r  -= rh
+        r -= srg
+        r, c, w = gu.box2__out(W,cg,rh, c,r)
+
+        # ----------------------- Mat -- END
+        r, c, w = gu.box1_out(W,cg,rh, c,r+rh)
+    else: r -= rh
+    r -= rg
+
     # ======================================================== FEM
 
     gu.caption1(c,r,w,rh,'FEM',EVT_REFRESH,EVT_FEM_SHOWHIDE)
@@ -665,16 +737,14 @@ def gui():
         r -= srg
         gu.caption2_(c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_eatts)
-        gu.text(c,r,'    Tag               Type                    Model')
+        gu.text(c,r,'    Tag               Type                Material ID')
         for k, v in eatts.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     ('',          EVT_INC+i, c,     r,  60, rh, int(v[0]),-1000,0,         'Set tag',                                   cb_eatt_settag)
-            Draw.Menu       (d['etymnu'], EVT_INC+i, c+ 60, r, 120, rh, int(v[1])+1,               'Element type: ex.: Quad4PStrain',           cb_eatt_settype)
-            Draw.Menu       (d['mdlmnu'], EVT_INC+i, c+180, r, 100, rh, int(v[2])+1,               'Constitutive model: ex.: LinElastic',       cb_eatt_setmodel)
-            Draw.PushButton ('Del',       EVT_INC+i, c+280, r,  40, rh,                            'Delete this row',                           cb_eatt_del)
-            #Draw.String     ('',               EVT_INC+i, c+280, r, 100, rh, m[2].replace('_',' '),128, 'Parameters: ex.: E=200 nu=0.25',            cb_eatt_setprms)
-            #Draw.String     ('',               EVT_INC+i, c+380, r,  80, rh, m[3].replace('_',' '),128, 'Initial values: ex.: Sx=0 Sy=0 Sz=0 Sxy=0', cb_eatt_setinis)
+            Draw.Number     ('',          EVT_INC+i, c,     r,  60, rh, int(v[0]),-1000,0, 'Set tag',                         cb_eatt_settag)
+            Draw.Menu       (d['etymnu'], EVT_INC+i, c+ 60, r, 120, rh, int(v[1])+1,       'Element type: ex.: Quad4PStrain', cb_eatt_settype)
+            Draw.Menu       (matmnu,      EVT_INC+i, c+180, r, 100, rh, int(v[2])+1,       'Choose material ID',              cb_eatt_setmat)
+            Draw.PushButton ('Del',       EVT_INC+i, c+280, r,  40, rh,                    'Delete this row',                 cb_eatt_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 

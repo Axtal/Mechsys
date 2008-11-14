@@ -98,6 +98,8 @@ public:
 	Solver * SetNumDiv    (int    NumDiv)    { _num_div   =NumDiv;    return this; } ///< Set the number of divisions to be used during each call of Solve
 	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< Set the time stepsize to be used during each call of Solve
 	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
+	void   DynSolve(double tIni, double tFin, double h, double dtOut, size_t MaxIt=10);
+	double F(double t) const;
 
 	// Access methods
 	LinAlg::Vector<double> const & Resid () const { return _resid;  } ///< Resid = dFext - dFint
@@ -320,6 +322,58 @@ inline void Solver::Solve()
 	// Output end of Stage
 	//if (_do_output) OutputStage(iStage);
 
+}
+
+inline double Solver::F(double t) const
+{
+	if (t<0.1) return t*10000.0/0.1;
+	else       return   10000.0;
+}
+
+inline void Solver::DynSolve(double tIni, double tFin, double h, double dtOut, size_t MaxIt)
+{
+	/*
+	double t    = tIni;
+	double tout = t + dtOut;
+	while (t<tFin)
+	{
+		M        = calc_M();
+		C_n      = calc_C(u_n, v_n);
+		K_n      = calc_K(u_n, v_n);
+		Fint_n   = C_n * v_n + K_n * u_n;                   // Eq. (2.363)
+		v_np1    = v_n + (1.0-gam)*h*a_n;                   // Eq. (2.360)
+		u_np1    = u_n + h*v_n + 0.5*h*h*(1.0-2.0*bet)*a_n; // Eq. (2.361)
+		a_np1    = 0.0;                                     // Eq. (2.381)
+		Fext_n   = F(t);
+		Fext_np1 = F(t+h);
+		for (size_t i=0; i<MaxIt; ++i)
+		{
+			C_np1   = calc_C(u_np1, v_np1);                                             // Eq. (2.365)
+			K_np1   = calc_K(u_np1, v_np1);                                             // Eq. (2.366)
+			Fint_st = C_np1 * v_np1 + K_np1 * u_np1;                                    // Eq. (2.384)
+			F_st    = (1.0+alp)*Fext_np1 - alp*Fext_n - (1.0+alp)*Fint_st + alp*Fint_n; // Eq. (2.383)
+			M_st    = M + (1.0+alp)*gam*h*C_np1 + (1.0+alp)*bet*h*h*K_np1;              // Eq. (2.373)
+			R       = F_st - M * a_np1;                                                 // Eq. (2.382)
+			normR   = Norm(R);
+			if (normR<Tol) break;
+			linsol(M_st,R,da); // Eq. (2.385)
+			//if (i==1)
+			//{
+				//for (j in 1:length(u_given))
+					//if (u_given[j]) Da[j] = (u_n[j]-u_np1[j])/(bet*hh)
+			//}
+			v_np1 += gam*h*da;   // Eq. (2.386)
+			u_np1 += bet*h*h*da; // Eq. (2.387)
+			a_np1 += da;         // Eq. (2.380)
+		}
+		t += h;
+		if (t>=tOut)
+		{
+			std::cout << t << v_n << std::endl;
+			tout = tout + dtOut;
+		}
+	}
+	*/
 }
 
 

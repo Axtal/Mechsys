@@ -36,6 +36,7 @@ def load_dict():
         dict['gui_show_set']  = True
         dict['gui_show_cad']  = True
         dict['gui_show_mesh'] = True
+        dict['gui_show_mat']  = True
         dict['gui_show_fem']  = True
         dict['gui_show_res']  = True
         dict['gui_inirow']    = 0
@@ -86,8 +87,8 @@ def load_dict():
         dict['etymnu'] = 'Element Types %t|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
 
         # Models
-        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion' }
-        dict['mdlmnu'] = 'Constitutive Models %t|LinDiffusion %x2|LinElastic %x1'
+        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay' }
+        dict['mdlmnu'] = 'Constitutive Models %t|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
 
         # VTK Cell Type (tentative mapping)
         dict['vtk2ety'] = {  5: 5,   # VTK_TRIANGLE             => Tri3PStrain
@@ -196,23 +197,21 @@ def new_hol_props():
     return [x,y,z] # 0:x, 1:y, 2:z
 
 def new_mat_props():
-    return [   200.0,     #   0:  E -- Young
-                 0.2,     #   1:  nu -- Poisson
-                 0.0891,  #   2:  lam -- lambda
-                 0.0196,  #   3:  kap -- kappa
-                31.6,     #   4:  phics -- shear angle at CS
-             18130.0 ]    #   5:  G -- shear modulus (kPa)
-
-def new_ini_props():
-    #                                       0  1  2    3   4   5
-    return [ 0.0,0.0,0.0, 0.0,0.0,0.0,  #  Sx,Sy,Sz, Sxy,Syz,Szx
-                              1.6910 ]  #  6:  v -- initial specific volume
+    return [       0,     #   0:  ModelType (0:LinElastic)
+               200.0,     #   1:  E -- Young (LinElastic)
+                 0.2,     #   2:  nu -- Poisson (LinElastic)
+                 1.0,     #   3:  k -- diffusion coefficient (LinDiffusion)
+                 0.0891,  #   4:  lam -- lambda (CamClay)
+                 0.0196,  #   5:  kap -- kappa (CamClay)
+                31.6,     #   6:  phics -- shear angle at CS (CamClay)
+             18130.0,     #   7:  G -- shear modulus (kPa) (CamClay)
+                 1.6910 ] #   8:  v -- initial specific volume (CamClay)
 
 def new_nbry_props(): return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props(): return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props(): return [-10, 0, 0.0]                     # tag, ux, val
 def new_fbry_props(): return [-100, 0, 0.0, key('newftag')[1]] # tag, ux, val, colour
-def new_eatt_props(): return [-1, 2, 0, -1, -1]                # tag ElemType Model MatID IniID
+def new_eatt_props(): return [-1, 2, -1]                       # tag ElemType MaterialID
 
 
 # ============================================================================== Object Properties

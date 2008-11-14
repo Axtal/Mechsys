@@ -52,19 +52,30 @@ def get_brys_atts(obj):
         for k, v in obj.properties['fbrys'].iteritems():
             fbrys.append([int(v[0]), d['dfv'][int(v[1])], v[2]])
 
+    # mats
+    mats = {}
+    if obj.properties.has_key('mats'):
+        for k, v in obj.properties['mats'].iteritems():
+            if int(v[0])==0: # LinElastic
+                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%f nu=%f' % (v[1],v[2])]
+            elif int(v[0])==1: # LinDiffusion
+                mats[int(k)] = [d['mdl'][int(v[0])], 'k=%f' % (v[3])]
+            elif int(v[0])==2: # CamClay
+                mats[int(k)] = [d['mdl'][int(v[0])], 'lam=%f kap=%f phics=%f G=%f v=%f' % (v[4],v[5],v[6],v[7],v[8])]
+
     # eatts
     eatts = []
     if obj.properties.has_key('eatts'):
         for k, v in obj.properties['eatts'].iteritems():
-            prms = 'E=200 nu=0.2'
-            inis = 'ZERO'
-            if obj.properties.has_key('mats'):
-                matID = str(int(v[3]))
-                if obj.properties['mats'].has_key(matID): prms = obj.properties['mats'][matID]
-            if obj.properties.has_key('inis'):
-                iniID = str(int(v[4]))
-                if obj.properties['inis'].has_key(iniID): inis = obj.properties['inis'][iniID]
-            eatts.append([int(v[0]), d['ety'][int(v[1])], d['mdl'][int(v[2])], prms, inis])
+            inis  = 'ZERO'
+            matID = int(v[2])
+            if mats.has_key(matID):
+                mdl  = mats[matID][0]
+                prms = mats[matID][1]
+            else:
+                mdl  = 'LinElastic'
+                prms = 'E=200 nu=0.2'
+            eatts.append([int(v[0]), d['ety'][int(v[1])], mdl, prms, inis])
 
     return nbrys, nbsID, ebrys, fbrys, eatts
 
