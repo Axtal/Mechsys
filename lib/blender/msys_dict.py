@@ -324,7 +324,7 @@ def blk_set_axis(id,item):
         Blender.Window.QRedrawAll()
     else:
         if edm: Blender.Window.EditMode(1)
-        raise Exception('Please, select (only) one edge to define the local axis')
+        raise Exception('Please, select one edge (only) in order to define the local axis')
     if edm: Blender.Window.EditMode(1)
 
 

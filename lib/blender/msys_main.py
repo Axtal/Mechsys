@@ -126,231 +126,306 @@ def event(evt, val):
         if d['gui_inirow']<0: d['gui_inirow'] += 180
         Blender.Window.QRedrawAll()
 
+def try_catch(func):
+    def wrapper(*arg):
+        try: func(*arg)
+        except Exception, inst:
+            msg = inst.args[0]
+            print '[1;34mMechSys[0m: Error: '+'[1;31m'+msg+'[0m'
+            Blender.Draw.PupMenu('ERROR|'+msg)
+    return wrapper
+
 # Handle button events
+@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
-    try:
-        # ----------------------------------------------------------------------------------- Settings
+    # ----------------------------------------------------------------------------------- Settings
 
-        if evt==EVT_SET_SHOWHIDE: di.toggle_key('gui_show_set')
+    if evt==EVT_SET_SHOWHIDE: di.toggle_key('gui_show_set')
 
-        elif evt==EVT_SET_DELPROPS:
-            scn = bpy.data.scenes.active
-            obs = scn.objects.selected
-            if len(obs)>0:
-                message = 'Confirm delete ALL properties?%t|Yes'
-                result  = Blender.Draw.PupMenu(message)
-                if result>0:
-                    for o in obs:
-                        for k, v in o.properties.iteritems():
-                            print '[1;34mMechSys[0m: Object = ', o.name, ' [1;35mDeleted property:[0m ', k, str(v)
-                            o.properties.pop(k)
-                        for p in o.getAllProperties():
-                            print '[1;34mMechSys[0m: Object = ', o.name, ' Deleted property: ', p.name, p.data
-                            o.removeProperty(p)
-                    Blender.Window.QRedrawAll()
+    elif evt==EVT_SET_DELPROPS:
+        scn = bpy.data.scenes.active
+        obs = scn.objects.selected
+        if len(obs)>0:
+            message = 'Confirm delete ALL properties?%t|Yes'
+            result  = Blender.Draw.PupMenu(message)
+            if result>0:
+                for o in obs:
+                    for k, v in o.properties.iteritems():
+                        print '[1;34mMechSys[0m: Object = ', o.name, ' [1;35mDeleted property:[0m ', k, str(v)
+                        o.properties.pop(k)
+                    for p in o.getAllProperties():
+                        print '[1;34mMechSys[0m: Object = ', o.name, ' Deleted property: ', p.name, p.data
+                        o.removeProperty(p)
+                Blender.Window.QRedrawAll()
 
-        # ----------------------------------------------------------------------------------- CAD
+    # ----------------------------------------------------------------------------------- CAD
 
-        elif evt==EVT_CAD_SHOWHIDE: di.toggle_key('gui_show_cad')
-        elif evt==EVT_CAD_ADDXYZ:   ca.add_point     (float(di.key('cad_x')), float(di.key('cad_y')), float(di.key('cad_z')))
-        elif evt==EVT_CAD_FILLET:   ca.fillet        (float(di.key('cad_rad')), di.key('cad_stp'))
-        elif evt==EVT_CAD_BREAK:    ca.break_edge    ()
-        elif evt==EVT_CAD_BREAKM:   ca.break_edge    (True)
-        elif evt==EVT_CAD_EINT:     ca.edge_intersect()
-        elif evt==EVT_CAD_FPOINT:   Blender.Window.FileSelector(ca.add_points_from_file, 'Read X Y Z columns')
-        elif evt==EVT_CAD_FSPLINE:  Blender.Window.FileSelector(ca.add_spline_from_file, 'Read X Y Z columns')
+    elif evt==EVT_CAD_SHOWHIDE: di.toggle_key('gui_show_cad')
+    elif evt==EVT_CAD_ADDXYZ:   ca.add_point     (float(di.key('cad_x')), float(di.key('cad_y')), float(di.key('cad_z')))
+    elif evt==EVT_CAD_FILLET:   ca.fillet        (float(di.key('cad_rad')), di.key('cad_stp'))
+    elif evt==EVT_CAD_BREAK:    ca.break_edge    ()
+    elif evt==EVT_CAD_BREAKM:   ca.break_edge    (True)
+    elif evt==EVT_CAD_EINT:     ca.edge_intersect()
+    elif evt==EVT_CAD_FPOINT:   Blender.Window.FileSelector(ca.add_points_from_file, 'Read X Y Z columns')
+    elif evt==EVT_CAD_FSPLINE:  Blender.Window.FileSelector(ca.add_spline_from_file, 'Read X Y Z columns')
 
-        # ---------------------------------------------------------------------------------- Mesh
+    # ---------------------------------------------------------------------------------- Mesh
 
-        elif evt==EVT_MESH_SHOWHIDE: di.toggle_key('gui_show_mesh')
+    elif evt==EVT_MESH_SHOWHIDE: di.toggle_key('gui_show_mesh')
 
-        elif evt==EVT_MESH_SETETAG:
-            tag = di.key('newetag')[0]
-            edm, obj, msh = di.get_msh()
-            for eid in di.get_selected_edges(msh):
-                di.props_set_with_tag ('etags', str(eid), tag, di.key('newetag'))
-            Blender.Window.QRedrawAll()
-            if edm: Blender.Window.EditMode(1)
+    elif evt==EVT_MESH_SETETAG:
+        tag = di.key('newetag')[0]
+        edm, obj, msh = di.get_msh()
+        for eid in di.get_selected_edges(msh):
+            di.props_set_with_tag ('etags', str(eid), tag, di.key('newetag'))
+        Blender.Window.QRedrawAll()
+        if edm: Blender.Window.EditMode(1)
 
-        elif evt==EVT_MESH_SETFTAG:
-            tag = di.key('newftag')[0]
-            edm, obj, msh = di.get_msh()
-            sel           = di.get_selected_edges(msh)
-            nedges        = len(sel)
-            if nedges==3 or nedges==6 or nedges==4 or nedges==8:
-                eids = '_'.join([str(eid) for eid in sel])
-                di.props_set_with_tag ('ftags', eids, tag, di.key('newftag'))
-            else: raise Exception('To set a face tag (FTAG), 3, 4, 6, or 8 edges must be selected')
-            Blender.Window.QRedrawAll()
-            if edm: Blender.Window.EditMode(1)
+    elif evt==EVT_MESH_SETFTAG:
+        tag = di.key('newftag')[0]
+        edm, obj, msh = di.get_msh()
+        sel           = di.get_selected_edges(msh)
+        nedges        = len(sel)
+        if nedges==3 or nedges==6 or nedges==4 or nedges==8:
+            eids = '_'.join([str(eid) for eid in sel])
+            di.props_set_with_tag ('ftags', eids, tag, di.key('newftag'))
+        else: raise Exception('To set a face tag (FTAG), 3, 4, 6, or 8 edges must be selected')
+        Blender.Window.QRedrawAll()
+        if edm: Blender.Window.EditMode(1)
 
-        # ---------------------------------------------------------------------------------- Materials
+    # ---------------------------------------------------------------------------------- Materials
 
-        elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key    ('gui_show_mat')
-        elif evt==EVT_MAT_ADDMAT:    di.props_push_new('mats', di.new_mat_props())
-        elif evt==EVT_MAT_DELALLMAT: di.props_del_all ('mats')
+    elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key    ('gui_show_mat')
+    elif evt==EVT_MAT_ADDMAT:    di.props_push_new('mats', di.new_mat_props())
+    elif evt==EVT_MAT_DELALLMAT: di.props_del_all ('mats')
 
-        # -------------------------------------------------------------------- Mesh -- structured
+    # -------------------------------------------------------------------- Mesh -- structured
 
-        elif evt==EVT_MESH_ADDBLK:
-            props = di.new_blk_props()
-            di.props_push_new('blks', props, True, 18, 18+int(props[17]))
+    elif evt==EVT_MESH_ADDBLK:
+        props = di.new_blk_props()
+        di.props_push_new('blks', props, True, 18, 18+int(props[17]))
 
-        elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
-        elif evt==EVT_MESH_GENSTRU:    me.gen_struct_mesh()
-        elif evt==EVT_MESH_GENSTRUS:   me.gen_struct_mesh(True)
+    elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
+    elif evt==EVT_MESH_GENSTRU:    me.gen_struct_mesh()
+    elif evt==EVT_MESH_GENSTRUS:   me.gen_struct_mesh(True)
 
-        # -------------------------------------------------------------------------- Unstructured
+    # -------------------------------------------------------------------------- Unstructured
 
-        elif evt==EVT_MESH_ADDREG:     di.props_push_new('regs', di.new_reg_props())
-        elif evt==EVT_MESH_DELALLREGS: di.props_del_all ('regs')
-        elif evt==EVT_MESH_ADDHOL:     di.props_push_new('hols', di.new_hol_props())
-        elif evt==EVT_MESH_DELALLHOLS: di.props_del_all ('hols')
-        elif evt==EVT_MESH_GENUNSTRU:  me.gen_unstruct_mesh()
-        elif evt==EVT_MESH_GENUNSTRUS: me.gen_unstruct_mesh(True)
+    elif evt==EVT_MESH_ADDREG:     di.props_push_new('regs', di.new_reg_props())
+    elif evt==EVT_MESH_DELALLREGS: di.props_del_all ('regs')
+    elif evt==EVT_MESH_ADDHOL:     di.props_push_new('hols', di.new_hol_props())
+    elif evt==EVT_MESH_DELALLHOLS: di.props_del_all ('hols')
+    elif evt==EVT_MESH_GENUNSTRU:  me.gen_unstruct_mesh()
+    elif evt==EVT_MESH_GENUNSTRUS: me.gen_unstruct_mesh(True)
 
-        # ----------------------------------------------------------------------------------- FEM 
+    # ----------------------------------------------------------------------------------- FEM 
 
-        elif evt==EVT_FEM_SHOWHIDE: di.toggle_key('gui_show_fem')
+    elif evt==EVT_FEM_SHOWHIDE: di.toggle_key('gui_show_fem')
 
-        elif evt==EVT_FEM_ADDNBRY: di.props_push_new('nbrys', di.new_nbry_props())
-        elif evt==EVT_FEM_ADDNBID: di.props_push_new('nbsID', di.new_nbID_props())
-        elif evt==EVT_FEM_ADDEBRY: di.props_push_new('ebrys', di.new_ebry_props())
-        elif evt==EVT_FEM_ADDFBRY: di.props_push_new('fbrys', di.new_fbry_props())
-        elif evt==EVT_FEM_ADDEATT: di.props_push_new('eatts', di.new_eatt_props())
+    elif evt==EVT_FEM_ADDNBRY: di.props_push_new('nbrys', di.new_nbry_props())
+    elif evt==EVT_FEM_ADDNBID: di.props_push_new('nbsID', di.new_nbID_props())
+    elif evt==EVT_FEM_ADDEBRY: di.props_push_new('ebrys', di.new_ebry_props())
+    elif evt==EVT_FEM_ADDFBRY: di.props_push_new('fbrys', di.new_fbry_props())
+    elif evt==EVT_FEM_ADDEATT: di.props_push_new('eatts', di.new_eatt_props())
 
-        elif evt==EVT_FEM_DELALLNBRY: di.props_del_all('nbrys')
-        elif evt==EVT_FEM_DELALLNBID: di.props_del_all('nbsID')
-        elif evt==EVT_FEM_DELALLEBRY: di.props_del_all('ebrys')
-        elif evt==EVT_FEM_DELALLFBRY: di.props_del_all('fbrys')
-        elif evt==EVT_FEM_DELALLEATT: di.props_del_all('eatts')
+    elif evt==EVT_FEM_DELALLNBRY: di.props_del_all('nbrys')
+    elif evt==EVT_FEM_DELALLNBID: di.props_del_all('nbsID')
+    elif evt==EVT_FEM_DELALLEBRY: di.props_del_all('ebrys')
+    elif evt==EVT_FEM_DELALLFBRY: di.props_del_all('fbrys')
+    elif evt==EVT_FEM_DELALLEATT: di.props_del_all('eatts')
 
-        elif evt==EVT_FEM_RUN:      fe.run_analysis()
-        elif evt==EVT_FEM_SCRIPT:   fe.run_analysis(True)
-        elif evt==EVT_FEM_PARAVIEW: fe.paraview    ()
+    elif evt==EVT_FEM_RUN:      fe.run_analysis()
+    elif evt==EVT_FEM_SCRIPT:   fe.run_analysis(True)
+    elif evt==EVT_FEM_PARAVIEW: fe.paraview    ()
 
-        # ----------------------------------------------------------------------------------- RES 
+    # ----------------------------------------------------------------------------------- RES 
 
-        elif evt==EVT_RES_SHOWHIDE: di.toggle_key('gui_show_res')
-
-
-    except Exception, inst:
-        msg = inst.args[0]
-        print '[1;34mMechSys[0m: Error: '+'[1;31m'+msg+'[0m'
-        Blender.Draw.PupMenu('ERROR|'+msg)
+    elif evt==EVT_RES_SHOWHIDE: di.toggle_key('gui_show_res')
 
 
 # ================================================================================= Callbacks
 
 # ---------------------------------- Settings
 
+@try_catch
 def cb_show_props(evt,val): di.set_key ('show_props', val)
+@try_catch
 def cb_show_e_ids(evt,val): di.set_key ('show_e_ids', val)
+@try_catch
 def cb_show_v_ids(evt,val): di.set_key ('show_v_ids', val)
+@try_catch
 def cb_show_blks (evt,val): di.set_key ('show_blks',  val)
+@try_catch
 def cb_show_axes (evt,val): di.set_key ('show_axes',  val)
+@try_catch
 def cb_show_etags(evt,val): di.set_key ('show_etags', val)
+@try_catch
 def cb_show_ftags(evt,val): di.set_key ('show_ftags', val)
+@try_catch
 def cb_show_elems(evt,val): di.set_key ('show_elems', val)
+@try_catch
 def cb_show_opac (evt,val): di.set_key ('show_opac',  val)
 
 # ---------------------------------- CAD
 
 def cb_set_x     (evt,val): di.set_key('cad_x',   val)
+@try_catch
 def cb_set_y     (evt,val): di.set_key('cad_y',   val)
+@try_catch
 def cb_set_z     (evt,val): di.set_key('cad_z',   val)
+@try_catch
 def cb_fillet_rad(evt,val): di.set_key('cad_rad', val)
+@try_catch
 def cb_fillet_stp(evt,val): di.set_key('cad_stp', val)
 
 # ---------------------------------- Mesh
 
+@try_catch
 def cb_3dmesh(evt,val): di.props_set_val('3dmesh', val)
+@try_catch
 def cb_etag  (evt,val): di.set_key      ('newetag', [val, di.key('newetag')[1]])
+@try_catch
 def cb_ftag  (evt,val): di.set_key      ('newftag', [val, di.key('newftag')[1]])
+@try_catch
 def cb_fclr  (evt,val): di.set_key      ('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
 
 # ---------------------------------- Mesh -- structured
 
+@try_catch
 def cb_blk_tag(evt,val): di.props_set_item ('blks', evt-EVT_INC,  0, val)
+@try_catch
 def cb_blk_xax(evt,val): di.blk_set_axis   (        evt-EVT_INC,  1)
+@try_catch
 def cb_blk_yax(evt,val): di.blk_set_axis   (        evt-EVT_INC,  2)
+@try_catch
 def cb_blk_zax(evt,val): di.blk_set_axis   (        evt-EVT_INC,  3)
+@try_catch
 def cb_blk_nx (evt,val): di.props_set_item ('blks', evt-EVT_INC,  8, val)
+@try_catch
 def cb_blk_ny (evt,val): di.props_set_item ('blks', evt-EVT_INC,  9, val)
+@try_catch
 def cb_blk_nz (evt,val): di.props_set_item ('blks', evt-EVT_INC, 10, val)
+@try_catch
 def cb_blk_ax (evt,val): di.props_set_item ('blks', evt-EVT_INC, 11, float(val))
+@try_catch
 def cb_blk_ay (evt,val): di.props_set_item ('blks', evt-EVT_INC, 12, float(val))
+@try_catch
 def cb_blk_az (evt,val): di.props_set_item ('blks', evt-EVT_INC, 13, float(val))
+@try_catch
 def cb_blk_nlx(evt,val): di.props_set_item ('blks', evt-EVT_INC, 14, val)
+@try_catch
 def cb_blk_nly(evt,val): di.props_set_item ('blks', evt-EVT_INC, 15, val)
+@try_catch
 def cb_blk_nlz(evt,val): di.props_set_item ('blks', evt-EVT_INC, 16, val)
+@try_catch
 def cb_blk_del(evt,val): di.props_del      ('blks', evt-EVT_INC)
 
 # ---------------------------------- Mesh -- unstructured
 
+@try_catch
 def cb_minang (evt,val): di.props_set_val('minang', float(val))
+@try_catch
 def cb_maxarea(evt,val): di.props_set_val('maxarea',float(val))
 
 # ---------------------------------- Mesh -- unstructured -- regions
 
+@try_catch
 def cb_regs_tag    (evt,val): di.props_set_item ('regs', evt-EVT_INC, 0, val)
+@try_catch
 def cb_regs_maxarea(evt,val): di.props_set_item ('regs', evt-EVT_INC, 1, float(val))
+@try_catch
 def cb_regs_setx   (evt,val): di.props_set_item ('regs', evt-EVT_INC, 2, float(val))
+@try_catch
 def cb_regs_sety   (evt,val): di.props_set_item ('regs', evt-EVT_INC, 3, float(val))
+@try_catch
 def cb_regs_setz   (evt,val): di.props_set_item ('regs', evt-EVT_INC, 4, float(val))
+@try_catch
 def cb_regs_del    (evt,val): di.props_del      ('regs', evt-EVT_INC)
 
 # ---------------------------------- Mesh -- unstructured -- holes
 
+@try_catch
 def cb_hols_setx(evt,val): di.props_set_item ('hols', evt-EVT_INC, 0, float(val))
+@try_catch
 def cb_hols_sety(evt,val): di.props_set_item ('hols', evt-EVT_INC, 1, float(val))
+@try_catch
 def cb_hols_setz(evt,val): di.props_set_item ('hols', evt-EVT_INC, 2, float(val))
+@try_catch
 def cb_hols_del (evt,val): di.props_del      ('hols', evt-EVT_INC)
 
 # ---------------------------------- Materials -- mats
 
+@try_catch
 def cb_mat_setmodel (evt,val): di.props_set_item ('mats', evt-EVT_INC, 0, val-1)
+@try_catch
 def cb_mat_setE     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 1, float(val))
+@try_catch
 def cb_mat_setnu    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 2, float(val))
+@try_catch
 def cb_mat_setk     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 3, float(val))
+@try_catch
 def cb_mat_setlam   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 4, float(val))
+@try_catch
 def cb_mat_setkap   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 5, float(val))
+@try_catch
 def cb_mat_setphics (evt,val): di.props_set_item ('mats', evt-EVT_INC, 6, float(val))
+@try_catch
 def cb_mat_setG     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 7, float(val))
+@try_catch
 def cb_mat_setv     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 8, float(val))
+@try_catch
 def cb_mat_del      (evt,val): di.props_del      ('mats', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbrys
 
+@try_catch
 def cb_nbry_setx  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 0, float(val))
+@try_catch
 def cb_nbry_sety  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 1, float(val))
+@try_catch
 def cb_nbry_setz  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 2, float(val))
+@try_catch
 def cb_nbry_setkey(evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 3, val-1)
+@try_catch
 def cb_nbry_setval(evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 4, float(val))
+@try_catch
 def cb_nbry_del   (evt,val): di.props_del      ('nbrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbsID
 
+@try_catch
 def cb_nbID_setID (evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 0, int(val))
+@try_catch
 def cb_nbID_setkey(evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 1, val-1)
+@try_catch
 def cb_nbID_setval(evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 2, float(val))
+@try_catch
 def cb_nbID_del   (evt,val): di.props_del      ('nbsID', evt-EVT_INC)
 
 # ---------------------------------- FEM -- ebrys
 
+@try_catch
 def cb_ebry_settag(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 0, int(val))
+@try_catch
 def cb_ebry_setkey(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 1, val-1)
+@try_catch
 def cb_ebry_setval(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 2, float(val))
+@try_catch
 def cb_ebry_del   (evt,val): di.props_del      ('ebrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- fbrys
 
+@try_catch
 def cb_fbry_settag(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 0, int(val))
+@try_catch
 def cb_fbry_setkey(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 1, val-1)
+@try_catch
 def cb_fbry_setval(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 2, float(val))
+@try_catch
 def cb_fbry_del   (evt,val): di.props_del      ('fbrys', evt-EVT_INC)
+@try_catch
 def cb_fbry_setclr(evt,val):
     obj = di.get_obj()
     id  = str(evt-EVT_INC)
@@ -364,21 +439,31 @@ def cb_fbry_setclr(evt,val):
 
 # ---------------------------------- FEM -- eatts
 
+@try_catch
 def cb_eatt_settag  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 0, int(val))
+@try_catch
 def cb_eatt_settype (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 1, val-1)
+@try_catch
 def cb_eatt_setmat  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 2, val-1)
+@try_catch
 def cb_eatt_del     (evt,val): di.props_del      ('eatts', evt-EVT_INC)
 
 # ---------------------------------- FEM
 
+@try_catch
 def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
 
 # ---------------------------------- Results
 
+@try_catch
 def cb_res_show       (evt,val): di.set_key ('show_res',        val)
+@try_catch
 def cb_res_dfv        (evt,val): di.set_key ('res_dfv',         val-1)
+@try_catch
 def cb_res_show_scalar(evt,val): di.set_key ('res_show_scalar', val)
+@try_catch
 def cb_res_warp_scale (evt,val): di.set_key ('res_warp_scale',  val)
+@try_catch
 def cb_res_show_warp  (evt,val): di.set_key ('res_show_warp',   val)
 
 
@@ -635,19 +720,19 @@ def gui():
             nlines = 0
             if int(v[0])==0: # LinElastic
                 gu.text(c,r+rh,'   ID       Model             E             nu')
-                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, str(v[1]), 32, 'E: Young modulus',  cb_mat_setE)
-                Draw.String     ('',    EVT_INC+i, c+180, r,  60, rh, str(v[2]), 32, 'nu: Poisson ratio', cb_mat_setnu)
+                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, '%g'%v[1], 32, 'E: Young modulus',  cb_mat_setE)
+                Draw.String     ('',    EVT_INC+i, c+180, r,  60, rh, '%g'%v[2], 32, 'nu: Poisson ratio', cb_mat_setnu)
                 Draw.PushButton ('Del', EVT_INC+i, c+240, r,  40, rh,                'Delete this row',   cb_mat_del)
             elif int(v[0])==1: # LinDiffusion
                 gu.text(c,r+rh,'   ID       Model             k')
-                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, str(v[3]), 32, 'k: Diffusion coefficient', cb_mat_setk)
+                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, '%g'%v[3], 32, 'k: Diffusion coefficient', cb_mat_setk)
                 Draw.PushButton ('Del', EVT_INC+i, c+180, r,  40, rh,                'Delete this row',          cb_mat_del)
             elif int(v[0])==2: # CamClay
                 gu.text(c,r+rh,'   ID       Model            lam           kap        phics           G             v')
                 Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, '%.4f'%v[4], 32, 'lam: Lambda',                          cb_mat_setlam)
                 Draw.String     ('',    EVT_INC+i, c+180, r,  60, rh, '%.4f'%v[5], 32, 'kap: Kappa',                           cb_mat_setkap)
                 Draw.String     ('',    EVT_INC+i, c+240, r,  60, rh, '%.2f'%v[6], 32, 'phics: Shear angle at critical state', cb_mat_setphics)
-                Draw.String     ('',    EVT_INC+i, c+300, r,  60, rh, '%.1f'%v[7], 32, 'G: Shear modulus',                     cb_mat_setG)
+                Draw.String     ('',    EVT_INC+i, c+300, r,  60, rh, '%g'  %v[7], 32, 'G: Shear modulus',                     cb_mat_setG)
                 Draw.String     ('',    EVT_INC+i, c+360, r,  60, rh, '%.4f'%v[8], 32, 'v: Specific volume',                   cb_mat_setv)
                 Draw.PushButton ('Del', EVT_INC+i, c+420, r,  40, rh,                  'Delete this row',                      cb_mat_del)
             r  -= rh
