@@ -57,6 +57,12 @@ extern "C"
 	            double *A, int *LDAp, int *IPIVp,
 	            double *B, int *LDBp, int *INFOp);
 
+	// DGETRF - compute an LU factorization of a general M-by-N matrix A using partial pivoting with row interchanges
+	void dgetrf_(const int* m, const int* n, double* a, const int* lda, int* ipiv, int* info);
+
+	// DGETRI - compute the inverse of a matrix using the LU factorization computed by DGETRF
+	void dgetri_(const int* n, double* a, const int* lda, int* ipiv, double* work, const int* lwork, int* info);
+
 	// DGTSV and EIGENPROBLEMS
 	/* not working with Ubuntu's LAPACK package
 	double dlamch_ (char *CMACHp);
@@ -472,6 +478,44 @@ inline int Gesv(Matrix<double> & A, Vector<double> & Y)
 	       &info);
 	delete [] ipiv;
 	if (info!=0) throw new Fatal (_("LinAlg::Gesv: Linear solver could not find the solution (singular matrix?)"));
+	return info;
+}
+
+/// GE Inverse
+inline int Geinv(Matrix<double> & A)
+{
+#ifndef DNDEBUG
+	if (A.Rows()!=A.Cols()) throw new Fatal(_("LinAlg::Geinv: The number of rows (%d) of matrix A must be equal to the number of columns (%d) of matrix A"),A.Rows(),A.Cols());
+#endif
+	int   info = 0;
+	int   N    = A.Rows(); // == A.Cols
+	int * ipiv = new int [N];
+
+	// Factorization
+	dgetrf_(&N,         // M
+	        &N,         // N
+	        A.GetPtr(), // double * A
+	        &N,         // LDA
+	        ipiv,       // Pivot indices
+	        &info);
+	if (info!=0) throw new Fatal ("LinAlg::Geinv: Matrix LU factorization did not work");
+
+	int      NB    = 2;                  // Optimal blocksize: TODO: Use ILAENV to find best block size
+	int      lwork = N*NB;               // Dimension of work >= max(1,N), optimal=N*NB
+	double * work  = new double [lwork]; // Work
+
+	// Inversion
+	dgetri_(&N,         // N
+	        A.GetPtr(), // double * A
+	        &N,         // LDA
+	        ipiv,       // Pivot indices
+	        work,       // work
+	        &lwork,     // dimension of work
+	        &info);
+	if (info!=0) throw new Fatal ("LinAlg::Geinv: Matrix inversion did not work");
+
+	delete [] ipiv;
+	delete [] work;
 	return info;
 }
 
