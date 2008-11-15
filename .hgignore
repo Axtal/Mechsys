@@ -1,9 +1,6 @@
 tst/tbeam01
 tst/tbeam02
 tst/tcamclay01
-tst/tmesh01
-tst/tmesh02
-tst/tmesh03
 tst/ttri6
 tst/tquad4
 tst/tquad8
@@ -15,7 +12,6 @@ tst/tpstrain01
 tst/tpstrain02
 tst/theat01
 tst/ttree01
-tst/reddy/tex461
 tst/reddy/tex541
 tst/reddy/tex831
 tst/reddy/tex851
@@ -23,6 +19,7 @@ tst/tpoisson01
 tst/tlaplace01
 tst/tsegfaults
 tst/talphashape01
+tst/midasgts/texam5
 tst/midasgts/tstatic121
 src/libmechsys.*
 

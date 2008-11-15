@@ -78,21 +78,6 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (tsolid02   ${LIBS})
 	SET_TARGET_PROPERTIES (tsolid02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
-	ADD_EXECUTABLE        (tmesh01    tmesh01.cpp)
-	ADD_TEST              (tmesh01    tmesh01)
-	TARGET_LINK_LIBRARIES (tmesh01    ${LIBS})
-	SET_TARGET_PROPERTIES (tmesh01    PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
-	ADD_EXECUTABLE        (tmesh02    tmesh02.cpp)
-	ADD_TEST              (tmesh02    tmesh02)
-	TARGET_LINK_LIBRARIES (tmesh02    ${LIBS})
-	SET_TARGET_PROPERTIES (tmesh02    PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
-	ADD_EXECUTABLE        (tmesh03    tmesh03.cpp)
-	ADD_TEST              (tmesh03    tmesh03)
-	TARGET_LINK_LIBRARIES (tmesh03    ${LIBS})
-	SET_TARGET_PROPERTIES (tmesh03    PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
 	ADD_EXECUTABLE        (tpoisson01 tpoisson01.cpp)
 	ADD_TEST              (tpoisson01 tpoisson01)
 	TARGET_LINK_LIBRARIES (tpoisson01 ${LIBS})

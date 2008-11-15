@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include <cfloat> // for DBL_EPSILON
+#include <cstring>
 
 // Boost
 #if defined(USE_BOOST) || defined(USE_BOOST_PYTHON)
@@ -91,10 +92,25 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 			throw new Fatal("FEM::SetNodesElems: For 2D problems, only the X and Y coordinates must be used (diff_z=%f)",diff_z);
 	}
 
+	// Number of beams
+	Array< boost::tuple<size_t,size_t,size_t> > beams; // elem_id, eatt_id, local_edge_id
+	for (size_t k=0; k<ElemsAtts->Size(); ++k)
+	{
+		if (strcmp((*ElemsAtts)[k].get<1>(),"Beam")==0)
+		{
+			int beam_edge_tag = (*ElemsAtts)[k].get<0>();
+			for (size_t i=0; i<M->NElemsBry();   ++i)
+			for (size_t j=0; j<M->ElemNETags(i); ++j)
+			{
+				if (M->ElemETag(M->ElemBry(i),j)==beam_edge_tag)
+					beams.Push (boost::make_tuple(M->ElemBry(i), k, j));
+			}
+		}
+	}
+
 	// Set elements
-	size_t ne = M->NElems();
-	G->SetNElems (ne);
-	for (size_t i=0; i<ne; ++i)
+	G->SetNElems (M->NElems() + beams.Size());
+	for (size_t i=0; i<M->NElems(); ++i)
 	{
 		// Set element
 		bool found = false;
@@ -116,6 +132,27 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 			}
 		}
 		if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",M->ElemTag(i),i);
+	}
+
+	// Set beams
+	size_t ie = M->NElems();
+	for (size_t i=0; i<beams.Size(); ++i)
+	{
+		// Data
+		size_t elem_id       = beams[i].get<0>();
+		size_t eatt_id       = beams[i].get<1>();
+		size_t local_edge_id = beams[i].get<2>();
+
+		// New finite element
+		FEM::Element * fe = G->SetElem (ie, (*ElemsAtts)[eatt_id].get<1>());
+
+		// Set connectivity
+		fe->Connect (0, G->Nod(M->EdgeToLef(elem_id, local_edge_id)));
+		fe->Connect (1, G->Nod(M->EdgeToRig(elem_id, local_edge_id)));
+
+		// Set parameters and initial values
+		fe->SetModel ((*ElemsAtts)[eatt_id].get<2>(), (*ElemsAtts)[eatt_id].get<3>(), (*ElemsAtts)[eatt_id].get<4>());
+		ie++;
 	}
 }
 

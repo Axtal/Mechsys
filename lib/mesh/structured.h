@@ -125,16 +125,13 @@ public:
 	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _has_etags(false), _has_ftags(false) {}
 
 	// Set methods
-	void SetTag    (int Tag)        { _tag = Tag; } ///< Set the tag to be replicated to all elements generated inside this block
-	void SetCoords (bool Is3D, size_t NNodes, ...); ///< Set coordinates. 2D:NNodes=4 or 8. 3D:NNodes=8 or 20
-	void SetETags  (size_t NETags, ...);            ///< Set edge tags. 2D:NETags=4 or 8. 3D:NETags=12 or 24
-	void SetFTags  (size_t NFTags, ...);            ///< Set face tags. 2D:NFTags=0. 3D:NFTags=6
-	void SetNx     (size_t Nx);                     ///< Set number of x divisions with all x weights equal to 1.0
-	void SetNy     (size_t Ny);                     ///< Set number of y divisions with all y weights equal to 1.0
-	void SetNz     (size_t Nz);                     ///< Set number of z divisions with all z weights equal to 1.0
-	void SetWx     (size_t Nx, ...);                ///< Set x weights and the number of divisions along x. Ex: SetWx(4, 1,2,3,4)
-	void SetWy     (size_t Ny, ...);                ///< Set y weights and the number of divisions along y. Ex: SetWy(3, 1,2,3)
-	void SetWz     (size_t Nz, ...);                ///< Set z weights and the number of divisions along z. Ex: SetWz(2, 1,2)
+	void SetTag    (int Tag)        { _tag = Tag; }               ///< Set the tag to be replicated to all elements generated inside this block
+	void SetCoords (bool Is3D, size_t NNodes, ...);               ///< Set coordinates. 2D:NNodes=4 or 8. 3D:NNodes=8 or 20
+	void SetETags  (size_t NETags, ...);                          ///< Set edge tags. 2D:NETags=4 or 8. 3D:NETags=12 or 24
+	void SetFTags  (size_t NFTags, ...);                          ///< Set face tags. 2D:NFTags=0. 3D:NFTags=6
+	void SetNx     (size_t Nx, double Ax=0.0, bool NonLin=false); ///< Set number of x divisions with all x weights equal to 1.0
+	void SetNy     (size_t Ny, double Ay=0.0, bool NonLin=false); ///< Set number of y divisions with all y weights equal to 1.0
+	void SetNz     (size_t Nz, double Az=0.0, bool NonLin=false); ///< Set number of z divisions with all z weights equal to 1.0
 
 	// Access methods
 	int    Tag        ()         const { return _tag;          }
@@ -388,58 +385,28 @@ inline void Block::SetFTags(size_t NFTags, ...)
 	va_end (arg_list);
 }
 
-inline void Block::SetNx(size_t Nx)
+inline void Block::SetNx(size_t Nx, double Ax, bool NonLin)
 {
-	_wx.Resize    (Nx);
-	_wx.SetValues (1.0);
-	_set_wx       ();
+	_wx.Resize(Nx);
+	if (NonLin) for (size_t i=0; i<Nx; ++i) _wx[i] = pow(i+1.0,Ax);
+	else        for (size_t i=0; i<Nx; ++i) _wx[i] = 1.0+Ax*i;
+	_set_wx();
 }
 
-inline void Block::SetNy(size_t Ny)
+inline void Block::SetNy(size_t Ny, double Ay, bool NonLin)
 {
-	_wy.Resize    (Ny);
-	_wy.SetValues (1.0);
-	_set_wy       ();
+	_wy.Resize(Ny);
+	if (NonLin) for (size_t i=0; i<Ny; ++i) _wy[i] = pow(i+1.0,Ay);
+	else        for (size_t i=0; i<Ny; ++i) _wy[i] = 1.0+Ay*i;
+	_set_wy();
 }
 
-inline void Block::SetNz(size_t Nz)
+inline void Block::SetNz(size_t Nz, double Az, bool NonLin)
 {
-	_wz.Resize    (Nz);
-	_wz.SetValues (1.0);
-	_set_wz       ();
-}
-
-inline void Block::SetWx(size_t Nx, ...)
-{
-	_wx.Resize (Nx);
-	va_list arg_list;
-	va_start (arg_list, Nx); // initialize arg_list with parameters AFTER Nx
-	for (size_t i=0; i<Nx; ++i)
-		_wx[i] = va_arg (arg_list, double);
-	va_end  (arg_list);
-	_set_wx ();
-}
-
-inline void Block::SetWy(size_t Ny, ...)
-{
-	_wy.Resize (Ny);
-	va_list arg_list;
-	va_start (arg_list, Ny); // initialize arg_list with parameters AFTER Ny
-	for (size_t i=0; i<Ny; ++i)
-		_wy[i] = va_arg (arg_list, double);
-	va_end  (arg_list);
-	_set_wy ();
-}
-
-inline void Block::SetWz(size_t Nz, ...)
-{
-	_wz.Resize (Nz);
-	va_list arg_list;
-	va_start (arg_list, Nz); // initialize arg_list with parameters AFTER Nz
-	for (size_t i=0; i<Nz; ++i)
-		_wz[i] = va_arg (arg_list, double);
-	va_end  (arg_list);
-	_set_wz ();
+	_wz.Resize(Nz);
+	if (NonLin) for (size_t i=0; i<Nz; ++i) _wz[i] = pow(i+1.0,Az);
+	else        for (size_t i=0; i<Nz; ++i) _wz[i] = 1.0+Az*i;
+	_set_wz();
 }
 
 inline void Block::FindLocalEdgesFacesID(int i, int j, int k, Vertex * V) const

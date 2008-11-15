@@ -113,6 +113,10 @@ public:
 	// Methods
 	void WriteVTU (char const * FileName) const; ///< Write output file for ParaView
 
+	// Methods
+	size_t EdgeToLef (size_t i, size_t EdgeLocalID) const; ///< Returns the GLOBAL left vertex ID for a given Local Edge ID and Element i
+	size_t EdgeToRig (size_t i, size_t EdgeLocalID) const; ///< Returns the GLOBAL right vertex ID for a given Local Edge ID and Element i
+
 	// Set methods
 	virtual void SetO2       (bool IsO2=true) { _is_o2=IsO2; }                      ///< (Un)set quadratic elements
 	virtual void SetNVerts   (size_t NumVerts);                                     ///< Erase old mesh and set number of vertices
@@ -302,6 +306,16 @@ inline void Generic::WriteVTU(char const * FileName) const
 	std::ofstream of(FileName, std::ios::out);
 	of << oss.str();
 	of.close();
+}
+
+inline size_t Generic::EdgeToLef (size_t i, size_t EdgeLocalID) const
+{
+	return ElemCon(i, _edge_to_lef_vert(EdgeLocalID));
+}
+
+inline size_t Generic::EdgeToRig (size_t i, size_t EdgeLocalID) const
+{
+	return ElemCon(i, _edge_to_rig_vert(EdgeLocalID));
 }
 
 inline void Generic::SetNVerts(size_t NumVerts)
