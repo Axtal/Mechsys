@@ -70,13 +70,9 @@ inline void LinElastic::SetPrms(char const * Prms)
 	{
 			 if (names[i]=="E" ) E  = values[i];
 		else if (names[i]=="nu") nu = values[i];
-		else if (names[i]=="A" ) _A = values[i];
+		else throw new Fatal("LinElastic::SetPrms: Parameter name==%s is invalid",names[i].CStr());
 	}
-	if (_geom==1)
-	{
-		_De      = 0.0;
-		_De(0,0) = E*_A;
-	}
+	if (_geom==1) throw new Fatal("LinElastic::SetPrms: This model is not available for Linear Elements");
 	else
 	{
 		double c  = (_geom==5 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // plane-stress != (plane-strain=3D)

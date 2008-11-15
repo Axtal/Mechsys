@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
 	// constants
 	double E     = 200.0; // Young
 	double nu    = 0.25;  // Poisson
-	double q     = 2.0;   // Downward vertical pressure
+	double q     = -2.0;  // Downward vertical pressure
 	int    ndiv  = 4;     // number of divisions along x, y, and z
 	bool   is_o2 = false; // use high order elements?
 	String linsol("UM");  // UMFPACK
@@ -107,7 +107,7 @@ int main(int argc, char **argv) try
 	fbrys.Push (make_tuple(-100, "ux", 0.0)); // tag, key, val
 	fbrys.Push (make_tuple(-102, "uy", 0.0)); // tag, key, val
 	fbrys.Push (make_tuple(-104, "uz", 0.0)); // tag, key, val
-	fbrys.Push (make_tuple(-105, "fz",  -q)); // tag, key, val
+	fbrys.Push (make_tuple(-105, "fz",   q)); // tag, key, val
 
 	// Element attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -180,9 +180,9 @@ int main(int argc, char **argv) try
 	// Displacements
 	for (size_t i=0; i<g.NNodes(); ++i)
 	{
-		double ux_correct = -Ex*g.Nod(i)->X();
-		double uy_correct = -Ey*g.Nod(i)->Y();
-		double uz_correct = -Ez*g.Nod(i)->Z();
+		double ux_correct = Ex*g.Nod(i)->X();
+		double uy_correct = Ey*g.Nod(i)->Y();
+		double uz_correct = Ez*g.Nod(i)->Z();
 		err_dis.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
 		err_dis.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
 		err_dis.Push ( fabs(g.Nod(i)->Val("uz") - uz_correct) / (1.0+fabs(uz_correct)) );

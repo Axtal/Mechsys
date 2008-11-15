@@ -70,19 +70,19 @@ public:
 	virtual ~EquilibElem() {}
 
 	// Derived methods
-	virtual bool CheckModel      () const;
-	bool         IsEssential     (char const * Name) const;
-	virtual void SetModel        (char const * ModelName, char const * Prms, char const * Inis);
-	void         SetProps        (Array<double> const & P);
-	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
-	virtual void UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	bool         HasVolForces    () const { return _has_body_force; }
-	void         AddVolForces    (LinAlg::Vector<double> & FVol) const;
-	virtual void BackupState     ();
-	virtual void RestoreState    ();
-	void         GetLabels       (Array<String> & Labels) const;
-	void         Deactivate      ();
-	char const * ModelName       () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
+	virtual bool CheckModel   () const;
+	bool         IsEssential  (char const * Name) const;
+	virtual void SetModel     (char const * ModelName, char const * Prms, char const * Inis);
+	void         SetProps     (Array<double> const & P);
+	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
+	virtual void UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	bool         HasVolForces () const { return _has_body_force; }
+	void         AddVolForces (LinAlg::Vector<double> & FVol) const;
+	virtual void BackupState  ();
+	virtual void RestoreState ();
+	void         GetLabels    (Array<String> & Labels) const;
+	void         Deactivate   ();
+	char const * ModelName    () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
 
 	// Derived methods to assemble DAS matrices
 	size_t       nOrder1Matrices () const { return 1; }
@@ -188,6 +188,8 @@ inline void EquilibElem::SetProps(Array<double> const & P)
 inline Element * EquilibElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 {
 	// Check
+	if (_n_nodes<1)               throw new Fatal("EquilibElem::Connect: __Internal Error__: There is a problem with the number of nodes: maybe derived elemet did not set _n_nodes");
+	if (_connects.Size()<1)       throw new Fatal("EquilibElem::Connect: __Internal Error__: There is a problem with connectivity array: maybe derived elemet did not allocate _connect");
 	if (_ndim<0 || _d<0 || _nd<0) throw new Fatal("EquilibElem::Connect: __Internal Error__: There is a problem with _ndim=%d, _d=%d, or _nd=%d\n (_ndim=space dimension, _d=dimension index==_ndim-1, and _nd=number of degrees of freedom)",_ndim,_d,_nd);
 
 	// Connectivity
@@ -409,100 +411,64 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 inline void EquilibElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
 {
 	/* OBS.:
-	 *          This B matrix considers Soil Mechanics sign convention of stress and strains
-	 *          Ex.: Compressive stresses/strains are positive
+	 *          This B matrix considers Solid Mechanics sign convention of stress and strains
+	 *          Ex.: Compressive stresses/strains are negative
 	 *          The B Matrix returns strains in Mandel notation
+	 *
+	 *          Traction    => Positive
+	 *          Compression => Negative
 	 */
+
+	// Cartesian derivatives
+	LinAlg::Matrix<double> dN;
+	dN = inv(J)*derivs;
 
 	// geometry type: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	switch (_geom())
 	{
-		case 1: // 1D
-		{
-			// Derivatives and determinand of Jacobian
-			LinAlg::Matrix<double> nat_derivs(_ndim, _nd*_n_nodes);
-			nat_derivs.SetValues(0.0);
-			double det_J = det(J);
-			for (size_t i=0; i<_n_nodes; i++)
-			for (int    j=0; j<_nd;      j++)
-				nat_derivs(j, i*_ndim+j) = derivs(0,i);
-			// Assemble B matrix
-			B = -1.0/(det_J*det_J)*J*nat_derivs; // B matrix for a linear element in 1D, 2D and 3D.
-			return;
-		}
 		case 2: // 2D(plane-strain)
 		{
-			// Cartesian derivatives
-			LinAlg::Matrix<double> cart_derivs;
-			cart_derivs = inv(J)*derivs;
-			// Resize B matrix
 			const int n_scomps = 4; // number of stress compoments
-			B.Resize(n_scomps,_nd*_n_nodes);
-			// Loop along all nodes of the element
-			double dNdX,dNdY;
-			int  j=0; // j column of B
+			B.Resize (n_scomps,_nd*_n_nodes);
 			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
-				// Assemble B matrix
-				j = i*_ndim;
-				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
-				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
-				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
-				B(2,0+j) =       0.0;   B(2,1+j) =  0.0;
-				B(3,0+j) =  dNdY/SQ2;   B(3,1+j) = dNdX/SQ2;  // SQ2 => Mandel representation
+				B(0,0+i*_nd) =     dN(0,i);  B(0,1+i*_nd) =         0.0;
+				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dN(1,i);
+				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;
+				B(3,0+i*_nd) = dN(1,i)/SQ2;  B(3,1+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
 		case 3: // 3D
 		{
-			// Cartesian derivatives
-			LinAlg::Matrix<double> cart_derivs;
-			cart_derivs = inv(J)*derivs;
-			// Resize B matrix
 			const int n_scomps = 6; // number of stress compoments
-			B.Resize(n_scomps,_nd*_n_nodes);
-			// Loop along all nodes of the element
-			double dNdX,dNdY,dNdZ;
-			int  j=0; // j column of B
+			B.Resize (n_scomps,_nd*_n_nodes);
 			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
-				// Assemble B matrix
-				j = i*_ndim;
-				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  dNdZ=-cart_derivs(2,i); // Negative values => Soil mechanics convention
-				B(0,0+j) =     dNdX;     B(0,1+j) =      0.0;     B(0,2+j) =      0.0;
-				B(1,0+j) =      0.0;     B(1,1+j) =     dNdY;     B(1,2+j) =      0.0;
-				B(2,0+j) =      0.0;     B(2,1+j) =      0.0;     B(2,2+j) =     dNdZ;
-				B(3,0+j) = dNdY/SQ2;     B(3,1+j) = dNdX/SQ2;     B(3,2+j) =      0.0; // SQ2 => Mandel representation
-				B(4,0+j) =      0.0;     B(4,1+j) = dNdZ/SQ2;     B(4,2+j) = dNdY/SQ2; // SQ2 => Mandel representation
-				B(5,0+j) = dNdZ/SQ2;     B(5,1+j) =      0.0;     B(5,2+j) = dNdX/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*_nd) =     dN(0,i);  B(0,1+i*_nd) =         0.0;  B(0,2+i*_nd) =         0.0;
+				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dN(1,i);  B(1,2+i*_nd) =         0.0;
+				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;  B(2,2+i*_nd) =     dN(2,i);
+				B(3,0+i*_nd) = dN(1,i)/SQ2;  B(3,1+i*_nd) = dN(0,i)/SQ2;  B(3,2+i*_nd) =         0.0; // SQ2 => Mandel representation
+				B(4,0+i*_nd) =         0.0;  B(4,1+i*_nd) = dN(2,i)/SQ2;  B(4,2+i*_nd) = dN(1,i)/SQ2; // SQ2 => Mandel representation
+				B(5,0+i*_nd) = dN(2,i)/SQ2;  B(5,1+i*_nd) =         0.0;  B(5,2+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
 		case 5: // 2D(plane-stress)
 		{
-			// Cartesian derivatives
-			LinAlg::Matrix<double> cart_derivs;
-			cart_derivs = inv(J)*derivs;
-			// Resize B matrix
 			const int n_scomps = 3; // number of stress compoments
 			B.Resize(n_scomps,_nd*_n_nodes);
-			// Loop along all nodes of the element
-			double dNdX,dNdY;
-			int  j=0; // j column of B
 			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
-				// Assemble B matrix
-				j = i*_ndim;
-				dNdX=-cart_derivs(0,i);  dNdY=-cart_derivs(1,i);  // Negative values => Soil mechanics convention
-				B(0,0+j) =      dNdX;   B(0,1+j) =  0.0;
-				B(1,0+j) =       0.0;   B(1,1+j) = dNdY;
-				B(2,0+j) =  dNdY/SQ2;   B(2,1+j) = dNdX/SQ2;  // SQ2 => Mandel representation
+				B(0,0+i*_nd) =      dN(0,i);   B(0,1+i*_nd) =         0.0;
+				B(1,0+i*_nd) =          0.0;   B(1,1+i*_nd) =     dN(1,i);
+				B(2,0+i*_nd) =  dN(1,i)/SQ2;   B(2,1+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
+		case 1: // 1D
 		case 4: // 2D(axis-symmetric)
-		default:
-			throw new Fatal("EquilibElem::B_Matrix: GeometryType==%d is not implemented yet",_geom());
+		default: throw new Fatal("EquilibElem::B_Matrix: B_Matrix() method is not available for GeometryType==%d",_geom());
 	}
 }
 

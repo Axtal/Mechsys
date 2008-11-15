@@ -50,7 +50,7 @@ class Element
 {
 public:
 	// Default constructor
-	Element() : _my_id(-1), _ndim(-1) {}
+	Element() : _my_id(-1), _ndim(-1), _n_nodes(0), _n_face_nodes(0), _n_int_pts(0), _n_face_int_pts(0) {}
 
 	// Destructor
 	virtual ~Element() {}
@@ -85,24 +85,22 @@ public:
 	virtual char const * ModelName   ()                                  const =0; ///< Return the name of the model of the first IP of this element
 
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
-	virtual bool      IsEssential   (char const * Name) const =0;                                                                         ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
-	virtual void      SetModel      (char const * ModelName, char const * Prms, char const * Inis) =0;                                       ///< (Re)allocate model with parameters and initial values
-	virtual void      SetProps      (Array<double> const & ElemProps) =0;                                                                    ///< Set element properties such as body forces, internal heat source, water pumping, etc.
-	virtual Element * Connect       (int iNodeLocal, FEM::Node * ptNode) =0;                                                                 ///< Set connectivity, by linking the local node ID with the pointer to the connection node
-	virtual void      UpdateState   (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0;                  ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
-	virtual void      BackupState   () =0;                                                                                                   ///< Backup internal state
-	virtual void      RestoreState  () =0;                                                                                                   ///< Restore internal state from a previously backup state
-	virtual void      GetLabels     (Array<String> & Labels) const =0;                                                                       ///< Get the labels of all values to be output
+	virtual bool      IsEssential (char const * Name) const =0;                                                           ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
+	virtual void      SetModel    (char const * ModelName, char const * Prms, char const * Inis) =0;                      ///< (Re)allocate model with parameters and initial values
+	virtual void      SetProps    (Array<double> const & ElemProps) =0;                                                   ///< Set element properties such as body forces, internal heat source, water pumping, etc.
+	virtual Element * Connect     (int iNodeLocal, FEM::Node * ptNode) =0;                                                ///< Set connectivity, by linking the local node ID with the pointer to the connection node
+	virtual void      UpdateState (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0; ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
+	virtual void      GetLabels   (Array<String> & Labels) const =0;                                                      ///< Get the labels of all values to be output
 
-	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
-	virtual void SetIntPoints   (int NumGaussPoints1D) =0;                                                                                   ///< Set the number of integration points using 1D information. Must NOT be called after allocation of Models.
-	virtual int  VTKCellType    () const =0;                                                                                                 ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
-	virtual void VTKConnect     (String & Nodes) const =0;                                                                                   ///< Return the VTK list of connectivities with global nodes IDs
-	virtual void GetFaceNodes   (int FaceID, Array<Node*> & FaceConnects) const =0;                                                          ///< Return the connectivity of a face, given the local face ID
-	virtual void Shape          (double r, double s, double t, LinAlg::Vector<double> & Shape) const =0;                                     ///< Shape functions
-	virtual void Derivs         (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const =0;                                    ///< Derivatives
-	virtual void FaceShape      (double r, double s, LinAlg::Vector<double> & FaceShape) const =0;                                           ///< Face shape functions
-	virtual void FaceDerivs     (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const =0;                                          ///< Face derivatives
+	// Methods related to GEOMETRY (pure virtual) that MAY be overriden by derived classes
+	virtual void SetIntPoints (int NumGaussPoints1D)                                                { throw new Fatal("FEM::Element: SetIntPoints() is not available"); } ///< Set the number of integration points using 1D information. Must NOT be called after allocation of Models.
+	virtual int  VTKCellType  () const                                                              { throw new Fatal("FEM::Element: VTKCellType() is not available"); }  ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
+	virtual void VTKConnect   (String & Nodes) const                                                { throw new Fatal("FEM::Element: VTKConnect() is not available"); }   ///< Return the VTK list of connectivities with global nodes IDs
+	virtual void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const                       { throw new Fatal("FEM::Element: GetFaceNodes() is not available"); } ///< Return the connectivity of a face, given the local face ID
+	virtual void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape) const  { throw new Fatal("FEM::Element: Shape() is not available"); }        ///< Shape functions
+	virtual void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const { throw new Fatal("FEM::Element: Derivs() is not available"); }       ///< Derivatives
+	virtual void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape) const        { throw new Fatal("FEM::Element: FaceShape() is not available"); }    ///< Face shape functions
+	virtual void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const       { throw new Fatal("FEM::Element: FaceDerivs() is not available"); }   ///< Face derivatives
 
 	// Methods that MAY be overriden by derived classes
 	virtual void   InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
@@ -113,10 +111,12 @@ public:
 	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
 	virtual void   LocalCoords   (LinAlg::Matrix<double> & coords) const {};                                                                 ///< Return the local coordinates of the nodes
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
-	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
+	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< TODO
 	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
-	virtual bool   HasVolForces  () const { return false; }
-	virtual void   AddVolForces  (LinAlg::Vector<double> & FVol) const {}
+	virtual bool   HasVolForces  () const { return false; }                                                                                  ///< TODO
+	virtual void   AddVolForces  (LinAlg::Vector<double> & FVol) const {}                                                                    ///< TODO
+	virtual void   BackupState   () {}                                                                                                       ///< Backup internal state
+	virtual void   RestoreState  () {}                                                                                                       ///< Restore internal state from a previously backup state
 
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
@@ -130,16 +130,16 @@ public:
 
 protected:
 	// Data (may be accessed by derived classes)
-	long                   _my_id;          ///< The ID of this element
-	int                    _ndim;           ///< Number of dimensions of the problem
-	size_t                 _n_nodes;        ///< Number of nodes in the element
-	size_t                 _n_face_nodes;   ///< Number of nodes in a face
-	size_t                 _n_int_pts;      ///< Number of integration (Gauss) points
-	size_t                 _n_face_int_pts; ///< Number of integration points in a face
-	Array<Node*>           _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
-	bool                   _is_active;      ///< Flag for active/inactive condition
-	IntegPoint const *     _a_int_pts;      ///< Array of Integration Points
-	IntegPoint const *     _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
+	long               _my_id;          ///< The ID of this element
+	int                _ndim;           ///< Number of dimensions of the problem
+	size_t             _n_nodes;        ///< GEOMETRY: Number of nodes in the element
+	size_t             _n_face_nodes;   ///< GEOMETRY: Number of nodes in a face
+	size_t             _n_int_pts;      ///< GEOMETRY: Number of integration (Gauss) points
+	size_t             _n_face_int_pts; ///< GEOMETRY: Number of integration points in a face
+	Array<Node*>       _connects;       ///< GEOMETRY: Connectivity (pointers to nodes in this element). size=_n_nodes
+	bool               _is_active;      ///< Flag for active/inactive condition
+	IntegPoint const * _a_int_pts;      ///< Array of Integration Points
+	IntegPoint const * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 	
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual void _set_ndim(int nDim) =0;
@@ -191,9 +191,8 @@ inline bool Element::CheckConnect() const
 
 inline bool Element::Check(String & Message) const
 {
-	//if (_extrap_mat.Rows()<1)  { Message.Printf("\n  %s","EXTRAPOLATION MATRIX NOT DEFINED"); return false; }
-	if (CheckConnect()==false) { Message.Printf("\n  %s","CONNECTIVITY NOT SET");             return false; }
-	if (CheckModel()==false)   { Message.Printf("\n  %s","CONSTITUTIVE MODEL NOT SET");       return false; }
+	if (CheckConnect()==false) { Message.Printf("\n  %s","CONNECTIVITY NOT SET");       return false; }
+	if (CheckModel()==false)   { Message.Printf("\n  %s","CONSTITUTIVE MODEL NOT SET"); return false; }
 	return true;
 }
 

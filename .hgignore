@@ -20,6 +20,7 @@ tst/tpoisson01
 tst/tlaplace01
 tst/tsegfaults
 tst/talphashape01
+tst/midasgts/texam1
 tst/midasgts/texam5
 tst/midasgts/tstatic121
 src/libmechsys.*

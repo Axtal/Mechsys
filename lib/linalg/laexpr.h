@@ -195,72 +195,6 @@ void scalet(type                 a,
 	}
 }
 
-// returns:  B <- a*inv(A)
-template <typename type>
-inline
-void scalei(type                 a,
-	        Matrix<type> const & A,
-	        Matrix<type>       & B) // m x n (col major)
-{
-	size_t m = A.Rows();
-	size_t n = A.Cols();
-	if (m!=n) throw new Fatal("Internal Error: laexpr:h::scalei: A(%d,%d) matrix must be square",m,n);
-	type const * ptrA;
-	ptrA = A.GetPtr();
-	B.Resize(n, m);
-
-	Matrix<type> extended(n, n*2); //temporary matrix to perform inverse
-
-	//extending Matrix
-	for (size_t r = 0; r < n; r++) 
-		for (size_t c = 0; c < n; c++)	
-		{
-			extended(r,c) = A(r,c);
-			if (r == c) extended(r,c+n) = 1;
-			else extended(r,c+n) = 0;
-		}
-
-	for (size_t p = 0; p < n; p++) //triangulation
-	{ 
-		for (size_t r = p + 1; r < n; r++)
-		{
-			//pivoting
-			if (fabs(extended(p,p))<1.e-10)
-			{ 
-				//lookin for a line with non zero value in pivot column
-				size_t rr;
-				for (rr = p; rr < n; rr++) if (fabs(extended(rr,p)) >= 1.e-10) break; 
-				if (rr== n) { throw new Fatal(_("Matrix::Inv: Error calculating inverse matrix => singular matrix")); }
-				for (size_t c = p; c < n*2; c++){
-					type      temp = extended(p,c);
-					extended(p,c)  = extended(rr,c); 
-					extended(rr,c) = temp;
-				}
-			}
-			type coef = extended(r,p) / extended(p,p);
-			for (size_t c = p; c < n*2; c++)
-				extended(r,c) -= coef * extended(p,c);
-		}
-	}
-
-	//Retro-Triangulation
-	for (size_t p = n-1; p > 0; p--)
-	{ 
-		for (int r = p-1; r >= 0; r--)
-		{
-			if (extended(p,p) == 0) { throw new Fatal(_("Matrix::Inv: Error calculating inverse matrix => singular matrix")); }
-			type coef = extended(r,p) / extended(p,p);
-			for (size_t c = n*2-1; c >= p; c--)  
-				extended(r,c) -= coef * extended(p,c);
-		}
-	}
-	
-	//copying inverse Matrix and dividing by diagonal value
-	for (size_t r = 0; r < n; r++)
-		for (size_t c = 0; c < n; c++)
-			B(r,c) = a*extended(r,c+ n) / extended(r,r); 
-}
-
 // returns: B <- det(A)
 template<typename type>
 inline 
@@ -424,7 +358,9 @@ template <typename type>
 inline
 Matrix<type> & _inv(Matrix<type> const & A, Matrix<type> & R)
 {
-	scalei(static_cast<type>(1), A, R);
+	if (A.Rows()!=A.Cols()) throw new Fatal("Internal Error: laexpr.h::_inv: A(%d,%d) matrix must be square",A.Rows(),A.Cols());
+	R = A;
+	LinAlg::Geinv(R);
 	return R;
 }
 

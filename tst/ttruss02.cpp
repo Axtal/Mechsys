@@ -47,7 +47,6 @@
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
 #include "fem/output.h"
-#include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 
 using std::cout;
@@ -109,27 +108,27 @@ int main(int argc, char **argv) try
 	g.Ele(20)->Connect(0, g.Nod( 8))->Connect(1, g.Nod( 9));
 
 	// Parameters and initial value
-	g.Ele( 0)->SetModel("LinElastic", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 1)->SetModel("LinElastic", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 2)->SetModel("LinElastic", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 3)->SetModel("LinElastic", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 4)->SetModel("LinElastic", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 5)->SetModel("LinElastic", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 6)->SetModel("LinElastic", "E=1000.0  A=10.0", "ZERO");
-	g.Ele( 7)->SetModel("LinElastic", "E=1000.0  A=10.0", "ZERO");
-	g.Ele( 8)->SetModel("LinElastic", "E=1000.0  A=10.0", "ZERO");
-	g.Ele( 9)->SetModel("LinElastic", "E=1000.0  A=10.0", "ZERO");
-	g.Ele(10)->SetModel("LinElastic", "E=1000.0  A=10.0", "ZERO");
-	g.Ele(11)->SetModel("LinElastic", "E=1000.0  A=10.0", "ZERO");
-	g.Ele(12)->SetModel("LinElastic", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(13)->SetModel("LinElastic", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(14)->SetModel("LinElastic", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(15)->SetModel("LinElastic", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(16)->SetModel("LinElastic", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(17)->SetModel("LinElastic", "E=1000.0  A= 1.0", "ZERO");
-	g.Ele(18)->SetModel("LinElastic", "E=1000.0  A= 1.0", "ZERO");
-	g.Ele(19)->SetModel("LinElastic", "E=1000.0  A= 1.0", "ZERO");
-	g.Ele(20)->SetModel("LinElastic", "E=1000.0  A= 1.0", "ZERO");
+	g.Ele( 0)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	g.Ele( 1)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	g.Ele( 2)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	g.Ele( 3)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	g.Ele( 4)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	g.Ele( 5)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	g.Ele( 6)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	g.Ele( 7)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	g.Ele( 8)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	g.Ele( 9)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	g.Ele(10)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	g.Ele(11)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	g.Ele(12)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	g.Ele(13)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	g.Ele(14)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	g.Ele(15)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	g.Ele(16)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	g.Ele(17)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	g.Ele(18)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	g.Ele(19)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	g.Ele(20)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
 
 	// Boundary conditions (must be after set connectivity)
 	g.Nod( 0)->Bry("ux",   0.0)->Bry("uy", 0.0);
@@ -198,27 +197,27 @@ int main(int argc, char **argv) try
 	
 	// Correct axial normal stresses
 	Array<double> err_s(g.NElems());
-	err_s[ 0] = fabs(g.Ele( 0)->Val("Sa") - (-28.0000));
-	err_s[ 1] = fabs(g.Ele( 1)->Val("Sa") - (-28.0000));
-	err_s[ 2] = fabs(g.Ele( 2)->Val("Sa") - (-28.7500));
-	err_s[ 3] = fabs(g.Ele( 3)->Val("Sa") - (-28.7500));
-	err_s[ 4] = fabs(g.Ele( 4)->Val("Sa") - (-28.0000));
-	err_s[ 5] = fabs(g.Ele( 5)->Val("Sa") - (-28.0000));
-	err_s[ 6] = fabs(g.Ele( 6)->Val("Sa") - (  6.2610));
-	err_s[ 7] = fabs(g.Ele( 7)->Val("Sa") - (  6.0030));
-	err_s[ 8] = fabs(g.Ele( 8)->Val("Sa") - (  6.0300));
-	err_s[ 9] = fabs(g.Ele( 9)->Val("Sa") - (  6.0300));
-	err_s[10] = fabs(g.Ele(10)->Val("Sa") - (  6.0030));
-	err_s[11] = fabs(g.Ele(11)->Val("Sa") - (  6.2610));
-	err_s[12] = fabs(g.Ele(12)->Val("Sa") - ( -3.3330));
-	err_s[13] = fabs(g.Ele(13)->Val("Sa") - ( -3.0830));
-	err_s[14] = fabs(g.Ele(14)->Val("Sa") - ( -4.0000));
-	err_s[15] = fabs(g.Ele(15)->Val("Sa") - ( -3.0830));
-	err_s[16] = fabs(g.Ele(16)->Val("Sa") - ( -3.3330));
-	err_s[17] = fabs(g.Ele(17)->Val("Sa") - ( -1.6770));
-	err_s[18] = fabs(g.Ele(18)->Val("Sa") - ( -3.2020));
-	err_s[19] = fabs(g.Ele(19)->Val("Sa") - ( -3.2020));
-	err_s[20] = fabs(g.Ele(20)->Val("Sa") - ( -1.6770));
+	err_s[ 0] = fabs(g.Ele( 0)->Val(0, "Sa") - (28.0000));
+	err_s[ 1] = fabs(g.Ele( 1)->Val(0, "Sa") - (28.0000));
+	err_s[ 2] = fabs(g.Ele( 2)->Val(0, "Sa") - (28.7500));
+	err_s[ 3] = fabs(g.Ele( 3)->Val(0, "Sa") - (28.7500));
+	err_s[ 4] = fabs(g.Ele( 4)->Val(0, "Sa") - (28.0000));
+	err_s[ 5] = fabs(g.Ele( 5)->Val(0, "Sa") - (28.0000));
+	err_s[ 6] = fabs(g.Ele( 6)->Val(0, "Sa") - (-6.2610));
+	err_s[ 7] = fabs(g.Ele( 7)->Val(0, "Sa") - (-6.0030));
+	err_s[ 8] = fabs(g.Ele( 8)->Val(0, "Sa") - (-6.0300));
+	err_s[ 9] = fabs(g.Ele( 9)->Val(0, "Sa") - (-6.0300));
+	err_s[10] = fabs(g.Ele(10)->Val(0, "Sa") - (-6.0030));
+	err_s[11] = fabs(g.Ele(11)->Val(0, "Sa") - (-6.2610));
+	err_s[12] = fabs(g.Ele(12)->Val(0, "Sa") - ( 3.3330));
+	err_s[13] = fabs(g.Ele(13)->Val(0, "Sa") - ( 3.0830));
+	err_s[14] = fabs(g.Ele(14)->Val(0, "Sa") - ( 4.0000));
+	err_s[15] = fabs(g.Ele(15)->Val(0, "Sa") - ( 3.0830));
+	err_s[16] = fabs(g.Ele(16)->Val(0, "Sa") - ( 3.3330));
+	err_s[17] = fabs(g.Ele(17)->Val(0, "Sa") - ( 1.6770));
+	err_s[18] = fabs(g.Ele(18)->Val(0, "Sa") - ( 3.2020));
+	err_s[19] = fabs(g.Ele(19)->Val(0, "Sa") - ( 3.2020));
+	err_s[20] = fabs(g.Ele(20)->Val(0, "Sa") - ( 1.6770));
 
 	// Error summary
 	double tol_u     = 5.0e-6;
@@ -230,10 +229,10 @@ int main(int argc, char **argv) try
 	double max_err_f = err_f[err_f.Max()];
 	double min_err_s = err_s[err_s.Min()];
 	double max_err_s = err_s[err_s.Max()];
-	cout << _4<< ""    << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
-	cout << _4<< "u"   << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
-	cout << _4<< "f"   << _8s<<min_err_f << _8s<<err_f.Mean() << (max_err_f>tol_f?"[1;31m":"[1;32m") << _8s<<max_err_f << "[0m" << _8s<<err_f.Norm() << endl;
-	cout << _4<< "Sig" << _8s<<min_err_s << _8s<<err_s.Mean() << (max_err_s>tol_s?"[1;31m":"[1;32m") << _8s<<max_err_s << "[0m" << _8s<<err_s.Norm() << endl;
+	cout << _4<< ""   << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
+	cout << _4<< "u"  << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
+	cout << _4<< "f"  << _8s<<min_err_f << _8s<<err_f.Mean() << (max_err_f>tol_f?"[1;31m":"[1;32m") << _8s<<max_err_f << "[0m" << _8s<<err_f.Norm() << endl;
+	cout << _4<< "Sa" << _8s<<min_err_s << _8s<<err_s.Mean() << (max_err_s>tol_s?"[1;31m":"[1;32m") << _8s<<max_err_s << "[0m" << _8s<<err_s.Norm() << endl;
 	cout << endl;
 
 	// Return error flag

@@ -21,35 +21,32 @@
 
 // MechSys
 #include "fem/equilibelem.h"
-#include "fem/elems/lin2.h"
 #include "util/exception.h"
+#include "fem/elems/vtkCellType.h"
 
 namespace FEM
 {
 
-class Beam : public Lin2, public EquilibElem
+class Beam : public EquilibElem
 {
 public:
-	// Constants
-	static char const * NAME;
-
 	// Constructor
-	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false) {}
+	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
 
 	// Derived methods
-	char const * Name() const { return NAME; };
+	char const * Name() const { return "Beam"; }
 
 	// Derived methods
 	bool   CheckModel   () const;
 	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
 	void   UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	void   BackupState  () {}
-	void   RestoreState () {}
 	void   CalcDepVars  () const;
 	double Val          (int iNodeLocal, char const * Name) const;
 	double Val          (char const * Name) const;
 	void   Order1Matrix (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
 	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
+	int    VTKCellType  () const { return VTK_LINE; }
+	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
 
 	// Methods
 	Beam * EdgeBry (char const * Key, double q, int EdgeLocalID) { return EdgeBry(Key,q,q,EdgeLocalID); } ///< Set distributed load with key = q0 or q1
@@ -80,9 +77,6 @@ private:
 	void _transf_mat                  (LinAlg::Matrix<double> & T) const; ///< Calculate transformation matrix
 
 }; // class Beam
-
-// Beam constants
-char const * Beam::NAME = "Beam";
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -183,7 +177,6 @@ inline void Beam::CalcDepVars() const
 	_uL = T * _uL;
 }
 
-
 inline double Beam::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
@@ -197,8 +190,8 @@ inline double Beam::Val(int iNodeLocal, char const * Name) const
 	     if (strcmp(Name,"N" )==0) return N(l);
 	else if (strcmp(Name,"M" )==0) return M(l);
 	else if (strcmp(Name,"V" )==0) return V(l);
-	else if (strcmp(Name,"Ea")==0) return    (_uL(3)-_uL(0))/_L;
-	else if (strcmp(Name,"Sa")==0) return _E*(_uL(3)-_uL(0))/_L;
+	else if (strcmp(Name,"Ea")==0) return    (_uL(_nd)-_uL(0))/_L;
+	else if (strcmp(Name,"Sa")==0) return _E*(_uL(_nd)-_uL(0))/_L;
 	else throw new Fatal("Beam::Val: This element does not have a Val named %s",Name);
 }
 
@@ -232,7 +225,7 @@ inline void Beam::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
 		     -c2, -c4, -c5,  c2,  c4, -c5,
 		     -c3,  c5,  c7,  c3, -c5,  c6;
 	}
-	else throw new Fatal("Beam::Order1Matrix: Feature no available for nDim==%d",_ndim);
+	else throw new Fatal("Beam::Order1Matrix: Feature not available for nDim==%d",_ndim);
 }
 
 inline void Beam::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
@@ -242,35 +235,45 @@ inline void Beam::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix
 
 inline double Beam::N(double l) const
 {
-	return _E*_A*(_uL(3)-_uL(0))/_L;
+	return _E*_A*(_uL(_nd)-_uL(0))/_L;
 }
 
 inline double Beam::M(double l) const
 {
-	double s   = l*_L;
-	double LL  = _L*_L;
-	double LLL = LL*_L;
-	double M   = _E*_Izz*(_uL(5)*((6*s)/LL-2/_L)+_uL(2)*((6*s)/LL-4/_L)+_uL(4)*(6/LL-(12*s)/LLL)+_uL(1)*((12*s)/LLL-6/LL));
-	if (_has_q)
+	double M = 0.0;
+	if (_ndim==2)
 	{
-		double ss  = s*s;
-		double sss = ss*s;
-		M += (2.0*_q1*LLL+3.0*_q0*LLL-9.0*_q1*s*LL-21.0*_q0*s*LL+30.0*_q0*ss*_L+10.0*_q1*sss-10.0*_q0*sss)/(60.0*_L);
+		double s   = l*_L;
+		double LL  = _L*_L;
+		double LLL = LL*_L;
+		M = _E*_Izz*(_uL(5)*((6*s)/LL-2/_L)+_uL(2)*((6*s)/LL-4/_L)+_uL(4)*(6/LL-(12*s)/LLL)+_uL(1)*((12*s)/LLL-6/LL));
+		if (_has_q)
+		{
+			double ss  = s*s;
+			double sss = ss*s;
+			M += (2.0*_q1*LLL+3.0*_q0*LLL-9.0*_q1*s*LL-21.0*_q0*s*LL+30.0*_q0*ss*_L+10.0*_q1*sss-10.0*_q0*sss)/(60.0*_L);
+		}
 	}
+	else throw new Fatal("Beam::M: Feature not available for nDim==%d",_ndim);
 	return M;
 }
 
 inline double Beam::V(double l) const
 {
-	double LL  = _L*_L;
-	double LLL = LL*_L;
-	double V   = _E*_Izz*((6*_uL(5))/LL+(6*_uL(2))/LL-(12*_uL(4))/LLL+(12*_uL(1))/LLL);
-	if (_has_q)
+	double V = 0.0;
+	if (_ndim==2)
 	{
-		double s  = l*_L;
-		double ss = s*s;
-		V += -(3.0*_q1*LL+7.0*_q0*LL-20.0*_q0*s*_L-10.0*_q1*ss+10.0*_q0*ss)/(20.0*_L);
+		double LL  = _L*_L;
+		double LLL = LL*_L;
+		V = _E*_Izz*((6*_uL(5))/LL+(6*_uL(2))/LL-(12*_uL(4))/LLL+(12*_uL(1))/LLL);
+		if (_has_q)
+		{
+			double s  = l*_L;
+			double ss = s*s;
+			V += -(3.0*_q1*LL+7.0*_q0*LL-20.0*_q0*s*_L-10.0*_q1*ss+10.0*_q0*ss)/(20.0*_L);
+		}
 	}
+	else throw new Fatal("Beam::V: Feature not available for nDim==%d",_ndim);
 	return V;
 }
 
@@ -309,7 +312,7 @@ inline void Beam::_transf_mat(LinAlg::Matrix<double> & T) const
 		     0.0, 0.0, 0.0,  -s,   c, 0.0,
 		     0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
 	}
-	else throw new Fatal("Beam::_transf_mat: Feature no available for nDim==%d",_ndim);
+	else throw new Fatal("Beam::_transf_mat: Feature not available for nDim==%d",_ndim);
 }
 
 
@@ -325,7 +328,7 @@ Element * BeamMaker()
 // Register a Beam element into ElementFactory array map
 int BeamRegister()
 {
-	ElementFactory[Beam::NAME] = BeamMaker;
+	ElementFactory["Beam"] = BeamMaker;
 	return 0;
 }
 

@@ -158,59 +158,48 @@ int main(int argc, char **argv) try
 	sx(7) = sx1(3);                 sy(7) = sy1(3);                 sxy(7) = sxy1(3);
 	sx(8) = sx1(5);                 sy(8) = sy1(5);                 sxy(8) = sxy1(5);                 
 
-	err_sig.Push( fabs(sx(0) - ( 1.1241E-2)) );
-	err_sig.Push( fabs(sx(1) - (-3.3784E-1)) );
-	err_sig.Push( fabs(sx(2) - ( 8.1807E-2)) );
-	err_sig.Push( fabs(sx(3) - (-9.0341E-2)) );
-	err_sig.Push( fabs(sx(4) - (-1.2802E-1)) );
-	err_sig.Push( fabs(sx(5) - ( 8.5346E-3)) );
-	err_sig.Push( fabs(sx(6) - ( 5.0083E-1)) );
-	err_sig.Push( fabs(sx(7) - ( 3.2931E-1)) );
-	err_sig.Push( fabs(sx(8) - ( 8.5345E-3)) );
+	err_sig.Push( fabs(sx(0) - (-1.1241E-2)) );
+	err_sig.Push( fabs(sx(1) - ( 3.3784E-1)) );
+	err_sig.Push( fabs(sx(2) - (-8.1807E-2)) );
+	err_sig.Push( fabs(sx(3) - ( 9.0341E-2)) );
+	err_sig.Push( fabs(sx(4) - ( 1.2802E-1)) );
+	err_sig.Push( fabs(sx(5) - (-8.5346E-3)) );
+	err_sig.Push( fabs(sx(6) - (-5.0083E-1)) );
+	err_sig.Push( fabs(sx(7) - (-3.2931E-1)) );
+	err_sig.Push( fabs(sx(8) - (-8.5345E-3)) );
 
-	err_sig.Push( fabs(sy(0) - (  8.5054E-1 )) );
-	err_sig.Push( fabs(sy(1) - ( -4.8378)) );
-	err_sig.Push( fabs(sy(2) - (  1.1622)) );
-	err_sig.Push( fabs(sy(3) - ( -1.8464)) );
-	err_sig.Push( fabs(sy(4) - ( -1.8378)) );
-	err_sig.Push( fabs(sy(5) - (  6.8422E-1)) );
-	err_sig.Push( fabs(sy(6) - ( -5.4992)) );
-	err_sig.Push( fabs(sy(7) - ( -1.8464)) );
-	err_sig.Push( fabs(sy(8) - ( -5.3158)) );
+	err_sig.Push( fabs(sy(0) - ( -8.5054E-1 )) );
+	err_sig.Push( fabs(sy(1) - (  4.8378)) );
+	err_sig.Push( fabs(sy(2) - ( -1.1622)) );
+	err_sig.Push( fabs(sy(3) - (  1.8464)) );
+	err_sig.Push( fabs(sy(4) - (  1.8378)) );
+	err_sig.Push( fabs(sy(5) - ( -6.8422E-1)) );
+	err_sig.Push( fabs(sy(6) - (  5.4992)) );
+	err_sig.Push( fabs(sy(7) - (  1.8464)) );
+	err_sig.Push( fabs(sy(8) - (  5.3158)) );
 
-	err_sig.Push( fabs(sxy(0) - ( -1.1241E-2 )) );
-	err_sig.Push( fabs(sxy(1) - ( -8.1807E-2)) );
-	err_sig.Push( fabs(sxy(2) - (  3.3784E-1)) );
-	err_sig.Push( fabs(sxy(3) - (  8.5345E-3)) );
-	err_sig.Push( fabs(sxy(4) - (  1.2802E-1)) );
-	err_sig.Push( fabs(sxy(5) - (  7.3272E-2)) );
-	err_sig.Push( fabs(sxy(6) - ( -5.0083E-1)) );
-	err_sig.Push( fabs(sxy(7) - (  8.5346E-3)) );
-	err_sig.Push( fabs(sxy(8) - ( -3.4638E-1)) );
+	err_sig.Push( fabs(sxy(0) - (  1.1241E-2 )) );
+	err_sig.Push( fabs(sxy(1) - (  8.1807E-2)) );
+	err_sig.Push( fabs(sxy(2) - ( -3.3784E-1)) );
+	err_sig.Push( fabs(sxy(3) - ( -8.5345E-3)) );
+	err_sig.Push( fabs(sxy(4) - ( -1.2802E-1)) );
+	err_sig.Push( fabs(sxy(5) - ( -7.3272E-2)) );
+	err_sig.Push( fabs(sxy(6) - (  5.0083E-1)) );
+	err_sig.Push( fabs(sxy(7) - ( -8.5346E-3)) );
+	err_sig.Push( fabs(sxy(8) - (  3.4638E-1)) );
 
 
 	// Error summary
-	//double tol_eps     = 1.0e-16;
-	double tol_sig     = 1.0e-14;
-	//double tol_dis     = 1.0e-16;
-	//double min_err_eps = err_eps[err_eps.Min()];
+	double tol_sig     = 1.0e-4;
 	double min_err_sig = err_sig[err_sig.Min()];
-	//double min_err_dis = err_dis[err_dis.Min()];
-	//double max_err_eps = err_eps[err_eps.Max()];
 	double max_err_sig = err_sig[err_sig.Max()];
-	//double max_err_dis = err_dis[err_dis.Max()];
 	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
-	//cout << _4<< "Eps" << _8s<<min_err_eps << _8s<<err_eps.Mean() << (max_err_eps>tol_eps?"[1;31m":"[1;32m") << _8s<<max_err_eps << "[0m" << _8s<<err_eps.Norm() << endl;
 	cout << _4<< "Sig" << _8s<<min_err_sig << _8s<<err_sig.Mean() << (max_err_sig>tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig << "[0m" << _8s<<err_sig.Norm() << endl;
-	//cout << _4<< "Dis" << _8s<<min_err_dis << _8s<<err_dis.Mean() << (max_err_dis>tol_dis?"[1;31m":"[1;32m") << _8s<<max_err_dis << "[0m" << _8s<<err_dis.Norm() << endl;
 	cout << endl;
 
 	// Return error flag
-	//if (max_err_eps>tol_eps || max_err_sig>tol_sig || max_err_dis>tol_dis) return 1;
 	if (max_err_sig>tol_sig) return 1;
 	else return 0;
-
-
 }
 catch (Exception * e) 
 {

@@ -61,19 +61,19 @@ public:
 	virtual ~DiffusionElem() {}
 
 	// Derived methods
-	bool         CheckModel      () const;
-	bool         IsEssential     (char const * DOFName) const;
-	void         SetModel        (char const * ModelName, char const * Prms, char const * Inis);
-	void         SetProps        (Array<double> const & P);
-	Element    * Connect         (int iNodeLocal, FEM::Node * ptNode);
-	void         UpdateState     (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	bool         HasVolForces    () const { return _has_source; }
-	void         AddVolForces    (LinAlg::Vector<double> & dFext) const;
-	void         BackupState     ();
-	void         RestoreState    ();
-	void         GetLabels       (Array<String> & Labels) const;
-	void         Deactivate      ();
-	char const * ModelName       () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
+	bool         CheckModel   () const;
+	bool         IsEssential  (char const * DOFName) const;
+	void         SetModel     (char const * ModelName, char const * Prms, char const * Inis);
+	void         SetProps     (Array<double> const & P);
+	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
+	void         UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	bool         HasVolForces () const { return _has_source; }
+	void         AddVolForces (LinAlg::Vector<double> & dFext) const;
+	void         BackupState  ();
+	void         RestoreState ();
+	void         GetLabels    (Array<String> & Labels) const;
+	void         Deactivate   ();
+	char const * ModelName    () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder1Matrices () const { return 1; }
@@ -112,8 +112,8 @@ private:
 
 inline bool DiffusionElem::CheckModel() const
 {
-	if (_a_model.Size()!=_a_int_pts.Size()) return false;
-	for (size_t i=0; i<_a_int_pts.Size(); ++i) if (_a_model[i]==NULL) return false;
+	if (_a_model.Size()!=_n_int_pts) return false;
+	for (size_t i=0; i<_n_int_pts; ++i) if (_a_model[i]==NULL) return false;
 	return true;
 }
 
@@ -132,11 +132,8 @@ inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, c
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
 	{
-		// Resize the array of model pointers
-		_a_model.Resize(_a_int_pts.Size());
-
-		// Loop along integration points
-		for (size_t i=0; i<_a_int_pts.Size(); ++i)
+		_a_model.Resize(_n_int_pts);
+		for (size_t i=0; i<_n_int_pts; ++i)
 		{
 			// Allocate a new model and set parameters
 			_a_model[i] = static_cast<DiffusionModel*>(AllocModel(ModelName));
@@ -144,8 +141,6 @@ inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, c
 			_a_model[i]->SetPrms (Prms);
 			_a_model[i]->SetInis (Inis);
 		}
-
-		// Calculate initial internal forces
 		_calc_initial_internal_state();
 	}
 	else throw new Fatal("DiffusionElem::SetModel: Feature not implemented.");
@@ -163,6 +158,10 @@ inline void DiffusionElem::SetProps(Array<double> const & P)
 
 inline Element * DiffusionElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 {
+	// Check
+	if (_n_nodes<1)         throw new Fatal("DiffusionElem::Connect: __Internal Error__: There is a problem with the number of nodes: maybe derived elemet did not set _n_nodes");
+	if (_connects.Size()<1) throw new Fatal("DiffusionElem::Connect: __Internal Error__: There is a problem with connectivity array: maybe derived elemet did not allocate _connect");
+
 	// Connects
 	_connects[iNodeLocal] = ptNode;
 
@@ -196,7 +195,7 @@ inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> co
 	LinAlg::Vector<double> dvel;    // delta velocity
 
 	// Loop along integration points
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -208,14 +207,9 @@ inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> co
 		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
 		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
 
-		// Calculate gradient
-		dgra = B*du;
-		
-		// Update model
-		_a_model[i]->StateUpdate(dgra, dvel);
-
-		// Calculate internal flow vector
-		dq += -trn(B)*dvel*det(J)*w;
+		dgra = B*du;                          // Calculate gradient
+		_a_model[i]->StateUpdate(dgra, dvel); // Update model
+		dq += -trn(B)*dvel*det(J)*w;          // Calculate internal flow vector
 	}
 
 	// Return internal flow
@@ -237,7 +231,7 @@ inline void DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 		LinAlg::Matrix<double> J;
 
 		// Loop along integration points
-		for (size_t i=0; i<_a_int_pts.Size(); ++i)
+		for (size_t i=0; i<_n_int_pts; ++i)
 		{
 			// Temporary Integration Points
 			double r = _a_int_pts[i].r;
@@ -263,14 +257,12 @@ inline void DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 
 inline void DiffusionElem::BackupState()
 {
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
-		_a_model[i]->BackupState();
+	for (size_t i=0; i<_n_int_pts; ++i) _a_model[i]->BackupState();
 }
 
 inline void DiffusionElem::RestoreState()
 {
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
-		_a_model[i]->RestoreState();
+	for (size_t i=0; i<_n_int_pts; ++i) _a_model[i]->RestoreState();
 }
 
 inline void DiffusionElem::GetLabels(Array<String> & Labels) const
@@ -310,33 +302,28 @@ inline void DiffusionElem::GetLabels(Array<String> & Labels) const
 
 inline void DiffusionElem::CalcDepVars() const
 {
-	// Get integration point values
-	if (_a_model.Size()==_a_int_pts.Size())
-		for (size_t i=0; i<_a_int_pts.Size(); i++)
-			_a_model[i]->CalcDepVars();
+	if (_a_model.Size()==_n_int_pts) for (size_t i=0; i<_n_int_pts; i++) _a_model[i]->CalcDepVars();
 	else throw new Fatal("DiffusionElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 }
 
 inline double DiffusionElem::Val(int iNodeLocal, char const * Name) const
 {
 	// Essential
-	if (strcmp(Name,"u")==0)
-		return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
+	if (strcmp(Name,"u")==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Natural
-	else if (strcmp(Name,"q")==0)
-		return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
+	else if (strcmp(Name,"q")==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	// Velocities, internal values, etc.
 	else
 	{
 		// Vectors for extrapolation
-		LinAlg::Vector<double>    ip_values (_a_int_pts.Size());
+		LinAlg::Vector<double>    ip_values (_n_int_pts);
 		LinAlg::Vector<double> nodal_values (_n_nodes);
 
 		// Get integration point values
-		if (_a_model.Size()==_a_int_pts.Size())
-			for (size_t i=0; i<_a_int_pts.Size(); i++)
+		if (_a_model.Size()==_n_int_pts)
+			for (size_t i=0; i<_n_int_pts; i++)
 				ip_values(i) = _a_model[i]->Val(Name);
 		else throw new Fatal("DiffusionElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
@@ -352,11 +339,11 @@ inline double DiffusionElem::Val(char const * Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
-	for (size_t i=0; i<_a_int_pts.Size(); i++)
+	for (size_t i=0; i<_n_int_pts; i++)
 		sum += _a_model[i]->Val(Name);
 
 	// Output single value at CG
-	return sum/_a_int_pts.Size();
+	return sum/_n_int_pts;
 }
 
 inline void DiffusionElem::Deactivate()
@@ -408,7 +395,7 @@ inline void DiffusionElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & K
 	LinAlg::Matrix<double> D;      // Conductivity matrix
 
 	// Loop along integration points
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -420,11 +407,8 @@ inline void DiffusionElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & K
 		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
 		B_Matrix (derivs,J, B);   // Calculate B matrix for i Integration Point
 
-		// Conductivity
-		_a_model[i]->TgConductivity(D); 
-
-		// Calculate Tangent Conductivity
-		Ke += trn(B)*D*B*det(J)*w;
+		_a_model[i]->TgConductivity(D); // Conductivity
+		Ke += trn(B)*D*B*det(J)*w;      // Calculate Tangent Conductivity
 	}
 }
 	
@@ -452,7 +436,7 @@ inline void DiffusionElem::_calc_initial_internal_state()
 	LinAlg::Vector<double> vel;     // velocity
 
 	// Loop along integration points
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -465,10 +449,7 @@ inline void DiffusionElem::_calc_initial_internal_state()
 		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
 
 		_a_model[i]->Vel(vel);
-
-		// Calculate internal flow vector
-		q += -trn(B)*vel*det(J)*w;
-
+		q += -trn(B)*vel*det(J)*w; // Calculate internal flow vector
 	}
 
 	// Update nodal Natural values

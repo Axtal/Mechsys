@@ -57,7 +57,7 @@ int main(int argc, char **argv) try
 	// Constants
 	double E       = 207.0; // Young
 	double nu      = 0.3;   // Poisson
-	double q       = 1.0;   // Load
+	double q       = -1.0;  // Load
 	double maxarea = 0.015; // max area of triangles
 	bool   is_o2   = false; // use high order elements?
 	String linsol("UM");    // UMFPACK
@@ -105,7 +105,7 @@ int main(int argc, char **argv) try
 	// Edges brys
 	FEM::EBrys_T ebrys;
 	ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
-	ebrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
+	ebrys.Push (make_tuple(-20, "fy",   q)); // tag, key, val
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -148,7 +148,7 @@ int main(int argc, char **argv) try
 	double Sz  = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
 	double Sxy = 0.0;
 
-	// Stress and epss
+	// Stress and strain
 	for (size_t i=0; i<g.NElems(); ++i)
 	{
 		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
@@ -167,8 +167,8 @@ int main(int argc, char **argv) try
 	// Displacements
 	for (size_t i=0; i<g.NNodes(); ++i)
 	{
-		double ux_correct = -Ex*(g.Nod(i)->X()-0.5);
-		double uy_correct = -Ey* g.Nod(i)->Y();
+		double ux_correct = Ex*(g.Nod(i)->X()-0.5);
+		double uy_correct = Ey* g.Nod(i)->Y();
 		err_dis.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
 		err_dis.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
 	}
