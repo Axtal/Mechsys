@@ -74,10 +74,11 @@ public:
              @-----@-----@             +----(2)----+
             0      4      1                  y-
 */
-Quad8::FaceMap Quad8::Face2Node[]= {{ 0, 3, 7 },
+Quad8::FaceMap Quad8::Face2Node[]= {{ 3, 0, 7 },
                                     { 1, 2, 5 },
                                     { 0, 1, 4 },
-                                    { 2, 3, 6 }};
+                                    { 2, 3, 6 }}; // order of nodes is important
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -106,21 +107,21 @@ inline void Quad8::SetIntPoints(int NumGaussPoints1D)
 	else throw new Fatal("Quad8::SetIntPoints: Error in number of integration points.");
 
 	_n_int_pts      = pow(NumGaussPoints1D, 2);
-	_a_face_int_pts = LIN_IP3;
-	_n_face_int_pts = 3;
+	_a_face_int_pts = LIN_IP2;
+	_n_face_int_pts = 2;
 }
 
 inline void Quad8::LocalCoords(LinAlg::Matrix<double> & coords) const 
 {
-	coords.Resize(8,4);
-	coords = -1.0, -1.0, 0.0, 1.0,
-	         +1.0, -1.0, 0.0, 1.0,
-	         +1.0, +1.0, 0.0, 1.0,
-	         -1.0, +1.0, 0.0, 1.0,
-	          0.0, -1.0, 0.0, 1.0,
-	         +1.0,  0.0, 0.0, 1.0,
-	          0.0, +1.0, 0.0, 1.0,
-	         -1.0, +0.0, 0.0, 1.0;
+	coords.Resize(8,3);
+	coords = -1.0, -1.0, 1.0,   
+	         +1.0, -1.0, 1.0,   
+	         +1.0, +1.0, 1.0,   
+	         -1.0, +1.0, 1.0,   
+	          0.0, -1.0, 1.0,   
+	         +1.0,  0.0, 1.0,   
+	          0.0, +1.0, 1.0,   
+	         -1.0, +0.0, 1.0;   
 }
 
 inline void Quad8::VTKConnect(String & Nodes) const

@@ -75,7 +75,7 @@ public:
 */
 Tri6::FaceMap Tri6::Face2Node[]= {{ 0, 1, 3 },
                                   { 1, 2, 4 },
-                                  { 0, 2, 5 }};
+                                  { 2, 0, 5 }}; // order of nodes is important
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -118,13 +118,13 @@ inline void Tri6::SetIntPoints(int NumGaussPointsTotal)
 
 inline void Tri6::LocalCoords(LinAlg::Matrix<double> & coords) const
 {
-	coords.Resize(6,4);
-	coords =  0.0,  0.0, 0.0, 1.0,
-	          1.0,  0.0, 0.0, 1.0,
-	          0.0,  1.0, 0.0, 1.0,
-	          0.5,  0.0, 0.0, 1.0,
-	          0.5,  0.5, 0.0, 1.0,
-	          0.0,  0.5, 0.0, 1.0;
+	coords.Resize(6,3);
+	coords =  0.0,  0.0, 1.0,
+	          1.0,  0.0, 1.0,
+	          0.0,  1.0, 1.0,
+	          0.5,  0.0, 1.0,
+	          0.5,  0.5, 1.0,
+	          0.0,  0.5, 1.0;
 }
 
 inline void Tri6::VTKConnect(String & Nodes) const

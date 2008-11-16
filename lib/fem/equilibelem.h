@@ -113,6 +113,7 @@ protected:
 
 private:
 	void _equations_map(Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
+	void _dist_to_face_nodes(char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const;
 
 }; // class EquilibElem
 
@@ -563,6 +564,60 @@ inline void EquilibElem::_equations_map(Array<size_t> & RowsMap, Array<size_t> &
 	}
 	ColsMap        = RowsMap;
 	ColsEssenPresc = RowsEssenPresc;
+}
+
+inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const
+{
+	// Compute face nodal values (integration along the face)
+
+	// Conventional face boundary condition
+	if (strcmp(Key,"Q")!=0)
+	{
+		Element::_dist_to_face_nodes(Key, FaceValue, FaceConnects);
+		return;
+	}
+
+	// Normal traction boundary condition
+	LinAlg::Matrix<double> values;  values.Resize(_n_face_nodes, _ndim);  values.SetValues(0.0);
+	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
+	LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
+	LinAlg::Matrix<double> F;                         // Shape function matrix
+	LinAlg::Vector<double> P;                         // Vector perpendicular to the face 
+	for (size_t i=0; i<_n_face_int_pts; i++)
+	{
+		double r = _a_face_int_pts[i].r;
+		double s = _a_face_int_pts[i].s;
+		double w = _a_face_int_pts[i].w;
+		FaceShape    (r, s, face_shape);
+		F = trn(trn(face_shape)); // trick just to convert Vector face_shape to a col Matrix
+		// perpendicular vector
+		if (_ndim==3)
+		{
+			FaceJacobian (FaceConnects, r, s, J);
+			LinAlg::Vector<double> V; V = J(0,0), J(0,1), J(0,2);
+			LinAlg::Vector<double> W; W = J(1,0), J(1,1), J(1,2);
+			P.Resize(3);
+			P = V(1)*W(2) - V(2)*W(1),      // vectorial product
+			    V(2)*W(0) - V(0)*W(2),
+			    V(0)*W(1) - V(1)*W(0);
+		}
+		else
+		{
+			FaceJacobian (FaceConnects, r, J);
+			P.Resize(2);
+			P = J(0,1), -J(0,0);  
+		}
+		values += FaceValue*F*trn(P)*w;
+	}
+
+	// Set nodes Brys
+	for (size_t i=0; i<_n_face_nodes; ++i)
+	{
+		FaceConnects[i]->Bry("fx",values(i,0));
+		FaceConnects[i]->Bry("fy",values(i,1));
+		if (_ndim==3)
+		FaceConnects[i]->Bry("fz",values(i,2));
+	}
 }
 
 }; // namespace FEM

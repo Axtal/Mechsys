@@ -73,10 +73,10 @@ public:
              @-----------@             +----(2)----+
             0             1                  y-
 */
-Quad4::FaceMap Quad4::Face2Node[]= {{ 0, 3 },
+Quad4::FaceMap Quad4::Face2Node[]= {{ 3, 0 },
                                     { 1, 2 },
                                     { 0, 1 },
-                                    { 2, 3 }};
+                                    { 2, 3 }}; // order of nodes is important
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -112,11 +112,11 @@ inline void Quad4::SetIntPoints(int NumGaussPoints1D)
 
 inline void Quad4::LocalCoords(LinAlg::Matrix<double> & coords) const 
 {
-	coords.Resize(4,4);
-	coords = -1.0, -1.0, 0.0, 1.0,
-	         +1.0, -1.0, 0.0, 1.0,
-	         +1.0, +1.0, 0.0, 1.0,
-	         -1.0, +1.0, 0.0, 1.0;
+	coords.Resize(4,3);
+	coords = -1.0, -1.0, 1.0,
+	          1.0, -1.0, 1.0,
+	          1.0,  1.0, 1.0,
+	         -1.0,  1.0, 1.0;
 }
 
 inline void Quad4::VTKConnect(String & Nodes) const

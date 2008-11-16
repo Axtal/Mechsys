@@ -143,9 +143,7 @@ protected:
 	
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual void _set_ndim(int nDim) =0;
-
-private:
-	void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
+	virtual void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
 
 }; // class Element
 
@@ -410,8 +408,8 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 	*/
 	LinAlg::Matrix<double> N(m, n);
 	LinAlg::Vector<double> shape(n);
-	LinAlg::Matrix<double> IP_coord(m, 4);   // IP coordinates matrix (local)
-	LinAlg::Matrix<double> node_coord(n, 4); // nodal coordinates matrix (local)
+	LinAlg::Matrix<double> IP_coord(m, _ndim+1);   // IP coordinates matrix (local)
+	LinAlg::Matrix<double> node_coord;             // nodal coordinates matrix (local)
 
 	// Mount N and IP_coord matrices
 	for (size_t i=0; i<m; i++)
@@ -423,8 +421,13 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 		for (size_t j=0; j<n; j++) N(i,j) = shape(j);
 		IP_coord(i, 0) = r;
 		IP_coord(i, 1) = s;
-		IP_coord(i, 2) = t;
-		IP_coord(i, 3) = 1.0;
+		if (_ndim==2)
+			IP_coord(i, 2) = 1.0;
+		else
+		{
+			IP_coord(i, 2) = t;
+			IP_coord(i, 3) = 1.0;
+		}
 	}
 
 	// Mount node_coord matrix

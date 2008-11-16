@@ -74,7 +74,7 @@ public:
 */
 Tri3::FaceMap Tri3::Face2Node[]= {{ 0, 1 },
                                   { 1, 2 },
-                                  { 0, 2 }};
+                                  { 2, 0 }}; // order of nodes is important
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -111,10 +111,10 @@ inline void Tri3::SetIntPoints(int NumGaussPointsTotal)
 
 inline void Tri3::LocalCoords(LinAlg::Matrix<double> & coords) const 
 {
-	coords.Resize(3,4);
-	coords = 0.0, 0.0, 0.0, 1.0,
-	         1.0, 0.0, 0.0, 1.0,
-	         0.0, 1.0, 0.0, 1.0;
+	coords.Resize(3,3);
+	coords = 0.0, 0.0, 1.0,
+	         1.0, 0.0, 1.0,
+	         0.0, 1.0, 1.0;
 }
 
 inline void Tri3::VTKConnect(String & Nodes) const
