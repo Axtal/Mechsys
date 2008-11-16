@@ -56,7 +56,7 @@ public:
 	void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
 	void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
 	void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-
+	void LocalCoords  (LinAlg::Matrix<double> & coords) const;
 }; // class Quad4
 
 
@@ -98,23 +98,25 @@ inline Quad4::Quad4()
 
 inline void Quad4::SetIntPoints(int NumGaussPoints1D)
 {
-	// Set IPs
-	FEM::SetGaussIP (/*NDim*/2, NumGaussPoints1D, _a_int_pts);
-	FEM::SetGaussIP (/*NDim*/1, NumGaussPoints1D, _a_face_int_pts);
+	// Setup pointer to the array of Integration Points
+	if      (NumGaussPoints1D==2) _a_int_pts = QUAD_IP2;
+	else if (NumGaussPoints1D==3) _a_int_pts = QUAD_IP3;
+	else if (NumGaussPoints1D==4) _a_int_pts = QUAD_IP4;
+	else if (NumGaussPoints1D==5) _a_int_pts = QUAD_IP5;
+	else throw new Fatal("Quad4::SetIntPoints: Error in number of integration points.");
 
-	// Evaluation matrix [E] (see pag. 629 of Burnett, D. S. (1988). Finite Element Analysis: From Concepts to Applications. Addison-Wesley. 844p.)
-	// [nodalvalues]T = [E] * [c0,c1,c2]T
-	//  nodalvalue_i  = c0 + c1*r_i + c2*s_i
-	// (i:node number)
-	LinAlg::Matrix<double> eval_mat;
-	eval_mat.Resize(_n_nodes, 3);
-	eval_mat = 1.0, -1.0, -1.0,
-	           1.0,  1.0, -1.0,
-	           1.0,  1.0,  1.0,
-	           1.0, -1.0,  1.0;
+	_n_int_pts      = pow(NumGaussPoints1D, 2);
+	_a_face_int_pts = LIN_IP2;
+	_n_face_int_pts = 2;
+}
 
-	// Set extrapolation matrix
-	FEM::SetExtrapMatrix (/*NDim*/2, _a_int_pts, eval_mat, _extrap_mat);
+inline void Quad4::LocalCoords(LinAlg::Matrix<double> & coords) const 
+{
+	coords.Resize(4,4);
+	coords = -1.0, -1.0, 0.0, 1.0,
+	         +1.0, -1.0, 0.0, 1.0,
+	         +1.0, +1.0, 0.0, 1.0,
+	         -1.0, +1.0, 0.0, 1.0;
 }
 
 inline void Quad4::VTKConnect(String & Nodes) const

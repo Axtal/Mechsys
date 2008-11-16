@@ -58,6 +58,7 @@ public:
 	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
 	void   FaceDerivs    (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
 	double BoundDistance (double r, double s, double t) const;
+	void   LocalCoords   (LinAlg::Matrix<double> & coords) const;
 
 }; // class Hex8
 
@@ -95,12 +96,12 @@ Hex8::FaceMap Hex8::Face2Node[]= {{ 0, 3, 7, 4 },
 inline Hex8::Hex8()
 {
 	// Setup nodes number
-	_n_nodes      = 8;
-	_n_face_nodes = 4;
+	_n_nodes        = 8;
+	_n_face_nodes   = 4;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize    (_n_nodes);
-	_connects.SetValues (NULL);
+	_connects.Resize(_n_nodes);
+	_connects.SetValues(NULL);
 
 	// Integration Points and Extrapolation Matrix
 	SetIntPoints (/*NumGaussPoints1D*/2);
@@ -108,27 +109,29 @@ inline Hex8::Hex8()
 
 inline void Hex8::SetIntPoints(int NumGaussPoints1D)
 {
-	// Set IPs
-	FEM::SetGaussIP (/*NDim*/3, NumGaussPoints1D, _a_int_pts);
-	FEM::SetGaussIP (/*NDim*/2, NumGaussPoints1D, _a_face_int_pts);
+	// Setup pointer to the array of Integration Points
+	if      (NumGaussPoints1D==2) _a_int_pts = HEX_IP2;
+	else if (NumGaussPoints1D==3) _a_int_pts = HEX_IP3;
+	else if (NumGaussPoints1D==4) _a_int_pts = HEX_IP4;
+	else if (NumGaussPoints1D==5) _a_int_pts = HEX_IP5;
+	else throw new Fatal("Hex8::SetIntPoints: Error in number of integration points.");
 
-	// Evaluation matrix [E]
-	// [nodalvalues]T = [E] * [c0,c1,c2,c3]T
-	//  nodalvalue_i  = c0 + c1*r_i + c2*s_i + c3*t_i
-	// (i:node number)
-	LinAlg::Matrix<double> eval_mat;
-	eval_mat.Resize(_n_nodes, 4);
-	eval_mat = 1.0, -1.0, -1.0, -1.0,
-	           1.0,  1.0, -1.0, -1.0,
-	           1.0,  1.0,  1.0, -1.0,
-	           1.0, -1.0,  1.0, -1.0,
-	           1.0, -1.0, -1.0,  1.0,
-	           1.0,  1.0, -1.0,  1.0,
-	           1.0,  1.0,  1.0,  1.0,
-	           1.0, -1.0,  1.0,  1.0;
+	_n_int_pts      = pow(NumGaussPoints1D, 3);
+	_a_face_int_pts = QUAD_IP2;
+	_n_face_int_pts = 4;
+}
 
-	// Set extrapolation matrix
-	FEM::SetExtrapMatrix (/*NDim*/3, _a_int_pts, eval_mat, _extrap_mat);
+inline void Hex8::LocalCoords(LinAlg::Matrix<double> & coords) const 
+{
+	coords.Resize(8,4);
+	coords = -1.0, -1.0, -1.0, 1.0,
+	         +1.0, -1.0, -1.0, 1.0,
+	         +1.0, +1.0, -1.0, 1.0,
+	         -1.0, +1.0, -1.0, 1.0,
+	         -1.0, -1.0, +1.0, 1.0,
+	         +1.0, -1.0, +1.0, 1.0,
+	         +1.0, +1.0, +1.0, 1.0,
+	         -1.0, +1.0, +1.0, 1.0;
 }
 
 inline void Hex8::VTKConnect(String & Nodes) const

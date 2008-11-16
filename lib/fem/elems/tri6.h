@@ -56,21 +56,22 @@ public:
 	void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
 	void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
 	void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
+	void LocalCoords   (LinAlg::Matrix<double> & coords) const;
 
 }; // class Tri6
 
 /* Local IDs
-             Nodes                 Faces 
-                           
-   y           2                                                        
-   |           @                     @                                  
-   +--x       / \                   / \                                  
-           5 /   \ 4               /   \                                 
-            @     @             2 /     \ 1                              
-           /       \             /       \                               
-          /         \           /         \                              
-         @-----@-----@         @-----------@                             
-        0      3      1              0               
+             Nodes                 Faces
+
+   y           2
+   |           @                     @
+   +--x       / \                   / \
+           5 /   \ 4               /   \
+            @     @             2 /     \ 1
+           /       \             /       \
+          /         \           /         \
+         @-----@-----@         @-----------@
+        0      3      1              0
 */
 Tri6::FaceMap Tri6::Face2Node[]= {{ 0, 1, 3 },
                                   { 1, 2, 4 },
@@ -91,30 +92,39 @@ inline Tri6::Tri6()
 	_connects.SetValues (NULL);
 
 	// Integration Points and Extrapolation Matrix
-	SetIntPoints (/*NumGaussPointsTotal*/6);
+	SetIntPoints (/*NumGaussPointsTotal*/3);
 }
 
 inline void Tri6::SetIntPoints(int NumGaussPointsTotal)
 {
-	// Set IPs
-	FEM::SetGaussIPTriTet (/*NDim*/2, NumGaussPointsTotal,   _a_int_pts);
-	FEM::SetGaussIP       (/*NDim*/1, /*NumGaussPoints1D*/2, _a_face_int_pts);
+	// Setup pointer to the array of Integration Points
+	if (NumGaussPointsTotal==3)
+		_a_int_pts      = TRI_IP3;
+	else if (NumGaussPointsTotal==4)
+		_a_int_pts      = TRI_IP4;
+	else if (NumGaussPointsTotal==6)
+		_a_int_pts      = TRI_IP6;
+	else if (NumGaussPointsTotal==7)
+		_a_int_pts      = TRI_IP7;
+	else if (NumGaussPointsTotal==13)
+		_a_int_pts      = TRI_IP13;
+	else
+		throw new Fatal("Tri6::SetIntPoints: Error in number of integration points.");
 
-	// Evaluation matrix [E] (see pag. 606 of Burnett, D. S. (1988). Finite Element Analysis: From Concepts to Applications. Addison-Wesley. 844p.)
-	// [nodalvalues]T = [E] * [c0,c1,c2]T
-	//  nodalvalue_i  = c0 + c1*r_i + c2*s_i
-	// (i:node number)
-	LinAlg::Matrix<double> eval_mat;
-	eval_mat.Resize(_n_nodes, 3);
-	eval_mat = 1.0, 0.0, 0.0,
-	           1.0, 1.0, 0.0,
-	           1.0, 0.0, 1.0,
-	           1.0, 0.5, 0.0,
-	           1.0, 0.5, 0.5,
-	           1.0, 0.0, 0.5;
+	_n_int_pts      = NumGaussPointsTotal;
+	_a_face_int_pts = LIN_IP2;
+	_n_face_int_pts = 2;
+}
 
-	// Set extrapolation matrix
-	FEM::SetExtrapMatrix (/*NDim*/2, _a_int_pts, eval_mat, _extrap_mat);
+inline void Tri6::LocalCoords(LinAlg::Matrix<double> & coords) const
+{
+	coords.Resize(6,4);
+	coords =  0.0,  0.0, 0.0, 1.0,
+	          1.0,  0.0, 0.0, 1.0,
+	          0.0,  1.0, 0.0, 1.0,
+	          0.5,  0.0, 0.0, 1.0,
+	          0.5,  0.5, 0.0, 1.0,
+	          0.0,  0.5, 0.0, 1.0;
 }
 
 inline void Tri6::VTKConnect(String & Nodes) const
@@ -141,16 +151,16 @@ inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	/*    s
 	 *    ^
 	 *    |
-	 *  2 
+	 *  2
 	 *    @,(0,1)
 	 *    | ',
 	 *    |   ',
 	 *    |     ',
 	 *    |       ',   4
 	 *  5 @          @
-	 *    |           ', 
-	 *    |             ', 
-	 *    |               ', 
+	 *    |           ',
+	 *    |             ',
+	 *    |               ',
 	 *    |(0,0)            ', (1,0)
 	 *    @---------@---------@  --> r
 	 *  0           3          1
@@ -176,8 +186,8 @@ inline void Tri6::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	Derivs.Resize(2, /*NumNodes*/6);
 
     Derivs(0,0) = -3.0 + 4.0 * (r + s);       Derivs(1,0) = -3.0 + 4.0*(r + s);
-    Derivs(0,1) =  4.0 * r - 1.;              Derivs(1,1) =  0.0 ; 
-	Derivs(0,2) =  0.0;                       Derivs(1,2) =  4.0 * s - 1.0;   
+    Derivs(0,1) =  4.0 * r - 1.;              Derivs(1,1) =  0.0 ;
+	Derivs(0,2) =  0.0;                       Derivs(1,2) =  4.0 * s - 1.0;
     Derivs(0,3) =  4.0 - 8.0 * r - 4.0 * s;   Derivs(1,3) = -4.0 * r;
     Derivs(0,4) =  4.0 * s;                   Derivs(1,4) =  4.0 * r;
     Derivs(0,5) = -4.0 * s;                   Derivs(1,5) =  4.0 - 4.0 * r - 8.0*s;

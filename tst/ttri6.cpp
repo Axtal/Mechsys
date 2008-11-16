@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/*       F1        F2        F3    F1=F2=F3 = 1.0
+/*       F1        F2        F3    F1= 0.0 F2=F3 = 1.0
           ^         ^         ^
           |         |         |
 
@@ -48,6 +48,8 @@
 #include "fem/solvers/autome.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
+
+#include "fem/output.h"
 
 using std::cout;
 using std::endl;
@@ -89,19 +91,20 @@ int main(int argc, char **argv) try
 			->Connect(2, g.Nod(2))
 			->Connect(3, g.Nod(3))
 			->Connect(4, g.Nod(4))
-			->Connect(5, g.Nod(5));
+			->Connect(5, g.Nod(5))->SetIntPoints(3);
+	
 	g.Ele(1)->Connect(0, g.Nod(6))
 	        ->Connect(1, g.Nod(2))
 	        ->Connect(2, g.Nod(1))
 	        ->Connect(3, g.Nod(7))
 	        ->Connect(4, g.Nod(4))
-	        ->Connect(5, g.Nod(8));
+	        ->Connect(5, g.Nod(8))->SetIntPoints(3);
 
 	// Boundary conditions (must be after connectivity)
 	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
 	g.Nod(1)->Bry("uy",0.0);
 	g.Nod(3)->Bry("uy",0.0);
-	g.Nod(2)->Bry("fy",1.0);
+	g.Nod(2)->Bry("fy",0.0);
 	g.Nod(7)->Bry("fy",1.0);
 	g.Nod(6)->Bry("fy",1.0);
 
@@ -114,6 +117,9 @@ int main(int argc, char **argv) try
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
 
+	Output out;
+	out.VTU(&g, "out.vtu");
+
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Check
@@ -121,51 +127,67 @@ int main(int argc, char **argv) try
     Array<double> err_sig;
     Array<double> err_dis;
 
-	// Element 0
-	err_sig.Push( fabs(g.Ele(0)->Val(0, "Sx") - ( 1.56432140e-01)) );
-	/*
-	err_sig.Push( fabs(g.Ele(0)->Val(1, "Sx") - (-3.00686928e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(2, "Sx") - ( 1.44254788e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(3, "Sx") - (-3.19109076e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(4, "Sx") - (-3.31286428e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(5, "Sx") - ( 1.25832639e-01)) );
+	Vector<double> sx0 (6);
+	Vector<double> sy0 (6);
+	Vector<double> sxy0(6);
+	Vector<double> sx1 (6);
+	Vector<double> sy1 (6);
+	Vector<double> sxy1(6);
 
-	err_sig.Push( fabs(g.Ele(0)->Val(0, "Sy") - (-2.05141549e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(1, "Sy") - ( 1.15872190e+00)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(2, "Sy") - (-9.53580350e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(3, "Sy") - (-2.22127394e+00)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(4, "Sy") - (-2.96971274e+00)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(5, "Sy") - (-4.33357619e+00)) );
+	for (int i=0; i<6; i++)
+	{
+		sx0 (i) = g.Ele(0)->Val(i, "Sx" );
+		sy0 (i) = g.Ele(0)->Val(i, "Sy" );
+		sxy0(i) = g.Ele(0)->Val(i, "Sxy");
+		sx1 (i) = g.Ele(1)->Val(i, "Sx" );
+		sy1 (i) = g.Ele(1)->Val(i, "Sy" );
+		sxy1(i) = g.Ele(1)->Val(i, "Sxy");
+	}
 
-	err_sig.Push( fabs(g.Ele(0)->Val(0, "Sxy") - (-1.56432140e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(1, "Sxy") - (-6.74437968e-02)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(2, "Sxy") - ( 2.23875937e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(3, "Sxy") - (-4.90216486e-02)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(4, "Sxy") - ( 3.31286428e-01)) );
-	err_sig.Push( fabs(g.Ele(0)->Val(5, "Sxy") - ( 2.42298085e-01)) );
+	Vector<double> sx (9);
+	Vector<double> sy (9);
+	Vector<double> sxy(9);
 
-	// Element 1
-	err_sig.Push( fabs(g.Ele(1)->Val(0, "Sx")  - ( 9.95732723e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(1, "Sx")  - ( 2.23875937e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(2, "Sx")  - (-1.21960866e+00)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(3, "Sx")  - ( 1.39446295e+00)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(4, "Sx")  - (-8.20878435e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(5, "Sx")  - (-4.90216486e-02)) );
+	sx(0) = sx0(0);                 sy(0) = sy0(0);                 sxy(0) = sxy0(0);                 
+	sx(1) = (sx0(1) + sx1(2))*0.5;  sy(1) = (sy0(1) + sy1(2))*0.5;  sxy(1) = (sxy0(1) + sxy1(2))*0.5;
+	sx(2) = (sx0(2) + sx1(1))*0.5;  sy(2) = (sy0(2) + sy1(1))*0.5;  sxy(2) = (sxy0(2) + sxy1(1))*0.5;
+	sx(3) = sx0(3);                 sy(3) = sy0(3);                 sxy(3) = sxy0(3);
+	sx(4) = (sx0(4) + sx1(4))*0.5;  sy(4) = (sy0(4) + sy1(4))*0.5;  sxy(4) = (sxy0(4) + sxy1(4))*0.5;
+	sx(5) = sx0(5);                 sy(5) = sy0(5);                 sxy(5) = sxy0(5);
+	sx(6) = sx1(0);                 sy(6) = sy1(0);                 sxy(6) = sxy1(0);
+	sx(7) = sx1(3);                 sy(7) = sy1(3);                 sxy(7) = sxy1(3);
+	sx(8) = sx1(5);                 sy(8) = sy1(5);                 sxy(8) = sxy1(5);                 
 
-	err_sig.Push( fabs(g.Ele(1)->Val(0, "Sy")  - (-1.25426728e+00)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(1, "Sy")  - ( 1.68328476e+00)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(2, "Sy")  - (-4.29017485e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(3, "Sy")  - (-2.39612823e+00)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(4, "Sy")  - (-1.57087843e+00)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(5, "Sy")  - (-4.50843047e+00)) );
+	err_sig.Push( fabs(sx(0) - ( 1.1241E-2)) );
+	err_sig.Push( fabs(sx(1) - (-3.3784E-1)) );
+	err_sig.Push( fabs(sx(2) - ( 8.1807E-2)) );
+	err_sig.Push( fabs(sx(3) - (-9.0341E-2)) );
+	err_sig.Push( fabs(sx(4) - (-1.2802E-1)) );
+	err_sig.Push( fabs(sx(5) - ( 8.5346E-3)) );
+	err_sig.Push( fabs(sx(6) - ( 5.0083E-1)) );
+	err_sig.Push( fabs(sx(7) - ( 3.2931E-1)) );
+	err_sig.Push( fabs(sx(8) - ( 8.5345E-3)) );
 
-	err_sig.Push( fabs(g.Ele(1)->Val(0, "Sxy") - (-9.95732723e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(1, "Sxy") - ( 1.29641965e+00)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(2, "Sxy") - (-3.00686928e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(3, "Sxy") - ( 1.25832639e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(4, "Sxy") - ( 8.20878435e-01)) );
-	err_sig.Push( fabs(g.Ele(1)->Val(5, "Sxy") - (-1.47127394e+00)) );
-	*/
+	err_sig.Push( fabs(sy(0) - (  8.5054E-1 )) );
+	err_sig.Push( fabs(sy(1) - ( -4.8378)) );
+	err_sig.Push( fabs(sy(2) - (  1.1622)) );
+	err_sig.Push( fabs(sy(3) - ( -1.8464)) );
+	err_sig.Push( fabs(sy(4) - ( -1.8378)) );
+	err_sig.Push( fabs(sy(5) - (  6.8422E-1)) );
+	err_sig.Push( fabs(sy(6) - ( -5.4992)) );
+	err_sig.Push( fabs(sy(7) - ( -1.8464)) );
+	err_sig.Push( fabs(sy(8) - ( -5.3158)) );
+
+	err_sig.Push( fabs(sxy(0) - ( -1.1241E-2 )) );
+	err_sig.Push( fabs(sxy(1) - ( -8.1807E-2)) );
+	err_sig.Push( fabs(sxy(2) - (  3.3784E-1)) );
+	err_sig.Push( fabs(sxy(3) - (  8.5345E-3)) );
+	err_sig.Push( fabs(sxy(4) - (  1.2802E-1)) );
+	err_sig.Push( fabs(sxy(5) - (  7.3272E-2)) );
+	err_sig.Push( fabs(sxy(6) - ( -5.0083E-1)) );
+	err_sig.Push( fabs(sxy(7) - (  8.5346E-3)) );
+	err_sig.Push( fabs(sxy(8) - ( -3.4638E-1)) );
+
 
 	// Error summary
 	//double tol_eps     = 1.0e-16;
@@ -187,6 +209,8 @@ int main(int argc, char **argv) try
 	//if (max_err_eps>tol_eps || max_err_sig>tol_sig || max_err_dis>tol_dis) return 1;
 	if (max_err_sig>tol_sig) return 1;
 	else return 0;
+
+
 }
 catch (Exception * e) 
 {

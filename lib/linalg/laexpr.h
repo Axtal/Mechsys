@@ -143,6 +143,19 @@ void scale(type                a,
 	_scale(n, a, ptrX, b, ptrW, ptrY);
 }
 
+// returns:  A <- idn(n);
+template <typename type>
+inline
+void identity(size_t         n,
+              Matrix<type> & A)
+{
+	A.Resize(n, n);
+	type * ptrA = A.GetPtr();
+	for (size_t i=0; i<n; ++i)    
+		for (size_t j=0; j<n; ++j)    
+			(i==j)? ptrA[i+n*j]=1:0;
+}
+
 // returns:  B <- a*trn(A);
 template <typename type>
 inline
@@ -1118,6 +1131,48 @@ det (expression<t_exp1, Matrix<type> > const & A)
 {
 	return determinat(static_cast<typename t_exp1::T_res const &>(static_cast<t_exp1 const &>(A)));
 }
+
+
+
+// norm(Vector)
+template <typename type>
+inline
+type
+norm(Vector<type> const & A)
+{
+	return norm_vector(A);
+}
+
+// norm(exp)
+template <class type, class t_exp1>
+inline 
+type
+norm(expression<t_exp1, Vector<type> > const & A)
+{
+	return norm_vector(static_cast<typename t_exp1::T_res const &>(static_cast<t_exp1 const &>(A)));
+}
+
+// invg(Matrix)
+template <class type>
+inline
+Matrix<type>
+invg(Matrix<type> const & A) // difficult to do pure expression
+{
+	int m = A.Rows();
+	int n = A.Cols();
+	if (m==n)     return inv(A);
+	else if (m>n) return inv(trn(A)*A)*trn(A);
+	else          return trn(A)*inv(A*trn(A));
+}
+
+template <class type, class t_exp1>
+inline
+Matrix<type>
+invg(expression<t_exp1, Matrix<type> > const & A)
+{
+	return invg(static_cast<Matrix<type> const & >(A));
+}
+
 
 // Matrix & Vector operations
 

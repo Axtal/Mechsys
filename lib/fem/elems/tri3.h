@@ -55,6 +55,7 @@ public:
 	void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
 	void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
 	void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
+	void LocalCoords  (LinAlg::Matrix<double> & coords) const;
 
 }; // class Tri3
 
@@ -95,22 +96,25 @@ inline Tri3::Tri3()
 
 inline void Tri3::SetIntPoints(int NumGaussPointsTotal)
 {
-	// Set IPs
-	FEM::SetGaussIPTriTet (/*NDim*/2, NumGaussPointsTotal,   _a_int_pts);
-	FEM::SetGaussIP       (/*NDim*/1, /*NumGaussPoints1D*/2, _a_face_int_pts);
+	// Setup pointer to the array of Integration Points
+	if      (NumGaussPointsTotal==3)  _a_int_pts = TRI_IP3;
+	else if (NumGaussPointsTotal==4)  _a_int_pts = TRI_IP4;
+	else if (NumGaussPointsTotal==6)  _a_int_pts = TRI_IP6;
+	else if (NumGaussPointsTotal==7)  _a_int_pts = TRI_IP7;
+	else if (NumGaussPointsTotal==13) _a_int_pts = TRI_IP13;
+	else throw new Fatal("tri3::SetIntPoints: Error in number of integration points.");
 
-	// Evaluation matrix [E] (see pag. 606 of Burnett, D. S. (1988). Finite Element Analysis: From Concepts to Applications. Addison-Wesley. 844p.)
-	// [nodalvalues]T = [E] * [c0,c1,c2]T
-	//  nodalvalue_i  = c0 + c1*r_i + c2*s_i
-	// (i:node number)
-	LinAlg::Matrix<double> eval_mat;
-	eval_mat.Resize(_n_nodes, 3);
-	eval_mat = 1.0, 0.0, 0.0,
-	           1.0, 1.0, 0.0,
-	           1.0, 0.0, 1.0;
+	_n_int_pts      = NumGaussPointsTotal;
+	_a_face_int_pts = LIN_IP2;
+	_n_face_int_pts = 2;
+}
 
-	// Set extrapolation matrix
-	FEM::SetExtrapMatrix (/*NDim*/2, _a_int_pts, eval_mat, _extrap_mat);
+inline void Tri3::LocalCoords(LinAlg::Matrix<double> & coords) const 
+{
+	coords.Resize(3,4);
+	coords = 0.0, 0.0, 0.0, 1.0,
+	         1.0, 0.0, 0.0, 1.0,
+	         0.0, 1.0, 0.0, 1.0;
 }
 
 inline void Tri3::VTKConnect(String & Nodes) const

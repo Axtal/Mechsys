@@ -111,6 +111,7 @@ public:
 	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, double const s, LinAlg::Matrix<double> & J) const; ///< Jacobian matrix of a face
 	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, LinAlg::Matrix<double> & J) const;                 ///< Jacobian matrix of a edge
 	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
+	virtual void   LocalCoords   (LinAlg::Matrix<double> & coords) const {};                                                                 ///< Return the local coordinates of the nodes
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< ???
 	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
@@ -133,12 +134,13 @@ protected:
 	int                    _ndim;           ///< Number of dimensions of the problem
 	size_t                 _n_nodes;        ///< Number of nodes in the element
 	size_t                 _n_face_nodes;   ///< Number of nodes in a face
+	size_t                 _n_int_pts;      ///< Number of integration (Gauss) points
+	size_t                 _n_face_int_pts; ///< Number of integration points in a face
 	Array<Node*>           _connects;       ///< Connectivity (pointers to nodes in this element). size=_n_nodes
 	bool                   _is_active;      ///< Flag for active/inactive condition
-	Array<IntegPoint>      _a_int_pts;      ///< Array of Integration Points
-	Array<IntegPoint>      _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
-	LinAlg::Matrix<double> _extrap_mat;     ///< Extrapolation matrix. Converts integration point values to nodal values: [NodalValues]T = _extrap * [IPValues]T
-
+	IntegPoint const *     _a_int_pts;      ///< Array of Integration Points
+	IntegPoint const *     _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
+	
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual void _set_ndim(int nDim) =0;
 
@@ -191,7 +193,7 @@ inline bool Element::CheckConnect() const
 
 inline bool Element::Check(String & Message) const
 {
-	if (_extrap_mat.Rows()<1)  { Message.Printf("\n  %s","EXTRAPOLATION MATRIX NOT DEFINED"); return false; }
+	//if (_extrap_mat.Rows()<1)  { Message.Printf("\n  %s","EXTRAPOLATION MATRIX NOT DEFINED"); return false; }
 	if (CheckConnect()==false) { Message.Printf("\n  %s","CONNECTIVITY NOT SET");             return false; }
 	if (CheckModel()==false)   { Message.Printf("\n  %s","CONSTITUTIVE MODEL NOT SET");       return false; }
 	return true;
@@ -205,7 +207,7 @@ inline double Element::Volume() const
 
 	// Loop along integration points
 	double vol = 0.0;
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		// Temporary Integration Points
 		double r = _a_int_pts[i].r;
@@ -265,8 +267,6 @@ inline void Element::InverseMap(double x, double y, double z, double & r, double
 	LinAlg::Vector<double> shape;
 	LinAlg::Matrix<double> derivs;
 	LinAlg::Matrix<double> J; //Jacobian matrix
-	//LinAlg::Matrix<double> inv_jacobian;
-	//LinAlg::Matrix<double> trn_inv_jacobian;
 	LinAlg::Vector<double> f(3);
 	LinAlg::Vector<double> delta(3);
 	double tx, ty, tz; //x, y, z trial
@@ -293,16 +293,12 @@ inline void Element::InverseMap(double x, double y, double z, double & r, double
 		f(1) = ty - y;
 		f(2) = tz - z;
 		
-		//jacobian.Inv(inv_jacobian);
-		//inv_jacobian.Trn(trn_inv_jacobian);
 		delta = trn(inv(J))*f;
-		//Gemv(1.0, trn_inv_jacobian, f, 0.0, delta);
 		
 		r -= delta(0);
 		s -= delta(1);
 		t -= delta(2);
 
-		//norm_f = sqrt(f(0)*f(0)+f(1)*f(1)+f(2)*f(2));
 		norm_f = sqrt(trn(f)*f);
 		if (k>25) break;
 	} while(norm_f>1e-4);
@@ -397,7 +393,7 @@ inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & L
 inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 
 {
 	// Check
-	if (IPValues.Size()!=static_cast<int>(_a_int_pts.Size())) throw new Fatal("Element::Extrapolate: IPValues.Size()==%d must be equal to _a_int_pts.Size()==%d",IPValues.Size(),_a_int_pts.Size());
+	if (IPValues.Size()!=static_cast<int>(_n_int_pts)) throw new Fatal("Element::Extrapolate: IPValues.Size()==%d must be equal to _n_int_pts==%d",IPValues.Size(),_n_int_pts);
 	if (NodalValues.Size()!=static_cast<int>(_n_nodes)) throw new Fatal("Element::Extrapolate: NodalValues.Size()==%d must be equal to _n_nodes==%d",NodalValues.Size(),_n_nodes);
 
 	// Data
@@ -414,6 +410,10 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 	*/
 	LinAlg::Matrix<double> N(m, n);
 	LinAlg::Vector<double> shape(n);
+	LinAlg::Matrix<double> IP_coord(m, 4);   // IP coordinates matrix (local)
+	LinAlg::Matrix<double> node_coord(n, 4); // nodal coordinates matrix (local)
+
+	// Mount N and IP_coord matrices
 	for (size_t i=0; i<m; i++)
 	{
 		double r = _a_int_pts[i].r;
@@ -421,24 +421,30 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 		double t = _a_int_pts[i].t;
 		Shape (r, s, t, shape);
 		for (size_t j=0; j<n; j++) N(i,j) = shape(j);
+		IP_coord(i, 0) = r;
+		IP_coord(i, 1) = s;
+		IP_coord(i, 2) = t;
+		IP_coord(i, 3) = 1.0;
 	}
 
-	// Transpose matrix
-	LinAlg::Matrix<double> Nt(n, m);
-	Nt = trn(N);
+	// Mount node_coord matrix
+	LocalCoords(node_coord);
 
 	// Extrapolator matrix
 	LinAlg::Matrix<double> E(n, m);
-	E = Nt*inv(N*Nt);
-	//std::cout << "E = \n" << E << std::endl;
-	//std::cout << "_extrap_mat = \n" << _extrap_mat << std::endl;
 
+	//calculate extrapolator matrix
+	if (n==m)     E = inv(N);
+	else if (m>n) E = invg(N);
+	else
+	{
+		LinAlg::Matrix<double> I;
+		identity(m,I);
+		E = invg(N)* (I - IP_coord*invg(IP_coord)) + node_coord*invg(IP_coord);
+	}
+	
 	// Extrapolate
 	NodalValues = E * IPValues;
-	//std::cout << "E*IPValues = \n" << NodalValues << std::endl;
-
-	NodalValues = _extrap_mat * IPValues;
-	//std::cout << "_extrap_mat*IPValues = \n" << _extrap_mat*IPValues << std::endl;
 }
 
 
@@ -458,7 +464,7 @@ inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValu
 		LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
 		LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
 		LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
-		for (size_t i=0; i<_a_face_int_pts.Size(); i++)
+		for (size_t i=0; i<_n_face_int_pts; i++)
 		{
 			double r = _a_face_int_pts[i].r;
 			double s = _a_face_int_pts[i].s;
@@ -504,6 +510,7 @@ Element * AllocElement(char const * ElementName)
 	ptr = ElementFactory[ElementName];
 	if (ptr==NULL)
 		throw new Fatal(_("FEM::AllocElement: There is no < %s > implemented in this library"), ElementName);
+
 	return (*ptr)();
 }
 

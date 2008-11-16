@@ -142,8 +142,8 @@ const char   EquilibElem::LB[5][18][4] = {
 
 inline bool EquilibElem::CheckModel() const
 {
-	if (_a_model.Size()!=_a_int_pts.Size()) return false;
-	for (size_t i=0; i<_a_int_pts.Size(); ++i) if (_a_model[i]==NULL) return false;
+	if (_a_model.Size()!=_n_int_pts) return false;
+	for (size_t i=0; i<_n_int_pts; ++i) if (_a_model[i]==NULL) return false;
 	return true;
 }
 
@@ -162,8 +162,8 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 	// If pointers to model was not already defined => No model was allocated
 	if (_a_model.Size()==0)
 	{
-		_a_model.Resize(_a_int_pts.Size());
-		for (size_t i=0; i<_a_int_pts.Size(); ++i)
+		_a_model.Resize(_n_int_pts);
+		for (size_t i=0; i<_n_int_pts; ++i)
 		{
 			_a_model[i] = static_cast<EquilibModel*>(AllocModel(ModelName));
 			_a_model[i]->SetGeom (_geom());
@@ -223,7 +223,7 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 	LinAlg::Vector<double> dsig;    // delta stress vector
 
 	// Update model and calculate internal force vector;
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		double r = _a_int_pts[i].r;
 		double s = _a_int_pts[i].s;
@@ -259,7 +259,7 @@ inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 		LinAlg::Matrix<double> J;
 
 		// Calculate local external volume force
-		for (size_t i=0; i<_a_int_pts.Size(); ++i)
+		for (size_t i=0; i<_n_int_pts; ++i)
 		{
 			double r = _a_int_pts[i].r;
 			double s = _a_int_pts[i].s;
@@ -285,12 +285,12 @@ inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
 
 inline void EquilibElem::BackupState()
 {
-	for (size_t i=0; i<_a_int_pts.Size(); ++i) _a_model[i]->BackupState();
+	for (size_t i=0; i<_n_int_pts; ++i) _a_model[i]->BackupState();
 }
 
 inline void EquilibElem::RestoreState()
 {
-	for (size_t i=0; i<_a_int_pts.Size(); ++i) _a_model[i]->RestoreState();
+	for (size_t i=0; i<_n_int_pts; ++i) _a_model[i]->RestoreState();
 }
 
 inline void EquilibElem::GetLabels(Array<String> & Labels) const
@@ -313,7 +313,7 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 
 inline void EquilibElem::CalcDepVars() const
 {
-	if (_a_model.Size()==_a_int_pts.Size()) for (size_t i=0; i<_a_int_pts.Size(); i++) _a_model[i]->CalcDepVars();
+	if (_a_model.Size()==_n_int_pts) for (size_t i=0; i<_n_int_pts; i++) _a_model[i]->CalcDepVars();
 	else throw new Fatal("EquilibElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 }
 
@@ -326,12 +326,12 @@ inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	// Stress, strains, internal values, etc.
-	LinAlg::Vector<double>    ip_values (_a_int_pts.Size()); // Vectors for extrapolation
+	LinAlg::Vector<double>    ip_values (_n_int_pts); // Vectors for extrapolation
 	LinAlg::Vector<double> nodal_values (_n_nodes);
 
 	// Get integration point values
-	if (_a_model.Size()==_a_int_pts.Size())
-		for (size_t i=0; i<_a_int_pts.Size(); i++)
+	if (_a_model.Size()==_n_int_pts)
+		for (size_t i=0; i<_n_int_pts; i++)
 			ip_values(i) = _a_model[i]->Val(Name);
 	else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
@@ -343,13 +343,13 @@ inline double EquilibElem::Val(char const * Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
-	if (_a_model.Size()==_a_int_pts.Size())
-		for (size_t i=0; i<_a_int_pts.Size(); i++)
+	if (_a_model.Size()==_n_int_pts)
+		for (size_t i=0; i<_n_int_pts; i++)
 			sum += _a_model[i]->Val(Name);
 	else throw new Fatal("EquilibElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
 
 	// Output single value at CG
-	return sum/_a_int_pts.Size();
+	return sum/_n_int_pts;
 }
 
 inline void EquilibElem::Deactivate()
@@ -386,7 +386,7 @@ inline void EquilibElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke)
 	LinAlg::Matrix<double> D;      // Constitutive matrix
 
 	// Calculate Tangent Stiffness
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		double r = _a_int_pts[i].r;
 		double s = _a_int_pts[i].s;
@@ -521,7 +521,7 @@ inline void EquilibElem::_calc_initial_internal_state()
 	LinAlg::Vector<double> sig;     // Stress vector in Mandel's notation
 
 	// Calculate internal force vector;
-	for (size_t i=0; i<_a_int_pts.Size(); ++i)
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
 		double r = _a_int_pts[i].r;
 		double s = _a_int_pts[i].s;
