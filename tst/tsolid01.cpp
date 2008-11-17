@@ -43,6 +43,7 @@
 #include "fem/functions.h"
 #include "fem/output.h"
 #include "fem/elems/hex8equilib.h"
+#include "fem/elems/hex20equilib.h"
 #include "fem/solvers/autome.h"
 #include "fem/solvers/forwardeuler.h"
 #include "models/equilibs/linelastic.h"

@@ -231,6 +231,9 @@ private:
 	// Data
 	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
 	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
+	Array<Vertex*> _verts_m1;    ///< X O2 Vertices (with duplicates)
+	Array<Vertex*> _verts_m2;    ///< Y O2 Vertices (with duplicates)
+	Array<Vertex*> _verts_m3;    ///< Z O2 Vertices (with duplicates)
 	Vector<double> _s;           ///< Current shape (interpolation) values, computed just after _shape(r,s,t)
 
 	// Private methods
@@ -922,12 +925,15 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 		Blocks[b]->Alright();
 
 		// Generate
+		double t_before = -2.0;
 		double t = -1.0; // initial Z natural coordinate
 		for (int k=0; k<(_is_3d ? Blocks[b]->nDivZ()+1 : 1); ++k)
 		{
+			double s_before = -2.0;
 			double s = -1.0; // initial Y natural coordinate
 			for (int j=0; j<Blocks[b]->nDivY()+1; ++j)
 			{
+				double r_before = -2.0;
 				double r = -1.0; // initial X natural coordinate
 				for (int i=0; i<Blocks[b]->nDivX()+1; ++i)
 				{
@@ -944,6 +950,52 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 					_verts_d.Push(v);
 					if (v->OnBry) _verts_d_bry.Push(v); // array with vertices on boundary
 
+					// New O2 vertices
+					Vertex * v1 = NULL;
+					Vertex * v2 = NULL;
+					Vertex * v3 = NULL;
+					if (_is_o2)
+					{
+						if (i!=0)
+						{
+							if (_is_3d) _shape_3d ((r_before+r)/2.0,s,t);
+							else        _shape_2d ((r_before+r)/2.0,s);
+							v1 = new Vertex;
+							v1->MyID = _verts_m1.Size();
+							v1->C    = Blocks[b]->C() * _s;
+							v1->Dupl = false;
+							if (i==Blocks[b]->nDivX()) Blocks[b]->FindLocalEdgesFacesID(i-1,j,k, v1);
+							else                       Blocks[b]->FindLocalEdgesFacesID(i,  j,k, v1);
+							_verts_m1.Push(v1);
+							if (v1->OnBry) _verts_d_bry.Push(v1);
+						}
+						if (j!=0)
+						{
+							if (_is_3d) _shape_3d (r,(s_before+s)/2.0,t);
+							else        _shape_2d (r,(s_before+s)/2.0);
+							v2 = new Vertex;
+							v2->MyID = _verts_m2.Size();
+							v2->C    = Blocks[b]->C() * _s;
+							v2->Dupl = false;
+							if (j==Blocks[b]->nDivY()) Blocks[b]->FindLocalEdgesFacesID(i,j-1,k, v2);
+							else                       Blocks[b]->FindLocalEdgesFacesID(i,j,  k, v2);
+							_verts_m2.Push(v2);
+							if (v2->OnBry) _verts_d_bry.Push(v2);
+						}
+						if (k!=0)
+						{
+							if (_is_3d) _shape_3d (r,s,(t_before+t)/2.0);
+							v3 = new Vertex;
+							v3->MyID = _verts_m3.Size();
+							v3->C    = Blocks[b]->C() * _s;
+							v3->Dupl = false;
+							if (k==Blocks[b]->nDivZ()) Blocks[b]->FindLocalEdgesFacesID(i,j,k-1, v3);
+							else                       Blocks[b]->FindLocalEdgesFacesID(i,j,k,   v3);
+							_verts_m3.Push(v3);
+							if (v3->OnBry) _verts_d_bry.Push(v3);
+						}
+					}
+
 					// New element
 					if (i!=0 && j!=0 && (_is_3d ? k!=0 : true))
 					{
@@ -953,7 +1005,7 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 						if (_is_3d)
 						{
 							// connectivity
-							e->V.Resize(8);
+							e->V.Resize((_is_o2?20:8));
 							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
 							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
 							e->V[2] = _verts_d[v->MyID                              - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
@@ -962,8 +1014,25 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 							e->V[5] = _verts_d[v->MyID -     (Blocks[b]->nDivX()+1)];
 							e->V[6] = _verts_d[v->MyID];
 							e->V[7] = _verts_d[v->MyID - 1];
+							if (_is_o2)
+							{
+								e->V[ 8] = _verts_m1[v1->MyID - Blocks[b]->nDivX() - Blocks[b]->nDivX()*(Blocks[b]->nDivY()+1)];
+								e->V[ 9] = _verts_m2[v2->MyID                      - Blocks[b]->nDivY()*(Blocks[b]->nDivX()+1)];
+								e->V[10] = _verts_m1[v1->MyID                      - Blocks[b]->nDivX()*(Blocks[b]->nDivY()+1)];
+								e->V[11] = _verts_m2[v2->MyID -1                   - Blocks[b]->nDivY()*(Blocks[b]->nDivX()+1)];
+
+								e->V[12] = _verts_m1[v1->MyID - Blocks[b]->nDivX()];
+								e->V[13] = _verts_m2[v2->MyID];
+								e->V[14] = _verts_m1[v1->MyID];
+								e->V[15] = _verts_m2[v2->MyID - 1];
+
+								e->V[16] = _verts_m3[v3->MyID - 1 - (Blocks[b]->nDivX()+1)];
+								e->V[17] = _verts_m3[v3->MyID -     (Blocks[b]->nDivX()+1)];
+								e->V[18] = _verts_m3[v3->MyID];
+								e->V[19] = _verts_m3[v3->MyID - 1];
+							}
 							// shares information
-							for (size_t m=0; m<8; ++m)
+							for (size_t m=0; m<(_is_o2?20:8); ++m)
 							{
 								Share s = {e,m}; // The node shares information will have this element and the local node index
 								e->V[m]->Shares.Push(s);
@@ -971,18 +1040,25 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 							// is on boundary ?
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry || e->V[4]->OnBry || e->V[5]->OnBry || e->V[6]->OnBry || e->V[7]->OnBry); // if any node is on Bry, yes
 							// VTK cell type
-							e->VTKCellType = VTK_HEXAHEDRON;
+							e->VTKCellType = (_is_o2 ? VTK_QUADRATIC_HEXAHEDRON : VTK_HEXAHEDRON);
 						}
 						else
 						{
 							// connectivity
-							e->V.Resize(4);
+							e->V.Resize((_is_o2?8:4));
 							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1)];
 							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1)];
 							e->V[2] = _verts_d[v->MyID];
 							e->V[3] = _verts_d[v->MyID - 1];
+							if (_is_o2)
+							{
+								e->V[4] = _verts_m1[v1->MyID - Blocks[b]->nDivX()];
+								e->V[5] = _verts_m2[v2->MyID];
+								e->V[6] = _verts_m1[v1->MyID];
+								e->V[7] = _verts_m2[v2->MyID - 1];
+							}
 							// shares information
-							for (size_t m=0; m<4; ++m)
+							for (size_t m=0; m<(_is_o2?8:4); ++m)
 							{
 								Share s = {e,m};
 								e->V[m]->Shares.Push(s);
@@ -990,7 +1066,7 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 							// is on boundary ?
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry); // if any node is on Bry, yes
 							// VTK cell type
-							e->VTKCellType = VTK_QUAD;
+							e->VTKCellType = (_is_o2 ? VTK_QUADRATIC_QUAD : VTK_QUAD);
 						}
 						if (e->OnBry)
 						{
@@ -1000,12 +1076,15 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 						_elems.Push(e); // array with all elements
 					}
 					// Next r
+					r_before = r;
 					r += (2.0/Blocks[b]->SumWeightX()) * Blocks[b]->Wx(i);
 				}
 				// Next s
+				s_before = s;
 				s += (2.0/Blocks[b]->SumWeightY()) * Blocks[b]->Wy(j);
 			}
 			// Next t
+			t_before = t;
 			t += (_is_3d ? (2.0/Blocks[b]->SumWeightZ()) * Blocks[b]->Wz(k) : 0.0);
 		}
 	}
@@ -1051,7 +1130,7 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 	// Set new array with non-duplicated vertices
 	size_t k = 0;
 	size_t m = 0;
-	_verts    .Resize (_verts_d    .Size() - ndupl);
+	_verts    .Resize (_verts_d    .Size() + _verts_m1.Size() + _verts_m2.Size() + _verts_m3.Size() - ndupl);
 	_verts_bry.Resize (_verts_d_bry.Size() - ndupl);
 	for (size_t i=0; i<_verts_d.Size(); ++i)
 	{
@@ -1059,6 +1138,48 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 		{
 			_verts[k]       = _verts_d[i]; // copy pointer
 			_verts[k]->MyID = k;           // new ID
+			if (_verts[k]->OnBry)
+			{
+				_verts_bry[m] = _verts[k]; // copy pointer
+				m++;
+			}
+			k++;
+		}
+	}
+	for (size_t i=0; i<_verts_m1.Size(); ++i)
+	{
+		if (_verts_m1[i]->Dupl==false)
+		{
+			_verts[k]       = _verts_m1[i]; // copy pointer
+			_verts[k]->MyID = k;            // new ID
+			if (_verts[k]->OnBry)
+			{
+				_verts_bry[m] = _verts[k]; // copy pointer
+				m++;
+			}
+			k++;
+		}
+	}
+	for (size_t i=0; i<_verts_m2.Size(); ++i)
+	{
+		if (_verts_m2[i]->Dupl==false)
+		{
+			_verts[k]       = _verts_m2[i]; // copy pointer
+			_verts[k]->MyID = k;            // new ID
+			if (_verts[k]->OnBry)
+			{
+				_verts_bry[m] = _verts[k]; // copy pointer
+				m++;
+			}
+			k++;
+		}
+	}
+	for (size_t i=0; i<_verts_m3.Size(); ++i)
+	{
+		if (_verts_m3[i]->Dupl==false)
+		{
+			_verts[k]       = _verts_m3[i]; // copy pointer
+			_verts[k]->MyID = k;            // new ID
 			if (_verts[k]->OnBry)
 			{
 				_verts_bry[m] = _verts[k]; // copy pointer
@@ -1171,29 +1292,56 @@ inline void Structured::_vtk_con(size_t i, String & Connect) const
 {
 	if (_is_3d)
 	{
-		Connect.Printf("%d %d %d %d %d %d %d %d",ElemCon(i,1),
-		                                         ElemCon(i,2),
-		                                         ElemCon(i,3),
-		                                         ElemCon(i,0),
-		                                         ElemCon(i,5),
-		                                         ElemCon(i,6),
-		                                         ElemCon(i,7),
-		                                         ElemCon(i,4));
+		if (_is_o2)
+		{
+			Connect.Printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+			               ElemCon(i, 0), ElemCon(i, 1), ElemCon(i, 2), ElemCon(i, 3),
+			               ElemCon(i, 4), ElemCon(i, 5), ElemCon(i, 6), ElemCon(i, 7),
+			               ElemCon(i, 8), ElemCon(i, 9), ElemCon(i,10), ElemCon(i,11),
+			               ElemCon(i,12), ElemCon(i,13), ElemCon(i,14), ElemCon(i,15),
+			               ElemCon(i,16), ElemCon(i,17), ElemCon(i,18), ElemCon(i,19));
+		}
+		else
+		{
+			Connect.Printf("%d %d %d %d %d %d %d %d",ElemCon(i,0),
+			                                         ElemCon(i,1),
+			                                         ElemCon(i,2),
+			                                         ElemCon(i,3),
+			                                         ElemCon(i,4),
+			                                         ElemCon(i,5),
+			                                         ElemCon(i,6),
+			                                         ElemCon(i,7));
+		}
 	}
 	else
 	{
-		Connect.Printf("%d %d %d %d",ElemCon(i,0),
-		                             ElemCon(i,1),
-		                             ElemCon(i,2),
-		                             ElemCon(i,3));
+		if (_is_o2)
+		{
+			Connect.Printf("%d %d %d %d %d %d %d %d",
+			               ElemCon(i,0), ElemCon(i,1), ElemCon(i,2), ElemCon(i,3),
+			               ElemCon(i,4), ElemCon(i,5), ElemCon(i,6), ElemCon(i,7));
+		}
+		else
+		{
+			Connect.Printf("%d %d %d %d",ElemCon(i,0),
+			                             ElemCon(i,1),
+			                             ElemCon(i,2),
+			                             ElemCon(i,3));
+		}
 	}
 }
 
 inline void Structured::_erase()
 {
-	for (size_t i=0; i<_verts_d.Size(); ++i) if (_verts_d[i]!=NULL) delete _verts_d[i]; // it is only necessary to delete nodes in _verts_d array
-	for (size_t i=0; i<_elems.  Size(); ++i) if (_elems  [i]!=NULL) delete _elems  [i]; // it is only necessary to delete elems in _elems array
+	for (size_t i=0; i<_verts_d .Size(); ++i) if (_verts_d [i]!=NULL) delete _verts_d [i]; // it is only necessary to delete nodes in _verts_d array
+	for (size_t i=0; i<_verts_m1.Size(); ++i) if (_verts_m1[i]!=NULL) delete _verts_m1[i]; // it is only necessary to delete nodes in _verts_m1 array
+	for (size_t i=0; i<_verts_m2.Size(); ++i) if (_verts_m2[i]!=NULL) delete _verts_m2[i]; // it is only necessary to delete nodes in _verts_m2 array
+	for (size_t i=0; i<_verts_m3.Size(); ++i) if (_verts_m3[i]!=NULL) delete _verts_m3[i]; // it is only necessary to delete nodes in _verts_m3 array
+	for (size_t i=0; i<_elems   .Size(); ++i) if (_elems   [i]!=NULL) delete _elems   [i]; // it is only necessary to delete elems in _elems array
 	_verts_d    .Resize(0);
+	_verts_m1   .Resize(0);
+	_verts_m2   .Resize(0);
+	_verts_m3   .Resize(0);
 	_verts_d_bry.Resize(0);
 	_verts      .Resize(0);
 	_elems      .Resize(0);
