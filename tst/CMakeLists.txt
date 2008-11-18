@@ -83,6 +83,11 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (tpstrain04 ${LIBS})
 	SET_TARGET_PROPERTIES (tpstrain04 PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
+	ADD_EXECUTABLE        (tpstrain05 tpstrain05.cpp)
+	ADD_TEST              (tpstrain05 tpstrain05)
+	TARGET_LINK_LIBRARIES (tpstrain05 ${LIBS})
+	SET_TARGET_PROPERTIES (tpstrain05 PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (tsolid01   tsolid01.cpp)
 	ADD_TEST              (tsolid01   tsolid01)
 	TARGET_LINK_LIBRARIES (tsolid01   ${LIBS})
