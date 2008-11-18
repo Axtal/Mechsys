@@ -41,64 +41,69 @@ using Util::_8s;
 using Util::PI;
 using boost::make_tuple;
 
-void Kirsch_stress(double p1, double p2, double r, double R, double th, Vector<double> & sig_k) // Calculate the Kirsch solution for a cylindrical hole
+// Calculate Kirsch's solution for a cylindrical hole (stresses)
+inline void KirschStress(double ph, double pv, double r, double R, double T, double & SigR, double & SigT, double & SigRT)
 {
-	sig_k.Resize(3);
-	sig_k = (p1+p2)/2.0*(1.0-r*r/R/R) + (p1-p2)/2.0*(1.0 - 4.0*r*r/R/R + 3.0*pow(r,4.0)/pow(R,4.0))*cos(2.0*th), // sig_r
-			(p1+p2)/2.0*(1.0+r*r/R/R) - (p1-p2)/2.0*(1.0 + 3.0*pow(r,4.0)/pow(R,4.0))*cos(2.0*th),               // sig_th
-		   -(p1-p2)/2.0*(1.0+2.0*r*r/R/R - 3.0*pow(r,4.0)/pow(R,4.0))*sin(2.0*th);                               // sig_r_th
+	double pm = (ph+pv)/2.0;
+	double pd = (ph-pv)/2.0;
+	double c1 = r*r/(R*R);
+	SigR  =  pm*(1.0-c1) + pd*(1.0-4.0*c1+3.0*c1*c1)*cos(2.0*T);
+	SigT  =  pm*(1.0+c1) - pd*(1.0+3.0*c1*c1)*cos(2.0*T);
+	SigRT = -pd*(1.0+2.0*c1-3.0*c1*c1)*sin(2.0*T);
 }
 
-void Kirsch_disp(double p1, double p2, double r, double R, double th, double E, double nu, double ux_correct, double uy_correct) // Calculate the Kirsch solution for a cylindrical hole
+// Calculate Kirsch's solution for a cylindrical hole (displacements)
+void KirschDisp(double ph, double pv, double r, double R, double T, double E, double nu, double & uR, double & uT)
 {
-	double G = E/2.0/(1+nu);
-	ux_correct =  (p1+p2)/(4.0*G)*r*r/R + (p1-p2)/(4.0*G)*r*r/R*(4.0*(1.0-nu)-r*r/R/R)*cos(2.0*th), // disp_r
-	uy_correct = -(p1-p2)/(4.0*G)*r*r/R   *(2.0*(1.0-2.0*nu)+r*r/R/R)*sin(2.0*th);                  // disp_theta
-}
-void RotateStress(Vector<double> & S, double th, Vector<double> & Q) // Calculate the stress components in a system rotated an angle equal to th
-{
-	double l1, l2, m1, m2;
-	l1 =  cos(th); l2 = sin(th);
-	m1 = -sin(th); m2 = cos(th);
-	Matrix<double> T(3,3);
-	T = l1*l1, m1*m1,     2*l1*m1,
-		l2*l2, m2*m2,     2*l2*m2,
-		l1*l2, m1*m2, l1*m2+m1*l2;
-	Q = T*S;
+	double G  = E/(2.0*(1.0+nu)); // Shear modulus
+	double c1 = r*r/R;
+	double qm = (ph+pv)/(4.0*G);
+	double qd = (ph-pv)/(4.0*G);
+	uR =  qm*c1 + qd*c1*(4.0*(1.0-nu)-c1/R)*cos(2.0*T);
+	uT = -qd*c1*(2.0*(1.0-2.0*nu)+c1/R)*sin(2.0*T);
 }
 
 int main(int argc, char **argv) try
 {
 	// Constants
-	double E_soil   = 6000.0;   // Young [MPa]
-	double nu_soil  = 0.2;      // Poisson
-	double r        = 1.0;      // radius
-	double L        = 10.0;     // length
-	double H        = 10.0;     // height
-	bool   is_o2    = false;    // use high order elements?
+	double ph      = -30.0;    // horizontal pressure
+	double pv      = -30.0;    // vertical pressure
+	double E_soil  = 6000.0;   // Young [MPa]
+	double nu_soil = 0.2;      // Poisson
+	double r       = 1.0;      // radius
+	double L       = 10.0;     // length
+	double H       = 10.0;     // height
+	bool   is_o2   = false;    // use high order elements?
+	int    ndivy   = 15;       // ndivy
+	double Ax      = 2.0;      // rate of increase of X divisions
+	double NonLinX = false;    // nonlinear divisions along X?
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2\n";
+	cout << "Input: " << argv[0] << "  is_o2  ndivy(ndivx=2*ndivy)\n";
 	if (argc>=2) is_o2 = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3) ndivy =  atoi(argv[2]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
-	/*                |---------- L ----------|
+	/*                     | | | pv | | |
+	 *                     V V V    V V V
+	 *
+	 *                |---------- L ----------|
 	 *   -+- -+- -+-  o___________o_-30_______o
 	 *    |   |   |   |                      ,|
 	 *    |   |   |   |-40    [b1]         ,' |
 	 *    |   |   d   o                  ,'   |
-	 *    |   f   |   |    y       x   ,'     |
-	 *    |   |   |   |     ',   ,'  ,o       |
-	 *    |   |  -+-  o-,_    '+'  ,'         |
-	 *    H   |           o-,    ,'           o -10
-	 *    |  -+- . . . . . . 'o '      [b0]   |
-	 *    |   |               .',             |
-	 *    |   e               .  o  y^        |
+	 *    |   f   |   |    y       x   ,'     |      <--
+	 *    |   |   |   |     ',   ,'  ,o       |      <--
+	 *    |   |  -+-  o-,_    '+'  ,'         |      <--
+	 *    H   |           o-,    ,'           o -20  <-- ph
+	 *    |  -+- . . . . . . 'o '      [b0]   |      <--
+	 *    |   |               .',             |      <--
+	 *    |   e               .  o  y^        |      <--
 	 *    |   |               .   \  |        |
 	 *    |   |               .   |  +-->x    |
 	 *   -+- -+-      +----r----->o-----o-----o
-	 *                        .       -20
+	 *                        .       -10
 	 *                        .   |---- a ----|
 	 *                |-- b --|------ c ------|
 	 */
@@ -110,8 +115,6 @@ int main(int argc, char **argv) try
 	double d = H-r;
 	double e = r*sin(2.*PI/8.);
 	double f = H-e;
-	
-	double K = 1;
 
 	// Lower block -- coordinates
 	Mesh::Block b0;
@@ -119,9 +122,9 @@ int main(int argc, char **argv) try
 	b0.SetCoords (false, 8, // Is3D, NNodes
 	               r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
 	              0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.));
-	b0.SetNx     (30*K,/*Ax*/2.0, /*Nonlinear*/true);
-	b0.SetNy     (15*K);
-	b0.SetETags  (4, 0, -10, -20, 0);
+	b0.SetNx     (2*ndivy, /*Ax*/Ax, /*Nonlinear*/NonLinX);
+	b0.SetNy     (ndivy);
+	b0.SetETags  (4, 0, -20, -10, 0);
 
 	// Upper block -- coordinates
 	Mesh::Block b1;
@@ -129,8 +132,8 @@ int main(int argc, char **argv) try
 	b1.SetCoords (false, 8,
 	              b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
 	              e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.));
-	b1.SetNx     (30*K,2.0, true);
-	b1.SetNy     (15*K);
+	b1.SetNx     (2*ndivy, /*Ax*/Ax, /*Nonlinear*/NonLinX);
+	b1.SetNy     (ndivy);
 	b1.SetETags  (4, 0, -30,  0, -40);
 
 	// Blocks
@@ -152,17 +155,12 @@ int main(int argc, char **argv) try
 	// Geometry
 	FEM::Geom g(2); // 2D
 
-	// Nodes brys
-	FEM::NBrys_T nbrys;
-
 	// Edges brys
 	FEM::EBrys_T ebrys;
-	double p1 = -30.0;
-	double p2 = -30.0;
-	ebrys.Push (make_tuple(-10, "fx", p1));
-	ebrys.Push (make_tuple(-20, "uy", 0.0));
-	ebrys.Push (make_tuple(-30, "fy", p2));
-	ebrys.Push (make_tuple(-40, "ux", 0.0));
+	ebrys.Push (make_tuple(-10, "uy", 0.));
+	ebrys.Push (make_tuple(-20, "fx", ph));
+	ebrys.Push (make_tuple(-30, "fy", pv));
+	ebrys.Push (make_tuple(-40, "ux", 0.));
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
@@ -172,7 +170,7 @@ int main(int argc, char **argv) try
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g, 1.0e-5);
-	FEM::SetBrys       (&mesh, &nbrys, &ebrys, NULL, &g);
+	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -185,81 +183,102 @@ int main(int argc, char **argv) try
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 
+	// Output: VTU
+	start = std::clock();
+	Output o; o.VTU (&g, "texam1.vtu");
+	total = std::clock() - start;
+	cout << "Time elapsed (output file) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	cout << "[1;34mFile <texam1.vtu> saved.[0m\n\n";
+
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
-    Vector<double> sig(3);
-    Vector<double> sig_k(3);
-    Array <double> err_sig_x;
-    Array <double> err_sig_y;
-    Array <double> err_sig_xy;
-    Array <double> err_disp;
+	start = std::clock();
 
-	// Stress 
+	// Stress
+	Array <double> err_sR;
+	Array <double> err_sT;
+	Array <double> err_sRT;
 	for (size_t i=0; i<g.NElems(); ++i)
 	{
 		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
 		{
 			// Analytical
-			double x  = g.Ele(i)->Nod(j)->X();
-			double y  = g.Ele(i)->Nod(j)->Y();
-			double th = atan(y/x);
-			double R  = sqrt(x*x + y*y);
-			Kirsch_stress(p1, p2, r, R, th, sig_k); // Calculate the Kirsch solution for a cylindrical hole
+			double x = g.Ele(i)->Nod(j)->X();
+			double y = g.Ele(i)->Nod(j)->Y();
+			double t = atan(y/x);
+			double R = sqrt(x*x+y*y);
+			double sigRc, sigTc, sigRTc; // correct stress components
+			KirschStress (ph,pv,r,R,t, sigRc,sigTc,sigRTc);
 
-			// Analysis
-			sig = g.Ele(i)->Val(j,"Sx"), g.Ele(i)->Val(j,"Sy"), g.Ele(i)->Val(j,"Sxy");
-			Vector<double> sig_polar(3); // Vector to transform to polar coordinates
-			sig_polar = sig(0)*pow(cos(th),2.0) + sig(1)*pow(sin(th),2.0) + 2.0*sig(2)*sin(th)*cos(th),
-			            sig(0)*pow(sin(th),2.0) + sig(1)*pow(cos(th),2.0) - 2.0*sig(2)*sin(th)*cos(th),
-			            (sig(1)-sig(0))*sin(th)*cos(th) + sig(2)*(pow(cos(th),2.0) - pow(sin(th),2.0));
+			// Numerical
+			double c     = x/R;
+			double s     = y/R;
+			double cc    = c*c;
+			double ss    = s*s;
+			double sc    = s*c;
+			double Sx    = g.Ele(i)->Val(j,"Sx");
+			double Sy    = g.Ele(i)->Val(j,"Sy");
+			double Sxy   = g.Ele(i)->Val(j,"Sxy");
+			double sigR  = Sx*cc + Sy*ss + 2.0*Sxy*sc;
+			double sigT  = Sx*ss + Sy*cc - 2.0*Sxy*sc;
+			double sigRT = (Sy-Sx)*sc + (cc-ss)*Sxy;
 
-			err_sig_x .Push ( fabs(sig_k(0) - sig_polar(0)) );
-			err_sig_y .Push ( fabs(sig_k(1) - sig_polar(1)) );
-			err_sig_xy.Push ( fabs(sig_k(2) - sig_polar(2)) );
+			// Error
+			err_sR .Push (fabs(sigR  - sigRc ));
+			err_sT .Push (fabs(sigT  - sigTc ));
+			err_sRT.Push (fabs(sigRT - sigRTc));
 		}
 	}
 
 	// Displacements
+	Array <double> err_uR;
+	Array <double> err_uT;
 	for (size_t i=0; i<g.NNodes(); ++i)
 	{
 		// Analytical
 		double x  = g.Nod(i)->X();
 		double y  = g.Nod(i)->Y();
-		double th = atan(y/x);
-		double R  = sqrt(x*x + y*y);
-		double ux_correct;
-		double uy_correct;
-		Kirsch_disp(p1, p2, r, R, th, E_soil, nu_soil, ux_correct, uy_correct);// Calculate the Kirsch solution for a cylindrical hole
+		double t  = atan(y/x);
+		double R  = sqrt(x*x+y*y);
+		double uRc, uTc; // correct displacement components
+		KirschDisp (ph,pv,r,R,t, E_soil,nu_soil, uRc,uTc);
 
-		// Analysis
-		err_disp.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) );
-		err_disp.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) );
+		// Numerical
+		double c  = x/R;
+		double s  = y/R;
+		double ux = g.Nod(i)->Val("ux");
+		double uy = g.Nod(i)->Val("uy");
+		double uR = ux*c + uy*s;
+		double uT = uy*c - ux*s;
+
+		// Error
+		err_uR.Push (fabs(uR-uRc));
+		err_uT.Push (fabs(uT-uTc));
 	}
 
-	// Output: VTU
-	Output o; o.VTU (&g, "texam1.vtu");
-	cout << "[1;34mFile <texam1.vtu> saved.[0m\n\n";
-
 	// Error summary
-	double tol_sig        = 3.0e0;
-	double tol_disp       = 1.0e-1;
-	double min_err_sig_x  = err_sig_x [err_sig_x .Min()];
-	double min_err_sig_y  = err_sig_y [err_sig_y .Min()];
-	double min_err_sig_xy = err_sig_xy[err_sig_xy.Min()];
-	double min_err_disp   = err_disp  [err_disp.Min()];
-	double max_err_sig_x  = err_sig_x [err_sig_x .Max()];
-	double max_err_sig_y  = err_sig_y [err_sig_y .Max()];
-	double max_err_sig_xy = err_sig_xy[err_sig_xy.Max()];
-	double max_err_disp   = err_disp  [err_disp.Max()];
-	cout << _4 << ""      << _8s<<"Min"       << _8s << "Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
-	cout << _4 << "SigX"  << _8s<<min_err_sig_x  << _8s<<err_sig_x .Mean() << (max_err_sig_x >tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig_x  << "[0m" << _8s<<err_sig_x.Norm() << endl;
-	cout << _4 << "SigY"  << _8s<<min_err_sig_y  << _8s<<err_sig_y .Mean() << (max_err_sig_y >tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig_y  << "[0m" << _8s<<err_sig_y.Norm() << endl;
-	cout << _4 << "SigXY" << _8s<<min_err_sig_xy << _8s<<err_sig_xy.Mean() << (max_err_sig_xy>tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig_xy << "[0m" << _8s<<err_sig_xy.Norm() << endl;
-	cout << _4 << "Disp"  << _8s<<min_err_disp   << _8s<<err_disp  .Mean() << (max_err_disp  >tol_disp?"[1;31m":"[1;32m") << _8s<<max_err_disp   << "[0m" << _8s<<err_disp  .Norm() << endl;
-	cout << endl;
+	double tol_sR      = 3.0e0;
+	double tol_sT      = 3.0e0;
+	double tol_sRT     = 3.0e0;
+	double tol_uR      = 1.0e-1;
+	double tol_uT      = 1.0e-3;
+	double min_err_sR  = err_sR [err_sR .Min()];   double max_err_sR  = err_sR [err_sR .Max()];
+	double min_err_sT  = err_sT [err_sT .Min()];   double max_err_sT  = err_sT [err_sT .Max()];
+	double min_err_sRT = err_sRT[err_sRT.Min()];   double max_err_sRT = err_sRT[err_sRT.Max()];
+	double min_err_uR  = err_uR [err_uR .Min()];   double max_err_uR  = err_uR [err_uR .Max()];
+	double min_err_uT  = err_uT [err_uT .Min()];   double max_err_uT  = err_uT [err_uT .Max()];
+	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
+	cout << _4<< "sR"  << _8s<<min_err_sR  << _8s<<err_sR .Mean() << (max_err_sR >tol_sR ?"[1;31m":"[1;32m") << _8s<<max_err_sR  << "[0m" << _8s<<err_sR.Norm()  << endl;
+	cout << _4<< "sT"  << _8s<<min_err_sT  << _8s<<err_sT .Mean() << (max_err_sT >tol_sT ?"[1;31m":"[1;32m") << _8s<<max_err_sT  << "[0m" << _8s<<err_sT.Norm()  << endl;
+	cout << _4<< "sRT" << _8s<<min_err_sRT << _8s<<err_sRT.Mean() << (max_err_sRT>tol_sRT?"[1;31m":"[1;32m") << _8s<<max_err_sRT << "[0m" << _8s<<err_sRT.Norm() << endl;
+	cout << _4<< "uR"  << _8s<<min_err_uR  << _8s<<err_uR .Mean() << (max_err_uR >tol_uR ?"[1;31m":"[1;32m") << _8s<<max_err_uR  << "[0m" << _8s<<err_uR.Norm()  << endl;
+	cout << _4<< "uT"  << _8s<<min_err_uT  << _8s<<err_uT .Mean() << (max_err_uT >tol_uT ?"[1;31m":"[1;32m") << _8s<<max_err_uT  << "[0m" << _8s<<err_uT.Norm()  << endl;
+
+	total = std::clock() - start;
+	cout << "Time elapsed (error check) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	// Return error flag
-	if ( max_err_sig_x>tol_sig || max_err_sig_y>tol_sig || max_err_sig_xy>tol_sig || max_err_disp>tol_disp ) return 1;
+	if (max_err_sR>tol_sR || max_err_sT>tol_sT || max_err_sRT>tol_sRT || max_err_uR>tol_uR || max_err_uT>tol_uT) return 1;
 	else return 0;
 }
 catch (Exception * e) 
