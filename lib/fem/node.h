@@ -208,11 +208,7 @@ inline Node * Node::Bry(const char * DOFName, double Value)
 		_dofs[idx].EssentialBry = Value;
 		_dofs[idx].IsEssenPresc = true;
 	}
-	else
-	{
-		_dofs[idx].NaturalBry   += Value;
-		_dofs[idx].IsEssenPresc  = false;
-	}
+	else _dofs[idx].NaturalBry += Value; // Bry function must not set IsEssenPresc in this case
 	return this;
 }
 

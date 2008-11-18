@@ -60,6 +60,7 @@
 #include "fem/elems/quad8pstrain.h"
 #include "fem/elems/quad8pstress.h"
 #include "fem/elems/hex8equilib.h"
+#include "fem/elems/hex20equilib.h"
 
 // MechSys -- Models
 #include "models/equilibs/linelastic.h"

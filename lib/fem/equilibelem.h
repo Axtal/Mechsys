@@ -556,12 +556,13 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 		double w = _a_face_int_pts[i].w;
 		FaceShape    (r, s, face_shape);
 		F = trn(trn(face_shape)); // trick just to convert Vector face_shape to a col Matrix
-		// perpendicular vector
+
+		// Calculate perpendicular vector
 		if (_ndim==3)
 		{
 			FaceJacobian (FaceConnects, r, s, J);
-			LinAlg::Vector<double> V; V = J(0,0), J(0,1), J(0,2);
-			LinAlg::Vector<double> W; W = J(1,0), J(1,1), J(1,2);
+			LinAlg::Vector<double> V(3); V = J(0,0), J(0,1), J(0,2);
+			LinAlg::Vector<double> W(3); W = J(1,0), J(1,1), J(1,2);
 			P.Resize(3);
 			P = V(1)*W(2) - V(2)*W(1),      // vectorial product
 			    V(2)*W(0) - V(0)*W(2),
@@ -579,10 +580,9 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 	// Set nodes Brys
 	for (size_t i=0; i<_n_face_nodes; ++i)
 	{
-		FaceConnects[i]->Bry("fx",values(i,0));
-		FaceConnects[i]->Bry("fy",values(i,1));
-		if (_ndim==3)
-		FaceConnects[i]->Bry("fz",values(i,2));
+		              FaceConnects[i]->Bry("fx",values(i,0));
+		              FaceConnects[i]->Bry("fy",values(i,1));
+		if (_ndim==3) FaceConnects[i]->Bry("fz",values(i,2));
 	}
 }
 
