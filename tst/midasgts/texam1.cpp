@@ -45,9 +45,6 @@ int main(int argc, char **argv) try
 	// Constants
 	double E_soil   = 6000.0;   // Young [MPa]
 	double nu_soil  = 0.2;      // Poisson
-	double E_beam   = 20000.0;  // Young [MPa]
-	double Izz_beam = 0.01042;  // Inertia m^4
-	double A_beam   = 0.5;      // Area m^2
 	double r        = 1.0;      // radius
 	double L        = 10.0;     // length
 	double H        = 10.0;     // height
@@ -67,11 +64,11 @@ int main(int argc, char **argv) try
 	 *    |   f   |   |    y       x   ,'     |
 	 *    |   |   |   |     ',   ,'  ,o       |
 	 *    |   |  -+-  o-,_    '+'  ,'         |
-	 *    H   |       -55 o-,    ,'           o -10
+	 *    H   |           o-,    ,'           o -10
 	 *    |  -+- . . . . . . 'o '      [b0]   |
 	 *    |   |               .',             |
 	 *    |   e               .  o  y^        |
-	 *    |   |               .-55\  |        |
+	 *    |   |               .   \  |        |
 	 *    |   |               .   |  +-->x    |
 	 *   -+- -+-      +----r----->o-----o-----o
 	 *                        .       -20
@@ -93,9 +90,9 @@ int main(int argc, char **argv) try
 	b0.SetCoords (false, 8, // Is3D, NNodes
 	               r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
 	              0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.));
-	b0.SetNx     (4, 2.0, true);
-	b0.SetNy     (4);
-	b0.SetETags  (4, -55, -10, -20, 0);
+	b0.SetNx     (30, /*Ax*/2.0, /*Nonlinear*/true);
+	b0.SetNy     (15);
+	b0.SetETags  (4, 0, -10, -20, 0);
 
 	// Upper block -- coordinates
 	Mesh::Block b1;
@@ -103,9 +100,9 @@ int main(int argc, char **argv) try
 	b1.SetCoords (false, 8,
 	              b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
 	              e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.));
-	b1.SetNx     (4, 2.0, true);
-	b1.SetNy     (4);
-	b1.SetETags  (4, -55, -30,  0, -40);
+	b1.SetNx     (30, 2.0, true);
+	b1.SetNy     (15);
+	b1.SetETags  (4, 0, -30,  0, -40);
 
 	// Blocks
 	Array<Mesh::Block*> blocks;  blocks.Resize(2);
@@ -128,8 +125,6 @@ int main(int argc, char **argv) try
 
 	// Nodes brys
 	FEM::NBrys_T nbrys;
-	nbrys.Push (make_tuple(r,0.0,0.0,"wz",0.0));
-	nbrys.Push (make_tuple(0.0,r,0.0,"wz",0.0));
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
@@ -143,12 +138,6 @@ int main(int argc, char **argv) try
 	FEM::EAtts_T eatts;
 	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0"));
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0"));
-	//eatts.Push (make_tuple(-55, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0"));
-
-	// Beam attributes
-	String beamprms;
-	beamprms.Printf("E=%f A=%f Izz=%f",E_beam,A_beam,Izz_beam);
-	eatts.Push (make_tuple(-55, "Beam", "", beamprms.CStr(), "ZERO"));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g, 1.0e-5);
@@ -166,8 +155,8 @@ int main(int argc, char **argv) try
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 
 	// Output: VTU
-	Output o; o.VTU (&g, "texam5.vtu");
-	cout << "[1;34mFile <texam5.vtu> saved.[0m\n\n";
+	Output o; o.VTU (&g, "texam1.vtu");
+	cout << "[1;34mFile <texam1.vtu> saved.[0m\n\n";
 
 	return 0;
 }
