@@ -83,9 +83,9 @@ int main(int argc, char **argv) try
 	double E_beam   = 20000.0;  // Young [MPa]
 	double Izz_beam = 0.01042;  // Inertia m^4
 	double A_beam   = 0.5;      // Area m^2
-	double r        = 1.0;      // radius
-	double L        = 10.0;     // length
-	double H        = 10.0;     // height
+	double r        = 2.5;      // radius
+	double L        = 50.0;     // length
+	double H        = 50.0;     // height
 	bool   is_o2    = false;    // use high order elements?
 
 	// Input
@@ -121,6 +121,7 @@ int main(int argc, char **argv) try
 	double d = H-r;
 	double e = r*sin(2.*PI/8.);
 	double f = H-e;
+	int    ndivy = 4;
 
 	// Lower block -- coordinates
 	Mesh::Block b0;
@@ -128,9 +129,9 @@ int main(int argc, char **argv) try
 	b0.SetCoords (false, 8, // Is3D, NNodes
 	               r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
 	              0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.));
-	b0.SetNx     (4, 2.0, true);
-	b0.SetNy     (4);
-	b0.SetETags  (4, -55, -10, -20, 0);
+	b0.SetNx     (2*ndivy, 2.0, true);
+	b0.SetNy     (ndivy);
+	//b0.SetETags  (4, -55, -10, -20, 0);
 
 	// Upper block -- coordinates
 	Mesh::Block b1;
@@ -138,9 +139,9 @@ int main(int argc, char **argv) try
 	b1.SetCoords (false, 8,
 	              b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
 	              e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.));
-	b1.SetNx     (4, 2.0, true);
-	b1.SetNy     (4);
-	b1.SetETags  (4, -55, -30,  0, -40);
+	b1.SetNx     (2*ndivy, 2.0, true);
+	b1.SetNy     (ndivy);
+	//b1.SetETags  (4, -55, -30,  0, -40);
 
 	// Blocks
 	Array<Mesh::Block*> blocks;  blocks.Resize(2);
@@ -156,6 +157,8 @@ int main(int argc, char **argv) try
 	cout << "\nNumber of quads     = " << ne << endl;
 	cout << "Time elapsed (mesh) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
+	mesh.WriteVTU("joe2.vtu");
+
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
@@ -169,7 +172,7 @@ int main(int argc, char **argv) try
 	// Edges brys
 	FEM::EBrys_T ebrys;
 	double p0 = -15.0;
-	double  K =  2.0;
+	double  K =  1.0;
 	ebrys.Push (make_tuple(-10, "fx", p0*K));
 	ebrys.Push (make_tuple(-20, "uy",  0.0));
 	ebrys.Push (make_tuple(-30, "fy",   p0));
@@ -206,37 +209,40 @@ int main(int argc, char **argv) try
 
     Vector<double> sig(3);
     Vector<double> sig_k(3);
-    Array <double> err_sig_x;
-    Array <double> err_sig_y;
-    Array <double> err_sig_xy;
-    Array <double> err_disp;
+    Array <double> err_M;
+    Array <double> err_N;
+    Array <double> err_uR;
+    Array <double> err_uT;
 
 	// Stress 
-	//for (size_t i=0; i<g.NElems(); ++i)
-	//{
-	//	for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
-	//	{
-	//		// Analytical
-	//		double x  = g.Ele(i)->Nod(j)->X();
-	//		double y  = g.Ele(i)->Nod(j)->Y();
-	//		double th = atan(y/x);
-	//		double R  = sqrt(x*x + y*y);
-	//		//Kirsch_stress(p1, p2, r, R, th, sig_k); // Calculate the Kirsch solution for a cylindrical hole
+	for (size_t i=0; i<g.NElems(); ++i)
+	{
+		String ele_name;
+		if (strcmp(g.Ele(i)->Name(), "Beam")==0) 
+			for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+			{
+				// Analytical
+				double x  = g.Ele(i)->Nod(j)->X();
+				double y  = g.Ele(i)->Nod(j)->Y();
+				double th = atan(y/x);
+				double R  = sqrt(x*x + y*y);
+				double M_correct; // Bending momentun
+				double N_correct; // Axial force
+				double uT, uR;
+				double nu_beam = 0.25;
+				Einsten_Schwartz( p0, K, R, th, r, E_soil, nu_soil, E_beam, nu_beam, Izz_beam, A_beam, M_correct, N_correct, uT, uR );
 
+				// Analysis
+				double M;
+				double N;
+				g.Ele(i)->CalcDepVars();
+				M = g.Ele(i)->Val(j,"M");
+				N = g.Ele(i)->Val(j,"N");
 
-
-	//		// Analysis
-	//		sig = g.Ele(i)->Val(j,"Sx"), g.Ele(i)->Val(j,"Sy"), g.Ele(i)->Val(j,"Sxy");
-	//		Vector<double> sig_polar(3); // Vector to transform to polar coordinates
-	//		sig_polar = sig(0)*pow(cos(th),2.0) + sig(1)*pow(sin(th),2.0) + 2.0*sig(2)*sin(th)*cos(th),
-	//		            sig(0)*pow(sin(th),2.0) + sig(1)*pow(cos(th),2.0) - 2.0*sig(2)*sin(th)*cos(th),
-	//		            (sig(1)-sig(0))*sin(th)*cos(th) + sig(2)*(pow(cos(th),2.0) - pow(sin(th),2.0));
-
-	//		err_sig_x .Push ( fabs(sig_k(0) - sig_polar(0)) );
-	//		err_sig_y .Push ( fabs(sig_k(1) - sig_polar(1)) );
-	//		err_sig_xy.Push ( fabs(sig_k(2) - sig_polar(2)) );
-	//	}
-	//}
+				err_M .Push ( fabs(M_correct - M) );
+				err_N .Push ( fabs(N_correct - N) );
+			}
+	}
 
 	// Displacements
 	for (size_t i=0; i<g.NNodes(); ++i)
@@ -256,22 +262,33 @@ int main(int argc, char **argv) try
 		// Analysis
 		double ux = g.Nod(i)->Val("ux");
 		double uy = g.Nod(i)->Val("uy");
-		double uR = ux*cos(th) + uy*sin(th);
-		double uT = uy*cos(th) - ux*sin(th);
+		double uR = ux*cos(th)+uy*sin(th);
+		double uT = uy*cos(th)-ux*sin(th);
 
-		err_disp.Push ( uR - uR_correct) ;
-		err_disp.Push ( uT - uT_correct) ;
+		err_uR.Push (fabs(uR - uR_correct)) ;
+		err_uT.Push (fabs(uT - uT_correct)) ;
 	}
+
 	// Error summary
-	double tol_disp       = 1.0e-1;
-	double min_err_disp   = err_disp  [err_disp.Min()];
-	double max_err_disp   = err_disp  [err_disp.Max()];
+	double tol_uR       = 1.0e-1;
+	double tol_uT       = 1.0e-1;
+	double tol_M        = 1.0e-1;
+	double tol_N        = 1.0e-1;
+	double min_err_uR   = err_uR[err_uR.Min()];
+	double max_err_uR   = err_uR[err_uR.Max()];
+	double min_err_uT   = err_uT[err_uT.Min()];
+	double max_err_uT   = err_uT[err_uT.Max()];
+	double min_err_M    = err_M [err_M .Min()];
+	double max_err_M    = err_M [err_M .Max()];
+	double min_err_N    = err_N [err_N .Min()];
+	double max_err_N    = err_N [err_N .Max()];
+
 	cout << _4 << ""      << _8s <<"Min"       << _8s << "Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
-	cout << _4 << "Disp"  << _8s <<min_err_disp << _8s<<err_disp  .Mean() << (max_err_disp  >tol_disp?"[1;31m":"[1;32m") << _8s<<max_err_disp   << "[0m" << _8s<<err_disp  .Norm() << endl;
+	cout << _4 << "uR"  << _8s <<min_err_uR << _8s<<err_uR.Mean() << (max_err_uR  >tol_uR?"[1;31m":"[1;32m") << _8s<<max_err_uR   << "[0m" << _8s<<err_uR  .Norm() << endl;
+	cout << _4 << "uT"  << _8s <<min_err_uT << _8s<<err_uT.Mean() << (max_err_uT  >tol_uT?"[1;31m":"[1;32m") << _8s<<max_err_uT   << "[0m" << _8s<<err_uT  .Norm() << endl;
+	cout << _4 << "M"  << _8s <<min_err_M << _8s<<err_M  .Mean() << (max_err_M  >tol_M?"[1;31m":"[1;32m") << _8s<<max_err_M   << "[0m" << _8s<<err_M  .Norm() << endl;
+	cout << _4 << "N"  << _8s <<min_err_N << _8s<<err_N  .Mean() << (max_err_N  >tol_N?"[1;31m":"[1;32m") << _8s<<max_err_N   << "[0m" << _8s<<err_N  .Norm() << endl;
 	cout << endl;
-
-
-
 
 	// Output: VTU
 	Output o; o.VTU (&g, "texam5.vtu");
