@@ -26,9 +26,7 @@
 #include <cstring>
 
 // Boost
-#if defined(USE_BOOST) || defined(USE_BOOST_PYTHON)
-  #include <boost/tuple/tuple_io.hpp>
-#endif
+#include <boost/tuple/tuple_io.hpp>
 
 // MechSys
 #include "fem/node.h"
@@ -42,8 +40,6 @@
 
 namespace FEM
 {
-
-#if defined(USE_BOOST) || defined(USE_BOOST_PYTHON)
 
 typedef Array< boost::tuple<double,double,double, char const *,double> >               NBrys_T; // Node: x,y,z, key, val
 typedef Array< boost::tuple<                 int, char const *,double> >               EBrys_T; // Edge:   tag, key, val
@@ -100,10 +96,13 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 		{
 			int beam_edge_tag = (*ElemsAtts)[k].get<0>();
 			for (size_t i=0; i<M->NElemsBry();   ++i)
-			for (size_t j=0; j<M->ElemNETags(i); ++j)
 			{
-				if (M->ElemETag(M->ElemBry(i),j)==beam_edge_tag)
-					beams.Push (boost::make_tuple(M->ElemBry(i), k, j));
+				long ie = M->ElemBry(i);
+				for (size_t j=0; j<M->ElemNETags(ie); ++j)
+				{
+					if (M->ElemETag(ie,j)==beam_edge_tag)
+						beams.Push (boost::make_tuple(ie, k, j));
+				}
 			}
 		}
 	}
@@ -370,8 +369,5 @@ void PySetBrys (Mesh::Generic const & M,          ///< In: The mesh
 	if (ebrys!=NULL) delete ebrys;
 	if (fbrys!=NULL) delete fbrys;
 }
-
-// }
-#endif // USE_BOOST_PYTHON
 
 #endif // MECHSYS_FEM_FUNCTIONS_H
