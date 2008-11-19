@@ -202,7 +202,7 @@ inline Node * Node::Bry(const char * DOFName, double Value)
 {
 	long idx = _find_var(DOFName);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::Bry: Could not find DOF variable name < %s > inside Node"), DOFName);
+		throw new Fatal(_("Node::Bry: Could not find DOF variable name < %s > inside Node (ID=%d, X=%f, Y=%f, Z=%f)"), DOFName, GetID(), X(), Y(), Z());
 	if (_dofs[idx].EssentialBryName==DOFName) // is essential
 	{
 		_dofs[idx].EssentialBry = Value;
