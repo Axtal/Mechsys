@@ -64,8 +64,8 @@ public:
 	template<typename Type>
 	void StructuredLine(int & A, int & B, Array< Array<Type> > & C);
 
-	void SeparatedLine(std::string const & Separator, Array<std::string> & Res);
-	void SeparatedLine(     String const & Separator, Array<     String> & Res);
+	void SplitLine(std::string const & Separator, Array<std::string> & Res);
+	void SplitLine(     String const & Separator, Array<     String> & Res);
 
 	template<typename Type1, typename Type2>
 	bool BreakExpressions(Array<Type1> & lvalue, Array<Type2> & rvalue);
@@ -124,7 +124,7 @@ inline void LineParser::StructuredLine(int & A, int & B, Array< Array<Type> > & 
 	}
 }
 
-inline void LineParser::SeparatedLine(std::string const & Separator, Array<std::string> & Res)
+inline void LineParser::SplitLine(std::string const & Separator, Array<std::string> & Res)
 {
 	/* Ex.:
 	 *         /home/dorival/teste/An File.txt 
@@ -157,11 +157,11 @@ inline void LineParser::SeparatedLine(std::string const & Separator, Array<std::
 	}
 }
 
-inline void LineParser::SeparatedLine(String const & Separator, Array<String> & Res)
+inline void LineParser::SplitLine(String const & Separator, Array<String> & Res)
 {
 	std::string        sep = Separator.CStr();
 	Array<std::string> arr;
-	SeparatedLine(sep,arr);
+	SplitLine(sep,arr);
 	size_t len = arr.Size();
 	Res.Resize(len);
 	for (size_t i=0; i<len; ++i)
@@ -218,7 +218,7 @@ inline void LineParser::PathSubstituteEnv()
 
 	// Substitute environmental variables
 	Array<String> pieces;
-	this->SeparatedLine("/",pieces);
+	this->SplitLine("/",pieces);
 
 
 	for (size_t k=0; k<pieces.Size(); ++k)
@@ -264,7 +264,7 @@ inline void LineParser::FileBasename(String const & ExtensionToRemove, String & 
 	 */
 
 	Array<String> pieces;
-	this->SeparatedLine("/",pieces);
+	this->SplitLine("/",pieces);
 	Basename = pieces[pieces.Size()-1];
 	if (ExtensionToRemove!=String(""))
 	{
