@@ -18,6 +18,11 @@
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
 
+	ADD_EXECUTABLE        (tbiot01   tbiot01.cpp)
+	ADD_TEST              (tbiot01   tbiot01)
+	TARGET_LINK_LIBRARIES (tbiot01   ${LIBS})
+	SET_TARGET_PROPERTIES (tbiot01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (tlinalg01   tlinalg01.cpp)
 	ADD_TEST              (tlinalg01   tlinalg01)
 	TARGET_LINK_LIBRARIES (tlinalg01   ${LIBS})
@@ -37,6 +42,11 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	ADD_TEST              (tbeam02   tbeam02)
 	TARGET_LINK_LIBRARIES (tbeam02   ${LIBS})
 	SET_TARGET_PROPERTIES (tbeam02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
+	ADD_EXECUTABLE        (ttunnel01   ttunnel01.cpp)
+	ADD_TEST              (ttunnel01   ttunnel01)
+	TARGET_LINK_LIBRARIES (ttunnel01   ${LIBS})
+	SET_TARGET_PROPERTIES (ttunnel01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
 	ADD_EXECUTABLE        (ttruss01   ttruss01.cpp)
 	ADD_TEST              (ttruss01   ttruss01)
