@@ -25,6 +25,7 @@
 #include "util/util.h"
 #include "linalg/laexpr.h"
 #include "tensors/tensors.h"
+#include "tensors/functions.h"
 
 using Util::SQ2;
 using Tensors::Tensor2;
@@ -105,6 +106,8 @@ private:
 	void _compute_H           (LinAlg::Matrix<double> & He) const;
 	void _compute_equilib_map (Array<size_t> & RowsMap, Array<bool> & RowsEssenPresc) const;
 	void _compute_flow_map    (Array<size_t> & RowsMap, Array<bool> & RowsEssenPresc) const;
+
+    double _val_ip (size_t iIP, char const * Name) const; ///< Output values at a specific Integration Point (IP)
 
 }; // class BiotElem
 
@@ -348,7 +351,6 @@ inline void BiotElem::GetLabels(Array<String> & Labels) const
 
 inline void BiotElem::CalcDepVars() const
 {
-
 }
 
 inline double BiotElem::Val(int iNodeLocal, char const * Name) const
@@ -364,19 +366,7 @@ inline double BiotElem::Val(int iNodeLocal, char const * Name) const
 	LinAlg::Vector<double> nodal_values (_n_nodes);
 
 	// Get integration point values
-	     if (strcmp(Name,"Sx" )==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _stress[i](0);
-	else if (strcmp(Name,"Sy" )==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _stress[i](1);
-	else if (strcmp(Name,"Sz" )==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _stress[i](2);
-	else if (strcmp(Name,"Sxy")==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _stress[i](3)/SQ2;
-	else if (strcmp(Name,"Syz")==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _stress[i](4)/SQ2;
-	else if (strcmp(Name,"Szx")==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _stress[i](5)/SQ2;
-	else if (strcmp(Name,"Ex" )==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _strain[i](0);
-	else if (strcmp(Name,"Ey" )==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _strain[i](1);
-	else if (strcmp(Name,"Ez" )==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _strain[i](2);
-	else if (strcmp(Name,"Exy")==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _strain[i](3)/SQ2;
-	else if (strcmp(Name,"Eyz")==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _strain[i](4)/SQ2;
-	else if (strcmp(Name,"Ezx")==0) for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _strain[i](5)/SQ2;
-	else throw new Fatal("BiotElem::Val: Name==%s is not available for this element",Name);
+	for (size_t i=0; i<_n_int_pts; i++) ip_values(i) = _val_ip(i,Name);
 
 	Extrapolate (ip_values, nodal_values);
 	return nodal_values (iNodeLocal);
@@ -751,6 +741,46 @@ inline void BiotElem::_compute_flow_map(Array<size_t> & RowsMap, Array<bool> & R
 			p++;
 		}
 	}
+}
+
+inline double BiotElem::_val_ip(size_t iIP, char const * Name) const
+{
+	     if (strcmp(Name,"Sx" )==0)                          return _stress[iIP](0);
+	else if (strcmp(Name,"Sy" )==0)                          return _stress[iIP](1);
+	else if (strcmp(Name,"Sz" )==0)                          return _stress[iIP](2);
+	else if (strcmp(Name,"Sxy")==0 || strcmp(Name,"Syx")==0) return _stress[iIP](3)/SQ2;
+	else if (strcmp(Name,"Syz")==0 || strcmp(Name,"Szy")==0) return _stress[iIP](4)/SQ2;
+	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return _stress[iIP](5)/SQ2;
+	else if (strcmp(Name,"p"  )==0)                          return (_stress[iIP](0)+_stress[iIP](1)+_stress[iIP](2))/3.0;
+	else if (strcmp(Name,"q"  )==0)                          return sqrt(((_stress[iIP](0)-_stress[iIP](1))*(_stress[iIP](0)-_stress[iIP](1)) + (_stress[iIP](1)-_stress[iIP](2))*(_stress[iIP](1)-_stress[iIP](2)) + (_stress[iIP](2)-_stress[iIP](0))*(_stress[iIP](2)-_stress[iIP](0)) + 3.0*(_stress[iIP](3)*_stress[iIP](3) + _stress[iIP](4)*_stress[iIP](4) + _stress[iIP](5)*_stress[iIP](5)))/2.0);
+	else if (strcmp(Name,"Ex" )==0)                          return _strain[iIP](0);
+	else if (strcmp(Name,"Ey" )==0)                          return _strain[iIP](1);
+	else if (strcmp(Name,"Ez" )==0)                          return _strain[iIP](2);
+	else if (strcmp(Name,"Exy")==0 || strcmp(Name,"Eyx")==0) return _strain[iIP](3)/SQ2;
+	else if (strcmp(Name,"Eyz")==0 || strcmp(Name,"Ezy")==0) return _strain[iIP](4)/SQ2;
+	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return _strain[iIP](5)/SQ2;
+	else if (strcmp(Name,"Ev" )==0)                          return _strain[iIP](0)+_strain[iIP](1)+_strain[iIP](2); 
+	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_strain[iIP](0)-_strain[iIP](1))*(_strain[iIP](0)-_strain[iIP](1)) + (_strain[iIP](1)-_strain[iIP](2))*(_strain[iIP](1)-_strain[iIP](2)) + (_strain[iIP](2)-_strain[iIP](0))*(_strain[iIP](2)-_strain[iIP](0)) + 3.0*(_strain[iIP](3)*_strain[iIP](3) + _strain[iIP](4)*_strain[iIP](4) + _strain[iIP](5)*_strain[iIP](5))))/3.0;
+
+	// Principal components of stress
+	else if (strcmp(Name,"S1" )==0) { double sigp[3]; Tensors::Eigenvals(_stress[iIP], sigp); return sigp[2]; }
+	else if (strcmp(Name,"S2" )==0) { double sigp[3]; Tensors::Eigenvals(_stress[iIP], sigp); return sigp[1]; }
+	else if (strcmp(Name,"S3" )==0) { double sigp[3]; Tensors::Eigenvals(_stress[iIP], sigp); return sigp[0]; }
+
+	// Principal components of strain
+	else if (strcmp(Name,"E1" )==0) { double epsp[3]; Tensors::Eigenvals(_strain[iIP], epsp); return epsp[2]; }
+	else if (strcmp(Name,"E2" )==0) { double epsp[3]; Tensors::Eigenvals(_strain[iIP], epsp); return epsp[1]; }
+	else if (strcmp(Name,"E3" )==0) { double epsp[3]; Tensors::Eigenvals(_strain[iIP], epsp); return epsp[0]; }
+
+	// Flow velocities
+	else if (strcmp(Name,"Vx" )==0) return 0.0;
+	else if (strcmp(Name,"Vy" )==0) return 0.0;
+	else if (strcmp(Name,"Vz" )==0) return 0.0;
+
+	// Total head
+	else if (strcmp(Name,"H" )==0) return 0.0;
+
+	else throw new Fatal("BiotElem::_val_ip: Name==%s if not available for this element",Name);
 }
 
 }; // namespace FEM
