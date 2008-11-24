@@ -136,6 +136,8 @@ int main(int argc, char **argv) try
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (2, sol);
 
+	delete sol;
+
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	return 0;

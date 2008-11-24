@@ -58,7 +58,7 @@ public:
 	DiffusionElem () : _source(0.0), _has_source(false) {}
 
 	// Destructor
-	virtual ~DiffusionElem() {}
+	virtual ~DiffusionElem();
 
 	// Derived methods
 	bool         CheckModel   () const;
@@ -107,6 +107,11 @@ private:
 
 
 /* public */
+
+inline DiffusionElem::~DiffusionElem()
+{
+	for (size_t i=0; i<_a_model.Size(); ++i) delete _a_model[i];
+}
 	
 // Derived methods
 

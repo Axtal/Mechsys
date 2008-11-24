@@ -147,6 +147,7 @@ int main(int argc, char **argv) try
 	cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 	if (norm_resid>9.0e-13) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,9.0e-13);
+	delete sol;
 
 	// Output: VTU
 	Output o; o.VTU (&g, "ttruss02.vtu");

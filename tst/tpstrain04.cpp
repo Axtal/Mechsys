@@ -137,6 +137,7 @@ int main(int argc, char **argv) try
 	double norm_resid = LinAlg::Norm(sol->Resid());
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	delete sol;
 
 	// Error summary
 	double err_ux = 0.0;

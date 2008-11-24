@@ -149,6 +149,7 @@ int main(int argc, char **argv) try
 			res << _8s<<g.Ele(13)->Val("p")  << _8s<<g.Ele(13)->Val("q")  << _8s<<g.Ele(13)->Val("Ev") << _8s<<g.Ele(13)->Val("Ed") << "\n";
 		}
 	}
+	delete sol;
 
 	// Close file
 	res.close();

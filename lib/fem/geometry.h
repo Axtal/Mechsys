@@ -21,6 +21,7 @@
 
 // STL
 #include <iostream>
+#include <cstring>
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
@@ -42,6 +43,9 @@ class Geom
 public:
 	/* Constructor */
 	Geom (int nDim) : _dim(nDim) {}
+
+	/* Destructor */
+	~Geom ();
 
 	// Set methods
 	void      SetNNodes (size_t NNodes);                                   ///< Set the number of nodes
@@ -84,6 +88,12 @@ private:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+inline Geom::~Geom()
+{
+	for (size_t i=0; i<_nodes.Size(); ++i) if (_nodes[i]!=NULL) delete _nodes[i];
+	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
+}
 
 inline void Geom::SetNNodes(size_t NNodes)
 {

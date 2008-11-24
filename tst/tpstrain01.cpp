@@ -127,6 +127,7 @@ int main(int argc, char **argv) try
 	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	delete sol;
 
 	// Output: VTU
 	Output o; o.VTU (&g, "tpstrain01.vtu");

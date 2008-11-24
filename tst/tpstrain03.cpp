@@ -119,6 +119,7 @@ int main(int argc, char **argv) try
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
+	delete sol;
 
 	// Error summary
 	double err_ux = 0.0;

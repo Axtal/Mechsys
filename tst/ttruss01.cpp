@@ -133,6 +133,7 @@ int main(int argc, char **argv) try
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 	if (norm_resid>1.3e-15) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,1.3e-15);
 	cout << endl;
+	delete sol;
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;

@@ -67,7 +67,7 @@ public:
 	EquilibElem () : _body_force(0.0), _has_body_force(false), _d(-1), _nd(-1) {}
 
 	// Destructor
-	virtual ~EquilibElem() {}
+	virtual ~EquilibElem();
 
 	// Derived methods
 	virtual bool CheckModel   () const;
@@ -138,6 +138,11 @@ const char   EquilibElem::LB[5][18][4] = {
 
 
 /* public */
+
+inline EquilibElem::~EquilibElem()
+{
+	for (size_t i=0; i<_a_model.Size(); ++i) delete _a_model[i];
+}
 
 // Derived methods
 

@@ -66,6 +66,7 @@ int main(int argc, char **argv) try
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetGeom(&g) -> SetLinSol("UM") -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
+	delete sol;
 
 	return 0;
 

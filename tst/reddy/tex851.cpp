@@ -161,6 +161,7 @@ int main(int argc, char **argv) try
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 	if (norm_resid>sqrt(DBL_EPSILON)) throw new Fatal("tex851: norm_resid=%e for quadrangular mesh is bigger than %e.",norm_resid,sqrt(DBL_EPSILON));
 	cout << endl;
+	delete sol;
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;

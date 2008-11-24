@@ -116,6 +116,7 @@ int main(int argc, char **argv) try
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
 	sol -> Solve();
+	delete sol;
 
 	// Output
 	cout << "Node 3: ux = " << g.Nod(3)->Val("ux") << " : uy = " << g.Nod(3)->Val("uy") << " : fy = "  << g.Nod(3)->Val("fy")  << endl;
