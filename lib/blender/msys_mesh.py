@@ -33,7 +33,67 @@ def print_timing(func):
         return res
     return wrapper
 
+# =========================================================================== Linear mesh
 
+@print_timing
+def gen_linear_mesh(gen_script=False,txt=None):
+    # get selected object and mesh
+    edm, obj, msh = di.get_msh()
+
+    # 3D mesh?
+    is3d = obj.properties['3dmesh']
+
+    # transform vertices coordinates
+    ori = msh.verts[:]         # create a copy in local coordinates
+    msh.transform (obj.matrix) # transform mesh to global coordinates
+
+    # MechSys mesh
+    msm = ms.mesh_generic(is3d)
+
+    # etags
+    etags = {}
+    if obj.properties.has_key('etags'):
+        for k, v in obj.properties['etags'].iteritems():
+            eid = int(k)
+            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
+
+    if gen_script:
+        if txt==None:
+            txt = Blender.Text.New(obj.name+'_lmesh')
+            txt.write('import mechsys   as ms\n')
+            txt.write('import msys_mesh as me\n\n')
+        if is3d: txt.write('msm = ms.mesh_generic(True)\n')
+        else:    txt.write('msm = ms.mesh_generic(False)\n')
+
+        # vertices
+        txt.write('msm.set_nverts    (%d)\n'%len(msh.verts))
+        for i, v in enumerate(msh.verts):
+            if is3d: txt.write('msm.set_vert      (%d, True, %g,%g,%g)\n'%(i, v.co[0], v.co[1], v.co[2]))
+            else:    txt.write('msm.set_vert      (%d, True, %g,%g)\n'   %(i, v.co[0], v.co[1]))
+
+        # elements
+        txt.write('msm.set_nelems    (%d)\n'%len(msh.edges))
+        for i, e in enumerate(msh.edges):
+            key = (e.v1.index, e.v2.index)
+            if not key in etags: raise Exception('All edges must have a edge tag')
+            etag = etags[key]
+            txt.write('msm.set_elem      (%d,%d,True,3)\n'%(i,etag))   # 3 == VTK_LINE
+            txt.write('msm.set_elem_con  (%d,0,%d)\n'%(i, e.v1.index)) # 0 == local node index
+            txt.write('msm.set_elem_con  (%d,1,%d)\n'%(i, e.v2.index)) # 1 == local node index
+            txt.write('msm.set_elem_etag (%d,0,%d)\n'%(i, etags[key])) # 0 == local edge index
+    else:
+        pass
+
+    # Restore local coordinates
+    msh.verts = ori
+
+    if gen_script:
+        txt.write('me.add_mesh(msm)\n')
+    else:
+        Blender.Window.WaitCursor(1)
+        add_mesh (msm)
+        Blender.Window.WaitCursor(0)
+    
 # =========================================================================== Structured mesh
 
 @print_timing
@@ -327,8 +387,8 @@ def add_mesh(msm, fclrs={}):
     # add new mesh to Blender
     key     = di.get_file_key()
     scn     = bpy.data.scenes.active
-    new_msh = bpy.data.meshes.new      (key+'_structured')
-    new_obj = scn.objects.new (new_msh, key+'_structured')
+    new_msh = bpy.data.meshes.new      (key+'_mesh')
+    new_obj = scn.objects.new (new_msh, key+'_mesh')
     new_msh.verts.extend (verts)
     new_msh.edges.extend (edges)
     new_obj.select       (1)

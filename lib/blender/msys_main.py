@@ -68,6 +68,9 @@ EVT_CAD_FSPLINE      = 11 # create a spline from points in a file
 EVT_MESH_SHOWHIDE    = 12 # show/hide MESH box
 EVT_MESH_SETETAG     = 13 # set edges tag
 EVT_MESH_SETFTAG     = 14 # set faces tag
+# Mesh -- linear
+EVT_MESH_GENLINEAR   = 55 # generate linear mesh
+EVT_MESH_GENLINEARS  = 56 # generate linear mesh
 # Mesh -- structured
 EVT_MESH_ADDBLK      = 15 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_DELALLBLKS  = 16 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
@@ -200,6 +203,11 @@ def button_event(evt):
     elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key    ('gui_show_mat')
     elif evt==EVT_MAT_ADDMAT:    di.props_push_new('mats', di.new_mat_props())
     elif evt==EVT_MAT_DELALLMAT: di.props_del_all ('mats')
+
+    # -------------------------------------------------------------------- Mesh -- linear
+
+    elif evt==EVT_MESH_GENLINEAR:  me.gen_linear_mesh()
+    elif evt==EVT_MESH_GENLINEARS: me.gen_linear_mesh(True)
 
     # -------------------------------------------------------------------- Mesh -- structured
 
@@ -376,6 +384,10 @@ def cb_mat_setG     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 7, float(
 @try_catch
 def cb_mat_setv     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 8, float(val))
 @try_catch
+def cb_mat_setA     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 9, float(val))
+@try_catch
+def cb_mat_setIzz   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 10, float(val))
+@try_catch
 def cb_mat_del      (evt,val): di.props_del      ('mats', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbrys
@@ -536,7 +548,7 @@ def gui():
     h_msh_unst_regs = rh+srg+rh*len(regs)
     h_msh_unst_hols = rh+srg+rh*len(hols)
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
-    h_msh           = 7*rh+h_msh_stru+h_msh_unst
+    h_msh           = 8*rh+h_msh_stru+h_msh_unst
     h_mat_mats      = srg+2*rh*len(mats)
     h_mat           = 3*rh+h_mat_mats
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
@@ -606,6 +618,9 @@ def gui():
         Draw.Number      ('',        EVT_NONE,          c+180, r, 60, rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
         Draw.ColorPicker (           EVT_NONE,          c+240, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
         Draw.PushButton  ('Face',    EVT_MESH_SETFTAG,  c+300, r, 60, rh,                              'Set faces tag (0 => remove tag)')
+        r -= rh
+        Draw.PushButton  ('Generate linear mesh', EVT_MESH_GENLINEAR,  c,     r, 240, rh, 'Generate linear mesh')
+        Draw.PushButton  ('Write Script',         EVT_MESH_GENLINEARS, c+240, r, 100, rh, 'Create script for structured mesh generation')
         r -= rh
         r -= rh
 
@@ -735,6 +750,12 @@ def gui():
                 Draw.String     ('',    EVT_INC+i, c+300, r,  60, rh, '%g'  %v[7], 32, 'G: Shear modulus',                     cb_mat_setG)
                 Draw.String     ('',    EVT_INC+i, c+360, r,  60, rh, '%.4f'%v[8], 32, 'v: Specific volume',                   cb_mat_setv)
                 Draw.PushButton ('Del', EVT_INC+i, c+420, r,  40, rh,                  'Delete this row',                      cb_mat_del)
+            elif int(v[0])==3: # BeamElastic
+                gu.text(c,r+rh,'   ID       Model             E             A            Izz')
+                Draw.String     ('',    EVT_INC+i, c+120, r,  60, rh, '%g'%v[ 1], 32, 'E: Young modulus',             cb_mat_setE)
+                Draw.String     ('',    EVT_INC+i, c+180, r,  60, rh, '%g'%v[ 9], 32, 'A: Cross-sectional area',      cb_mat_setA)
+                Draw.String     ('',    EVT_INC+i, c+240, r,  60, rh, '%g'%v[10], 32, 'Izz: Cross-sectional inertia', cb_mat_setIzz)
+                Draw.PushButton ('Del', EVT_INC+i, c+300, r,  40, rh,                 'Delete this row',              cb_mat_del)
             r  -= rh
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)

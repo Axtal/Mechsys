@@ -51,6 +51,7 @@
 #include "fem/solvers/forwardeuler.h"
 
 // MechSys -- fem -- Elements
+#include "fem/elems/beam.h"
 #include "fem/elems/rod.h"
 #include "fem/elems/tri6pstrain.h"
 #include "fem/elems/tri6pstress.h"

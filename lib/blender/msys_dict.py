@@ -70,35 +70,36 @@ def load_dict():
         dict['res_show_warp']   = 1
 
         # DOF Vars
-        dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q' }
-        dict['dfvmnu'] = 'DOF Vars %t|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
+        dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q', 8:'Q', 9:'wz', 10:'mz' }
+        dict['dfvmnu'] = 'DOF Vars %t|mz %x11|wz %x10|Q %x9|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
 
         # Element types
         dict['ety']  = {  0:'Hex8Equilib',    1:'Hex8Diffusion',
                           2:'Quad4PStrain',   3:'Quad4PStress',   4:'Quad4Diffusion',
                           5:'Tri3PStrain',    6:'Tri3PStress',    7:'Tri3Diffusion',
-                          8:'Rod',
-                          9:'Quad8PStrain',  10:'Quad8PStress',  11:'Quad8Diffusion',
-                         12:'Tri6PStrain',   13:'Tri6PStress',   14:'Tri6Diffusion',
-                         15:'Hex20Equilib',  16:'Hex20Diffusion',
-                         17:'Tet4Equilib',   18:'Tet4Diffusion',
-                         19:'Tet10Equilib',  20:'Tet10Diffusion' }
+                          8:'Rod',            9:'Beam',
+                         10:'Quad8PStrain',  11:'Quad8PStress',  12:'Quad8Diffusion',
+                         13:'Tri6PStrain',   14:'Tri6PStress',   15:'Tri6Diffusion',
+                         16:'Hex20Equilib',  17:'Hex20Diffusion',
+                         18:'Tet4Equilib',   19:'Tet4Diffusion',
+                         20:'Tet10Equilib',  21:'Tet10Diffusion' }
 
-        dict['etymnu'] = 'Element Types %t|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
+        dict['etymnu'] = 'Element Types %t|Tri6Diffusion %x16|Tri6PStress %x15|Tri6PStrain %x14|Quad8Diffusion %x13|Quad8PStress %x12|Quad8PStrain %x11|Beam %x10|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
 
         # Models
-        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay' }
-        dict['mdlmnu'] = 'Constitutive Models %t|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
+        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic' }
+        dict['mdlmnu'] = 'Constitutive Models %t|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
 
         # VTK Cell Type (tentative mapping)
         dict['vtk2ety'] = {  5: 5,   # VTK_TRIANGLE             => Tri3PStrain
                              9: 2,   # VTK_QUAD                 => Quad4PStrain
-                            10:17,   # VTK_TETRA                => Tet4Equilib
+                            10:18,   # VTK_TETRA                => Tet4Equilib
                             12: 0,   # VTK_HEXAHEDRON           => Hex8Equilib
-                            22:12,   # VTK_QUADRATIC_TRIANGLE   => Tri6PStrain
-                            23: 9,   # VTK_QUADRATIC_QUAD       => Quad8PStrain
-                            24:19,   # VTK_QUADRATIC_TETRA      => Tet10Equilib
-                            25:15 }  # VTK_QUADRATIC_HEXAHEDRON => Hex20Equilib
+                            22:13,   # VTK_QUADRATIC_TRIANGLE   => Tri6PStrain
+                            23:10,   # VTK_QUADRATIC_QUAD       => Quad8PStrain
+                            24:20,   # VTK_QUADRATIC_TETRA      => Tet10Equilib
+                            25:16,   # VTK_QUADRATIC_HEXAHEDRON => Hex20Equilib
+                             3: 9 }  # VTK_LINE                 => Beam
 
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
@@ -205,7 +206,9 @@ def new_mat_props():
                  0.0196,  #   5:  kap -- kappa (CamClay)
                 31.6,     #   6:  phics -- shear angle at CS (CamClay)
              18130.0,     #   7:  G -- shear modulus (kPa) (CamClay)
-                 1.6910 ] #   8:  v -- initial specific volume (CamClay)
+                 1.6910,  #   8:  v -- initial specific volume (CamClay)
+                 1.0,     #   9:  A -- Beam: Area
+                 1.0 ]    #  10:  Izz -- Beam: Inertia
 
 def new_nbry_props(): return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props(): return [0, 0, 0.0]                       # ID, ux, val

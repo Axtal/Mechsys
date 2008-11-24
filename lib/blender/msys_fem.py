@@ -62,6 +62,8 @@ def get_brys_atts(obj):
                 mats[int(k)] = [d['mdl'][int(v[0])], 'k=%f' % (v[3])]
             elif int(v[0])==2: # CamClay
                 mats[int(k)] = [d['mdl'][int(v[0])], 'lam=%f kap=%f phics=%f G=%f v=%f' % (v[4],v[5],v[6],v[7],v[8])]
+            elif int(v[0])==3: # BeamElastic
+                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%f A=%f Izz=%f' % (v[1],v[9],v[10])]
 
     # eatts
     eatts = []
