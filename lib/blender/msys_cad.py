@@ -249,24 +249,3 @@ def break_edge(at_mid=False):
         else: raise Exception('Please, select only one edge (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
     else: raise Exception('Please, select a Mesh object before calling this function')
-
-def join_meshes():
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    if len(obs)>1:
-        for o in obs:
-            if o==None or o.type!='Mesh': raise Exception('Please, all selected objects must be of Mesh type')
-        edm = Blender.Window.EditMode()
-        if edm: Blender.Window.EditMode(0)
-        new_msh = bpy.data.meshes.new      (o.name)
-        new_obj = scn.objects.new (new_msh, o.name)
-        for o in obs:
-            nvs = len(new_msh.verts)
-            msh = o.getData(mesh=True) # get mesh
-            ori = msh.verts[:]         # create a copy in local coordinates
-            msh.transform (o.matrix)   # transform mesh to global coordinates
-            new_msh.verts.extend ([v.co for v in msh.verts])
-            new_msh.edges.extend ([(e.v1.index+nvs,e.v2.index+nvs) for e in msh.edges])
-            msh.verts = ori            # recover original coordinates
-        new_obj.select(1)
-    else: raise Exception('Please, select at least two Mesh objects')
