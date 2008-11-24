@@ -30,6 +30,9 @@ namespace FEM
 class Beam : public EquilibElem
 {
 public:
+	// Constants
+	static const size_t NPOINTS;        ///< Number of points for extra output
+	
 	// Constructor
 	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
 
@@ -47,6 +50,7 @@ public:
 	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
 	int    VTKCellType  () const { return VTK_LINE; }
 	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
+	void   OutExtra     (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
 
 	// Methods
 	Beam * EdgeBry (char const * Key, double q, int EdgeLocalID) { return EdgeBry(Key,q,q,EdgeLocalID); } ///< Set distributed load with key = q0 or q1
@@ -77,6 +81,8 @@ private:
 	void _transf_mat                  (LinAlg::Matrix<double> & T) const; ///< Calculate transformation matrix
 
 }; // class Beam
+
+const size_t Beam::NPOINTS = 10;  ///< Number of points for extra output
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -277,6 +283,42 @@ inline double Beam::V(double l) const
 	return V;
 }
 
+inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const
+{
+	// Generate coordinates for the extra points
+	double x0  = _connects[0]->X();
+	double y0  = _connects[0]->Y();
+	double x1  = _connects[1]->X();
+	double y1  = _connects[1]->Y();
+	double len = sqrt(pow(x1-x0,2) + pow(y1-y0,2));
+	Coords.Resize(NPOINTS, 2);
+	for (size_t i=0; i<NPOINTS; i++)
+	{
+		Coords(i,0) = x0 + i*(x1-x0)/NPOINTS;
+		Coords(i,1) = y0 + i*(y1-y0)/NPOINTS;
+	}
+
+	// Normal vector
+	Norm.Resize(2);
+	double v = (x1-x0)/len;
+	double w = (y1-y0)/len;
+	Norm(0) = -w;
+	Norm(1) =  v;
+
+	// Labels
+	Labels.Resize(3);
+	Labels[0] = "M"; Labels[0] = "N"; Labels[0] = "V";
+
+	// Values
+	Values.Resize(NPOINTS, Labels.Size());
+	for (size_t i=0; i<NPOINTS; i++)
+	{
+		double l = static_cast<double>(i)/NPOINTS;
+		Values(i,0) = M(l);
+		Values(i,0) = N(l);
+		Values(i,0) = V(l);
+	}
+}
 
 /* private */
 
