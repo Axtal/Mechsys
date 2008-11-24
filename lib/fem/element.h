@@ -62,9 +62,6 @@ public:
 	virtual Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
 	virtual Element * EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
 
-	// Methods
-	virtual void AllocExtraNodes (Array<Node*> & Nodes) {}  ///< Allocate extra nodes for output, such as with Beams
-
 	// Set methods
 	virtual Element * EdgeBry (char const * Key, double Value0, double Value1, int EdgeLocalID) { return this; } ///< Set edge boundary conditions (SetDim MUST be called first)
 	

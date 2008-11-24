@@ -119,11 +119,7 @@ inline Node * Geom::SetNode(size_t i, double X, double Y, double Z)
 
 inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
 {
-	if (_elems[i]==NULL)
-	{
-		_elems[i] = AllocElement(Type);
-		_elems[i]->AllocExtraNodes(_nodes);
-	}
+	if (_elems[i]==NULL) _elems[i] = AllocElement(Type);
 	_elems[i]->SetID     (i);
 	_elems[i]->SetDim    (_dim);
 	_elems[i]->SetActive (IsActive);
