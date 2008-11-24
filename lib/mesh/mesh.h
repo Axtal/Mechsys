@@ -175,8 +175,8 @@ protected:
 
 	// Private methods that MAY be overloaded
 	virtual void   _erase            ();                                                  ///< Erase current mesh (deallocate memory)
-	virtual size_t _edge_to_lef_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local left vertex ID for a given Local Edge ID
-	virtual size_t _edge_to_rig_vert (size_t EdgeLocalID)             const { return 0; } ///< Returns the local right vertex ID for a given Local Edge ID
+	virtual size_t _edge_to_lef_vert (size_t EdgeLocalID) const;                          ///< Returns the local left vertex ID for a given Local Edge ID
+	virtual size_t _edge_to_rig_vert (size_t EdgeLocalID) const;                          ///< Returns the local right vertex ID for a given Local Edge ID
 	virtual void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const {} ///< Returns the local vertex IDs for a given Local Face ID
 	virtual void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const {} ///< Returns the local edge IDs for a given Local Face ID
 
@@ -555,6 +555,48 @@ inline void Generic::_erase()
 	if (_elems    .Size()>0) _elems      .Resize(0);
 	if (_elems_bry.Size()>0) _elems_bry  .Resize(0);
 	if (_verts_bry.Size()>0) _verts_bry  .Resize(0);
+}
+
+inline size_t Generic::_edge_to_lef_vert (size_t EdgeLocalID) const
+{
+	return 0; // VTK_LINE
+	/*
+	switch (VTKCellType)
+	{
+		case VTK_LINE:                 { return  0; }
+		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUAD:                 { return  QUA_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_TETRA:                { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Tetrahedrons"); }
+		case VTK_HEXAHEDRON:           { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Hexahedrons"); }
+		case VTK_QUADRATIC_EDGE:       { return  0; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  TRI_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUADRATIC_TETRA:      { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Tetrahedrons"); }
+		case VTK_QUADRATIC_HEXAHEDRON: { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Hexahedrons"); }
+		default: throw new Fatal("Generic::_edge_to_lef_vert: VTKCellType==%d is invalid (not implemented yet)", VTKCellType);
+	}
+	*/
+}
+
+inline size_t Generic::_edge_to_rig_vert (size_t EdgeLocalID) const
+{
+	return 1; // VTK_LINE
+	/*
+	switch (VTKCellType)
+	{
+		case VTK_LINE:                 { return  1; }
+		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUAD:                 { return  QUA_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_TETRA:                { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Tetrahedrons"); }
+		case VTK_HEXAHEDRON:           { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Hexahedrons"); }
+		case VTK_QUADRATIC_EDGE:       { return  1; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  TRI_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUADRATIC_TETRA:      { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Tetrahedrons"); }
+		case VTK_QUADRATIC_HEXAHEDRON: { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Hexahedrons"); }
+		default: throw new Fatal("Generic::_edge_to_rig_vert: VTKCellType==%d is invalid (not implemented yet)", VTKCellType);
+	}
+	*/
 }
 
 inline size_t Generic::_nverts(int VTKCellType) const
