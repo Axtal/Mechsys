@@ -348,6 +348,7 @@ inline void BiotElem::GetLabels(Array<String> & Labels) const
 
 inline void BiotElem::CalcDepVars() const
 {
+
 }
 
 inline double BiotElem::Val(int iNodeLocal, char const * Name) const
@@ -473,40 +474,40 @@ inline void BiotElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Ma
 		case 2: // 2D(plane-strain)
 		{
 			const int n_scomps = 4; // number of stress compoments
-			B.Resize (n_scomps,_nd*_n_nodes);
+			B.Resize (n_scomps,_ndim*_n_nodes);
 			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =     dN(0,i);  B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dN(1,i);
-				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;
-				B(3,0+i*_nd) = dN(1,i)/SQ2;  B(3,1+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*_ndim) =     dN(0,i);  B(0,1+i*_ndim) =         0.0;
+				B(1,0+i*_ndim) =         0.0;  B(1,1+i*_ndim) =     dN(1,i);
+				B(2,0+i*_ndim) =         0.0;  B(2,1+i*_ndim) =         0.0;
+				B(3,0+i*_ndim) = dN(1,i)/SQ2;  B(3,1+i*_ndim) = dN(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
 		case 3: // 3D
 		{
 			const int n_scomps = 6; // number of stress compoments
-			B.Resize (n_scomps,_nd*_n_nodes);
+			B.Resize (n_scomps,_ndim*_n_nodes);
 			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =     dN(0,i);  B(0,1+i*_nd) =         0.0;  B(0,2+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dN(1,i);  B(1,2+i*_nd) =         0.0;
-				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;  B(2,2+i*_nd) =     dN(2,i);
-				B(3,0+i*_nd) = dN(1,i)/SQ2;  B(3,1+i*_nd) = dN(0,i)/SQ2;  B(3,2+i*_nd) =         0.0; // SQ2 => Mandel representation
-				B(4,0+i*_nd) =         0.0;  B(4,1+i*_nd) = dN(2,i)/SQ2;  B(4,2+i*_nd) = dN(1,i)/SQ2; // SQ2 => Mandel representation
-				B(5,0+i*_nd) = dN(2,i)/SQ2;  B(5,1+i*_nd) =         0.0;  B(5,2+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*_ndim) =     dN(0,i);  B(0,1+i*_ndim) =         0.0;  B(0,2+i*_ndim) =         0.0;
+				B(1,0+i*_ndim) =         0.0;  B(1,1+i*_ndim) =     dN(1,i);  B(1,2+i*_ndim) =         0.0;
+				B(2,0+i*_ndim) =         0.0;  B(2,1+i*_ndim) =         0.0;  B(2,2+i*_ndim) =     dN(2,i);
+				B(3,0+i*_ndim) = dN(1,i)/SQ2;  B(3,1+i*_ndim) = dN(0,i)/SQ2;  B(3,2+i*_ndim) =         0.0; // SQ2 => Mandel representation
+				B(4,0+i*_ndim) =         0.0;  B(4,1+i*_ndim) = dN(2,i)/SQ2;  B(4,2+i*_ndim) = dN(1,i)/SQ2; // SQ2 => Mandel representation
+				B(5,0+i*_ndim) = dN(2,i)/SQ2;  B(5,1+i*_ndim) =         0.0;  B(5,2+i*_ndim) = dN(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
 		case 5: // 2D(plane-stress)
 		{
 			const int n_scomps = 3; // number of stress compoments
-			B.Resize(n_scomps,_nd*_n_nodes);
+			B.Resize(n_scomps,_ndim*_n_nodes);
 			for (size_t i=0; i<_n_nodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =      dN(0,i);   B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =          0.0;   B(1,1+i*_nd) =     dN(1,i);
-				B(2,0+i*_nd) =  dN(1,i)/SQ2;   B(2,1+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*_ndim) =      dN(0,i);   B(0,1+i*_ndim) =         0.0;
+				B(1,0+i*_ndim) =          0.0;   B(1,1+i*_ndim) =     dN(1,i);
+				B(2,0+i*_ndim) =  dN(1,i)/SQ2;   B(2,1+i*_ndim) = dN(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
@@ -639,8 +640,9 @@ inline void BiotElem::_compute_C(LinAlg::Matrix<double> & Ce) const
 	LinAlg::Vector<double> shape;  // size = _n_nodes
 	LinAlg::Matrix<double> J;      // Jacobian matrix
 	LinAlg::Matrix<double> B;      // strain-displacement matrix
-	LinAlg::Vector<double> m(6);   // vector with ones in the first three positions ~ 6D representation of the 2nd order identity tensor I
-	m = 1.0,1.0,1.0, 0.0,0.0,0.0;
+	LinAlg::Vector<double> m;      // vector with ones in the first three positions ~ 6D representation of the 2nd order identity tensor I
+	     if (_ndim==2) { m.Resize(4); m = 1.0,1.0,1.0, 0.0; }
+	else if (_ndim==3) { m.Resize(6); m = 1.0,1.0,1.0, 0.0,0.0,0.0; }
 
 	// Loop along integration points
 	for (size_t i=0; i<_n_int_pts; ++i)

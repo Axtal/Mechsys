@@ -43,11 +43,6 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (tbeam02   ${LIBS})
 	SET_TARGET_PROPERTIES (tbeam02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
-	ADD_EXECUTABLE        (ttunnel01   ttunnel01.cpp)
-	ADD_TEST              (ttunnel01   ttunnel01)
-	TARGET_LINK_LIBRARIES (ttunnel01   ${LIBS})
-	SET_TARGET_PROPERTIES (ttunnel01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
 	ADD_EXECUTABLE        (ttruss01   ttruss01.cpp)
 	ADD_TEST              (ttruss01   ttruss01)
 	TARGET_LINK_LIBRARIES (ttruss01   ${LIBS})

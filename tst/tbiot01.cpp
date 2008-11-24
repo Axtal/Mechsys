@@ -136,7 +136,9 @@ int main(int argc, char **argv) try
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (2, sol);
 
-	delete sol;
+	// Output: VTU
+	Output o; o.VTU (&g, "tbiot01.vtu");
+	cout << "[1;34mFile <tbiot01.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
