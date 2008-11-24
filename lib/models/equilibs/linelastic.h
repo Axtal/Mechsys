@@ -63,15 +63,21 @@ inline void LinElastic::SetPrms(char const * Prms)
 	Array<double> values;
 	lp.BreakExpressions(names,values);
 
-	// Set
+	// Parse parameters
 	double E  = -1.0;
 	double nu = -1.0;
 	for (size_t i=0; i<names.Size(); ++i)
 	{
-			 if (names[i]=="E" ) E  = values[i];
+		     if (names[i]=="E" ) E  = values[i];
 		else if (names[i]=="nu") nu = values[i];
 		else throw new Fatal("LinElastic::SetPrms: Parameter name==%s is invalid",names[i].CStr());
 	}
+
+	// Check
+	if (E<=0.0)             throw new Fatal("LinElastic::SetPrms: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
+	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::SetPrms: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",nu);
+
+	// Set stiffness
 	if (_geom==1) throw new Fatal("LinElastic::SetPrms: This model is not available for Linear Elements");
 	else
 	{
@@ -86,8 +92,6 @@ inline void LinElastic::SetPrms(char const * Prms)
 		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
 		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
 	}
-	if (E <=0.0) throw new Fatal("LinElastic::SetPrms: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
-	if (nu<=0.0 || nu>0.499999999) throw new Fatal("LinElastic::SetPrms: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",nu);
 }
 
 inline void LinElastic::SetInis(char const * Inis)
