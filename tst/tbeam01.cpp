@@ -24,6 +24,7 @@
 #include "fem/functions.h"
 #include "fem/elems/beam.h"
 #include "fem/solvers/forwardeuler.h"
+#include "fem/output.h"
 #include "fem/solvers/autome.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
@@ -111,6 +112,22 @@ int main(int argc, char **argv) try
 		cout <<          _8s<<g.Ele(i)->Val(1, "N") << _8s<<g.Ele(i)->Val(1, "M") << _8s<<g.Ele(i)->Val(1, "V") << endl;
 	}
 	cout << endl;
+
+	// Output: VTU
+	Output o; o.VTU (&g, "tbeam01.vtu");
+	cout << "[1;34mFile <tbeam01.vtu> saved.[0m\n\n";
+
+	//ExtraOut test
+	Matrix<double> Coords;
+	Vector<double> Norm;
+	Matrix<double> Values;
+	Array<String>  Labels;
+
+	g.Ele(2)->OutExtra(Coords, Norm, Values, Labels);
+	cout << "Coords: " << Coords << endl;
+	cout << "Noem:   " << Norm   << endl;
+	cout << "Values: " << Values << endl;
+	cout << "Labels: " << Labels[0] << Labels[1] << Labels[2] << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
