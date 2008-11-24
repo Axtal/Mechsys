@@ -285,39 +285,43 @@ inline double Beam::V(double l) const
 
 inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const
 {
-	// Generate coordinates for the extra points
-	double x0  = _connects[0]->X();
-	double y0  = _connects[0]->Y();
-	double x1  = _connects[1]->X();
-	double y1  = _connects[1]->Y();
-	double len = sqrt(pow(x1-x0,2) + pow(y1-y0,2));
-	Coords.Resize(NDIV+1, 2);
-	for (size_t i=0; i<NDIV+1; i++)
+	if (_ndim==2)
 	{
-		Coords(i,0) = x0 + i*(x1-x0)/NDIV;
-		Coords(i,1) = y0 + i*(y1-y0)/NDIV;
+		// Generate coordinates for the extra points
+		double x0  = _connects[0]->X();
+		double y0  = _connects[0]->Y();
+		double x1  = _connects[1]->X();
+		double y1  = _connects[1]->Y();
+		double len = sqrt(pow(x1-x0,2) + pow(y1-y0,2));
+		Coords.Resize(NDIV+1, 2);
+		for (size_t i=0; i<NDIV+1; i++)
+		{
+			Coords(i,0) = x0 + i*(x1-x0)/NDIV;
+			Coords(i,1) = y0 + i*(y1-y0)/NDIV;
+		}
+
+		// Normal vector
+		Norm.Resize(2);
+		double v = (x1-x0)/len;
+		double w = (y1-y0)/len;
+		Norm(0) = -w;
+		Norm(1) =  v;
+
+		// Labels
+		Labels.Resize(3);
+		Labels[0] = "M"; Labels[1] = "N"; Labels[2] = "V";
+
+		// Values
+		Values.Resize(NDIV+1, Labels.Size());
+		for (size_t i=0; i<NDIV+1; i++)
+		{
+			double l = static_cast<double>(i)/NDIV;
+			Values(i,0) = M(l);
+			Values(i,1) = N(l);
+			Values(i,2) = V(l);
+		}
 	}
-
-	// Normal vector
-	Norm.Resize(2);
-	double v = (x1-x0)/len;
-	double w = (y1-y0)/len;
-	Norm(0) = -w;
-	Norm(1) =  v;
-
-	// Labels
-	Labels.Resize(3);
-	Labels[0] = "M"; Labels[1] = "N"; Labels[2] = "V";
-
-	// Values
-	Values.Resize(NDIV+1, Labels.Size());
-	for (size_t i=0; i<NDIV+1; i++)
-	{
-		double l = static_cast<double>(i)/NDIV;
-		Values(i,0) = M(l);
-		Values(i,1) = N(l);
-		Values(i,2) = V(l);
-	}
+	else throw new Fatal("Beam::OutExtra: Feature not available for nDim==%d",_ndim);
 }
 
 /* private */
