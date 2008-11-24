@@ -31,7 +31,7 @@ class Beam : public EquilibElem
 {
 public:
 	// Constants
-	static const size_t NPOINTS;        ///< Number of points for extra output
+	static const size_t NDIV;        ///< Number of points for extra output
 	
 	// Constructor
 	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
@@ -82,7 +82,7 @@ private:
 
 }; // class Beam
 
-const size_t Beam::NPOINTS = 10;  ///< Number of points for extra output
+const size_t Beam::NDIV = 10;  ///< Number of points for extra output
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -291,11 +291,11 @@ inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<doubl
 	double x1  = _connects[1]->X();
 	double y1  = _connects[1]->Y();
 	double len = sqrt(pow(x1-x0,2) + pow(y1-y0,2));
-	Coords.Resize(NPOINTS, 2);
-	for (size_t i=0; i<NPOINTS; i++)
+	Coords.Resize(NDIV+1, 2);
+	for (size_t i=0; i<NDIV+1; i++)
 	{
-		Coords(i,0) = x0 + i*(x1-x0)/NPOINTS;
-		Coords(i,1) = y0 + i*(y1-y0)/NPOINTS;
+		Coords(i,0) = x0 + i*(x1-x0)/NDIV;
+		Coords(i,1) = y0 + i*(y1-y0)/NDIV;
 	}
 
 	// Normal vector
@@ -307,16 +307,16 @@ inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<doubl
 
 	// Labels
 	Labels.Resize(3);
-	Labels[0] = "M"; Labels[0] = "N"; Labels[0] = "V";
+	Labels[0] = "M"; Labels[1] = "N"; Labels[2] = "V";
 
 	// Values
-	Values.Resize(NPOINTS, Labels.Size());
-	for (size_t i=0; i<NPOINTS; i++)
+	Values.Resize(NDIV+1, Labels.Size());
+	for (size_t i=0; i<NDIV+1; i++)
 	{
-		double l = static_cast<double>(i)/NPOINTS;
+		double l = static_cast<double>(i)/NDIV;
 		Values(i,0) = M(l);
-		Values(i,0) = N(l);
-		Values(i,0) = V(l);
+		Values(i,1) = N(l);
+		Values(i,2) = V(l);
 	}
 }
 
