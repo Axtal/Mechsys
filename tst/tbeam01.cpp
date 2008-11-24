@@ -96,7 +96,10 @@ int main(int argc, char **argv) try
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << _8s<<"mz" << endl;
 	for (size_t i=0; i<g.NNodes(); ++i)
-		cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("wz") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << _8s<<g.Nod(i)->Val("mz") << endl;
+	{
+		if (g.Nod(i)->HasVar("wz"))
+			cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("wz") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << _8s<<g.Nod(i)->Val("mz") << endl;
+	}
 	cout << endl;
 
 	// Output: Elements

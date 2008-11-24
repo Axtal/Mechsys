@@ -52,6 +52,8 @@ public:
 	Beam * EdgeBry (char const * Key, double q, int EdgeLocalID) { return EdgeBry(Key,q,q,EdgeLocalID); } ///< Set distributed load with key = q0 or q1
 	Beam * EdgeBry (char const * Key, double q0, double q1, int EdgeLocalID);                             ///< Set distributed load with key = q0 or q1
 
+	void AllocExtraNodes (Array<Node*> & Nodes);
+
 	// Methods
 	double N(double l) const; ///< Axial force      (0 < l < 1) (Must be used after CalcDepVars())
 	double M(double l) const; ///< Bending momentum (0 < l < 1) (Must be used after CalcDepVars())
@@ -69,6 +71,9 @@ private:
 	// Depedent variables (calculated by CalcDepVars)
 	mutable double         _L;  ///< Beam length
 	mutable Vector<double> _uL; ///< Beam-Local displacements/rotations
+
+	// Data
+	Array<Node*> _extra_nodes;
 
 	// Private methods
 	int  _geom                        () const { return 1; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -109,6 +114,18 @@ inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLoca
 		_connects[i]->Bry (FD[_d][j], f(i*_nd+j));
 
 	return this;
+}
+
+inline void Beam::AllocExtraNodes(Array<Node*> & Nodes)
+{
+	for (size_t i=0; i<10; ++i)
+	{
+		int id = Nodes.Size();
+		FEM::Node * node = new Node;
+		node->Initialize (id,0.0,0.0,0.0);
+		Nodes.Push(node);
+		_extra_nodes.Push(node);
+	}
 }
 
 inline bool Beam::CheckModel() const
@@ -175,6 +192,8 @@ inline void Beam::CalcDepVars() const
 	LinAlg::Matrix<double> T;
 	_transf_mat(T);
 	_uL = T * _uL;
+
+	// Calculate values for extra nodes
 }
 
 inline double Beam::Val(int iNodeLocal, char const * Name) const
