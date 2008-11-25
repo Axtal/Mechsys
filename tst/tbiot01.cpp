@@ -36,6 +36,7 @@ using std::endl;
 using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
+using Util::_8_4;
 using boost::make_tuple;
 
 void CallSolve (int iStage, FEM::Solver * Sol)
@@ -53,6 +54,17 @@ void CallSolve (int iStage, FEM::Solver * Sol)
 	//cout << "[1;34mFile <tconsolid01.vtu> saved.[0m\n\n";
 }
 
+double Terz(double Z, double T) // Pore-pressure excess for one dimensional consolidation
+{
+	double ue=0.0;
+	for (int m=0; m<100; m++)
+	{
+		double M = 3.14159*(2.0*m+1.0)/2.0;
+		ue+=2.0/M*sin(M*Z)*exp(-M*M*T);
+	}
+	return ue;
+}
+
 int main(int argc, char **argv) try
 {
 	// Constants
@@ -64,6 +76,28 @@ int main(int argc, char **argv) try
 	double k     = 1.0e-5; // Isotropic permeability
 	int    ndivy = 10;     // number of divisions along x and y
 	bool   is_o2 = false;  // use high order elements?
+
+	// More constants related with the one-dimensional consolidation
+	double load  = -10;
+	double mv    = (1+nu)*(1-2*nu)/(E*(1-nu));
+	double cv    = k/(mv*gw);
+	Vector<int>    SampleNodes(11);  // Nodes where pwp is evaluated
+	SampleNodes = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21;
+	Vector<double> NormTimes(9); 
+	NormTimes   = 0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.6, 1.0;  // List of normalized times
+
+	// Calculate time increments
+	Vector<double> TimeIncs(8);  // Time increments
+	for (int i=0; i<TimeIncs.Size(); i++) 
+		TimeIncs(i) = (NormTimes(i+1)-NormTimes(i))*pow(H,2)/cv;
+
+	// Output information
+	Matrix<double> OutPwp(SampleNodes.Size(), TimeIncs.Size());  OutPwp.SetValues(0.0);
+
+	// Normalized depths of the sample nodes
+	Vector<double> NDepth(SampleNodes.Size()); 
+	for (int i=0; i<NDepth.Size(); i++) 
+		NDepth(i) = (10.0 - i)/10.0;
 
 	// Input
 	cout << "Input: " << argv[0] << "  is_o2  ndivy\n";
@@ -116,7 +150,7 @@ int main(int argc, char **argv) try
 	FEM::EBrys_T ebrys;
 
 	// Stage # 1
-	sol->SetNumDiv(4)->SetDeltaTime(10.0);
+	sol->SetNumDiv(4)->SetDeltaTime(1.0);
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
@@ -126,21 +160,63 @@ int main(int argc, char **argv) try
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (1, sol);
 
-	// Stage # 2
-	sol->SetNumDiv(10)->SetDeltaTime(16666.0);
-	ebrys.Resize (0);
-	ebrys.Push   (make_tuple(-10, "ux",    0.0));
-	ebrys.Push   (make_tuple(-20, "ux",    0.0));
-	ebrys.Push   (make_tuple(-30, "uy",    0.0));
-	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-	CallSolve    (2, sol);
+	// Output: VTU 
+	Output o; o.VTU (&g, "tbiot01_01.vtu");
+	cout << "[1;34mFile <tbiot01_01.vtu> saved.[0m\n\n";
 
-	// Output: VTU
-	Output o; o.VTU (&g, "tbiot01.vtu");
-	cout << "[1;34mFile <tbiot01.vtu> saved.[0m\n\n";
+	// Stage # 2..
+	for (int i=0; i<TimeIncs.Size(); i++)
+	{
+		cout << "Stage " << i+2 << endl;
+		sol->SetNumDiv(10)->SetDeltaTime(TimeIncs(i));
+		ebrys.Resize (0);
+		ebrys.Push   (make_tuple(-10, "ux",    0.0));
+		ebrys.Push   (make_tuple(-20, "ux",    0.0));
+		ebrys.Push   (make_tuple(-30, "uy",    0.0));
+		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+		FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
+		CallSolve    (2, sol);
+		for (int j=0; j<SampleNodes.Size(); j++)
+			OutPwp(j,i) = g.Nod(SampleNodes(j))->Val("pwp")/load; // Saving normalized pore-pressure
+	}
+
+	OutPwp.SetNS(Util::_8_4);
+	cout << "OutPwp :" << endl << OutPwp << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
+
+	// Analytical values
+	Matrix<double> AValues(SampleNodes.Size(), TimeIncs.Size());  
+	for (int i=0; i<NDepth.Size(); i++)
+		for (int j=0; j<TimeIncs.Size(); j++)
+			AValues(i,j) = Terz(NDepth(i), NormTimes(j+1));
+	
+	AValues.SetNS(Util::_8_4);
+	cout << "AValues:" << endl << AValues<< endl;
+
+	// Test
+	Array<double> err;
+
+	for (int i=0; i<OutPwp.Rows(); i++)
+		for (int j=0; j<OutPwp.Cols(); j++)
+			err.Push(fabs(OutPwp(i,j)-AValues(i,j)));
+
+	// Error summary
+	double tol     = 1.0e-1;
+	double min_err = err[err.Min()];
+	double max_err = err[err.Max()];
+	cout << _4<< ""    << _8s<<"Min"   << _8s<<"Mean"                                            << _8s<<"Max"                  << _8s<<"Norm"         << endl;
+	cout << _4<< "Eps" << _8s<<min_err << _8s<<err.Mean() << (max_err>tol?"[1;31m":"[1;32m") << _8s<<max_err << "[0m" << _8s<<err.Norm() << endl;
+	cout << endl;
+
+	// Return error flag
+	if (max_err>tol) return 1;
+	else return 0;
+
+
+	// Output: VTU
+	//o.VTU (&g, "tbiot01_02.vtu");
+	//cout << "[1;34mFile <tbiot01_02.vtu> saved.[0m\n\n";
 
 	return 0;
 }
