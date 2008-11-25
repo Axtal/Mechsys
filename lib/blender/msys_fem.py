@@ -92,9 +92,9 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
     ori = msh.verts[:] # create a copy in local coordinates
     msh.transform (obj.matrix)
 
-    # check for linear elements
-    linele = False
-    if obj.properties.has_key('linele'): linele = obj.properties['linele']
+    # check for frame mesh
+    frame = False
+    if obj.properties.has_key('frame'): frame = obj.properties['frame']
 
     # set geometry
     is3d = obj.properties['3dmesh']
@@ -102,86 +102,82 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
     if gen_script: txt.write('geo = ms.geom (%d)\n' % ndim)
     else: geo = ms.geom (ndim)
 
-    if linele:
-        msh.verts = ori # restore local coordinates
-        if edm: Blender.Window.EditMode(1)
-        raise Exception('Simulation with linear elements is not available yet') # TODO: implement this
+    if gen_script:
+        txt.write('\n# mesh structure\n')
+        if is3d: txt.write('mg = ms.mesh_generic(True)\n')
+        else:    txt.write('mg = ms.mesh_generic(False)\n')
+
+        txt.write('\n# vertices\n')
+        txt.write('mg.set_nverts (%d)\n' % len(msh.verts))
+        for i, v in enumerate(msh.verts):
+            onbry = True if (i in obj.properties['verts_bry']) else False
+            if is3d: txt.write('mg.set_vert (%d,%d,%f,%f,%f)\n' % (i, onbry, v.co[0], v.co[1], v.co[2]))
+            else:    txt.write('mg.set_vert (%d,%d,%f,%f)\n'    % (i, onbry, v.co[0], v.co[1]))
+
+        txt.write('\n# elements\n')
+        nelems = obj.properties['nelems']
+        txt.write('mg.set_nelems (%d)\n' % nelems)
+        for i in range(nelems):
+            txt.write('mg.set_elem (%d,%d,%d,%d)\n' %(i, obj.properties['elems']['tags'][i], obj.properties['elems']['onbs'][i], obj.properties['elems']['vtks'][i]))
+
+        txt.write('\n# connectivities\n')
+        for i in range(nelems):
+            for j in range(len(obj.properties['elems']['cons'] [str(i)])):
+                txt.write('mg.set_elem_con (%d,%d,%d)\n' % (i, j, obj.properties['elems']['cons'] [str(i)][j]))
+
+        txt.write('\n# edge tags\n')
+        for i in range(nelems):
+            for j in range(len(obj.properties['elems']['etags'][str(i)])):
+                tag = obj.properties['elems']['etags'][str(i)][j]
+                if tag<0: txt.write('mg.set_elem_etag (%d,%d,%d)\n' % (i, j, tag))
+
+        if is3d:
+            txt.write('\n# face tags\n')
+            for i in range(nelems):
+                for j in range(len(obj.properties['elems']['ftags'][str(i)])):
+                    txt.write('mg.set_elem_ftag (%d,%d,%d)\n' % (i, j, obj.properties['elems']['ftags'][str(i)][j]))
+
+        txt.write('\n# set geometry\n')
+        if frame: txt.write('ms.set_nodes_elems (mg, eatts, geo, 1.0e-5, True)\n')
+        else:     txt.write('ms.set_nodes_elems (mg, eatts, geo, 1.0e-5, False)\n')
+        txt.write('ms.set_brys        (mg, nbrys, ebrys, fbrys, geo)\n')
+
     else:
-        if gen_script:
-            txt.write('\n# mesh structure\n')
-            if is3d: txt.write('mg = ms.mesh_generic(True)\n')
-            else:    txt.write('mg = ms.mesh_generic(False)\n')
+        # mesh structure
+        mg = ms.mesh_generic(is3d)
 
-            txt.write('\n# vertices\n')
-            txt.write('mg.set_nverts (%d)\n' % len(msh.verts))
-            for i, v in enumerate(msh.verts):
-                onbry = True if (i in obj.properties['verts_bry']) else False
-                if is3d: txt.write('mg.set_vert (%d,%d,%f,%f,%f)\n' % (i, onbry, v.co[0], v.co[1], v.co[2]))
-                else:    txt.write('mg.set_vert (%d,%d,%f,%f)\n'    % (i, onbry, v.co[0], v.co[1]))
+        # vertices
+        mg.set_nverts (len(msh.verts))
+        for i, v in enumerate(msh.verts):
+            onbry = True if (i in obj.properties['verts_bry']) else False
+            if is3d: mg.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
+            else:    mg.set_vert (i, onbry, v.co[0], v.co[1])
 
-            txt.write('\n# elements\n')
-            nelems = obj.properties['nelems']
-            txt.write('mg.set_nelems (%d)\n' % nelems)
-            for i in range(nelems):
-                txt.write('mg.set_elem (%d,%d,%d,%d)\n' %(i, obj.properties['elems']['tags'][i], obj.properties['elems']['onbs'][i], obj.properties['elems']['vtks'][i]))
+        # elements
+        nelems = obj.properties['nelems']
+        mg.set_nelems (nelems)
+        for i in range(nelems):
+            # element
+            mg.set_elem (i, obj.properties['elems']['tags'][i],
+                            obj.properties['elems']['onbs'][i],
+                            obj.properties['elems']['vtks'][i])
 
-            txt.write('\n# connectivities\n')
-            for i in range(nelems):
-                for j in range(len(obj.properties['elems']['cons'] [str(i)])):
-                    txt.write('mg.set_elem_con (%d,%d,%d)\n' % (i, j, obj.properties['elems']['cons'] [str(i)][j]))
+            # connectivities
+            for j in range(len(obj.properties['elems']['cons'] [str(i)])):
+                mg.set_elem_con (i, j, obj.properties['elems']['cons'] [str(i)][j])
 
-            txt.write('\n# edge tags\n')
-            for i in range(nelems):
-                for j in range(len(obj.properties['elems']['etags'][str(i)])):
-                    tag = obj.properties['elems']['etags'][str(i)][j]
-                    if tag<0: txt.write('mg.set_elem_etag (%d,%d,%d)\n' % (i, j, tag))
+            # edge tags
+            for j in range(len(obj.properties['elems']['etags'][str(i)])):
+                mg.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
 
+            # face tags
             if is3d:
-                txt.write('\n# face tags\n')
-                for i in range(nelems):
-                    for j in range(len(obj.properties['elems']['ftags'][str(i)])):
-                        txt.write('mg.set_elem_ftag (%d,%d,%d)\n' % (i, j, obj.properties['elems']['ftags'][str(i)][j]))
+                for j in range(len(obj.properties['elems']['ftags'][str(i)])):
+                    mg.set_elem_ftag (i, j, obj.properties['elems']['ftags'][str(i)][j])
 
-            txt.write('\n# set geometry\n')
-            txt.write('ms.set_nodes_elems (mg, eatts, geo)\n')
-            txt.write('ms.set_brys        (mg, nbrys, ebrys, fbrys, geo)\n')
-
-        else:
-            # mesh structure
-            mg = ms.mesh_generic(is3d)
-
-            # vertices
-            mg.set_nverts (len(msh.verts))
-            for i, v in enumerate(msh.verts):
-                onbry = True if (i in obj.properties['verts_bry']) else False
-                if is3d: mg.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
-                else:    mg.set_vert (i, onbry, v.co[0], v.co[1])
-
-            # elements
-            nelems = obj.properties['nelems']
-            mg.set_nelems (nelems)
-            for i in range(nelems):
-                # element
-                mg.set_elem (i, obj.properties['elems']['tags'][i],
-                                obj.properties['elems']['onbs'][i],
-                                obj.properties['elems']['vtks'][i])
-
-                # connectivities
-                for j in range(len(obj.properties['elems']['cons'] [str(i)])):
-                    mg.set_elem_con (i, j, obj.properties['elems']['cons'] [str(i)][j])
-
-                # edge tags
-                for j in range(len(obj.properties['elems']['etags'][str(i)])):
-                    mg.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
-
-                # face tags
-                if is3d:
-                    for j in range(len(obj.properties['elems']['ftags'][str(i)])):
-                        mg.set_elem_ftag (i, j, obj.properties['elems']['ftags'][str(i)][j])
-
-            # set geometry
-            ms.set_nodes_elems (mg, eatts, geo)
-            ms.set_brys        (mg, nbrys, ebrys, fbrys, geo)
+        # set geometry
+        ms.set_nodes_elems (mg, eatts, geo, 1.0e-5, frame)
+        ms.set_brys        (mg, nbrys, ebrys, fbrys, geo)
 
     # end
     msh.verts = ori # restore local coordinates

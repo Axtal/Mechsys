@@ -371,7 +371,11 @@ def hex2rgb(hex):
 def get_cg(msh, vids, vtkcelltype):
     # In:   vids = verts_ids
     x, y, z = 0, 0, 0
-    if   vtkcelltype== 5: # VTK_TRIANGLE
+    if vtkcelltype== 3: # VTK_LINE
+        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[1]].co[0])/2.0
+        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[1]].co[1])/2.0
+        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[1]].co[2])/2.0
+    elif vtkcelltype== 5: # VTK_TRIANGLE
         x = (msh.verts[vids[0]].co[0]+msh.verts[vids[1]].co[0]+msh.verts[vids[2]].co[0])/3.0
         y = (msh.verts[vids[0]].co[1]+msh.verts[vids[1]].co[1]+msh.verts[vids[2]].co[1])/3.0
         z = (msh.verts[vids[0]].co[2]+msh.verts[vids[1]].co[2]+msh.verts[vids[2]].co[2])/3.0

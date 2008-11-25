@@ -203,7 +203,7 @@ if di.key('show_res'):
                     BGL.glColor3f (0.0, 0.0, 0.0)
                     for v in msh.verts:
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
-                        Draw.Text         ('%f' % obj.properties['res'][key][v.index])
+                        Draw.Text         ('%g' % obj.properties['res'][key][v.index])
 
                 # draw warped mesh
                 if di.key('res_show_warp') and obj.properties.has_key('res'):

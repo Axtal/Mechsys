@@ -53,57 +53,57 @@ EVT_INC              = 10000 # increment used when passing IDs through events
 EVT_NONE             =  0 # used for buttons with callbacks
 EVT_REFRESH          =  1 # refresh all windows
 # SETTINGS
-EVT_SET_SHOWHIDE     =  2 # show/hide SET box
-EVT_SET_DELPROPS     =  3 # delete all properties
+EVT_SET_SHOWHIDE     = 10 # show/hide SET box
+EVT_SET_DELPROPS     = 11 # delete all properties
 # CAD
-EVT_CAD_SHOWHIDE     =  4 # show/hide CAD box
-EVT_CAD_ADDXYZ       =  5 # type in values to define point(s)
-EVT_CAD_FILLET       =  6 # fillet two edges
-EVT_CAD_BREAK        =  7 # break edge
-EVT_CAD_BREAKM       =  8 # break edge at middle point
-EVT_CAD_EINT         =  9 # edge closest distance
-EVT_CAD_FPOINT       = 10 # read points from file
-EVT_CAD_FSPLINE      = 11 # create a spline from points in a file
+EVT_CAD_SHOWHIDE     = 20 # show/hide CAD box
+EVT_CAD_ADDXYZ       = 21 # type in values to define point(s)
+EVT_CAD_FILLET       = 22 # fillet two edges
+EVT_CAD_BREAK        = 23 # break edge
+EVT_CAD_BREAKM       = 24 # break edge at middle point
+EVT_CAD_EINT         = 25 # edge closest distance
+EVT_CAD_FPOINT       = 26 # read points from file
+EVT_CAD_FSPLINE      = 27 # create a spline from points in a file
 # Mesh
-EVT_MESH_SHOWHIDE    = 12 # show/hide MESH box
-EVT_MESH_SETETAG     = 13 # set edges tag
-EVT_MESH_SETFTAG     = 14 # set faces tag
+EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
+EVT_MESH_SETETAG     = 41 # set edges tag
+EVT_MESH_SETFTAG     = 42 # set faces tag
 # Mesh -- linear
-EVT_MESH_GENLINEAR   = 55 # generate linear mesh
-EVT_MESH_GENLINEARS  = 56 # generate linear mesh
+EVT_MESH_GENFRAME    = 50 # generate linear mesh
+EVT_MESH_GENFRAMES   = 51 # generate linear mesh script
 # Mesh -- structured
-EVT_MESH_ADDBLK      = 15 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
-EVT_MESH_DELALLBLKS  = 16 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
-EVT_MESH_GENSTRU     = 17 # generate structured mesh using MechSys module
-EVT_MESH_GENSTRUS    = 18 # script for structured mesh generation
+EVT_MESH_ADDBLK      = 60 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
+EVT_MESH_DELALLBLKS  = 61 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
+EVT_MESH_GENSTRU     = 62 # generate structured mesh using MechSys module
+EVT_MESH_GENSTRUS    = 63 # script for structured mesh generation
 # Mesh -- unstructured
-EVT_MESH_ADDREG      = 19 # add region
-EVT_MESH_DELALLREGS  = 20 # delete all regions
-EVT_MESH_ADDHOL      = 21 # add hole
-EVT_MESH_DELALLHOLS  = 22 # delete all holes
-EVT_MESH_GENUNSTRU   = 23 # generate unstructured mesh using MechSys module
-EVT_MESH_GENUNSTRUS  = 24 # script for unstructured mesh generation
+EVT_MESH_ADDREG      = 70 # add region
+EVT_MESH_DELALLREGS  = 71 # delete all regions
+EVT_MESH_ADDHOL      = 72 # add hole
+EVT_MESH_DELALLHOLS  = 73 # delete all holes
+EVT_MESH_GENUNSTRU   = 74 # generate unstructured mesh using MechSys module
+EVT_MESH_GENUNSTRUS  = 75 # script for unstructured mesh generation
 # Materials
-EVT_MAT_SHOWHIDE     = 40 # show/hide CAD box
-EVT_MAT_ADDMAT       = 41 # add material
-EVT_MAT_DELALLMAT    = 42 # delete all materials
+EVT_MAT_SHOWHIDE     = 80 # show/hide CAD box
+EVT_MAT_ADDMAT       = 81 # add material
+EVT_MAT_DELALLMAT    = 82 # delete all materials
 # FEM
-EVT_FEM_SHOWHIDE     = 25 # show/hide FEM box
-EVT_FEM_ADDNBRY      = 26 # add nodes boundary (given coordinates)
-EVT_FEM_ADDNBID      = 27 # add nodes boundary (given nodes IDs)
-EVT_FEM_ADDEBRY      = 28 # add edges boundary
-EVT_FEM_ADDFBRY      = 29 # add faces boundary
-EVT_FEM_ADDEATT      = 30 # add element attributes
-EVT_FEM_DELALLNBRY   = 31 # delete all nodes boundary
-EVT_FEM_DELALLNBID   = 32 # delete all nodes boundary (IDs)
-EVT_FEM_DELALLEBRY   = 33 # delete all edges boundary
-EVT_FEM_DELALLFBRY   = 34 # delete all faces boundary
-EVT_FEM_DELALLEATT   = 35 # delete all element attributes
-EVT_FEM_RUN          = 36 # run a FE simulation
-EVT_FEM_SCRIPT       = 37 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 38 # view in ParaView
+EVT_FEM_SHOWHIDE     =  90 # show/hide FEM box
+EVT_FEM_ADDNBRY      =  91 # add nodes boundary (given coordinates)
+EVT_FEM_ADDNBID      =  92 # add nodes boundary (given nodes IDs)
+EVT_FEM_ADDEBRY      =  93 # add edges boundary
+EVT_FEM_ADDFBRY      =  94 # add faces boundary
+EVT_FEM_ADDEATT      =  95 # add element attributes
+EVT_FEM_DELALLNBRY   =  96 # delete all nodes boundary
+EVT_FEM_DELALLNBID   =  97 # delete all nodes boundary (IDs)
+EVT_FEM_DELALLEBRY   =  98 # delete all edges boundary
+EVT_FEM_DELALLFBRY   =  99 # delete all faces boundary
+EVT_FEM_DELALLEATT   = 100 # delete all element attributes
+EVT_FEM_RUN          = 101 # run a FE simulation
+EVT_FEM_SCRIPT       = 102 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 103 # view in ParaView
 # Results
-EVT_RES_SHOWHIDE     = 39 # show/hide results box
+EVT_RES_SHOWHIDE     = 200 # show/hide results box
 
 
 # ==================================================================================== Events
@@ -206,8 +206,8 @@ def button_event(evt):
 
     # -------------------------------------------------------------------- Mesh -- linear
 
-    elif evt==EVT_MESH_GENLINEAR:  me.gen_linear_mesh()
-    elif evt==EVT_MESH_GENLINEARS: me.gen_linear_mesh(True)
+    elif evt==EVT_MESH_GENFRAME:  me.gen_frame_mesh()
+    elif evt==EVT_MESH_GENFRAMES: me.gen_frame_mesh(True)
 
     # -------------------------------------------------------------------- Mesh -- structured
 
@@ -543,12 +543,13 @@ def gui():
     # height of boxes
     h_set           = 5*rh+srg
     h_cad           = 5*rh
+    h_msh_fram      = 3*rh
     h_msh_stru_blks = rh+srg+2*rh*len(blks)
     h_msh_stru      = 4*rh+srg+h_msh_stru_blks
     h_msh_unst_regs = rh+srg+rh*len(regs)
     h_msh_unst_hols = rh+srg+rh*len(hols)
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
-    h_msh           = 8*rh+h_msh_stru+h_msh_unst
+    h_msh           = 9*rh+h_msh_fram+h_msh_stru+h_msh_unst
     h_mat_mats      = srg+2*rh*len(mats)
     h_mat           = 3*rh+h_mat_mats
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
@@ -619,10 +620,16 @@ def gui():
         Draw.ColorPicker (           EVT_NONE,          c+240, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
         Draw.PushButton  ('Face',    EVT_MESH_SETFTAG,  c+300, r, 60, rh,                              'Set faces tag (0 => remove tag)')
         r -= rh
-        Draw.PushButton  ('Generate linear mesh', EVT_MESH_GENLINEAR,  c,     r, 240, rh, 'Generate linear mesh')
-        Draw.PushButton  ('Write Script',         EVT_MESH_GENLINEARS, c+240, r, 100, rh, 'Create script for structured mesh generation')
         r -= rh
+
+        # ----------------------- Mesh -- frame
+
+        gu.caption2(c,r,w,rh,'Frame (truss/beam) mesh')
+        r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_msh_fram)
+        Draw.PushButton ('Generate frame mesh', EVT_MESH_GENFRAME,  c,     r, 240, rh, 'Generate frame (truss/beam) mesh')
+        Draw.PushButton ('Write Script',        EVT_MESH_GENFRAMES, c+240, r, 100, rh, 'Create script for frame (truss/beam) mesh')
         r -= rh
+        r, c, w = gu.box2_out(W,cg,rh, c,r)
 
         # ----------------------- Mesh -- structured
 

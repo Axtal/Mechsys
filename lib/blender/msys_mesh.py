@@ -36,7 +36,7 @@ def print_timing(func):
 # =========================================================================== Linear mesh
 
 @print_timing
-def gen_linear_mesh(gen_script=False,txt=None):
+def gen_frame_mesh(gen_script=False,txt=None):
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
 
@@ -62,14 +62,17 @@ def gen_linear_mesh(gen_script=False,txt=None):
             txt = Blender.Text.New(obj.name+'_lmesh')
             txt.write('import mechsys   as ms\n')
             txt.write('import msys_mesh as me\n\n')
-        if is3d: txt.write('msm = ms.mesh_generic(True)\n')
-        else:    txt.write('msm = ms.mesh_generic(False)\n')
+        if is3d: txt.write('is3d     = True\n')
+        else:    txt.write('is3d     = False\n')
+        txt.write('onbry    = True\n')
+        txt.write('VTK_LINE = 3\n\n')
+        txt.write('msm = ms.mesh_generic(is3d)\n')
 
         # vertices
         txt.write('msm.set_nverts    (%d)\n'%len(msh.verts))
         for i, v in enumerate(msh.verts):
-            if is3d: txt.write('msm.set_vert      (%d, True, %g,%g,%g)\n'%(i, v.co[0], v.co[1], v.co[2]))
-            else:    txt.write('msm.set_vert      (%d, True, %g,%g)\n'   %(i, v.co[0], v.co[1]))
+            if is3d: txt.write('msm.set_vert      (%d, onbry, %g,%g,%g)\n'%(i, v.co[0], v.co[1], v.co[2]))
+            else:    txt.write('msm.set_vert      (%d, onbry, %g,%g)\n'   %(i, v.co[0], v.co[1]))
 
         # elements
         txt.write('msm.set_nelems    (%d)\n'%len(msh.edges))
@@ -77,21 +80,40 @@ def gen_linear_mesh(gen_script=False,txt=None):
             key = (e.v1.index, e.v2.index)
             if not key in etags: raise Exception('All edges must have a edge tag')
             etag = etags[key]
-            txt.write('msm.set_elem      (%d,%d,True,3)\n'%(i,etag))   # 3 == VTK_LINE
-            txt.write('msm.set_elem_con  (%d,0,%d)\n'%(i, e.v1.index)) # 0 == local node index
-            txt.write('msm.set_elem_con  (%d,1,%d)\n'%(i, e.v2.index)) # 1 == local node index
-            txt.write('msm.set_elem_etag (%d,0,%d)\n'%(i, etags[key])) # 0 == local edge index
+            txt.write('msm.set_elem      (%d,%d,onbry,VTK_LINE)\n'%(i,etag)) # 3 == VTK_LINE
+            txt.write('msm.set_elem_con  (%d,0,%d)\n'%(i, e.v1.index))       # 0 == local node index
+            txt.write('msm.set_elem_con  (%d,1,%d)\n'%(i, e.v2.index))       # 1 == local node index
+            txt.write('msm.set_elem_etag (%d,0,%d)\n'%(i, etags[key]))       # 0 == local edge index
     else:
-        pass
+        onbry    = True
+        VTK_LINE = 3
+        msm      = ms.mesh_generic(is3d)
+
+        # vertices
+        msm.set_nverts (len(msh.verts))
+        for i, v in enumerate(msh.verts):
+            if is3d: msm.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
+            else:    msm.set_vert (i, onbry, v.co[0], v.co[1])
+
+        # elements
+        msm.set_nelems (len(msh.edges))
+        for i, e in enumerate(msh.edges):
+            key = (e.v1.index, e.v2.index)
+            if not key in etags: raise Exception('All edges must have a edge tag')
+            etag = etags[key]
+            msm.set_elem      (i,etag,onbry,VTK_LINE) # 3 == VTK_LINE
+            msm.set_elem_con  (i, 0, e.v1.index)      # 0 == local node index
+            msm.set_elem_con  (i, 1, e.v2.index)      # 1 == local node index
+            msm.set_elem_etag (i, 0, etags[key])      # 0 == local edge index
 
     # Restore local coordinates
     msh.verts = ori
 
     if gen_script:
-        txt.write('me.add_mesh(msm)\n')
+        txt.write('me.add_mesh(msm, [], True)\n')
     else:
         Blender.Window.WaitCursor(1)
-        add_mesh (msm)
+        add_mesh (msm, [], True)
         Blender.Window.WaitCursor(0)
     
 # =========================================================================== Structured mesh
@@ -377,7 +399,7 @@ def set_ftags(obj, msh, ftags, fclrs):
 
 
 @print_timing
-def add_mesh(msm, fclrs={}):
+def add_mesh(msm, fclrs={}, frame=False):
     # get vertices and edges
     verts = []
     edges = []
@@ -401,6 +423,9 @@ def add_mesh(msm, fclrs={}):
 
     # 2D or 3D mesh ?
     new_obj.properties['3dmesh'] = msm.is_3d()
+
+    # Frame mesh ?
+    new_obj.properties['frame'] = frame
 
     # set elements
     elems  = {}
