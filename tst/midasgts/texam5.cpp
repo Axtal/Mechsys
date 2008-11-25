@@ -121,7 +121,7 @@ int main(int argc, char **argv) try
 	double d = H-r;
 	double e = r*sin(2.*PI/8.);
 	double f = H-e;
-	int    ndivy = 50;
+	int    ndivy = 1;
 
 	// Lower block -- coordinates
 	Mesh::Block b0;
@@ -129,9 +129,9 @@ int main(int argc, char **argv) try
 	b0.SetCoords (false, 8, // Is3D, NNodes
 	               r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
 	              0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.));
-	b0.SetNx     (2*ndivy);//, 2.0, true);
+	b0.SetNx     (1*ndivy);//, 2.0, true);
 	b0.SetNy     (ndivy);
-	b0.SetETags  (4, -55, -10, -20, 0);
+	b0.SetETags  (4, -55, -10, -20, -55);
 
 	// Upper block -- coordinates
 	Mesh::Block b1;
@@ -139,9 +139,9 @@ int main(int argc, char **argv) try
 	b1.SetCoords (false, 8,
 	              b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
 	              e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.));
-	b1.SetNx     (2*ndivy);//, 2.0, true);
+	b1.SetNx     (1*ndivy);//, 2.0, true);
 	b1.SetNy     (ndivy);
-	b1.SetETags  (4, -55, -30,  0, -40);
+	b1.SetETags  (4, -55, -30,  -55, -40);
 
 	// Blocks
 	Array<Mesh::Block*> blocks;  blocks.Resize(2);
@@ -177,6 +177,7 @@ int main(int argc, char **argv) try
 	ebrys.Push (make_tuple(-20, "uy",  0.0));
 	ebrys.Push (make_tuple(-30, "fy",   p0));
 	ebrys.Push (make_tuple(-40, "ux",  0.0));
+	ebrys.Push (make_tuple(-55, "Qb",  -1));
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);

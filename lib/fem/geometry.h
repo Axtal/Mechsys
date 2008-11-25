@@ -53,6 +53,13 @@ public:
 	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0);      ///< Set a node
 	Element * SetElem   (size_t i, char const * Type, bool IsActive=true); ///< Set an element
 
+	// Beam
+	void      SetNBeams (size_t NBeams) { _beams.Resize(NBeams); _beams.SetValues(NULL); _btags.Resize(NBeams); }
+	void      SetBeam   (size_t iBeam, Element * Beam, int Tag) { _beams[iBeam]=Beam; _btags[iBeam]=Tag; }
+	size_t    NBeams    () const       { return _beams.Size(); }
+	Element * Beam      (size_t iBeam) { return _beams[iBeam]; }
+	int       BTag      (size_t iBeam) { return _btags[iBeam]; }
+
 	// Access methods
 	bool                    Check     ();                                        ///< Check if Nodes and Elements were allocated properly. Should be called before accessing Nodes and Elements, since these may not had been allocated yet (and then causing Segfaults).
 	size_t                  NNodes    ()         const { return _nodes.Size(); } ///< Return the number of nodes
@@ -86,6 +93,8 @@ private:
 	int             _dim;   ///< Space dimension
 	Array<Node*>    _nodes; ///< FE nodes
 	Array<Element*> _elems; ///< FE elements
+	Array<Element*> _beams; ///< Beams
+	Array<int>      _btags; ///< Beam tags
 
 }; // class Geom
 

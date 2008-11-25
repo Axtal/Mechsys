@@ -270,6 +270,9 @@ inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 	}
 	*/
 
+	// Generate Beams
+	_add_beams();
+
 	// Return number of elements==triangles
 	return _tou.numberoftriangles;
 }

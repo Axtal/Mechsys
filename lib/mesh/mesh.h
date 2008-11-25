@@ -50,6 +50,9 @@ using LinAlg::Vector;
 using LinAlg::Matrix;
 using blitz::TinyVector;
 
+using std::cout;
+using std::endl;
+
 namespace Mesh
 {
 
@@ -198,6 +201,9 @@ protected:
 	size_t _nverts  (int VTKCellType) const; ///< Returns the number of vertices of a VTKCell
 	size_t _nedges  (int VTKCellType) const; ///< Returns the number of edges of a VTKCell
 	size_t _nfaces  (int VTKCellType) const; ///< Returns the number of faces of a VTKCell
+
+	// Beam
+	void _add_beams ();
 
 }; // class Generic
 
@@ -441,6 +447,7 @@ inline void Generic::SetElemFTag(int i, int j, int Tag)
 
 inline void Generic::SetETagsBeams(size_t NBeamETags, ...)
 {
+	_etags_beams.Resize(NBeamETags);
 	va_list arg_list;
 	va_start (arg_list, NBeamETags); // initialize arg_list with parameters AETER NBeamETags
 	for (size_t i=0; i<NBeamETags; ++i)
@@ -851,6 +858,43 @@ inline size_t Generic::_nfaces(int VTKCellType) const
 	}
 }
 
+inline void Generic::_add_beams()
+{
+	// Add Beam elements
+	if (nETagsBeams()>0)
+	{
+		for (size_t i=0; i<NElems(); ++i)
+		{
+			for (size_t j=0; j<ElemNETags(i); ++j)
+			{
+				int etag = ElemETag (i,j);
+				if (etag<0)
+				{
+					if (IsETagBeam(etag))
+					{
+						cout << etag << endl;
+					}
+				}
+			}
+		}
+		//for (int p=0; p<e->ETags.Size(); ++p) // p is EdgeLocalID
+		//{
+			//int etag = e->ETags(m);
+			//if (IsETagBeam(etag))
+			//{
+				// Add new Beam element
+				//size_t l = EdgeToLef (_elems.Size()-1, p);
+				//size_t m = EdgeToMid (_elems.Size()-1, p);
+				//size_t r = EdgeToRig (_elems.Size()-1, p);
+				//Elem * beam = new Elem;
+				//e->MyID = _elems.Size(); // id
+				//e->Tag  = etag;          // tag
+				// connectivity
+				//e->V.Resize((_is_o2?3:8));
+			//}
+		//}
+	}
+}
 
 /* output */
 
