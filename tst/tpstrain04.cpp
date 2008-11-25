@@ -38,6 +38,10 @@ using Util::_8s;
 
 int main(int argc, char **argv) try
 {
+	// Description:
+	// Test of normal boundary conditions (traction) applied normal to a face.
+
+
 	// Input
 	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
 	String linsol("UM");
