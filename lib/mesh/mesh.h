@@ -104,6 +104,14 @@ struct Elem
 class Generic
 {
 public:
+	// Constants
+	static Edge TRI_EDGE2VERT[]; ///< Triangle: Map from local edge ID to local vertex ID
+	static Face TET_FACE2VERT[]; ///< Tetrahedron: Map from local face ID to local vertex ID
+	static Face TET_FACE2EDGE[]; ///< Tetrahedron: Map from local face ID to local edge ID
+	static Edge QUA_EDGE2VERT[]; ///< Quad: Map from local edge ID to local vertex ID
+	static Face HEX_FACE2VERT[]; ///< Hex: Map from local face ID to local vertex IDs
+	static Face HEX_FACE2EDGE[]; ///< Hex: Map from local face ID to local edge IDs
+
 	// Constructor
 	Generic (bool Is3D) : _is_3d(Is3D), _is_o2(false) {}
 
@@ -114,8 +122,8 @@ public:
 	void WriteVTU (char const * FileName) const; ///< Write output file for ParaView
 
 	// Methods
-	size_t EdgeToLef (size_t i, size_t EdgeLocalID) const; ///< Returns the GLOBAL left vertex ID for a given Local Edge ID and Element i
-	size_t EdgeToRig (size_t i, size_t EdgeLocalID) const; ///< Returns the GLOBAL right vertex ID for a given Local Edge ID and Element i
+	size_t EdgeToLef (size_t iElem, size_t EdgeLocalID) const; ///< Returns the GLOBAL left vertex ID for a given Local Edge ID and Element # i
+	size_t EdgeToRig (size_t iElem, size_t EdgeLocalID) const; ///< Returns the GLOBAL right vertex ID for a given Local Edge ID and Element # i
 
 	// Set methods
 	virtual void SetO2       (bool IsO2=true) { _is_o2=IsO2; }                      ///< (Un)set quadratic elements
@@ -176,15 +184,15 @@ protected:
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
 	Array<int>     _etags_beams; ///< Edge tags that represent Beams
 
-	// Private methods that MUST be overloaded
-	virtual void _vtk_con (size_t i, String & Connect) const {}; ///< Returns a string with the connectivites (global vertices IDs) of an element
-
 	// Private methods that MAY be overloaded
-	virtual void   _erase            ();                                                  ///< Erase current mesh (deallocate memory)
-	virtual size_t _edge_to_lef_vert (size_t EdgeLocalID) const;                          ///< Returns the local left vertex ID for a given Local Edge ID
-	virtual size_t _edge_to_rig_vert (size_t EdgeLocalID) const;                          ///< Returns the local right vertex ID for a given Local Edge ID
-	virtual void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const {} ///< Returns the local vertex IDs for a given Local Face ID
-	virtual void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const {} ///< Returns the local edge IDs for a given Local Face ID
+	virtual void _erase (); ///< Erase current mesh (deallocate memory)
+
+	// Private methods
+	size_t _edge_to_lef_vert (size_t iElem, size_t EdgeLocalID) const;                        ///< Returns the local left vertex ID for a given Local Edge ID of element # iElem
+	size_t _edge_to_rig_vert (size_t iElem, size_t EdgeLocalID) const;                        ///< Returns the local right vertex ID for a given Local Edge ID of element # iElem
+	void   _face_to_verts    (size_t iElem, size_t FaceLocalID, Array<size_t> & Verts) const; ///< Returns the local vertex IDs for a given Local Face ID
+	void   _face_to_edges    (size_t iElem, size_t FaceLocalID, Array<size_t> & Edges) const; ///< Returns the local edge IDs for a given Local Face ID
+	void   _vtk_con          (size_t iElem, String & Connect) const;                          ///< Returns a string with the connectivites (global vertices IDs) of an element
 
 	// Private methods
 	size_t _nverts  (int VTKCellType) const; ///< Returns the number of vertices of a VTKCell
@@ -193,6 +201,46 @@ protected:
 
 }; // class Generic
 
+Edge Generic::TRI_EDGE2VERT[]= {{ 0, 1 },
+                                { 1, 2 },
+                                { 0, 2 }};
+
+Face Generic::TET_FACE2VERT[]= {{  0,  2,  3,  6,  9,  7 },  // Face # 0 => Vertices 0,2,3...
+                                {  0,  1,  3,  4,  8,  7 },  // Face # 1
+                                {  0,  1,  2,  4,  5,  6 },  // Face # 2
+                                {  1,  2,  3,  5,  9,  8 }}; // Face # 3
+
+Face Generic::TET_FACE2EDGE[]= {{  0,  3,  5,  6,  9, 11 },  // Face # 0 => Edges 0,4,8
+                                {  1,  3,  4,  7,  9, 10 },  // Face # 1
+                                {  0,  1,  2,  6,  7,  8 },  // Face # 2
+                                {  2,  4,  5,  8, 10, 11 }}; // Face # 3
+
+Edge Generic::QUA_EDGE2VERT[]= {{ 0, 3 },  // Edge #  0
+                                { 1, 2 },  // Edge #  1
+                                { 0, 1 },  // Edge #  2
+                                { 2, 3 },  // Edge #  3
+                                { 4, 7 },  // Edge #  4
+                                { 5, 6 },  // Edge #  5
+                                { 4, 5 },  // Edge #  6
+                                { 6, 7 },  // Edge #  7
+                                { 0, 4 },  // Edge #  8
+                                { 1, 5 },  // Edge #  9
+                                { 2, 6 },  // Edge # 10
+                                { 3, 7 }}; // Edge # 11
+
+Face Generic::HEX_FACE2VERT[]= {{  0,  3,  7,  4, 11, 19, 15, 16 },  // Face # 0 => Vertices 0,3,7...
+                                {  1,  2,  6,  5,  9, 18, 13, 17 },  // Face # 1
+                                {  0,  1,  5,  4,  8, 17, 12, 16 },  // Face # 2
+                                {  2,  3,  7,  6, 10, 19, 14, 18 },  // Face # 3
+                                {  0,  1,  2,  3,  8,  9, 10, 11 },  // Face # 4
+                                {  4,  5,  6,  7, 12, 13, 14, 15 }}; // Face # 5
+
+Face Generic::HEX_FACE2EDGE[]= {{  0,  4,  8, 11, 12, 16, 20, 23 },  // Face # 0 => Edges 0,4,8
+                                {  1,  5,  9, 10, 13, 17, 21, 22 },  // Face # 1
+                                {  2,  6,  8,  9, 14, 18, 20, 21 },  // Face # 2
+                                {  3,  7, 10, 11, 15, 19, 22, 23 },  // Face # 3
+                                {  0,  1,  2,  3, 12, 13, 14, 15 },  // Face # 4
+                                {  4,  5,  6,  7, 16, 17, 18, 19 }}; // Face # 5
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -314,14 +362,14 @@ inline void Generic::WriteVTU(char const * FileName) const
 	of.close();
 }
 
-inline size_t Generic::EdgeToLef (size_t i, size_t EdgeLocalID) const
+inline size_t Generic::EdgeToLef (size_t iElem, size_t EdgeLocalID) const
 {
-	return ElemCon(i, _edge_to_lef_vert(EdgeLocalID));
+	return ElemCon(iElem, _edge_to_lef_vert(iElem, EdgeLocalID));
 }
 
-inline size_t Generic::EdgeToRig (size_t i, size_t EdgeLocalID) const
+inline size_t Generic::EdgeToRig (size_t iElem, size_t EdgeLocalID) const
 {
-	return ElemCon(i, _edge_to_rig_vert(EdgeLocalID));
+	return ElemCon(iElem, _edge_to_rig_vert(iElem, EdgeLocalID));
 }
 
 inline void Generic::SetNVerts(size_t NumVerts)
@@ -446,8 +494,8 @@ inline size_t Generic::PyGetEdges(BPy::list & Edges) const
 		for (size_t j=0; j<_nedges(ElemVTKCellType(i)); ++j)
 		{
 			BPy::list pair;
-			pair.append  (ElemCon(i, _edge_to_lef_vert(j)));
-			pair.append  (ElemCon(i, _edge_to_rig_vert(j)));
+			pair.append  (ElemCon(i, _edge_to_lef_vert(i, j)));
+			pair.append  (ElemCon(i, _edge_to_rig_vert(i, j)));
 			Edges.append (pair);
 		}
 	}
@@ -465,8 +513,8 @@ inline void Generic::PyGetETags(BPy::dict & ETags) const
 		{
 			if (ElemETag(i,j)<0)
 			{
-				int L = ElemCon(i, _edge_to_lef_vert(j));
-				int R = ElemCon(i, _edge_to_rig_vert(j));
+				int L = ElemCon(i, _edge_to_lef_vert(i, j));
+				int R = ElemCon(i, _edge_to_rig_vert(i, j));
 				ETags[BPy::make_tuple(L, R)] = ElemETag(i,j);
 			}
 		}
@@ -486,12 +534,12 @@ inline void Generic::PyGetFTags(BPy::dict & FTags) const
 			if (ElemFTag(i,j)<0)
 			{
 				Array<size_t> fe; // face-edges
-				_face_to_edges (j, fe);
+				_face_to_edges (i, j, fe);
 				String key;
 				for (size_t k=0; k<fe.Size(); ++k)
 				{
-					if (k==0) key.Printf(   "%d,%d",             ElemCon(i, _edge_to_lef_vert(fe[k])), ElemCon(i, _edge_to_rig_vert(fe[k])));
-					else      key.Printf("%s_%d,%d", key.CStr(), ElemCon(i, _edge_to_lef_vert(fe[k])), ElemCon(i, _edge_to_rig_vert(fe[k])));
+					if (k==0) key.Printf(   "%d,%d",             ElemCon(i, _edge_to_lef_vert(i, fe[k])), ElemCon(i, _edge_to_rig_vert(i, fe[k])));
+					else      key.Printf("%s_%d,%d", key.CStr(), ElemCon(i, _edge_to_lef_vert(i, fe[k])), ElemCon(i, _edge_to_rig_vert(i, fe[k])));
 				}
 				FTags[key.CStr()] = ElemFTag(i,j);
 			}
@@ -576,11 +624,9 @@ inline void Generic::_erase()
 	if (_verts_bry.Size()>0) _verts_bry  .Resize(0);
 }
 
-inline size_t Generic::_edge_to_lef_vert (size_t EdgeLocalID) const
+inline size_t Generic::_edge_to_lef_vert (size_t iElem, size_t EdgeLocalID) const
 {
-	return 0; // VTK_LINE
-	/*
-	switch (VTKCellType)
+	switch (ElemVTKCellType(iElem))
 	{
 		case VTK_LINE:                 { return  0; }
 		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].L; }
@@ -592,30 +638,163 @@ inline size_t Generic::_edge_to_lef_vert (size_t EdgeLocalID) const
 		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].L; }
 		case VTK_QUADRATIC_TETRA:      { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Tetrahedrons"); }
 		case VTK_QUADRATIC_HEXAHEDRON: { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Hexahedrons"); }
-		default: throw new Fatal("Generic::_edge_to_lef_vert: VTKCellType==%d is invalid (not implemented yet)", VTKCellType);
+		default: throw new Fatal("Generic::_edge_to_lef_vert: VTKCellType==%d is invalid (not implemented yet)", ElemVTKCellType(iElem));
 	}
-	*/
 }
 
-inline size_t Generic::_edge_to_rig_vert (size_t EdgeLocalID) const
+inline size_t Generic::_edge_to_rig_vert (size_t iElem, size_t EdgeLocalID) const
 {
-	return 1; // VTK_LINE
-	/*
-	switch (VTKCellType)
+	switch (ElemVTKCellType(iElem))
 	{
 		case VTK_LINE:                 { return  1; }
-		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].L; }
-		case VTK_QUAD:                 { return  QUA_EDGE2VERT[EdgeLocalID].L; }
-		case VTK_TETRA:                { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Tetrahedrons"); }
-		case VTK_HEXAHEDRON:           { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Hexahedrons"); }
+		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_QUAD:                 { return  QUA_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_TETRA:                { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Tetrahedrons"); }
+		case VTK_HEXAHEDRON:           { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Hexahedrons"); }
 		case VTK_QUADRATIC_EDGE:       { return  1; }
-		case VTK_QUADRATIC_TRIANGLE:   { return  TRI_EDGE2VERT[EdgeLocalID].L; }
-		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].L; }
-		case VTK_QUADRATIC_TETRA:      { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Tetrahedrons"); }
-		case VTK_QUADRATIC_HEXAHEDRON: { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Hexahedrons"); }
-		default: throw new Fatal("Generic::_edge_to_rig_vert: VTKCellType==%d is invalid (not implemented yet)", VTKCellType);
+		case VTK_QUADRATIC_TRIANGLE:   { return  TRI_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_QUADRATIC_TETRA:      { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Quadratic Tetrahedrons"); }
+		case VTK_QUADRATIC_HEXAHEDRON: { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Quadratic Hexahedrons"); }
+		default: throw new Fatal("Generic::_edge_to_rig_vert: VTKCellType==%d is invalid (not implemented yet)", ElemVTKCellType(iElem));
 	}
-	*/
+}
+
+inline void Generic::_face_to_verts(size_t iElem, size_t FaceLocalID, Array<size_t> & Verts) const
+{
+	if (ElemVTKCellType(iElem)==VTK_TETRA)
+	{
+		Verts.Resize(3);
+		Verts[0] = TET_FACE2VERT[FaceLocalID].I0;
+		Verts[1] = TET_FACE2VERT[FaceLocalID].I1;
+		Verts[2] = TET_FACE2VERT[FaceLocalID].I2;
+	}
+	else if (ElemVTKCellType(iElem)==VTK_QUADRATIC_TETRA)
+	{
+		Verts.Resize(6);
+		Verts[0] = TET_FACE2VERT[FaceLocalID].I0;
+		Verts[1] = TET_FACE2VERT[FaceLocalID].I1;
+		Verts[2] = TET_FACE2VERT[FaceLocalID].I2;
+		Verts[3] = TET_FACE2VERT[FaceLocalID].I3;
+		Verts[4] = TET_FACE2VERT[FaceLocalID].I4;
+		Verts[5] = TET_FACE2VERT[FaceLocalID].I5;
+	}
+	else if (ElemVTKCellType(iElem)==VTK_HEXAHEDRON)
+	{
+		Verts.Resize(4);
+		Verts[0] = HEX_FACE2VERT[FaceLocalID].I0;
+		Verts[1] = HEX_FACE2VERT[FaceLocalID].I1;
+		Verts[2] = HEX_FACE2VERT[FaceLocalID].I2;
+		Verts[3] = HEX_FACE2VERT[FaceLocalID].I3;
+	}
+	else if (ElemVTKCellType(iElem)==VTK_QUADRATIC_HEXAHEDRON)
+	{
+		Verts.Resize(8);
+		Verts[0] = HEX_FACE2VERT[FaceLocalID].I0;
+		Verts[1] = HEX_FACE2VERT[FaceLocalID].I1;
+		Verts[2] = HEX_FACE2VERT[FaceLocalID].I2;
+		Verts[3] = HEX_FACE2VERT[FaceLocalID].I3;
+		Verts[4] = HEX_FACE2VERT[FaceLocalID].I4;
+		Verts[5] = HEX_FACE2VERT[FaceLocalID].I5;
+		Verts[6] = HEX_FACE2VERT[FaceLocalID].I6;
+		Verts[7] = HEX_FACE2VERT[FaceLocalID].I7;
+	}
+	else throw new Fatal("Generic::_face_to_verts: Method not available for VTKCellType==%d",ElemVTKCellType(iElem));
+}
+
+inline void Generic::_face_to_edges(size_t iElem, size_t FaceLocalID, Array<size_t> & Edges) const
+{
+	if (ElemVTKCellType(iElem)==VTK_TETRA)
+	{
+		Edges.Resize(3);
+		Edges[0] = TET_FACE2EDGE[FaceLocalID].I0;
+		Edges[1] = TET_FACE2EDGE[FaceLocalID].I1;
+		Edges[2] = TET_FACE2EDGE[FaceLocalID].I2;
+	}
+	else if (ElemVTKCellType(iElem)==VTK_QUADRATIC_TETRA)
+	{
+		Edges.Resize(6);
+		Edges[0] = TET_FACE2EDGE[FaceLocalID].I0;
+		Edges[1] = TET_FACE2EDGE[FaceLocalID].I1;
+		Edges[2] = TET_FACE2EDGE[FaceLocalID].I2;
+		Edges[3] = TET_FACE2EDGE[FaceLocalID].I3;
+		Edges[4] = TET_FACE2EDGE[FaceLocalID].I4;
+		Edges[5] = TET_FACE2EDGE[FaceLocalID].I5;
+	}
+	else if (ElemVTKCellType(iElem)==VTK_HEXAHEDRON)
+	{
+		Edges.Resize(4);
+		Edges[0] = HEX_FACE2EDGE[FaceLocalID].I0;
+		Edges[1] = HEX_FACE2EDGE[FaceLocalID].I1;
+		Edges[2] = HEX_FACE2EDGE[FaceLocalID].I2;
+		Edges[3] = HEX_FACE2EDGE[FaceLocalID].I3;
+	}
+	else if (ElemVTKCellType(iElem)==VTK_QUADRATIC_HEXAHEDRON)
+	{
+		Edges.Resize(8);
+		Edges[0] = HEX_FACE2EDGE[FaceLocalID].I0;
+		Edges[1] = HEX_FACE2EDGE[FaceLocalID].I1;
+		Edges[2] = HEX_FACE2EDGE[FaceLocalID].I2;
+		Edges[3] = HEX_FACE2EDGE[FaceLocalID].I3;
+		Edges[4] = HEX_FACE2EDGE[FaceLocalID].I4;
+		Edges[5] = HEX_FACE2EDGE[FaceLocalID].I5;
+		Edges[6] = HEX_FACE2EDGE[FaceLocalID].I6;
+		Edges[7] = HEX_FACE2EDGE[FaceLocalID].I7;
+	}
+	else throw new Fatal("Generic::_face_to_edges: Method not available for VTKCellType==%d",ElemVTKCellType(iElem));
+}
+
+inline void Generic::_vtk_con(size_t i, String & Connect) const
+{
+	if (ElemVTKCellType(i)==VTK_LINE)
+	{
+		Connect.Printf("%d %d",ElemCon(i,0), ElemCon(i,1));
+	}
+	else if (ElemVTKCellType(i)==VTK_QUADRATIC_EDGE)
+	{
+		throw new Fatal("Generic::_vtk_con: Quadratic Linear elements are not available");
+	}
+	else if (ElemVTKCellType(i)==VTK_TRIANGLE)
+	{
+		Connect.Printf("%d %d %d",ElemCon(i,0), ElemCon(i,1), ElemCon(i,2));
+	}
+	else if (ElemVTKCellType(i)==VTK_QUADRATIC_TRIANGLE)
+	{
+		Connect.Printf("%d %d %d %d %d %d",ElemCon(i,0), ElemCon(i,1), ElemCon(i,2),
+		                                   ElemCon(i,3), ElemCon(i,4), ElemCon(i,5));
+	}
+	else if (ElemVTKCellType(i)==VTK_QUAD)
+	{
+		Connect.Printf("%d %d %d %d",ElemCon(i,0), ElemCon(i,1), ElemCon(i,2), ElemCon(i,3));
+	}
+	else if (ElemVTKCellType(i)==VTK_QUADRATIC_QUAD)
+	{
+		Connect.Printf("%d %d %d %d %d %d %d %d",
+		               ElemCon(i,0), ElemCon(i,1), ElemCon(i,2), ElemCon(i,3),
+		               ElemCon(i,4), ElemCon(i,5), ElemCon(i,6), ElemCon(i,7));
+	}
+	else if (ElemVTKCellType(i)==VTK_TETRA)
+	{
+		throw new Fatal("Generic::_vtk_con: Tetrahedrons elements are not available");
+	}
+	else if (ElemVTKCellType(i)==VTK_QUADRATIC_TETRA)
+	{
+		throw new Fatal("Generic::_vtk_con: Quadratic Tetrahedrons elements are not available");
+	}
+	else if (ElemVTKCellType(i)==VTK_HEXAHEDRON)
+	{
+		Connect.Printf("%d %d %d %d %d %d %d %d",ElemCon(i,0), ElemCon(i,1), ElemCon(i,2), ElemCon(i,3),
+		                                         ElemCon(i,4), ElemCon(i,5), ElemCon(i,6), ElemCon(i,7));
+	}
+	else if (ElemVTKCellType(i)==VTK_QUADRATIC_HEXAHEDRON)
+	{
+		Connect.Printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+		               ElemCon(i, 0), ElemCon(i, 1), ElemCon(i, 2), ElemCon(i, 3),
+		               ElemCon(i, 4), ElemCon(i, 5), ElemCon(i, 6), ElemCon(i, 7),
+		               ElemCon(i, 8), ElemCon(i, 9), ElemCon(i,10), ElemCon(i,11),
+		               ElemCon(i,12), ElemCon(i,13), ElemCon(i,14), ElemCon(i,15),
+		               ElemCon(i,16), ElemCon(i,17), ElemCon(i,18), ElemCon(i,19));
+	}
 }
 
 inline size_t Generic::_nverts(int VTKCellType) const

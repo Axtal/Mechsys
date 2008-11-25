@@ -206,14 +206,35 @@ private:
 
 }; // class Block
 
+Pair Block::Edge2Face[] = {{ 0, 4},  // Edge #  0 is shared among Faces # 0 and 4
+                           { 1, 4},  // Edge #  1 ...
+                           { 2, 4},  // Edge #  2
+                           { 3, 4},  // Edge #  3
+                           { 0, 5},  // Edge #  4
+                           { 1, 5},  // Edge #  5
+                           { 2, 5},  // Edge #  6
+                           { 3, 5},  // Edge #  7
+                           { 0, 2},  // Edge #  8
+                           { 2, 1},  // Edge #  9
+                           { 1, 3},  // Edge # 10
+                           { 3, 0},  // Edge # 11
+                           { 0, 4},  // Edge # 12
+                           { 1, 4},  // Edge # 13
+                           { 2, 4},  // Edge # 14
+                           { 3, 4},  // Edge # 15
+                           { 0, 5},  // Edge # 16
+                           { 1, 5},  // Edge # 17
+                           { 2, 5},  // Edge # 18
+                           { 3, 5},  // Edge # 19
+                           { 0, 2},  // Edge # 20
+                           { 2, 1},  // Edge # 21
+                           { 1, 3},  // Edge # 22
+                           { 3, 0}}; // Edge # 23
+
+
 class Structured : public virtual Mesh::Generic
 {
 public:
-	// Constants
-	static Edge Edge2Vert[]; ///< Map from local edge ID to local vertex ID
-	static Face Face2Vert[]; ///< Map from local face ID to local vertex IDs
-	static Face Face2Edge[]; ///< Map from local face ID to local edge IDs
-
 	// Constructor
 	Structured (bool Is3D) : Mesh::Generic(Is3D) {}
 
@@ -241,66 +262,9 @@ private:
 	void _shape_3d (double r, double s, double t);
 
 	// Overloaded private methods
-	void   _vtk_con          (size_t i, String & Connect) const;
-	void   _erase            ();
-	size_t _edge_to_lef_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].L; }
-	size_t _edge_to_rig_vert (size_t EdgeLocalID) const { return Edge2Vert[EdgeLocalID].R; }
-	void   _face_to_verts    (size_t FaceLocalID, Array<size_t> & Verts) const;
-	void   _face_to_edges    (size_t FaceLocalID, Array<size_t> & Edges) const;
+	void _erase ();
 
 }; // class Structured
-
-Edge Structured::Edge2Vert[]= {{ 0, 3 },  // Edge #  0
-                               { 1, 2 },  // Edge #  1
-                               { 0, 1 },  // Edge #  2
-                               { 2, 3 },  // Edge #  3
-                               { 4, 7 },  // Edge #  4
-                               { 5, 6 },  // Edge #  5
-                               { 4, 5 },  // Edge #  6
-                               { 6, 7 },  // Edge #  7
-                               { 0, 4 },  // Edge #  8
-                               { 1, 5 },  // Edge #  9
-                               { 2, 6 },  // Edge # 10
-                               { 3, 7 }}; // Edge # 11
-
-Face Structured::Face2Vert[]= {{  0,  3,  7,  4, 11, 19, 15, 16 },  // Face # 0 => Vertices 0,3,7...
-                               {  1,  2,  6,  5,  9, 18, 13, 17 },  // Face # 1
-                               {  0,  1,  5,  4,  8, 17, 12, 16 },  // Face # 2
-                               {  2,  3,  7,  6, 10, 19, 14, 18 },  // Face # 3
-                               {  0,  1,  2,  3,  8,  9, 10, 11 },  // Face # 4
-                               {  4,  5,  6,  7, 12, 13, 14, 15 }}; // Face # 5
-
-Face Structured::Face2Edge[]= {{  0,  4,  8, 11, 12, 16, 20, 23 },  // Face # 0 => Edges 0,4,8
-                               {  1,  5,  9, 10, 13, 17, 21, 22 },  // Face # 1
-                               {  2,  6,  8,  9, 14, 18, 20, 21 },  // Face # 2
-                               {  3,  7, 10, 11, 15, 19, 22, 23 },  // Face # 3
-                               {  0,  1,  2,  3, 12, 13, 14, 15 },  // Face # 4
-                               {  4,  5,  6,  7, 16, 17, 18, 19 }}; // Face # 5
-
-Pair Block::Edge2Face[] = {{ 0, 4},  // Edge #  0 is shared among Faces # 0 and 4
-                           { 1, 4},  // Edge #  1 ...
-                           { 2, 4},  // Edge #  2
-                           { 3, 4},  // Edge #  3
-                           { 0, 5},  // Edge #  4
-                           { 1, 5},  // Edge #  5
-                           { 2, 5},  // Edge #  6
-                           { 3, 5},  // Edge #  7
-                           { 0, 2},  // Edge #  8
-                           { 2, 1},  // Edge #  9
-                           { 1, 3},  // Edge # 10
-                           { 3, 0},  // Edge # 11
-                           { 0, 4},  // Edge # 12
-                           { 1, 4},  // Edge # 13
-                           { 2, 4},  // Edge # 14
-                           { 3, 4},  // Edge # 15
-                           { 0, 5},  // Edge # 16
-                           { 1, 5},  // Edge # 17
-                           { 2, 5},  // Edge # 18
-                           { 3, 5},  // Edge # 19
-                           { 0, 2},  // Edge # 20
-                           { 2, 1},  // Edge # 21
-                           { 1, 3},  // Edge # 22
-                           { 3, 0}}; // Edge # 23
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -1309,49 +1273,6 @@ inline void Structured::_shape_3d(double r, double s, double t)
 	_s(19) = 0.25 *(1.0-r)  *(1.0+s)  *(1.0-t*t);
 }
 
-inline void Structured::_vtk_con(size_t i, String & Connect) const
-{
-	if (_is_3d)
-	{
-		if (_is_o2)
-		{
-			Connect.Printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-			               ElemCon(i, 0), ElemCon(i, 1), ElemCon(i, 2), ElemCon(i, 3),
-			               ElemCon(i, 4), ElemCon(i, 5), ElemCon(i, 6), ElemCon(i, 7),
-			               ElemCon(i, 8), ElemCon(i, 9), ElemCon(i,10), ElemCon(i,11),
-			               ElemCon(i,12), ElemCon(i,13), ElemCon(i,14), ElemCon(i,15),
-			               ElemCon(i,16), ElemCon(i,17), ElemCon(i,18), ElemCon(i,19));
-		}
-		else
-		{
-			Connect.Printf("%d %d %d %d %d %d %d %d",ElemCon(i,0),
-			                                         ElemCon(i,1),
-			                                         ElemCon(i,2),
-			                                         ElemCon(i,3),
-			                                         ElemCon(i,4),
-			                                         ElemCon(i,5),
-			                                         ElemCon(i,6),
-			                                         ElemCon(i,7));
-		}
-	}
-	else
-	{
-		if (_is_o2)
-		{
-			Connect.Printf("%d %d %d %d %d %d %d %d",
-			               ElemCon(i,0), ElemCon(i,1), ElemCon(i,2), ElemCon(i,3),
-			               ElemCon(i,4), ElemCon(i,5), ElemCon(i,6), ElemCon(i,7));
-		}
-		else
-		{
-			Connect.Printf("%d %d %d %d",ElemCon(i,0),
-			                             ElemCon(i,1),
-			                             ElemCon(i,2),
-			                             ElemCon(i,3));
-		}
-	}
-}
-
 inline void Structured::_erase()
 {
 	for (size_t i=0; i<_verts_d .Size(); ++i) if (_verts_d [i]!=NULL) delete _verts_d [i]; // it is only necessary to delete nodes in _verts_d array
@@ -1369,55 +1290,6 @@ inline void Structured::_erase()
 	_elems_bry  .Resize(0);
 	_verts_bry  .Resize(0);
 }
-
-inline void Structured::_face_to_verts(size_t FaceLocalID, Array<size_t> & Verts) const
-{
-	if (_is_o2)
-	{
-		Verts.Resize(8);
-		Verts[0] = Face2Vert[FaceLocalID].I0;
-		Verts[1] = Face2Vert[FaceLocalID].I1;
-		Verts[2] = Face2Vert[FaceLocalID].I2;
-		Verts[3] = Face2Vert[FaceLocalID].I3;
-		Verts[4] = Face2Vert[FaceLocalID].I4;
-		Verts[5] = Face2Vert[FaceLocalID].I5;
-		Verts[6] = Face2Vert[FaceLocalID].I6;
-		Verts[7] = Face2Vert[FaceLocalID].I7;
-	}
-	else
-	{
-		Verts.Resize(4);
-		Verts[0] = Face2Vert[FaceLocalID].I0;
-		Verts[1] = Face2Vert[FaceLocalID].I1;
-		Verts[2] = Face2Vert[FaceLocalID].I2;
-		Verts[3] = Face2Vert[FaceLocalID].I3;
-	}
-}
-
-inline void Structured::_face_to_edges(size_t FaceLocalID, Array<size_t> & Edges) const
-{
-	if (_is_o2)
-	{
-		Edges.Resize(8);
-		Edges[0] = Face2Edge[FaceLocalID].I0;
-		Edges[1] = Face2Edge[FaceLocalID].I1;
-		Edges[2] = Face2Edge[FaceLocalID].I2;
-		Edges[3] = Face2Edge[FaceLocalID].I3;
-		Edges[4] = Face2Edge[FaceLocalID].I4;
-		Edges[5] = Face2Edge[FaceLocalID].I5;
-		Edges[6] = Face2Edge[FaceLocalID].I6;
-		Edges[7] = Face2Edge[FaceLocalID].I7;
-	}
-	else
-	{
-		Edges.Resize(4);
-		Edges[0] = Face2Edge[FaceLocalID].I0;
-		Edges[1] = Face2Edge[FaceLocalID].I1;
-		Edges[2] = Face2Edge[FaceLocalID].I2;
-		Edges[3] = Face2Edge[FaceLocalID].I3;
-	}
-}
-
 
 }; // namespace Mesh
 
