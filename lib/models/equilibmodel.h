@@ -185,8 +185,8 @@ inline void EquilibModel::CalcDepVars() const
 	Tensors::Eigenvals (_eps, _epsp);
 
 	// Sort (increasing)
-	//Util::Sort (_sigp, 3); // S1,S2,S3 = _sigp[2], _sigp[1], _sigp[0]
-	//Util::Sort (_epsp, 3); // E1,E2,E3 = _epsp[2], _epsp[1], _epsp[0]
+	Util::Sort (_sigp, 3); // S1,S2,S3 = _sigp[2], _sigp[1], _sigp[0]
+	Util::Sort (_epsp, 3); // E1,E2,E3 = _epsp[2], _epsp[1], _epsp[0]
 }
 
 inline double EquilibModel::Val(char const * Name) const
