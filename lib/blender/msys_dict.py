@@ -67,7 +67,14 @@ def load_dict():
         dict['res_dfv']         = 0
         dict['res_show_scalar'] = False
         dict['res_warp_scale']  = '10'
-        dict['res_show_warp']   = 1
+        dict['res_show_warp']   = True
+        dict['res_show_extra']  = True
+        dict['res_ext']         = 1
+        dict['res_ext_scale']   = '0.1'
+        dict['res_ext_txt']     = True
+
+        # Extra output
+        dict['extmnu'] = 'Extra output %t|V %x3|M %x2|N %x1'
 
         # DOF Vars
         dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q', 8:'Q', 9:'wz', 10:'mz' }

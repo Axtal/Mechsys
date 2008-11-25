@@ -124,10 +124,10 @@ int main(int argc, char **argv) try
 	Array<String>  Labels;
 
 	g.Ele(2)->OutExtra(Coords, Norm, Values, Labels);
-	cout << "Coords: " << Coords << endl;
-	cout << "Noem:   " << Norm   << endl;
-	cout << "Values: " << Values << endl;
-	cout << "Labels: " << Labels[0] << Labels[1] << Labels[2] << endl;
+	cout << "Coords: \n"       << Coords << endl;
+	cout << "Normal vector: "  << Norm   << endl;
+	cout << "Values:\n"        << Values << endl;
+	cout << "Labels: "         << Labels << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

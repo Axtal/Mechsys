@@ -20,6 +20,7 @@
 
 import Blender
 from   Blender import BGL, Draw, Window
+from   Blender.Mathutils import Vector
 import bpy
 import msys_dict as di
 
@@ -190,7 +191,7 @@ if di.key('show_res'):
         if obj!=None and obj.type=='Mesh':
 
             # draw only if active layer corresponds to this object.Layer
-            if Blender.Window.GetActiveLayer()==obj.Layer:
+            if Blender.Window.GetActiveLayer()==obj.Layer and obj.properties.has_key('res'):
 
                 # get mesh and transform to global coordinates
                 msh = obj.getData(mesh=1)
@@ -198,7 +199,7 @@ if di.key('show_res'):
                 msh.transform(obj.matrix)
 
                 # draw scalars text
-                if di.key('res_show_scalar') and obj.properties.has_key('res'):
+                if di.key('res_show_scalar'):
                     key = di.key('dfv')[obj.properties['res']['l2g'][str(di.key('res_dfv'))]]
                     BGL.glColor3f (0.0, 0.0, 0.0)
                     for v in msh.verts:
@@ -206,7 +207,7 @@ if di.key('show_res'):
                         Draw.Text         ('%g' % obj.properties['res'][key][v.index])
 
                 # draw warped mesh
-                if di.key('res_show_warp') and obj.properties.has_key('res'):
+                if di.key('res_show_warp'):
                     ux = obj.properties['res']['ux'] if obj.properties['res'].has_key('ux') else []
                     uy = obj.properties['res']['uy'] if obj.properties['res'].has_key('uy') else []
                     uz = obj.properties['res']['uz'] if obj.properties['res'].has_key('uz') else []
@@ -221,6 +222,40 @@ if di.key('show_res'):
                             BGL.glVertex3f (e.v1.co[0]+m*ux[e.v1.index], e.v1.co[1]+m*uy[e.v1.index], e.v1.co[2]+m*uz[e.v1.index])
                             BGL.glVertex3f (e.v2.co[0]+m*ux[e.v2.index], e.v2.co[1]+m*uy[e.v2.index], e.v2.co[2]+m*uz[e.v2.index])
                             BGL.glEnd      ()
+
+                if di.key('res_show_extra') and obj.properties['res'].has_key('extra'):
+                    clrs = [(0.276,0.276,1.0), (0.934, 0.643, 0.19), (0.69,0.81,0.57)]
+                    exts = ['N', 'M', 'V']
+                    idx  = di.key('res_ext')
+                    ext  = exts[idx]
+                    sca  = float(di.key('res_ext_scale'))
+                    BGL.glColor3f (clrs[idx][0], clrs[idx][1], clrs[idx][2])
+                    for ide in obj.properties['res']['extra']:
+                        key   = 'max_'+ext
+                        maxv  = obj.properties['res'][key] if obj.properties['res'][key]>0 else 1.0
+                        va    =        obj.properties['res']['extra'][ide]['values']
+                        co    =        obj.properties['res']['extra'][ide]['coords']
+                        no    = Vector(obj.properties['res']['extra'][ide]['normal'])
+                        m     = va[ext][0]
+                        sf    = m*obj.properties['res']['length']*sca/maxv
+                        epold = Vector([co['X'][0], co['Y'][0]]) + sf*no
+                        for i, m in enumerate(va[ext]):
+                            sf = m*obj.properties['res']['length']*sca/maxv
+                            sp = Vector([co['X'][i], co['Y'][i]])
+                            ep = sp + sf*no
+                            BGL.glBegin    (BGL.GL_LINES)
+                            BGL.glVertex3f (sp[0], sp[1], 0.0)
+                            BGL.glVertex3f (ep[0], ep[1], 0.0)
+                            BGL.glEnd      ()
+                            if (i>0):
+                                BGL.glBegin    (BGL.GL_LINES)
+                                BGL.glVertex3f (epold[0], epold[1], 0.0)
+                                BGL.glVertex3f (ep[0], ep[1], 0.0)
+                                BGL.glEnd      ()
+                            else: epold = ep
+                            if di.key('res_ext_txt'):
+                                BGL.glRasterPos3f (ep[0], ep[1], 0.0)
+                                Draw.Text ('%g' % m)
 
                 # Resore mesh to local coordinates
                 msh.verts = ori

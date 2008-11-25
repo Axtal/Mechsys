@@ -19,6 +19,7 @@
 import subprocess
 import math
 import Blender
+from   Blender.Mathutils import Vector
 import bpy
 import mechsys   as ms
 import msys_dict as di
@@ -208,6 +209,36 @@ def save_results(geo,obj):
             vals.append(geo.nod(i).val(key))
         obj.properties['res'][key] = vals
 
+    # limits
+    sp, ep = [], []
+    geo.bounds_3d (sp, ep)
+    v1    = Vector(sp)
+    v2    = Vector(ep)
+    delta = v2-v1
+    obj.properties['res']['length'] = delta.length
+
+    # save extra output
+    obj.properties['res']['extra'] = {}
+    for i in range(geo.nelems()):
+        if geo.ele(i).has_extra():
+            ide = str(i)
+            obj.properties['res']['extra'][ide] = {}
+            geo.ele(i).calc_dep_vars()
+            co, no, va = dict(), [], dict()
+            geo.ele(i).out_extra (co, no, va)
+            if co.has_key('X'):
+                if len(co['X'])>0:
+                    obj.properties['res']['extra'][ide]['coords'] = co
+                    obj.properties['res']['extra'][ide]['normal'] = no
+                    obj.properties['res']['extra'][ide]['values'] = {}
+                    for k, v in va.iteritems():
+                        obj.properties['res']['extra'][ide]['values'][k] = v
+                        # max value
+                        key  = 'max_'+k
+                        maxv = max([abs(val) for val in v])
+                        if obj.properties['res'].has_key(key):
+                            if maxv>obj.properties['res'][key]: obj.properties['res'][key] = maxv
+                        else: obj.properties['res'][key] = maxv
 
 def run_analysis(gen_script=False):
     # get object and set cursor

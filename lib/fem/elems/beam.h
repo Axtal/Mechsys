@@ -50,6 +50,7 @@ public:
 	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
 	int    VTKCellType  () const { return VTK_LINE; }
 	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
+	bool   HasExtra     () const { return true; }
 	void   OutExtra     (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
 
 	// Methods
@@ -285,6 +286,7 @@ inline double Beam::V(double l) const
 
 inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const
 {
+	if (_uL.Size()<1) throw new Fatal("Beam::OutExtra: Please, call CalcDepVars() before calling this method");
 	if (_ndim==2)
 	{
 		// Generate coordinates for the extra points

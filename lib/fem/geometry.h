@@ -65,6 +65,8 @@ public:
 	Array<Element*>       & Elems     ()               { return _elems;        } ///< Access all elements (read/write)
 	Array<Node*>    const & Nodes     ()         const { return _nodes;        } ///< Access all nodes (read-only)
 	Array<Element*> const & Elems     ()         const { return _elems;        } ///< Access all elements (read-only)
+	void                    Bounds    (double & MinX, double & MinY, double & MaxX, double & MaxY) const;                               ///< Return the limits of the geometry
+	void                    Bounds    (double & MinX, double & MinY, double & MinZ, double & MaxX, double & MaxY, double & MaxZ) const; ///< Return the limits of the geometry
 
 #ifdef USE_BOOST_PYTHON
 // {
@@ -74,6 +76,8 @@ public:
 	PyElem          PySetElem2  (size_t i, BPy::str const & Type, bool Act) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act)); }
 	Node    const & PyNod       (size_t i)                                  { return (*Nod(i)); }
 	PyElem          PyEle       (size_t i)                                  { return PyElem(Ele(i)); }
+	void            PyBounds2D  (BPy::list & MinXY,  BPy::list & MaxXY ) const;
+	void            PyBounds3D  (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -140,6 +144,40 @@ inline bool Geom::Check()
 	return true; // OK
 }
 
+inline void Geom::Bounds(double & MinX, double & MinY, double & MaxX, double & MaxY) const
+{
+	MinX = (NNodes()>0 ? Nod(0)->X() : 0.0);
+	MinY = (NNodes()>0 ? Nod(0)->Y() : 0.0);
+	MaxX = (NNodes()>0 ? Nod(0)->X() : 0.0);
+	MaxY = (NNodes()>0 ? Nod(0)->Y() : 0.0);
+	for (size_t i=0; i<NNodes(); ++i)
+	{
+		if (Nod(i)->X() < MinX) MinX = Nod(i)->X();
+		if (Nod(i)->Y() < MinY) MinY = Nod(i)->Y();
+		if (Nod(i)->X() > MaxX) MaxX = Nod(i)->X();
+		if (Nod(i)->Y() > MaxY) MaxY = Nod(i)->Y();
+	}
+}
+
+inline void Geom::Bounds(double & MinX, double & MinY, double & MinZ, double & MaxX, double & MaxY, double & MaxZ) const
+{
+	MinX = (NNodes()>0 ? Nod(0)->X() : 0.0);
+	MinY = (NNodes()>0 ? Nod(0)->Y() : 0.0);
+	MinZ = (NNodes()>0 ? Nod(0)->Z() : 0.0);
+	MaxX = (NNodes()>0 ? Nod(0)->X() : 0.0);
+	MaxY = (NNodes()>0 ? Nod(0)->Y() : 0.0);
+	MaxZ = (NNodes()>0 ? Nod(0)->Z() : 0.0);
+	for (size_t i=0; i<NNodes(); ++i)
+	{
+		if (Nod(i)->X() < MinX) MinX = Nod(i)->X();
+		if (Nod(i)->Y() < MinY) MinY = Nod(i)->Y();
+		if (Nod(i)->Z() < MinZ) MinZ = Nod(i)->Z();
+		if (Nod(i)->X() > MaxX) MaxX = Nod(i)->X();
+		if (Nod(i)->Y() > MaxY) MaxY = Nod(i)->Y();
+		if (Nod(i)->Z() > MaxZ) MaxZ = Nod(i)->Z();
+	}
+}
+
 /** Outputs a geometry. */
 std::ostream & operator<< (std::ostream & os, FEM::Geom const & G)
 {
@@ -147,6 +185,29 @@ std::ostream & operator<< (std::ostream & os, FEM::Geom const & G)
 		if (G.Ele(i)!=NULL) os << (*G.Ele(i));
 	return os;
 }
+
+#ifdef USE_BOOST_PYTHON
+// {
+
+inline void Geom::PyBounds2D(BPy::list & MinXY, BPy::list & MaxXY) const
+{
+	double  minx,miny, maxx,maxy;
+	Bounds (minx,miny, maxx,maxy);
+	MinXY.append(minx);  MaxXY.append(maxx);
+	MinXY.append(miny);  MaxXY.append(maxy);
+}
+
+inline void Geom::PyBounds3D(BPy::list & MinXYZ, BPy::list & MaxXYZ) const
+{
+	double  minx,miny,minz, maxx,maxy,maxz;
+	Bounds (minx,miny,minz, maxx,maxy,maxz);
+	MinXYZ.append(minx);  MaxXYZ.append(maxx);
+	MinXYZ.append(miny);  MaxXYZ.append(maxy);
+	MinXYZ.append(minz);  MaxXYZ.append(maxz);
+}
+
+// }
+#endif // USE_BOOST_PYTHON
 
 }; // namespace FEM
 

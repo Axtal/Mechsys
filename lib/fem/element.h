@@ -111,7 +111,8 @@ public:
 	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
 	virtual void   LocalCoords   (LinAlg::Matrix<double> & coords) const {};                                                                 ///< Return the local coordinates of the nodes
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
-	virtual void   OutExtra      (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const { } ///< Extra output for elements
+	virtual bool   HasExtra      () const { return false; }                                                                                                         ///< Has extra output ?
+	virtual void   OutExtra      (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const {} ///< Extra output for elements
 	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< TODO
 	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
 	virtual bool   HasVolForces  () const { return false; }                                                                                  ///< TODO
@@ -538,6 +539,39 @@ public:
 	double               Val1     (int iNodeLocal, BPy::str const & Name)                               { return _elem->Val(iNodeLocal, BPy::extract<char const *>(Name)()); }
 	double               Val2     (                BPy::str const & Name)                               { return _elem->Val(            BPy::extract<char const *>(Name)()); }
 	FEM::Element const * GetElem  ()                                                              const { return _elem; }
+	void CalcDepsVars() const { _elem->CalcDepVars(); }
+	bool HasExtra () const { return _elem->HasExtra(); }
+	void OutExtra (BPy::dict & Coords, BPy::list & Norm, BPy::dict & Values) const
+	{
+		Matrix<double> coords;
+		Vector<double> norm;
+		Matrix<double> values;
+		Array<String>  labels;
+		_elem->OutExtra (coords, norm, values, labels);
+
+		// Coords
+		BPy::list X;
+		BPy::list Y;
+		for (int i=0; i<coords.Rows(); ++i)
+		{
+			X.append (coords(i,0));
+			Y.append (coords(i,1));
+		}
+		Coords['X'] = X;
+		Coords['Y'] = Y;
+
+		// Norm
+		Norm.append (norm(0));
+		Norm.append (norm(1));
+
+		// Values
+		for (int j=0; j<values.Cols(); ++j)
+		{
+			BPy::list vals;
+			for (int i=0; i<values.Rows(); ++i) vals.append (values(i,j));
+			Values[labels[j].CStr()] = vals;
+		}
+	}
 private:
 	FEM::Element * _elem;
 }; // class PyElement
