@@ -38,6 +38,9 @@
 #include "mesh/mesh.h"
 #include "mesh/structured.h"
 
+using std::cout;
+using std::endl;
+
 namespace FEM
 {
 
@@ -89,8 +92,8 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 			throw new Fatal("FEM::SetNodesElems: For 2D problems, only the X and Y coordinates must be used (diff_z=%f)",diff_z);
 	}
 
-	// Number of beams
-	Array< boost::tuple<size_t,size_t,size_t> > beams; // elem_id, eatt_id, local_edge_id
+	// Number of beams (with duplicates)
+	Array< boost::tuple<size_t,size_t,size_t,int,int,int> > beams; // elem_id, eatt_id, local_edge_id, beam_tag, v0, v1
 	if (OnlyFrame==false)
 	{
 		for (size_t k=0; k<ElemsAtts->Size(); ++k)
@@ -103,11 +106,27 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 					for (size_t j=0; j<M->ElemNETags(i); ++j)
 					{
 						if (M->ElemETag(i,j)==beam_edge_tag)
-							beams.Push (boost::make_tuple(i, k, j));
+						{
+							int v0 = M->EdgeToLef(i, j);
+							int v1 = M->EdgeToRig(i, j);
+							bool is_new = true;
+							for (size_t m=0; m<beams.Size(); ++m)
+							{
+								int w0 = beams[m].get<4>();
+								int w1 = beams[m].get<5>();
+								if ((v0==w0 || v0==w1) && (v1==w0 || v1==w1)) // coincident
+								{
+									is_new = false;
+									break;
+								}
+							}
+							if (is_new) beams.Push (boost::make_tuple(i, k, j, beam_edge_tag, v0, v1));
+						}
 					}
 				}
 			}
 		}
+		G->SetNBeams (beams.Size());
 	}
 
 	// Set elements
@@ -144,6 +163,7 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 		size_t elem_id       = beams[i].get<0>();
 		size_t eatt_id       = beams[i].get<1>();
 		size_t local_edge_id = beams[i].get<2>();
+		int    beam_tag      = beams[i].get<3>();
 
 		// New finite element
 		FEM::Element * fe = G->SetElem (ie, (*ElemsAtts)[eatt_id].get<1>());
@@ -155,6 +175,9 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 		// Set parameters and initial values
 		fe->SetModel ((*ElemsAtts)[eatt_id].get<2>(), (*ElemsAtts)[eatt_id].get<3>(), (*ElemsAtts)[eatt_id].get<4>());
 		ie++;
+
+		// Set beam
+		G->SetBeam (i, fe, beam_tag);
 	}
 }
 
@@ -233,6 +256,11 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 						}
 					}
 				}
+			}
+			for (size_t b=0; b<G->NBeams(); ++b)
+			{
+				if (G->BTag(b)==(*EdgesBrys)[k].get<0>())
+					G->Beam(b)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), 0);
 			}
 		}
 	}
