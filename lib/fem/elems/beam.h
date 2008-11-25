@@ -93,6 +93,21 @@ const size_t Beam::NDIV = 10;  ///< Number of points for extra output
 
 inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLocalID)
 {
+	// Skip if key is not "Qb"
+	if (strcmp(Key,"Qb")!=0) return this;
+
+	// Check which node is the left-most and adjust q0 and q1
+	bool is_node0_leftmost = true;
+	double x0 = _connects[0]->X();  double y0 = _connects[0]->Y();
+	double x1 = _connects[1]->X();  double y1 = _connects[1]->Y();
+	if (fabs(x1-x0)<1.0e-5) { if (y1<y0) is_node0_leftmost = false; } // vertical segment
+	else                    { if (x1<x0) is_node0_leftmost = false; } 
+	if (is_node0_leftmost==false)
+	{
+		q0 = -q0;
+		q1 = -q1;
+	}
+
 	// Transformation matrix and calculate _L
 	LinAlg::Matrix<double> T;
 	_transf_mat(T);

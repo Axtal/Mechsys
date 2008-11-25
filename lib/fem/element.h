@@ -161,6 +161,10 @@ inline Element * Element::EdgeBry(char const * Key, double Value, int EdgeLocalI
 {
 	if (_ndim<3) // For 1D/2D meshes, edges correspond to faces
 	{
+
+		// Skip if key is "Qb" TODO: Move to EquilibElem
+		if (strcmp(Key,"Qb")==0) return this;
+
 		Array<Node*> fnodes;
 		GetFaceNodes        (EdgeLocalID, fnodes);
 		_dist_to_face_nodes (Key, Value, fnodes);
