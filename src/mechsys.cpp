@@ -80,7 +80,7 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,  2, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,       0, 2)
 
-BOOST_PYTHON_FUNCTION_OVERLOADS (PySetNE_Overloads,   PySetNodesElems, 3, 4)
+BOOST_PYTHON_FUNCTION_OVERLOADS (PySetNE_Overloads,   PySetNodesElems, 3, 5)
 BOOST_PYTHON_FUNCTION_OVERLOADS (PySetBrys_Overloads, PySetBrys,       5, 6)
 
 BOOST_PYTHON_MODULE (mechsys)

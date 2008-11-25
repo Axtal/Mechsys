@@ -127,6 +127,11 @@ public:
 	virtual void SetElemETag (int i, int j, int Tag);                               ///< Set element's edge tag
 	virtual void SetElemFTag (int i, int j, int Tag);                               ///< Set element's face tag
 
+	// Beams and Joints
+	void   SetETagsBeams (size_t NBeamETags, ...);                ///< Set what edge tags represent Beams
+	size_t nETagsBeams   () const { return _etags_beams.Size(); } ///< Return the number of edge tags that represent Beams
+	bool   IsETagBeam    (int ETag) const;                        ///< Find whether an EdgeTag represents a Beam or not
+
 	// Get methods
 	        bool   Is3D            ()                   const { return _is_3d;                  } ///< Is 3D mesh ?
 	virtual size_t NVerts          ()                   const { return _verts.Size();           } ///< Return the number of vertices
@@ -169,6 +174,7 @@ protected:
 	Array<Elem*>   _elems;     ///< Elements
 	Array<Elem*>   _elems_bry; ///< Elements on boundary
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
+	Array<int>     _etags_beams; ///< Edge tags that represent Beams
 
 	// Private methods that MUST be overloaded
 	virtual void _vtk_con (size_t i, String & Connect) const {}; ///< Returns a string with the connectivites (global vertices IDs) of an element
@@ -385,6 +391,19 @@ inline void Generic::SetElemFTag(int i, int j, int Tag)
 	_elems[i]->FTags(j) = Tag;
 }
 
+inline void Generic::SetETagsBeams(size_t NBeamETags, ...)
+{
+	va_list arg_list;
+	va_start (arg_list, NBeamETags); // initialize arg_list with parameters AETER NBeamETags
+	for (size_t i=0; i<NBeamETags; ++i)
+		_etags_beams[i] = va_arg (arg_list, int);
+	va_end (arg_list);
+}
+
+inline bool Generic::IsETagBeam(int ETag) const
+{
+	return (_etags_beams.Find(ETag)>=0);
+}
 
 #ifdef USE_BOOST_PYTHON
 // {

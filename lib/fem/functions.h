@@ -49,7 +49,8 @@ typedef Array< boost::tuple<int, char const*, char const*, char const*, char con
 inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
                            EAtts_T       const * ElemsAtts,  ///< In: Elements attributes
                            FEM::Geom           * G,          ///< Out: The FE geometry
-                           double                Tol=1.0e-5) ///< In: Tolerance for defining whether X-Y-Z coordinates are in a same plane or not
+                           double                Tol=1.0e-5,      ///< In: Tolerance for defining whether X-Y-Z coordinates are in a same plane or not
+                           bool                  OnlyFrame=false) ///< Only frame (beam/truss) structure ?
 {
 	/* Example:
 	
@@ -90,18 +91,21 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 
 	// Number of beams
 	Array< boost::tuple<size_t,size_t,size_t> > beams; // elem_id, eatt_id, local_edge_id
-	for (size_t k=0; k<ElemsAtts->Size(); ++k)
+	if (OnlyFrame==false)
 	{
-		if (strcmp((*ElemsAtts)[k].get<1>(),"Beam")==0)
+		for (size_t k=0; k<ElemsAtts->Size(); ++k)
 		{
-			int beam_edge_tag = (*ElemsAtts)[k].get<0>();
-			for (size_t i=0; i<M->NElemsBry();   ++i)
+			if (strcmp((*ElemsAtts)[k].get<1>(),"Beam")==0)
 			{
-				long ie = M->ElemBry(i);
-				for (size_t j=0; j<M->ElemNETags(ie); ++j)
+				int beam_edge_tag = (*ElemsAtts)[k].get<0>();
+				for (size_t i=0; i<M->NElemsBry();   ++i)
 				{
-					if (M->ElemETag(ie,j)==beam_edge_tag)
-						beams.Push (boost::make_tuple(ie, k, j));
+					long ie = M->ElemBry(i);
+					for (size_t j=0; j<M->ElemNETags(ie); ++j)
+					{
+						if (M->ElemETag(ie,j)==beam_edge_tag)
+							beams.Push (boost::make_tuple(ie, k, j));
+					}
 				}
 			}
 		}
@@ -264,7 +268,8 @@ namespace BPy = boost::python;
 void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
                       BPy::list     const & ElemsAtts,  ///< In: Elements attributes
                       FEM::Geom           & G,          ///< Out: The FE geometry
-                      double                Tol=1.0e-5) ///< In: Tolerance for defining whether X-Y-Z coordinates are in a same plane or not
+                      double                Tol=1.0e-5,      ///< In: Tolerance for defining whether X-Y-Z coordinates are in a same plane or not
+                      bool                  OnlyFrame=false) ///< Only frame (beam/truss) structure ?
 {
 	/* Example:
 	 *           
@@ -291,7 +296,7 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 	}
 
 	// Set geometry
-	FEM::SetNodesElems (&M, &eatts, &G, Tol);
+	FEM::SetNodesElems (&M, &eatts, &G, Tol, OnlyFrame);
 }
 
 void PySetBrys (Mesh::Generic const & M,          ///< In: The mesh

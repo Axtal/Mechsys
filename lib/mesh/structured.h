@@ -357,7 +357,7 @@ inline void Block::SetETags(size_t NETags, ...)
 		if (!(NETags==4 || NETags==8)) throw new Fatal("Block::SetETags: For 2D blocks, the number of edge tags must be either 4 or 8. (NETags==%d is invalid)",NETags);
 	}
 
-	// Set face tags
+	// Set edge tags
 	_has_etags = true;
 	va_list arg_list;
 	va_start (arg_list, NETags); // initialize arg_list with parameters AETER NETags
@@ -1072,6 +1072,27 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 						{
 							_elems_bry.Push(e);      // array with elements on boundary
 							Blocks[b]->ApplyTags(e); // apply tags to edges and faces of this element with boundary tags
+							// Add Beam elements
+							/*
+							if (nETagsBeams()>0)
+							{
+								for (int m=0; m<e->ETags.Size(); ++m) // m is EdgeLocalID
+								{
+									int etag = e->ETags(m);
+									if (IsETagBeam(etag))
+									{
+										// Add new Beam element
+										size_t l = _edge_to_lef_vert(m);
+										size_t r = _edge_to_rig_vert(m);
+										Elem * beam = new Elem;
+										e->MyID = _elems.Size(); // id
+										e->Tag  = etag;          // tag
+										// connectivity
+										//e->V.Resize((_is_o2?3:8));
+									}
+								}
+							}
+							*/
 						}
 						_elems.Push(e); // array with all elements
 					}
