@@ -252,7 +252,7 @@ if di.key('show_res'):
                                 BGL.glVertex3f (epold[0], epold[1], 0.0)
                                 BGL.glVertex3f (ep[0], ep[1], 0.0)
                                 BGL.glEnd      ()
-                            else: epold = ep
+                            epold = ep
                             if di.key('res_ext_txt'):
                                 BGL.glRasterPos3f (ep[0], ep[1], 0.0)
                                 Draw.Text ('%g' % m)
