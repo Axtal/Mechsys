@@ -39,6 +39,9 @@ using Util::_8s;
 
 int main(int argc, char **argv) try
 {
+	// Description:
+	// Test to evaluate the rotation of a loaded cube with just vertical constraints
+
 	// constants
 	double E  = 207.0; // Young
 	double nu = 0.3;   // Poisson
