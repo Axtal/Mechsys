@@ -206,7 +206,8 @@ def save_results(geo,obj):
         key  = di.key('dfv')[v]
         vals = []
         for i in range(geo.nnodes()):
-            vals.append(geo.nod(i).val(key))
+            try:    vals.append(geo.nod(i).val(key))
+            except: vals.append(0.0)
         obj.properties['res'][key] = vals
 
     # limits
