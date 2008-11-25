@@ -98,13 +98,12 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 			if (strcmp((*ElemsAtts)[k].get<1>(),"Beam")==0)
 			{
 				int beam_edge_tag = (*ElemsAtts)[k].get<0>();
-				for (size_t i=0; i<M->NElemsBry();   ++i)
+				for (size_t i=0; i<M->NElems(); ++i)
 				{
-					long ie = M->ElemBry(i);
-					for (size_t j=0; j<M->ElemNETags(ie); ++j)
+					for (size_t j=0; j<M->ElemNETags(i); ++j)
 					{
-						if (M->ElemETag(ie,j)==beam_edge_tag)
-							beams.Push (boost::make_tuple(ie, k, j));
+						if (M->ElemETag(i,j)==beam_edge_tag)
+							beams.Push (boost::make_tuple(i, k, j));
 					}
 				}
 			}
