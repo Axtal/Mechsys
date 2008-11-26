@@ -316,7 +316,7 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 	if (eatts_size>0) eatts.Resize(eatts_size);
 	for (int i=0; i<eatts_size; ++i)
 	{
-		if (len(ElemsAtts[i])==5)
+		if (len(ElemsAtts[i])==6)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
 			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
