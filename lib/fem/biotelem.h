@@ -67,6 +67,7 @@ public:
 	// Derived methods to assemble DAS matrices
 	size_t nOrder0Matrices () const { return 1; }                                                                                                              ///< Number of zero order matrices: H:Permeability.
 	size_t nOrder1Matrices () const { return 3; }                                                                                                              ///< Number of first order matrices: K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
+	size_t nOrder0Vectors  () const { return 2; }                                                                                                              ///< Number of zero order vectors: H*P and Qb.
 	void   Order0MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const; ///< Order0Matrix' map to convert local DOFs into global equation positions.
 	void   Order0VecMap    (size_t Index, Array<size_t> & RowsMap)                                                                                      const; ///< Order0Vector' map to convert local DOFs into global equation positions.
 	void   Order0Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const; ///< Zero order matrix: H:Permeability.
@@ -104,6 +105,7 @@ private:
 	void _compute_C           (LinAlg::Matrix<double> & Ce) const;
 	void _compute_L           (LinAlg::Matrix<double> & Le) const;
 	void _compute_H           (LinAlg::Matrix<double> & He) const;
+	void _compute_Qb          (LinAlg::Vector<double> & Qb) const;
 	void _compute_equilib_map (Array<size_t> & RowsMap, Array<bool> & RowsEssenPresc) const;
 	void _compute_flow_map    (Array<size_t> & RowsMap, Array<bool> & RowsEssenPresc) const;
 
@@ -407,12 +409,23 @@ inline void BiotElem::Order0Matrix(size_t index, LinAlg::Matrix<double> & M) con
 
 inline void BiotElem::Order0Vector(size_t Index, LinAlg::Vector<double> & V) const
 {
-	V.Resize(_n_nodes);
-	size_t nde =       NDE[_d]; // nDOFs Equilibrium
-	size_t ndf = _nd - NDE[_d]; // nDOFs Flow
-	for (size_t i=0; i<_n_nodes; ++i)
-	for (size_t j=0; j<ndf;      ++j)
-		V(i*ndf+j) = _connects[i]->DOFVar(UD[_d][j+nde]).EssentialVal;
+	if (Index==0)
+	{
+		V.Resize(_n_nodes);
+		size_t nde =       NDE[_d]; // nDOFs Equilibrium
+		size_t ndf = _nd - NDE[_d]; // nDOFs Flow
+		for (size_t i=0; i<_n_nodes; ++i)
+		for (size_t j=0; j<ndf;      ++j)
+			V(i*ndf+j) = _connects[i]->DOFVar(UD[_d][j+nde]).EssentialVal;
+
+		LinAlg::Matrix<double> H;
+		_compute_H(H);
+		V = H*V;
+	}
+	else if (Index==1)
+	{
+		_compute_Qb(V);
+	}
 }
 
 inline void BiotElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
@@ -709,6 +722,49 @@ inline void BiotElem::_compute_H(LinAlg::Matrix<double> & He) const
 		He += -trn(Bp)*_Ke*Bp*det(J)*w/_gw;
 	}
 }
+
+inline void BiotElem::_compute_Qb(LinAlg::Vector<double> & Qb) const // {{{
+{
+	//	
+	//	 Permeability Matrix Qh:
+	//	 ============================
+	//       
+	//                    1   /    T                   
+	//         [Qb]   =  ---  | [B]  * [K] * {b}  * dV
+	//                    gw  /    p            w  
+	//           
+	//   OBS.: [K] = [k]/gammaW
+	
+	// Resize Qb
+	Qb.Resize(_n_nodes); 
+	Qb.SetValues(0.0);
+
+	// Allocate entities used for every integration point
+	LinAlg::Matrix<double> derivs; // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
+	LinAlg::Vector<double> shape;  // size = _n_nodes
+	LinAlg::Matrix<double> J;      // Jacobian matrix
+	LinAlg::Matrix<double> Bp;     // pore-pressure - gradient matrix
+	LinAlg::Vector<double> b;   // fluid mass vector
+	     if (_ndim==2) { b.Resize(2); b = 0.0, _gw; }
+	else if (_ndim==3) { b.Resize(3); b = 0.0, 0.0, _gw; }
+
+	// Loop along integration points
+	for (size_t i_ip=0; i_ip<_n_int_pts; ++i_ip)
+	{
+		// Temporary Integration Points
+		double r = _a_int_pts[i_ip].r;
+		double s = _a_int_pts[i_ip].s;
+		double t = _a_int_pts[i_ip].t;
+		double w = _a_int_pts[i_ip].w;
+		Shape(r,s,t, shape);              // Calculate Np vector (equal to shape functions vector)
+		Derivs(r,s,t, derivs);            // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian(derivs, J);              // Calculate J (Jacobian) matrix for i_ip Integration Point
+		Bp_Matrix(derivs,J, Bp);          // Calculate Bp matrix for i_ip Integration Point
+
+		// Calculate the body mass vector for flow
+		Qb += trn(Bp)*_Ke*b*det(J)*w/_gw;
+	}
+} // }}}
 
 inline void BiotElem::_compute_equilib_map(Array<size_t> & RowsMap, Array<bool> & RowsEssenPresc) const
 {
