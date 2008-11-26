@@ -697,18 +697,9 @@ inline void Solver::_assemb_G_and_hKU(double h)
 				// Get local matrix (ex.: permeability H) and maps
 				elem->Order0MatMap (i, rows_map, cols_map, rows_pre, cols_pre);
 				elem->Order0Matrix (i, M);
-
-				// Get local vector related to the zeroth order term of the differential equation (ex.: [U P]^T)
-				elem->Order0VecMap (i, vect_map);
-				elem->Order0Vector (i, V);
-				
-				// Compute scaled vector and matrix
-				V = h*M*V;
 				M = alfa*h*M;
 
 				// Assemble into global
-				_has_hKU = true;
-				_mount_into_hKU    (V, vect_map);
 				_mount_into_global (M, rows_map, cols_map, rows_pre, cols_pre);
 			}
 
@@ -722,6 +713,21 @@ inline void Solver::_assemb_G_and_hKU(double h)
 				// Assemble into global
 				_mount_into_global (M, rows_map, cols_map, rows_pre, cols_pre);
 			}
+
+			// Assemble order zero Vectors
+			size_t n_RHS = elem->nOrder0Vectors();
+			for (size_t i=0; i<n_RHS; i++)
+			{
+				// Get local vector related to the zeroth order term of the differential equation (ex.: [U P]^T)
+				elem->Order0VecMap (i, vect_map);
+				elem->Order0Vector (i, V);
+
+				// Assemble into global
+				_has_hKU = true;
+				V = h*V;
+				_mount_into_hKU    (V, vect_map);
+			}
+			
 		}
 	}
 
