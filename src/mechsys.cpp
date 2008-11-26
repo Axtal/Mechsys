@@ -158,7 +158,7 @@ BOOST_PYTHON_MODULE (mechsys)
 		.def("has_extra",     &PyElem::HasExtra)
 		.def("out_extra",     &PyElem::OutExtra)
 		.def("calc_dep_vars", &PyElem::CalcDepsVars)
-		.def("set_props",     &PyElem::SetProps)
+		.def("set_props",     &PyElem::SetProps, return_internal_reference<>())
 	    .def(self_ns::str(self))
 	    ;
 

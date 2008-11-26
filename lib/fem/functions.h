@@ -307,7 +307,7 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 	/* Example:
 	 *           
 	 *           # Elements attributes
-	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']] # [tag], [type], [model], [prms], [inis]
+	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20']] # tag, type, model, prms, inis, props
 	 */
 
 	// Extract list with elements attributes
@@ -323,9 +323,10 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 			                             BPy::extract<char const*>(lst[1])(),
 			                             BPy::extract<char const*>(lst[2])(),
 			                             BPy::extract<char const*>(lst[3])(),
-			                             BPy::extract<char const*>(lst[4])());
+			                             BPy::extract<char const*>(lst[4])(),
+			                             BPy::extract<char const*>(lst[5])());
 		}
-		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 5 items: tag, type, model, prms, inis\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0']]");
+		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 6 items: tag, type, model, prms, inis, props\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20']]");
 	}
 
 	// Set geometry

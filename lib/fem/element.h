@@ -538,6 +538,7 @@ public:
 	FEM::Node const    & Nod      (size_t i)                                                      const { return (*_elem->Nod(i)); }
 	PyElem             & Connect  (int iNodeLocal, FEM::Node & refNode)                                 { _elem->Connect  (iNodeLocal, &refNode); return (*this); }
 	PyElem             & SetModel (BPy::str const & Name, BPy::str const & Prms, BPy::str const & Inis) { _elem->SetModel (BPy::extract<char const *>(Name)(), BPy::extract<char const *>(Prms)(), BPy::extract<char const *>(Inis)()); return (*this); }
+	PyElem             & SetProps (BPy::str const & Props)                                              { _elem->SetProps (BPy::extract<char const *>(Props)()); return (*this); }
 	PyElem             & EdgeBry  (BPy::str const & Key, double Value, int EdgeLocalID)                 { _elem->EdgeBry  (BPy::extract<char const *>(Key)(), Value, EdgeLocalID); return (*this); }
 	PyElem             & FaceBry  (BPy::str const & Key, double Value, int FaceLocalID)                 { _elem->FaceBry  (BPy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
 	double               Val1     (int iNodeLocal, BPy::str const & Name)                               { return _elem->Val(iNodeLocal, BPy::extract<char const *>(Name)()); }
@@ -575,13 +576,6 @@ public:
 			for (int i=0; i<values.Rows(); ++i) vals.append (values(i,j));
 			Values[labels[j].CStr()] = vals;
 		}
-	}
-	void SetProps (BPy::list & Props)
-	{
-		int nprops = BPy::len(Props);
-		Array<double> props(nprops);
-		for (int i=0; i<nprops; ++i) props[i] = BPy::extract<double>(Props[i])();
-		_elem->SetProps (props);
 	}
 private:
 	FEM::Element * _elem;
