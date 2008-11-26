@@ -123,6 +123,7 @@ public:
 	// Methods to assemble DAS matrices; MAY be overriden by derived classes
 	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
 	virtual size_t nOrder1Matrices () const { return 0; }                                                                                                                ///< Number of first order matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
+	virtual size_t nOrder0Vectors  () const { return 0; }                                                                                                                ///< Number of first order matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
 	virtual void   Order0MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
 	virtual void   Order0VecMap    (size_t Index, Array<size_t> & RowsMap)                                                                                      const {} ///< Order0Vector' map to convert local DOFs into global equation positions.
 	virtual void   Order0Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< Zero order matrix such as H:Permeability.
