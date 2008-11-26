@@ -37,6 +37,7 @@ using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
 using Util::_8_4;
+using Util::PI;
 using boost::make_tuple;
 
 void CallSolve (int iStage, FEM::Solver * Sol)
@@ -49,55 +50,68 @@ void CallSolve (int iStage, FEM::Solver * Sol)
 	cout << "\tTime elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 	cout << "\t[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "\t[1;32mNumber of DOFs          = " << Sol->nDOF() << "[0m\n";
-	// Output: VTU
-	//Output o; o.VTU (&g, "tconsolid01.vtu");
-	//cout << "[1;34mFile <tconsolid01.vtu> saved.[0m\n\n";
 }
 
-double Terz(double Z, double T) // Pore-pressure excess for one dimensional consolidation
+// Biot f function
+double f(double e)
 {
-	double ue=0.0;
-	for (int m=0; m<100; m++)
-	{
-		double M = 3.14159*(2.0*m+1.0)/2.0;
-		ue+=2.0/M*sin(M*Z)*exp(-M*M*T);
-	}
-	return ue;
+	e = e + 0.000000001; // to avoid zero when e==0
+	double  ee = e*e;
+	double r_pi = sqrt(PI);
+	return (1.0/(4.0*r_pi))*e*log(1.0 + 4.0/(PI*ee)) + 1.0/PI*atan(r_pi*e/2.0) + e/(2.0*r_pi*(3.24+ee));
+}
+
+// Normalized vertical displacement function
+double Biot(double X, double T)
+{
+	double r_pi = sqrt(PI);
+	// input values
+	double b  = 1.0, p=1.0, v=0.0, E=1.0, cv=1.0;
+	double l  = 2.0*b;
+	double mv = (1.0+v)*(1.0-2.0*v)/(E*(1.0-v));
+	double w_inf = mv*p*l/(4.0*r_pi); // quantity used to normalize
+	double t = pow(T*l,2)/cv;
+	double x = X*b; //
+	double r_cvt = sqrt(cv*t);
+	double ws = 2.0*mv*p*(r_cvt/r_pi)*(f((x+b)/r_cvt)-f((x-b)/r_cvt));
+	return ws/w_inf;
 }
 
 int main(int argc, char **argv) try
 {
 	// Constants
-	double W     = 1.0;    // Width
-	double H     = 10.0;   // Height
-	double E     = 5000.0; // Young
-	double nu    = 0.25;   // Poisson
+	double W     = 12.0;   // Width
+	double H     = 12.0;   // Height
+	double b     =  2.0;   //
+	double E     = 10000.0; // Young
+	double nu    = 0.0;    // Poisson
 	double gw    = 10.0;   // GammaW
-	double k     = 1.0e-5; // Isotropic permeability
-	int    ndivy = 10;     // number of divisions along x and y
+	double k     = 1.0e-6; // Isotropic permeability
+	int    ndivy = 12;     // number of divisions along x and y
 	bool   is_o2 = false;  // use high order elements?
 
 	// More constants related with the one-dimensional consolidation
-	double load  = -10;
+	double load  = -100.0;
 	double mv    = (1+nu)*(1-2*nu)/(E*(1-nu));
 	double cv    = k/(mv*gw);
-	Vector<int>    SampleNodes(11);  // Nodes where pwp is evaluated
+	double l     = 2*b;
+	double r_pi  = sqrt(PI);
+	double winf  = mv*load*l/(4*r_pi);
+	Vector<int>    SampleNodes(19);  // Nodes where pwp is evaluated
 	SampleNodes = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21;
-	Vector<double> NormTimes(9); 
-	NormTimes   = 0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.6, 1.0;  // List of normalized times
+	SampleNodes = 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 239, 240, 241, 242, 243, 244, 245, 246;
+
+	Vector<double> NormTimes(6); 
+	NormTimes   = 0.0, 1.0/8.0, 2.0/8.0, 3.0/8.0, 4.0/8.0, 5.0/8.0; // List of normalized times
 
 	// Calculate time increments
-	Vector<double> TimeIncs(8);  // Time increments
+	Vector<double> TimeIncs(NormTimes.Size()-1);  // Time increments
 	for (int i=0; i<TimeIncs.Size(); i++) 
-		TimeIncs(i) = (NormTimes(i+1)-NormTimes(i))*pow(H,2)/cv;
+		TimeIncs(i) = l*l/cv* (pow(NormTimes(i+1),2.0)-pow(NormTimes(i),2.0));
 
 	// Output information
-	Matrix<double> OutPwp(SampleNodes.Size(), TimeIncs.Size());  OutPwp.SetValues(0.0);
-
-	// Normalized depths of the sample nodes
-	Vector<double> NDepth(SampleNodes.Size()); 
-	for (int i=0; i<NDepth.Size(); i++) 
-		NDepth(i) = (10.0 - i)/10.0;
+	Matrix<double> OutUy(SampleNodes.Size(), TimeIncs.Size());  
+	Vector<double> Uy0  (SampleNodes.Size());  
 
 	// Input
 	cout << "Input: " << argv[0] << "  is_o2  ndivy\n";
@@ -107,16 +121,27 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Blocks
-	Mesh::Block b;
-	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (false, 4,                // Is3D, NNodes
-	             0.0,   W,  W, 0.0,       // x coordinates
-	             0.0, 0.0,  H,   H);      // y coordinates
-	b.SetNx     (1);                      // x weights and num of divisions along x
-	b.SetNy     (ndivy);                  // y weights and num of divisions along y
-	b.SetETags  (4,  -10, -20, -30, -40); // edge tags
 	Array<Mesh::Block*> blocks;
-	blocks.Push (&b);
+
+	Mesh::Block b1;
+	b1.SetTag    (-1); // tag to be replicated to all generated elements inside this block
+	b1.SetCoords (false, 4,               // Is3D, NNodes
+	             0.0, W-b,  W-b, 0.0,     // x coordinates
+	             0.0, 0.0,  H,   H);      // y coordinates
+	b1.SetNx     (10);                    // x weights and num of divisions along x
+	b1.SetNy     (ndivy);                 // y weights and num of divisions along y
+	b1.SetETags  (4,  -10, 0, -30, -50);  // edge tags
+	blocks.Push (&b1);
+
+	Mesh::Block b2;
+	b2.SetTag    (-1); // tag to be replicated to all generated elements inside this block
+	b2.SetCoords (false, 4,               // Is3D, NNodes
+	             W-b,   W,  W, W-b,       // x coordinates
+	             0.0, 0.0,  H,   H);      // y coordinates
+	b2.SetNx     (8);                     // x weights and num of divisions along x
+	b2.SetNy     (ndivy);                 // y weights and num of divisions along y
+	b2.SetETags  (4,  0, -20, -30, -40);  // edge tags
+	blocks.Push (&b2);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
@@ -149,47 +174,74 @@ int main(int argc, char **argv) try
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
 
-	// Stage # 1
-	sol->SetNumDiv(4)->SetDeltaTime(1.0);
+	// Stage # 0 // PWP TEST
+	sol->SetNumDiv(4)->SetDeltaTime(1000000);
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
 	ebrys.Push   (make_tuple(-30, "uy",    0.0));
-	ebrys.Push   (make_tuple(-40, "fy",  -10.0));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (1, sol);
 
 	// Output: VTU 
-	Output o; o.VTU (&g, "tbiot01_01.vtu");
-	cout << "[1;34mFile <tbiot01_01.vtu> saved.[0m\n\n";
+	Output o; o.VTU (&g, "tbiot01.vtu");
+	cout << "[1;34mFile <tbiot01.vtu> saved.[0m\n\n";
+
+
+	// Stage # 1
+	sol->SetNumDiv(4)->SetDeltaTime(0.0001);
+	ebrys.Resize (0);
+	ebrys.Push   (make_tuple(-10, "ux",    0.0));
+	ebrys.Push   (make_tuple(-20, "ux",    0.0));
+	ebrys.Push   (make_tuple(-30, "uy",    0.0));
+	ebrys.Push   (make_tuple(-40, "fy",   load));
+	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
+	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
+	CallSolve    (1, sol);
+
+	//// Output: VTU 
+	//Output o; o.VTU (&g, "tbiot01.vtu");
+	//cout << "[1;34mFile <tbiot01.vtu> saved.[0m\n\n";
+
+	// Calculate displacements after first stage
+	for (int i=0; i<SampleNodes.Size(); i++) 
+		Uy0(i) = g.Nod(SampleNodes(i))->Val("uy");
 
 	// Stage # 2..
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
-		cout << "Stage " << i+2 << endl;
 		sol->SetNumDiv(10)->SetDeltaTime(TimeIncs(i));
 		ebrys.Resize (0);
 		ebrys.Push   (make_tuple(-10, "ux",    0.0));
 		ebrys.Push   (make_tuple(-20, "ux",    0.0));
 		ebrys.Push   (make_tuple(-30, "uy",    0.0));
 		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+		ebrys.Push   (make_tuple(-50, "pwp",   0.0));
+
 		FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-		CallSolve    (2, sol);
+		CallSolve    (i+2, sol);
 		for (int j=0; j<SampleNodes.Size(); j++)
-			OutPwp(j,i) = g.Nod(SampleNodes(j))->Val("pwp")/load; // Saving normalized pore-pressure
+			OutUy(j,i) = (g.Nod(SampleNodes(j))->Val("uy") - Uy0(j))/(-winf); // Saving normalized vertical displacement
 	}
 
-	OutPwp.SetNS(Util::_8_4);
-	cout << "OutPwp :" << endl << OutPwp << endl;
+	OutUy.SetNS(Util::_8_4);
+	cout << "OutUy :" << endl << OutUy << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
+	// Normalized X coordinate of the sample nodes
+	Vector<double> XNorm(SampleNodes.Size()); 
+	for (int i=0; i<XNorm.Size(); i++) 
+		XNorm(i) = (W-g.Nod(SampleNodes(i))->X())/b;
+
 	// Analytical values
 	Matrix<double> AValues(SampleNodes.Size(), TimeIncs.Size());  
-	for (int i=0; i<NDepth.Size(); i++)
+	for (int i=0; i<XNorm.Size(); i++)
 		for (int j=0; j<TimeIncs.Size(); j++)
-			AValues(i,j) = Terz(NDepth(i), NormTimes(j+1));
+			AValues(i,j) = -Biot(XNorm(i), NormTimes(j+1));
 	
 	AValues.SetNS(Util::_8_4);
 	cout << "AValues:" << endl << AValues<< endl;
@@ -197,12 +249,12 @@ int main(int argc, char **argv) try
 	// Test
 	Array<double> err;
 
-	for (int i=0; i<OutPwp.Rows(); i++)
-		for (int j=0; j<OutPwp.Cols(); j++)
-			err.Push(fabs(OutPwp(i,j)-AValues(i,j)));
+	for (int i=0; i<OutUy.Rows(); i++)
+		for (int j=0; j<OutUy.Cols(); j++)
+			err.Push(fabs(OutUy(i,j)-AValues(i,j)));
 
 	// Error summary
-	double tol     = 1.0e-1;
+	double tol     = 1.0e-0;
 	double min_err = err[err.Min()];
 	double max_err = err[err.Max()];
 	cout << _4<< ""    << _8s<<"Min"   << _8s<<"Mean"                                            << _8s<<"Max"                  << _8s<<"Norm"         << endl;
