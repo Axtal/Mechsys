@@ -238,11 +238,11 @@ if di.key('show_res'):
                         no    = Vector(obj.properties['res']['extra'][ide]['normal'])
                         m     = va[ext][0]
                         sf    = m*obj.properties['res']['length']*sca/maxv
-                        epold = Vector([co['X'][0], co['Y'][0]]) + sf*no
+                        epold = Vector([co['X'][0], co['Y'][0]]) - sf*no
                         for i, m in enumerate(va[ext]):
                             sf = m*obj.properties['res']['length']*sca/maxv
                             sp = Vector([co['X'][i], co['Y'][i]])
-                            ep = sp + sf*no
+                            ep = sp - sf*no
                             BGL.glBegin    (BGL.GL_LINES)
                             BGL.glVertex3f (sp[0], sp[1], 0.0)
                             BGL.glVertex3f (ep[0], ep[1], 0.0)
