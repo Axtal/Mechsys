@@ -79,16 +79,20 @@ double Biot(double X, double T)
 
 int main(int argc, char **argv) try
 {
+	// Description:
+	// Two dimensional analysis of the settlement of a footing
+	// compared with the analytical solution obtained from Biot.
+
 	// Constants
-	double W     = 12.0;   // Width
-	double H     = 12.0;   // Height
-	double b     =  2.0;   //
+	double W     = 12.0;    // Width
+	double H     = 12.0;    // Height
+	double b     =  2.0;    // Load application length
 	double E     = 10000.0; // Young
-	double nu    = 0.0;    // Poisson
-	double gw    = 10.0;   // GammaW
-	double k     = 1.0e-6; // Isotropic permeability
-	int    ndivy = 12;     // number of divisions along x and y
-	bool   is_o2 = false;  // use high order elements?
+	double nu    = 0.0;     // Poisson
+	double gw    = 10.0;    // GammaW
+	double k     = 1.0e-6;  // Isotropic permeability
+	int    ndivy = 12;      // number of divisions along x and y
+	bool   is_o2 = false;   // use high order elements?
 
 	// More constants related with the one-dimensional consolidation
 	double load  = -100.0;
@@ -96,7 +100,7 @@ int main(int argc, char **argv) try
 	double cv    = k/(mv*gw);
 	double l     = 2*b;
 	double r_pi  = sqrt(PI);
-	double winf  = mv*load*l/(4*r_pi);
+	double winf  = mv*load*l/(4*r_pi); // Quantity used to normalize the settlement
 	Vector<int>    SampleNodes(19);  // Nodes where pwp is evaluated
 	SampleNodes = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21;
 	SampleNodes = 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 239, 240, 241, 242, 243, 244, 245, 246;
@@ -174,7 +178,7 @@ int main(int argc, char **argv) try
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
 
-	// Stage # 0 // PWP TEST
+	// Stage # 0: Stage performed to approach a stationary condition
 	sol->SetNumDiv(4)->SetDeltaTime(1000000);
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
@@ -183,14 +187,14 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
 	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-	CallSolve    (1, sol);
+	CallSolve    (0, sol);
 
 	// Output: VTU 
 	Output o; o.VTU (&g, "tbiot01.vtu");
 	cout << "[1;34mFile <tbiot01.vtu> saved.[0m\n\n";
 
 
-	// Stage # 1
+	// Stage # 1: Load application
 	sol->SetNumDiv(4)->SetDeltaTime(0.0001);
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
@@ -202,15 +206,11 @@ int main(int argc, char **argv) try
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (1, sol);
 
-	//// Output: VTU 
-	//Output o; o.VTU (&g, "tbiot01.vtu");
-	//cout << "[1;34mFile <tbiot01.vtu> saved.[0m\n\n";
-
 	// Calculate displacements after first stage
 	for (int i=0; i<SampleNodes.Size(); i++) 
 		Uy0(i) = g.Nod(SampleNodes(i))->Val("uy");
 
-	// Stage # 2..
+	// Stage # 2.. : Consolidation
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
 		sol->SetNumDiv(10)->SetDeltaTime(TimeIncs(i));
