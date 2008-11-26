@@ -102,17 +102,12 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", ""));
-	else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", ""));
+	if (is_o2) eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0"));
+	else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0"));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-
-	// Set heat source
-	Array<double> source(1); source.SetValues(1.0);
-	for (size_t i=0; i<g.NElems(); ++i)
-		g.Ele(i)->SetProps(source);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");

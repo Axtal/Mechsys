@@ -55,7 +55,7 @@ public:
 	virtual bool CheckModel   () const;
 	bool         IsEssential  (char const * Name) const;
 	virtual void SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void         SetProps     (Array<double> const & P);
+	void         SetProps     (char const * Properties);
 	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
 	virtual void UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	bool         HasVolForces () const { return _has_body_force; }
@@ -225,13 +225,15 @@ inline void BiotElem::SetModel(char const * ModelName, char const * Prms, char c
 	}
 }
 
-inline void BiotElem::SetProps(Array<double> const & P)
+inline void BiotElem::SetProps(char const * Properties)
 {
+	/*
 	_body_force = 0.0;
 	     if (P.Size()==1 && _ndim==1) _body_force(0) = P[0];
 	else if (P.Size()==2 && _ndim==2) _body_force    = P[0], P[1];
 	else if (P.Size()==3 && _ndim==3) _body_force    = P[0], P[1], P[2];
 	else throw new Fatal("BiotElem::SetProps: ElemProp(P)==BodyForce must have the same size as the number of dimensions (=%d)",_ndim);
+	*/
 }
 
 inline Element * BiotElem::Connect(int iNodeLocal, FEM::Node * ptNode)

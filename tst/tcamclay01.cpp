@@ -110,7 +110,7 @@ int main(int argc, char **argv) try
 	String prms; prms.Printf("lam=%f kap=%f phics=%f G=%f",lam,kap,phics,G);
 	String inis; inis.Printf("Sx=%f Sy=%f Sz=%f Sxy=0 Syz=0 Szx=0 v=%f",p_ini,p_ini,p_ini,v_ini);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Hex8Equilib", "CamClay", prms.CStr(), inis.CStr())); // tag, type, model, prms, inis
+	eatts.Push (make_tuple(-1, "Hex8Equilib", "CamClay", prms.CStr(), inis.CStr(), "")); // tag, type, model, prms, inis, props
 
 	// Set Nodes and Elements
 	FEM::SetNodesElems (&ms, &eatts, &g);

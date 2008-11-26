@@ -458,6 +458,8 @@ def cb_eatt_settype (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 1, val-1
 @try_catch
 def cb_eatt_setmat  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 2, val-1)
 @try_catch
+def cb_eatt_setprops(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 3, float(val))
+@try_catch
 def cb_eatt_del     (evt,val): di.props_del      ('eatts', evt-EVT_INC)
 
 # ---------------------------------- FEM
@@ -867,7 +869,8 @@ def gui():
             Draw.Number     ('',          EVT_INC+i, c,     r,  60, rh, int(v[0]),-1000,0, 'Set tag',                         cb_eatt_settag)
             Draw.Menu       (d['etymnu'], EVT_INC+i, c+ 60, r, 120, rh, int(v[1])+1,       'Element type: ex.: Quad4PStrain', cb_eatt_settype)
             Draw.Menu       (matmnu,      EVT_INC+i, c+180, r, 100, rh, int(v[2])+1,       'Choose material ID',              cb_eatt_setmat)
-            Draw.PushButton ('Del',       EVT_INC+i, c+280, r,  40, rh,                    'Delete this row',                 cb_eatt_del)
+            Draw.String     ('',          EVT_INC+i, c+280, r,  60, rh, str(v[3]),  32,    'Additional properties (specific weight,...)', cb_eatt_setprops)
+            Draw.PushButton ('Del',       EVT_INC+i, c+340, r,  40, rh,                    'Delete this row',                 cb_eatt_del)
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 

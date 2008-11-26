@@ -52,7 +52,7 @@ public:
 	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
 	bool   HasExtra     () const { return true; }
 	void   OutExtra     (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
-	void   SetProps     (Array<double> const & ElemProps);
+	void   SetProps     (char const * Properties);
 
 	// Methods
 	Beam * EdgeBry (char const * Key, double q, int EdgeLocalID) { return EdgeBry(Key,q,q,EdgeLocalID); } ///< Set distributed load with key = q0 or q1
@@ -343,9 +343,19 @@ inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<doubl
 	else throw new Fatal("Beam::OutExtra: Feature not available for nDim==%d",_ndim);
 }
 
-inline void Beam::SetProps(Array<double> const & ElemProps)
+inline void Beam::SetProps(char const * Properties)
 {
-	if (ElemProps.Size()>0) _use_cor = static_cast<bool>(ElemProps[0]);
+	/* "cq=1 */
+	LineParser lp(Properties);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
+
+	// Set
+	for (size_t i=0; i<names.Size(); ++i)
+	{
+		 if (names[i]=="cq") _use_cor = static_cast<bool>(values[i]); // cq == correct q
+	}
 }
 
 /* private */

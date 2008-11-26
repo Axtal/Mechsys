@@ -87,7 +87,7 @@ public:
 	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
 	virtual bool      IsEssential (char const * Name) const =0;                                                           ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
 	virtual void      SetModel    (char const * ModelName, char const * Prms, char const * Inis) =0;                      ///< (Re)allocate model with parameters and initial values
-	virtual void      SetProps    (Array<double> const & ElemProps) =0;                                                   ///< Set element properties such as body forces, internal heat source, water pumping, etc.
+	virtual void      SetProps    (char const * Properties) =0;                                                           ///< Set element properties such as body forces, internal heat source, water pumping, etc.
 	virtual Element * Connect     (int iNodeLocal, FEM::Node * ptNode) =0;                                                ///< Set connectivity, by linking the local node ID with the pointer to the connection node
 	virtual void      UpdateState (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0; ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	virtual void      GetLabels   (Array<String> & Labels) const =0;                                                      ///< Get the labels of all values to be output

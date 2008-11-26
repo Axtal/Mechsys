@@ -44,10 +44,10 @@ using std::endl;
 namespace FEM
 {
 
-typedef Array< boost::tuple<double,double,double, char const *,double> >               NBrys_T; // Node: x,y,z, key, val
-typedef Array< boost::tuple<                 int, char const *,double> >               EBrys_T; // Edge:   tag, key, val
-typedef Array< boost::tuple<                 int, char const *,double> >               FBrys_T; // Face:   tag, key, val
-typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*> > EAtts_T; // Elem:   tag, type, model, prms, inis
+typedef Array< boost::tuple<double,double,double, char const *,double> >                            NBrys_T; // Node: x,y,z, key, val
+typedef Array< boost::tuple<                 int, char const *,double> >                            EBrys_T; // Edge:   tag, key, val
+typedef Array< boost::tuple<                 int, char const *,double> >                            FBrys_T; // Face:   tag, key, val
+typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*, char const*> > EAtts_T; // Elem:   tag, type, model, prms, inis, props
 
 inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
                            EAtts_T       const * ElemsAtts,  ///< In: Elements attributes
@@ -59,7 +59,7 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 	
 		// Elements attributes
 		FEM::EAtts_T eatts;
-		eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0")); // tag, type, model, prms, inis
+		eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20")); // tag, type, model, prms, inis, props
 	*/
 
 	// 3D mesh?
@@ -149,6 +149,9 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 
 				// Set parameters and initial values
 				fe->SetModel ((*ElemsAtts)[j].get<2>(), (*ElemsAtts)[j].get<3>(), (*ElemsAtts)[j].get<4>());
+
+				// Set properties
+				fe->SetProps ((*ElemsAtts)[j].get<5>());
 				break;
 			}
 		}
@@ -174,6 +177,9 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 
 		// Set parameters and initial values
 		fe->SetModel ((*ElemsAtts)[eatt_id].get<2>(), (*ElemsAtts)[eatt_id].get<3>(), (*ElemsAtts)[eatt_id].get<4>());
+
+		// Set properties
+		fe->SetProps ((*ElemsAtts)[eatt_id].get<5>());
 		ie++;
 
 		// Set beam

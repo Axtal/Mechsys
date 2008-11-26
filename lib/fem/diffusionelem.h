@@ -64,7 +64,7 @@ public:
 	bool         CheckModel   () const;
 	bool         IsEssential  (char const * DOFName) const;
 	void         SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void         SetProps     (Array<double> const & P);
+	void         SetProps     (char const * Properties);
 	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
 	void         UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	bool         HasVolForces () const { return _has_source; }
@@ -151,14 +151,19 @@ inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, c
 	else throw new Fatal("DiffusionElem::SetModel: Feature not implemented.");
 }
 
-inline void DiffusionElem::SetProps(Array<double> const & P)
+inline void DiffusionElem::SetProps(char const * Properties)
 {
-	if (P.Size()==1)
+	/* "s=1.0 */
+	LineParser lp(Properties);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
+
+	// Set
+	for (size_t i=0; i<names.Size(); ++i)
 	{
-		_source     = P[0];
-		_has_source = true;
+		 if (names[i]=="s") { _source = values[i]; _has_source = true; } // source
 	}
-	else throw new Fatal("DiffusionElem::SetProps: ElemProp(P)==Source must have size equal to 1 (%d is invalid)",P.Size());
 }
 
 inline Element * DiffusionElem::Connect(int iNodeLocal, FEM::Node * ptNode)

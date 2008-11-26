@@ -114,7 +114,7 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("k=%f", k);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), "")); // tag, type, model, prms, inis
+	eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), "", "")); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);

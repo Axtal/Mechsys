@@ -65,7 +65,6 @@ int main(int argc, char **argv) try
 	size_t ndiv       = 2;     // number of divisions along x and y
 	bool   check_conv = false; // check convergence ?
 	String linsol("UM");       // linear solver: UMFPACK
-	Array<double> source(1); source[0] = 1.0;
 	
 	// Input
 	cout << "Input: " << argv[0] << "  ndiv  check_conv  linsol(LA,UM,SLU)\n";
@@ -112,10 +111,11 @@ int main(int argc, char **argv) try
 		g.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
 		
 		// Properties (heat source)
-		g.Ele(0)->SetProps(source);
-		g.Ele(1)->SetProps(source);
-		g.Ele(2)->SetProps(source);
-		g.Ele(3)->SetProps(source);
+
+		g.Ele(0)->SetProps("s=1.0");
+		g.Ele(1)->SetProps("s=1.0");
+		g.Ele(2)->SetProps("s=1.0");
+		g.Ele(3)->SetProps("s=1.0");
 
 		// Boundary conditions (must be after connectivity)
 		g.Ele(0)->EdgeBry("q", 0.0, 0)->EdgeBry("q", 0.0, 2);
@@ -241,15 +241,11 @@ int main(int argc, char **argv) try
 
 		// Elements attributes
 		FEM::EAtts_T eatts;
-		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", ""));
+		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0"));
 
 		// Set geometry: nodes, elements, attributes, and boundaries
 		FEM::SetNodesElems (&mesh, &eatts, &g);
 		FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-
-		// Set heat source
-		for (size_t i=0; i<g.NElems(); ++i)
-			g.Ele(i)->SetProps(source);
 
 		// Check conductivity matrices
 		double max_err_ke = 0.0;

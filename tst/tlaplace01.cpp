@@ -143,13 +143,13 @@ int main(int argc, char **argv) try
 	FEM::EAtts_T eatts;
 	if (is_quad)
 	{
-		if (is_o2) eatts.Push (make_tuple(-1, "Quad8Diffusion", "LinDiffusion", "k=1.0", ""));
-		else       eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", ""));
+		if (is_o2) eatts.Push (make_tuple(-1, "Quad8Diffusion", "LinDiffusion", "k=1.0", "", ""));
+		else       eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", "", ""));
 	}
 	else
 	{
-		if (is_o2) eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", ""));
-		else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", ""));
+		if (is_o2) eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", "", ""));
+		else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", "", ""));
 	}
 
 	// Set geometry: nodes, elements, attributes, and boundaries

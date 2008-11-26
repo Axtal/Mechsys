@@ -113,8 +113,8 @@ int main(int argc, char **argv) try
 	// Element attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Hex20Equilib", "LinElastic", prms.CStr(), "ZERO")); // tag, type, model, prms, inis
-	else       eatts.Push (make_tuple(-1, "Hex8Equilib",  "LinElastic", prms.CStr(), "ZERO")); // tag, type, model, prms, inis
+	if (is_o2) eatts.Push (make_tuple(-1, "Hex20Equilib", "LinElastic", prms.CStr(), "ZERO", "")); // tag, type, model, prms, inis, props
+	else       eatts.Push (make_tuple(-1, "Hex8Equilib",  "LinElastic", prms.CStr(), "ZERO", "")); // tag, type, model, prms, inis, props
 
 	// Set geometry
 	FEM::SetNodesElems (&mesh, &eatts, &g);

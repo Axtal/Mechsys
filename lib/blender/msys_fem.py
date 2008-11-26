@@ -78,7 +78,7 @@ def get_brys_atts(obj):
             else:
                 mdl  = 'LinElastic'
                 prms = 'E=200 nu=0.2'
-            eatts.append([int(v[0]), d['ety'][int(v[1])], mdl, prms, inis])
+            eatts.append([int(v[0]), d['ety'][int(v[1])], mdl, prms, inis, v[3]])
 
     return nbrys, nbsID, ebrys, fbrys, eatts
 
