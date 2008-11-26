@@ -34,7 +34,7 @@ public:
 	static const size_t NDIV;        ///< Number of points for extra output
 	
 	// Constructor
-	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
+	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
 
 	// Derived methods
 	char const * Name() const { return "Beam"; }
@@ -52,6 +52,7 @@ public:
 	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
 	bool   HasExtra     () const { return true; }
 	void   OutExtra     (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
+	void   SetProps     (Array<double> const & ElemProps);
 
 	// Methods
 	Beam * EdgeBry (char const * Key, double q, int EdgeLocalID) { return EdgeBry(Key,q,q,EdgeLocalID); } ///< Set distributed load with key = q0 or q1
@@ -64,12 +65,13 @@ public:
 
 private:
 	// Data
-	double _E;     ///< Young modulus
-	double _A;     ///< Cross-sectional area
-	double _Izz;   ///< Cross-sectional inertia
-	double _q0;    ///< Normal distributed load (value at node # 0. Or constant q)
-	double _q1;    ///< Normal distributed load (value at node # 1. Or constant q)
-	bool   _has_q; ///< Has distributed load (q0 and/or q1)
+	double _E;       ///< Young modulus
+	double _A;       ///< Cross-sectional area
+	double _Izz;     ///< Cross-sectional inertia
+	double _q0;      ///< Normal distributed load (value at node # 0. Or constant q)
+	double _q1;      ///< Normal distributed load (value at node # 1. Or constant q)
+	bool   _has_q;   ///< Has distributed load (q0 and/or q1)
+	bool   _use_cor; ///< Use correction for distributed (q) load?
 
 	// Depedent variables (calculated by CalcDepVars)
 	mutable double         _L;  ///< Beam length
@@ -269,7 +271,7 @@ inline double Beam::M(double l) const
 		double LL  = _L*_L;
 		double LLL = LL*_L;
 		M = _E*_Izz*(_uL(5)*((6*s)/LL-2/_L)+_uL(2)*((6*s)/LL-4/_L)+_uL(4)*(6/LL-(12*s)/LLL)+_uL(1)*((12*s)/LLL-6/LL));
-		if (_has_q)
+		if (_has_q && _use_cor)
 		{
 			double ss  = s*s;
 			double sss = ss*s;
@@ -288,7 +290,7 @@ inline double Beam::V(double l) const
 		double LL  = _L*_L;
 		double LLL = LL*_L;
 		V = _E*_Izz*((6*_uL(5))/LL+(6*_uL(2))/LL-(12*_uL(4))/LLL+(12*_uL(1))/LLL);
-		if (_has_q)
+		if (_has_q && _use_cor)
 		{
 			double s  = l*_L;
 			double ss = s*s;
@@ -339,6 +341,11 @@ inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<doubl
 		}
 	}
 	else throw new Fatal("Beam::OutExtra: Feature not available for nDim==%d",_ndim);
+}
+
+inline void Beam::SetProps(Array<double> const & ElemProps)
+{
+	if (ElemProps.Size()>0) _use_cor = static_cast<bool>(ElemProps[0]);
 }
 
 /* private */
