@@ -66,11 +66,11 @@ def load_dict():
         dict['show_res']        = False
         dict['res_dfv']         = 0
         dict['res_show_scalar'] = False
-        dict['res_warp_scale']  = '10'
+        dict['res_warp_scale']  = '1'
         dict['res_show_warp']   = True
         dict['res_show_extra']  = True
         dict['res_ext']         = 1
-        dict['res_ext_scale']   = '0.1'
+        dict['res_ext_scale']   = '0.02'
         dict['res_ext_txt']     = True
 
         # Extra output
