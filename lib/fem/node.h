@@ -34,7 +34,6 @@
 #define MECHSYS_FEM_NODE_H
 
 // STL
-#include <map>
 #include <sstream>
 #include <algorithm>
 
@@ -78,7 +77,7 @@ public:
 	};
 
 	// Methods
-	void   Initialize     (int ID, double X, double Y, double Z);                              ///< Set the ID of this node and its coordinates
+	void   Initialize     (int ID, double X, double Y, double Z, int Tag=0);                   ///< Set the ID of this node and its coordinates
 	void   AddDOF         (char const * StrEssentialBry, char const * StrNaturalBry);          ///< Add a degree of freedom
 	bool   IsEssential    (char const * Name) const;                                           ///< Check if a degree of freedom is essential
 	void   SetSharedBy    (int ElementID);                                                     ///< Set a new element which shares this node
@@ -92,6 +91,7 @@ public:
 	DOF const & DOFVar (int Index) const { return _dofs[Index]; } ///< Access a DOF structure by index (read-only)
 
 	// Access methods
+	int    Tag       ()          const { return _tag;   }            ///< Return the tag of this node
 	long   GetID     ()          const { return _my_id; }            ///< Return the ID of this node
 	double Coord     (size_t i)  const { return _coords(i); }        ///< Return coordinate x, y, or z
 	double X         ()          const { return _coords(0); }        ///< Return x coordinate
@@ -115,6 +115,7 @@ public:
 private:
 	// Data
 	long        _my_id;     ///< The ID of this node
+	int         _tag;       ///< The tag of this node
 	Array<long> _shared_by; ///< IDs of the elements that share this node
 	TinyVec     _coords;    ///< Coordinates
 	Array<DOF>  _dofs;      ///< Array with degrees of freedom
@@ -130,10 +131,11 @@ private:
 
 // Methods
 
-inline void Node::Initialize(int ID, double X, double Y, double Z)
+inline void Node::Initialize(int ID, double X, double Y, double Z, int Tag)
 {
 	_my_id  = ID;
 	_coords = X, Y, Z;
+	_tag    = Tag;
 }
 
 inline void Node::AddDOF(char const * EssentialBryName, char const * NaturalBryName)

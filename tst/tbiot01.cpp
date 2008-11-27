@@ -188,8 +188,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8Biot", "", prms.CStr(), "ZERO", "gam=20"));
-	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "gam=20"));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8Biot", "", prms.CStr(), "ZERO", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
@@ -230,6 +230,10 @@ int main(int argc, char **argv) try
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (1, sol);
 	o.VTU(&g, t+=0.0001);
+
+	// Output: VTU 
+	o.VTU (&g, "tbiot01_1.vtu");
+	cout << "[1;34mFile <tbiot01_1.vtu> saved.[0m\n\n";
 
 	// Calculate displacements after first stage
 	for (int i=0; i<SampleNodes.Size(); i++) 

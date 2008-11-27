@@ -44,10 +44,11 @@ using std::endl;
 namespace FEM
 {
 
-typedef Array< boost::tuple<double,double,double, char const *,double> >                            NBrys_T; // Node: x,y,z, key, val
-typedef Array< boost::tuple<                 int, char const *,double> >                            EBrys_T; // Edge:   tag, key, val
-typedef Array< boost::tuple<                 int, char const *,double> >                            FBrys_T; // Face:   tag, key, val
-typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*, char const*> > EAtts_T; // Elem:   tag, type, model, prms, inis, props
+typedef Array< boost::tuple<double,double,double, char const *,double> > NBrys_T; // Node: x,y,z, key, val
+typedef Array< boost::tuple<                 int, char const *,double> > EBrys_T; // Edge:   tag, key, val
+typedef Array< boost::tuple<                 int, char const *,double> > FBrys_T; // Face:   tag, key, val
+typedef Array< boost::tuple<int, char const*, char const*, char const*,
+                            char const*, char const*, bool> > EAtts_T; // Elem: tag, type, model, prms, inis, props, active
 
 inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
                            EAtts_T       const * ElemsAtts,  ///< In: Elements attributes
@@ -141,7 +142,7 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 			{
 				// New finite element
 				found = true;
-				FEM::Element * fe = G->SetElem (i, (*ElemsAtts)[j].get<1>());
+				FEM::Element * fe = G->SetElem (i, (*ElemsAtts)[j].get<1>(), (*ElemsAtts)[j].get<6>(), M->ElemTag(i));
 
 				// Set connectivity
 				for (size_t k=0; k<M->ElemNVerts(i); ++k)
@@ -169,7 +170,7 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 		int    beam_tag      = beams[i].get<3>();
 
 		// New finite element
-		FEM::Element * fe = G->SetElem (ie, (*ElemsAtts)[eatt_id].get<1>());
+		FEM::Element * fe = G->SetElem (ie, (*ElemsAtts)[eatt_id].get<1>(), (*ElemsAtts)[eatt_id].get<6>(), beam_tag);
 
 		// Set connectivity
 		fe->Connect (0, G->Nod(M->EdgeToLef(elem_id, local_edge_id)));

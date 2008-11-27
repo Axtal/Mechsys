@@ -22,6 +22,7 @@
 // STL
 #include <iostream>
 #include <cstring>
+#include <map>
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
@@ -48,12 +49,14 @@ public:
 	~Geom ();
 
 	// Set methods
-	void      SetNNodes (size_t NNodes);                                   ///< Set the number of nodes
-	void      SetNElems (size_t NElems);                                   ///< Set the number of elements
-	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0);      ///< Set a node
-	Element * SetElem   (size_t i, char const * Type, bool IsActive=true); ///< Set an element
+	void      SetNNodes (size_t NNodes);                                              ///< Set the number of nodes
+	void      SetNElems (size_t NElems);                                              ///< Set the number of elements
+	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0, int Tag=0);      ///< Set a node
+	Element * SetElem   (size_t i, char const * Type, bool IsActive=true, int Tag=0); ///< Set an element
 
 	void ApplyBodyForces() { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ApplyBodyForces(); } ///< ApplyBodyForces
+
+	Array<Element*> & ElemsWithTag (int Tag); ///< Return the elements with for a given tag
 
 	// Beam
 	void      SetNBeams (size_t NBeams) { _beams.Resize(NBeams); _beams.SetValues(NULL); _btags.Resize(NBeams); }
@@ -97,6 +100,8 @@ private:
 	Array<Element*> _elems; ///< FE elements
 	Array<Element*> _beams; ///< Beams
 	Array<int>      _btags; ///< Beam tags
+	std::map<int,size_t>    _elem_tag_idx;    ///< Map Tag => Idx, where Idx is the index inside _elems_with_tags
+	Array<Array<Element*> > _elems_with_tags; ///< Element with tags
 
 }; // class Geom
 
@@ -124,21 +129,36 @@ inline void Geom::SetNElems(size_t NElems)
 	_elems.SetValues(NULL);
 }
 
-
-inline Node * Geom::SetNode(size_t i, double X, double Y, double Z)
+inline Node * Geom::SetNode(size_t i, double X, double Y, double Z, int Tag)
 {
    if (_nodes[i]==NULL) _nodes[i] = new Node;
-	_nodes[i]->Initialize (i,X,Y,Z);
+	_nodes[i]->Initialize (i,X,Y,Z, Tag);
 	return _nodes[i];
 }
 
-inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive)
+inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive, int Tag)
 {
 	if (_elems[i]==NULL) _elems[i] = AllocElement(Type);
-	_elems[i]->SetID     (i);
+	_elems[i]->SetID     (i, Tag);
 	_elems[i]->SetDim    (_dim);
 	_elems[i]->SetActive (IsActive);
+	if (Tag!=0)
+	{
+		if (_elem_tag_idx.count(Tag)==0) // tag not set
+		{
+			_elem_tag_idx[Tag] = _elems_with_tags.Size();
+			Array<Element*> tmp;
+			_elems_with_tags.Push (tmp);
+		}
+		_elems_with_tags[_elem_tag_idx[Tag]].Push (_elems[i]);
+	}
 	return _elems[i];
+}
+
+inline Array<Element*> & Geom::ElemsWithTag(int Tag)
+{
+	if (_elem_tag_idx.count(Tag)==0) throw new Fatal("Geom::Elems: This Tag==%d was not set for any Element",Tag);
+	return _elems_with_tags[_elem_tag_idx[Tag]];
 }
 
 inline bool Geom::Check()

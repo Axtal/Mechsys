@@ -50,13 +50,13 @@ class Element
 {
 public:
 	// Default constructor
-	Element() : _my_id(-1), _ndim(-1), _n_nodes(0), _n_face_nodes(0), _n_int_pts(0), _n_face_int_pts(0) {}
+	Element() : _my_id(-1), _tag(0), _ndim(-1), _n_nodes(0), _n_face_nodes(0), _n_int_pts(0), _n_face_int_pts(0) {}
 
 	// Destructor
 	virtual ~Element() {}
 
 	// Set methods
-	void              SetID     (long ID)            { _my_id     = ID;       }    ///< Set the ID of this element
+	void              SetID     (long ID, int Tag=0) { _my_id=ID; _tag=Tag;   }    ///< Set the ID (and Tag) of this element
 	void              SetDim    (int nDim)           { _set_ndim(nDim);       }    ///< Set the number of dimension of the problem
 	void              SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
 	virtual Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
@@ -69,6 +69,7 @@ public:
 	bool         CheckConnect ()         const;                         ///< Check if connectivity is OK
 	bool         Check        (String & Message) const;                 ///< Check if everything is OK and element is ready for simulations
 	long         GetID        ()         const { return _my_id;       } ///< Return the ID of this element
+	int          Tag          ()         const { return _tag;         } ///< Return the Tag of this element
 	bool         IsActive     ()         const { return _is_active;   } ///< Check if this element is active
 	size_t       NNodes       ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
 	Node       * Nod          (size_t i)       { return _connects[i]; } ///< Return a pointer to a node in the connects list (read/write)
@@ -135,6 +136,7 @@ public:
 protected:
 	// Data (may be accessed by derived classes)
 	long               _my_id;          ///< The ID of this element
+	int                _tag;            ///< The Tag of this element
 	int                _ndim;           ///< Number of dimensions of the problem
 	size_t             _n_nodes;        ///< GEOMETRY: Number of nodes in the element
 	size_t             _n_face_nodes;   ///< GEOMETRY: Number of nodes in a face

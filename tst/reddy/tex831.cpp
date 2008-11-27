@@ -241,7 +241,7 @@ int main(int argc, char **argv) try
 
 		// Elements attributes
 		FEM::EAtts_T eatts;
-		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0"));
+		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
 
 		// Set geometry: nodes, elements, attributes, and boundaries
 		FEM::SetNodesElems (&mesh, &eatts, &g);
