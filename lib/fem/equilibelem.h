@@ -64,7 +64,7 @@ public:
 	static const char   LB [5][18][4]; ///< Additional labels
 
 	// Constructor
-	EquilibElem () : _body_force(0.0), _has_body_force(false), _d(-1), _nd(-1) {}
+	EquilibElem () : _gam(0.0), _d(-1), _nd(-1) {}
 
 	// Destructor
 	virtual ~EquilibElem();
@@ -76,8 +76,7 @@ public:
 	void         SetProps     (char const * Properties);
 	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
 	virtual void UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	bool         HasVolForces () const { return _has_body_force; }
-	void         AddVolForces (LinAlg::Vector<double> & FVol) const;
+	void         ApplyBodyForces();
 	virtual void BackupState  ();
 	virtual void RestoreState ();
 	void         GetLabels    (Array<String> & Labels) const;
@@ -99,11 +98,10 @@ public:
 
 protected:
 	// Data
-	Array<EquilibModel*> _a_model;        ///< Array of pointers to constitutive models
-	Tensors::Tensor1     _body_force;     ///< Body force
-	bool                 _has_body_force; ///< Has body force?
-	int                  _d;              ///< Dimension index == _ndim-1
-	int                  _nd;             ///< Number of DOFs == ND[_d] or NDB[_d]
+	Array<EquilibModel*> _a_model;  ///< Array of pointers to constitutive models
+	double               _gam;      ///< Specific weigth
+	int                  _d;        ///< Dimension index == _ndim-1
+	int                  _nd;       ///< Number of DOFs == ND[_d] or NDB[_d]
 
 	// Private methods
 	virtual void _calc_initial_internal_state (); ///< Calculate initial internal state
@@ -183,13 +181,17 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 
 inline void EquilibElem::SetProps(char const * Properties)
 {
-	/*
-	_body_force = 0.0;
-	     if (P.Size()==1 && _ndim==1) _body_force(0) = P[0];
-	else if (P.Size()==2 && _ndim==2) _body_force    = P[0], P[1];
-	else if (P.Size()==3 && _ndim==3) _body_force    = P[0], P[1], P[2];
-	else throw new Fatal("EquilibElem::SetProps: ElemProp(P)==BodyForce must have the same size as the number of dimensions (=%d)",_ndim);
-	*/
+	/* "gam=20.0 */
+	LineParser lp(Properties);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
+
+	// Set
+	for (size_t i=0; i<names.Size(); ++i)
+	{
+		 if (names[i]=="gam") _gam = values[i]; 
+	}
 }
 
 inline Element * EquilibElem::Connect(int iNodeLocal, FEM::Node * ptNode)
@@ -255,42 +257,45 @@ inline void EquilibElem::UpdateState(double TimeInc, LinAlg::Vector<double> cons
 		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
-inline void EquilibElem::AddVolForces(LinAlg::Vector<double> & FVol) const
+inline void EquilibElem::ApplyBodyForces() 
 {
-	if (_has_body_force)
+	// Allocate (local/element) external volume force vector
+	LinAlg::Matrix<double> fvol(_n_nodes, _ndim);
+	fvol.SetValues(0.0);
+
+	// Allocate entities used for every integration point
+	LinAlg::Vector<double> shape;
+	LinAlg::Matrix<double> derivs;
+	LinAlg::Matrix<double> J;
+	LinAlg::Vector<double> b;
+
+	// Mounting the body force vector
+	     if (_ndim==3) { b.Resize(3); b = 0.0, 0.0, -_gam; }
+	else if (_ndim==2) { b.Resize(2); b = 0.0, -_gam; }
+	else if (_ndim==1) { b.Resize(1); b = -_gam; }
+
+	// Calculate local external volume force
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
-		// Allocate (local/element) external volume force vector
-		LinAlg::Vector<double> fvol(_nd*_n_nodes);
-		fvol.SetValues(0.0);
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+		double w = _a_int_pts[i].w;
 
-		// Allocate entities used for every integration point
-		LinAlg::Vector<double> shape;
-		LinAlg::Matrix<double> derivs;
-		LinAlg::Matrix<double> J;
+		Shape    (r,s,t, shape);   // Calculate shape functions for i IP
+		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
 
-		// Calculate local external volume force
-		for (size_t i=0; i<_n_int_pts; ++i)
-		{
-			double r = _a_int_pts[i].r;
-			double s = _a_int_pts[i].s;
-			double t = _a_int_pts[i].t;
-			double w = _a_int_pts[i].w;
-
-			Shape    (r,s,t, shape);   // Calculate shape functions for i IP
-			Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-			Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
-
-			for (size_t j=0; j<_n_nodes; ++j)
-			for (size_t k=0; k<3;        ++k)
-				fvol(j*_nd+k) += _body_force(k)*shape(j)*det(J)*w;
-		}
-
-		// Sum up contribution to internal forces vector
-		for (size_t i=0; i<_n_nodes; ++i)
-		for (size_t j=0; j<3;        ++j)
-			FVol(_connects[i]->DOFVar(UD[_d][j]).EqID) += fvol(i*_nd+j);
+		fvol += shape*trn(b)*det(J)*w;
 	}
-	else throw new Fatal("EquilibElem::AddVolForces: This element (%s # %d) does not have volumetric forces.",Name(),_my_id);
+
+	// Sum up contribution to external forces vector
+	for (size_t i=0; i<_n_nodes; ++i)
+	{
+		              _connects[i]->Bry("fx",fvol(i,0));
+		              _connects[i]->Bry("fy",fvol(i,1));
+		if (_ndim==3) _connects[i]->Bry("fz",fvol(i,2));
+	}
 }
 
 inline void EquilibElem::BackupState()

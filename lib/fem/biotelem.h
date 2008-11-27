@@ -46,7 +46,7 @@ public:
 	static const char   LB [3][22][4]; ///< Additional labels
 
 	// Constructor
-	BiotElem () : _body_force(0.0), _has_body_force(false), _d(-1), _nd(-1), _gw(-1) {}
+	BiotElem () : _gam(0.0), _d(-1), _nd(-1), _gw(-1) {}
 
 	// Destructor
 	virtual ~BiotElem() {}
@@ -58,8 +58,7 @@ public:
 	void         SetProps     (char const * Properties);
 	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
 	virtual void UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	bool         HasVolForces () const { return _has_body_force; }
-	void         AddVolForces (LinAlg::Vector<double> & FVol) const;
+	void         ApplyBodyForces ();
 	void         GetLabels    (Array<String> & Labels) const;
 	void         Deactivate   ();
 	char const * ModelName    () const { return "LinElastic/LinFlow"; }
@@ -86,15 +85,14 @@ public:
 
 protected:
 	// Data
-	Tensors::Tensor1 _body_force;     ///< Body force
-	bool             _has_body_force; ///< Has body force?
-	int              _d;              ///< Dimension index == _ndim-1
-	int              _nd;             ///< Number of DOFs == ND[_d]
-	double           _gw;             ///< Water specific weight (gamma W)
-	Matrix<double>   _De;             ///< Constant tangent stiffness
-	Matrix<double>   _Ke;             ///< Constant tangent permeability
-	Array<Tensor2>   _stress;         ///< Total stress at each integration point. Size==_n_int_pts
-	Array<Tensor2>   _strain;         ///< Strain at each integration point. Size==_n_int_pts
+	double           _gam;    ///< Specific weight
+	int              _d;      ///< Dimension index == _ndim-1
+	int              _nd;     ///< Number of DOFs == ND[_d]
+	double           _gw;     ///< Water specific weight (gamma W)
+	Matrix<double>   _De;     ///< Constant tangent stiffness
+	Matrix<double>   _Ke;     ///< Constant tangent permeability
+	Array<Vector<double> >   _stress; ///< Total stress at each integration point. Size==_n_int_pts
+	Array<Vector<double> >   _strain; ///< Strain at each integration point. Size==_n_int_pts
 
 	// Private methods that MUST be derived
 	virtual int  _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -222,20 +220,26 @@ inline void BiotElem::SetModel(char const * ModelName, char const * Prms, char c
 	_strain.Resize(_n_int_pts);
 	for (size_t i=0; i<_n_int_pts; ++i)
 	{
+		_stress[i].Resize(6);
 		_stress[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_strain[i].Resize(6);
 		_strain[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 	}
 }
 
 inline void BiotElem::SetProps(char const * Properties)
 {
-	/*
-	_body_force = 0.0;
-	     if (P.Size()==1 && _ndim==1) _body_force(0) = P[0];
-	else if (P.Size()==2 && _ndim==2) _body_force    = P[0], P[1];
-	else if (P.Size()==3 && _ndim==3) _body_force    = P[0], P[1], P[2];
-	else throw new Fatal("BiotElem::SetProps: ElemProp(P)==BodyForce must have the same size as the number of dimensions (=%d)",_ndim);
-	*/
+	/* "gam=20.0 */
+	LineParser lp(Properties);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
+
+	// Set
+	for (size_t i=0; i<names.Size(); ++i)
+	{
+		 if (names[i]=="gam") _gam = values[i]; 
+	}
 }
 
 inline Element * BiotElem::Connect(int iNodeLocal, FEM::Node * ptNode)
@@ -288,6 +292,35 @@ inline void BiotElem::UpdateState(double TimeInc, LinAlg::Vector<double> const &
 	df   = Ke*du + Ce*dp;
 	dvol = Le*du + TimeInc*He*p;
 
+	// Stress update
+	LinAlg::Vector<double> shape;
+	LinAlg::Matrix<double> derivs;
+	LinAlg::Matrix<double> J;
+	LinAlg::Matrix<double> B;
+	LinAlg::Vector<double> deps(6);
+	LinAlg::Vector<double> dsig(6);
+	for (size_t i=0; i<_n_int_pts; ++i)
+	{
+		// Temporary Integration Points
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+
+		// Derivatives and another variables
+		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
+		B_Matrix (derivs,J, B);   // Calculate B matrix for i Integration Point
+		
+		LinAlg::Vector<double> deps4;
+		LinAlg::Vector<double> dsig4;
+		deps4 = B*du;
+		dsig4 = _De*deps4;
+		deps  = deps4(0), deps4(1), deps4(2), deps4(3), 0.0, 0.0;
+		dsig  = dsig4(0), dsig4(1), dsig4(2), dsig4(3), 0.0, 0.0;
+		_stress[i] += dsig;
+		_strain[i] += deps;
+	}
+
 	// Sum up contribution to internal forces vector
 	for (size_t i=0; i<_n_nodes; ++i)
 	{
@@ -296,43 +329,45 @@ inline void BiotElem::UpdateState(double TimeInc, LinAlg::Vector<double> const &
 	}
 }
 
-inline void BiotElem::AddVolForces(LinAlg::Vector<double> & FVol) const
+inline void BiotElem::ApplyBodyForces()
 {
-	if (_has_body_force)
+	// Allocate (local/element) external volume force vector
+	LinAlg::Matrix<double> fvol(_n_nodes, _ndim);
+	fvol.SetValues(0.0);
+
+	// Allocate entities used for every integration point
+	LinAlg::Vector<double> shape;
+	LinAlg::Matrix<double> derivs;
+	LinAlg::Matrix<double> J;
+	LinAlg::Vector<double> b;
+
+	// Mounting the body force vector
+	     if (_ndim==3) { b.Resize(3); b = 0.0, 0.0, -_gam; }
+	else if (_ndim==2) { b.Resize(2); b = 0.0, -_gam; }
+	else if (_ndim==1) { b.Resize(1); b = -_gam; }
+
+	// Calculate local external volume force
+	for (size_t i=0; i<_n_int_pts; ++i)
 	{
-		// Allocate (local/element) external volume force vector
-		LinAlg::Vector<double> fvol(_nd*_n_nodes);
-		fvol.SetValues(0.0);
+		double r = _a_int_pts[i].r;
+		double s = _a_int_pts[i].s;
+		double t = _a_int_pts[i].t;
+		double w = _a_int_pts[i].w;
 
-		// Allocate entities used for every integration point
-		LinAlg::Vector<double> shape;
-		LinAlg::Matrix<double> derivs;
-		LinAlg::Matrix<double> J;
+		Shape    (r,s,t, shape);   // Calculate shape functions for i IP
+		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
+		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
 
-		// Calculate local external volume force
-		size_t nde = NDE[_d]; // nDOFs Equilibrium
-		for (size_t i=0; i<_n_int_pts; ++i)
-		{
-			double r = _a_int_pts[i].r;
-			double s = _a_int_pts[i].s;
-			double t = _a_int_pts[i].t;
-			double w = _a_int_pts[i].w;
-
-			Shape    (r,s,t, shape);   // Calculate shape functions for i IP
-			Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-			Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
-
-			for (size_t j=0; j<_n_nodes; ++j)
-			for (size_t k=0; k<nde;      ++k)
-				fvol(j*nde+k) += _body_force(k)*shape(j)*det(J)*w;
-		}
-
-		// Sum up contribution to internal forces vector
-		for (size_t i=0; i<_n_nodes; ++i)
-		for (size_t j=0; j<nde;      ++j)
-			FVol(_connects[i]->DOFVar(UD[_d][j]).EqID) += fvol(i*nde+j);
+		fvol += shape*trn(b)*det(J)*w;
 	}
-	else throw new Fatal("BiotElem::AddVolForces: This element (%s # %d) does not have volumetric forces.",Name(),_my_id);
+
+	// Sum up contribution to external forces vector
+	for (size_t i=0; i<_n_nodes; ++i)
+	{
+		              _connects[i]->Bry("fx",fvol(i,0));
+		if (_ndim==2) _connects[i]->Bry("fy",fvol(i,1));
+		if (_ndim==3) _connects[i]->Bry("fz",fvol(i,2));
+	}
 }
 
 inline void BiotElem::GetLabels(Array<String> & Labels) const
@@ -821,14 +856,14 @@ inline double BiotElem::_val_ip(size_t iIP, char const * Name) const
 	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_strain[iIP](0)-_strain[iIP](1))*(_strain[iIP](0)-_strain[iIP](1)) + (_strain[iIP](1)-_strain[iIP](2))*(_strain[iIP](1)-_strain[iIP](2)) + (_strain[iIP](2)-_strain[iIP](0))*(_strain[iIP](2)-_strain[iIP](0)) + 3.0*(_strain[iIP](3)*_strain[iIP](3) + _strain[iIP](4)*_strain[iIP](4) + _strain[iIP](5)*_strain[iIP](5))))/3.0;
 
 	// Principal components of stress
-	else if (strcmp(Name,"S1" )==0) { double sigp[3]; Tensors::Eigenvals(_stress[iIP], sigp); return sigp[2]; }
-	else if (strcmp(Name,"S2" )==0) { double sigp[3]; Tensors::Eigenvals(_stress[iIP], sigp); return sigp[1]; }
-	else if (strcmp(Name,"S3" )==0) { double sigp[3]; Tensors::Eigenvals(_stress[iIP], sigp); return sigp[0]; }
+	else if (strcmp(Name,"S1" )==0) { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[2]; }
+	else if (strcmp(Name,"S2" )==0) { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[1]; }
+	else if (strcmp(Name,"S3" )==0) { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[0]; }
 
 	// Principal components of strain
-	else if (strcmp(Name,"E1" )==0) { double epsp[3]; Tensors::Eigenvals(_strain[iIP], epsp); return epsp[2]; }
-	else if (strcmp(Name,"E2" )==0) { double epsp[3]; Tensors::Eigenvals(_strain[iIP], epsp); return epsp[1]; }
-	else if (strcmp(Name,"E3" )==0) { double epsp[3]; Tensors::Eigenvals(_strain[iIP], epsp); return epsp[0]; }
+	else if (strcmp(Name,"E1" )==0) { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[2]; }
+	else if (strcmp(Name,"E2" )==0) { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[1]; }
+	else if (strcmp(Name,"E3" )==0) { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[0]; }
 
 	// Flow velocities
 	else if (strcmp(Name,"Vx" )==0) return 0.0;

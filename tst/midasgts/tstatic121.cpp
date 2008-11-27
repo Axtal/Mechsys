@@ -49,7 +49,7 @@ using boost::make_tuple;
 int main(int argc, char **argv) try
 {
 	// Constants
-	double E       = 10.7e+6; // Young
+	double E       = 10.7e+6; // Young (psi)
 	double nu      = 0.3;     // Poisson
 	double q       = 120.0;   // Load
 	size_t nx      = 2;       // ndivs along x
@@ -109,14 +109,14 @@ int main(int argc, char **argv) try
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 	FEM::SetBrys       (&mesh, NULL,   &ebrys, NULL, &g);
 
-	g.Nod( 2)->Bry("fy",-10);
-	g.Nod( 5)->Bry("fy",-20);
-	g.Nod( 8)->Bry("fy",-20);
-	g.Nod(11)->Bry("fy",-20);
-	g.Nod(14)->Bry("fy",-20);
-	g.Nod(17)->Bry("fy",-20);
-	g.Nod(20)->Bry("fy",-20);
-	g.Nod(23)->Bry("fy",-10);
+	g.Nod( 2)->Bry("fy",-10.0*10.0);
+	g.Nod( 5)->Bry("fy",-20.0*10.0);
+	g.Nod( 8)->Bry("fy",-20.0*10.0);
+	g.Nod(11)->Bry("fy",-20.0*10.0);
+	g.Nod(14)->Bry("fy",-20.0*10.0);
+	g.Nod(17)->Bry("fy",-20.0*10.0);
+	g.Nod(20)->Bry("fy",-20.0*10.0);
+	g.Nod(23)->Bry("fy",-10.0*10.0);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -129,6 +129,8 @@ int main(int argc, char **argv) try
 	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
 	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
 	delete sol;
+
+	cout << "Displacement at node 23: " << g.Nod(23)->Val("uy") << endl;
 
 	// Output: VTU
 	Output o; o.VTU (&g, "tstatic121.vtu");

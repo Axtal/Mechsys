@@ -113,8 +113,9 @@ public:
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
 	virtual bool   HasExtra      () const { return false; }                                                                                                         ///< Has extra output ?
 	virtual void   OutExtra      (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const {} ///< Extra output for elements
-	virtual double BoundDistance (double r, double s, double t) const { return -1; };                                                        ///< TODO
+	virtual double BoundDistance (double r, double s, double t) const { return -1; }                                                         ///< TODO
 	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
+	virtual void   ApplyBodyForces() {}                                                                                                      ///< Method to apply body forces as boundary conditions
 	virtual bool   HasVolForces  () const { return false; }                                                                                  ///< TODO
 	virtual void   AddVolForces  (LinAlg::Vector<double> & FVol) const {}                                                                    ///< TODO
 	virtual void   BackupState   () {}                                                                                                       ///< Backup internal state
