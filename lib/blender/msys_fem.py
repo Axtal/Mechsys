@@ -278,7 +278,8 @@ def run_analysis(gen_script=False):
             txt.write ('\n# Save results in object\n')
             txt.write ('mf.save_results(geo,obj)\n')
         txt.write ('\n# Output\n')
-        txt.write ('ms.out_vtu(geo, \''+obj.name+'_FEM.vtu\')\n')
+        txt.write ('o = ms.output()\n')
+        txt.write ('o.vtu(geo, \''+obj.name+'_FEM.vtu\')\n')
         txt.write ('\n# Hide running cursor\n')
         txt.write ('Blender.Window.WaitCursor(0)\n')
     else:
@@ -303,7 +304,8 @@ def run_analysis(gen_script=False):
 
         # output
         fn = obj.name+'_FEM.vtu'
-        ms.out_vtu (geo, fn)
+        o = ms.output()
+        o.vtu (geo, fn)
         print '[1;34mMechSys[0m: file <'+fn+'> generated'
 
     # redraw and restore cursor

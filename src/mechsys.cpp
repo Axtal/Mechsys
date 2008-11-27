@@ -160,7 +160,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("out_extra",         &PyElem::OutExtra)
 	    .def("calc_dep_vars",     &PyElem::CalcDepsVars)
 	    .def("set_props",         &PyElem::SetProps, return_internal_reference<>())
-	    .def("apply_body_forces", &PyElem::ApplyBodyForces)
+	    //.def("apply_body_forces", &PyElem::ApplyBodyForces)
 	    .def(self_ns::str(self))
 	    ;
 
@@ -189,13 +189,16 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("solve",          &PySolver::Solve)
 	    ;
 
+	class_<Output>("output")
+	    .def("open_collection",  &Output::PyOpenCollection)
+	    .def("close_collection", &Output::CloseCollection)
+	    .def("vtu",              &Output::PyVTU1)
+	    .def("vtu",              &Output::PyVTU2)
+	    ;
+
 	// ----------------------------------------------------------------------- functions
 	
 	// Global functions
-	def ("out_vtk",         PyOutputVTK   );
-	def ("out_vtu",         PyOutputVTU   );
-	def ("out_vtu_cg",      PyOutputVTUcg );
-	def ("out_vtk",         PyOutputVTK   );
 	def ("set_nodes_elems", PySetNodesElems, PySetNE_Overloads());
 	def ("set_brys",        PySetBrys,       PySetBrys_Overloads());
 

@@ -254,6 +254,9 @@ int main(int argc, char **argv) try
 	// Close collection
 	o.CloseCollection();
 
+	// Delete solver
+	delete sol;
+
 	OutUy.SetNS(Util::_8_4);
 	cout << "OutUy :" << endl << OutUy << endl;
 
