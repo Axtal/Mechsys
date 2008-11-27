@@ -201,7 +201,11 @@ int main(int argc, char **argv) try
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
 
+	// Open collection for output
+	Output o; o.OpenCollection ("tbiot01");
+
 	// Stage # 0: Stage performed to approach a stationary condition
+	double t = 0.0;
 	sol->SetNumDiv(4)->SetDeltaTime(1000000);
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
@@ -211,11 +215,7 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (0, sol);
-
-	// Output: VTU 
-	Output o; o.VTU (&g, "tbiot01.vtu");
-	cout << "[1;34mFile <tbiot01.vtu> saved.[0m\n\n";
-
+	o.VTU(&g, t+=1000000);
 
 	// Stage # 1: Load application
 	sol->SetNumDiv(4)->SetDeltaTime(0.0001);
@@ -228,6 +228,7 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	CallSolve    (1, sol);
+	o.VTU(&g, t+=0.0001);
 
 	// Calculate displacements after first stage
 	for (int i=0; i<SampleNodes.Size(); i++) 
@@ -247,7 +248,11 @@ int main(int argc, char **argv) try
 		CallSolve    (i+2, sol);
 		for (int j=0; j<SampleNodes.Size(); j++)
 			OutUy(j,i) = (g.Nod(SampleNodes(j))->Val("uy") - Uy0(j))/(-winf); // Saving normalized vertical displacement
+		o.VTU(&g, t+=TimeIncs(i));
 	}
+
+	// Close collection
+	o.CloseCollection();
 
 	OutUy.SetNS(Util::_8_4);
 	cout << "OutUy :" << endl << OutUy << endl;

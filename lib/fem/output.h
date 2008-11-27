@@ -44,12 +44,18 @@ class Output
 
 public:
 	// Constructor
-	Output () : _nimax(40), _nfmax(12), _nn(0), _ne(0), _nsflo(Util::_8s) {}
+	Output () : _nimax(40), _nfmax(12), _nn(0), _ne(0), _nsflo(Util::_8s), _has_collection(false), _idx_file(0) {}
+
+	// Destructor
+	~Output () { if (_has_collection) _pvd_file.close(); }
 
 	// Methods
 	void VTK   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTK file
 	void VTU   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file
 	void VTUcg (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file with element values at CG
+	void VTU   (FEM::Geom const * G, double TimeStep);       ///< Write a ParaView-VTU file (with timestep)
+	void OpenCollection  (char const * FileKey);             ///< Collection of files with different timesteps
+	void CloseCollection ();                                 ///< Close collection of files
 
 private:
 	// Data
@@ -62,6 +68,10 @@ private:
 	Array<FEM::Element const *> _aes;   ///< Active elements
 	std::map<String, int>       _map;   ///< Map to associate labels with indexes
 	LinAlg::Matrix<double>      _vals;  ///< Matrix for nodal values collected from elements
+	bool                        _has_collection; ///< Has a collection of files with different timesteps ?
+	int                         _idx_file;       ///< Increment to add to a file when working with collections
+	String                      _file_key;       ///< File key for collection
+	std::ofstream               _pvd_file;       ///< File for PVD (PavaView) collection
 
 	// Methods
 	void _fill_map                ();
@@ -249,6 +259,38 @@ inline void Output::VTUcg(FEM::Geom const * G, char const * FileName)
 
 	// Bottom and write to file
 	_vtu_write_bottom (FileName, oss);
+}
+
+inline void Output::VTU(FEM::Geom const * G, double TimeStep)
+{
+	if (_has_collection==false) throw new Fatal("Output::VTU: Collection file must be open before calling this method");
+	String buffer;
+	buffer.Printf ("    <DataSet timestep=\"%f\" file=\"%s_%d.vtu\" />\n", TimeStep, _file_key.CStr(), _idx_file);
+	_pvd_file << buffer;
+	buffer.Printf ("%s_%d.vtu", _file_key.CStr(), _idx_file);
+	VTU (G, buffer.CStr());
+	_idx_file++;
+}
+
+inline void Output::OpenCollection(char const * FileKey)
+{
+	String filename;
+	filename.Printf ("%s.pvd", FileKey);
+	_pvd_file.open  (filename.CStr(), std::ios::out);
+    _pvd_file << "<?xml version=\"1.0\" ?>\n";
+    _pvd_file << "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    _pvd_file << "  <Collection>\n";
+	_has_collection = true;
+	_idx_file       = 0;
+	_file_key       = FileKey;
+}
+
+inline void Output::CloseCollection()
+{
+    _pvd_file << "  </Collection>\n";
+    _pvd_file << "</VTKFile>\n";
+	_pvd_file.close();
+	_has_collection = false;
 }
 
 
