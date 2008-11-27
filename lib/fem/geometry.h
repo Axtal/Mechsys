@@ -53,6 +53,8 @@ public:
 	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0);      ///< Set a node
 	Element * SetElem   (size_t i, char const * Type, bool IsActive=true); ///< Set an element
 
+	void ApplyBodyForces() { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ApplyBodyForces(); } ///< ApplyBodyForces
+
 	// Beam
 	void      SetNBeams (size_t NBeams) { _beams.Resize(NBeams); _beams.SetValues(NULL); _btags.Resize(NBeams); }
 	void      SetBeam   (size_t iBeam, Element * Beam, int Tag) { _beams[iBeam]=Beam; _btags[iBeam]=Tag; }

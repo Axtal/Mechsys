@@ -109,12 +109,15 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "")); // tag, type, model, prms, inis, props
-	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "")); // tag, type, model, prms, inis, props
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20"));
+	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20"));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 	FEM::SetBrys       (&mesh, &nbrys, &ebrys, NULL, &g);
+
+	// Apply body forces
+	//for (size_t i=0; i<g.NElems(); ++i) g.Ele(i)->ApplyBodyForces();
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");

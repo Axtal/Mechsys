@@ -856,14 +856,14 @@ inline double BiotElem::_val_ip(size_t iIP, char const * Name) const
 	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_strain[iIP](0)-_strain[iIP](1))*(_strain[iIP](0)-_strain[iIP](1)) + (_strain[iIP](1)-_strain[iIP](2))*(_strain[iIP](1)-_strain[iIP](2)) + (_strain[iIP](2)-_strain[iIP](0))*(_strain[iIP](2)-_strain[iIP](0)) + 3.0*(_strain[iIP](3)*_strain[iIP](3) + _strain[iIP](4)*_strain[iIP](4) + _strain[iIP](5)*_strain[iIP](5))))/3.0;
 
 	// Principal components of stress
-	else if (strcmp(Name,"S1" )==0) { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[2]; }
-	else if (strcmp(Name,"S2" )==0) { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[1]; }
-	else if (strcmp(Name,"S3" )==0) { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[0]; }
+	else if (strcmp(Name,"S1" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[2]; }
+	else if (strcmp(Name,"S2" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[1]; }
+	else if (strcmp(Name,"S3" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_stress[iIP], sigp);*/ return sigp[0]; }
 
 	// Principal components of strain
-	else if (strcmp(Name,"E1" )==0) { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[2]; }
-	else if (strcmp(Name,"E2" )==0) { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[1]; }
-	else if (strcmp(Name,"E3" )==0) { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[0]; }
+	else if (strcmp(Name,"E1" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[2]; }
+	else if (strcmp(Name,"E2" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[1]; }
+	else if (strcmp(Name,"E3" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_strain[iIP], epsp);*/ return epsp[0]; }
 
 	// Flow velocities
 	else if (strcmp(Name,"Vx" )==0) return 0.0;

@@ -46,7 +46,7 @@
 #include "fem/geometry.h"
 #include "fem/functions.h"
 #include "fem/elems/quad4biot.h" // << plane strain
-//#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad8biot.h" // << plane strain
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
 #include "fem/output.h"
@@ -188,8 +188,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8Biot", "", prms.CStr(), "ZERO", ""));
-	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", ""));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8Biot", "", prms.CStr(), "ZERO", "gam=20"));
+	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "gam=20"));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
@@ -214,6 +214,7 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
 	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
+	g.ApplyBodyForces(); // <<<<<<< apply body forces
 	CallSolve    (0, sol);
 	o.VTU(&g, t+=1000000);
 
