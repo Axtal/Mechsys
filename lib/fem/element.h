@@ -112,6 +112,7 @@ public:
 	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
 	virtual void   LocalCoords   (LinAlg::Matrix<double> & coords) const {};                                                                 ///< Return the local coordinates of the nodes
 	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
+	virtual void   OutInfo       (std::ostream & os) const {}                                                                                ///< Output extra info of the derived element
 	virtual bool   HasExtra      () const { return false; }                                                                                                         ///< Has extra output ?
 	virtual void   OutExtra      (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const {} ///< Extra output for elements
 	virtual double BoundDistance (double r, double s, double t) const { return -1; }                                                         ///< TODO
@@ -152,8 +153,6 @@ protected:
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual void _set_ndim(int nDim) =0;
 	virtual void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
-
-	virtual String     _out_info() const { return "";}
 
 }; // class Element
 
@@ -508,10 +507,10 @@ inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValu
 /** Outputs an element. */
 std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 {
-	os << "[" << E.GetID() << "] " << E.Name() << " " << E.ModelName() << "\n";
+	os << "[" << E.GetID() << "] Act=" << E.IsActive() << " Tag=" << E.Tag() << " " << E.Name() << " " << E.ModelName() << "\n";
+	os << "   ";  E.OutInfo(os);  os << "\n";
 	for (size_t i=0; i<E.NNodes(); ++i)
 		if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
-	os << E._out_info();
 	return os;
 }
 

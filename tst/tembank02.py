@@ -66,13 +66,12 @@ print nels, 'elements generated'
 g = ms.geom(2)
 
 # Elements attributes
-eatts = [[-1, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", True],
-         [-2, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", True],
-         [-3, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", True]]
+eatts = [[-1, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", True ],
+         [-2, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", False],
+         [-3, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", False]]
 
 # Set geometry: nodes, elements, attributes, and boundaries
 ms.set_nodes_elems (mesh, eatts, g)
-
 
 # Solver
 sol = ms.solver("ForwardEuler")

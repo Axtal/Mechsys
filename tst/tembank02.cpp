@@ -65,7 +65,7 @@ int main(int argc, char **argv) try
 	bool   is_o2 = false;  // use high order elements?
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2  ndivx  ndivy\n";
+	//cout << "Input: " << argv[0] << "  is_o2  ndivx  ndivy\n";
 	if (argc>=2) is_o2 = (atoi(argv[1])>0 ? true : false);
 	if (argc>=3) ndivx =  atof(argv[2]);
 	if (argc>=4) ndivy =  atof(argv[3]);
@@ -114,9 +114,9 @@ int main(int argc, char **argv) try
 	clock_t start = std::clock();           // Initial time
 	size_t  ne    = mesh.Generate (blocks); // Discretize domain
 	clock_t total = std::clock() - start;   // Time elapsed
-	if (is_o2) cout << "\nNum of quadrangles (o2) = " << ne << endl;
-	else       cout << "\nNumber of quadrangles   = " << ne << endl;
-	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	//if (is_o2) cout << "\nNum of quadrangles (o2) = " << ne << endl;
+	//else       cout << "\nNumber of quadrangles   = " << ne << endl;
+	//cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -142,7 +142,6 @@ int main(int argc, char **argv) try
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 
-
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	//sol->SetCte  ("dTini", 1.0);
@@ -163,6 +162,7 @@ int main(int argc, char **argv) try
 	out.VTU              (&g, sol->Time());
 
 	// Stage # 0 ---------------------------------------------------------------
+    ebrys.Resize(0);
 	ebrys.Push         (make_tuple(-10, "ux",  0.0));
 	ebrys.Push         (make_tuple(-11, "uy",  0.0));
 	ebrys.Push         (make_tuple(-13, "pwp", 0.0));
@@ -172,6 +172,7 @@ int main(int argc, char **argv) try
 	out.VTU            (&g, sol->Time());
 
 	// Stage # 1 ---------------------------------------------------------------
+    ebrys.Resize(0);
 	ebrys.Push         (make_tuple(-10, "ux",  0.0));
 	ebrys.Push         (make_tuple(-11, "uy",  0.0));
 	ebrys.Push         (make_tuple(-14, "pwp", 0.0));

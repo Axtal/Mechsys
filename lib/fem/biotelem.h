@@ -64,6 +64,8 @@ public:
 	void         GetLabels           (Array<String> & Labels) const;
 	char const * ModelName           () const { return "LinElastic/LinFlow"; }
 	void         ClearDispAndStrains ();
+	void         SetActive           (bool Active);
+	virtual void OutInfo             (std::ostream & os) const;
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder0Matrices () const { return 1; }                                                                                                              ///< Number of zero order matrices: H:Permeability.
@@ -98,7 +100,6 @@ protected:
 
 	// Private methods that MUST be derived
 	virtual int  _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	virtual String _out_info() const;
 
 private:
 	void _dist_to_face_nodes  (char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const;
@@ -228,11 +229,6 @@ inline void BiotElem::SetModel(char const * ModelName, char const * Prms, char c
 		_strain[i].Resize(6);
 		_strain[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 	}
-
-	std::cout << "_geom() = " << _geom() << "   ndim=" << _ndim << "   _n_int_pts=" << _n_int_pts << std::endl;
-	std::cout << "_Ke = " << _Ke << std::endl;
-	std::cout << "stress = \n"; for (size_t i=0; i<6; ++i) std::cout << _stress[i]; std::cout << std::endl;
-	//std::cout << "strain = \n"; for (size_t i=0; i<6; ++i) std::cout << _strain[i]; std::cout << std::endl;
 }
 
 inline void BiotElem::SetProps(char const * Properties)
@@ -435,6 +431,38 @@ inline void BiotElem::ClearDispAndStrains()
 
 	// Clear strains
 	for (size_t i=0; i<_strain.Size(); ++i) _strain[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+}
+
+inline void BiotElem::SetActive(bool Activate)
+{
+	return;
+	if (_is_active==false && Activate)
+	{
+		// Set active
+		_is_active = true;
+
+		for (size_t i=0; i<_connects.Size(); ++i)
+		{
+			// Add Degree of Freedom to a node (Essential, Natural)
+			for (int j=0; j<_nd; ++j) _connects[i]->AddDOF (UD[_d][j], FD[_d][j]);
+
+			// Set SharedBy
+			_connects[i]->SetSharedBy (_my_id);
+		}
+
+		// Apply body forces
+		ApplyBodyForces ();
+	}
+	else throw new Fatal("BiotElem::SetActive: Deactivation (excavation) is not available yet");
+}
+
+inline void BiotElem::OutInfo(std::ostream & os) const
+{
+	for (size_t i=0; i<_n_int_pts; i++)
+	{
+		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _stress[i](0) << _12_6 << _stress[i](1) << _12_6 << _stress[i](2);
+		os <<                "  Ex,Ey,Ez = " << _12_6 << _strain[i](0) << _12_6 << _strain[i](1) << _12_6 << _strain[i](2) << " ";
+	}
 }
 
 // Derived methods to assemble DAS matrices
@@ -889,19 +917,6 @@ inline double BiotElem::_val_ip(size_t iIP, char const * Name) const
 	else if (strcmp(Name,"H" )==0) return 0.0;
 
 	else throw new Fatal("BiotElem::_val_ip: Name==%s if not available for this element",Name);
-}
-
-inline String BiotElem::_out_info() const
-{
-	std::ostringstream oss;    // Output structure
-
-	oss << std::endl <<  "Values in element [" << _my_id << "]:" << std::endl;
-	for (size_t i=0; i<_n_int_pts; i++)
-	{
-		oss << "Stress (Sx,Sy,Sz) at IP[" << i << "] : " << _12_6 << _stress[i](0) << _12_6 << _stress[i](1) << _12_6 << _stress[i](2) << std::endl;
-		oss << "Strain (Ex,Ey,Ez) at IP[" << i << "] : " << _12_6 << _strain[i](0) << _12_6 << _strain[i](1) << _12_6 << _strain[i](2) << std::endl;
-	}
-	return oss.str();
 }
 
 }; // namespace FEM

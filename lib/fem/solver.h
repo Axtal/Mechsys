@@ -244,7 +244,7 @@ inline void Solver::Solve(int NDiv, double DTime)
 	}
 	_nudofs = static_cast<int>(_udofs.Size());
 	_npdofs = static_cast<int>(_pdofs.Size());
-	
+
 	// Check
 	if (_nudofs==0) throw new Fatal("Solver::Solve: The number of Unknowns DOFs must be greater than zero.\n  There might be an error with the boundary conditions' setting up.");
 	if (_npdofs==0) throw new Fatal("Solver::Solve: The number of Prescribed DOFs must be greater than zero.\n  There might be an error with the boundary conditions' setting up.");
@@ -310,14 +310,6 @@ inline void Solver::Solve(int NDiv, double DTime)
 
 	// Solve
 	for (_inc=0; _inc<NDiv; ++_inc) _do_solve_for_an_increment (dTime);
-
-	std::cout << _dF_ext << std::endl;
-	std::cout << _dU_ext << std::endl;
-	std::cout << _U_bkp  << std::endl;
-	std::cout << _F_bkp  << std::endl;
-	std::cout << _hKU    << std::endl;
-	std::cout << _dF_int << std::endl;
-	std::cout << _resid  << std::endl;
 
 	// Update time
 	_time += DTime;

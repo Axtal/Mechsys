@@ -85,6 +85,7 @@ public:
 	char const * ModelName           () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
 	virtual void ClearDispAndStrains ();
 	void         SetActive           (bool Active);
+	virtual void OutInfo             (std::ostream & os) const;
 
 	// Derived methods to assemble DAS matrices
 	size_t       nOrder1Matrices () const { return 1; }
@@ -110,8 +111,7 @@ protected:
 	virtual void _calc_initial_internal_state (); ///< Calculate initial internal state
 
 	// Private methods that MUST be derived
-	virtual int    _geom()     const =0;               ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	virtual String _out_info() const;
+	virtual int _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 
 private:
 	void _equations_map(Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
@@ -412,6 +412,14 @@ inline void EquilibElem::SetActive(bool Activate)
 	else throw new Fatal("EquilibElem::SetActive: Deactivation (excavation) is not available yet");
 }
 
+inline void EquilibElem::OutInfo(std::ostream & os) const
+{
+	for (size_t i=0; i<_n_int_pts; i++)
+	{
+		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _a_model[i]->Val("Sx") << _12_6 << _a_model[i]->Val("Sy") << _12_6 << _a_model[i]->Val("Sz");
+		os <<                "  Ex,Ey,Ez = " << _12_6 << _a_model[i]->Val("Ex") << _12_6 << _a_model[i]->Val("Ey") << _12_6 << _a_model[i]->Val("Ez") << " ";
+	}
+}
 
 // Derived methods to assemble DAS matrices
 
@@ -639,19 +647,6 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 		              FaceConnects[i]->Bry("fy",values(i,1));
 		if (_ndim==3) FaceConnects[i]->Bry("fz",values(i,2));
 	}
-}
-
-inline String EquilibElem::_out_info() const
-{
-	std::ostringstream oss;    // Output structure
-
-	oss << std::endl <<  "Values in element [" << _my_id << "]:" << std::endl;
-	for (size_t i=0; i<_n_int_pts; i++)
-	{
-		oss << "Stress (Sx,Sy,Sz) at IP[" << i << "] : " << _12_6 << _a_model[i]->Val("Sx"); oss << _12_6 << _a_model[i]->Val("Sy"); oss << _12_6 << _a_model[i]->Val("Sz") << std::endl;
-		oss << "Strain (Ex,Ey,Ez) at IP[" << i << "] : " << _12_6 << _a_model[i]->Val("Ex"); oss << _12_6 << _a_model[i]->Val("Ey"); oss << _12_6 << _a_model[i]->Val("Ez") << std::endl;
-	}
-	return oss.str();
 }
 
 }; // namespace FEM
