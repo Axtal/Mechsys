@@ -57,6 +57,7 @@ public:
 	// Specific methods
 	void ApplyBodyForces    () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ApplyBodyForces(); } ///< Apply body forces (equilibrium/coupled problems)
 	void ClearDisplacements ();                                                                         ///< Clear displacements (equilibrium/coupled problems)
+	void Activate           (int ElemTag);                                                              ///< Activate all elements with Tag
 
 	// Beam
 	void      SetNBeams (size_t NBeams) { _beams.Resize(NBeams); _beams.SetValues(NULL); _btags.Resize(NBeams); }
@@ -162,6 +163,12 @@ inline void Geom::ClearDisplacements()
 
 	// Clear Elements strain
 	for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ClearStrains();
+}
+
+inline void Geom::Activate(int ElemTag)
+{
+	Array<Element*> & elems = ElemsWithTag (ElemTag);
+	for (size_t i=0; i<elems.Size(); ++i) elems[i]->SetActive (true);
 }
 
 inline bool Geom::Check()

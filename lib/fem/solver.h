@@ -54,12 +54,15 @@
 #define MECHSYS_FEM_SOLVER_H
 
 // Std Lib
-#include <cstring> // for strcmp
+#include <cstring>  // for strcmp
+#include <ctime>    // for clock
+#include <iostream> // for cout
 
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
 #include "fem/geometry.h"
+#include "fem/output.h"
 #include "fem/parallel.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
@@ -86,22 +89,22 @@ class Solver
 {
 public:
 	// Constructor
-	Solver() : _num_div(1), _delta_time(0.0), _do_output(false), _g(NULL), _pd(NULL), _ndofs(0) { SetLinSol("UM"); }
+	Solver() : _time(0.0), _g(NULL), _pd(NULL), _ndofs(0) { SetLinSol("UM"); }
 
 	// Destructor
 	virtual ~Solver() {}
 
 	// Methods
-	Solver * SetGeom      (FEM::Geom * G)    { _g  = G;  return this; }              ///< Set the geometry (Nodes/Elements) to be used during solution
-	Solver * SetPData     (FEM::PData * PD)  { _pd = PD; return this; }              ///< Set structure with data for parallel computation
-	Solver * SetLinSol    (char const * Key);                                        ///< LinSolName: LA=LAPACK, UM=UMFPACK, SLU=SuperLU, SLUd=SuperLUd
-	Solver * SetNumDiv    (int    NumDiv)    { _num_div   =NumDiv;    return this; } ///< Set the number of divisions to be used during each call of Solve
-	Solver * SetDeltaTime (double DeltaTime) { _delta_time=DeltaTime; return this; } ///< Set the time stepsize to be used during each call of Solve
-	void     Solve        ();                                                        ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
-	void   DynSolve(double tIni, double tFin, double h, double dtOut, size_t MaxIt=10);
-	double F(double t) const;
+	Solver * SetGeom       (FEM::Geom * G)    { _g  = G;  return this; }                             ///< Set the geometry (Nodes/Elements) to be used during solution
+	Solver * SetPData      (FEM::PData * PD)  { _pd = PD; return this; }                             ///< Set structure with data for parallel computation
+	Solver * SetLinSol     (char const * Key);                                                       ///< LinSolName: LA=LAPACK, UM=UMFPACK, SLU=SuperLU, SLUd=SuperLUd
+	void     Solve         (int NDiv=1, double DTime=0.0);                                           ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
+	void     SolveWithInfo (int NDiv=1, double DTime=0.0, int iStage=0, char const * MoreInfo=NULL); ///< Solve and show time/resid information
+	void     DynSolve      (double tIni, double tFin, double h, double dtOut, size_t MaxIt=10);      ///< TODO
+	double   F             (double t) const;                                                         ///< TODO
 
 	// Access methods
+	double                         Time  () const { return _time;   } ///< Return current time
 	LinAlg::Vector<double> const & Resid () const { return _resid;  } ///< Resid = dFext - dFint
 	size_t                         nDOF  () const { return _ndofs;  } ///< Number of DOFs
 
@@ -111,9 +114,7 @@ public:
 
 protected:
 	// Data
-	int                      _num_div;    ///< The number of divisions to be used during each call of Solve
-	double                   _delta_time; ///< The time stepsize to be used during each call of Solve
-	bool                     _do_output;  ///< Do output?
+	double                   _time;       ///< Current time
 	LinAlg::Vector<double>   _dF_ext;     ///< Increment of natural values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dU_ext;     ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dF_int;     ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
@@ -186,7 +187,7 @@ inline Solver * Solver::SetLinSol(char const * Key)
 	return this;
 }
 
-inline void Solver::Solve()
+inline void Solver::Solve(int NDiv, double DTime)
 {
 	// Solve:    ([C] + alpha*h*[K]) * {dU} = {dF} - h*[K]*{U}
 	
@@ -211,7 +212,7 @@ inline void Solver::Solve()
 	}
 
 	// Number of divisions for each increment
-	double dTime = _delta_time / _num_div; // Time increment
+	double dTime = DTime / NDiv; // Time increment
 
 	// Number of DOFs
 	_ndofs  = 0; // total
@@ -266,13 +267,13 @@ inline void Solver::Solve()
 	_dU_ext.SetValues (0.0);
 	for (int i=0; i<_nudofs; ++i)
 	{
-		_dF_ext(_udofs[i]->EqID) = _udofs[i]->NaturalBry   / _num_div;
-		_dU_ext(_udofs[i]->EqID) = _udofs[i]->EssentialBry / _num_div;
+		_dF_ext(_udofs[i]->EqID) = _udofs[i]->NaturalBry   / NDiv;
+		_dU_ext(_udofs[i]->EqID) = _udofs[i]->EssentialBry / NDiv;
 	}
 	for (int i=0; i<_npdofs; ++i)
 	{
-		_dF_ext(_pdofs[i]->EqID) = _pdofs[i]->NaturalBry   / _num_div;
-		_dU_ext(_pdofs[i]->EqID) = _pdofs[i]->EssentialBry / _num_div;
+		_dF_ext(_pdofs[i]->EqID) = _pdofs[i]->NaturalBry   / NDiv;
+		_dU_ext(_pdofs[i]->EqID) = _pdofs[i]->EssentialBry / NDiv;
 	}
 
 	// Set component of external forces due to volume forces such as body forces, heat source, etc.
@@ -286,7 +287,7 @@ inline void Solver::Solve()
 			if (_g->Ele(i)->IsActive()) _g->Ele(i)->AddVolForces(fvol); // add results to fvol
 
 		// Add to dFext vector
-		LinAlg::Axpy(1.0/_num_div,fvol, _dF_ext); // dFext <- dFext + fvol/numdiv
+		LinAlg::Axpy(1.0/NDiv,fvol, _dF_ext); // dFext <- dFext + fvol/numdiv
 	}
 
 	// Allocate stifness DENSE matrix G or Allocate stifness SPARSE matrix G
@@ -306,22 +307,24 @@ inline void Solver::Solve()
 		for (int i=0; i<_npdofs; ++i) _T11.PushEntry(_pdofs[i]->EqID, _pdofs[i]->EqID, 1.0);
 	}
 
-	// Output initial state
-	//if (iStage==0 && _do_output) OutputIncrement(iStage, -1);
+	// Solve
+	for (int increment=0; increment<NDiv; ++increment) _do_solve_for_an_increment (dTime);
 
-	// Loop over increments (0<increment<_num_div)
-	for (int increment=0; increment<_num_div; ++increment)
-	{
-		// Solve for increment
-		_do_solve_for_an_increment(dTime);
+	// Update time
+	_time += DTime;
+}
 
-		// Output results for increment
-		//if (_do_output) OutputIncrement(iStage, increment);
-	}
-
-	// Output end of Stage
-	//if (_do_output) OutputStage(iStage);
-
+inline void Solver::SolveWithInfo(int NDiv, double DTime, int iStage, char const * MoreInfo)
+{
+	double start = std::clock();
+	Solve (NDiv, DTime); // <<<<<<< Solve
+	double total = std::clock() - start;
+	double norm_resid = LinAlg::Norm (Resid());
+	std::cout << "[1;33m\n--- Stage # " << iStage << " --------------------------------------------------[0m\n";
+	if (MoreInfo!=NULL) std::cout << MoreInfo;
+	std::cout << "[1;36m    Time elapsed (FE solution) = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+	std::cout << "[1;35m    Norm(Resid=DFext-DFint)    = " << norm_resid << "[0m\n";
+	std::cout << "[1;32m    Number of DOFs             = " << nDOF()     << "[0m" << std::endl;
 }
 
 inline double Solver::F(double t) const

@@ -146,24 +146,29 @@ int main(int argc, char **argv) try
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g);
+	sol->SetGeom (&g);
 
 	// Open collection for output
-	Output o; o.OpenCollection ("tembank01");
+	Output out; out.OpenCollection ("tembank01");
 
-	// Apply body forces
-	g.ApplyBodyForces();
-	start = std::clock();
-	sol->Solve();
-	total = std::clock() - start;
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
-	o.VTU (&g, 0.0);
+	// Stage # -1 --------------------------------------------------------------
+	g.ApplyBodyForces    ();
+	sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/0.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+	g.ClearDisplacements ();
+	out.VTU              (&g, sol->Time());
+
+	// Stage # 0 ---------------------------------------------------------------
+	g.Activate         (/*Tag*/-2);
+	sol->SolveWithInfo (1, 0.0, 0, "  Construction of first layer\n");
+	out.VTU            (&g, sol->Time());
+
+	// Stage # 1 ---------------------------------------------------------------
+	g.Activate         (/*Tag*/-3);
+	sol->SolveWithInfo (1, 0.0, 0, "  Construction of second layer\n");
+	out.VTU            (&g, sol->Time());
 
 	// Close collection
-	o.CloseCollection();
+	out.CloseCollection();
 
 	// Delete solver
 	delete sol;
