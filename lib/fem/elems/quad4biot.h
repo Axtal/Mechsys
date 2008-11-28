@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_QUAD4CONSOLID_H
-#define MECHSYS_FEM_QUAD4CONSOLID_H
+#ifndef MECHSYS_FEM_QUAD4BIOT_H
+#define MECHSYS_FEM_QUAD4BIOT_H
 
 // MechSys
 #include "fem/biotelem.h"
@@ -68,4 +68,4 @@ int __Quad4Biot_dummy_int  = Quad4BiotRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_QUAD4CONSOLID_H
+#endif // MECHSYS_FEM_QUAD4BIOT_H

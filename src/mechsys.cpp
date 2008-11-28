@@ -63,6 +63,9 @@
 #include "fem/elems/hex8equilib.h"
 #include "fem/elems/hex20equilib.h"
 #include "fem/elems/tri3biot.h"
+#include "fem/elems/tri6biot.h"
+#include "fem/elems/quad4biot.h"
+#include "fem/elems/quad8biot.h"
 
 // MechSys -- Models
 #include "models/equilibs/linelastic.h"
@@ -148,6 +151,7 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	class_<PyElem>("elem", init<FEM::Element *>())
 	    .def("get_id",            &PyElem::GetID)
+	    .def("tag",               &PyElem::Tag)
 	    .def("nnodes",            &PyElem::NNodes)
 	    .def("nod",               &PyElem::Nod,      return_internal_reference<>())
 	    .def("connect",           &PyElem::Connect,  return_internal_reference<>())
@@ -178,6 +182,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("bounds_2d",         &FEM::Geom::PyBounds2D)
 	    .def("bounds_3d",         &FEM::Geom::PyBounds3D)
 	    .def("apply_body_forces", &FEM::Geom::ApplyBodyForces)
+	    .def("elems_with_tag",    &FEM::Geom::PyElemsWithTag)
 	    .def(self_ns::str(self))
 	    ;
 

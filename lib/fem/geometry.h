@@ -90,6 +90,7 @@ public:
 	PyElem          PyEle       (size_t i)                                  { return PyElem(Ele(i)); }
 	void            PyBounds2D  (BPy::list & MinXY,  BPy::list & MaxXY ) const;
 	void            PyBounds3D  (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
+	void            PyElemsWithTag (int Tag, BPy::list & Elems);
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -235,6 +236,13 @@ inline void Geom::PyBounds3D(BPy::list & MinXYZ, BPy::list & MaxXYZ) const
 	MinXYZ.append(minx);  MaxXYZ.append(maxx);
 	MinXYZ.append(miny);  MaxXYZ.append(maxy);
 	MinXYZ.append(minz);  MaxXYZ.append(maxz);
+}
+
+inline void Geom::PyElemsWithTag(int Tag, BPy::list & Elems)
+{
+	Array<FEM::Element*> & elems = ElemsWithTag (Tag);
+	for (size_t i=0; i<elems.Size(); ++i)
+		Elems.append (PyElem(elems[i]));
 }
 
 // }

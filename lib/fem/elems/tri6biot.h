@@ -16,56 +16,56 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_TRI3BIOT_H
-#define MECHSYS_FEM_TRI3BIOT_H
+#ifndef MECHSYS_FEM_TRI6BIOT_H
+#define MECHSYS_FEM_TRI6BIOT_H
 
 // MechSys
 #include "fem/biotelem.h"
-#include "fem/elems/tri3.h"
+#include "fem/elems/tri6.h"
 #include "util/exception.h"
 
 namespace FEM
 {
 
-class Tri3Biot : public Tri3, public BiotElem
+class Tri6Biot : public Tri6, public BiotElem
 {
 public:
 	// Derived methods
-	char const * Name() const { return "Tri3Biot"; }
+	char const * Name() const { return "Tri6Biot"; }
 
 private:
 	// Private methods
 	int  _geom     () const { return 2; } ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	void _set_ndim (int nDim)             ///< Set space dimension
 	{
-		if (nDim<2) throw new Fatal("Tri3Biot::_set_ndim: For this element, nDim must be greater than or equal to 2 (%d is invalid)",nDim);
+		if (nDim<2) throw new Fatal("Tri6Biot::_set_ndim: For this element, nDim must be greater than or equal to 2 (%d is invalid)",nDim);
 		_ndim = nDim;
 		_d    = _ndim-1;
 		_nd   = BiotElem::ND[_d];
 	}
 
-}; // class Tri3Biot
+}; // class Tri6Biot
 
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Tri3Biot element
-Element * Tri3BiotMaker()
+// Allocate a new Tri6Biot element
+Element * Tri6BiotMaker()
 {
-	return new Tri3Biot();
+	return new Tri6Biot();
 }
 
-// Register a Tri3Biot element into ElementFactory array map
-int Tri3BiotRegister()
+// Register a Tri6Biot element into ElementFactory array map
+int Tri6BiotRegister()
 {
-	ElementFactory["Tri3Biot"] = Tri3BiotMaker;
+	ElementFactory["Tri6Biot"] = Tri6BiotMaker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __Tri3Biot_dummy_int  = Tri3BiotRegister();
+int __Tri6Biot_dummy_int  = Tri6BiotRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_TRI3BIOT_H
+#endif // MECHSYS_FEM_TRI6BIOT_H

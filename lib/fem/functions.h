@@ -308,7 +308,7 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 	/* Example:
 	 *           
 	 *           # Elements attributes
-	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20']] # tag, type, model, prms, inis, props
+	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
 	 */
 
 	// Extract list with elements attributes
@@ -317,7 +317,7 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 	if (eatts_size>0) eatts.Resize(eatts_size);
 	for (int i=0; i<eatts_size; ++i)
 	{
-		if (len(ElemsAtts[i])==6)
+		if (len(ElemsAtts[i])==7)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
 			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
@@ -325,7 +325,8 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 			                             BPy::extract<char const*>(lst[2])(),
 			                             BPy::extract<char const*>(lst[3])(),
 			                             BPy::extract<char const*>(lst[4])(),
-			                             BPy::extract<char const*>(lst[5])());
+			                             BPy::extract<char const*>(lst[5])(), 
+			                             BPy::extract<bool>       (lst[6])());
 		}
 		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 6 items: tag, type, model, prms, inis, props\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20']]");
 	}

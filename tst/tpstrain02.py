@@ -69,7 +69,7 @@ ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
          [-20, 'fy',   q]] # [tag], [key], [val]
 
 # Elements attributes
-eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20']]
+eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]
 
 # Set geometry: nodes, elements and boundaries
 m.set_nodes_elems (ms, eatts, g)
