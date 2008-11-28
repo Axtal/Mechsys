@@ -256,11 +256,14 @@ inline Element * BiotElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 	// Connectivity
 	_connects[iNodeLocal] = ptNode;
 
-	// Add Degree of Freedom to a node (Essential, Natural)
-	for (int i=0; i<_nd; ++i) _connects[iNodeLocal]->AddDOF (UD[_d][i], FD[_d][i]);
+	if (_is_active)
+	{
+		// Add Degree of Freedom to a node (Essential, Natural)
+		for (int i=0; i<_nd; ++i) _connects[iNodeLocal]->AddDOF (UD[_d][i], FD[_d][i]);
 
-	// Set shared
-	_connects[iNodeLocal]->SetSharedBy(_my_id);
+		// Set shared
+		_connects[iNodeLocal]->SetSharedBy(_my_id);
+	}
 
 	return this;
 }
@@ -435,7 +438,6 @@ inline void BiotElem::ClearDispAndStrains()
 
 inline void BiotElem::SetActive(bool Activate)
 {
-	return;
 	if (_is_active==false && Activate)
 	{
 		// Set active
