@@ -418,6 +418,8 @@ inline double BiotElem::Val(char const * Name) const
 
 inline void BiotElem::ClearDispAndStrains()
 {
+	if (_is_active==false) return;
+
 	// Clear displacements
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (size_t j=0; j<NDE[_d];  ++j) // NDE[_d] == nDOFs Equilibrium

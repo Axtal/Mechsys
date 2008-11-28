@@ -376,6 +376,8 @@ inline double EquilibElem::Val(char const * Name) const
 
 inline void EquilibElem::ClearDispAndStrains()
 {
+	if (_is_active==false) return;
+
 	// Clear displacements
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)

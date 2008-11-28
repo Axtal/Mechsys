@@ -149,22 +149,22 @@ int main(int argc, char **argv) try
 	sol->SetGeom (&g);
 
 	// Open collection for output
-	Output out; out.OpenCollection ("tembank01");
+	Output out;  out.OpenCollection ("tembank01");
 
 	// Stage # -1 --------------------------------------------------------------
 	g.ApplyBodyForces    ();
-	sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/0.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+	sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
 	g.ClearDisplacements ();
 	out.VTU              (&g, sol->Time());
 
 	// Stage # 0 ---------------------------------------------------------------
 	g.Activate         (/*Tag*/-2);
-	sol->SolveWithInfo (1, 0.0, 0, "  Construction of first layer\n");
+	sol->SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
 	out.VTU            (&g, sol->Time());
 
 	// Stage # 1 ---------------------------------------------------------------
 	g.Activate         (/*Tag*/-3);
-	sol->SolveWithInfo (1, 0.0, 0, "  Construction of second layer\n");
+	sol->SolveWithInfo (1, 3.0, 0, "  Construction of second layer\n");
 	out.VTU            (&g, sol->Time());
 
 	// Close collection
