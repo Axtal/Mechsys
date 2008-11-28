@@ -115,6 +115,7 @@ public:
 protected:
 	// Data
 	double                   _time;       ///< Current time
+	int                      _inc;        ///< Current increment
 	LinAlg::Vector<double>   _dF_ext;     ///< Increment of natural values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dU_ext;     ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dF_int;     ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
@@ -308,7 +309,7 @@ inline void Solver::Solve(int NDiv, double DTime)
 	}
 
 	// Solve
-	for (int increment=0; increment<NDiv; ++increment) _do_solve_for_an_increment (dTime);
+	for (_inc=0; _inc<NDiv; ++_inc) _do_solve_for_an_increment (dTime);
 
 	// Update time
 	_time += DTime;

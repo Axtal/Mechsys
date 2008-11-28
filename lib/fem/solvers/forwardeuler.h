@@ -40,9 +40,6 @@ private:
 	int    _nSI;        ///< Number of sub-increments
 	double _norm_resid; ///< Residual Norm(dFext - dFint)
 
-	// Data
-	LinAlg::Vector<double> _resid;
-
 	// Private methods
 	void _do_solve_for_an_increment(double dTime);
 
@@ -86,9 +83,6 @@ inline void ForwardEuler::_do_solve_for_an_increment(double dTime)
 	LinAlg::CopyScal(1.0/_nSI,_dF_ext, dF_ext); // dF_ext <- _dF_ext/_nSI
 	LinAlg::CopyScal(1.0/_nSI,_dU_ext, dU_ext); // dU_ext <- _dU_ext/_nSI
 	double h = dTime/_nSI;
-
-	// Allocate auxiliar vector
-	if (_resid.Size()==0) _resid.Resize(ndofs);
 
 	// Start
 	for (int i=0; i<_nSI; ++i)

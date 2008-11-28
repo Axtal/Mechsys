@@ -115,7 +115,7 @@ inline void AutoME::_do_solve_for_an_increment(double dTime)
 	LinAlg::Vector<double> dU_ext(_dU_ext);
 
 	// Allocate auxiliar vectors
-	if (_dF_1.Size()==0)
+	if (_inc==0)
 	{
 		int ndofs = dF_ext.Size();
 		_dF_1 .Resize (ndofs);
