@@ -119,11 +119,6 @@ int main(int argc, char **argv) try
 	// Geometry
 	FEM::Geom g(2); // 2D
 
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "ux", 0.0));
-	ebrys.Push (make_tuple(-11, "uy", 0.0));
-
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
@@ -142,7 +137,6 @@ int main(int argc, char **argv) try
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -152,17 +146,27 @@ int main(int argc, char **argv) try
 	Output out;  out.OpenCollection ("tembank01");
 
 	// Stage # -1 --------------------------------------------------------------
+	FEM::EBrys_T ebrys;
+	ebrys.Push           (make_tuple(-10, "ux", 0.0));
+	ebrys.Push           (make_tuple(-11, "uy", 0.0));
+	FEM::SetBrys         (&mesh, NULL, &ebrys, NULL, &g);
 	g.ApplyBodyForces    ();
 	sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
 	g.ClearDisplacements ();
 	out.VTU              (&g, sol->Time());
 
 	// Stage # 0 ---------------------------------------------------------------
+	ebrys.Push         (make_tuple(-10, "ux", 0.0));
+	ebrys.Push         (make_tuple(-11, "uy", 0.0));
+	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
 	g.Activate         (/*Tag*/-2);
 	sol->SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
 	out.VTU            (&g, sol->Time());
 
 	// Stage # 1 ---------------------------------------------------------------
+	ebrys.Push         (make_tuple(-10, "ux", 0.0));
+	ebrys.Push         (make_tuple(-11, "uy", 0.0));
+	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
 	g.Activate         (/*Tag*/-3);
 	sol->SolveWithInfo (1, 3.0, 0, "  Construction of second layer\n");
 	out.VTU            (&g, sol->Time());
@@ -175,7 +179,7 @@ int main(int argc, char **argv) try
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
-	return 1;
+	return 0;
 }
 catch (Exception * e)
 {
