@@ -78,7 +78,7 @@ def get_brys_atts(obj):
             else:
                 mdl  = 'LinElastic'
                 prms = 'E=200 nu=0.2'
-            eatts.append([int(v[0]), d['ety'][int(v[1])], mdl, prms, inis, ''])
+            eatts.append([int(v[0]), d['ety'][int(v[1])], mdl, prms, inis, '', True])
 
     return nbrys, nbsID, ebrys, fbrys, eatts
 
@@ -271,15 +271,15 @@ def run_analysis(gen_script=False):
         for nb in nbsID:
             txt.write('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
         txt.write ('\n# Solution\n')
-        txt.write ('sol = ms.solver("ForwardEuler")\n')
-        txt.write ('sol.set_geom(geo)\n')
-        txt.write ('sol.solve()\n')
+        txt.write ('sol = ms.solver     ("ForwardEuler")\n')
+        txt.write ('sol.set_geom        (geo)\n')
+        txt.write ('sol.solve_with_info ()\n')
         if not di.key('fullsc'):
             txt.write ('\n# Save results in object\n')
             txt.write ('mf.save_results(geo,obj)\n')
         txt.write ('\n# Output\n')
-        txt.write ('o = ms.output()\n')
-        txt.write ('o.vtu(geo, \''+obj.name+'_FEM.vtu\')\n')
+        txt.write ('out = ms.output()\n')
+        txt.write ('out.vtu(geo, \''+obj.name+'_FEM.vtu\')\n')
         txt.write ('\n# Hide running cursor\n')
         txt.write ('Blender.Window.WaitCursor(0)\n')
     else:
@@ -295,17 +295,17 @@ def run_analysis(gen_script=False):
             geo.nod (nb[0]).bry(nb[1],nb[2])
 
         # solution
-        sol = ms.solver ('ForwardEuler')
-        sol.set_geom (geo)
-        sol.solve ()
+        sol = ms.solver     ('ForwardEuler')
+        sol.set_geom        (geo)
+        sol.solve_with_info ()
 
         # save results in object
         save_results (geo,obj)
 
         # output
         fn = obj.name+'_FEM.vtu'
-        o = ms.output()
-        o.vtu (geo, fn)
+        out = ms.output()
+        out.vtu (geo, fn)
         print '[1;34mMechSys[0m: file <'+fn+'> generated'
 
     # redraw and restore cursor

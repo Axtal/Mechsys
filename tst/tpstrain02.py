@@ -79,12 +79,12 @@ m.set_brys        (ms, nbrys, ebrys, [], g) # [] => no face brys
 print 'Solution: ---------------------------------------------------------------------'
 sol = m.solver('ForwardEuler')
 sol.set_geom(g)
-sol.solve()
+sol.solve_with_info()
 
 # Output file
 o = m.output()
 o.vtu(g, 'tpstrain02_py.vtu')
-print 'File <tpstrain02_py.vtu> generated'
+print '\nFile <tpstrain02_py.vtu> generated'
 
 #----------------------------------------------------------------------------- Check
 

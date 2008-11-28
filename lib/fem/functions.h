@@ -326,7 +326,7 @@ void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
 			                             BPy::extract<char const*>(lst[5])(), 
 			                             BPy::extract<bool>       (lst[6])());
 		}
-		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 6 items: tag, type, model, prms, inis, props\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20']]");
+		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
 	}
 
 	// Set geometry

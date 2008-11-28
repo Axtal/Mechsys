@@ -968,13 +968,13 @@ namespace BPy = boost::python;
 class PySolver
 {
 public:
-	           PySolver     (BPy::str const & Name) { _sol = FEM::AllocSolver (BPy::extract<char const *>(Name)()); }
-	          ~PySolver     ()                      { if (_sol!=NULL) delete _sol; }
-	PySolver & SetGeom      (FEM::Geom & G)         { _sol->SetGeom      (&G);                                return (*this); }
-	PySolver & SetLinSol    (BPy::str const & Key)  { _sol->SetLinSol    (BPy::extract<char const *>(Key)()); return (*this); }
-	PySolver & SetNumDiv    (int Numdiv)            { _sol->SetNumDiv    (Numdiv);                            return (*this); }
-	PySolver & SetDeltaTime (double DeltaTime)      { _sol->SetDeltaTime (DeltaTime);                         return (*this); }
-	void       Solve        ()                      { _sol->Solve        (); }
+	           PySolver       (BPy::str const & Name)                                                 { _sol = FEM::AllocSolver (BPy::extract<char const *>(Name)()); }
+	          ~PySolver       ()                                                                      { if (_sol!=NULL) delete _sol; }
+	PySolver & SetGeom        (FEM::Geom & G)                                                         { _sol->SetGeom      (&G);                                return (*this); }
+	PySolver & SetLinSol      (BPy::str const & Key)                                                  { _sol->SetLinSol    (BPy::extract<char const *>(Key)()); return (*this); }
+	void       Solve          (int NDiv=1, double DTime=0.0)                                          { _sol->Solve         (NDiv, DTime); }
+	void       SolveWithInfo1 (int NDiv=1, double DTime=0.0, int iStage=0)                            { _sol->SolveWithInfo (NDiv, DTime, iStage); }
+	void       SolveWithInfo2 (int NDiv,   double DTime,     int iStage,   BPy::str const & MoreInfo) { _sol->SolveWithInfo (NDiv, DTime, iStage, BPy::extract<char const *>(MoreInfo)()); }
 private:
 	FEM::Solver * _sol;
 }; // class PySolver

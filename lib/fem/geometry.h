@@ -84,12 +84,11 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-	Node          & PySetNode2D (size_t i, double X, double Y)              { return (*SetNode(i,X,Y));   }
-	Node          & PySetNode3D (size_t i, double X, double Y, double Z)    { return (*SetNode(i,X,Y,Z)); }
-	PyElem          PySetElem1  (size_t i, BPy::str const & Type)           { return PyElem(SetElem(i,BPy::extract<char const *>(Type)())); }
-	PyElem          PySetElem2  (size_t i, BPy::str const & Type, bool Act) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act)); }
-	Node    const & PyNod       (size_t i)                                  { return (*Nod(i)); }
-	PyElem          PyEle       (size_t i)                                  { return PyElem(Ele(i)); }
+	Node          & PySetNode2D (size_t i, double X, double Y)                       { return (*SetNode(i,X,Y));   }
+	Node          & PySetNode3D (size_t i, double X, double Y, double Z)             { return (*SetNode(i,X,Y,Z)); }
+	PyElem          PySetElem   (size_t i, BPy::str const & Type, bool Act, int Tag) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act,Tag)); }
+	Node    const & PyNod       (size_t i)                                           { return (*Nod(i)); }
+	PyElem          PyEle       (size_t i)                                           { return PyElem(Ele(i)); }
 	void            PyBounds2D  (BPy::list & MinXY,  BPy::list & MaxXY ) const;
 	void            PyBounds3D  (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
 	void            PyElemsWithTag (int Tag, BPy::list & Elems);

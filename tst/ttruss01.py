@@ -50,9 +50,9 @@ g.set_node   (2, 10.0, 10.0)
 
 # 2) Elements
 g.set_nelems (3)
-g.set_elem   (0, "Rod", 1)
-g.set_elem   (1, "Rod", 1)
-g.set_elem   (2, "Rod", 1)
+g.set_elem   (0, "Rod", True, -1)
+g.set_elem   (1, "Rod", True, -1)
+g.set_elem   (2, "Rod", True, -1)
 
 # 3) Set connectivity
 g.ele(0).connect(0, g.nod(0)).connect(1, g.nod(1))
@@ -71,8 +71,8 @@ g.ele(2).set_model("LinElastic", "E=200.0  A=%f"%math.sqrt(2), "Sx=0.0")
 
 # 6) Solve
 sol = m.solver('AutoME')
-sol.set_geom(g).set_lin_sol('LA').set_num_div(1).set_delta_time(0.0)
-sol.solve()
+sol.set_geom(g)
+sol.solve_with_info()
 
 # Check
 errors = 0.0
@@ -91,4 +91,4 @@ errors += abs(g.nod(1).val('fy') - ( 1.0))
 errors += abs(g.nod(2).val('fx') - ( 2.0))
 errors += abs(g.nod(2).val('fy') - ( 1.0))
 
-print 'Py:Errors = ', errors
+print '\nPy:Errors = ', errors
