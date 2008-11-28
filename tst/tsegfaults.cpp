@@ -47,7 +47,7 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (1);
-	g.SetElem   (0, "Quad4PStrain", /*IsActive*/true);
+	g.SetElem   (0, "Quad4PStrain", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
 	g.Ele(0)->Connect(0, g.Nod(0))

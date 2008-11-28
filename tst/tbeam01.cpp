@@ -68,9 +68,9 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (3);
-	g.SetElem   (0, "Beam")->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
-	g.SetElem   (1, "Beam")->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
-	g.SetElem   (2, "Beam")->Connect(0, g.Nod(2))->Connect(1, g.Nod(3));
+	g.SetElem   (0, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
+	g.SetElem   (1, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
+	g.SetElem   (2, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(2))->Connect(1, g.Nod(3));
 
 	// Parameters and initial value
 	String prms; prms.Printf("E=%f A=%f Izz=%f", E, A, Izz);

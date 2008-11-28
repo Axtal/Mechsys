@@ -71,14 +71,14 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (8);
-	g.SetElem   (0, "Beam")->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
-	g.SetElem   (1, "Beam")->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
-	g.SetElem   (2, "Beam")->Connect(0, g.Nod(2))->Connect(1, g.Nod(3));
-	g.SetElem   (3, "Beam")->Connect(0, g.Nod(3))->Connect(1, g.Nod(4));
-	g.SetElem   (4, "Beam")->Connect(0, g.Nod(4))->Connect(1, g.Nod(5));
-	g.SetElem   (5, "Beam")->Connect(0, g.Nod(6))->Connect(1, g.Nod(1));
-	g.SetElem   (6, "Beam")->Connect(0, g.Nod(6))->Connect(1, g.Nod(4));
-	g.SetElem   (7, "Beam")->Connect(0, g.Nod(7))->Connect(1, g.Nod(4));
+	g.SetElem   (0, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
+	g.SetElem   (1, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
+	g.SetElem   (2, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(2))->Connect(1, g.Nod(3));
+	g.SetElem   (3, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(3))->Connect(1, g.Nod(4));
+	g.SetElem   (4, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(4))->Connect(1, g.Nod(5));
+	g.SetElem   (5, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(6))->Connect(1, g.Nod(1));
+	g.SetElem   (6, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(6))->Connect(1, g.Nod(4));
+	g.SetElem   (7, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(7))->Connect(1, g.Nod(4));
 
 	// Parameters and initial value
 	g.Ele(0)->SetModel("LinElastic", "E=1.0 A=5e+9 Izz=6e+4", "ZERO");

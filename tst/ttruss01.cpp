@@ -72,9 +72,9 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (3);
-	g.SetElem   (0, "Rod", /*IsActive*/true);
-	g.SetElem   (1, "Rod", /*IsActive*/true);
-	g.SetElem   (2, "Rod", /*IsActive*/true);
+	g.SetElem   (0, "Rod", /*IsActive*/true, /*Tag*/-1);
+	g.SetElem   (1, "Rod", /*IsActive*/true, /*Tag*/-1);
+	g.SetElem   (2, "Rod", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
 	g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));

@@ -65,7 +65,7 @@ int main(int argc, char **argv) try
 
 	// 2) Elements
 	g.SetNElems (1);
-	g.SetElem   (0, "Quad4PStress", /*IsActive*/true);
+	g.SetElem   (0, "Quad4PStress", /*IsActive*/true, /*Tag*/-1);
 
 	// 3) Set connectivity
 	g.Ele(0)->Connect(0, g.Nod(0))

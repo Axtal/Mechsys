@@ -93,10 +93,10 @@ int main(int argc, char **argv) try
 
 		// Elements
 		g.SetNElems (4);
-		g.SetElem   (0, "Tri3Diffusion");
-		g.SetElem   (1, "Tri3Diffusion");
-		g.SetElem   (2, "Tri3Diffusion");
-		g.SetElem   (3, "Tri3Diffusion");
+		g.SetElem   (0, "Tri3Diffusion", true, -1);
+		g.SetElem   (1, "Tri3Diffusion", true, -1);
+		g.SetElem   (2, "Tri3Diffusion", true, -1);
+		g.SetElem   (3, "Tri3Diffusion", true, -1);
 
 		// Set connectivity
 		g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1))->Connect(2, g.Nod(2));

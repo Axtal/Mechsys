@@ -82,8 +82,8 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (2);
-	g.SetElem   (0, "Tri6PStrain", /*IsActive*/true);
-	g.SetElem   (1, "Tri6PStrain", /*IsActive*/true);
+	g.SetElem   (0, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
+	g.SetElem   (1, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
 	g.Ele(0)->Connect(0, g.Nod(0))

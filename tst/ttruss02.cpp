@@ -82,7 +82,7 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (21);
-	for (int i=0; i<21; ++i) g.SetElem(i, "Rod");
+	for (int i=0; i<21; ++i) g.SetElem(i, "Rod", true, -1);
 
 	// Set connectivity
 	g.Ele( 0)->Connect(0, g.Nod( 0))->Connect(1, g.Nod( 2));

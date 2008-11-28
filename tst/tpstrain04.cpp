@@ -111,7 +111,7 @@ int main(int argc, char **argv) try
 
 	// Elements
 	g.SetNElems (1);
-	g.SetElem   (0, "Hex20Equilib", /*IsActive*/true);
+	g.SetElem   (0, "Hex20Equilib", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity (list of nodes must be LOCAL)
 	g.Ele(0)->Connect(0, g.Nod( 0))->Connect(1, g.Nod( 1))->Connect(2, g.Nod( 2))->Connect(3, g.Nod( 3))
