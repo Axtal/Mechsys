@@ -174,21 +174,15 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetGeom(&g) -> SetLinSol("UM") -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	start = std::clock();
-	sol -> Solve();
-	total = std::clock() - start;
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	sol->SetGeom(&g);
+	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: VTU
 	start = std::clock();
 	Output o; o.VTU (&g, "texam1.vtu");
 	total = std::clock() - start;
-	cout << "Time elapsed (output file) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	cout << "\nTime elapsed (output file) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 	cout << "[1;34mFile <texam1.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////

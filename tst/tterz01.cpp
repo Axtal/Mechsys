@@ -38,18 +38,6 @@ using Util::_8s;
 using Util::_8_4;
 using boost::make_tuple;
 
-void CallSolve (int iStage, FEM::Solver * Sol)
-{
-	double start = std::clock();
-	Sol -> Solve();
-	double total = std::clock() - start;
-	double norm_resid = LinAlg::Norm(Sol->Resid());
-	cout << "[1;31mStage # " << iStage << "[0m" << endl;
-	cout << "\tTime elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "\t[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "\t[1;32mNumber of DOFs          = " << Sol->nDOF() << "[0m\n";
-}
-
 double Terz(double Z, double T) // Pore-pressure excess for one dimensional consolidation
 {
 	double ue=0.0;
@@ -147,14 +135,13 @@ int main(int argc, char **argv) try
 	FEM::EBrys_T ebrys;
 	
 	// Stage # 0: Stage performed to approach a stationary condition
-	sol->SetNumDiv(4)->SetDeltaTime(1000000);
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
 	ebrys.Push   (make_tuple(-30, "uy",    0.0));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-	CallSolve    (0, sol);
+	sol->SolveWithInfo(/*NDiv*/4, /*DTime*/1000000, /*iStage*/0);
 
 	// Output: VTU 
 	Output o; o.VTU (&g, "tterz01.vtu");
@@ -164,7 +151,6 @@ int main(int argc, char **argv) try
 		Pwp0(i) = g.Nod(SampleNodes(i))->Val("pwp");
 
 	// Stage # 1: Load application
-	sol->SetNumDiv(4)->SetDeltaTime(1.0);
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
@@ -172,19 +158,18 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-40, "fy",   load));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-	CallSolve    (1, sol);
+	sol->SolveWithInfo(/*NDiv*/4, /*DTime*/1.0, /*iStage*/1);
 
 	// Stage # 2.. : Consolidation
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
-		sol->SetNumDiv(4)->SetDeltaTime(TimeIncs(i));
 		ebrys.Resize (0);
 		ebrys.Push   (make_tuple(-10, "ux",    0.0));
 		ebrys.Push   (make_tuple(-20, "ux",    0.0));
 		ebrys.Push   (make_tuple(-30, "uy",    0.0));
 		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
 		FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-		CallSolve    (i+2, sol);
+		sol->SolveWithInfo(/*NDiv*/4, /*DTime*/TimeIncs(i), /*iStage*/i+2);
 		for (int j=0; j<SampleNodes.Size(); j++)
 			OutPwp(j,i) = (g.Nod(SampleNodes(j))->Val("pwp")-Pwp0(j))/load; // Saving normalized excess of pore-pressure
 	}

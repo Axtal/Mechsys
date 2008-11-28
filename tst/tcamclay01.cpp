@@ -104,7 +104,7 @@ int main(int argc, char **argv) try
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
+	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
 
 	// Element attributes
 	String prms; prms.Printf("lam=%f kap=%f phics=%f G=%f",lam,kap,phics,G);
@@ -123,6 +123,7 @@ int main(int argc, char **argv) try
 	Array<Tensor1> dtrac;  dtrac.Resize(2); // stress path (delta traction)
 	dtrac[0] = 0.0, 0.0, -2.0;              // dtracx, dtracy, dtracz
 	dtrac[1] = 0.0, 0.0,  3.0;
+	int istage = 0;
 	for (size_t i=0; i<dtrac.Size(); ++i)
 	{
 		size_t ndiv = 10;
@@ -141,7 +142,8 @@ int main(int argc, char **argv) try
 			FEM::SetBrys (&ms, NULL, NULL, &fbrys, &g);
 
 			// Solve
-			sol -> Solve();
+			sol->SolveWithInfo(1,0.0,istage);
+			istage++;
 
 			// Output
 			res << _8s<<g.Ele(13)->Val("Sx") << _8s<<g.Ele(13)->Val("Sy") << _8s<<g.Ele(13)->Val("Sz");

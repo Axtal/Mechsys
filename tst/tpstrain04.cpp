@@ -136,11 +136,8 @@ int main(int argc, char **argv) try
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	sol -> Solve();
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Error summary

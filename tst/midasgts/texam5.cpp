@@ -196,14 +196,8 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetGeom(&g) -> SetLinSol("UM") -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	start = std::clock();
-	sol -> Solve();
-	total = std::clock() - start;
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	sol->SetGeom(&g);
+	sol->SolveWithInfo();
 	delete sol;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -305,6 +299,7 @@ int main(int argc, char **argv) try
 	double min_err_N    = err_N [err_N .Min()];
 	double max_err_N    = err_N [err_N .Max()];
 
+	cout << "\n";
 	cout << _4 << ""    << _8s <<"Min"       << _8s << "Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
 	cout << _4 << "uR"  << _8s <<min_err_uR << _8s<<err_uR.Mean() << (max_err_uR  >tol_uR?"[1;31m":"[1;32m") << _8s<<max_err_uR   << "[0m" << _8s<<err_uR  .Norm() << endl;
 	cout << _4 << "uT"  << _8s <<min_err_uT << _8s<<err_uT.Mean() << (max_err_uT  >tol_uT?"[1;31m":"[1;32m") << _8s<<max_err_uT   << "[0m" << _8s<<err_uT  .Norm() << endl;

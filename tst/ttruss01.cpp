@@ -126,13 +126,8 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	sol -> Solve();
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
-	if (norm_resid>1.3e-15) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,1.3e-15);
-	cout << endl;
+	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Output: Nodes

@@ -63,18 +63,6 @@ using Util::_8_4;
 using Util::PI;
 using boost::make_tuple;
 
-void CallSolve (int iStage, FEM::Solver * Sol)
-{
-	double start = std::clock();
-	Sol -> Solve();
-	double total = std::clock() - start;
-	double norm_resid = LinAlg::Norm(Sol->Resid());
-	cout << "[1;31mStage # " << iStage << "[0m" << endl;
-	cout << "\tTime elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "\t[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "\t[1;32mNumber of DOFs          = " << Sol->nDOF() << "[0m\n";
-}
-
 // Biot f function
 double f(double e)
 {
@@ -147,9 +135,7 @@ int main(int argc, char **argv) try
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// Blocks
-	Array<Mesh::Block*> blocks;
-
+	// Block # 1
 	Mesh::Block b1;
 	b1.SetTag    (-1); // tag to be replicated to all generated elements inside this block
 	b1.SetCoords (false, 4,               // Is3D, NNodes
@@ -158,8 +144,8 @@ int main(int argc, char **argv) try
 	b1.SetNx     (10);                    // x weights and num of divisions along x
 	b1.SetNy     (ndivy);                 // y weights and num of divisions along y
 	b1.SetETags  (4,  -10, 0, -30, -50);  // edge tags
-	blocks.Push (&b1);
 
+	// Block # 2
 	Mesh::Block b2;
 	b2.SetTag    (-1); // tag to be replicated to all generated elements inside this block
 	b2.SetCoords (false, 4,               // Is3D, NNodes
@@ -168,6 +154,10 @@ int main(int argc, char **argv) try
 	b2.SetNx     (8);                     // x weights and num of divisions along x
 	b2.SetNy     (ndivy);                 // y weights and num of divisions along y
 	b2.SetETags  (4,  0, -20, -30, -40);  // edge tags
+
+	// Blocks
+	Array<Mesh::Block*> blocks;
+	blocks.Push (&b1);
 	blocks.Push (&b2);
 
 	// Generate
@@ -196,50 +186,63 @@ int main(int argc, char **argv) try
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol("UM");
+	sol->SetGeom(&g);
 
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
 
 	// Open collection for output
-	Output o; o.OpenCollection ("tbiot01");
+	Output out; out.OpenCollection ("tbiot01");
 
-	// Stage # 0: Stage performed to approach a stationary condition
-	double t = 0.0;
-	sol->SetNumDiv(4)->SetDeltaTime(1000000);
-	ebrys.Resize (0);
-	ebrys.Push   (make_tuple(-10, "ux",    0.0));
-	ebrys.Push   (make_tuple(-20, "ux",    0.0));
-	ebrys.Push   (make_tuple(-30, "uy",    0.0));
-	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
-	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-	g.ApplyBodyForces(); // <<<<<<< apply body forces
-	CallSolve    (0, sol);
-	o.VTU(&g, t+=1000000);
+	// Stage # -1 --------------------------------------------------------------
+	ebrys.Resize        (0);
+	ebrys.Push          (make_tuple(-10, "ux",    0.0));
+	ebrys.Push          (make_tuple(-20, "ux",    0.0));
+	ebrys.Push          (make_tuple(-30, "uy",    0.0));
+	ebrys.Push          (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push          (make_tuple(-50, "pwp",   0.0));
+	FEM::SetBrys        (&mesh, NULL, &ebrys, NULL, &g);
+	g.ApplyBodyForces   ();
+	sol->SolveWithInfo  (/*NDiv*/1, /*DTime*/1e+6, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+	//g.ClearDisplacements ();
+	out.VTU              (&g, sol->Time());
 
-	// Stage # 1: Load application
-	sol->SetNumDiv(4)->SetDeltaTime(0.0001);
-	ebrys.Resize (0);
-	ebrys.Push   (make_tuple(-10, "ux",    0.0));
-	ebrys.Push   (make_tuple(-20, "ux",    0.0));
-	ebrys.Push   (make_tuple(-30, "uy",    0.0));
-	ebrys.Push   (make_tuple(-40, "fy",   load));
-	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
-	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
-	CallSolve    (1, sol);
-	o.VTU(&g, t+=0.0001);
+	// Close collection
+	out.CloseCollection();
+	return 0;
 
-	// Output: VTU 
-	o.VTU (&g, "tbiot01_1.vtu");
-	cout << "[1;34mFile <tbiot01_1.vtu> saved.[0m\n\n";
+	// Stage # 0 --------------------------------------------------------------
+	ebrys.Resize       (0);
+	ebrys.Push         (make_tuple(-10, "ux",    0.0));
+	ebrys.Push         (make_tuple(-20, "ux",    0.0));
+	ebrys.Push         (make_tuple(-30, "uy",    0.0));
+	ebrys.Push         (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push         (make_tuple(-50, "pwp",   0.0));
+	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+	sol->SolveWithInfo (4, 1000000, 0, "  Generate stationary condition\n");
+	out.VTU            (&g, sol->Time());
+
+	// Stage # 1 --------------------------------------------------------------
+	ebrys.Resize       (0);
+	ebrys.Push         (make_tuple(-10, "ux",    0.0));
+	ebrys.Push         (make_tuple(-20, "ux",    0.0));
+	ebrys.Push         (make_tuple(-30, "uy",    0.0));
+	ebrys.Push         (make_tuple(-40, "fy",   load));
+	ebrys.Push         (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push         (make_tuple(-50, "pwp",   0.0));
+	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+	sol->SolveWithInfo (4, 0.0001, 1, "  Apply surface (footing) loading\n");
+	out.VTU            (&g, sol->Time());
+
+
+
+
 
 	// Calculate displacements after first stage
 	for (int i=0; i<SampleNodes.Size(); i++) 
 		Uy0(i) = g.Nod(SampleNodes(i))->Val("uy");
 
-	// Stage # 2.. : Consolidation
+	// Stage # 2+ -------------------------------------------------------------
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
@@ -249,21 +252,20 @@ int main(int argc, char **argv) try
 	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
-		sol->SetNumDiv(10)->SetDeltaTime(TimeIncs(i));
-		CallSolve    (i+2, sol);
+		sol->SolveWithInfo (10, TimeIncs(i), i+2, "  Consolidation\n");
 		for (int j=0; j<SampleNodes.Size(); j++)
 			OutUy(j,i) = (g.Nod(SampleNodes(j))->Val("uy") - Uy0(j))/(-winf); // Saving normalized vertical displacement
-		o.VTU(&g, t+=TimeIncs(i));
+		out.VTU (&g, sol->Time());
 	}
 
 	// Close collection
-	o.CloseCollection();
+	out.CloseCollection();
 
 	// Delete solver
 	delete sol;
 
 	OutUy.SetNS(Util::_8_4);
-	cout << "OutUy :" << endl << OutUy << endl;
+	cout << "\nOutUy :" << endl << OutUy << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

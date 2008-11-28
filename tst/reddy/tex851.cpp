@@ -151,16 +151,8 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	start = std::clock();
-	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	sol -> Solve();
-	total = std::clock() - start;
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
-	if (norm_resid>sqrt(DBL_EPSILON)) throw new Fatal("tex851: norm_resid=%e for quadrangular mesh is bigger than %e.",norm_resid,sqrt(DBL_EPSILON));
-	cout << endl;
+	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: Nodes

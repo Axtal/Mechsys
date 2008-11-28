@@ -104,14 +104,13 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	sol -> Solve(); ///*tIni*/0.0, /*tFin*/1.0, /*hIni*/0.001, /*DtOut*/0.01);
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "\n[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
-	if (norm_resid>1.0e-12) throw new Fatal("tex831: norm_resid=%e is bigger than %e.",norm_resid,1.0e-12);
-	cout << endl;
+	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SolveWithInfo();
 	delete sol;
+
+	// Output: VTU
+	Output o; o.VTU (&g, "tbeam02.vtu");
+	cout << "\n[1;34mFile <tbeam02.vtu> saved.[0m\n\n";
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << _8s<<"mz" << endl;
@@ -128,10 +127,6 @@ int main(int argc, char **argv) try
 		cout <<          _8s<<g.Ele(i)->Val(1, "N") << _8s<<g.Ele(i)->Val(1, "M") << _8s<<g.Ele(i)->Val(1, "V") << endl;
 	}
 	cout << endl;
-
-	// Output: VTU
-	Output o; o.VTU (&g, "tbeam02.vtu");
-	cout << "[1;34mFile <tbeam02.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

@@ -55,14 +55,12 @@ int main(int argc, char **argv) try
 	size_t nx      = 2;       // ndivs along x
 	size_t ny      = 7;       // ndivs along y
 	bool   is_o2   = false;   // use high order elements?
-	String linsol("UM");      // UMFPACK
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2  maxarea  linsol(LA,UM,SLU)\n";
-	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
-	if (argc>=3) nx         =  atof(argv[2]);
-	if (argc>=4) ny         =  atof(argv[3]);
-	if (argc>=5) linsol.Printf("%s",argv[4]);
+	cout << "Input: " << argv[0] << "  is_o2  maxarea\n";
+	if (argc>=2) is_o2 = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3) nx    =  atof(argv[2]);
+	if (argc>=4) ny    =  atof(argv[3]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
@@ -120,17 +118,11 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol -> SetGeom(&g) -> SetLinSol(linsol.CStr()) -> SetNumDiv(1) -> SetDeltaTime(0.0);
-	start = std::clock();
-	sol -> Solve();
-	total = std::clock() - start;
-	double norm_resid = LinAlg::Norm(sol->Resid());
-	cout << "Time elapsed (solution) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "[1;35mNorm(Resid=DFext-DFint) = " << norm_resid << "[0m\n";
-	cout << "[1;32mNumber of DOFs          = " << sol->nDOF() << "[0m\n";
+	sol->SetGeom(&g);
+	sol->SolveWithInfo();
 	delete sol;
 
-	cout << "Displacement at node 23: " << g.Nod(23)->Val("uy") << endl;
+	cout << "\nDisplacement at node 23: " << g.Nod(23)->Val("uy") << endl;
 
 	// Output: VTU
 	Output o; o.VTU (&g, "tstatic121.vtu");
