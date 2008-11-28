@@ -70,19 +70,19 @@ public:
 	virtual ~EquilibElem();
 
 	// Derived methods
-	virtual bool CheckModel   () const;
-	bool         IsEssential  (char const * Name) const;
-	virtual void SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void         SetProps     (char const * Properties);
-	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
-	virtual void UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	void         ApplyBodyForces();
-	virtual void BackupState  ();
-	virtual void RestoreState ();
-	void         GetLabels    (Array<String> & Labels) const;
-	char const * ModelName    () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
-	void         ClearStrains ();
-	void         SetActive    (bool Active);
+	virtual bool CheckModel          () const;
+	bool         IsEssential         (char const * Name) const;
+	virtual void SetModel            (char const * ModelName, char const * Prms, char const * Inis);
+	void         SetProps            (char const * Properties);
+	Element    * Connect             (int iNodeLocal, FEM::Node * ptNode);
+	virtual void UpdateState         (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void         ApplyBodyForces     ();
+	virtual void BackupState         ();
+	virtual void RestoreState        ();
+	void         GetLabels           (Array<String> & Labels) const;
+	char const * ModelName           () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
+	virtual void ClearDispAndStrains ();
+	void         SetActive           (bool Active);
 
 	// Derived methods to assemble DAS matrices
 	size_t       nOrder1Matrices () const { return 1; }
@@ -374,8 +374,14 @@ inline double EquilibElem::Val(char const * Name) const
 	return sum/_n_int_pts;
 }
 
-inline void EquilibElem::ClearStrains()
+inline void EquilibElem::ClearDispAndStrains()
 {
+	// Clear displacements
+	for (size_t i=0; i<_n_nodes; ++i)
+	for (int    j=0; j<_nd;      ++j)
+		_connects[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
+
+	// Clear strains
 	for (size_t i=0; i<_a_model.Size(); ++i) _a_model[i]->ClearStrain();
 }
 

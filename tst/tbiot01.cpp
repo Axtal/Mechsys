@@ -194,33 +194,18 @@ int main(int argc, char **argv) try
 	// Open collection for output
 	Output out; out.OpenCollection ("tbiot01");
 
-	// Stage # -1 --------------------------------------------------------------
-	ebrys.Resize        (0);
-	ebrys.Push          (make_tuple(-10, "ux",    0.0));
-	ebrys.Push          (make_tuple(-20, "ux",    0.0));
-	ebrys.Push          (make_tuple(-30, "uy",    0.0));
-	ebrys.Push          (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push          (make_tuple(-50, "pwp",   0.0));
-	FEM::SetBrys        (&mesh, NULL, &ebrys, NULL, &g);
-	g.ApplyBodyForces   ();
-	sol->SolveWithInfo  (/*NDiv*/1, /*DTime*/1e+6, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-	//g.ClearDisplacements ();
-	out.VTU              (&g, sol->Time());
-
-	// Close collection
-	out.CloseCollection();
-	return 0;
-
 	// Stage # 0 --------------------------------------------------------------
-	ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux",    0.0));
-	ebrys.Push         (make_tuple(-20, "ux",    0.0));
-	ebrys.Push         (make_tuple(-30, "uy",    0.0));
-	ebrys.Push         (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push         (make_tuple(-50, "pwp",   0.0));
-	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-	sol->SolveWithInfo (4, 1000000, 0, "  Generate stationary condition\n");
-	out.VTU            (&g, sol->Time());
+	ebrys.Resize         (0);
+	ebrys.Push           (make_tuple(-10, "ux",    0.0));
+	ebrys.Push           (make_tuple(-20, "ux",    0.0));
+	ebrys.Push           (make_tuple(-30, "uy",    0.0));
+	ebrys.Push           (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push           (make_tuple(-50, "pwp",   0.0));
+	FEM::SetBrys         (&mesh, NULL, &ebrys, NULL, &g);
+	g.ApplyBodyForces    ();
+	sol->SolveWithInfo   (4, 1e+6, 0, "  Initial stress state due to self weight (zero displacements)\n");
+	g.ClearDisplacements ();
+	out.VTU              (&g, sol->Time());
 
 	// Stage # 1 --------------------------------------------------------------
 	ebrys.Resize       (0);
@@ -233,10 +218,6 @@ int main(int argc, char **argv) try
 	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
 	sol->SolveWithInfo (4, 0.0001, 1, "  Apply surface (footing) loading\n");
 	out.VTU            (&g, sol->Time());
-
-
-
-
 
 	// Calculate displacements after first stage
 	for (int i=0; i<SampleNodes.Size(); i++) 

@@ -40,19 +40,20 @@ public:
 	char const * Name() const { return "Beam"; }
 
 	// Derived methods
-	bool   CheckModel   () const;
-	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void   UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	void   CalcDepVars  () const;
-	double Val          (int iNodeLocal, char const * Name) const;
-	double Val          (char const * Name) const;
-	void   Order1Matrix (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
-	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
-	int    VTKCellType  () const { return VTK_LINE; }
-	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
-	bool   HasExtra     () const { return true; }
-	void   OutExtra     (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
-	void   SetProps     (char const * Properties);
+	bool   CheckModel          () const;
+	void   SetModel            (char const * ModelName, char const * Prms, char const * Inis);
+	void   SetProps            (char const * Properties);
+	void   UpdateState         (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void   CalcDepVars         () const;
+	double Val                 (int iNodeLocal, char const * Name) const;
+	double Val                 (char const * Name) const;
+	void   Order1Matrix        (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
+	void   B_Matrix            (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
+	int    VTKCellType         () const { return VTK_LINE; }
+	void   VTKConnect          (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
+	bool   HasExtra            () const { return true; }
+	void   OutExtra            (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
+	void   ClearDispAndStrains ();
 
 	// Methods
 	Beam * EdgeBry (char const * Key, double q, int EdgeLocalID) { return EdgeBry(Key,q,q,EdgeLocalID); } ///< Set distributed load with key = q0 or q1
@@ -163,6 +164,21 @@ inline void Beam::SetModel(char const * ModelName, char const * Prms, char const
 	}
 }
 
+inline void Beam::SetProps(char const * Properties)
+{
+	/* "cq=1 */
+	LineParser lp(Properties);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
+
+	// Set
+	for (size_t i=0; i<names.Size(); ++i)
+	{
+		 if (names[i]=="cq") _use_cor = static_cast<bool>(values[i]); // cq == correct q
+	}
+}
+
 inline void Beam::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) displacements vector
@@ -222,6 +238,17 @@ inline double Beam::Val(int iNodeLocal, char const * Name) const
 inline double Beam::Val(char const * Name) const
 {
 	throw new Fatal("Beam::Val: Feature not available");
+}
+
+inline void Beam::ClearDispAndStrains()
+{
+	// Clear displacements
+	for (size_t i=0; i<_n_nodes; ++i)
+	for (int    j=0; j<_nd;      ++j)
+		_connects[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
+
+	// Clear strains
+	_uL.SetValues(0.0);
 }
 
 inline void Beam::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
@@ -343,20 +370,6 @@ inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<doubl
 	else throw new Fatal("Beam::OutExtra: Feature not available for nDim==%d",_ndim);
 }
 
-inline void Beam::SetProps(char const * Properties)
-{
-	/* "cq=1 */
-	LineParser lp(Properties);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		 if (names[i]=="cq") _use_cor = static_cast<bool>(values[i]); // cq == correct q
-	}
-}
 
 /* private */
 

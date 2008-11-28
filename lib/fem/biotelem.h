@@ -52,16 +52,16 @@ public:
 	virtual ~BiotElem() {}
 
 	// Derived methods
-	virtual bool CheckModel   () const;
-	bool         IsEssential  (char const * Name) const;
-	virtual void SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void         SetProps     (char const * Properties);
-	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
-	virtual void UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	void         ApplyBodyForces ();
-	void         GetLabels    (Array<String> & Labels) const;
-	char const * ModelName    () const { return "LinElastic/LinFlow"; }
-	void         ClearStrains ();
+	virtual bool CheckModel          () const;
+	bool         IsEssential         (char const * Name) const;
+	virtual void SetModel            (char const * ModelName, char const * Prms, char const * Inis);
+	void         SetProps            (char const * Properties);
+	Element    * Connect             (int iNodeLocal, FEM::Node * ptNode);
+	virtual void UpdateState         (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void         ApplyBodyForces     ();
+	void         GetLabels           (Array<String> & Labels) const;
+	char const * ModelName           () const { return "LinElastic/LinFlow"; }
+	void         ClearDispAndStrains ();
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder0Matrices () const { return 1; }                                                                                                              ///< Number of zero order matrices: H:Permeability.
@@ -416,8 +416,14 @@ inline double BiotElem::Val(char const * Name) const
 	throw new Fatal("BiotElem::Val: Feature not implemented yet");
 }
 
-inline void BiotElem::ClearStrains()
+inline void BiotElem::ClearDispAndStrains()
 {
+	// Clear displacements
+	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t j=0; j<NDE[_d];  ++j) // NDE[_d] == nDOFs Equilibrium
+		_connects[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
+
+	// Clear strains
 	for (size_t i=0; i<_strain.Size(); ++i) _strain[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 }
 

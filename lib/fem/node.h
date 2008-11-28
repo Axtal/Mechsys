@@ -84,7 +84,6 @@ public:
 	void   RemoveSharedBy (int ElementID);                                                     ///< Remove an element which shares this node
 	bool   HasVar         (char const * Name) const { return (_find_var(Name)<0?false:true); } ///< Check if this node has a variable, such as ux, fx, etc., named Name
 	void   ClearBryValues ();                                                                  ///< Clear only boundary information, but does NOT change (calculated) EssentialVal and NaturalVal (U and F values)
-	void   ClearEssenVals ();                                                                  ///< Clear only essential values
 
 	// DOFs access methods
 	DOF       & DOFVar (char const * Name);                       ///< Access a DOF structure by name (read/write)
@@ -198,12 +197,6 @@ inline void Node::ClearBryValues()
 		_dofs[i].IsEssenPresc = false;
 		_dofs[i].EqID         = -1;
 	}
-}
-
-inline void Node::ClearEssenVals()
-{
-	for (size_t i=0; i<_dofs.Size(); ++i)
-		_dofs[i].EssentialVal = 0.0;
 }
 
 // Set methods

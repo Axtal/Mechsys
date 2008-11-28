@@ -62,8 +62,8 @@ public:
 	virtual Element * FaceBry    (char const * Key, double Value, int FaceLocalID);                ///< Set face boundary conditions (SetDim MUST be called first)
 
 	// Specific set methods
-	virtual void ClearStrains () {}              ///< Clear strains (for equilibrium/coupled problems)
-	virtual void SetActive    (bool Activate) {} ///< Activate element (construction/excavation)
+	virtual void ClearDispAndStrains () {}              ///< Clear displacements and strains (for equilibrium/coupled problems)
+	virtual void SetActive           (bool Activate) {} ///< Activate element (construction/excavation)
 
 	// Get methods
 	bool         CheckConnect ()         const;                         ///< Check if connectivity is OK
