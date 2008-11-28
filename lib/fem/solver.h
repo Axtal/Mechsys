@@ -311,6 +311,14 @@ inline void Solver::Solve(int NDiv, double DTime)
 	// Solve
 	for (_inc=0; _inc<NDiv; ++_inc) _do_solve_for_an_increment (dTime);
 
+	std::cout << _dF_ext << std::endl;
+	std::cout << _dU_ext << std::endl;
+	std::cout << _U_bkp  << std::endl;
+	std::cout << _F_bkp  << std::endl;
+	std::cout << _hKU    << std::endl;
+	std::cout << _dF_int << std::endl;
+	std::cout << _resid  << std::endl;
+
 	// Update time
 	_time += DTime;
 }
@@ -973,6 +981,7 @@ public:
 	PySolver & SetGeom        (FEM::Geom & G)                                                         { _sol->SetGeom      (&G);                                     return (*this); }
 	PySolver & SetLinSol      (BPy::str const & Key)                                                  { _sol->SetLinSol    (BPy::extract<char const *>(Key)());      return (*this); }
 	PySolver & SetCte         (BPy::str const & Key, double Val)                                      { _sol->SetCte       (BPy::extract<char const *>(Key)(), Val); return (*this); }
+	double     Time           () const                                                                { return _sol->Time(); }
 	void       Solve          (int NDiv=1, double DTime=0.0)                                          { _sol->Solve         (NDiv, DTime); }
 	void       SolveWithInfo1 (int NDiv=1, double DTime=0.0, int iStage=0)                            { _sol->SolveWithInfo (NDiv, DTime, iStage); }
 	void       SolveWithInfo2 (int NDiv,   double DTime,     int iStage,   BPy::str const & MoreInfo) { _sol->SolveWithInfo (NDiv, DTime, iStage, BPy::extract<char const *>(MoreInfo)()); }

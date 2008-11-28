@@ -28,6 +28,11 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (tembank01   ${LIBS})
 	SET_TARGET_PROPERTIES (tembank01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
+	ADD_EXECUTABLE        (tembank02   tembank02.cpp)
+	ADD_TEST              (tembank02   tembank02)
+	TARGET_LINK_LIBRARIES (tembank02   ${LIBS})
+	SET_TARGET_PROPERTIES (tembank02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (tterz01   tterz01.cpp)
 	ADD_TEST              (tterz01   tterz01)
 	TARGET_LINK_LIBRARIES (tterz01   ${LIBS})

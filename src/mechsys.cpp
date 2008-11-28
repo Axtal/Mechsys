@@ -185,6 +185,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("bounds_3d",           &FEM::Geom::PyBounds3D)
 	    .def("apply_body_forces",   &FEM::Geom::ApplyBodyForces)
 	    .def("clear_displacements", &FEM::Geom::ClearDisplacements)
+	    .def("activate",            &FEM::Geom::Activate)
 	    .def(self_ns::str(self))
 	    ;
 
@@ -193,6 +194,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_lin_sol",     &PySolver::SetLinSol,      return_internal_reference<>())
 	    .def("set_cte",         &PySolver::SetCte,         return_internal_reference<>())
 	    .def("solve",           &PySolver::Solve,          SO_Solve())
+	    .def("time",            &PySolver::Time)
 	    .def("solve_with_info", &PySolver::SolveWithInfo1, SO_SolveWithInfo1())
 	    .def("solve_with_info", &PySolver::SolveWithInfo2)
 	    ;

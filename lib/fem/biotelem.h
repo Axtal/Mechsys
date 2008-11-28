@@ -228,6 +228,11 @@ inline void BiotElem::SetModel(char const * ModelName, char const * Prms, char c
 		_strain[i].Resize(6);
 		_strain[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 	}
+
+	std::cout << "_geom() = " << _geom() << "   ndim=" << _ndim << "   _n_int_pts=" << _n_int_pts << std::endl;
+	std::cout << "_Ke = " << _Ke << std::endl;
+	std::cout << "stress = \n"; for (size_t i=0; i<6; ++i) std::cout << _stress[i]; std::cout << std::endl;
+	//std::cout << "strain = \n"; for (size_t i=0; i<6; ++i) std::cout << _strain[i]; std::cout << std::endl;
 }
 
 inline void BiotElem::SetProps(char const * Properties)
