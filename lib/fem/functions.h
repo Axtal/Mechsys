@@ -235,7 +235,6 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 						if (tag==(*FacesBrys)[k].get<0>())
 						{
 							G->Ele(i)->FaceBry ((*FacesBrys)[k].get<1>(), (*FacesBrys)[k].get<2>(), j);
-							break; // go to the next element on boundary
 						}
 					}
 				}
@@ -259,7 +258,6 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 						if (tag==(*EdgesBrys)[k].get<0>())
 						{
 							G->Ele(i)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), j);
-							break; // go to the next element on boundary
 						}
 					}
 				}
