@@ -133,6 +133,8 @@ public:
 	virtual void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
 	virtual void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< First order matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
 
+	friend std::ostream & operator<< (std::ostream & os, FEM::Element const & E);
+
 protected:
 	// Data (may be accessed by derived classes)
 	long               _my_id;          ///< The ID of this element
@@ -150,6 +152,8 @@ protected:
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
 	virtual void _set_ndim(int nDim) =0;
 	virtual void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
+
+	virtual String     _out_info() const { return "";}
 
 }; // class Element
 
@@ -507,6 +511,7 @@ std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 	os << "[" << E.GetID() << "] " << E.Name() << " " << E.ModelName() << "\n";
 	for (size_t i=0; i<E.NNodes(); ++i)
 		if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
+	os << E._out_info();
 	return os;
 }
 

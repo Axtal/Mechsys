@@ -45,9 +45,11 @@
 #include "models/equilibmodel.h"
 #include "util/string.h"
 #include "util/util.h"
+#include "util/numstreams.h"
 #include "linalg/laexpr.h"
 
 using Util::SQ2;
+using Util::_12_6;
 
 namespace FEM
 {
@@ -108,7 +110,8 @@ protected:
 	virtual void _calc_initial_internal_state (); ///< Calculate initial internal state
 
 	// Private methods that MUST be derived
-	virtual int  _geom() const =0;               ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	virtual int    _geom()     const =0;               ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	virtual String _out_info() const;
 
 private:
 	void _equations_map(Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
@@ -592,6 +595,9 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 		return;
 	}
 
+	// Check if the element is active
+	if (_is_active==false) return;
+
 	// Normal traction boundary condition
 	LinAlg::Matrix<double> values;  values.Resize(_n_face_nodes, _ndim);  values.SetValues(0.0);
 	LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
@@ -633,6 +639,19 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 		              FaceConnects[i]->Bry("fy",values(i,1));
 		if (_ndim==3) FaceConnects[i]->Bry("fz",values(i,2));
 	}
+}
+
+inline String EquilibElem::_out_info() const
+{
+	std::ostringstream oss;    // Output structure
+
+	oss << std::endl <<  "Values in element [" << _my_id << "]:" << std::endl;
+	for (size_t i=0; i<_n_int_pts; i++)
+	{
+		oss << "Stress (Sx,Sy,Sz) at IP[" << i << "] : " << _12_6 << _a_model[i]->Val("Sx"); oss << _12_6 << _a_model[i]->Val("Sy"); oss << _12_6 << _a_model[i]->Val("Sz") << std::endl;
+		oss << "Strain (Ex,Ey,Ez) at IP[" << i << "] : " << _12_6 << _a_model[i]->Val("Ex"); oss << _12_6 << _a_model[i]->Val("Ey"); oss << _12_6 << _a_model[i]->Val("Ez") << std::endl;
+	}
+	return oss.str();
 }
 
 }; // namespace FEM

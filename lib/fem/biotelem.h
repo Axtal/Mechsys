@@ -23,11 +23,13 @@
 #include "fem/element.h"
 #include "util/string.h"
 #include "util/util.h"
+#include "util/numstreams.h"
 #include "linalg/laexpr.h"
 #include "tensors/tensors.h"
 #include "tensors/functions.h"
 
 using Util::SQ2;
+using Util::_12_6;
 using Tensors::Tensor2;
 using Tensors::Tensor4;
 
@@ -96,6 +98,7 @@ protected:
 
 	// Private methods that MUST be derived
 	virtual int  _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	virtual String _out_info() const;
 
 private:
 	void _dist_to_face_nodes  (char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const;
@@ -881,6 +884,19 @@ inline double BiotElem::_val_ip(size_t iIP, char const * Name) const
 	else if (strcmp(Name,"H" )==0) return 0.0;
 
 	else throw new Fatal("BiotElem::_val_ip: Name==%s if not available for this element",Name);
+}
+
+inline String BiotElem::_out_info() const
+{
+	std::ostringstream oss;    // Output structure
+
+	oss << std::endl <<  "Values in element [" << _my_id << "]:" << std::endl;
+	for (size_t i=0; i<_n_int_pts; i++)
+	{
+		oss << "Stress (Sx,Sy,Sz) at IP[" << i << "] : " << _12_6 << _stress[i](0) << _12_6 << _stress[i](1) << _12_6 << _stress[i](2) << std::endl;
+		oss << "Strain (Ex,Ey,Ez) at IP[" << i << "] : " << _12_6 << _strain[i](0) << _12_6 << _strain[i](1) << _12_6 << _strain[i](2) << std::endl;
+	}
+	return oss.str();
 }
 
 }; // namespace FEM
