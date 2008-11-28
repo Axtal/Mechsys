@@ -56,15 +56,15 @@ public:
 	virtual ~Element() {}
 
 	// Set methods
-	void              SetID     (long ID, int Tag=0) { _my_id=ID; _tag=Tag;   }    ///< Set the ID (and Tag) of this element
-	void              SetDim    (int nDim)           { _set_ndim(nDim);       }    ///< Set the number of dimension of the problem
-	void              SetActive (bool IsActive=true) { _is_active = IsActive; }    ///< Activate/deactivate the element
-	virtual Element * FaceBry   (char const * Key, double Value, int FaceLocalID); ///< Set face boundary conditions (SetDim MUST be called first)
-	virtual Element * EdgeBry   (char const * Key, double Value, int EdgeLocalID); ///< Set edge boundary conditions (SetDim MUST be called first)
+	void              Initialize (long ID, bool IsActive, int nDim, int Tag);                      ///< Initialize the element
+	virtual Element * EdgeBry    (char const * Key, double Value, int EdgeLocalID);                ///< Set edge boundary conditions (SetDim MUST be called first)
+	virtual Element * EdgeBry    (char const * Key, double V0, double V1, int ID) { return this; } ///< Set edge boundary conditions (SetDim MUST be called first) ID = EdgeLocalID
+	virtual Element * FaceBry    (char const * Key, double Value, int FaceLocalID);                ///< Set face boundary conditions (SetDim MUST be called first)
 
-	// Set methods
-	virtual Element * EdgeBry (char const * Key, double Value0, double Value1, int EdgeLocalID) { return this; } ///< Set edge boundary conditions (SetDim MUST be called first)
-	
+	// Specific set methods
+	virtual void ClearStrains () {}              ///< Clear strains (for equilibrium/coupled problems)
+	virtual void SetActive    (bool Activate) {} ///< Activate element (construction/excavation)
+
 	// Get methods
 	bool         CheckConnect ()         const;                         ///< Check if connectivity is OK
 	bool         Check        (String & Message) const;                 ///< Check if everything is OK and element is ready for simulations
@@ -160,6 +160,14 @@ protected:
 /* public */
 
 // Set and get methods
+
+inline void Element::Initialize(long ID, bool IsActive, int nDim, int Tag)
+{
+	_my_id     = ID;
+	_is_active = IsActive;
+	_set_ndim (nDim);
+	_tag       = Tag;
+}
 
 inline Element * Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)
 {

@@ -72,7 +72,6 @@ public:
 	void         BackupState  ();
 	void         RestoreState ();
 	void         GetLabels    (Array<String> & Labels) const;
-	void         Deactivate   ();
 	char const * ModelName    () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
 
 	// Derived methods to assemble DAS matrices
@@ -146,7 +145,7 @@ inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, c
 			_a_model[i]->SetPrms (Prms);
 			_a_model[i]->SetInis (Inis);
 		}
-		_calc_initial_internal_state();
+		if (_is_active) _calc_initial_internal_state();
 	}
 	else throw new Fatal("DiffusionElem::SetModel: Feature not implemented.");
 }
@@ -354,11 +353,6 @@ inline double DiffusionElem::Val(char const * Name) const
 
 	// Output single value at CG
 	return sum/_n_int_pts;
-}
-
-inline void DiffusionElem::Deactivate()
-{
-	throw new Fatal("DiffusionElem::Deactivate: Feature not implemented in this element");
 }
 
 // Derived methods to assemble DAS matrices

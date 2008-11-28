@@ -1,3 +1,4 @@
+tst/tembank01
 tst/tbiot01
 tst/tterz01
 tst/tlinalg01
@@ -45,5 +46,6 @@ install_manifest.txt
 .cproject
 .project
 .DS_Store
+*.pvd
 *.vtu
 *.vtk

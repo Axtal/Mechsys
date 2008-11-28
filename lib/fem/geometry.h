@@ -52,11 +52,11 @@ public:
 	void      SetNNodes (size_t NNodes);                                              ///< Set the number of nodes
 	void      SetNElems (size_t NElems);                                              ///< Set the number of elements
 	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0, int Tag=0);      ///< Set a node
-	Element * SetElem   (size_t i, char const * Type, bool IsActive=true, int Tag=0); ///< Set an element
+	Element * SetElem   (size_t i, char const * Type, bool IsActive, int Tag);        ///< Set an element
 
-	void ApplyBodyForces() { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ApplyBodyForces(); } ///< ApplyBodyForces
-
-	Array<Element*> & ElemsWithTag (int Tag); ///< Return the elements with for a given tag
+	// Specific methods
+	void ApplyBodyForces    () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ApplyBodyForces(); } ///< Apply body forces (equilibrium/coupled problems)
+	void ClearDisplacements ();                                                                         ///< Clear displacements (equilibrium/coupled problems)
 
 	// Beam
 	void      SetNBeams (size_t NBeams) { _beams.Resize(NBeams); _beams.SetValues(NULL); _btags.Resize(NBeams); }
@@ -66,19 +66,20 @@ public:
 	int       BTag      (size_t iBeam) { return _btags[iBeam]; }
 
 	// Access methods
-	bool                    Check     ();                                        ///< Check if Nodes and Elements were allocated properly. Should be called before accessing Nodes and Elements, since these may not had been allocated yet (and then causing Segfaults).
-	size_t                  NNodes    ()         const { return _nodes.Size(); } ///< Return the number of nodes
-	size_t                  NElems    ()         const { return _elems.Size(); } ///< Return the number of elements
-	Node                  * Nod       (size_t i)       { return _nodes[i];     } ///< Access (read/write) a node
-	Element               * Ele       (size_t i)       { return _elems[i];     } ///< Access (read/write) an element
-	Node            const * Nod       (size_t i) const { return _nodes[i];     } ///< Access (read-only) a node
-	Element         const * Ele       (size_t i) const { return _elems[i];     } ///< Access (read-only) an element
-	Array<Node*>          & Nodes     ()               { return _nodes;        } ///< Access all nodes (read/write)
-	Array<Element*>       & Elems     ()               { return _elems;        } ///< Access all elements (read/write)
-	Array<Node*>    const & Nodes     ()         const { return _nodes;        } ///< Access all nodes (read-only)
-	Array<Element*> const & Elems     ()         const { return _elems;        } ///< Access all elements (read-only)
-	void                    Bounds    (double & MinX, double & MinY, double & MaxX, double & MaxY) const;                               ///< Return the limits of the geometry
-	void                    Bounds    (double & MinX, double & MinY, double & MinZ, double & MaxX, double & MaxY, double & MaxZ) const; ///< Return the limits of the geometry
+	bool                    Check        ();                                        ///< Check if Nodes and Elements were allocated properly. Should be called before accessing Nodes and Elements, since these may not had been allocated yet (and then causing Segfaults).
+	size_t                  NNodes       ()         const { return _nodes.Size(); } ///< Return the number of nodes
+	size_t                  NElems       ()         const { return _elems.Size(); } ///< Return the number of elements
+	Node                  * Nod          (size_t i)       { return _nodes[i];     } ///< Access (read/write) a node
+	Element               * Ele          (size_t i)       { return _elems[i];     } ///< Access (read/write) an element
+	Node            const * Nod          (size_t i) const { return _nodes[i];     } ///< Access (read-only) a node
+	Element         const * Ele          (size_t i) const { return _elems[i];     } ///< Access (read-only) an element
+	Array<Node*>          & Nodes        ()               { return _nodes;        } ///< Access all nodes (read/write)
+	Array<Element*>       & Elems        ()               { return _elems;        } ///< Access all elements (read/write)
+	Array<Node*>    const & Nodes        ()         const { return _nodes;        } ///< Access all nodes (read-only)
+	Array<Element*> const & Elems        ()         const { return _elems;        } ///< Access all elements (read-only)
+	Array<Element*> &       ElemsWithTag (int Tag);                                 ///< Return the elements with for a given tag
+	void                    Bounds       (double & MinX, double & MinY, double & MaxX, double & MaxY) const;                               ///< Return the limits of the geometry
+	void                    Bounds       (double & MinX, double & MinY, double & MinZ, double & MaxX, double & MaxY, double & MaxZ) const; ///< Return the limits of the geometry
 
 #ifdef USE_BOOST_PYTHON
 // {
@@ -96,11 +97,11 @@ public:
 
 private:
 	// Data
-	int             _dim;   ///< Space dimension
-	Array<Node*>    _nodes; ///< FE nodes
-	Array<Element*> _elems; ///< FE elements
-	Array<Element*> _beams; ///< Beams
-	Array<int>      _btags; ///< Beam tags
+	int                     _dim;             ///< Space dimension
+	Array<Node*>            _nodes;           ///< FE nodes
+	Array<Element*>         _elems;           ///< FE elements
+	Array<Element*>         _beams;           ///< Beams
+	Array<int>              _btags;           ///< Beam tags
 	std::map<int,size_t>    _elem_tag_idx;    ///< Map Tag => Idx, where Idx is the index inside _elems_with_tags
 	Array<Array<Element*> > _elems_with_tags; ///< Element with tags
 
@@ -140,9 +141,7 @@ inline Node * Geom::SetNode(size_t i, double X, double Y, double Z, int Tag)
 inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive, int Tag)
 {
 	if (_elems[i]==NULL) _elems[i] = AllocElement(Type);
-	_elems[i]->SetID     (i, Tag);
-	_elems[i]->SetDim    (_dim);
-	_elems[i]->SetActive (IsActive);
+	_elems[i]->Initialize (/*ID*/i, IsActive, _dim, Tag);
 	if (Tag!=0)
 	{
 		if (_elem_tag_idx.count(Tag)==0) // tag not set
@@ -156,10 +155,13 @@ inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive, int T
 	return _elems[i];
 }
 
-inline Array<Element*> & Geom::ElemsWithTag(int Tag)
+inline void Geom::ClearDisplacements()
 {
-	if (_elem_tag_idx.count(Tag)==0) throw new Fatal("Geom::Elems: This Tag==%d was not set for any Element",Tag);
-	return _elems_with_tags[_elem_tag_idx[Tag]];
+	// Clear Nodes displacements
+	for (size_t i=0; i<_nodes.Size(); ++i) _nodes[i]->ClearEssenVals();
+
+	// Clear Elements strain
+	for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ClearStrains();
 }
 
 inline bool Geom::Check()
@@ -174,6 +176,12 @@ inline bool Geom::Check()
 	for (size_t i=0; i<NElems(); ++i) if (_elems[i]==NULL) return false;
 
 	return true; // OK
+}
+
+inline Array<Element*> & Geom::ElemsWithTag(int Tag)
+{
+	if (_elem_tag_idx.count(Tag)==0) throw new Fatal("Geom::Elems: This Tag==%d was not set for any Element",Tag);
+	return _elems_with_tags[_elem_tag_idx[Tag]];
 }
 
 inline void Geom::Bounds(double & MinX, double & MinY, double & MaxX, double & MaxY) const
@@ -209,6 +217,7 @@ inline void Geom::Bounds(double & MinX, double & MinY, double & MinZ, double & M
 		if (Nod(i)->Z() > MaxZ) MaxZ = Nod(i)->Z();
 	}
 }
+
 
 /** Outputs a geometry. */
 std::ostream & operator<< (std::ostream & os, FEM::Geom const & G)

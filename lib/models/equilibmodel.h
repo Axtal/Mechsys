@@ -52,6 +52,7 @@ public:
 	void SetGeom     (int Type) { _geom = Type; }                          ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	void TgStiffness (Matrix<double> & Dmat) const;                        ///< Tangent stiffness tensor
 	int  StateUpdate (Vector<double> const & DEps, Vector<double> & DSig); ///< Update stress/strain state for given strain increment
+	void ClearStrain () { _eps=0.0,0.0,0.0, 0.0,0.0,0.0; _eps_bkp=_eps; }  ///< Clear strain
 
 	// Access methods
 	void   CalcDepVars () const;                        ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.

@@ -80,8 +80,9 @@ public:
 	virtual void BackupState  ();
 	virtual void RestoreState ();
 	void         GetLabels    (Array<String> & Labels) const;
-	void         Deactivate   ();
 	char const * ModelName    () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
+	void         ClearStrains ();
+	void         SetActive    (bool Active);
 
 	// Derived methods to assemble DAS matrices
 	size_t       nOrder1Matrices () const { return 1; }
@@ -174,7 +175,7 @@ inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, cha
 			_a_model[i]->SetPrms (Prms);
 			_a_model[i]->SetInis (Inis);
 		}
-		_calc_initial_internal_state ();
+		if (_is_active) _calc_initial_internal_state ();
 	}
 	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
 }
@@ -204,11 +205,14 @@ inline Element * EquilibElem::Connect(int iNodeLocal, FEM::Node * ptNode)
 	// Connectivity
 	_connects[iNodeLocal] = ptNode;
 
-	// Add Degree of Freedom to a node (Essential, Natural)
-	for (int i=0; i<_nd; ++i) _connects[iNodeLocal]->AddDOF (UD[_d][i], FD[_d][i]);
+	if (_is_active)
+	{
+		// Add Degree of Freedom to a node (Essential, Natural)
+		for (int i=0; i<_nd; ++i) _connects[iNodeLocal]->AddDOF (UD[_d][i], FD[_d][i]);
 
-	// Set shared
-	_connects[iNodeLocal]->SetSharedBy(_my_id);
+		// Set shared
+		_connects[iNodeLocal]->SetSharedBy(_my_id);
+	}
 
 	return this;
 }
@@ -367,9 +371,31 @@ inline double EquilibElem::Val(char const * Name) const
 	return sum/_n_int_pts;
 }
 
-inline void EquilibElem::Deactivate()
+inline void EquilibElem::ClearStrains()
 {
-	throw new Fatal("EquilibElem::Deactivate: Feature not implemented yet");
+	for (size_t i=0; i<_a_model.Size(); ++i) _a_model[i]->ClearStrain();
+}
+
+inline void EquilibElem::SetActive(bool Activate)
+{
+	if (_is_active==false && Activate)
+	{
+		// Set active
+		_is_active = true;
+
+		for (size_t i=0; i<_connects.Size(); ++i)
+		{
+			// Add Degree of Freedom to a node (Essential, Natural)
+			for (int j=0; j<_nd; ++j) _connects[i]->AddDOF (UD[_d][j], FD[_d][j]);
+
+			// Set SharedBy
+			_connects[i]->SetSharedBy (_my_id);
+		}
+
+		// Apply body forces
+		ApplyBodyForces ();
+	}
+	else throw new Fatal("EquilibElem::SetActive: Deactivation (excavation) is not available yet");
 }
 
 

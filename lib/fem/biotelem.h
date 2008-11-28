@@ -60,8 +60,8 @@ public:
 	virtual void UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
 	void         ApplyBodyForces ();
 	void         GetLabels    (Array<String> & Labels) const;
-	void         Deactivate   ();
 	char const * ModelName    () const { return "LinElastic/LinFlow"; }
+	void         ClearStrains ();
 
 	// Derived methods to assemble DAS matrices
 	size_t nOrder0Matrices () const { return 1; }                                                                                                              ///< Number of zero order matrices: H:Permeability.
@@ -416,11 +416,10 @@ inline double BiotElem::Val(char const * Name) const
 	throw new Fatal("BiotElem::Val: Feature not implemented yet");
 }
 
-inline void BiotElem::Deactivate()
+inline void BiotElem::ClearStrains()
 {
-	throw new Fatal("BiotElem::Deactivate: Feature not implemented yet");
+	for (size_t i=0; i<_strain.Size(); ++i) _strain[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 }
-
 
 // Derived methods to assemble DAS matrices
 
