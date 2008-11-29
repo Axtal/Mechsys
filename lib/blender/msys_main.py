@@ -104,6 +104,7 @@ EVT_FEM_SCRIPT       = 102 # generate script for FEM
 EVT_FEM_PARAVIEW     = 103 # view in ParaView
 # Results
 EVT_RES_SHOWHIDE     = 200 # show/hide results box
+EVT_RES_ATNODE       = 201 # show results at a node
 
 
 # ==================================================================================== Events
@@ -251,6 +252,28 @@ def button_event(evt):
     # ----------------------------------------------------------------------------------- RES 
 
     elif evt==EVT_RES_SHOWHIDE: di.toggle_key('gui_show_res')
+    elif evt==EVT_RES_ATNODE:
+        edm, obj, msh = di.get_msh()
+        verts = msh.verts.selected()
+        if not obj.properties.has_key('res'):
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('Please, run analysis first')
+        if len(verts)==0:
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('Please, select at least 1 vertex')
+        if len(verts)>4:
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('Please, select at most 4 vertices')
+        msg = []
+        for vidx in verts:
+            msg.append('  Node # %d'%(vidx))
+            for k, key in di.key('dfv').iteritems():
+                if obj.properties['res'].has_key(key):
+                    msg.append('    %s = %g'%(key,obj.properties['res'][key][vidx]))
+        print 'Results:'
+        for item in msg: print item
+        Blender.Draw.PupBlock('Results:',msg)
+        if edm: Blender.Window.EditMode(1)
 
 
 # ================================================================================= Callbacks
@@ -514,8 +537,6 @@ def gui():
     ebrys    = {}
     fbrys    = {}
     eatts    = {}
-    r_dfvmnu = d['dfvmnu']
-    r_extmnu = d['extmnu']
     if obj!=None:
         if obj.properties.has_key('3dmesh'):  is3d     = obj.properties['3dmesh']
         else:      obj.properties['3dmesh']            = False
@@ -530,7 +551,6 @@ def gui():
         if obj.properties.has_key('ebrys'):   ebrys    = obj.properties['ebrys']
         if obj.properties.has_key('fbrys'):   fbrys    = obj.properties['fbrys']
         if obj.properties.has_key('eatts'):   eatts    = obj.properties['eatts']
-        if obj.properties.has_key('res'):     r_dfvmnu = obj.properties['res']['dfvmnu']
 
     # materials menu
     matmnu = 'Materials %t'
@@ -570,7 +590,7 @@ def gui():
     h_fem_fbrys     = rh+srg+rh*len(fbrys)
     h_fem_eatts     = rh+srg+rh*len(eatts)
     h_fem           = 8*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
-    h_res           = 4*rh
+    h_res           = 5*rh
 
     # clear background
     gu.background()
@@ -701,10 +721,10 @@ def gui():
             r -= rh
             i  = int(k)
             Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 60, rh, int(v[0]), -100,-1,'Region tag',                  cb_regs_tag)
-            Draw.String     ('',         EVT_INC+i, c+ 60, r, 60, rh, str(v[1]),   32,   'Max area (-1 => use default)',cb_regs_maxarea)
-            Draw.String     ('',         EVT_INC+i, c+120, r, 60, rh, str(v[2]),   32,   'X of the region',             cb_regs_setx)
-            Draw.String     ('',         EVT_INC+i, c+180, r, 60, rh, str(v[3]),   32,   'Y of the region',             cb_regs_sety)
-            Draw.String     ('',         EVT_INC+i, c+240, r, 60, rh, str(v[4]),   32,   'Z of the region',             cb_regs_setz)
+            Draw.String     ('',         EVT_INC+i, c+ 60, r, 60, rh, '%g'%v[1],   32,   'Max area (-1 => use default)',cb_regs_maxarea)
+            Draw.String     ('',         EVT_INC+i, c+120, r, 60, rh, '%g'%v[2],   32,   'X of the region',             cb_regs_setx)
+            Draw.String     ('',         EVT_INC+i, c+180, r, 60, rh, '%g'%v[3],   32,   'Y of the region',             cb_regs_sety)
+            Draw.String     ('',         EVT_INC+i, c+240, r, 60, rh, '%g'%v[4],   32,   'Z of the region',             cb_regs_setz)
             Draw.PushButton ('Del',      EVT_INC+i, c+300, r, 40, rh,                    'Delete this row',             cb_regs_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
@@ -719,9 +739,9 @@ def gui():
             r -= rh
             i  = int(k)
             gu.label        (str(i),            c    , r, 40, rh)
-            Draw.String     ('',     EVT_INC+i, c+ 40, r, 60, rh, str(v[0]), 32, 'X of the hole',   cb_hols_setx)
-            Draw.String     ('',     EVT_INC+i, c+100, r, 60, rh, str(v[1]), 32, 'Y of the hole',   cb_hols_sety)
-            Draw.String     ('',     EVT_INC+i, c+160, r, 60, rh, str(v[2]), 32, 'Z of the hole',   cb_hols_setz)
+            Draw.String     ('',     EVT_INC+i, c+ 40, r, 60, rh, '%g'%v[0], 32, 'X of the hole',   cb_hols_setx)
+            Draw.String     ('',     EVT_INC+i, c+100, r, 60, rh, '%g'%v[1], 32, 'Y of the hole',   cb_hols_sety)
+            Draw.String     ('',     EVT_INC+i, c+160, r, 60, rh, '%g'%v[2], 32, 'Z of the hole',   cb_hols_setz)
             Draw.PushButton ('Del',  EVT_INC+i, c+220, r, 40, rh,                'Delete this row', cb_hols_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
@@ -889,16 +909,18 @@ def gui():
     gu.caption1(c,r,w,rh,'RESULTS',EVT_REFRESH,EVT_RES_SHOWHIDE)
     if d['gui_show_res']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_res)
-        Draw.Toggle ('ON/OFF', EVT_NONE, c    , r-rh, 60, 2*rh, d['show_res'],             'Show results'               , cb_res_show)
-        Draw.Menu   (r_dfvmnu, EVT_NONE, c+ 60, r,    40,   rh, d['res_dfv']+1,            'Key such as ux, uy, fx, fz' , cb_res_dfv)
-        Draw.Toggle ('Scalar', EVT_NONE, c+100, r,    60,   rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
-        Draw.String ('sf=' ,   EVT_NONE, c+160, r,    60,   rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
-        Draw.Toggle ('Warp',   EVT_NONE, c+220, r,    60,   rh, d['res_show_warp']   ,     'Show warped (deformed) mesh', cb_res_show_warp)
+        Draw.Toggle ('ON/OFF',    EVT_NONE, c    , r-rh, 60, 2*rh, d['show_res'],             'Show results'               , cb_res_show)
+        Draw.Menu   (d['dfvmnu'], EVT_NONE, c+ 60, r,    40,   rh, d['res_dfv']+1,            'Key such as ux, uy, fx, fz' , cb_res_dfv)
+        Draw.Toggle ('Scalar',    EVT_NONE, c+100, r,    60,   rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
+        Draw.String ('sf=' ,      EVT_NONE, c+160, r,    60,   rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
+        Draw.Toggle ('Warp',      EVT_NONE, c+220, r,    60,   rh, d['res_show_warp']   ,     'Show warped (deformed) mesh', cb_res_show_warp)
         r -= rh
-        Draw.Menu   (r_extmnu, EVT_NONE, c+ 60, r, 40, rh, d['res_ext']+1,                 'Key such as N, M, V'     , cb_res_ext)
-        Draw.String ('sf=' ,   EVT_NONE, c+100, r, 60, rh, d['res_ext_scale']  , 32,       'Set extra drawing scale' , cb_res_ext_scale)
-        Draw.Toggle ('Extra',  EVT_NONE, c+160, r, 60, rh, d['res_show_extra'] ,           'Show extra output'       , cb_res_show_ext)
-        Draw.Toggle ('Values', EVT_NONE, c+220, r, 60, rh, d['res_ext_txt'] ,              'Show extra values'       , cb_res_ext_txt)
+        Draw.Menu   (d['extmnu'], EVT_NONE, c+ 60, r,    40,   rh, d['res_ext']+1,            'Key such as N, M, V'     , cb_res_ext)
+        Draw.String ('sf=' ,      EVT_NONE, c+100, r,    60,   rh, d['res_ext_scale']  , 32,  'Set extra drawing scale' , cb_res_ext_scale)
+        Draw.Toggle ('Extra',     EVT_NONE, c+160, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
+        Draw.Toggle ('Values',    EVT_NONE, c+220, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
+        r -= rh
+        Draw.PushButton ('At Node', EVT_RES_ATNODE, c, r, 60, rh, 'Show results at a specific Node')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rg
 

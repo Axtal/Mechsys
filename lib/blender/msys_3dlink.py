@@ -200,7 +200,7 @@ if di.key('show_res'):
 
                 # draw scalars text
                 if di.key('res_show_scalar'):
-                    key = di.key('dfv')[obj.properties['res']['l2g'][str(di.key('res_dfv'))]]
+                    key = di.key('dfv')[di.key('res_dfv')]
                     BGL.glColor3f (0.0, 0.0, 0.0)
                     for v in msh.verts:
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
@@ -216,7 +216,7 @@ if di.key('show_res'):
                         if len(uy)==0: uy = [0 for i in range(len(msh.verts))]
                         if len(uz)==0: uz = [0 for i in range(len(msh.verts))]
                         m = float(di.key('res_warp_scale'))
-                        BGL.glColor3f (0.85, 0.85, 0.85)
+                        BGL.glColor3f (1.0, 1.0, 1.0)
                         for e in msh.edges:
                             BGL.glBegin    (BGL.GL_LINES)
                             BGL.glVertex3f (e.v1.co[0]+m*ux[e.v1.index], e.v1.co[1]+m*uy[e.v1.index], e.v1.co[2]+m*uz[e.v1.index])

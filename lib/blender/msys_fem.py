@@ -187,23 +187,9 @@ def set_geo(obj,nbrys,ebrys,fbrys,eatts, gen_script=False,txt=None):
 
 
 def save_results(geo,obj):
-    # check what variables are available
-    obj.properties['res']        = {}
-    obj.properties['res']['l2g'] = {}             # dof vars map: local to global
-    dfvmnu                       = 'DOF Vars %t|' # dof vars menu
-    i                            = 0
-    for k, v in di.key('dfv').iteritems():
-        try:
-            val = geo.nod(0).val(v)
-            obj.properties['res']['l2g'][str(i)] = k
-            dfvmnu += v+' %x'+str(i+1)+'|'
-            i += 1
-        except: pass
-    obj.properties['res']['dfvmnu'] = dfvmnu
-
-    # save values in object
-    for k, v in obj.properties['res']['l2g'].iteritems():
-        key  = di.key('dfv')[v]
+    # save results at nodes
+    obj.properties['res'] = {}
+    for k, key in di.key('dfv').iteritems():
         vals = []
         for i in range(geo.nnodes()):
             try:    vals.append(geo.nod(i).val(key))
