@@ -77,8 +77,8 @@ def load_dict():
         dict['extmnu'] = 'Extra output %t|V %x3|M %x2|N %x1'
 
         # DOF Vars
-        dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q', 8:'Q', 9:'wz', 10:'mz', 11:'Qb' }
-        dict['dfvmnu'] = 'DOF Vars %t|Qb %x12|mz %x11|wz %x10|Q %x9|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
+        dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'q', 8:'Q', 9:'wz', 10:'mz', 11:'Qb', 12:'pwp', 13:'vol' }
+        dict['dfvmnu'] = 'DOF Vars %t|vol %x14|pwp %x13|Qb %x12|mz %x11|wz %x10|Q %x9|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
 
         # Element types
         dict['ety']  = {  0:'Hex8Equilib',    1:'Hex8Diffusion',

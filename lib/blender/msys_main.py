@@ -105,6 +105,7 @@ EVT_FEM_PARAVIEW     = 103 # view in ParaView
 # Results
 EVT_RES_SHOWHIDE     = 200 # show/hide results box
 EVT_RES_ATNODE       = 201 # show results at a node
+EVT_RES_STATS        = 202 # show statistics
 
 
 # ==================================================================================== Events
@@ -261,18 +262,37 @@ def button_event(evt):
         if len(verts)==0:
             if edm: Blender.Window.EditMode(1)
             raise Exception('Please, select at least 1 vertex')
-        if len(verts)>4:
+        if len(verts)>3:
             if edm: Blender.Window.EditMode(1)
-            raise Exception('Please, select at most 4 vertices')
+            raise Exception('Please, select at most 3 vertices')
         msg = []
         for vidx in verts:
-            msg.append('  Node # %d'%(vidx))
+            msg.append('--- Node # %d -----'%(vidx))
             for k, key in di.key('dfv').iteritems():
                 if obj.properties['res'].has_key(key):
-                    msg.append('    %s = %g'%(key,obj.properties['res'][key][vidx]))
+                    val = obj.properties['res'][key][vidx]
+                    msg.append('  %s = %g'%(key,val))
         print 'Results:'
         for item in msg: print item
         Blender.Draw.PupBlock('Results:',msg)
+        if edm: Blender.Window.EditMode(1)
+    elif evt==EVT_RES_STATS:
+        edm, obj, msh = di.get_msh()
+        if not obj.properties.has_key('res'):
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('Please, run analysis first')
+        stat = {}
+        for k, key in di.key('dfv').iteritems():
+            mi = min(obj.properties['res'][key])
+            ma = max(obj.properties['res'][key])
+            stat[key] = [mi,ma]
+        print 'Statistics:'
+        print '  %4s:[min, max]'%'key'
+        msg = ['key:[min, max]']
+        for k, v in stat.iteritems():
+            print '  %4s:[%g, %g]'%(k,v[0],v[1])
+            msg.append('%s:[%g, %g]'%(k,v[0],v[1]))
+        Blender.Draw.PupBlock('Statistics:',msg)
         if edm: Blender.Window.EditMode(1)
 
 
@@ -920,7 +940,8 @@ def gui():
         Draw.Toggle ('Extra',     EVT_NONE, c+160, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
         Draw.Toggle ('Values',    EVT_NONE, c+220, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
         r -= rh
-        Draw.PushButton ('At Node', EVT_RES_ATNODE, c, r, 60, rh, 'Show results at a specific Node')
+        Draw.PushButton ('At Node', EVT_RES_ATNODE, c,    r, 60, rh, 'Show results at a specific Node')
+        Draw.PushButton ('Stats',   EVT_RES_STATS,  c+60, r, 60, rh, 'Show statistics')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rg
 
