@@ -146,7 +146,7 @@ def try_catch(func):
     return wrapper
 
 # Handle button events
-#@try_catch
+@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -281,12 +281,13 @@ def button_event(evt):
         if len(verts)>3:
             if edm: Blender.Window.EditMode(1)
             raise Exception('Please, select at most 3 vertices')
-        msg = []
+        s   = str(di.key('res_stage'))
+        msg = ['=== Stage # '+s+' =====']
         for vidx in verts:
             msg.append('--- Node # %d -----'%(vidx))
             for k, key in di.key('dfv').iteritems():
-                if obj.properties['res'].has_key(key):
-                    val = obj.properties['res'][key][vidx]
+                if obj.properties['res'][s].has_key(key):
+                    val = obj.properties['res'][s][key][vidx]
                     msg.append('  %s = %g'%(key,val))
         print 'Results:'
         for item in msg: print item
@@ -297,14 +298,16 @@ def button_event(evt):
         if not obj.properties.has_key('res'):
             if edm: Blender.Window.EditMode(1)
             raise Exception('Please, run analysis first')
+        s    = str(di.key('res_stage'))
         stat = {}
         for k, key in di.key('dfv').iteritems():
-            mi = min(obj.properties['res'][key])
-            ma = max(obj.properties['res'][key])
+            mi = min(obj.properties['res'][s][key])
+            ma = max(obj.properties['res'][s][key])
             stat[key] = [mi,ma]
         print 'Statistics:'
+        print '=== Stage # '+s+' ====='
         print '  %4s:[min, max]'%'key'
-        msg = ['key:[min, max]']
+        msg = ['=== Stage # '+s+' =====', 'key:[min, max]']
         for k, v in stat.iteritems():
             print '  %4s:[%g, %g]'%(k,v[0],v[1])
             msg.append('%s:[%g, %g]'%(k,v[0],v[1]))

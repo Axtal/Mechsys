@@ -162,22 +162,22 @@ int main(int argc, char **argv) try
 	out.VTU              (&g, sol->Time());
 
 	// Stage # 0 ---------------------------------------------------------------
-    ebrys.Resize(0);
+	g.Activate         (/*Tag*/-2);
+    ebrys.Resize       (0);
 	ebrys.Push         (make_tuple(-10, "ux",  0.0));
 	ebrys.Push         (make_tuple(-11, "uy",  0.0));
 	ebrys.Push         (make_tuple(-13, "pwp", 0.0));
 	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-	g.Activate         (/*Tag*/-2);
 	sol->SolveWithInfo (10, 1e+2, 0, "  Construction of first layer\n");
 	out.VTU            (&g, sol->Time());
 
 	// Stage # 1 ---------------------------------------------------------------
-    ebrys.Resize(0);
+	g.Activate         (/*Tag*/-3);
+    ebrys.Resize       (0);
 	ebrys.Push         (make_tuple(-10, "ux",  0.0));
 	ebrys.Push         (make_tuple(-11, "uy",  0.0));
 	ebrys.Push         (make_tuple(-14, "pwp", 0.0));
 	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-	g.Activate         (/*Tag*/-3);
 	sol->SolveWithInfo (10, 1e+2, 0, "  Construction of second layer\n");
 	out.VTU            (&g, sol->Time());
 

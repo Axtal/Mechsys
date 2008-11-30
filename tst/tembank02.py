@@ -91,16 +91,16 @@ g.clear_displacements ()
 out.vtu               (g, sol.time())
 
 # Stage # 0 ---------------------------------------------------------------
+g.activate            (-2)
 ebrys = [[-10, "ux",  0.0], [-11, "uy",  0.0], [-13, "pwp", 0.0]]
 ms.set_brys           (mesh, [], ebrys, [], g)
-g.activate            (-2)
 sol.solve_with_info   (10, 1e+2, 0, "  Construction of first layer\n")
 out.vtu               (g, sol.time())
 
 # Stage # 1 ---------------------------------------------------------------
+g.activate            (-3)
 ebrys = [[-10, "ux",  0.0], [-11, "uy",  0.0], [-14, "pwp", 0.0]]
 ms.set_brys           (mesh, [], ebrys, [], g)
-g.activate            (-3)
 sol.solve_with_info   (10, 1e+2, 0, "  Construction of second layer\n")
 out.vtu               (g, sol.time())
 

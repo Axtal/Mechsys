@@ -345,8 +345,15 @@ def run_analysis(gen_script=False):
                     dtime = v[5]
                     break
 
-            # boundary conditions
+            # activate and deactivate elements
             txt.write ('\n# Stage # %d --------------------------------------------------------------\n'%num)
+            act, deact = get_act_deact (obj,stg)
+            for k, v in act.iteritems():
+                if v: txt.write ('geo.activate (%d)\n'%(k))
+            for k, v in deact.iteritems():
+                if v: txt.write ('geo.deactivate (%d)\n'%(k))
+
+            # boundary conditions
             nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
             txt.write ('nbrys = '+nbrys.__str__()+'\n')
             txt.write ('ebrys = '+ebrys.__str__()+'\n')
@@ -354,13 +361,6 @@ def run_analysis(gen_script=False):
             txt.write ('ms.set_brys             (mesh, nbrys, ebrys, fbrys, geo)\n')
             for nb in nbsID:
                 txt.write ('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
-
-            # activate and deactivate elements
-            act, deact = get_act_deact (obj,stg)
-            for k, v in act.iteritems():
-                if v: txt.write ('geo.activate            (%d)\n'%(k))
-            for k, v in deact.iteritems():
-                if v: txt.write ('geo.deactivate          (%d)\n'%(k))
 
             # apply body forces
             if abf: txt.write ('geo.apply_body_forces   ()\n')
@@ -425,17 +425,17 @@ def run_analysis(gen_script=False):
                     dtime = v[5]
                     break
 
-            # boundary conditions
-            nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
-            ms.set_brys (mesh, nbrys, ebrys, fbrys, geo)
-            for nb in nbsID: geo.nod(nb[0]).bry(nb[1],nb[2])
-
             # activate and deactivate elements
             act, deact = get_act_deact (obj,stg)
             for k, v in act.iteritems():
                 if v: geo.activate(k)
             for k, v in deact.iteritems():
                 if v: geo.deactivate(k)
+
+            # boundary conditions
+            nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
+            ms.set_brys (mesh, nbrys, ebrys, fbrys, geo)
+            for nb in nbsID: geo.nod(nb[0]).bry(nb[1],nb[2])
 
             # apply body forces
             if abf: geo.apply_body_forces()

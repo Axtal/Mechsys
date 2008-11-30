@@ -213,9 +213,6 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 
 	*/
 
-	// Erase previous boundary conditions
-	for (size_t i=0; i<G->NNodes(); ++i) G->Nod(i)->ClearBryValues();
-
 	// 3D mesh?
 	bool is3d = M->Is3D();
 

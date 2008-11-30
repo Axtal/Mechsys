@@ -313,6 +313,9 @@ inline void Solver::Solve(int NDiv, double DTime)
 
 	// Update time
 	_time += DTime;
+
+	// Clear boundary conditions for a next stage
+	for (size_t i=0; i<_g->NNodes(); ++i) _g->Nod(i)->ClearBryValues();
 }
 
 inline void Solver::SolveWithInfo(int NDiv, double DTime, int iStage, char const * MoreInfo)

@@ -156,18 +156,20 @@ int main(int argc, char **argv) try
 	out.VTU              (&g, sol->Time());
 
 	// Stage # 0 ---------------------------------------------------------------
+	g.Activate         (/*Tag*/-2);
+    ebrys.Resize       (0);
 	ebrys.Push         (make_tuple(-10, "ux", 0.0));
 	ebrys.Push         (make_tuple(-11, "uy", 0.0));
 	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-	g.Activate         (/*Tag*/-2);
 	sol->SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
 	out.VTU            (&g, sol->Time());
 
 	// Stage # 1 ---------------------------------------------------------------
+	g.Activate         (/*Tag*/-3);
+    ebrys.Resize       (0);
 	ebrys.Push         (make_tuple(-10, "ux", 0.0));
 	ebrys.Push         (make_tuple(-11, "uy", 0.0));
 	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-	g.Activate         (/*Tag*/-3);
 	sol->SolveWithInfo (1, 3.0, 0, "  Construction of second layer\n");
 	out.VTU            (&g, sol->Time());
 
