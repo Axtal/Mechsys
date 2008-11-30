@@ -198,19 +198,22 @@ if di.key('show_res'):
                 ori = msh.verts[:] # create a copy before transforming to global coordinates
                 msh.transform(obj.matrix)
 
+                # current stage
+                s = str(di.key('res_stage'))
+
                 # draw scalars text
                 if di.key('res_show_scalar'):
                     key = di.key('dfv')[di.key('res_dfv')]
                     BGL.glColor3f (0.0, 0.0, 0.0)
                     for v in msh.verts:
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
-                        Draw.Text         ('%g' % obj.properties['res'][key][v.index])
+                        Draw.Text         ('%g' % obj.properties['res'][s][key][v.index])
 
                 # draw warped mesh
                 if di.key('res_show_warp'):
-                    ux = obj.properties['res']['ux'] if obj.properties['res'].has_key('ux') else []
-                    uy = obj.properties['res']['uy'] if obj.properties['res'].has_key('uy') else []
-                    uz = obj.properties['res']['uz'] if obj.properties['res'].has_key('uz') else []
+                    ux = obj.properties['res'][s]['ux'] if obj.properties['res'][s].has_key('ux') else []
+                    uy = obj.properties['res'][s]['uy'] if obj.properties['res'][s].has_key('uy') else []
+                    uz = obj.properties['res'][s]['uz'] if obj.properties['res'][s].has_key('uz') else []
                     if len(ux)>0 or len(uy)>0 or len(uz)>0:
                         if len(ux)==0: ux = [0 for i in range(len(msh.verts))]
                         if len(uy)==0: uy = [0 for i in range(len(msh.verts))]
@@ -223,24 +226,24 @@ if di.key('show_res'):
                             BGL.glVertex3f (e.v2.co[0]+m*ux[e.v2.index], e.v2.co[1]+m*uy[e.v2.index], e.v2.co[2]+m*uz[e.v2.index])
                             BGL.glEnd      ()
 
-                if di.key('res_show_extra') and obj.properties['res'].has_key('extra'):
+                if di.key('res_show_extra') and len(obj.properties['res'][s]['extra'])>0:
                     clrs = [(0.276,0.276,1.0), (0.934, 0.643, 0.19), (0.69,0.81,0.57)]
                     exts = ['N', 'M', 'V']
                     idx  = di.key('res_ext')
                     ext  = exts[idx]
                     sca  = float(di.key('res_ext_scale'))
                     BGL.glColor3f (clrs[idx][0], clrs[idx][1], clrs[idx][2])
-                    for ide in obj.properties['res']['extra']:
+                    for ide in obj.properties['res'][s]['extra']:
                         key   = 'max_'+ext
-                        maxv  = obj.properties['res'][key] if obj.properties['res'][key]>0 else 1.0
-                        va    =        obj.properties['res']['extra'][ide]['values']
-                        co    =        obj.properties['res']['extra'][ide]['coords']
-                        no    = Vector(obj.properties['res']['extra'][ide]['normal'])
+                        maxv  = obj.properties['res'][s][key] if obj.properties['res'][s][key]>0 else 1.0
+                        va    =        obj.properties['res'][s]['extra'][ide]['values']
+                        co    =        obj.properties['res'][s]['extra'][ide]['coords']
+                        no    = Vector(obj.properties['res'][s]['extra'][ide]['normal'])
                         m     = va[ext][0]
-                        sf    = m*obj.properties['res']['length']*sca/maxv
+                        sf    = m*obj.properties['res'][s]['length']*sca/maxv
                         epold = Vector([co['X'][0], co['Y'][0]]) - sf*no
                         for i, m in enumerate(va[ext]):
-                            sf = m*obj.properties['res']['length']*sca/maxv
+                            sf = m*obj.properties['res'][s]['length']*sca/maxv
                             sp = Vector([co['X'][i], co['Y'][i]])
                             ep = sp - sf*no
                             BGL.glBegin    (BGL.GL_LINES)

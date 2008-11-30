@@ -34,7 +34,7 @@ def load_dict():
         dict                  = {}
         # GUI
         dict['gui_show_set']  = True
-        dict['gui_show_cad']  = True
+        dict['gui_show_cad']  = False
         dict['gui_show_mesh'] = True
         dict['gui_show_mat']  = True
         dict['gui_show_fem']  = True
@@ -61,10 +61,10 @@ def load_dict():
         dict['newetag']       = [-10, 0]         # tag, type
         dict['newftag']       = [-100, 0x000080] # tag, colour
         # FEM
-        dict['fem_stage']     = 0
+        dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
         # RESULTS
-        dict['res_stage']       = 0
+        dict['res_stage']       = 1      # stage num
         dict['show_res']        = False
         dict['res_dfv']         = 0
         dict['res_show_scalar'] = False
@@ -217,14 +217,15 @@ def new_mat_props():
              18130.0,     #   7:  G -- shear modulus (kPa) (CamClay)
                  1.6910,  #   8:  v -- initial specific volume (CamClay)
                  1.0,     #   9:  A -- Beam: Area
-                 1.0 ]    #  10:  Izz -- Beam: Inertia
+                 1.0,     #  10:  Izz -- Beam: Inertia
+                 -1  ]    #  11:  ids_description(in texts)
 
-def new_stage_props(): return [1, -1, 0, 0]                     # number, idx_desc(in texts), apply_body_forces?, clear_disps?
+def new_stage_props(): return [1, -1, 0, 0, 1, 0.0]             # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val
 def new_fbry_props():  return [-100, 0, 0.0, key('newftag')[1]] # tag, ux, val, colour
-def new_eatt_props():  return [-1, 2, -1, -1, 1]                # tag, ElemType, MaterialID, idx_props(in texts), active?
+def new_eatt_props():  return [-1, 2, -1, -1, 1, 0, 0]          # tag, ElemType, MaterialID, idx_props(in texts), active?, activate?, deactivate?
 
 
 # ============================================================================== Object Properties
@@ -284,6 +285,29 @@ def props_del_all(key):
         obj.properties.pop(key)
         Blender.Window.QRedrawAll()
 
+# ------------------------------------------------------------------------------ Materials
+
+def props_push_new_mat():
+    obj = get_obj()
+    mid = props_push_new('mats', new_mat_props()) # returns material_id == mid
+    tid = props_push_new('texts', 'material')     # returns text_id     == tid
+    props_set_item('mats',mid,11,tid)             # description
+    Blender.Window.QRedrawAll()
+
+def props_del_all_mats():
+    obj = get_obj()
+    msg = 'Confirm delete ALL materials?%t|Yes'
+    res  = Blender.Draw.PupMenu(msg)
+    if res>0:
+        # delete description
+        for mid, v in obj.properties['mats'].iteritems():
+            tid = str(int(v[11])) # text_id
+            obj.properties['texts'].pop(tid)
+        if len(obj.properties['texts'])==0: obj.properties.pop('texts')
+        # delete all materials
+        obj.properties.pop('mats')
+        Blender.Window.QRedrawAll()
+
 # ------------------------------------------------------------------------------ Stages
 
 def props_push_new_stage():
@@ -296,50 +320,66 @@ def props_push_new_stage():
     props_set_item('stages',sid,1,tid)  # description
     obj.properties[stg] = {}
     set_key('fem_stage', sid)
+    if nst>1:
+        # copy eatts from first stage
+        for k, v in obj.properties['stages'].iteritems():
+            if int(v[0])==1: # first stage
+                obj.properties[stg] = obj.properties['stg_'+k]
+                break
+        # add new text for properties
+        if obj.properties[stg].has_key('eatts'):
+            for k, v in obj.properties[stg]['eatts'].iteritems():
+                tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
+                obj.properties[stg]['eatts'][k][3] = tid
     Blender.Window.QRedrawAll()
 
-def props_push_new_fem(key,props):
+def props_push_new_fem(stage_ids,key,props):
     obj = get_obj()
-    stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
-    if not obj.properties[stg].has_key(key): obj.properties[stg][key] = {}
-    id = 0
-    while obj.properties[stg][key].has_key(str(id)): id += 1
-    obj.properties[stg][key][str(id)] = props
-    if key=='eatts':
-        tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
-        props_set_fem('eatts',id,3,tid)
+    for sid in stage_ids:
+        stg = 'stg_'+str(sid)
+        if not obj.properties[stg].has_key(key): obj.properties[stg][key] = {}
+        id = 0
+        while obj.properties[stg][key].has_key(str(id)): id += 1
+        obj.properties[stg][key][str(id)] = props
+        if key=='eatts':
+            tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
+            obj.properties[stg]['eatts'][str(id)][3] = tid
     Blender.Window.QRedrawAll()
 
-def props_set_fem(key,id,item,val):
-    stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
+def props_set_fem(stage_ids,key,id,item,val):
     obj = get_obj()
-    obj.properties[stg][key][str(id)][item] = val
+    for sid in stage_ids:
+        stg = 'stg_'+str(sid)
+        obj.properties[stg][key][str(id)][item] = val
     Blender.Window.QRedrawAll()
 
-def props_del_fem(key,id):
+def props_del_fem(stage_ids,key,id):
     msg = 'Confirm delete this item?%t|Yes'
     res = Blender.Draw.PupMenu(msg)
     if res>0:
-        stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
-        obj = get_obj()
-        if key=='eatts':
-            tid = str(obj.properties[stg][key][str(id)][3])
-            obj.properties['texts'].pop(tid)
-        obj.properties[stg][key].pop(str(id))
-        if len(obj.properties[stg][key])==0: obj.properties[stg].pop(key)
+        for sid in stage_ids:
+            stg = 'stg_'+str(sid)
+            obj = get_obj()
+            if key=='eatts':
+                tid = str(obj.properties[stg][key][str(id)][3])
+                if obj.properties['texts'].has_key(tid): obj.properties['texts'].pop(tid)
+            obj.properties[stg][key].pop(str(id))
+            if len(obj.properties[stg][key])==0: obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
 
-def props_del_all_fem(key):
+def props_del_all_fem(stage_ids,key):
     obj = get_obj()
     msg = 'Confirm delete ALL?%t|Yes'
     res  = Blender.Draw.PupMenu(msg)
     if res>0:
-        stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
-        if key=='eatts':
-            for k, v in obj.properties[stg][key].iteritems():
-                tid = str(v[3])
-                obj.properties['texts'].pop(tid)
-        obj.properties[stg].pop(key)
+        for sid in stage_ids:
+            stg = 'stg_'+str(sid)
+            if obj.properties[stg].has_key(key):
+                if key=='eatts':
+                    for k, v in obj.properties[stg][key].iteritems():
+                        tid = str(v[3])
+                        obj.properties['texts'].pop(tid)
+                obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
 
 def props_del_stage():
@@ -348,7 +388,7 @@ def props_del_stage():
     if res>0:
         obj = get_obj()
         sid = str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
-        tid = str(obj.properties['stages'][sid][1])
+        tid = str(int(obj.properties['stages'][sid][1]))
         stg = 'stg_'+sid
         # delete eatt text
         if obj.properties[stg].has_key('eatts'):
@@ -357,15 +397,15 @@ def props_del_stage():
         # delete description
         obj.properties['texts'].pop(tid)
         # delete stage
-        num = obj.properties['stages'][sid][0]
+        num = int(obj.properties['stages'][sid][0])
         obj.properties['stages'].pop(sid)
         obj.properties.pop(stg)
         # reset other stages numbers and set current fem_stage
         for k, v in obj.properties['stages'].iteritems():
-            other_num = obj.properties['stages'][k][0]
+            other_num = int(obj.properties['stages'][k][0])
             if other_num>num:
                 obj.properties['stages'][k][0] = other_num-1
-            if obj.properties['stages'][k][0]==1: set_key('fem_stage', int(k))
+            if int(obj.properties['stages'][k][0])==1: set_key('fem_stage', int(k))
         # delete 'stages' and 'texts'
         if len(obj.properties['stages'])==0: obj.properties.pop('stages')
         if len(obj.properties['texts'] )==0: obj.properties.pop('texts')
@@ -379,7 +419,7 @@ def props_del_all_stages():
     if res>0:
         for sid, v in obj.properties['stages'].iteritems():
             # delete description
-            obj.properties['texts'].pop(str(v[1])) # v[1] == text ID
+            obj.properties['texts'].pop(str(int(v[1]))) # v[1] == text ID
             # delete eatt text
             stg = 'stg_'+sid
             if obj.properties[stg].has_key('eatts'):

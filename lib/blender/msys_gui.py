@@ -25,6 +25,30 @@ def label(txt, c,r,w,h):
     BGL.glColor3f     (0.0, 0.0, 0.0)
     BGL.glRasterPos2i (c+5, r+5)
     Draw.Text         (txt)
+    # frame
+    BGL.glColor3f  (0.3, 0.3, 0.3)
+    BGL.glBegin    (BGL.GL_LINE_LOOP)
+    BGL.glVertex2i (c,   r)
+    BGL.glVertex2i (c+w, r)
+    BGL.glVertex2i (c+w, r+h)
+    BGL.glVertex2i (c,   r+h)
+    BGL.glEnd      ()
+
+def label_(txt, c,r,w,h):
+    l = len(txt)*10
+    BGL.glColor3f     (0.663, 0.663, 0.663)
+    BGL.glRecti       (c, r, c+w, r+h)
+    BGL.glColor3f     (0.0, 0.0, 0.0)
+    BGL.glRasterPos2i (c+5+(w-l)/2, r+2+(h-12)/2)
+    Draw.Text         (txt)
+    # frame
+    BGL.glColor3f  (0.3, 0.3, 0.3)
+    BGL.glBegin    (BGL.GL_LINE_LOOP)
+    BGL.glVertex2i (c,   r)
+    BGL.glVertex2i (c+w, r)
+    BGL.glVertex2i (c+w, r+h)
+    BGL.glVertex2i (c,   r+h)
+    BGL.glEnd      ()
 
 def text(c,r, txt):
     BGL.glColor3f     (0.0, 0.0, 0.0)
@@ -102,6 +126,13 @@ def caption3(c,r,w,rh, lab, evt_add,evt_delall):
     Draw.Text         (lab)
     Draw.PushButton   ('Add',        evt_add,    c+w-5-60-80, r+2, 60, rh-4, 'Add ')
     Draw.PushButton   ('Delete all', evt_delall, c+w-5-80,    r+2, 80, rh-4, 'Delete all ')
+
+def caption3_(c,r,w,rh, lab):
+    BGL.glColor3f     (0.53, 0.54, 0.6)
+    BGL.glRecti       (c, r, c+w, r+rh)
+    BGL.glColor3f     (1.0, 1.0, 1.0)
+    BGL.glRasterPos2i (c+5, r+5)
+    Draw.Text         (lab)
 
 def box3_in(W,cg,rh, c,r,w,h):
     BGL.glColor3f (0.82, 0.82, 0.9)
