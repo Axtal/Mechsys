@@ -343,43 +343,46 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
 
 @print_timing
 def set_elems(obj, nelems, elems):
-    obj.properties['nelems'] = nelems
-    obj.properties['elems']  = elems
-    obj.properties['eatts']  = {}
-    temp                     = {}
-    id                       = 0
+    stg                          = 'stg_'+str(di.key('fem_stage')) # stage
+    obj.properties['nelems']     = nelems
+    obj.properties['elems']      = elems
+    obj.properties[stg]['eatts'] = {}
+    temp                         = {}
+    id                           = 0
     for i, tag in enumerate(obj.properties['elems']['tags']):
         if not temp.has_key(tag):
             temp[tag] = True
-            obj.properties['eatts'][str(id)]    = di.new_eatt_props()
-            obj.properties['eatts'][str(id)][0] = tag
-            obj.properties['eatts'][str(id)][1] = di.key('vtk2ety')[obj.properties['elems']['vtks'][i]]
+            obj.properties[stg]['eatts'][str(id)]    = di.new_eatt_props()
+            obj.properties[stg]['eatts'][str(id)][0] = tag
+            obj.properties[stg]['eatts'][str(id)][1] = di.key('vtk2ety')[obj.properties['elems']['vtks'][i]]
             id += 1
 
 
 @print_timing
 def set_etags(obj, msh, etags):
-    obj.properties['etags'] = {}
-    obj.properties['ebrys'] = {}
-    temp                    = {}
-    id                      = 0
+    stg                          = 'stg_'+str(di.key('fem_stage')) # stage
+    obj.properties['etags']      = {}
+    obj.properties[stg]['ebrys'] = {}
+    temp                         = {}
+    id                           = 0
     for k, v in etags.iteritems():
         tag = v
         eid = msh.findEdges (k[0], k[1])
         obj.properties['etags'][str(eid)] = [tag, 0] # tag, type
         if not temp.has_key(tag):
             temp[tag] = True
-            obj.properties['ebrys'][str(id)]    = di.new_ebry_props()
-            obj.properties['ebrys'][str(id)][0] = tag
+            obj.properties[stg]['ebrys'][str(id)]    = di.new_ebry_props()
+            obj.properties[stg]['ebrys'][str(id)][0] = tag
             id += 1
 
 
 @print_timing
 def set_ftags(obj, msh, ftags, fclrs):
-    obj.properties['ftags'] = {}
-    obj.properties['fbrys'] = {}
-    temp                    = {}
-    id                      = 0
+    stg                          = 'stg_'+str(di.key('fem_stage')) # stage
+    obj.properties['ftags']      = {}
+    obj.properties[stg]['fbrys'] = {}
+    temp                         = {}
+    id                           = 0
     for k, v in ftags.iteritems():
         tag  = v
         vids = k.split('_')
@@ -392,9 +395,9 @@ def set_ftags(obj, msh, ftags, fclrs):
         obj.properties['ftags'][eids] = [tag, fclrs[tag]] # tag, colour
         if not temp.has_key(tag):
             temp[tag] = True
-            obj.properties['fbrys'][str(id)]    = di.new_fbry_props()
-            obj.properties['fbrys'][str(id)][0] = tag
-            obj.properties['fbrys'][str(id)][3] = fclrs[tag]
+            obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
+            obj.properties[stg]['fbrys'][str(id)][0] = tag
+            obj.properties[stg]['fbrys'][str(id)][3] = fclrs[tag]
             id += 1
 
 
@@ -426,6 +429,9 @@ def add_mesh(msm, fclrs={}, frame=False):
 
     # Frame mesh ?
     new_obj.properties['frame'] = frame
+
+    # new stage
+    di.props_push_new_stage()
 
     # set elements
     elems  = {}

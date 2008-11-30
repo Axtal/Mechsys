@@ -61,8 +61,10 @@ def load_dict():
         dict['newetag']       = [-10, 0]         # tag, type
         dict['newftag']       = [-100, 0x000080] # tag, colour
         # FEM
+        dict['fem_stage']     = 0
         dict['fullsc']        = False # generate full script (for FEA)
         # RESULTS
+        dict['res_stage']       = 0
         dict['show_res']        = False
         dict['res_dfv']         = 0
         dict['res_show_scalar'] = False
@@ -217,11 +219,12 @@ def new_mat_props():
                  1.0,     #   9:  A -- Beam: Area
                  1.0 ]    #  10:  Izz -- Beam: Inertia
 
-def new_nbry_props(): return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
-def new_nbID_props(): return [0, 0, 0.0]                       # ID, ux, val
-def new_ebry_props(): return [-10, 0, 0.0]                     # tag, ux, val
-def new_fbry_props(): return [-100, 0, 0.0, key('newftag')[1]] # tag, ux, val, colour
-def new_eatt_props(): return [-1, 2, -1, 1]                    # tag ElemType MaterialID Properties
+def new_stage_props(): return [1, -1, 0, 0]                     # number, idx_desc(in texts), apply_body_forces?, clear_disps?
+def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
+def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
+def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val
+def new_fbry_props():  return [-100, 0, 0.0, key('newftag')[1]] # tag, ux, val, colour
+def new_eatt_props():  return [-1, 2, -1, -1, 1]                # tag, ElemType, MaterialID, idx_props(in texts), active?
 
 
 # ============================================================================== Object Properties
@@ -244,14 +247,19 @@ def props_push_new(key,props,check=False,ic=0,fc=0):
             for i in range(ic,fc): eds.append(v[i])
             if props[ic:fc]==eds: raise Exception('Property was already added')
     id = 0
-    while obj.properties[key].has_key(str(id)):
-        id += 1
+    while obj.properties[key].has_key(str(id)): id += 1
     obj.properties[key][str(id)] = props
     Blender.Window.QRedrawAll()
+    return id
 
 def props_set_item(key,id,item,val):
     obj = get_obj()
     obj.properties[key][str(id)][item] = val
+    Blender.Window.QRedrawAll()
+
+def props_set_text(key,id,txt):
+    obj = get_obj()
+    obj.properties[key][str(id)] = txt
     Blender.Window.QRedrawAll()
 
 def props_del(key,id):
@@ -275,6 +283,116 @@ def props_del_all(key):
     if res>0:
         obj.properties.pop(key)
         Blender.Window.QRedrawAll()
+
+# ------------------------------------------------------------------------------ Stages
+
+def props_push_new_stage():
+    obj = get_obj()
+    sid = props_push_new('stages', new_stage_props()) # returns stage_id == sid
+    tid = props_push_new('texts', 'simulation stage') # returns text_id  == tid
+    stg = 'stg_'+str(sid)
+    nst = len(obj.properties['stages']) # number of stages
+    props_set_item('stages',sid,0,nst)  # num
+    props_set_item('stages',sid,1,tid)  # description
+    obj.properties[stg] = {}
+    set_key('fem_stage', sid)
+    Blender.Window.QRedrawAll()
+
+def props_push_new_fem(key,props):
+    obj = get_obj()
+    stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
+    if not obj.properties[stg].has_key(key): obj.properties[stg][key] = {}
+    id = 0
+    while obj.properties[stg][key].has_key(str(id)): id += 1
+    obj.properties[stg][key][str(id)] = props
+    if key=='eatts':
+        tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
+        props_set_fem('eatts',id,3,tid)
+    Blender.Window.QRedrawAll()
+
+def props_set_fem(key,id,item,val):
+    stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
+    obj = get_obj()
+    obj.properties[stg][key][str(id)][item] = val
+    Blender.Window.QRedrawAll()
+
+def props_del_fem(key,id):
+    msg = 'Confirm delete this item?%t|Yes'
+    res = Blender.Draw.PupMenu(msg)
+    if res>0:
+        stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
+        obj = get_obj()
+        if key=='eatts':
+            tid = str(obj.properties[stg][key][str(id)][3])
+            obj.properties['texts'].pop(tid)
+        obj.properties[stg][key].pop(str(id))
+        if len(obj.properties[stg][key])==0: obj.properties[stg].pop(key)
+        Blender.Window.QRedrawAll()
+
+def props_del_all_fem(key):
+    obj = get_obj()
+    msg = 'Confirm delete ALL?%t|Yes'
+    res  = Blender.Draw.PupMenu(msg)
+    if res>0:
+        stg = 'stg_'+str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
+        if key=='eatts':
+            for k, v in obj.properties[stg][key].iteritems():
+                tid = str(v[3])
+                obj.properties['texts'].pop(tid)
+        obj.properties[stg].pop(key)
+        Blender.Window.QRedrawAll()
+
+def props_del_stage():
+    msg = 'Confirm delete this stage?%t|Yes'
+    res = Blender.Draw.PupMenu(msg)
+    if res>0:
+        obj = get_obj()
+        sid = str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
+        tid = str(obj.properties['stages'][sid][1])
+        stg = 'stg_'+sid
+        # delete eatt text
+        if obj.properties[stg].has_key('eatts'):
+            for k, v in obj.properties[stg]['eatts'].iteritems():
+                obj.properties['texts'].pop(str(v[3]))
+        # delete description
+        obj.properties['texts'].pop(tid)
+        # delete stage
+        num = obj.properties['stages'][sid][0]
+        obj.properties['stages'].pop(sid)
+        obj.properties.pop(stg)
+        # reset other stages numbers and set current fem_stage
+        for k, v in obj.properties['stages'].iteritems():
+            other_num = obj.properties['stages'][k][0]
+            if other_num>num:
+                obj.properties['stages'][k][0] = other_num-1
+            if obj.properties['stages'][k][0]==1: set_key('fem_stage', int(k))
+        # delete 'stages' and 'texts'
+        if len(obj.properties['stages'])==0: obj.properties.pop('stages')
+        if len(obj.properties['texts'] )==0: obj.properties.pop('texts')
+        # set current fem stage
+        Blender.Window.QRedrawAll()
+
+def props_del_all_stages():
+    obj = get_obj()
+    msg = 'Confirm delete ALL stages?%t|Yes'
+    res  = Blender.Draw.PupMenu(msg)
+    if res>0:
+        for sid, v in obj.properties['stages'].iteritems():
+            # delete description
+            obj.properties['texts'].pop(str(v[1])) # v[1] == text ID
+            # delete eatt text
+            stg = 'stg_'+sid
+            if obj.properties[stg].has_key('eatts'):
+                for k, v in obj.properties[stg]['eatts'].iteritems():
+                    obj.properties['texts'].pop(str(v[3]))
+            # delete stage
+            obj.properties.pop(stg)
+        if len(obj.properties['texts'])==0: obj.properties.pop('texts')
+        obj.properties.pop('stages')
+        set_key('fem_stage', 0)
+        Blender.Window.QRedrawAll()
+
+# ------------------------------------------------------------------------------ Blocks
 
 def blk_set_local_system(obj,msh,id):
     # set local system: origin and vertices on positive directions

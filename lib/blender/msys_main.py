@@ -89,19 +89,22 @@ EVT_MAT_ADDMAT       = 81 # add material
 EVT_MAT_DELALLMAT    = 82 # delete all materials
 # FEM
 EVT_FEM_SHOWHIDE     =  90 # show/hide FEM box
-EVT_FEM_ADDNBRY      =  91 # add nodes boundary (given coordinates)
-EVT_FEM_ADDNBID      =  92 # add nodes boundary (given nodes IDs)
-EVT_FEM_ADDEBRY      =  93 # add edges boundary
-EVT_FEM_ADDFBRY      =  94 # add faces boundary
-EVT_FEM_ADDEATT      =  95 # add element attributes
-EVT_FEM_DELALLNBRY   =  96 # delete all nodes boundary
-EVT_FEM_DELALLNBID   =  97 # delete all nodes boundary (IDs)
-EVT_FEM_DELALLEBRY   =  98 # delete all edges boundary
-EVT_FEM_DELALLFBRY   =  99 # delete all faces boundary
-EVT_FEM_DELALLEATT   = 100 # delete all element attributes
-EVT_FEM_RUN          = 101 # run a FE simulation
-EVT_FEM_SCRIPT       = 102 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 103 # view in ParaView
+EVT_FEM_ADDSTAGE     =  91 # add stage
+EVT_FEM_DELSTAGE     =  92 # add stage
+EVT_FEM_DELALLSTAGES =  93 # add stage
+EVT_FEM_ADDNBRY      =  94 # add nodes boundary (given coordinates)
+EVT_FEM_ADDNBID      =  95 # add nodes boundary (given nodes IDs)
+EVT_FEM_ADDEBRY      =  96 # add edges boundary
+EVT_FEM_ADDFBRY      =  97 # add faces boundary
+EVT_FEM_ADDEATT      =  98 # add element attributes
+EVT_FEM_DELALLNBRY   =  99 # delete all nodes boundary
+EVT_FEM_DELALLNBID   = 100 # delete all nodes boundary (IDs)
+EVT_FEM_DELALLEBRY   = 101 # delete all edges boundary
+EVT_FEM_DELALLFBRY   = 102 # delete all faces boundary
+EVT_FEM_DELALLEATT   = 103 # delete all element attributes
+EVT_FEM_RUN          = 104 # run a FE simulation
+EVT_FEM_SCRIPT       = 105 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 106 # view in ParaView
 # Results
 EVT_RES_SHOWHIDE     = 200 # show/hide results box
 EVT_RES_ATNODE       = 201 # show results at a node
@@ -141,7 +144,7 @@ def try_catch(func):
     return wrapper
 
 # Handle button events
-@try_catch
+#@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -234,17 +237,20 @@ def button_event(evt):
 
     elif evt==EVT_FEM_SHOWHIDE: di.toggle_key('gui_show_fem')
 
-    elif evt==EVT_FEM_ADDNBRY: di.props_push_new('nbrys', di.new_nbry_props())
-    elif evt==EVT_FEM_ADDNBID: di.props_push_new('nbsID', di.new_nbID_props())
-    elif evt==EVT_FEM_ADDEBRY: di.props_push_new('ebrys', di.new_ebry_props())
-    elif evt==EVT_FEM_ADDFBRY: di.props_push_new('fbrys', di.new_fbry_props())
-    elif evt==EVT_FEM_ADDEATT: di.props_push_new('eatts', di.new_eatt_props())
+    elif evt==EVT_FEM_ADDSTAGE: di.props_push_new_stage()
+    elif evt==EVT_FEM_DELSTAGE: di.props_del_stage     ()
+    elif evt==EVT_FEM_ADDNBRY:  di.props_push_new_fem  ('nbrys',  di.new_nbry_props())
+    elif evt==EVT_FEM_ADDNBID:  di.props_push_new_fem  ('nbsID',  di.new_nbID_props())
+    elif evt==EVT_FEM_ADDEBRY:  di.props_push_new_fem  ('ebrys',  di.new_ebry_props())
+    elif evt==EVT_FEM_ADDFBRY:  di.props_push_new_fem  ('fbrys',  di.new_fbry_props())
+    elif evt==EVT_FEM_ADDEATT:  di.props_push_new_fem  ('eatts',  di.new_eatt_props())
 
-    elif evt==EVT_FEM_DELALLNBRY: di.props_del_all('nbrys')
-    elif evt==EVT_FEM_DELALLNBID: di.props_del_all('nbsID')
-    elif evt==EVT_FEM_DELALLEBRY: di.props_del_all('ebrys')
-    elif evt==EVT_FEM_DELALLFBRY: di.props_del_all('fbrys')
-    elif evt==EVT_FEM_DELALLEATT: di.props_del_all('eatts')
+    elif evt==EVT_FEM_DELALLSTAGES: di.props_del_all_stages()
+    elif evt==EVT_FEM_DELALLNBRY:   di.props_del_all_fem   ('nbrys')
+    elif evt==EVT_FEM_DELALLNBID:   di.props_del_all_fem   ('nbsID')
+    elif evt==EVT_FEM_DELALLEBRY:   di.props_del_all_fem   ('ebrys')
+    elif evt==EVT_FEM_DELALLFBRY:   di.props_del_all_fem   ('fbrys')
+    elif evt==EVT_FEM_DELALLEATT:   di.props_del_all_fem   ('eatts')
 
     elif evt==EVT_FEM_RUN:      fe.run_analysis()
     elif evt==EVT_FEM_SCRIPT:   fe.run_analysis(True)
@@ -436,50 +442,50 @@ def cb_mat_del      (evt,val): di.props_del      ('mats', evt-EVT_INC)
 # ---------------------------------- FEM -- nbrys
 
 @try_catch
-def cb_nbry_setx  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 0, float(val))
+def cb_nbry_setx  (evt,val): di.props_set_fem ('nbrys', evt-EVT_INC, 0, float(val))
 @try_catch
-def cb_nbry_sety  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 1, float(val))
+def cb_nbry_sety  (evt,val): di.props_set_fem ('nbrys', evt-EVT_INC, 1, float(val))
 @try_catch
-def cb_nbry_setz  (evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 2, float(val))
+def cb_nbry_setz  (evt,val): di.props_set_fem ('nbrys', evt-EVT_INC, 2, float(val))
 @try_catch
-def cb_nbry_setkey(evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 3, val-1)
+def cb_nbry_setkey(evt,val): di.props_set_fem ('nbrys', evt-EVT_INC, 3, val-1)
 @try_catch
-def cb_nbry_setval(evt,val): di.props_set_item ('nbrys', evt-EVT_INC, 4, float(val))
+def cb_nbry_setval(evt,val): di.props_set_fem ('nbrys', evt-EVT_INC, 4, float(val))
 @try_catch
-def cb_nbry_del   (evt,val): di.props_del      ('nbrys', evt-EVT_INC)
+def cb_nbry_del   (evt,val): di.props_del_fem ('nbrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbsID
 
 @try_catch
-def cb_nbID_setID (evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 0, int(val))
+def cb_nbID_setID (evt,val): di.props_set_fem ('nbsID', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_nbID_setkey(evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 1, val-1)
+def cb_nbID_setkey(evt,val): di.props_set_fem ('nbsID', evt-EVT_INC, 1, val-1)
 @try_catch
-def cb_nbID_setval(evt,val): di.props_set_item ('nbsID', evt-EVT_INC, 2, float(val))
+def cb_nbID_setval(evt,val): di.props_set_fem ('nbsID', evt-EVT_INC, 2, float(val))
 @try_catch
-def cb_nbID_del   (evt,val): di.props_del      ('nbsID', evt-EVT_INC)
+def cb_nbID_del   (evt,val): di.props_del_fem ('nbsID', evt-EVT_INC)
 
 # ---------------------------------- FEM -- ebrys
 
 @try_catch
-def cb_ebry_settag(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 0, int(val))
+def cb_ebry_settag(evt,val): di.props_set_fem ('ebrys', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_ebry_setkey(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 1, val-1)
+def cb_ebry_setkey(evt,val): di.props_set_fem ('ebrys', evt-EVT_INC, 1, val-1)
 @try_catch
-def cb_ebry_setval(evt,val): di.props_set_item ('ebrys', evt-EVT_INC, 2, float(val))
+def cb_ebry_setval(evt,val): di.props_set_fem ('ebrys', evt-EVT_INC, 2, float(val))
 @try_catch
-def cb_ebry_del   (evt,val): di.props_del      ('ebrys', evt-EVT_INC)
+def cb_ebry_del   (evt,val): di.props_del_fem ('ebrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- fbrys
 
 @try_catch
-def cb_fbry_settag(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 0, int(val))
+def cb_fbry_settag(evt,val): di.props_set_fem ('fbrys', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_fbry_setkey(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 1, val-1)
+def cb_fbry_setkey(evt,val): di.props_set_fem ('fbrys', evt-EVT_INC, 1, val-1)
 @try_catch
-def cb_fbry_setval(evt,val): di.props_set_item ('fbrys', evt-EVT_INC, 2, float(val))
+def cb_fbry_setval(evt,val): di.props_set_fem ('fbrys', evt-EVT_INC, 2, float(val))
 @try_catch
-def cb_fbry_del   (evt,val): di.props_del      ('fbrys', evt-EVT_INC)
+def cb_fbry_del   (evt,val): di.props_del_fem ('fbrys', evt-EVT_INC)
 @try_catch
 def cb_fbry_setclr(evt,val):
     obj = di.get_obj()
@@ -495,20 +501,34 @@ def cb_fbry_setclr(evt,val):
 # ---------------------------------- FEM -- eatts
 
 @try_catch
-def cb_eatt_settag  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 0, int(val))
+def cb_eatt_settag  (evt,val): di.props_set_fem ('eatts', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_eatt_settype (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 1, val-1)
+def cb_eatt_settype (evt,val): di.props_set_fem ('eatts', evt-EVT_INC, 1, val-1)
 @try_catch
-def cb_eatt_setmat  (evt,val): di.props_set_item ('eatts', evt-EVT_INC, 2, val-1)
+def cb_eatt_setmat  (evt,val): di.props_set_fem ('eatts', evt-EVT_INC, 2, val-1)
 @try_catch
-def cb_eatt_setprops(evt,val): di.props_set_item ('eatts', evt-EVT_INC, 3, float(val))
+def cb_eatt_setprops(evt,val): di.props_set_text('texts', evt-EVT_INC, val)
 @try_catch
-def cb_eatt_del     (evt,val): di.props_del      ('eatts', evt-EVT_INC)
+def cb_eatt_setact  (evt,val): di.props_set_fem ('eatts', evt-EVT_INC, 4, int(val))
+@try_catch
+def cb_eatt_del     (evt,val): di.props_del_fem ('eatts', evt-EVT_INC)
 
 # ---------------------------------- FEM
 
 @try_catch
 def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
+@try_catch
+def cb_fem_stage (evt,val):
+    obj = di.get_obj()
+    for k, v in obj.properties['stages'].iteritems():
+        if val==v[0]: di.set_key('fem_stage', int(k))
+    Blender.Window.QRedrawAll()
+@try_catch
+def cb_fem_stage_desc (evt,val): di.props_set_text ('texts', evt-EVT_INC, val)
+@try_catch
+def cb_fem_apply_bf   (evt,val): di.props_set_item ('stages', evt-EVT_INC, 2, int(val))
+@try_catch
+def cb_blk_clear_disp (evt,val): di.props_set_item ('stages', evt-EVT_INC, 3, int(val))
 
 # ---------------------------------- Results
 
@@ -552,6 +572,9 @@ def gui():
     regs     = {}
     hols     = {}
     mats     = {}
+    texts    = {}
+    stages   = {}
+    nstages  = 0
     nbrys    = {}
     nbsID    = {}
     ebrys    = {}
@@ -566,11 +589,16 @@ def gui():
         if obj.properties.has_key('regs'):    regs     = obj.properties['regs']
         if obj.properties.has_key('hols'):    hols     = obj.properties['hols']
         if obj.properties.has_key('mats'):    mats     = obj.properties['mats']
-        if obj.properties.has_key('nbrys'):   nbrys    = obj.properties['nbrys']
-        if obj.properties.has_key('nbsID'):   nbsID    = obj.properties['nbsID']
-        if obj.properties.has_key('ebrys'):   ebrys    = obj.properties['ebrys']
-        if obj.properties.has_key('fbrys'):   fbrys    = obj.properties['fbrys']
-        if obj.properties.has_key('eatts'):   eatts    = obj.properties['eatts']
+        if obj.properties.has_key('texts'):   texts    = obj.properties['texts']
+        if obj.properties.has_key('stages'):  stages   = obj.properties['stages']
+        nstages = len(stages)
+        if nstages>0:
+            stg = 'stg_'+str(d['fem_stage'])
+            if obj.properties[stg].has_key('nbrys'): nbrys = obj.properties[stg]['nbrys']
+            if obj.properties[stg].has_key('nbsID'): nbsID = obj.properties[stg]['nbsID']
+            if obj.properties[stg].has_key('ebrys'): ebrys = obj.properties[stg]['ebrys']
+            if obj.properties[stg].has_key('fbrys'): fbrys = obj.properties[stg]['fbrys']
+            if obj.properties[stg].has_key('eatts'): eatts = obj.properties[stg]['eatts']
 
     # materials menu
     matmnu = 'Materials %t'
@@ -608,8 +636,9 @@ def gui():
     h_fem_nbsID     = rh+srg+rh*len(nbsID)
     h_fem_ebrys     = rh+srg+rh*len(ebrys)
     h_fem_fbrys     = rh+srg+rh*len(fbrys)
-    h_fem_eatts     = rh+srg+rh*len(eatts)
-    h_fem           = 8*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
+    h_fem_eatts     = rh+srg+rh*len(eatts)*2
+    h_fem_stage     = 8*rh+6*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
+    h_fem           = 4*rh+srg+h_fem_stage if nstages>0 else 4*rh+srg
     h_res           = 5*rh
 
     # clear background
@@ -830,89 +859,120 @@ def gui():
     if d['gui_show_fem']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_fem)
 
-        # ----------------------- FEM -- nbrys
+        # ----------------------- FEM -- stages
 
-        gu.caption2_(c,r,w,rh,'Nodes boundary conditions (given X-Y-Y)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
-        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_nbrys)
-        gu.text(c,r,'     X             Y             Z        Key      Value')
-        for k, v in nbrys.iteritems():
+        gu.caption2__(c,r,w,rh,'Stage #                  / %d'%(nstages),EVT_FEM_ADDSTAGE,EVT_FEM_DELSTAGE,EVT_FEM_DELALLSTAGES)
+        if (len(stages)>0):
+            i   = d['fem_stage']
+            sid = str(i)          # stage_id
+            num = stages[sid][0]  # num
+            tid = stages[sid][1]  # text_id
+            abf = stages[sid][2]  # apply body forces
+            cdi = stages[sid][3]  # clear displacements
+            des = texts[str(tid)] # description
+            Draw.Number ('', EVT_NONE, c+55, r+2, 60, rh-4, num, 0,100,'Show stage', cb_fem_stage)
+            r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_fem_stage)
+            r += rh
+            r -= srg
+            gu.text     (c, r, 'Description:')
+            Draw.String ('', EVT_INC+tid, c+80, r, 280, rh, des, 256, 'Description of this stage', cb_fem_stage_desc)
             r -= rh
-            i  = int(k)
-            Draw.String     ('',          EVT_INC+i, c    , r, 60, rh, str(v[0]), 32, 'X of the node with boundary condition',                                      cb_nbry_setx)
-            Draw.String     ('',          EVT_INC+i, c+ 60, r, 60, rh, str(v[1]), 32, 'Y of the node with boundary condition',                                      cb_nbry_sety)
-            Draw.String     ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 32, 'Z of the node with boundary condition',                                      cb_nbry_setz)
-            Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+180, r, 40, rh, int(v[3])+1,   'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbry_setkey)
-            Draw.String     ('',          EVT_INC+i, c+220, r, 60, rh, str(v[4]), 32, 'Value of essential/natural boundary condition',                              cb_nbry_setval)
-            Draw.PushButton ('Del',       EVT_INC+i, c+280, r, 40, rh,                'Delete this row',                                                            cb_nbry_del)
-        r -= srg
-        r, c, w = gu.box2__out(W,cg,rh, c,r)
-
-        # ----------------------- FEM -- nbsID
-
-        r -= srg
-        gu.caption2_(c,r,w,rh,'Nodes boundary conditions (given IDs)', EVT_FEM_ADDNBID,EVT_FEM_DELALLNBID)
-        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_nbsID)
-        gu.text(c,r,'     ID        Key     Value')
-        for k, v in nbsID.iteritems():
+            Draw.Toggle ('Apply body forces',   EVT_INC+i, c+80,   r, 140, rh, abf, 'Apply body forces ?',                cb_fem_apply_bf)
+            Draw.Toggle ('Clear displacements', EVT_INC+i, c+220 , r, 140, rh, cdi, 'Clear displacements (and strains)?', cb_blk_clear_disp)
             r -= rh
-            i  = int(k)
-            Draw.Number     ('',          EVT_INC+i, c    , r, 60, rh, int(v[0]),0,10000, 'Set the node ID',                                                            cb_nbID_setID)
-            Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbID_setkey)
-            Draw.String     ('',          EVT_INC+i, c+100, r, 60, rh, str(v[2]), 32,     'Value of essential/natural boundary condition',                              cb_nbID_setval)
-            Draw.PushButton ('Del',       EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_nbID_del)
-        r -= srg
-        r, c, w = gu.box2__out(W,cg,rh, c,r)
+            r -= srg
 
-        # ----------------------- FEM -- ebrys
+            # ----------------------- FEM -- nbrys
 
-        r -= srg
-        gu.caption2_(c,r,w,rh,'Edges boundary conditions', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
-        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_ebrys)
-        gu.text(c,r,'    Tag       Key     Value')
-        for k, v in ebrys.iteritems():
-            r -= rh
-            i  = int(k)
-            Draw.Number     ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_ebry_settag)
-            Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
-            Draw.String     ('',          EVT_INC+i, c+100, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_ebry_setval)
-            Draw.PushButton ('Del',       EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_ebry_del)
-        r -= srg
-        r, c, w = gu.box2__out(W,cg,rh, c,r)
+            gu.caption3(c,r,w,rh,'Nodes boundary conditions (given X-Y-Y)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
+            gu.text(c,r,'     X             Y             Z        Key      Value')
+            for k, v in nbrys.iteritems():
+                r -= rh
+                i  = int(k)
+                Draw.String     ('',          EVT_INC+i, c    , r, 60, rh, str(v[0]), 32, 'X of the node with boundary condition',                                      cb_nbry_setx)
+                Draw.String     ('',          EVT_INC+i, c+ 60, r, 60, rh, str(v[1]), 32, 'Y of the node with boundary condition',                                      cb_nbry_sety)
+                Draw.String     ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 32, 'Z of the node with boundary condition',                                      cb_nbry_setz)
+                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+180, r, 40, rh, int(v[3])+1,   'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbry_setkey)
+                Draw.String     ('',          EVT_INC+i, c+220, r, 60, rh, str(v[4]), 32, 'Value of essential/natural boundary condition',                              cb_nbry_setval)
+                Draw.PushButton ('Del',       EVT_INC+i, c+280, r, 40, rh,                'Delete this row',                                                            cb_nbry_del)
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
 
-        # ----------------------- FEM -- fbrys
+            # ----------------------- FEM -- nbsID
 
-        r -= srg
-        gu.caption2_(c,r,w,rh,'Faces boundary conditions', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
-        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_fbrys)
-        gu.text(c,r,'    Tag        Colour     Key     Value')
-        for k, v in fbrys.iteritems():
-            r  -= rh
-            i   = int(k)
-            clr = di.hex2rgb(v[3])
-            Draw.Number      ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_fbry_settag)
-            Draw.ColorPicker (             EVT_INC+i, c+ 60, r, 60, rh, clr,               'Select color to paint tagged face',                                          cb_fbry_setclr)
-            Draw.Menu        (d['dfvmnu'], EVT_INC+i, c+120, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
-            Draw.String      ('',          EVT_INC+i, c+160, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
-            Draw.PushButton  ('Del',       EVT_INC+i, c+220, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
-        r -= srg
-        r, c, w = gu.box2__out(W,cg,rh, c,r)
+            r -= srg
+            gu.caption3(c,r,w,rh,'Nodes boundary conditions (given IDs)', EVT_FEM_ADDNBID,EVT_FEM_DELALLNBID)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbsID)
+            gu.text(c,r,'     ID        Key     Value')
+            for k, v in nbsID.iteritems():
+                r -= rh
+                i  = int(k)
+                Draw.Number     ('',          EVT_INC+i, c    , r, 60, rh, int(v[0]),0,10000, 'Set the node ID',                                                            cb_nbID_setID)
+                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbID_setkey)
+                Draw.String     ('',          EVT_INC+i, c+100, r, 60, rh, str(v[2]), 32,     'Value of essential/natural boundary condition',                              cb_nbID_setval)
+                Draw.PushButton ('Del',       EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_nbID_del)
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
 
-        # ----------------------- FEM -- eatts
+            # ----------------------- FEM -- ebrys
 
-        r -= srg
-        gu.caption2_(c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
-        r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_eatts)
-        gu.text(c,r,'    Tag               Type                Material ID')
-        for k, v in eatts.iteritems():
-            r -= rh
-            i  = int(k)
-            Draw.Number     ('',          EVT_INC+i, c,     r,  60, rh, int(v[0]),-1000,0, 'Set tag',                         cb_eatt_settag)
-            Draw.Menu       (d['etymnu'], EVT_INC+i, c+ 60, r, 120, rh, int(v[1])+1,       'Element type: ex.: Quad4PStrain', cb_eatt_settype)
-            Draw.Menu       (matmnu,      EVT_INC+i, c+180, r, 100, rh, int(v[2])+1,       'Choose material ID',              cb_eatt_setmat)
-            Draw.String     ('',          EVT_INC+i, c+280, r,  60, rh, str(v[3]),  32,    'Additional properties (specific weight,...)', cb_eatt_setprops)
-            Draw.PushButton ('Del',       EVT_INC+i, c+340, r,  40, rh,                    'Delete this row',                 cb_eatt_del)
-        r -= srg
-        r, c, w = gu.box2__out(W,cg,rh, c,r)
+            r -= srg
+            gu.caption3(c,r,w,rh,'Edges boundary conditions', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_ebrys)
+            gu.text(c,r,'    Tag       Key     Value')
+            for k, v in ebrys.iteritems():
+                r -= rh
+                i  = int(k)
+                Draw.Number     ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_ebry_settag)
+                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
+                Draw.String     ('',          EVT_INC+i, c+100, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_ebry_setval)
+                Draw.PushButton ('Del',       EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_ebry_del)
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+            # ----------------------- FEM -- fbrys
+
+            r -= srg
+            gu.caption3(c,r,w,rh,'Faces boundary conditions', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_fbrys)
+            gu.text(c,r,'    Tag        Colour     Key     Value')
+            for k, v in fbrys.iteritems():
+                r  -= rh
+                i   = int(k)
+                clr = di.hex2rgb(v[3])
+                Draw.Number      ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_fbry_settag)
+                Draw.ColorPicker (             EVT_INC+i, c+ 60, r, 60, rh, clr,               'Select color to paint tagged face',                                          cb_fbry_setclr)
+                Draw.Menu        (d['dfvmnu'], EVT_INC+i, c+120, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
+                Draw.String      ('',          EVT_INC+i, c+160, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
+                Draw.PushButton  ('Del',       EVT_INC+i, c+220, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+            # ----------------------- FEM -- eatts
+
+            r -= srg
+            gu.caption3(c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_eatts)
+            gu.text(c,r,'    Tag               Type                Material ID')
+            for k, v in eatts.iteritems():
+                r    -= rh
+                i     = int(k)
+                tid   = int(v[3])       # text id
+                props = texts[str(tid)] # properties
+                Draw.Number     ('',          EVT_INC+i,   c,     r-rh,  60, 2*rh, int(v[0]),-1000,0, 'Set tag',                         cb_eatt_settag)
+                Draw.Menu       (d['etymnu'], EVT_INC+i,   c+ 60, r,    120,   rh, int(v[1])+1,       'Element type: ex.: Quad4PStrain', cb_eatt_settype)
+                Draw.Menu       (matmnu,      EVT_INC+i,   c+180, r,    100,   rh, int(v[2])+1,       'Choose material ID',              cb_eatt_setmat)
+                Draw.PushButton ('Del',       EVT_INC+i,   c+280, r-rh,  40, 2*rh,                    'Delete this row',                 cb_eatt_del)
+                r -= rh
+                Draw.String     ('',          EVT_INC+tid, c+ 60, r,    120,   rh, props,  128,       'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
+                Draw.Toggle     ('Activated', EVT_INC+i,   c+180, r,    100,   rh, int(v[4]),         'Is active ?',                     cb_eatt_setact)
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+            # ----------------------- FEM -- stages -- END
+            r, c, w = gu.box2_out(W,cg,rh, c,r+rh)
+        else: r -= rh
 
         # ----------------------- FEM -- END
         r -= srg

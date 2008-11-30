@@ -68,6 +68,16 @@ def caption2_(c,r,w,rh, lab, evt_add,evt_delall):
     Draw.PushButton   ('Add',        evt_add,    c+w-5-60-80, r+2, 60, rh-4, 'Add ')
     Draw.PushButton   ('Delete all', evt_delall, c+w-5-80,    r+2, 80, rh-4, 'Delete all ')
 
+def caption2__(c,r,w,rh, lab, evt_add,evt_del,evt_delall):
+    BGL.glColor3f     (0.431, 0.443, 0.514)
+    BGL.glRecti       (c, r, c+w, r+rh)
+    BGL.glColor3f     (1.0, 1.0, 1.0)
+    BGL.glRasterPos2i (c+5, r+5)
+    Draw.Text         (lab)
+    Draw.PushButton   ('Add',        evt_add,    c+w-5-60-60-80, r+2, 60, rh-4, 'Add ')
+    Draw.PushButton   ('Delete',     evt_del,    c+w-5-60-80,    r+2, 60, rh-4, 'Delete')
+    Draw.PushButton   ('Delete all', evt_delall, c+w-5-80,       r+2, 80, rh-4, 'Delete all ')
+
 def box2_in(W,cg,rh, c,r,w,h):
     BGL.glColor3f (0.72, 0.72, 0.8)
     BGL.glRecti   (c,r-h,c+w,r)
