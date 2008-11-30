@@ -351,32 +351,32 @@ def run_analysis(gen_script=False):
             txt.write ('nbrys = '+nbrys.__str__()+'\n')
             txt.write ('ebrys = '+ebrys.__str__()+'\n')
             txt.write ('fbrys = '+fbrys.__str__()+'\n')
-            txt.write ('ms.set_brys           (mesh, nbrys, ebrys, fbrys, geo)\n')
+            txt.write ('ms.set_brys             (mesh, nbrys, ebrys, fbrys, geo)\n')
             for nb in nbsID:
                 txt.write ('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
 
             # activate and deactivate elements
             act, deact = get_act_deact (obj,stg)
             for k, v in act.iteritems():
-                if v: txt.write ('g.activate            (%d)\n'%(k))
+                if v: txt.write ('geo.activate            (%d)\n'%(k))
             for k, v in deact.iteritems():
-                if v: txt.write ('g.deactivate          (%d)\n'%(k))
+                if v: txt.write ('geo.deactivate          (%d)\n'%(k))
 
             # apply body forces
-            if abf: txt.write ('g.apply_body_forces   ()\n')
+            if abf: txt.write ('geo.apply_body_forces   ()\n')
 
             # solve
-            txt.write ('sol.solve_with_info   (%d, %g, %d, "%s")\n'%(ndiv,dtime,num,desc))
+            txt.write ('sol.solve_with_info     (%d, %g, %d, "%s")\n'%(ndiv,dtime,num,desc))
 
             # clear displacements
-            if cdi: txt.write ('g.clear_displacements ()\n')
+            if cdi: txt.write ('geo.clear_displacements ()\n')
 
             # output
-            txt.write ('out.vtu               (geo, sol.time())\n')
+            txt.write ('out.vtu                 (geo, sol.time())\n')
 
             # save results
             if not di.key('fullsc'):
-                txt.write ('mf.save_results       (geo,obj, %d)\n'%num)
+                txt.write ('mf.save_results         (geo,obj, %d)\n'%num)
 
         # close collection
         txt.write ('\n# Close collection\n')
@@ -433,18 +433,18 @@ def run_analysis(gen_script=False):
             # activate and deactivate elements
             act, deact = get_act_deact (obj,stg)
             for k, v in act.iteritems():
-                if v: g.activate(k)
+                if v: geo.activate(k)
             for k, v in deact.iteritems():
-                if v: g.deactivate(k)
+                if v: geo.deactivate(k)
 
             # apply body forces
-            if abf: g.apply_body_forces()
+            if abf: geo.apply_body_forces()
 
             # solve
             sol.solve_with_info (ndiv,dtime,num,desc)
 
             # clear displacements
-            if cdi: g.clear_displacements()
+            if cdi: geo.clear_displacements()
 
             # output
             out.vtu (geo, sol.time())
@@ -462,8 +462,8 @@ def run_analysis(gen_script=False):
 
 def save_results(geo,obj, stage_num):
     # dictionary
+    if not obj.properties.has_key('res'): obj.properties['res'] = {}
     s                        = str(stage_num)
-    obj.properties['res']    = {}
     obj.properties['res'][s] = {}
 
     # geometry limits
