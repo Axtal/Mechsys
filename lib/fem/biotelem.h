@@ -296,8 +296,13 @@ inline void BiotElem::UpdateState(double TimeInc, LinAlg::Vector<double> const &
 	Order1Matrix (1,Ce);
 	Order1Matrix (2,Le);
 	Order0Matrix (0,He);
+
+
+	Vector<double> Qb;
+	_compute_Qb(Qb);
+
 	df   = Ke*du + Ce*dp;
-	dvol = Le*du + TimeInc*He*p;
+	dvol = Le*du + TimeInc*He*p + TimeInc*Qb;
 
 	// Stress update
 	LinAlg::Vector<double> shape;
@@ -806,7 +811,7 @@ inline void BiotElem::_compute_H(LinAlg::Matrix<double> & He) const
 inline void BiotElem::_compute_Qb(LinAlg::Vector<double> & Qb) const // {{{
 {
 	//	
-	//	 Permeability Matrix Qh:
+	//	 Permeability Matrix Qb:
 	//	 ============================
 	//       
 	//                    1   /    T                   
