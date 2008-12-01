@@ -224,15 +224,15 @@ int main(int argc, char **argv) try
 		Uy0(i) = g.Nod(SampleNodes(i))->Val("uy");
 
 	// Stage # 2+ -------------------------------------------------------------
-	ebrys.Resize (0);
-	ebrys.Push   (make_tuple(-10, "ux",    0.0));
-	ebrys.Push   (make_tuple(-20, "ux",    0.0));
-	ebrys.Push   (make_tuple(-30, "uy",    0.0));
-	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push   (make_tuple(-50, "pwp",   0.0));
-	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
+		ebrys.Resize (0);
+		ebrys.Push   (make_tuple(-10, "ux",    0.0));
+		ebrys.Push   (make_tuple(-20, "ux",    0.0));
+		ebrys.Push   (make_tuple(-30, "uy",    0.0));
+		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+		ebrys.Push   (make_tuple(-50, "pwp",   0.0));
+		FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
 		sol->SolveWithInfo (10, TimeIncs(i), i+2, "  Consolidation\n");
 		for (int j=0; j<SampleNodes.Size(); j++)
 			OutUy(j,i) = (g.Nod(SampleNodes(j))->Val("uy") - Uy0(j))/(-winf); // Saving normalized vertical displacement
