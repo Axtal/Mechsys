@@ -1032,10 +1032,8 @@ def gui():
                     Draw.Menu       (matmnu,       EVT_INC+i,   c+180, r,    140,   rh, int(v[2])+1,       'Choose material',                 cb_eatt_setmat)
                     Draw.PushButton ('Del',        EVT_INC+i,   c+320, r-rh,  40, 2*rh,                    'Delete this row',                 cb_eatt_del)
                     r -= rh                         
-                    Draw.String     ('',           EVT_INC+tid, c+ 60, r,     70,   rh, props,  128,       'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
-                    Draw.Toggle     ('Is Active',  EVT_INC+i,   c+130, r,     60,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
-                    Draw.Toggle     ('Activate',   EVT_INC+i,   c+190, r,     60,   rh, int(v[5]),         'Activate this element at this stage?',   cb_eatt_act)
-                    Draw.Toggle     ('Deactivate', EVT_INC+i,   c+250, r,     70,   rh, int(v[6]),         'Deactivate this element at this stage?', cb_eatt_deact)
+                    Draw.String     ('',           EVT_INC+tid, c+ 60, r,    120,   rh, props,  128,       'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
+                    Draw.Toggle     ('Is Active',  EVT_INC+i,   c+180, r,    140,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
                 else:
                     etag =          str(featts[k][0])
                     etyp = d['ety'][int(featts[k][1])+1]
@@ -1044,10 +1042,9 @@ def gui():
                     gu.label  (etyp,  c+ 60, r,    120,   rh)
                     gu.label  (emat,  c+180, r,    140,   rh)
                     r -= rh                         
-                    Draw.String     ('',           EVT_INC+tid, c+ 60, r,     70,   rh, props,  128, 'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
-                    Draw.Toggle     ('Is Active',  EVT_INC+i,   c+130, r,     60,   rh, int(v[4]),   'Is active ?',                            cb_eatt_isact)
-                    Draw.Toggle     ('Activate',   EVT_INC+i,   c+190, r,     60,   rh, int(v[5]),   'Activate this element at this stage?',   cb_eatt_act)
-                    Draw.Toggle     ('Deactivate', EVT_INC+i,   c+250, r,     70,   rh, int(v[6]),   'Deactivate this element at this stage?', cb_eatt_deact)
+                    gu.label    (props,                   c+ 60, r, 120, rh)
+                    Draw.Toggle ('Activate',   EVT_INC+i, c+180, r,  70, rh, int(v[5]),   'Activate this element at this stage?',   cb_eatt_act)
+                    Draw.Toggle ('Deactivate', EVT_INC+i, c+250, r,  70, rh, int(v[6]),   'Deactivate this element at this stage?', cb_eatt_deact)
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 
