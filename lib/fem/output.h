@@ -56,7 +56,7 @@ public:
 	~Output () { if (_pvd_file!=NULL) { _pvd_file->close(); delete _pvd_file; } }
 
 	// Methods
-	double Val   (int iNode, char const * Key) const;
+	double Val   (int iNode, char const * Key) const;          ///< Output value at a specific node. This method must be called only AFTER VTK(), VTU() or VTUcg() methods, since the values at nodes must be extrapolated from the values at integration points
 	void   VTK   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTK file
 	void   VTU   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file
 	void   VTUcg (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file with element values at CG
@@ -464,10 +464,10 @@ inline void Output::_vtu_write_geometry(std::ostringstream & oss) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<_ne; ++i)
 	{
-		String con;  _g->Ele(i)->VTKConnect(con);
+		String con;  _aes[i]->VTKConnect(con);
 		oss << "  " << con;
 		k++;
-		OUT_NEWLINE (i,k,_ne,_nimax/_g->Ele(i)->NNodes(),oss);
+		OUT_NEWLINE (i,k,_ne,_nimax/_aes[i]->NNodes(),oss);
 	}
 	oss << "        </DataArray>\n";
 	oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
@@ -475,7 +475,7 @@ inline void Output::_vtu_write_geometry(std::ostringstream & oss) const
 	size_t offset = 0;
 	for (size_t i=0; i<_ne; ++i)
 	{
-		offset += _g->Ele(i)->NNodes();
+		offset += _aes[i]->NNodes();
 		oss << (k==0?"  ":" ") << offset;
 		k++;
 		OUT_NEWLINE (i,k,_ne,_nimax,oss);
@@ -485,7 +485,7 @@ inline void Output::_vtu_write_geometry(std::ostringstream & oss) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<_ne; ++i)
 	{
-		oss << (k==0?"  ":" ") << _g->Ele(i)->VTKCellType();
+		oss << (k==0?"  ":" ") << _aes[i]->VTKCellType();
 		k++;
 		OUT_NEWLINE (i,k,_ne,_nimax,oss);
 	}
@@ -521,7 +521,7 @@ inline void Output::_vtu_write_vals_at_elems(std::ostringstream & oss) const
 		for (size_t i=0; i<_ne; ++i)
 		{
 			double val = 0.0;
-			try { val = _g->Ele(i)->Val(it->first.CStr()); } catch (Exception * e) { delete e; }
+			try { val = _aes[i]->Val(it->first.CStr()); } catch (Exception * e) { delete e; }
 			oss << (k==0?"  ":" ") << val;
 			k++;
 			OUT_NEWLINE (i,k,_ne,_nfmax,oss);
