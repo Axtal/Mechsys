@@ -56,12 +56,13 @@ public:
 	~Output () { if (_pvd_file!=NULL) { _pvd_file->close(); delete _pvd_file; } }
 
 	// Methods
-	void VTK   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTK file
-	void VTU   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file
-	void VTUcg (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file with element values at CG
-	void VTU   (FEM::Geom const * G, double TimeStep);       ///< Write a ParaView-VTU file (with timestep)
-	void OpenCollection  (char const * FileKey);             ///< Collection of files with different timesteps
-	void CloseCollection ();                                 ///< Close collection of files
+	double Val   (int iNode, char const * Key) const;
+	void   VTK   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTK file
+	void   VTU   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file
+	void   VTUcg (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file with element values at CG
+	void   VTU   (FEM::Geom const * G, double TimeStep);       ///< Write a ParaView-VTU file (with timestep)
+	void   OpenCollection  (char const * FileKey);             ///< Collection of files with different timesteps
+	void   CloseCollection ();                                 ///< Close collection of files
 
 #ifdef USE_BOOST_PYTHON
 // {
@@ -106,6 +107,15 @@ private:
 
 
 /* public */
+
+inline double Output::Val(int iNode, char const * Key) const
+{ 
+	std::map<String,int>::const_iterator iter = _map.find(Key);
+	if (iter!=_map.end())
+		throw new Fatal(_("Output::Val: Could not find key < %s > for output"), Key);
+	return _vals(iNode, iter->second);
+}
+
 
 inline void Output::VTK(FEM::Geom const * G, char const * FileName)
 {
