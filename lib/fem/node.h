@@ -151,7 +151,7 @@ inline bool Node::IsEssential(char const * Name) const
 {
 	long idx = _find_var(Name);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::IsEssential: Could not find DOF variable name < %s > inside Node"), Name);
+		throw new Fatal(_("Node::IsEssential: Could not find DOF variable name < %s > inside Node (%d)"), Name, _my_id);
 	return _dofs[idx].EssentialBryName==Name;
 }
 
@@ -159,7 +159,7 @@ inline Node::DOF & Node::DOFVar(char const * Name)
 {
 	long idx = _find_var(Name);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node"), Name);
+		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node (%d)"), Name, _my_id);
 	return _dofs[idx];
 }
 
@@ -167,7 +167,7 @@ inline double Node::Val(char const * Name) const
 {
 	long idx = _find_var(Name);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node"), Name);
+		throw new Fatal(_("Node::DOFVar: Could not find DOF variable name < %s > inside Node (%d)"), Name, _my_id);
 	if (_dofs[idx].EssentialBryName==Name) return _dofs[idx].EssentialVal;
 	else                                   return _dofs[idx].NaturalVal;
 }
