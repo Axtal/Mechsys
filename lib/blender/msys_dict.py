@@ -220,7 +220,7 @@ def new_mat_props():
                  1.0,     #  10:  Izz -- Beam: Inertia
                  -1  ]    #  11:  ids_description(in texts)
 
-def new_stage_props(): return [1, -1, 0, 0, 1, 0.0]             # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime
+def new_stage_props(): return [1, -1, 0, 0, 1, 1.0]             # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val
