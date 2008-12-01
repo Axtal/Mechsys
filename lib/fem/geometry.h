@@ -157,7 +157,7 @@ inline Element * Geom::SetElem(size_t i, char const * Type, bool IsActive, int T
 
 inline void Geom::ClearDisplacements()
 {
-	for (size_t i=0; i<_elems.Size(); ++i)_elems[i]->ClearDispAndStrains();
+	for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ClearDispAndStrains();
 }
 
 inline void Geom::Activate(int ElemTag)

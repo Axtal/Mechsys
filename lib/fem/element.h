@@ -551,6 +551,7 @@ public:
 	                     PyElem   (FEM::Element * ptElem) : _elem(ptElem)                               { }
 	long                 GetID    ()                                                              const { return _elem->GetID();   }
 	int                  Tag      ()                                                              const { return _elem->Tag();     }
+	bool                 IsActive ()                                                              const { return _elem->IsActive();}
 	size_t               NNodes   ()                                                              const { return _elem->NNodes();  }
 	FEM::Node const    & Nod      (size_t i)                                                      const { return (*_elem->Nod(i)); }
 	PyElem             & Connect  (int iNodeLocal, FEM::Node & refNode)                                 { _elem->Connect  (iNodeLocal, &refNode); return (*this); }

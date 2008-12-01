@@ -402,6 +402,7 @@ inline void BiotElem::GetLabels(Array<String> & Labels) const
 
 inline void BiotElem::CalcDepVars() const
 {
+	if (_is_active==false) throw new Fatal("BiotElem::CalcDepVars: This element is inactive (ID=%d, Tag=%d)",_my_id,_tag);
 }
 
 inline double BiotElem::Val(int iNodeLocal, char const * Name) const

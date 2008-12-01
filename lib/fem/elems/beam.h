@@ -205,6 +205,8 @@ inline void Beam::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUg
 
 inline void Beam::CalcDepVars() const
 {
+	if (_is_active==false) throw new Fatal("Beam::CalcDepVars: This element is inactive (ID=%d, Tag=%d)",_my_id,_tag);
+
 	// Element displacements vector
 	_uL.Resize(_nd*_n_nodes);
 	for (size_t i=0; i<_n_nodes; ++i)
@@ -248,9 +250,6 @@ inline void Beam::ClearDispAndStrains()
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
 		_connects[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
-
-	// Clear strains
-	_uL.SetValues(0.0);
 }
 
 inline void Beam::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const

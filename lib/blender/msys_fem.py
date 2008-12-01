@@ -366,7 +366,7 @@ def run_analysis(gen_script=False):
             if abf: txt.write ('geo.apply_body_forces   ()\n')
 
             # solve
-            txt.write ('sol.solve_with_info     (%d, %g, %d, "%s")\n'%(ndiv,dtime,num,desc))
+            txt.write ('sol.solve_with_info     (%d, %g, %d, "%s\\n")\n'%(ndiv,dtime,num,desc))
 
             # clear displacements
             if cdi: txt.write ('geo.clear_displacements ()\n')
@@ -397,7 +397,6 @@ def run_analysis(gen_script=False):
         # element attributes
         eatts = []
         for ea in eatts1: eatts.append(ea[:7])
-        print eatts
 
         # set nodes and elements
         if frame: ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)
@@ -441,7 +440,7 @@ def run_analysis(gen_script=False):
             if abf: geo.apply_body_forces()
 
             # solve
-            sol.solve_with_info (ndiv,dtime,num,desc)
+            sol.solve_with_info (ndiv,dtime,num,desc+'\n')
 
             # clear displacements
             if cdi: geo.clear_displacements()
@@ -485,7 +484,7 @@ def save_results(geo,obj, stage_num):
     # save extra output
     obj.properties['res'][s]['extra'] = {}
     for i in range(geo.nelems()):
-        if geo.ele(i).has_extra():
+        if geo.ele(i).has_extra() and geo.ele(i).is_active():
             ide = str(i)
             obj.properties['res'][s]['extra'][ide] = {}
             geo.ele(i).calc_dep_vars()

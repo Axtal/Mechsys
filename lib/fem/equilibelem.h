@@ -338,8 +338,9 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 
 inline void EquilibElem::CalcDepVars() const
 {
+	if (_is_active==false) throw new Fatal("EquilibElem::CalcDepVars: This element is inactive (ID=%d, Tag=%d)",_my_id,_tag);
 	if (_a_model.Size()==_n_int_pts) for (size_t i=0; i<_n_int_pts; i++) _a_model[i]->CalcDepVars();
-	else throw new Fatal("EquilibElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
+	else throw new Fatal("EquilibElem::CalcDepVars: Constitutive models for this element (ID=%d, Tag=%d) were not set yet",_my_id,_tag);
 }
 
 inline double EquilibElem::Val(int iNodeLocal, char const * Name) const
