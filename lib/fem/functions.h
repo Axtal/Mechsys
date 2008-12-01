@@ -28,6 +28,12 @@
 // Boost
 #include <boost/tuple/tuple_io.hpp>
 
+// Boost::Python
+#ifdef USE_BOOST_PYTHON
+  //#include <boost/python.hpp> // this includes everything
+  namespace BPy = boost::python;
+#endif // USE_BOOST_PYTHON
+
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
@@ -145,6 +151,7 @@ inline void SetNodesElems (Mesh::Generic const * M,          ///< In: The mesh
 				FEM::Element * fe = G->SetElem (i, (*ElemsAtts)[j].get<1>(), (*ElemsAtts)[j].get<6>(), M->ElemTag(i));
 
 				// Set connectivity
+				if (M->ElemNVerts(i)!=fe->NNodes()) throw new Fatal("functions.h::SetNodesElems:: The number of vertices (%d) of mesh object must be compatible with the number of nodes (%d) of the element (%s)",M->ElemNVerts(i),fe->NNodes(),fe->Name());
 				for (size_t k=0; k<M->ElemNVerts(i); ++k)
 					fe->Connect (k, G->Nod(M->ElemCon(i,k)));
 
@@ -285,14 +292,9 @@ inline void SetBrys (Mesh::Generic const * M,          ///< In: The mesh
 	}
 }
 
-#endif // USE_BOOST || USE_BOOST_PYTHON
-
 }; // namespace FEM
 
 #ifdef USE_BOOST_PYTHON
-// {
-
-namespace BPy = boost::python;
 
 void PySetNodesElems (Mesh::Generic const & M,          ///< In: The mesh
                       BPy::list     const & ElemsAtts,  ///< In: Elements attributes
@@ -408,5 +410,7 @@ void PySetBrys (Mesh::Generic const & M,          ///< In: The mesh
 	if (ebrys!=NULL) delete ebrys;
 	if (fbrys!=NULL) delete fbrys;
 }
+
+#endif // USE_BOOST_PYTHON
 
 #endif // MECHSYS_FEM_FUNCTIONS_H
