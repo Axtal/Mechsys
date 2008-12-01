@@ -298,20 +298,24 @@ def button_event(evt):
         if not obj.properties.has_key('res'):
             if edm: Blender.Window.EditMode(1)
             raise Exception('Please, run analysis first')
-        s    = str(di.key('res_stage'))
-        stat = {}
-        for k, key in di.key('dfv').iteritems():
-            mi = min(obj.properties['res'][s][key])
-            ma = max(obj.properties['res'][s][key])
-            stat[key] = [mi,ma]
-        print 'Statistics:'
-        print '=== Stage # '+s+' ====='
-        print '  %4s:[min, max]'%'key'
-        msg = ['=== Stage # '+s+' =====', 'key:[min, max]']
-        for k, v in stat.iteritems():
-            print '  %4s:[%g, %g]'%(k,v[0],v[1])
-            msg.append('%s:[%g, %g]'%(k,v[0],v[1]))
-        Blender.Draw.PupBlock('Statistics:',msg)
+        s = str(di.key('res_stage'))
+        if obj.properties['res'].has_key(s):
+            stat = {}
+            for k, key in di.key('dfv').iteritems():
+                mi = min(obj.properties['res'][s][key])
+                ma = max(obj.properties['res'][s][key])
+                stat[key] = [mi,ma]
+            if obj.properties['res'][s].has_key('extra'):
+                if obj.properties['res'][s].has_key('max_M'):
+                    stat['max_M'] = [0,obj.properties['res'][s]['max_M']]
+            print 'Statistics:'
+            print '=== Stage # '+s+' ====='
+            print '  %4s:[min, max]'%'key'
+            msg = ['=== Stage # '+s+' =====', 'key:[min, max]']
+            for k, v in stat.iteritems():
+                print '  %4s:[%g, %g]'%(k,v[0],v[1])
+                msg.append('%s:[%g, %g]'%(k,v[0],v[1]))
+            Blender.Draw.PupBlock('Statistics:',msg)
         if edm: Blender.Window.EditMode(1)
 
 
@@ -573,7 +577,8 @@ def cb_res_show       (evt,val): di.set_key ('show_res',        val)
 def cb_res_stage      (evt,val):
     obj         = di.get_obj()
     res_nstages = len(obj.properties['res'])
-    if val<=res_nstages: di.set_key ('res_stage', val)
+    if   res_nstages==0:   di.set_key ('res_stage', 1)
+    elif val<=res_nstages: di.set_key ('res_stage', val)
     else: Blender.Window.QRedrawAll()
 @try_catch
 def cb_res_dfv        (evt,val): di.set_key ('res_dfv',         val-1)
