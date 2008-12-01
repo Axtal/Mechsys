@@ -34,7 +34,7 @@ public:
 	static const size_t NDIV;        ///< Number of points for extra output
 	
 	// Constructor
-	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
+	Beam () : _gam(0.0), _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
 
 	// Derived methods
 	char const * Name() const { return "Beam"; }
@@ -44,6 +44,7 @@ public:
 	void   SetModel            (char const * ModelName, char const * Prms, char const * Inis);
 	void   SetProps            (char const * Properties);
 	void   UpdateState         (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void   ApplyBodyForces     ();
 	void   CalcDepVars         () const;
 	double Val                 (int iNodeLocal, char const * Name) const;
 	double Val                 (char const * Name) const;
@@ -66,6 +67,7 @@ public:
 
 private:
 	// Data
+	double _gam;     ///< Specific weigth
 	double _E;       ///< Young modulus
 	double _A;       ///< Cross-sectional area
 	double _Izz;     ///< Cross-sectional inertia
@@ -175,7 +177,8 @@ inline void Beam::SetProps(char const * Properties)
 	// Set
 	for (size_t i=0; i<names.Size(); ++i)
 	{
-		 if (names[i]=="cq") _use_cor = static_cast<bool>(values[i]); // cq == correct q
+		      if (names[i]=="cq")  _use_cor = static_cast<bool>(values[i]); // cq == correct q
+		 else if (names[i]=="gam") _gam     = values[i];
 	}
 }
 
@@ -201,6 +204,31 @@ inline void Beam::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUg
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
 		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+}
+
+inline void Beam::ApplyBodyForces() 
+{
+	// Verify if element is active
+	if (_is_active==false) return;
+
+	// Weight
+	double dx = _connects[1]->X()-_connects[0]->X();
+	double dy = _connects[1]->Y()-_connects[0]->Y();
+	double L  = sqrt(dx*dx+dy*dy);
+	double W  = _A*L*_gam;
+
+	// Set boundary conditions
+	if (_ndim==1) throw new Fatal("Beam::ApplyBodyForces: feature not available for NDim==1");
+	else if (_ndim==2)
+	{
+		_connects[0]->Bry("fy", -W/2.0);
+		_connects[1]->Bry("fy", -W/2.0);
+	}
+	else if (_ndim==3)
+	{
+		_connects[0]->Bry("fz", -W/2.0);
+		_connects[1]->Bry("fz", -W/2.0);
+	}
 }
 
 inline void Beam::CalcDepVars() const

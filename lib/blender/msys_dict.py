@@ -34,7 +34,7 @@ def load_dict():
         dict                  = {}
         # GUI
         dict['gui_show_set']  = True
-        dict['gui_show_cad']  = False
+        dict['gui_show_cad']  = True
         dict['gui_show_mesh'] = True
         dict['gui_show_mat']  = True
         dict['gui_show_fem']  = True
