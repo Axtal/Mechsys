@@ -23,7 +23,7 @@ ENABLE_TESTING         ()
 
 OPTION(MAKE_VERBOSE       "Show additional messages during compilation/link?" OFF)
 OPTION(MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    ON )
-OPTION(MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g3)"                     ON )
+OPTION(MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      ON )
 OPTION(MAKE_PROFILING     "Make with profiling information (-pg)"             OFF)
 OPTION(MAKE_OPTIMIZED     "Make optimized (-O3)"                              OFF)
 
@@ -38,7 +38,7 @@ IF(MAKE_ALL_WARNINGS)
 ENDIF(MAKE_ALL_WARNINGS)
 
 IF(MAKE_DEBUG_SYMBOLS)
-	ADD_DEFINITIONS(-g3)
+	ADD_DEFINITIONS(-g)
 ENDIF(MAKE_DEBUG_SYMBOLS)
 
 IF(MAKE_PROFILING)
