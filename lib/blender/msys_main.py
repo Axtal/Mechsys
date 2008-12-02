@@ -436,6 +436,8 @@ def cb_mat_setA     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 9, float(
 @try_catch
 def cb_mat_setIzz   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 10, float(val))
 @try_catch
+def cb_mat_setgw    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 12, float(val))
+@try_catch
 def cb_mat_del      (evt,val): di.props_del      ('mats', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbrys
@@ -879,6 +881,13 @@ def gui():
                 Draw.String     ('',    EVT_INC+i, c+220, r,  60, rh, '%g'%v[ 9], 32, 'A: Cross-sectional area',      cb_mat_setA)
                 Draw.String     ('',    EVT_INC+i, c+280, r,  60, rh, '%g'%v[10], 32, 'Izz: Cross-sectional inertia', cb_mat_setIzz)
                 Draw.PushButton ('Del', EVT_INC+i, c+340, r,  40, rh,                 'Delete this row',              cb_mat_del)
+            elif int(v[0])==4: # BiotElastic
+                gu.text(c,r+rh,'     Name         Model             E             nu            k            gw')
+                Draw.String     ('',    EVT_INC+i, c+160, r,  60, rh, '%g'%v[ 1], 32, 'E: Young modulus',             cb_mat_setE)
+                Draw.String     ('',    EVT_INC+i, c+220, r,  60, rh, '%g'%v[ 2], 32, 'nu: Poisson ratio',            cb_mat_setnu)
+                Draw.String     ('',    EVT_INC+i, c+280, r,  60, rh, '%g'%v[ 3], 32, 'k: Isotropic permeability',    cb_mat_setk)
+                Draw.String     ('',    EVT_INC+i, c+340, r,  60, rh, '%g'%v[12], 32, 'gw: Water specific weight',    cb_mat_setgw)
+                Draw.PushButton ('Del', EVT_INC+i, c+400, r,  40, rh,                 'Delete this row',              cb_mat_del)
             r  -= rh
         r -= srg
         r, c, w = gu.box2__out(W,cg,rh, c,r)

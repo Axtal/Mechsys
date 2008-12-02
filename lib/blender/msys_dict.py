@@ -97,8 +97,8 @@ def load_dict():
         dict['etymnu'] = 'Element Types %t|Tet10Diffusion %x26|Tet10Equilib %x25|Tet4Diffusion %x24|Tet4Equilib %x23|Hex20Diffusion %x22|Hex20Equilib %x21|Quad8Biot %x20|Quad4Biot %x19|Tri6Biot %x18|Tri3Biot %x17|Tri6Diffusion %x16|Tri6PStress %x15|Tri6PStrain %x14|Quad8Diffusion %x13|Quad8PStress %x12|Quad8PStrain %x11|Beam %x10|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
 
         # Models
-        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic' }
-        dict['mdlmnu'] = 'Constitutive Models %t|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
+        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic', 4:'BiotElastic' }
+        dict['mdlmnu'] = 'Constitutive Models %t|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
 
         # VTK Cell Type (tentative mapping)
         dict['vtk2ety'] = {  5: 5,   # VTK_TRIANGLE             => Tri3PStrain
@@ -219,7 +219,8 @@ def new_mat_props():
                  1.6910,  #   8:  v -- initial specific volume (CamClay)
                  1.0,     #   9:  A -- Beam: Area
                  1.0,     #  10:  Izz -- Beam: Inertia
-                 -1  ]    #  11:  ids_description(in texts)
+                 -1,      #  11:  idx -- index to material name/description in 'texts'
+                10.0 ]    #  12:  gw -- water specific weight
 
 def new_stage_props(): return [1, -1, 0, 0, 1, 1.0]             # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val

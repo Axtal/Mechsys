@@ -83,6 +83,8 @@ def get_mats(obj):
                 mats[int(k)] = [d['mdl'][int(v[0])], 'lam=%g kap=%g phics=%g G=%g v=%g' % (v[4],v[5],v[6],v[7],v[8]), desc]
             elif int(v[0])==3: # BeamElastic
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g A=%g Izz=%g' % (v[1],v[9],v[10]), desc]
+            elif int(v[0])==4: # BiotElastic
+                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g nu=%g k=%g gw=%g' % (v[1],v[2],v[3],v[12]), desc]
     return mats
 
 
