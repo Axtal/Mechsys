@@ -501,8 +501,8 @@ def save_results(geo,obj, stage_num):
                         key  = 'max_'+k
                         maxv = max([abs(val) for val in v])
                         if obj.properties['res'][s].has_key(key):
-                            if maxv>obj.properties['res'][s][key]: obj.properties['res'][s][key] = maxv
-                        else: obj.properties['res'][s][key] = maxv
+                            if maxv>obj.properties['res'][s][key][0]: obj.properties['res'][s][key] = [maxv, i, geo.ele(i).nod(0).x(), geo.ele(i).nod(0).y()]
+                        else: obj.properties['res'][s][key] = [maxv, i, geo.ele(i).nod(0).x(), geo.ele(i).nod(0).y()]
 
     Blender.Window.QRedrawAll()
 

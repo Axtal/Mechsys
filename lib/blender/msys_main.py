@@ -44,6 +44,7 @@ import msys_mesh as me
 import msys_dict as di
 import msys_fem  as fe
 import msys_gui  as gu
+import msys_res  as re
 
 #import rpdb2; rpdb2.start_embedded_debugger('msys')
 
@@ -54,20 +55,23 @@ EVT_NONE             =  0 # used for buttons with callbacks
 EVT_REFRESH          =  1 # refresh all windows
 # SETTINGS
 EVT_SET_SHOWHIDE     = 10 # show/hide SET box
-EVT_SET_DELPROPS     = 11 # delete all properties
+EVT_SET_SHOWONLY     = 11 # show only this box
+EVT_SET_DELPROPS     = 12 # delete all properties
 # CAD
 EVT_CAD_SHOWHIDE     = 20 # show/hide CAD box
-EVT_CAD_ADDXYZ       = 21 # type in values to define point(s)
-EVT_CAD_FILLET       = 22 # fillet two edges
-EVT_CAD_BREAK        = 23 # break edge
-EVT_CAD_BREAKM       = 24 # break edge at middle point
-EVT_CAD_EINT         = 25 # edge closest distance
-EVT_CAD_FPOINT       = 26 # read points from file
-EVT_CAD_FSPLINE      = 27 # create a spline from points in a file
+EVT_CAD_SHOWONLY     = 21 # show/hide CAD box
+EVT_CAD_ADDXYZ       = 22 # type in values to define point(s)
+EVT_CAD_FILLET       = 23 # fillet two edges
+EVT_CAD_BREAK        = 24 # break edge
+EVT_CAD_BREAKM       = 25 # break edge at middle point
+EVT_CAD_EINT         = 26 # edge closest distance
+EVT_CAD_FPOINT       = 27 # read points from file
+EVT_CAD_FSPLINE      = 28 # create a spline from points in a file
 # Mesh
 EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
-EVT_MESH_SETETAG     = 41 # set edges tag
-EVT_MESH_SETFTAG     = 42 # set faces tag
+EVT_MESH_SHOWONLY    = 41 # show only this box
+EVT_MESH_SETETAG     = 42 # set edges tag
+EVT_MESH_SETFTAG     = 43 # set faces tag
 # Mesh -- linear
 EVT_MESH_GENFRAME    = 50 # generate linear mesh
 EVT_MESH_GENFRAMES   = 51 # generate linear mesh script
@@ -85,35 +89,50 @@ EVT_MESH_GENUNSTRU   = 74 # generate unstructured mesh using MechSys module
 EVT_MESH_GENUNSTRUS  = 75 # script for unstructured mesh generation
 # Materials
 EVT_MAT_SHOWHIDE     = 80 # show/hide CAD box
-EVT_MAT_ADDMAT       = 81 # add material
-EVT_MAT_DELALLMAT    = 82 # delete all materials
+EVT_MAT_SHOWONLY     = 81 # show/hide CAD box
+EVT_MAT_ADDMAT       = 82 # add material
+EVT_MAT_DELALLMAT    = 83 # delete all materials
 # FEM
 EVT_FEM_SHOWHIDE     =  90 # show/hide FEM box
-EVT_FEM_ADDSTAGE     =  91 # add stage
-EVT_FEM_DELSTAGE     =  92 # add stage
-EVT_FEM_DELALLSTAGES =  93 # add stage
-EVT_FEM_ADDNBRY      =  94 # add nodes boundary (given coordinates)
-EVT_FEM_ADDNBID      =  95 # add nodes boundary (given nodes IDs)
-EVT_FEM_ADDEBRY      =  96 # add edges boundary
-EVT_FEM_ADDFBRY      =  97 # add faces boundary
-EVT_FEM_ADDEATT      =  98 # add element attributes
-EVT_FEM_DELALLNBRY   =  99 # delete all nodes boundary
-EVT_FEM_DELALLNBID   = 100 # delete all nodes boundary (IDs)
-EVT_FEM_DELALLEBRY   = 101 # delete all edges boundary
-EVT_FEM_DELALLFBRY   = 102 # delete all faces boundary
-EVT_FEM_DELALLEATT   = 103 # delete all element attributes
-EVT_FEM_RUN          = 104 # run a FE simulation
-EVT_FEM_SCRIPT       = 105 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 106 # view in ParaView
-EVT_FEM_SAVESTAGES   = 107 # save stage info to a new object
-EVT_FEM_READSTAGES   = 108 # read stage info from another object
+EVT_FEM_SHOWONLY     =  91 # show only this box
+EVT_FEM_ADDSTAGE     =  92 # add stage
+EVT_FEM_DELSTAGE     =  93 # add stage
+EVT_FEM_DELALLSTAGES =  94 # add stage
+EVT_FEM_ADDNBRY      =  95 # add nodes boundary (given coordinates)
+EVT_FEM_ADDNBID      =  96 # add nodes boundary (given nodes IDs)
+EVT_FEM_ADDEBRY      = 100 # add edges boundary
+EVT_FEM_ADDFBRY      = 101 # add faces boundary
+EVT_FEM_ADDEATT      = 102 # add element attributes
+EVT_FEM_DELALLNBRY   = 103 # delete all nodes boundary
+EVT_FEM_DELALLNBID   = 104 # delete all nodes boundary (IDs)
+EVT_FEM_DELALLEBRY   = 105 # delete all edges boundary
+EVT_FEM_DELALLFBRY   = 106 # delete all faces boundary
+EVT_FEM_DELALLEATT   = 200 # delete all element attributes
+EVT_FEM_RUN          = 201 # run a FE simulation
+EVT_FEM_SCRIPT       = 202 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 203 # view in ParaView
+EVT_FEM_SAVESTAGES   = 204 # save stage info to a new object
+EVT_FEM_READSTAGES   = 205 # read stage info from another object
 # Results
-EVT_RES_SHOWHIDE     = 200 # show/hide results box
-EVT_RES_ATNODE       = 201 # show results at a node
-EVT_RES_STATS        = 202 # show statistics
+EVT_RES_SHOWHIDE     = 300 # show/hide results box
+EVT_RES_SHOWONLY     = 301 # show only this box
+EVT_RES_ATNODE       = 302 # show results at a node
+EVT_RES_STATS        = 303 # show statistics
+EVT_RES_REPORT       = 304 # show statistics
 
 
 # ==================================================================================== Events
+
+def show_only(key):
+    di.set_key('gui_show_set',  False)
+    di.set_key('gui_show_cad',  False)
+    di.set_key('gui_show_mesh', False)
+    di.set_key('gui_show_mat',  False)
+    di.set_key('gui_show_fem',  False)
+    di.set_key('gui_show_res',  False)
+    di.set_key(key,             True)
+    di.set_key('gui_inirow',    0)
+    Blender.Window.QRedrawAll()
 
 # Handle input events
 def event(evt, val):
@@ -153,6 +172,7 @@ def button_event(evt):
     # ----------------------------------------------------------------------------------- Settings
 
     if evt==EVT_SET_SHOWHIDE: di.toggle_key('gui_show_set')
+    if evt==EVT_SET_SHOWONLY: show_only    ('gui_show_set')
 
     elif evt==EVT_SET_DELPROPS:
         scn = bpy.data.scenes.active
@@ -173,6 +193,7 @@ def button_event(evt):
     # ----------------------------------------------------------------------------------- CAD
 
     elif evt==EVT_CAD_SHOWHIDE: di.toggle_key('gui_show_cad')
+    elif evt==EVT_CAD_SHOWONLY: show_only    ('gui_show_cad')
     elif evt==EVT_CAD_ADDXYZ:   ca.add_point     (float(di.key('cad_x')), float(di.key('cad_y')), float(di.key('cad_z')))
     elif evt==EVT_CAD_FILLET:   ca.fillet        (float(di.key('cad_rad')), di.key('cad_stp'))
     elif evt==EVT_CAD_BREAK:    ca.break_edge    ()
@@ -184,6 +205,7 @@ def button_event(evt):
     # ---------------------------------------------------------------------------------- Mesh
 
     elif evt==EVT_MESH_SHOWHIDE: di.toggle_key('gui_show_mesh')
+    elif evt==EVT_MESH_SHOWONLY: show_only    ('gui_show_mesh')
 
     elif evt==EVT_MESH_SETETAG:
         tag = di.key('newetag')[0]
@@ -208,6 +230,7 @@ def button_event(evt):
     # ---------------------------------------------------------------------------------- Materials
 
     elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key        ('gui_show_mat')
+    elif evt==EVT_MAT_SHOWONLY:  show_only            ('gui_show_mat')
     elif evt==EVT_MAT_ADDMAT:    di.props_push_new_mat()
     elif evt==EVT_MAT_DELALLMAT: di.props_del_all_mats()
 
@@ -238,6 +261,7 @@ def button_event(evt):
     # ----------------------------------------------------------------------------------- FEM 
 
     elif evt==EVT_FEM_SHOWHIDE: di.toggle_key('gui_show_fem')
+    elif evt==EVT_FEM_SHOWONLY: show_only    ('gui_show_fem')
 
     elif evt==EVT_FEM_ADDSTAGE: di.props_push_new_stage()
     elif evt==EVT_FEM_DELSTAGE: di.props_del_stage     ()
@@ -268,55 +292,11 @@ def button_event(evt):
 
     # ----------------------------------------------------------------------------------- RES 
 
-    elif evt==EVT_RES_SHOWHIDE: di.toggle_key('gui_show_res')
-    elif evt==EVT_RES_ATNODE:
-        edm, obj, msh = di.get_msh()
-        verts = msh.verts.selected()
-        if not obj.properties.has_key('res'):
-            if edm: Blender.Window.EditMode(1)
-            raise Exception('Please, run analysis first')
-        if len(verts)==0:
-            if edm: Blender.Window.EditMode(1)
-            raise Exception('Please, select at least 1 vertex')
-        if len(verts)>3:
-            if edm: Blender.Window.EditMode(1)
-            raise Exception('Please, select at most 3 vertices')
-        s   = str(di.key('res_stage'))
-        msg = ['=== Stage # '+s+' =====']
-        for vidx in verts:
-            msg.append('--- Node # %d -----'%(vidx))
-            for k, key in di.key('dfv').iteritems():
-                if obj.properties['res'][s].has_key(key):
-                    val = obj.properties['res'][s][key][vidx]
-                    msg.append('  %s = %g'%(key,val))
-        print 'Results:'
-        for item in msg: print item
-        Blender.Draw.PupBlock('Results:',msg)
-        if edm: Blender.Window.EditMode(1)
-    elif evt==EVT_RES_STATS:
-        edm, obj, msh = di.get_msh()
-        if not obj.properties.has_key('res'):
-            if edm: Blender.Window.EditMode(1)
-            raise Exception('Please, run analysis first')
-        s = str(di.key('res_stage'))
-        if obj.properties['res'].has_key(s):
-            stat = {}
-            for k, key in di.key('dfv').iteritems():
-                mi = min(obj.properties['res'][s][key])
-                ma = max(obj.properties['res'][s][key])
-                stat[key] = [mi,ma]
-            if obj.properties['res'][s].has_key('extra'):
-                if obj.properties['res'][s].has_key('max_M'):
-                    stat['max_M'] = [0,obj.properties['res'][s]['max_M']]
-            print 'Statistics:'
-            print '=== Stage # '+s+' ====='
-            print '  %4s:[min, max]'%'key'
-            msg = ['=== Stage # '+s+' =====', 'key:[min, max]']
-            for k, v in stat.iteritems():
-                print '  %4s:[%g, %g]'%(k,v[0],v[1])
-                msg.append('%s:[%g, %g]'%(k,v[0],v[1]))
-            Blender.Draw.PupBlock('Statistics:',msg)
-        if edm: Blender.Window.EditMode(1)
+    elif evt==EVT_RES_SHOWHIDE: di.toggle_key  ('gui_show_res')
+    elif evt==EVT_RES_SHOWONLY: show_only      ('gui_show_res')
+    elif evt==EVT_RES_ATNODE:   re.at_node     (di.key('res_stage'))
+    elif evt==EVT_RES_STATS:    re.stage_stats (di.key('res_stage'))
+    elif evt==EVT_RES_REPORT:   re.report      ()
 
 
 # ================================================================================= Callbacks
@@ -692,14 +672,14 @@ def gui():
     h_fem_stage     = 8*rh+6*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
     h_fem           = 6*rh+srg+h_fem_stage if nstages>0 else 6*rh+srg
     h_res_stage     = 5*rh
-    h_res           = 3*rh+h_res_stage if res_nstages>0 else 3*rh
+    h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
 
     # clear background
     gu.background()
 
     # ======================================================== Settings
 
-    gu.caption1(c,r,w,rh,'SETTINGS',EVT_REFRESH,EVT_SET_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'SETTINGS',EVT_REFRESH,EVT_SET_SHOWONLY,EVT_SET_SHOWHIDE)
     if d['gui_show_set']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_set)
         Draw.Toggle ('ON/OFF',     EVT_NONE, c    , r-rh, 60, 2*rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
@@ -721,7 +701,7 @@ def gui():
 
     # ======================================================== CAD
 
-    gu.caption1(c,r,w,rh,'CAD',EVT_REFRESH,EVT_CAD_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'CAD',EVT_REFRESH,EVT_CAD_SHOWONLY,EVT_CAD_SHOWHIDE)
     if d['gui_show_cad']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_cad)
         Draw.String     ('X=',           EVT_NONE,        c,     r, 80, rh, d['cad_x'],128,     'Set the X value of the new point to be added',cb_set_x)
@@ -744,7 +724,7 @@ def gui():
 
     # ======================================================== Mesh
 
-    gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_MESH_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_MESH_SHOWONLY,EVT_MESH_SHOWHIDE)
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
         Draw.Toggle      ('3D mesh', EVT_NONE,          c,     r, 60, rh, is3d,                        'Set 3D mesh',                       cb_3dmesh)
@@ -860,7 +840,7 @@ def gui():
 
     # ======================================================== Materials
 
-    gu.caption1(c,r,w,rh,'Materials',EVT_REFRESH,EVT_MAT_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'Materials',EVT_REFRESH,EVT_MAT_SHOWONLY,EVT_MAT_SHOWHIDE)
     if d['gui_show_mat']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_mat)
 
@@ -910,7 +890,7 @@ def gui():
 
     # ======================================================== FEM
 
-    gu.caption1(c,r,w,rh,'FEM',EVT_REFRESH,EVT_FEM_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'FEM',EVT_REFRESH,EVT_FEM_SHOWONLY,EVT_FEM_SHOWHIDE)
     if d['gui_show_fem']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_fem)
 
@@ -1041,13 +1021,14 @@ def gui():
                     Draw.Toggle     ('Is Active',  EVT_INC+i,   c+180, r,    140,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
                 else:
                     etag =          str(featts[k][0])
-                    etyp = d['ety'][int(featts[k][1])+1]
+                    etyp = d['ety'][int(featts[k][1])]
                     emat = matnames[int(featts[k][2])] if matnames.has_key(int(featts[k][2])) else ''
+                    prps = texts[str(str(int(featts[k][3])))] # properties
                     gu.label_ (etag,  c,     r-rh,  60, 2*rh)
                     gu.label  (etyp,  c+ 60, r,    120,   rh)
                     gu.label  (emat,  c+180, r,    140,   rh)
                     r -= rh                         
-                    gu.label    (props,                   c+ 60, r, 120, rh)
+                    gu.label    (prps,                    c+ 60, r, 120, rh)
                     Draw.Toggle ('Activate',   EVT_INC+i, c+180, r,  70, rh, int(v[5]),   'Activate this element at this stage?',   cb_eatt_act)
                     Draw.Toggle ('Deactivate', EVT_INC+i, c+250, r,  70, rh, int(v[6]),   'Deactivate this element at this stage?', cb_eatt_deact)
             r -= srg
@@ -1069,7 +1050,7 @@ def gui():
 
     # ======================================================== Results
 
-    gu.caption1(c,r,w,rh,'RESULTS',EVT_REFRESH,EVT_RES_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'RESULTS',EVT_REFRESH,EVT_RES_SHOWONLY,EVT_RES_SHOWHIDE)
     if d['gui_show_res']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_res)
         gu.caption2(c,r,w,rh,'Stage #                  / %d'%(res_nstages))
@@ -1090,6 +1071,9 @@ def gui():
             Draw.PushButton ('At Node', EVT_RES_ATNODE, c,    r, 60, rh, 'Show results at a specific Node')
             Draw.PushButton ('Stats',   EVT_RES_STATS,  c+60, r, 60, rh, 'Show statistics')
             r, c, w = gu.box1_out(W,cg,rh, c,r)
+        r -= rh
+        r -= srg
+        Draw.PushButton ('Generate report',  EVT_RES_REPORT, c, r, 100, rh, 'Generate report')
     r -= rg
 
 

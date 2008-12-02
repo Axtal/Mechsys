@@ -235,7 +235,7 @@ if di.key('show_res'):
                     BGL.glColor3f (clrs[idx][0], clrs[idx][1], clrs[idx][2])
                     for ide in obj.properties['res'][s]['extra']:
                         key   = 'max_'+ext
-                        maxv  = obj.properties['res'][s][key] if obj.properties['res'][s][key]>0 else 1.0
+                        maxv  = obj.properties['res'][s][key][0] if obj.properties['res'][s][key][0]>0 else 1.0
                         va    =        obj.properties['res'][s]['extra'][ide]['values']
                         co    =        obj.properties['res'][s]['extra'][ide]['coords']
                         no    = Vector(obj.properties['res'][s]['extra'][ide]['normal'])
@@ -259,6 +259,12 @@ if di.key('show_res'):
                             if di.key('res_ext_txt'):
                                 BGL.glRasterPos3f (ep[0], ep[1], 0.0)
                                 Draw.Text ('%g' % m)
+                    res = obj.properties['res'][s]['max_M']
+                    m, e, x, y = res[0], res[1], res[2], res[3] # max, elem, x, y
+                    BGL.glColor3f (0.0, 0.0, 0.0)
+                    BGL.glRasterPos3f (x, y, 0.0)
+                    Draw.Text ('%g at e%d' % (m,e))
+
 
                 # Resore mesh to local coordinates
                 msh.verts = ori
