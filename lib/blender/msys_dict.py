@@ -89,11 +89,12 @@ def load_dict():
                           8:'Rod',            9:'Beam',
                          10:'Quad8PStrain',  11:'Quad8PStress',  12:'Quad8Diffusion',
                          13:'Tri6PStrain',   14:'Tri6PStress',   15:'Tri6Diffusion',
-                         16:'Hex20Equilib',  17:'Hex20Diffusion',
-                         18:'Tet4Equilib',   19:'Tet4Diffusion',
-                         20:'Tet10Equilib',  21:'Tet10Diffusion' }
+                         16:'Tri3Biot',      17:'Tri6Biot',      18:'Quad4Biot',     19:'Quad8Biot',
+                         20:'Hex20Equilib',  21:'Hex20Diffusion',
+                         22:'Tet4Equilib',   23:'Tet4Diffusion',
+                         24:'Tet10Equilib',  25:'Tet10Diffusion' }
 
-        dict['etymnu'] = 'Element Types %t|Tri6Diffusion %x16|Tri6PStress %x15|Tri6PStrain %x14|Quad8Diffusion %x13|Quad8PStress %x12|Quad8PStrain %x11|Beam %x10|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
+        dict['etymnu'] = 'Element Types %t|Tet10Diffusion %x26|Tet10Equilib %x25|Tet4Diffusion %x24|Tet4Equilib %x23|Hex20Diffusion %x22|Hex20Equilib %x21|Quad8Biot %x20|Quad4Biot %x19|Tri6Biot %x18|Tri3Biot %x17|Tri6Diffusion %x16|Tri6PStress %x15|Tri6PStrain %x14|Quad8Diffusion %x13|Quad8PStress %x12|Quad8PStrain %x11|Beam %x10|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
 
         # Models
         dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic' }
