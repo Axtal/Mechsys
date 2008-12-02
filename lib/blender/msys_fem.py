@@ -260,7 +260,7 @@ def run_analysis(gen_script=False):
 
     # check number of stages
     if not obj.properties.has_key('stages'): raise Exception('Please, add stages first')
-    nstages = len(obj.properties['stages'])
+    nstages = di.key('fem_tostg')
 
     # first stage
     for k, v in obj.properties['stages'].iteritems():

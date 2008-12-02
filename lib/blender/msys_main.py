@@ -535,6 +535,12 @@ def cb_eatt_del     (evt,val):
 @try_catch
 def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
 @try_catch
+def cb_fem_tostg (evt,val):
+    obj = di.get_obj()
+    if obj.properties.has_key('stages'):
+        if val<=len(obj.properties['stages']): di.set_key('fem_tostg', val)
+    Blender.Window.QRedrawAll()
+@try_catch
 def cb_fem_stage (evt,val):
     obj = di.get_obj()
     for k, v in obj.properties['stages'].iteritems():
@@ -946,9 +952,9 @@ def gui():
                 Draw.String     ('',          EVT_INC+i, c    , r, 60, rh, str(v[0]), 32, 'X of the node with boundary condition',                                      cb_nbry_setx)
                 Draw.String     ('',          EVT_INC+i, c+ 60, r, 60, rh, str(v[1]), 32, 'Y of the node with boundary condition',                                      cb_nbry_sety)
                 Draw.String     ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 32, 'Z of the node with boundary condition',                                      cb_nbry_setz)
-                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+180, r, 40, rh, int(v[3])+1,   'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbry_setkey)
-                Draw.String     ('',          EVT_INC+i, c+220, r, 60, rh, str(v[4]), 32, 'Value of essential/natural boundary condition',                              cb_nbry_setval)
-                Draw.PushButton ('Del',       EVT_INC+i, c+280, r, 40, rh,                'Delete this row',                                                            cb_nbry_del)
+                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+180, r, 60, rh, int(v[3])+1,   'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbry_setkey)
+                Draw.String     ('',          EVT_INC+i, c+240, r, 60, rh, str(v[4]), 32, 'Value of essential/natural boundary condition',                              cb_nbry_setval)
+                Draw.PushButton ('Del',       EVT_INC+i, c+300, r, 40, rh,                'Delete this row',                                                            cb_nbry_del)
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -962,9 +968,9 @@ def gui():
                 r -= rh
                 i  = int(k)
                 Draw.Number     ('',          EVT_INC+i, c    , r, 60, rh, int(v[0]),0,10000, 'Set the node ID',                                                            cb_nbID_setID)
-                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbID_setkey)
-                Draw.String     ('',          EVT_INC+i, c+100, r, 60, rh, str(v[2]), 32,     'Value of essential/natural boundary condition',                              cb_nbID_setval)
-                Draw.PushButton ('Del',       EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_nbID_del)
+                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbID_setkey)
+                Draw.String     ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 32,     'Value of essential/natural boundary condition',                              cb_nbID_setval)
+                Draw.PushButton ('Del',       EVT_INC+i, c+180, r, 40, rh,                    'Delete this row',                                                            cb_nbID_del)
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -978,9 +984,9 @@ def gui():
                 r -= rh
                 i  = int(k)
                 Draw.Number     ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_ebry_settag)
-                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
-                Draw.String     ('',          EVT_INC+i, c+100, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_ebry_setval)
-                Draw.PushButton ('Del',       EVT_INC+i, c+160, r, 40, rh,                    'Delete this row',                                                            cb_ebry_del)
+                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
+                Draw.String     ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_ebry_setval)
+                Draw.PushButton ('Del',       EVT_INC+i, c+180, r, 40, rh,                    'Delete this row',                                                            cb_ebry_del)
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -996,9 +1002,9 @@ def gui():
                 clr = di.hex2rgb(v[3])
                 Draw.Number      ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_fbry_settag)
                 Draw.ColorPicker (             EVT_INC+i, c+ 60, r, 60, rh, clr,               'Select color to paint tagged face',                                          cb_fbry_setclr)
-                Draw.Menu        (d['dfvmnu'], EVT_INC+i, c+120, r, 40, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
-                Draw.String      ('',          EVT_INC+i, c+160, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
-                Draw.PushButton  ('Del',       EVT_INC+i, c+220, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
+                Draw.Menu        (d['dfvmnu'], EVT_INC+i, c+120, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
+                Draw.String      ('',          EVT_INC+i, c+180, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
+                Draw.PushButton  ('Del',       EVT_INC+i, c+240, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -1049,10 +1055,11 @@ def gui():
 
         # ----------------------- FEM -- END
         r -= srg
-        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c,     r, 120, rh, 'Run a FE analysis directly (without script)')
-        Draw.Toggle     ('full',             EVT_NONE,         c+120, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
-        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+160, r,  80, rh, 'Generate script for FEM')
-        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+240, r, 120, rh, 'View results in ParaView')
+        Draw.Number     ('',                 EVT_INC,          c,     r,  60, rh, d['fem_tostg'],1,100, 'Run until stage #',                       cb_fem_tostg)
+        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c+ 60, r, 100, rh, 'Run a FE analysis directly (without script)')
+        Draw.Toggle     ('full',             EVT_NONE,         c+160, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
+        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+200, r,  80, rh, 'Generate script for FEM')
+        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+280, r, 100, rh, 'View results in ParaView')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
@@ -1067,15 +1074,15 @@ def gui():
             Draw.Number ('', EVT_NONE, c+55, r+2, 60, rh-4, d['res_stage'], 1,100,'Show results of specific stage', cb_res_stage)
             r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_res_stage)
             Draw.Toggle ('ON/OFF',    EVT_NONE, c    , r-rh, 60, 2*rh, d['show_res'],             'Show results'               , cb_res_show)
-            Draw.Menu   (d['dfvmnu'], EVT_NONE, c+ 60, r,    40,   rh, d['res_dfv']+1,            'Key such as ux, uy, fx, fz' , cb_res_dfv)
-            Draw.Toggle ('Scalar',    EVT_NONE, c+100, r,    60,   rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
-            Draw.String ('sf=' ,      EVT_NONE, c+160, r,    60,   rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
-            Draw.Toggle ('Warp',      EVT_NONE, c+220, r,    60,   rh, d['res_show_warp']   ,     'Show warped (deformed) mesh', cb_res_show_warp)
+            Draw.Menu   (d['dfvmnu'], EVT_NONE, c+ 60, r,    60,   rh, d['res_dfv']+1,            'Key such as ux, uy, fx, fz' , cb_res_dfv)
+            Draw.Toggle ('Scalar',    EVT_NONE, c+120, r,    60,   rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
+            Draw.String ('sf=' ,      EVT_NONE, c+180, r,    60,   rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
+            Draw.Toggle ('Warp',      EVT_NONE, c+240, r,    60,   rh, d['res_show_warp']   ,     'Show warped (deformed) mesh', cb_res_show_warp)
             r -= rh
-            Draw.Menu   (d['extmnu'], EVT_NONE, c+ 60, r,    40,   rh, d['res_ext']+1,            'Key such as N, M, V'     , cb_res_ext)
-            Draw.String ('sf=' ,      EVT_NONE, c+100, r,    60,   rh, d['res_ext_scale']  , 32,  'Set extra drawing scale' , cb_res_ext_scale)
-            Draw.Toggle ('Extra',     EVT_NONE, c+160, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
-            Draw.Toggle ('Values',    EVT_NONE, c+220, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
+            Draw.Menu   (d['extmnu'], EVT_NONE, c+ 60, r,    60,   rh, d['res_ext']+1,            'Key such as N, M, V'     , cb_res_ext)
+            Draw.String ('sf=' ,      EVT_NONE, c+120, r,    60,   rh, d['res_ext_scale']  , 32,  'Set extra drawing scale' , cb_res_ext_scale)
+            Draw.Toggle ('Extra',     EVT_NONE, c+180, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
+            Draw.Toggle ('Values',    EVT_NONE, c+240, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
             r -= rh
             Draw.PushButton ('At Node', EVT_RES_ATNODE, c,    r, 60, rh, 'Show results at a specific Node')
             Draw.PushButton ('Stats',   EVT_RES_STATS,  c+60, r, 60, rh, 'Show statistics')

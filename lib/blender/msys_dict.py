@@ -61,6 +61,7 @@ def load_dict():
         dict['newetag']       = [-10, 0]         # tag, type
         dict['newftag']       = [-100, 0x000080] # tag, colour
         # FEM
+        dict['fem_tostg']     = 0     # run to stage num
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
         # RESULTS
