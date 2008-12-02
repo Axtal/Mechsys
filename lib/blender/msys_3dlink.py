@@ -180,6 +180,9 @@ if di.key('show_props'):
                 # Resore mesh to local coordinates
                 msh.verts = ori
 
+def sgn(val):
+    if val<0: return -1
+    else:     return  1
 
 # Results (visualisation)
 if di.key('show_res'):
@@ -231,35 +234,79 @@ if di.key('show_res'):
                     exts = ['N', 'M', 'V']
                     idx  = di.key('res_ext')
                     ext  = exts[idx]
+                    key  = 'max_'+ext
                     sca  = float(di.key('res_ext_scale'))
                     BGL.glColor3f (clrs[idx][0], clrs[idx][1], clrs[idx][2])
                     for ide in obj.properties['res'][s]['extra']:
-                        key   = 'max_'+ext
                         maxv  = obj.properties['res'][s][key][0] if obj.properties['res'][s][key][0]>0 else 1.0
                         va    =        obj.properties['res'][s]['extra'][ide]['values']
                         co    =        obj.properties['res'][s]['extra'][ide]['coords']
                         no    = Vector(obj.properties['res'][s]['extra'][ide]['normal'])
                         m     = va[ext][0]
-                        sf    = m*obj.properties['res'][s]['length']*sca/maxv
-                        epold = Vector([co['X'][0], co['Y'][0]]) - sf*no
-                        for i, m in enumerate(va[ext]):
-                            sf = m*obj.properties['res'][s]['length']*sca/maxv
-                            sp = Vector([co['X'][i], co['Y'][i]])
-                            ep = sp - sf*no
-                            BGL.glBegin    (BGL.GL_LINES)
-                            BGL.glVertex3f (sp[0], sp[1], 0.0)
-                            BGL.glVertex3f (ep[0], ep[1], 0.0)
-                            BGL.glEnd      ()
-                            if (i>0):
+                        if ext=='N':
+                            sf   = m*obj.properties['res'][s]['length']*sca/maxv
+                            epo1 = Vector([co['X'][0], co['Y'][0]]) + sf*no/2.0
+                            epo2 = Vector([co['X'][0], co['Y'][0]]) - sf*no/2.0
+                            if m<0.0: BGL.glColor3f (0.276, 0.276, 1.0)  # blue ==> + compression
+                            else:     BGL.glColor3f (0.8,   0.0,   0.0)  # red  ==> - tension
+                            for i, m in enumerate(va[ext]):
+                                sf  = m*obj.properties['res'][s]['length']*sca/maxv
+                                sp  = Vector([co['X'][i], co['Y'][i]])
+                                ep1 = sp + sf*no/2.0
+                                ep2 = sp - sf*no/2.0
                                 BGL.glBegin    (BGL.GL_LINES)
-                                BGL.glVertex3f (epold[0], epold[1], 0.0)
+                                BGL.glVertex3f (sp [0], sp [1], 0.0)
+                                BGL.glVertex3f (ep1[0], ep1[1], 0.0)
+                                BGL.glEnd      ()
+                                BGL.glBegin    (BGL.GL_LINES)
+                                BGL.glVertex3f (sp [0], sp [1], 0.0)
+                                BGL.glVertex3f (ep2[0], ep2[1], 0.0)
+                                BGL.glEnd      ()
+                                if (i>0):
+                                    BGL.glBegin    (BGL.GL_LINES)
+                                    BGL.glVertex3f (epo1[0], epo1[1], 0.0)
+                                    BGL.glVertex3f (ep1 [0], ep1 [1], 0.0)
+                                    BGL.glEnd      ()
+                                    BGL.glBegin    (BGL.GL_LINES)
+                                    BGL.glVertex3f (epo2[0], epo2[1], 0.0)
+                                    BGL.glVertex3f (ep2 [0], ep2 [1], 0.0)
+                                    BGL.glEnd      ()
+                                epo1 = ep1
+                                epo2 = ep2
+                                if di.key('res_ext_txt'):
+                                    BGL.glRasterPos3f (sp[0], sp[1], 0.0)
+                                    Draw.Text ('%g' % m)
+                        else:
+                            c     = sgn(va['M'][1]) if ext=='V' else 1.0
+                            sf    = m*obj.properties['res'][s]['length']*sca/maxv
+                            epold = Vector([co['X'][0], co['Y'][0]]) - sf*c*no # "-" ==> Moment are plotted to the tensioned side
+                            nv    = len(va[ext]) # number of values
+                            if ext=='V': BGL.glColor3f (0.69,  0.81,  0.57)
+                            else:        BGL.glColor3f (0.934, 0.643, 0.19)
+                            for i, m in enumerate(va[ext]):
+                                if ext=='V':
+                                    if   i==0:    c = -sgn(va['M'][1])
+                                    elif i==nv-1: c = -sgn(va['M'][nv-2])
+                                    else:         c = -sgn(va['M'][i])
+                                else: c = 1.0
+                                sf = m*obj.properties['res'][s]['length']*sca/maxv
+                                sp = Vector([co['X'][i], co['Y'][i]])
+                                ep = sp - sf*c*no  # "-" ==> Moment are plotted to the tensioned side
+                                BGL.glBegin    (BGL.GL_LINES)
+                                BGL.glVertex3f (sp[0], sp[1], 0.0)
                                 BGL.glVertex3f (ep[0], ep[1], 0.0)
                                 BGL.glEnd      ()
-                            epold = ep
-                            if di.key('res_ext_txt'):
-                                BGL.glRasterPos3f (ep[0], ep[1], 0.0)
-                                Draw.Text ('%g' % m)
-                    res = obj.properties['res'][s]['max_M']
+                                if (i>0):
+                                    BGL.glBegin    (BGL.GL_LINES)
+                                    BGL.glVertex3f (epold[0], epold[1], 0.0)
+                                    BGL.glVertex3f (ep[0], ep[1], 0.0)
+                                    BGL.glEnd      ()
+                                epold = ep
+                                if di.key('res_ext_txt'):
+                                    BGL.glRasterPos3f (ep[0], ep[1], 0.0)
+                                    if ext=='V': Draw.Text ('%g' % m)
+                                    else:        Draw.Text ('%g' % abs(m)) # show Moment as absolute values
+                    res = obj.properties['res'][s][key]
                     m, e, x, y = res[0], res[1], res[2], res[3] # max, elem, x, y
                     BGL.glColor3f (0.0, 0.0, 0.0)
                     BGL.glRasterPos3f (x, y, 0.0)
