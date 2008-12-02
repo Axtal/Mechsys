@@ -343,6 +343,9 @@ inline void BiotElem::UpdateState(double TimeInc, LinAlg::Vector<double> const &
 
 inline void BiotElem::ApplyBodyForces()
 {
+	// Verify if element is active
+	if (_is_active==false) return;
+
 	// Allocate (local/element) external volume force vector
 	LinAlg::Matrix<double> fvol(_n_nodes, _ndim);
 	fvol.SetValues(0.0);

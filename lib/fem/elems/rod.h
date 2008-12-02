@@ -31,7 +31,7 @@ class Rod : public EquilibElem
 {
 public:
 	// Constructor
-	Rod () : _E(-1), _A(-1) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
+	Rod () : _gam(0.0), _E(-1), _A(-1) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
 
 	// Derived methods
 	char const * Name() const { return "Rod"; }
@@ -39,7 +39,9 @@ public:
 	// Derived methods
 	bool   CheckModel   () const;
 	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
+	void   SetProps     (char const * Properties);
 	void   UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void   ApplyBodyForces ();
 	void   CalcDepVars  () const;
 	double Val          (int iNodeLocal, char const * Name) const;
 	double Val          (char const * Name) const;
@@ -53,6 +55,7 @@ public:
 
 private:
 	// Data
+	double _gam; ///< Specific weigth
 	double _E; ///< Young modulus
 	double _A; ///< Cross-sectional area
 
@@ -101,6 +104,22 @@ inline void Rod::SetModel(char const * ModelName, char const * Prms, char const 
 	}
 }
 
+inline void Rod::SetProps(char const * Properties)
+{
+	/* "gam=20 */
+	LineParser lp(Properties);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
+
+	// Set
+	for (size_t i=0; i<names.Size(); ++i)
+	{
+		 if (names[i]=="gam") _gam = values[i];
+	}
+}
+
+
 inline void Rod::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) displacements vector
@@ -123,6 +142,31 @@ inline void Rod::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUgl
 	for (size_t i=0; i<_n_nodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
 		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+}
+
+inline void Rod::ApplyBodyForces() 
+{
+	// Verify if element is active
+	if (_is_active==false) return;
+
+	// Weight
+	double dx = _connects[1]->X()-_connects[0]->X();
+	double dy = _connects[1]->Y()-_connects[0]->Y();
+	double L  = sqrt(dx*dx+dy*dy);
+	double W  = _A*L*_gam;
+
+	// Set boundary conditions
+	if (_ndim==1) throw new Fatal("Rod::ApplyBodyForces: feature not available for NDim==1");
+	else if (_ndim==2)
+	{
+		_connects[0]->Bry("fy", -W/2.0);
+		_connects[1]->Bry("fy", -W/2.0);
+	}
+	else if (_ndim==3)
+	{
+		_connects[0]->Bry("fz", -W/2.0);
+		_connects[1]->Bry("fz", -W/2.0);
+	}
 }
 
 inline void Rod::CalcDepVars() const

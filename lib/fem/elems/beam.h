@@ -168,7 +168,7 @@ inline void Beam::SetModel(char const * ModelName, char const * Prms, char const
 
 inline void Beam::SetProps(char const * Properties)
 {
-	/* "cq=1 */
+	/* "cq=1 gam=20 */
 	LineParser lp(Properties);
 	Array<String> names;
 	Array<double> values;
