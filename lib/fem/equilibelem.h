@@ -126,10 +126,10 @@ const char   EquilibElem::UD [3][6][3] = {{"ux","wz","","","",""},  {"ux","uy","
 const char   EquilibElem::FD [3][6][3] = {{"fx","mz","","","",""},  {"fx","fy","mz","","",""},  {"fx","fy","fz","mx","my","mz"}};
 
 // LB[_geom-1][iLabel]
-const size_t EquilibElem::NL[5]        = { 2, 12, 18, 10, 18 };
+const size_t EquilibElem::NL[5]        = { 2, 16, 18, 10, 18 };
 const char   EquilibElem::LB[5][18][4] = {
 	{"Ea", "Sa", ""  ,  ""   , ""   , ""   , ""  , ""   , ""  , ""   , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  }, // 1D
-	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , ""  , ""  , ""  , ""  , ""  , ""  }, // 2D (plane-strain)
+	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", ""  , ""  }, // 2D (plane-strain)
 	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3"}, // 3D
 	{"Ex", "Ey", "Exy", "Sx" , "Sy" , "Sxy", "E1", "E2" , "S1", "S2" , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  }, // 2D (plane-stress)
 	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3"}  // 2D (axis-symmetric)

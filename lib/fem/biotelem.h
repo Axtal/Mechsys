@@ -124,10 +124,10 @@ const char   BiotElem::UD[3][4][4] = {{"ux","pwp","",""},  {"ux","uy","pwp",""},
 const char   BiotElem::FD[3][4][4] = {{"fx","vol","",""},  {"fx","fy","vol",""},  {"fx","fy","fz","vol"}};
 
 // LB[_geom-1][iLabel]
-const size_t BiotElem::NL[3]        = { 3, 15, 22 };
+const size_t BiotElem::NL[3]        = { 3, 19, 22 };
 const char   BiotElem::LB[3][22][4] = {
 	{"Ea", "Sa", "Vx",  ""   , ""   , ""   , ""  , ""   , ""  , ""   , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  , ""  , ""  , ""  , "" }, // 1D
-	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "Vx", "Vy", "H" , ""  , ""  , ""  , ""  , ""  , ""  , "" }, // 2D (plane-strain)
+	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "Vx", "Vy", "H" , "p" , "q" , "Ev", "Ed", ""  , ""  , "" }, // 2D (plane-strain)
 	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "Vx", "Vy", "Vz", "H"}, // 3D
 };
 
