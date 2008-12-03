@@ -113,8 +113,7 @@ private:
 inline double Output::Val(int iNode, char const * Key) const
 { 
 	std::map<String,int>::const_iterator iter = _map.find(Key);
-	if (iter!=_map.end())
-		throw new Fatal(_("Output::Val: Could not find key < %s > for output"), Key);
+	if (iter==_map.end()) throw new Fatal(_("Output::Val: Could not find key < %s > for output"), Key);
 	return _vals(iNode, iter->second);
 }
 
