@@ -70,10 +70,13 @@ public:
 	bool                    Check        ();                                        ///< Check if Nodes and Elements were allocated properly. Should be called before accessing Nodes and Elements, since these may not had been allocated yet (and then causing Segfaults).
 	size_t                  NNodes       ()         const { return _nodes.Size(); } ///< Return the number of nodes
 	size_t                  NElems       ()         const { return _elems.Size(); } ///< Return the number of elements
+	size_t                  NDim         ()         const { return _dim;          } ///< Return the dimension
 	Node                  * Nod          (size_t i)       { return _nodes[i];     } ///< Access (read/write) a node
 	Element               * Ele          (size_t i)       { return _elems[i];     } ///< Access (read/write) an element
 	Node            const * Nod          (size_t i) const { return _nodes[i];     } ///< Access (read-only) a node
 	Element         const * Ele          (size_t i) const { return _elems[i];     } ///< Access (read-only) an element
+	void                    PushNode     (Node * N)       { _nodes.Push(N);       } ///< Push back a new node
+	void                    PushElem     (Element * E)    { _elems.Push(E);       } ///< Push back a new element
 	Array<Node*>          & Nodes        ()               { return _nodes;        } ///< Access all nodes (read/write)
 	Array<Element*>       & Elems        ()               { return _elems;        } ///< Access all elements (read/write)
 	Array<Node*>    const & Nodes        ()         const { return _nodes;        } ///< Access all nodes (read-only)

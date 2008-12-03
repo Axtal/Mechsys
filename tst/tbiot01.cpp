@@ -279,12 +279,6 @@ int main(int argc, char **argv) try
 	if (max_err>tol) return 1;
 	else return 0;
 
-
-	// Output: VTU
-	//o.VTU (&g, "tbiot01_02.vtu");
-	//cout << "[1;34mFile <tbiot01_02.vtu> saved.[0m\n\n";
-
-	return 0;
 }
 catch (Exception * e) 
 {

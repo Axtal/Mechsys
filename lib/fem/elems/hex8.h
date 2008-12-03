@@ -255,7 +255,6 @@ inline double Hex8::BoundDistance(double r, double s, double t) const
 	return std::min(std::min( 1-fabs(r) , 1-fabs(s) ), 1-fabs(t)) ;
 }
 
-
 }; // namespace FEM
 
 #endif // MECHSYS_FEM_HEX8_H

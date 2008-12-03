@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_ROD_H
-#define MECHSYS_FEM_ROD_H
+#ifndef MECHSYS_FEM_ROD2_H
+#define MECHSYS_FEM_ROD2_H
 
 // MechSys
 #include "fem/equilibelem.h"
@@ -27,14 +27,14 @@
 namespace FEM
 {
 
-class Rod : public EquilibElem
+class Rod2 : public EquilibElem
 {
 public:
 	// Constructor
-	Rod () : _gam(0.0), _E(-1), _A(-1) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
+	Rod2 () : _gam(0.0), _E(-1), _A(-1) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
 
 	// Derived methods
-	char const * Name() const { return "Rod"; }
+	char const * Name() const { return "Rod2"; }
 
 	// Derived methods
 	bool   CheckModel   () const;
@@ -60,8 +60,8 @@ private:
 	double _A; ///< Cross-sectional area
 
 	// Depedent variables (calculated by CalcDepVars)
-	mutable double         _L;  ///< Rod length
-	mutable Vector<double> _uL; ///< Rod-Local displacements/rotations
+	mutable double         _L;  ///< Rod2 length
+	mutable Vector<double> _uL; ///< Rod2-Local displacements/rotations
 
 	// Private methods
 	int  _geom                        () const { return 1; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -69,7 +69,7 @@ private:
 	void _calc_initial_internal_state ();                                 ///< Calculate initial internal state
 	void _transf_mat                  (LinAlg::Matrix<double> & T) const; ///< Calculate transformation matrix
 
-}; // class Rod
+}; // class Rod2
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -77,17 +77,17 @@ private:
 
 /* public */
 
-inline bool Rod::CheckModel() const
+inline bool Rod2::CheckModel() const
 {
 	if (_E<0.0 || _A<0.0) return false;
 	return true;
 }
 
-inline void Rod::SetModel(char const * ModelName, char const * Prms, char const * Inis)
+inline void Rod2::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
 	// Check _ndim
-	if (_ndim<1) throw new Fatal("Rod::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (CheckConnect()==false) throw new Fatal("Rod::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
+	if (_ndim<1) throw new Fatal("Rod2::SetModel: The space dimension (SetDim) must be set before calling this method");
+	if (CheckConnect()==false) throw new Fatal("Rod2::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
 
 	/* "E=1 A=1" */
 	LineParser lp(Prms);
@@ -100,11 +100,11 @@ inline void Rod::SetModel(char const * ModelName, char const * Prms, char const 
 	{
 		     if (names[i]=="E") _E = values[i];
 		else if (names[i]=="A") _A = values[i];
-		else throw new Fatal("Rod::SetModel: Parameter name (%s) is invalid",names[i].CStr());
+		else throw new Fatal("Rod2::SetModel: Parameter name (%s) is invalid",names[i].CStr());
 	}
 }
 
-inline void Rod::SetProps(char const * Properties)
+inline void Rod2::SetProps(char const * Properties)
 {
 	/* "gam=20 */
 	LineParser lp(Properties);
@@ -119,7 +119,7 @@ inline void Rod::SetProps(char const * Properties)
 	}
 }
 
-inline void Rod::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
+inline void Rod2::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
 {
 	// Allocate (local/element) displacements vector
 	LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
@@ -143,7 +143,7 @@ inline void Rod::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUgl
 		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
-inline void Rod::ApplyBodyForces() 
+inline void Rod2::ApplyBodyForces() 
 {
 	// Verify if element is active
 	if (_is_active==false) return;
@@ -155,7 +155,7 @@ inline void Rod::ApplyBodyForces()
 	double W  = _A*L*_gam;
 
 	// Set boundary conditions
-	if (_ndim==1) throw new Fatal("Rod::ApplyBodyForces: feature not available for NDim==1");
+	if (_ndim==1) throw new Fatal("Rod2::ApplyBodyForces: feature not available for NDim==1");
 	else if (_ndim==2)
 	{
 		_connects[0]->Bry("fy", -W/2.0);
@@ -168,7 +168,7 @@ inline void Rod::ApplyBodyForces()
 	}
 }
 
-inline void Rod::CalcDepVars() const
+inline void Rod2::CalcDepVars() const
 {
 	// Element displacements vector
 	_uL.Resize(_nd*_n_nodes);
@@ -182,7 +182,7 @@ inline void Rod::CalcDepVars() const
 	_uL = T * _uL;
 }
 
-inline double Rod::Val(int iNodeLocal, char const * Name) const
+inline double Rod2::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
@@ -190,20 +190,20 @@ inline double Rod::Val(int iNodeLocal, char const * Name) const
 	// Forces
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 
-	if (_uL.Size()<1) throw new Fatal("Rod::Val: Please, call CalcDepVars() before calling this method");
+	if (_uL.Size()<1) throw new Fatal("Rod2::Val: Please, call CalcDepVars() before calling this method");
 	double l = (iNodeLocal==0 ? 0 : 1.0);
 	     if (strcmp(Name,"N" )==0) return N(l);
 	else if (strcmp(Name,"Ea")==0) return    (_uL(_nd)-_uL(0))/_L;
 	else if (strcmp(Name,"Sa")==0) return _E*(_uL(_nd)-_uL(0))/_L;
-	else throw new Fatal("Rod::Val: This element does not have a Val named %s",Name);
+	else throw new Fatal("Rod2::Val: This element does not have a Val named %s",Name);
 }
 
-inline double Rod::Val(char const * Name) const
+inline double Rod2::Val(char const * Name) const
 {
-	throw new Fatal("Rod::Val: Feature not available");
+	throw new Fatal("Rod2::Val: Feature not available");
 }
 
-inline void Rod::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
+inline void Rod2::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
 {
 	if (_ndim==2)
 	{
@@ -222,15 +222,15 @@ inline void Rod::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
 		      -c1, -c2,  c1,  c2,
 		      -c2, -c3,  c2,  c3;
 	}
-	else throw new Fatal("Rod::Order1Matrix: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Rod2::Order1Matrix: Feature not available for nDim==%d",_ndim);
 }
 
-inline void Rod::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
+inline void Rod2::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
 {
-	throw new Fatal("Rod::B_Matrix: Feature not available");
+	throw new Fatal("Rod2::B_Matrix: Feature not available");
 }
 
-inline double Rod::N(double l) const
+inline double Rod2::N(double l) const
 {
 	return _E*_A*(_uL(_nd)-_uL(0))/_L;
 }
@@ -238,20 +238,20 @@ inline double Rod::N(double l) const
 
 /* private */
 
-inline void Rod::_initialize()
+inline void Rod2::_initialize()
 {
-	if (_ndim<1) throw new Fatal("Rod::_initialize: For this element, _ndim must be greater than or equal to 1 (%d is invalid)",_ndim);
+	if (_ndim<1) throw new Fatal("Rod2::_initialize: For this element, _ndim must be greater than or equal to 1 (%d is invalid)",_ndim);
 	_d  = _ndim-1;
 	_nd = EquilibElem::ND[_d];
 	_nl = EquilibElem::NL[_geom()-1];
 }
 
-inline void Rod::_calc_initial_internal_state()
+inline void Rod2::_calc_initial_internal_state()
 {
-	throw new Fatal("Rod::_calc_initial_internal_state: Feature not available");
+	throw new Fatal("Rod2::_calc_initial_internal_state: Feature not available");
 }
 
-inline void Rod::_transf_mat(LinAlg::Matrix<double> & T) const
+inline void Rod2::_transf_mat(LinAlg::Matrix<double> & T) const
 {
 	// Transformation matrix
 	if (_ndim==2)
@@ -268,29 +268,29 @@ inline void Rod::_transf_mat(LinAlg::Matrix<double> & T) const
 		     0.0, 0.0,   c,   s,
 		     0.0, 0.0,  -s,   c;
 	}
-	else throw new Fatal("Rod::_transf_mat: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Rod2::_transf_mat: Feature not available for nDim==%d",_ndim);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Rod element
-Element * RodMaker()
+// Allocate a new Rod2 element
+Element * Rod2Maker()
 {
-	return new Rod();
+	return new Rod2();
 }
 
-// Register a Rod element into ElementFactory array map
-int RodRegister()
+// Register a Rod2 element into ElementFactory array map
+int Rod2Register()
 {
-	ElementFactory["Rod"] = RodMaker;
+	ElementFactory["Rod2"] = Rod2Maker;
 	return 0;
 }
 
 // Execute the autoregistration
-int __Rod_dummy_int  = RodRegister();
+int __Rod2_dummy_int  = Rod2Register();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_ROD_H
+#endif // MECHSYS_FEM_ROD2_H

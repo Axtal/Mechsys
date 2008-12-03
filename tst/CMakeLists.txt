@@ -17,6 +17,10 @@
 ########################################################################
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
+	ADD_EXECUTABLE        (tembed01   tembed01.cpp)
+	ADD_TEST              (tembed01   tembed01)
+	TARGET_LINK_LIBRARIES (tembed01   ${LIBS})
+	SET_TARGET_PROPERTIES (tembed01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
 	ADD_EXECUTABLE        (tbiot01   tbiot01.cpp)
 	ADD_TEST              (tbiot01   tbiot01)

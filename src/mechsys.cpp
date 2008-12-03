@@ -41,6 +41,7 @@
 // MechSys -- fem -- basic
 #include "fem/geometry.h"
 #include "fem/functions.h"
+#include "fem/embedded.h"
 #include "fem/solver.h"
 #include "fem/output.h"
 #include "models/model.h"
@@ -52,7 +53,8 @@
 
 // MechSys -- fem -- Elements
 #include "fem/elems/beam.h"
-#include "fem/elems/rod.h"
+#include "fem/elems/rod2.h"
+#include "fem/elems/rod3.h"
 #include "fem/elems/tri6pstrain.h"
 #include "fem/elems/tri6pstress.h"
 #include "fem/elems/tri3pstrain.h"

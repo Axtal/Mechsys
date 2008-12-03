@@ -286,41 +286,50 @@ inline void Element::InverseMap(double x, double y, double z, double & r, double
 	LinAlg::Vector<double> shape;
 	LinAlg::Matrix<double> derivs;
 	LinAlg::Matrix<double> J; //Jacobian matrix
-	LinAlg::Vector<double> f(3);
-	LinAlg::Vector<double> delta(3);
+	LinAlg::Vector<double> f;
+	LinAlg::Vector<double> delta;
+	     if (_ndim==2) f.Resize(2);
+	else if (_ndim==3) f.Resize(3);
 	double tx, ty, tz; //x, y, z trial
 	double norm_f;
 	r = s = t =0; // first suposition for natural coordinates
+	int max_steps= 25;
 	int k=0;
-	do
+	for (k=0; k<max_steps; k++)
 	{
-		k++;
 		Shape (r, s, t, shape);
 		Derivs(r, s, t, derivs);
 		Jacobian(derivs, J);
 		tx = ty = tz = 0; 
+
 		//calculate trial of real coordinates
 		for (size_t j=0; j<_n_nodes; j++) 
 		{
 			tx += shape(j)*_connects[j]->Coord(0); //ok
 			ty += shape(j)*_connects[j]->Coord(1); //ok
+			if (_ndim==3)
 			tz += shape(j)*_connects[j]->Coord(2); //ok
 		}
 		
-		// calculate the error
+		// Calculate the error
 		f(0) = tx - x;
 		f(1) = ty - y;
+		if (_ndim==3)
 		f(2) = tz - z;
 		
+		// Calculate the corrector
 		delta = trn(inv(J))*f;
 		
 		r -= delta(0);
 		s -= delta(1);
+		if (_ndim==3)
 		t -= delta(2);
 
 		norm_f = sqrt(trn(f)*f);
-		if (k>25) break;
-	} while(norm_f>1e-4);
+
+		if (norm_f<1.0E4) break;
+	} 
+	if (k==max_steps) throw new Fatal("Element::InverseMap: InverseMap did not converge after %d steps in element %d", max_steps, _my_id);
 }
 
 inline void Element::Jacobian(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const

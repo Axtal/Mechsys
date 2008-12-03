@@ -48,15 +48,16 @@ public:
 	virtual ~Quad8() {}
 
 	// Derived methods
-	void SetIntPoints (int NumGaussPoints1D);
-	int  VTKCellType  () const { return VTK_QUADRATIC_QUAD; }
-	void VTKConnect   (String & Nodes) const;
-	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
-	void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	void LocalCoords  (LinAlg::Matrix<double> & coords) const;
+	void   SetIntPoints  (int NumGaussPoints1D);
+	int    VTKCellType   () const { return VTK_QUADRATIC_QUAD; }
+	void   VTKConnect    (String & Nodes) const;
+	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
+	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
+	void   Derivs        (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
+	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
+	void   FaceDerivs    (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
+	double BoundDistance (double r, double s, double t) const;
+	void   LocalCoords   (LinAlg::Matrix<double> & coords) const;
 
 
 }; // class Quad8
@@ -237,6 +238,10 @@ inline void Quad8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceD
 	FaceDerivs(0,2) = -2.0* r;
 }
 
+inline double Quad8::BoundDistance(double r, double s, double t) const
+{
+	return std::min(1-fabs(r), 1-fabs(s)) ;
+}
 
 }; // namespace FEM
 
