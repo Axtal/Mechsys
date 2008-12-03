@@ -1,32 +1,6 @@
 import Blender
 import msys_dict as di
 
-def at_node(stage_id):
-    edm, obj, msh = di.get_msh()
-    verts = msh.verts.selected()
-    if not obj.properties.has_key('res'):
-        if edm: Blender.Window.EditMode(1)
-        raise Exception('Please, run analysis first')
-    if len(verts)==0:
-        if edm: Blender.Window.EditMode(1)
-        raise Exception('Please, select at least 1 vertex')
-    if len(verts)>3:
-        if edm: Blender.Window.EditMode(1)
-        raise Exception('Please, select at most 3 vertices')
-    s   = str(stage_id)
-    msg = ['=== Stage # '+s+' =====']
-    for vidx in verts:
-        msg.append('--- Node # %d -----'%(vidx))
-        for k, key in di.key('dfv').iteritems():
-            if obj.properties['res'][s].has_key(key):
-                val = obj.properties['res'][s][key][vidx]
-                msg.append('  %s = %g'%(key,val))
-    print 'Results:'
-    for item in msg: print item
-    Blender.Draw.PupBlock('Results:',msg)
-    if edm: Blender.Window.EditMode(1)
-
-
 def stage_stats(stage_id,console=True,popup=False):
     # get obj and msh
     edm, obj, msh = di.get_msh()
@@ -42,10 +16,10 @@ def stage_stats(stage_id,console=True,popup=False):
 
         # values at nodes
         stat = {}
-        for k, key in di.key('dfv').iteritems():
-            res       = [r for r in obj.properties['res'][s][key]]
+        for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
+            res       = [r for r in obj.properties['res'][s][lbl]]
             mi, ma    = min(res), max(res)
-            stat[key] = [mi, 'n%d'%res.index(mi), ma, 'n%d'%res.index(ma)]
+            stat[lbl] = [mi, 'n%d'%res.index(mi), ma, 'n%d'%res.index(ma)]
 
         # extra values
         ext = {}
@@ -59,7 +33,7 @@ def stage_stats(stage_id,console=True,popup=False):
 
         # caption
         msg = ['===== Stage # '+s+' =========================================================','\n'
-               '  %6s:[min = ??? at (node#/elem#),  max = ??? at (node#/elem#)]'%'key',
+               '  %6s:[min at (node#/elem#),  max at (node#/elem#)]'%'key',
                '  -----------------------------------------------------------------']
         # nodes
         for k, v in stat.iteritems():
@@ -68,7 +42,7 @@ def stage_stats(stage_id,console=True,popup=False):
         # extra
         if len(ext)>0:
             msg.append('\n')
-            msg.append('  %6s:[max of max = ??? at (elem#)]'%'key')
+            msg.append('  %6s:[max of max at (elem#)]'%'key')
             msg.append('  --------------------------------------------')
         for k, v in ext.iteritems():
             msg.append('  %6s:[max of max = %g at e%d]'%(k,v[0],v[1]))
@@ -108,13 +82,14 @@ def report():
         arr = obj.properties['res_nodes'].split(',')
         nds = [int(n) for n in arr]
         lin = '\n %8s' % 'Node #'
-        for k, key in di.key('dfv').iteritems(): lin = '%s  %12s' % (lin,key)
+        for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems(): lin = '%s  %12s' % (lin,lbl)
         lin += '\n'
         f.write (lin)
         for n in nds:
-            res = obj.properties['res'][s][key][n]
             lin = ' %8d  ' % n
-            for k, key in di.key('dfv').iteritems(): lin = '%s  %8.3e' % (lin,res)
+            for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
+                res  = obj.properties['res'][s][lbl][n]
+                lin += '%s  %8.3e' % (lin,res)
             lin += '\n'
             f.write (lin)
 

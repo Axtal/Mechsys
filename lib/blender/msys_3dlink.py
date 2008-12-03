@@ -206,11 +206,11 @@ if di.key('show_res'):
 
                 # draw scalars text
                 if di.key('res_show_scalar'):
-                    key = di.key('dfv')[di.key('res_dfv')]
+                    lbl = obj.properties['res'][s]['idx2lbl'][str(di.key('res_lbl'))]
                     BGL.glColor3f (0.0, 0.0, 0.0)
                     for v in msh.verts:
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
-                        Draw.Text         ('%g' % obj.properties['res'][s][key][v.index])
+                        Draw.Text         ('%g' % obj.properties['res'][s][lbl][v.index])
 
                 # draw warped mesh
                 if di.key('res_show_warp'):
@@ -244,13 +244,13 @@ if di.key('show_res'):
                         no    = Vector(obj.properties['res'][s]['extra'][ide]['normal'])
                         m     = va[ext][0]
                         if ext=='N':
-                            sf   = m*obj.properties['res'][s]['length']*sca/maxv
+                            sf   = m*sca/maxv
                             epo1 = Vector([co['X'][0], co['Y'][0]]) + sf*no/2.0
                             epo2 = Vector([co['X'][0], co['Y'][0]]) - sf*no/2.0
                             if m<0.0: BGL.glColor3f (0.276, 0.276, 1.0)  # blue ==> + compression
                             else:     BGL.glColor3f (0.8,   0.0,   0.0)  # red  ==> - tension
                             for i, m in enumerate(va[ext]):
-                                sf  = m*obj.properties['res'][s]['length']*sca/maxv
+                                sf  = m*sca/maxv
                                 sp  = Vector([co['X'][i], co['Y'][i]])
                                 ep1 = sp + sf*no/2.0
                                 ep2 = sp - sf*no/2.0
@@ -278,7 +278,7 @@ if di.key('show_res'):
                                     Draw.Text ('%g' % m)
                         else:
                             c     = sgn(va['M'][1]) if ext=='V' else 1.0
-                            sf    = m*obj.properties['res'][s]['length']*sca/maxv
+                            sf    = m*sca/maxv
                             epold = Vector([co['X'][0], co['Y'][0]]) - sf*c*no # "-" ==> Moment are plotted to the tensioned side
                             nv    = len(va[ext]) # number of values
                             if ext=='V': BGL.glColor3f (0.69,  0.81,  0.57)
@@ -289,7 +289,7 @@ if di.key('show_res'):
                                     elif i==nv-1: c = -sgn(va['M'][nv-2])
                                     else:         c = -sgn(va['M'][i])
                                 else: c = 1.0
-                                sf = m*obj.properties['res'][s]['length']*sca/maxv
+                                sf = m*sca/maxv
                                 sp = Vector([co['X'][i], co['Y'][i]])
                                 ep = sp - sf*c*no  # "-" ==> Moment are plotted to the tensioned side
                                 BGL.glBegin    (BGL.GL_LINES)

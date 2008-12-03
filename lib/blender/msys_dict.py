@@ -67,7 +67,7 @@ def load_dict():
         # RESULTS
         dict['res_stage']       = 1      # stage num
         dict['show_res']        = False
-        dict['res_dfv']         = 0
+        dict['res_lbl']         = 0
         dict['res_show_scalar'] = False
         dict['res_warp_scale']  = '1'
         dict['res_show_warp']   = True

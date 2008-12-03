@@ -116,9 +116,8 @@ EVT_FEM_READSTAGES   = 205 # read stage info from another object
 # Results
 EVT_RES_SHOWHIDE     = 300 # show/hide results box
 EVT_RES_SHOWONLY     = 301 # show only this box
-EVT_RES_ATNODE       = 302 # show results at a node
-EVT_RES_STATS        = 303 # show statistics
-EVT_RES_REPORT       = 304 # show statistics
+EVT_RES_STATS        = 302 # show statistics
+EVT_RES_REPORT       = 303 # show statistics
 
 
 # ==================================================================================== Events
@@ -165,7 +164,7 @@ def try_catch(func):
     return wrapper
 
 # Handle button events
-@try_catch
+#@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -294,7 +293,6 @@ def button_event(evt):
 
     elif evt==EVT_RES_SHOWHIDE: di.toggle_key  ('gui_show_res')
     elif evt==EVT_RES_SHOWONLY: show_only      ('gui_show_res')
-    elif evt==EVT_RES_ATNODE:   re.at_node     (di.key('res_stage'))
     elif evt==EVT_RES_STATS:    re.stage_stats (di.key('res_stage'))
     elif evt==EVT_RES_REPORT:   re.report      ()
 
@@ -569,7 +567,7 @@ def cb_res_stage      (evt,val):
     elif val<=res_nstages: di.set_key ('res_stage', val)
     else: Blender.Window.QRedrawAll()
 @try_catch
-def cb_res_dfv        (evt,val): di.set_key ('res_dfv',         val-1)
+def cb_res_lbl        (evt,val): di.set_key ('res_lbl',         val-1)
 @try_catch
 def cb_res_show_scalar(evt,val): di.set_key ('res_show_scalar', val)
 @try_catch
@@ -621,6 +619,7 @@ def gui():
     eatts       = {}
     res_nstages = 0
     res_nodes   = ''
+    lblmnu      = 'Labels %t'
     if obj!=None:
         if obj.properties.has_key('3dmesh'):  is3d     = obj.properties['3dmesh']
         else:      obj.properties['3dmesh']            = False
@@ -640,8 +639,13 @@ def gui():
             if obj.properties[stg].has_key('ebrys'): ebrys = obj.properties[stg]['ebrys']
             if obj.properties[stg].has_key('fbrys'): fbrys = obj.properties[stg]['fbrys']
             if obj.properties[stg].has_key('eatts'): eatts = obj.properties[stg]['eatts']
-        if obj.properties.has_key('res'):       res_nstages = len(obj.properties['res'])
-        if obj.properties.has_key('res_nodes'): res_nodes   = obj.properties['res_nodes']
+        if obj.properties.has_key('res'):
+            res_nstages = len(obj.properties['res'])
+            stage_num   = str(d['res_stage'])
+            if obj.properties['res'].has_key(stage_num):
+                if obj.properties['res'][stage_num].has_key('lblmnu'):
+                    lblmnu = obj.properties['res'][stage_num]['lblmnu']
+        if obj.properties.has_key('res_nodes'): res_nodes = obj.properties['res_nodes']
         else: obj.properties['res_nodes'] = ''
 
     # materials menu
@@ -1082,7 +1086,7 @@ def gui():
             Draw.Number ('', EVT_NONE, c+55, r+2, 60, rh-4, d['res_stage'], 1,100,'Show results of specific stage', cb_res_stage)
             r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_res_stage)
             Draw.Toggle ('ON/OFF',    EVT_NONE, c    , r-rh, 60, 2*rh, d['show_res'],             'Show results'               , cb_res_show)
-            Draw.Menu   (d['dfvmnu'], EVT_NONE, c+ 60, r,    60,   rh, d['res_dfv']+1,            'Key such as ux, uy, fx, fz' , cb_res_dfv)
+            Draw.Menu   (lblmnu,      EVT_NONE, c+ 60, r,    60,   rh, d['res_lbl']+1,            'Key such as ux, uy, fx, fz' , cb_res_lbl)
             Draw.Toggle ('Scalar',    EVT_NONE, c+120, r,    60,   rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
             Draw.String ('sf=' ,      EVT_NONE, c+180, r,    60,   rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
             Draw.Toggle ('Warp',      EVT_NONE, c+240, r,    60,   rh, d['res_show_warp']   ,     'Show warped (deformed) mesh', cb_res_show_warp)
@@ -1092,8 +1096,7 @@ def gui():
             Draw.Toggle ('Extra',     EVT_NONE, c+180, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
             Draw.Toggle ('Values',    EVT_NONE, c+240, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
             r -= rh
-            Draw.PushButton ('At Node', EVT_RES_ATNODE, c,    r, 60, rh, 'Show results at a specific Node')
-            Draw.PushButton ('Stats',   EVT_RES_STATS,  c+60, r, 60, rh, 'Show statistics')
+            Draw.PushButton ('Stats',   EVT_RES_STATS, c, r, 60, rh, 'Show statistics')
             r, c, w = gu.box1_out(W,cg,rh, c,r)
         r -= rh
         r -= srg

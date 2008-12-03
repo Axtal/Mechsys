@@ -378,7 +378,7 @@ def run_analysis(gen_script=False):
 
             # save results
             if not di.key('fullsc'):
-                txt.write ('mf.save_results         (geo,obj, %d)\n'%num)
+                txt.write ('mf.save_results         (out, geo, obj, %d)\n'%num)
 
         # close collection
         txt.write ('\n# Close collection\n')
@@ -451,7 +451,7 @@ def run_analysis(gen_script=False):
             out.vtu (geo, sol.time())
 
             # save results
-            save_results (geo,obj, num)
+            save_results (out,geo,obj,num)
 
         # close collection
         out.close_collection()
@@ -461,27 +461,27 @@ def run_analysis(gen_script=False):
     Blender.Window.WaitCursor(0)
 
 
-def save_results(geo,obj, stage_num):
+def save_results(out, geo, obj, stage_num):
     # dictionary
+    s = str(stage_num)
     if not obj.properties.has_key('res'): obj.properties['res'] = {}
-    s                        = str(stage_num)
     obj.properties['res'][s] = {}
 
-    # geometry limits
-    sp, ep = [], []
-    geo.bounds_3d (sp, ep)
-    v1    = Vector(sp)
-    v2    = Vector(ep)
-    delta = v2-v1
-    obj.properties['res'][s]['length'] = delta.length
+    # menu with lables
+    obj.properties['res'][s]['idx2lbl'] = {} # map index to label key
+    lbs = []
+    out.get_labels (lbs)
+    menu = 'Labels %t|'
+    for i, l in enumerate(lbs):
+        obj.properties['res'][s]['idx2lbl'][str(i)] = l
+        menu += l + ' %x' + str(i+1) + '|'
+    obj.properties['res'][s]['lblmnu'] = menu
 
     # save results at nodes
-    for k, key in di.key('dfv').iteritems():
+    for l in lbs:
         vals = []
-        for i in range(geo.nnodes()):
-            try:    vals.append(geo.nod(i).val(key))
-            except: vals.append(0.0)
-        obj.properties['res'][s][key] = vals
+        for i in range(geo.nnodes()): vals.append (out.val(i, l))
+        obj.properties['res'][s][l] = vals
 
     # save extra output
     obj.properties['res'][s]['extra'] = {}
