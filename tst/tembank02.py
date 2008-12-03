@@ -56,9 +56,9 @@ bks[-1].set_coords(-3,
                    [1.0],
                    4, 5, 7, -1)
 
-mesh = ms.mesh_structured(False)
-nels = mesh.generate(bks,1.0e-4)
-print nels, 'elements generated'
+mesh = ms.mesh_structured (False)
+mesh.set_blocks           (bks)
+nels = mesh.generate      (True)
 
 #////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

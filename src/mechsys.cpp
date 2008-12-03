@@ -74,13 +74,13 @@ using namespace boost::python;
 
 // Overloadings                                                      minargs  maxargs
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,        4, 5)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,       PyGenerate,     1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,       Generate,       0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,    2, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyPoint,   SetPolyPoint,   3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment, 3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  5, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,    3, 4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,  2, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,       0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,          Solve,          0, 2)
@@ -118,17 +118,21 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<Mesh::Structured, bases<Mesh::Generic> >("mesh_structured","Class to generate structured meshes",init<bool>())
-	    .def("generate", &Mesh::Structured::PyGenerate, MS_Generate())
+	    .def("set_blocks", &Mesh::Structured::PySetBlocks)
+	    .def("set_tol",    &Mesh::Structured::SetTol)
+	    .def("generate",   &Mesh::Structured::Generate, MS_Generate())
 	    .def(self_ns::str(self))
 	    ;
 
 	class_<Mesh::Unstructured, bases<Mesh::Generic> >("mesh_unstructured","Class to generate unstructured meshes",init<bool>())
-	    .def("set_poly_size",    &Mesh::Unstructured::SetPolySize,    MU_SetPolySize())
-	    .def("set_poly_point",   &Mesh::Unstructured::SetPolyPoint,   MU_SetPolyPoint())
-	    .def("set_poly_segment", &Mesh::Unstructured::SetPolySegment, MU_SetPolySegment())
-	    .def("set_poly_region",  &Mesh::Unstructured::SetPolyRegion,  MU_SetPolyRegion())
-	    .def("set_poly_hole",    &Mesh::Unstructured::SetPolyHole,    MU_SetPolyHole())
-	    .def("generate",         &Mesh::Unstructured::Generate,       MU_Generate())
+	    .def("set_poly_size",        &Mesh::Unstructured::SetPolySize,    MU_SetPolySize())
+	    .def("set_poly_point",       &Mesh::Unstructured::SetPolyPoint,   MU_SetPolyPoint())
+	    .def("set_poly_segment",     &Mesh::Unstructured::SetPolySegment, MU_SetPolySegment())
+	    .def("set_poly_region",      &Mesh::Unstructured::SetPolyRegion,  MU_SetPolyRegion())
+	    .def("set_poly_hole",        &Mesh::Unstructured::SetPolyHole,    MU_SetPolyHole())
+	    .def("set_max_area_global",  &Mesh::Unstructured::SetMaxAreaGlobal)
+	    .def("set_min_angle_global", &Mesh::Unstructured::SetMinAngleGlobal)
+	    .def("generate",             &Mesh::Unstructured::Generate,       MU_Generate())
 	    .def(self_ns::str(self))
 	    ;
 

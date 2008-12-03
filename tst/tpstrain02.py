@@ -51,10 +51,9 @@ blocks[0].set_coords (-1,                                    # tag to be replica
 
 # Generate
 print 'Mesh Generation: --------------------------------------------------------------'
-ms = m.mesh_structured(False) # Is3D==False
-ne = ms.generate (blocks)
-print ne, ' elements generated '
-print
+ms = m.mesh_structured (False) # Is3D==False
+ms.set_blocks          (blocks)
+ms.generate            (True)
 
 # ------------------------------------------------------------------------------ FEM
 

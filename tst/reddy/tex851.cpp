@@ -95,11 +95,8 @@ int main(int argc, char **argv) try
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
-	clock_t start = std::clock(); // Initial time
-	size_t  ne    = mesh.Generate (blocks);
-	clock_t total = std::clock() - start; // Time elapsed
-	cout << "\nNumber of quadrangles   = " << ne << endl;
-	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	mesh.SetBlocks (blocks);
+	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEA /////
 

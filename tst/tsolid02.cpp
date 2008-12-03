@@ -92,10 +92,8 @@ int main(int argc, char **argv) try
 	// Generate
 	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
 	Mesh::Structured ms(/*Is3D*/true);
-	clock_t start = std::clock(); // Initial time
-	size_t  ne    = ms.Generate (blocks);
-	clock_t total = std::clock() - start; // Time elapsed
-	cout << "[1;33m"<<ne<<" elements[0m. Time elapsed = [1;31m" << static_cast<double>(total)/CLOCKS_PER_SEC << "[0m [1;32mseconds[0m" << std::endl;
+	ms.SetBlocks (blocks);
+	ms.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

@@ -114,13 +114,9 @@ int main(int argc, char **argv) try
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
-	if (is_o2) mesh.SetO2();                // Non-linear elements
-	clock_t start = std::clock();           // Initial time
-	size_t  ne    = mesh.Generate (blocks); // Discretize domain
-	clock_t total = std::clock() - start;   // Time elapsed
-	if (is_o2) cout << "\nNum of quadrangles (o2) = " << ne << endl;
-	else       cout << "\nNumber of quadrangles   = " << ne << endl;
-	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	if (is_o2) mesh.SetO2();
+	mesh.SetBlocks (blocks);
+	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -212,9 +208,6 @@ int main(int argc, char **argv) try
 	cout << _4<< "sR"  << _8s<<min_err_sR  << _8s<<err_sR .Mean() << (max_err_sR >tol_sR ?"[1;31m":"[1;32m") << _8s<<max_err_sR  << "[0m" << _8s<<err_sR.Norm()  << endl;
 	cout << _4<< "sT"  << _8s<<min_err_sT  << _8s<<err_sT .Mean() << (max_err_sT >tol_sT ?"[1;31m":"[1;32m") << _8s<<max_err_sT  << "[0m" << _8s<<err_sT.Norm()  << endl;
 	cout << _4<< "uR"  << _8s<<min_err_uR  << _8s<<err_uR .Mean() << (max_err_uR >tol_uR ?"[1;31m":"[1;32m") << _8s<<max_err_uR  << "[0m" << _8s<<err_uR.Norm()  << endl;
-
-	total = std::clock() - start;
-	cout << "Time elapsed (error check) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	// Return error flag
 	if (max_err_sR>tol_sR || max_err_sT>tol_sT || max_err_uR>tol_uR) return 1;

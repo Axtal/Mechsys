@@ -150,14 +150,9 @@ int main(int argc, char **argv) try
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
-	if (is_o2) mesh.SetO2();               // Non-linear elements
-	clock_t start = std::clock();          // Initial time
-	size_t  ne    = mesh.Generate(blocks); // Discretize domain
-	clock_t total = std::clock() - start;  // Time elapsed
-	cout << "\nNumber of quads     = " << ne << endl;
-	cout << "Time elapsed (mesh) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-
-	mesh.WriteVTU("joe2.vtu");
+	if (is_o2) mesh.SetO2();
+	mesh.SetBlocks (blocks);
+	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

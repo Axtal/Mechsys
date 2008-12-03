@@ -97,12 +97,9 @@ int main(int argc, char **argv) try
 		blocks.Push (&b);
 
 		// Generate
-		if (is_o2) mss.SetO2();                  // Non-linear elements
-		clock_t start = std::clock();            // Initial time
-		size_t  ne    = mss.Generate (blocks);   // Discretize domain
-		clock_t total = std::clock() - start;    // Time elapsed
-		cout << "\nNumber of quadrangles   = " << ne << endl;
-		cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+		if (is_o2) mss.SetO2();
+		mss.SetBlocks (blocks);
+		mss.Generate  (true);
 		msh = &mss;
 	}
 	else // triangles
@@ -120,12 +117,8 @@ int main(int argc, char **argv) try
 		msu.SetPolyRegion  (0, /*Tag*/-1, maxarea, /*X*/2.5, /*Y*/5.0);
 
 		// Generate
-		if (is_o2) msu.SetO2();               // Non-linear elements
-		clock_t start = std::clock();         // Initial time
-		size_t  ne    = msu.Generate();       // Discretize domain
-		clock_t total = std::clock() - start; // Time elapsed
-		cout << "\nNumber of triangles     = " << ne << endl;
-		cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+		if (is_o2) msu.SetO2();
+		msu.Generate (true);
 		msh = &msu;
 	}
 

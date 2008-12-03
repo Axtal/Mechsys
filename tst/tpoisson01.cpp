@@ -85,11 +85,7 @@ int main(int argc, char **argv) try
 	mesh.SetPolyRegion (0, /*Tag*/-1, maxarea1, /*X*/0.0, /*Y*/0.0);
 	mesh.SetPolyRegion (1, /*Tag*/-1, maxarea2, /*X*/0.9, /*Y*/0.0);
 	if (is_o2) mesh.SetO2();
-	clock_t start = std::clock();         // Initial time
-	size_t  ne    = mesh.Generate();      // Discretize domain
-	clock_t total = std::clock() - start; // Time elapsed
-	cout << "\nNumber of triangles     = " << ne << endl;
-	cout << "Time elapsed (mesh)     = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
+	mesh.Generate (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

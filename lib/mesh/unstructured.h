@@ -39,6 +39,7 @@
 #include <iostream>
 #include <fstream>
 #include <cfloat>   // for DBL_EPSILON
+#include <ctime>    // for clock
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
@@ -114,13 +115,17 @@ public:
 	int    ElemETag        (size_t i, size_t j) const { return _tou.triedgemarks[i*3+j]; }
 
 	// Methods
-	size_t Generate (double MaxAreaGlobal=-1, double MinAngle=-1); ///< [opt] MaxAreaGlobal = Uniform maximum area constraint, [opt] MinAngle = Minium angle constraint
+	void   SetMaxAreaGlobal  (double MaxArea)  { _max_area  = MaxArea;  } ///< Uniform maximum area constraint
+	void   SetMinAngleGlobal (double MinAngle) { _min_angle = MinAngle; } ///< Minium angle constraint
+	size_t Generate          (bool WithInfo=false);                       ///< Generate mesh
 
 private:
 	// Data
-	TriIO        _tin;  ///< Triangle IO's input structure
-	TriIO        _tou;  ///< Triangle IO's output structure
-	Array<long>  _vbry; ///< Array with IDs of vertices on boundary
+	double       _max_area;  ///< Max area (global) for all elements
+	double       _min_angle; ///< Min angle (global) between edges of triangles/tetrahedrons
+	TriIO        _tin;       ///< Triangle IO's input structure
+	TriIO        _tou;       ///< Triangle IO's output structure
+	Array<long>  _vbry;      ///< Array with IDs of vertices on boundary
 
 	// Private methods
 	void _tri_set_all_to_null (TriIO & Tio); ///< Set all elements of Triangle's IO structure to NULL and 0
@@ -137,7 +142,9 @@ size_t Unstructured::FEM2Tri[]= {0,1,2,5,3,4};
 /* public */
 
 inline Unstructured::Unstructured(bool Is3D)
-	: Mesh::Generic(Is3D)
+	: Mesh::Generic (Is3D),
+	  _max_area     (-1),
+	  _min_angle    (-1)
 {
 	_tri_set_all_to_null (_tin);
 	_tri_set_all_to_null (_tou);
@@ -201,14 +208,17 @@ inline void Unstructured::SetPolyHole(size_t i, double X, double Y, double Z)
 	_tin.holelist[i*2+1] = Y;
 }
 
-inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
+inline size_t Unstructured::Generate(bool WithInfo)
 {
+	// Info
+	double start = std::clock();
+
 	// Generate (via JRS' triangle)
 	String prms("QpzA"); // Q=quiet, p=poly, q=quality, z=zero
-	if (MaxAreaGlobal>0) prms.Printf("%sa%f", prms.CStr(), MaxAreaGlobal);
-	if (MinAngle     >0) prms.Printf("%sq%f", prms.CStr(), MinAngle);
-	else                 prms.Printf("%sq",   prms.CStr());
-	if (_is_o2)          prms.Printf("%so2",  prms.CStr());
+	if (_max_area>0 ) prms.Printf("%sa%f", prms.CStr(), _max_area);
+	if (_min_angle>0) prms.Printf("%sq%f", prms.CStr(), _min_angle);
+	else              prms.Printf("%sq",   prms.CStr());
+	if (_is_o2)       prms.Printf("%so2",  prms.CStr());
 	prms.Printf("%sa", prms.CStr());
 	//std::cout << "JRS' triangle parameters = " << prms << std::endl;
 	triangulate (prms.CStr(), &_tin, &_tou, NULL);
@@ -272,6 +282,16 @@ inline size_t Unstructured::Generate(double MaxAreaGlobal, double MinAngle)
 
 	// Generate Beams
 	_add_beams();
+
+	// Info
+	if (WithInfo)
+	{
+		double total = std::clock() - start;
+		std::cout << "[1;33m\n--- Unstructured Mesh Generation -------------------------------[0m\n";
+		if (_is_o2) std::cout << "[1;36m    Time elapsed (o2)     = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+		else        std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+		std::cout << "[1;32m    Number of elements    = " << _tou.numberoftriangles << "[0m" << std::endl;
+	}
 
 	// Return number of elements==triangles
 	return _tou.numberoftriangles;

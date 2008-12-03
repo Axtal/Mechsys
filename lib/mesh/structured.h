@@ -60,6 +60,7 @@
 #include <fstream>
 #include <cfloat>   // for DBL_EPSILON
 #include <cstdarg>  // for va_list, va_start, va_end
+#include <ctime>    /// for std::clock
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
@@ -236,20 +237,24 @@ class Structured : public virtual Mesh::Generic
 {
 public:
 	// Constructor
-	Structured (bool Is3D) : Mesh::Generic(Is3D) {}
+	Structured (bool Is3D) : Mesh::Generic(Is3D), _tol(sqrt(DBL_EPSILON)) {}
 
 	// Destructor
 	~Structured () { _erase(); }
 
 	// Methods
-	size_t Generate (Array<Block*> const & Blocks, double Tol=sqrt(DBL_EPSILON)); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any). Tol is the tolerance to regard two vertices as coincident
+	void   SetBlocks (Array<Block*> const & Blocks) { _bls = Blocks; }
+	void   SetTol    (double Tol)                   { _tol = Tol;    }
+	size_t Generate  (bool WithInfo=false); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
 
 #ifdef USE_BOOST_PYTHON
-	size_t PyGenerate (BPy::list const & ListOfMeshBlock, double Tol=sqrt(DBL_EPSILON));
+	void   PySetBlocks (BPy::list const & ListOfMeshBlock);
 #endif
 
 private:
 	// Data
+	double         _tol;         ///< Tolerance to regard two vertices as coincident
+	Array<Block*>  _bls;         ///< Blocks defining the input geometry
 	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
 	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
 	Array<Vertex*> _verts_m1;    ///< X O2 Vertices (with duplicates)
@@ -867,39 +872,42 @@ inline void Block::_gen_mid_nodes()
 
 /* public */
 
-inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
+inline size_t Structured::Generate(bool WithInfo)
 {
+	// Info
+	double start = std::clock();
+
 	// Check
-	if (Blocks.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",Blocks.Size());
+	if (_bls.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",_bls.Size());
 
 	// Erase previous mesh
 	_erase();
 
 	// Check if the first block is 3D
-	_is_3d = Blocks[0]->Is3D();
+	_is_3d = _bls[0]->Is3D();
 	_s.Resize((_is_3d ? 20 : 8)); // resize the shape values vector
 
 	// Generate vertices and elements (with duplicates)
-	for (size_t b=0; b<Blocks.Size(); ++b)
+	for (size_t b=0; b<_bls.Size(); ++b)
 	{
 		// Check if all blocks have the same space dimension
-		if (Blocks[b]->Is3D()!=_is_3d) throw new Fatal("Structured::Generate: All blocks must have the same space dimension");
+		if (_bls[b]->Is3D()!=_is_3d) throw new Fatal("Structured::Generate: All blocks must have the same space dimension");
 		
 		// Check if block has all arrays/vectors/matrices with the right sizes
-		Blocks[b]->Alright();
+		_bls[b]->Alright();
 
 		// Generate
 		double t_before = -2.0;
 		double t = -1.0; // initial Z natural coordinate
-		for (int k=0; k<(_is_3d ? Blocks[b]->nDivZ()+1 : 1); ++k)
+		for (int k=0; k<(_is_3d ? _bls[b]->nDivZ()+1 : 1); ++k)
 		{
 			double s_before = -2.0;
 			double s = -1.0; // initial Y natural coordinate
-			for (int j=0; j<Blocks[b]->nDivY()+1; ++j)
+			for (int j=0; j<_bls[b]->nDivY()+1; ++j)
 			{
 				double r_before = -2.0;
 				double r = -1.0; // initial X natural coordinate
-				for (int i=0; i<Blocks[b]->nDivX()+1; ++i)
+				for (int i=0; i<_bls[b]->nDivX()+1; ++i)
 				{
 					// Compute shape (interpolation) functions
 					if (_is_3d) _shape_3d (r,s,t);
@@ -908,9 +916,9 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 					// New vertex
 					Vertex * v = new Vertex;
 					v->MyID = _verts_d.Size();                  // id
-					v->C    = Blocks[b]->C() * _s;              // new x-y-z coordinates
+					v->C    = _bls[b]->C() * _s;              // new x-y-z coordinates
 					v->Dupl = false;                            // is this a duplicated node?
-					Blocks[b]->FindLocalEdgesFacesID(i,j,k, v); // check if it is on boundary and find EdgesID where this vertex is located on
+					_bls[b]->FindLocalEdgesFacesID(i,j,k, v); // check if it is on boundary and find EdgesID where this vertex is located on
 					_verts_d.Push(v);
 					if (v->OnBry) _verts_d_bry.Push(v); // array with vertices on boundary
 
@@ -926,10 +934,10 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 							else        _shape_2d ((r_before+r)/2.0,s);
 							v1 = new Vertex;
 							v1->MyID = _verts_m1.Size();
-							v1->C    = Blocks[b]->C() * _s;
+							v1->C    = _bls[b]->C() * _s;
 							v1->Dupl = false;
-							if (i==Blocks[b]->nDivX()) Blocks[b]->FindLocalEdgesFacesID(i-1,j,k, v1);
-							else                       Blocks[b]->FindLocalEdgesFacesID(i,  j,k, v1);
+							if (i==_bls[b]->nDivX()) _bls[b]->FindLocalEdgesFacesID(i-1,j,k, v1);
+							else                     _bls[b]->FindLocalEdgesFacesID(i,  j,k, v1);
 							_verts_m1.Push(v1);
 							if (v1->OnBry) _verts_d_bry.Push(v1);
 						}
@@ -939,10 +947,10 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 							else        _shape_2d (r,(s_before+s)/2.0);
 							v2 = new Vertex;
 							v2->MyID = _verts_m2.Size();
-							v2->C    = Blocks[b]->C() * _s;
+							v2->C    = _bls[b]->C() * _s;
 							v2->Dupl = false;
-							if (j==Blocks[b]->nDivY()) Blocks[b]->FindLocalEdgesFacesID(i,j-1,k, v2);
-							else                       Blocks[b]->FindLocalEdgesFacesID(i,j,  k, v2);
+							if (j==_bls[b]->nDivY()) _bls[b]->FindLocalEdgesFacesID(i,j-1,k, v2);
+							else                     _bls[b]->FindLocalEdgesFacesID(i,j,  k, v2);
 							_verts_m2.Push(v2);
 							if (v2->OnBry) _verts_d_bry.Push(v2);
 						}
@@ -951,10 +959,10 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 							if (_is_3d) _shape_3d (r,s,(t_before+t)/2.0);
 							v3 = new Vertex;
 							v3->MyID = _verts_m3.Size();
-							v3->C    = Blocks[b]->C() * _s;
+							v3->C    = _bls[b]->C() * _s;
 							v3->Dupl = false;
-							if (k==Blocks[b]->nDivZ()) Blocks[b]->FindLocalEdgesFacesID(i,j,k-1, v3);
-							else                       Blocks[b]->FindLocalEdgesFacesID(i,j,k,   v3);
+							if (k==_bls[b]->nDivZ()) _bls[b]->FindLocalEdgesFacesID(i,j,k-1, v3);
+							else                     _bls[b]->FindLocalEdgesFacesID(i,j,k,   v3);
 							_verts_m3.Push(v3);
 							if (v3->OnBry) _verts_d_bry.Push(v3);
 						}
@@ -965,33 +973,33 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 					{
 						Elem * e = new Elem;
 						e->MyID = _elems.Size();    // id
-						e->Tag  = Blocks[b]->Tag(); // tag
+						e->Tag  = _bls[b]->Tag(); // tag
 						if (_is_3d)
 						{
 							// connectivity
 							e->V.Resize((_is_o2?20:8));
-							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
-							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1) - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
-							e->V[2] = _verts_d[v->MyID                              - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
-							e->V[3] = _verts_d[v->MyID - 1                          - (Blocks[b]->nDivX()+1)*(Blocks[b]->nDivY()+1)];
-							e->V[4] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1)];
-							e->V[5] = _verts_d[v->MyID -     (Blocks[b]->nDivX()+1)];
+							e->V[0] = _verts_d[v->MyID - 1 - (_bls[b]->nDivX()+1) - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
+							e->V[1] = _verts_d[v->MyID     - (_bls[b]->nDivX()+1) - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
+							e->V[2] = _verts_d[v->MyID                            - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
+							e->V[3] = _verts_d[v->MyID - 1                        - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
+							e->V[4] = _verts_d[v->MyID - 1 - (_bls[b]->nDivX()+1)];
+							e->V[5] = _verts_d[v->MyID -     (_bls[b]->nDivX()+1)];
 							e->V[6] = _verts_d[v->MyID];
 							e->V[7] = _verts_d[v->MyID - 1];
 							if (_is_o2)
 							{
-								e->V[ 8] = _verts_m1[v1->MyID - Blocks[b]->nDivX() - Blocks[b]->nDivX()*(Blocks[b]->nDivY()+1)];
-								e->V[ 9] = _verts_m2[v2->MyID                      - Blocks[b]->nDivY()*(Blocks[b]->nDivX()+1)];
-								e->V[10] = _verts_m1[v1->MyID                      - Blocks[b]->nDivX()*(Blocks[b]->nDivY()+1)];
-								e->V[11] = _verts_m2[v2->MyID -1                   - Blocks[b]->nDivY()*(Blocks[b]->nDivX()+1)];
+								e->V[ 8] = _verts_m1[v1->MyID - _bls[b]->nDivX() - _bls[b]->nDivX()*(_bls[b]->nDivY()+1)];
+								e->V[ 9] = _verts_m2[v2->MyID                    - _bls[b]->nDivY()*(_bls[b]->nDivX()+1)];
+								e->V[10] = _verts_m1[v1->MyID                    - _bls[b]->nDivX()*(_bls[b]->nDivY()+1)];
+								e->V[11] = _verts_m2[v2->MyID -1                 - _bls[b]->nDivY()*(_bls[b]->nDivX()+1)];
 
-								e->V[12] = _verts_m1[v1->MyID - Blocks[b]->nDivX()];
+								e->V[12] = _verts_m1[v1->MyID - _bls[b]->nDivX()];
 								e->V[13] = _verts_m2[v2->MyID];
 								e->V[14] = _verts_m1[v1->MyID];
 								e->V[15] = _verts_m2[v2->MyID - 1];
 
-								e->V[16] = _verts_m3[v3->MyID - 1 - (Blocks[b]->nDivX()+1)];
-								e->V[17] = _verts_m3[v3->MyID -     (Blocks[b]->nDivX()+1)];
+								e->V[16] = _verts_m3[v3->MyID - 1 - (_bls[b]->nDivX()+1)];
+								e->V[17] = _verts_m3[v3->MyID -     (_bls[b]->nDivX()+1)];
 								e->V[18] = _verts_m3[v3->MyID];
 								e->V[19] = _verts_m3[v3->MyID - 1];
 							}
@@ -1010,13 +1018,13 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 						{
 							// connectivity
 							e->V.Resize((_is_o2?8:4));
-							e->V[0] = _verts_d[v->MyID - 1 - (Blocks[b]->nDivX()+1)];
-							e->V[1] = _verts_d[v->MyID     - (Blocks[b]->nDivX()+1)];
+							e->V[0] = _verts_d[v->MyID - 1 - (_bls[b]->nDivX()+1)];
+							e->V[1] = _verts_d[v->MyID     - (_bls[b]->nDivX()+1)];
 							e->V[2] = _verts_d[v->MyID];
 							e->V[3] = _verts_d[v->MyID - 1];
 							if (_is_o2)
 							{
-								e->V[4] = _verts_m1[v1->MyID - Blocks[b]->nDivX()];
+								e->V[4] = _verts_m1[v1->MyID - _bls[b]->nDivX()];
 								e->V[5] = _verts_m2[v2->MyID];
 								e->V[6] = _verts_m1[v1->MyID];
 								e->V[7] = _verts_m2[v2->MyID - 1];
@@ -1035,28 +1043,28 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 						if (e->OnBry)
 						{
 							_elems_bry.Push(e);      // array with elements on boundary
-							Blocks[b]->ApplyTags(e); // apply tags to edges and faces of this element with boundary tags
+							_bls[b]->ApplyTags(e); // apply tags to edges and faces of this element with boundary tags
 						}
 						_elems.Push(e); // array with all elements
 					}
 					// Next r
 					r_before = r;
-					r += (2.0/Blocks[b]->SumWeightX()) * Blocks[b]->Wx(i);
+					r += (2.0/_bls[b]->SumWeightX()) * _bls[b]->Wx(i);
 				}
 				// Next s
 				s_before = s;
-				s += (2.0/Blocks[b]->SumWeightY()) * Blocks[b]->Wy(j);
+				s += (2.0/_bls[b]->SumWeightY()) * _bls[b]->Wy(j);
 			}
 			// Next t
 			t_before = t;
-			t += (_is_3d ? (2.0/Blocks[b]->SumWeightZ()) * Blocks[b]->Wz(k) : 0.0);
+			t += (_is_3d ? (2.0/_bls[b]->SumWeightZ()) * _bls[b]->Wz(k) : 0.0);
 		}
 	}
 
 	// Remove duplicates
 	long ncomp = 0; // number of comparisons
 	long ndupl = 0; // number of duplicates
-	if (Blocks.Size()>1)
+	if (_bls.Size()>1)
 	{
 		for (size_t i=0; i<_verts_d_bry.Size(); ++i)
 		{
@@ -1066,7 +1074,7 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 				double dist = sqrt(          pow(_verts_d_bry[i]->C(0)-_verts_d_bry[j]->C(0),2.0)+
 											 pow(_verts_d_bry[i]->C(1)-_verts_d_bry[j]->C(1),2.0)+
 								   (_is_3d ? pow(_verts_d_bry[i]->C(2)-_verts_d_bry[j]->C(2),2.0) : 0.0));
-				if (dist<Tol)
+				if (dist<_tol)
 				{
 					/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
 					// If this node is duplicated, than it is not on-boundary any longer
@@ -1153,10 +1161,20 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 		}
 	}
 
-	//std::cout << "number of comparisons = " << ncomp << ", number of duplicates = " << ndupl << std::endl;
-
 	// Generate Beams
 	_add_beams();
+
+	// Info
+	if (WithInfo)
+	{
+		double total = std::clock() - start;
+		std::cout << "[1;33m\n--- Structured Mesh Generation ---------------------------------[0m\n";
+		if (_is_o2) std::cout << "[1;36m    Time elapsed (o2)     = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+		else        std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+		std::cout << "[1;35m    Number of comparisons = " << ncomp         << "[0m\n";
+		std::cout << "[1;35m    Number of duplicates  = " << ndupl         << "[0m\n";
+		std::cout << "[1;32m    Number of elements    = " << _elems.Size() << "[0m" << std::endl;
+	}
 
 	return _elems.Size();
 }
@@ -1164,15 +1182,12 @@ inline size_t Structured::Generate(Array<Block*> const & Blocks, double Tol)
 
 #ifdef USE_BOOST_PYTHON
 
-inline size_t Structured::PyGenerate(BPy::list const & ListOfMeshBlock, double Tol)
+inline void Structured::PySetBlocks(BPy::list const & ListOfMeshBlock)
 {
 	int nb = BPy::len(ListOfMeshBlock);
 	if (nb<1) throw new Fatal("Structured::PyGenerate: Number of blocks must be greater than 0 (%d is invalid)",nb);
-	Array<Mesh::Block*> blocks;
-	blocks.Resize (nb);
-	for (int i=0; i<nb; ++i)
-		blocks[i] = BPy::extract<Mesh::Block*>(ListOfMeshBlock[i])();
-	return Mesh::Structured::Generate (blocks, Tol);
+	_bls.Resize (nb);
+	for (int i=0; i<nb; ++i) _bls[i] = BPy::extract<Mesh::Block*>(ListOfMeshBlock[i])();
 }
 
 #endif // USE_BOOST_PYTHON

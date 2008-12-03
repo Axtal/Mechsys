@@ -47,13 +47,13 @@ def test_2D_1():
                           15, 1, 33, 0)                                 # Origin, XPlus, YPlus, None
 
     # Generate
-    ms = m.mesh_structured(False) # Is3D==False
-    ne = ms.generate (blocks)
-    print '2D => Generated ', ne, ' elements'
+    ms = m.mesh_structured (False) # Is3D==False
+    ms.set_blocks          (blocks)
+    ms.generate            (True)
 
     # Output
     ms.write_vtu ('tmesh01_2D_1_py.vtu')
-    print 'File <tmesh01_2D_1_py.vtu> created'
+    print '\nFile <tmesh01_2D_1_py.vtu> created'
 
 
 def test_2D_2():
@@ -82,13 +82,13 @@ def test_2D_2():
                           0, 4, 7, 0)                                                                       # Origin, XPlus, YPlus, None
 
     # Generate
-    ms = m.mesh_structured(False) # Is3D==False
-    ne = ms.generate (blocks)
-    print '2D => Generated ', ne, ' elements'
+    ms = m.mesh_structured (False) # Is3D==False
+    ms.set_blocks          (blocks)
+    ms.generate            (True)
 
     # Output
     ms.write_vtu ('tmesh01_2D_2_py.vtu')
-    print 'File <tmesh01_2D_2_py.vtu> created'
+    print '\nFile <tmesh01_2D_2_py.vtu> created'
 
 
 ########################################################################################## Run #####
