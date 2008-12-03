@@ -102,4 +102,20 @@ def report():
         msg = stage_stats (int(s), False, False)
         for line in msg: f.write (line+'\n')
         f.write ('\n\n')
+
+    # extra nodes
+    if obj.properties.has_key('res_nodes'):
+        arr = obj.properties['res_nodes'].split(',')
+        nds = [int(n) for n in arr]
+        lin = '\n %8s' % 'Node #'
+        for k, key in di.key('dfv').iteritems(): lin = '%s  %12s' % (lin,key)
+        lin += '\n'
+        f.write (lin)
+        for n in nds:
+            res = obj.properties['res'][s][key][n]
+            lin = ' %8d  ' % n
+            for k, key in di.key('dfv').iteritems(): lin = '%s  %8.3e' % (lin,res)
+            lin += '\n'
+            f.write (lin)
+
     f.close()

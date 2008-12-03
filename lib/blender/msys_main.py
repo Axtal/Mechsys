@@ -585,6 +585,11 @@ def cb_res_show_ext  (evt,val): di.set_key ('res_show_extra',  val)
 def cb_res_ext_scale (evt,val): di.set_key ('res_ext_scale',   val)
 @try_catch
 def cb_res_ext_txt   (evt,val): di.set_key ('res_ext_txt',     val)
+@try_catch
+def cb_res_nodes     (evt,val):
+    obj = di.get_obj()
+    obj.properties['res_nodes'] = val
+    Blender.Window.QRedrawAll()
 
 
 # ======================================================================================= GUI
@@ -615,6 +620,7 @@ def gui():
     fbrys       = {}
     eatts       = {}
     res_nstages = 0
+    res_nodes   = ''
     if obj!=None:
         if obj.properties.has_key('3dmesh'):  is3d     = obj.properties['3dmesh']
         else:      obj.properties['3dmesh']            = False
@@ -634,7 +640,9 @@ def gui():
             if obj.properties[stg].has_key('ebrys'): ebrys = obj.properties[stg]['ebrys']
             if obj.properties[stg].has_key('fbrys'): fbrys = obj.properties[stg]['fbrys']
             if obj.properties[stg].has_key('eatts'): eatts = obj.properties[stg]['eatts']
-        if obj.properties.has_key('res'): res_nstages = len(obj.properties['res'])
+        if obj.properties.has_key('res'):       res_nstages = len(obj.properties['res'])
+        if obj.properties.has_key('res_nodes'): res_nodes   = obj.properties['res_nodes']
+        else: obj.properties['res_nodes'] = ''
 
     # materials menu
     matmnu   = 'Materials %t'
@@ -1089,7 +1097,8 @@ def gui():
             r, c, w = gu.box1_out(W,cg,rh, c,r)
         r -= rh
         r -= srg
-        Draw.PushButton ('Generate report',  EVT_RES_REPORT, c, r, 100, rh, 'Generate report')
+        Draw.String     ('',                 EVT_NONE,       c,     r, 200, rh, res_nodes,  256, 'List of node (separated by commas) to generate full output in report', cb_res_nodes)
+        Draw.PushButton ('Generate report',  EVT_RES_REPORT, c+200, r, 120, rh,                  'Generate report')
     r -= rg
 
 
