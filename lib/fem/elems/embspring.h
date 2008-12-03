@@ -255,24 +255,21 @@ inline void EmbSpring::_mount_T_matrix(Vector<double> const & Shape, Vector<doub
 	//  T = [  N1*l N1*m N1*n N2*l N2*m ... | 0  0  0  ]
 	//      [    0    0    0    0    0  ... | l  m  n  ]
 	//      
-
-	double l = Direction(0);
-	double m = Direction(1);
-	double n;  if (_ndim==3) n=Direction(2);
+	//  l, m, n = Direction(0), Direction(1), Direction(2)
 
 	T.Resize(2, _ndim*_n_nodes);
 	T.SetValues(0.0);
 	for (size_t i=0; i<_n_nodes-1; i++)
 	{
-		              T(0,i*_ndim    ) = Shape(i)*l;
-		              T(0,i*_ndim + 1) = Shape(i)*m;
-		if (_ndim==3) T(0,i*_ndim + 2) = Shape(i)*n;
+		              T(0,i*_ndim    ) = Shape(i)*Direction(0);
+		              T(0,i*_ndim + 1) = Shape(i)*Direction(1);
+		if (_ndim==3) T(0,i*_ndim + 2) = Shape(i)*Direction(2);
 	}
 
-	              T(1, (_n_nodes-1)*_ndim    ) = l;
-	              T(1, (_n_nodes-1)*_ndim + 1) = m;
-	if (_ndim==3) T(1, (_n_nodes-1)*_ndim + 2) = n;
-} 
+	              T(1, (_n_nodes-1)*_ndim    ) = Direction(0);
+	              T(1, (_n_nodes-1)*_ndim + 1) = Direction(1);
+	if (_ndim==3) T(1, (_n_nodes-1)*_ndim + 2) = Direction(2);
+}
 
 inline void EmbSpring::_get_another_vector(Vector<double> const & V1, Vector<double> & V2) const 
 {
