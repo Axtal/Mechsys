@@ -73,7 +73,7 @@ def load_dict():
         dict['res_show_warp']   = True
         dict['res_show_extra']  = True
         dict['res_ext']         = 1
-        dict['res_ext_scale']   = '0.02'
+        dict['res_ext_scale']   = '1'
         dict['res_ext_txt']     = True
 
         # Extra output
