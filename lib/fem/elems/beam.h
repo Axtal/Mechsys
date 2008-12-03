@@ -257,9 +257,9 @@ inline double Beam::Val(int iNodeLocal, char const * Name) const
 
 	if (_uL.Size()<1) throw new Fatal("Beam::Val: Please, call CalcDepVars() before calling this method");
 	double l = (iNodeLocal==0 ? 0 : 1.0);
-	     if (strcmp(Name,"N" )==0) return N(l);
-	else if (strcmp(Name,"M" )==0) return M(l);
-	else if (strcmp(Name,"V" )==0) return V(l);
+	     if (strcmp(Name,"N" )==0) return      N(l);
+	else if (strcmp(Name,"M" )==0) return fabs(M(l));
+	else if (strcmp(Name,"V" )==0) return fabs(V(l));
 	else if (strcmp(Name,"Ea")==0) return    (_uL(_nd)-_uL(0))/_L;
 	else if (strcmp(Name,"Sa")==0) return _E*(_uL(_nd)-_uL(0))/_L;
 	else throw new Fatal("Beam::Val: This element does not have a Val named %s",Name);
