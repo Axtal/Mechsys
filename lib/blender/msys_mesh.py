@@ -37,6 +37,8 @@ def print_timing(func):
 
 @print_timing
 def gen_frame_mesh(gen_script=False,txt=None):
+    Blender.Window.WaitCursor(1)
+
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
 
@@ -48,7 +50,7 @@ def gen_frame_mesh(gen_script=False,txt=None):
     msh.transform (obj.matrix) # transform mesh to global coordinates
 
     # MechSys mesh
-    msm = ms.mesh_generic(is3d)
+    mesh = ms.mesh_generic(is3d)
 
     # etags
     etags = {}
@@ -66,60 +68,62 @@ def gen_frame_mesh(gen_script=False,txt=None):
         else:    txt.write('is3d     = False\n')
         txt.write('onbry    = True\n')
         txt.write('VTK_LINE = 3\n\n')
-        txt.write('msm = ms.mesh_generic(is3d)\n')
+        txt.write('mesh = ms.mesh_generic(is3d)\n')
 
         # vertices
-        txt.write('msm.set_nverts    (%d)\n'%len(msh.verts))
+        txt.write('mesh.set_nverts    (%d)\n'%len(msh.verts))
         for i, v in enumerate(msh.verts):
-            if is3d: txt.write('msm.set_vert      (%d, onbry, %g,%g,%g)\n'%(i, v.co[0], v.co[1], v.co[2]))
-            else:    txt.write('msm.set_vert      (%d, onbry, %g,%g)\n'   %(i, v.co[0], v.co[1]))
+            if is3d: txt.write('mesh.set_vert      (%d, onbry, %g,%g,%g)\n'%(i, v.co[0], v.co[1], v.co[2]))
+            else:    txt.write('mesh.set_vert      (%d, onbry, %g,%g)\n'   %(i, v.co[0], v.co[1]))
 
         # elements
-        txt.write('msm.set_nelems    (%d)\n'%len(msh.edges))
+        txt.write('mesh.set_nelems    (%d)\n'%len(msh.edges))
         for i, e in enumerate(msh.edges):
             key = (e.v1.index, e.v2.index)
             if not key in etags: raise Exception('All edges must have a edge tag')
             etag = etags[key]
-            txt.write('msm.set_elem      (%d,%d,onbry,VTK_LINE)\n'%(i,etag)) # 3 == VTK_LINE
-            txt.write('msm.set_elem_con  (%d,0,%d)\n'%(i, e.v1.index))       # 0 == local node index
-            txt.write('msm.set_elem_con  (%d,1,%d)\n'%(i, e.v2.index))       # 1 == local node index
-            txt.write('msm.set_elem_etag (%d,0,%d)\n'%(i, etags[key]))       # 0 == local edge index
+            txt.write('mesh.set_elem      (%d,%d,onbry,VTK_LINE)\n'%(i,etag)) # 3 == VTK_LINE
+            txt.write('mesh.set_elem_con  (%d,0,%d)\n'%(i, e.v1.index))       # 0 == local node index
+            txt.write('mesh.set_elem_con  (%d,1,%d)\n'%(i, e.v2.index))       # 1 == local node index
+            txt.write('mesh.set_elem_etag (%d,0,%d)\n'%(i, etags[key]))       # 0 == local edge index
     else:
         onbry    = True
         VTK_LINE = 3
-        msm      = ms.mesh_generic(is3d)
+        mesh     = ms.mesh_generic(is3d)
 
         # vertices
-        msm.set_nverts (len(msh.verts))
+        mesh.set_nverts (len(msh.verts))
         for i, v in enumerate(msh.verts):
-            if is3d: msm.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
-            else:    msm.set_vert (i, onbry, v.co[0], v.co[1])
+            if is3d: mesh.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
+            else:    mesh.set_vert (i, onbry, v.co[0], v.co[1])
 
         # elements
-        msm.set_nelems (len(msh.edges))
+        mesh.set_nelems (len(msh.edges))
         for i, e in enumerate(msh.edges):
             key = (e.v1.index, e.v2.index)
             if not key in etags: raise Exception('All edges must have a edge tag')
             etag = etags[key]
-            msm.set_elem      (i,etag,onbry,VTK_LINE) # 3 == VTK_LINE
-            msm.set_elem_con  (i, 0, e.v1.index)      # 0 == local node index
-            msm.set_elem_con  (i, 1, e.v2.index)      # 1 == local node index
-            msm.set_elem_etag (i, 0, etags[key])      # 0 == local edge index
+            mesh.set_elem      (i,etag,onbry,VTK_LINE) # 3 == VTK_LINE
+            mesh.set_elem_con  (i, 0, e.v1.index)      # 0 == local node index
+            mesh.set_elem_con  (i, 1, e.v2.index)      # 1 == local node index
+            mesh.set_elem_etag (i, 0, etags[key])      # 0 == local edge index
 
     # Restore local coordinates
     msh.verts = ori
 
-    if gen_script:
-        txt.write('me.add_mesh(msm, [], True)\n')
-    else:
-        Blender.Window.WaitCursor(1)
-        add_mesh (msm, [], True)
-        Blender.Window.WaitCursor(0)
+    # Add mesh
+    if gen_script: txt.write('me.add_mesh(mesh, [], True)\n')
+    else:          add_mesh (mesh, [], True)
+
+    Blender.Window.WaitCursor(0)
+
     
 # =========================================================================== Structured mesh
 
 @print_timing
 def gen_struct_mesh(gen_script=False,txt=None):
+    Blender.Window.WaitCursor(1)
+
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
     if not obj.properties.has_key('blks'):
@@ -231,25 +235,30 @@ def gen_struct_mesh(gen_script=False,txt=None):
 
     # generate mesh and draw results
     if gen_script:
-        if is3d: txt.write('msm = ms.mesh_structured(True)\n')
-        else:    txt.write('msm = ms.mesh_structured(False)\n')
-        txt.write('nel = msm.generate(bks,1.0e-4)\n')
+        if is3d: txt.write('mesh = ms.mesh_structured(True)\n')
+        else:    txt.write('mesh = ms.mesh_structured(False)\n')
         txt.write('face_colours = '+fclrs.__str__()+'\n')
-        txt.write('me.add_mesh(msm, face_colours)\n')
+        txt.write('mesh.set_tol    (1.0e-4)\n')
+        txt.write('mesh.set_blocks (bks)\n')
+        txt.write('mesh.generate   (True)\n')
+        txt.write('me.add_mesh     (mesh, face_colours)\n')
     else:
         if len(bks)>0:
-            Blender.Window.WaitCursor(1)
-            msm = ms.mesh_structured(is3d)
-            nel = msm.generate (bks,1.0e-4)
-            print '[1;34mMechSys[0m: [1;33m%d[0m elements generated' % nel
-            add_mesh (msm, fclrs)
-            Blender.Window.WaitCursor(0)
+            mesh = ms.mesh_structured(is3d)
+            mesh.set_tol    (1.0e-4)
+            mesh.set_blocks (bks)
+            mesh.generate   (True)
+            add_mesh        (mesh, fclrs)
+
+    Blender.Window.WaitCursor(0)
 
 
 # ========================================================================= Unstructured mesh
 
 @print_timing
 def gen_unstruct_mesh(gen_script=False,txt=None):
+    Blender.Window.WaitCursor(1)
+
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
 
@@ -277,50 +286,50 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
             txt = Blender.Text.New(obj.name+'_umesh')
             txt.write('import mechsys   as ms\n')
             txt.write('import msys_mesh as me\n')
-        if is3d: txt.write('msm = ms.mesh_unstructured(True)\n')
-        else:    txt.write('msm = ms.mesh_unstructured(False)\n')
+        if is3d: txt.write('mesh = ms.mesh_unstructured(True)\n')
+        else:    txt.write('mesh = ms.mesh_unstructured(False)\n')
 
         # set polygon
-        txt.write('msm.set_poly_size    (%d,%d,%d,%d)'%(len(msh.verts), len(msh.edges), nregs, nhols)+'\n')
+        txt.write('mesh.set_poly_size    (%d,%d,%d,%d)'%(len(msh.verts), len(msh.edges), nregs, nhols)+'\n')
 
         # set vertices and edges
         for v in msh.verts:
-            txt.write('msm.set_poly_point   (%d,%f,%f,%f)'%(v.index, v.co[0], v.co[1], v.co[2])+'\n')
+            txt.write('mesh.set_poly_point   (%d,%f,%f,%f)'%(v.index, v.co[0], v.co[1], v.co[2])+'\n')
         for e in msh.edges:
             key = (e.v1.index, e.v2.index)
-            if key in etags: txt.write('msm.set_poly_segment (%d,%d,%d,%d)'%(e.index, e.v1.index, e.v2.index, etags[key])+'\n')
-            else:            txt.write('msm.set_poly_segment (%d,%d,%d)'   %(e.index, e.v1.index, e.v2.index)+'\n')
+            if key in etags: txt.write('mesh.set_poly_segment (%d,%d,%d,%d)'%(e.index, e.v1.index, e.v2.index, etags[key])+'\n')
+            else:            txt.write('mesh.set_poly_segment (%d,%d,%d)'   %(e.index, e.v1.index, e.v2.index)+'\n')
 
         # set regions and holes
         if obj.properties.has_key('regs'):
             for k, v in obj.properties['regs'].iteritems():
-                txt.write('msm.set_poly_region  (%d,%d,%f,%f,%f,%f)'%(int(k), int(v[0]), v[1], v[2], v[3], v[4])+'\n')
+                txt.write('mesh.set_poly_region  (%d,%d,%f,%f,%f,%f)'%(int(k), int(v[0]), v[1], v[2], v[3], v[4])+'\n')
         if obj.properties.has_key('hols'):
             for k, v in obj.properties['hols'].iteritems():
-                txt.write('msm.set_poly_hole    (%d,%f,%f,%f)'%(int(k), v[0], v[1], v[2])+'\n')
+                txt.write('mesh.set_poly_hole    (%d,%f,%f,%f)'%(int(k), v[0], v[1], v[2])+'\n')
 
     else:
         # unstructured mesh instance
-        msm = ms.mesh_unstructured(is3d)
+        mesh = ms.mesh_unstructured(is3d)
 
         # set polygon
-        msm.set_poly_size (len(msh.verts), len(msh.edges), nregs, nhols)
+        mesh.set_poly_size (len(msh.verts), len(msh.edges), nregs, nhols)
 
         # set vertices and edges
         for v in msh.verts:
-            msm.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
+            mesh.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
         for e in msh.edges:
             key = (e.v1.index, e.v2.index)
-            if key in etags: msm.set_poly_segment (e.index, e.v1.index, e.v2.index, etags[key])
-            else:            msm.set_poly_segment (e.index, e.v1.index, e.v2.index)
+            if key in etags: mesh.set_poly_segment (e.index, e.v1.index, e.v2.index, etags[key])
+            else:            mesh.set_poly_segment (e.index, e.v1.index, e.v2.index)
 
         # set regions and holes
         if obj.properties.has_key('regs'):
             for k, v in obj.properties['regs'].iteritems():
-                msm.set_poly_region (int(k), int(v[0]), v[1], v[2], v[3], v[4])
+                mesh.set_poly_region (int(k), int(v[0]), v[1], v[2], v[3], v[4])
         if obj.properties.has_key('hols'):
             for k, v in obj.properties['hols'].iteritems():
-                msm.set_poly_hole (int(k), v[0], v[1], v[2])
+                mesh.set_poly_hole (int(k), v[0], v[1], v[2])
 
     # Restore local coordinates
     msh.verts = ori
@@ -329,14 +338,17 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
     maxa = obj.properties['maxarea'] if obj.properties.has_key('maxarea') else -1.0
     mina = obj.properties['minang']  if obj.properties.has_key('minang')  else -1.0
     if gen_script:
-        txt.write('nel = msm.generate   (%f,%f)'%(maxa, mina)+'\n')
-        txt.write('me.add_mesh(msm)\n')
+        if maxa>0: txt.write('mesh.set_max_area_global  (%f)'%(maxa)+'\n')
+        if mina>0: txt.write('mesh.set_min_angle_global (%f)'%(mina)+'\n')
+        txt.write('mesh.generate             (True)\n')
+        txt.write('me.add_mesh               (mesh)\n')
     else:
-        Blender.Window.WaitCursor(1)
-        ne = msm.generate (maxa, mina)
-        print '[1;34mMechSys[0m: [1;33m%d[0m elements generated' % ne
-        add_mesh (msm)
-        Blender.Window.WaitCursor(0)
+        if maxa>0: mesh.set_max_area_global  (maxa)
+        if mina>0: mesh.set_min_angle_global (mina)
+        mesh.generate (True)
+        add_mesh      (mesh)
+
+    Blender.Window.WaitCursor(0)
 
 
 # ====================================================================================== Draw
@@ -405,12 +417,12 @@ def set_ftags(obj, msh, ftags, fclrs):
 
 
 @print_timing
-def add_mesh(msm, fclrs={}, frame=False):
+def add_mesh(mesh, fclrs={}, frame=False):
     # get vertices and edges
     verts = []
     edges = []
-    msm.get_verts (verts)
-    msm.get_edges (edges)
+    mesh.get_verts (verts)
+    mesh.get_edges (edges)
 
     # add new mesh to Blender
     key     = di.get_file_key()
@@ -424,11 +436,11 @@ def add_mesh(msm, fclrs={}, frame=False):
 
     # Vertices on boundary
     verts_bry = []
-    msm.get_verts_bry (verts_bry)
+    mesh.get_verts_bry (verts_bry)
     new_obj.properties['verts_bry'] = verts_bry;
 
     # 2D or 3D mesh ?
-    new_obj.properties['3dmesh'] = msm.is_3d()
+    new_obj.properties['3dmesh'] = mesh.is_3d()
 
     # Frame mesh ?
     new_obj.properties['frame'] = frame
@@ -438,17 +450,17 @@ def add_mesh(msm, fclrs={}, frame=False):
 
     # set elements
     elems  = {}
-    nelems = msm.get_elems (elems)
+    nelems = mesh.get_elems (elems)
     set_elems (new_obj, nelems, elems)
 
     # set etags
     etags = {}
-    msm.get_etags (etags)
+    mesh.get_etags (etags)
     set_etags (new_obj, new_msh, etags)
 
     # set ftags
     ftags = {}
-    msm.get_ftags (ftags)
+    mesh.get_ftags (ftags)
     set_ftags (new_obj, new_msh, ftags, fclrs)
 
     # redraw
