@@ -288,7 +288,7 @@ inline void Output::VTU(FEM::Geom const * G, double TimeStep)
 {
 	if (_pvd_file==NULL) throw new Fatal("Output::VTU: Collection file must be open before calling this method");
 	String buffer;
-	buffer.Printf ("    <DataSet timestep=\"%f\" file=\"%s_%d.vtu\" />\n", TimeStep, _file_key.CStr(), _idx_file);
+	buffer.Printf ("    <DataSet timestep=\"%d\" file=\"%s_%d.vtu\" />\n", _idx_file, _file_key.CStr(), _idx_file);
 	(*_pvd_file) << buffer;
 	buffer.Printf ("%s_%d.vtu", _file_key.CStr(), _idx_file);
 	VTU (G, buffer.CStr());
