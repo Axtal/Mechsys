@@ -39,12 +39,12 @@ public:
 private:
 	// Private methods
 	int  _geom     () const { return 3; } ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	void _set_ndim (int nDim)             ///< Set space dimension
+	void _initialize()
 	{
-		if (nDim!=3) throw new Fatal("Hex20Equilib::_set_ndim: For this element, nDim must be equal to 3 (%d is invalid)",nDim);
-		_ndim = nDim;
-		_d    = _ndim-1;
-		_nd   = EquilibElem::ND[_d];
+		if (_ndim!=3) throw new Fatal("Hex20Equilib::_initialize: For this element, _ndim must be equal to 3 (%d is invalid)",_ndim);
+		_d  = _ndim-1;
+		_nd = EquilibElem::ND[_d];
+		_nl = EquilibElem::NL[_geom()-1];
 	}
 
 }; // class Hex20Equilib

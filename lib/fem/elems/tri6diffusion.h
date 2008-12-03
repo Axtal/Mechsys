@@ -39,10 +39,9 @@ public:
 private:
 	// Private methods
 	int  _geom     () const { return 2; } ///< Geometry of the element: 1:1D, 2:2D, 3:3D
-	void _set_ndim (int nDim)             ///< Set space dimension
+	void _initialize()
 	{
-		if (nDim<2) throw new Fatal("Tri6Diffusion::_set_ndim: For this element, nDim must be greater than or equal to 2 (%d is invalid)",nDim);
-		_ndim = nDim;
+		if (_ndim<2) throw new Fatal("Tri6Diffusion::_initialize: For this element, _ndim must be greater than or equal to 2 (%d is invalid)",_ndim);
 	}
 
 }; // class Tri6Diffusion

@@ -63,10 +63,11 @@ public:
 	static const char   UD [3][6][3];  ///< Essential DOF names == UD[_ndim-1][iDOF]
 	static const char   FD [3][6][3];  ///< Natural DOF names
 	static const size_t NL [5];        ///< Number of additional labels (exceeding ND)
-	static const char   LB [5][18][4]; ///< Additional labels
+	static const size_t NLB[5];        ///< (Beam) Number of additional labels (exceeding ND)
+	static const char   LB [5][21][4]; ///< Additional labels
 
 	// Constructor
-	EquilibElem () : _gam(0.0), _d(-1), _nd(-1) {}
+	EquilibElem () : _gam(0.0), _d(-1), _nd(-1), _nl(-1) {}
 
 	// Destructor
 	virtual ~EquilibElem();
@@ -106,6 +107,7 @@ protected:
 	double               _gam;      ///< Specific weigth
 	int                  _d;        ///< Dimension index == _ndim-1
 	int                  _nd;       ///< Number of DOFs == ND[_d] or NDB[_d]
+	int                  _nl;       ///< Number of labels == NL[_geom()-1] or NLB[_geom()-1]
 
 	// Private methods
 	virtual void _calc_initial_internal_state (); ///< Calculate initial internal state
@@ -126,13 +128,14 @@ const char   EquilibElem::UD [3][6][3] = {{"ux","wz","","","",""},  {"ux","uy","
 const char   EquilibElem::FD [3][6][3] = {{"fx","mz","","","",""},  {"fx","fy","mz","","",""},  {"fx","fy","fz","mx","my","mz"}};
 
 // LB[_geom-1][iLabel]
-const size_t EquilibElem::NL[5]        = { 2, 16, 18, 10, 18 };
-const char   EquilibElem::LB[5][18][4] = {
-	{"Ea", "Sa", ""  ,  ""   , ""   , ""   , ""  , ""   , ""  , ""   , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  }, // 1D
-	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", ""  , ""  }, // 2D (plane-strain)
-	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3"}, // 3D
-	{"Ex", "Ey", "Exy", "Sx" , "Sy" , "Sxy", "E1", "E2" , "S1", "S2" , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  }, // 2D (plane-stress)
-	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3"}  // 2D (axis-symmetric)
+const size_t EquilibElem::NL [5]        = { 2, 16, 18, 10, 18 };
+const size_t EquilibElem::NLB[5]        = { 5, 19, 21, 13, 21 };
+const char   EquilibElem::LB [5][21][4] = {
+	{"Ea", "Sa", "N" ,  "V"  , "M"  , ""   , ""  , ""   , ""  , ""   , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""  , "" , "" , "" }, // 1D
+	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", "N" , "V" , "M", "" , "" }, // 2D (plane-strain)
+	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "N", "V", "M"}, // 3D
+	{"Ex", "Ey", "Exy", "Sx" , "Sy" , "Sxy", "E1", "E2" , "S1", "S2" , "N"  , "V"  , "M" , ""  , ""  , ""  , ""  , ""  , "" , "" , "" }, // 2D (plane-stress)
+	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "N", "V", "M"}  // 2D (axis-symmetric)
 };
 
 
@@ -320,9 +323,7 @@ inline void EquilibElem::RestoreState()
 
 inline void EquilibElem::GetLabels(Array<String> & Labels) const
 {
-	const int p  = _geom()-1;
-	const int q  = NL[p];   // number of additional labels
-	const int nl = 2*_nd+q; // total number of labels
+	const int nl = 2*_nd+_nl; // total number of labels
 	Labels.Resize(nl);
 	size_t k = 0;
 	for (int i=0; i<_nd; ++i)
@@ -330,9 +331,9 @@ inline void EquilibElem::GetLabels(Array<String> & Labels) const
 		Labels[k] = UD[_d][i];  k++;
 		Labels[k] = FD[_d][i];  k++;
 	}
-	for (int i=0; i<q; ++i)
+	for (int i=0; i<_nl; ++i)
 	{
-		Labels[k] = LB[p][i];  k++;
+		Labels[k] = LB[_geom()-1][i];  k++;
 	}
 }
 

@@ -151,7 +151,7 @@ protected:
 	IntegPoint const * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
 	
 	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
-	virtual void _set_ndim(int nDim) =0;
+	virtual void _initialize() =0; ///< Initialize derived elements (at the bottom of the diamond...)
 	virtual void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
 
 }; // class Element
@@ -168,8 +168,9 @@ inline void Element::Initialize(long ID, bool IsActive, int nDim, int Tag)
 {
 	_my_id     = ID;
 	_is_active = IsActive;
-	_set_ndim (nDim);
+	_ndim      = nDim;
 	_tag       = Tag;
+	_initialize();
 }
 
 inline Element * Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)

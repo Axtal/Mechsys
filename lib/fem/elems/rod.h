@@ -65,7 +65,7 @@ private:
 
 	// Private methods
 	int  _geom                        () const { return 1; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	void _set_ndim                    (int nDim);                         ///< Set space dimension
+	void _initialize                  ();                                 ///< Initialize the element
 	void _calc_initial_internal_state ();                                 ///< Calculate initial internal state
 	void _transf_mat                  (LinAlg::Matrix<double> & T) const; ///< Calculate transformation matrix
 
@@ -239,12 +239,12 @@ inline double Rod::N(double l) const
 
 /* private */
 
-inline void Rod::_set_ndim(int nDim)
+inline void Rod::_initialize()
 {
-	if (nDim<1) throw new Fatal("Rod::_set_ndim: For this element, nDim must be greater than or equal to 1 (%d is invalid)",nDim);
-	_ndim = nDim;
-	_d    = _ndim-1;
-	_nd   = EquilibElem::ND[_d];
+	if (_ndim<1) throw new Fatal("Rod::_initialize: For this element, _ndim must be greater than or equal to 1 (%d is invalid)",_ndim);
+	_d  = _ndim-1;
+	_nd = EquilibElem::ND[_d];
+	_nl = EquilibElem::NL[_geom()-1];
 }
 
 inline void Rod::_calc_initial_internal_state()

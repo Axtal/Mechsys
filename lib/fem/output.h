@@ -66,23 +66,25 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-	void PyVTU1 (FEM::Geom const & G, double TimeStep)           { VTU (&G, TimeStep); }
-	void PyVTU2 (FEM::Geom const & G, BPy::str const & FileName) { VTU (&G, BPy::extract<char const *>(FileName)()); }
-	void PyOpenCollection (BPy::str const & FileKey)      { OpenCollection (BPy::extract<char const *>(FileKey )()); }
+	void   PyGetLabels      (BPy::list & Labels) const { for (std::map<String,int>::const_iterator iter=_map.begin(); iter!=_map.end(); iter++) Labels.append (iter->first.CStr()); }
+	double PyVal            (int iNode, BPy::str const & Key) const          { return Val (iNode, BPy::extract<char const *>(Key)()); }
+	void   PyVTU1           (FEM::Geom const & G, double TimeStep)           { VTU (&G, TimeStep); }
+	void   PyVTU2           (FEM::Geom const & G, BPy::str const & FileName) { VTU (&G, BPy::extract<char const *>(FileName)()); }
+	void   PyOpenCollection (BPy::str const & FileKey)      { OpenCollection (BPy::extract<char const *>(FileKey )()); }
 // }
 #endif // USE_BOOST_PYTHON
 
 private:
 	// Data
-	size_t                      _nimax; ///< number of integers in a line
-	size_t                      _nfmax; ///< number of floats in a line
-	size_t                      _nn;    ///< Number of Nodes
-	size_t                      _ne;    ///< Number of Elements
-	Util::NumStream             _nsflo; ///< number format for floats
-	FEM::Geom           const * _g;     ///< Geometry structure
-	Array<FEM::Element const *> _aes;   ///< Active elements
-	std::map<String, int>       _map;   ///< Map to associate labels with indexes
-	LinAlg::Matrix<double>      _vals;  ///< Matrix for nodal values collected from elements
+	size_t                      _nimax;    ///< number of integers in a line
+	size_t                      _nfmax;    ///< number of floats in a line
+	size_t                      _nn;       ///< Number of Nodes
+	size_t                      _ne;       ///< Number of Elements
+	Util::NumStream             _nsflo;    ///< number format for floats
+	FEM::Geom           const * _g;        ///< Geometry structure
+	Array<FEM::Element const *> _aes;      ///< Active elements
+	std::map<String, int>       _map;      ///< Map to associate labels with indexes==column
+	LinAlg::Matrix<double>      _vals;     ///< Matrix for nodal values collected from elements. Rows==iNode, Cols==iLabel
 	String                      _file_key; ///< File key for collection
 	std::ofstream             * _pvd_file; ///< File for PVD (PavaView) collection
 	int                         _idx_file; ///< Increment to add to a file when working with collections
@@ -115,7 +117,6 @@ inline double Output::Val(int iNode, char const * Key) const
 		throw new Fatal(_("Output::Val: Could not find key < %s > for output"), Key);
 	return _vals(iNode, iter->second);
 }
-
 
 inline void Output::VTK(FEM::Geom const * G, char const * FileName)
 {

@@ -68,7 +68,8 @@ ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
          [-20, 'fy',   q]] # [tag], [key], [val]
 
 # Elements attributes
-eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]
+eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True],
+         [-20, 'Beam', '', 'E=1200 A=1 Izz=1', 'gam=20', 'ZERO', True]]
 
 # Set geometry: nodes, elements and boundaries
 m.set_nodes_elems (ms, eatts, g)
@@ -84,6 +85,10 @@ sol.solve_with_info()
 o = m.output()
 o.vtu(g, 'tpstrain02_py.vtu')
 print '\nFile <tpstrain02_py.vtu> generated'
+
+labels = []
+o.get_labels(labels)
+print labels
 
 #----------------------------------------------------------------------------- Check
 

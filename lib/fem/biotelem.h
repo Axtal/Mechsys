@@ -48,7 +48,7 @@ public:
 	static const char   LB [3][22][4]; ///< Additional labels
 
 	// Constructor
-	BiotElem () : _gam(0.0), _d(-1), _nd(-1), _gw(-1) {}
+	BiotElem () : _gam(0.0), _d(-1), _nd(-1), _nl(-1), _gw(-1) {}
 
 	// Destructor
 	virtual ~BiotElem() {}
@@ -89,14 +89,15 @@ public:
 
 protected:
 	// Data
-	double           _gam;    ///< Specific weight
-	int              _d;      ///< Dimension index == _ndim-1
-	int              _nd;     ///< Number of DOFs == ND[_d]
-	double           _gw;     ///< Water specific weight (gamma W)
-	Matrix<double>   _De;     ///< Constant tangent stiffness
-	Matrix<double>   _Ke;     ///< Constant tangent permeability
-	Array<Vector<double> >   _stress; ///< Total stress at each integration point. Size==_n_int_pts
-	Array<Vector<double> >   _strain; ///< Strain at each integration point. Size==_n_int_pts
+	double                 _gam;    ///< Specific weight
+	int                    _d;      ///< Dimension index == _ndim-1
+	int                    _nd;     ///< Number of DOFs == ND[_d]
+	int                    _nl;     ///< Number of labels == NL[_geom()-1]
+	double                 _gw;     ///< Water specific weight (gamma W)
+	Matrix<double>         _De;     ///< Constant tangent stiffness
+	Matrix<double>         _Ke;     ///< Constant tangent permeability
+	Array<Vector<double> > _stress; ///< Total stress at each integration point. Size==_n_int_pts
+	Array<Vector<double> > _strain; ///< Strain at each integration point. Size==_n_int_pts
 
 	// Private methods that MUST be derived
 	virtual int  _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -387,9 +388,7 @@ inline void BiotElem::ApplyBodyForces()
 
 inline void BiotElem::GetLabels(Array<String> & Labels) const
 {
-	const int p  = _geom()-1;
-	const int q  = NL[p];   // number of additional labels
-	const int nl = 2*_nd+q; // total number of labels
+	const int nl = 2*_nd+_nl; // total number of labels
 	Labels.Resize(nl);
 	size_t k = 0;
 	for (int i=0; i<_nd; ++i)
@@ -397,9 +396,9 @@ inline void BiotElem::GetLabels(Array<String> & Labels) const
 		Labels[k] = UD[_d][i];  k++;
 		Labels[k] = FD[_d][i];  k++;
 	}
-	for (int i=0; i<q; ++i)
+	for (int i=0; i<_nl; ++i)
 	{
-		Labels[k] = LB[p][i];  k++;
+		Labels[k] = LB[_geom()-1][i];  k++;
 	}
 }
 

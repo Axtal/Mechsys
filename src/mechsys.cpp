@@ -207,6 +207,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	class_<Output>("output")
 	    .def("open_collection",  &Output::PyOpenCollection)
 	    .def("close_collection", &Output::CloseCollection)
+	    .def("get_labels",       &Output::PyGetLabels)
+	    .def("val",              &Output::PyVal)
 	    .def("vtu",              &Output::PyVTU1)
 	    .def("vtu",              &Output::PyVTU2)
 	    ;
