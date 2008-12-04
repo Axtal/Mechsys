@@ -422,11 +422,11 @@ inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vect
 {
 	// Check
 	if (IPValues.Size()!=static_cast<int>(_n_int_pts)) throw new Fatal("Element::Extrapolate: IPValues.Size()==%d must be equal to _n_int_pts==%d",IPValues.Size(),_n_int_pts);
-	if (NodalValues.Size()!=static_cast<int>(_n_nodes)) throw new Fatal("Element::Extrapolate: NodalValues.Size()==%d must be equal to _n_nodes==%d",NodalValues.Size(),_n_nodes);
 
 	// Data
 	size_t m = IPValues   .Size();
-	size_t n = NodalValues.Size();
+	size_t n = _n_nodes;
+	NodalValues.Resize(n);
 
 	/* N: shape functions matrix:
 	          _                                                 _

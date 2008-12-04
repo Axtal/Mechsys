@@ -65,7 +65,8 @@ private:
 	double _A; ///< Cross-sectional area
 
 	// Depedent variables (calculated by CalcDepVars)
-	mutable Vector<double> _Eps; ///< Rod3-Local displacements/rotations
+	mutable Vector<double> _Eps;   ///< Strain at nodal points
+	mutable Vector<double> _EpsIP; ///< Strain at integration points
 
 	// Private methods
 	int  _geom                        () const { return 1; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -105,10 +106,20 @@ inline void Rod3::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 
 inline void Rod3::LocalCoords(LinAlg::Matrix<double> & coords) const 
 {
-	coords.Resize(3,3);
-	coords =  -1.0,  0.0, 1.0,
-	           0.0,  0.0, 1.0,
-	           1.0,  0.0, 1.0;
+	if (_ndim==2)
+	{
+		coords.Resize(3,3);
+		coords =  -1.0,  0.0, 1.0,
+				   0.0,  0.0, 1.0,
+				   1.0,  0.0, 1.0;
+	}
+	else
+	{
+		coords.Resize(3,4);
+		coords =  -1.0,  0.0, 0.0, 1.0,
+				   0.0,  0.0, 0.0, 1.0,
+				   1.0,  0.0, 0.0, 1.0;
+	}
 }
 
 inline void Rod3::SetIntPoints(int NumGaussPoints)
@@ -216,9 +227,7 @@ inline void Rod3::ApplyBodyForces() // TODO
 inline void Rod3::CalcDepVars() const
 {
 	// Calculate the strain at nodes
-	LinAlg::Vector<double> EpsIP;
-	EpsIP.Resize(_n_int_pts);
-	_Eps .Resize(_n_nodes);
+	_EpsIP.Resize(_n_int_pts);
 
 	// Assemble (local/element) displacements vector
 	LinAlg::Vector<double> U(_nd*_n_nodes); 
@@ -240,9 +249,9 @@ inline void Rod3::CalcDepVars() const
 		B_Matrix(derivs,J, B);        // Calculate B matrix for i Integration Point
 		Vector<double> C;
 		C = B*U;
-		EpsIP(i)=C(0);
+		_EpsIP(i)=C(0);
 	}
-	Extrapolate(EpsIP, _Eps);
+	Extrapolate(_EpsIP, _Eps);
 }
 
 inline double Rod3::Val(int iNodeLocal, char const * Name) const
@@ -256,7 +265,7 @@ inline double Rod3::Val(int iNodeLocal, char const * Name) const
 	if (_Eps.Size()<1) throw new Fatal("Rod3::Val: Please, call CalcDepVars() before calling this method");
 
 	     if (strcmp(Name,"Ea" )==0) return _Eps(iNodeLocal);
-	else if (strcmp(Name,"Sa")==0)  return  _Eps(iNodeLocal)*_E;
+	else if (strcmp(Name,"Sa")==0)  return _Eps(iNodeLocal)*_E;
 	else if (strcmp(Name,"Fa")==0)  return _Eps(iNodeLocal)*_E*_A;
 	else throw new Fatal("Rod3::Val: This element does not have a Val named %s",Name);
 }
@@ -271,7 +280,7 @@ inline void Rod3::OutInfo(std::ostream & os) const
 	CalcDepVars();
 	for (size_t i=0; i<_n_int_pts; i++)
 	{
-		os << "IP # " << i << " Ea,Sa = " << _12_6 << _Eps(i) << _12_6 << _Eps(i)*_E;
+		os << "IP # " << i << " Ea,Sa = " << _12_6 << _EpsIP(i) << _12_6 << _EpsIP(i)*_E;
 	}
 }
 

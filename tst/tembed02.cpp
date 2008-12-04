@@ -52,6 +52,7 @@
 #include "mesh/structured.h"
 
 #include "fem/embedded.h"        // << embedded
+#include "fem/elems/hex8equilib.h"        // << embedded
 #include "fem/elems/rod3.h"        // << embedded
 #include "fem/elems/embspring.h"        // << embedded
 
@@ -66,8 +67,9 @@ using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
-	int ndivx = 1;
-	int ndivy = 1;
+	int ndivz = 1;
+	int ndivx = 2*ndivz;
+	int ndivy = 2*ndivz;
 	double H  = 1.0;
 	double W  = 2.0*H;
 	bool is_o2 = false;
@@ -80,72 +82,58 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Block # 1
-	Mesh::Block b1;
-	b1.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b1.SetCoords (false, 4,                // Is3D, NNodes
-	             0.0, W/2.0,  W/2.0, 0.0,  // x coordinates
-	             0.0,   0.0,      H,   H); // y coordinates
-	b1.SetNx     (ndivx);                  // x weights and num of divisions along x
-	b1.SetNy     (ndivy);                  // y weights and num of divisions along y
-	b1.SetETags  (4, 0, 0, -30, 0);   // edge tags
-
-	// Block # 2
-	Mesh::Block b2;
-	b2.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b2.SetCoords (false, 4,               // Is3D, NNodes
-	             W/2.0,   W,  W, W/2.0,   // x coordinates
-	             0.0,   0.0,  H,    H);   // y coordinates
-	b2.SetNx     (ndivx);                 // x weights and num of divisions along x
-	b2.SetNy     (ndivy);                 // y weights and num of divisions along y
-	b2.SetETags  (4, 0, 0, -30, 0);      // edge tags
+	Mesh::Block b;
+	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
+	b.SetCoords (true, 8,                 // Is3D, NNodes
+	             0.0,   W,   W, 0.0, 0.0,   W, W, 0.0,  // x coordinates
+	             0.0, 0.0,   W,   W, 0.0, 0.0, W,   W,  // y coordinates
+	             0.0, 0.0, 0.0, 0.0,   H,   H, H,   H); // y coordinates
+	b.SetNx     (ndivx);                  // x weights and num of divisions along x
+	b.SetNy     (ndivy);                  // y weights and num of divisions along y
+	b.SetNz     (ndivz);                  // z weights and num of divisions along z
+	b.SetFTags  (6, 0, 0, 0, 0, -10, 0);  // face tags
 
 	// Blocks
 	Array<Mesh::Block*> blocks;
-	blocks.Push (&b1);
-	blocks.Push (&b2);
+	blocks.Push (&b);
 
 	// Generate
-	Mesh::Structured mesh(/*Is3D*/false);
-	if (is_o2) mesh.SetO2();                // Non-linear elements
+	Mesh::Structured mesh(/*Is3D*/true);
 	mesh.SetBlocks (blocks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 	
 	// weight
-	double P = 10.0;
+	double P = 1.0;
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Geom g(3); // 2D
 
 	// Nodes brys
 	FEM::NBrys_T nbrys;
-	nbrys.Push (make_tuple(  0.0, 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
-	nbrys.Push (make_tuple(  0.0, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
-	nbrys.Push (make_tuple(    W, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
-	nbrys.Push (make_tuple(W/2.0,   H, 0.0, "fy",  -P)); // x,y,z, key, val
+	nbrys.Push (make_tuple(2.0, 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
+	nbrys.Push (make_tuple(2.0, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
+	//nbrys.Push (make_tuple(  0.0, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
+	//nbrys.Push (make_tuple(    W, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
+	nbrys.Push (make_tuple(W/2.0,   W/2.0, H, "fz",  -P)); // x,y,z, key, val
 
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	//ebrys.Push (make_tuple(-30, "uy", 0.0)); // tag, key, val
+	// Faces brys
+	FEM::FBrys_T fbrys;
+	fbrys.Push (make_tuple(-10, "uz", 0.0)); // tag, key, val
 
 	// Elements attributes
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true)); // tag, type, model, prms, inis, props
-	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true)); // tag, type, model, prms, inis, props
+	if (is_o2) eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", "E=1.0 nu=0.0", "", "", true)); // tag, type, model, prms, inis, props
+	else       eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", "E=1.0 nu=0.0", "", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, &nbrys, NULL, NULL, &g);
+	FEM::SetBrys       (&mesh, &nbrys, NULL, &fbrys, &g);
 
-	// AddReinforcement
-	LinAlg::Vector<double> P0(3); P0=0.0,0.0,0.0;
-	LinAlg::Vector<double> P1(3); P1=1.0,1.0,0.0;
-	LinAlg::Vector<double> P2(3); P2=2.0,0.0,0.0;
-
-	AddReinf(0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0E6 A=1 K=1E12", true, -10, &g);
-	AddReinf(1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E6 A=1 K=1E12", true, -20, &g);
-	AddReinf(0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E6 A=1 K=1E12", true, -30, &g);
+	AddReinf(2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 A=0.1 K=1E12", true, -10, &g);
+	AddReinf(1.0, 1.0, 1.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -20, &g);
+	AddReinf(2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -30, &g);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -166,9 +154,9 @@ int main(int argc, char **argv) try
 		int tag = g.Ele(i)->Tag();
 		int  nn = g.Ele(i)->NNodes();
 
-		     if (tag==-10 && nn<=3) err.Push(fabs(g.Ele(i)->Val(0, "Sa") - (-0.707106781*P)));
-		else if (tag==-20 && nn<=3) err.Push(fabs(g.Ele(i)->Val(0, "Sa") - (-0.707106781*P)));
-		else if (tag==-30 && nn<=3) err.Push(fabs(g.Ele(i)->Val(0, "Sa") - ( 0.500000000*P)));
+		     if (tag==-10 && nn<=3) { err.Push(fabs(g.Ele(i)->Val(0, "Sa") - (-0.866025404*P*10))); }
+		else if (tag==-20 && nn<=3) { err.Push(fabs(g.Ele(i)->Val(0, "Sa") - (-0.866025404*P*10))); }
+		else if (tag==-30 && nn<=3) { err.Push(fabs(g.Ele(i)->Val(0, "Sa") - ( 0.707106781*P*10))); }
 	}
 
 	// Error summary
