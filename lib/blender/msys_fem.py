@@ -260,7 +260,7 @@ def run_analysis(gen_script=False):
 
     # check number of stages
     if not obj.properties.has_key('stages'): raise Exception('Please, add stages first')
-    nstages = di.key('fem_tostg')
+    nstages = len(obj.properties['stages'])
 
     # first stage
     for k, v in obj.properties['stages'].iteritems():
@@ -344,41 +344,45 @@ def run_analysis(gen_script=False):
                     abf   = True if int(v[2]) else False # apply body forces ?
                     cdi   = True if int(v[3]) else False # clear displacements ?
                     ndiv  = int(v[4])
-                    dtime = v[5]
+                    dtime =     v[5]
+                    act   = int(v[6])
                     break
 
-            # activate and deactivate elements
-            txt.write ('\n# Stage # %d --------------------------------------------------------------\n'%num)
-            act, deact = get_act_deact (obj,stg)
-            for k, v in act.iteritems():
-                if v: txt.write ('geo.activate (%d)\n'%(k))
-            for k, v in deact.iteritems():
-                if v: txt.write ('geo.deactivate (%d)\n'%(k))
+            # run only if stage is active
+            if act:
 
-            # boundary conditions
-            nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
-            txt.write ('nbrys = '+nbrys.__str__()+'\n')
-            txt.write ('ebrys = '+ebrys.__str__()+'\n')
-            txt.write ('fbrys = '+fbrys.__str__()+'\n')
-            txt.write ('ms.set_brys             (mesh, nbrys, ebrys, fbrys, geo)\n')
-            for nb in nbsID:
-                txt.write ('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
+                # activate and deactivate elements
+                txt.write ('\n# Stage # %d --------------------------------------------------------------\n'%num)
+                elem_act, elem_deact = get_act_deact (obj,stg)
+                for k, v in elem_act.iteritems():
+                    if v: txt.write ('geo.activate (%d)\n'%(k))
+                for k, v in elem_deact.iteritems():
+                    if v: txt.write ('geo.deactivate (%d)\n'%(k))
 
-            # apply body forces
-            if abf: txt.write ('geo.apply_body_forces   ()\n')
+                # boundary conditions
+                nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
+                txt.write ('nbrys = '+nbrys.__str__()+'\n')
+                txt.write ('ebrys = '+ebrys.__str__()+'\n')
+                txt.write ('fbrys = '+fbrys.__str__()+'\n')
+                txt.write ('ms.set_brys             (mesh, nbrys, ebrys, fbrys, geo)\n')
+                for nb in nbsID:
+                    txt.write ('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
 
-            # solve
-            txt.write ('sol.solve_with_info     (%d, %g, %d, "%s\\n")\n'%(ndiv,dtime,num,desc))
+                # apply body forces
+                if abf: txt.write ('geo.apply_body_forces   ()\n')
 
-            # clear displacements
-            if cdi: txt.write ('geo.clear_displacements ()\n')
+                # solve
+                txt.write ('sol.solve_with_info     (%d, %g, %d, "%s\\n")\n'%(ndiv,dtime,num,desc))
 
-            # output
-            txt.write ('out.vtu                 (geo, sol.time())\n')
+                # clear displacements
+                if cdi: txt.write ('geo.clear_displacements ()\n')
 
-            # save results
-            if not di.key('fullsc'):
-                txt.write ('mf.save_results         (out, geo, obj, %d)\n'%num)
+                # output
+                txt.write ('out.vtu                 (geo, sol.time())\n')
+
+                # save results
+                if not di.key('fullsc'):
+                    txt.write ('mf.save_results         (out, geo, obj, %d)\n'%num)
 
         # close collection
         txt.write ('\n# Close collection\n')
@@ -423,35 +427,39 @@ def run_analysis(gen_script=False):
                     abf   = True if int(v[2]) else False # apply body forces ?
                     cdi   = True if int(v[3]) else False # clear displacements ?
                     ndiv  = int(v[4])
-                    dtime = v[5]
+                    dtime =     v[5]
+                    act   = int(v[6])
                     break
 
-            # activate and deactivate elements
-            act, deact = get_act_deact (obj,stg)
-            for k, v in act.iteritems():
-                if v: geo.activate(k)
-            for k, v in deact.iteritems():
-                if v: geo.deactivate(k)
+            # run only if stage is active
+            if act:
 
-            # boundary conditions
-            nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
-            ms.set_brys (mesh, nbrys, ebrys, fbrys, geo)
-            for nb in nbsID: geo.nod(nb[0]).bry(nb[1],nb[2])
+                # activate and deactivate elements
+                elem_act, elem_deact = get_act_deact (obj,stg)
+                for k, v in elem_act.iteritems():
+                    if v: geo.activate(k)
+                for k, v in elem_deact.iteritems():
+                    if v: geo.deactivate(k)
 
-            # apply body forces
-            if abf: geo.apply_body_forces()
+                # boundary conditions
+                nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
+                ms.set_brys (mesh, nbrys, ebrys, fbrys, geo)
+                for nb in nbsID: geo.nod(nb[0]).bry(nb[1],nb[2])
 
-            # solve
-            sol.solve_with_info (ndiv,dtime,num,desc+'\n')
+                # apply body forces
+                if abf: geo.apply_body_forces()
 
-            # clear displacements
-            if cdi: geo.clear_displacements()
+                # solve
+                sol.solve_with_info (ndiv,dtime,num,desc+'\n')
 
-            # output
-            out.vtu (geo, sol.time())
+                # clear displacements
+                if cdi: geo.clear_displacements()
 
-            # save results
-            save_results (out,geo,obj,num)
+                # output
+                out.vtu (geo, sol.time())
+
+                # save results
+                save_results (out,geo,obj,num)
 
         # close collection
         out.close_collection()

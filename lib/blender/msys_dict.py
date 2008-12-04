@@ -61,7 +61,6 @@ def load_dict():
         dict['newetag']       = [-10, 0]         # tag, type
         dict['newftag']       = [-100, 0x000080] # tag, colour
         # FEM
-        dict['fem_tostg']     = 0     # run to stage num
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
         # RESULTS
@@ -223,7 +222,7 @@ def new_mat_props():
                  -1,      #  11:  idx -- index to material name/description in 'texts'
                 10.0 ]    #  12:  gw -- water specific weight
 
-def new_stage_props(): return [1, -1, 0, 0, 1, 1.0]             # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime
+def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1]          # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime, active?
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val

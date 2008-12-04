@@ -533,17 +533,13 @@ def cb_eatt_del     (evt,val):
 @try_catch
 def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
 @try_catch
-def cb_fem_tostg (evt,val):
-    obj = di.get_obj()
-    if obj.properties.has_key('stages'):
-        if val<=len(obj.properties['stages']): di.set_key('fem_tostg', val)
-    Blender.Window.QRedrawAll()
-@try_catch
 def cb_fem_stage (evt,val):
     obj = di.get_obj()
     for k, v in obj.properties['stages'].iteritems():
         if val==v[0]: di.set_key('fem_stage', int(k))
     Blender.Window.QRedrawAll()
+@try_catch
+def cb_fem_stage_act  (evt,val): di.props_set_item ('stages', evt-EVT_INC, 6, int(val))
 @try_catch
 def cb_fem_stage_desc (evt,val): di.props_set_text ('texts', evt-EVT_INC, val)
 @try_catch
@@ -689,7 +685,7 @@ def gui():
     h_fem_ebrys     = rh+srg+rh*len(ebrys)
     h_fem_fbrys     = rh+srg+rh*len(fbrys)
     h_fem_eatts     = rh+srg+rh*len(eatts)*2
-    h_fem_stage     = 8*rh+6*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
+    h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
     h_fem           = 6*rh+srg+h_fem_stage if nstages>0 else 6*rh+srg
     h_res_stage     = 5*rh
     h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
@@ -938,13 +934,12 @@ def gui():
             cdi = int(stages[sid][3])  # clear displacements
             ndi = int(stages[sid][4])  # ndiv
             dti = '%g'%stages[sid][5]  # dtime
+            act = int(stages[sid][6])  # active?
             des = texts[str(tid)]      # description
             Draw.Number ('', EVT_NONE, c+55, r+2, 60, rh-4, num, 0,99,'Show stage', cb_fem_stage)
             r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_fem_stage)
-            r += rh
-            r -= srg
-            gu.text     (c, r, 'Description:')
-            Draw.String ('', EVT_INC+tid, c+80, r, 280, rh, des, 256, 'Description of this stage', cb_fem_stage_desc)
+            Draw.Toggle ('Active', EVT_INC+i,   c,    r,  80, rh, act,      'Set stage Active/Inactive during simulations?', cb_fem_stage_act)
+            Draw.String ('Desc: ', EVT_INC+tid, c+80, r, 280, rh, des, 256, 'Description of this stage',                     cb_fem_stage_desc)
             r -= rh
             Draw.Toggle ('Apply body forces',   EVT_INC+i, c,     r, 120, rh, abf,          'Apply body forces ?',                cb_fem_apply_bf)
             Draw.Toggle ('Clear displacements', EVT_INC+i, c+120, r, 120, rh, cdi,          'Clear displacements (and strains)?', cb_fem_clear_disp)
@@ -955,7 +950,7 @@ def gui():
 
             # ----------------------- FEM -- nbrys
 
-            gu.caption3(c,r,w,rh,'Nodes boundary conditions (given X-Y-Y)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
+            gu.caption3(c,r,w,rh,'Nodes boundary conditions (X-Y-Y)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
             gu.text(c,r,'     X             Y             Z        Key      Value')
             for k, v in nbrys.iteritems():
@@ -1067,11 +1062,10 @@ def gui():
 
         # ----------------------- FEM -- END
         r -= srg
-        Draw.Number     ('',                 EVT_INC,          c,     r,  60, rh, d['fem_tostg'],1,100, 'Run until stage #',                       cb_fem_tostg)
-        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c+ 60, r, 100, rh, 'Run a FE analysis directly (without script)')
-        Draw.Toggle     ('full',             EVT_NONE,         c+160, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
-        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+200, r,  80, rh, 'Generate script for FEM')
-        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+280, r, 100, rh, 'View results in ParaView')
+        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c    , r, 100, rh, 'Run a FE analysis directly (without script)')
+        Draw.Toggle     ('full',             EVT_NONE,         c+100, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
+        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+140, r,  80, rh, 'Generate script for FEM')
+        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+220, r, 120, rh, 'View results in ParaView')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
