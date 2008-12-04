@@ -58,8 +58,9 @@ def load_dict():
         dict['cad_rad']       = '0.0'
         dict['cad_stp']       = 10
         # MESH
-        dict['newetag']       = [-10, 0]         # tag, type
-        dict['newftag']       = [-100, 0x000080] # tag, colour
+        dict['newetag']       = [-10, 0]         # tag, type   (edge)
+        dict['newftag']       = [-100, 0x000080] # tag, colour (face)
+        dict['newrtag']       = [-10, 0]         # tag, type   (reinforcement)
         # FEM
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)

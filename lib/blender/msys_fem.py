@@ -254,9 +254,27 @@ def get_mesh(obj, txt=None):
 
 
 def run_analysis(gen_script=False):
-    # object
-    obj = di.get_obj()
     Blender.Window.WaitCursor(1)
+
+    # get selected objects
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    if len(obs)>2: raise Exception('Please, select at most two Mesh objects')
+    if len(obs)==1 and obs[0].properties.has_key('rtags'): return # skip reinforcements
+
+    # find main object (skip reinforcements)
+    reinf = {} # reinforcements
+    for o in obs:
+        if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
+        if o.properties.has_key('rtags'):
+            edm = Blender.Window.EditMode()
+            if edm: Blender.Window.EditMode(0)
+            m = o.getData(mesh=1)
+            for k, v in o.properties['rtags'].iteritems():
+                eid = int(k)
+                reinf[(m.edges[eid].v1.index, m.edges[eid].v2.index)] = v[0]
+            if edm: Blender.Window.EditMode(1)
+        else: obj = o
 
     # check number of stages
     if not obj.properties.has_key('stages'): raise Exception('Please, add stages first')

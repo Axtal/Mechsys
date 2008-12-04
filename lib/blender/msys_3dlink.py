@@ -81,6 +81,15 @@ if di.key('show_props'):
                             BGL.glRasterPos3f (pos[0], pos[1], pos[2])
                             Draw.Text         (str(v[0]))
 
+                # draw reinforcement tags
+                if obj.properties.has_key('rtags'):
+                    for k, v in obj.properties['rtags'].iteritems():
+                        eid = int(k)
+                        pos = msh.edges[eid].v1.co + 0.60*(msh.edges[eid].v2.co-msh.edges[eid].v1.co)
+                        BGL.glColor3f     (1.0, 0.0, 0.0)
+                        BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                        Draw.Text         (str(v[0]))
+
                 # draw face tags
                 if di.key('show_ftags'):
                     if obj.properties.has_key('ftags'):

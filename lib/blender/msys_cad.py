@@ -26,11 +26,11 @@ import msys_dict as di
 def add_point(x, y, z):
     scn = bpy.data.scenes.active
     obj = scn.objects.active
-    if obj==None:
+    edm = Blender.Window.EditMode()
+    if obj==None or not edm:
         msh = bpy.data.meshes.new('points')
         obj = scn.objects.new(msh,'points')
     if obj!=None and obj.type=='Mesh':
-        edm = Blender.Window.EditMode()
         if edm: Blender.Window.EditMode(0)
         msh = obj.getData(mesh=1)
         msh.verts.extend(x,y,z)
@@ -38,6 +38,7 @@ def add_point(x, y, z):
         obj.select(1)
         Blender.Window.RedrawAll()
     else:
+        if edm: Blender.Window.EditMode(1)
         raise Exception('Select a Mesh object before calling this function')
 
 

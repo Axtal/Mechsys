@@ -110,6 +110,7 @@ def gen_frame_mesh(gen_script=False,txt=None):
 
     # Restore local coordinates
     msh.verts = ori
+    if edm: Blender.Window.EditMode(1)
 
     # Add mesh
     if gen_script: txt.write('me.add_mesh(mesh, [], True)\n')
@@ -124,11 +125,24 @@ def gen_frame_mesh(gen_script=False,txt=None):
 def gen_struct_mesh(gen_script=False,txt=None):
     Blender.Window.WaitCursor(1)
 
-    # get selected object and mesh
-    edm, obj, msh = di.get_msh()
-    if not obj.properties.has_key('blks'):
-        if edm: Blender.Window.EditMode(1)
-        raise Exception('Please, assign blocks first')
+    # get selected objects
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    if len(obs)>2: raise Exception('Please, select at most two Mesh objects')
+    if len(obs)==1 and obs[0].properties.has_key('rtags'): return # skip reinforcements
+
+    # find main object (skip reinforcements)
+    for o in obs:
+        if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
+        if not o.properties.has_key('rtags'): obj = o
+
+    # get mesh
+    edm = Blender.Window.EditMode()
+    if edm: Blender.Window.EditMode(0)
+    msh = obj.getData(mesh=1)
+
+    # check for blocks
+    if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')
 
     # 3D mesh?
     is3d = obj.properties['3dmesh']
@@ -232,6 +246,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
 
     # Restore local coordinates
     msh.verts = ori
+    if edm: Blender.Window.EditMode(1)
 
     # generate mesh and draw results
     if gen_script:
@@ -259,8 +274,21 @@ def gen_struct_mesh(gen_script=False,txt=None):
 def gen_unstruct_mesh(gen_script=False,txt=None):
     Blender.Window.WaitCursor(1)
 
-    # get selected object and mesh
-    edm, obj, msh = di.get_msh()
+    # get selected objects
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    if len(obs)>2: raise Exception('Please, select at most two Mesh objects')
+    if len(obs)==1 and obs[0].properties.has_key('rtags'): return # skip reinforcements
+
+    # find main object (skip reinforcements)
+    for o in obs:
+        if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
+        if not o.properties.has_key('rtags'): obj = o
+
+    # get mesh
+    edm = Blender.Window.EditMode()
+    if edm: Blender.Window.EditMode(0)
+    msh = obj.getData(mesh=1)
 
     # 3D mesh?
     is3d = obj.properties['3dmesh']
@@ -333,6 +361,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
 
     # Restore local coordinates
     msh.verts = ori
+    if edm: Blender.Window.EditMode(1)
 
     # generate mesh and draw results
     maxa = obj.properties['maxarea'] if obj.properties.has_key('maxarea') else -1.0

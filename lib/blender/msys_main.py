@@ -72,6 +72,10 @@ EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
 EVT_MESH_SHOWONLY    = 41 # show only this box
 EVT_MESH_SETETAG     = 42 # set edges tag
 EVT_MESH_SETFTAG     = 43 # set faces tag
+EVT_MESH_SETRTAG     = 44 # set reinforcement
+EVT_MESH_DELALLETAGS = 45 # delete all edge tags
+EVT_MESH_DELALLFTAGS = 46 # delete all face tags
+EVT_MESH_DELALLRTAGS = 47 # delete all reinforcement tags
 # Mesh -- linear
 EVT_MESH_GENFRAME    = 50 # generate linear mesh
 EVT_MESH_GENFRAMES   = 51 # generate linear mesh script
@@ -226,6 +230,14 @@ def button_event(evt):
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1)
 
+    elif evt==EVT_MESH_SETRTAG:
+        tag = di.key('newrtag')[0]
+        edm, obj, msh = di.get_msh()
+        for eid in di.get_selected_edges(msh):
+            di.props_set_with_tag ('rtags', str(eid), tag, di.key('newrtag'))
+        Blender.Window.QRedrawAll()
+        if edm: Blender.Window.EditMode(1)
+
     # ---------------------------------------------------------------------------------- Materials
 
     elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key        ('gui_show_mat')
@@ -342,6 +354,8 @@ def cb_etag  (evt,val): di.set_key      ('newetag', [val, di.key('newetag')[1]])
 def cb_ftag  (evt,val): di.set_key      ('newftag', [val, di.key('newftag')[1]])
 @try_catch
 def cb_fclr  (evt,val): di.set_key      ('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
+@try_catch
+def cb_rtag  (evt,val): di.set_key      ('newrtag', [val, di.key('newrtag')[1]])
 
 # ---------------------------------- Mesh -- structured
 
@@ -677,7 +691,7 @@ def gui():
     h_msh_unst_regs = rh+srg+rh*len(regs)
     h_msh_unst_hols = rh+srg+rh*len(hols)
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
-    h_msh           = 9*rh+h_msh_fram+h_msh_stru+h_msh_unst
+    h_msh           = 10*rh+h_msh_fram+h_msh_stru+h_msh_unst
     h_mat_mats      = srg+2*rh*len(mats)
     h_mat           = 3*rh+h_mat_mats
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
@@ -743,12 +757,15 @@ def gui():
     gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_MESH_SHOWONLY,EVT_MESH_SHOWHIDE)
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
-        Draw.Toggle      ('3D mesh', EVT_NONE,          c,     r, 60, rh, is3d,                        'Set 3D mesh',                       cb_3dmesh)
-        Draw.Number      ('',        EVT_NONE,          c+ 60, r, 60, rh, d['newetag'][0],    -100, 0, 'New edge tag',                      cb_etag)
-        Draw.PushButton  ('Edge',    EVT_MESH_SETETAG,  c+120, r, 60, rh,                              'Set edges tag (0 => remove tag)')
-        Draw.Number      ('',        EVT_NONE,          c+180, r, 60, rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
-        Draw.ColorPicker (           EVT_NONE,          c+240, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
-        Draw.PushButton  ('Face',    EVT_MESH_SETFTAG,  c+300, r, 60, rh,                              'Set faces tag (0 => remove tag)')
+        Draw.Toggle      ('3D mesh', EVT_NONE,          c,     r-rh, 60, 2*rh, is3d,                        'Set 3D mesh',                       cb_3dmesh)
+        Draw.Number      ('',        EVT_NONE,          c+ 60, r,    60,   rh, d['newetag'][0],    -100, 0, 'New edge tag',                      cb_etag)
+        Draw.PushButton  ('Edge',    EVT_MESH_SETETAG,  c+120, r,    60,   rh,                              'Set edges tag (0 => remove tag)')
+        Draw.Number      ('',        EVT_NONE,          c+180, r,    60,   rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
+        Draw.ColorPicker (           EVT_NONE,          c+240, r,    60,   rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
+        Draw.PushButton  ('Face',    EVT_MESH_SETFTAG,  c+300, r,    60,   rh,                              'Set faces tag (0 => remove tag)')
+        r -= rh
+        Draw.Number      ('',        EVT_NONE,          c+ 60, r,    60,   rh, d['newrtag'][0],    -100, 0, 'New reinforcement tag',             cb_rtag)
+        Draw.PushButton  ('Reinf',   EVT_MESH_SETRTAG,  c+120, r,    60,   rh,                              'Set reinforcements tag (0 => remove tag)')
         r -= rh
         r -= rh
 
