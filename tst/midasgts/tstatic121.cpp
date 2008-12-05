@@ -18,7 +18,7 @@
 
 /*                      
       ///@-----------@ |
-      ///|           | | q
+      ///|           | | F
       ///|           | |
       ///@-----------@ V
 */
@@ -52,9 +52,9 @@ int main(int argc, char **argv) try
 	// Constants
 	double E       = 10.7e+6; // Young (psi)
 	double nu      = 0.3;     // Poisson
-	double q       = 120.0;   // Load
-	size_t nx      = 2;       // ndivs along x
-	size_t ny      = 6;       // ndivs along y
+	double F       = 120.0;   // Load
+	size_t nx      = 20;       // ndivs along x
+	size_t ny      = 10;       // ndivs along y
 	bool   is_o2   = false;   // use high order elements?
 
 	// Input
@@ -65,6 +65,10 @@ int main(int argc, char **argv) try
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
+	// Dimensions
+	double L = 3.0;
+	double H = 0.6;
+	double B = 0.1;
 	// Blocks
 	Mesh::Block b;
 	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
@@ -92,7 +96,7 @@ int main(int argc, char **argv) try
 	FEM::EBrys_T ebrys;
 	ebrys.Push (make_tuple(-10, "ux", 0.0));
 	ebrys.Push (make_tuple(-10, "uy", 0.0));
-	ebrys.Push (make_tuple(-20, "fy", 0.0));
+	ebrys.Push (make_tuple(-20, "fy", -F/0.06));
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -104,21 +108,11 @@ int main(int argc, char **argv) try
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 	FEM::SetBrys       (&mesh, NULL,   &ebrys, NULL, &g);
 
-	g.Nod( 2)->Bry("fy",-10.0*10.0);
-	g.Nod( 5)->Bry("fy",-20.0*10.0);
-	g.Nod( 8)->Bry("fy",-20.0*10.0);
-	g.Nod(11)->Bry("fy",-20.0*10.0);
-	g.Nod(14)->Bry("fy",-20.0*10.0);
-	g.Nod(17)->Bry("fy",-20.0*10.0);
-	g.Nod(20)->Bry("fy",-10.0*10.0);
-
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
 	sol->SetGeom(&g);
 	sol->SolveWithInfo();
 	delete sol;
-
-	cout << "\nDisplacement at node 20: " << g.Nod(20)->Val("uy") << endl;
 
 	// Output: VTU
 	Output o; o.VTU (&g, "tstatic121.vtu");
@@ -127,62 +121,28 @@ int main(int argc, char **argv) try
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Check
-    Array<double> err_eps;
-    Array<double> err_sig;
-    Array<double> err_dis;
+    Array<double> err_dis_z;
+	double I = B*H*H*H/12.0; // Section momentum of inertia
 
-	double Sx  = 0.0;
-	double Sy  = q;
-	double Ex  = -nu*(1.0+nu)*Sy/E;
-	double Ey  =  (1.0-nu*nu)*Sy/E;
-	double Ez  = 0.0;
-	double Exy = 0.0;
-	double Sz  = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey);
-	double Sxy = 0.0;
-
-	// Stress and epss
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<g.NNodes(); i++)
 	{
-		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
-		{
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
-		}
-	}
-
-	// Displacements
-	for (size_t i=0; i<g.NNodes(); ++i)
-	{
-		double ux_correct = -Ex*(g.Nod(i)->X()-0.5);
-		double uy_correct = -Ey* g.Nod(i)->Y();
-		err_dis.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
-		err_dis.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
+		double x   = g.Nod(i)->X();
+		double uy  = g.Nod(i)->Val("uy");
+		double auy = F/(E*I)*(x*x*x/6.0 - x*x*L/2.0); // Analitic solution for the vertical displacement
+		err_dis_z.Push(fabs(uy - auy));
+		cout << "iNode: " << i << "  Uy: " << uy << "    Analytic Uy: " <<  auy << endl;
 	}
 
 	// Error summary
-	double tol_eps     = 1.0e-16;
-	double tol_sig     = 1.0e-14;
-	double tol_dis     = 1.0e-16;
-	double min_err_eps = err_eps[err_eps.Min()];
-	double min_err_sig = err_sig[err_sig.Min()];
-	double min_err_dis = err_dis[err_dis.Min()];
-	double max_err_eps = err_eps[err_eps.Max()];
-	double max_err_sig = err_sig[err_sig.Max()];
-	double max_err_dis = err_dis[err_dis.Max()];
-	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
-	cout << _4<< "Eps" << _8s<<min_err_eps << _8s<<err_eps.Mean() << (max_err_eps>tol_eps?"[1;31m":"[1;32m") << _8s<<max_err_eps << "[0m" << _8s<<err_eps.Norm() << endl;
-	cout << _4<< "Sig" << _8s<<min_err_sig << _8s<<err_sig.Mean() << (max_err_sig>tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig << "[0m" << _8s<<err_sig.Norm() << endl;
-	cout << _4<< "Dis" << _8s<<min_err_dis << _8s<<err_dis.Mean() << (max_err_dis>tol_dis?"[1;31m":"[1;32m") << _8s<<max_err_dis << "[0m" << _8s<<err_dis.Norm() << endl;
+	double tol_dis     = 1.0e-3;
+	double min_err_dis = err_dis_z[err_dis_z.Min()];
+	double max_err_dis = err_dis_z[err_dis_z.Max()];
+	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                          << _8s<<"Max"                  << _8s<<"Norm"         << endl;
+	cout << _4<< "Dis" << _8s<<min_err_dis << _8s<<err_dis_z.Mean() << (max_err_dis>tol_dis?"[1;31m":"[1;32m") << _8s<<max_err_dis << "[0m" << _8s<<err_dis_z.Norm() << endl;
 	cout << endl;
 
 	// Return error flag
-	if (max_err_eps>tol_eps || max_err_sig>tol_sig || max_err_dis>tol_dis) return 1;
+	if (max_err_dis>tol_dis) return 1;
 	else return 0;
 }
 catch (Exception * e) 
