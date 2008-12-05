@@ -42,7 +42,6 @@
 // MechSys
 #include "fem/geometry.h"
 #include "fem/functions.h"
-#include "fem/elems/quad4pstrain.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -50,11 +49,10 @@
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
-
-#include "fem/embedded.h"        // << embedded
-#include "fem/elems/hex8equilib.h"        // << embedded
-#include "fem/elems/rod3.h"        // << embedded
-#include "fem/elems/embspring.h"        // << embedded
+#include "fem/embedded.h"
+#include "fem/elems/hex8equilib.h"
+#include "fem/elems/rod3.h"
+#include "fem/elems/embspring.h"
 
 using std::cout;
 using std::endl;
@@ -129,11 +127,14 @@ int main(int argc, char **argv) try
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, &nbrys, NULL, &fbrys, &g);
 
-	AddReinf(2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 A=0.1 K=1E12", true, -10, &g);
-	AddReinf(1.0, 1.0, 1.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -20, &g);
-	AddReinf(2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -30, &g);
+	// Add reinforcements
+	AddReinf (2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 A=0.1 K=1E12", true, -10, &g);
+	AddReinf (1.0, 1.0, 1.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -20, &g);
+	AddReinf (2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -30, &g);
+
+	// Boundary conditions
+	FEM::SetBrys (&mesh, &nbrys, NULL, &fbrys, &g);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");

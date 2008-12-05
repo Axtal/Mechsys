@@ -85,6 +85,8 @@ def get_mats(obj):
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g A=%g Izz=%g' % (v[1],v[9],v[10]), desc]
             elif int(v[0])==4: # BiotElastic
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g nu=%g k=%g gw=%g' % (v[1],v[2],v[3],v[12]), desc]
+            elif int(v[0])==5: # Reinforcement
+                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g A=%g ks=%g' % (v[1],v[9],v[13]), desc]
     return mats
 
 
@@ -231,8 +233,8 @@ def get_mesh(obj, txt=None):
         for i in range(nelems):
             # element
             mesh.set_elem (i, obj.properties['elems']['tags'][i],
-                            obj.properties['elems']['onbs'][i],
-                            obj.properties['elems']['vtks'][i])
+                              obj.properties['elems']['onbs'][i],
+                              obj.properties['elems']['vtks'][i])
 
             # connectivities
             for j in range(len(obj.properties['elems']['cons'] [str(i)])):
@@ -272,7 +274,9 @@ def run_analysis(gen_script=False):
             m = o.getData(mesh=1)
             for k, v in o.properties['rtags'].iteritems():
                 eid = int(k)
-                reinf[(m.edges[eid].v1.index, m.edges[eid].v2.index)] = v[0]
+                x0, y0, z0 = m.edges[eid].v1.co[0], m.edges[eid].v1.co[1], m.edges[eid].v1.co[2]
+                x1, y1, z1 = m.edges[eid].v2.co[0], m.edges[eid].v2.co[1], m.edges[eid].v2.co[2]
+                reinf[(x0,y0,z0, x1,y1,z1)] = int(v[1]) # tag
             if edm: Blender.Window.EditMode(1)
         else: obj = o
 
@@ -340,6 +344,12 @@ def run_analysis(gen_script=False):
         txt.write           ('\n# Set nodes and elements\n')
         if frame: txt.write ('ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)\n')
         else:     txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
+
+        # set reinforcements
+        for r in reinf:
+            print r
+            #x0, y0, z0 = r
+            #ms.add_reinf (r)
 
         # allocate solver
         txt.write ('\n# Solver\n')

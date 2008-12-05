@@ -69,6 +69,11 @@
 #include "fem/elems/quad4biot.h"
 #include "fem/elems/quad8biot.h"
 
+// MechSys -- fem -- Embedded
+#include "fem/embedded.h"
+#include "fem/elems/rod3.h"
+#include "fem/elems/embspring.h"
+
 // MechSys -- Models
 #include "models/equilibs/linelastic.h"
 
@@ -220,6 +225,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	// Global functions
 	def ("set_nodes_elems", PySetNodesElems, PySetNE_Overloads());
 	def ("set_brys",        PySetBrys,       PySetBrys_Overloads());
+	def ("add_reinf",       PyAddReinf);
 
 	// ---------------------------------------------------------------------- Exceptions
 	

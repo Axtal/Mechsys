@@ -50,10 +50,9 @@
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
-
-#include "fem/embedded.h"        // << embedded
-#include "fem/elems/rod3.h"        // << embedded
-#include "fem/elems/embspring.h"        // << embedded
+#include "fem/embedded.h"
+#include "fem/elems/rod3.h"
+#include "fem/elems/embspring.h"
 
 using std::cout;
 using std::endl;
@@ -134,18 +133,16 @@ int main(int argc, char **argv) try
 	if (is_o2) eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true)); // tag, type, model, prms, inis, props
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true)); // tag, type, model, prms, inis, props
 
-	// Set geometry: nodes, elements, attributes, and boundaries
+	// Set geometry: nodes, elements and attributes
 	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, &nbrys, &ebrys, NULL, &g);
 
-	// AddReinforcement
-	LinAlg::Vector<double> P0(3); P0=0.0,0.0,0.0;
-	LinAlg::Vector<double> P1(3); P1=1.0,1.0,0.0;
-	LinAlg::Vector<double> P2(3); P2=2.0,0.0,0.0;
+	// Add reinforcements
+	AddReinf (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -10, &g);
+	AddReinf (1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -20, &g);
+	AddReinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -30, &g);
 
-	AddReinf(0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -10, &g);
-	AddReinf(1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -20, &g);
-	AddReinf(0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -30, &g);
+	// Set boundary conditions
+	FEM::SetBrys (&mesh, &nbrys, &ebrys, NULL, &g);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");

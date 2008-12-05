@@ -25,8 +25,11 @@
 #include <cfloat> // for DBL_EPSILON
 #include <cstring>
 
-// Boost
-//#include <boost/tuple/tuple_io.hpp>
+// Boost::Python
+#ifdef USE_BOOST_PYTHON
+  //#include <boost/python.hpp> // this includes everything
+  namespace BPy = boost::python;
+#endif // USE_BOOST_PYTHON
 
 // MechSys
 #include "fem/node.h"
@@ -174,11 +177,10 @@ inline void GetSegments( double x1, double y1, double z1,   ///< In: Initial poi
 
 void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initial point
               double x2, double y2, double z2, // In:  Coordinates of the final point
-			  char const *          Prms,      // In:  Properties and parameters [E A AA K]
-			  bool                  IsActive,  // In:  Define if the entire reinforcement is active or not
-			  int                   Tag,       // In:  Tag for all generated elements
-              FEM::Geom  *          G          // Out: The FE geometry
-			  )
+              char const *          Prms,      // In:  Properties and parameters [E Ar At ks]
+              bool                  IsActive,  // In:  Define if the entire reinforcement is active or not
+              int                   Tag,       // In:  Tag for all generated elements
+              FEM::Geom  *          G)         // Out: The FE geometry
 {
 	// E=2.0E8 A=0.02 K=2.0E6
 	LineParser    lp(Prms);
@@ -315,5 +317,23 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 
 } // Namespace FEM
 
+#ifdef USE_BOOST_PYTHON
+
+void PyAddReinf(double x1, double y1, double z1, // In:  Coordinates of the initial point
+                double x2, double y2, double z2, // In:  Coordinates of the final point
+                BPy::str const      & Prms,      // In:  Properties and parameters [E A AA K]
+                bool                  IsActive,  // In:  Define if the entire reinforcement is active or not
+                int                   Tag,       // In:  Tag for all generated elements
+                FEM::Geom           & G)         // Out: The FE geometry
+{
+	AddReinf (x1,y1,z1,
+	          x2,y2,z2,
+	          BPy::extract<char const *>(Prms)(),
+	          IsActive,
+	          Tag,
+	          &G);
+}
+
+#endif // USE_BOOST_PYTHON
 
 #endif // MECHSYS_FEM_EMBEDDED_H
