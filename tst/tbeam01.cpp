@@ -158,15 +158,15 @@ int main(int argc, char **argv) try
 
 	// Stresses
 	Array<double> err_s(18);
-	err_s[ 0] = fabs(g.Ele(0)->Val(0,"N") - (  0.0));   err_s[ 9] = fabs(g.Ele(0)->Val(1,"N") - (  0.0));
-	err_s[ 1] = fabs(g.Ele(0)->Val(0,"M") - (  0.0));   err_s[10] = fabs(g.Ele(0)->Val(1,"M") - ( -5.0));
-	err_s[ 2] = fabs(g.Ele(0)->Val(0,"V") - ( -5.0));   err_s[11] = fabs(g.Ele(0)->Val(1,"V") - ( -5.0));
-	err_s[ 3] = fabs(g.Ele(1)->Val(0,"N") - (-15.0));   err_s[12] = fabs(g.Ele(1)->Val(1,"N") - (-15.0));
-	err_s[ 4] = fabs(g.Ele(1)->Val(0,"M") - ( -5.0));   err_s[13] = fabs(g.Ele(1)->Val(1,"M") - ( -5.0));
-	err_s[ 5] = fabs(g.Ele(1)->Val(0,"V") - (  0.0));   err_s[14] = fabs(g.Ele(1)->Val(1,"V") - (  0.0));
-	err_s[ 6] = fabs(g.Ele(2)->Val(0,"N") - (  0.0));   err_s[15] = fabs(g.Ele(2)->Val(1,"N") - (  0.0));
-	err_s[ 7] = fabs(g.Ele(2)->Val(0,"M") - ( -5.0));   err_s[16] = fabs(g.Ele(2)->Val(1,"M") - (-20.0));
-	err_s[ 8] = fabs(g.Ele(2)->Val(0,"V") - (-15.0));   err_s[17] = fabs(g.Ele(2)->Val(1,"V") - (-15.0));
+	err_s[ 0] = fabs(g.Ele(0)->Val(0,"N") -     (  0.0));   err_s[ 9] = fabs(g.Ele(0)->Val(1,"N") -     (  0.0));
+	err_s[ 1] = fabs(g.Ele(0)->Val(0,"M") - fabs(  0.0));   err_s[10] = fabs(g.Ele(0)->Val(1,"M") - fabs( -5.0));
+	err_s[ 2] = fabs(g.Ele(0)->Val(0,"V") - fabs( -5.0));   err_s[11] = fabs(g.Ele(0)->Val(1,"V") - fabs( -5.0));
+	err_s[ 3] = fabs(g.Ele(1)->Val(0,"N") -     (-15.0));   err_s[12] = fabs(g.Ele(1)->Val(1,"N") -     (-15.0));
+	err_s[ 4] = fabs(g.Ele(1)->Val(0,"M") - fabs( -5.0));   err_s[13] = fabs(g.Ele(1)->Val(1,"M") - fabs( -5.0));
+	err_s[ 5] = fabs(g.Ele(1)->Val(0,"V") - fabs(  0.0));   err_s[14] = fabs(g.Ele(1)->Val(1,"V") - fabs(  0.0));
+	err_s[ 6] = fabs(g.Ele(2)->Val(0,"N") -     (  0.0));   err_s[15] = fabs(g.Ele(2)->Val(1,"N") -     (  0.0));
+	err_s[ 7] = fabs(g.Ele(2)->Val(0,"M") - fabs( -5.0));   err_s[16] = fabs(g.Ele(2)->Val(1,"M") - fabs(-20.0));
+	err_s[ 8] = fabs(g.Ele(2)->Val(0,"V") - fabs(-15.0));   err_s[17] = fabs(g.Ele(2)->Val(1,"V") - fabs(-15.0));
 
 	// Error summary
 	double tol_u     = 1.0e-12;
