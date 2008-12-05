@@ -226,6 +226,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	def ("set_nodes_elems", PySetNodesElems, PySetNE_Overloads());
 	def ("set_brys",        PySetBrys,       PySetBrys_Overloads());
 	def ("add_reinf",       PyAddReinf);
+	def ("add_reinfs",      PyAddReinfs);
 
 	// ---------------------------------------------------------------------- Exceptions
 	

@@ -126,9 +126,9 @@ int main(int argc, char **argv) try
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 
 	// Add reinforcements
-	AddReinf (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -10, &g);
-	AddReinf (1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -20, &g);
-	AddReinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -30, &g);
+	AddReinf (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", true, -10, &g);
+	AddReinf (1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", true, -20, &g);
+	AddReinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", true, -30, &g);
 
 	// Set boundary conditions
 	FEM::SetBrys (&mesh, &nbrys, &ebrys, NULL, &g);
@@ -140,7 +140,7 @@ int main(int argc, char **argv) try
 	delete sol;
 
 	Output out;
-	out.VTU(&g, "out.vtu");
+	out.VTU (&g, "tembed01.vtu");
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
