@@ -18,7 +18,7 @@
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
 
-	ADD_EXECUTABLE        (tstatic121 tstatic121.cpp)
+	ADD_EXECUTABLE        (tstatic121 tstatic121.cpp) 
 	ADD_TEST              (tstatic121 tstatic121)
 	TARGET_LINK_LIBRARIES (tstatic121 ${LIBS})
 	SET_TARGET_PROPERTIES (tstatic121 PROPERTIES COMPILE_FLAGS "${FLAGS}")
