@@ -334,6 +334,33 @@ void PyAddReinf(double x1, double y1, double z1, // In:  Coordinates of the init
 	          &G);
 }
 
+void PyAddReinfs (bool              Is3D,  ///< 3D ?
+                  BPy::dict const & Verts, ///< {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... num vertices}
+                  BPy::list const & Edges, ///< [(v1,v2), (v1,v2), ... num edges]
+                  BPy::dict const & ETags, ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags} v# => vertex number
+                  BPy::list const & EAtts) ///< Elements attributes
+{
+	/* Example:
+	 *           
+	 *           # Elements attributes
+	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
+	 */
+	int nverts = BPy::len(Verts);
+
+	// Read coordinates
+	BPy::object const & v_keys = BPy::extract<BPy::dict>(Verts)().iterkeys();
+	BPy::object const & v_vals = BPy::extract<BPy::dict>(Verts)().itervalues();
+	for (int i=0; i<nverts; ++i)
+	{
+		long       id  =         BPy::extract<long>      (v_keys.attr("next")())();
+		BPy::tuple xyz =         BPy::extract<BPy::tuple>(v_vals.attr("next")())();
+		double     x   =         BPy::extract<double>    (xyz[0])();
+		double     y   =         BPy::extract<double>    (xyz[1])();
+		double     z   = (Is3D ? BPy::extract<double>    (xyz[2])() : 0.0);
+		std::cout << "Vert: " << id << ", " << x << ", " << y << ", " << z << std::endl;
+	}
+}
+
 #endif // USE_BOOST_PYTHON
 
 #endif // MECHSYS_FEM_EMBEDDED_H
