@@ -450,6 +450,16 @@ def cb_mat_setIzz   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 10, float
 @try_catch
 def cb_mat_setgw    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 12, float(val))
 @try_catch
+def cb_mat_setAr    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 13, float(val))
+@try_catch
+def cb_mat_setAt    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 14, float(val))
+@try_catch
+def cb_mat_setks    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 15, float(val))
+@try_catch
+def cb_mat_setc     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 16, float(val))
+@try_catch
+def cb_mat_setphi   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 17, float(val))
+@try_catch
 def cb_mat_del      (evt,val): di.props_del      ('mats', evt-EVT_INC)
 
 # ---------------------------------- FEM -- nbrys
@@ -682,6 +692,12 @@ def gui():
     c   = cg
     w   = W-2*c
 
+    # number of extra rows
+    mat_extra_rows = 0
+    for k, v in mats.iteritems():
+        mdl = int(v[0])
+        if mdl==2 or mdl==4 or mdl==5: mat_extra_rows += 1
+
     # height of boxes
     h_set           = 5*rh+srg
     h_cad           = 5*rh
@@ -692,7 +708,7 @@ def gui():
     h_msh_unst_hols = rh+srg+rh*len(hols)
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
     h_msh           = 10*rh+h_msh_fram+h_msh_stru+h_msh_unst
-    h_mat_mats      = srg+2*rh*len(mats)
+    h_mat_mats      = rh+srg+rh*(len(mats)+mat_extra_rows)
     h_mat           = 3*rh+h_mat_mats
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
     h_fem_nbsID     = rh+srg+rh*len(nbsID)
@@ -881,46 +897,53 @@ def gui():
 
         gu.caption2_(c,r,w,rh,'Materials', EVT_MAT_ADDMAT,EVT_MAT_DELALLMAT)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_mat_mats)
+        gu.text(c,r,'       Name             Model                      Parameters')
         for k, v in mats.iteritems():
             r  -= rh
             i   = int(k)
             tid = int(v[11])      # text_id
             des = texts[str(tid)] # description
-            Draw.String ('',          EVT_INC+tid, c,    r, 80, rh, des, 32,     'Material name',  cb_mat_setname)
-            Draw.Menu   (d['mdlmnu'], EVT_INC+i,   c+80, r, 80, rh, int(v[0])+1, 'Constitutive model: ex.: LinElastic', cb_mat_setmodel)
+            Draw.String ('',          EVT_INC+tid, c,     r, 100, rh, des, 32,     'Material name',  cb_mat_setname)
+            Draw.Menu   (d['mdlmnu'], EVT_INC+i,   c+100, r, 100, rh, int(v[0])+1, 'Constitutive model: ex.: LinElastic', cb_mat_setmodel)
             nlines = 0
             if int(v[0])==0: # LinElastic
-                gu.text(c,r+rh,'     Name         Model             E             nu')
-                Draw.String     ('',    EVT_INC+i, c+160, r,  60, rh, '%g'%v[1], 32, 'E: Young modulus',  cb_mat_setE)
-                Draw.String     ('',    EVT_INC+i, c+220, r,  60, rh, '%g'%v[2], 32, 'nu: Poisson ratio', cb_mat_setnu)
-                Draw.PushButton ('Del', EVT_INC+i, c+280, r,  40, rh,                'Delete this row',   cb_mat_del)
+                Draw.String     ('E=',     EVT_INC+i, c+200, r,     80,   rh, '%g'%v[1],   32, 'E: Young modulus',                                      cb_mat_setE)
+                Draw.String     ('nu=',    EVT_INC+i, c+280, r,     80,   rh, '%g'%v[2],   32, 'nu: Poisson ratio',                                     cb_mat_setnu)
+                Draw.PushButton ('Del',    EVT_INC+i, c+360, r,     40,   rh,                  'Delete this row',                                       cb_mat_del)
             elif int(v[0])==1: # LinDiffusion
-                gu.text(c,r+rh,'     Name         Model             k')
-                Draw.String     ('',    EVT_INC+i, c+160, r,  60, rh, '%g'%v[3], 32, 'k: Diffusion coefficient', cb_mat_setk)
-                Draw.PushButton ('Del', EVT_INC+i, c+220, r,  40, rh,                'Delete this row',          cb_mat_del)
+                Draw.String     ('k=',     EVT_INC+i, c+200, r,     80,   rh, '%g'%v[3],   32, 'k: Diffusion coefficient',                              cb_mat_setk)
+                Draw.PushButton ('Del',    EVT_INC+i, c+280, r,     40,   rh,                  'Delete this row',                                       cb_mat_del)
             elif int(v[0])==2: # CamClay
-                gu.text(c,r+rh,'     Name         Model            lam           kap        phics           G             v')
-                Draw.String     ('',    EVT_INC+i, c+160, r,  60, rh, '%.4f'%v[4], 32, 'lam: Lambda',                          cb_mat_setlam)
-                Draw.String     ('',    EVT_INC+i, c+220, r,  60, rh, '%.4f'%v[5], 32, 'kap: Kappa',                           cb_mat_setkap)
-                Draw.String     ('',    EVT_INC+i, c+280, r,  60, rh, '%.2f'%v[6], 32, 'phics: Shear angle at critical state', cb_mat_setphics)
-                Draw.String     ('',    EVT_INC+i, c+340, r,  60, rh, '%g'  %v[7], 32, 'G: Shear modulus',                     cb_mat_setG)
-                Draw.String     ('',    EVT_INC+i, c+400, r,  60, rh, '%.4f'%v[8], 32, 'v: Specific volume',                   cb_mat_setv)
-                Draw.PushButton ('Del', EVT_INC+i, c+460, r,  40, rh,                  'Delete this row',                      cb_mat_del)
+                Draw.String     ('lam=',   EVT_INC+i, c+200, r,     80,   rh, '%.4f'%v[4], 32, 'lam: Lambda',                                           cb_mat_setlam)
+                Draw.String     ('kap=',   EVT_INC+i, c+280, r,     80,   rh, '%.4f'%v[5], 32, 'kap: Kappa',                                            cb_mat_setkap)
+                Draw.String     ('phics=', EVT_INC+i, c+360, r,     80,   rh, '%.2f'%v[6], 32, 'phics: Shear angle at critical state',                  cb_mat_setphics)
+                r -= rh
+                Draw.String     ('G=',     EVT_INC+i, c+200, r,     80,   rh, '%g'  %v[7], 32, 'G: Shear modulus',                                      cb_mat_setG)
+                Draw.String     ('v=',     EVT_INC+i, c+280, r,    160,   rh, '%.4f'%v[8], 32, 'v: Specific volume',                                    cb_mat_setv)
+                Draw.PushButton ('Del',    EVT_INC+i, c+440, r,     40, 2*rh,                  'Delete this row',                                       cb_mat_del)
             elif int(v[0])==3: # BeamElastic
-                gu.text(c,r+rh,'     Name         Model             E             A            Izz')
-                Draw.String     ('',    EVT_INC+i, c+160, r,  60, rh, '%g'%v[ 1], 32, 'E: Young modulus',             cb_mat_setE)
-                Draw.String     ('',    EVT_INC+i, c+220, r,  60, rh, '%g'%v[ 9], 32, 'A: Cross-sectional area',      cb_mat_setA)
-                Draw.String     ('',    EVT_INC+i, c+280, r,  60, rh, '%g'%v[10], 32, 'Izz: Cross-sectional inertia', cb_mat_setIzz)
-                Draw.PushButton ('Del', EVT_INC+i, c+340, r,  40, rh,                 'Delete this row',              cb_mat_del)
-            elif int(v[0])==4: # BiotElastic
-                gu.text(c,r+rh,'     Name         Model             E             nu            k            gw')
-                Draw.String     ('',    EVT_INC+i, c+160, r,  60, rh, '%g'%v[ 1], 32, 'E: Young modulus',             cb_mat_setE)
-                Draw.String     ('',    EVT_INC+i, c+220, r,  60, rh, '%g'%v[ 2], 32, 'nu: Poisson ratio',            cb_mat_setnu)
-                Draw.String     ('',    EVT_INC+i, c+280, r,  60, rh, '%g'%v[ 3], 32, 'k: Isotropic permeability',    cb_mat_setk)
-                Draw.String     ('',    EVT_INC+i, c+340, r,  60, rh, '%g'%v[12], 32, 'gw: Water specific weight',    cb_mat_setgw)
-                Draw.PushButton ('Del', EVT_INC+i, c+400, r,  40, rh,                 'Delete this row',              cb_mat_del)
-            r  -= rh
+                Draw.String     ('E=',     EVT_INC+i, c+200, r,     80,   rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
+                Draw.String     ('A=',     EVT_INC+i, c+280, r,     80,   rh, '%g'%v[ 9],  32, 'A: Cross-sectional area',                                cb_mat_setA)
+                Draw.String     ('Izz=',   EVT_INC+i, c+360, r,     80,   rh, '%g'%v[10],  32, 'Izz: Cross-sectional inertia',                           cb_mat_setIzz)
+                Draw.PushButton ('Del',    EVT_INC+i, c+440, r,     40,   rh,                  'Delete this row',                                        cb_mat_del)
+            elif int(v[0])==4: # BiotElastic                                                                                                               
+                Draw.String     ('E=',     EVT_INC+i, c+200, r,     80,   rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
+                Draw.String     ('nu=',    EVT_INC+i, c+280, r,     80,   rh, '%g'%v[ 2],  32, 'nu: Poisson ratio',                                      cb_mat_setnu)
+                r -= rh
+                Draw.String     ('k=',     EVT_INC+i, c+200, r,     80,   rh, '%g'%v[ 3],  32, 'k: Isotropic permeability',                              cb_mat_setk)
+                Draw.String     ('gw=',    EVT_INC+i, c+280, r,     80,   rh, '%g'%v[12],  32, 'gw: Water specific weight',                              cb_mat_setgw)
+                Draw.PushButton ('Del',    EVT_INC+i, c+360, r,     40, 2*rh,                  'Delete this row',                                        cb_mat_del)
+            elif int(v[0])==5: # Reinforcement
+                Draw.String     ('E=',     EVT_INC+i, c+200, r,     80,   rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
+                Draw.String     ('Ar=',    EVT_INC+i, c+280, r,     80,   rh, '%g'%v[13],  32, 'Ar: Area of reinforcement (steel cross sectional area)', cb_mat_setAr)
+                Draw.String     ('At=',    EVT_INC+i, c+360, r,     80,   rh, '%g'%v[14],  32, 'At: Total area of reinforcement (steel + covering)',     cb_mat_setAt)
+                r -= rh
+                Draw.String     ('ks=',    EVT_INC+i, c+200, r,     80,   rh, '%g'%v[15],  32, 'ks: Interfacial spring stiffness',                       cb_mat_setks)
+                Draw.String     ('c=',     EVT_INC+i, c+280, r,     80,   rh, '%g'%v[16],  32, 'c: Cohesion',                                            cb_mat_setc)
+                Draw.String     ('phi=',   EVT_INC+i, c+360, r,     80,   rh, '%g'%v[17],  32, 'phi: friction angle',                                    cb_mat_setphi)
+                Draw.PushButton ('Del',    EVT_INC+i, c+440, r,     40, 2*rh,                  'Delete this row',                                        cb_mat_del)
         r -= srg
+        r -= rh
         r, c, w = gu.box2__out(W,cg,rh, c,r)
 
         # ----------------------- Mat -- END

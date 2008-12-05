@@ -223,7 +223,11 @@ def new_mat_props():
                  1.0,     #  10:  Izz -- Beam: Inertia
                   -1,     #  11:  idx -- index to material name/description in 'texts'
                 10.0,     #  12:  gw -- water specific weight
-             1.0e+12 ]    #  13:  ks -- Interface spring stiffness (Embedded)
+                 1.0,     #  13:  Ar -- area of reinforcement (steel cross sectional area) (Embedded)
+                 1.0,     #  14:  At -- total area of reinforcement (steel + covering) (Embedded)
+             1.0e+12,     #  15:  ks -- interfacial spring stiffness (Embedded)
+                 0.0,     #  16:  c  -- cohesion
+                20.0 ]    #  17:  phi -- friction angle
 
 def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1]          # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime, active?
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val

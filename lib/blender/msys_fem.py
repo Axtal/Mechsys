@@ -86,7 +86,7 @@ def get_mats(obj):
             elif int(v[0])==4: # BiotElastic
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g nu=%g k=%g gw=%g' % (v[1],v[2],v[3],v[12]), desc]
             elif int(v[0])==5: # Reinforcement
-                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g A=%g ks=%g' % (v[1],v[9],v[13]), desc]
+                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g Ar=%g At=%g ks=%g c=%g phi=%g' % (v[1],v[13],v[14],v[15],v[16],v[17]), desc]
     return mats
 
 
