@@ -182,30 +182,30 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
               int                   Tag,       // In:  Tag for all generated elements
               FEM::Geom  *          G)         // Out: The FE geometry
 {
-	// E=2.0E8 A=0.02 K=2.0E6
+	// E=2.0E8 Ar=0.02 ks=2.0E6
 	LineParser    lp(Prms);
 	Array<String> names;
 	Array<double> values;
 	lp.BreakExpressions(names,values);
 
 	// Set
-	double E = -1.0, A = -1.0, AA = -1, K = -1.0;
+	double E = -1.0, Ar = -1.0, At = -1, ks = -1.0;
 	for (size_t i=0; i<names.Size(); ++i)
 	{
 		     if (names[i]=="E" )  E  = values[i];
-		else if (names[i]=="A" )  A  = values[i];
-		else if (names[i]=="AA")  AA = values[i];
-		else if (names[i]=="K" )  K  = values[i];
+		else if (names[i]=="Ar")  Ar  = values[i];
+		else if (names[i]=="At")  At = values[i];
+		else if (names[i]=="ks")  ks  = values[i];
 		else throw new Fatal("AddReinforcement: Parameter name (%s) is invalid",names[i].CStr());
 	}
 
-	if (AA<0) AA=A;
+	if (At<0) At=Ar;
 
 	// Check
-	if (E <=0.0) throw new Fatal("AddReinforcement: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
-	if (A <=0.0) throw new Fatal("AddReinforcement: Steel Section Area (A) must be provided (and positive). A==%f is invalid",A);
-	if (AA<=0.0) throw new Fatal("AddReinforcement: Total Section Area (AA) must be provided (and positive). AA==%f is invalid",AA);
-	if (K <=0.0) throw new Fatal("AddReinforcement: Spring Stiffness (K) must be provided (and positive). K=%f is invalid",K);
+	if (E  <=0.0) throw new Fatal("AddReinf: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
+	if (Ar <=0.0) throw new Fatal("AddReinf: Steel Section Area (Ar) must be provided (and positive). Ar==%f is invalid",Ar);
+	if (At <=0.0) throw new Fatal("AddReinf: Total Section Area (At) must be provided (and positive). At==%f is invalid",At);
+	if (ks <=0.0) throw new Fatal("AddReinf: Spring Stiffness (ks) must be provided (and positive). ks=%f is invalid",ks);
 
 	// Determine the internal segments
 	Array<Array<double> > a_segments;  // { {E1x1 E1y1 E1z1 E1x2 E1y2 E1z2 } {E2x1 E2y1 E2z1 E2x2 E2y2 E2z2 } ... }
@@ -245,7 +245,7 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 		double z2 = c_segm[n_seg_nodes*3-1];
 
 		double L  = sqrt(pow(x2-x1,2)+pow(y2-y1,2)+pow(z2-z1,2)); // lenght of the segment
-		double LA = 2.0*L*sqrt(3.14159*AA);                       // total interface area (lateral area)
+		double LA = 2.0*L*sqrt(3.14159*At);                       // total interface area (lateral area)
 
 		//Array for the new nodes
 		Array<Node*> nodes;
@@ -304,13 +304,13 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 
 			// Set parameters for the connector spring
 			std::ostringstream os;
-			os << "K=" << K << " LA=" << LA*weights(j_node);
+			os << "ks=" << ks << " Al=" << LA*weights(j_node);
 			conn_elem->SetModel  ("", os.str().c_str(), "");
 		}
 
         // Set parameters for the bar element
 		std::ostringstream os;
-		os << "E=" << E << " A=" << A;
+		os << "E=" << E << " A=" << Ar;
 		bar_elem->SetModel  ("", os.str().c_str(), "");
 	}
 }
@@ -321,7 +321,7 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 
 void PyAddReinf(double x1, double y1, double z1, // In:  Coordinates of the initial point
                 double x2, double y2, double z2, // In:  Coordinates of the final point
-                BPy::str const      & Prms,      // In:  Properties and parameters [E A AA K]
+                BPy::str const      & Prms,      // In:  Properties and parameters [E Ar At ks]
                 bool                  IsActive,  // In:  Define if the entire reinforcement is active or not
                 int                   Tag,       // In:  Tag for all generated elements
                 FEM::Geom           & G)         // Out: The FE geometry

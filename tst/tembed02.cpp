@@ -112,8 +112,6 @@ int main(int argc, char **argv) try
 	FEM::NBrys_T nbrys;
 	nbrys.Push (make_tuple(2.0, 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
 	nbrys.Push (make_tuple(2.0, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
-	//nbrys.Push (make_tuple(  0.0, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
-	//nbrys.Push (make_tuple(    W, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
 	nbrys.Push (make_tuple(W/2.0,   W/2.0, H, "fz",  -P)); // x,y,z, key, val
 
 	// Faces brys
@@ -129,9 +127,9 @@ int main(int argc, char **argv) try
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 
 	// Add reinforcements
-	AddReinf (2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 A=0.1 K=1E12", true, -10, &g);
-	AddReinf (1.0, 1.0, 1.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -20, &g);
-	AddReinf (2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -30, &g);
+	AddReinf (2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -10, &g);
+	AddReinf (1.0, 1.0, 1.0, 0.0, 2.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -20, &g);
+	AddReinf (2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -30, &g);
 
 	// Boundary conditions
 	FEM::SetBrys (&mesh, &nbrys, NULL, &fbrys, &g);

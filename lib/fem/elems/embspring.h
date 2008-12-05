@@ -52,8 +52,8 @@ public:
 
 private:
 	// Data
-	double _K;   ///< Spring stiffness
-	double _LA;  ///< Representative contact area
+	double _ks;   ///< Spring stiffness
+	double _Al;  ///< Representative contact area
 
 	// Private methods
 	int  _geom     () const { return 2; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -76,7 +76,7 @@ private:
 
 
 /* public */
-EmbSpring::EmbSpring(Element * Tress, Node * Ext, LinAlg::Vector<double> & Direction): _K(-1), _LA(-1)
+EmbSpring::EmbSpring(Element * Tress, Node * Ext, LinAlg::Vector<double> & Direction): _ks(-1), _Al(-1)
 {
 	_tress  = Tress;
 	_ext    = Ext;
@@ -87,7 +87,7 @@ EmbSpring::EmbSpring(Element * Tress, Node * Ext, LinAlg::Vector<double> & Direc
 
 inline bool EmbSpring::CheckModel() const
 {
-	if (_K<0.0 || _LA<0.0) return false;
+	if (_ks<0.0 || _Al<0.0) return false;
 	return true;
 }
 
@@ -97,7 +97,7 @@ inline void EmbSpring::SetModel(char const * ModelName, char const * Prms, char 
 	if (_ndim<1) throw new Fatal("EmbSpring::SetModel: The space dimension (SetDim) must be set before calling this method");
 	if (CheckConnect()==false) throw new Fatal("EmbSpring::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
 
-	/* "E=1 K=1" */
+	/* "E=1 ks=1" */
 	LineParser lp(Prms);
 	Array<String> names;
 	Array<double> values;
@@ -106,8 +106,8 @@ inline void EmbSpring::SetModel(char const * ModelName, char const * Prms, char 
 	// Set
 	for (size_t i=0; i<names.Size(); ++i)
 	{
-		     if (names[i]=="K" )  _K = values[i];
-		else if (names[i]=="LA") _LA = values[i];
+		     if (names[i]=="ks" )  _ks = values[i];
+		else if (names[i]=="Al") _Al = values[i];
 		else throw new Fatal("EmbSpring::SetModel: Parameter name (%s) is invalid",names[i].CStr());
 	}
 }
@@ -137,16 +137,6 @@ inline void EmbSpring::UpdateState(double TimeInc, LinAlg::Vector<double> const 
 
 inline void EmbSpring::CalcDepVars() const
 {
-	// Element displacements vector
-	//_uL.Resize(_nd*_n_nodes);
-	//for (size_t i=0; i<_n_nodes; ++i)
-	//for (int    j=0; j<_nd;      ++j)
-	//	_uL(i*_nd+j) = _connects[i]->DOFVar(UD[_d][j]).EssentialVal;
-
-	// Transform to rod-local coordinates
-	//LinAlg::Matrix<double> T;
-	//_transf_mat(T);
-	//_uL = T * _uL;
 }
 
 inline double EmbSpring::Val(int iNodeLocal, char const * Name) const
@@ -157,12 +147,6 @@ inline double EmbSpring::Val(int iNodeLocal, char const * Name) const
 	// Forces
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 
-	//if (_uL.Size()<1) throw new Fatal("EmbSpring::Val: Please, call CalcDepVars() before calling this method");
-	//double l = (iNodeLocal==0 ? 0 : 1.0);
-	//     if (strcmp(Name,"N" )==0) return N(l);
-	//else if (strcmp(Name,"Ea")==0) return    (_uL(_nd)-_uL(0))/_L;
-	//else if (strcmp(Name,"Sa")==0) return _E*(_uL(_nd)-_uL(0))/_L;
-	//else throw new Fatal("EmbSpring::Val: This element does not have a Val named %s",Name);
 	return 0;
 }
 
@@ -177,8 +161,8 @@ inline void EmbSpring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) c
 	//       K = [T0]*[B]*k0*[B]*[T0]*Area + [T1]*[B]*k1*[B]*[T1]*Area + [T2]*[B]*k2*[B]*[T2]*Area
 	//        
 
-	// Perpendicular stiffness
-	double kp = 1.0E3*_K;
+	// Stiffness of the perpendicular spring
+	double kp = 1.0E3*_ks;
 
 	Vector<double> shape;
 	double x = _ext->X(), y = _ext->Y(), z = _ext->Z();
@@ -207,7 +191,7 @@ inline void EmbSpring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) c
 		_mount_T_matrix(shape, L1, T1);
 
 		// Mounting Stiffness Matrix
-		Ke = trn(T0)*trn(B)*_K*B*T0*_LA + trn(T1)*trn(B)*kp*B*T1*_LA;
+		Ke = trn(T0)*trn(B)*_ks*B*T0*_Al + trn(T1)*trn(B)*kp*B*T1*_Al;
 	}
 	else if (_ndim==3)
 	{
@@ -221,10 +205,10 @@ inline void EmbSpring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) c
 		_mount_T_matrix(shape, L2, T2);
 
 		// Perpendicular stiffness
-		double kp = 1.0E4*_K;
+		double kp = 1.0E4*_ks;
 
 		// Mounting Stiffness Matrix
-		Ke = trn(T0)*trn(B)*_K*B*T0*_LA + trn(T1)*trn(B)*kp*B*T1*_LA + trn(T2)*trn(B)*kp*B*T2*_LA;
+		Ke = trn(T0)*trn(B)*_ks*B*T0*_Al + trn(T1)*trn(B)*kp*B*T1*_Al + trn(T2)*trn(B)*kp*B*T2*_Al;
 	}
 }
 

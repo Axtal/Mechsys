@@ -65,8 +65,8 @@ using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
-	int ndivx = 5;
-	int ndivy = 5;
+	int ndivy = 1;
+	int ndivx = 2*ndivy;
 	double H  = 1.0;
 	double W  = 2.0*H;
 	bool is_o2 = false;
@@ -82,26 +82,15 @@ int main(int argc, char **argv) try
 	Mesh::Block b1;
 	b1.SetTag    (-1); // tag to be replicated to all generated elements inside this block
 	b1.SetCoords (false, 4,                // Is3D, NNodes
-	             0.0, W/2.0,  W/2.0, 0.0,  // x coordinates
-	             0.0,   0.0,      H,   H); // y coordinates
+	             0.0,   W, W, 0.0,  // x coordinates
+	             0.0, 0.0, H,   H); // y coordinates
 	b1.SetNx     (ndivx);                  // x weights and num of divisions along x
 	b1.SetNy     (ndivy);                  // y weights and num of divisions along y
 	b1.SetETags  (4, 0, 0, -30, 0);   // edge tags
 
-	// Block # 2
-	Mesh::Block b2;
-	b2.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b2.SetCoords (false, 4,               // Is3D, NNodes
-	             W/2.0,   W,  W, W/2.0,   // x coordinates
-	             0.0,   0.0,  H,    H);   // y coordinates
-	b2.SetNx     (ndivx);                 // x weights and num of divisions along x
-	b2.SetNy     (ndivy);                 // y weights and num of divisions along y
-	b2.SetETags  (4, 0, 0, -30, 0);      // edge tags
-
 	// Blocks
 	Array<Mesh::Block*> blocks;
 	blocks.Push (&b1);
-	blocks.Push (&b2);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
@@ -137,9 +126,9 @@ int main(int argc, char **argv) try
 	FEM::SetNodesElems (&mesh, &eatts, &g);
 
 	// Add reinforcements
-	AddReinf (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -10, &g);
-	AddReinf (1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -20, &g);
-	AddReinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 A=0.1 K=1E12", true, -30, &g);
+	AddReinf (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -10, &g);
+	AddReinf (1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -20, &g);
+	AddReinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -30, &g);
 
 	// Set boundary conditions
 	FEM::SetBrys (&mesh, &nbrys, &ebrys, NULL, &g);

@@ -29,9 +29,7 @@
 // MechSys
 #include "fem/geometry.h"
 #include "fem/functions.h"
-#include "fem/elems/quad4pstress.h"
-#include "fem/elems/quad8pstress.h"
-#include "fem/elems/quad4pstrain.h"
+#include "fem/elems/hex8equilib.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -53,8 +51,9 @@ int main(int argc, char **argv) try
 	double E       = 10.7e+6; // Young (psi)
 	double nu      = 0.3;     // Poisson
 	double q       = 120.0;   // Load
-	size_t nx      = 2;       // ndivs along x
-	size_t ny      = 6;       // ndivs along y
+	size_t nx      = 1;       // ndivs along x
+	size_t ny      = 100;       // ndivs along y
+	size_t nz      = 100;       // ndivs along z
 	bool   is_o2   = false;   // use high order elements?
 
 	// Input
@@ -68,17 +67,19 @@ int main(int argc, char **argv) try
 	// Blocks
 	Mesh::Block b;
 	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (false, 4,            // Is3D, NNodes
-	             0.0, 3.0, 3.0, 0.0,  // x coordinates
-	             0.0, 0.0, 0.6, 0.6); // y coordinates
+	b.SetCoords (true, 8,             // Is3D, NNodes
+	             0.0, 0.1, 0.1, 0.0, 0.0, 0.1, 0.1, 0.0,  // x coordinates
+	             0.0, 0.0, 0.6, 0.6, 0.0, 0.0, 0.6, 0.6,  // y coordinates
+	             0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, 0.3); // z coordinates
 	b.SetNx     (nx);                 // x weights and num of divisions along x
 	b.SetNy     (ny);                 // y weights and num of divisions along y
-	b.SetETags  (4, -10, -20, 0, 0);  // edge tags
+	b.SetNz     (nz);                 // z weights and num of divisions along z
+	b.SetFTags  (6, 0, 0, -30, -40, 0, 0);  // face tags
 	Array<Mesh::Block*> blocks;
 	blocks.Push (&b);
 
 	// Generate
-	Mesh::Structured mesh(/*Is3D*/false);
+	Mesh::Structured mesh(/*Is3D*/true);
 	if (is_o2) mesh.SetO2();
 	mesh.SetBlocks (blocks);
 	mesh.Generate  (true);
@@ -86,31 +87,24 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Geom g(3); // 2D
 
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "ux", 0.0));
-	ebrys.Push (make_tuple(-10, "uy", 0.0));
-	ebrys.Push (make_tuple(-20, "fy", 0.0));
+	// Face brys
+	FEM::FBrys_T fbrys;
+	fbrys.Push (make_tuple(-30, "ux", 0.0));
+	fbrys.Push (make_tuple(-30, "uy", 0.0));
+	fbrys.Push (make_tuple(-30, "uz", 0.0));
+	fbrys.Push (make_tuple(-40, "fz", -q/0.06));
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4PStress", "LinElastic", prms.CStr(), "ZERO", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Hex20Equilib", "LinElastic", prms.CStr(), "ZERO", "", true));
+	else       eatts.Push (make_tuple(-1, "Hex8Equilib" , "LinElastic", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL,   &ebrys, NULL, &g);
-
-	g.Nod( 2)->Bry("fy",-10.0*10.0);
-	g.Nod( 5)->Bry("fy",-20.0*10.0);
-	g.Nod( 8)->Bry("fy",-20.0*10.0);
-	g.Nod(11)->Bry("fy",-20.0*10.0);
-	g.Nod(14)->Bry("fy",-20.0*10.0);
-	g.Nod(17)->Bry("fy",-20.0*10.0);
-	g.Nod(20)->Bry("fy",-10.0*10.0);
+	FEM::SetBrys       (&mesh, NULL, NULL, &fbrys, &g);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
@@ -118,11 +112,13 @@ int main(int argc, char **argv) try
 	sol->SolveWithInfo();
 	delete sol;
 
-	cout << "\nDisplacement at node 20: " << g.Nod(20)->Val("uy") << endl;
+	//cout << "\nDisplacement at node 20: " << g.Nod(20)->Val("uy") << endl;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tstatic121.vtu");
-	cout << "[1;34mFile <tstatic121.vtu> saved.[0m\n\n";
+	Output o; o.VTU (&g, "tstatic122.vtu");
+	cout << "[1;34mFile <tstatic122.vtu> saved.[0m\n\n";
+
+	return 0;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
