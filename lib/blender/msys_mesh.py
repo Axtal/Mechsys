@@ -37,7 +37,7 @@ def print_timing(func):
 
 @print_timing
 def gen_frame_mesh(txt=None):
-    Blender.Window.WaitCursor(1)
+    if txt!=None: Blender.Window.WaitCursor(1)
 
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
@@ -85,6 +85,8 @@ def gen_frame_mesh(txt=None):
             txt.write('mesh.set_elem_con  (%d,1,%d) %s\n'%(i, e.v2.index, inf2)) # 1 == local node index
             txt.write('mesh.set_elem_etag (%d,0,%d) %s\n'%(i, etags[key], inf3)) # 0 == local edge index
             inf1 = inf2 = inf3 = ''
+        Blender.Window.WaitCursor(0)
+
     else:
         mesh = ms.mesh_generic(is3d)
 
@@ -110,7 +112,6 @@ def gen_frame_mesh(txt=None):
     if edm: Blender.Window.EditMode(1)
 
     # generate mesh
-    Blender.Window.WaitCursor(0)
     if txt==None: return mesh
 
     
@@ -118,7 +119,7 @@ def gen_frame_mesh(txt=None):
 
 @print_timing
 def gen_struct_mesh(gen_script=False,txt=None):
-    Blender.Window.WaitCursor(1)
+    if gen_script: Blender.Window.WaitCursor(1)
 
     # get active object
     edm, obj, msh = di.get_msh()
@@ -244,7 +245,6 @@ def gen_struct_mesh(gen_script=False,txt=None):
             mesh.set_blocks (bks)
             mesh.generate   (True)
             print
-            Blender.Window.WaitCursor(0)
             return mesh
 
 
@@ -252,7 +252,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
 
 @print_timing
 def gen_unstruct_mesh(gen_script=False,txt=None):
-    Blender.Window.WaitCursor(1)
+    if gen_script: Blender.Window.WaitCursor(1)
 
     # get active object
     edm, obj, msh = di.get_msh()
@@ -374,7 +374,6 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
         if mina>0: mesh.set_min_angle_global (mina)
         mesh.generate (True)
         print
-        Blender.Window.WaitCursor(0)
         return mesh
 
 

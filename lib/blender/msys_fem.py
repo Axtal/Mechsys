@@ -90,12 +90,14 @@ def get_mats(obj):
     return mats
 
 
-def get_eatts(obj,mats,stg):
+def get_eatts_ratts(obj,mats,stg):
     d     = di.load_dict()
     eatts = []
+    ratts = []
     if obj.properties[stg].has_key('eatts'):
         for k, v in obj.properties[stg]['eatts'].iteritems():
             tag   = int(v[0])
+            ety   = d['ety'][int(v[1])]
             inis  = 'ZERO'
             matID = int(v[2])
             prop  = obj.properties['texts'][str(int(v[3]))]
@@ -105,27 +107,13 @@ def get_eatts(obj,mats,stg):
                 prms    = mats[matID][1]
                 matdesc = mats[matID][2]
             else:
-                mdl     = 'LinElastic'
-                prms    = 'E=200 nu=0.2'
+                mdl     = ''
+                prms    = ''
                 matdesc = '__no material__'
-            eatts.append ([tag, d['ety'][int(v[1])], mdl, prms, inis, prop, act, matdesc])
-    return eatts
+            if ety=='Reinforcement': ratts.append ([tag, ety, '',  prms, inis, prop, act, matdesc])
+            else:                    eatts.append ([tag, ety, mdl, prms, inis, prop, act, matdesc])
+    return eatts, ratts
 
-    # find main object (skip reinforcements)
-    #reinf = {} # reinforcements
-    #for o in obs:
-        #if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
-        #if o.properties.has_key('rtags'):
-            #edm = Blender.Window.EditMode()
-            #if edm: Blender.Window.EditMode(0)
-            #m = o.getData(mesh=1)
-            #for k, v in o.properties['rtags'].iteritems():
-                #eid = int(k)
-                #x0, y0, z0 = m.edges[eid].v1.co[0], m.edges[eid].v1.co[1], m.edges[eid].v1.co[2]
-                #x1, y1, z1 = m.edges[eid].v2.co[0], m.edges[eid].v2.co[1], m.edges[eid].v2.co[2]
-                #reinf[(x0,y0,z0, x1,y1,z1)] = int(v[1]) # tag
-            #if edm: Blender.Window.EditMode(1)
-        #else: obj = o
 
 def get_act_deact(obj,stg):
     d = di.load_dict()
@@ -169,6 +157,27 @@ def get_brys(obj,stg):
     return nbrys, nbsID, ebrys, fbrys
 
 
+def get_reinforcements(obj,msh,is3d):
+    reinf_verts = {}
+    reinf_edges = {}
+    if obj.properties.has_key('rtags'):
+        for k, v in obj.properties['rtags'].iteritems():
+            eid = int(k)
+            tag = int(v[0])
+            # vertices
+            v1 = msh.edges[eid].v1.index
+            v2 = msh.edges[eid].v2.index
+            if is3d:
+                if not reinf_verts.has_key(v1): reinf_verts[v1] = (msh.verts[v1].co[0], msh.verts[v1].co[1], msh.verts[v1].co[2])
+                if not reinf_verts.has_key(v2): reinf_verts[v2] = (msh.verts[v2].co[0], msh.verts[v2].co[1], msh.verts[v2].co[2])
+            else:
+                if not reinf_verts.has_key(v1): reinf_verts[v1] = (msh.verts[v1].co[0], msh.verts[v1].co[1])
+                if not reinf_verts.has_key(v2): reinf_verts[v2] = (msh.verts[v2].co[0], msh.verts[v2].co[1])
+            # edges
+            reinf_edges[(v1,v2)] = tag
+    return reinf_verts, reinf_edges
+
+
 def run_analysis(gen_script=False):
     Blender.Window.WaitCursor(1)
 
@@ -187,13 +196,16 @@ def run_analysis(gen_script=False):
     sid, stg = di.find_stage (obj, 1)
 
     # materials and first eatts
-    mats   = get_mats  (obj)
-    eatts1 = get_eatts (obj, mats, stg)
-    if len(eatts1)<1: raise Exception('Please, define element attributes first')
+    mats         = get_mats        (obj)
+    eatts, ratts = get_eatts_ratts (obj, mats, stg)
+    if len(eatts)<1: raise Exception('Please, define element attributes first')
 
     # ndim
     is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
     ndim = 3 if is3d else 2
+
+    # reinforcements
+    reinf_verts, reinf_edges = get_reinforcements (obj, msh, is3d)
 
     if gen_script:
         # create new script
@@ -229,9 +241,9 @@ def run_analysis(gen_script=False):
         txt.write ('geo = ms.geom (%d)\n' % ndim)
 
         # element attributes
-        neatt = len(eatts1)
+        neatt = len(eatts)
         txt.write ('\n# Element attributes\n')
-        for i, ea in enumerate(eatts1):
+        for i, ea in enumerate(eatts):
             if i==0:       estr  = 'eatts = ['
             else:          estr  = '         '
             if ea[6]:      estr += '[%d, "%s", "%s", "%s", "%s", "%s", True ]'#,  # %s\n'
@@ -240,16 +252,32 @@ def run_analysis(gen_script=False):
             else:          estr += ',  # %s\n'
             txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[7]))
 
-        # set nodes and elements
-        txt.write                        ('\n# Set nodes and elements\n')
+        # reinforcement attributes
+        if len(reinf_verts)>0:
+            nratt = len(ratts)
+            txt.write ('\n# Reinforcement attributes\n')
+            for i, ra in enumerate(ratts):
+                if i==0:       rstr  = 'ratts = ['
+                else:          rstr  = '         '
+                if ra[6]:      rstr += '[%d, "%s", "%s", "%s", "%s", "%s", True ]'#,  # %s\n'
+                else:          rstr += '[%d, "%s", "%s", "%s", "%s", "%s", False]'#,  # %s\n'
+                if i==nratt-1: rstr += ']  # %s\n'
+                else:          rstr += ',  # %s\n'
+                txt.write (rstr % (ra[0],ra[1],ra[2],ra[3],ra[4],ra[5],ra[7]))
+
+        # set geometry: nodes, elements and attributes
+        txt.write                        ('\n# Set nodes and elements (geometry)\n')
         if mesh_type=='frame': txt.write ('ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)\n')
         else:                  txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
 
         # set reinforcements
-        #for r, t in reinf.iteritems():
-            #print r, t
-            #x0, y0, z0 = r
-            #ms.add_reinf (r)
+        if len(reinf_verts)>0:
+            txt.write ('\n# Set reinforcements\n')
+            if is3d: txt.write ('ms.add_reinfs(True, # True=>3D\n')
+            else:    txt.write ('ms.add_reinfs(False, # False=>2D\n')
+            txt.write ('              '+reinf_verts.__str__()+', # vertices\n')
+            txt.write ('              '+reinf_edges.__str__()+', # edges/connectivity\n')
+            txt.write ('              ratts, geo)\n')
 
         # allocate solver
         txt.write ('\n# Solver\n')
@@ -337,12 +365,19 @@ def run_analysis(gen_script=False):
         geo = ms.geom (ndim)
 
         # element attributes
-        eatts = []
-        for ea in eatts1: eatts.append(ea[:7])
+        elem_atts = []
+        for ea in eatts: elem_atts.append(ea[:7])
 
-        # set nodes and elements
-        if mesh_type=='frame': ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)
-        else:                  ms.set_nodes_elems (mesh, eatts, geo)
+        # reinforcement attributes
+        reinf_atts = []
+        for ra in ratts: reinf_atts.append(ra[:7])
+
+        # set geometry: nodes, elements, and attributes
+        if mesh_type=='frame': ms.set_nodes_elems (mesh, elem_atts, geo, 1.0e-5, True)
+        else:                  ms.set_nodes_elems (mesh, elem_atts, geo)
+
+        # set reinforcements
+        if len(reinf_verts)>0: ms.add_reinfs(is3d, reinf_verts, reinf_edges, reinf_atts, geo)
 
         # allocate solver
         sol = ms.solver ("ForwardEuler")

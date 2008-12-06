@@ -191,12 +191,15 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 
 	// Set
 	double E = -1.0, Ar = -1.0, At = -1, ks = -1.0;
+	double c = 0.0,  phi = 0.0;
 	for (size_t i=0; i<names.Size(); ++i)
 	{
-		     if (names[i]=="E" )  E  = values[i];
+		     if (names[i]=="E" )  E   = values[i];
 		else if (names[i]=="Ar")  Ar  = values[i];
-		else if (names[i]=="At")  At = values[i];
+		else if (names[i]=="At")  At  = values[i];
 		else if (names[i]=="ks")  ks  = values[i];
+		else if (names[i]=="c")   c   = values[i];
+		else if (names[i]=="phi") phi = values[i];
 		else throw new Fatal("AddReinforcement: Parameter name (%s) is invalid",names[i].CStr());
 	}
 
