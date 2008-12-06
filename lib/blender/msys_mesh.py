@@ -36,7 +36,7 @@ def print_timing(func):
 # =========================================================================== Linear mesh
 
 @print_timing
-def gen_frame_mesh(gen_script=False,txt=None):
+def gen_frame_mesh(txt=None):
     Blender.Window.WaitCursor(1)
 
     # get selected object and mesh
@@ -59,43 +59,40 @@ def gen_frame_mesh(gen_script=False,txt=None):
             eid = int(k)
             etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
 
-    if gen_script:
-        if txt==None:
-            txt = Blender.Text.New(obj.name+'_lmesh')
-            txt.write('import mechsys   as ms\n')
-            txt.write('import msys_mesh as me\n\n')
-        if is3d: txt.write('is3d     = True\n')
-        else:    txt.write('is3d     = False\n')
-        txt.write('onbry    = True\n')
-        txt.write('VTK_LINE = 3\n\n')
-        txt.write('mesh = ms.mesh_generic(is3d)\n')
+    if txt!=None:
+        if is3d: txt.write ('mesh = ms.mesh_generic(True) # True=>3D\n')
+        else:    txt.write ('mesh = ms.mesh_generic(False) # False=>2D\n')
 
         # vertices
-        txt.write('mesh.set_nverts    (%d)\n'%len(msh.verts))
+        info = '# VertIdx, OnBry==True, X, Y, Z'
+        txt.write('mesh.set_nverts    (%d) # set number of vertices\n'%len(msh.verts))
         for i, v in enumerate(msh.verts):
-            if is3d: txt.write('mesh.set_vert      (%d, onbry, %g,%g,%g)\n'%(i, v.co[0], v.co[1], v.co[2]))
-            else:    txt.write('mesh.set_vert      (%d, onbry, %g,%g)\n'   %(i, v.co[0], v.co[1]))
+            if is3d: txt.write('mesh.set_vert      (%d, True, %g,%g,%g) %s\n'%(i, v.co[0], v.co[1], v.co[2], info))
+            else:    txt.write('mesh.set_vert      (%d, True, %g,%g) %s\n'   %(i, v.co[0], v.co[1],          info))
+            info = ''
 
         # elements
-        txt.write('mesh.set_nelems    (%d)\n'%len(msh.edges))
+        inf1 = '# ElemIdx, ETag, OnBry==True, VTK_LINE==3'
+        inf2 = '# ElemIdx, Vert1, Vert2'
+        inf3 = '# ElemIdx, LocalEdgeID==0, Tag'
+        txt.write('mesh.set_nelems    (%d) # set number of elements\n'%len(msh.edges))
         for i, e in enumerate(msh.edges):
             key = (e.v1.index, e.v2.index)
             if not key in etags: raise Exception('All edges must have a edge tag')
             etag = etags[key]
-            txt.write('mesh.set_elem      (%d,%d,onbry,VTK_LINE)\n'%(i,etag)) # 3 == VTK_LINE
-            txt.write('mesh.set_elem_con  (%d,0,%d)\n'%(i, e.v1.index))       # 0 == local node index
-            txt.write('mesh.set_elem_con  (%d,1,%d)\n'%(i, e.v2.index))       # 1 == local node index
-            txt.write('mesh.set_elem_etag (%d,0,%d)\n'%(i, etags[key]))       # 0 == local edge index
+            txt.write('mesh.set_elem      (%d,%d,True,3) %s\n'%(i, etag,  inf1)) # 3 == VTK_LINE
+            txt.write('mesh.set_elem_con  (%d,0,%d) %s\n'%(i, e.v1.index, inf2)) # 0 == local node index
+            txt.write('mesh.set_elem_con  (%d,1,%d) %s\n'%(i, e.v2.index, inf2)) # 1 == local node index
+            txt.write('mesh.set_elem_etag (%d,0,%d) %s\n'%(i, etags[key], inf3)) # 0 == local edge index
+            inf1 = inf2 = inf3 = ''
     else:
-        onbry    = True
-        VTK_LINE = 3
-        mesh     = ms.mesh_generic(is3d)
+        mesh = ms.mesh_generic(is3d)
 
         # vertices
         mesh.set_nverts (len(msh.verts))
         for i, v in enumerate(msh.verts):
-            if is3d: mesh.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
-            else:    mesh.set_vert (i, onbry, v.co[0], v.co[1])
+            if is3d: mesh.set_vert (i, True, v.co[0], v.co[1], v.co[2])
+            else:    mesh.set_vert (i, True, v.co[0], v.co[1])
 
         # elements
         mesh.set_nelems (len(msh.edges))
@@ -103,20 +100,18 @@ def gen_frame_mesh(gen_script=False,txt=None):
             key = (e.v1.index, e.v2.index)
             if not key in etags: raise Exception('All edges must have a edge tag')
             etag = etags[key]
-            mesh.set_elem      (i,etag,onbry,VTK_LINE) # 3 == VTK_LINE
-            mesh.set_elem_con  (i, 0, e.v1.index)      # 0 == local node index
-            mesh.set_elem_con  (i, 1, e.v2.index)      # 1 == local node index
-            mesh.set_elem_etag (i, 0, etags[key])      # 0 == local edge index
+            mesh.set_elem      (i,etag,True,3)    # 3 == VTK_LINE
+            mesh.set_elem_con  (i, 0, e.v1.index) # 0 == local node index
+            mesh.set_elem_con  (i, 1, e.v2.index) # 1 == local node index
+            mesh.set_elem_etag (i, 0, etags[key]) # 0 == local edge index
 
     # Restore local coordinates
     msh.verts = ori
     if edm: Blender.Window.EditMode(1)
 
-    # Add mesh
-    if gen_script: txt.write('me.add_mesh(obj, mesh, True)\n')
-    else:          add_mesh (obj, mesh, True)
-
+    # generate mesh
     Blender.Window.WaitCursor(0)
+    if txt==None: return mesh
 
     
 # =========================================================================== Structured mesh
@@ -230,7 +225,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
     msh.verts = ori
     if edm: Blender.Window.EditMode(1)
 
-    # generate mesh and draw results
+    # generate mesh
     if gen_script:
         if is3d: txt.write('mesh = ms.mesh_structured(True) # True=>3D\n')
         else:    txt.write('mesh = ms.mesh_structured(False) # False=>2D\n')
@@ -359,7 +354,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
     msh.verts = ori
     if edm: Blender.Window.EditMode(1)
 
-    # generate mesh and draw results
+    # generate mesh
     maxa = obj.properties['maxarea'] if obj.properties.has_key('maxarea') else -1.0
     mina = obj.properties['minang']  if obj.properties.has_key('minang')  else -1.0
     if gen_script:

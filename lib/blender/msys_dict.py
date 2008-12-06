@@ -247,6 +247,15 @@ def props_set_with_tag(key,subkey,tag,props):
     else:      obj.properties[key].update({subkey:props})
     if len(obj.properties[key])==0: obj.properties.pop(key)
 
+def props_del_all_tags(key):
+    obj = get_obj()
+    if obj.properties.has_key(key):
+        msg = 'Confirm delete all tags ('+key+')?%t|Yes'
+        res = Blender.Draw.PupMenu(msg)
+        if res>0:
+            obj.properties.pop(key)
+            Blender.Window.QRedrawAll()
+
 def props_push_new(key,props,check=False,ic=0,fc=0):
     # ic(inicomp),fc(fincomp): initial and final indexes for comparision between props elements,
     # in order to check whether the property was added or not

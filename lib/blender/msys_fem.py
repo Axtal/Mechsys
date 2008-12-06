@@ -189,6 +189,7 @@ def run_analysis(gen_script=False):
     # materials and first eatts
     mats   = get_mats  (obj)
     eatts1 = get_eatts (obj, mats, stg)
+    if len(eatts1)<1: raise Exception('Please, define element attributes first')
 
     # ndim
     is3d = obj.properties['is3d']
@@ -221,7 +222,7 @@ def run_analysis(gen_script=False):
         else:
             if   mesh_type=='struct':   me.gen_struct_mesh   (True, txt)
             elif mesh_type=='unstruct': me.gen_unstruct_mesh (True, txt)
-            elif mesh_type=='frame':    me.gen_frame_mesh    (True, txt)
+            elif mesh_type=='frame':    me.gen_frame_mesh    (      txt)
 
         # allocate geometry
         txt.write ('\n# Geometry\n')
@@ -287,13 +288,19 @@ def run_analysis(gen_script=False):
                     if v: txt.write ('geo.deactivate (%d)\n'%(k))
 
                 # boundary conditions
-                nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
-                txt.write ('nbrys = '+nbrys.__str__()+'\n')
-                txt.write ('ebrys = '+ebrys.__str__()+'\n')
-                txt.write ('fbrys = '+fbrys.__str__()+'\n')
-                txt.write ('ms.set_brys             (mesh, nbrys, ebrys, fbrys, geo)\n')
+                nbrys, nbsID, ebrys, fbrys = get_brys (obj,stg)
+                if len(nbrys)>0: txt.write ('nbrys = '+nbrys.__str__()+'\n')
+                if len(ebrys)>0: txt.write ('ebrys = '+ebrys.__str__()+'\n')
+                if len(fbrys)>0: txt.write ('fbrys = '+fbrys.__str__()+'\n')
+                txt.write ('ms.set_brys             (mesh, ')
+                if len(nbrys)>0: txt.write ('nbrys, ')
+                else:            txt.write ('[], ')
+                if len(ebrys)>0: txt.write ('ebrys, ')
+                else:            txt.write ('[], ')
+                if len(fbrys)>0: txt.write ('fbrys, geo)\n')
+                else:            txt.write ('[], geo)\n')
                 for nb in nbsID:
-                    txt.write ('geo.nod('+str(nb[0])+').bry("'+nb[1]+'",'+str(nb[2])+')\n')
+                    txt.write ('geo.nod('+str(nb[0])+').bry          ("'+nb[1]+'",'+str(nb[2])+')\n')
 
                 # apply body forces
                 if abf: txt.write ('geo.apply_body_forces   ()\n')

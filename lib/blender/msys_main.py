@@ -73,10 +73,10 @@ EVT_MESH_SHOWONLY    = 41 # show only this box
 EVT_MESH_SETETAG     = 42 # set edges tag
 EVT_MESH_SETFTAG     = 43 # set faces tag
 EVT_MESH_SETRTAG     = 44 # set reinforcement
-EVT_MESH_DELMESH     = 45 # delete mesh object
-EVT_MESH_DELALLETAGS = 46 # delete all edge tags
-EVT_MESH_DELALLFTAGS = 47 # delete all face tags
-EVT_MESH_DELALLRTAGS = 48 # delete all reinforcement tags
+EVT_MESH_DELALLETAGS = 45 # delete all edge tags
+EVT_MESH_DELALLFTAGS = 46 # delete all face tags
+EVT_MESH_DELALLRTAGS = 47 # delete all reinforcement tags
+EVT_MESH_DELMESH     = 48 # delete mesh object
 # Mesh -- structured
 EVT_MESH_ADDBLK      = 60 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_DELALLBLKS  = 61 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
@@ -236,6 +236,9 @@ def button_event(evt):
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1)
 
+    elif evt==EVT_MESH_DELALLETAGS: di.props_del_all_tags('etags')
+    elif evt==EVT_MESH_DELALLFTAGS: di.props_del_all_tags('ftags')
+    elif evt==EVT_MESH_DELALLRTAGS: di.props_del_all_tags('rtags')
     elif evt==EVT_MESH_DELMESH:
         obj = di.get_obj()
         if obj.properties.has_key('msh_name'):
@@ -821,7 +824,10 @@ def gui():
         Draw.PushButton  ('Reinf',      EVT_MESH_SETRTAG,  c+140, r, 60, rh,                              'Set reinforcements tag (0 => remove tag)')
         r -= rh
         r -= srg
-        Draw.PushButton  ('Delete mesh', EVT_MESH_DELMESH, c, r, 100, rh, 'Delete current mesh')
+        Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 80, rh, 'Delete all edge tags')
+        Draw.PushButton  ('Del all FTags', EVT_MESH_DELALLFTAGS, c+ 80, r, 80, rh, 'Delete all face tags')
+        Draw.PushButton  ('Del all Reinf', EVT_MESH_DELALLRTAGS, c+160, r, 80, rh, 'Delete all reinforcement tags')
+        Draw.PushButton  ('Delete mesh',   EVT_MESH_DELMESH,     c+240, r, 80, rh, 'Delete current mesh')
         r -= rh
         r -= rh
 
