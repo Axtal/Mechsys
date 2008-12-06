@@ -29,7 +29,7 @@
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  #include <boost/python.hpp> // this includes everything
+  //#include <boost/python.hpp> // this includes everything
   namespace BPy = boost::python;
 #endif
 
@@ -144,6 +144,7 @@ public:
 	bool   IsETagBeam    (int ETag) const;                        ///< Find whether an EdgeTag represents a Beam or not
 
 	// Get methods
+	        void   ElemCentre      (size_t i, double & X, double & Y, double & Z) const;          ///< Calculate centre of an element i
 	        bool   Is3D            ()                   const { return _is_3d;                  } ///< Is 3D mesh ?
 	virtual size_t NVerts          ()                   const { return _verts.Size();           } ///< Return the number of vertices
 	virtual size_t NVertsBry       ()                   const { return _verts_bry.Size();       } ///< Return the number of elements on boundary
@@ -173,7 +174,7 @@ public:
 	size_t PyGetEdges    (BPy::list & Edges)      const;
 	void   PyGetETags    (BPy::dict & ETags)      const;
 	void   PyGetFTags    (BPy::dict & FTags)      const;
-	size_t PyGetElems    (BPy::dict & Elems)      const;
+	size_t PyGetElems    (BPy::dict & Elems)      const; ///< Return: Elems = { "ID1":[Tag,VTK,Xcentre,Ycentre,Zcentre], "ID2":[Tag,VTK,X,Y,Z], num elements }
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -460,6 +461,41 @@ inline bool Generic::IsETagBeam(int ETag) const
 	return (_etags_beams.Find(ETag)>=0);
 }
 
+inline void Generic::ElemCentre (size_t i, double & X, double & Y, double & Z) const
+{
+	if (ElemVTKCellType(i)==VTK_LINE)
+	{
+		X =           (VertX(ElemCon(i,0))+VertX(ElemCon(i,1)))/2.0;
+		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,1)))/2.0;
+		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,1)))/2.0 : 0.0);
+	}
+	else if (ElemVTKCellType(i)==VTK_TRIANGLE)
+	{
+		X =           (VertX(ElemCon(i,0))+VertX(ElemCon(i,1))+VertX(ElemCon(i,2)))/3.0;
+		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,1))+VertY(ElemCon(i,2)))/3.0;
+		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,1))+VertZ(ElemCon(i,2)))/3.0 : 0.0);
+	}
+	else if (ElemVTKCellType(i)==VTK_QUAD)
+	{
+		X =           (VertX(ElemCon(i,0))+VertX(ElemCon(i,2)))/2.0;
+		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,2)))/2.0;
+		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,2)))/2.0 : 0.0);
+	}
+	//else if (ElemVTKCellType(i)==VTK_TETRA)
+	else if (ElemVTKCellType(i)==VTK_HEXAHEDRON)
+	{
+		X =           (VertX(ElemCon(i,0))+VertX(ElemCon(i,6)))/2.0;
+		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,6)))/2.0;
+		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,6)))/2.0 : 0.0);
+	}
+	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_EDGE)
+	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_TRIANGLE)
+	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_QUAD)
+	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_TETRA)
+	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_HEXAHEDRON)
+	else throw new Fatal("Generic::ElemCentre: VTKCellType==%d is invalid (not implemented yet)", ElemVTKCellType(i));
+}
+
 #ifdef USE_BOOST_PYTHON
 // {
 
@@ -556,62 +592,24 @@ inline void Generic::PyGetFTags(BPy::dict & FTags) const
 
 inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 {
-	/* Out:
-	 *    
-	 *    Elems = {
-	 *      'tags'    : [t1,t2,t3, ... num elements]
-	 *      'onbs'    : [ 1, 0, 1, ... num elements]
-	 *      'vtks'    : [ 9, 9,12, ... num elements]
-	 *      'cons'    : {'id0':[node0, node1, node3, num nodes in element 0],
-	 *                   'id1':[n0,n1,n2,n3,n4,n5,n6,n7], ... num elems}
-	 *      'etags'   : {'id0':[tag_edge_0, tag_edge_1, tag_edge_2, tag_edge_3],
-	 *                   'id1':[t0,t1,t2,t3], ... num elems]}
-	 *      'ftags'   : {'id0':[tag_face_0, tag_face_1, tag_face_2, tag_face_3, tag_face_4, tag_face_5],
-	 *                   'id1':[t0,t1,t2,t3,t4,t5], ... num elems]}
-	 *    }
-	 */
-	BPy::list tags,  onbs,  vtks;
-	BPy::dict cons, etags, ftags;
 	for (size_t i=0; i<NElems(); ++i)
 	{
-		// Data
-		tags.append (ElemTag(i));
-		onbs.append (IsElemOnBry(i) ? 1 : 0);
-		vtks.append (ElemVTKCellType(i));
+		// Calcuate Centre
+		double X=0.0;
+		double Y=0.0;
+		double Z=0.0;
+		ElemCentre (i, X, Y, Z);
 
-		// Connectivities
-		BPy::list co;
-		for (size_t j=0; j<ElemNVerts(i); ++j)
-			co.append (ElemCon(i,j));
-		cons[BPy::str(i)] = co;
-
-		// ETags
-		BPy::list et;
-		for (size_t j=0; j<ElemNETags(i); ++j) // j is the local edge id
-		{
-			int tag = ElemETag(i,j);
-			et.append (tag);
-		}
-		etags[BPy::str(i)] = et;
-
-		// FTags
-		if (Is3D())
-		{
-			BPy::list ft;
-			for (size_t j=0; j<ElemNFTags(i); ++j) // j is the local face id
-			{
-				int tag = ElemFTag(i,j);
-				ft.append (tag);
-			}
-			ftags[BPy::str(i)] = ft;
-		}
+		// Add to dict
+		BPy::list info;
+		info.append (ElemTag(i));
+		info.append (ElemVTKCellType(i));
+		info.append (X);
+		info.append (Y);
+		info.append (Z);
+		String id;  id.Printf("%d",i);
+		Elems[id.CStr()] = info;
 	}
-	Elems["tags" ] = tags;
-	Elems["onbs" ] = onbs;
-	Elems["vtks" ] = vtks;
-	Elems["cons" ] = cons;
-	Elems["etags"] = etags;
-	Elems["ftags"] = ftags;
 	return NElems();
 }
 

@@ -46,11 +46,12 @@ def load_dict():
         dict['show_v_ids']    = True
         dict['show_blks']     = True
         dict['show_axes']     = True
+        dict['show_regs']     = True
         dict['show_etags']    = True
         dict['show_ftags']    = True
         dict['show_elems']    = True
-        dict['show_regs']     = True
         dict['show_opac']     = 0.3
+        dict['show_rtags']    = True
         # CAD
         dict['cad_x']         = '0.0'
         dict['cad_y']         = '0.0'
@@ -376,10 +377,12 @@ def props_del_fem(stage_ids,key,id):
             if len(obj.properties[stg][key])==0: obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
 
-def props_del_all_fem(stage_ids,key):
+def props_del_all_fem(stage_ids,key,with_confirmation=True):
     obj = get_obj()
-    msg = 'Confirm delete ALL?%t|Yes'
-    res  = Blender.Draw.PupMenu(msg)
+    if with_confirmation:
+        msg = 'Confirm delete ALL?%t|Yes'
+        res  = Blender.Draw.PupMenu(msg)
+    else: res = 1
     if res>0:
         for sid in stage_ids:
             stg = 'stg_'+str(sid)
@@ -421,10 +424,12 @@ def props_del_stage():
         # set current fem stage
         Blender.Window.QRedrawAll()
 
-def props_del_all_stages():
+def props_del_all_stages(with_confirmation=True):
     obj = get_obj()
-    msg = 'Confirm delete ALL stages?%t|Yes'
-    res  = Blender.Draw.PupMenu(msg)
+    if with_confirmation:
+        msg = 'Confirm delete ALL stages?%t|Yes'
+        res = Blender.Draw.PupMenu(msg)
+    else: res = 1
     if res>0:
         for sid, v in obj.properties['stages'].iteritems():
             # delete description
@@ -440,6 +445,13 @@ def props_del_all_stages():
         obj.properties.pop('stages')
         set_key('fem_stage', 0)
         Blender.Window.QRedrawAll()
+
+def find_stage(obj,num):
+    for k, v in obj.properties['stages'].iteritems():
+        if int(v[0])==num:
+            sid = k
+            stg = 'stg_'+k
+            return sid, stg
 
 # ------------------------------------------------------------------------------ Blocks
 
@@ -536,99 +548,3 @@ def rgb2hex(rgb):
 def hex2rgb(hex):
     # convert a hex value 0x000000 to a (R, G, B) tuple
     return html2rgb('%06x' % hex)
-
-
-
-
-
-
-def get_cg(msh, vids, vtkcelltype):
-    # In:   vids = verts_ids
-    x, y, z = 0, 0, 0
-    if vtkcelltype== 3: # VTK_LINE
-        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[1]].co[0])/2.0
-        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[1]].co[1])/2.0
-        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[1]].co[2])/2.0
-    elif vtkcelltype== 5: # VTK_TRIANGLE
-        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[1]].co[0]+msh.verts[vids[2]].co[0])/3.0
-        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[1]].co[1]+msh.verts[vids[2]].co[1])/3.0
-        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[1]].co[2]+msh.verts[vids[2]].co[2])/3.0
-    elif vtkcelltype== 9: # VTK_QUAD
-        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[2]].co[0])/2.0
-        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[2]].co[1])/2.0
-        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[2]].co[2])/2.0
-    elif vtkcelltype==10: # VTK_TETRA
-        pass
-    elif vtkcelltype==12: # VTK_HEXAHEDRON
-        x = (msh.verts[vids[0]].co[0]+msh.verts[vids[6]].co[0])/2.0
-        y = (msh.verts[vids[0]].co[1]+msh.verts[vids[6]].co[1])/2.0
-        z = (msh.verts[vids[0]].co[2]+msh.verts[vids[6]].co[2])/2.0
-    elif vtkcelltype==22: # VTK_QUADRATIC_TRIANGLE
-        pass
-    elif vtkcelltype==23: # VTK_QUADRATIC_QUAD
-        pass
-    elif vtkcelltype==24: # VTK_QUADRATIC_TETRA
-        pass
-    elif vtkcelltype==25: # VTK_QUADRATIC_HEXAHEDRON
-        pass
-    return x, y, z
-
-
-def get_poly_area(msh, vids):
-    a = 0.0
-    n = len(vids)
-    for i in range(n):
-        j  = (i+1) % n
-        a += msh.verts[vids[i]].co[0] * msh.verts[vids[j]].co[1] - msh.verts[vids[j]].co[0] * msh.verts[vids[i]].co[1]
-    return a/2.0
-
-
-def get_poly_cg(msh, vids):
-    x, y, z = 0, 0, 0
-    n = len(vids)
-    for i in range(n):
-        j  = (i+1) % n
-        p  =  msh.verts[vids[i]].co[0] * msh.verts[vids[j]].co[1] - msh.verts[vids[j]].co[0] * msh.verts[vids[i]].co[1]
-        x += (msh.verts[vids[i]].co[0] + msh.verts[vids[j]].co[0]) * p 
-        y += (msh.verts[vids[i]].co[1] + msh.verts[vids[j]].co[1]) * p 
-        z +=  msh.verts[vids[i]].co[2]
-    area = get_poly_area (msh, vids)
-    x /= 6.0*area
-    y /= 6.0*area
-    z /= n
-    return x, y, z
-
-
-#  2+       r_idx    = 0        # start right vertex index
-#   |\      edge_ids = [0,1,2]  # indexes of all edges to search for r_idx
-#  0| \1    v1_ids   = [1,0,0]  # v1 vertex indexes
-#   |  \    v2_ids   = [2,2,1]  # v2 vertex indexes
-#  1+---+0  eds      = [1,0,2]  # result: edge indexes
-#     2     ids      = [2,1,0]  # result: vertex indexes
-def sort_edges_and_verts(msh, edge_ids, r_idx):
-    # loop over all connected edges
-    eds = []
-    ids = []
-    while len(edge_ids)>0:
-        v1_ids = [msh.edges[ie].v1.index for ie in edge_ids] # ie => index of an edge
-        v2_ids = [msh.edges[ie].v2.index for ie in edge_ids]
-        if r_idx in v1_ids:
-            idx   = v1_ids.index(r_idx)
-            r_idx = v2_ids[idx]
-            eds.append   (edge_ids[idx])
-            ids.append   (r_idx)
-            edge_ids.pop (idx)
-        elif r_idx in v2_ids:
-            idx   = v2_ids.index(r_idx)
-            r_idx = v1_ids[idx]
-            eds.append   (edge_ids[idx])
-            ids.append   (r_idx)
-            edge_ids.pop (idx)
-        else: break
-    return eds, ids
-
-
-def get_file_key():
-    bfn = Blender.sys.expandpath (Blender.Get('filename'))
-    key = Blender.sys.basename   (Blender.sys.splitext(bfn)[0])
-    return key

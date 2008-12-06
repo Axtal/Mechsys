@@ -73,9 +73,10 @@ EVT_MESH_SHOWONLY    = 41 # show only this box
 EVT_MESH_SETETAG     = 42 # set edges tag
 EVT_MESH_SETFTAG     = 43 # set faces tag
 EVT_MESH_SETRTAG     = 44 # set reinforcement
-EVT_MESH_DELALLETAGS = 45 # delete all edge tags
-EVT_MESH_DELALLFTAGS = 46 # delete all face tags
-EVT_MESH_DELALLRTAGS = 47 # delete all reinforcement tags
+EVT_MESH_DELMESH     = 45 # delete mesh object
+EVT_MESH_DELALLETAGS = 46 # delete all edge tags
+EVT_MESH_DELALLFTAGS = 47 # delete all face tags
+EVT_MESH_DELALLRTAGS = 48 # delete all reinforcement tags
 # Mesh -- linear
 EVT_MESH_GENFRAME    = 50 # generate linear mesh
 EVT_MESH_GENFRAMES   = 51 # generate linear mesh script
@@ -238,6 +239,18 @@ def button_event(evt):
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1)
 
+    elif evt==EVT_MESH_DELMESH:
+        obj = di.get_obj()
+        if obj.properties.has_key('msh_name'):
+            msg = 'Confirm delete mesh?%t|Yes'
+            res = Blender.Draw.PupMenu(msg)
+            if res>0:
+                old_msh = bpy.data.objects[obj.properties['msh_name']]
+                scn     = bpy.data.scenes.active
+                scn.objects.unlink (old_msh)
+                Blender.Window.QRedrawAll()
+
+
     # ---------------------------------------------------------------------------------- Materials
 
     elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key        ('gui_show_mat')
@@ -257,8 +270,15 @@ def button_event(evt):
         di.props_push_new('blks', props, True, 18, 18+int(props[17]))
 
     elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
-    elif evt==EVT_MESH_GENSTRU:    me.gen_struct_mesh()
-    elif evt==EVT_MESH_GENSTRUS:   me.gen_struct_mesh(True)
+    elif evt==EVT_MESH_GENSTRU:
+        obj  = di.get_obj()
+        mesh = me.gen_struct_mesh()
+        me.add_mesh (obj, mesh, 'struct')
+    elif evt==EVT_MESH_GENSTRUS:
+        obj = di.get_obj()
+        txt = me.gen_struct_mesh(True)
+        txt.write('obj = bpy.data.objects["'+obj.name+'"]\n')
+        txt.write('me.add_mesh     (obj, mesh, "struct")\n')
 
     # -------------------------------------------------------------------------- Unstructured
 
@@ -266,8 +286,15 @@ def button_event(evt):
     elif evt==EVT_MESH_DELALLREGS: di.props_del_all ('regs')
     elif evt==EVT_MESH_ADDHOL:     di.props_push_new('hols', di.new_hol_props())
     elif evt==EVT_MESH_DELALLHOLS: di.props_del_all ('hols')
-    elif evt==EVT_MESH_GENUNSTRU:  me.gen_unstruct_mesh()
-    elif evt==EVT_MESH_GENUNSTRUS: me.gen_unstruct_mesh(True)
+    elif evt==EVT_MESH_GENUNSTRU:
+        obj  = di.get_obj()
+        mesh = me.gen_unstruct_mesh()
+        me.add_mesh (obj, mesh, 'unstruct')
+    elif evt==EVT_MESH_GENUNSTRUS:
+        obj = di.get_obj()
+        txt = me.gen_unstruct_mesh(True)
+        txt.write('obj = bpy.data.objects["'+obj.name+'"]\n')
+        txt.write('me.add_mesh           (obj, mesh, "unstruct")\n')
 
     # ----------------------------------------------------------------------------------- FEM 
 
@@ -282,7 +309,7 @@ def button_event(evt):
     elif evt==EVT_FEM_ADDFBRY:  di.props_push_new_fem  ([di.key('fem_stage')], 'fbrys', di.new_fbry_props())
     elif evt==EVT_FEM_ADDEATT:
         obj  = di.get_obj()
-        sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
+        sids = [k for k in obj.properties['stages']]
         di.props_push_new_fem (sids, 'eatts', di.new_eatt_props())
 
     elif evt==EVT_FEM_DELALLSTAGES: di.props_del_all_stages()
@@ -324,6 +351,8 @@ def cb_show_blks (evt,val): di.set_key ('show_blks',  val)
 @try_catch
 def cb_show_axes (evt,val): di.set_key ('show_axes',  val)
 @try_catch
+def cb_show_regs (evt,val): di.set_key ('show_regs',  val)
+@try_catch
 def cb_show_etags(evt,val): di.set_key ('show_etags', val)
 @try_catch
 def cb_show_ftags(evt,val): di.set_key ('show_ftags', val)
@@ -331,6 +360,8 @@ def cb_show_ftags(evt,val): di.set_key ('show_ftags', val)
 def cb_show_elems(evt,val): di.set_key ('show_elems', val)
 @try_catch
 def cb_show_opac (evt,val): di.set_key ('show_opac',  val)
+@try_catch
+def cb_show_rtags(evt,val): di.set_key ('show_rtags', val)
 
 # ---------------------------------- CAD
 
@@ -707,7 +738,7 @@ def gui():
     h_msh_unst_regs = rh+srg+rh*len(regs)
     h_msh_unst_hols = rh+srg+rh*len(hols)
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
-    h_msh           = 10*rh+h_msh_fram+h_msh_stru+h_msh_unst
+    h_msh           = 11*rh+srg+h_msh_fram+h_msh_stru+h_msh_unst
     h_mat_mats      = rh+srg+rh*(len(mats)+mat_extra_rows)
     h_mat           = 3*rh+h_mat_mats
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
@@ -733,11 +764,13 @@ def gui():
         Draw.Toggle ('V IDs',      EVT_NONE, c+120, r,    60,   rh, d['show_v_ids'], 'Show vertex IDs'        , cb_show_v_ids)
         Draw.Toggle ('Blocks',     EVT_NONE, c+180, r,    60,   rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks )
         Draw.Toggle ('Local Axes', EVT_NONE, c+240, r,    80,   rh, d['show_axes'],  'Show local system axes' , cb_show_axes )
+        Draw.Toggle ('Regions',    EVT_NONE, c+320, r,    60,   rh, d['show_regs'],  'Show regions and holes' , cb_show_regs )
         r -= rh
         Draw.Toggle ('E Tags',     EVT_NONE, c+ 60, r,    60,   rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
         Draw.Toggle ('F Tags',     EVT_NONE, c+120, r,    60,   rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
         Draw.Toggle ('Elems',      EVT_NONE, c+180, r,    60,   rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
         Draw.Slider ('',           EVT_NONE, c+240, r,    80,   rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
+        Draw.Toggle ('Reinf',      EVT_NONE, c+320, r,    60,   rh, d['show_rtags'], 'Show reinforcement tags', cb_show_rtags)
         r -= rh
         r -= srg
         Draw.PushButton ('Delete all properties', EVT_SET_DELPROPS, c, r, 200, rh, 'Delete all properties')
@@ -782,6 +815,9 @@ def gui():
         r -= rh
         Draw.Number      ('',        EVT_NONE,          c+ 60, r,    60,   rh, d['newrtag'][0],    -100, 0, 'New reinforcement tag',             cb_rtag)
         Draw.PushButton  ('Reinf',   EVT_MESH_SETRTAG,  c+120, r,    60,   rh,                              'Set reinforcements tag (0 => remove tag)')
+        r -= rh
+        r -= srg
+        Draw.PushButton  ('Delete mesh', EVT_MESH_DELMESH, c, r, 100, rh, 'Delete current mesh')
         r -= rh
         r -= rh
 

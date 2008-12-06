@@ -58,37 +58,45 @@ if di.key('show_props'):
 
                 # draw vertices IDs
                 if di.key('show_v_ids'):
+                    BGL.glColor3f (1.0, 1.0, 0.0)
                     for v in msh.verts:
-                        BGL.glColor3f     (1.0, 1.0, 0.0)
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
                         Draw.Text         (str(v.index))
 
                 # draw edges IDs
                 if di.key('show_e_ids'):
+                    BGL.glColor3f (1.0, 1.0, 1.0)
                     for e in msh.edges:
                         mid = 0.5*(e.v1.co+e.v2.co)
-                        BGL.glColor3f     (1.0, 1.0, 1.0)
                         BGL.glRasterPos3f (mid[0], mid[1], mid[2])
                         Draw.Text         (str(e.index))
 
                 # draw edge tags
                 if di.key('show_etags'):
                     if obj.properties.has_key('etags'):
+                        BGL.glColor3f (0.551, 1.0, 0.370)
                         for k, v in obj.properties['etags'].iteritems():
                             eid = int(k)
                             pos = msh.edges[eid].v1.co + 0.60*(msh.edges[eid].v2.co-msh.edges[eid].v1.co)
-                            BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (pos[0], pos[1], pos[2])
                             Draw.Text         (str(v[0]))
 
                 # draw reinforcement tags
-                if obj.properties.has_key('rtags'):
-                    for k, v in obj.properties['rtags'].iteritems():
-                        eid = int(k)
-                        pos = msh.edges[eid].v1.co + 0.60*(msh.edges[eid].v2.co-msh.edges[eid].v1.co)
-                        BGL.glColor3f     (1.0, 0.0, 0.0)
-                        BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                        Draw.Text         (str(v[0]))
+                if di.key('show_rtags'):
+                    if obj.properties.has_key('rtags'):
+                        BGL.glColor3f (0.730, 0.681, 1.0)
+                        for k, v in obj.properties['rtags'].iteritems():
+                            eid = int(k)
+                            ed  = msh.edges[eid]
+                            # text
+                            pos = ed.v1.co + 0.60*(ed.v2.co-ed.v1.co)
+                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                            Draw.Text         (str(v[0]))
+                            # line
+                            BGL.glBegin    (BGL.GL_LINES)
+                            BGL.glVertex3f (ed.v1.co[0], ed.v1.co[1], ed.v1.co[2])
+                            BGL.glVertex3f (ed.v2.co[0], ed.v2.co[1], ed.v2.co[2])
+                            BGL.glEnd      ()
 
                 # draw face tags
                 if di.key('show_ftags'):
@@ -121,12 +129,12 @@ if di.key('show_props'):
                 # draw block IDs
                 if di.key('show_blks'):
                     if obj.properties.has_key('blks'):
+                        BGL.glColor3f (0.930, 0.830, 0.810)
                         for k, v in obj.properties['blks'].iteritems():
                             neds = int(v[17])
                             cen  = 0.5*(msh.edges[int(v[18])].v1.co+msh.edges[int(v[18])].v2.co)/neds
                             for i in range(19,19+neds-1):
                                 cen += 0.5*(msh.edges[int(v[i])].v1.co+msh.edges[int(v[i])].v2.co)/neds
-                            BGL.glColor3f     (0.2, 1.0, 0.2)
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
                             Draw.Text         ('blk:%d:%d'%(int(k),int(v[0])))
 
@@ -165,26 +173,23 @@ if di.key('show_props'):
                 # draw regions and holes
                 if di.key('show_regs'):
                     if obj.properties.has_key('regs'):
+                        BGL.glColor3f (0.054, 0.675, 1.0)
                         for k, v in obj.properties['regs'].iteritems():
-                            BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (v[2],v[3],v[4])
                             Draw.Text         ('reg:%d:%d'%(int(k),int(v[0])))
                     if obj.properties.has_key('hols'):
+                        BGL.glColor3f (0.054, 0.675, 1.0)
                         for k, v in obj.properties['hols'].iteritems():
-                            BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (v[0],v[1],v[2])
                             Draw.Text         ('hol:%d'%int(k))
 
                 # draw elements information
                 if di.key('show_elems'):
-                    try:    nelems = obj.properties['nelems']
-                    except: nelems = 0
-                    if nelems>0:
-                        for id in obj.properties['elems']['cons']:
-                            x, y, z = di.get_cg (msh, obj.properties['elems']['cons'][id], obj.properties['elems']['vtks'][int(id)])
-                            BGL.glColor3f     (0.0, 1.0, 0.0)
-                            BGL.glRasterPos3f (x, y, z)
-                            Draw.Text         (str(id)+'('+str(obj.properties['elems']['tags'][int(id)])+')')
+                    if obj.properties.has_key('elems'):
+                        BGL.glColor3f (0.0, 1.0, 0.0)
+                        for k, v in obj.properties['elems'].iteritems():
+                            BGL.glRasterPos3f (v[2], v[3], v[4])
+                            Draw.Text         (k+'('+str(int(v[0]))+')')
 
                 # Resore mesh to local coordinates
                 msh.verts = ori

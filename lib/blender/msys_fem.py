@@ -154,139 +154,34 @@ def get_brys(obj,stg):
     return nbrys, nbsID, ebrys, fbrys
 
 
-def get_mesh(obj, txt=None):
-    # mesh
-    edm = Blender.Window.EditMode()
-    if edm: Blender.Window.EditMode(0)
-    msh = obj.getData(mesh=1)
-
-    # check mesh
-    if not obj.properties.has_key('nelems'): raise Exception('Please, generate mesh first')
-
-    # transform mesh to global coordinates
-    ori = msh.verts[:] # create a copy in local coordinates
-    msh.transform (obj.matrix)
-
-    # check for frame mesh
-    frame = False
-    if obj.properties.has_key('frame'): frame = obj.properties['frame']
-
-    # check ndim
-    is3d = obj.properties['3dmesh']
-    ndim = 3 if is3d else 2
-
-    if txt!=None: # generate script
-        # mesh
-        txt.write('\n# MechSys mesh structure\n')
-        if is3d: txt.write('mesh = ms.mesh_generic(True)\n')
-        else:    txt.write('mesh = ms.mesh_generic(False)\n')
-
-        # vertices
-        txt.write('\n# vertices\n')
-        txt.write('mesh.set_nverts (%d)\n' % len(msh.verts))
-        for i, v in enumerate(msh.verts):
-            onbry = True if (i in obj.properties['verts_bry']) else False
-            if is3d: txt.write('mesh.set_vert (%d,%d,%f,%f,%f)\n' % (i, onbry, v.co[0], v.co[1], v.co[2]))
-            else:    txt.write('mesh.set_vert (%d,%d,%f,%f)\n'    % (i, onbry, v.co[0], v.co[1]))
-
-        # elements
-        txt.write('\n# elements\n')
-        nelems = obj.properties['nelems']
-        txt.write('mesh.set_nelems (%d)\n' % nelems)
-        for i in range(nelems):
-            txt.write('mesh.set_elem (%d,%d,%d,%d)\n' %(i, obj.properties['elems']['tags'][i], obj.properties['elems']['onbs'][i], obj.properties['elems']['vtks'][i]))
-
-        # connectivities
-        txt.write('\n# connectivities\n')
-        for i in range(nelems):
-            for j in range(len(obj.properties['elems']['cons'] [str(i)])):
-                txt.write('mesh.set_elem_con (%d,%d,%d)\n' % (i, j, obj.properties['elems']['cons'] [str(i)][j]))
-
-        # edge tags
-        txt.write('\n# edge tags\n')
-        for i in range(nelems):
-            for j in range(len(obj.properties['elems']['etags'][str(i)])):
-                tag = obj.properties['elems']['etags'][str(i)][j]
-                if tag<0: txt.write('mesh.set_elem_etag (%d,%d,%d)\n' % (i, j, tag))
-
-        # face tags
-        if is3d:
-            txt.write('\n# face tags\n')
-            for i in range(nelems):
-                for j in range(len(obj.properties['elems']['ftags'][str(i)])):
-                    txt.write('mesh.set_elem_ftag (%d,%d,%d)\n' % (i, j, obj.properties['elems']['ftags'][str(i)][j]))
-
-    else:
-        # mesh structure
-        mesh = ms.mesh_generic(is3d)
-
-        # vertices
-        mesh.set_nverts (len(msh.verts))
-        for i, v in enumerate(msh.verts):
-            onbry = True if (i in obj.properties['verts_bry']) else False
-            if is3d: mesh.set_vert (i, onbry, v.co[0], v.co[1], v.co[2])
-            else:    mesh.set_vert (i, onbry, v.co[0], v.co[1])
-
-        # elements
-        nelems = obj.properties['nelems']
-        mesh.set_nelems (nelems)
-        for i in range(nelems):
-            # element
-            mesh.set_elem (i, obj.properties['elems']['tags'][i],
-                              obj.properties['elems']['onbs'][i],
-                              obj.properties['elems']['vtks'][i])
-
-            # connectivities
-            for j in range(len(obj.properties['elems']['cons'] [str(i)])):
-                mesh.set_elem_con (i, j, obj.properties['elems']['cons'] [str(i)][j])
-
-            # edge tags
-            for j in range(len(obj.properties['elems']['etags'][str(i)])):
-                mesh.set_elem_etag (i, j, obj.properties['elems']['etags'][str(i)][j])
-
-            # face tags
-            if is3d:
-                for j in range(len(obj.properties['elems']['ftags'][str(i)])):
-                    mesh.set_elem_ftag (i, j, obj.properties['elems']['ftags'][str(i)][j])
-
-    # end
-    msh.verts = ori # restore local coordinates
-    if edm: Blender.Window.EditMode(1)
-    if txt==None: return mesh
-
-
 def run_analysis(gen_script=False):
     Blender.Window.WaitCursor(1)
 
-    # get selected objects
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    if len(obs)>2: raise Exception('Please, select at most two Mesh objects')
-    if len(obs)==1 and obs[0].properties.has_key('rtags'): return # skip reinforcements
+    # get active object
+    edm, obj, msh = di.get_msh()
 
     # find main object (skip reinforcements)
-    reinf = {} # reinforcements
-    for o in obs:
-        if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
-        if o.properties.has_key('rtags'):
-            edm = Blender.Window.EditMode()
-            if edm: Blender.Window.EditMode(0)
-            m = o.getData(mesh=1)
-            for k, v in o.properties['rtags'].iteritems():
-                eid = int(k)
-                x0, y0, z0 = m.edges[eid].v1.co[0], m.edges[eid].v1.co[1], m.edges[eid].v1.co[2]
-                x1, y1, z1 = m.edges[eid].v2.co[0], m.edges[eid].v2.co[1], m.edges[eid].v2.co[2]
-                reinf[(x0,y0,z0, x1,y1,z1)] = int(v[1]) # tag
-            if edm: Blender.Window.EditMode(1)
-        else: obj = o
+    #reinf = {} # reinforcements
+    #for o in obs:
+        #if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
+        #if o.properties.has_key('rtags'):
+            #edm = Blender.Window.EditMode()
+            #if edm: Blender.Window.EditMode(0)
+            #m = o.getData(mesh=1)
+            #for k, v in o.properties['rtags'].iteritems():
+                #eid = int(k)
+                #x0, y0, z0 = m.edges[eid].v1.co[0], m.edges[eid].v1.co[1], m.edges[eid].v1.co[2]
+                #x1, y1, z1 = m.edges[eid].v2.co[0], m.edges[eid].v2.co[1], m.edges[eid].v2.co[2]
+                #reinf[(x0,y0,z0, x1,y1,z1)] = int(v[1]) # tag
+            #if edm: Blender.Window.EditMode(1)
+        #else: obj = o
 
     # check number of stages
     if not obj.properties.has_key('stages'): raise Exception('Please, add stages first')
     nstages = len(obj.properties['stages'])
 
     # first stage
-    for k, v in obj.properties['stages'].iteritems():
-        if v[0]==1: stg = 'stg_'+k
+    sid, stg = di.find_stage (obj,1)
 
     # materials and first eatts
     mats   = get_mats  (obj)
@@ -315,7 +210,7 @@ def run_analysis(gen_script=False):
             txt.write ('\n# Show running cursor\n')
             txt.write ('Blender.Window.WaitCursor(1)\n')
 
-        # get/set mesh
+        # generate mesh
         if not di.key('fullsc'):
             txt.write ('\n# Get mesh\n')
             txt.write ('obj  = bpy.data.objects["'+obj.name+'"]\n')

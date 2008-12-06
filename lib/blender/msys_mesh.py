@@ -113,8 +113,8 @@ def gen_frame_mesh(gen_script=False,txt=None):
     if edm: Blender.Window.EditMode(1)
 
     # Add mesh
-    if gen_script: txt.write('me.add_mesh(mesh, [], True)\n')
-    else:          add_mesh (mesh, [], True)
+    if gen_script: txt.write('me.add_mesh(obj, mesh, True)\n')
+    else:          add_mesh (obj, mesh, True)
 
     Blender.Window.WaitCursor(0)
 
@@ -142,6 +142,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
     if gen_script:
         if txt==None:
             txt = Blender.Text.New(obj.name+'_smesh')
+            txt.write('import Blender, bpy\n')
             txt.write('import mechsys   as ms\n')
             txt.write('import msys_mesh as me\n')
         txt.write('bks = []\n')
@@ -236,16 +237,17 @@ def gen_struct_mesh(gen_script=False,txt=None):
         txt.write('mesh.set_tol    (1.0e-4)\n')
         txt.write('mesh.set_blocks (bks)\n')
         txt.write('mesh.generate   (True) # True=>WithInfo\n')
-        txt.write('me.add_mesh     (mesh, face_colours)\n')
+        Blender.Window.WaitCursor(0)
+        return txt
     else:
         if len(bks)>0:
             mesh = ms.mesh_structured(is3d)
             mesh.set_tol    (1.0e-4)
             mesh.set_blocks (bks)
             mesh.generate   (True)
-            add_mesh        (mesh)
-
-    Blender.Window.WaitCursor(0)
+            print
+            Blender.Window.WaitCursor(0)
+            return mesh
 
 
 # ========================================================================= Unstructured mesh
@@ -293,6 +295,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
         # unstructured mesh instance
         if txt==None:
             txt = Blender.Text.New(obj.name+'_umesh')
+            txt.write('import Blender, bpy\n')
             txt.write('import mechsys   as ms\n')
             txt.write('import msys_mesh as me\n')
         if is3d: txt.write('mesh = ms.mesh_unstructured(True) # True=>3D\n')
@@ -363,127 +366,109 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
         if maxa>0: txt.write('mesh.set_max_area_global  (%f)'%(maxa)+'\n')
         if mina>0: txt.write('mesh.set_min_angle_global (%f)'%(mina)+'\n')
         txt.write('mesh.generate         (True) # True=>WithInfo\n')
-        txt.write('me.add_mesh           (mesh)\n')
+        Blender.Window.WaitCursor(0)
+        return txt
     else:
         if maxa>0: mesh.set_max_area_global  (maxa)
         if mina>0: mesh.set_min_angle_global (mina)
         mesh.generate (True)
-        add_mesh      (mesh)
-
-    Blender.Window.WaitCursor(0)
+        print
+        Blender.Window.WaitCursor(0)
+        return mesh
 
 
 # ====================================================================================== Draw
 
 @print_timing
-def set_elems(obj, nelems, elems):
-    stg                          = 'stg_'+str(di.key('fem_stage')) # stage
-    obj.properties['nelems']     = nelems
-    obj.properties['elems']      = elems
-    obj.properties[stg]['eatts'] = {}
-    temp                         = {}
-    id                           = 0
-    for i, tag in enumerate(obj.properties['elems']['tags']):
+def set_elems(obj, elems):
+    # delete old eatts from all stages
+    sids = [k for k in obj.properties['stages']]
+    di.props_del_all_fem (sids, 'eatts', False)
+    # loop over element tags
+    obj.properties['elems'] = elems
+    temp                    = {}
+    for k, v in elems.iteritems():
+        tag = int(v[0])
+        vtk = int(v[1])
         if not temp.has_key(tag):
             temp[tag] = True
-            obj.properties[stg]['eatts'][str(id)]    = di.new_eatt_props()
-            obj.properties[stg]['eatts'][str(id)][0] = tag
-            obj.properties[stg]['eatts'][str(id)][1] = di.key('vtk2ety')[obj.properties['elems']['vtks'][i]]
-            # add new text for properties
-            tid = di.props_push_new('texts', 'gam=20') # returns text_id  == tid
-            obj.properties[stg]['eatts'][str(id)][3] = tid
-            id += 1
-
+            eatt      = di.new_eatt_props()
+            eatt[0]   = tag
+            eatt[1]   = di.key('vtk2ety')[vtk]
+            di.props_push_new_fem (sids, 'eatts', eatt)
 
 @print_timing
-def set_etags(obj, msh, etags):
-    stg                          = 'stg_'+str(di.key('fem_stage')) # stage
-    obj.properties['etags']      = {}
-    obj.properties[stg]['ebrys'] = {}
-    temp                         = {}
-    id                           = 0
-    for k, v in etags.iteritems():
-        tag = v
-        eid = msh.findEdges (k[0], k[1])
-        obj.properties['etags'][str(eid)] = [tag, 0] # tag, type
-        if not temp.has_key(tag):
-            temp[tag] = True
-            obj.properties[stg]['ebrys'][str(id)]    = di.new_ebry_props()
-            obj.properties[stg]['ebrys'][str(id)][0] = tag
-            id += 1
-
-
-@print_timing
-def set_ftags(obj, msh, ftags):
-    stg                          = 'stg_'+str(di.key('fem_stage')) # stage
-    obj.properties['ftags']      = {}
-    obj.properties[stg]['fbrys'] = {}
-    temp                         = {}
-    id                           = 0
-    for k, v in ftags.iteritems():
-        tag  = v
-        vids = k.split('_')
-        eids = ''
-        for i, vert_pair in enumerate(vids):
-            vs  = vert_pair.split(',')
-            eid = msh.findEdges (int(vs[0]), int(vs[1]))
-            if i>0: eids += '_'+str(eid)
-            else:   eids +=     str(eid)
-        obj.properties['ftags'][eids] = [tag, 0] # tag, colour
-        if not temp.has_key(tag):
-            temp[tag] = True
-            obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
-            obj.properties[stg]['fbrys'][str(id)][0] = tag
-            obj.properties[stg]['fbrys'][str(id)][3] = 0
-            id += 1
-
+def set_ebrys(obj):
+    # set edges boundaries
+    if obj.properties.has_key('etags'):
+        for sid in obj.properties['stages']:
+            stg = 'stg_'+sid
+            if not obj.properties[stg].has_key('ebrys'): obj.properties[stg]['ebrys'] = {} 
+            temp = {}
+            id   = 0
+            for k, v in obj.properties['etags'].iteritems():
+                tag = int(v[0])
+                if not temp.has_key(tag):
+                    temp[tag] = True
+                    obj.properties[stg]['ebrys'][str(id)]    = di.new_ebry_props()
+                    obj.properties[stg]['ebrys'][str(id)][0] = tag
+                    id += 1
 
 @print_timing
-def add_mesh(mesh, frame=False):
-    # get vertices and edges
-    verts = []
-    edges = []
-    mesh.get_verts (verts)
-    mesh.get_edges (edges)
+def set_fbrys(obj):
+    # set faces boundaries
+    if obj.properties['3dmesh'] and obj.properties.has_key('ftags'):
+        for sid in obj.properties['stages']:
+            stg = 'stg_'+sid
+            if not obj.properties[stg].has_key('fbrys'): obj.properties[stg]['fbrys'] = {} 
+            temp = {}
+            id   = 0
+            for k, v in obj.properties['ftags'].iteritems():
+                tag = int(v[0])
+                if not temp.has_key(tag):
+                    temp[tag] = True
+                    obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
+                    obj.properties[stg]['fbrys'][str(id)][0] = tag
+                    obj.properties[stg]['fbrys'][str(id)][3] = 0
+                    id += 1
 
-    # add new mesh to Blender
-    key     = di.get_file_key()
-    scn     = bpy.data.scenes.active
-    new_msh = bpy.data.meshes.new      (key+'_mesh')
-    new_obj = scn.objects.new (new_msh, key+'_mesh')
+@print_timing
+def add_mesh(obj, mesh, mesh_type):
+    # delete old mesh
+    if obj.properties.has_key('msh_name'):
+        msh_name = obj.properties['msh_name']
+        old_msh  = bpy.data.objects[msh_name]
+        scn      = bpy.data.scenes.active
+        scn.objects.unlink (old_msh)
+    else: msh_name = obj.name+'_msh'
+
+    # add new object/mesh to Blender
+    scn                        = bpy.data.scenes.active
+    new_msh                    = bpy.data.meshes.new      (msh_name)
+    new_obj                    = scn.objects.new (new_msh, msh_name)
+    new_obj.restrictSelect     = True
+    obj.properties['msh_name'] = new_obj.name
+    verts                      = []
+    edges                      = []
+    mesh.get_verts       (verts)
+    mesh.get_edges       (edges)
     new_msh.verts.extend (verts)
     new_msh.edges.extend (edges)
-    new_obj.select       (1)
-    print '[1;34mMechSys[0m: Mesh extended'
-
-    # Vertices on boundary
-    verts_bry = []
-    mesh.get_verts_bry (verts_bry)
-    new_obj.properties['verts_bry'] = verts_bry;
-
-    # 2D or 3D mesh ?
-    new_obj.properties['3dmesh'] = mesh.is_3d()
-
-    # Frame mesh ?
-    new_obj.properties['frame'] = frame
+    new_obj.select       (0)
+    obj.makeParent       ([new_obj])
 
     # new stage
-    di.props_push_new_stage()
+    if not obj.properties.has_key('stages'): di.props_push_new_stage() # add to the current active object
 
-    # set elements
-    elems  = {}
-    nelems = mesh.get_elems (elems)
-    set_elems (new_obj, nelems, elems)
+    # set elements, edges brys, and faces brys
+    elems = {}
+    mesh.get_elems (elems)
+    set_elems      (obj, elems)
+    set_ebrys      (obj)
+    set_fbrys      (obj)
 
-    # set etags
-    etags = {}
-    mesh.get_etags (etags)
-    set_etags (new_obj, new_msh, etags)
-
-    # set ftags
-    ftags = {}
-    mesh.get_ftags (ftags)
-    set_ftags (new_obj, new_msh, ftags)
+    # set mesh type
+    obj.properties['mesh_type'] = mesh_type
 
     # redraw
     Blender.Window.QRedrawAll()
