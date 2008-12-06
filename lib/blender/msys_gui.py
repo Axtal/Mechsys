@@ -61,7 +61,7 @@ def background():
 
 def caption1(c,r,w,rh, lab, evt_refresh,evt_hideall,evt_showonly,evt_showhide):
     BGL.glColor3f     (0.4, 0.4, 0.4)
-    BGL.glRecti       (c, r, c+w, r+1.3*rh)
+    BGL.glRecti       (c, r, c+w, r+int(1.3*rh))
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
     Draw.Text         (lab)

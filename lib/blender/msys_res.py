@@ -92,8 +92,8 @@ def report():
                 for n in nds:
                     lin = ' %8d  ' % n
                     for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
-                        res  = obj.properties['res'][s][lbl][n]
-                        lin += '%s  %8.3e' % (lin,res)
+                        res = obj.properties['res'][s][lbl][n]
+                        lin = '%s  %8.3e' % (lin,res)
                     lin += '\n'
                     f.write (lin)
 
