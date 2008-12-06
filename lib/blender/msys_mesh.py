@@ -43,7 +43,7 @@ def gen_frame_mesh(gen_script=False,txt=None):
     edm, obj, msh = di.get_msh()
 
     # 3D mesh?
-    is3d = obj.properties['3dmesh']
+    is3d = obj.properties['is3d']
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -132,7 +132,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
     if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')
 
     # 3D mesh?
-    is3d = obj.properties['3dmesh']
+    is3d = obj.properties['is3d']
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -260,7 +260,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
     edm, obj, msh = di.get_msh()
 
     # 3D mesh?
-    is3d = obj.properties['3dmesh']
+    is3d = obj.properties['is3d']
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -417,7 +417,7 @@ def set_ebrys(obj):
 @print_timing
 def set_fbrys(obj):
     # set faces boundaries
-    if obj.properties['3dmesh'] and obj.properties.has_key('ftags'):
+    if obj.properties['is3d'] and obj.properties.has_key('ftags'):
         for sid in obj.properties['stages']:
             stg = 'stg_'+sid
             if not obj.properties[stg].has_key('fbrys'): obj.properties[stg]['fbrys'] = {} 

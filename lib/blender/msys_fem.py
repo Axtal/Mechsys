@@ -111,6 +111,21 @@ def get_eatts(obj,mats,stg):
             eatts.append ([tag, d['ety'][int(v[1])], mdl, prms, inis, prop, act, matdesc])
     return eatts
 
+    # find main object (skip reinforcements)
+    #reinf = {} # reinforcements
+    #for o in obs:
+        #if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
+        #if o.properties.has_key('rtags'):
+            #edm = Blender.Window.EditMode()
+            #if edm: Blender.Window.EditMode(0)
+            #m = o.getData(mesh=1)
+            #for k, v in o.properties['rtags'].iteritems():
+                #eid = int(k)
+                #x0, y0, z0 = m.edges[eid].v1.co[0], m.edges[eid].v1.co[1], m.edges[eid].v1.co[2]
+                #x1, y1, z1 = m.edges[eid].v2.co[0], m.edges[eid].v2.co[1], m.edges[eid].v2.co[2]
+                #reinf[(x0,y0,z0, x1,y1,z1)] = int(v[1]) # tag
+            #if edm: Blender.Window.EditMode(1)
+        #else: obj = o
 
 def get_act_deact(obj,stg):
     d = di.load_dict()
@@ -160,39 +175,23 @@ def run_analysis(gen_script=False):
     # get active object
     edm, obj, msh = di.get_msh()
 
-    # find main object (skip reinforcements)
-    #reinf = {} # reinforcements
-    #for o in obs:
-        #if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
-        #if o.properties.has_key('rtags'):
-            #edm = Blender.Window.EditMode()
-            #if edm: Blender.Window.EditMode(0)
-            #m = o.getData(mesh=1)
-            #for k, v in o.properties['rtags'].iteritems():
-                #eid = int(k)
-                #x0, y0, z0 = m.edges[eid].v1.co[0], m.edges[eid].v1.co[1], m.edges[eid].v1.co[2]
-                #x1, y1, z1 = m.edges[eid].v2.co[0], m.edges[eid].v2.co[1], m.edges[eid].v2.co[2]
-                #reinf[(x0,y0,z0, x1,y1,z1)] = int(v[1]) # tag
-            #if edm: Blender.Window.EditMode(1)
-        #else: obj = o
+    # check mesh type
+    if obj.properties.has_key('mesh_type'): mesh_type = obj.properties['mesh_type']
+    else: raise Exception('Please, generate mesh first or set "Frame mesh" toggle')
 
     # check number of stages
     if not obj.properties.has_key('stages'): raise Exception('Please, add stages first')
     nstages = len(obj.properties['stages'])
 
     # first stage
-    sid, stg = di.find_stage (obj,1)
+    sid, stg = di.find_stage (obj, 1)
 
     # materials and first eatts
     mats   = get_mats  (obj)
-    eatts1 = get_eatts (obj,mats,stg)
-
-    # check for frame mesh
-    frame = False
-    if obj.properties.has_key('frame'): frame = obj.properties['frame']
+    eatts1 = get_eatts (obj, mats, stg)
 
     # ndim
-    is3d = obj.properties['3dmesh']
+    is3d = obj.properties['is3d']
     ndim = 3 if is3d else 2
 
     if gen_script:
@@ -202,8 +201,10 @@ def run_analysis(gen_script=False):
         # import libraries
         if not di.key('fullsc'):
             txt.write ('import Blender, bpy\n')
-            txt.write ('import msys_fem as mf\n')
-        txt.write     ('import mechsys  as ms\n')
+            txt.write ('import msys_mesh as me\n')
+            txt.write ('import msys_fem  as mf\n')
+            txt.write ('import mechsys   as ms\n')
+        else: txt.write ('import mechsys as ms\n')
 
         # change cursor
         if not di.key('fullsc'):
@@ -211,13 +212,16 @@ def run_analysis(gen_script=False):
             txt.write ('Blender.Window.WaitCursor(1)\n')
 
         # generate mesh
+        txt.write ('\n# Mesh generation\n')
         if not di.key('fullsc'):
-            txt.write ('\n# Get mesh\n')
             txt.write ('obj  = bpy.data.objects["'+obj.name+'"]\n')
-            txt.write ('mesh = mf.get_mesh(obj)\n')
+            if   mesh_type=='struct':   txt.write ('mesh = me.gen_struct_mesh()\n')
+            elif mesh_type=='unstruct': txt.write ('mesh = me.gen_unstruct_mesh()\n')
+            elif mesh_type=='frame':    txt.write ('mesh = me.gen_frame_mesh()\n')
         else:
-            txt.write ('\n# Set mesh\n')
-            get_mesh  (obj, txt)
+            if   mesh_type=='struct':   me.gen_struct_mesh   (True, txt)
+            elif mesh_type=='unstruct': me.gen_unstruct_mesh (True, txt)
+            elif mesh_type=='frame':    me.gen_frame_mesh    (True, txt)
 
         # allocate geometry
         txt.write ('\n# Geometry\n')
@@ -236,13 +240,13 @@ def run_analysis(gen_script=False):
             txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[7]))
 
         # set nodes and elements
-        txt.write           ('\n# Set nodes and elements\n')
-        if frame: txt.write ('ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)\n')
-        else:     txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
+        txt.write                        ('\n# Set nodes and elements\n')
+        if mesh_type=='frame': txt.write ('ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)\n')
+        else:                  txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
 
         # set reinforcements
-        for r, t in reinf.iteritems():
-            print r, t
+        #for r, t in reinf.iteritems():
+            #print r, t
             #x0, y0, z0 = r
             #ms.add_reinf (r)
 
@@ -318,7 +322,9 @@ def run_analysis(gen_script=False):
 
     else:
         # get/set mesh
-        mesh = get_mesh(obj)
+        if   mesh_type=='struct':   mesh = me.gen_struct_mesh   ()
+        elif mesh_type=='unstruct': mesh = me.gen_unstruct_mesh ()
+        elif mesh_type=='frame':    mesh = me.gen_frame_mesh    ()
 
         # allocate geometry
         geo = ms.geom (ndim)
@@ -328,8 +334,8 @@ def run_analysis(gen_script=False):
         for ea in eatts1: eatts.append(ea[:7])
 
         # set nodes and elements
-        if frame: ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)
-        else:     ms.set_nodes_elems (mesh, eatts, geo)
+        if mesh_type=='frame': ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)
+        else:                  ms.set_nodes_elems (mesh, eatts, geo)
 
         # allocate solver
         sol = ms.solver ("ForwardEuler")

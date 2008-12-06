@@ -77,9 +77,6 @@ EVT_MESH_DELMESH     = 45 # delete mesh object
 EVT_MESH_DELALLETAGS = 46 # delete all edge tags
 EVT_MESH_DELALLFTAGS = 47 # delete all face tags
 EVT_MESH_DELALLRTAGS = 48 # delete all reinforcement tags
-# Mesh -- linear
-EVT_MESH_GENFRAME    = 50 # generate linear mesh
-EVT_MESH_GENFRAMES   = 51 # generate linear mesh script
 # Mesh -- structured
 EVT_MESH_ADDBLK      = 60 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_DELALLBLKS  = 61 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
@@ -248,6 +245,9 @@ def button_event(evt):
                 old_msh = bpy.data.objects[obj.properties['msh_name']]
                 scn     = bpy.data.scenes.active
                 scn.objects.unlink (old_msh)
+                obj.properties.pop('mesh_type')
+                obj.properties.pop('msh_name')
+                obj.properties.pop('elems')
                 Blender.Window.QRedrawAll()
 
 
@@ -257,11 +257,6 @@ def button_event(evt):
     elif evt==EVT_MAT_SHOWONLY:  show_only            ('gui_show_mat')
     elif evt==EVT_MAT_ADDMAT:    di.props_push_new_mat()
     elif evt==EVT_MAT_DELALLMAT: di.props_del_all_mats()
-
-    # -------------------------------------------------------------------- Mesh -- linear
-
-    elif evt==EVT_MESH_GENFRAME:  me.gen_frame_mesh()
-    elif evt==EVT_MESH_GENFRAMES: me.gen_frame_mesh(True)
 
     # -------------------------------------------------------------------- Mesh -- structured
 
@@ -378,7 +373,13 @@ def cb_fillet_stp(evt,val): di.set_key('cad_stp', val)
 # ---------------------------------- Mesh
 
 @try_catch
-def cb_3dmesh(evt,val): di.props_set_val('3dmesh', val)
+def cb_is3d(evt,val): di.props_set_val('is3d', val)
+@try_catch
+def cb_frame (evt,val):
+    if val==1: di.props_set_val('mesh_type', 'frame')
+    else:
+        obj = di.get_obj()
+        if obj.properties.has_key('mesh_type'): obj.properties.pop('mesh_type')
 @try_catch
 def cb_etag  (evt,val): di.set_key      ('newetag', [val, di.key('newetag')[1]])
 @try_catch
@@ -654,6 +655,7 @@ def gui():
 
     # Data from current selected object
     is3d        = False
+    isframe     = False
     blks        = {}
     minang      = -1.0
     maxarea     = -1.0
@@ -672,8 +674,10 @@ def gui():
     res_nodes   = ''
     lblmnu      = 'Labels %t'
     if obj!=None:
-        if obj.properties.has_key('3dmesh'):  is3d     = obj.properties['3dmesh']
-        else:      obj.properties['3dmesh']            = False
+        if obj.properties.has_key('is3d'):  is3d       = obj.properties['is3d']
+        else:      obj.properties['is3d']              = False
+        if obj.properties.has_key('mesh_type'):
+            if obj.properties['mesh_type']=='frame': isframe = True
         if obj.properties.has_key('blks'):    blks     = obj.properties['blks']
         if obj.properties.has_key('minang'):  minang   = obj.properties['minang']
         if obj.properties.has_key('maxarea'): maxarea  = obj.properties['maxarea']
@@ -732,13 +736,12 @@ def gui():
     # height of boxes
     h_set           = 5*rh+srg
     h_cad           = 5*rh
-    h_msh_fram      = 3*rh
     h_msh_stru_blks = rh+srg+2*rh*len(blks)
     h_msh_stru      = 4*rh+srg+h_msh_stru_blks
     h_msh_unst_regs = rh+srg+rh*len(regs)
     h_msh_unst_hols = rh+srg+rh*len(hols)
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
-    h_msh           = 11*rh+srg+h_msh_fram+h_msh_stru+h_msh_unst
+    h_msh           = 9*rh+srg+h_msh_stru+h_msh_unst
     h_mat_mats      = rh+srg+rh*(len(mats)+mat_extra_rows)
     h_mat           = 3*rh+h_mat_mats
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
@@ -806,29 +809,21 @@ def gui():
     gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_MESH_SHOWONLY,EVT_MESH_SHOWHIDE)
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
-        Draw.Toggle      ('3D mesh', EVT_NONE,          c,     r-rh, 60, 2*rh, is3d,                        'Set 3D mesh',                       cb_3dmesh)
-        Draw.Number      ('',        EVT_NONE,          c+ 60, r,    60,   rh, d['newetag'][0],    -100, 0, 'New edge tag',                      cb_etag)
-        Draw.PushButton  ('Edge',    EVT_MESH_SETETAG,  c+120, r,    60,   rh,                              'Set edges tag (0 => remove tag)')
-        Draw.Number      ('',        EVT_NONE,          c+180, r,    60,   rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
-        Draw.ColorPicker (           EVT_NONE,          c+240, r,    60,   rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
-        Draw.PushButton  ('Face',    EVT_MESH_SETFTAG,  c+300, r,    60,   rh,                              'Set faces tag (0 => remove tag)')
-        r -= rh
-        Draw.Number      ('',        EVT_NONE,          c+ 60, r,    60,   rh, d['newrtag'][0],    -100, 0, 'New reinforcement tag',             cb_rtag)
-        Draw.PushButton  ('Reinf',   EVT_MESH_SETRTAG,  c+120, r,    60,   rh,                              'Set reinforcements tag (0 => remove tag)')
+        Draw.Toggle      ('3D mesh',    EVT_NONE,          c,     r, 80, rh, is3d,                        'Set 3D mesh',                       cb_is3d)
+        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newetag'][0],    -100, 0, 'New edge tag',                      cb_etag)
+        Draw.PushButton  ('Edge',       EVT_MESH_SETETAG,  c+140, r, 60, rh,                              'Set edges tag (0 => remove tag)')
+        Draw.Number      ('',           EVT_NONE,          c+200, r, 60, rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
+        Draw.ColorPicker (              EVT_NONE,          c+260, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
+        Draw.PushButton  ('Face',       EVT_MESH_SETFTAG,  c+320, r, 60, rh,                              'Set faces tag (0 => remove tag)')
+        r -= rh                         
+        Draw.Toggle      ('Frame Mesh', EVT_NONE,          c,     r, 80, rh, isframe,                     'Set frame (truss/beams only) mesh', cb_frame)
+        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newrtag'][0],    -100, 0, 'New reinforcement tag',             cb_rtag)
+        Draw.PushButton  ('Reinf',      EVT_MESH_SETRTAG,  c+140, r, 60, rh,                              'Set reinforcements tag (0 => remove tag)')
         r -= rh
         r -= srg
         Draw.PushButton  ('Delete mesh', EVT_MESH_DELMESH, c, r, 100, rh, 'Delete current mesh')
         r -= rh
         r -= rh
-
-        # ----------------------- Mesh -- frame
-
-        gu.caption2(c,r,w,rh,'Frame (truss/beam) mesh')
-        r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_msh_fram)
-        Draw.PushButton ('Generate frame mesh', EVT_MESH_GENFRAME,  c,     r, 240, rh, 'Generate frame (truss/beam) mesh')
-        Draw.PushButton ('Write Script',        EVT_MESH_GENFRAMES, c+240, r, 100, rh, 'Create script for frame (truss/beam) mesh')
-        r -= rh
-        r, c, w = gu.box2_out(W,cg,rh, c,r)
 
         # ----------------------- Mesh -- structured
 
