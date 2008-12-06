@@ -147,8 +147,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
         txt.write('bks = []\n')
 
     # generate list with blocks and face colors
-    bks   = []
-    fclrs = {}
+    bks = []
     for k, v in obj.properties['blks'].iteritems():
         # origin and local system
         origin, xp, yp, zp = int(v[4]), int(v[5]), int(v[6]), int(v[7])
@@ -203,8 +202,6 @@ def gen_struct_mesh(gen_script=False,txt=None):
                         face_is_in_block = False
                         break
                 if face_is_in_block: ftags[tuple(eds)] = n[0]
-                # colors
-                if not fclrs.has_key(n[0]): fclrs[n[0]] = n[1]
 
         # new block
         if gen_script:
@@ -236,7 +233,6 @@ def gen_struct_mesh(gen_script=False,txt=None):
     if gen_script:
         if is3d: txt.write('mesh = ms.mesh_structured(True) # True=>3D\n')
         else:    txt.write('mesh = ms.mesh_structured(False) # False=>2D\n')
-        txt.write('face_colours = '+fclrs.__str__()+'\n')
         txt.write('mesh.set_tol    (1.0e-4)\n')
         txt.write('mesh.set_blocks (bks)\n')
         txt.write('mesh.generate   (True) # True=>WithInfo\n')
@@ -247,7 +243,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
             mesh.set_tol    (1.0e-4)
             mesh.set_blocks (bks)
             mesh.generate   (True)
-            add_mesh        (mesh, fclrs)
+            add_mesh        (mesh)
 
     Blender.Window.WaitCursor(0)
 
@@ -418,7 +414,7 @@ def set_etags(obj, msh, etags):
 
 
 @print_timing
-def set_ftags(obj, msh, ftags, fclrs):
+def set_ftags(obj, msh, ftags):
     stg                          = 'stg_'+str(di.key('fem_stage')) # stage
     obj.properties['ftags']      = {}
     obj.properties[stg]['fbrys'] = {}
@@ -433,17 +429,17 @@ def set_ftags(obj, msh, ftags, fclrs):
             eid = msh.findEdges (int(vs[0]), int(vs[1]))
             if i>0: eids += '_'+str(eid)
             else:   eids +=     str(eid)
-        obj.properties['ftags'][eids] = [tag, fclrs[tag]] # tag, colour
+        obj.properties['ftags'][eids] = [tag, 0] # tag, colour
         if not temp.has_key(tag):
             temp[tag] = True
             obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
             obj.properties[stg]['fbrys'][str(id)][0] = tag
-            obj.properties[stg]['fbrys'][str(id)][3] = fclrs[tag]
+            obj.properties[stg]['fbrys'][str(id)][3] = 0
             id += 1
 
 
 @print_timing
-def add_mesh(mesh, fclrs={}, frame=False):
+def add_mesh(mesh, frame=False):
     # get vertices and edges
     verts = []
     edges = []
@@ -487,7 +483,7 @@ def add_mesh(mesh, fclrs={}, frame=False):
     # set ftags
     ftags = {}
     mesh.get_ftags (ftags)
-    set_ftags (new_obj, new_msh, ftags, fclrs)
+    set_ftags (new_obj, new_msh, ftags)
 
     # redraw
     Blender.Window.QRedrawAll()
