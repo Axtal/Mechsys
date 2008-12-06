@@ -192,7 +192,7 @@ def run_analysis(gen_script=False):
     if len(eatts1)<1: raise Exception('Please, define element attributes first')
 
     # ndim
-    is3d = obj.properties['is3d']
+    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
     ndim = 3 if is3d else 2
 
     if gen_script:

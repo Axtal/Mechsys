@@ -43,7 +43,7 @@ def gen_frame_mesh(txt=None):
     edm, obj, msh = di.get_msh()
 
     # 3D mesh?
-    is3d = obj.properties['is3d']
+    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -126,8 +126,9 @@ def gen_struct_mesh(gen_script=False,txt=None):
     # check for blocks
     if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')
 
-    # 3D mesh?
-    is3d = obj.properties['is3d']
+    # 3D mesh? Quadratic elements ?
+    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
+    iso2 = obj.properties['iso2'] if obj.properties.has_key('iso2') else False
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -229,6 +230,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
     if gen_script:
         if is3d: txt.write('mesh = ms.mesh_structured(True) # True=>3D\n')
         else:    txt.write('mesh = ms.mesh_structured(False) # False=>2D\n')
+        if iso2: txt.write('mesh.set_o2     (True) # True=>Quadratic elements\n')
         txt.write('mesh.set_tol    (1.0e-4)\n')
         txt.write('mesh.set_blocks (bks)\n')
         txt.write('mesh.generate   (True) # True=>WithInfo\n')
@@ -236,7 +238,8 @@ def gen_struct_mesh(gen_script=False,txt=None):
         return txt
     else:
         if len(bks)>0:
-            mesh = ms.mesh_structured(is3d)
+            mesh = ms.mesh_structured (is3d)
+            if iso2: mesh.set_o2      (True)
             mesh.set_tol    (1.0e-4)
             mesh.set_blocks (bks)
             mesh.generate   (True)
@@ -254,8 +257,9 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
     # get active object
     edm, obj, msh = di.get_msh()
 
-    # 3D mesh?
-    is3d = obj.properties['is3d']
+    # 3D mesh? Quadratic elements ?
+    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
+    iso2 = obj.properties['iso2'] if obj.properties.has_key('iso2') else False
 
     # transform vertices coordinates
     ori = msh.verts[:]         # create a copy in local coordinates
@@ -295,6 +299,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
             txt.write('import msys_mesh as me\n')
         if is3d: txt.write('mesh = ms.mesh_unstructured(True) # True=>3D\n')
         else:    txt.write('mesh = ms.mesh_unstructured(False) # False=>2D\n')
+        if iso2: txt.write('mesh.set_o2           (True) # True=>Quadratic elements\n')
 
         # set polygon
         txt.write('mesh.set_poly_size    (%d,%d,%d,%d)'%(nverts, nedges, nregs, nhols)+' # nVerts, nSegments, nRegs, nHols\n')
@@ -327,7 +332,8 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
 
     else:
         # unstructured mesh instance
-        mesh = ms.mesh_unstructured(is3d)
+        mesh = ms.mesh_unstructured (is3d)
+        if iso2: mesh.set_o2        (True)
 
         # set polygon
         mesh.set_poly_size (nverts, nedges, nregs, nhols)
@@ -405,14 +411,22 @@ def set_ebrys(obj):
                 tag = int(v[0])
                 if not temp.has_key(tag):
                     temp[tag] = True
-                    obj.properties[stg]['ebrys'][str(id)]    = di.new_ebry_props()
-                    obj.properties[stg]['ebrys'][str(id)][0] = tag
-                    id += 1
+                    old_id    = ''
+                    for m, n in obj.properties[stg]['ebrys'].iteritems(): # find old tag
+                        if int(n[0])==tag:
+                            old_id = m
+                            break
+                    if old_id=='': # add new
+                        obj.properties[stg]['ebrys'][str(id)]    = di.new_ebry_props()
+                        obj.properties[stg]['ebrys'][str(id)][0] = tag
+                        id += 1
 
 @print_timing
 def set_fbrys(obj):
+    # 3D mesh?
+    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
     # set faces boundaries
-    if obj.properties['is3d'] and obj.properties.has_key('ftags'):
+    if is3d and obj.properties.has_key('ftags'):
         for sid in obj.properties['stages']:
             stg = 'stg_'+sid
             if not obj.properties[stg].has_key('fbrys'): obj.properties[stg]['fbrys'] = {} 
@@ -422,10 +436,16 @@ def set_fbrys(obj):
                 tag = int(v[0])
                 if not temp.has_key(tag):
                     temp[tag] = True
-                    obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
-                    obj.properties[stg]['fbrys'][str(id)][0] = tag
-                    obj.properties[stg]['fbrys'][str(id)][3] = 0
-                    id += 1
+                    old_id    = ''
+                    for m, n in obj.properties[stg]['fbrys'].iteritems(): # find old tag
+                        if int(n[0])==tag:
+                            old_id = m
+                            break
+                    if old_id=='': # add new
+                        obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
+                        obj.properties[stg]['fbrys'][str(id)][0] = tag
+                        obj.properties[stg]['fbrys'][str(id)][3] = 0
+                        id += 1
 
 @print_timing
 def add_mesh(obj, mesh, mesh_type):

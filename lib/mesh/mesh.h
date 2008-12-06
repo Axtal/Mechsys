@@ -469,30 +469,27 @@ inline void Generic::ElemCentre (size_t i, double & X, double & Y, double & Z) c
 		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,1)))/2.0;
 		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,1)))/2.0 : 0.0);
 	}
-	else if (ElemVTKCellType(i)==VTK_TRIANGLE)
+	else if (ElemVTKCellType(i)==VTK_TRIANGLE || ElemVTKCellType(i)==VTK_QUADRATIC_TRIANGLE)
 	{
 		X =           (VertX(ElemCon(i,0))+VertX(ElemCon(i,1))+VertX(ElemCon(i,2)))/3.0;
 		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,1))+VertY(ElemCon(i,2)))/3.0;
 		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,1))+VertZ(ElemCon(i,2)))/3.0 : 0.0);
 	}
-	else if (ElemVTKCellType(i)==VTK_QUAD)
+	else if (ElemVTKCellType(i)==VTK_QUAD || ElemVTKCellType(i)==VTK_QUADRATIC_QUAD)
 	{
 		X =           (VertX(ElemCon(i,0))+VertX(ElemCon(i,2)))/2.0;
 		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,2)))/2.0;
 		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,2)))/2.0 : 0.0);
 	}
 	//else if (ElemVTKCellType(i)==VTK_TETRA)
-	else if (ElemVTKCellType(i)==VTK_HEXAHEDRON)
+	else if (ElemVTKCellType(i)==VTK_HEXAHEDRON || ElemVTKCellType(i)==VTK_QUADRATIC_HEXAHEDRON)
 	{
 		X =           (VertX(ElemCon(i,0))+VertX(ElemCon(i,6)))/2.0;
 		Y =           (VertY(ElemCon(i,0))+VertY(ElemCon(i,6)))/2.0;
 		Z = (_is_3d ? (VertZ(ElemCon(i,0))+VertZ(ElemCon(i,6)))/2.0 : 0.0);
 	}
 	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_EDGE)
-	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_TRIANGLE)
-	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_QUAD)
 	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_TETRA)
-	//else if (ElemVTKCellType(i)==VTK_QUADRATIC_HEXAHEDRON)
 	else throw new Fatal("Generic::ElemCentre: VTKCellType==%d is invalid (not implemented yet)", ElemVTKCellType(i));
 }
 

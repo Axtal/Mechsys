@@ -378,11 +378,14 @@ def cb_fillet_stp(evt,val): di.set_key('cad_stp', val)
 @try_catch
 def cb_is3d(evt,val): di.props_set_val('is3d', val)
 @try_catch
+def cb_iso2(evt,val): di.props_set_val('iso2', val)
+@try_catch
 def cb_frame (evt,val):
     if val==1: di.props_set_val('mesh_type', 'frame')
     else:
         obj = di.get_obj()
         if obj.properties.has_key('mesh_type'): obj.properties.pop('mesh_type')
+        Blender.Window.QRedrawAll()
 @try_catch
 def cb_etag  (evt,val): di.set_key      ('newetag', [val, di.key('newetag')[1]])
 @try_catch
@@ -658,6 +661,7 @@ def gui():
 
     # Data from current selected object
     is3d        = False
+    iso2        = False
     isframe     = False
     blks        = {}
     minang      = -1.0
@@ -678,7 +682,7 @@ def gui():
     lblmnu      = 'Labels %t'
     if obj!=None:
         if obj.properties.has_key('is3d'):  is3d       = obj.properties['is3d']
-        else:      obj.properties['is3d']              = False
+        if obj.properties.has_key('iso2'):  iso2       = obj.properties['iso2']
         if obj.properties.has_key('mesh_type'):
             if obj.properties['mesh_type']=='frame': isframe = True
         if obj.properties.has_key('blks'):    blks     = obj.properties['blks']
@@ -704,7 +708,6 @@ def gui():
                 if obj.properties['res'][stage_num].has_key('lblmnu'):
                     lblmnu = obj.properties['res'][stage_num]['lblmnu']
         if obj.properties.has_key('res_nodes'): res_nodes = obj.properties['res_nodes']
-        else: obj.properties['res_nodes'] = ''
 
     # materials menu
     matmnu   = 'Materials %t'
@@ -819,15 +822,16 @@ def gui():
         Draw.ColorPicker (              EVT_NONE,          c+260, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
         Draw.PushButton  ('Face',       EVT_MESH_SETFTAG,  c+320, r, 60, rh,                              'Set faces tag (0 => remove tag)')
         r -= rh                         
-        Draw.Toggle      ('Frame Mesh', EVT_NONE,          c,     r, 80, rh, isframe,                     'Set frame (truss/beams only) mesh', cb_frame)
-        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newrtag'][0],    -100, 0, 'New reinforcement tag',             cb_rtag)
-        Draw.PushButton  ('Reinf',      EVT_MESH_SETRTAG,  c+140, r, 60, rh,                              'Set reinforcements tag (0 => remove tag)')
+        Draw.Toggle      ('Frame Mesh',         EVT_NONE,          c,     r,  80, rh, isframe,                     'Set frame (truss/beams only) mesh', cb_frame)
+        Draw.Toggle      ('Quadratic Elements', EVT_NONE,          c+ 80, r, 120, rh, iso2,                        'Generate quadratic (o2) elements' , cb_iso2)
+        Draw.Number      ('',                   EVT_NONE,          c+200, r,  60, rh, d['newrtag'][0],    -100, 0, 'New reinforcement tag',             cb_rtag)
+        Draw.PushButton  ('Reinforcement',      EVT_MESH_SETRTAG,  c+260, r, 120, rh,                              'Set reinforcements tag (0 => remove tag)')
         r -= rh
         r -= srg
-        Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 80, rh, 'Delete all edge tags')
-        Draw.PushButton  ('Del all FTags', EVT_MESH_DELALLFTAGS, c+ 80, r, 80, rh, 'Delete all face tags')
-        Draw.PushButton  ('Del all Reinf', EVT_MESH_DELALLRTAGS, c+160, r, 80, rh, 'Delete all reinforcement tags')
-        Draw.PushButton  ('Delete mesh',   EVT_MESH_DELMESH,     c+240, r, 80, rh, 'Delete current mesh')
+        Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 90, rh, 'Delete all edge tags')
+        Draw.PushButton  ('Del all FTags', EVT_MESH_DELALLFTAGS, c+ 90, r, 90, rh, 'Delete all face tags')
+        Draw.PushButton  ('Del all Reinf', EVT_MESH_DELALLRTAGS, c+180, r, 90, rh, 'Delete all reinforcement tags')
+        Draw.PushButton  ('Delete mesh',   EVT_MESH_DELMESH,     c+270, r, 80, rh, 'Delete current mesh')
         r -= rh
         r -= rh
 
