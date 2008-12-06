@@ -347,6 +347,7 @@ void PyAddReinfs (bool              Is3D,  ///< 3D ?
 
 	// Map element tag to index in EAtts list
 	int neatts = BPy::len(EAtts);
+	if (neatts<1) throw new Fatal("embedded.h::PyAddReinfs: EAtts, Element(reinforcement) Attributes, must contain at least one element");
 	std::map<int,int> tag2idx; 
 	for (int i=0; i<neatts; ++i)
 	{

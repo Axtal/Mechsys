@@ -63,6 +63,18 @@ if di.key('show_props'):
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
                         Draw.Text         (str(v.index))
 
+                # draw nodes IDs
+                if di.key('show_n_ids') and obj.properties.has_key('msh_name'):
+                    msh_obj = bpy.data.objects[obj.properties['msh_name']]
+                    msh_msh = msh_obj.getData(mesh=1)
+                    msh_ori = msh_msh.verts[:] # create a copy before transforming to global coordinates
+                    msh_msh.transform(msh_obj.matrix)
+                    BGL.glColor3f (1.0, 1.0, 0.0)
+                    for v in msh_msh.verts:
+                        BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
+                        Draw.Text         (str(v.index))
+                    msh_msh.verts = msh_ori # Resore mesh to local coordinates
+
                 # draw edges IDs
                 if di.key('show_e_ids'):
                     BGL.glColor3f (1.0, 1.0, 1.0)
@@ -208,12 +220,15 @@ if di.key('show_res'):
         if obj!=None and obj.type=='Mesh':
 
             # draw only if active layer corresponds to this object.Layer
-            if Blender.Window.GetActiveLayer()==obj.Layer and obj.properties.has_key('res'):
+            if Blender.Window.GetActiveLayer()==obj.Layer and obj.properties.has_key('res') and obj.properties.has_key('msh_name'):
+
+                # get msh object
+                msh_obj = bpy.data.objects[obj.properties['msh_name']]
 
                 # get mesh and transform to global coordinates
-                msh = obj.getData(mesh=1)
+                msh = msh_obj.getData(mesh=1)
                 ori = msh.verts[:] # create a copy before transforming to global coordinates
-                msh.transform(obj.matrix)
+                msh.transform(msh_obj.matrix)
 
                 # current stage
                 s = str(di.key('res_stage'))

@@ -206,6 +206,8 @@ def run_analysis(gen_script=False):
 
     # reinforcements
     reinf_verts, reinf_edges = get_reinforcements (obj, msh, is3d)
+    has_reinf = len(reinf_verts)>0 and len(reinf_edges)>0 and len(ratts)>0
+    print 'has_reinf = ', has_reinf
 
     if gen_script:
         # create new script
@@ -253,7 +255,7 @@ def run_analysis(gen_script=False):
             txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[7]))
 
         # reinforcement attributes
-        if len(reinf_verts)>0:
+        if has_reinf:
             nratt = len(ratts)
             txt.write ('\n# Reinforcement attributes\n')
             for i, ra in enumerate(ratts):
@@ -271,7 +273,7 @@ def run_analysis(gen_script=False):
         else:                  txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
 
         # set reinforcements
-        if len(reinf_verts)>0:
+        if has_reinf:
             txt.write ('\n# Set reinforcements\n')
             if is3d: txt.write ('ms.add_reinfs(True, # True=>3D\n')
             else:    txt.write ('ms.add_reinfs(False, # False=>2D\n')
@@ -369,15 +371,16 @@ def run_analysis(gen_script=False):
         for ea in eatts: elem_atts.append(ea[:7])
 
         # reinforcement attributes
-        reinf_atts = []
-        for ra in ratts: reinf_atts.append(ra[:7])
+        if has_reinf:
+            reinf_atts = []
+            for ra in ratts: reinf_atts.append(ra[:7])
 
         # set geometry: nodes, elements, and attributes
         if mesh_type=='frame': ms.set_nodes_elems (mesh, elem_atts, geo, 1.0e-5, True)
         else:                  ms.set_nodes_elems (mesh, elem_atts, geo)
 
         # set reinforcements
-        if len(reinf_verts)>0: ms.add_reinfs(is3d, reinf_verts, reinf_edges, reinf_atts, geo)
+        if has_reinf: ms.add_reinfs (is3d, reinf_verts, reinf_edges, reinf_atts, geo)
 
         # allocate solver
         sol = ms.solver ("ForwardEuler")
@@ -446,8 +449,8 @@ def save_results(out, geo, obj, stage_num):
     if not obj.properties.has_key('res'): obj.properties['res'] = {}
     obj.properties['res'][s] = {}
 
-    # menu with lables
-    obj.properties['res'][s]['idx2lbl'] = {} # map index to label key
+    # menu with labels
+    obj.properties['res'][s]['idx2lbl'] = {} # map label index to label key
     lbs = []
     out.get_labels (lbs)
     menu = 'Labels %t|'

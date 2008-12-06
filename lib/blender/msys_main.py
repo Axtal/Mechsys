@@ -57,6 +57,7 @@ EVT_REFRESH          =  1 # refresh all windows
 EVT_SET_SHOWHIDE     = 10 # show/hide SET box
 EVT_SET_SHOWONLY     = 11 # show only this box
 EVT_SET_DELPROPS     = 12 # delete all properties
+EVT_SET_HIDEALL      = 13 # hide all boxes
 # CAD
 EVT_CAD_SHOWHIDE     = 20 # show/hide CAD box
 EVT_CAD_SHOWONLY     = 21 # show/hide CAD box
@@ -123,6 +124,16 @@ EVT_RES_REPORT       = 303 # show statistics
 
 
 # ==================================================================================== Events
+
+def hide_all():
+    di.set_key('gui_show_set',  False)
+    di.set_key('gui_show_cad',  False)
+    di.set_key('gui_show_mesh', False)
+    di.set_key('gui_show_mat',  False)
+    di.set_key('gui_show_fem',  False)
+    di.set_key('gui_show_res',  False)
+    di.set_key('gui_inirow',    0)
+    Blender.Window.QRedrawAll()
 
 def show_only(key):
     di.set_key('gui_show_set',  False)
@@ -191,6 +202,8 @@ def button_event(evt):
                         o.removeProperty(p)
                 Blender.Window.QRedrawAll()
 
+    elif evt==EVT_SET_HIDEALL: hide_all()
+
     # ----------------------------------------------------------------------------------- CAD
 
     elif evt==EVT_CAD_SHOWHIDE: di.toggle_key('gui_show_cad')
@@ -251,6 +264,7 @@ def button_event(evt):
                 obj.properties.pop('mesh_type')
                 obj.properties.pop('msh_name')
                 obj.properties.pop('elems')
+                if obj.properties.has_key('res'): obj.properties.pop('res')
                 Blender.Window.QRedrawAll()
 
 
@@ -344,6 +358,8 @@ def cb_show_props(evt,val): di.set_key ('show_props', val)
 def cb_show_e_ids(evt,val): di.set_key ('show_e_ids', val)
 @try_catch
 def cb_show_v_ids(evt,val): di.set_key ('show_v_ids', val)
+@try_catch
+def cb_show_n_ids(evt,val): di.set_key ('show_n_ids', val)
 @try_catch
 def cb_show_blks (evt,val): di.set_key ('show_blks',  val)
 @try_catch
@@ -757,7 +773,7 @@ def gui():
     h_fem_eatts     = rh+srg+rh*len(eatts)*2
     h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
     h_fem           = 6*rh+srg+h_fem_stage if nstages>0 else 6*rh+srg
-    h_res_stage     = 5*rh
+    h_res_stage     = 4*rh
     h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
 
     # clear background
@@ -765,12 +781,12 @@ def gui():
 
     # ======================================================== Settings
 
-    gu.caption1(c,r,w,rh,'SETTINGS',EVT_REFRESH,EVT_SET_SHOWONLY,EVT_SET_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'SETTINGS',EVT_REFRESH,EVT_SET_HIDEALL,EVT_SET_SHOWONLY,EVT_SET_SHOWHIDE)
     if d['gui_show_set']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_set)
         Draw.Toggle ('ON/OFF',     EVT_NONE, c    , r-rh, 60, 2*rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
-        Draw.Toggle ('E IDs',      EVT_NONE, c+ 60, r,    60,   rh, d['show_e_ids'], 'Show edge IDs'          , cb_show_e_ids)
-        Draw.Toggle ('V IDs',      EVT_NONE, c+120, r,    60,   rh, d['show_v_ids'], 'Show vertex IDs'        , cb_show_v_ids)
+        Draw.Toggle ('V IDs',      EVT_NONE, c+ 60, r,    60,   rh, d['show_v_ids'], 'Show Vertex IDs'        , cb_show_v_ids)
+        Draw.Toggle ('N IDs',      EVT_NONE, c+120, r,    60,   rh, d['show_n_ids'], 'Show mesh Node IDs'     , cb_show_n_ids)
         Draw.Toggle ('Blocks',     EVT_NONE, c+180, r,    60,   rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks )
         Draw.Toggle ('Local Axes', EVT_NONE, c+240, r,    80,   rh, d['show_axes'],  'Show local system axes' , cb_show_axes )
         Draw.Toggle ('Regions',    EVT_NONE, c+320, r,    60,   rh, d['show_regs'],  'Show regions and holes' , cb_show_regs )
@@ -789,7 +805,7 @@ def gui():
 
     # ======================================================== CAD
 
-    gu.caption1(c,r,w,rh,'CAD',EVT_REFRESH,EVT_CAD_SHOWONLY,EVT_CAD_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'CAD',EVT_REFRESH,EVT_SET_HIDEALL,EVT_CAD_SHOWONLY,EVT_CAD_SHOWHIDE)
     if d['gui_show_cad']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_cad)
         Draw.String     ('X=',           EVT_NONE,        c,     r, 80, rh, d['cad_x'],128,     'Set the X value of the new point to be added',cb_set_x)
@@ -812,7 +828,7 @@ def gui():
 
     # ======================================================== Mesh
 
-    gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_MESH_SHOWONLY,EVT_MESH_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_SET_HIDEALL,EVT_MESH_SHOWONLY,EVT_MESH_SHOWHIDE)
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
         Draw.Toggle      ('3D mesh',    EVT_NONE,          c,     r, 80, rh, is3d,                        'Set 3D mesh',                       cb_is3d)
@@ -930,7 +946,7 @@ def gui():
 
     # ======================================================== Materials
 
-    gu.caption1(c,r,w,rh,'Materials',EVT_REFRESH,EVT_MAT_SHOWONLY,EVT_MAT_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'Materials',EVT_REFRESH,EVT_SET_HIDEALL,EVT_MAT_SHOWONLY,EVT_MAT_SHOWHIDE)
     if d['gui_show_mat']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_mat)
 
@@ -994,7 +1010,7 @@ def gui():
 
     # ======================================================== FEM
 
-    gu.caption1(c,r,w,rh,'FEM',EVT_REFRESH,EVT_FEM_SHOWONLY,EVT_FEM_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'FEM',EVT_REFRESH,EVT_SET_HIDEALL,EVT_FEM_SHOWONLY,EVT_FEM_SHOWHIDE)
     if d['gui_show_fem']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_fem)
 
@@ -1153,25 +1169,24 @@ def gui():
 
     # ======================================================== Results
 
-    gu.caption1(c,r,w,rh,'RESULTS',EVT_REFRESH,EVT_RES_SHOWONLY,EVT_RES_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'RESULTS',EVT_REFRESH,EVT_SET_HIDEALL,EVT_RES_SHOWONLY,EVT_RES_SHOWHIDE)
     if d['gui_show_res']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_res)
         gu.caption2(c,r,w,rh,'Stage #                  / %d'%(res_nstages))
         if (res_nstages>0):
             Draw.Number ('', EVT_NONE, c+55, r+2, 60, rh-4, d['res_stage'], 1,100,'Show results of specific stage', cb_res_stage)
             r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_res_stage)
-            Draw.Toggle ('ON/OFF',    EVT_NONE, c    , r-rh, 60, 2*rh, d['show_res'],             'Show results'               , cb_res_show)
-            Draw.Menu   (lblmnu,      EVT_NONE, c+ 60, r,    60,   rh, d['res_lbl']+1,            'Key such as ux, uy, fx, fz' , cb_res_lbl)
-            Draw.Toggle ('Scalar',    EVT_NONE, c+120, r,    60,   rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
-            Draw.String ('sf=' ,      EVT_NONE, c+180, r,    60,   rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
-            Draw.Toggle ('Warp',      EVT_NONE, c+240, r,    60,   rh, d['res_show_warp']   ,     'Show warped (deformed) mesh', cb_res_show_warp)
+            Draw.Toggle     ('ON/OFF',    EVT_NONE,      c    , r-rh, 60, 2*rh, d['show_res'],             'Show results'               , cb_res_show)
+            Draw.Menu       (lblmnu,      EVT_NONE,      c+ 60, r,    60,   rh, d['res_lbl']+1,            'Key such as ux, uy, fx, fz' , cb_res_lbl)
+            Draw.Toggle     ('Scalar',    EVT_NONE,      c+120, r,    60,   rh, d['res_show_scalar'] ,     'Show scalar values'         , cb_res_show_scalar)
+            Draw.String     ('sf=' ,      EVT_NONE,      c+180, r,    60,   rh, d['res_warp_scale']  , 32, 'Set warp (deformed) scale'  , cb_res_warp_scale)
+            Draw.Toggle     ('Warp',      EVT_NONE,      c+240, r,    60,   rh, d['res_show_warp']   ,     'Show warped (deformed) mesh', cb_res_show_warp)
+            Draw.PushButton ('Stats',     EVT_RES_STATS, c+300, r,    60,   rh,                             'Show statistics')
             r -= rh
-            Draw.Menu   (d['extmnu'], EVT_NONE, c+ 60, r,    60,   rh, d['res_ext']+1,            'Key such as N, M, V'     , cb_res_ext)
-            Draw.String ('sf=' ,      EVT_NONE, c+120, r,    60,   rh, d['res_ext_scale']  , 32,  'Set extra drawing scale' , cb_res_ext_scale)
-            Draw.Toggle ('Extra',     EVT_NONE, c+180, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
-            Draw.Toggle ('Values',    EVT_NONE, c+240, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
-            r -= rh
-            Draw.PushButton ('Stats',   EVT_RES_STATS, c, r, 60, rh, 'Show statistics')
+            Draw.Menu       (d['extmnu'], EVT_NONE,      c+ 60, r,    60,   rh, d['res_ext']+1,            'Key such as N, M, V'     , cb_res_ext)
+            Draw.String     ('sf=' ,      EVT_NONE,      c+120, r,    60,   rh, d['res_ext_scale']  , 32,  'Set extra drawing scale' , cb_res_ext_scale)
+            Draw.Toggle     ('Extra',     EVT_NONE,      c+180, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
+            Draw.Toggle     ('Values',    EVT_NONE,      c+240, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
             r, c, w = gu.box1_out(W,cg,rh, c,r)
         r -= rh
         r -= srg

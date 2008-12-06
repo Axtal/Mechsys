@@ -75,24 +75,26 @@ def report():
     for s, v in obj.properties['res'].iteritems():
         msg = stage_stats (int(s), False, False)
         for line in msg: f.write (line+'\n')
-        f.write ('\n\n')
+        f.write ('\n')
 
     # extra nodes
     if obj.properties.has_key('res_nodes'):
         if not obj.properties['res_nodes']=='':
             arr = obj.properties['res_nodes'].split(',')
             nds = [int(n) for n in arr]
-            lin = '\n %8s' % 'Node #'
-            for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems(): lin = '%s  %12s' % (lin,lbl)
-            lin += '\n'
-            print lin
-            #f.write (lin)
-            #for n in nds:
-                #lin = ' %8d  ' % n
-                #for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
-                    #res  = obj.properties['res'][s][lbl][n]
-                    #lin += '%s  %8.3e' % (lin,res)
-                #lin += '\n'
-                #f.write (lin)
+            for s, v in obj.properties['res'].iteritems():
+                f.write('\n===== Stage # '+s+' =========================================================\n')
+                lin = '\n %8s' % 'Node #'
+                for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
+                    lin = '%s  %12s' % (lin,lbl)
+                lin += '\n'
+                f.write (lin)
+                for n in nds:
+                    lin = ' %8d  ' % n
+                    for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
+                        res  = obj.properties['res'][s][lbl][n]
+                        lin += '%s  %8.3e' % (lin,res)
+                    lin += '\n'
+                    f.write (lin)
 
     f.close()

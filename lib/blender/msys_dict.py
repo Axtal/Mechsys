@@ -42,14 +42,15 @@ def load_dict():
         dict['gui_inirow']    = 0
         # SETTINGS
         dict['show_props']    = False
-        dict['show_e_ids']    = True
-        dict['show_v_ids']    = True
+        dict['show_e_ids']    = False # edges
+        dict['show_v_ids']    = False # vertices
+        dict['show_n_ids']    = True  # nodes (FE mesh)
         dict['show_blks']     = True
         dict['show_axes']     = True
         dict['show_regs']     = True
         dict['show_etags']    = True
         dict['show_ftags']    = True
-        dict['show_elems']    = True
+        dict['show_elems']    = False
         dict['show_opac']     = 0.3
         dict['show_rtags']    = True
         # CAD
@@ -169,8 +170,9 @@ def new_blk_props():
     edm, obj, msh = get_msh()
     eids          = get_selected_edges(msh)
     neds          = len(eids)
+    is3d          = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
     # check
-    if obj.properties['3dmesh']:
+    if is3d:
         if not (neds==12 or neds==24):
             if edm: Blender.Window.EditMode(1)
             raise Exception('To set a 3D block, 12 or 24 edges must be selected (%d is invalid)'%neds)
