@@ -125,21 +125,8 @@ def gen_frame_mesh(gen_script=False,txt=None):
 def gen_struct_mesh(gen_script=False,txt=None):
     Blender.Window.WaitCursor(1)
 
-    # get selected objects
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    if len(obs)>2: raise Exception('Please, select at most two Mesh objects')
-    if len(obs)==1 and obs[0].properties.has_key('rtags'): return # skip reinforcements
-
-    # find main object (skip reinforcements)
-    for o in obs:
-        if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
-        if not o.properties.has_key('rtags'): obj = o
-
-    # get mesh
-    edm = Blender.Window.EditMode()
-    if edm: Blender.Window.EditMode(0)
-    msh = obj.getData(mesh=1)
+    # get active object
+    edm, obj, msh = di.get_msh()
 
     # check for blocks
     if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')
@@ -222,18 +209,15 @@ def gen_struct_mesh(gen_script=False,txt=None):
         # new block
         if gen_script:
             txt.write('bks.append(ms.mesh_block())\n')
-            txt.write('bks[-1].set_coords('+str(int(v[0]))+',\n')
-            txt.write('                   '+str(verts)+',\n')
-            txt.write('                   '+str(edges)+',\n')
-            txt.write('                   '+str(etags)+',\n')
-            txt.write('                   '+str(ftags)+',\n')
-            txt.write('                   '+str(wx)+',\n')
-            txt.write('                   '+str(wy)+',\n')
-            txt.write('                   '+str(wz)+',\n')
-            txt.write('                   '+str(origin)+',\n')
-            txt.write('                   '+str(xp)+',\n')
-            txt.write('                   '+str(yp)+',\n')
-            txt.write('                   '+str(zp)+')\n')
+            txt.write('bks[-1].set_coords('+str(int(v[0]))+', # Tag\n')
+            txt.write('                   '+str(verts)+', # Vertices\n')
+            txt.write('                   '+str(edges)+', # Edges\n')
+            txt.write('                   '+str(etags)+', # Edge Tags\n')
+            txt.write('                   '+str(ftags)+', # Face Tags\n')
+            txt.write('                   '+str(wx)+', # X-Weights\n')
+            txt.write('                   '+str(wy)+', # Y-Weights\n')
+            txt.write('                   '+str(wz)+', # Z-Weights\n')
+            txt.write('                   '+str(origin)+', '+str(xp)+', '+str(yp)+', '+str(zp)+') # Origin, X-Plus, Y-Plus, Z-Plus\n')
         else:
             bks.append(ms.mesh_block())
             bks[-1].set_coords (int(v[0]),          # tag to be replicated to all elements
@@ -250,12 +234,12 @@ def gen_struct_mesh(gen_script=False,txt=None):
 
     # generate mesh and draw results
     if gen_script:
-        if is3d: txt.write('mesh = ms.mesh_structured(True)\n')
-        else:    txt.write('mesh = ms.mesh_structured(False)\n')
+        if is3d: txt.write('mesh = ms.mesh_structured(True) # True=>3D\n')
+        else:    txt.write('mesh = ms.mesh_structured(False) # False=>2D\n')
         txt.write('face_colours = '+fclrs.__str__()+'\n')
         txt.write('mesh.set_tol    (1.0e-4)\n')
         txt.write('mesh.set_blocks (bks)\n')
-        txt.write('mesh.generate   (True)\n')
+        txt.write('mesh.generate   (True) # True=>WithInfo\n')
         txt.write('me.add_mesh     (mesh, face_colours)\n')
     else:
         if len(bks)>0:
@@ -274,21 +258,8 @@ def gen_struct_mesh(gen_script=False,txt=None):
 def gen_unstruct_mesh(gen_script=False,txt=None):
     Blender.Window.WaitCursor(1)
 
-    # get selected objects
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    if len(obs)>2: raise Exception('Please, select at most two Mesh objects')
-    if len(obs)==1 and obs[0].properties.has_key('rtags'): return # skip reinforcements
-
-    # find main object (skip reinforcements)
-    for o in obs:
-        if o==None or o.type!='Mesh': raise Exception('Selected objects must be of Mesh type')
-        if not o.properties.has_key('rtags'): obj = o
-
-    # get mesh
-    edm = Blender.Window.EditMode()
-    if edm: Blender.Window.EditMode(0)
-    msh = obj.getData(mesh=1)
+    # get active object
+    edm, obj, msh = di.get_msh()
 
     # 3D mesh?
     is3d = obj.properties['3dmesh']
@@ -308,48 +279,74 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
             eid = int(k)
             etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
 
+    # get rverts and rtags
+    rverts = [] # vertices on reinforcements
+    rtags  = {} # reinforcements connectivities and edge IDs
+    if obj.properties.has_key('rtags'):
+        for k, v in obj.properties['rtags'].iteritems():
+            eid = int(k)
+            rverts.append (msh.edges[eid].v1.index)
+            rverts.append (msh.edges[eid].v2.index)
+            rtags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
+
+    # number of vertices and segments
+    nverts = len(msh.verts)-len(rverts)
+    nedges = len(msh.edges)-len(rtags)
+
     if gen_script:
         # unstructured mesh instance
         if txt==None:
             txt = Blender.Text.New(obj.name+'_umesh')
             txt.write('import mechsys   as ms\n')
             txt.write('import msys_mesh as me\n')
-        if is3d: txt.write('mesh = ms.mesh_unstructured(True)\n')
-        else:    txt.write('mesh = ms.mesh_unstructured(False)\n')
+        if is3d: txt.write('mesh = ms.mesh_unstructured(True) # True=>3D\n')
+        else:    txt.write('mesh = ms.mesh_unstructured(False) # False=>2D\n')
 
         # set polygon
-        txt.write('mesh.set_poly_size    (%d,%d,%d,%d)'%(len(msh.verts), len(msh.edges), nregs, nhols)+'\n')
+        txt.write('mesh.set_poly_size    (%d,%d,%d,%d)'%(nverts, nedges, nregs, nhols)+' # nVerts, nSegments, nRegs, nHols\n')
 
         # set vertices and edges
+        info = ' # VertIdx, X, Y, Z'
         for v in msh.verts:
-            txt.write('mesh.set_poly_point   (%d,%f,%f,%f)'%(v.index, v.co[0], v.co[1], v.co[2])+'\n')
+            if not v.index in rverts:
+                txt.write('mesh.set_poly_point   (%d,%g,%g,%g)'%(v.index, v.co[0], v.co[1], v.co[2])+info+'\n')
+                info = ''
+        info = ' # SegmentIdx, VertIdx1, VertIdx2, Tag'
         for e in msh.edges:
             key = (e.v1.index, e.v2.index)
-            if key in etags: txt.write('mesh.set_poly_segment (%d,%d,%d,%d)'%(e.index, e.v1.index, e.v2.index, etags[key])+'\n')
-            else:            txt.write('mesh.set_poly_segment (%d,%d,%d)'   %(e.index, e.v1.index, e.v2.index)+'\n')
+            if not key in rtags:
+                if key in etags: txt.write('mesh.set_poly_segment (%d,%d,%d,%d)'%(e.index, e.v1.index, e.v2.index, etags[key])+info+'\n')
+                else:            txt.write('mesh.set_poly_segment (%d,%d,%d)'   %(e.index, e.v1.index, e.v2.index)+info+'\n')
+                info = ''
 
         # set regions and holes
+        info = ' # RegIdx, Tag, MaxArea, X, Y, Z'
         if obj.properties.has_key('regs'):
             for k, v in obj.properties['regs'].iteritems():
-                txt.write('mesh.set_poly_region  (%d,%d,%f,%f,%f,%f)'%(int(k), int(v[0]), v[1], v[2], v[3], v[4])+'\n')
+                txt.write('mesh.set_poly_region  (%d,%d,%g,%g,%g,%g)'%(int(k), int(v[0]), v[1], v[2], v[3], v[4])+info+'\n')
+                info = ''
+        info = ' # HolIdx, X, Y, Z'
         if obj.properties.has_key('hols'):
             for k, v in obj.properties['hols'].iteritems():
-                txt.write('mesh.set_poly_hole    (%d,%f,%f,%f)'%(int(k), v[0], v[1], v[2])+'\n')
+                txt.write('mesh.set_poly_hole    (%d,%g,%g,%g)'%(int(k), v[0], v[1], v[2])+info+'\n')
+                info = ''
 
     else:
         # unstructured mesh instance
         mesh = ms.mesh_unstructured(is3d)
 
         # set polygon
-        mesh.set_poly_size (len(msh.verts), len(msh.edges), nregs, nhols)
+        mesh.set_poly_size (nverts, nedges, nregs, nhols)
 
         # set vertices and edges
         for v in msh.verts:
-            mesh.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
+            if not v.index in rverts:
+                mesh.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
         for e in msh.edges:
             key = (e.v1.index, e.v2.index)
-            if key in etags: mesh.set_poly_segment (e.index, e.v1.index, e.v2.index, etags[key])
-            else:            mesh.set_poly_segment (e.index, e.v1.index, e.v2.index)
+            if not key in rtags:
+                if key in etags: mesh.set_poly_segment (e.index, e.v1.index, e.v2.index, etags[key])
+                else:            mesh.set_poly_segment (e.index, e.v1.index, e.v2.index)
 
         # set regions and holes
         if obj.properties.has_key('regs'):
@@ -369,8 +366,8 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
     if gen_script:
         if maxa>0: txt.write('mesh.set_max_area_global  (%f)'%(maxa)+'\n')
         if mina>0: txt.write('mesh.set_min_angle_global (%f)'%(mina)+'\n')
-        txt.write('mesh.generate             (True)\n')
-        txt.write('me.add_mesh               (mesh)\n')
+        txt.write('mesh.generate         (True) # True=>WithInfo\n')
+        txt.write('me.add_mesh           (mesh)\n')
     else:
         if maxa>0: mesh.set_max_area_global  (maxa)
         if mina>0: mesh.set_min_angle_global (mina)

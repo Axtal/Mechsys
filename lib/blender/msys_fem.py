@@ -346,8 +346,8 @@ def run_analysis(gen_script=False):
         else:     txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
 
         # set reinforcements
-        for r in reinf:
-            print r
+        for r, t in reinf.iteritems():
+            print r, t
             #x0, y0, z0 = r
             #ms.add_reinf (r)
 
