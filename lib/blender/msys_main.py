@@ -121,6 +121,7 @@ EVT_RES_SHOWHIDE     = 300 # show/hide results box
 EVT_RES_SHOWONLY     = 301 # show only this box
 EVT_RES_STATS        = 302 # show statistics
 EVT_RES_REPORT       = 303 # show statistics
+EVT_RES_DELRES       = 304 # delete results
 
 
 # ==================================================================================== Events
@@ -346,6 +347,10 @@ def button_event(evt):
     elif evt==EVT_RES_SHOWONLY: show_only      ('gui_show_res')
     elif evt==EVT_RES_STATS:    re.stage_stats (di.key('res_stage'))
     elif evt==EVT_RES_REPORT:   re.report      ()
+    elif evt==EVT_RES_DELRES:
+        obj = di.get_obj()
+        if obj.properties.has_key('res'): obj.properties.pop('res')
+        Blender.Window.QRedrawAll()
 
 
 # ================================================================================= Callbacks
@@ -1187,6 +1192,7 @@ def gui():
         r -= srg
         Draw.String     ('',                 EVT_NONE,       c,     r, 200, rh, res_nodes,  256, 'List of node (separated by commas) to generate full output in report', cb_res_nodes)
         Draw.PushButton ('Generate report',  EVT_RES_REPORT, c+200, r, 120, rh,                  'Generate report')
+        Draw.PushButton ('Delete results ',  EVT_RES_DELRES, c+320, r, 100, rh,                  'Delete all results')
     r -= rg
 
 

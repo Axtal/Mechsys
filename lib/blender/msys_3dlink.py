@@ -219,11 +219,18 @@ if di.key('show_res'):
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
 
+            # find mesh type
+            with_mesh = False
+            mesh_type = obj.properties['mesh_type'] if obj.properties.has_key('mesh_type') else ''
+            if mesh_type=='frame': with_mesh = True
+            else: with_mesh = obj.properties.has_key('msh_name')
+
             # draw only if active layer corresponds to this object.Layer
-            if Blender.Window.GetActiveLayer()==obj.Layer and obj.properties.has_key('res') and obj.properties.has_key('msh_name'):
+            if Blender.Window.GetActiveLayer()==obj.Layer and obj.properties.has_key('res') and with_mesh:
 
                 # get msh object
-                msh_obj = bpy.data.objects[obj.properties['msh_name']]
+                if mesh_type=='frame': msh_obj = obj
+                else: msh_obj = bpy.data.objects[obj.properties['msh_name']]
 
                 # get mesh and transform to global coordinates
                 msh = msh_obj.getData(mesh=1)
