@@ -178,7 +178,7 @@ def try_catch(func):
     return wrapper
 
 # Handle button events
-#@try_catch
+@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
