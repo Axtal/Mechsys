@@ -384,11 +384,13 @@ def set_elems(obj, elems):
                         old_id = m
                         break
                 if old_id=='': # add new
+                    tid = di.props_push_new('texts', 'gam=20') # returns text_id  == tid
                     obj.properties[stg]['eatts'][str(id)]    = di.new_eatt_props()
                     obj.properties[stg]['eatts'][str(id)][0] = tag
-                    obj.properties[stg]['eatts'][str(id)][1] = vtk
+                    obj.properties[stg]['eatts'][str(id)][1] = di.key('vtk2ety')[vtk]
+                    obj.properties[stg]['eatts'][str(id)][3] = tid
                     id += 1
-                else: obj.properties[stg]['eatts'][old_id][1] = vtk
+                else: obj.properties[stg]['eatts'][old_id][1] = di.key('vtk2ety')[vtk]
 
 @print_timing
 def set_ebrys(obj):

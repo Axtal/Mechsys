@@ -160,28 +160,23 @@ def get_brys(obj,stg):
 def get_reinforcements(obj,is3d):
     reinf_verts = {}
     reinf_edges = {}
-    if obj.properties.has_key('rtags'):
-        edm = Blender.Window.EditMode()
-        if edm: Blender.Window.EditMode(0)
-        msh = obj.getData(mesh=1)
-        ori = msh.verts[:] # create a copy before transforming to global coordinates
-        msh.transform (obj.matrix)
-        for k, v in obj.properties['rtags'].iteritems():
-            eid = int(k)
-            tag = int(v[0])
+    if obj.properties.has_key('reinfs'):
+        vid = 0
+        eid = 0
+        for k, v in obj.properties['reinfs'].iteritems():
+            tag  = int(v[0])
+            v1   = vid
+            v2   = vid+1
+            vid += 2
             # vertices
-            v1 = msh.edges[eid].v1.index
-            v2 = msh.edges[eid].v2.index
             if is3d:
-                if not reinf_verts.has_key(v1): reinf_verts[v1] = (msh.verts[v1].co[0], msh.verts[v1].co[1], msh.verts[v1].co[2])
-                if not reinf_verts.has_key(v2): reinf_verts[v2] = (msh.verts[v2].co[0], msh.verts[v2].co[1], msh.verts[v2].co[2])
+                reinf_verts[v1] = (v[1],v[2],v[3])
+                reinf_verts[v2] = (v[4],v[5],v[6])
             else:
-                if not reinf_verts.has_key(v1): reinf_verts[v1] = (msh.verts[v1].co[0], msh.verts[v1].co[1])
-                if not reinf_verts.has_key(v2): reinf_verts[v2] = (msh.verts[v2].co[0], msh.verts[v2].co[1])
+                reinf_verts[v1] = (v[1],v[2])
+                reinf_verts[v2] = (v[4],v[5])
             # edges
             reinf_edges[(v1,v2)] = tag
-        msh.verts = ori # Restore mesh to local coordinates
-        if edm: Blender.Window.EditMode(1)
     return reinf_verts, reinf_edges
 
 

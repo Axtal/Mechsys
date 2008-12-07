@@ -73,10 +73,8 @@ EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
 EVT_MESH_SHOWONLY    = 41 # show only this box
 EVT_MESH_SETETAG     = 42 # set edges tag
 EVT_MESH_SETFTAG     = 43 # set faces tag
-EVT_MESH_SETRTAG     = 44 # set reinforcement
 EVT_MESH_DELALLETAGS = 45 # delete all edge tags
 EVT_MESH_DELALLFTAGS = 46 # delete all face tags
-EVT_MESH_DELALLRTAGS = 47 # delete all reinforcement tags
 EVT_MESH_DELMESH     = 48 # delete mesh object
 # Mesh -- structured
 EVT_MESH_ADDBLK      = 60 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
@@ -116,6 +114,8 @@ EVT_FEM_SCRIPT       = 202 # generate script for FEM
 EVT_FEM_PARAVIEW     = 203 # view in ParaView
 EVT_FEM_SAVESTAGES   = 204 # save stage info to a new object
 EVT_FEM_READSTAGES   = 205 # read stage info from another object
+EVT_FEM_ADDREINF     = 206 # add reinforcement
+EVT_FEM_DELALLREINF  = 207 # delete all reinforcements
 # Results
 EVT_RES_SHOWHIDE     = 300 # show/hide results box
 EVT_RES_SHOWONLY     = 301 # show only this box
@@ -242,17 +242,8 @@ def button_event(evt):
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1)
 
-    elif evt==EVT_MESH_SETRTAG:
-        tag = di.key('newrtag')[0]
-        edm, obj, msh = di.get_msh()
-        for eid in di.get_selected_edges(msh):
-            di.props_set_with_tag ('rtags', str(eid), tag, di.key('newrtag'))
-        Blender.Window.QRedrawAll()
-        if edm: Blender.Window.EditMode(1)
-
     elif evt==EVT_MESH_DELALLETAGS: di.props_del_all_tags('etags')
     elif evt==EVT_MESH_DELALLFTAGS: di.props_del_all_tags('ftags')
-    elif evt==EVT_MESH_DELALLRTAGS: di.props_del_all_tags('rtags')
     elif evt==EVT_MESH_DELMESH:
         obj = di.get_obj()
         if obj.properties.has_key('msh_name'):
@@ -314,6 +305,7 @@ def button_event(evt):
     elif evt==EVT_FEM_SHOWHIDE: di.toggle_key('gui_show_fem')
     elif evt==EVT_FEM_SHOWONLY: show_only    ('gui_show_fem')
 
+    elif evt==EVT_FEM_ADDREINF: di.props_push_new      ('reinfs', di.new_reinf_props())
     elif evt==EVT_FEM_ADDSTAGE: di.props_push_new_stage()
     elif evt==EVT_FEM_DELSTAGE: di.props_del_stage     ()
     elif evt==EVT_FEM_ADDNBRY:  di.props_push_new_fem  ([di.key('fem_stage')], 'nbrys', di.new_nbry_props())
@@ -325,6 +317,7 @@ def button_event(evt):
         sids = [k for k in obj.properties['stages']]
         di.props_push_new_fem (sids, 'eatts', di.new_eatt_props())
 
+    elif evt==EVT_FEM_DELALLREINF:  di.props_del_all('reinfs')
     elif evt==EVT_FEM_DELALLSTAGES: di.props_del_all_stages()
     elif evt==EVT_FEM_DELALLNBRY:   di.props_del_all_fem   (str(di.key('fem_stage')), 'nbrys')
     elif evt==EVT_FEM_DELALLNBID:   di.props_del_all_fem   (str(di.key('fem_stage')), 'nbsID')
@@ -379,8 +372,6 @@ def cb_show_ftags(evt,val): di.set_key ('show_ftags', val)
 def cb_show_elems(evt,val): di.set_key ('show_elems', val)
 @try_catch
 def cb_show_opac (evt,val): di.set_key ('show_opac',  val)
-@try_catch
-def cb_show_rtags(evt,val): di.set_key ('show_rtags', val)
 
 # ---------------------------------- CAD
 
@@ -413,8 +404,6 @@ def cb_etag  (evt,val): di.set_key      ('newetag', [val, di.key('newetag')[1]])
 def cb_ftag  (evt,val): di.set_key      ('newftag', [val, di.key('newftag')[1]])
 @try_catch
 def cb_fclr  (evt,val): di.set_key      ('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
-@try_catch
-def cb_rtag  (evt,val): di.set_key      ('newrtag', [val, di.key('newrtag')[1]])
 
 # ---------------------------------- Mesh -- structured
 
@@ -614,7 +603,37 @@ def cb_eatt_del     (evt,val):
 # ---------------------------------- FEM
 
 @try_catch
+def cb_show_reinfs(evt,val): di.set_key ('show_reinfs', val)
+@try_catch
 def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
+@try_catch
+def cb_fem_rtag (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 0, int(val))
+@try_catch
+def cb_fem_rP0  (evt,val):
+    x, y, z = Blender.Window.GetCursorPos()
+    di.props_set_item ('reinfs', evt-EVT_INC, 1, x)
+    di.props_set_item ('reinfs', evt-EVT_INC, 2, y)
+    di.props_set_item ('reinfs', evt-EVT_INC, 3, z)
+@try_catch
+def cb_fem_rx0  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 1, float(val))
+@try_catch
+def cb_fem_ry0  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 2, float(val))
+@try_catch
+def cb_fem_rz0  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 3, float(val))
+@try_catch
+def cb_fem_rP1  (evt,val):
+    x, y, z = Blender.Window.GetCursorPos()
+    di.props_set_item ('reinfs', evt-EVT_INC, 4, x)
+    di.props_set_item ('reinfs', evt-EVT_INC, 5, y)
+    di.props_set_item ('reinfs', evt-EVT_INC, 6, z)
+@try_catch
+def cb_fem_rx1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 4, float(val))
+@try_catch
+def cb_fem_ry1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 5, float(val))
+@try_catch
+def cb_fem_rz1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 6, float(val))
+@try_catch
+def cb_fem_rdel (evt,val): di.props_del      ('reinfs', evt-EVT_INC)
 @try_catch
 def cb_fem_stage (evt,val):
     obj = di.get_obj()
@@ -698,6 +717,7 @@ def gui():
     ebrys       = {}
     fbrys       = {}
     eatts       = {}
+    reinfs      = {}
     res_nstages = 0
     res_nodes   = ''
     lblmnu      = 'Labels %t'
@@ -729,6 +749,7 @@ def gui():
                 if obj.properties['res'][stage_num].has_key('lblmnu'):
                     lblmnu = obj.properties['res'][stage_num]['lblmnu']
         if obj.properties.has_key('res_nodes'): res_nodes = obj.properties['res_nodes']
+        if obj.properties.has_key('reinfs'):    reinfs    = obj.properties['reinfs']
 
     # materials menu
     matmnu   = 'Materials %t'
@@ -771,13 +792,14 @@ def gui():
     h_msh           = 9*rh+srg+h_msh_stru+h_msh_unst
     h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats)
     h_mat           = 3*rh+h_mat_mats
+    h_fem_reinf     = 2*rh+(srg+2*rh)*len(reinfs)-srg
     h_fem_nbrys     = rh+srg+rh*len(nbrys)
     h_fem_nbsID     = rh+srg+rh*len(nbsID)
     h_fem_ebrys     = rh+srg+rh*len(ebrys)
     h_fem_fbrys     = rh+srg+rh*len(fbrys)
     h_fem_eatts     = rh+srg+rh*len(eatts)*2+srg*len(eatts)
     h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
-    h_fem           = 6*rh+srg+h_fem_stage if nstages>0 else 6*rh+srg
+    h_fem           = 6*rh+srg+h_fem_reinf+h_fem_stage if nstages>0 else 6*rh+srg
     h_res_stage     = 4*rh
     h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
 
@@ -800,7 +822,6 @@ def gui():
         Draw.Toggle ('F Tags',     EVT_NONE, c+120, r,    60,   rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
         Draw.Toggle ('Elems',      EVT_NONE, c+180, r,    60,   rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
         Draw.Slider ('',           EVT_NONE, c+240, r,    80,   rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
-        Draw.Toggle ('Reinf',      EVT_NONE, c+320, r,    60,   rh, d['show_rtags'], 'Show reinforcement tags', cb_show_rtags)
         r -= rh
         r -= srg
         Draw.PushButton ('Delete all properties', EVT_SET_DELPROPS, c, r, 200, rh, 'Delete all properties')
@@ -845,14 +866,11 @@ def gui():
         r -= rh                         
         Draw.Toggle      ('Frame Mesh',         EVT_NONE,          c,     r,  80, rh, isframe,                     'Set frame (truss/beams only) mesh', cb_frame)
         Draw.Toggle      ('Quadratic Elements', EVT_NONE,          c+ 80, r, 120, rh, iso2,                        'Generate quadratic (o2) elements' , cb_iso2)
-        Draw.Number      ('',                   EVT_NONE,          c+200, r,  60, rh, d['newrtag'][0],    -100, 0, 'New reinforcement tag',             cb_rtag)
-        Draw.PushButton  ('Reinforcement',      EVT_MESH_SETRTAG,  c+260, r, 120, rh,                              'Set reinforcements tag (0 => remove tag)')
         r -= rh
         r -= srg
         Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 90, rh, 'Delete all edge tags')
         Draw.PushButton  ('Del all FTags', EVT_MESH_DELALLFTAGS, c+ 90, r, 90, rh, 'Delete all face tags')
-        Draw.PushButton  ('Del all Reinf', EVT_MESH_DELALLRTAGS, c+180, r, 90, rh, 'Delete all reinforcement tags')
-        Draw.PushButton  ('Delete mesh',   EVT_MESH_DELMESH,     c+270, r, 80, rh, 'Delete current mesh')
+        Draw.PushButton  ('Delete mesh',   EVT_MESH_DELMESH,     c+180, r, 80, rh, 'Delete current mesh')
         r -= rh
         r -= rh
 
@@ -1015,6 +1033,33 @@ def gui():
 
         Draw.PushButton ('Save stage/mats info', EVT_FEM_SAVESTAGES, c,     r, 140, rh, 'Save stage and materials information to a new object')
         Draw.PushButton ('Read stage/mats info', EVT_FEM_READSTAGES, c+140, r, 140, rh, 'Read stage and materials information from another object')
+        Draw.Toggle     ('Show Reinfs',          EVT_NONE,           c+280, r,  80, rh, d['show_reinfs'], 'Show reinforcements', cb_show_reinfs)
+        r -= rh
+        r -= rh
+
+        # ----------------------- FEM -- reinforcements
+
+        gu.caption2_(c,r,w,rh,'Reinforcements',EVT_FEM_ADDREINF,EVT_FEM_DELALLREINF)
+        if len(reinfs)>0:
+            r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_reinf)
+            gu.text(c,r,'     Tag                        X0/X1            Y0/Y1           X0/Z1')
+            for k, v in reinfs.iteritems():
+                r -= rh
+                i  = int(k)
+                Draw.Number     ('',       EVT_INC+i, c,     r-rh, 60, 2*rh,  int(v[0]), -100, 0, 'New reinforcement tag',   cb_fem_rtag)
+                Draw.PushButton ('Get P0', EVT_INC+i, c+ 60, r,    60,   rh,                      'Get P0 of reinforcement', cb_fem_rP0)
+                Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[1],   32,     'X0: start point',         cb_fem_rx0)
+                Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[2],   32,     'Y0: start point',         cb_fem_ry0)
+                Draw.String     ('',       EVT_INC+i, c+280, r,    80,   rh, '%g'%v[3],   32,     'Z0: start point',         cb_fem_rz0)
+                r -= rh                                            
+                Draw.PushButton ('Get P1', EVT_INC+i, c+ 60, r,    60,   rh,                      'Get P1 of reinforcement', cb_fem_rP1)
+                Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[4],   32,     'X1: end point',           cb_fem_rx1)
+                Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[5],   32,     'Y1: end point',           cb_fem_ry1)
+                Draw.String     ('',       EVT_INC+i, c+280, r,    80,   rh, '%g'%v[6],   32,     'Z1: end point',           cb_fem_rz1)
+                Draw.PushButton ('Del',    EVT_INC+i, c+360, r,    40, 2*rh,                      'Delete this row',         cb_fem_rdel)
+                r -= srg
+            r += srg
+            r, c, w = gu.box2__out(W,cg,rh, c,r)
         r -= rh
         r -= rh
 

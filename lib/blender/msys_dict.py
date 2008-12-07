@@ -52,7 +52,6 @@ def load_dict():
         dict['show_ftags']    = True
         dict['show_elems']    = False
         dict['show_opac']     = 0.3
-        dict['show_rtags']    = True
         # CAD
         dict['cad_x']         = '0.0'
         dict['cad_y']         = '0.0'
@@ -64,6 +63,7 @@ def load_dict():
         dict['newftag']       = [-100, 0x000080] # tag, colour (face)
         dict['newrtag']       = [-10, 0]         # tag, type   (reinforcement)
         # FEM
+        dict['show_reinfs']   = True  # show reinforcements
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
         # RESULTS
@@ -232,6 +232,7 @@ def new_mat_props():
                  0.0,     #  16:  c  -- cohesion
                 20.0 ]    #  17:  phi -- friction angle
 
+def new_reinf_props(): return [-10, 0.0,0.0,0.0, 1.0,1.0,0.0]   # tag, x0,y0,z0, x1,y1,z1
 def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1]          # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime, active?
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val

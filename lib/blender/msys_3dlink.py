@@ -26,7 +26,7 @@ import msys_dict as di
 
 
 # Transformation matrix
-if di.key('show_props') or di.key('show_res'):
+if di.key('show_props') or di.key('show_res') or di.key('show_reinfs'):
     # Buffer
     view_matrix = Window.GetPerspMatrix()
     view_buffer = [view_matrix[i][j] for i in xrange(4) for j in xrange(4)]
@@ -92,23 +92,6 @@ if di.key('show_props'):
                             pos = msh.edges[eid].v1.co + 0.60*(msh.edges[eid].v2.co-msh.edges[eid].v1.co)
                             BGL.glRasterPos3f (pos[0], pos[1], pos[2])
                             Draw.Text         (str(v[0]))
-
-                # draw reinforcement tags
-                if di.key('show_rtags'):
-                    if obj.properties.has_key('rtags'):
-                        BGL.glColor3f (0.730, 0.681, 1.0)
-                        for k, v in obj.properties['rtags'].iteritems():
-                            eid = int(k)
-                            ed  = msh.edges[eid]
-                            # text
-                            pos = ed.v1.co + 0.60*(ed.v2.co-ed.v1.co)
-                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                            Draw.Text         (str(v[0]))
-                            # line
-                            BGL.glBegin    (BGL.GL_LINES)
-                            BGL.glVertex3f (ed.v1.co[0], ed.v1.co[1], ed.v1.co[2])
-                            BGL.glVertex3f (ed.v2.co[0], ed.v2.co[1], ed.v2.co[2])
-                            BGL.glEnd      ()
 
                 # draw face tags
                 if di.key('show_ftags'):
@@ -205,6 +188,33 @@ if di.key('show_props'):
 
                 # Resore mesh to local coordinates
                 msh.verts = ori
+
+
+# draw reinforcement tags
+if di.key('show_reinfs'):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for obj in obs:
+        if obj!=None and obj.type=='Mesh':
+
+            # draw only if active layer corresponds to this object.Layer
+            if Blender.Window.GetActiveLayer()==obj.Layer:
+
+                if obj.properties.has_key('reinfs'):
+                    BGL.glColor3f (0.730, 0.681, 1.0)
+                    for k, v in obj.properties['reinfs'].iteritems():
+                        # text
+                        xc = (v[1]+v[4])/2.0
+                        yc = (v[2]+v[5])/2.0
+                        zc = (v[3]+v[6])/2.0
+                        BGL.glRasterPos3f (xc,yc,zc)
+                        Draw.Text         (str(v[0]))
+                        # line
+                        BGL.glBegin    (BGL.GL_LINES)
+                        BGL.glVertex3f (v[1],v[2],v[3])
+                        BGL.glVertex3f (v[4],v[5],v[6])
+                        BGL.glEnd      ()
+
 
 def sgn(val):
     if val<0: return -1
