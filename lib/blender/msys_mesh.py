@@ -276,19 +276,9 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
             eid = int(k)
             etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
 
-    # get rverts and rtags
-    rverts = [] # vertices on reinforcements
-    rtags  = {} # reinforcements connectivities and edge IDs
-    if obj.properties.has_key('rtags'):
-        for k, v in obj.properties['rtags'].iteritems():
-            eid = int(k)
-            rverts.append (msh.edges[eid].v1.index)
-            rverts.append (msh.edges[eid].v2.index)
-            rtags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
-
     # number of vertices and segments
-    nverts = len(msh.verts)-len(rverts)
-    nedges = len(msh.edges)-len(rtags)
+    nverts = len(msh.verts)
+    nedges = len(msh.edges)
 
     if gen_script:
         # unstructured mesh instance
@@ -307,16 +297,14 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
         # set vertices and edges
         info = ' # VertIdx, X, Y, Z'
         for v in msh.verts:
-            if not v.index in rverts:
-                txt.write('mesh.set_poly_point   (%d,%g,%g,%g)'%(v.index, v.co[0], v.co[1], v.co[2])+info+'\n')
-                info = ''
+            txt.write('mesh.set_poly_point   (%d,%g,%g,%g)'%(v.index, v.co[0], v.co[1], v.co[2])+info+'\n')
+            info = ''
         info = ' # SegmentIdx, VertIdx1, VertIdx2, Tag'
         for e in msh.edges:
             key = (e.v1.index, e.v2.index)
-            if not key in rtags:
-                if key in etags: txt.write('mesh.set_poly_segment (%d,%d,%d,%d)'%(e.index, e.v1.index, e.v2.index, etags[key])+info+'\n')
-                else:            txt.write('mesh.set_poly_segment (%d,%d,%d)'   %(e.index, e.v1.index, e.v2.index)+info+'\n')
-                info = ''
+            if key in etags: txt.write('mesh.set_poly_segment (%d,%d,%d,%d)'%(e.index, e.v1.index, e.v2.index, etags[key])+info+'\n')
+            else:            txt.write('mesh.set_poly_segment (%d,%d,%d)'   %(e.index, e.v1.index, e.v2.index)+info+'\n')
+            info = ''
 
         # set regions and holes
         info = ' # RegIdx, Tag, MaxArea, X, Y, Z'
@@ -340,13 +328,11 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
 
         # set vertices and edges
         for v in msh.verts:
-            if not v.index in rverts:
-                mesh.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
+            mesh.set_poly_point (v.index, v.co[0], v.co[1], v.co[2])
         for e in msh.edges:
             key = (e.v1.index, e.v2.index)
-            if not key in rtags:
-                if key in etags: mesh.set_poly_segment (e.index, e.v1.index, e.v2.index, etags[key])
-                else:            mesh.set_poly_segment (e.index, e.v1.index, e.v2.index)
+            if key in etags: mesh.set_poly_segment (e.index, e.v1.index, e.v2.index, etags[key])
+            else:            mesh.set_poly_segment (e.index, e.v1.index, e.v2.index)
 
         # set regions and holes
         if obj.properties.has_key('regs'):
