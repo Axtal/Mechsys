@@ -113,10 +113,6 @@ int main(int argc, char **argv) try
 	nbrys.Push (make_tuple(    W, 0.0, 0.0, "uy", 0.0)); // x,y,z, key, val
 	nbrys.Push (make_tuple(W/2.0,   H, 0.0, "fy",  -P)); // x,y,z, key, val
 
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-30, "uy", 0.0)); // tag, key, val
-
 	// Elements attributes
 	FEM::EAtts_T eatts;
 	if (is_o2) eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true)); // tag, type, model, prms, inis, props
@@ -131,7 +127,7 @@ int main(int argc, char **argv) try
 	AddReinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", true, -30, &g);
 
 	// Set boundary conditions
-	FEM::SetBrys (&mesh, &nbrys, &ebrys, NULL, &g);
+	FEM::SetBrys (&mesh, &nbrys, NULL, NULL, &g);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");

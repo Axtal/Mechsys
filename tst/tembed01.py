@@ -56,9 +56,6 @@ nbrys = [[  0.0, 0.0, 0.0, "ux", 0.0],
          [    W, 0.0, 0.0, "uy", 0.0],
          [W/2.0,   H, 0.0, "fy",  -P]]
 
-# Edges brys
-ebrys = [[-30, "uy", 0.0]]
-
 # Elements attributes
 if (is_o2): eatts = [[-1, "Quad8PStrain", "LinElastic", "E=1.0 nu=0.0", "ZERO", "", True]]
 else:       eatts = [[-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "ZERO", "", True]]
@@ -82,7 +79,7 @@ else:
                    g)                                          # geometry
 
 # Set boundary conditions
-ms.set_brys (mesh, nbrys, ebrys, [], g)
+ms.set_brys (mesh, nbrys, [], [], g)
 
 # Solve
 sol = ms.solver     ("ForwardEuler")
