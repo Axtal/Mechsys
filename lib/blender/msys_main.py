@@ -1083,7 +1083,10 @@ def gui():
             gu.caption3(c,r,w,rh,'Edges boundary conditions', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_ebrys)
             gu.text(c,r,'    Tag       Key     Value')
-            for k, v in ebrys.iteritems():
+            etags = [(int(v[0]),k) for k, v in ebrys.iteritems()]
+            etags.sort(reverse=True)
+            for tag, k in etags:
+                v  = ebrys[k]
                 r -= rh
                 i  = int(k)
                 Draw.Number     ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_ebry_settag)
@@ -1099,7 +1102,10 @@ def gui():
             gu.caption3(c,r,w,rh,'Faces boundary conditions', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_fbrys)
             gu.text(c,r,'    Tag        Colour     Key     Value')
-            for k, v in fbrys.iteritems():
+            ftags = [(int(v[0]),k) for k, v in fbrys.iteritems()]
+            ftags.sort(reverse=True)
+            for tag, k in ftags:
+                v   = fbrys[k]
                 r  -= rh
                 i   = int(k)
                 clr = di.hex2rgb(v[3])
@@ -1124,7 +1130,10 @@ def gui():
                         fstg = 'stg_'+k
                         break
                 featts = obj.properties[fstg]['eatts'] if obj.properties[fstg].has_key('eatts') else {} # first stage eatts
-            for k, v in eatts.iteritems():
+            etags = [(int(v[0]),k) for k, v in eatts.iteritems()]
+            etags.sort(reverse=True)
+            for tag, k in etags:
+                v     = eatts[k]
                 r    -= rh
                 i     = int(k)
                 tid   = int(v[3])       # text id
@@ -1203,7 +1212,7 @@ Draw.Register (gui, event, button_event)
 # ================================================================================ ScriptLink
 
 # Load script for View3D drawing
-dict       = di.load_dict()
+msdict     = di.load_dict()
 script_lnk = 'msys_3dlink.py'
 script_dir = Blender.Get('scriptsdir')+Blender.sys.sep
 if script_lnk in [t.name for t in Blender.Text.Get()]:
