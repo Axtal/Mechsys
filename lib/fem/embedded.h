@@ -375,8 +375,8 @@ void PyAddReinfs (bool              Is3D,  ///< 3D ?
 		//std::cout << "Edge: tag="<<tag << ", v0="<<v0 << ", v1="<<v1 << ", x0="<<x0 << ", y0="<<y0 << ", z0="<<z0 << ", x1="<<x1 << ", y1="<<y1 << ", z1="<<z1 << std::endl;
 		
 		// Find element attributes
-		std::map<int,int>::const_iterator iter = tag2idx.find(tag);
-		if (iter==tag2idx.end()) throw new Fatal("embedded.h::PyAddReinfs: Could not find tag < %s > in the list of Element Attributes", tag);
+		std::map<int,int>::iterator iter = tag2idx.find(tag);
+		if (iter==tag2idx.end()) throw new Fatal("embedded.h::PyAddReinfs: Could not find tag < %d > in the list of Element Attributes", tag);
 		int idx_eatt = iter->second;
 
 		// Add reinforcement to FE geometry
