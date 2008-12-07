@@ -373,6 +373,7 @@ def set_elems(obj, elems):
         if not obj.properties[stg].has_key('eatts'): obj.properties[stg]['eatts'] = {} 
         temp = {}
         id   = 0
+        while obj.properties[stg]['eatts'].has_key(str(id)): id += 1
         for k, v in elems.iteritems():
             tag = int(v[0])
             vtk = int(v[1])
@@ -401,6 +402,7 @@ def set_ebrys(obj):
             if not obj.properties[stg].has_key('ebrys'): obj.properties[stg]['ebrys'] = {} 
             temp = {}
             id   = 0
+            while obj.properties[stg]['ebrys'].has_key(str(id)): id += 1
             for k, v in obj.properties['etags'].iteritems():
                 tag = int(v[0])
                 if not temp.has_key(tag):
@@ -426,6 +428,7 @@ def set_fbrys(obj):
             if not obj.properties[stg].has_key('fbrys'): obj.properties[stg]['fbrys'] = {} 
             temp = {}
             id   = 0
+            while obj.properties[stg]['fbrys'].has_key(str(id)): id += 1
             for k, v in obj.properties['ftags'].iteritems():
                 tag = int(v[0])
                 if not temp.has_key(tag):
@@ -450,6 +453,9 @@ def add_mesh(obj, mesh, mesh_type):
         scn      = bpy.data.scenes.active
         scn.objects.unlink (old_msh)
     else: msh_name = obj.name+'_msh'
+
+    # delete results
+    if obj.properties.has_key('res'): obj.properties.pop('res')
 
     # add new object/mesh to Blender
     scn                        = bpy.data.scenes.active
