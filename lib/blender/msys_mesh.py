@@ -381,21 +381,28 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
 
 @print_timing
 def set_elems(obj, elems):
-    # delete old eatts from all stages
-    sids = [k for k in obj.properties['stages']]
-    di.props_del_all_fem (sids, 'eatts', False)
-    # loop over element tags
     obj.properties['elems'] = elems
-    temp                    = {}
-    for k, v in elems.iteritems():
-        tag = int(v[0])
-        vtk = int(v[1])
-        if not temp.has_key(tag):
-            temp[tag] = True
-            eatt      = di.new_eatt_props()
-            eatt[0]   = tag
-            eatt[1]   = di.key('vtk2ety')[vtk]
-            di.props_push_new_fem (sids, 'eatts', eatt)
+    for sid in obj.properties['stages']:
+        stg = 'stg_'+sid
+        if not obj.properties[stg].has_key('eatts'): obj.properties[stg]['eatts'] = {} 
+        temp = {}
+        id   = 0
+        for k, v in elems.iteritems():
+            tag = int(v[0])
+            vtk = int(v[1])
+            if not temp.has_key(tag):
+                temp[tag] = True
+                old_id    = ''
+                for m, n in obj.properties[stg]['eatts'].iteritems(): # find old tag
+                    if int(n[0])==tag:
+                        old_id = m
+                        break
+                if old_id=='': # add new
+                    obj.properties[stg]['eatts'][str(id)]    = di.new_eatt_props()
+                    obj.properties[stg]['eatts'][str(id)][0] = tag
+                    obj.properties[stg]['eatts'][str(id)][1] = vtk
+                    id += 1
+                else: obj.properties[stg]['eatts'][old_id][1] = vtk
 
 @print_timing
 def set_ebrys(obj):
