@@ -909,16 +909,16 @@ def gui():
 
         gu.caption3(c,r,w,rh, 'Regions', EVT_MESH_ADDREG,EVT_MESH_DELALLREGS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_unst_regs)
-        gu.text(c,r,'  ID:Tag    max area        X             Y            Z')
+        gu.text(c,r,'     ID:Tag      max area        X             Y            Z')
         for k, v in regs.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 60, rh, int(v[0]), -100,-1,'Region tag',                  cb_regs_tag)
-            Draw.String     ('',         EVT_INC+i, c+ 60, r, 60, rh, '%g'%v[1],   32,   'Max area (-1 => use default)',cb_regs_maxarea)
-            Draw.String     ('',         EVT_INC+i, c+120, r, 60, rh, '%g'%v[2],   32,   'X of the region',             cb_regs_setx)
-            Draw.String     ('',         EVT_INC+i, c+180, r, 60, rh, '%g'%v[3],   32,   'Y of the region',             cb_regs_sety)
-            Draw.String     ('',         EVT_INC+i, c+240, r, 60, rh, '%g'%v[4],   32,   'Z of the region',             cb_regs_setz)
-            Draw.PushButton ('Del',      EVT_INC+i, c+300, r, 40, rh,                    'Delete this row',             cb_regs_del)
+            Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 80, rh, int(v[0]), -100,-1,'Region tag',                  cb_regs_tag)
+            Draw.String     ('',         EVT_INC+i, c+ 80, r, 60, rh, '%g'%v[1],   32,   'Max area (-1 => use default)',cb_regs_maxarea)
+            Draw.String     ('',         EVT_INC+i, c+140, r, 60, rh, '%g'%v[2],   32,   'X of the region',             cb_regs_setx)
+            Draw.String     ('',         EVT_INC+i, c+200, r, 60, rh, '%g'%v[3],   32,   'Y of the region',             cb_regs_sety)
+            Draw.String     ('',         EVT_INC+i, c+260, r, 60, rh, '%g'%v[4],   32,   'Z of the region',             cb_regs_setz)
+            Draw.PushButton ('Del',      EVT_INC+i, c+320, r, 40, rh,                    'Delete this row',             cb_regs_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
 
