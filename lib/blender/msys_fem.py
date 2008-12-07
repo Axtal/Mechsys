@@ -157,10 +157,15 @@ def get_brys(obj,stg):
     return nbrys, nbsID, ebrys, fbrys
 
 
-def get_reinforcements(obj,msh,is3d):
+def get_reinforcements(obj,is3d):
     reinf_verts = {}
     reinf_edges = {}
     if obj.properties.has_key('rtags'):
+        edm = Blender.Window.EditMode()
+        if edm: Blender.Window.EditMode(0)
+        msh = obj.getData(mesh=1)
+        ori = msh.verts[:] # create a copy before transforming to global coordinates
+        msh.transform (obj.matrix)
         for k, v in obj.properties['rtags'].iteritems():
             eid = int(k)
             tag = int(v[0])
@@ -175,6 +180,8 @@ def get_reinforcements(obj,msh,is3d):
                 if not reinf_verts.has_key(v2): reinf_verts[v2] = (msh.verts[v2].co[0], msh.verts[v2].co[1])
             # edges
             reinf_edges[(v1,v2)] = tag
+        msh.verts = ori # Restore mesh to local coordinates
+        if edm: Blender.Window.EditMode(1)
     return reinf_verts, reinf_edges
 
 
@@ -182,7 +189,7 @@ def run_analysis(gen_script=False):
     Blender.Window.WaitCursor(1)
 
     # get active object
-    edm, obj, msh = di.get_msh()
+    obj = di.get_obj()
 
     # check mesh type
     if obj.properties.has_key('mesh_type'): mesh_type = obj.properties['mesh_type']
@@ -205,7 +212,7 @@ def run_analysis(gen_script=False):
     ndim = 3 if is3d else 2
 
     # reinforcements
-    reinf_verts, reinf_edges = get_reinforcements (obj, msh, is3d)
+    reinf_verts, reinf_edges = get_reinforcements (obj, is3d)
     has_reinf = len(reinf_verts)>0 and len(reinf_edges)>0 and len(ratts)>0
     print 'has_reinf = ', has_reinf
 

@@ -73,7 +73,7 @@ if di.key('show_props'):
                     for v in msh_msh.verts:
                         BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
                         Draw.Text         (str(v.index))
-                    msh_msh.verts = msh_ori # Resore mesh to local coordinates
+                    msh_msh.verts = msh_ori # restore mesh to local coordinates
 
                 # draw edges IDs
                 if di.key('show_e_ids'):
