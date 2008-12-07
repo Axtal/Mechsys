@@ -19,6 +19,32 @@
 import Blender
 from   Blender import Draw, BGL
 
+def caption1_clr():
+    #BGL.glColor3f (0.4, 0.4, 0.4)
+    BGL.glColor3f (0.573, 0.512, 0.585)
+
+def caption2_clr():
+    #BGL.glColor3f (0.431, 0.443, 0.514)
+    BGL.glColor3f (0.573, 0.512, 0.585)
+
+def caption3_clr():
+    #BGL.glColor3f (0.53, 0.54, 0.6)
+    BGL.glColor3f (0.573, 0.512, 0.585)
+
+def box1_clr():
+    #BGL.glColor3f (0.85, 0.85, 0.85)
+    #BGL.glColor3f (0.553, 0.553, 0.718)
+    BGL.glColor3f (0.656, 0.696, 0.617)
+
+def box2_clr():
+    #BGL.glColor3f (0.72, 0.72, 0.8)
+    BGL.glColor3f (0.667, 0.667, 0.729)
+
+def box3_clr():
+    #BGL.glColor3f (0.82, 0.82, 0.9)
+    BGL.glColor3f (0.7, 0.75, 0.7)
+
+
 def label(txt, c,r,w,h):
     BGL.glColor3f     (0.663, 0.663, 0.663)
     BGL.glRecti       (c, r, c+w, r+h)
@@ -56,11 +82,12 @@ def text(c,r, txt):
     Draw.Text         (txt)
 
 def background():
-    BGL.glClearColor (0.531, 0.543, 0.614, 0.0)
+    #BGL.glClearColor (0.531, 0.543, 0.614, 0.0)
+    BGL.glClearColor (0.725, 0.725, 0.725, 0.0)
     BGL.glClear      (Blender.BGL.GL_COLOR_BUFFER_BIT)
 
 def caption1(c,r,w,rh, lab, evt_refresh,evt_hideall,evt_showonly,evt_showhide):
-    BGL.glColor3f     (0.4, 0.4, 0.4)
+    caption1_clr      ()
     BGL.glRecti       (c, r, c+w, r+int(1.3*rh))
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
@@ -71,7 +98,7 @@ def caption1(c,r,w,rh, lab, evt_refresh,evt_hideall,evt_showonly,evt_showhide):
     Draw.PushButton   ('Show/Hide', evt_showhide, c+w-5-70,          r+3, 70, rh-4, 'Show/Hide this box')
 
 def box1_in(W,cg,rh, c,r,w,h):
-    BGL.glColor3f (0.85, 0.85, 0.85)
+    box1_clr      ()
     BGL.glRecti   (c,r-h,c+w,r)
     return r-2*rh, c+cg, W-2*(c+cg)
 
@@ -79,14 +106,14 @@ def box1_out(W,cg,rh, c,r):
     return r-rh, c-cg, W-2*(c-cg)
 
 def caption2(c,r,w,rh, lab):
-    BGL.glColor3f     (0.431, 0.443, 0.514)
+    caption2_clr      ()
     BGL.glRecti       (c, r, c+w, r+rh)
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
     Draw.Text         (lab)
 
 def caption2_(c,r,w,rh, lab, evt_add,evt_delall):
-    BGL.glColor3f     (0.431, 0.443, 0.514)
+    caption2_clr      ()
     BGL.glRecti       (c, r, c+w, r+rh)
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
@@ -95,7 +122,7 @@ def caption2_(c,r,w,rh, lab, evt_add,evt_delall):
     Draw.PushButton   ('Delete all', evt_delall, c+w-5-80,    r+2, 80, rh-4, 'Delete all ')
 
 def caption2__(c,r,w,rh, lab, evt_add,evt_del,evt_delall):
-    BGL.glColor3f     (0.431, 0.443, 0.514)
+    caption2_clr      ()
     BGL.glRecti       (c, r, c+w, r+rh)
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
@@ -105,12 +132,12 @@ def caption2__(c,r,w,rh, lab, evt_add,evt_del,evt_delall):
     Draw.PushButton   ('Delete all', evt_delall, c+w-5-80,       r+2, 80, rh-4, 'Delete all ')
 
 def box2_in(W,cg,rh, c,r,w,h):
-    BGL.glColor3f (0.72, 0.72, 0.8)
+    box2_clr      ()
     BGL.glRecti   (c,r-h,c+w,r)
     return r-2*rh, c+cg, W-2*(c+cg)
 
 def box2__in(W,cg,rh, c,r,w,h):
-    BGL.glColor3f (0.72, 0.72, 0.8)
+    box2_clr      ()
     BGL.glRecti   (c,r-h,c+w,r)
     return r-rh, c+cg, W-2*(c+cg)
 
@@ -121,7 +148,7 @@ def box2__out(W,cg,rh, c,r):
     return r-rh, c-cg, W-2*(c-cg)
 
 def caption3(c,r,w,rh, lab, evt_add,evt_delall):
-    BGL.glColor3f     (0.53, 0.54, 0.6)
+    caption3_clr      ()
     BGL.glRecti       (c, r, c+w, r+rh)
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
@@ -130,14 +157,14 @@ def caption3(c,r,w,rh, lab, evt_add,evt_delall):
     Draw.PushButton   ('Delete all', evt_delall, c+w-5-80,    r+2, 80, rh-4, 'Delete all ')
 
 def caption3_(c,r,w,rh, lab):
-    BGL.glColor3f     (0.53, 0.54, 0.6)
+    caption3_clr      ()
     BGL.glRecti       (c, r, c+w, r+rh)
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
     Draw.Text         (lab)
 
 def box3_in(W,cg,rh, c,r,w,h):
-    BGL.glColor3f (0.82, 0.82, 0.9)
+    box3_clr      ()
     BGL.glRecti   (c,r-h,c+w,r)
     return r-rh, c+cg, W-2*(c+cg)
 
