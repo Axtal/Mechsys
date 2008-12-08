@@ -56,11 +56,12 @@ if di.key('show_props'):
                 ori = msh.verts[:] # create a copy before transforming to global coordinates
                 msh.transform(obj.matrix)
 
-                # show duplicated edges
-                if obj.properties.has_key('dupl'):
-                    BGL.glColor3f (0.0, 0.757, 1.0)
-                    for eid in obj.properties['dupl']:
+                # show overlapping edges
+                if obj.properties.has_key('over'):
+                    for i, eid in enumerate(obj.properties['over']):
                         ed = msh.edges[eid]
+                        if i%2==0: BGL.glColor3f (0.0, 0.757, 1.0)
+                        else:      BGL.glColor3f (0.0, 0.0,   0.9)
                         BGL.glBegin    (BGL.GL_LINES)
                         BGL.glVertex3f (ed.v1.co[0], ed.v1.co[1], ed.v1.co[2])
                         BGL.glVertex3f (ed.v2.co[0], ed.v2.co[1], ed.v2.co[2])

@@ -373,28 +373,33 @@ def cb_show_elems(evt,val): di.set_key ('show_elems', val)
 @try_catch
 def cb_show_opac (evt,val): di.set_key ('show_opac',  val)
 @try_catch
-def cb_markdup(evt,val):
+def cb_over(evt,val):
     TOL = 1.0e-4
     edm, obj, msh = di.get_msh()
     if val: # mark
         nedges = len(msh.edges)
-        dupl   = []
+        over   = []
         for i in range(nedges):
             v1 = msh.edges[i].v1.co
             v2 = msh.edges[i].v2.co
+            uu = v2-v1
             for j in range(i+1,nedges):
-                v3  = msh.edges[j].v1.co
-                v4  = msh.edges[j].v2.co
-                d13 = (v1-v3).length
-                d14 = (v1-v4).length
-                d23 = (v2-v3).length
-                d24 = (v2-v4).length
-                if (d13<TOL and d24<TOL) or (d14<TOL and d23<TOL): # duplicated
-                    dupl.append(i)
-                    dupl.append(j)
-        if len(dupl)>0: obj.properties['dupl'] = dupl
+                v3 = msh.edges[j].v1.co
+                v4 = msh.edges[j].v2.co
+                t3 = (v2[2]*v3[2]-v1[2]*v3[2]-v1[2]*v2[2]+v1[2]**2.0+v2[1]*v3[1]-v1[1]*v3[1]-v1[1]*v2[1]+v1[1]**2.0+v2[0]*v3[0]-v1[0]*v3[0]-v1[0]*v2[0]+v1[0]**2.0)/(v2[2]**2.0-2.0*v1[2]*v2[2]+v1[2]**2.0+v2[1]**2.0-2.0*v1[1]*v2[1]+v1[1]**2.0+v2[0]**2.0-2.0*v1[0]*v2[0]+v1[0]**2.0)
+                t4 = (v2[2]*v4[2]-v1[2]*v4[2]-v1[2]*v2[2]+v1[2]**2.0+v2[1]*v4[1]-v1[1]*v4[1]-v1[1]*v2[1]+v1[1]**2.0+v2[0]*v4[0]-v1[0]*v4[0]-v1[0]*v2[0]+v1[0]**2.0)/(v2[2]**2.0-2.0*v1[2]*v2[2]+v1[2]**2.0+v2[1]**2.0-2.0*v1[1]*v2[1]+v1[1]**2.0+v2[0]**2.0-2.0*v1[0]*v2[0]+v1[0]**2.0)
+                w3 = v1+t3*uu
+                w4 = v1+t4*uu
+                if ((v3-w3).length<TOL) and ((v4-w4).length<TOL): # parallel at the same supporting line
+                    if (t3>0.0 and t3<1.0) or (t4>0.0 and t4<1.0): # overlapping
+                        over.append(i)
+                        over.append(j)
+        if len(over)>0:
+            obj.properties['over'] = over
+            Blender.Draw.PupMenu('Found %d overlapping edges'%len(over))
+        else: Blender.Draw.PupMenu('Could not find any overlapping edges')
     else:
-        if obj.properties.has_key('dupl'): obj.properties.pop('dupl')
+        if obj.properties.has_key('over'): obj.properties.pop('over')
     Blender.Window.QRedrawAll()
 
 # ---------------------------------- CAD
@@ -724,7 +729,7 @@ def gui():
     except Exception, inst: edm, obj, msh = 0, None, None
 
     # Data from current selected object
-    markdup     = False
+    markover    = False
     is3d        = False
     iso2        = False
     isframe     = False
@@ -747,7 +752,7 @@ def gui():
     res_nodes   = ''
     lblmnu      = 'Labels %t'
     if obj!=None:
-        if obj.properties.has_key('dupl'):  markdup    = True
+        if obj.properties.has_key('over'):  markover   = True
         if obj.properties.has_key('is3d'):  is3d       = obj.properties['is3d']
         if obj.properties.has_key('iso2'):  iso2       = obj.properties['iso2']
         if obj.properties.has_key('mesh_type'):
@@ -851,8 +856,8 @@ def gui():
         Draw.Toggle ('Nodes',      EVT_NONE, c+320, r,    60,   rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
         r -= rh
         r -= srg
-        Draw.PushButton ('Delete all properties', EVT_SET_DELPROPS, c,     r, 200, rh, 'Delete all properties')
-        Draw.Toggle     ('Mark duplicated edges', EVT_NONE,         c+200, r, 160, rh, markdup, 'Mark duplicated edges', cb_markdup)
+        Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 200, rh,           'Delete all properties')
+        Draw.Toggle     ('Mark overlapping edges', EVT_NONE,         c+200, r, 160, rh, markover, 'Mark overlapping edges', cb_over)
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
