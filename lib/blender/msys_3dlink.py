@@ -102,35 +102,19 @@ if di.key('show_props'):
                             eid = int(k)
                             pos = msh.edges[eid].v1.co + 0.60*(msh.edges[eid].v2.co-msh.edges[eid].v1.co)
                             BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                            Draw.Text         (str(v[0]))
+                            Draw.Text         (str(v))
 
                 # draw face tags
                 if di.key('show_ftags'):
                     if obj.properties.has_key('ftags'):
-                        BGL.glBlendFunc (BGL.GL_SRC_ALPHA, BGL.GL_ONE)
                         for k, v in obj.properties['ftags'].iteritems():
-                            clr      = di.hex2rgb(v[1])
                             ids      = [int(id) for id in k.split('_')]
                             eds, vds = di.sort_edges_and_verts (msh, ids, msh.edges[ids[0]].v1.index) # will erase ids
                             cen      = msh.verts[vds[0]].co/len(eds)
-                            for i in range(1,len(eds)):
-                                cen += msh.verts[vds[i]].co/len(eds)
-                            BGL.glColor4f     (clr[0], clr[1], clr[2], di.key('show_opac'))
-                            if di.key('show_opac')<0.9:
-                                BGL.glEnable  (BGL.GL_BLEND)
-                                BGL.glDisable (BGL.GL_DEPTH_TEST)
-                            BGL.glBegin       (BGL.GL_TRIANGLE_FAN)
-                            BGL.glVertex3f    (cen[0], cen[1], cen[2])
-                            for i in range(len(eds)):
-                                BGL.glVertex3f(msh.verts[vds[i]].co[0], msh.verts[vds[i]].co[1], msh.verts[vds[i]].co[2])
-                            BGL.glVertex3f    (msh.verts[vds[0]].co[0], msh.verts[vds[0]].co[1], msh.verts[vds[0]].co[2])
-                            BGL.glEnd         ()
-                            if di.key('show_opac')<0.9:
-                                BGL.glDisable (BGL.GL_BLEND)
-                                BGL.glEnable  (BGL.GL_DEPTH_TEST)
+                            for i in range(1,len(eds)): cen += msh.verts[vds[i]].co/len(eds)
                             BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
-                            Draw.Text         (str(v[0]))
+                            Draw.Text         (str(v))
 
                 # draw block IDs
                 if di.key('show_blks'):

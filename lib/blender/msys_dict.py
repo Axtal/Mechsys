@@ -59,9 +59,9 @@ def load_dict():
         dict['cad_rad']       = '0.0'
         dict['cad_stp']       = 10
         # MESH
-        dict['newetag']       = [-10, 0]         # tag, type   (edge)
-        dict['newftag']       = [-100, 0x000080] # tag, colour (face)
-        dict['newrtag']       = [-10, 0]         # tag, type   (reinforcement)
+        dict['newetag']       = -10
+        dict['newftag']       = -100
+        dict['newrtag']       = -10
         # FEM
         dict['show_reinfs']   = True  # show reinforcements
         dict['fem_stage']     = 0     # stage ID
@@ -238,7 +238,7 @@ def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1]          # number, idx_de
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val
-def new_fbry_props():  return [-100, 0, 0.0, key('newftag')[1]] # tag, ux, val, colour
+def new_fbry_props():  return [-100, 0, 0.0]                    # tag, ux, val
 def new_eatt_props():  return [-1, 2, -1, -1, 1, 0, 0]          # tag, ElemType, MaterialID, idx_props(in texts), active?, activate?, deactivate?
 
 
@@ -302,6 +302,7 @@ def props_set_val(key, val):
 
 def props_del_all(key):
     obj = get_obj()
+    if not obj.properties.has_key(key): return
     msg = 'Confirm delete ALL?%t|Yes'
     res  = Blender.Draw.PupMenu(msg)
     if res>0:
@@ -439,6 +440,7 @@ def props_del_stage():
 
 def props_del_all_stages(with_confirmation=True):
     obj = get_obj()
+    if not obj.properties.has_key('stages'): return
     if with_confirmation:
         msg = 'Confirm delete ALL stages?%t|Yes'
         res = Blender.Draw.PupMenu(msg)

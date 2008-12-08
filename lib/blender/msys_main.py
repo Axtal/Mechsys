@@ -178,7 +178,7 @@ def try_catch(func):
     return wrapper
 
 # Handle button events
-@try_catch
+#@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -223,7 +223,7 @@ def button_event(evt):
     elif evt==EVT_MESH_SHOWONLY: show_only    ('gui_show_mesh')
 
     elif evt==EVT_MESH_SETETAG:
-        tag = di.key('newetag')[0]
+        tag = di.key('newetag')
         edm, obj, msh = di.get_msh()
         for eid in di.get_selected_edges(msh):
             di.props_set_with_tag ('etags', str(eid), tag, di.key('newetag'))
@@ -231,7 +231,7 @@ def button_event(evt):
         if edm: Blender.Window.EditMode(1)
 
     elif evt==EVT_MESH_SETFTAG:
-        tag = di.key('newftag')[0]
+        tag = di.key('newftag')
         edm, obj, msh = di.get_msh()
         sel           = di.get_selected_edges(msh)
         nedges        = len(sel)
@@ -428,11 +428,9 @@ def cb_frame (evt,val):
         if obj.properties.has_key('mesh_type'): obj.properties.pop('mesh_type')
         Blender.Window.QRedrawAll()
 @try_catch
-def cb_etag  (evt,val): di.set_key      ('newetag', [val, di.key('newetag')[1]])
+def cb_etag  (evt,val): di.set_key      ('newetag', val)
 @try_catch
-def cb_ftag  (evt,val): di.set_key      ('newftag', [val, di.key('newftag')[1]])
-@try_catch
-def cb_fclr  (evt,val): di.set_key      ('newftag', [di.key('newftag')[0], di.rgb2hex(val)])
+def cb_ftag  (evt,val): di.set_key      ('newftag', val)
 
 # ---------------------------------- Mesh -- structured
 
@@ -586,17 +584,6 @@ def cb_fbry_setkey(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', e
 def cb_fbry_setval(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC, 2, float(val))
 @try_catch
 def cb_fbry_del   (evt,val): di.props_del_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC)
-@try_catch
-def cb_fbry_setclr(evt,val):
-    obj = di.get_obj()
-    id  = str(evt-EVT_INC)
-    tag = obj.properties['fbrys'][id][0]
-    clr = di.rgb2hex(val)
-    if obj.properties.has_key('ftags'):
-        for k, v in obj.properties['ftags'].iteritems():
-            if int(v[0])==tag: obj.properties['ftags'][k][1] = clr
-    obj.properties['fbrys'][id][3] = clr
-    Blender.Window.QRedrawAll()
 
 # ---------------------------------- FEM -- eatts
 
@@ -830,7 +817,7 @@ def gui():
     h_fem_fbrys     = rh+srg+rh*len(fbrys)
     h_fem_eatts     = rh+srg+rh*len(eatts)*2+srg*len(eatts)
     h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
-    h_fem           = 6*rh+srg+h_fem_reinf+h_fem_stage if nstages>0 else 6*rh+srg
+    h_fem           = 6*rh+srg+h_fem_reinf+h_fem_stage if nstages>0 else 6*rh+srg+h_fem_reinf
     h_res_stage     = 4*rh
     h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
 
@@ -890,15 +877,14 @@ def gui():
     gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_SET_HIDEALL,EVT_MESH_SHOWONLY,EVT_MESH_SHOWHIDE)
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
-        Draw.Toggle      ('3D mesh',    EVT_NONE,          c,     r, 80, rh, is3d,                        'Set 3D mesh',                       cb_is3d)
-        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newetag'][0],    -100, 0, 'New edge tag',                      cb_etag)
-        Draw.PushButton  ('Edge',       EVT_MESH_SETETAG,  c+140, r, 60, rh,                              'Set edges tag (0 => remove tag)')
-        Draw.Number      ('',           EVT_NONE,          c+200, r, 60, rh, d['newftag'][0],   -1000, 0, 'New face tag',                      cb_ftag)
-        Draw.ColorPicker (              EVT_NONE,          c+260, r, 60, rh, di.hex2rgb(d['newftag'][1]), 'Select color to paint tagged face', cb_fclr)
-        Draw.PushButton  ('Face',       EVT_MESH_SETFTAG,  c+320, r, 60, rh,                              'Set faces tag (0 => remove tag)')
+        Draw.Toggle      ('3D mesh',    EVT_NONE,          c,     r, 80, rh, is3d,                     'Set 3D mesh',                       cb_is3d)
+        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newetag'],    -100, 0, 'New edge tag',                      cb_etag)
+        Draw.PushButton  ('Edge',       EVT_MESH_SETETAG,  c+140, r, 60, rh,                           'Set edges tag (0 => remove tag)')
+        Draw.Number      ('',           EVT_NONE,          c+200, r, 60, rh, d['newftag'],   -1000, 0, 'New face tag',                      cb_ftag)
+        Draw.PushButton  ('Face',       EVT_MESH_SETFTAG,  c+260, r, 60, rh,                           'Set faces tag (0 => remove tag)')
         r -= rh                         
-        Draw.Toggle      ('Frame Mesh',         EVT_NONE,          c,     r,  80, rh, isframe,                     'Set frame (truss/beams only) mesh', cb_frame)
-        Draw.Toggle      ('Quadratic Elements', EVT_NONE,          c+ 80, r, 120, rh, iso2,                        'Generate quadratic (o2) elements' , cb_iso2)
+        Draw.Toggle      ('Frame Mesh',         EVT_NONE,          c,     r,  80, rh, isframe,         'Set frame (truss/beams only) mesh', cb_frame)
+        Draw.Toggle      ('Quadratic Elements', EVT_NONE,          c+ 80, r, 120, rh, iso2,            'Generate quadratic (o2) elements' , cb_iso2)
         r -= rh
         r -= srg
         Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 90, rh, 'Delete all edge tags')
@@ -1126,7 +1112,7 @@ def gui():
 
             gu.caption3(c,r,w,rh,'Nodes boundary conditions (X-Y-Y)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
-            gu.text(c,r,'     X             Y             Z        Key      Value')
+            gu.text(c,r,'     X             Y             Z         Key        Value')
             for k, v in nbrys.iteritems():
                 r -= rh
                 i  = int(k)
@@ -1144,7 +1130,7 @@ def gui():
             r -= srg
             gu.caption3(c,r,w,rh,'Nodes boundary conditions (given IDs)', EVT_FEM_ADDNBID,EVT_FEM_DELALLNBID)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbsID)
-            gu.text(c,r,'     ID        Key     Value')
+            gu.text(c,r,'     ID         Key        Value')
             for k, v in nbsID.iteritems():
                 r -= rh
                 i  = int(k)
@@ -1160,7 +1146,7 @@ def gui():
             r -= srg
             gu.caption3(c,r,w,rh,'Edges boundary conditions', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_ebrys)
-            gu.text(c,r,'    Tag       Key     Value')
+            gu.text(c,r,'    Tag        Key        Value')
             etags = [(int(v[0]),k) for k, v in ebrys.iteritems()]
             etags.sort(reverse=True)
             for tag, k in etags:
@@ -1179,19 +1165,17 @@ def gui():
             r -= srg
             gu.caption3(c,r,w,rh,'Faces boundary conditions', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_fbrys)
-            gu.text(c,r,'    Tag        Colour     Key     Value')
+            gu.text(c,r,'    Tag        Key        Value')
             ftags = [(int(v[0]),k) for k, v in fbrys.iteritems()]
             ftags.sort(reverse=True)
             for tag, k in ftags:
                 v   = fbrys[k]
                 r  -= rh
                 i   = int(k)
-                clr = di.hex2rgb(v[3])
                 Draw.Number      ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_fbry_settag)
-                Draw.ColorPicker (             EVT_INC+i, c+ 60, r, 60, rh, clr,               'Select color to paint tagged face',                                          cb_fbry_setclr)
-                Draw.Menu        (d['dfvmnu'], EVT_INC+i, c+120, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
-                Draw.String      ('',          EVT_INC+i, c+180, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
-                Draw.PushButton  ('Del',       EVT_INC+i, c+240, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
+                Draw.Menu        (d['dfvmnu'], EVT_INC+i, c+ 60, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
+                Draw.String      ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
+                Draw.PushButton  ('Del',       EVT_INC+i, c+180, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 

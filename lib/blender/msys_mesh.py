@@ -57,7 +57,7 @@ def gen_frame_mesh(txt=None):
     if obj.properties.has_key('etags'):
         for k, v in obj.properties['etags'].iteritems():
             eid = int(k)
-            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
+            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v
 
     if txt!=None:
         if is3d: txt.write ('mesh = ms.mesh_generic(True) # True=>3D\n')
@@ -186,7 +186,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
         if obj.properties.has_key('etags'):
             for m, n in obj.properties['etags'].iteritems():
                 e = int(m)
-                if e in eids: etags[(msh.edges[e].v1.index, msh.edges[e].v2.index)] = n[0]
+                if e in eids: etags[(msh.edges[e].v1.index, msh.edges[e].v2.index)] = n
 
         # ftags
         ftags = {}
@@ -199,7 +199,7 @@ def gen_struct_mesh(gen_script=False,txt=None):
                     if not i in eids:
                         face_is_in_block = False
                         break
-                if face_is_in_block: ftags[tuple(eds)] = n[0]
+                if face_is_in_block: ftags[tuple(eds)] = n
 
         # new block
         if gen_script:
@@ -274,7 +274,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
     if obj.properties.has_key('etags'):
         for k, v in obj.properties['etags'].iteritems():
             eid = int(k)
-            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v[0]
+            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v
 
     # number of vertices and segments
     nverts = len(msh.verts)
@@ -430,7 +430,7 @@ def set_fbrys(obj):
             id   = 0
             while obj.properties[stg]['fbrys'].has_key(str(id)): id += 1
             for k, v in obj.properties['ftags'].iteritems():
-                tag = int(v[0])
+                tag = int(v)
                 if not temp.has_key(tag):
                     temp[tag] = True
                     old_id    = ''
@@ -441,7 +441,6 @@ def set_fbrys(obj):
                     if old_id=='': # add new
                         obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
                         obj.properties[stg]['fbrys'][str(id)][0] = tag
-                        obj.properties[stg]['fbrys'][str(id)][3] = 0
                         id += 1
 
 @print_timing
