@@ -17,6 +17,11 @@
 ########################################################################
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
+	ADD_EXECUTABLE        (tnewele01   tnewele01.cpp)
+	ADD_TEST              (tnewele01   tnewele01)
+	TARGET_LINK_LIBRARIES (tnewele01   ${LIBS})
+	SET_TARGET_PROPERTIES (tnewele01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (texcav02   texcav02.cpp)
 	ADD_TEST              (texcav02   texcav02)
 	TARGET_LINK_LIBRARIES (texcav02   ${LIBS})
