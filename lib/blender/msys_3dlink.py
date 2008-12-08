@@ -56,6 +56,16 @@ if di.key('show_props'):
                 ori = msh.verts[:] # create a copy before transforming to global coordinates
                 msh.transform(obj.matrix)
 
+                # show duplicated edges
+                if obj.properties.has_key('dupl'):
+                    BGL.glColor3f (0.0, 0.757, 1.0)
+                    for eid in obj.properties['dupl']:
+                        ed = msh.edges[eid]
+                        BGL.glBegin    (BGL.GL_LINES)
+                        BGL.glVertex3f (ed.v1.co[0], ed.v1.co[1], ed.v1.co[2])
+                        BGL.glVertex3f (ed.v2.co[0], ed.v2.co[1], ed.v2.co[2])
+                        BGL.glEnd      ()
+
                 # draw vertices IDs
                 if di.key('show_v_ids'):
                     BGL.glColor3f (1.0, 1.0, 0.0)
