@@ -76,8 +76,11 @@ public:
 	Element               * Ele          (size_t i)       { return _elems[i];     } ///< Access (read/write) an element
 	Node            const * Nod          (size_t i) const { return _nodes[i];     } ///< Access (read-only) a node
 	Element         const * Ele          (size_t i) const { return _elems[i];     } ///< Access (read-only) an element
-	void                    PushNode     (Node * N)       { _nodes.Push(N);       } ///< Push back a new node
-	void                    PushElem     (Element * E)    { _elems.Push(E);       } ///< Push back a new element
+	size_t                  PushNode     (Node * N)       { _nodes.Push(N); return _nodes.Size()-1; } ///< Push back a new node
+	size_t                  PushElem     (Element * E)    { _elems.Push(E); return _elems.Size()-1; } ///< Push back a new element
+	size_t                  PushNode     (double X, double Y, double Z=0.0, int Tag=0);               ///< Push back a new node
+	size_t                  PushElem     (int Tag, char const * Type, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> & Connectivity); ///< Push back a new element
+	size_t                  GetNode      (double X, double Y, double Z=0.0);        ///< Returns the node ID that matchs the specified coordinates
 	Array<Node*>          & Nodes        ()               { return _nodes;        } ///< Access all nodes (read/write)
 	Array<Element*>       & Elems        ()               { return _elems;        } ///< Access all elements (read/write)
 	Array<Node*>    const & Nodes        ()         const { return _nodes;        } ///< Access all nodes (read-only)
@@ -190,9 +193,50 @@ inline bool Geom::Check()
 	return true; // OK
 }
 
+inline size_t Geom::PushNode(double X, double Y, double Z, int Tag)  
+{
+	// Allocate new node
+	Node * new_node;
+	new_node = new Node;
+	_nodes.Push(new_node);
+	size_t ID = _nodes.Size()-1;
+	new_node->Initialize(ID, X, Y, Z, Tag);
+	return ID;
+}
+
+inline size_t Geom::PushElem(int Tag, char const * Type, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> & Connectivity )
+{
+	// Alocate new element
+	Element * new_elem;
+	new_elem = AllocElement(Type);
+	_elems.Push(new_elem);
+	size_t ID = _elems.Size()-1;
+	new_elem->Initialize(_elems.Size()-1, IsActive, _dim, Tag);
+	
+	// Connector (EmbSpring) connectivities
+	if (new_elem->NNodes()!=Connectivity.Size()) throw new Fatal("Geom::PushElem: The number of nodes in Connectivity does not match. (Element ID %d)", ID);
+	for (size_t i=0; i<new_elem->NNodes(); i++)
+		new_elem->Connect(i, _nodes[Connectivity[i]]);
+
+	// Set the model 
+	new_elem->SetModel(Model, Prms, Inis);
+	new_elem->SetProps(Props);
+	return ID;
+}
+
+inline size_t Geom::GetNode(double X, double Y, double Z)
+{
+	for (size_t i=0; i<_nodes.Size(); i++)
+	{
+		if( _nodes[i]->X()==X && _nodes[i]->Y()==Y && _nodes[i]->Z()==Z) return i;
+		std::cout << _nodes[i]->X() << " " << _nodes[i]->Y() << " " << _nodes[i]->Z();
+	}
+	throw new Fatal("Geom::GetNode: Node not found (%g, %g, %g)", X, Y, Z);
+}
+
 inline Array<Element*> & Geom::ElemsWithTag(int Tag)
 {
-	if (_elem_tag_idx.count(Tag)==0) throw new Fatal("Geom::Elems: This Tag==%d was not set for any Element",Tag);
+	if (_elem_tag_idx.count(Tag)==0) throw new Fatal("Geom::ElemsWithTag: This Tag==%d was not set for any Element",Tag);
 	return _elems_with_tags[_elem_tag_idx[Tag]];
 }
 
