@@ -44,7 +44,7 @@ def load_dict():
         dict['show_props']    = False
         dict['show_e_ids']    = False # edges
         dict['show_v_ids']    = False # vertices
-        dict['show_n_ids']    = True  # nodes (FE mesh)
+        dict['show_n_ids']    = False # nodes (FE mesh)
         dict['show_blks']     = True
         dict['show_axes']     = True
         dict['show_regs']     = True

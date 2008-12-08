@@ -813,15 +813,16 @@ def gui():
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_set)
         Draw.Toggle ('ON/OFF',     EVT_NONE, c    , r-rh, 60, 2*rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
         Draw.Toggle ('V IDs',      EVT_NONE, c+ 60, r,    60,   rh, d['show_v_ids'], 'Show Vertex IDs'        , cb_show_v_ids)
-        Draw.Toggle ('N IDs',      EVT_NONE, c+120, r,    60,   rh, d['show_n_ids'], 'Show mesh Node IDs'     , cb_show_n_ids)
-        Draw.Toggle ('Blocks',     EVT_NONE, c+180, r,    60,   rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks )
-        Draw.Toggle ('Local Axes', EVT_NONE, c+240, r,    80,   rh, d['show_axes'],  'Show local system axes' , cb_show_axes )
+        Draw.Toggle ('E IDs',      EVT_NONE, c+120, r,    60,   rh, d['show_e_ids'], 'Show Edges IDs'         , cb_show_e_ids)
+        Draw.Toggle ('Local Axes', EVT_NONE, c+180, r,    80,   rh, d['show_axes'],  'Show local system axes' , cb_show_axes )
+        Draw.Toggle ('Blocks',     EVT_NONE, c+260, r,    60,   rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks )
         Draw.Toggle ('Regions',    EVT_NONE, c+320, r,    60,   rh, d['show_regs'],  'Show regions and holes' , cb_show_regs )
         r -= rh
         Draw.Toggle ('E Tags',     EVT_NONE, c+ 60, r,    60,   rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
         Draw.Toggle ('F Tags',     EVT_NONE, c+120, r,    60,   rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
-        Draw.Toggle ('Elems',      EVT_NONE, c+180, r,    60,   rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
-        Draw.Slider ('',           EVT_NONE, c+240, r,    80,   rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
+        Draw.Slider ('',           EVT_NONE, c+180, r,    80,   rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
+        Draw.Toggle ('Elems',      EVT_NONE, c+260, r,    60,   rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
+        Draw.Toggle ('Nodes',      EVT_NONE, c+320, r,    60,   rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
         r -= rh
         r -= srg
         Draw.PushButton ('Delete all properties', EVT_SET_DELPROPS, c, r, 200, rh, 'Delete all properties')
