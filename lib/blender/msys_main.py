@@ -178,7 +178,7 @@ def try_catch(func):
     return wrapper
 
 # Handle button events
-#@try_catch
+@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -802,22 +802,22 @@ def gui():
     # height of boxes
     h_set           = 5*rh+srg
     h_cad           = 5*rh
-    h_msh_stru_blks = rh+srg+2*rh*len(blks)
+    h_msh_stru_blks = rh+srg+2*rh*len(blks) if len(blks)>0 else 0
     h_msh_stru      = 4*rh+srg+h_msh_stru_blks
-    h_msh_unst_regs = rh+srg+rh*len(regs)
-    h_msh_unst_hols = rh+srg+rh*len(hols)
+    h_msh_unst_regs = rh+srg+rh*len(regs) if len(regs)>0 else 0
+    h_msh_unst_hols = rh+srg+rh*len(hols) if len(hols)>0 else 0
     h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
     h_msh           = 9*rh+srg+h_msh_stru+h_msh_unst
-    h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats)
+    h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats) if len(mats)>0 else 0
     h_mat           = 3*rh+h_mat_mats
-    h_fem_reinf     = 2*rh+(srg+2*rh)*len(reinfs)-srg
-    h_fem_nbrys     = rh+srg+rh*len(nbrys)
-    h_fem_nbsID     = rh+srg+rh*len(nbsID)
-    h_fem_ebrys     = rh+srg+rh*len(ebrys)
-    h_fem_fbrys     = rh+srg+rh*len(fbrys)
-    h_fem_eatts     = rh+srg+rh*len(eatts)*2+srg*len(eatts)
-    h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts
-    h_fem           = 6*rh+srg+h_fem_reinf+h_fem_stage if nstages>0 else 6*rh+srg+h_fem_reinf
+    h_fem_reinf     = 2*rh+(srg+2*rh)*len(reinfs)-srg if len(reinfs)>0 else 0
+    h_fem_nbrys     = rh+srg+rh*len(nbrys) if len(nbrys)>0 else 0
+    h_fem_nbsID     = rh+srg+rh*len(nbsID) if len(nbsID)>0 else 0
+    h_fem_ebrys     = rh+srg+rh*len(ebrys) if len(ebrys)>0 else 0
+    h_fem_fbrys     = rh+srg+rh*len(fbrys) if len(fbrys)>0 else 0
+    h_fem_eatts     = rh+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
+    h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
+    h_fem           = 6*rh+2*srg+h_fem_reinf+h_fem_stage+h_fem_reinf
     h_res_stage     = 4*rh
     h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
 
@@ -902,7 +902,8 @@ def gui():
 
         gu.caption3(c,r,w,rh, 'Blocks', EVT_MESH_ADDBLK,EVT_MESH_DELALLBLKS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_stru_blks)
-        gu.text(c,r,'   ID:Tag    Local axes      nX           nY          nZ')
+        if len(blks)>0: gu.text(c,r,'   ID:Tag    Local axes      nX           nY          nZ')
+        else: r += (rh+srg)
         for k, v in blks.iteritems():
             r -= rh
             i  = int(k)
@@ -946,7 +947,8 @@ def gui():
 
         gu.caption3(c,r,w,rh, 'Regions', EVT_MESH_ADDREG,EVT_MESH_DELALLREGS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_unst_regs)
-        gu.text(c,r,'     ID:Tag      max area        X             Y            Z')
+        if len(regs)>0: gu.text(c,r,'     ID:Tag      max area        X             Y            Z')
+        else: r += (rh+srg)
         for k, v in regs.iteritems():
             r -= rh
             i  = int(k)
@@ -964,7 +966,8 @@ def gui():
         r -= srg
         gu.caption3(c,r,w,rh, 'Holes', EVT_MESH_ADDHOL,EVT_MESH_DELALLHOLS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_unst_hols)
-        gu.text(c,r,'   ID         X             Y             Z')
+        if len(hols)>0: gu.text(c,r,'   ID         X             Y             Z')
+        else: r += (rh+srg)
         for k, v in hols.iteritems():
             r -= rh
             i  = int(k)
@@ -996,7 +999,8 @@ def gui():
 
         gu.caption2_(c,r,w,rh,'Materials', EVT_MAT_ADDMAT,EVT_MAT_DELALLMAT)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_mat_mats)
-        gu.text(c,r,'          Model                   Name/Description')
+        if len(mats)>0: gu.text(c,r,'          Model                   Name/Description')
+        else: r += (rh+srg)
         for k, v in mats.iteritems():
             r  -= rh
             i   = int(k)
@@ -1050,15 +1054,10 @@ def gui():
     if d['gui_show_fem']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_fem)
 
-        Draw.PushButton ('Save stage/mats info', EVT_FEM_SAVESTAGES, c,     r, 140, rh, 'Save stage and materials information to a new object')
-        Draw.PushButton ('Read stage/mats info', EVT_FEM_READSTAGES, c+140, r, 140, rh, 'Read stage and materials information from another object')
-        Draw.Toggle     ('Show Reinfs',          EVT_NONE,           c+280, r,  80, rh, d['show_reinfs'], 'Show reinforcements', cb_show_reinfs)
-        r -= rh
-        r -= rh
-
         # ----------------------- FEM -- reinforcements
 
         gu.caption2_(c,r,w,rh,'Reinforcements',EVT_FEM_ADDREINF,EVT_FEM_DELALLREINF)
+        Draw.Toggle ('Show Reinfs', EVT_NONE, c+100, r+2, 80, rh-4, d['show_reinfs'], 'Show reinforcements', cb_show_reinfs)
         if len(reinfs)>0:
             r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_reinf)
             gu.text(c,r,'     Tag                        X0/X1            Y0/Y1           X0/Z1')
@@ -1080,12 +1079,12 @@ def gui():
             r += srg
             r, c, w = gu.box2__out(W,cg,rh, c,r)
         r -= rh
-        r -= rh
+        r -= srg
 
         # ----------------------- FEM -- stages
 
         gu.caption2__(c,r,w,rh,'Stage #                  / %d'%(nstages),EVT_FEM_ADDSTAGE,EVT_FEM_DELSTAGE,EVT_FEM_DELALLSTAGES)
-        if (len(stages)>0):
+        if len(stages)>0:
             i   = d['fem_stage']
             sid = str(i)               # stage_id
             num = int(stages[sid][0])  # num
@@ -1112,7 +1111,8 @@ def gui():
 
             gu.caption3(c,r,w,rh,'Nodes boundary conditions (X-Y-Y)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
-            gu.text(c,r,'     X             Y             Z         Key        Value')
+            if len(nbrys)>0: gu.text(c,r,'     X             Y             Z         Key        Value')
+            else: r += (rh+srg)
             for k, v in nbrys.iteritems():
                 r -= rh
                 i  = int(k)
@@ -1130,7 +1130,8 @@ def gui():
             r -= srg
             gu.caption3(c,r,w,rh,'Nodes boundary conditions (given IDs)', EVT_FEM_ADDNBID,EVT_FEM_DELALLNBID)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbsID)
-            gu.text(c,r,'     ID         Key        Value')
+            if len(nbsID)>0: gu.text(c,r,'     ID         Key        Value')
+            else: r += (rh+srg)
             for k, v in nbsID.iteritems():
                 r -= rh
                 i  = int(k)
@@ -1146,7 +1147,8 @@ def gui():
             r -= srg
             gu.caption3(c,r,w,rh,'Edges boundary conditions', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_ebrys)
-            gu.text(c,r,'    Tag        Key        Value')
+            if len(ebrys)>0: gu.text(c,r,'    Tag        Key        Value')
+            else: r += (rh+srg)
             etags = [(int(v[0]),k) for k, v in ebrys.iteritems()]
             etags.sort(reverse=True)
             for tag, k in etags:
@@ -1165,7 +1167,8 @@ def gui():
             r -= srg
             gu.caption3(c,r,w,rh,'Faces boundary conditions', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_fbrys)
-            gu.text(c,r,'    Tag        Key        Value')
+            if len(fbrys)>0: gu.text(c,r,'    Tag        Key        Value')
+            else: r += (rh+srg)
             ftags = [(int(v[0]),k) for k, v in fbrys.iteritems()]
             ftags.sort(reverse=True)
             for tag, k in ftags:
@@ -1185,7 +1188,8 @@ def gui():
             if num==1: gu.caption3 (c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
             else:      gu.caption3_(c,r,w,rh,'Elements attributes')
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_eatts)
-            gu.text(c,r,'    Tag               Type                        Material')
+            if len(eatts)>0: gu.text(c,r,'    Tag               Type                        Material')
+            else: r += (rh+srg)
             if num>1:
                 for k, v in obj.properties['stages'].iteritems():
                     if int(v[0])==1: # first stage
@@ -1230,6 +1234,9 @@ def gui():
 
         # ----------------------- FEM -- END
         r -= srg
+        Draw.PushButton ('Save stage/mats info', EVT_FEM_SAVESTAGES, c,     r, 140, rh, 'Save stage and materials information to a new object')
+        Draw.PushButton ('Read stage/mats info', EVT_FEM_READSTAGES, c+140, r, 140, rh, 'Read stage and materials information from another object')
+        r -= rh
         Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c    , r, 100, rh, 'Run a FE analysis directly (without script)')
         Draw.Toggle     ('full',             EVT_NONE,         c+100, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
         Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+140, r,  80, rh, 'Generate script for FEM')

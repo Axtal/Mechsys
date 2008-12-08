@@ -33,12 +33,12 @@ def load_dict():
     if not dict:
         dict                  = {}
         # GUI
-        dict['gui_show_set']  = False
-        dict['gui_show_cad']  = False
-        dict['gui_show_mesh'] = False
-        dict['gui_show_mat']  = False
-        dict['gui_show_fem']  = False
-        dict['gui_show_res']  = False
+        dict['gui_show_set']  = True
+        dict['gui_show_cad']  = True
+        dict['gui_show_mesh'] = True
+        dict['gui_show_mat']  = True
+        dict['gui_show_fem']  = True
+        dict['gui_show_res']  = True
         dict['gui_inirow']    = 0
         # SETTINGS
         dict['show_props']    = False
@@ -107,12 +107,12 @@ def load_dict():
         # VTK Cell Type (tentative mapping)
         dict['vtk2ety'] = {  5: 5,   # VTK_TRIANGLE             => Tri3PStrain
                              9: 2,   # VTK_QUAD                 => Quad4PStrain
-                            10:18,   # VTK_TETRA                => Tet4Equilib
+                            10:22,   # VTK_TETRA                => Tet4Equilib
                             12: 0,   # VTK_HEXAHEDRON           => Hex8Equilib
                             22:13,   # VTK_QUADRATIC_TRIANGLE   => Tri6PStrain
                             23:10,   # VTK_QUADRATIC_QUAD       => Quad8PStrain
-                            24:20,   # VTK_QUADRATIC_TETRA      => Tet10Equilib
-                            25:16,   # VTK_QUADRATIC_HEXAHEDRON => Hex20Equilib
+                            24:24,   # VTK_QUADRATIC_TETRA      => Tet10Equilib
+                            25:20,   # VTK_QUADRATIC_HEXAHEDRON => Hex20Equilib
                              3: 9 }  # VTK_LINE                 => Beam
 
         Blender.Registry.SetKey('MechSysDict', dict)
