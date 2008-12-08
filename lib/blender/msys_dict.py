@@ -128,7 +128,8 @@ def toggle_key(key):
     Blender.Window.QRedrawAll()
 
 def key(key):
-    return Blender.Registry.GetKey('MechSysDict')[key]
+    try: return Blender.Registry.GetKey('MechSysDict')[key]
+    except: return {}
 
 
 # ============================================================================== Objects and Meshes
@@ -560,3 +561,32 @@ def rgb2hex(rgb):
 def hex2rgb(hex):
     # convert a hex value 0x000000 to a (R, G, B) tuple
     return html2rgb('%06x' % hex)
+
+
+#  2+       r_idx    = 0        # start right vertex index
+#   |\      edge_ids = [0,1,2]  # indexes of all edges to search for r_idx
+#  0| \1    v1_ids   = [1,0,0]  # v1 vertex indexes
+#   |  \    v2_ids   = [2,2,1]  # v2 vertex indexes
+#  1+---+0  eds      = [1,0,2]  # result: edge indexes
+#     2     ids      = [2,1,0]  # result: vertex indexes
+def sort_edges_and_verts(msh, edge_ids, r_idx):
+    # loop over all connected edges
+    eds = []
+    ids = []
+    while len(edge_ids)>0:
+        v1_ids = [msh.edges[ie].v1.index for ie in edge_ids] # ie => index of an edge
+        v2_ids = [msh.edges[ie].v2.index for ie in edge_ids]
+        if r_idx in v1_ids:
+            idx   = v1_ids.index(r_idx)
+            r_idx = v2_ids[idx]
+            eds.append   (edge_ids[idx])
+            ids.append   (r_idx)
+            edge_ids.pop (idx)
+        elif r_idx in v2_ids:
+            idx   = v2_ids.index(r_idx)
+            r_idx = v1_ids[idx]
+            eds.append   (edge_ids[idx])
+            ids.append   (r_idx)
+            edge_ids.pop (idx)
+        else: break
+    return eds, ids
