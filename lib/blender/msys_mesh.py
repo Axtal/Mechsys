@@ -449,9 +449,11 @@ def add_mesh(obj, mesh, mesh_type):
     # delete old mesh
     if obj.properties.has_key('msh_name'):
         msh_name = obj.properties['msh_name']
-        old_msh  = bpy.data.objects[msh_name]
-        scn      = bpy.data.scenes.active
-        scn.objects.unlink (old_msh)
+        try:
+            old_msh  = bpy.data.objects[msh_name]
+            scn      = bpy.data.scenes.active
+            scn.objects.unlink (old_msh)
+        except: pass
     else: msh_name = obj.name+'_msh'
 
     # delete results
