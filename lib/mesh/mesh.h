@@ -652,7 +652,7 @@ inline size_t Generic::_edge_to_rig_vert (size_t iElem, size_t EdgeLocalID) cons
 		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].R; }
 		case VTK_QUAD:                 { return  QUA_EDGE2VERT[EdgeLocalID].R; }
 		case VTK_TETRA:                { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Tetrahedrons"); }
-		case VTK_HEXAHEDRON:           { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Hexahedrons"); }
+		case VTK_HEXAHEDRON:           { return  QUA_EDGE2VERT[EdgeLocalID].R; }
 		case VTK_QUADRATIC_EDGE:       { return  1; }
 		case VTK_QUADRATIC_TRIANGLE:   { return  TRI_EDGE2VERT[EdgeLocalID].R; }
 		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].R; }
