@@ -51,7 +51,7 @@ def load_dict():
         dict['show_etags']    = True
         dict['show_ftags']    = True
         dict['show_elems']    = False
-        dict['show_opac']     = 0.3
+        dict['show_opac']     = 1#0.3
         # CAD
         dict['cad_x']         = '0.0'
         dict['cad_y']         = '0.0'

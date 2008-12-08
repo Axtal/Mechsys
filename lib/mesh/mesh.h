@@ -108,13 +108,17 @@ class Generic
 {
 public:
 	// Constants
-	static Edge TRI_EDGE2VERT[]; ///< Triangle: Map from local edge ID to local vertex ID
-	static Face TET_FACE2VERT[]; ///< Tetrahedron: Map from local face ID to local vertex ID
-	static Face TET_FACE2EDGE[]; ///< Tetrahedron: Map from local face ID to local edge ID
-	static Edge QUA_EDGE2VERT[]; ///< Quad: Map from local edge ID to local vertex ID
-	static Face HEX_FACE2VERT[]; ///< Hex: Map from local face ID to local vertex IDs
-	static Face HEX_FACE2EDGE[]; ///< Hex: Map from local face ID to local edge IDs
-
+	static Edge TRI3_EDGE2VERT[];  ///< Triangle: Map from local edge ID to local vertex ID
+	static Edge TRI6_EDGE2VERT[];  ///< Triangle: Map from local edge ID to local vertex ID
+	static Edge QUA4_EDGE2VERT[];  ///< Quad: Map from local edge ID to local vertex ID
+	static Edge QUA8_EDGE2VERT[];  ///< Quad: Map from local edge ID to local vertex ID
+	static Edge HEX8_EDGE2VERT[];  ///< Quad: Map from local edge ID to local vertex ID
+	static Edge HEX20_EDGE2VERT[]; ///< Quad: Map from local edge ID to local vertex ID
+	static Face TET_FACE2VERT[];   ///< Tetrahedron: Map from local face ID to local vertex ID
+	static Face TET_FACE2EDGE[];   ///< Tetrahedron: Map from local face ID to local edge ID
+	static Face HEX_FACE2VERT[];   ///< Hex: Map from local face ID to local vertex IDs
+	static Face HEX_FACE2EDGE[];   ///< Hex: Map from local face ID to local edge IDs
+                                   
 	// Constructor
 	Generic (bool Is3D) : _is_3d(Is3D), _is_o2(false) {}
 
@@ -208,9 +212,16 @@ protected:
 
 }; // class Generic
 
-Edge Generic::TRI_EDGE2VERT[]= {{ 0, 1 },
-                                { 1, 2 },
-                                { 0, 2 }};
+Edge Generic::TRI3_EDGE2VERT[]= {{ 0, 1 },  // Edge # 0
+                                 { 1, 2 },  // Edge # 1
+                                 { 0, 2 }}; // Edge # 2
+
+Edge Generic::TRI6_EDGE2VERT[]= {{ 0, 3 },  // Edge # 0
+                                 { 1, 4 },  // Edge # 1
+                                 { 2, 5 },  // Edge # 2
+                                 { 1, 3 },  // Edge # 3
+                                 { 2, 4 },  // Edge # 4
+                                 { 0, 5 }}; // Edge # 5
 
 Face Generic::TET_FACE2VERT[]= {{  0,  2,  3,  6,  9,  7 },  // Face # 0 => Vertices 0,2,3...
                                 {  0,  1,  3,  4,  8,  7 },  // Face # 1
@@ -222,18 +233,57 @@ Face Generic::TET_FACE2EDGE[]= {{  0,  3,  5,  6,  9, 11 },  // Face # 0 => Edge
                                 {  0,  1,  2,  6,  7,  8 },  // Face # 2
                                 {  2,  4,  5,  8, 10, 11 }}; // Face # 3
 
-Edge Generic::QUA_EDGE2VERT[]= {{ 0, 3 },  // Edge #  0
-                                { 1, 2 },  // Edge #  1
-                                { 0, 1 },  // Edge #  2
-                                { 2, 3 },  // Edge #  3
-                                { 4, 7 },  // Edge #  4
-                                { 5, 6 },  // Edge #  5
-                                { 4, 5 },  // Edge #  6
-                                { 6, 7 },  // Edge #  7
-                                { 0, 4 },  // Edge #  8
-                                { 1, 5 },  // Edge #  9
-                                { 2, 6 },  // Edge # 10
-                                { 3, 7 }}; // Edge # 11
+Edge Generic::QUA4_EDGE2VERT[]= {{ 0, 3 },  // Edge #  0
+                                 { 1, 2 },  // Edge #  1
+                                 { 0, 1 },  // Edge #  2
+                                 { 2, 3 }}; // Edge #  3
+
+Edge Generic::QUA8_EDGE2VERT[]= {{ 0, 7 },  // Edge #  0
+                                 { 1, 5 },  // Edge #  1
+                                 { 0, 4 },  // Edge #  2
+                                 { 3, 6 },  // Edge #  3
+                                 { 3, 7 },  // Edge #  4
+                                 { 2, 5 },  // Edge #  5
+                                 { 1, 4 },  // Edge #  6
+                                 { 2, 6 }}; // Edge #  7
+
+Edge Generic::HEX8_EDGE2VERT[]= {{ 0, 3 },  // Edge #  0
+                                 { 1, 2 },  // Edge #  1
+                                 { 0, 1 },  // Edge #  2
+                                 { 2, 3 },  // Edge #  3
+                                 { 4, 7 },  // Edge #  4
+                                 { 5, 6 },  // Edge #  5
+                                 { 4, 5 },  // Edge #  6
+                                 { 6, 7 },  // Edge #  7
+                                 { 0, 4 },  // Edge #  8
+                                 { 1, 5 },  // Edge #  9
+                                 { 2, 6 },  // Edge # 10
+                                 { 3, 7 }}; // Edge # 11
+
+Edge Generic::HEX20_EDGE2VERT[]= {{ 0,11 },  // Edge #  0
+                                  { 1, 9 },  // Edge #  1
+                                  { 0, 8 },  // Edge #  2
+                                  { 3,10 },  // Edge #  3
+                                  { 4,15 },  // Edge #  4
+                                  { 5,13 },  // Edge #  5
+                                  { 4,12 },  // Edge #  6
+                                  { 7,14 },  // Edge #  7
+                                  { 0,16 },  // Edge #  8
+                                  { 1,17 },  // Edge #  9
+                                  { 2,18 },  // Edge # 10
+                                  { 3,19 },  // Edge # 11
+                                  { 3,11 },  // Edge # 12
+                                  { 2, 9 },  // Edge # 13
+                                  { 1, 8 },  // Edge # 14
+                                  { 2,10 },  // Edge # 15
+                                  { 7,15 },  // Edge # 16
+                                  { 6,13 },  // Edge # 17
+                                  { 5,12 },  // Edge # 18
+                                  { 6,14 },  // Edge # 19
+                                  { 4,16 },  // Edge # 20
+                                  { 5,17 },  // Edge # 21
+                                  { 6,18 },  // Edge # 22
+                                  { 7,19 }}; // Edge # 23
 
 Face Generic::HEX_FACE2VERT[]= {{  0,  3,  7,  4, 11, 19, 15, 16 },  // Face # 0 => Vertices 0,3,7...
                                 {  1,  2,  6,  5,  9, 18, 13, 17 },  // Face # 1
@@ -631,15 +681,15 @@ inline size_t Generic::_edge_to_lef_vert (size_t iElem, size_t EdgeLocalID) cons
 	switch (ElemVTKCellType(iElem))
 	{
 		case VTK_LINE:                 { return  0; }
-		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].L; }
-		case VTK_QUAD:                 { return  QUA_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_TRIANGLE:             { return  TRI3_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUAD:                 { return  QUA4_EDGE2VERT[EdgeLocalID].L; }
 		case VTK_TETRA:                { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Tetrahedrons"); }
-		case VTK_HEXAHEDRON:           { return  QUA_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_HEXAHEDRON:           { return  HEX8_EDGE2VERT[EdgeLocalID].L; }
 		case VTK_QUADRATIC_EDGE:       { return  0; }
-		case VTK_QUADRATIC_TRIANGLE:   { return  TRI_EDGE2VERT[EdgeLocalID].L; }
-		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  TRI6_EDGE2VERT[EdgeLocalID].L; }
+		case VTK_QUADRATIC_QUAD:       { return  QUA8_EDGE2VERT[EdgeLocalID].L; }
 		case VTK_QUADRATIC_TETRA:      { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Tetrahedrons"); }
-		case VTK_QUADRATIC_HEXAHEDRON: { throw new Fatal("Generic::_edge_to_lef_vert: Method not available for Quadratic Hexahedrons"); }
+		case VTK_QUADRATIC_HEXAHEDRON: { return  HEX20_EDGE2VERT[EdgeLocalID].L; }
 		default: throw new Fatal("Generic::_edge_to_lef_vert: VTKCellType==%d is invalid (not implemented yet)", ElemVTKCellType(iElem));
 	}
 }
@@ -649,15 +699,15 @@ inline size_t Generic::_edge_to_rig_vert (size_t iElem, size_t EdgeLocalID) cons
 	switch (ElemVTKCellType(iElem))
 	{
 		case VTK_LINE:                 { return  1; }
-		case VTK_TRIANGLE:             { return  TRI_EDGE2VERT[EdgeLocalID].R; }
-		case VTK_QUAD:                 { return  QUA_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_TRIANGLE:             { return  TRI3_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_QUAD:                 { return  QUA4_EDGE2VERT[EdgeLocalID].R; }
 		case VTK_TETRA:                { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Tetrahedrons"); }
-		case VTK_HEXAHEDRON:           { return  QUA_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_HEXAHEDRON:           { return  HEX8_EDGE2VERT[EdgeLocalID].R; }
 		case VTK_QUADRATIC_EDGE:       { return  1; }
-		case VTK_QUADRATIC_TRIANGLE:   { return  TRI_EDGE2VERT[EdgeLocalID].R; }
-		case VTK_QUADRATIC_QUAD:       { return  QUA_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  TRI6_EDGE2VERT[EdgeLocalID].R; }
+		case VTK_QUADRATIC_QUAD:       { return  QUA8_EDGE2VERT[EdgeLocalID].R; }
 		case VTK_QUADRATIC_TETRA:      { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Quadratic Tetrahedrons"); }
-		case VTK_QUADRATIC_HEXAHEDRON: { throw new Fatal("Generic::_edge_to_rig_vert: Method not available for Quadratic Hexahedrons"); }
+		case VTK_QUADRATIC_HEXAHEDRON: { return  HEX20_EDGE2VERT[EdgeLocalID].R; }
 		default: throw new Fatal("Generic::_edge_to_rig_vert: VTKCellType==%d is invalid (not implemented yet)", ElemVTKCellType(iElem));
 	}
 }
@@ -826,11 +876,11 @@ inline size_t Generic::_nedges(int VTKCellType) const
 		case VTK_QUAD:                 { return  4; }
 		case VTK_TETRA:                { return  6; }
 		case VTK_HEXAHEDRON:           { return 12; }
-		case VTK_QUADRATIC_EDGE:       { return  1; }
-		case VTK_QUADRATIC_TRIANGLE:   { return  3; }
-		case VTK_QUADRATIC_QUAD:       { return  4; }
-		case VTK_QUADRATIC_TETRA:      { return  6; }
-		case VTK_QUADRATIC_HEXAHEDRON: { return 12; }
+		case VTK_QUADRATIC_EDGE:       { return  2; }
+		case VTK_QUADRATIC_TRIANGLE:   { return  6; }
+		case VTK_QUADRATIC_QUAD:       { return  8; }
+		case VTK_QUADRATIC_TETRA:      { return 12; }
+		case VTK_QUADRATIC_HEXAHEDRON: { return 24; }
 		default: throw new Fatal("Generic::_nedges: VTKCellType==%d is invalid", VTKCellType);
 	}
 }
