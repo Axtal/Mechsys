@@ -111,6 +111,7 @@ protected:
 
 	// Private methods
 	virtual void _calc_initial_internal_state (); ///< Calculate initial internal state
+	        void _excavate();
 
 	// Private methods that MUST be derived
 	virtual int _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
@@ -411,7 +412,85 @@ inline void EquilibElem::SetActive(bool Activate)
 		// Apply body forces
 		ApplyBodyForces ();
 	}
-	else throw new Fatal("EquilibElem::SetActive: Deactivation (excavation) is not available yet");
+	if (_is_active && Activate==false)
+	{
+		// Set active
+		_is_active = false;
+
+		for (size_t i=0; i<_connects.Size(); ++i)
+		{
+			// Remove SharedBy
+			_connects[i]->RemoveSharedBy (_my_id); 
+
+			// Remove Degree of Freedom to a node (Essential)
+			if (_connects[i]->nSharedBy()==0) 
+				for (int j=0; j<_nd; ++j) _connects[i]->RemoveDOF (UD[_d][j]);
+		}
+
+		// Apply surface tensions to perform excavation
+		_excavate();
+
+	}
+}
+
+inline void EquilibElem::_excavate()
+{
+	// Verify if element is in the boundary of excavation
+	bool in_boundary = false;
+	for (size_t i=0; i<_n_nodes; i++)
+		if (_connects[i]->nSharedBy()>0) 
+		{
+			in_boundary=true;
+			break;
+		}
+
+	// Calculate internal forces for element on boundary
+	if (in_boundary)
+	{
+		LinAlg::Vector<double> F(_ndim*_n_nodes); F.SetValues(0.0);
+		LinAlg::Vector<double> S(_ndim*_n_nodes); S.SetValues(0.0);
+
+		// Allocate entities used for every integration point
+		LinAlg::Vector<double> shape;
+		LinAlg::Matrix<double> derivs; // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
+		LinAlg::Matrix<double> J;      // Jacobian matrix
+		LinAlg::Matrix<double> B;      // strain-displacement matrix
+		LinAlg::Vector<double> sig;    // stress tensor
+
+		for (size_t i=0; i<_n_int_pts; ++i)
+		{
+			// Temporary Integration Points
+			double r = _a_int_pts[i].r;
+			double s = _a_int_pts[i].s;
+			double t = _a_int_pts[i].t;
+			double w = _a_int_pts[i].w;
+
+			Shape(r,s,t, shape);          // Calculate shape functions for i IP
+			Derivs(r,s,t, derivs);        // Calculate Derivatives of Shape functions w.r.t local coordinate system
+			Jacobian(derivs, J);          // Calculate J (Jacobian) matrix for i Integration Point
+			B_Matrix(derivs,J, B);        // Calculate B matrix for i Integration Point
+
+			// Mount S
+			for (size_t j=0; j<_n_nodes; ++j) S(_ndim*j+_ndim-1)=shape(j);
+
+			// Get tensor for accumulate stress
+			_a_model[i]->Sig(sig);
+
+			// Calculate internal force vector
+			F += trn(B)*sig*det(J)*w + S*_gam*det(J)*w;
+		}	
+
+		// Adding to boundary values of node if nSharedBy()>0
+		for (size_t i=0; i<_n_nodes; ++i)
+			if (_connects[i]->nSharedBy()>0) 
+			{
+				// Apply forces (only for equilibrium type neighbor elements)
+							  _connects[i]->Bry("fx",F(_ndim*i+0));
+							  _connects[i]->Bry("fy",F(_ndim*i+1));
+				if (_ndim==3) _connects[i]->Bry("fz",F(_ndim*i+2));
+			}
+	}
+
 }
 
 inline void EquilibElem::OutInfo(std::ostream & os) const

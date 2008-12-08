@@ -17,6 +17,16 @@
 ########################################################################
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
+	ADD_EXECUTABLE        (texcav02   texcav02.cpp)
+	ADD_TEST              (texcav02   texcav02)
+	TARGET_LINK_LIBRARIES (texcav02   ${LIBS})
+	SET_TARGET_PROPERTIES (texcav02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
+	ADD_EXECUTABLE        (texcav01   texcav01.cpp)
+	ADD_TEST              (texcav01   texcav01)
+	TARGET_LINK_LIBRARIES (texcav01   ${LIBS})
+	SET_TARGET_PROPERTIES (texcav01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (tembed01   tembed01.cpp)
 	ADD_TEST              (tembed01   tembed01)
 	TARGET_LINK_LIBRARIES (tembed01   ${LIBS})

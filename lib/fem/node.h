@@ -79,6 +79,7 @@ public:
 	// Methods
 	void   Initialize     (int ID, double X, double Y, double Z, int Tag=0);                   ///< Set the ID of this node and its coordinates
 	void   AddDOF         (char const * StrEssentialBry, char const * StrNaturalBry);          ///< Add a degree of freedom
+	void   RemoveDOF      (char const * Name);                                                 ///< Remove a degree of freedom
 	bool   IsEssential    (char const * Name) const;                                           ///< Check if a degree of freedom is essential
 	void   SetSharedBy    (int ElementID);                                                     ///< Set a new element which shares this node
 	void   RemoveSharedBy (int ElementID);                                                     ///< Remove an element which shares this node
@@ -145,6 +146,15 @@ inline void Node::AddDOF(char const * EssentialBryName, char const * NaturalBryN
 		DOF tmp = { EssentialBryName,NaturalBryName,0.0,0.0,false,-1,0.0,0.0 };
 		_dofs.Push(tmp);
 	}
+}
+
+inline void Node::RemoveDOF(char const * Name)
+{
+	long idx = _find_var(Name); // Index in _dofs array corroesponding to the variable Name
+	if (idx==-1)
+		throw new Fatal(_("Node::RemoveDOF: Could not find DOF variable name < %s > inside Node (%d)"), Name, _my_id);
+	else 
+		_dofs.Remove(idx);
 }
 
 inline bool Node::IsEssential(char const * Name) const
