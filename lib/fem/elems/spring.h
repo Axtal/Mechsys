@@ -143,14 +143,27 @@ inline double Spring::Val(int iNodeLocal, char const * Name) const
 
 		Matrix<double> T; _mount_T_matrix(T);
 		Vector<double> D; D = T*du;
-		return (D(1)-D(0))*_ks;
+		return (D(0)-D(1))*_ks;
 	}
-	else throw new Fatal("Rod3::Val: This element does not have a Val named %s",Name);
+	else throw new Fatal("Spring::Val: This element does not have a Val named %s",Name);
 }
 
 inline double Spring::Val(char const * Name) const
 {
-	throw new Fatal("Spring::Val: Feature not available");
+	if (strcmp(Name,"N" )==0)
+	{
+		// Allocate (local/element) displacements vector
+		LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+		// Assemble (local/element) displacements vector
+		for (size_t i=0; i<_n_nodes; ++i)
+		for (int    j=0; j<_nd;      ++j)
+		du(i*_nd+j) = _connects[i]->Val(UD[_d][j]);
+
+		Matrix<double> T; _mount_T_matrix(T);
+		Vector<double> D; D = T*du;
+		return (D(0)-D(1))*_ks;
+	}
+	else throw new Fatal("Spring::Val: This element does not have a Val named %s",Name);
 }
 
 inline void Spring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
