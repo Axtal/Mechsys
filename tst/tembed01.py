@@ -16,6 +16,7 @@
 
 import mechsys as ms
 
+P     = 1.0
 ndivy = 1
 ndivx = 2*ndivy
 H     = 1.0
@@ -44,23 +45,19 @@ mesh.generate   (True)
 
 #////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-# weight
-P = 1.0
-
-# Geometry
-dat = ms.geom(2)
-
-# Nodes brys
-nbrys = [[  0.0, 0.0, 0.0, "ux", 0.0],
-         [  0.0, 0.0, 0.0, "uy", 0.0],
-         [    W, 0.0, 0.0, "uy", 0.0],
-         [W/2.0,   H, 0.0, "fy",  -P]]
+# Data and Solver
+dat = ms.data   (2)
+sol = ms.solver (dat, "tembed01_py")
 
 # Elements attributes
-if (is_o2): eatts = [[-1, "Quad8PStrain", "LinElastic", "E=1.0 nu=0.0", "ZERO", "", True]]
-else:       eatts = [[-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "ZERO", "", True]]
+if (is_o2): elem_type = "Quad8PStrain"
+else:       elem_type = "Quad4PStrain"
+eatts = [[-1, elem_type, "LinElastic", "E=1.0 nu=0.0", "ZERO", "", True],
+         [-10, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
+         [-20, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
+         [-30, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True]]
 
-# Set geometry: nodes, elements and attributes
+# Set geometry: nodes and elements
 dat.set_nodes_elems (mesh, eatts)
 
 # Add reinforcements
@@ -69,26 +66,15 @@ if False:
     ms.add_reinf (1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", True, -20, dat)
     ms.add_reinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", True, -30, dat)
 else:
-    ratts = [[-10, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
-             [-20, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
-             [-30, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True]]
-    ms.add_reinfs (False,                                      # Is3D
-                   {0:(0.0, 0.0), 1:(1.0, 1.0), 2:(2.0, 0.0)}, # vertices
-                   {(0,1):-10, (1,2):-20, (0,2):-30},          # edges/connectivity
-                   ratts,                                      # reinforcement attributes
-                   dat)                                          # geometry
+    dat.add_reinfs ({(0.0,0.0, 1.0,1.0):-10, (1.0,1.0, 2.0,0.0):-20, (0.0,0.0, 2.0,0.0):-30}, eatts)
 
-# Set boundary conditions
-dat.set_brys(mesh, nbrys, [], [], dat)
-
-# Solve
-sol = ms.solver     ("ForwardEuler")
-sol.set_geom        (dat)
+# Stage # 1
+nbrys = [[  0.0, 0.0, 0.0, "ux", 0.0],
+         [  0.0, 0.0, 0.0, "uy", 0.0],
+         [    W, 0.0, 0.0, "uy", 0.0],
+         [W/2.0,   H, 0.0, "fy",  -P]]
+dat.set_brys        (mesh, nbrys, [], [])
 sol.solve_with_info ()
-
-# output
-out = ms.output ()
-out.vtu         (dat, "tembed01_py.vtu")
 
 #//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

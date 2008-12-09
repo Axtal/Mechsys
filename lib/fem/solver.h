@@ -114,11 +114,12 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 //{
-	         Solver          (FEM::Data & D, BPy::str const & FileKey)                       { _initialize   (&D, BPy::extract<char const *>(FileKey)()); }
-	Solver & PySetType       (BPy::str const & Type)                                         { SetType       (BPy::extract<char const *>(Type)());     return (*this); }
-	Solver & PySetCte        (BPy::str const & Key, double Val)                              { SetCte        (BPy::extract<char const *>(Key)(), Val); return (*this); }
-	Solver & PySetLinSol     (BPy::str const & Key)                                          { SetLinSol     (BPy::extract<char const *>(Key)());      return (*this); }
-	void     PySolveWithInfo (int NDiv, double DTime, int iStage, BPy::str const & MoreInfo) { SolveWithInfo (NDiv, DTime, iStage, BPy::extract<char const *>(MoreInfo)()); }
+	         Solver           (FEM::Data & D, BPy::str const & FileKey)                       { _initialize   (&D, BPy::extract<char const *>(FileKey)()); }
+	Solver & PySetType        (BPy::str const & Type)                                         { SetType       (BPy::extract<char const *>(Type)());     return (*this); }
+	Solver & PySetCte         (BPy::str const & Key, double Val)                              { SetCte        (BPy::extract<char const *>(Key)(), Val); return (*this); }
+	Solver & PySetLinSol      (BPy::str const & Key)                                          { SetLinSol     (BPy::extract<char const *>(Key)());      return (*this); }
+	void     PySolveWithInfo1 (int NDiv=1, double DTime=0.0, int iStage=0)                    { SolveWithInfo (NDiv, DTime, iStage); }
+	void     PySolveWithInfo2 (int NDiv, double DTime, int iStage, BPy::str const & MoreInfo) { SolveWithInfo (NDiv, DTime, iStage, BPy::extract<char const *>(MoreInfo)()); }
 //}
 #endif // USE_BOOST_PYTHON
 

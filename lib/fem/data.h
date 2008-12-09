@@ -731,7 +731,7 @@ inline void Data::PyAddReinfs(BPy::dict const & Edges, BPy::list const & EAtts)
 		// Check number of coordinates
 		size_t nxyz = BPy::len(xyz);
 		bool   is3d = (nxyz==4 ? false : true);
-		if ((nxyz!=4) || (nxyz!=6)) throw new Fatal("Data::PyAddReinfs: Each edge representing a reinforcement must have either 4(2D) or 6(3D) coordinates corresponding to the start and end points (nxyz==%d is invalid).\n\tEx. {(x0,y0,z0, x1,y1,z1):-100}",nxyz);
+		if (!((nxyz==4) || (nxyz==6))) throw new Fatal("Data::PyAddReinfs: Each edge representing a reinforcement must have either 4(2D) or 6(3D)\n coordinates corresponding to the start and end points (nxyz==%d is invalid).\n\tEx. {(x0,y0,z0, x1,y1,z1):-100}",nxyz);
 
 		// Extract coordinates
 		if (is3d)
@@ -750,7 +750,7 @@ inline void Data::PyAddReinfs(BPy::dict const & Edges, BPy::list const & EAtts)
 			x1 = BPy::extract<double>(xyz[2])();
 			y1 = BPy::extract<double>(xyz[3])();
 		}
-		std::cout << "Edge: tag="<<tag << ", x0="<<x0 << ", y0="<<y0 << ", z0="<<z0 << ", x1="<<x1 << ", y1="<<y1 << ", z1="<<z1 << std::endl;
+		//std::cout << "Edge: tag="<<tag << ", x0="<<x0 << ", y0="<<y0 << ", z0="<<z0 << ", x1="<<x1 << ", y1="<<y1 << ", z1="<<z1 << std::endl;
 		
 		// Find element attributes
 		std::map<int,int>::const_iterator iter = tag2idx.find(tag);

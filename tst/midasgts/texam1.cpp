@@ -148,8 +148,9 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
+	// Data and Solver
+	FEM::Data   dat (2);
+	FEM::Solver sol (dat, "texam1");
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
@@ -160,18 +161,13 @@ int main(int argc, char **argv) try
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
-	// Solver
-	FEM::Solver sol(dat, "texam1");
-
-	// Set boundaries
+	// Stage # 1
 	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "uy", 0.));
-	ebrys.Push (make_tuple(-20, "fx", ph));
-	ebrys.Push (make_tuple(-30, "fy", pv));
-	ebrys.Push (make_tuple(-40, "ux", 0.));
+	ebrys.Push  (make_tuple(-10, "uy", 0.));
+	ebrys.Push  (make_tuple(-20, "fx", ph));
+	ebrys.Push  (make_tuple(-30, "fy", pv));
+	ebrys.Push  (make_tuple(-40, "ux", 0.));
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
-
-	// Solve
 	sol.SolveWithInfo();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////

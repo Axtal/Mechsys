@@ -75,19 +75,20 @@
 
 using namespace boost::python;
 
-// Overloadings                                                      minargs  maxargs
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,        4, 5)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,       Generate,       0, 1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,    2, 4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyPoint,   SetPolyPoint,   3, 4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment, 3, 4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,  5, 6)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,    3, 4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,  2, 3)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,       0, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (GE_SetOnlyFrame,   SetOnlyFrame,   0, 1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,          Solve,          0, 2)
+// Overloadings                                                        minargs  maxargs
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,          4, 5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,       Generate,         0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,      2, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyPoint,   SetPolyPoint,     3, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment,   3, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyRegion,  SetPolyRegion,    5, 6)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,      3, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,         0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,    2, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,         0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (GE_SetOnlyFrame,   SetOnlyFrame,     0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,          Solve,            0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_SolveWithInfo1, PySolveWithInfo1, 0, 3)
 
 BOOST_PYTHON_MODULE (mechsys)
 {
@@ -213,7 +214,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("set_cte",         &FEM::Solver::PySetCte,         return_internal_reference<>())
 	    .def("set_lin_sol",     &FEM::Solver::PySetLinSol,      return_internal_reference<>())
 	    .def("solve",           &FEM::Solver::Solve,            SO_Solve())
-	    .def("solve_with_info", &FEM::Solver::PySolveWithInfo)
+	    .def("solve_with_info", &FEM::Solver::PySolveWithInfo1, SO_SolveWithInfo1())
+	    .def("solve_with_info", &FEM::Solver::PySolveWithInfo2)
 	    .def("time",            &FEM::Solver::Time)
 	    .def("ndof",            &FEM::Solver::nDOF)
 	    ;
