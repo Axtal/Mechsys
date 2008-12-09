@@ -218,6 +218,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("solve_with_info", &FEM::Solver::PySolveWithInfo2)
 	    .def("time",            &FEM::Solver::Time)
 	    .def("ndof",            &FEM::Solver::nDOF)
+	    .def("out",             &FEM::Solver::Out,              return_internal_reference<>())
 	    ;
 
 	class_<Output>("output", init<FEM::Data const &, BPy::str const &>())
