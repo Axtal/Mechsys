@@ -143,7 +143,7 @@ inline double Spring::Val(int iNodeLocal, char const * Name) const
 
 		Matrix<double> T; _mount_T_matrix(T);
 		Vector<double> D; D = T*du;
-		return (D(0)-D(1))*_ks;
+		return (D(1)-D(0))*_ks;
 	}
 	else throw new Fatal("Spring::Val: This element does not have a Val named %s",Name);
 }
@@ -161,7 +161,7 @@ inline double Spring::Val(char const * Name) const
 
 		Matrix<double> T; _mount_T_matrix(T);
 		Vector<double> D; D = T*du;
-		return (D(0)-D(1))*_ks;
+		return (D(1)-D(0))*_ks;
 	}
 	else throw new Fatal("Spring::Val: This element does not have a Val named %s",Name);
 }
@@ -182,12 +182,12 @@ inline void Spring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) cons
 
 inline void Spring::_mount_T_matrix(Matrix<double> & T) const
 {
-	double x0 = _connects[0]->X(), y0 = _connects[0]->Y(), z0 = _connects[0]->Z();
-	double x1 = _connects[1]->X(), y1 = _connects[1]->Y(), z1 = _connects[1]->Z();
-	double L  = sqrt(pow(x0-x1,2)+pow(y0-y1,2)+pow(z0-z1,2));
-	double l = (x0-x1)/L;
-	double m = (y0-y1)/L;
-	double n = (z0-z1)/L;
+	double x0 = _connects[0]->X(); double y0 = _connects[0]->Y(); double z0 = _connects[0]->Z();
+	double x1 = _connects[1]->X(); double y1 = _connects[1]->Y(); double z1 = _connects[1]->Z();
+	double L  = sqrt(pow(x1-x0,2.0)+pow(y1-y0,2.0)+pow(z1-z0,2.0));
+	double l = (x1-x0)/L;
+	double m = (y1-y0)/L;
+	double n = (z1-z0)/L;
 
 	// Mount T Matrix
 	T.Resize(2, _ndim*2);

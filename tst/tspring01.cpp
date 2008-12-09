@@ -108,15 +108,12 @@ int main(int argc, char **argv) try
 	err_u[ 8] = fabs(dat.Nod(2)->Val("wz") - (0.0));
 
 	Array<double> err_s(2);
-	err_s[ 0] = fabs(dat.Ele(2)->Val(0,"N") - (72.822));
-	err_s[ 1] = fabs(dat.Ele(2)->Val(1,"N") - (72.822));
-
-	// TODO: Check this
-	cout << dat.Ele(2)->Val(0,"N") << ", " << dat.Ele(2)->Val(1,"N") << ", " << dat.Ele(2)->Val("N") << endl;
+	err_s[ 0] = fabs(dat.Ele(2)->Val(0,"N") - (36.911));
+	err_s[ 1] = fabs(dat.Ele(2)->Val(1,"N") - (36.911));
 
 	// Error summary
 	double tol_u     = 1.0e-7;
-	double tol_s     = 1.0e-7;
+	double tol_s     = 1.0e-5;
 	double min_err_u = err_u[err_u.Min()];
 	double max_err_u = err_u[err_u.Max()];
 	double min_err_s = err_s[err_s.Min()];
@@ -125,7 +122,8 @@ int main(int argc, char **argv) try
 	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
 	cout << _4<< "s" << _8s<<min_err_s << _8s<<err_s.Mean() << (max_err_s>tol_s?"[1;31m":"[1;32m") << _8s<<max_err_s << "[0m" << _8s<<err_s.Norm() << endl;
 
-	return 0;
+	if (max_err_u>tol_u || max_err_s>tol_s) return 1;
+	else return 0;
 }
 catch (Exception * e)
 {
