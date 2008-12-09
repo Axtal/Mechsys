@@ -102,6 +102,8 @@ public:
 	size_t          PyPushNode1    (double X, double Y)                    { return PushNode (X,Y);       }
 	size_t          PyPushNode2    (double X, double Y, double Z)          { return PushNode (X,Y,Z);     }
 	size_t          PyPushNode3    (double X, double Y, double Z, int Tag) { return PushNode (X,Y,Z,Tag); }
+	size_t          PyGetNode1     (double X, double Y)                    { return GetNode  (X,Y);       }
+	size_t          PyGetNode2     (double X, double Y, double Z)          { return GetNode  (X,Y,Z);     }
 	size_t          PyPushElem     (int Tag, BPy::str const & Type, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity);
 	void            PyAddLinElems  (BPy::dict const & Edges,  ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
 	                                BPy::list const & EAtts); ///< Elements attributes
@@ -218,7 +220,7 @@ inline size_t Geom::PushElem(int Tag, char const * Type, char const * Model, cha
 	_elems.Push(new_elem);
 	size_t ID = _elems.Size()-1;
 	new_elem->Initialize(_elems.Size()-1, IsActive, _dim, Tag);
-	
+
 	// Connector (EmbSpring) connectivities
 	if (new_elem->NNodes()!=Connectivity.Size()) throw new Fatal("Geom::PushElem: The number of nodes in Connectivity does not match. (Element ID %d)", ID);
 	for (size_t i=0; i<new_elem->NNodes(); i++)
