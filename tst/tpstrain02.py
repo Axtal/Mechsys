@@ -16,7 +16,7 @@
 # along with this program. If not, see <http:#www.gnu.org/licenses/>   #
 ########################################################################
 
-import mechsys as m
+import mechsys as ms
 
 # Constants
 L  = 2.0   # Length
@@ -38,7 +38,7 @@ ny = 10    # Divisions along y
 #                       8        4
 
 # Blocks
-blocks = [m.mesh_block()]
+blocks = [ms.mesh_block()]
 blocks[0].set_coords (-1,                                    # tag to be replicated to all elements
                       {8:(0,0), 4:(L,0), 1:(L,H), 55:(0,H)}, # vertices' coordinates
                       [(8,4), (4,1), (1,55), (55,8)],        # edges
@@ -51,39 +51,27 @@ blocks[0].set_coords (-1,                                    # tag to be replica
 
 # Generate
 print 'Mesh Generation: --------------------------------------------------------------'
-ms = m.mesh_structured (False) # Is3D==False
-ms.set_blocks          (blocks)
-ms.generate            (True)
+mesh = ms.mesh_structured (False) # Is3D==False
+mesh.set_blocks           (blocks)
+mesh.generate             (True)
 
 # ------------------------------------------------------------------------------ FEM
 
-# Geometry
-dat = m.geom(2)
-
-# Nodes brys
-nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]] # x,y,z, key, val
-
-# Edges brys
-ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
-         [-20, 'fy',   q]] # [tag], [key], [val]
+# Data and Solver
+dat = ms.data   (2)
+sol = ms.solver (dat, "tpstrain02_py")
 
 # Elements attributes
 eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]
 
-# Set geometry: nodes, elements and boundaries
-dat.set_nodes_elems (ms, eatts)
-dat.set_brys        (ms, nbrys, ebrys, []) # [] => no face brys
+# Set geometry: nodes and elements
+dat.set_nodes_elems (mesh, eatts)
 
-# Solve
-print 'Solution: ---------------------------------------------------------------------'
-sol = m.solver('ForwardEuler')
-sol.set_geom(dat)
+# Stage # 1
+nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]]
+ebrys = [[-10, 'uy', 0.0], [-20, 'fy',   q]]
+dat.set_brys (mesh, nbrys, ebrys, []) # [] => no face brys
 sol.solve_with_info()
-
-# Output file
-o = m.output()
-o.vtu(dat, 'tpstrain02_py.vtu')
-print '\nFile <tpstrain02_py.vtu> generated'
 
 #----------------------------------------------------------------------------- Check
 

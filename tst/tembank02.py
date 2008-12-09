@@ -62,47 +62,33 @@ nels = mesh.generate      (True)
 
 #////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-# Geometry
-dat = ms.geom(2)
+# Data and solver
+dat = ms.data   (2)
+sol = ms.solver (dat, "tembank02_py")
 
 # Elements attributes
 eatts = [[-1, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", True ],
          [-2, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", False],
          [-3, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", False]]
 
-# Set geometry: nodes, elements, attributes, and boundaries
+# Set geometry: nodes and elements
 dat.set_nodes_elems (mesh, eatts)
-
-# Solver
-sol = ms.solver("ForwardEuler")
-#sol.set_cte("dTini", 1.0)
-sol.set_geom(dat)
-
-# Open collection for output
-out = ms.output()
-out.open_collection("tembank02_py")
 
 # Stage # -1 --------------------------------------------------------------
 ebrys = [[-10, "ux",  0.0], [-11, "uy",  0.0], [-12, "pwp", 0.0]]
-dat.set_brys          (mesh, [], ebrys, [])
+dat.set_brys            (mesh, [], ebrys, [])
 dat.apply_body_forces   ()
-sol.solve_with_info   (10, 1e+2, -1, "  Initial stress state due to self weight (zero displacements)\n")
+sol.solve_with_info     (10, 1e+2, -1, "  Initial stress state due to self weight (zero displacements)\n")
 dat.clear_displacements ()
-out.vtu               (dat, sol.time())
 
 # Stage # 0 ---------------------------------------------------------------
-dat.activate            (-2)
+dat.activate          (-2)
 ebrys = [[-10, "ux",  0.0], [-11, "uy",  0.0], [-13, "pwp", 0.0]]
 dat.set_brys          (mesh, [], ebrys, [])
 sol.solve_with_info   (10, 1e+2, 0, "  Construction of first layer\n")
-out.vtu               (dat, sol.time())
 
 # Stage # 1 ---------------------------------------------------------------
-dat.activate            (-3)
+dat.activate          (-3)
 ebrys = [[-10, "ux",  0.0], [-11, "uy",  0.0], [-14, "pwp", 0.0]]
 dat.set_brys          (mesh, [], ebrys, [])
 sol.solve_with_info   (10, 1e+2, 0, "  Construction of second layer\n")
-out.vtu               (dat, sol.time())
-
-# Close collection
-out.close_collection()
