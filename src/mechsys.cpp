@@ -198,6 +198,11 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("apply_body_forces",   &FEM::Geom::ApplyBodyForces)
 	    .def("clear_displacements", &FEM::Geom::ClearDisplacements)
 	    .def("activate",            &FEM::Geom::Activate)
+	    .def("push_node",           &FEM::Geom::PyPushNode1)
+	    .def("push_node",           &FEM::Geom::PyPushNode2)
+	    .def("push_node",           &FEM::Geom::PyPushNode3)
+	    .def("push_elem",           &FEM::Geom::PyPushElem)
+	    .def("add_lin_elems",       &FEM::Geom::PyAddLinElems)
 	    .def(self_ns::str(self))
 	    ;
 

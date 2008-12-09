@@ -50,6 +50,7 @@ import msys_res  as re
 
 # ================================================================================= Constants
 
+CLOSE_VERT_TOL       = 1.0e-4 # tolerace to decide whether vertices are close to each other or not
 EVT_INC              = 10000 # increment used when passing IDs through events
 EVT_NONE             =  0 # used for buttons with callbacks
 EVT_REFRESH          =  1 # refresh all windows
@@ -116,6 +117,8 @@ EVT_FEM_SAVESTAGES   = 204 # save stage info to a new object
 EVT_FEM_READSTAGES   = 205 # read stage info from another object
 EVT_FEM_ADDREINF     = 206 # add reinforcement
 EVT_FEM_DELALLREINF  = 207 # delete all reinforcements
+EVT_FEM_ADDLINE      = 208 # add linear element
+EVT_FEM_DELALLLINES  = 209 # delete all linear elements
 # Results
 EVT_RES_SHOWHIDE     = 300 # show/hide results box
 EVT_RES_SHOWONLY     = 301 # show only this box
@@ -306,6 +309,7 @@ def button_event(evt):
     elif evt==EVT_FEM_SHOWONLY: show_only    ('gui_show_fem')
 
     elif evt==EVT_FEM_ADDREINF: di.props_push_new      ('reinfs', di.new_reinf_props())
+    elif evt==EVT_FEM_ADDLINE:  di.props_push_new      ('lines',  di.new_line_props())
     elif evt==EVT_FEM_ADDSTAGE: di.props_push_new_stage()
     elif evt==EVT_FEM_DELSTAGE: di.props_del_stage     ()
     elif evt==EVT_FEM_ADDNBRY:  di.props_push_new_fem  ([di.key('fem_stage')], 'nbrys', di.new_nbry_props())
@@ -318,6 +322,7 @@ def button_event(evt):
         di.props_push_new_fem (sids, 'eatts', di.new_eatt_props())
 
     elif evt==EVT_FEM_DELALLREINF:  di.props_del_all('reinfs')
+    elif evt==EVT_FEM_DELALLLINES:  di.props_del_all('lines')
     elif evt==EVT_FEM_DELALLSTAGES: di.props_del_all_stages()
     elif evt==EVT_FEM_DELALLNBRY:   di.props_del_all_fem   (str(di.key('fem_stage')), 'nbrys')
     elif evt==EVT_FEM_DELALLNBID:   di.props_del_all_fem   (str(di.key('fem_stage')), 'nbsID')
@@ -374,7 +379,6 @@ def cb_show_elems(evt,val): di.set_key ('show_elems', val)
 def cb_show_opac (evt,val): di.set_key ('show_opac',  val)
 @try_catch
 def cb_over(evt,val):
-    TOL = 1.0e-4
     edm, obj, msh = di.get_msh()
     if val: # mark
         nedges = len(msh.edges)
@@ -390,7 +394,7 @@ def cb_over(evt,val):
                 t4 = (v2[2]*v4[2]-v1[2]*v4[2]-v1[2]*v2[2]+v1[2]**2.0+v2[1]*v4[1]-v1[1]*v4[1]-v1[1]*v2[1]+v1[1]**2.0+v2[0]*v4[0]-v1[0]*v4[0]-v1[0]*v2[0]+v1[0]**2.0)/(v2[2]**2.0-2.0*v1[2]*v2[2]+v1[2]**2.0+v2[1]**2.0-2.0*v1[1]*v2[1]+v1[1]**2.0+v2[0]**2.0-2.0*v1[0]*v2[0]+v1[0]**2.0)
                 w3 = v1+t3*uu
                 w4 = v1+t4*uu
-                if ((v3-w3).length<TOL) and ((v4-w4).length<TOL): # parallel at the same supporting line
+                if ((v3-w3).length<CLOSE_VERT_TOL) and ((v4-w4).length<CLOSE_VERT_TOL): # parallel at the same supporting line
                     if (t3>0.0 and t3<1.0) or (t4>0.0 and t4<1.0): # overlapping
                         over.append(i)
                         over.append(j)
@@ -619,9 +623,12 @@ def cb_eatt_del     (evt,val):
 # ---------------------------------- FEM
 
 @try_catch
-def cb_show_reinfs(evt,val): di.set_key ('show_reinfs', val)
-@try_catch
 def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
+
+# ---------------------------------- FEM -- reinforcements (r)
+
+@try_catch
+def cb_show_reinfs(evt,val): di.set_key ('show_reinfs', val)
 @try_catch
 def cb_fem_rtag (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 0, int(val))
 @try_catch
@@ -650,6 +657,34 @@ def cb_fem_ry1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 5, float(va
 def cb_fem_rz1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 6, float(val))
 @try_catch
 def cb_fem_rdel (evt,val): di.props_del      ('reinfs', evt-EVT_INC)
+
+# ---------------------------------- FEM -- linear elements (le)
+
+@try_catch
+def cb_show_lines(evt,val): di.set_key ('show_lines', val)
+@try_catch
+def cb_fem_letag (evt,val): di.props_set_item ('lines', evt-EVT_INC, 0, int(val))
+@try_catch
+def cb_fem_getN0  (evt,val):
+    obj = di.get_obj()
+    if not obj.properties.has_key('msh_name'): raise Exception('Please, generate Mesh first')
+    msh_obj = bpy.data.objects[obj.properties['msh_name']]
+    di.props_set_item ('lines', evt-EVT_INC, 1, di.find_node(msh_obj))
+@try_catch
+def cb_fem_leN0  (evt,val): di.props_set_item ('lines', evt-EVT_INC, 1, float(val))
+@try_catch
+def cb_fem_getN1  (evt,val):
+    obj = di.get_obj()
+    if not obj.properties.has_key('msh_name'): raise Exception('Please, generate Mesh first')
+    msh_obj = bpy.data.objects[obj.properties['msh_name']]
+    di.props_set_item ('lines', evt-EVT_INC, 2, di.find_node(msh_obj))
+@try_catch
+def cb_fem_leN1  (evt,val): di.props_set_item ('lines', evt-EVT_INC, 2, float(val))
+@try_catch
+def cb_fem_ledel (evt,val): di.props_del      ('lines', evt-EVT_INC)
+
+# ---------------------------------- FEM -- stages
+
 @try_catch
 def cb_fem_stage (evt,val):
     obj = di.get_obj()
@@ -734,7 +769,8 @@ def gui():
     ebrys       = {}
     fbrys       = {}
     eatts       = {}
-    reinfs      = {}
+    reinfs      = {} # reinforcements
+    lines       = {} # linear elements
     res_nstages = 0
     res_nodes   = ''
     lblmnu      = 'Labels %t'
@@ -768,6 +804,7 @@ def gui():
                     lblmnu = obj.properties['res'][stage_num]['lblmnu']
         if obj.properties.has_key('res_nodes'): res_nodes = obj.properties['res_nodes']
         if obj.properties.has_key('reinfs'):    reinfs    = obj.properties['reinfs']
+        if obj.properties.has_key('lines'):     lines     = obj.properties['lines']
 
     # materials menu
     matmnu   = 'Materials %t'
@@ -811,13 +848,14 @@ def gui():
     h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats) if len(mats)>0 else 0
     h_mat           = 3*rh+h_mat_mats
     h_fem_reinf     = 2*rh+(srg+2*rh)*len(reinfs)-srg if len(reinfs)>0 else 0
+    h_fem_lines     = 2*rh+(srg+rh)*len(lines)-srg if len(lines)>0 else 0
     h_fem_nbrys     = rh+srg+rh*len(nbrys) if len(nbrys)>0 else 0
     h_fem_nbsID     = rh+srg+rh*len(nbsID) if len(nbsID)>0 else 0
     h_fem_ebrys     = rh+srg+rh*len(ebrys) if len(ebrys)>0 else 0
     h_fem_fbrys     = rh+srg+rh*len(fbrys) if len(fbrys)>0 else 0
     h_fem_eatts     = rh+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
-    h_fem           = 6*rh+2*srg+h_fem_reinf+h_fem_stage+h_fem_reinf
+    h_fem           = 7*rh+3*srg+h_fem_reinf+h_fem_stage+h_fem_reinf+h_fem_lines
     h_res_stage     = 4*rh
     h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
 
@@ -878,7 +916,7 @@ def gui():
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
         Draw.Toggle      ('3D mesh',    EVT_NONE,          c,     r, 80, rh, is3d,                     'Set 3D mesh',                       cb_is3d)
-        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newetag'],    -100, 0, 'New edge tag',                      cb_etag)
+        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newetag'],   -1000, 0, 'New edge tag',                      cb_etag)
         Draw.PushButton  ('Edge',       EVT_MESH_SETETAG,  c+140, r, 60, rh,                           'Set edges tag (0 => remove tag)')
         Draw.Number      ('',           EVT_NONE,          c+200, r, 60, rh, d['newftag'],   -1000, 0, 'New face tag',                      cb_ftag)
         Draw.PushButton  ('Face',       EVT_MESH_SETFTAG,  c+260, r, 60, rh,                           'Set faces tag (0 => remove tag)')
@@ -907,7 +945,7 @@ def gui():
         for k, v in blks.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     (str(i)+':', EVT_INC+i, c     , r-rh, 60, 2*rh, int(v[0]), -100, -1, 'Block tag',                       cb_blk_tag)
+            Draw.Number     (str(i)+':', EVT_INC+i, c     , r-rh, 60, 2*rh, int(v[0]), -1000, -1,'Block tag',                       cb_blk_tag)
             Draw.PushButton ('X',        EVT_INC+i, c+ 60 , r,    20,   rh,                      'Set X-axis',                      cb_blk_xax)
             Draw.PushButton ('Y',        EVT_INC+i, c+ 80 , r,    20,   rh,                      'Set Y-axis',                      cb_blk_yax)
             Draw.PushButton ('Z',        EVT_INC+i, c+100 , r,    20,   rh,                      'Set Z-axis',                      cb_blk_zax)
@@ -952,7 +990,7 @@ def gui():
         for k, v in regs.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 80, rh, int(v[0]), -100,-1,'Region tag',                  cb_regs_tag)
+            Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 80, rh, int(v[0]),-1000,-1,'Region tag',                  cb_regs_tag)
             Draw.String     ('',         EVT_INC+i, c+ 80, r, 60, rh, '%g'%v[1],   32,   'Max area (-1 => use default)',cb_regs_maxarea)
             Draw.String     ('',         EVT_INC+i, c+140, r, 60, rh, '%g'%v[2],   32,   'X of the region',             cb_regs_setx)
             Draw.String     ('',         EVT_INC+i, c+200, r, 60, rh, '%g'%v[3],   32,   'Y of the region',             cb_regs_sety)
@@ -1038,6 +1076,8 @@ def gui():
                 r -= rh
                 Draw.String ('c=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[16],  32, 'c: Cohesion',                                            cb_mat_setc)
                 Draw.String ('phi=',   EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[17],  32, 'phi: friction angle',                                    cb_mat_setphi)
+            elif int(v[0])==6: # Spring
+                Draw.String ('ks=',    EVT_INC+i, c    , r, 80, rh, '%g'%v[15],  32, 'ks: Spring stiffness',                                   cb_mat_setks)
             r -= srg
         r -= srg
         r -= rh
@@ -1064,17 +1104,39 @@ def gui():
             for k, v in reinfs.iteritems():
                 r -= rh
                 i  = int(k)
-                Draw.Number     ('',       EVT_INC+i, c,     r-rh, 60, 2*rh,  int(v[0]), -100, 0, 'New reinforcement tag',   cb_fem_rtag)
-                Draw.PushButton ('Get P0', EVT_INC+i, c+ 60, r,    60,   rh,                      'Get P0 of reinforcement', cb_fem_rP0)
-                Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[1],   32,     'X0: start point',         cb_fem_rx0)
-                Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[2],   32,     'Y0: start point',         cb_fem_ry0)
-                Draw.String     ('',       EVT_INC+i, c+280, r,    80,   rh, '%g'%v[3],   32,     'Z0: start point',         cb_fem_rz0)
+                Draw.Number     ('',       EVT_INC+i, c,     r-rh, 60, 2*rh,  int(v[0]),-1000, 0, 'New reinforcement tag',      cb_fem_rtag)
+                Draw.PushButton ('Loc P0', EVT_INC+i, c+ 60, r,    60,   rh,                      'Locate P0 of reinforcement', cb_fem_rP0)
+                Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[1],   32,     'X0: start point',            cb_fem_rx0)
+                Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[2],   32,     'Y0: start point',            cb_fem_ry0)
+                Draw.String     ('',       EVT_INC+i, c+280, r,    80,   rh, '%g'%v[3],   32,     'Z0: start point',            cb_fem_rz0)
                 r -= rh                                            
-                Draw.PushButton ('Get P1', EVT_INC+i, c+ 60, r,    60,   rh,                      'Get P1 of reinforcement', cb_fem_rP1)
-                Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[4],   32,     'X1: end point',           cb_fem_rx1)
-                Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[5],   32,     'Y1: end point',           cb_fem_ry1)
-                Draw.String     ('',       EVT_INC+i, c+280, r,    80,   rh, '%g'%v[6],   32,     'Z1: end point',           cb_fem_rz1)
-                Draw.PushButton ('Del',    EVT_INC+i, c+360, r,    40, 2*rh,                      'Delete this row',         cb_fem_rdel)
+                Draw.PushButton ('Loc P1', EVT_INC+i, c+ 60, r,    60,   rh,                      'Locate P1 of reinforcement', cb_fem_rP1)
+                Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[4],   32,     'X1: end point',              cb_fem_rx1)
+                Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[5],   32,     'Y1: end point',              cb_fem_ry1)
+                Draw.String     ('',       EVT_INC+i, c+280, r,    80,   rh, '%g'%v[6],   32,     'Z1: end point',              cb_fem_rz1)
+                Draw.PushButton ('Del',    EVT_INC+i, c+360, r,    40, 2*rh,                      'Delete this row',            cb_fem_rdel)
+                r -= srg
+            r += srg
+            r, c, w = gu.box2__out(W,cg,rh, c,r)
+        r -= rh
+        r -= srg
+
+        # ----------------------- FEM -- linear elements
+
+        gu.caption2_(c,r,w,rh,'Linear elements',EVT_FEM_ADDLINE,EVT_FEM_DELALLLINES)
+        Draw.Toggle ('Show Lines', EVT_NONE, c+100, r+2, 80, rh-4, d['show_lines'], 'Show linear elements', cb_show_lines)
+        if len(lines)>0:
+            r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_fem_lines)
+            gu.text(c,r,'     Tag                        N0                          N1')
+            for k, v in lines.iteritems():
+                r -= rh
+                i  = int(k)
+                Draw.Number     ('',       EVT_INC+i, c,     r, 60, rh, v[0],-1000, 0, 'New linear element tag',   cb_fem_letag)
+                Draw.PushButton ('Get N0', EVT_INC+i, c+ 60, r, 60, rh,                'Get N0 of linear element', cb_fem_getN0)
+                Draw.Number     ('',       EVT_INC+i, c+120, r, 60, rh, v[1], 0, 1e8,  'N0: start point',          cb_fem_leN0)
+                Draw.PushButton ('Get N1', EVT_INC+i, c+180, r, 60, rh,                'Get N1 of linear element', cb_fem_getN1)
+                Draw.Number     ('',       EVT_INC+i, c+240, r, 60, rh, v[2], 0, 1e8,  'N1: end point',            cb_fem_leN1)
+                Draw.PushButton ('Del',    EVT_INC+i, c+300, r, 40, rh,                'Delete this row',          cb_fem_ledel)
                 r -= srg
             r += srg
             r, c, w = gu.box2__out(W,cg,rh, c,r)

@@ -26,7 +26,7 @@
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  #include <boost/python.hpp> // this includes everything
+  //#include <boost/python.hpp> // this includes everything
   namespace BPy = boost::python;
 #endif
 
@@ -79,7 +79,7 @@ public:
 	size_t                  PushNode     (Node * N)       { _nodes.Push(N); return _nodes.Size()-1; } ///< Push back a new node
 	size_t                  PushElem     (Element * E)    { _elems.Push(E); return _elems.Size()-1; } ///< Push back a new element
 	size_t                  PushNode     (double X, double Y, double Z=0.0, int Tag=0);               ///< Push back a new node
-	size_t                  PushElem     (int Tag, char const * Type, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> & Connectivity); ///< Push back a new element
+	size_t                  PushElem     (int Tag, char const * Type, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> const & Connectivity); ///< Push back a new element
 	size_t                  GetNode      (double X, double Y, double Z=0.0);        ///< Returns the node ID that matchs the specified coordinates
 	Array<Node*>          & Nodes        ()               { return _nodes;        } ///< Access all nodes (read/write)
 	Array<Element*>       & Elems        ()               { return _elems;        } ///< Access all elements (read/write)
@@ -91,14 +91,20 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-	Node          & PySetNode2D (size_t i, double X, double Y)                       { return (*SetNode(i,X,Y));   }
-	Node          & PySetNode3D (size_t i, double X, double Y, double Z)             { return (*SetNode(i,X,Y,Z)); }
-	PyElem          PySetElem   (size_t i, BPy::str const & Type, bool Act, int Tag) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act,Tag)); }
-	Node    const & PyNod       (size_t i)                                           { return (*Nod(i)); }
-	PyElem          PyEle       (size_t i)                                           { return PyElem(Ele(i)); }
-	void            PyBounds2D  (BPy::list & MinXY,  BPy::list & MaxXY ) const;
-	void            PyBounds3D  (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
+	Node          & PySetNode2D    (size_t i, double X, double Y)                       { return (*SetNode(i,X,Y));   }
+	Node          & PySetNode3D    (size_t i, double X, double Y, double Z)             { return (*SetNode(i,X,Y,Z)); }
+	PyElem          PySetElem      (size_t i, BPy::str const & Type, bool Act, int Tag) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act,Tag)); }
+	Node    const & PyNod          (size_t i)                                           { return (*Nod(i)); }
+	PyElem          PyEle          (size_t i)                                           { return PyElem(Ele(i)); }
+	void            PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
+	void            PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
 	void            PyElemsWithTag (int Tag, BPy::list & Elems);
+	size_t          PyPushNode1    (double X, double Y)                    { return PushNode (X,Y);       }
+	size_t          PyPushNode2    (double X, double Y, double Z)          { return PushNode (X,Y,Z);     }
+	size_t          PyPushNode3    (double X, double Y, double Z, int Tag) { return PushNode (X,Y,Z,Tag); }
+	size_t          PyPushElem     (int Tag, BPy::str const & Type, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity);
+	void            PyAddLinElems  (BPy::dict const & Edges,  ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
+	                                BPy::list const & EAtts); ///< Elements attributes
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -204,7 +210,7 @@ inline size_t Geom::PushNode(double X, double Y, double Z, int Tag)
 	return ID;
 }
 
-inline size_t Geom::PushElem(int Tag, char const * Type, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> & Connectivity )
+inline size_t Geom::PushElem(int Tag, char const * Type, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> const & Connectivity )
 {
 	// Alocate new element
 	Element * new_elem;
@@ -308,6 +314,68 @@ inline void Geom::PyElemsWithTag(int Tag, BPy::list & Elems)
 	Array<FEM::Element*> & elems = ElemsWithTag (Tag);
 	for (size_t i=0; i<elems.Size(); ++i)
 		Elems.append (PyElem(elems[i]));
+}
+
+inline size_t Geom::PyPushElem(int Tag, BPy::str const & Type, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity)
+{
+	size_t nnodes = BPy::len(Connectivity);
+	if (nnodes<2) throw new Fatal("Geom::PyPushElem: Number of nodes in the Connectivity list must be greater than 1");
+	Array<int> conn(nnodes);
+	for (size_t i=0; i<nnodes; ++i) conn[i] = BPy::extract<int>(Connectivity[i])();
+	return PushElem(Tag,
+	                BPy::extract<char const *>(Type)(),
+	                BPy::extract<char const *>(Model)(),
+	                BPy::extract<char const *>(Prms)(),
+	                BPy::extract<char const *>(Inis)(),
+	                BPy::extract<char const *>(Props)(),
+	                IsActive, conn);
+}
+
+inline void Geom::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts)
+{
+	/* Example:
+	 *           
+	 *           # Elements attributes
+	 *           eatts = [[-1, 'Spring', '', 'ks=%g', 'ZERO', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
+	 */
+
+	// Map element tag to index in EAtts list
+	int neatts = BPy::len(EAtts);
+	if (neatts<1) throw new Fatal("functions.h::PyAddLinElems: EAtts (element attributes) must contain at least one element");
+	std::map<int,int> tag2idx; 
+	for (int i=0; i<neatts; ++i)
+	{
+		BPy::list const & lst = BPy::extract<BPy::list>(EAtts[i])();
+		tag2idx[BPy::extract<int>(lst[0])()] = i;
+		if (BPy::len(EAtts[i])!=7) throw new Fatal("functions.h::PyAddLinElems: Each sublist in EAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Spring', '', 'ks=1e+12', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
+	}
+
+	// Read edges
+	BPy::object const & e_keys = BPy::extract<BPy::dict>(Edges)().iterkeys();
+	BPy::object const & e_vals = BPy::extract<BPy::dict>(Edges)().itervalues();
+	for (int i=0; i<BPy::len(Edges); ++i)
+	{
+		// Extract linear element data
+		Array<int> conn(2); // connectivity
+		BPy::tuple const & edge    = BPy::extract<BPy::tuple> (e_keys.attr("next")())();
+		int                tag     = BPy::extract<int>        (e_vals.attr("next")())();
+		                   conn[0] = BPy::extract<int>        (edge[0])();
+		                   conn[1] = BPy::extract<int>        (edge[1])();
+		
+		// Find element attributes
+		std::map<int,int>::const_iterator iter = tag2idx.find(tag);
+		if (iter==tag2idx.end()) throw new Fatal("functions.h::PyAddLinElems: Could not find tag < %d > in the list of Element Attributes", tag);
+		int idx_eatt = iter->second;
+
+		// Add linear element to FE geometry
+		char const * type  = BPy::extract<char const *>(EAtts[idx_eatt][1])();
+		char const * mdl   = BPy::extract<char const *>(EAtts[idx_eatt][2])();
+		char const * prms  = BPy::extract<char const *>(EAtts[idx_eatt][3])();
+		char const * inis  = BPy::extract<char const *>(EAtts[idx_eatt][4])();
+		char const * props = BPy::extract<char const *>(EAtts[idx_eatt][5])();
+		bool         act   = BPy::extract<bool>        (EAtts[idx_eatt][6])();
+		PushElem (tag, type, mdl, prms, inis, props, act, conn);
+	}
 }
 
 // }

@@ -59,11 +59,11 @@ def load_dict():
         dict['cad_rad']       = '0.0'
         dict['cad_stp']       = 10
         # MESH
-        dict['newetag']       = -10
-        dict['newftag']       = -100
-        dict['newrtag']       = -10
+        dict['newetag']       = -50
+        dict['newftag']       = -500
         # FEM
         dict['show_reinfs']   = True  # show reinforcements
+        dict['show_lines']    = True  # show linear elements
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
         # RESULTS
@@ -96,13 +96,13 @@ def load_dict():
                          20:'Hex20Equilib',  21:'Hex20Diffusion',
                          22:'Tet4Equilib',   23:'Tet4Diffusion',
                          24:'Tet10Equilib',  25:'Tet10Diffusion',
-                         26:'Reinforcement' }
+                         26:'Reinforcement', 27: 'Spring' }
 
-        dict['etymnu'] = 'Element Types %t|Reinforcement %x27|Tet10Diffusion %x26|Tet10Equilib %x25|Tet4Diffusion %x24|Tet4Equilib %x23|Hex20Diffusion %x22|Hex20Equilib %x21|Quad8Biot %x20|Quad4Biot %x19|Tri6Biot %x18|Tri3Biot %x17|Tri6Diffusion %x16|Tri6PStress %x15|Tri6PStrain %x14|Quad8Diffusion %x13|Quad8PStress %x12|Quad8PStrain %x11|Beam %x10|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
+        dict['etymnu'] = 'Element Types %t|Spring %x28|Reinforcement %x27|Tet10Diffusion %x26|Tet10Equilib %x25|Tet4Diffusion %x24|Tet4Equilib %x23|Hex20Diffusion %x22|Hex20Equilib %x21|Quad8Biot %x20|Quad4Biot %x19|Tri6Biot %x18|Tri3Biot %x17|Tri6Diffusion %x16|Tri6PStress %x15|Tri6PStrain %x14|Quad8Diffusion %x13|Quad8PStress %x12|Quad8PStrain %x11|Beam %x10|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
 
         # Models
-        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic', 4:'BiotElastic', 5:'Reinforcement' }
-        dict['mdlmnu'] = 'Constitutive Models %t|Reinforcement %x6|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
+        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic', 4:'BiotElastic', 5:'Reinforcement', 6:'Spring' }
+        dict['mdlmnu'] = 'Constitutive Models %t|Spring %x7|Reinforcement %x6|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
 
         # VTK Cell Type (tentative mapping)
         dict['vtk2ety'] = {  5: 5,   # VTK_TRIANGLE             => Tri3PStrain
@@ -233,12 +233,13 @@ def new_mat_props():
                  0.0,     #  16:  c  -- cohesion
                 20.0 ]    #  17:  phi -- friction angle
 
-def new_reinf_props(): return [-10, 0.0,0.0,0.0, 1.0,1.0,0.0]   # tag, x0,y0,z0, x1,y1,z1
+def new_reinf_props(): return [-100, 0.0,0.0,0.0, 1.0,1.0,0.0]  # tag, x0,y0,z0, x1,y1,z1
+def new_line_props():  return [-200, 0, 1]                      # tag, N0, N1
 def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1]          # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime, active?
 def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val
-def new_fbry_props():  return [-100, 0, 0.0]                    # tag, ux, val
+def new_fbry_props():  return [-500, 0, 0.0]                    # tag, ux, val
 def new_eatt_props():  return [-1, 2, -1, -1, 1, 0, 0]          # tag, ElemType, MaterialID, idx_props(in texts), active?, activate?, deactivate?
 
 
@@ -592,3 +593,33 @@ def sort_edges_and_verts(msh, edge_ids, r_idx):
             edge_ids.pop (idx)
         else: break
     return eds, ids
+
+def bounding_box(msh):
+    minx, miny, minz = msh.verts[0].co[0], msh.verts[0].co[1], msh.verts[0].co[2]
+    maxx, maxy, maxz = minx, miny, minz
+    for v in msh.verts:
+        if v.co[0]<minx: minx = v.co[0]
+        if v.co[1]<miny: miny = v.co[1]
+        if v.co[2]<minz: minz = v.co[2]
+        if v.co[0]>maxx: maxx = v.co[0]
+        if v.co[1]>maxy: maxy = v.co[1]
+        if v.co[2]>maxz: maxz = v.co[2]
+    p0 = Blender.Mathutils.Vector([minx,miny,minz])
+    p1 = Blender.Mathutils.Vector([maxx,maxy,maxz])
+    return p0, p1, (p1-p0).length
+
+def find_node(obj):
+    x, y, z = Blender.Window.GetCursorPos()
+    pt  = Blender.Mathutils.Vector([x,y,z])
+    msh = obj.getData (mesh=1)
+    ori = msh.verts[:] # create a copy before transforming to global coordinates
+    msh.transform (obj.matrix) # transform to global coordinates
+    nid = None # id of the vertex close to x,y,z
+    p0, p1, maxlen = bounding_box(msh)
+    for v in msh.verts:
+        if (pt-v.co).length<0.05*maxlen:
+            nid = v.index
+            break
+    msh.verts = ori # restore mesh to local coordinates
+    if nid==None: raise Exception('Could not find any Node close to Cursor Position: x=%g, y=%g, z=%g'%(x,y,z))
+    return nid

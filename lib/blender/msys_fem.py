@@ -87,6 +87,8 @@ def get_mats(obj):
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g nu=%g k=%g gw=%g' % (v[1],v[2],v[3],v[12]), desc]
             elif int(v[0])==5: # Reinforcement
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g Ar=%g At=%g ks=%g c=%g phi=%g' % (v[1],v[13],v[14],v[15],v[16],v[17]), desc]
+            elif int(v[0])==6: # Spring
+                mats[int(k)] = [d['mdl'][int(v[0])], 'ks=%g' % (v[15]), desc]
     return mats
 
 
@@ -180,6 +182,14 @@ def get_reinforcements(obj,is3d):
     return reinf_verts, reinf_edges
 
 
+def get_linear_elems(obj):
+    lines= {}
+    if obj.properties.has_key('lines'):
+        for k, v in obj.properties['lines'].iteritems():
+            lines[(v[1],v[2])] = v[0]
+    return lines
+
+
 def run_analysis(gen_script=False):
     Blender.Window.WaitCursor(1)
 
@@ -209,7 +219,9 @@ def run_analysis(gen_script=False):
     # reinforcements
     reinf_verts, reinf_edges = get_reinforcements (obj, is3d)
     has_reinf = len(reinf_verts)>0 and len(reinf_edges)>0 and len(ratts)>0
-    print 'has_reinf = ', has_reinf
+
+    # linear elements
+    lines = get_linear_elems (obj)
 
     if gen_script:
         # create new script
@@ -273,6 +285,12 @@ def run_analysis(gen_script=False):
         txt.write                        ('\n# Set nodes and elements (geometry)\n')
         if mesh_type=='frame': txt.write ('ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)\n')
         else:                  txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
+
+        # linear elements
+        if len(lines)>0:
+            txt.write ('\n# Add linear elements\n')
+            txt.write ('lines = '+lines.__str__()+'\n')
+            txt.write ('geo.add_lin_elems (lines, eatts)\n')
 
         # set reinforcements
         if has_reinf:
