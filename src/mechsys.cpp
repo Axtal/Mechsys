@@ -208,6 +208,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<FEM::Solver>("solver", init<FEM::Data &>())
+		.def(init<FEM::Data &, BPy::str const &>())
 	    .def("set_type",        &FEM::Solver::PySetType,        return_internal_reference<>())
 	    .def("set_cte",         &FEM::Solver::PySetCte,         return_internal_reference<>())
 	    .def("set_lin_sol",     &FEM::Solver::PySetLinSol,      return_internal_reference<>())

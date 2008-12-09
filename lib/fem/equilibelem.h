@@ -45,6 +45,7 @@
 #include "models/equilibmodel.h"
 #include "util/string.h"
 #include "util/util.h"
+#include "util/lineparser.h"
 #include "util/numstreams.h"
 #include "linalg/laexpr.h"
 

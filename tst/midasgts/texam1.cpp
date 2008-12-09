@@ -25,7 +25,7 @@
 #include "fem/elems/quad8pstrain.h"
 #include "fem/elems/beam.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
+#include "fem/solver.h"
 #include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -151,39 +151,30 @@ int main(int argc, char **argv) try
 	// Geometry
 	FEM::Data dat(2); // 2D
 
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "uy", 0.));
-	ebrys.Push (make_tuple(-20, "fx", ph));
-	ebrys.Push (make_tuple(-30, "fy", pv));
-	ebrys.Push (make_tuple(-40, "ux", 0.));
-
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
 	FEM::EAtts_T eatts;
 	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat, 1.0e-5);
-	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
+
+	// Solver
+	FEM::Solver sol(dat, "texam1");
+
+	// Set boundaries
+	FEM::EBrys_T ebrys;
+	ebrys.Push (make_tuple(-10, "uy", 0.));
+	ebrys.Push (make_tuple(-20, "fx", ph));
+	ebrys.Push (make_tuple(-30, "fy", pv));
+	ebrys.Push (make_tuple(-40, "ux", 0.));
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat);
-	sol->SolveWithInfo();
-	delete sol;
-
-	// Output: VTU
-	double start = std::clock();
-	Output o; o.VTU (&dat, "texam1.vtu");
-	double total = std::clock() - start;
-	cout << "\nTime elapsed (output file) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
-	cout << "[1;34mFile <texam1.vtu> saved.[0m\n\n";
+	sol.SolveWithInfo();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
-
-	start = std::clock();
 
 	// Stress
 	Array <double> err_sR;
@@ -258,15 +249,13 @@ int main(int argc, char **argv) try
 	double min_err_sRT = err_sRT[err_sRT.Min()];   double max_err_sRT = err_sRT[err_sRT.Max()];
 	double min_err_uR  = err_uR [err_uR .Min()];   double max_err_uR  = err_uR [err_uR .Max()];
 	double min_err_uT  = err_uT [err_uT .Min()];   double max_err_uT  = err_uT [err_uT .Max()];
+	cout << endl;
 	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
 	cout << _4<< "sR"  << _8s<<min_err_sR  << _8s<<err_sR .Mean() << (max_err_sR >tol_sR ?"[1;31m":"[1;32m") << _8s<<max_err_sR  << "[0m" << _8s<<err_sR.Norm()  << endl;
 	cout << _4<< "sT"  << _8s<<min_err_sT  << _8s<<err_sT .Mean() << (max_err_sT >tol_sT ?"[1;31m":"[1;32m") << _8s<<max_err_sT  << "[0m" << _8s<<err_sT.Norm()  << endl;
 	cout << _4<< "sRT" << _8s<<min_err_sRT << _8s<<err_sRT.Mean() << (max_err_sRT>tol_sRT?"[1;31m":"[1;32m") << _8s<<max_err_sRT << "[0m" << _8s<<err_sRT.Norm() << endl;
 	cout << _4<< "uR"  << _8s<<min_err_uR  << _8s<<err_uR .Mean() << (max_err_uR >tol_uR ?"[1;31m":"[1;32m") << _8s<<max_err_uR  << "[0m" << _8s<<err_uR.Norm()  << endl;
 	cout << _4<< "uT"  << _8s<<min_err_uT  << _8s<<err_uT .Mean() << (max_err_uT >tol_uT ?"[1;31m":"[1;32m") << _8s<<max_err_uT  << "[0m" << _8s<<err_uT.Norm()  << endl;
-
-	total = std::clock() - start;
-	cout << "Time elapsed (error check) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 
 	// Return error flag
 	if (max_err_sR>tol_sR || max_err_sT>tol_sT || max_err_sRT>tol_sRT || max_err_uR>tol_uR || max_err_uT>tol_uT) return 1;

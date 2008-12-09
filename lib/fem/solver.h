@@ -92,10 +92,11 @@ public:
 	enum Solver_T { FE_T, AME_T }; ///< FE:Forward-Euler, AME:Automatic-Modified-Euler
 
 	// Constructor
-	Solver (FEM::Data * D) { _initialize (D); }
+	Solver (FEM::Data & D)                       { _initialize (&D, NULL);    }
+	Solver (FEM::Data & D, char const * FileKey) { _initialize (&D, FileKey); }
 
 	// Destructor
-	virtual ~Solver() {}
+	~Solver() { if (_out!=NULL) delete _out; }
 
 	// Methods
 	Solver * SetPData      (FEM::PData * PD)  { _pd = PD; return this; }                             ///< Set structure with data for parallel computation
@@ -113,7 +114,7 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 //{
-	         Solver          (FEM::Data & D)                                                 { _initialize (&D); }
+	         Solver          (FEM::Data & D, BPy::str const & FileKey)                       { _initialize   (&D, BPy::extract<char const *>(FileKey)()); }
 	Solver & PySetType       (BPy::str const & Type)                                         { SetType       (BPy::extract<char const *>(Type)());     return (*this); }
 	Solver & PySetCte        (BPy::str const & Key, double Val)                              { SetCte        (BPy::extract<char const *>(Key)(), Val); return (*this); }
 	Solver & PySetLinSol     (BPy::str const & Key)                                          { SetLinSol     (BPy::extract<char const *>(Key)());      return (*this); }
@@ -142,6 +143,7 @@ private:
 	LinAlg::Vector<double>   _resid;   ///< Residual: resid = dFext - dFint
 	LinAlg::Vector<double>   _hKU;     ///< Linearized independent term of the differential equation.
 	bool                     _has_hKU; ///< Flag which says if any element has to contribute to the hKU vector. If _has_hKU==false, there is no need for the hKU vector, because there are no Order0Matrices in this stage of the simulation.
+	Output                 * _out;     ///< Write output file
 
 	// Data for Forward-Euler
 	int    _nSI;        ///< Number of sub-increments
@@ -180,7 +182,7 @@ private:
 	int                         _T22_size; ///< Size of T22
 
 	// Methods
-	void   _initialize                 (FEM::Data * D);                                                                 ///< Initialize the solver
+	void   _initialize                 (FEM::Data * D, char const * FileKey);                                           ///< Initialize the solver
 	void   _inv_G_times_dF_minus_hKU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU);            ///< Compute (linear solver) inv(G)*(dF-hKU), where G may be assembled by Order1 and Order0 matrices
 	void   _update_nodes_and_elements  (double h, LinAlg::Vector<double> const & dF,LinAlg::Vector<double> const & dU); ///< Update nodes essential/natural values and elements internal values (such as stresses/strains)
 	void   _backup_nodes_and_elements  ();                                                                              ///< Backup nodes essential/natural values and elements internal values (such as stresses/strains)
@@ -396,6 +398,9 @@ inline void Solver::Solve(int NDiv, double DTime)
 
 	// Clear boundary conditions for a next stage
 	for (size_t i=0; i<_data->NNodes(); ++i) _data->Nod(i)->ClearBryValues();
+
+	// Write output
+	if (_out!=NULL) _out->Write();
 }
 
 inline void Solver::SolveWithInfo(int NDiv, double DTime, int iStage, char const * MoreInfo)
@@ -466,7 +471,7 @@ inline void Solver::DynSolve(double tIni, double tFin, double h, double dtOut, s
 
 /* private */
 
-inline void Solver::_initialize(FEM::Data * D)
+inline void Solver::_initialize(FEM::Data * D, char const * FileKey)
 {
 	_data  = D;
 	_pd    = NULL;
@@ -475,6 +480,8 @@ inline void Solver::_initialize(FEM::Data * D)
 	_ndofs = 0;
 	SetType   ("FE");
 	SetLinSol ("UM");
+	if (FileKey==NULL) _out = NULL;
+	else               _out = new Output (_data, FileKey);
 }
 
 inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU)

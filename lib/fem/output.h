@@ -150,6 +150,8 @@ inline void Output::_initialize(FEM::Data const * D, char const * FileKey)
 	(*_pvd_file) << "  <Collection>\n";
 	_idx_file = 0;
 	_file_key = FileKey;
+
+	std::cout << "Hello from Output!!!\n";
 }
 
 inline void Output::_vtu(char const * FileName)
