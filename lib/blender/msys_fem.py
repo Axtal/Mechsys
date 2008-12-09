@@ -158,26 +158,13 @@ def get_brys(obj,stg):
 
 
 def get_reinforcements(obj,is3d):
-    rverts = {}
-    redges = {}
+    reinfs = {}
     if obj.properties.has_key('reinfs'):
-        vid = 0
-        eid = 0
         for k, v in obj.properties['reinfs'].iteritems():
-            tag  = int(v[0])
-            v1   = vid
-            v2   = vid+1
-            vid += 2
-            # vertices
-            if is3d:
-                rverts[v1] = (v[1],v[2],v[3])
-                rverts[v2] = (v[4],v[5],v[6])
-            else:
-                rverts[v1] = (v[1],v[2])
-                rverts[v2] = (v[4],v[5])
-            # edges
-            redges[(v1,v2)] = tag
-    return rverts, redges
+            tag = int(v[0])
+            if is3d: reinfs[(v[1],v[2],v[3], v[4],v[5],v[6])] = tag
+            else:    reinfs[(v[1],v[2],      v[4],v[5]     )] = tag
+    return reinfs
 
 
 def get_linear_elems(obj):
@@ -215,8 +202,8 @@ def run_analysis(gen_script=False):
     ndim = 3 if is3d else 2
 
     # reinforcements
-    rverts, redges = get_reinforcements (obj, is3d)
-    has_reinf      = len(rverts)>0 and len(redges)>0
+    reinfs    = get_reinforcements (obj, is3d)
+    has_reinf = len(reinfs)>0
 
     # linear elements
     lines     = get_linear_elems (obj)
@@ -251,9 +238,11 @@ def run_analysis(gen_script=False):
             elif mesh_type=='unstruct': me.gen_unstruct_mesh (True, txt)
             elif mesh_type=='frame':    me.gen_frame_mesh    (      txt)
 
-        # allocate geometry
-        txt.write ('\n# Geometry\n')
-        txt.write ('geo = ms.geom (%d)\n' % ndim)
+        # data and solver
+        txt.write ('\n# Data and Solver\n')
+        txt.write ('dat = ms.data   (%d)\n'        % ndim)
+        txt.write ('sol = ms.solver (dat, "%s")\n' % obj.name)
+        if mesh_type=='frame': txt.write ('dat.set_only_frame() # frame (beam/truss) mesh only\n')
 
         # element attributes
         neatt = len(eatts)
@@ -267,34 +256,21 @@ def run_analysis(gen_script=False):
             else:          estr += ',  # %s\n'
             txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[7]))
 
-        # set geometry: nodes, elements and attributes
-        txt.write                        ('\n# Set nodes and elements (geometry)\n')
-        if mesh_type=='frame': txt.write ('ms.set_nodes_elems (mesh, eatts, geo, 1.0e-5, True)\n')
-        else:                  txt.write ('ms.set_nodes_elems (mesh, eatts, geo)\n')
+        # set geometry: nodes and elements
+        txt.write ('\n# Set nodes and elements (geometry)\n')
+        txt.write ('dat.set_nodes_elems (mesh, eatts)\n')
 
         # add reinforcements
         if has_reinf:
             txt.write ('\n# Add reinforcements\n')
-            txt.write ('rverts = '+rverts.__str__()+' # vertices\n')
-            txt.write ('redges = '+redges.__str__()+' # edges/connectivity\n')
-            if is3d: txt.write ('geo.add_reinfs (True, rverts, redges, eatts) # True=>3D\n')
-            else:    txt.write ('geo.add_reinfs (False, rverts, redges, eatts) # False=>2D\n')
+            txt.write ('reinfs = '+reinfs.__str__()+'\n')
+            txt.write ('dat.add_reinfs (reinfs, eatts)\n')
 
         # add linear elements
         if has_lines:
             txt.write ('\n# Add linear elements\n')
             txt.write ('lines = '+lines.__str__()+'\n')
-            txt.write ('geo.add_lin_elems (lines, eatts)\n')
-
-        # allocate solver
-        txt.write ('\n# Solver\n')
-        txt.write ('sol = ms.solver ("ForwardEuler")\n')
-        txt.write ('sol.set_geom    (geo)\n')
-
-        # allocate output and open collection
-        txt.write ('\n# Open collection for output\n')
-        txt.write ('out = ms.output     ()\n')
-        txt.write ('out.open_collection ("'+obj.name+'")\n')
+            txt.write ('dat.add_lin_elems (lines, eatts)\n')
 
         # solve each stage
         for num in range(1,nstages+1):
@@ -318,44 +294,37 @@ def run_analysis(gen_script=False):
                 txt.write ('\n# Stage # %d --------------------------------------------------------------\n'%num)
                 elem_act, elem_deact = get_act_deact (obj,stg)
                 for k, v in elem_act.iteritems():
-                    if v: txt.write ('geo.activate (%d)\n'%(k))
+                    if v: txt.write ('dat.activate (%d)\n'%(k))
                 for k, v in elem_deact.iteritems():
-                    if v: txt.write ('geo.deactivate (%d)\n'%(k))
+                    if v: txt.write ('dat.deactivate (%d)\n'%(k))
 
                 # boundary conditions
                 nbrys, nbsID, ebrys, fbrys = get_brys (obj,stg)
                 if len(nbrys)>0: txt.write ('nbrys = '+nbrys.__str__()+'\n')
                 if len(ebrys)>0: txt.write ('ebrys = '+ebrys.__str__()+'\n')
                 if len(fbrys)>0: txt.write ('fbrys = '+fbrys.__str__()+'\n')
-                txt.write ('ms.set_brys             (mesh, ')
+                txt.write ('dat.set_brys            (mesh, ')
                 if len(nbrys)>0: txt.write ('nbrys, ')
                 else:            txt.write ('[], ')
                 if len(ebrys)>0: txt.write ('ebrys, ')
                 else:            txt.write ('[], ')
-                if len(fbrys)>0: txt.write ('fbrys, geo)\n')
-                else:            txt.write ('[], geo)\n')
+                if len(fbrys)>0: txt.write ('fbrys)\n')
+                else:            txt.write ('[])\n')
                 for nb in nbsID:
-                    txt.write ('geo.nod('+str(nb[0])+').bry          ("'+nb[1]+'",'+str(nb[2])+')\n')
+                    txt.write ('dat.nod('+str(nb[0])+').bry          ("'+nb[1]+'",'+str(nb[2])+')\n')
 
                 # apply body forces
-                if abf: txt.write ('geo.apply_body_forces   ()\n')
+                if abf: txt.write ('dat.apply_body_forces   ()\n')
 
                 # solve
                 txt.write ('sol.solve_with_info     (%d, %g, %d, "%s\\n")\n'%(ndiv,dtime,num,desc))
 
                 # clear displacements
-                if cdi: txt.write ('geo.clear_displacements ()\n')
-
-                # output
-                txt.write ('out.vtu                 (geo, sol.time())\n')
+                if cdi: txt.write ('dat.clear_displacements ()\n')
 
                 # save results
                 if not di.key('fullsc'):
-                    txt.write ('mf.save_results         (out, geo, obj, %d)\n'%num)
-
-        # close collection
-        txt.write ('\n# Close collection\n')
-        txt.write ('out.close_collection()\n')
+                    txt.write ('mf.save_results         (sol, dat, obj, %d)\n'%num)
 
         # change cursor
         if not di.key('fullsc'):
@@ -368,30 +337,23 @@ def run_analysis(gen_script=False):
         elif mesh_type=='unstruct': mesh = me.gen_unstruct_mesh ()
         elif mesh_type=='frame':    mesh = me.gen_frame_mesh    ()
 
-        # allocate geometry
-        geo = ms.geom (ndim)
+        # data and solver
+        dat = ms.data   (ndim)
+        sol = ms.solver (dat, obj.name)
+        if mesh_type=='frame': dat.set_only_frame()
 
         # element attributes
         elem_atts = []
         for ea in eatts: elem_atts.append(ea[:7])
 
-        # set geometry: nodes, elements, and attributes
-        if mesh_type=='frame': ms.set_nodes_elems (mesh, elem_atts, geo, 1.0e-5, True)
-        else:                  ms.set_nodes_elems (mesh, elem_atts, geo)
+        # set geometry: nodes and elements
+        dat.set_nodes_elems (mesh, elem_atts)
 
         # add reinforcements
-        if has_reinf: geo.add_reinfs (is3d, rverts, redges, elem_atts)
+        if has_reinf: dat.add_reinfs (reinfs, elem_atts)
 
         # add linear elements
-        if has_lines: geo.add_lin_elems (lines, elem_atts)
-
-        # allocate solver
-        sol = ms.solver ("ForwardEuler")
-        sol.set_geom    (geo)
-
-        # allocate output and open collection
-        out = ms.output     ()
-        out.open_collection (obj.name)
+        if has_lines: dat.add_lin_elems (lines, elem_atts)
 
         # solve each stage
         for num in range(1,nstages+1):
@@ -414,39 +376,33 @@ def run_analysis(gen_script=False):
                 # activate and deactivate elements
                 elem_act, elem_deact = get_act_deact (obj,stg)
                 for k, v in elem_act.iteritems():
-                    if v: geo.activate(k)
+                    if v: dat.activate(k)
                 for k, v in elem_deact.iteritems():
-                    if v: geo.deactivate(k)
+                    if v: dat.deactivate(k)
 
                 # boundary conditions
-                nbrys, nbsID, ebrys, fbrys = get_brys  (obj,stg)
-                ms.set_brys (mesh, nbrys, ebrys, fbrys, geo)
-                for nb in nbsID: geo.nod(nb[0]).bry(nb[1],nb[2])
+                nbrys, nbsID, ebrys, fbrys = get_brys (obj,stg)
+                dat.set_brys (mesh, nbrys, ebrys, fbrys)
+                for nb in nbsID: dat.nod(nb[0]).bry(nb[1],nb[2])
 
                 # apply body forces
-                if abf: geo.apply_body_forces()
+                if abf: dat.apply_body_forces()
 
                 # solve
                 sol.solve_with_info (ndiv,dtime,num,desc+'\n')
 
                 # clear displacements
-                if cdi: geo.clear_displacements()
-
-                # output
-                out.vtu (geo, sol.time())
+                if cdi: dat.clear_displacements()
 
                 # save results
-                save_results (out,geo,obj,num)
-
-        # close collection
-        out.close_collection()
+                save_results (sol, dat, obj, num)
 
     # end
     #Blender.Run(txt.name)
     Blender.Window.WaitCursor(0)
 
 
-def save_results(out, geo, obj, stage_num):
+def save_results(sol, dat, obj, stage_num):
     # dictionary
     s = str(stage_num)
     if not obj.properties.has_key('res'): obj.properties['res'] = {}
@@ -455,7 +411,7 @@ def save_results(out, geo, obj, stage_num):
     # menu with labels
     obj.properties['res'][s]['idx2lbl'] = {} # map label index to label key
     lbs = []
-    out.get_labels (lbs)
+    sol.out().get_labels (lbs)
     menu = 'Labels %t|'
     for i, l in enumerate(lbs):
         obj.properties['res'][s]['idx2lbl'][str(i)] = l
@@ -465,18 +421,18 @@ def save_results(out, geo, obj, stage_num):
     # save results at nodes
     for l in lbs:
         vals = []
-        for i in range(geo.nnodes()): vals.append (out.val(i, l))
+        for i in range(dat.nnodes()): vals.append (sol.out().val(i, l))
         obj.properties['res'][s][l] = vals
 
     # save extra output
     obj.properties['res'][s]['extra'] = {}
-    for i in range(geo.nelems()):
-        if geo.ele(i).has_extra() and geo.ele(i).is_active():
+    for i in range(dat.nelems()):
+        if dat.ele(i).has_extra() and dat.ele(i).is_active():
             ide = str(i)
             obj.properties['res'][s]['extra'][ide] = {}
-            geo.ele(i).calc_dep_vars()
+            dat.ele(i).calc_dep_vars()
             co, no, va = dict(), [], dict()
-            geo.ele(i).out_extra (co, no, va)
+            dat.ele(i).out_extra (co, no, va)
             if co.has_key('X'):
                 if len(co['X'])>0:
                     obj.properties['res'][s]['extra'][ide]['coords'] = co
@@ -488,8 +444,8 @@ def save_results(out, geo, obj, stage_num):
                         key  = 'max_'+k
                         maxv = max([abs(val) for val in v])
                         if obj.properties['res'][s].has_key(key):
-                            if maxv>obj.properties['res'][s][key][0]: obj.properties['res'][s][key] = [maxv, i, geo.ele(i).nod(0).x(), geo.ele(i).nod(0).y()]
-                        else: obj.properties['res'][s][key] = [maxv, i, geo.ele(i).nod(0).x(), geo.ele(i).nod(0).y()]
+                            if maxv>obj.properties['res'][s][key][0]: obj.properties['res'][s][key] = [maxv, i, dat.ele(i).nod(0).x(), dat.ele(i).nod(0).y()]
+                        else: obj.properties['res'][s][key] = [maxv, i, dat.ele(i).nod(0).x(), dat.ele(i).nod(0).y()]
 
     Blender.Window.QRedrawAll()
 

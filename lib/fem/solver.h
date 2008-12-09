@@ -112,6 +112,9 @@ public:
 	double Time () const { return _time;   } ///< Return current time
 	size_t nDOF () const { return _ndofs;  } ///< Number of DOFs
 
+	// Access output
+	Output const & Out () const { return (*_out); }
+
 #ifdef USE_BOOST_PYTHON
 //{
 	         Solver           (FEM::Data & D, BPy::str const & FileKey)                       { _initialize   (&D, BPy::extract<char const *>(FileKey)()); }
