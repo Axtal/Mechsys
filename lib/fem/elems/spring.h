@@ -196,6 +196,27 @@ inline void Spring::VTKConnect(String & Nodes) const
 	Nodes.Printf(os.str().c_str());
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new Spring element
+Element * SpringMaker()
+{
+	return new Spring();
+}
+
+// Register a Spring element into ElementFactory array map
+int SpringRegister()
+{
+	ElementFactory["Spring"] = SpringMaker;
+	return 0;
+}
+
+// Execute the autoregistration
+int __Spring_dummy_int  = SpringRegister();
+
+
 }; // namespace FEM
 
 #endif // MECHSYS_FEM_SPRING_H
