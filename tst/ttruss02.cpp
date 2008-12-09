@@ -43,7 +43,7 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/rod.h"
+#include "fem/elems/rod2.h"
 #include "fem/output.h"
 #include "util/exception.h"
 
@@ -80,7 +80,7 @@ int main(int argc, char **argv) try
 
 	// Elements
 	dat.SetNElems (21);
-	for (int i=0; i<21; ++i) dat.SetElem(i, "Rod", true, -1);
+	for (int i=0; i<21; ++i) dat.SetElem(i, "Rod2", true, -1);
 
 	// Set connectivity
 	dat.Ele( 0)->Connect(0, dat.Nod( 0))->Connect(1, dat.Nod( 2));
