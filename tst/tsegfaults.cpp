@@ -21,11 +21,10 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad4diffusion.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
 
@@ -62,10 +61,8 @@ int main(int argc, char **argv) try
 	dat.Nod(1)->Bry("uy",0.0);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetData(&dat);
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
+	FEM::Solver sol(dat,"tsegfaults");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	return 0;
 

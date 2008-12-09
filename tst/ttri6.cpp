@@ -41,10 +41,9 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/tri6pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
 
@@ -112,13 +111,8 @@ int main(int argc, char **argv) try
 	dat.Ele(1)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
-
-	Output out;
-	out.VTU(&dat, "out.vtu");
+	FEM::Solver sol(dat,"ttri6");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

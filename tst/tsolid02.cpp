@@ -21,10 +21,8 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/output.h"
+#include "fem/solver.h"
 #include "fem/elems/hex8equilib.h"
-#include "fem/solvers/autome.h"
-#include "fem/solvers/forwardeuler.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -122,14 +120,8 @@ int main(int argc, char **argv) try
 	cout << dat  << endl;
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetData(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
-
-	// Output
-	Output o; o.VTU (&dat, "tsolid02.vtu");
-	cout << "[1;34mFile <tsolid02.vtu> saved.[0m" << endl;
+	FEM::Solver sol(dat,"tsolid02");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

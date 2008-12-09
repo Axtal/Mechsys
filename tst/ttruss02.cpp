@@ -42,9 +42,8 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/rod.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
 #include "fem/output.h"
 #include "util/exception.h"
 
@@ -139,14 +138,8 @@ int main(int argc, char **argv) try
 	dat.Nod(10)->Bry("fy", -10.0);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "ttruss02.vtu");
-	cout << "[1;34mFile <ttruss02.vtu> saved.[0m\n\n";
+	FEM::Solver sol(dat,"ttruss02");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

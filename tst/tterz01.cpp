@@ -21,10 +21,8 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad4biot.h" // << plane strain
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -123,8 +121,7 @@ int main(int argc, char **argv) try
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Solver
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetData(&dat)->SetLinSol("UM");
+	FEM::Solver sol(dat,"tterz01");
 
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
@@ -136,11 +133,7 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-30, "uy",    0.0));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
-	sol->SolveWithInfo(/*NDiv*/4, /*DTime*/1000000, /*iStage*/0);
-
-	// Output: VTU 
-	Output o; o.VTU (&dat, "tterz01.vtu");
-	cout << "[1;34mFile <tterz01.vtu> saved.[0m\n\n";
+	sol.SolveWithInfo(/*NDiv*/4, /*DTime*/1000000, /*iStage*/0);
 
 	for (int i=0; i<SampleNodes.Size(); i++) 
 		Pwp0(i) = dat.Nod(SampleNodes(i))->Val("pwp");
@@ -152,8 +145,8 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-30, "uy",    0.0));
 	ebrys.Push   (make_tuple(-40, "fy",   load));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	dat.SetBrys (&mesh, NULL, &ebrys, NULL, &dat);
-	sol->SolveWithInfo(/*NDiv*/4, /*DTime*/1.0, /*iStage*/1);
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
+	sol.SolveWithInfo(/*NDiv*/4, /*DTime*/1.0, /*iStage*/1);
 
 	// Stage # 2.. : Consolidation
 	for (int i=0; i<TimeIncs.Size(); i++)
@@ -163,8 +156,8 @@ int main(int argc, char **argv) try
 		ebrys.Push   (make_tuple(-20, "ux",    0.0));
 		ebrys.Push   (make_tuple(-30, "uy",    0.0));
 		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-		dat.SetBrys (&mesh, NULL, &ebrys, NULL, &dat);
-		sol->SolveWithInfo(/*NDiv*/4, /*DTime*/TimeIncs(i), /*iStage*/i+2);
+		dat.SetBrys (&mesh, NULL, &ebrys, NULL);
+		sol.SolveWithInfo(/*NDiv*/4, /*DTime*/TimeIncs(i), /*iStage*/i+2);
 		for (int j=0; j<SampleNodes.Size(); j++)
 			OutPwp(j,i) = (dat.Nod(SampleNodes(j))->Val("pwp")-Pwp0(j))/load; // Saving normalized excess of pore-pressure
 	}
@@ -201,11 +194,6 @@ int main(int argc, char **argv) try
 	// Return error flag
 	if (max_err>tol) return 1;
 	else return 0;
-
-
-	// Output: VTU
-	//o.VTU (&dat, "tbiot01_02.vtu");
-	//cout << "[1;34mFile <tbiot01_02.vtu> saved.[0m\n\n";
 
 	return 0;
 }

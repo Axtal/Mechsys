@@ -41,9 +41,8 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/elems/rod.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
+#include "fem/solver.h"
+#include "fem/elems/rod2.h"
 #include "util/exception.h"
 
 using std::cout;
@@ -124,10 +123,8 @@ int main(int argc, char **argv) try
 	if (err_ke>8.55e-14) throw new Fatal("ttruss01: err_ke=%e is bigger than %e.",err_ke,8.55e-14);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
+	FEM::Solver sol(dat,"ttruss01");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;

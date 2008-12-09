@@ -21,10 +21,9 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
 #include "util/exception.h"
 
 using std::cout;
@@ -109,13 +108,10 @@ int main(int argc, char **argv) try
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;
 	dat.Ele(0)->Order1Matrix(0,Ke0);
-	//cout << "Ke0=\n" << Ke0 << endl;
 
 	// 6) Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetData(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
+	FEM::Solver sol(dat,"tquad8");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	// Output
 	cout << "Node 3: ux = " << dat.Nod(3)->Val("ux") << " : uy = " << dat.Nod(3)->Val("uy") << " : fy = "  << dat.Nod(3)->Val("fy")  << endl;

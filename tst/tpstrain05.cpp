@@ -21,12 +21,10 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -140,14 +138,8 @@ int main(int argc, char **argv) try
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetData(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "tpstrain05.vtu");
-	cout << "[1;34mFile <tpstrain05.vtu> saved.[0m\n\n";
+	FEM::Solver sol(dat,"tpstrain05");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

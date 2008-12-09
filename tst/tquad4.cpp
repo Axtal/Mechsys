@@ -21,10 +21,9 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad4pstress.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
 
@@ -80,10 +79,8 @@ int main(int argc, char **argv) try
 	dat.Ele(0)->SetModel("LinElastic", "E=96.0 nu=0.333333333333333333333333", "Sx=0.0 Sy=0.0 Sxy=0.0");
 
 	// 6) Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetData(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
+	FEM::Solver sol(dat,"tquad4");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	// Stiffness
 	Array<size_t>          map;

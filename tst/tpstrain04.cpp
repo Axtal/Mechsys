@@ -21,13 +21,11 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/hex20equilib.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
-#include "fem/output.h"
 
 using std::cout;
 using std::endl;
@@ -134,10 +132,8 @@ int main(int argc, char **argv) try
 	dat.Ele(0)->FaceBry( "Q",  q,5); // 5 => top face
 
 	// 6) Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetData(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
+	FEM::Solver sol(dat,"tpstrain04");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	// Error summary
 	double err_ux = 0.0;
@@ -156,9 +152,6 @@ int main(int argc, char **argv) try
 	cout << _8s << (err_ux>tol?"[1;31m":"[1;32m") << _8s <<err_ux << "[0m";
 	cout << _8s << (err_uy>tol?"[1;31m":"[1;32m") << _8s <<err_uy << "[0m" << endl;
 	cout << endl;
-
-	Output out;
-	out.VTU(&dat, "out.vtu");
 
 	// Return error flag
 	if (err_ux>tol || err_uy>tol) return 1;

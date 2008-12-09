@@ -21,13 +21,11 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
-#include "fem/output.h"
 
 using std::cout;
 using std::endl;
@@ -115,10 +113,8 @@ int main(int argc, char **argv) try
 	LinAlg::Matrix<double> Ke0;
 
 	// 6) Solve
-	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol->SetData(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
+	FEM::Solver sol(dat,"tpstrain03");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	// Error summary
 	double err_ux = 0.0;
