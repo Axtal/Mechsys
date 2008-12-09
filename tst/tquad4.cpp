@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4pstress.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
@@ -54,35 +53,35 @@ int main(int argc, char **argv) try
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
 	// 0) Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// 1) Nodes
-	g.SetNNodes (4);
-	g.SetNode   (0, 0.0, 0.0);
-	g.SetNode   (1, 1.0, 0.0);
-	g.SetNode   (2, 1.0, 0.5);
-	g.SetNode   (3, 0.0, 0.5);
+	dat.SetNNodes (4);
+	dat.SetNode   (0, 0.0, 0.0);
+	dat.SetNode   (1, 1.0, 0.0);
+	dat.SetNode   (2, 1.0, 0.5);
+	dat.SetNode   (3, 0.0, 0.5);
 
 	// 2) Elements
-	g.SetNElems (1);
-	g.SetElem   (0, "Quad4PStress", /*IsActive*/true, /*Tag*/-1);
+	dat.SetNElems (1);
+	dat.SetElem   (0, "Quad4PStress", /*IsActive*/true, /*Tag*/-1);
 
 	// 3) Set connectivity
-	g.Ele(0)->Connect(0, g.Nod(0))
-	        ->Connect(1, g.Nod(1))
-	        ->Connect(2, g.Nod(2))
-	        ->Connect(3, g.Nod(3));
+	dat.Ele(0)->Connect(0, dat.Nod(0))
+	        ->Connect(1, dat.Nod(1))
+	        ->Connect(2, dat.Nod(2))
+	        ->Connect(3, dat.Nod(3));
 
 	// 4) Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
-	g.Nod(1)->Bry("uy",0.0);
+	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
+	dat.Nod(1)->Bry("uy",0.0);
 
 	// 5) Parameters and initial values
-	g.Ele(0)->SetModel("LinElastic", "E=96.0 nu=0.333333333333333333333333", "Sx=0.0 Sy=0.0 Sxy=0.0");
+	dat.Ele(0)->SetModel("LinElastic", "E=96.0 nu=0.333333333333333333333333", "Sx=0.0 Sy=0.0 Sxy=0.0");
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
@@ -90,7 +89,7 @@ int main(int argc, char **argv) try
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;  Ke0.SetNS(Util::_6_3);
-	g.Ele(0)->Order1Matrix(0,Ke0);
+	dat.Ele(0)->Order1Matrix(0,Ke0);
 	cout << "Ke0=\n" << Ke0 << endl;
 
 	// Check

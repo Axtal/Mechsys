@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
@@ -73,42 +72,42 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
 	// 0) Problem dimension
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// 1) Nodes
-	g.SetNNodes (8);
-	g.SetNode   (0,   0.0 ,         0.0);
-	g.SetNode   (1,     L ,         0.0);
-	g.SetNode   (2,     L ,          H2);
-	g.SetNode   (3,   0.0 ,          H1);
-	g.SetNode   (4, L/2.0 ,         0.0);
-	g.SetNode   (5,     L ,      H2/2.0);
-	g.SetNode   (6, L/2.0 , (H2+H1)/2.0);
-	g.SetNode   (7,   0.0 ,      H1/2.0);
+	dat.SetNNodes (8);
+	dat.SetNode   (0,   0.0 ,         0.0);
+	dat.SetNode   (1,     L ,         0.0);
+	dat.SetNode   (2,     L ,          H2);
+	dat.SetNode   (3,   0.0 ,          H1);
+	dat.SetNode   (4, L/2.0 ,         0.0);
+	dat.SetNode   (5,     L ,      H2/2.0);
+	dat.SetNode   (6, L/2.0 , (H2+H1)/2.0);
+	dat.SetNode   (7,   0.0 ,      H1/2.0);
 
 	// 2) Elements
-	g.SetNElems (1);
-	g.SetElem   (0, "Quad8PStrain", /*IsActive*/true);
+	dat.SetNElems (1);
+	dat.SetElem   (0, "Quad8PStrain", /*IsActive*/true);
 
 	// 3) Set connectivity (list of nodes must be LOCAL)
-	g.Ele(0)->Connect(0, g.Nod(0))
-	        ->Connect(1, g.Nod(1))
-	        ->Connect(2, g.Nod(2))
-	        ->Connect(3, g.Nod(3))
-	        ->Connect(4, g.Nod(4))
-	        ->Connect(5, g.Nod(5))
-	        ->Connect(6, g.Nod(6))
-	        ->Connect(7, g.Nod(7));
+	dat.Ele(0)->Connect(0, dat.Nod(0))
+	        ->Connect(1, dat.Nod(1))
+	        ->Connect(2, dat.Nod(2))
+	        ->Connect(3, dat.Nod(3))
+	        ->Connect(4, dat.Nod(4))
+	        ->Connect(5, dat.Nod(5))
+	        ->Connect(6, dat.Nod(6))
+	        ->Connect(7, dat.Nod(7));
 
 	// 4) Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry     ("uy",0.0)->Bry("ux",0.0);
-	g.Nod(4)->Bry     ("uy",0.0);
-	g.Nod(1)->Bry     ("uy",0.0);
-	g.Ele(0)->EdgeBry ("Q",q, 3); // 3 => top edge
+	dat.Nod(0)->Bry     ("uy",0.0)->Bry("ux",0.0);
+	dat.Nod(4)->Bry     ("uy",0.0);
+	dat.Nod(1)->Bry     ("uy",0.0);
+	dat.Ele(0)->EdgeBry ("Q",q, 3); // 3 => top edge
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	g.Ele(0)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	dat.Ele(0)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;
@@ -117,7 +116,7 @@ int main(int argc, char **argv) try
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
@@ -126,13 +125,13 @@ int main(int argc, char **argv) try
 	double err_uy = 0.0;
 	double tol    = 1E-7;
 
-	err_ux += fabs( g.Ele(0)->Val(3,"ux") - ( 2.4422E-3) );
-	err_ux += fabs( g.Ele(0)->Val(6,"ux") - ( 4.7371E-3) );
-	err_ux += fabs( g.Ele(0)->Val(2,"ux") - ( 9.2043E-3) );
+	err_ux += fabs( dat.Ele(0)->Val(3,"ux") - ( 2.4422E-3) );
+	err_ux += fabs( dat.Ele(0)->Val(6,"ux") - ( 4.7371E-3) );
+	err_ux += fabs( dat.Ele(0)->Val(2,"ux") - ( 9.2043E-3) );
 
-	err_uy += fabs( g.Ele(0)->Val(3,"uy") - ( 2.8685E-4) );
-	err_uy += fabs( g.Ele(0)->Val(6,"uy") - (-1.0436E-4) );
-	err_uy += fabs( g.Ele(0)->Val(2,"uy") - (-3.1506E-3) );
+	err_uy += fabs( dat.Ele(0)->Val(3,"uy") - ( 2.8685E-4) );
+	err_uy += fabs( dat.Ele(0)->Val(6,"uy") - (-1.0436E-4) );
+	err_uy += fabs( dat.Ele(0)->Val(2,"uy") - (-3.1506E-3) );
 
 	cout << _8s << "Err x" << _8s << "Err y" << endl;
 	cout << _8s << (err_ux>tol?"[1;31m":"[1;32m") << _8s <<err_ux << "[0m";
@@ -140,7 +139,7 @@ int main(int argc, char **argv) try
 	cout << endl;
 
 	Output out;
-	out.VTU(&g, "out.vtu");
+	out.VTU(&dat, "out.vtu");
 
 	// Return error flag
 	if (err_ux>tol || err_uy>tol) return 1;

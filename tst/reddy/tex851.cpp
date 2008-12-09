@@ -44,7 +44,7 @@
 #include <cmath>
 
 // MechSys
-#include "fem/geometry.h"
+#include "fem/data.h"
 #include "fem/functions.h"
 #include "fem/elems/quad4diffusion.h"
 #include "models/diffusions/lindiffusion.h"
@@ -101,7 +101,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEA /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
@@ -114,16 +114,16 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), "", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
 
 	// Set upper nodes boundary condition
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<dat.NNodes(); ++i)
 	{
-		double x = g.Nod(i)->X();
-		double y = g.Nod(i)->Y();
+		double x = dat.Nod(i)->X();
+		double y = dat.Nod(i)->Y();
 		if (fabs(y-H)<1.0e-5) // top node
-			g.Nod(i)->Bry ("u", T0*cos(PI*x/(6.0*a)));
+			dat.Nod(i)->Bry ("u", T0*cos(PI*x/(6.0*a)));
 	}
 
 	// Check conductivity matrices
@@ -134,10 +134,10 @@ int main(int argc, char **argv) try
 				 -2.0, -1.0,  4.0, -1.0,
 				 -1.0, -2.0, -1.0,  4.0;
 	Ke_correct = (k/6.0)*Ke_correct;
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
 		LinAlg::Matrix<double> Ke;
-		g.Ele(i)->Order1Matrix(0,Ke);
+		dat.Ele(i)->Order1Matrix(0,Ke);
 		double err_ke = 0.0;
 		for (int i=0; i<4; ++i)
 		for (int j=0; j<4; ++j)
@@ -148,25 +148,25 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
-	for (size_t i=0; i<g.NNodes(); ++i)
-		cout << _6<<i << _8s<<g.Nod(i)->Val("u") << _8s<<g.Nod(i)->Val("q") << endl;
+	for (size_t i=0; i<dat.NNodes(); ++i)
+		cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("q") << endl;
 	cout << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 	
 	// Check
 	Array<double> err_u;
-	for (size_t i=0; i<g.NNodes(); ++i)	
+	for (size_t i=0; i<dat.NNodes(); ++i)	
 	{
-		double x     = g.Nod(i)->X();
-		double y     = g.Nod(i)->Y();
-		double u     = g.Nod(i)->Val("u");
+		double x     = dat.Nod(i)->X();
+		double y     = dat.Nod(i)->Y();
+		double u     = dat.Nod(i)->Val("u");
 		double ucorr = T0*cosh(PI*y/(6.0*a))*cos(PI*x/(6.0*a))/cosh(PI/3.0);
 		err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
 	}

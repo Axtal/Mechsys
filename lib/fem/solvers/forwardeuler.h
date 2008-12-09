@@ -29,7 +29,7 @@ class ForwardEuler: public Solver
 {
 public:
 	// Constructor
-	ForwardEuler ();
+	ForwardEuler (FEM::Data * D);
 
 	// Methods
 	Solver * SetCte (char const * Key, double Value); ///< Set solver constant such as number of subincrements, DTOL, etc.
@@ -50,8 +50,9 @@ private:
 
 
 /* Constructor */
-inline ForwardEuler::ForwardEuler()
-	: _nSI        (1),
+inline ForwardEuler::ForwardEuler(FEM::Data * D)
+	: Solver(D),
+	  _nSI        (1),
 	  _norm_resid (0.0)
 {}
 

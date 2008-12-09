@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad4diffusion.h"
 #include "models/equilibs/linelastic.h"
@@ -36,35 +35,35 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	// Geometry
-	FEM::Geom g(2);
+	FEM::Data dat(2);
 
 	// Nodes
-	g.SetNNodes (4);
-	g.SetNode   (0, 0.0, 0.0);
-	g.SetNode   (1, 1.0, 0.0);
-	g.SetNode   (2, 1.0, 1.0);
-	g.SetNode   (3, 0.0, 1.0);
+	dat.SetNNodes (4);
+	dat.SetNode   (0, 0.0, 0.0);
+	dat.SetNode   (1, 1.0, 0.0);
+	dat.SetNode   (2, 1.0, 1.0);
+	dat.SetNode   (3, 0.0, 1.0);
 
 	// Elements
-	g.SetNElems (1);
-	g.SetElem   (0, "Quad4PStrain", /*IsActive*/true, /*Tag*/-1);
+	dat.SetNElems (1);
+	dat.SetElem   (0, "Quad4PStrain", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
-	g.Ele(0)->Connect(0, g.Nod(0))
-	        ->Connect(1, g.Nod(1))
-	        ->Connect(2, g.Nod(2))
-	        ->Connect(3, g.Nod(3));
+	dat.Ele(0)->Connect(0, dat.Nod(0))
+	        ->Connect(1, dat.Nod(1))
+	        ->Connect(2, dat.Nod(2))
+	        ->Connect(3, dat.Nod(3));
 
 	// Parameters and initial values
-	g.Ele(0)->SetModel("LinElastic", "E=100.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
+	dat.Ele(0)->SetModel("LinElastic", "E=100.0 nu=0.25", "Sx=0.0 Sy=0.0 Sxy=0.0");
 
 	// Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
-	g.Nod(1)->Bry("uy",0.0);
+	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
+	dat.Nod(1)->Bry("uy",0.0);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g);
+	sol->SetGeom(&dat);
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 

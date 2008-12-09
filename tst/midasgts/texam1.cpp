@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad8pstrain.h"
 #include "fem/elems/beam.h"
@@ -150,7 +149,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
@@ -166,18 +165,18 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g, 1.0e-5);
-	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat, 1.0e-5);
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g);
+	sol->SetGeom(&dat);
 	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: VTU
 	double start = std::clock();
-	Output o; o.VTU (&g, "texam1.vtu");
+	Output o; o.VTU (&dat, "texam1.vtu");
 	double total = std::clock() - start;
 	cout << "\nTime elapsed (output file) = "<<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds\n";
 	cout << "[1;34mFile <texam1.vtu> saved.[0m\n\n";
@@ -190,13 +189,13 @@ int main(int argc, char **argv) try
 	Array <double> err_sR;
 	Array <double> err_sT;
 	Array <double> err_sRT;
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j)
 		{
 			// Analytical
-			double x = g.Ele(i)->Nod(j)->X();
-			double y = g.Ele(i)->Nod(j)->Y();
+			double x = dat.Ele(i)->Nod(j)->X();
+			double y = dat.Ele(i)->Nod(j)->Y();
 			double t = atan(y/x);
 			double R = sqrt(x*x+y*y);
 			double sigRc, sigTc, sigRTc; // correct stress components
@@ -208,9 +207,9 @@ int main(int argc, char **argv) try
 			double cc    = c*c;
 			double ss    = s*s;
 			double sc    = s*c;
-			double Sx    = g.Ele(i)->Val(j,"Sx");
-			double Sy    = g.Ele(i)->Val(j,"Sy");
-			double Sxy   = g.Ele(i)->Val(j,"Sxy");
+			double Sx    = dat.Ele(i)->Val(j,"Sx");
+			double Sy    = dat.Ele(i)->Val(j,"Sy");
+			double Sxy   = dat.Ele(i)->Val(j,"Sxy");
 			double sigR  = Sx*cc + Sy*ss + 2.0*Sxy*sc;
 			double sigT  = Sx*ss + Sy*cc - 2.0*Sxy*sc;
 			double sigRT = (Sy-Sx)*sc + (cc-ss)*Sxy;
@@ -225,11 +224,11 @@ int main(int argc, char **argv) try
 	// Displacements
 	Array <double> err_uR;
 	Array <double> err_uT;
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<dat.NNodes(); ++i)
 	{
 		// Analytical
-		double x  = g.Nod(i)->X();
-		double y  = g.Nod(i)->Y();
+		double x  = dat.Nod(i)->X();
+		double y  = dat.Nod(i)->Y();
 		double t  = atan(y/x);
 		double R  = sqrt(x*x+y*y);
 		double uRc, uTc; // correct displacement components
@@ -238,8 +237,8 @@ int main(int argc, char **argv) try
 		// Numerical
 		double c  = x/R;
 		double s  = y/R;
-		double ux = g.Nod(i)->Val("ux");
-		double uy = g.Nod(i)->Val("uy");
+		double ux = dat.Nod(i)->Val("ux");
+		double uy = dat.Nod(i)->Val("uy");
 		double uR = ux*c + uy*s;
 		double uT = uy*c - ux*s;
 

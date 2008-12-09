@@ -40,8 +40,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/rod.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -62,34 +61,34 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Nodes
-	g.SetNNodes (3);
-	g.SetNode   (0,  0.0,  0.0);
-	g.SetNode   (1, 10.0,  0.0);
-	g.SetNode   (2, 10.0, 10.0);
+	dat.SetNNodes (3);
+	dat.SetNode   (0,  0.0,  0.0);
+	dat.SetNode   (1, 10.0,  0.0);
+	dat.SetNode   (2, 10.0, 10.0);
 
 	// Elements
-	g.SetNElems (3);
-	g.SetElem   (0, "Rod", /*IsActive*/true, /*Tag*/-1);
-	g.SetElem   (1, "Rod", /*IsActive*/true, /*Tag*/-1);
-	g.SetElem   (2, "Rod", /*IsActive*/true, /*Tag*/-1);
+	dat.SetNElems (3);
+	dat.SetElem   (0, "Rod", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (1, "Rod", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (2, "Rod", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
-	g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
-	g.Ele(1)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
-	g.Ele(2)->Connect(0, g.Nod(0))->Connect(1, g.Nod(2));
+	dat.Ele(0)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1));
+	dat.Ele(1)->Connect(0, dat.Nod(1))->Connect(1, dat.Nod(2));
+	dat.Ele(2)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(2));
 
 	// Parameters and initial value
-	g.Ele(0)->SetModel("", "E=100.0 A=1.0"              , "Sx=0.0");
-	g.Ele(1)->SetModel("", "E= 50.0 A=1.0"              , "Sx=0.0");
-	g.Ele(2)->SetModel("", "E=200.0 A=1.414213562373095", "Sx=0.0");
+	dat.Ele(0)->SetModel("", "E=100.0 A=1.0"              , "Sx=0.0");
+	dat.Ele(1)->SetModel("", "E= 50.0 A=1.0"              , "Sx=0.0");
+	dat.Ele(2)->SetModel("", "E=200.0 A=1.414213562373095", "Sx=0.0");
 
 	// Boundary conditions (must be after set connectivity)
-	g.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
-	g.Nod(1)->                Bry("uy",  0.4); // Essential
-	g.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
+	dat.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
+	dat.Nod(1)->                Bry("uy",  0.4); // Essential
+	dat.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
 
 	// Check stiffness matrices
 	double err_ke = 0.0;
@@ -100,9 +99,9 @@ int main(int argc, char **argv) try
 	Ke0c.Resize(4,4);
 	Ke1c.Resize(4,4);
 	Ke2c.Resize(4,4);
-	g.Ele(0)->Order1Matrix(0,Ke0);
-	g.Ele(1)->Order1Matrix(0,Ke1);
-	g.Ele(2)->Order1Matrix(0,Ke2);
+	dat.Ele(0)->Order1Matrix(0,Ke0);
+	dat.Ele(1)->Order1Matrix(0,Ke1);
+	dat.Ele(2)->Order1Matrix(0,Ke2);
 	Ke0c =  10.0,   0.0, -10.0,   0.0,
 	         0.0,   0.0,   0.0,   0.0,
 	       -10.0,   0.0,  10.0,   0.0,
@@ -126,24 +125,24 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
-	for (size_t i=0; i<g.NNodes(); ++i)
-		cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << endl;
+	for (size_t i=0; i<dat.NNodes(); ++i)
+		cout << _6<<i << _8s<<dat.Nod(i)->Val("ux") <<  _8s<<dat.Nod(i)->Val("uy") << _8s<<dat.Nod(i)->Val("fx") << _8s<<dat.Nod(i)->Val("fy") << endl;
 	cout << endl;
 
 	// Output: Elements
 	cout << _6<<"Elem #" << _8s<<"Sa(left)" << _8s<<"Sa(right)" << _8s<<"Ea(left)" << _8s<<"Ea(right)" << endl;
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		g.Ele(i)->CalcDepVars();
+		dat.Ele(i)->CalcDepVars();
 		cout << _6<<i;
-		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j) cout << _8s<<g.Ele(i)->Val(j, "Sa");
-		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j) cout << _8s<<g.Ele(i)->Val(j, "Ea");
+		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j) cout << _8s<<dat.Ele(i)->Val(j, "Sa");
+		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j) cout << _8s<<dat.Ele(i)->Val(j, "Ea");
 		cout << endl;
 	}
 	cout << endl;
@@ -152,26 +151,26 @@ int main(int argc, char **argv) try
 
 	// Displacements
 	Array<double> err_u(6);
-	err_u[0] =  fabs(g.Nod(0)->Val("ux") - ( 0.0));
-	err_u[1] =  fabs(g.Nod(0)->Val("uy") - (-0.5));
-	err_u[2] =  fabs(g.Nod(1)->Val("ux") - ( 0.0));
-	err_u[3] =  fabs(g.Nod(1)->Val("uy") - ( 0.4));
-	err_u[4] =  fabs(g.Nod(2)->Val("ux") - (-0.5));
-	err_u[5] =  fabs(g.Nod(2)->Val("uy") - ( 0.2));
+	err_u[0] =  fabs(dat.Nod(0)->Val("ux") - ( 0.0));
+	err_u[1] =  fabs(dat.Nod(0)->Val("uy") - (-0.5));
+	err_u[2] =  fabs(dat.Nod(1)->Val("ux") - ( 0.0));
+	err_u[3] =  fabs(dat.Nod(1)->Val("uy") - ( 0.4));
+	err_u[4] =  fabs(dat.Nod(2)->Val("ux") - (-0.5));
+	err_u[5] =  fabs(dat.Nod(2)->Val("uy") - ( 0.2));
 
 	// Forces
 	Array<double> err_f(6);
-	err_f[0] = fabs(g.Nod(0)->Val("fx") - (-2.0));
-	err_f[1] = fabs(g.Nod(0)->Val("fy") - (-2.0));
-	err_f[2] = fabs(g.Nod(1)->Val("fx") - ( 0.0));
-	err_f[3] = fabs(g.Nod(1)->Val("fy") - ( 1.0));
-	err_f[4] = fabs(g.Nod(2)->Val("fx") - ( 2.0));
-	err_f[5] = fabs(g.Nod(2)->Val("fy") - ( 1.0));
+	err_f[0] = fabs(dat.Nod(0)->Val("fx") - (-2.0));
+	err_f[1] = fabs(dat.Nod(0)->Val("fy") - (-2.0));
+	err_f[2] = fabs(dat.Nod(1)->Val("fx") - ( 0.0));
+	err_f[3] = fabs(dat.Nod(1)->Val("fy") - ( 1.0));
+	err_f[4] = fabs(dat.Nod(2)->Val("fx") - ( 2.0));
+	err_f[5] = fabs(dat.Nod(2)->Val("fy") - ( 1.0));
 
 	// Correct axial normal stresses
-	Array<double> err_s(g.NElems());
+	Array<double> err_s(dat.NElems());
 	err_s.SetValues(0.0);
-	err_s[1] = fabs(g.Ele(1)->Val(0, "N") - (-1.0));
+	err_s[1] = fabs(dat.Ele(1)->Val(0, "N") - (-1.0));
 
 	// Error summary
 	double tol_u     = DBL_EPSILON;

@@ -40,8 +40,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/tri6pstrain.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
@@ -66,60 +65,60 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Nodes
-	g.SetNNodes (9);
-	g.SetNode   (0, 0.0, 0.0);
-	g.SetNode   (1, 1.0, 0.0);
-	g.SetNode   (2, 0.0, 1.0);
-	g.SetNode   (3, 0.5, 0.0);
-	g.SetNode   (4, 0.5, 0.5);
-	g.SetNode   (5, 0.0, 0.5);
-	g.SetNode   (6, 1.0, 1.0);
-	g.SetNode   (7, 0.5, 1.0);
-	g.SetNode   (8, 1.0, 0.5);
+	dat.SetNNodes (9);
+	dat.SetNode   (0, 0.0, 0.0);
+	dat.SetNode   (1, 1.0, 0.0);
+	dat.SetNode   (2, 0.0, 1.0);
+	dat.SetNode   (3, 0.5, 0.0);
+	dat.SetNode   (4, 0.5, 0.5);
+	dat.SetNode   (5, 0.0, 0.5);
+	dat.SetNode   (6, 1.0, 1.0);
+	dat.SetNode   (7, 0.5, 1.0);
+	dat.SetNode   (8, 1.0, 0.5);
 
 	// Elements
-	g.SetNElems (2);
-	g.SetElem   (0, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
-	g.SetElem   (1, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
+	dat.SetNElems (2);
+	dat.SetElem   (0, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (1, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
-	g.Ele(0)->Connect(0, g.Nod(0))
-	        ->Connect(1, g.Nod(1))
-			->Connect(2, g.Nod(2))
-			->Connect(3, g.Nod(3))
-			->Connect(4, g.Nod(4))
-			->Connect(5, g.Nod(5))->SetIntPoints(3);
+	dat.Ele(0)->Connect(0, dat.Nod(0))
+	        ->Connect(1, dat.Nod(1))
+			->Connect(2, dat.Nod(2))
+			->Connect(3, dat.Nod(3))
+			->Connect(4, dat.Nod(4))
+			->Connect(5, dat.Nod(5))->SetIntPoints(3);
 	
-	g.Ele(1)->Connect(0, g.Nod(6))
-	        ->Connect(1, g.Nod(2))
-	        ->Connect(2, g.Nod(1))
-	        ->Connect(3, g.Nod(7))
-	        ->Connect(4, g.Nod(4))
-	        ->Connect(5, g.Nod(8))->SetIntPoints(3);
+	dat.Ele(1)->Connect(0, dat.Nod(6))
+	        ->Connect(1, dat.Nod(2))
+	        ->Connect(2, dat.Nod(1))
+	        ->Connect(3, dat.Nod(7))
+	        ->Connect(4, dat.Nod(4))
+	        ->Connect(5, dat.Nod(8))->SetIntPoints(3);
 
 	// Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
-	g.Nod(1)->Bry("uy",0.0);
-	g.Nod(3)->Bry("uy",0.0);
-	g.Nod(2)->Bry("fy",0.0);
-	g.Nod(7)->Bry("fy",1.0);
-	g.Nod(6)->Bry("fy",1.0);
+	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
+	dat.Nod(1)->Bry("uy",0.0);
+	dat.Nod(3)->Bry("uy",0.0);
+	dat.Nod(2)->Bry("fy",0.0);
+	dat.Nod(7)->Bry("fy",1.0);
+	dat.Nod(6)->Bry("fy",1.0);
 
 	// Parameters and initial values
-	g.Ele(0)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
-	g.Ele(1)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	dat.Ele(0)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	dat.Ele(1)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	Output out;
-	out.VTU(&g, "out.vtu");
+	out.VTU(&dat, "out.vtu");
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -137,12 +136,12 @@ int main(int argc, char **argv) try
 
 	for (int i=0; i<6; i++)
 	{
-		sx0 (i) = g.Ele(0)->Val(i, "Sx" );
-		sy0 (i) = g.Ele(0)->Val(i, "Sy" );
-		sxy0(i) = g.Ele(0)->Val(i, "Sxy");
-		sx1 (i) = g.Ele(1)->Val(i, "Sx" );
-		sy1 (i) = g.Ele(1)->Val(i, "Sy" );
-		sxy1(i) = g.Ele(1)->Val(i, "Sxy");
+		sx0 (i) = dat.Ele(0)->Val(i, "Sx" );
+		sy0 (i) = dat.Ele(0)->Val(i, "Sy" );
+		sxy0(i) = dat.Ele(0)->Val(i, "Sxy");
+		sx1 (i) = dat.Ele(1)->Val(i, "Sx" );
+		sy1 (i) = dat.Ele(1)->Val(i, "Sy" );
+		sxy1(i) = dat.Ele(1)->Val(i, "Sxy");
 	}
 
 	Vector<double> sx (9);

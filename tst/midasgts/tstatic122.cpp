@@ -27,8 +27,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/hex8equilib.h"
 #include "fem/elems/hex20equilib.h"
 #include "models/equilibs/linelastic.h"
@@ -94,7 +93,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(3); // 2D
+	FEM::Data dat(3); // 2D
 
 	// Face brys
 	FEM::FBrys_T fbrys;
@@ -110,17 +109,17 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Hex8Equilib" , "LinElastic", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL, NULL, &fbrys, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetBrys       (&mesh, NULL, NULL, &fbrys, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g);
+	sol->SetGeom(&dat);
 	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tstatic122.vtu");
+	Output o; o.VTU (&dat, "tstatic122.vtu");
 	cout << "[1;34mFile <tstatic122.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -129,10 +128,10 @@ int main(int argc, char **argv) try
     Array<double> err_dis_z;
 	double I = B*H*H*H/12.0; // Section momentum of inertia
 
-	for (size_t i=0; i<g.NNodes(); i++)
+	for (size_t i=0; i<dat.NNodes(); i++)
 	{
-		double y   = g.Nod(i)->Y();
-		double uz  = g.Nod(i)->Val("uz");
+		double y   = dat.Nod(i)->Y();
+		double uz  = dat.Nod(i)->Val("uz");
 		double auz = F/(E*I)*(y*y*y/6.0 - y*y*L/2.0); // Analitic solution for the vertical displacement
 		err_dis_z.Push(fabs(uz - auz));
 		cout << "iNode: " << i << "  Uz: " << uz << "    Analytic Uz: " <<  auz << endl;

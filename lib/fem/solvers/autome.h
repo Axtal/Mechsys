@@ -31,7 +31,7 @@ class AutoME: public Solver
 {
 public:
 	// Constructor
-	AutoME ();
+	AutoME (FEM::Data * D);
 
 	// Methods
 	Solver * SetCte (char const * Key, double Value); ///< Set solver constant such as number of subincrements, DTOL, etc.
@@ -70,8 +70,9 @@ private:
 
 /* Constructor */
 
-inline AutoME::AutoME()
-	: _maxSI (400),
+inline AutoME::AutoME(FEM::Data * D)
+	: Solver(D),
+	  _maxSI (400),
 	  _DTOL  (1.0e-3),
 	  _dTini (0.001),
 	  _mMin  (0.01),

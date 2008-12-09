@@ -41,8 +41,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/rod.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -63,90 +62,90 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Nodes
-	g.SetNNodes (12);
-	g.SetNode   ( 0,  0.0, 0.0);
-	g.SetNode   ( 1, 10.0, 5.0);
-	g.SetNode   ( 2, 10.0, 0.0);
-	g.SetNode   ( 3, 20.0, 8.0);
-	g.SetNode   ( 4, 20.0, 0.0);
-	g.SetNode   ( 5, 30.0, 9.0);
-	g.SetNode   ( 6, 30.0, 0.0);
-	g.SetNode   ( 7, 40.0, 8.0);
-	g.SetNode   ( 8, 40.0, 0.0);
-	g.SetNode   ( 9, 50.0, 5.0);
-	g.SetNode   (10, 50.0, 0.0);
-	g.SetNode   (11, 60.0, 0.0);
+	dat.SetNNodes (12);
+	dat.SetNode   ( 0,  0.0, 0.0);
+	dat.SetNode   ( 1, 10.0, 5.0);
+	dat.SetNode   ( 2, 10.0, 0.0);
+	dat.SetNode   ( 3, 20.0, 8.0);
+	dat.SetNode   ( 4, 20.0, 0.0);
+	dat.SetNode   ( 5, 30.0, 9.0);
+	dat.SetNode   ( 6, 30.0, 0.0);
+	dat.SetNode   ( 7, 40.0, 8.0);
+	dat.SetNode   ( 8, 40.0, 0.0);
+	dat.SetNode   ( 9, 50.0, 5.0);
+	dat.SetNode   (10, 50.0, 0.0);
+	dat.SetNode   (11, 60.0, 0.0);
 
 	// Elements
-	g.SetNElems (21);
-	for (int i=0; i<21; ++i) g.SetElem(i, "Rod", true, -1);
+	dat.SetNElems (21);
+	for (int i=0; i<21; ++i) dat.SetElem(i, "Rod", true, -1);
 
 	// Set connectivity
-	g.Ele( 0)->Connect(0, g.Nod( 0))->Connect(1, g.Nod( 2));
-	g.Ele( 1)->Connect(0, g.Nod( 2))->Connect(1, g.Nod( 4));
-	g.Ele( 2)->Connect(0, g.Nod( 4))->Connect(1, g.Nod( 6));
-	g.Ele( 3)->Connect(0, g.Nod( 6))->Connect(1, g.Nod( 8));
-	g.Ele( 4)->Connect(0, g.Nod( 8))->Connect(1, g.Nod(10));
-	g.Ele( 5)->Connect(0, g.Nod(10))->Connect(1, g.Nod(11));
-	g.Ele( 6)->Connect(0, g.Nod( 0))->Connect(1, g.Nod( 1));
-	g.Ele( 7)->Connect(0, g.Nod( 1))->Connect(1, g.Nod( 3));
-	g.Ele( 8)->Connect(0, g.Nod( 3))->Connect(1, g.Nod( 5));
-	g.Ele( 9)->Connect(0, g.Nod( 5))->Connect(1, g.Nod( 7));
-	g.Ele(10)->Connect(0, g.Nod( 7))->Connect(1, g.Nod( 9));
-	g.Ele(11)->Connect(0, g.Nod( 9))->Connect(1, g.Nod(11));
-	g.Ele(12)->Connect(0, g.Nod( 1))->Connect(1, g.Nod( 2));
-	g.Ele(13)->Connect(0, g.Nod( 3))->Connect(1, g.Nod( 4));
-	g.Ele(14)->Connect(0, g.Nod( 5))->Connect(1, g.Nod( 6));
-	g.Ele(15)->Connect(0, g.Nod( 7))->Connect(1, g.Nod( 8));
-	g.Ele(16)->Connect(0, g.Nod( 9))->Connect(1, g.Nod(10));
-	g.Ele(17)->Connect(0, g.Nod( 1))->Connect(1, g.Nod( 4));
-	g.Ele(18)->Connect(0, g.Nod( 3))->Connect(1, g.Nod( 6));
-	g.Ele(19)->Connect(0, g.Nod( 6))->Connect(1, g.Nod( 7));
-	g.Ele(20)->Connect(0, g.Nod( 8))->Connect(1, g.Nod( 9));
+	dat.Ele( 0)->Connect(0, dat.Nod( 0))->Connect(1, dat.Nod( 2));
+	dat.Ele( 1)->Connect(0, dat.Nod( 2))->Connect(1, dat.Nod( 4));
+	dat.Ele( 2)->Connect(0, dat.Nod( 4))->Connect(1, dat.Nod( 6));
+	dat.Ele( 3)->Connect(0, dat.Nod( 6))->Connect(1, dat.Nod( 8));
+	dat.Ele( 4)->Connect(0, dat.Nod( 8))->Connect(1, dat.Nod(10));
+	dat.Ele( 5)->Connect(0, dat.Nod(10))->Connect(1, dat.Nod(11));
+	dat.Ele( 6)->Connect(0, dat.Nod( 0))->Connect(1, dat.Nod( 1));
+	dat.Ele( 7)->Connect(0, dat.Nod( 1))->Connect(1, dat.Nod( 3));
+	dat.Ele( 8)->Connect(0, dat.Nod( 3))->Connect(1, dat.Nod( 5));
+	dat.Ele( 9)->Connect(0, dat.Nod( 5))->Connect(1, dat.Nod( 7));
+	dat.Ele(10)->Connect(0, dat.Nod( 7))->Connect(1, dat.Nod( 9));
+	dat.Ele(11)->Connect(0, dat.Nod( 9))->Connect(1, dat.Nod(11));
+	dat.Ele(12)->Connect(0, dat.Nod( 1))->Connect(1, dat.Nod( 2));
+	dat.Ele(13)->Connect(0, dat.Nod( 3))->Connect(1, dat.Nod( 4));
+	dat.Ele(14)->Connect(0, dat.Nod( 5))->Connect(1, dat.Nod( 6));
+	dat.Ele(15)->Connect(0, dat.Nod( 7))->Connect(1, dat.Nod( 8));
+	dat.Ele(16)->Connect(0, dat.Nod( 9))->Connect(1, dat.Nod(10));
+	dat.Ele(17)->Connect(0, dat.Nod( 1))->Connect(1, dat.Nod( 4));
+	dat.Ele(18)->Connect(0, dat.Nod( 3))->Connect(1, dat.Nod( 6));
+	dat.Ele(19)->Connect(0, dat.Nod( 6))->Connect(1, dat.Nod( 7));
+	dat.Ele(20)->Connect(0, dat.Nod( 8))->Connect(1, dat.Nod( 9));
 
 	// Parameters and initial value
-	g.Ele( 0)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 1)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 2)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 3)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 4)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 5)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	g.Ele( 6)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	g.Ele( 7)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	g.Ele( 8)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	g.Ele( 9)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	g.Ele(10)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	g.Ele(11)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	g.Ele(12)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(13)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(14)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(15)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(16)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	g.Ele(17)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
-	g.Ele(18)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
-	g.Ele(19)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
-	g.Ele(20)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	dat.Ele( 0)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	dat.Ele( 1)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	dat.Ele( 2)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	dat.Ele( 3)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	dat.Ele( 4)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	dat.Ele( 5)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
+	dat.Ele( 6)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	dat.Ele( 7)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	dat.Ele( 8)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	dat.Ele( 9)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	dat.Ele(10)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	dat.Ele(11)->SetModel("", "E=1000.0  A=10.0", "ZERO");
+	dat.Ele(12)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	dat.Ele(13)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	dat.Ele(14)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	dat.Ele(15)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	dat.Ele(16)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
+	dat.Ele(17)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	dat.Ele(18)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	dat.Ele(19)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	dat.Ele(20)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
 
 	// Boundary conditions (must be after set connectivity)
-	g.Nod( 0)->Bry("ux",   0.0)->Bry("uy", 0.0);
-	g.Nod(11)->Bry("uy",   0.0);
-	g.Nod( 2)->Bry("fy", -10.0);
-	g.Nod( 4)->Bry("fy", -10.0);
-	g.Nod( 6)->Bry("fy", -16.0);
-	g.Nod( 8)->Bry("fy", -10.0);
-	g.Nod(10)->Bry("fy", -10.0);
+	dat.Nod( 0)->Bry("ux",   0.0)->Bry("uy", 0.0);
+	dat.Nod(11)->Bry("uy",   0.0);
+	dat.Nod( 2)->Bry("fy", -10.0);
+	dat.Nod( 4)->Bry("fy", -10.0);
+	dat.Nod( 6)->Bry("fy", -16.0);
+	dat.Nod( 8)->Bry("fy", -10.0);
+	dat.Nod(10)->Bry("fy", -10.0);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "ttruss02.vtu");
+	Output o; o.VTU (&dat, "ttruss02.vtu");
 	cout << "[1;34mFile <ttruss02.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -181,40 +180,40 @@ int main(int argc, char **argv) try
 
 	Array<double> err_u;
 	Array<double> err_f;
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<dat.NNodes(); ++i)
 	{
 		// Displacements
-		err_u.Push ( fabs(g.Nod(i)->Val("ux")-u_corr[i][0]) );
-		err_u.Push ( fabs(g.Nod(i)->Val("uy")-u_corr[i][1]) );
+		err_u.Push ( fabs(dat.Nod(i)->Val("ux")-u_corr[i][0]) );
+		err_u.Push ( fabs(dat.Nod(i)->Val("uy")-u_corr[i][1]) );
 
 		// Forces
-		err_f.Push ( fabs(g.Nod(i)->Val("fx")-f_corr[i][0]) );
-		err_f.Push ( fabs(g.Nod(i)->Val("fy")-f_corr[i][1]) );
+		err_f.Push ( fabs(dat.Nod(i)->Val("fx")-f_corr[i][0]) );
+		err_f.Push ( fabs(dat.Nod(i)->Val("fy")-f_corr[i][1]) );
 	}
 	
 	// Correct axial normal stresses
-	Array<double> err_s(g.NElems());
-	err_s[ 0] = fabs(g.Ele( 0)->Val(0, "Sa") - (28.0000));
-	err_s[ 1] = fabs(g.Ele( 1)->Val(0, "Sa") - (28.0000));
-	err_s[ 2] = fabs(g.Ele( 2)->Val(0, "Sa") - (28.7500));
-	err_s[ 3] = fabs(g.Ele( 3)->Val(0, "Sa") - (28.7500));
-	err_s[ 4] = fabs(g.Ele( 4)->Val(0, "Sa") - (28.0000));
-	err_s[ 5] = fabs(g.Ele( 5)->Val(0, "Sa") - (28.0000));
-	err_s[ 6] = fabs(g.Ele( 6)->Val(0, "Sa") - (-6.2610));
-	err_s[ 7] = fabs(g.Ele( 7)->Val(0, "Sa") - (-6.0030));
-	err_s[ 8] = fabs(g.Ele( 8)->Val(0, "Sa") - (-6.0300));
-	err_s[ 9] = fabs(g.Ele( 9)->Val(0, "Sa") - (-6.0300));
-	err_s[10] = fabs(g.Ele(10)->Val(0, "Sa") - (-6.0030));
-	err_s[11] = fabs(g.Ele(11)->Val(0, "Sa") - (-6.2610));
-	err_s[12] = fabs(g.Ele(12)->Val(0, "Sa") - ( 3.3330));
-	err_s[13] = fabs(g.Ele(13)->Val(0, "Sa") - ( 3.0830));
-	err_s[14] = fabs(g.Ele(14)->Val(0, "Sa") - ( 4.0000));
-	err_s[15] = fabs(g.Ele(15)->Val(0, "Sa") - ( 3.0830));
-	err_s[16] = fabs(g.Ele(16)->Val(0, "Sa") - ( 3.3330));
-	err_s[17] = fabs(g.Ele(17)->Val(0, "Sa") - ( 1.6770));
-	err_s[18] = fabs(g.Ele(18)->Val(0, "Sa") - ( 3.2020));
-	err_s[19] = fabs(g.Ele(19)->Val(0, "Sa") - ( 3.2020));
-	err_s[20] = fabs(g.Ele(20)->Val(0, "Sa") - ( 1.6770));
+	Array<double> err_s(dat.NElems());
+	err_s[ 0] = fabs(dat.Ele( 0)->Val(0, "Sa") - (28.0000));
+	err_s[ 1] = fabs(dat.Ele( 1)->Val(0, "Sa") - (28.0000));
+	err_s[ 2] = fabs(dat.Ele( 2)->Val(0, "Sa") - (28.7500));
+	err_s[ 3] = fabs(dat.Ele( 3)->Val(0, "Sa") - (28.7500));
+	err_s[ 4] = fabs(dat.Ele( 4)->Val(0, "Sa") - (28.0000));
+	err_s[ 5] = fabs(dat.Ele( 5)->Val(0, "Sa") - (28.0000));
+	err_s[ 6] = fabs(dat.Ele( 6)->Val(0, "Sa") - (-6.2610));
+	err_s[ 7] = fabs(dat.Ele( 7)->Val(0, "Sa") - (-6.0030));
+	err_s[ 8] = fabs(dat.Ele( 8)->Val(0, "Sa") - (-6.0300));
+	err_s[ 9] = fabs(dat.Ele( 9)->Val(0, "Sa") - (-6.0300));
+	err_s[10] = fabs(dat.Ele(10)->Val(0, "Sa") - (-6.0030));
+	err_s[11] = fabs(dat.Ele(11)->Val(0, "Sa") - (-6.2610));
+	err_s[12] = fabs(dat.Ele(12)->Val(0, "Sa") - ( 3.3330));
+	err_s[13] = fabs(dat.Ele(13)->Val(0, "Sa") - ( 3.0830));
+	err_s[14] = fabs(dat.Ele(14)->Val(0, "Sa") - ( 4.0000));
+	err_s[15] = fabs(dat.Ele(15)->Val(0, "Sa") - ( 3.0830));
+	err_s[16] = fabs(dat.Ele(16)->Val(0, "Sa") - ( 3.3330));
+	err_s[17] = fabs(dat.Ele(17)->Val(0, "Sa") - ( 1.6770));
+	err_s[18] = fabs(dat.Ele(18)->Val(0, "Sa") - ( 3.2020));
+	err_s[19] = fabs(dat.Ele(19)->Val(0, "Sa") - ( 3.2020));
+	err_s[20] = fabs(dat.Ele(20)->Val(0, "Sa") - ( 1.6770));
 
 	// Error summary
 	double tol_u     = 5.0e-6;

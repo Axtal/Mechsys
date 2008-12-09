@@ -35,8 +35,7 @@
 #include <cmath>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/tri3diffusion.h"
 #include "fem/elems/tri6diffusion.h"
 #include "fem/elems/quad4diffusion.h"
@@ -125,7 +124,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Edges brys (the order matters!)
 	FEM::EBrys_T ebrys;
@@ -146,26 +145,26 @@ int main(int argc, char **argv) try
 	}
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (msh, &eatts, &g);
-	FEM::SetBrys       (msh, NULL, &ebrys, NULL, &g);
+	dat.SetNodesElems (msh, &eatts, &dat);
+	dat.SetBrys       (msh, NULL, &ebrys, NULL, &dat);
 
 	// Set prescribed u = 100*sin(PI*x/10) on top nodes
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<dat.NNodes(); ++i)
 	{
-		double x = g.Nod(i)->X();
-		double y = g.Nod(i)->Y();
+		double x = dat.Nod(i)->X();
+		double y = dat.Nod(i)->Y();
 		if (y>10.0-1e-7) // top node
-			g.Nod(i)->Bry("u", 100.0*sin(PI*x/10.0));
+			dat.Nod(i)->Bry("u", 100.0*sin(PI*x/10.0));
 	}
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tlaplace01.vtu");
+	Output o; o.VTU (&dat, "tlaplace01.vtu");
 	cout << "[1;34mFile <tlaplace01.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -173,14 +172,14 @@ int main(int argc, char **argv) try
 	// Check
 	Array<double> err_u;
 	//cout << _6<<"Node #" << _8s<<"u" << _8s<<"ucorrect" << _8s<<"q" << endl;
-	for (size_t i=0; i<g.NNodes(); ++i)	
+	for (size_t i=0; i<dat.NNodes(); ++i)	
 	{
-		double x     = g.Nod(i)->X();
-		double y     = g.Nod(i)->Y();
-		double u     = g.Nod(i)->Val("u");
+		double x     = dat.Nod(i)->X();
+		double y     = dat.Nod(i)->Y();
+		double u     = dat.Nod(i)->Val("u");
 		double ucorr = 100.0*sinh(PI*y/10.0)*sin(PI*x/10.0)/sinh(PI);
 		err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
-		//cout << _6<<i << _8s<<g.Nod(i)->Val("u") << _8s<<ucorr << _8s<<g.Nod(i)->Val("q") << endl;
+		//cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<ucorr << _8s<<dat.Nod(i)->Val("q") << endl;
 	}
 	//cout << endl;
 

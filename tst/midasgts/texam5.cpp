@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad8pstrain.h"
 #include "fem/elems/beam.h"
@@ -157,7 +156,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Nodes brys
 	FEM::NBrys_T nbrys;
@@ -186,12 +185,12 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-55, "Beam", "", beamprms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g, 1.0e-5);
-	FEM::SetBrys       (&mesh, &nbrys, &ebrys, NULL, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat, 1.0e-5);
+	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g);
+	sol->SetGeom(&dat);
 	sol->SolveWithInfo();
 	delete sol;
 
@@ -205,15 +204,15 @@ int main(int argc, char **argv) try
     Array <double> err_uT;
 
 	// Stress 
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
 		String ele_name;
-		if (strcmp(g.Ele(i)->Name(), "Beam")==0) 
-			for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		if (strcmp(dat.Ele(i)->Name(), "Beam")==0) 
+			for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j)
 			{
 				// Analytical
-				double x  = g.Ele(i)->Nod(j)->X();
-				double y  = g.Ele(i)->Nod(j)->Y();
+				double x  = dat.Ele(i)->Nod(j)->X();
+				double y  = dat.Ele(i)->Nod(j)->Y();
 				double th = atan(y/x);
 				double R  = sqrt(x*x + y*y);
 				double M_correct; // Bending momentun
@@ -225,17 +224,17 @@ int main(int argc, char **argv) try
 				// Analysis
 				double M;
 				double N;
-				g.Ele(i)->CalcDepVars();
-				M = g.Ele(i)->Val(j,"M");
-				N = g.Ele(i)->Val(j,"N");
+				dat.Ele(i)->CalcDepVars();
+				M = dat.Ele(i)->Val(j,"M");
+				N = dat.Ele(i)->Val(j,"N");
 
 				err_M .Push ( fabs(M_correct - M) );
 				err_N .Push ( fabs(N_correct - N) );
 
-				int node_id = g.Ele(i)->Nod(j)->GetID();
+				int node_id = dat.Ele(i)->Nod(j)->GetID();
 
-				double ux = g.Nod(node_id)->Val("ux");
-				double uy = g.Nod(node_id)->Val("uy");
+				double ux = dat.Nod(node_id)->Val("ux");
+				double uy = dat.Nod(node_id)->Val("uy");
 				double uR = -(ux*cos(th)+uy*sin(th));
 				double uT = -(uy*cos(th)-ux*sin(th));
 
@@ -254,11 +253,11 @@ int main(int argc, char **argv) try
 	}
 
 	//// Displacements
-	//for (size_t i=0; i<g.NNodes(); ++i)
+	//for (size_t i=0; i<dat.NNodes(); ++i)
 	//{
 	//	// Analytical
-	//	double x  = g.Nod(i)->X();
-	//	double y  = g.Nod(i)->Y();
+	//	double x  = dat.Nod(i)->X();
+	//	double y  = dat.Nod(i)->Y();
 	//	double th = atan(y/x);
 	//	double R  = sqrt(x*x + y*y);
 	//	double uR_correct;
@@ -269,8 +268,8 @@ int main(int argc, char **argv) try
 	//	Einsten_Schwartz( p0, K, R, th, r, E_soil, nu_soil, E_beam, nu_beam, Izz_beam, A_beam, M, N, uT_correct, uR_correct);
 
 	//	// Analysis
-	//	double ux = g.Nod(i)->Val("ux");
-	//	double uy = g.Nod(i)->Val("uy");
+	//	double ux = dat.Nod(i)->Val("ux");
+	//	double uy = dat.Nod(i)->Val("uy");
 	//	double uR = ux*cos(th)+uy*sin(th);
 	//	double uT = uy*cos(th)-ux*sin(th);
 
@@ -303,7 +302,7 @@ int main(int argc, char **argv) try
 	cout << endl;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "texam5.vtu");
+	Output o; o.VTU (&dat, "texam5.vtu");
 	cout << "[1;34mFile <texam5.vtu> saved.[0m\n\n";
 
 	return 1;

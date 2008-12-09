@@ -22,8 +22,7 @@
 #include <cmath>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/tri3diffusion.h"
 #include "fem/elems/tri6diffusion.h"
 #include "models/diffusions/lindiffusion.h"
@@ -90,7 +89,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Edges brys (the order matters!)
 	FEM::EBrys_T ebrys;
@@ -102,28 +101,28 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tpoisson01.vtu");
+	Output o; o.VTU (&dat, "tpoisson01.vtu");
 	cout << "[1;34mFile <tpoisson01.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Check
 	Array<double> err_u;
-	for (size_t i=0; i<g.NNodes(); ++i)	
+	for (size_t i=0; i<dat.NNodes(); ++i)	
 	{
-		double x     = g.Nod(i)->X();
-		double y     = g.Nod(i)->Y();
-		double u     = g.Nod(i)->Val("u");
+		double x     = dat.Nod(i)->X();
+		double y     = dat.Nod(i)->Y();
+		double u     = dat.Nod(i)->Val("u");
 		double ucorr = (1.0-x*x-y*y)/4.0;
 		err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
 	}

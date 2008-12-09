@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/beam.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/output.h"
@@ -57,58 +56,58 @@ int main(int argc, char **argv) try
 	double Izz =  4.0e-4; // m^4
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Nodes
-	g.SetNNodes (4);
-	g.SetNode   (0, 0.0,   L);
-	g.SetNode   (1,   L,   L);
-	g.SetNode   (2,   L, 0.0);
-	g.SetNode   (3, L+L, 0.0);
+	dat.SetNNodes (4);
+	dat.SetNode   (0, 0.0,   L);
+	dat.SetNode   (1,   L,   L);
+	dat.SetNode   (2,   L, 0.0);
+	dat.SetNode   (3, L+L, 0.0);
 
 	// Elements
-	g.SetNElems (3);
-	g.SetElem   (0, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1));
-	g.SetElem   (1, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(1))->Connect(1, g.Nod(2));
-	g.SetElem   (2, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, g.Nod(2))->Connect(1, g.Nod(3));
+	dat.SetNElems (3);
+	dat.SetElem   (0, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1));
+	dat.SetElem   (1, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(1))->Connect(1, dat.Nod(2));
+	dat.SetElem   (2, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(2))->Connect(1, dat.Nod(3));
 
 	// Parameters and initial value
 	String prms; prms.Printf("E=%f A=%f Izz=%f", E, A, Izz);
-	g.Ele(0)->SetModel("LinElastic", prms.CStr(), "ZERO");
-	g.Ele(1)->SetModel("LinElastic", prms.CStr(), "ZERO");
-	g.Ele(2)->SetModel("LinElastic", prms.CStr(), "ZERO");
+	dat.Ele(0)->SetModel("LinElastic", prms.CStr(), "ZERO");
+	dat.Ele(1)->SetModel("LinElastic", prms.CStr(), "ZERO");
+	dat.Ele(2)->SetModel("LinElastic", prms.CStr(), "ZERO");
 
 	// Boundary conditions (must be after set connectivity)
-	g.Nod(0)->Bry("ux", 0.0)->Bry("uy", 0.0);
-	g.Nod(1)->Bry("fy", P);
-	g.Nod(3)->Bry("uy", 0.0)->Bry("mz", M);
+	dat.Nod(0)->Bry("ux", 0.0)->Bry("uy", 0.0);
+	dat.Nod(1)->Bry("fy", P);
+	dat.Nod(3)->Bry("uy", 0.0)->Bry("mz", M);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tbeam01.vtu");
+	Output o; o.VTU (&dat, "tbeam01.vtu");
 	cout << "\n[1;34mFile <tbeam01.vtu> saved.[0m\n\n";
 
 	// Output: Nodes
 	cout << "" << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << _8s<<"mz" << endl;
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<dat.NNodes(); ++i)
 	{
-		if (g.Nod(i)->HasVar("wz"))
-			cout << _6<<i << _8s<<g.Nod(i)->Val("ux") <<  _8s<<g.Nod(i)->Val("uy") << _8s<<g.Nod(i)->Val("wz") << _8s<<g.Nod(i)->Val("fx") << _8s<<g.Nod(i)->Val("fy") << _8s<<g.Nod(i)->Val("mz") << endl;
+		if (dat.Nod(i)->HasVar("wz"))
+			cout << _6<<i << _8s<<dat.Nod(i)->Val("ux") <<  _8s<<dat.Nod(i)->Val("uy") << _8s<<dat.Nod(i)->Val("wz") << _8s<<dat.Nod(i)->Val("fx") << _8s<<dat.Nod(i)->Val("fy") << _8s<<dat.Nod(i)->Val("mz") << endl;
 	}
 	cout << endl;
 
 	// Output: Elements
 	cout << _6<<"Elem #" << _8s<<"N0" << _8s<<"M0" << _8s<<"V0" << _8s<<"N1" << _8s<<"M1" << _8s<<"V1" << endl;
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		g.Ele(i)->CalcDepVars();
-		cout << _6<<i << _8s<<g.Ele(i)->Val(0, "N") << _8s<<g.Ele(i)->Val(0, "M") << _8s<<g.Ele(i)->Val(0, "V");
-		cout <<          _8s<<g.Ele(i)->Val(1, "N") << _8s<<g.Ele(i)->Val(1, "M") << _8s<<g.Ele(i)->Val(1, "V") << endl;
+		dat.Ele(i)->CalcDepVars();
+		cout << _6<<i << _8s<<dat.Ele(i)->Val(0, "N") << _8s<<dat.Ele(i)->Val(0, "M") << _8s<<dat.Ele(i)->Val(0, "V");
+		cout <<          _8s<<dat.Ele(i)->Val(1, "N") << _8s<<dat.Ele(i)->Val(1, "M") << _8s<<dat.Ele(i)->Val(1, "V") << endl;
 	}
 	cout << endl;
 
@@ -118,7 +117,7 @@ int main(int argc, char **argv) try
 	Matrix<double> Values;
 	Array<String>  Labels;
 
-	g.Ele(2)->OutExtra(Coords, Norm, Values, Labels);
+	dat.Ele(2)->OutExtra(Coords, Norm, Values, Labels);
 	cout << "Coords: \n"       << Coords << endl;
 	cout << "Normal vector: "  << Norm   << endl;
 	cout << "Values:\n"        << Values << endl;
@@ -128,45 +127,45 @@ int main(int argc, char **argv) try
 
 	// Displacements
 	Array<double> err_u(12);
-	err_u[ 0] = fabs(g.Nod(0)->Val("ux") - (0.0));
-	err_u[ 1] = fabs(g.Nod(0)->Val("uy") - (0.0));
-	err_u[ 2] = fabs(g.Nod(0)->Val("wz") - (7.84722222e-5));
-	err_u[ 3] = fabs(g.Nod(1)->Val("ux") - (0.0));
-	err_u[ 4] = fabs(g.Nod(1)->Val("uy") - (6.85515873e-05));
-	err_u[ 5] = fabs(g.Nod(1)->Val("wz") - (4.87103175e-05));
-	err_u[ 6] = fabs(g.Nod(2)->Val("ux") - (1.89484127e-05));
-	err_u[ 7] = fabs(g.Nod(2)->Val("uy") - (7.03373016e-05));
-	err_u[ 8] = fabs(g.Nod(2)->Val("wz") - (-1.08134921e-05));
-	err_u[ 9] = fabs(g.Nod(3)->Val("ux") - (1.89484127e-05));
-	err_u[10] = fabs(g.Nod(3)->Val("uy") - (0.0));
-	err_u[11] = fabs(g.Nod(3)->Val("wz") - (-1.59623016e-04));
+	err_u[ 0] = fabs(dat.Nod(0)->Val("ux") - (0.0));
+	err_u[ 1] = fabs(dat.Nod(0)->Val("uy") - (0.0));
+	err_u[ 2] = fabs(dat.Nod(0)->Val("wz") - (7.84722222e-5));
+	err_u[ 3] = fabs(dat.Nod(1)->Val("ux") - (0.0));
+	err_u[ 4] = fabs(dat.Nod(1)->Val("uy") - (6.85515873e-05));
+	err_u[ 5] = fabs(dat.Nod(1)->Val("wz") - (4.87103175e-05));
+	err_u[ 6] = fabs(dat.Nod(2)->Val("ux") - (1.89484127e-05));
+	err_u[ 7] = fabs(dat.Nod(2)->Val("uy") - (7.03373016e-05));
+	err_u[ 8] = fabs(dat.Nod(2)->Val("wz") - (-1.08134921e-05));
+	err_u[ 9] = fabs(dat.Nod(3)->Val("ux") - (1.89484127e-05));
+	err_u[10] = fabs(dat.Nod(3)->Val("uy") - (0.0));
+	err_u[11] = fabs(dat.Nod(3)->Val("wz") - (-1.59623016e-04));
 
 	// Forces
 	Array<double> err_f(12);
-	err_f[ 0] = fabs(g.Nod(0)->Val("fx") - (0.0));
-	err_f[ 1] = fabs(g.Nod(0)->Val("fy") - (-5.0));
-	err_f[ 2] = fabs(g.Nod(0)->Val("mz") - (0.0));
-	err_f[ 3] = fabs(g.Nod(1)->Val("fx") - (0.0));
-	err_f[ 4] = fabs(g.Nod(1)->Val("fy") - (-10.0));
-	err_f[ 5] = fabs(g.Nod(1)->Val("mz") - (0.0));
-	err_f[ 6] = fabs(g.Nod(2)->Val("fx") - (0.0));
-	err_f[ 7] = fabs(g.Nod(2)->Val("fy") - (0.0));
-	err_f[ 8] = fabs(g.Nod(2)->Val("mz") - (0.0));
-	err_f[ 9] = fabs(g.Nod(3)->Val("fx") - (0.0));
-	err_f[10] = fabs(g.Nod(3)->Val("fy") - (15.0));
-	err_f[11] = fabs(g.Nod(3)->Val("mz") - (-20.0));
+	err_f[ 0] = fabs(dat.Nod(0)->Val("fx") - (0.0));
+	err_f[ 1] = fabs(dat.Nod(0)->Val("fy") - (-5.0));
+	err_f[ 2] = fabs(dat.Nod(0)->Val("mz") - (0.0));
+	err_f[ 3] = fabs(dat.Nod(1)->Val("fx") - (0.0));
+	err_f[ 4] = fabs(dat.Nod(1)->Val("fy") - (-10.0));
+	err_f[ 5] = fabs(dat.Nod(1)->Val("mz") - (0.0));
+	err_f[ 6] = fabs(dat.Nod(2)->Val("fx") - (0.0));
+	err_f[ 7] = fabs(dat.Nod(2)->Val("fy") - (0.0));
+	err_f[ 8] = fabs(dat.Nod(2)->Val("mz") - (0.0));
+	err_f[ 9] = fabs(dat.Nod(3)->Val("fx") - (0.0));
+	err_f[10] = fabs(dat.Nod(3)->Val("fy") - (15.0));
+	err_f[11] = fabs(dat.Nod(3)->Val("mz") - (-20.0));
 
 	// Stresses
 	Array<double> err_s(18);
-	err_s[ 0] = fabs(g.Ele(0)->Val(0,"N") -     (  0.0));   err_s[ 9] = fabs(g.Ele(0)->Val(1,"N") -     (  0.0));
-	err_s[ 1] = fabs(g.Ele(0)->Val(0,"M") - fabs(  0.0));   err_s[10] = fabs(g.Ele(0)->Val(1,"M") - fabs( -5.0));
-	err_s[ 2] = fabs(g.Ele(0)->Val(0,"V") - fabs( -5.0));   err_s[11] = fabs(g.Ele(0)->Val(1,"V") - fabs( -5.0));
-	err_s[ 3] = fabs(g.Ele(1)->Val(0,"N") -     (-15.0));   err_s[12] = fabs(g.Ele(1)->Val(1,"N") -     (-15.0));
-	err_s[ 4] = fabs(g.Ele(1)->Val(0,"M") - fabs( -5.0));   err_s[13] = fabs(g.Ele(1)->Val(1,"M") - fabs( -5.0));
-	err_s[ 5] = fabs(g.Ele(1)->Val(0,"V") - fabs(  0.0));   err_s[14] = fabs(g.Ele(1)->Val(1,"V") - fabs(  0.0));
-	err_s[ 6] = fabs(g.Ele(2)->Val(0,"N") -     (  0.0));   err_s[15] = fabs(g.Ele(2)->Val(1,"N") -     (  0.0));
-	err_s[ 7] = fabs(g.Ele(2)->Val(0,"M") - fabs( -5.0));   err_s[16] = fabs(g.Ele(2)->Val(1,"M") - fabs(-20.0));
-	err_s[ 8] = fabs(g.Ele(2)->Val(0,"V") - fabs(-15.0));   err_s[17] = fabs(g.Ele(2)->Val(1,"V") - fabs(-15.0));
+	err_s[ 0] = fabs(dat.Ele(0)->Val(0,"N") -     (  0.0));   err_s[ 9] = fabs(dat.Ele(0)->Val(1,"N") -     (  0.0));
+	err_s[ 1] = fabs(dat.Ele(0)->Val(0,"M") - fabs(  0.0));   err_s[10] = fabs(dat.Ele(0)->Val(1,"M") - fabs( -5.0));
+	err_s[ 2] = fabs(dat.Ele(0)->Val(0,"V") - fabs( -5.0));   err_s[11] = fabs(dat.Ele(0)->Val(1,"V") - fabs( -5.0));
+	err_s[ 3] = fabs(dat.Ele(1)->Val(0,"N") -     (-15.0));   err_s[12] = fabs(dat.Ele(1)->Val(1,"N") -     (-15.0));
+	err_s[ 4] = fabs(dat.Ele(1)->Val(0,"M") - fabs( -5.0));   err_s[13] = fabs(dat.Ele(1)->Val(1,"M") - fabs( -5.0));
+	err_s[ 5] = fabs(dat.Ele(1)->Val(0,"V") - fabs(  0.0));   err_s[14] = fabs(dat.Ele(1)->Val(1,"V") - fabs(  0.0));
+	err_s[ 6] = fabs(dat.Ele(2)->Val(0,"N") -     (  0.0));   err_s[15] = fabs(dat.Ele(2)->Val(1,"N") -     (  0.0));
+	err_s[ 7] = fabs(dat.Ele(2)->Val(0,"M") - fabs( -5.0));   err_s[16] = fabs(dat.Ele(2)->Val(1,"M") - fabs(-20.0));
+	err_s[ 8] = fabs(dat.Ele(2)->Val(0,"V") - fabs(-15.0));   err_s[17] = fabs(dat.Ele(2)->Val(1,"V") - fabs(-15.0));
 
 	// Error summary
 	double tol_u     = 1.0e-12;

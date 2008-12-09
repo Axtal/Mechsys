@@ -25,7 +25,7 @@
 #include <cfloat> // for DBL_EPSILON
 
 // MechSys
-#include "fem/geometry.h"
+#include "fem/data.h"
 #include "fem/functions.h"
 #include "fem/elems/tri3diffusion.h"
 #include "fem/elems/quad4diffusion.h"
@@ -80,58 +80,58 @@ int main(int argc, char **argv) try
 		////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 		// Geometry
-		FEM::Geom g(2); // 2D
+		FEM::Data dat(2); // 2D
 
 		// Nodes
-		g.SetNNodes (6);
-		g.SetNode   (0, 0.0, 0.0);
-		g.SetNode   (1, 0.5, 0.0);
-		g.SetNode   (2, 0.5, 0.5);
-		g.SetNode   (3, 1.0, 0.0);
-		g.SetNode   (4, 1.0, 0.5);
-		g.SetNode   (5, 1.0, 1.0);
+		dat.SetNNodes (6);
+		dat.SetNode   (0, 0.0, 0.0);
+		dat.SetNode   (1, 0.5, 0.0);
+		dat.SetNode   (2, 0.5, 0.5);
+		dat.SetNode   (3, 1.0, 0.0);
+		dat.SetNode   (4, 1.0, 0.5);
+		dat.SetNode   (5, 1.0, 1.0);
 
 		// Elements
-		g.SetNElems (4);
-		g.SetElem   (0, "Tri3Diffusion", true, -1);
-		g.SetElem   (1, "Tri3Diffusion", true, -1);
-		g.SetElem   (2, "Tri3Diffusion", true, -1);
-		g.SetElem   (3, "Tri3Diffusion", true, -1);
+		dat.SetNElems (4);
+		dat.SetElem   (0, "Tri3Diffusion", true, -1);
+		dat.SetElem   (1, "Tri3Diffusion", true, -1);
+		dat.SetElem   (2, "Tri3Diffusion", true, -1);
+		dat.SetElem   (3, "Tri3Diffusion", true, -1);
 
 		// Set connectivity
-		g.Ele(0)->Connect(0, g.Nod(0))->Connect(1, g.Nod(1))->Connect(2, g.Nod(2));
-		g.Ele(1)->Connect(0, g.Nod(4))->Connect(1, g.Nod(2))->Connect(2, g.Nod(1));
-		g.Ele(2)->Connect(0, g.Nod(1))->Connect(1, g.Nod(3))->Connect(2, g.Nod(4));
-		g.Ele(3)->Connect(0, g.Nod(2))->Connect(1, g.Nod(4))->Connect(2, g.Nod(5));
+		dat.Ele(0)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1))->Connect(2, dat.Nod(2));
+		dat.Ele(1)->Connect(0, dat.Nod(4))->Connect(1, dat.Nod(2))->Connect(2, dat.Nod(1));
+		dat.Ele(2)->Connect(0, dat.Nod(1))->Connect(1, dat.Nod(3))->Connect(2, dat.Nod(4));
+		dat.Ele(3)->Connect(0, dat.Nod(2))->Connect(1, dat.Nod(4))->Connect(2, dat.Nod(5));
 
 		// Parameters and initial values
-		g.Ele(0)->SetModel("LinDiffusion", "k=1.0", "");
-		g.Ele(1)->SetModel("LinDiffusion", "k=1.0", "");
-		g.Ele(2)->SetModel("LinDiffusion", "k=1.0", "");
-		g.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
+		dat.Ele(0)->SetModel("LinDiffusion", "k=1.0", "");
+		dat.Ele(1)->SetModel("LinDiffusion", "k=1.0", "");
+		dat.Ele(2)->SetModel("LinDiffusion", "k=1.0", "");
+		dat.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
 		
 		// Properties (heat source)
 
-		g.Ele(0)->SetProps("s=1.0");
-		g.Ele(1)->SetProps("s=1.0");
-		g.Ele(2)->SetProps("s=1.0");
-		g.Ele(3)->SetProps("s=1.0");
+		dat.Ele(0)->SetProps("s=1.0");
+		dat.Ele(1)->SetProps("s=1.0");
+		dat.Ele(2)->SetProps("s=1.0");
+		dat.Ele(3)->SetProps("s=1.0");
 
 		// Boundary conditions (must be after connectivity)
-		g.Ele(0)->EdgeBry("q", 0.0, 0)->EdgeBry("q", 0.0, 2);
-		g.Ele(2)->EdgeBry("q", 0.0, 0)->EdgeBry("u", 0.0, 1);
-		g.Ele(3)->EdgeBry("u", 0.0, 1)->EdgeBry("q", 0.0, 2);
-		g.Nod(3)->Bry("u",0.0);
-		g.Nod(5)->Bry("u",0.0);
+		dat.Ele(0)->EdgeBry("q", 0.0, 0)->EdgeBry("q", 0.0, 2);
+		dat.Ele(2)->EdgeBry("q", 0.0, 0)->EdgeBry("u", 0.0, 1);
+		dat.Ele(3)->EdgeBry("u", 0.0, 1)->EdgeBry("q", 0.0, 2);
+		dat.Nod(3)->Bry("u",0.0);
+		dat.Nod(5)->Bry("u",0.0);
 
 		// Check conductivity matrices
 		double err_ke = 0.0;
 		LinAlg::Matrix<double> Ke0, Ke1, Ke2, Ke3;
 		LinAlg::Matrix<double> Ke_correct;  Ke_correct.Resize(3,3);
-		g.Ele(0)->Order1Matrix(0,Ke0);
-		g.Ele(1)->Order1Matrix(0,Ke1);
-		g.Ele(2)->Order1Matrix(0,Ke2);
-		g.Ele(3)->Order1Matrix(0,Ke3);
+		dat.Ele(0)->Order1Matrix(0,Ke0);
+		dat.Ele(1)->Order1Matrix(0,Ke1);
+		dat.Ele(2)->Order1Matrix(0,Ke2);
+		dat.Ele(3)->Order1Matrix(0,Ke3);
 		Ke_correct =  0.5, -0.5,  0.0,
 					 -0.5,  1.0, -0.5,
 					  0.0, -0.5,  0.5;
@@ -147,25 +147,25 @@ int main(int argc, char **argv) try
 
 		// Solve
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+		sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 		sol->SolveWithInfo();
 		delete sol;
 
 		// Output: Nodes
 		cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
-		for (size_t i=0; i<g.NNodes(); ++i)
-			cout << _6<<i << _8s<<g.Nod(i)->Val("u") << _8s<<g.Nod(i)->Val("q") << endl;
+		for (size_t i=0; i<dat.NNodes(); ++i)
+			cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("q") << endl;
 
 		//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 		std::ofstream of("tex831_1.cal", std::ios::out);
 		of << _8s<<"x" << _8s<<"u" << _8s<<"ucorr" << endl;
 		Array<double> err_u;
-		for (size_t i=0; i<g.NNodes(); ++i)	
+		for (size_t i=0; i<dat.NNodes(); ++i)	
 		{
-			double x     = g.Nod(i)->X();
-			double y     = g.Nod(i)->Y();
-			double u     = g.Nod(i)->Val("u");
+			double x     = dat.Nod(i)->X();
+			double y     = dat.Nod(i)->Y();
+			double u     = dat.Nod(i)->Val("u");
 			double ucorr = u_correct(1.0,1.0,x,y);
 			err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
 			if (fabs(y)<=1e-5) of << _8s<<x << _8s<<u << _8s<<ucorr << endl;
@@ -223,7 +223,7 @@ int main(int argc, char **argv) try
 		////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 		// Geometry
-		FEM::Geom g(2);
+		FEM::Geom dat(2);
 
 		// Edges brys (the order matters!)
 		FEM::EBrys_T ebrys;
@@ -237,8 +237,8 @@ int main(int argc, char **argv) try
 		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
 
 		// Set geometry: nodes, elements, attributes, and boundaries
-		FEM::SetNodesElems (&mesh, &eatts, &g);
-		FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+		dat.SetNodesElems (&mesh, &eatts, &dat);
+		dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
 
 		// Check conductivity matrices
 		double max_err_ke = 0.0;
@@ -248,10 +248,10 @@ int main(int argc, char **argv) try
 		             -2.0, -1.0,  4.0, -1.0,
 		             -1.0, -2.0, -1.0,  4.0;
 		Ke_correct = (1.0/6.0)*Ke_correct;
-		for (size_t i=0; i<g.NElems(); ++i)
+		for (size_t i=0; i<dat.NElems(); ++i)
 		{
 			LinAlg::Matrix<double> Ke;
-			g.Ele(i)->Order1Matrix(0,Ke);
+			dat.Ele(i)->Order1Matrix(0,Ke);
 			double err_ke = 0.0;
 			for (int i=0; i<4; ++i)
 			for (int j=0; j<4; ++j)
@@ -262,7 +262,7 @@ int main(int argc, char **argv) try
 
 		// Solve
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+		sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 		sol->SolveWithInfo();
 		ndofs[k] = sol->nDOF();
 		delete sol;
@@ -270,7 +270,7 @@ int main(int argc, char **argv) try
 		// Output: VTU
 		if (check_conv==false)
 		{
-			Output o; o.VTU (&g, "tex831.vtu");
+			Output o; o.VTU (&dat, "tex831.vtu");
 			cout << "[1;34mFile <tex831.vtu> saved.[0m\n";
 		}
 		cout << endl;
@@ -279,8 +279,8 @@ int main(int argc, char **argv) try
 		if (ndivs[k]<3)
 		{
 			cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
-			for (size_t i=0; i<g.NNodes(); ++i)
-				cout << _6<<i << _8s<<g.Nod(i)->Val("u") << _8s<<g.Nod(i)->Val("q") << endl;
+			for (size_t i=0; i<dat.NNodes(); ++i)
+				cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("q") << endl;
 			cout << endl;
 		}
 
@@ -290,11 +290,11 @@ int main(int argc, char **argv) try
 		std::ofstream of("tex831_2.cal", std::ios::out);
 		of << _8s<<"x" << _8s<<"u" << _8s<<"ucorr" << endl;
 		Array<double> err_u;
-		for (size_t i=0; i<g.NNodes(); ++i)	
+		for (size_t i=0; i<dat.NNodes(); ++i)	
 		{
-			double x     = g.Nod(i)->X();
-			double y     = g.Nod(i)->Y();
-			double u     = g.Nod(i)->Val("u");
+			double x     = dat.Nod(i)->X();
+			double y     = dat.Nod(i)->Y();
+			double u     = dat.Nod(i)->Val("u");
 			double ucorr = u_correct(1.0,1.0,x,y);
 			err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
 			if (fabs(y)<=1e-5) of << _8s<<x << _8s<<u << _8s<<ucorr << endl;

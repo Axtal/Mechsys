@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
@@ -121,7 +120,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
@@ -137,17 +136,17 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tpstrain05.vtu");
+	Output o; o.VTU (&dat, "tpstrain05.vtu");
 	cout << "[1;34mFile <tpstrain05.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -157,13 +156,13 @@ int main(int argc, char **argv) try
 	Array <double> err_sR;
 	Array <double> err_sT;
 	Array <double> err_uR;
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j)
 		{
 			// Analytical
-			double x = g.Ele(i)->Nod(j)->X();
-			double y = g.Ele(i)->Nod(j)->Y();
+			double x = dat.Ele(i)->Nod(j)->X();
+			double y = dat.Ele(i)->Nod(j)->Y();
 			double L = sqrt(x*x+y*y);
 			double sigRc, sigTc, uRc; // correct stress components
 			Analyitical(r, R, p0, p1, E, nu, L, sigRc, sigTc, uRc);
@@ -174,11 +173,11 @@ int main(int argc, char **argv) try
 			double cc    = c*c;
 			double ss    = s*s;
 			double sc    = s*c;
-			double Sx    = g.Ele(i)->Val(j,"Sx");
-			double Sy    = g.Ele(i)->Val(j,"Sy");
-			double Sxy   = g.Ele(i)->Val(j,"Sxy");
-			double ux    = g.Ele(i)->Val(j,"ux");
-			double uy    = g.Ele(i)->Val(j,"uy");
+			double Sx    = dat.Ele(i)->Val(j,"Sx");
+			double Sy    = dat.Ele(i)->Val(j,"Sy");
+			double Sxy   = dat.Ele(i)->Val(j,"Sxy");
+			double ux    = dat.Ele(i)->Val(j,"ux");
+			double uy    = dat.Ele(i)->Val(j,"uy");
 			double sigR  = Sx*cc + Sy*ss + 2.0*Sxy*sc;
 			double sigT  = Sx*ss + Sy*cc - 2.0*Sxy*sc;
 			double uR    = ux*c  + uy*s;

@@ -21,8 +21,7 @@
 #include <fstream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/hex8equilib.h"
 #include "models/equilibs/camclay.h"
 #include "fem/solvers/forwardeuler.h"
@@ -98,11 +97,11 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(3); // 3D
+	FEM::Data dat(3); // 3D
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("AutoME");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 
 	// Element attributes
 	String prms; prms.Printf("lam=%f kap=%f phics=%f G=%f",lam,kap,phics,G);
@@ -111,7 +110,7 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Hex8Equilib", "CamClay", prms.CStr(), inis.CStr(), "", true));
 
 	// Set Nodes and Elements
-	FEM::SetNodesElems (&ms, &eatts, &g);
+	dat.SetNodesElems (&ms, &eatts, &dat);
 
 	// Open file
 	std::ofstream res("tcamclay01.cal", std::ios::out);
@@ -137,16 +136,16 @@ int main(int argc, char **argv) try
 			fbrys.Push (make_tuple(-105, "fz", dtrac[i](2)/ndiv));
 
 			// Set boundary conditions
-			FEM::SetBrys (&ms, NULL, NULL, &fbrys, &g);
+			dat.SetBrys (&ms, NULL, NULL, &fbrys, &dat);
 
 			// Solve
 			sol->SolveWithInfo(1,0.0,istage);
 			istage++;
 
 			// Output
-			res << _8s<<g.Ele(13)->Val("Sx") << _8s<<g.Ele(13)->Val("Sy") << _8s<<g.Ele(13)->Val("Sz");
-			res << _8s<<g.Ele(13)->Val("Ex") << _8s<<g.Ele(13)->Val("Ey") << _8s<<g.Ele(13)->Val("Ez");
-			res << _8s<<g.Ele(13)->Val("p")  << _8s<<g.Ele(13)->Val("q")  << _8s<<g.Ele(13)->Val("Ev") << _8s<<g.Ele(13)->Val("Ed") << "\n";
+			res << _8s<<dat.Ele(13)->Val("Sx") << _8s<<dat.Ele(13)->Val("Sy") << _8s<<dat.Ele(13)->Val("Sz");
+			res << _8s<<dat.Ele(13)->Val("Ex") << _8s<<dat.Ele(13)->Val("Ey") << _8s<<dat.Ele(13)->Val("Ez");
+			res << _8s<<dat.Ele(13)->Val("p")  << _8s<<dat.Ele(13)->Val("q")  << _8s<<dat.Ele(13)->Val("Ev") << _8s<<dat.Ele(13)->Val("Ed") << "\n";
 		}
 	}
 	delete sol;
@@ -156,7 +155,7 @@ int main(int argc, char **argv) try
 	cout << "[1;34mFile <tcamclay01.cal> saved.[0m" << endl;
 
 	// Output final state
-	Output o; o.VTU (&g, "tcamclay01.vtu");
+	Output o; o.VTU (&dat, "tcamclay01.vtu");
 	cout << "[1;34mFile <tcamclay01.vtu> saved.[0m" << endl;
 }
 catch (Exception * e) 

@@ -27,8 +27,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4pstress.h"
 #include "fem/elems/quad8pstress.h"
 #include "fem/elems/quad4pstrain.h"
@@ -90,7 +89,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
@@ -105,17 +104,17 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4PStress", "LinElastic", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL,   &ebrys, NULL, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetBrys       (&mesh, NULL,   &ebrys, NULL, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g);
+	sol->SetGeom(&dat);
 	sol->SolveWithInfo();
 	delete sol;
 
 	// Output: VTU
-	Output o; o.VTU (&g, "tstatic121.vtu");
+	Output o; o.VTU (&dat, "tstatic121.vtu");
 	cout << "[1;34mFile <tstatic121.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -124,10 +123,10 @@ int main(int argc, char **argv) try
     Array<double> err_dis_z;
 	double I = B*H*H*H/12.0; // Section momentum of inertia
 
-	for (size_t i=0; i<g.NNodes(); i++)
+	for (size_t i=0; i<dat.NNodes(); i++)
 	{
-		double x   = g.Nod(i)->X();
-		double uy  = g.Nod(i)->Val("uy");
+		double x   = dat.Nod(i)->X();
+		double uy  = dat.Nod(i)->Val("uy");
 		double auy = F/(E*I)*(x*x*x/6.0 - x*x*L/2.0); // Analitic solution for the vertical displacement
 		err_dis_z.Push(fabs(uy - auy));
 		cout << "iNode: " << i << "  Uy: " << uy << "    Analytic Uy: " <<  auy << endl;

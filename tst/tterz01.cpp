@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4biot.h" // << plane strain
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -112,7 +111,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Elements attributes
 	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
@@ -121,11 +120,11 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol("UM");
+	sol->SetGeom(&dat)->SetLinSol("UM");
 
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
@@ -136,15 +135,15 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
 	ebrys.Push   (make_tuple(-30, "uy",    0.0));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL, &dat);
 	sol->SolveWithInfo(/*NDiv*/4, /*DTime*/1000000, /*iStage*/0);
 
 	// Output: VTU 
-	Output o; o.VTU (&g, "tterz01.vtu");
+	Output o; o.VTU (&dat, "tterz01.vtu");
 	cout << "[1;34mFile <tterz01.vtu> saved.[0m\n\n";
 
 	for (int i=0; i<SampleNodes.Size(); i++) 
-		Pwp0(i) = g.Nod(SampleNodes(i))->Val("pwp");
+		Pwp0(i) = dat.Nod(SampleNodes(i))->Val("pwp");
 
 	// Stage # 1: Load application
 	ebrys.Resize (0);
@@ -153,7 +152,7 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-30, "uy",    0.0));
 	ebrys.Push   (make_tuple(-40, "fy",   load));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL, &dat);
 	sol->SolveWithInfo(/*NDiv*/4, /*DTime*/1.0, /*iStage*/1);
 
 	// Stage # 2.. : Consolidation
@@ -164,10 +163,10 @@ int main(int argc, char **argv) try
 		ebrys.Push   (make_tuple(-20, "ux",    0.0));
 		ebrys.Push   (make_tuple(-30, "uy",    0.0));
 		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-		FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
+		dat.SetBrys (&mesh, NULL, &ebrys, NULL, &dat);
 		sol->SolveWithInfo(/*NDiv*/4, /*DTime*/TimeIncs(i), /*iStage*/i+2);
 		for (int j=0; j<SampleNodes.Size(); j++)
-			OutPwp(j,i) = (g.Nod(SampleNodes(j))->Val("pwp")-Pwp0(j))/load; // Saving normalized excess of pore-pressure
+			OutPwp(j,i) = (dat.Nod(SampleNodes(j))->Val("pwp")-Pwp0(j))/load; // Saving normalized excess of pore-pressure
 	}
 
 	OutPwp.SetNS(Util::_8_4);
@@ -205,7 +204,7 @@ int main(int argc, char **argv) try
 
 
 	// Output: VTU
-	//o.VTU (&g, "tbiot01_02.vtu");
+	//o.VTU (&dat, "tbiot01_02.vtu");
 	//cout << "[1;34mFile <tbiot01_02.vtu> saved.[0m\n\n";
 
 	return 0;

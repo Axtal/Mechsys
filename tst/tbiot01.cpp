@@ -43,8 +43,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4biot.h" // << plane strain
 #include "fem/elems/quad8biot.h" // << plane strain
 #include "fem/solvers/forwardeuler.h"
@@ -169,7 +168,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// Elements attributes
 	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
@@ -178,11 +177,11 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g);
+	sol->SetGeom(&dat);
 
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
@@ -197,11 +196,11 @@ int main(int argc, char **argv) try
 	ebrys.Push           (make_tuple(-30, "uy",    0.0));
 	ebrys.Push           (make_tuple(-40, "pwp",   0.0));
 	ebrys.Push           (make_tuple(-50, "pwp",   0.0));
-	FEM::SetBrys         (&mesh, NULL, &ebrys, NULL, &g);
-	g.ApplyBodyForces    ();
+	dat.SetBrys         (&mesh, NULL, &ebrys, NULL, &dat);
+	dat.ApplyBodyForces    ();
 	sol->SolveWithInfo   (4, 1e+6, 0, "  Initial stress state due to self weight (zero displacements)\n");
-	g.ClearDisplacements ();
-	out.VTU              (&g, sol->Time());
+	dat.ClearDisplacements ();
+	out.VTU              (&dat, sol->Time());
 
 	// Stage # 1 --------------------------------------------------------------
 	ebrys.Resize       (0);
@@ -211,13 +210,13 @@ int main(int argc, char **argv) try
 	ebrys.Push         (make_tuple(-40, "fy",   load));
 	ebrys.Push         (make_tuple(-40, "pwp",   0.0));
 	ebrys.Push         (make_tuple(-50, "pwp",   0.0));
-	FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
 	sol->SolveWithInfo (4, 0.0001, 1, "  Apply surface (footing) loading\n");
-	out.VTU            (&g, sol->Time());
+	out.VTU            (&dat, sol->Time());
 
 	// Calculate displacements after first stage
 	for (int i=0; i<SampleNodes.Size(); i++) 
-		Uy0(i) = g.Nod(SampleNodes(i))->Val("uy");
+		Uy0(i) = dat.Nod(SampleNodes(i))->Val("uy");
 
 	// Stage # 2+ -------------------------------------------------------------
 	for (int i=0; i<TimeIncs.Size(); i++)
@@ -228,11 +227,11 @@ int main(int argc, char **argv) try
 		ebrys.Push   (make_tuple(-30, "uy",    0.0));
 		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
 		ebrys.Push   (make_tuple(-50, "pwp",   0.0));
-		FEM::SetBrys (&mesh, NULL, &ebrys, NULL, &g);
+		dat.SetBrys (&mesh, NULL, &ebrys, NULL, &dat);
 		sol->SolveWithInfo (10, TimeIncs(i), i+2, "  Consolidation\n");
 		for (int j=0; j<SampleNodes.Size(); j++)
-			OutUy(j,i) = (g.Nod(SampleNodes(j))->Val("uy") - Uy0(j))/(-winf); // Saving normalized vertical displacement
-		out.VTU (&g, sol->Time());
+			OutUy(j,i) = (dat.Nod(SampleNodes(j))->Val("uy") - Uy0(j))/(-winf); // Saving normalized vertical displacement
+		out.VTU (&dat, sol->Time());
 	}
 
 	// Close collection
@@ -249,7 +248,7 @@ int main(int argc, char **argv) try
 	// Normalized X coordinate of the sample nodes
 	Vector<double> XNorm(SampleNodes.Size()); 
 	for (int i=0; i<XNorm.Size(); i++) 
-		XNorm(i) = (W-g.Nod(SampleNodes(i))->X())/b;
+		XNorm(i) = (W-dat.Nod(SampleNodes(i))->X())/b;
 
 	// Analytical values
 	Matrix<double> AValues(SampleNodes.Size(), TimeIncs.Size());  

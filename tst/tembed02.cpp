@@ -40,8 +40,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
 #include "fem/solvers/autome.h"
@@ -106,7 +105,7 @@ int main(int argc, char **argv) try
 	double P = 1.0;
 
 	// Geometry
-	FEM::Geom g(3); // 2D
+	FEM::Data dat(3); // 2D
 
 	// Nodes brys
 	FEM::NBrys_T nbrys;
@@ -124,38 +123,38 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", "E=1.0 nu=0.0", "", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	FEM::SetNodesElems (&mesh, &eatts, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
 
 	// Add reinforcements
-	AddReinf (2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -10, &g);
-	AddReinf (1.0, 1.0, 1.0, 0.0, 2.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -20, &g);
-	AddReinf (2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -30, &g);
+	AddReinf (2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -10, &dat);
+	AddReinf (1.0, 1.0, 1.0, 0.0, 2.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -20, &dat);
+	AddReinf (2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -30, &dat);
 
 	// Boundary conditions
-	FEM::SetBrys (&mesh, &nbrys, NULL, &fbrys, &g);
+	dat.SetBrys (&mesh, &nbrys, NULL, &fbrys, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	Output out;
-	out.VTU(&g, "out.vtu");
+	out.VTU(&dat, "out.vtu");
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Test
 	Array<double> err;
 
-	for (size_t i=0; i<g.NElems(); i++)
+	for (size_t i=0; i<dat.NElems(); i++)
 	{
-		int tag = g.Ele(i)->Tag();
-		int  nn = g.Ele(i)->NNodes();
+		int tag = dat.Ele(i)->Tag();
+		int  nn = dat.Ele(i)->NNodes();
 
-		     if (tag==-10 && nn<=3) { err.Push(fabs(g.Ele(i)->Val(0, "Sa") - (-0.866025404*P*10))); }
-		else if (tag==-20 && nn<=3) { err.Push(fabs(g.Ele(i)->Val(0, "Sa") - (-0.866025404*P*10))); }
-		else if (tag==-30 && nn<=3) { err.Push(fabs(g.Ele(i)->Val(0, "Sa") - ( 0.707106781*P*10))); }
+		     if (tag==-10 && nn<=3) { err.Push(fabs(dat.Ele(i)->Val(0, "Sa") - (-0.866025404*P*10))); }
+		else if (tag==-20 && nn<=3) { err.Push(fabs(dat.Ele(i)->Val(0, "Sa") - (-0.866025404*P*10))); }
+		else if (tag==-30 && nn<=3) { err.Push(fabs(dat.Ele(i)->Val(0, "Sa") - ( 0.707106781*P*10))); }
 	}
 
 	// Error summary

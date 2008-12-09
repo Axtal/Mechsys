@@ -20,8 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solvers/forwardeuler.h"
@@ -66,67 +65,67 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
 	// 0) Problem dimension
-	FEM::Geom g(2); // 2D
+	FEM::Data dat(2); // 2D
 
 	// 1) Nodes
-	g.SetNNodes (8);
-	g.SetNode   (0,   0.0 ,   0.0);
-	g.SetNode   (1,     L ,   0.0);
-	g.SetNode   (2,     L ,     H);
-	g.SetNode   (3,   0.0 ,     H);
-	g.SetNode   (4, L/2.0 ,   0.0);
-	g.SetNode   (5,     L , H/2.0);
-	g.SetNode   (6, L/2.0 ,     H);
-	g.SetNode   (7,   0.0 , H/2.0);
+	dat.SetNNodes (8);
+	dat.SetNode   (0,   0.0 ,   0.0);
+	dat.SetNode   (1,     L ,   0.0);
+	dat.SetNode   (2,     L ,     H);
+	dat.SetNode   (3,   0.0 ,     H);
+	dat.SetNode   (4, L/2.0 ,   0.0);
+	dat.SetNode   (5,     L , H/2.0);
+	dat.SetNode   (6, L/2.0 ,     H);
+	dat.SetNode   (7,   0.0 , H/2.0);
 
 	// 2) Elements
-	g.SetNElems (1);
-	g.SetElem   (0, "Quad8PStrain", /*IsActive*/true, /*Tag*/-1);
+	dat.SetNElems (1);
+	dat.SetElem   (0, "Quad8PStrain", /*IsActive*/true, /*Tag*/-1);
 
 	// 3) Set connectivity (list of nodes must be LOCAL)
-	g.Ele(0)->Connect(0, g.Nod(0))
-	        ->Connect(1, g.Nod(1))
-	        ->Connect(2, g.Nod(2))
-	        ->Connect(3, g.Nod(3))
-	        ->Connect(4, g.Nod(4))
-	        ->Connect(5, g.Nod(5))
-	        ->Connect(6, g.Nod(6))
-	        ->Connect(7, g.Nod(7));
+	dat.Ele(0)->Connect(0, dat.Nod(0))
+	        ->Connect(1, dat.Nod(1))
+	        ->Connect(2, dat.Nod(2))
+	        ->Connect(3, dat.Nod(3))
+	        ->Connect(4, dat.Nod(4))
+	        ->Connect(5, dat.Nod(5))
+	        ->Connect(6, dat.Nod(6))
+	        ->Connect(7, dat.Nod(7));
 
-	g.Ele(0)->SetIntPoints(4);
+	dat.Ele(0)->SetIntPoints(4);
 
 	// 4) Boundary conditions (must be after connectivity)
-	g.Nod(0)->Bry     ("uy",0.0);
-	g.Nod(4)->Bry     ("uy",0.0)->Bry("ux",0.0);
-	g.Nod(1)->Bry     ("uy",0.0);
-	g.Ele(0)->EdgeBry ("fy",q,3); // 3 => top edge
+	dat.Nod(0)->Bry     ("uy",0.0);
+	dat.Nod(4)->Bry     ("uy",0.0)->Bry("ux",0.0);
+	dat.Nod(1)->Bry     ("uy",0.0);
+	dat.Ele(0)->EdgeBry ("fy",q,3); // 3 => top edge
 
 	// 5) Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	g.Ele(0)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
+	dat.Ele(0)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
 
 	// Stiffness
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;
-	g.Ele(0)->Order1Matrix(0,Ke0);
+	dat.Ele(0)->Order1Matrix(0,Ke0);
 	//cout << "Ke0=\n" << Ke0 << endl;
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Output
-	cout << "Node 3: ux = " << g.Nod(3)->Val("ux") << " : uy = " << g.Nod(3)->Val("uy") << " : fy = "  << g.Nod(3)->Val("fy")  << endl;
-	cout << "Node 6: ux = " << g.Nod(6)->Val("ux") << " : uy = " << g.Nod(6)->Val("uy") << " : fy = "  << g.Nod(6)->Val("fy")  << endl;
-	cout << "Node 2: ux = " << g.Nod(2)->Val("ux") << " : uy = " << g.Nod(2)->Val("uy") << " : fy = "  << g.Nod(2)->Val("fy")  << endl << endl;;
-	cout << "Node 0: ux = " << g.Nod(0)->Val("ux") << " : uy = " << g.Nod(0)->Val("uy") << " : fy = "  << g.Nod(0)->Val("fy")  << endl;
-	cout << "Node 4: ux = " << g.Nod(4)->Val("ux") << " : uy = " << g.Nod(4)->Val("uy") << " : fy = "  << g.Nod(4)->Val("fy")  << endl;
-	cout << "Node 1: ux = " << g.Nod(1)->Val("ux") << " : uy = " << g.Nod(1)->Val("uy") << " : fy = "  << g.Nod(1)->Val("fy")  << endl << endl;;
-	cout << "Elem 0: Sx = " << g.Ele(0)->Val("Sx") << " : Sy = " << g.Ele(0)->Val("Sy") << " : Sxy = " << g.Ele(0)->Val("Sxy") << endl;
-	cout << "Elem 0: Ex = " << g.Ele(0)->Val("Ex") << " : Ey = " << g.Ele(0)->Val("Ey") << " : Exy = " << g.Ele(0)->Val("Exy") << endl;
+	cout << "Node 3: ux = " << dat.Nod(3)->Val("ux") << " : uy = " << dat.Nod(3)->Val("uy") << " : fy = "  << dat.Nod(3)->Val("fy")  << endl;
+	cout << "Node 6: ux = " << dat.Nod(6)->Val("ux") << " : uy = " << dat.Nod(6)->Val("uy") << " : fy = "  << dat.Nod(6)->Val("fy")  << endl;
+	cout << "Node 2: ux = " << dat.Nod(2)->Val("ux") << " : uy = " << dat.Nod(2)->Val("uy") << " : fy = "  << dat.Nod(2)->Val("fy")  << endl << endl;;
+	cout << "Node 0: ux = " << dat.Nod(0)->Val("ux") << " : uy = " << dat.Nod(0)->Val("uy") << " : fy = "  << dat.Nod(0)->Val("fy")  << endl;
+	cout << "Node 4: ux = " << dat.Nod(4)->Val("ux") << " : uy = " << dat.Nod(4)->Val("uy") << " : fy = "  << dat.Nod(4)->Val("fy")  << endl;
+	cout << "Node 1: ux = " << dat.Nod(1)->Val("ux") << " : uy = " << dat.Nod(1)->Val("uy") << " : fy = "  << dat.Nod(1)->Val("fy")  << endl << endl;;
+	cout << "Elem 0: Sx = " << dat.Ele(0)->Val("Sx") << " : Sy = " << dat.Ele(0)->Val("Sy") << " : Sxy = " << dat.Ele(0)->Val("Sxy") << endl;
+	cout << "Elem 0: Ex = " << dat.Ele(0)->Val("Ex") << " : Ey = " << dat.Ele(0)->Val("Ey") << " : Exy = " << dat.Ele(0)->Val("Exy") << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -145,28 +144,28 @@ int main(int argc, char **argv) try
 	double Sxy = 0.0;
 
 	// Stress and strain
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j)
 		{
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
-			err_eps.Push ( fabs(g.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
-			err_sig.Push ( fabs(g.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
+			err_eps.Push ( fabs(dat.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
+			err_eps.Push ( fabs(dat.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
+			err_eps.Push ( fabs(dat.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
+			err_eps.Push ( fabs(dat.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
+			err_sig.Push ( fabs(dat.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
+			err_sig.Push ( fabs(dat.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
+			err_sig.Push ( fabs(dat.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
+			err_sig.Push ( fabs(dat.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
 		}
 	}
 
 	// Displacements
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<dat.NNodes(); ++i)
 	{
-		double ux_correct = Ex*(g.Nod(i)->X()-L/2.0);
-		double uy_correct = Ey* g.Nod(i)->Y();
-		err_dis.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
-		err_dis.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
+		double ux_correct = Ex*(dat.Nod(i)->X()-L/2.0);
+		double uy_correct = Ey* dat.Nod(i)->Y();
+		err_dis.Push ( fabs(dat.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
+		err_dis.Push ( fabs(dat.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
 	}
 
 	// Error summary

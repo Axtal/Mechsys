@@ -16,7 +16,6 @@
 
 import mechsys as ms
 
-P     = 1.0
 ndivy = 1
 ndivx = 2*ndivy
 H     = 1.0
@@ -45,8 +44,11 @@ mesh.generate   (True)
 
 #////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
+# weight
+P = 1.0
+
 # Geometry
-geo = ms.geom(2)
+dat = ms.geom(2)
 
 # Nodes brys
 nbrys = [[  0.0, 0.0, 0.0, "ux", 0.0],
@@ -55,42 +57,50 @@ nbrys = [[  0.0, 0.0, 0.0, "ux", 0.0],
          [W/2.0,   H, 0.0, "fy",  -P]]
 
 # Elements attributes
-if (is_o2): elem_type = "Quad8PStrain"
-else:       elem_type = "Quad4PStrain"
-eatts = [[-1,  elem_type,       "LinElastic", "E=1.0 nu=0.0",               "ZERO", "", True],
-         [-10, "Reinforcement", "",           "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
-         [-20, "Reinforcement", "",           "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
-         [-30, "Reinforcement", "",           "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True]]
+if (is_o2): eatts = [[-1, "Quad8PStrain", "LinElastic", "E=1.0 nu=0.0", "ZERO", "", True]]
+else:       eatts = [[-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "ZERO", "", True]]
 
 # Set geometry: nodes, elements and attributes
-geo.set_nodes_elems (mesh, eatts)
+dat.set_nodes_elems (mesh, eatts)
 
 # Add reinforcements
-geo.add_reinfs ({(0.0,0.0, 1.0,1.0):-10, (1.0,1.0, 2.0,0.0):-20, (0.0,0.0, 2.0,0.0):-30}, eatts)
+if False:
+    ms.add_reinf (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", True, -10, dat)
+    ms.add_reinf (1.0, 1.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", True, -20, dat)
+    ms.add_reinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", True, -30, dat)
+else:
+    ratts = [[-10, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
+             [-20, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True],
+             [-30, "Reinforcement", "", "E=1.0e+8 Ar=0.1 ks=1.0e+12", "ZERO", "", True]]
+    ms.add_reinfs (False,                                      # Is3D
+                   {0:(0.0, 0.0), 1:(1.0, 1.0), 2:(2.0, 0.0)}, # vertices
+                   {(0,1):-10, (1,2):-20, (0,2):-30},          # edges/connectivity
+                   ratts,                                      # reinforcement attributes
+                   dat)                                          # geometry
 
 # Set boundary conditions
-geo.set_brys (mesh, nbrys, [], [])
+dat.set_brys(mesh, nbrys, [], [], dat)
 
 # Solve
 sol = ms.solver     ("ForwardEuler")
-sol.set_geom        (geo)
+sol.set_geom        (dat)
 sol.solve_with_info ()
 
 # output
 out = ms.output ()
-out.vtu         (geo, "tembed01_py.vtu")
+out.vtu         (dat, "tembed01_py.vtu")
 
 #//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 # Test
 err = []
 
-for i in range(geo.nelems()):
-    tag = geo.ele(i).tag()
-    nn  = geo.ele(i).nnodes()
-    if   (tag==-10 and nn<=3): err.append(abs(geo.ele(i).val(0, "Sa") - (-0.707106781*P*10)))
-    elif (tag==-20 and nn<=3): err.append(abs(geo.ele(i).val(0, "Sa") - (-0.707106781*P*10)))
-    elif (tag==-30 and nn<=3): err.append(abs(geo.ele(i).val(0, "Sa") - ( 0.500000000*P*10)))
+for i in range(dat.nelems()):
+    tag = dat.ele(i).tag()
+    nn  = dat.ele(i).nnodes()
+    if   (tag==-10 and nn<=3): err.append(abs(dat.ele(i).val(0, "Sa") - (-0.707106781*P*10)))
+    elif (tag==-20 and nn<=3): err.append(abs(dat.ele(i).val(0, "Sa") - (-0.707106781*P*10)))
+    elif (tag==-30 and nn<=3): err.append(abs(dat.ele(i).val(0, "Sa") - ( 0.500000000*P*10)))
 
 # Error summary
 min_err = min(err)

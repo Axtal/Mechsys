@@ -39,8 +39,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/output.h"
 #include "fem/elems/hex8equilib.h"
 #include "fem/elems/hex20equilib.h"
@@ -97,7 +96,7 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Geometry
-	FEM::Geom g(3); // 3D
+	FEM::Data dat(3); // 3D
 
 	// Faces brys
 	FEM::FBrys_T fbrys;
@@ -113,17 +112,17 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Hex8Equilib",  "LinElastic", prms.CStr(), "ZERO", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry
-	FEM::SetNodesElems (&mesh, &eatts, &g);
-	FEM::SetBrys       (&mesh, NULL, NULL, &fbrys, &g);
+	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetBrys       (&mesh, NULL, NULL, &fbrys, &dat);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&g)->SetLinSol(linsol.CStr());
+	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 
 	// Output
-	Output o; o.VTU (&g, "tsolid01.vtu");
+	Output o; o.VTU (&dat, "tsolid01.vtu");
 	cout << "[1;34mFile <tsolid01.vtu> saved.[0m\n\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -148,36 +147,36 @@ int main(int argc, char **argv) try
 	double Ezx = 0.0;
 
 	// Stress and strains
-	for (size_t i=0; i<g.NElems(); ++i)
+	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		for (size_t j=0; j<g.Ele(i)->NNodes(); ++j)
+		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j)
 		{
 			// eps
-			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
-			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
-			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
-			err_eps.Push( fabs(g.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
-			err_eps.Push( fabs(g.Ele(i)->Val(j,"Eyz") - Eyz) / (1.0+fabs(Eyz)) );
-			err_eps.Push( fabs(g.Ele(i)->Val(j,"Ezx") - Ezx) / (1.0+fabs(Ezx)) );
+			err_eps.Push( fabs(dat.Ele(i)->Val(j,"Ex" ) - Ex ) / (1.0+fabs(Ex )) );
+			err_eps.Push( fabs(dat.Ele(i)->Val(j,"Ey" ) - Ey ) / (1.0+fabs(Ey )) );
+			err_eps.Push( fabs(dat.Ele(i)->Val(j,"Ez" ) - Ez ) / (1.0+fabs(Ez )) );
+			err_eps.Push( fabs(dat.Ele(i)->Val(j,"Exy") - Exy) / (1.0+fabs(Exy)) );
+			err_eps.Push( fabs(dat.Ele(i)->Val(j,"Eyz") - Eyz) / (1.0+fabs(Eyz)) );
+			err_eps.Push( fabs(dat.Ele(i)->Val(j,"Ezx") - Ezx) / (1.0+fabs(Ezx)) );
 			// sig
-			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
-			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
-			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
-			err_sig.Push( fabs(g.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
-			err_sig.Push( fabs(g.Ele(i)->Val(j,"Syz") - Syz) / (1.0+fabs(Syz)) );
-			err_sig.Push( fabs(g.Ele(i)->Val(j,"Szx") - Szx) / (1.0+fabs(Szx)) );
+			err_sig.Push( fabs(dat.Ele(i)->Val(j,"Sx" ) - Sx ) / (1.0+fabs(Sx )) );
+			err_sig.Push( fabs(dat.Ele(i)->Val(j,"Sy" ) - Sy ) / (1.0+fabs(Sy )) );
+			err_sig.Push( fabs(dat.Ele(i)->Val(j,"Sz" ) - Sz ) / (1.0+fabs(Sz )) );
+			err_sig.Push( fabs(dat.Ele(i)->Val(j,"Sxy") - Sxy) / (1.0+fabs(Sxy)) );
+			err_sig.Push( fabs(dat.Ele(i)->Val(j,"Syz") - Syz) / (1.0+fabs(Syz)) );
+			err_sig.Push( fabs(dat.Ele(i)->Val(j,"Szx") - Szx) / (1.0+fabs(Szx)) );
 		}
 	}
 
 	// Displacements
-	for (size_t i=0; i<g.NNodes(); ++i)
+	for (size_t i=0; i<dat.NNodes(); ++i)
 	{
-		double ux_correct = Ex*g.Nod(i)->X();
-		double uy_correct = Ey*g.Nod(i)->Y();
-		double uz_correct = Ez*g.Nod(i)->Z();
-		err_dis.Push ( fabs(g.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
-		err_dis.Push ( fabs(g.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
-		err_dis.Push ( fabs(g.Nod(i)->Val("uz") - uz_correct) / (1.0+fabs(uz_correct)) );
+		double ux_correct = Ex*dat.Nod(i)->X();
+		double uy_correct = Ey*dat.Nod(i)->Y();
+		double uz_correct = Ez*dat.Nod(i)->Z();
+		err_dis.Push ( fabs(dat.Nod(i)->Val("ux") - ux_correct) / (1.0+fabs(ux_correct)) );
+		err_dis.Push ( fabs(dat.Nod(i)->Val("uy") - uy_correct) / (1.0+fabs(uy_correct)) );
+		err_dis.Push ( fabs(dat.Nod(i)->Val("uz") - uz_correct) / (1.0+fabs(uz_correct)) );
 	}
 
 	// Error summary

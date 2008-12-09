@@ -30,8 +30,7 @@
 #include <iostream>
 
 // MechSys
-#include "fem/geometry.h"
-#include "fem/functions.h"
+#include "fem/data.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
@@ -102,7 +101,7 @@ int main(int argc, char **argv) try
 		////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 		// Geometry
-		FEM::Geom g(2); // 2D
+		FEM::Data dat(2); // 2D
 
 		// Elements attributes
 		String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -119,11 +118,11 @@ int main(int argc, char **argv) try
 		}
 
 		// Set geometry: nodes, elements, attributes, and boundaries
-		FEM::SetNodesElems (&mesh, &eatts, &g);
+		dat.SetNodesElems (&mesh, &eatts, &dat);
 
 		// Solver
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		sol->SetGeom (&g);
+		sol->SetGeom (&dat);
 
 		// Open collection for output
 		Output out;  out.OpenCollection ("tnewele01_1");
@@ -132,22 +131,22 @@ int main(int argc, char **argv) try
 		FEM::EBrys_T ebrys;
 		ebrys.Push           (make_tuple(-10, "ux", 0.0));
 		ebrys.Push           (make_tuple(-11, "uy", 0.0));
-		FEM::SetBrys         (&mesh, NULL, &ebrys, NULL, &g);
-		g.ApplyBodyForces    ();
-		//cout << g << endl;
+		dat.SetBrys         (&mesh, NULL, &ebrys, NULL, &dat);
+		dat.ApplyBodyForces    ();
+		//cout << dat << endl;
 		sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-		g.ClearDisplacements ();
-		out.VTU              (&g, sol->Time());
+		dat.ClearDisplacements ();
+		out.VTU              (&dat, sol->Time());
 
 		// Stage # 0 ---------------------------------------------------------------
-		g.Activate         (/*Tag*/-2);
+		dat.Activate         (/*Tag*/-2);
 		ebrys.Resize       (0);
 		ebrys.Push         (make_tuple(-10, "ux", 0.0));
 		ebrys.Push         (make_tuple(-11, "uy", 0.0));
-		FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-		//cout << g << endl;
+		dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
+		//cout << dat << endl;
 		sol->SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
-		out.VTU            (&g, sol->Time());
+		out.VTU            (&dat, sol->Time());
 
 		// Close collection
 		out.CloseCollection();
@@ -207,7 +206,7 @@ int main(int argc, char **argv) try
 		////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 		// Geometry
-		FEM::Geom g(2); // 2D
+		FEM::Data dat(2); // 2D
 
 		// Elements attributes
 		String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -224,11 +223,11 @@ int main(int argc, char **argv) try
 		}
 
 		// Set geometry: nodes, elements, attributes, and boundaries
-		FEM::SetNodesElems (&mesh, &eatts, &g);
+		dat.SetNodesElems (&mesh, &eatts, &dat);
 
 		// Solver
 		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		sol->SetGeom (&g);
+		sol->SetGeom (&dat);
 
 		// Open collection for output
 		Output out;  out.OpenCollection ("tnewele01_2");
@@ -237,32 +236,32 @@ int main(int argc, char **argv) try
 		FEM::EBrys_T ebrys;
 		ebrys.Push           (make_tuple(-10, "ux", 0.0));
 		ebrys.Push           (make_tuple(-11, "uy", 0.0));
-		FEM::SetBrys         (&mesh, NULL, &ebrys, NULL, &g);
-		//g.ApplyBodyForces    ();
-		//cout << g << endl;
+		dat.SetBrys         (&mesh, NULL, &ebrys, NULL, &dat);
+		//dat.ApplyBodyForces    ();
+		//cout << dat << endl;
 		sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-		g.ClearDisplacements ();
-		out.VTU              (&g, sol->Time());
+		dat.ClearDisplacements ();
+		out.VTU              (&dat, sol->Time());
 
 		// Stage # 0 ---------------------------------------------------------------
 		Array<int> Conn;
-		size_t n0 = g.GetNode ( 0.0, 4.0);
-		size_t n1 = g.GetNode (12.0, 4.0);
-		size_t n2 = g.PushNode(12.0, 8.0);
-		size_t n3 = g.PushNode( 0.0, 8.0);
+		size_t n0 = dat.GetNode ( 0.0, 4.0);
+		size_t n1 = dat.GetNode (12.0, 4.0);
+		size_t n2 = dat.PushNode(12.0, 8.0);
+		size_t n3 = dat.PushNode( 0.0, 8.0);
 		Conn.Push(n0); Conn.Push(n1); Conn.Push(n2); Conn.Push(n3);
-		g.PushElem(0, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true, Conn);
-		g.Nod(n2)->Bry("ux",0.0);
-		g.Nod(n3)->Bry("ux",0.0);
+		dat.PushElem(0, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true, Conn);
+		dat.Nod(n2)->Bry("ux",0.0);
+		dat.Nod(n3)->Bry("ux",0.0);
 			
 		ebrys.Resize       (0);
 		ebrys.Push         (make_tuple(-10, "ux", 0.0));
 		ebrys.Push         (make_tuple(-11, "uy", 0.0));
-		FEM::SetBrys       (&mesh, NULL, &ebrys, NULL, &g);
-		g.ApplyBodyForces    ();
-		//cout << g << endl;
+		dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
+		dat.ApplyBodyForces    ();
+		//cout << dat << endl;
 		sol->SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
-		out.VTU            (&g, sol->Time());
+		out.VTU            (&dat, sol->Time());
 
 		// Close collection
 		out.CloseCollection();

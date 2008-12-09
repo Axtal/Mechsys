@@ -58,7 +58,7 @@ ms.generate            (True)
 # ------------------------------------------------------------------------------ FEM
 
 # Geometry
-g = m.geom(2)
+dat = m.geom(2)
 
 # Nodes brys
 nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]] # x,y,z, key, val
@@ -71,18 +71,18 @@ ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
 eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]
 
 # Set geometry: nodes, elements and boundaries
-m.set_nodes_elems (ms, eatts, g)
-m.set_brys        (ms, nbrys, ebrys, [], g) # [] => no face brys
+dat.set_nodes_elems (ms, eatts)
+dat.set_brys        (ms, nbrys, ebrys, []) # [] => no face brys
 
 # Solve
 print 'Solution: ---------------------------------------------------------------------'
 sol = m.solver('ForwardEuler')
-sol.set_geom(g)
+sol.set_geom(dat)
 sol.solve_with_info()
 
 # Output file
 o = m.output()
-o.vtu(g, 'tpstrain02_py.vtu')
+o.vtu(dat, 'tpstrain02_py.vtu')
 print '\nFile <tpstrain02_py.vtu> generated'
 
 #----------------------------------------------------------------------------- Check
@@ -101,23 +101,23 @@ Sz  = (E/(1.0+nu))*(nu/(1.0-2.0*nu))*(Ex+Ey)
 Sxy = 0.0
 
 # Stress and strains
-for i in range(g.nelems()):
-    for j in range(g.ele(i).nnodes()):
-        err_eps.append ( abs(g.ele(i).val(j,"Ex" ) - Ex ) / (1.0+abs(Ex )) )
-        err_eps.append ( abs(g.ele(i).val(j,"Ey" ) - Ey ) / (1.0+abs(Ey )) )
-        err_eps.append ( abs(g.ele(i).val(j,"Ez" ) - Ez ) / (1.0+abs(Ez )) )
-        err_eps.append ( abs(g.ele(i).val(j,"Exy") - Exy) / (1.0+abs(Exy)) )
-        err_sig.append ( abs(g.ele(i).val(j,"Sx" ) - Sx ) / (1.0+abs(Sx )) )
-        err_sig.append ( abs(g.ele(i).val(j,"Sy" ) - Sy ) / (1.0+abs(Sy )) )
-        err_sig.append ( abs(g.ele(i).val(j,"Sz" ) - Sz ) / (1.0+abs(Sz )) )
-        err_sig.append ( abs(g.ele(i).val(j,"Sxy") - Sxy) / (1.0+abs(Sxy)) )
+for i in range(dat.nelems()):
+    for j in range(dat.ele(i).nnodes()):
+        err_eps.append ( abs(dat.ele(i).val(j,"Ex" ) - Ex ) / (1.0+abs(Ex )) )
+        err_eps.append ( abs(dat.ele(i).val(j,"Ey" ) - Ey ) / (1.0+abs(Ey )) )
+        err_eps.append ( abs(dat.ele(i).val(j,"Ez" ) - Ez ) / (1.0+abs(Ez )) )
+        err_eps.append ( abs(dat.ele(i).val(j,"Exy") - Exy) / (1.0+abs(Exy)) )
+        err_sig.append ( abs(dat.ele(i).val(j,"Sx" ) - Sx ) / (1.0+abs(Sx )) )
+        err_sig.append ( abs(dat.ele(i).val(j,"Sy" ) - Sy ) / (1.0+abs(Sy )) )
+        err_sig.append ( abs(dat.ele(i).val(j,"Sz" ) - Sz ) / (1.0+abs(Sz )) )
+        err_sig.append ( abs(dat.ele(i).val(j,"Sxy") - Sxy) / (1.0+abs(Sxy)) )
 
 # Displacements
-for i in range(g.nnodes()):
-    ux_correct = Ex*(g.nod(i).x()-L/2.)
-    uy_correct = Ey* g.nod(i).y()
-    err_dis.append ( abs(g.nod(i).val("ux") - ux_correct) / (1.0+abs(ux_correct)) )
-    err_dis.append ( abs(g.nod(i).val("uy") - uy_correct) / (1.0+abs(uy_correct)) )
+for i in range(dat.nnodes()):
+    ux_correct = Ex*(dat.nod(i).x()-L/2.)
+    uy_correct = Ey* dat.nod(i).y()
+    err_dis.append ( abs(dat.nod(i).val("ux") - ux_correct) / (1.0+abs(ux_correct)) )
+    err_dis.append ( abs(dat.nod(i).val("uy") - uy_correct) / (1.0+abs(uy_correct)) )
 
 # Error summary
 min_err_eps = min(err_eps)
