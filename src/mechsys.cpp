@@ -55,6 +55,7 @@
 #include "fem/elems/beam.h"
 #include "fem/elems/rod2.h"
 #include "fem/elems/rod3.h"
+#include "fem/elems/spring.h"
 #include "fem/elems/tri6pstrain.h"
 #include "fem/elems/tri6pstress.h"
 #include "fem/elems/tri3pstrain.h"
