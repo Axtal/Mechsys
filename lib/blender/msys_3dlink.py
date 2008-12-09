@@ -181,7 +181,7 @@ if di.key('show_props'):
                             BGL.glRasterPos3f (v[2], v[3], v[4])
                             Draw.Text         (k+'('+str(int(v[0]))+')')
 
-                # Resore mesh to local coordinates
+                # restore mesh to local coordinates
                 msh.verts = ori
 
 
@@ -191,10 +191,7 @@ if di.key('show_reinfs'):
     obs = scn.objects.selected
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
-
-            # draw only if active layer corresponds to this object.Layer
-            if Blender.Window.GetActiveLayer()==obj.Layer:
-
+            if Blender.Window.GetActiveLayer()==obj.Layer: # draw only if active layer corresponds to this object.Layer
                 if obj.properties.has_key('reinfs'):
                     BGL.glColor3f (0.730, 0.681, 1.0)
                     for k, v in obj.properties['reinfs'].iteritems():
@@ -209,6 +206,33 @@ if di.key('show_reinfs'):
                         BGL.glVertex3f (v[1],v[2],v[3])
                         BGL.glVertex3f (v[4],v[5],v[6])
                         BGL.glEnd      ()
+
+
+# draw linear elements
+if di.key('show_lines'):
+    scn = bpy.data.scenes.active
+    obs = scn.objects.selected
+    for obj in obs:
+        if obj!=None and obj.type=='Mesh':
+            if Blender.Window.GetActiveLayer()==obj.Layer: # draw only if active layer corresponds to this object.Layer
+                if obj.properties.has_key('lines') and obj.properties.has_key('msh_name'):
+                    msh_obj = bpy.data.objects[obj.properties['msh_name']]
+                    edm     = Blender.Window.EditMode()
+                    msh     = obj.getData(mesh=1)
+                    ori     = msh.verts[:] # create a copy before transforming to global coordinates
+                    msh.transform (obj.matrix) # transform to global coordinates
+                    BGL.glColor3f (0.483, 0.709, 0.257)
+                    for k, v in obj.properties['lines'].iteritems():
+                        pos = msh.verts[v[1]].co + 0.40*(msh.verts[v[2]].co-msh.verts[v[1]].co)
+                        # text
+                        BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                        Draw.Text         (str(v[0]))
+                        # line
+                        BGL.glBegin    (BGL.GL_LINES)
+                        BGL.glVertex3f (msh.verts[v[1]].co[0], msh.verts[v[1]].co[1], msh.verts[v[1]].co[2])
+                        BGL.glVertex3f (msh.verts[v[2]].co[0], msh.verts[v[2]].co[1], msh.verts[v[2]].co[2])
+                        BGL.glEnd      ()
+                    msh.verts = ori # restore mesh to local coordinates
 
 
 def sgn(val):

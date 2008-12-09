@@ -848,7 +848,7 @@ def gui():
     h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats) if len(mats)>0 else 0
     h_mat           = 3*rh+h_mat_mats
     h_fem_reinf     = 2*rh+(srg+2*rh)*len(reinfs)-srg if len(reinfs)>0 else 0
-    h_fem_lines     = 2*rh+(srg+rh)*len(lines)-srg if len(lines)>0 else 0
+    h_fem_lines     = 2*rh+rh*len(lines) if len(lines)>0 else 0
     h_fem_nbrys     = rh+srg+rh*len(nbrys) if len(nbrys)>0 else 0
     h_fem_nbsID     = rh+srg+rh*len(nbsID) if len(nbsID)>0 else 0
     h_fem_ebrys     = rh+srg+rh*len(ebrys) if len(ebrys)>0 else 0
@@ -1137,8 +1137,6 @@ def gui():
                 Draw.PushButton ('Get N1', EVT_INC+i, c+180, r, 60, rh,                'Get N1 of linear element', cb_fem_getN1)
                 Draw.Number     ('',       EVT_INC+i, c+240, r, 60, rh, v[2], 0, 1e8,  'N1: end point',            cb_fem_leN1)
                 Draw.PushButton ('Del',    EVT_INC+i, c+300, r, 40, rh,                'Delete this row',          cb_fem_ledel)
-                r -= srg
-            r += srg
             r, c, w = gu.box2__out(W,cg,rh, c,r)
         r -= rh
         r -= srg
