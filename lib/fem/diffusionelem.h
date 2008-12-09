@@ -46,6 +46,7 @@
 #include "fem/element.h"
 #include "models/diffusionmodel.h"
 #include "util/string.h"
+#include "util/lineparser.h"
 #include "linalg/laexpr.h"
 
 namespace FEM

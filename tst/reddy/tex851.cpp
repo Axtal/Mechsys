@@ -45,11 +45,9 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/functions.h"
 #include "fem/elems/quad4diffusion.h"
 #include "models/diffusions/lindiffusion.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
+#include "fem/solver.h"
 #include "fem/output.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -100,22 +98,23 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEA /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
-
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "q", 0.0)); // tag, key, val
-	ebrys.Push (make_tuple(-20, "u", 0.0)); // tag, key, val
+	// Data and Solver
+	FEM::Data   dat (2);
+	FEM::Solver sol (dat);
 
 	// Elements attributes
 	String prms; prms.Printf("k=%f", k);
 	FEM::EAtts_T eatts;
 	eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), "", "", true)); // tag, type, model, prms, inis, props
 
-	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
-	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
+
+	// Edges brys
+	FEM::EBrys_T ebrys;
+	ebrys.Push  (make_tuple(-10, "q", 0.0)); // tag, key, val
+	ebrys.Push  (make_tuple(-20, "u", 0.0)); // tag, key, val
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 
 	// Set upper nodes boundary condition
 	for (size_t i=0; i<dat.NNodes(); ++i)
@@ -147,10 +146,8 @@ int main(int argc, char **argv) try
 	if (max_err_ke>3.4e-5) throw new Fatal("tex831: max_err_ke==%e for quadrangular mesh is bigger than %e.",max_err_ke,3.4e-5);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo();
-	delete sol;
+	sol.SetLinSol(linsol.CStr());
+	sol.SolveWithInfo();
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
