@@ -41,10 +41,8 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -123,7 +121,7 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", "E=1.0 nu=0.0", "", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Add reinforcements
 	AddReinf (2.0, 0.0, 0.0, 1.0, 1.0, 1.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -10, &dat);
@@ -131,16 +129,11 @@ int main(int argc, char **argv) try
 	AddReinf (2.0, 0.0, 0.0, 0.0, 2.0, 0.0, "E=1.0E8 Ar=0.1 ks=1E12", true, -30, &dat);
 
 	// Boundary conditions
-	dat.SetBrys (&mesh, &nbrys, NULL, &fbrys, &dat);
+	dat.SetBrys (&mesh, &nbrys, NULL, &fbrys);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
-
-	Output out;
-	out.VTU(&dat, "out.vtu");
+	FEM::Solver sol(dat, "tembed02");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

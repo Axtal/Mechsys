@@ -23,12 +23,10 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/tri3diffusion.h"
 #include "fem/elems/tri6diffusion.h"
 #include "models/diffusions/lindiffusion.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
 #include "mesh/unstructured.h"
@@ -101,18 +99,12 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
-	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
+	dat.SetNodesElems (&mesh, &eatts);
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "tpoisson01.vtu");
-	cout << "[1;34mFile <tpoisson01.vtu> saved.[0m\n\n";
+	FEM::Solver sol(dat,"tpoisson01");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

@@ -31,12 +31,10 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad4pstrain.h"
 #include "fem/elems/quad8pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -118,41 +116,28 @@ int main(int argc, char **argv) try
 		}
 
 		// Set geometry: nodes, elements, attributes, and boundaries
-		dat.SetNodesElems (&mesh, &eatts, &dat);
+		dat.SetNodesElems (&mesh, &eatts);
 
 		// Solver
-		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		sol->SetGeom (&dat);
-
-		// Open collection for output
-		Output out;  out.OpenCollection ("tnewele01_1");
+		FEM::Solver sol(dat,"tnewele01_1");
 
 		// Stage # -1 --------------------------------------------------------------
 		FEM::EBrys_T ebrys;
 		ebrys.Push           (make_tuple(-10, "ux", 0.0));
 		ebrys.Push           (make_tuple(-11, "uy", 0.0));
-		dat.SetBrys         (&mesh, NULL, &ebrys, NULL, &dat);
+		dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
 		dat.ApplyBodyForces    ();
-		//cout << dat << endl;
-		sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+		sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
 		dat.ClearDisplacements ();
-		out.VTU              (&dat, sol->Time());
 
 		// Stage # 0 ---------------------------------------------------------------
 		dat.Activate         (/*Tag*/-2);
 		ebrys.Resize       (0);
 		ebrys.Push         (make_tuple(-10, "ux", 0.0));
 		ebrys.Push         (make_tuple(-11, "uy", 0.0));
-		dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
-		//cout << dat << endl;
-		sol->SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
-		out.VTU            (&dat, sol->Time());
+		dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
+		sol.SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
 
-		// Close collection
-		out.CloseCollection();
-
-		// Delete solver
-		delete sol;
 	}
 
 	/// Test part two
@@ -223,25 +208,18 @@ int main(int argc, char **argv) try
 		}
 
 		// Set geometry: nodes, elements, attributes, and boundaries
-		dat.SetNodesElems (&mesh, &eatts, &dat);
+		dat.SetNodesElems (&mesh, &eatts);
 
 		// Solver
-		FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-		sol->SetGeom (&dat);
-
-		// Open collection for output
-		Output out;  out.OpenCollection ("tnewele01_2");
+		FEM::Solver sol(dat,"tnewele01_2");
 
 		// Stage # -1 --------------------------------------------------------------
 		FEM::EBrys_T ebrys;
 		ebrys.Push           (make_tuple(-10, "ux", 0.0));
 		ebrys.Push           (make_tuple(-11, "uy", 0.0));
-		dat.SetBrys         (&mesh, NULL, &ebrys, NULL, &dat);
-		//dat.ApplyBodyForces    ();
-		//cout << dat << endl;
-		sol->SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+		dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
+		sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
 		dat.ClearDisplacements ();
-		out.VTU              (&dat, sol->Time());
 
 		// Stage # 0 ---------------------------------------------------------------
 		Array<int> Conn;
@@ -257,17 +235,10 @@ int main(int argc, char **argv) try
 		ebrys.Resize       (0);
 		ebrys.Push         (make_tuple(-10, "ux", 0.0));
 		ebrys.Push         (make_tuple(-11, "uy", 0.0));
-		dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
+		dat.SetBrys        (&mesh, NULL, &ebrys, NULL);
 		dat.ApplyBodyForces    ();
-		//cout << dat << endl;
-		sol->SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
-		out.VTU            (&dat, sol->Time());
+		sol.SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
 
-		// Close collection
-		out.CloseCollection();
-
-		// Delete solver
-		delete sol;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////

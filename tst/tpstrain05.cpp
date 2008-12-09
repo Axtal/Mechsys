@@ -136,12 +136,12 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
-	dat.SetBrys       (&mesh, NULL, &ebrys, NULL, &dat);
+	dat.SetNodesElems (&mesh, &eatts);
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
+	sol->SetData(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 

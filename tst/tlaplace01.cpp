@@ -36,14 +36,12 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/tri3diffusion.h"
 #include "fem/elems/tri6diffusion.h"
 #include "fem/elems/quad4diffusion.h"
 #include "fem/elems/quad8diffusion.h"
 #include "models/diffusions/lindiffusion.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
 #include "mesh/structured.h"
@@ -145,8 +143,8 @@ int main(int argc, char **argv) try
 	}
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (msh, &eatts, &dat);
-	dat.SetBrys       (msh, NULL, &ebrys, NULL, &dat);
+	dat.SetNodesElems (msh, &eatts);
+	dat.SetBrys       (msh, NULL, &ebrys, NULL);
 
 	// Set prescribed u = 100*sin(PI*x/10) on top nodes
 	for (size_t i=0; i<dat.NNodes(); ++i)
@@ -158,14 +156,8 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo();
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "tlaplace01.vtu");
-	cout << "[1;34mFile <tlaplace01.vtu> saved.[0m\n\n";
+	FEM::Solver sol(dat, "tlaplace01");
+	sol.SolveWithInfo();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -179,9 +171,7 @@ int main(int argc, char **argv) try
 		double u     = dat.Nod(i)->Val("u");
 		double ucorr = 100.0*sinh(PI*y/10.0)*sin(PI*x/10.0)/sinh(PI);
 		err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
-		//cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<ucorr << _8s<<dat.Nod(i)->Val("q") << endl;
 	}
-	//cout << endl;
 
 	// Error summary
 	double tol_u     = 3.8e-2;

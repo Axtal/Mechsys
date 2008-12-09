@@ -135,7 +135,7 @@ int main(int argc, char **argv) try
 
 	// 6) Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
+	sol->SetData(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 

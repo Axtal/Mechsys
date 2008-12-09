@@ -120,11 +120,11 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Solver
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol("UM");
+	sol->SetData(&dat)->SetLinSol("UM");
 
 	// Edges boundaries
 	FEM::EBrys_T ebrys;
@@ -135,7 +135,7 @@ int main(int argc, char **argv) try
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
 	ebrys.Push   (make_tuple(-30, "uy",    0.0));
 	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-	dat.SetBrys (&mesh, NULL, &ebrys, NULL, &dat);
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol->SolveWithInfo(/*NDiv*/4, /*DTime*/1000000, /*iStage*/0);
 
 	// Output: VTU 

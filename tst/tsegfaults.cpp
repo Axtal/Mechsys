@@ -63,7 +63,7 @@ int main(int argc, char **argv) try
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat);
+	sol->SetData(&dat);
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 

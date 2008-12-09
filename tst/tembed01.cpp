@@ -41,11 +41,9 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/quad4pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -118,7 +116,7 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=1.0 nu=0.0", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes, elements and attributes
-	dat.SetNodesElems (&mesh, &eatts, &dat);
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Add reinforcements
 	AddReinf (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", true, -10, &dat);
@@ -126,16 +124,11 @@ int main(int argc, char **argv) try
 	AddReinf (0.0, 0.0, 0.0, 2.0, 0.0, 0.0, "E=1.0e+8 Ar=0.1 ks=1.0e+12", true, -30, &dat);
 
 	// Set boundary conditions
-	dat.SetBrys (&mesh, &nbrys, NULL, NULL, &dat);
+	dat.SetBrys (&mesh, &nbrys, NULL, NULL);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
-	delete sol;
-
-	Output out;
-	out.VTU (&dat, "tembed01.vtu");
+	FEM::Solver sol(dat,"tembed01");
+	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

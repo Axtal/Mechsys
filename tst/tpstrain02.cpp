@@ -108,15 +108,15 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
-	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL, &dat);
+	dat.SetNodesElems (&mesh, &eatts);
+	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL);
 
 	// Apply body forces
 	//for (size_t i=0; i<dat.NElems(); ++i) dat.Ele(i)->ApplyBodyForces();
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
+	sol->SetData(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 

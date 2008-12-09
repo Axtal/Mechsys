@@ -34,12 +34,10 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/tri3pstrain.h"
 #include "fem/elems/tri6pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
-#include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/unstructured.h"
@@ -109,18 +107,12 @@ int main(int argc, char **argv) try
 	else       eatts.Push (make_tuple(-1, "Tri3PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
-	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL, &dat);
+	dat.SetNodesElems (&mesh, &eatts);
+	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo ();
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "tpstrain01.vtu");
-	cout << "[1;34mFile <tpstrain01.vtu> saved.[0m\n\n";
+	FEM::Solver sol(dat,"tpstrain01");
+	sol.SolveWithInfo ();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

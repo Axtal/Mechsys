@@ -115,15 +115,15 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-1, "Hex8Equilib", "LinElastic", prms.CStr(), "ZERO", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry
-	dat.SetNodesElems (&ms, &eatts, &dat);
-	dat.SetBrys       (&ms, NULL, NULL, &fbrys, &dat);
+	dat.SetNodesElems (&ms, &eatts);
+	dat.SetBrys       (&ms, NULL, NULL, &fbrys);
 
 	cout << ms << endl;
 	cout << dat  << endl;
 
 	// Solve
 	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
+	sol->SetData(&dat)->SetLinSol(linsol.CStr());
 	sol->SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 	delete sol;
 

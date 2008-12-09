@@ -21,10 +21,8 @@
 
 // MechSys
 #include "fem/data.h"
+#include "fem/solver.h"
 #include "fem/elems/beam.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/output.h"
-#include "fem/solvers/autome.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 
@@ -83,14 +81,8 @@ int main(int argc, char **argv) try
 	dat.Nod(3)->Bry("uy", 0.0)->Bry("mz", M);
 
 	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat)->SetLinSol(linsol.CStr());
-	sol->SolveWithInfo();
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "tbeam01.vtu");
-	cout << "\n[1;34mFile <tbeam01.vtu> saved.[0m\n\n";
+	FEM::Solver sol(dat, "tbeam01");
+	sol.SolveWithInfo();
 
 	// Output: Nodes
 	cout << "" << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << _8s<<"mz" << endl;
