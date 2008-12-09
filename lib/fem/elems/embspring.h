@@ -97,7 +97,7 @@ inline void EmbSpring::SetModel(char const * ModelName, char const * Prms, char 
 	if (_ndim<1) throw new Fatal("EmbSpring::SetModel: The space dimension (SetDim) must be set before calling this method");
 	if (CheckConnect()==false) throw new Fatal("EmbSpring::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
 
-	/* "E=1 ks=1" */
+	/* "ks=1 Al" */
 	LineParser lp(Prms);
 	Array<String> names;
 	Array<double> values;
