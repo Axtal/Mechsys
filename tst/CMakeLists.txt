@@ -17,6 +17,11 @@
 ########################################################################
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
+	ADD_EXECUTABLE        (tspring01   tspring01.cpp)
+	ADD_TEST              (tspring01   tspring01)
+	TARGET_LINK_LIBRARIES (tspring01   ${LIBS})
+	SET_TARGET_PROPERTIES (tspring01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (tnewele01   tnewele01.cpp)
 	ADD_TEST              (tnewele01   tnewele01)
 	TARGET_LINK_LIBRARIES (tnewele01   ${LIBS})

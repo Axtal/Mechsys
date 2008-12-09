@@ -850,9 +850,11 @@ inline void Solver::_assemb_G_and_hKU(double h)
 	#ifndef DNDEBUG
 	//_G.SetNS(Util::_6_3);
 	//std::cout << "G(global stiffness) = \n" << _G << std::endl;
+	/*
 	for (int i=0; i<_G.Rows(); ++i)
 	for (int j=0; j<_G.Cols(); ++j)
 		if (_G(i,j)!=_G(i,j)) throw new Fatal (_("Solver::_assemb_G_and_hKU: DENSE stiffness matrix has NaNs"));
+	*/
 	#endif
 }
 
