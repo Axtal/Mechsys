@@ -201,16 +201,9 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("clear_displacements", &FEM::Geom::ClearDisplacements)
 	    .def("activate",            &FEM::Geom::Activate)
 	    .def("deactivate",          &FEM::Geom::Deactivate)
-<<<<<<< local
-	    .def("add_reinfs",          &FEM::Geom::PyAddReinfs)
-=======
-	    .def("push_node",           &FEM::Geom::PyPushNode1)
-	    .def("push_node",           &FEM::Geom::PyPushNode2)
-	    .def("push_node",           &FEM::Geom::PyPushNode3)
 	    .def("get_node",            &FEM::Geom::PyGetNode1)
 	    .def("get_node",            &FEM::Geom::PyGetNode2)
-	    .def("push_elem",           &FEM::Geom::PyPushElem)
->>>>>>> other
+	    .def("add_reinfs",          &FEM::Geom::PyAddReinfs)
 	    .def("add_lin_elems",       &FEM::Geom::PyAddLinElems)
 	    .def(self_ns::str(self))
 	    ;

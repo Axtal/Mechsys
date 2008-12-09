@@ -109,7 +109,6 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
-<<<<<<< local
 	void            PySetNodesElems (Mesh::Generic const & M,          ///< The mesh
 	                                 BPy::list     const & ElemsAtts); ///< Elements attributes
 	void            PySetBrys       (Mesh::Generic const & M,          ///< The mesh
@@ -128,28 +127,12 @@ public:
 	size_t          PyPushNode2     (double X, double Y, double Z)          { return PushNode (X,Y,Z);     }
 	size_t          PyPushNode3     (double X, double Y, double Z, int Tag) { return PushNode (X,Y,Z,Tag); }
 	size_t          PyPushElem      (int Tag, BPy::str const & Type, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity);
+	size_t          PyGetNode1      (double X, double Y)                    { return GetNode  (X,Y);       }
+	size_t          PyGetNode2      (double X, double Y, double Z)          { return GetNode  (X,Y,Z);     }
 	void            PyAddReinfs     (BPy::dict const & Edges,  ///< {(x0,y0, x1,y1):tag1, ... num edges} or {(x0,y0,z0, x1,y1,z1):tag1, ... num edges}
 	                                 BPy::list const & EAtts); ///< Elements attributes
 	void            PyAddLinElems   (BPy::dict const & Edges,  ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
 	                                 BPy::list const & EAtts); ///< Elements attributes
-=======
-	Node          & PySetNode2D    (size_t i, double X, double Y)                       { return (*SetNode(i,X,Y));   }
-	Node          & PySetNode3D    (size_t i, double X, double Y, double Z)             { return (*SetNode(i,X,Y,Z)); }
-	PyElem          PySetElem      (size_t i, BPy::str const & Type, bool Act, int Tag) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act,Tag)); }
-	Node    const & PyNod          (size_t i)                                           { return (*Nod(i)); }
-	PyElem          PyEle          (size_t i)                                           { return PyElem(Ele(i)); }
-	void            PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
-	void            PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
-	void            PyElemsWithTag (int Tag, BPy::list & Elems);
-	size_t          PyPushNode1    (double X, double Y)                    { return PushNode (X,Y);       }
-	size_t          PyPushNode2    (double X, double Y, double Z)          { return PushNode (X,Y,Z);     }
-	size_t          PyPushNode3    (double X, double Y, double Z, int Tag) { return PushNode (X,Y,Z,Tag); }
-	size_t          PyGetNode1     (double X, double Y)                    { return GetNode  (X,Y);       }
-	size_t          PyGetNode2     (double X, double Y, double Z)          { return GetNode  (X,Y,Z);     }
-	size_t          PyPushElem     (int Tag, BPy::str const & Type, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity);
-	void            PyAddLinElems  (BPy::dict const & Edges,  ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
-	                                BPy::list const & EAtts); ///< Elements attributes
->>>>>>> other
 // }
 #endif // USE_BOOST_PYTHON
 
