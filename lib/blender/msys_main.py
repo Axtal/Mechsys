@@ -666,17 +666,13 @@ def cb_show_lines(evt,val): di.set_key ('show_lines', val)
 def cb_fem_letag (evt,val): di.props_set_item ('lines', evt-EVT_INC, 0, int(val))
 @try_catch
 def cb_fem_getN0  (evt,val):
-    obj = di.get_obj()
-    if not obj.properties.has_key('msh_name'): raise Exception('Please, generate Mesh first')
-    msh_obj = bpy.data.objects[obj.properties['msh_name']]
+    msh_obj = di.get_msh_obj (di.get_obj())
     di.props_set_item ('lines', evt-EVT_INC, 1, di.find_node(msh_obj))
 @try_catch
 def cb_fem_leN0  (evt,val): di.props_set_item ('lines', evt-EVT_INC, 1, float(val))
 @try_catch
 def cb_fem_getN1  (evt,val):
-    obj = di.get_obj()
-    if not obj.properties.has_key('msh_name'): raise Exception('Please, generate Mesh first')
-    msh_obj = bpy.data.objects[obj.properties['msh_name']]
+    msh_obj = di.get_msh_obj (di.get_obj())
     di.props_set_item ('lines', evt-EVT_INC, 2, di.find_node(msh_obj))
 @try_catch
 def cb_fem_leN1  (evt,val): di.props_set_item ('lines', evt-EVT_INC, 2, float(val))

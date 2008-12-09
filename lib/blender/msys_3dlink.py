@@ -26,7 +26,7 @@ import msys_dict as di
 
 
 # Transformation matrix
-if di.key('show_props') or di.key('show_res') or di.key('show_reinfs'):
+if di.key('show_props') or di.key('show_res') or di.key('show_reinfs') or di.key('show_lines'):
     # Buffer
     view_matrix = Window.GetPerspMatrix()
     view_buffer = [view_matrix[i][j] for i in xrange(4) for j in xrange(4)]
@@ -44,7 +44,6 @@ if di.key('show_props'):
     # Draw
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
-    edm = Blender.Window.EditMode()
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
 
@@ -215,24 +214,24 @@ if di.key('show_lines'):
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
             if Blender.Window.GetActiveLayer()==obj.Layer: # draw only if active layer corresponds to this object.Layer
-                if obj.properties.has_key('lines') and obj.properties.has_key('msh_name'):
-                    msh_obj = bpy.data.objects[obj.properties['msh_name']]
-                    edm     = Blender.Window.EditMode()
-                    msh     = obj.getData(mesh=1)
-                    ori     = msh.verts[:] # create a copy before transforming to global coordinates
-                    msh.transform (obj.matrix) # transform to global coordinates
-                    BGL.glColor3f (0.483, 0.709, 0.257)
-                    for k, v in obj.properties['lines'].iteritems():
-                        pos = msh.verts[v[1]].co + 0.40*(msh.verts[v[2]].co-msh.verts[v[1]].co)
-                        # text
-                        BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                        Draw.Text         (str(v[0]))
-                        # line
-                        BGL.glBegin    (BGL.GL_LINES)
-                        BGL.glVertex3f (msh.verts[v[1]].co[0], msh.verts[v[1]].co[1], msh.verts[v[1]].co[2])
-                        BGL.glVertex3f (msh.verts[v[2]].co[0], msh.verts[v[2]].co[1], msh.verts[v[2]].co[2])
-                        BGL.glEnd      ()
-                    msh.verts = ori # restore mesh to local coordinates
+                if obj.properties.has_key('lines') and obj.properties.has_key('mesh_type'):
+                    msh_obj = di.get_msh_obj (obj, False)
+                    if msh_obj!=None:
+                        msh = msh_obj.getData(mesh=1)
+                        ori = msh.verts[:] # create a copy before transforming to global coordinates
+                        msh.transform (obj.matrix) # transform to global coordinates
+                        BGL.glColor3f (0.483, 0.709, 0.257)
+                        for k, v in obj.properties['lines'].iteritems():
+                            pos = msh.verts[v[1]].co + 0.40*(msh.verts[v[2]].co-msh.verts[v[1]].co)
+                            # text
+                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                            Draw.Text         (str(v[0]))
+                            # line
+                            BGL.glBegin    (BGL.GL_LINES)
+                            BGL.glVertex3f (msh.verts[v[1]].co[0], msh.verts[v[1]].co[1], msh.verts[v[1]].co[2])
+                            BGL.glVertex3f (msh.verts[v[2]].co[0], msh.verts[v[2]].co[1], msh.verts[v[2]].co[2])
+                            BGL.glEnd      ()
+                        msh.verts = ori # restore mesh to local coordinates
 
 
 def sgn(val):
@@ -241,30 +240,17 @@ def sgn(val):
 
 # Results (visualisation)
 if di.key('show_res'):
-    # Draw
     scn = bpy.data.scenes.active
     obs = scn.objects.selected
-    edm = Blender.Window.EditMode()
     for obj in obs:
         if obj!=None and obj.type=='Mesh':
-
-            # find mesh type
-            with_mesh = False
-            mesh_type = obj.properties['mesh_type'] if obj.properties.has_key('mesh_type') else ''
-            if mesh_type=='frame': with_mesh = True
-            else: with_mesh = obj.properties.has_key('msh_name')
-
-            # draw only if active layer corresponds to this object.Layer
-            if Blender.Window.GetActiveLayer()==obj.Layer and obj.properties.has_key('res') and with_mesh:
-
-                # get msh object
-                if mesh_type=='frame': msh_obj = obj
-                else: msh_obj = bpy.data.objects[obj.properties['msh_name']]
+            msh_obj = di.get_msh_obj (obj, False)
+            if msh_obj!=None and obj.properties.has_key('res'):
 
                 # get mesh and transform to global coordinates
                 msh = msh_obj.getData(mesh=1)
                 ori = msh.verts[:] # create a copy before transforming to global coordinates
-                msh.transform(msh_obj.matrix)
+                msh.transform (msh_obj.matrix)
 
                 # current stage
                 s = str(di.key('res_stage'))
@@ -282,18 +268,18 @@ if di.key('show_res'):
                     ux = obj.properties['res'][s]['ux'] if obj.properties['res'][s].has_key('ux') else []
                     uy = obj.properties['res'][s]['uy'] if obj.properties['res'][s].has_key('uy') else []
                     uz = obj.properties['res'][s]['uz'] if obj.properties['res'][s].has_key('uz') else []
-                    if len(ux)>0 or len(uy)>0 or len(uz)>0:
-                        if len(ux)==0: ux = [0 for i in range(len(msh.verts))]
-                        if len(uy)==0: uy = [0 for i in range(len(msh.verts))]
-                        if len(uz)==0: uz = [0 for i in range(len(msh.verts))]
-                        m = float(di.key('res_warp_scale'))
-                        BGL.glColor3f (1.0, 1.0, 1.0)
-                        for e in msh.edges:
-                            BGL.glBegin    (BGL.GL_LINES)
-                            BGL.glVertex3f (e.v1.co[0]+m*ux[e.v1.index], e.v1.co[1]+m*uy[e.v1.index], e.v1.co[2]+m*uz[e.v1.index])
-                            BGL.glVertex3f (e.v2.co[0]+m*ux[e.v2.index], e.v2.co[1]+m*uy[e.v2.index], e.v2.co[2]+m*uz[e.v2.index])
-                            BGL.glEnd      ()
+                    if len(ux)==0: ux = [0 for i in range(len(msh.verts))]
+                    if len(uy)==0: uy = [0 for i in range(len(msh.verts))]
+                    if len(uz)==0: uz = [0 for i in range(len(msh.verts))]
+                    m = float(di.key('res_warp_scale'))
+                    BGL.glColor3f (1.0, 1.0, 1.0)
+                    for e in msh.edges:
+                        BGL.glBegin    (BGL.GL_LINES)
+                        BGL.glVertex3f (e.v1.co[0]+m*ux[e.v1.index], e.v1.co[1]+m*uy[e.v1.index], e.v1.co[2]+m*uz[e.v1.index])
+                        BGL.glVertex3f (e.v2.co[0]+m*ux[e.v2.index], e.v2.co[1]+m*uy[e.v2.index], e.v2.co[2]+m*uz[e.v2.index])
+                        BGL.glEnd      ()
 
+                # draw extra
                 if di.key('res_show_extra') and len(obj.properties['res'][s]['extra'])>0:
                     clrs = [(0.276,0.276,1.0), (0.934, 0.643, 0.19), (0.69,0.81,0.57)]
                     exts = ['N', 'M', 'V']

@@ -134,6 +134,18 @@ def key(key):
 
 # ============================================================================== Objects and Meshes
 
+def get_msh_obj(obj,with_error=True):
+    msh_obj = None
+    if obj.properties.has_key('mesh_type'): mesh_type = obj.properties['mesh_type']
+    else:
+        if with_error: raise Exception('Please, generate mesh first or set "Frame mesh" toggle')
+    if mesh_type=='frame': msh_obj = obj
+    else:
+        if obj.properties.has_key('msh_name'): msh_obj = bpy.data.objects[obj.properties['msh_name']]
+        else:
+            if with_error: raise Exception('Please, generate Mesh first')
+    return msh_obj
+
 def get_obj(with_error=True):
     # Get current active object
     scn = bpy.data.scenes.active
