@@ -29,7 +29,7 @@
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
-#include "fem/geometry.h"
+#include "fem/data.h"
 #include "util/array.h"
 #include "util/numstreams.h"
 #include "util/exception.h"
@@ -54,7 +54,7 @@ typedef Array< boost::tuple<int, char const*, char const*, char const*,
 inline void GetSegments (double x1, double y1, double z1,   ///< In: Initial point coordinates
                          double x2, double y2, double z2,   ///< In: Final   point coordinates
                          int nNodes,                        ///< In: Number of nodes for the new rod elements
-                         FEM::Geom           * G,           ///< Out: The FE geometry
+                         FEM::Data           * D,           ///< Out: The FE geometry
                          Array<int> & aElems,               ///< Out: Array of tresspassed elements
                          Array<Array<double> > & aSegments) ///< Out: Array of arrays containig nodal coordinates of the new nodes
 {
@@ -63,7 +63,7 @@ inline void GetSegments (double x1, double y1, double z1,   ///< In: Initial poi
 
 	// Determination of embedded portions
 	//int    n_elems = DA.Elements.Size();
-	int    n_elems = G->NElems();
+	int    n_elems = D->NElems();
 	double tiny    = 1E-4;
 
 	double length      = sqrt(pow(x2-x1,2)+pow(y2-y1,2)+pow(z2-z1,2));
@@ -82,11 +82,11 @@ inline void GetSegments (double x1, double y1, double z1,   ///< In: Initial poi
 	//find the initial element
 	for (int j=0; j<n_elems; j++)
 		//if (DA.Elements[j]->IsInside(x1+tinylength*l, y1+tinylength*m, z1+tinylength*n))
-		if (G->Ele(j)->IsInside(x1+tinylength*l, y1+tinylength*m, z1+tinylength*n)) { init_elem = j; break; }
+		if (D->Ele(j)->IsInside(x1+tinylength*l, y1+tinylength*m, z1+tinylength*n)) { init_elem = j; break; }
 
 	//find the final element
 	for (int j=0; j<n_elems; j++)
-		if (G->Ele(j)->IsInside(x2-tinylength*l, y2-tinylength*m, z2-tinylength*n)) { final_elem = j; break; }
+		if (D->Ele(j)->IsInside(x2-tinylength*l, y2-tinylength*m, z2-tinylength*n)) { final_elem = j; break; }
 
 	double xp = x1;  // previous x coordinate
 	double yp = y1;  // previous y coordinate
@@ -112,11 +112,11 @@ inline void GetSegments (double x1, double y1, double z1,   ///< In: Initial poi
 			y    += step*m;
 			z    += step*n;
 			//if (DA.Elements[prev_elem]->IsInside(x, y, z))
-			if (G->Ele(prev_elem)->IsInside(x, y, z))
+			if (D->Ele(prev_elem)->IsInside(x, y, z))
 				actual_elem = prev_elem;
 			else
 				for (int j=0; j<n_elems; j++)
-					if (G->Ele(j)->IsInside(x, y, z)) { actual_elem = j; break; }
+					if (D->Ele(j)->IsInside(x, y, z)) { actual_elem = j; break; }
 		}
 		if (prev_elem == actual_elem)
 		{
@@ -125,9 +125,9 @@ inline void GetSegments (double x1, double y1, double z1,   ///< In: Initial poi
 			{
 				double r, s, t;
 				//DA.Elements[next_elem]->InverseMap(x,y,z,r,s,t);
-				G->Ele(next_elem)->InverseMap(x,y,z,r,s,t);
+				D->Ele(next_elem)->InverseMap(x,y,z,r,s,t);
 				//bf = fabs(DA.Elements[next_elem]->BoundDistance(r,s,t));
-				bf = fabs(G->Ele(next_elem)->BoundDistance(r,s,t));
+				bf = fabs(D->Ele(next_elem)->BoundDistance(r,s,t));
 			}
 			if ( final || bf <= tiny )  // intersection is reached
 			{
@@ -175,7 +175,7 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
               char const *          Prms,      // In:  Properties and parameters [E Ar At ks]
               bool                  IsActive,  // In:  Define if the entire reinforcement is active or not
               int                   Tag,       // In:  Tag for all generated elements
-              FEM::Geom  *          G)         // Out: The FE geometry
+              FEM::Data  *          D)         // Out: The FE geometry
 {
 	// E=2.0E8 Ar=0.02 ks=2.0E6
 	LineParser    lp(Prms);
@@ -209,7 +209,7 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 	Array<Array<double> > a_segments;  // { {E1x1 E1y1 E1z1 E1x2 E1y2 E1z2 } {E2x1 E2y1 E2z1 E2x2 E2y2 E2z2 } ... }
 	Array<int>            a_elems;     // { E1, E2, E3, ... }
 	int n_seg_nodes = 3;               // Second order
-	GetSegments(x1, y1, z1, x2, y2, z2, n_seg_nodes, G, a_elems, a_segments);
+	GetSegments(x1, y1, z1, x2, y2, z2, n_seg_nodes, D, a_elems, a_segments);
 
 	// Direction
 	double length    = sqrt(pow(x2-x1,2)+pow(y2-y1,2)+pow(z2-z1,2));
@@ -252,13 +252,13 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 		// Adding the initial and final nodes
 		Node * begin_node = new Node;
 		Node *   end_node = new Node;
-		G->PushNode(begin_node); begin_node->Initialize(G->NNodes()-1, x1, y1, z1);
-		G->PushNode(  end_node);   end_node->Initialize(G->NNodes()-1, x2, y2, z2);
+		D->PushNode(begin_node); begin_node->Initialize(D->NNodes()-1, x1, y1, z1);
+		D->PushNode(  end_node);   end_node->Initialize(D->NNodes()-1, x2, y2, z2);
 
 		// Allocate bar reinforcement
 		Element * bar_elem = new Rod3; // Three nodes Rod
-		G->PushElem(bar_elem);
-		bar_elem->Initialize(G->NElems()-1, IsActive, G->NDim(), Tag);
+		D->PushElem(bar_elem);
+		bar_elem->Initialize(D->NElems()-1, IsActive, D->NDim(), Tag);
 
 		// Loop along the nodes from the segment
 		for (int j_node=0; j_node<n_seg_nodes; j_node++)
@@ -284,16 +284,16 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 			else
 			{
 				nodes[j_node] = new Node;
-				G->PushNode(nodes[j_node]); nodes[j_node]->Initialize(G->NNodes()-1, x, y, z);
+				D->PushNode(nodes[j_node]); nodes[j_node]->Initialize(D->NNodes()-1, x, y, z);
 				last_end_node = nodes[j_node];
 			}
 			bar_elem->Connect(j_node, nodes[j_node]);
 
 			// Generating the interface element:
-			Element * solid_elem = G->Ele(a_elems[i_seg]);
+			Element * solid_elem = D->Ele(a_elems[i_seg]);
 			Element * conn_elem = new EmbSpring(solid_elem, nodes[j_node], Direction);
-			G->PushElem(conn_elem);
-			conn_elem->Initialize(G->NElems()-1, IsActive, G->NDim(), Tag);
+			D->PushElem(conn_elem);
+			conn_elem->Initialize(D->NElems()-1, IsActive, D->NDim(), Tag);
 
 			// Connector (EmbSpring) connectivities
 			for (size_t i=0; i<solid_elem->NNodes(); i++)

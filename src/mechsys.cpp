@@ -39,16 +39,12 @@
 #include "mesh/alphashape.h"
 
 // MechSys -- fem -- basic
-#include "fem/geometry.h"
+#include "fem/data.h"
 #include "fem/embedded.h"
 #include "fem/solver.h"
 #include "fem/output.h"
 #include "models/model.h"
 #include "util/exception.h"
-
-// MechSys -- fem -- Solvers
-#include "fem/solvers/autome.h"
-#include "fem/solvers/forwardeuler.h"
 
 // MechSys -- fem -- Elements
 #include "fem/elems/beam.h"
@@ -92,7 +88,6 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,  2, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,       0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (GE_SetOnlyFrame,   SetOnlyFrame,   0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,          Solve,          0, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_SolveWithInfo1, SolveWithInfo1, 0, 3)
 
 BOOST_PYTHON_MODULE (mechsys)
 {
@@ -179,52 +174,53 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def(self_ns::str(self))
 	    ;
 
-	class_<FEM::Geom>("geom", init<int>())
-	    .def("set_tol",             &FEM::Geom::SetTol)
-	    .def("set_only_frame",      &FEM::Geom::SetOnlyFrame, GE_SetOnlyFrame())
-		.def("set_nodes_elems",     &FEM::Geom::SetNodesElems)
-		.def("set_brys",            &FEM::Geom::SetBrys)
-	    .def("set_nnodes",          &FEM::Geom::SetNNodes)
-	    .def("set_nelems",          &FEM::Geom::SetNElems)
-	    .def("check",               &FEM::Geom::Check)
-	    .def("nnodes",              &FEM::Geom::NNodes)
-	    .def("nelems",              &FEM::Geom::NElems)
-	    .def("set_node",            &FEM::Geom::PySetNode2D, return_internal_reference<>())
-	    .def("set_node",            &FEM::Geom::PySetNode3D, return_internal_reference<>())
-	    .def("set_elem",            &FEM::Geom::PySetElem)
-	    .def("nod",                 &FEM::Geom::PyNod,       return_internal_reference<>())
-	    .def("ele",                 &FEM::Geom::PyEle)
-	    .def("elems_with_tag",      &FEM::Geom::PyElemsWithTag)
-	    .def("bounds_2d",           &FEM::Geom::PyBounds2D)
-	    .def("bounds_3d",           &FEM::Geom::PyBounds3D)
-	    .def("apply_body_forces",   &FEM::Geom::ApplyBodyForces)
-	    .def("clear_displacements", &FEM::Geom::ClearDisplacements)
-	    .def("activate",            &FEM::Geom::Activate)
-	    .def("deactivate",          &FEM::Geom::Deactivate)
-	    .def("get_node",            &FEM::Geom::PyGetNode1)
-	    .def("get_node",            &FEM::Geom::PyGetNode2)
-	    .def("add_reinfs",          &FEM::Geom::PyAddReinfs)
-	    .def("add_lin_elems",       &FEM::Geom::PyAddLinElems)
+	class_<FEM::Data>("data", init<int>())
+	    .def("set_tol",             &FEM::Data::SetTol)
+	    .def("set_only_frame",      &FEM::Data::SetOnlyFrame, GE_SetOnlyFrame())
+		.def("set_nodes_elems",     &FEM::Data::PySetNodesElems)
+		.def("set_brys",            &FEM::Data::PySetBrys)
+	    .def("add_reinfs",          &FEM::Data::PyAddReinfs)
+	    .def("add_lin_elems",       &FEM::Data::PyAddLinElems)
+	    .def("set_nnodes",          &FEM::Data::SetNNodes)
+	    .def("set_nelems",          &FEM::Data::SetNElems)
+	    .def("set_node",            &FEM::Data::PySetNode2D, return_internal_reference<>())
+	    .def("set_node",            &FEM::Data::PySetNode3D, return_internal_reference<>())
+	    .def("set_elem",            &FEM::Data::PySetElem)
+	    .def("push_node",           &FEM::Data::PyPushNode1)
+	    .def("push_node",           &FEM::Data::PyPushNode2)
+	    .def("push_node",           &FEM::Data::PyPushNode3)
+	    .def("push_elem",           &FEM::Data::PyPushElem)
+	    .def("apply_body_forces",   &FEM::Data::ApplyBodyForces)
+	    .def("clear_displacements", &FEM::Data::ClearDisplacements)
+	    .def("activate",            &FEM::Data::Activate)
+	    .def("deactivate",          &FEM::Data::Deactivate)
+	    .def("check",               &FEM::Data::Check)
+	    .def("nnodes",              &FEM::Data::NNodes)
+	    .def("nelems",              &FEM::Data::NElems)
+	    .def("nod",                 &FEM::Data::PyNod, return_internal_reference<>())
+	    .def("ele",                 &FEM::Data::PyEle)
+	    .def("get_node",            &FEM::Data::PyGetNode1)
+	    .def("get_node",            &FEM::Data::PyGetNode2)
+	    .def("elems_with_tag",      &FEM::Data::PyElemsWithTag)
+	    .def("bounds_2d",           &FEM::Data::PyBounds2D)
+	    .def("bounds_3d",           &FEM::Data::PyBounds3D)
 	    .def(self_ns::str(self))
 	    ;
 
-	class_<PySolver>("solver", init<str const &>())
-	    .def("set_geom",        &PySolver::SetGeom,        return_internal_reference<>())
-	    .def("set_lin_sol",     &PySolver::SetLinSol,      return_internal_reference<>())
-	    .def("set_cte",         &PySolver::SetCte,         return_internal_reference<>())
-	    .def("solve",           &PySolver::Solve,          SO_Solve())
-	    .def("time",            &PySolver::Time)
-	    .def("solve_with_info", &PySolver::SolveWithInfo1, SO_SolveWithInfo1())
-	    .def("solve_with_info", &PySolver::SolveWithInfo2)
+	class_<FEM::Solver>("solver", init<FEM::Data &>())
+	    .def("set_type",        &FEM::Solver::PySetType,        return_internal_reference<>())
+	    .def("set_cte",         &FEM::Solver::PySetCte,         return_internal_reference<>())
+	    .def("set_lin_sol",     &FEM::Solver::PySetLinSol,      return_internal_reference<>())
+	    .def("solve",           &FEM::Solver::Solve,            SO_Solve())
+	    .def("solve_with_info", &FEM::Solver::PySolveWithInfo)
+	    .def("time",            &FEM::Solver::Time)
+	    .def("ndof",            &FEM::Solver::nDOF)
 	    ;
 
-	class_<Output>("output")
-	    .def("open_collection",  &Output::PyOpenCollection)
-	    .def("close_collection", &Output::CloseCollection)
-	    .def("get_labels",       &Output::PyGetLabels)
-	    .def("val",              &Output::PyVal)
-	    .def("vtu",              &Output::PyVTU1)
-	    .def("vtu",              &Output::PyVTU2)
+	class_<Output>("output", init<FEM::Data const &, BPy::str const &>())
+	    .def("write",      &Output::Write)
+	    .def("val",        &Output::PyVal)
+	    .def("get_labels", &Output::PyGetLabels)
 	    ;
 
 	// ---------------------------------------------------------------------- Exceptions

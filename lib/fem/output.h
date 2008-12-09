@@ -33,7 +33,7 @@
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
-#include "fem/geometry.h"
+#include "fem/data.h"
 #include "util/array.h"
 #include "util/numstreams.h"
 #include "util/exception.h"
@@ -50,38 +50,31 @@ class Output
 
 public:
 	// Constructor
-	Output () : _nimax(40), _nfmax(12), _nn(0), _ne(0), _nsflo(Util::_8s), _pvd_file(NULL), _idx_file(0) {}
+	Output (FEM::Data const * D, char const * FileKey) { _initialize (D, FileKey); }
 
 	// Destructor
-	~Output () { if (_pvd_file!=NULL) { _pvd_file->close(); delete _pvd_file; } }
+	~Output ();
 
 	// Methods
-	double Val   (int iNode, char const * Key) const;          ///< Output value at a specific node. This method must be called only AFTER VTK(), VTU() or VTUcg() methods, since the values at nodes must be extrapolated from the values at integration points
-	void   VTK   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTK file
-	void   VTU   (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file
-	void   VTUcg (FEM::Geom const * G, char const * FileName); ///< Write a ParaView-VTU file with element values at CG
-	void   VTU   (FEM::Geom const * G, double TimeStep);       ///< Write a ParaView-VTU file (with timestep)
-	void   OpenCollection  (char const * FileKey);             ///< Collection of files with different timesteps
-	void   CloseCollection ();                                 ///< Close collection of files
+	void   Write ();                                  ///< Write output file for the current timestep
+	double Val   (int iNode, char const * Key) const; ///< Output value at a specific node. This method must be called only AFTER Write, since the values at nodes must be extrapolated from the values at integration points
 
 #ifdef USE_BOOST_PYTHON
 // {
-	void   PyGetLabels      (BPy::list & Labels) const { for (std::map<String,int>::const_iterator iter=_map.begin(); iter!=_map.end(); iter++) Labels.append (iter->first.CStr()); }
-	double PyVal            (int iNode, BPy::str const & Key) const          { return Val (iNode, BPy::extract<char const *>(Key)()); }
-	void   PyVTU1           (FEM::Geom const & G, double TimeStep)           { VTU (&G, TimeStep); }
-	void   PyVTU2           (FEM::Geom const & G, BPy::str const & FileName) { VTU (&G, BPy::extract<char const *>(FileName)()); }
-	void   PyOpenCollection (BPy::str const & FileKey)      { OpenCollection (BPy::extract<char const *>(FileKey )()); }
+           Output      (FEM::Data const & D, BPy::str const & FileKey) { _initialize (&D, BPy::extract<char const *>(FileKey)()); }
+	double PyVal       (int iNode, BPy::str const & Key) const         { return Val (iNode, BPy::extract<char const *>(Key)()); }
+	void   PyGetLabels (BPy::list & Labels) const                      { for (std::map<String,int>::const_iterator iter=_map.begin(); iter!=_map.end(); iter++) Labels.append (iter->first.CStr()); }
 // }
 #endif // USE_BOOST_PYTHON
 
 private:
 	// Data
+	FEM::Data           const * _data;     ///< The FEM data structure
 	size_t                      _nimax;    ///< number of integers in a line
 	size_t                      _nfmax;    ///< number of floats in a line
 	size_t                      _nn;       ///< Number of Nodes
 	size_t                      _ne;       ///< Number of Elements
 	Util::NumStream             _nsflo;    ///< number format for floats
-	FEM::Geom           const * _g;        ///< Geometry structure
 	Array<FEM::Element const *> _aes;      ///< Active elements
 	std::map<String, int>       _map;      ///< Map to associate labels with indexes==column
 	LinAlg::Matrix<double>      _vals;     ///< Matrix for nodal values collected from elements. Rows==iNode, Cols==iLabel
@@ -89,13 +82,11 @@ private:
 	std::ofstream             * _pvd_file; ///< File for PVD (PavaView) collection
 	int                         _idx_file; ///< Increment to add to a file when working with collections
 
-	// Methods
+	// Private methods
+	void _initialize              (FEM::Data const * D, char const * FileKey);
+	void _vtu                     (char const * FileName);
 	void _fill_map                ();
 	void _calc_nodal_vals         ();
-	void _vtk_write_header        (                 std::ostringstream & oss) const;
-	void _vtk_write_geometry      (                 std::ostringstream & oss) const;
-	void _vtk_write_vals_at_nodes (                 std::ostringstream & oss) const;
-	void _vtk_write_bottom        (char const * FN, std::ostringstream & oss) const;
 	void _vtu_write_header        (                 std::ostringstream & oss) const;
 	void _vtu_write_geometry      (                 std::ostringstream & oss) const;
 	void _vtu_write_vals_at_nodes (                 std::ostringstream & oss) const;
@@ -110,6 +101,15 @@ private:
 
 /* public */
 
+inline Output::~Output()
+{
+	if (_pvd_file==NULL) throw new Fatal("Output::~Output: Collection file was not open in constructor");
+    (*_pvd_file) << "  </Collection>\n";
+    (*_pvd_file) << "</VTKFile>\n";
+	_pvd_file->close();
+	delete _pvd_file;
+}
+
 inline double Output::Val(int iNode, char const * Key) const
 { 
 	std::map<String,int>::const_iterator iter = _map.find(Key);
@@ -117,58 +117,51 @@ inline double Output::Val(int iNode, char const * Key) const
 	return _vals(iNode, iter->second);
 }
 
-inline void Output::VTK(FEM::Geom const * G, char const * FileName)
+inline void Output::Write()
 {
-	// Set array of active elements
-	_aes.Resize(0);
-	for (size_t i=0; i<G->NElems(); ++i)
-		if (G->Ele(i)->IsActive()) _aes.Push (G->Ele(i)); // Only active elements are considered
-
-	// Set data
-	_nn = G->NNodes(); // Number of Nodes
-	_ne = _aes.Size(); // Number of Elements
-	_g  = G;           // geometry
-
-	std::ostringstream oss;    // Output structure
-	_fill_map           ();    // fill map
-	_calc_nodal_vals    ();    // Calculate averaged nodal values
-	_vtk_write_header   (oss); // Header
-	_vtk_write_geometry (oss); // Geometry
-
-	// Data -- nodes
-	oss << "POINT_DATA " << _nn << std::endl;
-
-	// Data -- nodes -- displacements and forces
-	if (_map.find("ux")!=_map.end())
-	{
-		oss << "VECTORS " << "displ float" << std::endl;
-		for (size_t j=0; j<_nn; ++j)
-			oss << _nsflo<< _vals(j, _map["ux"]) << _nsflo<< _vals(j, _map["uy"]) << _nsflo<< ((_map.find("uz")==_map.end()) ? 0.0 : _vals(j, _map["uz"])) << "\n";
-		oss << "\n";
-		oss << "VECTORS " << "force float" << std::endl;
-		for (size_t j=0; j<_nn; ++j)
-			oss << _nsflo<< _vals(j, _map["fx"]) << _nsflo<< _vals(j, _map["fy"]) << _nsflo<< ((_map.find("fz")==_map.end()) ? 0.0 : _vals(j, _map["uz"])) << "\n";
-		oss << "\n";
-	}
-
-	// Data -- nodes -- scalars
-	_vtk_write_vals_at_nodes (oss);
-
-	// Bottom and write to file
-	_vtk_write_bottom (FileName, oss);
+	if (_pvd_file==NULL) throw new Fatal("Output::VTU: Collection file could not be open");
+	String buffer;
+	buffer.Printf ("    <DataSet timestep=\"%d\" file=\"%s_%d.vtu\" />\n", _idx_file, _file_key.CStr(), _idx_file);
+	(*_pvd_file) << buffer;
+	buffer.Printf ("%s_%d.vtu", _file_key.CStr(), _idx_file);
+	_vtu (buffer.CStr());
+	_idx_file++;
 }
 
-inline void Output::VTU(FEM::Geom const * G, char const * FileName)
+
+/* private */
+
+inline void Output::_initialize(FEM::Data const * D, char const * FileKey)
+{
+	// Variables
+	_data  = D;
+	_nimax = 40;
+	_nfmax = 12;
+	_nn    = 0;
+	_ne    = 0;
+	_nsflo = Util::_8s;
+
+	// Open collection
+	String filename;  filename.Printf("%s.pvd", FileKey);
+	_pvd_file = new std::ofstream();
+	_pvd_file->open (filename.CStr(), std::ios::out);
+	(*_pvd_file) << "<?xml version=\"1.0\" ?>\n";
+	(*_pvd_file) << "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+	(*_pvd_file) << "  <Collection>\n";
+	_idx_file = 0;
+	_file_key = FileKey;
+}
+
+inline void Output::_vtu(char const * FileName)
 {
 	// Set array of active elements
 	_aes.Resize(0);
-	for (size_t i=0; i<G->NElems(); ++i)
-		if (G->Ele(i)->IsActive()) _aes.Push (G->Ele(i)); // Only active elements are considered
+	for (size_t i=0; i<_data->NElems(); ++i)
+		if (_data->Ele(i)->IsActive()) _aes.Push (_data->Ele(i)); // Only active elements are considered
 
 	// Set data
-	_nn = G->NNodes(); // Number of Nodes
-	_ne = _aes.Size(); // Number of Elements
-	_g  = G;           // geometry
+	_nn = _data->NNodes(); // Number of Nodes
+	_ne = _aes.Size();     // Number of Elements
 
 	std::ostringstream oss;    // Output structure
 	_fill_map           ();    // fill map
@@ -207,118 +200,6 @@ inline void Output::VTU(FEM::Geom const * G, char const * FileName)
 	// Bottom and write to file
 	_vtu_write_bottom (FileName, oss);
 }
-
-inline void Output::VTUcg(FEM::Geom const * G, char const * FileName)
-{
-	// Set array of active elements
-	_aes.Resize(0);
-	for (size_t i=0; i<G->NElems(); ++i)
-		if (G->Ele(i)->IsActive()) _aes.Push (G->Ele(i)); // Only active elements are considered
-
-	// Set data
-	_nn = G->NNodes(); // Number of Nodes
-	_ne = _aes.Size(); // Number of Elements
-	_g  = G;           // geometry
-
-	std::ostringstream oss;    // Output structure
-	_fill_map           ();    // fill map
-	_vtu_write_header   (oss); // Header
-	_vtu_write_geometry (oss); // Geometry
-
-	// Data -- nodes -- temperature and heat
-	oss << "      <PointData Scalars=\"TheScalars\" Vectors=\"TheVectors\">\n";
-	if (_map.find("T")!=_map.end())
-	{
-		oss << "        <DataArray type=\"Float32\" Name=\"" << "T" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-		size_t k = 0; oss << "        ";
-		for (size_t i=0; i<_nn; ++i)
-		{
-			oss << (k==0?"  ":" ") << _g->Nod(i)->Val("T");
-			k++;
-			OUT_NEWLINE (i,k,_nn,_nfmax,oss);
-		}
-		oss << "        </DataArray>\n";
-		oss << "        <DataArray type=\"Float32\" Name=\"" << "F" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-		k = 0; oss << "        ";
-		for (size_t i=0; i<_nn; ++i)
-		{
-			oss << (k==0?"  ":" ") << _g->Nod(i)->Val("F");
-			k++;
-			OUT_NEWLINE (i,k,_nn,_nfmax,oss);
-		}
-		oss << "        </DataArray>\n";
-	}
-
-	// Data -- nodes -- displacements and forces
-	if (_map.find("ux")!=_map.end())
-	{
-		oss << "        <DataArray type=\"Float32\" Name=\"" << "displ" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-		size_t k = 0; oss << "        ";
-		for (size_t i=0; i<_nn; ++i)
-		{
-			oss << " " << _nsflo << (_g->Nod(i)->HasVar("ux") ? _g->Nod(i)->Val("ux"): 0.0) << " ";
-			oss <<        _nsflo << (_g->Nod(i)->HasVar("uy") ? _g->Nod(i)->Val("uy"): 0.0) << " ";
-			oss <<        _nsflo << (_g->Nod(i)->HasVar("uz") ? _g->Nod(i)->Val("uz"): 0.0) << " ";
-			k++;
-			OUT_NEWLINE (i,k,_nn,_nfmax/3,oss);
-		}
-		oss << "        </DataArray>\n";
-		oss << "        <DataArray type=\"Float32\" Name=\"" << "force" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-		k = 0; oss << "        ";
-		for (size_t i=0; i<_nn; ++i)
-		{
-			oss << " " << _nsflo << (_g->Nod(i)->HasVar("fx") ? _g->Nod(i)->Val("fx"): 0.0) << " ";
-			oss <<        _nsflo << (_g->Nod(i)->HasVar("fy") ? _g->Nod(i)->Val("fy"): 0.0) << " ";
-			oss <<        _nsflo << (_g->Nod(i)->HasVar("fz") ? _g->Nod(i)->Val("fz"): 0.0) << " ";
-			k++;
-			OUT_NEWLINE (i,k,_nn,_nfmax/3,oss);
-		}
-		oss << "        </DataArray>\n";
-	}
-	oss << "      </PointData>\n";
-
-	// Data -- elements
-	_vtu_write_vals_at_elems (oss);
-
-	// Bottom and write to file
-	_vtu_write_bottom (FileName, oss);
-}
-
-inline void Output::VTU(FEM::Geom const * G, double TimeStep)
-{
-	if (_pvd_file==NULL) throw new Fatal("Output::VTU: Collection file must be open before calling this method");
-	String buffer;
-	buffer.Printf ("    <DataSet timestep=\"%d\" file=\"%s_%d.vtu\" />\n", _idx_file, _file_key.CStr(), _idx_file);
-	(*_pvd_file) << buffer;
-	buffer.Printf ("%s_%d.vtu", _file_key.CStr(), _idx_file);
-	VTU (G, buffer.CStr());
-	_idx_file++;
-}
-
-inline void Output::OpenCollection(char const * FileKey)
-{
-	String filename;  filename.Printf("%s.pvd", FileKey);
-	_pvd_file = new std::ofstream();
-	_pvd_file->open (filename.CStr(), std::ios::out);
-    (*_pvd_file) << "<?xml version=\"1.0\" ?>\n";
-    (*_pvd_file) << "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
-    (*_pvd_file) << "  <Collection>\n";
-	_idx_file = 0;
-	_file_key = FileKey;
-}
-
-inline void Output::CloseCollection()
-{
-	if (_pvd_file==NULL) throw new Fatal("Output::CloseCollection: Collection file must be open before calling this method");
-    (*_pvd_file) << "  </Collection>\n";
-    (*_pvd_file) << "</VTKFile>\n";
-	_pvd_file->close();
-	delete _pvd_file;
-	_pvd_file = NULL;
-}
-
-
-/* private */
 
 inline void Output::_fill_map()
 {
@@ -374,64 +255,6 @@ inline void Output::_calc_nodal_vals()
 	}
 }
 
-inline void Output::_vtk_write_header(std::ostringstream & oss) const
-{
-	// Write Legacy VTK file header
-	oss << "# vtk DataFile Version 3.0"     << std::endl;
-	oss << "MechSys/FEM"                    << std::endl;
-	oss << "ASCII"                          << std::endl;
-	oss << "DATASET UNSTRUCTURED_GRID"      << std::endl;
-	oss <<                                     std::endl;
-}
-
-inline void Output::_vtk_write_geometry(std::ostringstream & oss) const
-{
-	// Node coordinates
-	oss << "POINTS " << _nn << " float" << std::endl;
-	for (size_t i=0; i<_nn; ++i)
-		oss << _nsflo << _g->Nod(i)->Coord(0) << _nsflo << _g->Nod(i)->Coord(1) << _nsflo << _g->Nod(i)->Coord(2) << std::endl;
-	oss << std::endl;
-
-	// Total number of CELLS data = Sum (1 + NNodes); 1 for the numPts label
-	int n_data = 0;
-	for (size_t i=0; i<_ne; ++i) n_data += 1 + _aes[i]->NNodes();
-
-	// Elements connectivities
-	oss << "CELLS "<< _ne << " " << n_data << std::endl;
-	for (size_t i=0; i<_ne; ++i)
-	{
-		String connect; _aes[i]->VTKConnect(connect);
-		oss << _aes[i]->NNodes() << " " << connect << std::endl;
-	}
-	oss << std::endl;
-
-	// Cell types
-	oss << "CELL_TYPES " << _ne << std::endl;
-	for (size_t i=0; i<_ne; ++i)
-		oss << _aes[i]->VTKCellType() << std::endl;
-	oss << std::endl;
-}
-
-inline void Output::_vtk_write_vals_at_nodes(std::ostringstream & oss) const
-{
-	std::map<String,int>::const_iterator it;
-	for (it=_map.begin(); it!=_map.end(); it++)
-	{
-		oss << "SCALARS " << it->first << " float 1" << std::endl;
-		oss << "LOOKUP_TABLE default" << std::endl;
-		for (size_t i=0; i<_nn; ++i)
-			oss << _nsflo << _vals(i, it->second) << std::endl;
-		oss << std::endl;
-	}
-}
-
-inline void Output::_vtk_write_bottom(char const * FN, std::ostringstream & oss) const
-{
-	std::ofstream of(FN, std::ios::out);
-	of << oss.str();
-	of.close();
-}
-
 inline void Output::_vtu_write_header(std::ostringstream & oss) const
 {
 	// Header
@@ -449,9 +272,9 @@ inline void Output::_vtu_write_geometry(std::ostringstream & oss) const
 	size_t k = 0; oss << "        ";
 	for (size_t i=0; i<_nn; ++i)
 	{
-		oss << "  " << _nsflo << _g->Nod(i)->Coord(0) << " ";
-		oss <<         _nsflo << _g->Nod(i)->Coord(1) << " ";
-		oss <<         _nsflo << _g->Nod(i)->Coord(2);
+		oss << "  " << _nsflo << _data->Nod(i)->Coord(0) << " ";
+		oss <<         _nsflo << _data->Nod(i)->Coord(1) << " ";
+		oss <<         _nsflo << _data->Nod(i)->Coord(2);
 		k++;
 		OUT_NEWLINE (i,k,_nn,_nfmax/3,oss);
 	}
