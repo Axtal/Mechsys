@@ -22,6 +22,7 @@
 // STL
 #include <iostream>
 #include <cstring>
+#include <cfloat> // for DBL_EPSILON
 #include <map>
 
 // Boost::Python
@@ -33,20 +34,37 @@
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
+#include "mesh/mesh.h"
 #include "util/array.h"
 
 namespace FEM
 {
+
+typedef Array< boost::tuple<double,double,double, char const *,double> > NBrys_T; // Node: x,y,z, key, val
+typedef Array< boost::tuple<                 int, char const *,double> > EBrys_T; // Edge:   tag, key, val
+typedef Array< boost::tuple<                 int, char const *,double> > FBrys_T; // Face:   tag, key, val
+typedef Array< boost::tuple<int, char const*, char const*, char const*,
+                            char const*, char const*, bool> > EAtts_T; // Elem: tag, type, model, prms, inis, props, active
 
 /* Geometry */
 class Geom
 {
 public:
 	/* Constructor */
-	Geom (int nDim) : _dim(nDim) {}
+	Geom (int nDim) : _dim(nDim), _tol(1.0e-5), _frame(false) {}
 
 	/* Destructor */
 	~Geom ();
+
+	// Set methods
+	void SetTol        (double Tol)      { _tol   = Tol;   } ///< Tolerance for defining whether X-Y-Z coordinates are in a same plane or not. Also used for comparing coincident nodes
+	void SetOnlyFrame  (bool Frame=true) { _frame = Frame; } ///< Only frame (beam/truss) structure ?
+	void SetNodesElems (Mesh::Generic const * M,             ///< The mesh
+	                    EAtts_T       const * ElemsAtts);    ///< Elements attributes
+	void SetBrys       (Mesh::Generic const * M,             ///< The mesh
+	                    NBrys_T       const * NodesBrys,     ///< Give NULL when there are no nodes boundary conditions
+	                    EBrys_T       const * EdgesBrys,     ///< Give NULL for 3D meshes without edges boundary conditions
+	                    FBrys_T       const * FacesBrys);    ///< Give NULL for 2D meshes
 
 	// Set methods
 	void      SetNNodes (size_t NNodes);                                              ///< Set the number of nodes
@@ -91,6 +109,30 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 // {
+<<<<<<< local
+	void            PySetNodesElems (Mesh::Generic const & M,          ///< The mesh
+	                                 BPy::list     const & ElemsAtts); ///< Elements attributes
+	void            PySetBrys       (Mesh::Generic const & M,          ///< The mesh
+	                                 BPy::list     const & NodesBrys,  ///< Give [] when there are no nodes boundary conditions
+	                                 BPy::list     const & EdgesBrys,  ///< Give [] for 3D mesh without edge boundary conditions
+	                                 BPy::list     const & FacesBrys); ///< Give [] for 2D meshes
+	Node          & PySetNode2D     (size_t i, double X, double Y)                       { return (*SetNode(i,X,Y));   }
+	Node          & PySetNode3D     (size_t i, double X, double Y, double Z)             { return (*SetNode(i,X,Y,Z)); }
+	PyElem          PySetElem       (size_t i, BPy::str const & Type, bool Act, int Tag) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act,Tag)); }
+	Node    const & PyNod           (size_t i)                                           { return (*Nod(i)); }
+	PyElem          PyEle           (size_t i)                                           { return PyElem(Ele(i)); }
+	void            PyBounds2D      (BPy::list & MinXY,  BPy::list & MaxXY ) const;
+	void            PyBounds3D      (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
+	void            PyElemsWithTag  (int Tag, BPy::list & Elems);
+	size_t          PyPushNode1     (double X, double Y)                    { return PushNode (X,Y);       }
+	size_t          PyPushNode2     (double X, double Y, double Z)          { return PushNode (X,Y,Z);     }
+	size_t          PyPushNode3     (double X, double Y, double Z, int Tag) { return PushNode (X,Y,Z,Tag); }
+	size_t          PyPushElem      (int Tag, BPy::str const & Type, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity);
+	void            PyAddReinfs     (BPy::dict const & Edges,  ///< {(x0,y0, x1,y1):tag1, ... num edges} or {(x0,y0,z0, x1,y1,z1):tag1, ... num edges}
+	                                 BPy::list const & EAtts); ///< Elements attributes
+	void            PyAddLinElems   (BPy::dict const & Edges,  ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
+	                                 BPy::list const & EAtts); ///< Elements attributes
+=======
 	Node          & PySetNode2D    (size_t i, double X, double Y)                       { return (*SetNode(i,X,Y));   }
 	Node          & PySetNode3D    (size_t i, double X, double Y, double Z)             { return (*SetNode(i,X,Y,Z)); }
 	PyElem          PySetElem      (size_t i, BPy::str const & Type, bool Act, int Tag) { return PyElem(SetElem(i,BPy::extract<char const *>(Type)(),Act,Tag)); }
@@ -107,12 +149,15 @@ public:
 	size_t          PyPushElem     (int Tag, BPy::str const & Type, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity);
 	void            PyAddLinElems  (BPy::dict const & Edges,  ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
 	                                BPy::list const & EAtts); ///< Elements attributes
+>>>>>>> other
 // }
 #endif // USE_BOOST_PYTHON
 
 private:
 	// Data
 	int                     _dim;             ///< Space dimension
+	double                  _tol;             ///< Tolerance for defining whether X-Y-Z coordinates are in a same plane or not. Also used for comparing coincident nodes
+	bool                    _frame;           ///< Only frame (beam/truss) structure ?
 	Array<Node*>            _nodes;           ///< FE nodes
 	Array<Element*>         _elems;           ///< FE elements
 	Array<Element*>         _beams;           ///< Beams
@@ -122,6 +167,9 @@ private:
 
 }; // class Geom
 
+// Forward declaration of a method in embedded.h
+void AddReinf (double x1, double y1, double z1, double x2, double y2, double z2, char const * Prms, bool IsActive, int Tag, Geom * G);
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -130,6 +178,233 @@ inline Geom::~Geom()
 {
 	for (size_t i=0; i<_nodes.Size(); ++i) if (_nodes[i]!=NULL) delete _nodes[i];
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
+}
+
+inline void Geom::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAtts)
+{
+	/* Example:
+	
+		// Elements attributes
+		FEM::EAtts_T eatts;
+		eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20")); // tag, type, model, prms, inis, props
+	*/
+
+	// 3D mesh?
+	bool is3d = M->Is3D();
+
+	// Set nodes
+	size_t nn = M->NVerts();
+	this->SetNNodes (nn);
+	double diff_x = 0.0; // used for verification (try to find which plane the problem is defined in)
+	double diff_y = 0.0;
+	double diff_z = 0.0;
+	for (size_t i=0; i<nn; ++i) // loop over all vertices
+	{
+		// New node
+		this->SetNode (i, M->VertX(i), M->VertY(i), (is3d ? M->VertZ(i) : 0.0));
+		          diff_x += fabs(M->VertX(0)-M->VertX(i));
+		          diff_y += fabs(M->VertY(0)-M->VertY(i));
+		if (is3d) diff_z += fabs(M->VertZ(0)-M->VertZ(i));
+	}
+
+	// Check working plane
+	if (is3d)
+	{
+		if (diff_x<_tol || diff_y<_tol || diff_z<_tol)
+			throw new Fatal("FEM::SetNodesElems: For 3D problems, vertices cannot be all in a same plane (diff_x=%f, diff_y=%f, diff_z=%f)",diff_x,diff_y,diff_z);
+	}
+	else
+	{
+		if (diff_z>_tol)
+			throw new Fatal("FEM::SetNodesElems: For 2D problems, only the X and Y coordinates must be used (diff_z=%f)",diff_z);
+	}
+
+	// Number of beams (with duplicates)
+	Array< boost::tuple<size_t,size_t,size_t,int,int,int> > beams; // elem_id, eatt_id, local_edge_id, beam_tag, v0, v1
+	if (_frame==false)
+	{
+		for (size_t k=0; k<ElemsAtts->Size(); ++k)
+		{
+			if (strcmp((*ElemsAtts)[k].get<1>(),"Beam")==0)
+			{
+				int beam_edge_tag = (*ElemsAtts)[k].get<0>();
+				for (size_t i=0; i<M->NElems(); ++i)
+				{
+					for (size_t j=0; j<M->ElemNETags(i); ++j)
+					{
+						if (M->ElemETag(i,j)==beam_edge_tag)
+						{
+							int v0 = M->EdgeToLef(i, j);
+							int v1 = M->EdgeToRig(i, j);
+							bool is_new = true;
+							for (size_t m=0; m<beams.Size(); ++m)
+							{
+								int w0 = beams[m].get<4>();
+								int w1 = beams[m].get<5>();
+								if ((v0==w0 || v0==w1) && (v1==w0 || v1==w1)) // coincident
+								{
+									is_new = false;
+									break;
+								}
+							}
+							if (is_new) beams.Push (boost::make_tuple(i, k, j, beam_edge_tag, v0, v1));
+						}
+					}
+				}
+			}
+		}
+		this->SetNBeams (beams.Size());
+	}
+
+	// Set elements
+	this->SetNElems (M->NElems() + beams.Size());
+	for (size_t i=0; i<M->NElems(); ++i)
+	{
+		// Set element
+		bool found = false;
+		for (size_t j=0; j<ElemsAtts->Size(); ++j)
+		{
+			if (M->ElemTag(i)==(*ElemsAtts)[j].get<0>())
+			{
+				// New finite element
+				found = true;
+				FEM::Element * fe = this->SetElem (i, (*ElemsAtts)[j].get<1>(), (*ElemsAtts)[j].get<6>(), M->ElemTag(i));
+
+				// Set connectivity
+				if (M->ElemNVerts(i)!=fe->NNodes()) throw new Fatal("functions.h::SetNodesElems:: The number of vertices (%d) of mesh object must be compatible with the number of nodes (%d) of the element (%s)",M->ElemNVerts(i),fe->NNodes(),fe->Name());
+				for (size_t k=0; k<M->ElemNVerts(i); ++k)
+					fe->Connect (k, this->Nod(M->ElemCon(i,k)));
+
+				// Set parameters and initial values
+				fe->SetModel ((*ElemsAtts)[j].get<2>(), (*ElemsAtts)[j].get<3>(), (*ElemsAtts)[j].get<4>());
+
+				// Set properties
+				fe->SetProps ((*ElemsAtts)[j].get<5>());
+				break;
+			}
+		}
+		if (found==false) throw new Fatal("SetGeom: Could not find Tag==%d for Element %d in the ElemsAtts list",M->ElemTag(i),i);
+	}
+
+	// Set beams
+	size_t ie = M->NElems();
+	for (size_t i=0; i<beams.Size(); ++i)
+	{
+		// Data
+		size_t elem_id       = beams[i].get<0>();
+		size_t eatt_id       = beams[i].get<1>();
+		size_t local_edge_id = beams[i].get<2>();
+		int    beam_tag      = beams[i].get<3>();
+
+		// New finite element
+		FEM::Element * fe = this->SetElem (ie, (*ElemsAtts)[eatt_id].get<1>(), (*ElemsAtts)[eatt_id].get<6>(), beam_tag);
+
+		// Set connectivity
+		fe->Connect (0, this->Nod(M->EdgeToLef(elem_id, local_edge_id)));
+		fe->Connect (1, this->Nod(M->EdgeToRig(elem_id, local_edge_id)));
+
+		// Set parameters and initial values
+		fe->SetModel ((*ElemsAtts)[eatt_id].get<2>(), (*ElemsAtts)[eatt_id].get<3>(), (*ElemsAtts)[eatt_id].get<4>());
+
+		// Set properties
+		fe->SetProps ((*ElemsAtts)[eatt_id].get<5>());
+		ie++;
+
+		// Set beam
+		this->SetBeam (i, fe, beam_tag);
+	}
+}
+
+inline void Geom::SetBrys(Mesh::Generic const * M, NBrys_T const * NodesBrys, EBrys_T const * EdgesBrys, FBrys_T const * FacesBrys)
+{
+	/* Example:
+	
+		// Nodes brys
+		FEM::NBrys_T nbrys;
+		nbrys.Push (make_tuple(L/2., 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
+
+		// Edges brys (the order matters!)
+		FEM::EBrys_T ebrys;
+		ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
+		ebrys.Push (make_tuple(-20, "fy",  -q)); // tag, key, val
+
+		// Faces brys (the order matters!)
+		FEM::FBrys_T fbrys;
+		fbrys.Push (make_tuple(-100, "uy", 0.0)); // tag, key, val
+		fbrys.Push (make_tuple(-200, "fy",  -q)); // tag, key, val
+
+	*/
+
+	// 3D mesh?
+	bool is3d = M->Is3D();
+
+	// Set faces boundaries (the order matters)
+	if (is3d && FacesBrys!=NULL)
+	{
+		for (size_t k=0; k<FacesBrys->Size(); ++k)
+		{
+			for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
+			{
+				int i = M->ElemBry(b);
+				for (size_t j=0; j<M->ElemNFTags(i); ++j) // j is the local face id
+				{
+					int tag = M->ElemFTag(i, j);
+					if (tag<0) // this element has a face tag
+					{
+						if (tag==(*FacesBrys)[k].get<0>())
+						{
+							this->Ele(i)->FaceBry ((*FacesBrys)[k].get<1>(), (*FacesBrys)[k].get<2>(), j);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Set edges boundaries (the order matters)
+	if (EdgesBrys!=NULL)
+	{
+		for (size_t k=0; k<EdgesBrys->Size(); ++k)
+		{
+			for (size_t b=0; b<M->NElemsBry(); ++b) // loop over all elements on boundary
+			{
+				int i = M->ElemBry(b);
+				for (size_t j=0; j<M->ElemNETags(i); ++j) // j is the local edge id
+				{
+					int tag = M->ElemETag(i, j);
+					if (tag<0) // this element has an edge tag
+					{
+						if (tag==(*EdgesBrys)[k].get<0>())
+						{
+							this->Ele(i)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), j);
+						}
+					}
+				}
+			}
+			for (size_t b=0; b<this->NBeams(); ++b)
+			{
+				if (this->BTag(b)==(*EdgesBrys)[k].get<0>())
+					this->Beam(b)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), 0);
+			}
+		}
+	}
+
+	// Set nodes boundaries
+	if (NodesBrys!=NULL)
+	{
+		for (size_t j=0; j<NodesBrys->Size(); ++j)
+		{
+			for (size_t b=0; b<M->NVertsBry(); ++b) // loop over all vertices on boundary
+			{
+				int i = M->VertBry(b);
+				double x =         (*NodesBrys)[j].get<0>();
+				double y =         (*NodesBrys)[j].get<1>();
+				double z = (is3d ? (*NodesBrys)[j].get<2>() : 0.0);
+				double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
+				if (d<_tol) this->Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
+			}
+		}
+	}
 }
 
 inline void Geom::SetNNodes(size_t NNodes)
@@ -294,6 +569,112 @@ std::ostream & operator<< (std::ostream & os, FEM::Geom const & G)
 #ifdef USE_BOOST_PYTHON
 // {
 
+inline void Geom::PySetNodesElems(Mesh::Generic const & M, BPy::list const & ElemsAtts)
+{
+	/* Example:
+	 *           
+	 *           # Elements attributes
+	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
+	 */
+
+	// Extract list with elements attributes
+	FEM::EAtts_T eatts;
+	int eatts_size = len(ElemsAtts);
+	if (eatts_size>0) eatts.Resize(eatts_size);
+	for (int i=0; i<eatts_size; ++i)
+	{
+		if (len(ElemsAtts[i])==7)
+		{
+			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
+			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
+			                             BPy::extract<char const*>(lst[1])(),
+			                             BPy::extract<char const*>(lst[2])(),
+			                             BPy::extract<char const*>(lst[3])(),
+			                             BPy::extract<char const*>(lst[4])(),
+			                             BPy::extract<char const*>(lst[5])(), 
+			                             BPy::extract<bool>       (lst[6])());
+		}
+		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
+	}
+
+	// Set geometry
+	this->SetNodesElems (&M, &eatts);
+}
+
+inline void Geom::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys, BPy::list const & EdgesBrys, BPy::list const & FacesBrys)
+{
+	/* Example:
+	 *           # Nodes brys
+	 *           nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]] # x,y,z, key, val
+	 *
+	 *           # Edges brys (the order matters!)
+	 *           ebrys = [[-10, 'uy', 0.0], # [tag], [key], [val]
+	 *                    [-20, 'fy',  -q]] # [tag], [key], [val]
+	 *           
+	 *           # Faces brys (the order matters!)
+	 *           fbrys = [[-100, 'uy', 0.0], # [tag], [key], [val]
+	 *                    [-200, 'fy',  -q]] # [tag], [key], [val]
+	 */
+
+	// Extract list with nodes boundaries
+	int nbrys_size = len(NodesBrys);
+	FEM::NBrys_T * nbrys = (nbrys_size>0 ? new FEM::NBrys_T : NULL);
+	if (nbrys!=NULL) nbrys->Resize(nbrys_size);
+	for (int i=0; i<nbrys_size; ++i)
+	{
+		if (len(NodesBrys[i])==5)
+		{
+			BPy::list lst = BPy::extract<BPy::list>(NodesBrys[i])();
+			(*nbrys)[i] = boost::make_tuple(BPy::extract<double     >(lst[0])(),
+			                                BPy::extract<double     >(lst[1])(),
+			                                BPy::extract<double     >(lst[2])(),
+			                                BPy::extract<char const*>(lst[3])(),
+			                                BPy::extract<double     >(lst[4])());
+		}
+		else throw new Fatal("PySetGeom: Each sublist in NodesBrys must have 5 items: x,y,z, key, val\n\tExample: NodesBrys = [[1.0, 0.0, 0.0, 'ux', 0.0]]");
+	}
+
+	// Extract list with edges boundaries
+	int ebrys_size = len(EdgesBrys);
+	FEM::EBrys_T * ebrys = (ebrys_size>0 ? new FEM::EBrys_T : NULL);
+	if (ebrys!=NULL) ebrys->Resize(ebrys_size);
+	for (int i=0; i<ebrys_size; ++i)
+	{
+		if (len(EdgesBrys[i])==3)
+		{
+			BPy::list lst = BPy::extract<BPy::list>(EdgesBrys[i])();
+			(*ebrys)[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
+			                                BPy::extract<char const*>(lst[1])(),
+			                                BPy::extract<double     >(lst[2])());
+		}
+		else throw new Fatal("PySetGeom: Each sublist in EdgesBrys must have 3 items: tag, key, val\n\tExample: EdgesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
+	}
+
+	// Extract list with faces boundaries
+	int fbrys_size = len(FacesBrys);
+	FEM::FBrys_T * fbrys = (fbrys_size>0 ? new FEM::FBrys_T : NULL);
+	if (fbrys!=NULL) fbrys->Resize(fbrys_size);
+	for (int i=0; i<fbrys_size; ++i)
+	{
+		if (len(FacesBrys[i])==3)
+		{
+			BPy::list lst = BPy::extract<BPy::list>(FacesBrys[i])();
+			(*fbrys)[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
+			                                BPy::extract<char const*>(lst[1])(),
+			                                BPy::extract<double     >(lst[2])());
+		}
+		else throw new Fatal("PySetGeom: Each sublist in FacesBrys must have 3 items: tag, key, val\n\tExample: FacesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
+	}
+
+	// Set geometry
+	this->SetBrys (&M, nbrys, ebrys, fbrys);
+
+	// Clean up
+	if (nbrys!=NULL) delete nbrys;
+	if (ebrys!=NULL) delete ebrys;
+	if (fbrys!=NULL) delete fbrys;
+}
+
 inline void Geom::PyBounds2D(BPy::list & MinXY, BPy::list & MaxXY) const
 {
 	double  minx,miny, maxx,maxy;
@@ -333,6 +714,72 @@ inline size_t Geom::PyPushElem(int Tag, BPy::str const & Type, BPy::str const & 
 	                IsActive, conn);
 }
 
+inline void Geom::PyAddReinfs(BPy::dict const & Edges, BPy::list const & EAtts)
+{
+	/* Example:
+	 *           
+	 *           # Elements attributes
+	 *           eatts = [[-1, 'Reinforcement', '', 'E=%g Ar=%g At=%g ks=%g c=%g phi=%g', 'ZERO', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
+	 */
+
+	// Map element tag to index in EAtts list
+	int neatts = BPy::len(EAtts);
+	if (neatts<1) throw new Fatal("Geom::PyAddReinfs: EAtts (element attributes) must contain at least one element");
+	std::map<int,int> tag2idx; 
+	for (int i=0; i<neatts; ++i)
+	{
+		BPy::list const & lst = BPy::extract<BPy::list>(EAtts[i])();
+		tag2idx[BPy::extract<int>(lst[0])()] = i;
+		if (BPy::len(EAtts[i])!=7) throw new Fatal("Geom::PyAddReinfs: Each sublist in EAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Reinforcement', '', 'E=200 Ar=1 At=1 ks=1e+12 c=0 phi=20', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
+	}
+
+	// Read edges
+	double x0=0.0; double y0=0.0; double z0=0.0;
+	double x1=0.0; double y1=0.0; double z1=0.0;
+	BPy::object const & e_keys = BPy::extract<BPy::dict>(Edges)().iterkeys();
+	BPy::object const & e_vals = BPy::extract<BPy::dict>(Edges)().itervalues();
+	for (int i=0; i<BPy::len(Edges); ++i)
+	{
+		// Extract reinforcement data
+		BPy::tuple const & xyz = BPy::extract<BPy::tuple> (e_keys.attr("next")())();
+		int                tag = BPy::extract<int>        (e_vals.attr("next")())();
+
+		// Check number of coordinates
+		size_t nxyz = BPy::len(xyz);
+		bool   is3d = (nxyz==4 ? false : true);
+		if ((nxyz!=4) || (nxyz!=6)) throw new Fatal("Geom::PyAddReinfs: Each edge representing a reinforcement must have either 4(2D) or 6(3D) coordinates corresponding to the start and end points (nxyz==%d is invalid).\n\tEx. {(x0,y0,z0, x1,y1,z1):-100}",nxyz);
+
+		// Extract coordinates
+		if (is3d)
+		{
+			x0 = BPy::extract<double>(xyz[0])();
+			y0 = BPy::extract<double>(xyz[1])();
+			z0 = BPy::extract<double>(xyz[2])();
+			x1 = BPy::extract<double>(xyz[3])();
+			y1 = BPy::extract<double>(xyz[4])();
+			z1 = BPy::extract<double>(xyz[5])();
+		}
+		else
+		{
+			x0 = BPy::extract<double>(xyz[0])();
+			y0 = BPy::extract<double>(xyz[1])();
+			x1 = BPy::extract<double>(xyz[2])();
+			y1 = BPy::extract<double>(xyz[3])();
+		}
+		std::cout << "Edge: tag="<<tag << ", x0="<<x0 << ", y0="<<y0 << ", z0="<<z0 << ", x1="<<x1 << ", y1="<<y1 << ", z1="<<z1 << std::endl;
+		
+		// Find element attributes
+		std::map<int,int>::const_iterator iter = tag2idx.find(tag);
+		if (iter==tag2idx.end()) throw new Fatal("Geom::PyAddReinfs: Could not find tag < %d > in the list of Element Attributes", tag);
+		int idx_eatt = iter->second;
+
+		// Add reinforcement to FE geometry
+		char const * prms = BPy::extract<char const *>(EAtts[idx_eatt][3])();
+		bool         act  = BPy::extract<bool>        (EAtts[idx_eatt][6])();
+		FEM::AddReinf (x0,y0,z0, x1,y1,z1, prms, act, tag, this);
+	}
+}
+
 inline void Geom::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts)
 {
 	/* Example:
@@ -343,13 +790,13 @@ inline void Geom::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 
 	// Map element tag to index in EAtts list
 	int neatts = BPy::len(EAtts);
-	if (neatts<1) throw new Fatal("functions.h::PyAddLinElems: EAtts (element attributes) must contain at least one element");
+	if (neatts<1) throw new Fatal("Geom::PyAddLinElems: EAtts (element attributes) must contain at least one element");
 	std::map<int,int> tag2idx; 
 	for (int i=0; i<neatts; ++i)
 	{
 		BPy::list const & lst = BPy::extract<BPy::list>(EAtts[i])();
 		tag2idx[BPy::extract<int>(lst[0])()] = i;
-		if (BPy::len(EAtts[i])!=7) throw new Fatal("functions.h::PyAddLinElems: Each sublist in EAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Spring', '', 'ks=1e+12', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
+		if (BPy::len(EAtts[i])!=7) throw new Fatal("Geom::PyAddLinElems: Each sublist in EAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Spring', '', 'ks=1e+12', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
 	}
 
 	// Read edges
@@ -366,7 +813,7 @@ inline void Geom::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 		
 		// Find element attributes
 		std::map<int,int>::const_iterator iter = tag2idx.find(tag);
-		if (iter==tag2idx.end()) throw new Fatal("functions.h::PyAddLinElems: Could not find tag < %d > in the list of Element Attributes", tag);
+		if (iter==tag2idx.end()) throw new Fatal("Geom::PyAddLinElems: Could not find tag < %d > in the list of Element Attributes", tag);
 		int idx_eatt = iter->second;
 
 		// Add linear element to FE geometry

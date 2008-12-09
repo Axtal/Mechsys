@@ -40,7 +40,6 @@
 
 // MechSys -- fem -- basic
 #include "fem/geometry.h"
-#include "fem/functions.h"
 #include "fem/embedded.h"
 #include "fem/solver.h"
 #include "fem/output.h"
@@ -91,11 +90,9 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyHole,    SetPolyHole,    3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,       Generate,       0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_AddCloudPoint,  AddCloudPoint,  2, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,       0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (GE_SetOnlyFrame,   SetOnlyFrame,   0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,          Solve,          0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_SolveWithInfo1, SolveWithInfo1, 0, 3)
-
-BOOST_PYTHON_FUNCTION_OVERLOADS (PySetNE_Overloads,   PySetNodesElems, 3, 5)
-BOOST_PYTHON_FUNCTION_OVERLOADS (PySetBrys_Overloads, PySetBrys,       5, 6)
 
 BOOST_PYTHON_MODULE (mechsys)
 {
@@ -183,6 +180,10 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<FEM::Geom>("geom", init<int>())
+	    .def("set_tol",             &FEM::Geom::SetTol)
+	    .def("set_only_frame",      &FEM::Geom::SetOnlyFrame, GE_SetOnlyFrame())
+		.def("set_nodes_elems",     &FEM::Geom::SetNodesElems)
+		.def("set_brys",            &FEM::Geom::SetBrys)
 	    .def("set_nnodes",          &FEM::Geom::SetNNodes)
 	    .def("set_nelems",          &FEM::Geom::SetNElems)
 	    .def("check",               &FEM::Geom::Check)
@@ -200,12 +201,16 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("clear_displacements", &FEM::Geom::ClearDisplacements)
 	    .def("activate",            &FEM::Geom::Activate)
 	    .def("deactivate",          &FEM::Geom::Deactivate)
+<<<<<<< local
+	    .def("add_reinfs",          &FEM::Geom::PyAddReinfs)
+=======
 	    .def("push_node",           &FEM::Geom::PyPushNode1)
 	    .def("push_node",           &FEM::Geom::PyPushNode2)
 	    .def("push_node",           &FEM::Geom::PyPushNode3)
 	    .def("get_node",            &FEM::Geom::PyGetNode1)
 	    .def("get_node",            &FEM::Geom::PyGetNode2)
 	    .def("push_elem",           &FEM::Geom::PyPushElem)
+>>>>>>> other
 	    .def("add_lin_elems",       &FEM::Geom::PyAddLinElems)
 	    .def(self_ns::str(self))
 	    ;
@@ -228,14 +233,6 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("vtu",              &Output::PyVTU1)
 	    .def("vtu",              &Output::PyVTU2)
 	    ;
-
-	// ----------------------------------------------------------------------- functions
-	
-	// Global functions
-	def ("set_nodes_elems", PySetNodesElems, PySetNE_Overloads());
-	def ("set_brys",        PySetBrys,       PySetBrys_Overloads());
-	def ("add_reinf",       PyAddReinf);
-	def ("add_reinfs",      PyAddReinfs);
 
 	// ---------------------------------------------------------------------- Exceptions
 	

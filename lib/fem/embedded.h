@@ -26,12 +26,6 @@
 #include <cstring>
 #include <map>
 
-// Boost::Python
-#ifdef USE_BOOST_PYTHON
-  //#include <boost/python.hpp> // this includes everything
-  namespace BPy = boost::python;
-#endif // USE_BOOST_PYTHON
-
 // MechSys
 #include "fem/node.h"
 #include "fem/element.h"
@@ -57,7 +51,7 @@ typedef Array< boost::tuple<                 int, char const *,double> > FBrys_T
 typedef Array< boost::tuple<int, char const*, char const*, char const*,
                             char const*, char const*, bool> > EAtts_T; // Elem: tag, type, model, prms, inis, props, active
 
-inline void GetSegments( double x1, double y1, double z1,   ///< In: Initial point coordinates
+inline void GetSegments (double x1, double y1, double z1,   ///< In: Initial point coordinates
                          double x2, double y2, double z2,   ///< In: Final   point coordinates
                          int nNodes,                        ///< In: Number of nodes for the new rod elements
                          FEM::Geom           * G,           ///< Out: The FE geometry
@@ -320,72 +314,5 @@ void AddReinf(double x1, double y1, double z1, // In:  Coordinates of the initia
 }
 
 } // Namespace FEM
-
-#ifdef USE_BOOST_PYTHON
-
-void PyAddReinf(double x1, double y1, double z1, // In:  Coordinates of the initial point
-                double x2, double y2, double z2, // In:  Coordinates of the final point
-                BPy::str const      & Prms,      // In:  Properties and parameters [E Ar At ks]
-                bool                  IsActive,  // In:  Define if the entire reinforcement is active or not
-                int                   Tag,       // In:  Tag for all generated elements
-                FEM::Geom           & G)         // Out: The FE geometry
-{
-	AddReinf (x1,y1,z1, x2,y2,z2, BPy::extract<char const *>(Prms)(), IsActive, Tag, &G);
-}
-
-void PyAddReinfs (bool              Is3D,  ///< 3D ?
-                  BPy::dict const & Verts, ///< {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... num vertices}
-                  BPy::dict const & Edges, ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges} v# => vertex number
-                  BPy::list const & EAtts, ///< Elements attributes
-                  FEM::Geom       &     G) ///< Out: The FE geometry
-{
-	/* Example:
-	 *           
-	 *           # Elements attributes
-	 *           eatts = [[-1, 'Reinforcement', '', 'E=%g Ar=%g At=%g ks=%g c=%g phi=%g', 'ZERO', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
-	 */
-
-	// Map element tag to index in EAtts list
-	int neatts = BPy::len(EAtts);
-	if (neatts<1) throw new Fatal("embedded.h::PyAddReinfs: EAtts, Element(reinforcement) Attributes, must contain at least one element");
-	std::map<int,int> tag2idx; 
-	for (int i=0; i<neatts; ++i)
-	{
-		BPy::list const & lst = BPy::extract<BPy::list>(EAtts[i])();
-		tag2idx[BPy::extract<int>(lst[0])()] = i;
-		if (BPy::len(EAtts[i])!=7) throw new Fatal("embedded.h::PyAddReinfs: Each sublist in EAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Reinforcement', '', 'E=200 Ar=1 At=1 ks=1e+12 c=0 phi=20', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
-	}
-
-	// Read edges
-	double x0=0.0; double y0=0.0; double z0=0.0;
-	double x1=0.0; double y1=0.0; double z1=0.0;
-	BPy::object const & e_keys = BPy::extract<BPy::dict>(Edges)().iterkeys();
-	BPy::object const & e_vals = BPy::extract<BPy::dict>(Edges)().itervalues();
-	for (int i=0; i<BPy::len(Edges); ++i)
-	{
-		// Extract reinforcement data
-		BPy::tuple const & edge = BPy::extract<BPy::tuple> (e_keys.attr("next")())();
-		int                tag  = BPy::extract<int>        (e_vals.attr("next")())();
-		long               v0   = BPy::extract<long>       (edge[0])();
-		long               v1   = BPy::extract<long>       (edge[1])();
-		BPy::tuple const & xyz0 = BPy::extract<BPy::tuple> (Verts[v0])();
-		BPy::tuple const & xyz1 = BPy::extract<BPy::tuple> (Verts[v1])();
-		x0 = BPy::extract<double>(xyz0[0])();   y0 = BPy::extract<double>(xyz0[1])();   if (Is3D) z0 = BPy::extract<double>(xyz0[2])();
-		x1 = BPy::extract<double>(xyz1[0])();   y1 = BPy::extract<double>(xyz1[1])();   if (Is3D) z1 = BPy::extract<double>(xyz1[2])();
-		//std::cout << "Edge: tag="<<tag << ", v0="<<v0 << ", v1="<<v1 << ", x0="<<x0 << ", y0="<<y0 << ", z0="<<z0 << ", x1="<<x1 << ", y1="<<y1 << ", z1="<<z1 << std::endl;
-		
-		// Find element attributes
-		std::map<int,int>::const_iterator iter = tag2idx.find(tag);
-		if (iter==tag2idx.end()) throw new Fatal("embedded.h::PyAddReinfs: Could not find tag < %d > in the list of Element Attributes", tag);
-		int idx_eatt = iter->second;
-
-		// Add reinforcement to FE geometry
-		BPy::str const & prms = BPy::extract<BPy::str>(EAtts[idx_eatt][3])();
-		bool             act  = BPy::extract<bool>    (EAtts[idx_eatt][6])();
-		AddReinf (x0,y0,z0, x1,y1,z1, BPy::extract<char const *>(prms)(), act, tag, &G);
-	}
-}
-
-#endif // USE_BOOST_PYTHON
 
 #endif // MECHSYS_FEM_EMBEDDED_H
