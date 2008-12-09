@@ -338,7 +338,7 @@ def run_analysis(gen_script=False):
         elif mesh_type=='frame':    mesh = me.gen_frame_mesh    ()
 
         # data and solver
-        dat = ms.geom   (ndim)
+        dat = ms.data   (ndim)
         sol = ms.solver (dat, obj.name)
         if mesh_type=='frame': dat.set_only_frame()
 
@@ -411,7 +411,7 @@ def save_results(sol, dat, obj, stage_num):
     # menu with labels
     obj.properties['res'][s]['idx2lbl'] = {} # map label index to label key
     lbs = []
-    sol.out.get_labels (lbs)
+    sol.out().get_labels (lbs)
     menu = 'Labels %t|'
     for i, l in enumerate(lbs):
         obj.properties['res'][s]['idx2lbl'][str(i)] = l
@@ -421,7 +421,7 @@ def save_results(sol, dat, obj, stage_num):
     # save results at nodes
     for l in lbs:
         vals = []
-        for i in range(dat.nnodes()): vals.append (sol.out.val(i, l))
+        for i in range(dat.nnodes()): vals.append (sol.out().val(i, l))
         obj.properties['res'][s][l] = vals
 
     # save extra output

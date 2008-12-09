@@ -203,7 +203,7 @@ if di.key('show_reinfs'):
                         yc = (v[2]+v[5])/2.0
                         zc = (v[3]+v[6])/2.0
                         BGL.glRasterPos3f (xc,yc,zc)
-                        Draw.Text         (str(v[0]))
+                        Draw.Text         (str(int(v[0])))
                         # line
                         BGL.glBegin    (BGL.GL_LINES)
                         BGL.glVertex3f (v[1],v[2],v[3])
