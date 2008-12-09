@@ -46,7 +46,7 @@ public:
 	double Val          (char const * Name) const;
 	void   Order1Matrix (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
 	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
-	int    VTKCellType  () const { return VTK_POLY_VERTEX; }
+	int    VTKCellType  () const { return VTK_LINE; }
 	void   VTKConnect   (String & Nodes) const;
 	void   OutInfo(std::ostream & os) const;
 	
@@ -60,6 +60,7 @@ private:
 	void _initialize();
 
 	void _calc_initial_internal_state();
+	void _mount_T_matrix(Matrix<double> & T) const;
 
 }; // class Spring
 
@@ -129,7 +130,22 @@ inline double Spring::Val(int iNodeLocal, char const * Name) const
 	// Forces
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
 
-	return 0;
+	     if (strcmp(Name,"Ea")==0)  return 0.0;
+	else if (strcmp(Name,"Sa")==0)  return 0.0;
+	else if (strcmp(Name,"N" )==0)
+	{
+		// Allocate (local/element) displacements vector
+		LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+		// Assemble (local/element) displacements vector
+		for (size_t i=0; i<_n_nodes; ++i)
+		for (int    j=0; j<_nd;      ++j)
+		du(i*_nd+j) = _connects[i]->Val(UD[_d][j]);
+
+		Matrix<double> T; _mount_T_matrix(T);
+		Vector<double> D; D = T*du;
+		return (D(1)-D(0))*_ks;
+	}
+	else throw new Fatal("Rod3::Val: This element does not have a Val named %s",Name);
 }
 
 inline double Spring::Val(char const * Name) const
@@ -143,6 +159,16 @@ inline void Spring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) cons
 	//       K = [T0]*[B]*k0*[B]*[T0]*Area 
 	//        
 
+	// Mount B Matrix
+	Matrix<double> B(1,2); B = 1, -1;
+	// Mount T Matrix
+	Matrix<double> T; _mount_T_matrix(T);
+
+	Ke = trn(T)*trn(B)*_ks*B*T;
+}
+
+inline void Spring::_mount_T_matrix(Matrix<double> & T) const
+{
 	double x0 = _connects[0]->X(), y0 = _connects[0]->Y(), z0 = _connects[0]->Z();
 	double x1 = _connects[1]->X(), y1 = _connects[1]->Y(), z1 = _connects[1]->Z();
 	double L  = sqrt(pow(x0-x1,2)+pow(y0-y1,2)+pow(z0-z1,2));
@@ -150,18 +176,14 @@ inline void Spring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) cons
 	double m = (y0-y1)/L;
 	double n = (z0-z1)/L;
 
-	// Mount B Matrix
-	Matrix<double> B(1,2); B = 1, -1;
 	// Mount T Matrix
-	Matrix<double> T(2, _ndim*2);
+	T.Resize(2, _ndim*2);
 	if (_ndim==2)
 		T = l, m, 0, 0, 
 	        0, 0, l, m;
 	else 
 		T = l, m, n, 0, 0, 0,
 	        0, 0, 0, l, m, n;
-
-	Ke = trn(T)*trn(B)*_ks*B*T;
 }
 
 inline void Spring::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
@@ -176,7 +198,7 @@ inline void Spring::_initialize()
 	if (_ndim<1) throw new Fatal("Spring::_initialize: For this element, _ndim must be greater than or equal to 1 (%d is invalid)",_ndim);
 	_d  = _ndim-1; // Not used
 	_nd = _ndim;   // Not used
-	_nl = 0;
+	_nl = 3;
 }
 
 inline void Spring::_calc_initial_internal_state()

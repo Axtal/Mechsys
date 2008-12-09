@@ -264,9 +264,9 @@ inline double Rod3::Val(int iNodeLocal, char const * Name) const
 
 	if (_Eps.Size()<1) throw new Fatal("Rod3::Val: Please, call CalcDepVars() before calling this method");
 
-	     if (strcmp(Name,"Ea" )==0) return _Eps(iNodeLocal);
-	else if (strcmp(Name,"Sa")==0)  return _Eps(iNodeLocal)*_E;
-	else if (strcmp(Name,"Fa")==0)  return _Eps(iNodeLocal)*_E*_A;
+	     if (strcmp(Name,"Ea")==0) return _Eps(iNodeLocal);
+	else if (strcmp(Name,"Sa")==0) return _Eps(iNodeLocal)*_E;
+	else if (strcmp(Name,"N" )==0) return _Eps(iNodeLocal)*_E*_A;
 	else throw new Fatal("Rod3::Val: This element does not have a Val named %s",Name);
 }
 
