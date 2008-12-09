@@ -25,7 +25,7 @@
 #include "fem/elems/quad8pstrain.h"
 #include "fem/elems/beam.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
+#include "fem/solver.h"
 #include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -155,8 +155,23 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
+	// Data and Solver
+	FEM::Data   dat (2);
+	FEM::Solver sol (dat, "texam5");
+
+	// Elements attributes
+	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
+	FEM::EAtts_T eatts;
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
+	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
+
+	// Beam attributes
+	String beamprms;
+	beamprms.Printf("E=%f A=%f Izz=%f",E_beam,A_beam,Izz_beam);
+	eatts.Push (make_tuple(-55, "Beam", "", beamprms.CStr(), "ZERO", "", true));
+
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Nodes brys
 	FEM::NBrys_T nbrys;
@@ -173,26 +188,9 @@ int main(int argc, char **argv) try
 	ebrys.Push (make_tuple(-40, "ux",  0.0));
 	ebrys.Push (make_tuple(-55, "Qb",  -1));
 
-	// Elements attributes
-	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
-
-	// Beam attributes
-	String beamprms;
-	beamprms.Printf("E=%f A=%f Izz=%f",E_beam,A_beam,Izz_beam);
-	eatts.Push (make_tuple(-55, "Beam", "", beamprms.CStr(), "ZERO", "", true));
-
-	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat, 1.0e-5);
-	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL, &dat);
-
-	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat);
-	sol->SolveWithInfo();
-	delete sol;
+	// Stage # 1
+	dat.SetBrys (&mesh, &nbrys, &ebrys, NULL);
+	sol.SolveWithInfo();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -300,10 +298,6 @@ int main(int argc, char **argv) try
 	cout << _4 << "M"  << _8s <<min_err_M << _8s<<err_M  .Mean() << (max_err_M  >tol_M?"[1;31m":"[1;32m") << _8s<<max_err_M   << "[0m" << _8s<<err_M  .Norm() << endl;
 	cout << _4 << "N"  << _8s <<min_err_N << _8s<<err_N  .Mean() << (max_err_N  >tol_N?"[1;31m":"[1;32m") << _8s<<max_err_N   << "[0m" << _8s<<err_N  .Norm() << endl;
 	cout << endl;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "texam5.vtu");
-	cout << "[1;34mFile <texam5.vtu> saved.[0m\n\n";
 
 	return 1;
 }

@@ -31,8 +31,7 @@
 #include "fem/elems/hex8equilib.h"
 #include "fem/elems/hex20equilib.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
+#include "fem/solver.h"
 #include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -92,15 +91,9 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(3); // 2D
-
-	// Face brys
-	FEM::FBrys_T fbrys;
-	fbrys.Push (make_tuple(-30, "ux", 0.0));
-	fbrys.Push (make_tuple(-30, "uy", 0.0));
-	fbrys.Push (make_tuple(-30, "uz", 0.0));
-	fbrys.Push (make_tuple(-40, "fz", -F/0.06));
+	// Data and Solver
+	FEM::Data dat   (3);
+	FEM::Solver sol (dat, "tstatic122");
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -108,19 +101,17 @@ int main(int argc, char **argv) try
 	if (is_o2) eatts.Push (make_tuple(-1, "Hex20Equilib", "LinElastic", prms.CStr(), "ZERO", "", true));
 	else       eatts.Push (make_tuple(-1, "Hex8Equilib" , "LinElastic", prms.CStr(), "ZERO", "", true));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
-	dat.SetBrys       (&mesh, NULL, NULL, &fbrys, &dat);
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
 
-	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat);
-	sol->SolveWithInfo();
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "tstatic122.vtu");
-	cout << "[1;34mFile <tstatic122.vtu> saved.[0m\n\n";
+	// State # 1
+	FEM::FBrys_T fbrys;
+	fbrys.Push  (make_tuple(-30, "ux", 0.0));
+	fbrys.Push  (make_tuple(-30, "uy", 0.0));
+	fbrys.Push  (make_tuple(-30, "uz", 0.0));
+	fbrys.Push  (make_tuple(-40, "fz", -F/0.06));
+	dat.SetBrys (&mesh, NULL, NULL, &fbrys);
+	sol.SolveWithInfo();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

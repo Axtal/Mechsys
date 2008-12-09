@@ -32,8 +32,7 @@
 #include "fem/elems/quad8pstress.h"
 #include "fem/elems/quad4pstrain.h"
 #include "models/equilibs/linelastic.h"
-#include "fem/solvers/forwardeuler.h"
-#include "fem/solvers/autome.h"
+#include "fem/solver.h"
 #include "fem/output.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -88,14 +87,9 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
-
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "ux", 0.0));
-	ebrys.Push (make_tuple(-10, "uy", 0.0));
-	ebrys.Push (make_tuple(-20, "fy", -F/0.06));
+	// Data and Solver
+	FEM::Data   dat (2);
+	FEM::Solver sol (dat, "tstatic121");
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -103,19 +97,16 @@ int main(int argc, char **argv) try
 	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "", true));
 	else       eatts.Push (make_tuple(-1, "Quad4PStress", "LinElastic", prms.CStr(), "ZERO", "", true));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
-	dat.SetNodesElems (&mesh, &eatts, &dat);
-	dat.SetBrys       (&mesh, NULL,   &ebrys, NULL, &dat);
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
 
-	// Solve
-	FEM::Solver * sol = FEM::AllocSolver("ForwardEuler");
-	sol->SetGeom(&dat);
-	sol->SolveWithInfo();
-	delete sol;
-
-	// Output: VTU
-	Output o; o.VTU (&dat, "tstatic121.vtu");
-	cout << "[1;34mFile <tstatic121.vtu> saved.[0m\n\n";
+	// Stage # 1
+	FEM::EBrys_T ebrys;
+	ebrys.Push  (make_tuple(-10, "ux", 0.0));
+	ebrys.Push  (make_tuple(-10, "uy", 0.0));
+	ebrys.Push  (make_tuple(-20, "fy", -F/0.06));
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
+	sol.SolveWithInfo();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
