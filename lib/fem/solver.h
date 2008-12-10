@@ -25,7 +25,7 @@
  *   |             | |       |  +  |            | |   |  =  |       |
  *   |_  L2   M   _| \ dP/dt /     |_  0    H  _| \ P /     \ dQ/dt /
  *
- *               [C] { dU/dt }  +             [K] { U }  =  { dF/dt }
+ *               [C] { dU/dt }  +             [H] { U }  =  { dF/dt }
  *
  *  For example:
  *
@@ -40,13 +40,10 @@
  *    M = MassMatrix
  *    H = Permeability
  *
- *    C = Order1Matrix (Applied to the first order derivative dU)
- *    K = Order0Matrix (Applied to the zeroth order derivative U)
+ *    num(CMatrix) = 4
+ *    num(HMatrix) = 1
  *
- *    num(Order1Matrix) = 4
- *    num(Order0Matrix) = 1
- *
- *  Solve:     ([C] + alpha*h*[K]) * {dU} = {dF} - h*[K]*{U}
+ *  Solve:     ([C] + alpha*h*[H]) * {dU} = {dF} - h*[K]*{U}
  */
 
 
@@ -145,8 +142,8 @@ private:
 	LinAlg::Vector<double>   _dU_ext;  ///< Increment of essential values, divided by the number of increments, which update the current state towards the condition at the end the stage being solved.
 	LinAlg::Vector<double>   _dF_int;  ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
 	LinAlg::Vector<double>   _resid;   ///< Residual: resid = dFext - dFint
-	LinAlg::Vector<double>   _hKU;     ///< Linearized independent term of the differential equation.
-	bool                     _has_hKU; ///< Flag which says if any element has to contribute to the hKU vector. If _has_hKU==false, there is no need for the hKU vector, because there are no Order0Matrices in this stage of the simulation.
+	LinAlg::Vector<double>   _hHU;     ///< Linearized independent term of the differential equation.
+	bool                     _has_hHU; ///< Flag which says if any element has to contribute to the hHU vector. If _has_hHU==false, there is no need for the hHU vector, because there are no HMatrices in this stage of the simulation.
 	Output                 * _out;     ///< Write output file
 
 	// Data for Forward-Euler
@@ -187,7 +184,7 @@ private:
 
 	// Methods
 	void   _initialize                 (FEM::Data * D, char const * FileKey);                                           ///< Initialize the solver
-	void   _inv_G_times_dF_minus_hKU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU);            ///< Compute (linear solver) inv(G)*(dF-hKU), where G may be assembled by Order1 and Order0 matrices
+	void   _inv_G_times_dF_minus_hHU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU);            ///< Compute (linear solver) inv(G)*(dF-hHU), where G may be assembled by [C] and [H] matrices
 	void   _update_nodes_and_elements  (double h, LinAlg::Vector<double> const & dF,LinAlg::Vector<double> const & dU); ///< Update nodes essential/natural values and elements internal values (such as stresses/strains)
 	void   _backup_nodes_and_elements  ();                                                                              ///< Backup nodes essential/natural values and elements internal values (such as stresses/strains)
 	void   _restore_nodes_and_elements ();                                                                              ///< Restore nodes essential/natural values and elements internal values (such as stresses/strains)
@@ -195,8 +192,8 @@ private:
 	double _norm_natural_vector        ();                                                                              ///< Compute the Euclidian norm of the natural (forces) vector
 
 	// Private methods
-	void _assemb_G_and_hKU     (double h);                                                                                                                                                   ///< Assemble matrix G for the actual state of elements/nodes. Note h == TimeInc
-	void _mount_into_hKU       (LinAlg::Vector<double> const & V, Array<size_t> const & RowsMap);                                                                                            ///< Add a local vector, such as [U P]^T into the hKU vector
+	void _assemb_G_and_hHU     (double h);                                                                                                                                                   ///< Assemble matrix G for the actual state of elements/nodes. Note h == TimeInc
+	void _mount_into_hHU       (LinAlg::Vector<double> const & V, Array<size_t> const & RowsMap);                                                                                            ///< Add a local vector, such as [U P]^T into the hHU vector
 	void _mount_into_global    (LinAlg::Matrix<double> const & M, Array<size_t> const & RowsMap, Array<size_t> const & ColsMap, Array<bool> const & RowsPre, Array<bool> const & ColsPre);   ///< Add a local matrix, such as K,L1,L2 or M into the global DENSE matrix G or into the global SPARSE matrix G (T11,T12,T21,T22)
 	void _compute_global_size  ();                                                                                                                                                           ///< Compute the sizes of T11,T12,T21 and T22
 	void _increase_global_size (Array<size_t> const & RowsMap, Array<size_t> const & ColsMap, Array<bool> const & RowsPre, Array<bool> const & ColsPre);                                     ///< Auxiliar method to compute the sizes of T11,T12,T21 and T22
@@ -293,7 +290,7 @@ inline void Solver::Solve(int NDiv, double DTime)
 				throw new Fatal("Solver::Solve Element # %d was not properly initialized. Error: %s",i,msg.CStr());
 
 			// Check if any element has volumetric forces
-			has_fvol = _data->Ele(i)->HasVolForces();
+			//has_fvol = _data->Ele(i)->HasVolForces();
 		}
 	}
 
@@ -344,7 +341,7 @@ inline void Solver::Solve(int NDiv, double DTime)
 	_dU_ext.Resize (_ndofs);
 	_U_bkp .Resize (_ndofs);
 	_F_bkp .Resize (_ndofs);
-	_hKU   .Resize (_ndofs);
+	_hHU   .Resize (_ndofs);
 	_dF_int.Resize (_ndofs);
 	_resid .Resize (_ndofs);
 
@@ -369,8 +366,8 @@ inline void Solver::Solve(int NDiv, double DTime)
 		LinAlg::Vector<double> fvol;
 		fvol.Resize    (_ndofs);
 		fvol.SetValues (0.0);
-		for (size_t i=0; i<_data->NElems(); ++i)
-			if (_data->Ele(i)->IsActive()) _data->Ele(i)->AddVolForces(fvol); // add results to fvol
+		//for (size_t i=0; i<_data->NElems(); ++i)
+			//if (_data->Ele(i)->IsActive()) _data->Ele(i)->AddVolForces(fvol); // add results to fvol
 
 		// Add to dFext vector
 		LinAlg::Axpy(1.0/NDiv,fvol, _dF_ext); // dFext <- dFext + fvol/numdiv
@@ -488,7 +485,7 @@ inline void Solver::_initialize(FEM::Data * D, char const * FileKey)
 	else               _out = new Output (_data, FileKey);
 }
 
-inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU)
+inline void Solver::_inv_G_times_dF_minus_hHU(double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU)
 {
 	/*   _               _
 	    |  [G11]   [G12]  | / {dU1}=? \   / {dF1}   \  <== unknowns DOFs    size = _udofs
@@ -505,12 +502,12 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 	   |             | |       |  +  |            | |   |  =  |       |
 	   |_  L2   M   _| \ dP/dt /     |_  0    H  _| \ P /     \ dQ/dt /
 
-	               [C] { dU/dt }  +             [K] { U }  =  { dF/dt }
+	               [C] { dU/dt }  +             [H] { U }  =  { dF/dt }
 	 */
 
-	// 0) Assemble the global stiffness matrix G and the hKU vector
-	_assemb_G_and_hKU(h);                      // G  <- C + h*alpha*K
-	if (_has_hKU) LinAlg::Axpy(-1.0,_hKU, dF); // dF <- dF - hKU
+	// 0) Assemble the global stiffness matrix G and the hHU vector
+	_assemb_G_and_hHU(h);                      // G  <- C + h*alpha*K
+	if (_has_hHU) LinAlg::Axpy(-1.0,_hHU, dF); // dF <- dF - hHU
 
 	if (_linsol==LinAlg::LAPACK_T)
 	{
@@ -590,7 +587,7 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 			#ifdef HAVE_UMFPACK
 			UMFPACK::Solve(G11,W, dU); // dU <- inv(G11)*W
 			#else
-			throw new Fatal(_("Solve::_inv_G_times_dF_minus_hKU: UMFPACK is not available"));
+			throw new Fatal(_("Solve::_inv_G_times_dF_minus_hHU: UMFPACK is not available"));
 			#endif
 
 			// 7) Solve for natural (forces) values dF2
@@ -607,7 +604,7 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 			LinAlg::Copy   (W,   dU); // dU <- W
 			SuperLU::Solve (G11, dU); // dU <- inv(G11)*dU
 			#else
-			throw new Fatal(_("Solve::_inv_G_times_dF_minus_hKU: SuperLU is not available"));
+			throw new Fatal(_("Solve::_inv_G_times_dF_minus_hHU: SuperLU is not available"));
 			#endif
 
 			// 7) Solve for natural (forces) values dF2
@@ -636,10 +633,10 @@ inline void Solver::_inv_G_times_dF_minus_hKU(double h, LinAlg::Vector<double> &
 			MPI::COMM_WORLD.Barrier();
 			MPI::COMM_WORLD.Allgatherv(&dF.GetPtr()[_pd->MyMinEq], _pd->MyNumEqs, MPI::DOUBLE, dF.GetPtr(), &_pd->AllNumEqs[0], &_pd->AllMinEq[0], MPI::DOUBLE);
 			#else
-			throw new Fatal(_("Solve::_inv_G_times_dF_minus_hKU: SuperLUd is not available"));
+			throw new Fatal(_("Solve::_inv_G_times_dF_minus_hHU: SuperLUd is not available"));
 			#endif
 		}
-		else throw new Fatal(_("Solve::_inv_G_times_dF_minus_hKU: Linear solver #%d is not available"),_linsol);
+		else throw new Fatal(_("Solve::_inv_G_times_dF_minus_hHU: Linear solver #%d is not available"),_linsol);
 	}
 
 #ifdef DO_DEBUGx
@@ -689,7 +686,7 @@ inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> 
 	for (size_t i=0; i<_data->NElems(); ++i)
 	{
 		if (_data->Ele(i)->IsActive())
-			_data->Ele(i)->UpdateState(h,dU, _dF_int); // sum results into dF_int
+			_data->Ele(i)->Update (h,dU, _dF_int); // sum results into dF_int
 	}
 
 	// Calculate residual: resid = dFext-dFint
@@ -723,7 +720,7 @@ inline void Solver::_backup_nodes_and_elements()
 
 	// Backup all elements
 	for (size_t i=0; i<_data->NElems(); ++i)
-		_data->Ele(i)->BackupState();
+		_data->Ele(i)->Backup ();
 
 }
 
@@ -743,7 +740,7 @@ inline void Solver::_restore_nodes_and_elements()
 
 	// Restore all elements
 	for (size_t i=0; i<_data->NElems(); ++i)
-		_data->Ele(i)->RestoreState();
+		_data->Ele(i)->Restore ();
 
 }
 
@@ -763,7 +760,7 @@ inline double Solver::_norm_natural_vector()
 	return sqrt(norm);
 }
 
-inline void Solver::_assemb_G_and_hKU(double h)
+inline void Solver::_assemb_G_and_hHU(double h)
 {
 	// Clear DENSE stifness matrix G or Clear SPARSE stifness matrix G (T11,T12,T21,T22)
 	if (_linsol==LinAlg::LAPACK_T) _G.SetValues(0.0);
@@ -776,9 +773,9 @@ inline void Solver::_assemb_G_and_hKU(double h)
 		_T22.ResetTop();
 	}
 
-	// Clear hKU and set alfa (step-controller)
-	_hKU.SetValues(0.0);
-	_has_hKU    = false;
+	// Clear hHU and set alfa (step-controller)
+	_hHU.SetValues(0.0);
+	_has_hHU    = false;
 	double alfa = 1.0;
     
 	// Variables to be used during assemblage
@@ -793,56 +790,45 @@ inline void Solver::_assemb_G_and_hKU(double h)
 	// Loop along elements
 	for (size_t i_ele=0; i_ele<_data->NElems(); ++i_ele)
 	{
-		// Get a poniter to the element
 		FEM::Element const * const elem = _data->Ele(i_ele);
 		if (elem->IsActive())
 		{
-			// Assemble zero order matrices
-			for (size_t i=0; i<elem->nOrder0Matrices(); i++)
+			// Assemble [H] matrices
+			for (size_t i=0; i<elem->NHMats(); i++)
 			{
-				// Get local matrix (ex.: permeability H) and maps
-				elem->Order0MatMap (i, rows_map, cols_map, rows_pre, cols_pre);
-				elem->Order0Matrix (i, M);
+				elem->HMatMap (i, rows_map, cols_map, rows_pre, cols_pre);
+				elem->HMatrix (i, M);
 				M = alfa*h*M;
-
-				// Assemble into global
 				_mount_into_global (M, rows_map, cols_map, rows_pre, cols_pre);
 			}
 
-			// Assemble first order matrices
-			for (size_t i=0; i<elem->nOrder1Matrices(); i++)
+			// Assemble [C] matrices
+			for (size_t i=0; i<elem->NCMats(); i++)
 			{
-				// Get local matrix (ex.: stiffness Ke) and maps
-				elem->Order1MatMap (i, rows_map, cols_map, rows_pre, cols_pre);
-				elem->Order1Matrix (i, M);
-
-				// Assemble into global
+				elem->CMatMap (i, rows_map, cols_map, rows_pre, cols_pre);
+				elem->CMatrix (i, M);
 				_mount_into_global (M, rows_map, cols_map, rows_pre, cols_pre);
 			}
 
-			// Assemble order zero Vectors
-			size_t n_RHS = elem->nOrder0Vectors();
+			// Assemble [U] Vectors
+			size_t n_RHS = elem->NUVecs();
 			for (size_t i=0; i<n_RHS; i++)
 			{
-				// Get local vector related to the zeroth order term of the differential equation (ex.: [U P]^T)
-				elem->Order0VecMap (i, vect_map);
-				elem->Order0Vector (i, V);
-
-				// Assemble into global
-				_has_hKU = true;
-				V = h*V;
-				_mount_into_hKU    (V, vect_map);
+				elem->UVecMap (i, vect_map);
+				elem->UVector (i, V);
+				_has_hHU = true;
+				V        = h*V;
+				_mount_into_hHU (V, vect_map);
 			}
-			
 		}
 	}
 
 	#ifdef HAVE_SUPERLUD
-	if (_has_hKU)
+	if (_has_hHU)
 	{
-		// Distribute all pieces of _hKU to all processors
+		// Distribute all pieces of _hHU to all processors
 		MPI::COMM_WORLD.Barrier();
-		MPI::COMM_WORLD.Allgatherv(&_hKU.GetPtr()[_pd->MyMinEq], _pd->MyNumEqs, MPI::DOUBLE, _hKU.GetPtr(), &_pd->AllNumEqs[0], &_pd->AllMinEq[0], MPI::DOUBLE);
+		MPI::COMM_WORLD.Allgatherv(&_hHU.GetPtr()[_pd->MyMinEq], _pd->MyNumEqs, MPI::DOUBLE, _hHU.GetPtr(), &_pd->AllNumEqs[0], &_pd->AllMinEq[0], MPI::DOUBLE);
 	}
 	#endif
 
@@ -853,16 +839,16 @@ inline void Solver::_assemb_G_and_hKU(double h)
 	/*
 	for (int i=0; i<_G.Rows(); ++i)
 	for (int j=0; j<_G.Cols(); ++j)
-		if (_G(i,j)!=_G(i,j)) throw new Fatal (_("Solver::_assemb_G_and_hKU: DENSE stiffness matrix has NaNs"));
+		if (_G(i,j)!=_G(i,j)) throw new Fatal (_("Solver::_assemb_G_and_hHU: DENSE stiffness matrix has NaNs"));
 	*/
 	#endif
 }
 
-inline void Solver::_mount_into_hKU(LinAlg::Vector<double> const & V, Array<size_t> const & RowsMap)
+inline void Solver::_mount_into_hHU(LinAlg::Vector<double> const & V, Array<size_t> const & RowsMap)
 {
-	// Assemble local (LocalVector) DOFs into hKU matrix
+	// Assemble local (LocalVector) DOFs into hHU matrix
 	for (int i=0; i<V.Size(); ++i)
-		_hKU(RowsMap[i]) += V(i);
+		_hHU(RowsMap[i]) += V(i);
 }
 
 inline void Solver::_mount_into_global(LinAlg::Matrix<double> const & M, Array<size_t> const & RowsMap, Array<size_t> const & ColsMap, Array<bool> const & RowsPre, Array<bool> const & ColsPre)
@@ -922,24 +908,18 @@ inline void Solver::_compute_global_size()
 		FEM::Element const * const elem = _data->Ele(i_ele);
 		if (elem->IsActive())
 		{
-			// Compute zero order matrices size
-			for (size_t i=0; i<elem->nOrder0Matrices(); i++)
+			// Compute [H] matrices size
+			for (size_t i=0; i<elem->NHMats(); i++)
 			{
-				// Get map (ex.: permeability H)
-				elem->Order0MatMap(i, rows_map, cols_map, rows_pre, cols_pre);
-
-				// Increase global stiffness pieces size
-				_increase_global_size(rows_map, cols_map, rows_pre, cols_pre);
+				elem->HMatMap (i, rows_map, cols_map, rows_pre, cols_pre);
+				_increase_global_size (rows_map, cols_map, rows_pre, cols_pre);
 			}
 
-			// Compute first order matrices size
-			for (size_t i=0; i<elem->nOrder1Matrices(); i++)
+			// Compute [C] matrices size
+			for (size_t i=0; i<elem->NCMats(); i++)
 			{
-				// Get map (ex.: stiffness Ke)
-				elem->Order1MatMap(i, rows_map, cols_map, rows_pre, cols_pre);
-
-				// Increase global stiffness pieces size
-				_increase_global_size(rows_map, cols_map, rows_pre, cols_pre);
+				elem->CMatMap (i, rows_map, cols_map, rows_pre, cols_pre);
+				_increase_global_size (rows_map, cols_map, rows_pre, cols_pre);
 			}
 		}
 	}
@@ -1053,14 +1033,14 @@ inline void Solver::_fe_solve_for_an_increment(double dTime)
 	for (int i=0; i<_nSI; ++i)
 	{
 		// Assemble G matrix and calculate dU_ext
-		_inv_G_times_dF_minus_hKU(h, dF_ext, dU_ext); // dU_ext <- inv(G)*(dF_ext - hKU)
+		_inv_G_times_dF_minus_hHU(h, dF_ext, dU_ext); // dU_ext <- inv(G)*(dF_ext - hHU)
 
 		// Update nodes and elements state
 		_update_nodes_and_elements(h, dF_ext, dU_ext); // AND calculate _resid
 
 		// Calculate residual (internal)
-		if (_has_hKU)
-		LinAlg::Axpy      (+1.0,_hKU, dF_ext);                // dF_ext <- dF_ext + hKU
+		if (_has_hHU)
+		LinAlg::Axpy      (+1.0,_hHU, dF_ext);                // dF_ext <- dF_ext + hHU
 		LinAlg::AddScaled (1.0,dF_ext, -1.0,_dF_int, _resid); // _resid <- dF_ext - dF_int
 		double denom = 0.0;                                   // Normalizer
 		for (int i=0; i<ndofs; i++) denom += pow((dF_ext(i)+_dF_int(i))/2.0, 2.0);
@@ -1108,13 +1088,13 @@ inline void Solver::_ame_solve_for_an_increment(double dTime)
 		_backup_nodes_and_elements();
 
 		// Forward-Euler: Assemble G matrix and calculate _dU_1
-		_inv_G_times_dF_minus_hKU(h, _dF_1, _dU_1); // _dU_1 <- inv(G)*(dF_ext - hKU)
+		_inv_G_times_dF_minus_hHU(h, _dF_1, _dU_1); // _dU_1 <- inv(G)*(dF_ext - hHU)
 	
 		// Forward-Euler: update nodes and elements state
 		_update_nodes_and_elements(h, _dF_1, _dU_1); // AND calculate _resid
 
 		// Modified-Euler: Assemble G matrix and calculate dU_2
-		_inv_G_times_dF_minus_hKU(h, _dF_2, _dU_2); // _dU_2 <- inv(G)*(dF_ext - hKun)
+		_inv_G_times_dF_minus_hHU(h, _dF_2, _dU_2); // _dU_2 <- inv(G)*(dF_ext - hKun)
 	
 		// Save the norm of essential and natural vectors
 		double normU = _norm_essential_vector();

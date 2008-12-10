@@ -208,7 +208,7 @@ inline void Output::_fill_map()
 	for (size_t i=0; i<_ne; ++i)
 	{
 		Array<String> labels;
-		_aes[i]->GetLabels (labels);
+		_aes[i]->GetLbls (labels);
 		for (size_t j=0; j<labels.Size(); ++j)
 		{
 			if (_map.find(labels[j])==_map.end())
@@ -231,8 +231,8 @@ inline void Output::_calc_nodal_vals()
 	{
 		LinAlg::Matrix<double> values;
 		Array<String>          labels;
-		_aes[i]->CalcDepVars ();
-		_aes[i]->OutNodes    (values, labels);
+		_aes[i]->CalcDeps ();
+		_aes[i]->OutNodes (values, labels);
 		size_t elem_nnodes = _aes[i]->NNodes();
 		for (size_t j=0; j<labels.Size(); ++j)
 		{
@@ -287,7 +287,7 @@ inline void Output::_vtu_write_geometry(std::ostringstream & oss) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<_ne; ++i)
 	{
-		String con;  _aes[i]->VTKConnect(con);
+		String con;  _aes[i]->VTKConn (con);
 		oss << "  " << con;
 		k++;
 		OUT_NEWLINE (i,k,_ne,_nimax/_aes[i]->NNodes(),oss);
@@ -308,7 +308,7 @@ inline void Output::_vtu_write_geometry(std::ostringstream & oss) const
 	k = 0; oss << "        ";
 	for (size_t i=0; i<_ne; ++i)
 	{
-		oss << (k==0?"  ":" ") << _aes[i]->VTKCellType();
+		oss << (k==0?"  ":" ") << _aes[i]->VTKType ();
 		k++;
 		OUT_NEWLINE (i,k,_ne,_nimax,oss);
 	}

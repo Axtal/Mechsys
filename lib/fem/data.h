@@ -30,7 +30,7 @@
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  #include <boost/python.hpp> // this includes everything
+  //#include <boost/python.hpp> // this includes everything
   namespace BPy = boost::python;
 #endif
 
@@ -90,7 +90,7 @@ public:
 	                 Array<int> const & Connectivity);                        ///< Push back a new element
 
 	// Specific methods
-	void ApplyBodyForces    () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ApplyBodyForces(); } ///< Apply body forces (equilibrium/coupled problems)
+	void AddVolForces    () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
 	void ClearDisplacements ();                                                                         ///< Clear displacements (equilibrium/coupled problems)
 	void Activate           (int ElemTag);                                                              ///< Activate all elements with Tag
 	void Deactivate         (int ElemTag);                                                              ///< Activate all elements with Tag
@@ -281,9 +281,9 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 				FEM::Element * fe = this->SetElem (i, (*ElemsAtts)[j].get<1>(), (*ElemsAtts)[j].get<6>(), M->ElemTag(i));
 
 				// Set connectivity
-				if (M->ElemNVerts(i)!=fe->NNodes()) throw new Fatal("functions.h::SetNodesElems:: The number of vertices (%d) of mesh object must be compatible with the number of nodes (%d) of the element (%s)",M->ElemNVerts(i),fe->NNodes(),fe->Name());
+				if (M->ElemNVerts(i)!=fe->NNodes()) throw new Fatal("functions.h::SetNodesElems:: The number of vertices (%d) of mesh object must be compatible with the number of nodes (%d) of the element (%s)",M->ElemNVerts(i),fe->NNodes(),fe->Type());
 				for (size_t k=0; k<M->ElemNVerts(i); ++k)
-					fe->Connect (k, this->Nod(M->ElemCon(i,k)));
+					fe->SetConn (k, this->Nod(M->ElemCon(i,k)));
 
 				// Set parameters and initial values
 				fe->SetModel ((*ElemsAtts)[j].get<2>(), (*ElemsAtts)[j].get<3>(), (*ElemsAtts)[j].get<4>());
@@ -310,8 +310,8 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		FEM::Element * fe = this->SetElem (ie, (*ElemsAtts)[eatt_id].get<1>(), (*ElemsAtts)[eatt_id].get<6>(), beam_tag);
 
 		// Set connectivity
-		fe->Connect (0, this->Nod(M->EdgeToLef(elem_id, local_edge_id)));
-		fe->Connect (1, this->Nod(M->EdgeToRig(elem_id, local_edge_id)));
+		fe->SetConn (0, this->Nod(M->EdgeToLef(elem_id, local_edge_id)));
+		fe->SetConn (1, this->Nod(M->EdgeToRig(elem_id, local_edge_id)));
 
 		// Set parameters and initial values
 		fe->SetModel ((*ElemsAtts)[eatt_id].get<2>(), (*ElemsAtts)[eatt_id].get<3>(), (*ElemsAtts)[eatt_id].get<4>());
@@ -437,14 +437,14 @@ inline void Data::SetNElems(size_t NElems)
 inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 {
    if (_nodes[i]==NULL) _nodes[i] = new Node;
-	_nodes[i]->Initialize (i,X,Y,Z, Tag);
+	_nodes[i]->Initialize (i, X,Y,Z, Tag);
 	return _nodes[i];
 }
 
 inline Element * Data::SetElem(size_t i, char const * Type, bool IsActive, int Tag)
 {
-	if (_elems[i]==NULL) _elems[i] = AllocElement(Type);
-	_elems[i]->Initialize (/*ID*/i, IsActive, _dim, Tag);
+	if (_elems[i]==NULL) _elems[i] = new Element;
+	_elems[i]->Initialize (Type, /*ID*/i, Tag, _dim, IsActive);
 	if (Tag!=0)
 	{
 		if (_elem_tag_idx.count(Tag)==0) // tag not set
@@ -464,27 +464,25 @@ inline Element * Data::SetElem(size_t i, char const * Type, bool IsActive, int T
 inline size_t Data::PushNode(double X, double Y, double Z, int Tag)  
 {
 	// Allocate new node
-	Node * new_node;
-	new_node = new Node;
-	_nodes.Push(new_node);
+	Node * new_node = new Node;
+	_nodes.Push (new_node);
 	size_t ID = _nodes.Size()-1;
-	new_node->Initialize(ID, X, Y, Z, Tag);
+	new_node->Initialize (ID, X,Y,Z, Tag);
 	return ID;
 }
 
 inline size_t Data::PushElem(int Tag, char const * Type, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> const & Connectivity )
 {
 	// Alocate new element
-	Element * new_elem;
-	new_elem = AllocElement(Type);
-	_elems.Push(new_elem);
+	Element * new_elem = new Element;
+	_elems.Push (new_elem);
 	size_t ID = _elems.Size()-1;
-	new_elem->Initialize(_elems.Size()-1, IsActive, _dim, Tag);
+	new_elem->Initialize (Type, ID, Tag, _dim, IsActive);
 
 	// Connector (EmbSpring) connectivities
 	if (new_elem->NNodes()!=Connectivity.Size()) throw new Fatal("Data::PushElem: The number of nodes in Connectivity does not match. (Element ID %d)", ID);
 	for (size_t i=0; i<new_elem->NNodes(); i++)
-		new_elem->Connect(i, _nodes[Connectivity[i]]);
+		new_elem->SetConn (i, _nodes[Connectivity[i]]);
 
 	// Set the model 
 	new_elem->SetModel(Model, Prms, Inis);
@@ -497,7 +495,7 @@ inline size_t Data::PushElem(int Tag, char const * Type, char const * Model, cha
 
 inline void Data::ClearDisplacements()
 {
-	for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ClearDispAndStrains();
+	for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ClearDisp();
 }
 
 inline void Data::Activate(int ElemTag)

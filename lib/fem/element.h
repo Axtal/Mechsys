@@ -19,23 +19,10 @@
 #ifndef MECHSYS_FEM_ELEMENT_H
 #define MECHSYS_FEM_ELEMENT_H
 
-
-/* OBS.:
- *          For 2D meshes, FACE means EDGES
- *          and EDGES related arrays are unavailable.
- *
- *          For 3D meshes, FACE and EDGES correspond to the normal
- *          meanings.
- */
-
-
-// STL
-#include <map>
-#include <cstdarg>  // for va_list, va_start, va_end
-
 // MechSys
-#include "fem/quadrature.h"
 #include "fem/node.h"
+#include "fem/geomelem.h"
+//#include "fem/probelem.h"
 #include "util/string.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
@@ -45,114 +32,93 @@
 namespace FEM
 {
 
-/// Elements
+typedef LinAlg::Matrix<double> Mat_t;
+typedef LinAlg::Vector<double> Vec_t;
+typedef char const *           Str_t;
+
 class Element
 {
 public:
-	// Default constructor
-	Element() : _my_id(-1), _tag(0), _ndim(-1), _n_nodes(0), _n_face_nodes(0), _n_int_pts(0), _n_face_int_pts(0) {}
+	// Friends
+	friend std::ostream & operator<< (std::ostream & os, Element const & E);
 
-	// Destructor
-	virtual ~Element() {}
+	// Constructor
+	Element() : _id(-1), _tag(0), _type("__no_type__"), _ge(NULL)/*, _pe(NULL)*/ {}
 
-	// Set methods
-	void              Initialize (long ID, bool IsActive, int nDim, int Tag);                      ///< Initialize the element
-	virtual Element * EdgeBry    (char const * Key, double Value, int EdgeLocalID);                ///< Set edge boundary conditions (SetDim MUST be called first)
-	virtual Element * EdgeBry    (char const * Key, double V0, double V1, int ID) { return this; } ///< Set edge boundary conditions (SetDim MUST be called first) ID = EdgeLocalID
-	virtual Element * FaceBry    (char const * Key, double Value, int FaceLocalID);                ///< Set face boundary conditions (SetDim MUST be called first)
+	// Methods
+	void  Initialize (Str_t Type, long ID, int Tag, int NDim, bool IsActive); ///< Initialize the element
+	long  GetID      () const                        { return _id;          } ///< Return the ID of this element
+	int   Tag        () const                        { return _tag;         } ///< Return the Tag of this element
+	Str_t Type       () const                        { return _type.CStr(); } ///< Return the name/type of this element
+	bool  Check      (String & Msg) const;                                    ///< Check if everything is OK and element is ready for simulations
 
-	// Specific set methods
-	virtual void ClearDispAndStrains () {}              ///< Clear displacements and strains (for equilibrium/coupled problems)
-	virtual void SetActive           (bool Activate) {} ///< Activate element (construction/excavation)
+	// Methods related to GEOMETRY
+	bool         CheckConn () const                                   { return _ge->CheckConn();             } ///< Check if connectivity is OK
+	size_t       NNodes    () const                                   { return _ge->NNodes;                  } ///< Return the number of nodes in this element
+	Node       * Nod       (size_t i)                                 { return _ge->Conn[i];                 } ///< Return a pointer to a node in the connects list (read/write)
+	Node const * Nod       (size_t i) const                           { return _ge->Conn[i];                 } ///< Return a pointer to a node in the connects list (read-only)
+	double       Volume    () const                                   { return _ge->Volume();                } ///< Return the volume/area/length of the element
+	void         Extrap    (Vec_t & IPVals, Vec_t & NodVals) const    {        _ge->Extrap(IPVals,NodVals);  } ///< Extrapolate values from integration points to nodes
+	void         InvMap    (double X, double Y, double Z,
+	                        double & r, double & s, double & t) const {        _ge->InvMap(X,Y,Z,r,s,t);     } ///< From "global" coordinates, compute the natural (local) coordinates
+	bool         IsInside  (double X, double Y, double Z) const       { return _ge->IsInside(X,Y,Z);         } ///< Check if a point is inside the element
+	void         SetIPs    (int NIPs1D)                               {        _ge->SetIPs(NIPs1D);          } ///< Set the number of integration points using 1D information. Must NOT be called after allocation of Models.
+	int          VTKType   () const                                   { return _ge->VTKType();               } ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
+	void         VTKConn   (String & Nodes) const                     {        _ge->VTKConn(Nodes);          } ///< Return the VTK list of connectivities with global nodes IDs
+	void         GetFNodes (int FaceID, Array<Node*> & FConn) const   {        _ge->GetFNodes(FaceID,FConn); } ///< Return the connectivity of a face, given the local face ID
+	double       BoundDist (double r, double s, double t) const       { return _ge->BoundDist(r,s,t);        } ///< TODO: Bound distance
 
-	// Get methods
-	bool         CheckConnect ()         const;                         ///< Check if connectivity is OK
-	bool         Check        (String & Message) const;                 ///< Check if everything is OK and element is ready for simulations
-	long         GetID        ()         const { return _my_id;       } ///< Return the ID of this element
-	int          Tag          ()         const { return _tag;         } ///< Return the Tag of this element
-	bool         IsActive     ()         const { return _is_active;   } ///< Check if this element is active
-	size_t       NNodes       ()         const { return _n_nodes;     } ///< Return the number of nodes in this element
-	Node       * Nod          (size_t i)       { return _connects[i]; } ///< Return a pointer to a node in the connects list (read/write)
-	Node const * Nod          (size_t i) const { return _connects[i]; } ///< Return a pointer to a node in the connects list (read-only)
-	double       Volume       ()         const;                         ///< Return the volume/area/length of the element
-	bool         IsInside     (double x, double y, double z) const;     ///< Check if a node is inside the element
+	// Methods related to PROBLEM
+	void      AddVolForces ()                                           {/*        _pe->AddVolForces();                     */ } ///< Method to apply volumetric (body) forces as boundary condition
+	void      ClearDisp    ()                                           {/*        _pe->ClearDisp();                        */ } ///< Clear displacements and strains (for equilibrium/coupled problems)
+	void      SetActive    (bool Activate)                              {/*        _pe->SetActive(Activate);                */ } ///< Activate element (construction/excavation)
+	bool      CheckMdl     () const                                     {return false;/* return _pe->CheckMdl(); }                       */  }///< Check if constitutive models are OK
+	Element * EdgeBry      (Str_t Key, double Val, int iEdge)           {return this;/*        _pe->EdgeBry(Key,Val,iEdge); return this;*/ } ///< Set edge boundary conditions (Initialize MUST be called first)
+	Element * EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {return this;/*                                     return this;*/ } ///< Set edge boundary conditions (Initialize MUST be called first)
+	Element * FaceBry      (Str_t Key, double Val, int iFace)           {return this;/*        _pe->FaceBry(Key,Val,iFace); return this;*/ } ///< Set face boundary conditions (Initialize MUST be called first)
+	bool      IsActive     () const                                     {return false;/* return _pe->IsActive;                           */ } ///< Check if this element is active
+	void      CalcDeps     () const                                     {/*        _pe->CalcDeps();                         */ } ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	Str_t     ModelName    () const                                     {return "hi";/* return _pe->ModelName();                        */ } ///< Return the name of the model of the first IP of this element
+	double    Val          (int iNod, Str_t Key) const                  {return 0;/* return _pe->Val(iNod,Key);                      */ } ///< Return computed values at the Nodes of the element. Ex.: Key="ux", "fx", "Sx", "Sxy", "Ex", etc.
+	double    Val          (          Str_t Key) const                  {return 0;/* return _pe->Val(Key);                           */ } ///< Return computed values at the CG of the element. Ex.: Key="Sx", "Sxy", "Ex", etc.
+	bool      IsEssen      (Str_t Key) const                            {return false;/*     return   _pe->IsEssen(name);                      */ } ///< Is the correspondent DOFKey (Degree of Freedom, such as "Dux") essential (such displacements)?
+	void      SetProps     (Str_t Properties)                           {/*        _pe->SetProps(Properties);               */ } ///< Set element properties such as body forces, internal heat source, water pumping, etc.
+	void      SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis)    {/*        _pe->SetModel(ModelName,Prms,Inis);      */ } ///< (Re)allocate model with parameters and initial values
+	Element * SetConn      (int iNod, FEM::Node * ptNode)               {return this;/*        _pe->SetConn(iNod,ptNode);   return this;*/ } ///< Set connectivity, by linking the local node ID with the pointer to the connection node
+	void      Update       (double h, Vec_t const & dU, Vec_t & dFint)  {/*        _pe->Update(h,dU,dFint);                 */ } ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
+	void      Backup       ()                                           {/*        _pe->Backup();                           */ } ///< Backup internal state
+	void      Restore      ()                                           {/*        _pe->Restore();                          */ } ///< Restore internal state from a previously backup state
+	void      GetLbls      (Array<String> & Lbls) const                 {/*        _pe->GetLbls();                          */ } ///< Get the labels of all values to be output
+	void      OutNodes     (Mat_t & Vals, Array<String> & Lbls) const   {/*        _pe->OutNodes(Vals,Lbls);                */ } ///< Output values at nodes
+	void      OutInfo      (std::ostream & os) const                    {/*        _pe->OutInfo();                          */ } ///< Output extra info of the derived element
+	bool      HasExtra     () const                                     {return false;/*        _pe->HasExtra();                         */ } ///< Has extra output ?
+	void      OutExtra     (Mat_t & Coords, Vec_t & Norm,                /*                                                 */ 
+	                        Mat_t & Vals, Array<String> & Lbls) const   {/*        _pe->OutExtra(Coords,Norm,Vals,Lbls);    */ } ///< Output extra information
+	size_t   NCMats        () const                                     {return 0;/* return _pe->NCMats();                           */ } ///< Number of C matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
+	size_t   NHMats        () const                                     {return 0;/* return _pe->NHMats();                           */ } ///< Number of H matrices such as H:Permeability
+	size_t   NUVecs        () const                                     {return 0;/* return _pe->NUVecs();                           */ } ///< Number of U vectors such as U:Displacements, P:Pore-pressures
+	void     CMatrix       (size_t Idx, Mat_t & M) const                {/*        _pe->CMatrix(Idx,M);                     */ } ///< C matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
+	void     HMatrix       (size_t Idx, Mat_t & M) const                {/*        _pe->HMatrix(Idx,M);                     */ } ///< H matrix such as H:Permeability
+	void     UVector       (size_t Idx, Vec_t & V) const                {/*        _pe->UVector(Idx,V);                     */ } ///< U vector such as U:Displacement, P:Pore-pressure
+	void     CMatMap       (size_t Idx,
+	                        Array<size_t> & RMap,
+	                        Array<size_t> & CMap,
+	                        Array<bool> & RUPresc,
+	                        Array<bool> & CUPresc) const                {/*     _pe->CMatMap(Idx,RMap,CMap,RUPresc,CUPresc);*/ } ///< CMatrix map to convert local DOFs into global equation positions
+	void     HMatMap       (size_t Idx,
+	                        Array<size_t> & RMap,
+	                        Array<size_t> & CMap,
+	                        Array<bool> & RUPresc,
+	                        Array<bool> & CUPresc) const                {/*     _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc);*/ } ///< HMatrix map to convert local DOFs into global equation positions
+	void     UVecMap       (size_t Idx, Array<size_t> & RMap) const     {/*     _pe->UVecMap(Index,RMap);                   */ } ///< UVector map to convert local DOFs into global equation positions
 
-	// Methods that MUST be overriden by derived classes
-	virtual bool         CheckModel  ()                                  const =0; ///< Check if constitutive models are OK
-	virtual void         CalcDepVars ()                                  const =0; ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
-	virtual double       Val         (int iNodeLocal, char const * Name) const =0; ///< Return computed values at the Nodes of the element. Ex.: Name="ux", "fx", "Sx", "Sxy", "Ex", etc.
-	virtual double       Val         (                char const * Name) const =0; ///< Return computed values at the CG of the element. Ex.: Name="Sx", "Sxy", "Ex", etc.
-	virtual char const * Name        ()                                  const =0; ///< Return the name/type of this element
-	virtual char const * ModelName   ()                                  const =0; ///< Return the name of the model of the first IP of this element
-
-	// Methods related to PROBLEM (pure virtual) that MUST be overriden by derived classes
-	virtual bool      IsEssential (char const * Name) const =0;                                                           ///< Is the correspondent DOFName (Degree of Freedom, such as "Dux") essential (such displacements)?
-	virtual void      SetModel    (char const * ModelName, char const * Prms, char const * Inis) =0;                      ///< (Re)allocate model with parameters and initial values
-	virtual void      SetProps    (char const * Properties) =0;                                                           ///< Set element properties such as body forces, internal heat source, water pumping, etc.
-	virtual Element * Connect     (int iNodeLocal, FEM::Node * ptNode) =0;                                                ///< Set connectivity, by linking the local node ID with the pointer to the connection node
-	virtual void      UpdateState (double TimeInc, LinAlg::Vector<double> const & dU, LinAlg::Vector<double> & dFint) =0; ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
-	virtual void      GetLabels   (Array<String> & Labels) const =0;                                                      ///< Get the labels of all values to be output
-
-	// Methods related to GEOMETRY (pure virtual) that MAY be overriden by derived classes
-	virtual void SetIntPoints (int NumGaussPoints1D)                                                { throw new Fatal("FEM::Element: SetIntPoints() is not available"); } ///< Set the number of integration points using 1D information. Must NOT be called after allocation of Models.
-	virtual int  VTKCellType  () const                                                              { throw new Fatal("FEM::Element: VTKCellType() is not available"); }  ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
-	virtual void VTKConnect   (String & Nodes) const                                                { throw new Fatal("FEM::Element: VTKConnect() is not available"); }   ///< Return the VTK list of connectivities with global nodes IDs
-	virtual void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const                       { throw new Fatal("FEM::Element: GetFaceNodes() is not available"); } ///< Return the connectivity of a face, given the local face ID
-	virtual void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape) const  { throw new Fatal("FEM::Element: Shape() is not available"); }        ///< Shape functions
-	virtual void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const { throw new Fatal("FEM::Element: Derivs() is not available"); }       ///< Derivatives
-	virtual void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape) const        { throw new Fatal("FEM::Element: FaceShape() is not available"); }    ///< Face shape functions
-	virtual void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const       { throw new Fatal("FEM::Element: FaceDerivs() is not available"); }   ///< Face derivatives
-
-	// Methods that MAY be overriden by derived classes
-	virtual void   InverseMap    (double x, double y, double z, double & r, double & s, double & t) const;                                   ///< From "global" coordinates, compute the natural (local) coordinates
-	virtual void   Jacobian      (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const;                                  ///< Jacobian matrix
-	virtual void   Jacobian      (double r, double s, double t, LinAlg::Matrix<double> & J) const;                                           ///< (alternative) method to compute the Jacobian matrix
-	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, double const s, LinAlg::Matrix<double> & J) const; ///< Jacobian matrix of a face
-	virtual void   FaceJacobian  (Array<FEM::Node*> const & FaceConnects, double const r, LinAlg::Matrix<double> & J) const;                 ///< Jacobian matrix of a edge
-	virtual void   Coords        (LinAlg::Matrix<double> & coords) const;                                                                    ///< Return the coordinates of the nodes
-	virtual void   LocalCoords   (LinAlg::Matrix<double> & coords) const {};                                                                 ///< Return the local coordinates of the nodes
-	virtual void   OutNodes      (LinAlg::Matrix<double> & Values, Array<String> & Labels) const;                                            ///< Output values at nodes
-	virtual void   OutInfo       (std::ostream & os) const {}                                                                                ///< Output extra info of the derived element
-	virtual bool   HasExtra      () const { return false; }                                                                                                         ///< Has extra output ?
-	virtual void   OutExtra      (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const {} ///< Extra output for elements
-	virtual double BoundDistance (double r, double s, double t) const { return -1; }                                                         ///< TODO
-	virtual void   Extrapolate   (LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const;                            ///< Extrapolate values from integration points to nodes
-	virtual void   ApplyBodyForces() {}                                                                                                      ///< Method to apply body forces as boundary conditions
-	virtual bool   HasVolForces  () const { return false; }                                                                                  ///< TODO
-	virtual void   AddVolForces  (LinAlg::Vector<double> & FVol) const {}                                                                    ///< TODO
-	virtual void   BackupState   () {}                                                                                                       ///< Backup internal state
-	virtual void   RestoreState  () {}                                                                                                       ///< Restore internal state from a previously backup state
-
-	// Methods to assemble DAS matrices; MAY be overriden by derived classes
-	virtual size_t nOrder0Matrices () const { return 0; }                                                                                                                ///< Number of zero order matrices such as H:Permeability.
-	virtual size_t nOrder1Matrices () const { return 0; }                                                                                                                ///< Number of first order matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
-	virtual size_t nOrder0Vectors  () const { return 0; }                                                                                                                ///< Number of first order matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
-	virtual void   Order0MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
-	virtual void   Order0VecMap    (size_t Index, Array<size_t> & RowsMap)                                                                                      const {} ///< Order0Vector' map to convert local DOFs into global equation positions.
-	virtual void   Order0Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< Zero order matrix such as H:Permeability.
-	virtual void   Order0Vector    (size_t Index, LinAlg::Vector<double> & V)                                                                                   const {} ///< Zero order vector such as [U P]^T, where U is displacement and P, porepressure.
-	virtual void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const {} ///< Order0Matrix' map to convert local DOFs into global equation positions.
-	virtual void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & M)                                                                                   const {} ///< First order matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix.
-
-	friend std::ostream & operator<< (std::ostream & os, FEM::Element const & E);
-
-protected:
-	// Data (may be accessed by derived classes)
-	long               _my_id;          ///< The ID of this element
-	int                _tag;            ///< The Tag of this element
-	int                _ndim;           ///< Number of dimensions of the problem
-	size_t             _n_nodes;        ///< GEOMETRY: Number of nodes in the element
-	size_t             _n_face_nodes;   ///< GEOMETRY: Number of nodes in a face
-	size_t             _n_int_pts;      ///< GEOMETRY: Number of integration (Gauss) points
-	size_t             _n_face_int_pts; ///< GEOMETRY: Number of integration points in a face
-	Array<Node*>       _connects;       ///< GEOMETRY: Connectivity (pointers to nodes in this element). size=_n_nodes
-	bool               _is_active;      ///< Flag for active/inactive condition
-	IntegPoint const * _a_int_pts;      ///< Array of Integration Points
-	IntegPoint const * _a_face_int_pts; ///< Array of Integration Points of Faces/Edges
-	
-	// Methods related to GEOMETRY (pure virtual) that MUST be overriden by derived classes
-	virtual void _initialize() =0; ///< Initialize derived elements (at the bottom of the diamond...)
-	virtual void _dist_to_face_nodes (char const * Key, double Value, Array<Node*> const & FaceConnects) const; ///< Distribute value to face nodes. FaceConnects => In: Array of ptrs to face nodes. FaceValue => In: A value applied on a face to be converted to nodes
+private:
+	// Data
+	long       _id;   ///< The ID of this element
+	int        _tag;  ///< The Tag of this element
+	String     _type; ///< The name of this element
+	GeomElem * _ge;   ///< Geometry element
+	//ProbElem * _pe;   ///< Problem element
 
 }; // class Element
 
@@ -162,457 +128,33 @@ protected:
 
 /* public */
 
-// Set and get methods
-
-inline void Element::Initialize(long ID, bool IsActive, int nDim, int Tag)
+inline void Element::Initialize(Str_t Type, long ID, int Tag, int NDim, bool IsActive)
 {
-	_my_id     = ID;
-	_is_active = IsActive;
-	_ndim      = nDim;
-	_tag       = Tag;
-	_initialize();
+	_id   = ID;
+	_tag  = Tag;
+	_type = Type;
+	_ge->Initialize (NDim);
+	//_pe->Initialize (_ge, NDim, IsActive);
 }
 
-inline Element * Element::EdgeBry(char const * Key, double Value, int EdgeLocalID)
+inline bool Element::Check(String & Msg) const
 {
-	if (_ndim<3) // For 1D/2D meshes, edges correspond to faces
-	{
-
-		// Skip if key is "Qb" TODO: Move to EquilibElem
-		if (strcmp(Key,"Qb")==0) return this;
-
-		Array<Node*> fnodes;
-		GetFaceNodes        (EdgeLocalID, fnodes);
-		_dist_to_face_nodes (Key, Value, fnodes);
-	}
-	else
-	{
-		throw new Fatal("Element::EdgeBry: Method not yet implemented for 3D meshes.");
-	}
-	return this;
-}
-
-inline Element * Element::FaceBry(char const * Key, double Value, int FaceLocalID)
-{
-	if (_ndim==2) throw new Fatal("Element::FaceBry: This method must be called only for 3D meshes.");
-	else
-	{
-		Array<Node*> fnodes;
-		GetFaceNodes        (FaceLocalID, fnodes);
-		_dist_to_face_nodes (Key, Value, fnodes);
-	}
-	return this;
-}
-
-inline bool Element::CheckConnect() const
-{
-	if (_connects.Size()!=_n_nodes) return false;
-	for (size_t i=0; i<_n_nodes; ++i) if (_connects[i]==NULL) return false;
-	return true;
-}
-
-inline bool Element::Check(String & Message) const
-{
-	if (CheckConnect()==false) { Message.Printf("\n  %s","CONNECTIVITY NOT SET");       return false; }
-	if (CheckModel()==false)   { Message.Printf("\n  %s","CONSTITUTIVE MODEL NOT SET"); return false; }
-	return true;
-}
-
-inline double Element::Volume() const
-{
-	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;       // Jacobian matrix
-
-	// Loop along integration points
-	double vol = 0.0;
-	for (size_t i=0; i<_n_int_pts; ++i)
-	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i].r;
-		double s = _a_int_pts[i].s;
-		double t = _a_int_pts[i].t;
-
-		// Jacobian
-		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
-
-		// Calculate internal force vector;
-		vol += det(J);
-	}
-	return vol;
-}
-
-inline bool Element::IsInside(double x, double y, double z) const
-{
-	double tiny = 1e-4;
-	double huge = 1e+20;
-	double max, min;
-	
-	//fast search in X -----------------------------------------------------------------------
-	max = -huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(0) > max) max=_connects[i]->Coord(0);
-	if ( x > max ) return false;
-	min = +huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(0) < min) min=_connects[i]->Coord(0);
-	if ( x < min ) return false;
-
-	//fast search in Y -----------------------------------------------------------------------
-	max = -huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(1) > max) max=_connects[i]->Coord(1);
-	if ( y > max ) return false;
-	min = +huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(1) < min) min=_connects[i]->Coord(1);
-	if ( y < min ) return false;
-	
-	//fast search in Z -----------------------------------------------------------------------
-	max = -huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(2) > max) max=_connects[i]->Coord(2);
-	if ( z > max ) return false;
-	min = +huge;
-	for (size_t i=0; i < NNodes(); i++) if (_connects[i]->Coord(2) < min) min=_connects[i]->Coord(2);
-	if ( z < min ) return false;
-	
-	double r, s, t;
-	InverseMap(x,y,z,r,s,t);
-	if (BoundDistance(r,s,t)>-tiny) return true;
-	else return false;
-}
-
-// Methods that MAY be overriden by derived classes
-
-inline void Element::InverseMap(double x, double y, double z, double & r, double & s, double & t) const
-{
-	LinAlg::Vector<double> shape;
-	LinAlg::Matrix<double> derivs;
-	LinAlg::Matrix<double> J; //Jacobian matrix
-	LinAlg::Vector<double> f;
-	LinAlg::Vector<double> delta;
-	     if (_ndim==2) f.Resize(2);
-	else if (_ndim==3) f.Resize(3);
-	double tx, ty, tz; //x, y, z trial
-	double norm_f;
-	r = s = t =0; // first suposition for natural coordinates
-	int max_steps= 25;
-	int k=0;
-	for (k=0; k<max_steps; k++)
-	{
-		Shape (r, s, t, shape);
-		Derivs(r, s, t, derivs);
-		Jacobian(derivs, J);
-		tx = ty = tz = 0; 
-
-		//calculate trial of real coordinates
-		for (size_t j=0; j<_n_nodes; j++) 
-		{
-			tx += shape(j)*_connects[j]->Coord(0); //ok
-			ty += shape(j)*_connects[j]->Coord(1); //ok
-			if (_ndim==3)
-			tz += shape(j)*_connects[j]->Coord(2); //ok
-		}
-		
-		// Calculate the error
-		f(0) = tx - x;
-		f(1) = ty - y;
-		if (_ndim==3)
-		f(2) = tz - z;
-		
-		// Calculate the corrector
-		delta = trn(inv(J))*f;
-		
-		r -= delta(0);
-		s -= delta(1);
-		if (_ndim==3)
-		t -= delta(2);
-
-		norm_f = sqrt(trn(f)*f);
-
-		if (norm_f<1.0E4) break;
-	} 
-	if (k==max_steps) throw new Fatal("Element::InverseMap: InverseMap did not converge after %d steps in element %d", max_steps, _my_id);
-}
-
-inline void Element::Jacobian(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> & J) const
-{
-	// Calculate a matrix with nodal coordinates
-	LinAlg::Matrix<double> cmatrix;  // size = _n_nodes x _ndim
-	cmatrix.Resize(_n_nodes, _ndim);
-	for (size_t i=0; i<_n_nodes; i++)
-	for (int j=0; j<_ndim; ++j)
-		cmatrix(i,j) = _connects[i]->Coord(j);
-
-	// Calculate the Jacobian; 
-	J = derivs * cmatrix;
-}
-
-inline void Element::Jacobian(double r, double s, double t, LinAlg::Matrix<double> & J) const
-{
-	LinAlg::Matrix<double> derivs; Derivs(r, s, t, derivs);
-	LinAlg::Matrix<double> coords; Coords(coords);
-	J = derivs*coords;
-}
-
-inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double const r, double const s, LinAlg::Matrix<double> & J) const
-{
-	if (_n_face_nodes>0)
-	{
-		// Calculate the shape function derivatives for a face
-		LinAlg::Matrix<double> m_face_derivs;
-		FaceDerivs(r, s, m_face_derivs);
-
-		// Get the face coordinates
-		LinAlg::Matrix<double> m_face_coords(_n_face_nodes,3);
-		for (size_t i=0; i<_n_face_nodes; i++)
-		for (int j=0; j<_ndim; ++j)
-			m_face_coords(i,j) = FaceConnects[i]->Coord(j);
-
-		// Determine face jacobian (2x3)
-		J = m_face_derivs*m_face_coords;
-	}
-}
-
-inline void Element::FaceJacobian(Array<FEM::Node*> const & FaceConnects, double const r, LinAlg::Matrix<double> & J) const
-{
-	if (_n_face_nodes>0)
-	{
-		// Calculate the shape function derivatives for a face
-		LinAlg::Matrix<double> m_face_derivs;
-		FaceDerivs(r, 0.0, m_face_derivs);
-
-		// Get the face coordinates
-		LinAlg::Matrix<double> m_face_coords(_n_face_nodes,2);
-		for (size_t i=0; i<_n_face_nodes; i++)
-		{
-			m_face_coords(i,0) = FaceConnects[i]->Coord(0);
-			m_face_coords(i,1) = FaceConnects[i]->Coord(1);
-		}
-
-		// Determine face jacobian (1x2)
-		J = m_face_derivs*m_face_coords;
-	}
-}
-
-inline void Element::Coords(LinAlg::Matrix<double> & coords) const
-{
-	// Calculate a matrix with nodal coordinates
-	coords.Resize(_n_nodes,_ndim);
-
-	// Loop along all nodes of this element
-	for (size_t i=0; i<_n_nodes; i++)
-	for (int j=0; j<_ndim; ++j)
-		coords(i,j) = _connects[i]->Coord(j);
-}
-
-inline void Element::OutNodes(LinAlg::Matrix<double> & Values, Array<String> & Labels) const
-{
-	// Get the labels of all values to output from derived elements
-	GetLabels (Labels);
-
-	// Resize matrix with values at nodes
-	size_t nlabels = Labels.Size();
-	Values.Resize (_n_nodes,nlabels);
-
-	// Fill matrix with values
-	for (size_t i=0; i<_n_nodes; ++i)
-	for (size_t j=0; j< nlabels; ++j)
-		Values(i,j) = Val(i, Labels[j].CStr());
-}
-
-inline void Element::Extrapolate(LinAlg::Vector<double> & IPValues, LinAlg::Vector<double> & NodalValues) const 
-{
-	// Check
-	if (IPValues.Size()!=static_cast<int>(_n_int_pts)) throw new Fatal("Element::Extrapolate: IPValues.Size()==%d must be equal to _n_int_pts==%d",IPValues.Size(),_n_int_pts);
-
-	// Data
-	size_t m = IPValues   .Size();
-	size_t n = _n_nodes;
-	NodalValues.Resize(n);
-
-	/* N: shape functions matrix:
-	          _                                                 _
-	         |   N11      N12      N13      ...  N1(nNode)       |
-	         |   N21      N22      N23      ...  N2(nNode)       |
-	     N = |   N31      N32      N33      ...  N3(nNode)       |
-	         |          ...............................          |
-	         |_  N(nIP)1  N(nIP)2  N(nIP)3  ...  N(nIP)(nNode)  _| [m=nIP x n=nNode]
+	/*
+	if (_ge->CheckConn()==false) { Msg.Printf("\n  %s","CONNECTIVITY NOT SET");       return false; }
+	if (_pe->CheckModel()==false)   { Msg.Printf("\n  %s","CONSTITUTIVE MODEL NOT SET"); return false; }
 	*/
-	LinAlg::Matrix<double> N(m, n);
-	LinAlg::Vector<double> shape(n);
-	LinAlg::Matrix<double> IP_coord(m, _ndim+1);   // IP coordinates matrix (local)
-	LinAlg::Matrix<double> node_coord;             // nodal coordinates matrix (local)
-
-	// Mount N and IP_coord matrices
-	for (size_t i=0; i<m; i++)
-	{
-		double r = _a_int_pts[i].r;
-		double s = _a_int_pts[i].s;
-		double t = _a_int_pts[i].t;
-		Shape (r, s, t, shape);
-		for (size_t j=0; j<n; j++) N(i,j) = shape(j);
-		IP_coord(i, 0) = r;
-		IP_coord(i, 1) = s;
-		if (_ndim==2)
-			IP_coord(i, 2) = 1.0;
-		else
-		{
-			IP_coord(i, 2) = t;
-			IP_coord(i, 3) = 1.0;
-		}
-	}
-
-	// Mount node_coord matrix
-	LocalCoords(node_coord);
-
-	// Extrapolator matrix
-	LinAlg::Matrix<double> E(n, m);
-
-	//calculate extrapolator matrix
-	if (n==m)     E = inv(N);
-	else if (m>n) E = invg(N);
-	else
-	{
-		LinAlg::Matrix<double> I;
-		identity(m,I);
-		E = invg(N)* (I - IP_coord*invg(IP_coord)) + node_coord*invg(IP_coord);
-	}
-	
-	// Extrapolate
-	NodalValues = E * IPValues;
+	return true;
 }
 
-
-/* private */
-
-inline void Element::_dist_to_face_nodes(char const * Key, double const FaceValue, Array<Node*> const & FaceConnects) const
-{
-	if (IsEssential(Key)) // Assign directly
-	{
-		// Set nodes Brys
-		for (size_t i=0; i<_n_face_nodes; ++i)
-			FaceConnects[i]->Bry(Key,FaceValue);
-	}
-	else // Integrate along area/length
-	{
-		// Compute face nodal values (integration along the face)
-		LinAlg::Vector<double> values;  values.Resize(_n_face_nodes);  values.SetValues(0.0);
-		LinAlg::Matrix<double> J;                         // Jacobian matrix. size = [1,2] x 3
-		LinAlg::Vector<double> face_shape(_n_face_nodes); // Shape functions of a face/edge. size = _n_face_nodes
-		for (size_t i=0; i<_n_face_int_pts; i++)
-		{
-			double r = _a_face_int_pts[i].r;
-			double s = _a_face_int_pts[i].s;
-			double w = _a_face_int_pts[i].w;
-			FaceShape    (r, s, face_shape);
-			FaceJacobian (FaceConnects, r, s, J);
-			values += FaceValue*face_shape*det(J)*w;
-		}
-
-		// Set nodes Brys
-		for (size_t i=0; i<_n_face_nodes; ++i)
-			FaceConnects[i]->Bry(Key,values(i));
-	}
-}
-
-
-/** Outputs an element. */
 std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 {
-	os << "[" << E.GetID() << "] Act=" << E.IsActive() << " Tag=" << E.Tag() << " " << E.Name() << " " << E.ModelName() << "\n";
-	os << "   ";  E.OutInfo(os);  os << "\n";
-	for (size_t i=0; i<E.NNodes(); ++i)
-		if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
+	//os << "[" << E.GetID() << "] Act=" << E.IsActive() << " Tag=" << E.Tag() << " " << E.Name() << " " << E.ModelName() << "\n";
+	//os << "   ";  E.OutInfo(os);  os << "\n";
+	//for (size_t i=0; i<E.NNodes(); ++i)
+		//if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
 	return os;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
-
-
-// Define a pointer to a function that makes (allocate) a new element
-typedef Element * (*ElementMakerPtr)();
-
-// Typdef of the array map that contains all the pointers to the functions that makes elements
-typedef std::map<String, ElementMakerPtr, std::less<String> > ElementFactory_t;
-
-// Instantiate the array map that contains all the pointers to the functions that makes elements
-ElementFactory_t ElementFactory;
-
-// Allocate a new element according to a string giving the name of the element
-Element * AllocElement(char const * ElementName)
-{
-	ElementMakerPtr ptr=NULL;
-	ptr = ElementFactory[ElementName];
-	if (ptr==NULL)
-		throw new Fatal(_("FEM::AllocElement: There is no < %s > implemented in this library"), ElementName);
-
-	return (*ptr)();
-}
-
 }; // namespace FEM
-
-
-#ifdef USE_BOOST_PYTHON
-// {
-
-namespace BPy = boost::python;
-class PyElem
-{
-public:
-	                     PyElem   (FEM::Element * ptElem) : _elem(ptElem)                               { }
-	long                 GetID    ()                                                              const { return _elem->GetID();   }
-	int                  Tag      ()                                                              const { return _elem->Tag();     }
-	bool                 IsActive ()                                                              const { return _elem->IsActive();}
-	size_t               NNodes   ()                                                              const { return _elem->NNodes();  }
-	FEM::Node const    & Nod      (size_t i)                                                      const { return (*_elem->Nod(i)); }
-	PyElem             & Connect  (int iNodeLocal, FEM::Node & refNode)                                 { _elem->Connect  (iNodeLocal, &refNode); return (*this); }
-	PyElem             & SetModel (BPy::str const & Name, BPy::str const & Prms, BPy::str const & Inis) { _elem->SetModel (BPy::extract<char const *>(Name)(), BPy::extract<char const *>(Prms)(), BPy::extract<char const *>(Inis)()); return (*this); }
-	PyElem             & SetProps (BPy::str const & Props)                                              { _elem->SetProps (BPy::extract<char const *>(Props)()); return (*this); }
-	PyElem             & EdgeBry  (BPy::str const & Key, double Value, int EdgeLocalID)                 { _elem->EdgeBry  (BPy::extract<char const *>(Key)(), Value, EdgeLocalID); return (*this); }
-	PyElem             & FaceBry  (BPy::str const & Key, double Value, int FaceLocalID)                 { _elem->FaceBry  (BPy::extract<char const *>(Key)(), Value, FaceLocalID); return (*this); }
-	double               Val1     (int iNodeLocal, BPy::str const & Name)                               { return _elem->Val(iNodeLocal, BPy::extract<char const *>(Name)()); }
-	double               Val2     (                BPy::str const & Name)                               { return _elem->Val(            BPy::extract<char const *>(Name)()); }
-	FEM::Element const * GetElem  ()                                                              const { return _elem; }
-	void CalcDepsVars() const { _elem->CalcDepVars(); }
-	bool HasExtra () const { return _elem->HasExtra(); }
-	void OutExtra (BPy::dict & Coords, BPy::list & Norm, BPy::dict & Values) const
-	{
-		Matrix<double> coords;
-		Vector<double> norm;
-		Matrix<double> values;
-		Array<String>  labels;
-		_elem->OutExtra (coords, norm, values, labels);
-
-		// Coords
-		BPy::list X;
-		BPy::list Y;
-		for (int i=0; i<coords.Rows(); ++i)
-		{
-			X.append (coords(i,0));
-			Y.append (coords(i,1));
-		}
-		Coords['X'] = X;
-		Coords['Y'] = Y;
-
-		// Norm
-		Norm.append (norm(0));
-		Norm.append (norm(1));
-
-		// Values
-		for (int j=0; j<values.Cols(); ++j)
-		{
-			BPy::list vals;
-			for (int i=0; i<values.Rows(); ++i) vals.append (values(i,j));
-			Values[labels[j].CStr()] = vals;
-		}
-	}
-private:
-	FEM::Element * _elem;
-}; // class PyElement
-
-std::ostream & operator<< (std::ostream & os, PyElem const & E) { if (E.GetElem()!=NULL) os<<(*E.GetElem()); return os; }
-
-// }
-#endif // USE_BOOST_PYTHON
-
 
 #endif // MECHSYS_FEM_ELEMENT
