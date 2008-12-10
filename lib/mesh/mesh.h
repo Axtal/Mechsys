@@ -84,13 +84,14 @@ struct Share
 
 struct Vertex
 {
-	long              MyID;    ///< ID
-	bool              OnBry;   ///< Is on boundary?
-	TinyVector<int,3> EdgesID; ///< Local indexes (3) of what edges this vertex is located on (from 0 to 12). -1 => Not on boundary
-	TinyVector<int,3> FacesID; ///< Local indexes (3) of what faces this vertex is located on (from 0 to 6) . -1 => Not on boundary
-	bool              Dupl;    ///< Is this a duplicated node?
-	Vector<double>    C;       ///< X, Y, and Z coordinates
-	Array<Share>      Shares;  ///< Shared elements
+	long              MyID;     ///< ID
+	int               BlockNum; ///< Number of the parent block (in structured meshes only)
+	bool              OnBry;    ///< Is on boundary?
+	TinyVector<int,3> EdgesID;  ///< Local indexes (3) of what edges this vertex is located on (from 0 to 12). -1 => Not on boundary
+	TinyVector<int,3> FacesID;  ///< Local indexes (3) of what faces this vertex is located on (from 0 to 6) . -1 => Not on boundary
+	bool              Dupl;     ///< Is this a duplicated node?
+	Vector<double>    C;        ///< X, Y, and Z coordinates
+	Array<Share>      Shares;   ///< Shared elements
 };
 
 struct Elem

@@ -146,6 +146,7 @@ public:
 	double Wx         (int iDiv) const { return _wx[iDiv];     }
 	double Wy         (int iDiv) const { return _wy[iDiv];     }
 	double Wz         (int iDiv) const { return _wz[iDiv];     }
+	double Diagonal   ()         const;
 
 	/* Find in which edge a vertex will be located, for given the indexes
 	 * of the natural coordinates corresponding to each division.
@@ -379,6 +380,12 @@ inline void Block::SetNz(size_t Nz, double Az, bool NonLin)
 	if (NonLin) for (size_t i=0; i<Nz; ++i) _wz[i] = pow(i+1.0,Az);
 	else        for (size_t i=0; i<Nz; ++i) _wz[i] = 1.0+Az*i;
 	_set_wz();
+}
+
+inline double Block::Diagonal() const
+{
+	if (_is_3d) return sqrt(pow(_c(0,6)-_c(0,0),2.0)+pow(_c(1,6)-_c(1,0),2.0)+pow(_c(2,6)-_c(2,0),2.0));
+	else        return sqrt(pow(_c(0,2)-_c(0,0),2.0)+pow(_c(1,2)-_c(1,0),2.0));
 }
 
 inline void Block::FindLocalEdgesFacesID(int i, int j, int k, Vertex * V) const
@@ -888,6 +895,7 @@ inline size_t Structured::Generate(bool WithInfo)
 	_s.Resize((_is_3d ? 20 : 8)); // resize the shape values vector
 
 	// Generate vertices and elements (with duplicates)
+	double min_diagonal = _bls[0]->Diagonal(); // minimum diagonal among all elements
 	for (size_t b=0; b<_bls.Size(); ++b)
 	{
 		// Check if all blocks have the same space dimension
@@ -914,10 +922,11 @@ inline size_t Structured::Generate(bool WithInfo)
 					else        _shape_2d (r,s);
 
 					// New vertex
-					Vertex * v = new Vertex;
-					v->MyID = _verts_d.Size();                  // id
-					v->C    = _bls[b]->C() * _s;              // new x-y-z coordinates
-					v->Dupl = false;                            // is this a duplicated node?
+					Vertex  * v = new Vertex;
+					v->MyID     = _verts_d.Size();            // id
+					v->BlockNum = b;                          // block number (used when removing duplicates)
+					v->C        = _bls[b]->C() * _s;          // new x-y-z coordinates
+					v->Dupl     = false;                      // is this a duplicated node?
 					_bls[b]->FindLocalEdgesFacesID(i,j,k, v); // check if it is on boundary and find EdgesID where this vertex is located on
 					_verts_d.Push(v);
 					if (v->OnBry) _verts_d_bry.Push(v); // array with vertices on boundary
@@ -932,10 +941,11 @@ inline size_t Structured::Generate(bool WithInfo)
 						{
 							if (_is_3d) _shape_3d ((r_before+r)/2.0,s,t);
 							else        _shape_2d ((r_before+r)/2.0,s);
-							v1 = new Vertex;
-							v1->MyID = _verts_m1.Size();
-							v1->C    = _bls[b]->C() * _s;
-							v1->Dupl = false;
+							v1           = new Vertex;
+							v1->MyID     = _verts_m1.Size();
+							v1->BlockNum = b;
+							v1->C        = _bls[b]->C() * _s;
+							v1->Dupl     = false;
 							if (i==_bls[b]->nDivX()) _bls[b]->FindLocalEdgesFacesID(i-1,j,k, v1);
 							else                     _bls[b]->FindLocalEdgesFacesID(i,  j,k, v1);
 							_verts_m1.Push(v1);
@@ -945,10 +955,11 @@ inline size_t Structured::Generate(bool WithInfo)
 						{
 							if (_is_3d) _shape_3d (r,(s_before+s)/2.0,t);
 							else        _shape_2d (r,(s_before+s)/2.0);
-							v2 = new Vertex;
-							v2->MyID = _verts_m2.Size();
-							v2->C    = _bls[b]->C() * _s;
-							v2->Dupl = false;
+							v2           = new Vertex;
+							v2->MyID     = _verts_m2.Size();
+							v2->BlockNum = b;
+							v2->C        = _bls[b]->C() * _s;
+							v2->Dupl     = false;
 							if (j==_bls[b]->nDivY()) _bls[b]->FindLocalEdgesFacesID(i,j-1,k, v2);
 							else                     _bls[b]->FindLocalEdgesFacesID(i,j,  k, v2);
 							_verts_m2.Push(v2);
@@ -957,10 +968,11 @@ inline size_t Structured::Generate(bool WithInfo)
 						if (k!=0)
 						{
 							if (_is_3d) _shape_3d (r,s,(t_before+t)/2.0);
-							v3 = new Vertex;
-							v3->MyID = _verts_m3.Size();
-							v3->C    = _bls[b]->C() * _s;
-							v3->Dupl = false;
+							v3           = new Vertex;
+							v3->MyID     = _verts_m3.Size();
+							v3->BlockNum = b;
+							v3->C        = _bls[b]->C() * _s;
+							v3->Dupl     = false;
 							if (k==_bls[b]->nDivZ()) _bls[b]->FindLocalEdgesFacesID(i,j,k-1, v3);
 							else                     _bls[b]->FindLocalEdgesFacesID(i,j,k,   v3);
 							_verts_m3.Push(v3);
@@ -969,11 +981,12 @@ inline size_t Structured::Generate(bool WithInfo)
 					}
 
 					// New element
+					double diagonal = 0.0; // element diagonal
 					if (i!=0 && j!=0 && (_is_3d ? k!=0 : true))
 					{
 						Elem * e = new Elem;
-						e->MyID = _elems.Size();    // id
-						e->Tag  = _bls[b]->Tag(); // tag
+						e->MyID     = _elems.Size();  // id
+						e->Tag      = _bls[b]->Tag(); // tag
 						if (_is_3d)
 						{
 							// connectivity
@@ -1013,6 +1026,10 @@ inline size_t Structured::Generate(bool WithInfo)
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry || e->V[4]->OnBry || e->V[5]->OnBry || e->V[6]->OnBry || e->V[7]->OnBry); // if any node is on Bry, yes
 							// VTK cell type
 							e->VTKCellType = (_is_o2 ? VTK_QUADRATIC_HEXAHEDRON : VTK_HEXAHEDRON);
+							// Diagonal
+							diagonal = sqrt(pow(e->V[6]->C(0) - e->V[0]->C(0),2.0)+
+							                pow(e->V[6]->C(1) - e->V[0]->C(1),2.0)+
+							                pow(e->V[6]->C(2) - e->V[0]->C(2),2.0));
 						}
 						else
 						{
@@ -1039,6 +1056,9 @@ inline size_t Structured::Generate(bool WithInfo)
 							e->OnBry = (e->V[0]->OnBry || e->V[1]->OnBry || e->V[2]->OnBry || e->V[3]->OnBry); // if any node is on Bry, yes
 							// VTK cell type
 							e->VTKCellType = (_is_o2 ? VTK_QUADRATIC_QUAD : VTK_QUAD);
+							// Diagonal
+							diagonal = sqrt(pow(e->V[2]->C(0) - e->V[0]->C(0),2.0)+
+							                pow(e->V[2]->C(1) - e->V[0]->C(1),2.0));
 						}
 						if (e->OnBry)
 						{
@@ -1046,6 +1066,8 @@ inline size_t Structured::Generate(bool WithInfo)
 							_bls[b]->ApplyTags(e); // apply tags to edges and faces of this element with boundary tags
 						}
 						_elems.Push(e); // array with all elements
+						// Minimum diagonal
+						if (diagonal<min_diagonal) min_diagonal = diagonal;
 					}
 					// Next r
 					r_before = r;
@@ -1064,37 +1086,41 @@ inline size_t Structured::Generate(bool WithInfo)
 	// Remove duplicates
 	long ncomp = 0; // number of comparisons
 	long ndupl = 0; // number of duplicates
+	double tol = min_diagonal*0.001; // tolerance decide whether two vertices are coincident or not
 	if (_bls.Size()>1)
 	{
 		for (size_t i=0; i<_verts_d_bry.Size(); ++i)
 		{
 			for (size_t j=i+1; j<_verts_d_bry.Size(); ++j)
 			{
-				// check distance
-				double dist = sqrt(          pow(_verts_d_bry[i]->C(0)-_verts_d_bry[j]->C(0),2.0)+
-											 pow(_verts_d_bry[i]->C(1)-_verts_d_bry[j]->C(1),2.0)+
-								   (_is_3d ? pow(_verts_d_bry[i]->C(2)-_verts_d_bry[j]->C(2),2.0) : 0.0));
-				if (dist<_tol)
+				if (_verts_d_bry[i]->BlockNum!=_verts_d_bry[j]->BlockNum) // Vertices are located on different blocks
 				{
-					/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
-					// If this node is duplicated, than it is not on-boundary any longer
-					_verts_d_bry[i]->OnBry = false;
-					*/
-					// Mark duplicated
-					if (_verts_d_bry[j]->Dupl==false) // vertex not tagged as duplicated yet
+					// check distance
+					double dist = sqrt(          pow(_verts_d_bry[i]->C(0)-_verts_d_bry[j]->C(0),2.0)+
+					                             pow(_verts_d_bry[i]->C(1)-_verts_d_bry[j]->C(1),2.0)+
+					                   (_is_3d ? pow(_verts_d_bry[i]->C(2)-_verts_d_bry[j]->C(2),2.0) : 0.0));
+					if (dist<tol)
 					{
-					   	ndupl++; 
-						_verts_d_bry[j]->Dupl = true;
-						// Chage elements' connectivities
-						for (size_t k=0; k<_verts_d_bry[j]->Shares.Size(); ++k)
+						/* TODO: this is wrong, since corner nodes can be duplicated and are still on boundary
+						// If this node is duplicated, than it is not on-boundary any longer
+						_verts_d_bry[i]->OnBry = false;
+						*/
+						// Mark duplicated
+						if (_verts_d_bry[j]->Dupl==false) // vertex not tagged as duplicated yet
 						{
-							Elem * e = _verts_d_bry[j]->Shares[k].E;
-							int    n = _verts_d_bry[j]->Shares[k].N;
-							e->V[n] = _verts_d_bry[i];
+							ndupl++;
+							_verts_d_bry[j]->Dupl = true;
+							// Chage elements' connectivities
+							for (size_t k=0; k<_verts_d_bry[j]->Shares.Size(); ++k)
+							{
+								Elem * e = _verts_d_bry[j]->Shares[k].E;
+								int    n = _verts_d_bry[j]->Shares[k].N;
+								e->V[n] = _verts_d_bry[i];
+							}
 						}
 					}
+					ncomp++;
 				}
-				ncomp++;
 			}
 		}
 	}
@@ -1173,6 +1199,7 @@ inline size_t Structured::Generate(bool WithInfo)
 		else        std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 		std::cout << "[1;35m    Number of comparisons = " << ncomp         << "[0m\n";
 		std::cout << "[1;35m    Number of duplicates  = " << ndupl         << "[0m\n";
+		std::cout << "[1;35m    Minimum diagonal      = " << min_diagonal  << "[0m\n";
 		std::cout << "[1;32m    Number of elements    = " << _elems.Size() << "[0m" << std::endl;
 	}
 
