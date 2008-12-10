@@ -493,7 +493,7 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
                         BPy::dict const & Verts,   // {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... (4)8 or (8)20 vertices]
                         BPy::list const & Edges,   // [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
                         BPy::dict const & ETags,   // {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags} v# => vertex number
-                        BPy::dict const & FTags,   // {(e1,e2..e12):tag1, (e1,e2..e12):tag2, ... num faces with tags} e# => edge number
+                        BPy::dict const & FTags,   // {(v1,v2..v8):tag1, (v1,v2..v8):tag2, ... num faces with tags} v# => edge number (sorted)
                         BPy::list const & Wx,      // Weights along x
                         BPy::list const & Wy,      // Weights along y
                         BPy::list const & Wz,      // Weights along z
@@ -755,8 +755,9 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 	_has_etags = (net>0 ? true : false);
 	for (int i=0; i<net; ++i)
 	{
-		BPy::tuple ed = BPy::extract<BPy::tuple>(ETags.keys()[i])();
-		size_t eid = tree.GetEdge (BPy::extract<long>(ed[0])(), BPy::extract<long>(ed[1])());
+		BPy::tuple const & verts = BPy::extract<BPy::tuple>(ETags.keys()[i])();
+		if (BPy::len(verts)<2) throw new Fatal("Block::SetCoords: Each edge tag list must have at least 2 vertices IDs defining an edge");
+		size_t eid = tree.GetEdge (BPy::extract<long>(verts[0])(), BPy::extract<long>(verts[1])());
 		_etags(eg2l[eid]) = BPy::extract<int>(ETags.values()[i])();
 	}
 
@@ -766,21 +767,36 @@ void Block::PySetCoords(int               Tag,     // Tag to be replicated to el
 		_has_ftags = (nft>0 ? true : false);
 		for (int i=0; i<nft; ++i)
 		{
-			BPy::tuple fa = BPy::extract<BPy::tuple>(FTags.keys()[i])();
-			long ed0 = eg2l[BPy::extract<long>(fa[0])()];
-			long ed1 = eg2l[BPy::extract<long>(fa[1])()];
-			long ed2 = eg2l[BPy::extract<long>(fa[2])()];
-			int  sum[6] = { 0,0,0,0,0,0 };
-			sum[Edge2Face[ed0].L] += 1;   sum[Edge2Face[ed0].R] += 1;
-			sum[Edge2Face[ed1].L] += 1;   sum[Edge2Face[ed1].R] += 1;
-			sum[Edge2Face[ed2].L] += 1;   sum[Edge2Face[ed2].R] += 1;
-			for (int j=0; j<6; ++j)
+			// face tag
+			int ftag = BPy::extract<int>(FTags.values()[i])();
+			// vertices on the face
+			BPy::tuple const & verts = BPy::extract<BPy::tuple>(FTags.keys()[i])();
+			if (BPy::len(verts)<4) throw new Fatal("Block::SetCoords: Each face tag list must have at least 4 vertices IDs defining a face");
+			// 3 edges defining the face
+			long eid0 = eg2l[ tree.GetEdge (BPy::extract<long>(verts[0])(), BPy::extract<long>(verts[1])()) ];
+			long eid1 = eg2l[ tree.GetEdge (BPy::extract<long>(verts[1])(), BPy::extract<long>(verts[2])()) ];
+			long eid2 = eg2l[ tree.GetEdge (BPy::extract<long>(verts[2])(), BPy::extract<long>(verts[3])()) ];
+			// find face given 3 edges
+			int  sum[6] = { 0,0,0,0,0,0 }; // number of edges defining each face
+			sum[Edge2Face[eid0].L] += 1;   sum[Edge2Face[eid0].R] += 1;
+			sum[Edge2Face[eid1].L] += 1;   sum[Edge2Face[eid1].R] += 1;
+			sum[Edge2Face[eid2].L] += 1;   sum[Edge2Face[eid2].R] += 1;
+			bool found = false; // found face with edges eid0,eid1,eid2 ?
+			for (int j=0; j<6; ++j) // loop over face local IDs
 			{
-				if (sum[j]==3) // found
+				if (sum[j]==3) // found face
 				{
-					_ftags(j) = BPy::extract<int>(FTags.values()[i])();
+					_ftags(j) = ftag;
+					found     = true;
 					break;
 				}
+			}
+			if (found==false)
+			{
+				String buffer;
+				for (int j=0; j<BPy::len(verts); ++j)
+					buffer.Printf("%s,%d", buffer.CStr(), BPy::extract<long>(verts[i])());
+				throw new Fatal("Block::SetCoords: Could not find face with vertices (%s) and ftag==%d in block with blktag==%d", buffer.CStr(), ftag, Tag);
 			}
 		}
 	}

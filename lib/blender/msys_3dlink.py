@@ -107,10 +107,9 @@ if di.key('show_props'):
                 if di.key('show_ftags'):
                     if obj.properties.has_key('ftags'):
                         for k, v in obj.properties['ftags'].iteritems():
-                            ids      = [int(id) for id in k.split('_')]
-                            eds, vds = di.sort_edges_and_verts (msh, ids, msh.edges[ids[0]].v1.index) # will erase ids
-                            cen      = msh.verts[vds[0]].co/len(eds)
-                            for i in range(1,len(eds)): cen += msh.verts[vds[i]].co/len(eds)
+                            vids = [int(vid) for vid in k.split('_')]
+                            cen  = msh.verts[vids[0]].co/len(vids)
+                            for i in range(1,len(vids)): cen += msh.verts[vids[i]].co/len(vids)
                             BGL.glColor3f     (0.0, 0.0, 0.0)
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
                             Draw.Text         (str(v))

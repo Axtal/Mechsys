@@ -118,14 +118,16 @@ def gen_frame_mesh(txt=None):
 # =========================================================================== Structured mesh
 
 @print_timing
-def gen_struct_mesh(gen_script=False,txt=None):
-    if gen_script: Blender.Window.WaitCursor(1)
+def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False):
+    if show_cursor: Blender.Window.WaitCursor(1)
 
     # get active object
     edm, obj, msh = di.get_msh()
 
     # check for blocks
-    if not obj.properties.has_key('blks'): raise Exception('Please, assign blocks first')
+    if not obj.properties.has_key('blks'):
+        if edm: Blender.Window.EditMode(1)
+        raise Exception('Please, assign blocks first')
 
     # 3D mesh? Quadratic elements ?
     is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
@@ -192,14 +194,13 @@ def gen_struct_mesh(gen_script=False,txt=None):
         ftags = {}
         if is3d and obj.properties.has_key('ftags'):
             for m, n in obj.properties['ftags'].iteritems():
-                # tags
-                eds = [int(eid) for eid in m.split('_')]
+                vids = [int(vid) for vid in m.split('_')]
                 face_is_in_block = True
-                for i in eds:
-                    if not i in eids:
+                for vid in vids:
+                    if not vid in verts:
                         face_is_in_block = False
                         break
-                if face_is_in_block: ftags[tuple(eds)] = n
+                if face_is_in_block: ftags[tuple(vids)] = n
 
         # new block
         if gen_script:
@@ -232,7 +233,6 @@ def gen_struct_mesh(gen_script=False,txt=None):
         if is3d: txt.write('mesh = ms.mesh_structured(True) # True=>3D\n')
         else:    txt.write('mesh = ms.mesh_structured(False) # False=>2D\n')
         if iso2: txt.write('mesh.set_o2     (True) # True=>Quadratic elements\n')
-        txt.write('mesh.set_tol    (1.0e-4)\n')
         txt.write('mesh.set_blocks (bks)\n')
         txt.write('mesh.generate   (True) # True=>WithInfo\n')
         Blender.Window.WaitCursor(0)
@@ -241,18 +241,18 @@ def gen_struct_mesh(gen_script=False,txt=None):
         if len(bks)>0:
             mesh = ms.mesh_structured (is3d)
             if iso2: mesh.set_o2      (True)
-            mesh.set_tol    (1.0e-4)
             mesh.set_blocks (bks)
             mesh.generate   (True)
             print
+            if show_cursor: Blender.Window.WaitCursor(0)
             return mesh
 
 
 # ========================================================================= Unstructured mesh
 
 @print_timing
-def gen_unstruct_mesh(gen_script=False,txt=None):
-    if gen_script: Blender.Window.WaitCursor(1)
+def gen_unstruct_mesh(gen_script=False,txt=None,show_cursor=True):
+    if show_cursor: Blender.Window.WaitCursor(1)
 
     # get active object
     edm, obj, msh = di.get_msh()
@@ -360,6 +360,7 @@ def gen_unstruct_mesh(gen_script=False,txt=None):
         if mina>0: mesh.set_min_angle_global (mina)
         mesh.generate (True)
         print
+        if show_cursor: Blender.Window.WaitCursor(0)
         return mesh
 
 

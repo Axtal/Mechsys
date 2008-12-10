@@ -61,6 +61,7 @@ def load_dict():
         # MESH
         dict['newetag']       = -50
         dict['newftag']       = -500
+        dict['hide_mesh']     = False
         # FEM
         dict['show_reinfs']   = True  # show reinforcements
         dict['show_lines']    = True  # show linear elements

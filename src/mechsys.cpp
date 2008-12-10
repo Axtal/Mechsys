@@ -121,7 +121,6 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	class_<Mesh::Structured, bases<Mesh::Generic> >("mesh_structured","Class to generate structured meshes",init<bool>())
 	    .def("set_blocks", &Mesh::Structured::PySetBlocks)
-	    .def("set_tol",    &Mesh::Structured::SetTol)
 	    .def("generate",   &Mesh::Structured::Generate, MS_Generate())
 	    .def(self_ns::str(self))
 	    ;
