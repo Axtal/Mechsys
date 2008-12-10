@@ -396,8 +396,8 @@ def cb_over(evt,val):
                 w4 = v1+t4*uu
                 if ((v3-w3).length<CLOSE_VERT_TOL) and ((v4-w4).length<CLOSE_VERT_TOL): # parallel at the same supporting line
                     if (t3>0.0 and t3<1.0) or (t4>0.0 and t4<1.0): # overlapping
-                        over.append(i)
-                        over.append(j)
+                        if not i in over: over.append(i)
+                        if not j in over: over.append(j)
         if len(over)>0:
             obj.properties['over'] = over
             Blender.Draw.PupMenu('Found %d overlapping edges'%len(over))
