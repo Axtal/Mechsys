@@ -180,6 +180,17 @@ def try_catch(func):
             Blender.Draw.PupMenu('ERROR|'+msg)
     return wrapper
 
+def delete_mesh():
+    obj = di.get_obj()
+    if obj.properties.has_key('msh_name'):
+        old_msh = bpy.data.objects[obj.properties['msh_name']]
+        scn     = bpy.data.scenes.active
+        scn.objects.unlink (old_msh)
+        obj.properties.pop('mesh_type')
+        obj.properties.pop('msh_name')
+        obj.properties.pop('elems')
+        if obj.properties.has_key('res'): obj.properties.pop('res')
+
 # Handle button events
 @try_catch
 def button_event(evt):
@@ -239,29 +250,23 @@ def button_event(evt):
         sel           = di.get_selected_edges(msh)
         nedges        = len(sel)
         if nedges==3 or nedges==6 or nedges==4 or nedges==8:
-            eids = '_'.join([str(eid) for eid in sel])
-            di.props_set_with_tag ('ftags', eids, tag, di.key('newftag'))
-        else: raise Exception('To set a face tag (FTAG), 3, 4, 6, or 8 edges must be selected')
+            eds, vds = di.sort_edges_and_verts (msh, sel, msh.edges[sel[0]].v1.index) # will erase sel
+            vids = '_'.join([str(vid) for vid in vds])
+            di.props_set_with_tag ('ftags', vids, tag, di.key('newftag'))
+        else:
+            if edm: Blender.Window.EditMode(1)
+            raise Exception('To set a face tag (FTAG), 3, 4, 6, or 8 edges must be selected')
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1)
 
     elif evt==EVT_MESH_DELALLETAGS: di.props_del_all_tags('etags')
     elif evt==EVT_MESH_DELALLFTAGS: di.props_del_all_tags('ftags')
     elif evt==EVT_MESH_DELMESH:
-        obj = di.get_obj()
-        if obj.properties.has_key('msh_name'):
-            msg = 'Confirm delete mesh?%t|Yes'
-            res = Blender.Draw.PupMenu(msg)
-            if res>0:
-                old_msh = bpy.data.objects[obj.properties['msh_name']]
-                scn     = bpy.data.scenes.active
-                scn.objects.unlink (old_msh)
-                obj.properties.pop('mesh_type')
-                obj.properties.pop('msh_name')
-                obj.properties.pop('elems')
-                if obj.properties.has_key('res'): obj.properties.pop('res')
-                Blender.Window.QRedrawAll()
-
+        msg = 'Confirm delete mesh?%t|Yes'
+        res = Blender.Draw.PupMenu(msg)
+        if res>0:
+            delete_mesh()
+            Blender.Window.QRedrawAll()
 
     # ---------------------------------------------------------------------------------- Materials
 
@@ -279,11 +284,11 @@ def button_event(evt):
     elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
     elif evt==EVT_MESH_GENSTRU:
         obj  = di.get_obj()
-        mesh = me.gen_struct_mesh()
+        mesh = me.gen_struct_mesh(False,None,True)
         me.add_mesh (obj, mesh, 'struct')
     elif evt==EVT_MESH_GENSTRUS:
         obj = di.get_obj()
-        txt = me.gen_struct_mesh(True)
+        txt = me.gen_struct_mesh(True,None,True)
         txt.write('obj = bpy.data.objects["'+obj.name+'"]\n')
         txt.write('me.add_mesh     (obj, mesh, "struct")\n')
 
@@ -295,11 +300,11 @@ def button_event(evt):
     elif evt==EVT_MESH_DELALLHOLS: di.props_del_all ('hols')
     elif evt==EVT_MESH_GENUNSTRU:
         obj  = di.get_obj()
-        mesh = me.gen_unstruct_mesh()
+        mesh = me.gen_unstruct_mesh(False,None,True)
         me.add_mesh (obj, mesh, 'unstruct')
     elif evt==EVT_MESH_GENUNSTRUS:
         obj = di.get_obj()
-        txt = me.gen_unstruct_mesh(True)
+        txt = me.gen_unstruct_mesh(True,None,True)
         txt.write('obj = bpy.data.objects["'+obj.name+'"]\n')
         txt.write('me.add_mesh           (obj, mesh, "unstruct")\n')
 
@@ -405,6 +410,15 @@ def cb_over(evt,val):
     else:
         if obj.properties.has_key('over'): obj.properties.pop('over')
     Blender.Window.QRedrawAll()
+@try_catch
+def cb_hide_mesh(evt,val):
+    obj = di.get_obj()
+    if obj.properties.has_key('msh_name'):
+        msh_obj = bpy.data.objects[obj.properties['msh_name']]
+        if val: msh_obj.layers = []
+        else:   msh_obj.layers = [1]
+        di.set_key('hide_mesh', val)
+        Blender.Window.QRedrawAll()
 
 # ---------------------------------- CAD
 
@@ -423,7 +437,12 @@ def cb_fillet_stp(evt,val): di.set_key('cad_stp', val)
 @try_catch
 def cb_is3d(evt,val): di.props_set_val('is3d', val)
 @try_catch
-def cb_iso2(evt,val): di.props_set_val('iso2', val)
+def cb_iso2(evt,val):
+    msg = 'This action will delete current mesh (and results). Confirm?%t|Yes'
+    res = Blender.Draw.PupMenu(msg)
+    if res>0:
+        delete_mesh()
+        di.props_set_val('iso2', val)
 @try_catch
 def cb_frame (evt,val):
     if val==1: di.props_set_val('mesh_type', 'frame')
@@ -877,8 +896,8 @@ def gui():
         Draw.Toggle ('Nodes',      EVT_NONE, c+320, r,    60,   rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
         r -= rh
         r -= srg
-        Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 200, rh,           'Delete all properties')
-        Draw.Toggle     ('Mark overlapping edges', EVT_NONE,         c+200, r, 160, rh, markover, 'Mark overlapping edges', cb_over)
+        Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 140, rh,           'Delete all properties')
+        Draw.Toggle     ('Mark overlapping edges', EVT_NONE,         c+140, r, 160, rh, markover, 'Mark overlapping edges', cb_over)
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
@@ -924,6 +943,7 @@ def gui():
         Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 90, rh, 'Delete all edge tags')
         Draw.PushButton  ('Del all FTags', EVT_MESH_DELALLFTAGS, c+ 90, r, 90, rh, 'Delete all face tags')
         Draw.PushButton  ('Delete mesh',   EVT_MESH_DELMESH,     c+180, r, 80, rh, 'Delete current mesh')
+        Draw.Toggle      ('Hide mesh',     EVT_NONE,             c+260, r, 80, rh, d['hide_mesh'], 'Hide mesh', cb_hide_mesh)
         r -= rh
         r -= rh
 
@@ -972,8 +992,8 @@ def gui():
         gu.caption2(c,r,w,rh,'Unstructured mesh')
         r, c, w = gu.box2_in(W,cg,rh, c,r,w,h_msh_unst)
         gu.text     (c,r,'Quality:')
-        Draw.String ('q=', EVT_NONE, c+ 50, r, 80, rh, str(minang),  32, 'Set the minimum angle between edges/faces (-1 => use default)',                        cb_minang)
-        Draw.String ('a=', EVT_NONE, c+130, r, 80, rh, str(maxarea), 32, 'Set the maximum area/volume (uniform) for triangles/tetrahedrons (-1 => use default)', cb_maxarea)
+        Draw.String ('q=', EVT_NONE, c+ 50, r, 80, rh, '%g'%minang,  32, 'Set the minimum angle between edges/faces (-1 => use default)',                        cb_minang)
+        Draw.String ('a=', EVT_NONE, c+130, r, 80, rh, '%g'%maxarea, 32, 'Set the maximum area/volume (uniform) for triangles/tetrahedrons (-1 => use default)', cb_maxarea)
         r -= rh
         r -= srg
 
