@@ -807,7 +807,7 @@ inline void BiotElem::_compute_H(LinAlg::Matrix<double> & He) const
 		Jacobian  (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
 		Bp_Matrix (derivs,J, Bp);  // Calculate Bp matrix for i Integration Point
 
-		// Calculate tangent stiffness
+		// Calculate tangent permeability
 		He += -trn(Bp)*_Ke*Bp*det(J)*w/_gw;
 	}
 }
@@ -815,7 +815,7 @@ inline void BiotElem::_compute_H(LinAlg::Matrix<double> & He) const
 inline void BiotElem::_compute_Qb(LinAlg::Vector<double> & Qb) const // {{{
 {
 	//	
-	//	 Permeability Matrix Qb:
+	//	 Matrix Qb:
 	//	 ============================
 	//       
 	//                    1   /    T                   
