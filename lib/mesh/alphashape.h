@@ -122,7 +122,7 @@ inline size_t AlphaShape::Generate(double Alpha, bool Regular)
 		as.set_alpha (alp);
 
 		// Erase old mesh
-		_erase ();
+		Erase ();
 
 		// Set Vertices
 		size_t id = 0;
