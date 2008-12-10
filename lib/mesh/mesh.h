@@ -124,7 +124,7 @@ public:
 	Generic (bool Is3D) : _is_3d(Is3D), _is_o2(false) {}
 
 	// Destructor
-	virtual ~Generic () { _erase(); }
+	virtual ~Generic () { Erase(); }
 
 	// Methods
 	void WriteVTU (char const * FileName) const; ///< Write output file for ParaView
@@ -142,6 +142,8 @@ public:
 	virtual void SetElemCon  (int i, int j, size_t iVert);                          ///< Set element connectivity
 	virtual void SetElemETag (int i, int j, int Tag);                               ///< Set element's edge tag
 	virtual void SetElemFTag (int i, int j, int Tag);                               ///< Set element's face tag
+	virtual void Erase       ();                                                    ///< Erase current mesh (deallocate memory)
+
 
 	// Beams and Joints
 	void   SetETagsBeams (size_t NBeamETags, ...);                ///< Set what edge tags represent Beams
@@ -192,9 +194,6 @@ protected:
 	Array<Elem*>   _elems_bry; ///< Elements on boundary
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
 	Array<int>     _etags_beams; ///< Edge tags that represent Beams
-
-	// Private methods that MAY be overloaded
-	virtual void _erase (); ///< Erase current mesh (deallocate memory)
 
 	// Private methods
 	size_t _edge_to_lef_vert (size_t iElem, size_t EdgeLocalID) const;                        ///< Returns the local left vertex ID for a given Local Edge ID of element # iElem
@@ -432,7 +431,7 @@ inline size_t Generic::EdgeToRig (size_t iElem, size_t EdgeLocalID) const
 
 inline void Generic::SetNVerts(size_t NumVerts)
 {
-	_erase            ();
+	 Erase            ();
 	_verts.Resize     (NumVerts);
 	_verts.SetValues  (NULL);
 	_verts_bry.Resize (0);
@@ -667,7 +666,7 @@ inline size_t Generic::PyGetElems(BPy::dict & Elems) const
 
 /* private */
 
-inline void Generic::_erase()
+inline void Generic::Erase()
 {
 	for (size_t i=0; i<_verts.Size(); ++i) if (_verts[i]!=NULL) delete _verts[i]; // it is only necessary to delete nodes in _verts array
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i]; // it is only necessary to delete elems in _elems array

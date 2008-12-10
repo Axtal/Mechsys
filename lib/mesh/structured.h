@@ -238,14 +238,14 @@ class Structured : public virtual Mesh::Generic
 {
 public:
 	// Constructor
-	Structured (bool Is3D) : Mesh::Generic(Is3D), _tol(sqrt(DBL_EPSILON)) {}
+	Structured (bool Is3D) : Mesh::Generic(Is3D) {}
 
 	// Destructor
-	~Structured () { _erase(); }
+	~Structured () { Erase(); }
 
 	// Methods
+	void   Erase     ();
 	void   SetBlocks (Array<Block*> const & Blocks) { _bls = Blocks; }
-	void   SetTol    (double Tol)                   { _tol = Tol;    }
 	size_t Generate  (bool WithInfo=false); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
 
 #ifdef USE_BOOST_PYTHON
@@ -254,7 +254,6 @@ public:
 
 private:
 	// Data
-	double         _tol;         ///< Tolerance to regard two vertices as coincident
 	Array<Block*>  _bls;         ///< Blocks defining the input geometry
 	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
 	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
@@ -266,9 +265,6 @@ private:
 	// Private methods
 	void _shape_2d (double r, double s);
 	void _shape_3d (double r, double s, double t);
-
-	// Overloaded private methods
-	void _erase ();
 
 }; // class Structured
 
@@ -888,7 +884,7 @@ inline size_t Structured::Generate(bool WithInfo)
 	if (_bls.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",_bls.Size());
 
 	// Erase previous mesh
-	_erase();
+	Erase();
 
 	// Check if the first block is 3D
 	_is_3d = _bls[0]->Is3D();
@@ -1297,7 +1293,7 @@ inline void Structured::_shape_3d(double r, double s, double t)
 	_s(19) = 0.25 *(1.0-r)  *(1.0+s)  *(1.0-t*t);
 }
 
-inline void Structured::_erase()
+inline void Structured::Erase()
 {
 	for (size_t i=0; i<_verts_d .Size(); ++i) if (_verts_d [i]!=NULL) delete _verts_d [i]; // it is only necessary to delete nodes in _verts_d array
 	for (size_t i=0; i<_verts_m1.Size(); ++i) if (_verts_m1[i]!=NULL) delete _verts_m1[i]; // it is only necessary to delete nodes in _verts_m1 array
