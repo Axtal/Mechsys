@@ -32,8 +32,9 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad4pstrain.h"
-#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -106,13 +107,13 @@ int main(int argc, char **argv) try
 		FEM::EAtts_T eatts;
 		if (is_o2)
 		{
-			eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-			eatts.Push (make_tuple(-2, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+			eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+			eatts.Push (make_tuple(-2, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 		}
 		else
 		{
-			eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-			eatts.Push (make_tuple(-2, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+			eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+			eatts.Push (make_tuple(-2, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 		}
 
 		// Set geometry: nodes, elements, attributes, and boundaries
@@ -126,9 +127,9 @@ int main(int argc, char **argv) try
 		ebrys.Push           (make_tuple(-10, "ux", 0.0));
 		ebrys.Push           (make_tuple(-11, "uy", 0.0));
 		dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
-		dat.ApplyBodyForces    ();
+		dat.AddVolForces();
 		sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-		dat.ClearDisplacements ();
+		dat.ClearDisp();
 
 		// Stage # 0 ---------------------------------------------------------------
 		dat.Activate         (/*Tag*/-2);
@@ -198,13 +199,13 @@ int main(int argc, char **argv) try
 		FEM::EAtts_T eatts;
 		if (is_o2)
 		{
-			eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-			//eatts.Push (make_tuple(-2, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+			eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+			//eatts.Push (make_tuple(-2, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 		}
 		else
 		{
-			eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-			//eatts.Push (make_tuple(-2, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+			eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+			//eatts.Push (make_tuple(-2, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 		}
 
 		// Set geometry: nodes, elements, attributes, and boundaries
@@ -219,7 +220,7 @@ int main(int argc, char **argv) try
 		ebrys.Push           (make_tuple(-11, "uy", 0.0));
 		dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
 		sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-		dat.ClearDisplacements ();
+		dat.ClearDisp();
 
 		// Stage # 0 ---------------------------------------------------------------
 		Array<int> Conn;
@@ -228,7 +229,7 @@ int main(int argc, char **argv) try
 		size_t n2 = dat.PushNode(12.0, 8.0);
 		size_t n3 = dat.PushNode( 0.0, 8.0);
 		Conn.Push(n0); Conn.Push(n1); Conn.Push(n2); Conn.Push(n3);
-		dat.PushElem(0, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true, Conn);
+		dat.PushElem(0, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true, Conn);
 		dat.Nod(n2)->Bry("ux",0.0);
 		dat.Nod(n3)->Bry("ux",0.0);
 			
@@ -236,7 +237,7 @@ int main(int argc, char **argv) try
 		ebrys.Push         (make_tuple(-10, "ux", 0.0));
 		ebrys.Push         (make_tuple(-11, "uy", 0.0));
 		dat.SetBrys        (&mesh, NULL, &ebrys, NULL);
-		dat.ApplyBodyForces    ();
+		dat.AddVolForces();
 		sol.SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
 
 	}

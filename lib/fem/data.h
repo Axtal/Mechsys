@@ -533,7 +533,7 @@ inline size_t Data::GetNode(double X, double Y, double Z)
 	for (size_t i=0; i<_nodes.Size(); i++)
 	{
 		if( _nodes[i]->X()==X && _nodes[i]->Y()==Y && _nodes[i]->Z()==Z) return i;
-		std::cout << _nodes[i]->X() << " " << _nodes[i]->Y() << " " << _nodes[i]->Z();
+	//	std::cout << _nodes[i]->X() << " " << _nodes[i]->Y() << " " << _nodes[i]->Z();
 	}
 	throw new Fatal("Data::GetNode: Node not found (%g, %g, %g)", X, Y, Z);
 }

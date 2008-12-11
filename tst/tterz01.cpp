@@ -22,7 +22,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad4biot.h" // << plane strain
+#include "fem/elems/quad4.h" // << plane strain
+#include "fem/biotelem.h" // << plane strain
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -114,8 +115,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8Biot", "", prms.CStr(), "ZERO", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "", prms.CStr(), "ZERO", "", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);
