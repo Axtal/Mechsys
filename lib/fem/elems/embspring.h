@@ -46,7 +46,7 @@ public:
 	void   Order1Matrix (size_t Index, Mat_t & Ke) const; ///< Stiffness
 	void   B_Matrix     (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
 	int    VTKCellType  () const { return VTK_POLY_VERTEX; }
-	void   VTKConnect   (String & Nodes) const;
+	void   VTKConn   (String & Nodes) const;
 	void   OutInfo(std::ostream & os) const;
 	
 
@@ -291,7 +291,7 @@ inline void EmbSpring::OutInfo(std::ostream & os) const
 {
 }
 
-inline void EmbSpring::VTKConnect(String & Nodes) const 
+inline void EmbSpring::VTKConn(String & Nodes) const 
 { 
 	std::ostringstream os;
 	for(size_t i=0; i<Conn.Size(); i++)

@@ -112,7 +112,7 @@ inline void Tri6::SetIPs(int NIPsTotal)
 	NFIPs = 2;
 }
 
-inline void Tri6::VTKConnect(String & Nodes) const
+inline void Tri6::VTKConn(String & Nodes) const
 {
 	Nodes.Printf("%d %d %d %d %d %d",Conn[0]->GetID(),
 	                                 Conn[1]->GetID(),

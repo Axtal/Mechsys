@@ -48,7 +48,7 @@ public:
 	void   Order1Matrix (size_t Index, Mat_t & Ke) const; ///< Stiffness
 	void   B_Matrix     (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
 	int    VTKCellType  () const { return VTK_LINE; }
-	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
+	void   VTKConn   (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
 
 	// Methods
 	double N(double l) const; ///< Axial force (0 < l < 1) (Must be used after CalcDepVars())

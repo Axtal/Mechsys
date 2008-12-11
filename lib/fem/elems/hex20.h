@@ -132,7 +132,7 @@ inline void Hex20::SetIPs(int NumGaussPoints1D)
 }
 
 
-inline void Hex20::VTKConnect(String & Nodes) const
+inline void Hex20::VTKConn(String & Nodes) const
 {
 	Nodes.Printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
 	             Conn[ 0]->GetID(),

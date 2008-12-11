@@ -113,7 +113,7 @@ inline void Quad8::SetIPs(int NIPs1D)
 }
 
 
-inline void Quad8::VTKConnect(String & Nodes) const
+inline void Quad8::VTKConn(String & Nodes) const
 {
 	Nodes.Printf("%d %d %d %d %d %d %d %d",Conn[0]->GetID(),
 	                                       Conn[1]->GetID(),
