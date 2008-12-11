@@ -133,6 +133,7 @@ inline void Element::Initialize(Str_t Type, long ID, int Tag, int NDim, bool IsA
 	_id   = ID;
 	_tag  = Tag;
 	_type = Type;
+	_ge   = AllocGeomElem("Quad4");
 	_ge->Initialize (NDim);
 	//_pe->Initialize (_ge, NDim, IsActive);
 }

@@ -60,7 +60,7 @@ public:
 	virtual double       BoundDist (double r, double s, double t) const     =0;
 
 	// Methods
-	        void Initialize (int nDim) { NDim=nDim; _initialize(); }
+	        void Initialize (int nDim) { NDim = nDim; }
 	        void Jacobian   (Mat_t const & dN, Mat_t & J) const;                 ///< Jacobian matrix
 	virtual void Shape      (double r, double s, double t, Vec_t & N)  const =0; ///< Shape functions
 	virtual void Derivs     (double r, double s, double t, Mat_t & dN) const =0; ///< Derivatives of shape functions
@@ -78,7 +78,7 @@ public:
 	Array<Node*>       Conn;    ///< Connectivity (size==NNodes). Initialized by ProbElem
 
 private:
-	virtual void _local_coords (Mat_t & C) =0; ///< Return the local coordinates of the nodes
+	virtual void _local_coords (Mat_t & C) const =0; ///< Return the local coordinates of the nodes
 
 }; // class GeomElem
 
@@ -275,7 +275,6 @@ GeomElem * AllocGeomElem(char const * GeomElemName)
 	if (ptr==NULL) throw new Fatal("FEM::AllocGeomElem: There is no < %s > implemented in this library", GeomElemName);
 	return (*ptr)();
 }
-
 
 }; // namespace FEM
 
