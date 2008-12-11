@@ -45,7 +45,6 @@ public:
 	// Constructor
 	Tri6();
 
-
 	// Derived methods
 	void   SetIPs     (int NIPs1D);
 	int    VTKType    () const { return VTK_QUADRATIC_TRIANGLE; }
@@ -61,6 +60,7 @@ private:
 	void _local_coords (Mat_t & coords) const;
 
 }; // class Tri6
+
 
 /* Local IDs
              Nodes                 Faces
@@ -151,12 +151,12 @@ inline void Tri6::Shape(double r, double s, double t, Vec_t & N) const
 	 *  0           3          1
 	 */
 	N.Resize(/*NumNodes*/6);
-    N(0) = 1.0-(r+s)*(3.0-2.0*(r+s));
-    N(1) = r*(2.0*r-1.0);
-    N(2) = s*(2.0*s-1.0);
-    N(3) = 4.0*r*(1.0-(r+s));
-    N(4) = 4.0*r*s;
-    N(5) = 4.0*s*(1.0-(r+s));
+	N(0) = 1.0-(r+s)*(3.0-2.0*(r+s));
+	N(1) = r*(2.0*r-1.0);
+	N(2) = s*(2.0*s-1.0);
+	N(3) = 4.0*r*(1.0-(r+s));
+	N(4) = 4.0*r*s;
+	N(5) = 4.0*s*(1.0-(r+s));
 }
 
 inline void Tri6::Derivs(double r, double s, double t, Mat_t & dN) const
@@ -170,12 +170,12 @@ inline void Tri6::Derivs(double r, double s, double t, Mat_t & dN) const
 	 */
 	dN.Resize(2, /*NumNodes*/6);
 
-    dN(0,0) = -3.0 + 4.0 * (r + s);       dN(1,0) = -3.0 + 4.0*(r + s);
-    dN(0,1) =  4.0 * r - 1.;              dN(1,1) =  0.0 ;
+	dN(0,0) = -3.0 + 4.0 * (r + s);       dN(1,0) = -3.0 + 4.0*(r + s);
+	dN(0,1) =  4.0 * r - 1.;              dN(1,1) =  0.0 ;
 	dN(0,2) =  0.0;                       dN(1,2) =  4.0 * s - 1.0;
-    dN(0,3) =  4.0 - 8.0 * r - 4.0 * s;   dN(1,3) = -4.0 * r;
-    dN(0,4) =  4.0 * s;                   dN(1,4) =  4.0 * r;
-    dN(0,5) = -4.0 * s;                   dN(1,5) =  4.0 - 4.0 * r - 8.0*s;
+	dN(0,3) =  4.0 - 8.0 * r - 4.0 * s;   dN(1,3) = -4.0 * r;
+	dN(0,4) =  4.0 * s;                   dN(1,4) =  4.0 * r;
+	dN(0,5) = -4.0 * s;                   dN(1,5) =  4.0 - 4.0 * r - 8.0*s;
 }
 
 inline void Tri6::FaceShape(double r, double s, Vec_t & FN) const

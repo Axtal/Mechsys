@@ -60,6 +60,7 @@ private:
 
 }; // class Tri3
 
+
 /* Local IDs
              Nodes                 Faces 
                            
@@ -145,9 +146,9 @@ inline void Tri3::Shape(double r, double s, double t, Vec_t & N) const
 	 *  0                      1
 	 */
 	N.Resize(/*NumNodes*/3);
-    N(0) = 1.0-r-s;
-    N(1) = r;
-    N(2) = s;
+	N(0) = 1.0-r-s;
+	N(1) = r;
+	N(2) = s;
 }
 
 inline void Tri3::Derivs(double r, double s, double t, Mat_t & dN) const
@@ -160,8 +161,8 @@ inline void Tri3::Derivs(double r, double s, double t, Mat_t & dN) const
 	 *   dN(j,i), j=>local coordinate and i=>shape function
 	 */
 	dN.Resize(2, /*NumNodes*/3);
-    dN(0,0) = -1.0;    dN(1,0) = -1.0;
-    dN(0,1) =  1.0;    dN(1,1) =  0.0;
+	dN(0,0) = -1.0;    dN(1,0) = -1.0;
+	dN(0,1) =  1.0;    dN(1,1) =  0.0;
 	dN(0,2) =  0.0;    dN(1,2) =  1.0;
 }
 

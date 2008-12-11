@@ -48,6 +48,7 @@ public:
 		int n7; // node #7 local id
 	};
 	static FaceMap Face2Node[];
+
 	// Constructor
 	Hex20();
 
@@ -64,10 +65,12 @@ public:
 	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
 	void   FaceShape  (double r, double s, Vec_t & FN)  const;
 	void   FaceDerivs (double r, double s, Mat_t & FdN) const;
+
 private:
 	void _local_coords (Mat_t & coords) const;
 
 }; // class Hex20
+
 
 /* Local IDs
                   Vertices                             Edges                              Faces
@@ -197,7 +200,7 @@ inline void Hex20::Shape(double r, double s, double t, Vec_t & N) const
 	N(19) = 1/4.*rm1*sp1*(1-t*t);
 }
 
-inline void Hex20::Derivs(double r, double s, double t, Mat_t & Derivs) const
+inline void Hex20::Derivs(double r, double s, double t, Mat_t & dN) const
 {
 	/*       _     _ T
 	 *      |  dNi  |
@@ -207,80 +210,79 @@ inline void Hex20::Derivs(double r, double s, double t, Mat_t & Derivs) const
 	 * dN(j,i), j=>local coordinate and i=>shape function
 	 */
 
-	Derivs.Resize(3,20);
+	dN.Resize(3,20);
 
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
 	double tp1=1.0+t; double tm1=1.0-t;
 	
 	//Derivatives with respect to r
-    Derivs(0, 0)= -.125*sm1*tm1*(-r-s-t-2)-0.125*rm1*sm1*tm1;
-	Derivs(0, 1)=  .125*sm1*tm1*( r-s-t-2)+0.125*rp1*sm1*tm1;
-	Derivs(0, 2)=  .125*sp1*tm1*( r+s-t-2)+0.125*rp1*sp1*tm1;
-	Derivs(0, 3)= -.125*sp1*tm1*(-r+s-t-2)-0.125*rm1*sp1*tm1;
-	Derivs(0, 4)= -.125*sm1*tp1*(-r-s+t-2)-0.125*rm1*sm1*tp1;
-	Derivs(0, 5)=  .125*sm1*tp1*( r-s+t-2)+0.125*rp1*sm1*tp1;
-	Derivs(0, 6)=  .125*sp1*tp1*( r+s+t-2)+0.125*rp1*sp1*tp1;
-	Derivs(0, 7)= -.125*sp1*tp1*(-r+s+t-2)-0.125*rm1*sp1*tp1;
-	Derivs(0, 8)= -.5*r*sm1*tm1;
-	Derivs(0, 9)=  .25*(1-s*s)*tm1;
-	Derivs(0,10)= -.5*r*sp1*tm1;
-	Derivs(0,11)= -.25*(1-s*s)*tm1;
-	Derivs(0,12)= -.5*r*sm1*tp1;
-	Derivs(0,13)=  .25*(1-s*s)*tp1;
-	Derivs(0,14)= -.5*r*sp1  *tp1;
-	Derivs(0,15)= -.25*(1-s*s)*tp1;
-	Derivs(0,16)= -.25*sm1*(1-t*t);
-	Derivs(0,17)=  .25*sm1*(1-t*t);
-	Derivs(0,18)=  .25*sp1*(1-t*t);
-	Derivs(0,19)= -.25*sp1*(1-t*t);
-
+	dN(0, 0)= -.125*sm1*tm1*(-r-s-t-2)-0.125*rm1*sm1*tm1;
+	dN(0, 1)=  .125*sm1*tm1*( r-s-t-2)+0.125*rp1*sm1*tm1;
+	dN(0, 2)=  .125*sp1*tm1*( r+s-t-2)+0.125*rp1*sp1*tm1;
+	dN(0, 3)= -.125*sp1*tm1*(-r+s-t-2)-0.125*rm1*sp1*tm1;
+	dN(0, 4)= -.125*sm1*tp1*(-r-s+t-2)-0.125*rm1*sm1*tp1;
+	dN(0, 5)=  .125*sm1*tp1*( r-s+t-2)+0.125*rp1*sm1*tp1;
+	dN(0, 6)=  .125*sp1*tp1*( r+s+t-2)+0.125*rp1*sp1*tp1;
+	dN(0, 7)= -.125*sp1*tp1*(-r+s+t-2)-0.125*rm1*sp1*tp1;
+	dN(0, 8)= -.5*r*sm1*tm1;
+	dN(0, 9)=  .25*(1-s*s)*tm1;
+	dN(0,10)= -.5*r*sp1*tm1;
+	dN(0,11)= -.25*(1-s*s)*tm1;
+	dN(0,12)= -.5*r*sm1*tp1;
+	dN(0,13)=  .25*(1-s*s)*tp1;
+	dN(0,14)= -.5*r*sp1  *tp1;
+	dN(0,15)= -.25*(1-s*s)*tp1;
+	dN(0,16)= -.25*sm1*(1-t*t);
+	dN(0,17)=  .25*sm1*(1-t*t);
+	dN(0,18)=  .25*sp1*(1-t*t);
+	dN(0,19)= -.25*sp1*(1-t*t);
 
 	//Derivatives with respect to s
-	Derivs(1, 0)= -.125*rm1*tm1*(-r-s-t-2)-0.125*rm1*sm1*tm1;
-	Derivs(1, 1)= -.125*rp1*tm1*( r-s-t-2)-0.125*rp1*sm1*tm1;
-	Derivs(1, 2)=  .125*rp1*tm1*( r+s-t-2)+0.125*rp1*sp1*tm1;
-	Derivs(1, 3)=  .125*rm1*tm1*(-r+s-t-2)+0.125*rm1*sp1*tm1;
-	Derivs(1, 4)= -.125*rm1*tp1*(-r-s+t-2)-0.125*rm1*sm1*tp1;
-	Derivs(1, 5)= -.125*rp1*tp1*( r-s+t-2)-0.125*rp1*sm1*tp1;
-	Derivs(1, 6)=  .125*rp1*tp1*( r+s+t-2)+0.125*rp1*sp1*tp1;
-	Derivs(1, 7)=  .125*rm1*tp1*(-r+s+t-2)+0.125*rm1*sp1*tp1;
-	Derivs(1, 8)= -.25*(1-r*r)*tm1;
-	Derivs(1, 9)= -.5*s*rp1*tm1;
-	Derivs(1,10)=  .25*(1-r*r)*tm1;
-	Derivs(1,11)= -.5*s*rm1*tm1;
-	Derivs(1,12)= -.25*(1-r*r)*tp1;
-	Derivs(1,13)= -.5*s*rp1*tp1;
-	Derivs(1,14)=  .25*(1-r*r)*tp1;
-	Derivs(1,15)= -.5*s*rm1*tp1;
-	Derivs(1,16)= -.25*rm1*(1-t*t);
-	Derivs(1,17)= -.25*rp1*(1-t*t);
-	Derivs(1,18)=  .25*rp1*(1-t*t);
-	Derivs(1,19)=  .25*rm1*(1-t*t);
+	dN(1, 0)= -.125*rm1*tm1*(-r-s-t-2)-0.125*rm1*sm1*tm1;
+	dN(1, 1)= -.125*rp1*tm1*( r-s-t-2)-0.125*rp1*sm1*tm1;
+	dN(1, 2)=  .125*rp1*tm1*( r+s-t-2)+0.125*rp1*sp1*tm1;
+	dN(1, 3)=  .125*rm1*tm1*(-r+s-t-2)+0.125*rm1*sp1*tm1;
+	dN(1, 4)= -.125*rm1*tp1*(-r-s+t-2)-0.125*rm1*sm1*tp1;
+	dN(1, 5)= -.125*rp1*tp1*( r-s+t-2)-0.125*rp1*sm1*tp1;
+	dN(1, 6)=  .125*rp1*tp1*( r+s+t-2)+0.125*rp1*sp1*tp1;
+	dN(1, 7)=  .125*rm1*tp1*(-r+s+t-2)+0.125*rm1*sp1*tp1;
+	dN(1, 8)= -.25*(1-r*r)*tm1;
+	dN(1, 9)= -.5*s*rp1*tm1;
+	dN(1,10)=  .25*(1-r*r)*tm1;
+	dN(1,11)= -.5*s*rm1*tm1;
+	dN(1,12)= -.25*(1-r*r)*tp1;
+	dN(1,13)= -.5*s*rp1*tp1;
+	dN(1,14)=  .25*(1-r*r)*tp1;
+	dN(1,15)= -.5*s*rm1*tp1;
+	dN(1,16)= -.25*rm1*(1-t*t);
+	dN(1,17)= -.25*rp1*(1-t*t);
+	dN(1,18)=  .25*rp1*(1-t*t);
+	dN(1,19)=  .25*rm1*(1-t*t);
 
 	//Derivatives with respect to t
-	Derivs(2, 0)= -.125*rm1*sm1*(-r-s-t-2)-0.125*rm1*sm1*tm1;
-	Derivs(2, 1)= -.125*rp1*sm1*( r-s-t-2)-0.125*rp1*sm1*tm1;
-	Derivs(2, 2)= -.125*rp1*sp1*( r+s-t-2)-0.125*rp1*sp1*tm1;
-	Derivs(2, 3)= -.125*rm1*sp1*(-r+s-t-2)-0.125*rm1*sp1*tm1;
-	Derivs(2, 4)=  .125*rm1*sm1*(-r-s+t-2)+0.125*rm1*sm1*tp1;
-	Derivs(2, 5)=  .125*rp1*sm1*( r-s+t-2)+0.125*rp1*sm1*tp1;
-	Derivs(2, 6)=  .125*rp1*sp1*( r+s+t-2)+0.125*rp1*sp1*tp1;
-	Derivs(2, 7)=  .125*rm1*sp1*(-r+s+t-2)+0.125*rm1*sp1*tp1;
-	Derivs(2, 8)= -.25*(1-r*r)*sm1;
-	Derivs(2, 9)= -.25*rp1*(1-s*s);
-	Derivs(2,10)= -.25*(1-r*r)*sp1;
-	Derivs(2,11)= -.25*rm1*(1-s*s);
-	Derivs(2,12)=  .25*(1-r*r)*sm1;
-	Derivs(2,13)=  .25*rp1*(1-s*s);
-	Derivs(2,14)=  .25*(1-r*r)*sp1;
-	Derivs(2,15)=  .25*rm1*(1-s*s);
-	Derivs(2,16)= -.5*t*rm1*sm1;
-	Derivs(2,17)= -.5*t*rp1*sm1;
-	Derivs(2,18)= -.5*t*rp1*sp1;
-	Derivs(2,19)= -.5*t*rm1*sp1;
+	dN(2, 0)= -.125*rm1*sm1*(-r-s-t-2)-0.125*rm1*sm1*tm1;
+	dN(2, 1)= -.125*rp1*sm1*( r-s-t-2)-0.125*rp1*sm1*tm1;
+	dN(2, 2)= -.125*rp1*sp1*( r+s-t-2)-0.125*rp1*sp1*tm1;
+	dN(2, 3)= -.125*rm1*sp1*(-r+s-t-2)-0.125*rm1*sp1*tm1;
+	dN(2, 4)=  .125*rm1*sm1*(-r-s+t-2)+0.125*rm1*sm1*tp1;
+	dN(2, 5)=  .125*rp1*sm1*( r-s+t-2)+0.125*rp1*sm1*tp1;
+	dN(2, 6)=  .125*rp1*sp1*( r+s+t-2)+0.125*rp1*sp1*tp1;
+	dN(2, 7)=  .125*rm1*sp1*(-r+s+t-2)+0.125*rm1*sp1*tp1;
+	dN(2, 8)= -.25*(1-r*r)*sm1;
+	dN(2, 9)= -.25*rp1*(1-s*s);
+	dN(2,10)= -.25*(1-r*r)*sp1;
+	dN(2,11)= -.25*rm1*(1-s*s);
+	dN(2,12)=  .25*(1-r*r)*sm1;
+	dN(2,13)=  .25*rp1*(1-s*s);
+	dN(2,14)=  .25*(1-r*r)*sp1;
+	dN(2,15)=  .25*rm1*(1-s*s);
+	dN(2,16)= -.5*t*rm1*sm1;
+	dN(2,17)= -.5*t*rp1*sm1;
+	dN(2,18)= -.5*t*rp1*sp1;
+	dN(2,19)= -.5*t*rm1*sp1;
 }
-	
+
 inline void Hex20::FaceShape(double r, double s, Vec_t & FaceShape) const
 {
 	/*                 ^ s
@@ -354,15 +356,15 @@ inline void Hex20::_local_coords(Mat_t & coords) const
 	          1.0,  1.0,  1.0, 1.0,
 	         -1.0,  1.0,  1.0, 1.0,
 
-              0.0, -1.0, -1.0, 1.0, // nodes 8 to 11
-              1.0,  0.0, -1.0, 1.0,
-              0.0,  1.0, -1.0, 1.0,
-             -1.0,  0.0, -1.0, 1.0,
+	          0.0, -1.0, -1.0, 1.0, // nodes 8 to 11
+	          1.0,  0.0, -1.0, 1.0,
+	          0.0,  1.0, -1.0, 1.0,
+	         -1.0,  0.0, -1.0, 1.0,
 
-              0.0, -1.0,  1.0, 1.0, // nodes 12 to 15
-              1.0,  0.0,  1.0, 1.0,
-              0.0,  1.0,  1.0, 1.0,
-             -1.0,  0.0,  1.0, 1.0,
+	          0.0, -1.0,  1.0, 1.0, // nodes 12 to 15
+	          1.0,  0.0,  1.0, 1.0,
+	          0.0,  1.0,  1.0, 1.0,
+	         -1.0,  0.0,  1.0, 1.0,
 
 	         -1.0, -1.0,  0.0, 1.0, // nodes 16 to 19
 	          1.0, -1.0,  0.0, 1.0,
@@ -382,6 +384,7 @@ int Hex20Register() { GeomElemFactory["Hex20"]=Hex20Maker; return 0; }
 
 // Call register
 int __Hex20_dummy_int  = Hex20Register();
+
 }; // namespace FEM
 
 #endif // MECHSYS_FEM_HEX20_H
