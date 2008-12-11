@@ -171,15 +171,14 @@ inline void GeomElem::InvMap(double x, double y, double z, double & r, double & 
 {
 	Vec_t N;  // Shape
 	Mat_t dN; // Derivs
-	Mat_t J;  //Jacobian matrix
-	Vec_t f;
+	Mat_t J;  // Jacobian matrix
+	Vec_t f;  // Residual betweem real and trial global coordinates
 	Vec_t delta;
 	     if (NDim==2) f.Resize(2);
 	else if (NDim==3) f.Resize(3);
-	double tx, ty, tz; //x, y, z trial
-	double norm_f;
-	r = s = t = 0; // first suposition for natural coordinates
-	int max_steps = 25;
+	double tx, ty, tz;  // x, y, z trial
+	r = s = t = 0;      // First suposition for natural coordinates
+	int max_steps = 25; // Number of maximum steps
 	int k = 0;
 	for (k=0; k<max_steps; k++)
 	{
@@ -188,15 +187,15 @@ inline void GeomElem::InvMap(double x, double y, double z, double & r, double & 
 		Jacobian (dN, J);
 		tx = ty = tz = 0; 
 
-		// calculate trial of real coordinates
+		// Calculate trial of real coordinates
 		for (size_t j=0; j<NNodes; j++) 
 		{
-			             tx += N(j)*Conn[j]->Coord(0); // ok
-			             ty += N(j)*Conn[j]->Coord(1); // ok
-			if (NDim==3) tz += N(j)*Conn[j]->Coord(2); // ok
+			             tx += N(j)*Conn[j]->Coord(0); 
+			             ty += N(j)*Conn[j]->Coord(1); 
+			if (NDim==3) tz += N(j)*Conn[j]->Coord(2); 
 		}
 		
-		// Calculate error
+		// Calculate residual
 		             f(0) = tx - x;
 		             f(1) = ty - y;
 		if (NDim==3) f(2) = tz - z;
@@ -208,7 +207,7 @@ inline void GeomElem::InvMap(double x, double y, double z, double & r, double & 
 		             s -= delta(1);
 		if (NDim==3) t -= delta(2);
 
-		norm_f = sqrt(trn(f)*f);
+		double norm_f = sqrt(trn(f)*f); // Norm of the residual
 
 		if (norm_f<1.0e+4) break;
 	}
