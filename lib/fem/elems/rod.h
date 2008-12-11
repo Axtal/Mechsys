@@ -248,11 +248,25 @@ inline double Rod::N(double l) const
 
 inline void Rod::_initialize()
 {
-	_nd = ND_EQUILIB_2D;
-	UD  = UD_EQUILIB_2D;
-	FD  = FD_EQUILIB_2D;
-	_nl = NL_ROD; 
-	LB  = LB_ROD;
+	if (_ge->NDim==2)
+	{
+		_gi = 1;
+		_nd = ND_EQUILIB_2D;
+		UD  = UD_EQUILIB_2D;
+		FD  = FD_EQUILIB_2D;
+		_nl = NL_ROD; 
+		LB  = LB_ROD;
+	}
+	else if (_ge->NDim==3)
+	{
+		_gi = 0;
+		_nd = ND_EQUILIB_3D;
+		UD  = UD_EQUILIB_3D;
+		FD  = FD_EQUILIB_3D;
+		_nl = NL_ROD; 
+		LB  = LB_ROD;
+	}
+	
 }
 
 inline void Rod::_initial_state()
