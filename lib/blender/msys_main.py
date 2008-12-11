@@ -192,7 +192,7 @@ def delete_mesh():
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-@try_catch
+#@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -611,22 +611,13 @@ def cb_fbry_del   (evt,val): di.props_del_fem ([di.key('fem_stage')], 'fbrys', e
 # ---------------------------------- FEM -- eatts
 
 @try_catch
-def cb_eatt_settag  (evt,val):
-    obj  = di.get_obj()
-    sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
-    di.props_set_fem (sids, 'eatts', evt-EVT_INC, 0, int(val))
+def cb_eatt_settag  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_eatt_settype(evt,val):
-    obj  = di.get_obj()
-    sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
-    di.props_set_fem (sids, 'eatts', evt-EVT_INC, 1, val-1)
+def cb_eatt_setety  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 1, int(val)-1)
 @try_catch
-def cb_eatt_setmat  (evt,val):
-    obj  = di.get_obj()
-    sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
-    di.props_set_fem (sids, 'eatts', evt-EVT_INC, 2, val-1)
+def cb_eatt_setpty  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 2, int(val)-1)
 @try_catch
-def cb_eatt_setprops(evt,val): di.props_set_text(                       'texts', evt-EVT_INC, val)
+def cb_eatt_setmat  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 3, int(val)-1)
 @try_catch
 def cb_eatt_isact   (evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 4, int(val))
 @try_catch
@@ -634,10 +625,9 @@ def cb_eatt_act     (evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts',
 @try_catch
 def cb_eatt_deact   (evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 6, int(val))
 @try_catch
-def cb_eatt_del     (evt,val):
-    obj  = di.get_obj()
-    sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
-    di.props_del_fem (sids, 'eatts', evt-EVT_INC)
+def cb_eatt_setprops(evt,val): di.props_set_text(                       'texts', evt-EVT_INC, val)
+@try_catch
+def cb_eatt_del     (evt,val): di.props_del_fem_all_stg ('eatts', evt-EVT_INC)
 
 # ---------------------------------- FEM
 
@@ -1264,7 +1254,7 @@ def gui():
             if num==1: gu.caption3 (c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
             else:      gu.caption3_(c,r,w,rh,'Elements attributes')
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_eatts)
-            if len(eatts)>0: gu.text(c,r,'    Tag               Type                        Material')
+            if len(eatts)>0: gu.text(c,r,'    Tag         ElemType         ProbType         Material')
             else: r += (rh+srg)
             if num>1:
                 for k, v in obj.properties['stages'].iteritems():
@@ -1278,28 +1268,31 @@ def gui():
                 v     = eatts[k]
                 r    -= rh
                 i     = int(k)
-                tid   = int(v[3])       # text id
+                tid   = int(v[7])       # text id
                 props = texts[str(tid)] # properties
                 if num==1:
-                    Draw.Number     ('',           EVT_INC+i,   c,     r-rh,  60, 2*rh, int(v[0]),-1000,0, 'Set tag',                         cb_eatt_settag)
-                    Draw.Menu       (d['etymnu'],  EVT_INC+i,   c+ 60, r,    120,   rh, int(v[1])+1,       'Element type: ex.: Quad4PStrain', cb_eatt_settype)
-                    Draw.Menu       (matmnu,       EVT_INC+i,   c+180, r,    140,   rh, int(v[2])+1,       'Choose material',                 cb_eatt_setmat)
-                    Draw.PushButton ('Del',        EVT_INC+i,   c+320, r-rh,  40, 2*rh,                    'Delete this row',                 cb_eatt_del)
+                    Draw.Number     ('',           EVT_INC+i,   c,     r-rh,  60, 2*rh, int(v[0]),-1000,0, 'Set tag',                             cb_eatt_settag)
+                    Draw.Menu       (d['etymnu'],  EVT_INC+i,   c+ 60, r,    100,   rh, int(v[1])+1,       'Element type: ex.: Quad4, Hex8',      cb_eatt_setety)
+                    Draw.Menu       (d['ptymnu'],  EVT_INC+i,   c+160, r,     80,   rh, int(v[2])+1,       'Problem type: ex.: PStrain, Equilib', cb_eatt_setpty)
+                    Draw.Menu       (matmnu,       EVT_INC+i,   c+240, r,    110,   rh, int(v[3])+1,       'Choose material',                     cb_eatt_setmat)
+                    Draw.PushButton ('Del',        EVT_INC+i,   c+350, r-rh,  30, 2*rh,                    'Delete this row',                     cb_eatt_del)
                     r -= rh                         
-                    Draw.String     ('',           EVT_INC+tid, c+ 60, r,    120,   rh, props,  128,       'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
-                    Draw.Toggle     ('Is Active',  EVT_INC+i,   c+180, r,    140,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
+                    Draw.String     ('',           EVT_INC+tid, c+ 60, r,    140,   rh, props,  128,       'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
+                    Draw.Toggle     ('Is Active',  EVT_INC+i,   c+200, r,    150,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
                 else:
                     etag =          str(featts[k][0])
                     etyp = d['ety'][int(featts[k][1])]
-                    emat = matnames[int(featts[k][2])] if matnames.has_key(int(featts[k][2])) else ''
-                    prps = texts[str(str(int(featts[k][3])))] # properties
-                    gu.label_ (etag,  c,     r-rh,  60, 2*rh)
-                    gu.label  (etyp,  c+ 60, r,    120,   rh)
-                    gu.label  (emat,  c+180, r,    140,   rh)
+                    ptyp = d['pty'][int(featts[k][2])]
+                    emat = matnames[int(featts[k][3])] if matnames.has_key(int(featts[k][3])) else ''
+                    prps = texts[str(str(int(featts[k][7])))] # properties
+                    gu.label_   (etag,                    c,     r-rh,  60, 2*rh)
+                    gu.label    (etyp,                    c+ 60, r,    100,   rh)
+                    gu.label    (ptyp,                    c+160, r,     80,   rh)
+                    gu.label    (emat,                    c+240, r,    110,   rh)
                     r -= rh                         
-                    gu.label    (prps,                    c+ 60, r, 120, rh)
-                    Draw.Toggle ('Activate',   EVT_INC+i, c+180, r,  70, rh, int(v[5]),   'Activate this element at this stage?',   cb_eatt_act)
-                    Draw.Toggle ('Deactivate', EVT_INC+i, c+250, r,  70, rh, int(v[6]),   'Deactivate this element at this stage?', cb_eatt_deact)
+                    gu.label    (prps,                    c+ 60, r,    140,   rh)
+                    Draw.Toggle ('Activate',   EVT_INC+i, c+200, r,     75,   rh, int(v[5]), 'Activate this element at this stage?',   cb_eatt_act)
+                    Draw.Toggle ('Deactivate', EVT_INC+i, c+275, r,     75,   rh, int(v[6]), 'Deactivate this element at this stage?', cb_eatt_deact)
                 r -= srg
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)

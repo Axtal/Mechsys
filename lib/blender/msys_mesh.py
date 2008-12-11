@@ -390,9 +390,12 @@ def set_elems(obj, elems):
                     obj.properties[stg]['eatts'][str(id)]    = di.new_eatt_props()
                     obj.properties[stg]['eatts'][str(id)][0] = tag
                     obj.properties[stg]['eatts'][str(id)][1] = di.key('vtk2ety')[vtk]
-                    obj.properties[stg]['eatts'][str(id)][3] = tid
+                    obj.properties[stg]['eatts'][str(id)][2] = di.key('vtk2pty')[vtk]
+                    obj.properties[stg]['eatts'][str(id)][7] = tid
                     id += 1
-                else: obj.properties[stg]['eatts'][old_id][1] = di.key('vtk2ety')[vtk]
+                else:
+                    obj.properties[stg]['eatts'][old_id][1] = di.key('vtk2ety')[vtk]
+                    obj.properties[stg]['eatts'][old_id][2] = di.key('vtk2pty')[vtk]
 
 @print_timing
 def set_ebrys(obj):
