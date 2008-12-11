@@ -20,7 +20,8 @@
 #define MECHSYS_FEM_QUAD8_H
 
 // MechSys
-#include "fem/element.h"
+#include "fem/node.h"
+#include "fem/geomelem.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
@@ -29,7 +30,7 @@
 namespace FEM
 {
 
-class Quad8: public virtual Element
+class Quad8: public GeomElem
 {
 public:
 	// Auxiliar structure to map local face IDs to local node IDs
@@ -44,20 +45,19 @@ public:
 	// Constructor
 	Quad8();
 
-	// Destructor
-	virtual ~Quad8() {}
-
 	// Derived methods
-	void   SetIntPoints  (int NumGaussPoints1D);
-	int    VTKCellType   () const { return VTK_QUADRATIC_QUAD; }
-	void   VTKConnect    (String & Nodes) const;
-	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
-	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void   Derivs        (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void   FaceDerivs    (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	double BoundDistance (double r, double s, double t) const;
-	void   LocalCoords   (LinAlg::Matrix<double> & coords) const;
+	void   SetIPs     (int NIPs1D);
+	int    VTKType    () const { return VTK_QUADRATIC_QUAD; }
+	void   VTKConn    (String & Nodes) const;
+	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects) const;
+	double BoundDist  (double r, double s, double t) const { return std::min(1-fabs(r),1-fabs(s)); }
+	void   Shape      (double r, double s, double t, Vec_t & N)  const;
+	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
+	void   FaceShape  (double r, double s, Vec_t & FN)  const;
+	void   FaceDerivs (double r, double s, Mat_t & FdN) const;
+
+private:
+	void _local_coords (Mat_t & coords) const;
 
 
 }; // class Quad8
@@ -87,65 +87,53 @@ Quad8::FaceMap Quad8::Face2Node[]= {{ 3, 0, 7 },
 inline Quad8::Quad8()
 {
 	// Setup nodes number
-	_n_nodes      = 8;
-	_n_face_nodes = 3;
+	NNodes  = 8;
+	NFNodes = 3;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize    (_n_nodes);
-	_connects.SetValues (NULL);
+	Conn.Resize    (NNodes);
+	Conn.SetValues (NULL);
 
-	// Integration Points and Extrapolation Matrix
-	SetIntPoints (/*NumGaussPoints1D*/2);
+	// Integration points and Extrapolation Matrix
+	SetIPs (/*NIPs1D*/2);
 }
 
-inline void Quad8::SetIntPoints(int NumGaussPoints1D)
+inline void Quad8::SetIPs(int NIPs1D)
 {
 	// Setup pointer to the array of Integration Points
-	if      (NumGaussPoints1D==2) _a_int_pts = QUAD_IP2;
-	else if (NumGaussPoints1D==3) _a_int_pts = QUAD_IP3;
-	else if (NumGaussPoints1D==4) _a_int_pts = QUAD_IP4;
-	else if (NumGaussPoints1D==5) _a_int_pts = QUAD_IP5;
-	else throw new Fatal("Quad8::SetIntPoints: Error in number of integration points.");
+	     if (NIPs1D==2) IPs = QUAD_IP2;
+	else if (NIPs1D==3) IPs = QUAD_IP3;
+	else if (NIPs1D==4) IPs = QUAD_IP4;
+	else if (NIPs1D==5) IPs = QUAD_IP5;
+	else throw new Fatal("Quad8::SetIPs: Number of integration points < %d > is invalid",NIPs1D);
 
-	_n_int_pts      = pow(NumGaussPoints1D, 2);
-	_a_face_int_pts = LIN_IP2;
-	_n_face_int_pts = 2;
+	NIPs  = pow(NIPs1D, 2);
+	FIPs  = LIN_IP2;
+	NFIPs = 2;
 }
 
-inline void Quad8::LocalCoords(LinAlg::Matrix<double> & coords) const 
-{
-	coords.Resize(8,3);
-	coords = -1.0, -1.0, 1.0,   
-	         +1.0, -1.0, 1.0,   
-	         +1.0, +1.0, 1.0,   
-	         -1.0, +1.0, 1.0,   
-	          0.0, -1.0, 1.0,   
-	         +1.0,  0.0, 1.0,   
-	          0.0, +1.0, 1.0,   
-	         -1.0, +0.0, 1.0;   
-}
 
 inline void Quad8::VTKConnect(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d %d %d %d %d %d",_connects[0]->GetID(),
-	                                       _connects[1]->GetID(),
-	                                       _connects[2]->GetID(),
-	                                       _connects[3]->GetID(),
-	                                       _connects[4]->GetID(),
-	                                       _connects[5]->GetID(),
-	                                       _connects[6]->GetID(),
-	                                       _connects[7]->GetID());
+	Nodes.Printf("%d %d %d %d %d %d %d %d",Conn[0]->GetID(),
+	                                       Conn[1]->GetID(),
+	                                       Conn[2]->GetID(),
+	                                       Conn[3]->GetID(),
+	                                       Conn[4]->GetID(),
+	                                       Conn[5]->GetID(),
+	                                       Conn[6]->GetID(),
+	                                       Conn[7]->GetID());
 }
 
 inline void Quad8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
 	FaceConnects.Resize(3);
-	FaceConnects[0] = _connects[Face2Node[FaceID].L];
-	FaceConnects[1] = _connects[Face2Node[FaceID].R];
-	FaceConnects[2] = _connects[Face2Node[FaceID].M];
+	FaceConnects[0] = Conn[Face2Node[FaceID].L];
+	FaceConnects[1] = Conn[Face2Node[FaceID].R];
+	FaceConnects[2] = Conn[Face2Node[FaceID].M];
 }
 
-inline void Quad8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
+inline void Quad8::Shape(double r, double s, double t, Vec_t & N) const
 {
 	/*      3           6            2
 	 *        @---------@----------@
@@ -161,55 +149,55 @@ inline void Quad8::Shape(double r, double s, double t, LinAlg::Vector<double> & 
 	 *        @---------@----------@
 	 *      0           4            1
 	 */
-	Shape.Resize (/*NumNodes*/8);
+	N.Resize (/*NumNodes*/8);
 
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
 
-	Shape(0) = 0.25*rm1*sm1*(rm1+sm1-3.0);
-	Shape(1) = 0.25*rp1*sm1*(rp1+sm1-3.0);
-	Shape(2) = 0.25*rp1*sp1*(rp1+sp1-3.0);
-	Shape(3) = 0.25*rm1*sp1*(rm1+sp1-3.0);
-	Shape(4) = 0.50*sm1*(1.0-r*r);
-	Shape(5) = 0.50*rp1*(1.0-s*s);
-	Shape(6) = 0.50*sp1*(1.0-r*r);
-	Shape(7) = 0.50*rm1*(1.0-s*s);
+	N(0) = 0.25*rm1*sm1*(rm1+sm1-3.0);
+	N(1) = 0.25*rp1*sm1*(rp1+sm1-3.0);
+	N(2) = 0.25*rp1*sp1*(rp1+sp1-3.0);
+	N(3) = 0.25*rm1*sp1*(rm1+sp1-3.0);
+	N(4) = 0.50*sm1*(1.0-r*r);
+	N(5) = 0.50*rp1*(1.0-s*s);
+	N(6) = 0.50*sp1*(1.0-r*r);
+	N(7) = 0.50*rm1*(1.0-s*s);
 }
 
-inline void Quad8::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
+inline void Quad8::Derivs(double r, double s, double t, Mat_t & dN) const
 {
 	/*           _     _ T
 	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
+	 * dN = |  ---  |   , where cj = r, s
 	 *          |_ dcj _|
 	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	 * dN(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize (2, /*NumNodes*/8);
+	dN.Resize (2, /*NumNodes*/8);
 
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
 
-	Derivs(0,0) = - 0.25 * sm1 * (rm1 + rm1 + sm1 - 3.0);
-	Derivs(0,1) =   0.25 * sm1 * (rp1 + rp1 + sm1 - 3.0);
-	Derivs(0,2) =   0.25 * sp1 * (rp1 + rp1 + sp1 - 3.0);
-	Derivs(0,3) = - 0.25 * sp1 * (rm1 + rm1 + sp1 - 3.0);
-	Derivs(0,4) = - r * sm1;
-	Derivs(0,5) =   0.50 * (1.0 - s * s);
-	Derivs(0,6) = - r * sp1;
-	Derivs(0,7) = - 0.5 * (1.0 - s * s);
+	dN(0,0) = - 0.25 * sm1 * (rm1 + rm1 + sm1 - 3.0);
+	dN(0,1) =   0.25 * sm1 * (rp1 + rp1 + sm1 - 3.0);
+	dN(0,2) =   0.25 * sp1 * (rp1 + rp1 + sp1 - 3.0);
+	dN(0,3) = - 0.25 * sp1 * (rm1 + rm1 + sp1 - 3.0);
+	dN(0,4) = - r * sm1;
+	dN(0,5) =   0.50 * (1.0 - s * s);
+	dN(0,6) = - r * sp1;
+	dN(0,7) = - 0.5 * (1.0 - s * s);
 
-	Derivs(1,0) = - 0.25 * rm1 * (sm1 + rm1 + sm1 - 3.0);
-	Derivs(1,1) = - 0.25 * rp1 * (sm1 + rp1 + sm1 - 3.0);
-	Derivs(1,2) =   0.25 * rp1 * (sp1 + rp1 + sp1 - 3.0);
-	Derivs(1,3) =   0.25 * rm1 * (sp1 + rm1 + sp1 - 3.0);
-	Derivs(1,4) = - 0.50 * (1.0 - r * r);
-	Derivs(1,5) = - s * rp1;
-	Derivs(1,6) =   0.50 * (1.0 - r * r);
-	Derivs(1,7) = - s * rm1;
+	dN(1,0) = - 0.25 * rm1 * (sm1 + rm1 + sm1 - 3.0);
+	dN(1,1) = - 0.25 * rp1 * (sm1 + rp1 + sm1 - 3.0);
+	dN(1,2) =   0.25 * rp1 * (sp1 + rp1 + sp1 - 3.0);
+	dN(1,3) =   0.25 * rm1 * (sp1 + rm1 + sp1 - 3.0);
+	dN(1,4) = - 0.50 * (1.0 - r * r);
+	dN(1,5) = - s * rp1;
+	dN(1,6) =   0.50 * (1.0 - r * r);
+	dN(1,7) = - s * rm1;
 }
 
-inline void Quad8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
+inline void Quad8::FaceShape(double r, double s, Vec_t & FN) const
 {
 	/*
 	 *       @-----------@-----------@-> r
@@ -217,32 +205,52 @@ inline void Quad8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSh
 	 *       |           |           |
 	 *      r=-1         r=0        r=+1
 	 */
-	FaceShape.Resize(/*NumFaceNodes*/3);
-	FaceShape(0) = 0.5 * (r*r-r);
-	FaceShape(1) = 0.5 * (r*r+r);
-	FaceShape(2) = 1.0 -  r*r;
+	FN.Resize(/*NumFaceNodes*/3);
+	FN(0) = 0.5 * (r*r-r);
+	FN(1) = 0.5 * (r*r+r);
+	FN(2) = 1.0 -  r*r;
 }
 
-inline void Quad8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
+inline void Quad8::FaceDerivs(double r, double s, Mat_t & FdN) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
+	/*          _     _ T
+	 *         |  dNi  |
+	 *   FdN = |  ---  |   , where cj = r, s
+	 *         |_ dcj _|
 	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	 *   FdN(j,i), j=>local coordinate and i=>shape function
 	 */
-	FaceDerivs.Resize(1,/*NumFaceNodes*/3);
-	FaceDerivs(0,0) =  r  - 0.5;
-	FaceDerivs(0,1) =  r  + 0.5;
-	FaceDerivs(0,2) = -2.0* r;
+	FdN.Resize(1,/*NumFaceNodes*/3);
+	FdN(0,0) =  r  - 0.5;
+	FdN(0,1) =  r  + 0.5;
+	FdN(0,2) = -2.0* r;
 }
 
-inline double Quad8::BoundDistance(double r, double s, double t) const
+inline void Quad8::_local_coords(Mat_t & C) const 
 {
-	return std::min(1-fabs(r), 1-fabs(s)) ;
+	C.Resize(8,3);
+	C = -1.0, -1.0, 1.0,   
+	    +1.0, -1.0, 1.0,   
+	    +1.0, +1.0, 1.0,   
+	    -1.0, +1.0, 1.0,   
+	     0.0, -1.0, 1.0,   
+	    +1.0,  0.0, 1.0,   
+	     0.0, +1.0, 1.0,   
+	    -1.0, +0.0, 1.0;   
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new element
+GeomElem * Quad8Maker() { return new Quad8(); }
+
+// Register element
+int Quad8Register() { GeomElemFactory["Quad8"]=Quad8Maker;  return 0; }
+
+// Call register
+int __Quad8_dummy_int  = Quad8Register();
 }; // namespace FEM
 
 #endif // MECHSYS_FEM_QUAD8_H

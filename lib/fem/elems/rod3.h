@@ -31,28 +31,28 @@ class Rod3 : public EquilibElem
 {
 public:
 	// Constructor
-	Rod3 () : _gam(0.0), _E(-1), _A(-1) { _n_nodes=3; _connects.Resize(_n_nodes); _connects.SetValues(NULL); SetIntPoints(2);}
+	Rod3 () : _gam(0.0), _E(-1), _A(-1) { NNodes=3; Conn.Resize(NNodes); Conn.SetValues(NULL); SetIntPoints(2);}
 
 	// Derived methods
 	char const * Name() const { return "Rod3"; }
 
 	// Derived methods
-	void   Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const;
-	void   Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void   LocalCoords(LinAlg::Matrix<double> & coords) const;
+	void   Shape(double r, double s, double t, Vec_t & N) const;
+	void   Derivs(double r, double s, double t, Mat_t & Derivs) const;
+	void   LocalCoords(Mat_t & coords) const;
 	void   SetIntPoints (int NumGaussPoints);
 	bool   CheckModel   () const;
 	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
 	void   SetProps     (char const * Properties);
-	void   UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void   UpdateState  (double TimeInc, Vec_t const & dUglobal, Vec_t & dFint);
 	void   ApplyBodyForces ();
 	void   CalcDepVars  () const;
 	double Val          (int iNodeLocal, char const * Name) const;
 	double Val          (char const * Name) const;
-	void   Order1Matrix (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
-	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
+	void   Order1Matrix (size_t Index, Mat_t & Ke) const; ///< Stiffness
+	void   B_Matrix     (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
 	int    VTKCellType  () const { return VTK_QUADRATIC_EDGE; }
-	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d %d",_connects[0]->GetID(),_connects[2]->GetID(),_connects[1]->GetID()); }
+	void   VTKConnect   (String & Nodes) const { Nodes.Printf("%d %d %d",Conn[0]->GetID(),Conn[2]->GetID(),Conn[1]->GetID()); }
 	void   OutInfo(std::ostream & os) const;
 
 	// Methods
@@ -72,7 +72,7 @@ private:
 	int  _geom                        () const { return 1; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	void _initialize                  ();                                 ///< Initialize the element
 	void _calc_initial_internal_state ();                                 ///< Calculate initial internal state
-	void _transf_mat                  (LinAlg::Matrix<double> & T) const; ///< Calculate transformation matrix
+	void _transf_mat                  (Mat_t & T) const; ///< Calculate transformation matrix
 
 }; // class Rod3
 
@@ -81,7 +81,7 @@ private:
 
 
 /* public */
-inline void  Rod3::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const 
+inline void  Rod3::Shape(double r, double s, double t, Vec_t & N) const 
 {
 
 	/*
@@ -90,13 +90,13 @@ inline void  Rod3::Shape(double r, double s, double t, LinAlg::Vector<double> & 
 	 *
 	 */
 
-	Shape.Resize(3);
-	Shape(0) = 0.5*(r*r-r);
-	Shape(1) = 1.0 - r*r;
-	Shape(2) = 0.5*(r*r+r);
+	N.Resize(3);
+	N(0) = 0.5*(r*r-r);
+	N(1) = 1.0 - r*r;
+	N(2) = 0.5*(r*r+r);
 }
 
-inline void Rod3::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const 
+inline void Rod3::Derivs(double r, double s, double t, Mat_t & Derivs) const 
 {
 	Derivs.Resize(1,3);
 	Derivs(0,0) =  r-0.5;
@@ -104,7 +104,7 @@ inline void Rod3::Derivs(double r, double s, double t, LinAlg::Matrix<double> & 
 	Derivs(0,2) =  r+0.5;
 }
 
-inline void Rod3::LocalCoords(LinAlg::Matrix<double> & coords) const 
+inline void Rod3::LocalCoords(Mat_t & coords) const 
 {
 	if (_ndim==2)
 	{
@@ -175,28 +175,28 @@ inline void Rod3::SetProps(char const * Properties)
 	}
 }
 
-inline void Rod3::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
+inline void Rod3::UpdateState(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+	Vec_t du(_nd*NNodes); // Delta disp. of this element
 
 	// Assemble (local/element) displacements vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
+		du(i*_nd+j) = dUglobal(Conn[i]->DOFVar(UD[_d][j]).EqID);
 
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> df(_nd*_n_nodes); // Delta internal force of this element
+	Vec_t df(_nd*NNodes); // Delta internal force of this element
 	df.SetValues(0.0);
 
-	LinAlg::Matrix<double> Ke;
+	Mat_t Ke;
 	Order1Matrix(0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+		dFint(Conn[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
 inline void Rod3::ApplyBodyForces() // TODO
@@ -205,8 +205,8 @@ inline void Rod3::ApplyBodyForces() // TODO
 	if (_is_active==false) return;
 
 	// Weight
-	double dx = _connects[1]->X()-_connects[0]->X();
-	double dy = _connects[1]->Y()-_connects[0]->Y();
+	double dx = Conn[1]->X()-Conn[0]->X();
+	double dy = Conn[1]->Y()-Conn[0]->Y();
 	double L  = sqrt(dx*dx+dy*dy);
 	double W  = _A*L*_gam;
 
@@ -214,13 +214,13 @@ inline void Rod3::ApplyBodyForces() // TODO
 	if (_ndim==1) throw new Fatal("Rod3::ApplyBodyForces: feature not available for NDim==1");
 	else if (_ndim==2)
 	{
-		_connects[0]->Bry("fy", -W/2.0);
-		_connects[1]->Bry("fy", -W/2.0);
+		Conn[0]->Bry("fy", -W/2.0);
+		Conn[1]->Bry("fy", -W/2.0);
 	}
 	else if (_ndim==3)
 	{
-		_connects[0]->Bry("fz", -W/2.0);
-		_connects[1]->Bry("fz", -W/2.0);
+		Conn[0]->Bry("fz", -W/2.0);
+		Conn[1]->Bry("fz", -W/2.0);
 	}
 }
 
@@ -230,14 +230,14 @@ inline void Rod3::CalcDepVars() const
 	_EpsIP.Resize(_n_int_pts);
 
 	// Assemble (local/element) displacements vector
-	LinAlg::Vector<double> U(_nd*_n_nodes); 
-	for (size_t i=0; i<_n_nodes; ++i) for (int j=0; j<_nd; ++j)
-		U(i*_nd+j) = _connects[i]->Val(UD[_d][j]);
+	Vec_t U(_nd*NNodes); 
+	for (size_t i=0; i<NNodes; ++i) for (int j=0; j<_nd; ++j)
+		U(i*_nd+j) = Conn[i]->Val(UD[_d][j]);
 
 	// Calculate Strain
-	LinAlg::Matrix<double> derivs; // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;      // Jacobian matrix
-	LinAlg::Matrix<double> B;      // strain-displacement matrix
+	Mat_t derivs; // size = NumLocalCoords(ex.: r,s,t) x NNodes
+	Mat_t J;      // Jacobian matrix
+	Mat_t B;      // strain-displacement matrix
 
 	// Loop along integration points
 	for (size_t i=0; i<_n_int_pts; ++i)
@@ -257,10 +257,10 @@ inline void Rod3::CalcDepVars() const
 inline double Rod3::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	if (_Eps.Size()<1) throw new Fatal("Rod3::Val: Please, call CalcDepVars() before calling this method");
 
@@ -285,16 +285,16 @@ inline void Rod3::OutInfo(std::ostream & os) const
 }
 
 
-inline void Rod3::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
+inline void Rod3::Order1Matrix(size_t Index, Mat_t & Ke) const
 {
 	// Resize Ke
-	Ke.Resize(_ndim*_n_nodes, _ndim*_n_nodes); // sum(Bt*D*B*det(J)*w)
+	Ke.Resize(_ndim*NNodes, _ndim*NNodes); // sum(Bt*D*B*det(J)*w)
 	Ke.SetValues(0.0);
 
 	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs; // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;      // Jacobian matrix
-	LinAlg::Matrix<double> B;      // strain-displacement matrix
+	Mat_t derivs; // size = NumLocalCoords(ex.: r,s,t) x NNodes
+	Mat_t J;      // Jacobian matrix
+	Mat_t B;      // strain-displacement matrix
 
 	// Loop along integration points
 	for (size_t i_ip=0; i_ip<_n_int_pts; ++i_ip)
@@ -312,13 +312,13 @@ inline void Rod3::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
 	}
 }
 
-inline void Rod3::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
+inline void Rod3::B_Matrix(Mat_t const & derivs, Mat_t const & J, Mat_t & B) const
 {
-	LinAlg::Matrix<double> cart_derivs(_ndim, _ndim*_n_nodes); // cartesian derivatives
+	Mat_t cart_derivs(_ndim, _ndim*NNodes); // cartesian derivatives
 	double det_J = det(J);
 
 	cart_derivs.SetValues(0.0);
-	for(size_t i=0; i<_n_nodes; i++) for(int j=0; j<_ndim; j++) cart_derivs(j, i*_ndim+j) = derivs(0,i);
+	for(size_t i=0; i<NNodes; i++) for(int j=0; j<_ndim; j++) cart_derivs(j, i*_ndim+j) = derivs(0,i);
 
 	B = 1.0/(det_J*det_J)*J*cart_derivs; // B matrix for a rod element (2D and 3D)
 }

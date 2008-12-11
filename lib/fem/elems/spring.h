@@ -31,7 +31,7 @@ class Spring : public EquilibElem
 {
 public:
 	// Constructor
-	Spring() : _ks(-1) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL);}
+	Spring() : _ks(-1) { NNodes=2; Conn.Resize(NNodes); Conn.SetValues(NULL);}
 	
 
 	// Derived methods
@@ -40,12 +40,12 @@ public:
 	// Derived methods
 	bool   CheckModel   () const;
 	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void   UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void   UpdateState  (double TimeInc, Vec_t const & dUglobal, Vec_t & dFint);
 	void   CalcDepVars  () const;
 	double Val          (int iNodeLocal, char const * Name) const;
 	double Val          (char const * Name) const;
-	void   Order1Matrix (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
-	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
+	void   Order1Matrix (size_t Index, Mat_t & Ke) const; ///< Stiffness
+	void   B_Matrix     (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
 	int    VTKCellType  () const { return VTK_LINE; }
 	void   VTKConnect   (String & Nodes) const;
 	void   OutInfo(std::ostream & os) const;
@@ -95,27 +95,27 @@ inline void Spring::SetModel(char const * ModelName, char const * Prms, char con
 	}
 }
 
-inline void Spring::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
+inline void Spring::UpdateState(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+	Vec_t du(_nd*NNodes); // Delta disp. of this element
 
 	// Assemble (local/element) displacements vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
+		du(i*_nd+j) = dUglobal(Conn[i]->DOFVar(UD[_d][j]).EqID);
 
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> df; // Delta internal force of this element
+	Vec_t df; // Delta internal force of this element
 
-	LinAlg::Matrix<double> Ke;
+	Mat_t Ke;
 	Order1Matrix(0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+		dFint(Conn[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
 inline void Spring::CalcDepVars() const
@@ -125,21 +125,21 @@ inline void Spring::CalcDepVars() const
 inline double Spring::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	     if (strcmp(Name,"Ea")==0)  return 0.0;
 	else if (strcmp(Name,"Sa")==0)  return 0.0;
 	else if (strcmp(Name,"N" )==0)
 	{
 		// Allocate (local/element) displacements vector
-		LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+		Vec_t du(_nd*NNodes); // Delta disp. of this element
 		// Assemble (local/element) displacements vector
-		for (size_t i=0; i<_n_nodes; ++i)
+		for (size_t i=0; i<NNodes; ++i)
 		for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = _connects[i]->Val(UD[_d][j]);
+		du(i*_nd+j) = Conn[i]->Val(UD[_d][j]);
 
 		Matrix<double> T; _mount_T_matrix(T);
 		Vector<double> D; D = T*du;
@@ -153,11 +153,11 @@ inline double Spring::Val(char const * Name) const
 	if (strcmp(Name,"N" )==0)
 	{
 		// Allocate (local/element) displacements vector
-		LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+		Vec_t du(_nd*NNodes); // Delta disp. of this element
 		// Assemble (local/element) displacements vector
-		for (size_t i=0; i<_n_nodes; ++i)
+		for (size_t i=0; i<NNodes; ++i)
 		for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = _connects[i]->Val(UD[_d][j]);
+		du(i*_nd+j) = Conn[i]->Val(UD[_d][j]);
 
 		Matrix<double> T; _mount_T_matrix(T);
 		Vector<double> D; D = T*du;
@@ -166,7 +166,7 @@ inline double Spring::Val(char const * Name) const
 	else throw new Fatal("Spring::Val: This element does not have a Val named %s",Name);
 }
 
-inline void Spring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
+inline void Spring::Order1Matrix(size_t Index, Mat_t & Ke) const
 {
 	//              T   T                    
 	//       K = [T0]*[B]*k0*[B]*[T0]*Area 
@@ -182,8 +182,8 @@ inline void Spring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) cons
 
 inline void Spring::_mount_T_matrix(Matrix<double> & T) const
 {
-	double x0 = _connects[0]->X(); double y0 = _connects[0]->Y(); double z0 = _connects[0]->Z();
-	double x1 = _connects[1]->X(); double y1 = _connects[1]->Y(); double z1 = _connects[1]->Z();
+	double x0 = Conn[0]->X(); double y0 = Conn[0]->Y(); double z0 = Conn[0]->Z();
+	double x1 = Conn[1]->X(); double y1 = Conn[1]->Y(); double z1 = Conn[1]->Z();
 	double L  = sqrt(pow(x1-x0,2.0)+pow(y1-y0,2.0)+pow(z1-z0,2.0));
 	double l = (x1-x0)/L;
 	double m = (y1-y0)/L;
@@ -199,7 +199,7 @@ inline void Spring::_mount_T_matrix(Matrix<double> & T) const
 	        0, 0, 0, l, m, n;
 }
 
-inline void Spring::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
+inline void Spring::B_Matrix(Mat_t const & derivs, Mat_t const & J, Mat_t & B) const
 {
 	throw new Fatal("Spring::B_Matrix: Feature not available");
 }
@@ -226,8 +226,8 @@ inline void Spring::OutInfo(std::ostream & os) const
 inline void Spring::VTKConnect(String & Nodes) const 
 { 
 	std::ostringstream os;
-	for(size_t i=0; i<_connects.Size(); i++)
-		os << _connects[i]->GetID() << " ";
+	for(size_t i=0; i<Conn.Size(); i++)
+		os << Conn[i]->GetID() << " ";
 	Nodes.Printf(os.str().c_str());
 }
 

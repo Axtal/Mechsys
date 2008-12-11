@@ -20,7 +20,8 @@
 #define MECHSYS_FEM_TRI6_H
 
 // MechSys
-#include "fem/element.h"
+#include "fem/node.h"
+#include "fem/geomelem.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
@@ -29,7 +30,7 @@
 namespace FEM
 {
 
-class Tri6: public virtual Element
+class Tri6: public GeomElem
 {
 public:
 	// Auxiliar structure to map local face IDs to local node IDs
@@ -44,19 +45,20 @@ public:
 	// Constructor
 	Tri6();
 
-	// Destructor
-	virtual ~Tri6() {}
 
 	// Derived methods
-	void SetIntPoints (int NumGaussPoints1D);
-	int  VTKCellType  () const { return VTK_QUADRATIC_TRIANGLE; }
-	void VTKConnect   (String & Nodes) const;
-	void GetFaceNodes (int FaceID, Array<Node*> & FaceConnects) const;
-	void Shape        (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void Derivs       (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void FaceShape    (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void FaceDerivs   (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	void LocalCoords   (LinAlg::Matrix<double> & coords) const;
+	void   SetIPs     (int NIPs1D);
+	int    VTKType    () const { return VTK_QUADRATIC_TRIANGLE; }
+	void   VTKConn    (String & Nodes) const;
+	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects) const;
+	double BoundDist  (double r, double s, double t) const { return std::min(std::min(r,s), 1-r-s); }
+	void   Shape      (double r, double s, double t, Vec_t & N)  const;
+	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
+	void   FaceShape  (double r, double s, Vec_t & FN)  const;
+	void   FaceDerivs (double r, double s, Mat_t & FdN) const;
+
+private:
+	void _local_coords (Mat_t & coords) const;
 
 }; // class Tri6
 
@@ -84,68 +86,51 @@ Tri6::FaceMap Tri6::Face2Node[]= {{ 0, 1, 3 },
 inline Tri6::Tri6()
 {
 	// Setup nodes number
-	_n_nodes      = 6;
-	_n_face_nodes = 3;
+	NNodes  = 6;
+	NFNodes = 3;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize    (_n_nodes);
-	_connects.SetValues (NULL);
+	Conn.Resize    (NNodes);
+	Conn.SetValues (NULL);
 
-	// Integration Points and Extrapolation Matrix
-	SetIntPoints (/*NumGaussPointsTotal*/3);
+	// Integration points and Extrapolation Matrix
+	SetIPs (/*NIPsTotal*/3);
 }
 
-inline void Tri6::SetIntPoints(int NumGaussPointsTotal)
+inline void Tri6::SetIPs(int NIPsTotal)
 {
 	// Setup pointer to the array of Integration Points
-	if (NumGaussPointsTotal==3)
-		_a_int_pts      = TRI_IP3;
-	else if (NumGaussPointsTotal==4)
-		_a_int_pts      = TRI_IP4;
-	else if (NumGaussPointsTotal==6)
-		_a_int_pts      = TRI_IP6;
-	else if (NumGaussPointsTotal==7)
-		_a_int_pts      = TRI_IP7;
-	else if (NumGaussPointsTotal==13)
-		_a_int_pts      = TRI_IP13;
-	else
-		throw new Fatal("Tri6::SetIntPoints: Error in number of integration points.");
+	if      (NIPsTotal==3)  IPs = TRI_IP3;
+	else if (NIPsTotal==4)  IPs = TRI_IP4;
+	else if (NIPsTotal==6)  IPs = TRI_IP6;
+	else if (NIPsTotal==7)  IPs = TRI_IP7;
+	else if (NIPsTotal==13) IPs = TRI_IP13;
+	else throw new Fatal("tri6::SetIntPoints: Error in number of integration points.");
 
-	_n_int_pts      = NumGaussPointsTotal;
-	_a_face_int_pts = LIN_IP2;
-	_n_face_int_pts = 2;
-}
-
-inline void Tri6::LocalCoords(LinAlg::Matrix<double> & coords) const
-{
-	coords.Resize(6,3);
-	coords =  0.0,  0.0, 1.0,
-	          1.0,  0.0, 1.0,
-	          0.0,  1.0, 1.0,
-	          0.5,  0.0, 1.0,
-	          0.5,  0.5, 1.0,
-	          0.0,  0.5, 1.0;
+	NIPs  = NIPsTotal ;
+	FIPs  = LIN_IP2;
+	NFIPs = 2;
 }
 
 inline void Tri6::VTKConnect(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d %d %d %d",_connects[0]->GetID(),
-	                                 _connects[1]->GetID(),
-	                                 _connects[2]->GetID(),
-	                                 _connects[3]->GetID(),
-	                                 _connects[4]->GetID(),
-	                                 _connects[5]->GetID());
+	Nodes.Printf("%d %d %d %d %d %d",Conn[0]->GetID(),
+	                                 Conn[1]->GetID(),
+	                                 Conn[2]->GetID(),
+	                                 Conn[3]->GetID(),
+	                                 Conn[4]->GetID(),
+	                                 Conn[5]->GetID());
 }
 
 inline void Tri6::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
 	FaceConnects.Resize(3);
-	FaceConnects[0] = _connects[Face2Node[FaceID].L];
-	FaceConnects[1] = _connects[Face2Node[FaceID].R];
-	FaceConnects[2] = _connects[Face2Node[FaceID].M];
+	FaceConnects[0] = Conn[Face2Node[FaceID].L];
+	FaceConnects[1] = Conn[Face2Node[FaceID].R];
+	FaceConnects[2] = Conn[Face2Node[FaceID].M];
 }
 
-inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
+inline void Tri6::Shape(double r, double s, double t, Vec_t & N) const
 {
 
 	/*    s
@@ -165,35 +150,35 @@ inline void Tri6::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	 *    @---------@---------@  --> r
 	 *  0           3          1
 	 */
-	Shape.Resize(/*NumNodes*/6);
-    Shape(0) = 1.0-(r+s)*(3.0-2.0*(r+s));
-    Shape(1) = r*(2.0*r-1.0);
-    Shape(2) = s*(2.0*s-1.0);
-    Shape(3) = 4.0*r*(1.0-(r+s));
-    Shape(4) = 4.0*r*s;
-    Shape(5) = 4.0*s*(1.0-(r+s));
+	N.Resize(/*NumNodes*/6);
+    N(0) = 1.0-(r+s)*(3.0-2.0*(r+s));
+    N(1) = r*(2.0*r-1.0);
+    N(2) = s*(2.0*s-1.0);
+    N(3) = 4.0*r*(1.0-(r+s));
+    N(4) = 4.0*r*s;
+    N(5) = 4.0*s*(1.0-(r+s));
 }
 
-inline void Tri6::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
+inline void Tri6::Derivs(double r, double s, double t, Mat_t & dN) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
-	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	/*         _     _ T
+	 *        |  dNi  |
+	 *   dN = |  ---  |   , where cj = r, s
+	 *        |_ dcj _|
+	 *  
+	 *   dN(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(2, /*NumNodes*/6);
+	dN.Resize(2, /*NumNodes*/6);
 
-    Derivs(0,0) = -3.0 + 4.0 * (r + s);       Derivs(1,0) = -3.0 + 4.0*(r + s);
-    Derivs(0,1) =  4.0 * r - 1.;              Derivs(1,1) =  0.0 ;
-	Derivs(0,2) =  0.0;                       Derivs(1,2) =  4.0 * s - 1.0;
-    Derivs(0,3) =  4.0 - 8.0 * r - 4.0 * s;   Derivs(1,3) = -4.0 * r;
-    Derivs(0,4) =  4.0 * s;                   Derivs(1,4) =  4.0 * r;
-    Derivs(0,5) = -4.0 * s;                   Derivs(1,5) =  4.0 - 4.0 * r - 8.0*s;
+    dN(0,0) = -3.0 + 4.0 * (r + s);       dN(1,0) = -3.0 + 4.0*(r + s);
+    dN(0,1) =  4.0 * r - 1.;              dN(1,1) =  0.0 ;
+	dN(0,2) =  0.0;                       dN(1,2) =  4.0 * s - 1.0;
+    dN(0,3) =  4.0 - 8.0 * r - 4.0 * s;   dN(1,3) = -4.0 * r;
+    dN(0,4) =  4.0 * s;                   dN(1,4) =  4.0 * r;
+    dN(0,5) = -4.0 * s;                   dN(1,5) =  4.0 - 4.0 * r - 8.0*s;
 }
 
-inline void Tri6::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
+inline void Tri6::FaceShape(double r, double s, Vec_t & FN) const
 {
 	/*
 	 *       @-----------@-----------@-> r
@@ -201,20 +186,43 @@ inline void Tri6::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	 *       |           |           |
 	 *      r=-1         r=0        r=+1
 	 */
-	FaceShape.Resize(/*NumFaceNodes*/3);
-	FaceShape(0) = 0.5 * (r*r-r);
-	FaceShape(1) = 0.5 * (r*r+r);
-	FaceShape(2) = 1.0 -  r*r;
+	FN.Resize(/*NumFaceNodes*/3);
+	FN(0) = 0.5 * (r*r-r);
+	FN(1) = 0.5 * (r*r+r);
+	FN(2) = 1.0 -  r*r;
 }
 
-inline void Tri6::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
+inline void Tri6::FaceDerivs(double r, double s, Mat_t & FdN) const
 {
-	FaceDerivs.Resize(1,/*NumFaceNodes*/3);
-	FaceDerivs(0,0) =  r  - 0.5;
-	FaceDerivs(0,1) =  r  + 0.5;
-	FaceDerivs(0,2) = -2.0* r;
+	FdN.Resize(1,/*NumFaceNodes*/3);
+	FdN(0,0) =  r  - 0.5;
+	FdN(0,1) =  r  + 0.5;
+	FdN(0,2) = -2.0* r;
 }
 
+inline void Tri6::_local_coords(Mat_t & C) const
+{
+	C.Resize(6,3);
+	C =  0.0,  0.0, 1.0,
+	     1.0,  0.0, 1.0,
+	     0.0,  1.0, 1.0,
+	     0.5,  0.0, 1.0,
+	     0.5,  0.5, 1.0,
+	     0.0,  0.5, 1.0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new element
+GeomElem * Tri6Maker() { return new Tri6(); }
+
+// Register element
+int Tri6Register() { GeomElemFactory["Tri6"]=Tri6Maker;  return 0; }
+
+// Call register
+int __Tri6_dummy_int  = Tri6Register();
 
 }; // namespace FEM
 

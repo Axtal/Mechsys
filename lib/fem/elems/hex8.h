@@ -50,7 +50,7 @@ public:
 	int    VTKType    () const { return VTK_HEXAHEDRON; }
 	void   VTKConn    (String & Nodes) const;
 	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects) const;
-	double BoundDist  (double r, double s, double t) const { return std::min(std::min(1-fabs(r),1-fabs(s)), 1-fabs(t)); }
+	double BoundDist  (double r, double s, double t) const { return std::min(std::min(1-fabs(r),1-fabs(s)),1-fabs(t)); }
 	void   Shape      (double r, double s, double t, Vec_t & N)  const;
 	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
 	void   FaceShape  (double r, double s, Vec_t & FN)  const;
@@ -115,7 +115,7 @@ inline void Hex8::SetIPs(int NIPs1D)
 	else throw new Fatal("Hex8::SetIPs: Number of integration points < %d > is invalid",NIPs1D);
 
 	NIPs  = pow(NIPs1D, 3);
-	FIPs   = QUAD_IP2;
+	FIPs  = QUAD_IP2;
 	NFIPs = 4; 
 }
 

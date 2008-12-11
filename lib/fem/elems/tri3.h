@@ -20,7 +20,8 @@
 #define MECHSYS_FEM_TRI3_H
 
 // MechSys
-#include "fem/element.h"
+#include "fem/node.h"
+#include "fem/geomelem.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
@@ -29,7 +30,7 @@
 namespace FEM
 {
 
-class Tri3: public virtual Element
+class Tri3: public GeomElem
 {
 public:
 	// Auxiliar structure to map local face IDs to local node IDs
@@ -43,20 +44,19 @@ public:
 	// Constructor
 	Tri3();
 
-	// Destructor
-	virtual ~Tri3() {}
-
 	// Derived methods
-	void   SetIntPoints  (int NumGaussPointsTotal);
-	int    VTKCellType   () const { return VTK_TRIANGLE; }
-	void   VTKConnect    (String & Nodes) const;
-	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
-	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void   Derivs        (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void   FaceDerivs    (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	double BoundDistance (double r, double s, double t) const;
-	void   LocalCoords   (LinAlg::Matrix<double> & coords) const;
+	void   SetIPs     (int NIPs1D);
+	int    VTKType    () const { return VTK_TRIANGLE; }
+	void   VTKConn    (String & Nodes) const;
+	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects) const;
+	double BoundDist  (double r, double s, double t) const { return std::min(std::min(r,s), 1-r-s); }
+	void   Shape      (double r, double s, double t, Vec_t & N)  const;
+	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
+	void   FaceShape  (double r, double s, Vec_t & FN)  const;
+	void   FaceDerivs (double r, double s, Mat_t & FdN) const;
+
+private:
+	void _local_coords (Mat_t & coords) const;
 
 }; // class Tri3
 
@@ -84,55 +84,47 @@ Tri3::FaceMap Tri3::Face2Node[]= {{ 0, 1 },
 inline Tri3::Tri3()
 {
 	// Setup nodes number
-	_n_nodes      = 3;
-	_n_face_nodes = 2;
+	NNodes  = 3;
+	NFNodes = 2;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize    (_n_nodes);
-	_connects.SetValues (NULL);
+	Conn.Resize    (NNodes);
+	Conn.SetValues (NULL);
 
-	// Integration Points and Extrapolation Matrix
-	SetIntPoints (/*NumGaussPointsTotal*/3);
+	// Integration points and Extrapolation Matrix
+	SetIPs (/*NIPsTotal*/3);
 }
 
-inline void Tri3::SetIntPoints(int NumGaussPointsTotal)
+inline void Tri3::SetIPs(int NIPsTotal)
 {
 	// Setup pointer to the array of Integration Points
-	if      (NumGaussPointsTotal==3)  _a_int_pts = TRI_IP3;
-	else if (NumGaussPointsTotal==4)  _a_int_pts = TRI_IP4;
-	else if (NumGaussPointsTotal==6)  _a_int_pts = TRI_IP6;
-	else if (NumGaussPointsTotal==7)  _a_int_pts = TRI_IP7;
-	else if (NumGaussPointsTotal==13) _a_int_pts = TRI_IP13;
+	if      (NIPsTotal==3)  IPs = TRI_IP3;
+	else if (NIPsTotal==4)  IPs = TRI_IP4;
+	else if (NIPsTotal==6)  IPs = TRI_IP6;
+	else if (NIPsTotal==7)  IPs = TRI_IP7;
+	else if (NIPsTotal==13) IPs = TRI_IP13;
 	else throw new Fatal("tri3::SetIntPoints: Error in number of integration points.");
 
-	_n_int_pts      = NumGaussPointsTotal;
-	_a_face_int_pts = LIN_IP2;
-	_n_face_int_pts = 2;
-}
-
-inline void Tri3::LocalCoords(LinAlg::Matrix<double> & coords) const 
-{
-	coords.Resize(3,3);
-	coords = 0.0, 0.0, 1.0,
-	         1.0, 0.0, 1.0,
-	         0.0, 1.0, 1.0;
+	NIPs  = NIPsTotal ;
+	FIPs  = LIN_IP2;
+	NFIPs = 2;
 }
 
 inline void Tri3::VTKConnect(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d",_connects[0]->GetID(),
-	                        _connects[1]->GetID(),
-	                        _connects[2]->GetID());
+	Nodes.Printf("%d %d %d",Conn[0]->GetID(),
+	                        Conn[1]->GetID(),
+	                        Conn[2]->GetID());
 }
 
-inline void Tri3::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
+inline void Tri3::GetFNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
 	FaceConnects.Resize(2);
-	FaceConnects[0] = _connects[Face2Node[FaceID].L];
-	FaceConnects[1] = _connects[Face2Node[FaceID].R];
+	FaceConnects[0] = Conn[Face2Node[FaceID].L];
+	FaceConnects[1] = Conn[Face2Node[FaceID].R];
 }
 
-inline void Tri3::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
+inline void Tri3::Shape(double r, double s, double t, Vec_t & N) const
 {
 
 	/*    s
@@ -152,57 +144,73 @@ inline void Tri3::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	 *    @-------------------@  --> r
 	 *  0                      1
 	 */
-	Shape.Resize(/*NumNodes*/3);
-    Shape(0) = 1.0-r-s;
-    Shape(1) = r;
-    Shape(2) = s;
+	N.Resize(/*NumNodes*/3);
+    N(0) = 1.0-r-s;
+    N(1) = r;
+    N(2) = s;
 }
 
-inline void Tri3::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
+inline void Tri3::Derivs(double r, double s, double t, Mat_t & dN) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
-	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	/*         _     _ T
+	 *        |  dNi  |
+	 *   dN = |  ---  |   , where cj = r, s
+	 *        |_ dcj _|
+	 *  
+	 *   dN(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(2, /*NumNodes*/3);
-    Derivs(0,0) = -1.0;    Derivs(1,0) = -1.0;
-    Derivs(0,1) =  1.0;    Derivs(1,1) =  0.0;
-	Derivs(0,2) =  0.0;    Derivs(1,2) =  1.0;
+	dN.Resize(2, /*NumNodes*/3);
+    dN(0,0) = -1.0;    dN(1,0) = -1.0;
+    dN(0,1) =  1.0;    dN(1,1) =  0.0;
+	dN(0,2) =  0.0;    dN(1,2) =  1.0;
 }
 
-inline void Tri3::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
+inline void Tri3::FaceShape(double r, double s, Vec_t & FN) const
 {
 	/*  
 	 *       0           |           1
 	 *       @-----------+-----------@-> r
 	 *      -1           |          +1
 	 */
-	FaceShape.Resize(/*NumFaceNodes*/2);
-	FaceShape(0) = 0.5*(1.0-r);
-	FaceShape(1) = 0.5*(1.0+r);
+	FN.Resize(/*NumFaceNodes*/2);
+	FN(0) = 0.5*(1.0-r);
+	FN(1) = 0.5*(1.0+r);
 }
 
-inline void Tri3::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
+inline void Tri3::FaceDerivs(double r, double s, Mat_t & FdN) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
+	/*          _     _ T
+	 *         |  dNi  |
+	 *   FdN = |  ---  |   , where cj = r, s
+	 *         |_ dcj _|
 	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	 *   FdN(j,i), j=>local coordinate and i=>shape function
 	 */
-	FaceDerivs.Resize(1,/*NumFaceNodes*/2);
-	FaceDerivs(0,0) = -0.5;
-	FaceDerivs(0,1) =  0.5;
+	FdN.Resize(1,/*NumFNodes*/2);
+	FdN(0,0) = -0.5;
+	FdN(0,1) =  0.5;
 }
 
-inline double Tri3::BoundDistance(double r, double s, double t) const
+inline void Tri3::_local_coords(Mat_t & C) const 
 {
-	return std::min(std::min(r,s), 1-r-s);
+	C.Resize(3,3);
+	C = 0.0, 0.0, 1.0,
+	    1.0, 0.0, 1.0,
+	    0.0, 1.0, 1.0;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new element
+GeomElem * Tri3Maker() { return new Tri3(); }
+
+// Register element
+int Tri3Register() { GeomElemFactory["Tri3"]=Tri3Maker;  return 0; }
+
+// Call register
+int __Tri3_dummy_int  = Tri3Register();
 
 }; // namespace FEM
 

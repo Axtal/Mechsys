@@ -34,7 +34,7 @@ public:
 	static const size_t NDIV;        ///< Number of points for extra output
 	
 	// Constructor
-	Beam () : _gam(0.0), _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) { _n_nodes=2; _connects.Resize(_n_nodes); _connects.SetValues(NULL); }
+	Beam () : _gam(0.0), _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) { NNodes=2; Conn.Resize(NNodes); Conn.SetValues(NULL); }
 
 	// Derived methods
 	char const * Name() const { return "Beam"; }
@@ -43,17 +43,17 @@ public:
 	bool   CheckModel          () const;
 	void   SetModel            (char const * ModelName, char const * Prms, char const * Inis);
 	void   SetProps            (char const * Properties);
-	void   UpdateState         (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void   UpdateState         (double TimeInc, Vec_t const & dUglobal, Vec_t & dFint);
 	void   ApplyBodyForces     ();
 	void   CalcDepVars         () const;
 	double Val                 (int iNodeLocal, char const * Name) const;
 	double Val                 (char const * Name) const;
-	void   Order1Matrix        (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
-	void   B_Matrix            (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
+	void   Order1Matrix        (size_t Index, Mat_t & Ke) const; ///< Stiffness
+	void   B_Matrix            (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
 	int    VTKCellType         () const { return VTK_LINE; }
-	void   VTKConnect          (String & Nodes) const { Nodes.Printf("%d %d",_connects[0]->GetID(),_connects[1]->GetID()); }
+	void   VTKConnect          (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
 	bool   HasExtra            () const { return true; }
-	void   OutExtra            (LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const;
+	void   OutExtra            (Mat_t & Coords, Vec_t & Norm, Mat_t & Values, Array<String> & Labels) const;
 	void   ClearDispAndStrains ();
 
 	// Methods
@@ -84,7 +84,7 @@ private:
 	int  _geom                        () const { return 1; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	void _initialize                  ();                                 ///< Initialize the element
 	void _calc_initial_internal_state ();                                 ///< Calculate initial internal state
-	void _transf_mat                  (LinAlg::Matrix<double> & T) const; ///< Calculate transformation matrix
+	void _transf_mat                  (Mat_t & T) const; ///< Calculate transformation matrix
 
 }; // class Beam
 
@@ -103,8 +103,8 @@ inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLoca
 
 	// Check which node is the left-most and adjust q0 and q1
 	bool is_node0_leftmost = true;
-	double x0 = _connects[0]->X();  double y0 = _connects[0]->Y();
-	double x1 = _connects[1]->X();  double y1 = _connects[1]->Y();
+	double x0 = Conn[0]->X();  double y0 = Conn[0]->Y();
+	double x1 = Conn[1]->X();  double y1 = Conn[1]->Y();
 	if (fabs(x1-x0)<1.0e-5) { if (y1<y0) is_node0_leftmost = false; } // vertical segment
 	else                    { if (x1<x0) is_node0_leftmost = false; } 
 	if (is_node0_leftmost==false)
@@ -114,7 +114,7 @@ inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLoca
 	}
 
 	// Transformation matrix and calculate _L
-	LinAlg::Matrix<double> T;
+	Mat_t T;
 	_transf_mat(T);
 
 	_has_q = true;
@@ -123,7 +123,7 @@ inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLoca
 	double LL = _L*_L;
 
 	// Beam-Local increment of force
-	LinAlg::Vector<double> f(_nd*_n_nodes);
+	Vec_t f(_nd*NNodes);
 	f = 0.0, _L*(7.0*_q0+3.0*_q1)/20.0,  LL*(3.0*_q0+2.0*_q1)/60.0,
 	    0.0, _L*(3.0*_q0+7.0*_q1)/20.0, -LL*(2.0*_q0+3.0*_q1)/60.0;
 
@@ -131,9 +131,9 @@ inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLoca
 	f = inv(T)*f;
 
 	// Add to nodes Brys
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		_connects[i]->Bry (FD[_d][j], f(i*_nd+j));
+		Conn[i]->Bry (FD[_d][j], f(i*_nd+j));
 
 	return this;
 }
@@ -182,28 +182,28 @@ inline void Beam::SetProps(char const * Properties)
 	}
 }
 
-inline void Beam::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
+inline void Beam::UpdateState(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+	Vec_t du(_nd*NNodes); // Delta disp. of this element
 
 	// Assemble (local/element) displacements vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
+		du(i*_nd+j) = dUglobal(Conn[i]->DOFVar(UD[_d][j]).EqID);
 
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> df(_nd*_n_nodes); // Delta internal force of this element
+	Vec_t df(_nd*NNodes); // Delta internal force of this element
 	df.SetValues(0.0);
 
-	LinAlg::Matrix<double> Ke;
+	Mat_t Ke;
 	Order1Matrix(0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+		dFint(Conn[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
 inline void Beam::ApplyBodyForces() 
@@ -212,8 +212,8 @@ inline void Beam::ApplyBodyForces()
 	if (_is_active==false) return;
 
 	// Weight
-	double dx = _connects[1]->X()-_connects[0]->X();
-	double dy = _connects[1]->Y()-_connects[0]->Y();
+	double dx = Conn[1]->X()-Conn[0]->X();
+	double dy = Conn[1]->Y()-Conn[0]->Y();
 	double L  = sqrt(dx*dx+dy*dy);
 	double W  = _A*L*_gam;
 
@@ -221,13 +221,13 @@ inline void Beam::ApplyBodyForces()
 	if (_ndim==1) throw new Fatal("Beam::ApplyBodyForces: feature not available for NDim==1");
 	else if (_ndim==2)
 	{
-		_connects[0]->Bry("fy", -W/2.0);
-		_connects[1]->Bry("fy", -W/2.0);
+		Conn[0]->Bry("fy", -W/2.0);
+		Conn[1]->Bry("fy", -W/2.0);
 	}
 	else if (_ndim==3)
 	{
-		_connects[0]->Bry("fz", -W/2.0);
-		_connects[1]->Bry("fz", -W/2.0);
+		Conn[0]->Bry("fz", -W/2.0);
+		Conn[1]->Bry("fz", -W/2.0);
 	}
 }
 
@@ -236,13 +236,13 @@ inline void Beam::CalcDepVars() const
 	if (_is_active==false) throw new Fatal("Beam::CalcDepVars: This element is inactive (ID=%d, Tag=%d)",_my_id,_tag);
 
 	// Element displacements vector
-	_uL.Resize(_nd*_n_nodes);
-	for (size_t i=0; i<_n_nodes; ++i)
+	_uL.Resize(_nd*NNodes);
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		_uL(i*_nd+j) = _connects[i]->DOFVar(UD[_d][j]).EssentialVal;
+		_uL(i*_nd+j) = Conn[i]->DOFVar(UD[_d][j]).EssentialVal;
 
 	// Transform to beam-local coordinates
-	LinAlg::Matrix<double> T;
+	Mat_t T;
 	_transf_mat(T);
 	_uL = T * _uL;
 }
@@ -250,10 +250,10 @@ inline void Beam::CalcDepVars() const
 inline double Beam::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	if (_uL.Size()<1) throw new Fatal("Beam::Val: Please, call CalcDepVars() before calling this method");
 	double l = (iNodeLocal==0 ? 0 : 1.0);
@@ -275,17 +275,17 @@ inline void Beam::ClearDispAndStrains()
 	if (_is_active==false) return;
 
 	// Clear displacements
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		_connects[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
+		Conn[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
 }
 
-inline void Beam::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
+inline void Beam::Order1Matrix(size_t Index, Mat_t & Ke) const
 {
 	if (_ndim==2)
 	{
-		double dx = _connects[1]->X()-_connects[0]->X();
-		double dy = _connects[1]->Y()-_connects[0]->Y();
+		double dx = Conn[1]->X()-Conn[0]->X();
+		double dy = Conn[1]->Y()-Conn[0]->Y();
 		double LL = dx*dx+dy*dy;
 		      _L  = sqrt(LL);
 		double c  = dx/_L;
@@ -297,7 +297,7 @@ inline void Beam::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
 		double c5 = _E*(6.0*_Izz*c/_L)/_L;
 		double c6 = _E*(4.0*_Izz)/_L;
 		double c7 = _E*(2.0*_Izz)/_L;
-		Ke.Resize(_nd*_n_nodes, _nd*_n_nodes);
+		Ke.Resize(_nd*NNodes, _nd*NNodes);
 		Ke =  c1,  c2, -c3, -c1, -c2, -c3,
 		      c2,  c4,  c5, -c2, -c4,  c5,
 		     -c3,  c5,  c6,  c3, -c5,  c7,
@@ -308,7 +308,7 @@ inline void Beam::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
 	else throw new Fatal("Beam::Order1Matrix: Feature not available for nDim==%d",_ndim);
 }
 
-inline void Beam::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
+inline void Beam::B_Matrix(Mat_t const & derivs, Mat_t const & J, Mat_t & B) const
 {
 	throw new Fatal("Beam::B_Matrix: Feature not available");
 }
@@ -357,16 +357,16 @@ inline double Beam::V(double l) const
 	return V;
 }
 
-inline void Beam::OutExtra(LinAlg::Matrix<double> & Coords, LinAlg::Vector<double> & Norm, LinAlg::Matrix<double> & Values, Array<String> & Labels) const
+inline void Beam::OutExtra(Mat_t & Coords, Vec_t & Norm, Mat_t & Values, Array<String> & Labels) const
 {
 	if (_uL.Size()<1) throw new Fatal("Beam::OutExtra: Please, call CalcDepVars() before calling this method");
 	if (_ndim==2)
 	{
 		// Generate coordinates for the extra points
-		double x0  = _connects[0]->X();
-		double y0  = _connects[0]->Y();
-		double x1  = _connects[1]->X();
-		double y1  = _connects[1]->Y();
+		double x0  = Conn[0]->X();
+		double y0  = Conn[0]->Y();
+		double x1  = Conn[1]->X();
+		double y1  = Conn[1]->Y();
 		double len = sqrt(pow(x1-x0,2) + pow(y1-y0,2));
 		Coords.Resize(NDIV+1, 2);
 		for (size_t i=0; i<NDIV+1; i++)
@@ -415,13 +415,13 @@ inline void Beam::_calc_initial_internal_state()
 	throw new Fatal("Beam::_calc_initial_internal_state: Feature not available");
 }
 
-inline void Beam::_transf_mat(LinAlg::Matrix<double> & T) const
+inline void Beam::_transf_mat(Mat_t & T) const
 {
 	// Transformation matrix
 	if (_ndim==2)
 	{
-		double dx = _connects[1]->X()-_connects[0]->X();
-		double dy = _connects[1]->Y()-_connects[0]->Y();
+		double dx = Conn[1]->X()-Conn[0]->X();
+		double dy = Conn[1]->Y()-Conn[0]->Y();
 		double LL = dx*dx+dy*dy;
 		      _L  = sqrt(LL);
 		double c  = dx/_L;

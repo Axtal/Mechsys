@@ -31,7 +31,7 @@ class EmbSpring : public EquilibElem
 {
 public:
 	// Constructor
-	EmbSpring(Element * Tress, Node * Ext, LinAlg::Vector<double> & Direction);
+	EmbSpring(Element * Tress, Node * Ext, Vec_t & Direction);
 
 	// Derived methods
 	char const * Name() const { return "EmbSpring"; }
@@ -39,12 +39,12 @@ public:
 	// Derived methods
 	bool   CheckModel   () const;
 	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void   UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
+	void   UpdateState  (double TimeInc, Vec_t const & dUglobal, Vec_t & dFint);
 	void   CalcDepVars  () const;
 	double Val          (int iNodeLocal, char const * Name) const;
 	double Val          (char const * Name) const;
-	void   Order1Matrix (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Stiffness
-	void   B_Matrix     (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
+	void   Order1Matrix (size_t Index, Mat_t & Ke) const; ///< Stiffness
+	void   B_Matrix     (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
 	int    VTKCellType  () const { return VTK_POLY_VERTEX; }
 	void   VTKConnect   (String & Nodes) const;
 	void   OutInfo(std::ostream & os) const;
@@ -59,14 +59,14 @@ private:
 	int  _geom     () const { return 2; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
 	void _initialize();
 
-	void _mount_T_matrix(Vector<double> const & Shape, Vector<double> const & Direction, Matrix<double> & T) const;
+	void _mount_T_matrix(Vector<double> const & N, Vector<double> const & Direction, Matrix<double> & T) const;
 	void _calc_initial_internal_state();
 	void _get_another_vector(Vector<double> const & V1, Vector<double> & V2) const;
 	void _get_normal_vector (Vector<double> const & V1, Vector<double> const & V2, Vector<double> & V3) const;
 
 	Element *              _tress;
 	Node    *              _ext; 
-	LinAlg::Vector<double> _direct;
+	Vec_t _direct;
 	
 
 }; // class EmbSpring
@@ -76,13 +76,13 @@ private:
 
 
 /* public */
-EmbSpring::EmbSpring(Element * Tress, Node * Ext, LinAlg::Vector<double> & Direction): _ks(-1), _Al(-1)
+EmbSpring::EmbSpring(Element * Tress, Node * Ext, Vec_t & Direction): _ks(-1), _Al(-1)
 {
 	_tress  = Tress;
 	_ext    = Ext;
 	_direct = Direction;
-	_n_nodes = _tress->NNodes() + 1;
-	_connects.Resize(_n_nodes);
+	NNodes = _tress->NNodes() + 1;
+	Conn.Resize(NNodes);
 }
 
 inline bool EmbSpring::CheckModel() const
@@ -112,27 +112,27 @@ inline void EmbSpring::SetModel(char const * ModelName, char const * Prms, char 
 	}
 }
 
-inline void EmbSpring::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
+inline void EmbSpring::UpdateState(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
-	LinAlg::Vector<double> du(_nd*_n_nodes); // Delta disp. of this element
+	Vec_t du(_nd*NNodes); // Delta disp. of this element
 
 	// Assemble (local/element) displacements vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = dUglobal(_connects[i]->DOFVar(UD[_d][j]).EqID);
+		du(i*_nd+j) = dUglobal(Conn[i]->DOFVar(UD[_d][j]).EqID);
 
 	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> df; // Delta internal force of this element
+	Vec_t df; // Delta internal force of this element
 
-	LinAlg::Matrix<double> Ke;
+	Mat_t Ke;
 	Order1Matrix(0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
-	for (size_t i=0; i<_n_nodes; ++i)
+	for (size_t i=0; i<NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		dFint(_connects[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+		dFint(Conn[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
 }
 
 inline void EmbSpring::CalcDepVars() const
@@ -142,10 +142,10 @@ inline void EmbSpring::CalcDepVars() const
 inline double EmbSpring::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	return 0;
 }
@@ -155,7 +155,7 @@ inline double EmbSpring::Val(char const * Name) const
 	throw new Fatal("EmbSpring::Val: Feature not available");
 }
 
-inline void EmbSpring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) const
+inline void EmbSpring::Order1Matrix(size_t Index, Mat_t & Ke) const
 {
 	//              T   T                       T   T                       T   T
 	//       K = [T0]*[B]*k0*[B]*[T0]*Area + [T1]*[B]*k1*[B]*[T1]*Area + [T2]*[B]*k2*[B]*[T2]*Area
@@ -212,7 +212,7 @@ inline void EmbSpring::Order1Matrix(size_t Index, LinAlg::Matrix<double> & Ke) c
 	}
 }
 
-inline void EmbSpring::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
+inline void EmbSpring::B_Matrix(Mat_t const & derivs, Mat_t const & J, Mat_t & B) const
 {
 	throw new Fatal("EmbSpring::B_Matrix: Feature not available");
 }
@@ -232,27 +232,27 @@ inline void EmbSpring::_calc_initial_internal_state()
 	throw new Fatal("EmbSpring::_calc_initial_internal_state: Feature not available");
 }
 
-inline void EmbSpring::_mount_T_matrix(Vector<double> const & Shape, Vector<double> const & Direction, Matrix<double> & T) const 
+inline void EmbSpring::_mount_T_matrix(Vector<double> const & N, Vector<double> const & Direction, Matrix<double> & T) const 
 {
-	// Mounting T Matrix (2 x _n_nodes*_ndim)
+	// Mounting T Matrix (2 x NNodes*_ndim)
 	//
 	//  T = [  N1*l N1*m N1*n N2*l N2*m ... | 0  0  0  ]
 	//      [    0    0    0    0    0  ... | l  m  n  ]
 	//      
 	//  l, m, n = Direction(0), Direction(1), Direction(2)
 
-	T.Resize(2, _ndim*_n_nodes);
+	T.Resize(2, _ndim*NNodes);
 	T.SetValues(0.0);
-	for (size_t i=0; i<_n_nodes-1; i++)
+	for (size_t i=0; i<NNodes-1; i++)
 	{
-		              T(0,i*_ndim    ) = Shape(i)*Direction(0);
-		              T(0,i*_ndim + 1) = Shape(i)*Direction(1);
-		if (_ndim==3) T(0,i*_ndim + 2) = Shape(i)*Direction(2);
+		              T(0,i*_ndim    ) = N(i)*Direction(0);
+		              T(0,i*_ndim + 1) = N(i)*Direction(1);
+		if (_ndim==3) T(0,i*_ndim + 2) = N(i)*Direction(2);
 	}
 
-	              T(1, (_n_nodes-1)*_ndim    ) = Direction(0);
-	              T(1, (_n_nodes-1)*_ndim + 1) = Direction(1);
-	if (_ndim==3) T(1, (_n_nodes-1)*_ndim + 2) = Direction(2);
+	              T(1, (NNodes-1)*_ndim    ) = Direction(0);
+	              T(1, (NNodes-1)*_ndim + 1) = Direction(1);
+	if (_ndim==3) T(1, (NNodes-1)*_ndim + 2) = Direction(2);
 }
 
 inline void EmbSpring::_get_another_vector(Vector<double> const & V1, Vector<double> & V2) const 
@@ -294,8 +294,8 @@ inline void EmbSpring::OutInfo(std::ostream & os) const
 inline void EmbSpring::VTKConnect(String & Nodes) const 
 { 
 	std::ostringstream os;
-	for(size_t i=0; i<_connects.Size(); i++)
-		os << _connects[i]->GetID() << " ";
+	for(size_t i=0; i<Conn.Size(); i++)
+		os << Conn[i]->GetID() << " ";
 	Nodes.Printf(os.str().c_str());
 }
 

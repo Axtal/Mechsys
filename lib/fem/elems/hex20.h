@@ -23,7 +23,7 @@
 #include <algorithm> 
 
 // MechSys
-#include "fem/element.h"
+#include "fem/node.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
@@ -32,7 +32,7 @@
 namespace FEM
 {
 
-class Hex20 : public virtual Element
+class Hex20 : public GeomElem
 {
 public:
 	// Auxiliar structure to map local face IDs to local node IDs
@@ -55,21 +55,22 @@ public:
 	virtual ~Hex20() {}
 
 	// Derived methods
-	void   SetIntPoints  (int NumGaussPoints1D);
-	int    VTKCellType   () const { return VTK_QUADRATIC_HEXAHEDRON; }
-	void   VTKConnect    (String & Nodes) const;
-	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
-	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void   Derivs        (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void   FaceDerivs    (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	double BoundDistance (double r, double s, double t) const;
-	void   LocalCoords   (LinAlg::Matrix<double> & coords) const;
+	void   SetIPs     (int NIPs1D);
+	int    VTKType    () const { return VTK_QUADRATIC_HEXAHEDRON; }
+	void   VTKConn    (String & Nodes) const;
+	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects) const;
+	double BoundDist  (double r, double s, double t) const { return std::min(std::min(1-fabs(r),1-fabs(s)),1-fabs(t)); }
+	void   Shape      (double r, double s, double t, Vec_t & N)  const;
+	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
+	void   FaceShape  (double r, double s, Vec_t & FN)  const;
+	void   FaceDerivs (double r, double s, Mat_t & FdN) const;
+private:
+	void _local_coords (Mat_t & coords) const;
 
 }; // class Hex20
 
 /* Local IDs
-                  Vertices                            Edges                              Faces
+                  Vertices                             Edges                              Faces
     t
     |           4        15        7                   4      16
    ,+--s         @-------@--------@                 +-------+--------+                 +----------------+ 
@@ -102,135 +103,108 @@ Hex20::FaceMap Hex20::Face2Node[]= {{ 0, 4, 7, 3, 16, 15, 19, 11 },
 inline Hex20::Hex20()
 {
 	// Setup nodes number
-	_n_nodes        = 20;
-	_n_face_nodes   = 8;
+	NNodes  = 20;
+	NFNodes = 8;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
-	_connects.SetValues(NULL);
+	Conn.Resize    (NNodes);
+	Conn.SetValues (NULL);
 
-	// Integration Points and Extrapolation Matrix
-	SetIntPoints (/*NumGaussPoints1D*/2);
+	// Integration points and Extrapolation Matrix
+	SetIPs (/*NIPs1D*/2);
 }
 
-inline void Hex20::SetIntPoints(int NumGaussPoints1D)
+inline void Hex20::SetIPs(int NumGaussPoints1D)
 {
 	// Setup pointer to the array of Integration Points
-	if      (NumGaussPoints1D==2) _a_int_pts = HEX_IP2;
-	else if (NumGaussPoints1D==3) _a_int_pts = HEX_IP3;
-	else if (NumGaussPoints1D==4) _a_int_pts = HEX_IP4;
-	else if (NumGaussPoints1D==5) _a_int_pts = HEX_IP5;
-	else throw new Fatal("Hex20::SetIntPoints: Error in number of integration points.");
+	     if (NIPs1D==2) IPs = HEX_IP2;
+	else if (NIPs1D==3) IPs = HEX_IP3;
+	else if (NIPs1D==4) IPs = HEX_IP4;
+	else if (NIPs1D==5) IPs = HEX_IP5;
+	else throw new Fatal("Hex20::SetIPs: Number of integration points < %d > is invalid",NIPs1D);
 
-	_n_int_pts      = pow(NumGaussPoints1D, 3);
-	_a_face_int_pts = QUAD_IP2;
-	_n_face_int_pts = 4;
+	NIPs  = pow(NIPs1D, 3);
+	FIPs  = QUAD_IP2;
+	NFIPs = 4; 
 }
 
-inline void Hex20::LocalCoords(LinAlg::Matrix<double> & coords) const 
-{
-	coords.Resize(20,4);
-	coords = -1.0, -1.0, -1.0, 1.0, // nodes 0 to 7
-	          1.0, -1.0, -1.0, 1.0,
-	          1.0,  1.0, -1.0, 1.0,
-	         -1.0,  1.0, -1.0, 1.0,
-	         -1.0, -1.0,  1.0, 1.0,
-	          1.0, -1.0,  1.0, 1.0,
-	          1.0,  1.0,  1.0, 1.0,
-	         -1.0,  1.0,  1.0, 1.0,
-
-              0.0, -1.0, -1.0, 1.0, // nodes 8 to 11
-              1.0,  0.0, -1.0, 1.0,
-              0.0,  1.0, -1.0, 1.0,
-             -1.0,  0.0, -1.0, 1.0,
-
-              0.0, -1.0,  1.0, 1.0, // nodes 12 to 15
-              1.0,  0.0,  1.0, 1.0,
-              0.0,  1.0,  1.0, 1.0,
-             -1.0,  0.0,  1.0, 1.0,
-
-	         -1.0, -1.0,  0.0, 1.0, // nodes 16 to 19
-	          1.0, -1.0,  0.0, 1.0,
-	          1.0,  1.0,  0.0, 1.0,
-	         -1.0,  1.0,  0.0, 1.0;
-}
 
 inline void Hex20::VTKConnect(String & Nodes) const
 {
 	Nodes.Printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-	             _connects[ 0]->GetID(),
-	             _connects[ 1]->GetID(),
-	             _connects[ 2]->GetID(),
-	             _connects[ 3]->GetID(),
-	             _connects[ 4]->GetID(),
-	             _connects[ 5]->GetID(),
-	             _connects[ 6]->GetID(),
-	             _connects[ 7]->GetID(),
-	             _connects[ 8]->GetID(),
-	             _connects[ 9]->GetID(),
-	             _connects[10]->GetID(),
-	             _connects[11]->GetID(),
-	             _connects[12]->GetID(),
-	             _connects[13]->GetID(),
-	             _connects[14]->GetID(),
-	             _connects[15]->GetID(),
-	             _connects[16]->GetID(),
-	             _connects[17]->GetID(),
-	             _connects[18]->GetID(),
-	             _connects[19]->GetID());
+	             Conn[ 0]->GetID(),
+	             Conn[ 1]->GetID(),
+	             Conn[ 2]->GetID(),
+	             Conn[ 3]->GetID(),
+	             Conn[ 4]->GetID(),
+	             Conn[ 5]->GetID(),
+	             Conn[ 6]->GetID(),
+	             Conn[ 7]->GetID(),
+	             Conn[ 8]->GetID(),
+	             Conn[ 9]->GetID(),
+	             Conn[10]->GetID(),
+	             Conn[11]->GetID(),
+	             Conn[12]->GetID(),
+	             Conn[13]->GetID(),
+	             Conn[14]->GetID(),
+	             Conn[15]->GetID(),
+	             Conn[16]->GetID(),
+	             Conn[17]->GetID(),
+	             Conn[18]->GetID(),
+	             Conn[19]->GetID());
 }
 
 inline void Hex20::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
 	FaceConnects.Resize(/*NumFaceNodes*/8);
-	FaceConnects[0] = _connects[Face2Node[FaceID].n0];
-	FaceConnects[1] = _connects[Face2Node[FaceID].n1];
-	FaceConnects[2] = _connects[Face2Node[FaceID].n2];
-	FaceConnects[3] = _connects[Face2Node[FaceID].n3];
-	FaceConnects[4] = _connects[Face2Node[FaceID].n4];
-	FaceConnects[5] = _connects[Face2Node[FaceID].n5];
-	FaceConnects[6] = _connects[Face2Node[FaceID].n6];
-	FaceConnects[7] = _connects[Face2Node[FaceID].n7];
+	FaceConnects[0] = Conn[Face2Node[FaceID].n0];
+	FaceConnects[1] = Conn[Face2Node[FaceID].n1];
+	FaceConnects[2] = Conn[Face2Node[FaceID].n2];
+	FaceConnects[3] = Conn[Face2Node[FaceID].n3];
+	FaceConnects[4] = Conn[Face2Node[FaceID].n4];
+	FaceConnects[5] = Conn[Face2Node[FaceID].n5];
+	FaceConnects[6] = Conn[Face2Node[FaceID].n6];
+	FaceConnects[7] = Conn[Face2Node[FaceID].n7];
 }
 
-inline void Hex20::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
+inline void Hex20::Shape(double r, double s, double t, Vec_t & N) const
 {
-	Shape.Resize(20);
+	N.Resize(20);
 
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
 	double tp1=1.0+t; double tm1=1.0-t;
 
-	Shape( 0) = 1/8.*rm1*sm1*tm1*(-r-s-t-2);
-	Shape( 1) = 1/8.*rp1*sm1*tm1*( r-s-t-2);
-	Shape( 2) = 1/8.*rp1*sp1*tm1*( r+s-t-2);
-	Shape( 3) = 1/8.*rm1*sp1*tm1*(-r+s-t-2);
-	Shape( 4) = 1/8.*rm1*sm1*tp1*(-r-s+t-2);
-	Shape( 5) = 1/8.*rp1*sm1*tp1*( r-s+t-2);
-	Shape( 6) = 1/8.*rp1*sp1*tp1*( r+s+t-2);
-	Shape( 7) = 1/8.*rm1*sp1*tp1*(-r+s+t-2);
-	Shape( 8) = 1/4.*(1-r*r)*sm1*tm1;
-	Shape( 9) = 1/4.*rp1*(1-s*s)*tm1;
-	Shape(10) = 1/4.*(1-r*r)*sp1*tm1;
-	Shape(11) = 1/4.*rm1*(1-s*s)*tm1;
-	Shape(12) = 1/4.*(1-r*r)*sm1*tp1;
-	Shape(13) = 1/4.*rp1*(1-s*s)*tp1;
-	Shape(14) = 1/4.*(1-r*r)*sp1*tp1;
-	Shape(15) = 1/4.*rm1*(1-s*s)*tp1;
-	Shape(16) = 1/4.*rm1*sm1*(1-t*t);
-	Shape(17) = 1/4.*rp1*sm1*(1-t*t);
-	Shape(18) = 1/4.*rp1*sp1*(1-t*t);
-	Shape(19) = 1/4.*rm1*sp1*(1-t*t);
+	N( 0) = 1/8.*rm1*sm1*tm1*(-r-s-t-2);
+	N( 1) = 1/8.*rp1*sm1*tm1*( r-s-t-2);
+	N( 2) = 1/8.*rp1*sp1*tm1*( r+s-t-2);
+	N( 3) = 1/8.*rm1*sp1*tm1*(-r+s-t-2);
+	N( 4) = 1/8.*rm1*sm1*tp1*(-r-s+t-2);
+	N( 5) = 1/8.*rp1*sm1*tp1*( r-s+t-2);
+	N( 6) = 1/8.*rp1*sp1*tp1*( r+s+t-2);
+	N( 7) = 1/8.*rm1*sp1*tp1*(-r+s+t-2);
+	N( 8) = 1/4.*(1-r*r)*sm1*tm1;
+	N( 9) = 1/4.*rp1*(1-s*s)*tm1;
+	N(10) = 1/4.*(1-r*r)*sp1*tm1;
+	N(11) = 1/4.*rm1*(1-s*s)*tm1;
+	N(12) = 1/4.*(1-r*r)*sm1*tp1;
+	N(13) = 1/4.*rp1*(1-s*s)*tp1;
+	N(14) = 1/4.*(1-r*r)*sp1*tp1;
+	N(15) = 1/4.*rm1*(1-s*s)*tp1;
+	N(16) = 1/4.*rm1*sm1*(1-t*t);
+	N(17) = 1/4.*rp1*sm1*(1-t*t);
+	N(18) = 1/4.*rp1*sp1*(1-t*t);
+	N(19) = 1/4.*rm1*sp1*(1-t*t);
 }
 
-inline void Hex20::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
+inline void Hex20::Derivs(double r, double s, double t, Mat_t & Derivs) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
+	/*       _     _ T
+	 *      |  dNi  |
+	 * dN = |  ---  |   , where cj = r, s
+	 *      |_ dcj _|
 	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	 * dN(j,i), j=>local coordinate and i=>shape function
 	 */
 
 	Derivs.Resize(3,20);
@@ -307,7 +281,7 @@ inline void Hex20::Derivs(double r, double s, double t, LinAlg::Matrix<double> &
 	Derivs(2,19)= -.5*t*rm1*sp1;
 }
 	
-inline void Hex20::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
+inline void Hex20::FaceShape(double r, double s, Vec_t & FaceShape) const
 {
 	/*                 ^ s
 	 *                 |
@@ -326,54 +300,88 @@ inline void Hex20::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSh
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
 
-	FaceShape(0) = 0.25*rm1*sm1*(rm1+sm1-3.0);
-	FaceShape(1) = 0.25*rp1*sm1*(rp1+sm1-3.0);
-	FaceShape(2) = 0.25*rp1*sp1*(rp1+sp1-3.0);
-	FaceShape(3) = 0.25*rm1*sp1*(rm1+sp1-3.0);
-	FaceShape(4) = 0.50*sm1*(1.0-r*r);
-	FaceShape(5) = 0.50*rp1*(1.0-s*s);
-	FaceShape(6) = 0.50*sp1*(1.0-r*r);
-	FaceShape(7) = 0.50*rm1*(1.0-s*s);
+	FN(0) = 0.25*rm1*sm1*(rm1+sm1-3.0);
+	FN(1) = 0.25*rp1*sm1*(rp1+sm1-3.0);
+	FN(2) = 0.25*rp1*sp1*(rp1+sp1-3.0);
+	FN(3) = 0.25*rm1*sp1*(rm1+sp1-3.0);
+	FN(4) = 0.50*sm1*(1.0-r*r);
+	FN(5) = 0.50*rp1*(1.0-s*s);
+	FN(6) = 0.50*sp1*(1.0-r*r);
+	FN(7) = 0.50*rm1*(1.0-s*s);
 }
 
-inline void Hex20::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
+inline void Hex20::FaceDerivs(double r, double s, Mat_t & FdN) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
+	/*          _     _ T
+	 *         |  dNi  |
+	 *   FdN = |  ---  |   , where cj = r, s
+	 *         |_ dcj _|
 	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	 *   FdN(j,i), j=>local coordinate and i=>shape function
 	 */
-	FaceDerivs.Resize(2,8);
+	FdN.Resize(2,8);
 	double rp1=1.0+r; double rm1=1.0-r;
 	double sp1=1.0+s; double sm1=1.0-s;
 
-	FaceDerivs(0,0) = - 0.25 * sm1 * (rm1 + rm1 + sm1 - 3.0);
-	FaceDerivs(0,1) =   0.25 * sm1 * (rp1 + rp1 + sm1 - 3.0);
-	FaceDerivs(0,2) =   0.25 * sp1 * (rp1 + rp1 + sp1 - 3.0);
-	FaceDerivs(0,3) = - 0.25 * sp1 * (rm1 + rm1 + sp1 - 3.0);
-	FaceDerivs(0,4) = - r * sm1;
-	FaceDerivs(0,5) =   0.50 * (1.0 - s * s);
-	FaceDerivs(0,6) = - r * sp1;
-	FaceDerivs(0,7) = - 0.5 * (1.0 - s * s);
+	FdN(0,0) = - 0.25 * sm1 * (rm1 + rm1 + sm1 - 3.0);
+	FdN(0,1) =   0.25 * sm1 * (rp1 + rp1 + sm1 - 3.0);
+	FdN(0,2) =   0.25 * sp1 * (rp1 + rp1 + sp1 - 3.0);
+	FdN(0,3) = - 0.25 * sp1 * (rm1 + rm1 + sp1 - 3.0);
+	FdN(0,4) = - r * sm1;
+	FdN(0,5) =   0.50 * (1.0 - s * s);
+	FdN(0,6) = - r * sp1;
+	FdN(0,7) = - 0.5 * (1.0 - s * s);
 
-	FaceDerivs(1,0) = - 0.25 * rm1 * (sm1 + rm1 + sm1 - 3.0);
-	FaceDerivs(1,1) = - 0.25 * rp1 * (sm1 + rp1 + sm1 - 3.0);
-	FaceDerivs(1,2) =   0.25 * rp1 * (sp1 + rp1 + sp1 - 3.0);
-	FaceDerivs(1,3) =   0.25 * rm1 * (sp1 + rm1 + sp1 - 3.0);
-	FaceDerivs(1,4) = - 0.50 * (1.0 - r * r);
-	FaceDerivs(1,5) = - s * rp1;
-	FaceDerivs(1,6) =   0.50 * (1.0 - r * r);
-	FaceDerivs(1,7) = - s * rm1;
+	FdN(1,0) = - 0.25 * rm1 * (sm1 + rm1 + sm1 - 3.0);
+	FdN(1,1) = - 0.25 * rp1 * (sm1 + rp1 + sm1 - 3.0);
+	FdN(1,2) =   0.25 * rp1 * (sp1 + rp1 + sp1 - 3.0);
+	FdN(1,3) =   0.25 * rm1 * (sp1 + rm1 + sp1 - 3.0);
+	FdN(1,4) = - 0.50 * (1.0 - r * r);
+	FdN(1,5) = - s * rp1;
+	FdN(1,6) =   0.50 * (1.0 - r * r);
+	FdN(1,7) = - s * rm1;
 }
 
-inline double Hex20::BoundDistance(double r, double s, double t) const
+inline void Hex20::_local_coords(Mat_t & coords) const 
 {
-	return std::min(std::min( 1-fabs(r) , 1-fabs(s) ), 1-fabs(t)) ;
+	coords.Resize(20,4);
+	coords = -1.0, -1.0, -1.0, 1.0, // nodes 0 to 7
+	          1.0, -1.0, -1.0, 1.0,
+	          1.0,  1.0, -1.0, 1.0,
+	         -1.0,  1.0, -1.0, 1.0,
+	         -1.0, -1.0,  1.0, 1.0,
+	          1.0, -1.0,  1.0, 1.0,
+	          1.0,  1.0,  1.0, 1.0,
+	         -1.0,  1.0,  1.0, 1.0,
+
+              0.0, -1.0, -1.0, 1.0, // nodes 8 to 11
+              1.0,  0.0, -1.0, 1.0,
+              0.0,  1.0, -1.0, 1.0,
+             -1.0,  0.0, -1.0, 1.0,
+
+              0.0, -1.0,  1.0, 1.0, // nodes 12 to 15
+              1.0,  0.0,  1.0, 1.0,
+              0.0,  1.0,  1.0, 1.0,
+             -1.0,  0.0,  1.0, 1.0,
+
+	         -1.0, -1.0,  0.0, 1.0, // nodes 16 to 19
+	          1.0, -1.0,  0.0, 1.0,
+	          1.0,  1.0,  0.0, 1.0,
+	         -1.0,  1.0,  0.0, 1.0;
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new element
+GeomElem * Hex20Maker() { return new Hex20(); }
+
+// Register element
+int Hex20Register() { GeomElemFactory["Hex20"]=Hex20Maker; return 0; }
+
+// Call register
+int __Hex20_dummy_int  = Hex20Register();
 }; // namespace FEM
 
 #endif // MECHSYS_FEM_HEX20_H
