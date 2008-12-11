@@ -22,7 +22,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/hex20equilib.h"
+#include "fem/elems/hex20.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -108,14 +109,14 @@ int main(int argc, char **argv) try
 
 	// Elements
 	dat.SetNElems (1);
-	dat.SetElem   (0, "Hex20Equilib", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (0, "Hex20", "Equilib", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity (list of nodes must be LOCAL)
-	dat.Ele(0)->Connect(0, dat.Nod( 0))->Connect(1, dat.Nod( 1))->Connect(2, dat.Nod( 2))->Connect(3, dat.Nod( 3))
-	        ->Connect(4, dat.Nod( 4))->Connect(5, dat.Nod( 5))->Connect(6, dat.Nod( 6))->Connect(7, dat.Nod( 7))
-	        ->Connect(8, dat.Nod( 8))->Connect(9, dat.Nod( 9))->Connect(10,dat.Nod(10))->Connect(11,dat.Nod(11))
-	        ->Connect(12,dat.Nod(12))->Connect(13,dat.Nod(13))->Connect(14,dat.Nod(14))->Connect(15,dat.Nod(15))
-	        ->Connect(16,dat.Nod(16))->Connect(17,dat.Nod(17))->Connect(18,dat.Nod(18))->Connect(19,dat.Nod(19));
+	dat.Ele(0)->SetConn(0, dat.Nod( 0))->SetConn(1, dat.Nod( 1))->SetConn(2, dat.Nod( 2))->SetConn(3, dat.Nod( 3))
+	          ->SetConn(4, dat.Nod( 4))->SetConn(5, dat.Nod( 5))->SetConn(6, dat.Nod( 6))->SetConn(7, dat.Nod( 7))
+	          ->SetConn(8, dat.Nod( 8))->SetConn(9, dat.Nod( 9))->SetConn(10,dat.Nod(10))->SetConn(11,dat.Nod(11))
+	          ->SetConn(12,dat.Nod(12))->SetConn(13,dat.Nod(13))->SetConn(14,dat.Nod(14))->SetConn(15,dat.Nod(15))
+	          ->SetConn(16,dat.Nod(16))->SetConn(17,dat.Nod(17))->SetConn(18,dat.Nod(18))->SetConn(19,dat.Nod(19));
 
 	// Parameters and initial values
 	String prms; prms.Printf("E=%f  nu=%f",E,nu);
@@ -124,7 +125,7 @@ int main(int argc, char **argv) try
 	// 4) Boundary conditions (must be after connectivity)
 	dat.Nod(0)->Bry    ("uy",0.0)->Bry("ux",0.0);
 	dat.Nod(3)->Bry    ("uy",0.0)->Bry("ux",0.0);
-	dat.Nod(11)->Bry   ("uy",0.0)->Bry("ux",0.0);
+	dat.Nod(11)->Bry   ("uy",0.0)->Bry("ux",0.0); 
 
 	dat.Ele(0)->FaceBry("uy",0.0,2);
 	dat.Ele(0)->FaceBry("uy",0.0,3);

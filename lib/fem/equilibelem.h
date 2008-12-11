@@ -127,7 +127,7 @@ const char EquilibElem:: UD [2][3][4] = {{"ux","uy",""},  {"ux","uy","uz"}};
 const char EquilibElem:: FD [2][3][4] = {{"fx","fy",""},  {"fx","fy","fz"}};
 
 // NL[_gi]                            3D PStrain PStress AxisSym
-const size_t EquilibElem:: NL [4] = { 18,     16,     10,     18 };
+const size_t EquilibElem:: NL [4] = { 22,     16,     14,     22 };
 
 // LB[_gi][iLbl]
 const char EquilibElem:: LB [4][22][4] = {
@@ -413,6 +413,7 @@ inline void EquilibElem::GetLbls(Array<String> & Lbls) const
 	{
 		Lbls[k] = LB[_gi-1][i];  k++;
 	}
+	std::cout << "Labels: " << Lbls << std::endl;
 }
 
 inline void EquilibElem::OutInfo(std::ostream & os) const
@@ -471,7 +472,6 @@ inline bool EquilibElem::CheckModel() const
 inline void EquilibElem::_initialize()
 {
 	_di = _ge->NDim-2; // Dimension index == _ge->NDim-2
-	_gi = 1;           // Geometry index: 3D=0, PStrain=1, PStress=2, Axis=3
 	_nd = ND[_di];
 	_nl = NL[_gi];
 	/*
@@ -727,25 +727,43 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 // Equilib
-// Allocate a new element
-ProbElem * EquilibMaker() { return new EquilibElem(); }
-
+// Allocate a new 3D Equilib element:
+ProbElem * EquilibMaker() 
+{ 
+	EquilibElem * Ptr = new EquilibElem;
+	Ptr->SetGeomIdx(0);
+	return Ptr; 
+}
 // Register element
 int EquilibRegister() { ProbElemFactory["Equilib"]=EquilibMaker;  return 0; }
-
 // Call register
 int __Equilib_dummy_int  = EquilibRegister();
 
-// PStrain
-// Allocate a new element
-ProbElem * PStrainMaker() { return new EquilibElem(); }
 
+// Allocate a new PStrain element:
+ProbElem * PStrainMaker() 
+{ 
+	EquilibElem * Ptr = new EquilibElem;
+	Ptr->SetGeomIdx(1);
+	return Ptr; 
+}
 // Register element
 int PStrainRegister() { ProbElemFactory["PStrain"]=PStrainMaker;  return 0; }
-
 // Call register
 int __PStrain_dummy_int  = PStrainRegister();
 
+
+// Allocate a new PStress element:
+ProbElem * PStressMaker() 
+{ 
+	EquilibElem * Ptr = new EquilibElem;
+	Ptr->SetGeomIdx(2);
+	return Ptr; 
+}
+// Register element
+int PStressRegister() { ProbElemFactory["PStress"]=PStressMaker;  return 0; }
+// Call register
+int __PStress_dummy_int  = PStressRegister();
 
 }; // namespace FEM
 

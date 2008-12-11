@@ -85,7 +85,7 @@ int main(int argc, char **argv) try
 
 	// 2) Elements
 	dat.SetNElems (1);
-	dat.SetElem   (0, "Quad8PStrain", /*IsActive*/true);
+	dat.SetElem   (0, "Quad8", "PStrain", /*IsActive*/true);
 
 	// 3) Set connectivity (list of nodes must be LOCAL)
 	dat.Ele(0)->Connect(0, dat.Nod(0))
