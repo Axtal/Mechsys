@@ -20,7 +20,7 @@
 #define MECHSYS_FEM_HEX8_H
 
 // MechSys
-#include "fem/element.h"
+#include "fem/node.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
@@ -29,7 +29,7 @@
 namespace FEM
 {
 
-class Hex8 : public virtual GeomElem
+class Hex8 : public GeomElem
 {
 public:
 	// Auxiliar structure to map local face IDs to local node IDs
@@ -50,13 +50,13 @@ public:
 	int    VTKType    () const { return VTK_HEXAHEDRON; }
 	void   VTKConn    (String & Nodes) const;
 	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects) const;
-	double BoundDist  (double r, double s, double t) const { return std::min(std::min( 1-fabs(r) , 1-fabs(s) ), 1-fabs(t)) }
+	double BoundDist  (double r, double s, double t) const { return std::min(std::min(1-fabs(r),1-fabs(s)), 1-fabs(t)); }
 	void   Shape      (double r, double s, double t, Vec_t & N)  const;
 	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
-	void   FShape     (double r, double s, Vec_t & FaceN)  const;
-	void   FDerivs    (double r, double s, Mat_t & FacedN) const;
+	void   FaceShape  (double r, double s, Vec_t & FN)  const;
+	void   FaceDerivs (double r, double s, Mat_t & FdN) const;
 private:
-	void   _local_coords (Mat_t & coords) const;
+	void _local_coords (Mat_t & coords) const;
 
 }; // class Hex8
 
@@ -94,54 +94,54 @@ Hex8::FaceMap Hex8::Face2Node[]= {{ 0, 3, 7, 4 },
 inline Hex8::Hex8()
 {
 	// Setup nodes number
-	NNodes        = 8;
-	NFNodes   = 4;
+	NNodes  = 8;
+	NFNodes = 4;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(NNodes);
-	_connects.SetValues(NULL);
+	Conn.Resize    (NNodes);
+	Conn.SetValues (NULL);
 
-	// Integration Points and Extrapolation Matrix
-	SetIntPoints (/*NumGaussPoints1D*/2);
+	// Integration points and Extrapolation Matrix
+	SetIPs (/*NIPs1D*/2);
 }
 
 inline void Hex8::SetIPs(int NIPs1D)
 {
 	// Setup pointer to the array of Integration Points
-	if      (NIPs1D==2) _a_int_pts = HEX_IP2;
-	else if (NIPs1D==3) _a_int_pts = HEX_IP3;
-	else if (NIPs1D==4) _a_int_pts = HEX_IP4;
-	else if (NIPs1D==5) _a_int_pts = HEX_IP5;
-	else throw new Fatal("Hex8::SetIntPoints: Error in number of integration points.");
+	     if (NIPs1D==2) IPs = HEX_IP2;
+	else if (NIPs1D==3) IPs = HEX_IP3;
+	else if (NIPs1D==4) IPs = HEX_IP4;
+	else if (NIPs1D==5) IPs = HEX_IP5;
+	else throw new Fatal("Hex8::SetIPs: Number of integration points < %d > is invalid",NIPs1D);
 
-	NIPs     = pow(NIPs1D, 3);
-	IPs      = QUAD_IP2;
-	NFaceIPs = 4;
+	NIPs  = pow(NIPs1D, 3);
+	FIPs   = QUAD_IP2;
+	NFIPs = 4; 
 }
 
 
 inline void Hex8::VTKConnect(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d %d %d %d %d %d",_connects[1]->GetID(),
-	                                       _connects[2]->GetID(),
-	                                       _connects[3]->GetID(),
-	                                       _connects[0]->GetID(),
-	                                       _connects[5]->GetID(),
-	                                       _connects[6]->GetID(),
-	                                       _connects[7]->GetID(),
-	                                       _connects[4]->GetID());
+	Nodes.Printf("%d %d %d %d %d %d %d %d",Conn[1]->GetID(),
+	                                       Conn[2]->GetID(),
+	                                       Conn[3]->GetID(),
+	                                       Conn[0]->GetID(),
+	                                       Conn[5]->GetID(),
+	                                       Conn[6]->GetID(),
+	                                       Conn[7]->GetID(),
+	                                       Conn[4]->GetID());
 }
 
 inline void Hex8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
 	FaceConnects.Resize(/*NumFaceNodes*/4);
-	FaceConnects[0] = _connects[Face2Node[FaceID].n0];
-	FaceConnects[1] = _connects[Face2Node[FaceID].n1];
-	FaceConnects[2] = _connects[Face2Node[FaceID].n2];
-	FaceConnects[3] = _connects[Face2Node[FaceID].n3];
+	FaceConnects[0] = Conn[Face2Node[FaceID].n0];
+	FaceConnects[1] = Conn[Face2Node[FaceID].n1];
+	FaceConnects[2] = Conn[Face2Node[FaceID].n2];
+	FaceConnects[3] = Conn[Face2Node[FaceID].n3];
 }
 
-inline void Hex8::Shape(double r, double s, double t, Vec_t & Shape) const
+inline void Hex8::Shape(double r, double s, double t, Vec_t & N) const
 {
 	/*                    t
 	 *                    ^
@@ -166,15 +166,15 @@ inline void Hex8::Shape(double r, double s, double t, Vec_t & Shape) const
 	 *    |_
 	 *   r
 	 */
-	Shape.Resize(/*NumNodes*/8);
-	Shape(0) = 0.125*(1.0-r-s+r*s-t+s*t+r*t-r*s*t);
-	Shape(1) = 0.125*(1.0+r-s-r*s-t+s*t-r*t+r*s*t);
-	Shape(2) = 0.125*(1.0+r+s+r*s-t-s*t-r*t-r*s*t);
-	Shape(3) = 0.125*(1.0-r+s-r*s-t-s*t+r*t+r*s*t);
-	Shape(4) = 0.125*(1.0-r-s+r*s+t-s*t-r*t+r*s*t);
-	Shape(5) = 0.125*(1.0+r-s-r*s+t-s*t+r*t-r*s*t);
-	Shape(6) = 0.125*(1.0+r+s+r*s+t+s*t+r*t+r*s*t);
-	Shape(7) = 0.125*(1.0-r+s-r*s+t+s*t-r*t-r*s*t);
+	N.Resize(/*NumNodes*/8);
+	N(0) = 0.125*(1.0-r-s+r*s-t+s*t+r*t-r*s*t);
+	N(1) = 0.125*(1.0+r-s-r*s-t+s*t-r*t+r*s*t);
+	N(2) = 0.125*(1.0+r+s+r*s-t-s*t-r*t-r*s*t);
+	N(3) = 0.125*(1.0-r+s-r*s-t-s*t+r*t+r*s*t);
+	N(4) = 0.125*(1.0-r-s+r*s+t-s*t-r*t+r*s*t);
+	N(5) = 0.125*(1.0+r-s-r*s+t-s*t+r*t-r*s*t);
+	N(6) = 0.125*(1.0+r+s+r*s+t+s*t+r*t+r*s*t);
+	N(7) = 0.125*(1.0-r+s-r*s+t+s*t-r*t-r*s*t);
 }
 
 inline void Hex8::Derivs(double r, double s, double t, Mat_t & dN) const
@@ -221,12 +221,12 @@ inline void Hex8::FaceShape(double r, double s, Vec_t & FN) const
 
 inline void Hex8::FaceDerivs(double r, double s, Mat_t & FdN) const
 {
-	/*        _     _ T
-	 *       |  dNi  |
-	 * FdN = |  ---  |   , where cj = r, s
-	 *       |_ dcj _|
+	/*          _     _ T
+	 *         |  dNi  |
+	 *   FdN = |  ---  |   , where cj = r, s
+	 *         |_ dcj _|
 	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	 *   FdN(j,i), j=>local coordinate and i=>shape function
 	 */
 
 	FdN.Resize(2,/*NumFaceNodes*/4);
@@ -257,8 +257,7 @@ inline void Hex8::_local_coords(Mat_t & coords) const
 GeomElem * Hex8Maker() { return new Hex8(); }
 
 // Register element
-int Hex8Register() { GeomElemFactory["Hex8"]=Hex8Maker; return 0;
-}
+int Hex8Register() { GeomElemFactory["Hex8"]=Hex8Maker; return 0; }
 
 // Call register
 int __Hex8_dummy_int  = Hex8Register();

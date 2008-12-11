@@ -191,7 +191,7 @@ inline void Quad4::FaceDerivs(double r, double s, Mat_t & FdN) const
 	 *         |  dNi  |
 	 *   FdN = |  ---  |   , where cj = r, s
 	 *         |_ dcj _|
-	 *  
+	 *
 	 *   FdN(j,i), j=>local coordinate and i=>shape function
 	 */
 	FdN.Resize(1,/*NumFNodes*/2);
