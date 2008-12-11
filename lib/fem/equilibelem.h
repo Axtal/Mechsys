@@ -143,19 +143,13 @@ inline void EquilibElem::AddVolForces()
 	if (_is_active==false) return;
 	
 	// Allocate (local/element) external volume force vector
-	Mat_t fvol(_ge->NNodes, _ge->NDim);
+	Vec_t fvol(_ge->NNodes);
 	fvol.SetValues(0.0);
 
 	// Allocate entities used for every integration point
 	Vec_t N;
 	Mat_t dN;
 	Mat_t J;
-	Vec_t b;
-
-	// Mounting the body force vector
-	     if (_ge->NDim==3) { b.Resize(3); b = 0.0, 0.0, -_gam; }
-	else if (_ge->NDim==2) { b.Resize(2); b = 0.0, -_gam; }
-	else if (_ge->NDim==1) { b.Resize(1); b = -_gam; }
 
 	// Calculate local external volume force
 	for (size_t i=0; i<_ge->NIPs; ++i)
@@ -169,17 +163,14 @@ inline void EquilibElem::AddVolForces()
 		Derivs   (r,s,t, dN);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
 		Jacobian (dN, J);      // Calculate J (Jacobian) matrix for i Integration Point
 
-		fvol += N*trn(b)*det(J)*w;
+		fvol += -N*_gam*det(J)*w;
 	}
 
 	// Sum up contribution to external forces vector
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	{
-		              _ge->Conn[i]->Bry("fx",fvol(i,0));
-		              _ge->Conn[i]->Bry("fy",fvol(i,1));
-		if (_ge->NDim==3) _ge->Conn[i]->Bry("fz",fvol(i,2));
-	//for (size_t j=0; j<_ge->NDim; j++)
-		//_ge->Conn[i]->Bry(FD[_di][j],fvol(i,j));
+		if (_ge->NDim==2) _ge->Conn[i]->Bry("fy",fvol(i));
+		if (_ge->NDim==3) _ge->Conn[i]->Bry("fz",fvol(i));
 	}
 }
 
@@ -558,9 +549,9 @@ inline void EquilibElem::_excavate()
 			double t = _ge->IPs[i].t;
 			double w = _ge->IPs[i].w;
 
-			Shape(r,s,t, N);          // Calculate N functions for i IP
-			Derivs(r,s,t, dN);        // Calculate Derivatives of Shape functions w.r.t local coordinate system
-			Jacobian(dN, J);          // Calculate J (Jacobian) matrix for i Integration Point
+			Shape(r,s,t, N);       // Calculate N functions for i IP
+			Derivs(r,s,t, dN);     // Calculate Derivatives of Shape functions w.r.t local coordinate system
+			Jacobian(dN, J);       // Calculate J (Jacobian) matrix for i Integration Point
 			_Bmat(dN,J, B);        // Calculate B matrix for i Integration Point
 
 			// Mount S
