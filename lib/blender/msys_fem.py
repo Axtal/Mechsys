@@ -99,9 +99,10 @@ def get_eatts(obj,mats,stg):
         for k, v in obj.properties[stg]['eatts'].iteritems():
             tag   = int(v[0])
             ety   = d['ety'][int(v[1])]
+            pty   = d['pty'][int(v[2])]
             inis  = 'ZERO'
-            matID = int(v[2])
-            prop  = obj.properties['texts'][str(int(v[3]))]
+            matID = int(v[3])
+            prop  = obj.properties['texts'][str(int(v[7]))]
             act   = True if int(v[4]) else False
             if mats.has_key(matID):
                 mdl     = mats[matID][0]
@@ -111,7 +112,7 @@ def get_eatts(obj,mats,stg):
                 mdl     = ''
                 prms    = ''
                 matdesc = '__no material__'
-            eatts.append ([tag, ety, mdl, prms, inis, prop, act, matdesc])
+            eatts.append ([tag, ety, pty, mdl, prms, inis, prop, act, matdesc])
     return eatts
 
 
@@ -250,11 +251,11 @@ def run_analysis(gen_script=False):
         for i, ea in enumerate(eatts):
             if i==0:       estr  = 'eatts = ['
             else:          estr  = '         '
-            if ea[6]:      estr += '[%d, "%s", "%s", "%s", "%s", "%s", True ]'#,  # %s\n'
-            else:          estr += '[%d, "%s", "%s", "%s", "%s", "%s", False]'#,  # %s\n'
+            if ea[6]:      estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", True ]'#,  # %s\n'
+            else:          estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", False]'#,  # %s\n'
             if i==neatt-1: estr += ']  # %s\n'
             else:          estr += ',  # %s\n'
-            txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[7]))
+            txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[8]))
 
         # set geometry: nodes and elements
         txt.write ('\n# Set nodes and elements (geometry)\n')

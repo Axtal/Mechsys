@@ -87,34 +87,41 @@ def load_dict():
         dict['dfvmnu'] = 'DOF Vars %t|vol %x14|pwp %x13|Qb %x12|mz %x11|wz %x10|Q %x9|q %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
 
         # Element types
-        dict['ety']  = {  0:'Hex8Equilib',    1:'Hex8Diffusion',
-                          2:'Quad4PStrain',   3:'Quad4PStress',   4:'Quad4Diffusion',
-                          5:'Tri3PStrain',    6:'Tri3PStress',    7:'Tri3Diffusion',
-                          8:'Rod',            9:'Beam',
-                         10:'Quad8PStrain',  11:'Quad8PStress',  12:'Quad8Diffusion',
-                         13:'Tri6PStrain',   14:'Tri6PStress',   15:'Tri6Diffusion',
-                         16:'Tri3Biot',      17:'Tri6Biot',      18:'Quad4Biot',     19:'Quad8Biot',
-                         20:'Hex20Equilib',  21:'Hex20Diffusion',
-                         22:'Tet4Equilib',   23:'Tet4Diffusion',
-                         24:'Tet10Equilib',  25:'Tet10Diffusion',
-                         26:'Reinforcement', 27: 'Spring' }
+        dict['ety']  =  { 0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20',
+                          8:'Rod',  9:'Beam', 10:'Spring', 11:'Reinforcement' }
 
-        dict['etymnu'] = 'Element Types %t|Spring %x28|Reinforcement %x27|Tet10Diffusion %x26|Tet10Equilib %x25|Tet4Diffusion %x24|Tet4Equilib %x23|Hex20Diffusion %x22|Hex20Equilib %x21|Quad8Biot %x20|Quad4Biot %x19|Tri6Biot %x18|Tri3Biot %x17|Tri6Diffusion %x16|Tri6PStress %x15|Tri6PStrain %x14|Quad8Diffusion %x13|Quad8PStress %x12|Quad8PStrain %x11|Beam %x10|Rod %x9|Tri3Diffusion %x8|Tri3PStress %x7|Tri3PStrain %x6|Quad4Diffusion %x5|Quad4PStress %x4|Quad4PStrain %x3|Hex8Diffusion %x2|Hex8Equilib %x1'
+        dict['etymnu'] = 'Element Types %t|Reinforcement %x12|Spring %x11|Beam %x10|Rod %x9|Hex20 %x8|Hex8 %x7|Tet10 %x6|Tet4 %x5|Quad8 %x4|Quad4 %x3|Tri6 %x2|Tri3 %x1'
+
+        # Problem types
+        dict['pty'] = { 0:'Equilib', 1:'PStrain', 2:'PStress', 3:'Axis', 4:'Diffusion', 5:'Biot', 6:'Unsat' }
+
+        dict['ptymnu'] = 'Problem Types %t|Unsat %x7|Biot %x6|Diffusion %x5|Axis %x4|PStress %x3|PStrain %x2|Equilib %x1'
 
         # Models
         dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic', 4:'BiotElastic', 5:'Reinforcement', 6:'Spring' }
         dict['mdlmnu'] = 'Constitutive Models %t|Spring %x7|Reinforcement %x6|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
 
         # VTK Cell Type (tentative mapping)
-        dict['vtk2ety'] = {  5: 5,   # VTK_TRIANGLE             => Tri3PStrain
-                             9: 2,   # VTK_QUAD                 => Quad4PStrain
-                            10:22,   # VTK_TETRA                => Tet4Equilib
-                            12: 0,   # VTK_HEXAHEDRON           => Hex8Equilib
-                            22:13,   # VTK_QUADRATIC_TRIANGLE   => Tri6PStrain
-                            23:10,   # VTK_QUADRATIC_QUAD       => Quad8PStrain
-                            24:24,   # VTK_QUADRATIC_TETRA      => Tet10Equilib
-                            25:20,   # VTK_QUADRATIC_HEXAHEDRON => Hex20Equilib
-                             3: 9 }  # VTK_LINE                 => Beam
+        dict['vtk2ety'] = {  5:  0,   # VTK_TRIANGLE             => Tri3
+                             9:  2,   # VTK_QUAD                 => Quad4
+                            10:  4,   # VTK_TETRA                => Tet4
+                            12:  6,   # VTK_HEXAHEDRON           => Hex8
+                            22:  1,   # VTK_QUADRATIC_TRIANGLE   => Tri6
+                            23:  3,   # VTK_QUADRATIC_QUAD       => Quad8
+                            24:  5,   # VTK_QUADRATIC_TETRA      => Tet10
+                            25:  7,   # VTK_QUADRATIC_HEXAHEDRON => Hex20
+                             3:  9 }  # VTK_LINE                 => Beam
+
+        # VTK Problem Type (tentative mapping)
+        dict['vtk2pty'] = {  5: 1,   # VTK_TRIANGLE             => PStrain
+                             9: 1,   # VTK_QUAD                 => PStrain
+                            10: 0,   # VTK_TETRA                => Equilib
+                            12: 0,   # VTK_HEXAHEDRON           => Equilib
+                            22: 1,   # VTK_QUADRATIC_TRIANGLE   => PStrain
+                            23: 1,   # VTK_QUADRATIC_QUAD       => PStrain
+                            24: 0,   # VTK_QUADRATIC_TETRA      => Equilib
+                            25: 0,   # VTK_QUADRATIC_HEXAHEDRON => Equilib
+                             3: 0 }  # VTK_LINE                 => Equilib
 
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
@@ -253,7 +260,7 @@ def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
 def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
 def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val
 def new_fbry_props():  return [-500, 0, 0.0]                    # tag, ux, val
-def new_eatt_props():  return [-1, 2, -1, -1, 1, 0, 0]          # tag, ElemType, MaterialID, idx_props(in texts), active?, activate?, deactivate?
+def new_eatt_props():  return [-1, 0, 1, -1, 1, 0, 0, -1]       # 0:tag, 1:ElemType, 2:ProbType, 3:MatID, 4:active?, 5:activate?, 6:deactivate?, 7:idx_txt
 
 
 # ============================================================================== Object Properties
@@ -391,6 +398,11 @@ def props_set_fem(stage_ids,key,id,item,val):
         obj.properties[stg][key][str(id)][item] = val
     Blender.Window.QRedrawAll()
 
+def props_set_fem_all_stg(key,id,item,val):
+    obj  = di.get_obj()
+    sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
+    props_set_fem (sids, key, id, item, val)
+
 def props_del_fem(stage_ids,key,id):
     msg = 'Confirm delete this item?%t|Yes'
     res = Blender.Draw.PupMenu(msg)
@@ -404,6 +416,11 @@ def props_del_fem(stage_ids,key,id):
             obj.properties[stg][key].pop(str(id))
             if len(obj.properties[stg][key])==0: obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
+
+def props_del_fem_all_stg(key,id):
+    obj  = di.get_obj()
+    sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
+    props_del_fem(sids, key, id)
 
 def props_del_all_fem(stage_ids,key,with_confirmation=True):
     obj = get_obj()
