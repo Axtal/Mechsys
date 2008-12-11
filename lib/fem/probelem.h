@@ -46,7 +46,6 @@ public:
 	virtual void      AddVolForces ()                                           {}
 	virtual void      ClearDisp    ()                                           {}
 	virtual void      SetActive    (bool Activate)                             =0;
-	virtual bool      CheckMdl     () const                                    =0;
 	virtual void      EdgeBry      (Str_t Key, double Val, int iEdge)           {}
 	virtual void      EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
 	virtual void      FaceBry      (Str_t Key, double Val, int iFace)           {}
@@ -62,7 +61,6 @@ public:
 	virtual void      Backup       ()                                          =0;
 	virtual void      Restore      ()                                          =0;
 	virtual void      GetLbls      (Array<String> & Lbls) const                =0;
-	virtual void      OutNodes     (Mat_t & Vals, Array<String> & Lbls) const  =0;
 	virtual void      OutInfo      (std::ostream & os) const                   =0;
 	virtual bool      HasExtra     () const                      { return false; }
 	virtual void      OutExtra     (Mat_t & Coords, Vec_t & Norm,
@@ -86,7 +84,8 @@ public:
 	virtual void      UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
 
 	// Methods
-	void Initialize (GeomElem * GE, bool IsAct); ///< Initialize the element
+	        void Initialize (Str_t Type, GeomElem * GE, bool IsAct); ///< Initialize the element
+	virtual bool CheckModel () const =0;                 ///< Check constitutive model
 
 	// Public data (read only)
 	bool IsActive;
@@ -94,6 +93,9 @@ public:
 protected:
 	// Data
 	GeomElem * _ge; ///< Geometry element
+
+	// Methods
+	virtual void _initialize(Str_t Type) =0; ///< Initialize derived element
 
 }; // class ProbElem
 
@@ -103,17 +105,18 @@ protected:
 
 /* public */
 
-inline void ProbElem::Initialize(GeomElem * GE, bool IsAct)
+inline void ProbElem::Initialize(Str_t Type, GeomElem * GE, bool IsAct)
 {
 	_ge      = GE;
 	IsActive = IsAct;
+	_initialize (Type);
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
 
-// Define a pointer to a function that makes (allocate) a new ProbElement
+// Define a pointer to a function that makes (allocate) a new ProbElem
 typedef ProbElem * (*ProbElemMakerPtr)();
 
 // Typdef of the array map that contains all the pointers to the functions that makes elements

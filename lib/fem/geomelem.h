@@ -45,22 +45,19 @@ public:
 	virtual ~GeomElem() {}
 
 	// Methods related to GEOMETRY
-	        bool         CheckConn () const;
-	        Node       * Nod       (size_t i)       { return Conn[i]; }
-	        Node const * Nod       (size_t i) const { return Conn[i]; }
-	        double       Volume    () const;
-	        void         Extrap    (Vec_t & IPVals, Vec_t & NodVals) const;
-	        void         InvMap    (double X, double Y, double Z,
-	                                double & r, double & s, double & t) const;
-	        bool         IsInside  (double X, double Y, double Z) const;
-	virtual void         SetIPs    (int NIPs1D)                             =0;
-	virtual int          VTKType   () const                                 =0;
-	virtual void         VTKConn   (String & Nodes) const                   =0;
-	virtual void         GetFNodes (int FaceID, Array<Node*> & FConn) const =0;
-	virtual double       BoundDist (double r, double s, double t) const     =0;
+	        double Volume    () const;
+	        void   Extrap    (Vec_t & IPVals, Vec_t & NodVals) const;
+	        void   InvMap    (double X, double Y, double Z, double & r, double & s, double & t) const;
+	        bool   IsInside  (double X, double Y, double Z) const;
+	virtual void   SetIPs    (int NIPs1D)                             =0;
+	virtual int    VTKType   () const                                 =0;
+	virtual void   VTKConn   (String & Nodes) const                   =0;
+	virtual void   GetFNodes (int FaceID, Array<Node*> & FConn) const =0;
+	virtual double BoundDist (double r, double s, double t) const     =0;
 
 	// Methods
-	        void Initialize (int nDim) { NDim = nDim; }
+	        void Initialize (int nDim);                                          ///< Initialize this element
+	        bool CheckConn  () const;                                            ///< Check connectivity
 	        void Jacobian   (Mat_t const & dN, Mat_t & J) const;                 ///< Jacobian matrix
 	virtual void Shape      (double r, double s, double t, Vec_t & N)  const =0; ///< Shape functions
 	virtual void Derivs     (double r, double s, double t, Mat_t & dN) const =0; ///< Derivatives of shape functions
@@ -85,6 +82,12 @@ private:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+inline void GeomElem::Initialize(int nDim)
+{
+	if (nDim<2 || nDim>3) throw new Fatal("GeomElem::Initialize: nDim must be either 2 or 3 (%d is invalid)",nDim);
+	NDim = nDim;
+}
 
 inline bool GeomElem::CheckConn() const
 {
