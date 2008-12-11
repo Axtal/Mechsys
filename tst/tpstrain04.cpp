@@ -23,8 +23,7 @@
 #include "fem/data.h"
 #include "fem/solver.h"
 #include "fem/elems/hex20.h"
-#include "fem/:quilibelem.h"
-
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"

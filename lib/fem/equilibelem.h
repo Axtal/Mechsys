@@ -37,8 +37,8 @@
 
 */
 
-#ifndef MECHSYS_FEM_EQUILIB_H
-#define MECHSYS_FEM_EQUILIB_H
+#ifndef MECHSYS_FEM_EQUILIBELEM_H
+#define MECHSYS_FEM_EQUILIBELEM_H
 
 // MechSys
 #include "fem/probelem.h"
@@ -411,9 +411,8 @@ inline void EquilibElem::GetLbls(Array<String> & Lbls) const
 	}
 	for (int i=0; i<_nl; ++i)
 	{
-		Lbls[k] = LB[_gi-1][i];  k++;
+		Lbls[k] = LB[_gi][i];  k++;
 	}
-	std::cout << "Labels: " << Lbls << std::endl;
 }
 
 inline void EquilibElem::OutInfo(std::ostream & os) const
@@ -726,7 +725,7 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
-// Equilib
+
 // Allocate a new 3D Equilib element:
 ProbElem * EquilibMaker() 
 { 
@@ -767,4 +766,4 @@ int __PStress_dummy_int  = PStressRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_EQUILIB_H
+#endif // MECHSYS_FEM_EQUILIBELEM_H
