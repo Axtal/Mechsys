@@ -91,10 +91,10 @@ public:
 	                 Array<int> const & Connectivity);                        ///< Push back a new element
 
 	// Specific methods
-	void AddVolForces    () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
-	void ClearDisplacements ();                                                                         ///< Clear displacements (equilibrium/coupled problems)
-	void Activate           (int ElemTag);                                                              ///< Activate all elements with Tag
-	void Deactivate         (int ElemTag);                                                              ///< Activate all elements with Tag
+	void AddVolForces () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
+	void ClearDisp    ();                                                                      ///< Clear displacements (equilibrium/coupled problems)
+	void Activate     (int ElemTag);                                                           ///< Activate all elements with Tag
+	void Deactivate   (int ElemTag);                                                           ///< Activate all elements with Tag
 
 	// Beams
 	void      SetNBeams (size_t NBeams) { _beams.Resize(NBeams); _beams.SetValues(NULL); _btags.Resize(NBeams); } ///< Set the number of beams
@@ -494,7 +494,7 @@ inline size_t Data::PushElem(int Tag, char const * GeomT, char const * ProbT, ch
 
 // Specific methods
 
-inline void Data::ClearDisplacements()
+inline void Data::ClearDisp()
 {
 	for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->ClearDisp();
 }

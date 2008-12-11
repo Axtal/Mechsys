@@ -45,8 +45,9 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad4biot.h" // << plane strain
-#include "fem/elems/quad8biot.h" // << plane strain
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/biotelem.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -171,8 +172,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8Biot", "", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Quad4Biot", "", prms.CStr(), "ZERO", "gam=20", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "", prms.CStr(), "ZERO", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);
@@ -184,25 +185,25 @@ int main(int argc, char **argv) try
 	FEM::EBrys_T ebrys;
 
 	// Stage # 0 --------------------------------------------------------------
-	ebrys.Resize         (0);
-	ebrys.Push           (make_tuple(-10, "ux",    0.0));
-	ebrys.Push           (make_tuple(-20, "ux",    0.0));
-	ebrys.Push           (make_tuple(-30, "uy",    0.0));
-	ebrys.Push           (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push           (make_tuple(-50, "pwp",   0.0));
-	dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
-	dat.ApplyBodyForces    ();
-	sol.SolveWithInfo   (4, 1e+6, 0, "  Initial stress state due to self weight (zero displacements)\n");
-	dat.ClearDisplacements ();
+	ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux",    0.0));
+	ebrys.Push        (make_tuple(-20, "ux",    0.0));
+	ebrys.Push        (make_tuple(-30, "uy",    0.0));
+	ebrys.Push        (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push        (make_tuple(-50, "pwp",   0.0));
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
+	dat.AddVolForces  ();
+	sol.SolveWithInfo (4, 1e+6, 0, "  Initial stress state due to self weight (zero displacements)\n");
+	dat.ClearDisp     ();
 
 	// Stage # 1 --------------------------------------------------------------
-	ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux",    0.0));
-	ebrys.Push         (make_tuple(-20, "ux",    0.0));
-	ebrys.Push         (make_tuple(-30, "uy",    0.0));
-	ebrys.Push         (make_tuple(-40, "fy",   load));
-	ebrys.Push         (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push         (make_tuple(-50, "pwp",   0.0));
+	ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux",    0.0));
+	ebrys.Push        (make_tuple(-20, "ux",    0.0));
+	ebrys.Push        (make_tuple(-30, "uy",    0.0));
+	ebrys.Push        (make_tuple(-40, "fy",   load));
+	ebrys.Push        (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push        (make_tuple(-50, "pwp",   0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (4, 0.0001, 1, "  Apply surface (footing) loading\n");
 
@@ -213,13 +214,13 @@ int main(int argc, char **argv) try
 	// Stage # 2+ -------------------------------------------------------------
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
-		ebrys.Resize (0);
-		ebrys.Push   (make_tuple(-10, "ux",    0.0));
-		ebrys.Push   (make_tuple(-20, "ux",    0.0));
-		ebrys.Push   (make_tuple(-30, "uy",    0.0));
-		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
-		ebrys.Push   (make_tuple(-50, "pwp",   0.0));
-		dat.SetBrys (&mesh, NULL, &ebrys, NULL);
+		ebrys.Resize      (0);
+		ebrys.Push        (make_tuple(-10, "ux",    0.0));
+		ebrys.Push        (make_tuple(-20, "ux",    0.0));
+		ebrys.Push        (make_tuple(-30, "uy",    0.0));
+		ebrys.Push        (make_tuple(-40, "pwp",   0.0));
+		ebrys.Push        (make_tuple(-50, "pwp",   0.0));
+		dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 		sol.SolveWithInfo (10, TimeIncs(i), i+2, "  Consolidation\n");
 		for (int j=0; j<SampleNodes.Size(); j++)
 			OutUy(j,i) = (dat.Nod(SampleNodes(j))->Val("uy") - Uy0(j))/(-winf); // Saving normalized vertical displacement
