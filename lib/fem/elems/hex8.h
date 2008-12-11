@@ -253,22 +253,15 @@ inline void Hex8::_local_coords(Mat_t & coords) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Hex8Equilib element
-GeomElem * Hex8EquilibMaker()
-{
-	return new Hex8Equilib();
+// Allocate a new element
+GeomElem * Hex8Maker() { return new Hex8(); }
+
+// Register element
+int Hex8Register() { GeomElemFactory["Hex8"]=Hex8Maker; return 0;
 }
 
-// Register a Hex8Equilib element into ElementFactory array map
-int Hex8EquilibRegister()
-{
-	ElementFactory[Hex8Equilib::NAME] = Hex8EquilibMaker;
-	return 0;
-}
-
-// Execute the autoregistration
-int __Hex8Equilib_dummy_int  = Hex8EquilibRegister();
-
+// Call register
+int __Hex8_dummy_int  = Hex8Register();
 
 }; // namespace FEM
 
