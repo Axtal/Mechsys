@@ -531,45 +531,46 @@ inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) co
 	Mat_t dC;
 	dC = inv(J)*dN;
 
+	int dim = _ge->NDim;
 	switch (_gi)
 	{
 		case 0: // 3D
 		{
 			const int n_scomps = 6; // number of stress compoments
-			B.Resize (n_scomps,_nd*_ge->NNodes);
+			B.Resize (n_scomps,dim*_ge->NNodes);
 			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =     dC(0,i);  B(0,1+i*_nd) =         0.0;  B(0,2+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dC(1,i);  B(1,2+i*_nd) =         0.0;
-				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;  B(2,2+i*_nd) =     dC(2,i);
-				B(3,0+i*_nd) = dC(1,i)/SQ2;  B(3,1+i*_nd) = dC(0,i)/SQ2;  B(3,2+i*_nd) =         0.0; // SQ2 => Mandel representation
-				B(4,0+i*_nd) =         0.0;  B(4,1+i*_nd) = dC(2,i)/SQ2;  B(4,2+i*_nd) = dC(1,i)/SQ2; // SQ2 => Mandel representation
-				B(5,0+i*_nd) = dC(2,i)/SQ2;  B(5,1+i*_nd) =         0.0;  B(5,2+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*dim) =     dC(0,i);  B(0,1+i*dim) =         0.0;  B(0,2+i*dim) =         0.0;
+				B(1,0+i*dim) =         0.0;  B(1,1+i*dim) =     dC(1,i);  B(1,2+i*dim) =         0.0;
+				B(2,0+i*dim) =         0.0;  B(2,1+i*dim) =         0.0;  B(2,2+i*dim) =     dC(2,i);
+				B(3,0+i*dim) = dC(1,i)/SQ2;  B(3,1+i*dim) = dC(0,i)/SQ2;  B(3,2+i*dim) =         0.0; // SQ2 => Mandel representation
+				B(4,0+i*dim) =         0.0;  B(4,1+i*dim) = dC(2,i)/SQ2;  B(4,2+i*dim) = dC(1,i)/SQ2; // SQ2 => Mandel representation
+				B(5,0+i*dim) = dC(2,i)/SQ2;  B(5,1+i*dim) =         0.0;  B(5,2+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
 		case 1: // 2D(plane-strain)
 		{
 			const int n_scomps = 4; // number of stress compoments
-			B.Resize (n_scomps,_nd*_ge->NNodes);
+			B.Resize (n_scomps,dim*_ge->NNodes);
 			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =     dC(0,i);  B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dC(1,i);
-				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;
-				B(3,0+i*_nd) = dC(1,i)/SQ2;  B(3,1+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*dim) =     dC(0,i);  B(0,1+i*dim) =         0.0;
+				B(1,0+i*dim) =         0.0;  B(1,1+i*dim) =     dC(1,i);
+				B(2,0+i*dim) =         0.0;  B(2,1+i*dim) =         0.0;
+				B(3,0+i*dim) = dC(1,i)/SQ2;  B(3,1+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
 		case 2: // 2D(plane-stress)
 		{
 			const int n_scomps = 3; // number of stress compoments
-			B.Resize(n_scomps,_nd*_ge->NNodes);
+			B.Resize(n_scomps,dim*_ge->NNodes);
 			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =      dC(0,i);   B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =          0.0;   B(1,1+i*_nd) =     dC(1,i);
-				B(2,0+i*_nd) =  dC(1,i)/SQ2;   B(2,1+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*dim) =      dC(0,i);   B(0,1+i*dim) =         0.0;
+				B(1,0+i*dim) =          0.0;   B(1,1+i*dim) =     dC(1,i);
+				B(2,0+i*dim) =  dC(1,i)/SQ2;   B(2,1+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
