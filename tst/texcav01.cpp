@@ -142,7 +142,7 @@ int main(int argc, char **argv) try
 	dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
 	dat.AddVolForces    ();
 	sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-	dat.ClearDisplacements ();
+	dat.ClearDisp       ();
 
 	// Stage # 0 ---------------------------------------------------------------
 	dat.Deactivate       (/*Tag*/-3);
