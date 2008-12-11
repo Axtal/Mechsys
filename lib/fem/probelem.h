@@ -38,6 +38,8 @@ typedef char const *           Str_t;
 class ProbElem
 {
 public:
+	// Typedefs
+	typedef const char VarName_t[4];
 
 	// Constructor
 	ProbElem() : IsActive(true) {}
@@ -92,7 +94,10 @@ public:
 	
 protected:
 	// Data
-	GeomElem * _ge; ///< Geometry element
+	GeomElem  * _ge; ///< Geometry element
+	VarName_t *  UD; ///< Essential DOF names. Access: UD[iDOF]
+	VarName_t *  FD; ///< Natural   DOF names. Access: FD[iDOF]
+	VarName_t *  LB; ///< Additional lbls (exceed. those from UD/FD).  Access: LB[iLbl]
 
 	// Methods
 	virtual void _initialize() =0; ///< Initialize derived element

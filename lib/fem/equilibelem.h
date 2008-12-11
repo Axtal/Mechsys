@@ -59,16 +59,8 @@ namespace FEM
 class EquilibElem : public ProbElem
 {
 public:
-	typedef const char VARNAME[4];
-
-	// Constants. Note: _di==dimension index, _gi==geometry index
-	static const char   UD [2][3][4];  ///< Essential DOF names. Access: UD[_di][iDOF]
-	static const char   FD [2][3][4];  ///< Natural DOF names.   Access: FD[_di][iDOF]
-	static const size_t NL [4];        ///< Number of additional labels (exceeding nDOFs). Access: NL[_gi]
-	static const char   LB [4][22][4]; ///< Additional lbls (exceed. those from UD/FD).    Access: LB[_gi][iLbl]
-
 	// Constructor
-	EquilibElem () : _di(-1), _gi(-1), _nd(-1), _nl(-1), _gam(0.0) {}
+	EquilibElem () : _gi(-1), _nd(-1), _nl(-1), _gam(0.0) {}
 
 	// Destructor
 	~EquilibElem () { for (size_t i=0; i<_mdl.Size(); ++i) delete _mdl[i]; }
@@ -119,9 +111,6 @@ protected:
 	void _equations_map      (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) const;
 
-	VARNAME * UD;  ///< Essential DOF names. Access: UD[iDOF]
-	VARNAME * FD;  ///< Natural   DOF names. Access: FD[iDOF]
-	VARNAME * LB;  ///< Additional lbls (exceed. those from UD/FD).  Access: LB[iLbl]
 	
                                                                                             
 }; // class EquilibElem                                                                     
