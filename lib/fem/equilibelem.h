@@ -42,6 +42,7 @@
 
 // MechSys
 #include "fem/probelem.h"
+#include "fem/dofs.h"
 #include "models/equilibmodel.h"
 #include "util/string.h"
 #include "util/util.h"
@@ -58,6 +59,8 @@ namespace FEM
 class EquilibElem : public ProbElem
 {
 public:
+	typedef const char VARNAME[4];
+
 	// Constants. Note: _di==dimension index, _gi==geometry index
 	static const char   UD [2][3][4];  ///< Essential DOF names. Access: UD[_di][iDOF]
 	static const char   FD [2][3][4];  ///< Natural DOF names.   Access: FD[_di][iDOF]
@@ -114,9 +117,14 @@ protected:
 	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
 	void _initial_state      ();                                                   ///< Calculate initial internal state
 	void _equations_map      (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) constEquilibElem;
-                                                                                            EquilibElem
-}; // class EquilibElem                                                                     EquilibElem
+	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) const;
+
+	VARNAME * UD;  ///< Essential DOF names. Access: UD[iDOF]
+	VARNAME * FD;  ///< Natural   DOF names. Access: FD[iDOF]
+	VARNAME * LB;  ///< Additional lbls (exceed. those from UD/FD).  Access: LB[iLbl]
+	
+                                                                                            
+}; // class EquilibElem                                                                     
 
 // UD[_di][iDOF]                         2D               3D
 const char EquilibElem:: UD [2][3][4] = {{"ux","uy",""},  {"ux","uy","uz"}};
@@ -192,7 +200,7 @@ inline void EquilibElem::SetActive(bool Activate, int ID)
 		for (size_t i=0; i<_ge->Conn.Size(); ++i)
 		{
 			// Add Degree of Freedom to a node (Essential, Natural)
-			for (int j=0; j<_nd; ++j) _ge->Conn[i]->AddDOF (UD[_di][j], FD[_di][j]);
+			for (int j=0; j<_nd; ++j) _ge->Conn[i]->AddDOF (UD[_di][j], FD[j]);
 
 			// Set SharedBy
 			_ge->Conn[i]->SetSharedBy (ID);
@@ -259,7 +267,7 @@ inline double EquilibElem::Val(int iNod, Str_t Name) const
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_di][j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_di][j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
 
 	// Stress, strains, internal values, etc.
 	Vec_t    ip_values (_ge->NIPs); // Vectors for extrapolation
@@ -343,7 +351,7 @@ inline void EquilibElem::SetConn(int iNod, FEM::Node * ptNode, int ID)
 	if (IsActive)
 	{
 		// Add Degree of Freedom to a node (Essential, Natural)
-		for (int i=0; i<_nd; ++i) _ge->Conn[iNod]->AddDOF (UD[_di][i], FD[_di][i]);
+		for (int i=0; i<_nd; ++i) _ge->Conn[iNod]->AddDOF (UD[_di][i], FD[i]);
 
 		// Set shared
 		_ge->Conn[iNod]->SetSharedBy (ID);
@@ -403,8 +411,8 @@ inline void EquilibElem::GetLbls(Array<String> & Lbls) const
 	size_t k = 0;
 	for (int i=0; i<_nd; ++i)
 	{
-		Lbls[k] = EquilibElem::UD[_di][i];  k++;
-		Lbls[k] = EquilibElem::FD[_di][i];  k++;
+		Lbls[k] = EquilibElem::UD[i];  k++;
+		Lbls[k] = EquilibElem::FD[i];  k++;
 	}
 	for (int i=0; i<_nl; ++i)
 	{
@@ -460,9 +468,30 @@ inline bool EquilibElem::CheckModel() const
 
 inline void EquilibElem::_initialize()
 {
-	_di = _ge->NDim-2; // Dimension index == _ge->NDim-2
-	_nd = _ge->NDim;   // number of DOFs
-	_nl = NL[_gi];     // number of additional labels
+	if (_gi==0)  // 3D
+	{
+		_nd = ND_EQUILIB_3D;
+		UD  = UD_EQUILIB_3D;
+		FD  = FD_EQUILIB_3D;
+		_nl = NL_EQUILIB_3D; 
+		LB  = LB_EQUILIB_3D;
+	}
+	else if (_gi==1)  // PlaneStrain
+	{
+		_nd = ND_PSTRAIN;
+		UD  = UD_PSTRAIN;
+		FD  = FD_PSTRAIN;
+		_nl = NL_PSTRAIN; 
+		LB  = LB_PSTRAIN;
+	}
+	else if (_gi==2)  // PlaneStress
+	{
+		_nd = ND_PSTRESS;
+		UD  = UD_PSTRESS;
+		FD  = FD_PSTRESS;
+		_nl = NL_PSTRESS; 
+		LB  = LB_PSTRESS;
+	}
 }
 
 inline void EquilibElem::_excavate()
@@ -603,7 +632,7 @@ inline void EquilibElem::_initial_state()
 	// Assemble (local/element) displacements vector.
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (int    j=0; j<_nd;         ++j)
-		_ge->Conn[i]->DOFVar(UD[_di][j]).NaturalVal += f(i*_nd+j);
+		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_nd+j);
 }
 
 inline void EquilibElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
@@ -616,8 +645,8 @@ inline void EquilibElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CM
 	{
 		for (int j=0; j<_nd; ++j)
 		{
-			RMap    [p] = _ge->Conn[i]->DOFVar(UD[_di][j]).EqID;
-			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[_di][j]).IsEssenPresc;
+			RMap    [p] = _ge->Conn[i]->DOFVar(UD[j]).EqID;
+			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[j]).IsEssenPresc;
 			p++;
 		}
 	}

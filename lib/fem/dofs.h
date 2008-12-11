@@ -49,11 +49,11 @@ const char   FD_EQUILIB_2D[ 2][4] = {"fx", "fy"};
 const size_t NB_EQUILIB_3D        = 22;
 const char   LB_EQUILIB_3D[22][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p", "q", "Ev", "Ed"};
 
-const size_t NB_PSTRAIN_2D        = 16;
-const char   LB_PSTRAIN_2D[16][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "E1", "E2", "S1", "S2", "p", "q", "Ev", "Ed"};
+const size_t NB_PSTRAIN        = 16;
+const char   LB_PSTRAIN[16][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "E1", "E2", "S1", "S2", "p", "q", "Ev", "Ed"};
 
-const size_t NB_PSTRESS_2D        = 10;
-const char   LB_PSTRESS_2D[10][4] = {"Ex", "Ey", "Exy", "Sx", "Sy", "Sxy", "E1", "E2", "S1", "S2" };
+const size_t NB_PSTRESS        = 10;
+const char   LB_PSTRESS[10][4] = {"Ex", "Ey", "Exy", "Sx", "Sy", "Sxy", "E1", "E2", "S1", "S2" };
 
 // Beam
 const size_t ND_BEAM_3D       = 6;
