@@ -56,7 +56,7 @@ public:
 	virtual bool      IsEssen      (Str_t Key) const                           =0;
 	virtual void      SetProps     (Str_t Properties)                          =0;
 	virtual void      SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis)   =0;
-	virtual void      SetConn      (int iNod, FEM::Node * ptNode)              =0;
+	virtual void      SetConn      (int iNod, FEM::Node * ptNode, int ID)      =0;
 	virtual void      Update       (double h, Vec_t const & dU, Vec_t & dFint) =0;
 	virtual void      Backup       ()                                          =0;
 	virtual void      Restore      ()                                          =0;
@@ -64,7 +64,7 @@ public:
 	virtual void      OutInfo      (std::ostream & os) const                   =0;
 	virtual bool      HasExtra     () const                      { return false; }
 	virtual void      OutExtra     (Mat_t & Coords, Vec_t & Norm,
-	virtual                         Mat_t & Vals, Array<String> & Lbls) const   {}
+	                                Mat_t & Vals, Array<String> & Lbls) const   {}
 	virtual size_t    NCMats       () const                          { return 0; }
 	virtual size_t    NHMats       () const                          { return 0; }
 	virtual size_t    NUVecs       () const                          { return 0; }
@@ -84,7 +84,7 @@ public:
 	virtual void      UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
 
 	// Methods
-	        void Initialize (Str_t Type, GeomElem * GE, bool IsAct); ///< Initialize the element
+	        void Initialize (GeomElem * GE, bool IsAct); ///< Initialize the element
 	virtual bool CheckModel () const =0;                 ///< Check constitutive model
 
 	// Public data (read only)
@@ -95,7 +95,7 @@ protected:
 	GeomElem * _ge; ///< Geometry element
 
 	// Methods
-	virtual void _initialize(Str_t Type) =0; ///< Initialize derived element
+	virtual void _initialize() =0; ///< Initialize derived element
 
 }; // class ProbElem
 
@@ -105,11 +105,11 @@ protected:
 
 /* public */
 
-inline void ProbElem::Initialize(Str_t Type, GeomElem * GE, bool IsAct)
+inline void ProbElem::Initialize(GeomElem * GE, bool IsAct)
 {
 	_ge      = GE;
 	IsActive = IsAct;
-	_initialize (Type);
+	_initialize ();
 }
 
 

@@ -69,35 +69,35 @@ public:
 	double       BoundDist (double r, double s, double t) const       { return _ge->BoundDist(r,s,t);        } ///< TODO: Bound distance
 
 	// Methods related to PROBLEM
-	void      AddVolForces ()                                           {        _pe->AddVolForces();                      } ///< Method to apply volumetric (body) forces as boundary condition
-	void      ClearDisp    ()                                           {        _pe->ClearDisp();                         } ///< Clear displacements and strains (for equilibrium/coupled problems)
-	void      SetActive    (bool Activate)                              {        _pe->SetActive(Activate);                 } ///< Activate element (construction/excavation)
-	Element * EdgeBry      (Str_t Key, double Val, int iEdge)           {        _pe->EdgeBry(Key,Val,iEdge); return this; } ///< Set edge boundary conditions (Initialize MUST be called first)
-	Element * EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {                                     return this; } ///< Set edge boundary conditions (Initialize MUST be called first)
-	Element * FaceBry      (Str_t Key, double Val, int iFace)           {        _pe->FaceBry(Key,Val,iFace); return this; } ///< Set face boundary conditions (Initialize MUST be called first)
-	bool      IsActive     () const                                     { return _pe->IsActive;                            } ///< Check if this element is active
-	void      CalcDeps     () const                                     {        _pe->CalcDeps();                          } ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
-	Str_t     ModelName    () const                                     { return _pe->ModelName();                         } ///< Return the name of the model of the first IP of this element
-	double    Val          (int iNod, Str_t Key) const                  { return _pe->Val(iNod,Key);                       } ///< Return computed values at the Nodes of the element. Ex.: Key="ux", "fx", "Sx", "Sxy", "Ex", etc.
-	double    Val          (          Str_t Key) const                  { return _pe->Val(Key);                            } ///< Return computed values at the CG of the element. Ex.: Key="Sx", "Sxy", "Ex", etc.
-	bool      IsEssen      (Str_t Key) const                            { return _pe->IsEssen(Key);                        } ///< Is the correspondent DOFKey (Degree of Freedom, such as "Dux") essential (such displacements)?
-	void      SetProps     (Str_t Properties)                           {        _pe->SetProps(Properties);                } ///< Set element properties such as body forces, internal heat source, water pumping, etc.
-	void      SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis)    {        _pe->SetModel(ModelName,Prms,Inis);       } ///< (Re)allocate model with parameters and initial values
-	Element * SetConn      (int iNod, FEM::Node * ptNode)               {        _pe->SetConn(iNod,ptNode);   return this; } ///< Set connectivity, by linking the local node ID with the pointer to the connection node
-	void      Update       (double h, Vec_t const & dU, Vec_t & dFint)  {        _pe->Update(h,dU,dFint);                  } ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
-	void      Backup       ()                                           {        _pe->Backup();                            } ///< Backup internal state
-	void      Restore      ()                                           {        _pe->Restore();                           } ///< Restore internal state from a previously backup state
-	void      GetLbls      (Array<String> & Lbls) const                 {        _pe->GetLbls();                           } ///< Get the labels of all values to be output
-	void      OutInfo      (std::ostream & os) const                    {        _pe->OutInfo();                           } ///< Output extra info of the derived element
-	bool      HasExtra     () const                                     {        _pe->HasExtra();                          } ///< Has extra output ?
-	void      OutExtra     (Mat_t & Coords, Vec_t & Norm,                                                                  
-	                        Mat_t & Vals, Array<String> & Lbls) const   {        _pe->OutExtra(Coords,Norm,Vals,Lbls);     } ///< Output extra information
-	size_t    NCMats       () const                                     { return _pe->NCMats();                            } ///< Number of C matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
-	size_t    NHMats       () const                                     { return _pe->NHMats();                            } ///< Number of H matrices such as H:Permeability
-	size_t    NUVecs       () const                                     { return _pe->NUVecs();                            } ///< Number of U vectors such as U:Displacements, P:Pore-pressures
-	void      CMatrix      (size_t Idx, Mat_t & M) const                {        _pe->CMatrix(Idx,M);                      } ///< C matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
-	void      HMatrix      (size_t Idx, Mat_t & M) const                {        _pe->HMatrix(Idx,M);                      } ///< H matrix such as H:Permeability
-	void      UVector      (size_t Idx, Vec_t & V) const                {        _pe->UVector(Idx,V);                      } ///< U vector such as U:Displacement, P:Pore-pressure
+	void      AddVolForces ()                                           {        _pe->AddVolForces();                        } ///< Method to apply volumetric (body) forces as boundary condition
+	void      ClearDisp    ()                                           {        _pe->ClearDisp();                           } ///< Clear displacements and strains (for equilibrium/coupled problems)
+	void      SetActive    (bool Activate)                              {        _pe->SetActive(Activate);                   } ///< Activate element (construction/excavation)
+	Element * EdgeBry      (Str_t Key, double Val, int iEdge)           {        _pe->EdgeBry(Key,Val,iEdge); return this;   } ///< Set edge boundary conditions (Initialize MUST be called first)
+	Element * EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {                                     return this;   } ///< Set edge boundary conditions (Initialize MUST be called first)
+	Element * FaceBry      (Str_t Key, double Val, int iFace)           {        _pe->FaceBry(Key,Val,iFace); return this;   } ///< Set face boundary conditions (Initialize MUST be called first)
+	bool      IsActive     () const                                     { return _pe->IsActive;                              } ///< Check if this element is active
+	void      CalcDeps     () const                                     {        _pe->CalcDeps();                            } ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
+	Str_t     ModelName    () const                                     { return _pe->ModelName();                           } ///< Return the name of the model of the first IP of this element
+	double    Val          (int iNod, Str_t Key) const                  { return _pe->Val(iNod,Key);                         } ///< Return computed values at the Nodes of the element. Ex.: Key="ux", "fx", "Sx", "Sxy", "Ex", etc.
+	double    Val          (          Str_t Key) const                  { return _pe->Val(Key);                              } ///< Return computed values at the CG of the element. Ex.: Key="Sx", "Sxy", "Ex", etc.
+	bool      IsEssen      (Str_t Key) const                            { return _pe->IsEssen(Key);                          } ///< Is the correspondent DOFKey (Degree of Freedom, such as "Dux") essential (such displacements)?
+	void      SetProps     (Str_t Properties)                           {        _pe->SetProps(Properties);                  } ///< Set element properties such as body forces, internal heat source, water pumping, etc.
+	void      SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis)    {        _pe->SetModel(ModelName,Prms,Inis);         } ///< (Re)allocate model with parameters and initial values
+	Element * SetConn      (int iNod, FEM::Node * ptNode)               {        _pe->SetConn(iNod,ptNode,_id); return this; } ///< Set connectivity, by linking the local node ID with the pointer to the connection node
+	void      Update       (double h, Vec_t const & dU, Vec_t & dFint)  {        _pe->Update(h,dU,dFint);                    } ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
+	void      Backup       ()                                           {        _pe->Backup();                              } ///< Backup internal state
+	void      Restore      ()                                           {        _pe->Restore();                             } ///< Restore internal state from a previously backup state
+	void      GetLbls      (Array<String> & Lbls) const                 {        _pe->GetLbls(Lbls);                         } ///< Get the labels of all values to be output
+	void      OutInfo      (std::ostream & os) const                    {        _pe->OutInfo(os);                           } ///< Output extra info of the derived element
+	bool      HasExtra     () const                                     { return _pe->HasExtra();                            } ///< Has extra output ?
+	void      OutExtra     (Mat_t & Coords, Vec_t & Norm,                                                                    
+	                        Mat_t & Vals, Array<String> & Lbls) const   {        _pe->OutExtra(Coords,Norm,Vals,Lbls);       } ///< Output extra information
+	size_t    NCMats       () const                                     { return _pe->NCMats();                              } ///< Number of C matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
+	size_t    NHMats       () const                                     { return _pe->NHMats();                              } ///< Number of H matrices such as H:Permeability
+	size_t    NUVecs       () const                                     { return _pe->NUVecs();                              } ///< Number of U vectors such as U:Displacements, P:Pore-pressures
+	void      CMatrix      (size_t Idx, Mat_t & M) const                {        _pe->CMatrix(Idx,M);                        } ///< C matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
+	void      HMatrix      (size_t Idx, Mat_t & M) const                {        _pe->HMatrix(Idx,M);                        } ///< H matrix such as H:Permeability
+	void      UVector      (size_t Idx, Vec_t & V) const                {        _pe->UVector(Idx,V);                        } ///< U vector such as U:Displacement, P:Pore-pressure
 	void      CMatMap      (size_t Idx,
 	                        Array<size_t> & RMap,
 	                        Array<size_t> & CMap,
@@ -108,7 +108,7 @@ public:
 	                        Array<size_t> & CMap,
 	                        Array<bool> & RUPresc,
 	                        Array<bool> & CUPresc) const                {     _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc); } ///< HMatrix map to convert local DOFs into global equation positions
-	void      UVecMap      (size_t Idx, Array<size_t> & RMap) const     {     _pe->UVecMap(Index,RMap);                    } ///< UVector map to convert local DOFs into global equation positions
+	void      UVecMap      (size_t Idx, Array<size_t> & RMap) const     {     _pe->UVecMap(Idx,RMap);                      } ///< UVector map to convert local DOFs into global equation positions
 
 private:
 	// Data
@@ -134,7 +134,7 @@ inline void Element::Initialize(Str_t Type, long ID, int Tag, int NDim, bool IsA
 	_ge   = AllocGeomElem("Quad4");
 	_pe   = AllocProbElem("Equilib");
 	_ge->Initialize (NDim);
-	_pe->Initialize (Type, _ge, IsAct);
+	_pe->Initialize (_ge, IsAct);
 }
 
 inline bool Element::Check(String & Msg) const

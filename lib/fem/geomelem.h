@@ -56,13 +56,14 @@ public:
 	virtual double BoundDist (double r, double s, double t) const     =0;
 
 	// Methods
-	        void Initialize (int nDim);                                          ///< Initialize this element
-	        bool CheckConn  () const;                                            ///< Check connectivity
-	        void Jacobian   (Mat_t const & dN, Mat_t & J) const;                 ///< Jacobian matrix
-	virtual void Shape      (double r, double s, double t, Vec_t & N)  const =0; ///< Shape functions
-	virtual void Derivs     (double r, double s, double t, Mat_t & dN) const =0; ///< Derivatives of shape functions
-	virtual void FaceShape  (double r, double s, Vec_t & FN)           const =0; ///< Face shape functions
-	virtual void FaceDerivs (double r, double s, Mat_t & FdN)          const =0; ///< Face derivatives of shape functions
+	        void Initialize (int nDim);                                                             ///< Initialize this element
+	        bool CheckConn  () const;                                                               ///< Check connectivity
+	        void Jacobian   (Mat_t const & dN, Mat_t & J) const;                                    ///< Jacobian matrix
+	        void FaceJacob  (Array<FEM::Node*> const & FConn, double r, double s, Mat_t & J) const; ///< Face Jacobian matrix
+	virtual void Shape      (double r, double s, double t, Vec_t & N)  const =0;                    ///< Shape functions
+	virtual void Derivs     (double r, double s, double t, Mat_t & dN) const =0;                    ///< Derivatives of shape functions
+	virtual void FaceShape  (double r, double s, Vec_t & FN)           const =0;                    ///< Face shape functions
+	virtual void FaceDerivs (double r, double s, Mat_t & FdN)          const =0;                    ///< Face derivatives of shape functions
 
 	// Public data (read only)
 	size_t             NDim;    ///< Space dimension (2D or 3D)
@@ -255,6 +256,26 @@ inline void GeomElem::Jacobian(Mat_t const & dN, Mat_t & J) const
 	for (size_t j=0; j<NDim;   ++j)
 		coords(i,j) = Conn[i]->Coord(j);
 	J = dN * coords;
+}
+
+inline void GeomElem::FaceJacob(Array<FEM::Node*> const & FConn, double r, double s, Mat_t & J) const
+{
+	if (NFNodes>0)
+	{
+		// Calculate shape function derivatives for a face
+		Mat_t FdN;
+		FaceDerivs(r, s, FdN);
+
+		// Get the face coordinates
+		Mat_t fcoords(NFNodes,NDim);
+		for (size_t i=0; i<NFNodes; i++)
+		for (size_t j=0; j<NDim;    j++)
+			fcoords(i,j) = FConn[i]->Coord(j);
+
+		// Calculate face Jacobian
+		J = FdN*fcoords;
+	}
+	else throw new Fatal("GeomElem::FaceJacob: This element does not have any face/edge (NFNodes==%d)",NFNodes);
 }
 
 
