@@ -106,9 +106,9 @@ inline void Quad4::SetIPs(int NIPs1D)
 	else if (NIPs1D==5) IPs = QUAD_IP5;
 	else throw new Fatal("Quad4::SetIPs: Number of integration points < %d > is invalid",NIPs1D);
 
-	NIPs     = pow(NIPs1D, 2);
-	FaceIPs  = LIN_IP2;
-	NFaceIPs = 2;
+	NIPs  = pow(NIPs1D, 2);
+	FIPs  = LIN_IP2;
+	NFIPs = 2;
 }
 
 inline void Quad4::VTKConnect(String & Nodes) const
@@ -207,6 +207,19 @@ inline void Quad4::_local_coords(Mat_t & C) const
 	     1.0,  1.0, 1.0,
 	    -1.0,  1.0, 1.0;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new element
+GeomElem * Quad4Maker() { return new Quad4(); }
+
+// Register element
+int Quad4Register() { GeomElemFactory["Quad4"]=Quad4Maker;  return 0; }
+
+// Call register
+int __Quad4_dummy_int  = Quad4Register();
 
 }; // namespace FEM
 

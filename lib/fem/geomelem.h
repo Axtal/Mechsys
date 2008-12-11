@@ -68,17 +68,16 @@ public:
 	virtual void FaceDerivs (double r, double s, Mat_t & FdN)          const =0; ///< Face derivatives of shape functions
 
 	// Public data (read only)
-	size_t             NDim;     ///< Space dimension (2D or 3D)
-	size_t             NNodes;   ///< Number of nodes
-	size_t             NFNodes;  ///< Number of face nodes
-	size_t             NIPs;     ///< Number of integration points
-	size_t             NFaceIPs; ///< Number of integration points of face
-	IntegPoint const * IPs;      ///< Integration points
-	IntegPoint const * FaceIPs;  ///< Integration points of Faces/Edges
-	Array<Node*>       Conn;     ///< Connectivity (size==NNodes). Initialized by ProbElem
+	size_t             NDim;    ///< Space dimension (2D or 3D)
+	size_t             NNodes;  ///< Number of nodes
+	size_t             NFNodes; ///< Number of face nodes
+	size_t             NIPs;    ///< Number of integration points
+	size_t             NFIPs;   ///< Number of integration points of face
+	IntegPoint const * IPs;     ///< Integration points
+	IntegPoint const * FIPs;    ///< Integration points of Faces/Edges
+	Array<Node*>       Conn;    ///< Connectivity (size==NNodes). Initialized by ProbElem
 
 private:
-	virtual void _initialize   ()          =0; ///< Initialize NNodes, NFNodes, NIPs, NFaceIPs, IPs, and FaceIPs
 	virtual void _local_coords (Mat_t & C) =0; ///< Return the local coordinates of the nodes
 
 }; // class GeomElem
@@ -86,8 +85,6 @@ private:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-
-/* public */
 
 inline bool GeomElem::CheckConn() const
 {
@@ -171,7 +168,7 @@ inline void GeomElem::InvMap(double x, double y, double z, double & r, double & 
 	Vec_t N;  // Shape
 	Mat_t dN; // Derivs
 	Mat_t J;  // Jacobian matrix
-	Vec_t f;  // Residual betweem real and trial global coordinates
+	Vec_t f;  // Residual between real and trial global coordinates
 	Vec_t delta;
 	     if (NDim==2) f.Resize(2);
 	else if (NDim==3) f.Resize(3);
