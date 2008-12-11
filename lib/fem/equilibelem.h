@@ -93,6 +93,7 @@ public:
 	size_t  NCMats       () const { return 1; }
 	void    CMatrix      (size_t Idx, Mat_t & M) const;
 	void    CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void    SetGeomIdx   (int Idx) { _gi = Idx; }
 
 	// Derived methods
 	bool CheckModel () const;
@@ -725,7 +726,7 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
-
+// Equilib
 // Allocate a new element
 ProbElem * EquilibMaker() { return new EquilibElem(); }
 
@@ -734,6 +735,16 @@ int EquilibRegister() { ProbElemFactory["Equilib"]=EquilibMaker;  return 0; }
 
 // Call register
 int __Equilib_dummy_int  = EquilibRegister();
+
+// PStrain
+// Allocate a new element
+ProbElem * PStrainMaker() { return new EquilibElem(); }
+
+// Register element
+int PStrainRegister() { ProbElemFactory["PStrain"]=PStrainMaker;  return 0; }
+
+// Call register
+int __PStrain_dummy_int  = PStrainRegister();
 
 
 }; // namespace FEM

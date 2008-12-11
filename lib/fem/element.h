@@ -46,12 +46,12 @@ public:
 	Element() : _id(-1), _tag(0), _type("__no_type__"), _ge(NULL), _pe(NULL) {}
 
 	// Methods
-	void  Initialize (Str_t Type, long ID, int Tag, int NDim, bool IsAct);    ///< Initialize the element
-	long  GetID      () const                        { return _id;          } ///< Return the ID of this element
-	int   Tag        () const                        { return _tag;         } ///< Return the Tag of this element
-	Str_t Type       () const                        { return _type.CStr(); } ///< Return the name/type of this element
-	bool  Check      (String & Msg) const;                                    ///< Check if everything is OK and element is ready for simulations
-	void  OutNodes   (Mat_t & Vals, Array<String> & Lbls) const;              ///< Output values at nodes
+	void  Initialize (Str_t GeomT, Str_t ProbT, long ID, int Tag, int NDim, bool IsAct);  ///< Initialize the element
+	long  GetID      () const                                   { return _id;          } ///< Return the ID of this element
+	int   Tag        () const                                   { return _tag;         } ///< Return the Tag of this element
+	Str_t Type       () const                                   { return _type.CStr(); } ///< Return the name/type of this element
+	bool  Check      (String & Msg) const;                                               ///< Check if everything is OK and element is ready for simulations
+	void  OutNodes   (Mat_t & Vals, Array<String> & Lbls) const;                         ///< Output values at nodes
 
 	// Methods related to GEOMETRY
 	size_t       NNodes    () const                                   { return _ge->NNodes;                  } ///< Return the number of nodes in this element
@@ -126,13 +126,13 @@ private:
 
 /* public */
 
-inline void Element::Initialize(Str_t Type, long ID, int Tag, int NDim, bool IsAct)
+inline void Element::Initialize(Str_t GeomT, Str_t ProbT, long ID, int Tag, int NDim, bool IsAct)
 {
 	_id   = ID;
 	_tag  = Tag;
-	_type = Type;
-	_ge   = AllocGeomElem("Quad4");
-	_pe   = AllocProbElem("Equilib");
+	_type = ProbT;
+	_ge   = AllocGeomElem(GeomT);
+	_pe   = AllocProbElem(ProbT);
 	_ge->Initialize (NDim);
 	_pe->Initialize (_ge, IsAct);
 }
