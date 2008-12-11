@@ -34,8 +34,9 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad4pstrain.h"
-#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -117,15 +118,15 @@ int main(int argc, char **argv) try
 	FEM::EAtts_T eatts;
 	if (is_o2)
 	{
-		eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-		eatts.Push (make_tuple(-3, "Quad8PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+		eatts.Push (make_tuple(-2, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-3, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 	}
 	else
 	{
-		eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-		eatts.Push (make_tuple(-3, "Quad4PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+		eatts.Push (make_tuple(-2, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-3, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 	}
 
 	// Set geometry: nodes, elements, attributes, and boundaries
@@ -139,7 +140,7 @@ int main(int argc, char **argv) try
 	ebrys.Push           (make_tuple(-10, "ux", 0.0));
 	ebrys.Push           (make_tuple(-11, "uy", 0.0));
 	dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
-	dat.ApplyBodyForces    ();
+	dat.AddVolForces    ();
 	sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
 	dat.ClearDisplacements ();
 

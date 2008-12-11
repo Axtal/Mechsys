@@ -42,7 +42,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/tri6pstrain.h"
+#include "fem/elems/tri6.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -80,23 +81,23 @@ int main(int argc, char **argv) try
 
 	// Elements
 	dat.SetNElems (2);
-	dat.SetElem   (0, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
-	dat.SetElem   (1, "Tri6PStrain", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (0, "Tri6", "PStrain", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (1, "Tri6", "PStrain", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
-	dat.Ele(0)->Connect(0, dat.Nod(0))
-	        ->Connect(1, dat.Nod(1))
-			->Connect(2, dat.Nod(2))
-			->Connect(3, dat.Nod(3))
-			->Connect(4, dat.Nod(4))
-			->Connect(5, dat.Nod(5))->SetIntPoints(3);
+	dat.Ele(0)->SetConn(0, dat.Nod(0))
+	          ->SetConn(1, dat.Nod(1))
+			  ->SetConn(2, dat.Nod(2))
+			  ->SetConn(3, dat.Nod(3))
+			  ->SetConn(4, dat.Nod(4))
+			  ->SetConn(5, dat.Nod(5))->SetIPs(3);
 	
-	dat.Ele(1)->Connect(0, dat.Nod(6))
-	        ->Connect(1, dat.Nod(2))
-	        ->Connect(2, dat.Nod(1))
-	        ->Connect(3, dat.Nod(7))
-	        ->Connect(4, dat.Nod(4))
-	        ->Connect(5, dat.Nod(8))->SetIntPoints(3);
+	dat.Ele(1)->SetConn(0, dat.Nod(6))
+	          ->SetConn(1, dat.Nod(2))
+	          ->SetConn(2, dat.Nod(1))
+	          ->SetConn(3, dat.Nod(7))
+	          ->SetConn(4, dat.Nod(4))
+	          ->SetConn(5, dat.Nod(8))->SetIPs(3);
 
 	// Boundary conditions (must be after connectivity)
 	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);

@@ -22,7 +22,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad8.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 
@@ -79,19 +80,19 @@ int main(int argc, char **argv) try
 
 	// 2) Elements
 	dat.SetNElems (1);
-	dat.SetElem   (0, "Quad8PStrain", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (0, "Quad8", "PStrain", /*IsActive*/true, /*Tag*/-1);
 
 	// 3) Set connectivity (list of nodes must be LOCAL)
-	dat.Ele(0)->Connect(0, dat.Nod(0))
-	        ->Connect(1, dat.Nod(1))
-	        ->Connect(2, dat.Nod(2))
-	        ->Connect(3, dat.Nod(3))
-	        ->Connect(4, dat.Nod(4))
-	        ->Connect(5, dat.Nod(5))
-	        ->Connect(6, dat.Nod(6))
-	        ->Connect(7, dat.Nod(7));
+	dat.Ele(0)->SetConn(0, dat.Nod(0))
+	          ->SetConn(1, dat.Nod(1))
+	          ->SetConn(2, dat.Nod(2))
+	          ->SetConn(3, dat.Nod(3))
+	          ->SetConn(4, dat.Nod(4))
+	          ->SetConn(5, dat.Nod(5))
+	          ->SetConn(6, dat.Nod(6))
+	          ->SetConn(7, dat.Nod(7));
 
-	dat.Ele(0)->SetIntPoints(4);
+	dat.Ele(0)->SetIPs(4);
 
 	// 4) Boundary conditions (must be after connectivity)
 	dat.Nod(0)->Bry     ("uy",0.0);
@@ -107,7 +108,7 @@ int main(int argc, char **argv) try
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;
-	dat.Ele(0)->Order1Matrix(0,Ke0);
+	dat.Ele(0)->CMatrix(0,Ke0);
 
 	// 6) Solve
 	FEM::Solver sol(dat,"tquad8");

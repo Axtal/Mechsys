@@ -53,7 +53,7 @@ public:
 	virtual int    VTKType   () const                                 =0;
 	virtual void   VTKConn   (String & Nodes) const                   =0;
 	virtual void   GetFNodes (int FaceID, Array<Node*> & FConn) const =0;
-	virtual double BoundDist (double r, double s, double t) const     =0;
+	virtual double BoundDist (double r, double s, double t) const { return -1; };
 
 	// Methods
 	        void Initialize (int nDim);                                                             ///< Initialize this element

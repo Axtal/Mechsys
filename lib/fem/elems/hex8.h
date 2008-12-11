@@ -132,7 +132,7 @@ inline void Hex8::VTKConn(String & Nodes) const
 	                                       Conn[4]->GetID());
 }
 
-inline void Hex8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
+inline void Hex8::GetFNodes(int FaceID, Array<Node*> & FaceConnects) const
 {
 	FaceConnects.Resize(/*NumFaceNodes*/4);
 	FaceConnects[0] = Conn[Face2Node[FaceID].n0];
