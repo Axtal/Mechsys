@@ -434,13 +434,14 @@ inline void EquilibElem::CMatrix(size_t Idx, Mat_t & Ke) const
 
 	// Resize Ke
 	Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
-	Ke.SetValues (0.0);
+	Ke.SetValues(0.0);
 
-	// Calculate Tangent Stiffness
-	Mat_t dN; // Shape derivatives
-	Mat_t J;  // Jacobian matrix
-	Mat_t B;  // B matrix
-	Mat_t D;  // Stiffness
+	// Allocate entities used for every integration point
+	Mat_t dN;     // size = NumLocalCoords(ex.: r,s,t) x _ge->NNodes
+	Mat_t J;      // Jacobian matrix
+	Mat_t B;      // strain-displacement matrix
+	Mat_t D;      // Constitutive matrix
+
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
@@ -706,7 +707,7 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 		{
 			// Compute face nodal values (integration along the face)
 			Vec_t values;  values.Resize(_ge->NFNodes);  values.SetValues(0.0);
-			Mat_t J;                         // Jacobian matrix. size = [1,2] x 3
+			Mat_t J;                // Jacobian matrix. size = [1,2] x 3
 			Vec_t FN(_ge->NFNodes); // Shape functions of a face/edge. size = _ge->NFNodes
 			for (size_t i=0; i<_n_face_int_pts; i++)
 			{

@@ -93,7 +93,7 @@ inline Quad4::Quad4()
 	Conn.Resize    (NNodes);
 	Conn.SetValues (NULL);
 
-	// Integration points and Extrapolation Matrix
+	// Integration points
 	SetIPs (/*NIPs1D*/2);
 }
 
