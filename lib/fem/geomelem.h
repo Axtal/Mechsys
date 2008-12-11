@@ -254,6 +254,29 @@ inline void GeomElem::Jacobian(Mat_t const & dN, Mat_t & J) const
 	J = dN * coords;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
+
+
+// Define a pointer to a function that makes (allocate) a new GeomElem
+typedef GeomElem * (*GeomElemMakerPtr)();
+
+// Typdef of the array map that contains all the pointers to the functions that makes elements
+typedef std::map<String, GeomElemMakerPtr, std::less<String> > GeomElemFactory_t;
+
+// Instantiate the array map that contains all the pointers to the functions that makes elements
+GeomElemFactory_t GeomElemFactory;
+
+// Allocate a new GeomElem according to a string giving the name of the element
+GeomElem * AllocGeomElem(char const * GeomElemName)
+{
+	GeomElemMakerPtr ptr=NULL;
+	ptr = GeomElemFactory[GeomElemName];
+	if (ptr==NULL) throw new Fatal("FEM::AllocGeomElem: There is no < %s > implemented in this library", GeomElemName);
+	return (*ptr)();
+}
+
+
 }; // namespace FEM
 
 #endif // MECHSYS_FEM_GEOMELEM
