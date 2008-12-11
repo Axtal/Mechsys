@@ -33,86 +33,80 @@ using Util::_12_6;
 namespace FEM
 {
 
-class BiotElem : public ProbElem
+class BiotElem : public EquilibElem
 {
 public:
 	// Constants. Note: _di==dimension index, _gi==geometry index
-	static const size_t ND [2];        ///< Number of DOFs.      Access: ND[_di]
 	static const char   UD [2][3][4];  ///< Essential DOF names. Access: UD[_di][iDOF]
 	static const char   FD [2][3][4];  ///< Natural DOF names.   Access: FD[_di][iDOF]
-	static const size_t NL [4];        ///< Number of additional labels (exceeding ND). Access: NL[_gi]
-	static const char   LB [4][22][4]; ///< Additional lbls (exceed. those from UD/FD). Access: LB[_gi][iLbl]
+	static const size_t NL [2];        ///< Number of additional labels (exceeding nDOFs). Access: NL[_gi]
+	static const char   LB [2][26][4]; ///< Additional lbls (exceed. those from UD/FD).    Access: LB[_gi][iLbl]
 
 	// Constructor
-	BiotElem () : _di(-1), _gi(-1), _nd(-1), _nde(-1), _ndf(-1), _nl(-1), _gam(0.0) {}
+	BiotElem () {}
 
 	// Destructor
-	~BiotElem () { for (size_t i=0; i<_mdl.Size(); ++i) delete _mdl[i]; }
+	~BiotElem () {}
 
 	// Methods related to PROBLEM
-	void    AddVolForces ();
 	void    ClearDisp    ();
-	void    SetActive    (bool Activate, int ID);
-	void    EdgeBry      (Str_t Key, double Val, int iEdge);
-	void    FaceBry      (Str_t Key, double Val, int iFace);
 	void    CalcDeps     () const;
 	Str_t   ModelName    () const { return (_mdl.Size()>0 ? _mdl[0]->Name() : "__no_model__"); }
 	double  Val          (int iNod, Str_t Key) const;
 	double  Val          (          Str_t Key) const;
-	bool    IsEssen      (Str_t Key) const;
-	void    SetProps     (Str_t Properties);
 	void    SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis);
-	void    SetConn      (int iNod, FEM::Node * ptNode, int ID);
 	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
-	void    Backup       ();
-	void    Restore      ();
 	void    GetLbls      (Array<String> & Lbls) const;
 	void    OutInfo      (std::ostream & os) const;
-	size_t  NCMats       () const { return 1; }
+	size_t  NCMats       () const { return 4; }
+	size_t  NHMats       () const { return 1; }
+	size_t  NUVecs       () const { return 2; }
 	void    CMatrix      (size_t Idx, Mat_t & M) const;
+	void    HMatrix      (size_t Idx, Mat_t & M) const;
+	void    UVector      (size_t Idx, Vec_t & V) const;
 	void    CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void    SetGeomIdx   (int Idx) { _gi = Idx; }
+	void    HMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void    UVecMap      (size_t Idx, Array<size_t> & RMap) const;
 
 	// Derived methods
 	bool CheckModel () const;
 
 private:
 	// Data
-	int                  _di;  ///< Dimension index == _ge->NDim-2
-	int                  _gi;  ///< Geometry index: 3D=0, PStrain=1, PStress=2, Axis=3
-	int                  _nd;  ///< Number of DOFs == ND[_di]
-	int                  _nl;  ///< Number of lbls == NL[_gi]
-	double               _gam; ///< Specific weigth
-	Array<EquilibModel*> _mdl; ///< Array of pointers to constitutive models
+	double       _gw;  ///< Water specific weight (gamma W)
+	Mat_t        _De;  ///< Constant tangent stiffness
+	Mat_t        _Ke;  ///< Constant tangent permeability
+	Array<Vec_t> _sig; ///< Total sig at each integration point. Size==NIPs
+	Array<Vec_t> _eps; ///< Strain at each integration point. Size==NIPs
 
 	// Derived methods
 	void _initialize ();
 
 	// Private methods
-	void _excavate           ();                                                   ///< Excavate element
-	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
-	void _initial_state      ();                                                   ///< Calculate initial internal state
-	void _equations_map      (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void _dist_to_face_nodes (char const * Key, double FaceValue, Array<Node*> const & FConn) const;
+	void   _Bp_mat     (Mat_t const & dN, Mat_t const & J, Mat_t & Bp) const { Bp = inv(J)*dN; }
+	void   _excavate   ();
+	void   _equi_map   (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void   _flow_map   (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void   _compute_K  (Mat_t & Ke) const;
+	void   _compute_C  (Mat_t & Ce) const;
+	void   _compute_L  (Mat_t & Le) const;
+	void   _compute_H  (Mat_t & He) const;
+	void   _compute_Qb (Vec_t & Qb) const;
+	double _val_ip     (size_t iIP, Str_t Name) const;
 
 }; // class BiotElem
 
-// ND[_di]                           2D  3D
-const size_t BiotElem:: ND [2] = { 2, 3 };
+// UD[_di][iDOF]                       2D                     3D
+const char BiotElem:: UD [2][4][4] = {{"ux","uy","pwp",""},  {"ux","uy","uz","pwp"}};
+const char BiotElem:: FD [2][4][4] = {{"fx","fy","pwp",""},  {"fx","fy","fz","pwp"}};
 
-// UD[_di][iDOF]                         2D               3D
-const char BiotElem:: UD [2][3][4] = {{"ux","uy",""},  {"ux","uy","uz"}};
-const char BiotElem:: FD [2][3][4] = {{"fx","fy",""},  {"fx","fy","fz"}};
-
-// NL[_gi]                            3D PStrain PStress AxisSym
-const size_t BiotElem:: NL [4] = { 22,     16,     14,     22 };
+// NL[_gi]                         3D PStrain
+const size_t BiotElem:: NL [2] = { 26,     20};
 
 // LB[_gi][iLbl]
-const char BiotElem:: LB [4][22][4] = {
-	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p", "q", "Ev", "Ed" }, // 3D
-	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", ""  , ""  , "" , "" , ""  , ""   }, // 2D (plane-strain)
-	{"Ex", "Ey", "Exy", "Sx" , "Sy" , "Sxy", "E1", "E2" , "S1", "S2" , "p"  , "q"  , "Ev", "Ed", ""  , ""  , ""  , ""  , "" , "" , ""  , ""   }, // 2D (plane-stress)
-	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p", "q", "Ev", "Ed" }  // 2D (axis-symmetric)
+const char BiotElem:: LB [2][26][4] = {
+	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p" , "q", "Ev", "Ed", "Vx", "Vy", "Vz", "H" }, // 3D
+	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", "Vx", "Vy", "Vz", "H", ""  , ""  , ""  , ""  , ""  , ""  }  // 2D (plane-strain)
 };
 
 
@@ -121,120 +115,26 @@ const char BiotElem:: LB [4][22][4] = {
 
 /* public */
 
-inline void BiotElem::AddVolForces()
-{
-	// Verify if element is active
-	if (IsActive==false) return;
-	
-	// Allocate (local/element) external volume force vector
-	Vec_t fvol(_ge->NNodes);
-	fvol.SetValues (0.0);
-
-	// Calculate local external volume force
-	Vec_t N;
-	Mat_t dN;
-	Mat_t J;
-	for (size_t i=0; i<_ge->NIPs; ++i)
-	{
-		_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		fvol += -N*_gam*det(J)*_ge->IPs[i].w;
-	}
-
-	// Sum up contribution to external forces vector
-	for (size_t i=0; i<_ge->NNodes; ++i)
-	{
-		if (_ge->NDim==2) _ge->Conn[i]->Bry("fy",fvol(i));
-		if (_ge->NDim==3) _ge->Conn[i]->Bry("fz",fvol(i));
-	}
-}
-
 inline void BiotElem::ClearDisp()
 {
 	if (IsActive==false) return;
 
 	// Clear displacements
+	size_t nde = _nd-1; // nDOFs equilib
 	for (size_t i=0; i<_ge->NNodes; ++i)
-	for (int    j=0; j<_nd;         ++j)
+	for (int    j=0; j<nde;         ++j)
 		_ge->Conn[i]->DOFVar(UD[_di][j]).EssentialVal = 0.0;
 
 	// Clear strains
-	for (size_t i=0; i<_mdl.Size(); ++i) _mdl[i]->ClearStrain();
-}
-
-inline void BiotElem::SetActive(bool Activate, int ID)
-{
-	if (IsActive==false && Activate)
-	{
-		// Set active
-		IsActive = true;
-
-		for (size_t i=0; i<_ge->Conn.Size(); ++i)
-		{
-			// Add Degree of Freedom to a node (Essential, Natural)
-			for (int j=0; j<_nd; ++j) _ge->Conn[i]->AddDOF (UD[_di][j], FD[_di][j]);
-
-			// Set SharedBy
-			_ge->Conn[i]->SetSharedBy (ID);
-		}
-
-		// Apply body forces
-		AddVolForces ();
-	}
-	if (IsActive && Activate==false)
-	{
-		// Set active
-		IsActive = false;
-
-		for (size_t i=0; i<_ge->Conn.Size(); ++i)
-		{
-			// Remove SharedBy
-			_ge->Conn[i]->RemoveSharedBy (ID);
-
-			// Remove Degree of Freedom to a node (Essential)
-			if (_ge->Conn[i]->nSharedBy()==0) 
-				for (int j=0; j<_nd; ++j) _ge->Conn[i]->RemoveDOF (UD[_di][j]);
-		}
-
-		// Apply surface tensions to perform excavation
-		_excavate();
-	}
-}
-
-inline void BiotElem::EdgeBry(char const * Key, double Value, int iEdge)
-{
-	if (_ge->NDim<3) // For 1D/2D meshes, edges correspond to faces
-	{
-		// Skip if key is "Qb", Beam Normal Loading
-		if (strcmp(Key,"Qb")==0) return;
-
-		Array<Node*> fnodes;
-		_ge->GetFNodes      (iEdge, fnodes);
-		_dist_to_face_nodes (Key, Value, fnodes);
-	}
-	else throw new Fatal("BiotElem::EdgeBry: Method not yet implemented for 3D meshes");
-}
-
-inline void BiotElem::FaceBry(char const * Key, double Value, int iFace)
-{
-	if (_ge->NDim==2) throw new Fatal("BiotElem::FaceBry: This method must be called only for 3D meshes");
-	else
-	{
-		Array<Node*> fnodes;
-		_ge->GetFNodes      (iFace, fnodes);
-		_dist_to_face_nodes (Key, Value, fnodes);
-	}
+	for (size_t i=0; i<_eps.Size(); ++i) _eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 }
 
 inline void BiotElem::CalcDeps() const
 {
 	if (IsActive==false) throw new Fatal("BiotElem::CalcDepVars: This element is inactive");
-	if (_mdl.Size()==_ge->NIPs) for (size_t i=0; i<_ge->NIPs; i++) _mdl[i]->CalcDepVars();
-	else throw new Fatal("BiotElem::CalcDepVars: Constitutive models for this element were not set");
 }
 
-inline double BiotElem::Val(int iNod, char const * Name) const
+inline double BiotElem::Val(int iNod, Str_t Name) const
 {
 	// Displacements
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_di][j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
@@ -247,134 +147,162 @@ inline double BiotElem::Val(int iNod, char const * Name) const
 	Vec_t nodal_values (_ge->NNodes);
 
 	// Get integration point values
-	if (_mdl.Size()==_ge->NIPs)
-		for (size_t i=0; i<_ge->NIPs; i++) ip_values(i) = _mdl[i]->Val(Name);
-	else throw new Fatal("BiotElem::Val: Constitutive models for this element were not set yet");
+	for (size_t i=0; i<_ge->NIPs; i++) ip_values(i) = _val_ip(i,Name);
 
 	// Extrapolate
 	_ge->Extrap (ip_values, nodal_values);
 	return nodal_values (iNod);
 }
 
-inline double BiotElem::Val(char const * Name) const
+inline double BiotElem::Val(Str_t Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
-	if (_mdl.Size()==_ge->NIPs)
-		for (size_t i=0; i<_ge->NIPs; i++) sum += _mdl[i]->Val(Name);
-	else throw new Fatal("BiotElem::Val: Constitutive models for this element were not set yet");
+	for (size_t i=0; i<_ge->NIPs; i++) sum += _val_ip(i,Name);
 
 	// Output single value at CG
 	return sum/_ge->NIPs;
 }
 
-inline bool BiotElem::IsEssen(char const * Name) const
-{
-	for (int i=0; i<_nd; ++i) if (strcmp(Name,UD[_di][i])==0) return true;
-	return false;
-}
-
-inline void BiotElem::SetProps(char const * Properties)
-{
-	/* "gam=20.0 */
-	LineParser lp(Properties);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		 if (names[i]=="gam") _gam = values[i]; 
-	}
-}
-
-inline void BiotElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
+inline void BiotElem::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
 {
 	// Check _ge->NDim
 	if (_ge->NDim<1)             throw new Fatal("BiotElem::SetModel: The space dimension (SetDim) must be set before calling this method");
 	if (_ge->CheckConn()==false) throw new Fatal("BiotElem::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
 
-	// If pointers to model was not already defined => No model was allocated
-	if (_mdl.Size()==0)
+	/* "E=200 nu=0.2 k=1.0e-5 gw=10" */
+	LineParser lp(Prms);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions(names,values);
+
+	// Set
+	double E  = -1.0;
+	double nu = -1.0;
+	double k  = -1.0;
+	for (size_t i=0; i<names.Size(); ++i)
 	{
-		_mdl.Resize(_ge->NIPs);
-		for (size_t i=0; i<_ge->NIPs; ++i)
-		{
-			_mdl[i] = static_cast<EquilibModel*>(AllocModel(ModelName));
-			_mdl[i]->SetGeom (_gi);
-			_mdl[i]->SetPrms (Prms);
-			_mdl[i]->SetInis (Inis);
-		}
-		if (IsActive) _initial_state ();
+		     if (names[i]=="gw") _gw = values[i];
+		else if (names[i]=="E" )  E  = values[i];
+		else if (names[i]=="nu")  nu = values[i];
+		else if (names[i]=="k" )  k  = values[i];
+		else throw new Fatal("BiotElem::SetModel: Parameter name (%s) is invalid",names[i].CStr());
 	}
-	else throw new Fatal("BiotElem::SetModel: Feature not implemented.");
-}
 
-inline void BiotElem::SetConn(int iNod, FEM::Node * ptNode, int ID)
-{
 	// Check
-	if (_ge->NNodes<1)              throw new Fatal("BiotElem::Connect: __Internal Error__: There is a problem with the number of nodes: maybe derived elemet did not set _ge->NNodes");
-	if (_ge->Conn.Size()<1)         throw new Fatal("BiotElem::Connect: __Internal Error__: There is a problem with connectivity array: maybe derived elemet did not allocate _connect");
-	if (_di<0||_gi<0||_nd<0||_nl<0) throw new Fatal("BiotElem::Connect: __Internal Error__: There is a problem with _di=%d, _gi=%d, _nd=%d, or _nd=%d\n (_di=dimension index, _gi=geometry index, _nd=number of degrees of freedom, _nl=number of additional labels)",_di,_gi,_nd,_nl);
+	if (_gw<0.0)            throw new Fatal("BiotElem::SetModel: GammaW must be provided (and positive). gw==%f is invalid",_gw);
+	if (E<=0.0)             throw new Fatal("BiotElem::SetModel: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
+	if (nu<0.0 || nu>0.499) throw new Fatal("BiotElem::SetModel: Poisson ratio (nu) must be provided (and in the range: 0 <= nu < 0.5). nu==%f is invalid",nu);
+	if (k<0.0)              throw new Fatal("BiotElem::SetModel: Isotropic permeability must be provided (and positive). k=%f is invalid",k);
 
-	// Connectivity
-	_ge->Conn[iNod] = ptNode;
+	// Set stiffness
+	double c  = E/((1.0+nu)*(1.0-2.0*nu));
+	double c1 = c*(1.0-nu);
+	double c2 = c*(1.0-2.0*nu)/2.0;
+	double c3 = c*nu;
+	Tensor4 De;
+	De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	     c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	     c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
+	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
+	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
+	Tensors::Tensor4ToMatrix (_gi,De, _De);
 
-	if (IsActive)
+	// Set permeability
+	double kx = k;
+	double ky = k;
+	double kz = k;
+	if (_ge->NDim==2)
 	{
-		// Add Degree of Freedom to a node (Essential, Natural)
-		for (int i=0; i<_nd; ++i) _ge->Conn[iNod]->AddDOF (UD[_di][i], FD[_di][i]);
+		_Ke.Resize(2,2);
+		_Ke =  kx,  0.0,
+		      0.0,   ky;
+	}
+	else if (_ge->NDim==3)
+	{
+		_Ke.Resize(3,3);
+		_Ke =  kx,  0.0,  0.0,
+		      0.0,   ky,  0.0,
+		      0.0,  0.0,   kz;
+	}
 
-		// Set shared
-		_ge->Conn[iNod]->SetSharedBy (ID);
+	// Set arrays of sig/eps
+	_sig.Resize(_ge->NIPs);
+	_eps.Resize(_ge->NIPs);
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_sig[i].Resize(6);  _sig[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_eps[i].Resize(6);  _eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 	}
 }
 
 inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 {
+	// nDOFs
+	size_t nde = _nd-1; // nDOFs equilib
+	size_t ndf =     1; // nDOFs flow
+
 	// Allocate (local/element) displacements vector
-	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element
+	Vec_t du(nde*_ge->NNodes);
+	Vec_t dp(ndf*_ge->NNodes);
+	Vec_t  p(ndf*_ge->NNodes);
 
 	// Assemble (local/element) displacements vector
 	for (size_t i=0; i<_ge->NNodes; ++i)
-	for (int    j=0; j<_nd;         ++j)
-		du(i*_nd+j) = dU(_ge->Conn[i]->DOFVar(UD[_di][j]).EqID);
+	{
+		for (size_t j=0; j<nde; ++j) du(i*nde+j) = dU(_ge->Conn[i]->DOFVar(UD[_di][j    ]).EqID);
+		for (size_t j=0; j<ndf; ++j) dp(i*ndf+j) = dU(_ge->Conn[i]->DOFVar(UD[_di][j+nde]).EqID);
+		for (size_t j=0; j<ndf; ++j)  p(i*ndf+j) =    _ge->Conn[i]->DOFVar(UD[_di][j+nde]).EssentialVal;
+	}
 
 	// Allocate (local/element) internal force vector
-	Vec_t df(_nd*_ge->NNodes); // Delta internal force of this element
-	df.SetValues (0.0);
+	Vec_t df  (nde*_ge->NNodes); // Delta internal force of this element
+	Vec_t dvol(ndf*_ge->NNodes); // Delta internal volumes of this element
+	Mat_t Ke;                    // Stiffness matrix
+	Mat_t Ce;                    // Coupling matrix 1
+	Mat_t Le;                    // Coupling matrix 2
+	Mat_t He;                    // Permeability matrix
+	CMatrix (0,Ke);
+	CMatrix (1,Ce);
+	CMatrix (2,Le);
+	HMatrix (0,He);
+
+	Vector<double> Qb;
+	_compute_Qb(Qb);
+
+	df   = Ke*du + Ce*dp;
+	dvol = Le*du + h*He*p + h*Qb;
 
 	// Update model and calculate internal force vector;
-	Mat_t dN;   // Shape derivatives
-	Mat_t J;    // Jacobian
-	Mat_t B;    // B matrix
-	Vec_t deps; // Delta Strain
-	Vec_t dsig; // Delta Stress
+	Mat_t N;       // Shape 
+	Mat_t dN;      // Shape derivatives
+	Mat_t J;       // Jacobian
+	Mat_t B;       // B matrix
+	Vec_t deps(6); // Delta Strain
+	Vec_t dsig(6); // Delta Stress
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian (dN, J);
 		_B_mat        (dN, J, B);
-		deps = B*du;
-		_mdl[i]->StateUpdate (deps, dsig);
-		df += trn(B)*dsig*det(J)*_ge->IPs[i].w;
+
+		Vec_t deps4;
+		Vec_t dsig4;
+		deps4 = B*du;
+		dsig4 = _De*deps4;
+		deps  = deps4(0), deps4(1), deps4(2), deps4(3), 0.0, 0.0;
+		dsig  = dsig4(0), dsig4(1), dsig4(2), dsig4(3), 0.0, 0.0;
+		_sig[i] += dsig;
+		_eps[i] += deps;
 	}
 
 	// Sum up contribution to internal forces vector
 	for (size_t i=0; i<_ge->NNodes; ++i)
-	for (int    j=0; j<_nd;         ++j)
-		dFint(_ge->Conn[i]->DOFVar(UD[_di][j]).EqID) += df(i*_nd+j);
-}
-
-inline void BiotElem::Backup()
-{
-	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i]->BackupState();
-}
-
-inline void BiotElem::Restore()
-{
-	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i]->RestoreState();
+	{
+		for (size_t j=0; j<nde; ++j) dFint(_ge->Conn[i]->DOFVar(UD[_di][j    ]).EqID) += df  (i*nde+j);
+		for (size_t j=0; j<ndf; ++j) dFint(_ge->Conn[i]->DOFVar(UD[_di][j+nde]).EqID) += dvol(i*ndf+j);
+	}
 }
 
 inline void BiotElem::GetLbls(Array<String> & Lbls) const
@@ -384,12 +312,12 @@ inline void BiotElem::GetLbls(Array<String> & Lbls) const
 	size_t k = 0;
 	for (int i=0; i<_nd; ++i)
 	{
-		Lbls[k] = UD[_di][i];  k++;
-		Lbls[k] = FD[_di][i];  k++;
+		Lbls[k] = BiotElem::UD[_di][i];  k++;
+		Lbls[k] = BiotElem::FD[_di][i];  k++;
 	}
 	for (int i=0; i<_nl; ++i)
 	{
-		Lbls[k] = LB[_gi][i];  k++;
+		Lbls[k] = BiotElem::LB[_gi][i];  k++;
 	}
 }
 
@@ -397,49 +325,42 @@ inline void BiotElem::OutInfo(std::ostream & os) const
 {
 	for (size_t i=0; i<_ge->NIPs; i++)
 	{
-		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _mdl[i]->Val("Sx") << _12_6 << _mdl[i]->Val("Sy") << _12_6 << _mdl[i]->Val("Sz");
-		os <<                "  Ex,Ey,Ez = " << _12_6 << _mdl[i]->Val("Ex") << _12_6 << _mdl[i]->Val("Ey") << _12_6 << _mdl[i]->Val("Ez") << " ";
+		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2);
+		os <<                "  Ex,Ey,Ez = " << _12_6 << _eps[i](0) << _12_6 << _eps[i](1) << _12_6 << _eps[i](2) << " ";
 	}
 }
 
-inline void BiotElem::CMatrix(size_t Idx, Mat_t & Ke) const
+inline void BiotElem::CMatrix(size_t Idx, Mat_t & M) const
 {
-	/* Stiffness:
-	   ==========
-	                 /    T
-	        [Ke]  =  | [B]  * [D] * [B]  * dV
-	                 /
-	*/
-
-	// Resize Ke
-	Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
-	Ke.SetValues(0.0);
-
-	// Allocate entities used for every integration point
-	Mat_t dN;     // size = NumLocalCoords(ex.: r,s,t) x _ge->NNodes
-	Mat_t J;      // Jacobian matrix
-	Mat_t B;      // strain-displacement matrix
-	Mat_t D;      // Constitutive matrix
-
-	for (size_t i=0; i<_ge->NIPs; ++i)
-	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_B_mat        (dN, J, B);
-		_mdl[i]->TgStiffness (D);
-		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
-	}
+	     if (Idx==0) _compute_K (M);
+	else if (Idx==1) _compute_C (M);
+	else if (Idx==2) _compute_L (M);
 }
 
 inline void BiotElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
 {
-	_equations_map (RMap, CMap, RUPresc, CUPresc);
+	if (Idx==0)
+	{
+		_equi_map (RMap, RUPresc);
+		CMap    = RMap;
+		CUPresc = RUPresc;
+	}
+	else if (Idx==1)
+	{
+		_equi_map (RMap, RUPresc);
+		_flow_map (CMap, CUPresc);
+	}
+	else if (Idx==2)
+	{
+		_flow_map (RMap, RUPresc);
+		_equi_map (CMap, CUPresc);
+	}
+	else throw new Fatal("BiotElem::CMatMap: Index==%d is invalid",Idx);
 }
 
 inline bool BiotElem::CheckModel() const
 {
-	if (_mdl.Size()!=_ge->NIPs) return false;
-	for (size_t i=0; i<_ge->NIPs; ++i) if (_mdl[i]==NULL) return false;
+	if (_gw<0.0 || _De.Rows()==0 || _Ke.Rows()==0) return false;
 	return true;
 }
 
@@ -449,298 +370,226 @@ inline bool BiotElem::CheckModel() const
 inline void BiotElem::_initialize()
 {
 	_di = _ge->NDim-2; // Dimension index == _ge->NDim-2
-	_nd = ND[_di];
+	_nd = (_ge->NDim==2 ? 3 : 4);
+	_gi = (_ge->NDim==2 ? 1 : 0);
 	_nl = NL[_gi];
-	/*
-	     if (strcmp(Type,"")       ==0) _pt = (_ge->NDim==2 ? PStrain_T : Eq3D_T);
-	else if (strcmp(Type,"PStrain")==0) _pt = PStrain_T;
-	else if (strcmp(Type,"PStress")==0) _pt = PStress_T;
-	else if (strcmp(Type,"Axis")   ==0) _pt = Axis_T;
-	else if (strcmp(Type,"Rod")    ==0) _st = Rod_T;
-	else if (strcmp(Type,"Beam")   ==0) _st = Beam_T;
-	else if (strcmp(Type,"Spring") ==0) _st = Spring_T;
-	_di  = _ge->NDim-1;
-	_nd = BiotElem::ND[_di];
-	size_t idx = 0;
-	     if (_st==PStrain_T) idx = 0;
-	else if (_st==Eq3D_T   ) idx = 1;
-	else if (_st==PStress_T) idx = 2;
-	else if (_st==Axis_T   ) idx = 3;
-	else if (_st==Rod_T    ) idx = 4;
-	else if (_st==Beam_T   ) idx = 5;
-	else if (_st==Spring_T ) idx = 6;
-	_nl = BiotElem::NL[idx];
-	*/
 }
 
 inline void BiotElem::_excavate()
 {
-	// Verify if element is on the boundary of excavation
-	bool on_boundary = false;
-	for (size_t i=0; i<_ge->NNodes; i++)
-	{
-		if (_ge->Conn[i]->nSharedBy()>0)
-		{
-			on_boundary=true;
-			break;
-		}
-	}
-
-	// Calculate internal forces for element on boundary
-	if (on_boundary)
-	{
-		Vec_t F(_ge->NDim*_ge->NNodes);  F.SetValues(0.0);
-		Vec_t S(_ge->NDim*_ge->NNodes);  S.SetValues(0.0);
-		Vec_t N;      // Shape functions
-		Mat_t dN;     // Derivative of shape functions
-		Mat_t J;      // Jacobian matrix
-		Mat_t B;      // strain-displacement matrix
-		Vec_t sig;    // stress tensor
-		for (size_t i=0; i<_ge->NIPs; ++i)
-		{
-			_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
-			_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-			_ge->Jacobian (dN, J);
-			_B_mat        (dN, J, B);
-
-			// Mount S
-			for (size_t j=0; j<_ge->NNodes; ++j) S(_ge->NDim*j+_ge->NDim-1) = N(j);
-
-			// Get tensor
-			_mdl[i]->Sig (sig);
-
-			// Calculate internal force vector
-			F += trn(B)*sig*det(J)*_ge->IPs[i].w + S*_gam*det(J)*_ge->IPs[i].w;
-		}
-
-		// Add to boundary values of node if nSharedBy()>0
-		for (size_t i=0; i<_ge->NNodes; ++i)
-		{
-			if (_ge->Conn[i]->nSharedBy()>0)
-			{
-				// Apply forces (only for equilibrium type neighbor elements)
-				for (size_t j=0; j<_ge->NDim; ++j)
-					_ge->Conn[i]->Bry (FD[_di][j], F(_ge->NDim*i+j));
-			}
-		}
-	}
+	throw new Fatal("BiotElem::_excavate: Method not available");
 }
 
-inline void BiotElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) const
-{
-	/* OBS.:
-	 *          This B matrix considers Solid Mechanics sign convention of stress and strains
-	 *          Ex.: Compressive stresses/strains are negative
-	 *          The B Matrix returns strains in Mandel notation
-	 *
-	 *          Traction    => Positive
-	 *          Compression => Negative
-	 */
-
-	// Cartesian derivatives
-	Mat_t dC;
-	dC = inv(J)*dN;
-
-	switch (_gi)
-	{
-		case 0: // 3D
-		{
-			const int n_scomps = 6; // number of stress compoments
-			B.Resize (n_scomps,_nd*_ge->NNodes);
-			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
-			{
-				B(0,0+i*_nd) =     dC(0,i);  B(0,1+i*_nd) =         0.0;  B(0,2+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dC(1,i);  B(1,2+i*_nd) =         0.0;
-				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;  B(2,2+i*_nd) =     dC(2,i);
-				B(3,0+i*_nd) = dC(1,i)/SQ2;  B(3,1+i*_nd) = dC(0,i)/SQ2;  B(3,2+i*_nd) =         0.0; // SQ2 => Mandel representation
-				B(4,0+i*_nd) =         0.0;  B(4,1+i*_nd) = dC(2,i)/SQ2;  B(4,2+i*_nd) = dC(1,i)/SQ2; // SQ2 => Mandel representation
-				B(5,0+i*_nd) = dC(2,i)/SQ2;  B(5,1+i*_nd) =         0.0;  B(5,2+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
-			}
-			return;
-		}
-		case 1: // 2D(plane-strain)
-		{
-			const int n_scomps = 4; // number of stress compoments
-			B.Resize (n_scomps,_nd*_ge->NNodes);
-			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
-			{
-				B(0,0+i*_nd) =     dC(0,i);  B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dC(1,i);
-				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;
-				B(3,0+i*_nd) = dC(1,i)/SQ2;  B(3,1+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
-			}
-			return;
-		}
-		case 2: // 2D(plane-stress)
-		{
-			const int n_scomps = 3; // number of stress compoments
-			B.Resize(n_scomps,_nd*_ge->NNodes);
-			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
-			{
-				B(0,0+i*_nd) =      dC(0,i);   B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =          0.0;   B(1,1+i*_nd) =     dC(1,i);
-				B(2,0+i*_nd) =  dC(1,i)/SQ2;   B(2,1+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
-			}
-			return;
-		}
-		case 3: // 2D(axis-symmetric)
-		default: throw new Fatal("BiotElem::_B_mat: _B_mat() method is not available for GeometryIndex(gi)==%d",_gi);
-	}
-}
-
-inline void BiotElem::_initial_state()
-{
-	// Allocate (local/element) internal force vector
-	Vec_t f(_nd*_ge->NNodes);
-	f.SetValues (0.0);
-
-	// Calculate internal force vector;
-	Mat_t dN;  // Shape Derivs
-	Mat_t J;   // Jacobian matrix
-	Mat_t B;   // strain-displacement matrix
-	Vec_t sig; // Stress vector in Mandel's notation
-	for (size_t i=0; i<_ge->NIPs; ++i)
-	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_B_mat        (dN, J, B);
-		_mdl[i]->Sig (sig);
-		f += trn(B)*sig*det(J)*_ge->IPs[i].w;
-	}
-
-	// Assemble (local/element) displacements vector.
-	for (size_t i=0; i<_ge->NNodes; ++i)
-	for (int    j=0; j<_nd;         ++j)
-		_ge->Conn[i]->DOFVar(UD[_di][j]).NaturalVal += f(i*_nd+j);
-}
-
-inline void BiotElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
+inline void BiotElem::_equi_map(Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
 {
 	// Map of positions from Me to Global
-	RMap   .Resize(_nd*_ge->NNodes);
-	RUPresc.Resize(_nd*_ge->NNodes);
+	size_t nde = _nd-1; // nDOFs equilib
+	RMap   .Resize(nde*_ge->NNodes);
+	RUPresc.Resize(nde*_ge->NNodes);
 	int p = 0; // position inside matrix
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	{
-		for (int j=0; j<_nd; ++j)
+		for (int j=0; j<nde; ++j)
 		{
 			RMap    [p] = _ge->Conn[i]->DOFVar(UD[_di][j]).EqID;
 			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[_di][j]).IsEssenPresc;
 			p++;
 		}
 	}
-	CMap    = RMap;
-	CUPresc = RUPresc;
 }
 
-inline void BiotElem::_dist_to_face_nodes(char const * Key, double const FaceValue, Array<Node*> const & FConn) const
+inline void BiotElem::_flow_map(Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
 {
-	// Check if the element is active
-	if (IsActive==false) return;
-
-	if (strcmp(Key,"Q")==0)
+	// Map of positions from Me to Global
+	size_t nde = _nd-1; // nDOFs equilib
+	size_t ndf =     1; // nDOFs flow
+	RMap   .Resize(ndf*_ge->NNodes);
+	RUPresc.Resize(ndf*_ge->NNodes);
+	int p = 0; // position inside matrix
+	for (size_t i=0; i<_ge->NNodes; ++i)
 	{
-		// Normal traction boundary condition
-		Mat_t values;  values.Resize (_ge->NFNodes, _ge->NDim);  values.SetValues(0.0);
-		Mat_t J;
-		Vec_t FN(_ge->NFNodes); // Face shape
-		Mat_t FNmat;            // Shape function matrix
-		Vec_t P;                // Vector perpendicular to the face
-		for (size_t i=0; i<_ge->NFIPs; i++)
+		for (int j=0; j<ndf; ++j)
 		{
-			_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
-			FNmat = trn(trn(FN)); // trick just to convert Vector FN to a col Matrix
-
-			// Calculate perpendicular vector
-			if (_ge->NDim==3)
-			{
-				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-				Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
-				Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
-				P.Resize(3);
-				P = V(1)*W(2) - V(2)*W(1),      // vectorial product
-					V(2)*W(0) - V(0)*W(2),
-					V(0)*W(1) - V(1)*W(0);
-			}
-			else
-			{
-				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-				P.Resize(2);
-				P = J(0,1), -J(0,0);
-			}
-			values += FaceValue*FNmat*trn(P)*_ge->FIPs[i].w;
-		}
-
-		// Set nodes Brys
-		for (size_t i=0; i<_ge->NFNodes; ++i)
-		{
-			for (size_t j=0; j<_ge->NDim; ++j) FConn[i]->Bry (FD[_di][j], values(i,j));
+			RMap    [p] = _ge->Conn[i]->DOFVar(UD[_di][j+nde]).EqID;
+			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[_di][j+nde]).IsEssenPresc;
+			p++;
 		}
 	}
-	else
-	{
-		if (IsEssen(Key)) // Assign directly
-			for (size_t i=0; i<_ge->NFNodes; ++i) FConn[i]->Bry(Key,FaceValue);
-		else // Integrate along area/length
-		{
-			// Compute face nodal values (integration along the face)
-			Vec_t values;  values.Resize(_ge->NFNodes);  values.SetValues(0.0);
-			Mat_t J;                // Jacobian matrix. size = [1,2] x 3
-			Vec_t FN(_ge->NFNodes); // Shape functions of a face/edge. size = _ge->NFNodes
-			for (size_t i=0; i<_ge->NFIPs; i++)
-			{
-				_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
-				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-				values += FaceValue*FN*det(J)*_ge->FIPs[i].w;
-			}
+}
 
-			// Set nodes Brys
-			for (size_t i=0; i<_ge->NFNodes; ++i) FConn[i]->Bry (Key,values(i));
-		}
+inline void BiotElem::_compute_K(Mat_t & Ke) const
+{
+	/* Stiffness:
+	   ==========
+	                 /    T
+	        [Ke]  =  | [B]  * [D] * [B]  * dV
+	                 /
+	*/
+
+	size_t nde = _nd-1; // nDOFs equilib
+	Ke.Resize    (nde*_ge->NNodes, nde*_ge->NNodes);
+	Ke.SetValues (0.0);
+	Mat_t dN,J,B;
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_B_mat        (dN, J, B);
+		Ke += trn(B)*_De*B*det(J)*_ge->IPs[i].w;
 	}
+}
+
+inline void BiotElem::_compute_C(Mat_t & Ce) const
+{
+	/*  Coupling Matrix L1:
+	    ===================
+	
+	                 /    T      T
+	        [C]   =  | [B]  * {m} * {N}  * dV    // coupled saturated
+	                 /    u            p
+	
+	    Note:   p => pore-pressure
+	    =====   u => displacement
+	
+	               T
+	            {m} = [ 1 1 1 0 0 0 ]
+	*/
+	
+	size_t nde = _nd-1; // nDOFs equilib
+	size_t ndf =     1; // nDOFs flow
+	Ce.Resize    (nde*_n_nodes, ndf*_n_nodes); 
+	Ce.SetValues (0.0);
+	Vec_t N,m;
+	Mat_t dN,J,B;
+	     if (_ge->NDim==2) { m.Resize(4); m = 1.0,1.0,1.0, 0.0;         }
+	else if (_ge->NDim==3) { m.Resize(6); m = 1.0,1.0,1.0, 0.0,0.0,0.0; }
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_B_mat        (dN, J, B);
+		Ce += trn(B)*m*trn(N)*det(J)*_ge->IPs[i].w;
+	}
+}
+
+inline void BiotElem::_compute_L(Mat_t & Le) const
+{
+	Mat_t Ce;
+	_compute_C (Ce);
+	Le = trn(Ce);
+}
+
+inline void BiotElem::_compute_H(Mat_t & He) const
+{
+	/*  Permeability Matrix H:
+	    ======================
+	
+	                   /    T
+	         [H]   =  -| [Bp]  * [K] * [Bp]  * dV
+	                   /
+	
+	    Note:   p => pore-pressure
+	    =====   u => displacement
+	
+	
+	               T
+	            {m} = [ 1 1 1 0 0 0 ]
+	*/
+	
+	size_t ndf = 1; // nDOFs flow
+	He.Resize    (ndf*_ge->NNodes, ndf*_ge->NNodes);
+	He.SetValues (0.0);
+	Mat_t dN,J,Bp;
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_Bp_mat       (dN, J, Bp);
+		He += -trn(Bp)*_Ke*Bp*det(J)*_ge->IPs[i].w/_gw;
+	}
+}
+
+inline void BiotElem::_compute_Qb(Vec_t & Qb) const
+{
+	/*	 Matrix Qb:
+		 ============================
+	
+	                    1   /    T                   
+	         [Qb]   =  ---  | [B]  * [K] * {b}  * dV
+	                    gw  /    p            w  
+	*/
+	
+	size_t ndf = 1; // nDOFs flow
+	Qb.Resize    (ndf*_ge->NNodes); 
+	Qb.SetValues (0.0);
+	Vec_t b;
+	Mat_t dN,J,Bp;
+	     if (_ndim==2) { b.Resize(2); b = 0.0, _gw; }
+	else if (_ndim==3) { b.Resize(3); b = 0.0, 0.0, _gw; }
+	for (size_t i_ip=0; i_ip<_ge->NIPs; ++i_ip)
+	{
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_Bp_mat       (dN, J, Bp);
+		Qb += trn(Bp)*_Ke*b*det(J)*_ge->IPs[i].w/_gw;
+	}
+}
+
+inline double BiotElem::_val_ip(size_t iIP, Str_t Name) const
+{
+	     if (strcmp(Name,"Sx" )==0)                          return _sig[iIP](0);
+	else if (strcmp(Name,"Sy" )==0)                          return _sig[iIP](1);
+	else if (strcmp(Name,"Sz" )==0)                          return _sig[iIP](2);
+	else if (strcmp(Name,"Sxy")==0 || strcmp(Name,"Syx")==0) return _sig[iIP](3)/SQ2;
+	else if (strcmp(Name,"Syz")==0 || strcmp(Name,"Szy")==0) return _sig[iIP](4)/SQ2;
+	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return _sig[iIP](5)/SQ2;
+	else if (strcmp(Name,"p"  )==0)                          return (_sig[iIP](0)+_sig[iIP](1)+_sig[iIP](2))/3.0;
+	else if (strcmp(Name,"q"  )==0)                          return sqrt(((_sig[iIP](0)-_sig[iIP](1))*(_sig[iIP](0)-_sig[iIP](1)) + (_sig[iIP](1)-_sig[iIP](2))*(_sig[iIP](1)-_sig[iIP](2)) + (_sig[iIP](2)-_sig[iIP](0))*(_sig[iIP](2)-_sig[iIP](0)) + 3.0*(_sig[iIP](3)*_sig[iIP](3) + _sig[iIP](4)*_sig[iIP](4) + _sig[iIP](5)*_sig[iIP](5)))/2.0);
+	else if (strcmp(Name,"Ex" )==0)                          return _eps[iIP](0);
+	else if (strcmp(Name,"Ey" )==0)                          return _eps[iIP](1);
+	else if (strcmp(Name,"Ez" )==0)                          return _eps[iIP](2);
+	else if (strcmp(Name,"Exy")==0 || strcmp(Name,"Eyx")==0) return _eps[iIP](3)/SQ2;
+	else if (strcmp(Name,"Eyz")==0 || strcmp(Name,"Ezy")==0) return _eps[iIP](4)/SQ2;
+	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return _eps[iIP](5)/SQ2;
+	else if (strcmp(Name,"Ev" )==0)                          return _eps[iIP](0)+_eps[iIP](1)+_eps[iIP](2); 
+	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_eps[iIP](0)-_eps[iIP](1))*(_eps[iIP](0)-_eps[iIP](1)) + (_eps[iIP](1)-_eps[iIP](2))*(_eps[iIP](1)-_eps[iIP](2)) + (_eps[iIP](2)-_eps[iIP](0))*(_eps[iIP](2)-_eps[iIP](0)) + 3.0*(_eps[iIP](3)*_eps[iIP](3) + _eps[iIP](4)*_eps[iIP](4) + _eps[iIP](5)*_eps[iIP](5))))/3.0;
+
+	// Principal components of sig
+	else if (strcmp(Name,"S1" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_sig[iIP], sigp);*/ return sigp[2]; }
+	else if (strcmp(Name,"S2" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_sig[iIP], sigp);*/ return sigp[1]; }
+	else if (strcmp(Name,"S3" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_sig[iIP], sigp);*/ return sigp[0]; }
+
+	// Principal components of eps
+	else if (strcmp(Name,"E1" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_eps[iIP], epsp);*/ return epsp[2]; }
+	else if (strcmp(Name,"E2" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_eps[iIP], epsp);*/ return epsp[1]; }
+	else if (strcmp(Name,"E3" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_eps[iIP], epsp);*/ return epsp[0]; }
+
+	// Flow velocities
+	else if (strcmp(Name,"Vx" )==0) return 0.0;
+	else if (strcmp(Name,"Vy" )==0) return 0.0;
+	else if (strcmp(Name,"Vz" )==0) return 0.0;
+
+	// Total head
+	else if (strcmp(Name,"H" )==0) return 0.0;
+
+	else throw new Fatal("BiotElem::_val_ip: Name==%s if not available for this element",Name);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new 3D Equilib element:
-ProbElem * EquilibMaker() 
-{ 
+// Allocate a new 3D Biot element:
+ProbElem * BiotMaker() 
+{
 	BiotElem * Ptr = new BiotElem;
-	Ptr->SetGeomIdx(0);
 	return Ptr; 
 }
 // Register element
-int EquilibRegister() { ProbElemFactory["Equilib"]=EquilibMaker;  return 0; }
+int BiotRegister() { ProbElemFactory["Biot"]=BiotMaker;  return 0; }
 // Call register
-int __Equilib_dummy_int  = EquilibRegister();
-
-
-// Allocate a new PStrain element:
-ProbElem * PStrainMaker() 
-{ 
-	BiotElem * Ptr = new BiotElem;
-	Ptr->SetGeomIdx(1);
-	return Ptr; 
-}
-// Register element
-int PStrainRegister() { ProbElemFactory["PStrain"]=PStrainMaker;  return 0; }
-// Call register
-int __PStrain_dummy_int  = PStrainRegister();
-
-
-// Allocate a new PStress element:
-ProbElem * PStressMaker() 
-{ 
-	BiotElem * Ptr = new BiotElem;
-	Ptr->SetGeomIdx(2);
-	return Ptr; 
-}
-// Register element
-int PStressRegister() { ProbElemFactory["PStress"]=PStressMaker;  return 0; }
-// Call register
-int __PStress_dummy_int  = PStressRegister();
+int __Biot_dummy_int = BiotRegister();
 
 }; // namespace FEM
 

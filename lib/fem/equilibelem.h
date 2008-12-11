@@ -59,11 +59,10 @@ class EquilibElem : public ProbElem
 {
 public:
 	// Constants. Note: _di==dimension index, _gi==geometry index
-	static const size_t ND [2];        ///< Number of DOFs.      Access: ND[_di]
 	static const char   UD [2][3][4];  ///< Essential DOF names. Access: UD[_di][iDOF]
 	static const char   FD [2][3][4];  ///< Natural DOF names.   Access: FD[_di][iDOF]
-	static const size_t NL [4];        ///< Number of additional labels (exceeding ND). Access: NL[_gi]
-	static const char   LB [4][22][4]; ///< Additional lbls (exceed. those from UD/FD). Access: LB[_gi][iLbl]
+	static const size_t NL [4];        ///< Number of additional labels (exceeding nDOFs). Access: NL[_gi]
+	static const char   LB [4][22][4]; ///< Additional lbls (exceed. those from UD/FD).    Access: LB[_gi][iLbl]
 
 	// Constructor
 	EquilibElem () : _di(-1), _gi(-1), _nd(-1), _nl(-1), _gam(0.0) {}
@@ -98,11 +97,11 @@ public:
 	// Derived methods
 	bool CheckModel () const;
 
-private:
+protected:
 	// Data
 	int                  _di;  ///< Dimension index == _ge->NDim-2
 	int                  _gi;  ///< Geometry index: 3D=0, PStrain=1, PStress=2, Axis=3
-	int                  _nd;  ///< Number of DOFs == ND[_di]
+	int                  _nd;  ///< Number of DOFs
 	int                  _nl;  ///< Number of lbls == NL[_gi]
 	double               _gam; ///< Specific weigth
 	Array<EquilibModel*> _mdl; ///< Array of pointers to constitutive models
@@ -115,12 +114,9 @@ private:
 	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
 	void _initial_state      ();                                                   ///< Calculate initial internal state
 	void _equations_map      (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void _dist_to_face_nodes (char const * Key, double FaceValue, Array<Node*> const & FConn) const;
+	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) const;
 
 }; // class EquilibElem
-
-// ND[_di]                           2D  3D
-const size_t EquilibElem:: ND [2] = { 2, 3 };
 
 // UD[_di][iDOF]                         2D               3D
 const char EquilibElem:: UD [2][3][4] = {{"ux","uy",""},  {"ux","uy","uz"}};
@@ -224,7 +220,7 @@ inline void EquilibElem::SetActive(bool Activate, int ID)
 	}
 }
 
-inline void EquilibElem::EdgeBry(char const * Key, double Value, int iEdge)
+inline void EquilibElem::EdgeBry(Str_t Key, double Value, int iEdge)
 {
 	if (_ge->NDim<3) // For 1D/2D meshes, edges correspond to faces
 	{
@@ -238,7 +234,7 @@ inline void EquilibElem::EdgeBry(char const * Key, double Value, int iEdge)
 	else throw new Fatal("EquilibElem::EdgeBry: Method not yet implemented for 3D meshes");
 }
 
-inline void EquilibElem::FaceBry(char const * Key, double Value, int iFace)
+inline void EquilibElem::FaceBry(Str_t Key, double Value, int iFace)
 {
 	if (_ge->NDim==2) throw new Fatal("EquilibElem::FaceBry: This method must be called only for 3D meshes");
 	else
@@ -256,7 +252,7 @@ inline void EquilibElem::CalcDeps() const
 	else throw new Fatal("EquilibElem::CalcDepVars: Constitutive models for this element were not set");
 }
 
-inline double EquilibElem::Val(int iNod, char const * Name) const
+inline double EquilibElem::Val(int iNod, Str_t Name) const
 {
 	// Displacements
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_di][j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
@@ -278,7 +274,7 @@ inline double EquilibElem::Val(int iNod, char const * Name) const
 	return nodal_values (iNod);
 }
 
-inline double EquilibElem::Val(char const * Name) const
+inline double EquilibElem::Val(Str_t Name) const
 {
 	// Get integration point values
 	double sum = 0.0;
@@ -290,13 +286,13 @@ inline double EquilibElem::Val(char const * Name) const
 	return sum/_ge->NIPs;
 }
 
-inline bool EquilibElem::IsEssen(char const * Name) const
+inline bool EquilibElem::IsEssen(Str_t Name) const
 {
 	for (int i=0; i<_nd; ++i) if (strcmp(Name,UD[_di][i])==0) return true;
 	return false;
 }
 
-inline void EquilibElem::SetProps(char const * Properties)
+inline void EquilibElem::SetProps(Str_t Properties)
 {
 	/* "gam=20.0 */
 	LineParser lp(Properties);
@@ -311,7 +307,7 @@ inline void EquilibElem::SetProps(char const * Properties)
 	}
 }
 
-inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
+inline void EquilibElem::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
 {
 	// Check _ge->NDim
 	if (_ge->NDim<1)             throw new Fatal("EquilibElem::SetModel: The space dimension (SetDim) must be set before calling this method");
@@ -406,12 +402,12 @@ inline void EquilibElem::GetLbls(Array<String> & Lbls) const
 	size_t k = 0;
 	for (int i=0; i<_nd; ++i)
 	{
-		Lbls[k] = UD[_di][i];  k++;
-		Lbls[k] = FD[_di][i];  k++;
+		Lbls[k] = EquilibElem::UD[_di][i];  k++;
+		Lbls[k] = EquilibElem::FD[_di][i];  k++;
 	}
 	for (int i=0; i<_nl; ++i)
 	{
-		Lbls[k] = LB[_gi][i];  k++;
+		Lbls[k] = EquilibElem::LB[_gi][i];  k++;
 	}
 }
 
@@ -433,16 +429,9 @@ inline void EquilibElem::CMatrix(size_t Idx, Mat_t & Ke) const
 	                 /
 	*/
 
-	// Resize Ke
-	Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
-	Ke.SetValues(0.0);
-
-	// Allocate entities used for every integration point
-	Mat_t dN;     // size = NumLocalCoords(ex.: r,s,t) x _ge->NNodes
-	Mat_t J;      // Jacobian matrix
-	Mat_t B;      // strain-displacement matrix
-	Mat_t D;      // Constitutive matrix
-
+	Ke.Resize    (_nd*_ge->NNodes, _nd*_ge->NNodes);
+	Ke.SetValues (0.0);
+	Mat_t dN,J,B,D;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
@@ -471,28 +460,8 @@ inline bool EquilibElem::CheckModel() const
 inline void EquilibElem::_initialize()
 {
 	_di = _ge->NDim-2; // Dimension index == _ge->NDim-2
-	_nd = ND[_di];
-	_nl = NL[_gi];
-	/*
-	     if (strcmp(Type,"")       ==0) _pt = (_ge->NDim==2 ? PStrain_T : Eq3D_T);
-	else if (strcmp(Type,"PStrain")==0) _pt = PStrain_T;
-	else if (strcmp(Type,"PStress")==0) _pt = PStress_T;
-	else if (strcmp(Type,"Axis")   ==0) _pt = Axis_T;
-	else if (strcmp(Type,"Rod")    ==0) _st = Rod_T;
-	else if (strcmp(Type,"Beam")   ==0) _st = Beam_T;
-	else if (strcmp(Type,"Spring") ==0) _st = Spring_T;
-	_di  = _ge->NDim-1;
-	_nd = EquilibElem::ND[_di];
-	size_t idx = 0;
-	     if (_st==PStrain_T) idx = 0;
-	else if (_st==Eq3D_T   ) idx = 1;
-	else if (_st==PStress_T) idx = 2;
-	else if (_st==Axis_T   ) idx = 3;
-	else if (_st==Rod_T    ) idx = 4;
-	else if (_st==Beam_T   ) idx = 5;
-	else if (_st==Spring_T ) idx = 6;
-	_nl = EquilibElem::NL[idx];
-	*/
+	_nd = _ge->NDim;   // number of DOFs
+	_nl = NL[_gi];     // number of additional labels
 }
 
 inline void EquilibElem::_excavate()
@@ -655,7 +624,7 @@ inline void EquilibElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CM
 	CUPresc = RUPresc;
 }
 
-inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const FaceValue, Array<Node*> const & FConn) const
+inline void EquilibElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, Array<Node*> const & FConn) const
 {
 	// Check if the element is active
 	if (IsActive==false) return;

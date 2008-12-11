@@ -126,7 +126,7 @@ typedef std::map<String, ProbElemMakerPtr, std::less<String> > ProbElemFactory_t
 ProbElemFactory_t ProbElemFactory;
 
 // Allocate a new ProbElem according to a string giving the name of the element
-ProbElem * AllocProbElem(char const * ProbElemName)
+ProbElem * AllocProbElem(Str_t ProbElemName)
 {
 	ProbElemMakerPtr ptr=NULL;
 	ptr = ProbElemFactory[ProbElemName];
