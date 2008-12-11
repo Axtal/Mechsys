@@ -23,7 +23,8 @@
 #include "fem/data.h"
 #include "fem/solver.h"
 #include "fem/elems/hex20.h"
-#include "fem/equilibelem.h"
+#include "fem/:quilibelem.h"
+
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -125,7 +126,7 @@ int main(int argc, char **argv) try
 	// 4) Boundary conditions (must be after connectivity)
 	dat.Nod(0)->Bry    ("uy",0.0)->Bry("ux",0.0);
 	dat.Nod(3)->Bry    ("uy",0.0)->Bry("ux",0.0);
-	dat.Nod(11)->Bry   ("uy",0.0)->Bry("ux",0.0); 
+	dat.Nod(11)->Bry   ("uy",0.0)->Bry("ux",0.0);
 
 	dat.Ele(0)->FaceBry("uy",0.0,2);
 	dat.Ele(0)->FaceBry("uy",0.0,3);
