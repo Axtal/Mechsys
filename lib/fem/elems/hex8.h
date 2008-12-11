@@ -29,7 +29,7 @@
 namespace FEM
 {
 
-class Hex8 : public virtual Element
+class Hex8 : public virtual GeomElem
 {
 public:
 	// Auxiliar structure to map local face IDs to local node IDs
@@ -45,20 +45,18 @@ public:
 	// Constructor
 	Hex8();
 
-	// Destructor
-	virtual ~Hex8() {}
-
 	// Derived methods
-	void   SetIntPoints  (int NumGaussPoints1D);
-	int    VTKCellType   () const { return VTK_HEXAHEDRON; }
-	void   VTKConnect    (String & Nodes) const;
-	void   GetFaceNodes  (int FaceID, Array<Node*> & FaceConnects) const;
-	void   Shape         (double r, double s, double t, LinAlg::Vector<double> & Shape)  const;
-	void   Derivs        (double r, double s, double t, LinAlg::Matrix<double> & Derivs) const;
-	void   FaceShape     (double r, double s, LinAlg::Vector<double> & FaceShape)  const;
-	void   FaceDerivs    (double r, double s, LinAlg::Matrix<double> & FaceDerivs) const;
-	double BoundDistance (double r, double s, double t) const;
-	void   LocalCoords   (LinAlg::Matrix<double> & coords) const;
+	void   SetIPs     (int NIPs1D);
+	int    VTKType    () const { return VTK_HEXAHEDRON; }
+	void   VTKConn    (String & Nodes) const;
+	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects) const;
+	double BoundDist  (double r, double s, double t) const { return std::min(std::min( 1-fabs(r) , 1-fabs(s) ), 1-fabs(t)) }
+	void   Shape      (double r, double s, double t, Vec_t & N)  const;
+	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
+	void   FShape     (double r, double s, Vec_t & FaceN)  const;
+	void   FDerivs    (double r, double s, Mat_t & FacedN) const;
+private:
+	void   _local_coords (Mat_t & coords) const;
 
 }; // class Hex8
 
@@ -107,32 +105,20 @@ inline Hex8::Hex8()
 	SetIntPoints (/*NumGaussPoints1D*/2);
 }
 
-inline void Hex8::SetIntPoints(int NumGaussPoints1D)
+inline void Hex8::SetIPs(int NIPs1D)
 {
 	// Setup pointer to the array of Integration Points
-	if      (NumGaussPoints1D==2) _a_int_pts = HEX_IP2;
-	else if (NumGaussPoints1D==3) _a_int_pts = HEX_IP3;
-	else if (NumGaussPoints1D==4) _a_int_pts = HEX_IP4;
-	else if (NumGaussPoints1D==5) _a_int_pts = HEX_IP5;
+	if      (NIPs1D==2) _a_int_pts = HEX_IP2;
+	else if (NIPs1D==3) _a_int_pts = HEX_IP3;
+	else if (NIPs1D==4) _a_int_pts = HEX_IP4;
+	else if (NIPs1D==5) _a_int_pts = HEX_IP5;
 	else throw new Fatal("Hex8::SetIntPoints: Error in number of integration points.");
 
-	_n_int_pts      = pow(NumGaussPoints1D, 3);
-	_a_face_int_pts = QUAD_IP2;
-	_n_face_int_pts = 4;
+	NIPs     = pow(NIPs1D, 3);
+	IPs      = QUAD_IP2;
+	NFaceIPs = 4;
 }
 
-inline void Hex8::LocalCoords(LinAlg::Matrix<double> & coords) const 
-{
-	coords.Resize(8,4);
-	coords = -1.0, -1.0, -1.0, 1.0,
-	         +1.0, -1.0, -1.0, 1.0,
-	         +1.0, +1.0, -1.0, 1.0,
-	         -1.0, +1.0, -1.0, 1.0,
-	         -1.0, -1.0, +1.0, 1.0,
-	         +1.0, -1.0, +1.0, 1.0,
-	         +1.0, +1.0, +1.0, 1.0,
-	         -1.0, +1.0, +1.0, 1.0;
-}
 
 inline void Hex8::VTKConnect(String & Nodes) const
 {
@@ -155,7 +141,7 @@ inline void Hex8::GetFaceNodes(int FaceID, Array<Node*> & FaceConnects) const
 	FaceConnects[3] = _connects[Face2Node[FaceID].n3];
 }
 
-inline void Hex8::Shape(double r, double s, double t, LinAlg::Vector<double> & Shape) const
+inline void Hex8::Shape(double r, double s, double t, Vec_t & Shape) const
 {
 	/*                    t
 	 *                    ^
@@ -191,27 +177,27 @@ inline void Hex8::Shape(double r, double s, double t, LinAlg::Vector<double> & S
 	Shape(7) = 0.125*(1.0-r+s-r*s+t+s*t-r*t-r*s*t);
 }
 
-inline void Hex8::Derivs(double r, double s, double t, LinAlg::Matrix<double> & Derivs) const
+inline void Hex8::Derivs(double r, double s, double t, Mat_t & dN) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
+	/*       _     _ T
+	 *      |  dNi  |
+	 * dN = |  ---  |   , where cj = r, s
+	 *      |_ dcj _|
 	 *
-	 * Derivs(j,i), j=>local coordinate and i=>shape function
+	 * dN(j,i), j=>local coordinate and i=>shape function
 	 */
-	Derivs.Resize(3,/*NumNodes*/8);
-	Derivs(0,0) = 0.125*(-1.0+s+t-s*t);   Derivs(1,0)=0.125*(-1.0+r+t-r*t);   Derivs(2,0)=0.125*(-1.0+r+s-r*s);
-	Derivs(0,1) = 0.125*(+1.0-s-t+s*t);   Derivs(1,1)=0.125*(-1.0-r+t+r*t);   Derivs(2,1)=0.125*(-1.0-r+s+r*s);
-	Derivs(0,2) = 0.125*(+1.0+s-t-s*t);   Derivs(1,2)=0.125*(+1.0+r-t-r*t);   Derivs(2,2)=0.125*(-1.0-r-s-r*s);
-	Derivs(0,3) = 0.125*(-1.0-s+t+s*t);   Derivs(1,3)=0.125*(+1.0-r-t+r*t);   Derivs(2,3)=0.125*(-1.0+r-s+r*s);
-	Derivs(0,4) = 0.125*(-1.0+s-t+s*t);   Derivs(1,4)=0.125*(-1.0+r-t+r*t);   Derivs(2,4)=0.125*(+1.0-r-s+r*s);
-	Derivs(0,5) = 0.125*(+1.0-s+t-s*t);   Derivs(1,5)=0.125*(-1.0-r-t-r*t);   Derivs(2,5)=0.125*(+1.0+r-s-r*s);
-	Derivs(0,6) = 0.125*(+1.0+s+t+s*t);   Derivs(1,6)=0.125*(+1.0+r+t+r*t);   Derivs(2,6)=0.125*(+1.0+r+s+r*s);
-	Derivs(0,7) = 0.125*(-1.0-s-t-s*t);   Derivs(1,7)=0.125*(+1.0-r+t-r*t);   Derivs(2,7)=0.125*(+1.0-r+s-r*s);
+	dN.Resize(3,/*NumNodes*/8);
+	dN(0,0) = 0.125*(-1.0+s+t-s*t);   dN(1,0)=0.125*(-1.0+r+t-r*t);   dN(2,0)=0.125*(-1.0+r+s-r*s);
+	dN(0,1) = 0.125*(+1.0-s-t+s*t);   dN(1,1)=0.125*(-1.0-r+t+r*t);   dN(2,1)=0.125*(-1.0-r+s+r*s);
+	dN(0,2) = 0.125*(+1.0+s-t-s*t);   dN(1,2)=0.125*(+1.0+r-t-r*t);   dN(2,2)=0.125*(-1.0-r-s-r*s);
+	dN(0,3) = 0.125*(-1.0-s+t+s*t);   dN(1,3)=0.125*(+1.0-r-t+r*t);   dN(2,3)=0.125*(-1.0+r-s+r*s);
+	dN(0,4) = 0.125*(-1.0+s-t+s*t);   dN(1,4)=0.125*(-1.0+r-t+r*t);   dN(2,4)=0.125*(+1.0-r-s+r*s);
+	dN(0,5) = 0.125*(+1.0-s+t-s*t);   dN(1,5)=0.125*(-1.0-r-t-r*t);   dN(2,5)=0.125*(+1.0+r-s-r*s);
+	dN(0,6) = 0.125*(+1.0+s+t+s*t);   dN(1,6)=0.125*(+1.0+r+t+r*t);   dN(2,6)=0.125*(+1.0+r+s+r*s);
+	dN(0,7) = 0.125*(-1.0-s-t-s*t);   dN(1,7)=0.125*(+1.0-r+t-r*t);   dN(2,7)=0.125*(+1.0-r+s-r*s);
 }
 
-inline void Hex8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceShape) const
+inline void Hex8::FaceShape(double r, double s, Vec_t & FN) const
 {
 	/*           s
 	 *           ^
@@ -226,34 +212,63 @@ inline void Hex8::FaceShape(double r, double s, LinAlg::Vector<double> & FaceSha
 	 *           0           1
 	 */
 
-	FaceShape.Resize(/*NumFaceNodes*/4);
-	FaceShape(0) = 0.25*(1.0-r-s+r*s);
-	FaceShape(1) = 0.25*(1.0+r-s-r*s);
-	FaceShape(2) = 0.25*(1.0+r+s+r*s);
-	FaceShape(3) = 0.25*(1.0-r+s-r*s);
+	FN.Resize(/*NumFaceNodes*/4);
+	FN(0) = 0.25*(1.0-r-s+r*s);
+	FN(1) = 0.25*(1.0+r-s-r*s);
+	FN(2) = 0.25*(1.0+r+s+r*s);
+	FN(3) = 0.25*(1.0-r+s-r*s);
 }
 
-inline void Hex8::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
+inline void Hex8::FaceDerivs(double r, double s, Mat_t & FdN) const
 {
-	/*           _     _ T
-	 *          |  dNi  |
-	 * Derivs = |  ---  |   , where cj = r, s
-	 *          |_ dcj _|
+	/*        _     _ T
+	 *       |  dNi  |
+	 * FdN = |  ---  |   , where cj = r, s
+	 *       |_ dcj _|
 	 *
 	 * Derivs(j,i), j=>local coordinate and i=>shape function
 	 */
 
-	FaceDerivs.Resize(2,/*NumFaceNodes*/4);
-	FaceDerivs(0,0) = 0.25*(-1.0+s);   FaceDerivs(1,0) = 0.25*(-1.0+r);
-	FaceDerivs(0,1) = 0.25*(+1.0-s);   FaceDerivs(1,1) = 0.25*(-1.0-r);
-	FaceDerivs(0,2) = 0.25*(+1.0+s);   FaceDerivs(1,2) = 0.25*(+1.0+r);
-	FaceDerivs(0,3) = 0.25*(-1.0-s);   FaceDerivs(1,3) = 0.25*(+1.0-r);
+	FdN.Resize(2,/*NumFaceNodes*/4);
+	FdN(0,0) = 0.25*(-1.0+s);   FdN(1,0) = 0.25*(-1.0+r);
+	FdN(0,1) = 0.25*(+1.0-s);   FdN(1,1) = 0.25*(-1.0-r);
+	FdN(0,2) = 0.25*(+1.0+s);   FdN(1,2) = 0.25*(+1.0+r);
+	FdN(0,3) = 0.25*(-1.0-s);   FdN(1,3) = 0.25*(+1.0-r);
 }
 
-inline double Hex8::BoundDistance(double r, double s, double t) const
+inline void Hex8::_local_coords(Mat_t & coords) const 
 {
-	return std::min(std::min( 1-fabs(r) , 1-fabs(s) ), 1-fabs(t)) ;
+	coords.Resize(8,4);
+	coords = -1.0, -1.0, -1.0, 1.0,
+	         +1.0, -1.0, -1.0, 1.0,
+	         +1.0, +1.0, -1.0, 1.0,
+	         -1.0, +1.0, -1.0, 1.0,
+	         -1.0, -1.0, +1.0, 1.0,
+	         +1.0, -1.0, +1.0, 1.0,
+	         +1.0, +1.0, +1.0, 1.0,
+	         -1.0, +1.0, +1.0, 1.0;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new Hex8Equilib element
+GeomElem * Hex8EquilibMaker()
+{
+	return new Hex8Equilib();
+}
+
+// Register a Hex8Equilib element into ElementFactory array map
+int Hex8EquilibRegister()
+{
+	ElementFactory[Hex8Equilib::NAME] = Hex8EquilibMaker;
+	return 0;
+}
+
+// Execute the autoregistration
+int __Hex8Equilib_dummy_int  = Hex8EquilibRegister();
+
 
 }; // namespace FEM
 
