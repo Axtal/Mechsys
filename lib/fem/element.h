@@ -130,14 +130,13 @@ inline void Element::Initialize(Str_t GeomT, Str_t ProbT, long ID, int Tag, int 
 {
 	_id   = ID;
 	_tag  = Tag;
-	_type = ProbT;
-	if (strcmp(GeomT,"")==0)
-		_ge   = AllocGeomElem("Lin2");
-	else
-		_ge   = AllocGeomElem(GeomT);
-	_pe   = AllocProbElem(ProbT);
-	_ge->Initialize (NDim);
-	_pe->Initialize (_ge, IsAct);
+	_type.Printf ("%s_%s",GeomT,ProbT);
+	if (strcmp(ProbT,"")==0) throw new Fatal("Element::Initialize: ProblemType must be provided");
+	if (strcmp(GeomT,"")==0) _ge = AllocGeomElem ("Lin2");
+	else                     _ge = AllocGeomElem (GeomT);
+	_pe   = AllocProbElem (ProbT);
+	_ge->Initialize       (NDim);
+	_pe->Initialize       (_ge, IsAct);
 }
 
 inline bool Element::Check(String & Msg) const

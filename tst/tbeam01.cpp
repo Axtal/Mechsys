@@ -65,9 +65,9 @@ int main(int argc, char **argv) try
 
 	// Elements
 	dat.SetNElems (3);
-	dat.SetElem   (0, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1));
-	dat.SetElem   (1, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(1))->Connect(1, dat.Nod(2));
-	dat.SetElem   (2, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(2))->Connect(1, dat.Nod(3));
+	dat.SetElem   (0, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(0))->SetConn(1, dat.Nod(1));
+	dat.SetElem   (1, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(1))->SetConn(1, dat.Nod(2));
+	dat.SetElem   (2, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(2))->SetConn(1, dat.Nod(3));
 
 	// Parameters and initial value
 	String prms; prms.Printf("E=%f A=%f Izz=%f", E, A, Izz);
@@ -97,7 +97,7 @@ int main(int argc, char **argv) try
 	cout << _6<<"Elem #" << _8s<<"N0" << _8s<<"M0" << _8s<<"V0" << _8s<<"N1" << _8s<<"M1" << _8s<<"V1" << endl;
 	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		dat.Ele(i)->CalcDepVars();
+		dat.Ele(i)->CalcDeps();
 		cout << _6<<i << _8s<<dat.Ele(i)->Val(0, "N") << _8s<<dat.Ele(i)->Val(0, "M") << _8s<<dat.Ele(i)->Val(0, "V");
 		cout <<          _8s<<dat.Ele(i)->Val(1, "N") << _8s<<dat.Ele(i)->Val(1, "M") << _8s<<dat.Ele(i)->Val(1, "V") << endl;
 	}

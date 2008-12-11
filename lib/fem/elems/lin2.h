@@ -65,9 +65,8 @@ inline Lin2::Lin2()
 	Conn.Resize    (NNodes);
 	Conn.SetValues (NULL);
 
-	// Integration points 
-	SetIPs (/*NIPs1D*/2);
-	NIPs  = 0;
+	// Integration points
+	NIPs = 0;
 }
 
 inline void Lin2::SetIPs(int NIPs1D)

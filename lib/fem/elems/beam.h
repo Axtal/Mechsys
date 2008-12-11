@@ -20,6 +20,7 @@
 #define MECHSYS_FEM_BEAM_H
 
 // MechSys
+#include "fem/elems/lin2.h"
 #include "fem/equilibelem.h"
 #include "util/exception.h"
 #include "fem/elems/vtkCellType.h"
@@ -31,43 +32,37 @@ class Beam : public EquilibElem
 {
 public:
 	// Constants
-	static const size_t NDIV;        ///< Number of points for extra output
+	static const size_t NDIV_EXTRA;        ///< Number of points for extra output
 	
 	// Constructor
-	Beam () : _gam(0.0), _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) { NNodes=2; Conn.Resize(NNodes); Conn.SetValues(NULL); }
+	Beam () : _E(-1), _A(-1), _Izz(-1), _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) {}
 
 	// Derived methods
-	char const * Name() const { return "Beam"; }
+	Str_t Name() const { return "Beam"; }
 
 	// Derived methods
-	bool   CheckModel          () const;
-	void   SetModel            (char const * ModelName, char const * Prms, char const * Inis);
-	void   SetProps            (char const * Properties);
-	void   UpdateState         (double TimeInc, Vec_t const & dUglobal, Vec_t & dFint);
-	void   ApplyBodyForces     ();
-	void   CalcDepVars         () const;
-	double Val                 (int iNodeLocal, char const * Name) const;
-	double Val                 (char const * Name) const;
-	void   Order1Matrix        (size_t Index, Mat_t & Ke) const; ///< Stiffness
-	void   B_Matrix            (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
-	int    VTKCellType         () const { return VTK_LINE; }
-	void   VTKConn          (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
-	bool   HasExtra            () const { return true; }
-	void   OutExtra            (Mat_t & Coords, Vec_t & Norm, Mat_t & Values, Array<String> & Labels) const;
-	void   ClearDispAndStrains ();
+	void   AddVolForces ();
+	void   ClearDisp    ();
+	void   EdgeBry      (Str_t Key, double q, int iEdge) { return EdgeBry(Key,q,q,iEdge); } ///< Set distributed load with key = q0 or q1
+	void   EdgeBry      (Str_t Key, double q0, double q1, int iEdge);                       ///< Set distributed load with key = q0 or q1
+	void   CalcDeps     () const;
+	Str_t  ModelName    () const { return "__no_model__"; }
+	double Val          (int iNod, Str_t Name) const;
+	void   SetProps     (Str_t Properties);
+	void   SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis);
+	void   Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	bool   HasExtra     () const { return true; }
+	void   OutExtra     (Mat_t & Coords, Vec_t & Norm, Mat_t & Values, Array<String> & Labels) const;
+	void   CMatrix      (size_t Idx, Mat_t & Ke) const;
+	bool   CheckModel   () const;
 
 	// Methods
-	Beam * EdgeBry (char const * Key, double q, int EdgeLocalID) { return EdgeBry(Key,q,q,EdgeLocalID); } ///< Set distributed load with key = q0 or q1
-	Beam * EdgeBry (char const * Key, double q0, double q1, int EdgeLocalID);                             ///< Set distributed load with key = q0 or q1
-
-	// Methods
-	double N(double l) const; ///< Axial force      (0 < l < 1) (Must be used after CalcDepVars())
-	double M(double l) const; ///< Bending momentum (0 < l < 1) (Must be used after CalcDepVars())
-	double V(double l) const; ///< Shear force      (0 < l < 1) (Must be used after CalcDepVars())
+	double N(double l) const; ///< Axial force      (0 < l < 1) (Must be used after CalcDeps())
+	double M(double l) const; ///< Bending momentum (0 < l < 1) (Must be used after CalcDeps())
+	double V(double l) const; ///< Shear force      (0 < l < 1) (Must be used after CalcDeps())
 
 private:
 	// Data
-	double _gam;     ///< Specific weigth
 	double _E;       ///< Young modulus
 	double _A;       ///< Cross-sectional area
 	double _Izz;     ///< Cross-sectional inertia
@@ -76,19 +71,17 @@ private:
 	bool   _has_q;   ///< Has distributed load (q0 and/or q1)
 	bool   _use_cor; ///< Use correction for distributed (q) load?
 
-	// Depedent variables (calculated by CalcDepVars)
-	mutable double         _L;  ///< Beam length
-	mutable Vector<double> _uL; ///< Beam-Local displacements/rotations
+	// Depedent variables (calculated by CalcDeps)
+	mutable double _L;  ///< Beam length
+	mutable Vec_t  _uL; ///< Beam-Local displacements/rotations
 
 	// Private methods
-	int  _geom                        () const { return 1; }              ///< Geometry of the element: 1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
-	void _initialize                  ();                                 ///< Initialize the element
-	void _calc_initial_internal_state ();                                 ///< Calculate initial internal state
-	void _transf_mat                  (Mat_t & T) const; ///< Calculate transformation matrix
+	void _initialize ();                ///< Initialize the element
+	void _transf_mat (Mat_t & T) const; ///< Calculate transformation matrix
 
 }; // class Beam
 
-const size_t Beam::NDIV = 10;  ///< Number of points for extra output
+const size_t Beam::NDIV_EXTRA = 10;  ///< Number of points for extra output
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -96,15 +89,15 @@ const size_t Beam::NDIV = 10;  ///< Number of points for extra output
 
 /* public */
 
-inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLocalID)
+inline void Beam::EdgeBry(Str_t Key, double q0, double q1, int iEdge)
 {
 	// Skip if key is not "Qb"
-	if (strcmp(Key,"Qb")!=0) return this;
+	if (strcmp(Key,"Qb")!=0) return;
 
 	// Check which node is the left-most and adjust q0 and q1
 	bool is_node0_leftmost = true;
-	double x0 = Conn[0]->X();  double y0 = Conn[0]->Y();
-	double x1 = Conn[1]->X();  double y1 = Conn[1]->Y();
+	double x0 = _ge->Conn[0]->X();  double y0 = _ge->Conn[0]->Y();
+	double x1 = _ge->Conn[1]->X();  double y1 = _ge->Conn[1]->Y();
 	if (fabs(x1-x0)<1.0e-5) { if (y1<y0) is_node0_leftmost = false; } // vertical segment
 	else                    { if (x1<x0) is_node0_leftmost = false; } 
 	if (is_node0_leftmost==false)
@@ -123,7 +116,7 @@ inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLoca
 	double LL = _L*_L;
 
 	// Beam-Local increment of force
-	Vec_t f(_nd*NNodes);
+	Vec_t f(_nd*_ge->NNodes);
 	f = 0.0, _L*(7.0*_q0+3.0*_q1)/20.0,  LL*(3.0*_q0+2.0*_q1)/60.0,
 	    0.0, _L*(3.0*_q0+7.0*_q1)/20.0, -LL*(2.0*_q0+3.0*_q1)/60.0;
 
@@ -131,11 +124,9 @@ inline Beam * Beam::EdgeBry(char const * Key, double q0, double q1, int EdgeLoca
 	f = inv(T)*f;
 
 	// Add to nodes Brys
-	for (size_t i=0; i<NNodes; ++i)
-	for (int    j=0; j<_nd;      ++j)
-		Conn[i]->Bry (FD[_d][j], f(i*_nd+j));
-
-	return this;
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		_ge->Conn[i]->Bry (FD[j], f(i*_nd+j));
 }
 
 inline bool Beam::CheckModel() const
@@ -144,11 +135,12 @@ inline bool Beam::CheckModel() const
 	return true;
 }
 
-inline void Beam::SetModel(char const * ModelName, char const * Prms, char const * Inis)
+inline void Beam::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
 {
-	// Check _ndim
-	if (_ndim<1) throw new Fatal("Beam::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (CheckConnect()==false) throw new Fatal("Beam::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
+	// Check _ge->NDim
+	if (_ge->NDim<1)             throw new Fatal("Beam::SetModel: The space dimension (SetDim) must be set before calling this method");
+	if (_ge->CheckConn()==false) throw new Fatal("Beam::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
+	if (_ge->NNodes!=2)          throw new Fatal("Beam::SetModel: The number of nodes (%d) of Geometry element is incorret. It must be equal to 2",_ge->NNodes);
 
 	/* "E=1 A=1 Izz=1" */
 	LineParser lp(Prms);
@@ -166,7 +158,7 @@ inline void Beam::SetModel(char const * ModelName, char const * Prms, char const
 	}
 }
 
-inline void Beam::SetProps(char const * Properties)
+inline void Beam::SetProps(Str_t Properties)
 {
 	/* "cq=1 gam=20 */
 	LineParser lp(Properties);
@@ -182,64 +174,63 @@ inline void Beam::SetProps(char const * Properties)
 	}
 }
 
-inline void Beam::UpdateState(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
+inline void Beam::Update(double h, Vec_t const & dU, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
-	Vec_t du(_nd*NNodes); // Delta disp. of this element
+	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element
 
 	// Assemble (local/element) displacements vector
-	for (size_t i=0; i<NNodes; ++i)
-	for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = dUglobal(Conn[i]->DOFVar(UD[_d][j]).EqID);
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		du(i*_nd+j) = dU(_ge->Conn[i]->DOFVar(UD[j]).EqID);
 
 	// Allocate (local/element) internal force vector
-	Vec_t df(_nd*NNodes); // Delta internal force of this element
+	Vec_t df(_nd*_ge->NNodes); // Delta internal force of this element
 	df.SetValues(0.0);
 
 	Mat_t Ke;
-	Order1Matrix(0,Ke);
+	CMatrix(0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
-	for (size_t i=0; i<NNodes; ++i)
-	for (int    j=0; j<_nd;      ++j)
-		dFint(Conn[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		dFint(_ge->Conn[i]->DOFVar(UD[j]).EqID) += df(i*_nd+j);
 }
 
-inline void Beam::ApplyBodyForces() 
+inline void Beam::AddVolForces() 
 {
 	// Verify if element is active
-	if (_is_active==false) return;
+	if (IsActive==false) return;
 
 	// Weight
-	double dx = Conn[1]->X()-Conn[0]->X();
-	double dy = Conn[1]->Y()-Conn[0]->Y();
+	double dx = _ge->Conn[1]->X()-_ge->Conn[0]->X();
+	double dy = _ge->Conn[1]->Y()-_ge->Conn[0]->Y();
 	double L  = sqrt(dx*dx+dy*dy);
 	double W  = _A*L*_gam;
 
 	// Set boundary conditions
-	if (_ndim==1) throw new Fatal("Beam::ApplyBodyForces: feature not available for NDim==1");
-	else if (_ndim==2)
+	if (_ge->NDim==2)
 	{
-		Conn[0]->Bry("fy", -W/2.0);
-		Conn[1]->Bry("fy", -W/2.0);
+		_ge->Conn[0]->Bry("fy", -W/2.0);
+		_ge->Conn[1]->Bry("fy", -W/2.0);
 	}
-	else if (_ndim==3)
+	else if (_ge->NDim==3)
 	{
-		Conn[0]->Bry("fz", -W/2.0);
-		Conn[1]->Bry("fz", -W/2.0);
+		_ge->Conn[0]->Bry("fz", -W/2.0);
+		_ge->Conn[1]->Bry("fz", -W/2.0);
 	}
 }
 
-inline void Beam::CalcDepVars() const
+inline void Beam::CalcDeps() const
 {
-	if (_is_active==false) throw new Fatal("Beam::CalcDepVars: This element is inactive (ID=%d, Tag=%d)",_my_id,_tag);
+	if (IsActive==false) throw new Fatal("Beam::CalcDeps: This element is inactive");
 
 	// Element displacements vector
-	_uL.Resize(_nd*NNodes);
-	for (size_t i=0; i<NNodes; ++i)
+	_uL.Resize(_nd*_ge->NNodes);
+	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		_uL(i*_nd+j) = Conn[i]->DOFVar(UD[_d][j]).EssentialVal;
+		_uL(i*_nd+j) = _ge->Conn[i]->DOFVar(UD[j]).EssentialVal;
 
 	// Transform to beam-local coordinates
 	Mat_t T;
@@ -247,16 +238,16 @@ inline void Beam::CalcDepVars() const
 	_uL = T * _uL;
 }
 
-inline double Beam::Val(int iNodeLocal, char const * Name) const
+inline double Beam::Val(int iNod, Str_t Name) const
 {
 	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
 
-	if (_uL.Size()<1) throw new Fatal("Beam::Val: Please, call CalcDepVars() before calling this method");
-	double l = (iNodeLocal==0 ? 0 : 1.0);
+	if (_uL.Size()<1) throw new Fatal("Beam::Val: Please, call CalcDeps() before calling this method");
+	double l = (iNod==0 ? 0 : 1.0);
 	     if (strcmp(Name,"N" )==0) return      N(l);
 	else if (strcmp(Name,"M" )==0) return fabs(M(l));
 	else if (strcmp(Name,"V" )==0) return fabs(V(l));
@@ -265,27 +256,22 @@ inline double Beam::Val(int iNodeLocal, char const * Name) const
 	else throw new Fatal("Beam::Val: This element does not have a Val named %s",Name);
 }
 
-inline double Beam::Val(char const * Name) const
+inline void Beam::ClearDisp()
 {
-	throw new Fatal("Beam::Val: Feature not available");
-}
-
-inline void Beam::ClearDispAndStrains()
-{
-	if (_is_active==false) return;
+	if (IsActive==false) return;
 
 	// Clear displacements
-	for (size_t i=0; i<NNodes; ++i)
-	for (int    j=0; j<_nd;      ++j)
-		Conn[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		_ge->Conn[i]->DOFVar(UD[j]).EssentialVal = 0.0;
 }
 
-inline void Beam::Order1Matrix(size_t Index, Mat_t & Ke) const
+inline void Beam::CMatrix(size_t Idx, Mat_t & Ke) const
 {
-	if (_ndim==2)
+	if (_ge->NDim==2)
 	{
-		double dx = Conn[1]->X()-Conn[0]->X();
-		double dy = Conn[1]->Y()-Conn[0]->Y();
+		double dx = _ge->Conn[1]->X()-_ge->Conn[0]->X();
+		double dy = _ge->Conn[1]->Y()-_ge->Conn[0]->Y();
 		double LL = dx*dx+dy*dy;
 		      _L  = sqrt(LL);
 		double c  = dx/_L;
@@ -297,7 +283,7 @@ inline void Beam::Order1Matrix(size_t Index, Mat_t & Ke) const
 		double c5 = _E*(6.0*_Izz*c/_L)/_L;
 		double c6 = _E*(4.0*_Izz)/_L;
 		double c7 = _E*(2.0*_Izz)/_L;
-		Ke.Resize(_nd*NNodes, _nd*NNodes);
+		Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
 		Ke =  c1,  c2, -c3, -c1, -c2, -c3,
 		      c2,  c4,  c5, -c2, -c4,  c5,
 		     -c3,  c5,  c6,  c3, -c5,  c7,
@@ -305,12 +291,7 @@ inline void Beam::Order1Matrix(size_t Index, Mat_t & Ke) const
 		     -c2, -c4, -c5,  c2,  c4, -c5,
 		     -c3,  c5,  c7,  c3, -c5,  c6;
 	}
-	else throw new Fatal("Beam::Order1Matrix: Feature not available for nDim==%d",_ndim);
-}
-
-inline void Beam::B_Matrix(Mat_t const & derivs, Mat_t const & J, Mat_t & B) const
-{
-	throw new Fatal("Beam::B_Matrix: Feature not available");
+	else throw new Fatal("Beam::CMatrix: Feature not available for nDim==%d",_ge->NDim);
 }
 
 inline double Beam::N(double l) const
@@ -321,7 +302,7 @@ inline double Beam::N(double l) const
 inline double Beam::M(double l) const
 {
 	double M = 0.0;
-	if (_ndim==2)
+	if (_ge->NDim==2)
 	{
 		double s   = l*_L;
 		double LL  = _L*_L;
@@ -334,14 +315,14 @@ inline double Beam::M(double l) const
 			M += (2.0*_q1*LLL+3.0*_q0*LLL-9.0*_q1*s*LL-21.0*_q0*s*LL+30.0*_q0*ss*_L+10.0*_q1*sss-10.0*_q0*sss)/(60.0*_L);
 		}
 	}
-	else throw new Fatal("Beam::M: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Beam::M: Feature not available for nDim==%d",_ge->NDim);
 	return M;
 }
 
 inline double Beam::V(double l) const
 {
 	double V = 0.0;
-	if (_ndim==2)
+	if (_ge->NDim==2)
 	{
 		double LL  = _L*_L;
 		double LLL = LL*_L;
@@ -353,26 +334,26 @@ inline double Beam::V(double l) const
 			V += -(3.0*_q1*LL+7.0*_q0*LL-20.0*_q0*s*_L-10.0*_q1*ss+10.0*_q0*ss)/(20.0*_L);
 		}
 	}
-	else throw new Fatal("Beam::V: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Beam::V: Feature not available for nDim==%d",_ge->NDim);
 	return V;
 }
 
 inline void Beam::OutExtra(Mat_t & Coords, Vec_t & Norm, Mat_t & Values, Array<String> & Labels) const
 {
-	if (_uL.Size()<1) throw new Fatal("Beam::OutExtra: Please, call CalcDepVars() before calling this method");
-	if (_ndim==2)
+	if (_uL.Size()<1) throw new Fatal("Beam::OutExtra: Please, call CalcDeps() before calling this method");
+	if (_ge->NDim==2)
 	{
 		// Generate coordinates for the extra points
-		double x0  = Conn[0]->X();
-		double y0  = Conn[0]->Y();
-		double x1  = Conn[1]->X();
-		double y1  = Conn[1]->Y();
+		double x0  = _ge->Conn[0]->X();
+		double y0  = _ge->Conn[0]->Y();
+		double x1  = _ge->Conn[1]->X();
+		double y1  = _ge->Conn[1]->Y();
 		double len = sqrt(pow(x1-x0,2) + pow(y1-y0,2));
-		Coords.Resize(NDIV+1, 2);
-		for (size_t i=0; i<NDIV+1; i++)
+		Coords.Resize(NDIV_EXTRA+1, 2);
+		for (size_t i=0; i<NDIV_EXTRA+1; i++)
 		{
-			Coords(i,0) = x0 + i*(x1-x0)/NDIV;
-			Coords(i,1) = y0 + i*(y1-y0)/NDIV;
+			Coords(i,0) = x0 + i*(x1-x0)/NDIV_EXTRA;
+			Coords(i,1) = y0 + i*(y1-y0)/NDIV_EXTRA;
 		}
 
 		// Normal vector
@@ -387,16 +368,16 @@ inline void Beam::OutExtra(Mat_t & Coords, Vec_t & Norm, Mat_t & Values, Array<S
 		Labels[0] = "M"; Labels[1] = "N"; Labels[2] = "V";
 
 		// Values
-		Values.Resize(NDIV+1, Labels.Size());
-		for (size_t i=0; i<NDIV+1; i++)
+		Values.Resize(NDIV_EXTRA+1, Labels.Size());
+		for (size_t i=0; i<NDIV_EXTRA+1; i++)
 		{
-			double l = static_cast<double>(i)/NDIV;
+			double l = static_cast<double>(i)/NDIV_EXTRA;
 			Values(i,0) = M(l);
 			Values(i,1) = N(l);
 			Values(i,2) = V(l);
 		}
 	}
-	else throw new Fatal("Beam::OutExtra: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Beam::OutExtra: Feature not available for nDim==%d",_ge->NDim);
 }
 
 
@@ -404,24 +385,34 @@ inline void Beam::OutExtra(Mat_t & Coords, Vec_t & Norm, Mat_t & Values, Array<S
 
 inline void Beam::_initialize()
 {
-	if (_ndim<1) throw new Fatal("Beam::_initialize: For this element, nDim must be greater than or equal to 1 (%d is invalid)",_ndim);
-	_d  = _ndim-1;
-	_nd = EquilibElem::NDB[_d];
-	_nl = EquilibElem::NLB[_geom()-1];
-}
-
-inline void Beam::_calc_initial_internal_state()
-{
-	throw new Fatal("Beam::_calc_initial_internal_state: Feature not available");
+	if (_ge->NDim==2)
+	{
+		_gi = 1;
+		_nd = ND_BEAM_2D;
+		UD  = UD_BEAM_2D;
+		FD  = FD_BEAM_2D;
+		_nl = NL_BEAM_2D;
+		LB  = LB_BEAM_2D;
+	}
+	else if (_ge->NDim==3)
+	{
+		_gi = 0;
+		_nd = ND_BEAM_3D;
+		UD  = UD_BEAM_3D;
+		FD  = FD_BEAM_3D;
+		_nl = NL_BEAM_3D;
+		LB  = LB_BEAM_3D;
+	}
+	else throw new Fatal("Beam::_initialize: nDim==%d is invalid",_ge->NDim);
 }
 
 inline void Beam::_transf_mat(Mat_t & T) const
 {
 	// Transformation matrix
-	if (_ndim==2)
+	if (_ge->NDim==2)
 	{
-		double dx = Conn[1]->X()-Conn[0]->X();
-		double dy = Conn[1]->Y()-Conn[0]->Y();
+		double dx = _ge->Conn[1]->X()-_ge->Conn[0]->X();
+		double dy = _ge->Conn[1]->Y()-_ge->Conn[0]->Y();
 		double LL = dx*dx+dy*dy;
 		      _L  = sqrt(LL);
 		double c  = dx/_L;
@@ -434,7 +425,7 @@ inline void Beam::_transf_mat(Mat_t & T) const
 		     0.0, 0.0, 0.0,  -s,   c, 0.0,
 		     0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
 	}
-	else throw new Fatal("Beam::_transf_mat: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Beam::_transf_mat: Feature not available for nDim==%d",_ge->NDim);
 }
 
 
@@ -442,20 +433,13 @@ inline void Beam::_transf_mat(Mat_t & T) const
 
 
 // Allocate a new Beam element
-Element * BeamMaker()
-{
-	return new Beam();
-}
+ProbElem * BeamMaker() { return new Beam(); }
 
-// Register a Beam element into ElementFactory array map
-int BeamRegister()
-{
-	ElementFactory["Beam"] = BeamMaker;
-	return 0;
-}
+// Register element
+int BeamRegister() { ProbElemFactory["Beam"]=BeamMaker;  return 0; }
 
-// Execute the autoregistration
-int __Beam_dummy_int  = BeamRegister();
+// Call register
+int __Beam_dummy_int = BeamRegister();
 
 }; // namespace FEM
 
