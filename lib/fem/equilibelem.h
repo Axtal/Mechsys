@@ -74,7 +74,7 @@ public:
 	// Methods related to PROBLEM
 	void    AddVolForces ();
 	void    ClearDisp    ();
-	void    SetActive    (bool Activate);
+	void    SetActive    (bool Activate, int ID);
 	void    EdgeBry      (Str_t Key, double Val, int iEdge);
 	void    FaceBry      (Str_t Key, double Val, int iFace);
 	void    CalcDeps     () const;
@@ -157,9 +157,9 @@ inline void EquilibElem::AddVolForces()
 	Mat_t J;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
-		Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		Jacobian (dN, J);
+		_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
 		fvol += -N*_gam*det(J)*_ge->IPs[i].w;
 	}
 
@@ -184,7 +184,7 @@ inline void EquilibElem::ClearDisp()
 	for (size_t i=0; i<_mdl.Size(); ++i) _mdl[i]->ClearStrain();
 }
 
-inline void EquilibElem::SetActive(bool Activate)
+inline void EquilibElem::SetActive(bool Activate, int ID)
 {
 	if (IsActive==false && Activate)
 	{
@@ -197,11 +197,11 @@ inline void EquilibElem::SetActive(bool Activate)
 			for (int j=0; j<_nd; ++j) _ge->Conn[i]->AddDOF (UD[_di][j], FD[_di][j]);
 
 			// Set SharedBy
-			_ge->Conn[i]->SetSharedBy (_my_id);
+			_ge->Conn[i]->SetSharedBy (ID);
 		}
 
 		// Apply body forces
-		ApplyBodyForces ();
+		AddVolForces ();
 	}
 	if (IsActive && Activate==false)
 	{
@@ -211,7 +211,7 @@ inline void EquilibElem::SetActive(bool Activate)
 		for (size_t i=0; i<_ge->Conn.Size(); ++i)
 		{
 			// Remove SharedBy
-			_ge->Conn[i]->RemoveSharedBy (_my_id);
+			_ge->Conn[i]->RemoveSharedBy (ID);
 
 			// Remove Degree of Freedom to a node (Essential)
 			if (_ge->Conn[i]->nSharedBy()==0) 
@@ -225,13 +225,13 @@ inline void EquilibElem::SetActive(bool Activate)
 
 inline void EquilibElem::EdgeBry(char const * Key, double Value, int iEdge)
 {
-	if (NDim<3) // For 1D/2D meshes, edges correspond to faces
+	if (_ge->NDim<3) // For 1D/2D meshes, edges correspond to faces
 	{
 		// Skip if key is "Qb", Beam Normal Loading
-		if (strcmp(Key,"Qb")==0) return this;
+		if (strcmp(Key,"Qb")==0) return;
 
 		Array<Node*> fnodes;
-		GetFaceNodes        (iEdge, fnodes);
+		_ge->GetFNodes      (iEdge, fnodes);
 		_dist_to_face_nodes (Key, Value, fnodes);
 	}
 	else throw new Fatal("EquilibElem::EdgeBry: Method not yet implemented for 3D meshes");
@@ -239,11 +239,11 @@ inline void EquilibElem::EdgeBry(char const * Key, double Value, int iEdge)
 
 inline void EquilibElem::FaceBry(char const * Key, double Value, int iFace)
 {
-	if (NDim==2) throw new Fatal("EquilibElem::FaceBry: This method must be called only for 3D meshes");
+	if (_ge->NDim==2) throw new Fatal("EquilibElem::FaceBry: This method must be called only for 3D meshes");
 	else
 	{
 		Array<Node*> fnodes;
-		GetFaceNodes        (iFace, fnodes);
+		_ge->GetFNodes      (iFace, fnodes);
 		_dist_to_face_nodes (Key, Value, fnodes);
 	}
 }
@@ -273,7 +273,7 @@ inline double EquilibElem::Val(int iNod, char const * Name) const
 	else throw new Fatal("EquilibElem::Val: Constitutive models for this element were not set yet");
 
 	// Extrapolate
-	Extrapolate (ip_values, nodal_values);
+	_ge->Extrap (ip_values, nodal_values);
 	return nodal_values (iNod);
 }
 
@@ -313,8 +313,8 @@ inline void EquilibElem::SetProps(char const * Properties)
 inline void EquilibElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
 	// Check _ge->NDim
-	if (_ge->NDim<1) throw new Fatal("EquilibElem::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (CheckConnect()==false) throw new Fatal("EquilibElem::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
+	if (_ge->NDim<1)             throw new Fatal("EquilibElem::SetModel: The space dimension (SetDim) must be set before calling this method");
+	if (_ge->CheckConn()==false) throw new Fatal("EquilibElem::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
 
 	// If pointers to model was not already defined => No model was allocated
 	if (_mdl.Size()==0)
@@ -374,9 +374,9 @@ inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	Vec_t dsig; // Delta Stress
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		Jacobian (dN, J);
-		_B_mat   (dN, J, B);
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_B_mat        (dN, J, B);
 		deps = B*du;
 		_mdl[i]->StateUpdate (deps, dsig);
 		df += trn(B)*dsig*det(J)*_ge->IPs[i].w;
@@ -444,9 +444,9 @@ inline void EquilibElem::CMatrix(size_t Idx, Mat_t & Ke) const
 
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		Jacobian (dN, J);
-		_B_mat   (dN,J, B);
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_B_mat        (dN, J, B);
 		_mdl[i]->TgStiffness (D);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
@@ -520,10 +520,10 @@ inline void EquilibElem::_excavate()
 		Vec_t sig;    // stress tensor
 		for (size_t i=0; i<_ge->NIPs; ++i)
 		{
-			Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
-			Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-			Jacobian (dN, J);
-			_B_mat   (dN,J, B);
+			_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
+			_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+			_ge->Jacobian (dN, J);
+			_B_mat        (dN, J, B);
 
 			// Mount S
 			for (size_t j=0; j<_ge->NNodes; ++j) S(_ge->NDim*j+_ge->NDim-1) = N(j);
@@ -532,7 +532,7 @@ inline void EquilibElem::_excavate()
 			_mdl[i]->Sig (sig);
 
 			// Calculate internal force vector
-			F += trn(B)*sig*det(J)*w + S*_gam*det(J)*_ge->IPs[i].w;
+			F += trn(B)*sig*det(J)*_ge->IPs[i].w + S*_gam*det(J)*_ge->IPs[i].w;
 		}
 
 		// Add to boundary values of node if nSharedBy()>0
@@ -560,8 +560,8 @@ inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) co
 	 */
 
 	// Cartesian derivatives
-	Mat_t dN;
-	dN = inv(J)*dN;
+	Mat_t dC;
+	dC = inv(J)*dN;
 
 	switch (_gi)
 	{
@@ -571,12 +571,12 @@ inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) co
 			B.Resize (n_scomps,_nd*_ge->NNodes);
 			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =     dN(0,i);  B(0,1+i*_nd) =         0.0;  B(0,2+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dN(1,i);  B(1,2+i*_nd) =         0.0;
-				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;  B(2,2+i*_nd) =     dN(2,i);
-				B(3,0+i*_nd) = dN(1,i)/SQ2;  B(3,1+i*_nd) = dN(0,i)/SQ2;  B(3,2+i*_nd) =         0.0; // SQ2 => Mandel representation
-				B(4,0+i*_nd) =         0.0;  B(4,1+i*_nd) = dN(2,i)/SQ2;  B(4,2+i*_nd) = dN(1,i)/SQ2; // SQ2 => Mandel representation
-				B(5,0+i*_nd) = dN(2,i)/SQ2;  B(5,1+i*_nd) =         0.0;  B(5,2+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*_nd) =     dC(0,i);  B(0,1+i*_nd) =         0.0;  B(0,2+i*_nd) =         0.0;
+				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dC(1,i);  B(1,2+i*_nd) =         0.0;
+				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;  B(2,2+i*_nd) =     dC(2,i);
+				B(3,0+i*_nd) = dC(1,i)/SQ2;  B(3,1+i*_nd) = dC(0,i)/SQ2;  B(3,2+i*_nd) =         0.0; // SQ2 => Mandel representation
+				B(4,0+i*_nd) =         0.0;  B(4,1+i*_nd) = dC(2,i)/SQ2;  B(4,2+i*_nd) = dC(1,i)/SQ2; // SQ2 => Mandel representation
+				B(5,0+i*_nd) = dC(2,i)/SQ2;  B(5,1+i*_nd) =         0.0;  B(5,2+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
@@ -586,10 +586,10 @@ inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) co
 			B.Resize (n_scomps,_nd*_ge->NNodes);
 			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =     dN(0,i);  B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dN(1,i);
+				B(0,0+i*_nd) =     dC(0,i);  B(0,1+i*_nd) =         0.0;
+				B(1,0+i*_nd) =         0.0;  B(1,1+i*_nd) =     dC(1,i);
 				B(2,0+i*_nd) =         0.0;  B(2,1+i*_nd) =         0.0;
-				B(3,0+i*_nd) = dN(1,i)/SQ2;  B(3,1+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
+				B(3,0+i*_nd) = dC(1,i)/SQ2;  B(3,1+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
@@ -599,9 +599,9 @@ inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) co
 			B.Resize(n_scomps,_nd*_ge->NNodes);
 			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
 			{
-				B(0,0+i*_nd) =      dN(0,i);   B(0,1+i*_nd) =         0.0;
-				B(1,0+i*_nd) =          0.0;   B(1,1+i*_nd) =     dN(1,i);
-				B(2,0+i*_nd) =  dN(1,i)/SQ2;   B(2,1+i*_nd) = dN(0,i)/SQ2; // SQ2 => Mandel representation
+				B(0,0+i*_nd) =      dC(0,i);   B(0,1+i*_nd) =         0.0;
+				B(1,0+i*_nd) =          0.0;   B(1,1+i*_nd) =     dC(1,i);
+				B(2,0+i*_nd) =  dC(1,i)/SQ2;   B(2,1+i*_nd) = dC(0,i)/SQ2; // SQ2 => Mandel representation
 			}
 			return;
 		}
@@ -623,9 +623,9 @@ inline void EquilibElem::_initial_state()
 	Vec_t sig; // Stress vector in Mandel's notation
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		Jacobian (dN, J);
-		_B_mat   (dN, J, B);
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_B_mat        (dN, J, B);
 		_mdl[i]->Sig (sig);
 		f += trn(B)*sig*det(J)*_ge->IPs[i].w;
 	}
@@ -668,15 +668,15 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 		Vec_t FN(_ge->NFNodes); // Face shape
 		Mat_t FNmat;            // Shape function matrix
 		Vec_t P;                // Vector perpendicular to the face
-		for (size_t i=0; i<_ge->NFIps; i++)
+		for (size_t i=0; i<_ge->NFIPs; i++)
 		{
-			FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
+			_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
 			FNmat = trn(trn(FN)); // trick just to convert Vector FN to a col Matrix
 
 			// Calculate perpendicular vector
 			if (_ge->NDim==3)
 			{
-				FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
 				Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
 				Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
 				P.Resize(3);
@@ -686,7 +686,7 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 			}
 			else
 			{
-				FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
 				P.Resize(2);
 				P = J(0,1), -J(0,0);
 			}
@@ -709,10 +709,10 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 			Vec_t values;  values.Resize(_ge->NFNodes);  values.SetValues(0.0);
 			Mat_t J;                // Jacobian matrix. size = [1,2] x 3
 			Vec_t FN(_ge->NFNodes); // Shape functions of a face/edge. size = _ge->NFNodes
-			for (size_t i=0; i<_n_face_int_pts; i++)
+			for (size_t i=0; i<_ge->NFIPs; i++)
 			{
-				FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
-				FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+				_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
+				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
 				values += FaceValue*FN*det(J)*_ge->FIPs[i].w;
 			}
 
@@ -721,6 +721,20 @@ inline void EquilibElem::_dist_to_face_nodes(char const * Key, double const Face
 		}
 	}
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new element
+ProbElem * EquilibMaker() { return new EquilibElem(); }
+
+// Register element
+int EquilibRegister() { ProbElemFactory["Equilib"]=EquilibMaker;  return 0; }
+
+// Call register
+int __Equilib_dummy_int  = EquilibRegister();
+
 
 }; // namespace FEM
 

@@ -67,7 +67,7 @@ private:
 
 inline void CamClay::SetPrms(char const * Prms)
 {
-	if (_geom<0) throw new Fatal("CamClay::SetPrms: Geometry type:\n\t[1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)] must be set via SetGeom before calling this method");
+	if (_geom<0) throw new Fatal("CamClay::SetPrms: Geometry type:\n\t[0==3D, 1==2D(plane-strain), 2==2D(plane-stress), 3==2D(axis-symmetric)] must be set via SetGeom before calling this method");
 
 	/* "lam=0.1 kap=0.01 phics=30 G=100" */
 	LineParser lp(Prms);

@@ -58,7 +58,7 @@ public:
 
 protected:
 	// Data
-	int      _geom;   ///< Geometry type
+	int     _geom;    ///< Geometry type: 3D=0, PStrain=1, PStress=2, Axis=3
 	IntVals _ivs;     ///< Internal values
 	IntVals _ivs_bkp; ///< Backup internal values
 

@@ -50,7 +50,7 @@ public:
 	virtual ~DiffusionModel () {}
 
 	// Methods
-	void SetGeom        (int Type) { _geom = Type; if (_geom<1 || _geom>3) throw new Fatal("DiffusionModel::SetGeom: Geometry type must be: 1:1D, 2:2D, 3:3D."); } ///< Geometry type:  1:1D, 2:2D, 3:3D
+	void SetGeom        (int Type) { _geom=Type; if (_geom>2) throw new Fatal("DiffusionModel::SetGeom: Geometry type must be: 0:3D, 1:2D"); } ///< Geometry type: : 3D=0, 2D=1
 	void TgConductivity (Matrix<double> & Dmat) const;                        ///< Tangent conductivity
 	int  StateUpdate    (Vector<double> const & DGra, Vector<double> & DVel); ///< Update internal state for given DGra = Delta(du_dx)
 
@@ -107,9 +107,8 @@ inline int DiffusionModel::StateUpdate(Vector<double> const & DGra, Vector<doubl
 	_dgra = 0.0;
 	switch (_geom)
 	{
-		case 1: { _dgra = DGra(0);                   break; }
-		case 2: { _dgra = DGra(0), DGra(1);          break; }
-		case 3: { _dgra = DGra(0), DGra(1), DGra(2); break; }
+		case 0: { _dgra = DGra(0), DGra(1), DGra(2); break; } // 3D
+		case 1: { _dgra = DGra(0), DGra(1);          break; } // 2D
 	}
 
 	// Forward-Euler update
@@ -162,22 +161,16 @@ inline void DiffusionModel::_tvec2vec(TinyVec const & TVec, Vector<double> & Vec
 {
 	switch (_geom)
 	{
-		case 1: // 1D
-		{
-			Vect.Resize(1);
-			Vect(0) = TVec(0);
-			return;
-		}
-		case 2: // 2D
-		{
-			Vect.Resize(2);
-			Vect = TVec(0), TVec(1);
-			return;
-		}
-		case 3: // 3D
+		case 0: // 3D
 		{
 			Vect.Resize(3);
 			Vect = TVec(0), TVec(1), TVec(2);
+			return;
+		}
+		case 1: // 2D
+		{
+			Vect.Resize(2);
+			Vect = TVec(0), TVec(1);
 			return;
 		}
 	}
@@ -187,25 +180,19 @@ inline void DiffusionModel::_tmat2mat(TinyMat const & TMat, Matrix<double> & Mat
 {
 	switch (_geom)
 	{
-		case 1: // 1D
-		{
-			Matr.Resize(1,1);
-			Matr(0,0) = TMat(0,0);
-			return;
-		}
-		case 2: // 2TMat
-		{
-			Matr.Resize(2,2);
-			Matr = TMat(0,0), TMat(0,1),
-			       TMat(1,0), TMat(1,1);
-			return;
-		}
-		case 3: // 3TMat
+		case 0: // 3D
 		{
 			Matr.Resize(3,3);
 			Matr = TMat(0,0), TMat(0,1), TMat(0,2),
 			       TMat(1,0), TMat(1,1), TMat(1,2),
 			       TMat(2,0), TMat(2,1), TMat(2,2);
+			return;
+		}
+		case 1: // 2D
+		{
+			Matr.Resize(2,2);
+			Matr = TMat(0,0), TMat(0,1),
+			       TMat(1,0), TMat(1,1);
 			return;
 		}
 	}

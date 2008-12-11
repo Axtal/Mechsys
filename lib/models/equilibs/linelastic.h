@@ -55,7 +55,7 @@ private:
 
 inline void LinElastic::SetPrms(char const * Prms)
 {
-	if (_geom<0) throw new Fatal("LinElastic::SetPrms: Geometry type:\n\t[1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)] must be set via SetGeom before calling this method");
+	if (_geom<0) throw new Fatal("LinElastic::SetPrms: Geometry type:\n\t[0==3D, 1==2D(plane-strain), 2==2D(plane-stress), 3==2D(axis-symmetric)] must be set via SetGeom before calling this method");
 
 	/* "E=20000.0 nu=0.2" */
 	LineParser lp(Prms);
@@ -78,12 +78,11 @@ inline void LinElastic::SetPrms(char const * Prms)
 	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::SetPrms: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",nu);
 
 	// Set stiffness
-	if (_geom==1) throw new Fatal("LinElastic::SetPrms: This model is not available for Linear Elements");
 	else
 	{
-		double c  = (_geom==5 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // plane-stress != (plane-strain=3D)
-		double c1 = (_geom==5 ? c*1.0          : c*(1.0-nu)                ); // plane-stress != (plane-strain=3D)
-		double c2 = (_geom==5 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // plane-stress != (plane-strain=3D)
+		double c  = (_geom==2 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // (2)plane-stress != (plane-strain=3D)
+		double c1 = (_geom==2 ? c*1.0          : c*(1.0-nu)                ); // (2)plane-stress != (plane-strain=3D)
+		double c2 = (_geom==2 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // (2)plane-stress != (plane-strain=3D)
 		double c3 = c*nu;
 		_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
 		      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,

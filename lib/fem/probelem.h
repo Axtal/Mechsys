@@ -45,7 +45,7 @@ public:
 	// Methods related to PROBLEM
 	virtual void      AddVolForces ()                                           {}
 	virtual void      ClearDisp    ()                                           {}
-	virtual void      SetActive    (bool Activate)                             =0;
+	virtual void      SetActive    (bool Activate, int ID)                     =0;
 	virtual void      EdgeBry      (Str_t Key, double Val, int iEdge)           {}
 	virtual void      EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
 	virtual void      FaceBry      (Str_t Key, double Val, int iFace)           {}

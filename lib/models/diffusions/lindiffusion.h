@@ -57,7 +57,7 @@ private:
 
 inline void LinDiffusion::SetPrms(char const * Prms)
 {
-	if (_geom<0) throw new Fatal("LinDiffusion::SetPrms: Geometry type:\n\t[1:1D, 2:2D, 3:3D] must be set via SetGeom before calling this method");
+	if (_geom<0) throw new Fatal("LinDiffusion::SetPrms: Geometry type:\n\t[0==3D 1==2D] must be set via SetGeom before calling this method");
 
 	/* "kxx=1.0 kxy=0.0 kxz=0.0
 	            kyy=1.0 kxz=0.0
@@ -70,7 +70,7 @@ inline void LinDiffusion::SetPrms(char const * Prms)
 	lp.BreakExpressions(names,values);
 
 	// Conductivity matrix
-	if (_geom<1 || _geom>3) new Fatal("LinDiffusion::SetPrms: Geometry==%d is invalid. The valid one must be one of [1:1D, 2:2D, 3:3D]",_geom);
+	if (_geom>2) throw new Fatal("LinDiffusion::SetPrms: Geometry type must be: 0:3D, 1:2D");
 	_K = 0.0;
 
 	// Set
@@ -86,16 +86,15 @@ inline void LinDiffusion::SetPrms(char const * Prms)
 	}
 	else
 	{
-		if (_geom==1) throw new Fatal("LinDiffusion::SetPrms: For unidimensional problems, only one parameter key (equal to 'k') must be used. Ex.: k=1.0 (%s is invalid)");
 		for (size_t i=0; i<names.Size(); ++i)
 		{
 			      if ( names[i]=="kxx")                                 { _K(0,0) = values[i];                       }
 			 else if ( names[i]=="kxy" || names[i]=="kyx")              { _K(0,1) = values[i];  _K(1,0) = values[i]; }
-			 else if ((names[i]=="kxz" || names[i]=="kzx") && _geom==3) { _K(0,2) = values[i];  _K(2,0) = values[i]; }
+			 else if ((names[i]=="kxz" || names[i]=="kzx") && _geom==0) { _K(0,2) = values[i];  _K(2,0) = values[i]; }
 			 else if ( names[i]=="kyy")                                 { _K(1,1) = values[i];                       }
-			 else if ((names[i]=="kyz" || names[i]=="kzy") && _geom==3) { _K(1,2) = values[i];  _K(2,1) = values[i]; }
-			 else if ( names[i]=="kzz"                     && _geom==3) { _K(2,2) = values[i];                       }
-			 else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s is invalid. It must be: kxx, kxy, kxz,  kyy, kyz,  kzz  (or kyx, kzx, kzy), where the 'z-coefficients' are valid only for 3D problems.",names[i].CStr());
+			 else if ((names[i]=="kyz" || names[i]=="kzy") && _geom==0) { _K(1,2) = values[i];  _K(2,1) = values[i]; }
+			 else if ( names[i]=="kzz"                     && _geom==0) { _K(2,2) = values[i];                       }
+			 else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s is invalid. It must be: kxx, kxy, kxz,  kyy, kyz,  kzz  (or kyx, kzx, kzy), where the 'z-coefficients' are valid only for 3D problems (_geom==0)",names[i].CStr());
 		}
 	}
 }

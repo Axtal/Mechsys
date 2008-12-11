@@ -49,7 +49,7 @@ public:
 	virtual ~EquilibModel () {}
 
 	// Methods
-	void SetGeom     (int Type) { _geom = Type; }                          ///< Geometry type:  1:1D, 2:2D(plane-strain), 3:3D, 4:2D(axis-symmetric), 5:2D(plane-stress)
+	void SetGeom     (int Type) { _geom = Type; }                          ///< Geometry type: 3D=0, PStrain=1, PStress=2, Axis=3
 	void TgStiffness (Matrix<double> & Dmat) const;                        ///< Tangent stiffness tensor
 	int  StateUpdate (Vector<double> const & DEps, Vector<double> & DSig); ///< Update stress/strain state for given strain increment
 	void ClearStrain () { _eps=0.0,0.0,0.0, 0.0,0.0,0.0; _eps_bkp=_eps; }  ///< Clear strain

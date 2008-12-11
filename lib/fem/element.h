@@ -71,7 +71,7 @@ public:
 	// Methods related to PROBLEM
 	void      AddVolForces ()                                           {        _pe->AddVolForces();                        } ///< Method to apply volumetric (body) forces as boundary condition
 	void      ClearDisp    ()                                           {        _pe->ClearDisp();                           } ///< Clear displacements and strains (for equilibrium/coupled problems)
-	void      SetActive    (bool Activate)                              {        _pe->SetActive(Activate);                   } ///< Activate element (construction/excavation)
+	void      SetActive    (bool Activate)                              {        _pe->SetActive(Activate,_id);               } ///< Activate element (construction/excavation)
 	Element * EdgeBry      (Str_t Key, double Val, int iEdge)           {        _pe->EdgeBry(Key,Val,iEdge); return this;   } ///< Set edge boundary conditions (Initialize MUST be called first)
 	Element * EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {                                     return this;   } ///< Set edge boundary conditions (Initialize MUST be called first)
 	Element * FaceBry      (Str_t Key, double Val, int iFace)           {        _pe->FaceBry(Key,Val,iFace); return this;   } ///< Set face boundary conditions (Initialize MUST be called first)
