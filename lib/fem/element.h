@@ -131,7 +131,10 @@ inline void Element::Initialize(Str_t GeomT, Str_t ProbT, long ID, int Tag, int 
 	_id   = ID;
 	_tag  = Tag;
 	_type = ProbT;
-	_ge   = AllocGeomElem(GeomT);
+	if (strcmp(GeomT,"")==0)
+		_ge   = AllocGeomElem("Lin2");
+	else
+		_ge   = AllocGeomElem(GeomT);
 	_pe   = AllocProbElem(ProbT);
 	_ge->Initialize (NDim);
 	_pe->Initialize (_ge, IsAct);

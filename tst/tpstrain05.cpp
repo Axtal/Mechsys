@@ -24,7 +24,7 @@
 #include "fem/solver.h"
 #include "fem/elems/quad4.h"
 #include "fem/elems/quad8.h"
-#include "fem/elems/equilibelem.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"

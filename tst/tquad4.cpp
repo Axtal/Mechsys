@@ -22,7 +22,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad4pstress.h"
+#include "fem/elems/quad4.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -63,13 +64,13 @@ int main(int argc, char **argv) try
 
 	// 2) Elements
 	dat.SetNElems (1);
-	dat.SetElem   (0, "Quad4PStress", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (0, "Quad4", "PStress", /*IsActive*/true, /*Tag*/-1);
 
 	// 3) Set connectivity
-	dat.Ele(0)->Connect(0, dat.Nod(0))
-	        ->Connect(1, dat.Nod(1))
-	        ->Connect(2, dat.Nod(2))
-	        ->Connect(3, dat.Nod(3));
+	dat.Ele(0)->SetConn(0, dat.Nod(0))
+	        ->SetConn(1, dat.Nod(1))
+	        ->SetConn(2, dat.Nod(2))
+	        ->SetConn(3, dat.Nod(3));
 
 	// 4) Boundary conditions (must be after connectivity)
 	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
@@ -86,7 +87,7 @@ int main(int argc, char **argv) try
 	Array<size_t>          map;
 	Array<bool>            pre;
 	LinAlg::Matrix<double> Ke0;  Ke0.SetNS(Util::_6_3);
-	dat.Ele(0)->Order1Matrix(0,Ke0);
+	dat.Ele(0)->CMatrix(0,Ke0);
 	cout << "Ke0=\n" << Ke0 << endl;
 
 	// Check

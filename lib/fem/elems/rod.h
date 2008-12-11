@@ -20,18 +20,24 @@
 #define MECHSYS_FEM_ROD_H
 
 // MechSys
-#include "fem/equilibelem.h"
+//#include "fem/equilibelem.h"
+#include "fem/probelem.h"
 #include "util/exception.h"
 #include "fem/elems/vtkCellType.h"
 
 namespace FEM
 {
 
-class Rod : public EquilibElem
+class Rod : public ProbElem
 {
 public:
+	// Constants. Note: _di==dimension index, _gi==geometry index
+	static const char   UD [2][3][4];  ///< Essential DOF names. Access: UD[_di][iDOF]
+	static const char   FD [2][3][4];  ///< Natural DOF names.   Access: FD[_di][iDOF]
+	static const char   LB [3][4];     ///< Additional lbls (exceed. those from UD/FD). Access: LB[_gi][iLbl]
+
 	// Constructor
-	Rod () : _gam(0.0), _E(-1), _A(-1) { NNodes=2; Conn.Resize(NNodes); Conn.SetValues(NULL); }
+	Rod () : _gam(0.0), _E(-1), _A(-1) { };
 
 	// Derived methods
 	char const * Name() const { return "Rod"; }
@@ -41,14 +47,14 @@ public:
 	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
 	void   SetProps     (char const * Properties);
 	void   UpdateState  (double TimeInc, Vec_t const & dUglobal, Vec_t & dFint);
-	void   ApplyBodyForces ();
+	void   AddVolForces();
 	void   CalcDepVars  () const;
 	double Val          (int iNodeLocal, char const * Name) const;
 	double Val          (char const * Name) const;
-	void   Order1Matrix (size_t Index, Mat_t & Ke) const; ///< Stiffness
+	void   CMatrix      (size_t Index, Mat_t & Ke) const; ///< Stiffness
 	void   B_Matrix     (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
 	int    VTKCellType  () const { return VTK_LINE; }
-	void   VTKConn   (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
+	void   VTKConn   (String & Nodes) const { Nodes.Printf("%d %d", _ge->Conn[0]->GetID(), _ge->Conn[1]->GetID()); }
 
 	// Methods
 	double N(double l) const; ///< Axial force (0 < l < 1) (Must be used after CalcDepVars())
@@ -58,6 +64,9 @@ private:
 	double _gam; ///< Specific weigth
 	double _E; ///< Young modulus
 	double _A; ///< Cross-sectional area
+
+	int    _nd;
+	int    _di;
 
 	// Depedent variables (calculated by CalcDepVars)
 	mutable double         _L;  ///< Rod length
@@ -70,6 +79,12 @@ private:
 	void _transf_mat                  (Mat_t & T) const; ///< Calculate transformation matrix
 
 }; // class Rod
+
+// UD[_di][iDOF]                         2D               3D
+const char Rod:: UD [2][3][4] = {{"ux","uy",""},  {"ux","uy","uz"}};
+const char Rod:: FD [2][3][4] = {{"fx","fy",""},  {"fx","fy","fz"}};
+const char Rod:: LB [3][4]    = {"Ea", "Sa", "N" }; // 2D and 3D
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -85,9 +100,9 @@ inline bool Rod::CheckModel() const
 
 inline void Rod::SetModel(char const * ModelName, char const * Prms, char const * Inis)
 {
-	// Check _ndim
-	if (_ndim<1) throw new Fatal("Rod::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (CheckConnect()==false) throw new Fatal("Rod::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
+	// Check NDim
+	if (_ge->NDim<1) throw new Fatal("Rod::SetModel: The space dimension (SetDim) must be set before calling this method");
+	if (_ge->CheckConn()==false) throw new Fatal("Rod::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
 
 	/* "E=1 A=1" */
 	LineParser lp(Prms);
@@ -122,59 +137,59 @@ inline void Rod::SetProps(char const * Properties)
 inline void Rod::UpdateState(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
-	Vec_t du(_nd*NNodes); // Delta disp. of this element
+	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element
 
 	// Assemble (local/element) displacements vector
-	for (size_t i=0; i<NNodes; ++i)
+	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = dUglobal(Conn[i]->DOFVar(UD[_d][j]).EqID);
+		du(i*_nd+j) = dUglobal(_ge->Conn[i]->DOFVar(UD[_di][j]).EqID);
 
 	// Allocate (local/element) internal force vector
-	Vec_t df(_nd*NNodes); // Delta internal force of this element
+	Vec_t df(_nd*_ge->NNodes); // Delta internal force of this element
 	df.SetValues(0.0);
 
 	Mat_t Ke;
-	Order1Matrix(0,Ke);
+	CMatrix(0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
-	for (size_t i=0; i<NNodes; ++i)
+	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		dFint(Conn[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
+		dFint(_ge->Conn[i]->DOFVar(UD[_di][j]).EqID) += df(i*_nd+j);
 }
 
-inline void Rod::ApplyBodyForces() 
+inline void Rod::AddVolForces() 
 {
 	// Verify if element is active
-	if (_is_active==false) return;
+	if (IsActive==false) return;
 
 	// Weight
-	double dx = Conn[1]->X()-Conn[0]->X();
-	double dy = Conn[1]->Y()-Conn[0]->Y();
+	double dx = _ge->Conn[1]->X()-_ge->Conn[0]->X();
+	double dy = _ge->Conn[1]->Y()-_ge->Conn[0]->Y();
 	double L  = sqrt(dx*dx+dy*dy);
 	double W  = _A*L*_gam;
 
 	// Set boundary conditions
-	if (_ndim==1) throw new Fatal("Rod::ApplyBodyForces: feature not available for NDim==1");
-	else if (_ndim==2)
+	if (_ge->NDim==1) throw new Fatal("Rod::ApplyBodyForces: feature not available for NDim==1");
+	else if (_ge->NDim==2)
 	{
-		Conn[0]->Bry("fy", -W/2.0);
-		Conn[1]->Bry("fy", -W/2.0);
+		_ge->Conn[0]->Bry("fy", -W/2.0);
+		_ge->Conn[1]->Bry("fy", -W/2.0);
 	}
-	else if (_ndim==3)
+	else if (_ge->NDim==3)
 	{
-		Conn[0]->Bry("fz", -W/2.0);
-		Conn[1]->Bry("fz", -W/2.0);
+		_ge->Conn[0]->Bry("fz", -W/2.0);
+		_ge->Conn[1]->Bry("fz", -W/2.0);
 	}
 }
 
 inline void Rod::CalcDepVars() const
 {
 	// Element displacements vector
-	_uL.Resize(_nd*NNodes);
-	for (size_t i=0; i<NNodes; ++i)
+	_uL.Resize(_nd*_ge->NNodes);
+	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (int    j=0; j<_nd;      ++j)
-		_uL(i*_nd+j) = Conn[i]->DOFVar(UD[_d][j]).EssentialVal;
+		_uL(i*_nd+j) = _ge->Conn[i]->DOFVar(UD[_di][j]).EssentialVal;
 
 	// Transform to rod-local coordinates
 	Mat_t T;
@@ -185,10 +200,10 @@ inline void Rod::CalcDepVars() const
 inline double Rod::Val(int iNodeLocal, char const * Name) const
 {
 	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_di][j])==0) return _ge->Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_di][j])==0) return _ge->Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
 
 	if (_uL.Size()<1) throw new Fatal("Rod::Val: Please, call CalcDepVars() before calling this method");
 	double l = (iNodeLocal==0 ? 0 : 1.0);
@@ -203,12 +218,12 @@ inline double Rod::Val(char const * Name) const
 	throw new Fatal("Rod::Val: Feature not available");
 }
 
-inline void Rod::Order1Matrix(size_t Index, Mat_t & Ke) const
+inline void Rod::CMatrix(size_t Index, Mat_t & Ke) const
 {
-	if (_ndim==2)
+	if (_ge->NDim==2)
 	{
-		double dx = Conn[1]->X()-Conn[0]->X();
-		double dy = Conn[1]->Y()-Conn[0]->Y();
+		double dx = _ge->Conn[1]->X()-_ge->Conn[0]->X();
+		double dy = _ge->Conn[1]->Y()-_ge->Conn[0]->Y();
 		double LL = dx*dx+dy*dy;
 		      _L  = sqrt(LL);
 		double c  = dx/_L;
@@ -216,13 +231,13 @@ inline void Rod::Order1Matrix(size_t Index, Mat_t & Ke) const
 		double c1 = _E*_A*c*c/_L;
 		double c2 = _E*_A*s*c/_L;
 		double c3 = _E*_A*s*s/_L;
-		Ke.Resize(_nd*NNodes, _nd*NNodes);
+		Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
 		Ke =   c1,  c2, -c1, -c2,
 		       c2,  c3, -c2, -c3,
 		      -c1, -c2,  c1,  c2,
 		      -c2, -c3,  c2,  c3;
 	}
-	else throw new Fatal("Rod::Order1Matrix: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Rod::CMatrix: Feature not available for nDim==%d",_ge->NDim);
 }
 
 inline void Rod::B_Matrix(Mat_t const & derivs, Mat_t const & J, Mat_t & B) const
@@ -240,10 +255,10 @@ inline double Rod::N(double l) const
 
 inline void Rod::_initialize()
 {
-	if (_ndim<1) throw new Fatal("Rod::_initialize: For this element, _ndim must be greater than or equal to 1 (%d is invalid)",_ndim);
-	_d  = _ndim-1;
-	_nd = EquilibElem::ND[_d];
-	_nl = EquilibElem::NL[_geom()-1];
+	if (_ge->NDim<1) throw new Fatal("Rod::_initialize: For this element, _ge->NDim must be greater than or equal to 1 (%d is invalid)",_ge->NDim);
+	_di  = _ge->NDim-2;
+	_nd = _ge->NDim();
+	_nl = 3;
 }
 
 inline void Rod::_calc_initial_internal_state()
@@ -254,10 +269,10 @@ inline void Rod::_calc_initial_internal_state()
 inline void Rod::_transf_mat(Mat_t & T) const
 {
 	// Transformation matrix
-	if (_ndim==2)
+	if (_ge->NDim==2)
 	{
-		double dx = Conn[1]->X()-Conn[0]->X();
-		double dy = Conn[1]->Y()-Conn[0]->Y();
+		double dx = _ge->Conn[1]->X()-_ge->Conn[0]->X();
+		double dy = _ge->Conn[1]->Y()-_ge->Conn[0]->Y();
 		double LL = dx*dx+dy*dy;
 		      _L  = sqrt(LL);
 		double c  = dx/_L;
@@ -268,7 +283,7 @@ inline void Rod::_transf_mat(Mat_t & T) const
 		     0.0, 0.0,   c,   s,
 		     0.0, 0.0,  -s,   c;
 	}
-	else throw new Fatal("Rod::_transf_mat: Feature not available for nDim==%d",_ndim);
+	else throw new Fatal("Rod::_transf_mat: Feature not available for nDim==%d",_ge->NDim);
 }
 
 

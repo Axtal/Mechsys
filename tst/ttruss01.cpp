@@ -42,7 +42,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/rod2.h"
+#include "fem/elems/lin2.h"
+#include "fem/elems/rod.h"
 #include "util/exception.h"
 
 using std::cout;
@@ -70,9 +71,9 @@ int main(int argc, char **argv) try
 
 	// Elements
 	dat.SetNElems (3);
-	dat.SetElem   (0, "Rod2", /*IsActive*/true, /*Tag*/-1);
-	dat.SetElem   (1, "Rod2", /*IsActive*/true, /*Tag*/-1);
-	dat.SetElem   (2, "Rod2", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (0, "", "Rod", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (1, "", "Rod", /*IsActive*/true, /*Tag*/-1);
+	dat.SetElem   (2, "", "Rod", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
 	dat.Ele(0)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1));

@@ -34,8 +34,9 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad4biot.h"
-#include "fem/elems/quad8biot.h"
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/biot.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -57,8 +58,8 @@ int main(int argc, char **argv) try
 	double k     = 1.0e-2; // permeability
 	int    ndivx = 10;     // number of divisions along x and y (for each block)
 	int    ndivy =  4;     // number of divisions along x and y (for each block)
-	//int    ndivx = 48;     // number of divisions along x and y (for each block)
-	//int    ndivy = 16;     // number of divisions along x and y (for each block)
+	//int    ndivx = 48;   // number of divisions along x and y (for each block)
+	//int    ndivy = 16;   // number of divisions along x and y (for each block)
 	bool   is_o2 = false;  // use high order elements?
 
 	// Input
@@ -121,15 +122,15 @@ int main(int argc, char **argv) try
 	FEM::EAtts_T eatts;
 	if (is_o2)
 	{
-		eatts.Push (make_tuple(-1, "Quad8Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad8Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-		eatts.Push (make_tuple(-3, "Quad8Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-1, "Quad8", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+		eatts.Push (make_tuple(-2, "Quad8", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-3, "Quad8", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 	}
 	else
 	{
-		eatts.Push (make_tuple(-1, "Quad4Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad4Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-		eatts.Push (make_tuple(-3, "Quad4Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-1, "Quad4", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
+		eatts.Push (make_tuple(-2, "Quad4", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
+		eatts.Push (make_tuple(-3, "Quad4", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
 	}
 
 	// Set geometry: nodes, elements, attributes, and boundaries
