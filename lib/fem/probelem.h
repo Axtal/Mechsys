@@ -42,7 +42,7 @@ public:
 	typedef const char VarName_t[4];
 
 	// Constructor
-	ProbElem() : IsActive(true) {}
+	ProbElem() : IsActive(true), _nd(-1), _nl(-1) {}
 
 	// Methods related to PROBLEM
 	virtual void      AddVolForces ()                                           {}
@@ -94,6 +94,8 @@ public:
 	
 protected:
 	// Data
+	int         _nd; ///< Number of DOFs
+	int         _nl; ///< Number of lbls == NL[_gi]
 	GeomElem  * _ge; ///< Geometry element
 	VarName_t *  UD; ///< Essential DOF names. Access: UD[iDOF]
 	VarName_t *  FD; ///< Natural   DOF names. Access: FD[iDOF]

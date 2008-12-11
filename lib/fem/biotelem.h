@@ -36,12 +36,6 @@ namespace FEM
 class BiotElem : public EquilibElem
 {
 public:
-	// Constants. Note: _di==dimension index, _gi==geometry index
-	static const char   UDb [2][4][4];  ///< Essential DOF names. Access: UDb[_di][iDOF]
-	static const char   FDb [2][4][4];  ///< Natural DOF names.   Access: FDb[_di][iDOF]
-	static const size_t NLb [2];        ///< Number of additional labels (exceeding nDOFs). Access: NLb[_gi]
-	static const char   LBb [2][26][4]; ///< Additional lbls (exceed. those from UDb/FDb).  Access: LBb[_gi][iLbl]
-
 	// Constructor
 	BiotElem () {}
 
@@ -58,7 +52,7 @@ public:
 	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
 	void    GetLbls      (Array<String> & Lbls) const;
 	void    OutInfo      (std::ostream & os) const;
-	size_t  NCMats       () const { return 4; }
+	size_t  NCMats       () const { return 3; }
 	size_t  NHMats       () const { return 1; }
 	size_t  NUVecs       () const { return 2; }
 	void    CMatrix      (size_t Idx, Mat_t & M) const;
@@ -96,19 +90,6 @@ private:
 
 }; // class BiotElem
 
-// UDb[_di][iDOF]                       2D                     3D
-const char BiotElem:: UDb [2][4][4] = {{"ux","uy","pwp",""},  {"ux","uy","uz","pwp"}};
-const char BiotElem:: FDb [2][4][4] = {{"fx","fy","pwp",""},  {"fx","fy","fz","pwp"}};
-
-// NLb[_gi]                         3D PStrain
-const size_t BiotElem:: NLb [2] = { 26,     20};
-
-// LBb[_gi][iLbl]
-const char BiotElem:: LBb [2][26][4] = {
-	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p" , "q", "Ev", "Ed", "Vx", "Vy", "Vz", "H" }, // 3D
-	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", "Vx", "Vy", "Vz", "H", ""  , ""  , ""  , ""  , ""  , ""  }  // 2D (plane-strain)
-};
-
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -123,7 +104,7 @@ inline void BiotElem::ClearDisp()
 	size_t nde = _nd-1; // nDOFs equilib
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (size_t j=0; j<nde;         ++j)
-		_ge->Conn[i]->DOFVar(UDb[_di][j]).EssentialVal = 0.0;
+		_ge->Conn[i]->DOFVar(UD[j]).EssentialVal = 0.0;
 
 	// Clear strains
 	for (size_t i=0; i<_eps.Size(); ++i) _eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
@@ -137,10 +118,10 @@ inline void BiotElem::CalcDeps() const
 inline double BiotElem::Val(int iNod, Str_t Name) const
 {
 	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UDb[_di][j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
 
 	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FDb[_di][j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
 
 	// Stress, strains, internal values, etc.
 	Vec_t    ip_values (_ge->NIPs); // Vectors for extrapolation
@@ -251,9 +232,9 @@ inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	// Assemble (local/element) displacements vector
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	{
-		for (size_t j=0; j<nde; ++j) du(i*nde+j) = dU(_ge->Conn[i]->DOFVar(UDb[_di][j    ]).EqID);
-		for (size_t j=0; j<ndf; ++j) dp(i*ndf+j) = dU(_ge->Conn[i]->DOFVar(UDb[_di][j+nde]).EqID);
-		for (size_t j=0; j<ndf; ++j)  p(i*ndf+j) =    _ge->Conn[i]->DOFVar(UDb[_di][j+nde]).EssentialVal;
+		for (size_t j=0; j<nde; ++j) du(i*nde+j) = dU(_ge->Conn[i]->DOFVar(UD[j    ]).EqID);
+		for (size_t j=0; j<ndf; ++j) dp(i*ndf+j) = dU(_ge->Conn[i]->DOFVar(UD[j+nde]).EqID);
+		for (size_t j=0; j<ndf; ++j)  p(i*ndf+j) =    _ge->Conn[i]->DOFVar(UD[j+nde]).EssentialVal;
 	}
 
 	// Allocate (local/element) internal force vector
@@ -300,8 +281,8 @@ inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	// Sum up contribution to internal forces vector
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	{
-		for (size_t j=0; j<nde; ++j) dFint(_ge->Conn[i]->DOFVar(UDb[_di][j    ]).EqID) += df  (i*nde+j);
-		for (size_t j=0; j<ndf; ++j) dFint(_ge->Conn[i]->DOFVar(UDb[_di][j+nde]).EqID) += dvol(i*ndf+j);
+		for (size_t j=0; j<nde; ++j) dFint(_ge->Conn[i]->DOFVar(UD[j    ]).EqID) += df  (i*nde+j);
+		for (size_t j=0; j<ndf; ++j) dFint(_ge->Conn[i]->DOFVar(UD[j+nde]).EqID) += dvol(i*ndf+j);
 	}
 }
 
@@ -312,12 +293,12 @@ inline void BiotElem::GetLbls(Array<String> & Lbls) const
 	size_t k = 0;
 	for (int i=0; i<_nd; ++i)
 	{
-		Lbls[k] = BiotElem::UDb[_di][i];  k++;
-		Lbls[k] = BiotElem::FDb[_di][i];  k++;
+		Lbls[k] = BiotElem::UD[i];  k++;
+		Lbls[k] = BiotElem::FD[i];  k++;
 	}
 	for (int i=0; i<_nl; ++i)
 	{
-		Lbls[k] = BiotElem::LBb[_gi][i];  k++;
+		Lbls[k] = BiotElem::LB[i];  k++;
 	}
 }
 
@@ -351,7 +332,7 @@ inline void BiotElem::UVector(size_t Idx, Vec_t & V) const
 		size_t ndf =     1; // nDOFs flow
 		for (size_t i=0; i<_ge->NNodes; ++i)
 		for (size_t j=0; j<ndf;      ++j)
-			V(i*ndf+j) = _ge->Conn[i]->DOFVar (UD[_di][j+nde]).EssentialVal;
+			V(i*ndf+j) = _ge->Conn[i]->DOFVar (UD[j+nde]).EssentialVal;
 		Mat_t H;
 		_compute_H (H);
 		V = H*V;
@@ -404,10 +385,24 @@ inline bool BiotElem::CheckModel() const
 
 inline void BiotElem::_initialize()
 {
-	_di = _ge->NDim-2; // Dimension index == _ge->NDim-2
-	_nd = (_ge->NDim==2 ? 3 : 4);
 	_gi = (_ge->NDim==2 ? 1 : 0);
-	_nl = NLb[_gi];
+	if (_gi==0)  // 3D
+	{
+		_nd = ND_BIOT_3D;
+		UD  = UD_BIOT_3D;
+		FD  = FD_BIOT_3D;
+		_nl = NL_BIOT_3D; 
+		LB  = LB_BIOT_3D;
+	}
+	else if (_gi==1)  // PlaneStrain
+	{
+		_nd = ND_BIOT_2D;
+		UD  = UD_BIOT_2D;
+		FD  = FD_BIOT_2D;
+		_nl = NL_BIOT_2D; 
+		LB  = LB_BIOT_2D;
+	}
+	else throw new Fatal("BiotElem::_initialize: GeometryIndex _gi==%d is invalid",_gi);
 }
 
 inline void BiotElem::_excavate()
@@ -426,8 +421,8 @@ inline void BiotElem::_equi_map(Array<size_t> & RMap, Array<bool> & RUPresc) con
 	{
 		for (size_t j=0; j<nde; ++j)
 		{
-			RMap    [p] = _ge->Conn[i]->DOFVar (UDb[_di][j]).EqID;
-			RUPresc [p] = _ge->Conn[i]->DOFVar (UDb[_di][j]).IsEssenPresc;
+			RMap    [p] = _ge->Conn[i]->DOFVar (UD[j]).EqID;
+			RUPresc [p] = _ge->Conn[i]->DOFVar (UD[j]).IsEssenPresc;
 			p++;
 		}
 	}
@@ -445,8 +440,8 @@ inline void BiotElem::_flow_map(Array<size_t> & RMap, Array<bool> & RUPresc) con
 	{
 		for (size_t j=0; j<ndf; ++j)
 		{
-			RMap    [p] = _ge->Conn[i]->DOFVar (UDb[_di][j+nde]).EqID;
-			RUPresc [p] = _ge->Conn[i]->DOFVar (UDb[_di][j+nde]).IsEssenPresc;
+			RMap    [p] = _ge->Conn[i]->DOFVar (UD[j+nde]).EqID;
+			RUPresc [p] = _ge->Conn[i]->DOFVar (UD[j+nde]).IsEssenPresc;
 			p++;
 		}
 	}
