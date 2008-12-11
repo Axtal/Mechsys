@@ -80,7 +80,7 @@ public:
 	Str_t     ModelName    () const                                     { return _pe->ModelName();                         } ///< Return the name of the model of the first IP of this element
 	double    Val          (int iNod, Str_t Key) const                  { return _pe->Val(iNod,Key);                       } ///< Return computed values at the Nodes of the element. Ex.: Key="ux", "fx", "Sx", "Sxy", "Ex", etc.
 	double    Val          (          Str_t Key) const                  { return _pe->Val(Key);                            } ///< Return computed values at the CG of the element. Ex.: Key="Sx", "Sxy", "Ex", etc.
-	bool      IsEssen      (Str_t Key) const                            { return _pe->IsEssen(name);                       } ///< Is the correspondent DOFKey (Degree of Freedom, such as "Dux") essential (such displacements)?
+	bool      IsEssen      (Str_t Key) const                            { return _pe->IsEssen(Key);                        } ///< Is the correspondent DOFKey (Degree of Freedom, such as "Dux") essential (such displacements)?
 	void      SetProps     (Str_t Properties)                           {        _pe->SetProps(Properties);                } ///< Set element properties such as body forces, internal heat source, water pumping, etc.
 	void      SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis)    {        _pe->SetModel(ModelName,Prms,Inis);       } ///< (Re)allocate model with parameters and initial values
 	Element * SetConn      (int iNod, FEM::Node * ptNode)               {        _pe->SetConn(iNod,ptNode);   return this; } ///< Set connectivity, by linking the local node ID with the pointer to the connection node

@@ -58,21 +58,14 @@ namespace FEM
 class EquilibElem : public ProbElem
 {
 public:
-	// Enums
-	enum Prob_T    { Eq3D_T, PStrain_T, PStress_T, Axis_T }; ///< Problem type: 3D, PStrain, PStress, Axis-symmetric
-	enum Special_T { None_T, Rod_T, Beam_T, Spring_T };      ///< Special type: Rod, Beam, Spring
-
 	// Constants
-	static const size_t ND [3];        ///< Number of DOFs to add to a node == ND[_ge->NDim-1]
-	static const size_t NDB[3];        ///< (Beam) Number of DOFs to add to a node == NDB[_ge->NDim-1]
-	static const char   UD [3][6][3];  ///< Essential DOF names == UD[_ge->NDim-1][iDOF]
-	static const char   FD [3][6][3];  ///< Natural DOF names
-	static const size_t NL [5];        ///< Number of additional labels (exceeding ND)
-	static const size_t NLB[5];        ///< (Beam) Number of additional labels (exceeding ND)
-	static const char   LB [5][21][4]; ///< Additional labels
+	static const char   UD [2][6][3];  ///< Essential DOF names == UD[_ge->NDim-1][iDOF]
+	static const char   FD [2][6][3];  ///< Natural DOF names
+	static const size_t NL [4];        ///< Number of additional labels (exceeding ND)
+	static const char   LB [4][18][4]; ///< Additional labels
 
 	// Constructor
-	EquilibElem () : _gam(0.0), _d(-1), _nd(-1), _nl(-1) {}
+	EquilibElem () : _gam(0.0), _di(-1), _gi(-1) {}
 
 	// Destructor
 	~EquilibElem () { for (size_t i=0; i<_mdl.Size(); ++i) delete _mdl[i]; }
@@ -107,11 +100,8 @@ private:
 	// Data
 	Array<EquilibModel*> _mdl; ///< Array of pointers to constitutive models
 	double               _gam; ///< Specific weigth
-	int                  _d;   ///< Dimension index == _ge->NDim-1
-	int                  _nd;  ///< Number of DOFs == ND[_d] or NDB[_d]
-	int                  _nl;  ///< Number of labels == NL[_geom()-1] or NLB[_geom()-1]
-	Prob_T               _pt;  ///< Problem type: 3D, PStrain, PStress, Axis-symmetric
-	Special_T            _st;  ///< Special type: Rod, Beam, Spring
+	int                  _di;  ///< Dimension index == _ge->NDim-2
+	int                  _gi;  ///< Geometry index: 3D=0, PStrain=1, PStress=2, Axis=3
 
 	// Derived methods
 	void _initialize (Str_t Type);
@@ -125,20 +115,20 @@ private:
 
 }; // class EquilibElem
 
-// UD[_ge->NDim-1][iDOF]                       1D                         2D                          3D
-const size_t EquilibElem::ND [3]       = { 1,                         2,                          3};
-const size_t EquilibElem::NDB[3]       = { 2,                         3,                          6};
-const char   EquilibElem::UD [3][6][3] = {{"ux","wz","","","",""},  {"ux","uy","wz","","",""},  {"ux","uy","uz","wx","wy","wz"}};
-const char   EquilibElem::FD [3][6][3] = {{"fx","mz","","","",""},  {"fx","fy","mz","","",""},  {"fx","fy","fz","mx","my","mz"}};
+// UD[_ge->NDim-1][iDOF]                   2D                          3D
+const char   EquilibElem::UD [2][3][3] = {{"ux","uy",""},  {"ux","uy","uz"}};
+const char   EquilibElem::FD [2][3][3] = {{"fx","fy",""},  {"fx","fy","fz"}};
 
 // LB[_geom-1][iLabel]
-const size_t EquilibElem::NL [4]        = { 16, 18, 10, 18 };
-const size_t EquilibElem::NLB[4]        = { 19, 21, 13, 21 };
-const char   EquilibElem::LB [4][21][4] = {
-	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", "N" , "V" , "M", "" , "" }, // 2D (plane-strain)
-	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "N", "V", "M"}, // 3D
-	{"Ex", "Ey", "Exy", "Sx" , "Sy" , "Sxy", "E1", "E2" , "S1", "S2" , "N"  , "V"  , "M" , ""  , ""  , ""  , ""  , ""  , "" , "" , "" }, // 2D (plane-stress)
-	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "N", "V", "M"}  // 2D (axis-symmetric)
+const size_t EquilibElem::NL [4]  = {18,    // 3D                  
+                                     16,    // 2D (plane-strain)
+                                     10,    // 2D (plane-stress)
+                                     18 };  // 2D (axis-symmetric)
+const char   EquilibElem::LB [4][18][4] = {
+	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3" }, // 3D
+	{"Ex", "Ey", "Ez",  "Exy", "Sx" , "Sy" , "Sz", "Sxy", "E1", "E2" , "S1" , "S2" , "p" , "q" , "Ev", "Ed", ""  , ""   }, // 2D (plane-strain)
+	{"Ex", "Ey", "Exy", "Sx" , "Sy" , "Sxy", "E1", "E2" , "S1", "S2" , ""   , ""   , ""  , ""  , ""  , ""  , ""  , ""   }, // 2D (plane-stress)
+	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3" }  // 2D (axis-symmetric)
 };
 
 
@@ -188,6 +178,8 @@ inline void EquilibElem::AddVolForces()
 		              _ge->Conn[i]->Bry("fx",fvol(i,0));
 		              _ge->Conn[i]->Bry("fy",fvol(i,1));
 		if (_ge->NDim==3) _ge->Conn[i]->Bry("fz",fvol(i,2));
+	//for (size_t j=0; j<_ge->NDim; j++)
+		//_ge->Conn[i]->Bry(FD[_di][j],fvol(i,j));
 	}
 }
 
