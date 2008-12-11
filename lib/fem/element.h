@@ -94,23 +94,23 @@ public:
 	bool      HasExtra     () const                                     {return false;/*        _pe->HasExtra();                         */ } ///< Has extra output ?
 	void      OutExtra     (Mat_t & Coords, Vec_t & Norm,                /*                                                 */ 
 	                        Mat_t & Vals, Array<String> & Lbls) const   {/*        _pe->OutExtra(Coords,Norm,Vals,Lbls);    */ } ///< Output extra information
-	size_t   NCMats        () const                                     {return 0;/* return _pe->NCMats();                           */ } ///< Number of C matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
-	size_t   NHMats        () const                                     {return 0;/* return _pe->NHMats();                           */ } ///< Number of H matrices such as H:Permeability
-	size_t   NUVecs        () const                                     {return 0;/* return _pe->NUVecs();                           */ } ///< Number of U vectors such as U:Displacements, P:Pore-pressures
-	void     CMatrix       (size_t Idx, Mat_t & M) const                {/*        _pe->CMatrix(Idx,M);                     */ } ///< C matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
-	void     HMatrix       (size_t Idx, Mat_t & M) const                {/*        _pe->HMatrix(Idx,M);                     */ } ///< H matrix such as H:Permeability
-	void     UVector       (size_t Idx, Vec_t & V) const                {/*        _pe->UVector(Idx,V);                     */ } ///< U vector such as U:Displacement, P:Pore-pressure
-	void     CMatMap       (size_t Idx,
+	size_t    NCMats       () const                                     {return 0;/* return _pe->NCMats();                           */ } ///< Number of C matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
+	size_t    NHMats       () const                                     {return 0;/* return _pe->NHMats();                           */ } ///< Number of H matrices such as H:Permeability
+	size_t    NUVecs       () const                                     {return 0;/* return _pe->NUVecs();                           */ } ///< Number of U vectors such as U:Displacements, P:Pore-pressures
+	void      CMatrix      (size_t Idx, Mat_t & M) const                {/*        _pe->CMatrix(Idx,M);                     */ } ///< C matrix such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
+	void      HMatrix      (size_t Idx, Mat_t & M) const                {/*        _pe->HMatrix(Idx,M);                     */ } ///< H matrix such as H:Permeability
+	void      UVector      (size_t Idx, Vec_t & V) const                {/*        _pe->UVector(Idx,V);                     */ } ///< U vector such as U:Displacement, P:Pore-pressure
+	void      CMatMap      (size_t Idx,
 	                        Array<size_t> & RMap,
 	                        Array<size_t> & CMap,
 	                        Array<bool> & RUPresc,
 	                        Array<bool> & CUPresc) const                {/*     _pe->CMatMap(Idx,RMap,CMap,RUPresc,CUPresc);*/ } ///< CMatrix map to convert local DOFs into global equation positions
-	void     HMatMap       (size_t Idx,
+	void      HMatMap      (size_t Idx,
 	                        Array<size_t> & RMap,
 	                        Array<size_t> & CMap,
 	                        Array<bool> & RUPresc,
 	                        Array<bool> & CUPresc) const                {/*     _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc);*/ } ///< HMatrix map to convert local DOFs into global equation positions
-	void     UVecMap       (size_t Idx, Array<size_t> & RMap) const     {/*     _pe->UVecMap(Index,RMap);                   */ } ///< UVector map to convert local DOFs into global equation positions
+	void      UVecMap      (size_t Idx, Array<size_t> & RMap) const     {/*     _pe->UVecMap(Index,RMap);                   */ } ///< UVector map to convert local DOFs into global equation positions
 
 private:
 	// Data

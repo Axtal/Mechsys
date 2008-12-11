@@ -44,9 +44,6 @@ public:
 	// Destructor
 	virtual ~GeomElem() {}
 
-	// Methods
-	void Initialize (int nDim) { NDim=nDim; _initialize(); }
-
 	// Methods related to GEOMETRY
 	        bool         CheckConn () const;
 	        Node       * Nod       (size_t i)       { return Conn[i]; }
@@ -63,23 +60,25 @@ public:
 	virtual double       BoundDist (double r, double s, double t) const     =0;
 
 	// Methods
-	        void Jacobian  (Mat_t const & dN, Mat_t & J) const;
-	virtual void Shape     (double r, double s, double t, Vec_t & N)  const =0;
-	virtual void FaceShape (double r, double s, Vec_t & N)            const =0;
-	virtual void Derivs    (double r, double s, double t, Mat_t & dN) const =0;
+	        void Initialize (int nDim) { NDim=nDim; _initialize(); }
+	        void Jacobian   (Mat_t const & dN, Mat_t & J) const;                 ///< Jacobian matrix
+	virtual void Shape      (double r, double s, double t, Vec_t & N)  const =0; ///< Shape functions
+	virtual void Derivs     (double r, double s, double t, Mat_t & dN) const =0; ///< Derivatives of shape functions
+	virtual void FaceShape  (double r, double s, Vec_t & FN)           const =0; ///< Face shape functions
+	virtual void FaceDerivs (double r, double s, Mat_t & FdN)          const =0; ///< Face derivatives of shape functions
 
 	// Public data (read only)
-	size_t             NDim;       ///< Space dimension (2D or 3D)
-	size_t             NNodes;     ///< Number of nodes
-	size_t             NFaceNodes; ///< Number of face nodes
-	size_t             NIPs;       ///< Number of integration points
-	size_t             NFaceIPs;   ///< Number of integration points of face
-	IntegPoint const * IPs;        ///< Integration points
-	IntegPoint const * FaceIPs;    ///< Integration points of Faces/Edges
-	Array<Node*>       Conn;       ///< Connectivity (size==NNodes). Initialized by ProbElem
+	size_t             NDim;     ///< Space dimension (2D or 3D)
+	size_t             NNodes;   ///< Number of nodes
+	size_t             NFNodes;  ///< Number of face nodes
+	size_t             NIPs;     ///< Number of integration points
+	size_t             NFaceIPs; ///< Number of integration points of face
+	IntegPoint const * IPs;      ///< Integration points
+	IntegPoint const * FaceIPs;  ///< Integration points of Faces/Edges
+	Array<Node*>       Conn;     ///< Connectivity (size==NNodes). Initialized by ProbElem
 
 private:
-	virtual void _initialize   ()          =0; ///< Initialize NNodes, NFaceNodes, NIPs, NFaceIPs, IPs, and FaceIPs
+	virtual void _initialize   ()          =0; ///< Initialize NNodes, NFNodes, NIPs, NFaceIPs, IPs, and FaceIPs
 	virtual void _local_coords (Mat_t & C) =0; ///< Return the local coordinates of the nodes
 
 }; // class GeomElem
