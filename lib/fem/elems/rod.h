@@ -20,7 +20,7 @@
 #define MECHSYS_FEM_ROD_H
 
 // MechSys
-//#include "fem/equilibelem.h"
+#include "fem/equilibelem.h"
 #include "fem/probelem.h"
 #include "util/exception.h"
 #include "fem/elems/vtkCellType.h"
@@ -28,7 +28,7 @@
 namespace FEM
 {
 
-class Rod : public ProbElem
+class Rod: public ProbElem
 {
 public:
 	// Constants. Note: _di==dimension index, _gi==geometry index
@@ -46,15 +46,24 @@ public:
 	bool   CheckModel   () const;
 	void   SetModel     (char const * ModelName, char const * Prms, char const * Inis);
 	void   SetProps     (char const * Properties);
-	void   UpdateState  (double TimeInc, Vec_t const & dUglobal, Vec_t & dFint);
+	void    Update       (double h, Vec_t const & dU, Vec_t & dFint) { }
+	void    Backup       () { }
+	void    Restore      () { }
 	void   AddVolForces();
 	void   CalcDepVars  () const;
 	double Val          (int iNodeLocal, char const * Name) const;
 	double Val          (char const * Name) const;
+	bool   IsEssen      (Str_t Name) const;
 	void   CMatrix      (size_t Index, Mat_t & Ke) const; ///< Stiffness
 	void   B_Matrix     (Mat_t const & derivs, Mat_t const & J, Mat_t & B) const;
+	void   SetConn(int iNod, FEM::Node * ptNode, int ID);
 	int    VTKCellType  () const { return VTK_LINE; }
 	void   VTKConn   (String & Nodes) const { Nodes.Printf("%d %d", _ge->Conn[0]->GetID(), _ge->Conn[1]->GetID()); }
+	void   ClearDisp();
+	Str_t   ModelName    () const { return "__no_model__"; }
+	
+	void   SetActive(bool Activate, int ID);
+	
 
 	// Methods
 	double N(double l) const; ///< Axial force (0 < l < 1) (Must be used after CalcDepVars())
@@ -67,6 +76,7 @@ private:
 
 	int    _nd;
 	int    _di;
+	int    _nl;
 
 	// Depedent variables (calculated by CalcDepVars)
 	mutable double         _L;  ///< Rod length
@@ -82,15 +92,67 @@ private:
 
 // UD[_di][iDOF]                         2D               3D
 const char Rod:: UD [2][3][4] = {{"ux","uy",""},  {"ux","uy","uz"}};
+
 const char Rod:: FD [2][3][4] = {{"fx","fy",""},  {"fx","fy","fz"}};
 const char Rod:: LB [3][4]    = {"Ea", "Sa", "N" }; // 2D and 3D
-
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
 /* public */
+
+inline void Rod::ClearDisp()
+{
+	if (IsActive==false) return;
+
+	// Clear displacements
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		_ge->Conn[i]->DOFVar(UD[_di][j]).EssentialVal = 0.0;
+
+}
+
+inline bool Rod::IsEssen(Str_t Name) const
+{
+	for (int i=0; i<_nd; ++i) if (strcmp(Name,UD[_di][i])==0) return true;
+	return false;
+}
+
+inline void Rod::SetActive(bool Activate, int ID)
+{
+	if (IsActive==false && Activate)
+	{
+		// Set active
+		IsActive = true;
+
+		for (size_t i=0; i<_ge->Conn.Size(); ++i)
+		{
+			// Add Degree of Freedom to a node (Essential, Natural)
+			for (int j=0; j<_nd; ++j) _ge->Conn[i]->AddDOF (UD[_di][j], FD[_di][j]);
+
+			// Set SharedBy
+			_ge->Conn[i]->SetSharedBy (ID);
+		}
+
+	}
+	if (IsActive && Activate==false)
+	{
+		// Set active
+		IsActive = false;
+
+		for (size_t i=0; i<_ge->Conn.Size(); ++i)
+		{
+			// Remove SharedBy
+			_ge->Conn[i]->RemoveSharedBy (ID);
+
+			// Remove Degree of Freedom to a node (Essential)
+			if (_ge->Conn[i]->nSharedBy()==0) 
+				for (int j=0; j<_nd; ++j) _ge->Conn[i]->RemoveDOF (UD[_di][j]);
+		}
+
+	}
+}
 
 inline bool Rod::CheckModel() const
 {
@@ -133,6 +195,27 @@ inline void Rod::SetProps(char const * Properties)
 		 if (names[i]=="gam") _gam = values[i];
 	}
 }
+
+inline void Rod::SetConn(int iNod, FEM::Node * ptNode, int ID)
+{
+	// Check
+	if (_ge->NNodes<1)              throw new Fatal("Rod::Connect: __Internal Error__: There is a problem with the number of nodes: maybe derived elemet did not set _ge->NNodes");
+	if (_ge->Conn.Size()<1)         throw new Fatal("Rod::Connect: __Internal Error__: There is a problem with connectivity array: maybe derived elemet did not allocate _connect");
+	if (_di<0||_nd<0||_nl<0) throw new Fatal("Rod::Connect: __Internal Error__: There is a problem with _di=%d, _nd=%d, or _nd=%d\n (_di=dimension index, _gi=geometry index, _nd=number of degrees of freedom, _nl=number of additional labels)",_di,_nd,_nl);
+
+	// Connectivity
+	_ge->Conn[iNod] = ptNode;
+
+	if (IsActive)
+	{
+		// Add Degree of Freedom to a node (Essential, Natural)
+		for (int i=0; i<_nd; ++i) _ge->Conn[iNod]->AddDOF (UD[_di][i], FD[_di][i]);
+
+		// Set shared
+		_ge->Conn[iNod]->SetSharedBy (ID);
+	}
+}
+
 
 inline void Rod::UpdateState(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
 {
@@ -257,7 +340,7 @@ inline void Rod::_initialize()
 {
 	if (_ge->NDim<1) throw new Fatal("Rod::_initialize: For this element, _ge->NDim must be greater than or equal to 1 (%d is invalid)",_ge->NDim);
 	_di  = _ge->NDim-2;
-	_nd = _ge->NDim();
+	_nd = _ge->NDim;
 	_nl = 3;
 }
 
@@ -290,20 +373,20 @@ inline void Rod::_transf_mat(Mat_t & T) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Rod element
-Element * RodMaker()
+// Allocate a new element
+ProbElem * RodMaker()
 {
 	return new Rod();
 }
 
-// Register a Rod element into ElementFactory array map
+// Register element
 int RodRegister()
 {
-	ElementFactory["Rod"] = RodMaker;
+	ProbElemFactory["Rod"] = RodMaker;
 	return 0;
 }
 
-// Execute the autoregistration
+// Call register
 int __Rod_dummy_int  = RodRegister();
 
 }; // namespace FEM

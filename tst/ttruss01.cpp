@@ -76,9 +76,9 @@ int main(int argc, char **argv) try
 	dat.SetElem   (2, "", "Rod", /*IsActive*/true, /*Tag*/-1);
 
 	// Set connectivity
-	dat.Ele(0)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1));
-	dat.Ele(1)->Connect(0, dat.Nod(1))->Connect(1, dat.Nod(2));
-	dat.Ele(2)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(2));
+	dat.Ele(0)->SetConn(0, dat.Nod(0))->SetConn(1, dat.Nod(1));
+	dat.Ele(1)->SetConn(0, dat.Nod(1))->SetConn(1, dat.Nod(2));
+	dat.Ele(2)->SetConn(0, dat.Nod(0))->SetConn(1, dat.Nod(2));
 
 	// Parameters and initial value
 	dat.Ele(0)->SetModel("", "E=100.0 A=1.0"              , "Sx=0.0");
@@ -99,9 +99,9 @@ int main(int argc, char **argv) try
 	Ke0c.Resize(4,4);
 	Ke1c.Resize(4,4);
 	Ke2c.Resize(4,4);
-	dat.Ele(0)->Order1Matrix(0,Ke0);
-	dat.Ele(1)->Order1Matrix(0,Ke1);
-	dat.Ele(2)->Order1Matrix(0,Ke2);
+	dat.Ele(0)->CMatrix(0,Ke0);
+	dat.Ele(1)->CMatrix(0,Ke1);
+	dat.Ele(2)->CMatrix(0,Ke2);
 	Ke0c =  10.0,   0.0, -10.0,   0.0,
 	         0.0,   0.0,   0.0,   0.0,
 	       -10.0,   0.0,  10.0,   0.0,
@@ -137,7 +137,7 @@ int main(int argc, char **argv) try
 	cout << _6<<"Elem #" << _8s<<"Sa(left)" << _8s<<"Sa(right)" << _8s<<"Ea(left)" << _8s<<"Ea(right)" << endl;
 	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		dat.Ele(i)->CalcDepVars();
+		dat.Ele(i)->CalcDeps();
 		cout << _6<<i;
 		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j) cout << _8s<<dat.Ele(i)->Val(j, "Sa");
 		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j) cout << _8s<<dat.Ele(i)->Val(j, "Ea");

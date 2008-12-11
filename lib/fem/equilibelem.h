@@ -114,9 +114,9 @@ protected:
 	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
 	void _initial_state      ();                                                   ///< Calculate initial internal state
 	void _equations_map      (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) const;
-
-}; // class EquilibElem
+	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) constEquilibElem;
+                                                                                            EquilibElem
+}; // class EquilibElem                                                                     EquilibElem
 
 // UD[_di][iDOF]                         2D               3D
 const char EquilibElem:: UD [2][3][4] = {{"ux","uy",""},  {"ux","uy","uz"}};
@@ -133,6 +133,7 @@ const char EquilibElem:: LB [4][22][4] = {
 	{"Ex", "Ey", "Ez",  "Exy", "Eyz", "Ezx", "Sx", "Sy" , "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p", "q", "Ev", "Ed" }  // 2D (axis-symmetric)
 };
 
+const char LB [][4]; 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
