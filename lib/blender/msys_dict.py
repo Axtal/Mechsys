@@ -375,7 +375,7 @@ def props_push_new_stage():
         if obj.properties[stg].has_key('eatts'):
             for k, v in obj.properties[stg]['eatts'].iteritems():
                 tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
-                obj.properties[stg]['eatts'][k][3] = tid
+                obj.properties[stg]['eatts'][k][7] = tid
     Blender.Window.QRedrawAll()
 
 def props_push_new_fem(stage_ids,key,props):
@@ -388,7 +388,7 @@ def props_push_new_fem(stage_ids,key,props):
         obj.properties[stg][key][str(id)] = props
         if key=='eatts':
             tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
-            obj.properties[stg]['eatts'][str(id)][3] = tid
+            obj.properties[stg]['eatts'][str(id)][7] = tid
     Blender.Window.QRedrawAll()
 
 def props_set_fem(stage_ids,key,id,item,val):
@@ -399,7 +399,7 @@ def props_set_fem(stage_ids,key,id,item,val):
     Blender.Window.QRedrawAll()
 
 def props_set_fem_all_stg(key,id,item,val):
-    obj  = di.get_obj()
+    obj  = get_obj()
     sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
     props_set_fem (sids, key, id, item, val)
 
@@ -411,14 +411,14 @@ def props_del_fem(stage_ids,key,id):
             stg = 'stg_'+str(sid)
             obj = get_obj()
             if key=='eatts':
-                tid = str(obj.properties[stg][key][str(id)][3])
+                tid = str(obj.properties[stg][key][str(id)][7])
                 if obj.properties['texts'].has_key(tid): obj.properties['texts'].pop(tid)
             obj.properties[stg][key].pop(str(id))
             if len(obj.properties[stg][key])==0: obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
 
 def props_del_fem_all_stg(key,id):
-    obj  = di.get_obj()
+    obj  = get_obj()
     sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
     props_del_fem(sids, key, id)
 
@@ -434,7 +434,7 @@ def props_del_all_fem(stage_ids,key,with_confirmation=True):
             if obj.properties[stg].has_key(key):
                 if key=='eatts':
                     for k, v in obj.properties[stg][key].iteritems():
-                        tid = str(v[3])
+                        tid = str(v[7])
                         obj.properties['texts'].pop(tid)
                 obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
@@ -450,7 +450,7 @@ def props_del_stage():
         # delete eatt text
         if obj.properties[stg].has_key('eatts'):
             for k, v in obj.properties[stg]['eatts'].iteritems():
-                obj.properties['texts'].pop(str(v[3]))
+                obj.properties['texts'].pop(str(v[7]))
         # delete description
         obj.properties['texts'].pop(tid)
         # delete stage
@@ -484,7 +484,7 @@ def props_del_all_stages(with_confirmation=True):
             stg = 'stg_'+sid
             if obj.properties[stg].has_key('eatts'):
                 for k, v in obj.properties[stg]['eatts'].iteritems():
-                    obj.properties['texts'].pop(str(v[3]))
+                    obj.properties['texts'].pop(str(v[7]))
             # delete stage
             obj.properties.pop(stg)
         if len(obj.properties['texts'])==0: obj.properties.pop('texts')
