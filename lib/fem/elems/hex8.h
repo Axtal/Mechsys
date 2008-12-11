@@ -94,11 +94,11 @@ Hex8::FaceMap Hex8::Face2Node[]= {{ 0, 3, 7, 4 },
 inline Hex8::Hex8()
 {
 	// Setup nodes number
-	_n_nodes        = 8;
-	_n_face_nodes   = 4;
+	NNodes        = 8;
+	NFNodes   = 4;
 
 	// Allocate nodes (connectivity)
-	_connects.Resize(_n_nodes);
+	_connects.Resize(NNodes);
 	_connects.SetValues(NULL);
 
 	// Integration Points and Extrapolation Matrix
