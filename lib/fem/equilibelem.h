@@ -46,7 +46,6 @@
 #include "models/equilibmodel.h"
 #include "util/string.h"
 #include "util/util.h"
-#include "util/lineparser.h"
 #include "util/numstreams.h"
 #include "linalg/laexpr.h"
 
@@ -69,20 +68,14 @@ public:
 	void    AddVolForces ();
 	void    ClearDisp    ();
 	void    SetActive    (bool Activate, int ID);
-	void    EdgeBry      (Str_t Key, double Val, int iEdge);
-	void    FaceBry      (Str_t Key, double Val, int iFace);
 	void    CalcDeps     () const;
 	Str_t   ModelName    () const { return (_mdl.Size()>0 ? _mdl[0]->Name() : "__no_model__"); }
 	double  Val          (int iNod, Str_t Key) const;
 	double  Val          (          Str_t Key) const;
-	bool    IsEssen      (Str_t Key) const;
-	void    SetProps     (Str_t Properties);
 	void    SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis);
-	void    SetConn      (int iNod, FEM::Node * ptNode, int ID);
 	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
 	void    Backup       ();
 	void    Restore      ();
-	void    GetLbls      (Array<String> & Lbls) const;
 	void    OutInfo      (std::ostream & os) const;
 	size_t  NCMats       () const { return 1; }
 	void    CMatrix      (size_t Idx, Mat_t & M) const;
@@ -98,15 +91,15 @@ protected:
 	double               _gam; ///< Specific weigth
 	Array<EquilibModel*> _mdl; ///< Array of pointers to constitutive models
 
-	// Derived methods
-	void _initialize ();
-
 	// Private methods
+	void _initialize         ();
 	void _excavate           ();                                                   ///< Excavate element
 	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
-	void _initial_state      ();                                                   ///< Calculate initial internal state
-	void _equations_map      (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) const;
+
+private:
+	void _initial_state ();                                                   ///< Calculate initial internal state
+	void _equations_map (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 
 }; // class EquilibElem                                                                     
 
@@ -197,31 +190,6 @@ inline void EquilibElem::SetActive(bool Activate, int ID)
 	}
 }
 
-inline void EquilibElem::EdgeBry(Str_t Key, double Value, int iEdge)
-{
-	if (_ge->NDim<3) // For 1D/2D meshes, edges correspond to faces
-	{
-		// Skip if key is "Qb", Beam Normal Loading
-		if (strcmp(Key,"Qb")==0) return;
-
-		Array<Node*> fnodes;
-		_ge->GetFNodes      (iEdge, fnodes);
-		_dist_to_face_nodes (Key, Value, fnodes);
-	}
-	else throw new Fatal("EquilibElem::EdgeBry: Method not yet implemented for 3D meshes");
-}
-
-inline void EquilibElem::FaceBry(Str_t Key, double Value, int iFace)
-{
-	if (_ge->NDim==2) throw new Fatal("EquilibElem::FaceBry: This method must be called only for 3D meshes");
-	else
-	{
-		Array<Node*> fnodes;
-		_ge->GetFNodes      (iFace, fnodes);
-		_dist_to_face_nodes (Key, Value, fnodes);
-	}
-}
-
 inline void EquilibElem::CalcDeps() const
 {
 	if (IsActive==false) throw new Fatal("EquilibElem::CalcDepVars: This element is inactive");
@@ -263,27 +231,6 @@ inline double EquilibElem::Val(Str_t Name) const
 	return sum/_ge->NIPs;
 }
 
-inline bool EquilibElem::IsEssen(Str_t Name) const
-{
-	for (int i=0; i<_nd; ++i) if (strcmp(Name,UD[i])==0) return true;
-	return false;
-}
-
-inline void EquilibElem::SetProps(Str_t Properties)
-{
-	/* "gam=20.0 */
-	LineParser lp(Properties);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		 if (names[i]=="gam") _gam = values[i]; 
-	}
-}
-
 inline void EquilibElem::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
 {
 	// Check _ge->NDim
@@ -304,26 +251,6 @@ inline void EquilibElem::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
 		if (IsActive) _initial_state ();
 	}
 	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
-}
-
-inline void EquilibElem::SetConn(int iNod, FEM::Node * ptNode, int ID)
-{
-	// Check
-	if (_ge->NNodes<1)       throw new Fatal("EquilibElem::Connect: __Internal Error__: There is a problem with the number of nodes: maybe derived elemet did not set _ge->NNodes");
-	if (_ge->Conn.Size()<1)  throw new Fatal("EquilibElem::Connect: __Internal Error__: There is a problem with connectivity array: maybe derived elemet did not allocate _connect");
-	if (_gi<0||_nd<0||_nl<0) throw new Fatal("EquilibElem::Connect: __Internal Error__: There is a problem with _gi=%d, _nd=%d, or _nd=%d\n (_gi=geometry index, _nd=number of degrees of freedom, _nl=number of additional labels)",_gi,_nd,_nl);
-
-	// Connectivity
-	_ge->Conn[iNod] = ptNode;
-
-	if (IsActive)
-	{
-		// Add Degree of Freedom to a node (Essential, Natural)
-		for (int i=0; i<_nd; ++i) _ge->Conn[iNod]->AddDOF (UD[i], FD[i]);
-
-		// Set shared
-		_ge->Conn[iNod]->SetSharedBy (ID);
-	}
 }
 
 inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
@@ -370,22 +297,6 @@ inline void EquilibElem::Backup()
 inline void EquilibElem::Restore()
 {
 	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i]->RestoreState();
-}
-
-inline void EquilibElem::GetLbls(Array<String> & Lbls) const
-{
-	const int nl = 2*_nd+_nl; // total number of labels
-	Lbls.Resize(nl);
-	size_t k = 0;
-	for (int i=0; i<_nd; ++i)
-	{
-		Lbls[k] = EquilibElem::UD[i];  k++;
-		Lbls[k] = EquilibElem::FD[i];  k++;
-	}
-	for (int i=0; i<_nl; ++i)
-	{
-		Lbls[k] = EquilibElem::LB[i];  k++;
-	}
 }
 
 inline void EquilibElem::OutInfo(std::ostream & os) const
@@ -519,12 +430,14 @@ inline void EquilibElem::_excavate()
 inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) const
 {
 	/* OBS.:
-	 *          This B matrix considers Solid Mechanics sign convention of stress and strains
+	 *       1) This B matrix considers Solid Mechanics sign convention of stress and strains
 	 *          Ex.: Compressive stresses/strains are negative
 	 *          The B Matrix returns strains in Mandel notation
 	 *
 	 *          Traction    => Positive
 	 *          Compression => Negative
+	 *
+	 *       2) This works for Equilib and Biot elements, but not for Beams and Rods
 	 */
 
 	// Cartesian derivatives
@@ -626,69 +539,47 @@ inline void EquilibElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CM
 
 inline void EquilibElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, Array<Node*> const & FConn) const
 {
+	// Skip in case Key does NOT indicate normal loading
+	if (strcmp(Key,"Q")!=0) ProbElem::_dist_to_face_nodes (Key,FaceValue,FConn);
+
 	// Check if the element is active
 	if (IsActive==false) return;
 
-	if (strcmp(Key,"Q")==0)
+	// Key=="Q" => Normal traction boundary condition
+	Mat_t values;  values.Resize (_ge->NFNodes, _ge->NDim);  values.SetValues(0.0);
+	Mat_t J;
+	Vec_t FN(_ge->NFNodes); // Face shape
+	Mat_t FNmat;            // Shape function matrix
+	Vec_t P;                // Vector perpendicular to the face
+	for (size_t i=0; i<_ge->NFIPs; i++)
 	{
-		// Normal traction boundary condition
-		Mat_t values;  values.Resize (_ge->NFNodes, _ge->NDim);  values.SetValues(0.0);
-		Mat_t J;
-		Vec_t FN(_ge->NFNodes); // Face shape
-		Mat_t FNmat;            // Shape function matrix
-		Vec_t P;                // Vector perpendicular to the face
-		for (size_t i=0; i<_ge->NFIPs; i++)
-		{
-			_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
-			FNmat = trn(trn(FN)); // trick just to convert Vector FN to a col Matrix
+		_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
+		FNmat = trn(trn(FN)); // trick just to convert Vector FN to a col Matrix
 
-			// Calculate perpendicular vector
-			if (_ge->NDim==3)
-			{
-				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-				Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
-				Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
-				P.Resize(3);
-				P = V(1)*W(2) - V(2)*W(1),      // vectorial product
-					V(2)*W(0) - V(0)*W(2),
-					V(0)*W(1) - V(1)*W(0);
-			}
-			else
-			{
-				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-				P.Resize(2);
-				P = J(0,1), -J(0,0);
-			}
-			values += FaceValue*FNmat*trn(P)*_ge->FIPs[i].w;
-		}
-
-		// Set nodes Brys
-		for (size_t i=0; i<_ge->NFNodes; ++i)
+		// Calculate perpendicular vector
+		if (_ge->NDim==3)
 		{
-			for (size_t j=0; j<_ge->NDim; ++j) FConn[i]->Bry (FD[j], values(i,j));
+			_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+			Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
+			Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
+			P.Resize(3);
+			P = V(1)*W(2) - V(2)*W(1),      // vectorial product
+				V(2)*W(0) - V(0)*W(2),
+				V(0)*W(1) - V(1)*W(0);
 		}
+		else
+		{
+			_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+			P.Resize(2);
+			P = J(0,1), -J(0,0);
+		}
+		values += FaceValue*FNmat*trn(P)*_ge->FIPs[i].w;
 	}
-	else
-	{
-		if (IsEssen(Key)) // Assign directly
-			for (size_t i=0; i<_ge->NFNodes; ++i) FConn[i]->Bry(Key,FaceValue);
-		else // Integrate along area/length
-		{
-			// Compute face nodal values (integration along the face)
-			Vec_t values;  values.Resize(_ge->NFNodes);  values.SetValues(0.0);
-			Mat_t J;                // Jacobian matrix. size = [1,2] x 3
-			Vec_t FN(_ge->NFNodes); // Shape functions of a face/edge. size = _ge->NFNodes
-			for (size_t i=0; i<_ge->NFIPs; i++)
-			{
-				_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
-				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-				values += FaceValue*FN*det(J)*_ge->FIPs[i].w;
-			}
 
-			// Set nodes Brys
-			for (size_t i=0; i<_ge->NFNodes; ++i) FConn[i]->Bry (Key,values(i));
-		}
-	}
+	// Set nodes Brys
+	for (size_t i=0; i<_ge->NFNodes; ++i)
+	for (size_t j=0; j<_ge->NDim;    ++j)
+		FConn[i]->Bry (FD[j], values(i,j));
 }
 
 

@@ -72,9 +72,6 @@ public:
 	void      AddVolForces ()                                           {        _pe->AddVolForces();                        } ///< Method to apply volumetric (body) forces as boundary condition
 	void      ClearDisp    ()                                           {        _pe->ClearDisp();                           } ///< Clear displacements and strains (for equilibrium/coupled problems)
 	void      SetActive    (bool Activate)                              {        _pe->SetActive(Activate,_id);               } ///< Activate element (construction/excavation)
-	Element * EdgeBry      (Str_t Key, double Val, int iEdge)           {        _pe->EdgeBry(Key,Val,iEdge); return this;   } ///< Set edge boundary conditions (Initialize MUST be called first)
-	Element * EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {                                     return this;   } ///< Set edge boundary conditions (Initialize MUST be called first)
-	Element * FaceBry      (Str_t Key, double Val, int iFace)           {        _pe->FaceBry(Key,Val,iFace); return this;   } ///< Set face boundary conditions (Initialize MUST be called first)
 	bool      IsActive     () const                                     { return _pe->IsActive;                              } ///< Check if this element is active
 	void      CalcDeps     () const                                     {        _pe->CalcDeps();                            } ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
 	Str_t     ModelName    () const                                     { return _pe->ModelName();                           } ///< Return the name of the model of the first IP of this element
@@ -84,6 +81,9 @@ public:
 	void      SetProps     (Str_t Properties)                           {        _pe->SetProps(Properties);                  } ///< Set element properties such as body forces, internal heat source, water pumping, etc.
 	void      SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis)    {        _pe->SetModel(ModelName,Prms,Inis);         } ///< (Re)allocate model with parameters and initial values
 	Element * SetConn      (int iNod, FEM::Node * ptNode)               {        _pe->SetConn(iNod,ptNode,_id); return this; } ///< Set connectivity, by linking the local node ID with the pointer to the connection node
+	Element * EdgeBry      (Str_t Key, double Val, int iEdge)           {        _pe->EdgeBry(Key,Val,iEdge);   return this; } ///< Set edge boundary conditions (Initialize MUST be called first)
+	Element * EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {                                       return this; } ///< Set edge boundary conditions (Initialize MUST be called first)
+	Element * FaceBry      (Str_t Key, double Val, int iFace)           {        _pe->FaceBry(Key,Val,iFace);   return this; } ///< Set face boundary conditions (Initialize MUST be called first)
 	void      Update       (double h, Vec_t const & dU, Vec_t & dFint)  {        _pe->Update(h,dU,dFint);                    } ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	void      Backup       ()                                           {        _pe->Backup();                              } ///< Backup internal state
 	void      Restore      ()                                           {        _pe->Restore();                             } ///< Restore internal state from a previously backup state

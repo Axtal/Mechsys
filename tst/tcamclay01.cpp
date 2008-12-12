@@ -23,7 +23,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/hex8equilib.h"
+#include "fem/elems/hex8.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/camclay.h"
 #include "fem/output.h"
 #include "util/exception.h"
@@ -105,7 +106,7 @@ int main(int argc, char **argv) try
 	String prms; prms.Printf("lam=%f kap=%f phics=%f G=%f",lam,kap,phics,G);
 	String inis; inis.Printf("Sx=%f Sy=%f Sz=%f Sxy=0 Syz=0 Szx=0 v=%f",p_ini,p_ini,p_ini,v_ini);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Hex8Equilib", "CamClay", prms.CStr(), inis.CStr(), "", true));
+	eatts.Push (make_tuple(-1, "Hex8", "Equilib", "CamClay", prms.CStr(), inis.CStr(), "", true));
 
 	// Set Nodes and Elements
 	dat.SetNodesElems (&ms, &eatts);

@@ -68,14 +68,14 @@ int main(int argc, char **argv) try
 
 	// Elements
 	dat.SetNElems (8);
-	dat.SetElem   (0, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1));
-	dat.SetElem   (1, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(1))->Connect(1, dat.Nod(2));
-	dat.SetElem   (2, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(2))->Connect(1, dat.Nod(3));
-	dat.SetElem   (3, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(3))->Connect(1, dat.Nod(4));
-	dat.SetElem   (4, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(4))->Connect(1, dat.Nod(5));
-	dat.SetElem   (5, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(6))->Connect(1, dat.Nod(1));
-	dat.SetElem   (6, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(6))->Connect(1, dat.Nod(4));
-	dat.SetElem   (7, "Beam", /*Active*/true, /*Tag*/-5)->Connect(0, dat.Nod(7))->Connect(1, dat.Nod(4));
+	dat.SetElem   (0, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(0))->SetConn(1, dat.Nod(1));
+	dat.SetElem   (1, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(1))->SetConn(1, dat.Nod(2));
+	dat.SetElem   (2, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(2))->SetConn(1, dat.Nod(3));
+	dat.SetElem   (3, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(3))->SetConn(1, dat.Nod(4));
+	dat.SetElem   (4, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(4))->SetConn(1, dat.Nod(5));
+	dat.SetElem   (5, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(6))->SetConn(1, dat.Nod(1));
+	dat.SetElem   (6, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(6))->SetConn(1, dat.Nod(4));
+	dat.SetElem   (7, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(7))->SetConn(1, dat.Nod(4));
 
 	// Parameters and initial value
 	dat.Ele(0)->SetModel("LinElastic", "E=1.0 A=5e+9 Izz=6e+4", "ZERO");
@@ -113,7 +113,7 @@ int main(int argc, char **argv) try
 	cout << _6<<"Elem #" << _8s<<"N0" << _8s<<"M0" << _8s<<"V0" << _8s<<"N1" << _8s<<"M1" << _8s<<"V1" << endl;
 	for (size_t i=0; i<dat.NElems(); ++i)
 	{
-		dat.Ele(i)->CalcDepVars();
+		dat.Ele(i)->CalcDeps();
 		cout << _6<<i << _8s<<dat.Ele(i)->Val(0, "N") << _8s<<dat.Ele(i)->Val(0, "M") << _8s<<dat.Ele(i)->Val(0, "V");
 		cout <<          _8s<<dat.Ele(i)->Val(1, "N") << _8s<<dat.Ele(i)->Val(1, "M") << _8s<<dat.Ele(i)->Val(1, "V") << endl;
 	}

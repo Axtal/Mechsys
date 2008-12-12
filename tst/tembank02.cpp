@@ -36,7 +36,7 @@
 #include "fem/solver.h"
 #include "fem/elems/quad4.h"
 #include "fem/elems/quad8.h"
-#include "fem/biot.h"
+#include "fem/biotelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
@@ -141,29 +141,29 @@ int main(int argc, char **argv) try
 
 	// Stage # -1 --------------------------------------------------------------
 	FEM::EBrys_T ebrys;
-	ebrys.Push           (make_tuple(-10, "ux",  0.0));
-	ebrys.Push           (make_tuple(-11, "uy",  0.0));
-	ebrys.Push           (make_tuple(-12, "pwp", 0.0));
-	dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
-	dat.ApplyBodyForces    ();
-	sol.SolveWithInfo   (10, 1e+2, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-	dat.ClearDisplacements ();
+	ebrys.Push        (make_tuple(-10, "ux",  0.0));
+	ebrys.Push        (make_tuple(-11, "uy",  0.0));
+	ebrys.Push        (make_tuple(-12, "pwp", 0.0));
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
+	dat.AddVolForces  ();
+	sol.SolveWithInfo (10, 1e+2, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+	dat.ClearDisp     ();
 
 	// Stage # 0 ---------------------------------------------------------------
-	dat.Activate         (/*Tag*/-2);
-    ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux",  0.0));
-	ebrys.Push         (make_tuple(-11, "uy",  0.0));
-	ebrys.Push         (make_tuple(-13, "pwp", 0.0));
+	dat.Activate      (/*Tag*/-2);
+    ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux",  0.0));
+	ebrys.Push        (make_tuple(-11, "uy",  0.0));
+	ebrys.Push        (make_tuple(-13, "pwp", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (10, 1e+2, 0, "  Construction of first layer\n");
 
 	// Stage # 1 ---------------------------------------------------------------
-	dat.Activate         (/*Tag*/-3);
-    ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux",  0.0));
-	ebrys.Push         (make_tuple(-11, "uy",  0.0));
-	ebrys.Push         (make_tuple(-14, "pwp", 0.0));
+	dat.Activate      (/*Tag*/-3);
+    ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux",  0.0));
+	ebrys.Push        (make_tuple(-11, "uy",  0.0));
+	ebrys.Push        (make_tuple(-14, "pwp", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (10, 1e+2, 0, "  Construction of second layer\n");
 

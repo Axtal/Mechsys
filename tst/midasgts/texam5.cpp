@@ -21,8 +21,9 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/elems/quad4pstrain.h"
-#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/equilibelem.h"
 #include "fem/elems/beam.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solver.h"
@@ -162,13 +163,13 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
 
 	// Beam attributes
 	String beamprms;
 	beamprms.Printf("E=%f A=%f Izz=%f",E_beam,A_beam,Izz_beam);
-	eatts.Push (make_tuple(-55, "Beam", "", beamprms.CStr(), "ZERO", "", true));
+	eatts.Push (make_tuple(-55, "", "Beam", "", beamprms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
@@ -205,7 +206,7 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<dat.NElems(); ++i)
 	{
 		String ele_name;
-		if (strcmp(dat.Ele(i)->Name(), "Beam")==0) 
+		if (dat.Ele(i)->Tag()==-55) 
 			for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j)
 			{
 				// Analytical
@@ -222,7 +223,7 @@ int main(int argc, char **argv) try
 				// Analysis
 				double M;
 				double N;
-				dat.Ele(i)->CalcDepVars();
+				dat.Ele(i)->CalcDeps();
 				M = dat.Ele(i)->Val(j,"M");
 				N = dat.Ele(i)->Val(j,"N");
 
@@ -292,11 +293,11 @@ int main(int argc, char **argv) try
 	double max_err_N    = err_N [err_N .Max()];
 
 	cout << "\n";
-	cout << _4 << ""    << _8s <<"Min"       << _8s << "Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
-	cout << _4 << "uR"  << _8s <<min_err_uR << _8s<<err_uR.Mean() << (max_err_uR  >tol_uR?"[1;31m":"[1;32m") << _8s<<max_err_uR   << "[0m" << _8s<<err_uR  .Norm() << endl;
-	cout << _4 << "uT"  << _8s <<min_err_uT << _8s<<err_uT.Mean() << (max_err_uT  >tol_uT?"[1;31m":"[1;32m") << _8s<<max_err_uT   << "[0m" << _8s<<err_uT  .Norm() << endl;
-	cout << _4 << "M"  << _8s <<min_err_M << _8s<<err_M  .Mean() << (max_err_M  >tol_M?"[1;31m":"[1;32m") << _8s<<max_err_M   << "[0m" << _8s<<err_M  .Norm() << endl;
-	cout << _4 << "N"  << _8s <<min_err_N << _8s<<err_N  .Mean() << (max_err_N  >tol_N?"[1;31m":"[1;32m") << _8s<<max_err_N   << "[0m" << _8s<<err_N  .Norm() << endl;
+	cout << _4 << ""   << _8s <<"Min"      << _8s << "Mean"                                                     << _8s<<"Max"                  << _8s<<"Norm"         << endl;
+	cout << _4 << "uR" << _8s <<min_err_uR << _8s<<err_uR.Mean() << (max_err_uR  >tol_uR?"[1;31m":"[1;32m") << _8s<<max_err_uR  << "[0m" << _8s<<err_uR .Norm() << endl;
+	cout << _4 << "uT" << _8s <<min_err_uT << _8s<<err_uT.Mean() << (max_err_uT  >tol_uT?"[1;31m":"[1;32m") << _8s<<max_err_uT  << "[0m" << _8s<<err_uT .Norm() << endl;
+	cout << _4 << "M"  << _8s <<min_err_M  << _8s<<err_M .Mean() << (max_err_M   >tol_M?"[1;31m":"[1;32m")  << _8s<<max_err_M   << "[0m" << _8s<<err_M  .Norm() << endl;
+	cout << _4 << "N"  << _8s <<min_err_N  << _8s<<err_N .Mean() << (max_err_N   >tol_N?"[1;31m":"[1;32m")  << _8s<<max_err_N   << "[0m" << _8s<<err_N  .Norm() << endl;
 	cout << endl;
 
 	return 1;

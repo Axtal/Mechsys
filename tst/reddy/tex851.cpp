@@ -45,7 +45,8 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/elems/quad4diffusion.h"
+#include "fem/elems/quad4.h"
+#include "fem/diffusionelem.h"
 #include "models/diffusions/lindiffusion.h"
 #include "fem/solver.h"
 #include "fem/output.h"
@@ -105,7 +106,7 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("k=%f", k);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", prms.CStr(), "", "", true)); // tag, type, model, prms, inis, props
+	eatts.Push (make_tuple(-1, "Quad4", "Diffusion", "LinDiffusion", prms.CStr(), "", "", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

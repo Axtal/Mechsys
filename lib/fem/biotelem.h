@@ -50,7 +50,6 @@ public:
 	double  Val          (          Str_t Key) const;
 	void    SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis);
 	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
-	void    GetLbls      (Array<String> & Lbls) const;
 	void    OutInfo      (std::ostream & os) const;
 	size_t  NCMats       () const { return 3; }
 	size_t  NHMats       () const { return 1; }
@@ -283,22 +282,6 @@ inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	{
 		for (size_t j=0; j<nde; ++j) dFint(_ge->Conn[i]->DOFVar(UD[j    ]).EqID) += df  (i*nde+j);
 		for (size_t j=0; j<ndf; ++j) dFint(_ge->Conn[i]->DOFVar(UD[j+nde]).EqID) += dvol(i*ndf+j);
-	}
-}
-
-inline void BiotElem::GetLbls(Array<String> & Lbls) const
-{
-	const int nl = 2*_nd+_nl; // total number of labels
-	Lbls.Resize(nl);
-	size_t k = 0;
-	for (int i=0; i<_nd; ++i)
-	{
-		Lbls[k] = BiotElem::UD[i];  k++;
-		Lbls[k] = BiotElem::FD[i];  k++;
-	}
-	for (int i=0; i<_nl; ++i)
-	{
-		Lbls[k] = BiotElem::LB[i];  k++;
 	}
 }
 

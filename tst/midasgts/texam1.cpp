@@ -21,8 +21,9 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/elems/quad4pstrain.h"
-#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/equilibelem.h"
 #include "fem/elems/beam.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solver.h"
@@ -155,8 +156,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

@@ -137,26 +137,26 @@ int main(int argc, char **argv) try
 
 	// Stage # -1 --------------------------------------------------------------
 	FEM::EBrys_T ebrys;
-	ebrys.Push           (make_tuple(-10, "ux", 0.0));
-	ebrys.Push           (make_tuple(-11, "uy", 0.0));
-	dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
-	dat.AddVolForces    ();
-	sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-	dat.ClearDisplacements ();
+	ebrys.Push        (make_tuple(-10, "ux", 0.0));
+	ebrys.Push        (make_tuple(-11, "uy", 0.0));
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
+	dat.AddVolForces  ();
+	sol.SolveWithInfo (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+	dat.ClearDisp     ();
 
 	// Stage # 0 ---------------------------------------------------------------
-	dat.Activate         (/*Tag*/-2);
-    ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux", 0.0));
-	ebrys.Push         (make_tuple(-11, "uy", 0.0));
+	dat.Activate      (/*Tag*/-2);
+    ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux", 0.0));
+	ebrys.Push        (make_tuple(-11, "uy", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (1, 2.0, 0, "  Construction of first layer\n");
 
 	// Stage # 1 ---------------------------------------------------------------
-	dat.Activate         (/*Tag*/-3);
-    ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux", 0.0));
-	ebrys.Push         (make_tuple(-11, "uy", 0.0));
+	dat.Activate      (/*Tag*/-3);
+    ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux", 0.0));
+	ebrys.Push        (make_tuple(-11, "uy", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (1, 3.0, 0, "  Construction of second layer\n");
 

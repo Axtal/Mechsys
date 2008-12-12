@@ -28,8 +28,9 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/elems/hex8equilib.h"
-#include "fem/elems/hex20equilib.h"
+#include "fem/elems/hex8.h"
+#include "fem/elems/hex20.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solver.h"
 #include "fem/output.h"
@@ -98,8 +99,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Hex20Equilib", "LinElastic", prms.CStr(), "ZERO", "", true));
-	else       eatts.Push (make_tuple(-1, "Hex8Equilib" , "LinElastic", prms.CStr(), "ZERO", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "", true));
+	else       eatts.Push (make_tuple(-1, "Hex8",  "Equilib", "LinElastic", prms.CStr(), "ZERO", "", true));
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

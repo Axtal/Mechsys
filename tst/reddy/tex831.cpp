@@ -26,8 +26,9 @@
 
 // MechSys
 #include "fem/data.h"
-#include "fem/elems/tri3diffusion.h"
-#include "fem/elems/quad4diffusion.h"
+#include "fem/elems/tri3.h"
+#include "fem/elems/quad4.h"
+#include "fem/diffusionelem.h"
 #include "models/diffusions/lindiffusion.h"
 #include "fem/solver.h"
 #include "fem/output.h"
@@ -92,10 +93,10 @@ int main(int argc, char **argv) try
 
 		// Elements
 		dat.SetNElems (4);
-		dat.SetElem   (0, "Tri3Diffusion", true, -1);
-		dat.SetElem   (1, "Tri3Diffusion", true, -1);
-		dat.SetElem   (2, "Tri3Diffusion", true, -1);
-		dat.SetElem   (3, "Tri3Diffusion", true, -1);
+		dat.SetElem   (0, "Tri3", "Diffusion", true, -1);
+		dat.SetElem   (1, "Tri3", "Diffusion", true, -1);
+		dat.SetElem   (2, "Tri3", "Diffusion", true, -1);
+		dat.SetElem   (3, "Tri3", "Diffusion", true, -1);
 
 		// Set connectivity
 		dat.Ele(0)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1))->Connect(2, dat.Nod(2));
@@ -224,7 +225,7 @@ int main(int argc, char **argv) try
 
 		// Elements attributes
 		FEM::EAtts_T eatts;
-		eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
+		eatts.Push (make_tuple(-1, "Quad4", "Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
 
 		// Set geometry: nodes and elements
 		dat.SetNodesElems (&mesh, &eatts);

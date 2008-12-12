@@ -42,7 +42,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad4pstrain.h"
+#include "fem/elems/quad4.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
