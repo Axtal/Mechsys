@@ -27,6 +27,8 @@
 #include "util/lineparser.h"
 #include "numerical/brentroot.h"
 
+const char CAMCLAY_PN[4][8] = {"lam", "kap", "nu", "phics"};
+
 class CamClay : public EquilibModel
 {
 public:

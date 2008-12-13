@@ -33,22 +33,17 @@ using Util::_12_6;
 namespace FEM
 {
 
+const char BIOT_PN[4][8] = {"E", "nu", "k", "gw"};
+
 class BiotElem : public EquilibElem
 {
 public:
-	// Constructor
-	BiotElem () {}
-
-	// Destructor
-	~BiotElem () {}
-
 	// Methods related to PROBLEM
 	void    ClearDisp    ();
 	void    CalcDeps     () const;
-	Str_t   ModelName    () const { return "__no_model__"; }
+	Str_t   ModelName    () const { return "LinElastic"; }
 	double  Val          (int iNod, Str_t Key) const;
 	double  Val          (          Str_t Key) const;
-	void    SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis);
 	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
 	void    OutInfo      (std::ostream & os) const;
 	size_t  NCMats       () const { return 3; }
@@ -73,11 +68,12 @@ private:
 	Array<Vec_t> _eps; ///< Strain at each integration point. Size==NIPs
 
 	// Derived methods
-	void _initialize ();
+	void _initialize (Str_t Model);
+	void _init_model (Str_t Inis);
+	void _excavate   ();
 
 	// Private methods
 	void   _Bp_mat     (Mat_t const & dN, Mat_t const & J, Mat_t & Bp) const { Bp = inv(J)*dN; }
-	void   _excavate   ();
 	void   _equi_map   (Array<size_t> & RMap, Array<bool> & RUPresc) const;
 	void   _flow_map   (Array<size_t> & RMap, Array<bool> & RUPresc) const;
 	void   _compute_K  (Mat_t & Ke) const;
@@ -142,79 +138,6 @@ inline double BiotElem::Val(Str_t Name) const
 
 	// Output single value at CG
 	return sum/_ge->NIPs;
-}
-
-inline void BiotElem::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
-{
-	// Check _ge->NDim
-	if (_ge->NDim<1)             throw new Fatal("BiotElem::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (_ge->CheckConn()==false) throw new Fatal("BiotElem::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
-
-	/* "E=200 nu=0.2 k=1.0e-5 gw=10" */
-	LineParser lp(Prms);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	double E  = -1.0;
-	double nu = -1.0;
-	double k  = -1.0;
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		     if (names[i]=="gw") _gw = values[i];
-		else if (names[i]=="E" )  E  = values[i];
-		else if (names[i]=="nu")  nu = values[i];
-		else if (names[i]=="k" )  k  = values[i];
-		else throw new Fatal("BiotElem::SetModel: Parameter name (%s) is invalid",names[i].CStr());
-	}
-
-	// Check
-	if (_gw<0.0)            throw new Fatal("BiotElem::SetModel: GammaW must be provided (and positive). gw==%f is invalid",_gw);
-	if (E<=0.0)             throw new Fatal("BiotElem::SetModel: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
-	if (nu<0.0 || nu>0.499) throw new Fatal("BiotElem::SetModel: Poisson ratio (nu) must be provided (and in the range: 0 <= nu < 0.5). nu==%f is invalid",nu);
-	if (k<0.0)              throw new Fatal("BiotElem::SetModel: Isotropic permeability must be provided (and positive). k=%f is invalid",k);
-
-	// Set stiffness
-	double c  = E/((1.0+nu)*(1.0-2.0*nu));
-	double c1 = c*(1.0-nu);
-	double c2 = c*(1.0-2.0*nu)/2.0;
-	double c3 = c*nu;
-	Tensor4 De;
-	De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-	     c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-	     c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
-	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
-	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
-	Tensors::Tensor4ToMatrix (_gi,De, _De);
-
-	// Set permeability
-	double kx = k;
-	double ky = k;
-	double kz = k;
-	if (_ge->NDim==2)
-	{
-		_Ke.Resize(2,2);
-		_Ke =  kx,  0.0,
-		      0.0,   ky;
-	}
-	else if (_ge->NDim==3)
-	{
-		_Ke.Resize(3,3);
-		_Ke =  kx,  0.0,  0.0,
-		      0.0,   ky,  0.0,
-		      0.0,  0.0,   kz;
-	}
-
-	// Set arrays of sig/eps
-	_sig.Resize(_ge->NIPs);
-	_eps.Resize(_ge->NIPs);
-	for (size_t i=0; i<_ge->NIPs; ++i)
-	{
-		_sig[i].Resize(6);  _sig[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-		_eps[i].Resize(6);  _eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-	}
 }
 
 inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
@@ -366,8 +289,12 @@ inline bool BiotElem::CheckModel() const
 
 /* private */
 
-inline void BiotElem::_initialize()
+inline void BiotElem::_initialize(Str_t Model)
 {
+	// Check
+	if (_ge->NDim<1) throw new Fatal("BiotElem::_initialize: The space dimension (SetDim) must be set before calling this method");
+
+	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
 	_gi = (_ge->NDim==2 ? 1 : 0);
 	if (_gi==0)  // 3D
 	{
@@ -386,6 +313,78 @@ inline void BiotElem::_initialize()
 		LB  = LB_BIOT_2D;
 	}
 	else throw new Fatal("BiotElem::_initialize: GeometryIndex _gi==%d is invalid",_gi);
+
+	// Model and parameters
+	_prms.Resize (4);
+	PRMS = BIOT_PN;
+
+	// Properties
+	_props.Resize (1); // just "gam"
+	PROP = EQUILIB_PROP;
+}
+
+inline void BiotElem::_init_model(Str_t Inis)
+{
+	// Set
+	double E  = _prms[0];
+	double nu = _prms[1];
+	double k  = _prms[2];
+	      _gw = _prms[3];
+
+	// Check
+	if (E<=0.0)             throw new Fatal("BiotElem::_init_state: Young modulus (E) must positive. E==%f is invalid",E);
+	if (nu<0.0 || nu>0.499) throw new Fatal("BiotElem::_init_state: Poisson ratio (nu) must be in the range: 0 <= nu < 0.5. nu==%f is invalid",nu);
+	if (k<0.0)              throw new Fatal("BiotElem::_init_state: Isotropic permeability must positive. k=%f is invalid",k);
+	if (_gw<0.0)            throw new Fatal("BiotElem::_init_state: GammaW must be positive. gw==%f is invalid",_gw);
+
+	// Set stiffness
+	double c  = E/((1.0+nu)*(1.0-2.0*nu));
+	double c1 = c*(1.0-nu);
+	double c2 = c*(1.0-2.0*nu)/2.0;
+	double c3 = c*nu;
+	Tensor4 De;
+	De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	     c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	     c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
+	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
+	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
+	Tensors::Tensor4ToMatrix (_gi,De, _De);
+
+	// Set permeability
+	double kx = k;
+	double ky = k;
+	double kz = k;
+	if (_ge->NDim==2)
+	{
+		_Ke.Resize(2,2);
+		_Ke =  kx,  0.0,
+		      0.0,   ky;
+	}
+	else if (_ge->NDim==3)
+	{
+		_Ke.Resize(3,3);
+		_Ke =  kx,  0.0,  0.0,
+		      0.0,   ky,  0.0,
+		      0.0,  0.0,   kz;
+	}
+
+	// Set arrays of sig/eps
+	_sig.Resize(_ge->NIPs);
+	_eps.Resize(_ge->NIPs);
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_sig[i].Resize(6);  _sig[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_eps[i].Resize(6);  _eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+	}
+
+	// Initial values
+	LineParser lp(Inis);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions (names,values);
+	for (size_t i=0; i<names.Size(); i++)
+		if (names[i]!="ZERO") throw new Fatal("BiotElem::_init_state: Initial state must be ZERO at this time");
 }
 
 inline void BiotElem::_excavate()

@@ -22,6 +22,10 @@
 namespace FEM
 {
 
+
+//////////////////////////////////////////////////////////////////// DOFs and Labels
+
+
 // Biot
 const size_t ND_BIOT_3D        = 4;
 const char   UD_BIOT_3D[ 4][4] = {"ux", "uy", "uz", "pwp"};
@@ -73,6 +77,14 @@ const char   LB_BEAM_2D[5][4] = {"Ea", "Sa", "N", "V", "M"};
 // Rod
 const size_t NL_ROD       = 3;
 const char   LB_ROD[3][4] = {"Ea", "Sa", "N"};
+
+
+//////////////////////////////////////////////////////////////////// Properties
+
+
+const char EQUILIB_PROP[1][8] = {"gam"};
+const char BEAM_PROP   [2][8] = {"gam", "cq"};
+
 
 }; // namespace FEM
 

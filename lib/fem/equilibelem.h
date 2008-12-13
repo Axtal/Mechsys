@@ -58,11 +58,8 @@ namespace FEM
 class EquilibElem : public ProbElem
 {
 public:
-	// Constructor
-	EquilibElem () : _gi(-1), _gam(0.0) {}
-
 	// Destructor
-	~EquilibElem () { for (size_t i=0; i<_mdl.Size(); ++i) delete _mdl[i]; }
+	virtual ~EquilibElem () { for (size_t i=0; i<_mdl.Size(); ++i) delete _mdl[i]; }
 
 	// Methods related to PROBLEM
 	void    AddVolForces ();
@@ -72,7 +69,6 @@ public:
 	Str_t   ModelName    () const { return (_mdl.Size()>0 ? _mdl[0]->Name() : "__no_model__"); }
 	double  Val          (int iNod, Str_t Key) const;
 	double  Val          (          Str_t Key) const;
-	void    SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis);
 	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
 	void    Backup       ();
 	void    Restore      ();
@@ -80,26 +76,29 @@ public:
 	size_t  NCMats       () const { return 1; }
 	void    CMatrix      (size_t Idx, Mat_t & M) const;
 	void    CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void    SetGeomIdx   (int Idx) { _gi = Idx; }
 
 	// Derived methods
-	bool CheckModel () const;
+	virtual bool CheckModel () const;
+
+	// Method used when filling ProbElemFactory
+	void __SetGeomIdx (int Idx) { _gi = Idx; }
 
 protected:
 	// Data
-	int                  _gi;  ///< Geometry index: 3D=0, PStrain=1, PStress=2, Axis=3
-	double               _gam; ///< Specific weigth
 	Array<EquilibModel*> _mdl; ///< Array of pointers to constitutive models
 
+	// Private methods that MAY be derived
+	virtual void _initialize (Str_t Model); ///< Initialize this element
+	virtual void _init_model (Str_t Inis);  ///< Initialize model
+	virtual void _excavate   ();            ///< Excavate element
+
 	// Private methods
-	void _initialize         ();
-	void _excavate           ();                                                   ///< Excavate element
-	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
-	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn) const;
+	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const;      ///< Calculate B matrix
+	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn); ///< Distribute values from face/edges to nodes
 
 private:
-	void _initial_state ();                                                   ///< Calculate initial internal state
-	void _equations_map (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void _init_internal_state (); ///< Initialize internal state
+	void _equations_map       (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 
 }; // class EquilibElem                                                                     
 
@@ -119,6 +118,8 @@ inline void EquilibElem::AddVolForces()
 	fvol.SetValues (0.0);
 
 	// Calculate local external volume force
+	if (_props.Size()!=1) throw new Fatal("EquilibElem::AddVolForces: Array of properties must be set with gam==20, for example");
+	double gam = _props[0];
 	Vec_t N;
 	Mat_t dN;
 	Mat_t J;
@@ -127,7 +128,7 @@ inline void EquilibElem::AddVolForces()
 		_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
 		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian (dN, J);
-		fvol += -N*_gam*det(J)*_ge->IPs[i].w;
+		fvol += -N*gam*det(J)*_ge->IPs[i].w;
 	}
 
 	// Sum up contribution to external forces vector
@@ -231,28 +232,6 @@ inline double EquilibElem::Val(Str_t Name) const
 	return sum/_ge->NIPs;
 }
 
-inline void EquilibElem::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
-{
-	// Check _ge->NDim
-	if (_ge->NDim<1)             throw new Fatal("EquilibElem::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (_ge->CheckConn()==false) throw new Fatal("EquilibElem::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
-
-	// If pointers to model was not already defined => No model was allocated
-	if (_mdl.Size()==0)
-	{
-		_mdl.Resize(_ge->NIPs);
-		for (size_t i=0; i<_ge->NIPs; ++i)
-		{
-			_mdl[i] = static_cast<EquilibModel*>(AllocModel(ModelName));
-			_mdl[i]->SetGeom (_gi);
-			_mdl[i]->SetPrms (Prms);
-			_mdl[i]->SetInis (Inis);
-		}
-		if (IsActive) _initial_state ();
-	}
-	else throw new Fatal("EquilibElem::SetModel: Feature not implemented.");
-}
-
 inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
@@ -337,7 +316,8 @@ inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t>
 
 inline bool EquilibElem::CheckModel() const
 {
-	if (_mdl.Size()!=_ge->NIPs) return false;
+	if (_prms.Size()<1)                                   return false;
+	if (_mdl.Size()!=_ge->NIPs)                           return false;
 	for (size_t i=0; i<_ge->NIPs; ++i) if (_mdl[i]==NULL) return false;
 	return true;
 }
@@ -345,8 +325,12 @@ inline bool EquilibElem::CheckModel() const
 
 /* private */
 
-inline void EquilibElem::_initialize()
+inline void EquilibElem::_initialize(Str_t Model)
 {
+	// Check
+	if (_ge->NDim<1) throw new Fatal("EquilibElem::_initialize: The space dimension (SetDim) must be set before calling this method");
+
+	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
 	if (_gi==0)  // 3D
 	{
 		_nd = ND_EQUILIB_3D;
@@ -372,6 +356,26 @@ inline void EquilibElem::_initialize()
 		LB  = LB_PSTRESS;
 	}
 	else throw new Fatal("EquilibElem::_initialize: GeometryIndex _gi==%d is invalid",_gi);
+
+	// Model and parameters
+	_mdl.Resize (_ge->NIPs);  _mdl.SetValues(NULL);
+	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i] = static_cast<EquilibModel*>(AllocModel(Model));
+	_prms.Resize (_mdl[0]->NPrms());
+	PRMS = _mdl[0]->GetPrmNames();
+
+	// Properties
+	_props.Resize (1); // just "gam"
+	PROP = EQUILIB_PROP;
+}
+
+inline void EquilibElem::_init_model(Str_t Inis)
+{
+	// Set model initial state
+	if (_mdl.Size()!=_ge->NIPs)  throw new Fatal("EquilibElem::_init_state: Array with pointers to model was not properly initialized");
+	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i]->Initialize (_gi, &_prms, Inis);
+
+	// Initialize internal state
+	if (IsActive) _init_internal_state();
 }
 
 inline void EquilibElem::_excavate()
@@ -390,6 +394,8 @@ inline void EquilibElem::_excavate()
 	// Calculate internal forces for element on boundary
 	if (on_boundary)
 	{
+		if (_props.Size()!=1) throw new Fatal("EquilibElem::_excavate: Array of properties must be set with gam==20, for example");
+		double gam = _props[0];
 		Vec_t F(_ge->NDim*_ge->NNodes);  F.SetValues(0.0);
 		Vec_t S(_ge->NDim*_ge->NNodes);  S.SetValues(0.0);
 		Vec_t N;      // Shape functions
@@ -411,7 +417,7 @@ inline void EquilibElem::_excavate()
 			_mdl[i]->Sig (sig);
 
 			// Calculate internal force vector
-			F += trn(B)*sig*det(J)*_ge->IPs[i].w + S*_gam*det(J)*_ge->IPs[i].w;
+			F += trn(B)*sig*det(J)*_ge->IPs[i].w + S*gam*det(J)*_ge->IPs[i].w;
 		}
 
 		// Add to boundary values of node if nSharedBy()>0
@@ -492,7 +498,72 @@ inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) co
 	}
 }
 
-inline void EquilibElem::_initial_state()
+inline void EquilibElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
+{
+	// Map of positions from Me to Global
+	RMap   .Resize(_nd*_ge->NNodes);
+	RUPresc.Resize(_nd*_ge->NNodes);
+	int p = 0; // position inside matrix
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	{
+		for (int j=0; j<_nd; ++j)
+		{
+			RMap    [p] = _ge->Conn[i]->DOFVar(UD[j]).EqID;
+			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[j]).IsEssenPresc;
+			p++;
+		}
+	}
+	CMap    = RMap;
+	CUPresc = RUPresc;
+}
+
+inline void EquilibElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, Array<Node*> const & FConn)
+{
+	// Key=="Q" => Normal traction boundary condition
+	if (strcmp(Key,"Q")==0)
+	{
+		// Check if the element is active
+		if (IsActive==false) return;
+
+		Mat_t values;  values.Resize (_ge->NFNodes, _ge->NDim);  values.SetValues(0.0);
+		Mat_t J;
+		Vec_t FN(_ge->NFNodes); // Face shape
+		Mat_t FNmat;            // Shape function matrix
+		Vec_t P;                // Vector perpendicular to the face
+		for (size_t i=0; i<_ge->NFIPs; i++)
+		{
+			_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
+			FNmat = trn(trn(FN)); // trick just to convert Vector FN to a col Matrix
+
+			// Calculate perpendicular vector
+			if (_ge->NDim==3)
+			{
+				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+				Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
+				Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
+				P.Resize(3);
+				P = V(1)*W(2) - V(2)*W(1),      // vectorial product
+					V(2)*W(0) - V(0)*W(2),
+					V(0)*W(1) - V(1)*W(0);
+			}
+			else
+			{
+				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+				P.Resize(2);
+				P = J(0,1), -J(0,0);
+			}
+			values += FaceValue*FNmat*trn(P)*_ge->FIPs[i].w;
+		}
+
+		// Set nodes Brys
+		for (size_t i=0; i<_ge->NFNodes; ++i)
+		for (size_t j=0; j<_ge->NDim;    ++j)
+			FConn[i]->Bry (FD[j], values(i,j));
+	}
+	else ProbElem::_dist_to_face_nodes (Key,FaceValue,FConn);
+}
+
+inline void EquilibElem::_init_internal_state()
 {
 	// Allocate (local/element) internal force vector
 	Vec_t f(_nd*_ge->NNodes);
@@ -518,70 +589,6 @@ inline void EquilibElem::_initial_state()
 		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_nd+j);
 }
 
-inline void EquilibElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
-{
-	// Map of positions from Me to Global
-	RMap   .Resize(_nd*_ge->NNodes);
-	RUPresc.Resize(_nd*_ge->NNodes);
-	int p = 0; // position inside matrix
-	for (size_t i=0; i<_ge->NNodes; ++i)
-	{
-		for (int j=0; j<_nd; ++j)
-		{
-			RMap    [p] = _ge->Conn[i]->DOFVar(UD[j]).EqID;
-			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[j]).IsEssenPresc;
-			p++;
-		}
-	}
-	CMap    = RMap;
-	CUPresc = RUPresc;
-}
-
-inline void EquilibElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, Array<Node*> const & FConn) const
-{
-	// Skip in case Key does NOT indicate normal loading
-	if (strcmp(Key,"Q")!=0) ProbElem::_dist_to_face_nodes (Key,FaceValue,FConn);
-
-	// Check if the element is active
-	if (IsActive==false) return;
-
-	// Key=="Q" => Normal traction boundary condition
-	Mat_t values;  values.Resize (_ge->NFNodes, _ge->NDim);  values.SetValues(0.0);
-	Mat_t J;
-	Vec_t FN(_ge->NFNodes); // Face shape
-	Mat_t FNmat;            // Shape function matrix
-	Vec_t P;                // Vector perpendicular to the face
-	for (size_t i=0; i<_ge->NFIPs; i++)
-	{
-		_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
-		FNmat = trn(trn(FN)); // trick just to convert Vector FN to a col Matrix
-
-		// Calculate perpendicular vector
-		if (_ge->NDim==3)
-		{
-			_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-			Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
-			Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
-			P.Resize(3);
-			P = V(1)*W(2) - V(2)*W(1),      // vectorial product
-				V(2)*W(0) - V(0)*W(2),
-				V(0)*W(1) - V(1)*W(0);
-		}
-		else
-		{
-			_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
-			P.Resize(2);
-			P = J(0,1), -J(0,0);
-		}
-		values += FaceValue*FNmat*trn(P)*_ge->FIPs[i].w;
-	}
-
-	// Set nodes Brys
-	for (size_t i=0; i<_ge->NFNodes; ++i)
-	for (size_t j=0; j<_ge->NDim;    ++j)
-		FConn[i]->Bry (FD[j], values(i,j));
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
@@ -590,7 +597,7 @@ inline void EquilibElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, 
 ProbElem * EquilibMaker() 
 { 
 	EquilibElem * Ptr = new EquilibElem;
-	Ptr->SetGeomIdx(0);
+	Ptr->__SetGeomIdx(0);
 	return Ptr; 
 }
 // Register element
@@ -603,7 +610,7 @@ int __Equilib_dummy_int  = EquilibRegister();
 ProbElem * PStrainMaker() 
 { 
 	EquilibElem * Ptr = new EquilibElem;
-	Ptr->SetGeomIdx(1);
+	Ptr->__SetGeomIdx(1);
 	return Ptr; 
 }
 // Register element
@@ -616,7 +623,7 @@ int __PStrain_dummy_int  = PStrainRegister();
 ProbElem * PStressMaker() 
 { 
 	EquilibElem * Ptr = new EquilibElem;
-	Ptr->SetGeomIdx(2);
+	Ptr->__SetGeomIdx(2);
 	return Ptr; 
 }
 // Register element

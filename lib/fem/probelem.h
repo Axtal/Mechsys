@@ -40,10 +40,15 @@ class ProbElem
 {
 public:
 	// Typedefs
-	typedef const char VarName_t[4];
+	typedef const char VarName_t[4]; ///< Variables names. Ex: "ux", "uy", "Sx", ...
+	typedef const char PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
+	typedef const char ProName_t[8]; ///< Properties names. Ex: "gam", "s", "cq", ...
 
 	// Constructor
-	ProbElem() : IsActive(true), _nd(-1), _nl(-1), _gam(0.0) {}
+	ProbElem() : IsActive(true), _nd(-1), _nl(-1), _gi(-1) {}
+
+	// Destructor
+	virtual ~ProbElem() {}
 
 	// Methods related to PROBLEM
 	virtual void    AddVolForces ()                                           {}
@@ -53,7 +58,6 @@ public:
 	virtual Str_t   ModelName    () const                                    =0;
 	virtual double  Val          (int iNod, Str_t Key) const                 =0;
 	virtual double  Val          (          Str_t Key) const                 =0;
-	virtual void    SetModel     (Str_t ModelName, Str_t Prms, Str_t Inis)   =0;
 	virtual void    EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
 	virtual void    Update       (double h, Vec_t const & dU, Vec_t & dFint) =0;
 	virtual void    Backup       ()                                          =0;
@@ -80,14 +84,14 @@ public:
 	                              Array<bool> & CUPresc) const                {}
 	virtual void    UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
 
+	/* Initialize the element. */
+	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Str_t Model, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct); ///< Initialize the element
+
 	// Methods
-	        void Initialize (GeomElem * GE, bool IsAct); ///< Initialize the element
-	virtual bool CheckModel () const =0;                 ///< Check constitutive model
+	virtual bool CheckModel () const =0; ///< Check constitutive model
 
 	// Methods related to PROBLEM implemented here
 	bool  IsEssen  (Str_t Key) const;
-	void  SetProps (Str_t Properties);
-	void  SetConn  (int iNod, FEM::Node * ptNode, int ID);
 	void  GetLbls  (Array<String> & Lbls) const;
 	void  EdgeBry  (Str_t Key, double Val, int iEdge);
 	void  FaceBry  (Str_t Key, double Val, int iFace);
@@ -96,17 +100,25 @@ public:
 	bool IsActive;
 	
 protected:
+	// Data (set in _initialize)
+	int         _nd;  ///< (set in _initialize) Number of DOFs
+	int         _nl;  ///< (set in _initialize) Number of labels == NL[_gi]
+	int         _gi;  ///< (set in _initialize) Geometry index: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
+	VarName_t * UD;   ///< (set in _initialize) Essential DOF names. Access: UD[iDOF]
+	VarName_t * FD;   ///< (set in _initialize) Natural   DOF names. Access: FD[iDOF]
+	VarName_t * LB;   ///< (set in _initialize) Additional lbls (exceed. those from UD/FD).  Access: LB[iLbl]
+	PrmName_t * PRMS; ///< (set in _initialize) Parameters names. Ex: "E", "nu", "lam", "kap", ...
+	ProName_t * PROP; ///< (set in _initialize) Properties names. Ex: "gam", "s", "cq", ...
+
 	// Data
-	int         _nd;  ///< Number of DOFs
-	int         _nl;  ///< Number of lbls == NL[_gi]
-	double      _gam; ///< Specific weight Ex.: [kN/m3]
-	GeomElem  * _ge;  ///< Geometry element
-	VarName_t * UD;   ///< Essential DOF names. Access: UD[iDOF]
-	VarName_t * FD;   ///< Natural   DOF names. Access: FD[iDOF]
-	VarName_t * LB;   ///< Additional lbls (exceed. those from UD/FD).  Access: LB[iLbl]
+	GeomElem      * _ge;    ///< Geometry element
+	double          _gam;   ///< Specific weight Ex.: [kN/m3]
+	Array<double>   _prms;  ///< Parameters
+	Array<double>   _props; ///< Properties
 
 	// Methods
-	virtual void _initialize         ()                                                     =0; ///< Initialize derived element
+	virtual void _initialize         (Str_t Model)                                          =0; ///< Initialize derived element. Set a pointer to Prms and return _nprms and _nprops
+	virtual void _init_model         (Str_t Inis)                                            {} ///< Initialize model for already set _prms and given, i.e., Sx=1.0, Sy=2.0, etc.
 	virtual void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn); ///< Distribute values from face/edges to nodes
 
 }; // class ProbElem
@@ -117,52 +129,74 @@ protected:
 
 /* public */
 
-inline void ProbElem::Initialize(GeomElem * GE, bool IsAct)
+inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CONN, Str_t Model, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
 {
+	// Data
 	_ge      = GE;
 	IsActive = IsAct;
-	_initialize ();
+
+	// Check GeomElement
+	if (_ge->NNodes<1)      throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with the number of nodes: maybe derived elemet did not set _ge->NNodes",ID);
+	if (_ge->Conn.Size()<1) throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with connectivity array: maybe derived elemet did not allocate _ge->Conn (connecitvity) array",ID);
+
+	// Initialize: _nd, _nl, _gi, UD, FD, LB, PRMS and PROP. Also resize: _prms, _props
+	_initialize (Model);
+
+	// Check variables
+	if (_nd<0 || _nl<0 || _prms.Size()<0 || _props.Size()<0) throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with nd=%d or nl=%d or nprms=%d or nprops=%d\n (nd=number of degrees of freedom, nl=number of additional labels, nprms=number of parameters, nprops=number of properties)",ID,_nd,_nl,_prms.Size(),_props.Size());
+
+	// Set connectivity, by linking the local node ID with the pointer to the connected node
+	for (size_t i=0; i<CONN.Size(); ++i)
+	{
+		_ge->Conn[i] = CONN[i];
+		if (IsActive)
+		{
+			// Add Degree of Freedom to a node (Essential, Natural)
+			for (int j=0; j<_nd; ++j) _ge->Conn[i]->AddDOF (UD[j], FD[j]);
+
+			// Set shared
+			_ge->Conn[i]->SetSharedBy (ID);
+		}
+	}
+
+	// Check connectivity
+	if (_ge->CheckConn()==false) throw new Fatal("EquilibElem::Initialize: Element # %d: Connectivity was not set properly",ID);
+
+	// Read parameters
+	LineParser lp(Prms);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions (names,values);
+	_prms.SetValues(-1);
+	for (size_t i=0; i<names.Size(); ++i)
+	for (size_t j=0; j<_prms.Size(); ++j)
+	{
+		if (names[i]==PRMS[j]) // found parameter
+		{
+			_prms[j] = values[i];
+			break;
+		}
+	}
+
+	// Initialize model
+	_init_model (Inis);
+
+	// Read properties
+	lp.Reset            (Props);
+	lp.BreakExpressions (names,values);
+	 _props.SetValues(0.0);
+	for (size_t i=0; i<names.Size();  ++i)
+	for (size_t j=0; j<_props.Size(); ++j)
+	{
+		if (names[i]==PROP[j]) _props[j] = values[i];
+		else throw new Fatal("ProbElem::Initialize: Element # %d: Property name < %s > is invalid",ID,names[i].CStr());
+	}
 }
 
 inline bool ProbElem::IsEssen(Str_t Name) const
 {
 	for (int i=0; i<_nd; ++i) if (strcmp(Name,UD[i])==0) return true;
 	return false;
-}
-
-inline void ProbElem::SetProps(Str_t Properties)
-{
-	/* "gam=20.0 */
-	LineParser lp(Properties);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		 if (names[i]=="gam") _gam = values[i]; 
-	}
-}
-
-inline void ProbElem::SetConn(int iNod, FEM::Node * ptNode, int ID)
-{
-	// Check
-	if (_ge->NNodes<1)      throw new Fatal("ProbElem::SetConn: There is a problem with the number of nodes: maybe derived elemet did not set _ge->NNodes");
-	if (_ge->Conn.Size()<1) throw new Fatal("ProbElem::SetConn: There is a problem with connectivity array: maybe derived elemet did not allocate Connecitvity array");
-	if (_nd<0 || _nl<0)     throw new Fatal("ProbElem::SetConn: There is a problem with _nd=%d or _nl=%d\n (_nd=number of degrees of freedom or _nl=number of additional labels)",_nd,_nl);
-
-	// Connectivity
-	_ge->Conn[iNod] = ptNode;
-
-	if (IsActive)
-	{
-		// Add Degree of Freedom to a node (Essential, Natural)
-		for (int i=0; i<_nd; ++i) _ge->Conn[iNod]->AddDOF (UD[i], FD[i]);
-
-		// Set shared
-		_ge->Conn[iNod]->SetSharedBy (ID);
-	}
 }
 
 inline void ProbElem::GetLbls(Array<String> & Lbls) const

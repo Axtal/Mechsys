@@ -39,6 +39,8 @@ using Util::SQ2;
 using LinAlg::Vector;
 using LinAlg::Matrix;
 
+typedef char const * Str_t;
+
 class EquilibModel : public Model
 {
 public:
@@ -49,14 +51,13 @@ public:
 	virtual ~EquilibModel () {}
 
 	// Methods
-	void SetGeom     (int Type) { _geom = Type; }                          ///< Geometry type: 3D=0, PStrain=1, PStress=2, Axis=3
 	void TgStiffness (Matrix<double> & Dmat) const;                        ///< Tangent stiffness tensor
 	int  StateUpdate (Vector<double> const & DEps, Vector<double> & DSig); ///< Update stress/strain state for given strain increment
 	void ClearStrain () { _eps=0.0,0.0,0.0, 0.0,0.0,0.0; _eps_bkp=_eps; }  ///< Clear strain
 
 	// Access methods
 	void   CalcDepVars () const;                        ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
-	double Val         (char const * Name) const;       ///< Return stress/strain components, internal values, or principal components of stress/strain
+	double Val         (Str_t Name) const;              ///< Return stress/strain components, internal values, or principal components of stress/strain
 	void   Sig         (Vector<double> & Stress) const; ///< Return stress tensor
 
 protected:
@@ -72,7 +73,7 @@ protected:
 
 	// Private methods that MUST be derived
 	virtual void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const =0; ///< Tangent or secant stiffness
-	virtual double _val   (char const * Name) const =0; ///< Return internal values
+	virtual double _val   (Str_t Name) const =0; ///< Return internal values
 
 private:
 	// Derived private methods
@@ -95,7 +96,7 @@ inline void EquilibModel::TgStiffness(Matrix<double> & Dmat) const
 	Tensor4        D;
 	Array<Tensor2> B;
 	_stiff (_deps,_sig,_eps,_ivs, D,B);
-	Tensor4ToMatrix (_geom,D, Dmat);
+	Tensor4ToMatrix (_gi,D, Dmat);
 }
 
 inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double> & DSig)
@@ -115,7 +116,7 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 	double   error;                // Estimated error
 
 	// Read input vector
-	VectorToTensor2 (_geom,DEps, _deps);
+	VectorToTensor2 (_gi,DEps, _deps);
 
 	// Solve
 	double T  = 0.0;
@@ -127,7 +128,7 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 		{
 			// Write output vector
 			Tensor2 dsig; dsig = _sig - sig_i;
-			Tensor2ToVector (_geom,dsig, DSig);
+			Tensor2ToVector (_gi,dsig, DSig);
 			return k;
 		}
 
@@ -190,7 +191,7 @@ inline void EquilibModel::CalcDepVars() const
 	Util::Sort (_epsp, 3); // E1,E2,E3 = _epsp[2], _epsp[1], _epsp[0]
 }
 
-inline double EquilibModel::Val(char const * Name) const
+inline double EquilibModel::Val(Str_t Name) const
 {
 	     if (strcmp(Name,"Sx" )==0)                          return _sig(0);
 	else if (strcmp(Name,"Sy" )==0)                          return _sig(1);
@@ -219,7 +220,7 @@ inline double EquilibModel::Val(char const * Name) const
 
 inline void EquilibModel::Sig(Vector<double> & Stress) const
 {
-	Tensor2ToVector(_geom, _sig, Stress);
+	Tensor2ToVector(_gi, _sig, Stress);
 }
 
 

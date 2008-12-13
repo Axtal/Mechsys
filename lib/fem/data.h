@@ -43,12 +43,13 @@
 namespace FEM
 {
 
+typedef char const * Str_t;
+
 // Tuples used when initializing nodes and elements by groups
-typedef Array< boost::tuple<double,double,double, char const *,double> > NBrys_T; // Node: x,y,z, key, val
-typedef Array< boost::tuple<                 int, char const *,double> > EBrys_T; // Edge:   tag, key, val
-typedef Array< boost::tuple<                 int, char const *,double> > FBrys_T; // Face:   tag, key, val
-typedef Array< boost::tuple<int, char const*, char const*, char const*, char const*,
-                            char const*, char const*, bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
+typedef Array< boost::tuple<double,double,double, Str_t,double> >           NBrys_T; // Node: x,y,z, key, val
+typedef Array< boost::tuple<                 int, Str_t,double> >           EBrys_T; // Edge:   tag, key, val
+typedef Array< boost::tuple<                 int, Str_t,double> >           FBrys_T; // Face:   tag, key, val
+typedef Array< boost::tuple<int,Str_t,Str_t,Str_t,Str_t,Str_t,Str_t,bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
 
 /* Dataetry */
 class Data
@@ -74,21 +75,18 @@ public:
 	void      SetNNodes (size_t NNodes);                                         ///< Set the number of nodes
 	void      SetNElems (size_t NElems);                                         ///< Set the number of elements
 	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0, int Tag=0); ///< Set a node
-	Element * SetElem   (size_t i, char const * GeomT, char const * ProbT, bool IsActive, int Tag);   ///< Set an element
-
-	// Add methods
-	size_t PushNode (Node * N)    { _nodes.Push(N); return _nodes.Size()-1; } ///< Push back a new node
-	size_t PushElem (Element * E) { _elems.Push(E); return _elems.Size()-1; } ///< Push back a new element
-	size_t PushNode (double X, double Y, double Z=0.0, int Tag=0);            ///< Push back a new node
-	size_t PushElem (int Tag,                                                 ///< The tag of new element
-	                 char const * GeomT,                                      ///< Geometry Element type. Ex: Tri3
-	                 char const * ProbT,                                      ///< Problem  Element type. Ex: PStrain
-	                 char const * Model,                                      ///< Constitutive model. Ex: LinElastic
-	                 char const * Prms,                                       ///< Model parameters. Ex.: E=200 nu=0.2
-	                 char const * Inis,                                       ///< Initial state. Ex: Sx=0.0
-	                 char const * Props,                                      ///< Element properties. Ex: gam=20
-	                 bool IsActive,                                           ///< Active/Inactive?
-	                 Array<int> const & Connectivity);                        ///< Push back a new element
+	Element * SetElem   (size_t               i,                                 ///< The ID(index) of the element
+	                     int                  Tag,                               ///< The tag of new element
+	                     Array<Node*> const & Conn,                              ///< Connectivity
+	                     Str_t                GeomT,                             ///< Geometry Element type. Ex: Tri3
+	                     Str_t                ProbT,                             ///< Problem  Element type. Ex: PStrain
+	                     Str_t                Model,                             ///< Constitutive model. Ex: LinElastic
+	                     Str_t                Prms,                              ///< Model parameters. Ex.: E=200 nu=0.2
+	                     Str_t                Inis,                              ///< Initial state. Ex: Sx=0.0
+	                     Str_t                Props,                             ///< Element properties. Ex: gam=20
+	                     bool                 IsAct);                            ///< Active/Inactive?
+	Node    * PushNode  (double X, double Y, double Z, int Tag) { _nodes.Push(new Node);  return SetNode(_nodes.Size()-1,X,Y,Z,Tag); }
+	Element * PushElem  (int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Str_t Model, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct) { _elems.Push(new Element);  return SetElem(_elems.Size()-1,Tag,Conn,GeomT,ProbT,Model,Prms,Inis,Props,IsAct); }
 
 	// Specific methods
 	void AddVolForces () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
@@ -137,25 +135,14 @@ public:
 	void PyAddLinElems   (BPy::dict const & Edges,          ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
 	                      BPy::list const & EAtts);         ///< Elements attributes
 
-	// Set methods
-	Node   & PySetNode2D (size_t i, double X, double Y)                       { return (*SetNode(i,X,Y));   }
-	Node   & PySetNode3D (size_t i, double X, double Y, double Z)             { return (*SetNode(i,X,Y,Z)); }
-	PyElem   PySetElem   (size_t i, BPy::str const & GeomT, BPy::str const & ProbT, bool Act, int Tag) { return PyElem(SetElem(i,BPy::extract<char const *>(GeomT)(),BPy::extract<char const *>(ProbT)(),Act,Tag)); }
-
-	// Add methods
-	size_t PyPushNode1 (double X, double Y)                    { return PushNode (X,Y);       }
-	size_t PyPushNode2 (double X, double Y, double Z)          { return PushNode (X,Y,Z);     }
-	size_t PyPushNode3 (double X, double Y, double Z, int Tag) { return PushNode (X,Y,Z,Tag); }
-	size_t PyPushElem  (int Tag, BPy::str const & GeomT, BPy::str const & ProbT, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity);
-
 	// Access methods
-	Node const & PyNod          (size_t i)                     { return (*Nod(i));       }
-	PyElem       PyEle          (size_t i)                     { return PyElem(Ele(i));  }
-	size_t       PyGetNode1     (double X, double Y)           { return GetNode  (X,Y);  }
-	size_t       PyGetNode2     (double X, double Y, double Z) { return GetNode  (X,Y,Z);}
-	void         PyElemsWithTag (int Tag, BPy::list & Elems);
-	void         PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
-	void         PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
+	Node    const & PyNod          (size_t i)                     { return (*Nod(i));       }
+	Element const & PyEle          (size_t i)                     { return (*Ele(i));       }
+	size_t          PyGetNode1     (double X, double Y)           { return GetNode  (X,Y);  }
+	size_t          PyGetNode2     (double X, double Y, double Z) { return GetNode  (X,Y,Z);}
+	void            PyElemsWithTag (int Tag, BPy::list & Elems);
+	void            PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
+	void            PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -174,7 +161,7 @@ private:
 }; // class Data
 
 // Forward declaration of a method in embedded.h
-void AddReinf (double x1, double y1, double z1, double x2, double y2, double z2, char const * Prms, bool IsActive, int Tag, Data * G);
+void AddReinf (double x1, double y1, double z1, double x2, double y2, double z2, Str_t Prms, bool IsAct, int Tag, Data * G);
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -187,9 +174,6 @@ inline Data::~Data()
 	for (size_t i=0; i<_nodes.Size(); ++i) if (_nodes[i]!=NULL) delete _nodes[i];
 	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
 }
-
-
-// Set by groups methods
 
 inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAtts)
 {
@@ -275,22 +259,27 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		bool found = false;
 		for (size_t j=0; j<ElemsAtts->Size(); ++j)
 		{
-			if (M->ElemTag(i)==(*ElemsAtts)[j].get<0>())
+			int tag = (*ElemsAtts)[j].get<0>();
+			if (M->ElemTag(i)==tag)
 			{
+				// Extract attributes: 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
+				Str_t geomt = (*ElemsAtts)[j].get<1>();
+				Str_t probt = (*ElemsAtts)[j].get<2>();
+				Str_t model = (*ElemsAtts)[j].get<3>();
+				Str_t prms  = (*ElemsAtts)[j].get<4>();
+				Str_t inis  = (*ElemsAtts)[j].get<5>();
+				Str_t props = (*ElemsAtts)[j].get<6>();
+				bool  act   = (*ElemsAtts)[j].get<7>();
+
+				// Connectivity
+				Array<Node*> conn(M->ElemNVerts(i));
+				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = this->Nod(M->ElemCon(i,k));
+
 				// New finite element
 				found = true;
-				FEM::Element * fe = this->SetElem (i, (*ElemsAtts)[j].get<1>(), (*ElemsAtts)[j].get<2>(), (*ElemsAtts)[j].get<7>(), M->ElemTag(i));
+				this->SetElem (i, tag, conn, geomt, probt, model, prms, inis, props, act);
 
-				// Set connectivity
-				if (M->ElemNVerts(i)!=fe->NNodes()) throw new Fatal("functions.h::SetNodesElems:: The number of vertices (%d) of mesh object must be compatible with the number of nodes (%d) of the element (%s)",M->ElemNVerts(i),fe->NNodes(),fe->Type());
-				for (size_t k=0; k<M->ElemNVerts(i); ++k)
-					fe->SetConn (k, this->Nod(M->ElemCon(i,k)));
-
-				// Set parameters and initial values
-				fe->SetModel ((*ElemsAtts)[j].get<3>(), (*ElemsAtts)[j].get<4>(), (*ElemsAtts)[j].get<5>());
-
-				// Set properties
-				fe->SetProps ((*ElemsAtts)[j].get<6>());
+				// Next element
 				break;
 			}
 		}
@@ -307,18 +296,24 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		size_t local_edge_id = beams[i].get<2>();
 		int    beam_tag      = beams[i].get<3>();
 
+		// Extract attributes: 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
+		Str_t geomt = (*ElemsAtts)[eatt_id].get<1>();
+		Str_t probt = (*ElemsAtts)[eatt_id].get<2>();
+		Str_t model = (*ElemsAtts)[eatt_id].get<3>();
+		Str_t prms  = (*ElemsAtts)[eatt_id].get<4>();
+		Str_t inis  = (*ElemsAtts)[eatt_id].get<5>();
+		Str_t props = (*ElemsAtts)[eatt_id].get<6>();
+		bool  act   = (*ElemsAtts)[eatt_id].get<7>();
+
+		// Connectivity
+		Array<Node*> conn(2);
+		conn[0] = this->Nod(M->EdgeToLef(elem_id, local_edge_id));
+		conn[1] = this->Nod(M->EdgeToRig(elem_id, local_edge_id));
+
 		// New finite element
-		FEM::Element * fe = this->SetElem (ie, "", (*ElemsAtts)[eatt_id].get<2>(), (*ElemsAtts)[eatt_id].get<7>(), beam_tag);
+		FEM::Element * fe = this->SetElem (ie, beam_tag, conn, geomt, probt, model, prms, inis, props, act);
 
-		// Set connectivity
-		fe->SetConn (0, this->Nod(M->EdgeToLef(elem_id, local_edge_id)));
-		fe->SetConn (1, this->Nod(M->EdgeToRig(elem_id, local_edge_id)));
-
-		// Set parameters and initial values
-		fe->SetModel ((*ElemsAtts)[eatt_id].get<3>(), (*ElemsAtts)[eatt_id].get<4>(), (*ElemsAtts)[eatt_id].get<5>());
-
-		// Set properties
-		fe->SetProps ((*ElemsAtts)[eatt_id].get<6>());
+		// Next element
 		ie++;
 
 		// Set beam
@@ -418,9 +413,6 @@ inline void Data::SetBrys(Mesh::Generic const * M, NBrys_T const * NodesBrys, EB
 	}
 }
 
-
-// Set methods
-
 inline void Data::SetNNodes(size_t NNodes)
 {
 	for (size_t i=0; i<_nodes.Size(); ++i) if (_nodes[i]!=NULL) delete _nodes[i];
@@ -442,10 +434,15 @@ inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 	return _nodes[i];
 }
 
-inline Element * Data::SetElem(size_t i, char const * GeomT, char const * ProbT, bool IsActive, int Tag)
+inline Element * Data::SetElem(size_t i, int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Str_t Model, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
 {
+	// New element
 	if (_elems[i]==NULL) _elems[i] = new Element;
-	_elems[i]->Initialize (GeomT, ProbT, /*ID*/i, Tag, _dim, IsActive);
+
+	// Initialize
+	_elems[i]->Initialize (/*ID*/i, Tag, _dim, Conn, GeomT, ProbT, Model, Prms, Inis, Props, IsAct);
+
+	// Set array with elements with tags
 	if (Tag!=0)
 	{
 		if (_elem_tag_idx.count(Tag)==0) // tag not set
@@ -458,41 +455,6 @@ inline Element * Data::SetElem(size_t i, char const * GeomT, char const * ProbT,
 	}
 	return _elems[i];
 }
-
-
-// Add methods
-
-inline size_t Data::PushNode(double X, double Y, double Z, int Tag)  
-{
-	// Allocate new node
-	Node * new_node = new Node;
-	_nodes.Push (new_node);
-	size_t ID = _nodes.Size()-1;
-	new_node->Initialize (ID, X,Y,Z, Tag);
-	return ID;
-}
-
-inline size_t Data::PushElem(int Tag, char const * GeomT, char const * ProbT, char const * Model, char const * Prms, char const * Inis, char const * Props, bool IsActive, Array<int> const & Connectivity )
-{
-	// Alocate new element
-	Element * new_elem = new Element;
-	_elems.Push (new_elem);
-	size_t ID = _elems.Size()-1;
-	new_elem->Initialize (GeomT, ProbT, ID, Tag, _dim, IsActive);
-
-	// Connector (EmbSpring) connectivities
-	if (new_elem->NNodes()!=Connectivity.Size()) throw new Fatal("Data::PushElem: The number of nodes in Connectivity does not match. (Element ID %d)", ID);
-	for (size_t i=0; i<new_elem->NNodes(); i++)
-		new_elem->SetConn (i, _nodes[Connectivity[i]]);
-
-	// Set the model 
-	new_elem->SetModel(Model, Prms, Inis);
-	new_elem->SetProps(Props);
-	return ID;
-}
-
-
-// Specific methods
 
 inline void Data::ClearDisp()
 {
@@ -510,9 +472,6 @@ inline void Data::Deactivate(int ElemTag)
 	Array<Element*> & elems = ElemsWithTag (ElemTag);
 	for (size_t i=0; i<elems.Size(); ++i) elems[i]->SetActive (false);
 }
-
-
-// Access methods
 
 inline bool Data::Check()
 {
@@ -609,11 +568,11 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 		{
 			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
 			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
-			                             BPy::extract<char const*>(lst[1])(),
-			                             BPy::extract<char const*>(lst[2])(),
-			                             BPy::extract<char const*>(lst[3])(),
-			                             BPy::extract<char const*>(lst[4])(),
-			                             BPy::extract<char const*>(lst[5])(), 
+			                             BPy::extract<Str_t>(lst[1])(),
+			                             BPy::extract<Str_t>(lst[2])(),
+			                             BPy::extract<Str_t>(lst[3])(),
+			                             BPy::extract<Str_t>(lst[4])(),
+			                             BPy::extract<Str_t>(lst[5])(), 
 			                             BPy::extract<bool>       (lst[6])());
 		}
 		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
@@ -650,7 +609,7 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 			(*nbrys)[i] = boost::make_tuple(BPy::extract<double     >(lst[0])(),
 			                                BPy::extract<double     >(lst[1])(),
 			                                BPy::extract<double     >(lst[2])(),
-			                                BPy::extract<char const*>(lst[3])(),
+			                                BPy::extract<Str_t>(lst[3])(),
 			                                BPy::extract<double     >(lst[4])());
 		}
 		else throw new Fatal("PySetData: Each sublist in NodesBrys must have 5 items: x,y,z, key, val\n\tExample: NodesBrys = [[1.0, 0.0, 0.0, 'ux', 0.0]]");
@@ -666,7 +625,7 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 		{
 			BPy::list lst = BPy::extract<BPy::list>(EdgesBrys[i])();
 			(*ebrys)[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
-			                                BPy::extract<char const*>(lst[1])(),
+			                                BPy::extract<Str_t>(lst[1])(),
 			                                BPy::extract<double     >(lst[2])());
 		}
 		else throw new Fatal("PySetData: Each sublist in EdgesBrys must have 3 items: tag, key, val\n\tExample: EdgesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
@@ -682,7 +641,7 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 		{
 			BPy::list lst = BPy::extract<BPy::list>(FacesBrys[i])();
 			(*fbrys)[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
-			                                BPy::extract<char const*>(lst[1])(),
+			                                BPy::extract<Str_t>(lst[1])(),
 			                                BPy::extract<double     >(lst[2])());
 		}
 		else throw new Fatal("PySetData: Each sublist in FacesBrys must have 3 items: tag, key, val\n\tExample: FacesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
@@ -757,7 +716,7 @@ inline void Data::PyAddReinfs(BPy::dict const & Edges, BPy::list const & EAtts)
 		int idx_eatt = iter->second;
 
 		// Add reinforcement to FE geometry
-		char const * prms = BPy::extract<char const *>(EAtts[idx_eatt][3])();
+		Str_t prms = BPy::extract<Str_t>(EAtts[idx_eatt][3])();
 		bool         act  = BPy::extract<bool>        (EAtts[idx_eatt][6])();
 		FEM::AddReinf (x0,y0,z0, x1,y1,z1, prms, act, tag, this);
 	}
@@ -800,30 +759,30 @@ inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 		int idx_eatt = iter->second;
 
 		// Add linear element to FE geometry
-		char const * type  = BPy::extract<char const *>(EAtts[idx_eatt][1])();
-		char const * mdl   = BPy::extract<char const *>(EAtts[idx_eatt][2])();
-		char const * prms  = BPy::extract<char const *>(EAtts[idx_eatt][3])();
-		char const * inis  = BPy::extract<char const *>(EAtts[idx_eatt][4])();
-		char const * props = BPy::extract<char const *>(EAtts[idx_eatt][5])();
+		Str_t type  = BPy::extract<Str_t>(EAtts[idx_eatt][1])();
+		Str_t mdl   = BPy::extract<Str_t>(EAtts[idx_eatt][2])();
+		Str_t prms  = BPy::extract<Str_t>(EAtts[idx_eatt][3])();
+		Str_t inis  = BPy::extract<Str_t>(EAtts[idx_eatt][4])();
+		Str_t props = BPy::extract<Str_t>(EAtts[idx_eatt][5])();
 		bool         act   = BPy::extract<bool>        (EAtts[idx_eatt][6])();
 		PushElem (tag, type, mdl, prms, inis, props, act, conn);
 	}
 }
 
-inline size_t Data::PyPushElem(int Tag, BPy::str const & GeomT, BPy::str const & ProbT, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsActive, BPy::list const & Connectivity)
+inline size_t Data::PyPushElem(int Tag, BPy::str const & GeomT, BPy::str const & ProbT, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsAct, BPy::list const & Conn)
 {
-	size_t nnodes = BPy::len(Connectivity);
-	if (nnodes<2) throw new Fatal("Data::PyPushElem: Number of nodes in the Connectivity list must be greater than 1");
+	size_t nnodes = BPy::len(Conn);
+	if (nnodes<2) throw new Fatal("Data::PyPushElem: Number of nodes in the Conn list must be greater than 1");
 	Array<int> conn(nnodes);
-	for (size_t i=0; i<nnodes; ++i) conn[i] = BPy::extract<int>(Connectivity[i])();
+	for (size_t i=0; i<nnodes; ++i) conn[i] = BPy::extract<int>(Conn[i])();
 	return PushElem(Tag,
-	                BPy::extract<char const *>(GeomT)(),
-	                BPy::extract<char const *>(ProbT)(),
-	                BPy::extract<char const *>(Model)(),
-	                BPy::extract<char const *>(Prms)(),
-	                BPy::extract<char const *>(Inis)(),
-	                BPy::extract<char const *>(Props)(),
-	                IsActive, conn);
+	                BPy::extract<Str_t>(GeomT)(),
+	                BPy::extract<Str_t>(ProbT)(),
+	                BPy::extract<Str_t>(Model)(),
+	                BPy::extract<Str_t>(Prms)(),
+	                BPy::extract<Str_t>(Inis)(),
+	                BPy::extract<Str_t>(Props)(),
+	                IsAct, conn);
 }
 
 inline void Data::PyElemsWithTag(int Tag, BPy::list & Elems)

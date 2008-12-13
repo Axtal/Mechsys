@@ -26,16 +26,21 @@
 #include "util/util.h"
 #include "util/lineparser.h"
 
+typedef char const * Str_t;
+
+const char LINELASTIC_PN[2][8] = {"E", "nu"};
+
 class LinElastic : public EquilibModel
 {
 public:
 	// Destructor
 	virtual ~LinElastic () {}
 
-	// Derived Methods
-	void         SetPrms (char const * Prms);
-	void         SetInis (char const * Inis);
-	char const * Name    () const { return "LinElastic"; }
+	// Derived methods
+	Str_t       Name        () const { return "LinElastic"; }
+	size_t      NPrms       () const { return 2; }
+	PrmName_t * GetPrmNames () const { return LINELASTIC_PN; }
+	void        Initialize  (int GeomIdx, Array<double> const * Prms, Str_t Inis);
 
 private:
 	// Data
@@ -43,7 +48,7 @@ private:
 
 	// Private methods
 	void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const; ///< Tangent or secant stiffness
-	double _val   (char const * Name) const { throw new Fatal("LinElastic::_val The Name==%s is invalid",Name); }                                ///< Return internal values
+	double _val   (Str_t Name) const { throw new Fatal("LinElastic::_val The Name==%s is invalid",Name); }                                       ///< Return internal values
 
 }; // class LinElastic
 
@@ -53,53 +58,38 @@ private:
 
 /* public */
 
-inline void LinElastic::SetPrms(char const * Prms)
+inline void LinElastic::Initialize(int GeomIdx, Array<double> const * Prms, Str_t Inis)
 {
-	if (_geom<0) throw new Fatal("LinElastic::SetPrms: Geometry type:\n\t[0==3D, 1==2D(plane-strain), 2==2D(plane-stress), 3==2D(axis-symmetric)] must be set via SetGeom before calling this method");
+	// Set geometry index
+	_gi = GeomIdx;
+	if (_gi<0) throw new Fatal("LinElastic::Initialize: Geometry type:\n\t[0==3D, 1==2D(plane-strain), 2==2D(plane-stress), 3==2D(axis-symmetric)] must be set via SetGeom before calling this method");
 
-	/* "E=20000.0 nu=0.2" */
-	LineParser lp(Prms);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Parse parameters
-	double E  = -1.0;
-	double nu = -1.0;
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		     if (names[i]=="E" ) E  = values[i];
-		else if (names[i]=="nu") nu = values[i];
-		else throw new Fatal("LinElastic::SetPrms: Parameter name==%s is invalid",names[i].CStr());
-	}
+	// Parameters
+	_prms = Prms;
+	double E  = (*_prms)[0];
+	double nu = (*_prms)[1];
 
 	// Check
-	if (E<=0.0)             throw new Fatal("LinElastic::SetPrms: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
-	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::SetPrms: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",nu);
+	if (E<=0.0)             throw new Fatal("LinElastic::Initialize: Young modulus (E) must be provided (and positive). E==%f is invalid",E);
+	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::Initialize: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",nu);
 
 	// Set stiffness
-	else
-	{
-		double c  = (_geom==2 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // (2)plane-stress != (plane-strain=3D)
-		double c1 = (_geom==2 ? c*1.0          : c*(1.0-nu)                ); // (2)plane-stress != (plane-strain=3D)
-		double c2 = (_geom==2 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // (2)plane-stress != (plane-strain=3D)
-		double c3 = c*nu;
-		_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-		      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-		      c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
-		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
-		      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
-	}
-}
+	double c  = (_gi==2 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // (2)plane-stress != (plane-strain=3D)
+	double c1 = (_gi==2 ? c*1.0          : c*(1.0-nu)                ); // (2)plane-stress != (plane-strain=3D)
+	double c2 = (_gi==2 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // (2)plane-stress != (plane-strain=3D)
+	double c3 = c*nu;
+	_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	      c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
+	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
+	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
+	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
 
-inline void LinElastic::SetInis(char const * Inis)
-{
-	/* "Sx=0.0 Sy=0.0 Sxy=0.0 ..." or "ZERO" */
+	// Initial values
 	LineParser lp(Inis);
 	Array<String> names;
 	Array<double> values;
-	lp.BreakExpressions(names,values);
+	lp.BreakExpressions (names,values);
 
 	// Parse input
 	_sig = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
@@ -113,7 +103,7 @@ inline void LinElastic::SetInis(char const * Inis)
 		else if (names[i]=="Sxy" || names[i]=="Syx") _sig(3) = values[i]*SQ2;
 		else if (names[i]=="Syz" || names[i]=="Szy") _sig(4) = values[i]*SQ2;
 		else if (names[i]=="Szx" || names[i]=="Sxz") _sig(5) = values[i]*SQ2;
-		else throw new Fatal("LinElastic::SetInis: '%s' component of stress is invalid",names[i].CStr());
+		else throw new Fatal("LinElastic::Initialize: '%s' component of stress is invalid",names[i].CStr());
 	}
 }
 

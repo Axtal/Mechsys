@@ -24,14 +24,17 @@
 #include "util/array.h"
 #include "util/util.h"
 
+typedef char const * Str_t;
+
 class Model
 {
 public:
 	// Typedefs
-	typedef Array<double> IntVals; ///< Internal values (specific volume, yield surface size, etc.)
+	typedef const char    PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
+	typedef Array<double> IntVals;      ///< Internal values (specific volume, yield surface size, etc.)
 
 	// Constructor
-	Model () : _geom(-1) { STOL().dTini().mMin().mMax().maxSS(); }
+	Model () : _gi(-1), _prms(NULL) { STOL().dTini().mMin().mMax().maxSS(); }
 
 	// Destructor
 	virtual ~Model () {}
@@ -48,19 +51,18 @@ public:
 	void RestoreState () { _ivs=_ivs_bkp; _restore_state(); } ///< Restore internal state
 
 	// Methods that MUST be derived
-	virtual void SetGeom (int GeomType)      =0; ///< Set geometry type
-	virtual void SetPrms (char const * Prms) =0; ///< Set parameters
-	virtual void SetInis (char const * Inis) =0; ///< Set initial values
-
-	// Access methods that MUST be derived
-	virtual double       Val  (char const * Name) const =0; ///< Value: Sx, Sy, Ex, Ey, Wp, z0, etc.
-	virtual char const * Name ()                  const =0; ///< Return the name of the constitutive model
+	virtual Str_t       Name        () const                                              =0; ///< Model name
+	virtual size_t      NPrms       () const                                              =0; ///< Return the number of parameters
+	virtual PrmName_t * GetPrmNames () const                                              =0; ///< Get array with parameter names
+	virtual void        Initialize  (int GeomIdx, Array<double> const * Prms, Str_t Inis) =0; ///< Initialize model
+	virtual double      Val         (Str_t Name) const                                    =0; ///< Value: Sx, Sy, Ex, Ey, Wp, z0, etc.
 
 protected:
 	// Data
-	int     _geom;    ///< Geometry type: 3D=0, PStrain=1, PStress=2, Axis=3
-	IntVals _ivs;     ///< Internal values
-	IntVals _ivs_bkp; ///< Backup internal values
+	int                   _gi;      ///< Geometry index: Equilib: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
+	Array<double> const * _prms;    ///< Parameters
+	IntVals               _ivs;     ///< Internal values
+	IntVals               _ivs_bkp; ///< Backup internal values
 
 	// Constants for the stress update algorithm
 	double _STOL;
@@ -89,7 +91,7 @@ typedef std::map<String, ModelMakerPtr, std::less<String> > ModelFactory_t;
 ModelFactory_t ModelFactory;
 
 // Allocate a new Models according to a string giving the name of the Model
-Model * AllocModel(char const * Name)
+Model * AllocModel(Str_t Name)
 {
 	// Check if there is Name model implemented
 	ModelMakerPtr ptr=NULL;

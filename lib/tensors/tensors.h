@@ -102,7 +102,7 @@ inline void VectorToTensor2(int GeomType, LinAlg::Vector<double> const & V, Tens
 			T = V(0), V(1), 0.0, V(2),  0.0, 0.0;
 			return;
 		}
-		default: throw new Fatal("Tensors::Vector2Tensor2: GeomType==%d is invalid.",GeomType);
+		default: throw new Fatal("Tensors::VectorToTensor2: GeomType==%d is invalid.",GeomType);
 	}
 }
 
@@ -192,7 +192,7 @@ inline void Tensor4ToMatrix(int GeomType, Tensor4 const & T, LinAlg::Matrix<doub
 			    T(3,0), T(3,1), T(3,3);  // xy
 			return;
 		}
-		default: throw new Fatal("Tensors::Vector2Tensor2: GeomType==%d is invalid.",GeomType);
+		default: throw new Fatal("Tensors::Tensor4ToMatrix: GeomType==%d is invalid.",GeomType);
 	}
 }
 
