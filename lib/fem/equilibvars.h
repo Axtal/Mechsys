@@ -35,11 +35,11 @@ const size_t ND_BIOT_2D        = 3;
 const char   UD_BIOT_2D[ 3][4] = {"ux", "uy", "pwp"};
 const char   FD_BIOT_2D[ 3][4] = {"fx", "fy", "vol"};
 
-const size_t NL_BIOT_3D        = 26;
-const char   LB_BIOT_3D[26][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p", "q", "Ev", "Ed", "Vx", "Vy", "Vz", "H"};
+const size_t NL_BIOT_3D        = 20;
+const char   LB_BIOT_3D[20][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "p", "q", "Ev", "Ed", "Vx", "Vy", "Vz", "H"};
 
-const size_t NL_BIOT_2D        = 19;
-const char   LB_BIOT_2D[19][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "E1", "E2", "S1", "S2", "p", "q", "Ev", "Ed", "Vx", "Vy", "H"};
+const size_t NL_BIOT_2D        = 15;
+const char   LB_BIOT_2D[15][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "p", "q", "Ev", "Ed", "Vx", "Vy", "H"};
 
 // Equilib
 const size_t ND_EQUILIB_3D        = 3;
@@ -50,14 +50,14 @@ const size_t ND_EQUILIB_2D        = 2;
 const char   UD_EQUILIB_2D[ 2][4] = {"ux", "uy"};
 const char   FD_EQUILIB_2D[ 2][4] = {"fx", "fy"};
 
-const size_t NL_EQUILIB_3D        = 22;
-const char   LB_EQUILIB_3D[22][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "E1", "E2", "E3", "S1", "S2", "S3", "p", "q", "Ev", "Ed"};
+const size_t NL_EQUILIB_3D        = 16;
+const char   LB_EQUILIB_3D[16][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "p", "q", "Ev", "Ed"};
 
-const size_t NL_PSTRAIN        = 16;
-const char   LB_PSTRAIN[16][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "E1", "E2", "S1", "S2", "p", "q", "Ev", "Ed"};
+const size_t NL_PSTRAIN        = 12;
+const char   LB_PSTRAIN[12][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "p", "q", "Ev", "Ed"};
 
-const size_t NL_PSTRESS        = 10;
-const char   LB_PSTRESS[10][4] = {"Ex", "Ey", "Exy", "Sx", "Sy", "Sxy", "E1", "E2", "S1", "S2" };
+const size_t NL_PSTRESS        = 6;
+const char   LB_PSTRESS[6][4] = {"Ex", "Ey", "Exy", "Sx", "Sy", "Sxy"};
 
 // Beam
 const size_t ND_BEAM_3D       = 6;
@@ -83,6 +83,7 @@ const char   LB_ROD[3][4] = {"Ea", "Sa", "N"};
 
 
 const char EQUILIB_PROP[1][8] = {"gam"};
+const char BIOT_PROP   [2][8] = {"gam", "gw"};
 const char BEAM_PROP   [2][8] = {"gam", "cq"};
 
 

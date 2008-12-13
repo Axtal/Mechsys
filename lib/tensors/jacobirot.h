@@ -69,8 +69,8 @@ int JacobiRot(Tensors::Tensor2 const & T    , ///< In: Tensor2 (Mandel) correspo
 /** Jacobi Transformation of a Symmetric Matrix (given as a Tensor2).
  * \return the number of iterations
  */
-int JacobiRot(Tensors::Tensor2 const & T    , ///< In: Tensor2 (Mandel) corresponding to a the matrix (A) we seek for the eigenvalues (SYMMETRIC and square)
-			  double                   L[3]); ///< Out: Eigenvalues (array with 3 values)
+int JacobiRot(Tensors::Tensor2 const & T , ///< In: Tensor2 (Mandel) corresponding to a the matrix (A) we seek for the eigenvalues (SYMMETRIC and square)
+			  Tensors::Tensor1       & L); ///< Out: Eigenvalues (array with 3 values)
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -215,7 +215,7 @@ inline int JacobiRot(Tensors::Tensor2 const & T, double V0[3], double V1[3], dou
 
 }
 
-inline int JacobiRot(Tensors::Tensor2 const & T, double L[3])
+inline int JacobiRot(Tensors::Tensor2 const & T, Tensors::Tensor1 & L)
 {
 	const double maxIt  = 30;      // Max number of iterations
 	const double errTol = 1.0e-15; // Erro: Tolerance
@@ -232,10 +232,10 @@ inline int JacobiRot(Tensors::Tensor2 const & T, double L[3])
 	double sq2=sqrt(2.0); // Useful for the conversion: Tensor (Mandel) ==> matriz A
 	double sumUT;         // Sum of upper triangle of abs(A) that measures the error
 	int    it;            // Iteration number
-	double h;             // Difference L[i]-L[j]
+	double h;             // Difference L(i)-L(j)
 	
 	// Initialize eigenvalues which correnspond to the diagonal part of A
-	L[0]=T(0); L[1]=T(1); L[2]=T(2);
+	L(0)=T(0); L(1)=T(1); L(2)=T(2);
 
 	// Initialize Upper Triangle part of A matrix (array[3])
 	UT[0]=T(3)/sq2; UT[1]=T(4)/sq2; UT[2]=T(5)/sq2;
@@ -248,7 +248,7 @@ inline int JacobiRot(Tensors::Tensor2 const & T, double L[3])
 		if (sumUT<=errTol) return it;
 		
 		// i=0, j=1 ,r=2 (p=3)
-		h=L[0]-L[1];
+		h=L(0)-L(1);
 		if (fabs(h)<zero) t=1.0;
 		else
 		{
@@ -261,16 +261,16 @@ inline int JacobiRot(Tensors::Tensor2 const & T, double L[3])
 		cc = c*c;
 		ss = s*s;
 		// Zeroes term UT[0]
-		Temp  = cc*L[0] + 2.0*c*s*UT[0] + ss*L[1];
-		L[1]  = ss*L[0] - 2.0*c*s*UT[0] + cc*L[1];
-		L[0]  = Temp;
+		Temp  = cc*L(0) + 2.0*c*s*UT[0] + ss*L(1);
+		L(1)  = ss*L(0) - 2.0*c*s*UT[0] + cc*L(1);
+		L(0)  = Temp;
 		UT[0] = 0.0;
 		Temp  = c*UT[2] + s*UT[1];
 		UT[1] = c*UT[1] - s*UT[2];
 		UT[2] = Temp;
 		
 		// i=1, j=2 ,r=0 (p=4)
-		h = L[1]-L[2];
+		h = L(1)-L(2);
 		if (fabs(h)<zero) t=1.0;
 		else
 		{
@@ -283,16 +283,16 @@ inline int JacobiRot(Tensors::Tensor2 const & T, double L[3])
 		cc = c*c;
 		ss = s*s;
 		// Zeroes term UT[1]
-		Temp  = cc*L[1] + 2.0*c*s*UT[1] + ss*L[2];
-		L[2]  = ss*L[1] - 2.0*c*s*UT[1] + cc*L[2];
-		L[1]  = Temp;
+		Temp  = cc*L(1) + 2.0*c*s*UT[1] + ss*L(2);
+		L(2)  = ss*L(1) - 2.0*c*s*UT[1] + cc*L(2);
+		L(1)  = Temp;
 		UT[1] = 0.0;
 		Temp  = c*UT[0] + s*UT[2];
 		UT[2] = c*UT[2] - s*UT[0];
 		UT[0] = Temp;
 
 		// i=0, j=2 ,r=1 (p=5)
-		h = L[0]-L[2];
+		h = L(0)-L(2);
 		if (fabs(h)<zero) t=1.0;
 		else
 		{
@@ -305,9 +305,9 @@ inline int JacobiRot(Tensors::Tensor2 const & T, double L[3])
 		cc = c*c;
 		ss = s*s;
 		// Zeroes term UT[2]
-		Temp  = cc*L[0] + 2.0*c*s*UT[2] + ss*L[2];
-		L[2]  = ss*L[0] - 2.0*c*s*UT[2] + cc*L[2];
-		L[0]  = Temp;
+		Temp  = cc*L(0) + 2.0*c*s*UT[2] + ss*L(2);
+		L(2)  = ss*L(0) - 2.0*c*s*UT[2] + cc*L(2);
+		L(0)  = Temp;
 		UT[2] = 0.0;
 		Temp  = c*UT[0] + s*UT[1];
 		UT[1] = c*UT[1] - s*UT[0];

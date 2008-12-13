@@ -36,52 +36,56 @@ using Tensors::Tensor2ToVector;
 using Tensors::VectorToTensor2;
 using Tensors::Tensor4ToMatrix;
 using Util::SQ2;
-using LinAlg::Vector;
-using LinAlg::Matrix;
 
-typedef char const * Str_t;
+typedef LinAlg::Vector<double> Vec_t;
+typedef LinAlg::Matrix<double> Mat_t;
+typedef char const           * Str_t;
 
 class EquilibModel : public Model
 {
 public:
+	// Typedefs
+	typedef Array<double> IntVals; ///< Internal values (specific volume, yield surface size, etc.)
+
 	// Constructor
-	EquilibModel () { _sig=0.0; _eps=0.0; _deps=0.0; }
+	EquilibModel () { _deps = 0.0,0.0,0.0, 0.0,0.0,0.0; }
 
 	// Destructor
 	virtual ~EquilibModel () {}
 
-	// Methods
-	void TgStiffness (Matrix<double> & Dmat) const;                        ///< Tangent stiffness tensor
-	int  StateUpdate (Vector<double> const & DEps, Vector<double> & DSig); ///< Update stress/strain state for given strain increment
-	void ClearStrain () { _eps=0.0,0.0,0.0, 0.0,0.0,0.0; _eps_bkp=_eps; }  ///< Clear strain
+	/* Tangent stiffness. */
+	void TgStiffness (Tensor2 const & Sig,
+	                  Tensor2 const & Eps,
+	                  IntVals const & Ivs,
+	                  Mat_t         & Dmat) const;
 
-	// Access methods
-	void   CalcDepVars () const;                        ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
-	double Val         (Str_t Name) const;              ///< Return stress/strain components, internal values, or principal components of stress/strain
-	void   Sig         (Vector<double> & Stress) const; ///< Return stress tensor
+	/* State update. */
+	int StateUpdate (Vec_t   const & DEps,
+	                 Tensor2       & Sig,
+	                 Tensor2       & Eps,
+	                 IntVals       & Ivs,
+	                 Vec_t         & DSig);
 
 protected:
-	// Data
-	Tensor2        _sig;      ///< Stress (or axial force for linear elements)
-	Tensor2        _eps;      ///< Strain
-	Tensor2        _deps;     ///< Delta strain
-	Tensor2        _sig_bkp;  ///< Backup stress
-	Tensor2        _eps_bkp;  ///< Backup strain
-	Tensor2        _deps_bkp; ///< Backup delta strain
-	mutable double _sigp[3];  ///< Principal components of stress (mutable => CalcDepVars can change it)
-	mutable double _epsp[3];  ///< Principal components of strain (mutable => CalcDepVars can change it)
-
-	// Private methods that MUST be derived
-	virtual void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const =0; ///< Tangent or secant stiffness
-	virtual double _val   (Str_t Name) const =0; ///< Return internal values
+	/* Tangent or secant stiffness. */
+	virtual void _stiff (Tensor2 const  & DEps,
+	                     Tensor2 const  & Sig,
+	                     Tensor2 const  & Eps,
+	                     IntVals const  & Ivs,
+	                     Tensor4        & D,
+	                     Array<Tensor2> & B) const =0;
 
 private:
-	// Derived private methods
-	void _backup_state  () { _sig_bkp=_sig; _eps_bkp=_eps; _deps_bkp=_deps; } ///< Backup internal state (sig, eps, ivs; stress, strain, internal values)
-	void _restore_state () { _sig=_sig_bkp; _eps=_eps_bkp; _deps=_deps_bkp; } ///< Restore internal state (sig, eps, ivs; stress, strain, internal values)
+	// Data
+	Tensor2 _deps;
 
-	// Private methods
-	void _tg_incs (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor2 & DSig, IntVals & DIvs) const; ///< Tangent increments
+	/* Tangent increments. */
+	void _tg_incs (Tensor2 const & DEps,
+	               Tensor2 const & Sig,
+	               Tensor2 const & Eps,
+	               IntVals const & Ivs,
+	               Tensor2       & DSig,
+	               IntVals       & DIvs) const;
 
 }; // class EquilibModel
 
@@ -91,29 +95,29 @@ private:
 
 /* public */
 
-inline void EquilibModel::TgStiffness(Matrix<double> & Dmat) const
+inline void EquilibModel::TgStiffness(Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Mat_t & Dmat) const
 {
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiff (_deps,_sig,_eps,_ivs, D,B);
+	_stiff          (_deps,Sig,Eps,Ivs, D,B);
 	Tensor4ToMatrix (_gi,D, Dmat);
 }
 
-inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double> & DSig)
+inline int EquilibModel::StateUpdate(Vec_t const & DEps, Tensor2 & Sig, Tensor2 & Eps, IntVals & Ivs, Vec_t & DSig)
 {
 	// Auxiliar variables
-	Tensor2  sig_i; sig_i = _sig;  // Initial stress state
-	Tensor2  deps_T;               // Driver increment of strain
-	Tensor2  dsig_1;               // FE increment of stress
-	IntVals  divs_1(_ivs.Size());  // FE increment of internal values
-	Tensor2  eps_1;                // FE strain state
-	Tensor2  sig_1;                // FE stress state
-	IntVals  ivs_1(_ivs.Size());   // FE internal values
-	Tensor2  dsig_2;               // Intermediary increment of stress evaluated with a tangent computed at the FE state
-	IntVals  divs_2(_ivs.Size());  // Intermediary increment of internal velues evaluated with a tangent computed at the FE state
-	Tensor2  sig_ME;               // ME stress state
-	IntVals  ivs_ME(_ivs.Size());  // ME internal values
-	double   error;                // Estimated error
+	Tensor2  sig_i; sig_i = Sig;  // Initial stress state
+	Tensor2  deps_T;              // Driver increment of strain
+	Tensor2  dsig_1;              // FE increment of stress
+	IntVals  divs_1(Ivs.Size());  // FE increment of internal values
+	Tensor2  eps_1;               // FE strain state
+	Tensor2  sig_1;               // FE stress state
+	IntVals  ivs_1(Ivs.Size());   // FE internal values
+	Tensor2  dsig_2;              // Intermediary increment of stress evaluated with a tangent computed at the FE state
+	IntVals  divs_2(Ivs.Size());  // Intermediary increment of internal velues evaluated with a tangent computed at the FE state
+	Tensor2  sig_ME;              // ME stress state
+	IntVals  ivs_ME(Ivs.Size());  // ME internal values
+	double   error;               // Estimated error
 
 	// Read input vector
 	VectorToTensor2 (_gi,DEps, _deps);
@@ -127,7 +131,7 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 		if (T>=1.0)
 		{
 			// Write output vector
-			Tensor2 dsig; dsig = _sig - sig_i;
+			Tensor2 dsig; dsig = Sig - sig_i;
 			Tensor2ToVector (_gi,dsig, DSig);
 			return k;
 		}
@@ -136,23 +140,23 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 		deps_T = _deps*dT;
 
 		// FE increments (dsig_1 & divs_1)
-		_tg_incs (deps_T,_sig,_eps,_ivs, dsig_1,divs_1);
+		_tg_incs (deps_T,Sig,Eps,Ivs, dsig_1,divs_1);
 
 		// FE state
-		eps_1    = _eps    + deps_T;
-		sig_1    = _sig    + dsig_1;   for (size_t i=0; i<_ivs.Size(); ++i)
-		ivs_1[i] = _ivs[i] + divs_1[i];
+		eps_1    = Eps    + deps_T;
+		sig_1    = Sig    + dsig_1;   for (size_t i=0; i<Ivs.Size(); ++i)
+		ivs_1[i] = Ivs[i] + divs_1[i];
 
 		// Intermediary increments (dsig_2 & divs_2)
 		_tg_incs (deps_T,sig_1,eps_1,ivs_1, dsig_2,divs_2);
 
 		// ME state
-		sig_ME    = _sig    + 0.5*(dsig_1   +dsig_2   );  for (size_t i=0; i<_ivs.Size(); ++i)
-		ivs_ME[i] = _ivs[i] + 0.5*(divs_1[i]+divs_2[i]);
+		sig_ME    = Sig    + 0.5*(dsig_1   +dsig_2   );  for (size_t i=0; i<Ivs.Size(); ++i)
+		ivs_ME[i] = Ivs[i] + 0.5*(divs_1[i]+divs_2[i]);
 
 		// Local error estimate
 		error = Tensors::Norm(sig_ME-sig_1)/(1.0+Tensors::Norm(sig_ME));
-		for (size_t i=0; i<_ivs.Size(); ++i)
+		for (size_t i=0; i<Ivs.Size(); ++i)
 		{
 			double err = fabs(ivs_ME[i]-ivs_1[i])/(1.0+ivs_ME[i]);
 			if (err>error) error = err;
@@ -165,9 +169,9 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 		if (error<_STOL) // step accepted
 		{
 			T   += dT;
-			_eps = eps_1;
-			_sig = sig_ME;
-			_ivs = ivs_ME;
+			Eps = eps_1;
+			Sig = sig_ME;
+			Ivs = ivs_ME;
 			if (m>_mMax) m = _mMax;
 		}
 		else // step rejected
@@ -178,49 +182,6 @@ inline int EquilibModel::StateUpdate(Vector<double> const & DEps, Vector<double>
 		if (dT>1.0-T) dT = 1.0-T; // last step
 	}
 	throw new Fatal("EquilibModel::StateUpdate did not converge for %d steps",_maxSS);
-}
-
-inline void EquilibModel::CalcDepVars() const
-{
-	// Calculate principal values
-	Tensors::Eigenvals (_sig, _sigp);
-	Tensors::Eigenvals (_eps, _epsp);
-
-	// Sort (increasing)
-	Util::Sort (_sigp, 3); // S1,S2,S3 = _sigp[2], _sigp[1], _sigp[0]
-	Util::Sort (_epsp, 3); // E1,E2,E3 = _epsp[2], _epsp[1], _epsp[0]
-}
-
-inline double EquilibModel::Val(Str_t Name) const
-{
-	     if (strcmp(Name,"Sx" )==0)                          return _sig(0);
-	else if (strcmp(Name,"Sy" )==0)                          return _sig(1);
-	else if (strcmp(Name,"Sz" )==0)                          return _sig(2);
-	else if (strcmp(Name,"Sxy")==0 || strcmp(Name,"Syx")==0) return _sig(3)/SQ2;
-	else if (strcmp(Name,"Syz")==0 || strcmp(Name,"Szy")==0) return _sig(4)/SQ2;
-	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return _sig(5)/SQ2;
-	else if (strcmp(Name,"p"  )==0)                          return (_sig(0)+_sig(1)+_sig(2))/3.0;
-	else if (strcmp(Name,"q"  )==0)                          return sqrt(((_sig(0)-_sig(1))*(_sig(0)-_sig(1)) + (_sig(1)-_sig(2))*(_sig(1)-_sig(2)) + (_sig(2)-_sig(0))*(_sig(2)-_sig(0)) + 3.0*(_sig(3)*_sig(3) + _sig(4)*_sig(4) + _sig(5)*_sig(5)))/2.0);
-	else if (strcmp(Name,"S1" )==0)                          return _sigp[2];
-	else if (strcmp(Name,"S2" )==0)                          return _sigp[1];
-	else if (strcmp(Name,"S3" )==0)                          return _sigp[0];
-	else if (strcmp(Name,"Ex" )==0)                          return _eps(0);
-	else if (strcmp(Name,"Ey" )==0)                          return _eps(1);
-	else if (strcmp(Name,"Ez" )==0)                          return _eps(2);
-	else if (strcmp(Name,"Exy")==0 || strcmp(Name,"Eyx")==0) return _eps(3)/SQ2;
-	else if (strcmp(Name,"Eyz")==0 || strcmp(Name,"Ezy")==0) return _eps(4)/SQ2;
-	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return _eps(5)/SQ2;
-	else if (strcmp(Name,"Ev" )==0)                          return _eps(0)+_eps(1)+_eps(2); 
-	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_eps(0)-_eps(1))*(_eps(0)-_eps(1)) + (_eps(1)-_eps(2))*(_eps(1)-_eps(2)) + (_eps(2)-_eps(0))*(_eps(2)-_eps(0)) + 3.0*(_eps(3)*_eps(3) + _eps(4)*_eps(4) + _eps(5)*_eps(5))))/3.0;
-	else if (strcmp(Name,"E1" )==0)                          return _epsp[2];
-	else if (strcmp(Name,"E2" )==0)                          return _epsp[1];
-	else if (strcmp(Name,"E3" )==0)                          return _epsp[0];
-	else return _val(Name);
-}
-
-inline void EquilibModel::Sig(Vector<double> & Stress) const
-{
-	Tensor2ToVector(_gi, _sig, Stress);
 }
 
 
@@ -234,8 +195,8 @@ inline void EquilibModel::_tg_incs(Tensor2 const & DEps, Tensor2 const & Sig, Te
 	_stiff (DEps,Sig,Eps,Ivs, D,B);
 
 	// Increments
-	Tensors::Dot (D,DEps, DSig);      // DSig    = D:DEps
-	for (size_t i=0; i<_ivs.Size(); ++i) DIvs[i] = blitz::dot(B[i],DEps);
+	Tensors::Dot (D,DEps, DSig);     // DSig    = D:DEps
+	for (size_t i=0; i<Ivs.Size(); ++i) DIvs[i] = blitz::dot(B[i],DEps);
 }
 
 

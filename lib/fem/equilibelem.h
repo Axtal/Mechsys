@@ -48,9 +48,12 @@
 #include "util/util.h"
 #include "util/numstreams.h"
 #include "linalg/laexpr.h"
+#include "tensors/tensors.h"
 
 using Util::SQ2;
 using Util::_12_6;
+using Tensors::Tensor1;
+using Tensors::Tensor2;
 
 namespace FEM
 {
@@ -58,15 +61,19 @@ namespace FEM
 class EquilibElem : public ProbElem
 {
 public:
+	// Typedefs
+	typedef Array<double> IntVals; ///< Internal values (specific volume, yield surface size, etc.)
+
 	// Destructor
-	virtual ~EquilibElem () { for (size_t i=0; i<_mdl.Size(); ++i) delete _mdl[i]; }
+	virtual ~EquilibElem () {}
 
 	// Methods related to PROBLEM
+	int     InitCtes     (int nDim);
 	void    AddVolForces ();
 	void    ClearDisp    ();
 	void    SetActive    (bool Activate, int ID);
 	void    CalcDeps     () const;
-	Str_t   ModelName    () const { return (_mdl.Size()>0 ? _mdl[0]->Name() : "__no_model__"); }
+	Str_t   ModelName    () const { return _mdl->Name(); }
 	double  Val          (int iNod, Str_t Key) const;
 	double  Val          (          Str_t Key) const;
 	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
@@ -77,20 +84,23 @@ public:
 	void    CMatrix      (size_t Idx, Mat_t & M) const;
 	void    CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 
-	// Derived methods
-	virtual bool CheckModel () const;
+	// Methods
 
 	// Method used when filling ProbElemFactory
 	void __SetGeomIdx (int Idx) { _gi = Idx; }
 
 protected:
-	// Data
-	Array<EquilibModel*> _mdl; ///< Array of pointers to constitutive models
+	// Data at each Integration Point (IP)
+	Array<Tensor2> _sig;      ///< Stress (or axial force for linear elements)
+	Array<Tensor2> _eps;      ///< Strain
+	Array<IntVals> _ivs;      ///< Internal values
+	Array<Tensor2> _sig_bkp;  ///< Backup stress
+	Array<Tensor2> _eps_bkp;  ///< Backup strain
+	Array<IntVals> _ivs_bkp;  ///< Backup internal values
 
 	// Private methods that MAY be derived
-	virtual void _initialize (Str_t Model); ///< Initialize this element
-	virtual void _init_model (Str_t Inis);  ///< Initialize model
-	virtual void _excavate   ();            ///< Excavate element
+	virtual void _initialize (Str_t Inis); ///< Initialize this element
+	virtual void _excavate   ();           ///< Excavate element
 
 	// Private methods
 	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const;      ///< Calculate B matrix
@@ -107,6 +117,46 @@ private:
 
 
 /* public */
+
+inline int EquilibElem::InitCtes(int nDim)
+{
+	// Check
+	if (nDim<2 || nDim>3) throw new Fatal("EquilibElem::InitCtes: The space dimension must be 2 or 3. nDim==%d is invalid",nDim);
+
+	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
+	if (_gi==0)  // 3D
+	{
+		_nd = ND_EQUILIB_3D;
+		UD  = UD_EQUILIB_3D;
+		FD  = FD_EQUILIB_3D;
+		_nl = NL_EQUILIB_3D; 
+		LB  = LB_EQUILIB_3D;
+	}
+	else if (_gi==1)  // PlaneStrain
+	{
+		_nd = ND_EQUILIB_2D;
+		UD  = UD_EQUILIB_2D;
+		FD  = FD_EQUILIB_2D;
+		_nl = NL_PSTRAIN; 
+		LB  = LB_PSTRAIN;
+	}
+	else if (_gi==2)  // PlaneStress
+	{
+		_nd = ND_EQUILIB_2D;
+		UD  = UD_EQUILIB_2D;
+		FD  = FD_EQUILIB_2D;
+		_nl = NL_PSTRESS; 
+		LB  = LB_PSTRESS;
+	}
+	else throw new Fatal("EquilibElem::InitCtes: GeometryIndex _gi==%d is invalid",_gi);
+
+	// Properties
+	_props.Resize (1); // just "gam"
+	PROP = EQUILIB_PROP;
+
+	// Return geometry index
+	return _gi;
+}
 
 inline void EquilibElem::AddVolForces()
 {
@@ -149,7 +199,11 @@ inline void EquilibElem::ClearDisp()
 		_ge->Conn[i]->DOFVar(UD[j]).EssentialVal = 0.0;
 
 	// Clear strains
-	for (size_t i=0; i<_mdl.Size(); ++i) _mdl[i]->ClearStrain();
+	for (size_t i=0; i<_ge->NIPs; i++)
+	{
+		_eps    [i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_eps_bkp[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+	}
 }
 
 inline void EquilibElem::SetActive(bool Activate, int ID)
@@ -194,8 +248,18 @@ inline void EquilibElem::SetActive(bool Activate, int ID)
 inline void EquilibElem::CalcDeps() const
 {
 	if (IsActive==false) throw new Fatal("EquilibElem::CalcDepVars: This element is inactive");
-	if (_mdl.Size()==_ge->NIPs) for (size_t i=0; i<_ge->NIPs; i++) _mdl[i]->CalcDepVars();
-	else throw new Fatal("EquilibElem::CalcDepVars: Constitutive models for this element were not set");
+	/*
+	for (size_t i=0; i<_ge->NIPs; i++)
+	{
+		// Calculate principal values
+		Tensors::Eigenvals (_sig[i], _sigp[i]);
+		Tensors::Eigenvals (_eps[i], _epsp[i]);
+
+		// Sort (increasing)
+		Tensors::Sort (_sigp[i]); // S1,S2,S3 = _sigp[0], _sigp[1], _sigp[2]
+		Tensors::Sort (_epsp[i]); // E1,E2,E3 = _epsp[0], _epsp[1], _epsp[2]
+	}
+	*/
 }
 
 inline double EquilibElem::Val(int iNod, Str_t Name) const
@@ -207,29 +271,20 @@ inline double EquilibElem::Val(int iNod, Str_t Name) const
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
 
 	// Stress, strains, internal values, etc.
-	Vec_t    ip_values (_ge->NIPs); // Vectors for extrapolation
-	Vec_t nodal_values (_ge->NNodes);
+	Vec_t    ip_vals (_ge->NIPs); // Vectors for extrapolation
+	Vec_t nodal_vals (_ge->NNodes);
 
 	// Get integration point values
-	if (_mdl.Size()==_ge->NIPs)
-		for (size_t i=0; i<_ge->NIPs; i++) ip_values(i) = _mdl[i]->Val(Name);
-	else throw new Fatal("EquilibElem::Val: Constitutive models for this element were not set yet");
+	for (size_t i=0; i<_ge->NIPs; i++) ip_vals(i) = Tensors::Val (_sig[i], _eps[i], Name);
 
 	// Extrapolate
-	_ge->Extrap (ip_values, nodal_values);
-	return nodal_values (iNod);
+	_ge->Extrap (ip_vals, nodal_vals);
+	return nodal_vals (iNod);
 }
 
 inline double EquilibElem::Val(Str_t Name) const
 {
-	// Get integration point values
-	double sum = 0.0;
-	if (_mdl.Size()==_ge->NIPs)
-		for (size_t i=0; i<_ge->NIPs; i++) sum += _mdl[i]->Val(Name);
-	else throw new Fatal("EquilibElem::Val: Constitutive models for this element were not set yet");
-
-	// Output single value at CG
-	return sum/_ge->NIPs;
+	throw new Fatal("EquilibElem::Val: Feature not availabe");
 }
 
 inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
@@ -247,18 +302,15 @@ inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	df.SetValues (0.0);
 
 	// Update model and calculate internal force vector;
-	Mat_t dN;   // Shape derivatives
-	Mat_t J;    // Jacobian
-	Mat_t B;    // B matrix
-	Vec_t deps; // Delta Strain
-	Vec_t dsig; // Delta Stress
+	Mat_t dN,J,B;
+	Vec_t deps,dsig;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_B_mat        (dN, J, B);
+		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian     (dN, J);
+		_B_mat            (dN, J, B);
 		deps = B*du;
-		_mdl[i]->StateUpdate (deps, dsig);
+		_mdl->StateUpdate (deps, _sig[i], _eps[i], _ivs[i], dsig);
 		df += trn(B)*dsig*det(J)*_ge->IPs[i].w;
 	}
 
@@ -270,20 +322,30 @@ inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 
 inline void EquilibElem::Backup()
 {
-	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i]->BackupState();
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_sig_bkp[i] = _sig[i];
+		_eps_bkp[i] = _eps[i];
+		_ivs_bkp[i] = _ivs[i];
+	}
 }
 
 inline void EquilibElem::Restore()
 {
-	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i]->RestoreState();
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_sig[i] = _sig_bkp[i];
+		_eps[i] = _eps_bkp[i];
+		_ivs[i] = _ivs_bkp[i];
+	}
 }
 
 inline void EquilibElem::OutInfo(std::ostream & os) const
 {
 	for (size_t i=0; i<_ge->NIPs; i++)
 	{
-		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _mdl[i]->Val("Sx") << _12_6 << _mdl[i]->Val("Sy") << _12_6 << _mdl[i]->Val("Sz");
-		os <<                "  Ex,Ey,Ez = " << _12_6 << _mdl[i]->Val("Ex") << _12_6 << _mdl[i]->Val("Ey") << _12_6 << _mdl[i]->Val("Ez") << " ";
+		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2);
+		os <<                "  Ex,Ey,Ez = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2) << " ";
 	}
 }
 
@@ -301,10 +363,10 @@ inline void EquilibElem::CMatrix(size_t Idx, Mat_t & Ke) const
 	Mat_t dN,J,B,D;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_B_mat        (dN, J, B);
-		_mdl[i]->TgStiffness (D);
+		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian     (dN, J);
+		_B_mat            (dN, J, B);
+		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
 }
@@ -314,65 +376,29 @@ inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t>
 	_equations_map (RMap, CMap, RUPresc, CUPresc);
 }
 
-inline bool EquilibElem::CheckModel() const
-{
-	if (_prms.Size()<1)                                   return false;
-	if (_mdl.Size()!=_ge->NIPs)                           return false;
-	for (size_t i=0; i<_ge->NIPs; ++i) if (_mdl[i]==NULL) return false;
-	return true;
-}
-
 
 /* private */
 
-inline void EquilibElem::_initialize(Str_t Model)
+inline void EquilibElem::_initialize(Str_t Inis)
 {
-	// Check
-	if (_ge->NDim<1) throw new Fatal("EquilibElem::_initialize: The space dimension (SetDim) must be set before calling this method");
+	// Resize IP data
+	_sig.Resize (_ge->NIPs);
+	_eps.Resize (_ge->NIPs);
+	_ivs.Resize (_ge->NIPs);
 
-	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
-	if (_gi==0)  // 3D
+	// Initial values
+	LineParser lp(Inis);
+	Array<String> names;
+	Array<double> values;
+	lp.BreakExpressions (names,values);
+
+	// Set initial values
+	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_nd = ND_EQUILIB_3D;
-		UD  = UD_EQUILIB_3D;
-		FD  = FD_EQUILIB_3D;
-		_nl = NL_EQUILIB_3D; 
-		LB  = LB_EQUILIB_3D;
+		_sig[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		for (size_t j=0; j<names.Size(); ++j) Tensors::SetVal (names[j].CStr(), values[j], _sig[i]);
 	}
-	else if (_gi==1)  // PlaneStrain
-	{
-		_nd = ND_EQUILIB_2D;
-		UD  = UD_EQUILIB_2D;
-		FD  = FD_EQUILIB_2D;
-		_nl = NL_PSTRAIN; 
-		LB  = LB_PSTRAIN;
-	}
-	else if (_gi==2)  // PlaneStress
-	{
-		_nd = ND_EQUILIB_2D;
-		UD  = UD_EQUILIB_2D;
-		FD  = FD_EQUILIB_2D;
-		_nl = NL_PSTRESS; 
-		LB  = LB_PSTRESS;
-	}
-	else throw new Fatal("EquilibElem::_initialize: GeometryIndex _gi==%d is invalid",_gi);
-
-	// Model and parameters
-	_mdl.Resize (_ge->NIPs);  _mdl.SetValues(NULL);
-	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i] = static_cast<EquilibModel*>(AllocModel(Model));
-	_prms.Resize (_mdl[0]->NPrms());
-	PRMS = _mdl[0]->GetPrmNames();
-
-	// Properties
-	_props.Resize (1); // just "gam"
-	PROP = EQUILIB_PROP;
-}
-
-inline void EquilibElem::_init_model(Str_t Inis)
-{
-	// Set model initial state
-	if (_mdl.Size()!=_ge->NIPs)  throw new Fatal("EquilibElem::_init_state: Array with pointers to model was not properly initialized");
-	for (size_t i=0; i<_ge->NIPs; ++i) _mdl[i]->Initialize (_gi, &_prms, Inis);
 
 	// Initialize internal state
 	if (IsActive) _init_internal_state();
@@ -414,7 +440,7 @@ inline void EquilibElem::_excavate()
 			for (size_t j=0; j<_ge->NNodes; ++j) S(_ge->NDim*j+_ge->NDim-1) = N(j);
 
 			// Get tensor
-			_mdl[i]->Sig (sig);
+			Tensor2ToVector (_gi,_sig[i], sig);
 
 			// Calculate internal force vector
 			F += trn(B)*sig*det(J)*_ge->IPs[i].w + S*gam*det(J)*_ge->IPs[i].w;
@@ -576,10 +602,10 @@ inline void EquilibElem::_init_internal_state()
 	Vec_t sig; // Stress vector in Mandel's notation
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_B_mat        (dN, J, B);
-		_mdl[i]->Sig (sig);
+		_ge->Derivs     (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian   (dN, J);
+		_B_mat          (dN, J, B);
+		Tensor2ToVector (_gi,_sig[i], sig);
 		f += trn(B)*sig*det(J)*_ge->IPs[i].w;
 	}
 

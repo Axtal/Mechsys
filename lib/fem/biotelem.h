@@ -33,12 +33,12 @@ using Util::_12_6;
 namespace FEM
 {
 
-const char BIOT_PN[4][8] = {"E", "nu", "k", "gw"};
 
 class BiotElem : public EquilibElem
 {
 public:
 	// Methods related to PROBLEM
+	int     InitCtes     (int nDim);
 	void    ClearDisp    ();
 	void    CalcDeps     () const;
 	Str_t   ModelName    () const { return "LinElastic"; }
@@ -56,21 +56,10 @@ public:
 	void    HMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 	void    UVecMap      (size_t Idx, Array<size_t> & RMap) const;
 
-	// Derived methods
-	bool CheckModel () const;
-
 private:
-	// Data
-	double       _gw;  ///< Water specific weight (gamma W)
-	Mat_t        _De;  ///< Constant tangent stiffness
-	Mat_t        _Ke;  ///< Constant tangent permeability
-	Array<Vec_t> _sig; ///< Total sig at each integration point. Size==NIPs
-	Array<Vec_t> _eps; ///< Strain at each integration point. Size==NIPs
-
 	// Derived methods
-	void _initialize (Str_t Model);
-	void _init_model (Str_t Inis);
-	void _excavate   ();
+	void _excavate            ();
+	void _init_internal_state () {}
 
 	// Private methods
 	void   _Bp_mat     (Mat_t const & dN, Mat_t const & J, Mat_t & Bp) const { Bp = inv(J)*dN; }
@@ -90,6 +79,39 @@ private:
 
 
 /* public */
+
+inline int BiotElem::InitCtes(int nDim)
+{
+	// Check
+	if (nDim<2 || nDim>3) throw new Fatal("BiotElem::InitCtes: The space dimension must be 2 or 3. nDim==%d is invalid",nDim);
+
+	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
+	_gi = (nDim==2 ? 1 : 0);
+	if (_gi==0)  // 3D
+	{
+		_nd = ND_BIOT_3D;
+		UD  = UD_BIOT_3D;
+		FD  = FD_BIOT_3D;
+		_nl = NL_BIOT_3D; 
+		LB  = LB_BIOT_3D;
+	}
+	else if (_gi==1)  // PlaneStrain
+	{
+		_nd = ND_BIOT_2D;
+		UD  = UD_BIOT_2D;
+		FD  = FD_BIOT_2D;
+		_nl = NL_BIOT_2D; 
+		LB  = LB_BIOT_2D;
+	}
+	else throw new Fatal("BiotElem::InitCtes: GeometryIndex _gi==%d is invalid",_gi);
+
+	// Properties
+	_props.Resize (1); // just "gam"
+	PROP = EQUILIB_PROP;
+
+	// Return geometry index
+	return _gi;
+}
 
 inline void BiotElem::ClearDisp()
 {
@@ -178,26 +200,15 @@ inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	dvol = Le*du + h*He*p + h*Qb;
 
 	// Update model and calculate internal force vector;
-	Mat_t N;       // Shape 
-	Mat_t dN;      // Shape derivatives
-	Mat_t J;       // Jacobian
-	Mat_t B;       // B matrix
-	Vec_t deps(6); // Delta Strain
-	Vec_t dsig(6); // Delta Stress
+	Mat_t dN,J,B;
+	Vec_t deps,dsig;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_B_mat        (dN, J, B);
-
-		Vec_t deps4;
-		Vec_t dsig4;
-		deps4 = B*du;
-		dsig4 = _De*deps4;
-		deps  = deps4(0), deps4(1), deps4(2), deps4(3), 0.0, 0.0;
-		dsig  = dsig4(0), dsig4(1), dsig4(2), dsig4(3), 0.0, 0.0;
-		_sig[i] += dsig;
-		_eps[i] += deps;
+		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian     (dN, J);
+		_B_mat            (dN, J, B);
+		deps = B*du;
+		_mdl->StateUpdate (deps, _sig[i], _eps[i], _ivs[i], dsig);
 	}
 
 	// Sum up contribution to internal forces vector
@@ -280,112 +291,8 @@ inline void BiotElem::UVecMap(size_t Idx, Array<size_t> & RMap) const
 	_flow_map (RMap, rupresc);
 }
 
-inline bool BiotElem::CheckModel() const
-{
-	if (_gw<0.0 || _De.Rows()==0 || _Ke.Rows()==0) return false;
-	return true;
-}
-
 
 /* private */
-
-inline void BiotElem::_initialize(Str_t Model)
-{
-	// Check
-	if (_ge->NDim<1) throw new Fatal("BiotElem::_initialize: The space dimension (SetDim) must be set before calling this method");
-
-	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
-	_gi = (_ge->NDim==2 ? 1 : 0);
-	if (_gi==0)  // 3D
-	{
-		_nd = ND_BIOT_3D;
-		UD  = UD_BIOT_3D;
-		FD  = FD_BIOT_3D;
-		_nl = NL_BIOT_3D; 
-		LB  = LB_BIOT_3D;
-	}
-	else if (_gi==1)  // PlaneStrain
-	{
-		_nd = ND_BIOT_2D;
-		UD  = UD_BIOT_2D;
-		FD  = FD_BIOT_2D;
-		_nl = NL_BIOT_2D; 
-		LB  = LB_BIOT_2D;
-	}
-	else throw new Fatal("BiotElem::_initialize: GeometryIndex _gi==%d is invalid",_gi);
-
-	// Model and parameters
-	_prms.Resize (4);
-	PRMS = BIOT_PN;
-
-	// Properties
-	_props.Resize (1); // just "gam"
-	PROP = EQUILIB_PROP;
-}
-
-inline void BiotElem::_init_model(Str_t Inis)
-{
-	// Set
-	double E  = _prms[0];
-	double nu = _prms[1];
-	double k  = _prms[2];
-	      _gw = _prms[3];
-
-	// Check
-	if (E<=0.0)             throw new Fatal("BiotElem::_init_state: Young modulus (E) must positive. E==%f is invalid",E);
-	if (nu<0.0 || nu>0.499) throw new Fatal("BiotElem::_init_state: Poisson ratio (nu) must be in the range: 0 <= nu < 0.5. nu==%f is invalid",nu);
-	if (k<0.0)              throw new Fatal("BiotElem::_init_state: Isotropic permeability must positive. k=%f is invalid",k);
-	if (_gw<0.0)            throw new Fatal("BiotElem::_init_state: GammaW must be positive. gw==%f is invalid",_gw);
-
-	// Set stiffness
-	double c  = E/((1.0+nu)*(1.0-2.0*nu));
-	double c1 = c*(1.0-nu);
-	double c2 = c*(1.0-2.0*nu)/2.0;
-	double c3 = c*nu;
-	Tensor4 De;
-	De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-	     c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-	     c3     , c3     , c1     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
-	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
-	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
-	     0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
-	Tensors::Tensor4ToMatrix (_gi,De, _De);
-
-	// Set permeability
-	double kx = k;
-	double ky = k;
-	double kz = k;
-	if (_ge->NDim==2)
-	{
-		_Ke.Resize(2,2);
-		_Ke =  kx,  0.0,
-		      0.0,   ky;
-	}
-	else if (_ge->NDim==3)
-	{
-		_Ke.Resize(3,3);
-		_Ke =  kx,  0.0,  0.0,
-		      0.0,   ky,  0.0,
-		      0.0,  0.0,   kz;
-	}
-
-	// Set arrays of sig/eps
-	_sig.Resize(_ge->NIPs);
-	_eps.Resize(_ge->NIPs);
-	for (size_t i=0; i<_ge->NIPs; ++i)
-	{
-		_sig[i].Resize(6);  _sig[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-		_eps[i].Resize(6);  _eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-	}
-
-	// Initial values
-	LineParser lp(Inis);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions (names,values);
-	for (size_t i=0; i<names.Size(); i++)
-		if (names[i]!="ZERO") throw new Fatal("BiotElem::_init_state: Initial state must be ZERO at this time");
-}
 
 inline void BiotElem::_excavate()
 {
@@ -441,13 +348,14 @@ inline void BiotElem::_compute_K(Mat_t & Ke) const
 	size_t nde = _nd-1; // nDOFs equilib
 	Ke.Resize    (nde*_ge->NNodes, nde*_ge->NNodes);
 	Ke.SetValues (0.0);
-	Mat_t dN,J,B;
+	Mat_t dN,J,B,D;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_B_mat        (dN, J, B);
-		Ke += trn(B)*_De*B*det(J)*_ge->IPs[i].w;
+		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian     (dN, J);
+		_B_mat            (dN, J, B);
+		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D);
+		//Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
 }
 
@@ -509,16 +417,18 @@ inline void BiotElem::_compute_H(Mat_t & He) const
 	            {m} = [ 1 1 1 0 0 0 ]
 	*/
 	
+	double gw  = _props[1];
 	size_t ndf = 1; // nDOFs flow
 	He.Resize    (ndf*_ge->NNodes, ndf*_ge->NNodes);
 	He.SetValues (0.0);
-	Mat_t dN,J,Bp;
+	Mat_t dN,J,Bp,K;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_Bp_mat       (dN, J, Bp);
-		He += -trn(Bp)*_Ke*Bp*det(J)*_ge->IPs[i].w/_gw;
+		_ge->Derivs          (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian        (dN, J);
+		_Bp_mat              (dN, J, Bp);
+		_mdl->TgPermeability (K);
+		//He += -trn(Bp)*K*Bp*det(J)*_ge->IPs[i].w/gw;
 	}
 }
 
@@ -532,19 +442,21 @@ inline void BiotElem::_compute_Qb(Vec_t & Qb) const
 	                    gw  /    p            w  
 	*/
 	
+	double gw  = _props[1];
 	size_t ndf = 1; // nDOFs flow
 	Qb.Resize    (ndf*_ge->NNodes); 
 	Qb.SetValues (0.0);
 	Vec_t b;
-	Mat_t dN,J,Bp;
-	     if (_ge->NDim==2) { b.Resize(2); b = 0.0, _gw; }
-	else if (_ge->NDim==3) { b.Resize(3); b = 0.0, 0.0, _gw; }
+	Mat_t dN,J,Bp,K;
+	     if (_ge->NDim==2) { b.Resize(2); b = 0.0, gw; }
+	else if (_ge->NDim==3) { b.Resize(3); b = 0.0, 0.0, gw; }
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian (dN, J);
-		_Bp_mat       (dN, J, Bp);
-		Qb += trn(Bp)*_Ke*b*det(J)*_ge->IPs[i].w/_gw;
+		_ge->Derivs          (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian        (dN, J);
+		_Bp_mat              (dN, J, Bp);
+		_mdl->TgPermeability (K);
+		//Qb += trn(Bp)*K*b*det(J)*_ge->IPs[i].w/gw;
 	}
 }
 
@@ -593,13 +505,11 @@ inline double BiotElem::_val_ip(size_t iIP, Str_t Name) const
 
 
 // Allocate a new 3D Biot element:
-ProbElem * BiotMaker() 
-{
-	BiotElem * Ptr = new BiotElem;
-	return Ptr; 
-}
+ProbElem * BiotMaker() { return new BiotElem; }
+
 // Register element
 int BiotRegister() { ProbElemFactory["Biot"]=BiotMaker;  return 0; }
+
 // Call register
 int __Biot_dummy_int = BiotRegister();
 

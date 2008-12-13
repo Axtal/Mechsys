@@ -39,6 +39,7 @@
 #include "fem/element.h"
 #include "mesh/mesh.h"
 #include "util/array.h"
+#include "models/model.h"
 
 namespace FEM
 {
@@ -72,21 +73,20 @@ public:
 	                    FBrys_T       const * FacesBrys);    ///< Give NULL for 2D meshes
 
 	// Set methods
-	void      SetNNodes (size_t NNodes);                                         ///< Set the number of nodes
-	void      SetNElems (size_t NElems);                                         ///< Set the number of elements
-	Node    * SetNode   (size_t i, double X, double Y, double Z=0.0, int Tag=0); ///< Set a node
-	Element * SetElem   (size_t               i,                                 ///< The ID(index) of the element
-	                     int                  Tag,                               ///< The tag of new element
-	                     Array<Node*> const & Conn,                              ///< Connectivity
-	                     Str_t                GeomT,                             ///< Geometry Element type. Ex: Tri3
-	                     Str_t                ProbT,                             ///< Problem  Element type. Ex: PStrain
-	                     Str_t                Model,                             ///< Constitutive model. Ex: LinElastic
-	                     Str_t                Prms,                              ///< Model parameters. Ex.: E=200 nu=0.2
-	                     Str_t                Inis,                              ///< Initial state. Ex: Sx=0.0
-	                     Str_t                Props,                             ///< Element properties. Ex: gam=20
-	                     bool                 IsAct);                            ///< Active/Inactive?
-	Node    * PushNode  (double X, double Y, double Z, int Tag) { _nodes.Push(new Node);  return SetNode(_nodes.Size()-1,X,Y,Z,Tag); }
-	Element * PushElem  (int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Str_t Model, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct) { _elems.Push(new Element);  return SetElem(_elems.Size()-1,Tag,Conn,GeomT,ProbT,Model,Prms,Inis,Props,IsAct); }
+	void      SetNNodes       (size_t NNodes);                                         ///< Set the number of nodes
+	void      SetNElems       (size_t NElems);                                         ///< Set the number of elements
+	Node    * SetNode         (size_t i, double X, double Y, double Z=0.0, int Tag=0); ///< Set a node
+	Element * SetElemAndModel (size_t               i,                                 ///< The ID(index) of the element
+	                           int                  Tag,                               ///< The tag of new element
+	                           Array<Node*> const & Conn,                              ///< Connectivity
+	                           Str_t                GeomT,                             ///< Geometry Element type. Ex: Tri3
+	                           Str_t                ProbT,                             ///< Problem  Element type. Ex: PStrain
+	                           Model              * Mdl,                               ///< Constitutive model. Ex: AllocModel("LinElastic")
+	                           Str_t                Inis,                              ///< Initial state. Ex: Sx=0.0
+	                           Str_t                Props,                             ///< Element properties. Ex: gam=20
+	                           bool                 IsAct);                            ///< Active/Inactive?
+	Node    * PushNode        (double X, double Y, double Z, int Tag) { _nodes.Push(new Node);  return SetNode(_nodes.Size()-1,X,Y,Z,Tag); }
+	Element * PushElem        (int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct) { _elems.Push(new Element);  return SetElemAndModel(_elems.Size()-1,Tag,Conn,GeomT,ProbT,Mdl,Inis,Props,IsAct); }
 
 	// Specific methods
 	void AddVolForces () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
@@ -157,6 +157,7 @@ private:
 	Array<int>              _btags;           ///< Beam tags
 	std::map<int,size_t>    _elem_tag_idx;    ///< Map Tag => Idx, where Idx is the index inside _elems_with_tags
 	Array<Array<Element*> > _elems_with_tags; ///< Element with tags
+	Array<Model*>           _models;
 
 }; // class Data
 
@@ -181,7 +182,7 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 	
 		// Elements attributes
 		FEM::EAtts_T eatts;
-		eatts.Push (make_tuple(-1, "Quad4PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20")); // tag, type, model, prms, inis, props
+		eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20")); // tag, type, model, prms, inis, props
 	*/
 
 	// 3D mesh?
@@ -189,14 +190,14 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 
 	// Set nodes
 	size_t nn = M->NVerts();
-	this->SetNNodes (nn);
+	SetNNodes (nn);
 	double diff_x = 0.0; // used for verification (try to find which plane the problem is defined in)
 	double diff_y = 0.0;
 	double diff_z = 0.0;
 	for (size_t i=0; i<nn; ++i) // loop over all vertices
 	{
 		// New node
-		this->SetNode (i, M->VertX(i), M->VertY(i), (is3d ? M->VertZ(i) : 0.0));
+		SetNode (i, M->VertX(i), M->VertY(i), (is3d ? M->VertZ(i) : 0.0));
 		          diff_x += fabs(M->VertX(0)-M->VertX(i));
 		          diff_y += fabs(M->VertY(0)-M->VertY(i));
 		if (is3d) diff_z += fabs(M->VertZ(0)-M->VertZ(i));
@@ -212,6 +213,15 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 	{
 		if (diff_z>_tol)
 			throw new Fatal("FEM::SetNodesElems: For 2D problems, only the X and Y coordinates must be used (diff_z=%f)",diff_z);
+	}
+
+	// Allocate models
+	_models.Resize (ElemsAtts->Size());
+	for (size_t i=0; i<ElemsAtts->Size(); ++i) // 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
+	{
+		Str_t mdl = (*ElemsAtts)[i].get<3>();
+		if (strcmp(mdl,"")==0) throw new Fatal("Data::SetNodesElems: All model names must not be empty");
+		_models[i] = AllocModel(mdl);
 	}
 
 	// Number of beams (with duplicates)
@@ -248,11 +258,11 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 				}
 			}
 		}
-		this->SetNBeams (beams.Size());
+		SetNBeams (beams.Size());
 	}
 
 	// Set elements
-	this->SetNElems (M->NElems() + beams.Size());
+	SetNElems (M->NElems() + beams.Size());
 	for (size_t i=0; i<M->NElems(); ++i)
 	{
 		// Set element
@@ -265,19 +275,17 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 				// Extract attributes: 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
 				Str_t geomt = (*ElemsAtts)[j].get<1>();
 				Str_t probt = (*ElemsAtts)[j].get<2>();
-				Str_t model = (*ElemsAtts)[j].get<3>();
-				Str_t prms  = (*ElemsAtts)[j].get<4>();
 				Str_t inis  = (*ElemsAtts)[j].get<5>();
 				Str_t props = (*ElemsAtts)[j].get<6>();
 				bool  act   = (*ElemsAtts)[j].get<7>();
 
 				// Connectivity
 				Array<Node*> conn(M->ElemNVerts(i));
-				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = this->Nod(M->ElemCon(i,k));
+				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = Nod(M->ElemCon(i,k));
 
 				// New finite element
 				found = true;
-				this->SetElem (i, tag, conn, geomt, probt, model, prms, inis, props, act);
+				SetElemAndModel (i, tag, conn, geomt, probt, _models[j], inis, props, act);
 
 				// Next element
 				break;
@@ -299,25 +307,30 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		// Extract attributes: 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
 		Str_t geomt = (*ElemsAtts)[eatt_id].get<1>();
 		Str_t probt = (*ElemsAtts)[eatt_id].get<2>();
-		Str_t model = (*ElemsAtts)[eatt_id].get<3>();
-		Str_t prms  = (*ElemsAtts)[eatt_id].get<4>();
 		Str_t inis  = (*ElemsAtts)[eatt_id].get<5>();
 		Str_t props = (*ElemsAtts)[eatt_id].get<6>();
 		bool  act   = (*ElemsAtts)[eatt_id].get<7>();
 
 		// Connectivity
 		Array<Node*> conn(2);
-		conn[0] = this->Nod(M->EdgeToLef(elem_id, local_edge_id));
-		conn[1] = this->Nod(M->EdgeToRig(elem_id, local_edge_id));
+		conn[0] = Nod(M->EdgeToLef(elem_id, local_edge_id));
+		conn[1] = Nod(M->EdgeToRig(elem_id, local_edge_id));
 
 		// New finite element
-		FEM::Element * fe = this->SetElem (ie, beam_tag, conn, geomt, probt, model, prms, inis, props, act);
+		FEM::Element * fe = SetElemAndModel (ie, beam_tag, conn, geomt, probt, _models[eatt_id], inis, props, act);
 
 		// Next element
 		ie++;
 
 		// Set beam
-		this->SetBeam (i, fe, beam_tag);
+		SetBeam (i, fe, beam_tag);
+	}
+
+	// Set parameters
+	for (size_t i=0; i<_models.Size(); ++i)
+	{
+		Str_t prms = (*ElemsAtts)[i].get<4>();
+		if (_models[i]!=NULL) _models[i]->Initialize (prms);
 	}
 }
 
@@ -359,7 +372,7 @@ inline void Data::SetBrys(Mesh::Generic const * M, NBrys_T const * NodesBrys, EB
 					{
 						if (tag==(*FacesBrys)[k].get<0>())
 						{
-							this->Ele(i)->FaceBry ((*FacesBrys)[k].get<1>(), (*FacesBrys)[k].get<2>(), j);
+							Ele(i)->FaceBry ((*FacesBrys)[k].get<1>(), (*FacesBrys)[k].get<2>(), j);
 						}
 					}
 				}
@@ -382,15 +395,15 @@ inline void Data::SetBrys(Mesh::Generic const * M, NBrys_T const * NodesBrys, EB
 					{
 						if (tag==(*EdgesBrys)[k].get<0>())
 						{
-							this->Ele(i)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), j);
+							Ele(i)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), j);
 						}
 					}
 				}
 			}
-			for (size_t b=0; b<this->NBeams(); ++b)
+			for (size_t b=0; b<NBeams(); ++b)
 			{
-				if (this->BTag(b)==(*EdgesBrys)[k].get<0>())
-					this->Beam(b)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), 0);
+				if (BTag(b)==(*EdgesBrys)[k].get<0>())
+					Beam(b)->EdgeBry ((*EdgesBrys)[k].get<1>(), (*EdgesBrys)[k].get<2>(), 0);
 			}
 		}
 	}
@@ -407,7 +420,7 @@ inline void Data::SetBrys(Mesh::Generic const * M, NBrys_T const * NodesBrys, EB
 				double y =         (*NodesBrys)[j].get<1>();
 				double z = (is3d ? (*NodesBrys)[j].get<2>() : 0.0);
 				double d = sqrt(pow(x - M->VertX(i),2.0) + pow(y - M->VertY(i),2.0) + (is3d ? pow(z - M->VertZ(i),2.0) : 0.0));
-				if (d<_tol) this->Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
+				if (d<_tol) Nod(i)->Bry ((*NodesBrys)[j].get<3>(), (*NodesBrys)[j].get<4>());
 			}
 		}
 	}
@@ -434,13 +447,19 @@ inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 	return _nodes[i];
 }
 
-inline Element * Data::SetElem(size_t i, int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Str_t Model, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
+inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Inis, Str_t Props, bool IsAct)
 {
 	// New element
 	if (_elems[i]==NULL) _elems[i] = new Element;
 
+	// Initialize constants of element and get geometry index (gi)
+	int gi = _elems[i]->InitCtes (_dim, GeomT, ProbT);
+
 	// Initialize
-	_elems[i]->Initialize (/*ID*/i, Tag, _dim, Conn, GeomT, ProbT, Model, Prms, Inis, Props, IsAct);
+	_elems[i]->Initialize (/*ID*/i, Tag, Conn, Mdl, Inis, Props, IsAct);
+
+	// Set geometry index
+	Mdl->SetGeomIdx (gi);
 
 	// Set array with elements with tags
 	if (Tag!=0)
@@ -579,7 +598,7 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 	}
 
 	// Set geometry
-	this->SetNodesElems (&M, &eatts);
+	SetNodesElems (&M, &eatts);
 }
 
 inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys, BPy::list const & EdgesBrys, BPy::list const & FacesBrys)
@@ -648,7 +667,7 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 	}
 
 	// Set geometry
-	this->SetBrys (&M, nbrys, ebrys, fbrys);
+	SetBrys (&M, nbrys, ebrys, fbrys);
 
 	// Clean up
 	if (nbrys!=NULL) delete nbrys;

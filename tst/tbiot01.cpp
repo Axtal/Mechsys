@@ -48,6 +48,7 @@
 #include "fem/elems/quad4.h"
 #include "fem/elems/quad8.h"
 #include "fem/biotelem.h"
+#include "models/equilibs/biotelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -172,8 +173,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "", prms.CStr(), "ZERO", "gam=20", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);

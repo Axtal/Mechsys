@@ -50,25 +50,20 @@ public:
 	// Destructor
 	virtual ~Element() { if (_ge!=NULL) delete _ge;  if (_pe!=NULL) delete _pe; }
 
-	/* Initialize the element. */
-	void Initialize (size_t               i,       ///< ID == index in the array of elements
-	                 int                  Tag,     ///< Tag of the element
-	                 int                  nDim,    ///< Space dimension
-	                 Array<Node*> const & CONN,    ///< Connectivity
-	                 Str_t                GeomT,   ///< Geometry type. Ex: "Hex8"
-	                 Str_t                ProbT,   ///< Problem type. Ex: "Equilib"
-	                 Str_t                Model,   ///< Model name. Ex: "LinElastic"
-	                 Str_t                Prms,    ///< Model parameters. Ex: "E=200 nu=0.2"
-	                 Str_t                Inis,    ///< Initial values. Ex: "ZERO" or "Sx=0.0 Sy=0.0"
-	                 Str_t                Props,   ///< Properties. Ex: "gam=20"
-	                 bool                 IsAct);  ///< Is the element active ?
-
 	// Methods
-	long  GetID    () const            { return _id;          } ///< Return the ID of this element
-	int   Tag      () const            { return _tag;         } ///< Return the Tag of this element
-	Str_t Type     () const            { return _type.CStr(); } ///< Return the name/type of this element
-	bool  Check    (String & Msg) const;                        ///< Check if everything is OK and element is ready for simulations
-	void  OutNodes (Mat_t & Vals, Array<String> & Lbls) const;  ///< Output values at nodes
+	int   InitCtes   (int nDim, Str_t GeomT, Str_t ProbT);       ///< Initialize constants. Returns GI(Geometry Index): 3D=0, 2D=1, 2D-PStress=2, 2D-Axissym=3
+	void  Initialize (size_t               i,                    ///< ID == index in the array of elements
+	                  int                  Tag,                  ///< Tag of the element
+	                  Array<Node*> const & CONN,                 ///< Connectivity
+	                  Model              * Mdl,                  ///< Model. Ex: AllocModel("LinElastic")
+	                  Str_t                Inis,                 ///< Initial values. Ex: "ZERO" or "Sx=0.0 Sy=0.0"
+	                  Str_t                Props,                ///< Properties. Ex: "gam=20"
+	                  bool                 IsAct);               ///< Is the element active ?
+	long  GetID      () const           { return _id;          } ///< Return the ID of this element
+	int   Tag        () const           { return _tag;         } ///< Return the Tag of this element
+	Str_t Type       () const           { return _type.CStr(); } ///< Return the name/type of this element
+	bool  Check      (String & Msg) const;                       ///< Check if everything is OK and element is ready for simulations
+	void  OutNodes   (Mat_t & Vals, Array<String> & Lbls) const; ///< Output values at nodes
 
 	// Methods related to GEOMETRY
 	size_t       NNodes    () const                                     { CHECKGEPE("NNodes"   ) return _ge->NNodes;                          } ///< Return the number of nodes in this element
@@ -140,11 +135,8 @@ private:
 
 /* public */
 
-inline void Element::Initialize(size_t i, int Tag, int nDim, Array<Node*> const & CONN, Str_t GeomT, Str_t ProbT, Str_t Model, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
+inline int Element::InitCtes(int nDim, Str_t GeomT, Str_t ProbT)
 {
-	// Data
-	_id  = i;
-	_tag = Tag;
 	_type.Printf ("%s_%s_%dD",GeomT,ProbT,nDim);
 
 	// Geometry element
@@ -153,15 +145,21 @@ inline void Element::Initialize(size_t i, int Tag, int nDim, Array<Node*> const 
 	_ge->Initialize (nDim);
 
 	// Problem element
-	if (strcmp(ProbT,"")==0) throw new Fatal("Element::Initialize: ProblemType must be provided");
+	if (strcmp(ProbT,"")==0) throw new Fatal("Element::InitCtes: ProblemType must be provided");
 	_pe = AllocProbElem (ProbT);
-	_pe->Initialize     (_ge, _id, CONN, Model, Prms, Inis, Props, IsAct);
+	return _pe->InitCtes (nDim);
+}
+
+inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Str_t Props, bool IsAct)
+{
+	_id  = i;
+	_tag = Tag;
+	_pe->Initialize (_ge, _id, CONN, Mdl, Inis, Props, IsAct);
 }
 
 inline bool Element::Check(String & Msg) const
 {
 	if (_ge->CheckConn ()==false) { Msg.Printf("\n  %s","CONNECTIVITY NOT SET");       return false; }
-	if (_pe->CheckModel()==false) { Msg.Printf("\n  %s","CONSTITUTIVE MODEL NOT SET"); return false; }
 	return true;
 }
 

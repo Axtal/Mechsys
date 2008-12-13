@@ -22,6 +22,7 @@
 // STL
 #include <cmath>  // for sqrt()
 #include <cfloat> // for DBL_EPSILON
+#include <cstring> // for strcmp
 
 // MechSys
 #include "tensors/tensors.h"
@@ -37,6 +38,39 @@ using Util::SQ2BY3;
 
 namespace Tensors
 {
+
+inline double Val(Tensor2 const & Sig, Tensor2 const & Eps, char const * Name)
+{
+	     if (strcmp(Name,"Sx" )==0)                          return Sig(0);
+	else if (strcmp(Name,"Sy" )==0)                          return Sig(1);
+	else if (strcmp(Name,"Sz" )==0)                          return Sig(2);
+	else if (strcmp(Name,"Sxy")==0 || strcmp(Name,"Syx")==0) return Sig(3)/SQ2;
+	else if (strcmp(Name,"Syz")==0 || strcmp(Name,"Szy")==0) return Sig(4)/SQ2;
+	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return Sig(5)/SQ2;
+	else if (strcmp(Name,"p"  )==0)                          return (Sig(0)+Sig(1)+Sig(2))/3.0;
+	else if (strcmp(Name,"q"  )==0)                          return sqrt(((Sig(0)-Sig(1))*(Sig(0)-Sig(1)) + (Sig(1)-Sig(2))*(Sig(1)-Sig(2)) + (Sig(2)-Sig(0))*(Sig(2)-Sig(0)) + 3.0*(Sig(3)*Sig(3) + Sig(4)*Sig(4) + Sig(5)*Sig(5)))/2.0);
+	else if (strcmp(Name,"Ex" )==0)                          return Eps(0);
+	else if (strcmp(Name,"Ey" )==0)                          return Eps(1);
+	else if (strcmp(Name,"Ez" )==0)                          return Eps(2);
+	else if (strcmp(Name,"Exy")==0 || strcmp(Name,"Eyx")==0) return Eps(3)/SQ2;
+	else if (strcmp(Name,"Eyz")==0 || strcmp(Name,"Ezy")==0) return Eps(4)/SQ2;
+	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return Eps(5)/SQ2;
+	else if (strcmp(Name,"Ev" )==0)                          return Eps(0)+Eps(1)+Eps(2); 
+	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((Eps(0)-Eps(1))*(Eps(0)-Eps(1)) + (Eps(1)-Eps(2))*(Eps(1)-Eps(2)) + (Eps(2)-Eps(0))*(Eps(2)-Eps(0)) + 3.0*(Eps(3)*Eps(3) + Eps(4)*Eps(4) + Eps(5)*Eps(5))))/3.0;
+	else throw new Fatal("Tensors::Val: Name==%s is invalid",Name);
+}
+
+inline void SetVal(char const * Name, double Val, Tensor2 & Sig)
+{
+	     if (strcmp(Name,"ZERO")==0)                          return;
+	else if (strcmp(Name,"Sx"  )==0)                          Sig(0) = Val;
+	else if (strcmp(Name,"Sy"  )==0)                          Sig(1) = Val;
+	else if (strcmp(Name,"Sz"  )==0)                          Sig(2) = Val;
+	else if (strcmp(Name,"Sxy" )==0 || strcmp(Name,"Syx")==0) Sig(3) = Val*SQ2;
+	else if (strcmp(Name,"Syz" )==0 || strcmp(Name,"Szy")==0) Sig(4) = Val*SQ2;
+	else if (strcmp(Name,"Szx" )==0 || strcmp(Name,"Sxz")==0) Sig(5) = Val*SQ2;
+	else throw new Fatal("Tensors::SetVal: Name==%s is invalid",Name);
+}
 
 /** Tensor multiplication  \f$ \TeSe{R} \gets \TeSe{S}\bullet\TeSe{T} \f$.
  * \em IMPORTANT
@@ -106,14 +140,23 @@ inline void Inv(Tensor2 const & T, Tensor2 & R)
 }
 
 /** Eigenvalues (L) of a tensor T  \f$ L_{i=1\cdots3} \gets eigenvalues(\TeSe{T}) \f$. */
-inline void Eigenvals(Tensor2 const & T, double L[3])
+inline void Eigenvals(Tensor2 const & T, Tensor1 & L)
 {
+	if (JacobiRot(T,L)==-1) throw new Fatal("Tensors::Eigenvals: Jacobi rotation did not converge. T=<%.6f %.6f %.6f %.6f %.6f %.6f>", T(0), T(1), T(2), T(3)/SQ2, T(4)/SQ2, T(5)/SQ2);
+}
 
-	// Calculate eigenvalues and eigenvectors
-	if (JacobiRot(T,L)==-1)
-	   throw new Fatal(_("Tensors::Eigenvals: Jacobi rotation did not converge. T=<%.6f %.6f %.6f %.6f %.6f %.6f>"),
-		                T(0), T(1), T(2), T(3)/SQ2, T(4)/SQ2, T(5)/SQ2);
+// Sort descending
+inline void Sort(Tensor1 & L)
+{
+	for (int i=0; i<2; ++i)
+	{
+		// Find the index of the maximum element
+		int max_index = i;
+		for (int j=i+1; j<3; ++j) if (L(j)>L(max_index)) max_index = j;
 
+		// Swap if i-th element is not the biggest yet
+		if (max_index>i) Util::Swap(L(i), L(max_index));
+	}
 }
 
 /** Eigenvalues (L) and Eigenprojectors (P) of a tensor T \f$ L_{i=1\cdots3} \gets eigenvalues(\TeSe{T}) \quad \TeSe{P}_{i=1\cdots3} \gets eigenprojectors(\TeSe{T}) \f$.
