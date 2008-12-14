@@ -27,26 +27,33 @@
 #include "util/lineparser.h"
 #include "numerical/brentroot.h"
 
-const char CAMCLAY_PN[4][8] = {"lam", "kap", "nu", "phics"};
+using Tensors::AddScaled;
+using Tensors::IIsym;
+using Tensors::IdyI;
 
 class CamClay : public EquilibModel
 {
 public:
+	// Constants
+	static const char CAMCLAY_PN[4][8]; ///< Parameters
+
 	// Destructor
 	virtual ~CamClay () {}
 
-	// Derived Methods
-	void         SetPrms (char const * Prms);
-	void         SetInis (char const * Inis);
-	char const * Name    () const { return "CamClay"; }
+	// Derived methods
+	int         NPrms   () const { return 4;          }
+	PrmName_t * Prms    () const { return CAMCLAY_PN; }
+	Str_t       Name    () const { return "CamClay";  }
+	void        InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const;
 
 private:
 	// Private data
-	double _lam;
-	double _kap;
 	double _Mcs;
 	double _w;
-	double _G;
+
+	// Derived private methods
+	void _initialize ();
+	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
 
 	// Private methods
 	double _calc_M  (double const & t)    const;                                    ///< Variable CSL slope
@@ -55,11 +62,9 @@ private:
 	void   _df_dsig (Tensor2 const & Sig, IntVals const & Ivs,  Tensor2 & V) const; ///< Calculate the V=df_dsig derivative for the (Sig,Ivs) state
 	double _f_alpha (double Alpha, void const * Sig, void const * DSig, void const * Ivs) const;
 
-	// Derived private methods
-	void   _stiff (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const; ///< Tangent or secant stiffness
-	double _val   (char const * Name) const;                                                                                                     ///< Return internal values
-
 }; // class CamClay
+
+const char CamClay::CAMCLAY_PN[4][8] = {"lam", "kap", "nu", "phics"};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -67,60 +72,135 @@ private:
 
 /* public */
 
-inline void CamClay::SetPrms(char const * Prms)
+inline void CamClay::InitIVS(Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const
 {
-	if (_geom<0) throw new Fatal("CamClay::SetPrms: Geometry type:\n\t[0==3D, 1==2D(plane-strain), 2==2D(plane-stress), 3==2D(axis-symmetric)] must be set via SetGeom before calling this method");
-
-	/* "lam=0.1 kap=0.01 phics=30 G=100" */
-	LineParser lp(Prms);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	if (names.Size()!=4) throw new Fatal("CamClay::SetPrms: The number of paramaters (%d) is incorrect (must be equal to 4). Ex.: lam=0.1 kap=0.01 phics=30 G=100",names.Size());
-	double sinphi;
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-			 if (names[i]=="lam")    _lam   =     values[i];
-		else if (names[i]=="kap")    _kap   =     values[i];
-		else if (names[i]=="phics")  sinphi = sin(values[i]*Util::PI/180.0);
-		else if (names[i]=="G")      _G     =     values[i];
-		else throw new Fatal("CamClay::SetPrms: Parameter label==%s is invalid. Ex.: lam=0.1 kap=0.01 phics=30 G=100",names[i].CStr());
-	}
-	_Mcs = 6.0*sinphi/(3.0-sinphi);
-	_w   = pow((3.0-sinphi)/(3.0+sinphi),4.0);
-}
-
-inline void CamClay::SetInis(char const * Inis)
-{
-	/* "Sx=0.0 Sy=0.0 Sxy=0.0 v=2.2" */
-	LineParser lp(Inis);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Check
-	_sig = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-	_eps = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-	_ivs.Resize(2); // z0 (yield surface size), and v (specific volume)
-	for (size_t i=0; i<names.Size(); i++)
-	{
-		     if (names[i]=="ZERO")                   break;
-		else if (names[i]=="Sx")                     _sig(0) = values[i];
-		else if (names[i]=="Sy")                     _sig(1) = values[i];
-		else if (names[i]=="Sz")                     _sig(2) = values[i];
-		else if (names[i]=="Sxy" || names[i]=="Syx") _sig(3) = values[i]*SQ2;
-		else if (names[i]=="Syz" || names[i]=="Szy") _sig(4) = values[i]*SQ2;
-		else if (names[i]=="Szx" || names[i]=="Sxz") _sig(5) = values[i]*SQ2;
-		else if (names[i]=="v")                      _ivs[1] = values[i];
-		else throw new Fatal("CamClay::SetInis: '%s' component of stress is invalid",names[i].CStr());
-	}
-	_ivs[0] = _calc_z0 (_sig);
+	Ini_t::const_iterator it = Ini.find("v");
+	if (it==Ini.end()) throw new Fatal("CamClay::InitIVS: Specific volume (v) must be provided with the array of Initial Values");
+	Ivs.Resize(2); // z0 (yield surface size), and v (specific volume)
+	Ivs[0] = _calc_z0 (Sig);
+	Ivs[1] = it->second;
 }
 
 
 /* private */
+
+inline void CamClay::_initialize()
+{
+	// Parameters
+	double lam   = Prm("lam");
+	double kap   = Prm("kap");
+	double nu    = Prm("nu");
+	double phics = Prm("phics");
+	
+	// Check
+	if (lam<=0.0)           throw new Fatal("LinElastic::_initialize: Tag=%d: Compressibility index (lam) must be positive. lam==%f is invalid",_tag,lam);
+	if (kap<=0.0)           throw new Fatal("LinElastic::_initialize: Tag=%d: Rebounding index (kap) must be positive. kap==%f is invalid",_tag,kap);
+	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::_initialize: Tag=%d: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",_tag,nu);
+	if (phics<=0.0)         throw new Fatal("LinElastic::_initialize: Tag=%d: Friction angle at critical state (phics) must be positive. phics==%f is invalid",_tag,phics);
+	
+	// Derived constants
+	double sinphi = sin(phics*Util::PI/180.0);
+	_Mcs = 6.0*sinphi/(3.0-sinphi);
+	_w   = pow((3.0-sinphi)/(3.0+sinphi),4.0);
+}
+
+inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
+{
+	// Parameters
+	double lam = Prm("lam");
+	double kap = Prm("kap");
+	double nu  = Prm("nu");
+
+	// B tensors: dzk = Bk:DEps
+	B.Resize    (2); // 2 internal values
+	B.SetValues (0.0);
+
+	// Elastic tangent stiffness
+	double v = Ivs[1];                                                    // specific volume
+	double E = (Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v/kap;                 // Young modulus
+	AddScaled (E/(1.0+nu), IIsym, nu*E/((1.0+nu)*(1.0-2.0*nu)), IdyI, D); // Elastic tangent tensor
+
+	// Elastic trial state
+	Tensor2 dsig_tr;                // trial stress increment
+	Tensor2  sig_tr;                // elastic trial state
+	Tensors::Dot (D,DEps, dsig_tr); // dsig_tr = De:DEps
+	sig_tr = Sig + dsig_tr;
+
+	// Initial and trial yield values
+	double f_ini = _calc_f (Sig,    Ivs); // initial yield function value
+	double f_tr  = _calc_f (sig_tr, Ivs); // trial yield function value
+
+	// Elastic/Elastoplastic ?
+	bool   intersect = false; // elastic/elastoplastic intersection ?
+	double alpha     = 0.0;   // intersection position
+	if (f_ini<0.0) // stress state inside yield surface
+	{
+		if (f_tr>0.0) intersect = true; // going outside => elastic/elastoplastic intersection
+		else return;                    // still inside => pure elastic
+	}
+	else // on the yield surface or slightly outside
+	{
+		// Loading/unloading?
+		Tensor2 V;  _df_dsig (Sig,Ivs, V);          // V = df_dsig derivative
+		double num_dL = Tensors::Reduce (V,D,DEps); // num_dL = V:De:DEps
+		if (num_dL<=0.0) return;                    // going inside (or tangent) => pure elastic
+	}
+
+	// Set current state on yield surface (after intersection)
+	Tensor2 sig;  sig  = Sig;
+	Tensor2 eps;  eps  = Eps;
+	Tensor2 deps; deps = DEps;
+	if (intersect)
+	{
+		// Find intersection
+		Numerical::BrentRoot<CamClay> br(this, &CamClay::_f_alpha);
+		alpha = br.Solve (0.0, 1.0, &Sig, &dsig_tr, &Ivs);
+
+		// Update stress state up to the intersection
+		Tensor2 deps_elastic;  deps_elastic = alpha*DEps;
+		Tensor2 dsig_elastic;
+		Tensors::Dot (D,deps_elastic, dsig_elastic); // dsig_elastic = De:deps_elastic
+		sig += dsig_elastic;
+		eps += deps_elastic;
+		deps = (1.0-alpha)*DEps; // remaining strain increment (elastoplastic)
+	}
+
+	// Invariants
+	double   p,q,t;
+	Tensor2  S;
+	Tensors::Stress_p_q_S_t (sig, p,q,S,t);
+
+	// Yield surface gradient
+	Tensor2 V;             // V = df_dsig derivative
+	_df_dsig (sig,Ivs, V); // V <- df_dsig(Sig,Ivs)
+
+	// Hardening
+	double M   = _calc_M (t);     // variable CSL slope
+	double z0  = Ivs[0];          // z0 (yield surface size)
+	double y0  = -M*M*p;          // y0 = df_dz0
+	double chi = (lam - kap)/v; // Chi
+	double trr = V(0)+V(1)+V(2);  // trace of (r=V)
+	double HH0 = z0*trr/chi;      // hardening moduli
+	double hp  = -y0*HH0;         // plastic coeficient
+
+	// Elastic tangent stiffness
+	Tensor4 De;
+	E = 3.0*p*(1.0-2.0*nu)*v/kap;
+	AddScaled (E/(1.0+nu), IIsym, nu*E/((1.0+nu)*(1.0-2.0*nu)), IdyI, De);
+
+	// Elastoplastic tangent stiffness
+	Tensor4 Dep;
+	double Phi = Tensors::Reduce(V,De,V) + hp;       // Phi = V:De:V + hp
+	Tensors::GerX      (-1.0/Phi,De,V,V,De,De, Dep); // Dep = (-1/Phi) * (De:V)dy(V:De) + De
+	Tensors::DotScaled (HH0/Phi,V,De, B[0]);         // B[0] = (HH0/Phi)*(V:De)
+
+	// Secant stiffness
+	if (alpha>0.0)
+	{
+		Tensors::AddScaled (alpha,D, 1.0-alpha,Dep, D); // D <- alp*De + (1-alp)*Dep
+		B[0] = (1.0-alpha)*B[0];                        // B <-          (1-alp)*B
+	}
+}
 
 inline double CamClay::_calc_M(double const & t) const
 {
@@ -185,125 +265,17 @@ inline double CamClay::_f_alpha(double Alpha, void const * Sig, void const * DSi
 	return _calc_f (siga, (*static_cast<IntVals const *>(Ivs)));
 }
 
-inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
-{
-	// B tensors: dzk = Bk:DEps
-	B.Resize    (2); // 2 internal values
-	B.SetValues (0.0);
-
-	// Elastic tangent stiffness
-	double v = Ivs[1];                     // specific volume
-	double p = (Sig(0)+Sig(1)+Sig(2))/3.0; // mean stress
-	double K = p*v/_kap;                   // bulk modulus
-	Tensors::AddScaled (2.0*_G,Tensors::Psd, K,Tensors::IdyI, D);
-
-	// Elastic trial state
-	Tensor2 dsig_tr;                // trial stress increment
-	Tensor2  sig_tr;                // elastic trial state
-	Tensors::Dot (D,DEps, dsig_tr); // dsig_tr = De:DEps
-	sig_tr = Sig + dsig_tr;
-
-	// Initial and trial yield values
-	double f_ini = _calc_f (Sig,    Ivs); // initial yield function value
-	double f_tr  = _calc_f (sig_tr, Ivs); // trial yield function value
-
-	// Elastic/Elastoplastic ?
-	bool   intersect = false; // elastic/elastoplastic intersection ?
-	double alpha     = 0.0;   // intersection position
-	if (f_ini<0.0) // stress state inside yield surface
-	{
-		if (f_tr>0.0) intersect = true; // going outside => elastic/elastoplastic intersection
-		else return;                    // still inside => pure elastic
-	}
-	else // on the yield surface or slightly outside
-	{
-		// Loading/unloading?
-		Tensor2 V;  _df_dsig (Sig,Ivs, V);          // V = df_dsig derivative
-		double num_dL = Tensors::Reduce (V,D,DEps); // num_dL = V:De:DEps
-		if (num_dL<=0.0) return;                    // going inside (or tangent) => pure elastic
-	}
-
-	// Set current state on yield surface (after intersection)
-	Tensor2 sig;  sig  = Sig;
-	Tensor2 eps;  eps  = Eps;
-	Tensor2 deps; deps = DEps;
-	if (intersect)
-	{
-		// Find intersection
-		Numerical::BrentRoot<CamClay> br(this, &CamClay::_f_alpha);
-		alpha = br.Solve (0.0, 1.0, &Sig, &dsig_tr, &Ivs);
-
-		// Update stress state up to the intersection
-		Tensor2 deps_elastic;  deps_elastic = alpha*DEps;
-		Tensor2 dsig_elastic;
-		Tensors::Dot (D,deps_elastic, dsig_elastic); // dsig_elastic = De:deps_elastic
-		sig += dsig_elastic;
-		eps += deps_elastic;
-		deps = (1.0-alpha)*DEps; // remaining strain increment (elastoplastic)
-	}
-
-	// Invariants
-	double   q,t;
-	Tensor2  S;
-	Tensors::Stress_p_q_S_t (sig, p,q,S,t);
-
-	// Yield surface gradient
-	Tensor2 V;             // V = df_dsig derivative
-	_df_dsig (sig,Ivs, V); // V <- df_dsig(Sig,Ivs)
-
-	// Hardening
-	double M   = _calc_M (t);     // variable CSL slope
-	double z0  = Ivs[0];          // z0 (yield surface size)
-	double y0  = -M*M*p;          // y0 = df_dz0
-	double chi = (_lam - _kap)/v; // Chi
-	double trr = V(0)+V(1)+V(2);  // trace of (r=V)
-	double HH0 = z0*trr/chi;      // hardening moduli
-	double hp  = -y0*HH0;         // plastic coeficient
-
-	// Elastic tangent stiffness
-	Tensor4 De;
-	K = p*v/_kap;
-	Tensors::AddScaled (2.0*_G,Tensors::Psd, K,Tensors::IdyI, De);
-
-	// Elastoplastic tangent stiffness
-	Tensor4 Dep;
-	double Phi = Tensors::Reduce(V,De,V) + hp;       // Phi = V:De:V + hp
-	Tensors::GerX      (-1.0/Phi,De,V,V,De,De, Dep); // Dep = (-1/Phi) * (De:V)dy(V:De) + De
-	Tensors::DotScaled (HH0/Phi,V,De, B[0]);         // B[0] = (HH0/Phi)*(V:De)
-
-	// Secant stiffness
-	if (alpha>0.0)
-	{
-		Tensors::AddScaled (alpha,D, 1.0-alpha,Dep, D); // D <- alp*De + (1-alp)*Dep
-		B[0] = (1.0-alpha)*B[0];                        // B <-          (1-alp)*B
-	}
-}
-
-inline double CamClay::_val(char const * Name) const
-{
-	     if (strcmp(Name,"z0")==0) return _ivs[0];
-	else if (strcmp(Name,"v" )==0) return _ivs[1];
-	else throw new Fatal("CamClay::_val: There is no value named (%s) in this model", Name);
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new CamClay model
-Model * CamClayMaker()
-{
-	return new CamClay();
-}
+// Allocate a new model
+Model * CamClayMaker() { return new CamClay(); }
 
-// Register CamClay model into ModelFactory array map
-int CamClayRegister()
-{
-	ModelFactory["CamClay"] = CamClayMaker;
-	return 0;
-}
+// Register model
+int CamClayRegister() { ModelFactory["CamClay"]=CamClayMaker;  return 0; }
 
-// Execute the autoregistration
+// Call register
 int __CamClay_dummy_int = CamClayRegister();
 
 

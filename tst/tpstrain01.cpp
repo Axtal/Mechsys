@@ -89,8 +89,10 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Data
-	FEM::Data dat(2); // 2D
+	// Data and solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"tpstrain01");
+	sol.SetLinSol   (linsol.CStr());
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -101,16 +103,13 @@ int main(int argc, char **argv) try
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
-	// Solver
-	FEM::Solver sol(dat,"tpstrain01");
-
 	// Stage # 1 -----------------------------------------------------------
 	FEM::NBrys_T nbrys;
-	nbrys.Push  (make_tuple(0.5, 0.0, 0.0, "ux", 0.0));
 	FEM::EBrys_T ebrys;
-	ebrys.Push  (make_tuple(-10, "uy", 0.0));
-	ebrys.Push  (make_tuple(-20, "fy",   q));
-	dat.SetBrys (&mesh, &nbrys, &ebrys, NULL);
+	nbrys.Push        (make_tuple(0.5, 0.0, 0.0, "ux", 0.0));
+	ebrys.Push        (make_tuple(-10, "uy", 0.0));
+	ebrys.Push        (make_tuple(-20, "fy",   q));
+	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL);
 	sol.SolveWithInfo ();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -164,6 +163,7 @@ int main(int argc, char **argv) try
 	double max_err_eps = err_eps[err_eps.Max()];
 	double max_err_sig = err_sig[err_sig.Max()];
 	double max_err_dis = err_dis[err_dis.Max()];
+	cout << endl;
 	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
 	cout << _4<< "Eps" << _8s<<min_err_eps << _8s<<err_eps.Mean() << (max_err_eps>tol_eps?"[1;31m":"[1;32m") << _8s<<max_err_eps << "[0m" << _8s<<err_eps.Norm() << endl;
 	cout << _4<< "Sig" << _8s<<min_err_sig << _8s<<err_sig.Mean() << (max_err_sig>tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig << "[0m" << _8s<<err_sig.Norm() << endl;

@@ -60,7 +60,7 @@ inline double Val(Tensor2 const & Sig, Tensor2 const & Eps, char const * Name)
 	else throw new Fatal("Tensors::Val: Name==%s is invalid",Name);
 }
 
-inline void SetVal(char const * Name, double Val, Tensor2 & Sig)
+inline void SetVal(char const * Name, double Val, Tensor2 & Sig, bool WithError=true)
 {
 	     if (strcmp(Name,"ZERO")==0)                          return;
 	else if (strcmp(Name,"Sx"  )==0)                          Sig(0) = Val;
@@ -69,7 +69,7 @@ inline void SetVal(char const * Name, double Val, Tensor2 & Sig)
 	else if (strcmp(Name,"Sxy" )==0 || strcmp(Name,"Syx")==0) Sig(3) = Val*SQ2;
 	else if (strcmp(Name,"Syz" )==0 || strcmp(Name,"Szy")==0) Sig(4) = Val*SQ2;
 	else if (strcmp(Name,"Szx" )==0 || strcmp(Name,"Sxz")==0) Sig(5) = Val*SQ2;
-	else throw new Fatal("Tensors::SetVal: Name==%s is invalid",Name);
+	else if (WithError) throw new Fatal("Tensors::SetVal: Name==%s is invalid",Name);
 }
 
 /** Tensor multiplication  \f$ \TeSe{R} \gets \TeSe{S}\bullet\TeSe{T} \f$.

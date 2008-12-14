@@ -63,8 +63,8 @@ inline void LinElastic::_initialize()
 	double nu = Prm("nu");
 
 	// Check
-	if (E<=0.0)             throw new Fatal("LinElastic::_initialize: Tag=%d: Young modulus (E) must be provided (and positive). E==%f is invalid",_tag,E);
-	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::_initialize: Tag=%d: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",_tag,nu);
+	if (E<=0.0)             throw new Fatal("LinElastic::_initialize: Tag=%d: Young modulus (E) must be positive. E==%f is invalid",_tag,E);
+	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::_initialize: Tag=%d: Poisson ratio (nu) must be in the range: 0 < nu < 0.5. nu==%f is invalid",_tag,nu);
 
 	// Set stiffness
 	double c  = (_gi==2 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // (2)plane-stress != (plane-strain=3D)

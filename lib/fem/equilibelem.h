@@ -62,7 +62,8 @@ class EquilibElem : public ProbElem
 {
 public:
 	// Typedefs
-	typedef Array<double> IntVals; ///< Internal values (specific volume, yield surface size, etc.)
+	typedef Array<double>           IntVals; ///< Internal values (specific volume, yield surface size, etc.)
+    typedef std::map<String,double> Ini_t;   ///< Initial values. Ex.: Sx=0.0
 
 	//{ Constants
 	static const size_t ND_EQUILIB_3D;        ///< Number of DOFs Eq3D
@@ -309,7 +310,9 @@ inline double EquilibElem::Val(int iNod, Str_t Name) const
 
 inline double EquilibElem::Val(Str_t Name) const
 {
-	throw new Fatal("EquilibElem::Val: Feature not availabe");
+	double ave = 0.0;
+	for (size_t i=0; i<_ge->NIPs; i++) ave += Tensors::Val (_sig[i], _eps[i], Name);
+	return ave/_ge->NIPs;
 }
 
 inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
@@ -425,18 +428,22 @@ inline void EquilibElem::_initialize(Str_t Inis)
 	_eps.Resize (_ge->NIPs);
 	_ivs.Resize (_ge->NIPs);
 
-	// Initial values
-	LineParser lp(Inis);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions (names,values);
+	// Parse values
+	LineParser           lp(Inis);
+    Ini_t                names_vals;
+	lp.BreakExpressions (names_vals);
 
 	// Set initial values
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
+		// Stress and strain
 		_sig[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
 		_eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-		for (size_t j=0; j<names.Size(); ++j) Tensors::SetVal (names[j].CStr(), values[j], _sig[i]);
+		for (Ini_t::const_iterator it=names_vals.begin(); it!=names_vals.end(); ++it)
+			Tensors::SetVal (it->first.CStr(), it->second, _sig[i], /*WithError*/false);
+
+		// Initialize internal values
+		_mdl->InitIVS (names_vals, _sig[i], _eps[i], _ivs[i]);
 	}
 
 	// Initialize internal state

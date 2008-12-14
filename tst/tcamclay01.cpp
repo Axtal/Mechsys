@@ -16,6 +16,25 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/* Cube -- true triaxial test
+ 
+      z
+      |__y      +________________+
+   x,'        ,'|              ,'|
+            ,'               ,'  |
+          ,'    |          ,'    | 1.0
+        ,'      .        ,'      | 
+      +'_______________+'        |
+      |                |         |    13 = # elem in centre
+      |         |      |         |
+      |         + -  - | -  -  - +
+      |       ,        |       ,' 
+      |     ,          |     ,'   
+      |   ,            |   ,'  1.0
+      | ,      1.0     | ,'       
+      +________________+'         
+*/
+
 // STL
 #include <iostream>
 #include <fstream>
@@ -45,33 +64,18 @@ int main(int argc, char **argv) try
 	double lam   = 0.0891;  // lambda
 	double kap   = 0.0196;  // kappa
 	double phics = 31.6;    // shear angle at CS
-	double G     = 18130.0; // shear modulus (kPa)
+	double nu    = 0.2;     // Poisson ratio
 	double p_ini = 198.0;   // initial mean stress (kPa)
 	double v_ini = 1.6910;  // initial specific volume
-
-	/* Cube -- true triaxial test
-	 
-	      z
-	      |__y      +________________+
-	   x,'        ,'|              ,'|
-	            ,'               ,'  |
-	          ,'    |          ,'    | 1.0
-	        ,'      .        ,'      | 
-	      +'_______________+'        |
-	      |                |         |    13 = # elem in centre
-	      |         |      |         |
-	      |         + -  - | -  -  - +
-	      |       ,        |       ,' 
-	      |     ,          |     ,'   
-	      |   ,            |   ,'  1.0
-	      | ,      1.0     | ,'       
-	      +________________+'         
-	*/
+	bool   is_o2 = false;   // use high order elements?
+	int    ndiv  = 1;       // number of divisions along x, y and z
+	String linsol("UM");    // UMFPACK
 
 	// Input
-	String linsol("UM");
-	if (argc==2) linsol.Printf("%s",argv[1]);
-	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
+	cout << "Input: " << argv[0] << "  is_o2  ndiv  linsol(LA,UM,SLU)\n";
+	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3) ndiv       =  atof(argv[2]);
+	if (argc>=4) linsol.Printf("%s",argv[3]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
@@ -89,27 +93,27 @@ int main(int argc, char **argv) try
 	blocks.Push (&b);
 
 	// Generate
-	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
-	Mesh::Structured ms(/*Is3D*/true);
-	ms.SetBlocks (blocks);
-	ms.Generate  (true);
+	Mesh::Structured mesh(/*Is3D*/false);
+	mesh.SetBlocks (blocks);           // Set Blocks
+	if (is_o2) mesh.SetO2();           // Non-linear elements
+	mesh.Generate (/*WithInfo*/ true); // Discretize domain
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(3); // 3D
-
-	// Solver
-	FEM::Solver sol(dat,"tcamclay01");
+	// Data and Solver
+	FEM::Data   dat (3); // 3D
+	FEM::Solver sol (dat, "tcamclay01");
+	sol.SetLinSol   (linsol.CStr());
 
 	// Element attributes
-	String prms; prms.Printf("lam=%f kap=%f phics=%f G=%f",lam,kap,phics,G);
+	String prms; prms.Printf("lam=%f kap=%f nu=%f phics=%f",lam,kap,nu,phics);
 	String inis; inis.Printf("Sx=%f Sy=%f Sz=%f Sxy=0 Syz=0 Szx=0 v=%f",p_ini,p_ini,p_ini,v_ini);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Hex8", "Equilib", "CamClay", prms.CStr(), inis.CStr(), "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Hex20", "Equilib", "CamClay", prms.CStr(), inis.CStr(), "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Hex8",  "Equilib", "CamClay", prms.CStr(), inis.CStr(), "gam=20", true));
 
-	// Set Nodes and Elements
-	dat.SetNodesElems (&ms, &eatts);
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Open file
 	std::ofstream res("tcamclay01.cal", std::ios::out);
@@ -122,7 +126,7 @@ int main(int argc, char **argv) try
 	int istage = 0;
 	for (size_t i=0; i<dtrac.Size(); ++i)
 	{
-		size_t ndiv = 10;
+		size_t ndiv = 1;//10;
 		for (size_t j=0; j<ndiv; ++j)
 		{
 			// Faces brys
@@ -135,7 +139,7 @@ int main(int argc, char **argv) try
 			fbrys.Push (make_tuple(-105, "fz", dtrac[i](2)/ndiv));
 
 			// Set boundary conditions
-			dat.SetBrys (&ms, NULL, NULL, &fbrys);
+			dat.SetBrys (&mesh, NULL, NULL, &fbrys);
 
 			// Solve
 			sol.SolveWithInfo(1,0.0,istage);

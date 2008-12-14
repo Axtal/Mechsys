@@ -34,6 +34,7 @@ typedef LinAlg::Matrix<double>  Mat_t;
 typedef char const            * Str_t;
 typedef std::map<String,double> Prm_t;        ///< Parameters type
 typedef const char              PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
+typedef std::map<String,double> Ini_t;        ///< Initial values. Ex.: Sx=0.0
 
 class Model
 {
@@ -56,6 +57,9 @@ public:
 	virtual int         NPrms () const =0; ///< Number of parameters
 	virtual PrmName_t * Prms  () const =0; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
 	virtual Str_t       Name  () const =0; ///< Model name
+
+	/* Initialize internal values. */
+	virtual void InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const {}
 
 	/* Tangent stiffness. */
 	virtual void TgStiffness (Tensor2 const & Sig,
