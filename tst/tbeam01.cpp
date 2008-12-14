@@ -23,8 +23,9 @@
 #include "fem/data.h"
 #include "fem/solver.h"
 #include "fem/elems/beam.h"
-#include "models/equilibs/linelastic.h"
+#include "models/equilibs/beamelastic.h"
 #include "util/exception.h"
+#include "mesh/mesh.h"
 
 using std::cout;
 using std::endl;
@@ -32,6 +33,7 @@ using LinAlg::Matrix;
 using Util::_4;
 using Util::_6;
 using Util::_8s;
+using boost::make_tuple;
 
 inline double fy (double t)
 {
@@ -40,10 +42,6 @@ inline double fy (double t)
 
 int main(int argc, char **argv) try
 {
-	// Input
-	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
-	String linsol("LA");
-	if (argc==2) linsol.Printf("%s",argv[1]);
 
 	// Constants
 	double M   = -20.0;   // kN*m
@@ -53,37 +51,52 @@ int main(int argc, char **argv) try
 	double A   =  4.0e-2; // m^2
 	double Izz =  4.0e-4; // m^4
 
-	// Geometry
+	// Input
+	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
+	String linsol("LA");
+	if (argc==2) linsol.Printf("%s",argv[1]);
+
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+	
+	Mesh::Generic mesh(/*Is3D*/false);
+	mesh.SetNVerts  (4);
+	mesh.SetNElems  (3);
+	mesh.SetVert    (0, true, 0.0,   L); // true => OnBry
+	mesh.SetVert    (1, true,   L,   L);
+	mesh.SetVert    (2, true,   L, 0.0);
+	mesh.SetVert    (3, true, L+L, 0.0);
+	mesh.SetElem    (0, -5, true, VTK_LINE);
+	mesh.SetElem    (1, -5, true, VTK_LINE);
+	mesh.SetElem    (2, -5, true, VTK_LINE);
+	mesh.SetElemCon (0, 0, 0);  mesh.SetElemCon(0, 1, 1);
+	mesh.SetElemCon (1, 0, 1);  mesh.SetElemCon(1, 1, 2);
+	mesh.SetElemCon (2, 0, 2);  mesh.SetElemCon(2, 1, 3);
+
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+	
+	// Data
 	FEM::Data dat(2); // 2D
 
-	// Nodes
-	dat.SetNNodes (4);
-	dat.SetNode   (0, 0.0,   L);
-	dat.SetNode   (1,   L,   L);
-	dat.SetNode   (2,   L, 0.0);
-	dat.SetNode   (3, L+L, 0.0);
+	// Elements attributes
+	String prms; prms.Printf("E=%f A=%f Izz=%f",E,A,Izz);
+	FEM::EAtts_T eatts;
+	eatts.Push (make_tuple(-5, "", "Beam", "BeamElastic", prms.CStr(), "ZERO", "gam=20 cq=1", true));
 
-	// Elements
-	dat.SetNElems (3);
-	dat.SetElem   (0, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(0))->SetConn(1, dat.Nod(1));
-	dat.SetElem   (1, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(1))->SetConn(1, dat.Nod(2));
-	dat.SetElem   (2, "", "Beam", /*Active*/true, /*Tag*/-5)->SetConn(0, dat.Nod(2))->SetConn(1, dat.Nod(3));
+	// Set geometry: nodes and elements
+	dat.SetOnlyFrame  (true);
+	dat.SetNodesElems (&mesh, &eatts);
 
-	// Parameters and initial value
-	String prms; prms.Printf("E=%f A=%f Izz=%f", E, A, Izz);
-	dat.Ele(0)->SetModel("LinElastic", prms.CStr(), "ZERO");
-	dat.Ele(1)->SetModel("LinElastic", prms.CStr(), "ZERO");
-	dat.Ele(2)->SetModel("LinElastic", prms.CStr(), "ZERO");
+	// Solver
+	FEM::Solver sol(dat, "tbeam01");
 
-	// Boundary conditions (must be after set connectivity)
+	// Stage # 1 -----------------------------------------------------------
 	dat.Nod(0)->Bry("ux", 0.0)->Bry("uy", 0.0);
 	dat.Nod(1)->Bry("fy", P);
 	dat.Nod(3)->Bry("uy", 0.0)->Bry("mz", M);
-
-	// Solve
-	FEM::Solver sol(dat, "tbeam01");
 	sol.SolveWithInfo();
 
+	//////////////////////////////////////////////////////////////////////////////////////// Output ////
+	
 	// Output: Nodes
 	cout << "" << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"wz" << _8s<<"fx"<< _8s<<"fy" << _8s<<"mz" << endl;
 	for (size_t i=0; i<dat.NNodes(); ++i)
@@ -169,6 +182,7 @@ int main(int argc, char **argv) try
 	double max_err_f = err_f[err_f.Max()];
 	double min_err_s = err_s[err_s.Min()];
 	double max_err_s = err_s[err_s.Max()];
+	cout << endl;
 	cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
 	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
 	cout << _4<< "f" << _8s<<min_err_f << _8s<<err_f.Mean() << (max_err_f>tol_f?"[1;31m":"[1;32m") << _8s<<max_err_f << "[0m" << _8s<<err_f.Norm() << endl;

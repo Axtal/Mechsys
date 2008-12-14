@@ -60,7 +60,6 @@ public:
 	virtual void        ClearDisp    ()                                           {}
 	virtual void        SetActive    (bool Activate, int ID)                     =0;
 	virtual void        CalcDeps     () const                                     {}
-	virtual Str_t       ModelName    () const                                    =0;
 	virtual double      Val          (int iNod, Str_t Key) const                 =0;
 	virtual double      Val          (          Str_t Key) const                 =0;
 	virtual void        EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
@@ -119,7 +118,7 @@ protected:
 	Prop_t   * _prp; ///< Properties
 
 	// Methods
-	virtual void _initialize         (Str_t Inis)                                            {} ///< Initialize the element
+	virtual void _initialize         (Str_t Inis)                                           =0; ///< Initialize the element
 	virtual void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn); ///< Distribute values from face/edges to nodes
 
 }; // class ProbElem

@@ -89,30 +89,28 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
+	// Data
 	FEM::Data dat(2); // 2D
-
-	// Nodes brys
-	FEM::NBrys_T nbrys;
-	nbrys.Push (make_tuple(0.5, 0.0, 0.0, "ux", 0.0)); // x,y,z, key, val
-
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "uy", 0.0)); // tag, key, val
-	ebrys.Push (make_tuple(-20, "fy",   q)); // tag, key, val
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Tri6","PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20", true)); // tag, type, model, prms, inis, props
-	else       eatts.Push (make_tuple(-1, "Tri3","PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20", true)); // tag, type, model, prms, inis, props
+	if (is_o2) eatts.Push (make_tuple(-1, "Tri6","PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Tri3","PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20", true));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
+	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
-	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL);
 
-	// Solve
+	// Solver
 	FEM::Solver sol(dat,"tpstrain01");
+
+	// Stage # 1 -----------------------------------------------------------
+	FEM::NBrys_T nbrys;
+	nbrys.Push  (make_tuple(0.5, 0.0, 0.0, "ux", 0.0));
+	FEM::EBrys_T ebrys;
+	ebrys.Push  (make_tuple(-10, "uy", 0.0));
+	ebrys.Push  (make_tuple(-20, "fy",   q));
+	dat.SetBrys (&mesh, &nbrys, &ebrys, NULL);
 	sol.SolveWithInfo ();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////

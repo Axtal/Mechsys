@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
 	double L       = 10.0;     // length
 	double H       = 10.0;     // height
 	bool   is_o2   = false;    // use high order elements?
-	int    ndivy   = 50;       // ndivy
+	int    ndivy   = 15;       // ndivy
 	double Ax      = 2.0;      // rate of increase of X divisions
 	double NonLinX = false;    // nonlinear divisions along X?
 

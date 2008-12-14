@@ -23,7 +23,7 @@
 #include "fem/equilibelem.h"
 #include "util/string.h"
 #include "util/util.h"
-#include "util/lineparser.h"
+#include "util/exception.h"
 #include "util/numstreams.h"
 #include "linalg/laexpr.h"
 
@@ -37,13 +37,26 @@ namespace FEM
 class BiotElem : public EquilibElem
 {
 public:
+	//{ Constants
+	static const size_t ND_BIOT_3D;        ///< Number of DOF vars 3D
+	static const char   UD_BIOT_3D[ 4][4]; ///< Essential DOF vars 3D
+	static const char   FD_BIOT_3D[ 4][4]; ///< Natural DOF vars 3D
+	static const size_t ND_BIOT_2D;        ///< Number of DOF vars 2D
+	static const char   UD_BIOT_2D[ 3][4]; ///< Essential DOF vars 2D
+	static const char   FD_BIOT_2D[ 3][4]; ///< Natural DOF vars 2D
+	static const size_t NL_BIOT_3D;        ///< Number of labels 3D
+	static const char   LB_BIOT_3D[20][4]; ///< Name of labels 3D
+	static const size_t NL_BIOT_2D;        ///< Number of labels 2D
+	static const char   LB_BIOT_2D[15][4]; ///< Name of labels 2D
+	static const char   BIOT_PROP [ 2][8]; ///< Properties
+	//}
+	
 	// Methods related to PROBLEM
 	int         InitCtes     (int nDim);
 	int         NProps       () const { return 2; } ///< "gam" and "gw"
 	ProName_t * Props        () const { return BIOT_PROP; }
 	void        ClearDisp    ();
 	void        CalcDeps     () const;
-	Str_t       ModelName    () const { return "LinElastic"; }
 	double      Val          (int iNod, Str_t Key) const;
 	double      Val          (          Str_t Key) const;
 	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
@@ -60,7 +73,7 @@ public:
 
 private:
 	// Derived methods
-	void _excavate ();
+	void _excavate () { throw new Fatal("BiotElem::_excavate: Method not available"); }
 
 	// Private methods
 	void   _Bp_mat     (Mat_t const & dN, Mat_t const & J, Mat_t & Bp) const { Bp = inv(J)*dN; }
@@ -74,6 +87,20 @@ private:
 	double _val_ip     (size_t iIP, Str_t Name) const;
 
 }; // class BiotElem
+
+//{ Constants
+const size_t BiotElem::ND_BIOT_3D        = 4;
+const char   BiotElem::UD_BIOT_3D[ 4][4] = {"ux", "uy", "uz", "pwp"};
+const char   BiotElem::FD_BIOT_3D[ 4][4] = {"fx", "fy", "fz", "vol"};
+const size_t BiotElem::ND_BIOT_2D        = 3;
+const char   BiotElem::UD_BIOT_2D[ 3][4] = {"ux", "uy", "pwp"};
+const char   BiotElem::FD_BIOT_2D[ 3][4] = {"fx", "fy", "vol"};
+const size_t BiotElem::NL_BIOT_3D        = 20;
+const char   BiotElem::LB_BIOT_3D[20][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "p", "q", "Ev", "Ed", "Vx", "Vy", "Vz", "H"};
+const size_t BiotElem::NL_BIOT_2D        = 15;
+const char   BiotElem::LB_BIOT_2D[15][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "p", "q", "Ev", "Ed", "Vx", "Vy", "H"};
+const char   BiotElem::BIOT_PROP [ 2][8] = {"gam", "gw"};
+//}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -291,11 +318,6 @@ inline void BiotElem::UVecMap(size_t Idx, Array<size_t> & RMap) const
 
 /* private */
 
-inline void BiotElem::_excavate()
-{
-	throw new Fatal("BiotElem::_excavate: Method not available");
-}
-
 inline void BiotElem::_equi_map(Array<size_t> & RMap, Array<bool> & RUPresc) const
 {
 	// Map of positions from Me to Global
@@ -475,16 +497,6 @@ inline double BiotElem::_val_ip(size_t iIP, Str_t Name) const
 	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return _eps[iIP](5)/SQ2;
 	else if (strcmp(Name,"Ev" )==0)                          return _eps[iIP](0)+_eps[iIP](1)+_eps[iIP](2); 
 	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_eps[iIP](0)-_eps[iIP](1))*(_eps[iIP](0)-_eps[iIP](1)) + (_eps[iIP](1)-_eps[iIP](2))*(_eps[iIP](1)-_eps[iIP](2)) + (_eps[iIP](2)-_eps[iIP](0))*(_eps[iIP](2)-_eps[iIP](0)) + 3.0*(_eps[iIP](3)*_eps[iIP](3) + _eps[iIP](4)*_eps[iIP](4) + _eps[iIP](5)*_eps[iIP](5))))/3.0;
-
-	// Principal components of sig
-	else if (strcmp(Name,"S1" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_sig[iIP], sigp);*/ return sigp[2]; }
-	else if (strcmp(Name,"S2" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_sig[iIP], sigp);*/ return sigp[1]; }
-	else if (strcmp(Name,"S3" )==0) return 0.0; // { double sigp[3];/* Tensors::Eigenvals(_sig[iIP], sigp);*/ return sigp[0]; }
-
-	// Principal components of eps
-	else if (strcmp(Name,"E1" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_eps[iIP], epsp);*/ return epsp[2]; }
-	else if (strcmp(Name,"E2" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_eps[iIP], epsp);*/ return epsp[1]; }
-	else if (strcmp(Name,"E3" )==0) return 0.0; // { double epsp[3];/* Tensors::Eigenvals(_eps[iIP], epsp);*/ return epsp[0]; }
 
 	// Flow velocities
 	else if (strcmp(Name,"Vx" )==0) return 0.0;

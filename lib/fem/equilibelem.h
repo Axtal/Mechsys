@@ -64,6 +64,22 @@ public:
 	// Typedefs
 	typedef Array<double> IntVals; ///< Internal values (specific volume, yield surface size, etc.)
 
+	//{ Constants
+	static const size_t ND_EQUILIB_3D;        ///< Number of DOFs Eq3D
+	static const char   UD_EQUILIB_3D[ 3][4]; ///< Essential DOF vars 3D
+	static const char   FD_EQUILIB_3D[ 3][4]; ///< Natural DOF vars 3D
+	static const size_t ND_EQUILIB_2D;        ///< Number of DOFs 2D
+	static const char   UD_EQUILIB_2D[ 2][4]; ///< Essential DOF vars 2D
+	static const char   FD_EQUILIB_2D[ 2][4]; ///< Natural DOF vars 2D
+	static const size_t NL_EQUILIB_3D;        ///< Number of labels 3D
+	static const char   LB_EQUILIB_3D[16][4]; ///< Name of labels 3D
+	static const size_t NL_PSTRAIN;           ///< Number of labels Plane-strain
+	static const char   LB_PSTRAIN   [12][4]; ///< Name of labels Plane-strain
+	static const size_t NL_PSTRESS;           ///< Number of labels Plane-stress
+	static const char   LB_PSTRESS   [ 6][4]; ///< Name of labels Plane-stress
+	static const char   EQUILIB_PROP [ 1][8]; ///< Properties
+	//}
+
 	// Destructor
 	virtual ~EquilibElem () {}
 
@@ -75,7 +91,6 @@ public:
 	void        ClearDisp    ();
 	void        SetActive    (bool Activate, int ID);
 	void        CalcDeps     () const;
-	Str_t       ModelName    () const { return _mdl->Name(); }
 	double      Val          (int iNod, Str_t Key) const;
 	double      Val          (          Str_t Key) const;
 	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
@@ -108,9 +123,24 @@ protected:
 
 private:
 	void _init_internal_state (); ///< Initialize internal state
-	void _equations_map       (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 
 }; // class EquilibElem                                                                     
+
+//{ Constants
+const size_t EquilibElem::ND_EQUILIB_3D        = 3;
+const char   EquilibElem::UD_EQUILIB_3D[ 3][4] = {"ux", "uy", "uz"};
+const char   EquilibElem::FD_EQUILIB_3D[ 3][4] = {"fx", "fy", "fz"};
+const size_t EquilibElem::ND_EQUILIB_2D        = 2;
+const char   EquilibElem::UD_EQUILIB_2D[ 2][4] = {"ux", "uy"};
+const char   EquilibElem::FD_EQUILIB_2D[ 2][4] = {"fx", "fy"};
+const size_t EquilibElem::NL_EQUILIB_3D        = 16;
+const char   EquilibElem::LB_EQUILIB_3D[16][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "p", "q", "Ev", "Ed"};
+const size_t EquilibElem::NL_PSTRAIN           = 12;
+const char   EquilibElem::LB_PSTRAIN   [12][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "p", "q", "Ev", "Ed"};
+const size_t EquilibElem::NL_PSTRESS           = 6;
+const char   EquilibElem::LB_PSTRESS   [ 6][4] = {"Ex", "Ey", "Exy", "Sx", "Sy", "Sxy"};
+const char   EquilibElem::EQUILIB_PROP [ 1][8] = {"gam"};
+//}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -368,7 +398,21 @@ inline void EquilibElem::CMatrix(size_t Idx, Mat_t & Ke) const
 
 inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
 {
-	_equations_map (RMap, CMap, RUPresc, CUPresc);
+	// Map of positions from Me to Global
+	RMap   .Resize(_nd*_ge->NNodes);
+	RUPresc.Resize(_nd*_ge->NNodes);
+	int p = 0; // position inside matrix
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	{
+		for (int j=0; j<_nd; ++j)
+		{
+			RMap    [p] = _ge->Conn[i]->DOFVar(UD[j]).EqID;
+			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[j]).IsEssenPresc;
+			p++;
+		}
+	}
+	CMap    = RMap;
+	CUPresc = RUPresc;
 }
 
 
@@ -516,25 +560,6 @@ inline void EquilibElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) co
 		case 3: // 2D(axis-symmetric)
 		default: throw new Fatal("EquilibElem::_B_mat: _B_mat() method is not available for GeometryIndex(gi)==%d",_gi);
 	}
-}
-
-inline void EquilibElem::_equations_map(Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
-{
-	// Map of positions from Me to Global
-	RMap   .Resize(_nd*_ge->NNodes);
-	RUPresc.Resize(_nd*_ge->NNodes);
-	int p = 0; // position inside matrix
-	for (size_t i=0; i<_ge->NNodes; ++i)
-	{
-		for (int j=0; j<_nd; ++j)
-		{
-			RMap    [p] = _ge->Conn[i]->DOFVar(UD[j]).EqID;
-			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[j]).IsEssenPresc;
-			p++;
-		}
-	}
-	CMap    = RMap;
-	CUPresc = RUPresc;
 }
 
 inline void EquilibElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, Array<Node*> const & FConn)

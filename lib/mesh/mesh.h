@@ -29,7 +29,7 @@
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  //#include <boost/python.hpp> // this includes everything
+  #include <boost/python.hpp> // this includes everything
   namespace BPy = boost::python;
 #endif
 

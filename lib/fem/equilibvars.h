@@ -27,52 +27,10 @@ namespace FEM
 
 
 // Biot
-const size_t ND_BIOT_3D        = 4;
-const char   UD_BIOT_3D[ 4][4] = {"ux", "uy", "uz", "pwp"};
-const char   FD_BIOT_3D[ 4][4] = {"fx", "fy", "fz", "vol"};
-
-const size_t ND_BIOT_2D        = 3;
-const char   UD_BIOT_2D[ 3][4] = {"ux", "uy", "pwp"};
-const char   FD_BIOT_2D[ 3][4] = {"fx", "fy", "vol"};
-
-const size_t NL_BIOT_3D        = 20;
-const char   LB_BIOT_3D[20][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "p", "q", "Ev", "Ed", "Vx", "Vy", "Vz", "H"};
-
-const size_t NL_BIOT_2D        = 15;
-const char   LB_BIOT_2D[15][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "p", "q", "Ev", "Ed", "Vx", "Vy", "H"};
 
 // Equilib
-const size_t ND_EQUILIB_3D        = 3;
-const char   UD_EQUILIB_3D[ 3][4] = {"ux", "uy", "uz"};
-const char   FD_EQUILIB_3D[ 3][4] = {"fx", "fy", "fz"};
-
-const size_t ND_EQUILIB_2D        = 2;
-const char   UD_EQUILIB_2D[ 2][4] = {"ux", "uy"};
-const char   FD_EQUILIB_2D[ 2][4] = {"fx", "fy"};
-
-const size_t NL_EQUILIB_3D        = 16;
-const char   LB_EQUILIB_3D[16][4] = {"Ex", "Ey", "Ez", "Exy", "Eyz", "Ezx", "Sx", "Sy", "Sz", "Sxy", "Syz", "Szx", "p", "q", "Ev", "Ed"};
-
-const size_t NL_PSTRAIN        = 12;
-const char   LB_PSTRAIN[12][4] = {"Ex", "Ey", "Ez", "Exy", "Sx", "Sy", "Sz", "Sxy", "p", "q", "Ev", "Ed"};
-
-const size_t NL_PSTRESS        = 6;
-const char   LB_PSTRESS[6][4] = {"Ex", "Ey", "Exy", "Sx", "Sy", "Sxy"};
 
 // Beam
-const size_t ND_BEAM_3D       = 6;
-const char   UD_BEAM_3D[6][4] = {"ux", "uy", "uz", "wx", "wy", "wz"};
-const char   FD_BEAM_3D[6][4] = {"fx", "fy", "fz", "mx", "my", "mz"};
-
-const size_t ND_BEAM_2D       = 3;
-const char   UD_BEAM_2D[3][4] = {"ux", "uy", "wz"};
-const char   FD_BEAM_2D[3][4] = {"fx", "fy", "mz"};
-
-const size_t NL_BEAM_3D       = 5;
-const char   LB_BEAM_3D[5][4] = {"Ea", "Sa", "N", "V", "M"};
-
-const size_t NL_BEAM_2D       = 5;
-const char   LB_BEAM_2D[5][4] = {"Ea", "Sa", "N", "V", "M"};
 
 // Rod
 const size_t NL_ROD       = 3;
@@ -82,9 +40,6 @@ const char   LB_ROD[3][4] = {"Ea", "Sa", "N"};
 //////////////////////////////////////////////////////////////////// Properties
 
 
-const char EQUILIB_PROP[1][8] = {"gam"};
-const char BIOT_PROP   [2][8] = {"gam", "gw"};
-const char BEAM_PROP   [2][8] = {"gam", "cq"};
 
 
 }; // namespace FEM

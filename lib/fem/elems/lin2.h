@@ -38,8 +38,8 @@ public:
 
 	// Derived methods
 	void   SetIPs     (int NIPs1D);
-	int    VTKType    () const { return VTK_QUAD; }
-	void   VTKConn    (String & Nodes) const { Nodes.Printf("%d %d %d",Conn[0]->GetID(),Conn[2]->GetID(),Conn[1]->GetID()); }
+	int    VTKType    () const { return VTK_LINE; }
+	void   VTKConn    (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
 	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects)  const;
 	void   Shape      (double r, double s, double t, Vec_t & N)  const;
 	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
@@ -106,13 +106,13 @@ inline void Lin2::_local_coords(Mat_t & coords) const
 	{
 		coords.Resize(2,3);
 		coords =  -1.0,  0.0, 1.0,
-				   1.0,  0.0, 1.0;
+		           1.0,  0.0, 1.0;
 	}
 	else
 	{
 		coords.Resize(2,4);
 		coords =  -1.0,  0.0, 0.0, 1.0,
-				   1.0,  0.0, 0.0, 1.0;
+		           1.0,  0.0, 0.0, 1.0;
 	}
 }
 

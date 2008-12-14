@@ -23,6 +23,7 @@
 #include "fem/node.h"
 #include "fem/geomelem.h"
 #include "fem/probelem.h"
+#include "fem/elems/lin2.h"
 #include "util/string.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
@@ -90,7 +91,6 @@ public:
 	void         SetActive (bool Activate)                              { CHECKGEPE("SetActive")        _pe->SetActive(Activate,_id);         } ///< Activate element (construction/excavation)
 	bool         IsActive  () const                                     { CHECKGEPE("IsActive" ) return _pe->IsActive;                        } ///< Check if this element is active
 	void         CalcDeps  () const                                     { CHECKGEPE("CalcDeps" )        _pe->CalcDeps();                      } ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
-	Str_t        ModelName () const                                     { CHECKGEPE("ModelName") return _pe->ModelName();                     } ///< Return the name of the model of the first IP of this element
 	double       Val       (int iNod, Str_t Key) const                  { CHECKGEPE("Val"      ) return _pe->Val(iNod,Key);                   } ///< Return computed values at the Nodes of the element. Ex.: Key="ux", "fx", "Sx", "Sxy", "Ex", etc.
 	double       Val       (          Str_t Key) const                  { CHECKGEPE("Val"      ) return _pe->Val(Key);                        } ///< Return computed values at the CG of the element. Ex.: Key="Sx", "Sxy", "Ex", etc.
 	bool         IsEssen   (Str_t Key) const                            { CHECKGEPE("IsEssen"  ) return _pe->IsEssen(Key);                    } ///< Is the correspondent DOFKey (Degree of Freedom, such as "Dux") essential (such displacements)?
