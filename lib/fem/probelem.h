@@ -220,8 +220,8 @@ inline void ProbElem::FaceBry(Str_t Key, double Value, int iFace)
 
 inline double ProbElem::Prop(Str_t Key) const
 {
-	std::map<String,double>::const_iterator it = _prp->find(Key);
-	if (it==_prp->end()) throw new Fatal("ProbElem::Prop: Could not find property < %d > in _props array",Key);
+	Prop_t::const_iterator it = _prp->find(Key);
+	if (it==_prp->end()) throw new Fatal("ProbElem::Prop: Could not find property < %d > in _prp array",Key);
 	return it->second;
 }
 

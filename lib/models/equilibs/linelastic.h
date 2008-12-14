@@ -26,9 +26,6 @@
 #include "util/util.h"
 #include "util/lineparser.h"
 
-typedef char const * Str_t;
-
-
 class LinElastic : public EquilibModel
 {
 public:
@@ -39,14 +36,15 @@ public:
 	virtual ~LinElastic () {}
 
 	// Derived methods
-	Str_t Name () const { return "LinElastic"; }
+	int         NPrms () const { return 2;             }
+	PrmName_t * Prms  () const { return LINELASTIC_PN; }
+	Str_t       Name  () const { return "LinElastic";  }
 
 private:
 	// Data
 	Tensor4 _De; ///< Constant tangent stiffness
 
 	// Private methods
-	void _set_ctes   () { _np=2;  PRMS=LINELASTIC_PN; }
 	void _initialize ();
 	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
 
@@ -61,8 +59,8 @@ const char LinElastic::LINELASTIC_PN[2][8] = {"E", "nu"};
 inline void LinElastic::_initialize()
 {
 	// Parameters
-	double E  = _prms["E"];
-	double nu = _prms["nu"];
+	double E  = Prm("E");
+	double nu = Prm("nu");
 
 	// Check
 	if (E<=0.0)             throw new Fatal("LinElastic::_initialize: Tag=%d: Young modulus (E) must be provided (and positive). E==%f is invalid",_tag,E);

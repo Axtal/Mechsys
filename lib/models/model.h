@@ -29,15 +29,16 @@
 using Tensors::Tensor2;
 using Tensors::Tensor4;
 
-typedef LinAlg::Vector<double> Vec_t;
-typedef LinAlg::Matrix<double> Mat_t;
-typedef char const           * Str_t;
+typedef LinAlg::Vector<double>  Vec_t;
+typedef LinAlg::Matrix<double>  Mat_t;
+typedef char const            * Str_t;
+typedef std::map<String,double> Prm_t;        ///< Parameters type
+typedef const char              PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
 
 class Model
 {
 public:
 	// Typedefs
-	typedef const char    PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
 	typedef Array<double> IntVals;      ///< Internal values (specific volume, yield surface size, etc.)
 
 	// Constructor
@@ -47,8 +48,14 @@ public:
 	virtual ~Model () {}
 
 	// Methods
-	void SetGeomIdx (int GeomIdx);         ///< Set geometry index. MUST be called before Initialize
-	void Initialize (int Tag, Str_t Prms); ///< Initialize this model
+	void   SetGeomIdx (int GeomIdx);            ///< Set geometry index. MUST be called before Initialize
+	void   Initialize (int Tag, Str_t StrPrms); ///< Initialize this model
+	double Prm        (Str_t Key) const;        ///< Value of a parameter
+
+	// Methods to be derived
+	virtual int         NPrms () const =0; ///< Number of parameters
+	virtual PrmName_t * Prms  () const =0; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
+	virtual Str_t       Name  () const =0; ///< Model name
 
 	/* Tangent stiffness. */
 	virtual void TgStiffness (Tensor2 const & Sig,
@@ -66,9 +73,6 @@ public:
 	                         IntVals       & Ivs,
 	                         Vec_t         & DSig) { return -1; }
 
-	// Access methods
-	std::map<String,double> const & Prms() const { return _prms; }
-
 	// Integration constants
 	Model & STOL  (double Val=1.0e-5) { _STOL =Val; return (*this); }
 	Model & dTini (double Val=1.0   ) { _dTini=Val; return (*this); }
@@ -76,18 +80,11 @@ public:
 	Model & mMax  (double Val=10.0  ) { _mMax =Val; return (*this); }
 	Model & maxSS (size_t Val=2000  ) { _maxSS=Val; return (*this); }
 
-	// Methods that MUST be derived
-	virtual Str_t Name () const =0; ///< Model name
-
 protected:
-	// Data (set in _set_ctes)
-	int        _np;   ///< (set in _set_ctes) Number of parameters
-	PrmName_t * PRMS; ///< (set in _set_ctes) Parameters names. Ex: "E", "nu", "lam", "kap", ...
-
 	// Data
-	int                     _gi;   ///< Geometry index: Equilib: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
-	int                     _tag;  ///< The tag of the model
-	std::map<String,double> _prms; ///< Parameters
+	int   _gi;   ///< Geometry index: Equilib: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
+	int   _tag;  ///< The tag of the model
+	Prm_t _prms; ///< Parameters
 
 	// Constants for the stress update algorithm
 	double _STOL;
@@ -97,7 +94,6 @@ protected:
 	size_t _maxSS;
 
 	// Methods
-	virtual void _set_ctes   () =0; ///< Set PRMS and resize _prms
 	virtual void _initialize () =0; ///< Initialize the model
 
 }; // class Model
@@ -113,18 +109,24 @@ inline void Model::SetGeomIdx(int GeomIdx)
 	if (_gi<0) throw new Fatal("Model::SetGeomIdx: Geometry index==%d is invalid\n It must be in: 0==3D, 1==2D(plane-strain), 2==2D(plane-stress), 3==2D(axis-symmetric)",_gi);
 }
 
-inline void Model::Initialize(int Tag, Str_t Prms)
+inline void Model::Initialize(int Tag, Str_t StrPrms)
 {
 	// Set PRMS and resize _prms
 	_tag = Tag;
-	_set_ctes ();
 
 	// Read parameters
-	LineParser lp(Prms);
-	lp.ReadVariables (_np, PRMS, _prms, "parameters", "Model", _tag);
+	LineParser lp(StrPrms);
+	lp.ReadVariables (NPrms(), Prms(), _prms, "parameters", "Model", _tag);
 
 	// Initialize model
 	_initialize ();
+}
+
+inline double Model::Prm(Str_t Key) const
+{
+	Prm_t::const_iterator it = _prms.find(Key);
+	if (it==_prms.end()) throw new Fatal("Model::Prm: Could not find parameter < %d > in _prms array",Key);
+	return it->second;
 }
 
 

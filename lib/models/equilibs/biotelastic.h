@@ -41,7 +41,9 @@ public:
 	void TgPermeability (Mat_t & Kmat) const { Kmat = _K; }
 
 	// Derived methods
-	Str_t Name () const { return "BiotElastic"; }
+	int         NPrms () const { return 3;              }
+	PrmName_t * Prms  () const { return BIOTELASTIC_PN; }
+	Str_t       Name  () const { return "BiotElastic";  }
 
 private:
 	// Data
@@ -49,7 +51,6 @@ private:
 	Mat_t   _K;  ///< Constant tangent permeability
 
 	// Private methods
-	void _set_ctes   () { _np=3;  PRMS=BIOTELASTIC_PN; }
 	void _initialize ();
 	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
 
@@ -67,9 +68,9 @@ inline void BiotElastic::_initialize()
 	if (_gi<0 || _gi>1) throw new Fatal("BiotElastic::_initialize: Tag=%d. This model is only available for 3D(gi==0) and 2D(plane-strain, gi==1) problems. (gi==%d is invalid)",_tag,_gi);
 
 	// Parameters
-	double E  = _prms[0];
-	double nu = _prms[1];
-	double k  = _prms[2];
+	double E  = Prm("E");
+	double nu = Prm("nu");
+	double k  = Prm("k");
 
 	// Check
 	if (E<=0.0)             throw new Fatal("BiotElastic::_initialize: Tag=%d. Young modulus (E) must positive. E==%f is invalid",_tag,E);
