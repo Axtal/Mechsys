@@ -92,6 +92,7 @@ public:
 	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct); ///< Initialize the element
 
 	// Methods related to PROBLEM implemented here
+	Str_t MdlName  () const { return (_mdl==NULL ? "__no_model__" : _mdl->Name()); }
 	bool  IsEssen  (Str_t Key) const;
 	void  GetLbls  (Array<String> & Lbls) const;
 	void  EdgeBry  (Str_t Key, double Val, int iEdge);

@@ -86,6 +86,7 @@ public:
 	// Methods related to PROBLEM
 	int          NProps       () const                                  { CHECKGEPE("NProps"   ) return _pe->NProps();                        } ///< Number of properties
 	ProName_t  * Props        () const                                  { CHECKGEPE("Props"    ) return _pe->Props();                         } ///< Names of properties
+	Str_t        MdlName      () const                                  { CHECKGEPE("MdlName"  ) return _pe->MdlName();                       } ///< Name of the constitutive model
 	void         AddVolForces ()                                        { CHECKGEPE("AddVols"  )        _pe->AddVolForces();                  } ///< Method to apply volumetric (body) forces as boundary condition
 	void         ClearDisp ()                                           { CHECKGEPE("ClearDisp")        _pe->ClearDisp();                     } ///< Clear displacements and strains (for equilibrium/coupled problems)
 	void         SetActive (bool Activate)                              { CHECKGEPE("SetActive")        _pe->SetActive(Activate,_id);         } ///< Activate element (construction/excavation)
@@ -95,7 +96,7 @@ public:
 	double       Val       (          Str_t Key) const                  { CHECKGEPE("Val"      ) return _pe->Val(Key);                        } ///< Return computed values at the CG of the element. Ex.: Key="Sx", "Sxy", "Ex", etc.
 	bool         IsEssen   (Str_t Key) const                            { CHECKGEPE("IsEssen"  ) return _pe->IsEssen(Key);                    } ///< Is the correspondent DOFKey (Degree of Freedom, such as "Dux") essential (such displacements)?
 	void         EdgeBry   (Str_t Key, double Val, int iEdge)           { CHECKGEPE("EdgeBry"  )        _pe->EdgeBry(Key,Val,iEdge);          } ///< Set edge boundary conditions (Initialize MUST be called first)
-	void         EdgeBry   (Str_t Key, double V0, double V1, int iEdge) { CHECKGEPE("EdgeBry"  )                                              } ///< Set edge boundary conditions (Initialize MUST be called first)
+	void         EdgeBry   (Str_t Key, double V0, double V1, int iEdge) { CHECKGEPE("EdgeBry"  )        _pe->EdgeBry(Key,V0,V1,iEdge);        } ///< Set edge boundary conditions (Initialize MUST be called first)
 	void         FaceBry   (Str_t Key, double Val, int iFace)           { CHECKGEPE("FaceBry"  )        _pe->FaceBry(Key,Val,iFace);          } ///< Set face boundary conditions (Initialize MUST be called first)
 	void         Update    (double h, Vec_t const & dU, Vec_t & dFint)  { CHECKGEPE("Update"   )        _pe->Update(h,dU,dFint);              } ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	void         Backup    ()                                           { CHECKGEPE("Backup"   )        _pe->Backup();                        } ///< Backup internal state
@@ -185,10 +186,10 @@ inline void Element::OutNodes(Mat_t & Vals, Array<String> & Lbls) const
 
 std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 {
-	//os << "[" << E.GetID() << "] Act=" << E.IsActive() << " Tag=" << E.Tag() << " " << E.Name() << " " << E.ModelName() << "\n";
-	//os << "   ";  E.OutInfo(os);  os << "\n";
-	//for (size_t i=0; i<E.NNodes(); ++i)
-		//if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
+	os << "[" << E.GetID() << "] Act=" << E.IsActive() << " Tag=" << E.Tag() << " " << E.Type() << " " << E.MdlName() << "\n";
+	os << "   ";  E.OutInfo(os);  os << "\n";
+	for (size_t i=0; i<E.NNodes(); ++i)
+		if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";
 	return os;
 }
 

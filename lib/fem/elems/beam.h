@@ -222,7 +222,7 @@ inline double Beam::Val(Str_t Name) const
 inline void Beam::EdgeBry(Str_t Key, double q0, double q1, int iEdge)
 {
 	// Skip if key is not "Qb"
-	if (strcmp(Key,"Qb")!=0) return;
+	if (!(strcmp(Key,"Qb")==0)) return;
 
 	// Check which node is the left-most and adjust q0 and q1
 	bool is_node0_leftmost = true;
@@ -285,7 +285,7 @@ inline void Beam::Update(double h, Vec_t const & dU, Vec_t & dFint)
 
 inline void Beam::OutInfo(std::ostream & os) const
 {
-	os << "q0=" << _q0 << ", q1=" << _q1 << std::endl;
+	if (_has_q) os << "q0=" << _q0 << ", q1=" << _q1;
 }
 
 inline void Beam::OutExtra(Mat_t & Coords, Vec_t & Norm, Mat_t & Vals, Array<String> & Lbls) const
