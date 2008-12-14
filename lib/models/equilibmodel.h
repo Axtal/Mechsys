@@ -181,7 +181,7 @@ inline int EquilibModel::StateUpdate(Vec_t const & DEps, Tensor2 & Sig, Tensor2 
 		dT = m * dT;
 		if (dT>1.0-T) dT = 1.0-T; // last step
 	}
-	throw new Fatal("EquilibModel::StateUpdate did not converge for %d steps",_maxSS);
+	throw new Fatal("EquilibModel::StateUpdate: %s:Tag=%s: Update did not converge for %d steps",Name(),_tag,_maxSS);
 }
 
 

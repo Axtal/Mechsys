@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_LINELASTIC_H
-#define MECHSYS_LINELASTIC_H
+#ifndef MECHSYS_BIOTELASTIC_H
+#define MECHSYS_BIOTELASTIC_H
 
 // MechSys
 #include "models/equilibmodel.h"
@@ -28,50 +28,58 @@
 
 typedef char const * Str_t;
 
-
-class LinElastic : public EquilibModel
+class BiotElastic : public EquilibModel
 {
 public:
 	// Constants
-	static const char LINELASTIC_PN[2][8];
+	static const char BIOTELASTIC_PN[4][8];
 
 	// Destructor
-	virtual ~LinElastic () {}
+	virtual ~BiotElastic () {}
+
+	// Methods
+	void TgPermeability (Mat_t & Kmat) const { Kmat = _K; }
 
 	// Derived methods
-	Str_t Name () const { return "LinElastic"; }
+	Str_t Name () const { return "BiotElastic"; }
 
 private:
 	// Data
 	Tensor4 _De; ///< Constant tangent stiffness
+	Mat_t   _K;  ///< Constant tangent permeability
 
 	// Private methods
-	void _set_ctes   () { PRMS=LINELASTIC_PN; _prms.Resize(2); }
+	void _set_ctes   () { PRMS=BIOTELASTIC_PN; _prms.Resize(4); }
 	void _initialize ();
 	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
 
-}; // class LinElastic
+}; // class BiotElastic
 
-const char LinElastic::LINELASTIC_PN[2][8] = {"E", "nu"};
+const char BiotElastic::BIOTELASTIC_PN[4][8] = {"E", "nu", "k", "gw"};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline void LinElastic::_initialize()
+inline void BiotElastic::_initialize()
 {
+	// 3D:gi=0, 2D:gi=1
+	if (_gi<0 || _gi>1) throw new Fatal("BiotElastic::_initialize: Tag=%d. This model is only available for 3D(gi==0) and 2D(plane-strain, gi==1) problems. (gi==%d is invalid)",_tag,_gi);
+
 	// Parameters
 	double E  = _prms[0];
 	double nu = _prms[1];
+	double k  = _prms[2];
 
 	// Check
-	if (E<=0.0)             throw new Fatal("LinElastic::_initialize: Tag=%d: Young modulus (E) must be provided (and positive). E==%f is invalid",_tag,E);
-	if (nu<0.0 || nu>0.499) throw new Fatal("LinElastic::_initialize: Tag=%d: Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",_tag,nu);
+	if (E<=0.0)             throw new Fatal("BiotElastic::_initialize: Tag=%d. Young modulus (E) must be provided (and positive). E==%f is invalid",_tag,E);
+	if (nu<0.0 || nu>0.499) throw new Fatal("BiotElastic::_initialize: Tag=%d. Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",_tag,nu);
+	if (k<0.0)              throw new Fatal("BiotElastic::_initialize: Tag=%d. Isotropic permeability must positive. k=%f is invalid",_tag,k);
 
 	// Set stiffness
-	double c  = (_gi==2 ? E/(1.0-nu*nu)  : E/((1.0+nu)*(1.0-2.0*nu)) ); // (2)plane-stress != (plane-strain=3D)
-	double c1 = (_gi==2 ? c*1.0          : c*(1.0-nu)                ); // (2)plane-stress != (plane-strain=3D)
-	double c2 = (_gi==2 ? c*0.5*(1.0-nu) : c*(1.0-2.0*nu)/2.0        ); // (2)plane-stress != (plane-strain=3D)
+	double c  = E/((1.0+nu)*(1.0-2.0*nu));
+	double c1 = c*(1.0-nu);
+	double c2 = c*(1.0-2.0*nu)/2.0;
 	double c3 = c*nu;
 	_De = c1     , c3     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
 	      c3     , c1     , c3     , 0.0*SQ2, 0.0*SQ2, 0.0*SQ2,
@@ -79,9 +87,27 @@ inline void LinElastic::_initialize()
 	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
 	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
 	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
+
+	// Set permeability
+	double kx = k;
+	double ky = k;
+	double kz = k;
+	if (_gi==1) // 2D
+	{
+		_K.Resize(2,2);
+		_K =  kx,  0.0,
+		     0.0,   ky;
+	}
+	else
+	{
+		_K.Resize(3,3);
+		_K =  kx,  0.0,  0.0,
+		     0.0,   ky,  0.0,
+		     0.0,  0.0,   kz;
+	}
 }
 
-inline void LinElastic::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
+inline void BiotElastic::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
 {
 	D = _De;
 }
@@ -91,13 +117,13 @@ inline void LinElastic::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor
 
 
 // Allocate a new model
-Model * LinElasticMaker() { return new LinElastic(); }
+Model * BiotElasticMaker() { return new BiotElastic(); }
 
 // Register model
-int LinElasticRegister() { ModelFactory["LinElastic"]=LinElasticMaker;  return 0; }
+int BiotElasticRegister() { ModelFactory["BiotElastic"]=BiotElasticMaker;  return 0; }
 
 // Call register
-int __LinElastic_dummy_int = LinElasticRegister();
+int __BiotElastic_dummy_int = BiotElasticRegister();
 
 
-#endif // MECHSYS_LINELASTIC_H
+#endif // MECHSYS_BIOTELASTIC_H

@@ -99,6 +99,7 @@ int main(int argc, char **argv) try
 	double b     =  2.0;    // Load application length
 	double E     = 10000.0; // Young
 	double nu    = 0.0;     // Poisson
+	double gam   = 20.0;    // Specific weight
 	double gw    = 10.0;    // GammaW
 	double k     = 1.0e-6;  // Isotropic permeability
 	int    ndivy = 12;      // number of divisions along x and y
@@ -171,10 +172,11 @@ int main(int argc, char **argv) try
 	FEM::Data dat(2); // 2D
 
 	// Elements attributes
-	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
+	String prms; prms.Printf("E=%f nu=%f k=%f",E,nu,k);
+	String prps; prps.Printf("gam=%f gw=%f",gam,gw);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", "gam=20", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);

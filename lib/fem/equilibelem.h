@@ -168,7 +168,6 @@ inline void EquilibElem::AddVolForces()
 	fvol.SetValues (0.0);
 
 	// Calculate local external volume force
-	if (_props.Size()!=1) throw new Fatal("EquilibElem::AddVolForces: Array of properties must be set with gam==20, for example");
 	double gam = _props[0];
 	Vec_t N;
 	Mat_t dN;
@@ -420,7 +419,6 @@ inline void EquilibElem::_excavate()
 	// Calculate internal forces for element on boundary
 	if (on_boundary)
 	{
-		if (_props.Size()!=1) throw new Fatal("EquilibElem::_excavate: Array of properties must be set with gam==20, for example");
 		double gam = _props[0];
 		Vec_t F(_ge->NDim*_ge->NNodes);  F.SetValues(0.0);
 		Vec_t S(_ge->NDim*_ge->NNodes);  S.SetValues(0.0);
@@ -592,7 +590,7 @@ inline void EquilibElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, 
 inline void EquilibElem::_init_internal_state()
 {
 	// Allocate (local/element) internal force vector
-	Vec_t f(_nd*_ge->NNodes);
+	Vec_t f(_ge->NDim*_ge->NNodes); // only forces (fx,fy,fz) (NDim) DOFs
 	f.SetValues (0.0);
 
 	// Calculate internal force vector;
@@ -611,8 +609,8 @@ inline void EquilibElem::_init_internal_state()
 
 	// Assemble (local/element) displacements vector.
 	for (size_t i=0; i<_ge->NNodes; ++i)
-	for (int    j=0; j<_nd;         ++j)
-		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_nd+j);
+	for (size_t j=0; j<_ge->NDim;   ++j)
+		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_ge->NDim+j); // only forces (fx,fy,fz) (NDim) DOFs
 }
 
 

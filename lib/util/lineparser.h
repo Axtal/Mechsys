@@ -24,6 +24,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <map>
 
 #include "util/array.h"
 #include "util/string.h"
@@ -69,6 +70,12 @@ public:
 
 	template<typename Type1, typename Type2>
 	bool BreakExpressions(Array<Type1> & lvalue, Array<Type2> & rvalue);
+
+	template<typename Type1, typename Type2>
+	bool BreakExpressions(std::map<Type1,Type2> & lvalue_rvalue);
+
+	template<int nChars, typename Type>
+	void ReadVariables(size_t NumNames, char const Names[][nChars], Array<Type> & Values, int ID=-1, char const * Desc=NULL);
 
 	void PathSubstituteEnv();
 	void FileBasename(String const & ExtensionToRemove, String & Basename);
@@ -201,6 +208,74 @@ inline bool LineParser::BreakExpressions(Array<Type1> & Lvalue, Array<Type2> & R
 	}
 	if (Lvalue.Size()==Rvalue.Size()) return true;
 	else                              return false;
+}
+
+template<typename Type1, typename Type2>
+inline bool LineParser::BreakExpressions(std::map<Type1,Type2> & Lvalue_Rvalue)
+{
+	/* For:  this->str() == "var1=value1 var2=value3 var3=value4"
+	 *
+	 * with:  var1,   var2   and var3   of Type1
+	 * and    value1, value2 and value3 of Type2
+	 *
+	 * result:
+	 *           Lvalue_Rvalue[var1,var2,var3] = [value1,value2,value3]
+	 * return:
+	 *           false if some problem occurred with istringstream, i.e: format is invalid
+	 */
+
+	Lvalue_Rvalue.clear();
+	ReplaceAllChars('=',' ');
+
+	// Parse bry marks
+	Type1 lval;
+	Type2 rval;
+	while ((*this)>>lval)
+	{
+		if (((*this)>>rval)) Lvalue_Rvalue[lval] = rval;
+		else return false;
+	}
+	return true;
+}
+
+template<int nChars, typename Type>
+inline void LineParser::ReadVariables(size_t NumNames, char const Names[][nChars], Array<Type> & Values, int ID, char const * Desc)
+{
+	/* Read:  "gam=20 gw=10"  into   Values[0]=20, Values[1]=10
+	 *
+	 * for:   Names[2][8] = {"gam", "gw"};   ==>   NumNames=2, nChars=8
+	 */
+
+	// Build map with names x values
+	std::map<String,Type>  names_vals;
+	BreakExpressions      (names_vals);
+
+	// Check size of variables ("a=1 b=2" => NumNames==2)
+	if (names_vals.size()!=NumNames)
+	{
+		size_t nwrong = names_vals.size();
+		String buf(NumNames, Names);
+		String ele;  if (ID>=0)      ele.Printf("# %d: ",ID);
+		String des;  if (Desc==NULL) des.Printf("names"); else des.Printf("%s",Desc);
+		throw new Fatal("LineParser::ReadVariables: %sThe number (%d) of %s is incorrect; it must be equal to %d.\n\tAll %s < %s > must be defined.",
+		                ele.CStr(), nwrong, des.CStr(), NumNames, des.CStr(), buf.CStr());
+	}
+
+	// Parse variables
+	Values.Resize(NumNames);
+	for (size_t i=0; i<NumNames; ++i)
+	{
+		if (names_vals.count(Names[i])==0)
+		{
+			String buf(NumNames, Names);
+			String ele;  if (ID>=0)      ele.Printf("# %d: ",ID);
+			String des;  if (Desc==NULL) des.Printf("names"); else des.Printf("%s",Desc);
+			throw new Fatal("LineParser::ReadVariables: %sCould not find name < %s > in array of %s.\n\tAll %s < %s > must be defined.",
+			                ele.CStr(), Names[i], des.CStr(), des.CStr(), buf.CStr());
+		}
+		Values[i] = names_vals[Names[i]];
+		//std::cout << Names[i] << " --> " << Values[i] << std::endl;
+	}
 }
 
 inline void LineParser::PathSubstituteEnv()

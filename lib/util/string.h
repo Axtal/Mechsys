@@ -40,6 +40,20 @@ public:
 		this->clear();
 		this->append(Msg);
 	}
+	template<int nChars>
+	String(size_t NumElements, char const Elements[][nChars], bool WithComma=false)
+	{
+		/* Ex:  Elements[2][8] = {"gam", "gw"};   ==>   NumElements=2
+		 *
+		 *      Output: "gam, gw"
+		 */
+		char const * sep = (WithComma ? ", " : " ");
+		for (size_t i=0; i<NumElements; ++i)
+		{
+			if (i==0) Printf("%s",               Elements[i]);
+			else      Printf("%s%s%s",CStr(),sep,Elements[i]);
+		}
+	}
 	int Printf(String const & Fmt, ...)
 	{
 		int len;

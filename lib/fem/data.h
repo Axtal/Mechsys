@@ -172,8 +172,9 @@ void AddReinf (double x1, double y1, double z1, double x2, double y2, double z2,
 
 inline Data::~Data()
 {
-	for (size_t i=0; i<_nodes.Size(); ++i) if (_nodes[i]!=NULL) delete _nodes[i];
-	for (size_t i=0; i<_elems.Size(); ++i) if (_elems[i]!=NULL) delete _elems[i];
+	for (size_t i=0; i<_nodes .Size(); ++i) if (_nodes [i]!=NULL) delete _nodes [i];
+	for (size_t i=0; i<_elems .Size(); ++i) if (_elems [i]!=NULL) delete _elems [i];
+	for (size_t i=0; i<_models.Size(); ++i) if (_models[i]!=NULL) delete _models[i];
 }
 
 inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAtts)
@@ -329,8 +330,9 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 	// Set parameters
 	for (size_t i=0; i<_models.Size(); ++i)
 	{
+		int   tag  = (*ElemsAtts)[i].get<0>();
 		Str_t prms = (*ElemsAtts)[i].get<4>();
-		if (_models[i]!=NULL) _models[i]->Initialize (prms);
+		if (_models[i]!=NULL) _models[i]->Initialize (tag, prms);
 	}
 }
 

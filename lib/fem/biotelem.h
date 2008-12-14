@@ -58,8 +58,7 @@ public:
 
 private:
 	// Derived methods
-	void _excavate            ();
-	void _init_internal_state () {}
+	void _excavate ();
 
 	// Private methods
 	void   _Bp_mat     (Mat_t const & dN, Mat_t const & J, Mat_t & Bp) const { Bp = inv(J)*dN; }
@@ -106,8 +105,8 @@ inline int BiotElem::InitCtes(int nDim)
 	else throw new Fatal("BiotElem::InitCtes: GeometryIndex _gi==%d is invalid",_gi);
 
 	// Properties
-	_props.Resize (1); // just "gam"
-	PROP = EQUILIB_PROP;
+	_props.Resize (2); // "gam" and "gw"
+	PROP = BIOT_PROP;
 
 	// Return geometry index
 	return _gi;
@@ -355,7 +354,7 @@ inline void BiotElem::_compute_K(Mat_t & Ke) const
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
 		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D);
-		//Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
+		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
 }
 
@@ -428,7 +427,7 @@ inline void BiotElem::_compute_H(Mat_t & He) const
 		_ge->Jacobian        (dN, J);
 		_Bp_mat              (dN, J, Bp);
 		_mdl->TgPermeability (K);
-		//He += -trn(Bp)*K*Bp*det(J)*_ge->IPs[i].w/gw;
+		He += -trn(Bp)*K*Bp*det(J)*_ge->IPs[i].w/gw;
 	}
 }
 
@@ -456,7 +455,7 @@ inline void BiotElem::_compute_Qb(Vec_t & Qb) const
 		_ge->Jacobian        (dN, J);
 		_Bp_mat              (dN, J, Bp);
 		_mdl->TgPermeability (K);
-		//Qb += trn(Bp)*K*b*det(J)*_ge->IPs[i].w/gw;
+		Qb += trn(Bp)*K*b*det(J)*_ge->IPs[i].w/gw;
 	}
 }
 

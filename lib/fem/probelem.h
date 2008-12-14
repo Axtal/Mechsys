@@ -154,20 +154,11 @@ inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CON
 	}
 
 	// Check connectivity
-	if (_ge->CheckConn()==false) throw new Fatal("EquilibElem::Initialize: Element # %d: Connectivity was not properly set",ID);
+	if (_ge->CheckConn()==false) throw new Fatal("ProbElem::Initialize: Element # %d: Connectivity was not properly set",ID);
 
 	// Read properties
 	LineParser lp(Props);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions (names,values);
-	 _props.SetValues(0.0);
-	for (size_t i=0; i<names.Size();  ++i)
-	for (size_t j=0; j<_props.Size(); ++j)
-	{
-		if (names[i]==PROP[j]) _props[j] = values[i];
-		else throw new Fatal("ProbElem::Initialize: Element # %d: Property name < %s > is invalid",ID,names[i].CStr());
-	}
+	lp.ReadVariables (_props.Size(), PROP, _props, ID, "properties");
 
 	// Initialize
 	_mdl = Mdl;

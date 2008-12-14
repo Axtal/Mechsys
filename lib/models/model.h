@@ -41,14 +41,14 @@ public:
 	typedef Array<double> IntVals;      ///< Internal values (specific volume, yield surface size, etc.)
 
 	// Constructor
-	Model () : _gi(-1) { STOL().dTini().mMin().mMax().maxSS(); }
+	Model () : _gi(-1), _tag(0) { STOL().dTini().mMin().mMax().maxSS(); }
 
 	// Destructor
 	virtual ~Model () {}
 
 	// Methods
-	void SetGeomIdx (int GeomIdx); ///< Set geometry index. MUST be called before Initialize
-	void Initialize (Str_t Prms);  ///< Initialize this model
+	void SetGeomIdx (int GeomIdx);         ///< Set geometry index. MUST be called before Initialize
+	void Initialize (int Tag, Str_t Prms); ///< Initialize this model
 
 	/* Tangent stiffness. */
 	virtual void TgStiffness (Tensor2 const & Sig,
@@ -66,7 +66,6 @@ public:
 	                         IntVals       & Ivs,
 	                         Vec_t         & DSig) { return -1; }
 
-
 	// Integration constants
 	Model & STOL  (double Val=1.0e-5) { _STOL =Val; return (*this); }
 	Model & dTini (double Val=1.0   ) { _dTini=Val; return (*this); }
@@ -83,9 +82,8 @@ protected:
 	Array<double>  _prms; ///< (resized in _set_ctes) Parameters
 
 	// Data
-	int     _gi;      ///< Geometry index: Equilib: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
-	IntVals _ivs;     ///< Internal values
-	IntVals _ivs_bkp; ///< Backup internal values
+	int _gi;  ///< Geometry index: Equilib: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
+	int _tag; ///< The tag of the model
 
 	// Constants for the stress update algorithm
 	double _STOL;
@@ -111,29 +109,15 @@ inline void Model::SetGeomIdx(int GeomIdx)
 	if (_gi<0) throw new Fatal("Model::SetGeomIdx: Geometry index==%d is invalid\n It must be in: 0==3D, 1==2D(plane-strain), 2==2D(plane-stress), 3==2D(axis-symmetric)",_gi);
 }
 
-inline void Model::Initialize(Str_t Prms)
+inline void Model::Initialize(int Tag, Str_t Prms)
 {
 	// Set PRMS and resize _prms
+	_tag = Tag;
 	_set_ctes ();
-
-	// Check
-	if (_prms.Size()<0) throw new Fatal("Model::Initialize: nprms=%d, number of parameters, is invalid",_prms.Size());
 
 	// Read parameters
 	LineParser lp(Prms);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions (names,values);
-	_prms.SetValues(-1);
-	for (size_t i=0; i<names.Size(); ++i)
-	for (size_t j=0; j<_prms.Size(); ++j)
-	{
-		if (names[i]==PRMS[j]) // found parameter
-		{
-			_prms[j] = values[i];
-			break;
-		}
-	}
+	lp.ReadVariables (_prms.Size(), PRMS, _prms, -_tag, "parameters (tag is neg)");
 
 	// Initialize model
 	_initialize ();
