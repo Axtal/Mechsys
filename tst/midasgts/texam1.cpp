@@ -24,7 +24,6 @@
 #include "fem/elems/quad4.h"
 #include "fem/elems/quad8.h"
 #include "fem/equilibelem.h"
-#include "fem/elems/beam.h"
 #include "models/equilibs/linelastic.h"
 #include "fem/solver.h"
 #include "fem/output.h"
@@ -74,7 +73,7 @@ int main(int argc, char **argv) try
 	double L       = 10.0;     // length
 	double H       = 10.0;     // height
 	bool   is_o2   = false;    // use high order elements?
-	int    ndivy   = 15;       // ndivy
+	int    ndivy   = 50;       // ndivy
 	double Ax      = 2.0;      // rate of increase of X divisions
 	double NonLinX = false;    // nonlinear divisions along X?
 
@@ -156,8 +155,8 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

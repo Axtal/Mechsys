@@ -30,7 +30,7 @@
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  //#include <boost/python.hpp> // this includes everything
+  #include <boost/python.hpp> // this includes everything
   namespace BPy = boost::python;
 #endif
 
@@ -44,7 +44,8 @@
 namespace FEM
 {
 
-typedef char const * Str_t;
+typedef std::map<String,double> Prop_t; ///< Properties type
+typedef char const            * Str_t;
 
 // Tuples used when initializing nodes and elements by groups
 typedef Array< boost::tuple<double,double,double, Str_t,double> >           NBrys_T; // Node: x,y,z, key, val
@@ -83,10 +84,11 @@ public:
 	                           Str_t                ProbT,                             ///< Problem  Element type. Ex: PStrain
 	                           Model              * Mdl,                               ///< Constitutive model. Ex: AllocModel("LinElastic")
 	                           Str_t                Inis,                              ///< Initial state. Ex: Sx=0.0
+	                           Prop_t             * Prp,                               ///< Element properties. Ex: gam=20
 	                           Str_t                Props,                             ///< Element properties. Ex: gam=20
 	                           bool                 IsAct);                            ///< Active/Inactive?
 	Node    * PushNode        (double X, double Y, double Z, int Tag) { _nodes.Push(new Node);  return SetNode(_nodes.Size()-1,X,Y,Z,Tag); }
-	Element * PushElem        (int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct) { _elems.Push(new Element);  return SetElemAndModel(_elems.Size()-1,Tag,Conn,GeomT,ProbT,Mdl,Inis,Props,IsAct); }
+	Element * PushElem        (int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Prms, Str_t Inis, Prop_t * Prp, Str_t Props, bool IsAct) { _elems.Push(new Element);  return SetElemAndModel(_elems.Size()-1,Tag,Conn,GeomT,ProbT,Mdl,Inis,Prp,Props,IsAct); }
 
 	// Specific methods
 	void AddVolForces () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
@@ -157,7 +159,8 @@ private:
 	Array<int>              _btags;           ///< Beam tags
 	std::map<int,size_t>    _elem_tag_idx;    ///< Map Tag => Idx, where Idx is the index inside _elems_with_tags
 	Array<Array<Element*> > _elems_with_tags; ///< Element with tags
-	Array<Model*>           _models;
+	Array<Model*>           _models;          ///< Models
+	Array<Prop_t>           _props;           ///< Properties
 
 }; // class Data
 
@@ -216,8 +219,9 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 			throw new Fatal("FEM::SetNodesElems: For 2D problems, only the X and Y coordinates must be used (diff_z=%f)",diff_z);
 	}
 
-	// Allocate models
+	// Allocate models and properties
 	_models.Resize (ElemsAtts->Size());
+	_props .Resize (ElemsAtts->Size());
 	for (size_t i=0; i<ElemsAtts->Size(); ++i) // 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
 	{
 		Str_t mdl = (*ElemsAtts)[i].get<3>();
@@ -286,7 +290,7 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 
 				// New finite element
 				found = true;
-				SetElemAndModel (i, tag, conn, geomt, probt, _models[j], inis, props, act);
+				SetElemAndModel (i, tag, conn, geomt, probt, _models[j], inis, &_props[j], props, act);
 
 				// Next element
 				break;
@@ -318,7 +322,7 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		conn[1] = Nod(M->EdgeToRig(elem_id, local_edge_id));
 
 		// New finite element
-		FEM::Element * fe = SetElemAndModel (ie, beam_tag, conn, geomt, probt, _models[eatt_id], inis, props, act);
+		FEM::Element * fe = SetElemAndModel (ie, beam_tag, conn, geomt, probt, _models[eatt_id], inis, &_props[eatt_id], props, act);
 
 		// Next element
 		ie++;
@@ -449,7 +453,7 @@ inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 	return _nodes[i];
 }
 
-inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Inis, Str_t Props, bool IsAct)
+inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Inis, Prop_t * Prp, Str_t Props, bool IsAct)
 {
 	// New element
 	if (_elems[i]==NULL) _elems[i] = new Element;
@@ -457,10 +461,17 @@ inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<Node*> const & C
 	// Initialize constants of element and get geometry index (gi)
 	int gi = _elems[i]->InitCtes (_dim, GeomT, ProbT);
 
-	// Initialize
-	_elems[i]->Initialize (/*ID*/i, Tag, Conn, Mdl, Inis, Props, IsAct);
+	// Parse properties for the first (only) time
+	if (Prp->size()==0)
+	{
+		LineParser lp(Props);
+		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*Prp), "properties", "Element tag", Tag);
+	}
 
-	// Set geometry index
+	// Initialize
+	_elems[i]->Initialize (/*ID*/i, Tag, Conn, Mdl, Inis, Prp, IsAct);
+
+	// Set Model geometry index
 	Mdl->SetGeomIdx (gi);
 
 	// Set array with elements with tags

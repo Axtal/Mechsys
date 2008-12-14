@@ -74,8 +74,8 @@ public:
 	template<typename Type1, typename Type2>
 	bool BreakExpressions(std::map<Type1,Type2> & lvalue_rvalue);
 
-	template<int nChars, typename Type>
-	void ReadVariables(size_t NumNames, char const Names[][nChars], Array<Type> & Values, int ID=-1, char const * Desc=NULL);
+	template<int nChars, typename Type1, typename Type2>
+	void ReadVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc=NULL, char const * ElemOrMdl=NULL, int IDOrTag=-1);
 
 	void PathSubstituteEnv();
 	void FileBasename(String const & ExtensionToRemove, String & Basename);
@@ -238,8 +238,8 @@ inline bool LineParser::BreakExpressions(std::map<Type1,Type2> & Lvalue_Rvalue)
 	return true;
 }
 
-template<int nChars, typename Type>
-inline void LineParser::ReadVariables(size_t NumNames, char const Names[][nChars], Array<Type> & Values, int ID, char const * Desc)
+template<int nChars, typename Type1, typename Type2>
+inline void LineParser::ReadVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc, char const * ElemOrMdl, int IDOrTag)
 {
 	/* Read:  "gam=20 gw=10"  into   Values[0]=20, Values[1]=10
 	 *
@@ -247,34 +247,32 @@ inline void LineParser::ReadVariables(size_t NumNames, char const Names[][nChars
 	 */
 
 	// Build map with names x values
-	std::map<String,Type>  names_vals;
-	BreakExpressions      (names_vals);
+	BreakExpressions (NamesVals);
 
 	// Check size of variables ("a=1 b=2" => NumNames==2)
-	if (names_vals.size()!=NumNames)
+	if (NamesVals.size()!=NumNames)
 	{
-		size_t nwrong = names_vals.size();
+		size_t nwrong = NamesVals.size();
 		String buf(NumNames, Names);
-		String ele;  if (ID>=0)      ele.Printf("# %d: ",ID);
-		String des;  if (Desc==NULL) des.Printf("names"); else des.Printf("%s",Desc);
+		String ele;  if (ElemOrMdl!=NULL) ele.Printf("%s # %d: ",ElemOrMdl,IDOrTag);
+		String des;  if (Desc==NULL)      des.Printf("names"); else des.Printf("%s",Desc);
 		throw new Fatal("LineParser::ReadVariables: %sThe number (%d) of %s is incorrect; it must be equal to %d.\n\tAll %s < %s > must be defined.",
 		                ele.CStr(), nwrong, des.CStr(), NumNames, des.CStr(), buf.CStr());
 	}
 
-	// Parse variables
-	Values.Resize(NumNames);
+	// Check variables
 	for (size_t i=0; i<NumNames; ++i)
 	{
-		if (names_vals.count(Names[i])==0)
+		if (NamesVals.count(Names[i])==0)
 		{
 			String buf(NumNames, Names);
-			String ele;  if (ID>=0)      ele.Printf("# %d: ",ID);
-			String des;  if (Desc==NULL) des.Printf("names"); else des.Printf("%s",Desc);
+			String ele;  if (ElemOrMdl!=NULL) ele.Printf("%s # %d: ",ElemOrMdl,IDOrTag);
+			String des;  if (Desc==NULL)      des.Printf("names"); else des.Printf("%s",Desc);
 			throw new Fatal("LineParser::ReadVariables: %sCould not find name < %s > in array of %s.\n\tAll %s < %s > must be defined.",
 			                ele.CStr(), Names[i], des.CStr(), des.CStr(), buf.CStr());
 		}
-		Values[i] = names_vals[Names[i]];
-		//std::cout << Names[i] << " --> " << Values[i] << std::endl;
+		//for (std::map<Type1,Type2>::const_iterator it=NamesVals.begin(); it!=NamesVals.end(); ++it)
+			//std::cout << it->first << " --> " << it->second << std::endl;
 	}
 }
 

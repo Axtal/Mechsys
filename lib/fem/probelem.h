@@ -33,9 +33,11 @@
 namespace FEM
 {
 
-typedef LinAlg::Matrix<double> Mat_t;
-typedef LinAlg::Vector<double> Vec_t;
-typedef char const *           Str_t;
+typedef LinAlg::Matrix<double>  Mat_t;
+typedef LinAlg::Vector<double>  Vec_t;
+typedef char const            * Str_t;
+typedef std::map<String,double> Prop_t;       ///< Properties type
+typedef const char              ProName_t[8]; ///< Properties names. Ex: "gam", "s", "cq", ...
 
 class ProbElem
 {
@@ -43,57 +45,61 @@ public:
 	// Typedefs
 	typedef const char VarName_t[4]; ///< Variables names. Ex: "ux", "uy", "Sx", ...
 	typedef const char PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
-	typedef const char ProName_t[8]; ///< Properties names. Ex: "gam", "s", "cq", ...
 
 	// Constructor
-	ProbElem() : IsActive(true), _nd(-1), _nl(-1), _gi(-1), UD(NULL), FD(NULL), LB(NULL), PROP(NULL), _mdl(NULL) {}
+	ProbElem() : IsActive(true), _nd(-1), _nl(-1), _gi(-1), UD(NULL), FD(NULL), LB(NULL), _mdl(NULL) {}
 
 	// Destructor
 	virtual ~ProbElem() {}
 
 	// Methods related to PROBLEM
-	virtual int     InitCtes     (int nDim)        { return (nDim==3 ? 0 : 1); } ///< Return geometry index: 3D==>0, 2D==>1
-	virtual void    AddVolForces ()                                           {}
-	virtual void    ClearDisp    ()                                           {}
-	virtual void    SetActive    (bool Activate, int ID)                     =0;
-	virtual void    CalcDeps     () const                                     {}
-	virtual Str_t   ModelName    () const                                    =0;
-	virtual double  Val          (int iNod, Str_t Key) const                 =0;
-	virtual double  Val          (          Str_t Key) const                 =0;
-	virtual void    EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
-	virtual void    Update       (double h, Vec_t const & dU, Vec_t & dFint) =0;
-	virtual void    Backup       ()                                          =0;
-	virtual void    Restore      ()                                          =0;
-	virtual void    OutInfo      (std::ostream & os) const                   =0;
-	virtual bool    HasExtra     () const                      { return false; }
-	virtual void    OutExtra     (Mat_t & Coords, Vec_t & Norm,
-	                              Mat_t & Vals, Array<String> & Lbls) const   {}
-	virtual size_t  NCMats       () const                          { return 0; }
-	virtual size_t  NHMats       () const                          { return 0; }
-	virtual size_t  NUVecs       () const                          { return 0; }
-	virtual void    CMatrix      (size_t Idx, Mat_t & M) const                {}
-	virtual void    HMatrix      (size_t Idx, Mat_t & M) const                {}
-	virtual void    UVector      (size_t Idx, Vec_t & V) const                {}
-	virtual void    CMatMap      (size_t Idx,
-	                              Array<size_t> & RMap,
-	                              Array<size_t> & CMap,
-	                              Array<bool> & RUPresc,
-	                              Array<bool> & CUPresc) const                {}
-	virtual void    HMatMap      (size_t Idx,
-	                              Array<size_t> & RMap,
-	                              Array<size_t> & CMap,
-	                              Array<bool> & RUPresc,
-	                              Array<bool> & CUPresc) const                {}
-	virtual void    UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
+	virtual int         InitCtes     (int nDim)        { return (nDim==3 ? 0 : 1); } ///< Return geometry index: 3D==>0, 2D==>1
+	virtual int         NProps       () const                                    =0;
+	virtual ProName_t * Props        () const                                    =0;
+	virtual void        AddVolForces ()                                           {}
+	virtual void        ClearDisp    ()                                           {}
+	virtual void        SetActive    (bool Activate, int ID)                     =0;
+	virtual void        CalcDeps     () const                                     {}
+	virtual Str_t       ModelName    () const                                    =0;
+	virtual double      Val          (int iNod, Str_t Key) const                 =0;
+	virtual double      Val          (          Str_t Key) const                 =0;
+	virtual void        EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
+	virtual void        Update       (double h, Vec_t const & dU, Vec_t & dFint) =0;
+	virtual void        Backup       ()                                          =0;
+	virtual void        Restore      ()                                          =0;
+	virtual void        OutInfo      (std::ostream & os) const                   =0;
+	virtual bool        HasExtra     () const                      { return false; }
+	virtual void        OutExtra     (Mat_t & Coords, Vec_t & Norm,
+	                                  Mat_t & Vals, Array<String> & Lbls) const   {}
+	virtual size_t      NCMats       () const                          { return 0; }
+	virtual size_t      NHMats       () const                          { return 0; }
+	virtual size_t      NUVecs       () const                          { return 0; }
+	virtual void        CMatrix      (size_t Idx, Mat_t & M) const                {}
+	virtual void        HMatrix      (size_t Idx, Mat_t & M) const                {}
+	virtual void        UVector      (size_t Idx, Vec_t & V) const                {}
+	virtual void        CMatMap      (size_t Idx,
+	                                  Array<size_t> & RMap,
+	                                  Array<size_t> & CMap,
+	                                  Array<bool> & RUPresc,
+	                                  Array<bool> & CUPresc) const                {}
+	virtual void        HMatMap      (size_t Idx,
+	                                  Array<size_t> & RMap,
+	                                  Array<size_t> & CMap,
+	                                  Array<bool> & RUPresc,
+	                                  Array<bool> & CUPresc) const                {}
+	virtual void        UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
 
 	/* Initialize the element. */
-	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Str_t Props, bool IsAct); ///< Initialize the element
+	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct); ///< Initialize the element
 
 	// Methods related to PROBLEM implemented here
 	bool  IsEssen  (Str_t Key) const;
 	void  GetLbls  (Array<String> & Lbls) const;
 	void  EdgeBry  (Str_t Key, double Val, int iEdge);
 	void  FaceBry  (Str_t Key, double Val, int iFace);
+
+	// Methods
+	double Prop (Str_t Key) const; ///< Value of a property
 
 	// Public data (read only)
 	bool IsActive;
@@ -106,12 +112,11 @@ protected:
 	VarName_t * UD;   ///< (set by InitCtes) Essential DOF names. Access: UD[iDOF]
 	VarName_t * FD;   ///< (set by InitCtes) Natural   DOF names. Access: FD[iDOF]
 	VarName_t * LB;   ///< (set by InitCtes) Additional lbls (exceed. those from UD/FD).  Access: LB[iLbl]
-	ProName_t * PROP; ///< (set by InitCtes) Properties names. Ex: "gam", "s", "cq", ...
 
 	// Data
-	Model         * _mdl;   ///< Constitutive model
-	GeomElem      * _ge;    ///< Geometry element
-	Array<double>   _props; ///< Properties. Ex: gam==specific weight
+	GeomElem * _ge;  ///< Geometry element
+	Model    * _mdl; ///< Constitutive model
+	Prop_t   * _prp; ///< Properties
 
 	// Methods
 	virtual void _initialize         (Str_t Inis)                                            {} ///< Initialize the element
@@ -125,10 +130,11 @@ protected:
 
 /* public */
 
-inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Str_t Props, bool IsAct)
+inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct)
 {
 	// Data
 	_ge      = GE;
+	_prp     = Prp;
 	IsActive = IsAct;
 
 	// Check GeomElement
@@ -136,8 +142,9 @@ inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CON
 	if (_ge->Conn.Size()<1) throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with connectivity array: maybe derived elemet did not allocate _ge->Conn (connecitvity) array",ID);
 
 	// Check constants
-	if (_nd<0 || _nl<0 || _gi<0 || _props.Size()<0)     throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with nd=%d or nl=%d or nprops=%d\n (nd=number of degrees of freedom, nl=number of additional labels, nprops=number of properties)",ID,_nd,_nl,_props.Size());
-	if (UD==NULL || FD==NULL || LB==NULL || PROP==NULL) throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with UD, FD, LB or PROP\n (UD=Essential DOFs, FD=Corresponding Natural variables, LB=Labels, PROP=properties)",ID);
+	if (_nd<0 || _nl<0 || _gi<0)          throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with nd=%d or nl=%d\n (nd=number of degrees of freedom, nl=number of additional labels)",ID,_nd,_nl);
+	if (UD==NULL || FD==NULL || LB==NULL) throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with UD, FD or LB\n (UD=Essential DOFs, FD=Corresponding Natural variables, LB=Labels)",ID);
+	if (_prp==NULL)                       throw new Fatal("ProbElem::Initialize: Element # %d: There is a problem with _prp\n (_prp=properties)",ID);
 
 	// Set connectivity, by linking the local node ID with the pointer to the connected node
 	for (size_t i=0; i<CONN.Size(); ++i)
@@ -155,10 +162,6 @@ inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CON
 
 	// Check connectivity
 	if (_ge->CheckConn()==false) throw new Fatal("ProbElem::Initialize: Element # %d: Connectivity was not properly set",ID);
-
-	// Read properties
-	LineParser lp(Props);
-	lp.ReadVariables (_props.Size(), PROP, _props, ID, "properties");
 
 	// Initialize
 	_mdl = Mdl;
@@ -213,6 +216,13 @@ inline void ProbElem::FaceBry(Str_t Key, double Value, int iFace)
 	Array<Node*> fnodes;
 	_ge->GetFNodes      (iFace, fnodes);
 	_dist_to_face_nodes (Key, Value, fnodes);
+}
+
+inline double ProbElem::Prop(Str_t Key) const
+{
+	std::map<String,double>::const_iterator it = _prp->find(Key);
+	if (it==_prp->end()) throw new Fatal("ProbElem::Prop: Could not find property < %d > in _props array",Key);
+	return it->second;
 }
 
 

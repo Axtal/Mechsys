@@ -38,23 +38,25 @@ class BiotElem : public EquilibElem
 {
 public:
 	// Methods related to PROBLEM
-	int     InitCtes     (int nDim);
-	void    ClearDisp    ();
-	void    CalcDeps     () const;
-	Str_t   ModelName    () const { return "LinElastic"; }
-	double  Val          (int iNod, Str_t Key) const;
-	double  Val          (          Str_t Key) const;
-	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
-	void    OutInfo      (std::ostream & os) const;
-	size_t  NCMats       () const { return 3; }
-	size_t  NHMats       () const { return 1; }
-	size_t  NUVecs       () const { return 2; }
-	void    CMatrix      (size_t Idx, Mat_t & M) const;
-	void    HMatrix      (size_t Idx, Mat_t & M) const;
-	void    UVector      (size_t Idx, Vec_t & V) const;
-	void    CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void    HMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	void    UVecMap      (size_t Idx, Array<size_t> & RMap) const;
+	int         InitCtes     (int nDim);
+	int         NProps       () const { return 2; } ///< "gam" and "gw"
+	ProName_t * Props        () const { return BIOT_PROP; }
+	void        ClearDisp    ();
+	void        CalcDeps     () const;
+	Str_t       ModelName    () const { return "LinElastic"; }
+	double      Val          (int iNod, Str_t Key) const;
+	double      Val          (          Str_t Key) const;
+	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        OutInfo      (std::ostream & os) const;
+	size_t      NCMats       () const { return 3; }
+	size_t      NHMats       () const { return 1; }
+	size_t      NUVecs       () const { return 2; }
+	void        CMatrix      (size_t Idx, Mat_t & M) const;
+	void        HMatrix      (size_t Idx, Mat_t & M) const;
+	void        UVector      (size_t Idx, Vec_t & V) const;
+	void        CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void        HMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void        UVecMap      (size_t Idx, Array<size_t> & RMap) const;
 
 private:
 	// Derived methods
@@ -103,10 +105,6 @@ inline int BiotElem::InitCtes(int nDim)
 		LB  = LB_BIOT_2D;
 	}
 	else throw new Fatal("BiotElem::InitCtes: GeometryIndex _gi==%d is invalid",_gi);
-
-	// Properties
-	_props.Resize (2); // "gam" and "gw"
-	PROP = BIOT_PROP;
 
 	// Return geometry index
 	return _gi;
@@ -416,7 +414,7 @@ inline void BiotElem::_compute_H(Mat_t & He) const
 	            {m} = [ 1 1 1 0 0 0 ]
 	*/
 	
-	double gw  = _props[1];
+	double gw  = Prop("gw");
 	size_t ndf = 1; // nDOFs flow
 	He.Resize    (ndf*_ge->NNodes, ndf*_ge->NNodes);
 	He.SetValues (0.0);
@@ -441,7 +439,7 @@ inline void BiotElem::_compute_Qb(Vec_t & Qb) const
 	                    gw  /    p            w  
 	*/
 	
-	double gw  = _props[1];
+	double gw  = Prop("gw");
 	size_t ndf = 1; // nDOFs flow
 	Qb.Resize    (ndf*_ge->NNodes); 
 	Qb.SetValues (0.0);

@@ -66,6 +66,9 @@ public:
 	                         IntVals       & Ivs,
 	                         Vec_t         & DSig) { return -1; }
 
+	// Access methods
+	std::map<String,double> const & Prms() const { return _prms; }
+
 	// Integration constants
 	Model & STOL  (double Val=1.0e-5) { _STOL =Val; return (*this); }
 	Model & dTini (double Val=1.0   ) { _dTini=Val; return (*this); }
@@ -78,12 +81,13 @@ public:
 
 protected:
 	// Data (set in _set_ctes)
-	PrmName_t     * PRMS; ///< (set in _set_ctes) Parameters names. Ex: "E", "nu", "lam", "kap", ...
-	Array<double>  _prms; ///< (resized in _set_ctes) Parameters
+	int        _np;   ///< (set in _set_ctes) Number of parameters
+	PrmName_t * PRMS; ///< (set in _set_ctes) Parameters names. Ex: "E", "nu", "lam", "kap", ...
 
 	// Data
-	int _gi;  ///< Geometry index: Equilib: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
-	int _tag; ///< The tag of the model
+	int                     _gi;   ///< Geometry index: Equilib: 3D=0, PStrain=1, PStress=2, Axis=3. Others: 3D=0, 2D=1
+	int                     _tag;  ///< The tag of the model
+	std::map<String,double> _prms; ///< Parameters
 
 	// Constants for the stress update algorithm
 	double _STOL;
@@ -117,7 +121,7 @@ inline void Model::Initialize(int Tag, Str_t Prms)
 
 	// Read parameters
 	LineParser lp(Prms);
-	lp.ReadVariables (_prms.Size(), PRMS, _prms, -_tag, "parameters (tag is neg)");
+	lp.ReadVariables (_np, PRMS, _prms, "parameters", "Model", _tag);
 
 	// Initialize model
 	_initialize ();

@@ -46,7 +46,7 @@ private:
 	Tensor4 _De; ///< Constant tangent stiffness
 
 	// Private methods
-	void _set_ctes   () { PRMS=LINELASTIC_PN; _prms.Resize(2); }
+	void _set_ctes   () { _np=2;  PRMS=LINELASTIC_PN; }
 	void _initialize ();
 	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
 
@@ -61,8 +61,8 @@ const char LinElastic::LINELASTIC_PN[2][8] = {"E", "nu"};
 inline void LinElastic::_initialize()
 {
 	// Parameters
-	double E  = _prms[0];
-	double nu = _prms[1];
+	double E  = _prms["E"];
+	double nu = _prms["nu"];
 
 	// Check
 	if (E<=0.0)             throw new Fatal("LinElastic::_initialize: Tag=%d: Young modulus (E) must be provided (and positive). E==%f is invalid",_tag,E);

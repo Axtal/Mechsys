@@ -34,9 +34,11 @@
 namespace FEM
 {
 
-typedef LinAlg::Matrix<double> Mat_t;
-typedef LinAlg::Vector<double> Vec_t;
-typedef char const *           Str_t;
+typedef LinAlg::Matrix<double>  Mat_t;
+typedef LinAlg::Vector<double>  Vec_t;
+typedef char const            * Str_t;
+typedef std::map<String,double> Prop_t;       ///< Properties type
+typedef const char              ProName_t[8]; ///< Properties names. Ex: "gam", "s", "cq", ...
 
 class Element
 {
@@ -57,7 +59,7 @@ public:
 	                  Array<Node*> const & CONN,                 ///< Connectivity
 	                  Model              * Mdl,                  ///< Model. Ex: AllocModel("LinElastic")
 	                  Str_t                Inis,                 ///< Initial values. Ex: "ZERO" or "Sx=0.0 Sy=0.0"
-	                  Str_t                Props,                ///< Properties. Ex: "gam=20"
+	                  Prop_t             * Prp,                  ///< Properties. Ex: "gam=20"
 	                  bool                 IsAct);               ///< Is the element active ?
 	long  GetID      () const           { return _id;          } ///< Return the ID of this element
 	int   Tag        () const           { return _tag;         } ///< Return the Tag of this element
@@ -81,6 +83,8 @@ public:
 	double       BoundDist (double r, double s, double t) const         { CHECKGEPE("BoundDist") return _ge->BoundDist(r,s,t);                } ///< TODO: Bound distance
 
 	// Methods related to PROBLEM
+	int          NProps       () const                                  { CHECKGEPE("NProps"   ) return _pe->NProps();                        } ///< Number of properties
+	ProName_t  * Props        () const                                  { CHECKGEPE("Props"    ) return _pe->Props();                         } ///< Names of properties
 	void         AddVolForces ()                                        { CHECKGEPE("AddVols"  )        _pe->AddVolForces();                  } ///< Method to apply volumetric (body) forces as boundary condition
 	void         ClearDisp ()                                           { CHECKGEPE("ClearDisp")        _pe->ClearDisp();                     } ///< Clear displacements and strains (for equilibrium/coupled problems)
 	void         SetActive (bool Activate)                              { CHECKGEPE("SetActive")        _pe->SetActive(Activate,_id);         } ///< Activate element (construction/excavation)
@@ -119,6 +123,7 @@ public:
 	                        Array<bool> & CUPresc) const                { CHECKGEPE("HMatMap"  ) _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc); } ///< HMatrix map to convert local DOFs into global equation positions
 	void         UVecMap   (size_t Idx, Array<size_t> & RMap) const     { CHECKGEPE("UVecMap"  ) _pe->UVecMap(Idx,RMap);                      } ///< UVector map to convert local DOFs into global equation positions
 
+
 private:
 	// Data
 	long       _id;   ///< The ID of this element
@@ -150,11 +155,11 @@ inline int Element::InitCtes(int nDim, Str_t GeomT, Str_t ProbT)
 	return _pe->InitCtes (nDim);
 }
 
-inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Str_t Props, bool IsAct)
+inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct)
 {
 	_id  = i;
 	_tag = Tag;
-	_pe->Initialize (_ge, _id, CONN, Mdl, Inis, Props, IsAct);
+	_pe->Initialize (_ge, _id, CONN, Mdl, Inis, Prp, IsAct);
 }
 
 inline bool Element::Check(String & Msg) const

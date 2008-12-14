@@ -68,23 +68,23 @@ public:
 	virtual ~EquilibElem () {}
 
 	// Methods related to PROBLEM
-	int     InitCtes     (int nDim);
-	void    AddVolForces ();
-	void    ClearDisp    ();
-	void    SetActive    (bool Activate, int ID);
-	void    CalcDeps     () const;
-	Str_t   ModelName    () const { return _mdl->Name(); }
-	double  Val          (int iNod, Str_t Key) const;
-	double  Val          (          Str_t Key) const;
-	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
-	void    Backup       ();
-	void    Restore      ();
-	void    OutInfo      (std::ostream & os) const;
-	size_t  NCMats       () const { return 1; }
-	void    CMatrix      (size_t Idx, Mat_t & M) const;
-	void    CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-
-	// Methods
+	int         InitCtes     (int nDim);
+	int         NProps       () const { return 1; } ///< just "gam"
+	ProName_t * Props        () const { return EQUILIB_PROP; }
+	void        AddVolForces ();
+	void        ClearDisp    ();
+	void        SetActive    (bool Activate, int ID);
+	void        CalcDeps     () const;
+	Str_t       ModelName    () const { return _mdl->Name(); }
+	double      Val          (int iNod, Str_t Key) const;
+	double      Val          (          Str_t Key) const;
+	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        Backup       ();
+	void        Restore      ();
+	void        OutInfo      (std::ostream & os) const;
+	size_t      NCMats       () const { return 1; }
+	void        CMatrix      (size_t Idx, Mat_t & M) const;
+	void        CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 
 	// Method used when filling ProbElemFactory
 	void __SetGeomIdx (int Idx) { _gi = Idx; }
@@ -150,10 +150,6 @@ inline int EquilibElem::InitCtes(int nDim)
 	}
 	else throw new Fatal("EquilibElem::InitCtes: GeometryIndex _gi==%d is invalid",_gi);
 
-	// Properties
-	_props.Resize (1); // just "gam"
-	PROP = EQUILIB_PROP;
-
 	// Return geometry index
 	return _gi;
 }
@@ -168,7 +164,7 @@ inline void EquilibElem::AddVolForces()
 	fvol.SetValues (0.0);
 
 	// Calculate local external volume force
-	double gam = _props[0];
+	double gam = Prop("gam");
 	Vec_t N;
 	Mat_t dN;
 	Mat_t J;
@@ -419,7 +415,7 @@ inline void EquilibElem::_excavate()
 	// Calculate internal forces for element on boundary
 	if (on_boundary)
 	{
-		double gam = _props[0];
+		double gam = Prop("gam");
 		Vec_t F(_ge->NDim*_ge->NNodes);  F.SetValues(0.0);
 		Vec_t S(_ge->NDim*_ge->NNodes);  S.SetValues(0.0);
 		Vec_t N;      // Shape functions

@@ -32,7 +32,7 @@ class BiotElastic : public EquilibModel
 {
 public:
 	// Constants
-	static const char BIOTELASTIC_PN[4][8];
+	static const char BIOTELASTIC_PN[3][8];
 
 	// Destructor
 	virtual ~BiotElastic () {}
@@ -49,13 +49,13 @@ private:
 	Mat_t   _K;  ///< Constant tangent permeability
 
 	// Private methods
-	void _set_ctes   () { PRMS=BIOTELASTIC_PN; _prms.Resize(4); }
+	void _set_ctes   () { _np=3;  PRMS=BIOTELASTIC_PN; }
 	void _initialize ();
 	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
 
 }; // class BiotElastic
 
-const char BiotElastic::BIOTELASTIC_PN[4][8] = {"E", "nu", "k", "gw"};
+const char BiotElastic::BIOTELASTIC_PN[3][8] = {"E", "nu", "k"};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -72,8 +72,8 @@ inline void BiotElastic::_initialize()
 	double k  = _prms[2];
 
 	// Check
-	if (E<=0.0)             throw new Fatal("BiotElastic::_initialize: Tag=%d. Young modulus (E) must be provided (and positive). E==%f is invalid",_tag,E);
-	if (nu<0.0 || nu>0.499) throw new Fatal("BiotElastic::_initialize: Tag=%d. Poisson ratio (nu) must be provided (and in the range: 0 < nu < 0.5). nu==%f is invalid",_tag,nu);
+	if (E<=0.0)             throw new Fatal("BiotElastic::_initialize: Tag=%d. Young modulus (E) must positive. E==%f is invalid",_tag,E);
+	if (nu<0.0 || nu>0.499) throw new Fatal("BiotElastic::_initialize: Tag=%d. Poisson ratio (nu) must be in the range: 0 < nu < 0.5). nu==%f is invalid",_tag,nu);
 	if (k<0.0)              throw new Fatal("BiotElastic::_initialize: Tag=%d. Isotropic permeability must positive. k=%f is invalid",_tag,k);
 
 	// Set stiffness
