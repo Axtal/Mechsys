@@ -42,9 +42,10 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/lin2.h"
 #include "fem/elems/rod.h"
+#include "models/equilibs/rodelastic.h"
 #include "util/exception.h"
+#include "mesh/mesh.h"
 
 using std::cout;
 using std::endl;
@@ -52,43 +53,43 @@ using LinAlg::Matrix;
 using Util::_4;
 using Util::_6;
 using Util::_8s;
+using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
-	// Input
-	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
-	String linsol("UM");
-	if (argc==2) linsol.Printf("%s",argv[1]);
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+	
+	Mesh::Generic mesh(/*Is3D*/false);
+	mesh.SetNVerts  (3);
+	mesh.SetNElems  (3);
+	mesh.SetVert    (0, true,  0.0,  0.0); // true => OnBry
+	mesh.SetVert    (1, true, 10.0,  0.0);
+	mesh.SetVert    (2, true, 10.0, 10.0);
+	mesh.SetElem    (0, -1, true, VTK_LINE); // true => OnBry
+	mesh.SetElem    (1, -2, true, VTK_LINE);
+	mesh.SetElem    (2, -3, true, VTK_LINE);
+	mesh.SetElemCon (0, 0, 0);  mesh.SetElemCon(0, 1, 1);
+	mesh.SetElemCon (1, 0, 1);  mesh.SetElemCon(1, 1, 2);
+	mesh.SetElemCon (2, 0, 0);  mesh.SetElemCon(2, 1, 2);
 
-	// Geometry
-	FEM::Data dat(2); // 2D
-
-	// Nodes
-	dat.SetNNodes (3);
-	dat.SetNode   (0,  0.0,  0.0);
-	dat.SetNode   (1, 10.0,  0.0);
-	dat.SetNode   (2, 10.0, 10.0);
-
-	// Elements
-	dat.SetNElems (3);
-	dat.SetElem   (0, "", "Rod", /*IsActive*/true, /*Tag*/-1);
-	dat.SetElem   (1, "", "Rod", /*IsActive*/true, /*Tag*/-1);
-	dat.SetElem   (2, "", "Rod", /*IsActive*/true, /*Tag*/-1);
-
-	// Set connectivity
-	dat.Ele(0)->SetConn(0, dat.Nod(0))->SetConn(1, dat.Nod(1));
-	dat.Ele(1)->SetConn(0, dat.Nod(1))->SetConn(1, dat.Nod(2));
-	dat.Ele(2)->SetConn(0, dat.Nod(0))->SetConn(1, dat.Nod(2));
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+	
+	// Data and Solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat, "ttruss01");
 
 	// Parameters and initial value
-	dat.Ele(0)->SetModel("", "E=100.0 A=1.0"              , "Sx=0.0");
-	dat.Ele(1)->SetModel("", "E= 50.0 A=1.0"              , "Sx=0.0");
-	dat.Ele(2)->SetModel("", "E=200.0 A=1.414213562373095", "Sx=0.0");
+	FEM::EAtts_T eatts;
+	String p1; p1.Printf("E=%f A=%f", 100.0 ,      1.0);
+	String p2; p2.Printf("E=%f A=%f",  50.0 ,      1.0);
+	String p3; p3.Printf("E=%f A=%f", 200.0 , sqrt(2.0));
+	eatts.Push (make_tuple(-1, "", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-2, "", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-3, "", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", true));
 
-	// Boundary conditions (must be after set connectivity)
-	dat.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
-	dat.Nod(1)->                Bry("uy",  0.4); // Essential
-	dat.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
+	// Set geometry: nodes and elements
+	dat.SetOnlyFrame  (true);
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Check stiffness matrices
 	double err_ke = 0.0;
@@ -121,11 +122,15 @@ int main(int argc, char **argv) try
 		err_ke += fabs(Ke1(i,j)-Ke1c(i,j));
 		err_ke += fabs(Ke2(i,j)-Ke2c(i,j));
 	}
-	if (err_ke>8.55e-14) throw new Fatal("ttruss01: err_ke=%e is bigger than %e.",err_ke,8.55e-14);
+	if (err_ke>1.0e-4) throw new Fatal("ttruss01: err_ke=%e is bigger than %e.",err_ke,1.0e-4);
 
-	// Solve
-	FEM::Solver sol(dat,"ttruss01");
+	// Stage # 1 -----------------------------------------------------------
+	dat.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
+	dat.Nod(1)->                Bry("uy",  0.4); // Essential
+	dat.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
+
+	//////////////////////////////////////////////////////////////////////////////////////// Output ////
 
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
@@ -171,9 +176,9 @@ int main(int argc, char **argv) try
 	err_s[1] = fabs(dat.Ele(1)->Val(0, "N") - (-1.0));
 
 	// Error summary
-	double tol_u     = DBL_EPSILON;
-	double tol_f     = 8.89e-16;
-	double tol_s     = 4.4e-4;
+	double tol_u     = 1.0e-7;
+	double tol_f     = 1.0e-7;
+	double tol_s     = 1.0e-7;
 	double min_err_u = err_u[err_u.Min()];
 	double max_err_u = err_u[err_u.Max()];
 	double min_err_f = err_f[err_f.Min()];

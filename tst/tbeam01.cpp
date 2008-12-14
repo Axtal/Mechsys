@@ -74,20 +74,18 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 	
-	// Data
-	FEM::Data dat(2); // 2D
+	// Data and solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat, "tbeam01");
 
 	// Elements attributes
-	String prms; prms.Printf("E=%f A=%f Izz=%f",E,A,Izz);
 	FEM::EAtts_T eatts;
+	String prms; prms.Printf("E=%f A=%f Izz=%f",E,A,Izz);
 	eatts.Push (make_tuple(-5, "", "Beam", "BeamElastic", prms.CStr(), "ZERO", "gam=20 cq=1", true));
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);
 	dat.SetNodesElems (&mesh, &eatts);
-
-	// Solver
-	FEM::Solver sol(dat, "tbeam01");
 
 	// Stage # 1 -----------------------------------------------------------
 	dat.Nod(0)->Bry("ux", 0.0)->Bry("uy", 0.0);

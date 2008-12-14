@@ -43,92 +43,102 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/rod2.h"
-#include "fem/output.h"
+#include "fem/elems/rod.h"
+#include "models/equilibs/rodelastic.h"
 #include "util/exception.h"
+#include "mesh/mesh.h"
 
 using std::cout;
 using std::endl;
 using Util::_4;
 using Util::_6;
 using Util::_8s;
+using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
-	// Input
-	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
-	String linsol("UM");
-	if (argc==2) linsol.Printf("%s",argv[1]);
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+	
+	Mesh::Generic mesh(/*Is3D*/false);
+	mesh.SetNVerts  (12);
+	mesh.SetNElems  (21);
+	mesh.SetVert    ( 0, true,  0.0, 0.0);
+	mesh.SetVert    ( 1, true, 10.0, 5.0);
+	mesh.SetVert    ( 2, true, 10.0, 0.0);
+	mesh.SetVert    ( 3, true, 20.0, 8.0);
+	mesh.SetVert    ( 4, true, 20.0, 0.0);
+	mesh.SetVert    ( 5, true, 30.0, 9.0);
+	mesh.SetVert    ( 6, true, 30.0, 0.0);
+	mesh.SetVert    ( 7, true, 40.0, 8.0);
+	mesh.SetVert    ( 8, true, 40.0, 0.0);
+	mesh.SetVert    ( 9, true, 50.0, 5.0);
+	mesh.SetVert    (10, true, 50.0, 0.0);
+	mesh.SetVert    (11, true, 60.0, 0.0);
+	mesh.SetElem    ( 0,  -2, true, VTK_LINE);
+	mesh.SetElem    ( 1,  -2, true, VTK_LINE);
+	mesh.SetElem    ( 2,  -2, true, VTK_LINE);
+	mesh.SetElem    ( 3,  -2, true, VTK_LINE);
+	mesh.SetElem    ( 4,  -2, true, VTK_LINE);
+	mesh.SetElem    ( 5,  -2, true, VTK_LINE);
+	mesh.SetElem    ( 6, -10, true, VTK_LINE);
+	mesh.SetElem    ( 7, -10, true, VTK_LINE);
+	mesh.SetElem    ( 8, -10, true, VTK_LINE);
+	mesh.SetElem    ( 9, -10, true, VTK_LINE);
+	mesh.SetElem    (10, -10, true, VTK_LINE);
+	mesh.SetElem    (11, -10, true, VTK_LINE);
+	mesh.SetElem    (12,  -3, true, VTK_LINE);
+	mesh.SetElem    (13,  -3, true, VTK_LINE);
+	mesh.SetElem    (14,  -3, true, VTK_LINE);
+	mesh.SetElem    (15,  -3, true, VTK_LINE);
+	mesh.SetElem    (16,  -3, true, VTK_LINE);
+	mesh.SetElem    (17,  -1, true, VTK_LINE);
+	mesh.SetElem    (18,  -1, true, VTK_LINE);
+	mesh.SetElem    (19,  -1, true, VTK_LINE);
+	mesh.SetElem    (20,  -1, true, VTK_LINE);
+	mesh.SetElemCon ( 0, 0,  0);  mesh.SetElemCon( 0, 1,  2);
+	mesh.SetElemCon ( 1, 0,  2);  mesh.SetElemCon( 1, 1,  4);
+	mesh.SetElemCon ( 2, 0,  4);  mesh.SetElemCon( 2, 1,  6);
+	mesh.SetElemCon ( 3, 0,  6);  mesh.SetElemCon( 3, 1,  8);
+	mesh.SetElemCon ( 4, 0,  8);  mesh.SetElemCon( 4, 1, 10);
+	mesh.SetElemCon ( 5, 0, 10);  mesh.SetElemCon( 5, 1, 11);
+	mesh.SetElemCon ( 6, 0,  0);  mesh.SetElemCon( 6, 1,  1);
+	mesh.SetElemCon ( 7, 0,  1);  mesh.SetElemCon( 7, 1,  3);
+	mesh.SetElemCon ( 8, 0,  3);  mesh.SetElemCon( 8, 1,  5);
+	mesh.SetElemCon ( 9, 0,  5);  mesh.SetElemCon( 9, 1,  7);
+	mesh.SetElemCon (10, 0,  7);  mesh.SetElemCon(10, 1,  9);
+	mesh.SetElemCon (11, 0,  9);  mesh.SetElemCon(11, 1, 11);
+	mesh.SetElemCon (12, 0,  1);  mesh.SetElemCon(12, 1,  2);
+	mesh.SetElemCon (13, 0,  3);  mesh.SetElemCon(13, 1,  4);
+	mesh.SetElemCon (14, 0,  5);  mesh.SetElemCon(14, 1,  6);
+	mesh.SetElemCon (15, 0,  7);  mesh.SetElemCon(15, 1,  8);
+	mesh.SetElemCon (16, 0,  9);  mesh.SetElemCon(16, 1, 10);
+	mesh.SetElemCon (17, 0,  1);  mesh.SetElemCon(17, 1,  4);
+	mesh.SetElemCon (18, 0,  3);  mesh.SetElemCon(18, 1,  6);
+	mesh.SetElemCon (19, 0,  6);  mesh.SetElemCon(19, 1,  7);
+	mesh.SetElemCon (20, 0,  8);  mesh.SetElemCon(20, 1,  9);
 
-	// Geometry
-	FEM::Data dat(2); // 2D
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Nodes
-	dat.SetNNodes (12);
-	dat.SetNode   ( 0,  0.0, 0.0);
-	dat.SetNode   ( 1, 10.0, 5.0);
-	dat.SetNode   ( 2, 10.0, 0.0);
-	dat.SetNode   ( 3, 20.0, 8.0);
-	dat.SetNode   ( 4, 20.0, 0.0);
-	dat.SetNode   ( 5, 30.0, 9.0);
-	dat.SetNode   ( 6, 30.0, 0.0);
-	dat.SetNode   ( 7, 40.0, 8.0);
-	dat.SetNode   ( 8, 40.0, 0.0);
-	dat.SetNode   ( 9, 50.0, 5.0);
-	dat.SetNode   (10, 50.0, 0.0);
-	dat.SetNode   (11, 60.0, 0.0);
-
-	// Elements
-	dat.SetNElems (21);
-	for (int i=0; i<21; ++i) dat.SetElem(i, "Rod2", true, -1);
-
-	// Set connectivity
-	dat.Ele( 0)->Connect(0, dat.Nod( 0))->Connect(1, dat.Nod( 2));
-	dat.Ele( 1)->Connect(0, dat.Nod( 2))->Connect(1, dat.Nod( 4));
-	dat.Ele( 2)->Connect(0, dat.Nod( 4))->Connect(1, dat.Nod( 6));
-	dat.Ele( 3)->Connect(0, dat.Nod( 6))->Connect(1, dat.Nod( 8));
-	dat.Ele( 4)->Connect(0, dat.Nod( 8))->Connect(1, dat.Nod(10));
-	dat.Ele( 5)->Connect(0, dat.Nod(10))->Connect(1, dat.Nod(11));
-	dat.Ele( 6)->Connect(0, dat.Nod( 0))->Connect(1, dat.Nod( 1));
-	dat.Ele( 7)->Connect(0, dat.Nod( 1))->Connect(1, dat.Nod( 3));
-	dat.Ele( 8)->Connect(0, dat.Nod( 3))->Connect(1, dat.Nod( 5));
-	dat.Ele( 9)->Connect(0, dat.Nod( 5))->Connect(1, dat.Nod( 7));
-	dat.Ele(10)->Connect(0, dat.Nod( 7))->Connect(1, dat.Nod( 9));
-	dat.Ele(11)->Connect(0, dat.Nod( 9))->Connect(1, dat.Nod(11));
-	dat.Ele(12)->Connect(0, dat.Nod( 1))->Connect(1, dat.Nod( 2));
-	dat.Ele(13)->Connect(0, dat.Nod( 3))->Connect(1, dat.Nod( 4));
-	dat.Ele(14)->Connect(0, dat.Nod( 5))->Connect(1, dat.Nod( 6));
-	dat.Ele(15)->Connect(0, dat.Nod( 7))->Connect(1, dat.Nod( 8));
-	dat.Ele(16)->Connect(0, dat.Nod( 9))->Connect(1, dat.Nod(10));
-	dat.Ele(17)->Connect(0, dat.Nod( 1))->Connect(1, dat.Nod( 4));
-	dat.Ele(18)->Connect(0, dat.Nod( 3))->Connect(1, dat.Nod( 6));
-	dat.Ele(19)->Connect(0, dat.Nod( 6))->Connect(1, dat.Nod( 7));
-	dat.Ele(20)->Connect(0, dat.Nod( 8))->Connect(1, dat.Nod( 9));
+	// Data and Solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat, "ttruss02");
 
 	// Parameters and initial value
-	dat.Ele( 0)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	dat.Ele( 1)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	dat.Ele( 2)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	dat.Ele( 3)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	dat.Ele( 4)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	dat.Ele( 5)->SetModel("", "E=1000.0  A= 2.0", "ZERO");
-	dat.Ele( 6)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	dat.Ele( 7)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	dat.Ele( 8)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	dat.Ele( 9)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	dat.Ele(10)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	dat.Ele(11)->SetModel("", "E=1000.0  A=10.0", "ZERO");
-	dat.Ele(12)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	dat.Ele(13)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	dat.Ele(14)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	dat.Ele(15)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	dat.Ele(16)->SetModel("", "E=1000.0  A= 3.0", "ZERO");
-	dat.Ele(17)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
-	dat.Ele(18)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
-	dat.Ele(19)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
-	dat.Ele(20)->SetModel("", "E=1000.0  A= 1.0", "ZERO");
+	FEM::EAtts_T eatts;
+	String p1; p1.Printf("E=%f A=%f", 1000.0,  2.0);
+	String p2; p2.Printf("E=%f A=%f", 1000.0, 10.0);
+	String p3; p3.Printf("E=%f A=%f", 1000.0,  3.0);
+	String p4; p4.Printf("E=%f A=%f", 1000.0,  1.0);
+	eatts.Push (make_tuple( -2, "", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-10, "", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple( -3, "", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple( -1, "", "Rod", "RodElastic", p4.CStr(), "ZERO", "gam=20", true));
 
-	// Boundary conditions (must be after set connectivity)
+	// Set geometry: nodes and elements
+	dat.SetOnlyFrame  (true);
+	dat.SetNodesElems (&mesh, &eatts);
+
+	// Stage # 1 -----------------------------------------------------------
 	dat.Nod( 0)->Bry("ux",   0.0)->Bry("uy", 0.0);
 	dat.Nod(11)->Bry("uy",   0.0);
 	dat.Nod( 2)->Bry("fy", -10.0);
@@ -136,9 +146,6 @@ int main(int argc, char **argv) try
 	dat.Nod( 6)->Bry("fy", -16.0);
 	dat.Nod( 8)->Bry("fy", -10.0);
 	dat.Nod(10)->Bry("fy", -10.0);
-
-	// Solve
-	FEM::Solver sol(dat,"ttruss02");
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////

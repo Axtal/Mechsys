@@ -42,7 +42,6 @@
 
 // MechSys
 #include "fem/probelem.h"
-#include "fem/equilibvars.h"
 #include "models/equilibmodel.h"
 #include "util/string.h"
 #include "util/util.h"

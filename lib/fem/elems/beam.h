@@ -24,7 +24,6 @@
 #include "util/string.h"
 #include "util/util.h"
 #include "util/exception.h"
-#include "linalg/laexpr.h"
 
 namespace FEM
 {
@@ -41,7 +40,7 @@ public:
 	static const char   UD_BEAM_2D[3][4]; ///< Essential DOF vars 2D
 	static const char   FD_BEAM_2D[3][4]; ///< NaturalVal DOF vars 2D
 	static const size_t NL_BEAM_3D;       ///< Number of labels 3D
-	static const char   LB_BEAM_3D[5][4]; ///< Name of lables 3D
+	static const char   LB_BEAM_3D[5][4]; ///< Name of labels 3D
 	static const size_t NL_BEAM_2D;       ///< Number of labels 2D
 	static const char   LB_BEAM_2D[5][4]; ///< Name of lables 2D
 	static const char   BEAM_PROP [2][8]; ///< Properties
@@ -83,10 +82,8 @@ private:
 	mutable double _L;  ///< Beam length
 	mutable Vec_t  _uL; ///< Beam-Local displacements/rotations
 
-	// Derived methods
-	void _excavate () { throw new Fatal("BeamElem::_excavate: Method not available"); }
-
 	// Private methods
+	void _excavate   () { throw new Fatal("Beam::_excavate: Method not available"); }
 	void _initialize (Str_t Inis) {}    ///< Initialize the element
 	void _transf_mat (Mat_t & T) const; ///< Calculate transformation matrix
 
@@ -202,7 +199,7 @@ inline double Beam::Val(int iNod, Str_t Name) const
 	     if (strcmp(Name,"N" )==0) return      N(l);
 	else if (strcmp(Name,"M" )==0) return fabs(M(l));
 	else if (strcmp(Name,"V" )==0) return fabs(V(l));
-	else if (strcmp(Name,"Ea")==0) return    (_uL(_nd)-_uL(0))/_L;
+	else if (strcmp(Name,"Ea")==0) return                (_uL(_nd)-_uL(0))/_L;
 	else if (strcmp(Name,"Sa")==0) return _mdl->Prm("E")*(_uL(_nd)-_uL(0))/_L;
 	else throw new Fatal("Beam::Val: This element does not have a Val named < %s >",Name);
 }
@@ -214,7 +211,7 @@ inline double Beam::Val(Str_t Name) const
 	     if (strcmp(Name,"N" )==0) return      N(l);
 	else if (strcmp(Name,"M" )==0) return fabs(M(l));
 	else if (strcmp(Name,"V" )==0) return fabs(V(l));
-	else if (strcmp(Name,"Ea")==0) return    (_uL(_nd)-_uL(0))/_L;
+	else if (strcmp(Name,"Ea")==0) return                (_uL(_nd)-_uL(0))/_L;
 	else if (strcmp(Name,"Sa")==0) return _mdl->Prm("E")*(_uL(_nd)-_uL(0))/_L;
 	else throw new Fatal("Beam::Val: This element does not have a Val named < %s >",Name);
 }
@@ -271,10 +268,10 @@ inline void Beam::Update(double h, Vec_t const & dU, Vec_t & dFint)
 
 	// Allocate (local/element) internal force vector
 	Vec_t df(_nd*_ge->NNodes); // Delta internal force of this element
-	df.SetValues(0.0);
+	df.SetValues (0.0);
 
 	Mat_t Ke;
-	CMatrix(0,Ke);
+	CMatrix (0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
