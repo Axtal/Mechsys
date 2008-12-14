@@ -26,6 +26,8 @@
 #include "fem/solver.h"
 #include "fem/elems/beam.h"
 #include "fem/elems/spring.h"
+#include "models/equilibs/beamelastic.h"
+#include "models/equilibs/springelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -61,21 +63,19 @@ int main(int argc, char **argv) try
 	// Data and Solver
 	FEM::Data   dat (2);
 	FEM::Solver sol (dat, "tspring01");
-	sol.SetLinSol("LA");
-	dat.SetOnlyFrame(); // frame (beam/truss) mesh only
 
 	// Element attributes
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple( -50, "Beam", "BeamElastic", "E=30000 A=0.5 Izz=1000", "ZERO", "gam=20", true )); // # BEAM
-	eatts.Push (make_tuple( -200, "Spring", "Spring", "ks=100", "ZERO", "gam=20", true ));                   // # SPRING
+	eatts.Push (make_tuple(  -50, "", "Beam",   "BeamElastic",   "E=30000 A=0.5 Izz=1000", "ZERO", "gam=20 cq=1", true));
+	eatts.Push (make_tuple( -200, "", "Spring", "SpringElastic", "ks=100",                 "ZERO", "",            true));
 
 	// Set nodes and elements (geometry)
+	dat.SetOnlyFrame  (); // frame (beam/truss) mesh only
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Add linear elements
-	Array<int> conn(2);
-	conn[0] = 0;  conn[1] = 2;
-	dat.PushElem (-200, "Spring", "", "ks=100", "ZERO", "gam=20", true, conn);
+	//Array<int> conn(2);  conn = 0, 2;
+	//dat.PushElem (-200, "Spring", "", "ks=100", "ZERO", "gam=20", true, conn);
 
 	// Print stiffness
 	/*

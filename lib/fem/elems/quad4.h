@@ -24,8 +24,8 @@
 #include "fem/geomelem.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
-#include "linalg/lawrap.h"
-#include "vtkCellType.h"
+#include "util/exception.h"
+#include "fem/elems/vtkCellType.h"
 
 namespace FEM
 {

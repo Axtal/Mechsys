@@ -53,7 +53,7 @@ typedef Array< boost::tuple<                 int, Str_t,double> >           EBry
 typedef Array< boost::tuple<                 int, Str_t,double> >           FBrys_T; // Face:   tag, key, val
 typedef Array< boost::tuple<int,Str_t,Str_t,Str_t,Str_t,Str_t,Str_t,bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
 
-/* Dataetry */
+/* FEM Data. */
 class Data
 {
 public:
@@ -796,7 +796,7 @@ inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 		Str_t prms  = BPy::extract<Str_t>(EAtts[idx_eatt][3])();
 		Str_t inis  = BPy::extract<Str_t>(EAtts[idx_eatt][4])();
 		Str_t props = BPy::extract<Str_t>(EAtts[idx_eatt][5])();
-		bool         act   = BPy::extract<bool>        (EAtts[idx_eatt][6])();
+		bool  act   = BPy::extract<bool> (EAtts[idx_eatt][6])();
 		PushElem (tag, type, mdl, prms, inis, props, act, conn);
 	}
 }

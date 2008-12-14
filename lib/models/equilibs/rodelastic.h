@@ -63,8 +63,8 @@ inline void RodElastic::_initialize()
 	double A = Prm("A");
 
 	// Check
-	if (E<=0.0) throw new Fatal("RodElastic::_initialize: Tag=%d. Young modulus (E) must be positive). E==%f is invalid",_tag,E);
-	if (A<=0.0) throw new Fatal("RodElastic::_initialize: Tag=%d. Cross sectional area (A) must be positive). A==%f is invalid",_tag,A);
+	if (E<=0.0) throw new Fatal("RodElastic::_initialize: Tag=%d. Young modulus (E) must be positive. E==%f is invalid",_tag,E);
+	if (A<=0.0) throw new Fatal("RodElastic::_initialize: Tag=%d. Cross sectional area (A) must be positive. A==%f is invalid",_tag,A);
 }
 
 

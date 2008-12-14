@@ -16,8 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_LIN2_H
-#define MECHSYS_FEM_LIN2_H
+#ifndef MECHSYS_FEM_LIN3_H
+#define MECHSYS_FEM_LIN3_H
 
 // MechSys
 #include "fem/node.h"
@@ -30,35 +30,32 @@
 namespace FEM
 {
 
-class Lin2: public GeomElem
+class Lin3 : public GeomElem
 {
 public:
 	// Constructor
-	Lin2 ();
+	Lin3 ();
 
 	// Derived methods
 	void   SetIPs     (int NIPs1D);
-	int    VTKType    () const { return VTK_LINE; }
-	void   VTKConn    (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
-	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects)  const;
+	int    VTKType    () const { return VTK_QUADRATIC_EDGE; }
+	void   VTKConn    (String & Nodes) const { Nodes.Printf("%d %d %d",Conn[0]->GetID(),Conn[2]->GetID(),Conn[1]->GetID()); }
 	void   Shape      (double r, double s, double t, Vec_t & N)  const;
 	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
-	void   FaceShape  (double r, double s, Vec_t & FN)           const;
-	void   FaceDerivs (double r, double s, Mat_t & FdN)          const;
 
 private:
 	void _local_coords (Mat_t & coords) const;
 
-}; // class Rod3
+}; // class Lin3
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Lin2::Lin2()
+inline Lin3::Lin3()
 {
 	// Setup nodes number
-	NNodes  = 2;
+	NNodes  = 3;
 	NFNodes = 0;
 
 	// Allocate nodes (connectivity)
@@ -66,53 +63,56 @@ inline Lin2::Lin2()
 	Conn.SetValues (NULL);
 
 	// Integration points
-	NIPs = 0;
+	SetIPs (/*NIPs1D*/2);
 }
 
-inline void Lin2::SetIPs(int NIPs1D)
+inline void Lin3::SetIPs(int NIPs1D)
 {
-	throw new Fatal("Lin2::SetIPs: This feature was not implemented yet.");
+	// Setup pointer to the array of Integration Points
+	     if (NIPs1D==2) IPs = LIN_IP2;
+	else if (NIPs1D==3) IPs = LIN_IP3;
+	else throw new Fatal("Lin3::SetIntPoints: Error in number of integration points.");
+
+	NIPs  = NIPs1D;
+	NFIPs = 0;
 }
 
-inline void Lin2::Shape(double r, double s, double t, Vec_t & N) const 
+inline void Lin3::Shape(double r, double s, double t, Vec_t & N) const 
 {
-	throw new Fatal("Lin2::Shape: This feature was not implemented yet.");
+	/*
+	 *       -----o=========o=========o----->  r
+	 *            0         1         2
+	 */
+
+	N.Resize(3);
+	N(0) = 0.5*(r*r-r);
+	N(1) = 1.0 - r*r;
+	N(2) = 0.5*(r*r+r);
 }
 
-inline void Lin2::Derivs(double r, double s, double t, Mat_t & dN) const 
+inline void Lin3::Derivs(double r, double s, double t, Mat_t & dN) const 
 {
-	throw new Fatal("Lin2::Derivs: This feature was not implemented yet.");
+	dN.Resize(1,3);
+	dN(0,0) =  r-0.5;
+	dN(0,1) = -2.0*r;
+	dN(0,2) =  r+0.5;
 }
 
-inline void Lin2::FaceShape  (double r, double s, Vec_t & FN) const
+inline void Lin3::LocalCoords(Mat_t & coords) const 
 {
-	throw new Fatal("Lin2::FaceShape: This feature was not availible for this element.");
-}
-
-inline void Lin2::FaceDerivs (double r, double s, Mat_t & FdN) const
-{
-	throw new Fatal("Lin2::FaceDerivs: This feature was not availible for this element.");
-}
-
-inline void Lin2::GetFNodes (int FaceID, Array<Node*> & FaceConnects) const
-{
-	throw new Fatal("Lin2::GetFNodes: This feature was not availible for this element.");
-
-}
-
-inline void Lin2::_local_coords(Mat_t & coords) const 
-{
-	if (NDim==2)
+	if (_ndim==2)
 	{
-		coords.Resize(2,3);
+		coords.Resize(3,3);
 		coords =  -1.0,  0.0, 1.0,
-		           1.0,  0.0, 1.0;
+				   0.0,  0.0, 1.0,
+				   1.0,  0.0, 1.0;
 	}
 	else
 	{
-		coords.Resize(2,4);
+		coords.Resize(3,4);
 		coords =  -1.0,  0.0, 0.0, 1.0,
-		           1.0,  0.0, 0.0, 1.0;
+				   0.0,  0.0, 0.0, 1.0,
+				   1.0,  0.0, 0.0, 1.0;
 	}
 }
 
@@ -120,15 +120,16 @@ inline void Lin2::_local_coords(Mat_t & coords) const
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new element
-GeomElem * Lin2Maker() { return new Lin2(); }
+// Allocate new element
+Element * Lin3Maker() { return new Lin3(); }
 
-// Register element
-int Lin2Register() { GeomElemFactory["Lin2"] = Lin2Maker; return 0; }
+// Register new element
+int Lin3Register() { ElementFactory["Lin3"]=Lin3Maker;  return 0; }
 
 // Call register
-int __Lin2_dummy_int  = Lin2Register();
+int __Lin3_dummy_int  = Lin3Register();
+
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_LIN2_H
+#endif // MECHSYS_FEM_LIN3_H

@@ -21,402 +21,246 @@
 
 // MechSys
 #include "fem/equilibelem.h"
+#include "util/string.h"
+#include "util/util.h"
 #include "util/exception.h"
-#include "fem/elems/vtkCellType.h"
 
 namespace FEM
 {
 
-class Lin3 : public GeomElem
+class Rod3: public EquilibElem
 {
 public:
-	// Constructor
-	Lin3 ();
-
-	// Derived methods
-	void   SetIPs     (int NIPs1D);
-	int    VTKType    () const { return VTK_QUAD; }
-	void   VTKConn    (String & Nodes) const { Nodes.Printf("%d %d %d",Conn[0]->GetID(),Conn[2]->GetID(),Conn[1]->GetID()); }
-	void   Shape      (double r, double s, double t, Vec_t & N)  const;
-	void   Derivs     (double r, double s, double t, Mat_t & dN) const;
-
-private:
-	void _local_coords (Mat_t & coords) const;
-
-}; // class Rod3
-
-
-/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
-
-inline Lin3::Lin3()
-{
-	// Setup nodes number
-	NNodes  = 3;
-	NFNodes = 0;
-
-	// Allocate nodes (connectivity)
-	Conn.Resize    (NNodes);
-	Conn.SetValues (NULL);
-
-	// Integration points 
-	SetIPs (/*NIPs1D*/2);
-}
-
-inline void Lin3::Shape(double r, double s, double t, Vec_t & N) const 
-{
-
-	/*
-	 *       -----o=========o=========o----->  r
-	 *            0         1         2
-	 *
-	 */
-
-	N.Resize(3);
-	N(0) = 0.5*(r*r-r);
-	N(1) = 1.0 - r*r;
-	N(2) = 0.5*(r*r+r);
-}
-
-inline void Lin3::Derivs(double r, double s, double t, Mat_t & dN) const 
-{
-	dN.Resize(1,3);
-	dN(0,0) =  r-0.5;
-	dN(0,1) = -2.0*r;
-	dN(0,2) =  r+0.5;
-}
-
-inline void Lin3::LocalCoords(Mat_t & coords) const 
-{
-	if (_ndim==2)
-	{
-		coords.Resize(3,3);
-		coords =  -1.0,  0.0, 1.0,
-				   0.0,  0.0, 1.0,
-				   1.0,  0.0, 1.0;
-	}
-	else
-	{
-		coords.Resize(3,4);
-		coords =  -1.0,  0.0, 0.0, 1.0,
-				   0.0,  0.0, 0.0, 1.0,
-				   1.0,  0.0, 0.0, 1.0;
-	}
-}
-
-inline void Lin3::SetIntPoints(int NumGaussPoints)
-{
-	// Setup pointer to the array of Integration Points
-	if      (NumGaussPoints==2) _a_int_pts = LIN_IP2;
-	else if (NumGaussPoints==3) _a_int_pts = LIN_IP3;
-	else throw new Fatal("Rod3::SetIntPoints: Error in number of integration points.");
-
-	_n_int_pts      = NumGaussPoints;
-	_n_face_int_pts = 0;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////// Rod3/////
-
-
-class Rod3 : public EquilibElem
-{
-public:
-	// Constructor
-	Rod3 () : _gam(0.0), _E(-1), _A(-1) { NNodes=3; Conn.Resize(NNodes); Conn.SetValues(NULL); SetIntPoints(2);}
-
-	// Derived methods
-	Str_t Name() const { return "Rod3"; }
+	// Constants
+	static const size_t NL_ROD3;         ///< Number of labels
+	static const char   LB_ROD3  [3][4]; ///< Name of labels
+	static const char   ROD3_PROP[1][8]; ///< Properties
 
 	// Methods related to PROBLEM
-	void    AddVolForces ();
-	void    ClearDisp    ();
-	void    CalcDeps     () const;
-	Str_t   ModelName    () const { return (_mdl.Size()>0 ? _mdl[0]->Name() : "__no_model__"); }
-	double  Val          (int iNod, Str_t Key) const;
-	double  Val          (          Str_t Key) const;
-	bool    IsEssen      (Str_t Key) const;
-	void    SetConn      (int iNod, FEM::Node * ptNode);
-	void    Update       (double h, Vec_t const & dU, Vec_t & dFint);
-	void    Backup       ();
-	void    Restore      ();
-	void    GetLbls      (Array<String> & Lbls) const;
-	void    OutInfo      (std::ostream & os) const;
-	size_t  NCMats       () const { return 1; }
-	void    CMatrix      (size_t Idx, Mat_t & M) const;
-	void    CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	int         InitCtes     (int nDim);
+	void        AddVolForces ();
+	int         NProps       () const { return 1; } ///< "gam"
+	ProName_t * Props        () const { return ROD3_PROP; }
+	void        ClearDisp    ();
+	void        CalcDeps     () const;
+	double      Val          (int iNod, Str_t Key) const;
+	double      Val          (          Str_t Key) const;
+	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        OutInfo      (std::ostream & os) const;
+	void        CMatrix      (size_t Idx, Mat_t & M) const;
 
-	// Derived methods
-	bool CheckModel () const;
-
-private:
-	// Data
-	double _gam; ///< Specific weigth
-	double _E;   ///< Young modulus
-	double _A;   ///< Cross-sectional area
-	int    _di;  ///< Dimension index == _ge->NDim-2
-	int    _nl;  ///< Number of additional labels
-
-	// Depedent variables (calculated by CalcDepVars)
-	mutable Vector<double> _Eps;   ///< Strain at nodal points
-	mutable Vector<double> _EpsIP; ///< Strain at integration points
-
-	// Derived methods
-	void _initialize (Str_t Type);
+protected:
+	// Depedent variables (calculated by CalcDeps)
+	mutable Vector<double> _eps_np; ///< Strain at nodal points
+	mutable Vector<double> _eps_ip; ///< Strain at integration points
 
 	// Private methods
-	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
-	void _initial_state      ();                                                   ///< Calculate initial internal state
-	void _equations_map      (Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	void _excavate   () { throw new Fatal("Rod3::_excavate: Method not available"); }
+	void _initialize (Str_t Inis) {}                                       ///< Initialize the element
+	void _B_mat      (Mat_t const & dN, Mat_t const & J, Mat_t & B) const; ///< Calculate B matrix
 
 }; // class Rod3
 
-
-// UD[_ge->NDim-1][iDOF]                   2D                          3D
-const char   EquilibElem::UD [2][3][3] = {{"ux","uy",""},  {"ux","uy","uz"}};
-const char   EquilibElem::FD [2][3][3] = {{"fx","fy",""},  {"fx","fy","fz"}};
-
-// LB[_geom-1][iLabel]
-const char   EquilibElem::LB [3][4] = { "Ea", "Sa", "N" }, // 2D and 3D
+const size_t Rod3::NL_ROD3         = 3;
+const char   Rod3::LB_ROD3  [3][4] = {"Ea", "Sa", "N"};
+const char   Rod3::ROD3_PROP[1][8] = {"gam"};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline void Rod3::AddVolForces() // TODO
+/* public */
+
+inline int Rod3::InitCtes(int nDim)
+{
+	if (nDim==2)
+	{
+		_gi = 1;
+		_nd = ND_EQUILIB_2D;
+		UD  = UD_EQUILIB_2D;
+		FD  = FD_EQUILIB_2D;
+		_nl = NL_ROD3; 
+		LB  = LB_ROD3;
+	}
+	else if (nDim==3)
+	{
+		_gi = 0;
+		_nd = ND_EQUILIB_3D;
+		UD  = UD_EQUILIB_3D;
+		FD  = FD_EQUILIB_3D;
+		_nl = NL_ROD3; 
+		LB  = LB_ROD3;
+	}
+	else throw new Fatal("Rod3::InitCtes: nDim==%d is invalid",nDim);
+
+	// Return geometry index
+	return _gi;
+}
+
+inline void Rod3::AddVolForces() 
 {
 	// Verify if element is active
-	if (_is_active==false) return;
+	if (IsActive==false) return;
 
 	// Weight
-	double dx = Conn[1]->X()-Conn[0]->X();
-	double dy = Conn[1]->Y()-Conn[0]->Y();
+	double dx = _ge->Conn[1]->X()-_ge->Conn[0]->X();
+	double dy = _ge->Conn[1]->Y()-_ge->Conn[0]->Y();
 	double L  = sqrt(dx*dx+dy*dy);
-	double W  = _A*L*_gam;
+	double W  = _mdl->Prm("A")*L*Prop("gam");
 
 	// Set boundary conditions
-	if (_ndim==1) throw new Fatal("Rod3::ApplyBodyForces: feature not available for NDim==1");
-	else if (_ndim==2)
+	if (_ge->NDim==2)
 	{
-		Conn[0]->Bry("fy", -W/2.0);
-		Conn[1]->Bry("fy", -W/2.0);
+		_ge->Conn[0]->Bry("fy", -W/2.0);
+		_ge->Conn[1]->Bry("fy", -W/2.0);
 	}
-	else if (_ndim==3)
+	else if (_ge->NDim==3)
 	{
-		Conn[0]->Bry("fz", -W/2.0);
-		Conn[1]->Bry("fz", -W/2.0);
+		_ge->Conn[0]->Bry("fz", -W/2.0);
+		_ge->Conn[1]->Bry("fz", -W/2.0);
 	}
 }
 
-inline void EquilibElem::ClearDisp()
+inline void Rod3::ClearDisp()
 {
-	if (_is_active==false) return;
+	if (IsActive==false) return;
 
 	// Clear displacements
 	for (size_t i=0; i<_ge->NNodes; ++i)
-	for (int    j=0; j<_ge->nDim  ; ++j)
-		_ge->Conn[i]->DOFVar(UD[_d][j]).EssentialVal = 0.0;
-
+	for (int    j=0; j<_nd;         ++j)
+		_ge->Conn[i]->DOFVar(UD[j]).EssentialVal = 0.0;
 }
 
-inline bool Rod3::CheckModel() const
+inline void Rod3::CalcDeps() const
 {
-	if (_E<0.0 || _A<0.0) return false;
-	return true;
-}
-
-inline void Rod3::SetModel(Str_t ModelName, Str_t Prms, Str_t Inis)
-{
-	// Check _ndim
-	if (_ndim<1) throw new Fatal("Rod3::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (CheckConnect()==false) throw new Fatal("Rod3::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
-
-	/* "E=1 A=1" */
-	LineParser lp(Prms);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		     if (names[i]=="E") _E = values[i];
-		else if (names[i]=="A") _A = values[i];
-		else throw new Fatal("Rod3::SetModel: Parameter name (%s) is invalid",names[i].CStr());
-	}
-}
-
-inline void Rod3::SetProps(Str_t Properties)
-{
-	/* "gam=20 */
-	LineParser lp(Properties);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		 if (names[i]=="gam") _gam = values[i];
-	}
-}
-
-inline void Rod3::Update(double TimeInc, Vec_t const & dUglobal, Vec_t & dFint)
-{
-	// Allocate (local/element) displacements vector
-	Vec_t du(_nd*NNodes); // Delta disp. of this element
+	if (IsActive==false) throw new Fatal("Rod3::CalcDeps: This element is inactive");
 
 	// Assemble (local/element) displacements vector
-	for (size_t i=0; i<NNodes; ++i)
-	for (int    j=0; j<_nd;      ++j)
-		du(i*_nd+j) = dUglobal(Conn[i]->DOFVar(UD[_d][j]).EqID);
+	Vec_t u(_nd*_ge->NNodes);
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		u(i*_nd+j) = _ge->Conn[i]->Val(UD[j]);
+
+	// Calculate strain
+	_eps_ip.Resize    (_ge->NIPs);
+	_eps_ip.SetValues (0.0);
+	Vec_t eps;
+	Mat_t dN,J,B;
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_ge->Derivs   (_ge->IPs[i].r, 0, 0, dN);
+		_ge->Jacobian (dN, J);
+		_B_mat        (dN, J, B);
+		eps = B*u;
+		_eps_ip(i) = eps(0);
+	}
+	_ge->Extrap(_eps_ip, _eps_np);
+}
+
+inline double Rod3::Val(int iNod, Str_t Name) const
+{
+	// Displacements
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
+
+	// Forces
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
+
+	if (_eps_np.Size()<1) throw new Fatal("Rod3::Val: Please, call CalcDeps() before calling this method");
+	     if (strcmp(Name,"Ea")==0) return _eps_np(iNod);
+	else if (strcmp(Name,"Sa")==0) return _eps_np(iNod)*_mdl->Prm("E");
+	else if (strcmp(Name,"N" )==0) return _eps_np(iNod)*_mdl->Prm("E")*_mdl->Prm("A");
+	else throw new Fatal("Rod3::Val: This element does not have a Val named < %s >",Name);
+}
+
+inline double Rod3::Val(char const * Name) const
+{
+	throw new Fatal("Rod3::Val: Value at CG: Method not available yet");
+}
+
+inline void Rod3::Update(double h, Vec_t const & dU, Vec_t & dFint)
+{
+	// Allocate (local/element) displacements vector
+	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element
+
+	// Assemble (local/element) displacements vector
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		du(i*_nd+j) = dU(_ge->Conn[i]->DOFVar(UD[j]).EqID);
 
 	// Allocate (local/element) internal force vector
-	Vec_t df(_nd*NNodes); // Delta internal force of this element
-	df.SetValues(0.0);
+	Vec_t df(_nd*_ge->NNodes); // Delta internal force of this element
+	df.SetValues (0.0);
 
 	Mat_t Ke;
-	Order1Matrix(0,Ke);
+	CMatrix (0,Ke);
 	df = Ke * du;
 
 	// Sum up contribution to internal forces vector
-	for (size_t i=0; i<NNodes; ++i)
-	for (int    j=0; j<_nd;      ++j)
-		dFint(Conn[i]->DOFVar(UD[_d][j]).EqID) += df(i*_nd+j);
-}
-
-
-inline void Rod3::CalcDepVars() const
-{
-	// Calculate the strain at nodes
-	_EpsIP.Resize(_n_int_pts);
-
-	// Assemble (local/element) displacements vector
-	Vec_t U(_nd*NNodes); 
-	for (size_t i=0; i<NNodes; ++i) for (int j=0; j<_nd; ++j)
-		U(i*_nd+j) = Conn[i]->Val(UD[_d][j]);
-
-	// Calculate Strain
-	Mat_t derivs; // size = NumLocalCoords(ex.: r,s,t) x NNodes
-	Mat_t J;      // Jacobian matrix
-	Mat_t B;      // strain-displacement matrix
-
-	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
-	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i].r;
-		Derivs(r, 0, 0, derivs);      // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian(derivs, J);          // Calculate J (Jacobian) matrix for i Integration Point
-		B_Matrix(derivs,J, B);        // Calculate B matrix for i Integration Point
-		Vector<double> C;
-		C = B*U;
-		_EpsIP(i)=C(0);
-	}
-	Extrapolate(_EpsIP, _Eps);
-}
-
-inline double Rod3::Val(int iNodeLocal, Str_t Name) const
-{
-	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).EssentialVal;
-
-	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[_d][j])==0) return Conn[iNodeLocal]->DOFVar(Name).NaturalVal;
-
-	if (_Eps.Size()<1) throw new Fatal("Rod3::Val: Please, call CalcDepVars() before calling this method");
-
-	     if (strcmp(Name,"Ea")==0) return _Eps(iNodeLocal);
-	else if (strcmp(Name,"Sa")==0) return _Eps(iNodeLocal)*_E;
-	else if (strcmp(Name,"N" )==0) return _Eps(iNodeLocal)*_E*_A;
-	else throw new Fatal("Rod3::Val: This element does not have a Val named %s",Name);
-}
-
-inline double Rod3::Val(Str_t Name) const
-{
-	throw new Fatal("Rod3::Val: Feature not available");
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		dFint(_ge->Conn[i]->DOFVar(UD[j]).EqID) += df(i*_nd+j);
 }
 
 inline void Rod3::OutInfo(std::ostream & os) const
 {
-	CalcDepVars();
-	for (size_t i=0; i<_n_int_pts; i++)
-	{
-		os << "IP # " << i << " Ea,Sa = " << _12_6 << _EpsIP(i) << _12_6 << _EpsIP(i)*_E;
-	}
+	CalcDeps();
+	for (size_t i=0; i<_ge->NIPs; i++)
+		os << "IP # " << i << ": Ea=" << Util::_8s << _eps_ip(i) << ", Sa=" << Util::_8s << _eps_ip(i)*_mdl->Prm("E") << "  ";
 }
-
 
 inline void Rod3::CMatrix(size_t Idx, Mat_t & Ke) const
 {
-	// Resize Ke
-	Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
-	Ke.SetValues(0.0);
+	/* Stiffness:
+	   ==========
+	                 /    T
+	        [Ke]  =  | [B]  * [D] * [B]  * dV
+	                 /
+	*/
 
-	// Allocate entities used for every integration point
-	Mat_t dN;     // size = NumLocalCoords(ex.: r,s,t) x NNodes
-	Mat_t J;      // Jacobian matrix
-	Mat_t B;      // strain-displacement matrix
-
-	// Loop along integration points
-	for (size_t i_ip=0; i_ip<_n_int_pts; ++i_ip)
+	double E = _mdl->Prm("E");
+	double A = _mdl->Prm("A");
+	Ke.Resize    (_nd*_ge->NNodes, _nd*_ge->NNodes);
+	Ke.SetValues (0.0);
+	Mat_t dN,J,B;
+	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i_ip].r;
-		double w = _a_int_pts[i_ip].w;
-
-		Derivs(r, 0.0, 0.0, dN);      // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian(derivs, J);          // Calculate J (Jacobian) matrix for i_ip Integration Point
-		B_Matrix(derivs,J, B);        // Calculate B matrix for i_ip Integration Point
-
-		// Calculate Tangent Stiffness
-		Ke += trn(B)*_E*B*det(J)*_A*w;
+		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian     (dN, J);
+		_B_mat            (dN, J, B);
+		Ke += trn(B)*E*A*B*det(J)*_ge->IPs[i].w;
 	}
 }
 
-inline void Rod3::B_Matrix(Mat_t const & derivs, Mat_t const & J, Mat_t & B) const
-{
-	Mat_t cart_derivs(_ndim, _ndim*NNodes); // cartesian derivatives
-	double det_J = det(J);
-
-	cart_derivs.SetValues(0.0);
-	for(size_t i=0; i<NNodes; i++) for(int j=0; j<_ndim; j++) cart_derivs(j, i*_ndim+j) = derivs(0,i);
-
-	B = 1.0/(det_J*det_J)*J*cart_derivs; // B matrix for a rod element (2D and 3D)
-}
 
 /* private */
 
-inline void Rod3::_initialize()
+inline void Rod3::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) const
 {
-	_di  = _ndim-2;
-	_nl = EquilibElem::NL[_geom()-1];
-}
+	int dim = _ge->NDim;
+	Mat_t dC(dim, dim*_ge->NNodes); // cartesian derivatives
+	double det_J = det(J);
 
-inline void Rod3::_calc_initial_internal_state()
-{
-	throw new Fatal("Rod3::_calc_initial_internal_state: Feature not available");
-}
+	dC.SetValues(0.0);
+	for(size_t i=0; i<_ge->NNodes; i++)
+	for(int    j=0; j<dim;         j++)
+		dC(j, i*dim+j) = dN(0,i);
 
+	// B matrix for a rod element (2D and 3D)
+	B = 1.0/(det_J*det_J)*J*dC;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new Rod3 element
-Element * Rod3Maker()
-{
-	return new Rod3();
-}
+// Allocate a new element
+ProbElem * Rod3Maker() { return new Rod3(); }
 
-// Register a Rod3 element into ElementFactory array map
-int Rod3Register()
-{
-	ElementFactory["Rod3"] = Rod3Maker;
-	return 0;
-}
+// Register element
+int Rod3Register() { ProbElemFactory["Rod3"]=Rod3Maker;  return 0; }
 
-// Execute the autoregistration
+// Call register
 int __Rod3_dummy_int  = Rod3Register();
+
 
 }; // namespace FEM
 

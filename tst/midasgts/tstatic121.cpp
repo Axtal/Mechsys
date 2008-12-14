@@ -94,13 +94,13 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStress", "LinElastic", prms.CStr(), "ZERO", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "PStress", "LinElastic", prms.CStr(), "ZERO", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
-	// Stage # 1
+	// Stage # 1 -----------------------------------------------
 	FEM::EBrys_T ebrys;
 	ebrys.Push  (make_tuple(-10, "ux", 0.0));
 	ebrys.Push  (make_tuple(-10, "uy", 0.0));

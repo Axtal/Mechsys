@@ -37,16 +37,6 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (texcav01   ${LIBS})
 	SET_TARGET_PROPERTIES (texcav01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
-	ADD_EXECUTABLE        (tembed01   tembed01.cpp)
-	ADD_TEST              (tembed01   tembed01)
-	TARGET_LINK_LIBRARIES (tembed01   ${LIBS})
-	SET_TARGET_PROPERTIES (tembed01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
-	ADD_EXECUTABLE        (tembed02   tembed02.cpp)
-	ADD_TEST              (tembed02   tembed02)
-	TARGET_LINK_LIBRARIES (tembed02   ${LIBS})
-	SET_TARGET_PROPERTIES (tembed02   PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
 	ADD_EXECUTABLE        (tbiot01   tbiot01.cpp)
 	ADD_TEST              (tbiot01   tbiot01)
 	TARGET_LINK_LIBRARIES (tbiot01   ${LIBS})

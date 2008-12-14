@@ -185,10 +185,8 @@ inline void Rod::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	for (int    j=0; j<_nd;         ++j)
 		du(i*_nd+j) = dU(_ge->Conn[i]->DOFVar(UD[j]).EqID);
 
-	// Allocate (local/element) internal force vector
-	Vec_t df(_nd*_ge->NNodes); // Delta internal force of this element
-	df.SetValues (0.0);
-
+	// Calculate internal force vector
+	Vec_t df;
 	Mat_t Ke;
 	CMatrix (0,Ke);
 	df = Ke * du;

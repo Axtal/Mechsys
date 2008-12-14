@@ -93,19 +93,19 @@ int main(int argc, char **argv) try
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
 	// Data and Solver
-	FEM::Data dat   (3);
+	FEM::Data   dat (3);
 	FEM::Solver sol (dat, "tstatic122");
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "", true));
-	else       eatts.Push (make_tuple(-1, "Hex8",  "Equilib", "LinElastic", prms.CStr(), "ZERO", "", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Hex8",  "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
-	// State # 1
+	// State # 1 -----------------------------------------------
 	FEM::FBrys_T fbrys;
 	fbrys.Push  (make_tuple(-30, "ux", 0.0));
 	fbrys.Push  (make_tuple(-30, "uy", 0.0));

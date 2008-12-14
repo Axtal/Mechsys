@@ -83,9 +83,6 @@ int main(int argc, char **argv) try
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
-	cout << dat << endl;
-
-
 	// Stage # 1 --------------------------------------
 	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
 	dat.Nod(1)->Bry("uy",0.0);
