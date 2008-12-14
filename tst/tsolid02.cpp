@@ -95,33 +95,29 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(3); // 3D
-
-	// Nodes brys
-	FEM::NBrys_T nbrys;
-	nbrys.Push (make_tuple(0., 0., -1., "ux", 0.0));
-	nbrys.Push (make_tuple(0., 0., -1., "uy", 0.0));
-
-	// Faces brys
-	FEM::FBrys_T fbrys;
-	fbrys.Push (make_tuple(-200, "uz", 0.0)); // tag, key, val
-	fbrys.Push (make_tuple(-100, "fz",  -q)); // tag, key, val
+	// Data and solver
+	FEM::Data   dat (3); // 3D
+	FEM::Solver sol (dat,"tsolid02");
 
 	// Element attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Hex8", "Equilib", "LinElastic", prms.CStr(), "ZERO", "", true)); // tag, type, model, prms, inis, props
+	eatts.Push (make_tuple(-1, "Hex8", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
-	// Set geometry
+	// Set geometry: nodes and elements
 	dat.SetNodesElems (&ms, &eatts);
-	dat.SetBrys       (&ms, NULL, NULL, &fbrys);
 
 	cout << ms << endl;
 	cout << dat  << endl;
 
-	// Solve
-	FEM::Solver sol(dat,"tsolid02");
+	// Stage # 1 --------------------------------------------
+	FEM::NBrys_T nbrys;
+	FEM::FBrys_T fbrys;
+	nbrys.Push  (make_tuple(0., 0., -1., "ux", 0.0));
+	nbrys.Push  (make_tuple(0., 0., -1., "uy", 0.0));
+	fbrys.Push  (make_tuple(-200, "uz", 0.0));
+	fbrys.Push  (make_tuple(-100, "fz",  -q));
+	dat.SetBrys (&ms, NULL, NULL, &fbrys);
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -188,6 +184,7 @@ int main(int argc, char **argv) try
 	double max_err_eps = err_eps[err_eps.Max()];
 	double max_err_sig = err_sig[err_sig.Max()];
 	double max_err_dis = err_dis[err_dis.Max()];
+	cout << endl;
 	cout << _4<< ""    << _8s<<"Min"       << _8s<<"Mean"                                                        << _8s<<"Max"                  << _8s<<"Norm"         << endl;
 	cout << _4<< "Eps" << _8s<<min_err_eps << _8s<<err_eps.Mean() << (max_err_eps>tol_eps?"[1;31m":"[1;32m") << _8s<<max_err_eps << "[0m" << _8s<<err_eps.Norm() << endl;
 	cout << _4<< "Sig" << _8s<<min_err_sig << _8s<<err_sig.Mean() << (max_err_sig>tol_sig?"[1;31m":"[1;32m") << _8s<<max_err_sig << "[0m" << _8s<<err_sig.Norm() << endl;

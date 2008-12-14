@@ -107,11 +107,6 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (tquad4     ${LIBS})
 	SET_TARGET_PROPERTIES (tquad4     PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
-	ADD_EXECUTABLE        (tquad8     tquad8.cpp)
-	ADD_TEST              (tquad8     tquad8)
-	TARGET_LINK_LIBRARIES (tquad8     ${LIBS})
-	SET_TARGET_PROPERTIES (tquad8     PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
 	ADD_EXECUTABLE        (tpstrain01 tpstrain01.cpp)
 	ADD_TEST              (tpstrain01 tpstrain01)
 	TARGET_LINK_LIBRARIES (tpstrain01 ${LIBS})

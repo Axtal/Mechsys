@@ -118,32 +118,29 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
-
-	// Edges brys
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-30, "uy", 0.0));
-	ebrys.Push (make_tuple(-40, "ux", 0.0));
-	ebrys.Push (make_tuple(-20, "Q",   p0));
-	ebrys.Push (make_tuple(-10, "Q",   p1));
+	// Data and solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"tpstrain05");
 
 	// Elements attributes
-	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "", true));
+	String prms; prms.Printf("E=%f nu=%f",E,nu);
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
+	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
-	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 
-	// Solve
-	FEM::Solver sol(dat,"tpstrain05");
+	// Stage # 1 -----------------------------------------------------------
+	FEM::EBrys_T ebrys;
+	ebrys.Push  (make_tuple(-30, "uy", 0.0));
+	ebrys.Push  (make_tuple(-40, "ux", 0.0));
+	ebrys.Push  (make_tuple(-20, "Q",   p0));
+	ebrys.Push  (make_tuple(-10, "Q",   p1));
+	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
-
 
 	// Stress
 	Array <double> err_sR;

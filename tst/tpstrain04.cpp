@@ -27,23 +27,18 @@
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
+#include "mesh/mesh.h"
 
 using std::cout;
 using std::endl;
 using Util::_4;
 using Util::_8s;
-
+using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
 	// Description:
 	// Test of normal boundary conditions (traction) applied normal to a face.
-
-
-	// Input
-	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
-	String linsol("UM");
-	if (argc==2) linsol.Printf("%s",argv[1]);
 
 	double H1 = 0.5;    // height
 	double H2 = 1.5;    // height
@@ -81,60 +76,60 @@ int main(int argc, char **argv) try
                        |-------- L --------|
 	 */
 
-	// Problem dimension
-	FEM::Data dat(3); // 3D
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+	
+	Mesh::Generic mesh(/*Is3D*/false);
+	mesh.SetNVerts  (20);
+	mesh.SetNElems  (1);
+	mesh.SetVert    ( 0, true,   0.0 ,      0.0,         0.0);
+	mesh.SetVert    ( 1, true,     L ,      0.0,         0.0);
+	mesh.SetVert    ( 2, true,     L ,        T,         0.0);
+	mesh.SetVert    ( 3, true,   0.0 ,        T,         0.0);
+	mesh.SetVert    ( 4, true,   0.0 ,      0.0,          H1);
+	mesh.SetVert    ( 5, true,     L ,      0.0,          H2);
+	mesh.SetVert    ( 6, true,     L ,        T,          H2);
+	mesh.SetVert    ( 7, true,   0.0 ,        T,          H1);
+	mesh.SetVert    ( 8, true, L/2.0 ,      0.0,         0.0);
+	mesh.SetVert    ( 9, true,     L ,    T/2.0,         0.0);
+	mesh.SetVert    (10, true, L/2.0 ,        T,         0.0);
+	mesh.SetVert    (11, true,   0.0 ,    T/2.0,         0.0);
+	mesh.SetVert    (12, true, L/2.0 ,      0.0, (H1+H2)/2.0);
+	mesh.SetVert    (13, true,     L ,    T/2.0,          H2);
+	mesh.SetVert    (14, true, L/2.0 ,        T, (H1+H2)/2.0);
+	mesh.SetVert    (15, true,   0.0 ,    T/2.0,          H1);
+	mesh.SetVert    (16, true,   0.0 ,      0.0,      H1/2.0);
+	mesh.SetVert    (17, true,     L ,      0.0,      H2/2.0);
+	mesh.SetVert    (18, true,     L ,        T,      H2/2.0);
+	mesh.SetVert    (19, true,   0.0 ,        T,      H1/2.0);
+	mesh.SetElem    (0, -1, true, VTK_QUADRATIC_HEXAHEDRON);
+	mesh.SetElemCon (0,  0,  0);  mesh.SetElemCon(0,  1,  1);  mesh.SetElemCon(0,  2,  2);  mesh.SetElemCon(0,  3,  3);
+	mesh.SetElemCon (0,  4,  4);  mesh.SetElemCon(0,  5,  5);  mesh.SetElemCon(0,  6,  6);  mesh.SetElemCon(0,  7,  7);
+	mesh.SetElemCon (0,  8,  8);  mesh.SetElemCon(0,  9,  9);  mesh.SetElemCon(0, 10, 10);  mesh.SetElemCon(0, 11, 11);
+	mesh.SetElemCon (0, 12, 12);  mesh.SetElemCon(0, 13, 13);  mesh.SetElemCon(0, 14, 14);  mesh.SetElemCon(0, 15, 15);
+	mesh.SetElemCon (0, 16, 16);  mesh.SetElemCon(0, 17, 17);  mesh.SetElemCon(0, 18, 18);  mesh.SetElemCon(0, 19, 19);
 
-	// Nodes
-	dat.SetNNodes (20);
-	dat.SetNode   ( 0,   0.0 ,      0.0,         0.0);
-	dat.SetNode   ( 1,     L ,      0.0,         0.0);
-	dat.SetNode   ( 2,     L ,        T,         0.0);
-	dat.SetNode   ( 3,   0.0 ,        T,         0.0);
-	dat.SetNode   ( 4,   0.0 ,      0.0,          H1);
-	dat.SetNode   ( 5,     L ,      0.0,          H2);
-	dat.SetNode   ( 6,     L ,        T,          H2);
-	dat.SetNode   ( 7,   0.0 ,        T,          H1);
-	dat.SetNode   ( 8, L/2.0 ,      0.0,         0.0);
-	dat.SetNode   ( 9,     L ,    T/2.0,         0.0);
-	dat.SetNode   (10, L/2.0 ,        T,         0.0);
-	dat.SetNode   (11,   0.0 ,    T/2.0,         0.0);
-	dat.SetNode   (12, L/2.0 ,      0.0, (H1+H2)/2.0);
-	dat.SetNode   (13,     L ,    T/2.0,          H2);
-	dat.SetNode   (14, L/2.0 ,        T, (H1+H2)/2.0);
-	dat.SetNode   (15,   0.0 ,    T/2.0,          H1);
-	dat.SetNode   (16,   0.0 ,      0.0,      H1/2.0);
-	dat.SetNode   (17,     L ,      0.0,      H2/2.0);
-	dat.SetNode   (18,     L ,        T,      H2/2.0);
-	dat.SetNode   (19,   0.0 ,        T,      H1/2.0);
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Elements
-	dat.SetNElems (1);
-	dat.SetElem   (0, "Hex20", "Equilib", /*IsActive*/true, /*Tag*/-1);
+	// Data and solver
+	FEM::Data   dat (3);
+	FEM::Solver sol (dat,"tpstrain04");
 
-	// Set connectivity (list of nodes must be LOCAL)
-	dat.Ele(0)->SetConn(0, dat.Nod( 0))->SetConn(1, dat.Nod( 1))->SetConn(2, dat.Nod( 2))->SetConn(3, dat.Nod( 3))
-	          ->SetConn(4, dat.Nod( 4))->SetConn(5, dat.Nod( 5))->SetConn(6, dat.Nod( 6))->SetConn(7, dat.Nod( 7))
-	          ->SetConn(8, dat.Nod( 8))->SetConn(9, dat.Nod( 9))->SetConn(10,dat.Nod(10))->SetConn(11,dat.Nod(11))
-	          ->SetConn(12,dat.Nod(12))->SetConn(13,dat.Nod(13))->SetConn(14,dat.Nod(14))->SetConn(15,dat.Nod(15))
-	          ->SetConn(16,dat.Nod(16))->SetConn(17,dat.Nod(17))->SetConn(18,dat.Nod(18))->SetConn(19,dat.Nod(19));
+	// Elements attributes
+	FEM::EAtts_T eatts;
+	String prms; prms.Printf("E=%f nu=%f",E,nu);
+	eatts.Push (make_tuple(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
-	// Parameters and initial values
-	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	dat.Ele(0)->SetModel("LinElastic", prms.CStr(), "ZERO");
-
-	// 4) Boundary conditions (must be after connectivity)
+	// Stage # 1 -----------------------------------------------------------
 	dat.Nod(0)->Bry    ("uy",0.0)->Bry("ux",0.0);
 	dat.Nod(3)->Bry    ("uy",0.0)->Bry("ux",0.0);
 	dat.Nod(11)->Bry   ("uy",0.0)->Bry("ux",0.0);
-
 	dat.Ele(0)->FaceBry("uy",0.0,2);
 	dat.Ele(0)->FaceBry("uy",0.0,3);
 	dat.Ele(0)->FaceBry("uz",0.0,4);
 	dat.Ele(0)->FaceBry( "Q",  q,5); // 5 => top face
-
-	// 6) Solve
-	FEM::Solver sol(dat,"tpstrain04");
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
+
+	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Error summary
 	double err_ux = 0.0;

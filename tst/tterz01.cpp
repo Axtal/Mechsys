@@ -23,7 +23,9 @@
 #include "fem/data.h"
 #include "fem/solver.h"
 #include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
 #include "fem/biotelem.h"
+#include "models/equilibs/biotelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -109,25 +111,22 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
+	// Data and solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"tterz01");
 
 	// Elements attributes
-	String prms; prms.Printf("gw=%f E=%f nu=%f k=%f",gw,E,nu,k);
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "", prms.CStr(), "ZERO", "", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "", prms.CStr(), "ZERO", "", true));
+	String prms; prms.Printf("E=%f nu=%f k=%f", E,nu,k);
+	String prps; prps.Printf("gam=20 gw=%f",    gw);
+	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
+	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);
 
-	// Solver
-	FEM::Solver sol(dat,"tterz01");
-
-	// Edges boundaries
+	// Stage # 0: Stage performed to approach a stationary condition ------------------------------
 	FEM::EBrys_T ebrys;
-	
-	// Stage # 0: Stage performed to approach a stationary condition
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
@@ -139,7 +138,7 @@ int main(int argc, char **argv) try
 	for (int i=0; i<SampleNodes.Size(); i++) 
 		Pwp0(i) = dat.Nod(SampleNodes(i))->Val("pwp");
 
-	// Stage # 1: Load application
+	// Stage # 1: Load application ------------------------------
 	ebrys.Resize (0);
 	ebrys.Push   (make_tuple(-10, "ux",    0.0));
 	ebrys.Push   (make_tuple(-20, "ux",    0.0));
@@ -149,7 +148,7 @@ int main(int argc, char **argv) try
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo(/*NDiv*/4, /*DTime*/1.0, /*iStage*/1);
 
-	// Stage # 2.. : Consolidation
+	// Stage # 2.. : Consolidation ------------------------------
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
 		ebrys.Resize (0);

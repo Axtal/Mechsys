@@ -47,13 +47,13 @@
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
-
-#include "fem/output.h"
+#include "mesh/mesh.h"
 
 using std::cout;
 using std::endl;
 using Util::_4;
 using Util::_8s;
+using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
@@ -62,60 +62,59 @@ int main(int argc, char **argv) try
 	String linsol("UM");
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+	
+	Mesh::Generic mesh(/*Is3D*/false);
+	mesh.SetNVerts  (9);
+	mesh.SetNElems  (2);
+	mesh.SetVert    (0, true, 0.0, 0.0);
+	mesh.SetVert    (1, true, 1.0, 0.0);
+	mesh.SetVert    (2, true, 0.0, 1.0);
+	mesh.SetVert    (3, true, 0.5, 0.0);
+	mesh.SetVert    (4, true, 0.5, 0.5);
+	mesh.SetVert    (5, true, 0.0, 0.5);
+	mesh.SetVert    (6, true, 1.0, 1.0);
+	mesh.SetVert    (7, true, 0.5, 1.0);
+	mesh.SetVert    (8, true, 1.0, 0.5);
+	mesh.SetElem    (0, -1, true, VTK_QUADRATIC_TRIANGLE);
+	mesh.SetElem    (1, -1, true, VTK_QUADRATIC_TRIANGLE);
+	mesh.SetElemCon (0, 0, 0);
+	mesh.SetElemCon (0, 1, 1);
+	mesh.SetElemCon (0, 2, 2);
+	mesh.SetElemCon (0, 3, 3);
+	mesh.SetElemCon (0, 4, 4);
+	mesh.SetElemCon (0, 5, 5);
+	mesh.SetElemCon (1, 0, 6);
+	mesh.SetElemCon (1, 1, 2);
+	mesh.SetElemCon (1, 2, 1);
+	mesh.SetElemCon (1, 3, 7);
+	mesh.SetElemCon (1, 4, 4);
+	mesh.SetElemCon (1, 5, 8);
+
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
+	// Data and solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"ttri6");
 
-	// Nodes
-	dat.SetNNodes (9);
-	dat.SetNode   (0, 0.0, 0.0);
-	dat.SetNode   (1, 1.0, 0.0);
-	dat.SetNode   (2, 0.0, 1.0);
-	dat.SetNode   (3, 0.5, 0.0);
-	dat.SetNode   (4, 0.5, 0.5);
-	dat.SetNode   (5, 0.0, 0.5);
-	dat.SetNode   (6, 1.0, 1.0);
-	dat.SetNode   (7, 0.5, 1.0);
-	dat.SetNode   (8, 1.0, 0.5);
+	// Elements attributes
+	FEM::EAtts_T eatts;
+	String prms; prms.Printf("E=%f nu=%f", 10000.0, 0.25);
+	eatts.Push (make_tuple(-1, "Tri6", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
-	// Elements
-	dat.SetNElems (2);
-	dat.SetElem   (0, "Tri6", "PStrain", /*IsActive*/true, /*Tag*/-1);
-	dat.SetElem   (1, "Tri6", "PStrain", /*IsActive*/true, /*Tag*/-1);
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
 
-	// Set connectivity
-	dat.Ele(0)->SetConn(0, dat.Nod(0))
-	          ->SetConn(1, dat.Nod(1))
-			  ->SetConn(2, dat.Nod(2))
-			  ->SetConn(3, dat.Nod(3))
-			  ->SetConn(4, dat.Nod(4))
-			  ->SetConn(5, dat.Nod(5))->SetIPs(3);
-	
-	dat.Ele(1)->SetConn(0, dat.Nod(6))
-	          ->SetConn(1, dat.Nod(2))
-	          ->SetConn(2, dat.Nod(1))
-	          ->SetConn(3, dat.Nod(7))
-	          ->SetConn(4, dat.Nod(4))
-	          ->SetConn(5, dat.Nod(8))->SetIPs(3);
-
-	// Boundary conditions (must be after connectivity)
+	// Stage # 1 --------------------------------------
 	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
 	dat.Nod(1)->Bry("uy",0.0);
 	dat.Nod(3)->Bry("uy",0.0);
 	dat.Nod(2)->Bry("fy",0.0);
 	dat.Nod(7)->Bry("fy",1.0);
 	dat.Nod(6)->Bry("fy",1.0);
-
-	// Parameters and initial values
-	dat.Ele(0)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
-	dat.Ele(1)->SetModel("LinElastic", "E=10000.0 nu=0.25", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
-
-	// Solve
-	FEM::Solver sol(dat,"ttri6");
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
-	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+	///////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Check
     Array<double> err_eps;

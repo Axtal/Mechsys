@@ -14,7 +14,6 @@ tst/tbeam02
 tst/tcamclay01
 tst/ttri6
 tst/tquad4
-tst/tquad8
 tst/ttruss01
 tst/ttruss02
 tst/tsolid01
@@ -26,7 +25,6 @@ tst/tpstrain04
 tst/tpstrain05
 tst/theat01
 tst/ttree01
-tst/reddy/tex541
 tst/reddy/tex831
 tst/reddy/tex851
 tst/tpoisson01

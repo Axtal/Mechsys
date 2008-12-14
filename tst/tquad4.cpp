@@ -27,9 +27,11 @@
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
+#include "mesh/mesh.h"
 
 using std::cout;
 using std::endl;
+using boost::make_tuple;
 
 int main(int argc, char **argv) try
 {
@@ -52,35 +54,41 @@ int main(int argc, char **argv) try
 	if (argc==2) linsol.Printf("%s",argv[1]);
 	else cout << "[1;32mYou may call this program as in:\t " << argv[0] << " LinSol\n  where LinSol:\n \tLA  => LAPACK_T  : DENSE\n \tUM  => UMFPACK_T : SPARSE\n \tSLU => SuperLU_T : SPARSE\n [0m[1;34m Now using LA (LAPACK)\n[0m" << endl;
 
-	// 0) Geometry
-	FEM::Data dat(2); // 2D
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// 1) Nodes
-	dat.SetNNodes (4);
-	dat.SetNode   (0, 0.0, 0.0);
-	dat.SetNode   (1, 1.0, 0.0);
-	dat.SetNode   (2, 1.0, 0.5);
-	dat.SetNode   (3, 0.0, 0.5);
+	Mesh::Generic mesh(/*Is3D*/false);
+	mesh.SetNVerts  (4);
+	mesh.SetVert    (0, true, 0.0, 0.0);
+	mesh.SetVert    (1, true, 1.0, 0.0);
+	mesh.SetVert    (2, true, 1.0, 0.5);
+	mesh.SetVert    (3, true, 0.0, 0.5);
+	mesh.SetNElems  (1);
+	mesh.SetElem    (0, -1, true, VTK_QUAD);
+	mesh.SetElemCon (0, 0, 0);
+	mesh.SetElemCon (0, 1, 1);
+	mesh.SetElemCon (0, 2, 2);
+	mesh.SetElemCon (0, 3, 3);
 
-	// 2) Elements
-	dat.SetNElems (1);
-	dat.SetElem   (0, "Quad4", "PStress", /*IsActive*/true, /*Tag*/-1);
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+	
+	// Data and solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"tquad4");
 
-	// 3) Set connectivity
-	dat.Ele(0)->SetConn(0, dat.Nod(0))
-	        ->SetConn(1, dat.Nod(1))
-	        ->SetConn(2, dat.Nod(2))
-	        ->SetConn(3, dat.Nod(3));
+	// Elements attributes
+	FEM::EAtts_T eatts;
+	String prms; prms.Printf("E=%f nu=%f", 96.0, 1.0/3.0);
+	eatts.Push (make_tuple(-1, "Quad4", "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
-	// 4) Boundary conditions (must be after connectivity)
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
+
+	cout << dat << endl;
+
+
+	// Stage # 1 --------------------------------------
 	dat.Nod(0)->Bry("ux",0.0)->Bry("uy",0.0);
 	dat.Nod(1)->Bry("uy",0.0);
-
-	// 5) Parameters and initial values
-	dat.Ele(0)->SetModel("LinElastic", "E=96.0 nu=0.333333333333333333333333", "Sx=0.0 Sy=0.0 Sxy=0.0");
-
-	// 6) Solve
-	FEM::Solver sol(dat,"tquad4");
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
 	// Stiffness
@@ -89,6 +97,8 @@ int main(int argc, char **argv) try
 	LinAlg::Matrix<double> Ke0;  Ke0.SetNS(Util::_6_3);
 	dat.Ele(0)->CMatrix(0,Ke0);
 	cout << "Ke0=\n" << Ke0 << endl;
+
+	///////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Check
 	LinAlg::Matrix<double> Ke_correct; Ke_correct.Resize(8,8);
