@@ -16,7 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-
 /* __ Element for diffusion transport simulations __
 
   Solves:
@@ -38,69 +37,96 @@
 
 */
 
-
-#ifndef MECHSYS_FEM_DIFFUSION_H
-#define MECHSYS_FEM_DIFFUSION_H
+#ifndef MECHSYS_FEM_DIFFUSIONELEM_H
+#define MECHSYS_FEM_DIFFUSIONELEM_H
 
 // MechSys
-#include "fem/element.h"
+#include "fem/probelem.h"
 #include "models/diffusionmodel.h"
 #include "util/string.h"
-#include "util/lineparser.h"
+#include "util/util.h"
+#include "util/numstreams.h"
 #include "linalg/laexpr.h"
+
+using Util::SQ2;
+using Util::_12_6;
+using Tensors::Tensor1;
+using Tensors::Vec3_t;
 
 namespace FEM
 {
 
-class DiffusionElem : public virtual Element
+class DiffusionElem : public ProbElem
 {
 public:
-	// Constructor
-	DiffusionElem () : _source(0.0), _has_source(false) {}
+	// Typedefs
+	typedef Array<double>                 IntVals; ///< Internal values (specific volume, yield surface size, etc.)
+	typedef blitz::TinyVector<double,3>   Vec3_t;
+	typedef blitz::TinyMatrix<double,3,3> Mat3_t;
+    typedef std::map<String,double>       Ini_t;   ///< Initial values. Ex.: Sx=0.0
+
+	//{ Constants
+	static const size_t ND_DIFFUSION;          ///< Number of DOFs
+	static const char   UD_DIFFUSION   [1][4]; ///< Essential DOF vars
+	static const char   FD_DIFFUSION   [1][4]; ///< Natural DOF vars
+	static const size_t NL_DIFFUSION_3D;       ///< Number of labels 3D
+	static const char   LB_DIFFUSION_3D[6][4]; ///< Name of labels 3D
+	static const size_t NL_DIFFUSION_2D;       ///< Number of labels 2D
+	static const char   LB_DIFFUSION_2D[4][4]; ///< Name of labels 2D
+	static const char   DIFFUSION_PROP [1][8]; ///< Properties
+	//}
 
 	// Destructor
-	virtual ~DiffusionElem();
+	virtual ~DiffusionElem () {}
 
-	// Derived methods
-	bool         CheckModel   () const;
-	bool         IsEssential  (char const * DOFName) const;
-	void         SetModel     (char const * ModelName, char const * Prms, char const * Inis);
-	void         SetProps     (char const * Properties);
-	Element    * Connect      (int iNodeLocal, FEM::Node * ptNode);
-	void         UpdateState  (double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint);
-	bool         HasVolForces () const { return _has_source; }
-	void         AddVolForces (LinAlg::Vector<double> & dFext) const;
-	void         BackupState  ();
-	void         RestoreState ();
-	void         GetLabels    (Array<String> & Labels) const;
-	char const * ModelName    () const { return (_a_model.Size()>0 ? _a_model[0]->Name() : "__no_model__"); }
+	// Methods related to PROBLEM
+	int         InitCtes     (int nDim);
+	int         NProps       () const { return 1; } ///< just "gam"
+	ProName_t * Props        () const { return DIFFUSION_PROP; }
+	void        AddVolForces ();
+	void        SetActive    (bool Activate, int ID);
+	void        CalcDeps     () const;
+	double      Val          (int iNod, Str_t Key) const;
+	double      Val          (          Str_t Key) const;
+	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        Backup       ();
+	void        Restore      ();
+	void        OutInfo      (std::ostream & os) const;
+	size_t      NCMats       () const { return 1; }
+	void        CMatrix      (size_t Idx, Mat_t & M) const;
+	void        CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
 
-	// Derived methods to assemble DAS matrices
-	size_t nOrder1Matrices () const { return 1; }
-	void   Order1MatMap    (size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const;
-	void   Order1Matrix    (size_t Index, LinAlg::Matrix<double> & Ke) const; ///< Permeability/Conductivity
+protected:
+	// Data at each Integration Point (IP)
+	Array<Vec3_t>  _vel;      ///< Stress (or axial force for linear elements)
+	Array<Vec3_t>  _gra;      ///< Strain
+	Array<IntVals> _ivs;      ///< Internal values
+	Array<Vec3_t>  _vel_bkp;  ///< Backup stress
+	Array<Vec3_t>  _gra_bkp;  ///< Backup strain
+	Array<IntVals> _ivs_bkp;  ///< Backup internal values
 
-	// Methods
-	void B_Matrix (LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const;
-
-	// Access methods
-	void   CalcDepVars () const;                                  ///< Calculate dependent variables (to be called before Val() or OutNodes() for example). Necessary for output of principal stresses, for example.
-	double Val         (int iNodeLocal, char const * Name) const; ///< Return values at nodes
-	double Val         (                char const * Name) const; ///< Return values at the CG of the element
-
-private:
-	// Data
-	Array<DiffusionModel*> _a_model;    ///< Array of pointers to diffusion models
-	double                 _source;     ///< Source (heat) or recharge/pumping (water)
-	bool                   _has_source; ///< Has source?
+	// Private methods that MAY be derived
+	virtual void _initialize (Str_t Inis); ///< Initialize this element
 
 	// Private methods
-	void _calc_initial_internal_state (); ///< Calculate initial internal state
+	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const;      ///< Calculate B matrix
+	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn); ///< Distribute values from face/edges to nodes
 
-	// Private methods that MUST be derived
-	virtual int _geom() const =0; ///< Geometry of the element: 1:1D, 2:2D, 3:3D
+private:
+	void _init_internal_state (); ///< Initialize internal state
 
-}; // class DiffusionElem
+}; // class DiffusionElem                                                                     
+
+//{ Constants
+const size_t DiffusionElem::ND_DIFFUSION           = 1;
+const char   DiffusionElem::UD_DIFFUSION   [1][4] = {"u"};
+const char   DiffusionElem::FD_DIFFUSION   [1][4] = {"f"};
+const size_t DiffusionElem::NL_DIFFUSION_3D       = 6;
+const char   DiffusionElem::LB_DIFFUSION_3D[6][4] = {"Vx", "Vy", "Vz", "Ix", "Iy", "Iz"};
+const size_t DiffusionElem::NL_DIFFUSION_2D       = 4;
+const char   DiffusionElem::LB_DIFFUSION_2D[4][4] = {"Vx", "Vy", "Ix", "Iy"};
+const char   DiffusionElem::DIFFUSION_PROP [1][8] = {"s"};
+//}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -108,361 +134,406 @@ private:
 
 /* public */
 
-inline DiffusionElem::~DiffusionElem()
-{
-	for (size_t i=0; i<_a_model.Size(); ++i) delete _a_model[i];
-}
-	
-// Derived methods
-
-inline bool DiffusionElem::CheckModel() const
-{
-	if (_a_model.Size()!=_n_int_pts) return false;
-	for (size_t i=0; i<_n_int_pts; ++i) if (_a_model[i]==NULL) return false;
-	return true;
-}
-
-inline bool DiffusionElem::IsEssential(char const * DOFName) const
-{
-	if (strcmp(DOFName,"u")==0) return true;
-	return false;
-}
-
-inline void DiffusionElem::SetModel(char const * ModelName, char const * Prms, char const * Inis)
-{
-	// Check _ndim
-	if (_ndim<1) throw new Fatal("DiffusionElem::SetModel: The space dimension (SetDim) must be set before calling this method");
-	if (CheckConnect()==false) throw new Fatal("DiffusionElem::SetModel: Connectivity is not correct. Connectivity MUST be set before calling this method");
-
-	// If pointers to model was not already defined => No model was allocated
-	if (_a_model.Size()==0)
-	{
-		_a_model.Resize(_n_int_pts);
-		for (size_t i=0; i<_n_int_pts; ++i)
-		{
-			// Allocate a new model and set parameters
-			_a_model[i] = static_cast<DiffusionModel*>(AllocModel(ModelName));
-			_a_model[i]->SetGeom (_geom());
-			_a_model[i]->SetPrms (Prms);
-			_a_model[i]->SetInis (Inis);
-		}
-		if (_is_active) _calc_initial_internal_state();
-	}
-	else throw new Fatal("DiffusionElem::SetModel: Feature not implemented.");
-}
-
-inline void DiffusionElem::SetProps(char const * Properties)
-{
-	/* "s=1.0 */
-	LineParser lp(Properties);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Set
-	for (size_t i=0; i<names.Size(); ++i)
-	{
-		 if (names[i]=="s") { _source = values[i]; _has_source = true; } // source
-	}
-}
-
-inline Element * DiffusionElem::Connect(int iNodeLocal, FEM::Node * ptNode)
+inline int DiffusionElem::InitCtes(int nDim)
 {
 	// Check
-	if (_n_nodes<1)         throw new Fatal("DiffusionElem::Connect: __Internal Error__: There is a problem with the number of nodes: maybe derived elemet did not set _n_nodes");
-	if (_connects.Size()<1) throw new Fatal("DiffusionElem::Connect: __Internal Error__: There is a problem with connectivity array: maybe derived elemet did not allocate _connect");
+	if (nDim<2 || nDim>3) throw new Fatal("DiffusionElem::InitCtes: The space dimension must be 2 or 3. nDim==%d is invalid",nDim);
 
-	// Connects
-	_connects[iNodeLocal] = ptNode;
+	// Essential/Natural
+	_nd = ND_DIFFUSION;
+	UD  = UD_DIFFUSION;
+	FD  = FD_DIFFUSION;
 
-	// Add Degree of Freedom to a node (Essential, Natural)
-	_connects[iNodeLocal]->AddDOF("u", "q");
+	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
+	if (_gi==0)  // 3D
+	{
+		_nl = NL_DIFFUSION_3D; 
+		LB  = LB_DIFFUSION_3D;
+	}
+	else if (_gi==1)  // 2D
+	{
+		_nl = NL_DIFFUSION_2D; 
+		LB  = LB_DIFFUSION_2D;
+	}
+	else throw new Fatal("DiffusionElem::InitCtes: GeometryIndex _gi==%d is invalid",_gi);
 
-	// Shared
-	_connects[iNodeLocal]->SetSharedBy(_my_id);
-
-	return this;
+	// Return geometry index
+	return _gi;
 }
 
-inline void DiffusionElem::UpdateState(double TimeInc, LinAlg::Vector<double> const & dUglobal, LinAlg::Vector<double> & dFint)
+inline void DiffusionElem::AddVolForces()
 {
-	// Allocate (local/element) temperature/head vector
-	LinAlg::Vector<double> du(_n_nodes); // Delta temperature/total head of this element
+	// Verify if element is active
+	if (IsActive==false) return;
 	
-	// Assemble (local/element) temperature/head vector
-	for (size_t i=0; i<_n_nodes; ++i)
-		du(i) = dUglobal(_connects[i]->DOFVar("u").EqID);
+	// Allocate (local/element) external volume force vector
+	Vec_t fvol(_ge->NNodes);
+	fvol.SetValues (0.0);
 
-	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> dq(_n_nodes); // Delta internal flow of this element
-	dq.SetValues(0.0);
-	
-	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;       // Jacobian matrix
-	LinAlg::Matrix<double> B;       // strain-displacement matrix
-	LinAlg::Vector<double> dgra;    // delta gradient
-	LinAlg::Vector<double> dvel;    // delta velocity
-
-	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	// Calculate local external volume force
+	double s = Prop("s");
+	Vec_t N;
+	Mat_t dN;
+	Mat_t J;
+	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i].r;
-		double s = _a_int_pts[i].s;
-		double t = _a_int_pts[i].t;
-		double w = _a_int_pts[i].w;
-
-		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
-		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
-
-		dgra = B*du;                          // Calculate gradient
-		_a_model[i]->StateUpdate(dgra, dvel); // Update model
-		dq += -trn(B)*dvel*det(J)*w;          // Calculate internal flow vector
+		_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		fvol += -N*s*det(J)*_ge->IPs[i].w;
 	}
 
-	// Return internal flow
-	for (size_t i=0; i<_n_nodes; ++i)
-		dFint(_connects[i]->DOFVar("q").EqID) += dq(i);
+	// Sum up contribution to external forces vector
+	for (size_t i=0; i<_ge->NNodes; ++i)
+		_ge->Conn[i]->Bry("f",fvol(i));
 }
 
-inline void DiffusionElem::AddVolForces(LinAlg::Vector<double> & FVol) const
+inline void DiffusionElem::CalcDeps() const
 {
-	if (_has_source)
-	{
-		// Allocate (local/element) external volume force vector
-		LinAlg::Vector<double> fvol(_n_nodes);
-		fvol.SetValues(0.0);
-
-		// Allocate entities used for every integration point
-		LinAlg::Vector<double> shape;
-		LinAlg::Matrix<double> derivs;
-		LinAlg::Matrix<double> J;
-
-		// Loop along integration points
-		for (size_t i=0; i<_n_int_pts; ++i)
-		{
-			// Temporary Integration Points
-			double r = _a_int_pts[i].r;
-			double s = _a_int_pts[i].s;
-			double t = _a_int_pts[i].t;
-			double w = _a_int_pts[i].w;
-
-			Shape    (r,s,t, shape);   // Calculate shape functions for i IP
-			Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-			Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
-
-			// Calculate local external volume force
-			for (size_t j=0; j<_n_nodes; j++)
-				fvol(j) += _source*shape(j)*det(J)*w;
-		}
-
-		// Add to external force vector
-		for (size_t i=0; i<_n_nodes; ++i)
-			FVol(_connects[i]->DOFVar("q").EqID) += fvol(i);
-	}
-	else throw new Fatal("DiffusionElem::AddVolForces: This element (%s # %d) does not have volumetric forces.",Name(),_my_id);
+	if (IsActive==false) throw new Fatal("DiffusionElem::CalcDepVars: This element is inactive");
 }
 
-inline void DiffusionElem::BackupState()
-{
-	for (size_t i=0; i<_n_int_pts; ++i) _a_model[i]->BackupState();
-}
-
-inline void DiffusionElem::RestoreState()
-{
-	for (size_t i=0; i<_n_int_pts; ++i) _a_model[i]->RestoreState();
-}
-
-inline void DiffusionElem::GetLabels(Array<String> & Labels) const
-{
-	// Get labels of all values to output
-	switch (_geom())
-	{
-		case 1:
-		{
-			Labels.Resize(4);
-			Labels[0]="u";  // temperature/total heat
-			Labels[1]="q";  // volumetric flow
-			Labels[2]="Vx"; // flux rate/velocity
-			Labels[3]="Ix"; // gradient = du_dx
-			return;
-		}
-		case 2:
-		{
-			Labels.Resize(6);
-			Labels[0]="u";                  // temperature/total heat
-			Labels[1]="q";                  // volumetric flow
-			Labels[2]="Vx"; Labels[3]="Vy"; // flux rate/velocity
-			Labels[4]="Ix"; Labels[5]="Iy"; // gradient = du_dx
-			return;
-		}
-		case 3:
-		{
-			Labels.Resize(8);
-			Labels[0]="u";                                  // temperature/total heat
-			Labels[1]="q";                                  // volumetric flow
-			Labels[2]="Vx"; Labels[3]="Vy"; Labels[4]="Vz"; // flux rate/velocity
-			Labels[5]="Ix"; Labels[6]="Iy"; Labels[7]="Iz"; // gradient = du_dx
-			return;
-		}
-	}
-}
-
-inline void DiffusionElem::CalcDepVars() const
-{
-	if (_a_model.Size()==_n_int_pts) for (size_t i=0; i<_n_int_pts; i++) _a_model[i]->CalcDepVars();
-	else throw new Fatal("DiffusionElem::CalcDepVars: Constitutive models for this element (ID==%d) were not set yet", _my_id);
-}
-
-inline double DiffusionElem::Val(int iNodeLocal, char const * Name) const
+inline double DiffusionElem::Val(int iNod, Str_t Name) const
 {
 	// Essential
-	if (strcmp(Name,"u")==0) return _connects[iNodeLocal]->DOFVar(Name).EssentialVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
 
 	// Natural
-	else if (strcmp(Name,"q")==0) return _connects[iNodeLocal]->DOFVar(Name).NaturalVal;
+	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
 
-	// Velocities, internal values, etc.
-	else
-	{
-		// Vectors for extrapolation
-		LinAlg::Vector<double>    ip_values (_n_int_pts);
-		LinAlg::Vector<double> nodal_values (_n_nodes);
+	// Veloc, grads, internal values, etc.
+	Vec_t    ip_vals (_ge->NIPs); // Vectors for extrapolation
+	Vec_t nodal_vals (_ge->NNodes);
 
-		// Get integration point values
-		if (_a_model.Size()==_n_int_pts)
-			for (size_t i=0; i<_n_int_pts; i++)
-				ip_values(i) = _a_model[i]->Val(Name);
-		else throw new Fatal("DiffusionElem::Val: Constitutive models for this element (ID==%d) were not set yet", _my_id);
-
-		// Extrapolation
-		Extrapolate (ip_values, nodal_values);
-
-		// Output single value
-		return nodal_values (iNodeLocal);
-	}
-}
-
-inline double DiffusionElem::Val(char const * Name) const
-{
 	// Get integration point values
-	double sum = 0.0;
-	for (size_t i=0; i<_n_int_pts; i++)
-		sum += _a_model[i]->Val(Name);
+	//for (size_t i=0; i<_ge->NIPs; i++) ip_vals(i) = Tensors::Val (_vel[i], _gra[i], Name);
 
-	// Output single value at CG
-	return sum/_n_int_pts;
+	// Extrapolate
+	_ge->Extrap (ip_vals, nodal_vals);
+	return nodal_vals (iNod);
 }
 
-// Derived methods to assemble DAS matrices
-
-inline void DiffusionElem::Order1MatMap(size_t Index, Array<size_t> & RowsMap, Array<size_t> & ColsMap, Array<bool> & RowsEssenPresc, Array<bool> & ColsEssenPresc) const
+inline double DiffusionElem::Val(Str_t Name) const
 {
-	// Size of Ke
-	int n_rows = _n_nodes; // == n_cols
+	double ave = 0.0;
+	//for (size_t i=0; i<_ge->NIPs; i++) ave += Tensors::Val (_vel[i], _gra[i], Name);
+	return ave/_ge->NIPs;
+}
 
-	// Mounting a map of positions from Ke to Global
-	int idx_Ke = 0;                // position (idx) inside Ke matrix
-	RowsMap       .Resize(n_rows); // size=Ke.Rows()=Ke.Cols()
-	RowsEssenPresc.Resize(n_rows); // size=Ke.Rows()=Ke.Cols()
+inline void DiffusionElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
+{
+	// Allocate (local/element) displacements vector
+	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element
 
-	// Fill map of Ke position to K position of DOFs components
-	for (size_t i_node=0; i_node<_n_nodes; ++i_node)
+	// Assemble (local/element) displacements vector
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		du(i*_nd+j) = dU(_ge->Conn[i]->DOFVar(UD[j]).EqID);
+
+	// Allocate (local/element) internal force vector
+	Vec_t df(_nd*_ge->NNodes); // Delta internal force of this element
+	df.SetValues (0.0);
+
+	// Update model and calculate internal force vector;
+	Mat_t dN,J,B;
+	Vec_t deps,dsig;
+	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		RowsMap        [idx_Ke] = _connects[i_node]->DOFVar("u").EqID; 
-		RowsEssenPresc [idx_Ke] = _connects[i_node]->DOFVar("u").IsEssenPresc; 
-		idx_Ke++;
+		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian     (dN, J);
+		_B_mat            (dN, J, B);
+		deps = B*du;
+		_mdl->StateUpdate (deps, _vel[i], _gra[i], _ivs[i], dsig);
+		df += trn(B)*dsig*det(J)*_ge->IPs[i].w;
 	}
-	ColsMap        = RowsMap;
-	ColsEssenPresc = RowsEssenPresc;
+
+	// Sum up contribution to internal forces vector
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (int    j=0; j<_nd;         ++j)
+		dFint(_ge->Conn[i]->DOFVar(UD[j]).EqID) += df(i*_nd+j);
 }
 
-inline void DiffusionElem::Order1Matrix(size_t index, LinAlg::Matrix<double> & Ke) const
+inline void DiffusionElem::Backup()
 {
-	/* Conductivity:
-	   ============
-	
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_vel_bkp[i] = _vel[i];
+		_gra_bkp[i] = _gra[i];
+		_ivs_bkp[i] = _ivs[i];
+	}
+}
+
+inline void DiffusionElem::Restore()
+{
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_vel[i] = _vel_bkp[i];
+		_gra[i] = _gra_bkp[i];
+		_ivs[i] = _ivs_bkp[i];
+	}
+}
+
+inline void DiffusionElem::OutInfo(std::ostream & os) const
+{
+	for (size_t i=0; i<_ge->NIPs; i++)
+	{
+		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _vel[i](0) << _12_6 << _vel[i](1) << _12_6 << _vel[i](2);
+		os <<                "  Ex,Ey,Ez = " << _12_6 << _vel[i](0) << _12_6 << _vel[i](1) << _12_6 << _vel[i](2) << " ";
+	}
+}
+
+inline void DiffusionElem::CMatrix(size_t Idx, Mat_t & Ke) const
+{
+	/* Stiffness:
+	   ==========
 	                 /    T
 	        [Ke]  =  | [B]  * [D] * [B]  * dV
 	                 /
 	*/
 
-	// Resize Ke
-	Ke.Resize(_n_nodes, _n_nodes); // sum(Bt*D*B*det(J)*w)
-	Ke.SetValues(0.0);
-
-	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs; // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;      // Jacobian matrix
-	LinAlg::Matrix<double> B;      // B matrix
-	LinAlg::Matrix<double> D;      // Conductivity matrix
-
-	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	Ke.Resize    (_nd*_ge->NNodes, _nd*_ge->NNodes);
+	Ke.SetValues (0.0);
+	Mat_t dN,J,B,D;
+	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i].r;
-		double s = _a_int_pts[i].s;
-		double t = _a_int_pts[i].t;
-		double w = _a_int_pts[i].w;
-
-		Derivs   (r,s,t, derivs); // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);     // Calculate J (Jacobian) matrix for i Integration Point
-		B_Matrix (derivs,J, B);   // Calculate B matrix for i Integration Point
-
-		_a_model[i]->TgConductivity(D); // Conductivity
-		Ke += trn(B)*D*B*det(J)*w;      // Calculate Tangent Conductivity
+		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian     (dN, J);
+		_B_mat            (dN, J, B);
+		_mdl->TgStiffness (_vel[i], _gra[i], _ivs[i], D);
+		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
 }
-	
-// Methods
 
-inline void DiffusionElem::B_Matrix(LinAlg::Matrix<double> const & derivs, LinAlg::Matrix<double> const & J, LinAlg::Matrix<double> & B) const
+inline void DiffusionElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
 {
-	// Calculate Bp matrix (NDIM x _n_nodes)
-	B = inv(J)*derivs; // equal to the cartesian derivatives matrix for diffusion elements
+	// Map of positions from Me to Global
+	RMap   .Resize(_nd*_ge->NNodes);
+	RUPresc.Resize(_nd*_ge->NNodes);
+	int p = 0; // position inside matrix
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	{
+		for (int j=0; j<_nd; ++j)
+		{
+			RMap    [p] = _ge->Conn[i]->DOFVar(UD[j]).EqID;
+			RUPresc [p] = _ge->Conn[i]->DOFVar(UD[j]).IsEssenPresc;
+			p++;
+		}
+	}
+	CMap    = RMap;
+	CUPresc = RUPresc;
 }
 
 
 /* private */
 
-inline void DiffusionElem::_calc_initial_internal_state()
+inline void DiffusionElem::_initialize(Str_t Inis)
 {
-	// Allocate (local/element) internal force vector
-	LinAlg::Vector<double> q(_n_nodes); // internal flow of this element
-	q.SetValues(0.0);
-	
-	// Allocate entities used for every integration point
-	LinAlg::Matrix<double> derivs;  // size = NumLocalCoords(ex.: r,s,t) x _n_nodes
-	LinAlg::Matrix<double> J;       // Jacobian matrix
-	LinAlg::Matrix<double> B;       // strain-displacement matrix
-	LinAlg::Vector<double> vel;     // velocity
+	// Resize IP data
+	_vel.Resize (_ge->NIPs);
+	_gra.Resize (_ge->NIPs);
+	_ivs.Resize (_ge->NIPs);
 
-	// Loop along integration points
-	for (size_t i=0; i<_n_int_pts; ++i)
+	// Parse values
+	LineParser           lp(Inis);
+    Ini_t                names_vals;
+	lp.BreakExpressions (names_vals);
+
+	// Set initial values
+	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		// Temporary Integration Points
-		double r = _a_int_pts[i].r;
-		double s = _a_int_pts[i].s;
-		double t = _a_int_pts[i].t;
-		double w = _a_int_pts[i].w;
+		// Stress and strain
+		_vel[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_gra[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		for (Ini_t::const_iterator it=names_vals.begin(); it!=names_vals.end(); ++it)
+			Tensors::SetVal (it->first.CStr(), it->second, _vel[i], /*WithError*/false);
 
-		Derivs   (r,s,t, derivs);  // Calculate Derivatives of Shape functions w.r.t local coordinate system
-		Jacobian (derivs, J);      // Calculate J (Jacobian) matrix for i Integration Point
-		B_Matrix (derivs, J, B);   // Calculate B matrix for i Integration Point
-
-		_a_model[i]->Vel(vel);
-		q += -trn(B)*vel*det(J)*w; // Calculate internal flow vector
+		// Initialize internal values
+		_mdl->InitIVS (names_vals, _vel[i], _gra[i], _ivs[i]);
 	}
 
-	// Update nodal Natural values
-	for (size_t i=0; i<_n_nodes; ++i)
-		_connects[i]->DOFVar("q").NaturalVal += q(i); // NaturalVal must be set to zero during AddDOF routine
+	// Initialize internal state
+	if (IsActive) _init_internal_state();
+}
+
+inline void DiffusionElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) const
+{
+	/* OBS.:
+	 *       1) This B matrix considers Solid Mechanics sign convention of stress and strains
+	 *          Ex.: Compressive stresses/strains are negative
+	 *          The B Matrix returns strains in Mandel notation
+	 *
+	 *          Traction    => Positive
+	 *          Compression => Negative
+	 *
+	 *       2) This works for Diffusion and Biot elements, but not for Beams and Rods
+	 */
+
+	// Cartesian derivatives
+	Mat_t dC;
+	dC = inv(J)*dN;
+
+	int dim = _ge->NDim;
+	switch (_gi)
+	{
+		case 0: // 3D
+		{
+			const int n_scomps = 6; // number of stress compoments
+			B.Resize (n_scomps,dim*_ge->NNodes);
+			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
+			{
+				B(0,0+i*dim) =     dC(0,i);  B(0,1+i*dim) =         0.0;  B(0,2+i*dim) =         0.0;
+				B(1,0+i*dim) =         0.0;  B(1,1+i*dim) =     dC(1,i);  B(1,2+i*dim) =         0.0;
+				B(2,0+i*dim) =         0.0;  B(2,1+i*dim) =         0.0;  B(2,2+i*dim) =     dC(2,i);
+				B(3,0+i*dim) = dC(1,i)/SQ2;  B(3,1+i*dim) = dC(0,i)/SQ2;  B(3,2+i*dim) =         0.0; // SQ2 => Mandel representation
+				B(4,0+i*dim) =         0.0;  B(4,1+i*dim) = dC(2,i)/SQ2;  B(4,2+i*dim) = dC(1,i)/SQ2; // SQ2 => Mandel representation
+				B(5,0+i*dim) = dC(2,i)/SQ2;  B(5,1+i*dim) =         0.0;  B(5,2+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
+			}
+			return;
+		}
+		case 1: // 2D(plane-strain)
+		{
+			const int n_scomps = 4; // number of stress compoments
+			B.Resize (n_scomps,dim*_ge->NNodes);
+			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
+			{
+				B(0,0+i*dim) =     dC(0,i);  B(0,1+i*dim) =         0.0;
+				B(1,0+i*dim) =         0.0;  B(1,1+i*dim) =     dC(1,i);
+				B(2,0+i*dim) =         0.0;  B(2,1+i*dim) =         0.0;
+				B(3,0+i*dim) = dC(1,i)/SQ2;  B(3,1+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
+			}
+			return;
+		}
+		case 2: // 2D(plane-stress)
+		{
+			const int n_scomps = 3; // number of stress compoments
+			B.Resize(n_scomps,dim*_ge->NNodes);
+			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
+			{
+				B(0,0+i*dim) =      dC(0,i);   B(0,1+i*dim) =         0.0;
+				B(1,0+i*dim) =          0.0;   B(1,1+i*dim) =     dC(1,i);
+				B(2,0+i*dim) =  dC(1,i)/SQ2;   B(2,1+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
+			}
+			return;
+		}
+		case 3: // 2D(axis-symmetric)
+		default: throw new Fatal("DiffusionElem::_B_mat: _B_mat() method is not available for GeometryIndex(gi)==%d",_gi);
+	}
+}
+
+inline void DiffusionElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, Array<Node*> const & FConn)
+{
+	// Key=="Q" => Normal traction boundary condition
+	if (strcmp(Key,"Q")==0)
+	{
+		// Check if the element is active
+		if (IsActive==false) return;
+
+		Mat_t values;  values.Resize (_ge->NFNodes, _ge->NDim);  values.SetValues(0.0);
+		Mat_t J;
+		Vec_t FN(_ge->NFNodes); // Face shape
+		Mat_t FNmat;            // Shape function matrix
+		Vec_t P;                // Vector perpendicular to the face
+		for (size_t i=0; i<_ge->NFIPs; i++)
+		{
+			_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
+			FNmat = trn(trn(FN)); // trick just to convert Vector FN to a col Matrix
+
+			// Calculate perpendicular vector
+			if (_ge->NDim==3)
+			{
+				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+				Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
+				Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
+				P.Resize(3);
+				P = V(1)*W(2) - V(2)*W(1),      // vectorial product
+					V(2)*W(0) - V(0)*W(2),
+					V(0)*W(1) - V(1)*W(0);
+			}
+			else
+			{
+				_ge->FaceJacob (FConn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+				P.Resize(2);
+				P = J(0,1), -J(0,0);
+			}
+			values += FaceValue*FNmat*trn(P)*_ge->FIPs[i].w;
+		}
+
+		// Set nodes Brys
+		for (size_t i=0; i<_ge->NFNodes; ++i)
+		for (size_t j=0; j<_ge->NDim;    ++j)
+			FConn[i]->Bry (FD[j], values(i,j));
+	}
+	else ProbElem::_dist_to_face_nodes (Key,FaceValue,FConn);
+}
+
+inline void DiffusionElem::_init_internal_state()
+{
+	// Allocate (local/element) internal force vector
+	Vec_t f(_ge->NDim*_ge->NNodes); // only forces (fx,fy,fz) (NDim) DOFs
+	f.SetValues (0.0);
+
+	// Calculate internal force vector;
+	Mat_t dN;  // Shape Derivs
+	Mat_t J;   // Jacobian matrix
+	Mat_t B;   // strain-displacement matrix
+	Vec_t sig; // Stress vector in Mandel's notation
+	for (size_t i=0; i<_ge->NIPs; ++i)
+	{
+		_ge->Derivs     (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian   (dN, J);
+		_B_mat          (dN, J, B);
+		Vec3_tToVector (_gi,_vel[i], sig);
+		f += trn(B)*sig*det(J)*_ge->IPs[i].w;
+	}
+
+	// Assemble (local/element) displacements vector.
+	for (size_t i=0; i<_ge->NNodes; ++i)
+	for (size_t j=0; j<_ge->NDim;   ++j)
+		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_ge->NDim+j); // only forces (fx,fy,fz) (NDim) DOFs
 }
 
 
+///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
+
+
+// Allocate a new 3D Diffusion element:
+ProbElem * DiffusionMaker() 
+{ 
+	DiffusionElem * Ptr = new DiffusionElem;
+	Ptr->__SetGeomIdx(0);
+	return Ptr; 
+}
+// Register element
+int DiffusionRegister() { ProbElemFactory["Diffusion"]=DiffusionMaker;  return 0; }
+// Call register
+int __Diffusion_dummy_int  = DiffusionRegister();
+
+
+// Allocate a new PStrain element:
+ProbElem * PStrainMaker() 
+{ 
+	DiffusionElem * Ptr = new DiffusionElem;
+	Ptr->__SetGeomIdx(1);
+	return Ptr; 
+}
+// Register element
+int PStrainRegister() { ProbElemFactory["PStrain"]=PStrainMaker;  return 0; }
+// Call register
+int __PStrain_dummy_int  = PStrainRegister();
+
+
+// Allocate a new PStress element:
+ProbElem * PStressMaker() 
+{ 
+	DiffusionElem * Ptr = new DiffusionElem;
+	Ptr->__SetGeomIdx(2);
+	return Ptr; 
+}
+// Register element
+int PStressRegister() { ProbElemFactory["PStress"]=PStressMaker;  return 0; }
+// Call register
+int __PStress_dummy_int  = PStressRegister();
+
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_DIFFUSIO_H
+#endif // MECHSYS_FEM_DIFFUSIONELEM_H

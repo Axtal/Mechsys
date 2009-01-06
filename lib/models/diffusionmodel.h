@@ -19,7 +19,8 @@
 #ifndef MECHSYS_DIFFUSIONMODEL_H
 #define MECHSYS_DIFFUSIONMODEL_H
 
-// Std lib
+// STL
+#include <cmath> // for fabs, sqrt, etc.
 #include <cstring> // for strcmp
 
 // Blitz++
@@ -30,57 +31,59 @@
 #include "models/model.h"
 #include "util/string.h"
 #include "util/util.h"
-#include "linalg/vector.h"
-#include "linalg/matrix.h"
+#include "tensors/functions.h"
 
-using LinAlg::Vector;
-using LinAlg::Matrix;
+typedef LinAlg::Vector<double> Vec_t;
+typedef LinAlg::Matrix<double> Mat_t;
+typedef char const           * Str_t;
 
 class DiffusionModel : public Model
 {
 public:
 	// Typedefs
-	typedef blitz::TinyVector<double,3>   TinyVec;
-	typedef blitz::TinyMatrix<double,3,3> TinyMat;
+	typedef Array<double>                 IntVals; ///< Internal values (specific volume, yield surface size, etc.)
+	typedef blitz::TinyVector<double,3>   Vec3_t;
+	typedef blitz::TinyMatrix<double,3,3> Mat3_t;
 
 	// Constructor
-	DiffusionModel () { _vel=0.0; _gra=0.0; _dgra=0.0; }
+	DiffusionModel () { _dgra = 0.0,0.0,0.0, 0.0,0.0,0.0; }
 
 	// Destructor
 	virtual ~DiffusionModel () {}
 
-	// Methods
-	void SetGeom        (int Type) { _geom=Type; if (_geom>2) throw new Fatal("DiffusionModel::SetGeom: Geometry type must be: 0:3D, 1:2D"); } ///< Geometry type: : 3D=0, 2D=1
-	void TgConductivity (Matrix<double> & Dmat) const;                        ///< Tangent conductivity
-	int  StateUpdate    (Vector<double> const & DGra, Vector<double> & DVel); ///< Update internal state for given DGra = Delta(du_dx)
+	/* Tangent conductivity. */
+	void TgConductivity (Vec3_t  const & Vel,
+	                     Vec3_t  const & Gra,
+	                     IntVals const & Ivs,
+	                     Mat_t         & Dmat) const;
 
-	// Access methods
-	void   CalcDepVars () const {}                     ///< Calculate dependent variables (to be called before Val() or OutNodes() for example).
-	double Val         (char const * Name) const;      ///< Return stress/strain components, internal values, or principal components of stress/strain
-	void   Vel         (Vector<double> & Veloc) const; ///< Return stress tensor
+	/* State update. */
+	int StateUpdate (Vec_t   const & DGra,
+	                 Vec3_t        & Vel,
+	                 Vec3_t        & Gra,
+	                 IntVals       & Ivs,
+	                 Vec_t         & DVel);
 
 protected:
-	// Data
-	TinyVec _vel;      ///< Diffusion velocity: {vel} = [K]{du_dx}
-	TinyVec _gra;      ///< Flow gradient:      {gra} = du_dx
-	TinyVec _dgra;     ///< Delta gradient
-	TinyVec _vel_bkp;  ///< Backup velocity
-	TinyVec _gra_bkp;  ///< Backup gradient
-	TinyVec _dgra_bkp; ///< Backup delta gradient
-
-	// Private methods that MUST be derived
-	virtual void   _cond (TinyVec const & DGra, TinyVec const & Vel, TinyVec const & Gra, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const =0; ///< Tangent or secant conductivity
-	virtual double _val  (char const * Name) const =0; ///< Return internal values
+	/* Tangent or secant conductivity. */
+	virtual void _cond (Vec3_t  const & DGra,
+	                    Vec3_t  const & Vel,
+	                    Vec3_t  const & Gra,
+	                    IntVals const & Ivs,
+	                    Mat3_t        & D,
+	                    Array<Vec3_t> & B) const =0;
 
 private:
-	// Derived methods
-	void _backup_state  () { _vel_bkp=_vel; _gra_bkp=_gra; _dgra_bkp=_dgra; } ///< Backup internal state
-	void _restore_state () { _vel=_vel_bkp; _gra=_gra_bkp; _dgra=_dgra_bkp; } ///< Restore internal state
+	// Data
+	Vec3_t _dgra;
 
-	// Private methods
-	void _tg_incs  (TinyVec const & DGra, TinyVec const & Vel, TinyVec const & Gra, IntVals const & Ivs,  TinyVec & DVel, IntVals & DIvs) const; ///< Tangent increments
-	void _tvec2vec (TinyVec const & TVec, Vector<double> & Vect) const;
-	void _tmat2mat (TinyMat const & TMat, Matrix<double> & Matr) const;
+	/* Tangent increments. */
+	void _tg_incs (Vec3_t  const & DGra,
+	               Vec3_t  const & Vel,
+	               Vec3_t  const & Gra,
+	               IntVals const & Ivs,
+	               Vec3_t        & DVel,
+	               IntVals       & DIvs) const;
 
 }; // class DiffusionModel
 
@@ -90,112 +93,109 @@ private:
 
 /* public */
 
-inline void DiffusionModel::TgConductivity(Matrix<double> & Dmat) const
+inline void DiffusionModel::TgConductivity(Vec3_t const & Vel, Vec3_t const & Gra, IntVals const & Ivs, Mat_t & Dmat) const
 {
-	// Conductivity
-	TinyMat        D;
-	Array<TinyVec> B;
-	_cond (_dgra,_vel,_gra,_ivs, D,B);
-
-	// Result
-	_tmat2mat (D, Dmat);
+	Mat3_t        D;
+	Array<Vec3_t> B;
+	_cond          (_dgra,Vel,Gra,Ivs, D,B);
+	//Mat3_tToMatrix (_gi,D, Dmat);
 }
 
-inline int DiffusionModel::StateUpdate(Vector<double> const & DGra, Vector<double> & DVel)
+inline int DiffusionModel::StateUpdate(Vec_t const & DGra, Vec3_t & Vel, Vec3_t & Gra, IntVals & Ivs, Vec_t & DVel)
 {
-	// Gradient
-	_dgra = 0.0;
-	switch (_geom)
+	// Auxiliar variables
+	Vec3_t  sig_i; sig_i = Vel;  // Initial stress state
+	Vec3_t  dgra_T;              // Driver increment of strain
+	Vec3_t  dsig_1;              // FE increment of stress
+	IntVals  divs_1(Ivs.Size());  // FE increment of internal values
+	Vec3_t  gra_1;               // FE strain state
+	Vec3_t  sig_1;               // FE stress state
+	IntVals  ivs_1(Ivs.Size());   // FE internal values
+	Vec3_t  dsig_2;              // Intermediary increment of stress evaluated with a tangent computed at the FE state
+	IntVals  divs_2(Ivs.Size());  // Intermediary increment of internal velues evaluated with a tangent computed at the FE state
+	Vec3_t  sig_ME;              // ME stress state
+	IntVals  ivs_ME(Ivs.Size());  // ME internal values
+	double   error;               // Estimated error
+
+	// Read input vector
+	//VectorToVec3_t (_gi,DGra, _dgra);
+
+	// Solve
+	double T  = 0.0;
+	double dT = _dTini;
+	for (size_t k=0; k<=_maxSS; ++k)
 	{
-		case 0: { _dgra = DGra(0), DGra(1), DGra(2); break; } // 3D
-		case 1: { _dgra = DGra(0), DGra(1);          break; } // 2D
+		// Exit point
+		if (T>=1.0)
+		{
+			// Write output vector
+			Vec3_t dsig; dsig = Vel - sig_i;
+			Vec3_tToVector (_gi,dsig, DVel);
+			return k;
+		}
+
+		// Driver increment
+		dgra_T = _dgra*dT;
+
+		// FE increments (dsig_1 & divs_1)
+		_tg_incs (dgra_T,Vel,Gra,Ivs, dsig_1,divs_1);
+
+		// FE state
+		gra_1    = Gra    + dgra_T;
+		sig_1    = Vel    + dsig_1;   for (size_t i=0; i<Ivs.Size(); ++i)
+		ivs_1[i] = Ivs[i] + divs_1[i];
+
+		// Intermediary increments (dsig_2 & divs_2)
+		_tg_incs (dgra_T,sig_1,gra_1,ivs_1, dsig_2,divs_2);
+
+		// ME state
+		sig_ME    = Vel    + 0.5*(dsig_1   +dsig_2   );  for (size_t i=0; i<Ivs.Size(); ++i)
+		ivs_ME[i] = Ivs[i] + 0.5*(divs_1[i]+divs_2[i]);
+
+		// Local error estimate
+		error = Tensors::Norm(sig_ME-sig_1)/(1.0+Tensors::Norm(sig_ME));
+		for (size_t i=0; i<Ivs.Size(); ++i)
+		{
+			double err = fabs(ivs_ME[i]-ivs_1[i])/(1.0+ivs_ME[i]);
+			if (err>error) error = err;
+		}
+
+		// Step multiplier
+		double m = 0.9*sqrt(_STOL/error);
+
+		// Update
+		if (error<_STOL) // step accepted
+		{
+			T   += dT;
+			Gra = gra_1;
+			Vel = sig_ME;
+			Ivs = ivs_ME;
+			if (m>_mMax) m = _mMax;
+		}
+		else // step rejected
+			if (m<_mMin) m = _mMin;
+
+		// Change next step size
+		dT = m * dT;
+		if (dT>1.0-T) dT = 1.0-T; // last step
 	}
-
-	// Forward-Euler update
-	TinyVec dvel;
-	IntVals divs;
-	_tg_incs (_dgra,_vel,_gra,_ivs, dvel,divs);
-	_vel    = _vel    +  dvel;
-	_gra    = _gra    + _dgra;   for (size_t i=0; i<_ivs.Size(); ++i)
-	_ivs[i] = _ivs[i] +  divs[i];
-
-	// Result
-	_tvec2vec (dvel, DVel);
-
-	// 1 substep
-	return 1;
-}
-
-inline double DiffusionModel::Val(char const * Name) const
-{
-	     if (strcmp(Name,"Vx" )==0) return _vel(0); // velocity
-	else if (strcmp(Name,"Vy" )==0) return _vel(1);
-	else if (strcmp(Name,"Vz" )==0) return _vel(2);
-	else if (strcmp(Name,"Ix" )==0) return _gra(0); // gradient
-	else if (strcmp(Name,"Iy" )==0) return _gra(1);
-	else if (strcmp(Name,"Iz" )==0) return _gra(2);
-	return _val(Name);
-}
-
-inline void DiffusionModel::Vel(Vector<double> & Veloc) const
-{
-	_tvec2vec(_vel, Veloc);
+	throw new Fatal("DiffusionModel::StateUpdate: %s:Tag=%s: Update did not converge for %d stgra",Name(),_tag,_maxSS);
 }
 
 
 /* private */
 
-inline void DiffusionModel::_tg_incs(TinyVec const & DGra, TinyVec const & Vel, TinyVec const & Gra, IntVals const & Ivs,  TinyVec & DVel, IntVals & DIvs) const
+inline void DiffusionModel::_tg_incs(Vec3_t const & DGra, Vec3_t const & Vel, Vec3_t const & Gra, IntVals const & Ivs,  Vec3_t & DVel, IntVals & DIvs) const
 {
 	// Conductivity
-	TinyMat        D;
-	Array<TinyVec> B;
+	Mat3_t        D;
+	Array<Vec3_t> B;
 	_cond (DGra,Vel,Gra,Ivs, D,B);
 
 	// Increments
-	DVel = -blitz::product (D,DGra);  // DVel    = -D*Dgra
-	for (size_t i=0; i<_ivs.Size(); ++i) DIvs[i] = blitz::dot(B[i],DGra);
+	Tensors::Dot (D,DGra, DVel);     // DVel    = D:DGra
+	for (size_t i=0; i<Ivs.Size(); ++i) DIvs[i] = blitz::dot(B[i],DGra);
 }
 
-inline void DiffusionModel::_tvec2vec(TinyVec const & TVec, Vector<double> & Vect) const
-{
-	switch (_geom)
-	{
-		case 0: // 3D
-		{
-			Vect.Resize(3);
-			Vect = TVec(0), TVec(1), TVec(2);
-			return;
-		}
-		case 1: // 2D
-		{
-			Vect.Resize(2);
-			Vect = TVec(0), TVec(1);
-			return;
-		}
-	}
-}
-
-inline void DiffusionModel::_tmat2mat(TinyMat const & TMat, Matrix<double> & Matr) const
-{
-	switch (_geom)
-	{
-		case 0: // 3D
-		{
-			Matr.Resize(3,3);
-			Matr = TMat(0,0), TMat(0,1), TMat(0,2),
-			       TMat(1,0), TMat(1,1), TMat(1,2),
-			       TMat(2,0), TMat(2,1), TMat(2,2);
-			return;
-		}
-		case 1: // 2D
-		{
-			Matr.Resize(2,2);
-			Matr = TMat(0,0), TMat(0,1),
-			       TMat(1,0), TMat(1,1);
-			return;
-		}
-	}
-}
 
 #endif // MECHSYS_DIFFUSIONMODEL_H
