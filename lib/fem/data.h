@@ -78,15 +78,27 @@ public:
 	void      SetNElems       (size_t NElems);                                         ///< Set the number of elements
 	Node    * SetNode         (size_t i, double X, double Y, double Z=0.0, int Tag=0); ///< Set a node
 	Element * SetElemAndModel (size_t               i,                                 ///< The ID(index) of the element
-	                           int                  Tag,                               ///< The tag of new element
 	                           Array<long>  const & Conn,                              ///< Connectivity
+	                           int                  Tag,                               ///< The tag of new element
 	                           Str_t                GeomT,                             ///< Geometry Element type. Ex: Tri3
 	                           Str_t                ProbT,                             ///< Problem  Element type. Ex: PStrain
-	                           Model              * Mdl,                               ///< Constitutive model. Ex: AllocModel("LinElastic")
+	                           Str_t                MdlName,                           ///< Constitutive model. Ex: "LinElastic"
+	                           Str_t                Prms,                              ///< Parameters. Ex: "E=100 nu=0.3"
 	                           Str_t                Inis,                              ///< Initial state. Ex: Sx=0.0
-	                           Prop_t             * Prp,                               ///< Element properties. Ex: gam=20
 	                           Str_t                Props,                             ///< Element properties. Ex: gam=20
 	                           bool                 IsAct);                            ///< Active/Inactive?
+
+	// Push new Node and Element
+	Node    * PushNode (double X, double Y, double Z, int Tag) { _nodes.Push(new Node);  return SetNode(_nodes.Size()-1,X,Y,Z,Tag); }
+	Element * PushElem (Array<long> const & Conn,      ///< Array wih IDs of connected nodes
+	                    int                 Tag,       ///< A tag for the new element
+	                    Str_t               GeomT,     ///< Geometry type. Ex.: Hex8, Beam, Spring
+	                    Str_t               ProbT,     ///< Problem type. Ex.: Equilib, Diffusion
+	                    Str_t               MdlName,   ///< Constitutive model name
+	                    Str_t               Prms,      ///< Parameters. Ex.: E=100 nu=0.3
+	                    Str_t               Inis,      ///< Initial values. Ex.: ZERO, Sx=0
+	                    Str_t               Props,     ///< Properties. Ex.: gam=20
+	                    bool                IsAct);    ///< Is active?
 
 	// Specific methods
 	void AddVolForces () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
@@ -148,17 +160,17 @@ public:
 
 private:
 	// Data
-	int                     _dim;             ///< Space dimension
-	double                  _tol;             ///< Tolerance for defining whether X-Y-Z coordinates are in a same plane or not. Also used for comparing coincident nodes
-	bool                    _frame;           ///< Only frame (beam/truss) structure ?
-	Array<Node*>            _nodes;           ///< FE nodes
-	Array<Element*>         _elems;           ///< FE elements
-	Array<Element*>         _beams;           ///< Beams
-	Array<int>              _btags;           ///< Beam tags
-	std::map<int,size_t>    _elem_tag_idx;    ///< Map Tag => Idx, where Idx is the index inside _elems_with_tags
-	Array<Array<Element*> > _elems_with_tags; ///< Element with tags
-	Array<Model*>           _models;          ///< Models
-	Array<Prop_t>           _props;           ///< Properties
+	int                     _dim;    ///< Space dimension
+	double                  _tol;    ///< Tolerance for defining whether X-Y-Z coordinates are in a same plane or not. Also used for comparing coincident nodes
+	bool                    _frame;  ///< Only frame (beam/truss) structure ?
+	Array<Node*>            _nodes;  ///< FE nodes
+	Array<Element*>         _elems;  ///< FE elements
+	Array<Element*>         _beams;  ///< Beams
+	Array<int>              _btags;  ///< Beam tags
+	std::map<int,size_t>    _etidx;  ///< Map: Tag=>Idx, where Idx is the index inside _ewtags, _models, and _props
+	Array<Array<Element*> > _ewtags; ///< Elements with tags. Size==_etidx.size()
+	Array<Model*>           _models; ///< Models.             Size==_etidx.size()
+	Array<Prop_t>           _props;  ///< Properties.         Size==_etidx.size()
 
 }; // class Data
 
@@ -217,16 +229,6 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 			throw new Fatal("FEM::SetNodesElems: For 2D problems, only the X and Y coordinates must be used (diff_z=%f)",diff_z);
 	}
 
-	// Allocate models and properties
-	_models.Resize (ElemsAtts->Size());
-	_props .Resize (ElemsAtts->Size());
-	for (size_t i=0; i<ElemsAtts->Size(); ++i) // 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
-	{
-		Str_t mdl = (*ElemsAtts)[i].get<3>();
-		if (strcmp(mdl,"")==0) throw new Fatal("Data::SetNodesElems: All model names must not be empty");
-		_models[i] = AllocModel(mdl);
-	}
-
 	// Number of beams (with duplicates)
 	Array< boost::tuple<size_t,size_t,size_t,int,int,int> > beams; // elem_id, eatt_id, local_edge_id, beam_tag, v0, v1
 	if (_frame==false)
@@ -275,20 +277,20 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 			int tag = (*ElemsAtts)[j].get<0>();
 			if (M->ElemTag(i)==tag)
 			{
-				// Extract attributes: 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
-				Str_t geomt = (*ElemsAtts)[j].get<1>();
-				Str_t probt = (*ElemsAtts)[j].get<2>();
-				Str_t inis  = (*ElemsAtts)[j].get<5>();
-				Str_t props = (*ElemsAtts)[j].get<6>();
-				bool  act   = (*ElemsAtts)[j].get<7>();
-
 				// Connectivity
 				Array<long> conn(M->ElemNVerts(i));
 				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = Nod(M->ElemCon(i,k))->GetID();
 
 				// New finite element
 				found = true;
-				SetElemAndModel (i, tag, conn, geomt, probt, _models[j], inis, &_props[j], props, act);
+				SetElemAndModel (i, conn, tag,
+				                 (*ElemsAtts)[j].get<1>(),  // GeomT
+				                 (*ElemsAtts)[j].get<2>(),  // ProbT
+				                 (*ElemsAtts)[j].get<3>(),  // MdlName
+				                 (*ElemsAtts)[j].get<4>(),  // Prms
+				                 (*ElemsAtts)[j].get<5>(),  // Inis
+				                 (*ElemsAtts)[j].get<6>(),  // Props
+				                 (*ElemsAtts)[j].get<7>()); // IsAct
 
 				// Next element
 				break;
@@ -307,34 +309,26 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		size_t local_edge_id = beams[i].get<2>();
 		int    beam_tag      = beams[i].get<3>();
 
-		// Extract attributes: 0:tag, 1:geom_t, 2:prob_t, 3:model, 4:prms, 5:inis, 6:props, 7:active
-		Str_t geomt = (*ElemsAtts)[eatt_id].get<1>();
-		Str_t probt = (*ElemsAtts)[eatt_id].get<2>();
-		Str_t inis  = (*ElemsAtts)[eatt_id].get<5>();
-		Str_t props = (*ElemsAtts)[eatt_id].get<6>();
-		bool  act   = (*ElemsAtts)[eatt_id].get<7>();
-
 		// Connectivity
 		Array<long> conn(2);
 		conn[0] = Nod(M->EdgeToLef(elem_id, local_edge_id))->GetID();
 		conn[1] = Nod(M->EdgeToRig(elem_id, local_edge_id))->GetID();
 
 		// New finite element
-		FEM::Element * fe = SetElemAndModel (ie, beam_tag, conn, geomt, probt, _models[eatt_id], inis, &_props[eatt_id], props, act);
+		FEM::Element * fe = SetElemAndModel (ie, conn, beam_tag,
+		                                     (*ElemsAtts)[eatt_id].get<1>(),  // GeomT
+		                                     (*ElemsAtts)[eatt_id].get<2>(),  // ProbT
+		                                     (*ElemsAtts)[eatt_id].get<3>(),  // MdlName
+		                                     (*ElemsAtts)[eatt_id].get<4>(),  // Prms
+		                                     (*ElemsAtts)[eatt_id].get<5>(),  // Inis
+		                                     (*ElemsAtts)[eatt_id].get<6>(),  // Props
+		                                     (*ElemsAtts)[eatt_id].get<7>()); // IsAct
 
 		// Next element
 		ie++;
 
 		// Set beam
 		SetBeam (i, fe, beam_tag);
-	}
-
-	// Set parameters
-	for (size_t i=0; i<_models.Size(); ++i)
-	{
-		int   tag  = (*ElemsAtts)[i].get<0>();
-		Str_t prms = (*ElemsAtts)[i].get<4>();
-		if (_models[i]!=NULL) _models[i]->Initialize (tag, prms);
 	}
 }
 
@@ -451,7 +445,7 @@ inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 	return _nodes[i];
 }
 
-inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<long> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Inis, Prop_t * Prp, Str_t Props, bool IsAct)
+inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
 {
 	// New element
 	if (_elems[i]==NULL) _elems[i] = new Element;
@@ -459,33 +453,42 @@ inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<long> const & Co
 	// Initialize constants of element and get geometry index (gi)
 	int gi = _elems[i]->InitCtes (_dim, GeomT, ProbT);
 
-	// Parse properties for the first (only) time
-	if (Prp->size()==0)
+	// Set array with elements with tags, allocate models, and set _props
+	if (_etidx.count(Tag)==0) // tag not set yet
 	{
+		// Set elements with tags
+		_etidx[Tag] = _ewtags.Size();
+		Array<Element*> tmp;
+		_ewtags.Push (tmp);
+		
+		// Allocate model (MUST be after _elems[i]->InitCtes)
+		_models.Push (AllocModel(MdlName));
+		_models[_models.Size()-1]->SetGeomIdx (gi);        // Set Model geometry index
+		_models[_models.Size()-1]->Initialize (Tag, Prms); // Parse parameters
+
+		// Parse properties
+		Prop_t prp;
+		_props.Push (prp);
 		LineParser lp(Props);
-		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*Prp), "properties", "Element tag", Tag);
+		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), _props[_props.Size()-1], "properties", "Element tag", Tag);
 	}
+	_ewtags[_etidx[Tag]].Push (_elems[i]);
 
 	// Initialize
 	Array<Node*> conn(Conn.Size());
 	for (size_t j=0; j<Conn.Size(); ++j) conn[j] = Nod(Conn[j]);
-	_elems[i]->Initialize (/*ID*/i, Tag, conn, Mdl, Inis, Prp, IsAct);
+	_elems[i]->Initialize (/*ID*/i, Tag, conn, _models[_etidx[Tag]], Inis, &_props[_etidx[Tag]], IsAct);
 
-	// Set Model geometry index
-	Mdl->SetGeomIdx (gi);
-
-	// Set array with elements with tags
-	if (Tag!=0)
-	{
-		if (_elem_tag_idx.count(Tag)==0) // tag not set
-		{
-			_elem_tag_idx[Tag] = _elems_with_tags.Size();
-			Array<Element*> tmp;
-			_elems_with_tags.Push (tmp);
-		}
-		_elems_with_tags[_elem_tag_idx[Tag]].Push (_elems[i]);
-	}
 	return _elems[i];
+}
+
+inline Element * Data::PushElem(Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
+{
+	// Add new element
+	_elems.Push (new Element);
+
+	// Set element, model, and properties
+	return SetElemAndModel (_elems.Size()-1, Conn, Tag, GeomT, ProbT, MdlName, Prms, Inis, Props, IsAct);
 }
 
 inline void Data::ClearDisp()
@@ -531,8 +534,8 @@ inline size_t Data::GetNode(double X, double Y, double Z)
 
 inline Array<Element*> & Data::ElemsWithTag(int Tag)
 {
-	if (_elem_tag_idx.count(Tag)==0) throw new Fatal("Data::ElemsWithTag: This Tag==%d was not set for any Element",Tag);
-	return _elems_with_tags[_elem_tag_idx[Tag]];
+	if (_etidx.count(Tag)==0) throw new Fatal("Data::ElemsWithTag: This Tag==%d was not set for any Element",Tag);
+	return _ewtags[_etidx[Tag]];
 }
 
 inline void Data::Bounds(double & MinX, double & MinY, double & MaxX, double & MaxY) const

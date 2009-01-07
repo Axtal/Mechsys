@@ -335,9 +335,12 @@ inline void DiffusionElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_
 inline void DiffusionElem::_initialize(Str_t Inis)
 {
 	// Resize IP data
-	_vel.Resize (_ge->NIPs);
-	_gra.Resize (_ge->NIPs);
-	_ivs.Resize (_ge->NIPs);
+	_vel    .Resize (_ge->NIPs);
+	_gra    .Resize (_ge->NIPs);
+	_ivs    .Resize (_ge->NIPs);
+	_vel_bkp.Resize (_ge->NIPs);
+	_gra_bkp.Resize (_ge->NIPs);
+	_ivs_bkp.Resize (_ge->NIPs);
 
 	// Parse values
 	LineParser           lp(Inis);

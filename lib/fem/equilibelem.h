@@ -424,9 +424,12 @@ inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t>
 inline void EquilibElem::_initialize(Str_t Inis)
 {
 	// Resize IP data
-	_sig.Resize (_ge->NIPs);
-	_eps.Resize (_ge->NIPs);
-	_ivs.Resize (_ge->NIPs);
+	_sig    .Resize (_ge->NIPs);
+	_eps    .Resize (_ge->NIPs);
+	_ivs    .Resize (_ge->NIPs);
+	_sig_bkp.Resize (_ge->NIPs);
+	_eps_bkp.Resize (_ge->NIPs);
+	_ivs_bkp.Resize (_ge->NIPs);
 
 	// Parse values
 	LineParser           lp(Inis);

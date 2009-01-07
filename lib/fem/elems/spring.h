@@ -181,7 +181,7 @@ inline void Spring::CMatrix(size_t Idx, Mat_t & Ke) const
 
 inline double Spring::N(double l) const
 {
-	return _mdl->Prm("ks")*(_uL(_nd)-_uL(0));
+	return _mdl->Prm("ks")*(_uL(1)-_uL(0));
 }
 
 

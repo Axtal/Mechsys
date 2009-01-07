@@ -74,15 +74,13 @@ int main(int argc, char **argv) try
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Add linear elements
-	//Array<int> conn(2);  conn = 0, 2;
-	//dat.PushElem (-200, "Spring", "", "ks=100", "ZERO", "gam=20", true, conn);
+	Array<long> conn(2);  conn = 0, 2;
+	dat.PushElem (conn, -200, "", "Spring", "SpringElastic", "ks=100", "ZERO", "", true);
 
 	// Print stiffness
-	/*
 	Matrix<double> Ke;  Ke.SetNS(Util::_12_4);
-	dat.Ele(2)->Order1Matrix(0,Ke);
+	dat.Ele(2)->CMatrix(0,Ke);
 	cout << "Ke =\n" << Ke << endl;
-	*/
 
 	// Stage # 1 --------------------------------------------------------------
 	dat.Nod(0)->Bry ("ux",0.0);

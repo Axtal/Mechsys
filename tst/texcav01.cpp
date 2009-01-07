@@ -115,19 +115,11 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
+	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
 	FEM::EAtts_T eatts;
-	if (is_o2)
-	{
-		eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-		eatts.Push (make_tuple(-3, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-	}
-	else
-	{
-		eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-		eatts.Push (make_tuple(-3, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-	}
+	eatts.Push (make_tuple(-1, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-2, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-3, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);
@@ -137,26 +129,26 @@ int main(int argc, char **argv) try
 
 	// Stage # -1 --------------------------------------------------------------
 	FEM::EBrys_T ebrys;
-	ebrys.Push           (make_tuple(-10, "ux", 0.0));
-	ebrys.Push           (make_tuple(-11, "uy", 0.0));
-	dat.SetBrys         (&mesh, NULL, &ebrys, NULL);
-	dat.AddVolForces    ();
-	sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-	dat.ClearDisp       ();
+	ebrys.Push        (make_tuple(-10, "ux", 0.0));
+	ebrys.Push        (make_tuple(-11, "uy", 0.0));
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
+	dat.AddVolForces  ();
+	sol.SolveWithInfo (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
+	dat.ClearDisp     ();
 
 	// Stage # 0 ---------------------------------------------------------------
-	dat.Deactivate       (/*Tag*/-3);
-    ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux", 0.0));
-	ebrys.Push         (make_tuple(-11, "uy", 0.0));
+	dat.Deactivate    (/*Tag*/-3);
+	ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux", 0.0));
+	ebrys.Push        (make_tuple(-11, "uy", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (1, 2.0, 0, "  Excavation of first layer\n");
 
 	// Stage # 1 ---------------------------------------------------------------
-	dat.Deactivate       (/*Tag*/-2);
-    ebrys.Resize       (0);
-	ebrys.Push         (make_tuple(-10, "ux", 0.0));
-	ebrys.Push         (make_tuple(-11, "uy", 0.0));
+	dat.Deactivate    (/*Tag*/-2);
+	ebrys.Resize      (0);
+	ebrys.Push        (make_tuple(-10, "ux", 0.0));
+	ebrys.Push        (make_tuple(-11, "uy", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (1, 3.0, 0, "  Excavation of second layer\n");
 

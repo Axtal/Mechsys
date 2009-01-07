@@ -122,7 +122,7 @@ int main(int argc, char **argv) try
 
 	// Stage # 0 ---------------------------------------------------------------
 	dat.Activate      (/*Tag*/-2);
-    ebrys.Resize      (0);
+	ebrys.Resize      (0);
 	ebrys.Push        (make_tuple(-10, "ux", 0.0));
 	ebrys.Push        (make_tuple(-11, "uy", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
@@ -130,7 +130,7 @@ int main(int argc, char **argv) try
 
 	// Stage # 1 ---------------------------------------------------------------
 	dat.Deactivate    (/*Tag*/-2);
-    ebrys.Resize      (0);
+	ebrys.Resize      (0);
 	ebrys.Push        (make_tuple(-10, "ux", 0.0));
 	ebrys.Push        (make_tuple(-11, "uy", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
