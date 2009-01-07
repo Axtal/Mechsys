@@ -110,8 +110,9 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
+	// Data and Solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"texcav01");
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
@@ -121,11 +122,8 @@ int main(int argc, char **argv) try
 	eatts.Push (make_tuple(-2, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 	eatts.Push (make_tuple(-3, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
+	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
-
-	// Solver
-	FEM::Solver sol(dat,"texcav01");
 
 	// Stage # -1 --------------------------------------------------------------
 	FEM::EBrys_T ebrys;

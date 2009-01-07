@@ -37,7 +37,7 @@
 #include "fem/elems/quad4.h"
 #include "fem/elems/quad8.h"
 #include "fem/biotelem.h"
-#include "models/equilibs/linelastic.h"
+#include "models/equilibs/biotelastic.h"
 #include "util/exception.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
@@ -54,6 +54,7 @@ int main(int argc, char **argv) try
 	// Constants
 	double E     = 5000.0; // Young
 	double nu    = 0.3;    // Poisson
+	double gam   = 20.0;   // Specific weight
 	double gw    = 10.0;   // gamma w
 	double k     = 1.0e-2; // permeability
 	int    ndivx = 10;     // number of divisions along x and y (for each block)
@@ -114,30 +115,21 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
+	// Data and Solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"tembed02");
 
 	// Elements attributes
-	String prms; prms.Printf("E=%f nu=%f gw=%f k=%f",E,nu,gw,k);
+	String prms; prms.Printf("E=%f nu=%f k=%f",E,nu,k);
+	String prps; prps.Printf("gam=%f gw=%f",gam,gw);
+	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
 	FEM::EAtts_T eatts;
-	if (is_o2)
-	{
-		eatts.Push (make_tuple(-1, "Quad8", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad8", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-		eatts.Push (make_tuple(-3, "Quad8", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-	}
-	else
-	{
-		eatts.Push (make_tuple(-1, "Quad4", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ));
-		eatts.Push (make_tuple(-2, "Quad4", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-		eatts.Push (make_tuple(-3, "Quad4", "Biot", "LinElastic", prms.CStr(), "ZERO", "gam=20", false));
-	}
+	eatts.Push (make_tuple(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true ));
+	eatts.Push (make_tuple(-2, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false));
+	eatts.Push (make_tuple(-3, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
+	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
-
-	// Solver
-	FEM::Solver sol(dat,"tembed02");
 
 	// Stage # -1 --------------------------------------------------------------
 	FEM::EBrys_T ebrys;

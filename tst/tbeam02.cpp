@@ -72,9 +72,9 @@ int main(int argc, char **argv) try
 	mesh.SetElem   (2, -5, true, VTK_LINE);
 	mesh.SetElem   (3, -5, true, VTK_LINE);
 	mesh.SetElem   (4, -5, true, VTK_LINE);
-	mesh.SetElem   (5, -5, true, VTK_LINE);
-	mesh.SetElem   (6, -5, true, VTK_LINE);
-	mesh.SetElem   (7, -5, true, VTK_LINE);
+	mesh.SetElem   (5, -6, true, VTK_LINE);
+	mesh.SetElem   (6, -6, true, VTK_LINE);
+	mesh.SetElem   (7, -6, true, VTK_LINE);
 	mesh.SetElemCon(0, 0, 0);  mesh.SetElemCon(0, 1, 1);
 	mesh.SetElemCon(1, 0, 1);  mesh.SetElemCon(1, 1, 2);
 	mesh.SetElemCon(2, 0, 2);  mesh.SetElemCon(2, 1, 3);
@@ -86,23 +86,26 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 	
-	// Data
-	FEM::Data dat(2); // 2D
+	// Data and Solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat, "tbeam02");
 
 	// Elements attributes
-	double E   = 1.0;
-	double A   = 5.0e+9;
-	double Izz = 6.0e+4;
-	String prms; prms.Printf("E=%f A=%f Izz=%f",E,A,Izz);
+	double E1   = 1.0;
+	double A1   = 5.0e+9;
+	double Izz1 = 6.0e+4;
+	double E2   = 1.0;
+	double A2   = 1.0e+9;
+	double Izz2 = 2.0e+4;
+	String prms1; prms1.Printf("E=%f A=%f Izz=%f",E1,A1,Izz1);
+	String prms2; prms2.Printf("E=%f A=%f Izz=%f",E2,A2,Izz2);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-5, "", "Beam", "BeamElastic", prms.CStr(), "ZERO", "gam=20 cq=1", true));
+	eatts.Push (make_tuple(-5, "", "Beam", "BeamElastic", prms1.CStr(), "ZERO", "gam=20 cq=1", true));
+	eatts.Push (make_tuple(-6, "", "Beam", "BeamElastic", prms2.CStr(), "ZERO", "gam=20 cq=1", true));
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);
 	dat.SetNodesElems (&mesh, &eatts);
-
-	// Solver
-	FEM::Solver sol(dat, "tbeam02");
 
 	// Stage # 1 -----------------------------------------------------------
 	dat.Ele(0)->EdgeBry("Qb", -20.0, -20.0, 0);
@@ -137,7 +140,38 @@ int main(int argc, char **argv) try
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
-	return 1;
+	// Displacements
+	Array<double> err_u;
+    err_u.Push(fabs(dat.Nod(0)->Val("ux") - 0.000000000000000E+00));
+    err_u.Push(fabs(dat.Nod(1)->Val("ux") - 0.364510505250599E-07));
+    err_u.Push(fabs(dat.Nod(4)->Val("ux") - 0.643549267921723E-07));
+    err_u.Push(fabs(dat.Nod(5)->Val("ux") - 0.643549267921723E-07));
+    err_u.Push(fabs(dat.Nod(6)->Val("ux") - 0.000000000000000E+00));
+    err_u.Push(fabs(dat.Nod(7)->Val("ux") - 0.000000000000000E+00));
+    err_u.Push(fabs(dat.Nod(0)->Val("uy") -  0.000000000000000E+00));
+    err_u.Push(fabs(dat.Nod(1)->Val("uy") - -0.831942398779212E-06));
+    err_u.Push(fabs(dat.Nod(4)->Val("uy") - -0.628326321776739E-06));
+    err_u.Push(fabs(dat.Nod(5)->Val("uy") -  0.287991471238717E-02));
+    err_u.Push(fabs(dat.Nod(6)->Val("uy") -  0.000000000000000E+00));
+    err_u.Push(fabs(dat.Nod(7)->Val("uy") -  0.000000000000000E+00));
+    err_u.Push(fabs(dat.Nod(0)->Val("wz") - -0.102535585850665E-02));
+    err_u.Push(fabs(dat.Nod(1)->Val("wz") - -0.949704254186087E-03));
+    err_u.Push(fabs(dat.Nod(4)->Val("wz") -  0.177354929713225E-02));
+    err_u.Push(fabs(dat.Nod(5)->Val("wz") -  0.132921596379892E-02));
+    err_u.Push(fabs(dat.Nod(6)->Val("wz") -  0.000000000000000E+00));
+    err_u.Push(fabs(dat.Nod(7)->Val("wz") -  0.000000000000000E+00));
+
+	// Error summary
+	double tol_u     = 1.0e-6;
+	double min_err_u = err_u[err_u.Min()];
+	double max_err_u = err_u[err_u.Max()];
+	cout << endl;
+	cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
+	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
+
+	// Return error flag
+	if (max_err_u>tol_u) return 1;
+	else return 0;
 }
 catch (Exception * e) 
 {

@@ -114,12 +114,12 @@ int main(int argc, char **argv) try
 	for (int j=0; j<8; ++j)
 		errors += fabs(Ke0(i,j)-Ke_correct(i,j));
 
-	if (fabs(errors)>1.0e-12) cout << "[1;31mErrors(" << linsol << ") = " << Util::_8s << errors << "[0m\n" << endl;
+	if (fabs(errors)>1.0e-3) cout << "[1;31mErrors(" << linsol << ") = " << Util::_8s << errors << "[0m\n" << endl;
 	else                      cout << "[1;32mErrors(" << linsol << ") = " << Util::_8s << errors << "[0m\n" << endl;
 
 	// Return error flag
-	if (fabs(errors)>1.0e-12) return 1;
-	else                      return 0;
+	if (fabs(errors)>1.0e-3) return 1;
+	else                     return 0;
 }
 catch (Exception * e) 
 {

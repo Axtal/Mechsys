@@ -190,8 +190,6 @@ int main(int argc, char **argv) try
 	// Return error flag
 	if (max_err_u>tol_u || max_err_f>tol_f || max_err_s>tol_s) return 1;
 	else return 0;
-
-	return 0;
 }
 catch (Exception * e) 
 {
