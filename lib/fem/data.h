@@ -142,10 +142,8 @@ public:
 	                      BPy::list     const & NodesBrys,  ///< Give [] when there are no nodes boundary conditions
 	                      BPy::list     const & EdgesBrys,  ///< Give [] for 3D mesh without edge boundary conditions
 	                      BPy::list     const & FacesBrys); ///< Give [] for 2D meshes
-	void PyAddReinfs     (BPy::dict const & Edges,          ///< {(x0,y0, x1,y1):tag1, ... num edges} or {(x0,y0,z0, x1,y1,z1):tag1, ... num edges}
-	                      BPy::list const & EAtts);         ///< Elements attributes
-	void PyAddLinElems   (BPy::dict const & Edges,          ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
-	                      BPy::list const & EAtts);         ///< Elements attributes
+	void PyAddLinElems   (BPy::dict     const & Edges,      ///< {(n1,n2):tag1, (n3,n4):tag2, ... num edges} n# => node ID
+	                      BPy::list     const & EAtts);     ///< Elements attributes
 
 	// Access methods
 	Node    const & PyNod          (size_t i)                     { return (*Nod(i));       }
@@ -691,78 +689,12 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 	if (fbrys!=NULL) delete fbrys;
 }
 
-inline void Data::PyAddReinfs(BPy::dict const & Edges, BPy::list const & EAtts)
-{
-	/* Example:
-	 *           
-	 *           # Elements attributes
-	 *           eatts = [[-1, 'Reinforcement', '', 'E=%g Ar=%g At=%g ks=%g c=%g phi=%g', 'ZERO', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
-	 */
-
-	// Map element tag to index in EAtts list
-	int neatts = BPy::len(EAtts);
-	if (neatts<1) throw new Fatal("Data::PyAddReinfs: EAtts (element attributes) must contain at least one element");
-	std::map<int,int> tag2idx; 
-	for (int i=0; i<neatts; ++i)
-	{
-		BPy::list const & lst = BPy::extract<BPy::list>(EAtts[i])();
-		tag2idx[BPy::extract<int>(lst[0])()] = i;
-		if (BPy::len(EAtts[i])!=7) throw new Fatal("Data::PyAddReinfs: Each sublist in EAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Reinforcement', '', 'E=200 Ar=1 At=1 ks=1e+12 c=0 phi=20', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
-	}
-
-	// Read edges
-	double x0=0.0; double y0=0.0; double z0=0.0;
-	double x1=0.0; double y1=0.0; double z1=0.0;
-	BPy::object const & e_keys = BPy::extract<BPy::dict>(Edges)().iterkeys();
-	BPy::object const & e_vals = BPy::extract<BPy::dict>(Edges)().itervalues();
-	for (int i=0; i<BPy::len(Edges); ++i)
-	{
-		// Extract reinforcement data
-		BPy::tuple const & xyz = BPy::extract<BPy::tuple> (e_keys.attr("next")())();
-		int                tag = BPy::extract<int>        (e_vals.attr("next")())();
-
-		// Check number of coordinates
-		size_t nxyz = BPy::len(xyz);
-		bool   is3d = (nxyz==4 ? false : true);
-		if (!((nxyz==4) || (nxyz==6))) throw new Fatal("Data::PyAddReinfs: Each edge representing a reinforcement must have either 4(2D) or 6(3D)\n coordinates corresponding to the start and end points (nxyz==%d is invalid).\n\tEx. {(x0,y0,z0, x1,y1,z1):-100}",nxyz);
-
-		// Extract coordinates
-		if (is3d)
-		{
-			x0 = BPy::extract<double>(xyz[0])();
-			y0 = BPy::extract<double>(xyz[1])();
-			z0 = BPy::extract<double>(xyz[2])();
-			x1 = BPy::extract<double>(xyz[3])();
-			y1 = BPy::extract<double>(xyz[4])();
-			z1 = BPy::extract<double>(xyz[5])();
-		}
-		else
-		{
-			x0 = BPy::extract<double>(xyz[0])();
-			y0 = BPy::extract<double>(xyz[1])();
-			x1 = BPy::extract<double>(xyz[2])();
-			y1 = BPy::extract<double>(xyz[3])();
-		}
-		//std::cout << "Edge: tag="<<tag << ", x0="<<x0 << ", y0="<<y0 << ", z0="<<z0 << ", x1="<<x1 << ", y1="<<y1 << ", z1="<<z1 << std::endl;
-		
-		// Find element attributes
-		std::map<int,int>::const_iterator iter = tag2idx.find(tag);
-		if (iter==tag2idx.end()) throw new Fatal("Data::PyAddReinfs: Could not find tag < %d > in the list of Element Attributes", tag);
-		int idx_eatt = iter->second;
-
-		// Add reinforcement to FE geometry
-		Str_t prms = BPy::extract<Str_t>(EAtts[idx_eatt][3])();
-		bool         act  = BPy::extract<bool>        (EAtts[idx_eatt][6])();
-		FEM::AddReinf (x0,y0,z0, x1,y1,z1, prms, act, tag, this);
-	}
-}
-
 inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts)
 {
 	/* Example:
 	 *           
 	 *           # Elements attributes
-	 *           eatts = [[-1, 'Spring', '', 'ks=%g', 'ZERO', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
+	 *           eatts = [[-1, '', 'Spring', 'LinSpring', 'ks=%g', 'ZERO', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
 	 */
 
 	// Map element tag to index in EAtts list
@@ -773,7 +705,7 @@ inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 	{
 		BPy::list const & lst = BPy::extract<BPy::list>(EAtts[i])();
 		tag2idx[BPy::extract<int>(lst[0])()] = i;
-		if (BPy::len(EAtts[i])!=7) throw new Fatal("Data::PyAddLinElems: Each sublist in EAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Spring', '', 'ks=1e+12', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
+		if (BPy::len(EAtts[i])!=8) throw new Fatal("Data::PyAddLinElems: Each sublist in EAtts must have 8 items: tag, '', type, model, prms, inis, props, active?\n\tExample: eatts = [[-1, 'Spring', '', 'ks=1e+12', 'ZERO', 'gam=20', True]]\n\tlen(EAtts[i])==%d is invalid.",BPy::len(EAtts[i]));
 	}
 
 	// Read edges
@@ -782,11 +714,11 @@ inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 	for (int i=0; i<BPy::len(Edges); ++i)
 	{
 		// Extract linear element data
-		Array<int> conn(2); // connectivity
+		Array<long> conn(2); // connectivity
 		BPy::tuple const & edge    = BPy::extract<BPy::tuple> (e_keys.attr("next")())();
 		int                tag     = BPy::extract<int>        (e_vals.attr("next")())();
-		                   conn[0] = BPy::extract<int>        (edge[0])();
-		                   conn[1] = BPy::extract<int>        (edge[1])();
+		                   conn[0] = BPy::extract<long>       (edge[0])();
+		                   conn[1] = BPy::extract<long>       (edge[1])();
 		
 		// Find element attributes
 		std::map<int,int>::const_iterator iter = tag2idx.find(tag);
@@ -794,37 +726,22 @@ inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 		int idx_eatt = iter->second;
 
 		// Add linear element to FE geometry
-		Str_t type  = BPy::extract<Str_t>(EAtts[idx_eatt][1])();
-		Str_t mdl   = BPy::extract<Str_t>(EAtts[idx_eatt][2])();
-		Str_t prms  = BPy::extract<Str_t>(EAtts[idx_eatt][3])();
-		Str_t inis  = BPy::extract<Str_t>(EAtts[idx_eatt][4])();
-		Str_t props = BPy::extract<Str_t>(EAtts[idx_eatt][5])();
-		bool  act   = BPy::extract<bool> (EAtts[idx_eatt][6])();
-		PushElem (tag, type, mdl, prms, inis, props, act, conn);
+		PushElem (conn, tag,
+		          BPy::extract<Str_t>(EAtts[idx_eatt][1])(),  // GeomT
+		          BPy::extract<Str_t>(EAtts[idx_eatt][2])(),  // ProbT
+		          BPy::extract<Str_t>(EAtts[idx_eatt][3])(),  // MdlName
+		          BPy::extract<Str_t>(EAtts[idx_eatt][4])(),  // Prms
+		          BPy::extract<Str_t>(EAtts[idx_eatt][5])(),  // Inis
+		          BPy::extract<Str_t>(EAtts[idx_eatt][6])(),  // Props
+		          BPy::extract<bool> (EAtts[idx_eatt][7])()); // IsAct
 	}
-}
-
-inline size_t Data::PyPushElem(int Tag, BPy::str const & GeomT, BPy::str const & ProbT, BPy::str const & Model, BPy::str const & Prms, BPy::str const & Inis, BPy::str const & Props, bool IsAct, BPy::list const & Conn)
-{
-	size_t nnodes = BPy::len(Conn);
-	if (nnodes<2) throw new Fatal("Data::PyPushElem: Number of nodes in the Conn list must be greater than 1");
-	Array<int> conn(nnodes);
-	for (size_t i=0; i<nnodes; ++i) conn[i] = BPy::extract<int>(Conn[i])();
-	return PushElem(Tag,
-	                BPy::extract<Str_t>(GeomT)(),
-	                BPy::extract<Str_t>(ProbT)(),
-	                BPy::extract<Str_t>(Model)(),
-	                BPy::extract<Str_t>(Prms)(),
-	                BPy::extract<Str_t>(Inis)(),
-	                BPy::extract<Str_t>(Props)(),
-	                IsAct, conn);
 }
 
 inline void Data::PyElemsWithTag(int Tag, BPy::list & Elems)
 {
 	Array<FEM::Element*> & elems = ElemsWithTag (Tag);
 	for (size_t i=0; i<elems.Size(); ++i)
-		Elems.append (PyElem(elems[i]));
+		Elems.append ((*elems[i]));
 }
 
 inline void Data::PyBounds2D(BPy::list & MinXY, BPy::list & MaxXY) const
