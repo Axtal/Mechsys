@@ -112,9 +112,9 @@ inline int BiotElem::InitCtes(int nDim)
 {
 	// Check
 	if (nDim<2 || nDim>3) throw new Fatal("BiotElem::InitCtes: The space dimension must be 2 or 3. nDim==%d is invalid",nDim);
+	_gi = (nDim==2 ? 1 : 0);
 
 	// Set number of DOFs (_nd), number of labels (_nl), and arrays of essential UD, natural FD, and labels LB
-	_gi = (nDim==2 ? 1 : 0);
 	if (_gi==0)  // 3D
 	{
 		_nd = ND_BIOT_3D;

@@ -22,11 +22,6 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	TARGET_LINK_LIBRARIES (tspring01   ${LIBS})
 	SET_TARGET_PROPERTIES (tspring01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
-	ADD_EXECUTABLE        (tnewele01   tnewele01.cpp)
-	ADD_TEST              (tnewele01   tnewele01)
-	TARGET_LINK_LIBRARIES (tnewele01   ${LIBS})
-	SET_TARGET_PROPERTIES (tnewele01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
 	ADD_EXECUTABLE        (texcav02   texcav02.cpp)
 	ADD_TEST              (texcav02   texcav02)
 	TARGET_LINK_LIBRARIES (texcav02   ${LIBS})
@@ -141,11 +136,6 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 	ADD_TEST              (tlaplace01 tlaplace01)
 	TARGET_LINK_LIBRARIES (tlaplace01 ${LIBS})
 	SET_TARGET_PROPERTIES (tlaplace01 PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
-	ADD_EXECUTABLE        (tsegfaults tsegfaults.cpp)
-	ADD_TEST              (tsegfaults tsegfaults)
-	TARGET_LINK_LIBRARIES (tsegfaults ${LIBS})
-	SET_TARGET_PROPERTIES (tsegfaults PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
 ENDIF(BLITZ_FOUND AND LINALG_FOUND)
 

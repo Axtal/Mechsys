@@ -21,7 +21,7 @@
        //@-----------@       ---
        //|           |        |
        //|           |        |
-  u=0  //|           |q=0    H=10
+  u=0  //|           |f=0    H=10
        //|           |        |
        //|    L=5    |        |
        //@-----------@       ---
@@ -37,10 +37,11 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/tri3diffusion.h"
-#include "fem/elems/tri6diffusion.h"
-#include "fem/elems/quad4diffusion.h"
-#include "fem/elems/quad8diffusion.h"
+#include "fem/elems/tri3.h"
+#include "fem/elems/tri6.h"
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/diffusionelem.h"
 #include "models/diffusions/lindiffusion.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -126,20 +127,20 @@ int main(int argc, char **argv) try
 
 	// Edges brys (the order matters!)
 	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-20, "q", 0.0));
+	ebrys.Push (make_tuple(-20, "f", 0.0));
 	ebrys.Push (make_tuple(-10, "u", 0.0));
 
 	// Elements attributes
 	FEM::EAtts_T eatts;
 	if (is_quad)
 	{
-		if (is_o2) eatts.Push (make_tuple(-1, "Quad8Diffusion", "LinDiffusion", "k=1.0", "", "", true));
-		else       eatts.Push (make_tuple(-1, "Quad4Diffusion", "LinDiffusion", "k=1.0", "", "", true));
+		if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Diffusion", "LinDiffusion", "k=1.0", "", "s=0.0", true));
+		else       eatts.Push (make_tuple(-1, "Quad4", "Diffusion", "LinDiffusion", "k=1.0", "", "s=0.0", true));
 	}
 	else
 	{
-		if (is_o2) eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", "", "", true));
-		else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", "", "", true));
+		if (is_o2) eatts.Push (make_tuple(-1, "Tri6", "Diffusion", "LinDiffusion", "k=1.0", "", "s=0.0", true));
+		else       eatts.Push (make_tuple(-1, "Tri3", "Diffusion", "LinDiffusion", "k=1.0", "", "s=0.0", true));
 	}
 
 	// Set geometry: nodes, elements, attributes, and boundaries
@@ -163,7 +164,7 @@ int main(int argc, char **argv) try
 
 	// Check
 	Array<double> err_u;
-	//cout << _6<<"Node #" << _8s<<"u" << _8s<<"ucorrect" << _8s<<"q" << endl;
+	//cout << _6<<"Node #" << _8s<<"u" << _8s<<"fcorrect" << _8s<<"f" << endl;
 	for (size_t i=0; i<dat.NNodes(); ++i)	
 	{
 		double x     = dat.Nod(i)->X();

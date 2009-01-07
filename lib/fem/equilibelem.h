@@ -28,7 +28,8 @@
              σ = D:ε       ε= -[-- + (--)]      t = σ . n
                               2 dx    dx
 
-  Primary variale:     u == displacements
+  Primary variable:    u == displacements
+  Natural variable:    f == force
   Volumetric variable: b == body forces
   Secondary variable:  σ == stress
   Secondary variable:  ε == strain

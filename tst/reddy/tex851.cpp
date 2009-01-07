@@ -28,13 +28,13 @@
  *                #|      |      |      |
  *                #|      |  a   |      |
  *    (insulated) #@------@------@------@  u=T=0
- *       q=0.0    #|      |      |      |
+ *       f=0.0    #|      |      |      |
  *                #|      |a     |      |  edgetag=-20
  *   edgetag=-10  #|      |      |      |
  *                #@------@------@------@  --> x
  *                #######################
  *                      (insulated)
- *                         q=0.0
+ *                         f=0.0
  *
  *                      edgetag=-10
  */
@@ -106,14 +106,14 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("k=%f", k);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Quad4", "Diffusion", "LinDiffusion", prms.CStr(), "", "", true)); // tag, type, model, prms, inis, props
+	eatts.Push (make_tuple(-1, "Quad4", "Diffusion", "LinDiffusion", prms.CStr(), "", "s=0.0", true)); // tag, type, model, prms, inis, props
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
-	ebrys.Push  (make_tuple(-10, "q", 0.0)); // tag, key, val
+	ebrys.Push  (make_tuple(-10, "f", 0.0)); // tag, key, val
 	ebrys.Push  (make_tuple(-20, "u", 0.0)); // tag, key, val
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 
@@ -137,7 +137,7 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<dat.NElems(); ++i)
 	{
 		LinAlg::Matrix<double> Ke;
-		dat.Ele(i)->Order1Matrix(0,Ke);
+		dat.Ele(i)->CMatrix(0,Ke);
 		double err_ke = 0.0;
 		for (int i=0; i<4; ++i)
 		for (int j=0; j<4; ++j)
@@ -151,9 +151,9 @@ int main(int argc, char **argv) try
 	sol.SolveWithInfo();
 
 	// Output: Nodes
-	cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
+	cout << _6<<"Node #" << _8s<<"u" << _8s<<"f" << endl;
 	for (size_t i=0; i<dat.NNodes(); ++i)
-		cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("q") << endl;
+		cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("f") << endl;
 	cout << endl;
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////

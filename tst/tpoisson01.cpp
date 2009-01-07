@@ -24,8 +24,9 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/tri3diffusion.h"
-#include "fem/elems/tri6diffusion.h"
+#include "fem/elems/tri3.h"
+#include "fem/elems/tri6.h"
+#include "fem/diffusionelem.h"
 #include "models/diffusions/lindiffusion.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -86,25 +87,24 @@ int main(int argc, char **argv) try
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// Geometry
-	FEM::Data dat(2); // 2D
-
-	// Edges brys (the order matters!)
-	FEM::EBrys_T ebrys;
-	ebrys.Push (make_tuple(-10, "u", 0.0));
+	// Data and Solver
+	FEM::Data   dat (2);
+	FEM::Solver sol (dat,"tpoisson01");
 
 	// Elements attributes
 	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Tri6Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
-	else       eatts.Push (make_tuple(-1, "Tri3Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
+	if (is_o2) eatts.Push (make_tuple(-1, "Tri6", "Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
+	else       eatts.Push (make_tuple(-1, "Tri3", "Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
 
-	// Set geometry: nodes, elements, attributes, and boundaries
+	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
-	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 
-	// Solve
-	FEM::Solver sol(dat,"tpoisson01");
-	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
+	// Stage # 1 -----------------------------------------------------------
+	FEM::EBrys_T ebrys;
+	ebrys.Push        (make_tuple(-10, "u", 0.0));
+	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
+	dat.AddVolForces  ();
+	sol.SolveWithInfo ();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 

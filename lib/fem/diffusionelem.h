@@ -28,9 +28,10 @@
             v = -k.i      i = --      qn = v . n
                               dx
 
-  Primary variale:     u  == temperature/total head              ~~ displacements
+  Primary variable:    u  == temperature/total head              ~~ displacements
+  Natural variable:    f  == flow(volume)                        ~~ force
   Volumetric variable: s  == heat source/wate recharge (pumping) ~~ body forces
-  Secondary variable:  v  == heat flux/velocity                  ~~ stress
+  Secondary variable:  v  == heat flux/Darcy's velocity          ~~ stress
   Secondary variable:  i  == gradient                            ~~ strain
   Secondary variable:  qn == normal flow                         ~~ traction
   Secondary variable:  n  == unit normal on boundary
@@ -51,7 +52,6 @@
 using Util::SQ2;
 using Util::_12_6;
 using Tensors::Tensor1;
-using Tensors::Vec3_t;
 
 namespace FEM
 {
@@ -81,7 +81,7 @@ public:
 
 	// Methods related to PROBLEM
 	int         InitCtes     (int nDim);
-	int         NProps       () const { return 1; } ///< just "gam"
+	int         NProps       () const { return 1; } ///< just "s" (source)
 	ProName_t * Props        () const { return DIFFUSION_PROP; }
 	void        AddVolForces ();
 	void        SetActive    (bool Activate, int ID);
@@ -138,6 +138,7 @@ inline int DiffusionElem::InitCtes(int nDim)
 {
 	// Check
 	if (nDim<2 || nDim>3) throw new Fatal("DiffusionElem::InitCtes: The space dimension must be 2 or 3. nDim==%d is invalid",nDim);
+	_gi = (nDim==2 ? 1 : 0);
 
 	// Essential/Natural
 	_nd = ND_DIFFUSION;
@@ -180,12 +181,17 @@ inline void DiffusionElem::AddVolForces()
 		_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
 		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian (dN, J);
-		fvol += -N*s*det(J)*_ge->IPs[i].w;
+		fvol += s*N*det(J)*_ge->IPs[i].w;
 	}
 
 	// Sum up contribution to external forces vector
 	for (size_t i=0; i<_ge->NNodes; ++i)
 		_ge->Conn[i]->Bry("f",fvol(i));
+}
+
+inline void DiffusionElem::SetActive(bool Activate, int ID)
+{
+	throw new Fatal("DiffusionElem::SetActive: Element # %d: Method not available yet",ID);
 }
 
 inline void DiffusionElem::CalcDeps() const
@@ -223,7 +229,7 @@ inline double DiffusionElem::Val(Str_t Name) const
 inline void DiffusionElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
-	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element
+	Vec_t du(_nd*_ge->NNodes); // Delta temp/head of this element
 
 	// Assemble (local/element) displacements vector
 	for (size_t i=0; i<_ge->NNodes; ++i)
@@ -236,15 +242,15 @@ inline void DiffusionElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 
 	// Update model and calculate internal force vector;
 	Mat_t dN,J,B;
-	Vec_t deps,dsig;
+	Vec_t dgrad,dvel;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
-		deps = B*du;
-		_mdl->StateUpdate (deps, _vel[i], _gra[i], _ivs[i], dsig);
-		df += trn(B)*dsig*det(J)*_ge->IPs[i].w;
+		dgrad = B*du;
+		_mdl->StateUpdate (dgrad, _vel[i], _gra[i], _ivs[i], dvel);
+		df += trn(B)*dvel*det(J)*_ge->IPs[i].w;
 	}
 
 	// Sum up contribution to internal forces vector
@@ -296,10 +302,10 @@ inline void DiffusionElem::CMatrix(size_t Idx, Mat_t & Ke) const
 	Mat_t dN,J,B,D;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian     (dN, J);
-		_B_mat            (dN, J, B);
-		_mdl->TgStiffness (_vel[i], _gra[i], _ivs[i], D);
+		_ge->Derivs          (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian        (dN, J);
+		_B_mat               (dN, J, B);
+		_mdl->TgConductivity (_vel[i], _gra[i], _ivs[i], D);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
 }
@@ -342,10 +348,8 @@ inline void DiffusionElem::_initialize(Str_t Inis)
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		// Stress and strain
-		_vel[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-		_gra[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-		for (Ini_t::const_iterator it=names_vals.begin(); it!=names_vals.end(); ++it)
-			Tensors::SetVal (it->first.CStr(), it->second, _vel[i], /*WithError*/false);
+		_vel[i] = 0.0,0.0,0.0;
+		_gra[i] = 0.0,0.0,0.0;
 
 		// Initialize internal values
 		_mdl->InitIVS (names_vals, _vel[i], _gra[i], _ivs[i]);
@@ -357,67 +361,7 @@ inline void DiffusionElem::_initialize(Str_t Inis)
 
 inline void DiffusionElem::_B_mat(Mat_t const & dN, Mat_t const & J, Mat_t & B) const
 {
-	/* OBS.:
-	 *       1) This B matrix considers Solid Mechanics sign convention of stress and strains
-	 *          Ex.: Compressive stresses/strains are negative
-	 *          The B Matrix returns strains in Mandel notation
-	 *
-	 *          Traction    => Positive
-	 *          Compression => Negative
-	 *
-	 *       2) This works for Diffusion and Biot elements, but not for Beams and Rods
-	 */
-
-	// Cartesian derivatives
-	Mat_t dC;
-	dC = inv(J)*dN;
-
-	int dim = _ge->NDim;
-	switch (_gi)
-	{
-		case 0: // 3D
-		{
-			const int n_scomps = 6; // number of stress compoments
-			B.Resize (n_scomps,dim*_ge->NNodes);
-			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
-			{
-				B(0,0+i*dim) =     dC(0,i);  B(0,1+i*dim) =         0.0;  B(0,2+i*dim) =         0.0;
-				B(1,0+i*dim) =         0.0;  B(1,1+i*dim) =     dC(1,i);  B(1,2+i*dim) =         0.0;
-				B(2,0+i*dim) =         0.0;  B(2,1+i*dim) =         0.0;  B(2,2+i*dim) =     dC(2,i);
-				B(3,0+i*dim) = dC(1,i)/SQ2;  B(3,1+i*dim) = dC(0,i)/SQ2;  B(3,2+i*dim) =         0.0; // SQ2 => Mandel representation
-				B(4,0+i*dim) =         0.0;  B(4,1+i*dim) = dC(2,i)/SQ2;  B(4,2+i*dim) = dC(1,i)/SQ2; // SQ2 => Mandel representation
-				B(5,0+i*dim) = dC(2,i)/SQ2;  B(5,1+i*dim) =         0.0;  B(5,2+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
-			}
-			return;
-		}
-		case 1: // 2D(plane-strain)
-		{
-			const int n_scomps = 4; // number of stress compoments
-			B.Resize (n_scomps,dim*_ge->NNodes);
-			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
-			{
-				B(0,0+i*dim) =     dC(0,i);  B(0,1+i*dim) =         0.0;
-				B(1,0+i*dim) =         0.0;  B(1,1+i*dim) =     dC(1,i);
-				B(2,0+i*dim) =         0.0;  B(2,1+i*dim) =         0.0;
-				B(3,0+i*dim) = dC(1,i)/SQ2;  B(3,1+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
-			}
-			return;
-		}
-		case 2: // 2D(plane-stress)
-		{
-			const int n_scomps = 3; // number of stress compoments
-			B.Resize(n_scomps,dim*_ge->NNodes);
-			for (size_t i=0; i<_ge->NNodes; ++i) // i row of B
-			{
-				B(0,0+i*dim) =      dC(0,i);   B(0,1+i*dim) =         0.0;
-				B(1,0+i*dim) =          0.0;   B(1,1+i*dim) =     dC(1,i);
-				B(2,0+i*dim) =  dC(1,i)/SQ2;   B(2,1+i*dim) = dC(0,i)/SQ2; // SQ2 => Mandel representation
-			}
-			return;
-		}
-		case 3: // 2D(axis-symmetric)
-		default: throw new Fatal("DiffusionElem::_B_mat: _B_mat() method is not available for GeometryIndex(gi)==%d",_gi);
-	}
+	B = inv(J)*dN;
 }
 
 inline void DiffusionElem::_dist_to_face_nodes(Str_t Key, double const FaceValue, Array<Node*> const & FConn)
@@ -469,27 +413,27 @@ inline void DiffusionElem::_dist_to_face_nodes(Str_t Key, double const FaceValue
 inline void DiffusionElem::_init_internal_state()
 {
 	// Allocate (local/element) internal force vector
-	Vec_t f(_ge->NDim*_ge->NNodes); // only forces (fx,fy,fz) (NDim) DOFs
+	Vec_t f(_ge->NNodes);
 	f.SetValues (0.0);
 
 	// Calculate internal force vector;
 	Mat_t dN;  // Shape Derivs
 	Mat_t J;   // Jacobian matrix
-	Mat_t B;   // strain-displacement matrix
-	Vec_t sig; // Stress vector in Mandel's notation
+	Mat_t B;   // grad-head matrix
+	Vec_t vel; // Velocity
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_ge->Derivs     (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-		_ge->Jacobian   (dN, J);
-		_B_mat          (dN, J, B);
-		Vec3_tToVector (_gi,_vel[i], sig);
-		f += trn(B)*sig*det(J)*_ge->IPs[i].w;
+		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+		_ge->Jacobian (dN, J);
+		_B_mat        (dN, J, B);
+		DiffusionModel::Vec3ToVec (_gi, _vel[i], vel);
+		f += trn(B)*vel*det(J)*_ge->IPs[i].w;
 	}
 
 	// Assemble (local/element) displacements vector.
 	for (size_t i=0; i<_ge->NNodes; ++i)
-	for (size_t j=0; j<_ge->NDim;   ++j)
-		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_ge->NDim+j); // only forces (fx,fy,fz) (NDim) DOFs
+	for (int    j=0; j<_nd;         ++j)
+		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_nd+j);
 }
 
 
@@ -497,42 +441,13 @@ inline void DiffusionElem::_init_internal_state()
 
 
 // Allocate a new 3D Diffusion element:
-ProbElem * DiffusionMaker() 
-{ 
-	DiffusionElem * Ptr = new DiffusionElem;
-	Ptr->__SetGeomIdx(0);
-	return Ptr; 
-}
+ProbElem * DiffusionMaker() { return new DiffusionElem; }
+
 // Register element
 int DiffusionRegister() { ProbElemFactory["Diffusion"]=DiffusionMaker;  return 0; }
+
 // Call register
 int __Diffusion_dummy_int  = DiffusionRegister();
-
-
-// Allocate a new PStrain element:
-ProbElem * PStrainMaker() 
-{ 
-	DiffusionElem * Ptr = new DiffusionElem;
-	Ptr->__SetGeomIdx(1);
-	return Ptr; 
-}
-// Register element
-int PStrainRegister() { ProbElemFactory["PStrain"]=PStrainMaker;  return 0; }
-// Call register
-int __PStrain_dummy_int  = PStrainRegister();
-
-
-// Allocate a new PStress element:
-ProbElem * PStressMaker() 
-{ 
-	DiffusionElem * Ptr = new DiffusionElem;
-	Ptr->__SetGeomIdx(2);
-	return Ptr; 
-}
-// Register element
-int PStressRegister() { ProbElemFactory["PStress"]=PStressMaker;  return 0; }
-// Call register
-int __PStress_dummy_int  = PStressRegister();
 
 }; // namespace FEM
 

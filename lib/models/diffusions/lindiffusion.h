@@ -25,105 +25,51 @@
 #include "util/util.h"
 #include "util/lineparser.h"
 
-using LinAlg::Vector;
-using LinAlg::Matrix;
-
 class LinDiffusion : public DiffusionModel
 {
 public:
+	// Constants
+	static const char LINDIFFUSION_PN[1][8];
+
 	// Destructor
 	virtual ~LinDiffusion () {}
 
-	// Derived Methods
-	void         SetPrms (char const * Prms);
-	void         SetInis (char const * Inis);
-	char const * Name    () const { return "LinDiffusion"; }
+	// Derived methods
+	int         NPrms () const { return 1;               }
+	PrmName_t * Prms  () const { return LINDIFFUSION_PN; }
+	Str_t       Name  () const { return "LinDiffusion";  }
 
 private:
 	// Data
-	TinyMat _K; ///< Conductivity
+	Mat3_t _K; ///< Constant conductivity
 
 	// Private methods
-	void   _cond (TinyVec const & DGra, TinyVec const & Vel, TinyVec const & Gra, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const;
-	double _val  (char const * Name) const { throw new Fatal("LinDiffusion::_val: The Name==%s is invalid",Name); }
+	void _initialize ();
+	void _cond       (Vec3_t const & DGra, Vec3_t const & Vel, Vec3_t const & Gra, IntVals const & Ivs,  Mat3_t & D, Array<Vec3_t> & B) const;
 
 }; // class LinDiffusion
+
+const char LinDiffusion::LINDIFFUSION_PN[1][8] = {"k"};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-/* public */
-
-inline void LinDiffusion::SetPrms(char const * Prms)
+inline void LinDiffusion::_initialize()
 {
-	if (_geom<0) throw new Fatal("LinDiffusion::SetPrms: Geometry type:\n\t[0==3D 1==2D] must be set via SetGeom before calling this method");
+	// Parameters
+	double k = Prm("k");
 
-	/* "kxx=1.0 kxy=0.0 kxz=0.0
-	            kyy=1.0 kxz=0.0
-	                    kzz=1.0"
-	    or "k=1.0" => isotropic
-	*/
-	LineParser lp(Prms);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
+	// Check
+	if (k<=0.0) throw new Fatal("LinDiffusion::_initialize: Tag=%d: Permeability (k) must be positive. k==%f is invalid",_tag,k);
 
-	// Conductivity matrix
-	if (_geom>2) throw new Fatal("LinDiffusion::SetPrms: Geometry type must be: 0:3D, 1:2D");
-	_K = 0.0;
-
-	// Set
-	if (names.Size()==1)
-	{
-		if (names[0]=="k")
-		{
-			_K = values[0],       0.0,       0.0,
-			           0.0, values[0],       0.0,
-			           0.0,       0.0, values[0];
-		}
-		else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s for isotropic models is invalid. It must be equal to 'k'. Ex.: k=1.0",names[0].CStr());
-	}
-	else
-	{
-		for (size_t i=0; i<names.Size(); ++i)
-		{
-			      if ( names[i]=="kxx")                                 { _K(0,0) = values[i];                       }
-			 else if ( names[i]=="kxy" || names[i]=="kyx")              { _K(0,1) = values[i];  _K(1,0) = values[i]; }
-			 else if ((names[i]=="kxz" || names[i]=="kzx") && _geom==0) { _K(0,2) = values[i];  _K(2,0) = values[i]; }
-			 else if ( names[i]=="kyy")                                 { _K(1,1) = values[i];                       }
-			 else if ((names[i]=="kyz" || names[i]=="kzy") && _geom==0) { _K(1,2) = values[i];  _K(2,1) = values[i]; }
-			 else if ( names[i]=="kzz"                     && _geom==0) { _K(2,2) = values[i];                       }
-			 else throw new Fatal("LinDiffusion::SetPrms: Parameter key==%s is invalid. It must be: kxx, kxy, kxz,  kyy, kyz,  kzz  (or kyx, kzx, kzy), where the 'z-coefficients' are valid only for 3D problems (_geom==0)",names[i].CStr());
-		}
-	}
+	// Set conductivity
+	_K =   k, 0.0, 0.0,
+	     0.0,   k, 0.0,
+	     0.0, 0.0,   k;
 }
 
-inline void LinDiffusion::SetInis(char const * Inis)
-{
-	/* "Vx=0.0 Vy=0.0 Vxy=0.0 ..." or "ZERO" */
-	LineParser lp(Inis);
-	Array<String> names;
-	Array<double> values;
-	lp.BreakExpressions(names,values);
-
-	// Parse input
-	_vel = 0.0, 0.0, 0.0;
-	_gra = 0.0, 0.0, 0.0;
-	for (size_t i=0; i<names.Size(); i++)
-	{
-		     if (names[i]=="ZERO") break;
-		else if (names[i]=="Vx")   _vel(0) = values[i];
-		else if (names[i]=="Vy")   _vel(1) = values[i];
-		else if (names[i]=="Vz")   _vel(2) = values[i];
-		else throw new Fatal("LinDiffusion::SetInis: '%s' component of velocity is invalid",names[i].CStr());
-	}
-}
-
-
-/* private */
-
-inline void LinDiffusion::_cond(TinyVec const & DGra, TinyVec const & Vel, TinyVec const & Gra, IntVals const & Ivs,  TinyMat & D, Array<TinyVec> & B) const
+inline void LinDiffusion::_cond(Vec3_t const & DGra, Vec3_t const & Vel, Vec3_t const & Gra, IntVals const & Ivs,  Mat3_t & D, Array<Vec3_t> & B) const
 {
 	D = _K;
 }
@@ -132,21 +78,14 @@ inline void LinDiffusion::_cond(TinyVec const & DGra, TinyVec const & Vel, TinyV
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
 
-// Allocate a new LinDiffusion model
-Model * LinDiffusionMaker()
-{
-	return new LinDiffusion();
-}
+// Allocate a new model
+Model * LinDiffusionMaker() { return new LinDiffusion(); }
 
-// Register an LinDiffusion model into ModelFactory array map
-int LinearDiffusionRegister()
-{
-	ModelFactory["LinDiffusion"] = LinDiffusionMaker;
-	return 0;
-}
+// Register model
+int LinDiffusionRegister() { ModelFactory["LinDiffusion"]=LinDiffusionMaker;  return 0; }
 
-// Execute the autoregistration
-int __LinearDiffusion_dummy_int = LinearDiffusionRegister();
+// Call register
+int __LinDiffusion_dummy_int = LinDiffusionRegister();
 
 
 #endif // MECHSYS_LINDIFFUSION_H

@@ -29,12 +29,14 @@
 using Tensors::Tensor2;
 using Tensors::Tensor4;
 
-typedef LinAlg::Vector<double>  Vec_t;
-typedef LinAlg::Matrix<double>  Mat_t;
-typedef char const            * Str_t;
-typedef std::map<String,double> Prm_t;        ///< Parameters type
-typedef const char              PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
-typedef std::map<String,double> Ini_t;        ///< Initial values. Ex.: Sx=0.0
+typedef LinAlg::Vector<double>        Vec_t;
+typedef LinAlg::Matrix<double>        Mat_t;
+typedef char const                  * Str_t;
+typedef std::map<String,double>       Prm_t;        ///< Parameters type
+typedef const char                    PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
+typedef std::map<String,double>       Ini_t;        ///< Initial values. Ex.: Sx=0.0
+typedef blitz::TinyVector<double,3>   Vec3_t;
+typedef blitz::TinyMatrix<double,3,3> Mat3_t;
 
 class Model
 {
@@ -60,6 +62,7 @@ public:
 
 	/* Initialize internal values. */
 	virtual void InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const {}
+	virtual void InitIVS (Ini_t const & Ini, Vec3_t  const & Vel, Vec3_t  const & Gra, IntVals & Ivs) const {}
 
 	/* Tangent stiffness. */
 	virtual void TgStiffness (Tensor2 const & Sig,
@@ -67,8 +70,14 @@ public:
 	                          IntVals const & Ivs,
 	                          Mat_t         & Dmat) const {}
 
-	/* Tangent stiffness. */
+	/* Tangent permeability. */
 	virtual void TgPermeability (Mat_t & Kmat) const {}
+
+	/* Tangent stiffness. */
+	virtual void TgConductivity (Vec3_t  const & Vel,
+	                             Vec3_t  const & Gra,
+	                             IntVals const & Ivs,
+	                             Mat_t         & Dmat) const {}
 
 	/* State update. */
 	virtual int StateUpdate (Vec_t   const & DEps,
@@ -76,6 +85,13 @@ public:
 	                         Tensor2       & Eps,
 	                         IntVals       & Ivs,
 	                         Vec_t         & DSig) { return -1; }
+
+	/* State update. */
+	virtual int StateUpdate (Vec_t   const & DGra,
+	                         Vec3_t        & Vel,
+	                         Vec3_t        & Gra,
+	                         IntVals       & Ivs,
+	                         Vec_t         & DVel) { return -1; }
 
 	// Integration constants
 	Model & STOL  (double Val=1.0e-5) { _STOL =Val; return (*this); }

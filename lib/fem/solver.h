@@ -279,7 +279,6 @@ inline void Solver::Solve(int NDiv, double DTime)
 	if (_data->Check()==false) throw new Fatal("Solver::Solve: FEM Geometry was not properly set (pointers may be NULL)");
 
 	// Loop over all active elements
-	double has_fvol = false;
 	for (size_t i=0; i<_data->NElems(); ++i)
 	{
 		if (_data->Ele(i)->IsActive())
@@ -288,9 +287,6 @@ inline void Solver::Solve(int NDiv, double DTime)
 			String msg;
 			if (_data->Ele(i)->Check(msg)==false)
 				throw new Fatal("Solver::Solve Element # %d was not properly initialized. Error: %s",i,msg.CStr());
-
-			// Check if any element has volumetric forces
-			//has_fvol = _data->Ele(i)->HasVolForces();
 		}
 	}
 
@@ -357,20 +353,6 @@ inline void Solver::Solve(int NDiv, double DTime)
 	{
 		_dF_ext(_pdofs[i]->EqID) = _pdofs[i]->NaturalBry   / NDiv;
 		_dU_ext(_pdofs[i]->EqID) = _pdofs[i]->EssentialBry / NDiv;
-	}
-
-	// Set component of external forces due to volume forces such as body forces, heat source, etc.
-	if (has_fvol)
-	{
-		// Calculate fvol
-		LinAlg::Vector<double> fvol;
-		fvol.Resize    (_ndofs);
-		fvol.SetValues (0.0);
-		//for (size_t i=0; i<_data->NElems(); ++i)
-			//if (_data->Ele(i)->IsActive()) _data->Ele(i)->AddVolForces(fvol); // add results to fvol
-
-		// Add to dFext vector
-		LinAlg::Axpy(1.0/NDiv,fvol, _dF_ext); // dFext <- dFext + fvol/numdiv
 	}
 
 	// Allocate stifness DENSE matrix G or Allocate stifness SPARSE matrix G

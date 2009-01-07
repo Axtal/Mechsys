@@ -71,116 +71,7 @@ int main(int argc, char **argv) try
 	if (argc>=3) check_conv  = atoi(argv[2]);
 	if (argc>=4) linsol.Printf("%s",argv[3]);
 
-	double err_1 = 0.0;
-	if (check_conv==false)
-	{
-		cout << "\n[0;1m================================================================== Coarse triangular mesh[0m\n";
-
-		////////////////////////////////////////////////////////////////////////////////////////// FEM /////
-
-		// Data and Solver
-		FEM::Data   dat (2);
-		FEM::Solver sol (dat);
-
-		// Nodes
-		dat.SetNNodes (6);
-		dat.SetNode   (0, 0.0, 0.0);
-		dat.SetNode   (1, 0.5, 0.0);
-		dat.SetNode   (2, 0.5, 0.5);
-		dat.SetNode   (3, 1.0, 0.0);
-		dat.SetNode   (4, 1.0, 0.5);
-		dat.SetNode   (5, 1.0, 1.0);
-
-		// Elements
-		dat.SetNElems (4);
-		dat.SetElem   (0, "Tri3", "Diffusion", true, -1);
-		dat.SetElem   (1, "Tri3", "Diffusion", true, -1);
-		dat.SetElem   (2, "Tri3", "Diffusion", true, -1);
-		dat.SetElem   (3, "Tri3", "Diffusion", true, -1);
-
-		// Set connectivity
-		dat.Ele(0)->Connect(0, dat.Nod(0))->Connect(1, dat.Nod(1))->Connect(2, dat.Nod(2));
-		dat.Ele(1)->Connect(0, dat.Nod(4))->Connect(1, dat.Nod(2))->Connect(2, dat.Nod(1));
-		dat.Ele(2)->Connect(0, dat.Nod(1))->Connect(1, dat.Nod(3))->Connect(2, dat.Nod(4));
-		dat.Ele(3)->Connect(0, dat.Nod(2))->Connect(1, dat.Nod(4))->Connect(2, dat.Nod(5));
-
-		// Parameters and initial values
-		dat.Ele(0)->SetModel("LinDiffusion", "k=1.0", "");
-		dat.Ele(1)->SetModel("LinDiffusion", "k=1.0", "");
-		dat.Ele(2)->SetModel("LinDiffusion", "k=1.0", "");
-		dat.Ele(3)->SetModel("LinDiffusion", "k=1.0", "");
-		
-		// Properties (heat source)
-		dat.Ele(0)->SetProps("s=1.0");
-		dat.Ele(1)->SetProps("s=1.0");
-		dat.Ele(2)->SetProps("s=1.0");
-		dat.Ele(3)->SetProps("s=1.0");
-
-		// Boundary conditions (must be after connectivity)
-		dat.Ele(0)->EdgeBry("q", 0.0, 0)->EdgeBry("q", 0.0, 2);
-		dat.Ele(2)->EdgeBry("q", 0.0, 0)->EdgeBry("u", 0.0, 1);
-		dat.Ele(3)->EdgeBry("u", 0.0, 1)->EdgeBry("q", 0.0, 2);
-		dat.Nod(3)->Bry("u",0.0);
-		dat.Nod(5)->Bry("u",0.0);
-
-		// Check conductivity matrices
-		double err_ke = 0.0;
-		LinAlg::Matrix<double> Ke0, Ke1, Ke2, Ke3;
-		LinAlg::Matrix<double> Ke_correct;  Ke_correct.Resize(3,3);
-		dat.Ele(0)->Order1Matrix(0,Ke0);
-		dat.Ele(1)->Order1Matrix(0,Ke1);
-		dat.Ele(2)->Order1Matrix(0,Ke2);
-		dat.Ele(3)->Order1Matrix(0,Ke3);
-		Ke_correct =  0.5, -0.5,  0.0,
-					 -0.5,  1.0, -0.5,
-					  0.0, -0.5,  0.5;
-		for (int i=0; i<3; ++i)
-		for (int j=0; j<3; ++j)
-		{
-			err_ke += fabs(Ke0(i,j)-Ke_correct(i,j));
-			err_ke += fabs(Ke1(i,j)-Ke_correct(i,j));
-			err_ke += fabs(Ke2(i,j)-Ke_correct(i,j));
-			err_ke += fabs(Ke3(i,j)-Ke_correct(i,j));
-		}
-		if (err_ke>DBL_EPSILON) throw new Fatal("tex831: err_ke=%e for coarse triangular mesh is bigger than %e.",err_ke,DBL_EPSILON);
-
-		// Solve
-		sol.SetLinSol(linsol.CStr());
-		sol.SolveWithInfo();
-
-		// Output: Nodes
-		cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
-		for (size_t i=0; i<dat.NNodes(); ++i)
-			cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("q") << endl;
-
-		//////////////////////////////////////////////////////////////////////////////////////// Check /////
-
-		std::ofstream of("tex831_1.cal", std::ios::out);
-		of << _8s<<"x" << _8s<<"u" << _8s<<"ucorr" << endl;
-		Array<double> err_u;
-		for (size_t i=0; i<dat.NNodes(); ++i)	
-		{
-			double x     = dat.Nod(i)->X();
-			double y     = dat.Nod(i)->Y();
-			double u     = dat.Nod(i)->Val("u");
-			double ucorr = u_correct(1.0,1.0,x,y);
-			err_u.Push ( fabs(u-ucorr) / (1.0+fabs(ucorr)) );
-			if (fabs(y)<=1e-5) of << _8s<<x << _8s<<u << _8s<<ucorr << endl;
-		}
-		of.close();
-
-		// Error summary
-		double tol_u     = 1.0e-2;
-		double min_err_u = err_u[err_u.Min()];
-		double max_err_u = err_u[err_u.Max()];
-		cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
-		cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
-		cout << endl;
-		err_1 = max_err_u;
-	}
-
-	cout << endl;
-	double err_2  = 0.0;
+	double error  = 0.0;
 	size_t ntests = (check_conv ? 4 : 1);
 	Array<size_t> ndivs;   ndivs  .Resize(ntests);
 	Array<size_t> ndofs;   ndofs  .Resize(ntests);
@@ -222,6 +113,7 @@ int main(int argc, char **argv) try
 		// Data and Solver
 		FEM::Data   dat (2);
 		FEM::Solver sol (dat);
+		sol.SetLinSol   (linsol.CStr());
 
 		// Elements attributes
 		FEM::EAtts_T eatts;
@@ -229,14 +121,6 @@ int main(int argc, char **argv) try
 
 		// Set geometry: nodes and elements
 		dat.SetNodesElems (&mesh, &eatts);
-
-		// Edges brys (the order matters!)
-		FEM::EBrys_T ebrys;
-		ebrys.Push  (make_tuple(-10, "q", 0.0));
-		ebrys.Push  (make_tuple(-30, "q", 0.0));
-		ebrys.Push  (make_tuple(-20, "u", 0.0));
-		ebrys.Push  (make_tuple(-40, "u", 0.0));
-		dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 
 		// Check conductivity matrices
 		double max_err_ke = 0.0;
@@ -249,7 +133,7 @@ int main(int argc, char **argv) try
 		for (size_t i=0; i<dat.NElems(); ++i)
 		{
 			LinAlg::Matrix<double> Ke;
-			dat.Ele(i)->Order1Matrix(0,Ke);
+			dat.Ele(i)->CMatrix(0,Ke);
 			double err_ke = 0.0;
 			for (int i=0; i<4; ++i)
 			for (int j=0; j<4; ++j)
@@ -258,18 +142,24 @@ int main(int argc, char **argv) try
 		}
 		if (max_err_ke>1.0e-12) throw new Fatal("tex831: max_err_ke==%e for quadrangular mesh is bigger than %e.",max_err_ke,1.0e-12);
 
-		// Solve
-		sol.SetLinSol(linsol.CStr());
-		sol.SolveWithInfo();
+		// Stage # 1 -----------------------------------------------------------
+		FEM::EBrys_T ebrys;
+		ebrys.Push        (make_tuple(-10, "f", 0.0));
+		ebrys.Push        (make_tuple(-30, "f", 0.0));
+		ebrys.Push        (make_tuple(-20, "u", 0.0));
+		ebrys.Push        (make_tuple(-40, "u", 0.0));
+		dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
+		dat.AddVolForces  ();
+		sol.SolveWithInfo ();
 		ndofs[k] = sol.nDOF();
 
 		// Output: Nodes
 		cout << endl;
 		if (ndivs[k]<3)
 		{
-			cout << _6<<"Node #" << _8s<<"u" << _8s<<"q" << endl;
+			cout << _6<<"Node #" << _8s<<"u" << _8s<<"f" << endl;
 			for (size_t i=0; i<dat.NNodes(); ++i)
-				cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("q") << endl;
+				cout << _6<<i << _8s<<dat.Nod(i)->Val("u") << _8s<<dat.Nod(i)->Val("f") << endl;
 			cout << endl;
 		}
 
@@ -301,7 +191,7 @@ int main(int argc, char **argv) try
 		// Error -- convergence
 		max_err[k] = max_err_u;
 	}
-	err_2 = max_err[0];
+	error = max_err[0];
 
 	// Check convergence
 	if (check_conv)
@@ -319,9 +209,9 @@ int main(int argc, char **argv) try
 	}
 
 	// Return error flag
-	if (err_1>1.38e-2 || err_2>1.24e-2)
+	if (error>1.24e-2)
 	{
-		cout << "[1;31mERROR too big: err_1 = " << _8s<<err_1 << ",    err_2 = " << _8s<<err_2 << "[0m" << endl;
+		cout << "[1;31mERROR too big:   error = " << _8s<<error << "[0m" << endl;
 		return 1;
 	}
 	else return 0;
