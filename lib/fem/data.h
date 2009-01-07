@@ -79,7 +79,7 @@ public:
 	Node    * SetNode         (size_t i, double X, double Y, double Z=0.0, int Tag=0); ///< Set a node
 	Element * SetElemAndModel (size_t               i,                                 ///< The ID(index) of the element
 	                           int                  Tag,                               ///< The tag of new element
-	                           Array<Node*> const & Conn,                              ///< Connectivity
+	                           Array<long>  const & Conn,                              ///< Connectivity
 	                           Str_t                GeomT,                             ///< Geometry Element type. Ex: Tri3
 	                           Str_t                ProbT,                             ///< Problem  Element type. Ex: PStrain
 	                           Model              * Mdl,                               ///< Constitutive model. Ex: AllocModel("LinElastic")
@@ -87,8 +87,6 @@ public:
 	                           Prop_t             * Prp,                               ///< Element properties. Ex: gam=20
 	                           Str_t                Props,                             ///< Element properties. Ex: gam=20
 	                           bool                 IsAct);                            ///< Active/Inactive?
-	Node    * PushNode        (double X, double Y, double Z, int Tag) { _nodes.Push(new Node);  return SetNode(_nodes.Size()-1,X,Y,Z,Tag); }
-	Element * PushElem        (int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Prms, Str_t Inis, Prop_t * Prp, Str_t Props, bool IsAct) { _elems.Push(new Element);  return SetElemAndModel(_elems.Size()-1,Tag,Conn,GeomT,ProbT,Mdl,Inis,Prp,Props,IsAct); }
 
 	// Specific methods
 	void AddVolForces () { for (size_t i=0; i<_elems.Size(); ++i) _elems[i]->AddVolForces(); } ///< Apply body forces (equilibrium/coupled problems)
@@ -285,8 +283,8 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 				bool  act   = (*ElemsAtts)[j].get<7>();
 
 				// Connectivity
-				Array<Node*> conn(M->ElemNVerts(i));
-				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = Nod(M->ElemCon(i,k));
+				Array<long> conn(M->ElemNVerts(i));
+				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = Nod(M->ElemCon(i,k))->GetID();
 
 				// New finite element
 				found = true;
@@ -317,9 +315,9 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		bool  act   = (*ElemsAtts)[eatt_id].get<7>();
 
 		// Connectivity
-		Array<Node*> conn(2);
-		conn[0] = Nod(M->EdgeToLef(elem_id, local_edge_id));
-		conn[1] = Nod(M->EdgeToRig(elem_id, local_edge_id));
+		Array<long> conn(2);
+		conn[0] = Nod(M->EdgeToLef(elem_id, local_edge_id))->GetID();
+		conn[1] = Nod(M->EdgeToRig(elem_id, local_edge_id))->GetID();
 
 		// New finite element
 		FEM::Element * fe = SetElemAndModel (ie, beam_tag, conn, geomt, probt, _models[eatt_id], inis, &_props[eatt_id], props, act);
@@ -453,7 +451,7 @@ inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 	return _nodes[i];
 }
 
-inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<Node*> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Inis, Prop_t * Prp, Str_t Props, bool IsAct)
+inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<long> const & Conn, Str_t GeomT, Str_t ProbT, Model * Mdl, Str_t Inis, Prop_t * Prp, Str_t Props, bool IsAct)
 {
 	// New element
 	if (_elems[i]==NULL) _elems[i] = new Element;
@@ -469,7 +467,9 @@ inline Element * Data::SetElemAndModel(size_t i, int Tag, Array<Node*> const & C
 	}
 
 	// Initialize
-	_elems[i]->Initialize (/*ID*/i, Tag, Conn, Mdl, Inis, Prp, IsAct);
+	Array<Node*> conn(Conn.Size());
+	for (size_t j=0; j<Conn.Size(); ++j) conn[j] = Nod(Conn[j]);
+	_elems[i]->Initialize (/*ID*/i, Tag, conn, Mdl, Inis, Prp, IsAct);
 
 	// Set Model geometry index
 	Mdl->SetGeomIdx (gi);
