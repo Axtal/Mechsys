@@ -192,7 +192,7 @@ def delete_mesh():
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-@try_catch
+#@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -288,9 +288,10 @@ def button_event(evt):
         me.add_mesh (obj, mesh, 'struct')
     elif evt==EVT_MESH_GENSTRUS:
         obj = di.get_obj()
-        txt = me.gen_struct_mesh(True,None,True)
-        txt.write('obj = bpy.data.objects["'+obj.name+'"]\n')
-        txt.write('me.add_mesh     (obj, mesh, "struct")\n')
+        txt = me.gen_struct_mesh(True,None,True,di.key('smsh_cpp'))
+        if not di.key('smsh_cpp'):
+            txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
+            txt.write('me.add_mesh (obj, mesh, "struct")\n')
 
     # -------------------------------------------------------------------------- Unstructured
 
@@ -304,9 +305,10 @@ def button_event(evt):
         me.add_mesh (obj, mesh, 'unstruct')
     elif evt==EVT_MESH_GENUNSTRUS:
         obj = di.get_obj()
-        txt = me.gen_unstruct_mesh(True,None,True)
-        txt.write('obj = bpy.data.objects["'+obj.name+'"]\n')
-        txt.write('me.add_mesh           (obj, mesh, "unstruct")\n')
+        txt = me.gen_unstruct_mesh(True,None,True,di.key('umsh_cpp'))
+        if not di.key('umsh_cpp'):
+            txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
+            txt.write('me.add_mesh (obj, mesh, "unstruct")\n')
 
     # ----------------------------------------------------------------------------------- FEM 
 
@@ -454,6 +456,10 @@ def cb_frame (evt,val):
 def cb_etag  (evt,val): di.set_key      ('newetag', val)
 @try_catch
 def cb_ftag  (evt,val): di.set_key      ('newftag', val)
+@try_catch
+def cb_smsh_cpp (evt,val): di.set_key('smsh_cpp', val)
+@try_catch
+def cb_umsh_cpp (evt,val): di.set_key('umsh_cpp', val)
 
 # ---------------------------------- Mesh -- structured
 
@@ -633,6 +639,8 @@ def cb_eatt_del     (evt,val): di.props_del_fem_all_stg ('eatts', evt-EVT_INC)
 
 @try_catch
 def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
+@try_catch
+def cb_fem_cpp   (evt,val): di.set_key('fem_cpp', val)
 
 # ---------------------------------- FEM -- reinforcements (r)
 
@@ -973,7 +981,8 @@ def gui():
 
         r -= srg
         Draw.PushButton ('Generate (quadrilaterals/hexahedrons)', EVT_MESH_GENSTRU,  c,     r, 240, rh, 'Generated structured mesh')
-        Draw.PushButton ('Write Script',                          EVT_MESH_GENSTRUS, c+240, r, 100, rh, 'Create script for structured mesh generation')
+        Draw.Toggle     ('C++',                                   EVT_NONE,          c+240, r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
+        Draw.PushButton ('Write Script',                          EVT_MESH_GENSTRUS, c+280, r, 100, rh, 'Create script for structured mesh generation')
         r, c, w = gu.box2_out(W,cg,rh, c,r)
 
         # ----------------------- Mesh -- unstructured
@@ -1027,7 +1036,8 @@ def gui():
 
         r -= srg
         Draw.PushButton ('Generate (triangles/tetrahedrons)', EVT_MESH_GENUNSTRU , c,     r, 240, rh, 'Generated unstructured mesh')
-        Draw.PushButton ('Write Script',                      EVT_MESH_GENUNSTRUS, c+240, r, 100, rh, 'Create script for unstructured mesh generation')
+        Draw.Toggle     ('C++',                               EVT_NONE,            c+240, r,  40, rh, d['umsh_cpp'], 'Generate C++ script', cb_umsh_cpp)
+        Draw.PushButton ('Write Script',                      EVT_MESH_GENUNSTRUS, c+280, r, 100, rh, 'Create script for unstructured mesh generation')
         r, c, w = gu.box2_out(W,cg,rh, c,r+rh)
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
@@ -1311,8 +1321,9 @@ def gui():
         r -= rh
         Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c    , r, 100, rh, 'Run a FE analysis directly (without script)')
         Draw.Toggle     ('full',             EVT_NONE,         c+100, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
-        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+140, r,  80, rh, 'Generate script for FEM')
-        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+220, r, 120, rh, 'View results in ParaView')
+        Draw.Toggle     ('C++',              EVT_NONE,         c+140, r,  40, rh, d['fem_cpp'], 'Generate C++ script', cb_fem_cpp)
+        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+180, r, 100, rh, 'Generate script for FEM')
+        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+280, r, 120, rh, 'View results in ParaView')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg

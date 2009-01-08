@@ -62,11 +62,14 @@ def load_dict():
         dict['newetag']       = -50
         dict['newftag']       = -500
         dict['hide_mesh']     = False
+        dict['smsh_cpp']      = False # structured mesh: generate C++ script
+        dict['umsh_cpp']      = False # unstructured mesh: generate C++ script
         # FEM
         dict['show_reinfs']   = True  # show reinforcements
         dict['show_lines']    = True  # show linear elements
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
+        dict['fem_cpp']       = False # generate C++ script
         # RESULTS
         dict['res_stage']       = 1      # stage num
         dict['show_res']        = False
