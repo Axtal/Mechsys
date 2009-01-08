@@ -231,7 +231,7 @@ int main(int argc, char **argv) try
 				err_M .Push ( fabs(M_correct - M) );
 				err_N .Push ( fabs(N_correct - N) );
 
-				int node_id = dat.Ele(i)->Nod(j)->GetID();
+				int node_id = dat.Ele(i)->Nod(j)->ID();
 
 				double ux = dat.Nod(node_id)->Val("ux");
 				double uy = dat.Nod(node_id)->Val("uy");

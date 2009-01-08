@@ -117,7 +117,7 @@ int main(int argc, char **argv) try
 
 	// Data and Solver
 	FEM::Data   dat (2); // 2D
-	FEM::Solver sol (dat,"tembed02");
+	FEM::Solver sol (dat,"tembank02");
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f k=%f",E,nu,k);

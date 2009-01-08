@@ -16,6 +16,7 @@ import mechsys as ms
 E     = 5000.0  # Young
 nu    = 0.3     # Poisson
 gw    = 10.0    # gamma w
+gam   = 20.0    # specific weight
 k     = 1.0e-2  # permeability
 ndivx = 10      # number of divisions along x and y (for each block)
 ndivy =  4      # number of divisions along x and y (for each block)
@@ -67,19 +68,19 @@ dat = ms.data   (2)
 sol = ms.solver (dat, "tembank02_py")
 
 # Elements attributes
-eatts = [[-1, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", True ],
-         [-2, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", False],
-         [-3, "Quad4Biot", "LinElastic", "E=%f nu=%f gw=%f k=%f"%(E,nu,gw,k), "ZERO", "gam=20", False]]
+eatts = [[-1, "Quad4", "Biot", "BiotElastic", "E=%f nu=%f k=%f"%(E,nu,k), "ZERO", "gw=%f gam=%f"%(gw,gam), True ],
+         [-2, "Quad4", "Biot", "BiotElastic", "E=%f nu=%f k=%f"%(E,nu,k), "ZERO", "gw=%f gam=%f"%(gw,gam), False],
+         [-3, "Quad4", "Biot", "BiotElastic", "E=%f nu=%f k=%f"%(E,nu,k), "ZERO", "gw=%f gam=%f"%(gw,gam), False]]
 
 # Set geometry: nodes and elements
 dat.set_nodes_elems (mesh, eatts)
 
 # Stage # -1 --------------------------------------------------------------
 ebrys = [[-10, "ux",  0.0], [-11, "uy",  0.0], [-12, "pwp", 0.0]]
-dat.set_brys            (mesh, [], ebrys, [])
-dat.apply_body_forces   ()
-sol.solve_with_info     (10, 1e+2, -1, "  Initial stress state due to self weight (zero displacements)\n")
-dat.clear_displacements ()
+dat.set_brys          (mesh, [], ebrys, [])
+dat.add_vol_forces    ()
+sol.solve_with_info   (10, 1e+2, -1, "  Initial stress state due to self weight (zero displacements)\n")
+dat.clear_disp        ()
 
 # Stage # 0 ---------------------------------------------------------------
 dat.activate          (-2)

@@ -114,12 +114,12 @@ inline void Tri6::SetIPs(int NIPsTotal)
 
 inline void Tri6::VTKConn(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d %d %d %d",Conn[0]->GetID(),
-	                                 Conn[1]->GetID(),
-	                                 Conn[2]->GetID(),
-	                                 Conn[3]->GetID(),
-	                                 Conn[4]->GetID(),
-	                                 Conn[5]->GetID());
+	Nodes.Printf("%d %d %d %d %d %d",Conn[0]->ID(),
+	                                 Conn[1]->ID(),
+	                                 Conn[2]->ID(),
+	                                 Conn[3]->ID(),
+	                                 Conn[4]->ID(),
+	                                 Conn[5]->ID());
 }
 
 inline void Tri6::GetFNodes(int FaceID, Array<Node*> & FaceConnects) const

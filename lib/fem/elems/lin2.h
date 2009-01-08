@@ -39,7 +39,7 @@ public:
 	// Derived methods
 	void   SetIPs     (int NIPs1D);
 	int    VTKType    () const { return VTK_LINE; }
-	void   VTKConn    (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->GetID(),Conn[1]->GetID()); }
+	void   VTKConn    (String & Nodes) const { Nodes.Printf("%d %d",Conn[0]->ID(),Conn[1]->ID()); }
 	void   GetFNodes  (int FaceID, Array<Node*> & FaceConnects)  const;
 	void   Shape      (double r, double s, double t, Vec_t & N)  const;
 	void   Derivs     (double r, double s, double t, Mat_t & dN) const;

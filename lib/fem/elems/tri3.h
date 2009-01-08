@@ -113,9 +113,9 @@ inline void Tri3::SetIPs(int NIPsTotal)
 
 inline void Tri3::VTKConn(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d",Conn[0]->GetID(),
-	                        Conn[1]->GetID(),
-	                        Conn[2]->GetID());
+	Nodes.Printf("%d %d %d",Conn[0]->ID(),
+	                        Conn[1]->ID(),
+	                        Conn[2]->ID());
 }
 
 inline void Tri3::GetFNodes(int FaceID, Array<Node*> & FaceConnects) const

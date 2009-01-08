@@ -62,7 +62,7 @@ public:
 	                  Str_t                Inis,                 ///< Initial values. Ex: "ZERO" or "Sx=0.0 Sy=0.0"
 	                  Prop_t             * Prp,                  ///< Properties. Ex: "gam=20"
 	                  bool                 IsAct);               ///< Is the element active ?
-	long  GetID      () const           { return _id;          } ///< Return the ID of this element
+	long  ID         () const           { return _id;          } ///< Return the ID of this element
 	int   Tag        () const           { return _tag;         } ///< Return the Tag of this element
 	Str_t Type       () const           { return _type.CStr(); } ///< Return the name/type of this element
 	bool  Check      (String & Msg) const;                       ///< Check if everything is OK and element is ready for simulations
@@ -124,6 +124,17 @@ public:
 	                        Array<bool> & CUPresc) const                { CHECKGEPE("HMatMap"  ) _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc); } ///< HMatrix map to convert local DOFs into global equation positions
 	void         UVecMap   (size_t Idx, Array<size_t> & RMap) const     { CHECKGEPE("UVecMap"  ) _pe->UVecMap(Idx,RMap);                      } ///< UVector map to convert local DOFs into global equation positions
 
+#ifdef USE_BOOST_PYTHON
+// {
+	Node       & PyNod1     (size_t i)                                              { return (*Nod(i)); }
+	Node const & PyNod2     (size_t i)                                        const { return (*Nod(i)); }
+	double       PyVal1     (int iNod, BPy::str const & Key)                  const { return Val(iNod, BPy::extract<Str_t>(Key)()); }
+	double       PyVal2     (          BPy::str const & Key)                  const { return Val(      BPy::extract<Str_t>(Key)()); }
+	void         PyEdgeBry1 (BPy::str const & Key, double Val, int iEdge)           { EdgeBry(BPy::extract<Str_t>(Key)(), Val, iEdge); }
+	void         PyEdgeBry2 (BPy::str const & Key, double V0, double V1, int iEdge) { EdgeBry(BPy::extract<Str_t>(Key)(), V0, V1, iEdge); }
+	void         PyFaceBry  (BPy::str const & Key, double Val, int iFace)           { EdgeBry(BPy::extract<Str_t>(Key)(), Val, iFace); }
+// }
+#endif // USE_BOOST_PYTHON
 
 private:
 	// Data
@@ -186,7 +197,7 @@ inline void Element::OutNodes(Mat_t & Vals, Array<String> & Lbls) const
 
 std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 {
-	os << "[" << E.GetID() << "] Act=" << E.IsActive() << " Tag=" << E.Tag() << " " << E.Type() << " " << E.MdlName() << "\n";
+	os << "[" << E.ID() << "] Act=" << E.IsActive() << " Tag=" << E.Tag() << " " << E.Type() << " " << E.MdlName() << "\n";
 	os << "   ";  E.OutInfo(os);  os << "\n";
 	for (size_t i=0; i<E.NNodes(); ++i)
 		if (E.Nod(i)!=NULL) os << "   " << (*E.Nod(i)) << "\n";

@@ -66,7 +66,12 @@
 //#include "fem/elems/embspring.h"
 
 // MechSys -- Models
+#include "models/equilibs/beamelastic.h"
+#include "models/equilibs/biotelastic.h"
+#include "models/equilibs/camclay.h"
 #include "models/equilibs/linelastic.h"
+#include "models/equilibs/rodelastic.h"
+#include "models/equilibs/springelastic.h"
 
 using namespace boost::python;
 
@@ -141,7 +146,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	// ---------------------------------------------------------------------------- FEM
 	
 	class_<FEM::Node>("node")
-	    .def("get_id",  &FEM::Node::GetID)
+	    .def("id",      &FEM::Node::ID)
+	    .def("tag",     &FEM::Node::Tag)
 	    .def("x",       &FEM::Node::X)
 	    .def("y",       &FEM::Node::Y)
 	    .def("z",       &FEM::Node::Z)
@@ -151,18 +157,20 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<FEM::Element>("elem")
-	    .def("get_id",            &FEM::Element::GetID)
+	    .def("id",                &FEM::Element::ID)
 	    .def("tag",               &FEM::Element::Tag)
 	    .def("nnodes",            &FEM::Element::NNodes)
-	    .def("nod",               &FEM::Element::Nod,      return_internal_reference<>())
+	    .def("nod",               &FEM::Element::PyNod1, return_internal_reference<>())
+	    .def("nod",               &FEM::Element::PyNod2, return_internal_reference<>())
 	    .def("is_active",         &FEM::Element::IsActive)
-	    //.def("val",               &FEM::Element::Val1)
-	    //.def("val",               &FEM::Element::Val2)
-	    .def("edge_bry",          &FEM::Element::EdgeBry,  return_internal_reference<>())
-	    .def("face_bry",          &FEM::Element::FaceBry,  return_internal_reference<>())
+	    .def("calc_deps",         &FEM::Element::CalcDeps)
+	    .def("val",               &FEM::Element::PyVal1)
+	    .def("val",               &FEM::Element::PyVal2)
+	    .def("edge_bry",          &FEM::Element::PyEdgeBry1)
+	    .def("edge_bry",          &FEM::Element::PyEdgeBry2)
+	    .def("face_bry",          &FEM::Element::PyFaceBry)
 	    .def("has_extra",         &FEM::Element::HasExtra)
 	    .def("out_extra",         &FEM::Element::OutExtra)
-	    .def("calc_deps",         &FEM::Element::CalcDeps)
 	    .def(self_ns::str(self))
 	    ;
 
@@ -172,22 +180,16 @@ BOOST_PYTHON_MODULE (mechsys)
 		.def("set_nodes_elems",     &FEM::Data::PySetNodesElems)
 		.def("set_brys",            &FEM::Data::PySetBrys)
 	    .def("add_lin_elems",       &FEM::Data::PyAddLinElems)
-	    .def("set_nnodes",          &FEM::Data::SetNNodes)
-	    .def("set_nelems",          &FEM::Data::SetNElems)
-	    //.def("set_node",            &FEM::Data::PySetNode2D, return_internal_reference<>())
-	    //.def("set_node",            &FEM::Data::PySetNode3D, return_internal_reference<>())
-	    .def("set_elem",            &FEM::Data::PySetElem)
 	    .def("add_vol_forces",      &FEM::Data::AddVolForces)
 	    .def("clear_disp",          &FEM::Data::ClearDisp)
 	    .def("activate",            &FEM::Data::Activate)
 	    .def("deactivate",          &FEM::Data::Deactivate)
-	    .def("check",               &FEM::Data::Check)
 	    .def("nnodes",              &FEM::Data::NNodes)
 	    .def("nelems",              &FEM::Data::NElems)
 	    .def("nod",                 &FEM::Data::PyNod, return_internal_reference<>())
-	    .def("ele",                 &FEM::Data::PyEle)
-	    .def("get_node",            &FEM::Data::PyGetNode1)
-	    .def("get_node",            &FEM::Data::PyGetNode2)
+	    .def("ele",                 &FEM::Data::PyEle, return_internal_reference<>())
+	    //.def("get_node",            &FEM::Data::PyGetNode1)
+	    //.def("get_node",            &FEM::Data::PyGetNode2)
 	    .def("elems_with_tag",      &FEM::Data::PyElemsWithTag)
 	    .def("bounds_2d",           &FEM::Data::PyBounds2D)
 	    .def("bounds_3d",           &FEM::Data::PyBounds3D)

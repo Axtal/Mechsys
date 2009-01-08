@@ -148,8 +148,8 @@ public:
 	// Access methods
 	Node    const & PyNod          (size_t i)                     { return (*Nod(i));       }
 	Element const & PyEle          (size_t i)                     { return (*Ele(i));       }
-	size_t          PyGetNode1     (double X, double Y)           { return GetNode  (X,Y);  }
-	size_t          PyGetNode2     (double X, double Y, double Z) { return GetNode  (X,Y,Z);}
+	//size_t          PyGetNode1     (double X, double Y)           { return GetNode  (X,Y);  }
+	//size_t          PyGetNode2     (double X, double Y, double Z) { return GetNode  (X,Y,Z);}
 	void            PyElemsWithTag (int Tag, BPy::list & Elems);
 	void            PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
 	void            PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
@@ -277,7 +277,7 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 			{
 				// Connectivity
 				Array<long> conn(M->ElemNVerts(i));
-				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = Nod(M->ElemCon(i,k))->GetID();
+				for (size_t k=0; k<M->ElemNVerts(i); ++k) conn[k] = Nod(M->ElemCon(i,k))->ID();
 
 				// New finite element
 				found = true;
@@ -309,8 +309,8 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 
 		// Connectivity
 		Array<long> conn(2);
-		conn[0] = Nod(M->EdgeToLef(elem_id, local_edge_id))->GetID();
-		conn[1] = Nod(M->EdgeToRig(elem_id, local_edge_id))->GetID();
+		conn[0] = Nod(M->EdgeToLef(elem_id, local_edge_id))->ID();
+		conn[1] = Nod(M->EdgeToRig(elem_id, local_edge_id))->ID();
 
 		// New finite element
 		FEM::Element * fe = SetElemAndModel (ie, conn, beam_tag,
@@ -588,7 +588,7 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 	/* Example:
 	 *           
 	 *           # Elements attributes
-	 *           eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
+	 *           eatts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
 	 */
 
 	// Extract list with elements attributes
@@ -597,18 +597,19 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 	if (eatts_size>0) eatts.Resize(eatts_size);
 	for (int i=0; i<eatts_size; ++i)
 	{
-		if (len(ElemsAtts[i])==7)
+		if (len(ElemsAtts[i])==8)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
-			eatts[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
+			eatts[i] = boost::make_tuple(BPy::extract<int  >(lst[0])(),
 			                             BPy::extract<Str_t>(lst[1])(),
 			                             BPy::extract<Str_t>(lst[2])(),
 			                             BPy::extract<Str_t>(lst[3])(),
 			                             BPy::extract<Str_t>(lst[4])(),
-			                             BPy::extract<Str_t>(lst[5])(), 
-			                             BPy::extract<bool>       (lst[6])());
+			                             BPy::extract<Str_t>(lst[5])(),
+			                             BPy::extract<Str_t>(lst[6])(),
+			                             BPy::extract<bool> (lst[7])());
 		}
-		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 7 items: tag, type, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
+		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 8 items: tag, geomT, probT, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
 	}
 
 	// Set geometry
@@ -639,11 +640,11 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 		if (len(NodesBrys[i])==5)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(NodesBrys[i])();
-			(*nbrys)[i] = boost::make_tuple(BPy::extract<double     >(lst[0])(),
-			                                BPy::extract<double     >(lst[1])(),
-			                                BPy::extract<double     >(lst[2])(),
-			                                BPy::extract<Str_t>(lst[3])(),
-			                                BPy::extract<double     >(lst[4])());
+			(*nbrys)[i] = boost::make_tuple(BPy::extract<double>(lst[0])(),
+			                                BPy::extract<double>(lst[1])(),
+			                                BPy::extract<double>(lst[2])(),
+			                                BPy::extract<Str_t >(lst[3])(),
+			                                BPy::extract<double>(lst[4])());
 		}
 		else throw new Fatal("PySetData: Each sublist in NodesBrys must have 5 items: x,y,z, key, val\n\tExample: NodesBrys = [[1.0, 0.0, 0.0, 'ux', 0.0]]");
 	}
@@ -657,9 +658,9 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 		if (len(EdgesBrys[i])==3)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(EdgesBrys[i])();
-			(*ebrys)[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
-			                                BPy::extract<Str_t>(lst[1])(),
-			                                BPy::extract<double     >(lst[2])());
+			(*ebrys)[i] = boost::make_tuple(BPy::extract<int   >(lst[0])(),
+			                                BPy::extract<Str_t >(lst[1])(),
+			                                BPy::extract<double>(lst[2])());
 		}
 		else throw new Fatal("PySetData: Each sublist in EdgesBrys must have 3 items: tag, key, val\n\tExample: EdgesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
 	}
@@ -673,9 +674,9 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 		if (len(FacesBrys[i])==3)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(FacesBrys[i])();
-			(*fbrys)[i] = boost::make_tuple(BPy::extract<int        >(lst[0])(),
-			                                BPy::extract<Str_t>(lst[1])(),
-			                                BPy::extract<double     >(lst[2])());
+			(*fbrys)[i] = boost::make_tuple(BPy::extract<int   >(lst[0])(),
+			                                BPy::extract<Str_t >(lst[1])(),
+			                                BPy::extract<double>(lst[2])());
 		}
 		else throw new Fatal("PySetData: Each sublist in FacesBrys must have 3 items: tag, key, val\n\tExample: FacesBrys = [[-10, 'uy', 0.0], [-20, 'fy', -1]]");
 	}
@@ -692,7 +693,9 @@ inline void Data::PySetBrys(Mesh::Generic const & M, BPy::list const & NodesBrys
 inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts)
 {
 	/* Example:
-	 *           
+	 *           # Edges
+	 *           edges = {(n1,n2):tag1, (n3,n4):tag2, ... num edges}
+	 *
 	 *           # Elements attributes
 	 *           eatts = [[-1, '', 'Spring', 'LinSpring', 'ks=%g', 'ZERO', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
 	 */

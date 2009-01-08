@@ -113,10 +113,10 @@ inline void Quad4::SetIPs(int NIPs1D)
 
 inline void Quad4::VTKConn(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d %d",Conn[0]->GetID(),
-	                           Conn[1]->GetID(),
-	                           Conn[2]->GetID(),
-	                           Conn[3]->GetID());
+	Nodes.Printf("%d %d %d %d",Conn[0]->ID(),
+	                           Conn[1]->ID(),
+	                           Conn[2]->ID(),
+	                           Conn[3]->ID());
 }
 
 inline void Quad4::GetFNodes(int FaceID, Array<Node*> & FaceConnects) const

@@ -19,13 +19,14 @@
 import mechsys as ms
 
 # Constants
-L  = 2.0   # Length
-H  = 2.0   # Height
-E  = 207.0 # Young
-nu = 0.3   # Poisson
-q  = -1.0  # Load
-nx = 10    # Divisions along x (must be even)
-ny = 10    # Divisions along y
+L   = 1.0   # Length
+H   = 1.0   # Height
+E   = 207.0 # Young
+nu  = 0.3   # Poisson
+gam = 20   # Specific weight
+q   = -1.0  # Load
+nx  = 10    # Divisions along x (must be even)
+ny  = 10    # Divisions along y
 
 # ----------------------------------------------------------------------------- Mesh
 
@@ -62,16 +63,16 @@ dat = ms.data   (2)
 sol = ms.solver (dat, "tpstrain02_py")
 
 # Elements attributes
-eatts = [[-1, 'Quad4PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]
+eatts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'ZERO', 'gam=%f'%(gam), True]]
 
 # Set geometry: nodes and elements
 dat.set_nodes_elems (mesh, eatts)
 
-# Stage # 1
+# Stage # 1 --------------------------------------
 nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]]
 ebrys = [[-10, 'uy', 0.0], [-20, 'fy',   q]]
-dat.set_brys (mesh, nbrys, ebrys, []) # [] => no face brys
-sol.solve_with_info()
+dat.set_brys        (mesh, nbrys, ebrys, []) # [] => no face brys
+sol.solve_with_info ()
 
 #----------------------------------------------------------------------------- Check
 

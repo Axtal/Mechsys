@@ -239,7 +239,7 @@ inline void Output::_calc_nodal_vals()
 			int index = _map[labels[j]];
 			for (size_t k=0; k<elem_nnodes; ++k)
 			{
-				int inode           = _aes[i]->Nod(k)->GetID();
+				int inode           = _aes[i]->Nod(k)->ID();
 				_vals(inode,index) += values(k, j); // accumulate values
 				 refs(inode,index)++;               // update references number
 			}

@@ -92,8 +92,8 @@ public:
 	DOF const & DOFVar (int Index) const { return _dofs[Index]; } ///< Access a DOF structure by index (read-only)
 
 	// Access methods
+	long   ID        ()          const { return _my_id; }            ///< Return the ID of this node
 	int    Tag       ()          const { return _tag;   }            ///< Return the tag of this node
-	long   GetID     ()          const { return _my_id; }            ///< Return the ID of this node
 	double Coord     (size_t i)  const { return _coords(i); }        ///< Return coordinate x, y, or z
 	double X         ()          const { return _coords(0); }        ///< Return x coordinate
 	double Y         ()          const { return _coords(1); }        ///< Return y coordinate
@@ -215,7 +215,7 @@ inline Node * Node::Bry(const char * DOFName, double Value)
 	if (_shared_by.Size()==0) return this;
 	long idx = _find_var(DOFName);
 	if (idx<0) // not added
-		throw new Fatal(_("Node::Bry: Could not find DOF variable name < %s > inside Node (ID=%d, X=%f, Y=%f, Z=%f)"), DOFName, GetID(), X(), Y(), Z());
+		throw new Fatal(_("Node::Bry: Could not find DOF variable name < %s > inside Node (ID=%d, X=%f, Y=%f, Z=%f)"), DOFName, ID(), X(), Y(), Z());
 	if (_dofs[idx].EssentialBryName==DOFName) // is essential
 	{
 		_dofs[idx].EssentialBry = Value;
@@ -253,7 +253,7 @@ std::ostream & operator<< (std::ostream & os, FEM::Node::DOF const & D)
 /** Outputs a node. */
 std::ostream & operator<< (std::ostream & os, FEM::Node const & N)
 {
-	os << "[" << N.GetID() << "] (" << Util::_8_4<<N.Coord(0) << "," << Util::_8_4<<N.Coord(1) << "," << Util::_8_4<<N.Coord(2) << ")";
+	os << "[" << N.ID() << "] (" << Util::_8_4<<N.Coord(0) << "," << Util::_8_4<<N.Coord(1) << "," << Util::_8_4<<N.Coord(2) << ")";
 	for (size_t i=0; i<N.nDOF(); ++i)
 		os << " : " << N.DOFVar(i);
 	return os;

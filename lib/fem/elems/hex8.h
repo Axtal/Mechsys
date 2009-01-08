@@ -122,14 +122,14 @@ inline void Hex8::SetIPs(int NIPs1D)
 
 inline void Hex8::VTKConn(String & Nodes) const
 {
-	Nodes.Printf("%d %d %d %d %d %d %d %d",Conn[1]->GetID(),
-	                                       Conn[2]->GetID(),
-	                                       Conn[3]->GetID(),
-	                                       Conn[0]->GetID(),
-	                                       Conn[5]->GetID(),
-	                                       Conn[6]->GetID(),
-	                                       Conn[7]->GetID(),
-	                                       Conn[4]->GetID());
+	Nodes.Printf("%d %d %d %d %d %d %d %d",Conn[1]->ID(),
+	                                       Conn[2]->ID(),
+	                                       Conn[3]->ID(),
+	                                       Conn[0]->ID(),
+	                                       Conn[5]->ID(),
+	                                       Conn[6]->ID(),
+	                                       Conn[7]->ID(),
+	                                       Conn[4]->ID());
 }
 
 inline void Hex8::GetFNodes(int FaceID, Array<Node*> & FaceConnects) const
