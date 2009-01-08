@@ -35,9 +35,10 @@
 using std::cout;
 using std::endl;
 using LinAlg::Vector;
-using boost::make_tuple;
 using Util::_4;
 using Util::_8s;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -92,16 +93,16 @@ int main(int argc, char **argv) try
 	FEM::Solver sol (dat,"tpoisson01");
 
 	// Elements attributes
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Tri6", "Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
-	else       eatts.Push (make_tuple(-1, "Tri3", "Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true));
+	FEM::EAtts_T eatts(1);
+	String geom; geom = (is_o2 ? "Tri6" : "Tri3");
+	eatts = T(-1, geom.CStr(), "Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Stage # 1 -----------------------------------------------------------
 	FEM::EBrys_T ebrys;
-	ebrys.Push        (make_tuple(-10, "u", 0.0));
+	ebrys.Push        (T(-10, "u", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	dat.AddVolForces  ();
 	sol.SolveWithInfo ();
@@ -131,18 +132,6 @@ int main(int argc, char **argv) try
 	if (max_err_u>tol_u) return 1;
 	else return 0;
 }
-catch (Exception * e)
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-}
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

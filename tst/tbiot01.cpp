@@ -60,7 +60,8 @@ using Util::_4;
 using Util::_8s;
 using Util::_8_4;
 using Util::PI;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 // Biot f function
 double f(double e)
@@ -72,7 +73,7 @@ double f(double e)
 }
 
 // Normalized vertical displacement function
-double Biot(double X, double T)
+double Biot(double X, double Time)
 {
 	double r_pi = sqrt(PI);
 	// input values
@@ -80,7 +81,7 @@ double Biot(double X, double T)
 	double l  = 2.0*b;
 	double mv = (1.0+v)*(1.0-2.0*v)/(E*(1.0-v));
 	double w_inf = mv*p*l/(4.0*r_pi); // quantity used to normalize
-	double t = pow(T*l,2)/cv;
+	double t = pow(Time*l,2)/cv;
 	double x = X*b; //
 	double r_cvt = sqrt(cv*t);
 	double ws = 2.0*mv*p*(r_cvt/r_pi)*(f((x+b)/r_cvt)-f((x-b)/r_cvt));
@@ -135,35 +136,35 @@ int main(int argc, char **argv) try
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// Block # 1
-	Mesh::Block b1;
-	b1.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b1.SetCoords (false, 4,               // Is3D, NNodes
-	             0.0, W-b,  W-b, 0.0,     // x coordinates
-	             0.0, 0.0,  H,   H);      // y coordinates
-	b1.SetNx     (10);                    // x weights and num of divisions along x
-	b1.SetNy     (ndivy);                 // y weights and num of divisions along y
-	b1.SetETags  (4,  -10, 0, -30, -50);  // edge tags
-
-	// Block # 2
-	Mesh::Block b2;
-	b2.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b2.SetCoords (false, 4,               // Is3D, NNodes
-	             W-b,   W,  W, W-b,       // x coordinates
-	             0.0, 0.0,  H,   H);      // y coordinates
-	b2.SetNx     (8);                     // x weights and num of divisions along x
-	b2.SetNy     (ndivy);                 // y weights and num of divisions along y
-	b2.SetETags  (4,  0, -20, -30, -40);  // edge tags
-
 	// Blocks
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b1);
-	blocks.Push (&b2);
+	Array<Mesh::Block> bks(2);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0(4);
+    Mesh::Edges_T ed0(4);
+    Mesh::ETags_T et0(3);
+    ve0 = T(0,0.0,0.0,0.0), T(1,W-b,0.0,0.0), T(2,W-b,H,0.0), T(3,0.0,H,0.0);
+    ed0 = T(0,1), T(1,2), T(2,3), T(0,3);
+    et0 = T(0,3,-10), T(0,1,-30), T(2,3,-50);
+    bks[0].Set   (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/1, /*yplus*/3);
+	bks[0].SetNx (10);
+	bks[0].SetNy (ndivy);
+
+	// Block # 1
+    Mesh::Verts_T ve1(4);
+    Mesh::Edges_T ed1(4);
+    Mesh::ETags_T et1(3);
+    ve1 = T(0,W-b,0.0,0.0), T(1,W,0.0,0.0), T(2,W,H,0.0), T(3,W-b,H,0.0);
+    ed1 = T(0,1), T(1,2), T(2,3), T(0,3);
+    et1 = T(1,2,-20), T(0,1,-30), T(2,3,-40);
+    bks[1].Set   (-1, ve1, ed1, &et1, NULL, /*orig*/0, /*xplus*/1, /*yplus*/3);
+	bks[1].SetNx (8);
+	bks[1].SetNy (ndivy);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -174,9 +175,9 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f k=%f",E,nu,k);
 	String prps; prps.Printf("gam=%f gw=%f",gam,gw);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
+	FEM::EAtts_T eatts(1);
+	if (is_o2) eatts = T(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true);
+	else       eatts = T(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true);
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);
@@ -189,11 +190,11 @@ int main(int argc, char **argv) try
 
 	// Stage # 0 --------------------------------------------------------------
 	ebrys.Resize      (0);
-	ebrys.Push        (make_tuple(-10, "ux",    0.0));
-	ebrys.Push        (make_tuple(-20, "ux",    0.0));
-	ebrys.Push        (make_tuple(-30, "uy",    0.0));
-	ebrys.Push        (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push        (make_tuple(-50, "pwp",   0.0));
+	ebrys.Push        (T(-10, "ux",    0.0));
+	ebrys.Push        (T(-20, "ux",    0.0));
+	ebrys.Push        (T(-30, "uy",    0.0));
+	ebrys.Push        (T(-40, "pwp",   0.0));
+	ebrys.Push        (T(-50, "pwp",   0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	dat.AddVolForces  ();
 	sol.SolveWithInfo (4, 1e+6, 0, "  Initial stress state due to self weight (zero displacements)\n");
@@ -201,12 +202,12 @@ int main(int argc, char **argv) try
 
 	// Stage # 1 --------------------------------------------------------------
 	ebrys.Resize      (0);
-	ebrys.Push        (make_tuple(-10, "ux",    0.0));
-	ebrys.Push        (make_tuple(-20, "ux",    0.0));
-	ebrys.Push        (make_tuple(-30, "uy",    0.0));
-	ebrys.Push        (make_tuple(-40, "fy",   load));
-	ebrys.Push        (make_tuple(-40, "pwp",   0.0));
-	ebrys.Push        (make_tuple(-50, "pwp",   0.0));
+	ebrys.Push        (T(-10, "ux",    0.0));
+	ebrys.Push        (T(-20, "ux",    0.0));
+	ebrys.Push        (T(-30, "uy",    0.0));
+	ebrys.Push        (T(-40, "fy",   load));
+	ebrys.Push        (T(-40, "pwp",   0.0));
+	ebrys.Push        (T(-50, "pwp",   0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (4, 0.0001, 1, "  Apply surface (footing) loading\n");
 
@@ -218,11 +219,11 @@ int main(int argc, char **argv) try
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
 		ebrys.Resize      (0);
-		ebrys.Push        (make_tuple(-10, "ux",    0.0));
-		ebrys.Push        (make_tuple(-20, "ux",    0.0));
-		ebrys.Push        (make_tuple(-30, "uy",    0.0));
-		ebrys.Push        (make_tuple(-40, "pwp",   0.0));
-		ebrys.Push        (make_tuple(-50, "pwp",   0.0));
+		ebrys.Push        (T(-10, "ux",    0.0));
+		ebrys.Push        (T(-20, "ux",    0.0));
+		ebrys.Push        (T(-30, "uy",    0.0));
+		ebrys.Push        (T(-40, "pwp",   0.0));
+		ebrys.Push        (T(-50, "pwp",   0.0));
 		dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 		sol.SolveWithInfo (10, TimeIncs(i), i+2, "  Consolidation\n");
 		for (int j=0; j<SampleNodes.Size(); j++)
@@ -268,18 +269,6 @@ int main(int argc, char **argv) try
 	else return 0;
 
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

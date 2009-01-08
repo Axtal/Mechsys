@@ -31,9 +31,10 @@
 
 using std::cout;
 using std::endl;
-using boost::make_tuple;
 using Util::_4;
 using Util::_8s;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -41,12 +42,12 @@ int main(int argc, char **argv) try
 	// Test to evaluate the rotation of a loaded cube with just vertical constraints
 
 	// constants
-	double E  = 207.0; // Young
-	double nu = 0.3;   // Poisson
-	double q  = 1.0;   // Downward vertical pressure
-	int    nx = 2;     // number of divisions along x
-	int    ny = 2;     // number of divisions along y
-	int    nz = 2;     // number of divisions along z
+	double E     = 200.0; // Young
+	double nu    = 0.25;  // Poisson
+	double q     = 1.0;   // Downward vertical pressure
+	int    ndiv  = 2;     // number of divisions along x, y, and z
+	bool   is_o2 = false; // use high order elements?
+	String linsol("UM");  // UMFPACK
 
 	/* Cube with a uniform pressure at the top
 	 
@@ -68,30 +69,53 @@ int main(int argc, char **argv) try
 	*/
 
 	// Input
-	cout << "Input: " << argv[0] << "  linsol(LA,UM,SLU)\n";
-	String linsol("UM");
-	if (argc==2) linsol.Printf("%s",argv[1]);
+	cout << "Input: " << argv[0] << "  is_o2  ndiv  linsol(LA,UM,SLU)\n";
+	if (argc>=2) is_o2      = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3) ndiv       =  atof(argv[2]);
+	if (argc>=4) linsol.Printf("%s",argv[3]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
-	Mesh::Block b;
-	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (true, 8,                                  // Is3D, NNodes
-	             -1.,  1.,  1., -1.,  -1.,  1.,  1., -1.,  // x coordinates
-	             -1., -1.,  1.,  1.,  -1., -1.,  1.,  1.,  // y coordinates
-	             -1., -1., -1., -1.,   1.,  1.,  1.,  1.); // z coordinates
-	b.SetFTags  (6, 0,0,0,0, -200,-100);                   // face tags
-	b.SetNx     (nx);                                      // num of divisions along x
-	b.SetNy     (ny);                                      // num of divisions along y
-	b.SetNz     (nz);                                      // num of divisions along z
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b);
+    /*
+                      4----------------7  
+                    ,'|              ,'| 
+                  ,'  |            ,'  | 
+                ,'    | -6    -1 ,'    | 
+              ,'      |        ,'      | 
+            5'===============6'        | 
+            |         |      |    -4   | 
+            |    -3   |      |         | 
+            |         0- - - | -  - - -3  
+            |       ,'       |       ,'  
+            |     ,' -2      |     ,'    
+            |   ,'        -5 |   ,'      
+            | ,'             | ,'        
+            1----------------2'          
+    */
+
+	// Blocks
+	Array<Mesh::Block> bks(1);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0( 8);
+    Mesh::Edges_T ed0(12);
+    Mesh::FTags_T ft0( 6);
+    ve0 = T(0, 0., 0., 0.), T(1, 1., 0., 0.), T(2, 1., 1., 0.), T(3, 0., 1., 0.),
+          T(4, 0., 0., 1.), T(5, 1., 0., 1.), T(6, 1., 1., 1.), T(7, 0., 1., 1.);
+    ed0 = T(0,1), T(1,2), T(2,3), T(3,0),
+          T(4,5), T(5,6), T(6,7), T(7,4),
+          T(0,4), T(1,5), T(2,6), T(3,7);
+    ft0 = T(0,3,7,4,-1), T(1,2,6,5,-2), T(1,0,4,5,-3), T(2,3,7,6,-4), T(0,1,2,3,-5), T(4,5,6,7,-6);
+    bks[0].Set   (-1, ve0, ed0, NULL, &ft0, /*orig*/0, /*xplus*/1, /*yplus*/3, /*zplus*/4);
+	bks[0].SetNx (ndiv);
+	bks[0].SetNy (ndiv);
+	bks[0].SetNz (ndiv);
 
 	// Generate
-	cout << "\nMesh Generation: --------------------------------------------------------------" << endl;
-	Mesh::Structured ms(/*Is3D*/true);
-	ms.SetBlocks (blocks);
-	ms.Generate  (true);
+	Mesh::Structured mesh(/*Is3D*/true);
+	if (is_o2) mesh.SetO2();
+	mesh.SetBlocks (bks);
+	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -101,24 +125,22 @@ int main(int argc, char **argv) try
 
 	// Element attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, "Hex8", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	String geom; geom = (is_o2 ? "Hex20" : "Hex8");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
 
 	// Set geometry: nodes and elements
-	dat.SetNodesElems (&ms, &eatts);
-
-	cout << ms << endl;
-	cout << dat  << endl;
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Stage # 1 --------------------------------------------
 	FEM::NBrys_T nbrys;
 	FEM::FBrys_T fbrys;
-	nbrys.Push  (make_tuple(0., 0., -1., "ux", 0.0));
-	nbrys.Push  (make_tuple(0., 0., -1., "uy", 0.0));
-	fbrys.Push  (make_tuple(-200, "uz", 0.0));
-	fbrys.Push  (make_tuple(-100, "fz",  -q));
-	dat.SetBrys (&ms, NULL, NULL, &fbrys);
-	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
+	nbrys.Push        (T(0.5, 0.5, 0., "ux", 0.0));
+	nbrys.Push        (T(0.5, 0.5, 0., "uy", 0.0));
+	fbrys.Push        (T(-5, "uz", 0.0));
+	fbrys.Push        (T(-6, "fz",  -q));
+	dat.SetBrys       (&mesh, NULL, NULL, &fbrys);
+	sol.SolveWithInfo (/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -195,18 +217,6 @@ int main(int argc, char **argv) try
 	if (max_err_eps>tol_eps || max_err_sig>tol_sig || max_err_dis>tol_dis) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

@@ -33,7 +33,8 @@ using std::cout;
 using std::endl;
 using Util::_4;
 using Util::_8s;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -43,7 +44,7 @@ int main(int argc, char **argv) try
 	double H1 = 0.5;    // height
 	double H2 = 1.5;    // height
 	double L  = 1.0;    // length
-	double T  = 1.0;    // thickness
+	double th = 1.0;    // thickness
 	double E  = 2000.0; // Young
 	double nu = 0.25;   // Poisson
 	double q  = -1.0;   // Load
@@ -68,7 +69,7 @@ int main(int argc, char **argv) try
           ,    ',      @   10      ',  9   |      |          z
         ,',    11'@    |             '@    |      |    y,    |
            ',      ',  @16             ',  |      |      ',  |
-           T ',      ',|         8       ',|      |        ',|
+          th ',      ',|         8       ',|      |        ',|
                ', ,  0 @---------@---------@ 1   ---         '-------> x
                 ,'    /_\       /_\       /_\
                       ///       o o       o o
@@ -78,29 +79,29 @@ int main(int argc, char **argv) try
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
-	Mesh::Generic mesh(/*Is3D*/false);
+	Mesh::Generic mesh(/*Is3D*/true);
 	mesh.SetNVerts  (20);
 	mesh.SetNElems  (1);
 	mesh.SetVert    ( 0, true,   0.0 ,      0.0,         0.0);
 	mesh.SetVert    ( 1, true,     L ,      0.0,         0.0);
-	mesh.SetVert    ( 2, true,     L ,        T,         0.0);
-	mesh.SetVert    ( 3, true,   0.0 ,        T,         0.0);
+	mesh.SetVert    ( 2, true,     L ,       th,         0.0);
+	mesh.SetVert    ( 3, true,   0.0 ,       th,         0.0);
 	mesh.SetVert    ( 4, true,   0.0 ,      0.0,          H1);
 	mesh.SetVert    ( 5, true,     L ,      0.0,          H2);
-	mesh.SetVert    ( 6, true,     L ,        T,          H2);
-	mesh.SetVert    ( 7, true,   0.0 ,        T,          H1);
+	mesh.SetVert    ( 6, true,     L ,       th,          H2);
+	mesh.SetVert    ( 7, true,   0.0 ,       th,          H1);
 	mesh.SetVert    ( 8, true, L/2.0 ,      0.0,         0.0);
-	mesh.SetVert    ( 9, true,     L ,    T/2.0,         0.0);
-	mesh.SetVert    (10, true, L/2.0 ,        T,         0.0);
-	mesh.SetVert    (11, true,   0.0 ,    T/2.0,         0.0);
+	mesh.SetVert    ( 9, true,     L ,   th/2.0,         0.0);
+	mesh.SetVert    (10, true, L/2.0 ,       th,         0.0);
+	mesh.SetVert    (11, true,   0.0 ,   th/2.0,         0.0);
 	mesh.SetVert    (12, true, L/2.0 ,      0.0, (H1+H2)/2.0);
-	mesh.SetVert    (13, true,     L ,    T/2.0,          H2);
-	mesh.SetVert    (14, true, L/2.0 ,        T, (H1+H2)/2.0);
-	mesh.SetVert    (15, true,   0.0 ,    T/2.0,          H1);
+	mesh.SetVert    (13, true,     L ,   th/2.0,          H2);
+	mesh.SetVert    (14, true, L/2.0 ,       th, (H1+H2)/2.0);
+	mesh.SetVert    (15, true,   0.0 ,   th/2.0,          H1);
 	mesh.SetVert    (16, true,   0.0 ,      0.0,      H1/2.0);
 	mesh.SetVert    (17, true,     L ,      0.0,      H2/2.0);
-	mesh.SetVert    (18, true,     L ,        T,      H2/2.0);
-	mesh.SetVert    (19, true,   0.0 ,        T,      H1/2.0);
+	mesh.SetVert    (18, true,     L ,       th,      H2/2.0);
+	mesh.SetVert    (19, true,   0.0 ,       th,      H1/2.0);
 	mesh.SetElem    (0, -1, true, VTK_QUADRATIC_HEXAHEDRON);
 	mesh.SetElemCon (0,  0,  0);  mesh.SetElemCon(0,  1,  1);  mesh.SetElemCon(0,  2,  2);  mesh.SetElemCon(0,  3,  3);
 	mesh.SetElemCon (0,  4,  4);  mesh.SetElemCon(0,  5,  5);  mesh.SetElemCon(0,  6,  6);  mesh.SetElemCon(0,  7,  7);
@@ -115,9 +116,12 @@ int main(int argc, char **argv) try
 	FEM::Solver sol (dat,"tpstrain04");
 
 	// Elements attributes
-	FEM::EAtts_T eatts;
+	FEM::EAtts_T eatts(1);
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	eatts.Push (make_tuple(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	eatts = T(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
+
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
 
 	// Stage # 1 -----------------------------------------------------------
 	dat.Nod(0)->Bry    ("uy",0.0)->Bry("ux",0.0);
@@ -127,7 +131,7 @@ int main(int argc, char **argv) try
 	dat.Ele(0)->FaceBry("uy",0.0,3);
 	dat.Ele(0)->FaceBry("uz",0.0,4);
 	dat.Ele(0)->FaceBry( "Q",  q,5); // 5 => top face
-	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
+	sol.SolveWithInfo  (/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -153,18 +157,6 @@ int main(int argc, char **argv) try
 	if (err_ux>tol || err_uy>tol) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

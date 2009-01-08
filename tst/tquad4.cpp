@@ -31,7 +31,8 @@
 
 using std::cout;
 using std::endl;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -76,9 +77,9 @@ int main(int argc, char **argv) try
 	FEM::Solver sol (dat,"tquad4");
 
 	// Elements attributes
-	FEM::EAtts_T eatts;
+	FEM::EAtts_T eatts(1);
 	String prms; prms.Printf("E=%f nu=%f", 96.0, 1.0/3.0);
-	eatts.Push (make_tuple(-1, "Quad4", "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	eatts = T(-1, "Quad4", "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
@@ -121,18 +122,6 @@ int main(int argc, char **argv) try
 	if (fabs(errors)>1.0e-3) return 1;
 	else                     return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

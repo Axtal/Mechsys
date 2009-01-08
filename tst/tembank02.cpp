@@ -47,7 +47,8 @@ using std::endl;
 using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -71,46 +72,46 @@ int main(int argc, char **argv) try
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// Block # 0
-	Mesh::Block b0;
-	b0.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b0.SetCoords (false, 4,               // Is3D, NNodes
-	              0.0, 12.0, 12.0, 0.0,   // x coordinates
-	              0.0,  0.0,  4.0, 4.0);  // y coordinates
-	b0.SetNx     (ndivx);                 // x weights and num of divisions along x
-	b0.SetNy     (ndivy);                 // y weights and num of divisions along y
-	b0.SetETags  (4, -10, -10, -11, -12); // edge tags
-
-	// Block # 1
-	Mesh::Block b1;
-	b1.SetTag    (-2); // tag to be replicated to all generated elements inside this block
-	b1.SetCoords (false, 4,               // Is3D, NNodes
-	              0.0, 12.0, 12.0, 0.0,   // x coordinates
-	              4.0,  4.0,  8.0, 8.0);  // y coordinates
-	b1.SetNx     (ndivx);                 // x weights and num of divisions along x
-	b1.SetNy     (ndivy);                 // y weights and num of divisions along y
-	b1.SetETags  (4, -10, -10,   0, -13); // edge tags
-
-	// Block # 2
-	Mesh::Block b2;
-	b2.SetTag    (-3); // tag to be replicated to all generated elements inside this block
-	b2.SetCoords (false, 4,               // Is3D, NNodes
-	              0.0, 12.0, 12.0,  0.0,  // x coordinates
-	              8.0,  8.0, 12.0, 12.0); // y coordinates
-	b2.SetNx     (ndivx);                 // x weights and num of divisions along x
-	b2.SetNy     (ndivy);                 // y weights and num of divisions along y
-	b2.SetETags  (4, -10, -10,   0, -14); // edge tags
-
 	// Blocks
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b0);
-	blocks.Push (&b1);
-	blocks.Push (&b2);
+	Array<Mesh::Block> bks(3);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0(4);
+    Mesh::Edges_T ed0(4);
+    Mesh::ETags_T et0(4);
+	ve0 = T(0,0.0,0.0,0.), T(1,12.0,0.0,0.), T(2,12.0,4.0,0.), T(3,0.0,4.0,0.);
+	ed0 = T(0,1), T(1,2), T(2,3), T(3,0);
+	et0 = T(3,0,-10), T(1,2,-10), T(0,1,-11), T(2,3,-12);
+    bks[0].Set (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/1, /*yplus*/3);
+	bks[0].SetNx (ndivx);
+	bks[0].SetNy (ndivy);
+
+	// Block # 1 --------------------------------
+    Mesh::Verts_T ve1(4);
+    Mesh::Edges_T ed1(4);
+    Mesh::ETags_T et1(3);
+	ve1 = T(0,0.0,4.0,0.), T(1,12.0,4.0,0.), T(2,12.0,8.0,0.), T(3,0.0,8.0,0.);
+	ed1 = T(0,1), T(1,2), T(2,3), T(3,0);
+	et1 = T(3,0,-10), T(1,2,-10), T(2,3,-13);
+    bks[1].Set (-2, ve1, ed1, &et1, NULL, /*orig*/0, /*xplus*/1, /*yplus*/3);
+	bks[1].SetNx (ndivx);
+	bks[1].SetNy (ndivy);
+
+	// Block # 2 --------------------------------
+    Mesh::Verts_T ve2(4);
+    Mesh::Edges_T ed2(4);
+    Mesh::ETags_T et2(3);
+	ve2 = T(0,0.0,8.0,0.), T(1,12.0,8.0,0.), T(2,12.0,12.0,0.), T(3,0.0,12.0,0.);
+	ed2 = T(0,1), T(1,2), T(2,3), T(3,0);
+	et2 = T(3,0,-10), T(1,2,-10), T(3,2,-14);
+    bks[2].Set (-3, ve2, ed2, &et2, NULL, /*orig*/0, /*xplus*/1, /*yplus*/3);
+	bks[2].SetNx (ndivx);
+	bks[2].SetNy (ndivy);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -123,19 +124,19 @@ int main(int argc, char **argv) try
 	String prms; prms.Printf("E=%f nu=%f k=%f",E,nu,k);
 	String prps; prps.Printf("gam=%f gw=%f",gam,gw);
 	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
-	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true ));
-	eatts.Push (make_tuple(-2, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false));
-	eatts.Push (make_tuple(-3, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false));
+	FEM::EAtts_T eatts(3);
+	eatts = T(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true ),
+	        T(-2, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false),
+	        T(-3, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Stage # -1 --------------------------------------------------------------
 	FEM::EBrys_T ebrys;
-	ebrys.Push        (make_tuple(-10, "ux",  0.0));
-	ebrys.Push        (make_tuple(-11, "uy",  0.0));
-	ebrys.Push        (make_tuple(-12, "pwp", 0.0));
+	ebrys.Push        (T(-10, "ux",  0.0));
+	ebrys.Push        (T(-11, "uy",  0.0));
+	ebrys.Push        (T(-12, "pwp", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	dat.AddVolForces  ();
 	sol.SolveWithInfo (10, 1e+2, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
@@ -144,18 +145,18 @@ int main(int argc, char **argv) try
 	// Stage # 0 ---------------------------------------------------------------
 	dat.Activate      (/*Tag*/-2);
     ebrys.Resize      (0);
-	ebrys.Push        (make_tuple(-10, "ux",  0.0));
-	ebrys.Push        (make_tuple(-11, "uy",  0.0));
-	ebrys.Push        (make_tuple(-13, "pwp", 0.0));
+	ebrys.Push        (T(-10, "ux",  0.0));
+	ebrys.Push        (T(-11, "uy",  0.0));
+	ebrys.Push        (T(-13, "pwp", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (10, 1e+2, 0, "  Construction of first layer\n");
 
 	// Stage # 1 ---------------------------------------------------------------
 	dat.Activate      (/*Tag*/-3);
     ebrys.Resize      (0);
-	ebrys.Push        (make_tuple(-10, "ux",  0.0));
-	ebrys.Push        (make_tuple(-11, "uy",  0.0));
-	ebrys.Push        (make_tuple(-14, "pwp", 0.0));
+	ebrys.Push        (T(-10, "ux",  0.0));
+	ebrys.Push        (T(-11, "uy",  0.0));
+	ebrys.Push        (T(-14, "pwp", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo (10, 1e+2, 0, "  Construction of second layer\n");
 
@@ -163,18 +164,6 @@ int main(int argc, char **argv) try
 
 	return 0;
 }
-catch (Exception * e)
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-}
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

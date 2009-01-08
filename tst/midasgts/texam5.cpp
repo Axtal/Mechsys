@@ -39,7 +39,8 @@ using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
 using Util::PI;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 void Einsten_Schwartz(
 		double p0,   // initial stress load
@@ -103,14 +104,14 @@ int main(int argc, char **argv) try
 	 *    |   f   |   |    y       x   ,'     |
 	 *    |   |   |   |     ',   ,'  ,o       |
 	 *    |   |  -+-  o-,_    '+'  ,'         |
-	 *    H   |       -55 o-,    ,'           o -10
+	 *    H   |       -55 o-,    ,'           o -20
 	 *    |  -+- . . . . . . 'o '      [b0]   |
 	 *    |   |               .',             |
 	 *    |   e               .  o  y^        |
 	 *    |   |               .-55\  |        |
 	 *    |   |               .   |  +-->x    |
 	 *   -+- -+-      +----r----->o-----o-----o
-	 *                        .       -20
+	 *                        .       -10
 	 *                        .   |---- a ----|
 	 *                |-- b --|------ c ------|
 	 */
@@ -124,35 +125,49 @@ int main(int argc, char **argv) try
 	double f = H-e;
 	int    ndivy = 1;
 
-	// Lower block -- coordinates
-	Mesh::Block b0;
-	b0.SetTag    (-1);
-	b0.SetCoords (false, 8, // Is3D, NNodes
-	               r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
-	              0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.));
-	b0.SetNx     (1*ndivy);//, 2.0, true);
-	b0.SetNy     (ndivy);
-	b0.SetETags  (4, -55, -10, -20, -55);
-
-	// Upper block -- coordinates
-	Mesh::Block b1;
-	b1.SetTag    (-1);
-	b1.SetCoords (false, 8,
-	              b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
-	              e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.));
-	b1.SetNx     (1*ndivy);//, 2.0, true);
-	b1.SetNy     (ndivy);
-	b1.SetETags  (4, -55, -30,  -55, -40);
-
 	// Blocks
-	Array<Mesh::Block*> blocks;  blocks.Resize(2);
-	blocks[0] = &b0;
-	blocks[1] = &b1;
+	Array<Mesh::Block> bks(2);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0(8);
+    Mesh::Edges_T ed0(8);
+    Mesh::ETags_T et0(6);
+	ve0 = T(0 , r            , 0.           , 0.), 
+	      T(1 , L            , 0.           , 0.), 
+	      T(2 , L            , H            , 0.), 
+	      T(3 , b            , e            , 0.), 
+	      T(4 , r+a/2.       , 0.           , 0.), 
+	      T(5 , L            , H/2.         , 0.), 
+	      T(6 , b+c/2.       , e+f/2.       , 0.), 
+	      T(7 , r*cos(PI/8.) , r*sin(PI/8.) , 0.); 
+    ed0 = T(0,4), T(4,1), T(1,5), T(5,2), T(2,6), T(6,3), T(3,7), T(7,0);
+    et0 = T(0,4,-10), T(4,1,-10), T(1,5,-20), T(5,2,-20), T(0,7,-55), T(3,7,-55);
+    bks[0].Set   (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/4, /*yplus*/7);
+	bks[0].SetNx (ndivy);
+	bks[0].SetNy (ndivy);
+
+	// Block # 1 --------------------------------
+    Mesh::Verts_T ve1(8);
+    Mesh::Edges_T ed1(8);
+    Mesh::ETags_T et1(6);
+	ve1 = T(0 , b               , e               , 0.), 
+	      T(1 , L               , H               , 0.), 
+	      T(2 , 0.              , H               , 0.), 
+	      T(3 , 0.              , r               , 0.), 
+	      T(4 , b+c/2.          , e+f/2.          , 0.), 
+	      T(5 , L/2.            , H               , 0.), 
+	      T(6 , 0.              , r+d/2.          , 0.), 
+	      T(7 , r*cos(3.*PI/8.) , r*sin(3.*PI/8.) , 0.); 
+    ed1 = T(0,4), T(4,1), T(1,5), T(5,2), T(2,6), T(6,3), T(3,7), T(7,0);
+    et1 = T(1,5,-30), T(5,2,-30), T(2,6,-40), T(6,3,-40), T(0,7,-55), T(3,7,-55);
+    bks[1].Set   (-1, ve1, ed1, &et1, NULL, /*orig*/0, /*xplus*/4, /*yplus*/7);
+	bks[1].SetNx (ndivy);
+	bks[1].SetNy (ndivy);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -163,32 +178,32 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
 
 	// Beam attributes
 	String beamprms;
 	beamprms.Printf("E=%f A=%f Izz=%f",E_beam,A_beam,Izz_beam);
-	eatts.Push (make_tuple(-55, "", "Beam", "BeamElastic", beamprms.CStr(), "ZERO", "gam=20 cq=1", true));
+	eatts.Push (T(-55, "Lin2", "Beam", "BeamElastic", beamprms.CStr(), "ZERO", "gam=20 cq=1", true));
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Nodes brys
 	FEM::NBrys_T nbrys;
-	nbrys.Push (make_tuple(r,0.0,0.0,"wz",0.0));
-	nbrys.Push (make_tuple(0.0,r,0.0,"wz",0.0));
+	nbrys.Push (T(r,0.0,0.0,"wz",0.0));
+	nbrys.Push (T(0.0,r,0.0,"wz",0.0));
 
 	// Edges brys
 	FEM::EBrys_T ebrys;
 	double p0 = -15.0;
 	double  K =  2.0;
-	ebrys.Push (make_tuple(-10, "fx", p0*K));
-	ebrys.Push (make_tuple(-20, "uy",  0.0));
-	ebrys.Push (make_tuple(-30, "fy",   p0));
-	ebrys.Push (make_tuple(-40, "ux",  0.0));
-	ebrys.Push (make_tuple(-55, "Qb",  -1));
+	ebrys.Push (T(-10, "uy",  0.0));
+	ebrys.Push (T(-20, "fx", p0*K));
+	ebrys.Push (T(-30, "fy",   p0));
+	ebrys.Push (T(-40, "ux",  0.0));
+	ebrys.Push (T(-55, "Qb",  -1));
 
 	// Stage # 1
 	dat.SetBrys (&mesh, &nbrys, &ebrys, NULL);
@@ -303,18 +318,6 @@ int main(int argc, char **argv) try
 
 	return 1;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

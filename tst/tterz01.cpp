@@ -36,15 +36,16 @@ using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
 using Util::_8_4;
-using boost::make_tuple;
 
-double Terz(double Z, double T) // Pore-pressure excess for one dimensional consolidation
+#define T boost::make_tuple
+
+double Terz(double Z, double Time) // Pore-pressure excess for one dimensional consolidation
 {
 	double ue=0.0;
 	for (int m=0; m<100; m++)
 	{
 		double M = 3.14159*(2.0*m+1.0)/2.0;
-		ue+=2.0/M*sin(M*Z)*exp(-M*M*T);
+		ue+=2.0/M*sin(M*Z)*exp(-M*M*Time);
 	}
 	return ue;
 }
@@ -92,21 +93,23 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Blocks
-	Mesh::Block b;
-	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (false, 4,                // Is3D, NNodes
-	             0.0,   W,  W, 0.0,       // x coordinates
-	             0.0, 0.0,  H,   H);      // y coordinates
-	b.SetNx     (1);                      // x weights and num of divisions along x
-	b.SetNy     (ndivy);                  // y weights and num of divisions along y
-	b.SetETags  (4,  -10, -20, -30, -40); // edge tags
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b);
+	Array<Mesh::Block> bks(1);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0(4);
+    Mesh::Edges_T ed0(4);
+    Mesh::ETags_T et0(4);
+    ve0 = T(0,0.0,0.0,0.0), T(1,W,0.0,0.0), T(2,W,H,0.0), T(3,0.0,H,0.0);
+    ed0 = T(0,1), T(1,2), T(2,3), T(0,3);
+    et0 = T(0,3,-10), T(1,2,-20), T(0,1,-30), T(2,3,-40);
+    bks[0].Set   (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/1, /*yplus*/3);
+	bks[0].SetNx (1);
+	bks[0].SetNy (ndivy);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -116,11 +119,11 @@ int main(int argc, char **argv) try
 	FEM::Solver sol (dat,"tterz01");
 
 	// Elements attributes
-	FEM::EAtts_T eatts;
 	String prms; prms.Printf("E=%f nu=%f k=%f", E,nu,k);
 	String prps; prps.Printf("gam=20 gw=%f",    gw);
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true));
+	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true);
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);
@@ -128,10 +131,10 @@ int main(int argc, char **argv) try
 	// Stage # 0: Stage performed to approach a stationary condition ------------------------------
 	FEM::EBrys_T ebrys;
 	ebrys.Resize (0);
-	ebrys.Push   (make_tuple(-10, "ux",    0.0));
-	ebrys.Push   (make_tuple(-20, "ux",    0.0));
-	ebrys.Push   (make_tuple(-30, "uy",    0.0));
-	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push   (T(-10, "ux",    0.0));
+	ebrys.Push   (T(-20, "ux",    0.0));
+	ebrys.Push   (T(-30, "uy",    0.0));
+	ebrys.Push   (T(-40, "pwp",   0.0));
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo(/*NDiv*/4, /*DTime*/1000000, /*iStage*/0);
 
@@ -140,11 +143,11 @@ int main(int argc, char **argv) try
 
 	// Stage # 1: Load application ------------------------------
 	ebrys.Resize (0);
-	ebrys.Push   (make_tuple(-10, "ux",    0.0));
-	ebrys.Push   (make_tuple(-20, "ux",    0.0));
-	ebrys.Push   (make_tuple(-30, "uy",    0.0));
-	ebrys.Push   (make_tuple(-40, "fy",   load));
-	ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+	ebrys.Push   (T(-10, "ux",    0.0));
+	ebrys.Push   (T(-20, "ux",    0.0));
+	ebrys.Push   (T(-30, "uy",    0.0));
+	ebrys.Push   (T(-40, "fy",   load));
+	ebrys.Push   (T(-40, "pwp",   0.0));
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo(/*NDiv*/4, /*DTime*/1.0, /*iStage*/1);
 
@@ -152,10 +155,10 @@ int main(int argc, char **argv) try
 	for (int i=0; i<TimeIncs.Size(); i++)
 	{
 		ebrys.Resize (0);
-		ebrys.Push   (make_tuple(-10, "ux",    0.0));
-		ebrys.Push   (make_tuple(-20, "ux",    0.0));
-		ebrys.Push   (make_tuple(-30, "uy",    0.0));
-		ebrys.Push   (make_tuple(-40, "pwp",   0.0));
+		ebrys.Push   (T(-10, "ux",    0.0));
+		ebrys.Push   (T(-20, "ux",    0.0));
+		ebrys.Push   (T(-30, "uy",    0.0));
+		ebrys.Push   (T(-40, "pwp",   0.0));
 		dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 		sol.SolveWithInfo(/*NDiv*/4, /*DTime*/TimeIncs(i), /*iStage*/i+2);
 		for (int j=0; j<SampleNodes.Size(); j++)
@@ -197,18 +200,6 @@ int main(int argc, char **argv) try
 
 	return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

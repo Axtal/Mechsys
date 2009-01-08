@@ -37,7 +37,8 @@ using std::endl;
 using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -65,9 +66,9 @@ int main(int argc, char **argv) try
 	FEM::Solver sol (dat, "tspring01");
 
 	// Element attributes
-	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(  -50, "Lin2", "Beam",   "BeamElastic",   "E=30000 A=0.5 Izz=1000", "ZERO", "gam=20 cq=1", true));
-	eatts.Push (make_tuple( -200, "Lin2", "Spring", "SpringElastic", "ks=100",                 "ZERO", "",            true));
+	FEM::EAtts_T eatts(2);
+	eatts = T(  -50, "Lin2", "Beam",   "BeamElastic",   "E=30000 A=0.5 Izz=1000", "ZERO", "gam=20 cq=1", true),
+	        T( -200, "Lin2", "Spring", "SpringElastic", "ks=100",                 "ZERO", "",            true);
 
 	// Set nodes and elements (geometry)
 	dat.SetOnlyFrame  (); // frame (beam/truss) mesh only
@@ -123,18 +124,6 @@ int main(int argc, char **argv) try
 	if (max_err_u>tol_u || max_err_s>tol_s) return 1;
 	else return 0;
 }
-catch (Exception * e)
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-}
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

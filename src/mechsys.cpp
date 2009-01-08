@@ -18,7 +18,7 @@
 
 #define USE_BOOST_PYTHON
 
-// STL
+// Std Lib
 #include <iostream>
 #include <cfloat>    // for DBL_EPSILON
 
@@ -32,50 +32,15 @@
 #include <boost/utility.hpp>
 #include <boost/python.hpp> // this includes everything
 
-// MechSys -- mesh
-#include "mesh/mesh.h"
-#include "mesh/structured.h"
-#include "mesh/unstructured.h"
-#include "mesh/alphashape.h"
-
-// MechSys -- fem -- basic
-#include "fem/data.h"
-#include "fem/solver.h"
-#include "fem/output.h"
-#include "models/model.h"
-#include "util/exception.h"
-
-// MechSys -- fem -- Elements
-#include "fem/elems/lin2.h"
-#include "fem/elems/tri3.h"
-#include "fem/elems/tri6.h"
-#include "fem/elems/quad4.h"
-#include "fem/elems/quad8.h"
-#include "fem/elems/hex8.h"
-#include "fem/elems/hex20.h"
-#include "fem/elems/rod.h"
-#include "fem/elems/beam.h"
-#include "fem/elems/spring.h"
-#include "fem/diffusionelem.h"
-#include "fem/equilibelem.h"
-#include "fem/biotelem.h"
-
-// MechSys -- fem -- Embedded
-//#include "fem/embedded.h"
-//#include "fem/elems/rod3.h"
-//#include "fem/elems/embspring.h"
-
-// MechSys -- Models
-#include "models/equilibs/beamelastic.h"
-#include "models/equilibs/biotelastic.h"
-#include "models/equilibs/camclay.h"
-#include "models/equilibs/linelastic.h"
-#include "models/equilibs/rodelastic.h"
-#include "models/equilibs/springelastic.h"
+// MechSys
+#include "mechsys.h"
 
 using namespace boost::python;
 
 // Overloadings                                                        minargs  maxargs
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MB_SetNx,          SetNx,            1, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MB_SetNy,          SetNy,            1, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MB_SetNz,          SetNz,            1, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,          4, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,       Generate,         0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,      2, 4)
@@ -115,7 +80,10 @@ BOOST_PYTHON_MODULE (mechsys)
 	    ;
 
 	class_<Mesh::Block>("mesh_block")
-	    .def("set_coords", &Mesh::Block::PySetCoords)
+	    .def("set",    &Mesh::Block::PySet)
+	    .def("set_nx", &Mesh::Block::SetNx, MB_SetNx())
+	    .def("set_ny", &Mesh::Block::SetNy, MB_SetNy())
+	    .def("set_nz", &Mesh::Block::SetNz, MB_SetNz())
 	    ;
 
 	class_<Mesh::Structured, bases<Mesh::Generic> >("mesh_structured","Class to generate structured meshes",init<bool>())

@@ -43,7 +43,8 @@ using std::endl;
 using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -70,24 +71,46 @@ int main(int argc, char **argv) try
 	double H = 0.6;
 	double B = 0.1;
 
+    /*
+                      4----------------7  
+                    ,'|              ,'| 
+                  ,'  |            ,'  | 
+                ,'    | -6    -1 ,'    | 
+              ,'      |        ,'      | 
+            5'===============6'        | 
+            |         |      |    -4   | 
+            |    -3   |      |         | 
+            |         0- - - | -  - - -3  
+           H|       ,'       |       ,'  
+            |     ,' -2      |     ,'    
+            |   ,'        -5 |   ,' B    
+            | ,'             | ,'        
+            1----------------2'          
+	                L
+    */
+
 	// Blocks
-	Mesh::Block b;
-	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (true, 8,             // Is3D, NNodes
-	             0.0, B, B, 0.0, 0.0, B, B, 0.0,  // x coordinates
-	             0.0, 0.0, L, L, 0.0, 0.0, L, L,  // y coordinates
-	             0.0, 0.0, 0.0, 0.0, H, H, H, H); // z coordinates
-	b.SetNx     (nx);                 // x weights and num of divisions along x
-	b.SetNy     (ny);                 // y weights and num of divisions along y
-	b.SetNz     (nz);                 // z weights and num of divisions along z
-	b.SetFTags  (6, -10, -20, -30, -40, 0, 0);  // face tags
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b);
+	Array<Mesh::Block> bks(1);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0( 8);
+    Mesh::Edges_T ed0(12);
+    Mesh::FTags_T ft0( 6);
+    ve0 = T(0, 0., 0., 0.), T(1, B, 0., 0.), T(2, B, L, 0.), T(3, 0., L, 0.),
+          T(4, 0., 0., H),  T(5, B, 0., H),  T(6, B, L, H),  T(7, 0., L, H),
+    ed0 = T(0,1), T(1,2), T(2,3), T(3,0),
+          T(4,5), T(5,6), T(6,7), T(7,4),
+          T(0,4), T(1,5), T(2,6), T(3,7);
+    ft0 = T(0,3,7,4,-1), T(1,2,6,5,-2), T(1,0,4,5,-3), T(2,3,7,6,-4), T(0,1,2,3,-5), T(4,5,6,7,-6);
+    bks[0].Set   (-1, ve0, ed0, NULL, &ft0, /*orig*/0, /*xplus*/1, /*yplus*/3, /*zplus*/4);
+	bks[0].SetNx (nx);
+	bks[0].SetNy (ny);
+	bks[0].SetNz (nz);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/true);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -98,19 +121,19 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Hex8",  "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	String geom; geom = (is_o2 ? "Hex20" : "Hex8");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// State # 1 -----------------------------------------------
 	FEM::FBrys_T fbrys;
-	fbrys.Push  (make_tuple(-30, "ux", 0.0));
-	fbrys.Push  (make_tuple(-30, "uy", 0.0));
-	fbrys.Push  (make_tuple(-30, "uz", 0.0));
-	fbrys.Push  (make_tuple(-40, "fz", -F/0.06));
+	fbrys.Push  (T(-3, "ux", 0.0));
+	fbrys.Push  (T(-3, "uy", 0.0));
+	fbrys.Push  (T(-3, "uz", 0.0));
+	fbrys.Push  (T(-4, "fz", -F/0.06));
 	dat.SetBrys (&mesh, NULL, NULL, &fbrys);
 	sol.SolveWithInfo();
 
@@ -141,18 +164,6 @@ int main(int argc, char **argv) try
 	if (max_err_dis>tol_dis) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

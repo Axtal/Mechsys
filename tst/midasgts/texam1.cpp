@@ -38,28 +38,29 @@ using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
 using Util::PI;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 // Calculate Kirsch's solution for a cylindrical hole (stresses)
-inline void KirschStress(double ph, double pv, double r, double R, double T, double & SigR, double & SigT, double & SigRT)
+inline void KirschStress(double ph, double pv, double r, double R, double TT, double & SigR, double & SigT, double & SigRT)
 {
 	double pm = (ph+pv)/2.0;
 	double pd = (ph-pv)/2.0;
 	double c1 = r*r/(R*R);
-	SigR  =  pm*(1.0-c1) + pd*(1.0-4.0*c1+3.0*c1*c1)*cos(2.0*T);
-	SigT  =  pm*(1.0+c1) - pd*(1.0+3.0*c1*c1)*cos(2.0*T);
-	SigRT = -pd*(1.0+2.0*c1-3.0*c1*c1)*sin(2.0*T);
+	SigR  =  pm*(1.0-c1) + pd*(1.0-4.0*c1+3.0*c1*c1)*cos(2.0*TT);
+	SigT  =  pm*(1.0+c1) - pd*(1.0+3.0*c1*c1)*cos(2.0*TT);
+	SigRT = -pd*(1.0+2.0*c1-3.0*c1*c1)*sin(2.0*TT);
 }
 
 // Calculate Kirsch's solution for a cylindrical hole (displacements)
-void KirschDisp(double ph, double pv, double r, double R, double T, double E, double nu, double & uR, double & uT)
+void KirschDisp(double ph, double pv, double r, double R, double TT, double E, double nu, double & uR, double & uT)
 {
 	double G  = E/(2.0*(1.0+nu)); // Shear modulus
 	double c1 = r*r/R;
 	double qm = (ph+pv)/(4.0*G);
 	double qd = (ph-pv)/(4.0*G);
-	uR =  qm*c1 + qd*c1*(4.0*(1.0-nu)-c1/R)*cos(2.0*T);
-	uT = -qd*c1*(2.0*(1.0-2.0*nu)+c1/R)*sin(2.0*T);
+	uR =  qm*c1 + qd*c1*(4.0*(1.0-nu)-c1/R)*cos(2.0*TT);
+	uT = -qd*c1*(2.0*(1.0-2.0*nu)+c1/R)*sin(2.0*TT);
 }
 
 int main(int argc, char **argv) try
@@ -115,35 +116,49 @@ int main(int argc, char **argv) try
 	double e = r*sin(2.*PI/8.);
 	double f = H-e;
 
-	// Lower block -- coordinates
-	Mesh::Block b0;
-	b0.SetTag    (-1);
-	b0.SetCoords (false, 8, // Is3D, NNodes
-	               r,  L, L, b,    r+a/2.,    L, b+c/2., r*cos(PI/8.),
-	              0., 0., H, e,        0., H/2., e+f/2., r*sin(PI/8.));
-	b0.SetNx     (2*ndivy, /*Ax*/Ax, /*Nonlinear*/NonLinX);
-	b0.SetNy     (ndivy);
-	b0.SetETags  (4, 0, -20, -10, 0);
-
-	// Upper block -- coordinates
-	Mesh::Block b1;
-	b1.SetTag    (-1);
-	b1.SetCoords (false, 8,
-	              b, L, 0., 0.,   b+c/2., L/2.,     0., r*cos(3.*PI/8.),
-	              e, H,  H,  r,   e+f/2.,    H, r+d/2., r*sin(3.*PI/8.));
-	b1.SetNx     (2*ndivy, /*Ax*/Ax, /*Nonlinear*/NonLinX);
-	b1.SetNy     (ndivy);
-	b1.SetETags  (4, 0, -30,  0, -40);
-
 	// Blocks
-	Array<Mesh::Block*> blocks;  blocks.Resize(2);
-	blocks[0] = &b0;
-	blocks[1] = &b1;
+	Array<Mesh::Block> bks(2);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0(8);
+    Mesh::Edges_T ed0(8);
+    Mesh::ETags_T et0(4);
+	ve0 = T(0 , r            , 0.           , 0.), 
+	      T(1 , L            , 0.           , 0.), 
+	      T(2 , L            , H            , 0.), 
+	      T(3 , b            , e            , 0.), 
+	      T(4 , r+a/2.       , 0.           , 0.), 
+	      T(5 , L            , H/2.         , 0.), 
+	      T(6 , b+c/2.       , e+f/2.       , 0.), 
+	      T(7 , r*cos(PI/8.) , r*sin(PI/8.) , 0.); 
+    ed0 = T(0,4), T(4,1), T(1,5), T(5,2), T(2,6), T(6,3), T(3,7), T(7,0);
+    et0 = T(0,4,-10), T(4,1,-10), T(1,5,-20), T(5,2,-20);
+    bks[0].Set   (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/4, /*yplus*/7);
+	bks[0].SetNx (2*ndivy, Ax, NonLinX);
+	bks[0].SetNy (ndivy);
+
+	// Block # 1 --------------------------------
+    Mesh::Verts_T ve1(8);
+    Mesh::Edges_T ed1(8);
+    Mesh::ETags_T et1(4);
+	ve1 = T(0 , b               , e               , 0.), 
+	      T(1 , L               , H               , 0.), 
+	      T(2 , 0.              , H               , 0.), 
+	      T(3 , 0.              , r               , 0.), 
+	      T(4 , b+c/2.          , e+f/2.          , 0.), 
+	      T(5 , L/2.            , H               , 0.), 
+	      T(6 , 0.              , r+d/2.          , 0.), 
+	      T(7 , r*cos(3.*PI/8.) , r*sin(3.*PI/8.) , 0.); 
+    ed1 = T(0,4), T(4,1), T(1,5), T(5,2), T(2,6), T(6,3), T(3,7), T(7,0);
+    et1 = T(1,5,-30), T(5,2,-30), T(2,6,-40), T(6,3,-40);
+    bks[1].Set   (-1, ve1, ed1, &et1, NULL, /*orig*/0, /*xplus*/4, /*yplus*/7);
+	bks[1].SetNx (2*ndivy, Ax, NonLinX);
+	bks[1].SetNy (ndivy);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -154,19 +169,19 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E_soil,nu_soil);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Stage # 1
 	FEM::EBrys_T ebrys;
-	ebrys.Push  (make_tuple(-10, "uy", 0.));
-	ebrys.Push  (make_tuple(-20, "fx", ph));
-	ebrys.Push  (make_tuple(-30, "fy", pv));
-	ebrys.Push  (make_tuple(-40, "ux", 0.));
+	ebrys.Push  (T(-10, "uy", 0.));
+	ebrys.Push  (T(-20, "fx", ph));
+	ebrys.Push  (T(-30, "fy", pv));
+	ebrys.Push  (T(-40, "ux", 0.));
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo();
 
@@ -257,18 +272,6 @@ int main(int argc, char **argv) try
 	if (max_err_sR>tol_sR || max_err_sT>tol_sT || max_err_sRT>tol_sRT || max_err_uR>tol_uR || max_err_uT>tol_uT) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

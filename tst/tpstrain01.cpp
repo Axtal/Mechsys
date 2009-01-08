@@ -48,7 +48,8 @@ using std::endl;
 using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -96,9 +97,9 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Tri6","PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Tri3","PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20", true));
+	String geom; geom = (is_o2 ? "Tri6" : "Tri3");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
@@ -106,9 +107,9 @@ int main(int argc, char **argv) try
 	// Stage # 1 -----------------------------------------------------------
 	FEM::NBrys_T nbrys;
 	FEM::EBrys_T ebrys;
-	nbrys.Push        (make_tuple(0.5, 0.0, 0.0, "ux", 0.0));
-	ebrys.Push        (make_tuple(-10, "uy", 0.0));
-	ebrys.Push        (make_tuple(-20, "fy",   q));
+	nbrys.Push        (T(0.5, 0.0, 0.0, "ux", 0.0));
+	ebrys.Push        (T(-10, "uy", 0.0));
+	ebrys.Push        (T(-20, "fy",   q));
 	dat.SetBrys       (&mesh, &nbrys, &ebrys, NULL);
 	sol.SolveWithInfo ();
 
@@ -174,18 +175,6 @@ int main(int argc, char **argv) try
 	if (max_err_eps>tol_eps || max_err_sig>tol_sig || max_err_dis>tol_dis) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

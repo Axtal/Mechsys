@@ -43,7 +43,8 @@ using std::endl;
 using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -67,22 +68,25 @@ int main(int argc, char **argv) try
 	double L = 3.0;
 	double H = 0.6;
 	double B = 0.1;
+
 	// Blocks
-	Mesh::Block b;
-	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (false, 4,            // Is3D, NNodes
-	             0.0, 3.0, 3.0, 0.0,  // x coordinates
-	             0.0, 0.0, 0.6, 0.6); // y coordinates
-	b.SetNx     (nx);                 // x weights and num of divisions along x
-	b.SetNy     (ny);                 // y weights and num of divisions along y
-	b.SetETags  (4, -10, -20, 0, 0);  // edge tags
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b);
+	Array<Mesh::Block> bks(1);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0(4);
+    Mesh::Edges_T ed0(4);
+    Mesh::ETags_T et0(2);
+    ve0 = T(0,0.0,0.0,0.0), T(1,L,0.0,0.0), T(2,L,H,0.0), T(3,0.0,H,0.0);
+    ed0 = T(0,1), T(1,2), T(2,3), T(0,3);
+    et0 = T(0,3,-10), T(1,2,-20);
+    bks[0].Set   (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/1, /*yplus*/3);
+	bks[0].SetNx (nx);
+	bks[0].SetNy (ny);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -93,18 +97,18 @@ int main(int argc, char **argv) try
 
 	// Elements attributes
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "PStress", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Stage # 1 -----------------------------------------------
 	FEM::EBrys_T ebrys;
-	ebrys.Push  (make_tuple(-10, "ux", 0.0));
-	ebrys.Push  (make_tuple(-10, "uy", 0.0));
-	ebrys.Push  (make_tuple(-20, "fy", -F/0.06));
+	ebrys.Push  (T(-10, "ux", 0.0));
+	ebrys.Push  (T(-10, "uy", 0.0));
+	ebrys.Push  (T(-20, "fy", -F/0.06));
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo();
 
@@ -135,18 +139,6 @@ int main(int argc, char **argv) try
 	if (max_err_dis>tol_dis) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

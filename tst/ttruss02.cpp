@@ -53,7 +53,8 @@ using std::endl;
 using Util::_4;
 using Util::_6;
 using Util::_8s;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -124,15 +125,15 @@ int main(int argc, char **argv) try
 	FEM::Solver sol (dat, "ttruss02");
 
 	// Parameters and initial value
-	FEM::EAtts_T eatts;
+	FEM::EAtts_T eatts(4);
 	String p1; p1.Printf("E=%f A=%f", 1000.0,  2.0);
 	String p2; p2.Printf("E=%f A=%f", 1000.0, 10.0);
 	String p3; p3.Printf("E=%f A=%f", 1000.0,  3.0);
 	String p4; p4.Printf("E=%f A=%f", 1000.0,  1.0);
-	eatts.Push (make_tuple( -2, "Lin2", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", true));
-	eatts.Push (make_tuple(-10, "Lin2", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", true));
-	eatts.Push (make_tuple( -3, "Lin2", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", true));
-	eatts.Push (make_tuple( -1, "Lin2", "Rod", "RodElastic", p4.CStr(), "ZERO", "gam=20", true));
+	eatts = T( -2, "Lin2", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", true),
+	        T(-10, "Lin2", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", true),
+	        T( -3, "Lin2", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", true),
+	        T( -1, "Lin2", "Rod", "RodElastic", p4.CStr(), "ZERO", "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);
@@ -235,18 +236,6 @@ int main(int argc, char **argv) try
 	if (max_err_u>tol_u || max_err_f>tol_f || max_err_s>tol_s) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

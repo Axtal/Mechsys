@@ -54,9 +54,10 @@
 using std::cout;
 using std::endl;
 using LinAlg::Matrix;
-using boost::make_tuple;
 using Tensors::Tensor1;
 using Util::_8s;
+
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -79,22 +80,44 @@ int main(int argc, char **argv) try
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
-	Mesh::Block b;
-	b.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	b.SetCoords (true, 8,                           // Is3D, NNodes
-	             0., 1., 1., 0.,  0., 1., 1., 0.,   // x coordinates
-	             0., 0., 1., 1.,  0., 0., 1., 1.,   // y coordinates
-	             0., 0., 0., 0.,  1., 1., 1., 1.);  // z coordinates
-	b.SetFTags  (6, -100,-101,-102,-103,-104,-105); // face tags
-	b.SetNx     (3);                                // num of divisions along x
-	b.SetNy     (3);                                // num of divisions along y
-	b.SetNz     (3);                                // num of divisions along z
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&b);
+    /*
+                      4----------------7  
+                    ,'|              ,'| 
+                  ,'  |            ,'  | 
+                ,'    | -6    -1 ,'    | 
+              ,'      |        ,'      | 
+            5'===============6'        | 
+            |         |      |    -4   | 
+            |    -3   |      |         | 
+            |         0- - - | -  - - -3  
+            |       ,'       |       ,'  
+            |     ,' -2      |     ,'    
+            |   ,'        -5 |   ,'      
+            | ,'             | ,'        
+            1----------------2'          
+    */
+
+	// Blocks
+	Array<Mesh::Block> bks(1);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0( 8);
+    Mesh::Edges_T ed0(12);
+    Mesh::FTags_T ft0( 6);
+    ve0 = T(0, 0., 0., 0.), T(1, 1., 0., 0.), T(2, 1., 1., 0.), T(3, 0., 1., 0.),
+          T(4, 0., 0., 1.), T(5, 1., 0., 1.), T(6, 1., 1., 1.), T(7, 0., 1., 1.);
+    ed0 = T(0,1), T(1,2), T(2,3), T(3,0),
+          T(4,5), T(5,6), T(6,7), T(7,4),
+          T(0,4), T(1,5), T(2,6), T(3,7);
+    ft0 = T(0,3,7,4,-1), T(1,2,6,5,-2), T(1,0,4,5,-3), T(2,3,7,6,-4), T(0,1,2,3,-5), T(4,5,6,7,-6);
+    bks[0].Set   (-1, ve0, ed0, NULL, &ft0, /*orig*/0, /*xplus*/1, /*yplus*/3, /*zplus*/4);
+	bks[0].SetNx (3);
+	bks[0].SetNy (3);
+	bks[0].SetNz (3);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
-	mesh.SetBlocks (blocks);           // Set Blocks
+	mesh.SetBlocks (bks);              // Set Blocks
 	if (is_o2) mesh.SetO2();           // Non-linear elements
 	mesh.Generate (/*WithInfo*/ true); // Discretize domain
 
@@ -108,9 +131,9 @@ int main(int argc, char **argv) try
 	// Element attributes
 	String prms; prms.Printf("lam=%f kap=%f nu=%f phics=%f",lam,kap,nu,phics);
 	String inis; inis.Printf("Sx=%f Sy=%f Sz=%f Sxy=0 Syz=0 Szx=0 v=%f",p_ini,p_ini,p_ini,v_ini);
-	FEM::EAtts_T eatts;
-	if (is_o2) eatts.Push (make_tuple(-1, "Hex20", "Equilib", "CamClay", prms.CStr(), inis.CStr(), "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Hex8",  "Equilib", "CamClay", prms.CStr(), inis.CStr(), "gam=20", true));
+	String geom; geom = (is_o2 ? "Hex20" : "Hex8");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "Equilib", "CamClay", prms.CStr(), inis.CStr(), "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
@@ -119,55 +142,42 @@ int main(int argc, char **argv) try
 	std::ofstream res("tcamclay01.cal", std::ios::out);
 	res << _8s<<"Sx" << _8s<<"Sy" << _8s<<"Sz" << _8s<<"Ex" << _8s<<"Ey" << _8s<<"Ez" << _8s<<"p" << _8s<<"q" << _8s<<"Ev" << _8s<<"Ed" << "\n";
 
+    // Output
+    res << _8s<<dat.Ele(13)->Val("Sx") << _8s<<dat.Ele(13)->Val("Sy") << _8s<<dat.Ele(13)->Val("Sz");
+    res << _8s<<dat.Ele(13)->Val("Ex") << _8s<<dat.Ele(13)->Val("Ey") << _8s<<dat.Ele(13)->Val("Ez");
+    res << _8s<<dat.Ele(13)->Val("p")  << _8s<<dat.Ele(13)->Val("q")  << _8s<<dat.Ele(13)->Val("Ev") << _8s<<dat.Ele(13)->Val("Ed") << "\n";
+
 	// Solve each stage -- stress path
 	Array<Tensor1> dtrac;  dtrac.Resize(2); // stress path (delta traction)
 	dtrac[0] = 0.0, 0.0, -2.0;              // dtracx, dtracy, dtracz
 	dtrac[1] = 0.0, 0.0,  3.0;
-	int istage = 0;
 	for (size_t i=0; i<dtrac.Size(); ++i)
 	{
-		size_t ndiv = 1;//10;
-		for (size_t j=0; j<ndiv; ++j)
-		{
-			// Faces brys
-			FEM::FBrys_T fbrys;
-			fbrys.Push (make_tuple(-100, "ux", 0.0));
-			fbrys.Push (make_tuple(-101, "fx", dtrac[i](0)/ndiv));
-			fbrys.Push (make_tuple(-102, "uy", 0.0));
-			fbrys.Push (make_tuple(-103, "fy", dtrac[i](1)/ndiv));
-			fbrys.Push (make_tuple(-104, "uz", 0.0));
-			fbrys.Push (make_tuple(-105, "fz", dtrac[i](2)/ndiv));
+        // Faces brys
+        FEM::FBrys_T fbrys;
+        fbrys.Push (T(-1, "ux", 0.0));
+        fbrys.Push (T(-2, "fx", dtrac[i](0)));
+        fbrys.Push (T(-3, "uy", 0.0));
+        fbrys.Push (T(-4, "fy", dtrac[i](1)));
+        fbrys.Push (T(-5, "uz", 0.0));
+        fbrys.Push (T(-6, "fz", dtrac[i](2)));
 
-			// Set boundary conditions
-			dat.SetBrys (&mesh, NULL, NULL, &fbrys);
+        // Set boundary conditions
+        dat.SetBrys (&mesh, NULL, NULL, &fbrys);
 
-			// Solve
-			sol.SolveWithInfo(1,0.0,istage);
-			istage++;
+        // Solve
+        sol.SolveWithInfo();
 
-			// Output
-			res << _8s<<dat.Ele(13)->Val("Sx") << _8s<<dat.Ele(13)->Val("Sy") << _8s<<dat.Ele(13)->Val("Sz");
-			res << _8s<<dat.Ele(13)->Val("Ex") << _8s<<dat.Ele(13)->Val("Ey") << _8s<<dat.Ele(13)->Val("Ez");
-			res << _8s<<dat.Ele(13)->Val("p")  << _8s<<dat.Ele(13)->Val("q")  << _8s<<dat.Ele(13)->Val("Ev") << _8s<<dat.Ele(13)->Val("Ed") << "\n";
-		}
+        // Output
+        res << _8s<<dat.Ele(13)->Val("Sx") << _8s<<dat.Ele(13)->Val("Sy") << _8s<<dat.Ele(13)->Val("Sz");
+        res << _8s<<dat.Ele(13)->Val("Ex") << _8s<<dat.Ele(13)->Val("Ey") << _8s<<dat.Ele(13)->Val("Ez");
+        res << _8s<<dat.Ele(13)->Val("p")  << _8s<<dat.Ele(13)->Val("q")  << _8s<<dat.Ele(13)->Val("Ev") << _8s<<dat.Ele(13)->Val("Ed") << "\n";
 	}
 
 	// Close file
 	res.close();
 	cout << "[1;34mFile <tcamclay01.cal> saved.[0m" << endl;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

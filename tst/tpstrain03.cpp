@@ -22,7 +22,8 @@
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
-#include "fem/elems/quad8pstrain.h"
+#include "fem/elems/quad8.h"
+#include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
@@ -32,6 +33,7 @@ using std::endl;
 using Util::_4;
 using Util::_8s;
 
+#define T boost::make_tuple
 
 int main(int argc, char **argv) try
 {
@@ -69,52 +71,45 @@ int main(int argc, char **argv) try
 	String linsol("UM");
 	if (argc==2) linsol.Printf("%s",argv[1]);
 
-	// 0) Problem dimension
-	FEM::Data dat(2); // 2D
+	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-	// 1) Nodes
-	dat.SetNNodes (8);
-	dat.SetNode   (0,   0.0 ,         0.0);
-	dat.SetNode   (1,     L ,         0.0);
-	dat.SetNode   (2,     L ,          H2);
-	dat.SetNode   (3,   0.0 ,          H1);
-	dat.SetNode   (4, L/2.0 ,         0.0);
-	dat.SetNode   (5,     L ,      H2/2.0);
-	dat.SetNode   (6, L/2.0 , (H2+H1)/2.0);
-	dat.SetNode   (7,   0.0 ,      H1/2.0);
+	Mesh::Generic mesh(/*Is3D*/false);
+	mesh.SetNVerts  (8);
+	mesh.SetNElems  (1);
+	mesh.SetVert    (0, true,   0.0 ,         0.0);
+	mesh.SetVert    (1, true,     L ,         0.0);
+	mesh.SetVert    (2, true,     L ,          H2);
+	mesh.SetVert    (3, true,   0.0 ,          H1);
+	mesh.SetVert    (4, true, L/2.0 ,         0.0);
+	mesh.SetVert    (5, true,     L ,      H2/2.0);
+	mesh.SetVert    (6, true, L/2.0 , (H2+H1)/2.0);
+	mesh.SetVert    (7, true,   0.0 ,      H1/2.0);
+	mesh.SetElem    (0, -1, true, VTK_QUADRATIC_QUAD);
+	mesh.SetElemCon (0, 0, 0);  mesh.SetElemCon(0, 1, 1);  mesh.SetElemCon(0, 2, 2);  mesh.SetElemCon(0, 3, 3);
+	mesh.SetElemCon (0, 4, 4);  mesh.SetElemCon(0, 5, 5);  mesh.SetElemCon(0, 6, 6);  mesh.SetElemCon(0, 7, 7);
 
-	// 2) Elements
-	dat.SetNElems (1);
-	dat.SetElem   (0, "Quad8", "PStrain", /*IsActive*/true);
+	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
-	// 3) Set connectivity (list of nodes must be LOCAL)
-	dat.Ele(0)->Connect(0, dat.Nod(0))
-	        ->Connect(1, dat.Nod(1))
-	        ->Connect(2, dat.Nod(2))
-	        ->Connect(3, dat.Nod(3))
-	        ->Connect(4, dat.Nod(4))
-	        ->Connect(5, dat.Nod(5))
-	        ->Connect(6, dat.Nod(6))
-	        ->Connect(7, dat.Nod(7));
+	// Data and solver
+	FEM::Data   dat (2); // 2D
+	FEM::Solver sol (dat,"tpstrain03");
 
-	// 4) Boundary conditions (must be after connectivity)
+	// Elements attributes
+	FEM::EAtts_T eatts(1);
+	String prms; prms.Printf("E=%f nu=%f",E,nu);
+	eatts = T(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
+
+	// Set geometry: nodes and elements
+	dat.SetNodesElems (&mesh, &eatts);
+
+	// Stage # 1 -----------------------------------------------------------
 	dat.Nod(0)->Bry     ("uy",0.0)->Bry("ux",0.0);
 	dat.Nod(4)->Bry     ("uy",0.0);
 	dat.Nod(1)->Bry     ("uy",0.0);
 	dat.Ele(0)->EdgeBry ("Q",q, 3); // 3 => top edge
+	sol.SolveWithInfo   (/*NDiv*/1, /*DTime*/0.0);
 
-	// 5) Parameters and initial values
-	String prms; prms.Printf("E=%f  nu=%f",E,nu);
-	dat.Ele(0)->SetModel("LinElastic", prms.CStr(), "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0");
-
-	// Stiffness
-	Array<size_t>          map;
-	Array<bool>            pre;
-	LinAlg::Matrix<double> Ke0;
-
-	// 6) Solve
-	FEM::Solver sol(dat,"tpstrain03");
-	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
+	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	// Error summary
 	double err_ux = 0.0;
@@ -134,25 +129,10 @@ int main(int argc, char **argv) try
 	cout << _8s << (err_uy>tol?"[1;31m":"[1;32m") << _8s <<err_uy << "[0m" << endl;
 	cout << endl;
 
-	Output out;
-	out.VTU(&dat, "out.vtu");
-
 	// Return error flag
 	if (err_ux>tol || err_uy>tol) return 1;
 	else return 0;
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

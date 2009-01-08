@@ -36,7 +36,8 @@ using LinAlg::Matrix;
 using Util::_4;
 using Util::_8s;
 using Util::PI;
-using boost::make_tuple;
+
+#define T boost::make_tuple
 
 void Analyitical(double r, double R, double p0, double p1, double E, double nu, double L, double & SigR, double & SigT, double & UR)
 {
@@ -69,20 +70,20 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
 	/*            |---------- R ----------|
-	 *            @--,__ 
+	 *            2--,__ 
 	 *            |     '--,__    
 	 *        -40 |           '--,   -20
-	 *            @               '@
+	 *            6               '5
 	 *            |                 ',
 	 *            |                .  \
-	 *            @-,_                 ',
+	 *            3-,_                 ',
 	 *                '-,          .     \
-	 *                   '@               \
+	 *                   '7               \
 	 *               -10  .',      .      | 
 	 *                    .  '  y^        |
 	 *                    .   \  | .      |
 	 *                    .   |  +-->x    |
-	 *            +----r----->@-----@-----@
+	 *            +----r----->0-----4-----1
 	 *                    .   .    .  -30
 	 *                    .   |---- a ----|
 	 *            |-- b --|        .
@@ -99,21 +100,30 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
 	// Blocks
-	Mesh::Block bl;
-	bl.SetTag    (-1); // tag to be replicated to all generated elements inside this block
-	bl.SetCoords (false, 8,                              // Is3D, NNodes
-	               r,  R, 0., 0., r+a/2., c,     0., b,  // x coordinates
-	              0., 0.,  R,  r,     0., c, r+a/2., b); // y coordinates
-	bl.SetNx      (ndiv,/*Ax*/1.,/*Nonlinear*/false);    // x weights and num of divisions along x
-	bl.SetNy      (ndiv);                                // y weights and num of divisions along y
-	bl.SetETags   (4, -10, -20, -30, -40);               // edge tags
-	Array<Mesh::Block*> blocks;
-	blocks.Push (&bl);
+	Array<Mesh::Block> bks(1);
+
+	// Block # 0 --------------------------------
+    Mesh::Verts_T ve0(8);
+    Mesh::Edges_T ed0(8);
+    Mesh::ETags_T et0(8);
+	ve0 = T(0,  r      , 0.     , 0.),
+	      T(1,  R      , 0.     , 0.),
+	      T(2,  0.     , R      , 0.),
+	      T(3,  0.     , r      , 0.),
+	      T(4,  r+a/2. , 0.     , 0.),
+	      T(5,  c      , c      , 0.),
+	      T(6,  0.     , r+a/2. , 0.),
+	      T(7,  b      , b      , 0.);
+    ed0 = T(0,4), T(4,1), T(1,5), T(5,2), T(2,6), T(6,3), T(3,7), T(7,0);
+    et0 = T(0,4,-30), T(4,1,-30), T(1,5,-20), T(5,2,-20), T(2,6,-40), T(6,3,-40), T(3,7,-10), T(7,0,-10);
+    bks[0].Set   (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/4, /*yplus*/7);
+	bks[0].SetNx (ndiv, /*Ax*/1.0, /*NonLin*/false);
+	bks[0].SetNy (ndiv);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (blocks);
+	mesh.SetBlocks (bks);
 	mesh.Generate  (true);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -123,20 +133,20 @@ int main(int argc, char **argv) try
 	FEM::Solver sol (dat,"tpstrain05");
 
 	// Elements attributes
-	FEM::EAtts_T eatts;
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	if (is_o2) eatts.Push (make_tuple(-1, "Quad8", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
-	else       eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true));
+	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
+	FEM::EAtts_T eatts(1);
+	eatts = T(-1, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Stage # 1 -----------------------------------------------------------
 	FEM::EBrys_T ebrys;
-	ebrys.Push  (make_tuple(-30, "uy", 0.0));
-	ebrys.Push  (make_tuple(-40, "ux", 0.0));
-	ebrys.Push  (make_tuple(-20, "Q",   p0));
-	ebrys.Push  (make_tuple(-10, "Q",   p1));
+	ebrys.Push  (T(-30, "uy", 0.0));
+	ebrys.Push  (T(-40, "ux", 0.0));
+	ebrys.Push  (T(-20, "Q",   p0));
+	ebrys.Push  (T(-10, "Q",   p1));
 	dat.SetBrys (&mesh, NULL, &ebrys, NULL);
 	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
 
@@ -203,18 +213,6 @@ int main(int argc, char **argv) try
 	else return 0;
 
 }
-catch (Exception * e) 
-{
-	e->Cout();
-	if (e->IsFatal()) {delete e; exit(1);}
-	delete e;
-}
-catch (char const * m)
-{
-	std::cout << "Fatal: " << m << std::endl;
-	exit (1);
-}
-catch (...)
-{
-	std::cout << "Some exception (...) ocurred\n";
-} 
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
