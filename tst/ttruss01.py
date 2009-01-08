@@ -39,37 +39,42 @@
 import math
 import mechsys as ms
 
+#///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+
+mesh = ms.mesh_generic (False) # False => 2D
+mesh.set_nverts   (3)
+mesh.set_nelems   (3)
+mesh.set_vert     (0, True,  0.0,  0.0) # true => OnBry
+mesh.set_vert     (1, True, 10.0,  0.0)
+mesh.set_vert     (2, True, 10.0, 10.0)
+mesh.set_elem     (0, -1, True, 3) # true => OnBry, 3 => VTK_LINE
+mesh.set_elem     (1, -2, True, 3)
+mesh.set_elem     (2, -3, True, 3)
+mesh.set_elem_con (0, 0, 0);  mesh.set_elem_con(0, 1, 1)
+mesh.set_elem_con (1, 0, 1);  mesh.set_elem_con(1, 1, 2)
+mesh.set_elem_con (2, 0, 0);  mesh.set_elem_con(2, 1, 2)
+
+#////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+
 # Data and Solver
 dat = ms.data   (2) # 2D
 sol = ms.solver (dat, "ttruss01_py")
 
-# Nodes
-dat.set_nnodes (3)
-dat.set_node   (0,  0.0,  0.0)
-dat.set_node   (1, 10.0,  0.0)
-dat.set_node   (2, 10.0, 10.0)
+# Elements attributes
+eatts = [[-1, "Lin2", "Rod", "RodElastic", "E=100.0  A=1.0",               "ZERO", "gam=20", True],
+         [-2, "Lin2", "Rod", "RodElastic", "E= 50.0  A=1.0",               "ZERO", "gam=20", True],
+         [-3, "Lin2", "Rod", "RodElastic", "E=200.0  A=%f"%math.sqrt(2.0), "ZERO", "gam=20", True]]
 
-# Elements
-dat.set_nelems (3)
-dat.set_elem   (0, "Rod2", True, -1)
-dat.set_elem   (1, "Rod2", True, -1)
-dat.set_elem   (2, "Rod2", True, -1)
+# Set geometry: nodes and elements
+dat.set_nodes_elems (mesh, eatts)
 
-# Set connectivity
-dat.ele(0).connect(0, dat.nod(0)).connect(1, dat.nod(1))
-dat.ele(1).connect(0, dat.nod(1)).connect(1, dat.nod(2))
-dat.ele(2).connect(0, dat.nod(0)).connect(1, dat.nod(2))
-
-# Parameters and initial values
-dat.ele(0).set_model("LinElastic", "E=100.0  A=1.0",               "Sx=0.0")
-dat.ele(1).set_model("LinElastic", "E= 50.0  A=1.0",               "Sx=0.0")
-dat.ele(2).set_model("LinElastic", "E=200.0  A=%f"%math.sqrt(2.0), "Sx=0.0")
-
-# State # 1
+# Stage # -1 --------------------------------------------------------------
 dat.nod(0).bry("ux", 0.0).bry("uy", -0.5) # Essential
 dat.nod(1).               bry("uy",  0.4) # Essential
 dat.nod(2).bry("fx", 2.0).bry("fy",  1.0) # Natural
 sol.solve_with_info()
+
+#//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 # Check
 errors = 0.0
