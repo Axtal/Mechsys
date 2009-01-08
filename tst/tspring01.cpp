@@ -66,8 +66,8 @@ int main(int argc, char **argv) try
 
 	// Element attributes
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(  -50, "", "Beam",   "BeamElastic",   "E=30000 A=0.5 Izz=1000", "ZERO", "gam=20 cq=1", true));
-	eatts.Push (make_tuple( -200, "", "Spring", "SpringElastic", "ks=100",                 "ZERO", "",            true));
+	eatts.Push (make_tuple(  -50, "Lin2", "Beam",   "BeamElastic",   "E=30000 A=0.5 Izz=1000", "ZERO", "gam=20 cq=1", true));
+	eatts.Push (make_tuple( -200, "Lin2", "Spring", "SpringElastic", "ks=100",                 "ZERO", "",            true));
 
 	// Set nodes and elements (geometry)
 	dat.SetOnlyFrame  (); // frame (beam/truss) mesh only
@@ -75,7 +75,7 @@ int main(int argc, char **argv) try
 
 	// Add linear elements
 	Array<long> conn(2);  conn = 0, 2;
-	dat.PushElem (conn, -200, "", "Spring", "SpringElastic", "ks=100", "ZERO", "", true);
+	dat.PushElem (conn, -200, "Lin2", "Spring", "SpringElastic", "ks=100", "ZERO", "", true);
 
 	// Print stiffness
 	Matrix<double> Ke;  Ke.SetNS(Util::_12_4);

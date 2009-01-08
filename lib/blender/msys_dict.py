@@ -86,20 +86,17 @@ def load_dict():
         dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'f', 8:'Q', 9:'wz', 10:'mz', 11:'Qb', 12:'pwp', 13:'vol' }
         dict['dfvmnu'] = 'DOF Vars %t|vol %x14|pwp %x13|Qb %x12|mz %x11|wz %x10|Q %x9|f %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
 
-        # Element types
-        dict['ety']  =  { 0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20',
-                          8:'Rod',  9:'Beam', 10:'Spring', 11:'Reinforcement' }
-
-        dict['etymnu'] = 'Element Types %t|Reinforcement %x12|Spring %x11|Beam %x10|Rod %x9|Hex20 %x8|Hex8 %x7|Tet10 %x6|Tet4 %x5|Quad8 %x4|Quad4 %x3|Tri6 %x2|Tri3 %x1'
+        # Geometry types
+        dict['gty']  =  { 0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20', 8:'Lin2' }
+        dict['gtymnu'] = 'Element Types %t|Lin2 %x9|Hex20 %x8|Hex8 %x7|Tet10 %x6|Tet4 %x5|Quad8 %x4|Quad4 %x3|Tri6 %x2|Tri3 %x1'
 
         # Problem types
-        dict['pty'] = { 0:'Equilib', 1:'PStrain', 2:'PStress', 3:'Axis', 4:'Diffusion', 5:'Biot', 6:'Unsat' }
-
-        dict['ptymnu'] = 'Problem Types %t|Unsat %x7|Biot %x6|Diffusion %x5|Axis %x4|PStress %x3|PStrain %x2|Equilib %x1'
+        dict['pty'] = { 0:'Equilib', 1:'PStrain', 2:'PStress', 3:'Axis', 4:'Diffusion', 5:'Biot', 6:'Unsat', 7:'Rod', 8:'Beam', 9:'Spring', 10:'Reinforcement' }
+        dict['ptymnu'] = 'Problem Types %t|Reinforcement %x11|Spring %x10|Beam %x9|Rod %x8|Unsat %x7|Biot %x6|Diffusion %x5|Axis %x4|PStress %x3|PStrain %x2|Equilib %x1'
 
         # Models
-        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic', 4:'BiotElastic', 5:'Reinforcement', 6:'Spring' }
-        dict['mdlmnu'] = 'Constitutive Models %t|Spring %x7|Reinforcement %x6|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
+        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic', 4:'BiotElastic', 5:'Reinforcement', 6:'SpringElastic', 7:'RodElastic' }
+        dict['mdlmnu'] = 'Constitutive Models %t|RodElastic %x8|SpringElastic %x7|Reinforcement %x6|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
 
         # VTK Cell Type (tentative mapping)
         dict['vtk2ety'] = {  5:  0,   # VTK_TRIANGLE             => Tri3
@@ -110,7 +107,7 @@ def load_dict():
                             23:  3,   # VTK_QUADRATIC_QUAD       => Quad8
                             24:  5,   # VTK_QUADRATIC_TETRA      => Tet10
                             25:  7,   # VTK_QUADRATIC_HEXAHEDRON => Hex20
-                             3:  9 }  # VTK_LINE                 => Beam
+                             3:  9 }  # VTK_LINE                 => Lin2
 
         # VTK Problem Type (tentative mapping)
         dict['vtk2pty'] = {  5: 1,   # VTK_TRIANGLE             => PStrain

@@ -192,7 +192,7 @@ def delete_mesh():
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-#@try_catch
+@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -1082,8 +1082,11 @@ def gui():
                 r -= rh
                 Draw.String ('c=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[16],  32, 'c: Cohesion',                                            cb_mat_setc)
                 Draw.String ('phi=',   EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[17],  32, 'phi: friction angle',                                    cb_mat_setphi)
-            elif int(v[0])==6: # Spring
+            elif int(v[0])==6: # SpringElastic
                 Draw.String ('ks=',    EVT_INC+i, c    , r, 80, rh, '%g'%v[15],  32, 'ks: Spring stiffness',                                   cb_mat_setks)
+            elif int(v[0])==7: # RodElastic
+                Draw.String ('E=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
+                Draw.String ('A=',     EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[ 9],  32, 'A: Cross-sectional area',                                cb_mat_setA)
             r -= srg
         r -= srg
         r -= rh
@@ -1254,7 +1257,7 @@ def gui():
             if num==1: gu.caption3 (c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
             else:      gu.caption3_(c,r,w,rh,'Elements attributes')
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_eatts)
-            if len(eatts)>0: gu.text(c,r,'    Tag         ElemType         ProbType         Material')
+            if len(eatts)>0: gu.text(c,r,'    Tag         GeomType         ProbType         Material')
             else: r += (rh+srg)
             if num>1:
                 for k, v in obj.properties['stages'].iteritems():
@@ -1272,7 +1275,7 @@ def gui():
                 props = texts[str(tid)] # properties
                 if num==1:
                     Draw.Number     ('',           EVT_INC+i,   c,     r-rh,  60, 2*rh, int(v[0]),-1000,0, 'Set tag',                             cb_eatt_settag)
-                    Draw.Menu       (d['etymnu'],  EVT_INC+i,   c+ 60, r,    100,   rh, int(v[1])+1,       'Element type: ex.: Quad4, Hex8',      cb_eatt_setety)
+                    Draw.Menu       (d['gtymnu'],  EVT_INC+i,   c+ 60, r,    100,   rh, int(v[1])+1,       'Element type: ex.: Quad4, Hex8',      cb_eatt_setety)
                     Draw.Menu       (d['ptymnu'],  EVT_INC+i,   c+160, r,     80,   rh, int(v[2])+1,       'Problem type: ex.: PStrain, Equilib', cb_eatt_setpty)
                     Draw.Menu       (matmnu,       EVT_INC+i,   c+240, r,    110,   rh, int(v[3])+1,       'Choose material',                     cb_eatt_setmat)
                     Draw.PushButton ('Del',        EVT_INC+i,   c+350, r-rh,  30, 2*rh,                    'Delete this row',                     cb_eatt_del)
@@ -1281,12 +1284,12 @@ def gui():
                     Draw.Toggle     ('Is Active',  EVT_INC+i,   c+200, r,    150,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
                 else:
                     etag =          str(featts[k][0])
-                    etyp = d['ety'][int(featts[k][1])]
+                    gtyp = d['gty'][int(featts[k][1])]
                     ptyp = d['pty'][int(featts[k][2])]
                     emat = matnames[int(featts[k][3])] if matnames.has_key(int(featts[k][3])) else ''
                     prps = texts[str(str(int(featts[k][7])))] # properties
                     gu.label_   (etag,                    c,     r-rh,  60, 2*rh)
-                    gu.label    (etyp,                    c+ 60, r,    100,   rh)
+                    gu.label    (gtyp,                    c+ 60, r,    100,   rh)
                     gu.label    (ptyp,                    c+160, r,     80,   rh)
                     gu.label    (emat,                    c+240, r,    110,   rh)
                     r -= rh                         

@@ -100,8 +100,8 @@ int main(int argc, char **argv) try
 	String prms1; prms1.Printf("E=%f A=%f Izz=%f",E1,A1,Izz1);
 	String prms2; prms2.Printf("E=%f A=%f Izz=%f",E2,A2,Izz2);
 	FEM::EAtts_T eatts;
-	eatts.Push (make_tuple(-5, "", "Beam", "BeamElastic", prms1.CStr(), "ZERO", "gam=20 cq=1", true));
-	eatts.Push (make_tuple(-6, "", "Beam", "BeamElastic", prms2.CStr(), "ZERO", "gam=20 cq=1", true));
+	eatts.Push (make_tuple(-5, "Lin2", "Beam", "BeamElastic", prms1.CStr(), "ZERO", "gam=20 cq=1", true));
+	eatts.Push (make_tuple(-6, "Lin2", "Beam", "BeamElastic", prms2.CStr(), "ZERO", "gam=20 cq=1", true));
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);

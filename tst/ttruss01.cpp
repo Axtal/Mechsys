@@ -83,9 +83,9 @@ int main(int argc, char **argv) try
 	String p1; p1.Printf("E=%f A=%f", 100.0 ,      1.0);
 	String p2; p2.Printf("E=%f A=%f",  50.0 ,      1.0);
 	String p3; p3.Printf("E=%f A=%f", 200.0 , sqrt(2.0));
-	eatts.Push (make_tuple(-1, "", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", true));
-	eatts.Push (make_tuple(-2, "", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", true));
-	eatts.Push (make_tuple(-3, "", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-1, "Lin2", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-2, "Lin2", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", true));
+	eatts.Push (make_tuple(-3, "Lin2", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", true));
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);

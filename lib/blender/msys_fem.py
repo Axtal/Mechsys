@@ -87,8 +87,10 @@ def get_mats(obj):
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g nu=%g k=%g gw=%g' % (v[1],v[2],v[3],v[12]), desc]
             elif int(v[0])==5: # Reinforcement
                 mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g Ar=%g At=%g ks=%g c=%g phi=%g' % (v[1],v[13],v[14],v[15],v[16],v[17]), desc]
-            elif int(v[0])==6: # Spring
+            elif int(v[0])==6: # SpringElastic
                 mats[int(k)] = [d['mdl'][int(v[0])], 'ks=%g' % (v[15]), desc]
+            elif int(v[0])==7: # RodElastic
+                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g A=%g' % (v[1],v[9]), desc]
     return mats
 
 
@@ -98,7 +100,7 @@ def get_eatts(obj,mats,stg):
     if obj.properties[stg].has_key('eatts'):
         for k, v in obj.properties[stg]['eatts'].iteritems():
             tag   = int(v[0])
-            ety   = d['ety'][int(v[1])]
+            gty   = d['gty'][int(v[1])]
             pty   = d['pty'][int(v[2])]
             inis  = 'ZERO'
             matID = int(v[3])
@@ -112,7 +114,7 @@ def get_eatts(obj,mats,stg):
                 mdl     = ''
                 prms    = ''
                 matdesc = '__no material__'
-            eatts.append ([tag, ety, pty, mdl, prms, inis, prop, act, matdesc])
+            eatts.append ([tag, gty, pty, mdl, prms, inis, prop, act, matdesc])
     return eatts
 
 
@@ -201,6 +203,7 @@ def run_analysis(gen_script=False):
     # ndim
     is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
     ndim = 3 if is3d else 2
+    print '[1;34mMechSys[0m: Running [1;31m%dD[0m simulation'%ndim
 
     # reinforcements
     reinfs    = get_reinforcements (obj, is3d)

@@ -156,14 +156,20 @@ inline int Element::InitCtes(int nDim, Str_t GeomT, Str_t ProbT)
 {
 	_type.Printf ("%s_%s_%dD",GeomT,ProbT,nDim);
 
+	// Check
+	if (strcmp(GeomT,"")==0) throw new Fatal("Element::InitCtes: GeometryType must be provided");
+	if (strcmp(ProbT,"")==0) throw new Fatal("Element::InitCtes: ProblemType must be provided");
+	if (strcmp(ProbT,"Rod")==0 || strcmp(ProbT,"Beam")==0 || strcmp(ProbT,"Spring")==0)
+	{
+		if (!(strcmp(GeomT,"Lin2")==0)) throw new Fatal("Element::InitCtes: For Rod, Beam, or Spring, GeometryType must be Lin2");
+	}
+
 	// Geometry element
-	if (strcmp(GeomT,"")==0) _ge = AllocGeomElem ("Lin2");
-	else                     _ge = AllocGeomElem (GeomT);
-	_ge->Initialize (nDim);
+	_ge = AllocGeomElem (GeomT);
+	_ge->Initialize     (nDim);
 
 	// Problem element
-	if (strcmp(ProbT,"")==0) throw new Fatal("Element::InitCtes: ProblemType must be provided");
-	_pe = AllocProbElem (ProbT);
+	_pe = AllocProbElem  (ProbT);
 	return _pe->InitCtes (nDim);
 }
 
@@ -176,7 +182,7 @@ inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Mo
 
 inline bool Element::Check(String & Msg) const
 {
-	if (_ge->CheckConn ()==false) { Msg.Printf("\n  %s","CONNECTIVITY NOT SET");       return false; }
+	if (_ge->CheckConn()==false) { Msg.Printf("\n  %s","CONNECTIVITY NOT SET"); return false; }
 	return true;
 }
 
