@@ -249,6 +249,7 @@ def run_analysis(gen_script=False):
             # element attributes
             neatt = len(eatts)
             txt.write ('\n	// Element attributes\n')
+            txt.write ('	FEM::EAtts_T eatts(%d);\n'%len(eatts))
             for i, ea in enumerate(eatts):
                 if i==0:       estr  = '	eatts = '
                 else:          estr  = '	        '
@@ -297,18 +298,18 @@ def run_analysis(gen_script=False):
                     if len(nbrys)>0:
                         txt.write ('	nbrys = ')
                         for i, nb in enumerate(nbrys):
-                            if i<(len(nbrys)-1): txt.write('T(%g,%g,%g,%s,%g), ' %(nb[0],nb[1],nb[2],nb[3],nb[4]))
-                            else:                txt.write('T(%g,%g,%g,%s,%g);\n'%(nb[0],nb[1],nb[2],nb[3],nb[4]))
+                            if i<(len(nbrys)-1): txt.write('T(%g,%g,%g,"%s",%g), ' %(nb[0],nb[1],nb[2],nb[3],nb[4]))
+                            else:                txt.write('T(%g,%g,%g,"%s",%g);\n'%(nb[0],nb[1],nb[2],nb[3],nb[4]))
                     if len(ebrys)>0:
                         txt.write ('	ebrys = ')
                         for i, eb in enumerate(ebrys):
-                            if i<(len(ebrys)-1): txt.write('T(%d,%s,%g), ' %(eb[0],eb[1],eb[2]))
-                            else:                txt.write('T(%d,%s,%g);\n'%(eb[0],eb[1],eb[2]))
+                            if i<(len(ebrys)-1): txt.write('T(%d,"%s",%g), ' %(eb[0],eb[1],eb[2]))
+                            else:                txt.write('T(%d,"%s",%g);\n'%(eb[0],eb[1],eb[2]))
                     if len(fbrys)>0:
                         txt.write ('	fbrys = ')
                         for i, fb in enumerate(fbrys):
-                            if i<(len(fbrys)-1): txt.write('T(%d,%s,%g), ' %(fb[0],fb[1],fb[2]))
-                            else:                txt.write('T(%d,%s,%g);\n'%(fb[0],fb[1],fb[2]))
+                            if i<(len(fbrys)-1): txt.write('T(%d,"%s",%g), ' %(fb[0],fb[1],fb[2]))
+                            else:                txt.write('T(%d,"%s",%g);\n'%(fb[0],fb[1],fb[2]))
                     txt.write ('	dat.SetBrys       (&mesh, ')
                     if len(nbrys)>0: txt.write ('&nbrys, ')
                     else:            txt.write ('NULL, ')

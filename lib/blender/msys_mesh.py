@@ -264,8 +264,8 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
                         if i<(len(verts)-1): txt.write ('T(%d,%g,%g,%g), '  % (ve[0],ve[1],ve[2],ve[3]))
                         else:                txt.write ('T(%d,%g,%g,%g);\n' % (ve[0],ve[1],ve[2],ve[3]))
                     else:
-                        if i<(len(verts)-1): txt.write ('T(%d,%g,%g), '  % (ve[0],ve[1],ve[2]))
-                        else:                txt.write ('T(%d,%g,%g);\n' % (ve[0],ve[1],ve[2]))
+                        if i<(len(verts)-1): txt.write ('T(%d,%g,%g,0.0), '  % (ve[0],ve[1],ve[2]))
+                        else:                txt.write ('T(%d,%g,%g,0.0);\n' % (ve[0],ve[1],ve[2]))
                 txt.write ('	ed%d = ' % (ib))
                 for i, ed in enumerate(edges):
                     if i<(len(edges)-1): txt.write ('T(%d,%d), '  % (ed[0],ed[1]))
