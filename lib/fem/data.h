@@ -19,7 +19,7 @@
 #ifndef MECHSYS_FEM_DATA_H
 #define MECHSYS_FEM_DATA_H
 
-// STL
+// Std Lib
 #include <iostream>
 #include <cstring>
 #include <cfloat> // for DBL_EPSILON

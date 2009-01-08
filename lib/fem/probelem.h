@@ -62,6 +62,7 @@ public:
 	virtual void        CalcDeps     () const                                     {}
 	virtual double      Val          (int iNod, Str_t Key) const                 =0;
 	virtual double      Val          (          Str_t Key) const                 =0;
+	virtual void        EdgeBry      (Str_t Key, double Val, int iEdge);
 	virtual void        EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
 	virtual void        Update       (double h, Vec_t const & dU, Vec_t & dFint) =0;
 	virtual void        Backup       ()                                          =0;
@@ -95,7 +96,6 @@ public:
 	Str_t MdlName  () const { return (_mdl==NULL ? "__no_model__" : _mdl->Name()); }
 	bool  IsEssen  (Str_t Key) const;
 	void  GetLbls  (Array<String> & Lbls) const;
-	void  EdgeBry  (Str_t Key, double Val, int iEdge);
 	void  FaceBry  (Str_t Key, double Val, int iFace);
 
 	// Methods

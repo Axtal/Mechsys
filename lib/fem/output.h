@@ -19,7 +19,7 @@
 #ifndef MECHSYS_OUTPUT_H
 #define MECHSYS_OUTPUT_H
 
-// STL
+// Std Lib
 #include <iostream>
 #include <fstream>
 #include <cfloat>  // for DBL_EPSILON

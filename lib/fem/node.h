@@ -33,7 +33,7 @@
 #ifndef MECHSYS_FEM_NODE_H
 #define MECHSYS_FEM_NODE_H
 
-// STL
+// Std Lib
 #include <sstream>
 #include <algorithm>
 

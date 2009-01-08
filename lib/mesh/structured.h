@@ -55,7 +55,7 @@
      1         9         2                    1       13
 */
 
-// STL
+// Std Lib
 #include <iostream>
 #include <fstream>
 #include <cfloat>   // for DBL_EPSILON
@@ -64,6 +64,9 @@
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
+
+// Boost
+#include <boost/tuple/tuple_io.hpp>
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
@@ -98,6 +101,13 @@ namespace Mesh
 
 struct Pair { int L; int R; };
 
+// typedefs
+typedef Array< boost::tuple<int,double,double,double> > Verts_T; // ID,x,y,z
+typedef Array< boost::tuple<int,int> >                  Edges_T; // v1,v2
+typedef Array< boost::tuple<int,int,int> >              ETags_T; // v1,v2,tag
+typedef Array< boost::tuple<int,int,int,int,int> >      FTags_T; // v1,v2,v3,v4,tag
+
+/* Structured Block. */
 class Block
 {
 public:
@@ -126,13 +136,19 @@ public:
 	Block () : _n_div_x(0), _n_div_y(0), _n_div_z(0), _tag(-1), _has_etags(false), _has_ftags(false) {}
 
 	// Set methods
-	void SetTag    (int Tag)        { _tag = Tag; }               ///< Set the tag to be replicated to all elements generated inside this block
-	void SetCoords (bool Is3D, size_t NNodes, ...);               ///< Set coordinates. 2D:NNodes=4 or 8. 3D:NNodes=8 or 20
-	void SetETags  (size_t NETags, ...);                          ///< Set edge tags. 2D:NETags=4 or 8. 3D:NETags=12 or 24
-	void SetFTags  (size_t NFTags, ...);                          ///< Set face tags. 2D:NFTags=0. 3D:NFTags=6
-	void SetNx     (size_t Nx, double Ax=0.0, bool NonLin=false); ///< Set number of x divisions with all x weights equal to 1.0
-	void SetNy     (size_t Ny, double Ay=0.0, bool NonLin=false); ///< Set number of y divisions with all y weights equal to 1.0
-	void SetNz     (size_t Nz, double Az=0.0, bool NonLin=false); ///< Set number of z divisions with all z weights equal to 1.0
+	void Set (int             Tag,         ///< Tag to be replicated to elements
+	          Verts_T const & Verts,       ///< Vertices
+	          Edges_T const & Edges,       ///< Edges
+	          ETags_T const * ETags,       ///< Edges Tags (can be NULL)
+	          FTags_T const * FTags,       ///< Face Tags (can be NULL)
+	          long            OrigID,      ///< ID of the vertex at origin
+	          long            XPlusID,     ///< ID of the vertex at the positive corner of the local x-axis
+	          long            YPlusID,     ///< ID of the vertex at the positive corner of the local y-axis
+	          long            ZPlusID=-1); ///< ID of the vertex at the positive corner of the local z-axis
+
+	void SetNx (size_t Nx, double Ax=0.0, bool NonLin=false); ///< Set number of x divisions with all x weights equal to 1.0
+	void SetNy (size_t Ny, double Ay=0.0, bool NonLin=false); ///< Set number of y divisions with all y weights equal to 1.0
+	void SetNz (size_t Nz, double Az=0.0, bool NonLin=false); ///< Set number of z divisions with all z weights equal to 1.0
 
 	// Access methods
 	int    Tag        ()         const { return _tag;          }
@@ -167,18 +183,15 @@ public:
 	void Alright() const;
 
 #ifdef USE_BOOST_PYTHON
-	void PySetCoords (int               Tag,      ///< Tag to be replicated to elements
-	                  BPy::dict const & Verts,    ///< {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... (4)8 or (8)20 vertices}
-	                  BPy::list const & Edges,    ///< [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
-	                  BPy::dict const & ETags,    ///< {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags} v# => vertex number
-	                  BPy::dict const & FTags,    ///< {(e1,e2..e12):tag1, (e1,e2..e12):tag2, ... num faces with tags} e# => edge number
-	                  BPy::list const & Wx,       ///< Weights along x
-	                  BPy::list const & Wy,       ///< Weights along y
-	                  BPy::list const & Wz,       ///< Weights along z
-	                  long              OrigID,   ///< ID of the vertex at origin
-	                  long              XPlusID,  ///< ID of the vertex at the positive corner of the local x-axis
-	                  long              YPlusID,  ///< ID of the vertex at the positive corner of the local y-axis
-	                  long              ZPlusID); ///< ID of the vertex at the positive corner of the local z-axis
+	void PySet (int               Tag,      ///< Tag to be replicated to elements
+	            BPy::list const & Verts,    ///< Vertices: [(ID,x,y), (ID,x,y), (ID,x,y) ...] or [(ID,x,y,z)...]
+	            BPy::list const & Edges,    ///< Edges: [(v1,v2), (v1,v2), (v1,v2) ...]
+	            BPy::list const & ETags,    ///< Edges Tags: [(v1,v2,tag), (v1,v2,tag) ...] (can be [])
+	            BPy::list const & FTags,    ///< Face Tags: [(v1,v2,v3,v4,tag) ...] (can be [])
+	            long              OrigID,   ///< ID of the vertex at origin
+	            long              XPlusID,  ///< ID of the vertex at the positive corner of the local x-axis
+	            long              YPlusID,  ///< ID of the vertex at the positive corner of the local y-axis
+	            long              ZPlusID); ///< ID of the vertex at the positive corner of the local z-axis
 #endif
 
 private:
@@ -245,7 +258,7 @@ public:
 
 	// Methods
 	void   Erase     ();
-	void   SetBlocks (Array<Block*> const & Blocks) { _bls = Blocks; }
+	void   SetBlocks (Array<Block> const & Blocks) { _bls = Blocks; }
 	size_t Generate  (bool WithInfo=false); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
 
 #ifdef USE_BOOST_PYTHON
@@ -254,7 +267,7 @@ public:
 
 private:
 	// Data
-	Array<Block*>  _bls;         ///< Blocks defining the input geometry
+	Array<Block>   _bls;         ///< Blocks defining the input geometry
 	Array<Vertex*> _verts_d;     ///< Vertices (with duplicates)
 	Array<Vertex*> _verts_d_bry; ///< Vertices on boundary (with duplicates)
 	Array<Vertex*> _verts_m1;    ///< X O2 Vertices (with duplicates)
@@ -276,82 +289,288 @@ private:
 
 /* public */
 
-inline void Block::SetCoords(bool Is3D, size_t NNodes, ...)
+inline void Block::Set(int Tag, Verts_T const & Verts, Edges_T const & Edges, ETags_T const * ETags, FTags_T const * FTags, long OrigID, long XPlusID, long YPlusID, long ZPlusID)
 {
-	// Allocate arrays
-	size_t ncomps;
+	// Check
 	bool   gen_mid = false; // generate mid vertices ?
-	if (Is3D)
+	size_t nedges  = Edges.Size();
+	size_t nverts  = Verts.Size();
+	if (nedges==24)
 	{
-		if (!(NNodes==8 || NNodes==20)) throw new Fatal("Block::SetCoords: For 3D blocks, the number of nodes must be either 8 or 20. (NNodes==%d is invalid)",NNodes);
-		_set_3d ();
-		ncomps = 3*NNodes;
-		if (NNodes==8) gen_mid = true;
+		if (nverts!=20) throw new Fatal("Block::Set:: For 3D blocks with 24 edges, the number of vertices must be 20. (nverts==%d is invalid)",nverts);
+		_is_3d = true;
+	}
+	else if (nedges==12)
+	{
+		if (nverts!=8) throw new Fatal("Block::Set:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		_is_3d  = true;
+		gen_mid = true;
+	}
+	else if (nedges==8)
+	{
+		if (nverts!=8) throw new Fatal("Block::Set:: For 2D blocks with 8 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
+		_is_3d = false;
+	}
+	else if (nedges==4)
+	{
+		if (nverts!=4) throw new Fatal("Block::Set:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
+		_is_3d  = false;
+		gen_mid = true;
+	}
+	else throw new Fatal("Block::Set:: The list with edges must have 4(2D), 8(2D), 12(3D), or 24(3D) items. (nedges==%d is invalid)",nedges);
+
+	// Set
+	_tag = Tag;
+	if (_is_3d) _set_3d(); else _set_2d();
+
+	// Edges
+	Array<long> edges(nedges*2); // *2 => we have to serialize for Util::Tree
+	int k = 0;
+	for (size_t i=0; i<nedges; ++i)
+	{
+		edges[k  ] = Edges[i].get<0>();
+		edges[k+1] = Edges[i].get<1>();
+		k += 2;
+	}
+
+	// Tree
+	Util::Tree tree(edges);
+	Array<long> eds;   eds.Resize(nedges);  eds.SetNS(Util::_4);
+	Array<long> vl2g; vl2g.Resize(nverts); vl2g.SetNS(Util::_4); // map: local vertex to global vertex IDs
+
+	// Sort
+	vl2g[0] = OrigID;
+	Array<long> path;
+	tree.DelEdge   (OrigID, XPlusID);
+	tree.ShortPath (XPlusID, YPlusID, path);
+	if (_is_3d)
+	{
+		if (nedges==24)
+		{
+			// Bottom nodes
+			vl2g[ 8] = path[0];
+			vl2g[ 1] = path[1];
+			vl2g[ 9] = path[2];
+			vl2g[ 2] = path[3];
+			vl2g[10] = path[4];
+			vl2g[ 3] = path[5];
+			vl2g[11] = path[6];
+
+			// Behind nodes
+			tree.DelEdge   (OrigID, YPlusID);
+			tree.ShortPath (YPlusID, ZPlusID, path);
+			vl2g[19] = path[2];
+			vl2g[ 7] = path[3];
+			vl2g[15] = path[4];
+			vl2g[ 4] = path[5];
+			vl2g[16] = path[6];
+
+			// Left nodes
+			tree.DelEdge   (OrigID, ZPlusID);
+			tree.ShortPath (ZPlusID, XPlusID, path);
+			vl2g[12] = path[2];
+			vl2g[ 5] = path[3];
+			vl2g[17] = path[4];
+
+			// Corner-front nodes
+			tree.DelEdge   (vl2g[7], vl2g[15]);
+			tree.DelEdge   (vl2g[7], vl2g[19]);
+			tree.ShortPath (vl2g[7], vl2g[ 5], path);
+			vl2g[14] = path[1];
+			vl2g[ 6] = path[2];
+			vl2g[13] = path[3];
+			tree.ShortPath (vl2g[7], vl2g[2], path);
+			vl2g[18] = path[3];
+		}
+		else // nedges==12
+		{
+			// Bottom nodes
+			vl2g[1] = path[0];
+			vl2g[2] = path[1];
+			vl2g[3] = path[2];
+
+			// Behind nodes
+			tree.DelEdge   (OrigID, YPlusID);
+			tree.ShortPath (YPlusID, ZPlusID, path);
+			vl2g[7] = path[1];
+			vl2g[4] = path[2];
+
+			// Left nodes
+			tree.DelEdge   (OrigID, ZPlusID);
+			tree.ShortPath (ZPlusID, XPlusID, path);
+			vl2g[5] = path[1];
+
+			// Corner-front nodes
+			tree.DelEdge   (vl2g[4], vl2g[7]);
+			tree.DelEdge   (vl2g[7], vl2g[3]);
+			tree.ShortPath (vl2g[7], vl2g[5], path);
+			vl2g[6] = path[1];
+		}
 	}
 	else
 	{
-		if (!(NNodes==4 || NNodes==8)) throw new Fatal("Block::SetCoords: For 2D blocks, the number of nodes must be either 4 or 8. (NNodes==%d is invalid)",NNodes);
-		_set_2d ();
-		ncomps = 2*NNodes;
-		if (NNodes==4) gen_mid = true;
+		if (nedges==8)
+		{
+			vl2g[4] = path[0];
+			vl2g[1] = path[1];
+			vl2g[5] = path[2];
+			vl2g[2] = path[3];
+			vl2g[6] = path[4];
+			vl2g[3] = path[5];
+			vl2g[7] = path[6];
+		}
+		else // nedges==4
+		{
+			vl2g[1] = path[0];
+			vl2g[2] = path[1];
+			vl2g[3] = path[2];
+		}
 	}
+	//std::cout << "vl2g = " << vl2g << std::endl;
 
-	// Set coordinates
-	va_list arg_list;
-	va_start (arg_list, NNodes); // initialize arg_list with parameters AFTER NNodes
-	for (size_t comp=0; comp<ncomps; ++comp)
+	// Edge and face tags
+	size_t net = (ETags==NULL ? 0 : ETags->Size()); // number of edges with tags
+	size_t nft = (FTags==NULL ? 0 : FTags->Size()); // number of faces with tags
+	Array<long> eg2l; eg2l.SetNS(Util::_4); // map: global edge to local edge IDs
+	if (net>0 || nft>0)
 	{
-		size_t i = comp / NNodes;
-		size_t j = comp % NNodes;
-		_c(i, j) = va_arg (arg_list, double);
+		eg2l.Resize(nedges);
+		tree.Reset (edges);
+		if (_is_3d)
+		{
+			if (nedges==24)
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[11])] =  0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[ 9])] =  1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[ 8])] =  2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[10])] =  3;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[15])] =  4;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[13])] =  5;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[12])] =  6;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[14])] =  7;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[16])] =  8;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[17])] =  9;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[18])] = 10;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[19])] = 11;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[11])] = 12;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[ 9])] = 13;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[ 8])] = 14;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[10])] = 15;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[15])] = 16;
+				eg2l[tree.GetEdge(vl2g[6],vl2g[13])] = 17;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[12])] = 18;
+				eg2l[tree.GetEdge(vl2g[6],vl2g[14])] = 19;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[16])] = 20;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[17])] = 21;
+				eg2l[tree.GetEdge(vl2g[6],vl2g[18])] = 22;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[19])] = 23;
+			}
+			else // nedges==12
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[3])] =  0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[2])] =  1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[1])] =  2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[2])] =  3;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[7])] =  4;
+				eg2l[tree.GetEdge(vl2g[5],vl2g[6])] =  5;
+				eg2l[tree.GetEdge(vl2g[4],vl2g[5])] =  6;
+				eg2l[tree.GetEdge(vl2g[7],vl2g[6])] =  7;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[4])] =  8;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[5])] =  9;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[6])] = 10;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[7])] = 11;
+			}
+		}
+		else
+		{
+			if (nedges==8)
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[7])] = 0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[5])] = 1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[4])] = 2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[6])] = 3;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[7])] = 4;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[5])] = 5;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[4])] = 6;
+				eg2l[tree.GetEdge(vl2g[2],vl2g[6])] = 7;
+			}
+			else // nedges==4
+			{
+				eg2l[tree.GetEdge(vl2g[0],vl2g[3])] = 0;
+				eg2l[tree.GetEdge(vl2g[1],vl2g[2])] = 1;
+				eg2l[tree.GetEdge(vl2g[0],vl2g[1])] = 2;
+				eg2l[tree.GetEdge(vl2g[3],vl2g[2])] = 3;
+			}
+		}
 	}
-	va_end (arg_list);
+	//std::cout << "eg2l = " << eg2l << std::endl;
+
+	// Read coordinates
+	for (size_t i=0; i<nverts; ++i)
+	{
+		long id    = vl2g[i];
+		bool found = false;
+		for (size_t j=0; j<nverts; ++j)
+		{
+			if (Verts[j].get<0>()==id)
+			{
+				            _c(0,i) = Verts[j].get<1>();
+				            _c(1,i) = Verts[j].get<2>();
+				if (_is_3d) _c(2,i) = Verts[j].get<3>();
+				found = true;
+				break;
+			}
+		}
+		if (found==false) throw new Fatal("Block::Set: Could not find vertex ID == %d in Array of Verts",id);
+	}
 
 	// Generate mid nodes
 	if (gen_mid) _gen_mid_nodes ();
-}
 
-inline void Block::SetETags(size_t NETags, ...)
-{
-	// Check
+	// Edge tags
+	_has_etags = (net>0 ? true : false);
+	for (size_t i=0; i<net; ++i)
+	{
+		size_t eid = tree.GetEdge ((*ETags)[i].get<0>(), (*ETags)[i].get<1>());
+		_etags(eg2l[eid]) = (*ETags)[i].get<2>();
+	}
+
+	// Face tags
 	if (_is_3d)
 	{
-		if (!(NETags==12 || NETags==24)) throw new Fatal("Block::SetETags: For 3D blocks, the number of edge tags must be either 12 or 24. (NETags==%d is invalid)",NETags);
+		_has_ftags = (nft>0 ? true : false);
+		for (size_t i=0; i<nft; ++i)
+		{
+			// face tag
+			int ftag = (*FTags)[i].get<4>();
+
+			// 3 edges defining the face
+			long eid0 = eg2l[ tree.GetEdge ((*FTags)[i].get<0>(), (*FTags)[i].get<1>()) ];
+			long eid1 = eg2l[ tree.GetEdge ((*FTags)[i].get<1>(), (*FTags)[i].get<2>()) ];
+			long eid2 = eg2l[ tree.GetEdge ((*FTags)[i].get<2>(), (*FTags)[i].get<3>()) ];
+
+			// find face given 3 edges
+			int  sum[6] = { 0,0,0,0,0,0 }; // number of edges defining each face
+			sum[Edge2Face[eid0].L] += 1;   sum[Edge2Face[eid0].R] += 1;
+			sum[Edge2Face[eid1].L] += 1;   sum[Edge2Face[eid1].R] += 1;
+			sum[Edge2Face[eid2].L] += 1;   sum[Edge2Face[eid2].R] += 1;
+			bool found = false; // found face with edges eid0,eid1,eid2 ?
+			for (int j=0; j<6; ++j) // loop over face local IDs
+			{
+				if (sum[j]==3) // found face
+				{
+					_ftags(j) = ftag;
+					found     = true;
+					break;
+				}
+			}
+			if (found==false) throw new Fatal("Block::Set: Could not find face with vertices (%d,%d,%d,%d) and ftag==%d in block with blktag==%d", (*FTags)[i].get<0>(), (*FTags)[i].get<1>(), (*FTags)[i].get<2>(), (*FTags)[i].get<3>(), ftag, Tag);
+		}
 	}
 	else
 	{
-		if (!(NETags==4 || NETags==8)) throw new Fatal("Block::SetETags: For 2D blocks, the number of edge tags must be either 4 or 8. (NETags==%d is invalid)",NETags);
+		if (nft>0) throw new Fatal("Block::SetCoords: For 2D blocks, FTags must be null == []");
 	}
-
-	// Set edge tags
-	_has_etags = true;
-	va_list arg_list;
-	va_start (arg_list, NETags); // initialize arg_list with parameters AETER NETags
-	for (size_t i=0; i<NETags; ++i)
-		_etags(i) = va_arg (arg_list, int);
-	va_end (arg_list);
-
-	// Set correspondent edges' tags
-	if (NETags<static_cast<size_t>(_etags.Size()))
-	{
-		for (size_t i=0; i<NETags; ++i)
-			_etags(i+NETags) = _etags(i);
-	}
-}
-
-inline void Block::SetFTags(size_t NFTags, ...)
-{
-	// Check
-	if (_is_3d==false) throw new Fatal("Block::SetFTags: This method is not available for 2D blocks.");
-	if (NFTags!=6)     throw new Fatal("Block::SetFTags: For 3D blocks, the number of edge tags must be equal to 6. (NFTags==%d is invalid)",NFTags);
-
-	// Set face tags
-	_has_ftags = true;
-	va_list arg_list;
-	va_start (arg_list, NFTags); // initialize arg_list with parameters AFTER NFTags
-	for (size_t i=0; i<NFTags; ++i)
-		_ftags(i) = va_arg (arg_list, int);
-	va_end (arg_list);
 }
 
 inline void Block::SetNx(size_t Nx, double Ax, bool NonLin)
@@ -489,321 +708,52 @@ inline void Block::Alright() const
 
 #ifdef USE_BOOST_PYTHON
 
-void Block::PySetCoords(int               Tag,     // Tag to be replicated to elements
-                        BPy::dict const & Verts,   // {IDv1:(x1,y1,z1), IDv2:(x2,y2,z2), ... (4)8 or (8)20 vertices]
-                        BPy::list const & Edges,   // [(v1,v2), (v1,v2), ... (4)12 or (8)24 edges]
-                        BPy::dict const & ETags,   // {(v1,v2):tag1, (v3,v4):tag2, ... num edges with tags} v# => vertex number
-                        BPy::dict const & FTags,   // {(v1,v2..v8):tag1, (v1,v2..v8):tag2, ... num faces with tags} v# => edge number (sorted)
-                        BPy::list const & Wx,      // Weights along x
-                        BPy::list const & Wy,      // Weights along y
-                        BPy::list const & Wz,      // Weights along z
-                        long              OrigID,  // ID of the vertex at origin
-                        long              XPlusID, // ID of the vertex at the positive corner of the local x-axis
-                        long              YPlusID, // ID of the vertex at the positive corner of the local y-axis
-                        long              ZPlusID) // ID of the vertex at the positive corner of the local z-axis
+inline void Block::PySet(int Tag, BPy::list const & Verts, BPy::list const & Edges, BPy::list const & ETags, BPy::list const & FTags, long OrigID, long XPlusID, long YPlusID, long ZPlusID)
 {
-	// Check
-	bool gen_mid = false; // generate mid vertices ?
-	int  nedges  = BPy::len(Edges);
-	int  nverts  = BPy::len(Verts);
-	if (nedges==24)
-	{
-		if (nverts!=20) throw new Fatal("Block::PySetCoords:: For 3D blocks with 24 edges, the number of vertices must be 20. (nverts==%d is invalid)",nverts);
-		_is_3d = true;
-	}
-	else if (nedges==12)
-	{
-		if (nverts!=8) throw new Fatal("Block::PySetCoords:: For 3D blocks with 12 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
-		_is_3d  = true;
-		gen_mid = true;
-	}
-	else if (nedges==8)
-	{
-		if (nverts!=8) throw new Fatal("Block::PySetCoords:: For 2D blocks with 8 edges, the number of vertices must be 8. (nverts==%d is invalid)",nverts);
-		_is_3d = false;
-	}
-	else if (nedges==4)
-	{
-		if (nverts!=4) throw new Fatal("Block::PySetCoords:: For 2D blocks with 4 edges, the number of vertices must be 4 (nverts==%d is invalid)",nverts);
-		_is_3d  = false;
-		gen_mid = true;
-	}
-	else throw new Fatal("Block::PySetCoords:: The list with edges must have 4(2D), 8(2D), 12(3D), or 24(3D) items. Ex.: Edges = [(v1,v2), (v1,v2), ... 4,8,12 or 24 edges]. (nedges==%d is invalid)",nedges);
+	int nverts = BPy::len(Verts);
+	int nedges = BPy::len(Edges);
+	int netags = BPy::len(ETags);
+	int nftags = BPy::len(FTags);
+	Mesh::Verts_T verts(nverts);
+	Mesh::Edges_T edges(nedges);
+	Mesh::ETags_T etags; if (netags>0) etags.Resize(netags);
+	Mesh::FTags_T ftags; if (nftags>0) ftags.Resize(nftags);
 
-	// Alloc arrays
-	SetTag (Tag);
-	if (_is_3d) _set_3d();
-	else        _set_2d();
-
-	// Read Wx
-	int sz_wx = BPy::len(Wx); if (sz_wx<1) throw new Fatal("Block::PySetCoords: Number of elements in Wx list must be greater than 0 (%d is invalid)",sz_wx);
-	_wx.Resize (sz_wx);
-	for (int i=0; i<sz_wx; ++i) _wx[i] = BPy::extract<double>(Wx[i])();
-	_set_wx();
-
-	// Read Wy
-	int sz_wy = BPy::len(Wy); if (sz_wy<1) throw new Fatal("Block::PySetCoords: Number of elements in Wy list must be greater than 0 (%d is invalid)",sz_wy);
-	_wy.Resize (sz_wy);
-	for (int i=0; i<sz_wy; ++i) _wy[i] = BPy::extract<double>(Wy[i])();
-	_set_wy();
-
-	// Read Wz
-	if (_is_3d)
-	{
-		int sz_wz = BPy::len(Wz); if (sz_wz<1) throw new Fatal("Block::PySetCoords: Number of elements in Wz list must be greater than 0 (%d is invalid)",sz_wz);
-		_wz.Resize (sz_wz);
-		for (int i=0; i<sz_wz; ++i) _wz[i] = BPy::extract<double>(Wz[i])();
-		_set_wz();
-	}
-
-	// Edges
-	Array<long> edges(nedges*2); // *2 => we have to serialize for Util::Tree
-	int k = 0;
-	for (int i=0; i<nedges; ++i)
-	{
-		BPy::tuple ed = BPy::extract<BPy::tuple>(Edges[i])();
-		edges[k  ] = BPy::extract<long>(ed[0])();
-		edges[k+1] = BPy::extract<long>(ed[1])();
-		k += 2;
-	}
-
-	// Tree
-	Util::Tree tree(edges);
-	Array<long> eds;   eds.Resize(nedges);  eds.SetNS(Util::_4);
-	Array<long> vl2g; vl2g.Resize(nverts); vl2g.SetNS(Util::_4); // map: local vertex to global vertex IDs
-
-	// Sort
-	vl2g[0] = OrigID;
-	Array<long> path;
-	tree.DelEdge   (OrigID, XPlusID);
-	tree.ShortPath (XPlusID, YPlusID, path);
-	if (_is_3d)
-	{
-		if (nedges==24)
-		{
-			// Bottom nodes
-			vl2g[ 8] = path[0];
-			vl2g[ 1] = path[1];
-			vl2g[ 9] = path[2];
-			vl2g[ 2] = path[3];
-			vl2g[10] = path[4];
-			vl2g[ 3] = path[5];
-			vl2g[11] = path[6];
-
-			// Behind nodes
-			tree.DelEdge   (OrigID, YPlusID);
-			tree.ShortPath (YPlusID, ZPlusID, path);
-			vl2g[19] = path[2];
-			vl2g[ 7] = path[3];
-			vl2g[15] = path[4];
-			vl2g[ 4] = path[5];
-			vl2g[16] = path[6];
-
-			// Left nodes
-			tree.DelEdge   (OrigID, ZPlusID);
-			tree.ShortPath (ZPlusID, XPlusID, path);
-			vl2g[12] = path[2];
-			vl2g[ 5] = path[3];
-			vl2g[17] = path[4];
-
-			// Corner-front nodes
-			tree.DelEdge   (vl2g[7], vl2g[15]);
-			tree.DelEdge   (vl2g[7], vl2g[19]);
-			tree.ShortPath (vl2g[7], vl2g[ 5], path);
-			vl2g[14] = path[1];
-			vl2g[ 6] = path[2];
-			vl2g[13] = path[3];
-			tree.ShortPath (vl2g[7], vl2g[2], path);
-			vl2g[18] = path[3];
-		}
-		else // nedges==12
-		{
-			// Bottom nodes
-			vl2g[1] = path[0];
-			vl2g[2] = path[1];
-			vl2g[3] = path[2];
-
-			// Behind nodes
-			tree.DelEdge   (OrigID, YPlusID);
-			tree.ShortPath (YPlusID, ZPlusID, path);
-			vl2g[7] = path[1];
-			vl2g[4] = path[2];
-
-			// Left nodes
-			tree.DelEdge   (OrigID, ZPlusID);
-			tree.ShortPath (ZPlusID, XPlusID, path);
-			vl2g[5] = path[1];
-
-			// Corner-front nodes
-			tree.DelEdge   (vl2g[4], vl2g[7]);
-			tree.DelEdge   (vl2g[7], vl2g[3]);
-			tree.ShortPath (vl2g[7], vl2g[5], path);
-			vl2g[6] = path[1];
-		}
-	}
-	else
-	{
-		if (nedges==8)
-		{
-			vl2g[4] = path[0];
-			vl2g[1] = path[1];
-			vl2g[5] = path[2];
-			vl2g[2] = path[3];
-			vl2g[6] = path[4];
-			vl2g[3] = path[5];
-			vl2g[7] = path[6];
-		}
-		else // nedges==4
-		{
-			vl2g[1] = path[0];
-			vl2g[2] = path[1];
-			vl2g[3] = path[2];
-		}
-	}
-	//std::cout << "vl2g = " << vl2g << std::endl;
-
-	// Edge and face tags
-	int net = BPy::len(ETags); // number of edges with tags
-	int nft = BPy::len(FTags); // number of faces with tags
-	Array<long> eg2l; eg2l.SetNS(Util::_4); // map: global edge to local edge IDs
-	if (net>0 || nft>0)
-	{
-		eg2l.Resize(nedges);
-		tree.Reset (edges);
-		if (_is_3d)
-		{
-			if (nedges==24)
-			{
-				eg2l[tree.GetEdge(vl2g[0],vl2g[11])] =  0;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[ 9])] =  1;
-				eg2l[tree.GetEdge(vl2g[0],vl2g[ 8])] =  2;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[10])] =  3;
-				eg2l[tree.GetEdge(vl2g[4],vl2g[15])] =  4;
-				eg2l[tree.GetEdge(vl2g[5],vl2g[13])] =  5;
-				eg2l[tree.GetEdge(vl2g[4],vl2g[12])] =  6;
-				eg2l[tree.GetEdge(vl2g[7],vl2g[14])] =  7;
-				eg2l[tree.GetEdge(vl2g[0],vl2g[16])] =  8;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[17])] =  9;
-				eg2l[tree.GetEdge(vl2g[2],vl2g[18])] = 10;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[19])] = 11;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[11])] = 12;
-				eg2l[tree.GetEdge(vl2g[2],vl2g[ 9])] = 13;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[ 8])] = 14;
-				eg2l[tree.GetEdge(vl2g[2],vl2g[10])] = 15;
-				eg2l[tree.GetEdge(vl2g[7],vl2g[15])] = 16;
-				eg2l[tree.GetEdge(vl2g[6],vl2g[13])] = 17;
-				eg2l[tree.GetEdge(vl2g[5],vl2g[12])] = 18;
-				eg2l[tree.GetEdge(vl2g[6],vl2g[14])] = 19;
-				eg2l[tree.GetEdge(vl2g[4],vl2g[16])] = 20;
-				eg2l[tree.GetEdge(vl2g[5],vl2g[17])] = 21;
-				eg2l[tree.GetEdge(vl2g[6],vl2g[18])] = 22;
-				eg2l[tree.GetEdge(vl2g[7],vl2g[19])] = 23;
-			}
-			else // nedges==12
-			{
-				eg2l[tree.GetEdge(vl2g[0],vl2g[3])] =  0;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[2])] =  1;
-				eg2l[tree.GetEdge(vl2g[0],vl2g[1])] =  2;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[2])] =  3;
-				eg2l[tree.GetEdge(vl2g[4],vl2g[7])] =  4;
-				eg2l[tree.GetEdge(vl2g[5],vl2g[6])] =  5;
-				eg2l[tree.GetEdge(vl2g[4],vl2g[5])] =  6;
-				eg2l[tree.GetEdge(vl2g[7],vl2g[6])] =  7;
-				eg2l[tree.GetEdge(vl2g[0],vl2g[4])] =  8;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[5])] =  9;
-				eg2l[tree.GetEdge(vl2g[2],vl2g[6])] = 10;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[7])] = 11;
-			}
-		}
-		else
-		{
-			if (nedges==8)
-			{
-				eg2l[tree.GetEdge(vl2g[0],vl2g[7])] = 0;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[5])] = 1;
-				eg2l[tree.GetEdge(vl2g[0],vl2g[4])] = 2;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[6])] = 3;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[7])] = 4;
-				eg2l[tree.GetEdge(vl2g[2],vl2g[5])] = 5;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[4])] = 6;
-				eg2l[tree.GetEdge(vl2g[2],vl2g[6])] = 7;
-			}
-			else // nedges==4
-			{
-				eg2l[tree.GetEdge(vl2g[0],vl2g[3])] = 0;
-				eg2l[tree.GetEdge(vl2g[1],vl2g[2])] = 1;
-				eg2l[tree.GetEdge(vl2g[0],vl2g[1])] = 2;
-				eg2l[tree.GetEdge(vl2g[3],vl2g[2])] = 3;
-			}
-		}
-	}
-	//std::cout << "eg2l = " << eg2l << std::endl;
-
-	// Read coordinates
+	// Extract verts
 	for (int i=0; i<nverts; ++i)
 	{
-		BPy::tuple xyz = BPy::extract<BPy::tuple>(Verts[vl2g[i]])();
-		            _c(0,i) = BPy::extract<double>(xyz[0])();
-		            _c(1,i) = BPy::extract<double>(xyz[1])();
-		if (_is_3d) _c(2,i) = BPy::extract<double>(xyz[2])();
+		BPy::tuple const & ve = BPy::extract<BPy::tuple>(Verts[i])();
+		     if (BPy::len(ve)==3) verts[i] = boost::make_tuple (BPy::extract<int>(ve[0])(), BPy::extract<double>(ve[1])(), BPy::extract<double>(ve[2])(), 0.0);
+		else if (BPy::len(ve)==4) verts[i] = boost::make_tuple (BPy::extract<int>(ve[0])(), BPy::extract<double>(ve[1])(), BPy::extract<double>(ve[2])(), BPy::extract<double>(ve[3])());
+		else throw new Fatal("Block::PySet: The list of vertices (Verts) must contain tuples with 3 or 4 elements. Ex.: [(ID,x,y)...] or [(ID,x,y,z)...]");
 	}
 
-	// Generate mid nodes
-	if (gen_mid) _gen_mid_nodes ();
-
-	// Edge tags
-	_has_etags = (net>0 ? true : false);
-	for (int i=0; i<net; ++i)
+	// Extract edges
+	for (int i=0; i<nedges; ++i)
 	{
-		BPy::tuple const & verts = BPy::extract<BPy::tuple>(ETags.keys()[i])();
-		if (BPy::len(verts)<2) throw new Fatal("Block::SetCoords: Each edge tag list must have at least 2 vertices IDs defining an edge");
-		size_t eid = tree.GetEdge (BPy::extract<long>(verts[0])(), BPy::extract<long>(verts[1])());
-		_etags(eg2l[eid]) = BPy::extract<int>(ETags.values()[i])();
+		BPy::tuple const & ed = BPy::extract<BPy::tuple>(Edges[i])();
+		if (BPy::len(ed)!=2) throw new Fatal("Block::PySet: The list of edges (Edges) must contain tuples with 2 elements. Ex.: [(v1,v2)...]");
+		edges[i] = boost::make_tuple (BPy::extract<int>(ed[0])(), BPy::extract<int>(ed[1])());
 	}
 
-	// Face tags
-	if (_is_3d)
+	// Extract etags
+	for (int i=0; i<netags; ++i)
 	{
-		_has_ftags = (nft>0 ? true : false);
-		for (int i=0; i<nft; ++i)
-		{
-			// face tag
-			int ftag = BPy::extract<int>(FTags.values()[i])();
-			// vertices on the face
-			BPy::tuple const & verts = BPy::extract<BPy::tuple>(FTags.keys()[i])();
-			if (BPy::len(verts)<4) throw new Fatal("Block::SetCoords: Each face tag list must have at least 4 vertices IDs defining a face");
-			// 3 edges defining the face
-			long eid0 = eg2l[ tree.GetEdge (BPy::extract<long>(verts[0])(), BPy::extract<long>(verts[1])()) ];
-			long eid1 = eg2l[ tree.GetEdge (BPy::extract<long>(verts[1])(), BPy::extract<long>(verts[2])()) ];
-			long eid2 = eg2l[ tree.GetEdge (BPy::extract<long>(verts[2])(), BPy::extract<long>(verts[3])()) ];
-			// find face given 3 edges
-			int  sum[6] = { 0,0,0,0,0,0 }; // number of edges defining each face
-			sum[Edge2Face[eid0].L] += 1;   sum[Edge2Face[eid0].R] += 1;
-			sum[Edge2Face[eid1].L] += 1;   sum[Edge2Face[eid1].R] += 1;
-			sum[Edge2Face[eid2].L] += 1;   sum[Edge2Face[eid2].R] += 1;
-			bool found = false; // found face with edges eid0,eid1,eid2 ?
-			for (int j=0; j<6; ++j) // loop over face local IDs
-			{
-				if (sum[j]==3) // found face
-				{
-					_ftags(j) = ftag;
-					found     = true;
-					break;
-				}
-			}
-			if (found==false)
-			{
-				String buffer;
-				for (int j=0; j<BPy::len(verts); ++j)
-					buffer.Printf("%s,%d", buffer.CStr(), BPy::extract<long>(verts[i])());
-				throw new Fatal("Block::SetCoords: Could not find face with vertices (%s) and ftag==%d in block with blktag==%d", buffer.CStr(), ftag, Tag);
-			}
-		}
+		BPy::tuple const & et = BPy::extract<BPy::tuple>(ETags[i])();
+		if (BPy::len(et)!=3) throw new Fatal("Block::PySet: The list of edges tags (ETags) must contain tuples with 3 elements. Ex.: [(v1,v2,tag)...]");
+		etags[i] = boost::make_tuple (BPy::extract<int>(et[0])(), BPy::extract<int>(et[1])(), BPy::extract<int>(et[2])());
 	}
-	else
+
+	// Extract ftags
+	for (int i=0; i<nftags; ++i)
 	{
-		if (nft>0) throw new Fatal("Block::SetCoords: For 2D blocks, FTags must be null == []");
+		BPy::tuple const & ft = BPy::extract<BPy::tuple>(FTags[i])();
+		if (BPy::len(ft)!=5) throw new Fatal("Block::PySet: The list of faces tags (FTags) must contain tuples with 5 elements. Ex.: [(v1,v2,v3,v4,tag)...]");
+		ftags[i] = boost::make_tuple (BPy::extract<int>(ft[0])(), BPy::extract<int>(ft[1])(), BPy::extract<int>(ft[2])(), BPy::extract<int>(ft[3])(), BPy::extract<int>(ft[4])());
 	}
+
+	// Set Block
+	Set (Tag, verts, edges, (netags>0?&etags:NULL), (nftags>0?&ftags:NULL), OrigID, XPlusID, YPlusID, ZPlusID);
 }
 
 #endif // USE_BOOST_PYTHON
@@ -903,31 +853,31 @@ inline size_t Structured::Generate(bool WithInfo)
 	Erase();
 
 	// Check if the first block is 3D
-	_is_3d = _bls[0]->Is3D();
+	_is_3d = _bls[0].Is3D();
 	_s.Resize((_is_3d ? 20 : 8)); // resize the shape values vector
 
 	// Generate vertices and elements (with duplicates)
-	double min_diagonal = _bls[0]->Diagonal(); // minimum diagonal among all elements
+	double min_diagonal = _bls[0].Diagonal(); // minimum diagonal among all elements
 	for (size_t b=0; b<_bls.Size(); ++b)
 	{
 		// Check if all blocks have the same space dimension
-		if (_bls[b]->Is3D()!=_is_3d) throw new Fatal("Structured::Generate: All blocks must have the same space dimension");
+		if (_bls[b].Is3D()!=_is_3d) throw new Fatal("Structured::Generate: All blocks must have the same space dimension");
 		
 		// Check if block has all arrays/vectors/matrices with the right sizes
-		_bls[b]->Alright();
+		_bls[b].Alright();
 
 		// Generate
 		double t_before = -2.0;
 		double t = -1.0; // initial Z natural coordinate
-		for (int k=0; k<(_is_3d ? _bls[b]->nDivZ()+1 : 1); ++k)
+		for (int k=0; k<(_is_3d ? _bls[b].nDivZ()+1 : 1); ++k)
 		{
 			double s_before = -2.0;
 			double s = -1.0; // initial Y natural coordinate
-			for (int j=0; j<_bls[b]->nDivY()+1; ++j)
+			for (int j=0; j<_bls[b].nDivY()+1; ++j)
 			{
 				double r_before = -2.0;
 				double r = -1.0; // initial X natural coordinate
-				for (int i=0; i<_bls[b]->nDivX()+1; ++i)
+				for (int i=0; i<_bls[b].nDivX()+1; ++i)
 				{
 					// Compute shape (interpolation) functions
 					if (_is_3d) _shape_3d (r,s,t);
@@ -935,11 +885,11 @@ inline size_t Structured::Generate(bool WithInfo)
 
 					// New vertex
 					Vertex  * v = new Vertex;
-					v->MyID     = _verts_d.Size();            // id
-					v->BlockNum = b;                          // block number (used when removing duplicates)
-					v->C        = _bls[b]->C() * _s;          // new x-y-z coordinates
-					v->Dupl     = false;                      // is this a duplicated node?
-					_bls[b]->FindLocalEdgesFacesID(i,j,k, v); // check if it is on boundary and find EdgesID where this vertex is located on
+					v->MyID     = _verts_d.Size();           // id
+					v->BlockNum = b;                         // block number (used when removing duplicates)
+					v->C        = _bls[b].C() * _s;          // new x-y-z coordinates
+					v->Dupl     = false;                     // is this a duplicated node?
+					_bls[b].FindLocalEdgesFacesID(i,j,k, v); // check if it is on boundary and find EdgesID where this vertex is located on
 					_verts_d.Push(v);
 					if (v->OnBry) _verts_d_bry.Push(v); // array with vertices on boundary
 
@@ -956,10 +906,10 @@ inline size_t Structured::Generate(bool WithInfo)
 							v1           = new Vertex;
 							v1->MyID     = _verts_m1.Size();
 							v1->BlockNum = b;
-							v1->C        = _bls[b]->C() * _s;
+							v1->C        = _bls[b].C() * _s;
 							v1->Dupl     = false;
-							if (i==_bls[b]->nDivX()) _bls[b]->FindLocalEdgesFacesID(i-1,j,k, v1);
-							else                     _bls[b]->FindLocalEdgesFacesID(i,  j,k, v1);
+							if (i==_bls[b].nDivX()) _bls[b].FindLocalEdgesFacesID(i-1,j,k, v1);
+							else                    _bls[b].FindLocalEdgesFacesID(i,  j,k, v1);
 							_verts_m1.Push(v1);
 							if (v1->OnBry) _verts_d_bry.Push(v1);
 						}
@@ -970,10 +920,10 @@ inline size_t Structured::Generate(bool WithInfo)
 							v2           = new Vertex;
 							v2->MyID     = _verts_m2.Size();
 							v2->BlockNum = b;
-							v2->C        = _bls[b]->C() * _s;
+							v2->C        = _bls[b].C() * _s;
 							v2->Dupl     = false;
-							if (j==_bls[b]->nDivY()) _bls[b]->FindLocalEdgesFacesID(i,j-1,k, v2);
-							else                     _bls[b]->FindLocalEdgesFacesID(i,j,  k, v2);
+							if (j==_bls[b].nDivY()) _bls[b].FindLocalEdgesFacesID(i,j-1,k, v2);
+							else                    _bls[b].FindLocalEdgesFacesID(i,j,  k, v2);
 							_verts_m2.Push(v2);
 							if (v2->OnBry) _verts_d_bry.Push(v2);
 						}
@@ -983,10 +933,10 @@ inline size_t Structured::Generate(bool WithInfo)
 							v3           = new Vertex;
 							v3->MyID     = _verts_m3.Size();
 							v3->BlockNum = b;
-							v3->C        = _bls[b]->C() * _s;
+							v3->C        = _bls[b].C() * _s;
 							v3->Dupl     = false;
-							if (k==_bls[b]->nDivZ()) _bls[b]->FindLocalEdgesFacesID(i,j,k-1, v3);
-							else                     _bls[b]->FindLocalEdgesFacesID(i,j,k,   v3);
+							if (k==_bls[b].nDivZ()) _bls[b].FindLocalEdgesFacesID(i,j,k-1, v3);
+							else                    _bls[b].FindLocalEdgesFacesID(i,j,k,   v3);
 							_verts_m3.Push(v3);
 							if (v3->OnBry) _verts_d_bry.Push(v3);
 						}
@@ -997,34 +947,34 @@ inline size_t Structured::Generate(bool WithInfo)
 					if (i!=0 && j!=0 && (_is_3d ? k!=0 : true))
 					{
 						Elem * e = new Elem;
-						e->MyID     = _elems.Size();  // id
-						e->Tag      = _bls[b]->Tag(); // tag
+						e->MyID     = _elems.Size(); // id
+						e->Tag      = _bls[b].Tag(); // tag
 						if (_is_3d)
 						{
 							// connectivity
 							e->V.Resize((_is_o2?20:8));
-							e->V[0] = _verts_d[v->MyID - 1 - (_bls[b]->nDivX()+1) - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
-							e->V[1] = _verts_d[v->MyID     - (_bls[b]->nDivX()+1) - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
-							e->V[2] = _verts_d[v->MyID                            - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
-							e->V[3] = _verts_d[v->MyID - 1                        - (_bls[b]->nDivX()+1)*(_bls[b]->nDivY()+1)];
-							e->V[4] = _verts_d[v->MyID - 1 - (_bls[b]->nDivX()+1)];
-							e->V[5] = _verts_d[v->MyID -     (_bls[b]->nDivX()+1)];
+							e->V[0] = _verts_d[v->MyID - 1 - (_bls[b].nDivX()+1) - (_bls[b].nDivX()+1)*(_bls[b].nDivY()+1)];
+							e->V[1] = _verts_d[v->MyID     - (_bls[b].nDivX()+1) - (_bls[b].nDivX()+1)*(_bls[b].nDivY()+1)];
+							e->V[2] = _verts_d[v->MyID                           - (_bls[b].nDivX()+1)*(_bls[b].nDivY()+1)];
+							e->V[3] = _verts_d[v->MyID - 1                       - (_bls[b].nDivX()+1)*(_bls[b].nDivY()+1)];
+							e->V[4] = _verts_d[v->MyID - 1 - (_bls[b].nDivX()+1)];
+							e->V[5] = _verts_d[v->MyID -     (_bls[b].nDivX()+1)];
 							e->V[6] = _verts_d[v->MyID];
 							e->V[7] = _verts_d[v->MyID - 1];
 							if (_is_o2)
 							{
-								e->V[ 8] = _verts_m1[v1->MyID - _bls[b]->nDivX() - _bls[b]->nDivX()*(_bls[b]->nDivY()+1)];
-								e->V[ 9] = _verts_m2[v2->MyID                    - _bls[b]->nDivY()*(_bls[b]->nDivX()+1)];
-								e->V[10] = _verts_m1[v1->MyID                    - _bls[b]->nDivX()*(_bls[b]->nDivY()+1)];
-								e->V[11] = _verts_m2[v2->MyID -1                 - _bls[b]->nDivY()*(_bls[b]->nDivX()+1)];
+								e->V[ 8] = _verts_m1[v1->MyID - _bls[b].nDivX() - _bls[b].nDivX()*(_bls[b].nDivY()+1)];
+								e->V[ 9] = _verts_m2[v2->MyID                   - _bls[b].nDivY()*(_bls[b].nDivX()+1)];
+								e->V[10] = _verts_m1[v1->MyID                   - _bls[b].nDivX()*(_bls[b].nDivY()+1)];
+								e->V[11] = _verts_m2[v2->MyID -1                - _bls[b].nDivY()*(_bls[b].nDivX()+1)];
 
-								e->V[12] = _verts_m1[v1->MyID - _bls[b]->nDivX()];
+								e->V[12] = _verts_m1[v1->MyID - _bls[b].nDivX()];
 								e->V[13] = _verts_m2[v2->MyID];
 								e->V[14] = _verts_m1[v1->MyID];
 								e->V[15] = _verts_m2[v2->MyID - 1];
 
-								e->V[16] = _verts_m3[v3->MyID - 1 - (_bls[b]->nDivX()+1)];
-								e->V[17] = _verts_m3[v3->MyID -     (_bls[b]->nDivX()+1)];
+								e->V[16] = _verts_m3[v3->MyID - 1 - (_bls[b].nDivX()+1)];
+								e->V[17] = _verts_m3[v3->MyID -     (_bls[b].nDivX()+1)];
 								e->V[18] = _verts_m3[v3->MyID];
 								e->V[19] = _verts_m3[v3->MyID - 1];
 							}
@@ -1047,13 +997,13 @@ inline size_t Structured::Generate(bool WithInfo)
 						{
 							// connectivity
 							e->V.Resize((_is_o2?8:4));
-							e->V[0] = _verts_d[v->MyID - 1 - (_bls[b]->nDivX()+1)];
-							e->V[1] = _verts_d[v->MyID     - (_bls[b]->nDivX()+1)];
+							e->V[0] = _verts_d[v->MyID - 1 - (_bls[b].nDivX()+1)];
+							e->V[1] = _verts_d[v->MyID     - (_bls[b].nDivX()+1)];
 							e->V[2] = _verts_d[v->MyID];
 							e->V[3] = _verts_d[v->MyID - 1];
 							if (_is_o2)
 							{
-								e->V[4] = _verts_m1[v1->MyID - _bls[b]->nDivX()];
+								e->V[4] = _verts_m1[v1->MyID - _bls[b].nDivX()];
 								e->V[5] = _verts_m2[v2->MyID];
 								e->V[6] = _verts_m1[v1->MyID];
 								e->V[7] = _verts_m2[v2->MyID - 1];
@@ -1074,8 +1024,8 @@ inline size_t Structured::Generate(bool WithInfo)
 						}
 						if (e->OnBry)
 						{
-							_elems_bry.Push(e);      // array with elements on boundary
-							_bls[b]->ApplyTags(e); // apply tags to edges and faces of this element with boundary tags
+							_elems_bry.Push(e);   // array with elements on boundary
+							_bls[b].ApplyTags(e); // apply tags to edges and faces of this element with boundary tags
 						}
 						_elems.Push(e); // array with all elements
 						// Minimum diagonal
@@ -1083,15 +1033,15 @@ inline size_t Structured::Generate(bool WithInfo)
 					}
 					// Next r
 					r_before = r;
-					r += (2.0/_bls[b]->SumWeightX()) * _bls[b]->Wx(i);
+					r += (2.0/_bls[b].SumWeightX()) * _bls[b].Wx(i);
 				}
 				// Next s
 				s_before = s;
-				s += (2.0/_bls[b]->SumWeightY()) * _bls[b]->Wy(j);
+				s += (2.0/_bls[b].SumWeightY()) * _bls[b].Wy(j);
 			}
 			// Next t
 			t_before = t;
-			t += (_is_3d ? (2.0/_bls[b]->SumWeightZ()) * _bls[b]->Wz(k) : 0.0);
+			t += (_is_3d ? (2.0/_bls[b].SumWeightZ()) * _bls[b].Wz(k) : 0.0);
 		}
 	}
 
@@ -1226,7 +1176,7 @@ inline void Structured::PySetBlocks(BPy::list const & ListOfMeshBlock)
 	int nb = BPy::len(ListOfMeshBlock);
 	if (nb<1) throw new Fatal("Structured::PyGenerate: Number of blocks must be greater than 0 (%d is invalid)",nb);
 	_bls.Resize (nb);
-	for (int i=0; i<nb; ++i) _bls[i] = BPy::extract<Mesh::Block*>(ListOfMeshBlock[i])();
+	for (int i=0; i<nb; ++i) _bls[i] = BPy::extract<Mesh::Block const &>(ListOfMeshBlock[i])();
 }
 
 #endif // USE_BOOST_PYTHON
