@@ -89,7 +89,7 @@ int main(int argc, char **argv) try
 	double L        = 50.0;     // length
 	double H        = 50.0;     // height
 	bool   is_o2    = false;    // use high order elements?
-	int    ny       = 15;       // num divisions alogn Y
+	int    ny       = 15;       // num divisions along Y
 	double Ax       = 2.0;      // rate of increase of X divisions
 	double NonLinX  = false;    // nonlinear divisions along X?
 

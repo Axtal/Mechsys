@@ -286,9 +286,6 @@ inline size_t Unstructured::Generate(bool WithInfo)
 	}
 	*/
 
-	// Generate Beams
-	_add_beams();
-
 	// Info
 	if (WithInfo)
 	{

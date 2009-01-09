@@ -144,15 +144,12 @@ public:
 	virtual void SetElemFTag (int i, int j, int Tag);                               ///< Set element's face tag
 	virtual void Erase       ();                                                    ///< Erase current mesh (deallocate memory)
 
-
-	// Beams and Joints
-	void   SetETagsBeams (size_t NBeamETags, ...);                ///< Set what edge tags represent Beams
-	size_t nETagsBeams   () const { return _etags_beams.Size(); } ///< Return the number of edge tags that represent Beams
-	bool   IsETagBeam    (int ETag) const;                        ///< Find whether an EdgeTag represents a Beam or not
+	// Access methods
+	void   ElemCentre (size_t i, double & X, double & Y, double & Z) const;    ///< Calculate centre of an element i
+	bool   Is3D       ()         const { return _is_3d;                      } ///< Is 3D mesh ?
+	size_t ElemNEdges (size_t i) const { return _nedges(ElemVTKCellType(i)); } ///< Return the number of edges
 
 	// Get methods
-	        void   ElemCentre      (size_t i, double & X, double & Y, double & Z) const;          ///< Calculate centre of an element i
-	        bool   Is3D            ()                   const { return _is_3d;                  } ///< Is 3D mesh ?
 	virtual size_t NVerts          ()                   const { return _verts.Size();           } ///< Return the number of vertices
 	virtual size_t NVertsBry       ()                   const { return _verts_bry.Size();       } ///< Return the number of elements on boundary
 	virtual size_t NElems          ()                   const { return _elems.Size();           } ///< Return the number of elements
@@ -170,7 +167,7 @@ public:
 	virtual size_t ElemCon         (size_t i, size_t j) const { return _elems[i]->V[j]->MyID;   } ///< Return the vertex j of an element i
 	virtual size_t ElemNETags      (size_t i)           const { return _elems[i]->ETags.Size(); } ///< Return the number of edge tags of an element i
 	virtual size_t ElemNFTags      (size_t i)           const { return _elems[i]->FTags.Size(); } ///< Return the number of face tags of an element i
-	virtual int    ElemETag        (size_t i, size_t j) const { return _elems[i]->ETags(j);     } ///< Return the edge tag j of an element i
+	virtual int    ElemETag        (size_t i, size_t j) const;                                    ///< Return the edge tag j of an element i
 	virtual int    ElemFTag        (size_t i, size_t j) const { return _elems[i]->FTags(j);     } ///< Return the face tag j of an element i
 
 #ifdef USE_BOOST_PYTHON
@@ -193,7 +190,6 @@ protected:
 	Array<Elem*>   _elems;     ///< Elements
 	Array<Elem*>   _elems_bry; ///< Elements on boundary
 	Array<Vertex*> _verts_bry; ///< Vertices on boundary
-	Array<int>     _etags_beams; ///< Edge tags that represent Beams
 
 	// Private methods
 	size_t _edge_to_lef_vert (size_t iElem, size_t EdgeLocalID) const;                        ///< Returns the local left vertex ID for a given Local Edge ID of element # iElem
@@ -206,9 +202,6 @@ protected:
 	size_t _nverts  (int VTKCellType) const; ///< Returns the number of vertices of a VTKCell
 	size_t _nedges  (int VTKCellType) const; ///< Returns the number of edges of a VTKCell
 	size_t _nfaces  (int VTKCellType) const; ///< Returns the number of faces of a VTKCell
-
-	// Beam
-	void _add_beams ();
 
 }; // class Generic
 
@@ -496,19 +489,15 @@ inline void Generic::SetElemFTag(int i, int j, int Tag)
 	_elems[i]->FTags(j) = Tag;
 }
 
-inline void Generic::SetETagsBeams(size_t NBeamETags, ...)
+inline int Generic::ElemETag(size_t i, size_t j) const
 {
-	_etags_beams.Resize(NBeamETags);
-	va_list arg_list;
-	va_start (arg_list, NBeamETags); // initialize arg_list with parameters AETER NBeamETags
-	for (size_t i=0; i<NBeamETags; ++i)
-		_etags_beams[i] = va_arg (arg_list, int);
-	va_end (arg_list);
-}
-
-inline bool Generic::IsETagBeam(int ETag) const
-{
-	return (_etags_beams.Find(ETag)>=0);
+	size_t net = ElemNETags(i); // number of edge tags not regarding O2 edges
+	if (net>0)
+	{
+		size_t ied = (j>net-1 ? j-net : j); // first edge IDs not regarding O2 edges
+		return _elems[i]->ETags(ied);
+	}
+	else return 0;
 }
 
 inline void Generic::ElemCentre (size_t i, double & X, double & Y, double & Z) const
@@ -900,44 +889,6 @@ inline size_t Generic::_nfaces(int VTKCellType) const
 		case VTK_QUADRATIC_TETRA:      { return 4; }
 		case VTK_QUADRATIC_HEXAHEDRON: { return 6; }
 		default: throw new Fatal("Generic::_nfaces: VTKCellType==%d is invalid", VTKCellType);
-	}
-}
-
-inline void Generic::_add_beams()
-{
-	// Add Beam elements
-	if (nETagsBeams()>0)
-	{
-		for (size_t i=0; i<NElems(); ++i)
-		{
-			for (size_t j=0; j<ElemNETags(i); ++j)
-			{
-				int etag = ElemETag (i,j);
-				if (etag<0)
-				{
-					if (IsETagBeam(etag))
-					{
-						cout << etag << endl;
-					}
-				}
-			}
-		}
-		//for (int p=0; p<e->ETags.Size(); ++p) // p is EdgeLocalID
-		//{
-			//int etag = e->ETags(m);
-			//if (IsETagBeam(etag))
-			//{
-				// Add new Beam element
-				//size_t l = EdgeToLef (_elems.Size()-1, p);
-				//size_t m = EdgeToMid (_elems.Size()-1, p);
-				//size_t r = EdgeToRig (_elems.Size()-1, p);
-				//Elem * beam = new Elem;
-				//e->MyID = _elems.Size(); // id
-				//e->Tag  = etag;          // tag
-				// connectivity
-				//e->V.Resize((_is_o2?3:8));
-			//}
-		//}
 	}
 }
 

@@ -238,7 +238,7 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 				int beam_edge_tag = (*ElemsAtts)[k].get<0>();
 				for (size_t i=0; i<M->NElems(); ++i)
 				{
-					for (size_t j=0; j<M->ElemNETags(i); ++j)
+					for (size_t j=0; j<M->ElemNEdges(i); ++j)
 					{
 						if (M->ElemETag(i,j)==beam_edge_tag)
 						{

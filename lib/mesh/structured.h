@@ -1149,9 +1149,6 @@ inline size_t Structured::Generate(bool WithInfo)
 		}
 	}
 
-	// Generate Beams
-	_add_beams();
-
 	// Info
 	if (WithInfo)
 	{
