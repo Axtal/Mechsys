@@ -89,10 +89,14 @@ int main(int argc, char **argv) try
 	double L        = 50.0;     // length
 	double H        = 50.0;     // height
 	bool   is_o2    = false;    // use high order elements?
+	int    ny       = 15;       // num divisions alogn Y
+	double Ax       = 2.0;      // rate of increase of X divisions
+	double NonLinX  = false;    // nonlinear divisions along X?
 
 	// Input
-	cout << "Input: " << argv[0] << "  is_o2\n";
+	cout << "Input: " << argv[0] << "  is_o2  ny(nx=2*ny)\n";
 	if (argc>=2) is_o2 = (atoi(argv[1])>0 ? true : false);
+	if (argc>=3) ny    =  atoi(argv[2]);
 
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
@@ -123,7 +127,6 @@ int main(int argc, char **argv) try
 	double d = H-r;
 	double e = r*sin(2.*PI/8.);
 	double f = H-e;
-	int    ndivy = 1;
 
 	// Blocks
 	Array<Mesh::Block> bks(2);
@@ -143,8 +146,8 @@ int main(int argc, char **argv) try
     ed0 = T(0,4), T(4,1), T(1,5), T(5,2), T(2,6), T(6,3), T(3,7), T(7,0);
     et0 = T(0,4,-10), T(4,1,-10), T(1,5,-20), T(5,2,-20), T(0,7,-55), T(3,7,-55);
     bks[0].Set   (-1, ve0, ed0, &et0, NULL, /*orig*/0, /*xplus*/4, /*yplus*/7);
-	bks[0].SetNx (ndivy);
-	bks[0].SetNy (ndivy);
+	bks[0].SetNx (2*ny, Ax, NonLinX);
+	bks[0].SetNy (ny);
 
 	// Block # 1 --------------------------------
     Mesh::Verts_T ve1(8);
@@ -161,8 +164,8 @@ int main(int argc, char **argv) try
     ed1 = T(0,4), T(4,1), T(1,5), T(5,2), T(2,6), T(6,3), T(3,7), T(7,0);
     et1 = T(1,5,-30), T(5,2,-30), T(2,6,-40), T(6,3,-40), T(0,7,-55), T(3,7,-55);
     bks[1].Set   (-1, ve1, ed1, &et1, NULL, /*orig*/0, /*xplus*/4, /*yplus*/7);
-	bks[1].SetNx (ndivy);
-	bks[1].SetNy (ndivy);
+	bks[1].SetNx (2*ny, Ax, NonLinX);
+	bks[1].SetNy (ny);
 
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/false);
