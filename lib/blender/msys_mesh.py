@@ -491,8 +491,8 @@ def gen_unstruct_mesh(gen_script=False,txt=None,show_cursor=True,cpp=False):
     mina = obj.properties['minang']  if obj.properties.has_key('minang')  else -1.0
     if gen_script:
         if cpp:
-            if maxa>0: txt.write ('	mesh.Set_MaxAreaGlobal  (%g);\n' % (maxa))
-            if mina>0: txt.write ('	mesh.Set_MinAngleGlobal (%g);\n' % (mina))
+            if maxa>0: txt.write ('	mesh.SetMaxAreaGlobal  (%g);\n' % (maxa))
+            if mina>0: txt.write ('	mesh.SetMinAngleGlobal (%g);\n' % (mina))
             txt.write ('	mesh.Generate       (true); // true=>WithInfo\n')
         else:
             if maxa>0: txt.write ('mesh.set_max_area_global  (%g)\n' % (maxa))

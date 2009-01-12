@@ -192,7 +192,7 @@ def delete_mesh():
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-#@try_catch
+@try_catch
 def button_event(evt):
     if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
@@ -1188,7 +1188,7 @@ def gui():
 
             # ----------------------- FEM -- nbrys
 
-            gu.caption3(c,r,w,rh,'Nodes boundary conditions (X-Y-Y)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
+            gu.caption3(c,r,w,rh,'Nodes boundary conditions (X-Y-Z)', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
             if len(nbrys)>0: gu.text(c,r,'     X             Y             Z         Key        Value')
             else: r += (rh+srg)
