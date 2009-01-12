@@ -113,7 +113,7 @@ public:
 	size_t ElemCon         (size_t i, size_t j) const { return _tou.trianglelist[i*_tou.numberofcorners+FEM2Tri[j]]; }
 	size_t ElemNETags      (size_t i)           const { return 3; }
 	size_t ElemNFTags      (size_t i)           const { return 0; }
-	int    ElemETag        (size_t i, size_t j) const { return _tou.triedgemarks[i*3+j]; }
+	int    ElemETag        (size_t i, size_t j) const;
 
 	// Methods
 	void   SetMaxAreaGlobal  (double MaxArea)  { _max_area  = MaxArea;  } ///< Uniform maximum area constraint
@@ -212,6 +212,17 @@ inline void Unstructured::SetPolyHole(size_t i, double X, double Y, double Z)
 {
 	_tin.holelist[i*2  ] = X;
 	_tin.holelist[i*2+1] = Y;
+}
+
+inline int Unstructured::ElemETag(size_t i, size_t j) const
+{
+	size_t net = ElemNETags(i); // number of edge tags not regarding O2 edges
+	if (net>0)
+	{
+		size_t ied = (j>net-1 ? j-net : j); // first edge IDs not regarding O2 edges
+		return _tou.triedgemarks[i*3+ied];
+	}
+	else return 0;
 }
 
 inline size_t Unstructured::Generate(bool WithInfo)
