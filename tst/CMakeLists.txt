@@ -17,6 +17,11 @@
 ########################################################################
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
+	ADD_EXECUTABLE        (ttunnel   ttunnel.cpp)
+	ADD_TEST              (ttunnel   ttunnel)
+	TARGET_LINK_LIBRARIES (ttunnel   ${LIBS})
+	SET_TARGET_PROPERTIES (ttunnel   PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
+
 	ADD_EXECUTABLE        (tbiot01   tbiot01.cpp)
 	ADD_TEST              (tbiot01   tbiot01)
 	TARGET_LINK_LIBRARIES (tbiot01   ${LIBS})
