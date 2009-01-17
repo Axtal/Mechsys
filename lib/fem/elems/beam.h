@@ -47,7 +47,7 @@ public:
 	//}
 	
 	// Constructor
-	Beam () : _q0(0.0), _q1(0.0), _has_q(false), _use_cor(true) {}
+	Beam () : _q0(0.0), _q1(0.0), _has_q(false) {}
 
 	// Methods related to PROBLEM
 	int         InitCtes     (int nDim);
@@ -76,7 +76,6 @@ private:
 	double _q0;      ///< Normal distributed load (value at node # 0. Or constant q)
 	double _q1;      ///< Normal distributed load (value at node # 1. Or constant q)
 	bool   _has_q;   ///< Has distributed load (q0 and/or q1)
-	bool   _use_cor; ///< Use correction for distributed (q) load?
 
 	// Depedent variables (calculated by CalcDeps)
 	mutable double _L;  ///< Beam length
@@ -365,6 +364,7 @@ inline double Beam::N(double l) const
 
 inline double Beam::M(double l) const
 {
+	bool use_cor = (Prop("cq")>0 ? true : false); // Use correction for distributed (q) load?
 	double M = 0.0;
 	if (_ge->NDim==2)
 	{
@@ -372,7 +372,7 @@ inline double Beam::M(double l) const
 		double LL  = _L*_L;
 		double LLL = LL*_L;
 		M = _mdl->Prm("E")*_mdl->Prm("Izz")*(_uL(5)*((6*s)/LL-2/_L)+_uL(2)*((6*s)/LL-4/_L)+_uL(4)*(6/LL-(12*s)/LLL)+_uL(1)*((12*s)/LLL-6/LL));
-		if (_has_q && _use_cor)
+		if (_has_q && use_cor)
 		{
 			double ss  = s*s;
 			double sss = ss*s;
@@ -385,13 +385,14 @@ inline double Beam::M(double l) const
 
 inline double Beam::V(double l) const
 {
+	bool use_cor = (Prop("cq")>0 ? true : false); // Use correction for distributed (q) load?
 	double V = 0.0;
 	if (_ge->NDim==2)
 	{
 		double LL  = _L*_L;
 		double LLL = LL*_L;
 		V = _mdl->Prm("E")*_mdl->Prm("Izz")*((6*_uL(5))/LL+(6*_uL(2))/LL-(12*_uL(4))/LLL+(12*_uL(1))/LLL);
-		if (_has_q && _use_cor)
+		if (_has_q && use_cor)
 		{
 			double s  = l*_L;
 			double ss = s*s;
