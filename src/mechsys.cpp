@@ -137,8 +137,9 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("edge_bry",          &FEM::Element::PyEdgeBry1)
 	    .def("edge_bry",          &FEM::Element::PyEdgeBry2)
 	    .def("face_bry",          &FEM::Element::PyFaceBry)
+	    .def("calc_deps",         &FEM::Element::CalcDeps)
 	    .def("has_extra",         &FEM::Element::HasExtra)
-	    .def("out_extra",         &FEM::Element::OutExtra)
+	    .def("out_extra",         &FEM::Element::PyOutExtra)
 	    .def(self_ns::str(self))
 	    ;
 

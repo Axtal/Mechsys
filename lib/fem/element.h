@@ -133,6 +133,7 @@ public:
 	void         PyEdgeBry1 (BPy::str const & Key, double Val, int iEdge)           { EdgeBry(BPy::extract<Str_t>(Key)(), Val, iEdge); }
 	void         PyEdgeBry2 (BPy::str const & Key, double V0, double V1, int iEdge) { EdgeBry(BPy::extract<Str_t>(Key)(), V0, V1, iEdge); }
 	void         PyFaceBry  (BPy::str const & Key, double Val, int iFace)           { EdgeBry(BPy::extract<Str_t>(Key)(), Val, iFace); }
+	void         PyOutExtra (BPy::dict & Coords, BPy::list & Norm, BPy::dict & Values) const;
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -200,6 +201,42 @@ inline void Element::OutNodes(Mat_t & Vals, Array<String> & Lbls) const
 	for (size_t j=0; j<nlabels;     ++j)
 		Vals(i,j) = _pe->Val (i, Lbls[j].CStr());
 }
+
+#ifdef USE_BOOST_PYTHON
+// {
+inline void Element::PyOutExtra (BPy::dict & Coords, BPy::list & Norm, BPy::dict & Values) const
+{
+	Mat_t          coords;
+	Vec_t          norm;
+	Mat_t          values;
+	Array<String>  labels;
+	OutExtra (coords, norm, values, labels);
+
+	// Coords
+	BPy::list X;
+	BPy::list Y;
+	for (int i=0; i<coords.Rows(); ++i)
+	{
+		X.append (coords(i,0));
+		Y.append (coords(i,1));
+	}
+	Coords['X'] = X;
+	Coords['Y'] = Y;
+
+	// Norm
+	Norm.append (norm(0));
+	Norm.append (norm(1));
+
+	// Values
+	for (int j=0; j<values.Cols(); ++j)
+	{
+		BPy::list vals;
+		for (int i=0; i<values.Rows(); ++i) vals.append (values(i,j));
+		Values[labels[j].CStr()] = vals;
+	}
+}
+// }
+#endif // USE_BOOST_PYTHON
 
 std::ostream & operator<< (std::ostream & os, FEM::Element const & E)
 {

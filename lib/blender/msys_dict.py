@@ -147,6 +147,7 @@ def get_msh_obj(obj,with_error=True):
     if obj.properties.has_key('mesh_type'): mesh_type = obj.properties['mesh_type']
     else:
         if with_error: raise Exception('Please, generate mesh first or set "Frame mesh" toggle')
+        else: return msh_obj
     if mesh_type=='frame': msh_obj = obj
     else:
         if obj.properties.has_key('msh_name'): msh_obj = bpy.data.objects[obj.properties['msh_name']]

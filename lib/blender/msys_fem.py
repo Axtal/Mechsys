@@ -559,7 +559,7 @@ def save_results(sol, dat, obj, stage_num):
         if dat.ele(i).has_extra() and dat.ele(i).is_active():
             ide = str(i)
             obj.properties['res'][s]['extra'][ide] = {}
-            dat.ele(i).calc_dep_vars()
+            dat.ele(i).calc_deps()
             co, no, va = dict(), [], dict()
             dat.ele(i).out_extra (co, no, va)
             if co.has_key('X'):
