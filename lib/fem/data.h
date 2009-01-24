@@ -168,7 +168,7 @@ private:
 	std::map<int,size_t>    _etidx;  ///< Map: Tag=>Idx, where Idx is the index inside _ewtags, _models, and _props
 	Array<Array<Element*> > _ewtags; ///< Elements with tags. Size==_etidx.size()
 	Array<Model*>           _models; ///< Models.             Size==_etidx.size()
-	Array<Prop_t>           _props;  ///< Properties.         Size==_etidx.size()
+	Array<Prop_t*>          _props;  ///< Properties.         Size==_etidx.size()
 
 }; // class Data
 
@@ -186,6 +186,7 @@ inline Data::~Data()
 	for (size_t i=0; i<_nodes .Size(); ++i) if (_nodes [i]!=NULL) delete _nodes [i];
 	for (size_t i=0; i<_elems .Size(); ++i) if (_elems [i]!=NULL) delete _elems [i];
 	for (size_t i=0; i<_models.Size(); ++i) if (_models[i]!=NULL) delete _models[i];
+	for (size_t i=0; i<_props .Size(); ++i) if (_props [i]!=NULL) delete _props [i];
 }
 
 inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAtts)
@@ -465,17 +466,17 @@ inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int T
 		_models[_models.Size()-1]->Initialize (Tag, Prms); // Parse parameters
 
 		// Parse properties
-		Prop_t prp;
+		Prop_t * prp = new Prop_t;
 		_props.Push (prp);
 		LineParser lp(Props);
-		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), _props[_props.Size()-1], "properties", "Element tag", Tag);
+		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*prp), "properties", "Element tag", Tag);
 	}
 	_ewtags[_etidx[Tag]].Push (_elems[i]);
 
 	// Initialize
 	Array<Node*> conn(Conn.Size());
 	for (size_t j=0; j<Conn.Size(); ++j) conn[j] = Nod(Conn[j]);
-	_elems[i]->Initialize (/*ID*/i, Tag, conn, _models[_etidx[Tag]], Inis, &_props[_etidx[Tag]], IsAct);
+	_elems[i]->Initialize (/*ID*/i, Tag, conn, _models[_etidx[Tag]], Inis, _props[_etidx[Tag]], IsAct);
 
 	return _elems[i];
 }
