@@ -321,13 +321,13 @@ def run_analysis(gen_script=False):
                         txt.write ('	dat.Nod('+str(nb[0])+')->Bry   ("'+nb[1]+'",'+str(nb[2])+');\n')
 
                     # apply body forces
-                    if abf: txt.write ('	dat.AddVolForces   ();\n')
+                    if abf: txt.write ('	dat.AddVolForces  ();\n')
 
                     # solve
                     txt.write ('	sol.SolveWithInfo (%d, %g, %d, "%s\\n");\n'%(ndiv,dtime,num,desc))
 
                     # clear displacements
-                    if cdi: txt.write ('	dat.ClearDisp ();\n')
+                    if cdi: txt.write ('	dat.ClearDisp     ();\n')
 
             # main
             txt.write ('\n}\n')
@@ -515,7 +515,7 @@ def run_analysis(gen_script=False):
                 for nb in nbsID: dat.nod(nb[0]).bry(nb[1],nb[2])
 
                 # apply body forces
-                if abf: dat.apply_body_forces()
+                if abf: dat.add_vol_forces()
 
                 # solve
                 sol.solve_with_info (ndiv,dtime,num,desc+'\n')
