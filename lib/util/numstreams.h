@@ -52,6 +52,7 @@ NumStream _8_0   = { false, false, false,  8,  0 }; ///< General
 NumStream _8_2   = { false, false, false,  8,  2 }; ///< General
 NumStream _8_3   = { false, false, false,  8,  3 }; ///< General
 NumStream _8_4   = { false, false, false,  8,  4 }; ///< General
+NumStream _8_6   = { false, false, false,  8,  6 }; ///< General
 NumStream _12_4  = { false, false, false, 12,  4 }; ///< General
 NumStream _12_6  = { false, false, false, 12,  6 }; ///< General
 NumStream _20_15 = { false, false, false, 20, 15 }; ///< General

@@ -100,8 +100,8 @@ public:
 	Solver * SetType       (char const * Type);                                                      ///< Set solver type: FE:Forward-Euler, AME:Automatic-Modified-Euler
 	Solver * SetCte        (char const * Key, double Value);                                         ///< Set scheme constant such as number of subincrements, DTOL, etc.
 	Solver * SetLinSol     (char const * Key);                                                       ///< LinSolName: LA=LAPACK, UM=UMFPACK, SLU=SuperLU, SLUd=SuperLUd
-	void     Solve         (int NDiv=1, double DTime=0.0);                                           ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
-	void     SolveWithInfo (int NDiv=1, double DTime=0.0, int iStage=0, char const * MoreInfo=NULL); ///< Solve and show time/resid information
+	void     Solve         (int NDiv=1, double DTime=0.0, bool ClearDisp=false);                                           ///< Solve ([C]+alpha*h*[K])*{dU} = {dF}-h*[K]*{U} for the boundary conditions defined inside the nodes array
+	void     SolveWithInfo (int NDiv=1, double DTime=0.0, int iStage=0, char const * MoreInfo=NULL, bool ClearDisp=false); ///< Solve and show time/resid information
 	void     DynSolve      (double tIni, double tFin, double h, double dtOut, size_t MaxIt=10);      ///< TODO
 	double   F             (double t) const;                                                         ///< TODO
 
@@ -114,12 +114,12 @@ public:
 
 #ifdef USE_BOOST_PYTHON
 //{
-	         Solver           (FEM::Data & D, BPy::str const & FileKey)                       { _initialize   (&D, BPy::extract<char const *>(FileKey)()); }
-	Solver & PySetType        (BPy::str const & Type)                                         { SetType       (BPy::extract<char const *>(Type)());     return (*this); }
-	Solver & PySetCte         (BPy::str const & Key, double Val)                              { SetCte        (BPy::extract<char const *>(Key)(), Val); return (*this); }
-	Solver & PySetLinSol      (BPy::str const & Key)                                          { SetLinSol     (BPy::extract<char const *>(Key)());      return (*this); }
-	void     PySolveWithInfo1 (int NDiv=1, double DTime=0.0, int iStage=0)                    { SolveWithInfo (NDiv, DTime, iStage); }
-	void     PySolveWithInfo2 (int NDiv, double DTime, int iStage, BPy::str const & MoreInfo) { SolveWithInfo (NDiv, DTime, iStage, BPy::extract<char const *>(MoreInfo)()); }
+	         Solver          (FEM::Data & D, BPy::str const & FileKey)         { _initialize   (&D, BPy::extract<char const *>(FileKey)()); }
+	Solver & PySetType       (BPy::str const & Type)                           { SetType       (BPy::extract<char const *>(Type)());     return (*this); }
+	Solver & PySetCte        (BPy::str const & Key, double Val)                { SetCte        (BPy::extract<char const *>(Key)(), Val); return (*this); }
+	Solver & PySetLinSol     (BPy::str const & Key)                            { SetLinSol     (BPy::extract<char const *>(Key)());      return (*this); }
+	void     PySolveWithInfo (int NDiv, double DTime, int iStage,
+	                          BPy::str const & MoreInfo, bool ClearDisp=false) { SolveWithInfo (NDiv, DTime, iStage, BPy::extract<char const *>(MoreInfo)(), ClearDisp); }
 //}
 #endif // USE_BOOST_PYTHON
 
@@ -271,7 +271,7 @@ inline Solver * Solver::SetLinSol(char const * Key)
 	return this;
 }
 
-inline void Solver::Solve(int NDiv, double DTime)
+inline void Solver::Solve(int NDiv, double DTime, bool ClearDisp)
 {
 	// Solve:    ([C] + alpha*h*[K]) * {dU} = {dF} - h*[K]*{U}
 	
@@ -382,14 +382,17 @@ inline void Solver::Solve(int NDiv, double DTime)
 	// Clear boundary conditions for a next stage
 	for (size_t i=0; i<_data->NNodes(); ++i) _data->Nod(i)->ClearBryValues();
 
+	// Clear displacements
+	if (ClearDisp) _data->ClearDisp();
+
 	// Write output
 	if (_out!=NULL) _out->Write();
 }
 
-inline void Solver::SolveWithInfo(int NDiv, double DTime, int iStage, char const * MoreInfo)
+inline void Solver::SolveWithInfo(int NDiv, double DTime, int iStage, char const * MoreInfo, bool ClearDisp)
 {
 	double start = std::clock();
-	Solve (NDiv, DTime); // <<<<<<< Solve
+	Solve (NDiv, DTime, ClearDisp); // <<<<<<< Solve
 	double total = std::clock() - start;
 	double norm_resid = LinAlg::Norm (_resid);
 	std::cout << "[1;33m\n--- Stage # " << iStage << " --------------------------------------------------[0m\n";

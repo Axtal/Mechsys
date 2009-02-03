@@ -39,6 +39,8 @@ using Util::SQ2BY3;
 namespace Tensors
 {
 
+inline double Tr(Tensor2 const & A) { return A(0)+A(1)+A(2); }
+
 inline double Val(Tensor2 const & Sig, Tensor2 const & Eps, char const * Name)
 {
 	     if (strcmp(Name,"Sx" )==0)                          return Sig(0);

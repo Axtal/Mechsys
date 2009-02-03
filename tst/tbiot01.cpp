@@ -197,8 +197,7 @@ int main(int argc, char **argv) try
 	ebrys.Push        (T(-50, "pwp",   0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	dat.AddVolForces  ();
-	sol.SolveWithInfo (4, 1e+6, 0, "  Initial stress state due to self weight (zero displacements)\n");
-	dat.ClearDisp     ();
+	sol.SolveWithInfo (4, 1e+6, 0, "  Initial stress state due to self weight (zero displacements)\n", /*ClearDisp*/true);
 
 	// Stage # 1 --------------------------------------------------------------
 	ebrys.Resize      (0);

@@ -134,8 +134,7 @@ int main(int argc, char **argv) try
 	ebrys.Push        (T(-11, "uy", 0.0));
 	dat.SetBrys       (&mesh, NULL, &ebrys, NULL);
 	dat.AddVolForces  ();
-	sol.SolveWithInfo (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n");
-	dat.ClearDisp     ();
+	sol.SolveWithInfo (/*NDiv*/1, /*DTime*/1.0, /*iStage*/-1, "  Initial stress state due to self weight (zero displacements)\n", /*ClearDisp*/true);
 
 	// Stage # 0 ---------------------------------------------------------------
 	dat.Activate      (/*Tag*/-2);

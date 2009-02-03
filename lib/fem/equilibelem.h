@@ -125,7 +125,7 @@ protected:
 private:
 	void _init_internal_state (); ///< Initialize internal state
 
-}; // class EquilibElem                                                                     
+}; // class EquilibElem
 
 //{ Constants
 const size_t EquilibElem::ND_EQUILIB_3D        = 3;
@@ -160,7 +160,7 @@ inline int EquilibElem::InitCtes(int nDim)
 		_nd = ND_EQUILIB_3D;
 		UD  = UD_EQUILIB_3D;
 		FD  = FD_EQUILIB_3D;
-		_nl = NL_EQUILIB_3D; 
+		_nl = NL_EQUILIB_3D;
 		LB  = LB_EQUILIB_3D;
 	}
 	else if (_gi==1)  // PlaneStrain
@@ -168,7 +168,7 @@ inline int EquilibElem::InitCtes(int nDim)
 		_nd = ND_EQUILIB_2D;
 		UD  = UD_EQUILIB_2D;
 		FD  = FD_EQUILIB_2D;
-		_nl = NL_PSTRAIN; 
+		_nl = NL_PSTRAIN;
 		LB  = LB_PSTRAIN;
 	}
 	else if (_gi==2)  // PlaneStress
@@ -176,7 +176,7 @@ inline int EquilibElem::InitCtes(int nDim)
 		_nd = ND_EQUILIB_2D;
 		UD  = UD_EQUILIB_2D;
 		FD  = FD_EQUILIB_2D;
-		_nl = NL_PSTRESS; 
+		_nl = NL_PSTRESS;
 		LB  = LB_PSTRESS;
 	}
 	else throw new Fatal("EquilibElem::InitCtes: GeometryIndex _gi==%d is invalid",_gi);
@@ -189,7 +189,7 @@ inline void EquilibElem::AddVolForces()
 {
 	// Verify if element is active
 	if (IsActive==false) return;
-	
+
 	// Allocate (local/element) external volume force vector
 	Vec_t fvol(_ge->NNodes);
 	fvol.SetValues (0.0);
@@ -262,7 +262,7 @@ inline void EquilibElem::SetActive(bool Activate, int ID)
 			_ge->Conn[i]->RemoveSharedBy (ID);
 
 			// Remove Degree of Freedom to a node (Essential)
-			if (_ge->Conn[i]->nSharedBy()==0) 
+			if (_ge->Conn[i]->nSharedBy()==0)
 				for (int j=0; j<_nd; ++j) _ge->Conn[i]->RemoveDOF (UD[j]);
 		}
 
@@ -649,11 +649,11 @@ inline void EquilibElem::_init_internal_state()
 
 
 // Allocate a new 3D Equilib element:
-ProbElem * EquilibMaker() 
-{ 
+ProbElem * EquilibMaker()
+{
 	EquilibElem * Ptr = new EquilibElem;
 	Ptr->__SetGeomIdx(0);
-	return Ptr; 
+	return Ptr;
 }
 // Register element
 int EquilibRegister() { ProbElemFactory["Equilib"]=EquilibMaker;  return 0; }
@@ -662,11 +662,11 @@ int __Equilib_dummy_int  = EquilibRegister();
 
 
 // Allocate a new PStrain element:
-ProbElem * PStrainMaker() 
-{ 
+ProbElem * PStrainMaker()
+{
 	EquilibElem * Ptr = new EquilibElem;
 	Ptr->__SetGeomIdx(1);
-	return Ptr; 
+	return Ptr;
 }
 // Register element
 int PStrainRegister() { ProbElemFactory["PStrain"]=PStrainMaker;  return 0; }
@@ -675,11 +675,11 @@ int __PStrain_dummy_int  = PStrainRegister();
 
 
 // Allocate a new PStress element:
-ProbElem * PStressMaker() 
-{ 
+ProbElem * PStressMaker()
+{
 	EquilibElem * Ptr = new EquilibElem;
 	Ptr->__SetGeomIdx(2);
-	return Ptr; 
+	return Ptr;
 }
 // Register element
 int PStressRegister() { ProbElemFactory["PStress"]=PStressMaker;  return 0; }

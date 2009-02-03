@@ -324,10 +324,8 @@ def run_analysis(gen_script=False):
                     if abf: txt.write ('	dat.AddVolForces  ();\n')
 
                     # solve
-                    txt.write ('	sol.SolveWithInfo (%d, %g, %d, "%s\\n");\n'%(ndiv,dtime,num,desc))
-
-                    # clear displacements
-                    if cdi: txt.write ('	dat.ClearDisp     ();\n')
+                    if cdi: txt.write ('	sol.SolveWithInfo (%d, %g, %d, "%s\\n", true);\n'%(ndiv,dtime,num,desc)) # clear displacements
+                    else:   txt.write ('	sol.SolveWithInfo (%d, %g, %d, "%s\\n");\n'      %(ndiv,dtime,num,desc))
 
             # main
             txt.write ('\n}\n')
@@ -447,10 +445,8 @@ def run_analysis(gen_script=False):
                     if abf: txt.write ('dat.add_vol_forces   ()\n')
 
                     # solve
-                    txt.write ('sol.solve_with_info  (%d, %g, %d, "%s\\n")\n'%(ndiv,dtime,num,desc))
-
-                    # clear displacements
-                    if cdi: txt.write ('dat.clear_disp       ()\n')
+                    if cdi: txt.write ('sol.solve_with_info  (%d, %g, %d, "%s\\n", True)\n'%(ndiv,dtime,num,desc)) # clear displacements
+                    else:   txt.write ('sol.solve_with_info  (%d, %g, %d, "%s\\n")\n'      %(ndiv,dtime,num,desc))
 
                     # save results
                     if not di.key('fullsc'): txt.write ('mf.save_results      (sol, dat, obj, %d)\n'%num)
@@ -518,10 +514,8 @@ def run_analysis(gen_script=False):
                 if abf: dat.add_vol_forces()
 
                 # solve
-                sol.solve_with_info (ndiv,dtime,num,desc+'\n')
-
-                # clear displacements
-                if cdi: dat.clear_displacements()
+                if cdi: sol.solve_with_info (ndiv,dtime,num,desc+'\n',True) # clear displacements
+                else:   sol.solve_with_info (ndiv,dtime,num,desc+'\n')
 
                 # save results
                 save_results (sol, dat, obj, num)
