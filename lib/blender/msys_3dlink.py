@@ -22,7 +22,49 @@ import Blender
 from   Blender import BGL, Draw, Window
 from   Blender.Mathutils import Vector
 import bpy
+import math
 import msys_dict as di
+
+def sgn(val):
+    if val<0.0: return -1.0
+    else:       return  1.0
+
+def draw_arrow_2d(x0,y0,dx,dy, h=-1.0, alp=15.0):
+    L  = math.sqrt(dx*dx + dy*dy)
+    if h<0: h = 0.1*L
+    h  = h if h<=L else L
+    s  = h*math.tan(alp*math.pi/360.0)
+    xm = x0+(L-h)*dx/L
+    ym = y0+(L-h)*dy/L
+    BGL.glBegin    (BGL.GL_LINES)
+    BGL.glVertex3f (x0,    y0,    0.0)
+    BGL.glVertex3f (x0+dx, y0+dy, 0.0)
+    BGL.glEnd      ()
+    BGL.glBegin    (BGL.GL_POLYGON)
+    BGL.glVertex3f (xm-s*dy/L, ym+s*dx/L, 0.0)
+    BGL.glVertex3f (xm+s*dy/L, ym-s*dx/L, 0.0)
+    BGL.glVertex3f (x0+dx,     y0+dy,     0.0)
+    BGL.glEnd      ()
+
+def draw_xfix_2d(x0,y0, h, dx):
+    BGL.glBegin    (BGL.GL_LINES)
+    BGL.glVertex3f (x0-dx/2.0, y0-h/2.0, 0.0)
+    BGL.glVertex3f (x0-dx/2.0, y0+h/2.0, 0.0)
+    BGL.glEnd      ()
+    BGL.glBegin    (BGL.GL_LINES)
+    BGL.glVertex3f (x0+dx/2.0, y0-h/2.0, 0.0)
+    BGL.glVertex3f (x0+dx/2.0, y0+h/2.0, 0.0)
+    BGL.glEnd      ()
+
+def draw_yfix_2d(x0,y0, h, dy):
+    BGL.glBegin    (BGL.GL_LINES)
+    BGL.glVertex3f (x0-h/2.0, y0-dy/2.0, 0.0)
+    BGL.glVertex3f (x0+h/2.0, y0-dy/2.0, 0.0)
+    BGL.glEnd      ()
+    BGL.glBegin    (BGL.GL_LINES)
+    BGL.glVertex3f (x0-h/2.0, y0+dy/2.0, 0.0)
+    BGL.glVertex3f (x0+h/2.0, y0+dy/2.0, 0.0)
+    BGL.glEnd      ()
 
 
 # Transformation matrix
@@ -96,12 +138,29 @@ if di.key('show_props'):
                 # draw edge tags
                 if di.key('show_etags'):
                     if obj.properties.has_key('etags'):
+                        stg       = 'stg_'+str(di.key('fem_stage'))
+                        p0, p1, s = di.bounding_box(msh)
                         BGL.glColor3f (0.551, 1.0, 0.370)
                         for k, v in obj.properties['etags'].iteritems():
                             eid = int(k)
-                            pos = msh.edges[eid].v1.co + 0.60*(msh.edges[eid].v2.co-msh.edges[eid].v1.co)
+                            dP  = msh.edges[eid].v2.co-msh.edges[eid].v1.co
+                            pos = msh.edges[eid].v1.co + 0.60*dP
                             BGL.glRasterPos3f (pos[0], pos[1], pos[2])
                             Draw.Text         (str(v))
+                            if False: #obj.properties[stg].has_key('ebrys'):
+                                for m, n in obj.properties[stg]['ebrys'].iteritems():
+                                    if int(n[0])==v:
+                                        val = sgn(n[2])*0.1*s
+                                        pos = [msh.edges[eid].v1.co + c*dP for c in [0.0,0.25,0.5,0.75,1.0]]
+                                        if di.key('dfv')[n[1]]=='fy':
+                                            for p in pos: draw_arrow_2d (p[0],p[1], 0.0,val, 0.05*s)
+                                        if di.key('dfv')[n[1]]=='fx':
+                                            for p in pos: draw_arrow_2d (p[0],p[1], val,0.0, 0.05*s)
+                                        if di.key('dfv')[n[1]]=='ux':
+                                            for p in pos: draw_xfix_2d  (p[0],p[1], 0.05*s, 0.025*s)
+                                        if di.key('dfv')[n[1]]=='uy':
+                                            for p in pos: draw_yfix_2d  (p[0],p[1], 0.05*s, 0.025*s)
+                                        break
 
                 # draw face tags
                 if di.key('show_ftags'):
