@@ -67,6 +67,8 @@ public:
 	Str_t Type       () const           { return _type.CStr(); } ///< Return the name/type of this element
 	bool  Check      (String & Msg) const;                       ///< Check if everything is OK and element is ready for simulations
 	void  OutNodes   (Mat_t & Vals, Array<String> & Lbls) const; ///< Output values at nodes
+	void  Normal     (int iEdgeOrFace, Array<Vec_t> & X,
+	                                   Array<Vec_t> & N) const;  ///< Output unit normal to edges/faces at integration points
 
 	// Methods related to GEOMETRY
 	size_t       NNodes    () const                                     { CHECKGEPE("NNodes"   ) return _ge->NNodes;                          } ///< Return the number of nodes in this element
@@ -201,6 +203,54 @@ inline void Element::OutNodes(Mat_t & Vals, Array<String> & Lbls) const
 	for (size_t j=0; j<nlabels;     ++j)
 		Vals(i,j) = _pe->Val (i, Lbls[j].CStr());
 }
+
+inline void Element::Normal(int iEdgeOrFace, Array<Vec_t> & X, Array<Vec_t> & N) const
+{
+	CHECKGEPE("Normal")
+
+	// Face nodes
+	Array<Node*> fconn;
+	_ge->GetFNodes (iEdgeOrFace, fconn);
+	
+	N.Resize(0);
+	Mat_t J;
+	Vec_t FN(_ge->NFNodes); // Face shape
+	Vec_t n;                // Vector perpendicular to the face
+	Vec_t x;                // Position of IP
+	for (size_t i=0; i<_ge->NFIPs; i++)
+	{
+		// Calculate perpendicular vector
+		if (_ge->NDim==3)
+		{
+			_ge->FaceJacob (fconn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+			Vec_t V(3); V = J(0,0), J(0,1), J(0,2);
+			Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
+			n.Resize(3);
+			x.Resize(3);
+			n = V(1)*W(2) - V(2)*W(1),      // vectorial product
+				V(2)*W(0) - V(0)*W(2),
+				V(0)*W(1) - V(1)*W(0);
+		}
+		else
+		{
+			_ge->FaceJacob (fconn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
+			n.Resize(2);
+			x.Resize(2);
+			n = J(0,1), -J(0,0);
+		}
+		n = n/LinAlg::Norm(n);
+		N.Push(n);
+
+		// Calculate position of IP
+		_ge->FaceShape (_ge->FIPs[i].r, _ge->FIPs[i].s, FN);
+		x.SetValues(0.0);
+		for (size_t j=0; j<_ge->NFNodes; ++j)
+		for (size_t k=0; k<_ge->NDim;    ++k)
+			x(k) = x(k) + FN(j)*fconn[j]->Coord(k);
+		X.Push(x);
+	}
+}
+
 
 #ifdef USE_BOOST_PYTHON
 // {
