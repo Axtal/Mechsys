@@ -147,20 +147,26 @@ if di.key('show_props'):
                             pos = msh.edges[eid].v1.co + 0.60*dP
                             BGL.glRasterPos3f (pos[0], pos[1], pos[2])
                             Draw.Text         (str(v))
-                            if False: #obj.properties[stg].has_key('ebrys'):
-                                for m, n in obj.properties[stg]['ebrys'].iteritems():
-                                    if int(n[0])==v:
-                                        val = sgn(n[2])*0.1*s
-                                        pos = [msh.edges[eid].v1.co + c*dP for c in [0.0,0.25,0.5,0.75,1.0]]
-                                        if di.key('dfv')[n[1]]=='fy':
-                                            for p in pos: draw_arrow_2d (p[0],p[1], 0.0,val, 0.05*s)
-                                        if di.key('dfv')[n[1]]=='fx':
-                                            for p in pos: draw_arrow_2d (p[0],p[1], val,0.0, 0.05*s)
-                                        if di.key('dfv')[n[1]]=='ux':
-                                            for p in pos: draw_xfix_2d  (p[0],p[1], 0.05*s, 0.025*s)
-                                        if di.key('dfv')[n[1]]=='uy':
-                                            for p in pos: draw_yfix_2d  (p[0],p[1], 0.05*s, 0.025*s)
-                                        break
+                            if obj.properties.has_key(stg):
+                                if obj.properties[stg].has_key('ebrys'):
+                                    for m, n in obj.properties[stg]['ebrys'].iteritems():
+                                        if int(n[0])==v:
+                                            val = sgn(n[2])*0.1*s
+                                            pos = [msh.edges[eid].v1.co + c*dP for c in [0.0,0.25,0.5,0.75,1.0]]
+                                            if di.key('dfv')[n[1]]=='fy':
+                                                L = 0.05*s # arrow length
+                                                h = 0.4*L  # tip height
+                                                if n[2]<0:
+                                                    for p in pos: draw_arrow_2d (p[0],p[1]+L, 0.0,-L, h)
+                                                else:
+                                                    for p in pos: draw_arrow_2d (p[0],p[1], 0.0,L, h)
+                                            if di.key('dfv')[n[1]]=='fx':
+                                                for p in pos: draw_arrow_2d (p[0],p[1], val,0.0, 0.05*s)
+                                            if di.key('dfv')[n[1]]=='ux':
+                                                for p in pos: draw_xfix_2d  (p[0],p[1], 0.01*s, 0.005*s)
+                                            if di.key('dfv')[n[1]]=='uy':
+                                                for p in pos: draw_yfix_2d  (p[0],p[1], 0.01*s, 0.005*s)
+                                            break
 
                 # draw face tags
                 if di.key('show_ftags'):
