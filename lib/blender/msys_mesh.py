@@ -238,12 +238,13 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
 
         # ftags
         ftags = []
+        veids = [x[0] for x in verts]
         if is3d and obj.properties.has_key('ftags'):
             for m, n in obj.properties['ftags'].iteritems():
                 vids = [int(vid) for vid in m.split('_')]
                 face_is_in_block = True
                 for vid in vids:
-                    if not vid in verts:
+                    if not vid in veids:
                         face_is_in_block = False
                         break
                 if face_is_in_block: ftags.append ((vids[0],vids[1],vids[2],vids[3],n))
