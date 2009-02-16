@@ -67,11 +67,11 @@ eatts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'ZERO', 'ga
 # Set geometry: nodes and elements
 dat.set_nodes_elems (mesh, eatts)
 
-# Stage # 1 --------------------------------------
+# Stage # 0 --------------------------------------
 nbrys = [[L/2., 0.0, 0.0, 'ux', 0.0]]
 ebrys = [[-10, 'uy', 0.0], [-20, 'fy',   q]]
 dat.set_brys        (mesh, nbrys, ebrys, []) # [] => no face brys
-sol.solve_with_info ()
+sol.solve_with_info (1, 0.0, 0, 'First Stage') # nDiv,DTime,iStage,MoreInfo
 
 #----------------------------------------------------------------------------- Check
 

@@ -68,11 +68,11 @@ eatts = [[-1, "Lin2", "Rod", "RodElastic", "E=100.0  A=1.0",               "ZERO
 # Set geometry: nodes and elements
 dat.set_nodes_elems (mesh, eatts)
 
-# Stage # -1 --------------------------------------------------------------
+# Stage # 0 --------------------------------------------------------------
 dat.nod(0).bry("ux", 0.0).bry("uy", -0.5) # Essential
 dat.nod(1).               bry("uy",  0.4) # Essential
 dat.nod(2).bry("fx", 2.0).bry("fy",  1.0) # Natural
-sol.solve_with_info()
+sol.solve_with_info (1, 0.0, 0, 'First Stage') # nDiv,DTime,iStage,MoreInfo
 
 #//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
