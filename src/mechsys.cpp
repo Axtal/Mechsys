@@ -43,6 +43,7 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MB_SetNy,          SetNy,            1, 
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MB_SetNz,          SetNz,            1, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,        SetVert,          4, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,       Generate,         0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,         GenBox,           3, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySize,    SetPolySize,      2, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolyPoint,   SetPolyPoint,     3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_SetPolySegment, SetPolySegment,   3, 4)
@@ -90,6 +91,7 @@ BOOST_PYTHON_MODULE (mechsys)
 	class_<Mesh::Structured, bases<Mesh::Generic> >("mesh_structured","Class to generate structured meshes",init<bool>())
 	    .def("set_blocks", &Mesh::Structured::PySetBlocks)
 	    .def("generate",   &Mesh::Structured::Generate, MS_Generate())
+	    .def("gen_box",    &Mesh::Structured::GenBox,   MS_GenBox())
 	    .def(self_ns::str(self))
 	    ;
 

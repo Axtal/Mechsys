@@ -16,25 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/* Unit cube with a uniform pressure at the top
- 
-      z
-      |__y      +________________+
-   x,'        ,'|              ,'|
-            ,'               ,'  |
-          ,'    |          ,'    |
-        ,'      .        ,'      | 1.0
-      +'_______________+'        |
-      |                |         |
-      |         |      |         |
-      |         + -  - | -  -  - +
-      |       ,        |       ,' 
-      |     ,          |     ,'   
-      |   ,            |   ,'  1.0
-      | ,      1.0     | ,'       
-      +________________+'         
-*/
-
 // STL
 #include <iostream>
 
@@ -91,29 +72,10 @@ int main(int argc, char **argv) try
             1----------------2'          
     */
 
-	// Blocks
-	Array<Mesh::Block> bks(1);
-
-	// Block # 0 --------------------------------
-    Mesh::Verts_T ve0( 8);
-    Mesh::Edges_T ed0(12);
-    Mesh::FTags_T ft0( 6);
-    ve0 = T(0, 0., 0., 0.), T(1, 1., 0., 0.), T(2, 1., 1., 0.), T(3, 0., 1., 0.),
-          T(4, 0., 0., 1.), T(5, 1., 0., 1.), T(6, 1., 1., 1.), T(7, 0., 1., 1.);
-    ed0 = T(0,1), T(1,2), T(2,3), T(3,0),
-          T(4,5), T(5,6), T(6,7), T(7,4),
-          T(0,4), T(1,5), T(2,6), T(3,7);
-    ft0 = T(0,3,7,4,-1), T(1,2,6,5,-2), T(1,0,4,5,-3), T(2,3,7,6,-4), T(0,1,2,3,-5), T(4,5,6,7,-6);
-    bks[0].Set   (-1, ve0, ed0, NULL, &ft0, /*orig*/0, /*xplus*/1, /*yplus*/3, /*zplus*/4);
-	bks[0].SetNx (ndiv);
-	bks[0].SetNy (ndiv);
-	bks[0].SetNz (ndiv);
-
 	// Generate
 	Mesh::Structured mesh(/*Is3D*/true);
 	if (is_o2) mesh.SetO2();
-	mesh.SetBlocks (bks);
-	mesh.Generate  (true);
+	mesh.GenBox (ndiv,ndiv,ndiv);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

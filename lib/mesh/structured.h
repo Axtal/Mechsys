@@ -261,6 +261,8 @@ public:
 	void   SetBlocks (Array<Block> const & Blocks) { _bls = Blocks; }
 	size_t Generate  (bool WithInfo=false); ///< Returns the number of elements. Boundary marks are set first for Faces, then Edges, then Vertices (if any)
 
+	void GenBox (int Nx, int Ny, int Nz, double Lx=1.0, double Ly=1.0, double Lz=1.0); ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
+
 #ifdef USE_BOOST_PYTHON
 	void   PySetBlocks (BPy::list const & ListOfMeshBlock);
 #endif
@@ -1165,6 +1167,48 @@ inline size_t Structured::Generate(bool WithInfo)
 	return _elems.Size();
 }
 
+inline void Structured::GenBox(int Nx, int Ny, int Nz, double Lx, double Ly, double Lz)
+{
+    /*
+                      4----------------7  
+                    ,'|              ,'| 
+                  ,'  |            ,'  | 
+                ,'    | -6    -1 ,'    | 
+              ,'      |        ,'      | 
+            5'===============6'        | 
+            |         |      |    -4   | 
+            |    -3   |      |         | 
+            |         0- - - | -  - - -3  
+            |       ,'       |       ,'  
+            |     ,' -2      |     ,'    
+            |   ,'        -5 |   ,'      
+            | ,'             | ,'        
+            1----------------2'          
+    */
+
+	// Blocks
+	Array<Mesh::Block> bks(1);
+
+	// Block # 0
+	Mesh::Verts_T ve0( 8);
+	Mesh::Edges_T ed0(12);
+	Mesh::FTags_T ft0( 6);
+	ve0 = boost::make_tuple(0, 0.,0.,0.), boost::make_tuple(1, Lx,0.,0.), boost::make_tuple(2, Lx,Ly,0.), boost::make_tuple(3, 0.,Ly,0.),
+	      boost::make_tuple(4, 0.,0.,Lz), boost::make_tuple(5, Lx,0.,Lz), boost::make_tuple(6, Lx,Ly,Lz), boost::make_tuple(7, 0.,Ly,Lz);
+	ed0 = boost::make_tuple(0,1), boost::make_tuple(1,2), boost::make_tuple(2,3), boost::make_tuple(3,0),
+	      boost::make_tuple(4,5), boost::make_tuple(5,6), boost::make_tuple(6,7), boost::make_tuple(7,4),
+	      boost::make_tuple(0,4), boost::make_tuple(1,5), boost::make_tuple(2,6), boost::make_tuple(3,7);
+	ft0 = boost::make_tuple(0,3,7,4,-1), boost::make_tuple(1,2,6,5,-2), boost::make_tuple(1,0,4,5,-3),
+	      boost::make_tuple(2,3,7,6,-4), boost::make_tuple(0,1,2,3,-5), boost::make_tuple(4,5,6,7,-6);
+	bks[0].Set   (-1, ve0, ed0, NULL, &ft0, /*orig*/0, /*xplus*/1, /*yplus*/3, /*zplus*/4);
+	bks[0].SetNx (Nx);
+	bks[0].SetNy (Ny);
+	bks[0].SetNz (Nz);
+
+	// Generate
+	SetBlocks (bks);
+	Generate  (/*WithInfo*/false);
+}
 
 #ifdef USE_BOOST_PYTHON
 
