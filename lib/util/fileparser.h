@@ -93,7 +93,7 @@ public:
 			else
 			{
 				String tmp_fn = originalFN;
-				tmp_fn.append(_T("~"));
+				tmp_fn.append(_("~"));
 				return tmp_fn;
 			}
 		}
@@ -266,7 +266,7 @@ inline void FileParser::StructFile(Tags const * tags, int num_tags, StructVals &
 	values.clear();
 	for (int i=0; i<num_tags; ++i)
 	{
-		String fullkey(tags[i].L1); fullkey.append(_T(".")); fullkey.append(tags[i].L2);
+		String fullkey(tags[i].L1); fullkey.append(_(".")); fullkey.append(tags[i].L2);
 		values[fullkey] = "";
 	}
 	
@@ -280,7 +280,7 @@ inline void FileParser::StructFile(Tags const * tags, int num_tags, StructVals &
 		Advance();
 		String key;    LP>>key;
 		String subkey; LP>>subkey;
-		String fullkey(key); fullkey.append(_T(".")); fullkey.append(subkey);
+		String fullkey(key); fullkey.append(_(".")); fullkey.append(subkey);
 		bool found = false;
 		for (int i=0; i<num_tags; ++i)
 		{
@@ -292,7 +292,7 @@ inline void FileParser::StructFile(Tags const * tags, int num_tags, StructVals &
 					if (val[0]==_comm_char) break;
 					else
 					{
-						if (values[fullkey].size()>0) values[fullkey].append(_T(" "));
+						if (values[fullkey].size()>0) values[fullkey].append(_(" "));
 						values[fullkey].append(val);
 					}
 				}
@@ -307,14 +307,14 @@ inline void FileParser::StructFile(Tags const * tags, int num_tags, StructVals &
 	// Additional check and configuration
 	for (int i=0; i<num_tags; ++i)
 	{
-		String fullkey(tags[i].L1); fullkey.append(_T(".")); fullkey.append(tags[i].L2);
+		String fullkey(tags[i].L1); fullkey.append(_(".")); fullkey.append(tags[i].L2);
 
 		// Check required values
 		if (tags[i].Required && values[fullkey]=="")
 			throw new Fatal(_("FileParser::StructFile: The pair < %s %s > must be provided by file < %s >"), tags[i].L1.c_str(), tags[i].L2.c_str(), _filename.c_str());
 
 		// Set default values
-		if (!tags[i].Required && tags[i].Default!=_T("") && values[fullkey]==_T(""))
+		if (!tags[i].Required && tags[i].Default!=_("") && values[fullkey]==_(""))
 			values[fullkey] = tags[i].Default;
 	}
 	

@@ -32,6 +32,7 @@ namespace BPy = boost::python;
 #include "util/string.h"
 #include "util/util.h"
 #include "util/lineparser.h"
+#include "util/fileparser.h"
 
 class PyEquilib : public EquilibModel
 {
@@ -70,6 +71,8 @@ const char PyEquilib::PYEQUILIB_PN[36][8] = { "a0", "a1", "a2", "a3", "a4", "a5"
 
 inline void PyEquilib::_initialize()
 {
+	if (FileParser::CheckForFile(_py_fn)==false) throw new Fatal("PyEquilib::_initialize: Could not find < %s > file (Python script with function < [1;33mD,B = stiff(prms,deps,sig,eps,ivs)[0m > )",_py_fn.CStr());
+
 	// Run script and get _py_stiff
 	// TODO: call this only if "stiff" wasn't defined yet
 	try
