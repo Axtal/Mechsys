@@ -21,6 +21,7 @@
 
 // Std Lib
 #include <iostream>
+#include <fstream>
 #include <cstring>
 #include <cfloat> // for DBL_EPSILON
 #include <map>
@@ -133,6 +134,9 @@ public:
 	void                    Bounds       (double & MinX, double & MinY, double & MinZ,
 	                                      double & MaxX, double & MaxY, double & MaxZ) const; ///< Return the limits (bounding box) of the geometry
 
+	void SetOutEles (Array<size_t> const & Eles, Str_t FileKey); ///< Set elements to output
+	void OutEles    (bool OnlyCaption=false) const;              ///< Output elements state
+
 #ifdef USE_BOOST_PYTHON
 // {
 	// Set by groups methods
@@ -153,6 +157,8 @@ public:
 	void            PyElemsWithTag (int Tag, BPy::list & Elems);
 	void            PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
 	void            PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
+
+	void PySetOutEles (BPy::list const & Eles, BPy::str const & FileKey);
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -169,6 +175,8 @@ private:
 	Array<Array<Element*> > _ewtags; ///< Elements with tags. Size==_etidx.size()
 	Array<Model*>           _models; ///< Models.             Size==_etidx.size()
 	Array<Prop_t*>          _props;  ///< Properties.         Size==_etidx.size()
+	Array<std::ofstream*>   _efiles; ///< Files to output elements information
+	Array<size_t>           _eout;   ///< Elements for output
 
 }; // class Data
 
@@ -187,6 +195,7 @@ inline Data::~Data()
 	for (size_t i=0; i<_elems .Size(); ++i) if (_elems [i]!=NULL) delete _elems [i];
 	for (size_t i=0; i<_models.Size(); ++i) if (_models[i]!=NULL) delete _models[i];
 	for (size_t i=0; i<_props .Size(); ++i) if (_props [i]!=NULL) delete _props [i];
+	for (size_t i=0; i<_efiles.Size(); ++i) if (_efiles[i]!=NULL) { _efiles[i]->close(); delete _efiles[i]; }
 }
 
 inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAtts)
@@ -571,6 +580,22 @@ inline void Data::Bounds(double & MinX, double & MinY, double & MinZ, double & M
 	}
 }
 
+inline void Data::SetOutEles(Array<size_t> const & Eles, Str_t FileKey)
+{
+	_eout = Eles;
+	for (size_t i=0; i<Eles.Size(); ++i)
+	{
+		String fn; fn.Printf("%s_ele%d.cal",FileKey,_eout[i]);
+		std::ofstream * f = new std::ofstream();
+		f->open (fn.CStr(), std::ios::out);
+		_efiles.Push (f);
+	}
+}
+
+inline void Data::OutEles(bool OnlyCaption) const
+{
+	for (size_t i=0; i<_eout.Size(); ++i) Ele(_eout[i])->OutState ((*_efiles[i]), OnlyCaption);
+}
 
 /** Outputs a data structure. */
 std::ostream & operator<< (std::ostream & os, FEM::Data const & G)
@@ -763,6 +788,14 @@ inline void Data::PyBounds3D(BPy::list & MinXYZ, BPy::list & MaxXYZ) const
 	MinXYZ.append(minx);  MaxXYZ.append(maxx);
 	MinXYZ.append(miny);  MaxXYZ.append(maxy);
 	MinXYZ.append(minz);  MaxXYZ.append(maxz);
+}
+
+inline void Data::PySetOutEles (BPy::list const & Eles, BPy::str const & FileKey)
+{
+	Array<size_t> eles;
+	eles.Resize (BPy::len(Eles));
+	for (size_t i=0; i<eles.Size(); ++i) eles[i] = BPy::extract<size_t>(Eles[i])();
+	SetOutEles (eles, BPy::extract<Str_t>(FileKey)());
 }
 
 // }

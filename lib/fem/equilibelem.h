@@ -98,6 +98,7 @@ public:
 	void        Backup       ();
 	void        Restore      ();
 	void        OutInfo      (std::ostream & os) const;
+	void        OutState     (std::ostream & os, bool OnlyCaption=false) const;
 	size_t      NCMats       () const { return 1; }
 	void        CMatrix      (size_t Idx, Mat_t & M) const;
 	void        CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
@@ -374,6 +375,42 @@ inline void EquilibElem::OutInfo(std::ostream & os) const
 	{
 		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2);
 		os <<                "  Ex,Ey,Ez = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2) << " ";
+	}
+}
+
+inline void EquilibElem::OutState(std::ostream & os, bool OnlyCaption) const
+{
+	if (OnlyCaption)
+	{
+		// Stress and strains
+		os << Util::_8s<< "p"  << Util::_8s<< "q"  << Util::_8s<< "Ev" << Util::_8s<< "Ed";
+		os << Util::_8s<< "Sx" << Util::_8s<< "Sy" << Util::_8s<< "Sz" << Util::_8s<< "Sxy" << Util::_8s<< "Syz" << Util::_8s<< "Sxz";
+		os << Util::_8s<< "Ex" << Util::_8s<< "Ey" << Util::_8s<< "Ez" << Util::_8s<< "Exy" << Util::_8s<< "Eyz" << Util::_8s<< "Exz";
+
+		// Internal state values
+		String zname;
+		for (size_t i=0; i<_ivs[0].Size(); ++i)
+		{
+			zname.Printf("z%d",i);
+			os << Util::_8s<< zname;
+		}
+		os << std::endl;
+	}
+	else
+	{
+		// Stress and strains
+		os << Util::_8s<< Val("p" ) << Util::_8s<< Val("q" ) << Util::_8s<< Val("Ev") << Util::_8s<< Val("Ed" );
+		os << Util::_8s<< Val("Sx") << Util::_8s<< Val("Sy") << Util::_8s<< Val("Sz") << Util::_8s<< Val("Sxy") << Util::_8s<< Val("Syz") << Util::_8s<< Val("Sxz");
+		os << Util::_8s<< Val("Ex") << Util::_8s<< Val("Ey") << Util::_8s<< Val("Ez") << Util::_8s<< Val("Exy") << Util::_8s<< Val("Eyz") << Util::_8s<< Val("Exz");
+
+		// Internal state values
+		for (size_t i=0; i<_ivs[0].Size(); ++i)
+		{
+			double ave = 0.0;
+			for (size_t j=0; j<_ge->NIPs; ++j) ave += _ivs[j][i];
+			os << Util::_8s<< ave/_ge->NIPs;
+		}
+		os << std::endl;
 	}
 }
 

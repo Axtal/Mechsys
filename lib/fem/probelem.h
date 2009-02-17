@@ -69,6 +69,7 @@ public:
 	virtual void        Restore      ()                                          =0;
 	virtual void        OutInfo      (std::ostream & os) const                   =0;
 	virtual bool        HasExtra     () const                      { return false; }
+	virtual void        OutState     (std::ostream & os, bool OnlyCaption) const  {}
 	virtual void        OutExtra     (Mat_t & Coords, Vec_t & Norm,
 	                                  Mat_t & Vals, Array<String> & Lbls) const   {}
 	virtual size_t      NCMats       () const                          { return 0; }

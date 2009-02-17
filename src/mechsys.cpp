@@ -54,6 +54,7 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MA_Generate,       Generate,         0, 
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (GE_SetOnlyFrame,   SetOnlyFrame,     0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,          Solve,            0, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_SolveWithInfo,  PySolveWithInfo,  4, 5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DA_OutEles,        OutEles,          0, 1)
 
 BOOST_PYTHON_MODULE (mechsys)
 {
@@ -160,6 +161,8 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def("elems_with_tag",      &FEM::Data::PyElemsWithTag)
 	    .def("bounds_2d",           &FEM::Data::PyBounds2D)
 	    .def("bounds_3d",           &FEM::Data::PyBounds3D)
+	    .def("set_out_eles",        &FEM::Data::PySetOutEles)
+	    .def("out_eles",            &FEM::Data::OutEles, DA_OutEles())
 	    .def(self_ns::str(self))
 	    ;
 

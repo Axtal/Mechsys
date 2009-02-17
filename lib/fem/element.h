@@ -106,6 +106,7 @@ public:
 	void         GetLbls   (Array<String> & Lbls) const                 { CHECKGEPE("GetLbls"  )        _pe->GetLbls(Lbls);                   } ///< Get the labels of all values to be output
 	void         OutInfo   (std::ostream & os) const                    { CHECKGEPE("OutInfo"  )        _pe->OutInfo(os);                     } ///< Output extra info of the derived element
 	bool         HasExtra  () const                                     { CHECKGEPE("HasExtra" ) return _pe->HasExtra();                      } ///< Has extra output ?
+	void         OutState  (std::ostream & os, bool OnlyCaption) const  { CHECKGEPE("OutState")         _pe->OutState(os,OnlyCaption);        } ///< Output element state. Ex.: Sx Sy Sz p q Ex Ey Ez Ev Ed
 	void         OutExtra  (Mat_t & Coords, Vec_t & Norm,
 	                        Mat_t & Vals, Array<String> & Lbls) const   { CHECKGEPE("OutExtra" )        _pe->OutExtra(Coords,Norm,Vals,Lbls); } ///< Output extra information
 	size_t       NCMats    () const                                     { CHECKGEPE("NCMats"   ) return _pe->NCMats();                        } ///< Number of C matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
