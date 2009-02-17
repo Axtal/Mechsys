@@ -44,18 +44,20 @@ public:
 	virtual ~PyEquilib () {}
 
 	// Derived methods
-	int         NPrms () const { return 36;           }
-	PrmName_t * Prms  () const { return PYEQUILIB_PN; }
-	Str_t       Name  () const { return "PyEquilib";  }
+	int         NPrms   () const { return 36;           }
+	PrmName_t * Prms    () const { return PYEQUILIB_PN; }
+	Str_t       Name    () const { return "PyEquilib";  }
+	void        InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const;
 
 	/* Set script file name for models that can be extended using Python. */
 	void SetPyName (Str_t ScriptFileName) { _py_fn = ScriptFileName; }
 
 private:
 	// Data
-	String      _py_fn;    ///< Python: script filename
-	BPy::object _py_stiff; ///< Python: implementation of "stiff" function
-	BPy::dict   _py_prms;  ///< Python: parameters structure
+	String      _py_fn;       ///< Python: script filename
+	BPy::object _py_stiff;    ///< Python: implementation of "stiff" function
+	BPy::object _py_init_ivs; ///< Python: implementation of "init_ivs" function
+	BPy::dict   _py_prms;     ///< Python: parameters structure
 
 	// Private methods
 	void _initialize ();
@@ -69,6 +71,23 @@ const char PyEquilib::PYEQUILIB_PN[36][8] = { "a0", "a1", "a2", "a3", "a4", "a5"
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
+inline void PyEquilib::InitIVS(Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const
+{
+	// Fill python structures
+	BPy::tuple sig (BPy::make_tuple( Sig(0), Sig(1), Sig(2), Sig(3), Sig(4), Sig(5)));
+	BPy::tuple eps (BPy::make_tuple( Eps(0), Eps(1), Eps(2), Eps(3), Eps(4), Eps(5)));
+	BPy::dict  ini;
+	for (Ini_t::const_iterator it=Ini.begin(); it!=Ini.end(); ++it) ini[it->first.CStr()] = it->second;
+
+	// Call _py_init_ivs
+	BPy::list const & res = BPy::extract<BPy::list>( _py_init_ivs(_py_prms,ini,sig,eps) )();
+	
+	// Extract return vals
+	size_t nivs = BPy::len(res);
+	Ivs.Resize (nivs);
+	for (size_t i=0; i<nivs; ++i) Ivs[i] = BPy::extract<double>(res[i])();
+}
+
 inline void PyEquilib::_initialize()
 {
 	if (FileParser::CheckForFile(_py_fn)==false) throw new Fatal("PyEquilib::_initialize: Could not find < %s > file (Python script with function < [1;33mD,B = stiff(prms,deps,sig,eps,ivs)[0m > )",_py_fn.CStr());
@@ -80,13 +99,14 @@ inline void PyEquilib::_initialize()
 		BPy::object main_module((BPy::handle<>(BPy::borrowed(PyImport_AddModule("__main__")))));
 		BPy::object main_namespace = main_module.attr("__dict__");
 		BPy::exec_file (_py_fn.CStr(), main_namespace, main_namespace);
-		_py_stiff = BPy::extract<BPy::object>(main_namespace["stiff"])();
+		_py_stiff    = BPy::extract<BPy::object>(main_namespace["stiff"   ])();
+		_py_init_ivs = BPy::extract<BPy::object>(main_namespace["init_ivs"])();
 	}
 	catch (BPy::error_already_set const & Err)
 	{
 		std::cout << "[1;31mFatal: PyEquilib: The following error happend when running script < " << _py_fn.CStr() << " > [0m\n"; 
 		PyErr_Print();
-		std::cout << "[1;31mFunction < [1;33mD,B = stiff(prms,deps,sig,eps,ivs)[0m[1;31m > must be defined.[0m\n";
+		std::cout << "[1;31mFunction < [1;33mz = init_ivs(prms,ini,sig,eps)  and  D,B = stiff(prms,deps,sig,eps,ivs)[0m[1;31m > must be defined.[0m\n";
 		throw new Fatal("An error happend when running script < %s >. Please, check console for further information.",_py_fn.CStr());
 	}
 

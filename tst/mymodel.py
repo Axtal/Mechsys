@@ -2,6 +2,9 @@
 
 import math
 
+def init_ivs(prms, ini,sig,eps):
+    return []
+
 def stiff(prms, deps, sig,eps,ivs):
 
     SQ2 = math.sqrt(2.0)
