@@ -60,6 +60,9 @@ public:
 	virtual PrmName_t * Prms  () const =0; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
 	virtual Str_t       Name  () const =0; ///< Model name
 
+	// Methods that may be derived
+	virtual void SetPyName (Str_t ScriptFileName) {} ///< Set script file name for models that can be extended using Python
+
 	/* Initialize internal values. */
 	virtual void InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const {}
 	virtual void InitIVS (Ini_t const & Ini, Vec3_t  const & Vel, Vec3_t  const & Gra, IntVals & Ivs) const {}
@@ -136,7 +139,7 @@ inline void Model::Initialize(int Tag, Str_t StrPrms)
 
 	// Read parameters
 	LineParser lp(StrPrms);
-	lp.ReadVariables (NPrms(), Prms(), _prms, "parameters", "Model", _tag);
+	lp.ReadSomeVariables (NPrms(), Prms(), _prms, "Parameter", "Model", _tag);
 
 	// Initialize model
 	_initialize ();
@@ -145,7 +148,7 @@ inline void Model::Initialize(int Tag, Str_t StrPrms)
 inline double Model::Prm(Str_t Key) const
 {
 	Prm_t::const_iterator it = _prms.find(Key);
-	if (it==_prms.end()) throw new Fatal("Model::Prm: Could not find parameter < %d > in _prms array",Key);
+	if (it==_prms.end()) throw new Fatal("Model::Prm: Could not find parameter < %s > in _prms array",Key);
 	return it->second;
 }
 
@@ -165,11 +168,23 @@ ModelFactory_t ModelFactory;
 // Allocate a new Models according to a string giving the name of the Model
 Model * AllocModel(Str_t Name)
 {
+	// Check if ModelName has a comma (separating the name of a script)
+	// Ex.: "PyEquilib,mymodel.py"
+	Array<String> res;
+	LineParser lp(Name);
+	lp.SplitLine (",", res);
+	if (res.Size()==0) throw new Fatal("AllocModel: Model name cannot be empty. Use, for instance: LinElastic");
+	
 	// Check if there is Name model implemented
 	ModelMakerPtr ptr=NULL;
-	ptr = ModelFactory[Name];
-	if (ptr==NULL) throw new Fatal(_("FEM::AllocModel: There is no < %s > implemented in this library"), Name);
-	return (*ptr)();
+	ptr = ModelFactory[res[0].CStr()];
+	if (ptr==NULL) throw new Fatal(_("AllocModel: There is no < %s > implemented in this library"), Name);
+	Model * mdl = (*ptr)();
+
+	// Set script name
+	if (res.Size()==2) mdl->SetPyName (res[1].CStr());
+	
+	return mdl;
 }
 
 

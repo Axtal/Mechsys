@@ -19,7 +19,6 @@
 IF(BLITZ_FOUND AND LINALG_FOUND)
 	IF(FLTK_FOUND)
 		ADD_EXECUTABLE        (ttunnel   ttunnel.cpp)
-		ADD_TEST              (ttunnel   ttunnel)
 		TARGET_LINK_LIBRARIES (ttunnel   ${LIBS})
 		SET_TARGET_PROPERTIES (ttunnel   PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 	ENDIF(FLTK_FOUND)

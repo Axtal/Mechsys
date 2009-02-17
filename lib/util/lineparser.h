@@ -77,6 +77,9 @@ public:
 	template<int nChars, typename Type1, typename Type2>
 	void ReadVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc=NULL, char const * ElemOrMdl=NULL, int IDOrTag=-1);
 
+	template<int nChars, typename Type1, typename Type2>
+	void ReadSomeVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc=NULL, char const * ElemOrMdl=NULL, int IDOrTag=-1);
+
 	void PathSubstituteEnv();
 	void FileBasename(String const & ExtensionToRemove, String & Basename);
 
@@ -273,6 +276,39 @@ inline void LineParser::ReadVariables(size_t NumNames, char const Names[][nChars
 		}
 		//for (std::map<Type1,Type2>::const_iterator it=NamesVals.begin(); it!=NamesVals.end(); ++it)
 			//std::cout << it->first << " --> " << it->second << std::endl;
+	}
+}
+
+template<int nChars, typename Type1, typename Type2>
+inline void LineParser::ReadSomeVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc, char const * ElemOrMdl, int IDOrTag)
+{
+	/* Read:  "gam=20 gw=10"  into   Values[0]=20, Values[1]=10
+	 *
+	 * for:   Names[2][8] = {"gam", "gw"};   ==>   NumNames=2, nChars=8
+	 */
+
+	// Fill array with all names
+	Array<String> all_names;
+	for (size_t i=0; i<NumNames; ++i) all_names.Push (Names[i]);
+
+	// Read names and values
+	Array<String> names;
+	Array<double> vals;
+	BreakExpressions (names, vals);
+
+	// Check if all names[i] are in all_names
+	for (size_t i=0; i<names.Size(); ++i)
+	{
+		if (all_names.Find(names[i])<0)
+			throw new Fatal("LineParser::ReadSomeVariables: %s < %s > is not in defined for this %s (Tag == %d).",Desc,names[i].CStr(),ElemOrMdl,IDOrTag);
+	}
+
+	// Fill NamesVals map with ALL names
+	for (size_t i=0; i<NumNames; ++i)
+	{
+		long k = names.Find(all_names[i]);
+		if (k<0) NamesVals[all_names[i]] = 0.0;
+		else     NamesVals[all_names[i]] = vals[k];
 	}
 }
 

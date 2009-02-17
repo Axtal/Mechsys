@@ -59,5 +59,6 @@
 #include "models/equilibs/linelastic.h"
 #include "models/equilibs/rodelastic.h"
 #include "models/equilibs/springelastic.h"
+#include "models/equilibs/pyequilib.h"
 
 #endif // MECHSYS_MECHSYS_H
