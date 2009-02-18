@@ -117,8 +117,11 @@ inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 c
 
 	// Elastic tangent stiffness
 	double v = Ivs[1];                                                    // specific volume
-	double E = (Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v/kap;                 // Young modulus
+	double E = -(Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v/kap;                // Young modulus
 	AddScaled (E/(1.0+nu), IIsym, nu*E/((1.0+nu)*(1.0-2.0*nu)), IdyI, D); // Elastic tangent tensor
+
+	// Return if first stiffness
+	if (First) return;
 
 	// Elastic trial state
 	Tensor2 dsig_tr;                // trial stress increment
@@ -130,21 +133,37 @@ inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 c
 	double f_ini = _calc_f (Sig,    Ivs); // initial yield function value
 	double f_tr  = _calc_f (sig_tr, Ivs); // trial yield function value
 
+	//std::cout << f_ini << std::endl;
+
 	// Elastic/Elastoplastic ?
 	bool   intersect = false; // elastic/elastoplastic intersection ?
 	double alpha     = 0.0;   // intersection position
 	if (f_ini<0.0) // stress state inside yield surface
 	{
 		if (f_tr>0.0) intersect = true; // going outside => elastic/elastoplastic intersection
-		else return;                    // still inside => pure elastic
+		else
+		{
+			//std::cout << "pure elastic" << std::endl;
+			return;                    // still inside => pure elastic
+		}
 	}
 	else // on the yield surface or slightly outside
 	{
 		// Loading/unloading?
 		Tensor2 V;  _df_dsig (Sig,Ivs, V);          // V = df_dsig derivative
+		//std::cout << "df_dsig = " << V << std::endl;
+		//std::cout << "D = " << D << std::endl;
+		//std::cout << "DEps = " << DEps << std::endl;
 		double num_dL = Tensors::Reduce (V,D,DEps); // num_dL = V:De:DEps
-		if (num_dL<=0.0) return;                    // going inside (or tangent) => pure elastic
+		//std::cout << "num_dL = " << num_dL << std::endl;
+		if (num_dL<=0.0)
+		{
+			//std::cout << "going inside pure elastic" << std::endl;
+			return;                    // going inside (or tangent) => pure elastic
+		}
 	}
+
+	//std::cout << "intersect = " << intersect << std::endl;
 
 	// Set current state on yield surface (after intersection)
 	Tensor2 sig;  sig  = Sig;
@@ -178,14 +197,14 @@ inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 c
 	double M   = _calc_M (t);     // variable CSL slope
 	double z0  = Ivs[0];          // z0 (yield surface size)
 	double y0  = -M*M*p;          // y0 = df_dz0
-	double chi = (lam - kap)/v; // Chi
+	double chi = -(lam - kap)/v;  // Chi
 	double trr = V(0)+V(1)+V(2);  // trace of (r=V)
 	double HH0 = z0*trr/chi;      // hardening moduli
 	double hp  = -y0*HH0;         // plastic coeficient
 
 	// Elastic tangent stiffness
 	Tensor4 De;
-	E = 3.0*p*(1.0-2.0*nu)*v/kap;
+	E = -3.0*p*(1.0-2.0*nu)*v/kap;
 	AddScaled (E/(1.0+nu), IIsym, nu*E/((1.0+nu)*(1.0-2.0*nu)), IdyI, De);
 
 	// Elastoplastic tangent stiffness
@@ -194,17 +213,25 @@ inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 c
 	Tensors::GerX      (-1.0/Phi,De,V,V,De,De, Dep); // Dep = (-1/Phi) * (De:V)dy(V:De) + De
 	Tensors::DotScaled (HH0/Phi,V,De, B[0]);         // B[0] = (HH0/Phi)*(V:De)
 
+	//std::cout << "alpha = " << alpha << ", B[0]=" << B[0] << std::endl;
+	//std::cout << "DEps = " << _8s<<DEps(0) << _8s<<DEps(1) << _8s<<DEps(2) << _8s<<DEps(3) << _8s<<DEps(4) << _8s<<DEps(5) << std::endl;
+	//std::cout << "B[0] = " << _8s<<B[0](0) << _8s<<B[0](1) << _8s<<B[0](2) << _8s<<B[0](3) << _8s<<B[0](4) << _8s<<B[0](5) << std::endl;
+	//std::cout << "B[0]:DEps = " << Tensors::Dot(B[0],DEps) << std::endl;
+
 	// Secant stiffness
-	if (alpha>0.0)
-	{
-		Tensors::AddScaled (alpha,D, 1.0-alpha,Dep, D); // D <- alp*De + (1-alp)*Dep
-		B[0] = (1.0-alpha)*B[0];                        // B <-          (1-alp)*B
-	}
+	//if (alpha>0.0)
+	//{
+		//Tensors::AddScaled (alpha,D, 1.0-alpha,Dep, D); // D <- alp*De + (1-alp)*Dep
+		//B[0] = (1.0-alpha)*B[0];                        // B <-          (1-alp)*B
+	//}
+	
+	D = Dep;
+	//std::cout << D << std::endl;
 }
 
 inline double CamClay::_calc_M(double const & t) const
 {
-	return _Mcs*pow( 2.0*_w/(1.0+_w+(_w-1.0)*t) ,0.25);
+	return _Mcs*pow( 2.0*_w/(1.0+_w+(_w-1.0)*(-t)) ,0.25);
 }
 
 inline double CamClay::_calc_f(Tensor2 const & Sig, IntVals const & Ivs) const
@@ -229,6 +256,7 @@ inline double CamClay::_calc_z0(Tensor2 const & Sig) const
 
 	// z0
 	double M = _calc_M (t);
+	std::cout << "t = " << t << ", M = " << M << std::endl;
 	return p+q*q/(M*M*p);
 }
 
@@ -246,12 +274,13 @@ inline void CamClay::_df_dsig(Tensor2 const & Sig, IntVals const & Ivs,  Tensor2
 	double z0 = Ivs[0];
 	double M  = _calc_M (t);
 	double m  = M*M*(2.0*p-z0)/3.0;
+	//std::cout << "t = " << t << ", M = " << M << std::endl;
 	if (q>MIN_Q)
 	{
 		double n    = 2.0*M*p*(p-z0);
-		double dMdt = 0.25*M*(1.0-_w)/(1.0+_w-(1.0-_w)*t);
+		double dMdt = -0.25*M*(1.0-_w)/(1.0+_w-(1.0-_w)*(-t));
 		Tensor2 dMds; dMds = dMdt*dtds;
-		V = 3.0*S + m*Tensors::I + n*dMds;
+		V = 3.0*S + m*Tensors::I;// + n*dMds;
 	}
 	else V = m*Tensors::I;
 }

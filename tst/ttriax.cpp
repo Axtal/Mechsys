@@ -59,8 +59,8 @@ int main(int argc, char **argv) try
 	          -1.08, -1.08, -3.84;
 
 	// Number of divisions
-	int gndiv = 10; // global number of divisions for states
-	int sndiv = 10; // solver number of divisions
+	int gndiv = 20; // global number of divisions for states
+	int sndiv = 20; // solver number of divisions
 
 	// Parameters
 	double E    = 1300.0;
@@ -184,6 +184,7 @@ int main(int argc, char **argv) try
 		double dfx = (states(i,0)-Sx)/gndiv;
 		double dfy = (states(i,1)-Sy)/gndiv;
 		double dfz = (states(i,2)-Sz)/gndiv;
+		//cout << dfx << ", " << dfy << ", " << dfz << endl;
 		for (int j=0; j<gndiv; ++j)
 		{
 			// solve
