@@ -373,9 +373,10 @@ inline void BiotElem::_compute_K(Mat_t & Ke) const
 		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
-		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D);
+		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D, _first);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
+	if (_first) _first = false;
 }
 
 inline void BiotElem::_compute_C(Mat_t & Ce) const

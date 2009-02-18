@@ -126,9 +126,10 @@ protected:
 	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const;      ///< Calculate B matrix
 	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn); ///< Distribute values from face/edges to nodes
 
+	mutable bool _first; ///< First D matrix?
+
 private:
 	void _init_internal_state (); ///< Initialize internal state
-	mutable bool _first;          ///< First D matrix?
 
 }; // class EquilibElem
 
