@@ -23,6 +23,11 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 		SET_TARGET_PROPERTIES (ttunnel   PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 	ENDIF(FLTK_FOUND)
 
+	ADD_EXECUTABLE        (ttriax   ttriax.cpp)
+	ADD_TEST              (ttriax   ttriax)
+	TARGET_LINK_LIBRARIES (ttriax   ${LIBS} boost_python)
+	SET_TARGET_PROPERTIES (ttriax   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (tbiot01   tbiot01.cpp)
 	ADD_TEST              (tbiot01   tbiot01)
 	TARGET_LINK_LIBRARIES (tbiot01   ${LIBS})
