@@ -61,7 +61,7 @@ private:
 
 	// Private methods
 	void _initialize ();
-	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
+	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const;
 
 }; // class PyEquilib
 
@@ -114,7 +114,7 @@ inline void PyEquilib::_initialize()
 	for (int i=0; i<NPrms(); ++i) _py_prms[PYEQUILIB_PN[i]] = Prm(PYEQUILIB_PN[i]);
 }
 
-inline void PyEquilib::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
+inline void PyEquilib::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const
 {
 	// Fill python structures
 	BPy::tuple deps (BPy::make_tuple(DEps(0),DEps(1),DEps(2),DEps(3),DEps(4),DEps(5)));

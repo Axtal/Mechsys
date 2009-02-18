@@ -71,7 +71,8 @@ public:
 	virtual void TgStiffness (Tensor2 const & Sig,
 	                          Tensor2 const & Eps,
 	                          IntVals const & Ivs,
-	                          Mat_t         & Dmat) const {}
+	                          Mat_t         & Dmat,
+	                          bool            First) const {}
 
 	/* Tangent permeability. */
 	virtual void TgPermeability (Mat_t & Kmat) const {}

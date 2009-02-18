@@ -53,7 +53,7 @@ private:
 
 	// Derived private methods
 	void _initialize ();
-	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const;
+	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const;
 
 	// Private methods
 	double _calc_M  (double const & t)    const;                                    ///< Variable CSL slope
@@ -104,7 +104,7 @@ inline void CamClay::_initialize()
 	_w   = pow((3.0-sinphi)/(3.0+sinphi),4.0);
 }
 
-inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B) const
+inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const
 {
 	// Parameters
 	double lam = Prm("lam");

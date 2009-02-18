@@ -57,7 +57,8 @@ public:
 	void TgStiffness (Tensor2 const & Sig,
 	                  Tensor2 const & Eps,
 	                  IntVals const & Ivs,
-	                  Mat_t         & Dmat) const;
+	                  Mat_t         & Dmat,
+	                  bool            First) const;
 
 	/* State update. */
 	int StateUpdate (Vec_t   const & DEps,
@@ -73,7 +74,8 @@ protected:
 	                     Tensor2 const  & Eps,
 	                     IntVals const  & Ivs,
 	                     Tensor4        & D,
-	                     Array<Tensor2> & B) const =0;
+	                     Array<Tensor2> & B,
+	                     bool             First) const =0;
 
 private:
 	// Data
@@ -95,11 +97,11 @@ private:
 
 /* public */
 
-inline void EquilibModel::TgStiffness(Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Mat_t & Dmat) const
+inline void EquilibModel::TgStiffness(Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Mat_t & Dmat, bool First) const
 {
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiff          (_deps,Sig,Eps,Ivs, D,B);
+	_stiff          (_deps,Sig,Eps,Ivs, D,B, First);
 	Tensor4ToMatrix (_gi,D, Dmat);
 }
 
@@ -181,7 +183,7 @@ inline int EquilibModel::StateUpdate(Vec_t const & DEps, Tensor2 & Sig, Tensor2 
 		dT = m * dT;
 		if (dT>1.0-T) dT = 1.0-T; // last step
 	}
-	throw new Fatal("EquilibModel::StateUpdate: %s:Tag=%s: Update did not converge for %d steps",Name(),_tag,_maxSS);
+	throw new Fatal("EquilibModel::StateUpdate: %s:Tag=%d: Update did not converge for %d steps",Name(),_tag,_maxSS);
 }
 
 
@@ -192,7 +194,7 @@ inline void EquilibModel::_tg_incs(Tensor2 const & DEps, Tensor2 const & Sig, Te
 	// Stiffness
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiff (DEps,Sig,Eps,Ivs, D,B);
+	_stiff (DEps,Sig,Eps,Ivs, D,B, false);
 
 	// Increments
 	Tensors::Dot (D,DEps, DSig);     // DSig    = D:DEps
