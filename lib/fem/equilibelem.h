@@ -81,6 +81,9 @@ public:
 	static const char   EQUILIB_PROP [ 1][8]; ///< Properties
 	//}
 
+	// Constructor
+	EquilibElem () : _first(true) {}
+
 	// Destructor
 	virtual ~EquilibElem () {}
 
@@ -125,6 +128,7 @@ protected:
 
 private:
 	void _init_internal_state (); ///< Initialize internal state
+	mutable bool _first;          ///< First D matrix?
 
 }; // class EquilibElem
 
@@ -431,9 +435,10 @@ inline void EquilibElem::CMatrix(size_t Idx, Mat_t & Ke) const
 		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
-		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D);
+		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D, _first);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
+	if (_first) _first = false;
 }
 
 inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
