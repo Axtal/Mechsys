@@ -16,4 +16,4 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SUBDIRS (cylinder)
+ADD_EXECUTABLE        (joe   joe.cpp)
