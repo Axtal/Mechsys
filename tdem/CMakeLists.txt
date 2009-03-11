@@ -1,0 +1,10 @@
+PROJECT(SPOLY3D)
+
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+ADD_DEFINITIONS(-g -Wall)
+
+SUBDIRS(biaxialtest roughsurface ../lib/dem)
+
+SET(FLAGS "") # such as -DNDEBUG
+SET(LIBS "SPOLY3D")
