@@ -48,10 +48,10 @@ public:
 	static const LVeloc_T LOCAL_VELOC3D [27]; ///< Local velocities (3D)
 
 	// Constructor
-	Cell () : _is_solid(false) {}
+	Cell (double Tau, SETNEIGHS) : _tau(Tau), _is_solid(false) {}
 
 	// Initialization
-	void Initialize (double Tau, Vec3_t const & V0, double Rho0); ///< Tau: Relaxation time, V0: Initial velocity, Rho0: Initial density
+	void Initialize (Vec3_t const & V0, double Rho0); ///< Tau: Relaxation time, V0: Initial velocity, Rho0: Initial density
 
 	// Access methods
 	bool   IsSolid () const       { return _is_solid; }     ///< Is solid or fluid cell?
@@ -62,8 +62,8 @@ public:
 	double Density ()           const;                      ///< Calculate the density of the fluid in this cell
 
 	// Set methods
-	void SetVelocBC     (); ///< Set velocity boundary conditions (Neumann)
-	void SetBCDensityBC (); ///< Set density boundary conditions (Dirichlet)
+	void SetVelocBC   (); ///< Set velocity boundary conditions (Neumann)
+	void SetDensityBC (); ///< Set density boundary conditions (Dirichlet)
 
 	// Methods
 	double EqFun   (size_t Index, Vec3_t const & V, double Rho); ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
@@ -72,6 +72,7 @@ public:
 
 protected:
 	// Data
+	double           _tau;      ///< Relaxation time
 	bool             _is_solid; ///< Solid cell or fluid cell?
 	Array<Cell*>     _neigh;    ///< Neighbours. Note: First index [0] referes to itself
 	Array<double>    _f;        ///< Distribution functions. 2D: size==9, 3D: size==27
@@ -105,6 +106,11 @@ public:
 	Cell3D () { _w = WEIGHTS3D; _c = LOCAL_VELOC3D; }
 private:
 }; // class Cell3D
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+
 
 
 }; // namespace LBM

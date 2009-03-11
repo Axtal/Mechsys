@@ -20,9 +20,7 @@
 #define MECHSYS_LBM_LATTICE_H
 
 // MechSys
-#include "fem/node.h"
-
-typedef blitz::TinyVec<double,3> Vec3_t;
+#include "lbm/cell.h"
 
 namespace LBM
 {
@@ -30,28 +28,56 @@ namespace LBM
 class Lattice
 {
 public:
+	// Constructor
+	Lattice (bool Is3D, double Tau, size_t Nx, size_t Ny, double dL, size_t Nz=0); ///< Nx,Ny,Nz number of cells along each direction. dL = Length of each size
+
+	// Destructor
+	~Lattice ();
+
+	// Access methods
+	Array<Cell*> const & Bottom () { return _bottom; }
+	Array<Cell*> const & Left   () { return _left;   }
+	Array<Cell*> const & Top    () { return _top;    }
+	Array<Cell*> const & Right  () { return _right;  }
+	Array<Cell*> const & Front  () { return _front;  }
+	Array<Cell*> const & Back   () { return _back;   }
+
+	// Access method
+	Cell & GetCells (size_t i, size_t j, size_t k=0);
+
+	// Solve
+	void Solve (double tIni, double tFin, double dt, double dtOut); ///< Solve
 
 protected:
+	Array<Cell*> _cells;
+	Array<Cell*> _bottom;
+	Array<Cell*> _top;
+	Array<Cell*> _left;
+	Array<Cell*> _right;
+	Array<Cell*> _front;
+	Array<Cell*> _back;
 
 }; // class Lattice
 
-const Vec3_t LOCAL_VELOC2D[ 9] = {};
-const Vec3_t LOCAL_VELOC3D[27] = {};
 
-class Lattice2D : public Lattice
+/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+
+
+inline Lattice::Lattice(bool Is3D, double Tau, size_t Nx, size_t Ny, double dL, size_t Nz)
 {
-public:
-	Lattice2D() { _w = WEIGHTS2D; }
-private:
-}; // class Lattice2D
+}
 
-
-class Lattice3D : public Lattice
+inline Lattice::~Lattice()
 {
-public:
-	Lattice3D() { _w = WEIGHTS3D; }
-private:
-}; // class Lattice3D
+}
+
+inline Cell & Lattice::GetCells(size_t i, size_t j, size_t k)
+{
+}
+
+inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
+{
+}
 
 
 }; // namespace LBM
