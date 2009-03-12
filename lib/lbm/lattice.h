@@ -1,6 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
- * Copyright (C) 2005 Dorival M. Pedroso, Raúl D. D. Farfan             *
+ * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
+ * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -55,9 +56,9 @@ public:
 protected:
 	bool   _is_3d;        ///< TODO:
 	double _tau;          ///< TODO:
-	int    _nx;           ///< TODO:
-	int    _ny;           ///< TODO:
-	int    _nz;           ///< TODO:
+	size_t _nx;           ///< TODO:
+	size_t _ny;           ///< TODO:
+	size_t _nz;           ///< TODO:
 	double _dL;           ///< TODO:
 	size_t _size;         ///< TODO:
 
@@ -88,12 +89,12 @@ inline Lattice::Lattice(bool Is3D, double Tau, double dL, size_t Nx, size_t Ny, 
 
 	// Allocate memory
 	for (size_t i=0; i<_size; i++)
-		_cells[i] = Cell(_is_3d);
+		_cells[i] = new Cell(_is_3d);
 }
 
 inline Lattice::~Lattice()
 {
-	for (int i=0; i<_size; i++) delete _cells[i];
+	for (size_t i=0; i<_size; i++) delete _cells[i];
 }
 
 inline Cell & Lattice::GetCells(size_t i, size_t j, size_t k)
