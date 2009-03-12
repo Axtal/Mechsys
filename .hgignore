@@ -39,6 +39,8 @@ tst/midasgts/tstatic121
 tst/midasgts/tstatic122
 src/libmechsys.*
 tlbm/cylinder/cylinder
+tdem/biaxialtest/biaxialtest
+tdem/roughsurface/roughsurface
 
 syntax: glob
 CTestTestfile.cmake
@@ -58,3 +60,5 @@ install_manifest.txt
 *.pvd
 *.vtu
 *.vtk
+*.pov
+*.png

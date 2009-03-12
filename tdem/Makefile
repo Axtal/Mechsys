@@ -30,19 +30,19 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = /usr/bin/cmake
+CMAKE_COMMAND = /usr/local/bin/cmake
 
 # The command to remove a file.
-RM = /usr/bin/cmake -E remove -f
+RM = /usr/local/bin/cmake -E remove -f
 
 # The program to use to edit the cache.
-CMAKE_EDIT_COMMAND = /usr/bin/cmake-gui
+CMAKE_EDIT_COMMAND = /usr/local/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/sergio/mechsys/tdem
+CMAKE_SOURCE_DIR = /home/dorival/mechsys
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/sergio/mechsys/tdem
+CMAKE_BINARY_DIR = /home/dorival/mechsys
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -50,33 +50,84 @@ CMAKE_BINARY_DIR = /home/sergio/mechsys/tdem
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	/usr/bin/cmake-gui -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	cd /home/dorival/mechsys/tdem && /usr/local/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
 edit_cache/fast: edit_cache
 .PHONY : edit_cache/fast
 
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	cd /home/dorival/mechsys/tdem && /usr/local/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	cd /home/dorival/mechsys/tdem && /usr/local/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
+	cd /home/dorival/mechsys/tdem && /usr/local/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: install/local
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
+	cd /home/dorival/mechsys/tdem && /usr/local/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: install/strip
+.PHONY : install/strip/fast
+
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	cd /home/dorival/mechsys/tdem && /usr/local/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	cd /home/dorival/mechsys/tdem && /usr/local/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/sergio/mechsys/tdem/CMakeFiles /home/sergio/mechsys/tdem/CMakeFiles/progress.make
-	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/sergio/mechsys/tdem/CMakeFiles 0
+	cd /home/dorival/mechsys && $(CMAKE_COMMAND) -E cmake_progress_start /home/dorival/mechsys/CMakeFiles /home/dorival/mechsys/tdem/CMakeFiles/progress.make
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 tdem/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/dorival/mechsys/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	$(MAKE) -f CMakeFiles/Makefile2 clean
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 tdem/clean
 .PHONY : clean
 
 # The main clean target
@@ -85,57 +136,18 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	$(MAKE) -f CMakeFiles/Makefile2 preinstall
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 tdem/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	$(MAKE) -f CMakeFiles/Makefile2 preinstall
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 tdem/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	$(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/dorival/mechsys && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
-
-#=============================================================================
-# Target rules for targets named biaxialtest
-
-# Build rule for target.
-biaxialtest: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 biaxialtest
-.PHONY : biaxialtest
-
-# fast build rule for target.
-biaxialtest/fast:
-	$(MAKE) -f biaxialtest/CMakeFiles/biaxialtest.dir/build.make biaxialtest/CMakeFiles/biaxialtest.dir/build
-.PHONY : biaxialtest/fast
-
-#=============================================================================
-# Target rules for targets named roughsurface
-
-# Build rule for target.
-roughsurface: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 roughsurface
-.PHONY : roughsurface
-
-# fast build rule for target.
-roughsurface/fast:
-	$(MAKE) -f roughsurface/CMakeFiles/roughsurface.dir/build.make roughsurface/CMakeFiles/roughsurface.dir/build
-.PHONY : roughsurface/fast
-
-#=============================================================================
-# Target rules for targets named SPOLY3D
-
-# Build rule for target.
-SPOLY3D: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 SPOLY3D
-.PHONY : SPOLY3D
-
-# fast build rule for target.
-SPOLY3D/fast:
-	$(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build
-.PHONY : SPOLY3D/fast
 
 # Help Target
 help:
@@ -144,10 +156,12 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
-	@echo "... biaxialtest"
-	@echo "... roughsurface"
-	@echo "... SPOLY3D"
+	@echo "... test"
 .PHONY : help
 
 
@@ -159,6 +173,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	$(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/dorival/mechsys && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

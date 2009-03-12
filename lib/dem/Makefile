@@ -30,19 +30,19 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = /usr/bin/cmake
+CMAKE_COMMAND = /usr/local/bin/cmake
 
 # The command to remove a file.
-RM = /usr/bin/cmake -E remove -f
+RM = /usr/local/bin/cmake -E remove -f
 
 # The program to use to edit the cache.
-CMAKE_EDIT_COMMAND = /usr/bin/cmake-gui
+CMAKE_EDIT_COMMAND = /usr/local/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/sergio/mechsys/tdem
+CMAKE_SOURCE_DIR = /home/dorival/mechsys
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/sergio/mechsys/tdem
+CMAKE_BINARY_DIR = /home/dorival/mechsys
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -50,33 +50,84 @@ CMAKE_BINARY_DIR = /home/sergio/mechsys/tdem
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	cd /home/sergio/mechsys/lib/dem && /usr/bin/cmake-gui -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	cd /home/dorival/mechsys/lib/dem && /usr/local/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
 edit_cache/fast: edit_cache
 .PHONY : edit_cache/fast
 
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	cd /home/dorival/mechsys/lib/dem && /usr/local/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	cd /home/dorival/mechsys/lib/dem && /usr/local/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
+	cd /home/dorival/mechsys/lib/dem && /usr/local/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: install/local
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
+	cd /home/dorival/mechsys/lib/dem && /usr/local/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: install/strip
+.PHONY : install/strip/fast
+
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	cd /home/sergio/mechsys/lib/dem && /usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	cd /home/dorival/mechsys/lib/dem && /usr/local/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	cd /home/dorival/mechsys/lib/dem && /usr/local/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # The main all target
 all: cmake_check_build_system
-	cd /home/sergio/mechsys/tdem && $(CMAKE_COMMAND) -E cmake_progress_start /home/sergio/mechsys/tdem/CMakeFiles /home/sergio/mechsys/lib/dem/CMakeFiles/progress.make
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f CMakeFiles/Makefile2 /home/sergio/mechsys/lib/dem/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/sergio/mechsys/tdem/CMakeFiles 0
+	cd /home/dorival/mechsys && $(CMAKE_COMMAND) -E cmake_progress_start /home/dorival/mechsys/CMakeFiles /home/dorival/mechsys/lib/dem/CMakeFiles/progress.make
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 lib/dem/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/dorival/mechsys/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f CMakeFiles/Makefile2 /home/sergio/mechsys/lib/dem/clean
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 lib/dem/clean
 .PHONY : clean
 
 # The main clean target
@@ -85,31 +136,31 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f CMakeFiles/Makefile2 /home/sergio/mechsys/lib/dem/preinstall
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 lib/dem/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f CMakeFiles/Makefile2 /home/sergio/mechsys/lib/dem/preinstall
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 lib/dem/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/sergio/mechsys/tdem && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/dorival/mechsys && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
-/home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/rule:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f CMakeFiles/Makefile2 /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/rule
-.PHONY : /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/rule
+lib/dem/CMakeFiles/SPOLY3D.dir/rule:
+	cd /home/dorival/mechsys && $(MAKE) -f CMakeFiles/Makefile2 lib/dem/CMakeFiles/SPOLY3D.dir/rule
+.PHONY : lib/dem/CMakeFiles/SPOLY3D.dir/rule
 
 # Convenience name for target.
-SPOLY3D: /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/rule
+SPOLY3D: lib/dem/CMakeFiles/SPOLY3D.dir/rule
 .PHONY : SPOLY3D
 
 # fast build rule for target.
 SPOLY3D/fast:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/build
 .PHONY : SPOLY3D/fast
 
 Edge3d.o: Edge3d.cpp.o
@@ -117,7 +168,7 @@ Edge3d.o: Edge3d.cpp.o
 
 # target to build an object file
 Edge3d.cpp.o:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Edge3d.cpp.o
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Edge3d.cpp.o
 .PHONY : Edge3d.cpp.o
 
 Edge3d.i: Edge3d.cpp.i
@@ -125,7 +176,7 @@ Edge3d.i: Edge3d.cpp.i
 
 # target to preprocess a source file
 Edge3d.cpp.i:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Edge3d.cpp.i
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Edge3d.cpp.i
 .PHONY : Edge3d.cpp.i
 
 Edge3d.s: Edge3d.cpp.s
@@ -133,7 +184,7 @@ Edge3d.s: Edge3d.cpp.s
 
 # target to generate assembly for a file
 Edge3d.cpp.s:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Edge3d.cpp.s
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Edge3d.cpp.s
 .PHONY : Edge3d.cpp.s
 
 Face3d.o: Face3d.cpp.o
@@ -141,7 +192,7 @@ Face3d.o: Face3d.cpp.o
 
 # target to build an object file
 Face3d.cpp.o:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Face3d.cpp.o
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Face3d.cpp.o
 .PHONY : Face3d.cpp.o
 
 Face3d.i: Face3d.cpp.i
@@ -149,7 +200,7 @@ Face3d.i: Face3d.cpp.i
 
 # target to preprocess a source file
 Face3d.cpp.i:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Face3d.cpp.i
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Face3d.cpp.i
 .PHONY : Face3d.cpp.i
 
 Face3d.s: Face3d.cpp.s
@@ -157,7 +208,7 @@ Face3d.s: Face3d.cpp.s
 
 # target to generate assembly for a file
 Face3d.cpp.s:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Face3d.cpp.s
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Face3d.cpp.s
 .PHONY : Face3d.cpp.s
 
 Graph.o: Graph.cpp.o
@@ -165,7 +216,7 @@ Graph.o: Graph.cpp.o
 
 # target to build an object file
 Graph.cpp.o:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Graph.cpp.o
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Graph.cpp.o
 .PHONY : Graph.cpp.o
 
 Graph.i: Graph.cpp.i
@@ -173,7 +224,7 @@ Graph.i: Graph.cpp.i
 
 # target to preprocess a source file
 Graph.cpp.i:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Graph.cpp.i
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Graph.cpp.i
 .PHONY : Graph.cpp.i
 
 Graph.s: Graph.cpp.s
@@ -181,7 +232,7 @@ Graph.s: Graph.cpp.s
 
 # target to generate assembly for a file
 Graph.cpp.s:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Graph.cpp.s
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Graph.cpp.s
 .PHONY : Graph.cpp.s
 
 Interacton.o: Interacton.cpp.o
@@ -189,7 +240,7 @@ Interacton.o: Interacton.cpp.o
 
 # target to build an object file
 Interacton.cpp.o:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Interacton.cpp.o
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Interacton.cpp.o
 .PHONY : Interacton.cpp.o
 
 Interacton.i: Interacton.cpp.i
@@ -197,7 +248,7 @@ Interacton.i: Interacton.cpp.i
 
 # target to preprocess a source file
 Interacton.cpp.i:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Interacton.cpp.i
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Interacton.cpp.i
 .PHONY : Interacton.cpp.i
 
 Interacton.s: Interacton.cpp.s
@@ -205,7 +256,7 @@ Interacton.s: Interacton.cpp.s
 
 # target to generate assembly for a file
 Interacton.cpp.s:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Interacton.cpp.s
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Interacton.cpp.s
 .PHONY : Interacton.cpp.s
 
 Particle.o: Particle.cpp.o
@@ -213,7 +264,7 @@ Particle.o: Particle.cpp.o
 
 # target to build an object file
 Particle.cpp.o:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Particle.cpp.o
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Particle.cpp.o
 .PHONY : Particle.cpp.o
 
 Particle.i: Particle.cpp.i
@@ -221,7 +272,7 @@ Particle.i: Particle.cpp.i
 
 # target to preprocess a source file
 Particle.cpp.i:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Particle.cpp.i
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Particle.cpp.i
 .PHONY : Particle.cpp.i
 
 Particle.s: Particle.cpp.s
@@ -229,7 +280,7 @@ Particle.s: Particle.cpp.s
 
 # target to generate assembly for a file
 Particle.cpp.s:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Particle.cpp.s
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Particle.cpp.s
 .PHONY : Particle.cpp.s
 
 Quaternion.o: Quaternion.cpp.o
@@ -237,7 +288,7 @@ Quaternion.o: Quaternion.cpp.o
 
 # target to build an object file
 Quaternion.cpp.o:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Quaternion.cpp.o
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Quaternion.cpp.o
 .PHONY : Quaternion.cpp.o
 
 Quaternion.i: Quaternion.cpp.i
@@ -245,7 +296,7 @@ Quaternion.i: Quaternion.cpp.i
 
 # target to preprocess a source file
 Quaternion.cpp.i:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Quaternion.cpp.i
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Quaternion.cpp.i
 .PHONY : Quaternion.cpp.i
 
 Quaternion.s: Quaternion.cpp.s
@@ -253,7 +304,7 @@ Quaternion.s: Quaternion.cpp.s
 
 # target to generate assembly for a file
 Quaternion.cpp.s:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/Quaternion.cpp.s
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/Quaternion.cpp.s
 .PHONY : Quaternion.cpp.s
 
 vec3.o: vec3.cpp.o
@@ -261,7 +312,7 @@ vec3.o: vec3.cpp.o
 
 # target to build an object file
 vec3.cpp.o:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/vec3.cpp.o
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/vec3.cpp.o
 .PHONY : vec3.cpp.o
 
 vec3.i: vec3.cpp.i
@@ -269,7 +320,7 @@ vec3.i: vec3.cpp.i
 
 # target to preprocess a source file
 vec3.cpp.i:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/vec3.cpp.i
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/vec3.cpp.i
 .PHONY : vec3.cpp.i
 
 vec3.s: vec3.cpp.s
@@ -277,7 +328,7 @@ vec3.s: vec3.cpp.s
 
 # target to generate assembly for a file
 vec3.cpp.s:
-	cd /home/sergio/mechsys/tdem && $(MAKE) -f /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/build.make /home/sergio/mechsys/lib/dem/CMakeFiles/SPOLY3D.dir/vec3.cpp.s
+	cd /home/dorival/mechsys && $(MAKE) -f lib/dem/CMakeFiles/SPOLY3D.dir/build.make lib/dem/CMakeFiles/SPOLY3D.dir/vec3.cpp.s
 .PHONY : vec3.cpp.s
 
 # Help Target
@@ -288,7 +339,12 @@ help:
 	@echo "... depend"
 	@echo "... SPOLY3D"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... test"
 	@echo "... Edge3d.o"
 	@echo "... Edge3d.i"
 	@echo "... Edge3d.s"
@@ -321,6 +377,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/sergio/mechsys/tdem && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/dorival/mechsys && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 
