@@ -38,7 +38,7 @@ tst/midasgts/texam5
 tst/midasgts/tstatic121
 tst/midasgts/tstatic122
 src/libmechsys.*
-tlbm/cylinder/cylinder
+tlbm/cylinder
 tdem/biaxialtest/biaxialtest
 tdem/roughsurface/roughsurface
 

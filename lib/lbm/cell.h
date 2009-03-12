@@ -37,8 +37,8 @@ class Cell
 {
 public:
 	// Enums
-	enum BCType_T { VELOCITY_T=0, DENSITY_T=1 };
-	enum BCSide_T { LEFT_T=0, RIGHT_T=1, BOTTOM_T=2, TOP_T=3, FRONT_T=4, BACK_T=5 };
+	enum BCType_T { NONE_T, VELOCITY_T, DENSITY_T };
+	enum BCSide_T { LEFT_T, RIGHT_T, BOTTOM_T, TOP_T, FRONT_T, BACK_T };
 
 	// Typedefs
 	typedef double LVeloc_T[3]; ///< Local velocities type
@@ -57,8 +57,6 @@ public:
 
 	// Access methods
 	bool     IsSolid  () const       { return _is_solid; }     ///< Is solid or fluid cell?
-	size_t   NNeigh   () const       { return _neigh.Size(); } ///< Number of neighbours
-	Cell   * Neigh    (size_t Index) { return _neigh[Index]; } ///< Return the access to a neighbour cell
 	double & F        (size_t Index) { return _f[Index]; }     ///< Return the current value of the distribution function
 	double & TmpF     (size_t Index) { return _f_tmp[Index]; } ///< Return the current value of the distribution function
 	double   Density  ()           const;                      ///< Calculate the current density of the fluid in this cell
@@ -72,7 +70,6 @@ public:
 
 	// Methods
 	double EqFun    (size_t Index, Vec3_t const & V, double Rho); ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
-	//void   Stream  ();                                          ///< Calculate the movement of the fluid in this cell TODO:implement in Lattice class
 	void Collide    ();                                           ///< Calculate the collision of the fluid in this cell
 	void BounceBack ();                                           ///< 
 
@@ -86,7 +83,6 @@ protected:
 	double           _tau;      ///< Relaxation time
 	Array<double>    _f;        ///< Distribution functions. 2D: size==9, 3D: size==27
 	Array<double>    _f_tmp;    ///< Distribution functions. 2D: size==9, 3D: size==27
-	Array<Cell*>     _neigh;    ///< Neighbours. Note: First index [0] referes to itself
 	Vec3_t           _V0;       ///< Initial velocity from boundary condition
 	double           _rho0;     ///< Initial density from boundary condition
 	BCSide_T         _bc_side;  ///< Side by where the boundary condiction is applied
@@ -112,7 +108,8 @@ const Cell::LVeloc_T Cell::LOCAL_VELOC3D[27] =
 
 inline Cell::Cell(bool Is3D)
 	: _is_3D    (Is3D),
-	  _is_solid (false)
+	  _is_solid (false),
+	  _bc_type  (NONE_T)
 {
 	if (_is_3D)
 	{
@@ -143,6 +140,9 @@ inline void Cell::Initialize(double Tau, double Rho0, double Vx, double Vy, doub
 
 inline double Cell::Density() const
 {
+	// Skip if it is solid
+	if (_is_solid) return 0.0;
+
 	// Calulate current density
 	double density = 0.0;
 	for (size_t i=0; i<_nv; i++)
@@ -152,6 +152,13 @@ inline double Cell::Density() const
 
 inline void Cell::Velocity(Vec3_t & V) const
 {
+	// Skip if it is solid
+	if (_is_solid)
+	{
+		V = 0.0, 0.0, 0.0;
+		return;
+	}
+
 	double vx      = 0.0;
 	double vy      = 0.0;
 	double vz      = 0.0;
