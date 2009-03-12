@@ -53,7 +53,7 @@ public:
 	Cell (bool Is3D);
 
 	// Initialization
-	void Initialize (double Tau, Vec3_t const & V0, double Rho0); ///< Tau: Relaxation time, V0: Initial velocity, Rho0: Initial density
+	void Initialize (double Tau, double Rho0, double Vx, double Vy, double Vz=0.0); ///< Tau: Relaxation time, V0: Initial velocity, Rho0: Initial density
 
 	// Access methods
 	bool     IsSolid () const       { return _is_solid; }     ///< Is solid or fluid cell?
@@ -65,7 +65,8 @@ public:
 	void     Veloc   (Vec3_t & V) const;                      ///< Calculate the current velocity of the fluid in this cell
 
 	// Set methods
-	void SetVelocBC    (BCSide_T Side,double Vx, double Vy, double Vz=0.0); ///< Set velocity boundary conditions (Neumann)
+	void SetSolid      () { _is_solid = true; }                             ///< TODO
+	void SetVelocityBC (BCSide_T Side,double Vx, double Vy, double Vz=0.0); ///< Set velocity boundary conditions (Neumann)
 	void SetDensityBC  (BCSide_T Side, double Rho);                         ///< Set density boundary conditions (Dirichlet)
 	void ApplyBC       ();                                                  ///< Apply bonudary conditions
 
@@ -129,12 +130,15 @@ inline Cell::Cell(bool Is3D)
 	_f_tmp.Resize (_nv);
 }
 
-inline void Cell::Initialize(double Tau, Vec3_t const & V0, double Rho0)
+inline void Cell::Initialize(double Tau, double Rho0, double Vx, double Vy, double Vz)
 {
+	// Initial velocity
+	Vec3_t v0;  v0 = Vx, Vy, Vz;
+
 	// Initilize distribution function with initial velocity V0 and initial density Rho0
 	_tau = Tau;
 	for (size_t i=0; i<_nv; i++)
-		_f[i] = EqFun(i, V0, Rho0);
+		_f[i] = EqFun(i, v0, Rho0);
 }
 
 inline double Cell::Density() const
@@ -190,7 +194,7 @@ inline double Cell::EqFun(size_t Index, Vec3_t const & V, double Rho)
 	return f_eq;
 }
 
-inline void Cell::SetVelocBC(BCSide_T Side, double Vx, double Vy, double Vz)
+inline void Cell::SetVelocityBC(BCSide_T Side, double Vx, double Vy, double Vz)
 {
 	_V0      = Vx, Vy, Vz;
 	_bc_side = Side;

@@ -44,7 +44,10 @@ public:
 	Array<Cell*> const & Back   () { return _back;   }
 
 	// Access method
-	Cell & GetCells (size_t i, size_t j, size_t k=0);
+	size_t Nx() const { return _nx; }
+	size_t Ny() const { return _ny; }
+	size_t Nz() const { return _nz; }
+	Cell * GetCell (size_t i, size_t j, size_t k=0);
 
 	// Solve
 	void Solve      (double tIni, double tFin, double dt, double dtOut); ///< Solve
@@ -97,18 +100,34 @@ inline Lattice::~Lattice()
 	for (size_t i=0; i<_size; i++) delete _cells[i];
 }
 
-inline Cell & Lattice::GetCells(size_t i, size_t j, size_t k)
+inline Cell * Lattice::GetCell(size_t i, size_t j, size_t k)
 {
 	if (_is_3d)
 	{
 		// TODO: Implement this
 	}
-	return (*_cells[i+_nx*j]);
+	return _cells[i+_nx*j];
 }
 
 inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 {
-	throw new Fatal ("Lattice::Solve: Feature not availabe yet");
+	double t    = tIni;
+	double tout = t + dtOut;
+	//WriteState (t);
+	while (t<tFin)
+	{
+		Collide    ();
+		BounceBack ();
+		Stream     ();
+		ApplyBC    ();
+		t += dt;
+		if (t>=tout)
+		{
+			std::cout << "t = " << t << std::endl;
+			//WriteState (t);
+			tout += dtOut;
+		}
+	}
 }
 
 inline void Lattice::Stream()
@@ -125,12 +144,12 @@ inline void Lattice::Stream()
 		{
 			for (size_t k=0; k<9; k++)
 			{
-				size_t next_i = i + c[k][0];
-				size_t next_j = j + c[k][1];
-				if (next_i==-1)  next_i = _nx-1;
-				if (next_i==_nx) next_i = 0;
-				if (next_j==-1)  next_j = _ny-1;
-				if (next_j==_ny) next_j = 0;
+				int next_i = i + c[k][0];
+				int next_j = j + c[k][1];
+				if (next_i==-1)                    next_i = _nx-1;
+				if (next_i==static_cast<int>(_nx)) next_i = 0;
+				if (next_j==-1)                    next_j = _ny-1;
+				if (next_j==static_cast<int>(_ny)) next_j = 0;
 				_cells[next_i+_nx*next_j]->TmpF(k) = _cells[i+_nx*j]->F(k);
 			}
 		}
@@ -144,12 +163,12 @@ inline void Lattice::Stream()
 
 inline void Lattice::ApplyBC()
 {
-	for (int i=0; i<_size; i++) _cells[i]->ApplyBC();
+	for (size_t i=0; i<_size; i++) _cells[i]->ApplyBC();
 }
 
 inline void Lattice::Collide()
 {
-	for (int i=0; i<_size; i++)
+	for (size_t i=0; i<_size; i++)
 	{
 		if (_cells[i]->IsSolid()==false)
 			_cells[i]->Collide();
@@ -158,7 +177,7 @@ inline void Lattice::Collide()
 
 inline void Lattice::BounceBack()
 {
-	for (int i=0; i<_size; i++)
+	for (size_t i=0; i<_size; i++)
 	{
 		if (_cells[i]->IsSolid())
 			_cells[i]->BounceBack();
