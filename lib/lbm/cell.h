@@ -56,13 +56,13 @@ public:
 	void Initialize (double Tau, double Rho0, double Vx, double Vy, double Vz=0.0); ///< Tau: Relaxation time, V0: Initial velocity, Rho0: Initial density
 
 	// Access methods
-	bool     IsSolid () const       { return _is_solid; }     ///< Is solid or fluid cell?
-	size_t   NNeigh  () const       { return _neigh.Size(); } ///< Number of neighbours
-	Cell   * Neigh   (size_t Index) { return _neigh[Index]; } ///< Return the access to a neighbour cell
-	double & F       (size_t Index) { return _f[Index]; }     ///< Return the current value of the distribution function
-	double & TmpF    (size_t Index) { return _f_tmp[Index]; } ///< Return the current value of the distribution function
-	double   Density ()           const;                      ///< Calculate the current density of the fluid in this cell
-	void     Veloc   (Vec3_t & V) const;                      ///< Calculate the current velocity of the fluid in this cell
+	bool     IsSolid  () const       { return _is_solid; }     ///< Is solid or fluid cell?
+	size_t   NNeigh   () const       { return _neigh.Size(); } ///< Number of neighbours
+	Cell   * Neigh    (size_t Index) { return _neigh[Index]; } ///< Return the access to a neighbour cell
+	double & F        (size_t Index) { return _f[Index]; }     ///< Return the current value of the distribution function
+	double & TmpF     (size_t Index) { return _f_tmp[Index]; } ///< Return the current value of the distribution function
+	double   Density  ()           const;                      ///< Calculate the current density of the fluid in this cell
+	void     Velocity (Vec3_t & V) const;                      ///< Calculate the current velocity of the fluid in this cell
 
 	// Set methods
 	void SetSolid      () { _is_solid = true; }                             ///< TODO
@@ -150,7 +150,7 @@ inline double Cell::Density() const
 	return density;
 }
 
-inline void Cell::Veloc(Vec3_t & V) const
+inline void Cell::Velocity(Vec3_t & V) const
 {
 	double vx      = 0.0;
 	double vy      = 0.0;
@@ -210,8 +210,8 @@ inline void Cell::SetDensityBC(BCSide_T Side, double Rho)
 
 inline void Cell::Collide()
 {
-	Vec3_t V;      Veloc(V);
-	double   rho = Density();
+	Vec3_t V;      Velocity (V);
+	double   rho = Density  ();
 	double omega = 1.0/_tau;
 
 	// Updating _f

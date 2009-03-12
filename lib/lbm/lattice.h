@@ -20,17 +20,23 @@
 #ifndef MECHSYS_LBM_LATTICE_H
 #define MECHSYS_LBM_LATTICE_H
 
+// Std Lib
+#include <fstream>
+#include <sstream> // for std::ostringstream
+
 // MechSys
 #include "lbm/cell.h"
 
 namespace LBM
 {
 
+typedef char const * Str_t;
+
 class Lattice
 {
 public:
 	// Constructor
-	Lattice (bool Is3D, double Tau, double dL, size_t Nx, size_t Ny, size_t Nz=0); ///< Nx,Ny,Nz number of cells along each direction. dL = Length of each size
+	Lattice (Str_t FileKey, bool Is3D, double Tau, double dL, size_t Nx, size_t Ny, size_t Nz=1); ///< Nx,Ny,Nz number of cells along each direction. dL = Length of each size
 
 	// Destructor
 	~Lattice ();
@@ -49,14 +55,16 @@ public:
 	size_t Nz() const { return _nz; }
 	Cell * GetCell (size_t i, size_t j, size_t k=0);
 
-	// Solve
+	// Methods
 	void Solve      (double tIni, double tFin, double dt, double dtOut); ///< Solve
 	void Stream     ();
 	void ApplyBC    ();
 	void Collide    ();
 	void BounceBack ();
+	void WriteState (size_t TimeStep); ///< TODO
 
 protected:
+	String _file_key;     ///< TODO:
 	bool   _is_3d;        ///< TODO:
 	double _tau;          ///< TODO:
 	size_t _nx;           ///< TODO:
@@ -79,20 +87,40 @@ protected:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Lattice::Lattice(bool Is3D, double Tau, double dL, size_t Nx, size_t Ny, size_t Nz)
+inline Lattice::Lattice(Str_t FileKey, bool Is3D, double Tau, double dL, size_t Nx, size_t Ny, size_t Nz)
+	: _file_key (FileKey),
+	  _is_3d    (Is3D),
+	  _tau      (Tau),
+	  _nx       (Nx),
+	  _ny       (Ny),
+	  _nz       (Nz),
+	  _dL       (dL),
+	  _size     (Nx*Ny*Nz)
 {
-	// Set data
-	_is_3d = Is3D;
-	_tau   = Tau;
-	_nx    = Nx;
-	_ny    = Ny;
-	_nz    = Nz;
-	_size  = (Is3D ? Nx*Ny*Nz : Nx*Ny);
-	_cells.Resize(_size);
-
-	// Allocate memory
+	// Allocate memory for cells
+	_cells.Resize (_size);
 	for (size_t i=0; i<_size; i++)
 		_cells[i] = new Cell(_is_3d);
+
+	// Set auxiliary arrays
+	if (_is_3d) throw new Fatal("Lattice::Lattice: 3D Lattice is not available yet :-(");
+	else
+	{
+		_bottom.Resize (_nx);
+		_top   .Resize (_nx);
+		_left  .Resize (_ny);
+		_right .Resize (_ny);
+		for (size_t i=0; i<_nx; ++i)
+		{
+			_bottom[i] = GetCell (i,0);
+			_top   [i] = GetCell (i,_ny-1);
+		}
+		for (size_t i=0; i<_ny; ++i)
+		{
+			_left [i] = GetCell (0,i);
+			_right[i] = GetCell (_nx-1,i);
+		}
+	}
 }
 
 inline Lattice::~Lattice()
@@ -111,9 +139,10 @@ inline Cell * Lattice::GetCell(size_t i, size_t j, size_t k)
 
 inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 {
-	double t    = tIni;
-	double tout = t + dtOut;
-	//WriteState (t);
+	size_t T    = 0;         // Normalized time (integers) used for output only
+	double t    = tIni;      //
+	double tout = t + dtOut; //
+	WriteState (T);
 	while (t<tFin)
 	{
 		Collide    ();
@@ -123,8 +152,9 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 		t += dt;
 		if (t>=tout)
 		{
-			std::cout << "t = " << t << std::endl;
-			//WriteState (t);
+			std::cout << "[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = " << t << "[0m\n";
+			T++;
+			WriteState (T);
 			tout += dtOut;
 		}
 	}
@@ -184,6 +214,51 @@ inline void Lattice::BounceBack()
 	}
 }
 
+inline void Lattice::WriteState(size_t TimeStep)
+{
+	// Open/create file
+	String         fn;  fn.Printf("%s_%d.vtk",_file_key.CStr(),TimeStep);
+	std::ofstream  of;
+	of.open(fn.CStr(), std::ios::out);
+
+	// Header
+	std::ostringstream oss;
+	oss << "# vtk DataFile Version 2.0\n";
+	oss << "TimeStep = " << TimeStep << "\n";
+	oss << "ASCII\n";
+	oss << "DATASET STRUCTURED_POINTS\n";
+	oss << "DIMENSIONS "   << _nx << " " << _ny << " " << _nz << "\n";
+	oss << "ORIGIN "       << 0   << " " << 0   << " " << 0   << "\n";
+	oss << "SPACING "      << _dL << " " << _dL << " " << _dL << "\n";
+	oss << "POINT_DATA "   << _size << "\n";
+
+	// Solid cells
+	oss << "SCALARS Geom float 1\n";
+	oss << "LOOKUP_TABLE default\n";
+	for (size_t i=0; i<_size; ++i)
+	{
+		if (_cells[i]->IsSolid()) oss << "1.0\n";
+		else                      oss << "0.0\n";
+	}
+
+	// Density field
+	oss << "SCALARS Density float 1\n";
+	oss << "LOOKUP_TABLE default\n";
+	for (size_t i=0; i<_size; ++i)
+		oss << _cells[i]->Density() << "\n";
+
+	// Velocity field
+	oss << "VECTORS Velocity float\n";
+	for (size_t i=0; i<_size; ++i)
+	{
+		Vec3_t v;  _cells[i]->Velocity(v);
+		oss << v(0) << " " << v(1) << " " << v(2) << "\n";
+	}
+
+	// Write to file and close file
+	of << oss.str();
+	of.close();
+}
 
 }; // namespace LBM
 
