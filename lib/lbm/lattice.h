@@ -35,10 +35,10 @@ public:
 	~Lattice ();
 
 	// Access methods
-	Array<Cell*> const & Bottom () { return _bottom; }
 	Array<Cell*> const & Left   () { return _left;   }
-	Array<Cell*> const & Top    () { return _top;    }
 	Array<Cell*> const & Right  () { return _right;  }
+	Array<Cell*> const & Bottom () { return _bottom; }
+	Array<Cell*> const & Top    () { return _top;    }
 	Array<Cell*> const & Front  () { return _front;  }
 	Array<Cell*> const & Back   () { return _back;   }
 
@@ -46,28 +46,28 @@ public:
 	Cell & GetCells (size_t i, size_t j, size_t k=0);
 
 	// Solve
-	void Solve (double tIni, double tFin, double dt, double dtOut); ///< Solve
-	void Stream  ();
-	void ApplyBC ();
-	void Collide ();
+	void Solve      (double tIni, double tFin, double dt, double dtOut); ///< Solve
+	void Stream     ();
+	void ApplyBC    ();
+	void Collide    ();
 	void BounceBack ();
 
 protected:
-	bool   _is_3d;
-	double _tau;
-	int    _nx;
-	int    _ny;
-	int    _nz;
-	double _dL;
-	int    _size;
+	bool   _is_3d;        ///< TODO:
+	double _tau;          ///< TODO:
+	int    _nx;           ///< TODO:
+	int    _ny;           ///< TODO:
+	int    _nz;           ///< TODO:
+	double _dL;           ///< TODO:
+	size_t _size;         ///< TODO:
 
-	Array<Cell*> _cells;
-	Array<Cell*> _bottom;
-	Array<Cell*> _top;
-	Array<Cell*> _left;
-	Array<Cell*> _right;
-	Array<Cell*> _front;
-	Array<Cell*> _back;
+	Array<Cell*> _cells;  ///< TODO:
+	Array<Cell*> _bottom; ///< TODO:
+	Array<Cell*> _top;    ///< TODO:
+	Array<Cell*> _left;   ///< TODO:
+	Array<Cell*> _right;  ///< TODO:
+	Array<Cell*> _front;  ///< TODO:
+	Array<Cell*> _back;   ///< TODO:
 
 }; // class Lattice
 
@@ -77,22 +77,18 @@ protected:
 
 inline Lattice::Lattice(bool Is3D, double Tau, double dL, size_t Nx, size_t Ny, size_t Nz)
 {
+	// Set data
 	_is_3d = Is3D;
-	_tau = Tau;
-	_nx  = Nx;
-	_ny  = Ny;
-	_nz  = Nz;
-	_size = Nx*Ny; //TODO: update for 3D
-	_cells.Resize(Nx*Ny);
+	_tau   = Tau;
+	_nx    = Nx;
+	_ny    = Ny;
+	_nz    = Nz;
+	_size  = (Is3D ? Nx*Ny*Nz : Nx*Ny);
+	_cells.Resize(_size);
 
-	for (int i=0; i<_size; i++)
-	{
-		if (Is3D)
-			_cells[i] = new Cell3D;
-		else
-			_cells[i] = new Cell2D;
-	}
-
+	// Allocate memory
+	for (size_t i=0; i<_size; i++)
+		_cells[i] = Cell(_is_3d);
 }
 
 inline Lattice::~Lattice()
@@ -102,26 +98,34 @@ inline Lattice::~Lattice()
 
 inline Cell & Lattice::GetCells(size_t i, size_t j, size_t k)
 {
-	return *_cells[i+_nx*j]; //TODO: update for 3D
+	if (_is_3d)
+	{
+		// TODO: Implement this
+	}
+	return (*_cells[i+_nx*j]);
 }
 
 inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 {
+	throw new Fatal ("Lattice::Solve: Feature not availabe yet");
 }
 
 inline void Lattice::Stream()
 {
-	if (_is_3d); //TODO
-
-	// Streaming
-	Cell::LVeloc_T const * c = Cell::LOCAL_VELOC2D; // Local velocities
-	for (int i=0; i<_nx; i++)
-		for (int j=0; j<_ny; j++)
+	if (_is_3d)
+	{
+	}
+	else
+	{
+		// Streaming
+		Cell::LVeloc_T const * c = Cell::LOCAL_VELOC2D; // Local velocities
+		for (size_t i=0; i<_nx; i++)
+		for (size_t j=0; j<_ny; j++)
 		{
-			for (int k=0; k<9; k++)
+			for (size_t k=0; k<9; k++)
 			{
-				int next_i = i + c[k][0];
-				int next_j = j + c[k][1];
+				size_t next_i = i + c[k][0];
+				size_t next_j = j + c[k][1];
 				if (next_i==-1)  next_i = _nx-1;
 				if (next_i==_nx) next_i = 0;
 				if (next_j==-1)  next_j = _ny-1;
@@ -129,11 +133,12 @@ inline void Lattice::Stream()
 				_cells[next_i+_nx*next_j]->TmpF(k) = _cells[i+_nx*j]->F(k);
 			}
 		}
-	
-	// Swap the distribution function values
-	for (int i=0; i<_size; i++) 
-		for (int k=0; k<9; k++)
+		
+		// Swap the distribution function values
+		for (size_t i=0; i<_size; i++) 
+		for (size_t k=0; k<9;     k++)
 			_cells[i]->F(k) = _cells[i]->TmpF(k);
+	}
 }
 
 inline void Lattice::ApplyBC()
@@ -148,14 +153,15 @@ inline void Lattice::Collide()
 		if (_cells[i]->IsSolid()==false)
 			_cells[i]->Collide();
 	}
-
 }
 
 inline void Lattice::BounceBack()
 {
 	for (int i=0; i<_size; i++)
+	{
 		if (_cells[i]->IsSolid())
 			_cells[i]->BounceBack();
+	}
 }
 
 
