@@ -49,6 +49,4 @@ class Quaternion {
         void show_on_screen(void) {cout <<q0<<" "; q.show_on_screen(); cout <<endl;};
 };
 
-
-
 #endif
