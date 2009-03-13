@@ -61,6 +61,7 @@ public:
 	void ApplyBC    ();
 	void Collide    ();
 	void BounceBack ();
+	void ApplyForce (double Fx, double Fy, double Fz=0);
 	void WriteState (size_t TimeStep); ///< TODO
 
 protected:
@@ -145,6 +146,7 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 	WriteState (T);
 	while (t<tFin)
 	{
+		ApplyForce (0.0001,0);
 		Collide    ();
 		BounceBack ();
 		Stream     ();
@@ -212,6 +214,12 @@ inline void Lattice::BounceBack()
 		if (_cells[i]->IsSolid())
 			_cells[i]->BounceBack();
 	}
+}
+
+inline void Lattice::ApplyForce(double Fx, double Fy, double Fz)
+{
+	for (size_t i=0; i<_size; i++)
+		_cells[i]->ApplyForce(Fx, Fy, Fz);
 }
 
 inline void Lattice::WriteState(size_t TimeStep)

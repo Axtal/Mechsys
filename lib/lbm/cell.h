@@ -72,6 +72,7 @@ public:
 	double EqFun    (size_t Index, Vec3_t const & V, double Rho); ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
 	void Collide    ();                                           ///< Calculate the collision of the fluid in this cell
 	void BounceBack ();                                           ///< 
+	void ApplyForce (double Fx, double Fy, double Fz=0);
 
 protected:
 	// Data
@@ -87,6 +88,7 @@ protected:
 	double           _rho0;     ///< Initial density from boundary condition
 	BCSide_T         _bc_side;  ///< Side by where the boundary condiction is applied
 	BCType_T         _bc_type;  ///< Type of boundary condiction
+	Vec3_t           _bforce;   ///< Body force (gravity)
 
 }; // class Cell
 
@@ -224,6 +226,7 @@ inline void Cell::Collide()
 	// Updating _f
 	for (size_t k=0; k<_nv; k++)
 	{
+		V = V + _bforce*_tau/rho;
 		double f_eq = EqFun(k, V, rho);
 		_f[k] = (1.0-omega)*_f[k] + omega*f_eq;
 	}
@@ -299,6 +302,10 @@ inline void Cell::BounceBack()
 	}
 }
 
+inline void Cell::ApplyForce (double Fx, double Fy, double Fz)
+{
+	_bforce = Fx, Fy, Fz;
+}
 
 }; // namespace LBM
 
