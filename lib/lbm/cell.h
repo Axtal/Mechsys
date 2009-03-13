@@ -72,7 +72,8 @@ public:
 	double EqFun    (size_t Index, Vec3_t const & V, double Rho); ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
 	void Collide    ();                                           ///< Calculate the collision of the fluid in this cell
 	void BounceBack ();                                           ///< 
-	void ApplyForce (double Fx, double Fy, double Fz=0);
+	void ApplyForce (double Fx, double Fy, double Fz=0);          ///< TODO
+	void ResetForce () { _bforce = 0.0, 0.0, 0.0; }               ///< TODO
 
 protected:
 	// Data
@@ -304,7 +305,9 @@ inline void Cell::BounceBack()
 
 inline void Cell::ApplyForce (double Fx, double Fy, double Fz)
 {
-	_bforce = Fx, Fy, Fz;
+	_bforce(0) = Fx;
+	_bforce(1) = Fy;
+	_bforce(2) = Fz;
 }
 
 }; // namespace LBM

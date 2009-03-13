@@ -67,6 +67,7 @@ public:
 protected:
 	String _file_key;     ///< TODO:
 	bool   _is_3d;        ///< TODO:
+	bool   _mphase;       ///< TODO: MultiPhase ?
 	double _tau;          ///< TODO:
 	size_t _nx;           ///< TODO:
 	size_t _ny;           ///< TODO:
@@ -82,15 +83,23 @@ protected:
 	Array<Cell*> _front;  ///< TODO:
 	Array<Cell*> _back;   ///< TODO:
 
+	double _psi0;
+	double _rho0;
+	double _G;
+
+private:
+	double _psi(double Density) const;
+
 }; // class Lattice
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Lattice::Lattice(Str_t FileKey, bool Is3D, double Tau, double dL, size_t Nx, size_t Ny, size_t Nz)
+inline Lattice::Lattice(Str_t FileKey, bool Is3D/*, bool MultiPhase*/, double Tau, double dL, size_t Nx, size_t Ny, size_t Nz)
 	: _file_key (FileKey),
 	  _is_3d    (Is3D),
+	  _mphase   (false),//MultiPhase),
 	  _tau      (Tau),
 	  _nx       (Nx),
 	  _ny       (Ny),
@@ -122,6 +131,10 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double Tau, double dL, size_t 
 			_right[i] = GetCell (_nx-1,i);
 		}
 	}
+
+	_psi0 = 4.0;
+	_rho0 = 200.0;
+	_G    = 120.0;
 }
 
 inline Lattice::~Lattice()
@@ -146,7 +159,7 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 	WriteState (T);
 	while (t<tFin)
 	{
-		ApplyForce (0.0001,0);
+		ApplyForce (0.0, 0.0);
 		Collide    ();
 		BounceBack ();
 		Stream     ();
@@ -216,10 +229,35 @@ inline void Lattice::BounceBack()
 	}
 }
 
+inline double Lattice::_psi(double Density) const
+{
+	return _psi0*exp(-_rho0/Density);
+}
+
 inline void Lattice::ApplyForce(double Fx, double Fy, double Fz)
 {
-	for (size_t i=0; i<_size; i++)
-		_cells[i]->ApplyForce(Fx, Fy, Fz);
+	Cell::LVeloc_T const * c = Cell::LOCAL_VELOC2D; // Local velocities
+	double         const * w = Cell::WEIGHTS2D;
+	for (size_t i=0; i<_nx; i++)
+	for (size_t j=0; j<_ny; j++)
+	{
+		Vec3_t F;  F = Fx, Fy, Fz;
+		double psi = _psi(GetCell(i,j)->Density());
+		for (size_t k=1; k<9; k++)
+		{
+			int next_i = i + c[k][0];
+			int next_j = j + c[k][1];
+			if (next_i==-1)                    next_i = _nx-1;
+			if (next_i==static_cast<int>(_nx)) next_i = 0;
+			if (next_j==-1)                    next_j = _ny-1;
+			if (next_j==static_cast<int>(_ny)) next_j = 0;
+
+			double next_psi = _psi(GetCell(next_i,next_j)->Density());
+			F(0) += _G*psi*w[k]*next_psi*c[k][0];
+			F(1) += _G*psi*w[k]*next_psi*c[k][1];
+		}
+		GetCell(i,j)->ApplyForce(F(0), F(1), F(2));
+	}
 }
 
 inline void Lattice::WriteState(size_t TimeStep)
