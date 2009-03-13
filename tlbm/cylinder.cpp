@@ -49,7 +49,7 @@ void CalcInitSpeed(int x, int y, double & vx, double & vy)
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "joe", /*Is3D*/false, /*Tau*/CalcViscosity(), /*dL*/1.0, nx, ny);
+	LBM::Lattice l(/*FileKey*/ "cylinder", /*Is3D*/false, /*Tau*/CalcViscosity(), /*dL*/1.0, nx, ny);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();

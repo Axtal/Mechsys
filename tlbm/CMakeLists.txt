@@ -18,3 +18,4 @@
 
 ADD_EXECUTABLE        (cylinder   cylinder.cpp)
 ADD_EXECUTABLE        (gravity    gravity.cpp)
+ADD_EXECUTABLE        (drop    drop.cpp)
