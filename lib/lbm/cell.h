@@ -73,6 +73,7 @@ public:
 	void Collide    ();                                           ///< Calculate the collision of the fluid in this cell
 	void BounceBack ();                                           ///< 
 	void ApplyForce (double Fx, double Fy, double Fz=0);          ///< TODO
+	void ApplyGravity(double Gx, double Gy, double Gz=0);         ///< TODO
 	void ResetForce () { _bforce = 0.0, 0.0, 0.0; }               ///< TODO
 
 protected:
@@ -196,8 +197,9 @@ inline double Cell::EqFun(size_t Index, Vec3_t const & V, double Rho)
 	}
 	else
 	{
-		double vxy  = V(0)*_c[Index][0] + V(1)*_c[Index][1];
-		double vsqr = V(0)*V(0) + V(1)*V(1);
+		Vec3_t v = V + _bforce*_tau/Rho;
+		double vxy  = v(0)*_c[Index][0] + v(1)*_c[Index][1];
+		double vsqr = v(0)*v(0) + v(1)*v(1);
 		f_eq = _w[Index] * Rho * (1.0 + 3.0*vxy + 4.5*vxy*vxy - 1.5*vsqr);
 	}
 
@@ -227,9 +229,9 @@ inline void Cell::Collide()
 	// Updating _f
 	for (size_t k=0; k<_nv; k++)
 	{
-		V = V + _bforce*_tau/rho;
 		double f_eq = EqFun(k, V, rho);
 		_f[k] = (1.0-omega)*_f[k] + omega*f_eq;
+		if (_f[k]<0) throw new Fatal("F[%d]<0 detected",k);
 	}
 }
 
@@ -308,6 +310,25 @@ inline void Cell::ApplyForce (double Fx, double Fy, double Fz)
 	_bforce(0) = Fx;
 	_bforce(1) = Fy;
 	_bforce(2) = Fz;
+}
+
+inline void Cell::ApplyGravity (double Gx, double Gy, double Gz)
+{
+	double Rho = Density();
+	_bforce(0) += Gx*Rho;
+	_bforce(1) += Gy*Rho;
+	_bforce(2) += Gz*Rho;
+}
+
+/** Outputs a Cell. */
+std::ostream & operator<< (std::ostream & os, Cell * C)
+{
+	for(size_t i=0; i<9; i++)
+		os << "F[" << i << "]=" << C->F(i) << "  ";
+
+	os << "\n";
+
+	return os;
 }
 
 }; // namespace LBM

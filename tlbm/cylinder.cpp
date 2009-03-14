@@ -97,7 +97,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/100.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/200.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

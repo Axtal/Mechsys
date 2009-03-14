@@ -61,8 +61,12 @@ public:
 	void ApplyBC    ();
 	void Collide    ();
 	void BounceBack ();
-	void ApplyForce (double Fx, double Fy, double Fz=0);
+	void ApplyForce ();
+	void ApplyGravity();
+	void SetGravity (double Gx, double Gy, double Gz=0.0);
 	void WriteState (size_t TimeStep); ///< TODO
+	
+	double TotalMass();
 
 protected:
 	String _file_key;     ///< TODO:
@@ -86,6 +90,8 @@ protected:
 	double _psi0;
 	double _rho0;
 	double _G;
+
+	Vec3_t _gravity;
 
 private:
 	double _psi(double Density) const;
@@ -132,9 +138,11 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D/*, bool MultiPhase*/, double Ta
 		}
 	}
 
-	_psi0 = 4.0;
-	_rho0 = 200.0;
-	_G    = 120.0;
+	_gravity = 0.0, 0.0, 0.0; // Initial value for gravity
+
+	//_psi0 =  4.0;
+	_rho0 =  1.0;
+	_G    = -6.0;
 }
 
 inline Lattice::~Lattice()
@@ -159,7 +167,8 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 	WriteState (T);
 	while (t<tFin)
 	{
-		ApplyForce (0.0, 0.0);
+		ApplyForce ();
+		//ApplyGravity();
 		Collide    ();
 		BounceBack ();
 		Stream     ();
@@ -167,10 +176,12 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 		t += dt;
 		if (t>=tout)
 		{
-			std::cout << "[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = " << t << "[0m\n";
+			std::cout << "[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = " << t << "[0m";
+			std::cout << " Total mass = " << TotalMass() << "\n";
 			T++;
 			WriteState (T);
 			tout += dtOut;
+			std::cout << GetCell(25,25) << std::endl;
 		}
 	}
 }
@@ -231,17 +242,19 @@ inline void Lattice::BounceBack()
 
 inline double Lattice::_psi(double Density) const
 {
-	return _psi0*exp(-_rho0/Density);
+	//return _psi0*exp(-_rho0/Density);
+	return _rho0*(1-exp(-Density/_rho0));
+
 }
 
-inline void Lattice::ApplyForce(double Fx, double Fy, double Fz)
+inline void Lattice::ApplyForce()
 {
 	Cell::LVeloc_T const * c = Cell::LOCAL_VELOC2D; // Local velocities
 	double         const * w = Cell::WEIGHTS2D;
 	for (size_t i=0; i<_nx; i++)
 	for (size_t j=0; j<_ny; j++)
 	{
-		Vec3_t F;  F = Fx, Fy, Fz;
+		Vec3_t F;  F = 0.0, 0.0, 0.0;
 		double psi = _psi(GetCell(i,j)->Density());
 		for (size_t k=1; k<9; k++)
 		{
@@ -253,11 +266,23 @@ inline void Lattice::ApplyForce(double Fx, double Fy, double Fz)
 			if (next_j==static_cast<int>(_ny)) next_j = 0;
 
 			double next_psi = _psi(GetCell(next_i,next_j)->Density());
-			F(0) += _G*psi*w[k]*next_psi*c[k][0];
-			F(1) += _G*psi*w[k]*next_psi*c[k][1];
+			F(0) += -_G*psi*w[k]*next_psi*c[k][0];
+			F(1) += -_G*psi*w[k]*next_psi*c[k][1];
 		}
-		GetCell(i,j)->ApplyForce(F(0), F(1), F(2));
+		GetCell(i,j)->ApplyForce  (F(0), F(1), F(2));
 	}
+}
+
+inline void Lattice::ApplyGravity()
+{
+	for (size_t i=0; i<_nx; i++)
+	for (size_t j=0; j<_ny; j++)
+		GetCell(i,j)->ApplyGravity(_gravity(0), _gravity(1), _gravity(2));
+}
+
+void Lattice::SetGravity(double Gx, double Gy, double Gz)
+{
+	_gravity = Gx, Gy, Gz;
 }
 
 inline void Lattice::WriteState(size_t TimeStep)
@@ -304,6 +329,15 @@ inline void Lattice::WriteState(size_t TimeStep)
 	// Write to file and close file
 	of << oss.str();
 	of.close();
+}
+
+double Lattice::TotalMass()
+{
+	double mass = 0.0;
+	for(size_t i=0; i<_size; i++)
+		mass += _cells[i]->Density();
+
+	return mass;
 }
 
 }; // namespace LBM

@@ -29,18 +29,36 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "drop", /*Is3D*/false, /*Tau*/1.0, /*dL*/1.0, /*Nx*/200, /*Ny*/200);
+	LBM::Lattice l(/*FileKey*/ "drop", /*Is3D*/false, /*Tau*/1.2, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
 
-	// Initialize cells
+	srand(5.0);
+
+	// Set walls (top and bottom)
+	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
+	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
+
+	// Set inner obstacle
+	int obsX = l.Nx()/2;   // x position
+	int obsY = l.Ny()/2;   // y position
+	int radius = l.Nx()/4; // Inital drop radius
+
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
-		double rho0 = 200.0+(1.0*rand())/RAND_MAX;
-		l.GetCell(i,j)->Initialize (/*Tau*/1.0, rho0, /*Vx*/0.0, /*Vy*/0.0);
+		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
+			l.GetCell(i,j)->Initialize (/*Tau*/1.0,/*Rho*/ 0.8, /*Vx*/0.0, /*Vy*/0.0);
+		else
+			l.GetCell(i,j)->Initialize (/*Tau*/1.0,/*Rho*/ 0.1, /*Vx*/0.0, /*Vy*/0.0);
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/25600.0, /*dt*/1.0, /*dtOut*/100.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/150.0, /*dt*/1.0, /*dtOut*/5.0);
+
+	l.SetGravity(0.0, -0.001);
+
+	l.Solve(/*tIni*/0.0, /*tFin*/150.0, /*dt*/1.0, /*dtOut*/5.0);
+
+
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
