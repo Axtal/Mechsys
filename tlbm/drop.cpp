@@ -39,8 +39,8 @@ int main(int argc, char **argv) try
 
 	// Set inner obstacle
 	int obsX = l.Nx()/2;   // x position
-	int obsY = l.Ny()/2;   // y position
-	int radius = l.Nx()/4; // Inital drop radius
+	int obsY = l.Ny()/4;   // y position
+	int radius = l.Nx()/8; // Inital drop radius
 
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
@@ -52,11 +52,11 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/150.0, /*dt*/1.0, /*dtOut*/5.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/200.0, /*dt*/1.0, /*dtOut*/10.0);
 
-	l.SetGravity(0.0, -0.001);
+	l.SetGravity(0.0, -0.0005);
 
-	l.Solve(/*tIni*/0.0, /*tFin*/150.0, /*dt*/1.0, /*dtOut*/5.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dt*/1.0, /*dtOut*/10.0);
 
 
 }

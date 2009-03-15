@@ -78,6 +78,7 @@ protected:
 	size_t _nz;           ///< TODO:
 	double _dL;           ///< TODO:
 	size_t _size;         ///< TODO:
+	size_t _T;            ///< Normalized time
 
 	Array<Cell*> _cells;  ///< TODO:
 	Array<Cell*> _bottom; ///< TODO:
@@ -90,6 +91,7 @@ protected:
 	double _psi0;
 	double _rho0;
 	double _G;
+	double _G_solid;
 
 	Vec3_t _gravity;
 
@@ -138,11 +140,13 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D/*, bool MultiPhase*/, double Ta
 		}
 	}
 
+	_T = 0.0;
 	_gravity = 0.0, 0.0, 0.0; // Initial value for gravity
 
 	//_psi0 =  4.0;
 	_rho0 =  1.0;
 	_G    = -6.0;
+	_G_solid = -4.0;
 }
 
 inline Lattice::~Lattice()
@@ -161,14 +165,13 @@ inline Cell * Lattice::GetCell(size_t i, size_t j, size_t k)
 
 inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 {
-	size_t T    = 0;         // Normalized time (integers) used for output only
 	double t    = tIni;      //
 	double tout = t + dtOut; //
-	WriteState (T);
+	WriteState (_T);
 	while (t<tFin)
 	{
 		ApplyForce ();
-		//ApplyGravity();
+		ApplyGravity();
 		Collide    ();
 		BounceBack ();
 		Stream     ();
@@ -178,10 +181,10 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 		{
 			std::cout << "[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = " << t << "[0m";
 			std::cout << " Total mass = " << TotalMass() << "\n";
-			T++;
-			WriteState (T);
+			_T++;
+			WriteState (_T);
 			tout += dtOut;
-			std::cout << GetCell(25,25) << std::endl;
+			std::cout << GetCell(25,0) << std::endl;
 		}
 	}
 }
@@ -244,7 +247,6 @@ inline double Lattice::_psi(double Density) const
 {
 	//return _psi0*exp(-_rho0/Density);
 	return _rho0*(1-exp(-Density/_rho0));
-
 }
 
 inline void Lattice::ApplyForce()
@@ -268,6 +270,15 @@ inline void Lattice::ApplyForce()
 			double next_psi = _psi(GetCell(next_i,next_j)->Density());
 			F(0) += -_G*psi*w[k]*next_psi*c[k][0];
 			F(1) += -_G*psi*w[k]*next_psi*c[k][1];
+
+			// Check if neighbor cell is solid or not
+			if (GetCell(next_i, next_j)->IsSolid())
+			{
+				//double next_psi = _psi(GetCell(next_i,next_j)->Density());
+				F(0) += -_G_solid*psi*w[k]*c[k][0];
+				F(1) += -_G_solid*psi*w[k]*c[k][1];
+			}
+
 		}
 		GetCell(i,j)->ApplyForce  (F(0), F(1), F(2));
 	}
