@@ -28,10 +28,13 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "drop", /*Is3D*/false, /*Tau*/1.2, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
+	// Input
+	double seed = 5.0;
+	if (argc>=2) seed = atof(argv[1]);
+	srand(seed);
 
-	srand(5.0);
+	// Allocate lattice
+	LBM::Lattice l(/*FileKey*/ "drop", /*Is3D*/false, /*Tau*/1.0, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();

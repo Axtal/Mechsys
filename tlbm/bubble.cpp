@@ -34,18 +34,19 @@ int main(int argc, char **argv) try
 	srand(seed);
 
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "drop", /*Is3D*/false, /*Tau*/1.2, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
+	LBM::Lattice l(/*FileKey*/ "bubble", /*Is3D*/false, /*Tau*/1.2, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
 
 	// Initialize cells
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
 		double rho0 = 0.8 +(.02*rand())/RAND_MAX;
-		l.GetCell(i,j)->Initialize (/*Tau*/1.0, rho0, /*Vx*/0.0, /*Vy*/0.0);
+		l.GetCell(i,j)->Initialize (/*Tau*/1.2, rho0, /*Vx*/0.0, /*Vy*/0.0);
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/25600.0, /*dt*/1.0, /*dtOut*/20.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/2560.0, /*dt*/1.0, /*dtOut*/100.0);
+	//l.Solve(/*tIni*/0.0, /*tFin*/2.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
