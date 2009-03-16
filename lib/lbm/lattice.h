@@ -179,12 +179,12 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 		t += dt;
 		if (t>=tout)
 		{
-			std::cout << "[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = " << t << "[0m";
-			std::cout << " Total mass = " << TotalMass() << "\n";
+			std::cout << "[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = " << t << "  TotalMass = " << TotalMass() << "[0m\n";
+			//std::cout << " Total mass = " << TotalMass() << "\n";
 			_T++;
 			WriteState (_T);
 			tout += dtOut;
-			std::cout << GetCell(25,0) << std::endl;
+			//std::cout << GetCell(25,0) << std::endl;
 		}
 	}
 }
