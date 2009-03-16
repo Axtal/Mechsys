@@ -62,10 +62,10 @@ public:
 	Cell   * GetCell   (size_t i, size_t j, size_t k=0);
 
 	// Set constants
-	Lattice & G      (double Val) { _G       = Val;  return (*this); } ///< Set TODO
-	Lattice & GSolid (double Val) { _G_solid = Val;  return (*this); } ///< Set TODO
-	Lattice & RhoRef (double Val) { _rho_ref = Val;  return (*this); } ///< Set TODO
-	Lattice & PsiRef (double Val) { _psi_ref = Val;  return (*this); } ///< Set TODO
+	Lattice & SetG      (double Val) { _G       = Val;  return (*this); } ///< Set TODO
+	Lattice & SetGSolid (double Val) { _G_solid = Val;  return (*this); } ///< Set TODO
+	Lattice & SetRhoRef (double Val) { _rho_ref = Val;  return (*this); } ///< Set TODO
+	Lattice & SetPsiRef (double Val) { _psi_ref = Val;  return (*this); } ///< Set TODO
 
 	// Set methods
 	void SetGravity    (double Gx, double Gy, double Gz=0.0);
