@@ -38,6 +38,11 @@ using LinAlg::Vector;
 using Util::_4;
 using Util::_8s;
 
+double MySource(double u)
+{
+	return u;
+}
+
 #define T boost::make_tuple
 
 int main(int argc, char **argv) try
@@ -95,7 +100,7 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	FEM::EAtts_T eatts(1);
 	String geom; geom = (is_o2 ? "Tri6" : "Tri3");
-	eatts = T(-1, geom.CStr(), "Diffusion", "LinDiffusion", "k=1.0", "", "s=1.0", true);
+	eatts = T(-1, geom.CStr(), "Diffusion", "LinDiffusion", "k=1.0", "", &MySource, true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

@@ -49,11 +49,14 @@ namespace FEM
 typedef std::map<String,double> Prop_t; ///< Properties type
 typedef char const            * Str_t;
 
+typedef double(*Fun_t)(double);
+
 // Tuples used when initializing nodes and elements by groups
 typedef Array< boost::tuple<double,double,double, Str_t,double> >           NBrys_T; // Node: x,y,z, key, val
 typedef Array< boost::tuple<                 int, Str_t,double> >           EBrys_T; // Edge:   tag, key, val
 typedef Array< boost::tuple<                 int, Str_t,double> >           FBrys_T; // Face:   tag, key, val
-typedef Array< boost::tuple<int,Str_t,Str_t,Str_t,Str_t,Str_t,Str_t,bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
+//typedef Array< boost::tuple<int,Str_t,Str_t,Str_t,Str_t,Str_t,Str_t,bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
+typedef Array< boost::tuple<int,Str_t,Str_t,Str_t,Str_t,Str_t, Fun_t ,bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
 
 /* FEM Data. */
 class Data
@@ -87,7 +90,7 @@ public:
 	                           Str_t                MdlName,                           ///< Constitutive model. Ex: "LinElastic"
 	                           Str_t                Prms,                              ///< Parameters. Ex: "E=100 nu=0.3"
 	                           Str_t                Inis,                              ///< Initial state. Ex: Sx=0.0
-	                           Str_t                Props,                             ///< Element properties. Ex: gam=20
+	                           Fun_t                Props,                             ///< Element properties. Ex: gam=20
 	                           bool                 IsAct);                            ///< Active/Inactive?
 
 	// Push new Node and Element
@@ -99,7 +102,7 @@ public:
 	                    Str_t               MdlName,   ///< Constitutive model name
 	                    Str_t               Prms,      ///< Parameters. Ex.: E=100 nu=0.3
 	                    Str_t               Inis,      ///< Initial values. Ex.: ZERO, Sx=0
-	                    Str_t               Props,     ///< Properties. Ex.: gam=20
+	                    Fun_t               Props,     ///< Properties. Ex.: gam=20
 	                    bool                IsAct);    ///< Is active?
 
 	// Specific methods
@@ -454,7 +457,7 @@ inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 	return _nodes[i];
 }
 
-inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
+inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Fun_t Props, bool IsAct)
 {
 	// New element
 	if (_elems[i]==NULL) _elems[i] = new Element;
@@ -478,8 +481,8 @@ inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int T
 		// Parse properties
 		Prop_t * prp = new Prop_t;
 		_props.Push (prp);
-		LineParser lp(Props);
-		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*prp), "properties", "Element tag", Tag);
+		//LineParser lp(Props);
+		//lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*prp), "properties", "Element tag", Tag);
 	}
 	_ewtags[_etidx[Tag]].Push (_elems[i]);
 
@@ -491,7 +494,7 @@ inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int T
 	return _elems[i];
 }
 
-inline Element * Data::PushElem(Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Str_t Props, bool IsAct)
+inline Element * Data::PushElem(Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Fun_t Props, bool IsAct)
 {
 	// Add new element
 	_elems.Push (new Element);

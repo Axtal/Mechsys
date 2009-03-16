@@ -40,6 +40,9 @@ tst/midasgts/tstatic122
 src/libmechsys.*
 tlbm/cylinder
 tlbm/drop
+tlbm/bubble
+tlbm/capi
+tlbm/gravity
 tdem/biaxialtest/biaxialtest
 tdem/roughsurface/roughsurface
 

@@ -23,6 +23,16 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 		SET_TARGET_PROPERTIES (ttunnel   PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 	ENDIF(FLTK_FOUND)
 
+	ADD_EXECUTABLE        (tjoe   tjoe.cpp)
+	ADD_TEST              (tjoe   tjoe)
+	TARGET_LINK_LIBRARIES (tjoe   ${LIBS} boost_python)
+	SET_TARGET_PROPERTIES (tjoe   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
+	ADD_EXECUTABLE        (tmesh01   tmesh01.cpp)
+	ADD_TEST              (tmesh01   tmesh01)
+	TARGET_LINK_LIBRARIES (tmesh01   ${LIBS} boost_python)
+	SET_TARGET_PROPERTIES (tmesh01   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (ttriax   ttriax.cpp)
 	ADD_TEST              (ttriax   ttriax)
 	TARGET_LINK_LIBRARIES (ttriax   ${LIBS} boost_python)
