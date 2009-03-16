@@ -36,10 +36,6 @@ namespace LBM
 class Cell
 {
 public:
-	// Enums
-	enum BCType_T { NONE_T, VELOCITY_T, DENSITY_T };
-	enum BCSide_T { LEFT_T, RIGHT_T, BOTTOM_T, TOP_T, FRONT_T, BACK_T };
-
 	// Typedefs
 	typedef double LVeloc_T[3]; ///< Local velocities type
 
@@ -50,108 +46,126 @@ public:
 	static const LVeloc_T LOCAL_VELOC3D [27]; ///< Local velocities (3D)
 
 	// Constructor
-	Cell (bool Is3D);
-
-	// Initialization
-	void Initialize (double Tau, double Rho0, double Vx, double Vy, double Vz=0.0); ///< Tau: Relaxation time, V0: Initial velocity, Rho0: Initial density
-
-	// Access methods
-	bool     IsSolid  () const       { return _is_solid; }     ///< Is solid or fluid cell?
-	double & F        (size_t Index) { return _f[Index]; }     ///< Return the current value of the distribution function
-	double & TmpF     (size_t Index) { return _f_tmp[Index]; } ///< Return the current value of the distribution function
-	double   Density  ()           const;                      ///< Calculate the current density of the fluid in this cell
-	void     Velocity (Vec3_t & V) const;                      ///< Calculate the current velocity of the fluid in this cell
+	Cell (bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz=1);
 
 	// Set methods
-	void SetSolid      () { _is_solid = true; }                             ///< TODO
-	void SetVelocityBC (BCSide_T Side,double Vx, double Vy, double Vz=0.0); ///< Set velocity boundary conditions (Neumann)
-	void SetDensityBC  (BCSide_T Side, double Rho);                         ///< Set density boundary conditions (Dirichlet)
-	void ApplyBC       ();                                                  ///< Apply bonudary conditions
+	void Initialize (double Rho0, Vec3_t const & V0);      ///< V0: Initial velocity, Rho0: Initial density
+	void SetSolid   () { _is_solid = true; }               ///< Set solid cell
+	void SetRhoBC   (double Rho)        { _rho_bc = Rho; } ///< Set density boundary condition
+	void SetVelBC   (Vec3_t const &  V) { _vel_bc = V;   } ///< Set velocity boundary condition
+
+	// Access methods
+	bool     IsSolid ()                   const { return _is_solid;  } ///< Is solid or fluid cell?
+	double   RhoBC   ()                   const { return _rho_bc;    } ///< Initial density
+	double   VelBC   (size_t i)           const { return _vel_bc(i); } ///< Component of initial velocity
+	double   W       (size_t k)           const { return _w[k];      } ///< Component of weight
+	double   C       (size_t k, size_t i) const { return _c[k][i];   } ///< Component of local density
+	size_t   Neigh   (size_t k)           const { return _neigh[k];  } ///< Returns the index of neighbour k
+	bool     Left    () const { return static_cast<bool>(_side[0]);  } ///< Is this cell on the left side of lattice ?
+	bool     Right   () const { return static_cast<bool>(_side[1]);  } ///< Is this cell on the right side of lattice ?
+	bool     Bottom  () const { return static_cast<bool>(_side[2]);  } ///< Is this cell on the bottom side of lattice ?
+	bool     Top     () const { return static_cast<bool>(_side[3]);  } ///< Is this cell on the top side of lattice ?
+	double & F       (size_t Index)         { return _f[Index];      } ///< Return the current value of the distribution function
+	double & TmpF    (size_t Index)         { return _f_tmp[Index];  } ///< Return the current value of the distribution function
+	Vec3_t & BForce  ()                     { return _bforce;        } ///< Body force
 
 	// Methods
-	double EqFun    (size_t Index, Vec3_t const & V, double Rho); ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
-	void Collide    ();                                           ///< Calculate the collision of the fluid in this cell
-	void BounceBack ();                                           ///< 
-	void ApplyForce (double Fx, double Fy, double Fz=0);          ///< TODO
-	void ApplyGravity(double Gx, double Gy, double Gz=0);         ///< TODO
-	void ResetForce () { _bforce = 0.0, 0.0, 0.0; }               ///< TODO
+	double Density  () const;                                       ///< Calculate the current density of the fluid in this cell
+	void   Velocity (Vec3_t & V) const;                             ///< Calculate the current velocity of the fluid in this cell
+	double EqFun    (size_t k, Vec3_t const & V, double Rho) const; ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
 
 protected:
 	// Data
-	bool             _is_3D;    ///< Is 3D?
+	bool             _is_3d;    ///< Is 3D?
 	bool             _is_solid; ///< Solid cell or fluid cell?
+	double           _tau;      ///< TODO
+	size_t           _nneigh;   ///< Number of neighbours
+	double           _rho_bc;   ///< Initial density from boundary condition
+	Vec3_t           _vel_bc;   ///< Initial velocity from boundary condition
 	double   const * _w;        ///< Weights for the equilibrium distribution function. 2D: size==9, 3D: size==27
 	LVeloc_T const * _c;        ///< Local velocities
-	size_t           _nv;       ///< Number of velocities
-	double           _tau;      ///< Relaxation time
 	Array<double>    _f;        ///< Distribution functions. 2D: size==9, 3D: size==27
 	Array<double>    _f_tmp;    ///< Distribution functions. 2D: size==9, 3D: size==27
-	Vec3_t           _V0;       ///< Initial velocity from boundary condition
-	double           _rho0;     ///< Initial density from boundary condition
-	BCSide_T         _bc_side;  ///< Side by where the boundary condiction is applied
-	BCType_T         _bc_type;  ///< Type of boundary condiction
 	Vec3_t           _bforce;   ///< Body force (gravity)
+	Array<size_t>    _side;     ///< Which side on the boundary this cell is located
+	Array<size_t>    _neigh;    ///< Indices of neighbour cells
 
 }; // class Cell
-
-
-// Set constants
-const double Cell::WEIGHTS2D [ 9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
-const double Cell::WEIGHTS3D [27] = { 1,2,3,4,5,6,7,8,9, 1,2,3,4,5,6,7,8,9, 1,2,3,4,5,6,7,8,9 }; // TODO: Correct this
-const Cell::LVeloc_T Cell::LOCAL_VELOC2D[ 9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
-const Cell::LVeloc_T Cell::LOCAL_VELOC3D[27] =
-{
-	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
-	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
-	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}
-};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Cell::Cell(bool Is3D)
-	: _is_3D    (Is3D),
+inline Cell::Cell(bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz)
+	: _is_3d    (Is3D),
 	  _is_solid (false),
-	  _bc_type  (NONE_T)
+	  _tau      (Tau)
 {
-	if (_is_3D)
+	_rho_bc = 0.0;
+	_vel_bc = 0.0, 0.0, 0.0;
+	_bforce = 0.0, 0.0, 0.0;
+	if (_is_3d)
 	{
-		_w  = WEIGHTS3D;
-		_c  = LOCAL_VELOC3D;
-		_nv = 27;
+		_nneigh = 27;
+		_w      = WEIGHTS3D;
+		_c      = LOCAL_VELOC3D;
+		_f    .Resize    (_nneigh);
+		_f_tmp.Resize    (_nneigh);
+		_neigh.Resize    (_nneigh);
+		_side .Resize    (6);
+		_side .SetValues (false);
+		throw new Fatal("Cell::Cell: 3D simulation is not implemented yet");
 	}
 	else
 	{
-		_w  = WEIGHTS2D;
-		_c  = LOCAL_VELOC2D;
-		_nv = 9;
+		// Set constants
+		_nneigh = 9;
+		_w      = WEIGHTS2D;
+		_c      = LOCAL_VELOC2D;
+		_f    .Resize    (_nneigh);
+		_f_tmp.Resize    (_nneigh);
+		_neigh.Resize    (_nneigh);
+		_side .Resize    (4);
+		_side .SetValues (false);
+
+		// Find side in lattice
+		long nx = static_cast<long>(Nx);
+		long ny = static_cast<long>(Ny);
+		if (i==0)    _side[0] = true; // left
+		if (i==nx-1) _side[1] = true; // right
+		if (j==0)    _side[2] = true; // bottom
+		if (j==ny-1) _side[3] = true; // top
+
+		// Set neighbours
+		for (size_t k=0; k<_nneigh; ++k)
+		{
+			long p = i + _c[k][0]; // neighbour i
+			long q = j + _c[k][1]; // neighbour j
+			if (p==-1) p = nx-1;
+			if (p==nx) p = 0;
+			if (q==-1) q = ny-1;
+			if (q==ny) q = 0;
+			_neigh[k] = p + q*nx;
+		}
 	}
-	_f.Resize     (_nv);
-	_f_tmp.Resize (_nv);
 }
 
-inline void Cell::Initialize(double Tau, double Rho0, double Vx, double Vy, double Vz)
+inline void Cell::Initialize(double Rho0, Vec3_t const & V0)
 {
-	// Initial velocity
-	Vec3_t v0;  v0 = Vx, Vy, Vz;
-
-	// Initilize distribution function with initial velocity V0 and initial density Rho0
-	_tau = Tau;
-	for (size_t i=0; i<_nv; i++)
-		_f[i] = EqFun(i, v0, Rho0);
+	for (size_t k=0; k<_nneigh; k++) _f[k] = EqFun(k, V0, Rho0);
 }
 
 inline double Cell::Density() const
 {
 	// Skip if it is solid
 	if (_is_solid) return 0.0;
-
-	// Calulate current density
-	double density = 0.0;
-	for (size_t i=0; i<_nv; i++)
-		density += _f[i];
-	return density;
+	else
+	{
+		// Calulate current density
+		double rho = 0.0;
+		for (size_t k=0; k<_nneigh; k++) rho += _f[k];
+		return rho;
+	}
 }
 
 inline void Cell::Velocity(Vec3_t & V) const
@@ -162,174 +176,45 @@ inline void Cell::Velocity(Vec3_t & V) const
 		V = 0.0, 0.0, 0.0;
 		return;
 	}
-
-	double vx      = 0.0;
-	double vy      = 0.0;
-	double vz      = 0.0;
-	double density = Density();
-
-	for (size_t i=0; i<_nv; i++)
-		vx += _f[i]*_c[i][0];
-	vx /= density;
-
-	for (size_t i=0; i<_nv; i++)
-		vy += _f[i]*_c[i][1];
-	vy /= density;
-
-	if (_is_3D)
-	{
-		for (size_t i=0; i<_nv; i++)
-			vz += _f[i]*_c[i][2];
-		vz /= density;
-	}
-
-	// Return curren tvelocity
-	V = vx, vy, vz;
-}
-
-inline double Cell::EqFun(size_t Index, Vec3_t const & V, double Rho) 
-{
-	double f_eq;
-
-	if (_is_3D)
-	{
-		f_eq = 0.0; // TODO: correct this
-	}
 	else
 	{
-		Vec3_t v = V + _bforce*_tau/Rho;
-		double vxy  = v(0)*_c[Index][0] + v(1)*_c[Index][1];
-		double vsqr = v(0)*v(0) + v(1)*v(1);
-		f_eq = _w[Index] * Rho * (1.0 + 3.0*vxy + 4.5*vxy*vxy - 1.5*vsqr);
-	}
-
-	return f_eq;
-}
-
-inline void Cell::SetVelocityBC(BCSide_T Side, double Vx, double Vy, double Vz)
-{
-	_V0      = Vx, Vy, Vz;
-	_bc_side = Side;
-	_bc_type = VELOCITY_T;
-}
-
-inline void Cell::SetDensityBC(BCSide_T Side, double Rho)
-{
-	_rho0    = Rho;
-	_bc_side = Side;
-	_bc_type = DENSITY_T;
-}
-
-inline void Cell::Collide()
-{
-	Vec3_t V;      Velocity (V);
-	double   rho = Density  ();
-	double omega = 1.0/_tau;
-
-	// Updating _f
-	for (size_t k=0; k<_nv; k++)
-	{
-		double f_eq = EqFun(k, V, rho);
-		_f[k] = (1.0-omega)*_f[k] + omega*f_eq;
-		if (_f[k]<0) throw new Fatal("F[%d]<0 detected",k);
-	}
-}
-
-inline void Cell::ApplyBC()
-{
-	if (_bc_type==VELOCITY_T)
-	{
-		// Set velocity BC at left side
-		if (_bc_side==LEFT_T)
+		double rho = Density();
+		V = 0.0, 0.0, 0.0;
+		for (size_t k=0; k<_nneigh; ++k)
 		{
-			if (_is_3D)
-			{
-				// TODO: Implement this
-			}
-			else
-			{
-				double vx  = _V0(0);
-				double vy  = _V0(1);
-				double rho = (_f[0]+_f[2]+_f[4] + 2.0*(_f[3]+_f[6]+_f[7]))/(1.0 - vx);
-
-				_f[1] = _f[3] + 2.0/3.0*rho*vx;
-				_f[5] = _f[7] + 1.0/6.0*rho*vx + 0.5*rho*vy - 0.5*(_f[2]-_f[4]);
-				_f[8] = _f[6] + 1.0/6.0*rho*vx - 0.5*rho*vy + 0.5*(_f[2]-_f[4]);
-			}
+			            V(0) += _f[k]*_c[k][0]/rho;
+			            V(1) += _f[k]*_c[k][1]/rho;
+			if (_is_3d) V(2) += _f[k]*_c[k][2]/rho;
 		}
-		else throw new Fatal("Cell::ApplyBC: This feature is not available yet for BCType_T==%d, BCSide==%d",_bc_type,_bc_side);
-		// TODO: Add other directions
-	}
-	
-	if (_bc_type==DENSITY_T)
-	{
-		// Set density boundary condition at right side
-		if (_bc_side==RIGHT_T)
-		{
-			if (_is_3D)
-			{
-				// TODO: Implement this
-			}
-			else
-			{
-				double rho = _rho0;
-				double vx  = -1.0 + (_f[0]+_f[2]+_f[4] + 2.0*(_f[1]+_f[5]+_f[8]))/rho;
-				double vy  = 0.0;
-
-				_f[3] = _f[1] - 2.0/3.0*rho*vx; 
-				_f[7] = _f[5] - 1.0/6.0*rho*vx - 0.5*rho*vy + 0.5*(_f[2]-_f[4]);
-				_f[6] = _f[8] - 1.0/6.0*rho*vx + 0.5*rho*vy - 0.5*(_f[2]-_f[4]);
-			}
-		}
-		else throw new Fatal("Cell::ApplyBC: This feature is not available yet for BCType==%d, BCSide==%d",_bc_type,_bc_side);
-		// TODO: Add other directions
 	}
 }
 
-inline void Cell::BounceBack()
+inline double Cell::EqFun(size_t k, Vec3_t const & V, double Rho) const
 {
-	if (_is_3D)
-	{
-		//TODO: Implement this
-	}
+	if (_is_3d) throw new Fatal("Cell::EqFun: 3D simulation is not implemented yet");
 	else
 	{
-		// Copy values to the temporary f_tmp
-		for (size_t i=1; i<9; i++) _f_tmp[i] = _f[i];
-
-		// Bonce back
-		_f[1] = _f_tmp[3];  _f[2] = _f_tmp[4];
-		_f[3] = _f_tmp[1];  _f[4] = _f_tmp[2];
-		_f[5] = _f_tmp[7];  _f[6] = _f_tmp[8];
-		_f[7] = _f_tmp[5];  _f[8] = _f_tmp[6];
+		Vec3_t v;  v = V + _bforce*_tau/Rho;
+		double vdotc = v(0)*_c[k][0] + v(1)*_c[k][1];
+		double vdotv = v(0)*v(0) + v(1)*v(1);
+		return _w[k]*Rho*(1.0 + 3.0*vdotc + 4.5*vdotc*vdotc - 1.5*vdotv);
 	}
 }
 
-inline void Cell::ApplyForce (double Fx, double Fy, double Fz)
+
+/////////////////////////////////////////////////////////////////////////////////////////// Constants /////
+
+
+const double Cell::WEIGHTS2D [ 9] = { 4./9., 1./9., 1./9., 1./9., 1./9., 1./36., 1./36., 1./36., 1./36. };
+const double Cell::WEIGHTS3D [27] = { 1,2,3,4,5,6,7,8,9, 1,2,3,4,5,6,7,8,9, 1,2,3,4,5,6,7,8,9 }; // TODO: Correct this
+const Cell::LVeloc_T Cell::LOCAL_VELOC2D[ 9] = { {0,0,0}, {1,0,0}, {0,1,0}, {-1,0,0}, {0,-1,0}, {1,1,0}, {-1,1,0}, {-1,-1,0}, {1,-1,0} };
+const Cell::LVeloc_T Cell::LOCAL_VELOC3D[27] =
 {
-	_bforce(0) = Fx;
-	_bforce(1) = Fy;
-	_bforce(2) = Fz;
-}
+	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}
+};
 
-inline void Cell::ApplyGravity (double Gx, double Gy, double Gz)
-{
-	double Rho = Density();
-	_bforce(0) += Gx*Rho;
-	_bforce(1) += Gy*Rho;
-	_bforce(2) += Gz*Rho;
-}
-
-/** Outputs a Cell. */
-std::ostream & operator<< (std::ostream & os, Cell * C)
-{
-	for(size_t i=0; i<9; i++)
-		os << "F[" << i << "]=" << C->F(i) << "  ";
-
-	os << "\n";
-
-	return os;
-}
 
 }; // namespace LBM
 
