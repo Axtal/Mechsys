@@ -34,14 +34,22 @@ int main(int argc, char **argv) try
 	srand(seed);
 
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "bubble", /*Is3D*/false, /*Tau*/1.2, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
+	LBM::Lattice l("bubble", // FileKey
+	               false,    // Is3D
+	               1.2,      // Tau
+	               100,      // Nx
+	               100);     // Ny
+
+	// Set constants
+	l.SetG(-6.0).SetGSolid(-4.0);
 
 	// Initialize cells
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
 		double rho0 = 0.8 +(.02*rand())/RAND_MAX;
-		l.GetCell(i,j)->Initialize (/*Tau*/1.2, rho0, /*Vx*/0.0, /*Vy*/0.0);
+		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
+		l.GetCell(i,j)->Initialize (rho0, v0);
 	}
 
 	// Solve

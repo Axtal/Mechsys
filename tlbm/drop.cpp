@@ -34,7 +34,14 @@ int main(int argc, char **argv) try
 	srand(seed);
 
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "drop", /*Is3D*/false, /*Tau*/1.0, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
+	LBM::Lattice l("drop", // FileKey
+	               false,  // Is3D
+	               1.0,    // Tau
+	               100,    // Nx
+	               100);   // Ny
+
+	// Set constants
+	l.SetG(-6.0).SetGSolid(-4.0);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -48,10 +55,11 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
+		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->Initialize (/*Tau*/1.0,/*Rho*/ 0.8, /*Vx*/0.0, /*Vy*/0.0);
+			l.GetCell(i,j)->Initialize (/*Rho*/ 0.8, v0);
 		else
-			l.GetCell(i,j)->Initialize (/*Tau*/1.0,/*Rho*/ 0.1, /*Vx*/0.0, /*Vy*/0.0);
+			l.GetCell(i,j)->Initialize (/*Rho*/ 0.1, v0);
 	}
 
 	// Solve

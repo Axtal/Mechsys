@@ -34,7 +34,14 @@ int main(int argc, char **argv) try
 	srand(seed);
 
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "capi", /*Is3D*/false, /*Tau*/1.0, /*dL*/1.0, /*Nx*/100, /*Ny*/100);
+	LBM::Lattice l("capi", // FileKey
+	               false,  // Is3D
+	               1.0,    // Tau
+	               100,    // Nx
+	               100);   // Ny
+
+	// Set constants
+	l.SetG(-6.0).SetGSolid(-4.0);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -58,7 +65,7 @@ int main(int argc, char **argv) try
 	{
 		double rho0 = 1.4 +(.02*rand())/RAND_MAX;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (/*Tau*/1.0, rho0, /*Vx*/v0(0), /*Vy*/v0(1));
+		l.GetCell(i,j)->Initialize (rho0, v0);
 	}
 
 	// Solve

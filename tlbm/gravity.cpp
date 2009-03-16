@@ -35,30 +35,23 @@ int    radius = ny/10 + 1;
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "grav", /*Is3D*/false, /*Tau*/1.0, /*dL*/1.0, nx, ny);
+	LBM::Lattice l("grav", // FileKey
+	               false,  // Is3D
+	               1.0,    // Tau
+	               nx,     // Nx
+	               ny);    // Ny
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
-	//// Set inner obstacle
-	//int obsX = nx/2;   // x position
-	//int obsY = ny/2+3; // y position
-	//for (size_t i=0; i<l.Nx(); ++i)
-	//for (size_t j=0; j<l.Ny(); ++j)
-	//{
-	//	if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-	//		l.GetCell(i,j)->SetSolid();
-	//}
-	
 	// Define Initial conditions: velocity speed and density
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		double tau = 1.0;
-		double rho = 1.0;
-		//l.GetCell(i,j)->Initialize (tau, rho, vx, vy);
-		l.GetCell(i,j)->Initialize (tau, rho, 0.0, 0.0);
+		double rho0 = 1.0;
+		Vec3_t v0; v0 = 0.0, 0.0, 0.0;
+		l.GetCell(i,j)->Initialize (rho0, v0);
 	}
 
 	// Solve

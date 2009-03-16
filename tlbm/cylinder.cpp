@@ -49,7 +49,11 @@ void CalcInitSpeed(int x, int y, double & vx, double & vy)
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/ "cylinder", /*Is3D*/false, /*Tau*/CalcViscosity(), /*dL*/1.0, nx, ny);
+	LBM::Lattice l("cylinder",      // FileKey
+	               false,           // Is3D
+	               CalcViscosity(), // Tau
+	               nx,              // Nx
+	               ny);             // Ny
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -69,35 +73,24 @@ int main(int argc, char **argv) try
 	for (size_t j=0; j<l.Ny(); j++)
 	{
 		double vx, vy;
-		CalcInitSpeed(0, j, vx, vy);
-		l.GetCell(   0,j)->SetVelocityBC (LBM::Cell::LEFT_T, vx, vy);
-		l.GetCell(nx-1,j)->SetDensityBC  (LBM::Cell::RIGHT_T, 1.0);
+		CalcInitSpeed (0, j, vx, vy);
+		Vec3_t v;  v = vx, vy, 0.0;
+		l.SetVelocityBC (0,   j, v);
+		l.SetDensityBC  (nx-1,j, 1.0);
 	}
-
-	/*
-	for (size_t i=0; i<l.Left ().Size(); ++i)
-	{
-		double vx = 0.0;
-		double vy = 0.0;
-		l.Left ()[i]->SetVelocityBC (LBM::Cell::LEFT_T, vx, vy);
-	}
-	for (size_t i=0; i<l.Right().Size(); ++i) l.Right()[i]->SetDensityBC  (LBM::Cell::RIGHT_T, 1.0);
-	*/
 
 	// Define Initial conditions: velocity speed and density
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		double vx, vy;
-		double tau = CalcViscosity();
-		double rho = 1.0;
-		CalcInitSpeed(i, j, vx, vy);
-		//l.GetCell(i,j)->Initialize (tau, rho, vx, vy);
-		l.GetCell(i,j)->Initialize (tau, rho, 0.08, 0);
+		double rho0 = 1.0;
+		Vec3_t v0;  v0 = 0.08, 0.0, 0.0;
+		l.GetCell(i,j)->Initialize (rho0, v0);
 	}
 
 	// Solve
 	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/200.0);
+	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
