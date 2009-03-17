@@ -36,12 +36,11 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("bubble", // FileKey
 	               false,    // Is3D
-	               1.2,      // Tau
 	               100,      // Nx
 	               100);     // Ny
 
 	// Set constants
-	l.SetG(-6.0).SetGSolid(-4.0);
+	l.SetTau(1.0)->SetG(-6.0);
 
 	// Initialize cells
 	for (size_t i=0; i<l.Nx(); ++i)
@@ -53,7 +52,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/2560.0, /*dt*/1.0, /*dtOut*/100.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dt*/1.0, /*dtOut*/50.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/2.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

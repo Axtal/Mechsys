@@ -38,7 +38,6 @@ public:
 	// Constructor
 	Lattice (Str_t  FileKey, ///< Key such as "mytest" to be used when generating output files: Ex.: mytest_11.vtk
 	         bool   Is3D,    ///< 
-	         double Tau,     ///< 
 	         size_t Nx,      ///< Number of cells along x direction
 	         size_t Ny,      ///< Number of cells along y direction
 	         size_t Nz=1);   ///< Number of cells along z direction
@@ -58,14 +57,19 @@ public:
 	size_t   Nx        () const { return _nx; }
 	size_t   Ny        () const { return _ny; }
 	size_t   Nz        () const { return _nz; }
+	size_t   NNeigh    () const { return _nneigh; }
+	double   Tau       () const { return _tau; }
 	double   TotalMass () const;
 	Cell   * GetCell   (size_t i, size_t j, size_t k=0);
+	Cell   * GetCell   (size_t i) { return _cells[i]; }
 
 	// Set constants
-	Lattice & SetG      (double Val) { _G       = Val;  return (*this); } ///< Set TODO
-	Lattice & SetGSolid (double Val) { _G_solid = Val;  return (*this); } ///< Set TODO
-	Lattice & SetRhoRef (double Val) { _rho_ref = Val;  return (*this); } ///< Set TODO
-	Lattice & SetPsiRef (double Val) { _psi_ref = Val;  return (*this); } ///< Set TODO
+	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set TODO
+	Lattice * SetG         (double Val) { _G       = Val;  return this; } ///< Set TODO
+	Lattice * SetGSolid    (double Val) { _G_solid = Val;  return this; } ///< Set TODO
+	Lattice * SetRhoRef    (double Val) { _rho_ref = Val;  return this; } ///< Set TODO
+	Lattice * SetPsiRef    (double Val) { _psi_ref = Val;  return this; } ///< Set TODO
+	Lattice * SetMultiComp (double Val) { _is_mc   = true; return this; } ///< Set TODO
 
 	// Set methods
 	void SetGravity    (double Gx, double Gy, double Gz=0.0);
@@ -85,6 +89,7 @@ public:
 protected:
 	String       _file_key; ///< TODO:
 	bool         _is_3d;    ///< TODO:
+	bool         _is_mc;    ///< Flag to define if the analysis is multi-component
 	double       _tau;      ///< TODO:
 	double       _G;        ///< TODO:
 	double       _G_solid;  ///< TODO:
@@ -118,10 +123,11 @@ private:
 
 /* public */
 
-inline Lattice::Lattice(Str_t FileKey, bool Is3D, double Tau, size_t Nx, size_t Ny, size_t Nz)
+inline Lattice::Lattice(Str_t FileKey, bool Is3D, size_t Nx, size_t Ny, size_t Nz)
 	: _file_key (FileKey),
 	  _is_3d    (Is3D),
-	  _tau      (Tau),
+	  _is_mc    (false),
+	  _tau      (1.0),
 	  _G        (0.0),
 	  _G_solid  (0.0),
 	  _rho_ref  (1.0),
@@ -293,7 +299,10 @@ inline void Lattice::Collide()
 		LBM::Cell * c = _cells[i];
 		if (c->IsSolid()==false) // not solid
 		{
-			Vec3_t v;    c->Velocity (v);
+			Vec3_t v;    
+			if (_is_mc)	v = c->MixVelocity(); // For multi-components analysis
+			else            c->Velocity(v);   // Fore one component analysis
+
 			double rho = c->Density  ();
 			for (size_t k=0; k<_nneigh; ++k)
 			{

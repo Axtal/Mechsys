@@ -70,9 +70,11 @@ public:
 	Vec3_t & BForce  ()                     { return _bforce;        } ///< Body force
 
 	// Methods
-	double Density  () const;                                       ///< Calculate the current density of the fluid in this cell
-	void   Velocity (Vec3_t & V) const;                             ///< Calculate the current velocity of the fluid in this cell
-	double EqFun    (size_t k, Vec3_t const & V, double Rho) const; ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
+	double   Density  () const;                                       ///< Calculate the current density of the fluid in this cell
+	void     Velocity (Vec3_t & V) const;                             ///< Calculate the current velocity of the fluid in this cell
+	double   EqFun    (size_t k, Vec3_t const & V, double Rho) const; ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
+	Vec3_t & MixVelocity() { return _mix_vel; }
+
 
 protected:
 	// Data
@@ -89,6 +91,7 @@ protected:
 	Vec3_t           _bforce;   ///< Body force (gravity)
 	Array<size_t>    _side;     ///< Which side on the boundary this cell is located
 	Array<size_t>    _neigh;    ///< Indices of neighbour cells
+	Vec3_t           _mix_vel;
 
 }; // class Cell
 

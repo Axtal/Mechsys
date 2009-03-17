@@ -36,12 +36,11 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("capi", // FileKey
 	               false,  // Is3D
-	               1.0,    // Tau
 	               100,    // Nx
 	               100);   // Ny
 
 	// Set constants
-	l.SetG(-6.0).SetGSolid(-4.0);
+	l.SetTau(1.0)->SetG(-6.0)->SetGSolid(-4.0);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -70,7 +69,7 @@ int main(int argc, char **argv) try
 
 	// Solve
 	l.SetGravity(0.0, -0.0005);
-	l.Solve(/*tIni*/0.0, /*tFin*/400.0, /*dt*/1.0, /*dtOut*/10.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/2000.0, /*dt*/1.0, /*dtOut*/10.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

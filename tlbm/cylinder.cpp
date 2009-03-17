@@ -51,9 +51,11 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("cylinder",      // FileKey
 	               false,           // Is3D
-	               CalcViscosity(), // Tau
 	               nx,              // Nx
 	               ny);             // Ny
+
+	// Set tau
+	l.SetTau(CalcViscosity());
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -75,7 +77,7 @@ int main(int argc, char **argv) try
 		double vx, vy;
 		CalcInitSpeed (0, j, vx, vy);
 		Vec3_t v;  v = vx, vy, 0.0;
-		l.SetVelocityBC (0,   j, v);
+		l.SetVelocityBC (0, j, v);
 		l.SetDensityBC  (nx-1,j, 1.0);
 	}
 
@@ -89,7 +91,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/200.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/50.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
