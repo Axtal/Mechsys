@@ -78,6 +78,7 @@ public:
 
 	// Methods
 	void Solve        (double tIni, double tFin, double dt, double dtOut); ///< Solve
+	void Homogenize   ();
 	void Stream       ();
 	void ApplyBC      ();
 	void Collide      ();
@@ -242,7 +243,7 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 
 inline void Lattice::Stream()
 {
-	// Copy to temp
+	// Stream to temp
 	for (size_t i=0; i<_size; ++i)
 	{
 		LBM::Cell * c = _cells[i];
@@ -255,6 +256,37 @@ inline void Lattice::Stream()
 
 	// Swap the distribution function values
 	for (size_t i=0; i<_size;   i++) 
+	for (size_t k=0; k<_nneigh; k++)
+		_cells[i]->F(k) = _cells[i]->TmpF(k);
+}
+
+inline void Lattice::Homogenize()
+{
+	// Homogenize to temp
+	for (size_t i=0; i<_size; ++i)
+	{
+		LBM::Cell * c = _cells[i];
+		if (c->IsSolid()) continue;
+		for (size_t k=0; k<_nneigh; ++k)
+		{
+			double       f = 0.0;
+			//size_t n_fluid = 0;
+			for (size_t kk=0; kk<_nneigh; ++kk)
+			{
+				LBM::Cell * nb = _cells[c->Neigh(kk)];
+				//if (nb->IsSolid()==false)
+				//{
+					f += nb->F(k);
+				//	n_fluid++;
+				//}
+			}
+			//c->TmpF(k) = f/n_fluid;
+			c->TmpF(k) = f/_nneigh;
+		}
+	}
+
+	// Swap the distribution function values
+	for (size_t i=0; i<_size;   i++)
 	for (size_t k=0; k<_nneigh; k++)
 		_cells[i]->F(k) = _cells[i]->TmpF(k);
 }
@@ -347,6 +379,8 @@ inline void Lattice::ApplyForce()
 			LBM::Cell * nb = _cells[c->Neigh(k)];
 			double  nb_psi = (nb->IsSolid() ? 1.0      : _psi(nb->Density()));
 			double       G = (nb->IsSolid() ? _G_solid : _G);
+			//double  nb_psi =  _psi(nb->Density());
+			//double       G =  _G;
 			F(0) += -G*psi*c->W(k)*nb_psi*c->C(k,0);
 			F(1) += -G*psi*c->W(k)*nb_psi*c->C(k,1);
 		}
