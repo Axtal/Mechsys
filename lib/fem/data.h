@@ -625,7 +625,7 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 	if (eatts_size>0) eatts.Resize(eatts_size);
 	for (int i=0; i<eatts_size; ++i)
 	{
-		if (len(ElemsAtts[i])==8)
+		if (len(ElemsAtts[i])==9)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
 			eatts[i] = boost::make_tuple(BPy::extract<int  >(lst[0])(),
@@ -638,7 +638,7 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 			                             FNULL,
 			                             BPy::extract<bool> (lst[8])());
 		}
-		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 8 items: tag, geomT, probT, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
+		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 9 items: tag, geomT, probT, model, prms, inis, props, '', active?\n\tExample: ElemsAtts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', '', True]]");
 	}
 
 	// Set geometry
