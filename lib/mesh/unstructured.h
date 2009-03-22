@@ -235,7 +235,7 @@ inline size_t Unstructured::Generate(bool WithInfo)
 	double start = std::clock();
 
 	// Generate (via JRS' triangle)
-	String prms("neQpzA"); // Q=quiet, p=poly, q=quality, z=zero
+	String prms("QpzA"); // Q=quiet, p=poly, q=quality, z=zero
 	if (_max_area>0 ) prms.Printf("%sa%f", prms.CStr(), _max_area);
 	if (_min_angle>0) prms.Printf("%sq%f", prms.CStr(), _min_angle);
 	else              prms.Printf("%sq",   prms.CStr());
@@ -244,7 +244,9 @@ inline size_t Unstructured::Generate(bool WithInfo)
 	//std::cout << "JRS' triangle parameters = " << prms << std::endl;
 	triangulate (prms.CStr(), &_tin, &_tou, NULL);
 
+	/*
 	// IMRAN
+	// String prms("neQpzA"); // Q=quiet, p=poly, q=quality, z=zero
 	for (int i=0; i<_tou.numberoftriangles; ++i)
 	{
 		for (int j=0; j<3; ++j)
@@ -253,14 +255,12 @@ inline size_t Unstructured::Generate(bool WithInfo)
 	}
 	cout << endl;
 
-	/*
 	for (int i=0; i<_tou.numberofedges; ++i)
 	{
 		cout << _tou.edgelist[i*2+0] << " " << _tou.edgelist[i*2+1] << endl;
 	}
 	cout << endl;
 	*/
-	
 
 	/* Find vertices on boundary
 	 * _tou.pointmarkerlist[ipoint] will be equal to:

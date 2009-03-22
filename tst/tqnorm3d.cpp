@@ -118,7 +118,7 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	FEM::EAtts_T eatts(1);
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
-	eatts = T(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
+	eatts = T(-1, "Hex20", "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", FNULL, true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

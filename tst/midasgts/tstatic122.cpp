@@ -123,7 +123,7 @@ int main(int argc, char **argv) try
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	String geom; geom = (is_o2 ? "Hex20" : "Hex8");
 	FEM::EAtts_T eatts(1);
-	eatts = T(-1, geom.CStr(), "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", true);
+	eatts = T(-1, geom.CStr(), "Equilib", "LinElastic", prms.CStr(), "ZERO", "gam=20", FNULL, true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

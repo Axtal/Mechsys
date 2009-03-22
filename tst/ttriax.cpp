@@ -31,7 +31,7 @@
 #include "models/equilibs/linelastic.h"
 #include "models/equilibs/pyequilib.h"
 #include "models/equilibs/camclay.h"
-#include "models/equilibs/toto.h"
+//#include "models/equilibs/toto.h"
 #include "util/exception.h"
 #include "util/numstreams.h"
 #include "mesh/structured.h"
@@ -139,28 +139,28 @@ int main(int argc, char **argv) try
 		{
 			cout << "[1;34m ########################################## LinElastic ########################################## [0m" << endl;
 			prms.Printf("E=%f nu=%f",E,nu);
-			eatts = T(-1, geom.CStr(), "Equilib", "LinElastic", prms.CStr(), stat.CStr(), "gam=20", true);
+			eatts = T(-1, geom.CStr(), "Equilib", "LinElastic", prms.CStr(), stat.CStr(), "gam=20", FNULL, true);
 			break;
 		}
 		case 2:
 		{
 			cout << "[1;34m ########################################## CamClay ########################################## [0m" << endl;
 			prms.Printf("lam=%f kap=%f phics=%f nu=%f",lam,kap,phi,nu);
-			eatts = T(-1, geom.CStr(), "Equilib", "CamClay", prms.CStr(), stat.CStr(), "gam=20", true);
+			eatts = T(-1, geom.CStr(), "Equilib", "CamClay", prms.CStr(), stat.CStr(), "gam=20", FNULL, true);
 			break;
 		}
 		case 3:
 		{
 			cout << "[1;34m ########################################## PyEquilib ########################################## [0m" << endl;
 			prms.Printf("a0=%f a1=%f a2=%f a3=%f",lam,kap,phi,nu);
-			eatts = T(-1, geom.CStr(), "Equilib", "PyEquilib,camclay.py", prms.CStr(), stat.CStr(), "gam=20", true);
+			eatts = T(-1, geom.CStr(), "Equilib", "PyEquilib,camclay.py", prms.CStr(), stat.CStr(), "gam=20", FNULL, true);
 			break;
 		}
 		case 4:
 		{
 			cout << "[1;34m ########################################## Toto ########################################## [0m" << endl;
 			prms.Printf("k1=%f l1=%f b1=%f psi1=%f  k2=%f l2=%f b2=%f psi2=%f  k3=%f l3=%f b3=%f ev3=%f  k4=%f l4=%f b4=%f ev4=%f",k1,l1,b1,psi1, k2,l2,b2,psi2, k3,l3,b3,ev3, k4,l4,b4,ev4);
-			eatts = T(-1, geom.CStr(), "Equilib", "Toto", prms.CStr(), stat.CStr(), "gam=20", true);
+			eatts = T(-1, geom.CStr(), "Equilib", "Toto", prms.CStr(), stat.CStr(), "gam=20", FNULL, true);
 			break;
 		}
 		default: throw new Fatal("main: Model # %d is invalid. Please use 1:LinElastic, 2:CamClay, 3:PyEquilib, 4:Toto",mdl);

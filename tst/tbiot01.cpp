@@ -176,8 +176,8 @@ int main(int argc, char **argv) try
 	String prms; prms.Printf("E=%f nu=%f k=%f",E,nu,k);
 	String prps; prps.Printf("gam=%f gw=%f",gam,gw);
 	FEM::EAtts_T eatts(1);
-	if (is_o2) eatts = T(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true);
-	else       eatts = T(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true);
+	if (is_o2) eatts = T(-1, "Quad8", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), FNULL, true);
+	else       eatts = T(-1, "Quad4", "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), FNULL, true);
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);

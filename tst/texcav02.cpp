@@ -106,8 +106,8 @@ int main(int argc, char **argv) try
 	String geom = (is_o2 ? "Quad8" : "Quad4");
 	String prms; prms.Printf("E=%f nu=%f",E,nu);
 	FEM::EAtts_T eatts(2);
-	eatts = T(-1, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", true ),
-	        T(-2, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", false);
+	eatts = T(-1, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", FNULL, true ),
+	        T(-2, geom.CStr(), "PStrain", "LinElastic", prms.CStr(), "ZERO", "gam=20", FNULL, false);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

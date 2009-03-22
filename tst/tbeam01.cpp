@@ -81,7 +81,7 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	FEM::EAtts_T eatts;
 	String prms; prms.Printf("E=%f A=%f Izz=%f",E,A,Izz);
-	eatts.Push (make_tuple(-5, "Lin2", "Beam", "BeamElastic", prms.CStr(), "ZERO", "gam=20 cq=1", true));
+	eatts.Push (make_tuple(-5, "Lin2", "Beam", "BeamElastic", prms.CStr(), "ZERO", "gam=20 cq=1", FNULL, true));
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);

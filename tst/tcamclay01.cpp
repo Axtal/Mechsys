@@ -133,7 +133,7 @@ int main(int argc, char **argv) try
 	String inis; inis.Printf("Sx=%f Sy=%f Sz=%f Sxy=0 Syz=0 Szx=0 v=%f",p_ini,p_ini,p_ini,v_ini);
 	String geom; geom = (is_o2 ? "Hex20" : "Hex8");
 	FEM::EAtts_T eatts(1);
-	eatts = T(-1, geom.CStr(), "Equilib", "CamClay", prms.CStr(), inis.CStr(), "gam=20", true);
+	eatts = T(-1, geom.CStr(), "Equilib", "CamClay", prms.CStr(), inis.CStr(), "gam=20", FNULL, true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

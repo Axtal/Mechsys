@@ -130,10 +130,10 @@ int main(int argc, char **argv) try
 	String p2; p2.Printf("E=%f A=%f", 1000.0, 10.0);
 	String p3; p3.Printf("E=%f A=%f", 1000.0,  3.0);
 	String p4; p4.Printf("E=%f A=%f", 1000.0,  1.0);
-	eatts = T( -2, "Lin2", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", true),
-	        T(-10, "Lin2", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", true),
-	        T( -3, "Lin2", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", true),
-	        T( -1, "Lin2", "Rod", "RodElastic", p4.CStr(), "ZERO", "gam=20", true);
+	eatts = T( -2, "Lin2", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", FNULL, true),
+	        T(-10, "Lin2", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", FNULL, true),
+	        T( -3, "Lin2", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", FNULL, true),
+	        T( -1, "Lin2", "Rod", "RodElastic", p4.CStr(), "ZERO", "gam=20", FNULL, true);
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);

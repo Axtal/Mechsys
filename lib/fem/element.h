@@ -42,6 +42,8 @@ typedef char const            * Str_t;
 typedef std::map<String,double> Prop_t;       ///< Properties type
 typedef const char              ProName_t[8]; ///< Properties names. Ex: "gam", "s", "cq", ...
 
+typedef double(*Fun_t)(double);
+
 class Element
 {
 public:
@@ -62,6 +64,7 @@ public:
 	                  Model              * Mdl,                  ///< Model. Ex: AllocModel("LinElastic")
 	                  Str_t                Inis,                 ///< Initial values. Ex: "ZERO" or "Sx=0.0 Sy=0.0"
 	                  Prop_t             * Prp,                  ///< Properties. Ex: "gam=20"
+	                  Fun_t                SrcFun,               ///< Source function
 	                  bool                 IsAct);               ///< Is the element active ?
 	long  ID         () const           { return _id;          } ///< Return the ID of this element
 	int   Tag        () const           { return _tag;         } ///< Return the Tag of this element
@@ -178,11 +181,11 @@ inline int Element::InitCtes(int nDim, Str_t GeomT, Str_t ProbT)
 	return _pe->InitCtes (nDim);
 }
 
-inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct)
+inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, Fun_t SrcFun, bool IsAct)
 {
 	_id  = i;
 	_tag = Tag;
-	_pe->Initialize (_ge, _id, CONN, Mdl, Inis, Prp, IsAct);
+	_pe->Initialize (_ge, _id, CONN, Mdl, Inis, Prp, SrcFun, IsAct);
 }
 
 inline bool Element::Check(String & Msg) const

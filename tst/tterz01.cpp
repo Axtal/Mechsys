@@ -123,7 +123,7 @@ int main(int argc, char **argv) try
 	String prps; prps.Printf("gam=20 gw=%f",    gw);
 	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
 	FEM::EAtts_T eatts(1);
-	eatts = T(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true);
+	eatts = T(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), FNULL, true);
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (&mesh, &eatts);

@@ -109,7 +109,7 @@ int main(int argc, char **argv) try
 	// Elements attributes
 	String prms; prms.Printf("k=%f", k);
 	FEM::EAtts_T eatts(1);
-	eatts = T(-1, "Quad4", "Diffusion", "LinDiffusion", prms.CStr(), "", "s=0.0", true);
+	eatts = T(-1, "Quad4", "Diffusion", "LinDiffusion", prms.CStr(), "", "s=0.0", FNULL, true);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);

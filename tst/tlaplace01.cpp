@@ -138,7 +138,7 @@ int main(int argc, char **argv) try
 	String geom;
 	if (is_quad) geom = (is_o2 ? "Quad8" : "Quad4");
 	else         geom = (is_o2 ? "Tri6"  : "Tri3" );
-	eatts = T(-1, geom.CStr(), "Diffusion", "LinDiffusion", "k=1.0", "", "s=0.0", true);
+	eatts = T(-1, geom.CStr(), "Diffusion", "LinDiffusion", "k=1.0", "", "s=0.0", FNULL, true);
 
 	// Set geometry: nodes, elements, attributes, and boundaries
 	dat.SetNodesElems (msh, &eatts);

@@ -125,9 +125,9 @@ int main(int argc, char **argv) try
 	String prps; prps.Printf("gam=%f gw=%f",gam,gw);
 	String geom; geom = (is_o2 ? "Quad8" : "Quad4");
 	FEM::EAtts_T eatts(3);
-	eatts = T(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), true ),
-	        T(-2, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false),
-	        T(-3, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), false);
+	eatts = T(-1, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), FNULL, true ),
+	        T(-2, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), FNULL, false),
+	        T(-3, geom.CStr(), "Biot", "BiotElastic", prms.CStr(), "ZERO", prps.CStr(), FNULL, false);
 
 	// Set geometry: nodes and elements
 	dat.SetNodesElems (&mesh, &eatts);
