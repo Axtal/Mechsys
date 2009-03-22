@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILES="*.vtu *.cal"
+FILES="*.vtk *.vtu *.cal"
 
 for f in $FILES; do
 	find . -name "$f" -exec rm {} \; > /dev/null 2>&1
