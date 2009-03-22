@@ -635,7 +635,7 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 			                             BPy::extract<Str_t>(lst[4])(),
 			                             BPy::extract<Str_t>(lst[5])(),
 			                             BPy::extract<Str_t>(lst[6])(),
-			                             NULL,
+			                             FNULL,
 			                             BPy::extract<bool> (lst[8])());
 		}
 		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 8 items: tag, geomT, probT, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
@@ -765,7 +765,8 @@ inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 		          BPy::extract<Str_t>(EAtts[idx_eatt][4])(),  // Prms
 		          BPy::extract<Str_t>(EAtts[idx_eatt][5])(),  // Inis
 		          BPy::extract<Str_t>(EAtts[idx_eatt][6])(),  // Props
-		          BPy::extract<bool> (EAtts[idx_eatt][7])()); // IsAct
+		          FNULL,
+		          BPy::extract<bool> (EAtts[idx_eatt][8])()); // IsAct
 	}
 }
 

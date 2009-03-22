@@ -61,6 +61,6 @@
 #include "models/equilibs/rodelastic.h"
 #include "models/equilibs/springelastic.h"
 #include "models/equilibs/pyequilib.h"
-#include "models/equilibs/toto.h"
+//#include "models/equilibs/toto.h"
 
 #endif // MECHSYS_MECHSYS_H
