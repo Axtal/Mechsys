@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -173,7 +173,7 @@ inline void DiffusionElem::AddVolForces()
 	fvol.SetValues (0.0);
 
 	// Calculate local external volume force
-	double s = Prop("s");
+	double s;
 	Vec_t N;
 	Mat_t dN;
 	Mat_t J;
@@ -182,6 +182,14 @@ inline void DiffusionElem::AddVolForces()
 		_ge->Shape    (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, N);
 		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian (dN, J);
+		if (_srcfun==FNULL) s = Prop("s");
+		else
+		{
+			double u = 0.0;
+			for (size_t j=0; j<_ge->NNodes; ++j)
+				u += N(j) * _ge->Conn[j]->Val("u");
+			s = (*_srcfun)(u);
+		}
 		fvol += s*N*det(J)*_ge->IPs[i].w;
 	}
 

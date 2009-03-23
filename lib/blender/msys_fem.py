@@ -114,7 +114,7 @@ def get_eatts(obj,mats,stg):
                 mdl     = ''
                 prms    = ''
                 matdesc = '__no material__'
-            eatts.append ([tag, gty, pty, mdl, prms, inis, prop, act, matdesc])
+            eatts.append ([tag, gty, pty, mdl, prms, inis, prop, '', act, matdesc])
     return eatts
 
 
@@ -253,11 +253,11 @@ def run_analysis(gen_script=False):
             for i, ea in enumerate(eatts):
                 if i==0:       estr  = '	eatts = '
                 else:          estr  = '	        '
-                if ea[7]:      estr += 'T(%d, "%s", "%s", "%s", "%s", "%s", "%s", true )'#,  # %s\n'
-                else:          estr += 'T(%d, "%s", "%s", "%s", "%s", "%s", "%s", false)'#,  # %s\n'
+                if ea[8]:      estr += 'T(%d, "%s", "%s", "%s", "%s", "%s", "%s", FNULL, true )'#,  # %s\n'
+                else:          estr += 'T(%d, "%s", "%s", "%s", "%s", "%s", "%s", FNULL, false)'#,  # %s\n'
                 if i==neatt-1: estr += ';  // %s\n'
                 else:          estr += ',  // %s\n'
-                txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[6],ea[8]))
+                txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[6],ea[9]))
 
             # set geometry: nodes and elements
             txt.write ('\n	// Set nodes and elements (geometry)\n')
@@ -377,11 +377,11 @@ def run_analysis(gen_script=False):
             for i, ea in enumerate(eatts):
                 if i==0:       estr  = 'eatts = ['
                 else:          estr  = '         '
-                if ea[7]:      estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", True ]'#,  # %s\n'
-                else:          estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", False]'#,  # %s\n'
+                if ea[8]:      estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", \'\', True ]'#,  # %s\n'
+                else:          estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", \'\', False]'#,  # %s\n'
                 if i==neatt-1: estr += ']  # %s\n'
                 else:          estr += ',  # %s\n'
-                txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[6],ea[8]))
+                txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[6],ea[9]))
 
             # set geometry: nodes and elements
             txt.write ('\n# Set nodes and elements (geometry)\n')
@@ -468,7 +468,7 @@ def run_analysis(gen_script=False):
 
         # element attributes
         elem_atts = []
-        for ea in eatts: elem_atts.append(ea[:8])
+        for ea in eatts: elem_atts.append(ea[:9])
 
         # set geometry: nodes and elements
         if mesh_type=='frame': dat.set_only_frame()

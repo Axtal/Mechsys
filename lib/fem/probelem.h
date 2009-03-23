@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -40,6 +40,8 @@ typedef char const            * Str_t;
 typedef std::map<String,double> Prop_t;       ///< Properties type
 typedef const char              ProName_t[8]; ///< Properties names. Ex: "gam", "s", "cq", ...
 
+typedef double(*Fun_t)(double);
+
 class ProbElem
 {
 public:
@@ -48,7 +50,7 @@ public:
 	typedef const char PrmName_t[8]; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
 
 	// Constructor
-	ProbElem() : IsActive(true), _nd(-1), _nl(-1), _gi(-1), UD(NULL), FD(NULL), LB(NULL), _mdl(NULL) {}
+	ProbElem() : IsActive(true), _nd(-1), _nl(-1), _gi(-1), UD(NULL), FD(NULL), LB(NULL), _mdl(NULL), _srcfun(NULL) {}
 
 	// Destructor
 	virtual ~ProbElem() {}
@@ -90,9 +92,11 @@ public:
 	                                  Array<bool> & RUPresc,
 	                                  Array<bool> & CUPresc) const                {}
 	virtual void        UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
+	virtual bool        HasAddToF    () const                      { return false; }
+	virtual void        AddToF       (double h, Vec_t & Fext) const               {}
 
 	/* Initialize the element. */
-	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct); ///< Initialize the element
+	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, Fun_t SrcFun, bool IsAct); ///< Initialize the element
 
 	// Methods related to PROBLEM implemented here
 	Str_t MdlName  () const { return (_mdl==NULL ? "__no_model__" : _mdl->Name()); }
@@ -116,9 +120,10 @@ protected:
 	VarName_t * LB;   ///< (set by InitCtes) Additional lbls (exceed. those from UD/FD).  Access: LB[iLbl]
 
 	// Data
-	GeomElem * _ge;  ///< Geometry element
-	Model    * _mdl; ///< Constitutive model
-	Prop_t   * _prp; ///< Properties
+	GeomElem * _ge;     ///< Geometry element
+	Model    * _mdl;    ///< Constitutive model
+	Prop_t   * _prp;    ///< Properties
+	Fun_t      _srcfun; ///< Source function
 
 	// Methods
 	virtual void _initialize         (Str_t Inis)                                           =0; ///< Initialize the element
@@ -132,11 +137,12 @@ protected:
 
 /* public */
 
-inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct)
+inline void ProbElem::Initialize(GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, Fun_t SrcFun, bool IsAct)
 {
 	// Data
 	_ge      = GE;
 	_prp     = Prp;
+	_srcfun  = SrcFun;
 	IsActive = IsAct;
 
 	// Check GeomElement

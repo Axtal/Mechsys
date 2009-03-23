@@ -53,7 +53,7 @@ ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single
 
 INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
 
-SUBDIRS (lib tdem tlbm tst src)
+SUBDIRS (lib tfem tlbm tst src)
 
 # Dependencies
 SET(Boost_USE_STATIC_LIBS ON)
@@ -77,7 +77,7 @@ SET(LFLAGS "")
 IF(PYTHONLIBS_FOUND)
 	INCLUDE_DIRECTORIES   (${PYTHON_INCLUDE_PATH})
 	EXECUTE_PROCESS (COMMAND python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-	SET(LIBS ${LIBS} ${PYTHON_LIBRARIES})
+	SET(LIBS ${LIBS} ${PYTHON_LIBRARIES} "boost_python")
 ENDIF(PYTHONLIBS_FOUND)
 
 IF(Boost_FOUND)

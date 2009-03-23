@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -90,8 +90,8 @@ public:
 	enum Solver_T { FE_T, AME_T }; ///< FE:Forward-Euler, AME:Automatic-Modified-Euler
 
 	// Constructor
-	Solver (FEM::Data & D)                       { _initialize (&D, NULL);    }
-	Solver (FEM::Data & D, char const * FileKey) { _initialize (&D, FileKey); }
+	Solver (FEM::Data & D)                       : _has_addF(false) { _initialize (&D, NULL);    }
+	Solver (FEM::Data & D, char const * FileKey) : _has_addF(false) { _initialize (&D, FileKey); }
 
 	// Destructor
 	~Solver() { if (_out!=NULL) delete _out; }
@@ -146,6 +146,7 @@ private:
 	LinAlg::Vector<double>   _hHU;     ///< Linearized independent term of the differential equation.
 	bool                     _has_hHU; ///< Flag which says if any element has to contribute to the hHU vector. If _has_hHU==false, there is no need for the hHU vector, because there are no HMatrices in this stage of the simulation.
 	Output                 * _out;     ///< Write output file
+	bool                     _has_addF;///< Flag representing if there are any element that has to contribute to dFext vector
 
 	// Data for Forward-Euler
 	int    _nSI;        ///< Number of sub-increments
@@ -194,7 +195,6 @@ private:
 
 	// Private methods
 	void _assemb_G_and_hHU     (double h);                                                                                                                                                   ///< Assemble matrix G for the actual state of elements/nodes. Note h == TimeInc
-	void _mount_into_hHU       (LinAlg::Vector<double> const & V, Array<size_t> const & RowsMap);                                                                                            ///< Add a local vector, such as [U P]^T into the hHU vector
 	void _mount_into_global    (LinAlg::Matrix<double> const & M, Array<size_t> const & RowsMap, Array<size_t> const & ColsMap, Array<bool> const & RowsPre, Array<bool> const & ColsPre);   ///< Add a local matrix, such as K,L1,L2 or M into the global DENSE matrix G or into the global SPARSE matrix G (T11,T12,T21,T22)
 	void _compute_global_size  ();                                                                                                                                                           ///< Compute the sizes of T11,T12,T21 and T22
 	void _increase_global_size (Array<size_t> const & RowsMap, Array<size_t> const & ColsMap, Array<bool> const & RowsPre, Array<bool> const & ColsPre);                                     ///< Auxiliar method to compute the sizes of T11,T12,T21 and T22
@@ -288,6 +288,9 @@ inline void Solver::Solve(int NDiv, double DTime, bool ClearDisp)
 			String msg;
 			if (_data->Ele(i)->Check(msg)==false)
 				throw new Fatal("Solver::Solve Element # %d was not properly initialized. Error: %s",i,msg.CStr());
+
+			// Check if element has component to be added to F_ext
+			if (_data->Ele(i)->HasAddToF()) _has_addF = true;
 		}
 	}
 
@@ -490,6 +493,17 @@ inline void Solver::_inv_G_times_dF_minus_hHU(double h, LinAlg::Vector<double> &
 
 	               [C] { dU/dt }  +             [H] { U }  =  { dF/dt }
 	 */
+
+	// Add extra force components to Fext
+	if (_has_addF)
+	{
+		// Add to Fext
+		for (size_t i=0; i<_data->NElems(); ++i)
+		{
+			if (_data->Ele(i)->IsActive())
+				_data->Ele(i)->AddToF(h, dF); // add results to dF
+		}
+	}
 
 	// 0) Assemble the global stiffness matrix G and the hHU vector
 	_assemb_G_and_hHU(h);                      // G  <- C + h*alpha*K
@@ -803,8 +817,7 @@ inline void Solver::_assemb_G_and_hHU(double h)
 				elem->UVecMap (i, vect_map);
 				elem->UVector (i, V);
 				_has_hHU = true;
-				V        = h*V;
-				_mount_into_hHU (V, vect_map);
+				for (int j=0; j<V.Size(); ++j) _hHU(vect_map[j]) += h*V(j);
 			}
 		}
 	}
@@ -828,13 +841,6 @@ inline void Solver::_assemb_G_and_hHU(double h)
 		if (_G(i,j)!=_G(i,j)) throw new Fatal (_("Solver::_assemb_G_and_hHU: DENSE stiffness matrix has NaNs"));
 	*/
 	#endif
-}
-
-inline void Solver::_mount_into_hHU(LinAlg::Vector<double> const & V, Array<size_t> const & RowsMap)
-{
-	// Assemble local (LocalVector) DOFs into hHU matrix
-	for (int i=0; i<V.Size(); ++i)
-		_hHU(RowsMap[i]) += V(i);
 }
 
 inline void Solver::_mount_into_global(LinAlg::Matrix<double> const & M, Array<size_t> const & RowsMap, Array<size_t> const & ColsMap, Array<bool> const & RowsPre, Array<bool> const & ColsPre)

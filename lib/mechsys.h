@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -61,6 +61,6 @@
 #include "models/equilibs/rodelastic.h"
 #include "models/equilibs/springelastic.h"
 #include "models/equilibs/pyequilib.h"
-#include "models/equilibs/toto.h"
+//#include "models/equilibs/toto.h"
 
 #endif // MECHSYS_MECHSYS_H

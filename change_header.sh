@@ -24,7 +24,7 @@ sed -i '1i\
 /************************************************************************\
  * MechSys - Open Library for Mechanical Systems                        *\
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *\
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *\
+ * Copyright (C) 2009 Sergio Galindo                                    *\
  *                                                                      *\
  * This program is free software: you can redistribute it and/or modify *\
  * it under the terms of the GNU General Public License as published by *\
@@ -47,7 +47,7 @@ sed -i '1i\
 ########################################################################\
 # MechSys - Open Library for Mechanical Systems                        #\
 # Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   #\
-# Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   #\
+# Copyright (C) 2009 Sergio Galindo                                    #\
 #                                                                      #\
 # This program is free software: you can redistribute it and/or modify #\
 # it under the terms of the GNU General Public License as published by #\

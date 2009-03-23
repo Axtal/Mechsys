@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -106,6 +106,8 @@ public:
 	size_t      NCMats       () const { return 1; }
 	void        CMatrix      (size_t Idx, Mat_t & M) const;
 	void        CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
+	bool        HasAddToF    () const { return _mdl->HasAddToF(); }
+	void        AddToF       (double h, Vec_t & Fext) const;
 
 	// Method used when filling ProbElemFactory
 	void __SetGeomIdx (int Idx) { _gi = Idx; }
@@ -339,13 +341,22 @@ inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	// Update model and calculate internal force vector;
 	Mat_t dN,J,B;
 	Vec_t deps,dsig;
+	Vec_t dM;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
 		deps = B*du;
-		_mdl->StateUpdate (deps, _sig[i], _eps[i], _ivs[i], dsig);
+		if (_mdl->HasAddToF())
+		{
+			_mdl->CalcDeltaM  (h, _sig[i], _eps[i], _ivs[i], dM);
+			_mdl->StateUpdate (deps, dM, _sig[i], _eps[i], _ivs[i], dsig);
+		}
+		else
+		{
+			_mdl->StateUpdate (deps, _sig[i], _eps[i], _ivs[i], dsig);
+		}
 		df += trn(B)*dsig*det(J)*_ge->IPs[i].w;
 	}
 
@@ -460,6 +471,33 @@ inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t>
 	}
 	CMap    = RMap;
 	CUPresc = RUPresc;
+}
+
+inline void EquilibElem::AddToF(double h, Vec_t & dFext) const
+{
+	if (_mdl->HasAddToF())
+	{
+		// Allocate (local/element) force vector
+		Vec_t df(_nd*_ge->NNodes); // Delta force of this element
+		df.SetValues (0.0);
+
+		// Update model and calculate internal force vector
+		Mat_t dN,J,B;
+		Vec_t dM;
+		for (size_t i=0; i<_ge->NIPs; ++i)
+		{
+			_ge->Derivs      (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+			_ge->Jacobian    (dN, J);
+			_B_mat           (dN, J, B);
+			_mdl->CalcDeltaM (h, _sig[i], _eps[i], _ivs[i], dM);
+			df += trn(B)*dM*det(J)*_ge->IPs[i].w;
+		}
+
+		// Sum up contribution to external forces vector
+		for (size_t i=0; i<_ge->NNodes; ++i)
+		for (int    j=0; j<_nd;         ++j)
+			dFext(_ge->Conn[i]->DOFVar(UD[j]).EqID) += df(i*_nd+j);
+	}
 }
 
 

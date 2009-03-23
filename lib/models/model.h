@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -55,11 +55,15 @@ public:
 	void   SetGeomIdx (int GeomIdx);            ///< Set geometry index. MUST be called before Initialize
 	void   Initialize (int Tag, Str_t StrPrms); ///< Initialize this model
 	double Prm        (Str_t Key) const;        ///< Value of a parameter
+	bool   HasAddToF  () const { return false; } ///< Has terms to be added to Fext vector?
 
 	// Methods to be derived
 	virtual int         NPrms () const =0; ///< Number of parameters
 	virtual PrmName_t * Prms  () const =0; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
 	virtual Str_t       Name  () const =0; ///< Model name
+
+	// Viscosity
+	virtual void CalcDeltaM (double h, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Vec_t & dM) {}
 
 	// Methods that may be derived
 	virtual void SetPyName (Str_t ScriptFileName) {} ///< Set script file name for models that can be extended using Python
@@ -86,6 +90,14 @@ public:
 
 	/* State update. */
 	virtual int StateUpdate (Vec_t   const & DEps,
+	                         Tensor2       & Sig,
+	                         Tensor2       & Eps,
+	                         IntVals       & Ivs,
+	                         Vec_t         & DSig) { return -1; }
+
+	/* State update. */
+	virtual int StateUpdate (Vec_t   const & DEps,
+	                         Vec_t   const & DM,
 	                         Tensor2       & Sig,
 	                         Tensor2       & Eps,
 	                         IntVals       & Ivs,

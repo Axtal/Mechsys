@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -42,6 +42,8 @@ typedef char const            * Str_t;
 typedef std::map<String,double> Prop_t;       ///< Properties type
 typedef const char              ProName_t[8]; ///< Properties names. Ex: "gam", "s", "cq", ...
 
+typedef double(*Fun_t)(double);
+
 class Element
 {
 public:
@@ -62,6 +64,7 @@ public:
 	                  Model              * Mdl,                  ///< Model. Ex: AllocModel("LinElastic")
 	                  Str_t                Inis,                 ///< Initial values. Ex: "ZERO" or "Sx=0.0 Sy=0.0"
 	                  Prop_t             * Prp,                  ///< Properties. Ex: "gam=20"
+	                  Fun_t                SrcFun,               ///< Source function
 	                  bool                 IsAct);               ///< Is the element active ?
 	long  ID         () const           { return _id;          } ///< Return the ID of this element
 	int   Tag        () const           { return _tag;         } ///< Return the Tag of this element
@@ -127,6 +130,8 @@ public:
 	                        Array<bool> & RUPresc,
 	                        Array<bool> & CUPresc) const                { CHECKGEPE("HMatMap"  ) _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc); } ///< HMatrix map to convert local DOFs into global equation positions
 	void         UVecMap   (size_t Idx, Array<size_t> & RMap) const     { CHECKGEPE("UVecMap"  ) _pe->UVecMap(Idx,RMap);                      } ///< UVector map to convert local DOFs into global equation positions
+	bool         HasAddToF () const                                     { CHECKGEPE("HasAddToF") return _pe->HasAddToF();                     } ///< Has component to add to external force vector?
+	void         AddToF    (double h, Vec_t & Fext) const               { CHECKGEPE("AddToF")    _pe->AddToF(h,Fext);                         } ///< Add extra component to external force vector
 
 #ifdef USE_BOOST_PYTHON
 // {
@@ -178,11 +183,11 @@ inline int Element::InitCtes(int nDim, Str_t GeomT, Str_t ProbT)
 	return _pe->InitCtes (nDim);
 }
 
-inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, bool IsAct)
+inline void Element::Initialize(size_t i, int Tag, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, Fun_t SrcFun, bool IsAct)
 {
 	_id  = i;
 	_tag = Tag;
-	_pe->Initialize (_ge, _id, CONN, Mdl, Inis, Prp, IsAct);
+	_pe->Initialize (_ge, _id, CONN, Mdl, Inis, Prp, SrcFun, IsAct);
 }
 
 inline bool Element::Check(String & Msg) const

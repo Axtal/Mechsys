@@ -1,7 +1,7 @@
 /************************************************************************
  * MechSys - Open Library for Mechanical Systems                        *
  * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
- * Copyright (C) 2009 Sergio Galindo, Fernando Alonso                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
  *                                                                      *
  * This program is free software: you can redistribute it and/or modify *
  * it under the terms of the GNU General Public License as published by *
@@ -50,13 +50,22 @@ typedef std::map<String,double> Prop_t; ///< Properties type
 typedef char const            * Str_t;
 
 typedef double(*Fun_t)(double);
+double __null__(double u) { return 0.0; }
+#define FNULL &FEM::__null__
 
 // Tuples used when initializing nodes and elements by groups
-typedef Array< boost::tuple<double,double,double, Str_t,double> >           NBrys_T; // Node: x,y,z, key, val
-typedef Array< boost::tuple<                 int, Str_t,double> >           EBrys_T; // Edge:   tag, key, val
-typedef Array< boost::tuple<                 int, Str_t,double> >           FBrys_T; // Face:   tag, key, val
-//typedef Array< boost::tuple<int,Str_t,Str_t,Str_t,Str_t,Str_t,Str_t,bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
-typedef Array< boost::tuple<int,Str_t,Str_t,Str_t,Str_t,Str_t, Fun_t ,bool> > EAtts_T; // Elem: tag, geom_t, prob_t, model, prms, inis, props, active
+typedef Array< boost::tuple<double,double,double, Str_t,double> > NBrys_T; // Node: x,y,z, key, val
+typedef Array< boost::tuple<                 int, Str_t,double> > EBrys_T; // Edge:   tag, key, val
+typedef Array< boost::tuple<                 int, Str_t,double> > FBrys_T; // Face:   tag, key, val
+typedef Array< boost::tuple<int,             // 0: tag
+                            Str_t,           // 1: geom_t
+                            Str_t,           // 2: prob_t
+                            Str_t,           // 3: model name
+                            Str_t,           // 4: prms
+                            Str_t,           // 5: inis
+                            Str_t,           // 6: props
+                            Fun_t,           // 7: source function pointer
+                            bool> > EAtts_T; // 8: active ?
 
 /* FEM Data. */
 class Data
@@ -90,7 +99,8 @@ public:
 	                           Str_t                MdlName,                           ///< Constitutive model. Ex: "LinElastic"
 	                           Str_t                Prms,                              ///< Parameters. Ex: "E=100 nu=0.3"
 	                           Str_t                Inis,                              ///< Initial state. Ex: Sx=0.0
-	                           Fun_t                Props,                             ///< Element properties. Ex: gam=20
+	                           Str_t                Props,                             ///< Element properties. Ex: gam=20
+	                           Fun_t                SourceFun,                         ///< Source function pointer
 	                           bool                 IsAct);                            ///< Active/Inactive?
 
 	// Push new Node and Element
@@ -102,7 +112,8 @@ public:
 	                    Str_t               MdlName,   ///< Constitutive model name
 	                    Str_t               Prms,      ///< Parameters. Ex.: E=100 nu=0.3
 	                    Str_t               Inis,      ///< Initial values. Ex.: ZERO, Sx=0
-	                    Fun_t               Props,     ///< Properties. Ex.: gam=20
+	                    Str_t               Props,     ///< Properties. Ex.: gam=20
+	                    Fun_t               SourceFun, ///< Source function pointer
 	                    bool                IsAct);    ///< Is active?
 
 	// Specific methods
@@ -156,8 +167,6 @@ public:
 	// Access methods
 	Node    const & PyNod          (size_t i)                     { return (*Nod(i));       }
 	Element const & PyEle          (size_t i)                     { return (*Ele(i));       }
-	//size_t          PyGetNode1     (double X, double Y)           { return GetNode  (X,Y);  }
-	//size_t          PyGetNode2     (double X, double Y, double Z) { return GetNode  (X,Y,Z);}
 	void            PyElemsWithTag (int Tag, BPy::list & Elems);
 	void            PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
 	void            PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
@@ -204,13 +213,6 @@ inline Data::~Data()
 
 inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAtts)
 {
-	/* Example:
-	
-		// Elements attributes
-		FEM::EAtts_T eatts;
-		eatts.Push (make_tuple(-1, "Quad4", "PStrain", "LinElastic", "E=207 nu=0.3", "Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0", "gam=20")); // tag, type, model, prms, inis, props
-	*/
-
 	// 3D mesh?
 	bool is3d = M->Is3D();
 
@@ -302,7 +304,8 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 				                 (*ElemsAtts)[j].get<4>(),  // Prms
 				                 (*ElemsAtts)[j].get<5>(),  // Inis
 				                 (*ElemsAtts)[j].get<6>(),  // Props
-				                 (*ElemsAtts)[j].get<7>()); // IsAct
+				                 (*ElemsAtts)[j].get<7>(),  // SourceFun
+				                 (*ElemsAtts)[j].get<8>()); // IsAct
 
 				// Next element
 				break;
@@ -334,7 +337,8 @@ inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAt
 		                                     (*ElemsAtts)[eatt_id].get<4>(),  // Prms
 		                                     (*ElemsAtts)[eatt_id].get<5>(),  // Inis
 		                                     (*ElemsAtts)[eatt_id].get<6>(),  // Props
-		                                     (*ElemsAtts)[eatt_id].get<7>()); // IsAct
+		                                     (*ElemsAtts)[eatt_id].get<7>(),  // SourceFun
+		                                     (*ElemsAtts)[eatt_id].get<8>()); // IsAct
 
 		// Next element
 		ie++;
@@ -457,7 +461,7 @@ inline Node * Data::SetNode(size_t i, double X, double Y, double Z, int Tag)
 	return _nodes[i];
 }
 
-inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Fun_t Props, bool IsAct)
+inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Str_t Props, Fun_t SourceFun, bool IsAct)
 {
 	// New element
 	if (_elems[i]==NULL) _elems[i] = new Element;
@@ -481,26 +485,26 @@ inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int T
 		// Parse properties
 		Prop_t * prp = new Prop_t;
 		_props.Push (prp);
-		//LineParser lp(Props);
-		//lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*prp), "properties", "Element tag", Tag);
+		LineParser lp(Props);
+		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*prp), "properties", "Element tag", Tag);
 	}
 	_ewtags[_etidx[Tag]].Push (_elems[i]);
 
 	// Initialize
 	Array<Node*> conn(Conn.Size());
 	for (size_t j=0; j<Conn.Size(); ++j) conn[j] = Nod(Conn[j]);
-	_elems[i]->Initialize (/*ID*/i, Tag, conn, _models[_etidx[Tag]], Inis, _props[_etidx[Tag]], IsAct);
+	_elems[i]->Initialize (/*ID*/i, Tag, conn, _models[_etidx[Tag]], Inis, _props[_etidx[Tag]], SourceFun, IsAct);
 
 	return _elems[i];
 }
 
-inline Element * Data::PushElem(Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Fun_t Props, bool IsAct)
+inline Element * Data::PushElem(Array<long> const & Conn, int Tag, Str_t GeomT, Str_t ProbT, Str_t MdlName, Str_t Prms, Str_t Inis, Str_t Props, Fun_t SourceFun, bool IsAct)
 {
 	// Add new element
 	_elems.Push (new Element);
 
 	// Set element, model, and properties
-	return SetElemAndModel (_elems.Size()-1, Conn, Tag, GeomT, ProbT, MdlName, Prms, Inis, Props, IsAct);
+	return SetElemAndModel (_elems.Size()-1, Conn, Tag, GeomT, ProbT, MdlName, Prms, Inis, Props, SourceFun, IsAct);
 }
 
 inline void Data::ClearDisp()
@@ -615,19 +619,13 @@ std::ostream & operator<< (std::ostream & os, FEM::Data const & G)
 
 inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & ElemsAtts)
 {
-	/* Example:
-	 *           
-	 *           # Elements attributes
-	 *           eatts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=%f nu=%f'%(E,nu), 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]] # tag, type, model, prms, inis, props, active?
-	 */
-
 	// Extract list with elements attributes
 	FEM::EAtts_T eatts;
 	int eatts_size = len(ElemsAtts);
 	if (eatts_size>0) eatts.Resize(eatts_size);
 	for (int i=0; i<eatts_size; ++i)
 	{
-		if (len(ElemsAtts[i])==8)
+		if (len(ElemsAtts[i])==9)
 		{
 			BPy::list lst = BPy::extract<BPy::list>(ElemsAtts[i])();
 			eatts[i] = boost::make_tuple(BPy::extract<int  >(lst[0])(),
@@ -637,9 +635,10 @@ inline void Data::PySetNodesElems(Mesh::Generic const & M, BPy::list const & Ele
 			                             BPy::extract<Str_t>(lst[4])(),
 			                             BPy::extract<Str_t>(lst[5])(),
 			                             BPy::extract<Str_t>(lst[6])(),
-			                             BPy::extract<bool> (lst[7])());
+			                             FNULL,
+			                             BPy::extract<bool> (lst[8])());
 		}
-		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 8 items: tag, geomT, probT, model, prms, inis, props, active?\n\tExample: ElemsAtts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', True]]");
+		else throw new Fatal("PySetNodesElems: Each sublist in ElemsAtts must have 9 items: tag, geomT, probT, model, prms, inis, props, '', active?\n\tExample: ElemsAtts = [[-1, 'Quad4', 'PStrain', 'LinElastic', 'E=207.0 nu=0.3', 'Sx=0.0 Sy=0.0 Sz=0.0 Sxy=0.0', 'gam=20', '', True]]");
 	}
 
 	// Set geometry
@@ -766,7 +765,8 @@ inline void Data::PyAddLinElems(BPy::dict const & Edges, BPy::list const & EAtts
 		          BPy::extract<Str_t>(EAtts[idx_eatt][4])(),  // Prms
 		          BPy::extract<Str_t>(EAtts[idx_eatt][5])(),  // Inis
 		          BPy::extract<Str_t>(EAtts[idx_eatt][6])(),  // Props
-		          BPy::extract<bool> (EAtts[idx_eatt][7])()); // IsAct
+		          FNULL,
+		          BPy::extract<bool> (EAtts[idx_eatt][8])()); // IsAct
 	}
 }
 
