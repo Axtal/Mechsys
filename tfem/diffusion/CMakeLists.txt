@@ -17,25 +17,16 @@
 ########################################################################
 
 SET(TESTS
- alphashape01
- linalg01
- mesh01
- serialize
- tree01)
+  laplace01
+  poisson01
+  poisson02
+  poisson03)
 
 IF(BLITZ_FOUND AND LINALG_FOUND)
 	FOREACH(var ${TESTS})
 		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		ADD_TEST              (${var} ${var})
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
-		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
-	ENDFOREACH(var)
-ENDIF(BLITZ_FOUND AND LINALG_FOUND)
-
-IF(BLITZ_FOUND AND LINALG_FOUND)
-	FOREACH(var "tunnel01")
-		ADD_EXECUTABLE        (${var} "${var}.cpp")
-		TARGET_LINK_LIBRARIES (${var} ${LIBS})
-		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 	ENDFOREACH(var)
 ENDIF(BLITZ_FOUND AND LINALG_FOUND)

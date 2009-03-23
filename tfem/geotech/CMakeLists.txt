@@ -16,21 +16,19 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+SET(TESTS
+  camclay01
+  embank01
+  embank02
+  excav01
+  excav02
+  triaxial)
+
 IF(BLITZ_FOUND AND LINALG_FOUND)
-
-	ADD_EXECUTABLE        (tstatic121 tstatic121.cpp) 
-	ADD_TEST              (tstatic121 tstatic121)
-	TARGET_LINK_LIBRARIES (tstatic121 ${LIBS})
-	SET_TARGET_PROPERTIES (tstatic121 PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
-	ADD_EXECUTABLE        (tstatic122 tstatic122.cpp)
-	ADD_TEST              (tstatic122 tstatic122)
-	TARGET_LINK_LIBRARIES (tstatic122 ${LIBS})
-	SET_TARGET_PROPERTIES (tstatic122 PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
-	ADD_EXECUTABLE        (texam1 texam1.cpp)
-	ADD_TEST              (texam1 texam1)
-	TARGET_LINK_LIBRARIES (texam1 ${LIBS})
-	SET_TARGET_PROPERTIES (texam1 PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
+	FOREACH(var ${TESTS})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		ADD_TEST              (${var} ${var})
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+	ENDFOREACH(var)
 ENDIF(BLITZ_FOUND AND LINALG_FOUND)

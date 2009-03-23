@@ -16,16 +16,15 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+SET(TESTS
+  biot01
+  terz01)
+
 IF(BLITZ_FOUND AND LINALG_FOUND)
-
-	ADD_EXECUTABLE        (tex831   tex831.cpp)
-	ADD_TEST              (tex831   tex831)
-	TARGET_LINK_LIBRARIES (tex831   ${LIBS})
-	SET_TARGET_PROPERTIES (tex831   PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
-	ADD_EXECUTABLE        (tex851   tex851.cpp)
-	ADD_TEST              (tex851   tex851)
-	TARGET_LINK_LIBRARIES (tex851   ${LIBS})
-	SET_TARGET_PROPERTIES (tex851   PROPERTIES COMPILE_FLAGS "${FLAGS}")
-
+	FOREACH(var ${TESTS})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		ADD_TEST              (${var} ${var})
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+	ENDFOREACH(var)
 ENDIF(BLITZ_FOUND AND LINALG_FOUND)
