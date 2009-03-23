@@ -44,22 +44,25 @@ public:
 	static const double   WEIGHTS3D     [27]; ///< Weights for the equilibrium distribution functions (3D)
 	static const LVeloc_T LOCAL_VELOC2D [ 9]; ///< Local velocities (2D)
 	static const LVeloc_T LOCAL_VELOC3D [27]; ///< Local velocities (3D)
+	static const size_t   OPPOSITE2D    [ 9]; ///< Opposite directions
 
 	// Constructor
 	Cell (bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz=1);
 
 	// Set methods
-	void Initialize (double Rho0, Vec3_t const & V0);      ///< V0: Initial velocity, Rho0: Initial density
-	void SetSolid   () { _is_solid = true; }               ///< Set solid cell
-	void SetRhoBC   (double Rho)        { _rho_bc = Rho; } ///< Set density boundary condition
-	void SetVelBC   (Vec3_t const &  V) { _vel_bc = V;   } ///< Set velocity boundary condition
+	void Initialize (double Rho0, Vec3_t const & V0);                   ///< V0: Initial velocity, Rho0: Initial density
+	void SetSolid   (bool IsSolid=true)     { _is_solid = IsSolid; }    ///< Set solid cell
+	void SetSolid   (double Vx, double Vy, double Vz=0.0) { _is_solid = true; _vel_bc=Vx,Vy,Vz; }  ///< Set solid cell
+	void SetRhoBC   (double Rho)            { _rho_bc = Rho; } ///< Set density boundary condition
+	void SetVelBC   (Vec3_t const &  V)     { _vel_bc = V;   } ///< Set velocity boundary condition
 
 	// Access methods
 	bool     IsSolid ()                   const { return _is_solid;  } ///< Is solid or fluid cell?
 	double   RhoBC   ()                   const { return _rho_bc;    } ///< Initial density
 	double   VelBC   (size_t i)           const { return _vel_bc(i); } ///< Component of initial velocity
 	double   W       (size_t k)           const { return _w[k];      } ///< Component of weight
-	double   C       (size_t k, size_t i) const { return _c[k][i];   } ///< Component of local density
+	double   C       (size_t k, size_t i) const { return _c[k][i];   } ///< Component of local velocity
+	size_t   Opp     (size_t k)           const { return OPPOSITE2D[k];      } ///< Calculate the opposite direction
 	size_t   Neigh   (size_t k)           const { return _neigh[k];  } ///< Returns the index of neighbour k
 	bool     Left    () const { return static_cast<bool>(_side[0]);  } ///< Is this cell on the left side of lattice ?
 	bool     Right   () const { return static_cast<bool>(_side[1]);  } ///< Is this cell on the right side of lattice ?
@@ -91,7 +94,7 @@ protected:
 	Vec3_t           _bforce;   ///< Body force (gravity)
 	Array<size_t>    _side;     ///< Which side on the boundary this cell is located
 	Array<size_t>    _neigh;    ///< Indices of neighbour cells
-	Vec3_t           _mix_vel;
+	Vec3_t           _mix_vel;  ///< Mixed velocity for multicomponent analysis
 
 }; // class Cell
 
@@ -217,7 +220,7 @@ const Cell::LVeloc_T Cell::LOCAL_VELOC3D[27] =
 	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
 	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}
 };
-
+const size_t Cell::OPPOSITE2D[ 9] = { 0, 3, 4, 1, 2, 7, 8, 5, 6 };
 
 }; // namespace LBM
 

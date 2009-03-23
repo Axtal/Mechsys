@@ -266,6 +266,30 @@ inline void Mixture::WriteState(size_t TimeStep)
 		}
 	}
 
+	// Mass transfer field
+	for (size_t n=0; n<_n_comp; n++)
+	{
+		oss << "VECTORS Mass_flux_" << n << " float\n";
+		for (size_t i=0; i<_size; ++i)
+		{
+			Vec3_t v; _latts[n]->GetCell(i)->Velocity(v);
+			v *= _latts[n]->GetCell(i)->Density();
+			oss << v(0) << " " << v(1) << " " << v(2) << "\n";
+		}
+	}
+
+	// Total Mass field
+	oss << "VECTORS Total_mass_flux float\n";
+	for (size_t i=0; i<_size; ++i)
+	{
+		Vec3_t v0; _latts[0]->GetCell(i)->Velocity(v0);
+		Vec3_t v1; _latts[1]->GetCell(i)->Velocity(v1);
+		v0 *= _latts[0]->GetCell(i)->Density();
+		v1 *= _latts[1]->GetCell(i)->Density();
+		Vec3_t v; v = v0+v1;
+		oss << v(0) << " " << v(1) << " " << v(2) << "\n";
+	}
+
 	// Write to file and close file
 	of << oss.str();
 	of.close();

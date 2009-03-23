@@ -62,6 +62,7 @@ public:
 	double   TotalMass () const;
 	Cell   * GetCell   (size_t i, size_t j, size_t k=0);
 	Cell   * GetCell   (size_t i) { return _cells[i]; }
+	double   Curl      (size_t i, size_t j);
 
 	// Set constants
 	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set TODO
@@ -196,6 +197,25 @@ inline Cell * Lattice::GetCell(size_t i, size_t j, size_t k)
 	return _cells[i+_nx*j];
 }
 
+inline double Lattice::Curl(size_t i, size_t j)
+{
+	if (GetCell(i,j)->IsSolid()) return 0.0;
+	size_t i1 = (i+1+_nx) % _nx;
+	size_t i3 = (i-1+_nx) % _nx;
+	size_t j2 = (j+1+_ny) % _ny;
+	size_t j4 = (j-1+_ny) % _ny;
+
+	Vec3_t v1; GetCell(i1,j)->Velocity(v1);
+	Vec3_t v3; GetCell(i3,j)->Velocity(v3);
+	Vec3_t v2; GetCell(i,j2)->Velocity(v2);
+	Vec3_t v4; GetCell(i,j4)->Velocity(v4);
+
+	double dvydx = (v1(1)-v3(1))/2.0; // dVy/dx
+	double dvxdy = (v2(0)-v4(0))/2.0; // dVx/dy
+	
+	return dvydx - dvxdy;
+}
+
 inline void Lattice::SetGravity(double Gx, double Gy, double Gz)
 {
 	_gravity = Gx, Gy, Gz;
@@ -297,6 +317,7 @@ inline void Lattice::ApplyBC()
 	for (size_t i=0; i<_cpveloc.Size(); ++i)
 	{
 		LBM::Cell * c = _cpveloc[i];
+		if (c->IsSolid()) continue;
 		if (_is_3d) throw new Fatal("Lattice::ApplyBC: 3D simulation is not implemented yet");
 		if (c->Left()) // Cell is on the left side
 		{
@@ -311,6 +332,7 @@ inline void Lattice::ApplyBC()
 	for (size_t i=0; i<_cpdens.Size(); ++i)
 	{
 		LBM::Cell * c = _cpdens[i];
+		if (c->IsSolid()) continue;
 		if (_is_3d) throw new Fatal("Lattice::ApplyBC: 3D simulation is not implemented yet");
 		if (c->Right()) // Cell is on the right side
 		{
@@ -362,6 +384,20 @@ inline void Lattice::BounceBack()
 			c->F(3) = c->TmpF(1);  c->F(4) = c->TmpF(2);
 			c->F(5) = c->TmpF(7);  c->F(6) = c->TmpF(8);
 			c->F(7) = c->TmpF(5);  c->F(8) = c->TmpF(6);
+                                                       
+			// For surface velocity in solids ( alpha = 6*w*rho/Cs^2 )
+			double   rho = 0.0;
+			for (size_t i=0; i<_nneigh; i++) rho += c->F(i);
+
+			c->F(1) += -(6.0*c->W(3)*rho) * (c->C(3,0)*c->VelBC(0) + c->C(3,1)*c->VelBC(1));
+			c->F(2) += -(6.0*c->W(4)*rho) * (c->C(4,0)*c->VelBC(0) + c->C(4,1)*c->VelBC(1));
+			c->F(3) += -(6.0*c->W(1)*rho) * (c->C(1,0)*c->VelBC(0) + c->C(1,1)*c->VelBC(1));
+			c->F(4) += -(6.0*c->W(2)*rho) * (c->C(2,0)*c->VelBC(0) + c->C(2,1)*c->VelBC(1));
+			c->F(5) += -(6.0*c->W(7)*rho) * (c->C(7,0)*c->VelBC(0) + c->C(7,1)*c->VelBC(1));
+			c->F(6) += -(6.0*c->W(8)*rho) * (c->C(8,0)*c->VelBC(0) + c->C(8,1)*c->VelBC(1));
+			c->F(7) += -(6.0*c->W(5)*rho) * (c->C(5,0)*c->VelBC(0) + c->C(5,1)*c->VelBC(1));
+			c->F(8) += -(6.0*c->W(6)*rho) * (c->C(6,0)*c->VelBC(0) + c->C(6,1)*c->VelBC(1));
+
 		}
 	}
 }
@@ -424,6 +460,12 @@ inline void Lattice::WriteState(size_t TimeStep)
 	oss << "LOOKUP_TABLE default\n";
 	for (size_t i=0; i<_size; ++i)
 		oss << _cells[i]->Density() << "\n";
+
+	// Curl field
+	oss << "SCALARS Curl float 1\n";
+	oss << "LOOKUP_TABLE default\n";
+	for (size_t i=0; i<_size; ++i)
+		oss << Curl(i % _nx, i / _nx) << "\n";
 
 	// Velocity field
 	oss << "VECTORS Velocity float\n";

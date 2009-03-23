@@ -36,17 +36,17 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("bubble", // FileKey
 	               false,    // Is3D
-	               100,      // Nx
-	               100);     // Ny
+	               75,      // Nx
+	               75);     // Ny
 
 	// Set constants
-	l.SetTau(0.9)->SetG(-6.0);
+	l.SetTau(1.0)->SetG(-6.0);
 
 	// Initialize cells
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
-		double rho0 = 10 +(1.0*rand())/RAND_MAX;
+		double rho0 = 1.1 +(.02*rand())/RAND_MAX;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		l.GetCell(i,j)->Initialize (rho0, v0);
 	}
