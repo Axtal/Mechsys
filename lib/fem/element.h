@@ -130,6 +130,8 @@ public:
 	                        Array<bool> & RUPresc,
 	                        Array<bool> & CUPresc) const                { CHECKGEPE("HMatMap"  ) _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc); } ///< HMatrix map to convert local DOFs into global equation positions
 	void         UVecMap   (size_t Idx, Array<size_t> & RMap) const     { CHECKGEPE("UVecMap"  ) _pe->UVecMap(Idx,RMap);                      } ///< UVector map to convert local DOFs into global equation positions
+	bool         HasAddToF () const                                     { CHECKGEPE("HasAddToF") return _pe->HasAddToF();                     } ///< Has component to add to external force vector?
+	void         AddToF    (double h, Vec_t & Fext) const               { CHECKGEPE("AddToF")    _pe->AddToF(h,Fext);                         } ///< Add extra component to external force vector
 
 #ifdef USE_BOOST_PYTHON
 // {

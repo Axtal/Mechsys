@@ -29,6 +29,7 @@
 #include "fem/elems/hex20.h"
 #include "fem/equilibelem.h"
 #include "models/equilibs/linelastic.h"
+#include "models/equilibs/viscoelastic.h"
 #include "models/equilibs/pyequilib.h"
 #include "models/equilibs/camclay.h"
 //#include "models/equilibs/toto.h"
@@ -46,7 +47,7 @@ int main(int argc, char **argv) try
 	// Input
 	int  mdl   = 1;     // Model
 	bool is_o2 = false; // use high order elements?
-	cout << "Input: " << argv[0] << "  model(1:LinElastic, 2:CamClay, 3:PyEquilib, 4:Toto)  is_o2\n";
+	cout << "Input: " << argv[0] << "  model(1:LinElastic, 2:CamClay, 3:PyEquilib, 4:Toto, 5:ViscoElastic)  is_o2\n";
 	if (argc>=2) mdl   =  atoi(argv[1]);
 	if (argc>=3) is_o2 = (atoi(argv[2])>0 ? true : false);
 
@@ -163,7 +164,14 @@ int main(int argc, char **argv) try
 			eatts = T(-1, geom.CStr(), "Equilib", "Toto", prms.CStr(), stat.CStr(), "gam=20", FNULL, true);
 			break;
 		}
-		default: throw new Fatal("main: Model # %d is invalid. Please use 1:LinElastic, 2:CamClay, 3:PyEquilib, 4:Toto",mdl);
+		case 5:
+		{
+			cout << "[1;34m ########################################## ViscoElastic ########################################## [0m" << endl;
+			prms.Printf("E=%f nu=%f",E,nu);
+			eatts = T(-1, geom.CStr(), "Equilib", "ViscoElastic", prms.CStr(), stat.CStr(), "gam=20", FNULL, true);
+			break;
+		}
+		default: throw new Fatal("main: Model # %d is invalid. Please use 1:LinElastic, 2:CamClay, 3:PyEquilib, 4:Toto, 5:ViscoElastic",mdl);
 	}
 
 	// Set geometry: nodes and elements
@@ -172,7 +180,7 @@ int main(int argc, char **argv) try
 	// Output
 	Array<size_t> eles;
 	eles.Push      (iele);
-	dat.SetOutEles (eles, "ttriax");
+	dat.SetOutEles (eles, "triax");
 	dat.OutEles    (true); // true => only caption
 	dat.OutEles    ();     // initial state
 
@@ -192,7 +200,7 @@ int main(int argc, char **argv) try
 			fbrys = T(-1, "ux", 0.0), T(-3, "uy", 0.0), T(-5, "uz", 0.0),
 			        T(-2, "fx", dfx), T(-4, "fy", dfy), T(-6, "fz", dfz);
 			dat.SetBrys (&mesh, NULL, NULL, &fbrys);
-			sol.SolveWithInfo (sndiv,0.0,k,"");
+			sol.SolveWithInfo (sndiv,10.0,k,"");
 			// results
 			dat.OutEles();
 			// update state

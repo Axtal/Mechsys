@@ -92,6 +92,8 @@ public:
 	                                  Array<bool> & RUPresc,
 	                                  Array<bool> & CUPresc) const                {}
 	virtual void        UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
+	virtual bool        HasAddToF    () const                      { return false; }
+	virtual void        AddToF       (double h, Vec_t & Fext) const               {}
 
 	/* Initialize the element. */
 	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, Fun_t SrcFun, bool IsAct); ///< Initialize the element

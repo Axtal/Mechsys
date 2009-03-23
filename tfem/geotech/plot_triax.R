@@ -2,7 +2,7 @@
 
 doplot <- function(iele=0)
 {
-	c  <- read.table(paste("ttriax_ele",iele,".cal",sep=""),header=T)
+	c  <- read.table(paste("triax_ele",iele,".cal",sep=""),header=T)
 	d  <- read.table("~/mechsys_cvs/data/FCH/FCH.TTP.01.dat",header=T)
 	op <- par(mar=c(3.5,3.5,0.5,0.5),mfcol=c(2,2))
 
