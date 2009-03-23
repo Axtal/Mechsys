@@ -23,6 +23,11 @@ IF(BLITZ_FOUND AND LINALG_FOUND)
 		SET_TARGET_PROPERTIES (ttunnel   PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 	ENDIF(FLTK_FOUND)
 
+	ADD_EXECUTABLE        (tserialize   tserialize.cpp)
+	ADD_TEST              (tserialize   tserialize)
+	TARGET_LINK_LIBRARIES (tserialize   ${LIBS} boost_python boost_serialization)
+	SET_TARGET_PROPERTIES (tserialize   PROPERTIES COMPILE_FLAGS "${FLAGS}")
+
 	ADD_EXECUTABLE        (tmesh01   tmesh01.cpp)
 	ADD_TEST              (tmesh01   tmesh01)
 	TARGET_LINK_LIBRARIES (tmesh01   ${LIBS} boost_python)
