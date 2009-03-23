@@ -41,6 +41,9 @@ tlbm/drop
 tlbm/bubble
 tlbm/capi
 tlbm/gravity
+tlbm/ball
+tlbm/magnus
+tlbm/multicomp
 
 syntax: glob
 CTestTestfile.cmake
