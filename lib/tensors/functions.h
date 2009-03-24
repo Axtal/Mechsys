@@ -42,39 +42,6 @@ namespace Tensors
 
 inline double Tr(Tensor2 const & A) { return A(0)+A(1)+A(2); }
 
-inline double Val(Tensor2 const & Sig, Tensor2 const & Eps, char const * Name)
-{
-	     if (strcmp(Name,"Sx" )==0)                          return Sig(0);
-	else if (strcmp(Name,"Sy" )==0)                          return Sig(1);
-	else if (strcmp(Name,"Sz" )==0)                          return Sig(2);
-	else if (strcmp(Name,"Sxy")==0 || strcmp(Name,"Syx")==0) return Sig(3)/SQ2;
-	else if (strcmp(Name,"Syz")==0 || strcmp(Name,"Szy")==0) return Sig(4)/SQ2;
-	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return Sig(5)/SQ2;
-	else if (strcmp(Name,"p"  )==0)                          return (Sig(0)+Sig(1)+Sig(2))/3.0;
-	else if (strcmp(Name,"q"  )==0)                          return sqrt(((Sig(0)-Sig(1))*(Sig(0)-Sig(1)) + (Sig(1)-Sig(2))*(Sig(1)-Sig(2)) + (Sig(2)-Sig(0))*(Sig(2)-Sig(0)) + 3.0*(Sig(3)*Sig(3) + Sig(4)*Sig(4) + Sig(5)*Sig(5)))/2.0);
-	else if (strcmp(Name,"Ex" )==0)                          return Eps(0);
-	else if (strcmp(Name,"Ey" )==0)                          return Eps(1);
-	else if (strcmp(Name,"Ez" )==0)                          return Eps(2);
-	else if (strcmp(Name,"Exy")==0 || strcmp(Name,"Eyx")==0) return Eps(3)/SQ2;
-	else if (strcmp(Name,"Eyz")==0 || strcmp(Name,"Ezy")==0) return Eps(4)/SQ2;
-	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return Eps(5)/SQ2;
-	else if (strcmp(Name,"Ev" )==0)                          return Eps(0)+Eps(1)+Eps(2); 
-	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((Eps(0)-Eps(1))*(Eps(0)-Eps(1)) + (Eps(1)-Eps(2))*(Eps(1)-Eps(2)) + (Eps(2)-Eps(0))*(Eps(2)-Eps(0)) + 3.0*(Eps(3)*Eps(3) + Eps(4)*Eps(4) + Eps(5)*Eps(5))))/3.0;
-	else throw new Fatal("Tensors::Val: Name==%s is invalid",Name);
-}
-
-inline void SetVal(char const * Name, double Val, Tensor2 & Sig, bool WithError=true)
-{
-	     if (strcmp(Name,"ZERO")==0)                          return;
-	else if (strcmp(Name,"Sx"  )==0)                          Sig(0) = Val;
-	else if (strcmp(Name,"Sy"  )==0)                          Sig(1) = Val;
-	else if (strcmp(Name,"Sz"  )==0)                          Sig(2) = Val;
-	else if (strcmp(Name,"Sxy" )==0 || strcmp(Name,"Syx")==0) Sig(3) = Val*SQ2;
-	else if (strcmp(Name,"Syz" )==0 || strcmp(Name,"Szy")==0) Sig(4) = Val*SQ2;
-	else if (strcmp(Name,"Szx" )==0 || strcmp(Name,"Sxz")==0) Sig(5) = Val*SQ2;
-	else if (WithError) throw new Fatal("Tensors::SetVal: Name==%s is invalid",Name);
-}
-
 /** Tensor multiplication  \f$ \TeSe{R} \gets \TeSe{S}\bullet\TeSe{T} \f$.
  * \em IMPORTANT
  *

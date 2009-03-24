@@ -46,7 +46,7 @@ private:
 
 	// Private methods
 	void _initialize ();
-	void _cond       (Vec3_t const & DGra, Vec3_t const & Vel, Vec3_t const & Gra, IntVals const & Ivs,  Mat3_t & D, Array<Vec3_t> & B) const;
+	void _cond       (Vec3_t const & Vel, Vec3_t const & Gra, IntVals const & Ivs, Vec3_t const & DGra, Mat3_t & D, Array<Vec3_t> & B) const { D = _K; }
 
 }; // class LinDiffusion
 
@@ -68,11 +68,6 @@ inline void LinDiffusion::_initialize()
 	_K =   k, 0.0, 0.0,
 	     0.0,   k, 0.0,
 	     0.0, 0.0,   k;
-}
-
-inline void LinDiffusion::_cond(Vec3_t const & DGra, Vec3_t const & Vel, Vec3_t const & Gra, IntVals const & Ivs,  Mat3_t & D, Array<Vec3_t> & B) const
-{
-	D = _K;
 }
 
 

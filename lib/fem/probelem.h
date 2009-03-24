@@ -25,11 +25,14 @@
 #include "fem/geomelem.h"
 #include "models/model.h"
 #include "util/string.h"
+#include "util/util.h"
 #include "util/lineparser.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
 #include "linalg/laexpr.h"
+
+using Util::SQ2;
 
 namespace FEM
 {
@@ -67,12 +70,13 @@ public:
 	virtual double      Val          (          Str_t Key) const                 =0;
 	virtual void        EdgeBry      (Str_t Key, double Val, int iEdge);
 	virtual void        EdgeBry      (Str_t Key, double V0, double V1, int iEdge) {}
-	virtual void        Update       (double h, Vec_t const & dU, Vec_t & dFint) =0;
+	virtual void        Update       (double t, double Dt, Vec_t const & dU, Vec_t & dFint) =0;
 	virtual void        Backup       ()                                          =0;
 	virtual void        Restore      ()                                          =0;
 	virtual void        OutInfo      (std::ostream & os) const                   =0;
 	virtual bool        HasExtra     () const                      { return false; }
-	virtual void        OutState     (std::ostream & os, bool OnlyCaption) const  {}
+	virtual void        OutState     (double Time, 
+	                                  std::ostream & os, bool OnlyCaption) const  {}
 	virtual void        OutExtra     (Mat_t & Coords, Vec_t & Norm,
 	                                  Mat_t & Vals, Array<String> & Lbls) const   {}
 	virtual size_t      NCMats       () const                          { return 0; }
@@ -92,8 +96,8 @@ public:
 	                                  Array<bool> & RUPresc,
 	                                  Array<bool> & CUPresc) const                {}
 	virtual void        UVecMap      (size_t Idx, Array<size_t> & RMap) const     {}
-	virtual bool        HasAddToF    () const                      { return false; }
-	virtual void        AddToF       (double h, Vec_t & Fext) const               {}
+	virtual bool        HasDFs       () const                      { return false; }
+	virtual void        AddToDFext   (double t, double Dt, Vec_t & DFext) const   {}
 
 	/* Initialize the element. */
 	void Initialize (GeomElem * GE, int ID, Array<Node*> const & CONN, Model * Mdl, Str_t Inis, Prop_t * Prp, Fun_t SrcFun, bool IsAct); ///< Initialize the element

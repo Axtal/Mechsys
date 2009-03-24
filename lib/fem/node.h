@@ -86,6 +86,7 @@ public:
 	void   RemoveSharedBy (int ElementID);                                                     ///< Remove an element which shares this node
 	bool   HasVar         (char const * Name) const { return (_find_var(Name)<0?false:true); } ///< Check if this node has a variable, such as ux, fx, etc., named Name
 	void   ClearBryValues ();                                                                  ///< Clear only boundary information, but does NOT change (calculated) EssentialVal and NaturalVal (U and F values)
+	void   OutState       (double Time, std::ostream & os, bool OnlyCaption) const;            ///< Output node state
 
 	// DOFs access methods
 	DOF       & DOFVar (char const * Name);                       ///< Access a DOF structure by name (read/write)
@@ -207,6 +208,36 @@ inline void Node::ClearBryValues()
 		_dofs[i].NaturalBry   = 0.0;
 		_dofs[i].IsEssenPresc = false;
 		_dofs[i].EqID         = -1;
+	}
+}
+
+inline void Node::OutState(double Time, std::ostream & os, bool OnlyCaption) const
+{
+	if (OnlyCaption)
+	{
+		// Time
+		os << Util::_8s<<"time";
+
+		// Essential names
+		for (size_t i=0; i<_dofs.Size(); ++i) os << Util::_8s<< _dofs[i].EssentialBryName;
+
+		// Natural names
+		for (size_t i=0; i<_dofs.Size(); ++i) os << Util::_8s<< _dofs[i].NaturalBryName;
+
+		os << std::endl;
+	}
+	else
+	{
+		// Time
+		os << Util::_8s<<Time;
+
+		// Essential values
+		for (size_t i=0; i<_dofs.Size(); ++i) os << Util::_8s<< _dofs[i].EssentialVal;
+
+		// Natural values
+		for (size_t i=0; i<_dofs.Size(); ++i) os << Util::_8s<< _dofs[i].NaturalVal;
+
+		os << std::endl;
 	}
 }
 

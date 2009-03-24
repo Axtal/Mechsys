@@ -62,8 +62,6 @@ namespace FEM
 class EquilibElem : public ProbElem
 {
 public:
-	// Typedefs
-	typedef Array<double>           IntVals; ///< Internal values (specific volume, yield surface size, etc.)
     typedef std::map<String,double> Ini_t;   ///< Initial values. Ex.: Sx=0.0
 
 	//{ Constants
@@ -83,7 +81,7 @@ public:
 	//}
 
 	// Constructor
-	EquilibElem () : _first(true) {}
+	EquilibElem () {}
 
 	// Destructor
 	virtual ~EquilibElem () {}
@@ -98,28 +96,24 @@ public:
 	void        CalcDeps     () const;
 	double      Val          (int iNod, Str_t Key) const;
 	double      Val          (          Str_t Key) const;
-	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        Update       (double t, double Dt, Vec_t const & dU, Vec_t & dFint);
 	void        Backup       ();
 	void        Restore      ();
 	void        OutInfo      (std::ostream & os) const;
-	void        OutState     (std::ostream & os, bool OnlyCaption=false) const;
+	void        OutState     (double Time, std::ostream & os, bool OnlyCaption=false) const;
 	size_t      NCMats       () const { return 1; }
 	void        CMatrix      (size_t Idx, Mat_t & M) const;
 	void        CMatMap      (size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const;
-	bool        HasAddToF    () const { return _mdl->HasAddToF(); }
-	void        AddToF       (double h, Vec_t & Fext) const;
+	bool        HasDFs       () const { return _mdl->HasDSigStar(); }
+	void        AddToDFext   (double t, double Dt, Vec_t & DFext) const;
 
 	// Method used when filling ProbElemFactory
 	void __SetGeomIdx (int Idx) { _gi = Idx; }
 
 protected:
 	// Data at each Integration Point (IP)
-	Array<Tensor2> _sig;      ///< Stress (or axial force for linear elements)
-	Array<Tensor2> _eps;      ///< Strain
-	Array<IntVals> _ivs;      ///< Internal values
-	Array<Tensor2> _sig_bkp;  ///< Backup stress
-	Array<Tensor2> _eps_bkp;  ///< Backup strain
-	Array<IntVals> _ivs_bkp;  ///< Backup internal values
+	Array<MechState> _state;
+	Array<MechState> _state_bkp;
 
 	// Private methods that MAY be derived
 	virtual void _initialize (Str_t Inis); ///< Initialize this element
@@ -129,10 +123,10 @@ protected:
 	void _B_mat              (Mat_t const & dN, Mat_t const & J, Mat_t & B) const;      ///< Calculate B matrix
 	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn); ///< Distribute values from face/edges to nodes
 
-	mutable bool _first; ///< First D matrix?
-
 private:
-	void _init_internal_state (); ///< Initialize internal state
+	void   _init_internal_state (); ///< Initialize internal state
+	double _get_val (Str_t Name, Tensor2 const & Sig, Tensor2 const & Eps) const;
+	void   _set_val (Str_t Name, double Val, Tensor2 & Sig, bool WithError) const;
 
 }; // class EquilibElem
 
@@ -236,8 +230,8 @@ inline void EquilibElem::ClearDisp()
 	// Clear strains
 	for (size_t i=0; i<_ge->NIPs; i++)
 	{
-		_eps    [i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-		_eps_bkp[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_state    [i].Eps = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_state_bkp[i].Eps = 0.0,0.0,0.0, 0.0,0.0,0.0;
 	}
 }
 
@@ -283,18 +277,6 @@ inline void EquilibElem::SetActive(bool Activate, int ID)
 inline void EquilibElem::CalcDeps() const
 {
 	if (IsActive==false) throw new Fatal("EquilibElem::CalcDepVars: This element is inactive");
-	/*
-	for (size_t i=0; i<_ge->NIPs; i++)
-	{
-		// Calculate principal values
-		Tensors::Eigenvals (_sig[i], _sigp[i]);
-		Tensors::Eigenvals (_eps[i], _epsp[i]);
-
-		// Sort (increasing)
-		Tensors::Sort (_sigp[i]); // S1,S2,S3 = _sigp[0], _sigp[1], _sigp[2]
-		Tensors::Sort (_epsp[i]); // E1,E2,E3 = _epsp[0], _epsp[1], _epsp[2]
-	}
-	*/
 }
 
 inline double EquilibElem::Val(int iNod, Str_t Name) const
@@ -310,7 +292,7 @@ inline double EquilibElem::Val(int iNod, Str_t Name) const
 	Vec_t nodal_vals (_ge->NNodes);
 
 	// Get integration point values
-	for (size_t i=0; i<_ge->NIPs; i++) ip_vals(i) = Tensors::Val (_sig[i], _eps[i], Name);
+	for (size_t i=0; i<_ge->NIPs; i++) ip_vals(i) = _get_val (Name, _state[i].Sig, _state[i].Eps);
 
 	// Extrapolate
 	_ge->Extrap (ip_vals, nodal_vals);
@@ -320,11 +302,11 @@ inline double EquilibElem::Val(int iNod, Str_t Name) const
 inline double EquilibElem::Val(Str_t Name) const
 {
 	double ave = 0.0;
-	for (size_t i=0; i<_ge->NIPs; i++) ave += Tensors::Val (_sig[i], _eps[i], Name);
+	for (size_t i=0; i<_ge->NIPs; i++) ave += _get_val (Name, _state[i].Sig, _state[i].Eps);
 	return ave/_ge->NIPs;
 }
 
-inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
+inline void EquilibElem::Update(double t, double Dt, Vec_t const & dU, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
 	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element
@@ -341,22 +323,13 @@ inline void EquilibElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	// Update model and calculate internal force vector;
 	Mat_t dN,J,B;
 	Vec_t deps,dsig;
-	Vec_t dM;
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
 		deps = B*du;
-		if (_mdl->HasAddToF())
-		{
-			_mdl->CalcDeltaM  (h, _sig[i], _eps[i], _ivs[i], dM);
-			_mdl->StateUpdate (deps, dM, _sig[i], _eps[i], _ivs[i], dsig);
-		}
-		else
-		{
-			_mdl->StateUpdate (deps, _sig[i], _eps[i], _ivs[i], dsig);
-		}
+		_mdl->StateUpdate (t, Dt, deps, _state[i], dsig);
 		df += trn(B)*dsig*det(J)*_ge->IPs[i].w;
 	}
 
@@ -370,9 +343,9 @@ inline void EquilibElem::Backup()
 {
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_sig_bkp[i] = _sig[i];
-		_eps_bkp[i] = _eps[i];
-		_ivs_bkp[i] = _ivs[i];
+		_state_bkp[i].Sig = _state[i].Sig;
+		_state_bkp[i].Eps = _state[i].Eps;
+		_state_bkp[i].Ivs = _state[i].Ivs;
 	}
 }
 
@@ -380,9 +353,9 @@ inline void EquilibElem::Restore()
 {
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_sig[i] = _sig_bkp[i];
-		_eps[i] = _eps_bkp[i];
-		_ivs[i] = _ivs_bkp[i];
+		_state[i].Sig = _state_bkp[i].Sig;
+		_state[i].Eps = _state_bkp[i].Eps;
+		_state[i].Ivs = _state_bkp[i].Ivs;
 	}
 }
 
@@ -390,15 +363,18 @@ inline void EquilibElem::OutInfo(std::ostream & os) const
 {
 	for (size_t i=0; i<_ge->NIPs; i++)
 	{
-		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2);
-		os <<                "  Ex,Ey,Ez = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2) << " ";
+		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _state[i].Sig(0) << _12_6 << _state[i].Sig(1) << _12_6 << _state[i].Sig(2);
+		os <<                "  Ex,Ey,Ez = " << _12_6 << _state[i].Sig(0) << _12_6 << _state[i].Sig(1) << _12_6 << _state[i].Sig(2) << " ";
 	}
 }
 
-inline void EquilibElem::OutState(std::ostream & os, bool OnlyCaption) const
+inline void EquilibElem::OutState(double Time, std::ostream & os, bool OnlyCaption) const
 {
 	if (OnlyCaption)
 	{
+		// Time
+		os << Util::_8s<<"time";
+
 		// Stress and strains
 		os << Util::_8s<< "p"  << Util::_8s<< "q"  << Util::_8s<< "Ev" << Util::_8s<< "Ed";
 		os << Util::_8s<< "Sx" << Util::_8s<< "Sy" << Util::_8s<< "Sz" << Util::_8s<< "Sxy" << Util::_8s<< "Syz" << Util::_8s<< "Sxz";
@@ -406,7 +382,7 @@ inline void EquilibElem::OutState(std::ostream & os, bool OnlyCaption) const
 
 		// Internal state values
 		String zname;
-		for (size_t i=0; i<_ivs[0].Size(); ++i)
+		for (size_t i=0; i<_state[0].Ivs.Size(); ++i)
 		{
 			zname.Printf("z%d",i);
 			os << Util::_8s<< zname;
@@ -415,16 +391,19 @@ inline void EquilibElem::OutState(std::ostream & os, bool OnlyCaption) const
 	}
 	else
 	{
+		// Time
+		os << Util::_8s<<Time;
+
 		// Stress and strains
 		os << Util::_8s<< Val("p" ) << Util::_8s<< Val("q" ) << Util::_8s<< Val("Ev") << Util::_8s<< Val("Ed" );
 		os << Util::_8s<< Val("Sx") << Util::_8s<< Val("Sy") << Util::_8s<< Val("Sz") << Util::_8s<< Val("Sxy") << Util::_8s<< Val("Syz") << Util::_8s<< Val("Sxz");
 		os << Util::_8s<< Val("Ex") << Util::_8s<< Val("Ey") << Util::_8s<< Val("Ez") << Util::_8s<< Val("Exy") << Util::_8s<< Val("Eyz") << Util::_8s<< Val("Exz");
 
 		// Internal state values
-		for (size_t i=0; i<_ivs[0].Size(); ++i)
+		for (size_t i=0; i<_state[0].Ivs.Size(); ++i)
 		{
 			double ave = 0.0;
-			for (size_t j=0; j<_ge->NIPs; ++j) ave += _ivs[j][i];
+			for (size_t j=0; j<_ge->NIPs; ++j) ave += _state[j].Ivs[i];
 			os << Util::_8s<< ave/_ge->NIPs;
 		}
 		os << std::endl;
@@ -448,10 +427,9 @@ inline void EquilibElem::CMatrix(size_t Idx, Mat_t & Ke) const
 		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
-		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D, _first);
+		_mdl->TgStiffness (_state[i], D);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
-	if (_first) _first = false;
 }
 
 inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t> & CMap, Array<bool> & RUPresc, Array<bool> & CUPresc) const
@@ -473,9 +451,9 @@ inline void EquilibElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_t>
 	CUPresc = RUPresc;
 }
 
-inline void EquilibElem::AddToF(double h, Vec_t & dFext) const
+inline void EquilibElem::AddToDFext(double t, double Dt, Vec_t & DFext) const
 {
-	if (_mdl->HasAddToF())
+	if (_mdl->HasDSigStar())
 	{
 		// Allocate (local/element) force vector
 		Vec_t df(_nd*_ge->NNodes); // Delta force of this element
@@ -483,20 +461,20 @@ inline void EquilibElem::AddToF(double h, Vec_t & dFext) const
 
 		// Update model and calculate internal force vector
 		Mat_t dN,J,B;
-		Vec_t dM;
+		Vec_t dsig_star;
 		for (size_t i=0; i<_ge->NIPs; ++i)
 		{
-			_ge->Derivs      (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
-			_ge->Jacobian    (dN, J);
-			_B_mat           (dN, J, B);
-			_mdl->CalcDeltaM (h, _sig[i], _eps[i], _ivs[i], dM);
-			df += trn(B)*dM*det(J)*_ge->IPs[i].w;
+			_ge->Derivs        (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
+			_ge->Jacobian      (dN, J);
+			_B_mat             (dN, J, B);
+			_mdl->CalcDSigStar (t, Dt, _state[i], dsig_star);
+			df += trn(B)*dsig_star*det(J)*_ge->IPs[i].w;
 		}
 
 		// Sum up contribution to external forces vector
 		for (size_t i=0; i<_ge->NNodes; ++i)
 		for (int    j=0; j<_nd;         ++j)
-			dFext(_ge->Conn[i]->DOFVar(UD[j]).EqID) += df(i*_nd+j);
+			DFext(_ge->Conn[i]->DOFVar(UD[j]).EqID) += df(i*_nd+j);
 	}
 }
 
@@ -506,12 +484,8 @@ inline void EquilibElem::AddToF(double h, Vec_t & dFext) const
 inline void EquilibElem::_initialize(Str_t Inis)
 {
 	// Resize IP data
-	_sig    .Resize (_ge->NIPs);
-	_eps    .Resize (_ge->NIPs);
-	_ivs    .Resize (_ge->NIPs);
-	_sig_bkp.Resize (_ge->NIPs);
-	_eps_bkp.Resize (_ge->NIPs);
-	_ivs_bkp.Resize (_ge->NIPs);
+	_state    .Resize (_ge->NIPs);
+	_state_bkp.Resize (_ge->NIPs);
 
 	// Parse values
 	LineParser           lp(Inis);
@@ -522,13 +496,13 @@ inline void EquilibElem::_initialize(Str_t Inis)
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		// Stress and strain
-		_sig[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
-		_eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_state[i].Sig  = 0.0,0.0,0.0, 0.0,0.0,0.0;
+		_state[i].Eps  = 0.0,0.0,0.0, 0.0,0.0,0.0;
 		for (Ini_t::const_iterator it=names_vals.begin(); it!=names_vals.end(); ++it)
-			Tensors::SetVal (it->first.CStr(), it->second, _sig[i], /*WithError*/false);
+			_set_val (it->first.CStr(), it->second, _state[i].Sig, /*WithError*/false);
 
 		// Initialize internal values
-		_mdl->InitIVS (names_vals, _sig[i], _eps[i], _ivs[i]);
+		_mdl->InitIVS (names_vals, _state[i]);
 	}
 
 	// Initialize internal state
@@ -570,7 +544,7 @@ inline void EquilibElem::_excavate()
 			for (size_t j=0; j<_ge->NNodes; ++j) S(_ge->NDim*j+_ge->NDim-1) = N(j);
 
 			// Get tensor
-			Tensor2ToVector (_gi,_sig[i], sig);
+			Tensor2ToVector (_gi,_state[i].Sig, sig);
 
 			// Calculate internal force vector
 			F += trn(B)*sig*det(J)*_ge->IPs[i].w + S*gam*det(J)*_ge->IPs[i].w;
@@ -716,7 +690,7 @@ inline void EquilibElem::_init_internal_state()
 		_ge->Derivs     (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian   (dN, J);
 		_B_mat          (dN, J, B);
-		Tensor2ToVector (_gi,_sig[i], sig);
+		Tensor2ToVector (_gi,_state[i].Sig, sig);
 		f += trn(B)*sig*det(J)*_ge->IPs[i].w;
 	}
 
@@ -724,6 +698,43 @@ inline void EquilibElem::_init_internal_state()
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (size_t j=0; j<_ge->NDim;   ++j)
 		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_ge->NDim+j); // only forces (fx,fy,fz) (NDim) DOFs
+}
+
+inline double EquilibElem::_get_val(Str_t Name, Tensor2 const & Sig, Tensor2 const & Eps) const
+{
+	     if (strcmp(Name,"Sx" )==0)                          return Sig(0);
+	else if (strcmp(Name,"Sy" )==0)                          return Sig(1);
+	else if (strcmp(Name,"Sz" )==0)                          return Sig(2);
+	else if (strcmp(Name,"Sxy")==0 || strcmp(Name,"Syx")==0) return Sig(3)/SQ2;
+	else if (strcmp(Name,"Syz")==0 || strcmp(Name,"Szy")==0) return Sig(4)/SQ2;
+	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return Sig(5)/SQ2;
+	else if (strcmp(Name,"p"  )==0)                          return (Sig(0)+Sig(1)+Sig(2))/3.0;
+	else if (strcmp(Name,"q"  )==0)                          return sqrt(((Sig(0)-Sig(1))*(Sig(0)-Sig(1)) + (Sig(1)-Sig(2))*(Sig(1)-Sig(2)) + (Sig(2)-Sig(0))*(Sig(2)-Sig(0)) + 3.0*(Sig(3)*Sig(3) + Sig(4)*Sig(4) + Sig(5)*Sig(5)))/2.0);
+	else if (strcmp(Name,"Ex" )==0)                          return Eps(0);
+	else if (strcmp(Name,"Ey" )==0)                          return Eps(1);
+	else if (strcmp(Name,"Ez" )==0)                          return Eps(2);
+	else if (strcmp(Name,"Exy")==0 || strcmp(Name,"Eyx")==0) return Eps(3)/SQ2;
+	else if (strcmp(Name,"Eyz")==0 || strcmp(Name,"Ezy")==0) return Eps(4)/SQ2;
+	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return Eps(5)/SQ2;
+	else if (strcmp(Name,"Ev" )==0)                          return Eps(0)+Eps(1)+Eps(2); 
+	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((Eps(0)-Eps(1))*(Eps(0)-Eps(1)) + (Eps(1)-Eps(2))*(Eps(1)-Eps(2)) + (Eps(2)-Eps(0))*(Eps(2)-Eps(0)) + 3.0*(Eps(3)*Eps(3) + Eps(4)*Eps(4) + Eps(5)*Eps(5))))/3.0;
+	else if (strcmp(Name,"Vx" )==0)                          return 0.0;
+	else if (strcmp(Name,"Vy" )==0)                          return 0.0;
+	else if (strcmp(Name,"Vz" )==0)                          return 0.0;
+	else if (strcmp(Name,"H"  )==0)                          return 0.0;
+	else throw new Fatal("EquilibElem::_get_val: Name==%s is invalid",Name);
+}
+
+inline void EquilibElem::_set_val(Str_t Name, double Val, Tensor2 & Sig, bool WithError) const
+{
+	     if (strcmp(Name,"ZERO")==0)                          return;
+	else if (strcmp(Name,"Sx"  )==0)                          Sig(0) = Val;
+	else if (strcmp(Name,"Sy"  )==0)                          Sig(1) = Val;
+	else if (strcmp(Name,"Sz"  )==0)                          Sig(2) = Val;
+	else if (strcmp(Name,"Sxy" )==0 || strcmp(Name,"Syx")==0) Sig(3) = Val*SQ2;
+	else if (strcmp(Name,"Syz" )==0 || strcmp(Name,"Szy")==0) Sig(4) = Val*SQ2;
+	else if (strcmp(Name,"Szx" )==0 || strcmp(Name,"Sxz")==0) Sig(5) = Val*SQ2;
+	else if (WithError) throw new Fatal("EquilibElem::_set_val: Name==%s is invalid",Name);
 }
 
 

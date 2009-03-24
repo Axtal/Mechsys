@@ -53,7 +53,7 @@ private:
 
 	// Private methods
 	void _initialize ();
-	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const;
+	void _stiff      (Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Tensor2 const & DEps, Tensor4 & D, Array<Tensor2> & B) const { D = _De; }
 
 }; // class BiotElastic
 
@@ -107,11 +107,6 @@ inline void BiotElastic::_initialize()
 		     0.0,   ky,  0.0,
 		     0.0,  0.0,   kz;
 	}
-}
-
-inline void BiotElastic::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const
-{
-	D = _De;
 }
 
 

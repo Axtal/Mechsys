@@ -38,12 +38,28 @@ typedef const char                    PrmName_t[8]; ///< Parameters names. Ex: "
 typedef std::map<String,double>       Ini_t;        ///< Initial values. Ex.: Sx=0.0
 typedef blitz::TinyVector<double,3>   Vec3_t;
 typedef blitz::TinyMatrix<double,3,3> Mat3_t;
+typedef Array<double>                 IntVals;      ///< Internal values (specific volume, yield surface size, etc.)
+
+/** Mechanical state. */
+struct MechState
+{
+	Tensor2 Sig; ///< Stress
+	Tensor2 Eps; ///< Strain
+	IntVals Ivs; ///< Internal values
+};
+
+/** Diffusion state. */
+struct DiffState
+{
+	Vec3_t  Vel; ///< Velocity
+	Vec3_t  Gra; ///< Gradient
+	IntVals Ivs; ///< Internal values
+};
 
 class Model
 {
 public:
 	// Typedefs
-	typedef Array<double> IntVals;      ///< Internal values (specific volume, yield surface size, etc.)
 
 	// Constructor
 	Model () : _gi(-1), _tag(0) { STOL().dTini().mMin().mMax().maxSS(); }
@@ -55,7 +71,6 @@ public:
 	void   SetGeomIdx (int GeomIdx);            ///< Set geometry index. MUST be called before Initialize
 	void   Initialize (int Tag, Str_t StrPrms); ///< Initialize this model
 	double Prm        (Str_t Key) const;        ///< Value of a parameter
-	bool   HasAddToF  () const { return false; } ///< Has terms to be added to Fext vector?
 
 	// Methods to be derived
 	virtual int         NPrms () const =0; ///< Number of parameters
@@ -63,52 +78,24 @@ public:
 	virtual Str_t       Name  () const =0; ///< Model name
 
 	// Viscosity
-	virtual void CalcDeltaM (double h, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Vec_t & dM) {}
+	virtual bool HasDSigStar  () const { return false; } ///< Has delta sigma star (to be subtract to dsig)
+	virtual void CalcDSigStar (double t, double Dt, MechState const & State, Vec_t & DSigStar) const {}
 
 	// Methods that may be derived
 	virtual void SetPyName (Str_t ScriptFileName) {} ///< Set script file name for models that can be extended using Python
 
 	/* Initialize internal values. */
-	virtual void InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const {}
-	virtual void InitIVS (Ini_t const & Ini, Vec3_t  const & Vel, Vec3_t  const & Gra, IntVals & Ivs) const {}
+	virtual void InitIVS (Ini_t const & Ini, MechState & State) const {} ///< In/Out: MechState
+	virtual void InitIVS (Ini_t const & Ini, DiffState & State) const {} ///< In/Out: DiffState
 
-	/* Tangent stiffness. */
-	virtual void TgStiffness (Tensor2 const & Sig,
-	                          Tensor2 const & Eps,
-	                          IntVals const & Ivs,
-	                          Mat_t         & Dmat,
-	                          bool            First) const {}
-
-	/* Tangent permeability. */
-	virtual void TgPermeability (Mat_t & Kmat) const {}
-
-	/* Tangent stiffness. */
-	virtual void TgConductivity (Vec3_t  const & Vel,
-	                             Vec3_t  const & Gra,
-	                             IntVals const & Ivs,
-	                             Mat_t         & Dmat) const {}
+	/* Tangent stiffness, conductivity and permeability. */
+	virtual void TgStiffness    (MechState const & State, Mat_t & Dmat) const {}
+	virtual void TgConductivity (DiffState const & State, Mat_t & Dmat) const {}
+	virtual void TgPermeability (                         Mat_t & Kmat) const {}
 
 	/* State update. */
-	virtual int StateUpdate (Vec_t   const & DEps,
-	                         Tensor2       & Sig,
-	                         Tensor2       & Eps,
-	                         IntVals       & Ivs,
-	                         Vec_t         & DSig) { return -1; }
-
-	/* State update. */
-	virtual int StateUpdate (Vec_t   const & DEps,
-	                         Vec_t   const & DM,
-	                         Tensor2       & Sig,
-	                         Tensor2       & Eps,
-	                         IntVals       & Ivs,
-	                         Vec_t         & DSig) { return -1; }
-
-	/* State update. */
-	virtual int StateUpdate (Vec_t   const & DGra,
-	                         Vec3_t        & Vel,
-	                         Vec3_t        & Gra,
-	                         IntVals       & Ivs,
-	                         Vec_t         & DVel) { return -1; }
+	virtual int StateUpdate (double t, double Dt, Vec_t const & DEps, MechState & State, Vec_t & DSig) { return -1; }
+	virtual int StateUpdate (double t, double Dt, Vec_t const & DGra, DiffState & State, Vec_t & DVel) { return -1; }
 
 	// Integration constants
 	Model & STOL  (double Val=1.0e-5) { _STOL =Val; return (*this); }

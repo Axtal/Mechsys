@@ -71,6 +71,13 @@ void Dot (Tensor4 const & A,
           Tensor2 const & x,
           Tensor2       & y);
 
+// 3a) y = s * A * x
+/// \f$ \{y\}\gets s[A]\bullet\{x\} \quad\equiv\quad \TeSe{y}\gets s\TeFo{A}:\TeSe{x} \f$
+void Dot (double          s,
+          Tensor4 const & A,
+          Tensor2 const & x,
+          Tensor2       & y);
+
 // 4) C = A * B
 /// \f$ [C]\gets[A]\bullet[B] \quad\equiv\quad \TeFo{C}\gets\TeFo{A}:\TeFo{B} \f$
 void Dot (Tensor4 const & A,
@@ -173,6 +180,17 @@ inline void Dot (Tensor4 const & A, Tensor2 const & x, Tensor2 & y)
 	y(3) = A(3,0)*x(0) + A(3,1)*x(1) + A(3,2)*x(2) + A(3,3)*x(3) + A(3,4)*x(4) + A(3,5)*x(5);
 	y(4) = A(4,0)*x(0) + A(4,1)*x(1) + A(4,2)*x(2) + A(4,3)*x(3) + A(4,4)*x(4) + A(4,5)*x(5);
 	y(5) = A(5,0)*x(0) + A(5,1)*x(1) + A(5,2)*x(2) + A(5,3)*x(3) + A(5,4)*x(4) + A(5,5)*x(5);
+}
+
+// 3a) y = s * A * x
+inline void Dot (double s, Tensor4 const & A, Tensor2 const & x, Tensor2 & y)
+{
+	y(0) = s*(A(0,0)*x(0) + A(0,1)*x(1) + A(0,2)*x(2) + A(0,3)*x(3) + A(0,4)*x(4) + A(0,5)*x(5));
+	y(1) = s*(A(1,0)*x(0) + A(1,1)*x(1) + A(1,2)*x(2) + A(1,3)*x(3) + A(1,4)*x(4) + A(1,5)*x(5));
+	y(2) = s*(A(2,0)*x(0) + A(2,1)*x(1) + A(2,2)*x(2) + A(2,3)*x(3) + A(2,4)*x(4) + A(2,5)*x(5));
+	y(3) = s*(A(3,0)*x(0) + A(3,1)*x(1) + A(3,2)*x(2) + A(3,3)*x(3) + A(3,4)*x(4) + A(3,5)*x(5));
+	y(4) = s*(A(4,0)*x(0) + A(4,1)*x(1) + A(4,2)*x(2) + A(4,3)*x(3) + A(4,4)*x(4) + A(4,5)*x(5));
+	y(5) = s*(A(5,0)*x(0) + A(5,1)*x(1) + A(5,2)*x(2) + A(5,3)*x(3) + A(5,4)*x(4) + A(5,5)*x(5));
 }
 
 // 4) C = A * B
