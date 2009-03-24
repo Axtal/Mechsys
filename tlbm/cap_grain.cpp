@@ -64,7 +64,7 @@ void DrawCircle(LBM::Lattice & l, double & obsX, double & obsY, double radius, d
 				fx += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,0);
 				fy += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,1);
 
-				double G = -1.0;
+				double G = -3.0;
 				double rho_nb = l.GetCell(c->Neigh(k))->Density();
 				double nb_psi = l.Psi(rho_nb);
 				fx += -G*c->W(k)*nb_psi*c->C(k,0);
@@ -107,15 +107,15 @@ int main(int argc, char **argv) try
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-5,2.0) <= pow(radio,2.0)) // circle equation
 		{
-			l.GetCell(i,j)->Initialize (2.5, V);
+			l.GetCell(i,j)->Initialize (0.9, V);
 		}
 		else
 		{
-			l.GetCell(i,j)->Initialize (0.5, V);
+			l.GetCell(i,j)->Initialize (0.2, V);
 		}
 	}
 
-	size_t Tmax = 1000;
+	size_t Tmax = 2000;
 	size_t Tout = 1;
 
 	double vx = 0.0;

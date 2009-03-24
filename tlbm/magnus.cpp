@@ -31,7 +31,7 @@ int    nx     = 100;
 int    ny     = 50;
 double v0     = 0.04;
 int    radius = ny/10;
-double omega  = 0.08;  // Angular velocity in the surface of the obstacle
+double omega  = 0.01;  // Angular velocity in the surface of the obstacle
 
 int main(int argc, char **argv) try
 {

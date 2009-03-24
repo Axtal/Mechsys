@@ -16,15 +16,13 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-#Single component
 ADD_EXECUTABLE        (cylinder   cylinder.cpp)
-ADD_EXECUTABLE        (gravity    gravity.cpp)
-ADD_EXECUTABLE        (drop       drop.cpp)
-ADD_EXECUTABLE        (capi       capi.cpp)
-ADD_EXECUTABLE        (bubble     bubble.cpp)
-ADD_EXECUTABLE        (magnus     magnus.cpp)
-ADD_EXECUTABLE        (ball       ball.cpp)
-ADD_EXECUTABLE        (cap_grain  cap_grain.cpp)
+ADD_EXECUTABLE        (bubble       bubble.cpp)
+ADD_EXECUTABLE        (ball   	      ball.cpp)
+ADD_EXECUTABLE        (drop           drop.cpp)
+ADD_EXECUTABLE        (magnus       magnus.cpp)
+ADD_EXECUTABLE        (multicomp multicomp.cpp)
+ADD_EXECUTABLE        (cap_grain cap_grain.cpp)
 
-# Multicomponent
-ADD_EXECUTABLE        (multicomp  multicomp.cpp)
+
+
