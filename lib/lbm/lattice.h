@@ -87,6 +87,7 @@ public:
 	void ApplyForce   ();
 	void ApplyGravity ();
 	void WriteState   (size_t TimeStep); ///< TODO
+	double Psi(double Rho) const;
 
 protected:
 	String       _file_key; ///< TODO:
@@ -114,8 +115,6 @@ protected:
 	Array<Cell*> _cpveloc;  ///< Cells with prescribed velocity
 	Array<Cell*> _cpdens;   ///< Cells with prescribed density
 
-private:
-	double _psi(double Rho) const;
 
 }; // class Lattice
 
@@ -152,7 +151,7 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, size_t Nx, size_t Ny, size_t N
 	for (size_t j=0; j<Ny; ++j)
 	{
 		size_t n = i+j*Nx;
-		_cells[n] = new Cell(_is_3d,_tau,i,j,1,Nx,Ny,Nz);
+		_cells[n] = new Cell(n,_is_3d,_tau,i,j,1,Nx,Ny,Nz);
 	}
 
 	// Set auxiliary arrays
@@ -353,7 +352,7 @@ inline void Lattice::Collide()
 		LBM::Cell * c = _cells[i];
 		if (c->IsSolid()==false) // not solid
 		{
-			Vec3_t v;    
+			Vec3_t v;
 			if (_is_mc)	v = c->MixVelocity(); // For multi-components analysis
 			else            c->Velocity(v);   // Fore one component analysis
 
@@ -409,13 +408,13 @@ inline void Lattice::ApplyForce()
 	{
 		LBM::Cell * c = _cells[i];
 		Vec3_t F; F   = 0.0, 0.0, 0.0;
-		double    psi = _psi(c->Density());
+		double    psi = Psi(c->Density());
 		for (size_t k=1; k<_nneigh; ++k)
 		{
 			LBM::Cell * nb = _cells[c->Neigh(k)];
-			double  nb_psi = (nb->IsSolid() ? 1.0      : _psi(nb->Density()));
+			double  nb_psi = (nb->IsSolid() ? 1.0      : Psi(nb->Density()));
 			double       G = (nb->IsSolid() ? _G_solid : _G);
-			//double  nb_psi =  _psi(nb->Density());
+			//double  nb_psi =  Psi(nb->Density());
 			//double       G =  _G;
 			F(0) += -G*psi*c->W(k)*nb_psi*c->C(k,0);
 			F(1) += -G*psi*c->W(k)*nb_psi*c->C(k,1);
@@ -458,7 +457,7 @@ inline void Lattice::WriteState(size_t TimeStep)
 	// Density field
 	oss << "SCALARS Density float 1\n";
 	oss << "LOOKUP_TABLE default\n";
-	for (size_t i=0; i<_size; ++i)
+	for (size_t i=0; i<_size; i++)
 		oss << _cells[i]->Density() << "\n";
 
 	// Curl field
@@ -485,7 +484,7 @@ inline void Lattice::WriteState(size_t TimeStep)
 
 
 /* private */
-inline double Lattice::_psi(double Rho) const
+inline double Lattice::Psi(double Rho) const
 {
 	return _psi_ref*(1.0-exp(-Rho/_rho_ref));
 }

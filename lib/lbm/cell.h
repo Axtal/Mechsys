@@ -47,7 +47,7 @@ public:
 	static const size_t   OPPOSITE2D    [ 9]; ///< Opposite directions
 
 	// Constructor
-	Cell (bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz=1);
+	Cell (size_t ID, bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz=1);
 
 	// Set methods
 	void Initialize (double Rho0, Vec3_t const & V0);                   ///< V0: Initial velocity, Rho0: Initial density
@@ -95,6 +95,7 @@ protected:
 	Array<size_t>    _side;     ///< Which side on the boundary this cell is located
 	Array<size_t>    _neigh;    ///< Indices of neighbour cells
 	Vec3_t           _mix_vel;  ///< Mixed velocity for multicomponent analysis
+	size_t           _id;
 
 }; // class Cell
 
@@ -102,10 +103,11 @@ protected:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Cell::Cell(bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz)
+inline Cell::Cell(size_t ID, bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz)
 	: _is_3d    (Is3D),
 	  _is_solid (false),
-	  _tau      (Tau)
+	  _tau      (Tau),
+	  _id       (ID)
 {
 	_rho_bc = 0.0;
 	_vel_bc = 0.0, 0.0, 0.0;
@@ -163,8 +165,14 @@ inline void Cell::Initialize(double Rho0, Vec3_t const & V0)
 
 inline double Cell::Density() const
 {
+	//std::cout << "ID = " << _id << std::endl;
+	//for (size_t k=0; k<_nneigh; k++) std::cout << "fD[" << k << "] = " << _f[k] << std::endl;
+
 	// Skip if it is solid
-	if (_is_solid) return 0.0;
+	if (_is_solid) 
+	{
+		return 0.0;
+	}
 	else
 	{
 		// Calulate current density

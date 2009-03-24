@@ -24,6 +24,7 @@ ADD_EXECUTABLE        (capi       capi.cpp)
 ADD_EXECUTABLE        (bubble     bubble.cpp)
 ADD_EXECUTABLE        (magnus     magnus.cpp)
 ADD_EXECUTABLE        (ball       ball.cpp)
+ADD_EXECUTABLE        (cap_grain  cap_grain.cpp)
 
 # Multicomponent
 ADD_EXECUTABLE        (multicomp  multicomp.cpp)
