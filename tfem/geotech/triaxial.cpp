@@ -55,15 +55,24 @@ int main(int argc, char **argv) try
     Py_Initialize();
 
 	// States
+	/*
 	LinAlg::Matrix<double> states(2,3); // Stress states
 	states =  -2.0,  -2.0,  -2.0,
 	          -1.08, -1.08, -3.84;
+	*/
+	LinAlg::Matrix<double> states(2,3); // Stress states
+	states =  -2.0,  -2.0,  -2.0,
+	          -2.0,  -2.0,  -2.0;
 
 	// Number of divisions
-	int gndiv = 20; // global number of divisions for states
-	int sndiv = 20; // solver number of divisions
+	int states_ndiv =   20; // number of divisions for states
+	int solver_ndiv = 200; // solver number of divisions
+	double       dt = 10.0; // delta time / delta state
 
 	// Parameters
+	double alp  = 0.001/100;
+	double bet  = 0.02;
+
 	double E    = 1300.0;
 	double lam  = 0.0778;
 	double kap  = 0.00824;
@@ -94,8 +103,9 @@ int main(int argc, char **argv) try
 	// Mesh
 	//int nxyz = 3;  // Divisions along x
 	//int iele = 13; // Index of element for output (Centre)
-	int nxyz = 1;
-	int iele = 0;
+	int nxyz  = 1;
+	int ielem = 0;
+	int inode = 4;
 
 	//############################################################################## Mesh
 
@@ -124,7 +134,8 @@ int main(int argc, char **argv) try
 
 	// Data and Solver
 	FEM::Data   dat (3); // 3D
-	FEM::Solver sol (dat,"ttriax");
+	FEM::Solver sol (dat,"triax");
+	sol.SetType ("AME");
 
 	// Elements attributes
 	double Sx = states(0,0);
@@ -167,7 +178,7 @@ int main(int argc, char **argv) try
 		case 5:
 		{
 			cout << "[1;34m ########################################## ViscoElastic ########################################## [0m" << endl;
-			prms.Printf("E=%f nu=%f",E,nu);
+			prms.Printf("E=%f nu=%f alp=%f bet=%f",E,nu,alp,bet);
 			eatts = T(-1, geom.CStr(), "Equilib", "ViscoElastic", prms.CStr(), stat.CStr(), "gam=20", FNULL, true);
 			break;
 		}
@@ -178,31 +189,37 @@ int main(int argc, char **argv) try
 	dat.SetNodesElems (&mesh, &eatts);
 
 	// Output
-	Array<size_t> eles;
-	eles.Push      (iele);
-	dat.SetOutEles (eles, "triax");
-	dat.OutEles    (true); // true => only caption
-	dat.OutEles    ();     // initial state
+	Array<size_t> elems;
+	Array<size_t> nodes;
+	elems.Push      (ielem);
+	nodes.Push      (inode);
+	dat.SetOutElems (elems, "triax");
+	dat.SetOutNodes (nodes, "triax");
+	dat.OutElems    (true); // true => only caption
+	dat.OutElems    ();     // initial state
+	dat.OutNodes    (true); // true => only caption
+	dat.OutNodes    ();     // initial state
 
 	// Solve
 	int k = 0;
 	for (int i=1; i<states.Rows(); ++i)
 	{
 		// increments
-		double dfx = (states(i,0)-Sx)/gndiv;
-		double dfy = (states(i,1)-Sy)/gndiv;
-		double dfz = (states(i,2)-Sz)/gndiv;
+		double dfx = (states(i,0)-Sx)/states_ndiv;
+		double dfy = (states(i,1)-Sy)/states_ndiv;
+		double dfz = (states(i,2)-Sz)/states_ndiv;
 		//cout << dfx << ", " << dfy << ", " << dfz << endl;
-		for (int j=0; j<gndiv; ++j)
+		for (int j=0; j<states_ndiv; ++j)
 		{
 			// solve
 			FEM::FBrys_T fbrys; fbrys.Resize(6);
 			fbrys = T(-1, "ux", 0.0), T(-3, "uy", 0.0), T(-5, "uz", 0.0),
 			        T(-2, "fx", dfx), T(-4, "fy", dfy), T(-6, "fz", dfz);
-			dat.SetBrys (&mesh, NULL, NULL, &fbrys);
-			sol.SolveWithInfo (sndiv,10.0,k,"");
+			dat.SetBrys       (&mesh, NULL, NULL, &fbrys);
+			sol.SolveWithInfo (solver_ndiv, dt, k,"");
 			// results
-			dat.OutEles();
+			dat.OutElems();
+			dat.OutNodes();
 			// update state
 			Sx += dfx;
 			Sy += dfy;

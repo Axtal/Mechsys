@@ -61,7 +61,7 @@ public:
 	double      Val          (          Str_t Key) const;
 	void        EdgeBry      (Str_t Key, double q, int iEdge) { EdgeBry(Key,q,q,iEdge); }
 	void        EdgeBry      (Str_t Key, double q0, double q1, int iEdge);
-	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        Update       (double Time, double Dt, Vec_t const & dU, Vec_t & dFint);
 	void        OutInfo      (std::ostream & os) const;
 	bool        HasExtra     () const { return true; }
 	void        OutExtra     (Mat_t & Coords, Vec_t & Norm, Mat_t & Vals, Array<String> & Lbls) const;
@@ -256,7 +256,7 @@ inline void Beam::EdgeBry(Str_t Key, double q0, double q1, int iEdge)
 		_ge->Conn[i]->Bry (FD[j], f(i*_nd+j));
 }
 
-inline void Beam::Update(double h, Vec_t const & dU, Vec_t & dFint)
+inline void Beam::Update(double Time, double Dt, Vec_t const & dU, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
 	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element

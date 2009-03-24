@@ -47,7 +47,7 @@ private:
 
 	// Private methods
 	void _initialize ();
-	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const;
+	void _stiff      (Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Tensor2 const & DEps, Tensor4 & D, Array<Tensor2> & B) const { D = _De; }
 
 }; // class LinElastic
 
@@ -78,11 +78,6 @@ inline void LinElastic::_initialize()
 	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, c2 *2.0, 0.0*2.0, 0.0*2.0,
 	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, c2 *2.0, 0.0*2.0,
 	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
-}
-
-inline void LinElastic::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const
-{
-	D = _De;
 }
 
 

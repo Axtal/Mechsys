@@ -17,8 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_LINELASTIC_H
-#define MECHSYS_LINELASTIC_H
+#ifndef MECHSYS_VISCOELASTIC_H
+#define MECHSYS_VISCOELASTIC_H
 
 // MechSys
 #include "models/equilibmodel.h"
@@ -31,37 +31,48 @@ class ViscoElastic : public EquilibModel
 {
 public:
 	// Constants
-	static const char LINELASTIC_PN[2][8];
+	static const char LINELASTIC_PN[4][8];
 
 	// Destructor
 	virtual ~ViscoElastic () {}
 
 	// Derived methods
-	int         NPrms () const { return 2;             }
+	int         NPrms () const { return 4;             }
 	PrmName_t * Prms  () const { return LINELASTIC_PN; }
 	Str_t       Name  () const { return "ViscoElastic";  }
 
-	void CalcDeltaM (double h, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Vec_t & dM)
-	{
-		Tensor2 dm; dm = h,h,h,0.0,0.0,0.0;
-		Tensor2ToVector (_gi,dm, dM);
-	}
+	// Delta sigma star (due to viscosity)
+	bool HasDSigStar  () const { return true; }
+	void CalcDSigStar (double t, double Dt, MechState const & State, Vec_t & DSigStar) const;
 
 private:
 	// Data
 	Tensor4 _De; ///< Constant tangent stiffness
 
-	// Private methods
+	// Derived methods
 	void _initialize ();
-	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const;
+	void _stiff      (Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Tensor2 const & DEps, Tensor4 & D, Array<Tensor2> & B) const { D = _De; }
+	void _dsig_star  (double Time, double Dt, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Tensor2 & DSs) const;
 
 }; // class ViscoElastic
 
-const char ViscoElastic::LINELASTIC_PN[2][8] = {"E", "nu"};
+const char ViscoElastic::LINELASTIC_PN[4][8] = {"E", "nu", "alp", "bet"};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+/* public */
+
+inline void ViscoElastic::CalcDSigStar(double Time, double Dt, MechState const & State, Vec_t & DSs) const
+{
+	Tensor2 dss;
+	_dsig_star (Time, Dt, State.Sig, State.Eps, State.Ivs, dss);
+	Tensor2ToVector (_gi,dss, DSs);
+}
+
+
+/* private */
 
 inline void ViscoElastic::_initialize()
 {
@@ -86,9 +97,20 @@ inline void ViscoElastic::_initialize()
 	      0.0*SQ2, 0.0*SQ2, 0.0*SQ2, 0.0*2.0, 0.0*2.0, c2 *2.0; // In Mandel's basis
 }
 
-inline void ViscoElastic::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const
+inline void ViscoElastic::_dsig_star(double Time, double Dt, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Tensor2 & DSs) const
 {
-	D = _De;
+	double alp      = Prm("alp");
+	double bet      = Prm("bet");
+	double norm_sig = Tensors::Norm(Sig);
+
+	/*
+	DSs = (0.01/norm_sig) * Sig;
+	*/
+
+	Tensor2 deps_star;
+	deps_star = (alp*exp(-bet*Time)/norm_sig) * Sig;
+	Tensors::Dot (_De,deps_star, DSs); // DSs <- De:deps_star
+	//std::cout << Time << ", " << deps_star << ", " << DSs << std::endl;
 }
 
 
@@ -105,4 +127,4 @@ int ViscoElasticRegister() { ModelFactory["ViscoElastic"]=ViscoElasticMaker;  re
 int __ViscoElastic_dummy_int = ViscoElasticRegister();
 
 
-#endif // MECHSYS_LINELASTIC_H
+#endif // MECHSYS_VISCOELASTIC_H

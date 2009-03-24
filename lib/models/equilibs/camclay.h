@@ -45,7 +45,7 @@ public:
 	int         NPrms   () const { return 4;          }
 	PrmName_t * Prms    () const { return CAMCLAY_PN; }
 	Str_t       Name    () const { return "CamClay";  }
-	void        InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const;
+	void        InitIVS (Ini_t const & Ini, MechState & State) const;
 
 private:
 	// Private data
@@ -54,7 +54,7 @@ private:
 
 	// Derived private methods
 	void _initialize ();
-	void _stiff      (Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const;
+	void _stiff      (Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Tensor2 const & DEps, Tensor4 & D, Array<Tensor2> & B) const;
 
 	// Private methods
 	double _calc_M  (double const & t)    const;                                    ///< Variable CSL slope
@@ -73,13 +73,13 @@ const char CamClay::CAMCLAY_PN[4][8] = {"lam", "kap", "nu", "phics"};
 
 /* public */
 
-inline void CamClay::InitIVS(Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const
+inline void CamClay::InitIVS(Ini_t const & Ini, MechState & State) const
 {
 	Ini_t::const_iterator it = Ini.find("v");
 	if (it==Ini.end()) throw new Fatal("CamClay::InitIVS: Specific volume (v) must be provided with the array of Initial Values");
-	Ivs.Resize(2); // z0 (yield surface size), and v (specific volume)
-	Ivs[0] = _calc_z0 (Sig);
-	Ivs[1] = it->second;
+	State.Ivs.Resize(2); // z0 (yield surface size), and v (specific volume)
+	State.Ivs[0] = _calc_z0 (State.Sig);
+	State.Ivs[1] = it->second;
 }
 
 
@@ -105,7 +105,7 @@ inline void CamClay::_initialize()
 	_w   = pow((3.0-sinphi)/(3.0+sinphi),4.0);
 }
 
-inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor4 & D, Array<Tensor2> & B, bool First) const
+inline void CamClay::_stiff(Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Tensor2 const & DEps, Tensor4 & D, Array<Tensor2> & B) const
 {
 	// Parameters
 	double lam = Prm("lam");
@@ -120,9 +120,6 @@ inline void CamClay::_stiff(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 c
 	double v = Ivs[1];                                                    // specific volume
 	double E = -(Sig(0)+Sig(1)+Sig(2))*(1.0-2.0*nu)*v/kap;                // Young modulus
 	AddScaled (E/(1.0+nu), IIsym, nu*E/((1.0+nu)*(1.0-2.0*nu)), IdyI, D); // Elastic tangent tensor
-
-	// Return if first stiffness
-	if (First) return;
 
 	// Elastic trial state
 	Tensor2 dsig_tr;                // trial stress increment

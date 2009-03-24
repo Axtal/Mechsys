@@ -45,56 +45,44 @@ typedef char const           * Str_t;
 class EquilibModel : public Model
 {
 public:
-	// Typedefs
-	typedef Array<double> IntVals; ///< Internal values (specific volume, yield surface size, etc.)
-
 	// Constructor
 	EquilibModel () { _deps = 0.0,0.0,0.0, 0.0,0.0,0.0; }
 
 	// Destructor
 	virtual ~EquilibModel () {}
 
-	/* Tangent stiffness. */
-	void TgStiffness (Tensor2 const & Sig,
-	                  Tensor2 const & Eps,
-	                  IntVals const & Ivs,
-	                  Mat_t         & Dmat,
-	                  bool            First) const;
-
-	/* State update. */
-	int StateUpdate (Vec_t   const & DEps,
-	                 Tensor2       & Sig,
-	                 Tensor2       & Eps,
-	                 IntVals       & Ivs,
-	                 Vec_t         & DSig);
-
-	/* State update. */
-	int StateUpdate (Vec_t   const & DEps,
-	                 Vec_t   const & DM,
-	                 Tensor2       & Sig,
-	                 Tensor2       & Eps,
-	                 IntVals       & Ivs,
-	                 Vec_t         & DSig);
+	// Derived methods
+	void TgStiffness (MechState const & State, Mat_t & Dmat) const;
+	int  StateUpdate (double Time, double Dt, Vec_t const & DEps, MechState & State, Vec_t & DSig);
 
 protected:
-	/* Tangent or secant stiffness. */
-	virtual void _stiff (Tensor2 const  & DEps,
-	                     Tensor2 const  & Sig,
+	/** Tangent or secant stiffness. */
+	virtual void _stiff (Tensor2 const  & Sig,
 	                     Tensor2 const  & Eps,
 	                     IntVals const  & Ivs,
+	                     Tensor2 const  & DEps,
 	                     Tensor4        & D,
-	                     Array<Tensor2> & B,
-	                     bool             First) const =0;
+	                     Array<Tensor2> & B) const =0;
+
+	/** Calculate delta sigma star (viscosity). */
+	virtual void _dsig_star (double           Time,
+	                         double           Dt,
+	                         Tensor2 const  & Sig,
+	                         Tensor2 const  & Eps,
+	                         IntVals const  & Ivs,
+	                         Tensor2        & DSigStar) const {}
 
 private:
 	// Data
-	Tensor2 _deps;
+	Tensor2 _deps; ///< Current strain increment. Used to decide between De or Dep (unloading/loading matrices)
 
-	/* Tangent increments. */
-	void _tg_incs (Tensor2 const & DEps,
+	/** Tangent increments. */
+	void _tg_incs (double          Time,
 	               Tensor2 const & Sig,
 	               Tensor2 const & Eps,
 	               IntVals const & Ivs,
+	               double          Dt,
+	               Tensor2 const & DEps,
 	               Tensor2       & DSig,
 	               IntVals       & DIvs) const;
 
@@ -106,32 +94,43 @@ private:
 
 /* public */
 
-inline void EquilibModel::TgStiffness(Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, Mat_t & Dmat, bool First) const
+inline void EquilibModel::TgStiffness(MechState const & State, Mat_t & Dmat) const
 {
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiff          (_deps,Sig,Eps,Ivs, D,B, First);
+	_stiff          (State.Sig,State.Eps,State.Ivs, _deps, D,B);
 	Tensor4ToMatrix (_gi,D, Dmat);
 }
 
-inline int EquilibModel::StateUpdate(Vec_t const & DEps, Tensor2 & Sig, Tensor2 & Eps, IntVals & Ivs, Vec_t & DSig)
+inline int EquilibModel::StateUpdate(double Time, double Dt, Vec_t const & DEps, MechState & State, Vec_t & DSig)
 {
+	// Number of internal values
+	size_t nivs = State.Ivs.Size();
+
 	// Auxiliar variables
-	Tensor2  sig_i; sig_i = Sig;  // Initial stress state
-	Tensor2  deps_T;              // Driver increment of strain
-	Tensor2  dsig_1;              // FE increment of stress
-	IntVals  divs_1(Ivs.Size());  // FE increment of internal values
-	Tensor2  eps_1;               // FE strain state
-	Tensor2  sig_1;               // FE stress state
-	IntVals  ivs_1(Ivs.Size());   // FE internal values
-	Tensor2  dsig_2;              // Intermediary increment of stress evaluated with a tangent computed at the FE state
-	IntVals  divs_2(Ivs.Size());  // Intermediary increment of internal velues evaluated with a tangent computed at the FE state
-	Tensor2  sig_ME;              // ME stress state
-	IntVals  ivs_ME(Ivs.Size());  // ME internal values
-	double   error;               // Estimated error
+	Tensor2  sig_i;         // Initial stress state
+	double   dt_T;          // Driver increment of time
+	Tensor2  deps_T;        // Driver increment of strain
+	Tensor2  dsig_1;        // FE increment of stress
+	IntVals  divs_1(nivs);  // FE increment of internal values
+	double   t_1;           // FE time
+	Tensor2  eps_1;         // FE strain state
+	Tensor2  sig_1;         // FE stress state
+	IntVals  ivs_1(nivs);   // FE internal values
+	Tensor2  dsig_2;        // Intermediary increment of stress evaluated with a tangent computed at the FE state
+	IntVals  divs_2(nivs);  // Intermediary increment of internal velues evaluated with a tangent computed at the FE state
+	Tensor2  sig_ME;        // ME stress state
+	IntVals  ivs_ME(nivs);  // ME internal values
+	double   error;         // Estimated error
+
+	// Initial stress state
+   	sig_i = State.Sig;
 
 	// Read input vector
 	VectorToTensor2 (_gi,DEps, _deps);
+
+	// Time
+	double t = Time;
 
 	// Solve
 	double T  = 0.0;
@@ -142,32 +141,34 @@ inline int EquilibModel::StateUpdate(Vec_t const & DEps, Tensor2 & Sig, Tensor2 
 		if (T>=1.0)
 		{
 			// Write output vector
-			Tensor2 dsig; dsig = Sig - sig_i;
+			Tensor2 dsig;  dsig = State.Sig - sig_i;
 			Tensor2ToVector (_gi,dsig, DSig);
 			return k;
 		}
 
 		// Driver increment
+		dt_T   =    Dt*dT;
 		deps_T = _deps*dT;
 
 		// FE increments (dsig_1 & divs_1)
-		_tg_incs (deps_T,Sig,Eps,Ivs, dsig_1,divs_1);
+		_tg_incs (t, State.Sig,State.Eps,State.Ivs, dt_T,deps_T, dsig_1,divs_1);
 
 		// FE state
-		eps_1    = Eps    + deps_T;
-		sig_1    = Sig    + dsig_1;   for (size_t i=0; i<Ivs.Size(); ++i)
-		ivs_1[i] = Ivs[i] + divs_1[i];
+		t_1      = t            + dt_T;
+		eps_1    = State.Eps    + deps_T;
+		sig_1    = State.Sig    + dsig_1;   for (size_t i=0; i<nivs; ++i)
+		ivs_1[i] = State.Ivs[i] + divs_1[i];
 
 		// Intermediary increments (dsig_2 & divs_2)
-		_tg_incs (deps_T,sig_1,eps_1,ivs_1, dsig_2,divs_2);
+		_tg_incs (t_1, sig_1,eps_1,ivs_1, dt_T,deps_T, dsig_2,divs_2);
 
 		// ME state
-		sig_ME    = Sig    + 0.5*(dsig_1   +dsig_2   );  for (size_t i=0; i<Ivs.Size(); ++i)
-		ivs_ME[i] = Ivs[i] + 0.5*(divs_1[i]+divs_2[i]);
+		sig_ME    = State.Sig    + 0.5*(dsig_1   +dsig_2   );  for (size_t i=0; i<nivs; ++i)
+		ivs_ME[i] = State.Ivs[i] + 0.5*(divs_1[i]+divs_2[i]);
 
 		// Local error estimate
 		error = Tensors::Norm(sig_ME-sig_1)/(1.0+Tensors::Norm(sig_ME));
-		for (size_t i=0; i<Ivs.Size(); ++i)
+		for (size_t i=0; i<nivs; ++i)
 		{
 			double err = fabs(ivs_ME[i]-ivs_1[i])/(1.0+ivs_ME[i]);
 			if (err>error) error = err;
@@ -179,98 +180,11 @@ inline int EquilibModel::StateUpdate(Vec_t const & DEps, Tensor2 & Sig, Tensor2 
 		// Update
 		if (error<_STOL) // step accepted
 		{
-			T   += dT;
-			Eps = eps_1;
-			Sig = sig_ME;
-			Ivs = ivs_ME;
-			if (m>_mMax) m = _mMax;
-		}
-		else // step rejected
-			if (m<_mMin) m = _mMin;
-
-		// Change next step size
-		dT = m * dT;
-		if (dT>1.0-T) dT = 1.0-T; // last step
-	}
-	throw new Fatal("EquilibModel::StateUpdate: %s:Tag=%d: Update did not converge for %d steps",Name(),_tag,_maxSS);
-}
-
-inline int EquilibModel::StateUpdate(Vec_t const & DEps, Vec_t const & DM, Tensor2 & Sig, Tensor2 & Eps, IntVals & Ivs, Vec_t & DSig)
-{
-	// Auxiliar variables
-	Tensor2  sig_i; sig_i = Sig;  // Initial stress state
-	Tensor2  deps_T;              // Driver increment of strain
-	Tensor2  dsig_1;              // FE increment of stress
-	IntVals  divs_1(Ivs.Size());  // FE increment of internal values
-	Tensor2  eps_1;               // FE strain state
-	Tensor2  sig_1;               // FE stress state
-	IntVals  ivs_1(Ivs.Size());   // FE internal values
-	Tensor2  dsig_2;              // Intermediary increment of stress evaluated with a tangent computed at the FE state
-	IntVals  divs_2(Ivs.Size());  // Intermediary increment of internal velues evaluated with a tangent computed at the FE state
-	Tensor2  sig_ME;              // ME stress state
-	IntVals  ivs_ME(Ivs.Size());  // ME internal values
-	double   error;               // Estimated error
-
-	Tensor2  dM;                  // Term due to viscosity
-	Tensor2  dM_T;                // Term due to viscosity
-
-	// Read input vector
-	VectorToTensor2 (_gi,DEps, _deps);
-	VectorToTensor2 (_gi,DM,    dM);
-
-	// Solve
-	double T  = 0.0;
-	double dT = _dTini;
-	for (size_t k=0; k<=_maxSS; ++k)
-	{
-		// Exit point
-		if (T>=1.0)
-		{
-			// Write output vector
-			Tensor2 dsig; dsig = Sig - sig_i;
-			Tensor2ToVector (_gi,dsig, DSig);
-			return k;
-		}
-
-		// Driver increment
-		deps_T = _deps*dT;
-		dM_T   =    dM*dT;
-
-		// FE increments (dsig_1 & divs_1)
-		_tg_incs (deps_T,Sig,Eps,Ivs, dsig_1,divs_1);
-		dsig_1 -= dM_T;
-
-		// FE state
-		eps_1    = Eps    + deps_T;
-		sig_1    = Sig    + dsig_1;   for (size_t i=0; i<Ivs.Size(); ++i)
-		ivs_1[i] = Ivs[i] + divs_1[i];
-
-		// Intermediary increments (dsig_2 & divs_2)
-		_tg_incs (deps_T,sig_1,eps_1,ivs_1, dsig_2,divs_2);
-		dsig_2 -= dM_T;
-
-		// ME state
-		sig_ME    = Sig    + 0.5*(dsig_1   +dsig_2   );  for (size_t i=0; i<Ivs.Size(); ++i)
-		ivs_ME[i] = Ivs[i] + 0.5*(divs_1[i]+divs_2[i]);
-
-		// Local error estimate
-		error = Tensors::Norm(sig_ME-sig_1)/(1.0+Tensors::Norm(sig_ME));
-		for (size_t i=0; i<Ivs.Size(); ++i)
-		{
-			double err = fabs(ivs_ME[i]-ivs_1[i])/(1.0+ivs_ME[i]);
-			if (err>error) error = err;
-		}
-
-		// Step multiplier
-		double m = 0.9*sqrt(_STOL/error);
-
-		// Update
-		if (error<_STOL) // step accepted
-		{
-			T   += dT;
-			Eps = eps_1;
-			Sig = sig_ME;
-			Ivs = ivs_ME;
+			T        += dT;
+			t         = t_1;
+			State.Eps = eps_1;
+			State.Sig = sig_ME;
+			State.Ivs = ivs_ME;
 			if (m>_mMax) m = _mMax;
 		}
 		else // step rejected
@@ -286,16 +200,24 @@ inline int EquilibModel::StateUpdate(Vec_t const & DEps, Vec_t const & DM, Tenso
 
 /* private */
 
-inline void EquilibModel::_tg_incs(Tensor2 const & DEps, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs,  Tensor2 & DSig, IntVals & DIvs) const
+inline void EquilibModel::_tg_incs(double Time, Tensor2 const & Sig, Tensor2 const & Eps, IntVals const & Ivs, double Dt, Tensor2 const & DEps, Tensor2 & DSig, IntVals & DIvs) const
 {
 	// Stiffness
 	Tensor4        D;
 	Array<Tensor2> B;
-	_stiff (DEps,Sig,Eps,Ivs, D,B, false);
+	_stiff (Sig,Eps,Ivs,DEps,D,B);
 
 	// Increments
 	Tensors::Dot (D,DEps, DSig);     // DSig    = D:DEps
 	for (size_t i=0; i<Ivs.Size(); ++i) DIvs[i] = blitz::dot(B[i],DEps);
+
+	// Delta sigma star
+	if (HasDSigStar())
+	{
+		Tensor2 dss;
+		_dsig_star (Time,Dt,Sig,Eps,Ivs,dss);
+		DSig -= dss;
+	}
 }
 
 

@@ -46,7 +46,7 @@ public:
 	void        CalcDeps     () const;
 	double      Val          (int iNod, Str_t Key) const;
 	double      Val          (          Str_t Key) const;
-	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        Update       (double Time, double Dt, Vec_t const & dU, Vec_t & dFint);
 	void        CMatrix      (size_t Idx, Mat_t & M) const;
 
 	// Methods
@@ -176,7 +176,7 @@ inline double Rod::Val(char const * Name) const
 	else throw new Fatal("Rod::Val: This element does not have a Val named < %s >",Name);
 }
 
-inline void Rod::Update(double h, Vec_t const & dU, Vec_t & dFint)
+inline void Rod::Update(double Time, double Dt, Vec_t const & dU, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
 	Vec_t du(_nd*_ge->NNodes); // Delta disp. of this element

@@ -72,7 +72,7 @@ class Data
 {
 public:
 	/* Constructor */
-	Data (int nDim) : _dim(nDim), _tol(1.0e-5), _frame(false) {}
+	Data (int nDim) : _dim(nDim), _tol(1.0e-5), _frame(false), _time(0.0) {}
 
 	/* Destructor */
 	~Data ();
@@ -131,6 +131,7 @@ public:
 
 	// Access methods
 	bool                    Check        ();                                                  ///< Check if Nodes and Elements were allocated properly. Should be called before accessing Nodes and Elements, since these may not had been allocated yet (and then causing Segfaults).
+	double                  Time         ()         const { return _time;         }           ///< Return current time
 	size_t                  NNodes       ()         const { return _nodes.Size(); }           ///< Return the number of nodes
 	size_t                  NElems       ()         const { return _elems.Size(); }           ///< Return the number of elements
 	size_t                  NDim         ()         const { return _dim;          }           ///< Return the dimension
@@ -149,8 +150,12 @@ public:
 	void                    Bounds       (double & MinX, double & MinY, double & MinZ,
 	                                      double & MaxX, double & MaxY, double & MaxZ) const; ///< Return the limits (bounding box) of the geometry
 
-	void SetOutEles (Array<size_t> const & Eles, Str_t FileKey); ///< Set elements to output
-	void OutEles    (bool OnlyCaption=false) const;              ///< Output elements state
+	// Set methods
+	void UpdateTime  (double DTime) { _time += DTime; }            ///< Increment current time
+	void SetOutElems (Array<size_t> const & Elems, Str_t FileKey); ///< Set elements to output
+	void SetOutNodes (Array<size_t> const & Nodes, Str_t FileKey); ///< Set elements to output
+	void OutElems    (bool OnlyCaption=false) const;               ///< Output elements state
+	void OutNodes    (bool OnlyCaption=false) const;               ///< Output elements state
 
 #ifdef USE_BOOST_PYTHON
 // {
@@ -171,7 +176,8 @@ public:
 	void            PyBounds2D     (BPy::list & MinXY,  BPy::list & MaxXY ) const;
 	void            PyBounds3D     (BPy::list & MinXYZ, BPy::list & MaxXYZ) const;
 
-	void PySetOutEles (BPy::list const & Eles, BPy::str const & FileKey);
+	void PySetOutElems (BPy::list const & Elems, BPy::str const & FileKey);
+	void PySetOutNodes (BPy::list const & Nodes, BPy::str const & FileKey);
 // }
 #endif // USE_BOOST_PYTHON
 
@@ -180,6 +186,7 @@ private:
 	int                     _dim;    ///< Space dimension
 	double                  _tol;    ///< Tolerance for defining whether X-Y-Z coordinates are in a same plane or not. Also used for comparing coincident nodes
 	bool                    _frame;  ///< Only frame (beam/truss) structure ?
+	double                  _time;   ///< Current time
 	Array<Node*>            _nodes;  ///< FE nodes
 	Array<Element*>         _elems;  ///< FE elements
 	Array<Element*>         _beams;  ///< Beams
@@ -190,6 +197,8 @@ private:
 	Array<Prop_t*>          _props;  ///< Properties.         Size==_etidx.size()
 	Array<std::ofstream*>   _efiles; ///< Files to output elements information
 	Array<size_t>           _eout;   ///< Elements for output
+	Array<std::ofstream*>   _nfiles; ///< Files to output nodes information
+	Array<size_t>           _nout;   ///< Nodes for output
 
 }; // class Data
 
@@ -209,6 +218,7 @@ inline Data::~Data()
 	for (size_t i=0; i<_models.Size(); ++i) if (_models[i]!=NULL) delete _models[i];
 	for (size_t i=0; i<_props .Size(); ++i) if (_props [i]!=NULL) delete _props [i];
 	for (size_t i=0; i<_efiles.Size(); ++i) if (_efiles[i]!=NULL) { _efiles[i]->close(); delete _efiles[i]; }
+	for (size_t i=0; i<_nfiles.Size(); ++i) if (_nfiles[i]!=NULL) { _nfiles[i]->close(); delete _nfiles[i]; }
 }
 
 inline void Data::SetNodesElems(Mesh::Generic const * M, EAtts_T const * ElemsAtts)
@@ -588,10 +598,10 @@ inline void Data::Bounds(double & MinX, double & MinY, double & MinZ, double & M
 	}
 }
 
-inline void Data::SetOutEles(Array<size_t> const & Eles, Str_t FileKey)
+inline void Data::SetOutElems(Array<size_t> const & Elems, Str_t FileKey)
 {
-	_eout = Eles;
-	for (size_t i=0; i<Eles.Size(); ++i)
+	_eout = Elems;
+	for (size_t i=0; i<Elems.Size(); ++i)
 	{
 		String fn; fn.Printf("%s_ele%d.cal",FileKey,_eout[i]);
 		std::ofstream * f = new std::ofstream();
@@ -600,9 +610,26 @@ inline void Data::SetOutEles(Array<size_t> const & Eles, Str_t FileKey)
 	}
 }
 
-inline void Data::OutEles(bool OnlyCaption) const
+inline void Data::SetOutNodes(Array<size_t> const & Nodes, Str_t FileKey)
 {
-	for (size_t i=0; i<_eout.Size(); ++i) Ele(_eout[i])->OutState ((*_efiles[i]), OnlyCaption);
+	_nout = Nodes;
+	for (size_t i=0; i<Nodes.Size(); ++i)
+	{
+		String fn; fn.Printf("%s_nod%d.cal",FileKey,_nout[i]);
+		std::ofstream * f = new std::ofstream();
+		f->open (fn.CStr(), std::ios::out);
+		_nfiles.Push (f);
+	}
+}
+
+inline void Data::OutElems(bool OnlyCaption) const
+{
+	for (size_t i=0; i<_eout.Size(); ++i) Ele(_eout[i])->OutState (_time, (*_efiles[i]), OnlyCaption);
+}
+
+inline void Data::OutNodes(bool OnlyCaption) const
+{
+	for (size_t i=0; i<_nout.Size(); ++i) Nod(_nout[i])->OutState (_time, (*_nfiles[i]), OnlyCaption);
 }
 
 /** Outputs a data structure. */

@@ -58,9 +58,7 @@ public:
 	ProName_t * Props        () const { return BIOT_PROP; }
 	void        ClearDisp    ();
 	void        CalcDeps     () const;
-	double      Val          (int iNod, Str_t Key) const;
-	double      Val          (          Str_t Key) const;
-	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        Update       (double Time, double Dt, Vec_t const & dU, Vec_t & dFint);
 	void        OutInfo      (std::ostream & os) const;
 	size_t      NCMats       () const { return 3; }
 	size_t      NHMats       () const { return 1; }
@@ -85,7 +83,6 @@ private:
 	void   _compute_L  (Mat_t & Le) const;
 	void   _compute_H  (Mat_t & He) const;
 	void   _compute_Qb (Vec_t & Qb) const;
-	double _val_ip     (size_t iIP, Str_t Name) const;
 
 }; // class BiotElem
 
@@ -149,7 +146,7 @@ inline void BiotElem::ClearDisp()
 		_ge->Conn[i]->DOFVar(UD[j]).EssentialVal = 0.0;
 
 	// Clear strains
-	for (size_t i=0; i<_eps.Size(); ++i) _eps[i] = 0.0,0.0,0.0, 0.0,0.0,0.0;
+	for (size_t i=0; i<_state.Size(); ++i) _state[i].Eps = 0.0,0.0,0.0, 0.0,0.0,0.0;
 }
 
 inline void BiotElem::CalcDeps() const
@@ -157,37 +154,7 @@ inline void BiotElem::CalcDeps() const
 	if (IsActive==false) throw new Fatal("BiotElem::CalcDepVars: This element is inactive");
 }
 
-inline double BiotElem::Val(int iNod, Str_t Name) const
-{
-	// Displacements
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
-
-	// Forces
-	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
-
-	// Stress, strains, internal values, etc.
-	Vec_t    ip_values (_ge->NIPs); // Vectors for extrapolation
-	Vec_t nodal_values (_ge->NNodes);
-
-	// Get integration point values
-	for (size_t i=0; i<_ge->NIPs; i++) ip_values(i) = _val_ip(i,Name);
-
-	// Extrapolate
-	_ge->Extrap (ip_values, nodal_values);
-	return nodal_values (iNod);
-}
-
-inline double BiotElem::Val(Str_t Name) const
-{
-	// Get integration point values
-	double sum = 0.0;
-	for (size_t i=0; i<_ge->NIPs; i++) sum += _val_ip(i,Name);
-
-	// Output single value at CG
-	return sum/_ge->NIPs;
-}
-
-inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
+inline void BiotElem::Update(double t, double Dt, Vec_t const & dU, Vec_t & dFint)
 {
 	// nDOFs
 	size_t nde = _nd-1; // nDOFs equilib
@@ -222,7 +189,7 @@ inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 	_compute_Qb(Qb);
 
 	df   = Ke*du + Ce*dp;
-	dvol = Le*du + h*He*p + h*Qb;
+	dvol = Le*du + Dt*He*p + Dt*Qb;
 
 	// Update model and calculate internal force vector;
 	Mat_t dN,J,B;
@@ -233,7 +200,7 @@ inline void BiotElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
 		deps = B*du;
-		_mdl->StateUpdate (deps, _sig[i], _eps[i], _ivs[i], dsig);
+		_mdl->StateUpdate (t, Dt, deps, _state[i], dsig);
 	}
 
 	// Sum up contribution to internal forces vector
@@ -248,8 +215,8 @@ inline void BiotElem::OutInfo(std::ostream & os) const
 {
 	for (size_t i=0; i<_ge->NIPs; i++)
 	{
-		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _sig[i](0) << _12_6 << _sig[i](1) << _12_6 << _sig[i](2);
-		os <<                "  Ex,Ey,Ez = " << _12_6 << _eps[i](0) << _12_6 << _eps[i](1) << _12_6 << _eps[i](2) << " ";
+		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _state[i].Sig(0) << _12_6 << _state[i].Sig(1) << _12_6 << _state[i].Sig(2);
+		os <<                "  Ex,Ey,Ez = " << _12_6 << _state[i].Eps(0) << _12_6 << _state[i].Eps(1) << _12_6 << _state[i].Eps(2) << " ";
 	}
 }
 
@@ -374,10 +341,9 @@ inline void BiotElem::_compute_K(Mat_t & Ke) const
 		_ge->Derivs       (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
-		_mdl->TgStiffness (_sig[i], _eps[i], _ivs[i], D, _first);
+		_mdl->TgStiffness (_state[i], D);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
-	if (_first) _first = false;
 }
 
 inline void BiotElem::_compute_C(Mat_t & Ce) const
@@ -479,36 +445,6 @@ inline void BiotElem::_compute_Qb(Vec_t & Qb) const
 		_mdl->TgPermeability (K);
 		Qb += trn(Bp)*K*b*det(J)*_ge->IPs[i].w/gw;
 	}
-}
-
-inline double BiotElem::_val_ip(size_t iIP, Str_t Name) const
-{
-	     if (strcmp(Name,"Sx" )==0)                          return _sig[iIP](0);
-	else if (strcmp(Name,"Sy" )==0)                          return _sig[iIP](1);
-	else if (strcmp(Name,"Sz" )==0)                          return _sig[iIP](2);
-	else if (strcmp(Name,"Sxy")==0 || strcmp(Name,"Syx")==0) return _sig[iIP](3)/SQ2;
-	else if (strcmp(Name,"Syz")==0 || strcmp(Name,"Szy")==0) return _sig[iIP](4)/SQ2;
-	else if (strcmp(Name,"Szx")==0 || strcmp(Name,"Sxz")==0) return _sig[iIP](5)/SQ2;
-	else if (strcmp(Name,"p"  )==0)                          return (_sig[iIP](0)+_sig[iIP](1)+_sig[iIP](2))/3.0;
-	else if (strcmp(Name,"q"  )==0)                          return sqrt(((_sig[iIP](0)-_sig[iIP](1))*(_sig[iIP](0)-_sig[iIP](1)) + (_sig[iIP](1)-_sig[iIP](2))*(_sig[iIP](1)-_sig[iIP](2)) + (_sig[iIP](2)-_sig[iIP](0))*(_sig[iIP](2)-_sig[iIP](0)) + 3.0*(_sig[iIP](3)*_sig[iIP](3) + _sig[iIP](4)*_sig[iIP](4) + _sig[iIP](5)*_sig[iIP](5)))/2.0);
-	else if (strcmp(Name,"Ex" )==0)                          return _eps[iIP](0);
-	else if (strcmp(Name,"Ey" )==0)                          return _eps[iIP](1);
-	else if (strcmp(Name,"Ez" )==0)                          return _eps[iIP](2);
-	else if (strcmp(Name,"Exy")==0 || strcmp(Name,"Eyx")==0) return _eps[iIP](3)/SQ2;
-	else if (strcmp(Name,"Eyz")==0 || strcmp(Name,"Ezy")==0) return _eps[iIP](4)/SQ2;
-	else if (strcmp(Name,"Ezx")==0 || strcmp(Name,"Exz")==0) return _eps[iIP](5)/SQ2;
-	else if (strcmp(Name,"Ev" )==0)                          return _eps[iIP](0)+_eps[iIP](1)+_eps[iIP](2); 
-	else if (strcmp(Name,"Ed" )==0)                          return sqrt(2.0*((_eps[iIP](0)-_eps[iIP](1))*(_eps[iIP](0)-_eps[iIP](1)) + (_eps[iIP](1)-_eps[iIP](2))*(_eps[iIP](1)-_eps[iIP](2)) + (_eps[iIP](2)-_eps[iIP](0))*(_eps[iIP](2)-_eps[iIP](0)) + 3.0*(_eps[iIP](3)*_eps[iIP](3) + _eps[iIP](4)*_eps[iIP](4) + _eps[iIP](5)*_eps[iIP](5))))/3.0;
-
-	// Flow velocities
-	else if (strcmp(Name,"Vx" )==0) return 0.0;
-	else if (strcmp(Name,"Vy" )==0) return 0.0;
-	else if (strcmp(Name,"Vz" )==0) return 0.0;
-
-	// Total head
-	else if (strcmp(Name,"H" )==0) return 0.0;
-
-	else throw new Fatal("BiotElem::_val_ip: Name==%s if not available for this element",Name);
 }
 
 

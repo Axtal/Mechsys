@@ -104,13 +104,14 @@ public:
 	void         EdgeBry   (Str_t Key, double Val, int iEdge)           { CHECKGEPE("EdgeBry"  )        _pe->EdgeBry(Key,Val,iEdge);          } ///< Set edge boundary conditions (Initialize MUST be called first)
 	void         EdgeBry   (Str_t Key, double V0, double V1, int iEdge) { CHECKGEPE("EdgeBry"  )        _pe->EdgeBry(Key,V0,V1,iEdge);        } ///< Set edge boundary conditions (Initialize MUST be called first)
 	void         FaceBry   (Str_t Key, double Val, int iFace)           { CHECKGEPE("FaceBry"  )        _pe->FaceBry(Key,Val,iFace);          } ///< Set face boundary conditions (Initialize MUST be called first)
-	void         Update    (double h, Vec_t const & dU, Vec_t & dFint)  { CHECKGEPE("Update"   )        _pe->Update(h,dU,dFint);              } ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
+	void         Update    (double t, double Dt, Vec_t const & dU, Vec_t & dFint)  { CHECKGEPE("Update"   ) _pe->Update(t,Dt,dU,dFint);       } ///< Update the internal state of this element for given dU and update the DOFs related to this element inside dFint (internal forces increment vector)
 	void         Backup    ()                                           { CHECKGEPE("Backup"   )        _pe->Backup();                        } ///< Backup internal state
 	void         Restore   ()                                           { CHECKGEPE("Restore"  )        _pe->Restore();                       } ///< Restore internal state from a previously backup state
 	void         GetLbls   (Array<String> & Lbls) const                 { CHECKGEPE("GetLbls"  )        _pe->GetLbls(Lbls);                   } ///< Get the labels of all values to be output
 	void         OutInfo   (std::ostream & os) const                    { CHECKGEPE("OutInfo"  )        _pe->OutInfo(os);                     } ///< Output extra info of the derived element
 	bool         HasExtra  () const                                     { CHECKGEPE("HasExtra" ) return _pe->HasExtra();                      } ///< Has extra output ?
-	void         OutState  (std::ostream & os, bool OnlyCaption) const  { CHECKGEPE("OutState")         _pe->OutState(os,OnlyCaption);        } ///< Output element state. Ex.: Sx Sy Sz p q Ex Ey Ez Ev Ed
+	void         OutState  (double Time, std::ostream & os, 
+	                        bool OnlyCaption) const                     { CHECKGEPE("OutState")         _pe->OutState(Time,os,OnlyCaption);   } ///< Output element state. Ex.: Sx Sy Sz p q Ex Ey Ez Ev Ed
 	void         OutExtra  (Mat_t & Coords, Vec_t & Norm,
 	                        Mat_t & Vals, Array<String> & Lbls) const   { CHECKGEPE("OutExtra" )        _pe->OutExtra(Coords,Norm,Vals,Lbls); } ///< Output extra information
 	size_t       NCMats    () const                                     { CHECKGEPE("NCMats"   ) return _pe->NCMats();                        } ///< Number of C matrices such as K:Stiffness, L1:CouplingMatrix1, L2:CouplingMatrix2 and M:MassMatrix
@@ -130,8 +131,8 @@ public:
 	                        Array<bool> & RUPresc,
 	                        Array<bool> & CUPresc) const                { CHECKGEPE("HMatMap"  ) _pe->HMatMap(Idx,RMap,CMap,RUPresc,CUPresc); } ///< HMatrix map to convert local DOFs into global equation positions
 	void         UVecMap   (size_t Idx, Array<size_t> & RMap) const     { CHECKGEPE("UVecMap"  ) _pe->UVecMap(Idx,RMap);                      } ///< UVector map to convert local DOFs into global equation positions
-	bool         HasAddToF () const                                     { CHECKGEPE("HasAddToF") return _pe->HasAddToF();                     } ///< Has component to add to external force vector?
-	void         AddToF    (double h, Vec_t & Fext) const               { CHECKGEPE("AddToF")    _pe->AddToF(h,Fext);                         } ///< Add extra component to external force vector
+	bool         HasDFs    () const                                     { CHECKGEPE("HasDFs")     return _pe->HasDFs();                       } ///< Has component (dF(s)tar) to add to external force vector?
+	void         AddToDFext(double t, double Dt, Vec_t & DFext) const   { CHECKGEPE("AddToDFext")        _pe->AddToDFext(t,Dt,DFext);         } ///< Add extra component (dF(s)tar) to external force vector
 
 #ifdef USE_BOOST_PYTHON
 // {

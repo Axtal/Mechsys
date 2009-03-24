@@ -89,7 +89,7 @@ public:
 	void        CalcDeps     () const;
 	double      Val          (int iNod, Str_t Key) const;
 	double      Val          (          Str_t Key) const;
-	void        Update       (double h, Vec_t const & dU, Vec_t & dFint);
+	void        Update       (double Time, double Dt, Vec_t const & dU, Vec_t & dFint);
 	void        Backup       ();
 	void        Restore      ();
 	void        OutInfo      (std::ostream & os) const;
@@ -99,12 +99,8 @@ public:
 
 protected:
 	// Data at each Integration Point (IP)
-	Array<Vec3_t>  _vel;      ///< Stress (or axial force for linear elements)
-	Array<Vec3_t>  _gra;      ///< Strain
-	Array<IntVals> _ivs;      ///< Internal values
-	Array<Vec3_t>  _vel_bkp;  ///< Backup stress
-	Array<Vec3_t>  _gra_bkp;  ///< Backup strain
-	Array<IntVals> _ivs_bkp;  ///< Backup internal values
+	Array<DiffState> _state;
+	Array<DiffState> _state_bkp;
 
 	// Private methods that MAY be derived
 	virtual void _initialize (Str_t Inis); ///< Initialize this element
@@ -114,7 +110,9 @@ protected:
 	void _dist_to_face_nodes (Str_t Key, double FaceValue, Array<Node*> const & FConn); ///< Distribute values from face/edges to nodes
 
 private:
-	void _init_internal_state (); ///< Initialize internal state
+	void   _init_internal_state (); ///< Initialize internal state
+	double _get_val (Str_t Name, Vec3_t const & Vel, Vec3_t const & Gra) const;
+	void   _set_val (Str_t Name, double Val, Vec3_t & Vel, bool WithError) const;
 
 }; // class DiffusionElem                                                                     
 
@@ -210,18 +208,18 @@ inline void DiffusionElem::CalcDeps() const
 
 inline double DiffusionElem::Val(int iNod, Str_t Name) const
 {
-	// Essential
+	// Displacements
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,UD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).EssentialVal;
 
-	// Natural
+	// Forces
 	for (int j=0; j<_nd; ++j) if (strcmp(Name,FD[j])==0) return _ge->Conn[iNod]->DOFVar(Name).NaturalVal;
 
-	// Veloc, grads, internal values, etc.
+	// Stress, strains, internal values, etc.
 	Vec_t    ip_vals (_ge->NIPs); // Vectors for extrapolation
 	Vec_t nodal_vals (_ge->NNodes);
 
 	// Get integration point values
-	//for (size_t i=0; i<_ge->NIPs; i++) ip_vals(i) = Tensors::Val (_vel[i], _gra[i], Name);
+	for (size_t i=0; i<_ge->NIPs; i++) ip_vals(i) = _get_val (Name, _state[i].Vel, _state[i].Gra);
 
 	// Extrapolate
 	_ge->Extrap (ip_vals, nodal_vals);
@@ -231,11 +229,11 @@ inline double DiffusionElem::Val(int iNod, Str_t Name) const
 inline double DiffusionElem::Val(Str_t Name) const
 {
 	double ave = 0.0;
-	//for (size_t i=0; i<_ge->NIPs; i++) ave += Tensors::Val (_vel[i], _gra[i], Name);
+	for (size_t i=0; i<_ge->NIPs; i++) ave += _get_val (Name, _state[i].Vel, _state[i].Gra);
 	return ave/_ge->NIPs;
 }
 
-inline void DiffusionElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
+inline void DiffusionElem::Update(double Time, double Dt, Vec_t const & dU, Vec_t & dFint)
 {
 	// Allocate (local/element) displacements vector
 	Vec_t du(_nd*_ge->NNodes); // Delta temp/head of this element
@@ -258,7 +256,7 @@ inline void DiffusionElem::Update(double h, Vec_t const & dU, Vec_t & dFint)
 		_ge->Jacobian     (dN, J);
 		_B_mat            (dN, J, B);
 		dgrad = B*du;
-		_mdl->StateUpdate (dgrad, _vel[i], _gra[i], _ivs[i], dvel);
+		_mdl->StateUpdate (Time, Dt, dgrad, _state[i], dvel);
 		df += trn(B)*dvel*det(J)*_ge->IPs[i].w;
 	}
 
@@ -272,9 +270,9 @@ inline void DiffusionElem::Backup()
 {
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_vel_bkp[i] = _vel[i];
-		_gra_bkp[i] = _gra[i];
-		_ivs_bkp[i] = _ivs[i];
+		_state_bkp[i].Vel = _state[i].Vel;
+		_state_bkp[i].Gra = _state[i].Gra;
+		_state_bkp[i].Ivs = _state[i].Ivs;
 	}
 }
 
@@ -282,9 +280,9 @@ inline void DiffusionElem::Restore()
 {
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
-		_vel[i] = _vel_bkp[i];
-		_gra[i] = _gra_bkp[i];
-		_ivs[i] = _ivs_bkp[i];
+		_state[i].Vel = _state_bkp[i].Vel;
+		_state[i].Gra = _state_bkp[i].Gra;
+		_state[i].Ivs = _state_bkp[i].Ivs;
 	}
 }
 
@@ -292,8 +290,8 @@ inline void DiffusionElem::OutInfo(std::ostream & os) const
 {
 	for (size_t i=0; i<_ge->NIPs; i++)
 	{
-		os << "IP # " << i << " Sx,Sy,Sz = " << _12_6 << _vel[i](0) << _12_6 << _vel[i](1) << _12_6 << _vel[i](2);
-		os <<                "  Ex,Ey,Ez = " << _12_6 << _vel[i](0) << _12_6 << _vel[i](1) << _12_6 << _vel[i](2) << " ";
+		os << "IP # " << i << " Vx,Vy,Vz = " << _12_6 << _state[i].Vel(0) << _12_6 << _state[i].Vel(1) << _12_6 << _state[i].Vel(2);
+		os <<                "  Gx,Gy,Gz = " << _12_6 << _state[i].Gra(0) << _12_6 << _state[i].Gra(1) << _12_6 << _state[i].Gra(2) << " ";
 	}
 }
 
@@ -314,7 +312,7 @@ inline void DiffusionElem::CMatrix(size_t Idx, Mat_t & Ke) const
 		_ge->Derivs          (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian        (dN, J);
 		_B_mat               (dN, J, B);
-		_mdl->TgConductivity (_vel[i], _gra[i], _ivs[i], D);
+		_mdl->TgConductivity (_state[i], D);
 		Ke += trn(B)*D*B*det(J)*_ge->IPs[i].w;
 	}
 }
@@ -344,12 +342,8 @@ inline void DiffusionElem::CMatMap(size_t Idx, Array<size_t> & RMap, Array<size_
 inline void DiffusionElem::_initialize(Str_t Inis)
 {
 	// Resize IP data
-	_vel    .Resize (_ge->NIPs);
-	_gra    .Resize (_ge->NIPs);
-	_ivs    .Resize (_ge->NIPs);
-	_vel_bkp.Resize (_ge->NIPs);
-	_gra_bkp.Resize (_ge->NIPs);
-	_ivs_bkp.Resize (_ge->NIPs);
+	_state    .Resize (_ge->NIPs);
+	_state_bkp.Resize (_ge->NIPs);
 
 	// Parse values
 	LineParser           lp(Inis);
@@ -360,11 +354,11 @@ inline void DiffusionElem::_initialize(Str_t Inis)
 	for (size_t i=0; i<_ge->NIPs; ++i)
 	{
 		// Stress and strain
-		_vel[i] = 0.0,0.0,0.0;
-		_gra[i] = 0.0,0.0,0.0;
+		_state[i].Vel = 0.0,0.0,0.0;
+		_state[i].Gra = 0.0,0.0,0.0;
 
 		// Initialize internal values
-		_mdl->InitIVS (names_vals, _vel[i], _gra[i], _ivs[i]);
+		_mdl->InitIVS (names_vals, _state[i]);
 	}
 
 	// Initialize internal state
@@ -438,7 +432,7 @@ inline void DiffusionElem::_init_internal_state()
 		_ge->Derivs   (_ge->IPs[i].r, _ge->IPs[i].s, _ge->IPs[i].t, dN);
 		_ge->Jacobian (dN, J);
 		_B_mat        (dN, J, B);
-		DiffusionModel::Vec3ToVec (_gi, _vel[i], vel);
+		DiffusionModel::Vec3ToVec (_gi, _state[i].Vel, vel);
 		f += trn(B)*vel*det(J)*_ge->IPs[i].w;
 	}
 
@@ -446,6 +440,26 @@ inline void DiffusionElem::_init_internal_state()
 	for (size_t i=0; i<_ge->NNodes; ++i)
 	for (int    j=0; j<_nd;         ++j)
 		_ge->Conn[i]->DOFVar(UD[j]).NaturalVal += f(i*_nd+j);
+}
+
+inline double DiffusionElem::_get_val(Str_t Name, Vec3_t const & Vel, Vec3_t const & Gra) const
+{
+	     if (strcmp(Name,"Vx" )==0) return Vel(0);
+	else if (strcmp(Name,"Vy" )==0) return Vel(1);
+	else if (strcmp(Name,"Vz" )==0) return Vel(2);
+	else if (strcmp(Name,"Ix" )==0) return Gra(0);
+	else if (strcmp(Name,"Iy" )==0) return Gra(1);
+	else if (strcmp(Name,"Iz" )==0) return Gra(2);
+	else throw new Fatal("DiffusionElem::_get_val: Name==%s is invalid",Name);
+}
+
+inline void DiffusionElem::_set_val(Str_t Name, double Val, Vec3_t & Vel, bool WithError) const
+{
+	     if (strcmp(Name,"ZERO")==0) return;
+	else if (strcmp(Name,"Vx"  )==0) Vel(0) = Val;
+	else if (strcmp(Name,"Vy"  )==0) Vel(1) = Val;
+	else if (strcmp(Name,"Vz"  )==0) Vel(2) = Val;
+	else if (WithError) throw new Fatal("DiffusionElem::_set_val: Name==%s is invalid",Name);
 }
 
 

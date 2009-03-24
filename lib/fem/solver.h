@@ -90,8 +90,8 @@ public:
 	enum Solver_T { FE_T, AME_T }; ///< FE:Forward-Euler, AME:Automatic-Modified-Euler
 
 	// Constructor
-	Solver (FEM::Data & D)                       : _has_addF(false) { _initialize (&D, NULL);    }
-	Solver (FEM::Data & D, char const * FileKey) : _has_addF(false) { _initialize (&D, FileKey); }
+	Solver (FEM::Data & D)                       { _initialize (&D, NULL);    }
+	Solver (FEM::Data & D, char const * FileKey) { _initialize (&D, FileKey); }
 
 	// Destructor
 	~Solver() { if (_out!=NULL) delete _out; }
@@ -107,8 +107,8 @@ public:
 	double   F             (double t) const;                                                         ///< TODO
 
 	// Access methods
-	double Time () const { return _time;   } ///< Return current time
-	size_t nDOF () const { return _ndofs;  } ///< Number of DOFs
+	double Time () const { return _data->Time(); } ///< Return current time
+	size_t nDOF () const { return _ndofs;        } ///< Number of DOFs
 
 	// Access output
 	Output const & Out () const { return (*_out); }
@@ -129,10 +129,11 @@ private:
 	FEM::Data              * _data;    ///< FEM Data structure
 	FEM::PData             * _pd;      ///< Structure with data for parallel computation
 	Solver_T                 _type;    ///< Solver type: FE:Forward-Euler, AME:Automatic-Modified-Euler
-	double                   _time;    ///< Current time
 	int                      _inc;     ///< Current increment
 	int                      _ndofs;   ///< Total number of DOFs
 	LinAlg::LinSol_T         _linsol;  ///< The type of the linear solver to be used in the inversion of G11. Solves: X<-inv(A)*B
+	bool                     _has_hHU; ///< Flag which says if any element has to contribute to the hHU vector. If _has_hHU==false, there is no need for the hHU vector, because there are no HMatrices in this stage of the simulation.
+	bool                     _has_dFs; ///< Has delta Force (s)tar (to be added to dFext)
 	int                      _nudofs;  ///< Total number of unknown DOFs of a current stage
 	int                      _npdofs;  ///< Total number of prescribed DOFs of a current stage
 	Array<Node::DOF*>        _udofs;   ///< Unknown DOFs
@@ -144,9 +145,7 @@ private:
 	LinAlg::Vector<double>   _dF_int;  ///< Increment of internal natural (forces) values, divided by the number of increments, correspondent to the increment of external forces.
 	LinAlg::Vector<double>   _resid;   ///< Residual: resid = dFext - dFint
 	LinAlg::Vector<double>   _hHU;     ///< Linearized independent term of the differential equation.
-	bool                     _has_hHU; ///< Flag which says if any element has to contribute to the hHU vector. If _has_hHU==false, there is no need for the hHU vector, because there are no HMatrices in this stage of the simulation.
 	Output                 * _out;     ///< Write output file
-	bool                     _has_addF;///< Flag representing if there are any element that has to contribute to dFext vector
 
 	// Data for Forward-Euler
 	int    _nSI;        ///< Number of sub-increments
@@ -185,13 +184,13 @@ private:
 	int                         _T22_size; ///< Size of T22
 
 	// Methods
-	void   _initialize                 (FEM::Data * D, char const * FileKey);                                           ///< Initialize the solver
-	void   _inv_G_times_dF_minus_hHU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU);            ///< Compute (linear solver) inv(G)*(dF-hHU), where G may be assembled by [C] and [H] matrices
-	void   _update_nodes_and_elements  (double h, LinAlg::Vector<double> const & dF,LinAlg::Vector<double> const & dU); ///< Update nodes essential/natural values and elements internal values (such as stresses/strains)
-	void   _backup_nodes_and_elements  ();                                                                              ///< Backup nodes essential/natural values and elements internal values (such as stresses/strains)
-	void   _restore_nodes_and_elements ();                                                                              ///< Restore nodes essential/natural values and elements internal values (such as stresses/strains)
-	double _norm_essential_vector      ();                                                                              ///< Compute the Euclidian norm of the essential (displacements) vector
-	double _norm_natural_vector        ();                                                                              ///< Compute the Euclidian norm of the natural (forces) vector
+	void   _initialize                 (FEM::Data * D, char const * FileKey);                                ///< Initialize the solver
+	void   _inv_G_times_dF_minus_hHU   (double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU); ///< Compute (linear solver) inv(G)*(dF-hHU), where G may be assembled by [C] and [H] matrices
+	void   _update_nodes_and_elements  (double h,LinAlg::Vector<double> const & dU);                         ///< Update nodes essential/natural values and elements internal values (such as stresses/strains)
+	void   _backup_nodes_and_elements  ();                                                                   ///< Backup nodes essential/natural values and elements internal values (such as stresses/strains)
+	void   _restore_nodes_and_elements ();                                                                   ///< Restore nodes essential/natural values and elements internal values (such as stresses/strains)
+	double _norm_essential_vector      ();                                                                   ///< Compute the Euclidian norm of the essential (displacements) vector
+	double _norm_natural_vector        ();                                                                   ///< Compute the Euclidian norm of the natural (forces) vector
 
 	// Private methods
 	void _assemb_G_and_hHU     (double h);                                                                                                                                                   ///< Assemble matrix G for the actual state of elements/nodes. Note h == TimeInc
@@ -205,6 +204,7 @@ private:
 	// FE and AME schemes
 	void _fe_solve_for_an_increment  (double dTime);
 	void _ame_solve_for_an_increment (double dTime);
+	void _calc_resid                 (LinAlg::Vector<double> & dFext);
 
 }; // class Solver
 
@@ -219,24 +219,6 @@ inline Solver * Solver::SetType(char const * Type)
 	     if (strcmp(Type,"FE" )==0) _type = FE_T;
 	else if (strcmp(Type,"AME")==0) _type = AME_T;
 	else throw new Fatal("Solver::SetType: Solver type==%s is invalid",Type);
-	// Set constants
-	if (_type==FE_T)
-	{
-		_nSI        = 1;
-		_norm_resid = 0.0;
-	}
-	else
-	{
-		_maxSI  = 400;
-		_DTOL   = 1.0e-3;
-		_dTini  = 0.001;
-		_mMin   = 0.01;
-		_mMax   = 10;
-		_mCoef  = 0.7;
-		_ZTOL   = 1.0e-7;
-		_Cconv  = true;
-		_Rerr   = 0.0;
-	}
 	return this;
 }
 
@@ -280,6 +262,7 @@ inline void Solver::Solve(int NDiv, double DTime, bool ClearDisp)
 	if (_data->Check()==false) throw new Fatal("Solver::Solve: FEM Geometry was not properly set (pointers may be NULL)");
 
 	// Loop over all active elements
+	_has_dFs = false;
 	for (size_t i=0; i<_data->NElems(); ++i)
 	{
 		if (_data->Ele(i)->IsActive())
@@ -290,12 +273,9 @@ inline void Solver::Solve(int NDiv, double DTime, bool ClearDisp)
 				throw new Fatal("Solver::Solve Element # %d was not properly initialized. Error: %s",i,msg.CStr());
 
 			// Check if element has component to be added to F_ext
-			if (_data->Ele(i)->HasAddToF()) _has_addF = true;
+			if (_data->Ele(i)->HasDFs()) _has_dFs = true;
 		}
 	}
-
-	// Number of divisions for each increment
-	double dTime = DTime / NDiv; // Time increment
 
 	// Number of DOFs
 	_ndofs  = 0; // total
@@ -376,12 +356,12 @@ inline void Solver::Solve(int NDiv, double DTime, bool ClearDisp)
 		for (int i=0; i<_npdofs; ++i) _T11.PushEntry(_pdofs[i]->EqID, _pdofs[i]->EqID, 1.0);
 	}
 
-	// Solve
-	if (_type==FE_T) { for (_inc=0; _inc<NDiv; ++_inc) _fe_solve_for_an_increment  (dTime); }
-	else             { for (_inc=0; _inc<NDiv; ++_inc) _ame_solve_for_an_increment (dTime); }
+	// Number of divisions for each increment
+	double dTime = DTime / NDiv; // Time increment
 
-	// Update time
-	_time += DTime;
+	// Solve
+	if (_type==FE_T) { for (_inc=0; _inc<NDiv; ++_inc) _fe_solve_for_an_increment (dTime); }
+	else             { for (_inc=0; _inc<NDiv; ++_inc) _ame_solve_for_an_increment(dTime); }
 
 	// Clear boundary conditions for a next stage
 	for (size_t i=0; i<_data->NNodes(); ++i) _data->Nod(i)->ClearBryValues();
@@ -398,12 +378,11 @@ inline void Solver::SolveWithInfo(int NDiv, double DTime, int iStage, char const
 	double start = std::clock();
 	Solve (NDiv, DTime, ClearDisp); // <<<<<<< Solve
 	double total = std::clock() - start;
-	double norm_resid = LinAlg::Norm (_resid);
 	std::cout << "[1;33m\n--- Stage # " << iStage << " --------------------------------------------------[0m\n";
 	if (MoreInfo!=NULL) std::cout << MoreInfo;
 	std::cout << "[1;36m    Time elapsed (FE solution) = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-	std::cout << "[1;35m    Norm(Resid=DFext-DFint)    = " << norm_resid << "[0m\n";
-	std::cout << "[1;32m    Number of DOFs             = " << nDOF()     << "[0m" << std::endl;
+	std::cout << "[1;35m    Norm(Resid=DFext-DFint)    = " << _norm_resid << "[0m\n";
+	std::cout << "[1;32m    Number of DOFs             = " << nDOF()      << "[0m" << std::endl;
 }
 
 inline double Solver::F(double t) const
@@ -463,15 +442,28 @@ inline void Solver::DynSolve(double tIni, double tFin, double h, double dtOut, s
 
 inline void Solver::_initialize(FEM::Data * D, char const * FileKey)
 {
-	_data  = D;
-	_pd    = NULL;
-	_time  = 0.0;
-	_inc   = 0;
-	_ndofs = 0;
+	_data    = D;
+	_pd      = NULL;
+	_inc     = 0;
+	_ndofs   = 0;
+	_has_hHU = false;
+	_has_dFs = false;
 	SetType   ("FE");
 	SetLinSol ("UM");
 	if (FileKey==NULL) _out = NULL;
 	else               _out = new Output (_data, FileKey);
+
+	// Constants
+	_nSI    = 1;
+	_maxSI  = 400;
+	_DTOL   = 1.0e-3;
+	_dTini  = 0.001;
+	_mMin   = 0.01;
+	_mMax   = 10;
+	_mCoef  = 0.7;
+	_ZTOL   = 1.0e-7;
+	_Cconv  = true;
+	_Rerr   = 0.0;
 }
 
 inline void Solver::_inv_G_times_dF_minus_hHU(double h, LinAlg::Vector<double> & dF, LinAlg::Vector<double> & dU)
@@ -494,20 +486,17 @@ inline void Solver::_inv_G_times_dF_minus_hHU(double h, LinAlg::Vector<double> &
 	               [C] { dU/dt }  +             [H] { U }  =  { dF/dt }
 	 */
 
-	// Add extra force components to Fext
-	if (_has_addF)
-	{
-		// Add to Fext
-		for (size_t i=0; i<_data->NElems(); ++i)
-		{
-			if (_data->Ele(i)->IsActive())
-				_data->Ele(i)->AddToF(h, dF); // add results to dF
-		}
-	}
-
 	// 0) Assemble the global stiffness matrix G and the hHU vector
 	_assemb_G_and_hHU(h);                      // G  <- C + h*alpha*K
 	if (_has_hHU) LinAlg::Axpy(-1.0,_hHU, dF); // dF <- dF - hHU
+
+	// Add extra force components to dFext
+	if (_has_dFs)
+	{
+		// Add to Fext
+		for (size_t i=0; i<_data->NElems(); ++i)
+			if (_data->Ele(i)->IsActive()) _data->Ele(i)->AddToDFext (_data->Time(), h, dF);
+	}
 
 	if (_linsol==LinAlg::LAPACK_T)
 	{
@@ -675,7 +664,7 @@ inline void Solver::_inv_G_times_dF_minus_hHU(double h, LinAlg::Vector<double> &
 
 }
 
-inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> const & dF, LinAlg::Vector<double> const & dU)
+inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> const & dU)
 {
 	// Update all essential values
 	for (int i=0; i<_nudofs; ++i) _udofs[i]->EssentialVal += dU(_udofs[i]->EqID);
@@ -686,11 +675,8 @@ inline void Solver::_update_nodes_and_elements(double h, LinAlg::Vector<double> 
 	for (size_t i=0; i<_data->NElems(); ++i)
 	{
 		if (_data->Ele(i)->IsActive())
-			_data->Ele(i)->Update (h,dU, _dF_int); // sum results into dF_int
+			_data->Ele(i)->Update (_data->Time(), h, dU, _dF_int); // sum results into dF_int
 	}
-
-	// Calculate residual: resid = dFext-dFint
-	_resid = dF - _dF_int;
 
 	// Distribute all pieces of _dF_int to all processors
 	#ifdef HAVE_SUPERLUD
@@ -1028,16 +1014,14 @@ inline void Solver::_fe_solve_for_an_increment(double dTime)
 		_inv_G_times_dF_minus_hHU(h, dF_ext, dU_ext); // dU_ext <- inv(G)*(dF_ext - hHU)
 
 		// Update nodes and elements state
-		_update_nodes_and_elements(h, dF_ext, dU_ext); // AND calculate _resid
+		_update_nodes_and_elements(h, dU_ext); // AND calculate _resid
 
-		// Calculate residual (internal)
-		if (_has_hHU)
-		LinAlg::Axpy      (+1.0,_hHU, dF_ext);                // dF_ext <- dF_ext + hHU
-		LinAlg::AddScaled (1.0,dF_ext, -1.0,_dF_int, _resid); // _resid <- dF_ext - dF_int
-		double denom = 0.0;                                   // Normalizer
-		for (int i=0; i<ndofs; i++) denom += pow((dF_ext(i)+_dF_int(i))/2.0, 2.0);
-		_norm_resid = LinAlg::Norm(_resid)/(sqrt(denom)+1.0);
+		// Update time
+		 _data->UpdateTime (h);
 	}
+
+	// Calculate residual
+	_calc_resid (dF_ext);
 }
 
 inline void Solver::_ame_solve_for_an_increment(double dTime)
@@ -1065,7 +1049,11 @@ inline void Solver::_ame_solve_for_an_increment(double dTime)
 	double dT = _dTini;
 	for (int k=0; k<_maxSI; ++k)
 	{
-		if (T>=1.0) return;
+		if (T>=1.0)
+		{
+			_calc_resid (dF_ext);
+			return;
+		}
 
 		// Sub-divide timestep
 		double h = dT*dTime;
@@ -1083,7 +1071,10 @@ inline void Solver::_ame_solve_for_an_increment(double dTime)
 		_inv_G_times_dF_minus_hHU(h, _dF_1, _dU_1); // _dU_1 <- inv(G)*(dF_ext - hHU)
 	
 		// Forward-Euler: update nodes and elements state
-		_update_nodes_and_elements(h, _dF_1, _dU_1); // AND calculate _resid
+		_update_nodes_and_elements(h, _dU_1); // AND calculate _resid
+
+		// Update time
+		_data->UpdateTime (h);
 
 		// Modified-Euler: Assemble G matrix and calculate dU_2
 		_inv_G_times_dF_minus_hHU(h, _dF_2, _dU_2); // _dU_2 <- inv(G)*(dF_ext - hKun)
@@ -1104,6 +1095,9 @@ inline void Solver::_ame_solve_for_an_increment(double dTime)
 		// Restore nodes and element for initial disp. state given at the start of the increment
 		_restore_nodes_and_elements();
 
+		// Restore time
+		_data->UpdateTime (-h);
+
 		if (_Rerr<=_DTOL)
 		{
 			// Calculate Modified-Euler force and displacement increment vectors
@@ -1111,7 +1105,10 @@ inline void Solver::_ame_solve_for_an_increment(double dTime)
 			LinAlg::AddScaled(0.5,_dF_1, 0.5,_dF_2, _dF_ME);
 
 			// Update nodes and elements state for a Modified-Euler evaluation of displacements
-			_update_nodes_and_elements(h, _dF_ME, _dU_ME); // AND calculate _resid
+			_update_nodes_and_elements(h, _dU_ME); // AND calculate _resid
+
+			// Update time
+			 _data->UpdateTime (h);
 
 			// Next pseudo time
 			T = T + dT;
@@ -1125,6 +1122,19 @@ inline void Solver::_ame_solve_for_an_increment(double dTime)
 		if (dT>1.0-T) dT=1.0-T;
 	}
 	if (_Cconv) throw new Fatal(_("AutoME::_do_solve_for_an_increment: did not converge for %d substeps"), _maxSI);
+}
+
+void Solver::_calc_resid(LinAlg::Vector<double> & dFext)
+{
+	/*
+	LinAlg::Axpy      (+1.0,_hHU, dFext);                 //  dFext <- dFext + hHU
+	LinAlg::AddScaled (1.0,dFext, -1.0,_dF_int, _resid);  // _resid <- dFext - dFint
+	*/
+
+	if (_has_hHU) dFext += _hHU;
+
+	_resid      = dFext - _dF_int;
+	_norm_resid = LinAlg::Norm(_resid);
 }
 
 
