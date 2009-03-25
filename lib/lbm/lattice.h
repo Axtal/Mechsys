@@ -65,12 +65,12 @@ public:
 	double   Curl      (size_t i, size_t j);
 
 	// Set constants
-	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set TODO
-	Lattice * SetG         (double Val) { _G       = Val;  return this; } ///< Set TODO
-	Lattice * SetGSolid    (double Val) { _G_solid = Val;  return this; } ///< Set TODO
-	Lattice * SetRhoRef    (double Val) { _rho_ref = Val;  return this; } ///< Set TODO
-	Lattice * SetPsiRef    (double Val) { _psi_ref = Val;  return this; } ///< Set TODO
-	Lattice * SetMultiComp (double Val) { _is_mc   = true; return this; } ///< Set TODO
+	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set the dynamic viscocity
+	Lattice * SetG         (double Val) { _G       = Val;  return this; } ///< Set the interaction strenght
+	Lattice * SetGSolid    (double Val) { _G_solid = Val;  return this; } ///< Set the interaction strenght with solids
+	Lattice * SetRhoRef    (double Val) { _rho_ref = Val;  return this; } ///< Set the density reference value
+	Lattice * SetPsiRef    (double Val) { _psi_ref = Val;  return this; } ///< Set 
+	Lattice * SetMultiComp (double Val) { _is_mc   = true; return this; } ///< Set the flag that defines if the analysis is multicomponent
 
 	// Set methods
 	void SetGravity    (double Gx, double Gy, double Gz=0.0);
@@ -86,32 +86,32 @@ public:
 	void BounceBack   ();
 	void ApplyForce   ();
 	void ApplyGravity ();
-	void WriteState   (size_t TimeStep); ///< TODO
-	double Psi(double Rho) const;
+	void WriteState   (size_t TimeStep); ///< Write the current state to a vtk output file
+	double Psi(double Rho) const;        ///< Interaction potential function
 
 protected:
-	String       _file_key; ///< TODO:
-	bool         _is_3d;    ///< TODO:
+	String       _file_key; ///< File key used as part of the output filenames
+	bool         _is_3d;    ///< Flag that defines if the analysis is 3D
 	bool         _is_mc;    ///< Flag to define if the analysis is multi-component
-	double       _tau;      ///< TODO:
-	double       _G;        ///< TODO:
-	double       _G_solid;  ///< TODO:
-	double       _rho_ref;  ///< TODO:
-	double       _psi_ref;  ///< TODO:
-	size_t       _nx;       ///< TODO:
-	size_t       _ny;       ///< TODO:
-	size_t       _nz;       ///< TODO:
-	size_t       _size;     ///< TODO:
+	double       _tau;      ///< 
+	double       _G;        ///< Interaction strenght
+	double       _G_solid;  ///< Interaction strenght with solids
+	double       _rho_ref;  ///< Density reference value
+	double       _psi_ref;  ///< Interaction potential reference value
+	size_t       _nx;       ///< Number of cells in the x direction
+	size_t       _ny;       ///< Number of cells in the y direction
+	size_t       _nz;       ///< Number of cells in the z direction
+	size_t       _size;     ///< Total number of cells
 	size_t       _T;        ///< Normalized time
-	Vec3_t       _gravity;  ///< TODO:
-	size_t       _nneigh;   ///< TODO:
-	Array<Cell*> _cells;    ///< TODO:
-	Array<Cell*> _bottom;   ///< TODO:
-	Array<Cell*> _top;      ///< TODO:
-	Array<Cell*> _left;     ///< TODO:
-	Array<Cell*> _right;    ///< TODO:
-	Array<Cell*> _front;    ///< TODO:
-	Array<Cell*> _back;     ///< TODO:
+	Vec3_t       _gravity;  ///< Value of the applied gravity
+	size_t       _nneigh;   ///< Number of neighbors
+	Array<Cell*> _cells;    ///< Array of cell pointers
+	Array<Cell*> _bottom;   ///< Array of cell pointers of the bottom line
+	Array<Cell*> _top;      ///< Array of cell pointers of the left side
+	Array<Cell*> _left;     ///< 
+	Array<Cell*> _right;    ///< 
+	Array<Cell*> _front;    ///< 
+	Array<Cell*> _back;     ///< 
 	Array<Cell*> _cpveloc;  ///< Cells with prescribed velocity
 	Array<Cell*> _cpdens;   ///< Cells with prescribed density
 
@@ -289,17 +289,11 @@ inline void Lattice::Homogenize()
 		for (size_t k=0; k<_nneigh; ++k)
 		{
 			double       f = 0.0;
-			//size_t n_fluid = 0;
 			for (size_t kk=0; kk<_nneigh; ++kk)
 			{
 				LBM::Cell * nb = _cells[c->Neigh(kk)];
-				//if (nb->IsSolid()==false)
-				//{
-					f += nb->F(k);
-				//	n_fluid++;
-				//}
+				f += nb->F(k);
 			}
-			//c->TmpF(k) = f/n_fluid;
 			c->TmpF(k) = f/_nneigh;
 		}
 	}
@@ -378,13 +372,13 @@ inline void Lattice::BounceBack()
 			// Copy values to the temporary f_tmp
 			for (size_t i=1; i<_nneigh; i++) c->TmpF(i) = c->F(i);
 
-			// Bounce back
+			// Performing bounce back
 			c->F(1) = c->TmpF(3);  c->F(2) = c->TmpF(4);
 			c->F(3) = c->TmpF(1);  c->F(4) = c->TmpF(2);
 			c->F(5) = c->TmpF(7);  c->F(6) = c->TmpF(8);
 			c->F(7) = c->TmpF(5);  c->F(8) = c->TmpF(6);
                                                        
-			// For surface velocity in solids ( alpha = 6*w*rho/Cs^2 )
+			// Adding the component related with the solids surface velocity ( alpha = 6*w*rho/Cs^2 )
 			double   rho = 0.0;
 			for (size_t i=0; i<_nneigh; i++) rho += c->F(i);
 
@@ -481,7 +475,6 @@ inline void Lattice::WriteState(size_t TimeStep)
 	of << oss.str();
 	of.close();
 }
-
 
 /* private */
 inline double Lattice::Psi(double Rho) const

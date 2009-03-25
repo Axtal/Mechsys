@@ -25,28 +25,20 @@
 using std::cout;
 using std::endl;
 
-// Analysis constants
-double tau    = 1.0;
-int    nx     = 50;
-int    ny     = 20;
-double v0     = 0.1;
-//double omega  = 0.001;  // Angular velocity in the surface of the obstacle
 
-
-void DrawCircle(LBM::Lattice & l, double & obsX, double & obsY, double radius, double vx, double vy, double & fx, double & fy, double dt, int T)
+void DrawBall(LBM::Lattice & l, double & obsX, double & obsY, double radius, double vx, double vy, double & fx, double & fy, double dt, int T)
 {
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
 		// Set solids and set the magnus velocity
 		if (pow((int)obsX-(int)i,2.0) + pow((int)obsY-(int)j,2.0) <= pow(radius,2.0)) // circle equation
-		{
 			l.GetCell(i,j)->SetSolid(vx, vy);
-		}
 		else 
 			l.GetCell(i,j)->SetSolid(false);
 	}
 
+	// Calculate de force in the solid
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
@@ -63,26 +55,30 @@ void DrawCircle(LBM::Lattice & l, double & obsX, double & obsY, double radius, d
 				double alpha = 6.0*c->W(op)*rho;
 				fx += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,0);
 				fy += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,1);
-
 			}
 		}
 	}
-
 }
 
 int main(int argc, char **argv) try
 {
+	// Analysis constants
+	double tau    = 1.0;
+	int    nx     = 50;
+	int    ny     = 20;
+	double v0     = 0.1;
+	size_t Tmax   = 3000; // max number of steps
+	size_t Tout   = 1;    // interval steps for output
+
 	// Allocate lattice
 	LBM::Lattice l("ball",      // FileKey
-	               false,         // Is3D
-	               nx,            // Nx
-	               ny);           // Ny
+	               false,       // Is3D
+	               nx,          // Nx
+	               ny);         // Ny
 
-	// Set walls (top and bottom)
-	//for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
-	//for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
+	l.SetTau(tau);
 
-	//// Define boundary conditions
+	// Define velocity and density boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
 	{
 		Vec3_t v;  v = j*v0/ny, 0.0, 0.0;
@@ -96,55 +92,50 @@ int main(int argc, char **argv) try
 	{
 		double rho0 = 1.0;
 		Vec3_t v;  v = v0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v); 
+		l.GetCell(i,j)->Initialize (rho0, v);
 	}
 
-	size_t Tmax = 3000;
-	size_t Tout = 1;
+	// Set inner ball
+	double obsX   = ny/2;    // center x position
+	double obsY   = ny/2+3;  // center y position
+	int    radius = 4; 
 
+	// Initial velocity and force
 	double vx = 0.0;
 	double vy = 0.0;
-	double dt = 1.0;
-	double m  = 100.;
-	// Set inner obstacle
-	double obsX   = ny/2; // x position
-	double obsY   = ny/2+3; // y position
-	int    radius = 4; //ny/10;
-	double fx     = 0.0;
-	double fy     = 0.0;
+	double fx = 0.0;
+	double fy = 0.0;
 
-	DrawCircle(l, obsX, obsY, radius, vx, vy, fx, fy, dt,0);
+	// Time and mass
+	double dt = 1.0;     // Time increment (equal to 1.00 for LB models)
+	double m  = 100.0;   // Total mass of the ball
+
+	DrawBall(l, obsX, obsY, radius, vx, vy, fx, fy, dt,0);
 
 	std::cout << "Stage 0" << std::endl;
 	l.WriteState (0);
 
 	for (size_t T=1; T<=Tmax; T++)
 	{
-		for (size_t i=0; i<l.Nx(); i++)
-			for (size_t j=0; j<l.Ny(); j++)
-				{
-					for (size_t k=0; k<l.NNeigh(); ++k) ;
-				}
-
+		// Reset the force
 		fx = 0.0;
 		fy = 0.0;
 
-		DrawCircle(l, obsX, obsY, radius, vx, vy, fx, fy, dt,T);
-		if (true)
-		{
-			vx += fx/m*dt;
-			vy += fy/m*dt;
+		DrawBall(l, obsX, obsY, radius, vx, vy, fx, fy, dt,T);
 
-			obsX += vx*dt;
-			obsY += vy*dt;
-		}
+		// Update the velocity and the position of the ball
+		vx   += fx/m*dt;
+		vy   += fy/m*dt;
+		obsX += vx*dt;
+		obsY += vy*dt;
 
+		// Screen output
 		std::cout << "obsX = " << obsX << std::endl;
 		std::cout << "obsY = " << obsY << std::endl;
-		std::cout << "fx = " << fx << std::endl;
-		std::cout << "fy = " << fy << std::endl;
-		std::cout << "vx = " << vx << std::endl;
-		std::cout << "vy = " << vy << std::endl;
+		std::cout << "fx   = " << fx << std::endl;
+		std::cout << "fy   = " << fy << std::endl;
+		std::cout << "vx   = " << vx << std::endl;
+		std::cout << "vy   = " << vy << std::endl;
 
 		l.ApplyForce   ();
 		l.ApplyGravity ();
@@ -152,6 +143,8 @@ int main(int argc, char **argv) try
 		l.BounceBack   ();
 		l.Stream       ();
 		l.ApplyBC      ();
+
+		// File output
 		if (T % Tout == 0) 
 		{
 			String buf;
@@ -159,9 +152,7 @@ int main(int argc, char **argv) try
 			std::cout << buf;
 			l.WriteState (T);
 		}
-		
 	}
-
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

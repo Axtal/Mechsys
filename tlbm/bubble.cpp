@@ -28,7 +28,7 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	// Input
+	// Input 
 	double seed = 5.0;
 	if (argc>=2) seed = atof(argv[1]);
 	srand(seed);
@@ -53,7 +53,6 @@ int main(int argc, char **argv) try
 
 	// Solve
 	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dt*/1.0, /*dtOut*/50.0);
-	//l.Solve(/*tIni*/0.0, /*tFin*/2.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

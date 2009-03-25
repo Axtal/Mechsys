@@ -70,7 +70,6 @@ int main(int argc, char **argv) try
 	// Solve
 	l.SetGravity(0.0, -0.0005);
 	l.Solve(/*tIni*/0.0, /*tFin*/2000.0, /*dt*/1.0, /*dtOut*/10.0);
-	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

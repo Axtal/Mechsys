@@ -25,19 +25,18 @@
 using std::cout;
 using std::endl;
 
-// Analysis constants
-double u_max  = 0.1;
-double Re     = 30;
-int    nx     = 50;
-int    ny     = 50;
-int    radius = ny/10 + 1;
-
 int main(int argc, char **argv) try
 {
+	// Analysis constants
+	double u_max  = 0.1;
+	double Re     = 30;
+	int    nx     = 50;
+	int    ny     = 50;
+	int    radius = ny/10 + 1;
+
 	// Allocate lattice
 	LBM::Lattice l("grav", // FileKey
 	               false,  // Is3D
-	               1.0,    // Tau
 	               nx,     // Nx
 	               ny);    // Ny
 
@@ -45,7 +44,7 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
-	// Define Initial conditions: velocity speed and density
+	// Define Initial conditions: velocity and density
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{

@@ -69,8 +69,6 @@ void DrawCircle(LBM::Lattice & l, double & obsX, double & obsY, double radius, d
 				double nb_psi = l.Psi(rho_nb);
 				fx += -G*c->W(k)*nb_psi*c->C(k,0);
 				fy += -G*c->W(k)*nb_psi*c->C(k,1);
-				
-
 			}
 		}
 	}
