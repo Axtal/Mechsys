@@ -63,4 +63,6 @@
 #include "models/equilibs/pyequilib.h"
 //#include "models/equilibs/toto.h"
 
+#include "models/diffusions/lindiffusion.h"
+
 #endif // MECHSYS_MECHSYS_H

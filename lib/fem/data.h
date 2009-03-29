@@ -821,12 +821,20 @@ inline void Data::PyBounds3D(BPy::list & MinXYZ, BPy::list & MaxXYZ) const
 	MinXYZ.append(minz);  MaxXYZ.append(maxz);
 }
 
-inline void Data::PySetOutEles (BPy::list const & Eles, BPy::str const & FileKey)
+inline void Data::PySetOutElems(BPy::list const & Elems, BPy::str const & FileKey)
 {
-	Array<size_t> eles;
-	eles.Resize (BPy::len(Eles));
-	for (size_t i=0; i<eles.Size(); ++i) eles[i] = BPy::extract<size_t>(Eles[i])();
-	SetOutEles (eles, BPy::extract<Str_t>(FileKey)());
+	Array<size_t> elems;
+	elems.Resize (BPy::len(Elems));
+	for (size_t i=0; i<elems.Size(); ++i) elems[i] = BPy::extract<size_t>(Elems[i])();
+	SetOutElems (elems, BPy::extract<Str_t>(FileKey)());
+}
+
+inline void Data::PySetOutNodes(BPy::list const & Nodes, BPy::str const & FileKey)
+{
+	Array<size_t> nodes;
+	nodes.Resize (BPy::len(Nodes));
+	for (size_t i=0; i<nodes.Size(); ++i) nodes[i] = BPy::extract<size_t>(Nodes[i])();
+	SetOutNodes (nodes, BPy::extract<Str_t>(FileKey)());
 }
 
 // }

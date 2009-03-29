@@ -18,6 +18,7 @@
 
 SET(TESTS
  alphashape01
+ confinedflow
  linalg01
  mesh01
  serialize
