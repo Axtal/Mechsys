@@ -330,7 +330,6 @@ inline void Lattice::ApplyBC()
 		if (c->Right()) // Cell is on the right side
 		{
 			double vx = -1.0 + (c->F(0)+c->F(2)+c->F(4) + 2.0*(c->F(1)+c->F(5)+c->F(8)))/c->RhoBC();
-			//std::cout << c->RhoBC() << "  " << vx << std::endl;
 			c->F(3) = c->F(1) - (2.0/3.0)*c->RhoBC()*vx; 
 			c->F(7) = c->F(5) - (1.0/6.0)*c->RhoBC()*vx + 0.5*(c->F(2)-c->F(4));
 			c->F(6) = c->F(8) - (1.0/6.0)*c->RhoBC()*vx - 0.5*(c->F(2)-c->F(4));

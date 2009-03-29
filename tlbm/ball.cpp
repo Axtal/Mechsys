@@ -130,12 +130,14 @@ int main(int argc, char **argv) try
 		obsY += vy*dt;
 
 		// Screen output
+		/*
 		std::cout << "obsX = " << obsX << std::endl;
 		std::cout << "obsY = " << obsY << std::endl;
 		std::cout << "fx   = " << fx << std::endl;
 		std::cout << "fy   = " << fy << std::endl;
 		std::cout << "vx   = " << vx << std::endl;
 		std::cout << "vy   = " << vy << std::endl;
+		*/
 
 		l.ApplyForce   ();
 		l.ApplyGravity ();

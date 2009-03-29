@@ -207,13 +207,12 @@ inline void Mixture::Solve(double tIni, double tFin, double dt, double dtOut)
 		t += dt;
 		if (t>=tout)
 		{
-			std::cout << "[1;34mMechSys[0m::LBM::Mixture::Solve: [1;31mT = " << _T << "[0m";
-			std::cout << " Total mass:  l0 = " << _latts[0]->TotalMass();
-			std::cout << "  l1 = " << _latts[1]->TotalMass() << "\n";
+			String buf;
+			buf.Printf("[1;34mMechSys[0m::LBM::Mixture::Solve: [1;31mt=%g   T=%d   TotalMass[0]=%g   TotalMass[1]=%g[0m\n", t, _T, _latts[0]->TotalMass(), _latts[1]->TotalMass());
+			std::cout << buf;
 			_T++;
-			WriteState (_T);
 			tout += dtOut;
-			//std::cout << GetCell(25,0) << std::endl;
+			WriteState (_T);
 		}
 	}
 }

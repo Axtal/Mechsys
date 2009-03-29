@@ -165,9 +165,6 @@ inline void Cell::Initialize(double Rho0, Vec3_t const & V0)
 
 inline double Cell::Density() const
 {
-	//std::cout << "ID = " << _id << std::endl;
-	//for (size_t k=0; k<_nneigh; k++) std::cout << "fD[" << k << "] = " << _f[k] << std::endl;
-
 	// Skip if it is solid
 	if (_is_solid) 
 	{
