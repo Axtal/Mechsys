@@ -410,7 +410,7 @@ inline void Lattice::BounceBack()
 
 inline void Lattice::ApplyForce()
 {
-	if (_is_3d) throw new Fatal("Lattice::BounceBack: 3D simulation is not implemented yet");
+	if (_is_3d) throw new Fatal("Lattice::ApplyForce: 3D simulation is not implemented yet");
 	for (size_t i=0; i<_size; i++)
 	{
 		LBM::Cell * c = _cells[i];
@@ -421,8 +421,6 @@ inline void Lattice::ApplyForce()
 			LBM::Cell * nb = _cells[c->Neigh(k)];
 			double  nb_psi = (nb->IsSolid() ? 1.0      : Psi(nb->Density()));
 			double       G = (nb->IsSolid() ? _G_solid : _G);
-			//double  nb_psi =  Psi(nb->Density());
-			//double       G =  _G;
 			F(0) += -G*psi*c->W(k)*nb_psi*c->C(k,0);
 			F(1) += -G*psi*c->W(k)*nb_psi*c->C(k,1);
 		}
