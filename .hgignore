@@ -35,7 +35,10 @@ tst/mesh01
 tst/serialize
 tst/tree01
 tst/tunnel01
+tst/confinedflow
 
+tlbm/basic
+tlbm/cap_grain
 tlbm/cylinder
 tlbm/drop
 tlbm/bubble
