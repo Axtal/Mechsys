@@ -186,9 +186,6 @@ inline void Mixture::Solve(double tIni, double tFin, double dt, double dtOut)
 		_latts[0]->ApplyForce ();
 		_latts[1]->ApplyForce ();
 
-		_latts[0]->ApplyGravity();
-		_latts[1]->ApplyGravity();
-
 		ApplyMixForce();
 		SetMixVelocity();
 

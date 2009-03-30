@@ -166,7 +166,6 @@ int main(int argc, char **argv) try
 		std::cout << "vy = " << vy << std::endl;
 
 		l.ApplyForce   ();
-		l.ApplyGravity ();
 		l.Collide      ();
 		l.BounceBack   ();
 		l.Stream       ();

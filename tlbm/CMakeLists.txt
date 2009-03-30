@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+ADD_EXECUTABLE        (basic      basic.cpp)
 ADD_EXECUTABLE        (cylinder   cylinder.cpp)
 ADD_EXECUTABLE        (bubble       bubble.cpp)
 ADD_EXECUTABLE        (ball   	      ball.cpp)

@@ -140,7 +140,6 @@ int main(int argc, char **argv) try
 		*/
 
 		l.ApplyForce   ();
-		l.ApplyGravity ();
 		l.Collide      ();
 		l.BounceBack   ();
 		l.Stream       ();

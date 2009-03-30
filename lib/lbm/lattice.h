@@ -86,7 +86,6 @@ public:
 	void Collide      ();
 	void BounceBack   ();
 	void ApplyForce   ();
-	void ApplyGravity ();
 	void WriteState   (size_t TimeStep); ///< Write the current state to a vtk output file
 
 	// Output methods
@@ -255,7 +254,6 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 	while (t<tFin)
 	{
 		ApplyForce   ();
-		ApplyGravity ();
 		Collide      ();
 		BounceBack   ();
 		Stream       ();
@@ -413,6 +411,7 @@ inline void Lattice::ApplyForce()
 	if (_is_3d) throw new Fatal("Lattice::ApplyForce: 3D simulation is not implemented yet");
 	for (size_t i=0; i<_size; i++)
 	{
+		// Fluid-Fluid and Fluid-Solid interaction forces
 		LBM::Cell * c = _cells[i];
 		Vec3_t F; F   = 0.0, 0.0, 0.0;
 		double    psi = Psi(c->Density());
@@ -425,15 +424,10 @@ inline void Lattice::ApplyForce()
 			F(1) += -G*psi*c->W(k)*nb_psi*c->C(k,1);
 		}
 		c->BForce() = F;
-	}
-}
 
-inline void Lattice::ApplyGravity()
-{
-	for (size_t i=0; i<_size; ++i)
-	{
-		double rho = _cells[i]->Density();
-		_cells[i]->BForce() += _gravity*rho;
+		// Gravity force
+		double rho = c->Density();
+		c->BForce() += _gravity*rho;
 	}
 }
 
