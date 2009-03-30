@@ -27,6 +27,7 @@
 // MechSys
 #include "util/array.h"
 #include "util/exception.h"
+#include "util/numstreams.h"
 
 typedef blitz::TinyVector<double,3> Vec3_t;
 
@@ -78,6 +79,8 @@ public:
 	double   EqFun    (size_t k, Vec3_t const & V, double Rho) const; ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
 	Vec3_t & MixVelocity() { return _mix_vel; }
 
+	// Output methods
+	void OutState (double Time, std::ofstream & of, bool Header=false) const; ///< Output the current state of this cell
 
 protected:
 	// Data
@@ -209,6 +212,33 @@ inline double Cell::EqFun(size_t k, Vec3_t const & V, double Rho) const
 		double vdotc = v(0)*_c[k][0] + v(1)*_c[k][1];
 		double vdotv = v(0)*v(0) + v(1)*v(1);
 		return _w[k]*Rho*(1.0 + 3.0*vdotc + 4.5*vdotc*vdotc - 1.5*vdotv);
+	}
+}
+
+inline void Cell::OutState(double Time, std::ofstream & of, bool Header) const
+{
+	if (Header)
+	{
+		of << Util::_4 << "T" << Util::_8s << "vx" << Util::_8s << "vy" << Util::_8s << "rho";
+		String buf;
+		for (size_t k=0; k<_nneigh; ++k) { buf.Printf("f%d",  k); of << Util::_8s << buf; }
+		for (size_t k=0; k<_nneigh; ++k) { buf.Printf("feq%d",k); of << Util::_8s << buf; }
+		of << "\n";
+	}
+	else
+	{
+		double rho = Density  ();
+		Vec3_t v;    Velocity (v);
+
+		// Time, velocity and density
+		of << Util::_8s << Time << Util::_8s << v(0) << Util::_8s<< v(1) << Util::_8s << rho;
+
+		// Distribution function
+		for (size_t k=0; k<_nneigh; ++k) of << Util::_8s << _f[k];
+
+		// Equilibrium distribution function
+		for (size_t k=0; k<_nneigh; ++k) of << Util::_8s << EqFun(k,v,rho);
+		of << "\n";
 	}
 }
 

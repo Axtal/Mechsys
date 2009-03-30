@@ -63,6 +63,7 @@ public:
 	Cell   * GetCell   (size_t i, size_t j, size_t k=0);
 	Cell   * GetCell   (size_t i) { return _cells[i]; }
 	double   Curl      (size_t i, size_t j);
+	double   Psi       (double Rho) const;               ///< Interaction potential function
 
 	// Set constants
 	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set the dynamic viscocity
@@ -87,7 +88,10 @@ public:
 	void ApplyForce   ();
 	void ApplyGravity ();
 	void WriteState   (size_t TimeStep); ///< Write the current state to a vtk output file
-	double Psi(double Rho) const;        ///< Interaction potential function
+
+	// Output methods
+	void SetOutCells (Array<size_t> const & Cells, Str_t FileKey); ///< Set cells to output for each timestep
+	void OutCells    (bool Header=false) const;                    ///< Output cells selected for output for each timestep
 
 protected:
 	String       _file_key; ///< File key used as part of the output filenames
@@ -114,7 +118,8 @@ protected:
 	Array<Cell*> _back;     ///< 
 	Array<Cell*> _cpveloc;  ///< Cells with prescribed velocity
 	Array<Cell*> _cpdens;   ///< Cells with prescribed density
-
+	Array<size_t>         _cells_out;   ///< Indices of cells to generate output for each timestep
+	Array<std::ofstream*> _cells_files; ///< Files to output cells information for each timestep
 
 }; // class Lattice
 
@@ -178,6 +183,7 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, size_t Nx, size_t Ny, size_t N
 inline Lattice::~Lattice()
 {
 	for (size_t i=0; i<_size; i++) delete _cells[i];
+	for (size_t i=0; i<_cells_files.Size(); ++i) if (_cells_files[i]!=NULL) { _cells_files[i]->close(); delete _cells_files[i]; }
 }
 
 inline double Lattice::TotalMass() const
@@ -215,6 +221,11 @@ inline double Lattice::Curl(size_t i, size_t j)
 	return dvydx - dvxdy;
 }
 
+inline double Lattice::Psi(double Rho) const
+{
+	return _psi_ref*(1.0-exp(-Rho/_rho_ref));
+}
+
 inline void Lattice::SetGravity(double Gx, double Gy, double Gz)
 {
 	_gravity = Gx, Gy, Gz;
@@ -239,6 +250,8 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 	double t    = tIni;
 	double tout = t + dtOut;
 	WriteState (_T);
+	OutCells (/*Header*/true);
+	OutCells ();
 	while (t<tFin)
 	{
 		ApplyForce   ();
@@ -257,6 +270,7 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 			tout += dtOut;
 			WriteState (_T);
 		}
+		OutCells ();
 	}
 }
 
@@ -475,10 +489,21 @@ inline void Lattice::WriteState(size_t TimeStep)
 	of.close();
 }
 
-/* private */
-inline double Lattice::Psi(double Rho) const
+inline void Lattice::SetOutCells(Array<size_t> const & Cells, Str_t FileKey)
 {
-	return _psi_ref*(1.0-exp(-Rho/_rho_ref));
+	_cells_out = Cells;
+	for (size_t i=0; i<_cells_out.Size(); ++i)
+	{
+		String fn; fn.Printf("%s_cell%d.cal",FileKey,_cells_out[i]);
+		std::ofstream * f = new std::ofstream();
+		f->open (fn.CStr(), std::ios::out);
+		_cells_files.Push (f);
+	}
+}
+
+inline void Lattice::OutCells(bool Header) const
+{
+	for (size_t i=0; i<_cells_out.Size(); ++i) _cells[_cells_out[i]]->OutState (_T, (*_cells_files[i]), Header);
 }
 
 }; // namespace LBM
