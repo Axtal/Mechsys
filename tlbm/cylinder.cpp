@@ -28,7 +28,7 @@ using std::endl;
 // Analysis constants
 double u_max  = 0.1;
 double Re     = 100;
-int    nx     = 150;
+int    nx     = 200;
 int    ny     = 50;
 int    radius = ny/10 + 1;
 
@@ -55,8 +55,7 @@ int main(int argc, char **argv) try
 	               ny);             // Ny
 
 	// Set tau
-	//l.SetTau(CalcViscosity());
-	l.SetTau(1.0);
+	l.SetTau(CalcViscosity());
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -92,7 +91,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/10.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/15000.0, /*dt*/1.0, /*dtOut*/200.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
