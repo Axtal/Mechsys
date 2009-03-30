@@ -72,7 +72,7 @@ public:
 	bool  Check      (String & Msg) const;                       ///< Check if everything is OK and element is ready for simulations
 	void  OutNodes   (Mat_t & Vals, Array<String> & Lbls) const; ///< Output values at nodes
 	void  Normal     (int iEdgeOrFace, Array<Vec_t> & X,
-	                                   Array<Vec_t> & N) const;  ///< Output unit normal to edges/faces at integration points
+	                                   Array<Vec_t> & N) const;  ///< Output unit normal to edges/faces at the edge/face integration points
 
 	// Methods related to GEOMETRY
 	size_t       NNodes    () const                                     { CHECKGEPE("NNodes"   ) return _ge->NNodes;                          } ///< Return the number of nodes in this element
@@ -87,7 +87,7 @@ public:
 	int          VTKType   () const                                     { CHECKGEPE("VTKType"  ) return _ge->VTKType();                       } ///< Return the VTK (Visualization Tool Kit) cell type; used for generation of vtk files
 	void         VTKConn   (String & Nodes) const                       { CHECKGEPE("VTKConn"  )        _ge->VTKConn(Nodes);                  } ///< Return the VTK list of connectivities with global nodes IDs
 	void         GetFNodes (int FaceID, Array<Node*> & FConn) const     { CHECKGEPE("GetFNodes")        _ge->GetFNodes(FaceID,FConn);         } ///< Return the connectivity of a face, given the local face ID
-	double       BoundDist (double r, double s, double t) const         { CHECKGEPE("BoundDist") return _ge->BoundDist(r,s,t);                } ///< TODO: Bound distance
+	double       BoundDist (double r, double s, double t) const         { CHECKGEPE("BoundDist") return _ge->BoundDist(r,s,t);                } ///< Normalized distance from a specified point to the boundary fo the element
 
 	// Methods related to PROBLEM
 	int          NProps       () const                                  { CHECKGEPE("NProps"   ) return _pe->NProps();                        } ///< Number of properties
@@ -235,11 +235,11 @@ inline void Element::Normal(int iEdgeOrFace, Array<Vec_t> & X, Array<Vec_t> & N)
 			Vec_t W(3); W = J(1,0), J(1,1), J(1,2);
 			n.Resize(3);
 			x.Resize(3);
-			n = V(1)*W(2) - V(2)*W(1),      // vectorial product
+			n = V(1)*W(2) - V(2)*W(1),     
 				V(2)*W(0) - V(0)*W(2),
-				V(0)*W(1) - V(1)*W(0);
+				V(0)*W(1) - V(1)*W(0); // vectorial product
 		}
-		else
+		else // (_ge->NDim==2)
 		{
 			_ge->FaceJacob (fconn, _ge->FIPs[i].r, _ge->FIPs[i].s, J);
 			n.Resize(2);
