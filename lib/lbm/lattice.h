@@ -366,7 +366,7 @@ inline void Lattice::Collide()
 			{
 				double feq = c->EqFun (k,v,rho);
 				c->F(k) = (1.0-om)*c->F(k) + om*feq;
-				if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d)->F(%d)<0.0 detected",i,k);
+				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d)->F(%d)<0.0 detected",i,k);
 			}
 		}
 	}

@@ -193,6 +193,10 @@ inline void Cell::Velocity(Vec3_t & V) const
 	else
 	{
 		double rho = Density();
+		if (rho==0.0) {
+			V = 0.0, 0.0, 0.0;
+			return;
+		}
 		V = 0.0, 0.0, 0.0;
 		for (size_t k=0; k<_nneigh; ++k)
 		{

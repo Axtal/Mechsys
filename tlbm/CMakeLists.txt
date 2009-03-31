@@ -24,6 +24,8 @@ ADD_EXECUTABLE        (drop           drop.cpp)
 ADD_EXECUTABLE        (magnus       magnus.cpp)
 ADD_EXECUTABLE        (multicomp multicomp.cpp)
 ADD_EXECUTABLE        (cap_grain cap_grain.cpp)
+ADD_EXECUTABLE        (capi           capi.cpp)
+ADD_EXECUTABLE        (dam             dam.cpp)
 
 
 
