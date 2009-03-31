@@ -21,9 +21,7 @@
 #include <stdlib.h>
 
 // MechSys
-
 #include "lbm/lattice.h"
-#include "lbm/mixture.h"
 
 using std::cout;
 using std::endl;
@@ -31,59 +29,33 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,/*Nx*/100, /*Ny*/100);
+	LBM::Lattice l(/*FileKey*/"dam", /*Is3D*/false, /*Nx*/150, /*Ny*/150);
+
+	// Set constants
+	l.SetTau(0.99)->SetG(-5.5)->SetGSolid(-0.5);
+
+	// Set gravity
+	l.SetGravity(0.0,-0.001);
 
 	// Set walls (top and bottom)
-	// Lattice 0
-	for (size_t i=0; i<m.GetLattice(0)->Top()   .Size(); ++i) m.GetLattice(0)->Top()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(0)->Bottom().Size(); ++i) m.GetLattice(0)->Bottom()[i]->SetSolid();		
-	for (size_t i=0; i<m.GetLattice(0)->Left()  .Size(); ++i) m.GetLattice(0)->Left()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(0)->Right() .Size(); ++i) m.GetLattice(0)->Right()[i]->SetSolid();	
+	for (size_t i=0; i<l.Top()   .Size(); ++i) l.Top()[i]->SetSolid();
+	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
+	for (size_t i=0; i<l.Right() .Size(); ++i) l.Right()[i]->SetSolid();
 
-	// Lattice 1
-	for (size_t i=0; i<m.GetLattice(1)->Top()   .Size(); ++i) m.GetLattice(1)->Top()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(1)->Bottom().Size(); ++i) m.GetLattice(1)->Bottom()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(1)->Left()  .Size(); ++i) m.GetLattice(1)->Left()[i]->SetSolid();
-	for (size_t i=0; i<m.GetLattice(1)->Right() .Size(); ++i) m.GetLattice(1)->Right()[i]->SetSolid();	
-
-	
-	for (size_t i=0; i<m.Nx(); ++i)
-	for (size_t j=0; j<m.Ny(); ++j)
+	// Set dam and inner obstacle
+	for (size_t i=0; i<l.Nx(); ++i)
+	for (size_t j=0; j<l.Ny(); ++j)
 	{
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		if ((i>m.Nx()/2-10)&&(i<(m.Nx()/2+10))&&(j<m.Ny()/5)) {
-			m.GetLattice(0)->GetCell(i,j)->SetSolid();
-			m.GetLattice(0)->GetCell(i,j)->Initialize(0.1,v0);
-			m.GetLattice(1)->GetCell(i,j)->SetSolid();
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.1,v0);
-
-		}
-		else if ((i<m.Nx()/5)&&(i>=1)&&(j<3*m.Ny()/4)&&(j>=1)) {
-			m.GetLattice(0)->GetCell(i,j)->Initialize(2.6,v0);
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.1,v0);
-		}
-		else {
-			m.GetLattice(0)->GetCell(i,j)->Initialize(0.1,v0);
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.1,v0);
-		}
-
+		     if ((i>l.Nx()/2-2)&&(i<(l.Nx()/2+2))&&(j<l.Ny()/10)) l.GetCell(i,j)->SetSolid();
+		else if ((i<l.Nx()/3)&&(i>=1)&&(j>=1))                    l.GetCell(i,j)->Initialize(2.6, v0);
+		else                                                      l.GetCell(i,j)->Initialize(0.08,v0);
 	}
-
-	m.GetLattice(0)->SetTau(1.0)->SetG(-6.0)->SetGSolid(-0.0);
-	m.GetLattice(1)->SetTau(1.0)->SetG(-1.0)->SetGSolid(-0.0);
-	m.SetMixG(0.5);
 	
-	
-	
-
 	// Solve
-	m.WriteState(0);
-	//l.Solve(/*tIni*/0.0, /*tFin*/200.0, /*dt*/1.0, /*dtOut*/10.0);
-
-	m.SetGravity(0.0,-0.001,0.0);
-
-	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dt*/1.0, /*dtOut*/50.0);
-
+	l.WriteState (0);
+	l.Solve (/*tIni*/0.0, /*tFin*/1500.0, /*dt*/1.0, /*dtOut*/10.0);
+	return 0;
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

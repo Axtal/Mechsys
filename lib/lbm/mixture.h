@@ -26,6 +26,7 @@
 
 // MechSys
 #include "lbm/cell.h"
+#include "lbm/lattice.h"
 
 namespace LBM
 {

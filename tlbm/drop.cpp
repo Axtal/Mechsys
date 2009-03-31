@@ -28,29 +28,23 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	// Input
-	double seed = 5.0;
-	if (argc>=2) seed = atof(argv[1]);
-	srand(seed);
-
 	// Allocate lattice
-	LBM::Lattice l("drop", // FileKey
-	               false,  // Is3D
-	               100,    // Nx
-	               100);   // Ny
+	LBM::Lattice l(/*FileKey*/"drop", /*Is3D*/false, /*Nx*/100, /*Ny*/50);
 
 	// Set constants
 	l.SetTau(1.0)->SetG(-6.0)->SetGSolid(-4.0);
+
+	// Set Gravity
+	l.SetGravity (0.0, -0.0005);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
-	// Set inner obstacle
-	int obsX = l.Nx()/2;   // x position
-	int obsY = l.Ny()/4;   // y position
+	// Set drop
+	int obsX   = l.Nx()/2; // x position
+	int obsY   = l.Ny()/2; // y position
 	int radius = l.Nx()/8; // Inital drop radius
-
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
@@ -62,12 +56,8 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/200.0, /*dt*/1.0, /*dtOut*/10.0);
-
-	l.SetGravity(0.0, -0.0005);
-
 	l.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dt*/1.0, /*dtOut*/10.0);
-
+	return 0;
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

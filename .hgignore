@@ -40,6 +40,8 @@ tst/confinedflow
 tlbm/basic
 tlbm/cap_grain
 tlbm/cylinder
+tlbm/dam
+tlbm/dam_multi
 tlbm/drop
 tlbm/bubble
 tlbm/capi
