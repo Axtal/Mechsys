@@ -21,77 +21,59 @@
 
 // MechSys
 #include "lbm/lattice.h"
+#include "util/fileparser.h"
 
 using std::cout;
 using std::endl;
 
-// Analysis constants
-double u_max  = 0.1;
-double Re     = 100;
-int    nx     = 400;
-int    ny     = 100;
-int    radius = ny/10 + 1;
-
-double CalcViscosity()
-{
-	double kin_visc = u_max*(2*radius)/Re; // nu
-	return 3.0*kin_visc + 0.5;
-}
-
-void CalcInitSpeed(int x, int y, double & vx, double & vy)
-{
-	double L = ny - 2;
-	double yp = y - 1.5;
-	vx = u_max*4/(L*L)*(L*yp - yp*yp);
-	vy = 0.0;
-}
-
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l("cylinder",      // FileKey
-	               false,           // Is3D
-	               nx,              // Nx
-	               ny);             // Ny
-
-	// Set tau
-	l.SetTau(CalcViscosity());
+	LBM::Lattice l(/*FileKey*/"porous", /*Is3D*/false, /*Nx*/200, /*Ny*/200);
+	
+	// Set constants
+	l.SetTau(1.0)->SetGSolid(0.0);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
-	// Set inner obstacle
-	int obsX = ny/2;   // x position
-	int obsY = ny/2+3; // y position
-	for (size_t i=0; i<l.Nx(); ++i)
-	for (size_t j=0; j<l.Ny(); ++j)
+	// Set grains
+	FileParser::Table grains;
+	FileParser fp("circles.out");
+	fp.ReadTable(grains);
+	for (size_t i=0; i<grains["Xc"].Size(); ++i)
 	{
-		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->SetSolid();
+		double xc = grains["Xc"][i]*200.0;
+		double yc = grains["Yc"][i]*200.0;
+		double r  = grains["R" ][i]*190.0;
+		for (size_t i=0; i<l.Nx(); ++i)
+		for (size_t j=0; j<l.Ny(); ++j)
+		{
+			double dd = pow(static_cast<double>(i)-xc,2.0) + pow(static_cast<double>(j)-yc,2.0);
+			if (dd<=r*r) l.GetCell(i,j)->SetSolid();
+		}
 	}
 	
-	// Define boundary conditions
+	// Boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		double vx, vy;
-		CalcInitSpeed (0, j, vx, vy);
-		Vec3_t v;  v = vx, vy, 0.0;
-		l.SetVelocityBC (0, j, v);
-		l.SetDensityBC  (nx-1,j, 1.0);
+		Vec3_t v; v = 0.01, 0.0, 0.0;
+		l.SetVelocityBC (0,       j, v);
+		l.SetDensityBC  (l.Nx()-1,j, 1.0);
 	}
 
-	// Define Initial conditions: velocity speed and density
+	// Initial conditions
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		double rho0 = 1.0;
-		Vec3_t v0;  v0 = 0.08, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v0);
+		double      r0 = 1.0;
+		Vec3_t v0;  v0 = 0.001, 0.0, 0.0;
+		l.GetCell(i,j)->Initialize (r0, v0);
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/15000.0, /*dt*/1.0, /*dtOut*/200.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/15000.0, /*dt*/1.0, /*dtOut*/20.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

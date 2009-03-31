@@ -53,7 +53,7 @@ int main(int argc, char **argv) try
 	cols.Push(30);
 	cols.Push(31);
 	for (size_t n=0; n<cols.Size(); n++)
-	for (size_t j=40; j<60; ++j)
+	for (size_t j=40; j<80; ++j)
 	{
 		l.GetCell(cols[n],j)->SetSolid();
 	}
@@ -69,7 +69,7 @@ int main(int argc, char **argv) try
 
 	// Solve
 	l.SetGravity(0.0, -0.0005);
-	l.Solve(/*tIni*/0.0, /*tFin*/2000.0, /*dt*/1.0, /*dtOut*/10.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/4000.0, /*dt*/1.0, /*dtOut*/10.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

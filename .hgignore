@@ -49,6 +49,7 @@ tlbm/gravity
 tlbm/ball
 tlbm/magnus
 tlbm/multicomp
+tlbm/porous
 
 syntax: glob
 CTestTestfile.cmake

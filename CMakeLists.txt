@@ -55,7 +55,7 @@ INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
 
 SUBDIRS (lib tfem tlbm tst src)
 
-# Dependencies
+########################################################################### Dependencies
 SET(Boost_USE_STATIC_LIBS ON)
 INCLUDE(FindPythonLibs)
 INCLUDE(FindBoost)
