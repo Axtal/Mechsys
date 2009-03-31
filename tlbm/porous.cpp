@@ -55,21 +55,21 @@ int main(int argc, char **argv) try
 		}
 	}
 	
-	// Boundary conditions
-	for (size_t j=0; j<l.Ny(); j++)
-	{
-		Vec3_t v; v = 0.01, 0.0, 0.0;
-		l.SetVelocityBC (0,       j, v);
-		l.SetDensityBC  (l.Nx()-1,j, 1.0);
-	}
-
 	// Initial conditions
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
 		double      r0 = 1.0;
-		Vec3_t v0;  v0 = 0.001, 0.0, 0.0;
+		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		l.GetCell(i,j)->Initialize (r0, v0);
+	}
+
+	// Boundary conditions
+	for (size_t j=0; j<l.Ny(); j++)
+	{
+		Vec3_t v; v = 0.001, 0.0, 0.0;
+		l.SetVelocityBC (0,       j, v);
+		l.SetDensityBC  (l.Nx()-1,j, 1.0);
 	}
 
 	// Solve
