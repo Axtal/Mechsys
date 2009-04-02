@@ -38,9 +38,12 @@ public:
 	// Constructor
 	Lattice (Str_t  FileKey, ///< Key such as "mytest" to be used when generating output files: Ex.: mytest_11.vtk
 	         bool   Is3D,    ///< 
+			 double nu,		 ///< True viscosity
 	         size_t Nx,      ///< Number of cells along x direction
 	         size_t Ny,      ///< Number of cells along y direction
-	         size_t Nz=1);   ///< Number of cells along z direction
+	         size_t Nz=1,    ///< Number of cells along z direction
+			 double dt=1, 	 ///< Time step
+			 double h=1);    ///< Space viscosity
 
 	// Destructor
 	~Lattice ();
@@ -59,6 +62,7 @@ public:
 	size_t   Nz        () const { return _nz; }
 	size_t   NNeigh    () const { return _nneigh; }
 	double   Tau       () const { return _tau; }
+	double   Cs        () const { return _Cs;}
 	double   TotalMass () const;
 	Cell   * GetCell   (size_t i, size_t j, size_t k=0);
 	Cell   * GetCell   (size_t i) { return _cells[i]; }
@@ -66,7 +70,7 @@ public:
 	double   Psi       (double Rho) const;               ///< Interaction potential function
 
 	// Set constants
-	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set the dynamic viscocity
+	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set the relaxation time
 	Lattice * SetG         (double Val) { _G       = Val;  return this; } ///< Set the interaction strenght
 	Lattice * SetGSolid    (double Val) { _G_solid = Val;  return this; } ///< Set the interaction strenght with solids
 	Lattice * SetRhoRef    (double Val) { _rho_ref = Val;  return this; } ///< Set the density reference value
@@ -79,7 +83,7 @@ public:
 	void SetDensityBC  (size_t i, size_t j, double Rho);
 
 	// Methods
-	void Solve        (double tIni, double tFin, double dt, double dtOut); ///< Solve
+	void Solve        (double tIni, double tFin, double dtOut); ///< Solve
 	void Homogenize   ();
 	void Stream       ();
 	void ApplyBC      ();
@@ -97,10 +101,14 @@ protected:
 	bool         _is_3d;    ///< Flag that defines if the analysis is 3D
 	bool         _is_mc;    ///< Flag to define if the analysis is multi-component
 	double       _tau;      ///< 
+	double 		 _nu;		///< Real viscosity
 	double       _G;        ///< Interaction strenght
 	double       _G_solid;  ///< Interaction strenght with solids
 	double       _rho_ref;  ///< Density reference value
 	double       _psi_ref;  ///< Interaction potential reference value
+	double    	 _h;  		///< Space step
+	double    	 _dt;  		///< Time step
+	double       _Cs;		///< Speed of sound in the grid 		
 	size_t       _nx;       ///< Number of cells in the x direction
 	size_t       _ny;       ///< Number of cells in the y direction
 	size_t       _nz;       ///< Number of cells in the z direction
@@ -128,7 +136,7 @@ protected:
 
 /* public */
 
-inline Lattice::Lattice(Str_t FileKey, bool Is3D, size_t Nx, size_t Ny, size_t Nz)
+inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t Ny, size_t Nz,double dt,double h)
 	: _file_key (FileKey),
 	  _is_3d    (Is3D),
 	  _is_mc    (false),
@@ -137,14 +145,19 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, size_t Nx, size_t Ny, size_t N
 	  _G_solid  (0.0),
 	  _rho_ref  (1.0),
 	  _psi_ref  (1.0),
+	  _nu       (nu),
 	  _nx       (Nx),
 	  _ny       (Ny),
 	  _nz       (Nz),
+	  _dt 		(dt),
 	  _size     (Nx*Ny*Nz),
-	  _T        (0)
+	  _T        (0),
+	  _h        (h),
+	  _Cs       (h/dt)
 {
 	// Gravity
 	_gravity = 0.0, 0.0, 0.0;
+	_nu=1;
 
 	// Number of neighbours
 	_nneigh = (_is_3d ? 27 : 9);
@@ -177,6 +190,8 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, size_t Nx, size_t Ny, size_t N
 			_right[i] = GetCell (_nx-1,i);
 		}
 	}
+	_tau=_dt*3*_nu/(_h*_h)+0.5;
+
 }
 
 inline Lattice::~Lattice()
@@ -244,7 +259,7 @@ inline void Lattice::SetDensityBC(size_t i, size_t j, double Rho)
 	c->SetRhoBC  (Rho);
 }
 
-inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
+inline void Lattice::Solve(double tIni, double tFin, double dtOut)
 {
 	double t    = tIni;
 	double tout = t + dtOut;
@@ -258,7 +273,7 @@ inline void Lattice::Solve(double tIni, double tFin, double dt, double dtOut)
 		BounceBack   ();
 		Stream       ();
 		ApplyBC      ();
-		t += dt;
+		t += _dt;
 		if (t>=tout)
 		{
 			String buf;
@@ -351,7 +366,7 @@ inline void Lattice::ApplyBC()
 
 inline void Lattice::Collide()
 {
-	double om = 1.0/_tau;
+	double om = _dt/_tau;
 	for (size_t i=0; i<_size; i++)
 	{
 		LBM::Cell * c = _cells[i];
@@ -359,12 +374,12 @@ inline void Lattice::Collide()
 		{
 			Vec3_t v;
 			if (_is_mc)	v = c->MixVelocity(); // For multi-components analysis
-			else            c->Velocity(v);   // Fore one component analysis
+			else            c->Velocity(v,_Cs);   // Fore one component analysis
 
 			double rho = c->Density  ();
 			for (size_t k=0; k<_nneigh; ++k)
 			{
-				double feq = c->EqFun (k,v,rho);
+				double feq = c->EqFun (k,v,rho,_Cs);
 				c->F(k) = (1.0-om)*c->F(k) + om*feq;
 				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d)->F(%d)<0.0 detected",i,k);
 			}
@@ -469,7 +484,7 @@ inline void Lattice::WriteState(size_t TimeStep)
 	oss << "VECTORS Velocity float\n";
 	for (size_t i=0; i<_size; ++i)
 	{
-		Vec3_t v;  _cells[i]->Velocity(v);
+		Vec3_t v;  _cells[i]->Velocity(v,_Cs);
 		oss << v(0) << " " << v(1) << " " << v(2) << "\n";
 	}
 

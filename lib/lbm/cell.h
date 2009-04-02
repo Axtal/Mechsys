@@ -34,6 +34,7 @@ typedef blitz::TinyVector<double,3> Vec3_t;
 namespace LBM
 {
 
+
 class Cell
 {
 public:
@@ -51,7 +52,7 @@ public:
 	Cell (size_t ID, bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz=1);
 
 	// Set methods
-	void Initialize (double Rho0, Vec3_t const & V0);                   ///< V0: Initial velocity, Rho0: Initial density
+	void Initialize (double Rho0, Vec3_t const & V0,double Cs);                   ///< V0: Initial velocity, Rho0: Initial density
 	void SetSolid   (bool IsSolid=true)     { _is_solid = IsSolid; }    ///< Set solid cell
 	void SetSolid   (double Vx, double Vy, double Vz=0.0) { _is_solid = true; _vel_bc=Vx,Vy,Vz; }  ///< Set solid cell
 	void SetRhoBC   (double Rho)            { _rho_bc = Rho; } ///< Set density boundary condition
@@ -75,8 +76,8 @@ public:
 
 	// Methods
 	double   Density  () const;                                       ///< Calculate the current density of the fluid in this cell
-	void     Velocity (Vec3_t & V) const;                             ///< Calculate the current velocity of the fluid in this cell
-	double   EqFun    (size_t k, Vec3_t const & V, double Rho) const; ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
+	void     Velocity (Vec3_t & V,double Cs) const;                             ///< Calculate the current velocity of the fluid in this cell
+	double   EqFun    (size_t k, Vec3_t const & V, double Rho,double Cs) const; ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
 	Vec3_t & MixVelocity() { return _mix_vel; }
 
 	// Output methods
@@ -110,7 +111,7 @@ inline Cell::Cell(size_t ID, bool Is3D, double Tau, long i, long j, long k, size
 	: _is_3d    (Is3D),
 	  _is_solid (false),
 	  _tau      (Tau),
-	  _id       (ID)
+	  _id       (ID) 
 {
 	_rho_bc = 0.0;
 	_vel_bc = 0.0, 0.0, 0.0;
@@ -161,9 +162,9 @@ inline Cell::Cell(size_t ID, bool Is3D, double Tau, long i, long j, long k, size
 	}
 }
 
-inline void Cell::Initialize(double Rho0, Vec3_t const & V0)
+inline void Cell::Initialize(double Rho0, Vec3_t const & V0,double Cs)
 {
-	for (size_t k=0; k<_nneigh; k++) _f[k] = EqFun(k, V0, Rho0);
+	for (size_t k=0; k<_nneigh; k++) _f[k] = EqFun(k, V0, Rho0,Cs);
 }
 
 inline double Cell::Density() const
@@ -182,7 +183,7 @@ inline double Cell::Density() const
 	}
 }
 
-inline void Cell::Velocity(Vec3_t & V) const
+inline void Cell::Velocity(Vec3_t & V,double Cs=1) const
 {
 	// Skip if it is solid
 	if (_is_solid)
@@ -204,17 +205,18 @@ inline void Cell::Velocity(Vec3_t & V) const
 			            V(1) += _f[k]*_c[k][1]/rho;
 			if (_is_3d) V(2) += _f[k]*_c[k][2]/rho;
 		}
+		V*=Cs;
 	}
 }
 
-inline double Cell::EqFun(size_t k, Vec3_t const & V, double Rho) const
+inline double Cell::EqFun(size_t k, Vec3_t const & V, double Rho,double Cs=1) const
 {
 	if (_is_3d) throw new Fatal("Cell::EqFun: 3D simulation is not implemented yet");
 	else
 	{
 		Vec3_t v;  v = V + _bforce*_tau/Rho;
-		double vdotc = v(0)*_c[k][0] + v(1)*_c[k][1];
-		double vdotv = v(0)*v(0) + v(1)*v(1);
+		double vdotc = (v(0)*_c[k][0] + v(1)*_c[k][1])/Cs;
+		double vdotv = v(0)*v(0) + v(1)*v(1)/(Cs*Cs);
 		return _w[k]*Rho*(1.0 + 3.0*vdotc + 4.5*vdotc*vdotc - 1.5*vdotv);
 	}
 }

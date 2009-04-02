@@ -190,8 +190,8 @@ inline void Mixture::Solve(double tIni, double tFin, double dt, double dtOut)
 		ApplyMixForce();
 		SetMixVelocity();
 
-		_latts[0]->Collide    ();
-		_latts[1]->Collide    ();
+		_latts[0]->Collide    (dt);
+		_latts[1]->Collide    (dt);
 
 		_latts[0]->BounceBack ();
 		_latts[1]->BounceBack ();
