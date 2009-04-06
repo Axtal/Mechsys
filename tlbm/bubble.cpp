@@ -36,11 +36,16 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("bubble", // FileKey
 	               false,    // Is3D
+				   1, 		//viscosity
 	               75,      // Nx
-	               75);     // Ny
+	               75,    	// Ny
+				   1, 		// Nz
+				   1,		// h
+				   1   		// dt
+				   );     
 
 	// Set constants
-	l.SetTau(1.0)->SetG(-6.0);
+	l.SetG(-6.0);
 
 	// Initialize cells
 	for (size_t i=0; i<l.Nx(); ++i)
@@ -48,11 +53,11 @@ int main(int argc, char **argv) try
 	{
 		double rho0 = 1.1 +(.2*rand())/RAND_MAX;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v0);
+		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dt*/1.0, /*dtOut*/50.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/50.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

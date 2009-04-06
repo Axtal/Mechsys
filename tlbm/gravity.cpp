@@ -37,8 +37,12 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("grav", // FileKey
 	               false,  // Is3D
+				   1,
 	               nx,     // Nx
-	               ny);    // Ny
+	               ny,
+				   1,
+				   1,
+				   1);    // Ny
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -50,11 +54,11 @@ int main(int argc, char **argv) try
 	{
 		double rho0 = 1.0;
 		Vec3_t v0; v0 = 0.0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v0);
+		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/20.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dtOut*/20.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

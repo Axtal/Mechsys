@@ -29,8 +29,13 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+	//Now you have to enter the true viscosity as an array for each component
+	double nu[2];
+	nu[0]=1.0;
+	nu[1]=3.0;
+
 	// Allocate lattice
-	LBM::Mixture m( /*FileKey*/ "multi", /*Is3D*/false, /*NComp*/2,/*Nx*/50, /*Ny*/50);
+	LBM::Mixture m( /*FileKey*/ "multi", /*Is3D*/false, /*NComp*/2,nu/*true viscosity*/,/*Nx*/50, /*Ny*/50,1./*Nz*/,1./*space step*/,1./*time step*/);
 
 	// Set walls (top and bottom)
 	// Lattice 0
@@ -66,25 +71,25 @@ int main(int argc, char **argv) try
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
 		{
-			m.GetLattice(0)->GetCell(i,j)->Initialize (0.01, V);
-			m.GetLattice(1)->GetCell(i,j)->Initialize (1.0, V);
+			m.GetLattice(0)->GetCell(i,j)->Initialize (0.01, V,m.GetLattice(0)->Cs());
+			m.GetLattice(1)->GetCell(i,j)->Initialize (1.0, V,m.GetLattice(1)->Cs());
 		}
 		else
 		{
-			m.GetLattice(0)->GetCell(i,j)->Initialize (1.0, V);
-			m.GetLattice(1)->GetCell(i,j)->Initialize (0.01, V);
+			m.GetLattice(0)->GetCell(i,j)->Initialize (1.0, V,m.GetLattice(0)->Cs());
+			m.GetLattice(1)->GetCell(i,j)->Initialize (0.01, V,m.GetLattice(1)->Cs());
 		}
 	}
 
 	//// Properties
-	m.GetLattice(0)->SetTau(1.0)->SetG(-3.0)->SetGSolid(-0.0);
-	m.GetLattice(1)->SetTau(1.0)->SetG(-1.0)->SetGSolid(-0.0);
+	m.GetLattice(0)->SetG(-3.0)->SetGSolid(-0.0);
+	m.GetLattice(1)->SetG(-1.0)->SetGSolid(-0.0);
 	
 	m.SetGravity(0.0, -0.0005, 0.0);
 	m.SetMixG(0.5);
 
 	// Solve
-	m.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dt*/1.0, /*dtOut*/25.0);
+	m.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/25.0);
 
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

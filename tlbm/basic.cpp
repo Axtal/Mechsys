@@ -31,8 +31,8 @@ using Util::_6_4;
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l("basic", /*Is3D*/false, /*Nx*/150, /*Ny*/150);
-	l.SetTau(1.0)->SetG(-0.15);
+	LBM::Lattice l("basic", /*Is3D*/false,1, /*Nx*/150, /*Ny*/150,1,1,1);
+	l.SetG(-0.15);
 
 	// Set output cells
 	Array<size_t> outcells;
@@ -50,12 +50,12 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		if (i==75 && j==75) l.GetCell(i,j)->Initialize (rho0, vnoise);
-		else                l.GetCell(i,j)->Initialize (rho0, v0);
+		if (i==75 && j==75) l.GetCell(i,j)->Initialize (rho0, vnoise,l.Cs());
+		else                l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/200.0, /*dt*/1.0, /*dtOut*/1.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/200.0, /*dtOut*/1.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

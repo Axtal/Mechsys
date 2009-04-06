@@ -30,8 +30,13 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+	//allocate viscosity
+	double nu[2];
+	nu[0]=1.0;
+	nu[1]=1.0;
+
 	// Allocate lattice
-	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,/*Nx*/100, /*Ny*/100);
+	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,nu,/*Nx*/100, /*Ny*/100,1,1,1);
 
 	// Set walls (top and bottom)
 	// Lattice 0
@@ -53,24 +58,24 @@ int main(int argc, char **argv) try
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		if ((i>m.Nx()/2-10)&&(i<(m.Nx()/2+10))&&(j<m.Ny()/5)) {
 			m.GetLattice(0)->GetCell(i,j)->SetSolid();
-			m.GetLattice(0)->GetCell(i,j)->Initialize(0.01,v0);
+			m.GetLattice(0)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(0)->Cs());
 			m.GetLattice(1)->GetCell(i,j)->SetSolid();
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0);
+			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(1)->Cs());
 
 		}
 		else if ((i<m.Nx()/5)&&(i>=1)&&(j<3*m.Ny()/4)&&(j>=1)) {
-			m.GetLattice(0)->GetCell(i,j)->Initialize(1.0,v0);
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0);
+			m.GetLattice(0)->GetCell(i,j)->Initialize(1.0,v0,m.GetLattice(0)->Cs());
+			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(1)->Cs());
 		}
 		else {
-			m.GetLattice(0)->GetCell(i,j)->Initialize(0.01,v0);
-			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0);
+			m.GetLattice(0)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(0)->Cs());
+			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(1)->Cs());
 		}
 
 	}
 
-	m.GetLattice(0)->SetTau(1.0)->SetG(-6.0)->SetGSolid(-0.0);
-	m.GetLattice(1)->SetTau(1.0)->SetG(-1.0)->SetGSolid(-0.0);
+	m.GetLattice(0)->SetG(-6.0)->SetGSolid(-0.0);
+	m.GetLattice(1)->SetG(-1.0)->SetGSolid(-0.0);
 	m.SetMixG(1.0);
 	
 	
@@ -82,7 +87,7 @@ int main(int argc, char **argv) try
 
 	m.SetGravity(0.0,-0.001,0.0);
 
-	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dt*/0.01, /*dtOut*/1.0);
+	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/1.0);
 
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

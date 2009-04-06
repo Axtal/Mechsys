@@ -38,8 +38,12 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("magnus",      // FileKey
 	               false,         // Is3D
+				   1,
 	               nx,            // Nx
-	               ny);           // Ny
+	               ny,
+				   1,
+				   1,
+				   1);           // Ny
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -74,11 +78,11 @@ int main(int argc, char **argv) try
 	{
 		double rho0 = 1.0;
 		Vec3_t v;  v = v0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v);
+		l.GetCell(i,j)->Initialize (rho0, v,l.Cs());
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dt*/1.0, /*dtOut*/10.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dtOut*/10.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

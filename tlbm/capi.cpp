@@ -33,14 +33,20 @@ int main(int argc, char **argv) try
 	if (argc>=2) seed = atof(argv[1]);
 	srand(seed);
 
+
+
 	// Allocate lattice
 	LBM::Lattice l("capi", // FileKey
 	               false,  // Is3D
+				   1, 	   // viscosity
 	               100,    // Nx
-	               100);   // Ny
+	               100,	   // Ny
+				   1, 	   // Nz
+				   1, 	   // h
+				   1 );   // dt
 
 	// Set constants
-	l.SetTau(1.0)->SetG(-6.0)->SetGSolid(-4.0);
+	l.SetG(-6.0)->SetGSolid(-4.0);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -64,12 +70,12 @@ int main(int argc, char **argv) try
 	{
 		double rho0 = 1.4 +(.02*rand())/RAND_MAX;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v0);
+		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
 	}
 
 	// Solve
 	l.SetGravity(0.0, -0.0005);
-	l.Solve(/*tIni*/0.0, /*tFin*/4000.0, /*dt*/1.0, /*dtOut*/10.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/4000.0, /*dtOut*/10.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

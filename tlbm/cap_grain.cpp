@@ -80,8 +80,12 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("cap_grain",   // FileKey
 	               false,    // Is3D
+				   1,
 	               nx,       // Nx
-	               ny);      // Ny
+	               ny,
+				   1,
+				   1,
+				   1);      
 
 	// Set walls (top and bottom)
 	l.SetG(-5.0)->SetGSolid(-3.0);
@@ -105,11 +109,11 @@ int main(int argc, char **argv) try
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-5,2.0) <= pow(radio,2.0)) // circle equation
 		{
-			l.GetCell(i,j)->Initialize (0.9, V);
+			l.GetCell(i,j)->Initialize (0.9, V,l.Cs());
 		}
 		else
 		{
-			l.GetCell(i,j)->Initialize (0.2, V);
+			l.GetCell(i,j)->Initialize (0.2, V,l.Cs());
 		}
 	}
 

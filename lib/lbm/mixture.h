@@ -37,7 +37,7 @@ class Mixture
 {
 public:
 	// Constructor
-	Mixture (Str_t FileKey, bool Is3D, size_t NComp, size_t Nx, size_t Ny, size_t Nz=1); ///< Nx,Ny,Nz number of cells along each direction. dL = Length of each size
+	Mixture (Str_t FileKey, bool Is3D, size_t NComp, double *nu,size_t Nx, size_t Ny, size_t Nz=1, double h=1, double dt=1); ///< Nx,Ny,Nz number of cells along each direction. dL = Length of each size
 
 	// Destructor
 	~Mixture ();
@@ -55,7 +55,7 @@ public:
 	void SetMixVelocity ();
 	void ApplyMixForce  ();
 	void SetGravity     (double Gx, double Gy, double Gz);
-	void Solve          (double tIni, double tFin, double dt, double dtOut); ///< Solve
+	void Solve          (double tIni, double tFin, double dtOut); ///< Solve
 	void WriteState     (size_t TimeStep); ///< TODO
 	
 protected:
@@ -70,6 +70,8 @@ protected:
 	Array<Lattice *> _latts;  ///< Component Lattices
 
 	double _G_mix;       ///< TODO:
+	double _dt;
+	double _h;
 
 private:
 	double _psi(double Density) const;
@@ -80,7 +82,7 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Mixture::Mixture(Str_t FileKey, bool Is3D, size_t NComp, size_t Nx, size_t Ny, size_t Nz)
+inline Mixture::Mixture(Str_t FileKey, bool Is3D, size_t NComp, double *nu, size_t Nx, size_t Ny, size_t Nz,double h,double dt)
 	: _file_key (FileKey),
 	  _is_3d    (Is3D),
 	  _n_comp   (NComp),
@@ -89,12 +91,14 @@ inline Mixture::Mixture(Str_t FileKey, bool Is3D, size_t NComp, size_t Nx, size_
 	  _nz       (Nz),
 	  _size     (Nx*Ny*Nz),
 	  _T        (0),
-	  _G_mix    (0.0)
+	  _G_mix    (0.0),
+	  _h 		(h),
+	  _dt 		(dt)
 {
 	_latts.Resize(_n_comp);
 	for (size_t n=0; n<_n_comp; n++)
 	{
-		_latts[n] = new Lattice(FileKey,/*Is3D*/false, Nx, Ny);
+		_latts[n] = new Lattice(FileKey,/*Is3D*/false,nu[n], Nx, Ny,Nz,h,dt);
 		_latts[n]->SetMultiComp(true);
 	}
 }
@@ -174,7 +178,7 @@ inline void Mixture::SetGravity(double Gx, double Gy, double Gz)
 		_latts[n]->SetGravity(Gx, Gy, Gz);
 }
 
-inline void Mixture::Solve(double tIni, double tFin, double dt, double dtOut)
+inline void Mixture::Solve(double tIni, double tFin, double dtOut)
 {
 	double t    = tIni;      //
 	double tout = t + dtOut; //
@@ -190,8 +194,8 @@ inline void Mixture::Solve(double tIni, double tFin, double dt, double dtOut)
 		ApplyMixForce();
 		SetMixVelocity();
 
-		_latts[0]->Collide    (dt);
-		_latts[1]->Collide    (dt);
+		_latts[0]->Collide    ();
+		_latts[1]->Collide    ();
 
 		_latts[0]->BounceBack ();
 		_latts[1]->BounceBack ();
@@ -202,7 +206,7 @@ inline void Mixture::Solve(double tIni, double tFin, double dt, double dtOut)
 		_latts[0]->ApplyBC    ();
 		_latts[1]->ApplyBC    ();
 
-		t += dt;
+		t += _dt;
 		if (t>=tout)
 		{
 			String buf;

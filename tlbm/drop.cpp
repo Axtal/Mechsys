@@ -29,10 +29,10 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/"drop", /*Is3D*/false, /*Nx*/100, /*Ny*/50);
+	LBM::Lattice l(/*FileKey*/"drop", /*Is3D*/false,1.0, /*Nx*/100, /*Ny*/50,1,1,1);
 
 	// Set constants
-	l.SetTau(1.0)->SetG(-6.0)->SetGSolid(-4.0);
+	l.SetG(-6.0)->SetGSolid(-4.0);
 
 	// Set Gravity
 	l.SetGravity (0.0, -0.0005);
@@ -50,13 +50,13 @@ int main(int argc, char **argv) try
 	{
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->Initialize (/*Rho*/ 0.8, v0);
+			l.GetCell(i,j)->Initialize (/*Rho*/ 0.8, v0,l.Cs());
 		else
-			l.GetCell(i,j)->Initialize (/*Rho*/ 0.1, v0);
+			l.GetCell(i,j)->Initialize (/*Rho*/ 0.1, v0,l.Cs());
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dt*/1.0, /*dtOut*/10.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/10.0);
 	return 0;
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

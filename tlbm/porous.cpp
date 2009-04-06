@@ -29,10 +29,10 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/"porous", /*Is3D*/false, /*Nx*/200, /*Ny*/200);
+	LBM::Lattice l(/*FileKey*/"porous", /*Is3D*/false,1, /*Nx*/200, /*Ny*/200,1,1,1);
 	
 	// Set constants
-	l.SetTau(1.0)->SetGSolid(0.0);
+	l.SetGSolid(0.0);
 
 	// Set walls (top and bottom)
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
 	{
 		double      r0 = 1.0;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (r0, v0);
+		l.GetCell(i,j)->Initialize (r0, v0,l.Cs());
 	}
 
 	// Boundary conditions
@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/15000.0, /*dt*/1.0, /*dtOut*/20.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/15000.0, /*dtOut*/20.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

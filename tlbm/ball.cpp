@@ -73,10 +73,15 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("ball",      // FileKey
 	               false,       // Is3D
+				   1.0,			// viscosity
 	               nx,          // Nx
-	               ny);         // Ny
+	               ny, 			// Ny
+				   1,           // Nz
+				   1, 			// space step
+				   1 			// time step
+				   );         
 
-	l.SetTau(tau);
+	//l.SetTau(tau);
 
 	// Define velocity and density boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
@@ -92,7 +97,7 @@ int main(int argc, char **argv) try
 	{
 		double rho0 = 1.0;
 		Vec3_t v;  v = v0, 0.0, 0.0;
-		l.GetCell(i,j)->Initialize (rho0, v);
+		l.GetCell(i,j)->Initialize (rho0, v,l.Cs());
 	}
 
 	// Set inner ball
