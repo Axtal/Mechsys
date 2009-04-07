@@ -34,6 +34,7 @@ class BiotElastic : public EquilibModel
 public:
 	// Constants
 	static const char BIOTELASTIC_PN[3][8];
+	static double     BIOTELASTIC_DP[3];
 
 	// Destructor
 	virtual ~BiotElastic () {}
@@ -42,9 +43,10 @@ public:
 	void TgPermeability (Mat_t & Kmat) const { Kmat = _K; }
 
 	// Derived methods
-	int         NPrms () const { return 3;              }
-	PrmName_t * Prms  () const { return BIOTELASTIC_PN; }
-	Str_t       Name  () const { return "BiotElastic";  }
+	int         NPrms   () const { return 3;              }
+	PrmName_t * Prms    () const { return BIOTELASTIC_PN; }
+	double    * DefPrms () const { return BIOTELASTIC_DP; }
+	Str_t       Name    () const { return "BiotElastic";  }
 
 private:
 	// Data
@@ -58,6 +60,7 @@ private:
 }; // class BiotElastic
 
 const char BiotElastic::BIOTELASTIC_PN[3][8] = {"E", "nu", "k"};
+double     BiotElastic::BIOTELASTIC_DP[3]    = {1.0, 0.2,  1.0};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

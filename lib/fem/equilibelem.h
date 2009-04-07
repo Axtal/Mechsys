@@ -78,7 +78,7 @@ public:
 	static const size_t NL_PSTRESS;           ///< Number of labels Plane-stress
 	static const char   LB_PSTRESS   [ 6][4]; ///< Name of labels Plane-stress
 	static const char   EQUILIB_PROP [ 1][8]; ///< Properties
-	static double       EQUILIB_DEF_PROP[ 1]; ///< Default properties values
+	static double       EQUILIB_DPROP[ 1];    ///< Default properties values
 	//}
 
 	// Constructor
@@ -91,7 +91,7 @@ public:
 	int         InitCtes     (int nDim);
 	int         NProps       () const { return 1; } ///< just "gam"
 	ProName_t * Props        () const { return EQUILIB_PROP; }
-	double    * DefProps     () const { return EQUILIB_DEF_PROP; }
+	double    * DefProps     () const { return EQUILIB_DPROP; }
 	void        AddVolForces ();
 	void        ClearDisp    ();
 	void        SetActive    (bool Activate, int ID);
@@ -146,7 +146,7 @@ const char   EquilibElem::LB_PSTRAIN   [12][4] = {"Ex", "Ey", "Ez", "Exy", "Sx",
 const size_t EquilibElem::NL_PSTRESS           = 6;
 const char   EquilibElem::LB_PSTRESS   [ 6][4] = {"Ex", "Ey", "Exy", "Sx", "Sy", "Sxy"};
 const char   EquilibElem::EQUILIB_PROP [ 1][8] = {"gam"};
-double       EquilibElem::EQUILIB_DEF_PROP[ 1] = {0.0};
+double       EquilibElem::EQUILIB_DPROP[ 1]    = {0.0};
 //}
 
 

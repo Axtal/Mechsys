@@ -32,14 +32,16 @@ class SpringElastic : public EquilibModel
 public:
 	// Constants
 	static const char SPRINGELASTIC_PN[1][8];
+	static double     SPRINGELASTIC_DP[1];
 
 	// Destructor
 	virtual ~SpringElastic () {}
 
 	// Derived methods
-	int         NPrms () const { return 1;                }
-	PrmName_t * Prms  () const { return SPRINGELASTIC_PN; }
-	Str_t       Name  () const { return "SpringElastic";  }
+	int         NPrms   () const { return 1;                }
+	PrmName_t * Prms    () const { return SPRINGELASTIC_PN; }
+	double    * DefPrms () const { return SPRINGELASTIC_DP; }
+	Str_t       Name    () const { return "SpringElastic";  }
 
 private:
 	// Private methods
@@ -49,6 +51,7 @@ private:
 }; // class SpringElastic
 
 const char SpringElastic::SPRINGELASTIC_PN[1][8] = {"ks"};
+double     SpringElastic::SPRINGELASTIC_DP[1]    = {1.0};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

@@ -37,6 +37,7 @@ class CamClay : public EquilibModel
 public:
 	// Constants
 	static const char CAMCLAY_PN[4][8]; ///< Parameters
+	static double     CAMCLAY_DP[4];    ///< Default parameters values
 
 	// Destructor
 	virtual ~CamClay () {}
@@ -44,6 +45,7 @@ public:
 	// Derived methods
 	int         NPrms   () const { return 4;          }
 	PrmName_t * Prms    () const { return CAMCLAY_PN; }
+	double    * DefPrms () const { return CAMCLAY_DP; }
 	Str_t       Name    () const { return "CamClay";  }
 	void        InitIVS (Ini_t const & Ini, MechState & State) const;
 
@@ -66,6 +68,7 @@ private:
 }; // class CamClay
 
 const char CamClay::CAMCLAY_PN[4][8] = {"lam", "kap", "nu", "phics"};
+double     CamClay::CAMCLAY_DP[4]    = {0.01,  0.001, 0.2,  25.0};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

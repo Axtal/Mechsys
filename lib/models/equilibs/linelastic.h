@@ -32,14 +32,16 @@ class LinElastic : public EquilibModel
 public:
 	// Constants
 	static const char LINELASTIC_PN[2][8];
+	static double     LINELASTIC_DP[2];
 
 	// Destructor
 	virtual ~LinElastic () {}
 
 	// Derived methods
-	int         NPrms () const { return 2;             }
-	PrmName_t * Prms  () const { return LINELASTIC_PN; }
-	Str_t       Name  () const { return "LinElastic";  }
+	int         NPrms   () const { return 2;             }
+	PrmName_t * Prms    () const { return LINELASTIC_PN; }
+	double    * DefPrms () const { return LINELASTIC_DP; }
+	Str_t       Name    () const { return "LinElastic";  }
 
 private:
 	// Data
@@ -52,6 +54,7 @@ private:
 }; // class LinElastic
 
 const char LinElastic::LINELASTIC_PN[2][8] = {"E", "nu"};
+double     LinElastic::LINELASTIC_DP[2]    = {1.0, 0.2};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

@@ -31,14 +31,16 @@ class LinDiffusion : public DiffusionModel
 public:
 	// Constants
 	static const char LINDIFFUSION_PN[1][8];
+	static double     LINDIFFUSION_DP[1];
 
 	// Destructor
 	virtual ~LinDiffusion () {}
 
 	// Derived methods
-	int         NPrms () const { return 1;               }
-	PrmName_t * Prms  () const { return LINDIFFUSION_PN; }
-	Str_t       Name  () const { return "LinDiffusion";  }
+	int         NPrms   () const { return 1;               }
+	PrmName_t * Prms    () const { return LINDIFFUSION_PN; }
+	double    * DefPrms () const { return LINDIFFUSION_DP; }
+	Str_t       Name    () const { return "LinDiffusion";  }
 
 private:
 	// Data
@@ -51,6 +53,7 @@ private:
 }; // class LinDiffusion
 
 const char LinDiffusion::LINDIFFUSION_PN[1][8] = {"k"};
+double     LinDiffusion::LINDIFFUSION_DP[1]    = {1.0};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

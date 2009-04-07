@@ -32,14 +32,16 @@ class ViscoElastic : public EquilibModel
 public:
 	// Constants
 	static const char LINELASTIC_PN[4][8];
+	static double     LINELASTIC_DP[4];
 
 	// Destructor
 	virtual ~ViscoElastic () {}
 
 	// Derived methods
-	int         NPrms () const { return 4;             }
-	PrmName_t * Prms  () const { return LINELASTIC_PN; }
-	Str_t       Name  () const { return "ViscoElastic";  }
+	int         NPrms   () const { return 4;              }
+	PrmName_t * Prms    () const { return LINELASTIC_PN;  }
+	double    * DefPrms () const { return LINELASTIC_DP;  }
+	Str_t       Name    () const { return "ViscoElastic"; }
 
 	// Delta sigma star (due to viscosity)
 	bool HasDSigStar  () const { return true; }
@@ -57,6 +59,7 @@ private:
 }; // class ViscoElastic
 
 const char ViscoElastic::LINELASTIC_PN[4][8] = {"E", "nu", "alp", "bet"};
+double     ViscoElastic::LINELASTIC_DP[4]    = {1.0, 0.2,  1.0,   1.0};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

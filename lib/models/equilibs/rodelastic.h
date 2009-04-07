@@ -32,14 +32,16 @@ class RodElastic : public EquilibModel
 public:
 	// Constants
 	static const char RODELASTIC_PN[2][8];
+	static double     RODELASTIC_DP[2];
 
 	// Destructor
 	virtual ~RodElastic () {}
 
 	// Derived methods
-	int         NPrms () const { return 2;             }
-	PrmName_t * Prms  () const { return RODELASTIC_PN; }
-	Str_t       Name  () const { return "RodElastic";  }
+	int         NPrms   () const { return 2;             }
+	PrmName_t * Prms    () const { return RODELASTIC_PN; }
+	double    * DefPrms () const { return RODELASTIC_DP; }
+	Str_t       Name    () const { return "RodElastic";  }
 
 private:
 	// Private methods
@@ -49,6 +51,7 @@ private:
 }; // class RodElastic
 
 const char RodElastic::RODELASTIC_PN[2][8] = {"E", "A"};
+double     RodElastic::RODELASTIC_DP[2]    = {1.0, 1.0};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

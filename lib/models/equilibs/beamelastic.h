@@ -38,10 +38,10 @@ public:
 	virtual ~BeamElastic () {}
 
 	// Derived methods
-	int         NPrms () const { return 3;              }
-	PrmName_t * Prms  () const { return BEAMELASTIC_PN; }
-	double    * DefPrms() const { return BEAMELASTIC_DP; }
-	Str_t       Name  () const { return "BeamElastic";  }
+	int         NPrms   () const { return 3;              }
+	PrmName_t * Prms    () const { return BEAMELASTIC_PN; }
+	double    * DefPrms () const { return BEAMELASTIC_DP; }
+	Str_t       Name    () const { return "BeamElastic";  }
 
 private:
 	// Private methods

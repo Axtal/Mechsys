@@ -40,6 +40,7 @@ class PyEquilib : public EquilibModel
 public:
 	// Constants
 	static const char PYEQUILIB_PN[36][8];
+	static double     PYEQUILIB_DP[36];
 
 	// Destructor
 	virtual ~PyEquilib () {}
@@ -47,6 +48,7 @@ public:
 	// Derived methods
 	int         NPrms   () const { return 36;           }
 	PrmName_t * Prms    () const { return PYEQUILIB_PN; }
+	double    * DefPrms () const { return PYEQUILIB_DP; }
 	Str_t       Name    () const { return "PyEquilib";  }
 	void        InitIVS (Ini_t const & Ini, Tensor2 const & Sig, Tensor2 const & Eps, IntVals & Ivs) const;
 
@@ -67,6 +69,7 @@ private:
 }; // class PyEquilib
 
 const char PyEquilib::PYEQUILIB_PN[36][8] = { "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12", "a13", "a14", "a15", "a16", "a17", "a18", "a19", "a20", "a21", "a22", "a23", "a24", "a25", "a26", "a27", "a28", "a29", "a30", "a31", "a32", "a33", "a34", "a35" };
+double     PyEquilib::PYEQUILIB_DP[36]    = { 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0 , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0  , 0.0   };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

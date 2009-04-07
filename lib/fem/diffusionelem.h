@@ -75,6 +75,7 @@ public:
 	static const size_t NL_DIFFUSION_2D;       ///< Number of labels 2D
 	static const char   LB_DIFFUSION_2D[4][4]; ///< Name of labels 2D
 	static const char   DIFFUSION_PROP [1][8]; ///< Properties
+	static double       DIFFUSION_DPROP[1];    ///< Default properties values
 	//}
 
 	// Destructor
@@ -84,6 +85,7 @@ public:
 	int         InitCtes     (int nDim);
 	int         NProps       () const { return 1; } ///< just "s" (source)
 	ProName_t * Props        () const { return DIFFUSION_PROP; }
+	double    * DefProps     () const { return DIFFUSION_DPROP; }
 	void        AddVolForces ();
 	void        SetActive    (bool Activate, int ID);
 	void        CalcDeps     () const;
@@ -125,6 +127,7 @@ const char   DiffusionElem::LB_DIFFUSION_3D[6][4] = {"Vx", "Vy", "Vz", "Ix", "Iy
 const size_t DiffusionElem::NL_DIFFUSION_2D       = 4;
 const char   DiffusionElem::LB_DIFFUSION_2D[4][4] = {"Vx", "Vy", "Ix", "Iy"};
 const char   DiffusionElem::DIFFUSION_PROP [1][8] = {"s"};
+double       DiffusionElem::DIFFUSION_DPROP[1]    = {0.0};
 //}
 
 

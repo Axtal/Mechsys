@@ -41,14 +41,16 @@ class Toto : public EquilibModel
 public:
 	// Constants
 	static const char TOTO_PN[16][8];
+	static double     TOTO_DP[16];
 	
 	// Destructor
 	virtual ~Toto () {}
 
 	// Derived methods
-	int         NPrms () const { return 16;      }
-	PrmName_t * Prms  () const { return TOTO_PN; }
-	Str_t       Name  () const { return "Toto";  }
+	int         NPrms   () const { return 16;      }
+	PrmName_t * Prms    () const { return TOTO_PN; }
+	double    * DefPrms () const { return TOTO_DP; }
+	Str_t       Name    () const { return "Toto";  }
 
 private:
 	// Data
@@ -61,6 +63,7 @@ private:
 }; // class Toto
 
 const char Toto::TOTO_PN[16][8] = { "k1","l1","b1","psi1",  "k2","l2","b2","psi2",  "k3","l3","b3","ev3",  "k4","l4","b4","ev4" };
+double     Toto::TOTO_DP[16]    = { 0.0, 0.0, 0.0, 0.0,     0.0, 0.0, 0.0, 0.0,     0.0, 0.0, 0.0, 0.0,    0.0, 0.0, 0.0, 0.0   };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
