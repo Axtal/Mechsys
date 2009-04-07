@@ -19,6 +19,7 @@
 SET(TESTS
   beam01
   beam02
+  beam03
   qnorm2d
   qnorm3d
   quad4

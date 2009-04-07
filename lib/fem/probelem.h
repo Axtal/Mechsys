@@ -62,6 +62,7 @@ public:
 	virtual int         InitCtes     (int nDim)        { return (nDim==3 ? 0 : 1); } ///< Return geometry index: 3D==>0, 2D==>1
 	virtual int         NProps       () const                                    =0;
 	virtual ProName_t * Props        () const                                    =0;
+	virtual double    * DefProps     () const                                    =0;
 	virtual void        AddVolForces ()                                           {}
 	virtual void        ClearDisp    ()                                           {}
 	virtual void        SetActive    (bool Activate, int ID)                     =0;

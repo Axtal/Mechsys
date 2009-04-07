@@ -79,7 +79,7 @@ public:
 	void ReadVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc=NULL, char const * ElemOrMdl=NULL, int IDOrTag=-1);
 
 	template<int nChars, typename Type1, typename Type2>
-	void ReadSomeVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc=NULL, char const * ElemOrMdl=NULL, int IDOrTag=-1);
+	void ReadSomeVariables(size_t NumNames, char const Names[][nChars], double Defaults[], std::map<Type1,Type2> & NamesVals, char const * Desc=NULL, char const * ElemOrMdl=NULL, int IDOrTag=-1);
 
 	void PathSubstituteEnv();
 	void FileBasename(String const & ExtensionToRemove, String & Basename);
@@ -281,7 +281,7 @@ inline void LineParser::ReadVariables(size_t NumNames, char const Names[][nChars
 }
 
 template<int nChars, typename Type1, typename Type2>
-inline void LineParser::ReadSomeVariables(size_t NumNames, char const Names[][nChars], std::map<Type1,Type2> & NamesVals, char const * Desc, char const * ElemOrMdl, int IDOrTag)
+inline void LineParser::ReadSomeVariables(size_t NumNames, char const Names[][nChars], double Defaults[], std::map<Type1,Type2> & NamesVals, char const * Desc, char const * ElemOrMdl, int IDOrTag)
 {
 	/* Read:  "gam=20 gw=10"  into   Values[0]=20, Values[1]=10
 	 *
@@ -308,7 +308,7 @@ inline void LineParser::ReadSomeVariables(size_t NumNames, char const Names[][nC
 	for (size_t i=0; i<NumNames; ++i)
 	{
 		long k = names.Find(all_names[i]);
-		if (k<0) NamesVals[all_names[i]] = 0.0;
+		if (k<0) NamesVals[all_names[i]] = Defaults[i];
 		else     NamesVals[all_names[i]] = vals[k];
 	}
 }

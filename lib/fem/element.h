@@ -92,6 +92,7 @@ public:
 	// Methods related to PROBLEM
 	int          NProps       () const                                  { CHECKGEPE("NProps"   ) return _pe->NProps();                        } ///< Number of properties
 	ProName_t  * Props        () const                                  { CHECKGEPE("Props"    ) return _pe->Props();                         } ///< Names of properties
+	double     * DefProps     () const                                  { CHECKGEPE("DefProps" ) return _pe->DefProps();                      } ///< Default properties
 	Str_t        MdlName      () const                                  { CHECKGEPE("MdlName"  ) return _pe->MdlName();                       } ///< Name of the constitutive model
 	void         AddVolForces ()                                        { CHECKGEPE("AddVols"  )        _pe->AddVolForces();                  } ///< Method to apply volumetric (body) forces as boundary condition
 	void         ClearDisp ()                                           { CHECKGEPE("ClearDisp")        _pe->ClearDisp();                     } ///< Clear displacements and strains (for equilibrium/coupled problems)

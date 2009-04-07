@@ -75,6 +75,7 @@ public:
 	// Methods to be derived
 	virtual int         NPrms () const =0; ///< Number of parameters
 	virtual PrmName_t * Prms  () const =0; ///< Parameters names. Ex: "E", "nu", "lam", "kap", ...
+	virtual double    * DefPrms() const =0; ///< Default parameters values
 	virtual Str_t       Name  () const =0; ///< Model name
 
 	// Viscosity
@@ -140,7 +141,7 @@ inline void Model::Initialize(int Tag, Str_t StrPrms)
 
 	// Read parameters
 	LineParser lp(StrPrms);
-	lp.ReadSomeVariables (NPrms(), Prms(), _prms, "Parameter", "Model", _tag);
+	lp.ReadSomeVariables (NPrms(), Prms(), DefPrms(), _prms, "Parameter", "Model", _tag);
 
 	// Initialize model
 	_initialize ();

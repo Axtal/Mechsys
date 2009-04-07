@@ -32,6 +32,7 @@ class BeamElastic : public EquilibModel
 public:
 	// Constants
 	static const char BEAMELASTIC_PN[3][8];
+	static double     BEAMELASTIC_DP[3];
 
 	// Destructor
 	virtual ~BeamElastic () {}
@@ -39,6 +40,7 @@ public:
 	// Derived methods
 	int         NPrms () const { return 3;              }
 	PrmName_t * Prms  () const { return BEAMELASTIC_PN; }
+	double    * DefPrms() const { return BEAMELASTIC_DP; }
 	Str_t       Name  () const { return "BeamElastic";  }
 
 private:
@@ -49,6 +51,7 @@ private:
 }; // class BeamElastic
 
 const char BeamElastic::BEAMELASTIC_PN[3][8] = {"E", "A", "Izz"};
+double     BeamElastic::BEAMELASTIC_DP[3]    = {1.0, 1.0, 1.0};
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

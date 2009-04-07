@@ -44,7 +44,8 @@ public:
 	static const char   LB_BEAM_3D[5][4]; ///< Name of labels 3D
 	static const size_t NL_BEAM_2D;       ///< Number of labels 2D
 	static const char   LB_BEAM_2D[5][4]; ///< Name of lables 2D
-	static const char   BEAM_PROP [2][8]; ///< Properties
+	static const char   BEAM_PROP [4][8]; ///< Properties
+	static double       BEAM_DEFP [4];    ///< Default properties values
 	//}
 	
 	// Constructor
@@ -53,8 +54,9 @@ public:
 	// Methods related to PROBLEM
 	int         InitCtes     (int nDim);
 	void        AddVolForces ();
-	int         NProps       () const { return 2; } ///< "gam" and "cq"
+	int         NProps       () const { return 4; } ///< "gam" and "cq"
 	ProName_t * Props        () const { return BEAM_PROP; }
+	double    * DefProps     () const { return BEAM_DEFP; }
 	void        ClearDisp    ();
 	void        CalcDeps     () const;
 	double      Val          (int iNod, Str_t Key) const;
@@ -101,7 +103,8 @@ const size_t Beam::NL_BEAM_3D       = 5;
 const char   Beam::LB_BEAM_3D[5][4] = {"Ea", "Sa", "N", "V", "M"};
 const size_t Beam::NL_BEAM_2D       = 5;
 const char   Beam::LB_BEAM_2D[5][4] = {"Ea", "Sa", "N", "V", "M"};
-const char   Beam::BEAM_PROP [2][8] = {"gam", "cq"};
+const char   Beam::BEAM_PROP [4][8] = {"gam", "cq", "lpin", "rpin"};
+double       Beam::BEAM_DEFP [4]    = {0.0,   1.0,  0,      0};
 //}
 
 

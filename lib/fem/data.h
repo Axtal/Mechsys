@@ -496,7 +496,7 @@ inline Element * Data::SetElemAndModel(size_t i, Array<long> const & Conn, int T
 		Prop_t * prp = new Prop_t;
 		_props.Push (prp);
 		LineParser lp(Props);
-		lp.ReadVariables (_elems[i]->NProps(), _elems[i]->Props(), (*prp), "properties", "Element tag", Tag);
+		lp.ReadSomeVariables (_elems[i]->NProps(), _elems[i]->Props(), _elems[i]->DefProps(), (*prp), "properties", "Element tag", Tag);
 	}
 	_ewtags[_etidx[Tag]].Push (_elems[i]);
 
