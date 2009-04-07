@@ -36,7 +36,7 @@ int main(int argc, char **argv) try
 	nu[1]=1.0;
 
 	// Allocate lattice
-	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,nu,/*Nx*/100, /*Ny*/100,1,1,1);
+	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,nu,/*Nx*/100, /*Ny*/100,1,1,0.01);
 
 	// Set walls (top and bottom)
 	// Lattice 0
@@ -50,8 +50,7 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<m.GetLattice(1)->Bottom().Size(); ++i) m.GetLattice(1)->Bottom()[i]->SetSolid();
 	for (size_t i=0; i<m.GetLattice(1)->Left()  .Size(); ++i) m.GetLattice(1)->Left()[i]->SetSolid();
 	for (size_t i=0; i<m.GetLattice(1)->Right() .Size(); ++i) m.GetLattice(1)->Right()[i]->SetSolid();	
-
-	
+		
 	for (size_t i=0; i<m.Nx(); ++i)
 	for (size_t j=0; j<m.Ny(); ++j)
 	{
@@ -74,7 +73,7 @@ int main(int argc, char **argv) try
 
 	}
 
-	m.GetLattice(0)->SetG(-6.0)->SetGSolid(-0.0);
+	m.GetLattice(0)->SetG(-16.0)->SetGSolid(-0.0);
 	m.GetLattice(1)->SetG(-1.0)->SetGSolid(-0.0);
 	m.SetMixG(1.0);
 	
@@ -87,7 +86,7 @@ int main(int argc, char **argv) try
 
 	m.SetGravity(0.0,-0.001,0.0);
 
-	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/1.0);
+	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/1);
 
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

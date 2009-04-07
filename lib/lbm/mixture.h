@@ -70,9 +70,8 @@ protected:
 	Array<Lattice *> _latts;  ///< Component Lattices
 
 	double _G_mix;       ///< TODO:
-	double _dt;
 	double _h;
-
+	double _dt;
 private:
 	double _psi(double Density) const;
 
@@ -95,6 +94,7 @@ inline Mixture::Mixture(Str_t FileKey, bool Is3D, size_t NComp, double *nu, size
 	  _h 		(h),
 	  _dt 		(dt)
 {
+	//std::cout << _dt << " " << _h << std::endl;
 	_latts.Resize(_n_comp);
 	for (size_t n=0; n<_n_comp; n++)
 	{

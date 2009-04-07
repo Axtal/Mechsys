@@ -101,19 +101,19 @@ protected:
 	bool         _is_3d;    ///< Flag that defines if the analysis is 3D
 	bool         _is_mc;    ///< Flag to define if the analysis is multi-component
 	double       _tau;      ///< 
-	double 		 _nu;		///< Real viscosity
 	double       _G;        ///< Interaction strenght
 	double       _G_solid;  ///< Interaction strenght with solids
 	double       _rho_ref;  ///< Density reference value
 	double       _psi_ref;  ///< Interaction potential reference value
-	double    	 _h;  		///< Space step
-	double    	 _dt;  		///< Time step
-	double       _Cs;		///< Speed of sound in the grid 		
+	double 		 _nu;		///< Real viscosity
 	size_t       _nx;       ///< Number of cells in the x direction
 	size_t       _ny;       ///< Number of cells in the y direction
 	size_t       _nz;       ///< Number of cells in the z direction
+	double    	 _dt;  		///< Time step
 	size_t       _size;     ///< Total number of cells
 	size_t       _T;        ///< Normalized time
+	double    	 _h;  		///< Space step
+	double       _Cs;		///< Speed of sound in the grid 		
 	Vec3_t       _gravity;  ///< Value of the applied gravity
 	size_t       _nneigh;   ///< Number of neighbors
 	Array<Cell*> _cells;    ///< Array of cell pointers
@@ -136,7 +136,7 @@ protected:
 
 /* public */
 
-inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t Ny, size_t Nz,double dt,double h)
+inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t Ny, size_t Nz,double h,double dt)
 	: _file_key (FileKey),
 	  _is_3d    (Is3D),
 	  _is_mc    (false),
@@ -152,12 +152,13 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 	  _dt 		(dt),
 	  _size     (Nx*Ny*Nz),
 	  _T        (0),
-	  _h        (h),
-	  _Cs       (h/dt)
+	  _h        (h)
 {
+	_Cs=h/dt;
+
+	//std::cout << _Cs <<" "<< _dt <<" "<<_h<< std::endl;
 	// Gravity
 	_gravity = 0.0, 0.0, 0.0;
-	_nu=1;
 
 	// Number of neighbours
 	_nneigh = (_is_3d ? 27 : 9);
