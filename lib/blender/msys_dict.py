@@ -34,11 +34,11 @@ def load_dict():
         dict                  = {}
         # GUI
         dict['gui_show_set']  = True
-        dict['gui_show_cad']  = True
-        dict['gui_show_mesh'] = True
-        dict['gui_show_mat']  = True
-        dict['gui_show_fem']  = True
-        dict['gui_show_res']  = True
+        dict['gui_show_cad']  = False
+        dict['gui_show_mesh'] = False
+        dict['gui_show_mat']  = False
+        dict['gui_show_fem']  = False
+        dict['gui_show_res']  = False
         dict['gui_inirow']    = 0
         # SETTINGS
         dict['show_props']    = False

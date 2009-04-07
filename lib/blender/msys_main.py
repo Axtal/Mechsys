@@ -56,12 +56,9 @@ EVT_NONE             =  0 # used for buttons with callbacks
 EVT_REFRESH          =  1 # refresh all windows
 # SETTINGS
 EVT_SET_SHOWHIDE     = 10 # show/hide SET box
-EVT_SET_SHOWONLY     = 11 # show only this box
 EVT_SET_DELPROPS     = 12 # delete all properties
-EVT_SET_HIDEALL      = 13 # hide all boxes
 # CAD
 EVT_CAD_SHOWHIDE     = 20 # show/hide CAD box
-EVT_CAD_SHOWONLY     = 21 # show/hide CAD box
 EVT_CAD_ADDXYZ       = 22 # type in values to define point(s)
 EVT_CAD_FILLET       = 23 # fillet two edges
 EVT_CAD_BREAK        = 24 # break edge
@@ -71,7 +68,6 @@ EVT_CAD_FPOINT       = 27 # read points from file
 EVT_CAD_FSPLINE      = 28 # create a spline from points in a file
 # Mesh
 EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
-EVT_MESH_SHOWONLY    = 41 # show only this box
 EVT_MESH_SETETAG     = 42 # set edges tag
 EVT_MESH_SETFTAG     = 43 # set faces tag
 EVT_MESH_DELALLETAGS = 45 # delete all edge tags
@@ -91,12 +87,10 @@ EVT_MESH_GENUNSTRU   = 74 # generate unstructured mesh using MechSys module
 EVT_MESH_GENUNSTRUS  = 75 # script for unstructured mesh generation
 # Materials
 EVT_MAT_SHOWHIDE     = 80 # show/hide CAD box
-EVT_MAT_SHOWONLY     = 81 # show/hide CAD box
 EVT_MAT_ADDMAT       = 82 # add material
 EVT_MAT_DELALLMAT    = 83 # delete all materials
 # FEM
 EVT_FEM_SHOWHIDE     =  90 # show/hide FEM box
-EVT_FEM_SHOWONLY     =  91 # show only this box
 EVT_FEM_ADDSTAGE     =  92 # add stage
 EVT_FEM_DELSTAGE     =  93 # add stage
 EVT_FEM_DELALLSTAGES =  94 # add stage
@@ -121,7 +115,6 @@ EVT_FEM_ADDLINE      = 208 # add linear element
 EVT_FEM_DELALLLINES  = 209 # delete all linear elements
 # Results
 EVT_RES_SHOWHIDE     = 300 # show/hide results box
-EVT_RES_SHOWONLY     = 301 # show only this box
 EVT_RES_STATS        = 302 # show statistics
 EVT_RES_REPORT       = 303 # show statistics
 EVT_RES_DELRES       = 304 # delete results
@@ -140,13 +133,10 @@ def hide_all():
     Blender.Window.QRedrawAll()
 
 def show_only(key):
-    di.set_key('gui_show_set',  False)
-    di.set_key('gui_show_cad',  False)
-    di.set_key('gui_show_mesh', False)
-    di.set_key('gui_show_mat',  False)
-    di.set_key('gui_show_fem',  False)
-    di.set_key('gui_show_res',  False)
-    di.set_key(key,             True)
+    was_shown = di.key(key)
+    hide_all()
+    if was_shown: di.set_key(key, False)
+    else:         di.set_key(key, True)
     di.set_key('gui_inirow',    0)
     Blender.Window.QRedrawAll()
 
@@ -198,8 +188,7 @@ def button_event(evt):
 
     # ----------------------------------------------------------------------------------- Settings
 
-    if evt==EVT_SET_SHOWHIDE: di.toggle_key('gui_show_set')
-    if evt==EVT_SET_SHOWONLY: show_only    ('gui_show_set')
+    if evt==EVT_SET_SHOWHIDE: show_only ('gui_show_set')
 
     elif evt==EVT_SET_DELPROPS:
         scn = bpy.data.scenes.active
@@ -217,12 +206,9 @@ def button_event(evt):
                         o.removeProperty(p)
                 Blender.Window.QRedrawAll()
 
-    elif evt==EVT_SET_HIDEALL: hide_all()
-
     # ----------------------------------------------------------------------------------- CAD
 
-    elif evt==EVT_CAD_SHOWHIDE: di.toggle_key('gui_show_cad')
-    elif evt==EVT_CAD_SHOWONLY: show_only    ('gui_show_cad')
+    elif evt==EVT_CAD_SHOWHIDE: show_only        ('gui_show_cad')
     elif evt==EVT_CAD_ADDXYZ:   ca.add_point     (float(di.key('cad_x')), float(di.key('cad_y')), float(di.key('cad_z')))
     elif evt==EVT_CAD_FILLET:   ca.fillet        (float(di.key('cad_rad')), di.key('cad_stp'))
     elif evt==EVT_CAD_BREAK:    ca.break_edge    ()
@@ -233,8 +219,7 @@ def button_event(evt):
 
     # ---------------------------------------------------------------------------------- Mesh
 
-    elif evt==EVT_MESH_SHOWHIDE: di.toggle_key('gui_show_mesh')
-    elif evt==EVT_MESH_SHOWONLY: show_only    ('gui_show_mesh')
+    elif evt==EVT_MESH_SHOWHIDE: show_only ('gui_show_mesh')
 
     elif evt==EVT_MESH_SETETAG:
         tag = di.key('newetag')
@@ -270,8 +255,7 @@ def button_event(evt):
 
     # ---------------------------------------------------------------------------------- Materials
 
-    elif evt==EVT_MAT_SHOWHIDE:  di.toggle_key        ('gui_show_mat')
-    elif evt==EVT_MAT_SHOWONLY:  show_only            ('gui_show_mat')
+    elif evt==EVT_MAT_SHOWHIDE:  show_only            ('gui_show_mat')
     elif evt==EVT_MAT_ADDMAT:    di.props_push_new_mat()
     elif evt==EVT_MAT_DELALLMAT: di.props_del_all_mats()
 
@@ -312,8 +296,7 @@ def button_event(evt):
 
     # ----------------------------------------------------------------------------------- FEM 
 
-    elif evt==EVT_FEM_SHOWHIDE: di.toggle_key('gui_show_fem')
-    elif evt==EVT_FEM_SHOWONLY: show_only    ('gui_show_fem')
+    elif evt==EVT_FEM_SHOWHIDE: show_only ('gui_show_fem')
 
     elif evt==EVT_FEM_ADDREINF: di.props_push_new      ('reinfs', di.new_reinf_props())
     elif evt==EVT_FEM_ADDLINE:  di.props_push_new      ('lines',  di.new_line_props())
@@ -348,8 +331,7 @@ def button_event(evt):
 
     # ----------------------------------------------------------------------------------- RES 
 
-    elif evt==EVT_RES_SHOWHIDE: di.toggle_key  ('gui_show_res')
-    elif evt==EVT_RES_SHOWONLY: show_only      ('gui_show_res')
+    elif evt==EVT_RES_SHOWHIDE: show_only      ('gui_show_res')
     elif evt==EVT_RES_STATS:    re.stage_stats (di.key('res_stage'))
     elif evt==EVT_RES_REPORT:   re.report      ()
     elif evt==EVT_RES_DELRES:
@@ -877,7 +859,7 @@ def gui():
 
     # ======================================================== Settings
 
-    gu.caption1(c,r,w,rh,'SETTINGS',EVT_REFRESH,EVT_SET_HIDEALL,EVT_SET_SHOWONLY,EVT_SET_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'SETTINGS',EVT_SET_SHOWHIDE)
     if d['gui_show_set']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_set)
         Draw.Toggle ('ON/OFF',     EVT_NONE, c    , r-rh, 60, 2*rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
@@ -902,7 +884,7 @@ def gui():
 
     # ======================================================== CAD
 
-    gu.caption1(c,r,w,rh,'CAD',EVT_REFRESH,EVT_SET_HIDEALL,EVT_CAD_SHOWONLY,EVT_CAD_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'CAD',EVT_CAD_SHOWHIDE)
     if d['gui_show_cad']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_cad)
         Draw.String     ('X=',           EVT_NONE,        c,     r, 80, rh, d['cad_x'],128,     'Set the X value of the new point to be added',cb_set_x)
@@ -925,7 +907,7 @@ def gui():
 
     # ======================================================== Mesh
 
-    gu.caption1(c,r,w,rh,'MESH',EVT_REFRESH,EVT_SET_HIDEALL,EVT_MESH_SHOWONLY,EVT_MESH_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'MESH',EVT_MESH_SHOWHIDE)
     if d['gui_show_mesh']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
         Draw.Toggle      ('3D mesh',    EVT_NONE,          c,     r, 80, rh, is3d,                     'Set 3D mesh',                       cb_is3d)
@@ -933,7 +915,7 @@ def gui():
         Draw.PushButton  ('Edge',       EVT_MESH_SETETAG,  c+140, r, 60, rh,                           'Set edges tag (0 => remove tag)')
         Draw.Number      ('',           EVT_NONE,          c+200, r, 60, rh, d['newftag'],   -1000, 0, 'New face tag',                      cb_ftag)
         Draw.PushButton  ('Face',       EVT_MESH_SETFTAG,  c+260, r, 60, rh,                           'Set faces tag (0 => remove tag)')
-        r -= rh                         
+        r -= rh
         Draw.Toggle      ('Frame Mesh',         EVT_NONE,          c,     r,  80, rh, isframe,         'Set frame (truss/beams only) mesh', cb_frame)
         Draw.Toggle      ('Quadratic Elements', EVT_NONE,          c+ 80, r, 120, rh, iso2,            'Generate quadratic (o2) elements' , cb_iso2)
         r -= rh
@@ -966,7 +948,7 @@ def gui():
             Draw.Number     ('',         EVT_INC+i, c+120 , r,    60,   rh, int(v[ 8]), 1, 1000, 'Number of divisions along X',     cb_blk_nx)
             Draw.Number     ('',         EVT_INC+i, c+180 , r,    60,   rh, int(v[ 9]), 1, 1000, 'Number of divisions along Y',     cb_blk_ny)
             Draw.Number     ('',         EVT_INC+i, c+240 , r,    60,   rh, int(v[10]), 1, 1000, 'Number of divisions along Z',     cb_blk_nz)
-            r -= rh                                          
+            r -= rh
             Draw.Toggle     ('X',        EVT_INC+i, c+ 60 , r,    20,   rh, int(v[14]),          'Set nonlinear divisions along X', cb_blk_nlx)
             Draw.Toggle     ('Y',        EVT_INC+i, c+ 80 , r,    20,   rh, int(v[15]),          'Set nonlinear divisions along Y', cb_blk_nly)
             Draw.Toggle     ('Z',        EVT_INC+i, c+100 , r,    20,   rh, int(v[16]),          'Set nonlinear divisions along Z', cb_blk_nlz)
@@ -1045,7 +1027,7 @@ def gui():
 
     # ======================================================== Materials
 
-    gu.caption1(c,r,w,rh,'Materials',EVT_REFRESH,EVT_SET_HIDEALL,EVT_MAT_SHOWONLY,EVT_MAT_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'Materials',EVT_MAT_SHOWHIDE)
     if d['gui_show_mat']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_mat)
 
@@ -1109,7 +1091,7 @@ def gui():
 
     # ======================================================== FEM
 
-    gu.caption1(c,r,w,rh,'FEM',EVT_REFRESH,EVT_SET_HIDEALL,EVT_FEM_SHOWONLY,EVT_FEM_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'FEM',EVT_FEM_SHOWHIDE)
     if d['gui_show_fem']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_fem)
 
@@ -1128,7 +1110,7 @@ def gui():
                 Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[1],   32,     'X0: start point',            cb_fem_rx0)
                 Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[2],   32,     'Y0: start point',            cb_fem_ry0)
                 Draw.String     ('',       EVT_INC+i, c+280, r,    80,   rh, '%g'%v[3],   32,     'Z0: start point',            cb_fem_rz0)
-                r -= rh                                            
+                r -= rh
                 Draw.PushButton ('Loc P1', EVT_INC+i, c+ 60, r,    60,   rh,                      'Locate P1 of reinforcement', cb_fem_rP1)
                 Draw.String     ('',       EVT_INC+i, c+120, r,    80,   rh, '%g'%v[4],   32,     'X1: end point',              cb_fem_rx1)
                 Draw.String     ('',       EVT_INC+i, c+200, r,    80,   rh, '%g'%v[5],   32,     'Y1: end point',              cb_fem_ry1)
@@ -1289,7 +1271,7 @@ def gui():
                     Draw.Menu       (d['ptymnu'],  EVT_INC+i,   c+160, r,     80,   rh, int(v[2])+1,       'Problem type: ex.: PStrain, Equilib', cb_eatt_setpty)
                     Draw.Menu       (matmnu,       EVT_INC+i,   c+240, r,    110,   rh, int(v[3])+1,       'Choose material',                     cb_eatt_setmat)
                     Draw.PushButton ('Del',        EVT_INC+i,   c+350, r-rh,  30, 2*rh,                    'Delete this row',                     cb_eatt_del)
-                    r -= rh                         
+                    r -= rh
                     Draw.String     ('',           EVT_INC+tid, c+ 60, r,    140,   rh, props,  128,       'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
                     Draw.Toggle     ('Is Active',  EVT_INC+i,   c+200, r,    150,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
                 else:
@@ -1302,7 +1284,7 @@ def gui():
                     gu.label    (gtyp,                    c+ 60, r,    100,   rh)
                     gu.label    (ptyp,                    c+160, r,     80,   rh)
                     gu.label    (emat,                    c+240, r,    110,   rh)
-                    r -= rh                         
+                    r -= rh
                     gu.label    (prps,                    c+ 60, r,    140,   rh)
                     Draw.Toggle ('Activate',   EVT_INC+i, c+200, r,     75,   rh, int(v[5]), 'Activate this element at this stage?',   cb_eatt_act)
                     Draw.Toggle ('Deactivate', EVT_INC+i, c+275, r,     75,   rh, int(v[6]), 'Deactivate this element at this stage?', cb_eatt_deact)
@@ -1330,7 +1312,7 @@ def gui():
 
     # ======================================================== Results
 
-    gu.caption1(c,r,w,rh,'RESULTS',EVT_REFRESH,EVT_SET_HIDEALL,EVT_RES_SHOWONLY,EVT_RES_SHOWHIDE)
+    gu.caption1(c,r,w,rh,'RESULTS',EVT_RES_SHOWHIDE)
     if d['gui_show_res']:
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_res)
         gu.caption2(c,r,w,rh,'Stage #                  / %d'%(res_nstages))
@@ -1376,9 +1358,9 @@ Blender.Text.Load(script_dir+script_lnk)
 # Connect View3D drawing script
 scn = bpy.data.scenes.active
 scn.clearScriptLinks()
-if scn.getScriptLinks('Redraw')==None: 
+if scn.getScriptLinks('Redraw')==None:
     scn.addScriptLink(script_lnk,'Redraw')
-elif script_lnk not in scn.getScriptLinks('Redraw'): 
+elif script_lnk not in scn.getScriptLinks('Redraw'):
     scn.addScriptLink(script_lnk,'Redraw')
 
 
