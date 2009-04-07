@@ -44,8 +44,8 @@ public:
 	static const char   LB_BEAM_3D[5][4]; ///< Name of labels 3D
 	static const size_t NL_BEAM_2D;       ///< Number of labels 2D
 	static const char   LB_BEAM_2D[5][4]; ///< Name of lables 2D
-	static const char   BEAM_PROP [4][8]; ///< Properties
-	static double       BEAM_DEFP [4];    ///< Default properties values
+	static const char   BEAM_PROP [3][8]; ///< Properties
+	static double       BEAM_DEFP [3];    ///< Default properties values
 	//}
 	
 	// Constructor
@@ -54,7 +54,7 @@ public:
 	// Methods related to PROBLEM
 	int         InitCtes     (int nDim);
 	void        AddVolForces ();
-	int         NProps       () const { return 4; } ///< "gam" and "cq"
+	int         NProps       () const { return 3; } ///< "gam", "cq", and "rpin"
 	ProName_t * Props        () const { return BEAM_PROP; }
 	double    * DefProps     () const { return BEAM_DEFP; }
 	void        ClearDisp    ();
@@ -88,6 +88,7 @@ private:
 	void _excavate   () { throw new Fatal("Beam::_excavate: Method not available"); }
 	void _initialize (Str_t Inis) {}    ///< Initialize the element
 	void _transf_mat (Mat_t & T) const; ///< Calculate transformation matrix
+	bool _is_node0_leftmost () const;   ///< Is node0 the leftmost?
 
 }; // class Beam
 
@@ -103,8 +104,8 @@ const size_t Beam::NL_BEAM_3D       = 5;
 const char   Beam::LB_BEAM_3D[5][4] = {"Ea", "Sa", "N", "V", "M"};
 const size_t Beam::NL_BEAM_2D       = 5;
 const char   Beam::LB_BEAM_2D[5][4] = {"Ea", "Sa", "N", "V", "M"};
-const char   Beam::BEAM_PROP [4][8] = {"gam", "cq", "lpin", "rpin"};
-double       Beam::BEAM_DEFP [4]    = {0.0,   1.0,  0,      0};
+const char   Beam::BEAM_PROP [3][8] = {"gam", "cq", "rpin"};
+double       Beam::BEAM_DEFP [3]    = {0.0,   1.0,  0};
 //}
 
 
@@ -225,12 +226,7 @@ inline void Beam::EdgeBry(Str_t Key, double q0, double q1, int iEdge)
 	if (!(strcmp(Key,"Qb")==0)) return;
 
 	// Check which node is the left-most and adjust q0 and q1
-	bool is_node0_leftmost = true;
-	double x0 = _ge->Conn[0]->X();  double y0 = _ge->Conn[0]->Y();
-	double x1 = _ge->Conn[1]->X();  double y1 = _ge->Conn[1]->Y();
-	if (fabs(x1-x0)<1.0e-5) { if (y1<y0) is_node0_leftmost = false; } // vertical segment
-	else                    { if (x1<x0) is_node0_leftmost = false; } 
-	if (is_node0_leftmost==false)
+	if (_is_node0_leftmost()==false)
 	{
 		q0 = -q0;
 		q1 = -q1;
@@ -351,12 +347,29 @@ inline void Beam::CMatrix(size_t Idx, Mat_t & Ke) const
 		double c6  = E*(4.0*Izz)/_L;
 		double c7  = E*(2.0*Izz)/_L;
 		Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
-		Ke =  c1,  c2, -c3, -c1, -c2, -c3,
-		      c2,  c4,  c5, -c2, -c4,  c5,
-		     -c3,  c5,  c6,  c3, -c5,  c7,
-		     -c1, -c2,  c3,  c1,  c2,  c3,
-		     -c2, -c4, -c5,  c2,  c4, -c5,
-		     -c3,  c5,  c7,  c3, -c5,  c6;
+		if (Prop("rpin")>0) // pin (hinge) to the right
+		{
+			if (_is_node0_leftmost())
+			{
+				double c8 = 1.0/c6;
+				Ke =  c1-c3*c3*c8 ,  c3*c5*c8+c2 , c3*c7*c8-c3 ,  c3*c3*c8-c1 , -c3*c5*c8-c2 , 0.0,
+				      c3*c5*c8+c2 ,  c4-c5*c5*c8 , c5-c5*c7*c8 , -c3*c5*c8-c2 ,  c5*c5*c8-c4 , 0.0,
+				      c3*c7*c8-c3 ,  c5-c5*c7*c8 , c6-c7*c7*c8 ,  c3-c3*c7*c8 ,  c5*c7*c8-c5 , 0.0,
+				      c3*c3*c8-c1 , -c3*c5*c8-c2 , c3-c3*c7*c8 ,  c1-c3*c3*c8 ,  c3*c5*c8+c2 , 0.0,
+				     -c3*c5*c8-c2 ,  c5*c5*c8-c4 , c5*c7*c8-c5 ,  c3*c5*c8+c2 ,  c4-c5*c5*c8 , 0.0,
+				              0.0 ,          0.0 ,         0.0 ,          0.0 ,          0.0 , 0.0;
+			}
+			else throw new Fatal("Beam::CMatrix: rpin==1: method not available when node1 is the leftmost");
+		}
+		else
+		{
+			Ke =  c1,  c2, -c3, -c1, -c2, -c3,
+			      c2,  c4,  c5, -c2, -c4,  c5,
+			     -c3,  c5,  c6,  c3, -c5,  c7,
+			     -c1, -c2,  c3,  c1,  c2,  c3,
+			     -c2, -c4, -c5,  c2,  c4, -c5,
+			     -c3,  c5,  c7,  c3, -c5,  c6;
+		}
 	}
 	else throw new Fatal("Beam::CMatrix: Feature not available for nDim==%d",_ge->NDim);
 }
@@ -430,6 +443,15 @@ inline void Beam::_transf_mat(Mat_t & T) const
 		     0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
 	}
 	else throw new Fatal("Beam::_transf_mat: Feature not available for nDim==%d",_ge->NDim);
+}
+
+inline bool Beam::_is_node0_leftmost() const
+{
+	double x0 = _ge->Conn[0]->X();  double y0 = _ge->Conn[0]->Y();
+	double x1 = _ge->Conn[1]->X();  double y1 = _ge->Conn[1]->Y();
+	if (fabs(x1-x0)<1.0e-5) { if (y1<y0) return false; } // vertical segment
+	if (x1<x0) return false;
+	else       return true;
 }
 
 

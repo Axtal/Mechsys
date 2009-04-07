@@ -2,6 +2,9 @@ src/libmechsys.*
 
 tfem/basic/beam01
 tfem/basic/beam02
+tfem/basic/beam03
+tfem/basic/beam04
+tfem/basic/beam05
 tfem/basic/qnorm2d
 tfem/basic/qnorm3d
 tfem/basic/quad4
