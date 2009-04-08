@@ -23,6 +23,26 @@ import bpy
 import msys_dict as di
 
 
+def export_points(filename):
+    scn = bpy.data.scenes.active
+    obj = scn.objects.active
+    edm = Blender.Window.EditMode()
+    if obj!=None and obj.type=='Mesh':
+        if edm: Blender.Window.EditMode(0)
+        key = Blender.sys.basename(Blender.sys.splitext(filename)[0])
+        fil = open(filename, 'w')
+        msh = obj.getData(mesh=1)
+        lin = '  X      Y      Z\n'
+        for v in msh.verts:
+            lin = '%s %8s  %8s  %8s\n'%(lin,v.co[0],v.co[1],v.co[2])
+        fil.write(lin)
+        fil.close()
+        if edm: Blender.Window.EditMode(1)
+    else:
+        if edm: Blender.Window.EditMode(1)
+        raise Exception('Select a Mesh object before calling this function')
+
+
 def add_point(x, y, z):
     scn = bpy.data.scenes.active
     obj = scn.objects.active

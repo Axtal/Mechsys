@@ -66,6 +66,7 @@ EVT_CAD_BREAKM       = 25 # break edge at middle point
 EVT_CAD_EINT         = 26 # edge closest distance
 EVT_CAD_FPOINT       = 27 # read points from file
 EVT_CAD_FSPLINE      = 28 # create a spline from points in a file
+EVT_CAD_EXPTS        = 29 # export points to a file
 # Mesh
 EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
 EVT_MESH_SETETAG     = 42 # set edges tag
@@ -216,6 +217,7 @@ def button_event(evt):
     elif evt==EVT_CAD_EINT:     ca.edge_intersect()
     elif evt==EVT_CAD_FPOINT:   Blender.Window.FileSelector(ca.add_points_from_file, 'Read X Y Z columns')
     elif evt==EVT_CAD_FSPLINE:  Blender.Window.FileSelector(ca.add_spline_from_file, 'Read X Y Z columns')
+    elif evt==EVT_CAD_EXPTS:    Blender.Window.FileSelector(ca.export_points,        'Export Points', 'allpoints.txt')
 
     # ---------------------------------------------------------------------------------- Mesh
 
@@ -835,7 +837,7 @@ def gui():
 
     # height of boxes
     h_set           = 5*rh+srg
-    h_cad           = 5*rh
+    h_cad           = 6*rh
     h_msh_stru_blks = rh+srg+2*rh*len(blks) if len(blks)>0 else 0
     h_msh_stru      = 4*rh+srg+h_msh_stru_blks
     h_msh_unst_regs = rh+srg+rh*len(regs) if len(regs)>0 else 0
@@ -903,6 +905,8 @@ def gui():
         Draw.PushButton ('Break at mid', EVT_CAD_BREAKM,  c+ 80, r, 80, rh,                     'Break an edge at its middle point')
         Draw.PushButton ('Edge int',     EVT_CAD_EINT,    c+160, r, 80, rh,                     'Find the intersection (smaller distance) between two edges')
         Draw.PushButton ('Read spline',  EVT_CAD_FSPLINE, c+240, r, 80, rh,                     'Add a spline by reading its points from file')
+        r-=rh
+        Draw.PushButton ('Export points',EVT_CAD_EXPTS,   c,     r, 80, rh,                     'Export points to a file')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
