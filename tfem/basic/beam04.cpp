@@ -16,6 +16,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+/* J. N. Reddy, An Introduction to the Finite Element Method 3rd Ed
+ * Example 5.2.4, p259 */
+
 // STL
 #include <iostream>
 #include <fstream>
@@ -137,7 +140,6 @@ int main(int argc, char **argv) try
     err_f.Push(fabs(dat.Nod(0)->Val("mz") -  0.0));
     err_f.Push(fabs(dat.Nod(1)->Val("fx") -  0.0));
     err_f.Push(fabs(dat.Nod(1)->Val("fy") -  Qb*b*6.0/12.0));
-    err_f.Push(fabs(dat.Nod(1)->Val("mz") -  0.0));
 
 	// Error summary
 	double tol_u     = 1.0e-15;

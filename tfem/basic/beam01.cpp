@@ -35,11 +35,6 @@ using Util::_6;
 using Util::_8s;
 using boost::make_tuple;
 
-inline double fy (double t)
-{
-	return 0.0;
-}
-
 int main(int argc, char **argv) try
 {
 

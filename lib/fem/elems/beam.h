@@ -349,9 +349,9 @@ inline void Beam::CMatrix(size_t Idx, Mat_t & Ke) const
 		Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
 		if (Prop("rpin")>0) // pin (hinge) to the right
 		{
+			double c8 = 1.0/c6;
 			if (_is_node0_leftmost())
 			{
-				double c8 = 1.0/c6;
 				Ke =  c1-c3*c3*c8 ,  c3*c5*c8+c2 , c3*c7*c8-c3 ,  c3*c3*c8-c1 , -c3*c5*c8-c2 , 0.0,
 				      c3*c5*c8+c2 ,  c4-c5*c5*c8 , c5-c5*c7*c8 , -c3*c5*c8-c2 ,  c5*c5*c8-c4 , 0.0,
 				      c3*c7*c8-c3 ,  c5-c5*c7*c8 , c6-c7*c7*c8 ,  c3-c3*c7*c8 ,  c5*c7*c8-c5 , 0.0,
@@ -359,7 +359,15 @@ inline void Beam::CMatrix(size_t Idx, Mat_t & Ke) const
 				     -c3*c5*c8-c2 ,  c5*c5*c8-c4 , c5*c7*c8-c5 ,  c3*c5*c8+c2 ,  c4-c5*c5*c8 , 0.0,
 				              0.0 ,          0.0 ,         0.0 ,          0.0 ,          0.0 , 0.0;
 			}
-			else throw new Fatal("Beam::CMatrix: rpin==1: method not available when node1 is the leftmost");
+			else
+			{
+				Ke =  c1-c3*c3*c8 ,  c3*c5*c8+c2 , 0.0 ,  c3*c3*c8-c1 , -c3*c5*c8-c2 , c3*c7*c8-c3 , 
+				      c3*c5*c8+c2 ,  c4-c5*c5*c8 , 0.0 , -c3*c5*c8-c2 ,  c5*c5*c8-c4 , c5-c5*c7*c8 , 
+				              0.0 ,          0.0 , 0.0 ,          0.0 ,          0.0 ,         0.0 ,
+				      c3*c3*c8-c1 , -c3*c5*c8-c2 , 0.0 ,  c1-c3*c3*c8 ,  c3*c5*c8+c2 , c3-c3*c7*c8 , 
+				     -c3*c5*c8-c2 ,  c5*c5*c8-c4 , 0.0 ,  c3*c5*c8+c2 ,  c4-c5*c5*c8 , c5*c7*c8-c5 , 
+				      c3*c7*c8-c3 ,  c5-c5*c7*c8 , 0.0 ,  c3-c3*c7*c8 ,  c5*c7*c8-c5 , c6-c7*c7*c8 ;
+			}
 		}
 		else
 		{
@@ -381,6 +389,7 @@ inline double Beam::N(double l) const
 
 inline double Beam::M(double l) const
 {
+	if (Prop("rpin")>0) return 0; // TODO: pin (hinge) to the right
 	bool use_cor = (Prop("cq")>0 ? true : false); // Use correction for distributed (q) load?
 	double M = 0.0;
 	if (_ge->NDim==2)
@@ -402,6 +411,7 @@ inline double Beam::M(double l) const
 
 inline double Beam::V(double l) const
 {
+	if (Prop("rpin")>0) return 0; // TODO: pin (hinge) to the right
 	bool use_cor = (Prop("cq")>0 ? true : false); // Use correction for distributed (q) load?
 	double V = 0.0;
 	if (_ge->NDim==2)
