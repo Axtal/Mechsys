@@ -44,8 +44,8 @@ public:
 	static const char   LB_BEAM_3D[5][4]; ///< Name of labels 3D
 	static const size_t NL_BEAM_2D;       ///< Number of labels 2D
 	static const char   LB_BEAM_2D[5][4]; ///< Name of lables 2D
-	static const char   BEAM_PROP [3][8]; ///< Properties
-	static double       BEAM_DEFP [3];    ///< Default properties values
+	static const char   BEAM_PROP [4][8]; ///< Properties
+	static double       BEAM_DEFP [4];    ///< Default properties values
 	//}
 	
 	// Constructor
@@ -54,7 +54,7 @@ public:
 	// Methods related to PROBLEM
 	int         InitCtes     (int nDim);
 	void        AddVolForces ();
-	int         NProps       () const { return 3; } ///< "gam", "cq", and "rpin"
+	int         NProps       () const { return 4; } ///< "gam", "cq", "rpin", "lpin"
 	ProName_t * Props        () const { return BEAM_PROP; }
 	double    * DefProps     () const { return BEAM_DEFP; }
 	void        ClearDisp    ();
@@ -104,8 +104,8 @@ const size_t Beam::NL_BEAM_3D       = 5;
 const char   Beam::LB_BEAM_3D[5][4] = {"Ea", "Sa", "N", "V", "M"};
 const size_t Beam::NL_BEAM_2D       = 5;
 const char   Beam::LB_BEAM_2D[5][4] = {"Ea", "Sa", "N", "V", "M"};
-const char   Beam::BEAM_PROP [3][8] = {"gam", "cq", "rpin"};
-double       Beam::BEAM_DEFP [3]    = {0.0,   1.0,  0};
+const char   Beam::BEAM_PROP [4][8] = {"gam", "cq", "rpin", "lpin"};
+double       Beam::BEAM_DEFP [4]    = {0.0,   1.0,  0,       0};
 //}
 
 
@@ -349,6 +349,8 @@ inline void Beam::CMatrix(size_t Idx, Mat_t & Ke) const
 		Ke.Resize(_nd*_ge->NNodes, _nd*_ge->NNodes);
 		if (Prop("rpin")>0) // pin (hinge) to the right
 		{
+			if (Prop("lpin")>0) // pin (hinge) to the left
+				throw new Fatal("Beam::CMatrix: Beams must not have hinges to both sides");
 			double c8 = 1.0/c6;
 			if (_is_node0_leftmost())
 			{
@@ -367,6 +369,28 @@ inline void Beam::CMatrix(size_t Idx, Mat_t & Ke) const
 				      c3*c3*c8-c1 , -c3*c5*c8-c2 , 0.0 ,  c1-c3*c3*c8 ,  c3*c5*c8+c2 , c3-c3*c7*c8 , 
 				     -c3*c5*c8-c2 ,  c5*c5*c8-c4 , 0.0 ,  c3*c5*c8+c2 ,  c4-c5*c5*c8 , c5*c7*c8-c5 , 
 				      c3*c7*c8-c3 ,  c5-c5*c7*c8 , 0.0 ,  c3-c3*c7*c8 ,  c5*c7*c8-c5 , c6-c7*c7*c8 ;
+			}
+		}
+		else if (Prop("lpin")>0) // pin (hinge) to the left
+		{
+			double c8 = 1.0/c6;
+			if (_is_node0_leftmost())
+			{
+				Ke =  c1-c3*c3*c8 ,  c3*c5*c8+c2 , 0.0 ,  c3*c3*c8-c1 , -c3*c5*c8-c2 , c3*c7*c8-c3 , 
+				      c3*c5*c8+c2 ,  c4-c5*c5*c8 , 0.0 , -c3*c5*c8-c2 ,  c5*c5*c8-c4 , c5-c5*c7*c8 , 
+				              0.0 ,          0.0 , 0.0 ,          0.0 ,          0.0 ,         0.0 ,
+				      c3*c3*c8-c1 , -c3*c5*c8-c2 , 0.0 ,  c1-c3*c3*c8 ,  c3*c5*c8+c2 , c3-c3*c7*c8 , 
+				     -c3*c5*c8-c2 ,  c5*c5*c8-c4 , 0.0 ,  c3*c5*c8+c2 ,  c4-c5*c5*c8 , c5*c7*c8-c5 , 
+				      c3*c7*c8-c3 ,  c5-c5*c7*c8 , 0.0 ,  c3-c3*c7*c8 ,  c5*c7*c8-c5 , c6-c7*c7*c8 ;
+			}
+			else
+			{
+				Ke =  c1-c3*c3*c8 ,  c3*c5*c8+c2 , c3*c7*c8-c3 ,  c3*c3*c8-c1 , -c3*c5*c8-c2 , 0.0,
+				      c3*c5*c8+c2 ,  c4-c5*c5*c8 , c5-c5*c7*c8 , -c3*c5*c8-c2 ,  c5*c5*c8-c4 , 0.0,
+				      c3*c7*c8-c3 ,  c5-c5*c7*c8 , c6-c7*c7*c8 ,  c3-c3*c7*c8 ,  c5*c7*c8-c5 , 0.0,
+				      c3*c3*c8-c1 , -c3*c5*c8-c2 , c3-c3*c7*c8 ,  c1-c3*c3*c8 ,  c3*c5*c8+c2 , 0.0,
+				     -c3*c5*c8-c2 ,  c5*c5*c8-c4 , c5*c7*c8-c5 ,  c3*c5*c8+c2 ,  c4-c5*c5*c8 , 0.0,
+				              0.0 ,          0.0 ,         0.0 ,          0.0 ,          0.0 , 0.0;
 			}
 		}
 		else
@@ -390,6 +414,7 @@ inline double Beam::N(double l) const
 inline double Beam::M(double l) const
 {
 	if (Prop("rpin")>0) return 0; // TODO: pin (hinge) to the right
+	if (Prop("lpin")>0) return 0; // TODO: pin (hinge) to the left
 	bool use_cor = (Prop("cq")>0 ? true : false); // Use correction for distributed (q) load?
 	double M = 0.0;
 	if (_ge->NDim==2)
@@ -412,6 +437,7 @@ inline double Beam::M(double l) const
 inline double Beam::V(double l) const
 {
 	if (Prop("rpin")>0) return 0; // TODO: pin (hinge) to the right
+	if (Prop("lpin")>0) return 0; // TODO: pin (hinge) to the left
 	bool use_cor = (Prop("cq")>0 ? true : false); // Use correction for distributed (q) load?
 	double V = 0.0;
 	if (_ge->NDim==2)

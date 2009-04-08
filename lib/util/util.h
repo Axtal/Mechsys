@@ -38,6 +38,11 @@ const double SQ6    = sqrt(6.0);         ///< \f$ \sqrt{6} \f$
 const double SQ2BY3 = sqrt(2.0/3.0);     ///< \f$ \sqrt{2/3} \f$
 const double PI     = 4.0*atan(1.0);     ///< \f$ \pi \f$
 
+inline bool IsNan(double Val)
+{
+	return (std::isnan(Val) || ((Val==Val)==false)); // NaN is the only value, for which the expression Val==Val is always false
+}
+
 /*
 inline double Pi         ()                        { return 3.14159265358979323846264338327950288419716939937510582; } ///< The constant PI
 inline double ToRad      (double deg_angle)        { return 0.0174532925199433*deg_angle;                            } ///< Converts degrees to radians
