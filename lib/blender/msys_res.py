@@ -70,31 +70,33 @@ def report():
         if edm: Blender.Window.EditMode(1)
         raise Exception('Please, run analysis first')
 
+    # extra nodes
+    if obj.properties.has_key('res_nodes'):
+        if not obj.properties['res_nodes']=='':
+            arr = obj.properties['res_nodes'].split(',')
+            nds = [int(n) for n in arr]
+            for n in nds:
+                f = open ('%s_nod%d.cal'%(obj.name,n),'w')
+                # header
+                lin = '%4s' % 'stage'
+                for idx, lbl in obj.properties['res']['1']['idx2lbl'].iteritems():
+                    lin = '%s  %4s' % (lin,lbl)
+                lin += '\n'
+                f.write(lin)
+                # values
+                for s, v in obj.properties['res'].iteritems():
+                    lin = ' %4d  ' % int(s)
+                    for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
+                        res = obj.properties['res'][s][lbl][n]
+                        lin = '%s  %8.3e' % (lin,res)
+                    lin += '\n'
+                    f.write (lin)
+                f.close()
+
     # stats
     f = open (obj.name+'.res','w')
     for s, v in obj.properties['res'].iteritems():
         msg = stage_stats (int(s), False, False)
         for line in msg: f.write (line+'\n')
         f.write ('\n')
-
-    # extra nodes
-    if obj.properties.has_key('res_nodes'):
-        if not obj.properties['res_nodes']=='':
-            arr = obj.properties['res_nodes'].split(',')
-            nds = [int(n) for n in arr]
-            for s, v in obj.properties['res'].iteritems():
-                f.write('\n===== Stage # '+s+' =========================================================\n')
-                lin = '\n %8s' % 'Node #'
-                for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
-                    lin = '%s  %12s' % (lin,lbl)
-                lin += '\n'
-                f.write (lin)
-                for n in nds:
-                    lin = ' %8d  ' % n
-                    for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
-                        res = obj.properties['res'][s][lbl][n]
-                        lin = '%s  %8.3e' % (lin,res)
-                    lin += '\n'
-                    f.write (lin)
-
     f.close()
