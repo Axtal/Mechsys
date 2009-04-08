@@ -64,6 +64,7 @@ def load_dict():
         dict['hide_mesh']     = False
         dict['smsh_cpp']      = False # structured mesh: generate C++ script
         dict['umsh_cpp']      = False # unstructured mesh: generate C++ script
+        dict['mshsetfem']     = True  # set fem data after meshing?
         # FEM
         dict['show_reinfs']   = True  # show reinforcements
         dict['show_lines']    = True  # show linear elements

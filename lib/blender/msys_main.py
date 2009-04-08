@@ -428,6 +428,8 @@ def cb_iso2(evt,val):
         delete_mesh()
         di.props_set_val('iso2', val)
 @try_catch
+def cb_setfem(evt,val): di.set_key('mshsetfem', val)
+@try_catch
 def cb_frame (evt,val):
     if val==1: di.props_set_val('mesh_type', 'frame')
     else:
@@ -918,6 +920,7 @@ def gui():
         r -= rh
         Draw.Toggle      ('Frame Mesh',         EVT_NONE,          c,     r,  80, rh, isframe,         'Set frame (truss/beams only) mesh', cb_frame)
         Draw.Toggle      ('Quadratic Elements', EVT_NONE,          c+ 80, r, 120, rh, iso2,            'Generate quadratic (o2) elements' , cb_iso2)
+        Draw.Toggle      ('Set FEM',            EVT_NONE,          c+200, r,  80, rh, d['mshsetfem'],  'Set FEM data after meshing'       , cb_setfem)
         r -= rh
         r -= srg
         Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 90, rh, 'Delete all edge tags')

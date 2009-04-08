@@ -545,6 +545,7 @@ def set_elems(obj, elems):
 
 @print_timing
 def set_ebrys(obj):
+    if not di.key('mshsetfem'): return
     # set edges boundaries
     if obj.properties.has_key('etags'):
         for sid in obj.properties['stages']:
@@ -569,6 +570,7 @@ def set_ebrys(obj):
 
 @print_timing
 def set_fbrys(obj):
+    if not di.key('mshsetfem'): return
     # 3D mesh?
     is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
     # set faces boundaries
