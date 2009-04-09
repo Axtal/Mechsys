@@ -78,17 +78,17 @@ def report():
             for n in nds:
                 f = open ('%s_nod%d.cal'%(obj.name,n),'w')
                 # header
-                lin = '%4s' % 'stage'
+                lin = '%6s' % 'stage'
                 for idx, lbl in obj.properties['res']['1']['idx2lbl'].iteritems():
-                    lin = '%s  %4s' % (lin,lbl)
+                    lin = '%s  %15s' % (lin,lbl)
                 lin += '\n'
                 f.write(lin)
                 # values
                 for s, v in obj.properties['res'].iteritems():
-                    lin = ' %4d  ' % int(s)
+                    lin = '%6d' % int(s)
                     for idx, lbl in obj.properties['res'][s]['idx2lbl'].iteritems():
                         res = obj.properties['res'][s][lbl][n]
-                        lin = '%s  %8.3e' % (lin,res)
+                        lin = '%s  %15.8e' % (lin,res)
                     lin += '\n'
                     f.write (lin)
                 f.close()
