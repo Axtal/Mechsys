@@ -92,10 +92,10 @@ sol = ms.solver (dat, 'ttriax')
 Sx = states[0][0]
 Sy = states[0][1]
 Sz = states[0][2]
-#eatts = [[-1, 'Hex8', 'Equilib', 'PyEquilib,camclay.py', 'a0=%f a1=%f a2=%f a3=%f'%(lam,kap,phi,nu), 'Sx=%f Sy=%f Sz=%f v=%f'%(Sx,Sy,Sz,vini), 'gam=0', True]]
-#eatts = [[-1, 'Hex8', 'Equilib', 'LinElastic', 'E=%f nu=%f'%(1200,0.2), 'Sx=%f Sy=%f Sz=%f'%(Sx,Sy,Sz), 'gam=20', True]]
-#eatts = [[-1, 'Hex8', 'Equilib', 'CamClay', 'lam=%f kap=%f phics=%f nu=%f'%(lam,kap,phi,nu), 'Sx=%f Sy=%f Sz=%f v=%f'%(Sx,Sy,Sz,vini), 'gam=2', True]]
-eatts = [[-1, 'Hex8', 'Equilib', 'Toto', 'k1=%f l1=%f b1=%f psi1=%f  k2=%f l2=%f b2=%f psi2=%f  k3=%f l3=%f b3=%f ev3=%f  k4=%f l4=%f b4=%f ev4=%f'%(k1,l1,b1,psi1, k2,l2,b2,psi2, k3,l3,b3,ev3, k4,l4,b4,ev4), 'Sx=%f Sy=%f Sz=%f'%(Sx,Sy,Sz), 'gam=0', True]]
+#eatts = [[-1, 'Hex8', 'Equilib', 'PyEquilib,camclay.py', 'a0=%f a1=%f a2=%f a3=%f'%(lam,kap,phi,nu), 'Sx=%f Sy=%f Sz=%f v=%f'%(Sx,Sy,Sz,vini), 'gam=0', '', True]]
+eatts = [[-1, 'Hex8', 'Equilib', 'LinElastic', 'E=%f nu=%f'%(1200,0.2), 'Sx=%f Sy=%f Sz=%f'%(Sx,Sy,Sz), 'gam=20', '', True]]
+#eatts = [[-1, 'Hex8', 'Equilib', 'CamClay', 'lam=%f kap=%f phics=%f nu=%f'%(lam,kap,phi,nu), 'Sx=%f Sy=%f Sz=%f v=%f'%(Sx,Sy,Sz,vini), 'gam=2', '', True]]
+#eatts = [[-1, 'Hex8', 'Equilib', 'Toto', 'k1=%f l1=%f b1=%f psi1=%f  k2=%f l2=%f b2=%f psi2=%f  k3=%f l3=%f b3=%f ev3=%f  k4=%f l4=%f b4=%f ev4=%f'%(k1,l1,b1,psi1, k2,l2,b2,psi2, k3,l3,b3,ev3, k4,l4,b4,ev4), 'Sx=%f Sy=%f Sz=%f'%(Sx,Sy,Sz), 'gam=0', '', True]]
 
 # Set geometry: nodes and elements
 dat.set_nodes_elems (mesh, eatts)
