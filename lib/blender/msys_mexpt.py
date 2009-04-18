@@ -263,6 +263,7 @@ def cb_expmsh (fn):
         msg = 'Overwrite file <'+fn+'> ?%t|Yes'
         res = Draw.PupMenu(msg)
         if res>0: export_mesh(fn,get_key('outedg'))
+    else: export_mesh(fn,get_key('outedg'))
 
 # window
 def gui():
