@@ -55,12 +55,12 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("cylinder",      // FileKey
 	               false,           // Is3D
-				   1,
+		       u_max*(2*radius)/Re,
 	               nx,              // Nx
 	               ny,
-				   1,
-				   dt,
-				   h);             
+		       1,
+		       h,
+		       dt);             
 					
 
 	// Set tau

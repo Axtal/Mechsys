@@ -119,7 +119,7 @@ inline void Mixture::MixVelocity(long i, long j, Vec3_t & V)
 		Cell   * c = _latts[n]->GetCell(i,j);
 		double tau = _latts[n]->Tau();
 		double rho = c->Density();
-		Vec3_t   v;  c->Velocity(v);
+		Vec3_t   v;  c->Velocity(v,_h/_dt);
 		num += v*rho/tau;
 		//for (size_t k=0; k<nneigh; k++)
 		//{
@@ -262,7 +262,7 @@ inline void Mixture::WriteState(size_t TimeStep)
 		oss << "VECTORS Velocity_" << n << " float\n";
 		for (size_t i=0; i<_size; ++i)
 		{
-			Vec3_t v; _latts[n]->GetCell(i)->Velocity(v);
+			Vec3_t v; _latts[n]->GetCell(i)->Velocity(v,_h/_dt);
 			oss << v(0) << " " << v(1) << " " << v(2) << "\n";
 		}
 	}
@@ -273,7 +273,7 @@ inline void Mixture::WriteState(size_t TimeStep)
 		oss << "VECTORS Mass_flux_" << n << " float\n";
 		for (size_t i=0; i<_size; ++i)
 		{
-			Vec3_t v; _latts[n]->GetCell(i)->Velocity(v);
+			Vec3_t v; _latts[n]->GetCell(i)->Velocity(v,_h/_dt);
 			v *= _latts[n]->GetCell(i)->Density();
 			oss << v(0) << " " << v(1) << " " << v(2) << "\n";
 		}
@@ -283,8 +283,8 @@ inline void Mixture::WriteState(size_t TimeStep)
 	oss << "VECTORS Total_mass_flux float\n";
 	for (size_t i=0; i<_size; ++i)
 	{
-		Vec3_t v0; _latts[0]->GetCell(i)->Velocity(v0);
-		Vec3_t v1; _latts[1]->GetCell(i)->Velocity(v1);
+		Vec3_t v0; _latts[0]->GetCell(i)->Velocity(v0,_h/_dt);
+		Vec3_t v1; _latts[1]->GetCell(i)->Velocity(v1,_h/_dt);
 		v0 *= _latts[0]->GetCell(i)->Density();
 		v1 *= _latts[1]->GetCell(i)->Density();
 		Vec3_t v; v = v0+v1;

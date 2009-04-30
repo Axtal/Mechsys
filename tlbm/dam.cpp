@@ -32,11 +32,11 @@ int main(int argc, char **argv) try
 {
 	//allocate viscosity
 	double nu[2];
-	nu[0]=1.0;
-	nu[1]=1.0;
+	nu[0]=1./6.;
+	nu[1]=1./6.;
 
 	// Allocate lattice
-	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,nu,/*Nx*/100, /*Ny*/100,1,1,0.01);
+	LBM::Mixture m( /*FileKey*/ "dam", /*Is3D*/false, /*NComp*/2,nu,/*Nx*/200, /*Ny*/100,1,1,0.1);
 
 	// Set walls (top and bottom)
 	// Lattice 0
@@ -63,7 +63,7 @@ int main(int argc, char **argv) try
 
 		}
 		else if ((i<m.Nx()/5)&&(i>=1)&&(j<3*m.Ny()/4)&&(j>=1)) {
-			m.GetLattice(0)->GetCell(i,j)->Initialize(1.0,v0,m.GetLattice(0)->Cs());
+			m.GetLattice(0)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(0)->Cs());
 			m.GetLattice(1)->GetCell(i,j)->Initialize(0.01,v0,m.GetLattice(1)->Cs());
 		}
 		else {
@@ -73,9 +73,9 @@ int main(int argc, char **argv) try
 
 	}
 
-	m.GetLattice(0)->SetG(-16.0)->SetGSolid(-0.0);
-	m.GetLattice(1)->SetG(-1.0)->SetGSolid(-0.0);
-	m.SetMixG(1.0);
+	m.GetLattice(0)->SetG(-0.0)->SetGSolid(-0.0)->Homogenize();
+	m.GetLattice(1)->SetG(-0.0)->SetGSolid(-0.0)->Homogenize();
+	m.SetMixG(0.0);
 	
 	
 	
@@ -84,9 +84,9 @@ int main(int argc, char **argv) try
 	m.WriteState(0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/200.0, /*dt*/1.0, /*dtOut*/10.0);
 
-	m.SetGravity(0.0,-0.001,0.0);
+	m.SetGravity(0.0,-0.0001,0.0);
 
-	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/1);
+	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/0.1);
 
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

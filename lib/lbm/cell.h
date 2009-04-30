@@ -76,7 +76,7 @@ public:
 
 	// Methods
 	double   Density  () const;                                       ///< Calculate the current density of the fluid in this cell
-	void     Velocity (Vec3_t & V,double Cs) const;                             ///< Calculate the current velocity of the fluid in this cell
+	void     Velocity (Vec3_t & V,double Cs=1) const;                             ///< Calculate the current velocity of the fluid in this cell
 	double   EqFun    (size_t k, Vec3_t const & V, double Rho,double Cs) const; ///< Calculate the equilibrium distribution function in this cell for the Index direction. Note V/Rho may not be the velocity in this cell.
 	Vec3_t & MixVelocity() { return _mix_vel; }
 
@@ -183,7 +183,7 @@ inline double Cell::Density() const
 	}
 }
 
-inline void Cell::Velocity(Vec3_t & V,double Cs=1) const
+inline void Cell::Velocity(Vec3_t & V,double Cs) const
 {
 	// Skip if it is solid
 	if (_is_solid)
@@ -205,7 +205,10 @@ inline void Cell::Velocity(Vec3_t & V,double Cs=1) const
 			            V(1) += _f[k]*_c[k][1]/rho;
 			if (_is_3d) V(2) += _f[k]*_c[k][2]/rho;
 		}
+		//std::cout<<Cs<<" "<<V(0)<<std::endl;
 		V*=Cs;
+		//std::cout<<"b"<<V(0)<<std::endl;
+
 	}
 }
 

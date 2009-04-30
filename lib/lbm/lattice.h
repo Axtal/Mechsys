@@ -39,9 +39,9 @@ public:
 	Lattice (Str_t  FileKey, ///< Key such as "mytest" to be used when generating output files: Ex.: mytest_11.vtk
 	         bool   Is3D,    ///< 
 			 double nu,		 ///< True viscosity
-	         size_t Nx,      ///< Number of cells along x direction
-	         size_t Ny,      ///< Number of cells along y direction
-	         size_t Nz=1,    ///< Number of cells along z direction
+	          	 size_t Nx,      ///< Number of cells along x direction
+	         	 size_t Ny,      ///< Number of cells along y direction
+	         	 size_t Nz=1,    ///< Number of cells along z direction
 			 double dt=1, 	 ///< Time step
 			 double h=1);    ///< Space viscosity
 
@@ -63,6 +63,7 @@ public:
 	size_t   NNeigh    () const { return _nneigh; }
 	double   Tau       () const { return _tau; }
 	double   Cs        () const { return _Cs;}
+	double   dt        () const { return _dt;}
 	double   TotalMass () const;
 	Cell   * GetCell   (size_t i, size_t j, size_t k=0);
 	Cell   * GetCell   (size_t i) { return _cells[i]; }
@@ -105,15 +106,15 @@ protected:
 	double       _G_solid;  ///< Interaction strenght with solids
 	double       _rho_ref;  ///< Density reference value
 	double       _psi_ref;  ///< Interaction potential reference value
-	double 		 _nu;		///< Real viscosity
+	double 	     _nu;	///< Real viscosity
 	size_t       _nx;       ///< Number of cells in the x direction
 	size_t       _ny;       ///< Number of cells in the y direction
 	size_t       _nz;       ///< Number of cells in the z direction
-	double    	 _dt;  		///< Time step
+	double       _dt;	///< Time step
 	size_t       _size;     ///< Total number of cells
 	size_t       _T;        ///< Normalized time
-	double    	 _h;  		///< Space step
-	double       _Cs;		///< Speed of sound in the grid 		
+	double       _h;  	///< Space step
+	double       _Cs;	///< Speed of sound in the grid 		
 	Vec3_t       _gravity;  ///< Value of the applied gravity
 	size_t       _nneigh;   ///< Number of neighbors
 	Array<Cell*> _cells;    ///< Array of cell pointers
@@ -149,13 +150,13 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 	  _nx       (Nx),
 	  _ny       (Ny),
 	  _nz       (Nz),
-	  _dt 		(dt),
+	  _dt 	    (dt),
 	  _size     (Nx*Ny*Nz),
 	  _T        (0),
 	  _h        (h)
 {
 	_Cs=h/dt;
-
+	_rho_ref*=h*h;
 	//std::cout << _Cs <<" "<< _dt <<" "<<_h<< std::endl;
 	// Gravity
 	_gravity = 0.0, 0.0, 0.0;
@@ -191,7 +192,8 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 			_right[i] = GetCell (_nx-1,i);
 		}
 	}
-	_tau=_dt*3*_nu/(_h*_h)+0.5;
+	//_tau=_dt*3*_nu/(_h*_h)+0.5;
+	_dt=(_tau-0.5)*h*h/(3*nu);
 
 }
 
@@ -225,10 +227,10 @@ inline double Lattice::Curl(size_t i, size_t j)
 	size_t j2 = (j+1+_ny) % _ny;
 	size_t j4 = (j-1+_ny) % _ny;
 
-	Vec3_t v1; GetCell(i1,j)->Velocity(v1);
-	Vec3_t v3; GetCell(i3,j)->Velocity(v3);
-	Vec3_t v2; GetCell(i,j2)->Velocity(v2);
-	Vec3_t v4; GetCell(i,j4)->Velocity(v4);
+	Vec3_t v1; GetCell(i1,j)->Velocity(v1,_Cs);
+	Vec3_t v3; GetCell(i3,j)->Velocity(v3,_Cs);
+	Vec3_t v2; GetCell(i,j2)->Velocity(v2,_Cs);
+	Vec3_t v4; GetCell(i,j4)->Velocity(v4,_Cs);
 
 	double dvydx = (v1(1)-v3(1))/2.0; // dVy/dx
 	double dvxdy = (v2(0)-v4(0))/2.0; // dVx/dy
@@ -368,6 +370,7 @@ inline void Lattice::ApplyBC()
 inline void Lattice::Collide()
 {
 	double om = _dt/_tau;
+	//std::cout <<om << " " << _Cs <<std::endl;
 	for (size_t i=0; i<_size; i++)
 	{
 		LBM::Cell * c = _cells[i];
@@ -382,7 +385,7 @@ inline void Lattice::Collide()
 			{
 				double feq = c->EqFun (k,v,rho,_Cs);
 				c->F(k) = (1.0-om)*c->F(k) + om*feq;
-				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d)->F(%d)<0.0 detected",i,k);
+				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->F(%d)<0.0 detected",i%_nx,i/_nx,k);
 			}
 		}
 	}
