@@ -125,17 +125,17 @@ def export_mesh(fn,outedg):
                 if obj.properties['stags'].has_key(sid):
                     tag = obj.properties['stags'][sid]
             # nodes
-            ln1  = ' ['
+            ln1  = ' ('
             fnv1 = len(f.verts)-1
             for j, v in enumerate(f.verts):
-                ss  = ']' if j==fnv1 else ','
+                ss  = ')' if j==fnv1 else ','
                 ln1 = '%s%3d%s' % (ln1,v.index,ss)
             # edges
             edgs = msh.findEdges(f.edge_keys)
-            ln2  = ' ['
+            ln2  = ' ('
             fne1 = len(edgs)-1
             for j, e in enumerate(edgs):
-                ss  = ']' if j==fne1 else ','
+                ss  = ')' if j==fne1 else ','
                 if outedg: ln2 = '%s%3d%s' % (ln2,e,ss)
                 else:
                     etag = 0
