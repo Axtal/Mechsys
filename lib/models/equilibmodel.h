@@ -170,7 +170,7 @@ inline int EquilibModel::StateUpdate(double Time, double Dt, Vec_t const & DEps,
 		error = Tensors::Norm(sig_ME-sig_1)/(1.0+Tensors::Norm(sig_ME));
 		for (size_t i=0; i<nivs; ++i)
 		{
-			double err = fabs(ivs_ME[i]-ivs_1[i])/(1.0+ivs_ME[i]);
+			double err = fabs(ivs_ME[i]-ivs_1[i])/(1.0+fabs(ivs_ME[i]));
 			if (err>error) error = err;
 		}
 
