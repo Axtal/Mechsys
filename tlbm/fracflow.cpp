@@ -39,9 +39,9 @@ double distline(double x1,double y1,double x2,double y2,double x,double y) {
 int main(int argc, char **argv) try
 {	
 
-	double width=3;
+	double width=3.;
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/"fracflow", /*Is3D*/false,1, /*Nx*/200, /*Ny*/200,1,1,1);
+	LBM::Lattice l(/*FileKey*/"fracflow", /*Is3D*/false,1, /*Nx*/400, /*Ny*/400,1,1,1);
 	
 	// Set constants
 	l.SetGSolid(0.0);
@@ -61,10 +61,10 @@ int main(int argc, char **argv) try
 	fp.ReadTable(grains);
 	for (size_t i=0; i<grains["x1"].Size(); ++i)
 	{
-		double x1 = grains["x1"][i]*10.0;
-		double y1 = grains["y1"][i]*10.0;
-		double x2 = grains["x2"][i]*10.0;
-		double y2 = grains["y2"][i]*10.0;
+		double x1 = grains["x1"][i]*20.0;
+		double y1 = grains["y1"][i]*20.0;
+		double x2 = grains["x2"][i]*20.0;
+		double y2 = grains["y2"][i]*20.0;
 		for (size_t i=0; i<l.Nx(); ++i)
 		for (size_t j=0; j<l.Ny(); ++j)
 		{
@@ -88,13 +88,15 @@ int main(int argc, char **argv) try
 	// Boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		Vec3_t v; v = 0.001, 0.0, 0.0;
-		l.SetVelocityBC (0,       j, v);
-		l.SetDensityBC  (l.Nx()-1,j, 1.0);
+		Vec3_t v; v = 0.01, 0.0, 0.0;
+		//l.SetVelocityBC (0,       j, v);
+		l.SetDensityBC 	(0,j,1.0);
+		l.SetDensityBC  (l.Nx()-1,j, 0.0);
 	}
+	l.SetTau(1.);
 	l.WriteState(0);
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/15000.0, /*dtOut*/20.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/20.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

@@ -364,6 +364,14 @@ inline void Lattice::ApplyBC()
 			c->F(7) = c->F(5) - (1.0/6.0)*c->RhoBC()*vx + 0.5*(c->F(2)-c->F(4));
 			c->F(6) = c->F(8) - (1.0/6.0)*c->RhoBC()*vx - 0.5*(c->F(2)-c->F(4));
 		}
+		if (c->Left()) // Cell is on the left side
+		{
+			double vx = -1.0 + (c->F(0)+c->F(2)+c->F(4) + 2.0*(c->F(3)+c->F(6)+c->F(7)))/c->RhoBC();
+			c->F(1) = c->F(3) - (2.0/3.0)*c->RhoBC()*vx; 
+			c->F(5) = c->F(7) - (1.0/6.0)*c->RhoBC()*vx + 0.5*(c->F(4)-c->F(2));
+			c->F(8) = c->F(6) - (1.0/6.0)*c->RhoBC()*vx - 0.5*(c->F(4)-c->F(2));
+		}
+
 	}
 }
 
@@ -491,6 +499,14 @@ inline void Lattice::WriteState(size_t TimeStep)
 		Vec3_t v;  _cells[i]->Velocity(v,_Cs);
 		oss << v(0) << " " << v(1) << " " << v(2) << "\n";
 	}
+	oss << "VECTORS Mass_flux float\n";
+	for (size_t i=0; i<_size; ++i)
+	{
+		Vec3_t v; _cells[i]->Velocity(v,_Cs);
+		v *= _cells[i]->Density();
+		oss << v(0) << " " << v(1) << " " << v(2) << "\n";
+	}
+
 
 	// Open/create file, write to file, and close file
 	String         fn;  fn.Printf("%s_%d.vtk",_file_key.CStr(),TimeStep);
