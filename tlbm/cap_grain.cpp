@@ -27,8 +27,8 @@ using std::endl;
 
 // Analysis constants
 double tau    = 1.0;
-int    nx     = 50;
-int    ny     = 50;
+int    nx     = 200;
+int    ny     = 200;
 double v0     = 0;
 //double omega  = 0.001;  // Angular velocity in the surface of the obstacle
 
@@ -80,15 +80,15 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("cap_grain",   // FileKey
 	               false,    // Is3D
-				   1,
+		       1./6.,
 	               nx,       // Nx
 	               ny,
-				   1,
-				   1,
-				   1);      
+		       1,
+		       1,
+		       1);      
 
 	// Set walls (top and bottom)
-	l.SetG(-5.0)->SetGSolid(-3.0);
+	l.SetG(-6.0)->SetGSolid(-3.5);
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
@@ -105,29 +105,29 @@ int main(int argc, char **argv) try
 	for (size_t j=0; j<l.Ny(); j++)
 	{
 		double rho0  = 1.0;
-		size_t radio = 6;
+		size_t radio = 24;
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
-		if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-5,2.0) <= pow(radio,2.0)) // circle equation
+		if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-20,2.0) <= pow(radio,2.0)) // circle equation
 		{
-			l.GetCell(i,j)->Initialize (0.9, V,l.Cs());
+			l.GetCell(i,j)->Initialize (1.5, V,l.Cs());
 		}
 		else
 		{
-			l.GetCell(i,j)->Initialize (0.2, V,l.Cs());
+			l.GetCell(i,j)->Initialize (0.05, V,l.Cs());
 		}
 	}
 
 	size_t Tmax = 2000;
-	size_t Tout = 1;
+	size_t Tout = 10;
 
 	double vx = 0.0;
 	double vy = 0.0;
 	double dt = 1.0;
-	double m  = 100.;
+	double m  = 400.;
 	// Set inner obstacle
 	double obsX   = nx/2; // x position
-	double obsY   = 15; // y position
-	int    radius = 10; //ny/10;
+	double obsY   = ny/3; // y position
+	int    radius = ny/5; //ny/10;
 	double fx     = 0.0;
 	double fy     = 0.0;
 
@@ -162,12 +162,12 @@ int main(int argc, char **argv) try
 			obsY += vy*dt;
 		}
 
-		std::cout << "obsX = " << obsX << std::endl;
-		std::cout << "obsY = " << obsY << std::endl;
-		std::cout << "fx = " << fx << std::endl;
-		std::cout << "fy = " << fy << std::endl;
-		std::cout << "vx = " << vx << std::endl;
-		std::cout << "vy = " << vy << std::endl;
+		//std::cout << "obsX = " << obsX << std::endl;
+		//std::cout << "obsY = " << obsY << std::endl;
+		//std::cout << "fx = " << fx << std::endl;
+		//std::cout << "fy = " << fy << std::endl;
+		//std::cout << "vx = " << vx << std::endl;
+		//std::cout << "vy = " << vy << std::endl;
 
 		l.ApplyForce   ();
 		l.Collide      ();

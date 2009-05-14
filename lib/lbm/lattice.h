@@ -192,8 +192,8 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 			_right[i] = GetCell (_nx-1,i);
 		}
 	}
-	//_tau=_dt*3*_nu/(_h*_h)+0.5;
-	_dt=(_tau-0.5)*h*h/(3*nu);
+	_tau=_dt*3*_nu/(_h*_h)+0.5;
+	//dt=(_tau-0.5)*h*h/(3*nu);
 
 }
 
