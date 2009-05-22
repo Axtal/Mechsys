@@ -53,13 +53,13 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
-		double rho0 = (0.8 +(.01*rand())/RAND_MAX)*h*h;
+		double rho0 = (0.8 +(.1*rand())/RAND_MAX)*h*h;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/10*l.dt());
+	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/1.);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

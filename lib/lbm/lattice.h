@@ -157,6 +157,7 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 {
 	_Cs=h/dt;
 	_rho_ref*=h*h;
+	_tau=_dt*3*_nu/(_h*_h)+0.5;
 	//std::cout << _Cs <<" "<< _dt <<" "<<_h<< std::endl;
 	// Gravity
 	_gravity = 0.0, 0.0, 0.0;
@@ -192,7 +193,6 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 			_right[i] = GetCell (_nx-1,i);
 		}
 	}
-	_tau=_dt*3*_nu/(_h*_h)+0.5;
 	//dt=(_tau-0.5)*h*h/(3*nu);
 
 }
@@ -387,6 +387,7 @@ inline void Lattice::Collide()
 			Vec3_t v;
 			if (_is_mc)	v = c->MixVelocity(); // For multi-components analysis
 			else            c->Velocity(v,_Cs);   // Fore one component analysis
+			v+=_dt*(c->BForce())/(c->Density()*_h*_h);
 
 			double rho = c->Density  ();
 			for (size_t k=0; k<_nneigh; ++k)

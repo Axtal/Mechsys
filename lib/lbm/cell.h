@@ -72,8 +72,10 @@ public:
 	bool     Top     () const { return static_cast<bool>(_side[3]);  } ///< Is this cell on the top side of lattice ?
 	double & F       (size_t Index)         { return _f[Index];      } ///< Return the current value of the distribution function
 	double & TmpF    (size_t Index)         { return _f_tmp[Index];  } ///< Return the current value of the distribution function
+	double & Tau     () 			{ return _tau; 		 } ///< Return the viscosity
 	Vec3_t & BForce  ()                     { return _bforce;        } ///< Body force
-
+	
+	
 	// Methods
 	double   Density  () const;                                       ///< Calculate the current density of the fluid in this cell
 	void     Velocity (Vec3_t & V,double Cs=1) const;                             ///< Calculate the current velocity of the fluid in this cell
@@ -217,7 +219,7 @@ inline double Cell::EqFun(size_t k, Vec3_t const & V, double Rho,double Cs=1) co
 	if (_is_3d) throw new Fatal("Cell::EqFun: 3D simulation is not implemented yet");
 	else
 	{
-		Vec3_t v;  v = V + _bforce*_tau/Rho;
+		Vec3_t v;  v = V;
 		double vdotc = (v(0)*_c[k][0] + v(1)*_c[k][1])/Cs;
 		double vdotv = v(0)*v(0) + v(1)*v(1)/(Cs*Cs);
 		return _w[k]*Rho*(1.0 + 3.0*vdotc + 4.5*vdotc*vdotc - 1.5*vdotv);
