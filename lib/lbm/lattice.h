@@ -387,13 +387,15 @@ inline void Lattice::Collide()
 			Vec3_t v;
 			if (_is_mc)	v = c->MixVelocity(); // For multi-components analysis
 			else            c->Velocity(v,_Cs);   // Fore one component analysis
-			v+=_dt*(c->BForce())/(c->Density()*_h*_h);
+			Vec3_t vn = v + _dt*(c->BForce())/(c->Density()*_h*_h);
+			//v+=_dt*(c->BForce())/(c->Density()*_h*_h);
 
 			double rho = c->Density  ();
 			for (size_t k=0; k<_nneigh; ++k)
 			{
 				double feq = c->EqFun (k,v,rho,_Cs);
-				c->F(k) = (1.0-om)*c->F(k) + om*feq;
+				double feqn = c->EqFun (k,vn,rho,_Cs);
+				c->F(k) = (1.0-om)*c->F(k) + om*feq+feqn-feq;
 				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->F(%d)<0.0 detected",i%_nx,i/_nx,k);
 			}
 		}

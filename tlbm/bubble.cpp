@@ -30,14 +30,14 @@ int main(int argc, char **argv) try
 {
 	// Input 
 	double seed = 5.0;
-	double h=1.,dt=1.;
+	double h=1.,dt=0.5;
 	if (argc>=2) seed = atof(argv[1]);
 	srand(seed);
 
 	// Allocate lattice
 	LBM::Lattice l("bubble", // FileKey
 	               false,    // Is3D
-	               1./6., 	 //viscosity
+	               0.1, 	 //viscosity
 	               int(75/h),// Nx
 	               int(75/h),// Ny
 		       1, 	 // Nz

@@ -221,7 +221,7 @@ inline double Cell::EqFun(size_t k, Vec3_t const & V, double Rho,double Cs=1) co
 	{
 		Vec3_t v;  v = V;
 		double vdotc = (v(0)*_c[k][0] + v(1)*_c[k][1])/Cs;
-		double vdotv = v(0)*v(0) + v(1)*v(1)/(Cs*Cs);
+		double vdotv = (v(0)*v(0) + v(1)*v(1))/(Cs*Cs);
 		return _w[k]*Rho*(1.0 + 3.0*vdotc + 4.5*vdotc*vdotc - 1.5*vdotv);
 	}
 }
