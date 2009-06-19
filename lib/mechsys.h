@@ -24,7 +24,9 @@
 #include "mesh/mesh.h"
 #include "mesh/structured.h"
 #include "mesh/unstructured.h"
-#include "mesh/alphashape.h"
+#ifdef USE_CGAL
+  #include "mesh/alphashape.h"
+#endif
 
 // MechSys -- fem -- basic
 #include "fem/data.h"

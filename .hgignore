@@ -53,6 +53,7 @@ tlbm/ball
 tlbm/magnus
 tlbm/multicomp
 tlbm/porous
+tlbm/fracflow
 
 syntax: glob
 CTestTestfile.cmake
