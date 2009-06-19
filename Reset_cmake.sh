@@ -21,8 +21,9 @@ for f in $SFILES; do
 	find . -name "$f" -exec sudo rm {} \; > /dev/null 2>&1
 done
 
-echo "Removing all output files (vtu and pvd)"
+echo "Removing all output files (vtu, pvd, and cal)"
 find . -iname "*.pvd" -exec rm {} \;
 find . -iname "*.vtu" -exec rm {} \;
+find . -iname "*.cal" -exec rm {} \;
 
 exit 0

@@ -108,12 +108,14 @@ BOOST_PYTHON_MODULE (mechsys)
 	    .def(self_ns::str(self))
 	    ;
 
+#ifdef USE_CGAL
 	class_<Mesh::AlphaShape, bases<Mesh::Generic> >("mesh_alpha_shape","Class to generate meshes based on alpha-shape",init<bool>())
 	    .def("reset_cloud",     &Mesh::AlphaShape::ResetCloud)
 	    .def("add_cloud_point", &Mesh::AlphaShape::AddCloudPoint, MA_AddCloudPoint())
 	    .def("generate",        &Mesh::AlphaShape::Generate,      MA_Generate())
 	    .def(self_ns::str(self))
 	    ;
+#endif
 
 	// ---------------------------------------------------------------------------- FEM
 	

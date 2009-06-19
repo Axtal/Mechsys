@@ -15,7 +15,8 @@ build: $(PYVERS:%=build-python%)
 
 build-python%:
 	dh_testdir
-	python$* setup.py build
+	cmake -DINSTALL_ROOT=$(CURDIR)/debian/mechsys/ .
+	make
 	touch $@
 
 install: build $(PYVERS:%=install-python%)
@@ -23,7 +24,7 @@ install: build $(PYVERS:%=install-python%)
 	cp lib/blender/*.py $(CURDIR)/debian/mechsys/usr/share/blender/scripts/
 
 install-python%:
-	python$* setup.py install --root $(CURDIR)/debian/mechsys/
+	make install
 
 binary-indep: build install
 

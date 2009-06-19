@@ -22,10 +22,19 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 ENABLE_TESTING         ()
 
 OPTION(MAKE_VERBOSE       "Show additional messages during compilation/link?" OFF)
-OPTION(MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    ON )
-OPTION(MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      ON )
+OPTION(MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    OFF)
+OPTION(MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      OFF)
 OPTION(MAKE_PROFILING     "Make with profiling information (-pg)"             OFF)
-OPTION(MAKE_OPTIMIZED     "Make optimized (-O3)"                              OFF)
+OPTION(MAKE_OPTIMIZED     "Make optimized (-O3)"                              ON)
+OPTION(MAKE_PYTHON_MODULE "Create python module (mechsys)"                    ON)
+OPTION(MAKE_TST           "Compile tests"                                     OFF)
+OPTION(MAKE_TFEM          "Compile FEM tests"                                 OFF)
+OPTION(MAKE_TLBM          "Compile LBM tests"                                 OFF)
+
+# needed when building Debian package
+IF(NOT INSTALL_ROOT)
+	SET(INSTALL_ROOT /)
+ENDIF(NOT INSTALL_ROOT)
 
 #SET(CMAKE_CXX_COMPILER /opt/intel/cc/10.1.018/bin/icpc)
 
@@ -53,7 +62,26 @@ ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single
 
 INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
 
-SUBDIRS (lib tfem tlbm tst src)
+# sub-directories
+SET(ALLDIRS lib)
+
+IF(MAKE_PYTHON_MODULE)
+	SET(ALLDIRS ${ALLDIRS} src)
+ENDIF(MAKE_PYTHON_MODULE)
+
+IF(MAKE_TST)
+	SET(ALLDIRS ${ALLDIRS} tst)
+ENDIF(MAKE_TST)
+
+IF(MAKE_TFEM)
+	SET(ALLDIRS ${ALLDIRS} tfem)
+ENDIF(MAKE_TFEM)
+
+IF(MAKE_TLBM)
+	SET(ALLDIRS ${ALLDIRS} tlbm)
+ENDIF(MAKE_TLBM)
+
+SUBDIRS(${ALLDIRS})
 
 ########################################################################### Dependencies
 SET(Boost_USE_STATIC_LIBS ON)
