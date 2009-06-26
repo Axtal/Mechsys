@@ -68,7 +68,8 @@ public:
 	Cell   * GetCell   (size_t i, size_t j, size_t k=0);
 	Cell   * GetCell   (size_t i) { return _cells[i]; }
 	double   Curl      (size_t i, size_t j);
-	double   Psi       (double Rho) const;               ///< Interaction potential function
+	double   Pstate    (double rho, double T);
+	double   Psi       (double Rho);               ///< Interaction potential function
 
 	// Set constants
 	Lattice * SetTau       (double Val) { _tau     = Val;  return this; } ///< Set the relaxation time
@@ -157,7 +158,7 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 {
 	_Cs=h/dt;
 	_rho_ref*=h*h;
-	_tau=_dt*3*_nu/(_h*_h)+0.5;
+	_tau=_dt*(_dt*3*_nu/(_h*_h)+0.5);
 	//std::cout << _Cs <<" "<< _dt <<" "<<_h<< std::endl;
 	// Gravity
 	_gravity = 0.0, 0.0, 0.0;
@@ -238,9 +239,22 @@ inline double Lattice::Curl(size_t i, size_t j)
 	return dvydx - dvxdy;
 }
 
-inline double Lattice::Psi(double Rho) const
+
+inline double Lattice::Pstate(double Rho,double T)
 {
-	return _psi_ref*(1.0-exp(-Rho/_rho_ref));
+	double omega=0.3443,a=2./49,b=2./21,R=1;
+	double alpha=(1+(0.37464+1.54226*omega-0.26992*omega*omega)*(1-sqrt(T/647.1))),Tr=T;
+	alpha*=alpha;
+	//std::cout<<Rho*R*Tr/(1-b*Rho)-a*alpha*Rho*Rho/(1+2*b*Rho-b*b*Rho*Rho)<<std::endl;
+	return Rho*R*Tr/(1-b*Rho)-a*alpha*Rho*Rho/(1+2*b*Rho-b*b*Rho*Rho);
+}
+
+inline double Lattice::Psi(double Rho)
+{
+	//if (Rho<0) std::cout<< Rho <<std::endl;
+	//std::cout<<sqrt(Pstate(Rho,125.)-Rho)<<std::endl;
+	//return sqrt(fabs(Pstate(Rho,125.)-Rho*_Cs*_Cs));
+	return fabs(Rho)*_psi_ref*(1.0-exp(-fabs(Rho)/_rho_ref))/Rho;
 }
 
 inline void Lattice::SetGravity(double Gx, double Gy, double Gz)
@@ -296,10 +310,13 @@ inline void Lattice::Stream()
 	for (size_t i=0; i<_size; ++i)
 	{
 		LBM::Cell * c = _cells[i];
+		double rho = c->Density();
 		for (size_t k=0; k<_nneigh; ++k)
 		{
 			LBM::Cell * nb = _cells[c->Neigh(k)];
 			nb->TmpF(k) = c->F(k);
+			//if(c->F(k)>100) std::cout <<c->F(k)  << " " << k << " " << rho << " " << i << std::endl;
+
 		}
 	}
 
@@ -377,7 +394,7 @@ inline void Lattice::ApplyBC()
 
 inline void Lattice::Collide()
 {
-	double om = _dt/_tau;
+	double om,taup;
 	//std::cout <<om << " " << _Cs <<std::endl;
 	for (size_t i=0; i<_size; i++)
 	{
@@ -389,15 +406,34 @@ inline void Lattice::Collide()
 			else            c->Velocity(v,_Cs);   // Fore one component analysis
 			Vec3_t vn = v + _dt*(c->BForce())/(c->Density()*_h*_h);
 			//v+=_dt*(c->BForce())/(c->Density()*_h*_h);
-
+			Vec3_t F = c->BForce();
 			double rho = c->Density  ();
+			//if (rho<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->rho<0.0 detected",i%_nx,i/_nx);
+			//std::cout<< F <<std::endl;
+			double sfeq=0,sfeqn=0;
+			taup=_tau;
+			for (size_t k=0; k<_nneigh; ++k) {
+				double feqn = c->EqFun (k,vn,rho,_Cs);
+				if ((1-feqn/c->F(k))>taup) taup = (1-feqn/c->F(k));
+			}
+			om = _dt/taup;
 			for (size_t k=0; k<_nneigh; ++k)
 			{
 				double feq = c->EqFun (k,v,rho,_Cs);
 				double feqn = c->EqFun (k,vn,rho,_Cs);
-				c->F(k) = (1.0-om)*c->F(k) + om*feq+feqn-feq;
-				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->F(%d)<0.0 detected",i%_nx,i/_nx,k);
+				//sfeq+=feq;
+				//sfeqn+=feqn;
+				//if (fabs(c->F(k))>100.) std::cout <<c->F(k)  << " " << k << " " << rho << " " << i << " " << feq << " " <<feqn << std::endl;
+				//if (i==524) std::cout <<c->F(k)  << " " << k << " " << rho << std::endl;
+				//c->F(k) = (1.0-om)*c->F(k) + om*feq+feqn-feq;
+				
+				c->F(k) = (1.0-om)*c->F(k) + om*feqn;
+				//if (i==375) std::cout <<c->F(k)  << " " << k << std::endl;
+				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->F(%d)=%f detected",i%_nx,i/_nx,k,c->F(k));
+				if (c->F(k)<0.0) c->F(k)=0;
+				//if (fabs(c->F(k)>100.)) std::cout <<c->F(k)  << " " << k << " " << rho << " " << i << " " << feq << " " << feqn << std::endl;
 			}
+			//if (i==522) std::cout << rho << " " << sfeq<< " "<<sfeqn <<" " << i << std::endl;
 		}
 	}
 }
@@ -452,12 +488,14 @@ inline void Lattice::ApplyForce()
 			double       G = (nb->IsSolid() ? _G_solid : _G);
 			F(0) += -G*psi*c->W(k)*nb_psi*c->C(k,0);
 			F(1) += -G*psi*c->W(k)*nb_psi*c->C(k,1);
+			//std::cout << Psi(nb->Density()) << std::endl;
+			//if (nb_psi<0) std::cout << nb_psi << std::endl;
 		}
 		c->BForce() = F;
 
 		// Gravity force
 		double rho = c->Density();
-		c->BForce() += _gravity*rho;
+		c->BForce() += _gravity*rho*_h*_h;
 	}
 }
 

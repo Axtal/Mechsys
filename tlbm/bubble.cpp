@@ -29,15 +29,15 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	// Input 
-	double seed = 5.0;
-	double h=1.,dt=0.5;
+	double seed = 100.0;
+	double h=1.,dt=1.;
 	if (argc>=2) seed = atof(argv[1]);
 	srand(seed);
 
 	// Allocate lattice
 	LBM::Lattice l("bubble", // FileKey
 	               false,    // Is3D
-	               0.1, 	 //viscosity
+	               1./6., 	 //viscosity
 	               int(75/h),// Nx
 	               int(75/h),// Ny
 		       1, 	 // Nz
@@ -47,19 +47,38 @@ int main(int argc, char **argv) try
 
 	// Set constants
 	std::cout << l.Tau() << " "<< l.dt()<<std::endl;
-	l.SetG(-5.0);
+	l.SetG(-6.0);
 
 	// Initialize cells
+	
 	for (size_t i=0; i<l.Nx(); ++i)
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
-		double rho0 = (0.8 +(.1*rand())/RAND_MAX)*h*h;
+		
+		double rho0 = (0.5 +(.1*rand())/RAND_MAX)*h*h;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
+		//std::cout<<l.GetCell(i,j)->Density()<<std::endl;
+
 	}
+	
+	
+	/*for (size_t i=0; i<l.Nx(); ++i)
+	for (size_t j=0; j<l.Ny(); ++j)
+	{
+		double rho0;
+		if ((i-l.Nx()/2)*(i-l.Nx()/2)+(j-l.Ny()/2)*(j-l.Ny()/2)<=400) 
+			rho0 = 2.;
+		else rho0=1.;
+		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
+		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
+		//std::cout<<l.GetCell(i,j)->Density()<<std::endl;
+
+	}
+	*/
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/1.);
+	l.Solve(/*tIni*/0.0, /*tFin*/2000.0, /*dtOut*/1.);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

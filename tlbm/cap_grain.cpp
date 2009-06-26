@@ -43,8 +43,8 @@ void DrawCircle(LBM::Lattice & l, double & obsX, double & obsY, double radius, d
 		{
 			l.GetCell(i,j)->SetSolid(vx, vy);
 		}
-		else 
-			l.GetCell(i,j)->SetSolid(false);
+		//else 
+			//l.GetCell(i,j)->SetSolid(false);
 	}
 
 	for (size_t i=0; i<l.Nx(); ++i)
@@ -61,8 +61,8 @@ void DrawCircle(LBM::Lattice & l, double & obsX, double & obsY, double radius, d
 				if (l.GetCell(c->Neigh(k))->IsSolid()) continue;
 				size_t op = c->Opp(k);
 				double alpha = 6.0*c->W(op)*rho;
-				fx += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,0);
-				fy += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,1);
+				//fx += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,0);
+				//fy += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,1);
 
 				double G = -3.0;
 				double rho_nb = l.GetCell(c->Neigh(k))->Density();
@@ -107,7 +107,8 @@ int main(int argc, char **argv) try
 		double rho0  = 1.0;
 		size_t radio = 24;
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
-		if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-20,2.0) <= pow(radio,2.0)) // circle equation
+		//if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-20,2.0) <= pow(radio,2.0)) // circle equation
+		if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-100,2.0) <= pow(radio,2.0)) // circle equation
 		{
 			l.GetCell(i,j)->Initialize (1.5, V,l.Cs());
 		}
@@ -127,11 +128,19 @@ int main(int argc, char **argv) try
 	// Set inner obstacle
 	double obsX   = nx/2; // x position
 	double obsY   = ny/3; // y position
-	int    radius = ny/5; //ny/10;
+	int    radius = 30; //ny/10;
 	double fx     = 0.0;
 	double fy     = 0.0;
+	double X1,Y1,X2,Y2,vx1,vy1,vx2,vy2,fx1,fy1,fx2,fy2;
+	X1=nx/3;
+	X2=2*nx/3;
+	Y1=Y2=2*ny/3;
+	vx1=vx2=vy1=vy2=fx1=fx2=fy1=fy2=0.0;
 
 	DrawCircle(l, obsX, obsY, radius, vx, vy, fx, fy, dt,0);
+	DrawCircle(l, X1, Y1,radius,vx1,vy1,fx1,fy1,dt,0);
+	DrawCircle(l, X2, Y2,radius,vx2,vy2,fx2,fy2,dt,0);
+
 	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
@@ -143,13 +152,15 @@ int main(int argc, char **argv) try
 		for (size_t i=0; i<l.Nx(); i++)
 			for (size_t j=0; j<l.Ny(); j++)
 				{
-					for (size_t k=0; k<l.NNeigh(); ++k) ;
+					l.GetCell(i,j)->SetSolid(false);
 				}
 
-		fx = 0.0;
-		fy = 0.0;
+		fx = fx1=fx2=0.0;
+		fy = fy1=fy2=0.0;
 
 		DrawCircle(l, obsX, obsY, radius, vx, vy, fx, fy, dt,T);
+		DrawCircle(l, X1, Y1,radius,vx1,vy1,fx1,fy1,dt,T);
+		DrawCircle(l, X2, Y2,radius,vx2,vy2,fx2,fy2,dt,T);
 		for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 		for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
@@ -157,9 +168,16 @@ int main(int argc, char **argv) try
 		{
 			vx += fx/m*dt;
 			vy += fy/m*dt;
-
+			vx1 += fx1/m*dt;
+			vy1 += fy1/m*dt;
+			vx2 += fx2/m*dt;
+			vy2 += fy2/m*dt;
 			obsX += vx*dt;
 			obsY += vy*dt;
+			X1 += vx1*dt;
+			X2 += vx2*dt;
+			Y1 += vy1*dt;
+			Y2 += vy2*dt;
 		}
 
 		//std::cout << "obsX = " << obsX << std::endl;

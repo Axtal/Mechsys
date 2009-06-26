@@ -91,8 +91,8 @@ inline Mixture::Mixture(Str_t FileKey, bool Is3D, size_t NComp, double *nu, size
 	  _size     (Nx*Ny*Nz),
 	  _T        (0),
 	  _G_mix    (0.0),
-	  _h 		(h),
-	  _dt 		(dt)
+	  _h 	    (h),
+	  _dt 	    (dt)
 {
 	//std::cout << _dt << " " << _h << std::endl;
 	_latts.Resize(_n_comp);
