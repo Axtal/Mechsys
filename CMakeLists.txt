@@ -31,6 +31,8 @@ OPTION(MAKE_TST           "Compile tests"                                     OF
 OPTION(MAKE_TFEM          "Compile FEM tests"                                 OFF)
 OPTION(MAKE_TLBM          "Compile LBM tests"                                 OFF)
 OPTION(MAKE_TDEM2D          "Compile DEM2D tests"                             OFF)
+OPTION(MAKE_TDEM3D          "Compile DEM2D tests"                             OFF)
+
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)
 	SET(INSTALL_ROOT /)
@@ -85,6 +87,9 @@ IF(MAKE_TDEM2D)
 	SET(ALLDIRS ${ALLDIRS} tdem2D)
 ENDIF(MAKE_TDEM2D)
 
+IF(MAKE_TDEM3D)
+	SET(ALLDIRS ${ALLDIRS} tdem3D)
+ENDIF(MAKE_TDEM3D)
 
 SUBDIRS(${ALLDIRS})
 
