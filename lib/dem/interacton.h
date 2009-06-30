@@ -27,34 +27,35 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/sphere.h"
+#include "dem/particle.h"
 
 class Interacton
 {
 public:
 	// Constructor and destructor
-	 Interacton (Sphere * Pt1, Sphere * Pt2); ///< Constructor, it requires pointers to both particles
+	 Interacton (Particle * Pt1, Particle * Pt2); ///< Constructor, it requires pointers to both particles
 	~Interacton ();                           ///< Destructor
 
 	// Methods
 	void CalcForce (double Dt); ///< Calculates the contact force between particles
 
 protected:
-	double   _Kn;  ///< Normal stiffness
-	double   _Kt;  ///< Tengential stiffness
-	double   _gn;  ///< Normal viscous coefficient
-	double   _gt;  ///< Tangential viscous coefficient
-	double   _mu;  ///< Microscpic coefficient of friction
-	double   _mur; ///< Rolling resistance coefficient
-	Sphere * _p1;  ///< First particle
-	Sphere * _p2;  ///< Second particle
+	double     _Kn;  ///< Normal stiffness
+	double     _Kt;  ///< Tengential stiffness
+	double     _gn;  ///< Normal viscous coefficient
+	double     _gt;  ///< Tangential viscous coefficient
+	double     _mu;  ///< Microscpic coefficient of friction
+	double     _mur; ///< Rolling resistance coefficient
+	Particle * _p1;  ///< First particle
+	Particle * _p2;  ///< Second particle
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Interacton::Interacton(Sphere * Pt1, Sphere * Pt2)
+inline Interacton::Interacton(Particle * Pt1, Particle * Pt2)
+	: _p1(Pt2), _p2(Pt2)
 {
 }
 

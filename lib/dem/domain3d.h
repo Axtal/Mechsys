@@ -30,12 +30,44 @@
 
 // MechSys
 #include "util/array.h"
+#include "dem/particle.h"
+#include "dem/sphere.h"
 #include "dem/interacton.h"
+#include "dem/quaternion.h"
 
 class Domain3D
 {
+	Domain3D();
+    ~Domain3D();
 protected:
-	Array<Sphere *> _particles; ///< Array with all particles
+	Array<Particle *> _particles; ///< Array with all particles
 };
+
+
+/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+
+
+inline Domain3D::Domain3D()
+{
+	Vec3_t       r0,v0,omega0;
+	Quaternion_t q0;
+	double       rho0 = 1.0;
+	double       R0   = 1.0;
+	r0     = 0.0, 0.0, 0.0;
+	v0     = 1.0, 1.0, 1.0;
+	omega0 = 1.0, 1.0, 1.0;
+	q0     = 1.0, 1.0, 1.0, 1.0;
+
+	Sphere s(rho0, r0, v0, omega0, q0, R0);
+
+	//for (size_t i=0; i<10; ++i)
+		//_particles.Push(new Sphere(rho0, r0, v0, omega0, q0, R0));
+}
+
+inline Domain3D::~Domain3D()
+{
+	for (size_t i=0; i<_particles.Size(); ++i)
+		if (_particles[i]!=NULL) delete _particles[i];
+}
 
 #endif // DEM_DOMAIN_H
