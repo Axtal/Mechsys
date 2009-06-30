@@ -16,6 +16,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+SET(TESTS
+  test2d_01
+  test3d_01)
+
 IF(BLITZ_FOUND)
-	ADD_EXECUTABLE        (gas         gas.cpp)
+	FOREACH(var ${TESTS})
+		ADD_EXECUTABLE (${var} "${var}.cpp")
+	ENDFOREACH(var)
 ENDIF(BLITZ_FOUND)

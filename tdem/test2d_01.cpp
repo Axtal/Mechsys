@@ -16,11 +16,17 @@
  * You should have received a copy of the GNU General Public License    *
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
-#include "dem2D/Box.h"
 
-int main ()
+// MechSys
+#include "dem/domain2d.h"
+#include "util/exception.h"
+
+int main(int argc, char **argv) try
 {
-	Box B(1.,1.,100);
-	B.solve(0,10,1);
+	Domain2D b(1.,1.,100);
+	b.Solve(0,10,1);
 	return 0;
 }
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

@@ -1,6 +1,7 @@
 src/libmechsys.*
 
-tdem2D/gas
+tdem/test2d_01
+tdem/test3d_01
 
 tfem/basic/beam01
 tfem/basic/beam02

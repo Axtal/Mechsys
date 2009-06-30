@@ -30,8 +30,7 @@ OPTION(MAKE_PYTHON_MODULE "Create python module (mechsys)"                    ON
 OPTION(MAKE_TST           "Compile tests"                                     OFF)
 OPTION(MAKE_TFEM          "Compile FEM tests"                                 OFF)
 OPTION(MAKE_TLBM          "Compile LBM tests"                                 OFF)
-OPTION(MAKE_TDEM2D          "Compile DEM2D tests"                             OFF)
-OPTION(MAKE_TDEM3D          "Compile DEM2D tests"                             OFF)
+OPTION(MAKE_TDEM          "Compile DEM tests"                                 OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)
@@ -83,13 +82,9 @@ IF(MAKE_TLBM)
 	SET(ALLDIRS ${ALLDIRS} tlbm)
 ENDIF(MAKE_TLBM)
 
-IF(MAKE_TDEM2D)
-	SET(ALLDIRS ${ALLDIRS} tdem2D)
-ENDIF(MAKE_TDEM2D)
-
-IF(MAKE_TDEM3D)
-	SET(ALLDIRS ${ALLDIRS} tdem3D)
-ENDIF(MAKE_TDEM3D)
+IF(MAKE_TDEM)
+	SET(ALLDIRS ${ALLDIRS} tdem)
+ENDIF(MAKE_TDEM)
 
 SUBDIRS(${ALLDIRS})
 

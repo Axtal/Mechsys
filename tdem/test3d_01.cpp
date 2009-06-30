@@ -16,19 +16,26 @@
  * You should have received a copy of the GNU General Public License    *
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
-#include <math.h>
-#include "dem3D/Domain.h"
 
-using namespace DEM3D;
+// Std lib
+#include <math.h>
+
+// MechSys
+#include "dem/domain3d.h"
+#include "util/exception.h"
+
 using std::cout;
 using std::endl;
 
-int main () {
+int main(int argc, char **argv) try
+{
 	Vec3_t a(0,1,0),b,rot(0,1,0);
-	Quaternion q;
-	normalize_rotation(M_PI/3,rot,q);
-	rotate(a,q,b);
-	std::cout<<b<<std::endl;
-	
-	return 0;
+	Quaternion_t q;
+	NormalizeRotation(M_PI/3,rot,q);
+	Rotate(a,q,b);
+	std::cout<< b <<std::endl;
+	Domain3D d();
 }
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

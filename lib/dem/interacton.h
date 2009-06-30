@@ -16,72 +16,55 @@
  * You should have received a copy of the GNU General Public License    *
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
-#ifndef MECHSYS_DEM_DISK_H
-#define MECHSYS_DEM_DISK_H
 
+#ifndef DEM_INTERACTON_H
+#define DEM_INTERACTON_H
 
-#include <iostream>
 #include <math.h>
-#include <string>
-#include <vector>
+
+// Blitz++
 #include <blitz/tinyvec-et.h>
 #include <blitz/tinymat.h>
 
+// MechSys
+#include "dem/sphere.h"
 
-typedef blitz::TinyVector<double,2> Vec2_t;
-
-
-class Disk {
+class Interacton
+{
 public:
-	// Constructors
-	Disk (void) {}
-	
-	Disk (double rho0,double r0,Vec2_t x0,Vec2_t v0,double dt0) {
-		_rho = rho0;				
-		_r   = r0;		
-		_x   = x0;		
-		_v   = v0;		
-		_dt  = dt0;		
-		_xp  = _x - _v*_dt;	
-		_V   = M_PI*_r*_r;	
-		_m   = _V*_rho;		
-		_F   = 0.0,0.0;		
-	}
-	
+	// Constructor and destructor
+	 Interacton (Sphere * Pt1, Sphere * Pt2); ///< Constructor, it requires pointers to both particles
+	~Interacton ();                           ///< Destructor
+
 	// Methods
+	void CalcForce (double Dt); ///< Calculates the contact force between particles
 
-	void move(void) {
-		Vec2_t tmp = _x;
-		_x         = 2*_x-_xp + (_F/_m)*_dt*_dt;
-		_v         = (_x - _xp)/(2*_dt);
-		_xp        = tmp;
-	}
-
-	//Access methods
-	
-	double 	& rho	()	{return	_rho;	}	///< Density
-	double	& r	()	{return	_r;	}	///< Radious
-	double	& dt	()	{return	_dt;	}	///< time step
-	double	& V	()	{return	_V;	}	///< Volume     
-	double	& m	()	{return	_m;	}	///< mass
-	Vec2_t	& x	()	{return	_x;	}	///< _Position
-	Vec2_t	& v	()	{return	_v;	}	///< Velocity
-	Vec2_t	& xp	()	{return	_xp;	}	///< previous position
-	Vec2_t	& F	()	{return	_F;	}	///< Force     
 protected:
-	//Variables
-	double 	_rho;	///< Density
-	double	_r;	///< Radious
-	double	_dt;	///< time step
-	double	_V;	///< Volume     
-	double	_m;	///< mass
-	Vec2_t	_x;	///< _Position
-	Vec2_t	_v;	///< Velocity
-	Vec2_t	_xp;	///< previous position
-	Vec2_t	_F;	///< Force     
-	
-	
+	double   _Kn;  ///< Normal stiffness
+	double   _Kt;  ///< Tengential stiffness
+	double   _gn;  ///< Normal viscous coefficient
+	double   _gt;  ///< Tangential viscous coefficient
+	double   _mu;  ///< Microscpic coefficient of friction
+	double   _mur; ///< Rolling resistance coefficient
+	Sphere * _p1;  ///< First particle
+	Sphere * _p2;  ///< Second particle
 };
 
-#endif
 
+/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+
+
+inline Interacton::Interacton(Sphere * Pt1, Sphere * Pt2)
+{
+}
+
+inline Interacton::~Interacton()
+{
+}
+
+inline void Interacton::CalcForce(double Dt)
+{
+}
+
+
+#endif // DEM_INTERACTON_H
