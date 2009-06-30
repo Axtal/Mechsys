@@ -16,19 +16,26 @@
  * You should have received a copy of the GNU General Public License    *
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
+
+#ifndef MECHSYS_DEM3D_DOMAIN_H
+#define MECHSYS_DEM3D_DOMAIN_H
+
 #include <math.h>
-#include "dem3D/Domain.h"
+#include <vector>
+#include <map>
+// Blitz++
+#include <blitz/tinyvec-et.h>
+#include <blitz/tinymat.h>
+
+#include "dem3D/Interacton.h"
 
 using namespace DEM3D;
-using std::cout;
-using std::endl;
 
-int main () {
-	Vec3_t a(0,1,0),b,rot(0,1,0);
-	Quaternion q;
-	normalize_rotation(M_PI/3,rot,q);
-	rotate(a,q,b);
-	std::cout<<b<<std::endl;
-	
-	return 0;
-}
+class Domain
+{
+protected:
+	vector<Sphere*> Particles;
+
+};
+
+#endif

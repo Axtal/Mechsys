@@ -16,19 +16,36 @@
  * You should have received a copy of the GNU General Public License    *
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
+
+#ifndef MECHSYS_DEM3D_INTERACTON_H
+#define MECHSYS_DEM3D_INTERACTON_H
+
 #include <math.h>
-#include "dem3D/Domain.h"
+
+// Blitz++
+#include <blitz/tinyvec-et.h>
+#include <blitz/tinymat.h>
+
+#include "dem3D/sphere.h"
 
 using namespace DEM3D;
-using std::cout;
-using std::endl;
 
-int main () {
-	Vec3_t a(0,1,0),b,rot(0,1,0);
-	Quaternion q;
-	normalize_rotation(M_PI/3,rot,q);
-	rotate(a,q,b);
-	std::cout<<b<<std::endl;
-	
-	return 0;
-}
+class Interacton
+{
+public:
+	Interacton(Sphere &p1,Sphere &p2); ///< Constructor, it requires pointers to both particles
+	~Interacton ();                    ///< Destructor
+	void calcForce(double dt);         ///< Calculates the contact force between particles
+				
+protected:
+	double _Kn;     ///< Normal stiffness
+	double _Kt;     ///< Tengential stiffness
+	double _gn;     ///< Normal viscous coefficient
+	double _gt;     ///< Tangential viscous coefficient
+	double _mu;     ///< Microscpic coefficient of friction
+	double _mur;    ///< Rolling resistance coefficient
+	Sphere *p1,*p2; ///< Pointers to the pair of interacting particles
+};
+
+#endif
+
