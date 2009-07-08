@@ -17,39 +17,51 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+#ifndef DEM_EDGE3D_H
+#define DEM_EDGE3D_H
+
 // Std lib
 #include <math.h>
 
+// Blitz++
+#include <blitz/tinyvec-et.h>
+#include <blitz/tinymat.h>
+
 // MechSys
-#include "dem/graph.h"
-#include "dem/featuredistance.h"
-#include "util/exception.h"
+#include "dem/quaternion.h"
 
-using std::cout;
-using std::endl;
-
-int main(int argc, char **argv) try
+class Edge3D
 {
-	Vec3_t a(0,1,0),b(1,0,0),c(1,1,1),In(5,0,0),Vi(0,0,0),v[3];
-	v[0]=Vec3_t(0,0,-1);
-	v[1]=Vec3_t(1,0,-1);
-	v[2]=Vec3_t(0,1,-1);
-	Edge3D E(a,b);
-	Face3D F(v,3);
-	Distance(c,E,a,b);
-	Edge3D E1(a,b);
+public:
+	// Constructor
+	Edge3D(void) {};          ///< Default Constructor
+	Edge3D(const Vec3_t & a,  ///< Initial vector
+	       const Vec3_t & b); ///< Final vector
+
+	
+	// Access Methods
+	Vec3_t & ri () {return _ri;} ///< Initial vector
+	Vec3_t & rf () {return _rf;} ///< Final vector
+	Vec3_t & dr () {return _dr;} ///< Difference vector
 
 
-	Graph g("drawing");
-	g.SetCamera(In,Vi);
-	g.DrawPoint(c,0.1,"Blue");
-	g.DrawEdge3D(E,0.1,"Red");
-	g.DrawEdge3D(E1,0.05,"Black");
-	g.DrawFace3D(F,0.1,"Green");
-	g.DrawPolygon(v,3,"Green");
-	g.Close();
-	return 0;
+
+protected:
+	double _l;  ///< Length of the Edge
+	Vec3_t _ri; ///< Initial position
+	Vec3_t _rf; ///< Final position
+	Vec3_t _dr; ///< Difference Vector
+};
+
+
+/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+
+inline Edge3D::Edge3D (const Vec3_t & a,const Vec3_t & b)
+{
+	_ri = a;
+	_rf = b;
+	_dr = _rf-_ri;
+	_l  = norm(_dr);
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+
+#endif //DEM_EDGE3D_H
