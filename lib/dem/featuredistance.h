@@ -33,7 +33,7 @@
 inline void Distance(const Vec3_t & V,Edge3D & E,Vec3_t & xi,Vec3_t & xf) ///< Distance Between point V and Edge E
 {
 	double t;
-	t=(dot(V,E.ri())-dot(E.ri(),E.dr()))/(dot(E.dr(),E.dr()));
+	t=(dot(V,E.dr())-dot(E.ri(),E.dr()))/(dot(E.dr(),E.dr()));
 	xi=V;
 	if (t<0) xf=E.ri();
 	else if (t>1) xf=E.rf();
@@ -55,11 +55,13 @@ inline void Distance(Edge3D & E0,Edge3D & E1,Vec3_t & xi,Vec3_t & xf) ///< Dista
 	t = (c*b-e*a)/(c*d-e*e);
 	s = (e*b-a*d)/(c*d-e*e);
 	
-	if ((s>0)&&(s<1)&&(t>0)&&(t<1)) {
+	if ((s>0)&&(s<1)&&(t>0)&&(t<1)) 
+	{
 		xi = E0.ri()+E0.dr()*s;
 		xf = E1.ri()+E1.dr()*t;
 	}
-	else {
+	else 
+	{
 		Distance(E0.ri(),E1,xi1,xf1);
 		double l1 = norm(xf1-xi1);
 		Distance(E0.rf(),E1,xi2,xf2);
@@ -107,20 +109,24 @@ inline void Distance(Vec3_t & v,Face3D & F,Vec3_t & xi,Vec3_t & xf) ///< Distanc
 	s=(c*d-a*f)/(b*f-c*c);
 	t=(a*c-b*d)/(b*f-c*c);
 	pro=F.Edge(0)->ri()+s*F.Edge(0)->dr()+t*F.Edge(1)->dr();
-	for(i=0;i<ns;i++) {
+	for(i=0;i<ns;i++) 
+	{
 		Vec3_t tmp = pro-F.Edge(i)->ri();
 		if (dot(cross(F.Edge(i)->dr(),tmp),nor)<0) inside=false;
 	}
-	if (inside) {
+	if (inside) 
+	{
 		xi = v;
 		xf = pro;
 	}
 	
-	else {
+	else 
+	{
 		Distance(v,*F.Edge(0),pro,nor);
 		lt=norm(nor-pro);
 		ld=lt;
-		for(i=1;i<ns;i++) {
+		for(i=1;i<ns;i++) 
+		{
 			Distance(v,*F.Edge(i),pro,nor);
 			lt=norm(nor-pro);
 			if(lt<ld){

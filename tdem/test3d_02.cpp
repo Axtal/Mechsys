@@ -17,59 +17,32 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_FACE3D_H
-#define DEM_FACE3D_H
-
 // Std lib
 #include <math.h>
 
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
-
 // MechSys
-#include "dem/edge3d.h"
-#include "util/array.h"
+#include "dem/graph.h"
+#include "dem/featuredistance.h"
+#include "util/exception.h"
 
-class Face3D
+using std::cout;
+using std::endl;
+
+int main(int argc, char **argv) try
 {
-public:
-	// Constructor
-	Face3D(void) {};          ///< Default Constructor
-	Face3D(const Vec3_t * a,  ///< Vector array
-               const size_t N);   ///< Numer of sides
-
-	~Face3D();
-
-	// Access Methods
-	Edge3D * Edge (size_t i) {return _sides[i];}          ///< Returns pointer to the i-th side
-	size_t NumberofSides () {return (int) _sides.Size();} ///< Returns the number of sides
+	//This tests the distance between two edges in 3D, the edges are given by the points a,b and c,d. I and F are auxiliary vectors to define the distance edge and draw it.
+	Vec3_t a(1,1,1),b(0,0,0),c(0.5,1,0),d(2,0,0),I,F;
+	Edge3D E1(a,b),E2(c,d);
+	Distance(E1,E2,I,F);
+	Edge3D D(I,F);
 
 
-
-protected:
-	Array<Edge3D *> _sides;   ///< Array of edges representing sides of the face.
-};
-
-
-/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
-inline Face3D::Face3D (const Vec3_t * a,const size_t N)
-{
-	_sides.Resize (N);
-	for(size_t i=0;i<N;i++) 
-	{
-		_sides[i] = new Edge3D(a[i],a[(i+1)%N]);
-	}
+	Graph g("drawing",false);
+	g.DrawEdge3D(E1,0.2,"Blue");
+	g.DrawEdge3D(E2,0.2,"Blue");
+	g.DrawEdge3D(D,0.1,"Blue");
+	g.Close();
 }
-
-
-inline Face3D::~Face3D ()
-{
-	for(size_t i=0;i<_sides.Size();i++) 
-	{
-		delete _sides[i];
-	}
-}
-
-#endif //DEM_FACE3D_H
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

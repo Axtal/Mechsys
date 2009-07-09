@@ -18,7 +18,9 @@
 
 SET(TESTS
   test2d_01
-  test3d_01)
+  test3d_01
+  test3d_02
+  test3d_03)
 
 IF(BLITZ_FOUND)
 	FOREACH(var ${TESTS})

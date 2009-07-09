@@ -30,25 +30,18 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	Vec3_t a(0,1,0),b(1,0,0),c(1,1,1),In(5,0,0),Vi(0,0,0),v[3];
-	v[0]=Vec3_t(0,0,-1);
-	v[1]=Vec3_t(1,0,-1);
-	v[2]=Vec3_t(0,1,-1);
+	//This tests the distance between a point and an edge in 3D, the edge is given by the points a,b and the point is c. I and F are auxiliary vectors to define the distance edge and draw it.
+	Vec3_t a(1,1,1),b(0,0,0),c(1,1,0),I,F;
 	Edge3D E(a,b);
-	Face3D F(v,3);
-	Distance(c,E,a,b);
-	Edge3D E1(a,b);
+	Distance(c,E,I,F);
+	Edge3D D(I,F);
 
 
-	Graph g("drawing");
-	g.SetCamera(In,Vi);
-	g.DrawPoint(c,0.1,"Blue");
-	g.DrawEdge3D(E,0.1,"Red");
-	g.DrawEdge3D(E1,0.05,"Black");
-	g.DrawFace3D(F,0.1,"Green");
-	g.DrawPolygon(v,3,"Green");
+	Graph g("drawing",false);
+	g.DrawPoint(c,0.2,"Blue");
+	g.DrawEdge3D(E,0.2,"Blue");
+	g.DrawEdge3D(D,0.1,"Blue");
 	g.Close();
-	return 0;
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
