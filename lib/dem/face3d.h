@@ -37,13 +37,18 @@ public:
 	// Constructor
 	Face3D(void) {};          ///< Default Constructor
 	Face3D(const Vec3_t * a,  ///< Vector array
-               const size_t N);   ///< Numer of sides
+	       const size_t N);   ///< Numer of sides
 
+	// Destructor
 	~Face3D();
 
 	// Access Methods
 	Edge3D * Edge (size_t i) {return _sides[i];}          ///< Returns pointer to the i-th side
 	size_t NumberofSides () {return (int) _sides.Size();} ///< Returns the number of sides
+
+	//Methods
+	void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
+	            const Vec3_t & v);      ///< Position of the axis of rotation
 
 
 
@@ -71,5 +76,16 @@ inline Face3D::~Face3D ()
 		delete _sides[i];
 	}
 }
+
+
+inline void Face3D::Rotate (const Quaternion_t & q,const Vec3_t & v)
+{
+	for(size_t i=0;i<_sides.Size();i++) 
+	{
+		_sides[i]->Rotate(q,v);
+	}
+}
+
+
 
 #endif //DEM_FACE3D_H

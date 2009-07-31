@@ -42,13 +42,13 @@ public:
 	Graph(char const *f,           ///< Filename
 	      bool IsPovray=true);     ///< Flag for the user to choose between Povray or Blender for visualization
 
-	// Set methods
-	void SetCamera (const Vec3_t & x,const Vec3_t & v);  ///< Put the Camera at position x looking at point v
+	// Methods
+	void SetCamera (const Vec3_t & x,const Vec3_t & v);        ///< Put the Camera at position x looking at point v
 	void DrawPoint (const Vec3_t & r,double R,char const *c);  ///< Draw a single point as a sphere at position r with radius R and color c
 	void DrawEdge3D ( Edge3D & E,double R,char const *c);      ///< Draw a edge as a cylinder with radius R and color c
 	void DrawFace3D ( Face3D & F,double R,char const *c);      ///< Draw a face as a polygonal face with radius R and color c
 	void DrawPolygon (const Vec3_t *v,size_t N,char const *c); ///< Draw a polygon with N sides and color c whose vertices are stored in v
-	void Close ();                                       ///< Flushes the working string into the final file
+	void Close ();                                             ///< Flushes the working string into the final file
 
 
 
@@ -131,11 +131,17 @@ inline void Graph::DrawPolygon (const Vec3_t *v,size_t N,char const *c)
 {
 	if (_IsPovray)
 	{
-		size_t i=0;
-		_oss << "polygon {"<<N<<", \n";
-		_oss << "<"<<v[i](0)<<","<<v[i](1)<<","<<v[i](2)<<">";
-		for(i=1;i<N;i++) {
-			_oss << ",<"<<v[i](0)<<","<<v[i](1)<<","<<v[i](2)<<">";
+		Vec3_t middle(0,0,0);
+		for(size_t i=0;i<N;i++) 
+		{
+			middle += v[i];
+		}
+		middle /= N;
+		for(size_t i=0;i<N;i++) {
+			_oss << "polygon {"<<3<<", \n";
+			_oss << "<"<<v[i](0)<<","<<v[i](1)<<","<<v[i](2)<<">";
+			_oss << ",<"<<v[(i+1)%N](0)<<","<<v[(i+1)%N](1)<<","<<v[(i+1)%N](2)<<">";
+			_oss << ",<"<<middle(0)<<","<<middle(1)<<","<<middle(2)<<">";
 		}
 		_oss <<"\n pigment { color "<<c<<" } }\n";
 	}

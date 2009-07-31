@@ -17,69 +17,34 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_EDGE3D_H
-#define DEM_EDGE3D_H
-
 // Std lib
 #include <math.h>
 
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
-
 // MechSys
-#include "dem/quaternion.h"
+#include "dem/graph.h"
+#include "dem/featuredistance.h"
+#include "util/exception.h"
 
-class Edge3D
+using std::cout;
+using std::endl;
+
+int main(int argc, char **argv) try
 {
-public:
-	// Constructor
-	Edge3D(void) {};          ///< Default Constructor
-	Edge3D(const Vec3_t & a,  ///< Initial vector
-	       const Vec3_t & b); ///< Final vector
-
-	
-	// Access Methods
-	Vec3_t & ri () {return _ri;} ///< Initial vector
-	Vec3_t & rf () {return _rf;} ///< Final vector
-	Vec3_t & dr () {return _dr;} ///< Difference vector
-
-	// Methods
-	void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
-                    const Vec3_t & v);      ///< Position of the axis of rotation
-
-
-
-protected:
-	double _l;  ///< Length of the Edge
-	Vec3_t _ri; ///< Initial position
-	Vec3_t _rf; ///< Final position
-	Vec3_t _dr; ///< Difference Vector
-};
-
-
-/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
-inline Edge3D::Edge3D (const Vec3_t & a,const Vec3_t & b)
-{
-	_ri = a;
-	_rf = b;
-	_dr = _rf-_ri;
-	_l  = norm(_dr);
+	//This tests the distance between a point and an face in 3D, the face is given by the points a,b,c and the point is d. I and F are auxiliary vectors to define the distance edge and draw it. the edges of the face have been draw to for comprehension.
+	Vec3_t a(1,0,0),b(0,0,0),c(0,1,0),d(1,0.5,0),I(0,0,0),F(0,0,1);
+	Vec3_t v[4];
+	v[0]=a;
+	v[1]=b;
+	v[2]=c;
+	v[3]=d;
+	Face3D Fa(v,4);
+	Quaternion_t q;
+	NormalizeRotation(M_PI/3,F,q);
+	Fa.Rotate(q,I);
+	Graph g("drawing",false);
+	g.DrawFace3D(Fa,0.1,"Blue");
+	g.Close();
 }
-
-
-
-inline void Edge3D::Rotate (const Quaternion_t & q,const Vec3_t & v)
-{
-	Vec3_t t1,t2;
-	t1 = _ri - v;
-	t2 = _rf - v;
-	Rotation(t1,q,_ri);
-	Rotation(t2,q,_rf);
-	_ri = _ri + v;
-	_rf = _rf + v;
-	_dr = _rf - _ri;
-}
-
-#endif //DEM_EDGE3D_H
+catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
+catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
+catch (...)            { std::cout << "Some exception (...) ocurred\n"; }

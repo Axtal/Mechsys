@@ -71,7 +71,7 @@ void QuaternionProduct(Quaternion_t const & A, Quaternion_t const & B, Quaternio
 	SetQuaternion(scalar,vect,C);
 }
 
-void Rotate(Vec3_t const & A, Quaternion_t const & B, Vec3_t & C)
+void Rotation(Vec3_t const & A, Quaternion_t const & B, Vec3_t & C)
 {
 	Quaternion_t t1,t2,t3;
 	SetQuaternion     (0.0,A,t1);
