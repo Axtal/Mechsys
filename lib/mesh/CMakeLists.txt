@@ -17,4 +17,4 @@
 ########################################################################
 
 ADD_LIBRARY           (jrs_triangle  jrs_triangle.c)
-SET_TARGET_PROPERTIES (jrs_triangle  PROPERTIES COMPILE_FLAGS "-O3 -DTRILIBRARY")
+SET_TARGET_PROPERTIES (jrs_triangle  PROPERTIES COMPILE_FLAGS "-fPIC -O3 -DTRILIBRARY")
