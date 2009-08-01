@@ -6,24 +6,12 @@
 #   sudo pbuilder create
 #   gvim ~/.pbuilderrc
 #      COMPONENTS="main universe multiverse"
-#      OTHERMIRROR="deb http://cneurocvs.rmki.kfki.hu /packages/binary/"
+#      OTHERMIRROR="deb http://www.uq.edu.au/geomechanics /software/binary/"
 #   sudo pbuilder update --override-config
 #   gpg --gen-key
 
-if [ "$#" -ne 1 ]; then
-	echo
-	echo "Usage:"
-	echo "        $0  ARCH"
-	echo
-	echo "Where:"
-	echo "	  ARCH =  i386  or  amd64"
-	echo
-	exit 1
-fi
-
 VERSION=1.3
 REV=1
-ARCH=$1
 
 set -e
 

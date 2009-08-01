@@ -37,12 +37,12 @@ fi
 
 # binary
 dpkg-scanpackages binary /dev/null \
- | sed 's@Filename: binary/@Filename: /software/mechsys/binary/@' \
+ | sed 's@Filename: binary/@Filename: /software/binary/@' \
  | gzip -9c > binary/Packages.gz
 
 # sources
 dpkg-scansources sources /dev/null \
- | sed 's@Directory: sources@Directory: /software/mechsys/sources@' \
+ | sed 's@Directory: sources@Directory: /software/sources@' \
  | gzip -9c > sources/Sources.gz
 
 exit 0

@@ -10,20 +10,8 @@
 #   sudo pbuilder update --override-config
 #   gpg --gen-key
 
-if [ "$#" -ne 1 ]; then
-	echo
-	echo "Usage:"
-	echo "        $0  ARCH"
-	echo
-	echo "Where:"
-	echo "	  ARCH =  i386  or  amd64"
-	echo
-	exit 1
-fi
-
 VERSION=0.5.2
 REV=1
-ARCH=$1
 
 set -e
 
