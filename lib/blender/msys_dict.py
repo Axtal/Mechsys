@@ -644,7 +644,7 @@ def find_node(obj):
     x, y, z = Blender.Window.GetCursorPos()
     pt  = Blender.Mathutils.Vector([x,y,z])
     msh = obj.getData (mesh=1)
-    ori = msh.verts[:] # create a copy before transforming to global coordinates
+    ori = [v for v in msh.verts] # create a copy before transforming to global coordinates
     msh.transform (obj.matrix) # transform to global coordinates
     nid = None # id of the vertex close to x,y,z
     p0, p1, maxlen = bounding_box(msh)

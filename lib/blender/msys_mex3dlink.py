@@ -24,7 +24,7 @@ if d['show']:
 
         # get mesh and transform to global coordinates
         msh = obj.getData(mesh=1)
-        ori = msh.verts[:] # create a copy before transforming to global coordinates
+        ori = [v for v in msh.verts] # create a copy before transforming to global coordinates
         msh.transform(obj.matrix)
 
         # draw vertices IDs

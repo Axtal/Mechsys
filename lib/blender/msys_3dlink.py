@@ -94,7 +94,7 @@ if di.key('show_props'):
 
                 # get mesh and transform to global coordinates
                 msh = obj.getData(mesh=1)
-                ori = msh.verts[:] # create a copy before transforming to global coordinates
+                ori = [v for v in msh.verts] # create a copy in local coordinates
                 msh.transform(obj.matrix)
 
                 # show overlapping edges
@@ -119,7 +119,7 @@ if di.key('show_props'):
                 if di.key('show_n_ids') and obj.properties.has_key('msh_name'):
                     msh_obj = bpy.data.objects[obj.properties['msh_name']]
                     msh_msh = msh_obj.getData(mesh=1)
-                    msh_ori = msh_msh.verts[:] # create a copy before transforming to global coordinates
+                    msh_ori = [v for v in msh_msh.verts] # create a copy before transforming to global coordinates
                     msh_msh.transform(msh_obj.matrix)
                     BGL.glColor3f (1.0, 1.0, 0.0)
                     for v in msh_msh.verts:
@@ -282,8 +282,8 @@ if di.key('show_lines'):
                     msh_obj = di.get_msh_obj (obj, False)
                     if msh_obj!=None:
                         msh = msh_obj.getData(mesh=1)
-                        ori = msh.verts[:] # create a copy before transforming to global coordinates
-                        msh.transform (obj.matrix) # transform to global coordinates
+                        ori = [v for v in msh.verts] # create a copy before transforming to global coordinates
+                        msh.transform (obj.matrix)   # transform to global coordinates
                         BGL.glColor3f (0.483, 0.709, 0.257)
                         for k, v in obj.properties['lines'].iteritems():
                             pos = msh.verts[v[1]].co + 0.40*(msh.verts[v[2]].co-msh.verts[v[1]].co)
@@ -313,7 +313,7 @@ if di.key('show_res'):
 
                 # get mesh and transform to global coordinates
                 msh = msh_obj.getData(mesh=1)
-                ori = msh.verts[:] # create a copy before transforming to global coordinates
+                ori = [v for v in msh.verts] # create a copy before transforming to global coordinates
                 msh.transform (msh_obj.matrix)
 
                 # current stage

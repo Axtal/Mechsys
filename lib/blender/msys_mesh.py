@@ -46,8 +46,8 @@ def gen_frame_mesh(txt=None,cpp=False):
     is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
 
     # transform vertices coordinates
-    ori = msh.verts[:]         # create a copy in local coordinates
-    msh.transform (obj.matrix) # transform mesh to global coordinates
+    ori = [v for v in msh.verts] # create a copy in local coordinates
+    msh.transform (obj.matrix)   # transform mesh to global coordinates
 
     # MechSys mesh
     mesh = ms.mesh_generic(is3d)
@@ -168,8 +168,8 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
     iso2 = obj.properties['iso2'] if obj.properties.has_key('iso2') else False
 
     # transform vertices coordinates
-    ori = msh.verts[:]         # create a copy in local coordinates
-    msh.transform (obj.matrix) # transform mesh to global coordinates
+    ori = [v for v in msh.verts] # create a copy in local coordinates
+    msh.transform (obj.matrix)   # transform mesh to global coordinates
 
     # create text for script
     if gen_script:
@@ -363,8 +363,8 @@ def gen_unstruct_mesh(gen_script=False,txt=None,show_cursor=True,cpp=False):
     iso2 = obj.properties['iso2'] if obj.properties.has_key('iso2') else False
 
     # transform vertices coordinates
-    ori = msh.verts[:]         # create a copy in local coordinates
-    msh.transform (obj.matrix) # transform mesh to global coordinates
+    ori = [v for v in msh.verts] # create a copy in local coordinates
+    msh.transform (obj.matrix)   # transform mesh to global coordinates
 
     # number of regions and holes
     nregs = len(obj.properties['regs']) if obj.properties.has_key('regs') else 0
