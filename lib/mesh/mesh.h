@@ -47,6 +47,11 @@
   #define VTU_NEWLINE(I,K,N,KMAX,OF) if (K>KMAX) { OF<<(I<N-1?"\n        ":"\n"); K=0; } else if (I==N-1) { OF<<"\n"; }
 #endif
 
+
+// TODO: Organize vertices by tags
+// TODO: Organize edges by tags
+
+
 using LinAlg::Vector;
 using LinAlg::Matrix;
 using blitz::TinyVector;
@@ -93,6 +98,7 @@ struct Vertex
 	bool              Dupl;     ///< Is this a duplicated node?
 	Vector<double>    C;        ///< X, Y, and Z coordinates
 	Array<Share>      Shares;   ///< Shared elements
+	int               Tag;      ///< Tag
 };
 
 struct Elem
@@ -138,7 +144,7 @@ public:
 	virtual void SetO2       (bool IsO2=true) { _is_o2=IsO2; }                      ///< (Un)set quadratic elements
 	virtual void SetNVerts   (size_t NumVerts);                                     ///< Erase old mesh and set number of vertices
 	virtual void SetNElems   (size_t NumElems);                                     ///< Set number of elements
-	virtual void SetVert     (int i, bool IsOnBry, double X, double Y, double Z=0); ///< Set vertex
+	virtual void SetVert     (int i, bool IsOnBry, double X, double Y, double Z=0, int Tag=0); ///< Set vertex
 	virtual void SetElem     (int i, int Tag, bool IsOnBry, int VTKCellType);       ///< Set element
 	virtual void SetElemCon  (int i, int j, size_t iVert);                          ///< Set element connectivity
 	virtual void SetElemETag (int i, int j, int Tag);                               ///< Set element's edge tag
@@ -161,6 +167,7 @@ public:
 	virtual double VertX           (size_t i)           const { return _verts[i]->C(0);         } ///< Return the X coordinate of a vertex i
 	virtual double VertY           (size_t i)           const { return _verts[i]->C(1);         } ///< Return the Y coordinate of a vertex i
 	virtual double VertZ           (size_t i)           const { return _verts[i]->C(2);         } ///< Return the Z coordinate of a vertex i
+	virtual int    VertTag         (size_t i)           const { return _verts[i]->Tag;          } ///< Return the Tag of a vertex i
 	virtual int    ElemTag         (size_t i)           const { return _elems[i]->Tag;          } ///< Return the Tag of a element i
 	virtual bool   IsElemOnBry     (size_t i)           const { return _elems[i]->OnBry;        } ///< Return whether an element is on boundary or not
 	virtual int    ElemVTKCellType (size_t i)           const { return _elems[i]->VTKCellType;  } ///< Return the VTKCellType of an element i
@@ -439,7 +446,7 @@ inline void Generic::SetNElems(size_t NumElems)
 	_elems_bry.Resize (0);
 }
 
-inline void Generic::SetVert(int i, bool IsOnBry, double X, double Y, double Z)
+inline void Generic::SetVert(int i, bool IsOnBry, double X, double Y, double Z, int Tag)
 {
 	// Set _verts
 	if (_verts[i]==NULL) _verts[i] = new Vertex;
@@ -450,6 +457,7 @@ inline void Generic::SetVert(int i, bool IsOnBry, double X, double Y, double Z)
 	_verts[i]->Dupl    = false;
 	_verts[i]->C.Resize(3);
 	_verts[i]->C = X, Y, Z;
+	_verts[i]->Tag = Tag;
 
 	// Set _verts_bry
 	if (IsOnBry) _verts_bry.Push (_verts[i]);

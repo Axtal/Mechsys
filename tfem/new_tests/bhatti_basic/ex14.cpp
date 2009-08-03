@@ -16,25 +16,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/*  Small truss
-                              1.0 ^
-                                  |
-                                  |2
-                                  o----> 2.0
-                                ,'|
-                              ,'  |
-                   E=200    ,'    |
-                   A=SQ2  ,'      | E=50
-                    [2] ,'        | A=1
-                      ,'          | [1]
-                    ,'            |
-                  ,'              |
-   y            ,'                |
-   |         0,'        [0]       |1
-   |         o--------------------o
-  (z)___x   /_\        E=100     /_\
-           ////        A=1       ___  
-*/
+/*  Bhatti (2005): Example 1.4, p25
+ *  ===============================
+ */
 
 // STL
 #include <iostream>
@@ -61,75 +45,49 @@ int main(int argc, char **argv) try
 	///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 	
 	Mesh::Generic mesh(/*Is3D*/false);
-	mesh.SetNVerts  (3);
-	mesh.SetNElems  (3);
-	mesh.SetVert    (0, true,  0.0,  0.0); // true => OnBry
-	mesh.SetVert    (1, true, 10.0,  0.0);
-	mesh.SetVert    (2, true, 10.0, 10.0);
+	mesh.SetNVerts  (4);
+	mesh.SetNElems  (5);
+	mesh.SetVert    (0, true,  0.0,  0.0, 0, -100); // true => OnBry
+	mesh.SetVert    (1, true, 1500, 3500, 0, -200);
+	mesh.SetVert    (2, true,  0.0, 5000, 0,    0);
+	mesh.SetVert    (3, true, 5000, 5000, 0, -100);
 	mesh.SetElem    (0, -1, true, VTK_LINE); // true => OnBry
-	mesh.SetElem    (1, -2, true, VTK_LINE);
-	mesh.SetElem    (2, -3, true, VTK_LINE);
+	mesh.SetElem    (1, -1, true, VTK_LINE);
+	mesh.SetElem    (2, -2, true, VTK_LINE);
+	mesh.SetElem    (3, -2, true, VTK_LINE);
+	mesh.SetElem    (4, -3, true, VTK_LINE);
 	mesh.SetElemCon (0, 0, 0);  mesh.SetElemCon(0, 1, 1);
-	mesh.SetElemCon (1, 0, 1);  mesh.SetElemCon(1, 1, 2);
+	mesh.SetElemCon (1, 0, 1);  mesh.SetElemCon(1, 1, 3);
 	mesh.SetElemCon (2, 0, 0);  mesh.SetElemCon(2, 1, 2);
+	mesh.SetElemCon (3, 0, 2);  mesh.SetElemCon(3, 1, 3);
+	mesh.SetElemCon (4, 0, 1);  mesh.SetElemCon(4, 1, 2);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 	
 	// Data and Solver
 	FEM::Data   dat (2); // 2D
-	FEM::Solver sol (dat, "ttruss01");
+	FEM::Solver sol (dat, "ex14");
 
 	// Parameters and initial value
 	FEM::EAtts_T eatts(3);
-	String p1; p1.Printf("E=%f A=%f", 100.0 ,      1.0);
-	String p2; p2.Printf("E=%f A=%f",  50.0 ,      1.0);
-	String p3; p3.Printf("E=%f A=%f", 200.0 , sqrt(2.0));
-	eatts = T(-1, "Lin2", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=20", FNULL, true),
-	        T(-2, "Lin2", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=20", FNULL, true),
-	        T(-3, "Lin2", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=20", FNULL, true);
+	String p1; p1.Printf("E=%f A=%f", 200000.0, 4000.0);
+	String p2; p2.Printf("E=%f A=%f", 200000.0, 3000.0);
+	String p3; p3.Printf("E=%f A=%f",  70000.0, 2000.0);
+	eatts = T(-1, "Lin2", "Rod", "RodElastic", p1.CStr(), "ZERO", "gam=0", FNULL, true),
+	        T(-2, "Lin2", "Rod", "RodElastic", p2.CStr(), "ZERO", "gam=0", FNULL, true),
+	        T(-3, "Lin2", "Rod", "RodElastic", p3.CStr(), "ZERO", "gam=0", FNULL, true);
 
 	// Set geometry: nodes and elements
 	dat.SetOnlyFrame  (true);
 	dat.SetNodesElems (&mesh, &eatts);
 
-	// Check stiffness matrices
-	double err_ke = 0.0;
-	Array<size_t>  map;
-	Array<bool>    pre;
-	Matrix<double> Ke0,  Ke1,  Ke2;
-	Matrix<double> Ke0c, Ke1c, Ke2c; // correct matrices
-	Ke0c.Resize(4,4);
-	Ke1c.Resize(4,4);
-	Ke2c.Resize(4,4);
-	dat.Ele(0)->CMatrix(0,Ke0);
-	dat.Ele(1)->CMatrix(0,Ke1);
-	dat.Ele(2)->CMatrix(0,Ke2);
-	Ke0c =  10.0,   0.0, -10.0,   0.0,
-	         0.0,   0.0,   0.0,   0.0,
-	       -10.0,   0.0,  10.0,   0.0,
-	         0.0,   0.0,   0.0,   0.0;
-	Ke1c =   0.0,   0.0,   0.0,   0.0,
-	         0.0,   5.0,   0.0,  -5.0,
-	         0.0,   0.0,   0.0,   0.0,
-	         0.0,  -5.0,   0.0,   5.0;
-	Ke2c =  10.0,  10.0, -10.0, -10.0,
-	        10.0,  10.0, -10.0, -10.0,
-	       -10.0, -10.0,  10.0,  10.0,
-	       -10.0, -10.0,  10.0,  10.0;
-	for (int i=0; i<4; ++i)
-	for (int j=0; j<4; ++j)
-	{
-		err_ke += fabs(Ke0(i,j)-Ke0c(i,j));
-		err_ke += fabs(Ke1(i,j)-Ke1c(i,j));
-		err_ke += fabs(Ke2(i,j)-Ke2c(i,j));
-	}
-	if (err_ke>1.0e-4) throw new Fatal("ttruss01: err_ke=%e is bigger than %e.",err_ke,1.0e-4);
-
 	// Stage # 1 -----------------------------------------------------------
-	dat.Nod(0)->Bry("ux", 0.0)->Bry("uy", -0.5); // Essential
-	dat.Nod(1)->                Bry("uy",  0.4); // Essential
-	dat.Nod(2)->Bry("fx", 2.0)->Bry("fy",  1.0); // Natural
-	sol.SolveWithInfo(/*NDiv*/1, /*DTime*/0.0);
+	FEM::NBrysT_T nbrys(3);
+	nbrys = T(-100, "ux", 0.0),
+	        T(-100, "uy", 0.0),
+	        T(-200, "fy", -150000);
+	dat.SetNBrys      (mesh, nbrys);
+	sol.SolveWithInfo (/*NDiv*/1, /*DTime*/0.0);
 
 	//////////////////////////////////////////////////////////////////////////////////////// Output ////
 
@@ -153,6 +111,7 @@ int main(int argc, char **argv) try
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
+	/*
 	// Displacements
 	Array<double> err_u(6);
 	err_u[0] =  fabs(dat.Nod(0)->Val("ux") - ( 0.0));
@@ -195,6 +154,8 @@ int main(int argc, char **argv) try
 	// Return error flag
 	if (max_err_u>tol_u || max_err_f>tol_f || max_err_s>tol_s) return 1;
 	else return 0;
+	*/
+	return 1;
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
 catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }

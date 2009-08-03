@@ -54,6 +54,7 @@ double __null__(double u) { return 0.0; }
 #define FNULL &FEM::__null__
 
 // Tuples used when initializing nodes and elements by groups
+typedef Array< boost::tuple<                 int, Str_t,double> > NBrysT_T; // Node: tag, key, val
 typedef Array< boost::tuple<double,double,double, Str_t,double> > NBrys_T; // Node: x,y,z, key, val
 typedef Array< boost::tuple<                 int, Str_t,double> > EBrys_T; // Edge:   tag, key, val
 typedef Array< boost::tuple<                 int, Str_t,double> > FBrys_T; // Face:   tag, key, val
@@ -86,6 +87,7 @@ public:
 	                    NBrys_T       const * NodesBrys,     ///< Give NULL when there are no nodes boundary conditions
 	                    EBrys_T       const * EdgesBrys,     ///< Give NULL for 3D meshes without edges boundary conditions
 	                    FBrys_T       const * FacesBrys);    ///< Give NULL for 2D meshes
+	void SetNBrys      (Mesh::Generic const & M, NBrysT_T const & NodesBrys); ///< Set nodes boundary conditions given nodes' IDs
 
 	// Set methods
 	void      SetNNodes       (size_t NNodes);                                         ///< Set the number of nodes
@@ -448,6 +450,23 @@ inline void Data::SetBrys(Mesh::Generic const * M, NBrys_T const * NodesBrys, EB
 			}
 		}
 	}
+}
+
+inline void Data::SetNBrys(Mesh::Generic const & M, NBrysT_T const & NodesBrys)
+{
+	for (size_t j=0; j<NodesBrys.Size(); ++j)
+	{
+		for (size_t b=0; b<M.NVertsBry(); ++b) // loop over all vertices on boundary
+		{
+			int i   = M.VertBry(b);
+			int tag = M.VertTag(i);
+			if (tag<0) // this vertex has a tag
+				if (tag==NodesBrys[j].get<0>())
+					Nod(i)->Bry (NodesBrys[j].get<1>(), NodesBrys[j].get<2>());
+		}
+	}
+	// TODO: Organize vertices by tags
+	// TODO: Organize edges by tags
 }
 
 inline void Data::SetNNodes(size_t NNodes)
