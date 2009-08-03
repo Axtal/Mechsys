@@ -21,88 +21,64 @@
 #define DEM_PARTICLE_H
 
 // Std lib
+#include <iostream>
 #include <math.h>
+#include <string>
+#include <vector>
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/quaternion.h"
-
-typedef blitz::TinyVector<double,3> Vec3_t;
+#include "dem/edge3d.h"
+#include "util/array.h"
 
 class Particle
 {
 public:
-	// Constructor
-	Particle(double         rho0,    ///< Density
-	         Vec3_t       & r0,      ///< Initial position
-	         Vec3_t       & v0,      ///< Initial velocity
-	         Vec3_t       & omega0,  ///< Initial angular velocity
-	         Quaternion_t & q0);     ///< Initial quaternion giving the orientation
-	
-	// Destructor
-	virtual ~Particle() {}
+	// Constructors
+	// Sphere constructor, the simplest one
+	Particle(const double Radius,     ///< Radius for the sphere
+                 const double rho0,       ///< Density of mass
+	         const Vec3_t & r0,       ///< Initial position
+	         const Vec3_t & v0,       ///< Initial velocity
+	         const Vec3_t & ome0)     ///< Initial angular velocity
 
-	// Set methods
-	void Start              (double   dt);  ///< Start the particle for the Verlet algorithm
-	void Translation        (double   dt);  ///< Translates the particle after the forces are calculated
-	void Translation        (Vec3_t   t);   ///< Translates the particle a vector t
-	void Rotation           (double   dt);  ///< Rotates the particle after the torques are calculated
-	void QuaternionRotation (double   dt);  ///< Rotates the particle by a quaternion
-	void StartForce         ();             ///< Starts the force at a given value
-	void StartForce         (Vec3_t & F);   ///< Starts the force at a given value
+	// Plane constructor, for walls and the like
+	Particle(const double thickness,  ///< Thickness of the plane, equivalent to the spheroradius
+                 const double rho0,       ///< Density of mass
+	         const Vec3_t & r0,       ///< Initial position
+	         const Vec3_t & v0,       ///< Initial velocity
+	         const Vec3_t & ome0,     ///< Initial angular velocity
+	         const Quaternion_t q0)   ///< Initial orientation
+	         
 
-	// Special
-	virtual void Special() =0; // pure virtual function => derived class MUST derive
-	virtual void Another() {}  // not pure => derive clas MAY drive
 
 protected:
-	double       _m;    ///< Mass of the particle
-	double       _V;    ///< Volume of the particle
-	double       _rho;  ///< Density of the particle
-	Vec3_t       _r;    ///< Position of the particle
-	Vec3_t       _rp;   ///< Previous position of the particle
-	Vec3_t       _v;    ///< Velocity of the particle
-	Vec3_t       _f;    ///< Force of the particle
-	Vec3_t       _T;    ///< Torque of the particle
-	Vec3_t       _ome;  ///< Angular velocity of the particle
-	Vec3_t       _omep; ///< Previous angular velocity of the particle
-	Quaternion_t _q;    ///< Quaternion of the particle
+
+	bool            _IsLarge; ///< Flag to see if it is a large particle
+	double          _m;       ///< Mass of the particle
+	double          _R;       ///< Spheroradius of the particle
+	Vec3_t          _r;       ///< Position of the particle
+	Vec3_t          _rb;      ///< Past position for the Verlet algorithm
+	Vec3_t          _v;       ///< Velocity of the particle
+	Vec3_t          _f;       ///< Force over the particle
+	Vec3_t          _T;       ///< Torque over the particle
+	Vec3_t          _w;       ///< Angular velocity
+	Vec3_t          _wb;      ///< Past angular velocity for the leap frog algorithm
+	Vec3_t          _I;       ///< Vector containing the principal components of the inertia tensor
+	Quaternion_t    _Q;       ///< The quaternion representing the rotation
+	Array<Vec3_t *> _vertex;  ///< The set of vertices defining the geometry of the particle
+	Array<Edge3D *> _edges;   ///< The set of edges defining the geometry of the particle
+	Array<Face3D *> _faces;   ///< The set of faces defining the geometry of the particle
+	
+	
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-
-inline void Particle::Start(double dt)
-{
-}
-
-inline void Particle::Translation(double dt)
-{
-}
-
-inline void Particle::Translation(Vec3_t t)
-{
-}
-
-inline void Particle::Rotation(double dt)
-{
-}
-
-inline void Particle::QuaternionRotation(double dt)
-{
-}
-
-inline void Particle::StartForce()
-{
-}
-
-inline void Particle::StartForce(Vec3_t & F)
-{
-}
 
 
 #endif // DEM_PARTICLE_H
