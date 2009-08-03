@@ -1,5 +1,11 @@
 src/libmechsys.*
 
+tfem/new_tests/bhatti_basic/ex14
+tfem/new_tests/bhatti_basic/ex15
+tfem/new_tests/bhatti_basic/ex16
+tfem/new_tests/bhatti_basic/ex52
+tfem/new_tests/bhatti_basic/ex53
+
 tdem/test2d_01
 tdem/test3d_01
 

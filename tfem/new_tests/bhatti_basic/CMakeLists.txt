@@ -16,8 +16,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-IF(MAKE_TFEM_NEW_ONLY)
-	SUBDIRS (new_tests)
-ELSE(MAKE_TFEM_NEW_ONLY)
-	SUBDIRS (basic coupled diffusion elasticity geotech new_tests)
-ENDIF(MAKE_TFEM_NEW_ONLY)
+SET(TESTS
+  ex14)
+
+IF(BLITZ_FOUND AND LINALG_FOUND AND Boost_FOUND AND IGRAPH_FOUND)
+	FOREACH(var ${TESTS})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		ADD_TEST              (${var} ${var})
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+	ENDFOREACH(var)
+ENDIF(BLITZ_FOUND AND LINALG_FOUND AND Boost_FOUND AND IGRAPH_FOUND)
