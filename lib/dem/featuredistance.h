@@ -28,9 +28,9 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/face3d.h"
+#include "dem/face.h"
 
-inline void Distance(const Vec3_t & V,Edge3D & E,Vec3_t & xi,Vec3_t & xf) ///< Distance Between point V and Edge E
+inline void Distance(const Vec3_t & V,Edge & E,Vec3_t & xi,Vec3_t & xf) ///< Distance Between point V and Edge E
 {
 	double t;
 	t=(dot(V,E.dr())-dot(E.ri(),E.dr()))/(dot(E.dr(),E.dr()));
@@ -40,7 +40,7 @@ inline void Distance(const Vec3_t & V,Edge3D & E,Vec3_t & xi,Vec3_t & xf) ///< D
 	else xf=E.ri()+E.dr()*t;
 }
 
-inline void Distance(Edge3D & E0,Edge3D & E1,Vec3_t & xi,Vec3_t & xf) ///< Distance Between two edges
+inline void Distance(Edge & E0,Edge & E1,Vec3_t & xi,Vec3_t & xf) ///< Distance Between two edges
 {
 	double t,s,a,b,c,d,e;
 	Vec3_t xi1,xf1;
@@ -93,26 +93,26 @@ inline void Distance(Edge3D & E0,Edge3D & E1,Vec3_t & xi,Vec3_t & xf) ///< Dista
 	}
 }
 
-inline void Distance(Vec3_t & v,Face3D & F,Vec3_t & xi,Vec3_t & xf) ///< Distance Between a Point and a Face
+inline void Distance(Vec3_t & v,Face & F,Vec3_t & xi,Vec3_t & xf) ///< Distance Between a Point and a Face
 {
 	Vec3_t pro,nor;
 	bool inside=true;
 	double s,t,a,b,c,d,f,lt,ld;
 	size_t i,ns=F.NumberofSides();
-	nor=cross(F.Edge(0)->dr(),F.Edge(1)->dr());
+	nor=cross(F.Edges(0)->dr(),F.Edges(1)->dr());
 	nor=nor/norm(nor);
-	a=dot(F.Edge(0)->ri()-v,F.Edge(0)->dr());
-	b=dot(F.Edge(0)->dr(),F.Edge(0)->dr());
-	c=dot(F.Edge(0)->dr(),F.Edge(1)->dr());
-	d=dot(F.Edge(0)->ri()-v,F.Edge(1)->dr());
-	f=dot(F.Edge(1)->dr(),F.Edge(1)->dr());
+	a=dot(F.Edges(0)->ri()-v,F.Edges(0)->dr());
+	b=dot(F.Edges(0)->dr(),F.Edges(0)->dr());
+	c=dot(F.Edges(0)->dr(),F.Edges(1)->dr());
+	d=dot(F.Edges(0)->ri()-v,F.Edges(1)->dr());
+	f=dot(F.Edges(1)->dr(),F.Edges(1)->dr());
 	s=(c*d-a*f)/(b*f-c*c);
 	t=(a*c-b*d)/(b*f-c*c);
-	pro=F.Edge(0)->ri()+s*F.Edge(0)->dr()+t*F.Edge(1)->dr();
+	pro=F.Edges(0)->ri()+s*F.Edges(0)->dr()+t*F.Edges(1)->dr();
 	for(i=0;i<ns;i++) 
 	{
-		Vec3_t tmp = pro-F.Edge(i)->ri();
-		if (dot(cross(F.Edge(i)->dr(),tmp),nor)<0) inside=false;
+		Vec3_t tmp = pro-F.Edges(i)->ri();
+		if (dot(cross(F.Edges(i)->dr(),tmp),nor)<0) inside=false;
 	}
 	if (inside) 
 	{
@@ -122,12 +122,12 @@ inline void Distance(Vec3_t & v,Face3D & F,Vec3_t & xi,Vec3_t & xf) ///< Distanc
 	
 	else 
 	{
-		Distance(v,*F.Edge(0),pro,nor);
+		Distance(v,*F.Edges(0),pro,nor);
 		lt=norm(nor-pro);
 		ld=lt;
 		for(i=1;i<ns;i++) 
 		{
-			Distance(v,*F.Edge(i),pro,nor);
+			Distance(v,*F.Edges(i),pro,nor);
 			lt=norm(nor-pro);
 			if(lt<ld){
 				xi=pro;

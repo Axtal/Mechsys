@@ -30,25 +30,17 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	//This tests the distance between a point and an face in 3D, the face is given by the points a,b,c and the point is d. I and F are auxiliary vectors to define the distance edge and draw it. the edges of the face have been draw to for comprehension.
-	Vec3_t a(1,0,0),b(0,0,0),c(0,1,0),d(1,1,1),I,F;
-	Vec3_t v[3];
-	v[0]=a;
-	v[1]=b;
-	v[2]=c;
-	Face3D Fa(v,3);
-	Distance(d,Fa,I,F);
-	Edge3D D(I,F);
+	//This tests the distance between two edges in 3D, the edges are given by the points a,b and c,d. I and F are auxiliary vectors to define the distance edge and draw it.
+	Vec3_t a(1,1,1),b(0,0,0),c(0.5,1,0),d(2,0,0),I,F;
+	Edge E1(a,b),E2(c,d);
+	Distance(E1,E2,I,F);
+	Edge D(I,F);
+
+
 	Graph g("drawing",false);
-	I=10,0,0;
-	F=0,0,0;
-	g.SetCamera(I,F);
-	g.DrawPoint(d,0.2,"Blue");
-	g.DrawFace3D(Fa,0.2,"Blue");
-	g.DrawEdge3D(*Fa.Edge(0),0.2,"Blue");
-	g.DrawEdge3D(*Fa.Edge(1),0.2,"Blue");
-	g.DrawEdge3D(*Fa.Edge(2),0.2,"Blue");
-	g.DrawEdge3D(D,0.05,"Blue");
+	g.DrawEdge(E1,0.2,"Blue");
+	g.DrawEdge(E2,0.2,"Blue");
+	g.DrawEdge(D,0.1,"Blue");
 	g.Close();
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

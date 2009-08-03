@@ -31,7 +31,7 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/face3d.h"
+#include "dem/particle.h"
 
 using namespace std;
 
@@ -45,8 +45,8 @@ public:
 	// Methods
 	void SetCamera (const Vec3_t & x,const Vec3_t & v);        ///< Put the Camera at position x looking at point v
 	void DrawPoint (const Vec3_t & r,double R,char const *c);  ///< Draw a single point as a sphere at position r with radius R and color c
-	void DrawEdge3D ( Edge3D & E,double R,char const *c);      ///< Draw a edge as a cylinder with radius R and color c
-	void DrawFace3D ( Face3D & F,double R,char const *c);      ///< Draw a face as a polygonal face with radius R and color c
+	void DrawEdge ( Edge & E,double R,char const *c);          ///< Draw a edge as a cylinder with radius R and color c
+	void DrawFace ( Face & F,double R,char const *c);          ///< Draw a face as a polygonal face with radius R and color c
 	void DrawPolygon (const Vec3_t *v,size_t N,char const *c); ///< Draw a polygon with N sides and color c whose vertices are stored in v
 	void Close ();                                             ///< Flushes the working string into the final file
 
@@ -104,7 +104,7 @@ inline void Graph::DrawPoint (const Vec3_t & r,double R,char const *c)
 	}
 }
 
-inline void Graph::DrawEdge3D (Edge3D & E,double R,char const *c)
+inline void Graph::DrawEdge (Edge & E,double R,char const *c)
 {
 	Vec3_t ini = E.ri();
 	Vec3_t fin = E.rf();
@@ -162,18 +162,18 @@ inline void Graph::DrawPolygon (const Vec3_t *v,size_t N,char const *c)
 
 }
 
-inline void Graph::DrawFace3D (Face3D & F,double R,char const *c)
+inline void Graph::DrawFace (Face & F,double R,char const *c)
 {
 	Vec3_t * vs;
 	Vec3_t * vi;
-	Vec3_t n = cross(F.Edge(0)->dr(),F.Edge(1)->dr());
+	Vec3_t n = cross(F.Edges(0)->dr(),F.Edges(1)->dr());
 	n=n/norm(n);
 	size_t ns = F.NumberofSides();
 	vs = new Vec3_t [ns];
 	vi = new Vec3_t [ns];
 	for(size_t i=0;i<ns;i++) {
-		vi[i]=F.Edge(i%ns)->ri()-R*n;
-        	vs[i]=F.Edge(i%ns)->ri()+R*n;
+		vi[i]=F.Edges(i%ns)->ri()-R*n;
+        	vs[i]=F.Edges(i%ns)->ri()+R*n;
 		//cout << vs [i] << vi[i] << endl;
 	}
 	DrawPolygon(vi,ns,c);

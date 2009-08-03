@@ -17,79 +17,69 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_DOMAIN2D_H
-#define DEM_DOMAIN2D_H
+#ifndef DEM_EDGE3D_H
+#define DEM_EDGE3D_H
+
+// Std lib
+#include <math.h>
+
+// Blitz++
+#include <blitz/tinyvec-et.h>
+#include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/disk.h"
-#include "util/array.h"
+#include "dem/quaternion.h"
 
-class Domain2D
+class Edge
 {
 public:
 	// Constructor
-	Domain2D (double rho=1.0, double dt=1.0, size_t np=100);
+	Edge(void) {};          ///< Default Constructor
+	Edge(const Vec3_t & a,  ///< Initial vector
+	       const Vec3_t & b); ///< Final vector
+
+	
+	// Access Methods
+	Vec3_t & ri () {return _ri;} ///< Initial vector
+	Vec3_t & rf () {return _rf;} ///< Final vector
+	Vec3_t & dr () {return _dr;} ///< Difference vector
 
 	// Methods
-	void Forces (double k=1.0);
-	void Solve  (double tini, double tfin, double dtout);
+	void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
+                    const Vec3_t & v);      ///< Position of the axis of rotation
+
+
 
 protected:
-	Array<Disk> _P;
-	double      _dt;
+	double _l;  ///< Length of the Edge
+	Vec3_t _ri; ///< Initial position
+	Vec3_t _rf; ///< Final position
+	Vec3_t _dr; ///< Difference Vector
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-
-inline Domain2D::Domain2D(double rho, double dt, size_t np)
+inline Edge::Edge (const Vec3_t & a,const Vec3_t & b)
 {
-	_P.Resize(np);
-	_dt = dt;
-	for (size_t i=0; i<10; i++)
-	{
-		for (size_t j=0; j<10; j++)
-		{
-			Vec2_t x0;
-			x0 = i,j;
-			double vx = (rand()/RAND_MAX),vy = (rand()/RAND_MAX);
-			Vec2_t v0; 
-			v0 = vx,vy;
-			_P[j+i*10] = Disk(rho,0.5,x0,v0,1.0);
-		}
-	}
+	_ri = a;
+	_rf = b;
+	_dr = _rf-_ri;
+	_l  = norm(_dr);
 }
 
-inline void Domain2D::Forces(double k)
+
+
+inline void Edge::Rotate (const Quaternion_t & q,const Vec3_t & v)
 {
-	for (size_t i=0;i<100;i++)
-	{
-		for (size_t j=i+1;j<100;j++)
-		{
-			Vec2_t dx = _P[i].x() - _P[j].x();
-			double dist = sqrt(dx(1)*dx(1)+dx(0)*dx(0));
-			double delta = _P[i].r() + _P[j].r() - dist;
-			if (delta>0) {
-				Vec2_t dF = (k*delta/dist)*dx;
-				_P[i].F() = _P[i].F() + dF;
-				_P[j].F() = _P[j].F() - dF;
-			}
-		}
-	}
+	Vec3_t t1,t2;
+	t1 = _ri - v;
+	t2 = _rf - v;
+	Rotation(t1,q,_ri);
+	Rotation(t2,q,_rf);
+	_ri = _ri + v;
+	_rf = _rf + v;
+	_dr = _rf - _ri;
 }
 
-inline void Domain2D::Solve(double tini,double tfin,double dtout)
-{
-	double t=tini;
-	double tout=t+dtout;
-	while (t<tfin)
-	{
-		for (size_t i=0; i<100; i++) _P[i].F() = 0,0;
-		Forces();
-		for (size_t i=0; i<100; i++) _P[i].Move();
-		t += _dt;
-	}
-}
-
-#endif // DEM_DOMAIN2D_H
+#endif //DEM_EDGE3D_H

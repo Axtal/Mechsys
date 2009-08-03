@@ -31,27 +31,22 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/edge3d.h"
+#include "dem/face.h"
 #include "util/array.h"
 
 class Particle
 {
 public:
-	// Constructors
-	// Sphere constructor, the simplest one
-	Particle(const double Radius,     ///< Radius for the sphere
-                 const double rho0,       ///< Density of mass
-	         const Vec3_t & r0,       ///< Initial position
-	         const Vec3_t & v0,       ///< Initial velocity
-	         const Vec3_t & ome0)     ///< Initial angular velocity
+	// Constructor
+	Particle(const Array<Vec3_t *> &,
+	         const Array<Array <int> > &);
+	
 
-	// Plane constructor, for walls and the like
-	Particle(const double thickness,  ///< Thickness of the plane, equivalent to the spheroradius
-                 const double rho0,       ///< Density of mass
-	         const Vec3_t & r0,       ///< Initial position
-	         const Vec3_t & v0,       ///< Initial velocity
-	         const Vec3_t & ome0,     ///< Initial angular velocity
-	         const Quaternion_t q0)   ///< Initial orientation
+	// Methods
+	void StartForce(Vec3_t F);          ///< Start the force of the particle a value F, use for external forces like gravity
+	void Start(double dt);              ///< Initialize the particle for the Verlet algorithm
+	void DynamicRotation(double dt);    ///< Apply rotation on the particle once the total torque is found
+	void DynamicTranslation(double dt); ///< Apply translation once the total force is found
 	         
 
 
@@ -61,24 +56,23 @@ protected:
 	double          _m;       ///< Mass of the particle
 	double          _R;       ///< Spheroradius of the particle
 	Vec3_t          _r;       ///< Position of the particle
-	Vec3_t          _rb;      ///< Past position for the Verlet algorithm
+	Vec3_t          _rb;      ///< Former position for the Verlet algorithm
 	Vec3_t          _v;       ///< Velocity of the particle
 	Vec3_t          _f;       ///< Force over the particle
 	Vec3_t          _T;       ///< Torque over the particle
 	Vec3_t          _w;       ///< Angular velocity
-	Vec3_t          _wb;      ///< Past angular velocity for the leap frog algorithm
+	Vec3_t          _wb;      ///< Former angular velocity for the leap frog algorithm
 	Vec3_t          _I;       ///< Vector containing the principal components of the inertia tensor
 	Quaternion_t    _Q;       ///< The quaternion representing the rotation
 	Array<Vec3_t *> _vertex;  ///< The set of vertices defining the geometry of the particle
-	Array<Edge3D *> _edges;   ///< The set of edges defining the geometry of the particle
-	Array<Face3D *> _faces;   ///< The set of faces defining the geometry of the particle
+	Array<Edge *>   _edges;   ///< The set of edges defining the geometry of the particle
+	Array<Face *>   _faces;   ///< The set of faces defining the geometry of the particle
 	
 	
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
 
 
 #endif // DEM_PARTICLE_H

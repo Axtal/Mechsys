@@ -17,11 +17,10 @@
 ########################################################################
 
 SET(TESTS
-  test2d_01
-  test3d_01
-  test3d_02
-  test3d_03
-  test3d_04)
+  test_01
+  test_02
+  test_03
+  test_04)
 
 IF(BLITZ_FOUND)
 	FOREACH(var ${TESTS})
