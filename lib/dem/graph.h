@@ -31,7 +31,7 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/particle.h"
+#include "dem/domain.h"
 
 using namespace std;
 
@@ -48,6 +48,8 @@ public:
 	void DrawEdge ( Edge & E,double R,char const *c);          ///< Draw a edge as a cylinder with radius R and color c
 	void DrawFace ( Face & F,double R,char const *c);          ///< Draw a face as a polygonal face with radius R and color c
 	void DrawPolygon (const Vec3_t *v,size_t N,char const *c); ///< Draw a polygon with N sides and color c whose vertices are stored in v
+	void DrawParticle (Particle & P,char const *c);            ///< Draw the entire particle with all its geometric features
+	void DrawEntireDomain (Domain & D,char const *c);          ///< Draw the entire Domain with all its particles
 	void Close ();                                             ///< Flushes the working string into the final file
 
 
@@ -174,7 +176,6 @@ inline void Graph::DrawFace (Face & F,double R,char const *c)
 	for(size_t i=0;i<ns;i++) {
 		vi[i]=F.Edges(i%ns)->ri()-R*n;
         	vs[i]=F.Edges(i%ns)->ri()+R*n;
-		//cout << vs [i] << vi[i] << endl;
 	}
 	DrawPolygon(vi,ns,c);
     	DrawPolygon(vs,ns,c);
@@ -182,6 +183,35 @@ inline void Graph::DrawFace (Face & F,double R,char const *c)
 	delete [] vi;
 }
 
+
+
+inline void Graph::DrawParticle (Particle & P, const char *c)
+{
+	size_t nv = P.NumberVertices(),ne = P.NumberEdges(),nf = P.NumberFaces();
+	for (size_t i = 0; i < nv; i++)
+	{
+		DrawPoint(*P.Vertex(i),P.Radius(),c);
+	}
+
+	for (size_t i = 0; i < ne; i++)
+	{
+		DrawEdge(*P.Edges(i),P.Radius(),c);
+	}
+
+	for (size_t i = 0; i < nf; i++)
+	{
+		DrawFace(*P.Faces(i),P.Radius(),c);
+	}
+}
+
+
+inline void Graph::DrawEntireDomain(Domain & D,char const *c)
+{
+	for (size_t i = 0;i<D.NumberParticles();i++)
+	{
+		DrawParticle(*D.Particles(i),c);
+	}
+} 
 
 
 inline void Graph::Close ()

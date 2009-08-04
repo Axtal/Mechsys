@@ -38,8 +38,14 @@ class Particle
 {
 public:
 	// Constructor
-	Particle(const Array<Vec3_t *> &,
-	         const Array<Array <int> > &);
+	Particle(const Array<Vec3_t *> &,          ///< The list of vertices
+	         const Array<Array <int> > &,      ///< The list of edges with connectivity
+	         const Array<Array <int> > &,      ///< The list of faces with connectivity
+	         const double R,                   ///< The spheroradius
+	         const double rho0,                ///< The density of the material
+                 const Vec3_t & v0,                ///< Initial velocity
+                 const Vec3_t & w0);               ///< Initial angular velocity
+
 	
 
 	// Methods
@@ -47,7 +53,15 @@ public:
 	void Start(double dt);              ///< Initialize the particle for the Verlet algorithm
 	void DynamicRotation(double dt);    ///< Apply rotation on the particle once the total torque is found
 	void DynamicTranslation(double dt); ///< Apply translation once the total force is found
-	         
+
+	// Access Methods
+        size_t NumberVertices ( )         { return _vertex.Size();} ///< Return the number of vertices.
+        size_t NumberEdges    ( )         { return _edges.Size();}  ///< Return the number of edges.
+        size_t NumberFaces    ( )         { return _faces.Size();}  ///< Return the number of faces.
+        double Radius         ( )         { return _R;}             ///< Return the spheroradius
+        Vec3_t * Vertex       ( size_t i) { return _vertex[i];}     ///< Return pointer to the i-th vertex
+        Edge * Edges          ( size_t i) { return _edges[i];}      ///< Return pointer to the i-th Edge
+        Face * Faces          ( size_t i) { return _faces[i];}      ///< Return pointer to the i-th vertex
 
 
 protected:
@@ -73,6 +87,26 @@ protected:
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+
+inline Particle::Particle(const Array<Vec3_t *> & V,const Array<Array <int> > & E,const Array<Array <int> > & F,const double R,const double rho0,const Vec3_t & v0,const Vec3_t & w0)
+{
+	if (V.Size()==1&&E.Size()==0&&F.Size()==0)
+	{
+		_R                 = R;
+		_m                 = (4./3.)*rho0*_R*_R*_R;
+		_r                 = *V[0];
+		_w                 = 
+		_I                 = Vec3_t(0.4*_m*_R*_R,0.4*_m*_R*_R,0.4*_m*_R*_R);
+		_Q                 = 1,0,0,0;
+		_vertex.Resize(1);
+		_edges.Resize(0);
+		_faces.Resize(0);
+		_vertex[0]         = new Vec3_t(0,0,0);
+		*_vertex[0]        = _r;
+	}
+}
+
+
 
 
 #endif // DEM_PARTICLE_H
