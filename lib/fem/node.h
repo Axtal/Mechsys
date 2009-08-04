@@ -124,7 +124,7 @@ private:
 	Array<DOF>  _dofs;      ///< Array with degrees of freedom
 
 	// Private methods
-	long _find_var(char const * Name) const;
+	int _find_var(char const * Name) const;
 
 }; // class Node
 
@@ -258,12 +258,11 @@ inline Node * Node::Bry(const char * DOFName, double Value)
 }
 
 // Private
-inline long Node::_find_var(char const * Name) const
+inline int Node::_find_var(char const * Name) const
 {
-	long found = -1;
 	for (size_t i=0; i<_dofs.Size(); i++)
-		if (Name==_dofs[i].EssentialBryName || Name==_dofs[i].NaturalBryName) { found=i; break; }
-	return found;
+		if (Name==_dofs[i].EssentialBryName || Name==_dofs[i].NaturalBryName) return i;
+	return -1; // not found
 }
 
 // operator <<
