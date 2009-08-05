@@ -18,6 +18,7 @@
 
 // Std Lib
 #include <iostream>
+#include <math.h>
 
 // MechSys
 #include "lbm/lattice.h"
@@ -41,7 +42,7 @@ int main(int argc, char **argv) try
 
 	double width=3.;
 	// Allocate lattice
-	LBM::Lattice l(/*FileKey*/"fracflow", /*Is3D*/false,1, /*Nx*/400, /*Ny*/400,1,1,1);
+	LBM::Lattice l(/*FileKey*/"fracflow", /*Is3D*/false,1, /*Nx*/200, /*Ny*/100,1,1,1);
 	
 	// Set constants
 	l.SetGSolid(0.0);
@@ -59,7 +60,7 @@ int main(int argc, char **argv) try
 	FileParser::Table grains;
 	FileParser fp("percolating.txt");
 	fp.ReadTable(grains);
-	for (size_t i=0; i<grains["x1"].Size(); ++i)
+	/*for (size_t i=0; i<grains["x1"].Size(); ++i)
 	{
 		double x1 = grains["x1"][i]*20.0;
 		double y1 = grains["y1"][i]*20.0;
@@ -73,8 +74,12 @@ int main(int argc, char **argv) try
 			if (distline(x1,y1,x2,y2,x,y)<=width) l.GetCell(i,j)->SetSolid(false);
 		}
 	}
-
-	
+	*/
+	for (size_t n=0; n<grains["F"].Size(); ++n)
+	{
+		size_t i=n%100,j=n/100;
+		if (grains["F"][n]==1) l.GetCell(j,i)->SetSolid(false);
+	}
 	
 	// Initial conditions
 	for (size_t i=0; i<l.Nx(); i++)
@@ -90,13 +95,13 @@ int main(int argc, char **argv) try
 	{
 		Vec3_t v; v = 0.01, 0.0, 0.0;
 		//l.SetVelocityBC (0,       j, v);
-		l.SetDensityBC 	(0,j,1.0);
-		l.SetDensityBC  (l.Nx()-1,j, 0.0);
+		l.SetDensityBC 	(0,j,5.0);
+		l.SetDensityBC  (l.Nx()-1,j,1.0);
 	}
 	l.SetTau(1.);
 	l.WriteState(0);
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/20.0);
+	l.Solve(/*tIni*/0.0, /*tFin*/20000.0, /*dtOut*/20.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
 catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }

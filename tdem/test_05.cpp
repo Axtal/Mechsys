@@ -33,6 +33,8 @@ int main(int argc, char **argv) try
 	//This test the varius Domain and Particle constructors.
 	Domain D;
 	D.GenerateSpheres(1000,0,10,0,10,0,10,1,0.5);
+	Vec3_t r(-10,-10,-10);
+	D.AddTetra(r,1.,10,1.);
 	Graph gp("drawing",false);
 	gp.DrawEntireDomain(D,"Blue");
 	gp.Close();

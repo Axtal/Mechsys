@@ -49,6 +49,7 @@ public:
 	
 
 	// Methods
+	void CalcMassProperties();          ///< Calculate the mass, center of mass and moment of inertia
 	void StartForce(Vec3_t F);          ///< Start the force of the particle a value F, use for external forces like gravity
 	void Start(double dt);              ///< Initialize the particle for the Verlet algorithm
 	void DynamicRotation(double dt);    ///< Apply rotation on the particle once the total torque is found
@@ -69,6 +70,7 @@ protected:
 	bool            _IsLarge; ///< Flag to see if it is a large particle
 	double          _m;       ///< Mass of the particle
 	double          _R;       ///< Spheroradius of the particle
+	double          _V;       ///< Volume of the particle
 	Vec3_t          _r;       ///< Position of the particle
 	Vec3_t          _rb;      ///< Former position for the Verlet algorithm
 	Vec3_t          _v;       ///< Velocity of the particle
@@ -90,22 +92,62 @@ protected:
 
 inline Particle::Particle(const Array<Vec3_t *> & V,const Array<Array <int> > & E,const Array<Array <int> > & F,const double R,const double rho0,const Vec3_t & v0,const Vec3_t & w0)
 {
-	if (V.Size()==1&&E.Size()==0&&F.Size()==0)
+	for (size_t i = 0;i<V.Size();i++)
 	{
-		_R                 = R;
-		_m                 = (4./3.)*rho0*_R*_R*_R;
-		_r                 = *V[0];
-		_w                 = 
-		_I                 = Vec3_t(0.4*_m*_R*_R,0.4*_m*_R*_R,0.4*_m*_R*_R);
-		_Q                 = 1,0,0,0;
-		_vertex.Resize(1);
-		_edges.Resize(0);
-		_faces.Resize(0);
-		_vertex[0]         = new Vec3_t(0,0,0);
-		*_vertex[0]        = _r;
+		_vertex.Push(new Vec3_t(0,0,0));
+		*_vertex[i] = *V[i];
 	}
+	for (size_t i = 0;i<E.Size();i++)
+	{
+		size_t n = E[i][0],m = E[i][1];
+		_edges.Push(new Edge(*_vertex[n],*_vertex[m]));
+	}
+	for (size_t i = 0;i<F.Size();i++)
+	{
+		Vec3_t *v;
+		v = new Vec3_t [F[i].Size()];
+		for (size_t j = 0;j<F[i].Size();j++) 
+		{
+			v[j] = *_vertex[F[i][j]];
+		}
+		_faces.Push(new Face(v,F[i].Size()));
+		delete [] v;
+	}
+	_R = R;
+	_v = v0;
+	_w = w0;
+	CalcMassProperties();
+	_m = rho0*_V;
+	_I = rho0*_I;
+	
 }
 
+inline void Particle::CalcMassProperties()
+{
+	if (_vertex.Size()==1&&_edges.Size()==0&&_faces.Size()==0)
+	{
+		_V = (4./3.)*M_PI*_R*_R*_R;
+		_I = Vec3_t((8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.));
+		_r = *_vertex[0];
+		_Q = 1,0,0,0;
+	}
+	else if (_vertex.Size()==4&&_edges.Size()==6&&_faces.Size()==4) {
+		double l = norm(*_vertex[0]-*_vertex[1]);
+		_V = sqrt(2)*pow(l,3.)/12.;
+		_I = Vec3_t((16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.));
+		_r = 0.25*(*_vertex[0] + *_vertex[1] + *_vertex[2] + *_vertex[3]);
+		_Q = 1,0,0,0;
+	}
+	else 
+	{
+		_V = 1;
+		_I = (1,1,1);
+		_r = (0,0,0);
+		_Q = 1,0,0,0;
+	}
+ /* :TODO:08/05/2009 04:32:49 PM:: The rest of the mass properties with Monte Carlo integration */
+
+}
 
 
 

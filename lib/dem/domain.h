@@ -39,23 +39,25 @@ public:
 	Domain() {}
 
 	//Methods
-	void GenerateSpheres(size_t n,                  ///< Number of spheres
-	                     double Xmin,               ///< Left boundary
-	                     double Xmax,               ///< Right boundary
-	                     double Ymin,               ///< Back boundary
-	                     double Ymax,               ///< Front boundary
-	                     double Zmin,               ///< Bottom boundary
-	                     double Zmax,               ///< Top boundary
-	                     double rho,                ///< Density of the material
-	                     double Rmin);              ///< Minimun radius in units of the maximun radius
+	void GenerateSpheres(size_t n,                                 ///< Number of spheres
+	                     double Xmin,                              ///< Left boundary
+	                     double Xmax,                              ///< Right boundary
+	                     double Ymin,                              ///< Back boundary
+	                     double Ymax,                              ///< Front boundary
+	                     double Zmin,                              ///< Bottom boundary
+	                     double Zmax,                              ///< Top boundary
+	                     double rho,                               ///< Density of the material
+	                     double Rmin);                             ///< Minimun radius in units of the maximun radius
 	
-	void GenerateBox(double Xmin,                   ///< Left boundary
-	                 double Xmax,                   ///< Right boundary
-	                 double Ymin,                   ///< Back boundary
-	                 double Ymax,                   ///< Front boundary
-	                 double Zmin,                   ///< Bottom boundary
-	                 double Zmax,                   ///< Top boundary
-	                 double Thickness);             ///< Thickness of the wall, cannot be zero
+	void GenerateBox(double Xmin,                                  ///< Left boundary
+	                 double Xmax,                                  ///< Right boundary
+	                 double Ymin,                                  ///< Back boundary
+	                 double Ymax,                                  ///< Front boundary
+	                 double Zmin,                                  ///< Bottom boundary
+	                 double Zmax,                                  ///< Top boundary
+	                 double Thickness);                            ///< Thickness of the wall, cannot be zero
+
+	void AddTetra(const Vec3_t & r,double R,double l,double rho0); ///< Add a tetrahedron at position r with spheroradius R, side of length l and density rho0
 
 	//Access Methods
         size_t NumberParticles ( )         { return   _Particles.Size();} ///< Return the number of particles
@@ -90,6 +92,62 @@ inline void Domain::GenerateSpheres(size_t n,double Xmin,double Xmax,double Ymin
 	}
 }
 
+inline void Domain::GenerateBox(double Xmin,double Xmax,double Ymin,double Ymax,double Zmin,double Zmax,double Thickness)
+{
+	
+}
+
+inline void Domain::AddTetra(const Vec3_t & r,double R,double l,double rho0)
+{
+	Array<Vec3_t *> V;
+	V.Push(new Vec3_t(l/sqrt(3),l/sqrt(3),l/sqrt(3)));
+	V.Push(new Vec3_t(-l/sqrt(3),-l/sqrt(3),l/sqrt(3)));
+	V.Push(new Vec3_t(-l/sqrt(3),l/sqrt(3),-l/sqrt(3)));
+	V.Push(new Vec3_t(l/sqrt(3),-l/sqrt(3),-l/sqrt(3)));
+	Array<Array <int> > E;
+	E.Resize(6);
+	size_t n = 0;
+	for (size_t i = 0;i < 3;i++)
+	{
+		for (size_t j = i+1;j < 4;j++)
+		{
+			E[n].Resize(2);
+			E[n][0] = i;
+			E[n][1] = j;
+			n++;
+		}
+	}
+	Array<Array <int> > F;
+	F.Resize(4);
+	F[0].Push(0);
+	F[0].Push(1);
+	F[0].Push(2);
+
+	F[1].Push(0);
+	F[1].Push(1);
+	F[1].Push(3);
+
+	F[2].Push(0);
+	F[2].Push(2);
+	F[2].Push(3);
+
+	F[3].Push(1);
+	F[3].Push(2);
+	F[3].Push(3);
+	double angle = (1.*rand())/RAND_MAX*2*M_PI;
+	Vec3_t axis = ((1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX);
+	Quaternion_t q;
+	NormalizeRotation(angle,axis,q);
+
+	for (size_t i = 0;i < 4;i++)
+	{
+		Vec3_t t;
+		Rotation(*V[i],q,t);
+		*V[i]=t;
+	}
+	Vec3_t Zero(0,0,0);
+	_Particles.Push(new Particle(V,E,F,R,rho0,Zero,Zero));
+}
 
 
 
