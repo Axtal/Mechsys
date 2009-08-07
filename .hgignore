@@ -53,6 +53,7 @@ tst/tree01
 tst/tunnel01
 tst/confinedflow
 tst/quadrature
+tst/monte_carlo
 
 tlbm/basic
 tlbm/cap_grain

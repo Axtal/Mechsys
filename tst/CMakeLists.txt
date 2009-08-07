@@ -23,7 +23,8 @@ SET(PROGS_B # tests requiring CGAL
   alphashape01)
 
 SET(PROGS_C # tests requiring GSL
-  quadrature)
+  quadrature
+  monte_carlo)
 
 SET(PROGS_D # FEM tests 
  confinedflow
