@@ -28,6 +28,7 @@ tfem/basic/truss01
 tfem/basic/truss02
 tfem/coupled/biot01
 tfem/coupled/terz01
+tfem/diffusion/confinedflow
 tfem/diffusion/laplace01
 tfem/diffusion/poisson01
 tfem/diffusion/poisson02
@@ -47,11 +48,9 @@ tfem/geotech/triaxial
 
 tst/alphashape01
 tst/linalg01
-tst/mesh01
 tst/serialize
 tst/tree01
 tst/tunnel01
-tst/confinedflow
 tst/quadrature
 tst/monte_carlo
 

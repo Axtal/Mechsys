@@ -26,10 +26,8 @@ SET(PROGS_C # tests requiring GSL
   quadrature
   monte_carlo)
 
-SET(PROGS_D # FEM tests 
- confinedflow
+SET(PROGS_D # other tests 
  linalg01
- mesh01
  serialize
  tree01)
 
@@ -61,11 +59,11 @@ IF(GSL_FOUND)
 ENDIF(GSL_FOUND)
 
 
-IF(FEM_FOUND)
+IF(BLITZ_FOUND AND LINALG_FOUND)
 	FOREACH(var ${PROGS_D})
 		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		ADD_TEST              (${var} ${var})
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 	ENDFOREACH(var)
-ENDIF(FEM_FOUND)
+ENDIF(BLITZ_FOUND AND LINALG_FOUND)
