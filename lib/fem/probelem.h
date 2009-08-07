@@ -106,6 +106,8 @@ public:
 	// Methods related to PROBLEM implemented here
 	Str_t MdlName  () const { return (_mdl==NULL ? "__no_model__" : _mdl->Name()); }
 	bool  IsEssen  (Str_t Key) const;
+	bool  HasKey   (Str_t Key) const;
+	void  GetKeys  (Array<String> & Keys) const;
 	void  GetLbls  (Array<String> & Lbls) const;
 	void  FaceBry  (Str_t Key, double Val, int iFace);
 
@@ -185,6 +187,19 @@ inline bool ProbElem::IsEssen(Str_t Name) const
 {
 	for (int i=0; i<_nd; ++i) if (strcmp(Name,UD[i])==0) return true;
 	return false;
+}
+
+inline bool ProbElem::HasKey(Str_t Key) const
+{
+	for (int i=0; i<_nl; ++i)
+		if (strcmp(Key,LB[i])==0) return true;
+	return false;
+}
+
+inline void ProbElem::GetKeys(Array<String> & Keys) const
+{
+	Keys.Resize(_nl);
+	for (int i=0; i<_nl; ++i) Keys[i] = LB[i];
 }
 
 inline void ProbElem::GetLbls(Array<String> & Lbls) const

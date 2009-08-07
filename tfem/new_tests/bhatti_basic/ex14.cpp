@@ -40,7 +40,6 @@ namespace BPy = boost::python;
 
 using std::cout;
 using std::endl;
-using LinAlg::Matrix;
 
 #define T boost::make_tuple
 
@@ -95,99 +94,41 @@ int main(int argc, char **argv) try
 
 	//////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-	/*
-	// Output: Nodes
-	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
-	for (size_t i=0; i<dat.NNodes(); ++i)
-		cout << _6<<i << _8s<<dat.Nod(i)->Val("ux") <<  _8s<<dat.Nod(i)->Val("uy") << _8s<<dat.Nod(i)->Val("fx") << _8s<<dat.Nod(i)->Val("fy") << endl;
-	cout << endl;
-
-	// Output: Elements
-	cout << _6<<"Elem #" << _8s<<"Sa(left)" << _8s<<"Sa(right)" << _8s<<"Ea(left)" << _8s<<"Ea(right)" << endl;
-	for (size_t i=0; i<dat.NElems(); ++i)
-	{
-		dat.Ele(i)->CalcDeps();
-		cout << _6<<i;
-		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j) cout << _8s<<dat.Ele(i)->Val(j, "Sa");
-		for (size_t j=0; j<dat.Ele(i)->NNodes(); ++j) cout << _8s<<dat.Ele(i)->Val(j, "Ea");
-		cout << endl;
-	}
-	cout << endl;
-	*/
+	dat.PrintResults();
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
 
 	/*
-	Py_Initialize();
-	BPy::object main_module((BPy::handle<>(BPy::borrowed(PyImport_AddModule("__main__")))));
-	BPy::object main_namespace = main_module.attr("__dict__");
-	BPy::handle<> ignored((PyRun_String("print \"Hello, World\"", Py_file_input, main_namespace.ptr(), main_namespace.ptr())));
-	*/
-
-	Table nod_sol("                  ux                      uy                     Rux                     Ruy", /*NRows*/4,
+	Table nod_sol("                  ux                      uy                     Rux                     Ruy", 4,
 	              0.000000000000000e+00,  0.000000000000000e+00,  5.492667465378455e+04,  1.599266746537845e+05,
 	              5.389536380057676e-01, -9.530613006371175e-01,  0.000000000000000e+00,  0.000000000000000e+00,
 	              2.647036149579491e-01, -2.647036149579490e-01,  0.000000000000000e+00,  0.000000000000000e+00,
 	              0.000000000000000e+00,  0.000000000000000e+00, -5.492667465378455e+04, -9.926674653784567e+03);
+	*/
 
-	Table ele_sol("                   ea                      sa                      Fa", /*NRows*/5,
+	// correct solution
+	Table nod_sol("                  ux                      uy", /*NRows*/4,
+	              0.000000000000000e+00,  0.000000000000000e+00,
+	              5.389536380057676e-01, -9.530613006371175e-01,
+	              2.647036149579491e-01, -2.647036149579490e-01,
+	              0.000000000000000e+00,  0.000000000000000e+00);
+
+	Table ele_sol("                   Ea                      Sa                       N", /*NRows*/5,
 	              -1.742954548428455e-04, -3.485909096856910e+01, -1.394363638742764e+05,
 	              -3.149970910789726e-05, -6.299941821579453e+00, -2.519976728631781e+04,
 	              -5.294072299158981e-05, -1.058814459831796e+01, -3.176443379495388e+04,
 	              -5.294072299158982e-05, -1.058814459831796e+01, -3.176443379495389e+04,
 	               3.208692362423290e-04,  2.246084653696303e+01,  4.492169307392606e+04);
 
-	/*
-	Table nod_sol;
-	nod_sol["ux"].Resize(dat.NNodes());
-	nod_sol["ux"] = 0.000000000000000e+00, 5.389536380057676e-01, 2.647036149579491e-01, 0.000000000000000e+00;
-	cout << nod_sol["ux"].Size() << endl;
-	*/
-
-	/*
-	// Displacements
-	Array<double> err_u(6);
-	err_u[0] =  fabs(dat.Nod(0)->Val("ux") - ( 0.0));
-	err_u[1] =  fabs(dat.Nod(0)->Val("uy") - (-0.5));
-	err_u[2] =  fabs(dat.Nod(1)->Val("ux") - ( 0.0));
-	err_u[3] =  fabs(dat.Nod(1)->Val("uy") - ( 0.4));
-	err_u[4] =  fabs(dat.Nod(2)->Val("ux") - (-0.5));
-	err_u[5] =  fabs(dat.Nod(2)->Val("uy") - ( 0.2));
-
-	// Forces
-	Array<double> err_f(6);
-	err_f[0] = fabs(dat.Nod(0)->Val("fx") - (-2.0));
-	err_f[1] = fabs(dat.Nod(0)->Val("fy") - (-2.0));
-	err_f[2] = fabs(dat.Nod(1)->Val("fx") - ( 0.0));
-	err_f[3] = fabs(dat.Nod(1)->Val("fy") - ( 1.0));
-	err_f[4] = fabs(dat.Nod(2)->Val("fx") - ( 2.0));
-	err_f[5] = fabs(dat.Nod(2)->Val("fy") - ( 1.0));
-
-	// Correct axial normal stresses
-	Array<double> err_s(dat.NElems());
-	err_s.SetValues(0.0);
-	err_s[1] = fabs(dat.Ele(1)->Val(0, "N") - (-1.0));
-
-	// Error summary
-	double tol_u     = 1.0e-7;
-	double tol_f     = 1.0e-7;
-	double tol_s     = 1.0e-7;
-	double min_err_u = err_u[err_u.Min()];
-	double max_err_u = err_u[err_u.Max()];
-	double min_err_f = err_f[err_f.Min()];
-	double max_err_f = err_f[err_f.Max()];
-	double min_err_s = err_s[err_s.Min()];
-	double max_err_s = err_s[err_s.Max()];
-	cout << _4<< ""  << _8s<<"Min"     << _8s<<"Mean"                                                  << _8s<<"Max"                << _8s<<"Norm"       << endl;
-	cout << _4<< "u" << _8s<<min_err_u << _8s<<err_u.Mean() << (max_err_u>tol_u?"[1;31m":"[1;32m") << _8s<<max_err_u << "[0m" << _8s<<err_u.Norm() << endl;
-	cout << _4<< "f" << _8s<<min_err_f << _8s<<err_f.Mean() << (max_err_f>tol_f?"[1;31m":"[1;32m") << _8s<<max_err_f << "[0m" << _8s<<err_f.Norm() << endl;
-	cout << _4<< "N" << _8s<<min_err_s << _8s<<err_s.Mean() << (max_err_s>tol_s?"[1;31m":"[1;32m") << _8s<<max_err_s << "[0m" << _8s<<err_s.Norm() << endl;
-	cout << endl;
+	// error tolerance
+	FEM::StrDbl_t nod_tol, ele_tol;
+	nod_tol["ux"] = 1.0e-15;
+	nod_tol["uy"] = 1.0e-15;
+	ele_tol["Ea"] = 1.0e-15;
+	ele_tol["Sa"] = 1.0e-14;
+	ele_tol["N" ] = 1.0e-10;
 
 	// Return error flag
-	if (max_err_u>tol_u || max_err_f>tol_f || max_err_s>tol_s) return 1;
-	else return 0;
-	*/
-	return 1;
+	return dat.CheckError(nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

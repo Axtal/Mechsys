@@ -37,9 +37,12 @@ public:
 	// Constructor
 	Table (const char * StrKeys, size_t NumRows, ...);
 
+	// Operators
+	double operator() (char const * key, size_t iRow) const;
+
 	// Data
-	Array<String> Keys;
 	size_t        NRows;
+	Array<String> Keys;
 
 }; // class Table
 
@@ -69,8 +72,13 @@ inline Table::Table(const char * StrKeys, size_t NumRows, ...)
 			(*this)[Keys[j]][i] = va_arg(arg_list,double);
 		}
 	}
-	//(*this)[key][i] = 1.0;//va_arg(arg_list,double);
 	va_end (arg_list);
+}
+
+inline double Table::operator() (char const * key, size_t iRow) const
+{
+	Table_t::const_iterator p = this->find(key);
+	return p->second[iRow];
 }
 
 std::ostream & operator<< (std::ostream & os, Table const & T)
@@ -93,5 +101,23 @@ std::ostream & operator<< (std::ostream & os, Table const & T)
 	return os;
 }
 
+std::ostream & operator<< (std::ostream & os, Table_t const & T)
+{
+	// keys
+	Table_t::const_iterator p;
+	for (p=T.begin(); p!=T.end(); ++p) os << Util::_8s << p->first;
+	os << "\n";
+
+	// values
+	p = T.begin();
+	size_t nrows = p->second.Size();
+	for (size_t i=0; i<nrows; ++i)
+	{
+		for (p=T.begin(); p!=T.end(); ++p) os << Util::_8s << p->second[i];
+		os << "\n";
+	}
+
+	return os;
+}
 
 #endif // MECHSYS_TABLE_H

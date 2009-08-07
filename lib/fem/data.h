@@ -32,7 +32,7 @@
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  #include <boost/python.hpp> // this includes everything
+  //#include <boost/python.hpp> // this includes everything
   namespace BPy = boost::python;
 #endif
 
@@ -41,6 +41,7 @@
 #include "fem/element.h"
 #include "mesh/mesh.h"
 #include "util/array.h"
+#include "util/table.h"
 #include "models/model.h"
 
 namespace FEM
@@ -67,6 +68,8 @@ typedef Array< boost::tuple<int,             // 0: tag
                             Str_t,           // 6: props
                             Fun_t,           // 7: source function pointer
                             bool> > EAtts_T; // 8: active ?
+
+typedef std::map< String, double > StrDbl_t;
 
 /* FEM Data. */
 class Data
@@ -158,6 +161,11 @@ public:
 	void SetOutNodes (Array<size_t> const & Nodes, Str_t FileKey); ///< Set elements to output
 	void OutElems    (bool OnlyCaption=false) const;               ///< Output elements state
 	void OutNodes    (bool OnlyCaption=false) const;               ///< Output elements state
+
+	// Methods
+	void PrintResults () const;
+	bool CheckError   (Table const & NodSol, Table const & EleSol, StrDbl_t const & NodTol, StrDbl_t const & EleTol);
+
 
 #ifdef USE_BOOST_PYTHON
 // {
@@ -649,6 +657,124 @@ inline void Data::OutElems(bool OnlyCaption) const
 inline void Data::OutNodes(bool OnlyCaption) const
 {
 	for (size_t i=0; i<_nout.Size(); ++i) Nod(_nout[i])->OutState (_time, (*_nfiles[i]), OnlyCaption);
+}
+
+inline void Data::PrintResults() const
+{
+	// nodes: find keys
+	Array<String> ukeys, fkeys;
+	for (size_t i=0; i<NNodes(); ++i)
+	{
+		for (size_t j=0; j<Nod(i)->nDOF(); ++j)
+		{
+			String ukey = Nod(i)->DOFVar(j).EssentialBryName;
+			String fkey = Nod(i)->DOFVar(j).NaturalBryName;
+			if (ukeys.Find(ukey)<0) ukeys.Push(ukey);
+			if (fkeys.Find(fkey)<0) fkeys.Push(fkey);
+		}
+	}
+
+	// nodes: header
+	std::cout << "\n";
+	std::cout << "[1;37m--- Results ------------------------------------------------------------------\n\n";
+	std::cout << Util::_4<<"Node";
+	for (size_t i=0; i<ukeys.Size(); ++i) std::cout << Util::_8s<<ukeys[i];
+	for (size_t i=0; i<fkeys.Size(); ++i) std::cout << Util::_8s<<fkeys[i];
+	std::cout << "\n";
+
+	// nodes: results
+	for (size_t i=0; i<NNodes(); ++i)
+	{
+		std::cout << Util::_4<<i;
+		for (size_t j=0; j<ukeys.Size(); ++j)
+		{
+			if (Nod(i)->HasVar(ukeys[j].CStr())) std::cout << Util::_8s<< Nod(i)->Val(ukeys[j].CStr());
+			else                                 std::cout << Util::_8s<< "---";
+		}
+		for (size_t j=0; j<fkeys.Size(); ++j)
+		{
+			if (Nod(i)->HasVar(fkeys[j].CStr())) std::cout << Util::_8s<< Nod(i)->Val(fkeys[j].CStr());
+			else                                 std::cout << Util::_8s<< "---";
+		}
+		std::cout << "\n";
+	}
+
+	// elems: find keys
+	Array<String> keys;
+	for (size_t i=0; i<NElems(); ++i)
+	{
+		Array<String> ks;
+		Ele(i)->GetKeys(ks);
+		for (size_t j=0; j<ks.Size(); ++j)
+			if (keys.Find(ks[j])<0) keys.Push(ks[j]);
+	}
+
+	// elems: header
+	std::cout << "\n";
+	std::cout << Util::_4<<"Elem";
+	for (size_t i=0; i<keys.Size(); ++i) std::cout << Util::_8s<<keys[i];
+	std::cout << "\n";
+
+	// elems: results
+	for (size_t i=0; i<NElems(); ++i)
+	{
+		std::cout << Util::_4<<i;
+		for (size_t j=0; j<keys.Size(); ++j)
+		{
+			if (Ele(i)->HasKey(keys[j].CStr())) std::cout << Util::_8s<< Ele(i)->Val(keys[j].CStr());
+			else                                std::cout << Util::_8s<< "---";
+		}
+		std::cout << "\n";
+	}
+}
+
+inline bool Data::CheckError(Table const & NodSol, Table const & EleSol, StrDbl_t const & NodTol, StrDbl_t const & EleTol)
+{
+	// header
+	std::cout << "\n";
+	std::cout << "[1;37m--- Error Summary ------------------------------------------------------------\n";
+	std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm[0m" << endl;
+
+	// results
+	bool error = false;
+
+	// nodes
+	for (size_t i=0; i<NodSol.Keys.Size(); ++i)
+	{
+		// calc error
+		String key = NodSol.Keys[i];
+		Array<double> err(NodSol.NRows);
+		for (size_t j=0; j<NNodes(); ++j) err[j] = fabs(Nod(j)->Val(key.CStr()) - NodSol(key.CStr(),j));
+
+		// summary
+		double max_err = err[err.Max()];
+		StrDbl_t::const_iterator p = NodTol.find(key);
+		double tol = p->second;
+		std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+		std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+		error = (max_err>tol);
+	}
+
+	// elements
+	for (size_t i=0; i<EleSol.Keys.Size(); ++i)
+	{
+		// calc error
+		String key = EleSol.Keys[i];
+		Array<double> err(EleSol.NRows);
+		for (size_t j=0; j<NElems(); ++j) err[j] = fabs(Ele(j)->Val(key.CStr()) - EleSol(key.CStr(),j));
+
+		// summary
+		double max_err = err[err.Max()];
+		StrDbl_t::const_iterator p = EleTol.find(key);
+		double tol = p->second;
+		std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+		std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+		error = (max_err>tol);
+	}
+
+	std::cout << std::endl;
+
+	return error;
 }
 
 /** Outputs a data structure. */
