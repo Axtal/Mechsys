@@ -16,28 +16,21 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SET(TESTS
+SET(PROGS_A # tests requiring FLTK
+  tunnel01)
+
+SET(PROGS_B # tests requiring CGAL
+  alphashape01)
+
+SET(PROGS_C # tests requiring GSL
+  quadrature)
+
+SET(PROGS_D # FEM tests 
  confinedflow
  linalg01
  mesh01
  serialize
  tree01)
-
-SET(PROGS_A # Not tests requiring FLTK
-  tunnel01)
-
-SET(PROGS_B # Not tests requiring CGAL
-  alphashape01)
-
-
-IF(BLITZ_FOUND AND LINALG_FOUND AND Boost_FOUND AND IGRAPH_FOUND)
-	FOREACH(var ${TESTS})
-		ADD_EXECUTABLE        (${var} "${var}.cpp")
-		ADD_TEST              (${var} ${var})
-		TARGET_LINK_LIBRARIES (${var} ${LIBS})
-		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
-	ENDFOREACH(var)
-ENDIF(BLITZ_FOUND AND LINALG_FOUND AND Boost_FOUND AND IGRAPH_FOUND)
 
 
 IF(BLITZ_FOUND AND LINALG_FOUND AND Boost_FOUND AND FLTK_FOUND)
@@ -56,3 +49,22 @@ IF(BLITZ_FOUND AND LINALG_FOUND AND CGAL_FOUND AND Boost_FOUND)
 		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 	ENDFOREACH(var)
 ENDIF(BLITZ_FOUND AND LINALG_FOUND AND CGAL_FOUND AND Boost_FOUND)
+
+
+IF(GSL_FOUND)
+	FOREACH(var ${PROGS_C})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
+	ENDFOREACH(var)
+ENDIF(GSL_FOUND)
+
+
+IF(FEM_FOUND)
+	FOREACH(var ${PROGS_D})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		ADD_TEST              (${var} ${var})
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
+	ENDFOREACH(var)
+ENDIF(FEM_FOUND)

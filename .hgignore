@@ -52,6 +52,7 @@ tst/serialize
 tst/tree01
 tst/tunnel01
 tst/confinedflow
+tst/quadrature
 
 tlbm/basic
 tlbm/cap_grain
