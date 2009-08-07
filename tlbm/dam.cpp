@@ -88,6 +88,4 @@ int main(int argc, char **argv) try
 	m.Solve(/*tIni*/0.0, /*tFin*/1500.0, /*dtOut*/10.);
 
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

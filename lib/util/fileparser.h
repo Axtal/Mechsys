@@ -197,12 +197,12 @@ inline void FileParser::_open(String const & Filename)
 	// Open file
 	_file.open(Filename.CStr(), std::ios::in);
 	if (_file.fail())
-		throw new Warning(_("FileParser::Constructor: Could not open file < %s >"), Filename.c_str());
+		throw new Fatal(_("FileParser::Constructor: Could not open file < %s >"), Filename.c_str());
 	
 	// Read current (first) line
 	std::string buf;
 	if (!std::getline(_file, buf))
-		throw new Warning(_("FileParser::Constructor: Could not read first line of file < %s >"), Filename.c_str());
+		throw new Fatal(_("FileParser::Constructor: Could not read first line of file < %s >"), Filename.c_str());
 	_str_current_line = buf;
 	_current_line_num = 1;
 }
@@ -249,7 +249,7 @@ inline void FileParser::FindKeyAndFillArray(String const & StrKey, Array<Type> &
 		else
 		{
 			try { Advance(); }
-			catch (Exception * e)
+			catch (Fatal * e)
 			{
 				delete e;
 				throw new Fatal(_("FileParser::FindKeyAndFillArray: Could not find StrKey = < %s > inside file < %s >"), StrKey.c_str(), _filename.c_str());

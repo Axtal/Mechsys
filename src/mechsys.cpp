@@ -193,5 +193,5 @@ BOOST_PYTHON_MODULE (mechsys)
 
 	// ---------------------------------------------------------------------- Exceptions
 	
-	register_exception_translator<Exception *>(&PyExceptTranslator);
+	register_exception_translator<Fatal *>(&PyExceptTranslator);
 }

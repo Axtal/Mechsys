@@ -22,7 +22,7 @@
 
 // MechSys
 #include "util/array.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "mesh/unstructured.h"
 
 using std::cout;
@@ -43,6 +43,4 @@ int main(int argc, char **argv) try
 
 	return 0;
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

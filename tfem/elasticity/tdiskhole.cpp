@@ -27,7 +27,7 @@
 #include "models/equilibs/linelastic.h"
 #include "fem/solver.h"
 #include "fem/output.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "linalg/matrix.h"
 #include "linalg/laexpr.h"
 #include "mesh/structured.h"
@@ -272,6 +272,4 @@ int main(int argc, char **argv) try
 	if (max_err_sR>tol_sR || max_err_sT>tol_sT || max_err_sRT>tol_sRT || max_err_uR>tol_uR || max_err_uT>tol_uT) return 1;
 	else return 0;
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

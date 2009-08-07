@@ -28,7 +28,7 @@
 
 // MechSys
 #include "mechsys.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 
 /* Computation of the integral,
 
@@ -118,6 +118,4 @@ int main(int argc, char **argv) try
 	gsl_rng_free (r);
 	return 0;
 }
-catch (Exception * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout<<"Fatal: "<<m<<std::endl;  exit(1); }
-catch (...) { std::cout << "Some exception (...) ocurred\n"; } 
+MECHSYS_CATCH

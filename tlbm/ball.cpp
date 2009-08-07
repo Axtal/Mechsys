@@ -63,7 +63,7 @@ void DrawBall(LBM::Lattice & l, double & obsX, double & obsY, double radius, dou
 int main(int argc, char **argv) try
 {
 	// Analysis constants
-	double tau    = 1.0;
+	//double tau    = 1.0;
 	int    nx     = 50;
 	int    ny     = 20;
 	double v0     = 0.1;
@@ -160,6 +160,4 @@ int main(int argc, char **argv) try
 		}
 	}
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

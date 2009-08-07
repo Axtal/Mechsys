@@ -49,7 +49,7 @@
 #include "fem/elems/quad8.h"
 #include "fem/biotelem.h"
 #include "models/equilibs/biotelastic.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
 
@@ -268,6 +268,4 @@ int main(int argc, char **argv) try
 	else return 0;
 
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

@@ -1,9 +1,33 @@
+/************************************************************************
+ * MechSys - Open Library for Mechanical Systems                        *
+ * Copyright (C) 2005 Dorival M. Pedroso, Raúl D. D. Farfan             *
+ *                                                                      *
+ * This program is free software: you can redistribute it and/or modify *
+ * it under the terms of the GNU General Public License as published by *
+ * the Free Software Foundation, either version 3 of the License, or    *
+ * any later version.                                                   *
+ *                                                                      *
+ * This program is distributed in the hope that it will be useful,      *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of       *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         *
+ * GNU General Public License for more details.                         *
+ *                                                                      *
+ * You should have received a copy of the GNU General Public License    *
+ * along with this program. If not, see <http://www.gnu.org/licenses/>  *
+ ************************************************************************/
+
 // Std Lib
 #include <iostream>
 
 // MechSys
-#include "mechsys.h"
-#include "util/exception.h"
+#include "fem/data.h"
+#include "fem/solver.h"
+#include "fem/elems/quad4.h"
+#include "fem/diffusionelem.h"
+#include "models/diffusions/lindiffusion.h"
+#include "util/fatal.h"
+#include "util/numstreams.h"
+#include "mesh/structured.h"
 
 #define T boost::make_tuple
 
@@ -72,6 +96,4 @@ int main(int argc, char **argv) try
 	sol.SolveWithInfo (1, 1, 1, "simulation stage\n");
 
 }
-catch (Exception * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout<<"Fatal: "<<m<<std::endl;  exit(1); }
-catch (...) { std::cout << "Some exception (...) ocurred\n"; } 
+MECHSYS_CATCH

@@ -310,7 +310,7 @@ inline void Lattice::Stream()
 	for (size_t i=0; i<_size; ++i)
 	{
 		LBM::Cell * c = _cells[i];
-		double rho = c->Density();
+		//double rho = c->Density();
 		for (size_t k=0; k<_nneigh; ++k)
 		{
 			LBM::Cell * nb = _cells[c->Neigh(k)];
@@ -410,7 +410,7 @@ inline void Lattice::Collide()
 			double rho = c->Density  ();
 			//if (rho<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->rho<0.0 detected",i%_nx,i/_nx);
 			//std::cout<< F <<std::endl;
-			double sfeq=0,sfeqn=0;
+			//double sfeq=0,sfeqn=0;
 			taup=_tau;
 			for (size_t k=0; k<_nneigh; ++k) {
 				double feqn = c->EqFun (k,vn,rho,_Cs);
@@ -419,7 +419,7 @@ inline void Lattice::Collide()
 			om = _dt/taup;
 			for (size_t k=0; k<_nneigh; ++k)
 			{
-				double feq = c->EqFun (k,v,rho,_Cs);
+				//double feq = c->EqFun (k,v,rho,_Cs);
 				double feqn = c->EqFun (k,vn,rho,_Cs);
 				//sfeq+=feq;
 				//sfeqn+=feqn;

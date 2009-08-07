@@ -28,7 +28,7 @@
 #include "fem/elems/spring.h"
 #include "models/equilibs/beamelastic.h"
 #include "models/equilibs/springelastic.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "linalg/matrix.h"
 #include "mesh/structured.h"
 
@@ -124,6 +124,4 @@ int main(int argc, char **argv) try
 	if (max_err_u>tol_u || max_err_s>tol_s) return 1;
 	else return 0;
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

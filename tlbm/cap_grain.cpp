@@ -59,8 +59,8 @@ void DrawCircle(LBM::Lattice & l, double & obsX, double & obsY, double radius, d
 			for (size_t k=0; k<l.NNeigh(); ++k)
 			{
 				if (l.GetCell(c->Neigh(k))->IsSolid()) continue;
-				size_t op = c->Opp(k);
-				double alpha = 6.0*c->W(op)*rho;
+				//size_t op = c->Opp(k);
+				//double alpha = 6.0*c->W(op)*rho;
 				//fx += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,0);
 				//fy += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,1);
 
@@ -104,7 +104,7 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-		double rho0  = 1.0;
+		//double rho0  = 1.0;
 		size_t radio = 24;
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		//if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-20,2.0) <= pow(radio,2.0)) // circle equation
@@ -203,6 +203,4 @@ int main(int argc, char **argv) try
 	}
 
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

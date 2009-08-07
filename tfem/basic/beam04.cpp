@@ -28,7 +28,7 @@
 #include "fem/solver.h"
 #include "fem/elems/beam.h"
 #include "models/equilibs/beamelastic.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "mesh/mesh.h"
 
 using std::cout;
@@ -157,6 +157,4 @@ int main(int argc, char **argv) try
 	if (max_err_u>tol_u || max_err_f>tol_f) return 1;
 	else return 0;
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

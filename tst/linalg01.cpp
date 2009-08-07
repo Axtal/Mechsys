@@ -23,7 +23,7 @@
 #include "linalg/lawrap.h"
 #include "linalg/laexpr.h"
 #include "linalg/matrix.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/numstreams.h"
 
 using std::cout;
@@ -50,7 +50,7 @@ int main(int argc, char **argv) try
 	        133883/2.0 ,  -74877.0, -12363.0,  -67623.0,   77834.0;
 	invA = invA / 83701.0;
 
-	double tol   = 1.0e-13;
+	double tol   = 1.0e-12;
 	double error = 0.0;
 	for (size_t i=0; i<5; ++i)
 	for (size_t j=0; j<5; ++j)
@@ -61,6 +61,4 @@ int main(int argc, char **argv) try
 	if (error>tol) return 1;
 	else return 0;
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

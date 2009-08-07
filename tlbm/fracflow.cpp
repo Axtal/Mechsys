@@ -40,7 +40,7 @@ double distline(double x1,double y1,double x2,double y2,double x,double y) {
 int main(int argc, char **argv) try
 {	
 
-	double width=3.;
+	//double width=3.;
 	// Allocate lattice
 	LBM::Lattice l(/*FileKey*/"fracflow", /*Is3D*/false,1, /*Nx*/200, /*Ny*/100,1,1,1);
 	
@@ -104,6 +104,4 @@ int main(int argc, char **argv) try
 	l.Solve(/*tIni*/0.0, /*tFin*/20000.0, /*dtOut*/20.0);
 	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH
