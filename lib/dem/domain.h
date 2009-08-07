@@ -75,7 +75,7 @@ inline void Domain::GenerateSpheres(size_t n,double Xmin,double Xmax,double Ymin
 {
 	double Lx = Xmax-Xmin,Ly = Ymax-Ymin,Lz = Zmax-Zmin;
 	double Rmax = pow(Lx*Ly*Lz/(8*n),1./3.);
-	size_t nx = Lx/(2*Rmax),ny = Ly/(2*Rmax),nz = Lz/(2*Rmax);
+	size_t nx = Lx/(2*Rmax),ny = Ly/(2*Rmax);
 	Array <Vec3_t *> Vertex;
 	Array <Array <int> > Empty;
 	Vertex.Resize(1);
@@ -135,7 +135,10 @@ inline void Domain::AddTetra(const Vec3_t & r,double R,double l,double rho0)
 	F[3].Push(2);
 	F[3].Push(3);
 	double angle = (1.*rand())/RAND_MAX*2*M_PI;
-	Vec3_t axis = ((1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX);
+	Vec3_t axis;
+	axis(0) = (1.*rand())/RAND_MAX;
+	axis(1) = (1.*rand())/RAND_MAX;
+	axis(2) = (1.*rand())/RAND_MAX;
 	Quaternion_t q;
 	NormalizeRotation(angle,axis,q);
 
@@ -143,7 +146,7 @@ inline void Domain::AddTetra(const Vec3_t & r,double R,double l,double rho0)
 	{
 		Vec3_t t;
 		Rotation(*V[i],q,t);
-		*V[i]=t;
+		*V[i]=t+r;
 	}
 	Vec3_t Zero(0,0,0);
 	_Particles.Push(new Particle(V,E,F,R,rho0,Zero,Zero));

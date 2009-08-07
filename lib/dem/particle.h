@@ -141,8 +141,8 @@ inline void Particle::CalcMassProperties()
 	else 
 	{
 		_V = 1;
-		_I = (1,1,1);
-		_r = (0,0,0);
+		_I = 1,1,1;
+		_r = 0,0,0;
 		_Q = 1,0,0,0;
 	}
  /* :TODO:08/05/2009 04:32:49 PM:: The rest of the mass properties with Monte Carlo integration */
