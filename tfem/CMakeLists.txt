@@ -19,5 +19,5 @@
 IF(MAKE_TFEM_NEW_ONLY)
 	SUBDIRS (new_tests)
 ELSE(MAKE_TFEM_NEW_ONLY)
-	SUBDIRS (basic coupled diffusion elasticity geotech new_tests)
+	SUBDIRS (coupled diffusion elasticity geotech new_tests)
 ENDIF(MAKE_TFEM_NEW_ONLY)

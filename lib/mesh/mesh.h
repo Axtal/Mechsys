@@ -24,6 +24,7 @@
 #include <iostream>
 #include <fstream>
 #include <cfloat>   // for DBL_EPSILON
+#include <cstdarg>  // for va_list, va_start, va_end
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
@@ -146,7 +147,7 @@ public:
 	virtual void SetNElems   (size_t NumElems);                                     ///< Set number of elements
 	virtual void SetVert     (int i, bool IsOnBry, double X, double Y, double Z=0, int Tag=0); ///< Set vertex
 	virtual void SetElem     (int i, int Tag, bool IsOnBry, int VTKCellType);       ///< Set element
-	virtual void SetElemCon  (int i, int j, size_t iVert);                          ///< Set element connectivity
+	virtual void SetElemCon  (int i, size_t NVerts, ...);                           ///< Set element connectivity
 	virtual void SetElemETag (int i, int j, int Tag);                               ///< Set element's edge tag
 	virtual void SetElemFTag (int i, int j, int Tag);                               ///< Set element's face tag
 	virtual void Erase       ();                                                    ///< Erase current mesh (deallocate memory)
@@ -483,9 +484,16 @@ inline void Generic::SetElem(int i, int Tag, bool IsOnBry, int VTKCellType)
 	if (IsOnBry) _elems_bry.Push (_elems[i]);
 }
 
-inline void Generic::SetElemCon(int i, int j, size_t iVert)
+inline void Generic::SetElemCon(int i, size_t NVerts, ...)
 {
-	_elems[i]->V[j] = _verts[iVert];
+	va_list   arg_list;
+	va_start (arg_list, NVerts);
+	for (size_t j=0; j<NVerts; ++j)
+	{
+		size_t ivert = va_arg(arg_list,size_t);
+		_elems[i]->V[j] = _verts[ivert];
+	}
+	va_end (arg_list);
 }
 
 inline void Generic::SetElemETag(int i, int j, int Tag)

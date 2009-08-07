@@ -372,20 +372,4 @@ inline void FileParser::ReadTable(Table & T)
 	
 }
 
-
-std::ostream & operator<< (std::ostream & os, FileParser::Table const & T)
-{
-	FileParser::Table::const_iterator it = T.begin();
-	while (it!=T.end())
-	{
-		os << "Column " << it->first << " has " << it->second.Size() << " values:\n";
-		for (size_t i=0; i<it->second.Size(); ++i)
-			os << it->second[i] << " ";
-		os << "\n\n";
-		it++;
-	}
-	return os;
-}
-
-
 #endif //MECHSYS_FILEPARSER

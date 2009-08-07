@@ -16,18 +16,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/*  Bhatti (2005): Example 1.4, p25
- *  ===============================
- */
+/*  Bhatti (2005): Example 1.4, p25  *
+ *  ===============================  */
 
 // STL
 #include <iostream>
-
-// boost::python
-#include <boost/python.hpp>
-namespace BPy = boost::python;
-
-#define USE_BOOST_PYTHON
 
 // MechSys
 #include "fem/data.h"
@@ -59,11 +52,11 @@ int main(int argc, char **argv) try
 	mesh.SetElem    (2, -2, true, VTK_LINE);
 	mesh.SetElem    (3, -2, true, VTK_LINE);
 	mesh.SetElem    (4, -3, true, VTK_LINE);
-	mesh.SetElemCon (0, 0, 0);  mesh.SetElemCon(0, 1, 1);
-	mesh.SetElemCon (1, 0, 1);  mesh.SetElemCon(1, 1, 3);
-	mesh.SetElemCon (2, 0, 0);  mesh.SetElemCon(2, 1, 2);
-	mesh.SetElemCon (3, 0, 2);  mesh.SetElemCon(3, 1, 3);
-	mesh.SetElemCon (4, 0, 1);  mesh.SetElemCon(4, 1, 2);
+	mesh.SetElemCon (0, /*NVerts*/2, 0, 1);
+	mesh.SetElemCon (1, /*NVerts*/2, 1, 3);
+	mesh.SetElemCon (2, /*NVerts*/2, 0, 2);
+	mesh.SetElemCon (3, /*NVerts*/2, 2, 3);
+	mesh.SetElemCon (4, /*NVerts*/2, 1, 2);
 
 	////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 	

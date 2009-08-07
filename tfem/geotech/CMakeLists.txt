@@ -21,8 +21,7 @@ SET(TESTS
   embank01
   embank02
   excav01
-  excav02
-  triaxial)
+  excav02)
 
 IF(FEM_FOUND)
 	FOREACH(var ${TESTS})

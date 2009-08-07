@@ -676,11 +676,11 @@ inline void Data::PrintResults() const
 
 	// nodes: header
 	std::cout << "\n";
-	std::cout << "[1;37m--- Results ------------------------------------------------------------------\n\n";
+	std::cout << "[1;37m--- Results ------------------------------------------------------------------\n";
 	std::cout << Util::_4<<"Node";
 	for (size_t i=0; i<ukeys.Size(); ++i) std::cout << Util::_8s<<ukeys[i];
 	for (size_t i=0; i<fkeys.Size(); ++i) std::cout << Util::_8s<<fkeys[i];
-	std::cout << "\n";
+	std::cout << "[0m\n";
 
 	// nodes: results
 	for (size_t i=0; i<NNodes(); ++i)
@@ -710,10 +710,10 @@ inline void Data::PrintResults() const
 	}
 
 	// elems: header
-	std::cout << "\n";
+	std::cout << "\n[1;37m";
 	std::cout << Util::_4<<"Elem";
 	for (size_t i=0; i<keys.Size(); ++i) std::cout << Util::_8s<<keys[i];
-	std::cout << "\n";
+	std::cout << "[0m\n";
 
 	// elems: results
 	for (size_t i=0; i<NElems(); ++i)
