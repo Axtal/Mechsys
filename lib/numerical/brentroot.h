@@ -25,7 +25,7 @@
 #include <cfloat> // for DBL_EPSILON
 
 // MechSys
-#include "util/exception.h"
+#include "util/fatal.h"
 
 namespace Numerical
 {

@@ -24,7 +24,7 @@
 #include <algorithm> // for std::find, std::min_element, and std::max_element
 
 // MechSys
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/numstreams.h"
 
 template<typename Value_T>

@@ -30,7 +30,7 @@
 #include "util/array.h"
 #include "util/string.h"
 #include "util/lineparser.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 
 class FileParser
 {

@@ -23,20 +23,24 @@
 // STL
 #include <iostream>
 
+// boost::python
+#include <boost/python.hpp>
+namespace BPy = boost::python;
+
+#define USE_BOOST_PYTHON
+
 // MechSys
 #include "fem/data.h"
 #include "fem/solver.h"
 #include "fem/elems/rod.h"
 #include "models/equilibs/rodelastic.h"
-#include "util/exception.h"
+#include "util/fatal.h"
+#include "util/table.h"
 #include "mesh/mesh.h"
 
 using std::cout;
 using std::endl;
 using LinAlg::Matrix;
-using Util::_4;
-using Util::_6;
-using Util::_8s;
 
 #define T boost::make_tuple
 
@@ -91,6 +95,7 @@ int main(int argc, char **argv) try
 
 	//////////////////////////////////////////////////////////////////////////////////////// Output ////
 
+	/*
 	// Output: Nodes
 	cout << _6<<"Node #" << _8s<<"ux" << _8s<<"uy" << _8s<<"fx"<< _8s<<"fy" << endl;
 	for (size_t i=0; i<dat.NNodes(); ++i)
@@ -108,8 +113,36 @@ int main(int argc, char **argv) try
 		cout << endl;
 	}
 	cout << endl;
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////////// Check /////
+
+	/*
+	Py_Initialize();
+	BPy::object main_module((BPy::handle<>(BPy::borrowed(PyImport_AddModule("__main__")))));
+	BPy::object main_namespace = main_module.attr("__dict__");
+	BPy::handle<> ignored((PyRun_String("print \"Hello, World\"", Py_file_input, main_namespace.ptr(), main_namespace.ptr())));
+	*/
+
+	Table nod_sol("                  ux                      uy                     Rux                     Ruy", /*NRows*/4,
+	              0.000000000000000e+00,  0.000000000000000e+00,  5.492667465378455e+04,  1.599266746537845e+05,
+	              5.389536380057676e-01, -9.530613006371175e-01,  0.000000000000000e+00,  0.000000000000000e+00,
+	              2.647036149579491e-01, -2.647036149579490e-01,  0.000000000000000e+00,  0.000000000000000e+00,
+	              0.000000000000000e+00,  0.000000000000000e+00, -5.492667465378455e+04, -9.926674653784567e+03);
+
+	Table ele_sol("                   ea                      sa                      Fa", /*NRows*/5,
+	              -1.742954548428455e-04, -3.485909096856910e+01, -1.394363638742764e+05,
+	              -3.149970910789726e-05, -6.299941821579453e+00, -2.519976728631781e+04,
+	              -5.294072299158981e-05, -1.058814459831796e+01, -3.176443379495388e+04,
+	              -5.294072299158982e-05, -1.058814459831796e+01, -3.176443379495389e+04,
+	               3.208692362423290e-04,  2.246084653696303e+01,  4.492169307392606e+04);
+
+	/*
+	Table nod_sol;
+	nod_sol["ux"].Resize(dat.NNodes());
+	nod_sol["ux"] = 0.000000000000000e+00, 5.389536380057676e-01, 2.647036149579491e-01, 0.000000000000000e+00;
+	cout << nod_sol["ux"].Size() << endl;
+	*/
 
 	/*
 	// Displacements
@@ -157,6 +190,4 @@ int main(int argc, char **argv) try
 	*/
 	return 1;
 }
-catch (Exception  * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }
-catch (char const * m) { std::cout << "Fatal: "<<m<<std::endl;  exit(1); }
-catch (...)            { std::cout << "Some exception (...) ocurred\n"; }
+MECHSYS_CATCH

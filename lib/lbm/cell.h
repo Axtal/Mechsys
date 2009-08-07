@@ -26,7 +26,7 @@
 
 // MechSys
 #include "util/array.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/numstreams.h"
 
 typedef blitz::TinyVector<double,3> Vec3_t;

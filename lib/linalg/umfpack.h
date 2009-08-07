@@ -29,7 +29,7 @@ extern "C" {
 #include "linalg/matrix.h"
 #include "linalg/vector.h"
 #include "linalg/sparse_matrix.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/util.h"
 
 #ifdef DO_DEBUG

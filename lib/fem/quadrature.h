@@ -22,7 +22,7 @@
 
 // MechSys
 #include "util/array.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "linalg/matrix.h"
 #include "linalg/laexpr.h"
 
@@ -792,7 +792,7 @@ inline void SetExtrapMatrix (size_t NDim, Array<FEM::IntegPoint> const & IPs, Li
 	// Calculate smoothing matrix
 	LinAlg::Matrix<double> S; // smoothing matrix
 	try { S = inv(P)*Q; }
-	catch (Exception *) { throw new Fatal("FEM::SetExtrapMatrix: Inverse of P can not be computed (Singular matrix?)"); }
+	catch (Fatal *) { throw new Fatal("FEM::SetExtrapMatrix: Inverse of P can not be computed (Singular matrix?)"); }
 
 	// Calculate extrapolation matrix
 	ExtrapMat = EvalMat * S;

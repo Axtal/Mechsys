@@ -29,7 +29,7 @@
 #include "tensors/tensors.h"
 #include "tensors/operators.h"
 #include "tensors/jacobirot.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/numstreams.h"
 #include "util/util.h"
 

@@ -35,7 +35,7 @@
 
 // MechSys
 #include "util/array.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/lineparser.h"
 #include "linalg/vector.h"
 #include "linalg/matrix.h"

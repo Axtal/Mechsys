@@ -65,7 +65,7 @@
 #include "linalg/vector.h"
 #include "linalg/matrix.h"
 #include "linalg/lawrap.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "linalg/sparse_triplet.h"
 #include "linalg/sparse_matrix.h"
 #include "linalg/sparse_crmatrix.h"
@@ -1084,7 +1084,7 @@ inline void Solver::_ame_solve_for_an_increment(double dTime)
 		double normF = _norm_natural_vector();
 
 		// Calculate local error
-		if (normF<=_ZTOL) throw new Message(_("AutoME::_do_solve_for_an_increment: k=%d: normF=%e cannot be equal to ZTOL (%e)"),k,normF,_ZTOL);
+		if (normF<=_ZTOL) throw new Fatal(_("AutoME::_do_solve_for_an_increment: k=%d: normF=%e cannot be equal to ZTOL (%e)"),k,normF,_ZTOL);
 		LinAlg::AddScaled (0.5,_dU_2, -0.5,_dU_1, _Err_U); // Error on U (%)
 		LinAlg::AddScaled (0.5,_dF_2, -0.5,_dF_1, _Err_F); // Error on F
 		double Rerr_U = LinAlg::Norm(_Err_U)/(1.0+normU);  // (R)elative error on U

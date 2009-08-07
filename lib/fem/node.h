@@ -50,7 +50,7 @@
 // MechSys
 #include "util/array.h"
 #include "util/string.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/numstreams.h"
 #include "fem/node.h"
 

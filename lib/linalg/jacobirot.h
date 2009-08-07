@@ -36,7 +36,7 @@
 // MechSys
 #include "linalg/matrix.h"
 #include "linalg/vector.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 
 namespace LinAlg
 {

@@ -25,7 +25,7 @@
 #include <cmath>
 
 // MechSys
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/numstreams.h"
 
 namespace LinAlg

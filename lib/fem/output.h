@@ -37,7 +37,7 @@
 #include "fem/data.h"
 #include "util/array.h"
 #include "util/numstreams.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "mesh/mesh.h"
 #include "mesh/structured.h"
 
@@ -345,7 +345,7 @@ inline void Output::_vtu_write_vals_at_elems(std::ostringstream & oss) const
 		for (size_t i=0; i<_ne; ++i)
 		{
 			double val = 0.0;
-			try { val = _aes[i]->Val(it->first.CStr()); } catch (Exception * e) { delete e; }
+			try { val = _aes[i]->Val(it->first.CStr()); } catch (Fatal * e) { delete e; }
 			oss << (k==0?"  ":" ") << val;
 			k++;
 			OUT_NEWLINE (i,k,_ne,_nfmax,oss);

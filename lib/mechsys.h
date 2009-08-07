@@ -33,7 +33,7 @@
 #include "fem/solver.h"
 #include "fem/output.h"
 #include "models/model.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 
 // MechSys -- fem -- Elements
 #include "fem/elems/lin2.h"

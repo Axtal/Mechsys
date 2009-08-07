@@ -24,7 +24,7 @@
 #include "fem/equilibelem.h"
 #include "util/string.h"
 #include "util/util.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/numstreams.h"
 #include "linalg/laexpr.h"
 

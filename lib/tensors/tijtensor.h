@@ -26,7 +26,7 @@
 // MechSys
 #include "tensors/tensors.h"
 #include "tensors/functions.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 
 using Tensors::Tensor2;
 using Tensors::CharInvs;

@@ -23,7 +23,7 @@
 // MechSys
 #include "util/array.h"
 #include "util/util.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 
 class ElasticCtes
 {

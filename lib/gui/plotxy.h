@@ -33,7 +33,7 @@
 #include <FL/Enumerations.H> // for Fl_Color
 
 // Local
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/array.h"
 
 /* Plot XY. */

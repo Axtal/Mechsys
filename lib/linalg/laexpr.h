@@ -31,7 +31,7 @@
 #include "linalg/vector.h"
 #include "linalg/lawrap.h"
 #include "tensors/tensors.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 
 namespace LinAlg
 {

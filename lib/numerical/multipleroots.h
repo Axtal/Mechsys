@@ -27,7 +27,7 @@
 // MechSys
 #include "numerical/brentroot.h"
 #include "numerical/quadrature.h"
-#include "util/exception.h"
+#include "util/fatal.h"
 #include "util/array.h"
 #include "util/util.h"
 
