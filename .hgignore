@@ -6,8 +6,12 @@ tfem/new_tests/bhatti_basic/ex16
 tfem/new_tests/bhatti_basic/ex52
 tfem/new_tests/bhatti_basic/ex53
 
-tdem/test2d_01
-tdem/test3d_01
+tdem/test_01
+tdem/test_02
+tdem/test_03
+tdem/test_04
+tdem/test_05
+tdem/test_06
 
 tfem/basic/beam01
 tfem/basic/beam02
