@@ -30,8 +30,12 @@
 #include <blitz/tinyvec-et.h>
 #include <blitz/tinymat.h>
 
+// GSL
+#include <gsl/gsl_linalg.h>
+
 // MechSys
 #include "dem/face.h"
+#include "dem/featuredistance.h"
 #include "util/array.h"
 
 class Particle
@@ -54,6 +58,7 @@ public:
 	void Start(double dt);              ///< Initialize the particle for the Verlet algorithm
 	void DynamicRotation(double dt);    ///< Apply rotation on the particle once the total torque is found
 	void DynamicTranslation(double dt); ///< Apply translation once the total force is found
+	bool IsInside(Vec3_t & v);          ///< Enquire if the point v is inside the particle.
 
 	// Access Methods
         size_t NumberVertices ( )         { return _vertex.Size();} ///< Return the number of vertices.
@@ -147,6 +152,68 @@ inline void Particle::CalcMassProperties()
 	}
  /* :TODO:08/05/2009 04:32:49 PM:: The rest of the mass properties with Monte Carlo integration */
 
+}
+
+inline bool Particle::IsInside (Vec3_t & v)
+{
+	bool inside = false,insideface = false;
+	size_t nv = NumberVertices(),ne = NumberEdges(),nf = NumberFaces();
+	for (size_t i = 0; i < nv; i++)
+	{
+		if (Distance(v,*Vertex(i)) < _R) {
+			inside = true;
+			return inside;
+		}
+	}
+
+	for (size_t i = 0; i < ne; i++)
+	{
+		if (Distance(v,*Edges(i)) < _R) {
+			inside = true;
+			return inside;
+		}
+	}
+	int numberofintercepts = 0;
+	for (size_t i = 0; i < nf; i++)
+	{
+		if (Distance(v,*Faces(i)) < _R) {
+			inside = true;
+			return inside;
+		}
+		gsl_matrix *m = gsl_matrix_alloc(3,3);
+		gsl_vector *x = gsl_vector_alloc(3);
+		gsl_vector *b = gsl_vector_alloc(3);
+		Vec3_t D(0,0,1),nor;
+		for (size_t j = 0;j < 3;j++)
+		{
+			gsl_matrix_set(m,j,0,Faces(i)->Edges(0)->dr()(j));
+			gsl_matrix_set(m,j,1,Faces(i)->Edges(1)->dr()(j));
+			gsl_matrix_set(m,j,2,-D(j));
+			gsl_vector_set(b,j,v(j)-Faces(i)->Edges(0)->ri()(j));
+		}
+		int s;
+		gsl_permutation * p = gsl_permutation_alloc (3);
+     		gsl_linalg_LU_decomp (m, p, &s);
+     		gsl_linalg_LU_solve (m, p, b, x);
+		D = v + gsl_vector_get(x,2)*D;
+		nor = cross(Faces(i)->Edges(0)->dr(),Faces(i)->Edges(1)->dr());
+		insideface = true;
+		for(size_t j=0;j < Faces(i)->NumberofSides();j++) 
+		{
+			Vec3_t tmp = D-Faces(i)->Edges(j)->ri();
+			if (dot(cross(Faces(i)->Edges(j)->dr(),tmp),nor)<0) insideface = false;
+		}
+		if ((insideface)&&(gsl_vector_get(x,2)>0)) 
+		{
+			numberofintercepts++;
+		}
+		gsl_permutation_free(p);
+		gsl_matrix_free(m);
+		gsl_vector_free(x);
+		gsl_vector_free(b);
+	}
+	if (numberofintercepts%2!=0) inside = true;
+	return inside;
 }
 
 

@@ -29,7 +29,7 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "dem/particle.h"
+#include "dem/interacton.h"
 #include "util/array.h"
 
 class Domain
@@ -140,7 +140,10 @@ inline void Domain::AddTetra(const Vec3_t & r,double R,double l,double rho0)
 	axis(1) = (1.*rand())/RAND_MAX;
 	axis(2) = (1.*rand())/RAND_MAX;
 	Quaternion_t q;
+	angle = M_PI/6.;
+	axis=1,1,0;
 	NormalizeRotation(angle,axis,q);
+	q=1,0,0,0;
 
 	for (size_t i = 0;i < 4;i++)
 	{

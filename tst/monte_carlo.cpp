@@ -27,7 +27,6 @@
 #include <gsl/gsl_monte_vegas.h>
 
 // MechSys
-#include "mechsys.h"
 #include "util/fatal.h"
 
 /* Computation of the integral,

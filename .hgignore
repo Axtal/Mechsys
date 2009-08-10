@@ -6,6 +6,9 @@ tfem/new_tests/bhatti_basic/ex16
 tfem/new_tests/bhatti_basic/ex52
 tfem/new_tests/bhatti_basic/ex53
 
+tdem/drawing.py
+tlbm/0165-0001.txt~
+
 tdem/test_01
 tdem/test_02
 tdem/test_03

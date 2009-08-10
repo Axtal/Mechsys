@@ -30,7 +30,7 @@
 // MechSys
 #include "dem/face.h"
 
-inline void Distance(const Vec3_t & V,Edge & E,Vec3_t & xi,Vec3_t & xf) ///< Distance Between point V and Edge E
+inline void Distance(const Vec3_t & V,Edge & E,Vec3_t & xi,Vec3_t & xf) ///< Distance Between point V and Edge E given by the contact points
 {
 	double t;
 	t=(dot(V,E.dr())-dot(E.ri(),E.dr()))/(dot(E.dr(),E.dr()));
@@ -40,7 +40,24 @@ inline void Distance(const Vec3_t & V,Edge & E,Vec3_t & xi,Vec3_t & xf) ///< Dis
 	else xf=E.ri()+E.dr()*t;
 }
 
-inline void Distance(Edge & E0,Edge & E1,Vec3_t & xi,Vec3_t & xf) ///< Distance Between two edges
+inline void Distance(Edge & E,const Vec3_t & V,Vec3_t & xi,Vec3_t & xf) ///< Distance Between point V and Edge E given by the contact points
+{
+	Distance(V,E,xf,xi);
+}
+
+inline double Distance(Edge & E,const Vec3_t & V) ///< Distance Between point V and Edge E given by a scalar quantity
+{
+	Vec3_t xi,xf;
+	Distance(E,V,xi,xf);
+	return norm(xf-xi);
+}
+
+inline double Distance(const Vec3_t & V,Edge & E) ///< Distance Between point V and Edge E given by a scalar quantity
+{
+	return Distance(E,V);
+}
+
+inline void Distance(Edge & E0,Edge & E1,Vec3_t & xi,Vec3_t & xf) ///< Distance Between two edges given by the contact points
 {
 	double t,s,a,b,c,d,e;
 	Vec3_t xi1,xf1;
@@ -93,7 +110,14 @@ inline void Distance(Edge & E0,Edge & E1,Vec3_t & xi,Vec3_t & xf) ///< Distance 
 	}
 }
 
-inline void Distance(Vec3_t & v,Face & F,Vec3_t & xi,Vec3_t & xf) ///< Distance Between a Point and a Face
+inline double Distance(Edge & E0,Edge & E1) ///< Distance Between two edges given by the scalar quantity
+{
+	Vec3_t xi,xf;
+	Distance(E0,E1,xi,xf);
+	return norm(xf-xi);
+}
+
+inline void Distance(const Vec3_t & v, Face & F,Vec3_t & xi,Vec3_t & xf) ///< Distance Between a Point and a Face given by the contact points
 {
 	Vec3_t pro,nor;
 	bool inside=true;
@@ -119,12 +143,13 @@ inline void Distance(Vec3_t & v,Face & F,Vec3_t & xi,Vec3_t & xf) ///< Distance 
 		xi = v;
 		xf = pro;
 	}
-	
 	else 
 	{
 		Distance(v,*F.Edges(0),pro,nor);
 		lt=norm(nor-pro);
 		ld=lt;
+		xi=pro;
+		xf=nor;
 		for(i=1;i<ns;i++) 
 		{
 			Distance(v,*F.Edges(i),pro,nor);
@@ -136,8 +161,33 @@ inline void Distance(Vec3_t & v,Face & F,Vec3_t & xi,Vec3_t & xf) ///< Distance 
 			}
 		}
 	}
-	
 }
+
+inline void Distance(Face & F,const Vec3_t & v,Vec3_t & xi,Vec3_t & xf) ///< Distance Between a Point and a Face given by the contact points
+{
+	Distance(v,F,xf,xi);
+}
+
+inline double Distance(Face & F,const Vec3_t & v) ///< Distance Between a Point and a Face given by the scalar quantity
+{
+	Vec3_t xi,xf;
+	Distance(F,v,xi,xf);
+	return norm(xf-xi);
+}
+
+inline double Distance(const Vec3_t & v,Face & F) ///< Distance Between a Point and a Face given by the scalar quantity
+{
+	return Distance(F,v);
+}
+
+
+inline double Distance(const Vec3_t & a,const Vec3_t & b) ///< Distance between two points
+{
+	return norm(b-a);
+}
+
+
+
 
 
 

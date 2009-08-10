@@ -177,7 +177,7 @@ IF(FLTK_FOUND)
 ENDIF(FLTK_FOUND)
 
 IF(GSL_FOUND)
-	SET(LFLAGS "${LFLAGS} ${GSL_LIBRARIES}")
+	SET(LIBS ${LIBS} ${GSL_LIBRARIES})
 ENDIF(GSL_FOUND)
 
 ########################################################################### FEM
