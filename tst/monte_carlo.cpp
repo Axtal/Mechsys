@@ -18,103 +18,42 @@
 
 // Std Lib
 #include <stdlib.h>
-
-// GSL
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_monte.h>
-#include <gsl/gsl_monte_plain.h>
-#include <gsl/gsl_monte_miser.h>
-#include <gsl/gsl_monte_vegas.h>
+#include <math.h>
 
 // MechSys
 #include "util/fatal.h"
+#include "numerical/montecarlo.h"
 
-/* Computation of the integral,
+using Numerical::MonteCarlo;
 
-	I = int (dx dy dz)/(2pi)^3  1/(1-cos(x)cos(y)cos(z))
-
-	over (-pi,-pi,-pi) to (+pi, +pi, +pi).  The exact answer
-	is Gamma(1/4)^4/(4 pi^3).  This example is taken from
-	C.Itzykson, J.M.Drouffe, "Statistical Field Theory -
-	Volume 1", Section 1.1, p21, which cites the original
-	paper M.L.Glasser, I.J.Zucker, Proc.Natl.Acad.Sci.USA 74
-	1800 (1977)
-
-	For simplicity we compute the integral over the region 
-	(0,0,0) -> (pi,pi,pi) and multiply by 8
-*/
-
-double exact = 1.3932039296856768591842462603255;
-
-double g (double * k, size_t dim, void * params)
+class sphere
 {
-	double A = 1.0 / (M_PI * M_PI * M_PI);
-	return A / (1.0 - cos (k[0]) * cos (k[1]) * cos (k[2]));
-}
-
-void display_results (char const * title, double result, double error)
-{
-	printf ("%s ==================\n", title);
-	printf ("result = % .6f\n", result);
-	printf ("sigma  = % .6f\n", error);
-	printf ("exact  = % .6f\n", exact);
-	printf ("error  = % .6f = %.1g sigma\n", result - exact, fabs (result - exact) / error);
-}
+	public:
+		double Inside(double * r)
+		{
+			if ((r[0]-x)*(r[0]-x)+(r[1]-y)*(r[1]-y)+(r[2]-z)*(r[2]-z)<R*R) return 1.;
+			else return 0.;
+		}
+		double dInertia(double *r)
+		{
+			return (r[0]*r[0]+r[1]*r[1])*Inside(r);
+		}
+		double x,y,z,R;
+};
 
 int main(int argc, char **argv) try
 {
-	double res, err;
-	double xl[3] = { 0, 0, 0 };
-	double xu[3] = { M_PI, M_PI, M_PI };
+	double ri[3] = { -5, -5, -5 };
+	double rs[3] = { 5, 5, 5 };
+	double sr = 3;
+	sphere S;
+	S.x = S.y = S.z = 0;
+	S.R = sr;
+	MonteCarlo<sphere> MC1(&S,&sphere::Inside,Numerical::VEGAS,500000);
+	MonteCarlo<sphere> MC2(&S,&sphere::dInertia,Numerical::VEGAS,500000);
+	std::cout << " Exact Volume = "<<(4./3.)*M_PI*sr*sr*sr << " Calculated Volume = " <<MC1.Integrate(ri,rs)<<std::endl;
+	std::cout << " Exact Inertia Moment = "<<(8./15.)*M_PI*sr*sr*sr*sr*sr << " Calculated Inertia moment = " <<MC2.Integrate(ri,rs)<<std::endl;
 
-	const gsl_rng_type *T;
-	gsl_rng *r;
-
-	gsl_monte_function G = { &g, 3, 0 };
-
-	size_t calls = 500000;
-
-	gsl_rng_env_setup ();
-
-	T = gsl_rng_default;
-	r = gsl_rng_alloc (T);
-
-	// Plain
-	{
-		gsl_monte_plain_state *s = gsl_monte_plain_alloc (3);
-		gsl_monte_plain_integrate (&G, xl, xu, 3, calls, r, s, &res, &err);
-		gsl_monte_plain_free (s);
-		display_results ("plain", res, err);
-	}
-
-	// Miser
-	{
-		gsl_monte_miser_state *s = gsl_monte_miser_alloc (3);
-		gsl_monte_miser_integrate (&G, xl, xu, 3, calls, r, s, &res, &err);
-		gsl_monte_miser_free (s);
-		display_results ("miser", res, err);
-	}
-
-	// Vegas
-	{
-		gsl_monte_vegas_state *s = gsl_monte_vegas_alloc (3);
-		gsl_monte_vegas_integrate (&G, xl, xu, 3, 10000, r, s, &res, &err);
-		display_results ("vegas warm-up", res, err);
-		printf ("converging...\n");
-		do
-		{
-			gsl_monte_vegas_integrate (&G, xl, xu, 3, calls/5, r, s,
-			&res, &err);
-			printf ("result = % .6f sigma = % .6f "
-			"chisq/dof = %.1f\n", res, err, s->chisq);
-		}
-		while (fabs (s->chisq - 1.0) > 0.5);
-		display_results ("vegas final", res, err);
-		gsl_monte_vegas_free (s);
-	}
-
-	// Clean up
-	gsl_rng_free (r);
 	return 0;
 }
 MECHSYS_CATCH
