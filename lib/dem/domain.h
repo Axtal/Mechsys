@@ -100,10 +100,10 @@ inline void Domain::GenerateBox(double Xmin,double Xmax,double Ymin,double Ymax,
 inline void Domain::AddTetra(const Vec3_t & r,double R,double l,double rho0)
 {
 	Array<Vec3_t *> V;
-	V.Push(new Vec3_t(l/sqrt(3),l/sqrt(3),l/sqrt(3)));
-	V.Push(new Vec3_t(-l/sqrt(3),-l/sqrt(3),l/sqrt(3)));
-	V.Push(new Vec3_t(-l/sqrt(3),l/sqrt(3),-l/sqrt(3)));
-	V.Push(new Vec3_t(l/sqrt(3),-l/sqrt(3),-l/sqrt(3)));
+	V.Push(new Vec3_t(l/sqrt(8),l/sqrt(8),l/sqrt(8)));
+	V.Push(new Vec3_t(-l/sqrt(8),-l/sqrt(8),l/sqrt(8)));
+	V.Push(new Vec3_t(-l/sqrt(8),l/sqrt(8),-l/sqrt(8)));
+	V.Push(new Vec3_t(l/sqrt(8),-l/sqrt(8),-l/sqrt(8)));
 	Array<Array <int> > E;
 	E.Resize(6);
 	size_t n = 0;

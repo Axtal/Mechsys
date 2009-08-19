@@ -37,8 +37,9 @@ int main(int argc, char **argv) try
 	Domain D;
 	//D.GenerateSpheres(1000,0,10,0,10,0,10,1,0.5);
 	Vec3_t r(0,0,0),p(0,0,0);
-	D.AddTetra(r,1.,10,1.);
-	cout << "inside \? " << D.Particles(0)->IsInside(p) <<endl;
+	D.AddTetra(r,0.,1,1.);
+	D.Particles(0)->CalcMassProperties(5000);
+	cout << "Volume " << D.Particles(0)->I() <<endl;
 	Graph gp("drawing",false);
 	gp.DrawEntireDomain(D,"Blue");
 	gp.Close();
