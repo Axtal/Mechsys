@@ -37,9 +37,15 @@ int main(int argc, char **argv) try
 	Domain D;
 	//D.GenerateSpheres(1000,0,10,0,10,0,10,1,0.5);
 	Vec3_t r(0,0,0),p(0,0,0);
-	D.AddTetra(r,0.,1,1.);
+	D.AddRice(r,1.,10.,1.);
 	D.Particles(0)->CalcMassProperties(5000);
-	cout << "Volume " << D.Particles(0)->I() <<endl;
+	cout << "Volume " << D.Particles(0)->Volume() <<endl;
+	cout << "Center of mass " << D.Particles(0)->r() <<endl;
+	cout << "Moment of inertia " << D.Particles(0)->I() <<endl;
+	cout << "Quaternion " << D.Particles(0)->Q() << endl;
+
+
+
 	Graph gp("drawing",false);
 	gp.DrawEntireDomain(D,"Blue");
 	gp.Close();

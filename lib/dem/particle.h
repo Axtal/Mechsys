@@ -32,6 +32,9 @@
 
 // GSL
 #include <gsl/gsl_linalg.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
+
 
 // MechSys
 #include "dem/face.h"
@@ -91,6 +94,7 @@ public:
         Vec3_t * Vertex       ( size_t i) { return _vertex[i];}     ///< Return pointer to the i-th vertex
 	Vec3_t & r            ( )         { return _r;}             ///< Return center of mass
 	Vec3_t & I            ( )         { return _I;}             ///< Return the principal moments of inertia
+	Quaternion_t & Q      ( )         { return _Q;}             ///< Return the quaternion of the particle
         Edge * Edges          ( size_t i) { return _edges[i];}      ///< Return pointer to the i-th Edge
         Face * Faces          ( size_t i) { return _faces[i];}      ///< Return pointer to the i-th vertex
 
@@ -172,6 +176,7 @@ inline void Particle::CalcMassProperties(size_t NCALCS)
 	{
 		double ri[3] = { MinX() , MinY() , MinZ() };
 		double rs[3] = { MaxX() , MaxY() , MaxZ() };
+		double I[3][3];
 		MonteCarlo<Particle> *MC;
 		MC = new MonteCarlo<Particle> (this,&Particle::V,Numerical::VEGAS,NCALCS);
 		_V = MC->Integrate(ri,rs);
@@ -186,10 +191,54 @@ inline void Particle::CalcMassProperties(size_t NCALCS)
 		_r(2) = MC->Integrate(ri,rs)/_V;
 		delete MC;
 		MC = new MonteCarlo<Particle> (this,&Particle::Ixx,Numerical::VEGAS,NCALCS);
-		double I = MC->Integrate(ri,rs);
+		I[0][0] = MC->Integrate(ri,rs);
 		delete MC;
-		_I = I,I,I;
-		_Q = 1,0,0,0;
+		MC = new MonteCarlo<Particle> (this,&Particle::Iyy,Numerical::VEGAS,NCALCS);
+		I[1][1] = MC->Integrate(ri,rs);
+		delete MC;
+		MC = new MonteCarlo<Particle> (this,&Particle::Izz,Numerical::VEGAS,NCALCS);
+		I[2][2] = MC->Integrate(ri,rs);
+		delete MC;
+		MC = new MonteCarlo<Particle> (this,&Particle::Ixy,Numerical::VEGAS,NCALCS);
+		I[0][1] = I[1][0] = MC->Integrate(ri,rs);
+		delete MC;
+		MC = new MonteCarlo<Particle> (this,&Particle::Ixz,Numerical::VEGAS,NCALCS);
+		I[0][2] = I[2][0] = MC->Integrate(ri,rs);
+		delete MC;
+		MC = new MonteCarlo<Particle> (this,&Particle::Iyz,Numerical::VEGAS,NCALCS);
+		I[1][2] = I[2][1] = MC->Integrate(ri,rs);
+		delete MC;
+		gsl_matrix *m = gsl_matrix_alloc(3,3);
+		gsl_vector *eval = gsl_vector_alloc(3);
+		gsl_matrix *evec = gsl_matrix_alloc(3,3);
+		for (size_t i = 0;i < 3;i++)
+			for (size_t j = 0;j < 3;j++)
+			{
+				gsl_matrix_set(m,i,j,I[i][j]);
+			}
+		gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc (3);
+		gsl_eigen_symmv (m, eval, evec, w);
+		gsl_eigen_symmv_free (w);
+		Vec3_t xp,yp,zp,In(1,0,0),Jn(0,1,0),Kn(0,0,1);
+		for (size_t i = 0;i < 3;i++)
+		{
+			xp(i) = gsl_matrix_get(evec,i,0);
+			yp(i) = gsl_matrix_get(evec,i,1);
+			zp(i) = gsl_matrix_get(evec,i,2);
+			_I(i) = gsl_vector_get(eval,i);
+		}
+		Vec3_t axis = cross(In,xp);
+		double angle = acos(dot(In,xp));
+		NormalizeRotation(angle,axis,_Q);
+/* 		_Q(0) = 0.5*sqrt(1+gsl_matrix_get(evec,0,0)+gsl_matrix_get(evec,1,1)+gsl_matrix_get(evec,2,2));
+ * 		_Q(1) = (gsl_matrix_get(evec,2,1)-gsl_matrix_get(evec,1,2))/(4*_Q(0));
+ * 		_Q(2) = (gsl_matrix_get(evec,0,2)-gsl_matrix_get(evec,2,0))/(4*_Q(0));
+ * 		_Q(3) = (gsl_matrix_get(evec,1,0)-gsl_matrix_get(evec,0,1))/(4*_Q(0));
+ */
+		
+		gsl_matrix_free(m);
+		gsl_matrix_free(evec);
+		gsl_vector_free(eval);
 	}
 
 }
@@ -347,32 +396,33 @@ inline double Particle::Zc (double *r)
 
 inline double Particle::Ixx (double *r)
 {
-	return (r[1]*r[1]+r[2]*r[2])*IsInside(r);
+	//std::cout << (r[1]-_r(1)) << " " << (r[2]-_r(2)) << std::endl;
+	return ((r[1]-_r(1))*(r[1]-_r(1))+(r[2]-_r(2))*(r[2]-_r(2)))*IsInside(r);
 }
 
 inline double Particle::Iyy (double *r)
 {
-	return (r[0]*r[0]+r[2]*r[2])*IsInside(r);
+	return ((r[0]-_r(0))*(r[0]-_r(0))+(r[2]-_r(2))*(r[2]-_r(2)))*IsInside(r);
 }
 
 inline double Particle::Izz (double *r)
 {
-	return (r[0]*r[0]+r[1]*r[1])*IsInside(r);
+	return ((r[0]-_r(0))*(r[0]-_r(0))+(r[1]-_r(1))*(r[1]-_r(1)))*IsInside(r);
 }
 
 inline double Particle::Ixy (double *r)
 {
-	return -r[0]*r[1]*IsInside(r);
+	return -(r[0]-_r(0))*(r[1]-_r(1))*IsInside(r);
 }
 
 inline double Particle::Ixz (double *r)
 {
-	return -r[0]*r[2]*IsInside(r);
+	return -(r[0]-_r(0))*(r[2]-_r(2))*IsInside(r);
 }
 
 inline double Particle::Iyz (double *r)
 {
-	return -r[1]*r[2]*IsInside(r);
+	return -(r[1]-_r(1))*(r[2]-_r(2))*IsInside(r);
 }
 
 #endif // DEM_PARTICLE_H
