@@ -28,6 +28,7 @@ SET(PROGS_C # tests requiring GSL
 
 SET(PROGS_D # other tests 
  linalg01
+ linalg02
  serialize
  tree01)
 

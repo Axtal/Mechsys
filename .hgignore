@@ -51,6 +51,7 @@ tfem/geotech/triaxial
 
 tst/alphashape01
 tst/linalg01
+tst/linalg02
 tst/serialize
 tst/tree01
 tst/tunnel01

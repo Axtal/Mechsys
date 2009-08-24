@@ -28,6 +28,10 @@
 // Boost
 #include <boost/numeric/mtl/mtl.hpp>
 
+// Blitz++
+#include <blitz/tinyvec-et.h>
+#include <blitz/tinymat.h>
+
 // MechSys
 #include "util/fatal.h"
 
@@ -44,10 +48,14 @@ extern "C"
     void dgesvd_(const char* jobu, const char* jobvt, const int* M, const int* N, double* A, const int* lda, double* S, double* U, const int* ldu, double* VT, const int* ldvt, double* work,const int* lwork, const int* info);
 }
 
-/** Dense matrix. */
+
+/////////////////////////////////////////////////////////////////////////////////////////// General MatVec /////
+
+
+/** Dense matrix (general). */
 typedef mtl::dense2D<double, mtl::matrix::parameters<mtl::tag::col_major> > Mat_t;
 
-/** Dense vector. */
+/** Dense vector (general). */
 typedef mtl::dense_vector<double> Vec_t;
 
 /** Print vector. */
@@ -316,6 +324,12 @@ inline void Inv (Mat_t const & M, Mat_t & Mi, double Tol=1.0e-10)
     }
 }
 
+/** Linear Solver. {X} = [M]^{-1}{B}  */
+inline void Sol (Mat_t const & M, Vec_t const & B, Vec_t & X)
+{
+    throw new Fatal("matvec.h:Sol: Method not implemented yet");
+}
+
 /** Norm. */
 inline double Norm (Vec_t const & V)
 {
@@ -329,6 +343,196 @@ inline void Dyad (Vec_t const & A, Vec_t const & B, Mat_t & M)
     for (size_t i=0; i<A.size(); ++i)
     for (size_t j=0; j<B.size(); ++j)
         M(i,j) = A(i) * B(j);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////// Tiny MatVec /////
+
+
+/** 3x3 Matrix. */
+typedef blitz::TinyMatrix<double,3,3> Mat3_t;
+
+/** 3x1 Vector. */
+typedef blitz::TinyVector<double,3> Vec3_t;
+
+/** Linear Solver. {X} = [M]^{-1}{B}  */
+inline void Sol (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e-10)
+{
+    // determinant
+    double det =   M(0,0)*(M(1,1)*M(2,2) - M(1,2)*M(2,1))
+                 - M(0,1)*(M(1,0)*M(2,2) - M(1,2)*M(2,0))
+                 + M(0,2)*(M(1,0)*M(2,1) - M(1,1)*M(2,0));
+    if (fabs(det)<Tol) throw new Fatal("matvec.h:Sol: Cannot calculate inverse due to zero determinant. det = %g",det);
+
+    // inverse matrix
+    Mat3_t Mi;
+    Mi(0,0) = (M(1,1)*M(2,2) - M(1,2)*M(2,1)) / det;
+    Mi(0,1) = (M(0,2)*M(2,1) - M(0,1)*M(2,2)) / det;
+    Mi(0,2) = (M(0,1)*M(1,2) - M(0,2)*M(1,1)) / det;
+
+    Mi(1,0) = (M(1,2)*M(2,0) - M(1,0)*M(2,2)) / det;
+    Mi(1,1) = (M(0,0)*M(2,2) - M(0,2)*M(2,0)) / det;
+    Mi(1,2) = (M(0,2)*M(1,0) - M(0,0)*M(1,2)) / det;
+
+    Mi(2,0) = (M(1,0)*M(2,1) - M(1,1)*M(2,0)) / det;
+    Mi(2,1) = (M(0,1)*M(2,0) - M(0,0)*M(2,1)) / det;
+    Mi(2,2) = (M(0,0)*M(1,1) - M(0,1)*M(1,0)) / det;
+
+    // solve system
+	X(0) = Mi(0,0)*B(0) + Mi(0,1)*B(1) + Mi(0,2)*B(2);
+	X(1) = Mi(1,0)*B(0) + Mi(1,1)*B(1) + Mi(1,2)*B(2);
+	X(2) = Mi(2,0)*B(0) + Mi(2,1)*B(1) + Mi(2,2)*B(2);
+}
+
+/** Eigenvalues and eigenvectors. */
+inline void Eig (Mat3_t const & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t & V2)
+{
+    const double maxIt  = 30;      // Max number of iterations
+    const double errTol = 1.0e-15; // Erro: Tolerance
+    const double zero   = 1.0e-10; // Erro: Tolerance
+
+    // check for symmetric matrix
+    if (fabs(M(0,1)-M(1,0))>errTol) throw new Fatal("matvec.h:Eig: Matrix M must be symmetric");
+    if (fabs(M(0,2)-M(2,0))>errTol) throw new Fatal("matvec.h:Eig: Matrix M must be symmetric");
+    if (fabs(M(1,2)-M(2,1))>errTol) throw new Fatal("matvec.h:Eig: Matrix M must be symmetric");
+
+    double UT[3]; // Values of the Upper Triangle part of symmetric matrix A
+    double th;    // theta = (Aii-Ajj)/2Aij
+    double c;     // Cossine
+    double s;     // Sine
+    double cc;    // Cossine squared
+    double ss;    // Sine squared
+    double t;     // Tangent
+    double Temp;  // Auxiliar variable
+    double TM[3]; // Auxiliar array
+    double sumUT; // Sum of upper triangle of abs(A) that measures the error
+    int    it;    // Iteration number
+    double h;     // Difference L[i]-L[j]
+
+    // Initialize eigenvalues which correnspond to the diagonal part of A
+    L(0)=M(0,0); L(1)=M(1,1); L(2)=M(2,2);
+
+    // Initialize Upper Triangle part of A matrix (array[3])
+    UT[0]=M(0,1); UT[1]=M(1,2); UT[2]=M(0,2);
+
+    // Initialize eigenvectors
+    V0(0)=1.0; V1(0)=0.0; V2(0)=0.0;
+    V0(1)=0.0; V1(1)=1.0; V2(1)=0.0;
+    V0(2)=0.0; V1(2)=0.0; V2(2)=1.0;
+
+    // Iterations
+    for (it=1; it<=maxIt; ++it)
+    {
+        // Check error
+        sumUT = fabs(UT[0])+fabs(UT[1])+fabs(UT[2]);
+        if (sumUT<=errTol) return;
+
+        // i=0, j=1 ,r=2 (p=3)
+        h = L(0)-L(1);
+        if (fabs(h)<zero) t=1.0;
+        else
+        {
+            th = 0.5*h/UT[0];
+            t  = 1.0/(fabs(th)+sqrt(th*th+1.0));
+            if (th<0.0) t=-t;
+        }
+        c  = 1.0/sqrt(1.0+t*t);
+        s  = c*t;
+        cc = c*c;
+        ss = s*s;
+        // Zeroes term UT[0]
+        Temp  = cc*L(0) + 2.0*c*s*UT[0] + ss*L(1);
+        L(1)  = ss*L(0) - 2.0*c*s*UT[0] + cc*L(1);
+        L(0)  = Temp;
+        UT[0] = 0.0;
+        Temp  = c*UT[2] + s*UT[1];
+        UT[1] = c*UT[1] - s*UT[2];
+        UT[2] = Temp;
+        // Actualize eigenvectors
+        TM[0] = s*V1(0) + c*V0(0);
+        TM[1] = s*V1(1) + c*V0(1);
+        TM[2] = s*V1(2) + c*V0(2);
+        V1(0) = c*V1(0) - s*V0(0);
+        V1(1) = c*V1(1) - s*V0(1);
+        V1(2) = c*V1(2) - s*V0(2);
+        V0(0) = TM[0];
+        V0(1) = TM[1];
+        V0(2) = TM[2];
+
+        // i=1, j=2 ,r=0 (p=4)
+        h = L(1)-L(2);
+        if (fabs(h)<zero) t=1.0;
+        else
+        {
+            th = 0.5*h/UT[1];
+            t  = 1.0/(fabs(th)+sqrt(th*th+1.0));
+            if (th<0.0) t=-t;
+        }
+        c  = 1.0/sqrt(1.0+t*t);
+        s  = c*t;
+        cc = c*c;
+        ss = s*s;
+        // Zeroes term UT[1]
+        Temp  = cc*L(1) + 2.0*c*s*UT[1] + ss*L(2);
+        L(2)  = ss*L(1) - 2.0*c*s*UT[1] + cc*L(2);
+        L(1)  = Temp;
+        UT[1] = 0.0;
+        Temp  = c*UT[0] + s*UT[2];
+        UT[2] = c*UT[2] - s*UT[0];
+        UT[0] = Temp;
+        // Actualize eigenvectors
+        TM[1] = s*V2(1) + c*V1(1);
+        TM[2] = s*V2(2) + c*V1(2);
+        TM[0] = s*V2(0) + c*V1(0);
+        V2(1) = c*V2(1) - s*V1(1);
+        V2(2) = c*V2(2) - s*V1(2);
+        V2(0) = c*V2(0) - s*V1(0);
+        V1(1) = TM[1];
+        V1(2) = TM[2];
+        V1(0) = TM[0];
+
+        // i=0, j=2 ,r=1 (p=5)
+        h = L(0)-L(2);
+        if (fabs(h)<zero) t=1.0;
+        else
+        {
+            th = 0.5*h/UT[2];
+            t  = 1.0/(fabs(th)+sqrt(th*th+1.0));
+            if (th<0.0) t=-t;
+        }
+        c  = 1.0/sqrt(1.0+t*t);
+        s  = c*t;
+        cc = c*c;
+        ss = s*s;
+        // Zeroes term UT[2]
+        Temp  = cc*L(0) + 2.0*c*s*UT[2] + ss*L(2);
+        L(2)  = ss*L(0) - 2.0*c*s*UT[2] + cc*L(2);
+        L(0)  = Temp;
+        UT[2] = 0.0;
+        Temp  = c*UT[0] + s*UT[1];
+        UT[1] = c*UT[1] - s*UT[0];
+        UT[0] = Temp;
+        // Actualize eigenvectors
+        TM[0] = s*V2(0) + c*V0(0);
+        TM[2] = s*V2(2) + c*V0(2);
+        TM[1] = s*V2(1) + c*V0(1);
+        V2(0) = c*V2(0) - s*V0(0);
+        V2(2) = c*V2(2) - s*V0(2);
+        V2(1) = c*V2(1) - s*V0(1);
+        V0(0) = TM[0];
+        V0(2) = TM[2];
+        V0(1) = TM[1];
+    }
+    throw new Fatal("matvec.h:Eig: Jacobi rotation did not converge");
+}
+
+/** Compare two vectors. */
+inline double CompareVectors (Vec3_t const & A, Vec3_t const & B)
+{
+    double error = 0.0;
+    for (size_t i=0; i<3; ++i)
+        error += fabs(A(i)-B(i));
+    return error;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
