@@ -21,6 +21,7 @@
 
 SET(MTL_INCLUDE_SEARCH_PATH
   /home/dorival/pkg/mtl4
+  /home/sergio/pkg/mtl4
   /usr/include
   /usr/local/include)
 

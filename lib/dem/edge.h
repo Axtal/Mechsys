@@ -33,28 +33,28 @@
 class Edge
 {
 public:
-	// Constructor
-	Edge(void) {};          ///< Default Constructor
-	Edge(const Vec3_t & a,  ///< Initial vector
-	       const Vec3_t & b); ///< Final vector
+    // Constructor
+    Edge(void) {};          ///< Default Constructor
+    Edge(const Vec3_t & a,  ///< Initial vector
+           const Vec3_t & b); ///< Final vector
 
-	
-	// Access Methods
-	Vec3_t & ri () {return _ri;} ///< Initial vector
-	Vec3_t & rf () {return _rf;} ///< Final vector
-	Vec3_t & dr () {return _dr;} ///< Difference vector
+    
+    // Access Methods
+    Vec3_t & ri () {return _ri;} ///< Initial vector
+    Vec3_t & rf () {return _rf;} ///< Final vector
+    Vec3_t & dr () {return _dr;} ///< Difference vector
 
-	// Methods
-	void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
+    // Methods
+    void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
                     const Vec3_t & v);      ///< Position of the axis of rotation
 
 
 
 protected:
-	double _l;  ///< Length of the Edge
-	Vec3_t _ri; ///< Initial position
-	Vec3_t _rf; ///< Final position
-	Vec3_t _dr; ///< Difference Vector
+    double _l;  ///< Length of the Edge
+    Vec3_t _ri; ///< Initial position
+    Vec3_t _rf; ///< Final position
+    Vec3_t _dr; ///< Difference Vector
 };
 
 
@@ -62,24 +62,24 @@ protected:
 
 inline Edge::Edge (const Vec3_t & a,const Vec3_t & b)
 {
-	_ri = a;
-	_rf = b;
-	_dr = _rf-_ri;
-	_l  = norm(_dr);
+    _ri = a;
+    _rf = b;
+    _dr = _rf-_ri;
+    _l  = norm(_dr);
 }
 
 
 
 inline void Edge::Rotate (const Quaternion_t & q,const Vec3_t & v)
 {
-	Vec3_t t1,t2;
-	t1 = _ri - v;
-	t2 = _rf - v;
-	Rotation(t1,q,_ri);
-	Rotation(t2,q,_rf);
-	_ri = _ri + v;
-	_rf = _rf + v;
-	_dr = _rf - _ri;
+    Vec3_t t1,t2;
+    t1 = _ri - v;
+    t2 = _rf - v;
+    Rotation(t1,q,_ri);
+    Rotation(t2,q,_rf);
+    _ri = _ri + v;
+    _rf = _rf + v;
+    _dr = _rf - _ri;
 }
 
 #endif //DEM_EDGE3D_H

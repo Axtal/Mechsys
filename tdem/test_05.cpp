@@ -38,8 +38,16 @@ int main(int argc, char **argv) try
 	//D.GenerateSpheres(1000,0,10,0,10,0,10,1,0.5);
 	Vec3_t r(0,0,0),p(0,0,0);
 	D.AddRice(r,1.,10.,1.);
-	D.Particles(0)->CalcMassProperties(5000);
-	cout << "Volume " << D.Particles(0)->Volume() <<endl;
+	D.Particles(0)->CalcMassProperties(50000);
+    double error1 = fabs(D.Particles(0)->Volume()-(4./3.)*M_PI-M_PI*10),tol1=0.1;
+    double error2 = 0,tol2=1.;
+    Vec3_t Ireal((1./3.)*M_PI*100+(1./12.)*M_PI*1000+0.75*M_PI*10+(8./15.)*M_PI,(1./3.)*M_PI*100+(1./12.)*M_PI*1000+0.75*M_PI*10+(8./15.)*M_PI,0.5*M_PI*10+(8./15.)*M_PI);
+    for (size_t i = 0;i<3;i++)
+    {
+        error2+=fabs(D.Particles(0)->I()(i)-Ireal(i));
+    }
+
+	cout << "Volume " << D.Particles(0)->Volume() << endl;
 	cout << "Center of mass " << D.Particles(0)->r() <<endl;
 	cout << "Moment of inertia " << D.Particles(0)->I() <<endl;
 	cout << "Quaternion " << D.Particles(0)->Q() << endl;
@@ -49,5 +57,8 @@ int main(int argc, char **argv) try
 	Graph gp("drawing",false);
 	gp.DrawEntireDomain(D,"Blue");
 	gp.Close();
+
+    if ((error1>tol1)||(error2>tol2)) return 1;
+    else return 0;
 }
 MECHSYS_CATCH

@@ -25,7 +25,8 @@ SET(TESTS
 
 IF(BLITZ_FOUND)
 	FOREACH(var ${TESTS})
-		ADD_EXECUTABLE (${var} "${var}.cpp")
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+        ADD_TEST              (${var} ${var})
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 	ENDFOREACH(var)
 ENDIF(BLITZ_FOUND)

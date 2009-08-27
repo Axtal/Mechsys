@@ -34,26 +34,26 @@
 class Face
 {
 public:
-	// Constructor
-	Face(void) {};          ///< Default Constructor
-	Face(const Vec3_t * a,  ///< Vector array
-	     const size_t N);   ///< Numer of sides
+    // Constructor
+    Face(void) {};          ///< Default Constructor
+    Face(const Vec3_t * a,  ///< Vector array
+         const size_t N);   ///< Numer of sides
 
-	// Destructor
-	~Face();
+    // Destructor
+    ~Face();
 
-	// Access Methods
-	Edge * Edges (size_t i) {return _sides[i];}           ///< Returns pointer to the i-th side
-	size_t NumberofSides () {return (int) _sides.Size();} ///< Returns the number of sides
+    // Access Methods
+    Edge * Edges (size_t i) {return _sides[i];}           ///< Returns pointer to the i-th side
+    size_t NumberofSides () {return (int) _sides.Size();} ///< Returns the number of sides
 
-	//Methods
-	void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
-	            const Vec3_t & v);      ///< Position of the axis of rotation
+    //Methods
+    void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
+                const Vec3_t & v);      ///< Position of the axis of rotation
 
 
 
 protected:
-	Array<Edge *> _sides;   ///< Array of edges representing sides of the face.
+    Array<Edge *> _sides;   ///< Array of edges representing sides of the face.
 };
 
 
@@ -61,29 +61,29 @@ protected:
 
 inline Face::Face (const Vec3_t * a,const size_t N)
 {
-	_sides.Resize (N);
-	for(size_t i=0;i<N;i++) 
-	{
-		_sides[i] = new Edge(a[i],a[(i+1)%N]);
-	}
+    _sides.Resize (N);
+    for(size_t i=0;i<N;i++) 
+    {
+        _sides[i] = new Edge(a[i],a[(i+1)%N]);
+    }
 }
 
 
 inline Face::~Face ()
 {
-	for(size_t i=0;i<_sides.Size();i++) 
-	{
-		delete _sides[i];
-	}
+    for(size_t i=0;i<_sides.Size();i++) 
+    {
+        delete _sides[i];
+    }
 }
 
 
 inline void Face::Rotate (const Quaternion_t & q,const Vec3_t & v)
 {
-	for(size_t i=0;i<_sides.Size();i++) 
-	{
-		_sides[i]->Rotate(q,v);
-	}
+    for(size_t i=0;i<_sides.Size();i++) 
+    {
+        _sides[i]->Rotate(q,v);
+    }
 }
 
 

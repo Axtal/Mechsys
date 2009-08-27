@@ -47,79 +47,79 @@ using Numerical::MonteCarlo;
 class Particle
 {
 public:
-	// Constructor
-	Particle(const Array<Vec3_t *> &,          ///< The list of vertices
-	         const Array<Array <int> > &,      ///< The list of edges with connectivity
-	         const Array<Array <int> > &,      ///< The list of faces with connectivity
-	         const double R,                   ///< The spheroradius
-	         const double rho0,                ///< The density of the material
+    // Constructor
+    Particle(const Array<Vec3_t *> &,          ///< The list of vertices
+             const Array<Array <int> > &,      ///< The list of edges with connectivity
+             const Array<Array <int> > &,      ///< The list of faces with connectivity
+             const double R,                   ///< The spheroradius
+             const double rho0,                ///< The density of the material
                  const Vec3_t & v0,                ///< Initial velocity
                  const Vec3_t & w0);               ///< Initial angular velocity
 
-	
+    
 
-	// Methods
-	void CalcMassProperties(size_t NCALCS = 5000);          ///< Calculate the mass, center of mass and moment of inertia
-	void StartForce(Vec3_t F);                              ///< Start the force of the particle a value F, use for external forces like gravity
-	void Start(double dt);                                  ///< Initialize the particle for the Verlet algorithm
-	void DynamicRotation(double dt);                        ///< Apply rotation on the particle once the total torque is found
-	void DynamicTranslation(double dt);                     ///< Apply translation once the total force is found
-	bool IsInside(Vec3_t & v);                              ///< Enquire if the point v is inside the particle.
-	double IsInside(double *v);                             ///< Wrapper to the previous function
-	double MaxX();                                          ///< Find Maximun X coordinate
-	double MaxY();                                          ///< Find Maximun Y coordinate
-	double MaxZ();                                          ///< Find Maximun Y coordinate
-	double MinX();                                          ///< Find Minimun X coordinate
-	double MinY();                                          ///< Find Minimun Y coordinate
-	double MinZ();                                          ///< Find Minimun Y coordinate
+    // Methods
+    void CalcMassProperties(size_t NCALCS = 5000);          ///< Calculate the mass, center of mass and moment of inertia
+    void StartForce(Vec3_t F);                              ///< Start the force of the particle a value F, use for external forces like gravity
+    void Start(double dt);                                  ///< Initialize the particle for the Verlet algorithm
+    void DynamicRotation(double dt);                        ///< Apply rotation on the particle once the total torque is found
+    void DynamicTranslation(double dt);                     ///< Apply translation once the total force is found
+    bool IsInside(Vec3_t & v);                              ///< Enquire if the point v is inside the particle.
+    double IsInside(double *v);                             ///< Wrapper to the previous function
+    double MaxX();                                          ///< Find Maximun X coordinate
+    double MaxY();                                          ///< Find Maximun Y coordinate
+    double MaxZ();                                          ///< Find Maximun Y coordinate
+    double MinX();                                          ///< Find Minimun X coordinate
+    double MinY();                                          ///< Find Minimun Y coordinate
+    double MinZ();                                          ///< Find Minimun Y coordinate
 
-	//Integrants for mass properties
-	double V(double *r);                ///< Calculate the volume of the sample
-	double Xc(double *r);               ///< Calculate the coordinates of the center of mass
-	double Yc(double *r);               ///< Calculate the coordinates of the center of mass
-	double Zc(double *r);               ///< Calculate the coordinates of the center of mass
-	double Ixx(double *r);              ///< Calculate the inertia tensor
-	double Iyy(double *r);              ///< Calculate the inertia tensor
-	double Izz(double *r);              ///< Calculate the inertia tensor
-	double Ixy(double *r);              ///< Calculate the inertia tensor
-	double Ixz(double *r);              ///< Calculate the inertia tensor
-	double Iyz(double *r);              ///< Calculate the inertia tensor
+    //Integrants for mass properties
+    double V(double *r);                ///< Calculate the volume of the sample
+    double Xc(double *r);               ///< Calculate the coordinates of the center of mass
+    double Yc(double *r);               ///< Calculate the coordinates of the center of mass
+    double Zc(double *r);               ///< Calculate the coordinates of the center of mass
+    double Ixx(double *r);              ///< Calculate the inertia tensor
+    double Iyy(double *r);              ///< Calculate the inertia tensor
+    double Izz(double *r);              ///< Calculate the inertia tensor
+    double Ixy(double *r);              ///< Calculate the inertia tensor
+    double Ixz(double *r);              ///< Calculate the inertia tensor
+    double Iyz(double *r);              ///< Calculate the inertia tensor
 
-	// Access Methods
+    // Access Methods
         size_t NumberVertices ( )         { return _vertex.Size();} ///< Return the number of vertices.
         size_t NumberEdges    ( )         { return _edges.Size();}  ///< Return the number of edges.
         size_t NumberFaces    ( )         { return _faces.Size();}  ///< Return the number of faces.
         double Radius         ( )         { return _R;}             ///< Return the spheroradius
         double Volume         ( )         { return _V;}             ///< Return the Volume
         Vec3_t * Vertex       ( size_t i) { return _vertex[i];}     ///< Return pointer to the i-th vertex
-	Vec3_t & r            ( )         { return _r;}             ///< Return center of mass
-	Vec3_t & I            ( )         { return _I;}             ///< Return the principal moments of inertia
-	Quaternion_t & Q      ( )         { return _Q;}             ///< Return the quaternion of the particle
+    Vec3_t & r            ( )         { return _r;}             ///< Return center of mass
+    Vec3_t & I            ( )         { return _I;}             ///< Return the principal moments of inertia
+    Quaternion_t & Q      ( )         { return _Q;}             ///< Return the quaternion of the particle
         Edge * Edges          ( size_t i) { return _edges[i];}      ///< Return pointer to the i-th Edge
         Face * Faces          ( size_t i) { return _faces[i];}      ///< Return pointer to the i-th vertex
 
 
 protected:
 
-	bool            _IsLarge; ///< Flag to see if it is a large particle
-	double          _m;       ///< Mass of the particle
-	double          _rho;     ///< Density of the particle
-	double          _R;       ///< Spheroradius of the particle
-	double          _V;       ///< Volume of the particle
-	Vec3_t          _r;       ///< Position of the particle
-	Vec3_t          _rb;      ///< Former position for the Verlet algorithm
-	Vec3_t          _v;       ///< Velocity of the particle
-	Vec3_t          _f;       ///< Force over the particle
-	Vec3_t          _T;       ///< Torque over the particle
-	Vec3_t          _w;       ///< Angular velocity
-	Vec3_t          _wb;      ///< Former angular velocity for the leap frog algorithm
-	Vec3_t          _I;       ///< Vector containing the principal components of the inertia tensor
-	Quaternion_t    _Q;       ///< The quaternion representing the rotation
-	Array<Vec3_t *> _vertex;  ///< The set of vertices defining the geometry of the particle
-	Array<Edge *>   _edges;   ///< The set of edges defining the geometry of the particle
-	Array<Face *>   _faces;   ///< The set of faces defining the geometry of the particle
-	
-	
+    bool            _IsLarge; ///< Flag to see if it is a large particle
+    double          _m;       ///< Mass of the particle
+    double          _rho;     ///< Density of the particle
+    double          _R;       ///< Spheroradius of the particle
+    double          _V;       ///< Volume of the particle
+    Vec3_t          _r;       ///< Position of the particle
+    Vec3_t          _rb;      ///< Former position for the Verlet algorithm
+    Vec3_t          _v;       ///< Velocity of the particle
+    Vec3_t          _f;       ///< Force over the particle
+    Vec3_t          _T;       ///< Torque over the particle
+    Vec3_t          _w;       ///< Angular velocity
+    Vec3_t          _wb;      ///< Former angular velocity for the leap frog algorithm
+    Vec3_t          _I;       ///< Vector containing the principal components of the inertia tensor
+    Quaternion_t    _Q;       ///< The quaternion representing the rotation
+    Array<Vec3_t *> _vertex;  ///< The set of vertices defining the geometry of the particle
+    Array<Edge *>   _edges;   ///< The set of edges defining the geometry of the particle
+    Array<Face *>   _faces;   ///< The set of faces defining the geometry of the particle
+    
+    
 };
 
 
@@ -127,302 +127,273 @@ protected:
 
 inline Particle::Particle(const Array<Vec3_t *> & V,const Array<Array <int> > & E,const Array<Array <int> > & F,const double R,const double rho0,const Vec3_t & v0,const Vec3_t & w0)
 {
-	for (size_t i = 0;i<V.Size();i++)
-	{
-		_vertex.Push(new Vec3_t(0,0,0));
-		*_vertex[i] = *V[i];
-	}
-	for (size_t i = 0;i<E.Size();i++)
-	{
-		size_t n = E[i][0],m = E[i][1];
-		_edges.Push(new Edge(*_vertex[n],*_vertex[m]));
-	}
-	for (size_t i = 0;i<F.Size();i++)
-	{
-		Vec3_t *v;
-		v = new Vec3_t [F[i].Size()];
-		for (size_t j = 0;j<F[i].Size();j++) 
-		{
-			v[j] = *_vertex[F[i][j]];
-		}
-		_faces.Push(new Face(v,F[i].Size()));
-		delete [] v;
-	}
-	_R = R;
-	_v = v0;
-	_w = w0;
+    for (size_t i = 0;i<V.Size();i++)
+    {
+        _vertex.Push(new Vec3_t(0,0,0));
+        *_vertex[i] = *V[i];
+    }
+    for (size_t i = 0;i<E.Size();i++)
+    {
+        size_t n = E[i][0],m = E[i][1];
+        _edges.Push(new Edge(*_vertex[n],*_vertex[m]));
+    }
+    for (size_t i = 0;i<F.Size();i++)
+    {
+        Vec3_t *v;
+        v = new Vec3_t [F[i].Size()];
+        for (size_t j = 0;j<F[i].Size();j++) 
+        {
+            v[j] = *_vertex[F[i][j]];
+        }
+        _faces.Push(new Face(v,F[i].Size()));
+        delete [] v;
+    }
+    _R = R;
+    _v = v0;
+    _w = w0;
         _rho = rho0;
-	
+    
 }
 
 inline void Particle::CalcMassProperties(size_t NCALCS)
 {
-	if (_vertex.Size()==1&&_edges.Size()==0&&_faces.Size()==0)
-	{
-		_V = (4./3.)*M_PI*_R*_R*_R;
-		_I = Vec3_t((8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.));
-		_r = *_vertex[0];
-		_Q = 1,0,0,0;
-	}
-/* 	else if (_vertex.Size()==4&&_edges.Size()==6&&_faces.Size()==4) {
- * 		double l = norm(*_vertex[0]-*_vertex[1]);
- * 		_V = sqrt(2)*pow(l,3.)/12.;
- * 		_I = Vec3_t((16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.));
- * 		_r = 0.25*(*_vertex[0] + *_vertex[1] + *_vertex[2] + *_vertex[3]);
- * 		_Q = 1,0,0,0;
- * 	}
+    if (_vertex.Size()==1&&_edges.Size()==0&&_faces.Size()==0)
+    {
+        _V = (4./3.)*M_PI*_R*_R*_R;
+        _I = Vec3_t((8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.));
+        _r = *_vertex[0];
+        _Q = 1,0,0,0;
+    }
+/*  else if (_vertex.Size()==4&&_edges.Size()==6&&_faces.Size()==4) {
+ *      double l = norm(*_vertex[0]-*_vertex[1]);
+ *      _V = sqrt(2)*pow(l,3.)/12.;
+ *      _I = Vec3_t((16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.));
+ *      _r = 0.25*(*_vertex[0] + *_vertex[1] + *_vertex[2] + *_vertex[3]);
+ *      _Q = 1,0,0,0;
+ *  }
  */
-	else 
-	{
-		double ri[3] = { MinX() , MinY() , MinZ() };
-		double rs[3] = { MaxX() , MaxY() , MaxZ() };
-		double I[3][3];
-		MonteCarlo<Particle> *MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::V,Numerical::VEGAS,NCALCS);
-		_V = MC->Integrate(ri,rs);
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Xc,Numerical::VEGAS,NCALCS);
-		_r(0) = MC->Integrate(ri,rs)/_V;
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Yc,Numerical::VEGAS,NCALCS);
-		_r(1) = MC->Integrate(ri,rs)/_V;
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Zc,Numerical::VEGAS,NCALCS);
-		_r(2) = MC->Integrate(ri,rs)/_V;
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Ixx,Numerical::VEGAS,NCALCS);
-		I[0][0] = MC->Integrate(ri,rs);
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Iyy,Numerical::VEGAS,NCALCS);
-		I[1][1] = MC->Integrate(ri,rs);
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Izz,Numerical::VEGAS,NCALCS);
-		I[2][2] = MC->Integrate(ri,rs);
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Ixy,Numerical::VEGAS,NCALCS);
-		I[0][1] = I[1][0] = MC->Integrate(ri,rs);
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Ixz,Numerical::VEGAS,NCALCS);
-		I[0][2] = I[2][0] = MC->Integrate(ri,rs);
-		delete MC;
-		MC = new MonteCarlo<Particle> (this,&Particle::Iyz,Numerical::VEGAS,NCALCS);
-		I[1][2] = I[2][1] = MC->Integrate(ri,rs);
-		delete MC;
-		gsl_matrix *m = gsl_matrix_alloc(3,3);
-		gsl_vector *eval = gsl_vector_alloc(3);
-		gsl_matrix *evec = gsl_matrix_alloc(3,3);
-		for (size_t i = 0;i < 3;i++)
-			for (size_t j = 0;j < 3;j++)
-			{
-				gsl_matrix_set(m,i,j,I[i][j]);
-			}
-		gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc (3);
-		gsl_eigen_symmv (m, eval, evec, w);
-		gsl_eigen_symmv_free (w);
-		Vec3_t xp,yp,zp,In(1,0,0),Jn(0,1,0),Kn(0,0,1);
-		for (size_t i = 0;i < 3;i++)
-		{
-			xp(i) = gsl_matrix_get(evec,i,0);
-			yp(i) = gsl_matrix_get(evec,i,1);
-			zp(i) = gsl_matrix_get(evec,i,2);
-			_I(i) = gsl_vector_get(eval,i);
-		}
-		Vec3_t axis = cross(In,xp);
-		double angle = acos(dot(In,xp));
-		NormalizeRotation(angle,axis,_Q);
-/* 		_Q(0) = 0.5*sqrt(1+gsl_matrix_get(evec,0,0)+gsl_matrix_get(evec,1,1)+gsl_matrix_get(evec,2,2));
- * 		_Q(1) = (gsl_matrix_get(evec,2,1)-gsl_matrix_get(evec,1,2))/(4*_Q(0));
- * 		_Q(2) = (gsl_matrix_get(evec,0,2)-gsl_matrix_get(evec,2,0))/(4*_Q(0));
- * 		_Q(3) = (gsl_matrix_get(evec,1,0)-gsl_matrix_get(evec,0,1))/(4*_Q(0));
+    else 
+    {
+        double ri[3] = { MinX() , MinY() , MinZ() };
+        double rs[3] = { MaxX() , MaxY() , MaxZ() };
+        Mat3_t I;
+        MonteCarlo<Particle> *MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::V,Numerical::VEGAS,NCALCS);
+        _V = MC->Integrate(ri,rs);
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Xc,Numerical::VEGAS,NCALCS);
+        _r(0) = MC->Integrate(ri,rs)/_V;
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Yc,Numerical::VEGAS,NCALCS);
+        _r(1) = MC->Integrate(ri,rs)/_V;
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Zc,Numerical::VEGAS,NCALCS);
+        _r(2) = MC->Integrate(ri,rs)/_V;
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Ixx,Numerical::VEGAS,NCALCS);
+        I(0,0) = MC->Integrate(ri,rs);
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Iyy,Numerical::VEGAS,NCALCS);
+        I(1,1) = MC->Integrate(ri,rs);
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Izz,Numerical::VEGAS,NCALCS);
+        I(2,2) = MC->Integrate(ri,rs);
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Ixy,Numerical::VEGAS,NCALCS);
+        I(0,1) = I(1,0) = MC->Integrate(ri,rs);
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Ixz,Numerical::VEGAS,NCALCS);
+        I(0,2) = I(2,0) = MC->Integrate(ri,rs);
+        delete MC;
+        MC = new MonteCarlo<Particle> (this,&Particle::Iyz,Numerical::VEGAS,NCALCS);
+        I(1,2) = I(2,1) = MC->Integrate(ri,rs);
+        delete MC;
+        Vec3_t xp,yp,zp,In(1,0,0),Jn(0,1,0),Kn(0,0,1);
+        Eig(I,_I,xp,yp,zp);
+        Vec3_t axis = cross(Kn,zp);
+        double angle = acos(dot(Jn,zp));
+        NormalizeRotation(angle,axis,_Q);
+/*      _Q(0) = 0.5*sqrt(1+gsl_matrix_get(evec,0,0)+gsl_matrix_get(evec,1,1)+gsl_matrix_get(evec,2,2));
+ *      _Q(1) = (gsl_matrix_get(evec,2,1)-gsl_matrix_get(evec,1,2))/(4*_Q(0));
+ *      _Q(2) = (gsl_matrix_get(evec,0,2)-gsl_matrix_get(evec,2,0))/(4*_Q(0));
+ *      _Q(3) = (gsl_matrix_get(evec,1,0)-gsl_matrix_get(evec,0,1))/(4*_Q(0));
  */
-		
-		gsl_matrix_free(m);
-		gsl_matrix_free(evec);
-		gsl_vector_free(eval);
-	}
+        
+    }
 
 }
 
 inline bool Particle::IsInside (Vec3_t & v)
 {
-	bool inside = false,insideface = false;
-	size_t nv = NumberVertices(),ne = NumberEdges(),nf = NumberFaces();
-	for (size_t i = 0; i < nv; i++)
-	{
-		if (Distance(v,*Vertex(i)) < _R) {
-			inside = true;
-			return inside;
-		}
-	}
+    bool inside = false,insideface = false;
+    size_t nv = NumberVertices(),ne = NumberEdges(),nf = NumberFaces();
+    for (size_t i = 0; i < nv; i++)
+    {
+        if (Distance(v,*Vertex(i)) < _R) {
+            inside = true;
+            return inside;
+        }
+    }
 
-	for (size_t i = 0; i < ne; i++)
-	{
-		if (Distance(v,*Edges(i)) < _R) {
-			inside = true;
-			return inside;
-		}
-	}
-	int numberofintercepts = 0;
-	for (size_t i = 0; i < nf; i++)
-	{
-		if (Distance(v,*Faces(i)) < _R) {
-			inside = true;
-			return inside;
-		}
-		gsl_matrix *m = gsl_matrix_alloc(3,3);
-		gsl_vector *x = gsl_vector_alloc(3);
-		gsl_vector *b = gsl_vector_alloc(3);
-		Vec3_t D(0,0,1),nor;
-		for (size_t j = 0;j < 3;j++)
-		{
-			gsl_matrix_set(m,j,0,Faces(i)->Edges(0)->dr()(j));
-			gsl_matrix_set(m,j,1,Faces(i)->Edges(1)->dr()(j));
-			gsl_matrix_set(m,j,2,-D(j));
-			gsl_vector_set(b,j,v(j)-Faces(i)->Edges(0)->ri()(j));
-		}
-		int s;
-		gsl_permutation * p = gsl_permutation_alloc (3);
-     		gsl_linalg_LU_decomp (m, p, &s);
-     		gsl_linalg_LU_solve (m, p, b, x);
-		D = v + gsl_vector_get(x,2)*D;
-		nor = cross(Faces(i)->Edges(0)->dr(),Faces(i)->Edges(1)->dr());
-		insideface = true;
-		for(size_t j=0;j < Faces(i)->NumberofSides();j++) 
-		{
-			Vec3_t tmp = D-Faces(i)->Edges(j)->ri();
-			if (dot(cross(Faces(i)->Edges(j)->dr(),tmp),nor)<0) insideface = false;
-		}
-		if ((insideface)&&(gsl_vector_get(x,2)>0)) 
-		{
-			numberofintercepts++;
-		}
-		gsl_permutation_free(p);
-		gsl_matrix_free(m);
-		gsl_vector_free(x);
-		gsl_vector_free(b);
-	}
-	if (numberofintercepts%2!=0) inside = true;
-	return inside;
+    for (size_t i = 0; i < ne; i++)
+    {
+        if (Distance(v,*Edges(i)) < _R) {
+            inside = true;
+            return inside;
+        }
+    }
+    int numberofintercepts = 0;
+    for (size_t i = 0; i < nf; i++)
+    {
+        if (Distance(v,*Faces(i)) < _R) {
+            inside = true;
+            return inside;
+        }
+        Vec3_t D(0,0,1),nor,x,b;
+        Mat3_t m;
+        for (size_t j = 0;j < 3;j++)
+        {
+            m(j,0) = Faces(i)->Edges(0)->dr()(j);
+            m(j,1) = Faces(i)->Edges(1)->dr()(j);
+            m(j,2) = -D(j);
+            b(j) = v(j)-Faces(i)->Edges(0)->ri()(j);
+        }
+        Sol(m,b,x);
+        D = v + x(2)*D;
+        nor = cross(Faces(i)->Edges(0)->dr(),Faces(i)->Edges(1)->dr());
+        insideface = true;
+        for(size_t j=0;j < Faces(i)->NumberofSides();j++) 
+        {
+            Vec3_t tmp = D-Faces(i)->Edges(j)->ri();
+            if (dot(cross(Faces(i)->Edges(j)->dr(),tmp),nor)<0) insideface = false;
+        }
+        if ((insideface)&&(x(2)>0)) 
+        {
+            numberofintercepts++;
+        }
+    }
+    if (numberofintercepts%2!=0) inside = true;
+    return inside;
 }
 
 inline double Particle::IsInside (double *r)
 {
-	Vec3_t p;
-	p(0)=r[0];
-	p(1)=r[1];
-	p(2)=r[2];
-	return double(IsInside(p));
+    Vec3_t p;
+    p(0)=r[0];
+    p(1)=r[1];
+    p(2)=r[2];
+    return double(IsInside(p));
 }
 
 inline double Particle::MaxX()
 {
-	double result = (*Vertex(0))(0)+_R;
-	for (size_t i = 1; i < NumberVertices(); i++)
-	{
-		if ((*Vertex(i))(0)+_R > result) result = (*Vertex(i))(0)+_R; 
-	}
-	return result;
+    double result = (*Vertex(0))(0)+_R;
+    for (size_t i = 1; i < NumberVertices(); i++)
+    {
+        if ((*Vertex(i))(0)+_R > result) result = (*Vertex(i))(0)+_R; 
+    }
+    return result;
 }
 
 inline double Particle::MaxY()
 {
-	double result = (*Vertex(0))(1)+_R;
-	for (size_t i = 1; i < NumberVertices(); i++)
-	{
-		if ((*Vertex(i))(1)+_R > result) result = (*Vertex(i))(1)+_R; 
-	}
-	return result;
+    double result = (*Vertex(0))(1)+_R;
+    for (size_t i = 1; i < NumberVertices(); i++)
+    {
+        if ((*Vertex(i))(1)+_R > result) result = (*Vertex(i))(1)+_R; 
+    }
+    return result;
 }
 
 inline double Particle::MaxZ()
 {
-	double result = (*Vertex(0))(2)+_R;
-	for (size_t i = 1; i < NumberVertices(); i++)
-	{
-		if ((*Vertex(i))(2)+_R > result) result = (*Vertex(i))(2)+_R; 
-	}
-	return result;
+    double result = (*Vertex(0))(2)+_R;
+    for (size_t i = 1; i < NumberVertices(); i++)
+    {
+        if ((*Vertex(i))(2)+_R > result) result = (*Vertex(i))(2)+_R; 
+    }
+    return result;
 }
 
 inline double Particle::MinX()
 {
-	double result = (*Vertex(0))(0)-_R;
-	for (size_t i = 1; i < NumberVertices(); i++)
-	{
-		if ((*Vertex(i))(0)-_R < result) result = (*Vertex(i))(0)-_R; 
-	}
-	return result;
+    double result = (*Vertex(0))(0)-_R;
+    for (size_t i = 1; i < NumberVertices(); i++)
+    {
+        if ((*Vertex(i))(0)-_R < result) result = (*Vertex(i))(0)-_R; 
+    }
+    return result;
 }
 
 inline double Particle::MinY()
 {
-	double result = (*Vertex(0))(1)-_R;
-	for (size_t i = 1; i < NumberVertices(); i++)
-	{
-		if ((*Vertex(i))(1)-_R < result) result = (*Vertex(i))(1)-_R; 
-	}
-	return result;
+    double result = (*Vertex(0))(1)-_R;
+    for (size_t i = 1; i < NumberVertices(); i++)
+    {
+        if ((*Vertex(i))(1)-_R < result) result = (*Vertex(i))(1)-_R; 
+    }
+    return result;
 }
 
 inline double Particle::MinZ()
 {
-	double result = (*Vertex(0))(2)-_R;
-	for (size_t i = 1; i < NumberVertices(); i++)
-	{
-		if ((*Vertex(i))(2)-_R < result) result = (*Vertex(i))(2)-_R; 
-	}
-	return result;
+    double result = (*Vertex(0))(2)-_R;
+    for (size_t i = 1; i < NumberVertices(); i++)
+    {
+        if ((*Vertex(i))(2)-_R < result) result = (*Vertex(i))(2)-_R; 
+    }
+    return result;
 }
 
 inline double Particle::V (double *r)
 {
-	return IsInside(r);
+    return IsInside(r);
 }
 
 inline double Particle::Xc (double *r)
 {
-	return r[0]*IsInside(r);
+    return r[0]*IsInside(r);
 }
 
 inline double Particle::Yc (double *r)
 {
-	return r[1]*IsInside(r);
+    return r[1]*IsInside(r);
 }
 
 inline double Particle::Zc (double *r)
 {
-	return r[2]*IsInside(r);
+    return r[2]*IsInside(r);
 }
 
 inline double Particle::Ixx (double *r)
 {
-	//std::cout << (r[1]-_r(1)) << " " << (r[2]-_r(2)) << std::endl;
-	return ((r[1]-_r(1))*(r[1]-_r(1))+(r[2]-_r(2))*(r[2]-_r(2)))*IsInside(r);
+    //std::cout << (r[1]-_r(1)) << " " << (r[2]-_r(2)) << std::endl;
+    return ((r[1]-_r(1))*(r[1]-_r(1))+(r[2]-_r(2))*(r[2]-_r(2)))*IsInside(r);
 }
 
 inline double Particle::Iyy (double *r)
 {
-	return ((r[0]-_r(0))*(r[0]-_r(0))+(r[2]-_r(2))*(r[2]-_r(2)))*IsInside(r);
+    return ((r[0]-_r(0))*(r[0]-_r(0))+(r[2]-_r(2))*(r[2]-_r(2)))*IsInside(r);
 }
 
 inline double Particle::Izz (double *r)
 {
-	return ((r[0]-_r(0))*(r[0]-_r(0))+(r[1]-_r(1))*(r[1]-_r(1)))*IsInside(r);
+    return ((r[0]-_r(0))*(r[0]-_r(0))+(r[1]-_r(1))*(r[1]-_r(1)))*IsInside(r);
 }
 
 inline double Particle::Ixy (double *r)
 {
-	return -(r[0]-_r(0))*(r[1]-_r(1))*IsInside(r);
+    return -(r[0]-_r(0))*(r[1]-_r(1))*IsInside(r);
 }
 
 inline double Particle::Ixz (double *r)
 {
-	return -(r[0]-_r(0))*(r[2]-_r(2))*IsInside(r);
+    return -(r[0]-_r(0))*(r[2]-_r(2))*IsInside(r);
 }
 
 inline double Particle::Iyz (double *r)
 {
-	return -(r[1]-_r(1))*(r[2]-_r(2))*IsInside(r);
+    return -(r[1]-_r(1))*(r[2]-_r(2))*IsInside(r);
 }
 
 #endif // DEM_PARTICLE_H

@@ -62,8 +62,8 @@ public:
     void AddCube(const Vec3_t & r,double R,double l,double rho0);  ///< Add a cube at position r with spheroradius R, side of length l and density rho0
 
     //Access Methods
-        size_t NumberParticles ( )         { return   _Particles.Size();} ///< Return the number of particles
-        Particle * Particles   ( size_t i) { return _Particles[i];}       ///< Return pointer to i-th particle
+    size_t NumberParticles ( )         { return   _Particles.Size();} ///< Return the number of particles
+    Particle * Particles   ( size_t i) { return _Particles[i];}       ///< Return pointer to i-th particle
 
 protected:
     Array<Particle *> _Particles;                   ///< The array containing all the particles in the Domain.
@@ -173,7 +173,6 @@ inline void Domain::AddRice(const Vec3_t & r,double R,double l,double rho0)
     Quaternion_t q;
     NormalizeRotation(angle,axis,q);
     //q=1,0,0,0;
-    std::cout<<q<<std::endl;
     for (size_t i = 0;i < V.Size();i++)
     {
         Vec3_t t;
