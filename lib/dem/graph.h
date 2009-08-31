@@ -73,7 +73,12 @@ inline Graph::Graph(char const *f,bool IsPovray)
         _fn.Printf("%s.pov",f);
         _oss << "#include \"colors.inc\" \n";
         _oss << "background {color White} \n";
-        _oss << "light_source{<3,0,0> color White shadowless}  \n";
+        _oss << "light_source{<10,0,0> color White shadowless}  \n";
+        _oss << "light_source{<-10,0,0> color White shadowless}  \n";
+        _oss << "light_source{<0,10,0> color White shadowless}  \n";
+        _oss << "light_source{<0,-10,0> color White shadowless}  \n";
+        _oss << "light_source{<0,0,10> color White shadowless}  \n";
+        _oss << "light_source{<0,0,-10> color White shadowless}  \n";
     }
     else
     {
@@ -144,8 +149,8 @@ inline void Graph::DrawPolygon (const Vec3_t *v,size_t N,char const *c)
             _oss << "<"<<v[i](0)<<","<<v[i](1)<<","<<v[i](2)<<">";
             _oss << ",<"<<v[(i+1)%N](0)<<","<<v[(i+1)%N](1)<<","<<v[(i+1)%N](2)<<">";
             _oss << ",<"<<middle(0)<<","<<middle(1)<<","<<middle(2)<<">";
+            _oss <<"\n pigment { color "<<c<<" } }\n";
         }
-        _oss <<"\n pigment { color "<<c<<" } }\n";
     }
     else
     {
@@ -183,8 +188,6 @@ inline void Graph::DrawFace (Face & F,double R,char const *c)
     delete [] vi;
 }
 
-
-
 inline void Graph::DrawParticle (Particle & P, const char *c)
 {
     size_t nv = P.NumberVertices(),ne = P.NumberEdges(),nf = P.NumberFaces();
@@ -204,7 +207,6 @@ inline void Graph::DrawParticle (Particle & P, const char *c)
     }
 }
 
-
 inline void Graph::DrawEntireDomain(Domain & D,char const *c)
 {
     for (size_t i = 0;i<D.NumberParticles();i++)
@@ -212,7 +214,6 @@ inline void Graph::DrawEntireDomain(Domain & D,char const *c)
         DrawParticle(*D.Particles(i),c);
     }
 } 
-
 
 inline void Graph::Close ()
 {

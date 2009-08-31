@@ -48,76 +48,85 @@ class Particle
 {
 public:
     // Constructor
-    Particle(const Array<Vec3_t *> &,          ///< The list of vertices
-             const Array<Array <int> > &,      ///< The list of edges with connectivity
-             const Array<Array <int> > &,      ///< The list of faces with connectivity
-             const double R,                   ///< The spheroradius
-             const double rho0,                ///< The density of the material
-                 const Vec3_t & v0,                ///< Initial velocity
-                 const Vec3_t & w0);               ///< Initial angular velocity
+    Particle(const Array<Vec3_t *> &,                           ///< The list of vertices
+             const Array<Array <int> > &,                       ///< The list of edges with connectivity
+             const Array<Array <int> > &,                       ///< The list of faces with connectivity
+             const double R,                                    ///< The spheroradius
+             const double rho0,                                 ///< The density of the material
+             const Vec3_t & v0,                                 ///< Initial velocity
+             const Vec3_t & w0);                                ///< Initial angular velocity
 
     
 
     // Methods
-    void CalcMassProperties(size_t NCALCS = 5000);          ///< Calculate the mass, center of mass and moment of inertia
-    void StartForce(Vec3_t F);                              ///< Start the force of the particle a value F, use for external forces like gravity
-    void Start(double dt);                                  ///< Initialize the particle for the Verlet algorithm
-    void DynamicRotation(double dt);                        ///< Apply rotation on the particle once the total torque is found
-    void DynamicTranslation(double dt);                     ///< Apply translation once the total force is found
-    bool IsInside(Vec3_t & v);                              ///< Enquire if the point v is inside the particle.
-    double IsInside(double *v);                             ///< Wrapper to the previous function
-    double MaxX();                                          ///< Find Maximun X coordinate
-    double MaxY();                                          ///< Find Maximun Y coordinate
-    double MaxZ();                                          ///< Find Maximun Y coordinate
-    double MinX();                                          ///< Find Minimun X coordinate
-    double MinY();                                          ///< Find Minimun Y coordinate
-    double MinZ();                                          ///< Find Minimun Y coordinate
+    void CalcMassProperties(size_t NCALCS = 5000);              ///< Calculate the mass, center of mass and moment of inertia
+    void StartForce(Vec3_t F) {_F =  F;}                        ///< Start the force of the particle a value F, use for external forces like gravity
+    void StartForce() {_F = 0,0,0;}                             ///< Start the force of the particle a value F, use for external forces like gravity
+    void Start(double dt) {_rb = _r - _v*dt; _wb = _w;}         ///< Initialize the particle for the Verlet algorithm
+    void DynamicRotation(double dt);                            ///< Apply rotation on the particle once the total torque is found
+    void DynamicTranslation(double dt);                         ///< Apply translation once the total force is found
+    void QuaternionRotation(Quaternion_t & Q,Vec3_t &v);        ///< Apply rotation given by Quaternion Q at point v
+    void Translation(Vec3_t & t);                               ///< Apply translation by vector t
+    bool IsInside(Vec3_t & v);                                  ///< Enquire if the point v is inside the particle.
+    double IsInside(double *v);                                 ///< Wrapper to the previous function
+    double MaxX();                                              ///< Find Maximun X coordinate
+    double MaxY();                                              ///< Find Maximun Y coordinate
+    double MaxZ();                                              ///< Find Maximun Y coordinate
+    double MinX();                                              ///< Find Minimun X coordinate
+    double MinY();                                              ///< Find Minimun Y coordinate
+    double MinZ();                                              ///< Find Minimun Y coordinate
 
-    //Integrants for mass properties
-    double V(double *r);                ///< Calculate the volume of the sample
-    double Xc(double *r);               ///< Calculate the coordinates of the center of mass
-    double Yc(double *r);               ///< Calculate the coordinates of the center of mass
-    double Zc(double *r);               ///< Calculate the coordinates of the center of mass
-    double Ixx(double *r);              ///< Calculate the inertia tensor
-    double Iyy(double *r);              ///< Calculate the inertia tensor
-    double Izz(double *r);              ///< Calculate the inertia tensor
-    double Ixy(double *r);              ///< Calculate the inertia tensor
-    double Ixz(double *r);              ///< Calculate the inertia tensor
-    double Iyz(double *r);              ///< Calculate the inertia tensor
+    // Integrants for mass properties
+    double V(double *r);                                        ///< Calculate the volume of the sample
+    double Xc(double *r);                                       ///< Calculate the coordinates of the center of mass
+    double Yc(double *r);                                       ///< Calculate the coordinates of the center of mass
+    double Zc(double *r);                                       ///< Calculate the coordinates of the center of mass
+    double Ixx(double *r);                                      ///< Calculate the inertia tensor
+    double Iyy(double *r);                                      ///< Calculate the inertia tensor
+    double Izz(double *r);                                      ///< Calculate the inertia tensor
+    double Ixy(double *r);                                      ///< Calculate the inertia tensor
+    double Ixz(double *r);                                      ///< Calculate the inertia tensor
+    double Iyz(double *r);                                      ///< Calculate the inertia tensor
 
     // Access Methods
-        size_t NumberVertices ( )         { return _vertex.Size();} ///< Return the number of vertices.
-        size_t NumberEdges    ( )         { return _edges.Size();}  ///< Return the number of edges.
-        size_t NumberFaces    ( )         { return _faces.Size();}  ///< Return the number of faces.
-        double Radius         ( )         { return _R;}             ///< Return the spheroradius
-        double Volume         ( )         { return _V;}             ///< Return the Volume
-        Vec3_t * Vertex       ( size_t i) { return _vertex[i];}     ///< Return pointer to the i-th vertex
+    size_t NumberVertices ( )         { return _vertex.Size();} ///< Return the number of vertices.
+    size_t NumberEdges    ( )         { return _edges.Size();}  ///< Return the number of edges.
+    size_t NumberFaces    ( )         { return _faces.Size();}  ///< Return the number of faces.
+    double Radius         ( )         { return _R;}             ///< Return the spheroradius
+    double Volume         ( )         { return _V;}             ///< Return the Volume
+    Vec3_t * Vertex       ( size_t i) { return _vertex[i];}     ///< Return pointer to the i-th vertex
     Vec3_t & r            ( )         { return _r;}             ///< Return center of mass
+    Vec3_t & v            ( )         { return _v;}             ///< Return velocity
+    Vec3_t & w            ( )         { return _w;}             ///< Return angular velocity
     Vec3_t & I            ( )         { return _I;}             ///< Return the principal moments of inertia
+    Vec3_t & F            ( )         { return _F;}             ///< Return the force over the particle
+    Vec3_t & T            ( )         { return _T;}             ///< Return the torque over the particle
     Quaternion_t & Q      ( )         { return _Q;}             ///< Return the quaternion of the particle
-        Edge * Edges          ( size_t i) { return _edges[i];}      ///< Return pointer to the i-th Edge
-        Face * Faces          ( size_t i) { return _faces[i];}      ///< Return pointer to the i-th vertex
+    Edge * Edges          ( size_t i) { return _edges[i];}      ///< Return pointer to the i-th Edge
+    Face * Faces          ( size_t i) { return _faces[i];}      ///< Return pointer to the i-th vertex
 
-
+    
 protected:
-
-    bool            _IsLarge; ///< Flag to see if it is a large particle
-    double          _m;       ///< Mass of the particle
-    double          _rho;     ///< Density of the particle
-    double          _R;       ///< Spheroradius of the particle
-    double          _V;       ///< Volume of the particle
-    Vec3_t          _r;       ///< Position of the particle
-    Vec3_t          _rb;      ///< Former position for the Verlet algorithm
-    Vec3_t          _v;       ///< Velocity of the particle
-    Vec3_t          _f;       ///< Force over the particle
-    Vec3_t          _T;       ///< Torque over the particle
-    Vec3_t          _w;       ///< Angular velocity
-    Vec3_t          _wb;      ///< Former angular velocity for the leap frog algorithm
-    Vec3_t          _I;       ///< Vector containing the principal components of the inertia tensor
-    Quaternion_t    _Q;       ///< The quaternion representing the rotation
-    Array<Vec3_t *> _vertex;  ///< The set of vertices defining the geometry of the particle
-    Array<Edge *>   _edges;   ///< The set of edges defining the geometry of the particle
-    Array<Face *>   _faces;   ///< The set of faces defining the geometry of the particle
+    // Elements
+    bool            _IsLarge;                                   ///< Flag to see if it is a large particle
+    double          _m;                                         ///< Mass of the particle
+    double          _rho;                                       ///< Density of the particle
+    double          _R;                                         ///< Spheroradius of the particle
+    double          _V;                                         ///< Volume of the particle
+    double          _Erot;                                      ///< Rotational energy of the particle
+    double          _Ekin;                                      ///< Kinetical energy of the particle
+    Vec3_t          _r;                                         ///< Position of the particle
+    Vec3_t          _rb;                                        ///< Former position for the Verlet algorithm
+    Vec3_t          _v;                                         ///< Velocity of the particle
+    Vec3_t          _F;                                         ///< Force over the particle
+    Vec3_t          _T;                                         ///< Torque over the particle
+    Vec3_t          _w;                                         ///< Angular velocity
+    Vec3_t          _wb;                                        ///< Former angular velocity for the leap frog algorithm
+    Vec3_t          _I;                                         ///< Vector containing the principal components of the inertia tensor
+    Quaternion_t    _Q;                                         ///< The quaternion representing the rotation
+    Array<Vec3_t *> _vertex;                                    ///< The set of vertices defining the geometry of the particle
+    Array<Edge *>   _edges;                                     ///< The set of edges defining the geometry of the particle
+    Array<Face *>   _faces;                                     ///< The set of faces defining the geometry of the particle
     
     
 };
@@ -151,8 +160,8 @@ inline Particle::Particle(const Array<Vec3_t *> & V,const Array<Array <int> > & 
     _R = R;
     _v = v0;
     _w = w0;
-        _rho = rho0;
-    
+    _rho = rho0;
+    _wb = _w;
 }
 
 inline void Particle::CalcMassProperties(size_t NCALCS)
@@ -163,15 +172,8 @@ inline void Particle::CalcMassProperties(size_t NCALCS)
         _I = Vec3_t((8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.));
         _r = *_vertex[0];
         _Q = 1,0,0,0;
+        _m = _rho*_V;
     }
-/*  else if (_vertex.Size()==4&&_edges.Size()==6&&_faces.Size()==4) {
- *      double l = norm(*_vertex[0]-*_vertex[1]);
- *      _V = sqrt(2)*pow(l,3.)/12.;
- *      _I = Vec3_t((16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.),(16./(135.*sqrt(3)))*pow(l,5.));
- *      _r = 0.25*(*_vertex[0] + *_vertex[1] + *_vertex[2] + *_vertex[3]);
- *      _Q = 1,0,0,0;
- *  }
- */
     else 
     {
         double ri[3] = { MinX() , MinY() , MinZ() };
@@ -211,16 +213,103 @@ inline void Particle::CalcMassProperties(size_t NCALCS)
         Vec3_t xp,yp,zp,In(1,0,0),Jn(0,1,0),Kn(0,0,1);
         Eig(I,_I,xp,yp,zp);
         Vec3_t axis = cross(Kn,zp);
-        double angle = acos(dot(Jn,zp));
+        double angle = acos(dot(Kn,zp));
         NormalizeRotation(angle,axis,_Q);
-/*      _Q(0) = 0.5*sqrt(1+gsl_matrix_get(evec,0,0)+gsl_matrix_get(evec,1,1)+gsl_matrix_get(evec,2,2));
- *      _Q(1) = (gsl_matrix_get(evec,2,1)-gsl_matrix_get(evec,1,2))/(4*_Q(0));
- *      _Q(2) = (gsl_matrix_get(evec,0,2)-gsl_matrix_get(evec,2,0))/(4*_Q(0));
- *      _Q(3) = (gsl_matrix_get(evec,1,0)-gsl_matrix_get(evec,0,1))/(4*_Q(0));
- */
-        
+        Rotation(_w,_Q,_wb);
+        _w = _wb;
+        _m = _rho*_V;
     }
 
+}
+
+inline void Particle::DynamicRotation(double dt)
+{
+    double q0,q1,q2,q3,wx,wy,wz;
+    q0 = 0.5*_Q(0);
+    q1 = 0.5*_Q(1);
+    q2 = 0.5*_Q(2);
+    q3 = 0.5*_Q(3);
+
+    Vec3_t Td; 
+    Td(0)=(_T(0)+(_I(1)-_I(2))*_wb(1)*_wb(2))/_I(0);
+    Td(1)=(_T(1)+(_I(2)-_I(0))*_wb(0)*_wb(2))/_I(1);
+    Td(2)=(_T(2)+(_I(0)-_I(1))*_wb(1)*_wb(0))/_I(2);
+    _w = _wb+0.5*dt*Td;
+    wx = _w(0);
+    wy = _w(1);
+    wz = _w(2);
+    Quaternion_t dq(-(q1*wx+q2*wy+q3*wz),q0*wx-q3*wy+q2*wz,q3*wx+q0*wy-q1*wz,-q2*wx+q1*wy+q0*wz),qm;
+
+    _wb = _wb+Td*dt;
+    qm  = _Q+dq*(0.5*dt);
+    //std::cout << "mu " << _Q << std::endl;
+    q0  = 0.5*qm(0);
+    q1  = 0.5*qm(1);
+    q2  = 0.5*qm(2);
+    q3  = 0.5*qm(3);
+    wx  = _wb(0);
+    wy  = _wb(1);
+    wz  = _wb(2);
+    dq  = Quaternion_t(-(q1*wx+q2*wy+q3*wz),q0*wx-q3*wy+q2*wz,q3*wx+q0*wy-q1*wz,-q2*wx+q1*wy+q0*wz);
+    Quaternion_t Qd = (qm+dq*0.5*dt),temp;
+    Conjugate(_Q,temp);
+    QuaternionRotation(temp,_r);
+    _Q  = Qd/norm(Qd);
+    //std::cout << _Q <<std::endl;
+    QuaternionRotation(_Q,_r);    
+    _Erot=0.5*(_I(0)*wx*wx+_I(1)*wy*wy+_I(2)*wz*wz);
+}
+
+inline void Particle::DynamicTranslation(double dt)
+{
+    Vec3_t temp,ra;
+    ra    = 2*_r - _rb + _F*(dt*dt/_m);
+    temp  = ra - _r;
+    _v    = 0.5*(ra - _rb)/dt;
+    _rb   = _r;
+    _r    = ra;
+    _Ekin = 0.5*_m*dot(_v,_v);
+    Translation(temp);
+}
+
+inline void Particle::QuaternionRotation(Quaternion_t & Q,Vec3_t & v)
+{
+    size_t nv = NumberVertices(),ne = NumberEdges(),nf = NumberFaces();
+    for (size_t i = 0; i < nv; i++)
+    {
+        Vec3_t rt = *_vertex[i]-v;
+        Rotation(rt,Q,*_vertex[i]);
+        *_vertex[i] += v;
+    }
+
+    for (size_t i = 0; i < ne; i++)
+    {
+        _edges[i]->Rotate(Q,v);
+    }
+
+    for (size_t i = 0; i < nf; i++)
+    {
+        _faces[i]->Rotate(Q,v);
+    }
+}
+
+inline void Particle::Translation(Vec3_t & v)
+{
+    size_t nv = NumberVertices(),ne = NumberEdges(),nf = NumberFaces();
+    for (size_t i = 0; i < nv; i++)
+    {
+        *_vertex[i] += v;
+    }
+
+    for (size_t i = 0; i < ne; i++)
+    {
+        _edges[i]->Translate(v);
+    }
+
+    for (size_t i = 0; i < nf; i++)
+    {
+        _faces[i]->Translate(v);
+    }
 }
 
 inline bool Particle::IsInside (Vec3_t & v)
@@ -367,7 +456,6 @@ inline double Particle::Zc (double *r)
 
 inline double Particle::Ixx (double *r)
 {
-    //std::cout << (r[1]-_r(1)) << " " << (r[2]-_r(2)) << std::endl;
     return ((r[1]-_r(1))*(r[1]-_r(1))+(r[2]-_r(2))*(r[2]-_r(2)))*IsInside(r);
 }
 

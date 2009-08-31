@@ -166,13 +166,14 @@ inline void Domain::AddRice(const Vec3_t & r,double R,double l,double rho0)
     Array<Array <int> > F;
     F.Resize(0);
     double angle = (1.*rand())/RAND_MAX*2*M_PI;
-    Vec3_t axis;
+    //double angle = M_PI/4;
+    Vec3_t axis(0,1,0);
     axis(0) = (1.*rand())/RAND_MAX;
     axis(1) = (1.*rand())/RAND_MAX;
     axis(2) = (1.*rand())/RAND_MAX;
     Quaternion_t q;
     NormalizeRotation(angle,axis,q);
-    //q=1,0,0,0;
+    q=1,0,0,0;
     for (size_t i = 0;i < V.Size();i++)
     {
         Vec3_t t;

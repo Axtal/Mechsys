@@ -36,7 +36,7 @@ public:
     // Constructor
     Edge(void) {};          ///< Default Constructor
     Edge(const Vec3_t & a,  ///< Initial vector
-           const Vec3_t & b); ///< Final vector
+         const Vec3_t & b); ///< Final vector
 
     
     // Access Methods
@@ -46,7 +46,8 @@ public:
 
     // Methods
     void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
-                    const Vec3_t & v);      ///< Position of the axis of rotation
+                const Vec3_t & v);      ///< Position of the axis of rotation
+    void Translate(const Vec3_t & v);   ///< Translate the edge a vector v
 
 
 
@@ -81,5 +82,12 @@ inline void Edge::Rotate (const Quaternion_t & q,const Vec3_t & v)
     _rf = _rf + v;
     _dr = _rf - _ri;
 }
+
+inline void Edge::Translate(const Vec3_t & v)
+{
+    _ri+=v;
+    _rf+=v;
+}
+
 
 #endif //DEM_EDGE3D_H

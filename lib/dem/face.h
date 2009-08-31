@@ -35,9 +35,9 @@ class Face
 {
 public:
     // Constructor
-    Face(void) {};          ///< Default Constructor
-    Face(const Vec3_t * a,  ///< Vector array
-         const size_t N);   ///< Numer of sides
+    Face(void) {};                                        ///< Default Constructor
+    Face(const Vec3_t * a,                                ///< Vector array
+         const size_t N);                                 ///< Numer of sides
 
     // Destructor
     ~Face();
@@ -47,13 +47,14 @@ public:
     size_t NumberofSides () {return (int) _sides.Size();} ///< Returns the number of sides
 
     //Methods
-    void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
-                const Vec3_t & v);      ///< Position of the axis of rotation
+    void Rotate(const Quaternion_t & q,                   ///< Quaternion representing the rotation
+                const Vec3_t & v);                        ///< Position of the axis of rotation
+    void Translate(const Vec3_t & v);                     ///< Translate the face a distance v
 
 
 
 protected:
-    Array<Edge *> _sides;   ///< Array of edges representing sides of the face.
+    Array<Edge *> _sides;                                 ///< Array of edges representing sides of the face.
 };
 
 
@@ -83,6 +84,14 @@ inline void Face::Rotate (const Quaternion_t & q,const Vec3_t & v)
     for(size_t i=0;i<_sides.Size();i++) 
     {
         _sides[i]->Rotate(q,v);
+    }
+}
+
+inline void Face::Translate(const Vec3_t & v)
+{
+    for(size_t i=0;i<_sides.Size();i++) 
+    {
+        _sides[i]->Translate(v);
     }
 }
 
