@@ -39,35 +39,41 @@ public:
     Domain() {}
 
     //Methods
-    void GenerateSpheres(size_t n,                                 ///< Number of spheres
-                         double Xmin,                              ///< Left boundary
-                         double Xmax,                              ///< Right boundary
-                         double Ymin,                              ///< Back boundary
-                         double Ymax,                              ///< Front boundary
-                         double Zmin,                              ///< Bottom boundary
-                         double Zmax,                              ///< Top boundary
-                         double rho,                               ///< Density of the material
-                         double Rmin);                             ///< Minimun radius in units of the maximun radius
+    void GenerateSpheres(size_t n,                                    ///< Number of spheres
+                         double Xmin,                                 ///< Left boundary
+                         double Xmax,                                 ///< Right boundary
+                         double Ymin,                                 ///< Back boundary
+                         double Ymax,                                 ///< Front boundary
+                         double Zmin,                                 ///< Bottom boundary
+                         double Zmax,                                 ///< Top boundary
+                         double rho,                                  ///< Density of the material
+                         double Rmin);                                ///< Minimun radius in units of the maximun radius
     
-    void GenerateBox(double Xmin,                                  ///< Left boundary
-                     double Xmax,                                  ///< Right boundary
-                     double Ymin,                                  ///< Back boundary
-                     double Ymax,                                  ///< Front boundary
-                     double Zmin,                                  ///< Bottom boundary
-                     double Zmax,                                  ///< Top boundary
-                     double Thickness);                            ///< Thickness of the wall, cannot be zero
+    void GenerateBox(double Xmin,                                     ///< Left boundary
+                     double Xmax,                                     ///< Right boundary
+                     double Ymin,                                     ///< Back boundary
+                     double Ymax,                                     ///< Front boundary
+                     double Zmin,                                     ///< Bottom boundary
+                     double Zmax,                                     ///< Top boundary
+                     double Thickness);                               ///< Thickness of the wall, cannot be zero
 
-    void AddTetra(const Vec3_t & r,double R,double l,double rho0); ///< Add a tetrahedron at position r with spheroradius R, side of length l and density rho0
-    void AddRice(const Vec3_t & r,double R,double l,double rho0);  ///< Add a rice at position r with spheroradius R, side of length l and density rho0
-    void AddCube(const Vec3_t & r,double R,double l,double rho0);  ///< Add a cube at position r with spheroradius R, side of length l and density rho0
+    void AddTetra(const Vec3_t & r,double R,double l,double rho0);    ///< Add a tetrahedron at position r with spheroradius R, side of length l and density rho0
+    void AddRice(const Vec3_t & r,double R,double l,double rho0);     ///< Add a rice at position r with spheroradius R, side of length l and density rho0
+    void AddCube(const Vec3_t & r,double R,double l,double rho0);     ///< Add a cube at position r with spheroradius R, side of length l and density rho0
+    void CopyParticle(const Particle & P);                            ///< Create a new particle as a copy of particle P, it should be translated to another position.
+    void InitializeSimulation(double dt);                             ///< Set the particles to a initial state and asign the possible insteractions
+    void OneStep(double dt);                                          ///< One simualtion step
 
     //Access Methods
     size_t NumberParticles ( )         { return   _Particles.Size();} ///< Return the number of particles
     Particle * Particles   ( size_t i) { return _Particles[i];}       ///< Return pointer to i-th particle
+    void LinearMomentum    (Vec3_t & L);                              ///< Return total momentum of the system
+    void AngularMomentum   (Vec3_t & L);                              ///< Return total angular momentum of the system
+    double TotalEnergy     ();                                        ///< Return total energy of the system
 
 protected:
-    Array<Particle *> _Particles;                   ///< The array containing all the particles in the Domain.
-
+    Array<Particle *> _Particles;                                     ///< The array containing all the particles in the Domain.
+    Array<Interacton *> _Interactons;                                 ///< the array containing all the interactions
 };
 
 
@@ -173,7 +179,6 @@ inline void Domain::AddRice(const Vec3_t & r,double R,double l,double rho0)
     axis(2) = (1.*rand())/RAND_MAX;
     Quaternion_t q;
     NormalizeRotation(angle,axis,q);
-    q=1,0,0,0;
     for (size_t i = 0;i < V.Size();i++)
     {
         Vec3_t t;
@@ -231,5 +236,79 @@ inline void Domain::AddCube(const Vec3_t & r,double R,double l,double rho0)
     _Particles.Push(new Particle(V,E,F,R,rho0,Zero,Zero));
 }
 
+inline void Domain::CopyParticle(const Particle & P)
+{
 
+}
+
+inline void Domain::InitializeSimulation(double dt)
+{
+    for(size_t i = 0;i < NumberParticles();i++)
+    {
+        _Particles[i]->CalcMassProperties(5000);
+        _Particles[i]->Start(dt);
+    }
+
+    for(size_t i = 0;i < NumberParticles()-1;i++)
+    {
+        for(size_t j = i+1;j < NumberParticles();j++)
+        {
+            _Interactons.Push(new Interacton(_Particles[i],_Particles[j]));
+        }
+    }
+}
+
+inline void Domain::OneStep(double dt)
+{
+    for(size_t i = 0;i < NumberParticles();i++)
+    {
+        _Particles[i]->StartForce();
+    }
+    for(size_t i = 0;i < _Interactons.Size();i++)
+    {
+        _Interactons[i]->CalcForce(dt);
+    }
+    for(size_t i = 0;i < NumberParticles();i++)
+    {
+        _Particles[i]->DynamicRotation(dt);
+        _Particles[i]->DynamicTranslation(dt);
+    }
+}
+
+inline void Domain::LinearMomentum(Vec3_t & L)
+{
+    L = 0.,0.,0.;
+    for(size_t i = 0;i < NumberParticles();i++)
+    {
+        L+=_Particles[i]->Mass()*_Particles[i]->v();
+    }
+}
+
+inline void Domain::AngularMomentum(Vec3_t & L)
+{
+    L = 0.,0.,0.;
+    for(size_t i = 0;i < NumberParticles();i++)
+    {
+        Vec3_t t1,t2;
+        t1 = _Particles[i]->I()(0)*_Particles[i]->w()(0),_Particles[i]->I()(1)*_Particles[i]->w()(1),_Particles[i]->I()(2)*_Particles[i]->w()(2);
+        Rotation(t1,_Particles[i]->Q(),t2);
+        L += _Particles[i]->Mass()*cross(_Particles[i]->r(),_Particles[i]->v())+t2;
+    }
+    
+}
+
+inline double Domain::TotalEnergy()
+{
+    double E = 0;
+    for(size_t i = 0;i < NumberParticles();i++)
+    {
+        E += _Particles[i]->KinEnergy();
+    }
+
+    for(size_t i = 0;i < _Interactons.Size();i++)
+    {
+        E += _Interactons[i]->_Epot;
+    }
+    return E;
+}
 #endif //DEM_DOMAIN_H

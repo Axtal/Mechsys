@@ -69,7 +69,6 @@ inline Face::Face (const Vec3_t * a,const size_t N)
     }
 }
 
-
 inline Face::~Face ()
 {
     for(size_t i=0;i<_sides.Size();i++) 
@@ -77,7 +76,6 @@ inline Face::~Face ()
         delete _sides[i];
     }
 }
-
 
 inline void Face::Rotate (const Quaternion_t & q,const Vec3_t & v)
 {

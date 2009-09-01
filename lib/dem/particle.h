@@ -60,8 +60,8 @@ public:
 
     // Methods
     void CalcMassProperties(size_t NCALCS = 5000);              ///< Calculate the mass, center of mass and moment of inertia
-    void StartForce(Vec3_t F) {_F =  F;}                        ///< Start the force of the particle a value F, use for external forces like gravity
-    void StartForce() {_F = 0,0,0;}                             ///< Start the force of the particle a value F, use for external forces like gravity
+    void StartForce(Vec3_t F) {_F =  F; _T = 0,0,0;}            ///< Start the force of the particle a value F, use for external forces like gravity
+    void StartForce() {_F = 0,0,0; _T = 0,0,0;}                 ///< Start the force of the particle a value F, use for external forces like gravity
     void Start(double dt) {_rb = _r - _v*dt; _wb = _w;}         ///< Initialize the particle for the Verlet algorithm
     void DynamicRotation(double dt);                            ///< Apply rotation on the particle once the total torque is found
     void DynamicTranslation(double dt);                         ///< Apply translation once the total force is found
@@ -94,6 +94,8 @@ public:
     size_t NumberFaces    ( )         { return _faces.Size();}  ///< Return the number of faces.
     double Radius         ( )         { return _R;}             ///< Return the spheroradius
     double Volume         ( )         { return _V;}             ///< Return the Volume
+    double Mass           ( )         { return _m;}             ///< Return the mass
+    double KinEnergy      ( )         { return _Erot+_Ekin;}    ///< Return the kinetical energy
     Vec3_t * Vertex       ( size_t i) { return _vertex[i];}     ///< Return pointer to the i-th vertex
     Vec3_t & r            ( )         { return _r;}             ///< Return center of mass
     Vec3_t & v            ( )         { return _v;}             ///< Return velocity
@@ -104,8 +106,8 @@ public:
     Quaternion_t & Q      ( )         { return _Q;}             ///< Return the quaternion of the particle
     Edge * Edges          ( size_t i) { return _edges[i];}      ///< Return pointer to the i-th Edge
     Face * Faces          ( size_t i) { return _faces[i];}      ///< Return pointer to the i-th vertex
-
-    
+ /* :TODO:09/01/2009 05:18:53 PM:: Remove the friend class */
+    friend class Interacton;
 protected:
     // Elements
     bool            _IsLarge;                                   ///< Flag to see if it is a large particle
@@ -127,8 +129,6 @@ protected:
     Array<Vec3_t *> _vertex;                                    ///< The set of vertices defining the geometry of the particle
     Array<Edge *>   _edges;                                     ///< The set of edges defining the geometry of the particle
     Array<Face *>   _faces;                                     ///< The set of faces defining the geometry of the particle
-    
-    
 };
 
 
@@ -218,6 +218,8 @@ inline void Particle::CalcMassProperties(size_t NCALCS)
         Rotation(_w,_Q,_wb);
         _w = _wb;
         _m = _rho*_V;
+        _Ekin = 0.5*_m*dot(_v,_v);
+        _Erot = 0.5*(_I(0)*_w(0)*_w(0)+_I(1)*_w(1)*_w(1)+_I(2)*_w(2)*_w(2));
     }
 
 }
@@ -242,7 +244,6 @@ inline void Particle::DynamicRotation(double dt)
 
     _wb = _wb+Td*dt;
     qm  = _Q+dq*(0.5*dt);
-    //std::cout << "mu " << _Q << std::endl;
     q0  = 0.5*qm(0);
     q1  = 0.5*qm(1);
     q2  = 0.5*qm(2);
@@ -255,7 +256,6 @@ inline void Particle::DynamicRotation(double dt)
     Conjugate(_Q,temp);
     QuaternionRotation(temp,_r);
     _Q  = Qd/norm(Qd);
-    //std::cout << _Q <<std::endl;
     QuaternionRotation(_Q,_r);    
     _Erot=0.5*(_I(0)*wx*wx+_I(1)*wy*wy+_I(2)*wz*wz);
 }

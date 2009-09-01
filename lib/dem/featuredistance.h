@@ -180,7 +180,6 @@ inline double Distance(const Vec3_t & v,Face & F) ///< Distance Between a Point 
     return Distance(F,v);
 }
 
-
 inline double Distance(const Vec3_t & a,const Vec3_t & b) ///< Distance between two points
 {
     return norm(b-a);

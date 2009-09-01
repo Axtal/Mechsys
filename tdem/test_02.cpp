@@ -31,13 +31,15 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 	//This tests the distance between two edges in 3D, the edges are given by the points a,b and c,d. I and F are auxiliary vectors to define the distance edge and draw it.
-	Vec3_t a(1,1,1),b(0,0,0),c(0.5,1,0),d(2,0,0),I,F;
+	Vec3_t a(1,1,1),b(0,0,0),c(0.5,1,0),d(2,0,0),I(0,0,0),F(0,0,0);
 	Edge E1(a,b),E2(c,d);
 	Distance(E1,E2,I,F);
 	Edge D(I,F);
 
 
 	Graph g("drawing",false);
+    Vec3_t p(0,0,10),v(0.5,0.5,0.5);
+    g.SetCamera(p,v);
 	g.DrawEdge(E1,0.2,"Blue");
 	g.DrawEdge(E2,0.2,"Blue");
 	g.DrawEdge(D,0.1,"Blue");
