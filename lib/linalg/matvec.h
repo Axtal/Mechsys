@@ -535,6 +535,25 @@ inline double CompareVectors (Vec3_t const & A, Vec3_t const & B)
     return error;
 }
 
+// Constants
+namespace OrthoSys
+{
+    Vec3_t O;        ///< Origin
+    Vec3_t e0,e1,e2; ///< Basis
+
+    int __init_ortho_sys()
+    {
+        O  = 0.0, 0.0, 0.0;
+        e0 = 1.0, 0.0, 0.0;
+        e1 = 0.0, 1.0, 0.0;
+        e2 = 0.0, 0.0, 1.0;
+        return 0.0;
+    }
+
+    int __dummy_init_ortho_sys = __init_ortho_sys();
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
 
 

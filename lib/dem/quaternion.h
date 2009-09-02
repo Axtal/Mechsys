@@ -17,10 +17,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM3D_QUATERNION_H
-#define DEM3D_QUATERNION_H
+#ifndef MECHSYS_DEM_QUATERNION_H
+#define MECHSYS_DEM_QUATERNION_H
 
-#include <math.h>
+// Std Lib
+#include <cmath>
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
@@ -31,7 +32,7 @@
 
 typedef blitz::TinyVector<double,4> Quaternion_t;
 
-void NormalizeRotation(double Theta, Vec3_t const & Axis, Quaternion_t & C)
+inline void NormalizeRotation (double Theta, Vec3_t const & Axis, Quaternion_t & C)
 {
     Vec3_t A = Axis/norm(Axis);
     C(0)     = cos(Theta/2.0);
@@ -40,7 +41,7 @@ void NormalizeRotation(double Theta, Vec3_t const & Axis, Quaternion_t & C)
     C(3)     = A(2)*sin(Theta/2.0);
 }
 
-void Conjugate(Quaternion_t const & A, Quaternion_t & C)
+inline void Conjugate (Quaternion_t const & A, Quaternion_t & C)
 {
     C(0) =  A(0);
     C(1) = -A(1);
@@ -48,14 +49,14 @@ void Conjugate(Quaternion_t const & A, Quaternion_t & C)
     C(3) = -A(3);
 }
 
-void GetVector(Quaternion_t const & A, Vec3_t & C)
+inline void GetVector (Quaternion_t const & A, Vec3_t & C)
 {
     C(0) = A(1);
     C(1) = A(2);
     C(2) = A(3);
 }
 
-void SetQuaternion(double Scalar, Vec3_t const & A, Quaternion_t & C)
+inline void SetQuaternion (double Scalar, Vec3_t const & A, Quaternion_t & C)
 {
     C(0) = Scalar;
     C(1) = A(0);
@@ -63,17 +64,17 @@ void SetQuaternion(double Scalar, Vec3_t const & A, Quaternion_t & C)
     C(3) = A(2);
 }
 
-void QuaternionProduct(Quaternion_t const & A, Quaternion_t const & B, Quaternion_t & C)
+inline void QuaternionProduct (Quaternion_t const & A, Quaternion_t const & B, Quaternion_t & C)
 {
     Vec3_t t1,t2;
-    GetVector(A,t1);
-    GetVector(B,t2);
-    double scalar = A(0)*B(0)-dot(t1,t2);
-    Vec3_t vect = A(0)*t2 + B(0)*t1 + cross(t1,t2);
-    SetQuaternion(scalar,vect,C);
+    GetVector (A,t1);
+    GetVector (B,t2);
+    double scalar = A(0)*B(0) - dot(t1,t2);
+    Vec3_t vector = A(0)*t2 + B(0)*t1 + cross(t1,t2);
+    SetQuaternion (scalar,vector,C);
 }
 
-void Rotation(Vec3_t const & A, Quaternion_t const & B, Vec3_t & C)
+inline void Rotation (Vec3_t const & A, Quaternion_t const & B, Vec3_t & C)
 {
     Quaternion_t t1,t2,t3;
     SetQuaternion     (0.0,A,t1);
@@ -83,4 +84,4 @@ void Rotation(Vec3_t const & A, Quaternion_t const & B, Vec3_t & C)
     GetVector         (t1,C);
 }
 
-#endif // DEM3D_QUATERNION_H
+#endif // MECHSYS_DEM_QUATERNION_H

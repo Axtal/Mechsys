@@ -17,9 +17,8 @@
 ########################################################################
 
 SET(TESTS
-  test_01
-  test_02
-  test_03
+  test_distances
+  test_domain
   test_04
   test_05
   test_06)

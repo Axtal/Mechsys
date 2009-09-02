@@ -17,29 +17,98 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_GRAPH_H
-#define DEM_GRAPH_H
+#ifndef MECHSYS_DEM_GRAPH_H
+#define MECHSYS_DEM_GRAPH_H
 
 // Std lib
-#include <math.h>
-#include <fstream>
-#include <sstream>
 #include <iostream>
 
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
-
 // MechSys
-#include "dem/domain.h"
+#include "util/array.h"
+#include "linalg/matvec.h"
 
-using namespace std;
 
+/////////////////////////////////////////////////////////////////////////////////////////// PovRay /////
+
+
+inline void PovHeader (std::ostream & os)
+{
+    os << "#include \"colors.inc\" \n";
+    os << "background {color White} \n";
+    os << "light_source{<10,0,0> color White shadowless}  \n";
+    os << "light_source{<-10,0,0> color White shadowless}  \n";
+    os << "light_source{<0,10,0> color White shadowless}  \n";
+    os << "light_source{<0,-10,0> color White shadowless}  \n";
+    os << "light_source{<0,0,10> color White shadowless}  \n";
+    os << "light_source{<0,0,-10> color White shadowless}  \n";
+}   
+
+inline void PovSetCam (std::ostream & os, const Vec3_t & X, const Vec3_t & F)
+{
+    os << "camera { location <"<<X(0)<<","<<X(1)<<","<<X(2)<<"> sky <0,0,1> look_at <"<<F(0)<<","<<F(1)<<","<<F(2)<<"> }\n";
+}
+
+inline void PovDrawVert (Vec3_t const & V, std::ostream & os, double Radius=1.0, char const * Color="Blue")
+{
+    os << "sphere  { <"<<V(0)<<","<<V(1)<<","<<V(2)<<">,"<<Radius<<"\n pigment { color "<<Color<<" } }\n";
+}
+
+inline void PovDrawPolygon (Array<Vec3_t> const & V, std::ostream & os, char const * Color="Blue")
+{
+    size_t N = V.Size();
+    Vec3_t mid;
+    mid = 0.0, 0.0, 0.0;
+    for (size_t i=0; i<V.Size(); i++) mid += V[i];
+    mid /= V.Size();
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        os << "polygon {"<<3<<", \n";
+        os << "<"<<V[i](0)<<","<<V[i](1)<<","<<V[i](2)<<">";
+        os << ",<"<<V[(i+1)%N](0)<<","<<V[(i+1)%N](1)<<","<<V[(i+1)%N](2)<<">";
+        os << ",<"<<mid(0)<<","<<mid(1)<<","<<mid(2)<<">";
+        os <<"\n pigment { color "<<Color<<" } }\n";
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////// Blender /////
+
+
+inline void BlenderHeader (std::ostream & os)
+{
+    os << "from Blender import *\n";
+    os << "from bpy import *\n";
+    os << "from Blender import Mathutils\n";
+    os << "from Blender.Mathutils import *\n";
+    os << "s = data.scenes.active\n";
+}
+
+inline void BlenderDrawVert (Vec3_t const & V, std::ostream & os, double Radius=1.0)
+{
+    os << "m = Mesh.Primitives.UVsphere(32,32,"<<Radius*2.0<<")\n";
+    os << "o = s.objects.new(m,'Sphere')\n";
+    os << "o.setLocation("<<V(0)<<","<<V(1)<<","<<V(2)<<")\n";
+}
+
+inline void BlenderDrawPolygon (Array<Vec3_t> const & V, std::ostream & os)
+{
+    size_t N = V.Size();
+    Vec3_t mid;
+    mid = 0.0, 0.0, 0.0;
+    for (size_t i=0; i<V.Size(); i++) mid += V[i];
+    mid /= V.Size();
+    for (size_t i=0; i<N; i++) 
+    {   
+        os << "m = data.meshes.new('Face') \no = s.objects.new(m,'Face') \nv = [["<<V[i](0)<<","<<V[i](1)<<","<<V[i](2)<<"],["<<V[(i+1)%N](0)<<","<<V[(i+1)%N](1)<<","<<V[(i+1)%N](2)<<"],["<<mid(0)<<","<<mid(1)<<","<<mid(2)<<"]]\n";
+        os << "f = [[0,1,2]] \nm.verts.extend(V) \nm.faces.extend(f) \n";
+    }
+}
+
+/*
 class Graph
 {
 public:
     // Constructor
-    Graph(char const *f,           ///< Filename
+    Graph(char const * FileName,           ///< Filename
           bool IsPovray=true);     ///< Flag for the user to choose between Povray or Blender for visualization
 
     // Methods
@@ -51,6 +120,8 @@ public:
     void DrawParticle (Particle & P,char const *c);            ///< Draw the entire particle with all its geometric features
     void DrawEntireDomain (Domain & D,char const *c);          ///< Draw the entire Domain with all its particles
     void Close ();                                             ///< Flushes the working string into the final file
+
+    void WritePov (char const * Filename);
 
 
 
@@ -65,109 +136,6 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-inline Graph::Graph(char const *f,bool IsPovray)
-{
-    _IsPovray=IsPovray;
-    if(IsPovray)
-    {
-        _fn.Printf("%s.pov",f);
-        _oss << "#include \"colors.inc\" \n";
-        _oss << "background {color White} \n";
-        _oss << "light_source{<10,0,0> color White shadowless}  \n";
-        _oss << "light_source{<-10,0,0> color White shadowless}  \n";
-        _oss << "light_source{<0,10,0> color White shadowless}  \n";
-        _oss << "light_source{<0,-10,0> color White shadowless}  \n";
-        _oss << "light_source{<0,0,10> color White shadowless}  \n";
-        _oss << "light_source{<0,0,-10> color White shadowless}  \n";
-    }
-    else
-    {
-        _fn.Printf("%s.py",f);
-        _oss << "from Blender import * \n";
-        _oss << "from bpy import * \n";
-        _oss << "from Blender import Mathutils \n";
-        _oss << "from Blender.Mathutils import * \n";
-        _oss << "s = data.scenes.active \n";
-    }
-}   
-
-inline void Graph::SetCamera (const Vec3_t & x,const Vec3_t & v)
-{
-    if(_IsPovray)
-    {
-        _oss << "camera { location <"<<x(0)<<","<<x(1)<<","<<x(2)<<"> sky <0,0,1> look_at <"<<v(0)<<","<<v(1)<<","<<v(2)<<"> }\n";
-    }
-}
-
-inline void Graph::DrawPoint (const Vec3_t & r,double R,char const *c)
-{
-    if(_IsPovray)
-    {
-        _oss << "sphere  { <"<<r(0)<<","<<r(1)<<","<<r(2)<<">,"<<R<<"\n pigment { color "<<c<<" } }\n";
-    }
-    else
-    {
-        _oss << "m = Mesh.Primitives.UVsphere(32,32,"<<R*2.0<<") \no = s.objects.new(m,'Sphere') \no.setLocation("<<r(0)<<","<<r(1)<<","<<r(2)<<") \n";
-    }
-}
-
-inline void Graph::DrawEdge (Edge & E,double R,char const *c)
-{
-    Vec3_t ini = E.ri();
-    Vec3_t fin = E.rf();
-    if(_IsPovray)
-    {
-        _oss << "cylinder { <"<<ini(0)<<","<<ini(1)<<","<<ini(2)<<">,<"<<fin(0)<<","<<fin(1)<<","<<fin(2)<<">,"<<R<<"\n pigment { color "<<c<<" } }\n";
-    }
-    else
-    {
-        Vec3_t middle=(ini+fin)/2;
-        double L = norm(fin-ini);
-        Vec3_t Bv(0,0,L/2);
-        Vec3_t axis;
-        axis = fin-middle;
-        axis = cross(Bv,axis);
-        if(norm(axis)==0) axis=1,0,0;
-        double angle = acos(4*dot(Bv,fin-middle)/(L*L));
-        _oss << "m = Mesh.Primitives.Cylinder(32,"<<R*2.0<<","<<L<<") \no = s.objects.new(m,'Cylinder') \n";
-        _oss << "axis = ["<<axis(0)<<","<<axis(1)<<","<<axis(2)<<"] \nquat = Quaternion(axis,"<<angle*180/M_PI<<") \nquat.normalize() \no.setMatrix(quat.toMatrix()) \no.setLocation("<<middle(0)<<","<<middle(1)<<","<<middle(2)<<") \n";
-    }
-}
-
-inline void Graph::DrawPolygon (const Vec3_t *v,size_t N,char const *c)
-{
-    if (_IsPovray)
-    {
-        Vec3_t middle(0,0,0);
-        for(size_t i=0;i<N;i++) 
-        {
-            middle += v[i];
-        }
-        middle /= N;
-        for(size_t i=0;i<N;i++) {
-            _oss << "polygon {"<<3<<", \n";
-            _oss << "<"<<v[i](0)<<","<<v[i](1)<<","<<v[i](2)<<">";
-            _oss << ",<"<<v[(i+1)%N](0)<<","<<v[(i+1)%N](1)<<","<<v[(i+1)%N](2)<<">";
-            _oss << ",<"<<middle(0)<<","<<middle(1)<<","<<middle(2)<<">";
-            _oss <<"\n pigment { color "<<c<<" } }\n";
-        }
-    }
-    else
-    {
-        Vec3_t middle(0,0,0);
-        for(size_t i=0;i<N;i++) 
-        {
-            middle += v[i];
-        }
-        middle /= N;
-        for(size_t i=0;i<N;i++) 
-        {   
-            _oss << "m = data.meshes.new('Face') \no = s.objects.new(m,'Face') \nv = [["<<v[i](0)<<","<<v[i](1)<<","<<v[i](2)<<"],["<<v[(i+1)%N](0)<<","<<v[(i+1)%N](1)<<","<<v[(i+1)%N](2)<<"],["<<middle(0)<<","<<middle(1)<<","<<middle(2)<<"]] \nf = [[0,1,2]] \nm.verts.extend(v) \nm.faces.extend(f) \n";
-        }
-        
-    }
-
-}
 
 inline void Graph::DrawFace (Face & F,double R,char const *c)
 {
@@ -221,6 +189,6 @@ inline void Graph::Close ()
     file << _oss.str();
     file.close();
 }
+*/
 
-#endif //DEM_GRAPH_H
-
+#endif // MECHSYS_DEM_GRAPH_H

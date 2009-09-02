@@ -17,8 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_INTERACTON_H
-#define DEM_INTERACTON_H
+#ifndef MECHSYS_DEM_INTERACTON_H
+#define MECHSYS_DEM_INTERACTON_H
 
 #include <math.h>
 #include <map>
@@ -118,5 +118,4 @@ inline void Interacton::CalcForce(double Dt)
     _update_disp_calc_force (_p1->_faces,  _p2->_vertex, _fdfv);
 }
 
-
-#endif // DEM_INTERACTON_H
+#endif //  MECHSYS_DEM_INTERACTON_H

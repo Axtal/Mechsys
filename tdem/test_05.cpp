@@ -21,7 +21,7 @@
 #include <math.h>
 
 // GSL
-#include <gsl/gsl_linalg.h>
+//#include <gsl/gsl_linalg.h>
 
 // MechSys
 #include "dem/graph.h"
@@ -35,6 +35,7 @@ int main(int argc, char **argv) try
 {
 	//This test the varius Domain and Particle constructors.
 	Domain D;
+
 	//D.GenerateSpheres(1000,0,10,0,10,0,10,1,0.5);
 	Vec3_t r(0,0,0),p(0,0,0);
 	D.AddRice(r,1.,10.,1.);

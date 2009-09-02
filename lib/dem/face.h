@@ -17,82 +17,82 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_FACE3D_H
-#define DEM_FACE3D_H
-
-// Std lib
-#include <math.h>
-
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
+#ifndef MECHSYS_DEM_FACE_H
+#define MECHSYS_DEM_FACE_H
 
 // MechSys
 #include "dem/edge.h"
+#include "dem/graph.h"
 #include "util/array.h"
 
 class Face
 {
 public:
     // Constructor
-    Face(void) {};                                        ///< Default Constructor
-    Face(const Vec3_t * a,                                ///< Vector array
-         const size_t N);                                 ///< Numer of sides
+    Face (Array<Vec3_t> const & V); ///< V: vertices of face
 
     // Destructor
-    ~Face();
+    ~Face ();
 
-    // Access Methods
-    Edge * Edges (size_t i) {return _sides[i];}           ///< Returns pointer to the i-th side
-    size_t NumberofSides () {return (int) _sides.Size();} ///< Returns the number of sides
+    // Methods
+    void Rotate    (Quaternion_t const & Q, Vec3_t const & Xa); ///< Q: quaternion representing the rotation, Xa: position of the axis of rotation
+    void Translate (Vec3_t const & dX);                         ///< Translate edge by dX
+    void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool Blender=false);
 
-    //Methods
-    void Rotate(const Quaternion_t & q,                   ///< Quaternion representing the rotation
-                const Vec3_t & v);                        ///< Position of the axis of rotation
-    void Translate(const Vec3_t & v);                     ///< Translate the face a distance v
-
-
-
-protected:
-    Array<Edge *> _sides;                                 ///< Array of edges representing sides of the face.
+    // Data
+    Array<Edge*> Edges; ///< Edges
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-inline Face::Face (const Vec3_t * a,const size_t N)
+
+inline Face::Face (Array<Vec3_t> const & V)
 {
-    _sides.Resize (N);
-    for(size_t i=0;i<N;i++) 
+    if (V.Size()<3) throw new Fatal("Face::Face: Number of vertices must be greater than 2");
+    Edges.Resize (V.Size());
+    for (size_t i=0; i<Edges.Size(); i++) 
     {
-        _sides[i] = new Edge(a[i],a[(i+1)%N]);
+        if (i==V.Size()-1) Edges[i] = new Edge (V[i], V[0]);
+        else               Edges[i] = new Edge (V[i], V[i+1]);
     }
 }
 
 inline Face::~Face ()
 {
-    for(size_t i=0;i<_sides.Size();i++) 
-    {
-        delete _sides[i];
-    }
+    for (size_t i=0; i<Edges.Size(); i++) delete Edges[i];
 }
 
-inline void Face::Rotate (const Quaternion_t & q,const Vec3_t & v)
+inline void Face::Rotate (Quaternion_t const & Q, Vec3_t const & Xa)
 {
-    for(size_t i=0;i<_sides.Size();i++) 
-    {
-        _sides[i]->Rotate(q,v);
-    }
+    for (size_t i=0; i<Edges.Size(); i++) Edges[i]->Rotate (Q,Xa);
 }
 
-inline void Face::Translate(const Vec3_t & v)
+inline void Face::Translate (Vec3_t const & dX)
 {
-    for(size_t i=0;i<_sides.Size();i++) 
+    for (size_t i=0; i<Edges.Size(); i++) Edges[i]->Translate (dX);
+}
+
+inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bool Blender)
+{
+    Array<Vec3_t> vi, vs; // two "sandwich" faces due to the spheroradius (i:inferior, s:superior)
+    Vec3_t n = cross(Edges[0]->dL, Edges[1]->dL);
+    n = n/norm(n);
+    for (size_t i=0; i<Edges.Size(); i++)
     {
-        _sides[i]->Translate(v);
+        vi[i] = Edges[i]->X0 - Radius*n;
+        vs[i] = Edges[i]->X0 + Radius*n;
+    }
+    if (Blender)
+    {
+        BlenderDrawPolygon (vi,os);
+        BlenderDrawPolygon (vs,os);
+    }
+    else
+    {
+        PovDrawPolygon (vi,os,Color);
+        PovDrawPolygon (vs,os,Color);
     }
 }
 
-
-
-#endif //DEM_FACE3D_H
+#endif // MECHSYS_DEM_FACE_H

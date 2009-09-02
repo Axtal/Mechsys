@@ -17,15 +17,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_EDGE3D_H
-#define DEM_EDGE3D_H
+#ifndef MECHSYS_DEM_EDGE_H
+#define MECHSYS_DEM_EDGE_H
 
 // Std lib
-#include <math.h>
-
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
+#include <cmath>
 
 // MechSys
 #include "dem/quaternion.h"
@@ -34,60 +30,70 @@ class Edge
 {
 public:
     // Constructor
-    Edge(void) {};          ///< Default Constructor
-    Edge(const Vec3_t & a,  ///< Initial vector
-         const Vec3_t & b); ///< Final vector
-
-    
-    // Access Methods
-    Vec3_t & ri () {return _ri;} ///< Initial vector
-    Vec3_t & rf () {return _rf;} ///< Final vector
-    Vec3_t & dr () {return _dr;} ///< Difference vector
+    Edge (Vec3_t const & X0, Vec3_t const & X1); ///< Xi: endpoints of edge
 
     // Methods
-    void Rotate(const Quaternion_t & q, ///< Quaternion representing the rotation
-                const Vec3_t & v);      ///< Position of the axis of rotation
-    void Translate(const Vec3_t & v);   ///< Translate the edge a vector v
+    void Rotate    (Quaternion_t const & Q, Vec3_t const & Xa); ///< Q: quaternion representing the rotation, Xa: position of the axis of rotation
+    void Translate (Vec3_t const & dX);                         ///< Translate edge by dX
+    void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool Blender=false);
 
-
-
-protected:
-    double _l;  ///< Length of the Edge
-    Vec3_t _ri; ///< Initial position
-    Vec3_t _rf; ///< Final position
-    Vec3_t _dr; ///< Difference Vector
+    // Data
+    Vec3_t X0; ///< Left endpoint
+    Vec3_t X1; ///< Right endpoint
+    Vec3_t dL; ///< Delta(X) = X1 - X0. difference Vector
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-inline Edge::Edge (const Vec3_t & a,const Vec3_t & b)
+
+inline Edge::Edge (Vec3_t const & TheX0, Vec3_t const & TheX1)
+    : X0(TheX0), X1(TheX1), dL(X1-X0)
 {
-    _ri = a;
-    _rf = b;
-    _dr = _rf-_ri;
-    _l  = norm(_dr);
 }
 
-
-
-inline void Edge::Rotate (const Quaternion_t & q,const Vec3_t & v)
+inline void Edge::Rotate (Quaternion_t const & Q, Vec3_t const & Xa)
 {
     Vec3_t t1,t2;
-    t1 = _ri - v;
-    t2 = _rf - v;
-    Rotation(t1,q,_ri);
-    Rotation(t2,q,_rf);
-    _ri = _ri + v;
-    _rf = _rf + v;
-    _dr = _rf - _ri;
+    t1 = X0 - Xa;
+    t2 = X1 - Xa;
+    Rotation (t1,Q,X0);
+    Rotation (t2,Q,X1);
+    X0 = X0 + Xa;
+    X1 = X1 + Xa;
+    dL = X1 - X0;
 }
 
-inline void Edge::Translate(const Vec3_t & v)
+inline void Edge::Translate (Vec3_t const & dX)
 {
-    _ri+=v;
-    _rf+=v;
+    X0 += dX;
+    X1 += dX;
 }
 
+inline void Edge::Draw (std::ostream & os, double Radius, char const * Color, bool Blender)
+{
+    if (Blender)
+    {
+        Vec3_t mid = (X0+X1)/2.0;
+        double L   = norm(dL);
+        Vec3_t Bv(0.0,0.0,L/2.0);
+        Vec3_t axis;
+        axis = X1-mid;
+        axis = cross(Bv,axis);
+        if (norm(axis)<1.0e-10) axis =1.0,0.0,0.0;
+        double angle = acos(4.0*dot(Bv,X1-mid)/(L*L));
+        os << "m = Mesh.Primitives.Cylinder(32,"<<Radius*2.0<<","<<L<<")\n";
+        os << "o = s.objects.new(m,'Cylinder')\n";
+        os << "axis = ["<<axis(0)<<","<<axis(1)<<","<<axis(2)<<"]\n";
+        os << "quat = Quaternion(axis,"<<angle*180/M_PI<<")\n";
+        os << "quat.normalize()\n";
+        os << "o.setMatrix(quat.toMatrix())\n";
+        os << "o.setLocation("<<mid(0)<<","<<mid(1)<<","<<mid(2)<<")\n";
+    }
+    else
+    {
+        os << "cylinder { <"<<X0(0)<<","<<X0(1)<<","<<X0(2)<<">,<"<<X1(0)<<","<<X1(1)<<","<<X1(2)<<">,"<<Radius<<"\n pigment { color "<<Color<<" } }\n";
+    }
+}
 
-#endif //DEM_EDGE3D_H
+#endif // MECHSYS_DEM_EDGE_H

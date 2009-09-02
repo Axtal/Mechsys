@@ -17,47 +17,47 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef DEM_PARTICLE_H
-#define DEM_PARTICLE_H
+#ifndef MECHSYS_DEM_PARTICLE_H
+#define MECHSYS_DEM_PARTICLE_H
 
 // Std lib
 #include <iostream>
-#include <math.h>
-#include <string>
-#include <vector>
-
-// Blitz++
-#include <blitz/tinyvec-et.h>
-#include <blitz/tinymat.h>
-
-// GSL
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_eigen.h>
-
 
 // MechSys
 #include "dem/face.h"
-#include "dem/featuredistance.h"
+#include "dem/distance.h"
 #include "util/array.h"
 #include "numerical/montecarlo.h"
-
-using Numerical::MonteCarlo;
 
 class Particle
 {
 public:
     // Constructor
-    Particle(const Array<Vec3_t *> &,                           ///< The list of vertices
-             const Array<Array <int> > &,                       ///< The list of edges with connectivity
-             const Array<Array <int> > &,                       ///< The list of faces with connectivity
-             const double R,                                    ///< The spheroradius
-             const double rho0,                                 ///< The density of the material
-             const Vec3_t & v0,                                 ///< Initial velocity
-             const Vec3_t & w0);                                ///< Initial angular velocity
+    Particle(Array<Vec3_t>       const & V,        ///< The list of vertices
+             Array<Array <int> > const & E,        ///< The list of edges with connectivity
+             Array<Array <int> > const & F,        ///< The list of faces with connectivity
+             Vec3_t              const & v0,       ///< Initial velocity
+             Vec3_t              const & w0,       ///< Initial angular velocity
+             double                      R,        ///< The spheroradius
+             double                      rho=1.0); ///< The density of the material
 
-    
+    // Destructor
+    ~Particle ();
 
+    // Method
+    void Draw (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool Blender=false);
+
+    // Data
+    Vec3_t         v;     ///< Velocity
+    Vec3_t         w;     ///< Angular velocity
+    double         R;     ///< Spheroradius
+    double         rho;   ///< Density
+    Array<Vec3_t*> Verts; ///< Vertices
+    Array<Edge*>   Edges; ///< Edges
+    Array<Face*>   Faces; ///< Faces
+
+    /*
+     {
     // Methods
     void CalcMassProperties(size_t NCALCS = 5000);              ///< Calculate the mass, center of mass and moment of inertia
     void StartForce(Vec3_t F) {_F =  F; _T = 0,0,0;}            ///< Start the force of the particle a value F, use for external forces like gravity
@@ -89,14 +89,14 @@ public:
     double Iyz(double *r);                                      ///< Calculate the inertia tensor
 
     // Access Methods
-    size_t NumberVertices ( )         { return _vertex.Size();} ///< Return the number of vertices.
-    size_t NumberEdges    ( )         { return _edges.Size();}  ///< Return the number of edges.
-    size_t NumberFaces    ( )         { return _faces.Size();}  ///< Return the number of faces.
+    size_t NumberVertices ( )         { return Verts.Size();} ///< Return the number of vertices.
+    size_t NumberEdges    ( )         { return Edges.Size();}  ///< Return the number of edges.
+    size_t NumberFaces    ( )         { return Faces.Size();}  ///< Return the number of faces.
     double Radius         ( )         { return _R;}             ///< Return the spheroradius
     double Volume         ( )         { return _V;}             ///< Return the Volume
     double Mass           ( )         { return _m;}             ///< Return the mass
     double KinEnergy      ( )         { return _Erot+_Ekin;}    ///< Return the kinetical energy
-    Vec3_t * Vertex       ( size_t i) { return _vertex[i];}     ///< Return pointer to the i-th vertex
+    Vec3_t * Vertex       ( size_t i) { return Verts[i];}     ///< Return pointer to the i-th vertex
     Vec3_t & r            ( )         { return _r;}             ///< Return center of mass
     Vec3_t & v            ( )         { return _v;}             ///< Return velocity
     Vec3_t & w            ( )         { return _w;}             ///< Return angular velocity
@@ -104,73 +104,70 @@ public:
     Vec3_t & F            ( )         { return _F;}             ///< Return the force over the particle
     Vec3_t & T            ( )         { return _T;}             ///< Return the torque over the particle
     Quaternion_t & Q      ( )         { return _Q;}             ///< Return the quaternion of the particle
-    Edge * Edges          ( size_t i) { return _edges[i];}      ///< Return pointer to the i-th Edge
-    Face * Faces          ( size_t i) { return _faces[i];}      ///< Return pointer to the i-th vertex
- /* :TODO:09/01/2009 05:18:53 PM:: Remove the friend class */
+    Edge * Edges          ( size_t i) { return Edges[i];}      ///< Return pointer to the i-th Edge
+    Face * Faces          ( size_t i) { return Faces[i];}      ///< Return pointer to the i-th vertex
     friend class Interacton;
 protected:
     // Elements
     bool            _IsLarge;                                   ///< Flag to see if it is a large particle
     double          _m;                                         ///< Mass of the particle
     double          _rho;                                       ///< Density of the particle
-    double          _R;                                         ///< Spheroradius of the particle
+    double          _R;                                         
     double          _V;                                         ///< Volume of the particle
     double          _Erot;                                      ///< Rotational energy of the particle
     double          _Ekin;                                      ///< Kinetical energy of the particle
     Vec3_t          _r;                                         ///< Position of the particle
     Vec3_t          _rb;                                        ///< Former position for the Verlet algorithm
-    Vec3_t          _v;                                         ///< Velocity of the particle
     Vec3_t          _F;                                         ///< Force over the particle
     Vec3_t          _T;                                         ///< Torque over the particle
-    Vec3_t          _w;                                         ///< Angular velocity
     Vec3_t          _wb;                                        ///< Former angular velocity for the leap frog algorithm
     Vec3_t          _I;                                         ///< Vector containing the principal components of the inertia tensor
     Quaternion_t    _Q;                                         ///< The quaternion representing the rotation
-    Array<Vec3_t *> _vertex;                                    ///< The set of vertices defining the geometry of the particle
-    Array<Edge *>   _edges;                                     ///< The set of edges defining the geometry of the particle
-    Array<Face *>   _faces;                                     ///< The set of faces defining the geometry of the particle
+    }
+    */
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
-inline Particle::Particle(const Array<Vec3_t *> & V,const Array<Array <int> > & E,const Array<Array <int> > & F,const double R,const double rho0,const Vec3_t & v0,const Vec3_t & w0)
+
+inline Particle::Particle (Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
+    : v(v0), w(w0), R(TheR), rho(TheRho)
 {
-    for (size_t i = 0;i<V.Size();i++)
-    {
-        _vertex.Push(new Vec3_t(0,0,0));
-        *_vertex[i] = *V[i];
-    }
-    for (size_t i = 0;i<E.Size();i++)
-    {
-        size_t n = E[i][0],m = E[i][1];
-        _edges.Push(new Edge(*_vertex[n],*_vertex[m]));
-    }
+    for (size_t i=0; i<V.Size(); i++) Verts.Push (new Vec3_t(V[i]));
+    for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
     for (size_t i = 0;i<F.Size();i++)
     {
-        Vec3_t *v;
-        v = new Vec3_t [F[i].Size()];
-        for (size_t j = 0;j<F[i].Size();j++) 
-        {
-            v[j] = *_vertex[F[i][j]];
-        }
-        _faces.Push(new Face(v,F[i].Size()));
-        delete [] v;
+        Array<Vec3_t> verts(F[i].Size());
+        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (*Verts[F[i][j]]);
+        Faces.Push (new Face(verts));
     }
-    _R = R;
-    _v = v0;
-    _w = w0;
-    _rho = rho0;
-    _wb = _w;
 }
 
+inline Particle::~Particle()
+{
+    for (size_t i=0; i<Verts.Size(); ++i) delete Verts[i];
+    for (size_t i=0; i<Edges.Size(); ++i) delete Edges[i];
+    for (size_t i=0; i<Faces.Size(); ++i) delete Faces[i];
+}
+
+inline void Particle::Draw (std::ostream & os, double Radius, char const * Color, bool Blender)
+{
+    /*
+    Numerical::MonteCarlo<Particle> mc;
+    mc.Integrate (this, &Particle::V,  ri,rs);
+    mc.Integrate (this, &Particle::Xc, ri,rs);
+    */
+}
+
+/*
 inline void Particle::CalcMassProperties(size_t NCALCS)
 {
-    if (_vertex.Size()==1&&_edges.Size()==0&&_faces.Size()==0)
+    if (Verts.Size()==1&&Edges.Size()==0&&Faces.Size()==0)
     {
         _V = (4./3.)*M_PI*_R*_R*_R;
         _I = Vec3_t((8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.),(8./15.)*M_PI*pow(_R,5.));
-        _r = *_vertex[0];
+        _r = *Verts[0];
         _Q = 1,0,0,0;
         _m = _rho*_V;
     }
@@ -277,19 +274,19 @@ inline void Particle::QuaternionRotation(Quaternion_t & Q,Vec3_t & v)
     size_t nv = NumberVertices(),ne = NumberEdges(),nf = NumberFaces();
     for (size_t i = 0; i < nv; i++)
     {
-        Vec3_t rt = *_vertex[i]-v;
-        Rotation(rt,Q,*_vertex[i]);
-        *_vertex[i] += v;
+        Vec3_t rt = *Verts[i]-v;
+        Rotation(rt,Q,*Verts[i]);
+        *Verts[i] += v;
     }
 
     for (size_t i = 0; i < ne; i++)
     {
-        _edges[i]->Rotate(Q,v);
+        Edges[i]->Rotate(Q,v);
     }
 
     for (size_t i = 0; i < nf; i++)
     {
-        _faces[i]->Rotate(Q,v);
+        Faces[i]->Rotate(Q,v);
     }
 }
 
@@ -298,17 +295,17 @@ inline void Particle::Translation(Vec3_t & v)
     size_t nv = NumberVertices(),ne = NumberEdges(),nf = NumberFaces();
     for (size_t i = 0; i < nv; i++)
     {
-        *_vertex[i] += v;
+        *Verts[i] += v;
     }
 
     for (size_t i = 0; i < ne; i++)
     {
-        _edges[i]->Translate(v);
+        Edges[i]->Translate(v);
     }
 
     for (size_t i = 0; i < nf; i++)
     {
-        _faces[i]->Translate(v);
+        Faces[i]->Translate(v);
     }
 }
 
@@ -483,5 +480,6 @@ inline double Particle::Iyz (double *r)
 {
     return -(r[1]-_r(1))*(r[2]-_r(2))*IsInside(r);
 }
+*/
 
-#endif // DEM_PARTICLE_H
+#endif // MECHSYS_DEM_PARTICLE_H

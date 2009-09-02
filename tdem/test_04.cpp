@@ -21,7 +21,7 @@
 #include <math.h>
 
 // MechSys
-#include "dem/graph.h"
+//#include "dem/graph.h"
 #include "dem/featuredistance.h"
 #include "util/fatal.h"
 
@@ -30,7 +30,6 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-	//This tests the distance between a point and an face in 3D, the face is given by the points a,b,c and the point is d. I and F are auxiliary vectors to define the distance edge and draw it. the edges of the face have been draw to for comprehension.
 	Vec3_t a(1,0,0),b(0,0,0),c(0,1,0),d(1,0.5,0),I(0,0,0),F(0,0,1);
 	Vec3_t v[4];
 	v[0]=a;
@@ -41,8 +40,11 @@ int main(int argc, char **argv) try
 	Quaternion_t q;
 	NormalizeRotation(M_PI/3,F,q);
 	Fa.Rotate(q,I);
+
+    /*
 	Graph g("drawing",false);
 	g.DrawFace(Fa,0.1,"Blue");
 	g.Close();
+    */
 }
 MECHSYS_CATCH
