@@ -9,12 +9,8 @@ tfem/new_tests/bhatti_basic/ex53
 tdem/drawing.py
 tlbm/0165-0001.txt~
 
-tdem/test_01
-tdem/test_02
-tdem/test_03
-tdem/test_04
-tdem/test_05
-tdem/test_06
+tdem/test_distances
+tdem/test_domain
 
 tfem/basic/beam01
 tfem/basic/beam02
