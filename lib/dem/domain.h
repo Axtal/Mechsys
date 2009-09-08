@@ -23,9 +23,10 @@
 // Std lib
 #include <cmath>
 #include <stdlib.h> // for M_PI
+#include <iostream>
 
 // MechSys
-#include "dem/particle.h"
+#include "dem/interacton.h"
 //#include "dem/interacton.h"
 #include "util/array.h"
 #include "util/util.h"
@@ -59,23 +60,21 @@ public:
     void AddRice  (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddCube  (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
 
-    void WritePov     (char const * Filename);
+    void WritePov     (std::ostream & os,char const *Color);
     void WriteBlender (char const * Filename);
 
     // Methods
-    //void CopyParticle (const Particle & P);  ///< Create a new particle as a copy of particle P, it should be translated to another position.
-    //void Initialize   (double dt);           ///< Set the particles to a initial state and asign the possible insteractions
-    //void OneStep      (double dt);           ///< One simualtion step
+    void CopyParticle (const Particle & P);  ///< Create a new particle as a copy of particle P, it should be translated to another position.
+    void Initialize   (double dt);           ///< Set the particles to a initial state and asign the possible insteractions
+    void OneStep      (double dt);           ///< One simualtion step
 
-    /*
     void   LinearMomentum  (Vec3_t & L); ///< Return total momentum of the system
     void   AngularMomentum (Vec3_t & L); ///< Return total angular momentum of the system
     double TotalEnergy     ();           ///< Return total energy of the system
-    */
 
     // Data
     Array<Particle*>   Particles;   ///< All particles in domain
-    //Array<Interacton*> Interactons; ///< All interactons in domain
+    Array<Interacton*> Interactons; ///< All interactons in domain
 };
 
 
@@ -85,7 +84,7 @@ public:
 inline Domain::~Domain ()
 {
     for (size_t i=0; i<Particles.Size();   ++i) if (Particles  [i]!=NULL) delete Particles  [i];
-    //for (size_t i=0; i<Interactons.Size(); ++i) if (Interactons[i]!=NULL) delete Interactons[i];
+    for (size_t i=0; i<Interactons.Size(); ++i) if (Interactons[i]!=NULL) delete Interactons[i];
 }
 
 inline void Domain::GenerateSpheres (size_t N, double Xmin, double Xmax, double Ymin, double Ymax, double Zmin, double Zmax, double rho, double Rmin)
@@ -133,20 +132,19 @@ inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, 
     // face
     Array<Array <int> > F;
     F.Resize(4);
-    for (size_t i=0; i<4; ++i) F[i].Resize(2);
+    for (size_t i=0; i<4; ++i) F[i].Resize(3);
     F[0] = 0, 3, 2;
     F[1] = 0, 1, 3;
     F[2] = 0, 2, 1;
     F[3] = 1, 2, 3;
 
-    // random orientation
+
+    // calculate the rotation
     if (Axis==NULL)
     {
         Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
-        (*Axis) = (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
     }
-
-    // calculate the rotation
     Quaternion_t q;
     NormalizeRotation (Angle,(*Axis),q);
     for (size_t i=0; i<V.Size(); i++)
@@ -158,6 +156,7 @@ inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, 
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    delete Axis;
 }
 
 inline void Domain::AddRice (const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
@@ -173,16 +172,13 @@ inline void Domain::AddRice (const Vec3_t & X, double R, double L, double rho, d
     E[0] = 0, 1;
 
     // faces
-    Array<Array <int> > F; // no faces
-
-    // random orientation
+    Array<Array <int> > F(0); // no faces
+    // calculate the rotation
     if (Axis==NULL)
     {
         Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
-        (*Axis) = (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
     }
-
-    // calculate the rotation
     Quaternion_t q;
     NormalizeRotation (Angle,(*Axis),q);
     for (size_t i=0; i<V.Size(); i++)
@@ -194,6 +190,7 @@ inline void Domain::AddRice (const Vec3_t & X, double R, double L, double rho, d
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    delete Axis;
 }
 
 inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
@@ -237,6 +234,11 @@ inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, d
     F[5] = 4, 5, 6, 7;
 
     // calculate the rotation
+    if (Axis==NULL)
+    {
+        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+    }
     Quaternion_t q;
     NormalizeRotation (Angle,(*Axis),q);
     for (size_t i=0; i<V.Size(); i++)
@@ -248,66 +250,71 @@ inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, d
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    delete Axis;
 }
 
-/*
+inline void Domain::WritePov(std::ostream & os,char const *Color)
+{
+    for(size_t i = 0;i < Particles.Size();i++) Particles[i]->Draw(os,Color);
+}
+
+inline void Domain::Initialize(double dt)
+{
+    for(size_t i = 0;i < Particles.Size();i++)
+    {
+        //Particles[i]->CalcMassProperties(5000);
+        Particles[i]->Start(dt);
+    }
+
+    for(size_t i = 0;i < Particles.Size()-1;i++)
+    {
+        for(size_t j = i+1;j < Particles.Size();j++)
+        {
+            Interactons.Push(new Interacton(Particles[i],Particles[j]));
+        }
+    }
+}
+
 inline void Domain::CopyParticle(const Particle & P)
 {
 
 }
 
-inline void Domain::InitializeSimulation(double dt)
-{
-    for(size_t i = 0;i < NumberParticles();i++)
-    {
-        _Particles[i]->CalcMassProperties(5000);
-        _Particles[i]->Start(dt);
-    }
-
-    for(size_t i = 0;i < NumberParticles()-1;i++)
-    {
-        for(size_t j = i+1;j < NumberParticles();j++)
-        {
-            _Interactons.Push(new Interacton(_Particles[i],_Particles[j]));
-        }
-    }
-}
-
 inline void Domain::OneStep(double dt)
 {
-    for(size_t i = 0;i < NumberParticles();i++)
+    for(size_t i = 0;i < Particles.Size();i++)
     {
-        _Particles[i]->StartForce();
+        Particles[i]->StartForce();
     }
-    for(size_t i = 0;i < _Interactons.Size();i++)
+    for(size_t i = 0;i < Interactons.Size();i++)
     {
-        _Interactons[i]->CalcForce(dt);
+        Interactons[i]->CalcForce(dt);
     }
-    for(size_t i = 0;i < NumberParticles();i++)
+    for(size_t i = 0;i < Particles.Size();i++)
     {
-        _Particles[i]->DynamicRotation(dt);
-        _Particles[i]->DynamicTranslation(dt);
+        Particles[i]->DynamicRotation(dt);
+        Particles[i]->DynamicTranslation(dt);
     }
 }
 
 inline void Domain::LinearMomentum(Vec3_t & L)
 {
     L = 0.,0.,0.;
-    for(size_t i = 0;i < NumberParticles();i++)
+    for(size_t i = 0;i < Particles.Size();i++)
     {
-        L+=_Particles[i]->Mass()*_Particles[i]->v();
+        L+=Particles[i]->m*Particles[i]->v;
     }
 }
 
 inline void Domain::AngularMomentum(Vec3_t & L)
 {
     L = 0.,0.,0.;
-    for(size_t i = 0;i < NumberParticles();i++)
+    for(size_t i = 0;i < Particles.Size();i++)
     {
         Vec3_t t1,t2;
-        t1 = _Particles[i]->I()(0)*_Particles[i]->w()(0),_Particles[i]->I()(1)*_Particles[i]->w()(1),_Particles[i]->I()(2)*_Particles[i]->w()(2);
-        Rotation(t1,_Particles[i]->Q(),t2);
-        L += _Particles[i]->Mass()*cross(_Particles[i]->r(),_Particles[i]->v())+t2;
+        t1 = Particles[i]->I(0)*Particles[i]->w(0),Particles[i]->I(1)*Particles[i]->w(1),Particles[i]->I(2)*Particles[i]->w(2);
+        Rotation(t1,Particles[i]->Q,t2);
+        L += Particles[i]->m*cross(Particles[i]->x,Particles[i]->v)+t2;
     }
     
 }
@@ -315,17 +322,16 @@ inline void Domain::AngularMomentum(Vec3_t & L)
 inline double Domain::TotalEnergy()
 {
     double E = 0;
-    for(size_t i = 0;i < NumberParticles();i++)
+    for(size_t i = 0;i < Particles.Size();i++)
     {
-        E += _Particles[i]->KinEnergy();
+        E += Particles[i]->Ekin+Particles[i]->Erot;
     }
 
-    for(size_t i = 0;i < _Interactons.Size();i++)
+    for(size_t i = 0;i < Interactons.Size();i++)
     {
-        E += _Interactons[i]->_Epot;
+        E += Interactons[i]->Epot;
     }
     return E;
 }
-*/
 
 #endif // MECHSYS_DEM_DOMAIN_H

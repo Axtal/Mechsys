@@ -47,18 +47,18 @@ public:
     void CalcForce (double dt); ///< Calculates the contact force between particles
 
     // Data
-    double        _Kn;   ///< Normal stiffness
-    double        _Kt;   ///< Tengential stiffness
-    double        _gn;   ///< Normal viscous coefficient
-    double        _gt;   ///< Tangential viscous coefficient
-    double        _mu;   ///< Microscpic coefficient of friction
-    double        _mur;  ///< Rolling resistance coefficient
-    double        _Epot; ///< Ptential elastic energy
-    FrictionMap_t _fdee; ///< Static friction displacement for pair of edges
-    FrictionMap_t _fdvf; ///< Static friction displacement for pair of vertex-face
-    FrictionMap_t _fdfv; ///< Static friction displacement for pair of face-vertex
-    Particle    * _p1;   ///< First particle
-    Particle    * _p2;   ///< Second particle
+    double        Kn;   ///< Normal stiffness
+    double        Kt;   ///< Tengential stiffness
+    double        Gn;   ///< Normal viscous coefficient
+    double        Gt;   ///< Tangential viscous coefficient
+    double        Mu;   ///< Microscpic coefficient of friction
+    double        Mur;  ///< Rolling resistance coefficient
+    double        Epot; ///< Ptential elastic energy
+    FrictionMap_t Fdee; ///< Static friction displacement for pair of edges
+    FrictionMap_t Fdvf; ///< Static friction displacement for pair of vertex-face
+    FrictionMap_t Fdfv; ///< Static friction displacement for pair of face-vertex
+    Particle    * P1;   ///< First particle
+    Particle    * P2;   ///< Second particle
 
 private:
     template<typename FeatureA_T, typename FeatureB_T>
@@ -67,34 +67,32 @@ private:
         for (size_t i=0; i<A.Size(); ++i)
         for (size_t j=0; j<B.Size(); ++j)
         {
-            Vec3_t ri, rf;
-            Distance ((*A[i]), (*B[j]), ri, rf);
-            double dist = norm(rf-ri);
-            double delta = _p1->Radius() + _p2->Radius() - dist;
+            Vec3_t xi, xf;
+            Distance ((*A[i]), (*B[j]), xi, xf);
+            double dist = norm(xf-xi);
+            double delta = P1->R + P2->R - dist;
             if(delta>=0)
             {
-                Vec3_t n = (rf-ri)/dist;
-                Vec3_t F = _Kn*delta*n;
-                _p1->F()+=-F;
-                _p2->F()+=F;
-                Vec3_t r = ri+n*((_p1->Radius()*_p1->Radius()-_p2->Radius()*_p2->Radius()+dist*dist)/(2*dist));
+                Vec3_t n = (xf-xi)/dist;
+                Vec3_t F = Kn*delta*n;
+                P1->F+=-F;
+                P2->F+=F;
+                Vec3_t x = xi+n*((P1->R*P1->R-P2->R*P2->R+dist*dist)/(2*dist));
                 
                 Vec3_t T,Tt,temp;
-                temp = r - _p1->r();
+                temp = x - P1->x;
                 Tt = cross(temp,F);
                 Quaternion_t q;
-                Conjugate(_p1->Q(),q);
+                Conjugate(P1->Q,q);
                 Rotation(Tt,q,T);
-                _p1->T()-=T;
-                temp = r - _p2->r();
+                P1->T-=T;
+                temp = x - P2->x;
                 Tt = cross(temp,F);
-                Conjugate(_p2->Q(),q);
+                Conjugate(P2->Q,q);
                 Rotation(Tt,q,T);
-                _p2->T()+=T;
-                _Epot += 0.5*_Kn*delta*delta;
+                P2->T+=T;
+                Epot += 0.5*Kn*delta*delta;
             }
-            //std::pair<int,int> p = std::make_pair(i,j);
-            //FMap[p] += 0.0;
         }
     }
 };
@@ -104,18 +102,25 @@ private:
 
 
 inline Interacton::Interacton(Particle * Pt1, Particle * Pt2)
+    : P1(Pt1),P2(Pt2)
 {
-    _p1 = Pt1;
-    _p2 = Pt2;
-    _Kn = 1000;
+    Kn = 1000;
+    Epot = 0;
+}
+
+inline Interacton::~Interacton()
+{
 }
 
 inline void Interacton::CalcForce(double Dt)
 {
-    _Epot = 0;
-    _update_disp_calc_force (_p1->_edges,  _p2->_edges,  _fdee);
-    _update_disp_calc_force (_p1->_vertex, _p2->_faces,  _fdvf);
-    _update_disp_calc_force (_p1->_faces,  _p2->_vertex, _fdfv);
+    Epot = 0;
+    if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
+    {
+        _update_disp_calc_force (P1->Edges,P2->Edges,Fdee);
+        _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf);
+        _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv);
+    }
 }
 
 #endif //  MECHSYS_DEM_INTERACTON_H

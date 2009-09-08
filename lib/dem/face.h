@@ -80,8 +80,8 @@ inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bo
     n = n/norm(n);
     for (size_t i=0; i<Edges.Size(); i++)
     {
-        vi[i] = Edges[i]->X0 - Radius*n;
-        vs[i] = Edges[i]->X0 + Radius*n;
+        vi.Push(Edges[i]->X0 - Radius*n);
+        vs.Push(Edges[i]->X0 + Radius*n);
     }
     if (Blender)
     {

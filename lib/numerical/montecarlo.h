@@ -53,24 +53,17 @@ public:
 	typedef double (Instance::*pFun) (double * x); ///< Callback function
 
 	/** Constructor. */
-	MonteCarlo (Instance * p2Inst, pFun p2Fun, MCMethod method=VEGAS, size_t NCALLS=500000); // p2Fun == &F(x)
-
-	/** Destructor. */
-	~MonteCarlo ();
+	MonteCarlo<Instance> () {}
 
 	// Methods
-	double Integrate (double  * ri,double  * rs);                           ///< Integrate F(x)
+	double Integrate (Instance * p2Inst, pFun p2Fun, double  * ri,double  * rs, MCMethod method=VEGAS, size_t NCALLS=500000);                           ///< Integrate F(x)
 	double CallFun   (double  * r)   { return (_p2inst->*_p2fun)(r); }      ///< Call F(x)
 
 private:
-	Instance                 * _p2inst;     ///< Pointer to an instance
-	pFun                        _p2fun;      ///< Pointer to F(x) function
-	MCMethod                    _method;     ///< Method of quadrature
-	size_t                      _NCALLS;     ///< Number of calls for the MC method
-	gsl_monte_plain_state     * _wsp;        ///< Workspace for plain method
-	gsl_monte_miser_state     * _wsm;        ///< Workspace for miser method
-	gsl_monte_vegas_state     * _wsv;        ///< Workspace for vegas method
-
+	Instance                  *_p2inst;     ///< Pointer to an instance
+	pFun                       _p2fun;      ///< Pointer to F(x) function
+	MCMethod                   _method;     ///< Method of quadrature
+	size_t                     _NCALLS;     ///< Number of calls for the MC method
 }; // class MonteCarlo
 
 template<typename Instance>
@@ -92,28 +85,13 @@ double __monte_carlo_call_fun__(double * x,size_t dim, void *not_used_for_params
 
 
 template<typename Instance>
-inline MonteCarlo<Instance>::MonteCarlo(Instance * p2Inst, pFun p2Fun, MCMethod method, size_t NCALLS)
-	: _p2inst     (p2Inst),
-	  _p2fun      (p2Fun),
-	  _method     (method),
-	  _NCALLS     (NCALLS)
+inline double MonteCarlo<Instance>::Integrate(Instance * p2Inst, pFun p2Fun, double  * ri,double  * rs, MCMethod method, size_t NCALLS)
 {
-	_wsp = gsl_monte_plain_alloc (WORKSPACE_SIZE);
-	_wsm = gsl_monte_miser_alloc (WORKSPACE_SIZE);
-	_wsv = gsl_monte_vegas_alloc (WORKSPACE_SIZE);
-}
+    _p2inst = p2Inst;
+    _p2fun = p2Fun;
+    _method = method;
+    _NCALLS = NCALLS;
 
-template<typename Instance>
-inline MonteCarlo<Instance>::~MonteCarlo()
-{
-	if (_wsp!=NULL) gsl_monte_plain_free (_wsp);
-	if (_wsm!=NULL) gsl_monte_miser_free (_wsm);
-	if (_wsv!=NULL) gsl_monte_vegas_free (_wsv);
-}
-
-template<typename Instance>
-inline double MonteCarlo<Instance>::Integrate(double * ri, double * rs)
-{
 	// Function
 	gsl_monte_function f;
 	f.f = &__monte_carlo_call_fun__<Instance>;
@@ -128,17 +106,26 @@ inline double MonteCarlo<Instance>::Integrate(double * ri, double * rs)
 	{
 		case PLAIN:
 		{
-			gsl_monte_plain_integrate(&f,ri,rs,3,_NCALLS,r,_wsp,&result,&error);
+            gsl_monte_plain_state *wsp;
+			wsp = gsl_monte_plain_alloc (WORKSPACE_SIZE);
+			gsl_monte_plain_integrate(&f,ri,rs,3,_NCALLS,r,wsp,&result,&error);
+			gsl_monte_plain_free (wsp);
 			break;
 		}
 		case MISER:
 		{
-			gsl_monte_miser_integrate(&f,ri,rs,3,_NCALLS,r,_wsm,&result,&error);
+	        gsl_monte_miser_state *wsm;
+			wsm = gsl_monte_miser_alloc (WORKSPACE_SIZE);
+			gsl_monte_miser_integrate(&f,ri,rs,3,_NCALLS,r,wsm,&result,&error);
+			gsl_monte_miser_free (wsm);
 			break;
 		}
 		case VEGAS:
 		{
-			gsl_monte_vegas_integrate(&f,ri,rs,3,_NCALLS,r,_wsv,&result,&error);
+	        gsl_monte_vegas_state *wsv;
+			wsv = gsl_monte_vegas_alloc (WORKSPACE_SIZE);
+			gsl_monte_vegas_integrate(&f,ri,rs,3,_NCALLS,r,wsv,&result,&error);
+			gsl_monte_vegas_free (wsv);
 			break;
 		}
 	};

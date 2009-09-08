@@ -19,9 +19,7 @@
 SET(TESTS
   test_distances
   test_domain
-  test_04
-  test_05
-  test_06)
+  test_dynamics)
 
 IF(BLITZ_FOUND)
 	FOREACH(var ${TESTS})
