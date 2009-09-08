@@ -61,8 +61,8 @@ inline void Distance (Edge const & E0, Edge const & E1, Vec3_t & Xi, Vec3_t & Xf
         Vec3_t xi4,xf4;
         Distance (E0.X0,E1,xi1,xf1);
         Distance (E0.X1,E1,xi2,xf2);
-        Distance (E1.X0,E0,xi3,xf3);
-        Distance (E1.X1,E0,xi4,xf4);
+        Distance (E1.X0,E0,xf3,xi3);
+        Distance (E1.X1,E0,xf4,xi4);
         double l1 = norm(xf1-xi1);
         double l2 = norm(xf2-xi2);
         double l3 = norm(xf3-xi3);
