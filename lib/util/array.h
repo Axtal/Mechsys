@@ -46,6 +46,7 @@ public:
 	Value_T *               GetPtr    ()                        { return _values; } ///< Returns a pointer to the values
 	void                    Resize    (size_t  Size,  double SzFactor=1.2);         ///< Resize the array
 	void                    Push      (Value_T const & Value, double SzFactor=1.2); ///< Add a new entry increasing the size if necessary
+	void                    PushN     (Value_T const & Value, size_t Num, double SzFactor=1.2); ///< Add a new entry increasing the size if necessary
 	void                    Remove    (size_t i, size_t Length=1);                  ///< Remove item i from the array
 	long                    Find      (Value_T const & Value) const;                ///< Find a value: returns -1 if not found, otherwise, returns the index of the element found
 	long                    Min       () const;                                     ///< Find the minimum value: returns the index of the minimum element
@@ -53,6 +54,7 @@ public:
 	Value_T                 Mean      () const;                                     ///< Calculate the mean value (Value_T must have addition operators)
 	Value_T                 Norm      () const;                                     ///< Calculate the norm value (Value_T must have addition operators)
 	void                    SetValues (Value_T const & V);                          ///< Set all values to be equal to V
+	void                    Clear     () { Resize(0); }                             ///< Clear array
 
 	// Operators
 	Value_T       & operator[] (size_t i);                 ///< Access operator (write)
@@ -114,7 +116,7 @@ template<typename Value_T>
 inline void Array<Value_T>::Resize(size_t Size, double SzFactor)
 {
 	// Check
-	if (SzFactor<1.0) throw new Fatal(_("Array::Resize: SzFactor==%f must be greater than 1.0"), SzFactor);
+	if (SzFactor<1.0) throw new Fatal("Array::Resize: SzFactor==%f must be greater than 1.0", SzFactor);
 
 	// Clear previous memory
 	if (_values!=NULL) delete [] _values;
@@ -139,6 +141,22 @@ inline void Array<Value_T>::Push(Value_T const & Value, double SzFactor)
 	}
 	else _size++;
 	_values[_size-1] = Value;
+}
+
+template<typename Value_T>
+inline void Array<Value_T>::PushN(Value_T const & Value, size_t Num, double SzFactor)
+{
+	if (_size+Num>=_space)
+	{
+		size_t oldsz = _size;
+		Value_T * tmp = new Value_T [oldsz];
+		for (size_t i=0; i<oldsz; ++i) tmp[i] = _values[i];
+		Resize(oldsz+Num, SzFactor);
+		for (size_t i=0; i<oldsz; ++i) _values[i] = tmp[i];
+		delete [] tmp;
+	}
+	else _size += Num;
+    for (size_t i=0; i<Num; ++i) _values[_size-Num+i] = Value;
 }
 
 template<typename Value_T>
@@ -206,7 +224,7 @@ template<typename Value_T>
 inline Value_T & Array<Value_T>::operator[] (size_t i)
 {
 #ifndef NDEBUG
-	if (i<0 || i>=_size) throw new Fatal(_("Array::operator[] (write) Subscript==%d (size==%d) is out of range."), i, _size);
+	if (i<0 || i>=_size) throw new Fatal("Array::operator[] (write) Subscript==%d (size==%d) is out of range.", i, _size);
 #endif
 	return _values[i];
 }
@@ -215,7 +233,7 @@ template<typename Value_T>
 inline Value_T const & Array<Value_T>::operator[] (size_t i) const
 {
 #ifndef NDEBUG
-	if (i<0 || i>=_size) throw new Fatal(_("Array::operator[] (read) Subscript==%d (size==%d) is out of range."), i, _size); 
+	if (i<0 || i>=_size) throw new Fatal("Array::operator[] (read) Subscript==%d (size==%d) is out of range.", i, _size); 
 #endif
 	return _values[i];
 }
@@ -224,7 +242,7 @@ template<typename Value_T>
 inline void Array<Value_T>::operator= (Array<Value_T> const & R)
 {
 #ifndef DNDEBUG
-	if (&R==this) throw new Fatal(_("Array::operator= The right-hand-size of this operation (LHS = RHS) must not be equal to the LHS."));
+	if (&R==this) throw new Fatal("Array::operator= The right-hand-size of this operation (LHS = RHS) must not be equal to the LHS.");
 #endif
 	// Reallocate if they are different (LHS != RHS)
 	if (_size!=R.Size()) Resize(R.Size());
@@ -237,7 +255,7 @@ template<typename Value_T>
 inline void Array<Value_T>::operator+= (Array<Value_T> const & R)
 {
 #ifndef DNDEBUG
-	if (_size!=R.Size()) throw new Fatal(_("Array::operator+= The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d)."),_size,R.Size());
+	if (_size!=R.Size()) throw new Fatal("Array::operator+= The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d).",_size,R.Size());
 #endif
 	// Add values
 	for (int i=0; i<_size; ++i) _values[i] += R[i];
@@ -247,7 +265,7 @@ template<typename Value_T>
 inline void Array<Value_T>::operator-= (Array<Value_T> const & R)
 {
 #ifndef DNDEBUG
-	if (_size!=R.Size()) throw new Fatal(_("Array::operator-= The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d)."),_size,R.Size());
+	if (_size!=R.Size()) throw new Fatal("Array::operator-= The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d).",_size,R.Size());
 #endif
 	// Subtract values
 	for (int i=0; i<_size; ++i) _values[i] -= R[i];
@@ -259,7 +277,10 @@ template<typename Value_T>
 std::ostream & operator<< (std::ostream & os, const Array<Value_T> & V)
 {
 	for (size_t i=0; i<V.Size(); ++i)
-		os << V.NS()<< V[i];
+    {
+		os << V[i];
+        if (i!=V.Size()-1) os << ", ";
+    }
 	return os;
 }
 

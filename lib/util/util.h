@@ -40,84 +40,78 @@ const double PI     = 4.0*atan(1.0);     ///< \f$ \pi \f$
 
 inline bool IsNan(double Val)
 {
-	return (std::isnan(Val) || ((Val==Val)==false)); // NaN is the only value, for which the expression Val==Val is always false
+    return (std::isnan(Val) || ((Val==Val)==false)); // NaN is the only value, for which the expression Val==Val is always false
 }
 
 /*
-inline double Pi         ()                        { return 3.14159265358979323846264338327950288419716939937510582; } ///< The constant PI
-inline double ToRad      (double deg_angle)        { return 0.0174532925199433*deg_angle;                            } ///< Converts degrees to radians
-inline double ToDeg      (double rad_angle)        { return 57.2957795130823*rad_angle;                              } ///< Converts radians to degrees
 inline double Sgn        (double Val)              { return (Val>=0.0 ? +1.0 : -1.0);                                } ///< Sgn function where Sgn(0)=+1
 inline double Signal     (double Val, double Zero) { return (fabs(Val)<=Zero ? 0.0 : Sgn(Val));                      } ///< Sgn function where Sgn(0)=0
 inline double Sign       (double a, double b)      { return (b>=0.0 ? fabs(a) : -fabs(a));                           } ///< Composite Sgn function. Returns |a| or -|a| according to the sign of b
 inline double Acos       (double Val)              { return (Val>=1.0 ?  0.0 : (Val<=-1.0 ? Pi() : acos(Val)) );     } ///< Safe acos function
 inline bool   Str2Bool   (String const & Str)      { if (Str==String("true") || Str==String("TRUE") || Str==String("True")) return true; else return false; } ///< Converts "TRUE", "True", or "true" to bool
 inline bool   IsNanOrInf (double Val)              { int r=std::fpclassify(Val); if (r==FP_NAN) return true; if (r==FP_INFINITE) return true; return false; } ///< Check whether a number is NaN of Inf
-inline double Sq2        ()                        { return 1.41421356237310;              } ///< Square root of 2.0
-inline double Sq3        ()                        { return 1.73205080756888;              } ///< Square root of 3.0
-inline double Sq6        ()                        { return 2.44948974278318;              } ///< Square root of 6.0
-template <typename Type>
-inline Type   Min        (Type a, Type b)          { return (a<b ? a : b); } ///< Minimum between a and b
-template <typename Type>
-inline Type   Max        (Type a, Type b)          { return (a>b ? a : b); } ///< Maximum between a and b
 */
 
+template <typename Val_T> inline Val_T Min (Val_T const & a, Val_T const & b) { return (a<b ? a : b); } ///< Minimum between a and b
+template <typename Val_T> inline Val_T Max (Val_T const & a, Val_T const & b) { return (a>b ? a : b); } ///< Maximum between a and b
+
 /** Swap two values. */
-inline void Swap(double & x, double & y)
+template <typename Val_T>
+inline void Swap (Val_T & a, Val_T & b)
 {
-    double temp = x;
-    x = y;
-    y = temp;
+    Val_T tmp = a;
+    a = b;
+    b = tmp;
 }
 
-/** Sort an array according to an ascending order. */
-inline void Sort(double A[], int Size)
+/** Sort two values on an ascending order. */
+template <typename Val_T>
+inline void Sort (Val_T & a, Val_T & b)
 {
-	for (int i=0; i<Size-1; ++i)
-	{
-		int min_index = i;
+    if (b<a) Util::Swap (a,b);
+}
 
-		// Find the index of the minimum element
-		for (int j=i+1; j<Size; ++j)
-			if (A[j] < A[min_index])
-				min_index = j;
-
-		// Swap if i-th element not already smallest
-		if (min_index > i)
-			Util::Swap(A[i], A[min_index]);
-	}
+/** Sort three values on an ascending order. */
+template <typename Val_T>
+inline void Sort (Val_T & a, Val_T & b, Val_T & c)
+{
+    if (b<a) Util::Swap (a,b);
+    if (c<b) Util::Swap (b,c);
+    if (b<a) Util::Swap (a,b);
 }
 
 /** Find best square for given rows and columns. */
+/*
 inline void FindBestSquare (int Size, int & nRow, int & nCol)
 {
-	nRow = -1;  // not found
-	nCol = -1;  // not found
-	for (int x=1; x<=Size; ++x)
-	{
-		if ((x*x)>=Size)
-		{
-			if ((x*x)==Size)
-			{
-				nRow = x;
-				nCol = x;
-				return;
-			}
-			else
-			{
-				for (int y=x; y>=1; --y)
-				{
-					if ((x*y)==Size)
-					{
-						nRow = x;
-						nCol = y;
-						return;
-					}
-				}
-			}
-		}
-	}
+    nRow = -1;  // not found
+    nCol = -1;  // not found
+    for (int x=1; x<=Size; ++x)
+    {
+        if ((x*x)>=Size)
+        {
+            if ((x*x)==Size)
+            {
+                nRow = x;
+                nCol = x;
+                return;
+            }
+            else
+            {
+                for (int y=x; y>=1; --y)
+                {
+                    if ((x*y)==Size)
+                    {
+                        nRow = x;
+                        nCol = y;
+                        return;
+                    }
+                }
+            }
+        }
+    }
 }
+*/
 
 }; // namespace Util
 
