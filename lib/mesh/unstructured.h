@@ -23,389 +23,459 @@
 /* LOCAL indexes of Vertices, Edges, and Faces
 
   2D:
-             Nodes                 Edges 
-                           
-   y           2                                                        
-   |           @                     @                                  
-   +--x       / \                 2 / \ 4                                
-           5 /   \ 4               /   \                                 
-            @     @               @     @                                
-           /       \           5 /       \1                              
-          /         \           /         \                              
-         @-----@-----@         @-----@-----@                             
-        0      3      1           0     3         
+             Nodes                 Edges
+
+   y           2
+   |           @                     @
+   +--x       / \                   / \
+           5 /   \ 4               /   \
+            @     @             2 /     \ 1
+           /       \             /       \
+          /         \           /         \
+         @-----@-----@         @-----------@
+        0      3      1              0
 */
 
 // STL
-#include <iostream>
-#include <fstream>
+#include <iostream> // for cout, endl, ostream
+#include <sstream>  // for ostringstream
+#include <fstream>  // for ofstream
 #include <cfloat>   // for DBL_EPSILON
 #include <ctime>    // for clock
-
-// Blitz++
-#include <blitz/tinyvec-et.h>
+#include <map>
 
 // Jonathan R Shewchuk' Triangle
 extern "C"
 {
-	#define REAL double
-	#define ANSI_DECLARATORS
-	#define VOID int
-	  #include "jrs_triangle.h"
-	#undef REAL
-	#undef ANSI_DECLARATORS
-	#undef VOID
+    #define REAL double
+    #define ANSI_DECLARATORS
+    #define VOID int
+      #include "jrs_triangle.h"
+    #undef REAL
+    #undef ANSI_DECLARATORS
+    #undef VOID
 }
 
 // MechSys
 #include "util/array.h"
 #include "util/fatal.h"
-#include "util/lineparser.h"
-#include "linalg/vector.h"
-#include "linalg/matrix.h"
-#include "linalg/laexpr.h"
 #include "mesh/mesh.h"
-
-using LinAlg::Vector;
-using LinAlg::Matrix;
-using blitz::TinyVector;
-
-using std::cout;
-using std::endl;
+#include "draw.h"
 
 namespace Mesh
 {
 
+
+/////////////////////////////////////////////////////////////////////////////////////////// TriIO /////
+
+
 /** JRS' Triangle Input/Output structure. */
 typedef triangulateio TriIO;
+
+
+inline void TriAllocate (int NPoints, int NSegments, int NRegions, int NHoles, TriIO & Tio)
+{
+    // check
+    if (NPoints<3)   throw new Fatal("Mesh::TriAllocate: At least 3 points are required. (%d is invalid)",NPoints);
+    if (NSegments<3) throw new Fatal("Mesh::TriAllocate: At least 3 segments are required. (%d is invalid)",NSegments);
+
+    // points
+    Tio.pointlist       = (double*)malloc(NPoints*2*sizeof(double));
+    Tio.numberofpoints  = NPoints;
+    Tio.pointmarkerlist = (int*)malloc(NPoints*sizeof(int));
+
+    // segments
+    Tio.segmentlist       = (int*)malloc(NSegments*2*sizeof(int));
+    Tio.segmentmarkerlist = (int*)malloc(NSegments * sizeof(int));
+    Tio.numberofsegments  = NSegments;
+    for (int i=0; i<NSegments; ++i) Tio.segmentmarkerlist[i]=0;
+
+    // regions
+    if (NRegions>0)
+    {
+        Tio.regionlist      = (double*)malloc(NRegions*4*sizeof(double));
+        Tio.numberofregions = NRegions;
+    }
+
+    // holes
+    if (NHoles>0)
+    {
+        Tio.holelist      = (double*)malloc(NHoles*2*sizeof(double));
+        Tio.numberofholes = NHoles;
+    }
+}
+
+inline void TriSetAllToNull (TriIO & Tio)
+{
+    // points
+    Tio.pointlist               = NULL;
+    Tio.pointattributelist      = NULL;
+    Tio.pointmarkerlist         = NULL;
+    Tio.numberofpoints          = 0;
+    Tio.numberofpointattributes = 0;
+
+    // triangles
+    Tio.trianglelist               = NULL;
+    Tio.triangleattributelist      = NULL;
+    Tio.trianglearealist           = NULL;
+    Tio.neighborlist               = NULL;
+    Tio.numberoftriangles          = 0;
+    Tio.numberofcorners            = 0;
+    Tio.numberoftriangleattributes = 0;
+    Tio.triedgemarks               = NULL;
+
+    // segments
+    Tio.segmentlist       = NULL;
+    Tio.segmentmarkerlist = NULL;
+    Tio.numberofsegments  = 0;
+
+    // holes
+    Tio.holelist      = NULL;
+    Tio.numberofholes = 0;
+
+    // regions
+    Tio.regionlist      = NULL;
+    Tio.numberofregions = 0;
+
+    // edges
+    Tio.edgelist       = NULL;
+    Tio.edgemarkerlist = NULL;
+    Tio.normlist       = NULL;
+    Tio.numberofedges  = 0;
+}
+
+inline void TriDeallocateAll (TriIO & Tio)
+{
+    // Points
+    if (Tio.pointlist          != NULL) free(Tio.pointlist);
+    if (Tio.pointattributelist != NULL) free(Tio.pointattributelist);
+    if (Tio.pointmarkerlist    != NULL) free(Tio.pointmarkerlist);
+
+    // Triangles
+    if (Tio.trianglelist          != NULL) free(Tio.trianglelist);
+    if (Tio.triangleattributelist != NULL) free(Tio.triangleattributelist);
+    if (Tio.trianglearealist      != NULL) free(Tio.trianglearealist);
+    if (Tio.neighborlist          != NULL) free(Tio.neighborlist);
+    if (Tio.triedgemarks          != NULL) free(Tio.triedgemarks);
+
+    // Segments
+    if (Tio.segmentlist       != NULL) free(Tio.segmentlist);
+    if (Tio.segmentmarkerlist != NULL) free(Tio.segmentmarkerlist);
+
+    // Holes
+    if (Tio.holelist != NULL) free(Tio.holelist);
+
+    // Regions
+    if (Tio.regionlist != NULL) free(Tio.regionlist);
+
+    // Edges
+    if (Tio.edgelist       != NULL) free(Tio.edgelist);
+    if (Tio.edgemarkerlist != NULL) free(Tio.edgemarkerlist);
+    if (Tio.normlist       != NULL) free(Tio.normlist);
+
+    // Clear all
+    TriSetAllToNull (Tio);
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////// Unstructured /////
+
 
 class Unstructured : public virtual Mesh::Generic
 {
 public:
-	// Constants
-	static size_t FEM2Tri[]; ///< Map MechSys/FEM nodes IDs to JRS Triangle nodes IDs
+    // Constants
+    static size_t FEM2TriPt[]; ///< Map MechSys/FEM nodes to JRS-Triangle points
+    static size_t FEM2TriEd[]; ///< Map MechSys/FEM nodes to JRS-Triangle edges
 
-	// Constructor
-	Unstructured (bool Is3D);
+    // Constructor
+    Unstructured (int NDim) : Mesh::Generic(NDim) { TriSetAllToNull(Tin); }
 
-	// Destructor
-	~Unstructured () { Erase(); }
+    /** Set Piecewise Linear Complex.
+     *
+     *  Ex:          -20
+     *        -4@-----------@-3
+     *          | -1        |
+     *          |   @---@   |
+     *       -30|   | h |   |-20
+     *          |   @---@   |
+     *          |           |
+     *        -1@-----------@-2
+     *               -10
+     *
+     *  Mesh::Unstructured mesh(2) // 2D
+     *  mesh.Set (8, 8, 1, 1,      // 8 points, 8 segments, 1 region, 1 hole
+     *           -1.0, 0.0, 0.0,   // vtag, x, y, [z,] <<<<<< points
+     *           -2.0, 1.5, 0.0,   // vtag, x, y, [z,]
+     *           -3.0, 1.5, 1.5,   // vtag, x, y, [z,]
+     *           -4.0, 0.0, 1.5,   // vtag, x, y, [z,]
+     *            0.0, 0.5, 0.5,   // vtag, x, y, [z,]
+     *            0.0, 1.0, 0.5,   // vtag, x, y, [z,]
+     *            0.0, 1.0, 1.0,   // vtag, x, y, [z,]
+     *            0.0, 0.5, 1.0,   // vtag, x, y, [z,]
+     *          -10.0, 0.0, 1.0,   // etag, L, R <<<<<<<<<<<< segments
+     *          -20.0, 1.0, 2.0,   // etag, L, R
+     *          -30.0, 2.0, 3.0,   // etag, L, R
+     *          -40.0, 3.0, 0.0,   // etag, L, R
+     *            0.0, 4.0, 5.0,   // etag, L, R
+     *            0.0, 5.0, 6.0,   // etag, L, R
+     *            0.0, 6.0, 7.0,   // etag, L, R
+     *            0.0, 7.0, 4.0,   // etag, L, R
+     *           -1.0, 0.2, 0.8,   // tag, x, y, [z,] <<<<<<< regions
+     *                 0.7, 0.7);  //      x, y, [z,] <<<<<<< holes
+     *  Note:
+     *     After NHoles, all data must be (double)   */
+    void Set (size_t NPoints, size_t NSegments, size_t NRegions, size_t NHoles, ...);
 
-	// Set Methods
-	void Erase          ();
-	void SetPolySize    (size_t NPoints, size_t NSegments, size_t NRegions=0, size_t NHoles=0); ///< Erase any previous input PSLG and set the number of points and segments of the polygon. Also set the number of holes and regions.
-	void SetPolyPoint   (size_t i, double X, double Y, double Z=0);                             ///< Set the coordinates of point i of input PSLG. SetPolySize MUST be called first.
-	void SetPolySegment (size_t i, size_t iPointLeft, size_t iPointRight, int Tag=0);           ///< Set the left and right points of a segment i of input PSLG. SetPolySize MUST be called first.
-	void SetPolyRegion  (size_t i, int Tag, double MaxArea, double X, double Y, double Z=0);    ///< Set the coordinates of a point defining a region i.
-	void SetPolyHole    (size_t i, double X, double Y, double Z=0);                             ///< Set the coordinates of a point defining a hole i.
+    // Methods
+    void Generate  (bool O2=false, double GlobalMaxArea=-1, bool WithInfo=true); ///< Generate
+    void WritePoly (char const * FileKey, bool Blender=false);                   ///< (.poly)
 
-	// Get methods -- derived
-	size_t NVerts          ()                   const { return _tou.numberofpoints; }
-	size_t NVertsBry       ()                   const { return _vbry.Size(); }
-	size_t NElems          ()                   const { return _tou.numberoftriangles; }
-	size_t NElemsBry       ()                   const { return NElems(); } ///< TODO
-	long   VertBry         (size_t i)           const { return _vbry[i]; }
-	long   ElemBry         (size_t i)           const { return i; } ///< TODO
-	bool   IsVertOnBry     (size_t i)           const { return (_vbry.Find(i)<0 ? false : true); }
-	double VertX           (size_t i)           const { return _tou.pointlist[i*2  ]; }
-	double VertY           (size_t i)           const { return _tou.pointlist[i*2+1]; }
-	double VertZ           (size_t i)           const { return 0; }
-	int    ElemTag         (size_t i)           const { return (_tou.numberoftriangleattributes>0 ? _tou.triangleattributelist[i*_tou.numberoftriangleattributes] : -1); }
-	bool   IsElemOnBry     (size_t i)           const { return (_tou.triedgemarks[i*3]+_tou.triedgemarks[i*3+1]+_tou.triedgemarks[i*3+2]==0 ? false : true); }
-	int    ElemVTKCellType (size_t i)           const { return (_is_o2?VTK_QUADRATIC_TRIANGLE:VTK_TRIANGLE); }
-	size_t ElemNVerts      (size_t i)           const { return _tou.numberofcorners; }
-	size_t ElemCon         (size_t i, size_t j) const { return _tou.trianglelist[i*_tou.numberofcorners+FEM2Tri[j]]; }
-	size_t ElemNETags      (size_t i)           const { return 3; }
-	size_t ElemNFTags      (size_t i)           const { return 0; }
-	int    ElemETag        (size_t i, size_t j) const;
+    // Data
+    TriIO Tin; ///< Triangle structure: input PSLG
+};
 
-	// Methods
-	void   SetMaxAreaGlobal  (double MaxArea)  { _max_area  = MaxArea;  } ///< Uniform maximum area constraint
-	void   SetMinAngleGlobal (double MinAngle) { _min_angle = MinAngle; } ///< Minium angle constraint
-	size_t Generate          (bool WithInfo=false);                       ///< Generate mesh
-
-private:
-	// Data
-	double       _max_area;  ///< Max area (global) for all elements
-	double       _min_angle; ///< Min angle (global) between edges of triangles/tetrahedrons
-	TriIO        _tin;       ///< Triangle IO's input structure
-	TriIO        _tou;       ///< Triangle IO's output structure
-	Array<long>  _vbry;      ///< Array with IDs of vertices on boundary
-
-	// Private methods
-	void _tri_set_all_to_null (TriIO & Tio); ///< Set all elements of Triangle's IO structure to NULL and 0
-	void _tri_deallocate_all  (TriIO & Tio); ///< Deallocate all arrays inside Triangle's IO structure
-
-}; // class Unstructured
-
-size_t Unstructured::FEM2Tri[]= {0,1,2,5,3,4};
+size_t Unstructured::FEM2TriPt[]= {0,1,2,5,3,4};
+size_t Unstructured::FEM2TriEd[]= {0,1,2};
 
 
-/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+/////////////////////////////////////////////////////////////////////////////////////////// PLC: Implementation /////
 
 
-/* public */
-
-inline Unstructured::Unstructured(bool Is3D)
-	: Mesh::Generic (Is3D),
-	  _max_area     (-1),
-	  _min_angle    (-1)
+inline void Unstructured::Set (size_t NPoints, size_t NSegments, size_t NRegions, size_t NHoles, ...)
 {
-	_tri_set_all_to_null (_tin);
-	_tri_set_all_to_null (_tou);
+    // erase previous PLC
+    TriDeallocateAll (Tin);
+
+    // allocate PLC
+    TriAllocate (NPoints, NSegments, NRegions, NHoles, Tin);
+
+    // read points
+    va_list   arg_list;
+    va_start (arg_list, NHoles);
+    for (size_t i=0; i<NPoints; ++i)
+    {
+        int pt_tag = static_cast<int>(va_arg(arg_list,double)); // vertex tag
+        Tin.pointlist[i*2  ] = va_arg(arg_list,double);
+        Tin.pointlist[i*2+1] = va_arg(arg_list,double);  //if (NDim==3)
+        //Tin.pointlist[i*3+2] = va_arg(arg_list,double);  if (NDim==3)
+        Tin.pointmarkerlist[i] = pt_tag;
+    }
+
+    // read segments
+    for (size_t i=0; i<NSegments; ++i)
+    {
+        int etag = static_cast<int>(va_arg(arg_list,double)); // edge tag
+        Tin.segmentlist[i*2  ]   = static_cast<int>(va_arg(arg_list,double));
+        Tin.segmentlist[i*2+1]   = static_cast<int>(va_arg(arg_list,double));
+        Tin.segmentmarkerlist[i] = etag;
+    }
+
+    // set regions
+    for (size_t i=0; i<NRegions; ++i)
+    {
+        int tag = static_cast<int>(va_arg(arg_list,double)); // region tag
+        Tin.regionlist[i*4  ] = va_arg(arg_list,double);
+        Tin.regionlist[i*4+1] = va_arg(arg_list,double);  //if (NDim==3);
+        Tin.regionlist[i*4+2] = tag;
+        Tin.regionlist[i*4+3] = -1;// MaxArea;
+    }
+
+    // set holes
+    for (size_t i=0; i<NHoles; ++i)
+    {
+        Tin.holelist[i*2  ] = va_arg(arg_list,double);
+        Tin.holelist[i*2+1] = va_arg(arg_list,double);  //if (NDim==3);
+    }
+    va_end (arg_list);
 }
 
-inline void Unstructured::Erase()
+inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo)
 {
-	_tri_deallocate_all (_tin);
-	_tri_deallocate_all (_tou);
+    // info
+    double start = std::clock();
+
+    // parameters
+    double min_angle = -1;
+    String prms("QpzA"); // Q=quiet, p=poly, q=quality, z=zero
+    if (GlobalMaxArea>0) prms.Printf("%sa%f", prms.CStr(), GlobalMaxArea);
+    if (min_angle>0)     prms.Printf("%sq%f", prms.CStr(), min_angle);
+    else                 prms.Printf("%sq",   prms.CStr());
+    if (O2)              prms.Printf("%so2",  prms.CStr());
+    prms.Printf("%sa", prms.CStr());
+
+    // generate
+    TriIO tou;
+    TriSetAllToNull (tou);
+    triangulate (prms.CStr(), &Tin, &tou, NULL);
+
+    // verts
+    Verts.Resize (tou.numberofpoints);
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        Verts[i]      = new Vertex;
+        Verts[i]->ID  = i;
+        Verts[i]->Tag = 0;
+        Verts[i]->C   = tou.pointlist[i*2], tou.pointlist[i*2+1], 0.0;
+
+        /* tou.pointmarkerlist[ipoint] will be equal to:
+         * == edgeTag (<0) => on edge with tag <<<<<<<<<<<<<<<<<< REMOVED
+         * == 0            => internal vertex (not on boundary)
+         * == 1            => on boundary                   */
+        int mark = tou.pointmarkerlist[i];
+        if (mark<0)
+        {
+            Verts[i]->Tag = mark;
+            TgdVerts.Push (Verts[i]);
+        }
+    }
+
+    // cells
+    Cells.Resize (tou.numberoftriangles);
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        Cells[i]      = new Cell;
+        Cells[i]->ID  = i;
+        Cells[i]->Tag = tou.triangleattributelist[i*tou.numberoftriangleattributes];
+        Cells[i]->V.Resize (tou.numberofcorners);
+        for (size_t j=0; j<Cells[i]->V.Size(); ++j)
+        {
+            Cells[i]->V[j] = Verts[tou.trianglelist[i*tou.numberofcorners+FEM2TriPt[j]]];
+        }
+        bool has_bry_tag = false;
+        for (size_t j=0; j<3; ++j)
+        {
+            int edge_tag = tou.triedgemarks[i*3+FEM2TriEd[j]];
+            if (edge_tag<0)
+            {
+                Cells[i]->BryTags[j] = edge_tag;
+                has_bry_tag          = true;
+            }
+        }
+        if (has_bry_tag) TgdCells.Push (Cells[i]);
+    }
+
+    // info
+    if (WithInfo)
+    {
+        double total = std::clock() - start;
+        std::cout << "[1;33m\n--- Unstructured Mesh Generation -------------------------------[0m\n";
+        if (O2) std::cout << "[1;36m    Time elapsed (o2)     = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+        else    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+        std::cout <<         "    JRS' triangle command = " << prms                    << std::endl;
+        std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
+        std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
+    }
+
+    // clean up
+    /* After triangulate (with -p switch), tou.regionlist gets the content of Tin.regionlist and
+     * tou.holelist gets the content of Tin.holelist. Thus, these output variables must be set
+     * to NULL in order to tell TriDeallocateAll to ignore them and do not double-free memory. */
+    tou.regionlist      = NULL;
+    tou.numberofregions = 0;
+    tou.holelist        = NULL;
+    tou.numberofholes   = 0;
+    TriDeallocateAll (tou);
 }
 
-inline void Unstructured::SetPolySize(size_t NPoints, size_t NSegments, size_t NRegions, size_t NHoles)
+inline void Unstructured::WritePoly (char const * FileKey, bool Blender)
 {
-	// Erase previous PSLG
-	Erase();
+    // output string
+    String fn(FileKey); fn.append(".poly");
+    std::ostringstream oss;
 
-	// Points
-	_tin.pointlist      = (double*)malloc(NPoints*2*sizeof(double));
-	_tin.numberofpoints = NPoints;
+    if (Blender)
+    {
+        // header
+        oss << "import Blender\n";
+        oss << "import bpy\n";
 
-	// Segments
-	_tin.segmentlist       = (int*)malloc(NSegments*2*sizeof(int));
-	_tin.segmentmarkerlist = (int*)malloc(NSegments * sizeof(int));
-	_tin.numberofsegments  = NSegments;
-	for (size_t i=0; i<NSegments; ++i) _tin.segmentmarkerlist[i]=0;
+        // scene, mesh, and object
+        oss << "scn = bpy.data.scenes.active\n";
+        oss << "msh = bpy.data.meshes.new('unstruct_poly')\n";
+        oss << "obj = scn.objects.new(msh,'unstruct_poly')\n";
 
-	// Regions
-	if (NRegions>0)
-	{
-		_tin.regionlist      = (double*)malloc(NRegions*4*sizeof(double));
-		_tin.numberofregions = NRegions;
-	}
+        // points
+        oss << "pts = [";
+        for (int i=0; i<Tin.numberofpoints; ++i)
+        {
+            oss << "[" << Tin.pointlist[i*2];
+            oss << "," << Tin.pointlist[i*2+1];
+            oss << "," << (NDim==3 ? 0.0/*Tin.pointlist[i*3+2]*/ : 0.0) << "]";
+            if (i==Tin.numberofpoints-1) oss << "]\n";
+            else                         oss << ",\n       ";
+        }
+        oss << "\n";
 
-	// Holes
-	if (NHoles>0)
-	{
-		_tin.holelist      = (double*)malloc(NHoles*2*sizeof(double));
-		_tin.numberofholes = NHoles;
-	}
-}
+        // edges
+        oss << "edg = [";
+        for (int i=0; i<Tin.numberofsegments; ++i)
+        {
+            oss << "[" << Tin.segmentlist[i*2] << "," << Tin.segmentlist[i*2+1] << "]";
+            if (i==Tin.numberofsegments-1) oss << "]\n";
+            else                           oss << ",\n       ";
+        }
+        oss << "\n";
 
-inline void Unstructured::SetPolyPoint(size_t i, double X, double Y, double Z)
-{
-	_tin.pointlist[i*2  ] = X;
-	_tin.pointlist[i*2+1] = Y;
-}
+        // extend mesh
+        oss << "msh.verts.extend(pts)\n";
+        oss << "msh.edges.extend(edg)\n";
+    }
+    else // matplotlib
+    {
+        // header
+        MPL::Header (oss);
 
-inline void Unstructured::SetPolySegment(size_t i, size_t iPointLeft, size_t iPointRight, int Tag)
-{
-	_tin.segmentlist[i*2  ]   = iPointLeft;
-	_tin.segmentlist[i*2+1]   = iPointRight;
-	_tin.segmentmarkerlist[i] = Tag;
-}
+        // vertices and commands
+        oss << "# vertices and commands\n";
+        oss << "dat = []\n";
+        for (int i=0; i<Tin.numberofsegments; ++i)
+        {
+            int I = Tin.segmentlist[i*2];
+            int J = Tin.segmentlist[i*2+1];
+            oss << "dat.append((PH.MOVETO, (" << Tin.pointlist[I*2] << "," << Tin.pointlist[I*2+1] << ")))\n";
+            oss << "dat.append((PH.LINETO, (" << Tin.pointlist[J*2] << "," << Tin.pointlist[J*2+1] << ")))\n";
+        }
+        oss << "\n";
 
-inline void Unstructured::SetPolyRegion(size_t i, int Tag, double MaxArea, double X, double Y, double Z)
-{
-	_tin.regionlist[i*4  ] = X;
-	_tin.regionlist[i*4+1] = Y;
-	_tin.regionlist[i*4+2] = Tag;
-	_tin.regionlist[i*4+3] = MaxArea;
-}
+        // draw edges
+        MPL::AddPatch (oss);
 
-inline void Unstructured::SetPolyHole(size_t i, double X, double Y, double Z)
-{
-	_tin.holelist[i*2  ] = X;
-	_tin.holelist[i*2+1] = Y;
-}
+        // draw tags
+        oss << "# draw tags\n";
+        for (int i=0; i<Tin.numberofpoints; ++i)
+        {
+            int pt_tag = Tin.pointmarkerlist[i];
+            if (pt_tag<0) oss << "ax.text(" << Tin.pointlist[i*2] << "," << Tin.pointlist[i*2+1] << ", " << pt_tag << ", ha='center', va='center', fontsize=14, backgroundcolor=lyellow)\n";
+        }
+        for (int i=0; i<Tin.numberofsegments; ++i)
+        {
+            int edge_tag = Tin.segmentmarkerlist[i];
+            if (edge_tag<0)
+            {
+                int    I  = Tin.segmentlist[i*2];
+                int    J  = Tin.segmentlist[i*2+1];
+                double x0 = Tin.pointlist[I*2];
+                double y0 = Tin.pointlist[I*2+1];
+                double x1 = Tin.pointlist[J*2];
+                double y1 = Tin.pointlist[J*2+1];
+                double xm = (x0+x1)/2.0;
+                double ym = (y0+y1)/2.0;
+                oss << "ax.text(" << xm << "," << ym << ", " << edge_tag << ", ha='center', va='center', fontsize=14, backgroundcolor=pink)\n";
+            }
+        }
+        oss << "\n";
 
-inline int Unstructured::ElemETag(size_t i, size_t j) const
-{
-	size_t net = ElemNETags(i); // number of edge tags not regarding O2 edges
-	if (net>0)
-	{
-		size_t ied = (j>net-1 ? j-net : j); // first edge IDs not regarding O2 edges
-		return _tou.triedgemarks[i*3+ied];
-	}
-	else return 0;
-}
+        // show
+        oss << "# show\n";
+        oss << "axis ('scaled')\n";
+        oss << "show ()\n";
+    }
 
-inline size_t Unstructured::Generate(bool WithInfo)
-{
-	// Info
-	double start = std::clock();
-
-	// Generate (via JRS' triangle)
-	String prms("QpzA"); // Q=quiet, p=poly, q=quality, z=zero
-	if (_max_area>0 ) prms.Printf("%sa%f", prms.CStr(), _max_area);
-	if (_min_angle>0) prms.Printf("%sq%f", prms.CStr(), _min_angle);
-	else              prms.Printf("%sq",   prms.CStr());
-	if (_is_o2)       prms.Printf("%so2",  prms.CStr());
-	prms.Printf("%sa", prms.CStr());
-	//std::cout << "JRS' triangle parameters = " << prms << std::endl;
-	triangulate (prms.CStr(), &_tin, &_tou, NULL);
-
-	/*
-	// IMRAN
-	// String prms("neQpzA"); // Q=quiet, p=poly, q=quality, z=zero
-	for (int i=0; i<_tou.numberoftriangles; ++i)
-	{
-		for (int j=0; j<3; ++j)
-			cout << _tou.neighborlist[i*3+j] << " ";
-		cout << endl;
-	}
-	cout << endl;
-
-	for (int i=0; i<_tou.numberofedges; ++i)
-	{
-		cout << _tou.edgelist[i*2+0] << " " << _tou.edgelist[i*2+1] << endl;
-	}
-	cout << endl;
-	*/
-
-	/* Find vertices on boundary
-	 * _tou.pointmarkerlist[ipoint] will be equal to:
-	 * == edgeTag (<0) => on edge with tag
-	 * == 0            => internal vertex (not on boundary)
-	 * == 1            => on boundary
-	 */
-	_vbry.Resize(0);
-	for (int i=0; i<_tou.numberofpoints; ++i)
-	{
-		int mark = _tou.pointmarkerlist[i];
-		if (mark<0 || mark==1) _vbry.Push(i);
-		/*
-		for (int j=0; j<_tou.numberofpointattributes; j++)
-			std::cout << _tou.pointattributelist[i*_tou.numberofpointattributes+j] << "  ";
-		std::cout << std::endl;
-		*/
-	}
-
-	/*
-	for (int i=0; i<_tou.numberoftriangles; ++i)
-	{
-	   for (int j=0; j<_tou.numberoftriangleattributes; j++)
-		std::cout << _tou.triangleattributelist[i*_tou.numberoftriangleattributes+j] << "  ";
-	   std::cout << std::endl;
-	}
-	*/
-
-	/* After triangulate (with -p switch), _tou.regionlist gets the content of _tin.regionlist and
-	 * _tou.holelist gets the content of _tin.regionlist. Thus, these output variables must be set
-	 * to NULL in order to tell to the destructor to ignore them and then to not double-free memory. */
-	_tou.regionlist      = NULL;
-	_tou.numberofregions = 0;
-	_tou.holelist        = NULL;
-	_tou.numberofholes   = 0;
-
-	/*
-	// Set Vertices
-	SetNVerts (_tou.numberofpoints);
-	for (int i=0; i<_tou.numberofpoints; ++i)
-		SetVert2D (i, false, _tou.pointlist[i*2], _tou.pointlist[i*2+1]);
-
-	// Set Elements
-	SetNElems (_tou.numberoftriangles);
-	for (int i=0; i<_tou.numberoftriangles; ++i)
-	{
-		bool onbry = (_tou.triedgemarks[i*3]+_tou.triedgemarks[i*3+1]+_tou.triedgemarks[i*3+2]==0 ? false : true);
-		SetElem (i, -1, onbry, VTK_TRIANGLE, _tou.numberofcorners);
-		// Connectivity
-		for (int j=0; j<_tou.numberofcorners; ++j)
-			SetElemCon (i, j, _tou.trianglelist[i*_tou.numberofcorners+j]);
-		// ETags
-		SetElemETag (i, 0, _tou.triedgemarks[i*3]  );
-		SetElemETag (i, 1, _tou.triedgemarks[i*3+1]);
-		SetElemETag (i, 2, _tou.triedgemarks[i*3+2]);
-	}
-	*/
-
-	// Info
-	if (WithInfo)
-	{
-		double total = std::clock() - start;
-		std::cout << "[1;33m\n--- Unstructured Mesh Generation -------------------------------[0m\n";
-		if (_is_o2) std::cout << "[1;36m    Time elapsed (o2)     = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-		else        std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-		std::cout << "[1;32m    Number of elements    = " << _tou.numberoftriangles << "[0m" << std::endl;
-	}
-
-	// Return number of elements==triangles
-	return _tou.numberoftriangles;
-}
-
-
-/* private */
-
-inline void Unstructured::_tri_set_all_to_null(TriIO & Tio)
-{
-	// Points
-	Tio.pointlist               = NULL;
-	Tio.pointattributelist      = NULL;
-	Tio.pointmarkerlist         = NULL;
-	Tio.numberofpoints          = 0;
-	Tio.numberofpointattributes = 0;
-
-	// Triangles
-	Tio.trianglelist               = NULL;
-	Tio.triangleattributelist      = NULL;
-	Tio.trianglearealist           = NULL;
-	Tio.neighborlist               = NULL;
-	Tio.numberoftriangles          = 0;
-	Tio.numberofcorners            = 0;
-	Tio.numberoftriangleattributes = 0;
-	Tio.triedgemarks               = NULL;
-
-	// Segments
-	Tio.segmentlist       = NULL;
-	Tio.segmentmarkerlist = NULL;
-	Tio.numberofsegments  = 0;
-
-	// Holes
-	Tio.holelist      = NULL;
-	Tio.numberofholes = 0;
-
-	// Regions
-	Tio.regionlist      = NULL;
-	Tio.numberofregions = 0;
-
-	// Edges
-	Tio.edgelist       = NULL;
-	Tio.edgemarkerlist = NULL;
-	Tio.normlist       = NULL;
-	Tio.numberofedges  = 0;
-}
-
-inline void Unstructured::_tri_deallocate_all(TriIO & Tio)
-{
-	// Points
-	if (Tio.pointlist          != NULL) free(Tio.pointlist);
-	if (Tio.pointattributelist != NULL) free(Tio.pointattributelist);
-	if (Tio.pointmarkerlist    != NULL) free(Tio.pointmarkerlist);
-
-	// Triangles
-	if (Tio.trianglelist          != NULL) free(Tio.trianglelist);
-	if (Tio.triangleattributelist != NULL) free(Tio.triangleattributelist);
-	if (Tio.trianglearealist      != NULL) free(Tio.trianglearealist);
-	if (Tio.neighborlist          != NULL) free(Tio.neighborlist);
-	if (Tio.triedgemarks          != NULL) free(Tio.triedgemarks);
-
-	// Segments
-	if (Tio.segmentlist       != NULL) free(Tio.segmentlist);
-	if (Tio.segmentmarkerlist != NULL) free(Tio.segmentmarkerlist);
-
-	// Holes
-	if (Tio.holelist != NULL) free(Tio.holelist);
-
-	// Regions
-	if (Tio.regionlist != NULL) free(Tio.regionlist);
-
-	// Edges
-	if (Tio.edgelist       != NULL) free(Tio.edgelist);
-	if (Tio.edgemarkerlist != NULL) free(Tio.edgemarkerlist);
-	if (Tio.normlist       != NULL) free(Tio.normlist);
-
-	// Clear all
-	_tri_set_all_to_null (Tio);
+    // create file
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 }
 
 }; // namespace Mesh
