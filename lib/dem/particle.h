@@ -300,8 +300,9 @@ inline bool Particle::IsInside (Vec3_t & V)
             inside = true;
             return inside;
         }
-        Vec3_t D(0,0,1),nor,p,b;
+        Vec3_t D(0.1,0.2,0.3),nor,p,b;
         Mat3_t m;
+        D = D/norm(D);
         for (size_t j = 0;j < 3;j++)
         {
             m(j,0) = Faces[i]->Edges[0]->dL(j);

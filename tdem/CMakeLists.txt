@@ -19,6 +19,7 @@
 SET(TESTS
   test_distances
   test_domain
+  test_27cubes
   test_dynamics)
 
 IF(BLITZ_FOUND)

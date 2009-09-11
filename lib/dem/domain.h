@@ -24,12 +24,13 @@
 #include <cmath>
 #include <stdlib.h> // for M_PI
 #include <iostream>
+#include <ctime>    // for std::clock
 
 // MechSys
 #include "dem/interacton.h"
-//#include "dem/interacton.h"
 #include "util/array.h"
 #include "util/util.h"
+#include "mesh/structured.h"
 
 class Domain
 {
@@ -55,6 +56,9 @@ public:
                       double Zmin,       ///< Bottom boundary
                       double Zmax,       ///< Top boundary
                       double Thickness); ///< Thickness of the wall, cannot be zero
+
+    void GenFromMesh (Mesh::Structured const & M);
+    void Solve (double t0, double tf, double dt, double dtOut, char const * FileKey);
 
     void AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddRice  (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
@@ -108,6 +112,110 @@ inline void Domain::GenerateSpheres (size_t N, double Xmin, double Xmax, double 
 inline void Domain::GenerateBox (double Xmin, double Xmax, double Ymin, double Ymax, double Zmin, double Zmax, double Thickness)
 {
 }
+
+inline void Domain::GenFromMesh (Mesh::Structured const & M)
+{
+    // info
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Generating particles from mesh -----------------------------[0m\n";
+
+    double R   = 0.1;
+    double rho = 1.0;
+    Array <Array <int> > Empty;
+    for (size_t i=0; i<M.Cells.Size(); ++i)
+    {
+        // centroid
+        Vec3_t ct(0,0,0);
+        Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
+        size_t nverts = verts.Size();
+        for (size_t j=0; j<nverts; ++j) ct += verts[j]->C;
+        ct /=nverts;
+
+        // verts
+        Array<Vec3_t> V(nverts);
+        Vec3_t        dx;
+        for (size_t j=0; j<nverts; ++j)
+        {
+            dx = verts[j]->C - ct;
+            double l = norm(dx) - sqrt(2)*R;
+            V[j] = l*dx/norm(dx) + ct;
+        }
+
+        // edges
+        size_t nedges = Mesh::NVertsToNEdges3D[nverts];
+        Array<Array <int> > E(nedges);
+        for (size_t j=0; j<nedges; ++j)
+        {
+            E[j].Push (Mesh::NVertsToEdge3D[nverts][j][0]);
+            E[j].Push (Mesh::NVertsToEdge3D[nverts][j][1]);
+        }
+
+        size_t nfaces = Mesh::NVertsToNFaces[nverts];
+        size_t nvperf = Mesh::NVertsToNVertsPerFace[nverts];
+        Array<Array <int> > F(nfaces);
+        for (size_t j=0; j<nfaces; ++j)
+        {
+            for (size_t k=0; k<nvperf; ++k)
+            {
+                F[j].Push(Mesh::NVertsToFace[nverts][j][k]);
+            }
+        }
+
+        // find normals to each face
+        /*
+        size_t nfaces = Mesh::NVertsToNFaces[nverts];
+        for (size_t j=0; j<nfaces; ++j)
+        {
+            int vert_0 = NVertsToFace[nverts][j][0];
+            int vert_1 = NVertsToFace[nverts][j][1];
+            int vert_2 = NVertsToFace[nverts][j][2];
+        }
+        */
+
+        // add particle
+        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+        // Calculate properties
+        Particles[i]->CalcMassProperties();
+    }
+
+    // info
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+}
+
+inline void Domain::Solve (double t0, double tf, double dt, double dtOut, char const * FileKey)
+{
+    // info
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
+
+    size_t I=0;
+    double tout = t0 + dtOut;
+    for (double t=t0; t<tf; t+=dt)
+    {
+        OneStep(dt);
+        if(t>=tout)
+        {
+            String fn;  
+            fn.Printf("%s_%08d.pov",FileKey,I);
+            std::ofstream of(fn.CStr());
+            PovHeader(of);
+            Vec3_t p(0,10,0);
+            PovSetCam(of,p,OrthoSys::O);
+            WritePov(of,"Blue");
+            of.close();
+            tout+=dtOut;
+            I++;
+        }
+    }
+
+    // info
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+}
+
 
 inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
