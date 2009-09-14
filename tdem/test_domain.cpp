@@ -23,6 +23,7 @@
 
 using std::cout;
 using std::endl;
+using std::ofstream;
 
 int main(int argc, char **argv) try
 {
@@ -40,7 +41,14 @@ int main(int argc, char **argv) try
     {
         error2+=fabs(D.Particles[0]->I(i)-Ireal(i));
     }
-
+    ofstream of("test_domain.py");
+    BlenderHeader(of);
+    D.WriteBlender(of);
+    Quaternion_t q;
+    Conjugate(D.Particles[0]->Q,q);
+    D.Particles[0]->QuaternionRotation(q,OrthoSys::O);
+    D.WriteBlender(of);
+    of.close();
 	cout << "Volume " << D.Particles[0]->V << " " << error1 << endl;
 	cout << "Center of mass " << D.Particles[0]->x <<endl;
 	cout << "Moment of inertia " << D.Particles[0]->I <<" " <<error2 << endl;

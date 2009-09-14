@@ -16,15 +16,26 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SET(TESTS
+SET(EXES
   test_distances
   test_domain
   test_27cubes
   test_dynamics)
 
+SET(TESTS
+  test_distances
+  test_domain
+  test_dynamics)
+
+IF(BLITZ_FOUND)
+	FOREACH(var ${EXES})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+	ENDFOREACH(var)
+ENDIF(BLITZ_FOUND)
+
 IF(BLITZ_FOUND)
 	FOREACH(var ${TESTS})
-		ADD_EXECUTABLE        (${var} "${var}.cpp")
         ADD_TEST              (${var} ${var})
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 	ENDFOREACH(var)

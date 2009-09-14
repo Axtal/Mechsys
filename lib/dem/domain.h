@@ -65,7 +65,7 @@ public:
     void AddCube  (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
 
     void WritePov     (std::ostream & os,char const *Color);
-    void WriteBlender (char const * Filename);
+    void WriteBlender (std::ostream & os);
 
     // Methods
     void CopyParticle (const Particle & P);  ///< Create a new particle as a copy of particle P, it should be translated to another position.
@@ -137,7 +137,7 @@ inline void Domain::GenFromMesh (Mesh::Structured const & M)
         for (size_t j=0; j<nverts; ++j)
         {
             dx = verts[j]->C - ct;
-            double l = norm(dx) - sqrt(2)*R;
+            double l = norm(dx) - sqrt(3)*R;
             V[j] = l*dx/norm(dx) + ct;
         }
 
@@ -215,7 +215,6 @@ inline void Domain::Solve (double t0, double tf, double dt, double dtOut, char c
     double total = std::clock() - start;
     std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 }
-
 
 inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
@@ -364,6 +363,11 @@ inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, d
 inline void Domain::WritePov(std::ostream & os,char const *Color)
 {
     for(size_t i = 0;i < Particles.Size();i++) Particles[i]->Draw(os,Color);
+}
+
+inline void Domain::WriteBlender(std::ostream & os)
+{   
+    for(size_t i = 0;i < Particles.Size();i++) Particles[i]->Draw(os,"",true);
 }
 
 inline void Domain::Initialize(double dt)

@@ -72,9 +72,9 @@ int main(int argc, char **argv) try
     /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////
 
     double dt = 0.001;
-    d.Particles[13]->w = Vec3_t(0,.0,.0);
+    d.Particles[13]->w = Vec3_t(0,1.,1.);
     d.Initialize(dt);
-    d.Solve(0,30,dt,1.,"test_27cubes");
+    d.Solve(0,30,dt,.1,"test_27cubes");
 
     return 0;    
 }

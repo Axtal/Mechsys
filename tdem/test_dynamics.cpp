@@ -51,50 +51,13 @@ int main(int argc, char **argv) try
     D.Particles[1]->w = ome;
     D.Particles[1]->CalcMassProperties();
     double dt = 0.001;
-    for(size_t i = 0 ;i < 14; ++i)
-    {
-        r = Vec3_t((-10.*(i+2)), 0 ,0);
-	    D.AddCube(r,0.3,3.,1.);
-        D.Particles[2*i+2]->x = r;
-        D.Particles[2*i+2]->I = D.Particles[0]->I;
-        D.Particles[2*i+2]->Q = 1,0,0,0;
-        D.Particles[2*i+2]->v = 1.,0,0;
-        D.Particles[2*i+2]->w = D.Particles[0]->w;
-        D.Particles[2*i+2]->m = D.Particles[0]->m;
-        D.Particles[2*i+2]->Dmax = D.Particles[0]->Dmax;
-
-
-        r = Vec3_t(10.*(i+2), 0 ,0);
-	    D.AddTetra(r,0.44,4.4,1.);
-        D.Particles[2*i+3]->x = r;
-        D.Particles[2*i+3]->I = D.Particles[1]->I;
-        D.Particles[2*i+3]->Q = 1,0,0,0;
-        D.Particles[2*i+3]->v = -1.,0,0;
-        D.Particles[2*i+3]->w = D.Particles[1]->w;
-        D.Particles[2*i+3]->m = D.Particles[1]->m;
-        D.Particles[2*i+3]->Dmax = D.Particles[1]->Dmax;
-    }
     D.Initialize(dt);
     r=0,0,0; 
     Vec3_t L0(0,0,0),P0(0,0,0);
     double E0 = D.TotalEnergy();
     D.LinearMomentum(P0);
     D.AngularMomentum(L0);
-    size_t i =0;
-    for (double t = 0;t < 140;t+=dt,i++)
-    {
-        D.OneStep(dt);
-        if(i%100==0)
-        {
-	        String         fn;  
-            fn.Printf("test_dynamics_%04d.pov",i/100);
-            std::ofstream ws(fn.CStr());
-            PovHeader(ws);
-            PovSetCam(ws,p,OrthoSys::O);
-            D.WritePov(ws,"Blue");
-            ws.close();
-        }
-    }
+    D.Solve(0.0,30.0,dt,1.,"test_dynamics");
     Vec3_t L1(0,0,0),P1(0,0,0);
     double E1 = D.TotalEnergy();
     D.LinearMomentum(P1);

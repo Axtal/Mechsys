@@ -167,11 +167,12 @@ inline void Particle::CalcMassProperties(size_t NCALCS)
         It(0,1) = It(1,0) = MC.Integrate(this,&Particle::Ixy,Xi,Xs,Numerical::VEGAS,NCALCS);
         It(0,2) = It(2,0) = MC.Integrate(this,&Particle::Ixz,Xi,Xs,Numerical::VEGAS,NCALCS);
         It(1,2) = It(2,1) = MC.Integrate(this,&Particle::Iyz,Xi,Xs,Numerical::VEGAS,NCALCS);
-        Vec3_t xp,yp,zp,In(1,0,0),Jn(0,1,0),Kn(0,0,1);
+        Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);
-        Vec3_t axis = cross(Kn,zp);
-        double angle = acos(dot(Kn,zp));
-        NormalizeRotation(angle,axis,Q);
+        Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+        Q(1) = (yp(2)-zp(1))/(4*Q(0));
+        Q(2) = (zp(0)-xp(2))/(4*Q(0));
+        Q(3) = (xp(1)-yp(0))/(4*Q(0));
         Rotation(w,Q,wb);
         w = wb;
         m = rho*V;
