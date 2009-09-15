@@ -53,7 +53,6 @@ int main(int argc, char **argv) try
 	cout << "Center of mass " << D.Particles[0]->x <<endl;
 	cout << "Moment of inertia " << D.Particles[0]->I <<" " <<error2 << endl;
 	cout << "Quaternion " << D.Particles[0]->Q << endl;
-
     if ((error1>tol1)||(error2>tol2)) return 1;
     else return 0;
 

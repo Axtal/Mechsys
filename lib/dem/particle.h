@@ -173,6 +173,7 @@ inline void Particle::CalcMassProperties(size_t NCALCS)
         Q(1) = (yp(2)-zp(1))/(4*Q(0));
         Q(2) = (zp(0)-xp(2))/(4*Q(0));
         Q(3) = (xp(1)-yp(0))/(4*Q(0));
+        Q = Q/norm(Q);
         Rotation(w,Q,wb);
         w = wb;
         m = rho*V;
@@ -301,7 +302,8 @@ inline bool Particle::IsInside (Vec3_t & V)
             inside = true;
             return inside;
         }
-        Vec3_t D(0.1,0.2,0.3),nor,p,b;
+        Vec3_t D,nor,p,b;
+        D = Vec3_t((1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX);
         Mat3_t m;
         D = D/norm(D);
         for (size_t j = 0;j < 3;j++)
@@ -327,15 +329,6 @@ inline bool Particle::IsInside (Vec3_t & V)
     }
     if (numberofintercepts%2!=0) inside = true;
     return inside;
-}
-
-inline double Particle::IsInside (double *r)
-{
-    Vec3_t p;
-    p(0)=r[0];
-    p(1)=r[1];
-    p(2)=r[2];
-    return double(IsInside(p));
 }
 
 inline double Particle::MaxX()
@@ -396,6 +389,15 @@ inline double Particle::MinZ()
         if ((*Verts[i])(2)-R < result) result = (*Verts[i])(2)-R; 
     }
     return result;
+}
+
+inline double Particle::IsInside (double *r)
+{
+    Vec3_t p;
+    p(0)=r[0];
+    p(1)=r[1];
+    p(2)=r[2];
+    return double(IsInside(p));
 }
 
 inline double Particle::Vol (double *Thex)

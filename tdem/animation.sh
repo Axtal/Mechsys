@@ -1,5 +1,6 @@
 #! /bin/bash
 
+# input
 if [ "$#" -ne 2 ]; then
 	echo
 	echo "Usage:"
@@ -8,15 +9,30 @@ if [ "$#" -ne 2 ]; then
 	exit 1
 fi
 
-files=`find . -name "$1*.pov"`
+# find POVs
+POVs=`ls $1_*.pov | sort`
 
-for i in $files;
-do
-    povray -V -D +H640 +W640 +FN +I$i -V 2> NULL.txt
+# generate PNGs
+PNGs=""
+echo ""
+echo "----- Generate PNGs --------------------------------------------"
+for f in $POVs; do
+    povray -V -D +H640 +W640 +FN +I$f -V 2> /dev/null
+    png=$(echo "$f" | tr '[pov]' '[png]');
+    PNGs="$PNGs,$png"
 done
-mencoder "mf://*.png" -mf fps=25 -ovc lavc -lavcopts vcodec=msmpeg4:vbitrate=14400:vhq -o $1.avi
-mplayer $1.avi
 
-if [ "$2" -e 1]; then
-    rm *png *pov
+# generate AVI
+echo "----- Generate AVI ---------------------------------------------"
+mencoder "mf://$PNGs" -mf fps=25 -ovc lavc -lavcopts vcodec=msmpeg4:vbitrate=14400:vhq -o $1.avi > /dev/null
+
+# clean up
+if [ "$2" = "1" ]; then
+    echo "----- Clean up -------------------------------------------------"
+    for f in $POVs; do
+	    png=$(echo "$f" | tr '[pov]' '[png]');
+        rm $f $png $POVs
+    done
 fi
+
+exit 0

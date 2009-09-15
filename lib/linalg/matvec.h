@@ -355,6 +355,13 @@ typedef blitz::TinyMatrix<double,3,3> Mat3_t;
 /** 3x1 Vector. */
 typedef blitz::TinyVector<double,3> Vec3_t;
 
+inline double Det (Mat3_t const & M)
+{
+    double det =   M(0,0)*(M(1,1)*M(2,2) - M(1,2)*M(2,1))
+                 - M(0,1)*(M(1,0)*M(2,2) - M(1,2)*M(2,0))
+                 + M(0,2)*(M(1,0)*M(2,1) - M(1,1)*M(2,0));
+    return det;
+}
 /** Linear Solver. {X} = [M]^{-1}{B}  */
 inline void Sol (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e-10)
 {
