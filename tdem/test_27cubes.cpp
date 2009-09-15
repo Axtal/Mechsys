@@ -46,12 +46,12 @@ int main(int argc, char **argv) try
                  0.0,  0.0, 1.0, 0.0,
                  0.0,  0.0, 0.0, 1.0,  // tag, x, y, z
                  0.0,  1.0, 0.0, 1.0, 
-                 0.0,  1.0, 1.0, 1.0, 
+                 0.0,  2.0, 2.0, 2.0, 
                  0.0,  0.0, 1.0, 1.0,
                  0.0,0.0,0.0,0.0,0.0,0.0); // face tags
-    blks[0].SetNx (3);
-    blks[0].SetNy (3);
-    blks[0].SetNz (3);
+    blks[0].SetNx (2);
+    blks[0].SetNy (2);
+    blks[0].SetNz (2);
     Mesh::Structured mesh(/*NDim*/3);
     mesh.Generate (blks);
     mesh.WriteVTU ("test_27cubes");
@@ -59,22 +59,27 @@ int main(int argc, char **argv) try
     /////////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
     Domain d;
-    d.GenFromMesh (mesh);
-
+    d.GenFromMesh (mesh,0.0);
+    Vec3_t r = 3*OrthoSys::e0;
+    d.Particles[0]->Translation(r);
     //////////////////////////////////////////////////////////////////////////////////// First timestep /////
     
-    std::ofstream of("test_27cubes.pov",std::ios::out);
-    PovHeader     (of);
-    PovSetCam     (of,Vec3_t(2,1.5,1.5),OrthoSys::O);
-    d.WritePov    (of,"Blue");
-    of.close      ();
-
+    //std::ofstream of("test_27cubes.pov",std::ios::out);
+    //PovHeader     (of);
+    //PovSetCam     (of,Vec3_t(2,1.5,1.5),OrthoSys::O);
+    //d.WritePov    (of,"Blue");
+    //of.close      ();
+    //
+    std::ofstream  of2("test_27cubes.py",std::ios::out);
+    BlenderHeader  (of2);
+    d.WriteBlender (of2);
+    of2.close      ();
     /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////
 
-    double dt = 0.001;
-    d.Particles[13]->w = Vec3_t(0,1.,1.);
-    d.Initialize(dt);
-    d.Solve(0,30,dt,.1,"test_27cubes");
+    //double dt = 0.001;
+    //d.Particles[13]->w = Vec3_t(0,1.,1.);
+    //d.Initialize(dt);
+    //d.Solve(0,30,dt,.1,"test_27cubes");
 
     return 0;    
 }

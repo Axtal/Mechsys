@@ -30,6 +30,7 @@ class Face
 public:
     // Constructor
     Face (Array<Vec3_t> const & V); ///< V: vertices of face
+    Face () {};
 
     // Destructor
     ~Face ();

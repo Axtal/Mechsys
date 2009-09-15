@@ -80,8 +80,13 @@ inline void Edge::Draw (std::ostream & os, double Radius, char const * Color, bo
         Vec3_t axis;
         axis = X1-mid;
         axis = cross(Bv,axis);
-        if (norm(axis)<1.0e-10) axis =1.0,0.0,0.0;
-        double angle = acos(4.0*dot(Bv,X1-mid)/(L*L));
+        double angle;
+        if (norm(axis)<1.0e-10)
+        {
+            axis =1.0,0.0,0.0;
+            angle = 0.0;
+        }
+        else angle = acos(4.0*dot(Bv,X1-mid)/(L*L));
         os << "m = Mesh.Primitives.Cylinder(32,"<<Radius*2.0<<","<<L<<")\n";
         os << "o = s.objects.new(m,'Cylinder')\n";
         os << "axis = ["<<axis(0)<<","<<axis(1)<<","<<axis(2)<<"]\n";

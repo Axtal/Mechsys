@@ -30,8 +30,7 @@ int main(int argc, char **argv) try
 	//This test the varius Domain and Particle constructors.
 	Domain D;
 
-	//D.GenerateSpheres(1000,0,10,0,10,0,10,1,0.5);
-	Vec3_t r(0,0,0),p(0,0,0);
+	Vec3_t r(0,0,0);
 	D.AddRice(r,1.,10.,1.,0.,NULL);
 	D.Particles[0]->CalcMassProperties(50000);
     double error1 = fabs(D.Particles[0]->V-(4./3.)*M_PI-M_PI*10),tol1=0.1;
@@ -47,13 +46,27 @@ int main(int argc, char **argv) try
     Quaternion_t q;
     Conjugate(D.Particles[0]->Q,q);
     D.Particles[0]->QuaternionRotation(q,OrthoSys::O);
+	cout << "Rice Volume " << D.Particles[0]->V << " Error " << error1 << endl;
+	cout << "Rice Center of mass " << D.Particles[0]->x <<endl;
+	cout << "Rice Moment of inertia " << D.Particles[0]->I <<" Error " <<error2 << endl;
+	cout << "Rice Quaternion " << D.Particles[0]->Q << endl;
+
+    r = Vec3_t(20,0,0);
+    D.AddCube(r,1.,15,1.,0.,NULL);
+    D.Particles[1]->CalcMassProperties(50000);
+    
+    double error3,tol3=10;
+    error3 = fabs(D.Particles[1]->V-(4./3.)*M_PI-3.*M_PI*15.-pow(15,3)-6*pow(15,2));
+	cout << "Cube Volume " << D.Particles[1]->V << " Error " << error3 << endl;
+	cout << "Cube Center of mass " << D.Particles[1]->x <<endl;
+	cout << "Cube Moment of inertia " << D.Particles[1]->I << endl;
+	cout << "Cube Quaternion " << D.Particles[1]->Q << endl;
+
+
+    BlenderHeader(of);
     D.WriteBlender(of);
     of.close();
-	cout << "Volume " << D.Particles[0]->V << " " << error1 << endl;
-	cout << "Center of mass " << D.Particles[0]->x <<endl;
-	cout << "Moment of inertia " << D.Particles[0]->I <<" " <<error2 << endl;
-	cout << "Quaternion " << D.Particles[0]->Q << endl;
-    if ((error1>tol1)||(error2>tol2)) return 1;
+    if ((error1>tol1)||(error2>tol2)||(error3>tol3)) return 1;
     else return 0;
 
 }

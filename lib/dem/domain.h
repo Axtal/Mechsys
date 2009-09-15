@@ -57,7 +57,7 @@ public:
                       double Zmax,       ///< Top boundary
                       double Thickness); ///< Thickness of the wall, cannot be zero
 
-    void GenFromMesh (Mesh::Structured const & M);
+    void GenFromMesh (Mesh::Structured const & M,double R);
     void Solve (double t0, double tf, double dt, double dtOut, char const * FileKey);
 
     void AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
@@ -113,32 +113,24 @@ inline void Domain::GenerateBox (double Xmin, double Xmax, double Ymin, double Y
 {
 }
 
-inline void Domain::GenFromMesh (Mesh::Structured const & M)
+inline void Domain::GenFromMesh (Mesh::Structured const & M,double R)
 {
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Generating particles from mesh -----------------------------[0m\n";
 
-    double R   = 0.1;
     double rho = 1.0;
     Array <Array <int> > Empty;
     for (size_t i=0; i<M.Cells.Size(); ++i)
     {
-        // centroid
-        Vec3_t ct(0,0,0);
         Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
         size_t nverts = verts.Size();
-        for (size_t j=0; j<nverts; ++j) ct += verts[j]->C;
-        ct /=nverts;
 
         // verts
         Array<Vec3_t> V(nverts);
-        Vec3_t        dx;
         for (size_t j=0; j<nverts; ++j)
         {
-            dx = verts[j]->C - ct;
-            double l = norm(dx) - sqrt(3)*R;
-            V[j] = l*dx/norm(dx) + ct;
+            V[j] = verts[j]->C;
         }
 
         // edges
@@ -161,19 +153,9 @@ inline void Domain::GenFromMesh (Mesh::Structured const & M)
             }
         }
 
-        // find normals to each face
-        /*
-        size_t nfaces = Mesh::NVertsToNFaces[nverts];
-        for (size_t j=0; j<nfaces; ++j)
-        {
-            int vert_0 = NVertsToFace[nverts][j][0];
-            int vert_1 = NVertsToFace[nverts][j][1];
-            int vert_2 = NVertsToFace[nverts][j][2];
-        }
-        */
 
         // add particle
-        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho,false));
 
         // Calculate properties
         Particles[i]->CalcMassProperties();

@@ -99,7 +99,7 @@ inline void BlenderDrawPolygon (Array<Vec3_t> const & V, std::ostream & os)
     for (size_t i=0; i<N; i++) 
     {   
         os << "m = data.meshes.new('Face') \no = s.objects.new(m,'Face') \nv = [["<<V[i](0)<<","<<V[i](1)<<","<<V[i](2)<<"],["<<V[(i+1)%N](0)<<","<<V[(i+1)%N](1)<<","<<V[(i+1)%N](2)<<"],["<<mid(0)<<","<<mid(1)<<","<<mid(2)<<"]]\n";
-        os << "f = [[0,1,2]] \nm.verts.extend(V) \nm.faces.extend(f) \n";
+        os << "f = [[0,1,2]] \nm.verts.extend(v) \nm.faces.extend(f) \n";
     }
 }
 

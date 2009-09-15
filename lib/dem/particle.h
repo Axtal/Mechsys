@@ -33,13 +33,14 @@ class Particle
 {
 public:
     // Constructor
-    Particle(Array<Vec3_t>       const & V,        ///< The list of vertices
-             Array<Array <int> > const & E,        ///< The list of edges with connectivity
-             Array<Array <int> > const & F,        ///< The list of faces with connectivity
-             Vec3_t              const & v0,       ///< Initial velocity
-             Vec3_t              const & w0,       ///< Initial angular velocity
-             double                      R,        ///< The spheroradius
-             double                      rho=1.0); ///< The density of the material
+    Particle(Array<Vec3_t>       const & V,            ///< The list of vertices
+             Array<Array <int> > const & E,            ///< The list of edges with connectivity
+             Array<Array <int> > const & F,            ///< The list of faces with connectivity
+             Vec3_t              const & v0,           ///< Initial velocity
+             Vec3_t              const & w0,           ///< Initial angular velocity
+             double                      R,            ///< The spheroradius
+             double                      rho=1.0,      ///< The density of the material
+             bool                        Open=false);  ///< Ask if the particle should opened or just dilated
 
     // Destructor
     ~Particle ();
@@ -104,17 +105,100 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Particle::Particle (Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
+inline Particle::Particle (Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho, bool Open)
     : v(v0), w(w0), R(TheR), rho(TheRho)
 {
     for (size_t i=0; i<V.Size(); i++) Verts.Push (new Vec3_t(V[i]));
-    for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
     for (size_t i = 0;i<F.Size();i++)
     {
         Array<Vec3_t> verts(F[i].Size());
         for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (*Verts[F[i][j]]);
         Faces.Push (new Face(verts));
     }
+    if (Open)
+    {
+        Array<int> Faux(3);
+        Array<Vec3_t> Normal(3);
+        for (size_t i=0; i<V.Size(); i++)
+        {
+            size_t k=0;
+            for (size_t j = 0;j<F.Size();j++)
+            {
+                if (F[j].Find(i)!=-1)
+                {
+                    Faux[k] = j;
+                    Normal[k] = cross(Faces[j]->Edges[0]->dL,Faces[j]->Edges[1]->dL);
+                    Normal[k] = Normal[k]/norm(Normal[k]);
+                    Normal[k] = Faces[j]->Edges[0]->X0 - R*Normal[k];
+                    k++;
+                }
+            }
+            Mat_t M(9,9);
+            Vec_t X(9),B(9);
+            for (size_t j = 0;j<9;j++)
+            {
+                for (size_t k = 0;k<9;k++)
+                {
+                    M(j,k) = 0;
+                }
+                X(j) = 0;
+                B(j) = 0;
+            }
+            M(0,0) = Faces[Faux[0]]->Edges[0]->dL(0);
+            M(0,1) = Faces[Faux[0]]->Edges[1]->dL(0);
+            M(0,6) = -1;
+            M(1,0) = Faces[Faux[0]]->Edges[0]->dL(1);
+            M(1,1) = Faces[Faux[0]]->Edges[1]->dL(1);
+            M(1,7) = -1;
+            M(2,0) = Faces[Faux[0]]->Edges[0]->dL(2);
+            M(2,1) = Faces[Faux[0]]->Edges[1]->dL(2);
+            M(2,8) = -1;
+            M(3,2) = Faces[Faux[1]]->Edges[0]->dL(0);
+            M(3,3) = Faces[Faux[1]]->Edges[1]->dL(0);
+            M(3,6) = -1;
+            M(4,2) = Faces[Faux[1]]->Edges[0]->dL(1);
+            M(4,3) = Faces[Faux[1]]->Edges[1]->dL(1);
+            M(4,7) = -1;
+            M(5,2) = Faces[Faux[1]]->Edges[0]->dL(2);
+            M(5,3) = Faces[Faux[1]]->Edges[1]->dL(2);
+            M(5,8) = -1;
+            M(6,4) = Faces[Faux[2]]->Edges[0]->dL(0);
+            M(6,5) = Faces[Faux[2]]->Edges[1]->dL(0);
+            M(6,6) = -1;
+            M(7,4) = Faces[Faux[2]]->Edges[0]->dL(1);
+            M(7,5) = Faces[Faux[2]]->Edges[1]->dL(1);
+            M(7,7) = -1;
+            M(8,4) = Faces[Faux[2]]->Edges[0]->dL(2);
+            M(8,5) = Faces[Faux[2]]->Edges[1]->dL(2);
+            M(8,8) = -1;
+
+            B(0) = -Normal[0](0);
+            B(1) = -Normal[0](1);
+            B(2) = -Normal[0](2);
+            B(3) = -Normal[1](0);
+            B(4) = -Normal[1](1);
+            B(5) = -Normal[1](2);
+            B(6) = -Normal[2](0);
+            B(7) = -Normal[2](1);
+            B(8) = -Normal[2](2);
+
+            Sol(M,B,X);
+            Vec3_t Inter;
+            Inter(0) = X(6);
+            Inter(1) = X(7);
+            Inter(2) = X(8);
+
+            (*Verts[i]) = (Inter);
+        }
+        Faces.Clear();
+        for (size_t i = 0;i<F.Size();i++)
+        {
+            Array<Vec3_t> verts(F[i].Size());
+            for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (*Verts[F[i][j]]);
+            Faces.Push (new Face(verts));
+        }
+    }
+    for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
 }
 
 inline Particle::~Particle()
@@ -303,9 +387,8 @@ inline bool Particle::IsInside (Vec3_t & V)
             return inside;
         }
         Vec3_t D,nor,p,b;
-        D = Vec3_t((1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX,(1.*rand())/RAND_MAX);
+        D = Vec3_t(1,1,1);
         Mat3_t m;
-        D = D/norm(D);
         for (size_t j = 0;j < 3;j++)
         {
             m(j,0) = Faces[i]->Edges[0]->dL(j);
@@ -314,15 +397,16 @@ inline bool Particle::IsInside (Vec3_t & V)
             b(j) = V(j)-Faces[i]->Edges[0]->X0(j);
         }
         Sol(m,b,p);
-        D = V + p(2)*D;
+        b = V + p(2)*D;
         nor = cross(Faces[i]->Edges[0]->dL,Faces[i]->Edges[1]->dL);
+        nor = nor/norm(nor);
         insideface = true;
         for(size_t j=0;j < Faces[i]->Edges.Size();j++)
         {
-            Vec3_t tmp = D-Faces[i]->Edges[j]->X0;
+            Vec3_t tmp = b-Faces[i]->Edges[j]->X0;
             if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0) insideface = false;
         }
-        if ((insideface)&&(x(2)>0)) 
+        if ((insideface)&&(p(2)>0)) 
         {
             numberofintercepts++;
         }
