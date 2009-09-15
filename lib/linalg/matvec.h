@@ -46,6 +46,9 @@ extern "C"
 
     // DGESVD - computes the singular value decomposition of a real M-by-N matrix A, optionally computing the left and/or right singular vectors
     void dgesvd_(const char* jobu, const char* jobvt, const int* M, const int* N, double* A, const int* lda, double* S, double* U, const int* ldu, double* VT, const int* ldvt, double* work,const int* lwork, const int* info);
+
+	// DGESV - double-general-solver
+	void dgesv_(int *Np, int *NRHSp, double *A, int *LDAp, int *IPIVp, double *B, int *LDBp, int *INFOp);
 }
 
 
@@ -324,10 +327,37 @@ inline void Inv (Mat_t const & M, Mat_t & Mi, double Tol=1.0e-10)
     }
 }
 
+/** Linear Solver. {X} = [M]^{-1}{X} (M is lost) (X begins with the contents of B) */
+inline void Sol (Mat_t & M, Vec_t & X)
+{
+    int  m = M.num_rows();
+    int  n = M.num_cols();
+    int mv = X.size();
+    if (m!=n)  throw new Fatal("Sol: Matix must be square");
+    if (m!=mv) throw new Fatal("Sol: Vector X must have the same number of rows of matrix M");
+
+	int   info = 0;
+	int   nrhs = 1; // vector X has 1 column
+	int * ipiv = new int [m];
+	dgesv_(&m,                 // A(m,m)
+	       &nrhs,              // {X}(m,1) (RHS: Right Hand Side) 
+	       M.data,             // double * A
+	       &m,                 // LDA
+	       ipiv,               // Pivot Indices
+	       X.data,             // double * Y
+	       &m,                 // LDY
+	       &info);
+	delete [] ipiv;
+
+	if (info!=0) throw new Fatal ("Sol: Linear solver (DGESV) failed (singular matrix?)");
+}
+
 /** Linear Solver. {X} = [M]^{-1}{B}  */
 inline void Sol (Mat_t const & M, Vec_t const & B, Vec_t & X)
 {
-    throw new Fatal("matvec.h:Sol: Method not implemented yet");
+    Mat_t m(M);
+    X = B;
+    Sol (m, X);
 }
 
 /** Norm. */
@@ -362,6 +392,7 @@ inline double Det (Mat3_t const & M)
                  + M(0,2)*(M(1,0)*M(2,1) - M(1,1)*M(2,0));
     return det;
 }
+
 /** Linear Solver. {X} = [M]^{-1}{B}  */
 inline void Sol (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e-10)
 {
