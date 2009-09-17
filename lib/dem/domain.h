@@ -32,6 +32,9 @@
 #include "util/util.h"
 #include "mesh/structured.h"
 
+// Voro++
+#include "voro++.cc"
+
 class Domain
 {
 public:
@@ -57,7 +60,8 @@ public:
                       double Zmax,       ///< Top boundary
                       double Thickness); ///< Thickness of the wall, cannot be zero
 
-    void GenFromMesh (Mesh::Structured const & M,double R);
+    void GenFromMesh (Mesh::Structured const & M,double R,double rho = 1);
+    void AddVoronoiCell(voronoicell & VC,double R,double rho = 1);
     void Solve (double t0, double tf, double dt, double dtOut, char const * FileKey);
 
     void AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
@@ -113,13 +117,12 @@ inline void Domain::GenerateBox (double Xmin, double Xmax, double Ymin, double Y
 {
 }
 
-inline void Domain::GenFromMesh (Mesh::Structured const & M,double R)
+inline void Domain::GenFromMesh (Mesh::Structured const & M,double R,double rho)
 {
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Generating particles from mesh -----------------------------[0m\n";
 
-    double rho = 1.0;
     Array <Array <int> > Empty;
     for (size_t i=0; i<M.Cells.Size(); ++i)
     {
@@ -155,7 +158,7 @@ inline void Domain::GenFromMesh (Mesh::Structured const & M,double R)
 
 
         // add particle
-        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho,false));
+        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho,true));
 
         // Calculate properties
         Particles[i]->CalcMassProperties();
@@ -165,6 +168,70 @@ inline void Domain::GenFromMesh (Mesh::Structured const & M,double R)
     double total = std::clock() - start;
     std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+}
+
+void Domain::AddVoronoiCell(voronoicell & VC,double R,double rho)
+{
+
+    Array<Vec3_t> V(VC.p);
+    Array<Array <int> > E;
+    Array<int> Eaux(2);
+    for(size_t i=0;i<VC.p;i++) 
+    {
+        V[i] = Vec3_t(VC.pts[3*i],VC.pts[3*i+1],VC.pts[3*i+2]);
+        //ux=0.5*VC.pts[3*i]; 
+        //uy=0.5*VC.pts[3*i+1]; 
+        //uz=0.5*VC.pts[3*i+2];
+
+        for(size_t j=0;j<VC.nu[i];j++) 
+        {
+            size_t k=VC.ed[i][j];
+            if (VC.ed[i][j]<i) 
+            {
+                Eaux[0] = i;
+                Eaux[1] = k;
+                E.Push(Eaux);
+            }
+            //if (ed[i][j]<i) os << ux << " " << uy << " " << uz << "\n" << x+0.5*pts[3*k] << " " << y+0.5*pts[3*k+1] << " " << z+0.5*pts[3*k+2] << "\n\n\n";
+        }
+    }
+    Array<Array <int> > F;
+    Array<int> Faux;
+    bool later=false;
+    for(int i=0;i<VC.p;i++) 
+    {
+        for(int j=0;j<VC.nu[i];j++) 
+        {
+            int k=VC.ed[i][j];
+            if (k>=0) 
+            {
+                //if(later) os << " ";
+                //else later=true;
+                //os << "(" << i;
+                Faux.Push(i);
+                VC.ed[i][j]=-1-k;
+				int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
+                do 
+                {
+                    //os << "," << k;
+                    Faux.Push(k);
+                    int m=VC.ed[k][l];
+                    VC.ed[k][l]=-1-m;
+					l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
+                    k=m;
+                } while (k!=i);
+                F.Push(Faux);
+                Faux.Clear();
+                //os << ")";
+            }
+        }
+    }
+    VC.reset_edges();
+
+
+
+    // add particle
+    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 }
 
 inline void Domain::Solve (double t0, double tf, double dt, double dtOut, char const * FileKey)

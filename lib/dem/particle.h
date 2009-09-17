@@ -190,6 +190,7 @@ inline Particle::Particle (Array<Vec3_t> const & V, Array<Array <int> > const & 
 
             (*Verts[i]) = (Inter);
         }
+        for (size_t i = 0;i<F.Size();i++) delete Faces[i];
         Faces.Clear();
         for (size_t i = 0;i<F.Size();i++)
         {
