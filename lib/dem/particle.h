@@ -362,7 +362,7 @@ inline void Particle::Translation(Vec3_t & V)
 
 inline bool Particle::IsInside (Vec3_t & V)
 {
-    bool inside = false,insideface = false;
+    bool inside = false;
     size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size();
     for (size_t i = 0; i < nv; i++)
     {
@@ -379,39 +379,38 @@ inline bool Particle::IsInside (Vec3_t & V)
             return inside;
         }
     }
-    int numberofintercepts = 0;
     for (size_t i = 0; i < nf; i++)
     {
         if (Distance(V,*Faces[i]) < R) {
             inside = true;
             return inside;
         }
-        Vec3_t D,nor,p,b;
-        D = Vec3_t(1,1,1);
-        Mat3_t m;
-        for (size_t j = 0;j < 3;j++)
-        {
-            m(j,0) = Faces[i]->Edges[0]->dL(j);
-            m(j,1) = Faces[i]->Edges[1]->dL(j);
-            m(j,2) = -D(j);
-            b(j) = V(j)-Faces[i]->Edges[0]->X0(j);
-        }
-        Sol(m,b,p);
-        b = V + p(2)*D;
-        nor = cross(Faces[i]->Edges[0]->dL,Faces[i]->Edges[1]->dL);
-        nor = nor/norm(nor);
-        insideface = true;
-        for(size_t j=0;j < Faces[i]->Edges.Size();j++)
-        {
-            Vec3_t tmp = b-Faces[i]->Edges[j]->X0;
-            if (dot(cross(Faces[i]->Edges[j]->dL,tmp),nor)<0) insideface = false;
-        }
-        if ((insideface)&&(p(2)>0)) 
-        {
-            numberofintercepts++;
-        }
     }
-    if (numberofintercepts%2!=0) inside = true;
+    if (nf>2)
+    {
+        size_t k = 0;
+        double Mindistance = Distance(V,*Faces[k]);
+        for (size_t i = 1; i < nf; i++)
+        {
+            if (Distance(V,*Faces[i])<Mindistance) 
+            {
+                k = i;
+                Mindistance = Distance(V,*Faces[k]);
+            }
+        }
+        Vec3_t ct(0,0,0);
+        for (size_t i = 0; i < Faces[k]->Edges.Size(); i++)
+        {
+            ct += Faces[k]->Edges[i]->X0;
+        }
+        ct = ct/double(Faces[k]->Edges.Size());
+        Vec3_t pro = V - ct;
+        Vec3_t nor = cross(Faces[k]->Edges[0]->dL,Faces[k]->Edges[1]->dL);
+        nor = nor/norm(nor);
+        if (dot(pro,nor)<0) inside =true;
+    }
+
+
     return inside;
 }
 

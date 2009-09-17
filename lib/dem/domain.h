@@ -315,7 +315,7 @@ inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, d
     // faces
     Array<Array <int> > F(6);
     for (size_t i=0; i<6; i++) F[i].Resize(4);
-    F[0] = 0, 3, 7, 4;
+    F[0] = 4, 7, 3, 0;
     F[1] = 1, 2, 6, 5;
     F[2] = 0, 1, 5, 4;
     F[3] = 2, 3, 7, 6;
