@@ -62,6 +62,7 @@ public:
 
     void GenFromMesh (Mesh::Structured const & M,double R,double rho = 1);
     void AddVoronoiCell(voronoicell & VC,double R,double rho = 1);
+    void AddVoronoiContainer(container & VC,double R,double rho = 1);
     void Solve (double t0, double tf, double dt, double dtOut, char const * FileKey);
 
     void AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
@@ -231,7 +232,25 @@ void Domain::AddVoronoiCell(voronoicell & VC,double R,double rho)
 
 
     // add particle
-    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho,true));
+}
+
+inline void Domain::AddVoronoiContainer(container & VC,double R,double rho)
+{
+	fpoint x,y,z,px,py,pz;
+    container *cp = & VC;
+	voropp_loop l1(cp);
+	int q,s;
+	voronoicell c;
+	s=l1.init(VC.ax,VC.bx,VC.ay,VC.by,VC.az,VC.bz,px,py,pz);
+	do {
+		for(q=0;q<VC.co[s];q++) {
+			x=VC.p[s][VC.sz*q]+px;y=VC.p[s][VC.sz*q+1]+py;z=VC.p[s][VC.sz*q+2]+pz;
+			if(x>VC.ax&&x<VC.bx&&y>VC.ay&&y<VC.by&&z>VC.az&&z<VC.bz) {
+				if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) AddVoronoiCell(c,R,rho);
+			}
+		}
+	} while((s=l1.inc(px,py,pz))!=-1);
 }
 
 inline void Domain::Solve (double t0, double tf, double dt, double dtOut, char const * FileKey)

@@ -21,7 +21,8 @@ SET(EXES
   test_domain
   test_27cubes
   test_dynamics
-  test_voronoi)
+  test_voronoi
+  test_voronoi2)
 
 SET(TESTS
   test_distances
