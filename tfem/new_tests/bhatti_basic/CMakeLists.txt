@@ -18,7 +18,14 @@
 
 SET(TESTS
   ex14
-  ex16)
+  ex15
+  ex16
+  ex42
+  ex53
+  ex622
+  ex77
+  ex79
+  ex81)
 
 IF(FEM_FOUND)
 	FOREACH(var ${TESTS})

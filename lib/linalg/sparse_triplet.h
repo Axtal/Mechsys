@@ -66,8 +66,8 @@ public:
 	// Methods
 	Index_T Rows        () const { return _nrows; }                   ///< Number of rows of the matrix from which this triplet was defined
 	Index_T Cols        () const { return _ncols; }                   ///< Number of columns of the matrix from which this triplet was defined
-	Index_T Size        () const { return _size;  }                   ///< Return the maximum number of components allowed (memory available)
-	Index_T Top         () const { return _top;   }                   ///< Return current position of insertion of new components == current number of components-1
+	//Index_T Size        () const { return _top+1;/*_size;*/  }                   ///< Return the maximum number of components allowed (memory available)
+	Index_T Top         () const { return _top;   }                   ///< Return current position of insertion of new components == current number of components
 	void    AllocSpace  (Index_T nRows, Index_T nCols, Index_T Size); ///< Allocate memory for "Size" entries == number of non-zero values, including duplicates. The number of Rows and Columns are only saved to aid further format conversions. The "Size" must be any number, even bigger than Rows*Cols, in case there are duplicates.
 	void    PushEntry   (Index_T i, Index_T j, Value_T x);            ///< Insert an entry into the arrays (increase top; top must be smaller than Size)
 	void    ResetTop    (Index_T NewTop=0) { _top = NewTop; }         ///< Set Top to NewTop => clear the triplet after NewTop
@@ -146,7 +146,7 @@ inline void Triplet<Value_T,Index_T>::AllocSpace(Index_T nRows, Index_T nCols, I
 template<typename Value_T, typename Index_T>
 inline void Triplet<Value_T,Index_T>::PushEntry(Index_T i, Index_T j, Value_T x)
 {
-	if (_top>=_size) throw new Fatal(_("Sparse::Triplet::PushEntry: _top (%d) must be smaller than _size (%d)"),_top,_size);
+	if (_top>=_size) throw new Fatal("Sparse::Triplet::PushEntry: _top (%d) must be smaller than _size (%d)",_top,_size);
 	_Ai[_top] = i;
 	_Aj[_top] = j;
 	_Ax[_top] = x;
@@ -159,7 +159,8 @@ template<typename Value_T, typename Index_T>
 inline Index_T Triplet<Value_T,Index_T>::Ai(Index_T k) const
 {
 #ifndef DNDEBUG
-	if ((k<0) || (k>=_top)) throw new Fatal(_("Sparse::Triplet::Ai: Index (k=%d) for an row index must be greater than/equal to zero and smaller than/ equal to top(=%d)"),k,_top);
+	if ((k<0) || (k>=_top)) throw new Fatal("Sparse::Triplet::Ai: Index (k=%d) for a row index must be greater than/equal to zero and smaller than/ equal to top(=%d)",k,_top);
+	//if ((k<0) || (k>_top)) throw new Fatal("Sparse::Triplet::Ai: Index (k=%d) for a row index must be greater than/equal to zero and smaller than top(=%d)",k,_top);
 #endif
 	return _Ai[k];
 }
@@ -168,7 +169,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T Triplet<Value_T,Index_T>::Aj(Index_T k) const
 {
 #ifndef DNDEBUG
-	if ((k<0) || (k>_top)) throw new Fatal(_("Sparse::Triplet::Aj: Index (k=%d) for an column index must be greater than/equal to zero and smaller than/equal to top(=%d)"),k,_top);
+	if ((k<0) || (k>_top)) throw new Fatal("Sparse::Triplet::Aj: Index (k=%d) for a column index must be greater than/equal to zero and smaller than top(=%d)",k,_top);
 #endif
 	return _Aj[k];
 }
@@ -177,7 +178,8 @@ template<typename Value_T, typename Index_T>
 inline Value_T Triplet<Value_T,Index_T>::Ax(Index_T k) const
 {
 #ifndef DNDEBUG
-	if ((k<0) || (k>=_top)) throw new Fatal(_("Sparse::Triplet::Ax: Index (k=%d) for a non-zero value must be greater than/or equal to zero and smaller than/equal to top(=%d)"),k,_top);
+	if ((k<0) || (k>=_top)) throw new Fatal("Sparse::Triplet::Ax: Index (k=%d) for a non-zero value must be greater than/or equal to zero and smaller than/equal to top(=%d)",k,_top);
+	//if ((k<0) || (k>_top)) throw new Fatal("Sparse::Triplet::Ax: Index (k=%d) for a non-zero value must be greater than/or equal to zero and smaller than top(=%d)",k,_top);
 #endif
 	return _Ax[k];
 }
@@ -186,7 +188,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T * Triplet<Value_T,Index_T>::GetAiPtr()
 {
 #ifndef DNDEBUG
-	if (_Ai==NULL) throw new Fatal(_("Sparse::Triplet::GetAiPtr: The matrix must be allocated prior to get the pointer to Ai (row indexes)."));
+	if (_Ai==NULL) throw new Fatal("Sparse::Triplet::GetAiPtr: The matrix must be allocated prior to get the pointer to Ai (row indexes).");
 #endif
 	return _Ai;
 }
@@ -195,7 +197,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T * Triplet<Value_T,Index_T>::GetAjPtr()
 {
 #ifndef DNDEBUG
-	if (_Aj==NULL) throw new Fatal(_("Sparse::Triplet::GetAjPtr: The matrix must be allocated prior to get the pointer to Aj (column indexes)."));
+	if (_Aj==NULL) throw new Fatal("Sparse::Triplet::GetAjPtr: The matrix must be allocated prior to get the pointer to Aj (column indexes).");
 #endif
 	return _Aj;
 }
@@ -204,7 +206,7 @@ template<typename Value_T, typename Index_T>
 inline Value_T * Triplet<Value_T,Index_T>::GetAxPtr() 
 {
 #ifndef DNDEBUG
-	if (_Ax==NULL) throw new Fatal(_("Sparse::Triplet::GetAxPtr: The matrix must be allocated prior to get the pointer to Ax (non-zero values, including duplicates)."));
+	if (_Ax==NULL) throw new Fatal("Sparse::Triplet::GetAxPtr: The matrix must be allocated prior to get the pointer to Ax (non-zero values, including duplicates).");
 #endif
 	return _Ax;
 }
@@ -213,7 +215,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T const * Triplet<Value_T,Index_T>::GetAiPtr() const
 {
 #ifndef DNDEBUG
-	if (_Ai==NULL) throw new Fatal(_("Sparse::Triplet::GetAiPtr: The matrix must be allocated prior to get the pointer to Ai (row indexes)."));
+	if (_Ai==NULL) throw new Fatal("Sparse::Triplet::GetAiPtr: The matrix must be allocated prior to get the pointer to Ai (row indexes).");
 #endif
 	return _Ai;
 }
@@ -222,7 +224,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T const * Triplet<Value_T,Index_T>::GetAjPtr() const
 {
 #ifndef DNDEBUG
-	if (_Aj==NULL) throw new Fatal(_("Sparse::Triplet::GetAjPtr: The matrix must be allocated prior to get the pointer to Aj (column indexes)."));
+	if (_Aj==NULL) throw new Fatal("Sparse::Triplet::GetAjPtr: The matrix must be allocated prior to get the pointer to Aj (column indexes).");
 #endif
 	return _Aj;
 }
@@ -231,7 +233,7 @@ template<typename Value_T, typename Index_T>
 inline Value_T const * Triplet<Value_T,Index_T>::GetAxPtr() const
 {
 #ifndef DNDEBUG
-	if (_Ax==NULL) throw new Fatal(_("Sparse::Triplet::GetAxPtr: The matrix must be allocated prior to get the pointer to Ax (non-zero values, including duplicates)."));
+	if (_Ax==NULL) throw new Fatal("Sparse::Triplet::GetAxPtr: The matrix must be allocated prior to get the pointer to Ax (non-zero values, including duplicates).");
 #endif
 	return _Ax;
 }

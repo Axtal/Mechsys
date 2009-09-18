@@ -25,7 +25,7 @@
 #include <sstream>
 
 // MechSys
-#include "linalg/matrix.h"
+#include "linalg/matvec.h"
 #include "linalg/sparse_triplet.h"
 #include "util/array.h"
 #include "util/numstreams.h"
@@ -95,7 +95,7 @@ public:
 	Index_T const * GetAqPtr () const;             ///< Access pointers to columns indexes (read)
 
 	// Auxiliar methods
-	void                    GetDense (LinAlg::Matrix<Value_T> & D) const;  ///< Convert this sparse structure to a Dense matrix
+	void                    GetDense (Mat_t & D) const;                    ///< Convert this sparse structure to a Dense matrix
 	void                    SetNS    (Util::NumStream & NS) { _ns = &NS; } ///< Set the NumStream, a structure to aid format output of numbers
 	Util::NumStream const & NS       () const           { return (*_ns); } ///< Return the NumStream, a structure to aid format output of numbers
 
@@ -387,7 +387,7 @@ inline Index_T const * CRMatrix<Value_T,Index_T>::GetAqPtr() const
 // Auxiliar methods
 
 template<typename Value_T, typename Index_T>
-inline void CRMatrix<Value_T,Index_T>::GetDense(LinAlg::Matrix<Value_T> & D) const
+inline void CRMatrix<Value_T,Index_T>::GetDense(Mat_t & D) const
 {
 	D.Resize(_nrows,_ncols);
 	for (Index_T i=0; i<_nrows; ++i)

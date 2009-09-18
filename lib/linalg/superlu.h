@@ -24,8 +24,7 @@
 #include <slu_ddefs.h>
 
 // MechSys
-#include "linalg/matrix.h"
-#include "linalg/vector.h"
+#include "linalg/matvec.h"
 #include "linalg/sparse_matrix.h"
 #include "util/fatal.h"
 #include "util/util.h"
@@ -50,11 +49,11 @@ namespace SuperLU
  * \param A %Sparse matrix
  * \param X Right-hand side vector and solution vector
  */
-inline void Solve(Sparse::Matrix<double,int> const & A, LinAlg::Vector<double> & X)
+inline void Solve(Sparse::Matrix<double,int> const & A, Vec_t & X)
 {
 #ifndef DNDEBUG
-	if (A.Rows()!=A.Cols()) throw new Fatal(_("SuperLU::Solve: The matrix A (%d x %d) must be squared."),A.Rows(),A.Cols());
-	if (X.Size()!=A.Cols()) throw new Fatal(_("SuperLU::Solve: The vector X (%d x 1) must have a size equal to the number of columns of matrix A (%d)"),X.Size(),A.Cols());
+	if (A.Rows()!=A.Cols()) throw new Fatal("SuperLU::Solve: The matrix A (%d x %d) must be squared.",A.Rows(),A.Cols());
+	if (X.size()!=A.Cols()) throw new Fatal("SuperLU::Solve: The vector X (%d x 1) must have a size equal to the number of columns of matrix A (%d)",X.size(),A.Cols());
 #endif
 
 	// Size
@@ -67,7 +66,7 @@ inline void Solve(Sparse::Matrix<double,int> const & A, LinAlg::Vector<double> &
 	SuperMatrix a   = { /*Stype=column-wise/no-supernode*/SLU_NC, /*Dtype=double*/SLU_D, /*Mtype=general*/SLU_GE, m, n, &ncf };
 
     // Create right-hand side vector b
-	DNformat    dnf = { m, X.GetPtr() };
+	DNformat    dnf = { m, X.data };
 	SuperMatrix b   = { /*Stype=dense-storage*/SLU_DN, /*Dtype=double*/SLU_D, /*Mtype=general*/SLU_GE, m, 1, &dnf };
 
 	// Workspaces

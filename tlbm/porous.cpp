@@ -21,7 +21,6 @@
 
 // MechSys
 #include "lbm/lattice.h"
-#include "util/fileparser.h"
 
 using std::cout;
 using std::endl;
@@ -39,6 +38,7 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
 	// Set grains
+    /*
 	FileParser::Table grains;
 	FileParser fp("circles.out");
 	fp.ReadTable(grains);
@@ -54,6 +54,7 @@ int main(int argc, char **argv) try
 			if (dd<=r*r) l.GetCell(i,j)->SetSolid();
 		}
 	}
+    */
 	
 	// Initial conditions
 	for (size_t i=0; i<l.Nx(); i++)

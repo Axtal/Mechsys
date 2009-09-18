@@ -16,4 +16,18 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SUBDIRS (bhatti_advanced bhatti_basic smith_griffiths)
+SET(TESTS
+    fig52
+    fig511
+    fig515
+    fig517
+    fig524)
+
+IF(FEM_FOUND)
+	FOREACH(var ${TESTS})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		ADD_TEST              (${var} ${var})
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+	ENDFOREACH(var)
+ENDIF(FEM_FOUND)

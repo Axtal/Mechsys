@@ -25,7 +25,7 @@
 #include <sstream>
 
 // MechSys
-#include "linalg/matrix.h"
+#include "linalg/matvec.h"
 #include "linalg/sparse_triplet.h"
 #include "util/array.h"
 #include "util/numstreams.h"
@@ -114,7 +114,7 @@ public:
 	Index_T const * GetApPtr () const;             ///< Access pointers to row indexes (read)
 
 	// Auxiliar methods
-	void                    GetDense (LinAlg::Matrix<Value_T> & D) const;  ///< Convert this sparse structure to a Dense matrix
+	void                    GetDense (Mat_t & D) const;                    ///< Convert this sparse structure to a Dense matrix
 	void                    SetNS    (Util::NumStream & NS) { _ns = &NS; } ///< Set the NumStream, a structure to aid format output of numbers
 	Util::NumStream const & NS       () const           { return (*_ns); } ///< Return the NumStream, a structure to aid format output of numbers
 
@@ -197,7 +197,7 @@ inline void Matrix<Value_T,Index_T>::Set(Triplet<Value_T,Index_T> const & T)
 	Value_T * rx = new Value_T [_nz];       // temporary row form
 	Index_T * rc = new Index_T [_nrows];    // row count
 	Index_T * w  = new Index_T [nn];        // workspace
-	if (!rp || !rj || !rx || !rc || !w) throw new Fatal(_("Sparse::Matrix::Matrix(n,T): Out of memory."));
+	if (!rp || !rj || !rx || !rc || !w) throw new Fatal("Sparse::Matrix::Matrix(n,T): Out of memory.");
 
 	// Count the entries in each row (also counting duplicates)
 	for (Index_T i=0; i<_nrows; i++) w[i]=0; // use w as workspace for row counts (including duplicates)
@@ -205,7 +205,7 @@ inline void Matrix<Value_T,Index_T>::Set(Triplet<Value_T,Index_T> const & T)
 	{
 		Index_T i = T.Ai(k);
 		Index_T j = T.Aj(k);
-		if (i<0 || i>=_nrows || j<0 || j>=_ncols) throw new Fatal(_("Sparse::Matrix::Matrix(n,T): (i<0 || i>=nRows || j<0 || j>=nCols) failed => triplet corresponds to an invalid matrix."));
+		if (i<0 || i>=_nrows || j<0 || j>=_ncols) throw new Fatal("Sparse::Matrix::Matrix(n,T): (i<0 || i>=nRows || j<0 || j>=nCols) failed => triplet corresponds to an invalid matrix.");
 		w[i]++;
 	}
 
@@ -313,10 +313,10 @@ inline void Matrix<Value_T,Index_T>::Set(Index_T nRows, Index_T nCols, Index_T n
 	cout << "ap = " << strAp << " = "; for (size_t i=0; i<ap.Size(); i++) { cout << ap[i] << " "; } cout<<endl;
 #endif
 
-	if (static_cast<Index_T>(ax.Size())      !=nZ     ) throw new Fatal(_("Sparse::Matrix::Set: The size (%d) of strAx (values) must be equal to nz(=%d), where nz is the number of non-zero values."),ax.Size(),nZ);
-	if (static_cast<Index_T>(ai.Size())      !=nZ     ) throw new Fatal(_("Sparse::Matrix::Set: The size (%d) of strAi (row indexes) must be equal to nz(=%d), where nz is the number of non-zero values."),ai.Size(),nZ);
-	if (static_cast<Index_T>(ap.Size())      !=nCols+1) throw new Fatal(_("Sparse::Matrix::Set: The size (%d) of strAp (pointers to the row indexes) must be equal to ncols+1(=%d), where ncols is the number of columns."),ap.Size(),nCols+1);
-	if (static_cast<Index_T>(ap[ap.Size()-1])!=nZ     ) throw new Fatal(_("Sparse::Matrix::Set: The last value of Ap(=%d) in strAp (pointers to the row indexes) must be equal to nz(=%d), where nz is the number of non-zero values."),ap[ap.Size()-1],nZ);
+	if (static_cast<Index_T>(ax.Size())      !=nZ     ) throw new Fatal("Sparse::Matrix::Set: The size (%d) of strAx (values) must be equal to nz(=%d), where nz is the number of non-zero values.",ax.Size(),nZ);
+	if (static_cast<Index_T>(ai.Size())      !=nZ     ) throw new Fatal("Sparse::Matrix::Set: The size (%d) of strAi (row indexes) must be equal to nz(=%d), where nz is the number of non-zero values.",ai.Size(),nZ);
+	if (static_cast<Index_T>(ap.Size())      !=nCols+1) throw new Fatal("Sparse::Matrix::Set: The size (%d) of strAp (pointers to the row indexes) must be equal to ncols+1(=%d), where ncols is the number of columns.",ap.Size(),nCols+1);
+	if (static_cast<Index_T>(ap[ap.Size()-1])!=nZ     ) throw new Fatal("Sparse::Matrix::Set: The last value of Ap(=%d) in strAp (pointers to the row indexes) must be equal to nz(=%d), where nz is the number of non-zero values.",ap[ap.Size()-1],nZ);
 
 	_nrows = nRows;
 	_ncols = nCols;
@@ -338,7 +338,7 @@ template<typename Value_T, typename Index_T>
 inline Value_T Matrix<Value_T,Index_T>::Ax(Index_T iNz) const
 {
 #ifndef DNDEBUG
-	if ((iNz<0) || (iNz>=_nz)) throw new Fatal(_("Sparse::Matrix::Ax: Index for a non-zero value, iNz(=%d), must be greater than/or equal to zero and smaller than nz(=%d)"),iNz,_nz);
+	if ((iNz<0) || (iNz>=_nz)) throw new Fatal("Sparse::Matrix::Ax: Index for a non-zero value, iNz(=%d), must be greater than/or equal to zero and smaller than nz(=%d)",iNz,_nz);
 #endif
 	return _Ax[iNz];
 }
@@ -347,7 +347,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T Matrix<Value_T,Index_T>::Ai(Index_T iNz) const
 {
 #ifndef DNDEBUG
-	if ((iNz<0) || (iNz>=_nz)) throw new Fatal(_("Sparse::Matrix::Ai: Index for a row index to a non-zero value, iNz(=%d), must be greater than/or equal to zero and smaller than nz(=%d)"),iNz,_nz);
+	if ((iNz<0) || (iNz>=_nz)) throw new Fatal("Sparse::Matrix::Ai: Index for a row index to a non-zero value, iNz(=%d), must be greater than/or equal to zero and smaller than nz(=%d)",iNz,_nz);
 #endif
 	return _Ai[iNz];
 }
@@ -356,7 +356,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T Matrix<Value_T,Index_T>::Ap(Index_T iCol) const
 {
 #ifndef DNDEBUG
-	if ((iCol<0) || (iCol>_ncols)) throw new Fatal(_("Sparse::Matrix::Ap: Index for a column, iCol(=%d), must be greater than/or equal to zero and smaller than nCols+1(=%d)"),iCol,_ncols+1);
+	if ((iCol<0) || (iCol>_ncols)) throw new Fatal("Sparse::Matrix::Ap: Index for a column, iCol(=%d), must be greater than/or equal to zero and smaller than nCols+1(=%d)",iCol,_ncols+1);
 #endif
 	return _Ap[iCol];
 }
@@ -365,7 +365,7 @@ template<typename Value_T, typename Index_T>
 inline Value_T * Matrix<Value_T,Index_T>::GetAxPtr() 
 {
 #ifndef DNDEBUG
-	if (_Ax==NULL) throw new Fatal(_("Sparse::Matrix::GetAxPtr: The matrix must be set prior to get the pointer to Ax (non-zero values)."));
+	if (_Ax==NULL) throw new Fatal("Sparse::Matrix::GetAxPtr: The matrix must be set prior to get the pointer to Ax (non-zero values).");
 #endif
 	return _Ax;
 }
@@ -374,7 +374,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T * Matrix<Value_T,Index_T>::GetAiPtr()
 {
 #ifndef DNDEBUG
-	if (_Ai==NULL) throw new Fatal(_("Sparse::Matrix::GetAiPtr: The matrix must be set prior to get the pointer to Ai (row indexes of non-zero values)."));
+	if (_Ai==NULL) throw new Fatal("Sparse::Matrix::GetAiPtr: The matrix must be set prior to get the pointer to Ai (row indexes of non-zero values).");
 #endif
 	return _Ai;
 }
@@ -383,7 +383,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T * Matrix<Value_T,Index_T>::GetApPtr()
 {
 #ifndef DNDEBUG
-	if (_Ap==NULL) throw new Fatal(_("Sparse::Matrix::GetApPtr: The matrix must be set prior to get the pointer to Ap (pointers to the row indexes of non-zero values)."));
+	if (_Ap==NULL) throw new Fatal("Sparse::Matrix::GetApPtr: The matrix must be set prior to get the pointer to Ap (pointers to the row indexes of non-zero values).");
 #endif
 	return _Ap;
 }
@@ -392,7 +392,7 @@ template<typename Value_T, typename Index_T>
 inline Value_T const * Matrix<Value_T,Index_T>::GetAxPtr() const
 {
 #ifndef DNDEBUG
-	if (_Ax==NULL) throw new Fatal(_("Sparse::Matrix::GetAxPtr: The matrix must be set prior to get the pointer to Ax (non-zero values)."));
+	if (_Ax==NULL) throw new Fatal("Sparse::Matrix::GetAxPtr: The matrix must be set prior to get the pointer to Ax (non-zero values).");
 #endif
 	return _Ax;
 }
@@ -401,7 +401,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T const * Matrix<Value_T,Index_T>::GetAiPtr() const
 {
 #ifndef DNDEBUG
-	if (_Ai==NULL) throw new Fatal(_("Sparse::Matrix::GetAiPtr: The matrix must be set prior to get the pointer to Ai (row indexes of non-zero values)."));
+	if (_Ai==NULL) throw new Fatal("Sparse::Matrix::GetAiPtr: The matrix must be set prior to get the pointer to Ai (row indexes of non-zero values).");
 #endif
 	return _Ai;
 }
@@ -410,7 +410,7 @@ template<typename Value_T, typename Index_T>
 inline Index_T const * Matrix<Value_T,Index_T>::GetApPtr() const
 {
 #ifndef DNDEBUG
-	if (_Ap==NULL) throw new Fatal(_("Sparse::Matrix::GetApPtr: The matrix must be set prior to get the pointer to Ap (pointers to the row indexes of non-zero values)."));
+	if (_Ap==NULL) throw new Fatal("Sparse::Matrix::GetApPtr: The matrix must be set prior to get the pointer to Ap (pointers to the row indexes of non-zero values).");
 #endif
 	return _Ap;
 }
@@ -418,9 +418,10 @@ inline Index_T const * Matrix<Value_T,Index_T>::GetApPtr() const
 // Auxiliar methods
 
 template<typename Value_T, typename Index_T>
-inline void Matrix<Value_T,Index_T>::GetDense(LinAlg::Matrix<Value_T> & D) const
+inline void Matrix<Value_T,Index_T>::GetDense(Mat_t & D) const
 {
-	D.Resize(_nrows,_ncols);
+	D.change_dim(_nrows,_ncols);
+    set_to_zero(D);
 	for (Index_T j=0; j<_ncols; ++j)
 	{
 		Index_T start = _Ap[j];

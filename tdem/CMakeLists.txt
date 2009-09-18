@@ -26,9 +26,9 @@ SET(EXES
   test_voronoi2)
 
 SET(TESTS
-  test_distances
-  test_domain
-  test_dynamics)
+  test_distances)
+  #test_domain
+  #test_dynamics)
 
 IF(BLITZ_FOUND AND VORO_FOUND)
 	FOREACH(var ${EXES})
@@ -39,7 +39,6 @@ ENDIF(BLITZ_FOUND AND VORO_FOUND)
 
 IF(BLITZ_FOUND AND VORO_FOUND)
 	FOREACH(var ${TESTS})
-        ADD_TEST              (${var} ${var})
-		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+        ADD_TEST (${var} ${var})
 	ENDFOREACH(var)
 ENDIF(BLITZ_FOUND AND VORO_FOUND)

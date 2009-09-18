@@ -44,7 +44,9 @@ NumStream _4     = { false,  true, false,  4,  0 }; ///< Integer
 NumStream _6     = { false,  true, false,  6,  0 }; ///< Integer
 NumStream _8     = { false,  true, false,  8,  0 }; ///< Integer
 NumStream _3s    = { false, false,  true,  0,  3 }; ///< Scientific
+NumStream _6s    = { false, false,  true,  0,  6 }; ///< Scientific
 NumStream _8s    = { false, false,  true,  0,  8 }; ///< Scientific
+NumStream _15s   = { false, false,  true,  0, 15 }; ///< Scientific
 NumStream _6_2   = { false, false, false,  6,  3 }; ///< General
 NumStream _6_3   = { false, false, false,  6,  3 }; ///< General
 NumStream _6_4   = { false, false, false,  6,  4 }; ///< General
@@ -54,8 +56,14 @@ NumStream _8_2   = { false, false, false,  8,  2 }; ///< General
 NumStream _8_3   = { false, false, false,  8,  3 }; ///< General
 NumStream _8_4   = { false, false, false,  8,  4 }; ///< General
 NumStream _8_6   = { false, false, false,  8,  6 }; ///< General
+NumStream _10_3  = { false, false, false, 10,  3 }; ///< General
+NumStream _10_4  = { false, false, false, 10,  4 }; ///< General
+NumStream _10_6  = { false, false, false, 10,  6 }; ///< General
 NumStream _12_4  = { false, false, false, 12,  4 }; ///< General
 NumStream _12_6  = { false, false, false, 12,  6 }; ///< General
+NumStream _13_6  = { false, false, false, 13,  6 }; ///< General
+NumStream _14_6  = { false, false, false, 14,  6 }; ///< General
+NumStream _15_6  = { false, false, false, 15,  6 }; ///< General
 NumStream _20_15 = { false, false, false, 20, 15 }; ///< General
 
 /** Format the output. */

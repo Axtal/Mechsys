@@ -24,8 +24,7 @@
 #include <superlu_ddefs.h>
 
 // MechSys
-#include "linalg/matrix.h"
-#include "linalg/vector.h"
+#include "linalg/matvec.h"
 #include "linalg/sparse_crmatrix.h"
 #include "util/fatal.h"
 #include "util/util.h"
@@ -54,7 +53,7 @@ namespace SuperLUd
  * \param AugLocalA Local sparse matrix (compressed-row format)
  * \param GlobalB Global right-hand side vector and solution vector
  */
-inline void Solve(int MyMinEq, int MyMaxEq, int MyNumEqs, int nProcs, int nDOFs, Sparse::CRMatrix<double,int> & AugLocalA, LinAlg::Vector<double> & GlobalB)
+inline void Solve(int MyMinEq, int MyMaxEq, int MyNumEqs, int nProcs, int nDOFs, Sparse::CRMatrix<double,int> & AugLocalA, Vec_t & GlobalB)
 {
 
 	// Sizes
@@ -116,7 +115,7 @@ inline void Solve(int MyMinEq, int MyMaxEq, int MyNumEqs, int nProcs, int nDOFs,
 	int           info;
 	double        berr; // size == nrhs
     SOLVEstruct_t svs;
-	pdgssvx       (&opts, &a, &scp, &GlobalB.GetPtr()[MyMinEq], /*ldb*/m, /*nrhs*/1, &grid, &lus, &svs, &berr, &stat, &info);
+	pdgssvx       (&opts, &a, &scp, &GlobalB.data[MyMinEq], /*ldb*/m, /*nrhs*/1, &grid, &lus, &svs, &berr, &stat, &info);
 
 #ifdef DO_DEBUGx
 	int rank = MPI::COMM_WORLD.Get_rank();
