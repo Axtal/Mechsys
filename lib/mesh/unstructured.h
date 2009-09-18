@@ -50,7 +50,7 @@ extern "C"
     #define REAL double
     #define ANSI_DECLARATORS
     #define VOID int
-      #include "jrs_triangle.h"
+      #include "triangle.h"
     #undef REAL
     #undef ANSI_DECLARATORS
     #undef VOID

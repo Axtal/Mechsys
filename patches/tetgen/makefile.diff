@@ -1,0 +1,8 @@
+22c22
+< CXXFLAGS = -g
+---
+> CXXFLAGS = -O2
+61c61
+< 	ar r libtet.a tetgen.o predicates.o
+---
+> 	ar r libtetgen.a tetgen.o predicates.o
