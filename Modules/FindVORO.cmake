@@ -20,12 +20,11 @@
 #####################################################################################
 
 SET(VORO_INCLUDE_SEARCH_PATH
-  /home/dorival/pkg/voro++/src
-  /home/sergio/pkg/voro++/src
+  $ENV{HOME}/pkg/voro++
   /usr/include
   /usr/local/include)
 
-FIND_PATH(VORO_VORO_CC voro++.cc ${VORO_INCLUDE_SEARCH_PATH})
+FIND_PATH(VORO_VORO_CC src/voro++.cc ${VORO_INCLUDE_SEARCH_PATH})
 
 SET(VORO_FOUND 1)
 FOREACH(var VORO_VORO_CC)

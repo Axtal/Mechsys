@@ -19,20 +19,27 @@
 # Fifth Floor, Boston, MA 02110-1301, USA                                           #
 #####################################################################################
 
-SET(MTL_INCLUDE_SEARCH_PATH
-  $ENV{HOME}/pkg/mtl4
+SET(TETGEN_INCLUDE_SEARCH_PATH
+  $ENV{HOME}/pkg/tetgen1.4.3
   /usr/include
   /usr/local/include)
 
-FIND_PATH(MTL_MTL_H boost/numeric/mtl/mtl.hpp ${MTL_INCLUDE_SEARCH_PATH})
+SET(TETGEN_LIBRARY_SEARCH_PATH
+  $ENV{HOME}/pkg/tetgen1.4.3
+  /usr/lib
+  /usr/local/lib)
 
-SET(MTL_FOUND 1)
-FOREACH(var MTL_MTL_H)
+FIND_PATH(TETGEN_TETGEN_H tetgen.h ${TETGEN_INCLUDE_SEARCH_PATH})
+FIND_LIBRARY(TETGEN_TETGEN NAMES tet PATHS ${TETGEN_LIBRARY_SEARCH_PATH})
+
+SET(TETGEN_FOUND 1)
+FOREACH(var TETGEN_TETGEN_H TETGEN_TETGEN)
   IF(NOT ${var})
-	SET(MTL_FOUND 0)
+	SET(TETGEN_FOUND 0)
   ENDIF(NOT ${var})
 ENDFOREACH(var)
 
-IF(MTL_FOUND)
-  SET(MTL_INCLUDE_DIRS ${MTL_MTL_H})
-ENDIF(MTL_FOUND)
+IF(TETGEN_FOUND)
+  SET(TETGEN_INCLUDE_DIRS ${TETGEN_TETGEN_H})
+  SET(TETGEN_LIBRARIES    ${TETGEN_TETGEN})
+ENDIF(TETGEN_FOUND)

@@ -86,14 +86,14 @@ int    NVertsToFace[][6/*faces*/][4/*verts per face*/]=
 size_t NVertsToNEdges3D[] = {0,0,0,0, 6, 0,0,0, 12, 0, 6, 0,0,0,0,0,0,0,0,0, 12};
 int    NVertsToEdge3D[][12/*edges*/][3/*verts per edge*/]=
 {
-    NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,                                         //  0,1,2,3 verts
-    NOEDGES3D,             //  4 verts => TETRA
-    NOEDGES3D,NOEDGES3D,NOEDGES3D,                                                 //  5,6,7 verts
-    {{0,1,-1},{1,2,-1},{2,3,-1},{3,0,-1},{4,5,-1},{5,6,-1},{6,7,-1},{7,4,-1},{0,4,-1},{1,5,-1},{2,6,-1},{3,7,-1}},           //  8 verts => HEX
-    NOEDGES3D,                                                                 //  9 verts
-    NOEDGES3D,             // 10 verts => O2 TETRA
-    NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D, // 11,12,13,14,15,16,17,18,19 verts
-    NOEDGES3D            // 20 verts => O2 HEX
+    NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,                                                                       //  0,1,2,3 verts
+    {{0,1,-1},{1,2,-1},{2,0,-1},{0,3,-1},{1,3,-1},{2,3,-1},NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE},             //  4 verts => TETRA
+    NOEDGES3D,NOEDGES3D,NOEDGES3D,                                                                                 //  5,6,7 verts
+    {{0,1,-1},{1,2,-1},{2,3,-1},{3,0,-1},{4,5,-1},{5,6,-1},{6,7,-1},{7,4,-1},{0,4,-1},{1,5,-1},{2,6,-1},{3,7,-1}}, //  8 verts => HEX
+    NOEDGES3D,                                                                                                     //  9 verts
+    {{0,1,4},{1,2,5},{2,0,6},{0,3,7},{1,3,8},{2,3,9},NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE},                   // 10 verts => O2 TETRA
+    NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,                     // 11,12,13,14,15,16,17,18,19 verts
+    {{0,1,8},{1,2,9},{2,3,10},{3,0,11},{4,5,12},{5,6,13},{6,7,14},{7,4,15},{0,4,16},{1,5,17},{2,6,18},{3,7,19}}    // 20 verts => O2 HEX
 };
 
 #define BRYKEY(num_verts,idx_cell,idx_bry)                                    \
@@ -161,9 +161,8 @@ public:
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
 
     // Methods
-    void WriteVTU (char const * FileKey) const;                     ///< (.vtu) Write output file for ParaView
-    void WriteMPY (char const * FileKey, bool OnlyMesh=true) const; ///< (.mpy) Write Python script that calls mesh_drawing.py
-
+    void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
+    void WriteMPY (char const * FileKey, bool OnlyMesh=true) const;  ///< (.mpy) Write Python script that calls mesh_drawing.py
 
     // Auxiliar methods
     void ThrowError (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
@@ -211,7 +210,7 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
         os << ", [";
         for (size_t j=0; j<M.Cells[i]->V.Size(); ++j)
         {
-            os << Util::_4 << M.Cells[i]->V[j]->ID;
+            os << M.Cells[i]->V[j]->ID;
             if (j!=M.Cells[i]->V.Size()-1) os << ",";
         }
         os << "], {";
@@ -558,15 +557,42 @@ inline void Generic::Erase ()
     if (TgdCells.Size()>0) TgdCells.Resize(0);
 }
 
-inline void Generic::WriteVTU (char const * FileKey) const
+inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 {
-    // results
-    String fn(FileKey); fn.append(".vtu");
-    std::ostringstream oss;
+    // Vol=0, Surf=1, Both=2
+
+    // boundary cells (for plotting bry tags)
+    Array<Cell*> bcells;
+    if (VolSurfOrBoth>0)
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        int nverts = Cells[i]->V.Size();
+        for (BryTag_t::const_iterator p=Cells[i]->BryTags.begin(); p!=Cells[i]->BryTags.end(); ++p)
+        {
+            int ibry = p->first;
+            int btag = p->second;
+            if (btag<0)
+            {
+                int ibcell  = bcells.Size();
+                int nbverts = (NDim==3 ? NVertsToNVertsPerFace[nverts] : 2);
+                bcells.Push (new Cell);
+                bcells[ibcell]->ID  = Cells.Size()+ibcell;
+                bcells[ibcell]->Tag = btag;
+                for (int j=0; j<nbverts; ++j)
+                {
+                    bcells[ibcell]->V.Push (new Vertex);
+                    bcells[ibcell]->V[j]->ID = (NDim==3 ? Cells[i]->V[NVertsToFace[nverts][ibry][j]]->ID : Cells[i]->V[NVertsToEdge[nverts][ibry][j]]->ID);
+                }
+            }
+        }
+    }
 
     // data
-    size_t nn = Verts.Size(); // number of Nodes
-    size_t nc = Cells.Size(); // number of Cells
+    String fn(FileKey); fn.append(".vtu");
+    std::ostringstream oss;
+    size_t nn = Verts.Size();                           // number of Nodes
+    size_t nc = (VolSurfOrBoth!=1 ? Cells.Size() : 0);  // number of Cells
+    size_t nb = bcells.Size();                          // number of boundaries (faces or edges)
 
     // constants
     size_t          nimax = 40;        // number of integers in a line
@@ -577,7 +603,7 @@ inline void Generic::WriteVTU (char const * FileKey) const
     oss << "<?xml version=\"1.0\"?>\n";
     oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     oss << "  <UnstructuredGrid>\n";
-    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << nc << "\">\n";
+    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << nc+nb << "\">\n";
 
     // nodes: coordinates
     oss << "      <Points>\n";
@@ -598,6 +624,7 @@ inline void Generic::WriteVTU (char const * FileKey) const
     oss << "      <Cells>\n";
     oss << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
     k = 0; oss << "        ";
+    if (VolSurfOrBoth!=1)
     for (size_t i=0; i<nc; ++i)
     {
         oss << "  ";
@@ -605,10 +632,19 @@ inline void Generic::WriteVTU (char const * FileKey) const
         k++;
         VTU_NEWLINE (i,k,nc,nimax/Cells[i]->V.Size(),oss);
     }
+    if (VolSurfOrBoth>0)
+    for (size_t i=0; i<nb; ++i)
+    {
+        oss << "  ";
+        for (size_t j=0; j<bcells[i]->V.Size(); ++j) oss << bcells[i]->V[j]->ID << " ";
+        k++;
+        VTU_NEWLINE (i,k,nb,nimax/bcells[i]->V.Size(),oss);
+    }
     oss << "        </DataArray>\n";
     oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     size_t offset = 0;
+    if (VolSurfOrBoth!=1)
     for (size_t i=0; i<nc; ++i)
     {
         offset += Cells[i]->V.Size();
@@ -616,15 +652,31 @@ inline void Generic::WriteVTU (char const * FileKey) const
         k++;
         VTU_NEWLINE (i,k,nc,nimax,oss);
     }
+    if (VolSurfOrBoth>0)
+    for (size_t i=0; i<nb; ++i)
+    {
+        offset += bcells[i]->V.Size();
+        oss << (k==0?"  ":" ") << offset;
+        k++;
+        VTU_NEWLINE (i,k,nb,nimax,oss);
+    }
     oss << "        </DataArray>\n";
     oss << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
     k = 0; oss << "        ";
+    if (VolSurfOrBoth!=1)
     for (size_t i=0; i<nc; ++i)
     {
         if (NDim==2) oss << (k==0?"  ":" ") << NVertsToVTKCell2D[Cells[i]->V.Size()];
         else         oss << (k==0?"  ":" ") << NVertsToVTKCell3D[Cells[i]->V.Size()];
         k++;
         VTU_NEWLINE (i,k,nc,nimax,oss);
+    }
+    if (VolSurfOrBoth>0)
+    for (size_t i=0; i<nb; ++i)
+    {
+        oss << (k==0?"  ":" ") << NVertsToVTKCell2D[bcells[i]->V.Size()];
+        k++;
+        VTU_NEWLINE (i,k,nb,nimax,oss);
     }
     oss << "        </DataArray>\n";
     oss << "      </Cells>\n";
@@ -646,11 +698,19 @@ inline void Generic::WriteVTU (char const * FileKey) const
     oss << "      <CellData Scalars=\"TheScalars\">\n";
     oss << "        <DataArray type=\"Float32\" Name=\"" << "tag" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
     k = 0; oss << "        ";
+    if (VolSurfOrBoth!=1)
     for (size_t i=0; i<nc; ++i)
     {
         oss << (k==0?"  ":" ") << Cells[i]->Tag;
         k++;
         VTU_NEWLINE (i,k,nc,nimax,oss);
+    }
+    if (VolSurfOrBoth>0)
+    for (size_t i=0; i<nb; ++i)
+    {
+        oss << (k==0?"  ":" ") << bcells[i]->Tag;
+        k++;
+        VTU_NEWLINE (i,k,nb,nimax,oss);
     }
     oss << "        </DataArray>\n";
     oss << "      </CellData>\n";

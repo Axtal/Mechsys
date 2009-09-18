@@ -20,6 +20,7 @@ SET(EXES
   test_distances
   test_domain
   test_27cubes
+  test_tet
   test_dynamics
   test_voronoi
   test_voronoi2)
@@ -29,16 +30,16 @@ SET(TESTS
   test_domain
   test_dynamics)
 
-IF(BLITZ_FOUND)
+IF(BLITZ_FOUND AND VORO_FOUND)
 	FOREACH(var ${EXES})
 		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 	ENDFOREACH(var)
-ENDIF(BLITZ_FOUND)
+ENDIF(BLITZ_FOUND AND VORO_FOUND)
 
-IF(BLITZ_FOUND)
+IF(BLITZ_FOUND AND VORO_FOUND)
 	FOREACH(var ${TESTS})
         ADD_TEST              (${var} ${var})
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 	ENDFOREACH(var)
-ENDIF(BLITZ_FOUND)
+ENDIF(BLITZ_FOUND AND VORO_FOUND)

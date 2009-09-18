@@ -30,10 +30,10 @@
 #include "dem/interacton.h"
 #include "util/array.h"
 #include "util/util.h"
-#include "mesh/structured.h"
+#include "mesh/mesh.h"
 
 // Voro++
-#include "voro++.cc"
+#include "src/voro++.cc"
 
 class Domain
 {
@@ -60,7 +60,7 @@ public:
                       double Zmax,       ///< Top boundary
                       double Thickness); ///< Thickness of the wall, cannot be zero
 
-    void GenFromMesh (Mesh::Structured const & M,double R,double rho = 1);
+    void GenFromMesh (Mesh::Generic const & M,double R,double rho = 1);
     void AddVoronoiCell(voronoicell & VC,double R,double rho = 1);
     void AddVoronoiContainer(container & VC,double R,double rho = 1);
     void Solve (double t0, double tf, double dt, double dtOut, char const * FileKey);
@@ -118,7 +118,7 @@ inline void Domain::GenerateBox (double Xmin, double Xmax, double Ymin, double Y
 {
 }
 
-inline void Domain::GenFromMesh (Mesh::Structured const & M,double R,double rho)
+inline void Domain::GenFromMesh (Mesh::Generic const & M,double R,double rho)
 {
     // info
     double start = std::clock();
@@ -153,10 +153,10 @@ inline void Domain::GenFromMesh (Mesh::Structured const & M,double R,double rho)
         {
             for (size_t k=0; k<nvperf; ++k)
             {
+                // TODO: check if face is planar or not
                 F[j].Push(Mesh::NVertsToFace[nverts][j][k]);
             }
         }
-
 
         // add particle
         Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho,true));
