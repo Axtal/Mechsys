@@ -60,10 +60,10 @@ int main(int argc, char **argv) try
         Domain D;
         D.AddVoronoiContainer(con,0.1);
 
-        std::ofstream  of2("test_voronoi2.py",std::ios::out);
-        BlenderHeader  (of2);
-        D.WriteBlender (of2);
-        of2.close      ();
+        std::ofstream  of2("test_voronoi2.bpy",std::ios::out);
+        BPYHeader  (of2);
+        D.WriteBPY (of2);
+        of2.close  ();
         // Output the particle positions in gnuplot format
         con.draw_particles("random_points_p.gnu");
 

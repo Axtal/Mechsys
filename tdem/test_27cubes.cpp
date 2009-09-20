@@ -65,15 +65,15 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////// First timestep /////
     
     //std::ofstream of("test_27cubes.pov",std::ios::out);
-    //PovHeader     (of);
-    //PovSetCam     (of,Vec3_t(2,1.5,1.5),OrthoSys::O);
-    //d.WritePov    (of,"Blue");
+    //POVHeader     (of);
+    //POVSetCam     (of,Vec3_t(2,1.5,1.5),OrthoSys::O);
+    //d.WritePOV    (of,"Blue");
     //of.close      ();
     //
-    std::ofstream  of2("test_27cubes.py",std::ios::out);
-    BlenderHeader  (of2);
-    d.WriteBlender (of2);
-    of2.close      ();
+    std::ofstream of2("test_27cubes.bpy",std::ios::out);
+    BPYHeader  (of2);
+    d.WriteBPY (of2);
+    of2.close  ();
     /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////
 
     //double dt = 0.001;

@@ -21,9 +21,11 @@ install_manifest.txt
 *.png
 *.cal
 *.avi
-old_*
 *.res
 *.poly
 *.draw
 *.mpy
 *.mesh
+*.gnu
+*.bpy
+old_*

@@ -47,8 +47,8 @@ extern "C"
     // DGESVD - computes the singular value decomposition of a real M-by-N matrix A, optionally computing the left and/or right singular vectors
     void dgesvd_(const char* jobu, const char* jobvt, const int* M, const int* N, double* A, const int* lda, double* S, double* U, const int* ldu, double* VT, const int* ldvt, double* work,const int* lwork, const int* info);
 
-	// DGESV - double-general-solver
-	void dgesv_(int *Np, int *NRHSp, double *A, int *LDAp, int *IPIVp, double *B, int *LDBp, int *INFOp);
+    // DGESV - double-general-solver
+    void dgesv_(int *Np, int *NRHSp, double *A, int *LDAp, int *IPIVp, double *B, int *LDBp, int *INFOp);
 }
 
 
@@ -327,29 +327,29 @@ inline void Inv (Mat_t const & M, Mat_t & Mi, double Tol=1.0e-10)
     }
 }
 
-/** Linear Solver. {X} = [M]^{-1}{X} (M is lost) (X begins with the contents of B) */
+/** Linear Solver. {X} = [M]^{-1}{X} (M is lost) (X initially has the contents of the right-hand side) */
 inline void Sol (Mat_t & M, Vec_t & X)
 {
     int  m = M.num_rows();
     int  n = M.num_cols();
     int mv = X.size();
-    if (m!=n)  throw new Fatal("Sol: Matix must be square");
+    if (m!=n)  throw new Fatal("Sol: Matrix must be square");
     if (m!=mv) throw new Fatal("Sol: Vector X must have the same number of rows of matrix M");
 
-	int   info = 0;
-	int   nrhs = 1; // vector X has 1 column
-	int * ipiv = new int [m];
-	dgesv_(&m,                 // A(m,m)
-	       &nrhs,              // {X}(m,1) (RHS: Right Hand Side) 
-	       M.data,             // double * A
-	       &m,                 // LDA
-	       ipiv,               // Pivot Indices
-	       X.data,             // double * Y
-	       &m,                 // LDY
-	       &info);
-	delete [] ipiv;
+    int   info = 0;
+    int   nrhs = 1; // vector X has 1 column
+    int * ipiv = new int [m];
+    dgesv_(&m,      // A(m,m)
+           &nrhs,   // {X}(m,1) (RHS: Right Hand Side) 
+           M.data,  // double * A
+           &m,      // LDA
+           ipiv,    // Pivot Indices
+           X.data,  // double * Y
+           &m,      // LDY
+           &info);  // info
+    delete [] ipiv;
 
-	if (info!=0) throw new Fatal ("Sol: Linear solver (DGESV) failed (singular matrix?)");
+    if (info!=0) throw new Fatal ("Sol: Linear solver (DGESV) failed (singular matrix?)");
 }
 
 /** Linear Solver. {X} = [M]^{-1}{B}  */
@@ -417,9 +417,9 @@ inline void Sol (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e
     Mi(2,2) = (M(0,0)*M(1,1) - M(0,1)*M(1,0)) / det;
 
     // solve system
-	X(0) = Mi(0,0)*B(0) + Mi(0,1)*B(1) + Mi(0,2)*B(2);
-	X(1) = Mi(1,0)*B(0) + Mi(1,1)*B(1) + Mi(1,2)*B(2);
-	X(2) = Mi(2,0)*B(0) + Mi(2,1)*B(1) + Mi(2,2)*B(2);
+    X(0) = Mi(0,0)*B(0) + Mi(0,1)*B(1) + Mi(0,2)*B(2);
+    X(1) = Mi(1,0)*B(0) + Mi(1,1)*B(1) + Mi(1,2)*B(2);
+    X(2) = Mi(2,0)*B(0) + Mi(2,1)*B(1) + Mi(2,2)*B(2);
 }
 
 /** Eigenvalues and eigenvectors. */

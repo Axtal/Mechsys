@@ -53,8 +53,8 @@ int main(int argc, char **argv) try
         error2+=fabs(D.Particles[1]->I(i)-Ireal(i));
     }
     ofstream of("test_domain.py");
-    BlenderHeader(of);
-    D.WriteBlender(of);
+    BPYHeader(of);
+    D.WriteBPY(of);
     Quaternion_t q;
     Conjugate(D.Particles[1]->Q,q);
     D.Particles[1]->QuaternionRotation(q,OrthoSys::O);
@@ -65,8 +65,8 @@ int main(int argc, char **argv) try
 
 
 
-    BlenderHeader(of);
-    D.WriteBlender(of);
+    BPYHeader(of);
+    D.WriteBPY(of);
     of.close();
     if ((error1>tol1)||(error2>tol2)||(error3>tol3)) return 1;
     else return 0;

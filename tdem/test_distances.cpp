@@ -48,19 +48,19 @@ int main(int argc, char **argv) try
 
         // draw
         std::ofstream of("test_distances_VE.pov",std::ios::out);
-        PovHeader (of);
-        PovSetCam (of, Vec3_t(4,2,2), Vec3_t(0,0,0));
-        PovDrawVert  (V, of, /*R*/0.2, "Green");
+        POVHeader (of);
+        POVSetCam (of, Vec3_t(4,2,2), Vec3_t(0,0,0));
+        POVDrawVert  (V, of, /*R*/0.2, "Green");
         E.Draw    (of,    /*R*/0.1, "Red");
         D.Draw    (of,    /*R*/0.1, "Blue");
         of.close  ();
 
-        std::ofstream of2("test_distances_VE.py",std::ios::out);
-        BlenderHeader   (of2);
-        BlenderDrawVert (V, of2, /*R*/0.2);
-        E.Draw          (of2,    /*R*/0.1, "", true);
-        D.Draw          (of2,    /*R*/0.1, "", true);
-        of2.close       ();
+        std::ofstream of2("test_distances_VE.bpy",std::ios::out);
+        BPYHeader   (of2);
+        BPYDrawVert (V, of2, /*R*/0.2);
+        E.Draw      (of2,    /*R*/0.1, "", true);
+        D.Draw      (of2,    /*R*/0.1, "", true);
+        of2.close   ();
 
         // check
         double d = Distance(V,E);
@@ -115,9 +115,9 @@ int main(int argc, char **argv) try
 
         // draw
         std::ofstream of("test_distances_VF.pov",std::ios::out);
-        PovHeader   (of);
-        PovSetCam   (of, Vec3_t(4,2,2), Vec3_t(0,0,0));
-        PovDrawVert (V, of, /*R*/0.2, "Green");
+        POVHeader   (of);
+        POVSetCam   (of, Vec3_t(4,2,2), Vec3_t(0,0,0));
+        POVDrawVert (V, of, /*R*/0.2, "Green");
         F.Draw      (of,    /*R*/0.1, "Red");
         D.Draw      (of,    /*R*/0.1, "Blue");
         of.close    ();

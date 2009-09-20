@@ -35,7 +35,7 @@ public:
     // Methods
     void Rotate    (Quaternion_t const & Q, Vec3_t const & Xa); ///< Q: quaternion representing the rotation, Xa: position of the axis of rotation
     void Translate (Vec3_t const & dX);                         ///< Translate edge by dX
-    void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool Blender=false);
+    void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool BPY=false);
 
     // Data
     Vec3_t X0; ///< Left endpoint
@@ -70,9 +70,9 @@ inline void Edge::Translate (Vec3_t const & dX)
     X1 += dX;
 }
 
-inline void Edge::Draw (std::ostream & os, double Radius, char const * Color, bool Blender)
+inline void Edge::Draw (std::ostream & os, double Radius, char const * Color, bool BPY)
 {
-    if (Blender)
+    if (BPY)
     {
         Vec3_t mid = (X0+X1)/2.0;
         double L   = norm(dL);

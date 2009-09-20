@@ -68,7 +68,7 @@ public:
     Array<Face*>   Faces; ///< Faces
     
     // Methods
-    void Draw (std::ostream & os, char const * Color="Blue", bool Blender=false); ///< Draw the particle
+    void Draw (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
     void CalcMassProperties(size_t NCALCS = 5000);                                ///< Calculate the mass, center of mass and moment of inertia
     void StartForce(Vec3_t F) { F =  F;  T = 0,0,0;}                              ///< Start the force of the particle a value F, use for external forces like gravity
     void StartForce() { F = 0,0,0;  T = 0,0,0;}                                   ///< Start the force of the particle a value F, use for external forces like gravity
@@ -209,20 +209,20 @@ inline Particle::~Particle()
     for (size_t i=0; i<Faces.Size(); ++i) delete Faces[i];
 }
 
-inline void Particle::Draw (std::ostream & os, char const * Color, bool Blender)
+inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
 {
     for (size_t i=0; i<Verts.Size(); ++i)
     {
-        if (Blender) BlenderDrawVert((*Verts[i]),os,R);
-        else PovDrawVert((*Verts[i]),os,R,Color); 
+        if (BPY) BPYDrawVert((*Verts[i]),os,R);
+        else POVDrawVert((*Verts[i]),os,R,Color); 
     }
     for (size_t i=0; i<Edges.Size(); ++i)
     {
-        Edges[i]->Draw(os,R,Color,Blender);
+        Edges[i]->Draw(os,R,Color,BPY);
     }
     for (size_t i=0; i<Faces.Size(); ++i)
     {
-        Faces[i]->Draw(os,R,Color,Blender);
+        Faces[i]->Draw(os,R,Color,BPY);
     }
 }
 

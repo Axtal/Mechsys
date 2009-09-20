@@ -38,7 +38,7 @@ public:
     // Methods
     void Rotate    (Quaternion_t const & Q, Vec3_t const & Xa); ///< Q: quaternion representing the rotation, Xa: position of the axis of rotation
     void Translate (Vec3_t const & dX);                         ///< Translate edge by dX
-    void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool Blender=false);
+    void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool BPY=false);
 
     // Data
     Array<Edge*> Edges; ///< Edges
@@ -74,7 +74,7 @@ inline void Face::Translate (Vec3_t const & dX)
     for (size_t i=0; i<Edges.Size(); i++) Edges[i]->Translate (dX);
 }
 
-inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bool Blender)
+inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bool BPY)
 {
     Array<Vec3_t> vi, vs; // two "sandwich" faces due to the spheroradius (i:inferior, s:superior)
     Vec3_t n = cross(Edges[0]->dL, Edges[1]->dL);
@@ -84,15 +84,15 @@ inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bo
         vi.Push(Edges[i]->X0 - Radius*n);
         vs.Push(Edges[i]->X0 + Radius*n);
     }
-    if (Blender)
+    if (BPY)
     {
-        BlenderDrawPolygon (vi,os);
-        BlenderDrawPolygon (vs,os);
+        BPYDrawPolygon (vi,os);
+        BPYDrawPolygon (vs,os);
     }
     else
     {
-        PovDrawPolygon (vi,os,Color);
-        PovDrawPolygon (vs,os,Color);
+        POVDrawPolygon (vi,os,Color);
+        POVDrawPolygon (vs,os,Color);
     }
 }
 

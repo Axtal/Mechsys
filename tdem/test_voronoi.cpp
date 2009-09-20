@@ -77,10 +77,10 @@ int main(int argc, char **argv) try
     D.Solve(0,30,dt,0.1,"test_voronoi");
 
 
-    std::ofstream  of2("test_voronoi.py",std::ios::out);
-    BlenderHeader  (of2);
-    D.WriteBlender (of2);
-    of2.close      ();
+    std::ofstream of2("test_voronoi.bpy",std::ios::out);
+    BPYHeader  (of2);
+    D.WriteBPY (of2);
+    of2.close  ();
 	// Output the Voronoi cell to a file, in the gnuplot format
 	//v.draw_gnuplot("single_cell.gnu",0,0,0);
     //cout << v.pts[3][1] << " " << v.pts[4][1] << " " << v.pts[5][1] <<endl;
