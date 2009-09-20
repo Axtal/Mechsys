@@ -113,6 +113,22 @@ inline void FindBestSquare (int Size, int & nRow, int & nCol)
 }
 */
 
+struct FmtErr
+{
+    FmtErr (double TheError, double TheTol, char const * TheFmt="%g") : Error(TheError), Tol(TheTol), Fmt(TheFmt) {}
+    double Error;
+    double Tol;
+    String Fmt;
+};
+
+std::ostream & operator<< (std::ostream & os, FmtErr const & P)
+{
+    String str;
+    str.Printf (P.Fmt.CStr(), P.Error);
+    os << (P.Error>P.Tol ? "[1;31m" : "[1;32m") << str << "[0m";
+    return os;
+}
+
 }; // namespace Util
 
 #endif // MECHSYS_SORT_H
