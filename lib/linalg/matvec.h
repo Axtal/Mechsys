@@ -385,6 +385,26 @@ typedef blitz::TinyMatrix<double,3,3> Mat3_t;
 /** 3x1 Vector. */
 typedef blitz::TinyVector<double,3> Vec3_t;
 
+/** Print matrix. */
+inline String PrintMatrix (Mat3_t const & M, char const * Fmt="%13g", double Tol=1.0e-13)
+{
+    int m = 3;
+    int n = 3;
+    String lin;
+    for (int i=0; i<m; ++i)
+    {
+        for (int j=0; j<n; ++j)
+        {
+            double val = (fabs(M(i,j))<Tol ? 0.0 : M(i,j));
+            String buf;  buf.Printf(Fmt,val);
+            lin.append(buf);
+        }
+        lin.append("\n");
+    }
+    return lin;
+}
+
+/** Determinant.*/
 inline double Det (Mat3_t const & M)
 {
     double det =   M(0,0)*(M(1,1)*M(2,2) - M(1,2)*M(2,1))
@@ -573,11 +593,26 @@ inline double CompareVectors (Vec3_t const & A, Vec3_t const & B)
     return error;
 }
 
+/** Clear vector. */
+inline void set_to_zero (Vec3_t & V)
+{
+    V = 0.0, 0.0, 0.0;
+}
+
+/** Clear matrix. */
+inline void set_to_zero (Mat3_t & M)
+{
+    M = 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0;
+}
+
 // Constants
 namespace OrthoSys
 {
     Vec3_t O;        ///< Origin
     Vec3_t e0,e1,e2; ///< Basis
+    Mat3_t I;        ///< Identity
 
     int __init_ortho_sys()
     {
@@ -585,6 +620,9 @@ namespace OrthoSys
         e0 = 1.0, 0.0, 0.0;
         e1 = 0.0, 1.0, 0.0;
         e2 = 0.0, 0.0, 1.0;
+        I  = 1.0, 0.0, 0.0,
+             0.0, 1.0, 0.0,
+             0.0, 0.0, 1.0;
         return 0.0;
     }
 

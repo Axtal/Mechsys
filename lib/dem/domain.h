@@ -501,9 +501,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     Etot = CalcEnergy (Ekin, Epot);
     double total = std::clock() - start;
     std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[1;31m\n";
-    std::cout << "[1;35m    Potential energy      = " << Epot << "[1;31m\n";
-    std::cout << "[1;35m    Total energy          = " << Etot << "[1;31m\n";
+    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
+    std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
+    std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
 }
 
 inline void Domain::WritePOV (char const * FileKey, Vec3_t const & CamPos)

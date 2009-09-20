@@ -38,20 +38,21 @@ int main(int argc, char **argv) try
     
     /////////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
+    double L = 1.0;
     Array<Mesh::Block> blks(1);
     blks[0].Set (/*NDim*/3, /*Tag*/-1, /*NVert*/8,
                  0.0,  0.0, 0.0, 0.0,  // tag, x, y, z
-                 0.0,  1.0, 0.0, 0.0, 
-                 0.0,  1.0, 1.0, 0.0, 
-                 0.0,  0.0, 1.0, 0.0,
-                 0.0,  0.0, 0.0, 1.0,  // tag, x, y, z
-                 0.0,  1.0, 0.0, 1.0, 
-                 0.0,  2.0, 2.0, 2.0, 
-                 0.0,  0.0, 1.0, 1.0,
+                 0.0,    L, 0.0, 0.0, 
+                 0.0,    L,   L, 0.0, 
+                 0.0,  0.0,   L, 0.0,
+                 0.0,  0.0, 0.0,   L,  // tag, x, y, z
+                 0.0,    L, 0.0,   L, 
+                 0.0,    L,   L,   L, 
+                 0.0,  0.0,   L,   L,
                  0.0,0.0,0.0,0.0,0.0,0.0); // face tags
-    blks[0].SetNx (1);
-    blks[0].SetNy (1);
-    blks[0].SetNz (1);
+    blks[0].SetNx (3);
+    blks[0].SetNy (3);
+    blks[0].SetNz (3);
     Mesh::Structured mesh(/*NDim*/3);
     mesh.Generate (blks);
     mesh.WriteVTU ("test_27cubes");
@@ -59,20 +60,18 @@ int main(int argc, char **argv) try
     /////////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
     Domain d;
-    d.GenFromMesh (mesh,0.0);
-    Vec3_t r = 3*OrthoSys::e0;
-    d.Particles[0]->Translate (r);
+    d.GenFromMesh (mesh,/*R*/0.08);
 
     //////////////////////////////////////////////////////////////////////////////////// First timestep /////
     
-    Vec3_t cam_pos(2.0,1.5,1.5);
-    d.WritePOV ("test_27cubes",cam_pos);
-    d.WriteBPY ("test_27cubes");
+    Vec3_t cam_pos(4.0,3.0,3.0);
+    d.WritePOV ("init_test_27cubes",cam_pos);
+    d.WriteBPY ("init_test_27cubes");
 
     /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////
 
-    //d.Particles[13]->w = Vec3_t(0,1.,1.);
-    d.Solve(/*tf*/1.0, /*dt*/0.001, /*dtOut*/0.1, "test_27cubes", cam_pos);
+    d.Particles[0]->w = Vec3_t(0.01,0.02,0.03);
+    d.Solve(/*tf*/30.0, /*dt*/0.001, /*dtOut*/0.1, "test_27cubes", cam_pos);
 
     return 0;    
 }

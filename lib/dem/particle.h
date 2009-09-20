@@ -272,6 +272,9 @@ inline void Particle::CalcProps (size_t NCalls)
         It(0,1) = It(1,0);
         It(0,2) = It(2,0);
         It(1,2) = It(2,1);
+
+        //std::cout << "\nxct = (" << x(0) << "," << x(1) << "," << x(2) << ")  vol = " << V << "  I = \n" << PrintMatrix(It) << "\n";
+
         Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);
         Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));

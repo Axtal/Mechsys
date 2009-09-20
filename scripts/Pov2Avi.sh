@@ -31,7 +31,7 @@ if [ "$2" = "1" ]; then
     echo "----- Clean up -------------------------------------------------"
     for f in $POVs; do
 	    png=$(echo "$f" | tr '[pov]' '[png]');
-        rm $f $png $POVs
+        rm $f
     done
 fi
 

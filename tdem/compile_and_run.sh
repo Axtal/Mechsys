@@ -2,5 +2,5 @@
 
 make test_27cubes
 ./test_27cubes
-povray -I test_27cubes.pov
-qiv test_27cubes.png
+povray -I init_test_27cubes.pov
+Pov2Avi.sh test_27cubes 1
