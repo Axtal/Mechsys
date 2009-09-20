@@ -20,10 +20,10 @@ SET(EXES
   test_distances
   test_domain
   test_27cubes
-  test_tet
+  test_tetrahedra
   test_dynamics
-  test_voronoi
-  test_voronoi2)
+  test_voro01
+  test_voro02)
 
 SET(TESTS
   test_distances)

@@ -34,36 +34,58 @@ using std::map;
 
 int main(int argc, char **argv) try
 {
-	//This test the Dynamic engine.
-    Quaternion_t q;
-	Domain D;
-	Vec3_t r(-10,0,0),p(0,50,0);
-	D.AddCube(r,0.3,3.,1.);
-    Vec3_t ome(0,M_PI/50,0),vel(1.,0,0);
-    D.Particles[0]->v = vel;
-    D.Particles[0]->w = ome;
-    D.Particles[0]->CalcMassProperties();
-    r = 10 , 0 , 0;
-    ome = 0 , 0 , 0;
-    vel = -1. , 0 ,0;
-    D.AddTetra(r,0.8,8.,1.);
-    D.Particles[1]->v = vel;
-    D.Particles[1]->w = ome;
-    D.Particles[1]->CalcMassProperties();
+    // domain
+	Domain d;
+
+    // add cube
+	Vec3_t x(-10,0,0);     // position
+    Vec3_t w(0,M_PI/50,0); // rot veloc
+    Vec3_t v(1.,0,0);      // veloc
+	d.AddCube (x,0.3,3.,1.);
+    d.Particles[0]->v = v;
+    d.Particles[0]->w = w;
+
+    // add tetrahedron
+    x =  10 , 0 , 0;
+    w =   0 , 0 , 0;
+    v = -1. , 0 , 0;
+    d.AddTetra (x,0.8,8.,1.);
+    d.Particles[1]->v = v;
+    d.Particles[1]->w = w;
+
+    // initialize
     double dt = 0.001;
-    D.Initialize(dt);
-    r=0,0,0; 
-    Vec3_t L0(0,0,0),P0(0,0,0);
-    double E0 = D.TotalEnergy();
-    D.LinearMomentum(P0);
-    D.AngularMomentum(L0);
-    D.Solve(0.0,30.0,dt,1.,"test_dynamics");
-    Vec3_t L1(0,0,0),P1(0,0,0);
-    double E1 = D.TotalEnergy();
-    D.LinearMomentum(P1);
-    D.AngularMomentum(L1);
-    double error = fabs(E1-E0)/E0+norm(P1-P0)/norm(P0)+norm(L1-L0)/norm(L0),tol = 0.1;
+    d.Initialize (dt);
+
+    // initial constants
+    Vec3_t l0(0,0,0);  // initial linear momentum
+    Vec3_t p0(0,0,0);  // initial angular momentum
+    double Ek0,Ep0,E0; // initial energy
+    d.LinearMomentum  (p0);
+    d.AngularMomentum (l0);
+    E0 = d.CalcEnergy (Ek0,Ep0); 
+
+    // solve
+    Vec3_t cam_pos(0,10,0);
+    d.Solve(/*tf*/30.0, dt, /*dtOut*/1., "test_dynamics", cam_pos);
+
+    // final constants
+    Vec3_t l1(0,0,0);  // initial linear momentum
+    Vec3_t p1(0,0,0);  // initial angular momentum
+    double Ek1,Ep1,E1; // initial energy
+    d.LinearMomentum  (p1);
+    d.AngularMomentum (l1);
+    E1 = d.CalcEnergy (Ek1,Ep1); 
+
+    // check
+    double tol   = 0.1;
+    double err_l = norm(l1-l0);
+    double err_p = norm(p1-p0);
+    double err_E = fabs(E1-E0);
+    double error = err_l + err_p + err_E;
+
+    // results
     if (error>tol) return 1;
-    else return 0;
+    else           return 0;
 }
 MECHSYS_CATCH

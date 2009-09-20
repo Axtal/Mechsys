@@ -83,6 +83,13 @@ inline void Interacton::CalcForce ()
 template<typename FeatureA_T, typename FeatureB_T>
 inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap)
 {
+    // reset forces and torques
+    P1->F = 0.0,0.0,0.0;
+    P1->T = 0.0,0.0,0.0;
+    P2->F = 0.0,0.0,0.0;
+    P2->T = 0.0,0.0,0.0;
+
+    // update
     for (size_t i=0; i<A.Size(); ++i)
     for (size_t j=0; j<B.Size(); ++j)
     {
@@ -92,10 +99,13 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
         double delta = P1->R + P2->R - dist;
         if (delta>=0)
         {
+            // update force
             Vec3_t n = (xf-xi)/dist;
             Vec3_t F = Kn*delta*n;
             P1->F += -F;
-            P2->F += F;
+            P2->F +=  F;
+
+            // torque
             Vec3_t x = xi+n*((P1->R*P1->R-P2->R*P2->R+dist*dist)/(2*dist));
             Vec3_t T, Tt, temp;
             temp = x - P1->x;
@@ -109,7 +119,9 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             Conjugate (P2->Q,q);
             Rotation  (Tt,q,T);
             P2->T += T;
-            Epot  += 0.5*Kn*delta*delta;
+
+            // potential energy
+            Epot += 0.5*Kn*delta*delta;
         }
     }
 }

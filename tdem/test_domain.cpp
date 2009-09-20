@@ -23,53 +23,53 @@
 
 using std::cout;
 using std::endl;
-using std::ofstream;
 
 int main(int argc, char **argv) try
 {
-	//This test the varius Domain and Particle constructors.
-	Domain D;
+    // test the varius Domain and Particle constructors.
+    Domain d;
 
-	Vec3_t r(0,0,0);
-    r = Vec3_t(20,0,0);
-    D.AddCube(r,1.,15,1.,0.,NULL);
-    D.Particles[0]->CalcMassProperties(50000);
-    
-    double error3,tol3=10;
-    error3 = fabs(D.Particles[0]->V-(4./3.)*M_PI-3.*M_PI*15.-pow(15,3)-6*pow(15,2));
-	cout << "Cube Volume " << D.Particles[0]->V << " Error " << error3 << endl;
-	cout << "Cube Center of mass " << D.Particles[0]->x <<endl;
-	cout << "Cube Moment of inertia " << D.Particles[0]->I << endl;
-	cout << "Cube Quaternion " << D.Particles[0]->Q << endl;
+    // add cube
+    d.AddCube (Vec3_t(20,0,0),1.,15,1.,0.,NULL);
+    double cube_vol = (4./3.)*M_PI-3.*M_PI*15.-pow(15,3.0)-6*pow(15,2.0);
 
-    r = Vec3_t(0,0,0);
-	D.AddRice(r,1.,10.,1.,0.,NULL);
-	D.Particles[1]->CalcMassProperties(50000);
-    double error1 = fabs(D.Particles[1]->V-(4./3.)*M_PI-M_PI*10),tol1=0.1;
-    double error2 = 0,tol2=2.;
-    Vec3_t Ireal((1./3.)*M_PI*100+(1./12.)*M_PI*1000+0.75*M_PI*10+(8./15.)*M_PI,(1./3.)*M_PI*100+(1./12.)*M_PI*1000+0.75*M_PI*10+(8./15.)*M_PI,0.5*M_PI*10+(8./15.)*M_PI);
-    for (size_t i = 0;i<3;i++)
-    {
-        error2+=fabs(D.Particles[1]->I(i)-Ireal(i));
-    }
-    ofstream of("test_domain.py");
-    BPYHeader(of);
-    D.WriteBPY(of);
-    Quaternion_t q;
-    Conjugate(D.Particles[1]->Q,q);
-    D.Particles[1]->QuaternionRotation(q,OrthoSys::O);
-	cout << "Rice Volume " << D.Particles[1]->V << " Error " << error1 << endl;
-	cout << "Rice Center of mass " << D.Particles[1]->x <<endl;
-	cout << "Rice Moment of inertia " << D.Particles[1]->I <<" Error " <<error2 << endl;
-	cout << "Rice Quaternion " << D.Particles[1]->Q << endl;
+    // add rice
+    d.AddRice (Vec3_t(0,0,0),1.,10.,1.,0.,NULL);
+    double rice_vol = (4./3.)*M_PI-M_PI*10.0;
+    Vec3_t rice_I   = ((1./3.)*M_PI*100+(1./12.)*M_PI*1000+0.75*M_PI*10+(8./15.)*M_PI,
+                       (1./3.)*M_PI*100+(1./12.)*M_PI*1000+0.75*M_PI*10+(8./15.)*M_PI,
+                       0.5*M_PI*10+(8./15.)*M_PI);
 
+    // initialize
+    d.Initialize (/*dt*/0.0);
 
+    // check
+    double cube_tol_vol = 10.0;
+    double rice_tol_vol = 0.1;
+    double rice_tol_I   = 2.0;
+    double cube_err_vol = fabs(d.Particles[0]->V - cube_vol);
+    double rice_err_vol = fabs(d.Particles[1]->V - rice_vol);
+    double rice_err_I   = fabs(d.Particles[1]->I(0) - rice_I(0)) +
+                          fabs(d.Particles[1]->I(1) - rice_I(1)) +
+                          fabs(d.Particles[1]->I(2) - rice_I(2));
 
-    BPYHeader(of);
-    D.WriteBPY(of);
-    of.close();
-    if ((error1>tol1)||(error2>tol2)||(error3>tol3)) return 1;
+    // output
+    std::cout << "[1;33m\n--- Results ----------------------------------------------------[0m\n";
+    cout << "  Cube Volume            = " << d.Particles[0]->V    << "  [1;31mError = " << cube_err_vol << "[0m\n";
+    cout << "  Cube Center of mass    = " << d.Particles[0]->x(0) << ", " << d.Particles[0]->x(1) << ", " << d.Particles[0]->x(2) << "\n";
+    cout << "  Cube Moment of inertia = " << d.Particles[0]->I(0) << ", " << d.Particles[0]->I(1) << ", " << d.Particles[0]->I(2) << "\n";
+    cout << "  Cube Quaternion        = " << d.Particles[0]->Q(0) << ", " << d.Particles[0]->Q(1) << ", " << d.Particles[0]->Q(2) << ", " << d.Particles[0]->Q(3) << "\n";
+    cout << endl;
+    cout << "  Rice Volume            = " << d.Particles[1]->V    << "  [1;31mError = " << rice_err_vol << "[0m\n";
+    cout << "  Rice Center of mass    = " << d.Particles[1]->x(0) << ", " << d.Particles[1]->x(1) << ", " << d.Particles[1]->x(2) << endl;
+    cout << "  Rice Moment of inertia = " << d.Particles[1]->I(0) << ", " << d.Particles[1]->I(1) << ", " << d.Particles[1]->I(2) << "  [1;31mError =" << rice_err_I << "[0m\n";
+    cout << "  Rice Quaternion        = " << d.Particles[1]->Q(0) << ", " << d.Particles[1]->Q(1) << ", " << d.Particles[1]->Q(2) << ", " << d.Particles[1]->Q(3) << "\n";
+
+    // draw
+    d.WriteBPY ("test_domain");
+
+    // results
+    if ((rice_err_vol>rice_tol_vol) || (rice_err_I>rice_tol_I) || (cube_err_vol>cube_tol_vol)) return 1;
     else return 0;
-
 }
 MECHSYS_CATCH

@@ -23,66 +23,58 @@
 
 using std::cout;
 using std::endl;
-using std::ofstream;
 
+// Random double between 0 and 1
 double rnd() {return double(rand())/RAND_MAX;}
+
 int main(int argc, char **argv) try
 {
-
-	double x,y,z,rsq,r;
-	voronoicell v,u;
-	v.init(-1,1,-1,1,-1,1);
-	for(int i=0;i<20;i++) 
+    // generate voro cell
+    double x,y,z,rsq,r;
+    voronoicell v,u;
+    v.init(-1,1,-1,1,-1,1);
+    for(int i=0;i<20;i++) 
     {
-		x=2*rnd()-1;
-		y=2*rnd()-1;
-		z=2*rnd()-1;
-		rsq=x*x+y*y+z*z;
-		if(rsq>0.01&&rsq<1) 
+        x=2*rnd()-1;
+        y=2*rnd()-1;
+        z=2*rnd()-1;
+        rsq=x*x+y*y+z*z;
+        if(rsq>0.01&&rsq<1) 
         {
-			r=1/sqrt(rsq);x*=r;y*=r;z*=r;
-			v.plane(x,y,z,1);
-		}
-	}
+            r=1/sqrt(rsq);x*=r;y*=r;z*=r;
+            v.plane(x,y,z,1);
+        }
+    }
 
-	u.init(-1,1,-1,1,-1,1);
-	for(int i=0;i<20;i++) 
+    // generate voro cell
+    u.init(-1,1,-1,1,-1,1);
+    for(int i=0;i<20;i++) 
     {
-		x=2*rnd()-1;
-		y=2*rnd()-1;
-		z=2*rnd()-1;
-		rsq=x*x+y*y+z*z;
-		if(rsq>0.01&&rsq<1) 
+        x=2*rnd()-1;
+        y=2*rnd()-1;
+        z=2*rnd()-1;
+        rsq=x*x+y*y+z*z;
+        if(rsq>0.01&&rsq<1) 
         {
-			r=1/sqrt(rsq);x*=r;y*=r;z*=r;
-			u.plane(x,y,z,1);
-		}
-	}
-    
+            r=1/sqrt(rsq);x*=r;y*=r;z*=r;
+            u.plane(x,y,z,1);
+        }
+    }
 
-    Domain D;
-    D.AddVoroCell(v,0.1);
-    D.AddVoroCell(u,0.1);
-    
+    // domain
+    Domain d;
+    d.AddVoroCell (v,0.1);
+    d.AddVoroCell (u,0.1);
+
+    // tranlate particles
     Vec3_t trans(2.5,0,0);
-    D.Particles[0]->Translation(trans);
+    d.Particles[0]->Translate (trans);
     trans = -trans;
-    D.Particles[1]->Translation(trans);
-    D.Particles[0]->CalcMassProperties();
-    D.Particles[1]->CalcMassProperties();
-    D.Particles[0]->v = Vec3_t(-0.5,0,0);
+    d.Particles[1]->Translate (trans);
+    d.Particles[0]->v = Vec3_t(-0.5,0,0);
 
-    double dt =0.001;
-    D.Initialize(dt);
-    D.Solve(0,30,dt,0.1,"test_voronoi");
-
-
-    std::ofstream of2("test_voronoi.bpy",std::ios::out);
-    BPYHeader  (of2);
-    D.WriteBPY (of2);
-    of2.close  ();
-	// Output the Voronoi cell to a file, in the gnuplot format
-	//v.draw_gnuplot("single_cell.gnu",0,0,0);
-    //cout << v.pts[3][1] << " " << v.pts[4][1] << " " << v.pts[5][1] <<endl;
+    // solve
+    double dt = 0.001;
+    d.Solve (/*tf*/30, dt, /*dtOut*/0.1, "test_voro01", /*CamPos*/Vec3_t(0,10,0));
 }
 MECHSYS_CATCH

@@ -49,9 +49,9 @@ int main(int argc, char **argv) try
                  0.0,  2.0, 2.0, 2.0, 
                  0.0,  0.0, 1.0, 1.0,
                  0.0,0.0,0.0,0.0,0.0,0.0); // face tags
-    blks[0].SetNx (2);
-    blks[0].SetNy (2);
-    blks[0].SetNz (2);
+    blks[0].SetNx (1);
+    blks[0].SetNy (1);
+    blks[0].SetNz (1);
     Mesh::Structured mesh(/*NDim*/3);
     mesh.Generate (blks);
     mesh.WriteVTU ("test_27cubes");
@@ -61,25 +61,18 @@ int main(int argc, char **argv) try
     Domain d;
     d.GenFromMesh (mesh,0.0);
     Vec3_t r = 3*OrthoSys::e0;
-    d.Particles[0]->Translation(r);
+    d.Particles[0]->Translate (r);
+
     //////////////////////////////////////////////////////////////////////////////////// First timestep /////
     
-    //std::ofstream of("test_27cubes.pov",std::ios::out);
-    //POVHeader     (of);
-    //POVSetCam     (of,Vec3_t(2,1.5,1.5),OrthoSys::O);
-    //d.WritePOV    (of,"Blue");
-    //of.close      ();
-    //
-    std::ofstream of2("test_27cubes.bpy",std::ios::out);
-    BPYHeader  (of2);
-    d.WriteBPY (of2);
-    of2.close  ();
+    Vec3_t cam_pos(2.0,1.5,1.5);
+    d.WritePOV ("test_27cubes",cam_pos);
+    d.WriteBPY ("test_27cubes");
+
     /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////
 
-    //double dt = 0.001;
     //d.Particles[13]->w = Vec3_t(0,1.,1.);
-    //d.Initialize(dt);
-    //d.Solve(0,30,dt,.1,"test_27cubes");
+    d.Solve(/*tf*/1.0, /*dt*/0.001, /*dtOut*/0.1, "test_27cubes", cam_pos);
 
     return 0;    
 }

@@ -35,36 +35,26 @@ using std::map;
 
 int main(int argc, char **argv) try
 {
-    
     /////////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
     Mesh::Unstructured mesh(3);
     mesh.GenCube  (/*O2*/false,/*A*/-1,/*L*/1.0);
     mesh.WriteVTU ("mesh01_cube", /*VolSurfOrBoth*/1);
 
-    /////////////////////////////////////////////////////////////////////////////////////////// Domain /////
+    ///////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
     Domain d;
     d.GenFromMesh (mesh,0.05);
 
-    //////////////////////////////////////////////////////////////////////////////////// First timestep /////
+    ///////////////////////////////////////////////////////////////////////////////// First timestep /////
     
-    //std::ofstream of("test_27cubes.pov",std::ios::out);
-    //POVHeader     (of);
-    //POVSetCam     (of,Vec3_t(2,1.5,1.5),OrthoSys::O);
-    //d.WritePOV    (of,"Blue");
-    //of.close      ();
-    //
-    std::ofstream  of2("test_tet.bpy",std::ios::out);
-    BPYHeader  (of2);
-    d.WriteBPY (of2);
-    of2.close  ();
-    /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////
+    d.WriteBPY ("test_tet");
 
-    //double dt = 0.001;
-    //d.Particles[13]->w = Vec3_t(0,1.,1.);
-    //d.Initialize(dt);
-    //d.Solve(0,30,dt,.1,"test_27cubes");
+    ////////////////////////////////////////////////////////////////////////////////////////// Solve /////
+
+    double dt = 0.001;
+    d.Particles[13]->w = Vec3_t(0,1.,1.);
+    d.Solve(/*tf*/1, dt, /*dtOut*/.1, "test_27cubes", /*CamPos*/Vec3_t(0,10,0));
 
     return 0;    
 }

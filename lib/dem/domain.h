@@ -24,6 +24,7 @@
 #include <cmath>
 #include <stdlib.h> // for M_PI
 #include <iostream>
+#include <fstream>
 #include <ctime>    // for std::clock
 
 // Voro++
@@ -38,6 +39,9 @@
 class Domain
 {
 public:
+    // Constructor
+    Domain () : Initialized(false) {}
+
     // Destructor
     ~Domain();
 
@@ -70,28 +74,28 @@ public:
     void AddCube     (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
 
     // Methods
-    void CopyParticle (const Particle & P);  ///< Create a new particle as a copy of particle P, it should be translated to another position.
-    void Initialize   (double dt);           ///< Set the particles to a initial state and asign the possible insteractions
-    void OneStep      (double dt);           ///< One simualtion step
-    void Solve        (double t0, double tf, double dt, double dtOut, char const * FileKey); // Run simulation
+    void Initialize (double dt);                                   ///< Set the particles to a initial state and asign the possible insteractions
+    void Solve      (double tf, double dt, double dtOut,
+                     char const * FileKey, Vec3_t const & CamPos); ///< Run simulation
+    void WritePOV   (char const * FileKey, Vec3_t const & CamPos); ///< Write POV file
+    void WriteBPY   (char const * FileKey);                        ///< Write BPY (Blender) file
 
     // Auxiliar methods
-    void   LinearMomentum  (Vec3_t & L); ///< Return total momentum of the system
-    void   AngularMomentum (Vec3_t & L); ///< Return total angular momentum of the system
-    double TotalEnergy     ();           ///< Return total energy of the system
-
-    // Drawing
-    void WritePOV (std::ostream & os,char const *Color);
-    void WriteBPY (std::ostream & os);
+    void   LinearMomentum  (Vec3_t & L);                   ///< Return total momentum of the system
+    void   AngularMomentum (Vec3_t & L);                   ///< Return total angular momentum of the system
+    double CalcEnergy      (double & Ekin, double & Epot); ///< Return total energy of the system
 
     // Data
+    bool               Initialized; ///< System (particles and interactons) initialized ?
     Array<Particle*>   Particles;   ///< All particles in domain
-    Array<Interacton*> Interactons; ///< All interactons in domain
+    Array<Interacton*> Interactons; ///< All interactons
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+// Destructor
 
 inline Domain::~Domain ()
 {
@@ -100,9 +104,13 @@ inline Domain::~Domain ()
 }
 
 // Particle generation
-    
+
 inline void Domain::GenSpheres (size_t N, double Xmin, double Xmax, double Ymin, double Ymax, double Zmin, double Zmax, double rho, double Rmin)
 {
+    // info
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Generating spheres -----------------------------------------[0m\n";
+
     double Lx   = Xmax-Xmin;
     double Ly   = Ymax-Ymin;
     double Lz   = Zmax-Zmin;
@@ -117,10 +125,16 @@ inline void Domain::GenSpheres (size_t N, double Xmin, double Xmax, double Ymin,
         double R = Rmax*Rmin + (1.*rand())/RAND_MAX*Rmax*(1-Rmin);
         Particles.Push (new Particle(V,Empty,Empty, OrthoSys::O,OrthoSys::O, R,rho));
     }
+
+    // info
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
 inline void Domain::GenBox (double Xmin, double Xmax, double Ymin, double Ymax, double Zmin, double Zmax, double Thickness)
 {
+    throw new Fatal("Domain::GenBox: Method not implemented yet");
 }
 
 inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
@@ -164,10 +178,7 @@ inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
         }
 
         // add particle
-        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho,true));
-
-        // Calculate properties
-        Particles[i]->CalcMassProperties();
+        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
     }
 
     // info
@@ -178,27 +189,35 @@ inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
 
 inline void Domain::GenFromVoro (container & VC,double R,double rho)
 {
-	fpoint x,y,z,px,py,pz;
+    // info
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Generating particles from Voronoi tessellation -------------[0m\n";
+
+    fpoint x,y,z,px,py,pz;
     container *cp = & VC;
-	voropp_loop l1(cp);
-	int q,s;
-	voronoicell c;
-	s=l1.init(VC.ax,VC.bx,VC.ay,VC.by,VC.az,VC.bz,px,py,pz);
-	do {
-		for(q=0;q<VC.co[s];q++) {
-			x=VC.p[s][VC.sz*q]+px;y=VC.p[s][VC.sz*q+1]+py;z=VC.p[s][VC.sz*q+2]+pz;
-			if(x>VC.ax&&x<VC.bx&&y>VC.ay&&y<VC.by&&z>VC.az&&z<VC.bz) {
-				if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) AddVoroCell(c,R,rho);
-			}
-		}
-	} while((s=l1.inc(px,py,pz))!=-1);
+    voropp_loop l1(cp);
+    int q,s;
+    voronoicell c;
+    s=l1.init(VC.ax,VC.bx,VC.ay,VC.by,VC.az,VC.bz,px,py,pz);
+    do {
+        for(q=0;q<VC.co[s];q++) {
+            x=VC.p[s][VC.sz*q]+px;y=VC.p[s][VC.sz*q+1]+py;z=VC.p[s][VC.sz*q+2]+pz;
+            if(x>VC.ax&&x<VC.bx&&y>VC.ay&&y<VC.by&&z>VC.az&&z<VC.bz) {
+                if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) AddVoroCell(c,R,rho);
+            }
+        }
+    } while((s=l1.inc(px,py,pz))!=-1);
+
+    // info
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
 // Single particle addition
-    
+
 inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho)
 {
-
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
     Array<int> Eaux(2);
@@ -236,14 +255,14 @@ inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho)
                 //os << "(" << i;
                 Faux.Push(i);
                 VC.ed[i][j]=-1-k;
-				int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
+                int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
                 do 
                 {
                     //os << "," << k;
                     Faux.Push(k);
                     int m=VC.ed[k][l];
                     VC.ed[k][l]=-1-m;
-					l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
+                    l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
                     k=m;
                 } while (k!=i);
                 F.Push(Faux);
@@ -254,10 +273,8 @@ inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho)
     }
     VC.reset_edges();
 
-
-
     // add particle
-    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho,true));
+    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 }
 
 inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
@@ -289,7 +306,6 @@ inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, 
     F[2] = 0, 2, 1;
     F[3] = 1, 2, 3;
 
-
     // calculate the rotation
     if (Axis==NULL)
     {
@@ -307,6 +323,8 @@ inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, 
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
     delete Axis;
 }
 
@@ -324,6 +342,7 @@ inline void Domain::AddRice (const Vec3_t & X, double R, double L, double rho, d
 
     // faces
     Array<Array <int> > F(0); // no faces
+
     // calculate the rotation
     if (Axis==NULL)
     {
@@ -341,6 +360,8 @@ inline void Domain::AddRice (const Vec3_t & X, double R, double L, double rho, d
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
     delete Axis;
 }
 
@@ -401,130 +422,151 @@ inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, d
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
     delete Axis;
 }
 
 // Methods
 
-inline void Domain::CopyParticle (const Particle & P)
-{
-
-}
-    
 inline void Domain::Initialize (double dt)
 {
-    for(size_t i = 0;i < Particles.Size();i++)
-    {
-        //Particles[i]->CalcMassProperties(5000);
-        Particles[i]->Start(dt);
-    }
+    // info
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
 
-    for(size_t i = 0;i < Particles.Size()-1;i++)
+    for (size_t i=0; i<Particles.Size()-1; i++)
     {
-        for(size_t j = i+1;j < Particles.Size();j++)
+        // initialize particle
+        Particles[i]->Initialize (dt);
+
+        // initialize interactons
+        for (size_t j=i+1; j<Particles.Size(); j++)
         {
-            Interactons.Push(new Interacton(Particles[i],Particles[j]));
+            Interactons.Push (new Interacton(Particles[i],Particles[j]));
         }
     }
+
+    // initialize last particle
+    Particles[Particles.Size()-1]->Initialize (dt);
+
+    // set flag
+    Initialized = true;
+
+    // info
+    double Ekin, Epot, Etot;
+    Etot = CalcEnergy (Ekin, Epot);
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
+    std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
+    std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
 }
 
-inline void Domain::OneStep (double dt)
+inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey, Vec3_t const & CamPos)
 {
-    for(size_t i = 0;i < Particles.Size();i++)
-    {
-        Particles[i]->StartForce();
-    }
-    for(size_t i = 0;i < Interactons.Size();i++)
-    {
-        Interactons[i]->CalcForce();
-    }
-    for(size_t i = 0;i < Particles.Size();i++)
-    {
-        Particles[i]->DynamicRotation(dt);
-        Particles[i]->DynamicTranslation(dt);
-    }
-}
+    // initialize
+    if (!Initialized) Initialize (dt);
 
-inline void Domain::Solve (double t0, double tf, double dt, double dtOut, char const * FileKey)
-{
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
 
+    // solve
     size_t I=0;
-    double tout = t0 + dtOut;
-    for (double t=t0; t<tf; t+=dt)
+    double tout = dtOut;
+    for (double t=0.0; t<tf; t+=dt)
     {
-        OneStep(dt);
-        if(t>=tout)
+        // run one step
+        for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce ();
+        for (size_t i=0; i<Particles  .Size(); i++)
+        {
+            Particles[i]->Rotate    (dt);
+            Particles[i]->Translate (dt);
+        }
+
+        // output
+        if (t>=tout)
         {
             String fn;  
-            fn.Printf("%s_%08d.pov",FileKey,I);
-            std::ofstream of(fn.CStr());
-            POVHeader(of);
-            Vec3_t p(0,10,0);
-            POVSetCam(of,p,OrthoSys::O);
-            WritePOV(of,"Blue");
-            of.close();
-            tout+=dtOut;
+            fn.Printf("%s_%08d", FileKey, I);
+            WritePOV  (fn.CStr(), CamPos);
+            tout += dtOut;
             I++;
         }
     }
 
     // info
+    double Ekin, Epot, Etot;
+    Etot = CalcEnergy (Ekin, Epot);
     double total = std::clock() - start;
     std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[1;31m\n";
+    std::cout << "[1;35m    Potential energy      = " << Epot << "[1;31m\n";
+    std::cout << "[1;35m    Total energy          = " << Etot << "[1;31m\n";
+}
+
+inline void Domain::WritePOV (char const * FileKey, Vec3_t const & CamPos)
+{
+    String fn(FileKey);
+    fn.append(".pov");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    POVHeader (of);
+    POVSetCam (of, CamPos, OrthoSys::O);
+    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"Blue");
+    of.close();
+}
+
+inline void Domain::WriteBPY (char const * FileKey)
+{
+    String fn(FileKey);
+    fn.append(".bpy");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"",true);
+    of.close();
 }
 
 // Auxiliar methods
-    
+
 inline void Domain::LinearMomentum (Vec3_t & L)
 {
     L = 0.,0.,0.;
-    for(size_t i = 0;i < Particles.Size();i++)
+    for (size_t i=0; i<Particles.Size(); i++)
     {
-        L+=Particles[i]->m*Particles[i]->v;
+        L += Particles[i]->m*Particles[i]->v;
     }
 }
 
 inline void Domain::AngularMomentum (Vec3_t & L)
 {
     L = 0.,0.,0.;
-    for(size_t i = 0;i < Particles.Size();i++)
+    for (size_t i=0; i<Particles.Size(); i++)
     {
         Vec3_t t1,t2;
         t1 = Particles[i]->I(0)*Particles[i]->w(0),Particles[i]->I(1)*Particles[i]->w(1),Particles[i]->I(2)*Particles[i]->w(2);
-        Rotation(t1,Particles[i]->Q,t2);
+        Rotation (t1,Particles[i]->Q,t2);
         L += Particles[i]->m*cross(Particles[i]->x,Particles[i]->v)+t2;
     }
-    
 }
 
-inline double Domain::TotalEnergy ()
+inline double Domain::CalcEnergy (double & Ekin, double & Epot)
 {
-    double E = 0;
-    for(size_t i = 0;i < Particles.Size();i++)
+    // kinematic energy
+    Ekin = 0.0;
+    for (size_t i=0; i<Particles.Size(); i++)
     {
-        E += Particles[i]->Ekin+Particles[i]->Erot;
+        Ekin += Particles[i]->Ekin + Particles[i]->Erot;
     }
 
-    for(size_t i = 0;i < Interactons.Size();i++)
+    // potential energy
+    Epot = 0.0;
+    for (size_t i=0; i<Interactons.Size(); i++)
     {
-        E += Interactons[i]->Epot;
+        Epot += Interactons[i]->Epot;
     }
-    return E;
-}
 
-// Drawing
-    
-inline void Domain::WritePOV (std::ostream & os, char const * Color)
-{
-    for(size_t i = 0;i < Particles.Size();i++) Particles[i]->Draw(os,Color);
-}
-
-inline void Domain::WriteBPY (std::ostream & os)
-{   
-    for(size_t i = 0;i < Particles.Size();i++) Particles[i]->Draw(os,"",true);
+    // total energy
+    return Ekin + Epot;
 }
 
 #endif // MECHSYS_DEM_DOMAIN_H
