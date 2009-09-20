@@ -26,14 +26,14 @@
 #include <iostream>
 #include <ctime>    // for std::clock
 
+// Voro++
+#include "src/voro++.cc"
+
 // MechSys
 #include "dem/interacton.h"
 #include "util/array.h"
 #include "util/util.h"
 #include "mesh/mesh.h"
-
-// Voro++
-#include "src/voro++.cc"
 
 class Domain
 {
@@ -436,7 +436,7 @@ inline void Domain::OneStep (double dt)
     }
     for(size_t i = 0;i < Interactons.Size();i++)
     {
-        Interactons[i]->CalcForce(dt);
+        Interactons[i]->CalcForce();
     }
     for(size_t i = 0;i < Particles.Size();i++)
     {
