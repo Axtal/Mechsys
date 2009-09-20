@@ -58,7 +58,7 @@ int main(int argc, char **argv) try
                 con.put(i,x,y,z);
         }
         Domain D;
-        D.AddVoronoiContainer(con,0.1);
+        D.GenFromVoro (con,0.1);
 
         std::ofstream  of2("test_voronoi2.bpy",std::ios::out);
         BPYHeader  (of2);

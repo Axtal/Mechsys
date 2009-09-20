@@ -61,8 +61,8 @@ int main(int argc, char **argv) try
     
 
     Domain D;
-    D.AddVoronoiCell(v,0.1);
-    D.AddVoronoiCell(u,0.1);
+    D.AddVoroCell(v,0.1);
+    D.AddVoroCell(u,0.1);
     
     Vec3_t trans(2.5,0,0);
     D.Particles[0]->Translation(trans);
