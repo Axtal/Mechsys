@@ -68,7 +68,7 @@ public:
     void GenFromVoro (container & VC, double R, double rho=1.0);
 
     // Single particle addition
-    void AddVoroCell (voronoicell & VC, double R, double rho=1.0);
+    void AddVoroCell (voronoicell & VC, double R, double rho=1.0, bool Erode=true);
     void AddTetra    (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddRice     (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddCube     (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -176,6 +176,7 @@ inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
                 F[j].Push(Mesh::NVertsToFace[nverts][j][k]);
             }
         }
+        Erotion(V,F,R);
 
         // add particle
         Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
@@ -199,11 +200,19 @@ inline void Domain::GenFromVoro (container & VC,double R,double rho)
     int q,s;
     voronoicell c;
     s=l1.init(VC.ax,VC.bx,VC.ay,VC.by,VC.az,VC.bz,px,py,pz);
-    do {
-        for(q=0;q<VC.co[s];q++) {
+    do 
+    {
+        for(q=0;q<VC.co[s];q++) 
+        {
             x=VC.p[s][VC.sz*q]+px;y=VC.p[s][VC.sz*q+1]+py;z=VC.p[s][VC.sz*q+2]+pz;
-            if(x>VC.ax&&x<VC.bx&&y>VC.ay&&y<VC.by&&z>VC.az&&z<VC.bz) {
-                if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) AddVoroCell(c,R,rho);
+            if(x>VC.ax&&x<VC.bx&&y>VC.ay&&y<VC.by&&z>VC.az&&z<VC.bz) 
+            {
+                if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
+                {
+                    AddVoroCell(c,R,rho);
+                    Vec3_t trans(x,y,z);
+                    Particles[Particles.Size()-1]->Translate(trans);
+                }
             }
         }
     } while((s=l1.inc(px,py,pz))!=-1);
@@ -216,18 +225,14 @@ inline void Domain::GenFromVoro (container & VC,double R,double rho)
 
 // Single particle addition
 
-inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho)
+inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho,bool Erode)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
     Array<int> Eaux(2);
     for(size_t i=0;i<VC.p;i++) 
     {
-        V[i] = Vec3_t(VC.pts[3*i],VC.pts[3*i+1],VC.pts[3*i+2]);
-        //ux=0.5*VC.pts[3*i]; 
-        //uy=0.5*VC.pts[3*i+1]; 
-        //uz=0.5*VC.pts[3*i+2];
-
+        V[i] = Vec3_t(0.5*VC.pts[3*i],0.5*VC.pts[3*i+1],0.5*VC.pts[3*i+2]);
         for(size_t j=0;j<VC.nu[i];j++) 
         {
             size_t k=VC.ed[i][j];
@@ -237,7 +242,6 @@ inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho)
                 Eaux[1] = k;
                 E.Push(Eaux);
             }
-            //if (ed[i][j]<i) os << ux << " " << uy << " " << uz << "\n" << x+0.5*pts[3*k] << " " << y+0.5*pts[3*k+1] << " " << z+0.5*pts[3*k+2] << "\n\n\n";
         }
     }
     Array<Array <int> > F;
@@ -250,28 +254,31 @@ inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho)
             int k=VC.ed[i][j];
             if (k>=0) 
             {
-                //if(later) os << " ";
-                //else later=true;
-                //os << "(" << i;
                 Faux.Push(i);
                 VC.ed[i][j]=-1-k;
                 int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
                 do 
                 {
-                    //os << "," << k;
                     Faux.Push(k);
                     int m=VC.ed[k][l];
                     VC.ed[k][l]=-1-m;
                     l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
                     k=m;
                 } while (k!=i);
-                F.Push(Faux);
+                Array<int> Faux2(Faux.Size());
+                for (size_t l = 0; l < Faux.Size();l++)
+                {
+                    Faux2[l] = Faux[Faux.Size()-1-l];
+                }
+
+                F.Push(Faux2);
                 Faux.Clear();
-                //os << ")";
+                Faux2.Clear();
             }
         }
     }
     VC.reset_edges();
+    if (Erode) Erotion(V,F,R);
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
@@ -478,6 +485,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     for (double t=0.0; t<tf; t+=dt)
     {
         // run one step
+        for (size_t i=0; i<Particles  .Size(); i++) Particles[i]->StartForce();
         for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce ();
         for (size_t i=0; i<Particles  .Size(); i++)
         {
@@ -522,6 +530,7 @@ inline void Domain::WriteBPY (char const * FileKey)
     String fn(FileKey);
     fn.append(".bpy");
     std::ofstream of(fn.CStr(), std::ios::out);
+    BPYHeader(of);
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"",true);
     of.close();
 }

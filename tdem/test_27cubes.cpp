@@ -71,7 +71,7 @@ int main(int argc, char **argv) try
     /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////
 
     d.Particles[0]->w = Vec3_t(0.01,0.02,0.03);
-    d.Solve(/*tf*/30.0, /*dt*/0.001, /*dtOut*/0.1, "test_27cubes", cam_pos);
+    //d.Solve(/*tf*/30.0, /*dt*/0.001, /*dtOut*/0.1, "test_27cubes", cam_pos);
 
     return 0;    
 }

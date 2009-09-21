@@ -63,8 +63,8 @@ int main(int argc, char **argv) try
 
     // domain
     Domain d;
-    d.AddVoroCell (v,0.1);
-    d.AddVoroCell (u,0.1);
+    d.AddVoroCell (u,0.05);
+    d.AddVoroCell (v,0.05,);
 
     // tranlate particles
     Vec3_t trans(2.5,0,0);
@@ -73,8 +73,9 @@ int main(int argc, char **argv) try
     d.Particles[1]->Translate (trans);
     d.Particles[0]->v = Vec3_t(-0.5,0,0);
 
+    d.WriteBPY ("test_voro01");
     // solve
     double dt = 0.001;
-    d.Solve (/*tf*/30, dt, /*dtOut*/0.1, "test_voro01", /*CamPos*/Vec3_t(0,10,0));
+    //d.Solve (/*tf*/30, dt, /*dtOut*/0.1, "test_voro01", /*CamPos*/Vec3_t(0,10,0));
 }
 MECHSYS_CATCH

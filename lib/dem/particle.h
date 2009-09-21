@@ -39,13 +39,14 @@ public:
              Vec3_t              const & v0,  ///< Initial velocity
              Vec3_t              const & w0,  ///< Initial angular velocity
              double                      R,   ///< Spheroradius
-             double                 rho=1.0); ///< Density of the material
+             double                      rho=1.0); ///< Density of the material
 
     // Destructor
     ~Particle ();
 
     // Methods
     void Initialize (double dt, size_t NCalls=5000); ///< Initialize this particle
+    void StartForce () {F = Vec3_t(0,0,0); T = Vec3_t(0,0,0);}///< Start the force at a given value
     void Rotate     (double dt);                     ///< Apply rotation on the particle once the total torque is found
     void Rotate     (Quaternion_t & Q, Vec3_t & V);  ///< Apply rotation given by Quaternion Q at point v
     void Translate  (double dt);                     ///< Apply translation once the total force is found
@@ -277,6 +278,7 @@ inline void Particle::CalcProps (size_t NCalls)
 
         Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);
+        I *= rho;
         Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
         Q(1) = (yp(2)-zp(1))/(4*Q(0));
         Q(2) = (zp(0)-xp(2))/(4*Q(0));

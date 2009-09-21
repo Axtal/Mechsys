@@ -24,7 +24,7 @@ done
 
 # generate AVI
 echo "----- Generate AVI ---------------------------------------------"
-mencoder "mf://$PNGs" -mf fps=25 -ovc lavc -lavcopts vcodec=msmpeg4:vbitrate=14400:vhq -o $1.avi > /dev/null
+mencoder "mf://*png" -mf fps=25 -ovc lavc -lavcopts vcodec=msmpeg4:vbitrate=14400:vhq -o $1.avi > /dev/null
 
 # clean up
 if [ "$2" = "1" ]; then

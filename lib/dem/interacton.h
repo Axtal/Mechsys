@@ -83,12 +83,6 @@ inline void Interacton::CalcForce ()
 template<typename FeatureA_T, typename FeatureB_T>
 inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap)
 {
-    // reset forces and torques
-    P1->F = 0.0,0.0,0.0;
-    P1->T = 0.0,0.0,0.0;
-    P2->F = 0.0,0.0,0.0;
-    P2->T = 0.0,0.0,0.0;
-
     // update
     for (size_t i=0; i<A.Size(); ++i)
     for (size_t j=0; j<B.Size(); ++j)
