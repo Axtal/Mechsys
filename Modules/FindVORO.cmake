@@ -25,7 +25,7 @@ SET(VORO_INCLUDE_SEARCH_PATH
   /usr/local/include)
 
 SET(VORO_LIBRARY_SEARCH_PATH
-  $ENV{HOME}/pkg/voro++
+  $ENV{HOME}/pkg/voro++/src
   /usr/lib
   /usr/local/lib)
 

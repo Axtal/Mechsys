@@ -46,7 +46,6 @@ public:
 
     // Methods
     void Initialize (double dt, size_t NCalls=5000); ///< Initialize this particle
-    void StartForce () {F = Vec3_t(0,0,0); T = Vec3_t(0,0,0);}///< Start the force at a given value
     void Rotate     (double dt);                     ///< Apply rotation on the particle once the total torque is found
     void Rotate     (Quaternion_t & Q, Vec3_t & V);  ///< Apply rotation given by Quaternion Q at point v
     void Translate  (double dt);                     ///< Apply translation once the total force is found

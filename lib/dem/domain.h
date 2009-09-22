@@ -485,7 +485,11 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     for (double t=0.0; t<tf; t+=dt)
     {
         // run one step
-        for (size_t i=0; i<Particles  .Size(); i++) Particles[i]->StartForce();
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            Particles[i]->F = 0.0, 0.0, 0.0;
+            Particles[i]->T = 0.0, 0.0, 0.0;
+        }
         for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce ();
         for (size_t i=0; i<Particles  .Size(); i++)
         {

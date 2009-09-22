@@ -64,7 +64,7 @@ int main(int argc, char **argv) try
     // domain
     Domain d;
     d.AddVoroCell (u,0.05);
-    d.AddVoroCell (v,0.05,);
+    d.AddVoroCell (v,0.05);
 
     // tranlate particles
     Vec3_t trans(2.5,0,0);
