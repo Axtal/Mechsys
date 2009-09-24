@@ -52,13 +52,13 @@ public:
     void Solve         (size_t NDiv=1, double tf=1.0, bool Transient=false);
     void AssembleK     ();
     void AssembleKandM ();
-	void TgIncs        (double t, double dt, Vec_t & dU, Vec_t & dF);
+    void TgIncs        (double t, double dt, Vec_t & dU, Vec_t & dF);
     void TransTgIncs   (double t, double dt, Vec_t & dU, Vec_t & dF);
 
     // Data
     Domain const & Dom;   ///< Domain
-    double         Time;  ///< Time
-	size_t         NEQ;   ///< Total number of equations (DOFs)
+    double         Time;  ///< Current time (t)
+    size_t         NEQ;   ///< Total number of equations (DOFs)
     Array<size_t>  pDOFs; ///< prescribed DOFs (known equations)
 
     // Triplets and sparse matrices
@@ -67,24 +67,24 @@ public:
     Sparse::Matrix <double,int> k11;             ///< Augmented K11 in compressed-column format
     Sparse::Matrix <double,int> m11;             ///< Augmented M11 in compressed-column format
 
-	// Vectors
+    // Vectors
     Vec_t U, F, F_int, W; // U, F, F_int, and Workspace
 
-	// Constants for integration
+    // Constants for integration
     Scheme_t Scheme; ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
     size_t   nSS;    ///< FE: number of substeps
-	double   STOL;   ///< ME:
-	double   dTini;  ///< ME:
-	double   mMin;   ///< ME:
-	double   mMax;   ///< ME:
-	size_t   maxSS;  ///< ME:
+    double   STOL;   ///< ME:
+    double   dTini;  ///< ME:
+    double   mMin;   ///< ME:
+    double   mMax;   ///< ME:
+    size_t   maxSS;  ///< ME:
     bool     CteTg;  ///< Constant tangent matrices (linear problems) => K and M will be calculated once
 
     double   tsw; ///< t_switch
 
 private:
     typedef void (Solver::*p2TgIncs) (double t, double dt, Vec_t & dU, Vec_t & dF);
-    void _initialize (bool Transient=false);
+    void _initialize (bool Transient=false);       ///< Initialize global matrices and vectors
     void _FE_update  (p2TgIncs TgIncs, double tf);
     void _ME_update  (p2TgIncs TgIncs, double tf);
 };
@@ -98,11 +98,11 @@ inline Solver::Solver (Domain const & TheDom)
       Time   (0.0),
       Scheme (ME_t),
       nSS    (1),
-	  STOL   (1.0e-5),
-	  dTini  (1.0),
-	  mMin   (0.1),
-	  mMax   (10.0),
-	  maxSS  (2000),
+      STOL   (1.0e-5),
+      dTini  (1.0),
+      mMin   (0.1),
+      mMax   (10.0),
+      maxSS  (2000),
       CteTg  (false),
       tsw    (0.1)
 {
@@ -110,7 +110,7 @@ inline Solver::Solver (Domain const & TheDom)
 
 inline void Solver::Solve (size_t NDiv, double tf, bool Transient)
 {
-    // initialize
+    // initialize global matrices and vectors
     _initialize (Transient);
 
     // residual
@@ -118,33 +118,38 @@ inline void Solver::Solve (size_t NDiv, double tf, bool Transient)
     double norm_R = Norm(R);
     double tol_R  = 1.0e-9;
 
-	// output initial state
-    std::cout << "\n[1;37m--- Stage solution -----------------------------------------------------------\n";
+    // output initial state
+    std::cout << "\n[1;37m--- Stage solution --------- (" << (Scheme==FE_t?"FE":"ME") << ") --------------------------------------------\n";
     std::cout << Util::_6_3 << "Time" <<                                         Util::_8s <<"Norm(R)" << "[0m\n";
     std::cout << Util::_6_3 <<  Time  << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R   << "[0m\n";
     Dom.OutResults (Time);
 
-	// solve
+    // pointer to function that calculates tangent increments
+    p2TgIncs pfun = NULL;
+    if (Transient) pfun = &Solver::TransTgIncs; // transient analysis
+    else           pfun = &Solver::TgIncs;      // steady (default) analysis
+
+    // solve
     if (!Transient) tf = Time + 1.0;
     double Dt   = tf - Time;
     double dt   = Dt/NDiv;
     double tout = Time + dt;
-	for (size_t inc=0; inc<NDiv; ++inc)
-	{
-        // update Time to tout
-		     if (Scheme==FE_t) _FE_update ((Transient ? &Solver::TransTgIncs : &Solver::TgIncs), tout);
-        else if (Scheme==ME_t) _ME_update ((Transient ? &Solver::TransTgIncs : &Solver::TgIncs), tout);
+    for (size_t inc=0; inc<NDiv; ++inc)
+    {
+        // update Time and elements to tout
+             if (Scheme==FE_t) _FE_update (pfun, tout);
+        else if (Scheme==ME_t) _ME_update (pfun, tout);
 
-		// update nodes
-		for (size_t i=0; i<Dom.Nods.Size(); ++i)
-		{
-			for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
-			{
-				long eq = Dom.Nods[i]->EQ[j];
-				Dom.Nods[i]->U[j] = U(eq);
-				Dom.Nods[i]->F[j] = F(eq);
-			}
-		}
+        // update nodes to tout
+        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        {
+            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            {
+                long eq = Dom.Nods[i]->EQ[j];
+                Dom.Nods[i]->U[j] = U(eq);
+                Dom.Nods[i]->F[j] = F(eq);
+            }
+        }
 
         // residual
         R      = F - F_int;
@@ -156,7 +161,7 @@ inline void Solver::Solve (size_t NDiv, double tf, bool Transient)
 
         // next tout
         tout = Time + dt;
-	}
+    }
 }
 
 inline void Solver::AssembleK ()
@@ -231,7 +236,7 @@ inline void Solver::TgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
     // assemble global K matrix
     if (K11.Top()==0 || CteTg==false) AssembleK (); // not constant tangent matrices => non-linear problems
 
-	// assemble dF and W (workspace) vectors
+    // assemble dF and W (workspace) vectors
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
         for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
@@ -239,26 +244,26 @@ inline void Solver::TgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
             long eq = Dom.Nods[i]->EQ[j];
             if (Dom.Nods[i]->pU[j]) // prescribed U
             {
-				dF(eq) = 0.0;                   // clear dF2
+                dF(eq) = 0.0;                   // clear dF2
                 W (eq) = dt*Dom.Nods[i]->dU[j]; // set W2 equal to dU2
             }
             else
-			{
-				dF(eq) = dt*Dom.Nods[i]->dF[j]; // set dF1 equal to dF1
-				W (eq) = dF(eq);                // set W1  equal to dF1
-			}
+            {
+                dF(eq) = dt*Dom.Nods[i]->dF[j]; // set dF1 equal to dF1
+                W (eq) = dF(eq);                // set W1  equal to dF1
+            }
         }
     }
 
     // W1 = dF1 - K12*dU2
-	for (int k=0; k<K12.Top(); ++k) W(K12.Ai(k)) -= K12.Ax(k) * W(K12.Aj(k)); // W1 -= K12 * dU2
+    for (int k=0; k<K12.Top(); ++k) W(K12.Ai(k)) -= K12.Ax(k) * W(K12.Aj(k)); // W1 -= K12 * dU2
 
-	// solve for dU1 (and dU2)
+    // solve for dU1 (and dU2)
     UMFPACK::Solve (k11, W, dU); // inv(k11)*W = dU
 
-	// calculate dF2
-	for (int k=0; k<K21.Top(); ++k) dF(K21.Ai(k)) += K21.Ax(k) * dU(K21.Aj(k)); // dF2 += K21 * dU1
-	for (int k=0; k<K22.Top(); ++k) dF(K22.Ai(k)) += K22.Ax(k) * dU(K22.Aj(k)); // dF2 += K22 * dU2
+    // calculate dF2
+    for (int k=0; k<K21.Top(); ++k) dF(K21.Ai(k)) += K21.Ax(k) * dU(K21.Aj(k)); // dF2 += K21 * dU1
+    for (int k=0; k<K22.Top(); ++k) dF(K22.Ai(k)) += K22.Ax(k) * dU(K22.Aj(k)); // dF2 += K22 * dU2
 }
 
 inline void Solver::TransTgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
@@ -307,20 +312,20 @@ inline void Solver::TransTgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
     // increments
     dU = V*dt;
 
-	// dF2 = M21*V1 + M22*V2 + K21*Unew1 + K22*Unew2 - F2
+    // dF2 = M21*V1 + M22*V2 + K21*Unew1 + K22*Unew2 - F2
     Vec_t Unew(U+dU);
     set_to_zero (dF);
-	for (int k=0; k<M21.Top(); ++k) dF(M21.Ai(k)) += M21.Ax(k) * V   (M21.Aj(k)); // dF2 += M21 * V1
-	for (int k=0; k<M22.Top(); ++k) dF(M22.Ai(k)) += M22.Ax(k) * V   (M22.Aj(k)); // dF2 += M22 * V2
-	for (int k=0; k<K21.Top(); ++k) dF(K21.Ai(k)) += K21.Ax(k) * Unew(K21.Aj(k)); // dF2 += K21 * Unew1
-	for (int k=0; k<K22.Top(); ++k) dF(K22.Ai(k)) += K22.Ax(k) * Unew(K22.Aj(k)); // dF2 += K22 * Unew2
+    for (int k=0; k<M21.Top(); ++k) dF(M21.Ai(k)) += M21.Ax(k) * V   (M21.Aj(k)); // dF2 += M21 * V1
+    for (int k=0; k<M22.Top(); ++k) dF(M22.Ai(k)) += M22.Ax(k) * V   (M22.Aj(k)); // dF2 += M22 * V2
+    for (int k=0; k<K21.Top(); ++k) dF(K21.Ai(k)) += K21.Ax(k) * Unew(K21.Aj(k)); // dF2 += K21 * Unew1
+    for (int k=0; k<K22.Top(); ++k) dF(K22.Ai(k)) += K22.Ax(k) * Unew(K22.Aj(k)); // dF2 += K22 * Unew2
     for (size_t i=0; i<pDOFs.Size(); ++i) dF(pDOFs[i]) -= F(pDOFs[i]);            // dF2 -= F2
 }
 
 inline void Solver::_initialize (bool Transient)
 {
     // assign equation numbers
-	NEQ = 0;
+    NEQ = 0;
     pDOFs.Resize (0);
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
@@ -328,7 +333,7 @@ inline void Solver::_initialize (bool Transient)
         {
             Dom.Nods[i]->EQ[j] = NEQ;
             if (Dom.Nods[i]->pU[j]) pDOFs.Push (NEQ);
-			NEQ++;
+            NEQ++;
         }
     }
 
@@ -369,19 +374,19 @@ inline void Solver::_initialize (bool Transient)
         K11.AllocSpace (NEQ,NEQ,K11_size+pDOFs.Size()); // augmented
     }
 
-	// resize workspace
-	W.change_dim (NEQ);
+    // resize workspace
+    W.change_dim (NEQ);
 
-	// build U and F
+    // build U and F
     U.change_dim (NEQ);
     F.change_dim (NEQ);
-	for (size_t i=0; i<Dom.Nods.Size(); ++i)
-	{
+    for (size_t i=0; i<Dom.Nods.Size(); ++i)
+    {
         for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
         {
             long eq = Dom.Nods[i]->EQ[j];
-			U(eq)   = Dom.Nods[i]->U [j];
-			F(eq)   = Dom.Nods[i]->F [j];
+            U(eq)   = Dom.Nods[i]->U [j];
+            F(eq)   = Dom.Nods[i]->F [j];
             /*
             if (Transient)
             {
@@ -390,7 +395,7 @@ inline void Solver::_initialize (bool Transient)
             }
             */
         }
-	}
+    }
 
     // build F_int
     F_int.change_dim (NEQ);
@@ -402,8 +407,8 @@ inline void Solver::_initialize (bool Transient)
 
 inline void Solver::_FE_update (p2TgIncs TgIncs, double tf)
 {
-	// auxiliar vectors
-	Vec_t dU_fe(NEQ), dF_fe(NEQ);
+    // auxiliar vectors
+    Vec_t dU_fe(NEQ), dF_fe(NEQ);
 
     double dt = (tf-Time)/nSS;
     for (size_t i=0; i<nSS; ++i)
@@ -423,22 +428,25 @@ inline void Solver::_FE_update (p2TgIncs TgIncs, double tf)
 
 inline void Solver::_ME_update (p2TgIncs TgIncs, double tf)
 {
-	// auxiliar vectors
-	Vec_t dU_fe(NEQ), dU_tm(NEQ), dU_me(NEQ), U_me(NEQ), U_dif(NEQ);
-	Vec_t dF_fe(NEQ), dF_tm(NEQ), dF_me(NEQ), F_me(NEQ), F_dif(NEQ);
+    // auxiliar vectors
+    Vec_t dU_fe(NEQ), dU_tm(NEQ), dU_me(NEQ), U_me(NEQ), U_dif(NEQ);
+    Vec_t dF_fe(NEQ), dF_tm(NEQ), dF_me(NEQ), F_me(NEQ), F_dif(NEQ);
 
     // for each pseudo time T
     double T  = 0.0;
     double dT = dTini;
-    double dt = (tf-Time)*dT;
+    double Dt = tf-Time;
     size_t k  = 0;
     for (k=0; k<maxSS; ++k)
     {
         // exit point
         if (T>=1.0) break;
 
-        // backup state
+        // backup state of elements
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->BackupState ();
+
+        // time increment
+        double dt = Dt*dT;
 
         // FE state
         (this->*TgIncs) (Time, dt, dU_fe, dF_fe);
@@ -461,7 +469,7 @@ inline void Solver::_ME_update (p2TgIncs TgIncs, double tf)
         // step multiplier
         double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
 
-        // restore state
+        // restore state of elements
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->RestoreState ();
 
         // update
@@ -474,9 +482,11 @@ inline void Solver::_ME_update (p2TgIncs TgIncs, double tf)
             Time += dt;
             if (true && T<1.0)
             {
-                //R      = F - F_int;
-                //norm_R = Norm(R);
-                //std::cout << Util::_6_3 << Time+T << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
+                Vec_t R(F-F_int);
+                double norm_R = Norm(R);
+                double tol_R  = 1.0e-9;
+                std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
+                Dom.OutResults (Time);
             }
             if (m>mMax) m = mMax;
         }
@@ -488,7 +498,7 @@ inline void Solver::_ME_update (p2TgIncs TgIncs, double tf)
         // check for last increment
         if (dT>1.0-T) dT = 1.0-T;
     }
-    if (k>=maxSS) throw new Fatal("Solver:Solve: Modified-Euler (global integration) did not converge for %d steps",k);
+    if (k>=maxSS) throw new Fatal("Solver:_ME_update: Modified-Euler (global integration) did not converge for %d steps",k);
 }
 
 }; // namespace FEM
