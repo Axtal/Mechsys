@@ -125,7 +125,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
             CalcShape (C, GE->IPs[i], detJ, coef);
             for (size_t j=0; j<GE->NN; ++j)
             {
-                Con[j]->dF[Con[j]->FMap("Q")] += s*coef*GE->N(j);
+                Con[j]->DF[Con[j]->FMap("Q")] += s*coef*GE->N(j);
                 //Fs(j) += coef*GE->N(j)*s;
             }
         }
@@ -137,10 +137,8 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
         {
             for (size_t i=0; i<GE->NFN; ++i)
             {
-                Node & nod    = (*Con[GE->FNode(IdxEdgeOrFace,i)]);
-                size_t idx_H  = nod.UMap("H");
-                nod.dU[idx_H] = BCs("H");
-                nod.pU[idx_H] = true;
+                Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,i)]);
+                nod.SetBCs (BCs);
             }
         }
         else if (BCs.HasKey("flux"))
@@ -158,7 +156,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,j)]);
-                    nod.dF[nod.FMap("Q")] += coef*GE->FN(j)*qn;
+                    nod.DF[nod.FMap("Q")] += coef*GE->FN(j)*qn;
                 }
             }
         }
@@ -180,7 +178,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,j)]);
-                    nod.dF[nod.FMap("Q")] += coef*GE->FN(j)*h*Tinf;
+                    nod.DF[nod.FMap("Q")] += coef*GE->FN(j)*h*Tinf;
                 }
             }
         }

@@ -76,7 +76,7 @@ int main(int argc, char **argv) try
     // solver
     FEM::Solver sol(dom);
     sol.CteTg  = true;
-    sol.Scheme = FEM::Solver::FE_t;
+    //sol.Scheme = FEM::Solver::FE_t;
     sol.nSS    = 100;
     
     // stage # 1 -----------------------------------------------------------
@@ -88,7 +88,7 @@ int main(int argc, char **argv) try
        .Set( -20, "flux",        0.0);
     dom.SetBCs   (bcs);
     dom.SetUVals (uvs);
-    sol.Solve    (/*NDiv*/10, /*tf*/300.0, /*Transient*/true);
+    //sol.TransSolve (/*tf*/300.0, /*Transient*/true);
 
     // check matrices
     {

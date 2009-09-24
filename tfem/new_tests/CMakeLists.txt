@@ -16,4 +16,4 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SUBDIRS (bhatti_advanced bhatti_basic smith_griffiths)
+SUBDIRS (bhatti_advanced bhatti_basic smith_griffiths transient)

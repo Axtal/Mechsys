@@ -148,9 +148,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
             // add to dF
             for (size_t j=0; j<GE->NN; ++j)
             {
-                Con[j]->dF[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
-                Con[j]->dF[Con[j]->FMap("fy")] += coef*GE->N(j)*by;  if (NDim==3)
-                Con[j]->dF[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+                Con[j]->DF[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
+                Con[j]->DF[Con[j]->FMap("fy")] += coef*GE->N(j)*by;  if (NDim==3)
+                Con[j]->DF[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
                 //Fb(0+j*NDim) += coef*GE->N(j)*bx;
                 //Fb(1+j*NDim) += coef*GE->N(j)*by;  if (NDim==3)
                 //Fb(2+j*NDim) += coef*GE->N(j)*bz;
@@ -168,9 +168,7 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
             for (size_t i=0; i<GE->NFN; ++i)
             {
                 Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,i)]);
-                if (has_ux) { size_t idx_ux = nod.UMap("ux");  nod.dU[idx_ux] = BCs("ux");  nod.pU[idx_ux] = true; }
-                if (has_uy) { size_t idx_uy = nod.UMap("uy");  nod.dU[idx_uy] = BCs("uy");  nod.pU[idx_uy] = true; }
-                if (has_uz) { size_t idx_uz = nod.UMap("uz");  nod.dU[idx_uz] = BCs("uz");  nod.pU[idx_uz] = true; }
+                nod.SetBCs (BCs);
             }
         }
         else // surface loading
@@ -228,9 +226,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,j)]);
-                    nod.dF[nod.FMap("fx")] += coef*GE->FN(j)*qx;
-                    nod.dF[nod.FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
-                    nod.dF[nod.FMap("fz")] += coef*GE->FN(j)*qz;
+                    nod.DF[nod.FMap("fx")] += coef*GE->FN(j)*qx;
+                    nod.DF[nod.FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
+                    nod.DF[nod.FMap("fz")] += coef*GE->FN(j)*qz;
                 }
             }
         }

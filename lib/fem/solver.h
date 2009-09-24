@@ -49,11 +49,10 @@ public:
     Solver (Domain const & Dom);
 
     // Methods
-    void Solve         (size_t NDiv=1, double tf=1.0, bool Transient=false);
+    void Solve         (size_t NDiv=1);
     void AssembleK     ();
     void AssembleKandM ();
-    void TgIncs        (double t, double dt, Vec_t & dU, Vec_t & dF);
-    void TransTgIncs   (double t, double dt, Vec_t & dU, Vec_t & dF);
+    void TgIncs        (double dT, Vec_t & dU, Vec_t & dF);
 
     // Data
     Domain const & Dom;   ///< Domain
@@ -80,13 +79,10 @@ public:
     size_t   maxSS;  ///< ME:
     bool     CteTg;  ///< Constant tangent matrices (linear problems) => K and M will be calculated once
 
-    double   tsw; ///< t_switch
-
 private:
-    typedef void (Solver::*p2TgIncs) (double t, double dt, Vec_t & dU, Vec_t & dF);
-    void _initialize (bool Transient=false);       ///< Initialize global matrices and vectors
-    void _FE_update  (p2TgIncs TgIncs, double tf);
-    void _ME_update  (p2TgIncs TgIncs, double tf);
+    void _initialize (bool Transient=false); ///< Initialize global matrices and vectors
+    void _FE_update  (double tf);            ///< (Forward-Euler) Update Time and elements to tf
+    void _ME_update  (double tf);            ///< (Modified-Euler) Update Time and elements to tf
 };
 
 
@@ -103,15 +99,14 @@ inline Solver::Solver (Domain const & TheDom)
       mMin   (0.1),
       mMax   (10.0),
       maxSS  (2000),
-      CteTg  (false),
-      tsw    (0.1)
+      CteTg  (false)
 {
 }
 
-inline void Solver::Solve (size_t NDiv, double tf, bool Transient)
+inline void Solver::Solve (size_t NDiv)
 {
     // initialize global matrices and vectors
-    _initialize (Transient);
+    _initialize ();
 
     // residual
     Vec_t R(F-F_int);
@@ -124,21 +119,17 @@ inline void Solver::Solve (size_t NDiv, double tf, bool Transient)
     std::cout << Util::_6_3 <<  Time  << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R   << "[0m\n";
     Dom.OutResults (Time);
 
-    // pointer to function that calculates tangent increments
-    p2TgIncs pfun = NULL;
-    if (Transient) pfun = &Solver::TransTgIncs; // transient analysis
-    else           pfun = &Solver::TgIncs;      // steady (default) analysis
-
     // solve
-    if (!Transient) tf = Time + 1.0;
-    double Dt   = tf - Time;
-    double dt   = Dt/NDiv;
-    double tout = Time + dt;
+    double t0   = Time;     // current time
+    double tf   = t0 + 1.0; // final time
+    double Dt   = tf - t0;  // total time increment
+    double dt   = Dt/NDiv;  // global timestep
+    double tout = t0 + dt;  // time for output
     for (size_t inc=0; inc<NDiv; ++inc)
     {
         // update Time and elements to tout
-             if (Scheme==FE_t) _FE_update (pfun, tout);
-        else if (Scheme==ME_t) _ME_update (pfun, tout);
+             if (Scheme==FE_t) _FE_update (tout);
+        else if (Scheme==ME_t) _ME_update (tout);
 
         // update nodes to tout
         for (size_t i=0; i<Dom.Nods.Size(); ++i)
@@ -231,7 +222,7 @@ inline void Solver::AssembleKandM ()
     //std::cout << "M11 =\n" << PrintMatrix(D11);
 }
 
-inline void Solver::TgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
+inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 {
     // assemble global K matrix
     if (K11.Top()==0 || CteTg==false) AssembleK (); // not constant tangent matrices => non-linear problems
@@ -245,11 +236,11 @@ inline void Solver::TgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
             if (Dom.Nods[i]->pU[j]) // prescribed U
             {
                 dF(eq) = 0.0;                   // clear dF2
-                W (eq) = dt*Dom.Nods[i]->dU[j]; // set W2 equal to dU2
+                W (eq) = dT*Dom.Nods[i]->DU[j]; // set W2 equal to dU2
             }
             else
             {
-                dF(eq) = dt*Dom.Nods[i]->dF[j]; // set dF1 equal to dF1
+                dF(eq) = dT*Dom.Nods[i]->DF[j]; // set dF1 equal to dF1
                 W (eq) = dF(eq);                // set W1  equal to dF1
             }
         }
@@ -266,67 +257,11 @@ inline void Solver::TgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
     for (int k=0; k<K22.Top(); ++k) dF(K22.Ai(k)) += K22.Ax(k) * dU(K22.Aj(k)); // dF2 += K22 * dU2
 }
 
-inline void Solver::TransTgIncs (double t, double dt, Vec_t & dU, Vec_t & dF)
-{
-    // assemble global K and M matrices
-    if (K11.Top()==0 || CteTg==false) AssembleKandM(); // not constant tangent matrices => non-linear problems
-
-    // assemble W (workspace) and U vectors
-    for (size_t i=0; i<Dom.Nods.Size(); ++i)
-    {
-        for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
-        {
-            long eq = Dom.Nods[i]->EQ[j];
-            if (Dom.Nods[i]->pU[j]) // prescribed U
-            {
-                W(eq) = 0.0; // set W2 equal to V2==0
-                U(eq) = Dom.Nods[i]->dU[j];
-                //double alp = Dom.Nods[i]->dU[j]/tsw;
-                //U(eq) = (t<tsw ? alp*t : Dom.Nods[i]->dU[j]);
-                //W(eq) = Dom.Nods[i]->GetPrescV(j,t); // set W2 equal to V2
-                //U(eq) = Dom.Nods[i]->GetPrescU(j,t); // set U2 equal to U2
-            }
-            else
-            {
-                W(eq) = Dom.Nods[i]->dF[j];
-                //W(eq) = F(eq); // set W1 equal to F1
-                //double alp = Dom.Nods[i]->dF[j]/tsw;
-                //W(eq) = (t<tsw ? alp*t : Dom.Nods[i]->dF[j]);
-                //W(eq) = Dom.Nods[i]->GetPrescF(j,t); // set W1 equal to F1
-            }
-        }
-    }
-
-    //cout << "W = \n" << PrintVector(W);
-
-    // W1 = F1 - M12*V2 - K12*U2 - K11*U1
-    for (int k=0; k<M12.Top(); ++k) W(M12.Ai(k)) -= M12.Ax(k) * W(M12.Aj(k)); // W1 -= M12 * V2
-    for (int k=0; k<K12.Top(); ++k) W(K12.Ai(k)) -= K12.Ax(k) * U(K12.Aj(k)); // W1 -= K12 * U2
-    //cout << "W = \n" << PrintVector(W);
-    for (int k=0; k<K11.Top(); ++k) W(K11.Ai(k)) -= K11.Ax(k) * U(K11.Aj(k)); // W1 -= K11 * U1
-
-    // solve for V1 (and V2)
-    Vec_t V(NEQ);
-    UMFPACK::Solve (m11, W, V); // inv(M11)*W = V
-
-    // increments
-    dU = V*dt;
-
-    // dF2 = M21*V1 + M22*V2 + K21*Unew1 + K22*Unew2 - F2
-    Vec_t Unew(U+dU);
-    set_to_zero (dF);
-    for (int k=0; k<M21.Top(); ++k) dF(M21.Ai(k)) += M21.Ax(k) * V   (M21.Aj(k)); // dF2 += M21 * V1
-    for (int k=0; k<M22.Top(); ++k) dF(M22.Ai(k)) += M22.Ax(k) * V   (M22.Aj(k)); // dF2 += M22 * V2
-    for (int k=0; k<K21.Top(); ++k) dF(K21.Ai(k)) += K21.Ax(k) * Unew(K21.Aj(k)); // dF2 += K21 * Unew1
-    for (int k=0; k<K22.Top(); ++k) dF(K22.Ai(k)) += K22.Ax(k) * Unew(K22.Aj(k)); // dF2 += K22 * Unew2
-    for (size_t i=0; i<pDOFs.Size(); ++i) dF(pDOFs[i]) -= F(pDOFs[i]);            // dF2 -= F2
-}
-
 inline void Solver::_initialize (bool Transient)
 {
-    // assign equation numbers
+    // assign equation numbers and set pDOFs
     NEQ = 0;
-    pDOFs.Resize (0);
+    pDOFs.Resize (0); // prescribed DOFs
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
         for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
@@ -387,13 +322,6 @@ inline void Solver::_initialize (bool Transient)
             long eq = Dom.Nods[i]->EQ[j];
             U(eq)   = Dom.Nods[i]->U [j];
             F(eq)   = Dom.Nods[i]->F [j];
-            /*
-            if (Transient)
-            {
-                if (Dom.Nods[i]->pU[j]) U(eq) = Dom.Nods[i]->dU[j];
-                else                    F(eq) = Dom.Nods[i]->dF[j];
-            }
-            */
         }
     }
 
@@ -405,7 +333,7 @@ inline void Solver::_initialize (bool Transient)
     //std::cout << "F_int = \n" << PrintVector(F_int);
 }
 
-inline void Solver::_FE_update (p2TgIncs TgIncs, double tf)
+inline void Solver::_FE_update (double tf)
 {
     // auxiliar vectors
     Vec_t dU_fe(NEQ), dF_fe(NEQ);
@@ -414,7 +342,7 @@ inline void Solver::_FE_update (p2TgIncs TgIncs, double tf)
     for (size_t i=0; i<nSS; ++i)
     {
         // calculate tangent increments
-        (this->*TgIncs) (Time, dt, dU_fe, dF_fe);
+        TgIncs (dt, dU_fe, dF_fe);
 
         // update elements
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_fe, &F_int);
@@ -426,7 +354,7 @@ inline void Solver::_FE_update (p2TgIncs TgIncs, double tf)
     }
 }
 
-inline void Solver::_ME_update (p2TgIncs TgIncs, double tf)
+inline void Solver::_ME_update (double tf)
 {
     // auxiliar vectors
     Vec_t dU_fe(NEQ), dU_tm(NEQ), dU_me(NEQ), U_me(NEQ), U_dif(NEQ);
@@ -449,11 +377,11 @@ inline void Solver::_ME_update (p2TgIncs TgIncs, double tf)
         double dt = Dt*dT;
 
         // FE state
-        (this->*TgIncs) (Time, dt, dU_fe, dF_fe);
+        TgIncs (dt, dU_fe, dF_fe);
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_fe);
 
         // ME state
-        (this->*TgIncs) (Time+dt, dt, dU_tm, dF_tm);
+        TgIncs (dt, dU_tm, dF_tm);
         dU_me = 0.5*(dU_fe + dU_tm);
         dF_me = 0.5*(dF_fe + dF_tm);
         U_me  = U + dU_me;

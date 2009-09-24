@@ -133,7 +133,7 @@ int main(int argc, char **argv) try
        .Set(-100, "ux",    0.0)
        .Set(-200, "ux uy", 0.0,0.0);
     dom.SetBCs (bcs);
-    sol.Solve  (1,1);
+    sol.Solve  ();
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 

@@ -229,7 +229,7 @@ int main(int argc, char **argv) try
        .Set(-20, "ux", 0.0)
        .Set(-30, "qn", -p);
     dom.SetBCs (bcs);
-    sol.Solve  (1,1);
+    sol.Solve  ();
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 

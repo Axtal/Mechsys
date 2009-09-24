@@ -46,19 +46,15 @@ public:
     void   ClrBCs ();
     size_t nDOF   () const { return UMap.Keys.Size(); }
 
-    //double GetPrescU (size_t iDOF, double t) const;
-    //double GetPrescV (size_t iDOF, double t) const;
-    //double GetPrescF (size_t iDOF, double t) const;
-
     // Data
     Mesh::Vertex const & Vert;  ///< Geometric information: ID, Tag, coordinates
     SIPair               UMap;  ///< U keys ("ux", "uy", ...) to index (0, 1, ...) map
     SIPair               FMap;  ///< F keys ("fx", "fy", ...) to index (0, 1, ...) map
-    Array<double>        dU;    ///< Delta U (if prescribed U). NOT the current U value
-    Array<double>        dF;    ///< Delta F (if NOT pU). NOT the current F value
+    Array<double>        DU;    ///< Delta U (if prescribed U) to be applied in one stage
+    Array<double>        DF;    ///< Delta F (if NOT pU) to be applied in one stage
     Array<bool>          pU;    ///< Prescribed U (essential) ?
     Array<double>        U;     ///< Current U value. Size = num DOF
-    Array<double>        F;     ///< Current F value. Size = num DOFs
+    Array<double>        F;     ///< Current F value. Size = num DOF
     Array<long>          EQ;    ///< Equation numbers (of each DOF)
 };
 
@@ -72,8 +68,8 @@ std::ostream & operator<< (std::ostream & os, Node const & N)
     for (size_t i=0; i<N.nDOF(); ++i)
     {
         os << "[";
-        os << "d" << N.UMap.Keys[i] << "=" << Util::_6_3 << N.dU[i] << ", ";
-        os << "d" << N.FMap.Keys[i] << "=" << Util::_6_3 << N.dF[i] << ", ";
+        os << "d" << N.UMap.Keys[i] << "=" << Util::_6_3 << N.DU[i] << ", ";
+        os << "d" << N.FMap.Keys[i] << "=" << Util::_6_3 << N.DF[i] << ", ";
         os << "p" << N.UMap.Keys[i] << "=" << (N.pU[i]?"[1;31mT[0m":"F") << "]";
         if (i!=N.nDOF()-1) os << " ";
     }
@@ -127,8 +123,8 @@ inline void Node::AddDOF (char const * StrU, char const * StrF)
             int idx = static_cast<int>(nDOF());
             UMap.Set   (u_key.CStr(), idx);
             FMap.Set   (f_key.CStr(), idx);
-            dU  .Push  (0.0);
-            dF  .Push  (0.0);
+            DU  .Push  (0.0);
+            DF  .Push  (0.0);
             pU  .Push  (false);
             U   .Push  (0.0);
             F   .Push  (0.0);
@@ -145,15 +141,15 @@ inline void Node::SetBCs (SDPair const & BCs)
         if (UMap.HasKey(key)) // essential
         {
             int idx = UMap(key);
-            dU[idx] = BCs(key); // set
-            dF[idx] = 0.0;
+            DU[idx] = BCs(key); // set
+            DF[idx] = 0.0;
             pU[idx] = true;
         }
         else if (FMap.HasKey(key)) // natural
         {
             int idx  = FMap(key);
-            dU[idx]  = 0.0;
-            dF[idx] += BCs(key); // accumulate
+            DU[idx]  = 0.0;
+            DF[idx] += BCs(key); // accumulate
             pU[idx]  = false;
         }
         else
@@ -169,31 +165,11 @@ inline void Node::ClrBCs ()
 {
     for (size_t i=0; i<nDOF(); ++i)
     {
-        dU[i] = 0.0;
-        dF[i] = 0.0;
+        DU[i] = 0.0;
+        DF[i] = 0.0;
         pU[i] = false;
     }
 }
-
-/*
-inline double Node::GetPrescU (size_t iDOF, double t) const
-{
-    if (t>0.0) return dU[iDOF];
-    else       return  U[iDOF];
-}
-
-inline double Node::GetPrescV (size_t iDOF, double t) const
-{
-    return 0.0;
-}
-
-inline double Node::GetPrescF (size_t iDOF, double t) const
-{
-    //std::cout << "dF = " << dF[iDOF] << "\n";
-    if (t>0.0) return dF[iDOF];
-    else       return  F[iDOF];
-}
-*/
 
 }; //namespace FEM
 
