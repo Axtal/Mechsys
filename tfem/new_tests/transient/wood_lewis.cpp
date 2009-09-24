@@ -1,0 +1,115 @@
+/************************************************************************
+ * MechSys - Open Library for Mechanical Systems                        *
+ * Copyright (C) 2005 Dorival M. Pedroso, Raúl D. D. Farfan             *
+ *                                                                      *
+ * This program is free software: you can redistribute it and/or modify *
+ * it under the terms of the GNU General Public License as published by *
+ * the Free Software Foundation, either version 3 of the License, or    *
+ * any later version.                                                   *
+ *                                                                      *
+ * This program is distributed in the hope that it will be useful,      *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of       *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         *
+ * GNU General Public License for more details.                         *
+ *                                                                      *
+ * You should have received a copy of the GNU General Public License    *
+ * along with this program. If not, see <http://www.gnu.org/licenses/>  *
+ ************************************************************************/
+
+/*  Wood & Lewis (1975) A comparison of time marching schemes for
+ *  the transient heat conduction equation. IJNME. 9, 679-689
+ *  ============================================================= */
+
+// STL
+#include <iostream>
+
+// MechSys
+#include "mesh/structured.h"
+#include "fem/elems/quad8.h"
+#include "fem/flowelem.h"
+#include "fem/domain.h"
+#include "fem/solver.h"
+#include "models/linflow.h"
+#include "util/maps.h"
+#include "util/fatal.h"
+
+using std::cout;
+using std::endl;
+using FEM::PROB;
+using FEM::GEOM;
+
+int main(int argc, char **argv) try
+{
+    ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+
+    double L  = 4.0;
+    size_t nx = 10;
+    double H  = L/nx;
+    Array<Mesh::Block> blks(1);
+    blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
+                 0.,  0.0, 0.0,
+                 0.,    L, 0.0,
+                 0.,    L,   H,
+                 0.,  0.0,   H,   -10.0,-20.0,-30.0,-40.0);
+    blks[0].SetNx (nx);
+    blks[0].SetNy (1);
+    Mesh::Structured mesh(/*NDim*/2);
+    mesh.Generate (blks,/*O2*/true);
+    mesh.WriteMPY ("wood_lewis",/*OnlyMesh*/false);
+
+    ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+
+    // elements properties
+    Dict prps;
+    prps.Set(-1, "prob geom m", PROB("Flow"), GEOM("Quad8"), 1.0);
+
+    // models
+    Dict mdls;
+    mdls.Set(-1, "name k", MODEL("LinFlow"), 1.0);
+
+    // initial values
+    Dict inis;
+    inis.Set(-1, "vx vy", 0.0,0.0);
+
+    // domain
+    FEM::Domain dom(/*NDim*/2, prps, mdls, inis);
+    dom.SetMesh    (mesh);
+    dom.SetOutNods ("wood_lewis",/*NNod*/1,/*IDs*/34);
+
+    // solver
+    FEM::Solver sol(dom);
+    sol.CteTg  = true;
+    sol.Scheme = FEM::Solver::FE_t;
+    sol.nSS    = 10;
+    
+    // stage # 1 -----------------------------------------------------------
+    Dict   bcs;
+    bcs.Set(-10, "flux", 0.0)
+       .Set(-20, "flux", 0.0)
+       .Set(-30, "flux", 0.0)
+       .Set(-40, "H",    1.0);
+    dom.SetBCs (bcs);
+    sol.Solve  (/*NDiv*/100, /*tf*/30.0, /*Transient*/true);
+
+    //////////////////////////////////////////////////////////////////////////////////////// Output ////
+
+    dom.PrintResults (cout, Util::_12_6);
+
+    //////////////////////////////////////////////////////////////////////////////////////// Check /////
+
+    // correct solution
+    Table nod_sol;
+    //nod_sol.Set("H", dom.Nods.Size(),
+
+    Table ele_sol;
+    //ele_sol.Set("gx gy", dom.Eles.Size(),
+
+    // error tolerance
+    SDPair nod_tol, ele_tol;
+    nod_tol.Set("H", 1.0e-12);
+    ele_tol.Set("gx gy", 1.0e-11, 1.0e-11);
+
+    // return error flag
+    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+}
+MECHSYS_CATCH
