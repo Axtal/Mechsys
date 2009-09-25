@@ -43,15 +43,17 @@ class Solver
 {
 public:
     // enum
-    enum Scheme_t { FE_t, ME_t }; ///< Integration scheme
+    enum Scheme_t  { FE_t, ME_t };     ///< Steady time integration scheme
+    enum TScheme_t { SS11_t, SS22_t }; ///< Transient time integration scheme
 
     // Constructor
     Solver (Domain const & Dom);
 
     // Methods
     void Solve         (size_t NDiv=1);
+    void TransSolve    (double tf, double dt, double dtOut);
     void AssembleK     ();
-    void AssembleKandM ();
+    void AssembleKandM (double dt);
     void TgIncs        (double dT, Vec_t & dU, Vec_t & dF);
 
     // Data
@@ -63,26 +65,30 @@ public:
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
     Sparse::Triplet<double,int> M11,M12,M21,M22; ///< Mass matrices
-    Sparse::Matrix <double,int> k11;             ///< Augmented K11 in compressed-column format
-    Sparse::Matrix <double,int> m11;             ///< Augmented M11 in compressed-column format
+    Sparse::Triplet<double,int> A11;             ///< M11 + Theta*dt*K11
+    Sparse::Matrix <double,int> K11mat;          ///< Augmented K11 in compressed-column format
+    Sparse::Matrix <double,int> A11mat;          ///< Augmented A11 in compressed-column format
 
     // Vectors
     Vec_t U, F, F_int, W; // U, F, F_int, and Workspace
+    Vec_t U0, F0, V;      // Transient: U0, F0, and V
 
     // Constants for integration
-    Scheme_t Scheme; ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
-    size_t   nSS;    ///< FE: number of substeps
-    double   STOL;   ///< ME:
-    double   dTini;  ///< ME:
-    double   mMin;   ///< ME:
-    double   mMax;   ///< ME:
-    size_t   maxSS;  ///< ME:
-    bool     CteTg;  ///< Constant tangent matrices (linear problems) => K and M will be calculated once
+    Scheme_t  Scheme;  ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
+    size_t    nSS;     ///< FE: number of substeps
+    double    STOL;    ///< ME:
+    double    dTini;   ///< ME:
+    double    mMin;    ///< ME:
+    double    mMax;    ///< ME:
+    size_t    maxSS;   ///< ME:
+    bool      CteTg;   ///< Constant tangent matrices (linear problems) => K and M will be calculated once
+    TScheme_t TScheme; ///< Transient scheme
+    double    Theta;   ///< Transient scheme constant
 
 private:
-    void _initialize (bool Transient=false); ///< Initialize global matrices and vectors
-    void _FE_update  (double tf);            ///< (Forward-Euler) Update Time and elements to tf
-    void _ME_update  (double tf);            ///< (Modified-Euler) Update Time and elements to tf
+    void _initialize   (bool Transient=false); ///< Initialize global matrices and vectors
+    void _FE_update    (double tf);            ///< (Forward-Euler) Update Time and elements to tf
+    void _ME_update    (double tf);            ///< (Modified-Euler) Update Time and elements to tf
 };
 
 
@@ -90,16 +96,18 @@ private:
 
 
 inline Solver::Solver (Domain const & TheDom)
-    : Dom    (TheDom),
-      Time   (0.0),
-      Scheme (ME_t),
-      nSS    (1),
-      STOL   (1.0e-5),
-      dTini  (1.0),
-      mMin   (0.1),
-      mMax   (10.0),
-      maxSS  (2000),
-      CteTg  (false)
+    : Dom     (TheDom),
+      Time    (0.0),
+      Scheme  (ME_t),
+      nSS     (1),
+      STOL    (1.0e-5),
+      dTini   (1.0),
+      mMin    (0.1),
+      mMax    (10.0),
+      maxSS   (2000),
+      CteTg   (false),
+      TScheme (SS11_t),
+      Theta   (2./3.)
 {
 }
 
@@ -130,6 +138,7 @@ inline void Solver::Solve (size_t NDiv)
         // update Time and elements to tout
              if (Scheme==FE_t) _FE_update (tout);
         else if (Scheme==ME_t) _ME_update (tout);
+        else throw new Fatal("Solver::Solve: Time integration scheme invalid");
 
         // update nodes to tout
         for (size_t i=0; i<Dom.Nods.Size(); ++i)
@@ -153,6 +162,119 @@ inline void Solver::Solve (size_t NDiv)
         // next tout
         tout = Time + dt;
     }
+}
+
+inline void Solver::TransSolve (double tf, double dt, double dtOut)
+{
+    // initialize global matrices and vectors
+    _initialize (/*Transient*/true);
+
+    // residual
+    Vec_t R(F-F_int);
+    double norm_R = Norm(R);
+    double tol_R  = 1.0e-9;
+
+    // output initial state
+    std::cout << "\n[1;37m--- Stage solution --------- (" << (Scheme==FE_t?"FE":"ME") << ") --------------------------------------------\n";
+    std::cout << Util::_6_3 << "Time" <<                                         Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_6_3 <<  Time  << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R   << "[0m\n";
+    Dom.OutResults (Time);
+
+    // auxiliar variables
+    Vec_t F1(NEQ), U2(NEQ), G10(NEQ), G1(NEQ), dU(NEQ);
+    set_to_zero (F1);
+    set_to_zero (U2);
+
+    // build U2 and F1
+    for (size_t i=0; i<Dom.Nods.Size(); ++i)
+    {
+        for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+        {
+            long eq = Dom.Nods[i]->EQ[j];
+            if (Dom.Nods[i]->pU[j]) U2(eq) = U0(eq) + Dom.Nods[i]->DU[j];
+            else                    F1(eq) = F0(eq) + Dom.Nods[i]->DF[j];
+        }
+    }
+
+    // initialize U
+    //for (size_t i=0; i<pDOFs.Size(); ++i) U(pDOFs[i]) = U2(pDOFs[i]);
+
+    // initialize G10
+    set_to_zero (G10);
+
+    // solve
+    double t0   = Time;       // current time
+    double tout = t0 + dtOut; // time for output
+    while (Time<tf)
+    {
+        // update elements
+        if (TScheme==SS11_t)
+        {
+            // assemble K, M and A
+            AssembleKandM (dt);
+
+            // calc G1 = F1 - K12*U2
+            G1 = F1;
+            for (int k=0; k<K12.Top(); ++k) G1(K12.Ai(k)) -= K12.Ax(k) * U2(K12.Aj(k));
+
+            // calc W = G1bar - K11*U
+            W = G10 + Theta*(G1 - G10);
+            for (int k=0; k<K11.Top(); ++k) W(K11.Ai(k)) -= K11.Ax(k) * U(K11.Aj(k));
+
+            //Vec_t tmp(G1-G10);
+            //std::cout << "G1-G10  = \n" << PrintVector(tmp);
+
+            // calc V and U
+            UMFPACK::Solve (A11mat, W, V); // inv(A11mat)*W = V
+            for (size_t i=0; i<pDOFs.Size(); ++i) V(pDOFs[i]) = 0.0;
+            dU = dt*V;
+            U += dU;
+            for (size_t i=0; i<pDOFs.Size(); ++i) U(pDOFs[i]) = U2(pDOFs[i]);
+            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+
+            // calc F
+            F = F1;
+            for (int k=0; k<M21.Top(); ++k) F(M21.Ai(k)) += M21.Ax(k) * V(M21.Aj(k)); // F2 += M21 * V1
+            for (int k=0; k<K21.Top(); ++k) F(K21.Ai(k)) += K21.Ax(k) * U(K21.Aj(k)); // F2 += K21 * U1
+            for (int k=0; k<K22.Top(); ++k) F(K22.Ai(k)) += K22.Ax(k) * U(K22.Aj(k)); // F2 += K22 * U2
+            //std::cout << "F     = \n" << PrintVector(F);
+            
+            // update G10
+            G10 = G1;
+        }
+        else throw new Fatal("Solver::TransSolve: Time integration scheme invalid");
+
+        // update nodes to tout
+        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        {
+            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            {
+                long eq = Dom.Nods[i]->EQ[j];
+                Dom.Nods[i]->U[j] = U(eq);
+                Dom.Nods[i]->F[j] = F(eq);
+            }
+        }
+
+        // output
+        if (Time>=tout)
+        {
+            // residual
+            R      = F - F_int;
+            norm_R = Norm(R);
+
+            // output
+            std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
+            Dom.OutResults (Time);
+            tout += dtOut;
+        }
+
+        // next time
+        Time += dt;
+    }
+
+    // last output
+    std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
+    Dom.OutResults (Time);
 }
 
 inline void Solver::AssembleK ()
@@ -179,23 +301,24 @@ inline void Solver::AssembleK ()
             }
         }
     }
-    // augment K11 and set k11
+    // augment K11 and set K11mat
     for (size_t i=0; i<pDOFs.Size(); ++i) K11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
-    k11.Set (K11);
-    //Mat_t D11;  k11.GetDense (D11);
+    K11mat.Set (K11);
+    //Mat_t D11;  K11mat.GetDense (D11);
     //std::cout << "K11 =\n" << PrintMatrix(D11);
 }
 
-inline void Solver::AssembleKandM ()
+inline void Solver::AssembleKandM (double dt)
 {
     K11.ResetTop(); // reset top (position to insert new values) => clear triplet
     K12.ResetTop();
     K21.ResetTop();
     K22.ResetTop();
-    M11.ResetTop();
+    M11.ResetTop(); // reset top (position to insert new values) => clear triplet
     M12.ResetTop();
     M21.ResetTop();
     M22.ResetTop();
+    A11.ResetTop(); // reset top (position to insert new values) => clear triplet
     for (size_t k=0; k<Dom.Eles.Size(); ++k)
     {
         Mat_t         K, M; // matrices
@@ -208,18 +331,16 @@ inline void Solver::AssembleKandM ()
         {
             for (size_t j=0; j<loc.Size(); ++j)
             {
-                     if (!pre[i] && !pre[j]) { K11.PushEntry (loc[i], loc[j], K(i,j));  M11.PushEntry (loc[i], loc[j], M(i,j)); }
+                     if (!pre[i] && !pre[j]) { K11.PushEntry (loc[i], loc[j], K(i,j));  M11.PushEntry (loc[i], loc[j], M(i,j));  A11.PushEntry (loc[i], loc[j], M(i,j)+Theta*dt*K(i,j)); }
                 else if (!pre[i] &&  pre[j]) { K12.PushEntry (loc[i], loc[j], K(i,j));  M12.PushEntry (loc[i], loc[j], M(i,j)); }
                 else if ( pre[i] && !pre[j]) { K21.PushEntry (loc[i], loc[j], K(i,j));  M21.PushEntry (loc[i], loc[j], M(i,j)); }
                 else if ( pre[i] &&  pre[j]) { K22.PushEntry (loc[i], loc[j], K(i,j));  M22.PushEntry (loc[i], loc[j], M(i,j)); }
             }
         }
     }
-    // augment M11 and set m11
-    for (size_t i=0; i<pDOFs.Size(); ++i) M11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
-    m11.Set (M11);
-    //Mat_t D11;  m11.GetDense (D11);
-    //std::cout << "M11 =\n" << PrintMatrix(D11);
+    // augment A11 and set A11mat
+    for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
+    A11mat.Set (A11);
 }
 
 inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
@@ -250,7 +371,7 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     for (int k=0; k<K12.Top(); ++k) W(K12.Ai(k)) -= K12.Ax(k) * W(K12.Aj(k)); // W1 -= K12 * dU2
 
     // solve for dU1 (and dU2)
-    UMFPACK::Solve (k11, W, dU); // inv(k11)*W = dU
+    UMFPACK::Solve (K11mat, W, dU); // inv(K11mat)*W = dU
 
     // calculate dF2
     for (int k=0; k<K21.Top(); ++k) dF(K21.Ai(k)) += K21.Ax(k) * dU(K21.Aj(k)); // dF2 += K21 * dU1
@@ -299,10 +420,11 @@ inline void Solver::_initialize (bool Transient)
     if (Transient)
     {
         K11.AllocSpace (NEQ,NEQ,K11_size);
-        M11.AllocSpace (NEQ,NEQ,K11_size+pDOFs.Size()); // augmented
+        M11.AllocSpace (NEQ,NEQ,K11_size);
         M12.AllocSpace (NEQ,NEQ,K12_size);
         M21.AllocSpace (NEQ,NEQ,K21_size);
         M22.AllocSpace (NEQ,NEQ,K22_size);
+        A11.AllocSpace (NEQ,NEQ,K11_size+pDOFs.Size()); // augmented
     }
     else
     {
@@ -323,6 +445,17 @@ inline void Solver::_initialize (bool Transient)
             U(eq)   = Dom.Nods[i]->U [j];
             F(eq)   = Dom.Nods[i]->F [j];
         }
+    }
+
+    // build V, U0 and F0
+    if (Transient)
+    {
+        V .change_dim (NEQ);
+        U0.change_dim (NEQ);
+        F0.change_dim (NEQ);
+        set_to_zero   (V);
+        U0 = U;
+        F0 = F;
     }
 
     // build F_int

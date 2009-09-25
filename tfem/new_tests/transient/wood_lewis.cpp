@@ -40,6 +40,11 @@ using FEM::GEOM;
 
 int main(int argc, char **argv) try
 {
+    double theta = 0.5;
+    double dt    = 2.0;
+    if (argc>1) theta = atof(argv[1]);
+    if (argc>2) dt    = atof(argv[2]);
+
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
     double L  = 4.0;
@@ -78,16 +83,14 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    sol.CteTg  = true;
-    sol.Scheme = FEM::Solver::FE_t;
-    sol.nSS    = 10;
+    sol.Theta = theta;
     
     // stage # 1 -----------------------------------------------------------
     Dict   bcs;
     bcs.Set(-30, "flux", 0.0)
        .Set(-40, "H",    1.0);
     dom.SetBCs (bcs);
-    sol.TransSolve (/*tf*/30.0, /*dt*/2.0, /*dtOut*/2.0);
+    sol.TransSolve (/*tf*/30.0, /*dt*/dt, /*dtOut*/2.0);
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
