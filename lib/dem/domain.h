@@ -72,6 +72,7 @@ public:
     void AddTetra    (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddRice     (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddCube     (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddPlane    (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
 
     // Methods
     void Initialize (double dt);                                   ///< Set the particles to a initial state and asign the possible insteractions
@@ -176,7 +177,7 @@ inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
                 F[j].Push(Mesh::NVertsToFace[nverts][j][k]);
             }
         }
-        Erotion(V,F,R);
+        Erosion(V,F,R);
 
         // add particle
         Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
@@ -278,7 +279,7 @@ inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho,bool Ero
         }
     }
     VC.reset_edges();
-    if (Erode) Erotion(V,F,R);
+    if (Erode) Erosion(V,F,R);
 
     // add particle
     Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
@@ -434,6 +435,49 @@ inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, d
     delete Axis;
 }
 
+inline void Domain::AddPlane (const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    Array<Vec3_t> V(4);
+    double l = L/2.0;
+    V[0] = -l, -l, 0.0;
+    V[1] =  l, -l, 0.0;
+    V[2] =  l,  l, 0.0;
+    V[3] = -l,  l, 0.0;
+
+    // edges
+    Array<Array <int> > E(4);
+    for (size_t i=0; i<4; ++i) E[i].Resize(2);
+    E[ 0] = 0, 1;
+    E[ 1] = 1, 2;
+    E[ 2] = 2, 3;
+    E[ 3] = 3, 0;
+
+    // faces
+    Array<Array <int> > F(1);
+    F[0].Resize(4);
+    F[0] = 0, 3, 2, 1;
+
+    if (Axis==NULL)
+    {
+        Angle   = 0.;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
+    delete Axis;
+}
 // Methods
 
 inline void Domain::Initialize (double dt)
