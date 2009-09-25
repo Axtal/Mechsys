@@ -74,7 +74,7 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(/*NDim*/2, prps, mdls, inis);
     dom.SetMesh    (mesh);
-    dom.SetOutNods ("wood_lewis",/*NNod*/1,/*IDs*/34);
+    dom.SetOutNods ("wood_lewis",/*NNod*/4,/*IDs*/0,10,24,34);
 
     // solver
     FEM::Solver sol(dom);
@@ -84,16 +84,10 @@ int main(int argc, char **argv) try
     
     // stage # 1 -----------------------------------------------------------
     Dict   bcs;
-    bcs.Set(-10, "flux", 0.0)
-       .Set(-20, "flux", 0.0)
-       .Set(-30, "flux", 0.0)
+    bcs.Set(-30, "flux", 0.0)
        .Set(-40, "H",    1.0);
     dom.SetBCs (bcs);
-    sol.Solve  (/*NDiv*/100, /*tf*/30.0, /*Transient*/true);
-
-    //////////////////////////////////////////////////////////////////////////////////////// Output ////
-
-    dom.PrintResults (cout, Util::_12_6);
+    sol.TransSolve (/*tf*/30.0, /*dt*/2.0, /*dtOut*/2.0);
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
