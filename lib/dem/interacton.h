@@ -39,7 +39,7 @@ public:
      Interacton (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
 
     // Methods
-    void CalcForce (); ///< Calculates the contact force between particles
+    void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
 
     // Data
     double        Kn;   ///< Normal stiffness
@@ -57,7 +57,7 @@ public:
 
 private:
     template<typename FeatureA_T, typename FeatureB_T>
-    void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap);
+    void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt);
 };
 
 
@@ -65,23 +65,23 @@ private:
 
 
 inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
-    : P1(Pt1), P2(Pt2), Kn(1000.0), Epot(0.0)
+    : P1(Pt1), P2(Pt2), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), Epot(0.0)
 {
 }
 
-inline void Interacton::CalcForce ()
+inline void Interacton::CalcForce (double dt)
 {
     Epot = 0.0;
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
     {
-        _update_disp_calc_force (P1->Edges,P2->Edges,Fdee);
-        _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf);
-        _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv);
+        _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,dt);
+        _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,dt);
+        _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,dt);
     }
 }
 
 template<typename FeatureA_T, typename FeatureB_T>
-inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap)
+inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt)
 {
     // update
     for (size_t i=0; i<A.Size(); ++i)
@@ -95,12 +95,29 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
         {
             // update force
             Vec3_t n = (xf-xi)/dist;
+            Vec3_t x = xi+n*((P1->R*P1->R-P2->R*P2->R+dist*dist)/(2*dist));
+            Vec3_t t1,t2,x1,x2;
+            Rotation(P1->w,P1->Q,t1);
+            Rotation(P2->w,P2->Q,t2);
+            x1 = x - P1->x;
+            x2 = x - P2->x;
+            Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
+            Vec3_t vt = vrel - dot(n,vrel)*n;
+            pair<int,int> p;
+            p = make_pair(i,j);
+            FMap[p] += vt*dt;
+            FMap[p] -= dot(FMap[p],n)*n;
+            Vec3_t tan = FMap[p]/norm(FMap[p]);
             Vec3_t F = Kn*delta*n;
+            if (norm(FMap[p])>Mu*norm(F)/Kt)
+            {
+                FMap[p] = Mu*norm(F)/Kt*tan;
+            }
+            F += Kt*FMap[p]+Gn*dot(n,vrel)*n+Gt*vt;
             P1->F += -F;
             P2->F +=  F;
 
             // torque
-            Vec3_t x = xi+n*((P1->R*P1->R-P2->R*P2->R+dist*dist)/(2*dist));
             Vec3_t T, Tt, temp;
             temp = x - P1->x;
             Tt = cross (temp,F);
@@ -115,7 +132,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             P2->T += T;
 
             // potential energy
-            Epot += 0.5*Kn*delta*delta;
+            Epot += 0.5*Kn*delta*delta+0.5*Kt*dot(FMap[p],FMap[p]);
         }
     }
 }

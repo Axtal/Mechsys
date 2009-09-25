@@ -23,7 +23,8 @@ SET(EXES
   test_tetrahedra
   test_dynamics
   test_voro01
-  test_voro02)
+  test_voro02
+  test_voro03)
 
 SET(TESTS
   test_distances)

@@ -182,7 +182,7 @@ inline double Distance (Vec3_t const & V0, Vec3_t const & V1)
     return norm(V1-V0);
 }
 
-inline void Erotion(Array<Vec3_t> & V,Array<Array <int> > const & F,double R)
+inline void Erosion(Array<Vec3_t> & V,Array<Array <int> > const & F,double R)
 {
     Array<Face*> Faces;
     for (size_t i=0; i<F.Size(); i++)
@@ -261,6 +261,13 @@ inline void Erotion(Array<Vec3_t> & V,Array<Array <int> > const & F,double R)
         Inter(0) = X(6);
         Inter(1) = X(7);
         Inter(2) = X(8);
+        for (size_t j = 0;j < F.Size();j++) 
+        {
+            if (Faux.Find(j)==-1)
+            {
+                if (Distance(*Faces[j],Inter)<R) throw new Fatal("Error: A large value for spheroradius has been introduced. Please provide a smaller one");
+            }
+        }
         V[i] = (Inter);
     }
     for (size_t i = 0;i<F.Size();i++) delete Faces[i];

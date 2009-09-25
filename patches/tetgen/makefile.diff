@@ -2,7 +2,10 @@
 < CXXFLAGS = -g
 ---
 > CXXFLAGS = -O2
-61c61
+55a56,57
+> all: tetlib
+> 
+61c63
 < 	ar r libtet.a tetgen.o predicates.o
 ---
 > 	ar r libtetgen.a tetgen.o predicates.o
