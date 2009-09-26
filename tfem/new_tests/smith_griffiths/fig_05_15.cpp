@@ -74,7 +74,7 @@ int main(int argc, char **argv) try
     mesh.SetBryTag  ( 5, 1, -20);
     mesh.SetBryTag  ( 5, 2, -10);
     mesh.GenO2Verts ();
-    mesh.WriteMPY   ("fig515",/*OnlyMesh*/false);
+    mesh.WriteMPY   ("fig_05_15",/*OnlyMesh*/false);
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

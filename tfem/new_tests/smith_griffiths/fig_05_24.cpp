@@ -146,7 +146,7 @@ int main(int argc, char **argv) try
     mesh.SetBryTag  (5, 0, -10);
     mesh.SetBryTag  (5, 4, -30);
 
-    mesh.WriteVTU   ("fig524");
+    mesh.WriteVTU   ("fig_05_24");
     //cout << mesh << endl;
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
