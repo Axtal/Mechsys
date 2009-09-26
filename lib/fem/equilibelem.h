@@ -40,17 +40,20 @@ public:
                  Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);       ///< If setting body forces, IdxEdgeOrFace is ignored
-    void CalcK       (Mat_t & K)                                const; ///< Stiffness matrix
-	void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)     const; ///< Update state at IPs
-    void GetState    (SDPair & KeysVals, int IdxIP=-1)          const; ///< IdxIP<0 => At centroid
-    void GetState    (Array<SDPair> & Results)                  const; ///< At each integration point (IP)
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);   ///< If setting body forces, IdxEdgeOrFace is ignored
+    void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
+    void CalcM       (Mat_t & M)                            const; ///< Mass matrix
+    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
+    void GetState    (SDPair & KeysVals, int IdxIP=-1)      const; ///< IdxIP<0 => At centroid
+    void GetState    (Array<SDPair> & Results)              const; ///< At each integration point (IP)
 
     // Internal methods
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
+    void CalcN (Mat_t const & C, IntegPoint const & IP, Mat_t & N, double & detJ, double & Coef) const; ///< Shape functions matrix
 
     // Constants
-    double h; ///< Thickness of the element
+    double h;   ///< Thickness of the element
+    double rho; ///< Density
 };
 
 
@@ -64,7 +67,8 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     if (GE==NULL) throw new Fatal("EquilibElem::EquilibElem: GE (geometry element) must be defined");
 
     // parameters/properties
-    h = (Prp.HasKey("h") ? Prp("h") : 1.0);
+    h   = (Prp.HasKey("h")   ? Prp("h")   : 1.0);
+    rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
 
     // allocate and initialize state at each IP
     for (size_t i=0; i<GE->NIP; ++i)
@@ -89,7 +93,7 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
                 "ex", "ey", "ez", "exy"; // strains at centroid
 
         // initialize DOFs
-        for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy", "fx fy");
+        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy", "fx fy");
     }
     else // 3D
     {
@@ -103,7 +107,7 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
                 "ex", "ey", "ez", "exy", "eyz", "ezx"; // strains at centroid
 
         // initialize DOFs
-        for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
+        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
     }
 }
 
@@ -121,7 +125,7 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                bx = (has_cbx ? BCs("cbx") : bx );
         Mat_t C;
         CoordMatrix (C);
-        //Vec_t Fb(Con.Size()*NDim); set_to_zero(Fb);
+        //Vec_t Fb(GE->NN*NDim); set_to_zero(Fb);
         for (size_t i=0; i<GE->NIP; ++i)
         {
             // geometric data
@@ -239,7 +243,7 @@ inline void EquilibElem::CalcK (Mat_t & K) const
 {
     double detJ, coef;
     Mat_t C, D, B;
-    int nrows = Con.Size()*NDim; // number of rows in local K matrix
+    int nrows = GE->NN*NDim; // number of rows in local K matrix
     K.change_dim (nrows,nrows);
     set_to_zero  (K);
     CoordMatrix  (C);
@@ -252,6 +256,23 @@ inline void EquilibElem::CalcK (Mat_t & K) const
     }
     //std::cout << "D = \n" << PrintMatrix(D);
     //std::cout << "K = \n" << PrintMatrix(K);
+}
+
+inline void EquilibElem::CalcM (Mat_t & M) const
+{
+    double detJ, coef;
+    Mat_t  C, N;
+    int nrows = GE->NN*NDim; // number of rows in local M matrix
+    M.change_dim (nrows,nrows);
+    set_to_zero  (M);
+    CoordMatrix  (C);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        CalcN (C, GE->IPs[i], N, detJ, coef);
+        Mat_t NtN(trans(N)*N);
+        M += (rho*coef) * (NtN);
+    }
+    //std::cout << "M = \n" << PrintMatrix(M);
 }
 
 inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const
@@ -275,7 +296,7 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
     Coef = h*detJ*IP.w;
 
     // B matrix
-    int nrows = Con.Size()*NDim; // number of rows in local K matrix
+    int nrows = GE->NN*NDim; // number of rows in local K matrix
     int ncomp = 2*NDim;          // number of stress/strain components
     B.change_dim (ncomp,nrows);
     set_to_zero  (B);
@@ -292,7 +313,7 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
             Coef *= radius;
 
             // B matrix
-            for (size_t i=0; i<Con.Size(); ++i)
+            for (size_t i=0; i<GE->NN; ++i)
             {
                 B(0,0+i*NDim) = dNdX(0,i);
                 B(1,1+i*NDim) = dNdX(1,i);
@@ -304,7 +325,7 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
         }
         else // pse_t, psa_t
         {
-            for (size_t i=0; i<Con.Size(); ++i)
+            for (size_t i=0; i<GE->NN; ++i)
             {
                 B(0,0+i*NDim) = dNdX(0,i);
                 B(1,1+i*NDim) = dNdX(1,i);
@@ -315,7 +336,7 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
     }
     else // 3D
     {
-        for (size_t i=0; i<Con.Size(); ++i)
+        for (size_t i=0; i<GE->NN; ++i)
         {
             B(0,0+i*NDim) = dNdX(0,i);
             B(1,1+i*NDim) = dNdX(1,i);
@@ -327,6 +348,34 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
     }
 }
 
+inline void EquilibElem::CalcN (Mat_t const & C, IntegPoint const & IP, Mat_t & N, double & detJ, double & Coef) const
+{
+    // deriv of shape func w.r.t natural coordinates
+    GE->Shape  (IP.r, IP.s, IP.t);
+    GE->Derivs (IP.r, IP.s, IP.t);
+
+    // Jacobian and its determinant
+    Mat_t J(GE->dNdR * C); // J = dNdR * C
+    detJ = Det(J);
+
+    // coefficient used during integration
+    Coef = h*detJ*IP.w;
+
+    // N matrix
+    int nrows = GE->NN*NDim; // number of rows in local K matrix
+    N.change_dim (NDim,nrows);
+    set_to_zero  (N);
+    if (GTy==axs_t)
+    {
+        double radius = 0.0; // radius=x at this IP
+        for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
+        Coef *= radius; // correct coef for axisymmetric problems
+    }
+    for (int    i=0; i<NDim;   ++i)
+    for (size_t j=0; j<GE->NN; ++j)
+        N(i,i+j*NDim) = GE->N(j);
+}
+
 inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 {
     // get location array
@@ -334,7 +383,7 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     GetLoc (loc);
 
     // element nodal displacements
-    int nrows = Con.Size()*NDim; // number of rows in local K matrix
+    int nrows = GE->NN*NDim; // number of rows in local K matrix
     Vec_t dUe(nrows);
     for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
 

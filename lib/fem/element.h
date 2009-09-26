@@ -62,8 +62,8 @@ public:
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs) {}
     virtual void ClrBCs       ()                                         {}
     virtual void InitFint     (Vec_t & F_int)                            const { for (size_t i=0; i<F_int.size(); ++i) F_int(i) = 0.0; }
-    virtual void CalcK        (Mat_t & K)                                const {}
-    virtual void CalcM        (Mat_t & M)                                const {}
+    virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
+    virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }
     virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)     const {}
     virtual void GetState     (SDPair & KeysVals, int IdxIP=-1)          const {} ///< IdxIP<0 => At the centroid
     virtual void GetState     (Array<SDPair> & Results)                  const {} ///< At each integration point (IP)
