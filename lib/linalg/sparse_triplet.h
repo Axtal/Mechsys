@@ -101,6 +101,23 @@ private:
 }; // class Triplet
 
 
+/** Add multiplication: Y += M*X */
+template<typename Value_T, typename Index_T>
+void AddMult (Sparse::Triplet<Value_T,Index_T> const & M, Vec_t const & X, Vec_t & Y)
+{
+    for (int k=0; k<M.Top(); ++k)
+        Y(M.Ai(k)) += M.Ax(k) * X(M.Aj(k)); // Y += M*X
+}
+
+/** Subtract multiplication: Y -= M*X */
+template<typename Value_T, typename Index_T>
+void SubMult (Sparse::Triplet<Value_T,Index_T> const & M, Vec_t const & X, Vec_t & Y)
+{
+    for (int k=0; k<M.Top(); ++k)
+        Y(M.Ai(k)) -= M.Ax(k) * X(M.Aj(k)); // Y -= M*X
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 

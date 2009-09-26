@@ -41,7 +41,9 @@ namespace FEM
 class Domain
 {
 public:
-    typedef std::map<int,Model*> Models_t;
+    typedef void (*pCalcF) (double t, double & fx, double & fy, double & fz); ///< Callback function
+    typedef std::map<int,pCalcF> FDatabase_t;                                 ///< Map tag to F function pointer
+    typedef std::map<int,Model*> Models_t;                                    ///< Map tag to model pointer
 
     // Constructor
     Domain (int          NDim,  ///< Space dimension
@@ -76,6 +78,9 @@ public:
     Array<std::ofstream*> FilNods; ///< Files with results at selected nodes (OutNods)
     Array<std::ofstream*> FilEles; ///< Files with results at selected elements (OutEles)
     Mesh::Generic const * Msh;     ///< The mesh
+    FDatabase_t           FFuncs;  ///< Database of pointers to F functions
+    Array<Node*>          NodsF;   ///< Nodes with F specified through callback function
+    Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to FNodes
 };
 
 
@@ -191,7 +196,17 @@ inline Domain & Domain::SetBCs (Dict const & BCs)
         if (tag<0)
         {
             size_t nid = Msh->TgdVerts[i]->ID;
-            if (BCs.HasKey(tag)) Nods[nid]->SetBCs (BCs(tag));
+            if (BCs.HasKey(tag))
+            {
+                if (BCs(tag).HasKey("ffunc")) // callback specified
+                {
+                    NodsF.Push (Nods[nid]);
+                    FDatabase_t::const_iterator p = FFuncs.find(tag);
+                    if (p!=FFuncs.end()) CalcF.Push (p->second);
+                    else throw new Fatal("Domain::SetBCs: Callback function with tag=%d was not found in FFuncs database",tag);
+                }
+                else Nods[nid]->SetBCs (BCs(tag));
+            }
             else
             {
                 //std::cout << "Domain::SetBCs: BCs dictionary does not have tag=" << tag << " for node\n";
@@ -237,6 +252,8 @@ inline Domain & Domain::ClrBCs ()
 {
     for (size_t i=0; i<Nods.Size(); ++i) Nods[i]->ClrBCs ();
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
+    NodsF.Resize (0);
+    CalcF.Resize (0);
     return (*this);
 }
 

@@ -21,7 +21,8 @@ SET(TESTS
     fig_05_11
     fig_05_15
     fig_05_17
-    fig_05_24)
+    fig_05_24
+    fig_11_04)
 
 IF(FEM_FOUND)
 	FOREACH(var ${TESTS})

@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom active psa nip", PROB("Equilib"), GEOM("Tri3"), TRUE, TRUE, 1.0);
+    prps.Set(-1, "prob geom active psa nip", PROB("Equilib"), GEOM("Tri3"), TRUE, TRUE, 3.0);
 
     // models
     Dict mdls;
@@ -86,6 +86,13 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(/*NDim*/2, prps, mdls, inis);
     dom.SetMesh (mesh);
+
+    /*
+    Mat_t M;
+    dom.Eles[0]->CalcM(M);
+    M *= 12./0.125;
+    cout << PrintMatrix(M);
+    */
 
     // solver
     FEM::Solver sol(dom);
@@ -133,7 +140,7 @@ int main(int argc, char **argv) try
     // error tolerance
     SDPair nod_tol, ele_tol;
     nod_tol.Set("ux uy", 1.0e-15, 1.0e-15);
-    ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-15,1.0e-15,1.0e-15,1.0e-15, 1.0e-15,1.0e-15,1.0e-15,1.0e-15);
+    ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-15,1.0e-14,1.0e-15,1.0e-15, 1.0e-15,1.0e-15,1.0e-15,1.0e-15);
 
     // return error flag
     return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
