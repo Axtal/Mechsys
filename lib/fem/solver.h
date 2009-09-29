@@ -45,7 +45,7 @@ public:
     // enum
     enum Scheme_t  { FE_t, ME_t };         ///< Steady time integration scheme
     enum TScheme_t { SS11_t };             ///< Transient time integration scheme
-    enum DScheme_t { SS22_t };             ///< Dynamic time integration scheme
+    enum DScheme_t { SS22_t, GN22_t };     ///< Dynamic time integration scheme
     enum Damping_t { None_t, Rayleigh_t }; ///< Damping type
 
     // Constructor
@@ -268,7 +268,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
     Dom.OutResults (Time);
 
     // auxiliar variables
-    Vec_t Ubar(NEQ), A(NEQ), dU(NEQ);
+    Vec_t Ubar(NEQ), A(NEQ), dU(NEQ), Us(NEQ), Vs(NEQ);
+    set_to_zero (A);
 
     // solve
     double t0   = Time;       // current time
@@ -291,6 +292,14 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
                 for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
             }
             else throw new Fatal("Solver::DynSolve: Damping not implemented yet");
+        }
+        else if (DScheme==GN22_t)
+        {
+            double bet1 = 0.5;
+            double bet2 = 0.5;
+            Us = U + dt*V + (0.5*(1.0-bet2)*dt*dt)*A;
+            Vs = V + (1.0-bet1)*dt*A;
+            cout << PrintVector(Us);
         }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
