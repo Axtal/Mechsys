@@ -20,6 +20,7 @@ SET(TESTS
   ex14
   ex15
   ex16
+  ex411
   ex42
   ex53
   ex622
