@@ -45,6 +45,7 @@ public:
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);   ///< IdxEdgeOrFace is ignored
     void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
+    void CalcM       (Mat_t & M)                            const; ///< Mass matrix
     void CalcT       (Mat_t & T, double & l)                const; ///< Transformation matrix
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
     void GetState    (SDPair & KeysVals, int none=-1)       const;
@@ -55,6 +56,7 @@ public:
     double E;     ///< Young modulus
     double A;     ///< Cross-sectional area
     double Izz;   ///< Inertia
+    double rho;   ///< Density
     double qnl;   ///< Normal load (left)
     double qnr;   ///< Normal load (right)
     bool   HasQn; ///< Has normal load ?
@@ -74,6 +76,7 @@ inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
     E   = Prp("E");
     A   = Prp("A");
     Izz = Prp("Izz");
+    rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
 
     // set UKeys in parent element
     if (NDim==2) { UKeys.Resize(3);  UKeys = "ux", "uy", "wz"; }
@@ -155,6 +158,29 @@ inline void Beam::CalcK (Mat_t & K) const
     // K matrix
     K.change_dim (6,6);
     K = trans(T)*Kl*T;
+}
+
+inline void Beam::CalcM (Mat_t & M) const
+{
+    // length and T matrix
+    double l;
+    Mat_t  T;
+    CalcT (T, l);
+
+    // local M
+    double ll = l*l;
+    double m  = rho*A*l/420.;
+    Mat_t Ml(6,6);
+    Ml = 140.*m ,    0.     ,   0.      ,   70.*m ,    0.     ,    0.      ,
+           0.   ,  156.*m   ,  22.*l*m  ,    0.   ,   54.*m   ,  -13.*l*m  ,
+           0.   ,   22.*l*m ,   4.*ll*m ,    0.   ,   13.*l*m ,   -3.*ll*m ,
+          70.*m ,    0.     ,   0.      ,  140.*m ,    0.     ,    0.      ,
+           0.   ,   54.*m   ,  13.*l*m  ,    0.   ,  156.*m   ,  -22.*l*m  ,
+           0.   ,  -13.*l*m ,  -3.*ll*m ,    0.   ,  -22.*l*m ,    4.*ll*m ;
+
+    // M matrix
+    M.change_dim (6,6);
+    M = trans(T)*Ml*T;
 }
 
 inline void Beam::CalcT (Mat_t & T, double & l) const
