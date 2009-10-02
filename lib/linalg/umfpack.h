@@ -27,6 +27,7 @@ extern "C" {
 
 // MechSys
 #include "linalg/matvec.h"
+#include "linalg/sparse_triplet.h"
 #include "linalg/sparse_matrix.h"
 #include "util/fatal.h"
 #include "util/util.h"
@@ -87,6 +88,9 @@ inline void Solve(Sparse::Matrix<double,int> const & A, Vec_t const & B, Vec_t &
 	info = umfpack_di_solve         (UMFPACK_A, A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), X.data, B.data, numeric, null, null); if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_solve failed. %s",ErrorMsg(info).CStr());
 	       umfpack_di_free_numeric  (&numeric);
 }
+// TODO: Check: It seems that the following is not necessary
+//       (A sparse matrix is automatically created from the Triplet)
+inline void Solve(Sparse::Triplet<double,int> const & A, Vec_t const & B, Vec_t & X) { Solve(Sparse::Matrix<double,int>(A), B, X); }
 
 }; // namespace UMFPACK
 

@@ -71,7 +71,6 @@ public:
     Sparse::Triplet<double,int> C11,C12,C21,C22; ///< Damping matrices
     Sparse::Triplet<double,int> M11,M12,M21,M22; ///< Mass matrices
     Sparse::Triplet<double,int> A11;             ///< A=K  or  A=C1*M+C2*K  or  A=C1*M+C2*C+C3*K
-    Sparse::Matrix <double,int> A11mat;          ///< Augmented A11 in compressed-column format
 
     // Vectors
     Vec_t U, F, F_int, W;  // U, F, F_int, and Workspace
@@ -95,8 +94,8 @@ public:
     double    DynTh1;  ///< Dynamic coefficient Theta 1
     double    DynTh2;  ///< Dynamic coefficient Theta 2
 
+    void Initialize (bool Transient=false); ///< Initialize global matrices and vectors
 private:
-    void _initialize (bool Transient=false); ///< Initialize global matrices and vectors
     void _FE_update  (double tf);            ///< (Forward-Euler) Update Time and elements to tf
     void _ME_update  (double tf);            ///< (Modified-Euler) Update Time and elements to tf
     void _calc_Fbar  (double t, Vec_t & Fb); ///< Calc Fbar = F1 - K12*U2
@@ -131,7 +130,7 @@ inline Solver::Solver (Domain const & TheDom)
 inline void Solver::Solve (size_t NDiv)
 {
     // initialize global matrices and vectors
-    _initialize ();
+    Initialize ();
 
     // residual
     Vec_t R(F-F_int);
@@ -184,7 +183,7 @@ inline void Solver::Solve (size_t NDiv)
 inline void Solver::TransSolve (double tf, double dt, double dtOut)
 {
     // initialize global matrices and vectors
-    _initialize (/*Transient*/true);
+    Initialize (/*Transient*/true);
 
     // residual
     Vec_t R(F-F_int);
@@ -211,7 +210,7 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut)
             AssembleKMA    (1.0, Theta*dt); // A = M + Theta*dt*K
             _calc_Fbar     (Time, W);       // W = Fbar = F1 - K12*U2
             SubMult        (K11, U, W);     // W -= K11*U
-            UMFPACK::Solve (A11mat, W, V);  // V = inv(A11mat)*W
+            UMFPACK::Solve (A11, W, V);     // V = inv(A11)*W
             dU = dt*V;
             U += dU;
             for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
@@ -254,7 +253,7 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut)
 inline void Solver::DynSolve (double tf, double dt, double dtOut)
 {
     // initialize global matrices and vectors
-    _initialize (/*Transient*/true);
+    Initialize (/*Transient*/true);
 
     // residual
     Vec_t R(F-F_int);
@@ -271,6 +270,23 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
     Vec_t Ubar(NEQ), A(NEQ), dU(NEQ), Us(NEQ), Vs(NEQ);
     set_to_zero (A);
 
+    Vec_t Unew(U), Anew(A), Vnew(V);
+
+            double bet1 = 0.5;
+            double bet2 = 0.5;
+            double coef = 2.0/(bet2*dt*dt);
+            size_t MaxIt = 5;
+
+    // compute initial acceleration
+    _calc_Fbar     (Time, W);   // W = Fbar = F1 - K12*U2
+    AssembleKMA    (0.0, 0.0);  // Get K, M and Amat==0
+    UMFPACK::Solve (M11, W, A); // A = inv(M)*W
+
+    cout << "W0   = " << PrintVector(W);
+    cout << "V0   = " << PrintVector(V);
+    cout << "A0   = " << PrintVector(A);
+    cout << "Fint = " << PrintVector(F_int);
+
     // solve
     double t0   = Time;       // current time
     double tout = t0 + dtOut; // time for output
@@ -285,7 +301,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
                 AssembleKMA     (1.0, 0.5*DynTh2*dt*dt); // A = M + 0.5*Th2*(dt*dt)*K
                 _calc_Fbar      (Time, W);               // W = Fbar = F1 - K12*U2
                 Sparse::SubMult (K11, Ubar, W);          // W -= K11*Ubar
-                UMFPACK::Solve  (A11mat, W, A);          // A = inv(A11mat)*W
+                UMFPACK::Solve  (A11, W, A);             // A = inv(A11)*W
                 dU = dt*V + (0.5*dt*dt)*A;
                 U += dU;
                 V += dt*A;
@@ -295,11 +311,52 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
         }
         else if (DScheme==GN22_t)
         {
-            double bet1 = 0.5;
-            double bet2 = 0.5;
-            Us = U + dt*V + (0.5*(1.0-bet2)*dt*dt)*A;
-            Vs = V + (1.0-bet1)*dt*A;
-            cout << PrintVector(Us);
+            // estimate next solution
+            Unew = U + dt*V + (0.5*(1.0-bet2)*dt*dt)*A;
+            cout << "Unew = " << PrintVector(Unew);
+
+            // Newton iterations for time step n+1
+            size_t it = 0;
+            while (it<MaxIt)
+            {
+                // W = Fext_(n+1)
+                _calc_Fbar (Time+dt, W); 
+
+                // Fint_(n+1)
+                dU = Unew - U;
+                for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+
+                for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
+
+                // acceleration and velocities at (n+1)
+                Us   = U + dt*V + (0.5*(1.0-bet2)*dt*dt)*A; // Ustar_(n)
+                Vs   = V + ((1.0-bet1)*dt)*A;               // Vstar_(n)
+                Anew = coef*(Unew - Us);                    // A_(n+1)
+                Vnew = Vs + (bet1*dt)*Anew;                 // V_(n+1)
+
+                // residual
+                W -= F_int;             // W = Fext - Fint
+                SubMult (M11, Anew, W); // W = Fext - Fint - M*Anew
+
+                for (size_t i=0; i<pDOFs.Size(); ++i) W(pDOFs[i]) = 0.0;
+
+                // Jacobian and displacements
+                AssembleKMA    (coef, 1.0);   // -A11 = coef*M + K
+                UMFPACK::Solve (A11, W, dU);  // dU = -inv(A11)*R
+
+                for (size_t i=0; i<pDOFs.Size(); ++i) dU(pDOFs[i]) = 0.0;
+
+                // update
+                Unew += dU;
+                it++;
+
+                cout << "--------------------------------------------------------------------------------------\n";
+                cout << "dU   = " << PrintVector(dU);
+                cout << "W    = " << PrintVector(W);
+                cout << "Anew = " << PrintVector(Anew);
+                cout << "Unew = " << PrintVector(Unew);
+                cout << "Fint = " << PrintVector(F_int);
+            }
         }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
@@ -309,7 +366,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
             for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
             {
                 long eq = Dom.Nods[i]->EQ[j];
-                Dom.Nods[i]->U[j] = U(eq);
+                Dom.Nods[i]->U[j] = Unew(eq);
                 Dom.Nods[i]->F[j] = F(eq);
             }
         }
@@ -360,9 +417,8 @@ inline void Solver::AssembleKA ()
             }
         }
     }
-    // augment A11 and set A11mat
+    // augment A11
     for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
-    A11mat.Set (A11);
 }
 
 inline void Solver::AssembleKMA (double C1, double C2)
@@ -396,9 +452,12 @@ inline void Solver::AssembleKMA (double C1, double C2)
             }
         }
     }
-    // augment A11 and set A11mat
-    for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
-    A11mat.Set (A11);
+    // augment M11 and A11
+    for (size_t i=0; i<pDOFs.Size(); ++i)
+    {
+        M11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
+        A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
+    }
 }
 
 inline void Solver::AssembleKCMA (double C1, double C2, double C3)
@@ -442,9 +501,8 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
             }
         }
     }
-    // augment A11 and set A11mat
+    // augment A11
     for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
-    A11mat.Set (A11);
 }
 
 inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
@@ -472,13 +530,13 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     }
 
     // calc dU and dF
-    Sparse::SubMult (K12, W, W);     // W1  -= K12*dU2
-    UMFPACK::Solve  (A11mat, W, dU); // dU   = inv(A11mat)*W
-    Sparse::AddMult (K21, dU, dF);   // dF2 += K21*dU1
-    Sparse::AddMult (K22, dU, dF);   // dF2 += K22*dU2
+    Sparse::SubMult (K12, W, W);   // W1  -= K12*dU2
+    UMFPACK::Solve  (A11, W, dU);  // dU   = inv(A11)*W
+    Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
+    Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
 }
 
-inline void Solver::_initialize (bool Transient)
+inline void Solver::Initialize (bool Transient)
 {
     // assign equation numbers and set pDOFs
     NEQ = 0;
@@ -521,7 +579,7 @@ inline void Solver::_initialize (bool Transient)
     if (Transient)
     {
         K11.AllocSpace (NEQ,NEQ,K11_size);
-        M11.AllocSpace (NEQ,NEQ,K11_size);
+        M11.AllocSpace (NEQ,NEQ,K11_size+pDOFs.Size());
         M12.AllocSpace (NEQ,NEQ,K12_size);
         M21.AllocSpace (NEQ,NEQ,K21_size);
         M22.AllocSpace (NEQ,NEQ,K22_size);
