@@ -30,49 +30,59 @@ namespace Util
 /** Number format via STL streams. */
 struct NumStream
 {
-	bool BoolAlpha;  ///< Format output as a boolean?
-	bool Integer;    ///< Format output as an integer?
-	bool Scientific; ///< Format output as a scientific number?
-	int  Width;      ///< Width of the output
-	int  Precision;  ///< Precision for floating point numbers
+    bool BoolAlpha;  ///< Format output as a boolean?
+    bool Integer;    ///< Format output as an integer?
+    bool Scientific; ///< Format output as a scientific number?
+    int  Width;      ///< Width of the output
+    int  Precision;  ///< Precision for floating point numbers
+    bool Reset;      ///< Reset ?
 };
 
-//                    bool  integ  scien   w   p
-NumStream _a     = {  true, false, false,  0,  0 }; ///< Boolean
-NumStream _3     = { false,  true, false,  3,  0 }; ///< Integer
-NumStream _4     = { false,  true, false,  4,  0 }; ///< Integer
-NumStream _6     = { false,  true, false,  6,  0 }; ///< Integer
-NumStream _8     = { false,  true, false,  8,  0 }; ///< Integer
-NumStream _3s    = { false, false,  true,  0,  3 }; ///< Scientific
-NumStream _6s    = { false, false,  true,  0,  6 }; ///< Scientific
-NumStream _8s    = { false, false,  true,  0,  8 }; ///< Scientific
-NumStream _15s   = { false, false,  true,  0, 15 }; ///< Scientific
-NumStream _6_2   = { false, false, false,  6,  3 }; ///< General
-NumStream _6_3   = { false, false, false,  6,  3 }; ///< General
-NumStream _6_4   = { false, false, false,  6,  4 }; ///< General
-NumStream _6_6   = { false, false, false,  6,  6 }; ///< General
-NumStream _8_0   = { false, false, false,  8,  0 }; ///< General
-NumStream _8_2   = { false, false, false,  8,  2 }; ///< General
-NumStream _8_3   = { false, false, false,  8,  3 }; ///< General
-NumStream _8_4   = { false, false, false,  8,  4 }; ///< General
-NumStream _8_6   = { false, false, false,  8,  6 }; ///< General
-NumStream _10_3  = { false, false, false, 10,  3 }; ///< General
-NumStream _10_4  = { false, false, false, 10,  4 }; ///< General
-NumStream _10_6  = { false, false, false, 10,  6 }; ///< General
-NumStream _12_4  = { false, false, false, 12,  4 }; ///< General
-NumStream _12_6  = { false, false, false, 12,  6 }; ///< General
-NumStream _13_6  = { false, false, false, 13,  6 }; ///< General
-NumStream _14_6  = { false, false, false, 14,  6 }; ///< General
-NumStream _15_6  = { false, false, false, 15,  6 }; ///< General
-NumStream _20_15 = { false, false, false, 20, 15 }; ///< General
+//                    bool  integ  scien   w   p  reset
+NumStream _a     = {  true, false, false,  0,  0, false }; ///< Boolean
+NumStream _3     = { false,  true, false,  3,  0, false }; ///< Integer
+NumStream _4     = { false,  true, false,  4,  0, false }; ///< Integer
+NumStream _6     = { false,  true, false,  6,  0, false }; ///< Integer
+NumStream _8     = { false,  true, false,  8,  0, false }; ///< Integer
+NumStream _3s    = { false, false,  true,  0,  3, false }; ///< Scientific
+NumStream _6s    = { false, false,  true,  0,  6, false }; ///< Scientific
+NumStream _8s    = { false, false,  true,  0,  8, false }; ///< Scientific
+NumStream _15s   = { false, false,  true,  0, 15, false }; ///< Scientific
+NumStream _6_2   = { false, false, false,  6,  3, false }; ///< General
+NumStream _6_3   = { false, false, false,  6,  3, false }; ///< General
+NumStream _6_4   = { false, false, false,  6,  4, false }; ///< General
+NumStream _6_6   = { false, false, false,  6,  6, false }; ///< General
+NumStream _8_0   = { false, false, false,  8,  0, false }; ///< General
+NumStream _8_2   = { false, false, false,  8,  2, false }; ///< General
+NumStream _8_3   = { false, false, false,  8,  3, false }; ///< General
+NumStream _8_4   = { false, false, false,  8,  4, false }; ///< General
+NumStream _8_6   = { false, false, false,  8,  6, false }; ///< General
+NumStream _10_3  = { false, false, false, 10,  3, false }; ///< General
+NumStream _10_4  = { false, false, false, 10,  4, false }; ///< General
+NumStream _10_6  = { false, false, false, 10,  6, false }; ///< General
+NumStream _12_4  = { false, false, false, 12,  4, false }; ///< General
+NumStream _12_6  = { false, false, false, 12,  6, false }; ///< General
+NumStream _13_6  = { false, false, false, 13,  6, false }; ///< General
+NumStream _14_6  = { false, false, false, 14,  6, false }; ///< General
+NumStream _15_6  = { false, false, false, 15,  6, false }; ///< General
+NumStream _20_15 = { false, false, false, 20, 15, false }; ///< General
+NumStream _reset = { false, false, false,  0,  0, true  }; ///< Reset
 
 /** Format the output. */
 std::ostream & operator<< (std::ostream & os, NumStream const & NS)
 {
-	     if (NS.BoolAlpha)  { os<<" "<<std::setw(6)<<std::boolalpha; return os; }
-	else if (NS.Integer)    { os<<" "<<std::setw(NS.Width); return os; }
-	else if (NS.Scientific) { os<<" "<<std::setw(NS.Precision+9)<<std::scientific<<std::setprecision(NS.Precision); return os; } // add 9
-	else                    { os<<" "<<std::setw(NS.Width+1)<<std::fixed<<std::setprecision(NS.Precision); return os; } // add 1 (for sign)
+    if (NS.Reset)
+    {
+        os << std::resetiosflags(std::ios_base::scientific) << std::resetiosflags(std::ios_base::fixed) << std::resetiosflags(std::ios_base::boolalpha);
+    }
+    else
+    {
+        if      (NS.BoolAlpha)  { os<<" "<<std::setw(6)<<std::boolalpha; }
+        else if (NS.Integer)    { os<<" "<<std::setw(NS.Width); }
+        else if (NS.Scientific) { os<<" "<<std::setw(NS.Precision+9)<<std::scientific<<std::setprecision(NS.Precision); } // add 9
+        else                    { os<<" "<<std::setw(NS.Width+1)<<std::fixed<<std::setprecision(NS.Precision); } // add 1 (for sign)
+    }
+    return os;
 }
 
 }; // namespace Util
