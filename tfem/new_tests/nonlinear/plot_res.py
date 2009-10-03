@@ -10,7 +10,7 @@ from data_handler import *
 #plot(-uy,-fy,'bo',lw=2)
 
 
-dat = read_table("owen_hinton.res")
+dat = read_table("owen_hinton_01.res")
 u    = array(dat['u'])
 fint = array(dat['fint'])
 fext = array(dat['fext'])

@@ -16,8 +16,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/*  Bhatti (2005): Example 1.4, p25  *
- *  ===============================  */
+/*  Owen & Hinton (1980): Example 3.11.3, p78  *
+ *  Finite Elements in Plasticity              *
+ *  =========================================  */
 
 // STL
 #include <iostream>
@@ -38,11 +39,30 @@ using FEM::GEOM;
 using Util::_6_3;
 using Util::_8s;
 
+struct DbgDat
+{
+    long eqx; // equation number for output
+    std::ofstream of;
+    ~DbgDat () { of.close (); }
+     DbgDat ()
+    {
+         of.open ("owen_hinton_01.res",std::ios::out);
+         of<<_6_3<<"Time"<<_8s<<"u"<< _8s<<"fint"<<_8s<<"fext\n";
+         of<<_6_3<<  0   <<_8s<< 0 << _8s<<  0   <<_8s<<  0 << endl;
+    }
+};
+
+void DbgFun (FEM::Solver const & Sol, void * Dat)
+{
+    DbgDat * dat = static_cast<DbgDat*>(Dat);
+    dat->of << _6_3 << Sol.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+}
+
 int main(int argc, char **argv) try
 {
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-    double l = 10.;
+    double l = 5.;
     Mesh::Generic mesh(/*NDim*/2);
     mesh.SetSize  (3/*nodes*/, 2/*cells*/);
     mesh.SetVert  (0, -100,  0.0,  2.*l);
@@ -62,7 +82,6 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(/*NDim*/2, prps, /*mdls*/Dict(), /*inis*/Dict());
     dom.SetMesh (mesh);
-    dom.SetOutNods ("owen_hinton_01",/*NNod*/1,/*IDs*/2);
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
@@ -71,95 +90,21 @@ int main(int argc, char **argv) try
        .Set(-300, "ux fy", 0.0, -10.0);
     dom.SetBCs (bcs);
 
-    FEM::Solver sol(dom);
-    sol.Initialize ();
-    sol.AssembleKA ();
+    // weights
+    Array<double> weights(2);
+    weights = 0.8, 0.2;
 
-    long neq = sol.NEQ;
+    // debug data
+    DbgDat dat;
+    dat.eqx = 5; // eq for output
 
-    Vec_t F(neq), U(neq), Fext(neq), Fint(neq);
-    set_to_zero (F);
-    set_to_zero (U);
-    set_to_zero (Fext);
-    set_to_zero (Fint);
+    // solver
+    FEM::Solver sol(dom, &DbgFun, &dat);
+    //sol.Scheme = FEM::Solver::NR_t;
 
-    Vec_t dU(neq);
-    set_to_zero(dU);
+    // solve
+    sol.Solve (weights.Size(), &weights);
 
-    Vec_t R(neq);
-    Vec_t dUc(neq);
-
-    Array<double> Fincs(2);
-    Fincs = -8.0, -2.0;
-
-    // equation for output
-    long eqx = dom.Nods[2]->EQ[1];
-
-    // initial output
-    std::ofstream of("owen_hinton_01.res", std::ios::out);
-    of << _6_3 << "Time" << _8s << "u" << _8s << "fint" << _8s << "fext" << endl;
-    of << _6_3 << sol.Time << _8s << U(eqx) << _8s << Fint(eqx) << _8s << Fext(eqx) << endl;
-
-    Vec_t dF(neq);
-    size_t NIncs = Fincs.Size();
-    for (size_t inc=0; inc<NIncs; ++inc)
-    {
-        set_to_zero (dF);
-        dF(eqx) = Fincs[inc];
-
-        sol.AssembleKA  ();
-        UMFPACK::Solve  (sol.A11, dF, dU);
-        Sparse::AddMult (sol.K21, dU, dF); // dF2 += K21*dU1
-        Sparse::AddMult (sol.K22, dU, dF); // dF2 += K22*dU2
-
-        U += dU;
-        F += dF;
-        cout << "dU   = " << PrintVector(dU);
-
-        for (size_t i=0; i<dom.Eles.Size(); ++i) dom.Eles[i]->UpdateState (dU, &Fint);
-        Fext += dF;
-        R     = Fext-Fint;
-        double norm_R = Norm(R);
-
-        // output
-        sol.Time += 1.0;
-        of << _6_3 << sol.Time << _8s << U(eqx) << _8s << Fint(eqx) << _8s << Fext(eqx) << endl;
-
-        size_t it    = 0;
-        size_t MaxIt = 15;
-        while (it<MaxIt && norm_R>1.0e-8)
-        {
-            for (size_t i=0; i<dom.Nods.Size();     ++i)
-            for (size_t j=0; j<dom.Nods[i]->nDOF(); ++j)
-            {
-                long eq = dom.Nods[i]->EQ[j];
-                if (dom.Nods[i]->pU[j]) R(eq) = 0.0;
-            }
-
-            sol.AssembleKA ();
-            UMFPACK::Solve (sol.A11, R, dUc);
-
-            U += dUc;
-            for (size_t i=0; i<dom.Eles.Size(); ++i) dom.Eles[i]->UpdateState (dUc, &Fint);
-            R = Fext-Fint;
-            norm_R = Norm(R);
-
-            //cout << "dUc  = " << PrintVector(dUc);
-            //cout << "Fext = " << PrintVector(Fext);
-            //cout << "Fint = " << PrintVector(Fint);
-            //cout << "R    = " << PrintVector(R);
-            cout << "[1;32mnorm(R) = " << norm_R << "[0m\n";
-
-            sol.Time += 1.0;
-            of << _6_3 << sol.Time << _8s << U(eqx) << _8s << Fint(eqx) << _8s << Fext(eqx) << endl;
-
-            it++;
-        }
-        if (it>=MaxIt) throw new Fatal("did not converge");
-    }
-
-    of.close();
-
-    return 0.0;
+    return 0;
 }
 MECHSYS_CATCH

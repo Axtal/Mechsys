@@ -36,6 +36,9 @@
 #include "linalg/sparse_matrix.h"
 #include "linalg/umfpack.h"
 
+using std::cout;
+using std::endl;
+
 namespace FEM
 {
 
@@ -43,28 +46,40 @@ class Solver
 {
 public:
     // enum
-    enum Scheme_t  { FE_t, ME_t };         ///< Steady time integration scheme
-    enum TScheme_t { SS11_t };             ///< Transient time integration scheme
-    enum DScheme_t { SS22_t, GN22_t };     ///< Dynamic time integration scheme
-    enum Damping_t { None_t, Rayleigh_t }; ///< Damping type
+    enum Scheme_t  { FE_t, ME_t, NR_t };   ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
+    enum TScheme_t { SS11_t };             ///< Transient time integration scheme: (Single step/O1/1st order)
+    enum DScheme_t { SS22_t, GN22_t };     ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum Damping_t { None_t, Rayleigh_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K)
+
+    // typedefs
+    typedef void (*pDbgFun) (Solver const & Sol, void * DbgDat); ///< Pointer to Debug function
 
     // Constructor
-    Solver (Domain const & Dom);
+    Solver (Domain const & Dom, pDbgFun DbgFun=NULL, void * DbgDat=NULL);
 
     // Methods
-    void Solve        (size_t NDiv=1);
-    void TransSolve   (double tf, double dt, double dtOut);
-    void DynSolve     (double tf, double dt, double dtOut);
-    void AssembleKA   ();                                         ///< A = K11
-    void AssembleKMA  (double Coef1, double Coef2);               ///< A = Coef1*M + Coef2*K
-    void AssembleKCMA (double Coef1, double Coef2, double Coef3); ///< A = Coef1*M + Coef2*C + Coef3*K
-    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);
+    void Solve        (size_t NInc=1, Array<double> * Weights=NULL); ///< Solve steady/equilibrium equation
+    void TransSolve   (double tf, double dt, double dtOut);          ///< Solve transient equation
+    void DynSolve     (double tf, double dt, double dtOut);          ///< Solve dynamic equation
+    void AssembleKA   ();                                            ///< A = K11
+    void AssembleKMA  (double Coef1, double Coef2);                  ///< A = Coef1*M + Coef2*K
+    void AssembleKCMA (double Coef1, double Coef2, double Coef3);    ///< A = Coef1*M + Coef2*C + Coef3*K
+    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);           ///< Tangent increments: dU = inv(K)*dF
+    void Initialize   (bool Transient=false);                        ///< Initialize global matrices and vectors
 
     // Data
-    Domain const & Dom;   ///< Domain
-    double         Time;  ///< Current time (t)
-    size_t         NEQ;   ///< Total number of equations (DOFs)
-    Array<size_t>  pDOFs; ///< prescribed DOFs (known equations)
+    Domain const & Dom;    ///< Domain
+    pDbgFun        DbgFun; ///< Debug function
+    void         * DbgDat; ///< Debug data
+    double         Time;   ///< Current time (t)
+    size_t         Inc;    ///< Current increment
+    size_t         Stp;    ///< Current (sub) step
+    size_t         It;     ///< Current iteration
+    size_t         NEQ;    ///< Total number of equations (DOFs)
+    Array<long>    uDOFs;  ///< unknown DOFs
+    Array<long>    pDOFs;  ///< prescribed DOFs (known equations)
+    double         NormR;  ///< Euclidian norm of residual (R)
+    double         TolR;   ///< Tolerance for the norm of residual
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -73,18 +88,23 @@ public:
     Sparse::Triplet<double,int> A11;             ///< A=K  or  A=C1*M+C2*K  or  A=C1*M+C2*C+C3*K
 
     // Vectors
-    Vec_t U, F, F_int, W;  // U, F, F_int, and Workspace
-    Vec_t V, U2, F1;       // Transient/dynamic variables
+    Vec_t R;        // Residual
+    Vec_t F, F_int; // External and internal forces
+    Vec_t W, U;     // Workspace, displacement
+    Vec_t DU2, DF1; // Prescribed DU and DF
+    Vec_t V, A;     // (Transient/Dynamic) velocity and acceleration
 
     // Constants for integration
     Scheme_t  Scheme;  ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
-    size_t    nSS;     ///< FE: number of substeps
+    size_t    nSS;     ///< FE and NR: number of substeps
     double    STOL;    ///< ME:
     double    dTini;   ///< ME:
     double    mMin;    ///< ME:
     double    mMax;    ///< ME:
-    size_t    maxSS;   ///< ME:
+    size_t    MaxSS;   ///< ME:
     bool      CteTg;   ///< Constant tangent matrices (linear problems) => K will be calculated once
+    bool      ModNR;   ///< Modified Newton-Rhapson ?
+    size_t    MaxIt;   ///< Max iterations (for Newton-Rhapson)
     TScheme_t TScheme; ///< Transient scheme
     double    Theta;   ///< Transient scheme constant
     DScheme_t DScheme; ///< Dynamic scheme
@@ -94,28 +114,35 @@ public:
     double    DynTh1;  ///< Dynamic coefficient Theta 1
     double    DynTh2;  ///< Dynamic coefficient Theta 2
 
-    void Initialize (bool Transient=false); ///< Initialize global matrices and vectors
 private:
-    void _FE_update  (double tf);            ///< (Forward-Euler) Update Time and elements to tf
-    void _ME_update  (double tf);            ///< (Modified-Euler) Update Time and elements to tf
-    void _calc_Fbar  (double t, Vec_t & Fb); ///< Calc Fbar = F1 - K12*U2
+    void _FE_update  (double tf); ///< (Forward-Euler)  Update Time and elements to tf
+    void _ME_update  (double tf); ///< (Modified-Euler) Update Time and elements to tf
+    void _NR_update  (double tf); ///< (Newton-Rhapson) Update Time and elements to tf
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Solver::Solver (Domain const & TheDom)
+inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDat)
     : Dom     (TheDom),
+      DbgFun  (TheDbgFun),
+      DbgDat  (TheDbgDat),
       Time    (0.0),
+      Inc     (0),
+      Stp     (0),
+      It      (0),
+      TolR    (1.0e-9),
       Scheme  (ME_t),
       nSS     (1),
       STOL    (1.0e-5),
       dTini   (1.0),
       mMin    (0.1),
       mMax    (10.0),
-      maxSS   (2000),
+      MaxSS   (2000),
       CteTg   (false),
+      ModNR   (false),
+      MaxIt   (20),
       TScheme (SS11_t),
       Theta   (2./3.),
       DScheme (SS22_t),
@@ -127,33 +154,50 @@ inline Solver::Solver (Domain const & TheDom)
 {
 }
 
-inline void Solver::Solve (size_t NDiv)
+inline void Solver::Solve (size_t NInc, Array<double> * Weights)
 {
+    // info
+    double start = std::clock();
+
     // initialize global matrices and vectors
     Initialize ();
 
-    // residual
-    Vec_t R(F-F_int);
-    double norm_R = Norm(R);
-    double tol_R  = 1.0e-9;
-
     // output initial state
-    std::cout << "\n[1;37m--- Stage solution --------- (" << (Scheme==FE_t?"FE":"ME") << ") --------------------------------------------\n";
-    std::cout << Util::_6_3 << "Time" <<                                         Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_6_3 <<  Time  << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R   << "[0m\n";
+    std::cout << "\n[1;37m--- Stage solution -----------------------------------------------------------\n";
+    std::cout << Util::_6_3 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_6_3 <<  Time  << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
     Dom.OutResults (Time);
 
-    // solve
-    double t0   = Time;     // current time
-    double tf   = t0 + 1.0; // final time
-    double Dt   = tf - t0;  // total time increment
-    double dt   = Dt/NDiv;  // global timestep
-    double tout = t0 + dt;  // time for output
-    for (size_t inc=0; inc<NDiv; ++inc)
+    // weights
+    bool   del_weights = false;
+    double sum_weights = 0.0;
+    if (Weights==NULL)
     {
+        Weights = new Array<double>;
+        Weights->Resize (NInc);
+        for (size_t i=0; i<NInc; ++i) (*Weights)[i] = 1.0/NInc;
+        del_weights = true;
+    }
+    else if (NInc!=Weights->Size()) throw new Fatal("Solver::Solve: Array with weights must have size equal to NDiv (%d)",NInc);
+    for (size_t i=0; i<NInc; ++i) sum_weights += (*Weights)[i];
+    if (fabs(sum_weights-1.0)>1.0e-9) throw new Fatal("Solver::Solver: Sum of weights must be equal to 1.0 (Sum(W)=%g is invalid)",sum_weights);
+
+    // solve
+    double t0 = Time;     // current time
+    double tf = t0 + 1.0; // final time
+    double Dt = tf - t0;  // total time increment
+    double dt, tout;      // timestep and time for output
+    for (Inc=0; Inc<NInc; ++Inc)
+    {
+        // timestep
+        dt   = (*Weights)[Inc]*Dt; // timestep
+        tout = Time + dt;          // time for output
+
         // update Time and elements to tout
-             if (Scheme==FE_t) _FE_update (tout);
-        else if (Scheme==ME_t) _ME_update (tout);
+        String str;
+        if      (Scheme==FE_t) { _FE_update (tout);  str.Printf("Forward-Euler (FE): nss = %d",Stp); }
+        else if (Scheme==ME_t) { _ME_update (tout);  str.Printf("Modified-Euler (ME): nss = %d",Stp); }
+        else if (Scheme==NR_t) { _NR_update (tout);  str.Printf("Newton-Rhapson (NR): nit = %d",It); }
         else throw new Fatal("Solver::Solve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -168,229 +212,31 @@ inline void Solver::Solve (size_t NDiv)
         }
 
         // residual
-        R      = F - F_int;
-        norm_R = Norm(R);
+        R     = F - F_int;
+        NormR = Norm(R);
 
         // output
-        std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
+        std::cout << Util::_6_3 << Time << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
         Dom.OutResults (Time);
 
         // next tout
         tout = Time + dt;
     }
+
+    // info
+    double total = std::clock() - start;
+    std::cout << Util::_reset << "[1;36m Time elapsed = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+
+    // clean up
+    if (del_weights) delete Weights;
 }
 
 inline void Solver::TransSolve (double tf, double dt, double dtOut)
 {
-    // initialize global matrices and vectors
-    Initialize (/*Transient*/true);
-
-    // residual
-    Vec_t R(F-F_int);
-    double norm_R = Norm(R);
-    double tol_R  = 1.0e-9;
-
-    // output initial state
-    std::cout << "\n[1;37m--- Stage solution --------- (" << (Scheme==FE_t?"FE":"ME") << ") --------------------------------------------\n";
-    std::cout << Util::_6_3 << "Time" <<                                         Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_6_3 <<  Time  << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R   << "[0m\n";
-    Dom.OutResults (Time);
-
-    // auxiliar variables
-    Vec_t dU(NEQ);
-
-    // solve
-    double t0   = Time;       // current time
-    double tout = t0 + dtOut; // time for output
-    while (Time<tf)
-    {
-        // update elements
-        if (TScheme==SS11_t)
-        {
-            AssembleKMA    (1.0, Theta*dt); // A = M + Theta*dt*K
-            _calc_Fbar     (Time, W);       // W = Fbar = F1 - K12*U2
-            SubMult        (K11, U, W);     // W -= K11*U
-            UMFPACK::Solve (A11, W, V);     // V = inv(A11)*W
-            dU = dt*V;
-            U += dU;
-            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-        }
-        else throw new Fatal("Solver::TransSolve: Time integration scheme invalid");
-
-        // update nodes to tout
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
-        {
-            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
-            {
-                long eq = Dom.Nods[i]->EQ[j];
-                Dom.Nods[i]->U[j] = U(eq);
-                Dom.Nods[i]->F[j] = F(eq);
-            }
-        }
-
-        // output
-        if (Time>=tout)
-        {
-            // residual
-            R      = F - F_int;
-            norm_R = Norm(R);
-
-            // output
-            std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
-            Dom.OutResults (Time);
-            tout += dtOut;
-        }
-
-        // next time
-        Time += dt;
-    }
-
-    // last output
-    std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
-    Dom.OutResults (Time);
 }
 
 inline void Solver::DynSolve (double tf, double dt, double dtOut)
 {
-    // initialize global matrices and vectors
-    Initialize (/*Transient*/true);
-
-    // residual
-    Vec_t R(F-F_int);
-    double norm_R = Norm(R);
-    double tol_R  = 1.0e-9;
-
-    // output initial state
-    std::cout << "\n[1;37m--- Stage solution --------- (" << (Scheme==FE_t?"FE":"ME") << ") --------------------------------------------\n";
-    std::cout << Util::_6_3 << "Time" <<                                         Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_6_3 <<  Time  << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R   << "[0m\n";
-    Dom.OutResults (Time);
-
-    // auxiliar variables
-    Vec_t Ubar(NEQ), A(NEQ), dU(NEQ), Us(NEQ), Vs(NEQ);
-    set_to_zero (A);
-
-    Vec_t Unew(U), Anew(A), Vnew(V);
-
-            double bet1 = 0.5;
-            double bet2 = 0.5;
-            double coef = 2.0/(bet2*dt*dt);
-            size_t MaxIt = 5;
-
-    // compute initial acceleration
-    _calc_Fbar     (Time, W);   // W = Fbar = F1 - K12*U2
-    AssembleKMA    (0.0, 0.0);  // Get K, M and Amat==0
-    UMFPACK::Solve (M11, W, A); // A = inv(M)*W
-
-    cout << "W0   = " << PrintVector(W);
-    cout << "V0   = " << PrintVector(V);
-    cout << "A0   = " << PrintVector(A);
-    cout << "Fint = " << PrintVector(F_int);
-
-    // solve
-    double t0   = Time;       // current time
-    double tout = t0 + dtOut; // time for output
-    while (Time<tf)
-    {
-        // update elements
-        if (DScheme==SS22_t)
-        {
-            Ubar = U + DynTh1*dt*V;
-            if (DampTy==None_t) // no damping
-            {
-                AssembleKMA     (1.0, 0.5*DynTh2*dt*dt); // A = M + 0.5*Th2*(dt*dt)*K
-                _calc_Fbar      (Time, W);               // W = Fbar = F1 - K12*U2
-                Sparse::SubMult (K11, Ubar, W);          // W -= K11*Ubar
-                UMFPACK::Solve  (A11, W, A);             // A = inv(A11)*W
-                dU = dt*V + (0.5*dt*dt)*A;
-                U += dU;
-                V += dt*A;
-                for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-            }
-            else throw new Fatal("Solver::DynSolve: Damping not implemented yet");
-        }
-        else if (DScheme==GN22_t)
-        {
-            // estimate next solution
-            Unew = U + dt*V + (0.5*(1.0-bet2)*dt*dt)*A;
-            cout << "Unew = " << PrintVector(Unew);
-
-            // Newton iterations for time step n+1
-            size_t it = 0;
-            while (it<MaxIt)
-            {
-                // W = Fext_(n+1)
-                _calc_Fbar (Time+dt, W); 
-
-                // Fint_(n+1)
-                dU = Unew - U;
-                for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-
-                for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
-
-                // acceleration and velocities at (n+1)
-                Us   = U + dt*V + (0.5*(1.0-bet2)*dt*dt)*A; // Ustar_(n)
-                Vs   = V + ((1.0-bet1)*dt)*A;               // Vstar_(n)
-                Anew = coef*(Unew - Us);                    // A_(n+1)
-                Vnew = Vs + (bet1*dt)*Anew;                 // V_(n+1)
-
-                // residual
-                W -= F_int;             // W = Fext - Fint
-                SubMult (M11, Anew, W); // W = Fext - Fint - M*Anew
-
-                for (size_t i=0; i<pDOFs.Size(); ++i) W(pDOFs[i]) = 0.0;
-
-                // Jacobian and displacements
-                AssembleKMA    (coef, 1.0);   // -A11 = coef*M + K
-                UMFPACK::Solve (A11, W, dU);  // dU = -inv(A11)*R
-
-                for (size_t i=0; i<pDOFs.Size(); ++i) dU(pDOFs[i]) = 0.0;
-
-                // update
-                Unew += dU;
-                it++;
-
-                cout << "--------------------------------------------------------------------------------------\n";
-                cout << "dU   = " << PrintVector(dU);
-                cout << "W    = " << PrintVector(W);
-                cout << "Anew = " << PrintVector(Anew);
-                cout << "Unew = " << PrintVector(Unew);
-                cout << "Fint = " << PrintVector(F_int);
-            }
-        }
-        else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
-
-        // update nodes to tout
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
-        {
-            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
-            {
-                long eq = Dom.Nods[i]->EQ[j];
-                Dom.Nods[i]->U[j] = Unew(eq);
-                Dom.Nods[i]->F[j] = F(eq);
-            }
-        }
-
-        // output
-        if (Time>=tout)
-        {
-            // residual
-            R      = F - F_int;
-            norm_R = Norm(R);
-
-            // output
-            std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
-            Dom.OutResults (Time);
-            tout += dtOut;
-        }
-
-        // next time
-        Time += dt;
-    }
-
-    // last output
-    std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
-    Dom.OutResults (Time);
 }
 
 inline void Solver::AssembleKA ()
@@ -511,35 +357,29 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     if (K11.Top()==0 || CteTg==false) AssembleKA (); // not constant tangent matrices => non-linear problems
 
     // assemble dF and W (workspace) vectors
-    for (size_t i=0; i<Dom.Nods.Size(); ++i)
+    for (size_t i=0; i<uDOFs.Size(); ++i)
     {
-        for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
-        {
-            long eq = Dom.Nods[i]->EQ[j];
-            if (Dom.Nods[i]->pU[j]) // prescribed U
-            {
-                dF(eq) = 0.0;                   // clear dF2
-                W (eq) = dT*Dom.Nods[i]->DU[j]; // set W2 equal to dU2
-            }
-            else
-            {
-                dF(eq) = dT*Dom.Nods[i]->DF[j]; // set dF1 equal to dF1
-                W (eq) = dF(eq);                // set W1  equal to dF1
-            }
-        }
+        dF(uDOFs[i]) = dT*DF1(uDOFs[i]); // set dF1 equal to dT*DF1
+        W (uDOFs[i]) = dF(uDOFs[i]);     // set W1  equal to dF1
+    }
+    for (size_t i=0; i<pDOFs.Size(); ++i)
+    {
+        dF(pDOFs[i]) = 0.0;              // clear dF2
+        W (pDOFs[i]) = dT*DU2(pDOFs[i]); // set W2 equal to dT*DU2
     }
 
     // calc dU and dF
-    Sparse::SubMult (K12, W, W);   // W1  -= K12*dU2
-    UMFPACK::Solve  (A11, W, dU);  // dU   = inv(A11)*W
+    Sparse::SubMult (K12,  W,  W); // W1  -= K12*dU2
+    UMFPACK::Solve  (A11,  W, dU); // dU   = inv(A11)*W
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
     Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
 }
 
 inline void Solver::Initialize (bool Transient)
 {
-    // assign equation numbers and set pDOFs
+    // assign equation numbers
     NEQ = 0;
+    uDOFs.Resize (0); // unknown DOFs
     pDOFs.Resize (0); // prescribed DOFs
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
@@ -547,6 +387,7 @@ inline void Solver::Initialize (bool Transient)
         {
             Dom.Nods[i]->EQ[j] = NEQ;
             if (Dom.Nods[i]->pU[j]) pDOFs.Push (NEQ);
+            else                    uDOFs.Push (NEQ);
             NEQ++;
         }
     }
@@ -592,40 +433,39 @@ inline void Solver::Initialize (bool Transient)
         }
     }
 
-    // resize workspace
-    W.change_dim (NEQ);
-
-    // build U and F (and V, U2, F1, Fbar)
-    U.change_dim (NEQ);
-    F.change_dim (NEQ);
+    // initialize variables
+    R    .change_dim (NEQ);  set_to_zero (R);
+    F    .change_dim (NEQ);  set_to_zero (F);
+    F_int.change_dim (NEQ);  set_to_zero (F_int);
+    W    .change_dim (NEQ);  set_to_zero (W);
+    U    .change_dim (NEQ);  set_to_zero (U);
+    DU2  .change_dim (NEQ);  set_to_zero (DU2);
+    DF1  .change_dim (NEQ);  set_to_zero (DF1);
     if (Transient)
     {
-        V .change_dim (NEQ);
-        U2.change_dim (NEQ);
-        F1.change_dim (NEQ);
-        set_to_zero   (V);
-        set_to_zero   (U2);
-        set_to_zero   (F1);
+        V.change_dim (NEQ);  set_to_zero (V);
+        A.change_dim (NEQ);  set_to_zero (A);
     }
+
+    // initialize F_int (must come before setting up of F(ext))
+    for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->InitFint (F_int);
+
+    // set variables
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
         for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
         {
             long eq = Dom.Nods[i]->EQ[j];
-            U(eq)   = Dom.Nods[i]->U [j];
-            F(eq)   = Dom.Nods[i]->F [j];
-            if (Transient)
-            {
-                if (Dom.Nods[i]->pU[j]) U2(eq) = U(eq) + Dom.Nods[i]->DU[j];
-                else                    F1(eq) = F(eq) + Dom.Nods[i]->DF[j];
-            }
+            U (eq)  = Dom.Nods[i]->U [j];
+            F (eq)  = Dom.Nods[i]->F [j];
+            if (Dom.Nods[i]->pU[j]) DU2(eq) = Dom.Nods[i]->DU[j];
+            else                    DF1(eq) = Dom.Nods[i]->DF[j];
         }
     }
 
-    // build F_int
-    F_int.change_dim (NEQ);
-    for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->InitFint (F_int);
-
+    // calc residual
+    R     = F - F_int;
+    NormR = Norm(R);
     //std::cout << "F     = \n" << PrintVector(F);
     //std::cout << "F_int = \n" << PrintVector(F_int);
 }
@@ -633,20 +473,20 @@ inline void Solver::Initialize (bool Transient)
 inline void Solver::_FE_update (double tf)
 {
     // auxiliar vectors
-    Vec_t dU_fe(NEQ), dF_fe(NEQ);
+    Vec_t dU(NEQ), dF(NEQ);
 
     double dt = (tf-Time)/nSS;
-    for (size_t i=0; i<nSS; ++i)
+    for (Stp=0; Stp<nSS; ++Stp)
     {
         // calculate tangent increments
-        TgIncs (dt, dU_fe, dF_fe);
+        TgIncs (dt, dU, dF);
 
         // update elements
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_fe, &F_int);
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
 
         // update U, F, and Time
-        U    += dU_fe;
-        F    += dF_fe;
+        U    += dU;
+        F    += dF;
         Time += dt;
     }
 }
@@ -658,11 +498,10 @@ inline void Solver::_ME_update (double tf)
     Vec_t dF_fe(NEQ), dF_tm(NEQ), dF_me(NEQ), F_me(NEQ), F_dif(NEQ);
 
     // for each pseudo time T
-    double T  = 0.0;
-    double dT = dTini;
-    double Dt = tf-Time;
-    size_t k  = 0;
-    for (k=0; k<maxSS; ++k)
+    double T   = 0.0;
+    double dT  = dTini;
+    double Dt  = tf-Time;
+    for (Stp=0; Stp<MaxSS; ++Stp)
     {
         // exit point
         if (T>=1.0) break;
@@ -700,19 +539,12 @@ inline void Solver::_ME_update (double tf)
         // update
         if (error<STOL)
         {
+            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
             for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_me, &F_int);
             T    += dT;
             U     = U_me;
             F     = F_me;
             Time += dt;
-            if (true && T<1.0)
-            {
-                Vec_t R(F-F_int);
-                double norm_R = Norm(R);
-                double tol_R  = 1.0e-9;
-                std::cout << Util::_6_3 << Time << (norm_R>tol_R?"[1;31m":"[1;32m") << Util::_8s << norm_R << "[0m\n";
-                Dom.OutResults (Time);
-            }
             if (m>mMax) m = mMax;
         }
         else if (m<mMin) m = mMin;
@@ -723,34 +555,66 @@ inline void Solver::_ME_update (double tf)
         // check for last increment
         if (dT>1.0-T) dT = 1.0-T;
     }
-    if (k>=maxSS) throw new Fatal("Solver:_ME_update: Modified-Euler (global integration) did not converge for %d steps",k);
+    if (Stp>=MaxSS) throw new Fatal("Solver:_ME_update: Modified-Euler (global integration) did not converge for %d steps",Stp);
 }
 
-inline void Solver::_calc_Fbar (double t, Vec_t & Fb)
+inline void Solver::_NR_update (double tf)
 {
-    // calc Fbar = F1 - K12*U2
-    Fb = F1;
-    for (int k=0; k<K12.Top(); ++k)
-        Fb(K12.Ai(k)) -= K12.Ax(k) * U2(K12.Aj(k));
-    if (Dom.NDim==3)
+    // auxiliar vectors
+    Vec_t dU(NEQ), dF(NEQ);
+
+    size_t max_it = It;
+    double dt     = (tf-Time)/nSS;
+    for (Stp=0; Stp<nSS; ++Stp)
     {
-        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
+        // calculate tangent increments
+        TgIncs (dt, dU, dF);
+
+        // update elements
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+
+        // update U, F, and Time
+        U    += dU;
+        F    += dF;
+        Time += dt;
+
+        // residual
+        R     = F - F_int;
+        NormR = Norm(R);
+
+        // iterations
+        It = 0;
+        while (NormR>TolR && It<MaxIt)
         {
-            (*Dom.CalcF[i]) (t, Fb(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")]),
-                                Fb(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")]),
-                                Fb(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")]));
+            // debug
+            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+
+            // assemble global K matrix
+            if (!ModNR) AssembleKA ();
+
+            // clear unbalanced forces related to supports
+            for (size_t i=0; i<pDOFs.Size(); ++i) R(pDOFs[i]) = 0.0;
+
+            // calc corrector dU
+            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
+
+            // update elements and displacements
+            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+            U += dU;
+
+            // residual
+            R     = F - F_int;
+            NormR = Norm(R);
+
+            // next iteration
+            It++;
         }
+        if (It>=MaxIt) throw new Fatal("Solver::_NR_update: Newton-Rhapson did not converge after %d iterations",It);
+        if (It>max_it) max_it = It;
     }
-    else
-    {
-        double fz = 0.0;
-        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
-        {
-            (*Dom.CalcF[i]) (t, Fb(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")]),
-                                Fb(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")]),
-                                fz);
-        }
-    }
+
+    // return max number of iterations
+    It = max_it;
 }
 
 }; // namespace FEM
