@@ -115,9 +115,11 @@ public:
     double    DynTh2;  ///< Dynamic coefficient Theta 2
 
 private:
-    void _FE_update  (double tf); ///< (Forward-Euler)  Update Time and elements to tf
-    void _ME_update  (double tf); ///< (Modified-Euler) Update Time and elements to tf
-    void _NR_update  (double tf); ///< (Newton-Rhapson) Update Time and elements to tf
+    void _FE_update   (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
+    void _ME_update   (double tf);            ///< (Modified-Euler) Update Time and elements to tf
+    void _NR_update   (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
+    void _SS22_update (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
+    void _GN22_update (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
 };
 
 
@@ -163,7 +165,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
     Initialize ();
 
     // output initial state
-    std::cout << "\n[1;37m--- Stage solution -----------------------------------------------------------\n";
+    std::cout << "\n[1;37m--- Stage solution --- (steady) ----------------------------------------------\n";
     std::cout << Util::_6_3 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
     std::cout << Util::_6_3 <<  Time  << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
     Dom.OutResults (Time);
@@ -183,6 +185,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
     if (fabs(sum_weights-1.0)>1.0e-9) throw new Fatal("Solver::Solver: Sum of weights must be equal to 1.0 (Sum(W)=%g is invalid)",sum_weights);
 
     // solve
+    String str;
     double t0 = Time;     // current time
     double tf = t0 + 1.0; // final time
     double Dt = tf - t0;  // total time increment
@@ -193,8 +196,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
         dt   = (*Weights)[Inc]*Dt; // timestep
         tout = Time + dt;          // time for output
 
-        // update Time and elements to tout
-        String str;
+        // update U, F, Time and elements to tout
         if      (Scheme==FE_t) { _FE_update (tout);  str.Printf("Forward-Euler (FE): nss = %d",Stp); }
         else if (Scheme==ME_t) { _ME_update (tout);  str.Printf("Modified-Euler (ME): nss = %d",Stp); }
         else if (Scheme==NR_t) { _NR_update (tout);  str.Printf("Newton-Rhapson (NR): nit = %d",It); }
@@ -225,7 +227,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
 
     // info
     double total = std::clock() - start;
-    std::cout << Util::_reset << "[1;36m Time elapsed = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << Util::_reset << "[1;36m Time elapsed = " <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 
     // clean up
     if (del_weights) delete Weights;
@@ -237,6 +239,50 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut)
 
 inline void Solver::DynSolve (double tf, double dt, double dtOut)
 {
+    // info
+    double start = std::clock();
+
+    // initialize global matrices and vectors
+    Initialize (/*Transient*/true);
+
+    // output initial state
+    std::cout << "\n[1;37m--- Stage solution --- (dynamic) ---------------------------------------------\n";
+    std::cout << Util::_6_3 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_6_3 <<  Time  << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
+    Dom.OutResults (Time);
+
+    // solve
+    String str;
+    double tout = Time + dtOut; // time for output
+    while (Time<tf)
+    {
+        // update U, F, Time and elements to tout
+        if      (DScheme==SS22_t) { _SS22_update (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
+        else if (DScheme==GN22_t) { _GN22_update (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
+        else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
+
+        // update nodes to tout
+        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        {
+            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            {
+                long eq = Dom.Nods[i]->EQ[j];
+                Dom.Nods[i]->U[j] = U(eq);
+                Dom.Nods[i]->F[j] = F(eq);
+            }
+        }
+
+        // output
+        std::cout << Util::_6_3 << Time << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        Dom.OutResults (Time);
+
+        // next tout
+        tout = Time + dtOut;
+    }
+
+    // info
+    double total = std::clock() - start;
+    std::cout << Util::_reset << "[1;36m Time elapsed = " <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 }
 
 inline void Solver::AssembleKA ()
@@ -615,6 +661,129 @@ inline void Solver::_NR_update (double tf)
 
     // return max number of iterations
     It = max_it;
+}
+
+inline void Solver::_SS22_update (double tf, double dt)
+{
+    // auxiliar variables
+    double fz;     // dummy variable
+    Vec_t Us(NEQ); // starred displacement
+    Vec_t Unew(NEQ), dU(NEQ);
+    Vec_t Alp(NEQ);
+
+    while (Time<tf)
+    {
+        // calc starred variables
+        Us = U + (DynTh1*dt)*V;
+
+        // calc Fext_(n+1)
+        set_to_zero (F);
+        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
+        {
+            (*Dom.CalcF[i]) (Time+dt,        F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")]),
+                                             F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")]),
+                              (Dom.NDim==3 ? F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")]) : fz));
+        }
+
+        // set workspace
+        W = F;
+        Sparse::SubMult (K11, Us, W); if (DampTy!=None_t) // W -= K11*Us
+        Sparse::SubMult (C11, V,  W);                     // W -= C11*Vs
+
+        // assemble Amat
+        if (DampTy==None_t) AssembleKMA  (1.0, 0.5*DynTh2*dt*dt);
+        else                AssembleKCMA (1.0, DynTh1*dt, 0.5*DynTh2*dt*dt);
+
+        // calc new displacements, acceleration, and velocity
+        UMFPACK::Solve (A11, W, Alp); // Alp = inv(A11)*W
+        Unew = U + dt*V + (0.5*dt*dt)*Alp;
+        V    = V + dt*Alp;
+
+        // update elements and displacements
+        dU = Unew - U;
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        U = Unew;
+
+        // clear internal forces related to supports
+        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
+
+        // residual
+        R = F - F_int;
+        Sparse::SubMult (M11, A, R); // R -= M11*A
+        NormR = Norm(R);
+
+        // next time step
+        Time += dt;
+    }
+}
+
+inline void Solver::_GN22_update (double tf, double dt)
+{
+    // auxiliar variables
+    double fz;              // dummy variable
+    Vec_t As(NEQ), Vs(NEQ); // starred acceleration and velocity
+    Vec_t Unew(NEQ), dU(NEQ);
+
+    // constants
+    const double c1 = -2.0/(DynTh2*dt*dt);
+    const double c2 = -2.0/(DynTh2*dt);
+    const double c3 = -(1.0-DynTh2)/DynTh2;
+    const double c4 = -2.0*DynTh1/(DynTh2*dt);
+    const double c5 = 1.0-2.0*DynTh1/DynTh2;
+    const double c6 = (1.0-DynTh1/DynTh2)*dt;
+
+    while (Time<tf)
+    {
+        // calc starred variables
+        As = c1*U + c2*V + c3*A;
+        Vs = c4*U + c5*V + c6*A;
+
+        // calc Fext_(n+1)
+        set_to_zero (F);
+        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
+        {
+            (*Dom.CalcF[i]) (Time+dt,        F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")]),
+                                             F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")]),
+                              (Dom.NDim==3 ? F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")]) : fz));
+        }
+
+        // set workspace
+        W = F;
+        Sparse::SubMult (M11, As, W); if (DampTy!=None_t) // W -= M11*As
+        Sparse::SubMult (C11, Vs, W);                     // W -= C11*Vs
+
+        // assemble Amat
+        if (DampTy==None_t) AssembleKMA  (-c1, 1.0);
+        else                AssembleKCMA (-c1, -c4, 1.0);
+
+        // calc new displacements, acceleration, and velocity
+        UMFPACK::Solve (A11, W, Unew); // Unew = inv(A11)*W
+        A = As - c1*Unew;
+        V = Vs - c4*Unew;
+
+        // update elements and displacements
+        dU = Unew - U;
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        U = Unew;
+
+        // clear internal forces related to supports
+        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
+
+        // residual
+        R = F - F_int;
+        Sparse::SubMult (M11, A, R); // R -= M11*A
+        NormR = Norm(R);
+
+        /*
+        cout << "F     = " << PrintVector(F);
+        cout << "dU    = " << PrintVector(dU);
+        cout << "R     = " << PrintVector(R);
+        cout << "NormR = " << NormR << endl;
+        */
+
+        // next time step
+        Time += dt;
+    }
 }
 
 }; // namespace FEM

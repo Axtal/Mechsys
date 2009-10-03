@@ -75,25 +75,11 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-100, "ux uy wz", 0.0,0.0)
+    bcs.Set(-100, "ux uy wz", 0.0,0.0,0.0)
        .Set(-200, "ffunc", 0.0);
     dom.SetBCs (bcs);
-    sol.DynSolve (/*tf*/0.05, /*dt*/0.05, /*dtOut*/0.05);
+    sol.DynSolve (/*tf*/1.8, /*dt*/0.05, /*dtOut*/0.05);
 
-    //////////////////////////////////////////////////////////////////////////////////////// Check /////
-    
-    Table nod_sol;
-    //nod_sol.Set("ux uy", dom.Nods.Size(),
-
-    Table ele_sol;
-    //ele_sol.Set("sx sy sxy  ex ey exy", dom.Eles.Size(),
-
-    // error tolerance
-    SDPair nod_tol, ele_tol;
-    nod_tol.Set("ux uy", 1.0e-13, 1.0e-12);
-    ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-8,1.0e-7,1.0e-7,1.0e-8, 1.0e-14,1.0e-13,1.0e-15,1.0e-14);
-
-    // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return 0.0;
 }
 MECHSYS_CATCH

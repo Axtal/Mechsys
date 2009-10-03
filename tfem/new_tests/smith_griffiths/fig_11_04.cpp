@@ -106,7 +106,8 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    sol.DScheme = FEM::Solver::GN22_t;
+    sol.DScheme = FEM::Solver::SS22_t;
+    //sol.DScheme = FEM::Solver::GN22_t;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
@@ -114,22 +115,8 @@ int main(int argc, char **argv) try
        .Set(-100, "ffunc", 0.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;
-    sol.DynSolve (/*tf*/1.0, /*dt*/1.0, /*dtOut*/1.0);
+    sol.DynSolve (/*tf*/100.0, /*dt*/1.0, /*dtOut*/1.0);
 
-    //////////////////////////////////////////////////////////////////////////////////////// Check /////
-    
-    Table nod_sol;
-    //nod_sol.Set("ux uy", dom.Nods.Size(),
-
-    Table ele_sol;
-    //ele_sol.Set("sx sy sxy  ex ey exy", dom.Eles.Size(),
-
-    // error tolerance
-    SDPair nod_tol, ele_tol;
-    nod_tol.Set("ux uy", 1.0e-13, 1.0e-12);
-    ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-8,1.0e-7,1.0e-7,1.0e-8, 1.0e-14,1.0e-13,1.0e-15,1.0e-14);
-
-    // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return 0.0;
 }
 MECHSYS_CATCH
