@@ -49,9 +49,9 @@ int main(int argc, char **argv) try
 	sphere S;
 	S.x = S.y = S.z = 0;
 	S.R = sr;
-	MonteCarlo<sphere> MC1;
-	std::cout << " Exact Volume = "<<(4./3.)*M_PI*sr*sr*sr << " Calculated Volume = " <<MC1.Integrate(&S,&sphere::Inside,ri,rs,Numerical::VEGAS,500000)<<std::endl;
-	std::cout << " Exact Inertia Moment = "<<(8./15.)*M_PI*sr*sr*sr*sr*sr << " Calculated Inertia moment = " <<MC1.Integrate(&S,&sphere::dInertia,ri,rs,Numerical::VEGAS,500000)<<std::endl;
+	MonteCarlo<sphere> MC1(&S, Numerical::VEGAS, 500000);
+	std::cout << " Exact Volume = "<<(4./3.)*M_PI*sr*sr*sr << " Calculated Volume = " <<MC1.Integrate(&sphere::Inside,ri,rs)<<std::endl;
+	std::cout << " Exact Inertia Moment = "<<(8./15.)*M_PI*sr*sr*sr*sr*sr << " Calculated Inertia moment = " <<MC1.Integrate(&sphere::dInertia,ri,rs)<<std::endl;
 
 	return 0;
 }
