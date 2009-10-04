@@ -59,6 +59,7 @@
 // Std Lib
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <cfloat>   // for DBL_EPSILON
 #include <cstdarg>  // for va_list, va_start, va_end
 #include <ctime>    // for std::clock
@@ -106,6 +107,7 @@ public:
     void   SetNx       (size_t Nx, double Ax=0.0, bool NonLin=false);             ///< Set number of x divisions with all x weights equal to 1.0
     void   SetNy       (size_t Ny, double Ay=0.0, bool NonLin=false);             ///< Set number of y divisions with all y weights equal to 1.0
     void   SetNz       (size_t Nz, double Az=0.0, bool NonLin=false);             ///< Set number of z divisions with all z weights equal to 1.0
+    void   SetNx       (Array<double> const & TheWx);                             ///< Set divisions along x given weights
     double Diagonal    () const;                                                  ///< Find diagonal of block
     void   GenMidNodes ();                                                        ///< Generate mid nodes of block
     bool   BryIDs      (size_t i, size_t j, size_t k, Array<int> & BryIDs) const; ///< ID of boundary sides (edges or faces) of the block where i,j,k is located on
@@ -173,8 +175,9 @@ public:
     void Generate  (Array<Block> const & Blks, bool O2=false, bool WithInfo=true); ///< Boundary marks are set first for Faces, then Edges, then Vertices (if any)
     void GenBox    (bool O2=true, int Nx=2,      int Ny=2,      int Nz=2,
                                double Lx=1.0, double Ly=1.0, double Lz=1.0);       ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
-    void GenQRing  (bool O2=true, int Nx=2, int Ny=2, 
-                    double r=1.0, double R=2.0, size_t Nb=2);                      ///< Generate a quarter of a ring
+    void GenQRing  (bool O2=true, int Nx=2, int Ny=2, double r=1.0, double R=2.0,
+                    size_t Nb=2, double Ax=1.0, bool NonLin=false,
+                    char const * WeightsX=NULL);                                   ///< Generate a quarter of a ring
     void ShapeFunc (double r, double s, double t);                                 ///< Calculate shape function. Return results on N
 
     // Data
@@ -240,6 +243,16 @@ inline void Block::SetNx (size_t TheNx, double Ax, bool NonLin)
     Wx.Resize(Nx);
     if (NonLin) for (size_t i=0; i<Nx; ++i) Wx[i] = pow(i+1.0,Ax);
     else        for (size_t i=0; i<Nx; ++i) Wx[i] = 1.0+Ax*i;
+
+    SumWx = 0.0;
+    for (size_t i=0; i<Nx; ++i) SumWx += Wx[i];
+    Wx.Push(0.0); // extra value just to help loop over weights
+}
+
+inline void Block::SetNx (Array<double> const & TheWx)
+{
+    Nx = TheWx.Size();
+    Wx = TheWx;
 
     SumWx = 0.0;
     for (size_t i=0; i<Nx; ++i) SumWx += Wx[i];
@@ -766,8 +779,16 @@ inline void Structured::GenBox (bool O2, int Nx, int Ny, int Nz, double Lx, doub
     Generate (blks,O2);
 }
 
-inline void Structured::GenQRing (bool O2, int Nx, int Ny, double r, double R, size_t Nb)
+inline void Structured::GenQRing (bool O2, int Nx, int Ny, double r, double R, size_t Nb, double Ax, bool NonLin, char const * WeightsX)
 {
+    Array<double> Wx;
+    if (WeightsX!=NULL)
+    {
+        double wx;
+        std::istringstream iss(WeightsX);
+        while (iss>>wx) { Wx.Push(wx); }
+    }
+
     Array<Block> blks(Nb);
     double alp = (Util::PI/2.0)/Nb;
     double bet = alp/2.0;
@@ -788,7 +809,8 @@ inline void Structured::GenQRing (bool O2, int Nx, int Ny, double r, double R, s
                       0.,  m*cos((i+1)*alp)  ,  m*sin((i+1)*alp) ,
                       0.,  r*cos(i*alp+bet)  ,  r*sin(i*alp+bet) ,
                      tag0,tag1,tag2,tag3);
-        blks[i].SetNx (Nx, /*Ax*/1.0, /*NonLin*/false);
+        if (WeightsX!=NULL) blks[i].SetNx (Wx);
+        else                blks[i].SetNx (Nx, Ax, NonLin);
         blks[i].SetNy (Ny);
     }
     NDim = 2;

@@ -162,7 +162,8 @@ public:
 
     // Methods
     void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
-    void WriteMPY (char const * FileKey, bool OnlyMesh=true) const;  ///< (.mpy) Write Python script that calls mesh_drawing.py
+    void WriteMPY (char const * FileKey, bool OnlyMesh=true,
+                   char const * Extra=NULL) const;                   ///< (.mpy) Write Python script that calls mesh_drawing.py
 
     // Auxiliar methods
     void ThrowError (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
@@ -726,7 +727,7 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
     of.close();
 }
 
-inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh) const
+inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh, char const * Extra) const
 {
     String fn(FileKey); fn.append(".mpy");
     std::ostringstream oss;
@@ -735,6 +736,7 @@ inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh) const
     oss << "d = Drawing(V,C)\n";
     if (OnlyMesh) oss << "d.draw_mesh(with_tags=False,with_ids=False)\n";
     else          oss << "d.draw_mesh()\n";
+    if (Extra!=NULL) oss << Extra;
     oss << "d.show()\n";
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
