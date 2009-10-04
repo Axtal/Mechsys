@@ -215,9 +215,10 @@ public:
     void SetFac (size_t iFacet,   int FTag, size_t NPolygons, ...);
 
     // Methods
-    void Generate  (bool O2=false, double GlobalMaxArea=-1, bool WithInfo=true); ///< Generate
-    void WritePoly (char const * FileKey, bool Blender=false);                   ///< (.poly)
-    void GenCube   (bool O2=false, double MaxArea=-1.0, double EdgeLength=1.0);  ///< Generate a cube
+    void Generate (bool O2=false, double GlobalMaxArea=-1, bool WithInfo=true); ///< Generate
+    void WritePLY (char const * FileKey, bool Blender=true);                    ///< (.ply)
+    void GenBox   (bool O2=false, double MaxVolume=-1.0,
+                   double Lx=1.0, double Ly=1.0, double Lz=1.0);                ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
 
     // Data
     TriIO Tin; ///< Triangle structure: input PSLG
@@ -527,10 +528,10 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
     }
 }
 
-inline void Unstructured::WritePoly (char const * FileKey, bool Blender)
+inline void Unstructured::WritePLY (char const * FileKey, bool Blender)
 {
     // output string
-    String fn(FileKey); fn.append(".poly");
+    String fn(FileKey); fn.append(".ply");
     std::ostringstream oss;
 
     if (Blender)
@@ -544,27 +545,62 @@ inline void Unstructured::WritePoly (char const * FileKey, bool Blender)
         oss << "msh = bpy.data.meshes.new('unstruct_poly')\n";
         oss << "obj = scn.objects.new(msh,'unstruct_poly')\n";
 
-        // points
-        oss << "pts = [";
-        for (int i=0; i<Tin.numberofpoints; ++i)
+        if (NDim==2)
         {
-            oss << "[" << Tin.pointlist[i*2];
-            oss << "," << Tin.pointlist[i*2+1];
-            oss << "," << (NDim==3 ? 0.0/*Tin.pointlist[i*3+2]*/ : 0.0) << "]";
-            if (i==Tin.numberofpoints-1) oss << "]\n";
-            else                         oss << ",\n       ";
-        }
-        oss << "\n";
+            // points
+            oss << "pts = [";
+            for (int i=0; i<Tin.numberofpoints; ++i)
+            {
+                oss << "[" << Tin.pointlist[i*2];
+                oss << "," << Tin.pointlist[i*2+1] << ", 0.0]";
+                if (i==Tin.numberofpoints-1) oss << "]\n";
+                else                         oss << ",\n       ";
+            }
+            oss << "\n";
 
-        // edges
-        oss << "edg = [";
-        for (int i=0; i<Tin.numberofsegments; ++i)
-        {
-            oss << "[" << Tin.segmentlist[i*2] << "," << Tin.segmentlist[i*2+1] << "]";
-            if (i==Tin.numberofsegments-1) oss << "]\n";
-            else                           oss << ",\n       ";
+            // edges
+            oss << "edg = [";
+            for (int i=0; i<Tin.numberofsegments; ++i)
+            {
+                oss << "[" << Tin.segmentlist[i*2] << "," << Tin.segmentlist[i*2+1] << "]";
+                if (i==Tin.numberofsegments-1) oss << "]\n";
+                else                           oss << ",\n       ";
+            }
+            oss << "\n";
         }
-        oss << "\n";
+        else
+        {
+            // points
+            oss << "pts = [";
+            for (int i=0; i<Pin.numberofpoints; ++i)
+            {
+                oss << "[" << Pin.pointlist[i*3];
+                oss << "," << Pin.pointlist[i*3+1];
+                oss << "," << Pin.pointlist[i*3+2] << "]";
+                if (i==Pin.numberofpoints-1) oss << "]\n";
+                else                         oss << ",\n       ";
+            }
+            oss << "\n";
+
+            // edges
+            oss << "edg = [";
+            for (int i=0; i<Pin.numberoffacets; ++i)
+            {
+                TetIO::facet * f = &Pin.facetlist[i];
+                for (int j=0; j<f->numberofpolygons; ++j)
+                {
+                    TetIO::polygon * p  = &f->polygonlist[j];
+                    for (int k=1; k<p->numberofvertices; ++k)
+                    {
+                        oss << "[" << p->vertexlist[k-1] << "," << p->vertexlist[k] << "]";
+                        if (k==p->numberofvertices-1) oss << ",[" << p->vertexlist[k] << "," << p->vertexlist[0] << "]";
+                        if ((i==Pin.numberoffacets-1) && (j==f->numberofpolygons-1) && (k==p->numberofvertices-1)) oss << "]\n";
+                        else oss << ",\n       ";
+                    }
+                }
+            }
+            oss << "\n";
+        }
 
         // extend mesh
         oss << "msh.verts.extend(pts)\n";
@@ -572,6 +608,8 @@ inline void Unstructured::WritePoly (char const * FileKey, bool Blender)
     }
     else // matplotlib
     {
+        if (NDim==3) throw new Fatal("Unstructured::WritePLY: Method not available for 3D and MatPlotLib");
+
         // header
         MPL::Header (oss);
 
@@ -627,18 +665,18 @@ inline void Unstructured::WritePoly (char const * FileKey, bool Blender)
     of.close();
 }
 
-inline void Unstructured::GenCube (bool O2, double A, double L)
+inline void Unstructured::GenBox (bool O2, double MaxVolume, double Lx, double Ly, double Lz)
 {
     Set (8, 6, 1, 0,                 // nverts, nfaces, nregs, nholes
          0., -1.,   0.0,  0.0,  0.0, // id, vtag, x, y, z
-         1., -2.,     L,  0.0,  0.0,
-         2., -3.,     L,    L,  0.0,
-         3., -4.,   0.0,    L,  0.0,
-         4., -5.,   0.0,  0.0,    L,
-         5., -6.,     L,  0.0,    L,
-         6., -7.,     L,    L,    L,
-         7., -8.,   0.0,    L,    L,
-             -1.,  L/2., L/2., L/2., A); // tag, reg_x, reg_y, reg_z, max_area
+         1., -2.,    Lx,  0.0,  0.0,
+         2., -3.,    Lx,   Ly,  0.0,
+         3., -4.,   0.0,   Ly,  0.0,
+         4., -5.,   0.0,  0.0,   Lz,
+         5., -6.,    Lx,  0.0,   Lz,
+         6., -7.,    Lx,   Ly,   Lz,
+         7., -8.,   0.0,   Ly,   Lz,
+             -1.,  Lx/2., Ly/2., Lz/2., MaxVolume); // tag, reg_x, reg_y, reg_z, max_vol
 
     SetFac (0, -1, 1,  4., 0.,3.,7.,4.); // id, ftag, npolys, nverts, v0,v1,v2,v3
     SetFac (1, -2, 1,  4., 1.,2.,6.,5.);

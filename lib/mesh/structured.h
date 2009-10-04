@@ -69,6 +69,7 @@
 #include "linalg/matvec.h"
 #include "util/array.h"
 #include "util/fatal.h"
+#include "util/util.h"
 
 namespace Mesh
 {
@@ -169,9 +170,12 @@ public:
     ~Structured () { Erase(); }
 
     // Methods
-    void Generate  (Array<Block> const & Blks, bool O2=false, bool WithInfo=true);        ///< Boundary marks are set first for Faces, then Edges, then Vertices (if any)
-    void GenBox    (int Nx, int Ny, int Nz, double Lx=1.0, double Ly=1.0, double Lz=1.0); ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
-    void ShapeFunc (double r, double s, double t);                                        ///< Calculate shape function. Return results on N
+    void Generate  (Array<Block> const & Blks, bool O2=false, bool WithInfo=true); ///< Boundary marks are set first for Faces, then Edges, then Vertices (if any)
+    void GenBox    (bool O2=true, int Nx=2,      int Ny=2,      int Nz=2,
+                               double Lx=1.0, double Ly=1.0, double Lz=1.0);       ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
+    void GenQRing  (bool O2=true, int Nx=2, int Ny=2, 
+                    double r=1.0, double R=2.0, size_t Nb=2);                      ///< Generate a quarter of a ring
+    void ShapeFunc (double r, double s, double t);                                 ///< Calculate shape function. Return results on N
 
     // Data
     Vec_t N; ///< Shape functions
@@ -726,7 +730,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
     }
 }
 
-inline void Structured::GenBox (int Nx, int Ny, int Nz, double Lx, double Ly, double Lz)
+inline void Structured::GenBox (bool O2, int Nx, int Ny, int Nz, double Lx, double Ly, double Lz)
 {
     /*
                       4----------------7
@@ -744,31 +748,51 @@ inline void Structured::GenBox (int Nx, int Ny, int Nz, double Lx, double Ly, do
             | ,'             | ,'
             1----------------2'
     */
+    Array<Block> blks(1);
+    blks[0].Set (/*NDim*/3, /*Tag*/-1, /*NVert*/8,
+                 -1.,  0.0, 0.0, 0.0,  // tag, x, y, z
+                 -2.,   Lx, 0.0, 0.0, 
+                 -3.,   Lx,  Ly, 0.0, 
+                 -4.,  0.0,  Ly, 0.0,
+                 -5.,  0.0, 0.0,  Lz,  // tag, x, y, z
+                 -6.,   Lx, 0.0,  Lz, 
+                 -7.,   Lx,  Ly,  Lz, 
+                 -8.,  0.0,  Ly,  Lz,
+                 -1.,-2.,-3.,-4.,-5.,-6.); // face tags
+    blks[0].SetNx (Nx);
+    blks[0].SetNy (Ny);
+    blks[0].SetNz (Nz);
+    NDim = 3;
+    Generate (blks,O2);
+}
 
-    /*
-    // Blocks
-    Array<Mesh::Block> bks(1);
-
-    // Block # 0
-    Mesh::Verts_T ve0( 8);
-    Mesh::Edges_T ed0(12);
-    Mesh::FTags_T ft0( 6);
-    ve0 = boost::make_tuple(0, 0.,0.,0.), boost::make_tuple(1, Lx,0.,0.), boost::make_tuple(2, Lx,Ly,0.), boost::make_tuple(3, 0.,Ly,0.),
-          boost::make_tuple(4, 0.,0.,Lz), boost::make_tuple(5, Lx,0.,Lz), boost::make_tuple(6, Lx,Ly,Lz), boost::make_tuple(7, 0.,Ly,Lz);
-    ed0 = boost::make_tuple(0,1), boost::make_tuple(1,2), boost::make_tuple(2,3), boost::make_tuple(3,0),
-          boost::make_tuple(4,5), boost::make_tuple(5,6), boost::make_tuple(6,7), boost::make_tuple(7,4),
-          boost::make_tuple(0,4), boost::make_tuple(1,5), boost::make_tuple(2,6), boost::make_tuple(3,7);
-    ft0 = boost::make_tuple(0,3,7,4,-1), boost::make_tuple(1,2,6,5,-2), boost::make_tuple(1,0,4,5,-3),
-          boost::make_tuple(2,3,7,6,-4), boost::make_tuple(0,1,2,3,-5), boost::make_tuple(4,5,6,7,-6);
-    bks[0].Set   (-1, ve0, ed0, NULL, &ft0, orig0, xplus1, yplus3, zplus4);
-    bks[0].SetNx (Nx);
-    bks[0].SetNy (Ny);
-    bks[0].SetNz (Nz);
-
-    // Generate
-    SetBlocks (bks);
-    Generate  (false);
-    */
+inline void Structured::GenQRing (bool O2, int Nx, int Ny, double r, double R, size_t Nb)
+{
+    Array<Block> blks(Nb);
+    double alp = (Util::PI/2.0)/Nb;
+    double bet = alp/2.0;
+    double m   = (r+R)/2.0;
+    for (size_t i=0; i<Nb; ++i)
+    {
+        double tag0 = (i==0    ? -10. : 0.);
+        double tag1 =            -20.;
+        double tag2 = (i==Nb-1 ? -30. : 0.);
+        double tag3 =            -40.;
+        blks[i].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/8,
+                      0.,  r*cos(i*alp)      ,  r*sin(i*alp)     ,
+                      0.,  R*cos(i*alp)      ,  R*sin(i*alp)     ,
+                      0.,  R*cos((i+1)*alp)  ,  R*sin((i+1)*alp) ,
+                      0.,  r*cos((i+1)*alp)  ,  r*sin((i+1)*alp) ,
+                      0.,  m*cos(i*alp)      ,  m*sin(i*alp)     ,
+                      0.,  R*cos(i*alp+bet)  ,  R*sin(i*alp+bet) ,
+                      0.,  m*cos((i+1)*alp)  ,  m*sin((i+1)*alp) ,
+                      0.,  r*cos(i*alp+bet)  ,  r*sin(i*alp+bet) ,
+                     tag0,tag1,tag2,tag3);
+        blks[i].SetNx (Nx, /*Ax*/1.0, /*NonLin*/false);
+        blks[i].SetNy (Ny);
+    }
+    NDim = 2;
+    Generate (blks,O2);
 }
 
 inline void Structured::ShapeFunc (double r, double s, double t)
