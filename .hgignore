@@ -22,10 +22,12 @@ install_manifest.txt
 *.cal
 *.avi
 *.res
-*.poly
+*.ply
 *.draw
 *.mpy
 *.mesh
 *.gnu
 *.bpy
 old_*
+mesh_drawing.py
+data_handler.py

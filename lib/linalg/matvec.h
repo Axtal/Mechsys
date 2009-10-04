@@ -34,6 +34,7 @@
 
 // MechSys
 #include "util/fatal.h"
+#include "util/util.h"
 
 // LAPACK
 extern "C"
@@ -375,6 +376,16 @@ inline void Dyad (Vec_t const & A, Vec_t const & B, Mat_t & M)
         M(i,j) = A(i) * B(j);
 }
 
+/** Left multiplication. {B} = {A}*[M]  */
+inline void Mult (Vec_t const & A, Mat_t const & M, Vec_t & B)
+{
+    B.change_dim (M.num_cols());
+    set_to_zero  (B);
+    for (size_t i=0; i<M.num_rows(); ++i)
+    for (size_t j=0; j<M.num_cols(); ++j)
+        B(j) += A(i)*M(i,j);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////// Tiny MatVec /////
 
@@ -632,12 +643,96 @@ namespace OrthoSys
 
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
 
-// Invariants
+// Cambridge invariants
 inline double p  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
 inline double ev (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
 inline double q  (Vec_t const & Sig) { double m = (Sig.size()>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
 inline double ed (Vec_t const & Eps) { double m = (Eps.size()>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
 
+/** Eigenprojectors of Sig. */
+inline void EigenProj (Vec_t const & Sig, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
+{
+    size_t ncp = Sig.size();
+    Mat3_t sig;
+    if (ncp==4)
+    {
+        sig = Sig(0),            Sig(3)/Util::SQ2,     0.0,
+              Sig(3)/Util::SQ2,  Sig(1),               0.0,
+                           0.0,               0.0,  Sig(2);
+    }
+    else
+    {
+        sig = Sig(0),            Sig(3)/Util::SQ2,  Sig(5)/Util::SQ2,
+              Sig(3)/Util::SQ2,  Sig(1),            Sig(4)/Util::SQ2,
+              Sig(5)/Util::SQ2,  Sig(4)/Util::SQ2,  Sig(2);
+        
+    }
+    Vec3_t v0,v1,v2;
+    Eig (sig, L, v0, v1, v2);
+    P0.change_dim (ncp);
+    P1.change_dim (ncp);
+    P2.change_dim (ncp);
+    if (ncp==4)
+    {
+        P0 = v0(0)*v0(0), v0(1)*v0(1), v0(2)*v0(2), v0(0)*v0(1)*Util::SQ2;
+        P1 = v1(0)*v1(0), v1(1)*v1(1), v1(2)*v1(2), v1(0)*v1(1)*Util::SQ2;
+        P2 = v2(0)*v2(0), v2(1)*v2(1), v2(2)*v2(2), v2(0)*v2(1)*Util::SQ2;
+    }
+    else
+    {
+        P0 = v0(0)*v0(0), v0(1)*v0(1), v0(2)*v0(2), v0(0)*v0(1)*Util::SQ2, v0(1)*v0(2)*Util::SQ2, v0(2)*v0(0)*Util::SQ2;
+        P1 = v1(0)*v1(0), v1(1)*v1(1), v1(2)*v1(2), v1(0)*v1(1)*Util::SQ2, v1(1)*v1(2)*Util::SQ2, v1(2)*v1(0)*Util::SQ2;
+        P2 = v2(0)*v2(0), v2(1)*v2(1), v2(2)*v2(2), v2(0)*v2(1)*Util::SQ2, v2(1)*v2(2)*Util::SQ2, v2(2)*v2(0)*Util::SQ2;
+    }
+}
+
+/** Octahedral invariants of Sig. */
+inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double qTol=1.0e-8)
+{
+    size_t ncp = Sig.size();
+    Vec_t I(ncp), s(ncp);
+    set_to_zero (I);
+    set_to_zero (s);
+    I(0) = 1.0;
+    I(1) = 1.0;
+    I(2) = 1.0;
+    double m = (ncp>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0);
+    p = -(Sig(0)+Sig(1)+Sig(2))/Util::SQ3;
+    q = sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(3.0);
+    t = 0.0;
+    s = Sig - ((Sig(0)+Sig(1)+Sig(2))/3.0)*I;
+    if (q>qTol)
+    {
+        double det_s = s(0)*s(1)*s(2) - s(2)*s(3)*s(3)/2.0; // TODO: extend to 3D
+        t = -3.0*Util::SQ6*det_s/(q*q*q);
+        if (t<=-1.0) t = -1.0;
+        if (t>= 1.0) t =  1.0;
+    }
+}
+
+/** Octahedral invariants of Sig. */
+inline void OctInvs (Vec3_t & L, double & p, double & q, double & t, Vec3_t & dpdL, Vec3_t & dqdL, Vec3_t & dtdL, double qTol=1.0e-8)
+{
+    Vec3_t one(1.0,1.0,1.0), s;
+    p    = -(L(0)+L(1)+L(2))/Util::SQ3;
+    q    = sqrt(pow(L(0)-L(1),2.0) + pow(L(1)-L(2),2.0) + pow(L(2)-L(0),2.0))/sqrt(3.0);
+    t    = 0.0;
+    s    = L - ((L(0)+L(1)+L(2))/3.0)*one;
+    dpdL = (-1.0/Util::SQ3)*one;
+    dqdL = 0.0, 0.0, 0.0;
+    if (q>qTol)
+    {
+        double q3 = q*q*q;
+        double q5 = q3*q*q;
+        double l  = (L(0)-L(1))*(L(1)-L(2))*(L(2)-L(0));
+        Vec3_t B(L(2)-L(1), L(0)-L(2), L(1)-L(0));
+        t    = -3.0*Util::SQ6*s(0)*s(1)*s(2)/q3;
+        dqdL = (1.0/q)*s;
+        dtdL = (-Util::SQ6*l/q5)*B;
+        if (t<=-1.0) t = -1.0;
+        if (t>= 1.0) t =  1.0;
+    }
+}
 
 Mat_t Isy_2d (4,4); ///< Idendity of 4th order
 Mat_t Psd_2d (4,4); ///< Projector: sym-dev

@@ -43,6 +43,7 @@ public:
 	Vec_t Sig, SigBkp; ///< Stress
 	Vec_t Eps, EpsBkp; ///< Strain
 	Vec_t Ivs, IvsBkp; ///< Internal values
+    bool  Loading;     ///< Loading ?
 };
 
 
@@ -50,7 +51,7 @@ public:
 
 
 inline EquilibState::EquilibState (int NDim)
-	: State(NDim)
+	: State(NDim), Loading(false)
 {
     int ncomp = NDim*2; // number of stress/strain components
     Sig   .change_dim(ncomp);  set_to_zero(Sig   );

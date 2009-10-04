@@ -106,8 +106,8 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    sol.DScheme = FEM::Solver::SS22_t;
-    //sol.DScheme = FEM::Solver::GN22_t;
+    //sol.DScheme = FEM::Solver::SS22_t;
+    sol.DScheme = FEM::Solver::GN22_t;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
