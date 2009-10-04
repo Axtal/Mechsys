@@ -34,6 +34,7 @@
 #include "models/model.h"
 #include "fem/element.h"
 #include "mesh/mesh.h"
+#include "draw.h"
 
 namespace FEM
 {
@@ -65,6 +66,7 @@ public:
     void     PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
     bool     CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
     bool     CheckError   (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const; ///< At integration points
+    void     WriteMPY     (char const * FileKey);
 
     // Data
     int                   NDim;    ///< Space dimension
@@ -523,6 +525,17 @@ inline bool Domain::CheckError (std::ostream & os, Table const & EleSol, SDPair 
     os << "\n";
 
     return error;
+}
+
+inline void Domain::WriteMPY (char const * FNKey)
+{
+    String fn(FNKey);  fn.append(".mpy");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    MPL::Header   (of);
+    for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->Draw (of);
+    MPL::AddPatch (of);
+    MPL::Show     (of);
+    of.close      ();
 }
 
 std::ostream & operator<< (std::ostream & os, Domain const & D)
