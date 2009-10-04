@@ -585,13 +585,13 @@ inline void Solver::_ME_update (double tf)
         // update
         if (error<STOL)
         {
-            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
             for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_me, &F_int);
             T    += dT;
             U     = U_me;
             F     = F_me;
             Time += dt;
             if (m>mMax) m = mMax;
+            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
         }
         else if (m<mMin) m = mMin;
 

@@ -30,9 +30,6 @@
 #include "util/fatal.h"
 #include "linalg/matvec.h"
 
-using std::cout;
-using std::endl;
-
 namespace FEM
 {
 
@@ -253,7 +250,7 @@ inline void Element::CoordsOfIP (size_t IdxIP, Vec_t & X) const
 {
     if (GE==NULL) throw new Fatal("Element::CoordsOfIP: This method works only when GE (geometry element) is not NULL");
 
-    cout << "\n" << GE->IPs[IdxIP].r << "  " << GE->IPs[IdxIP].s << "\n\n";
+    //std::cout << "\n" << GE->IPs[IdxIP].r << "  " << GE->IPs[IdxIP].s << "\n\n";
     GE->Shape (GE->IPs[IdxIP].r, GE->IPs[IdxIP].s, GE->IPs[IdxIP].t);
     X.change_dim (NDim);
     set_to_zero  (X);
