@@ -120,7 +120,7 @@ int main(int argc, char **argv) try
     // error tolerance
     SDPair nod_tol, ele_tol;
     nod_tol.Set("ux uy wz", 1.0e-15,1.0e-15,1.0e-15);
-    ele_tol.Set("P  V  M",  1.0e-14,1.0e-15,1.0e-15);
+    ele_tol.Set("P  V  M",  1.0e-14,1.0e-14,1.0e-15);
 
     // return error flag
     return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
