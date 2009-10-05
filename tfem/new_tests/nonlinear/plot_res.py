@@ -2,7 +2,7 @@ from numpy import *
 from pylab import *
 from data_handler import *
 
-test = 2
+test = 22
 
 if test==1:
     #dat = read_table("owen_hinton_nod_2.res")
@@ -28,7 +28,7 @@ if test==1:
     show()
 
 if test==2:
-    P   = 12
+    P   = 18
     res = read_table("owen_hinton_02_P%d.res"%P)
     dat = read_table("owen_hinton_02_P%d.dat"%P)
 
@@ -46,3 +46,22 @@ if test==-2:
     #plot(dat['x'],dat['y'],'bo')
     #grid()
     #show()
+
+if test==22:
+    dat = read_table("owen_hinton_02_n41.res")
+    u    = array(dat['ur'])
+    fint = array(dat['fr_int'])
+    fext = array(dat['fr_ext'])
+
+    subplot(1,2,1)
+    plot(u,fext,'r-',lw=2)
+    plot(u,fext,'ro')
+    plot(u,fint,'b-',lw=2)
+    plot(u,fint,'b*')
+    grid()
+
+    subplot(1,2,2)
+    plot(u,dat['P'],'r-',lw=2)
+    grid()
+
+    show()

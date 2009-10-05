@@ -21,3 +21,14 @@ IF(MAKE_TFEM_NEW_ONLY)
 ELSE(MAKE_TFEM_NEW_ONLY)
 	SUBDIRS (coupled diffusion elasticity geotech new_tests)
 ENDIF(MAKE_TFEM_NEW_ONLY)
+
+SET(TESTS
+  labtest)
+
+IF(FEM_FOUND)
+	FOREACH(var ${TESTS})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+	ENDFOREACH(var)
+ENDIF(FEM_FOUND)
