@@ -350,7 +350,10 @@ inline void Sol (Mat_t & M, Vec_t & X)
            &info);  // info
     delete [] ipiv;
 
-    if (info!=0) throw new Fatal ("Sol: Linear solver (DGESV) failed (singular matrix?)");
+    if (info!=0) 
+    {
+        throw new Fatal ("Sol: Linear solver (DGESV) failed (singular matrix?)");
+    }
 }
 
 /** Linear Solver. {X} = [M]^{-1}{B}  */

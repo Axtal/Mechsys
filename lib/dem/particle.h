@@ -33,7 +33,8 @@ class Particle
 {
 public:
     // Constructor
-    Particle(Array<Vec3_t>       const & V,   ///< List of vertices
+    Particle(int                 Tag,         ///< Tag of the particle
+             Array<Vec3_t>       const & V,   ///< List of vertices
              Array<Array <int> > const & E,   ///< List of edges with connectivity
              Array<Array <int> > const & F,   ///< List of faces with connectivity
              Vec3_t              const & v0,  ///< Initial velocity
@@ -53,6 +54,7 @@ public:
     void Draw       (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
 
     // Data
+    int            Tag;        ///< Tag of the particle
     bool           PropsReady; ///< Are the properties calculated ready ?
     Vec3_t         x;          ///< Position of the center of mass
     Vec3_t         xb;         ///< Former position for the Verlet algorithm
@@ -60,7 +62,9 @@ public:
     Vec3_t         w;          ///< Angular velocity
     Vec3_t         wb;         ///< Former angular velocity for the leap frog algorithm
     Vec3_t         F;          ///< Force over the particle
+    Vec3_t         Ff;         ///< Fixed Force over the particle
     Vec3_t         T;          ///< Torque over the particle
+    Vec3_t         Tf;         ///< Fixed Torque over the particle
     Vec3_t         I;          ///< Vector containing the principal components of the inertia tensor
     Quaternion_t   Q;          ///< The quaternion representing the rotation
     double         R;          ///< Spheroradius
@@ -104,9 +108,11 @@ public:
 
 // Constructor and destructor
 
-inline Particle::Particle (Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
-    : PropsReady(false), v(v0), w(w0), R(TheR), rho(TheRho)
+inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
+    : Tag(TheTag), PropsReady(false), v(v0), w(w0), R(TheR), rho(TheRho)
 {
+    Ff = 0.0,0.0,0.0;
+    Tf = 0.0,0.0,0.0;
     for (size_t i=0; i<V.Size(); i++) Verts.Push (new Vec3_t(V[i]));
     for (size_t i=0; i<F.Size(); i++)
     {

@@ -64,16 +64,24 @@ int main(int argc, char **argv) try
 
     // domain
     Domain d;
-    d.GenFromVoro (con1, /*R*/radius);
+    d.GenFromVoro (-1,con1, /*R*/radius);
     for (size_t i=0; i < d.Particles.Size() ; ++i)
     {
         Vec3_t trans(x_min,y_min,z_min+2.0);
         d.Particles[i]->Translate(trans);
-        d.Particles[i]->v = Vec3_t(0,0,-3.);
+        d.Particles[i]->v = Vec3_t(0,0,0);
     }
 
-    Vec3_t r = (0.0,0.0,-1.0);
-    d.AddPlane(r,0.1,10.0,3.0);
+    Vec3_t r(0.0,0.0,-1.0);
+    d.AddPlane(-2,r,0.1,10.0,1.0);
+
+    r = 0.0,0.0,5.0;
+    d.AddPlane(-3,r,0.1,10.0,1.0);
+    // Dictionary of parameters
+    Dict B;
+    B.Set(-2,"vx vy vz",0.0,0.0,0.0)
+     .Set(-3,"fx fy fz",0.0,0.0,-1.0);
+
 
     // output
     d.WriteBPY ("test_voro03");
@@ -83,6 +91,7 @@ int main(int argc, char **argv) try
 
     // Output the Voronoi cells in gnuplot format
     //con.draw_cells_gnuplot("test_voro02_v.gnu");
-    d.Solve (/*tf*/30, 0.0001, /*dtOut*/0.1, "test_voro03", /*CamPos*/Vec3_t(0,15,9));
+    d.SetProps(B);
+    d.Solve (/*tf*/30, 0.001, /*dtOut*/0.1, "test_voro03", /*CamPos*/Vec3_t(0,15,0));
 }
 MECHSYS_CATCH

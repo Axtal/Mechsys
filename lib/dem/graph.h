@@ -34,6 +34,7 @@
 inline void POVHeader (std::ostream & os)
 {
     os << "#include \"colors.inc\" \n";
+    os << "#include \"glass.inc\" \n";
     os << "background {color White} \n";
     os << "light_source{<10,0,0> color White shadowless}  \n";
     os << "light_source{<-10,0,0> color White shadowless}  \n";
