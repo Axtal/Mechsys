@@ -771,7 +771,7 @@ inline void Structured::GenBox (bool O2, int Nx, int Ny, int Nz, double Lx, doub
                  -6.,   Lx, 0.0,  Lz, 
                  -7.,   Lx,  Ly,  Lz, 
                  -8.,  0.0,  Ly,  Lz,
-                 -1.,-2.,-3.,-4.,-5.,-6.); // face tags
+                 -10.,-20.,-30.,-40.,-50.,-60.); // face tags
     blks[0].SetNx (Nx);
     blks[0].SetNy (Ny);
     blks[0].SetNz (Nz);

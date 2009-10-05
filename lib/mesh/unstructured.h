@@ -678,12 +678,12 @@ inline void Unstructured::GenBox (bool O2, double MaxVolume, double Lx, double L
          7., -8.,   0.0,   Ly,   Lz,
              -1.,  Lx/2., Ly/2., Lz/2., MaxVolume); // tag, reg_x, reg_y, reg_z, max_vol
 
-    SetFac (0, -1, 1,  4., 0.,3.,7.,4.); // id, ftag, npolys, nverts, v0,v1,v2,v3
-    SetFac (1, -2, 1,  4., 1.,2.,6.,5.);
-    SetFac (2, -3, 1,  4., 0.,1.,5.,4.);
-    SetFac (3, -4, 1,  4., 2.,3.,7.,6.);
-    SetFac (4, -5, 1,  4., 0.,1.,2.,3.);
-    SetFac (5, -6, 1,  4., 4.,5.,6.,7.);
+    SetFac (0, -10, 1,  4., 0.,3.,7.,4.); // id, ftag, npolys, nverts, v0,v1,v2,v3
+    SetFac (1, -20, 1,  4., 1.,2.,6.,5.);
+    SetFac (2, -30, 1,  4., 0.,1.,5.,4.);
+    SetFac (3, -40, 1,  4., 2.,3.,7.,6.);
+    SetFac (4, -50, 1,  4., 0.,1.,2.,3.);
+    SetFac (5, -60, 1,  4., 4.,5.,6.,7.);
 
     Generate (O2);
 }
