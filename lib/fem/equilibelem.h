@@ -41,6 +41,7 @@ public:
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);   ///< If setting body forces, IdxEdgeOrFace is ignored
+    void CalcFint    (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
     void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                            const; ///< Mass matrix
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
@@ -109,6 +110,9 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
         // initialize DOFs
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
     }
+
+    // set F in nodes due to Fint
+    CalcFint ();
 }
 
 inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
@@ -244,6 +248,34 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
             }
         }
     }
+}
+
+inline void EquilibElem::CalcFint (Vec_t * F_int) const
+{
+    Array<size_t> loc;
+    GetLoc (loc);
+    double detJ, coef;
+    Mat_t  C, B;
+    Vec_t  Fe(GE->NN*NDim);
+    set_to_zero (Fe);
+    CoordMatrix (C);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        CalcB (C, GE->IPs[i], B, detJ, coef);
+        Vec_t Btsig(trans(B)*static_cast<EquilibState const *>(Sta[i])->Sig);
+        Fe += coef * (Btsig);
+    }
+    if (F_int==NULL) // set nodes
+    {
+        // add to F
+        for (size_t i=0; i<GE->NN; ++i)
+        {
+            Con[i]->F[Con[i]->FMap("fx")] += Fe(0+i*NDim);
+            Con[i]->F[Con[i]->FMap("fy")] += Fe(1+i*NDim);  if (NDim==3)
+            Con[i]->F[Con[i]->FMap("fz")] += Fe(2+i*NDim);
+        }
+    }
+    else for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += Fe(i);
 }
 
 inline void EquilibElem::CalcK (Mat_t & K) const

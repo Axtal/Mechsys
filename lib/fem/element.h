@@ -58,7 +58,7 @@ public:
     virtual void RestoreState ()                                         const;
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs) {}
     virtual void ClrBCs       ()                                         {}
-    virtual void InitFint     (Vec_t & F_int)                            const { for (size_t i=0; i<F_int.size(); ++i) F_int(i) = 0.0; }
+    virtual void CalcFint     (Vec_t * F_int=NULL)                       const { if (F_int!=NULL) for (size_t i=0; i<F_int->size(); ++i) (*F_int)(i) = 0.0; }
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
     virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }
     virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)     const {}

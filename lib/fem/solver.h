@@ -493,8 +493,8 @@ inline void Solver::Initialize (bool Transient)
         A.change_dim (NEQ);  set_to_zero (A);
     }
 
-    // initialize F_int (must come before setting up of F(ext))
-    for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->InitFint (F_int);
+    // initialize F_int
+    for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->CalcFint (&F_int);
 
     // set variables
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
