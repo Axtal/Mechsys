@@ -196,12 +196,19 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
 
                 // face/edge Jacobian and its determinant
                 Mat_t J(GE->FdNdR * C);
-                double detJ = Det(J);
 
                 // normal to edge/face
-                Vec_t n(NDim);
-                if (NDim==2) n = J(0,1)/detJ, -J(0,0)/detJ;
-                else throw new Fatal("EquilibElem::SetBCs: 3D element is not available yet");
+                Vec_t n(NDim); // normal multiplied by detJ
+                if (NDim==2) n = J(0,1), -J(0,0);
+                else
+                {
+                    // vectorial product
+                    Vec_t a(3);  a = J(0,0), J(0,1), J(0,2);
+                    Vec_t b(3);  b = J(1,0), J(1,1), J(1,2);
+                    n = a(1)*b(2) - a(2)*b(1),
+                        a(2)*b(0) - a(0)*b(2),
+                        a(0)*b(1) - a(1)*b(0);
+                }
 
                 // loading
                 if (NDim==2)
@@ -217,7 +224,7 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                 }
 
                 // coefficient used during integration
-                double coef = h*detJ*GE->FIPs[i].w;
+                double coef = h*GE->FIPs[i].w; // *detJ is not neccessary since qx,qy,qz are already multiplied by detJ (due to normal)
                 if (GTy==axs_t)
                 {
                     // calculate radius=x at this FIP

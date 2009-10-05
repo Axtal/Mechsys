@@ -107,10 +107,15 @@ inline Element::Element (int TheNDim, Mesh::Cell const & TheCell, Model const * 
         String geom_name;
         GEOM.Val2Key (Prp("geom"), geom_name);
         GE = AllocGeomElem (geom_name, NDim);
+
+        // set number of integration points
         if (Prp.HasKey("nip")) GE->SetIPs (static_cast<int>(Prp("nip")));
+
+        // check number of nodes
+        if (Con.Size()!=GE->NN) throw new Fatal("Element::Element: Number of vertices (%d) of an element (%s) in mesh is incorrect. It must be equal to %d for %s", Con.Size(),geom_name.CStr(),GE->NN,geom_name.CStr());
     }
 
-    // check
+    // check model
     if (Mdl!=NULL) { if (GTy!=Mdl->GTy) throw new Fatal("Element::Element: Element geometry type (%s) must be equal to Model geometry type (%s)", GTypeToStr(GTy).CStr(), GTypeToStr(Mdl->GTy).CStr()); }
 }
 

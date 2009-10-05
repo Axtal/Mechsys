@@ -66,7 +66,8 @@ public:
     void     PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
     bool     CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
     bool     CheckError   (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const; ///< At integration points
-    void     WriteMPY     (char const * FileKey);
+    void     WriteMPY     (char const * FileKey) const;
+    void     WriteVTU     (char const * FileKey) const;
 
     // Data
     int                   NDim;    ///< Space dimension
@@ -527,7 +528,7 @@ inline bool Domain::CheckError (std::ostream & os, Table const & EleSol, SDPair 
     return error;
 }
 
-inline void Domain::WriteMPY (char const * FNKey)
+inline void Domain::WriteMPY (char const * FNKey) const
 {
     String fn(FNKey);  fn.append(".mpy");
     std::ofstream of(fn.CStr(), std::ios::out);
@@ -536,6 +537,138 @@ inline void Domain::WriteMPY (char const * FNKey)
     MPL::AddPatch (of);
     MPL::Show     (of);
     of.close      ();
+}
+
+inline void Domain::WriteVTU (char const * FNKey) const
+{
+    // data
+    String fn(FNKey); fn.append(".vtu");
+    std::ostringstream oss;
+    size_t nn = Nods.Size(); // number of nodes
+    size_t ne = Eles.Size(); // number of elements
+
+    // constants
+    size_t          nimax = 40;        // number of integers in a line
+    size_t          nfmax =  6;        // number of floats in a line
+    Util::NumStream nsflo = Util::_8s; // number format for floats
+
+    // header
+    oss << "<?xml version=\"1.0\"?>\n";
+    oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    oss << "  <UnstructuredGrid>\n";
+    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << ne << "\">\n";
+
+    // nodes: coordinates
+    oss << "      <Points>\n";
+    oss << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    size_t k = 0; oss << "        ";
+    for (size_t i=0; i<nn; ++i)
+    {
+        oss << "  " << nsflo <<          Nods[i]->Vert.C(0) << " ";
+        oss <<         nsflo <<          Nods[i]->Vert.C(1) << " ";
+        oss <<         nsflo << (NDim==3?Nods[i]->Vert.C(2):0.0);
+        k++;
+        VTU_NEWLINE (i,k,nn,nfmax/3-1,oss);
+    }
+    oss << "        </DataArray>\n";
+    oss << "      </Points>\n";
+
+    // elements: connectivity, offsets, types
+    oss << "      <Cells>\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    for (size_t i=0; i<ne; ++i)
+    {
+        oss << "  ";
+        for (size_t j=0; j<Eles[i]->Con.Size(); ++j) oss << Eles[i]->Con[j]->Vert.ID << " ";
+        k++;
+        VTU_NEWLINE (i,k,ne,nimax/Eles[i]->Con.Size(),oss);
+    }
+    oss << "        </DataArray>\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    size_t offset = 0;
+    for (size_t i=0; i<ne; ++i)
+    {
+        offset += Eles[i]->Con.Size();
+        oss << (k==0?"  ":" ") << offset;
+        k++;
+        VTU_NEWLINE (i,k,ne,nimax,oss);
+    }
+    oss << "        </DataArray>\n";
+    oss << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    for (size_t i=0; i<ne; ++i)
+    {
+        if (NDim==2) oss << (k==0?"  ":" ") << NVertsToVTKCell2D[Eles[i]->Con.Size()];
+        else         oss << (k==0?"  ":" ") << NVertsToVTKCell3D[Eles[i]->Con.Size()];
+        k++;
+        VTU_NEWLINE (i,k,ne,nimax,oss);
+    }
+    oss << "        </DataArray>\n";
+    oss << "      </Cells>\n";
+
+    // data -- nodes
+    if (Nods[0]->U.Size()==1)
+    {
+        String key = Nods[0]->UMap.Keys[0];
+        oss << "      <PointData Scalars=\"TheScalars\">\n";
+        oss << "        <DataArray type=\"Float32\" Name=\"" << key << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t i=0; i<nn; ++i)
+        {
+            oss << (k==0?"  ":" ") << Nods[i]->Vert.Tag;
+            k++;
+            VTU_NEWLINE (i,k,nn,nimax,oss);
+        }
+        oss << "        </DataArray>\n";
+        oss << "      </PointData>\n";
+    }
+    else if (Nods[0]->U.Size()==(size_t)NDim)
+    {
+        oss << "      <PointData Vectors=\"TheVectors\">\n";
+        oss << "        <DataArray type=\"Float32\" Name=\"" << "U" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t i=0; i<nn; ++i)
+        {
+            oss << "  " << nsflo <<          Nods[i]->U[Nods[i]->UMap("ux")] << " ";
+            oss <<         nsflo <<          Nods[i]->U[Nods[i]->UMap("uy")] << " ";
+            oss <<         nsflo << (NDim==3?Nods[i]->U[Nods[i]->UMap("uz")]:0.0);
+            k++;
+            VTU_NEWLINE (i,k,nn,nfmax/3-1,oss);
+        }
+        oss << "        </DataArray>\n";
+        oss << "      </PointData>\n";
+    }
+
+    // data -- elements
+    oss << "      <CellData Scalars=\"TheScalars\">\n";
+    SDPair dat;
+    Eles[0]->GetState (dat);
+    for (size_t i=0; i<dat.Keys.Size(); ++i)
+    {
+        oss << "        <DataArray type=\"Float32\" Name=\"" << dat.Keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t j=0; j<ne; ++j)
+        {
+            Eles[j]->GetState (dat);
+            oss << (k==0?"  ":" ") << dat(dat.Keys[i]);
+            k++;
+            VTU_NEWLINE (j,k,nn,nfmax/3-1,oss);
+        }
+        oss << "        </DataArray>\n";
+    }
+    oss << "      </CellData>\n";
+
+    // Bottom
+    oss << "    </Piece>\n";
+    oss << "  </UnstructuredGrid>\n";
+    oss << "</VTKFile>" << std::endl;
+
+    // Write to file
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 }
 
 std::ostream & operator<< (std::ostream & os, Domain const & D)
