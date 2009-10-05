@@ -101,9 +101,11 @@ int main(int argc, char **argv) try
 
         // face
         Array<Vec3_t> C(3); // connectivity
-        C[0] = 1.0,0.0,0.0;
-        C[1] = 0.0,0.0,0.0;
-        C[2] = 0.0,1.0,0.0;
+        C[0] = -1.0,-1.0,0.0;
+        C[1] = -1.0,1.0,0.0;
+        C[2] =  1.0,1.0,0.0;
+        C[3] = 1.0,-1.0,0.0;
+
         Face F(C);
 
         // distance
@@ -114,8 +116,8 @@ int main(int argc, char **argv) try
         Edge D(Xi,Xf);
 
         // draw
-        std::ofstream of("test_distances_VF.pov",std::ios::out);
-        POVHeader   (of);
+        std::ofstream of("test_distances_VF",std::ios::out);
+        BPYHeader   (of);
         POVSetCam   (of, Vec3_t(4,2,2), Vec3_t(0,0,0));
         POVDrawVert (V, of, /*R*/0.2, "Green");
         F.Draw      (of,    /*R*/0.1, "Red");

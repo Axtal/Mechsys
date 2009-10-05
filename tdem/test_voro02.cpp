@@ -36,11 +36,12 @@ int main(int argc, char **argv) try
     const double cvol = (x_max-x_min)*(y_max-y_min)*(x_max-x_min);
 
     // number of blocks that the container is divided into
-    const int n_x=2, n_y=2, n_z=2;
+    const int n_x=3, n_y=3, n_z=3;
 
     // create voro container.allocate space for eight particles within each computational block
     size_t num_particles = n_x*n_y*n_z;
-    container con1 (x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z, false,false,false,8);
+    container con1 (x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z, true,true,true,8);
+    container con2 (x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z, true,true,true,8);
 
     // randomly add particles into the container
     size_t n = 0;
@@ -59,9 +60,26 @@ int main(int argc, char **argv) try
         }
     }
 
+    // randomly add particles into the container
+    n = 0;
+    for (size_t i=0; i<n_x; i++)
+    {
+        double x = x_min+(i+rnd())*(x_max-x_min)/n_x;
+        for (size_t j=0; j<n_y; j++)
+        {
+            double y = y_min+(j+rnd())*(y_max-y_min)/n_y;
+            for (size_t k=0; k<n_z; k++)
+            {
+                double z = z_min+(k+rnd())*(z_max-z_min)/n_z;
+                con2.put (n,x,y,z);
+                n++;
+            }
+        }
+    }
+
     // domain
     Domain d;
-    d.GenFromVoro (con1, /*R*/0.05);
+    d.GenFromVoro (-1,con1, /*R*/0.1,3.0);
     for (size_t i=0; i < d.Particles.Size() ; ++i)
     {
         Vec3_t trans(3,0,0);
@@ -69,7 +87,7 @@ int main(int argc, char **argv) try
         d.Particles[i]->v = Vec3_t(-0.6,0,0);
     }
 
-    d.GenFromVoro(con1,0.05);
+    d.GenFromVoro(-1,con2,0.1,3.0);
 
     // output
     d.WriteBPY ("test_voro02");
