@@ -45,9 +45,11 @@ public:
     Model (int NDim, SDPair const & Prms, char const * Name="__unnamed_model__"); ///< NDim:space dimension, Prms:parameters
 
     // Methods
-    virtual void   InitIvs   (SDPair const & Ini, State * Sta)                     const =0;
-    virtual void   Stiffness (State const * Sta, Mat_t & D, Array<Vec_t> * d=NULL) const {}
-    virtual double CalcDEz   (Vec_t const & DSig)                                  const { throw new Fatal("Model::CalcDEz: This method is not available yet"); return 0; }
+    virtual void   InitIvs      (SDPair const & Ini, State * Sta)                        const =0;
+    virtual void   Stiffness    (State const * Sta, Mat_t & D, Array<Vec_t> * d=NULL)    const {}
+    virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt) const { alpInt=-1.0; return false; }
+    virtual void   CorrectDrift (State * Sta)                                            const {}
+    virtual double CalcDEz      (Vec_t const & DSig)                                     const { throw new Fatal("Model::CalcDEz: This method is not available yet"); return 0; }
 
     // Data
     int      NDim; ///< Space dimension: 2 or 3

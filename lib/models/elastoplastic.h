@@ -27,6 +27,9 @@
 using std::cout;
 using std::endl;
 
+/** Failure criteria names. */
+SDPair FAILCRIT;
+
 class ElastoPlastic : public Model
 {
 public:
@@ -37,8 +40,10 @@ public:
     ElastoPlastic (int NDim, SDPair const & Prms);
 
     // Methods
-    void InitIvs   (SDPair const & Ini, State * Sta) const;
-    void Stiffness (State const * Sta, Mat_t & D, Array<Vec_t> * d=NULL) const;
+    void InitIvs      (SDPair const & Ini, State * Sta) const;
+    void Stiffness    (State const * Sta, Mat_t & D, Array<Vec_t> * d=NULL) const;
+    bool LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt) const;
+    void CorrectDrift (State * Sta) const;
 
     // Internal methods
     void   ELStiff   (EquilibState const * Sta, Mat_t & D)                         const;
@@ -51,9 +56,9 @@ public:
     double FailCrit  (EquilibState const * Sta) const { return YieldFunc (Sta); }
 
     // Data
-    double  E;
-    double  nu;
-    double  sY; ///< Uniaxial yield stress
+    double  E;  ///< Young
+    double  nu; ///< Poisson
+    double  kY; ///< Coefficient for yielding
     FCrit_t FC; ///< Failure criterion: VM:Von-Mises
 };
 
@@ -66,7 +71,21 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms)
 {
     E  = Prms("E");
     nu = Prms("nu");
-    sY = Prms("sY");
+    if (Prms.HasKey("fc"))
+    {
+        String fc;
+        FAILCRIT.Val2Key (Prms("fc"), fc);
+        if      (fc=="VM") FC = VM_t;
+        else if (fc=="DP") FC = DP_t;
+        else if (fc=="MC") FC = MC_t;
+        else throw new Fatal("ElastoPlastic::ElastoPlastic: Failure criterion fc=%s is not available",fc.CStr());
+    }
+    if (FC==VM_t)
+    {
+        if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
+        else if (Prms.HasKey("cu")) kY = 2.0*sqrt(2.0/3.0)*Prms("cu");
+        else throw new Fatal("ElastoPlastic::ElastoPlastic: With fc=VM (von Mises), either sY (uniaxial yield stress) or cu (undrained cohesion) must be provided");
+    }
 }
 
 inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
@@ -85,16 +104,65 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<Vec_t>
     ELStiff (sta, De);
 
     // stiffness
-    if (sta->Loading)
+    if (sta->Ldg)
     {
         Vec_t V, Y;
         Gradients (sta, V, Y);
         EPStiff   (sta, De, V, Y, D, (*d));
     }
-    else
+    else D = De;
+}
+
+inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, double & alpInt) const
+{
+    // default return values
+    alpInt = -1.0;    // no intersection
+    bool ldg = false; // => unloading
+
+    // current state
+    EquilibState const * sta = static_cast<EquilibState const *>(Sta);
+
+    // elastic stiffness
+    Mat_t De;
+    ELStiff (sta, De);
+
+    // trial state
+    Vec_t dsig_tr(De * DEps);
+    EquilibState sta_tr(NDim);
+    sta_tr = (*sta);
+    sta_tr.Sig += dsig_tr;
+
+    // yield function values
+    double f    = YieldFunc (sta);
+    double f_tr = YieldFunc (&sta_tr);
+
+    // going outside
+    if (f_tr>0.0)
     {
-        D = De;
+        ldg = true;
+        if (f*f_tr<0.0) // with crossing
+        {
+            Vec_t V, Y;
+            size_t k     = 0;
+            size_t maxIt = 10;
+            double tol   = 1.0e-9;
+            alpInt       = f/(f-f_tr);
+            sta_tr.Sig   = sta->Sig + alpInt*dsig_tr;
+            for (k=0; k<maxIt; ++k)
+            {
+                f_tr = YieldFunc (&sta_tr);
+                if (fabs(f_tr)<tol) break;
+                Gradients (&sta_tr, V, Y);
+                alpInt    += (-f_tr/dot(V,dsig_tr));
+                sta_tr.Sig = sta->Sig + alpInt*dsig_tr;
+            }
+            if (k>=maxIt) throw new Fatal("ElastoPlastic::LoadCond: Newton-Rhapson (for calculating intersection) did not converge after %d iterations",k);
+        }
+        //else std::cout << "ElastoPlastic::LoadCond: f=" << f << "  f_tr=" << f_tr << "\n";
     }
+
+    // return true if there is loading (also when there is intersection)
+    return ldg;
 }
 
 inline void ElastoPlastic::ELStiff (EquilibState const * Sta, Mat_t & D) const
@@ -213,7 +281,7 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
     OctInvs (Sta->Sig, p, q, t);
     if (FC==VM_t)
     {
-        f = q - Util::SQ3*sY;
+        f = q - kY;
     }
     else if (FC==DP_t)
     {
@@ -227,6 +295,37 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
     return f;
 }
 
+inline void ElastoPlastic::CorrectDrift (State * Sta) const
+{
+    EquilibState * sta = static_cast<EquilibState *>(Sta);
+    double fnew  = YieldFunc (sta);
+    size_t ncp   = sta->Sig.size();
+    size_t niv   = sta->Ivs.size();
+    size_t it    = 0;
+    size_t maxIt = 10;
+    double tol   = 1.0e-8;
+    Mat_t De;
+    Vec_t V(ncp), Y, W(ncp), H, VDe(ncp), DeW(ncp);
+    while (fnew>tol)
+    {
+        Gradients (sta, V, Y);
+        FlowRule  (sta, V, W);
+        Hardening (sta, W, H);
+        double hp = 0.0;
+        for (size_t i=0; i<niv; ++i) hp += Y(i)*H(i);
+        if (it==0) ELStiff (sta, De);
+        Mult (V, De, VDe);
+        double dgam = fnew/(dot(VDe,W)-hp);
+        DeW = De*W;
+        sta->Sig -= dgam*DeW;
+        sta->Ivs += dgam*H;
+        fnew = YieldFunc (sta);
+        if (fabs(fnew)<tol) break;
+        it++;
+    }
+    if (it>=maxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction dit not converge after %d iterations",it);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
@@ -237,6 +336,8 @@ int ElastoPlasticRegister()
 {
     ModelFactory["ElastoPlastic"] = ElastoPlasticMaker;
     MODEL.Set ("ElastoPlastic", (double)MODEL.Keys.Size());
+    double sz = FAILCRIT.Keys.Size();
+    FAILCRIT.Set ("VM DP MC", sz, (sz+1.0), (sz+2.0));
     return 0;
 }
 

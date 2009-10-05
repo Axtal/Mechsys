@@ -36,14 +36,17 @@ public:
 
 	// Methods
 	void Init    (SDPair const & Ini);
-    void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; }
-    void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; }
+    void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; LdgBkp=Ldg; }
+    void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; Ldg=LdgBkp; }
+
+    // Operators
+    void operator= (EquilibState const & Another);
 
 	// Data
 	Vec_t Sig, SigBkp; ///< Stress
 	Vec_t Eps, EpsBkp; ///< Strain
 	Vec_t Ivs, IvsBkp; ///< Internal values
-    bool  Loading;     ///< Loading ?
+    bool  Ldg, LdgBkp; ///< Loading ?
 };
 
 
@@ -51,7 +54,7 @@ public:
 
 
 inline EquilibState::EquilibState (int NDim)
-	: State(NDim), Loading(false)
+	: State(NDim), Ldg(false), LdgBkp(false)
 {
     int ncomp = NDim*2; // number of stress/strain components
     Sig   .change_dim(ncomp);  set_to_zero(Sig   );
@@ -79,6 +82,14 @@ inline void EquilibState::Init (SDPair const & Ini)
 		if (Ini.HasKey("sxz")) { error=true; key="sxz"; }
 		if (error) throw new Fatal("EquilibState::Init: For a 2D state, there are only 4 stress components. %s is not available",key.CStr());
 	}
+}
+
+inline void EquilibState::operator= (EquilibState const & A)
+{
+    Sig = A.Sig;  SigBkp = A.SigBkp;
+    Eps = A.Eps;  EpsBkp = A.EpsBkp;
+    Ivs = A.Ivs;  IvsBkp = A.IvsBkp;
+    Ldg = A.Ldg;  LdgBkp = A.LdgBkp;
 }
 
 #endif // MECHSYS_EQUILIBSTATE_H
