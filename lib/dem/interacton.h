@@ -42,6 +42,8 @@ public:
     void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
 
     // Data
+    Particle    * P1;   ///< First particle
+    Particle    * P2;   ///< Second particle
     double        Kn;   ///< Normal stiffness
     double        Kt;   ///< Tengential stiffness
     double        Gn;   ///< Normal viscous coefficient
@@ -52,8 +54,6 @@ public:
     FrictionMap_t Fdee; ///< Static friction displacement for pair of edges
     FrictionMap_t Fdvf; ///< Static friction displacement for pair of vertex-face
     FrictionMap_t Fdfv; ///< Static friction displacement for pair of face-vertex
-    Particle    * P1;   ///< First particle
-    Particle    * P2;   ///< Second particle
 
 private:
     template<typename FeatureA_T, typename FeatureB_T>
@@ -67,6 +67,7 @@ private:
 inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
     : P1(Pt1), P2(Pt2), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), Epot(0.0)
 {
+    CalcForce(0.1);
 }
 
 inline void Interacton::CalcForce (double dt)
@@ -105,7 +106,8 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             Vec3_t vt = vrel - dot(n,vrel)*n;
             pair<int,int> p;
             p = make_pair(i,j);
-            FMap[p] += vt*dt;
+            if (FMap.count(p)) FMap[p] += vt*dt;
+            else FMap[p] = vt*dt;
             FMap[p] -= dot(FMap[p],n)*n;
             Vec3_t tan = FMap[p]/norm(FMap[p]);
             Vec3_t F = Kn*delta*n;
@@ -133,6 +135,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
 
             // potential energy
             Epot += 0.5*Kn*delta*delta+0.5*Kt*dot(FMap[p],FMap[p]);
+            if (isnan(Epot)) std::cout << delta << " " << FMap[p] << std::endl;
         }
     }
 }

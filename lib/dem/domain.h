@@ -35,6 +35,7 @@
 #include "util/array.h"
 #include "util/util.h"
 #include "mesh/mesh.h"
+#include "util/maps.h"
 
 class Domain
 {
@@ -46,7 +47,8 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres (size_t N,     ///< Number of spheres
+    void GenSpheres (int    Tag,
+                     size_t N,     ///< Number of spheres
                      double Xmin,  ///< Left boundary
                      double Xmax,  ///< Right boundary
                      double Ymin,  ///< Back boundary
@@ -64,17 +66,18 @@ public:
                  double Zmax,       ///< Top boundary
                  double Thickness); ///< Thickness of the wall, cannot be zero
 
-    void GenFromMesh (Mesh::Generic const & M, double R, double rho=1.0);
-    void GenFromVoro (container & VC, double R, double rho=1.0);
+    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho=1.0);
+    void GenFromVoro (int Tag, container & VC, double R, double rho=1.0);
 
     // Single particle addition
-    void AddVoroCell (voronoicell & VC, double R, double rho=1.0, bool Erode=true);
-    void AddTetra    (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
-    void AddRice     (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
-    void AddCube     (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddPlane    (Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddVoroCell (int Tag, voronoicell & VC, double R, double rho=1.0, bool Erode=true);
+    void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
+    void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
+    void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddPlane    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
 
     // Methods
+    void SetProps   (Dict & D);
     void Initialize (double dt);                                   ///< Set the particles to a initial state and asign the possible insteractions
     void Solve      (double tf, double dt, double dtOut,
                      char const * FileKey, Vec3_t const & CamPos); ///< Run simulation
@@ -87,9 +90,13 @@ public:
     double CalcEnergy      (double & Ekin, double & Epot); ///< Return total energy of the system
 
     // Data
-    bool               Initialized; ///< System (particles and interactons) initialized ?
-    Array<Particle*>   Particles;   ///< All particles in domain
-    Array<Interacton*> Interactons; ///< All interactons
+    bool               Initialized;   ///< System (particles and interactons) initialized ?
+    Array<Particle*>   Particles;     ///< All particles in domain
+    Array<Particle*>   FreeParticles; ///< Particles without constrains
+    Array<Particle*>   TParticles;    ///< Particles with translation fixed
+    Array<Particle*>   RParticles;    ///< Particles with rotation fixed
+    Array<Particle*>   FParticles;    ///< Particles with applied force
+    Array<Interacton*> Interactons;   ///< All interactons
 };
 
 
@@ -106,7 +113,7 @@ inline Domain::~Domain ()
 
 // Particle generation
 
-inline void Domain::GenSpheres (size_t N, double Xmin, double Xmax, double Ymin, double Ymax, double Zmin, double Zmax, double rho, double Rmin)
+inline void Domain::GenSpheres (int Tag, size_t N, double Xmin, double Xmax, double Ymin, double Ymax, double Zmin, double Zmax, double rho, double Rmin)
 {
     // info
     double start = std::clock();
@@ -124,7 +131,7 @@ inline void Domain::GenSpheres (size_t N, double Xmin, double Xmax, double Ymin,
         Array<Vec3_t> V(1);
         V[0] = Xmin + Rmax+2*Rmax*(i%nx), Ymin + Rmax+2*Rmax*((i/nx)%ny), Zmin + Rmax+2*Rmax*(i/(nx*ny));
         double R = Rmax*Rmin + (1.*rand())/RAND_MAX*Rmax*(1-Rmin);
-        Particles.Push (new Particle(V,Empty,Empty, OrthoSys::O,OrthoSys::O, R,rho));
+        Particles.Push (new Particle(Tag,V,Empty,Empty, OrthoSys::O,OrthoSys::O, R,rho));
     }
 
     // info
@@ -138,7 +145,7 @@ inline void Domain::GenBox (double Xmin, double Xmax, double Ymin, double Ymax, 
     throw new Fatal("Domain::GenBox: Method not implemented yet");
 }
 
-inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
+inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho)
 {
     // info
     double start = std::clock();
@@ -177,10 +184,10 @@ inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
                 F[j].Push(Mesh::NVertsToFace[nverts][j][k]);
             }
         }
-        Erosion(V,F,R);
+        Erosion(V,E,F,R);
 
         // add particle
-        Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+        Particles.Push (new Particle(Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
     }
 
     // info
@@ -189,7 +196,7 @@ inline void Domain::GenFromMesh (Mesh::Generic const & M, double R, double rho)
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::GenFromVoro (container & VC,double R,double rho)
+inline void Domain::GenFromVoro (int Tag, container & VC,double R,double rho)
 {
     // info
     double start = std::clock();
@@ -210,7 +217,7 @@ inline void Domain::GenFromVoro (container & VC,double R,double rho)
             {
                 if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
                 {
-                    AddVoroCell(c,R,rho);
+                    AddVoroCell(Tag,c,R,rho);
                     Vec3_t trans(x,y,z);
                     Particles[Particles.Size()-1]->Translate(trans);
                 }
@@ -226,17 +233,17 @@ inline void Domain::GenFromVoro (container & VC,double R,double rho)
 
 // Single particle addition
 
-inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho,bool Erode)
+inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho,bool Erode)
 {
     Array<Vec3_t> V(VC.p);
     Array<Array <int> > E;
     Array<int> Eaux(2);
-    for(size_t i=0;i<VC.p;i++) 
+    for(int i=0;i<VC.p;i++) 
     {
         V[i] = Vec3_t(0.5*VC.pts[3*i],0.5*VC.pts[3*i+1],0.5*VC.pts[3*i+2]);
-        for(size_t j=0;j<VC.nu[i];j++) 
+        for(int j=0;j<VC.nu[i];j++) 
         {
-            size_t k=VC.ed[i][j];
+            int k=VC.ed[i][j];
             if (VC.ed[i][j]<i) 
             {
                 Eaux[0] = i;
@@ -247,7 +254,6 @@ inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho,bool Ero
     }
     Array<Array <int> > F;
     Array<int> Faux;
-    bool later=false;
     for(int i=0;i<VC.p;i++) 
     {
         for(int j=0;j<VC.nu[i];j++) 
@@ -279,13 +285,13 @@ inline void Domain::AddVoroCell (voronoicell & VC, double R, double rho,bool Ero
         }
     }
     VC.reset_edges();
-    if (Erode) Erosion(V,F,R);
+    if (Erode) Erosion(V,E,F,R);
 
     // add particle
-    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 }
 
-inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
     double sq8 = sqrt(8.0);
@@ -330,13 +336,13 @@ inline void Domain::AddTetra (Vec3_t const & X, double R, double L, double rho, 
     }
 
     // add particle
-    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
     delete Axis;
 }
 
-inline void Domain::AddRice (const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
     Array<Vec3_t> V(2);
@@ -367,13 +373,13 @@ inline void Domain::AddRice (const Vec3_t & X, double R, double L, double rho, d
     }
 
     // add particle
-    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
     delete Axis;
 }
 
-inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+inline void Domain::AddCube (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
     Array<Vec3_t> V(8);
@@ -429,13 +435,13 @@ inline void Domain::AddCube (const Vec3_t & X, double R, double L, double rho, d
     }
 
     // add particle
-    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
     delete Axis;
 }
 
-inline void Domain::AddPlane (const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
     Array<Vec3_t> V(4);
@@ -473,12 +479,47 @@ inline void Domain::AddPlane (const Vec3_t & X, double R, double L, double rho, 
     }
 
     // add particle
-    Particles.Push (new Particle(V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
     delete Axis;
 }
 // Methods
+
+inline void Domain::SetProps (Dict & D)
+{
+    for (size_t i =0 ; i<Particles.Size(); i++)
+    {
+        bool free_particle = true;
+        for (size_t j=0; j<D.Keys.Size(); ++j)
+        {
+            int tag = D.Keys[j];
+            if (tag==Particles[i]->Tag)
+            {
+                SDPair const & p = D(tag);
+                if (p.HasKey("vx") || p.HasKey("vy") || p.HasKey("vz")) // translation specified
+                {
+                    TParticles.Push (Particles[i]);
+                    TParticles[TParticles.Size()-1]->v = Vec3_t(p("vx"),p("vy"),p("vz"));
+                    free_particle = false;
+                }
+                if (p.HasKey("wx") || p.HasKey("wy") || p.HasKey("wz")) // rotation specified
+                {
+                    RParticles.Push (Particles[i]);
+                    RParticles[RParticles.Size()-1]->w = Vec3_t(p("wx"),p("wy"),p("wz"));
+                    free_particle = false;
+                }
+                if (p.HasKey("fx") || p.HasKey("fy") || p.HasKey("fz")) // Applied force specified
+                {
+                    FParticles.Push (Particles[i]);
+                    FParticles[FParticles.Size()-1]->Ff = Vec3_t(p("fx"),p("fy"),p("fz"));
+                    free_particle = false;
+                }
+            }
+        }
+        if (free_particle) FreeParticles.Push (Particles[i]);
+    }
+}
 
 inline void Domain::Initialize (double dt)
 {
@@ -486,20 +527,24 @@ inline void Domain::Initialize (double dt)
     double start = std::clock();
     std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
 
-    for (size_t i=0; i<Particles.Size()-1; i++)
-    {
-        // initialize particle
-        Particles[i]->Initialize (dt);
 
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Particles[i]->Initialize (dt);
+    }
+
+
+    for (size_t i=0; i<FreeParticles.Size()-1; i++)
+    {
         // initialize interactons
-        for (size_t j=i+1; j<Particles.Size(); j++)
+        for (size_t j=i+1; j<FreeParticles.Size(); j++)
         {
-            Interactons.Push (new Interacton(Particles[i],Particles[j]));
+            Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
         }
     }
 
+
     // initialize last particle
-    Particles[Particles.Size()-1]->Initialize (dt);
 
     // set flag
     Initialized = true;
@@ -517,6 +562,7 @@ inline void Domain::Initialize (double dt)
 inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey, Vec3_t const & CamPos)
 {
     // initialize
+    if (FreeParticles.Size()==0) FreeParticles = Particles;
     if (!Initialized) Initialize (dt);
 
     // info
@@ -531,14 +577,35 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // run one step
         for (size_t i=0; i<Particles.Size(); i++)
         {
-            Particles[i]->F = 0.0, 0.0, 0.0;
-            Particles[i]->T = 0.0, 0.0, 0.0;
+            Particles[i]->F = Particles[i]->Ff;
+            Particles[i]->T = Particles[i]->Tf;
         }
+
         for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce ();
-        for (size_t i=0; i<Particles  .Size(); i++)
+
+        for (size_t i=0; i<FreeParticles.Size(); i++)
         {
-            Particles[i]->Rotate    (dt);
-            Particles[i]->Translate (dt);
+            FreeParticles[i]->Rotate    (dt);
+            FreeParticles[i]->Translate (dt);
+        }
+
+        for (size_t i=0; i<TParticles.Size(); i++) 
+        {
+            TParticles[i]->F = 0.0,0.0,0.0;
+            TParticles[i]->Translate(dt);
+        }
+
+        for (size_t i=0; i<RParticles.Size(); i++)
+        {
+            RParticles[i]->T = 0.0,0.0,0.0;
+            RParticles[i]->Rotate(dt);
+        }
+
+        for (size_t i=0; i<FParticles.Size(); i++)
+        {
+            Vec3_t temp = FParticles[i]->Ff/norm(FParticles[i]->Ff);
+            FParticles[i]->F = dot(FParticles[i]->F,temp)*temp;
+            FParticles[i]->Translate (dt);
         }
 
         // output
@@ -569,7 +636,10 @@ inline void Domain::WritePOV (char const * FileKey, Vec3_t const & CamPos)
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"Blue");
+    for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Gray");
+    for (size_t i=0; i<TParticles.Size(); i++) TParticles[i]->Draw (of,"Col_Glass_Bluish");
+    for (size_t i=0; i<RParticles.Size(); i++) RParticles[i]->Draw (of,"Col_Glass_Bluish");
+    for (size_t i=0; i<FParticles.Size(); i++) FParticles[i]->Draw (of,"Col_Glass_Bluish");
     of.close();
 }
 
