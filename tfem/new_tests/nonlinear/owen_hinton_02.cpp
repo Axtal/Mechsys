@@ -160,8 +160,7 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(/*NDim*/2, prps, mdls, inis);
-    dom.SetMesh    (mesh);
+    FEM::Domain dom(mesh, prps, mdls, inis);
     dom.SetOutNods ("owen_hinton_02", /*NNod*/1, /*IDs*/41);
     dom.SetOutEles ("owen_hinton_02", /*NEle*/1, /*IDs*/4);
 

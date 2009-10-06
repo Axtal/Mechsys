@@ -69,8 +69,10 @@ EVT_CAD_FSPLINE      = 28 # create a spline from points in a file
 EVT_CAD_EXPTS        = 29 # export points to a file
 # Mesh
 EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
+EVT_MESH_SETVTAG     = 41 # set vertex tag
 EVT_MESH_SETETAG     = 42 # set edges tag
 EVT_MESH_SETFTAG     = 43 # set faces tag
+EVT_MESH_DELALLVTAGS = 44 # delete all vertex tags
 EVT_MESH_DELALLETAGS = 45 # delete all edge tags
 EVT_MESH_DELALLFTAGS = 46 # delete all face tags
 EVT_MESH_DELMESH     = 48 # delete mesh object
@@ -225,6 +227,14 @@ def button_event(evt):
 
     elif evt==EVT_MESH_SHOWHIDE: show_only ('gui_show_mesh')
 
+    elif evt==EVT_MESH_SETVTAG:
+        tag = di.key('newvtag')
+        edm, obj, msh = di.get_msh()
+        for vid in msh.verts.selected():
+            di.props_set_with_tag ('vtags', str(vid), tag, di.key('newvtag'))
+        Blender.Window.QRedrawAll()
+        if edm: Blender.Window.EditMode(1)
+
     elif evt==EVT_MESH_SETETAG:
         tag = di.key('newetag')
         edm, obj, msh = di.get_msh()
@@ -248,6 +258,7 @@ def button_event(evt):
         Blender.Window.QRedrawAll()
         if edm: Blender.Window.EditMode(1)
 
+    elif evt==EVT_MESH_DELALLVTAGS: di.props_del_all_tags('vtags')
     elif evt==EVT_MESH_DELALLETAGS: di.props_del_all_tags('etags')
     elif evt==EVT_MESH_DELALLFTAGS: di.props_del_all_tags('ftags')
     elif evt==EVT_MESH_DELMESH:
@@ -369,6 +380,8 @@ def cb_show_axes (evt,val): di.set_key ('show_axes',  val)
 @try_catch
 def cb_show_regs (evt,val): di.set_key ('show_regs',  val)
 @try_catch
+def cb_show_vtags(evt,val): di.set_key ('show_vtags', val)
+@try_catch
 def cb_show_etags(evt,val): di.set_key ('show_etags', val)
 @try_catch
 def cb_show_ftags(evt,val): di.set_key ('show_ftags', val)
@@ -446,6 +459,8 @@ def cb_frame (evt,val):
         obj = di.get_obj()
         if obj.properties.has_key('mesh_type'): obj.properties.pop('mesh_type')
         Blender.Window.QRedrawAll()
+@try_catch
+def cb_vtag  (evt,val): di.set_key      ('newvtag', val)
 @try_catch
 def cb_etag  (evt,val): di.set_key      ('newetag', val)
 @try_catch
@@ -852,7 +867,7 @@ def gui():
     h_msh_unst_regs = rh+srg+rh*len(regs) if len(regs)>0 else 0
     h_msh_unst_hols = rh+srg+rh*len(hols) if len(hols)>0 else 0
     h_msh_unst      = 7*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
-    h_msh           = 11*rh+srg+h_msh_stru+h_msh_unst
+    h_msh           = 12*rh+srg+h_msh_stru+h_msh_unst
     h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats) if len(mats)>0 else 0
     h_mat           = 3*rh+h_mat_mats
     h_fem_reinf     = 2*rh+(srg+2*rh)*len(reinfs)-srg if len(reinfs)>0 else 0
@@ -889,8 +904,9 @@ def gui():
         Draw.Toggle ('Regions',    EVT_NONE, c+240, r, 80, rh, d['show_regs'],  'Show regions and holes' , cb_show_regs )
         r -= rh
         gu.text(c,r,"Tags:")
-        Draw.Toggle ('E Tags',     EVT_NONE, c+ 80, r, 80, rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
-        Draw.Toggle ('F Tags',     EVT_NONE, c+160, r, 80, rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
+        Draw.Toggle ('V Tags',     EVT_NONE, c+ 80, r, 80, rh, d['show_vtags'], 'Show vertex tags'       , cb_show_vtags)
+        Draw.Toggle ('E Tags',     EVT_NONE, c+160, r, 80, rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
+        Draw.Toggle ('F Tags',     EVT_NONE, c+240, r, 80, rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
         r -= rh
         gu.text(c,r,"FEM:")
         Draw.Slider ('',           EVT_NONE, c+ 80, r, 80, rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
@@ -936,6 +952,11 @@ def gui():
     if d['gui_show_mesh']:
         r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
+        gu.text (c,r,'Vertex tags:')
+        Draw.Number      ('',          EVT_NONE,             c+ 80, r, 80, rh, d['newvtag'],   -1000, 0, 'New vertex tag',                      cb_vtag)
+        Draw.PushButton  ('Set V tag', EVT_MESH_SETVTAG,     c+160, r, 80, rh,                           'Set vertices tag (0 => remove tag)')
+        Draw.PushButton  ('Del VTags', EVT_MESH_DELALLVTAGS, c+240, r, 80, rh, 'Delete all vertex tags')
+        r -= rh
         gu.text (c,r,'Edge tags:')
         Draw.Number      ('',          EVT_NONE,             c+ 80, r, 80, rh, d['newetag'],   -1000, 0, 'New edge tag',                      cb_etag)
         Draw.PushButton  ('Set E tag', EVT_MESH_SETETAG,     c+160, r, 80, rh,                           'Set edges tag (0 => remove tag)')

@@ -16,21 +16,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/*  Smith & Griffiths (2004): Figure 11.1 p470 
- *  ==========================================  */
-
 // STL
 #include <iostream>
-#include <cmath>    // for cos
 
 // MechSys
-#include "mesh/mesh.h"
-#include "mesh/structured.h"
-#include "fem/beam.h"
+#include "mesh/unstructured.h"
+#include "fem/elems/tri3.h"
+#include "fem/elems/tri6.h"
+#include "fem/equilibelem.h"
 #include "fem/domain.h"
 #include "fem/solver.h"
+#include "models/linelastic.h"
 #include "util/maps.h"
-#include "util/util.h"
 #include "util/fatal.h"
 
 using std::cout;
@@ -38,47 +35,51 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
-void calc_F (double t, double & fx, double & fy, double & fz)
-{
-    fx = 0.0;
-    fz = 0.0;
-    if (t>1.0) fy = 0.0;
-    else       fy = 3.194*sin(Util::PI*t);
-}
-
 int main(int argc, char **argv) try
 {
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
-    
-    Mesh::Generic mesh(/*NDim*/2);
-    mesh.SetSize    (2/*verts*/, 1/*cells*/);
-    mesh.SetVert    ( 0, -100,  0.0,  0.0, 0);
-    mesh.SetVert    ( 1, -200,  1.0,  0.0, 0);
-    mesh.SetCell    ( 0,   -1, /*NVerts*/2, 0,1);
-    mesh.WriteMPY   ("fig_11_01",/*OnlyMesh*/false);
-    
+
+    double A  = 0.5;
+    bool   o2 = false;
+    #include "arch.h"
+
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 3.194, 1.0, 1.0);
+    if (o2) prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Tri6"), TRUE);
+    else    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Tri3"), TRUE);
+
+    // models
+    Dict mdls;
+    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 10.0, 0.2, TRUE);
+
+    // initial values
+    Dict inis;
+    inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(mesh, prps, Dict(), Dict());
-    dom.SetOutNods ("fig_11_01",/*NNod*/1, /*IDs*/1);
-    dom.FFuncs[-200] = &calc_F; // set database of callbacks
+    FEM::Domain dom(mesh, prps, mdls, inis);
+    dom.SetOutNods ("arch", /*NNods*/2, /*Ids*/0,192);
 
     // solver
     FEM::Solver sol(dom);
-    sol.DScheme = FEM::Solver::GN22_t;
+    sol.Scheme = FEM::Solver::FE_t;
+    //sol.Scheme = FEM::Solver::NR_t;
 
-    // stage # 1 -----------------------------------------------------------
+    ////////////////////////////////////////////////////////////////////////////////////////// Run /////
+    
     Dict bcs;
-    bcs.Set(-100, "ux uy wz", 0.0,0.0,0.0)
-       .Set(-200, "ffunc", 0.0);
+    bcs.Set(-50, "uy", 0.0)
+       .Set(-51, "ux", 0.0)
+       .Set( -5, "fy", -10.0);
     dom.SetBCs (bcs);
-    sol.DynSolve (/*tf*/1.8, /*dt*/0.05, /*dtOut*/0.05);
+    sol.Solve  (/*NDiv*/1);
 
-    return 0.0;
+    //////////////////////////////////////////////////////////////////////////////////////// Output ////
+
+    dom.WriteVTU ("arch");
+
+    return 0;
 }
 MECHSYS_CATCH

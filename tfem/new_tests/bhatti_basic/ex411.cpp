@@ -58,8 +58,7 @@ int main(int argc, char **argv) try
         .Set(-2, "prob  E A Izz  fra", PROB("Beam"),  3.0e+4, 100.0, 1000.0,  TRUE);
 
     // domain
-    FEM::Domain dom(/*NDim*/2, prps, /*mdls*/Dict(), /*inis*/Dict());
-    dom.SetMesh (mesh);
+    FEM::Domain dom(mesh, prps, /*mdls*/Dict(), /*inis*/Dict());
 
     // check matrices
     {

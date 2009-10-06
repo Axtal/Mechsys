@@ -80,8 +80,7 @@ int main(int argc, char **argv) try
     inis.Set(-1, "vx vy", 0.0,0.0);
 
     // domain
-    FEM::Domain dom(/*NDim*/2, prps, mdls, inis);
-    dom.SetMesh (mesh);
+    FEM::Domain dom(mesh, prps, mdls, inis);
 
     // solver
     FEM::Solver sol(dom);

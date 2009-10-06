@@ -47,16 +47,15 @@ public:
     typedef std::map<int,Model*> Models_t;                                    ///< Map tag to model pointer
 
     // Constructor
-    Domain (int          NDim,  ///< Space dimension
-            Dict const & Prps,  ///< Element properties
-            Dict const & Mdls,  ///< Model names and parameters
-            Dict const & Inis); ///< Initial values
+    Domain (Mesh::Generic const & Mesh,  ///< The mesh
+            Dict const          & Prps,  ///< Element properties
+            Dict const          & Mdls,  ///< Model names and parameters
+            Dict const          & Inis); ///< Initial values
 
     // Destructor
     ~Domain ();
 
     // Methods
-    Domain & SetMesh      (Mesh::Generic const & M);
     Domain & SetBCs       (Dict const & BCs);
     Domain & ClrBCs       ();
     Domain & SetUVals     (SDPair const & UVals);
@@ -70,9 +69,10 @@ public:
     void     WriteVTU     (char const * FileKey) const;
 
     // Data
-    int                   NDim;    ///< Space dimension
+    Mesh::Generic const & Msh;     ///< The mesh
     Dict          const & Prps;    ///< Element properties
     Dict          const & Inis;    ///< Initial values
+    int                   NDim;    ///< Space dimension
     Models_t              Mdls;    ///< Models
     Array<Node*>          Nods;    ///< Nodes
     Array<Element*>       Eles;    ///< Elements
@@ -80,7 +80,6 @@ public:
     Array<size_t>         OutEles; ///< ID of elements for which output (results) is generated
     Array<std::ofstream*> FilNods; ///< Files with results at selected nodes (OutNods)
     Array<std::ofstream*> FilEles; ///< Files with results at selected elements (OutEles)
-    Mesh::Generic const * Msh;     ///< The mesh
     FDatabase_t           FFuncs;  ///< Database of pointers to F functions
     Array<Node*>          NodsF;   ///< Nodes with F specified through callback function
     Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to FNodes
@@ -90,8 +89,8 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Domain::Domain (int TheNDim, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis)
-    : NDim(TheNDim), Prps(ThePrps), Inis(TheInis)
+inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis)
+    : Msh(TheMesh), Prps(ThePrps), Inis(TheInis), NDim(TheMesh.NDim)
 {
     // check
     //if (Prps.Keys.Size()!=TheMdls.Keys.Size()) throw new Fatal("Domain::Domain: Prps and Mdls dictionaries must have the same number of tags");
@@ -111,28 +110,14 @@ inline Domain::Domain (int TheNDim, Dict const & ThePrps, Dict const & TheMdls, 
         }
         else throw new Fatal("Domain::Domain: Dictionary of models must have keyword 'name' defining the name of the model");
     }
-}
 
-inline Domain::~Domain()
-{
-    for (Domain::Models_t::iterator p=Mdls.begin(); p!=Mdls.end(); ++p) delete p->second;
-    for (size_t i=0; i<Nods   .Size(); ++i) if (Nods   [i]!=NULL) delete Nods   [i];
-    for (size_t i=0; i<Eles   .Size(); ++i) if (Eles   [i]!=NULL) delete Eles   [i];
-    for (size_t i=0; i<FilNods.Size(); ++i) if (FilNods[i]!=NULL) { FilNods[i]->close(); delete FilNods[i]; }
-    for (size_t i=0; i<FilEles.Size(); ++i) if (FilEles[i]!=NULL) { FilEles[i]->close(); delete FilEles[i]; }
-}
+    // set nodes from mesh
+    for (size_t i=0; i<Msh.Verts.Size(); ++i) Nods.Push (new Node((*Msh.Verts[i])));
 
-inline Domain & Domain::SetMesh (Mesh::Generic const & M)
-{
-    Msh = &M;
-
-    // nodes
-    for (size_t i=0; i<Msh->Verts.Size(); ++i) Nods.Push (new Node((*Msh->Verts[i])));
-
-    // elements
-    for (size_t i=0; i<Msh->Cells.Size(); ++i)
+    // set elements from mesh
+    for (size_t i=0; i<Msh.Cells.Size(); ++i)
     {
-        int tag = Msh->Cells[i]->Tag;
+        int tag = Msh.Cells[i]->Tag;
         if (!Prps.HasKey(tag)) throw new Fatal("Domain::SetMesh: Dictionary of element properties does not have tag=%d",tag);
         if (Prps(tag).HasKey("prob"))
         {
@@ -146,19 +131,24 @@ inline Domain & Domain::SetMesh (Mesh::Generic const & M)
             if (m!=Mdls.end()) mdl = m->second;
 
             // inis
-            if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh->Cells[i]), mdl, Prps(tag), Inis(tag), Nods));
-            else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh->Cells[i]), mdl, Prps(tag), SDPair() , Nods));
+            if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), Nods));
+            else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , Nods));
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
+}
 
-    return (*this);
+inline Domain::~Domain()
+{
+    for (Domain::Models_t::iterator p=Mdls.begin(); p!=Mdls.end(); ++p) delete p->second;
+    for (size_t i=0; i<Nods   .Size(); ++i) if (Nods   [i]!=NULL) delete Nods   [i];
+    for (size_t i=0; i<Eles   .Size(); ++i) if (Eles   [i]!=NULL) delete Eles   [i];
+    for (size_t i=0; i<FilNods.Size(); ++i) if (FilNods[i]!=NULL) { FilNods[i]->close(); delete FilNods[i]; }
+    for (size_t i=0; i<FilEles.Size(); ++i) if (FilEles[i]!=NULL) { FilEles[i]->close(); delete FilEles[i]; }
 }
 
 inline Domain & Domain::SetBCs (Dict const & BCs)
 {
-    if (Msh==NULL) throw new Fatal("Domain::SetBCs: Mesh must be set first (using SetMesh)");
-
     // clear previous BCs
     ClrBCs ();
 
@@ -167,16 +157,16 @@ inline Domain & Domain::SetBCs (Dict const & BCs)
     for (size_t i=0; i<BCs.Keys.Size(); ++i) keys_set[BCs.Keys[i]] = false;
 
     // elements
-    for (size_t i=0; i<Msh->TgdCells.Size(); ++i)
+    for (size_t i=0; i<Msh.TgdCells.Size(); ++i)
     {
-        Mesh::BryTag_t const & eftags = Msh->TgdCells[i]->BryTags;
+        Mesh::BryTag_t const & eftags = Msh.TgdCells[i]->BryTags;
         for (Mesh::BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
         {
             int idx_edge_or_face = p->first;
             int tag              = p->second;
             if (tag<0)
             {
-                size_t eid = Msh->TgdCells[i]->ID;
+                size_t eid = Msh.TgdCells[i]->ID;
                 if (BCs.HasKey(tag)) Eles[eid]->SetBCs (idx_edge_or_face, BCs(tag));
                 else
                 {
@@ -193,12 +183,12 @@ inline Domain & Domain::SetBCs (Dict const & BCs)
     }
 
     // nodes (must be after elements)
-    for (size_t i=0; i<Msh->TgdVerts.Size(); ++i)
+    for (size_t i=0; i<Msh.TgdVerts.Size(); ++i)
     {
-        int tag = Msh->TgdVerts[i]->Tag;
+        int tag = Msh.TgdVerts[i]->Tag;
         if (tag<0)
         {
-            size_t nid = Msh->TgdVerts[i]->ID;
+            size_t nid = Msh.TgdVerts[i]->ID;
             if (BCs.HasKey(tag))
             {
                 if (BCs(tag).HasKey("ffunc")) // callback specified
@@ -230,10 +220,10 @@ inline Domain & Domain::SetBCs (Dict const & BCs)
         {
             // try elements (property) tags
             bool found = false;
-            for (size_t i=0; i<Msh->Cells.Size(); ++i)
+            for (size_t i=0; i<Msh.Cells.Size(); ++i)
             {
-                size_t eid = Msh->Cells[i]->ID;
-                if (Msh->Cells[i]->Tag==p->first)
+                size_t eid = Msh.Cells[i]->ID;
+                if (Msh.Cells[i]->Tag==p->first)
                 {
                     Eles[eid]->SetBCs (/*ignored*/0, BCs(p->first));
                     found = true;

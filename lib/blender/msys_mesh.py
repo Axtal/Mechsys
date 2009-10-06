@@ -510,6 +510,109 @@ def gen_unstruct_mesh(gen_script=False,txt=None,show_cursor=True,cpp=False):
         return mesh
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+@print_timing
+def gen_unstruct_mesh_new(gen_script=False,txt=None,show_cursor=True,cpp=False):
+    if show_cursor: Blender.Window.WaitCursor(1)
+
+    # get active object
+    edm, obj, msh = di.get_msh()
+
+    # transform vertices coordinates
+    ori = [v for v in msh.verts] # create a copy in local coordinates
+    msh.transform (obj.matrix)   # transform mesh to global coordinates
+
+    # 3D mesh? Quadratic elements ?
+    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
+    iso2 = obj.properties['iso2'] if obj.properties.has_key('iso2') else False
+    ndim = 3 if is3d else 2
+
+    # max area
+    maxA = obj.properties['maxarea'] if obj.properties.has_key('maxarea') else -1.0
+
+    # number of regions and holes
+    nregs = len(obj.properties['regs']) if obj.properties.has_key('regs') else 0
+    nhols = len(obj.properties['hols']) if obj.properties.has_key('hols') else 0
+
+    # number of vertices and segments
+    nverts = len(msh.verts)
+    nedges = len(msh.edges)
+
+    # get vtags
+    vtags = {}
+    if obj.properties.has_key('vtags'):
+        for k, v in obj.properties['vtags'].iteritems():
+            vid = int(k)
+            vtags[vid] = v
+
+    # get etags
+    etags = {}
+    if obj.properties.has_key('etags'):
+        for k, v in obj.properties['etags'].iteritems():
+            eid = int(k)
+            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v
+
+    if gen_script:
+
+        if cpp: # C++ script
+
+            if txt==None: txt = Blender.Text.New(obj.name+'_umesh')
+            txt.write ('Mesh::Unstructured mesh(/*NDim*/%d);\n' % (ndim))
+            txt.write ('mesh.Set (%d, %d, %d, %d,' % (nverts, nedges, nregs, nhols)+'                // nPoints, nSegments, nRegions, nHoles\n')
+            lin = ''
+            for v in msh.verts:
+                tag = 0
+                if v.index in vtags: tag = vtags[v.index]
+                if is3d: lin += ('%4d.,  %4d.,  %6e, %6e, %6e,\n' % (v.index, tag, v.co[0], v.co[1], v.co[2]))
+                else:    lin += ('%4d.,  %4d.,  %6e, %6e,\n'      % (v.index, tag, v.co[0], v.co[1]))
+            if nregs>0:
+                for k, v in obj.properties['regs'].iteritems():
+                    if is3d: lin += ('        %4d.,  %6e, %6e, %6e, %8e,\n' % (v[0], v[2], v[3], v[4], v[1]))
+                    else:    lin += ('        %4d.,  %6e, %6e, %8e,\n'      % (v[0], v[2], v[3], v[1]))
+            if nhols>0:
+                for k, v in obj.properties['hols'].iteritems():
+                    if is3d: lin += ('             %6e, %6e, %6e,\n' % (v[0], v[1], v[2]))
+                    else:    lin += ('             %6e, %6e,\n'      % (v[0], v[1]))
+            txt.write (lin[:len(lin)-2])
+            txt.write (');\n')
+
+            # segments
+            for e in msh.edges:
+                key = (e.v1.index, e.v2.index)
+                tag = 0
+                if key in etags: tag = etags[key]
+                txt.write ('mesh.SetSeg (%d, %d, %4d, %4d);\n' % (e.index, tag, e.v1.index, e.v2.index))
+
+            # generate
+            str_o2 = 'true' if iso2 else 'false'
+            txt.write ('mesh.Generate (/*O2*/%s, /*GlobalMaxArea*/%g);\n' % (str_o2,maxA))
+
+            Blender.Window.WaitCursor(0)
+            return txt
+
+    else: raise Exception ('gen_unstruct_mesh_new: method not implemented yet')
+
+    # restore local coordinates
+    msh.verts = ori
+    if edm: Blender.Window.EditMode(1)
+
+
+
+
+
+
+
 # ====================================================================================== Draw
 
 @print_timing

@@ -48,6 +48,7 @@ def load_dict():
         dict['show_blks']     = True
         dict['show_axes']     = True
         dict['show_regs']     = True
+        dict['show_vtags']    = True
         dict['show_etags']    = True
         dict['show_ftags']    = True
         dict['show_elems']    = False
@@ -59,6 +60,7 @@ def load_dict():
         dict['cad_rad']       = '0.0'
         dict['cad_stp']       = 10
         # MESH
+        dict['newvtag']       = -5
         dict['newetag']       = -50
         dict['newftag']       = -500
         dict['hide_mesh']     = False

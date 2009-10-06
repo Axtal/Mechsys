@@ -80,8 +80,7 @@ int main(int argc, char **argv) try
     //prps.Set(-1, "prob E A fra", PROB("Rod"), 200.0, 1.0, TRUE);
 
     // domain
-    FEM::Domain dom(/*NDim*/2, prps, /*mdls*/Dict(), /*inis*/Dict());
-    dom.SetMesh (mesh);
+    FEM::Domain dom(mesh, prps, /*mdls*/Dict(), /*inis*/Dict());
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

@@ -59,8 +59,7 @@ int main(int argc, char **argv) try
         .Set(-2, "prob active E A fra", PROB("Rod"), TRUE, 210000.0, 600.0, TRUE);
 
     // domain
-    FEM::Domain dom(/*NDim*/3, prps, /*mdls*/Dict(), /*inis*/Dict());
-    dom.SetMesh (mesh);
+    FEM::Domain dom(mesh, prps, /*mdls*/Dict(), /*inis*/Dict());
 
     // check matrices
     {

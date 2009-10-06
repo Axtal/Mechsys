@@ -66,8 +66,7 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy syz szx", -10.0,-10.0,-10.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(/*NDim*/3, prps, mdls, inis);
-    dom.SetMesh    (mesh);
+    FEM::Domain dom(mesh, prps, mdls, inis);
     dom.SetOutNods ("labtest", /*NNod*/1, /*ID*/(nd==3 ?  6 : 6));
     dom.SetOutEles ("labtest", /*NEle*/1, /*ID*/(nd==3 ? 13 : 0));
 

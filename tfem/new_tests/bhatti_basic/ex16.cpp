@@ -73,9 +73,8 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(/*NDim*/2, prps, mdls, inis);
-    dom.SetMesh    (mesh);
-    dom.SetOutNods ("ex16",/*NNod*/1,/*ID*/5);
+    FEM::Domain dom(mesh, prps, mdls, inis);
+    dom.SetOutNods ("ex16",/*NNod*/4,/*ID*/0,1,2,3,5);
     dom.SetOutEles ("ex16",/*NEle*/1,/*ID*/3);
 
     // check matrices
@@ -133,6 +132,8 @@ int main(int argc, char **argv) try
        .Set(-100, "ux uy", 0.0,0.0);
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/10);
+
+    cout << dom << endl;
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
