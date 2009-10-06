@@ -549,6 +549,13 @@ def gen_unstruct_mesh_new(gen_script=False,txt=None,show_cursor=True,cpp=False):
     nverts = len(msh.verts)
     nedges = len(msh.edges)
 
+    # get vtags
+    vtags = {}
+    if obj.properties.has_key('vtags'):
+        for k, v in obj.properties['vtags'].iteritems():
+            vid = int(k)
+            vtags[vid] = v
+
     # get etags
     etags = {}
     if obj.properties.has_key('etags'):
@@ -564,7 +571,9 @@ def gen_unstruct_mesh_new(gen_script=False,txt=None,show_cursor=True,cpp=False):
             txt.write ('Mesh::Unstructured mesh(/*NDim*/%d);\n' % (ndim))
             txt.write ('mesh.Set (%d, %d, %d, %d,' % (nverts, nedges, nregs, nhols)+'                // nPoints, nSegments, nRegions, nHoles\n')
             for v in msh.verts:
-                txt.write ('%4d.,  0.,  %6e, %6e, %6e,    \n' % (v.index, v.co[0], v.co[1], v.co[2]))
+                tag = 0
+                if v.index in vtags: tag = vtags[v.index]
+                txt.write ('%4d.,  %4d.,  %6e, %6e, %6e,    \n' % (v.index, tag, v.co[0], v.co[1], v.co[2]))
             if nregs>0:
                 for k, v in obj.properties['regs'].iteritems():
                     txt.write ('     %4d.,  %6e, %6e, %6e, %8e,\n' % (v[0], v[2], v[3], v[4], v[1]))

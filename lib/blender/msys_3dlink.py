@@ -135,6 +135,17 @@ if di.key('show_props'):
                         BGL.glRasterPos3f (mid[0], mid[1], mid[2])
                         Draw.Text         (str(e.index))
 
+                # draw vertex tags
+                if di.key('show_vtags'):
+                    if obj.properties.has_key('vtags'):
+                        stg       = 'stg_'+str(di.key('fem_stage'))
+                        BGL.glColor3f (0.551, 1.0, 0.370)
+                        for k, v in obj.properties['vtags'].iteritems():
+                            vid = int(k)
+                            pos = msh.verts[vid].co
+                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
+                            Draw.Text         (str(v))
+
                 # draw edge tags
                 if di.key('show_etags'):
                     if obj.properties.has_key('etags'):
