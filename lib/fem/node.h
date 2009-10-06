@@ -45,6 +45,7 @@ public:
     void   SetBCs (SDPair const & BCs);
     void   ClrBCs ();
     size_t nDOF   () const { return UMap.Keys.Size(); }
+    double Fa     (size_t iDOF, double Time) const { return Time*DF[iDOF]; } ///< F(applied)
 
     // Data
     Mesh::Vertex const & Vert;  ///< Geometric information: ID, Tag, coordinates
@@ -142,7 +143,7 @@ inline void Node::SetBCs (SDPair const & BCs)
         {
             int idx = UMap(key);
             DU[idx] = BCs(key); // set
-            DF[idx] = 0.0;
+            //DF[idx] = 0.0;
             pU[idx] = true;
         }
         else if (FMap.HasKey(key)) // natural

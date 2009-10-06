@@ -289,6 +289,11 @@ inline Domain & Domain::SetOutNods (char const * FNKey, int NNods, ...)
             (*of) << Util::_6_3 << "Time";
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->UMap.Keys[j];
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->FMap.Keys[j];
+            for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
+            {
+                buf.Printf ("R%s",Nods[nod]->UMap.Keys[j].CStr());
+                (*of) << Util::_8s << buf;
+            }
             (*of) << "\n";
         }
     }
@@ -328,6 +333,7 @@ inline void Domain::OutResults (double Time) const
         (*FilNods[i]) << Util::_6_3 << Time;
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->U[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j];
+        for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j] - Nods[nod]->Fa(j,Time);
         (*FilNods[i]) << "\n";
     }
 
@@ -363,9 +369,15 @@ inline void Domain::PrintResults (std::ostream & os, Util::NumStream NF, int Idx
     }
 
     // nodes: header
+    String buf;
     os << Util::_6 << "Node";
     for (size_t i=0; i<ukeys.Size(); ++i) os << NF << ukeys[i];
     for (size_t i=0; i<fkeys.Size(); ++i) os << NF << fkeys[i];
+    for (size_t i=0; i<ukeys.Size(); ++i)
+    {
+        buf.Printf ("R%s",ukeys[i].CStr());
+        os << NF << buf;
+    }
     os << "[0m\n";
 
     // nodes: data
@@ -387,6 +399,15 @@ inline void Domain::PrintResults (std::ostream & os, Util::NumStream NF, int Idx
             {
                 size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
                 os << NF << Nods[i]->F[idx];
+            }
+            else os << NF << "---";
+        }
+        for (size_t j=0; j<fkeys.Size(); ++j)
+        {
+            if (Nods[i]->FMap.HasKey(fkeys[j]))
+            {
+                size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
+                os << NF << Nods[i]->F[idx] - Nods[i]->Fa(idx,1.0);
             }
             else os << NF << "---";
         }
