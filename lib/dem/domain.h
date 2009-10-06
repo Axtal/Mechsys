@@ -532,6 +532,9 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
 
 inline void Domain::SetProps (Dict & D)
 {
+    TParticles.Resize(0);
+    RParticles.Resize(0);
+    FParticles.Resize(0);
     for (size_t i =0 ; i<Particles.Size(); i++)
     {
         bool free_particle = true;
@@ -571,10 +574,12 @@ inline void Domain::Initialize (double dt)
     double start = std::clock();
     std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
 
-
-    for (size_t i=0; i<Particles.Size(); i++)
+    if (!Initialized) 
     {
-        Particles[i]->Initialize (dt);
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            Particles[i]->Initialize (dt);
+        }
     }
 
     for (size_t i=0; i<Interactons.Size();i++)
@@ -582,6 +587,7 @@ inline void Domain::Initialize (double dt)
         delete Interactons[i];
     }
     Interactons.Resize(0);
+
     for (size_t i=0; i<FreeParticles.Size(); i++)
     {
         // initialize interactons
@@ -625,7 +631,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
 {
     // initialize
     if (FreeParticles.Size()==0) FreeParticles = Particles;
-    if (!Initialized) Initialize (dt);
+    Initialize (dt);
 
     // info
     double start = std::clock();
@@ -686,14 +692,15 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             tout += dtOut;
             I++;
             fw << t;
-            for (size_t i=0;TParticles.Size();i++)
+            for (size_t i=0;i<TParticles.Size();i++)
             {
                 fw << FT[i](0) << " "<< FT[i](1) << " "<< FT[i](2) << " " << TParticles[i]->x(0)<< " " << TParticles[i]->x(1)<< " " << TParticles[i]->x(2)<<" ";
             }
+            fw << endl;
 
         }
     }
-
+    fw.close();
     // info
     double Ekin, Epot, Etot;
     Etot = CalcEnergy (Ekin, Epot);
