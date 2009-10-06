@@ -167,8 +167,7 @@ int main(int argc, char **argv) try
         .Set(-2, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(/*NDim*/3, prps, mdls, inis);
-    dom.SetMesh (mesh);
+    FEM::Domain dom(mesh, prps, mdls, inis);
 
     // solver
     FEM::Solver sol(dom);
