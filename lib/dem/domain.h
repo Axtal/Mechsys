@@ -58,23 +58,17 @@ public:
                      double rho,   ///< Density of the material
                      double Rmin); ///< Minimun radius in units of the maximun radius
 
-    void GenBox (double Xmin,       ///< Left boundary
-                 double Xmax,       ///< Right boundary
-                 double Ymin,       ///< Back boundary
-                 double Ymax,       ///< Front boundary
-                 double Zmin,       ///< Bottom boundary
-                 double Zmax,       ///< Top boundary
-                 double Thickness); ///< Thickness of the wall, cannot be zero
-
-    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho=1.0);
-    void GenFromVoro (int Tag, container & VC, double R, double rho=1.0);
+    void GenBox (int InitialTag, double Lx, double Ly, double Lz, double R);  ///< Generate six walls with susscesive tags
+    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho=1.0); ///< Generate particles from a FEM mesh generator
+    void GenFromVoro (int Tag, container & VC, double R, double rho=1.0); ///< Generate Particles from a Voronoi container
+    void AddVoronoiPacking (int Tag,double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,bool Periodic = true,double rho=1.0); ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
 
     // Single particle addition
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho=1.0, bool Erode=true);
     void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
     void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
-    void AddPlane    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
 
     // Methods
     void SetProps   (Dict & D);
@@ -140,10 +134,32 @@ inline void Domain::GenSpheres (int Tag, size_t N, double Xmin, double Xmax, dou
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::GenBox (double Xmin, double Xmax, double Ymin, double Ymax, double Zmin, double Zmax, double Thickness)
+inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R)
 {
-    throw new Fatal("Domain::GenBox: Method not implemented yet");
+    Vec3_t r(0,0,0);
+    Quaternion_t q;
+
+    Vec3_t * e0, * e1;
+    e0 = new Vec3_t(OrthoSys::e0);
+    e1 = new Vec3_t(OrthoSys::e1);
+
+    AddPlane(InitialTag,Vec3_t(Lx/2.0,0.0,0.0),R,Lz,Ly,1.0,M_PI/2.0,e1);
+
+    AddPlane(InitialTag-1,Vec3_t(-Lx/2.0,0.0,0.0),R,Lz,Ly,1.0,M_PI/2.0,e1);
+
+    AddPlane(InitialTag-2,Vec3_t(0.0,Ly/2.0,0.0),R,Lx,Lz,1.0,M_PI/2.0,e0);
+
+    AddPlane(InitialTag-3,Vec3_t(0.0,-Ly/2.0,0.0),R,Lx,Lz,1.0,M_PI/2.0,e0);
+
+    AddPlane(InitialTag-4,Vec3_t(0.0,0.0,Lz/2.0),R,Lx,Ly,1.0);
+
+    AddPlane(InitialTag-5,Vec3_t(0.0,0.0,-Lz/2.0),R,Lx,Ly,1.0);
+
+    delete e0;
+    delete e1;
+    
 }
+
 
 inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho)
 {
@@ -231,6 +247,32 @@ inline void Domain::GenFromVoro (int Tag, container & VC,double R,double rho)
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
+inline void Domain::AddVoronoiPacking (int Tag,double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, bool Periodic, double rho)
+{
+    const double x_min=-Lx/2.0, x_max=Lx/2.0;
+    const double y_min=-Ly/2.0, y_max=Ly/2.0;
+    const double z_min=-Lz/2.0, z_max=Lz/2.0;
+    container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
+    size_t n = 0;
+    double qinter = 0.0;
+    for (size_t i=0; i<nx; i++)
+    {
+        for (size_t j=0; j<ny; j++)
+        {
+            for (size_t k=0; k<nz; k++)
+            {
+                double x = x_min+(i+qinter+(1-2*qinter)*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
+                double y = y_min+(j+qinter+(1-2*qinter)*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
+                double z = z_min+(k+qinter+(1-2*qinter)*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
+                con.put (n,x,y,z);
+                n++;
+            }
+        }
+    }
+    con.draw_particles("voro_p.gnu");
+    con.draw_cells_gnuplot("voro_v.gnu");
+    GenFromVoro(Tag,con,R,rho);
+}
 // Single particle addition
 
 inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho,bool Erode)
@@ -441,15 +483,15 @@ inline void Domain::AddCube (int Tag, const Vec3_t & X, double R, double L, doub
     delete Axis;
 }
 
-inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, double Ly, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
     Array<Vec3_t> V(4);
-    double l = L/2.0;
-    V[0] = -l, -l, 0.0;
-    V[1] =  l, -l, 0.0;
-    V[2] =  l,  l, 0.0;
-    V[3] = -l,  l, 0.0;
+    double lx = Lx/2.0, ly = Ly/2.0;
+    V[0] = -lx, -ly, 0.0;
+    V[1] =  lx, -ly, 0.0;
+    V[2] =  lx,  ly, 0.0;
+    V[3] = -lx,  ly, 0.0;
 
     // edges
     Array<Array <int> > E(4);
@@ -463,11 +505,13 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double L, dou
     Array<Array <int> > F(1);
     F[0].Resize(4);
     F[0] = 0, 3, 2, 1;
-
+    
+    bool ThereisanAxis = true;
     if (Axis==NULL)
     {
         Angle   = 0.;
         Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
     }
     Quaternion_t q;
     NormalizeRotation (Angle,(*Axis),q);
@@ -482,7 +526,7 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double L, dou
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
-    delete Axis;
+    if (!ThereisanAxis) delete Axis;
 }
 // Methods
 
@@ -533,18 +577,36 @@ inline void Domain::Initialize (double dt)
         Particles[i]->Initialize (dt);
     }
 
-
-    for (size_t i=0; i<FreeParticles.Size()-1; i++)
+    for (size_t i=0; i<Interactons.Size();i++)
+    {
+        delete Interactons[i];
+    }
+    Interactons.Resize(0);
+    for (size_t i=0; i<FreeParticles.Size(); i++)
     {
         // initialize interactons
         for (size_t j=i+1; j<FreeParticles.Size(); j++)
         {
             Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
         }
+
+        for (size_t j=0; j<FParticles.Size(); j++)
+        {
+            Interactons.Push (new Interacton(FreeParticles[i],FParticles[j]));
+        }
+
+        for (size_t j=0; j<RParticles.Size(); j++)
+        {
+            Interactons.Push (new Interacton(FreeParticles[i],RParticles[j]));
+        }
+
+        for (size_t j=0; j<TParticles.Size(); j++)
+        {
+            Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
+        }
     }
 
 
-    // initialize last particle
 
     // set flag
     Initialized = true;
@@ -572,6 +634,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     // solve
     size_t I=0;
     double tout = dtOut;
+    String fnw;
+    fnw.Printf("%s_walls.txt",FileKey);
+    ofstream fw(fnw.CStr());
     for (double t=0.0; t<tf; t+=dt)
     {
         // run one step
@@ -589,14 +654,18 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             FreeParticles[i]->Translate (dt);
         }
 
+        Array<Vec3_t> FT(TParticles.Size());
         for (size_t i=0; i<TParticles.Size(); i++) 
         {
+            FT[i] = TParticles[i]->F;
             TParticles[i]->F = 0.0,0.0,0.0;
             TParticles[i]->Translate(dt);
         }
 
+        Array<Vec3_t> TT(RParticles.Size());
         for (size_t i=0; i<RParticles.Size(); i++)
         {
+            TT[i] = RParticles[i]->T;
             RParticles[i]->T = 0.0,0.0,0.0;
             RParticles[i]->Rotate(dt);
         }
@@ -616,6 +685,12 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             WritePOV  (fn.CStr(), CamPos);
             tout += dtOut;
             I++;
+            fw << t;
+            for (size_t i=0;TParticles.Size();i++)
+            {
+                fw << FT[i](0) << " "<< FT[i](1) << " "<< FT[i](2) << " " << TParticles[i]->x(0)<< " " << TParticles[i]->x(1)<< " " << TParticles[i]->x(2)<<" ";
+            }
+
         }
     }
 
