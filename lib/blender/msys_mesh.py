@@ -574,13 +574,16 @@ def gen_unstruct_mesh_new(gen_script=False,txt=None,show_cursor=True,cpp=False):
             for v in msh.verts:
                 tag = 0
                 if v.index in vtags: tag = vtags[v.index]
-                lin += ('%4d.,  %4d.,  %6e, %6e, %6e,    \n' % (v.index, tag, v.co[0], v.co[1], v.co[2]))
+                if is3d: lin += ('%4d.,  %4d.,  %6e, %6e, %6e,\n' % (v.index, tag, v.co[0], v.co[1], v.co[2]))
+                else:    lin += ('%4d.,  %4d.,  %6e, %6e,\n'      % (v.index, tag, v.co[0], v.co[1]))
             if nregs>0:
                 for k, v in obj.properties['regs'].iteritems():
-                    lin += ('        %4d.,  %6e, %6e, %6e, %8e,\n' % (v[0], v[2], v[3], v[4], v[1]))
+                    if is3d: lin += ('        %4d.,  %6e, %6e, %6e, %8e,\n' % (v[0], v[2], v[3], v[4], v[1]))
+                    else:    lin += ('        %4d.,  %6e, %6e, %8e,\n'      % (v[0], v[2], v[3], v[1]))
             if nhols>0:
                 for k, v in obj.properties['hols'].iteritems():
-                    lin += ('             %6e, %6e, %6e,    \n' % (v[0], v[1], v[2]))
+                    if is3d: lin += ('             %6e, %6e, %6e,\n' % (v[0], v[1], v[2]))
+                    else:    lin += ('             %6e, %6e,\n'      % (v[0], v[1]))
             txt.write (lin[:len(lin)-2])
             txt.write (');\n')
 
