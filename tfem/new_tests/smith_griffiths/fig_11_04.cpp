@@ -100,7 +100,7 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("fig_11_04",/*NNod*/1, /*IDs*/17);
+    dom.SetOutNods ("fig_11_04",/*NNod*/1, /*WithTags*/false, /*IDs*/17);
     dom.FFuncs[-100] = &calc_F; // set database of callbacks
 
     // solver

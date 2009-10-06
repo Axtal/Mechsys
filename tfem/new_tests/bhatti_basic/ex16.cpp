@@ -74,7 +74,7 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("ex16",/*NNod*/4,/*ID*/0,1,2,3,5);
+    dom.SetOutNods ("ex16",/*NNod*/4,/*WithTags*/false,/*ID*/0,1,2,3,5);
     dom.SetOutEles ("ex16",/*NEle*/1,/*ID*/3);
 
     // check matrices

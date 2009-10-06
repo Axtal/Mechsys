@@ -78,7 +78,7 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("wood_lewis",/*NNod*/4,/*IDs*/0,10,24,34);
+    dom.SetOutNods ("wood_lewis",/*NNod*/4,/*WithTags*/false,/*IDs*/0,10,24,34);
 
     // solver
     FEM::Solver sol(dom);

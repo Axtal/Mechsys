@@ -59,7 +59,7 @@ public:
     Domain & SetBCs       (Dict const & BCs);
     Domain & ClrBCs       ();
     Domain & SetUVals     (SDPair const & UVals);
-    Domain & SetOutNods   (char const * FileKey, int NNods, ...);
+    Domain & SetOutNods   (char const * FileKey, int NNods, bool WithTags, ...);
     Domain & SetOutEles   (char const * FileKey, int NEles, ...);
     void     OutResults   (double Time) const;
     void     PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
@@ -262,17 +262,32 @@ inline Domain & Domain::SetUVals (SDPair const & UVals)
     return (*this);
 }
 
-inline Domain & Domain::SetOutNods (char const * FNKey, int NNods, ...)
+inline Domain & Domain::SetOutNods (char const * FNKey, int NNods, bool WTags, ...)
 {
-    if (Nods.Size()==0) throw new Fatal("Domain::SetOutNods: Mesh must be set first by calling Domain::SetMesh");
     va_list   arg_list;
-    va_start (arg_list, NNods);
+    va_start (arg_list, WTags);
     for (int i=0; i<NNods; ++i)
     {
-        int nod = va_arg (arg_list,int);
+        int nod_or_tag = va_arg (arg_list,int);
+        int nod = 0;
+        if (WTags)
+        {
+            bool found = false;
+            for (size_t j=0; j<Msh.TgdVerts.Size(); ++j)
+            {
+                if (nod_or_tag==Msh.TgdVerts[j]->Tag)
+                {
+                    nod   = Msh.TgdVerts[j]->ID;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) throw new Fatal("Domain::SetOutNods: Could not find node with tag = %d", nod_or_tag);
+        }
+        else nod = nod_or_tag;
         if (OutNods.Find(nod)<0)
         {
-            String buf; buf.Printf("%s_nod_%d.res",FNKey,nod);
+            String buf; buf.Printf("%s_nod_%d_%d.res",FNKey,nod,Nods[nod]->Vert.Tag);
             std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
             OutNods.Push (nod);
             FilNods.Push (of);

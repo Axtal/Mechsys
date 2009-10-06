@@ -60,7 +60,8 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("arch", /*NNods*/2, /*Ids*/0,192);
+    //dom.SetOutNods ("arch", /*NNods*/2, /*WithTags*/false, /*Ids*/0,192);
+    dom.SetOutNods ("arch", /*NNods*/3, /*WithTags*/true, /*Tags*/-5,-6,-7);
 
     // solver
     FEM::Solver sol(dom);

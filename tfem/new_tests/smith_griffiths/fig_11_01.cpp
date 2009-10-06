@@ -65,7 +65,7 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, Dict(), Dict());
-    dom.SetOutNods ("fig_11_01",/*NNod*/1, /*IDs*/1);
+    dom.SetOutNods ("fig_11_01",/*NNod*/1, /*WithTags*/false, /*IDs*/1);
     dom.FFuncs[-200] = &calc_F; // set database of callbacks
 
     // solver
