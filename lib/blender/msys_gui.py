@@ -86,13 +86,14 @@ def background():
     BGL.glClearColor (0.725, 0.725, 0.725, 0.0)
     BGL.glClear      (Blender.BGL.GL_COLOR_BUFFER_BIT)
 
-def caption1(c,r,w,rh, lab, evt_showhide):
+def caption1(c,r,w,rh, lab, evt_showhide,c0=0):
     caption1_clr      ()
     BGL.glRecti       (c, r, c+w, r+int(1.3*rh))
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
-    Draw.Text         (lab)
-    Draw.PushButton   ('Show/Hide', evt_showhide, c+w-5-70, r+3, 70, rh-4, 'Show/Hide this box')
+    #Draw.Text         (lab)
+    #Draw.PushButton   ('Show/Hide', evt_showhide, c+w-5-70, r+3, 70, rh-4, 'Show/Hide this box')
+    Draw.PushButton   (lab, evt_showhide, c0+3, r+3, 80, rh, lab)
 
 def box1_in(W,cg,rh, c,r,w,h):
     box1_clr      ()

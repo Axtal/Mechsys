@@ -86,6 +86,7 @@ EVT_MESH_ADDHOL      = 72 # add hole
 EVT_MESH_DELALLHOLS  = 73 # delete all holes
 EVT_MESH_GENUNSTRU   = 74 # generate unstructured mesh using MechSys module
 EVT_MESH_GENUNSTRUS  = 75 # script for unstructured mesh generation
+EVT_MESH_GENUNSTRUSN = 76 # (new) script for unstructured mesh generation
 # Materials
 EVT_MAT_SHOWHIDE     = 80 # show/hide CAD box
 EVT_MAT_ADDMAT       = 82 # add material
@@ -136,8 +137,9 @@ def hide_all():
 def show_only(key):
     was_shown = di.key(key)
     hide_all()
-    if was_shown: di.set_key(key, False)
-    else:         di.set_key(key, True)
+    #if was_shown: di.set_key(key, False)
+    #else:         di.set_key(key, True)
+    di.set_key(key, True)
     di.set_key('gui_inirow',    0)
     Blender.Window.QRedrawAll()
 
@@ -292,6 +294,12 @@ def button_event(evt):
     elif evt==EVT_MESH_GENUNSTRUS:
         obj = di.get_obj()
         txt = me.gen_unstruct_mesh(True,None,True,di.key('umsh_cpp'))
+        if not di.key('umsh_cpp'):
+            txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
+            txt.write('me.add_mesh (obj, mesh, "unstruct")\n')
+    elif evt==EVT_MESH_GENUNSTRUSN:
+        obj = di.get_obj()
+        txt = me.gen_unstruct_mesh_new(True,None,True,di.key('umsh_cpp'))
         if not di.key('umsh_cpp'):
             txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
             txt.write('me.add_mesh (obj, mesh, "unstruct")\n')
@@ -818,8 +826,8 @@ def gui():
     if edm: Blender.Window.EditMode(1)
 
     # constants
-    rg  = 20    # row gap
-    cg  = 14    # column gap
+    rg  = 15    # row gap
+    cg  = 10    # column gap
     rh  = 20    # row height
     srg =  6    # small row gap
 
@@ -828,22 +836,23 @@ def gui():
     r   = H-rh-rg-d['gui_inirow']
     c   = cg
     w   = W-2*c
+    r0  = r # initial r
 
     # number of extra rows
-    mat_extra_rows = 0
+    mat_extra_rows = 2
     for k, v in mats.iteritems():
         mdl = int(v[0])
         if mdl==5: mat_extra_rows += 1 # Reinforcement
 
     # height of boxes
-    h_set           = 5*rh+srg
+    h_set           = 8*rh+2*srg
     h_cad           = 6*rh
     h_msh_stru_blks = rh+srg+2*rh*len(blks) if len(blks)>0 else 0
-    h_msh_stru      = 4*rh+srg+h_msh_stru_blks
+    h_msh_stru      = 5*rh+srg+h_msh_stru_blks
     h_msh_unst_regs = rh+srg+rh*len(regs) if len(regs)>0 else 0
     h_msh_unst_hols = rh+srg+rh*len(hols) if len(hols)>0 else 0
-    h_msh_unst      = 6*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
-    h_msh           = 9*rh+srg+h_msh_stru+h_msh_unst
+    h_msh_unst      = 7*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols
+    h_msh           = 11*rh+srg+h_msh_stru+h_msh_unst
     h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats) if len(mats)>0 else 0
     h_mat           = 3*rh+h_mat_mats
     h_fem_reinf     = 2*rh+(srg+2*rh)*len(reinfs)-srg if len(reinfs)>0 else 0
@@ -854,42 +863,52 @@ def gui():
     h_fem_fbrys     = rh+srg+rh*len(fbrys) if len(fbrys)>0 else 0
     h_fem_eatts     = rh+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 9*rh+5*srg+h_fem_nbrys+h_fem_nbsID+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
-    h_fem           = 7*rh+3*srg+h_fem_reinf+h_fem_stage+h_fem_reinf+h_fem_lines
+    h_fem           = 9*rh+2*srg+h_fem_reinf+h_fem_stage+h_fem_reinf+h_fem_lines
     h_res_stage     = 4*rh
-    h_res           = 4*rh+srg+h_res_stage if res_nstages>0 else 4*rh+srg
+    h_res           = 6*rh+h_res_stage if res_nstages>0 else 6*rh
 
     # clear background
     gu.background()
 
     # ======================================================== Settings
 
-    gu.caption1(c,r,w,rh,'SETTINGS',EVT_SET_SHOWHIDE)
+    gu.caption1(c,r0,w,rh,'SETTINGS',EVT_SET_SHOWHIDE,c)
     if d['gui_show_set']:
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_set)
-        Draw.Toggle ('ON/OFF',     EVT_NONE, c    , r-rh, 60, 2*rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
-        Draw.Toggle ('V IDs',      EVT_NONE, c+ 60, r,    60,   rh, d['show_v_ids'], 'Show Vertex IDs'        , cb_show_v_ids)
-        Draw.Toggle ('E IDs',      EVT_NONE, c+120, r,    60,   rh, d['show_e_ids'], 'Show Edges IDs'         , cb_show_e_ids)
-        Draw.Toggle ('Local Axes', EVT_NONE, c+180, r,    80,   rh, d['show_axes'],  'Show local system axes' , cb_show_axes )
-        Draw.Toggle ('Blocks',     EVT_NONE, c+260, r,    60,   rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks )
-        Draw.Toggle ('Regions',    EVT_NONE, c+320, r,    60,   rh, d['show_regs'],  'Show regions and holes' , cb_show_regs )
+        Draw.Toggle ('Show/Hide All', EVT_NONE, c, r, 320, rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
+        r -= srg
         r -= rh
-        Draw.Toggle ('E Tags',     EVT_NONE, c+ 60, r,    60,   rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
-        Draw.Toggle ('F Tags',     EVT_NONE, c+120, r,    60,   rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
-        Draw.Slider ('',           EVT_NONE, c+180, r,    80,   rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
-        Draw.Toggle ('Elems',      EVT_NONE, c+260, r,    60,   rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
-        Draw.Toggle ('Nodes',      EVT_NONE, c+320, r,    60,   rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
+        gu.text(c,r,"Geometry:")
+        Draw.Toggle ('Vertices',   EVT_NONE, c+ 80, r, 80, rh, d['show_v_ids'], 'Show Vertex IDs'        , cb_show_v_ids)
+        Draw.Toggle ('Edges',      EVT_NONE, c+160, r, 80, rh, d['show_e_ids'], 'Show Edges IDs'         , cb_show_e_ids)
+        r -= rh
+        gu.text(c,r,"Mesh:")
+        Draw.Toggle ('Local Axes', EVT_NONE, c+ 80, r, 80, rh, d['show_axes'],  'Show local system axes' , cb_show_axes )
+        Draw.Toggle ('Blocks',     EVT_NONE, c+160, r, 80, rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks )
+        Draw.Toggle ('Regions',    EVT_NONE, c+240, r, 80, rh, d['show_regs'],  'Show regions and holes' , cb_show_regs )
+        r -= rh
+        gu.text(c,r,"Tags:")
+        Draw.Toggle ('E Tags',     EVT_NONE, c+ 80, r, 80, rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
+        Draw.Toggle ('F Tags',     EVT_NONE, c+160, r, 80, rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
+        r -= rh
+        gu.text(c,r,"FEM:")
+        Draw.Slider ('',           EVT_NONE, c+ 80, r, 80, rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
+        Draw.Toggle ('Elements',   EVT_NONE, c+160, r, 80, rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
+        Draw.Toggle ('Nodes',      EVT_NONE, c+240, r, 80, rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
         r -= rh
         r -= srg
-        Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 140, rh,           'Delete all properties')
-        Draw.Toggle     ('Mark overlapping edges', EVT_NONE,         c+140, r, 160, rh, markover, 'Mark overlapping edges', cb_over)
+        Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 160, rh,           'Delete all properties')
+        Draw.Toggle     ('Mark overlapping edges', EVT_NONE,         c+160, r, 160, rh, markover, 'Mark overlapping edges', cb_over)
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
 
     # ======================================================== CAD
 
-    gu.caption1(c,r,w,rh,'CAD',EVT_CAD_SHOWHIDE)
+    gu.caption1(c,r0,w,rh,'CAD',EVT_CAD_SHOWHIDE,c+80)
     if d['gui_show_cad']:
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_cad)
         Draw.String     ('X=',           EVT_NONE,        c,     r, 80, rh, d['cad_x'],128,     'Set the X value of the new point to be added',cb_set_x)
         Draw.String     ('Y=',           EVT_NONE,        c+ 80, r, 80, rh, d['cad_y'],128,     'Set the Y value of the new point to be added',cb_set_y)
@@ -913,24 +932,30 @@ def gui():
 
     # ======================================================== Mesh
 
-    gu.caption1(c,r,w,rh,'MESH',EVT_MESH_SHOWHIDE)
+    gu.caption1(c,r0,w,rh,'MESH',EVT_MESH_SHOWHIDE,c+160)
     if d['gui_show_mesh']:
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_msh)
-        Draw.Toggle      ('3D mesh',    EVT_NONE,          c,     r, 80, rh, is3d,                     'Set 3D mesh',                       cb_is3d)
-        Draw.Number      ('',           EVT_NONE,          c+ 80, r, 60, rh, d['newetag'],   -1000, 0, 'New edge tag',                      cb_etag)
-        Draw.PushButton  ('Edge',       EVT_MESH_SETETAG,  c+140, r, 60, rh,                           'Set edges tag (0 => remove tag)')
-        Draw.Number      ('',           EVT_NONE,          c+200, r, 60, rh, d['newftag'],   -1000, 0, 'New face tag',                      cb_ftag)
-        Draw.PushButton  ('Face',       EVT_MESH_SETFTAG,  c+260, r, 60, rh,                           'Set faces tag (0 => remove tag)')
+        gu.text (c,r,'Edge tags:')
+        Draw.Number      ('',          EVT_NONE,             c+ 80, r, 80, rh, d['newetag'],   -1000, 0, 'New edge tag',                      cb_etag)
+        Draw.PushButton  ('Set E tag', EVT_MESH_SETETAG,     c+160, r, 80, rh,                           'Set edges tag (0 => remove tag)')
+        Draw.PushButton  ('Del ETags', EVT_MESH_DELALLETAGS, c+240, r, 80, rh, 'Delete all edge tags')
         r -= rh
-        Draw.Toggle      ('Frame Mesh',         EVT_NONE,          c,     r,  80, rh, isframe,         'Set frame (truss/beams only) mesh', cb_frame)
-        Draw.Toggle      ('Quadratic Elements', EVT_NONE,          c+ 80, r, 120, rh, iso2,            'Generate quadratic (o2) elements' , cb_iso2)
-        Draw.Toggle      ('Set FEM',            EVT_NONE,          c+200, r,  80, rh, d['mshsetfem'],  'Set FEM data after meshing'       , cb_setfem)
+        gu.text (c,r,'Face tags:')
+        Draw.Number      ('',          EVT_NONE,             c+ 80, r, 80, rh, d['newftag'],   -1000, 0, 'New face tag',                      cb_ftag)
+        Draw.PushButton  ('Set F tag', EVT_MESH_SETFTAG,     c+160, r, 80, rh,                           'Set faces tag (0 => remove tag)')
+        Draw.PushButton  ('Del FTags', EVT_MESH_DELALLFTAGS, c+240, r, 80, rh, 'Delete all face tags')
         r -= rh
+        gu.text (c,r,'Settings:')
+        Draw.Toggle      ('3D mesh',     EVT_NONE, c+80,  r, 80, rh, is3d,                     'Set 3D mesh',                       cb_is3d)
+        Draw.Toggle      ('Frame Mesh',  EVT_NONE, c+160, r, 80, rh, isframe,         'Set frame (truss/beams only) mesh', cb_frame)
+        Draw.Toggle      ('O2 Elements', EVT_NONE, c+240, r, 80, rh, iso2,            'Generate quadratic (o2) elements' , cb_iso2)
+        r -= rh
+        Draw.Toggle      ('Set FEM after remeshing', EVT_NONE, c+80, r, 160, rh, d['mshsetfem'],  'Set FEM data after meshing'       , cb_setfem)
         r -= srg
-        Draw.PushButton  ('Del all ETags', EVT_MESH_DELALLETAGS, c,     r, 90, rh, 'Delete all edge tags')
-        Draw.PushButton  ('Del all FTags', EVT_MESH_DELALLFTAGS, c+ 90, r, 90, rh, 'Delete all face tags')
-        Draw.PushButton  ('Delete mesh',   EVT_MESH_DELMESH,     c+180, r, 80, rh, 'Delete current mesh')
-        Draw.Toggle      ('Hide mesh',     EVT_NONE,             c+260, r, 80, rh, d['hide_mesh'], 'Hide mesh', cb_hide_mesh)
+        r -= rh
+        Draw.Toggle      ('Hide mesh',   EVT_NONE,         c,     r, 160, rh, d['hide_mesh'], 'Hide mesh', cb_hide_mesh)
+        Draw.PushButton  ('Delete mesh', EVT_MESH_DELMESH, c+160, r, 160, rh, 'Delete current mesh')
         r -= rh
         r -= rh
 
@@ -969,9 +994,10 @@ def gui():
         # ----------------------- Mesh -- structured -- END
 
         r -= srg
-        Draw.PushButton ('Generate (quadrilaterals/hexahedrons)', EVT_MESH_GENSTRU,  c,     r, 240, rh, 'Generated structured mesh')
-        Draw.Toggle     ('C++',                                   EVT_NONE,          c+240, r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
-        Draw.PushButton ('Write Script',                          EVT_MESH_GENSTRUS, c+280, r, 100, rh, 'Create script for structured mesh generation')
+        Draw.Toggle     ('C++',          EVT_NONE,          c,    r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
+        Draw.PushButton ('Write Script', EVT_MESH_GENSTRUS, c+40, r, 100, rh, 'Create script for structured mesh generation')
+        r -= rh
+        Draw.PushButton ('Generate (quadrilaterals/hexahedrons)', EVT_MESH_GENSTRU, c, r, 240, rh, 'Generated structured mesh')
         r, c, w = gu.box2_out(W,cg,rh, c,r)
 
         # ----------------------- Mesh -- unstructured
@@ -1024,9 +1050,11 @@ def gui():
         # ----------------------- Mesh -- unstructured -- END
 
         r -= srg
-        Draw.PushButton ('Generate (triangles/tetrahedrons)', EVT_MESH_GENUNSTRU , c,     r, 240, rh, 'Generated unstructured mesh')
-        Draw.Toggle     ('C++',                               EVT_NONE,            c+240, r,  40, rh, d['umsh_cpp'], 'Generate C++ script', cb_umsh_cpp)
-        Draw.PushButton ('Write Script',                      EVT_MESH_GENUNSTRUS, c+280, r, 100, rh, 'Create script for unstructured mesh generation')
+        Draw.Toggle     ('C++',                EVT_NONE,            c,     r,  40, rh, d['umsh_cpp'], 'Generate C++ script', cb_umsh_cpp)
+        Draw.PushButton ('Write Script',       EVT_MESH_GENUNSTRUS, c+40,  r, 100, rh, 'Create script for unstructured mesh generation')
+        Draw.PushButton ('Write Script (new)', EVT_MESH_GENUNSTRUSN,c+140, r, 120, rh, 'Create script for unstructured mesh generation (new)')
+        r -= rh
+        Draw.PushButton ('Generate (triangles/tetrahedrons)', EVT_MESH_GENUNSTRU , c, r, 260, rh, 'Generated unstructured mesh')
         r, c, w = gu.box2_out(W,cg,rh, c,r+rh)
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
@@ -1034,56 +1062,46 @@ def gui():
 
     # ======================================================== Materials
 
-    gu.caption1(c,r,w,rh,'Materials',EVT_MAT_SHOWHIDE)
+    gu.caption1(c,r0-rh,w,rh,'MATERIALS',EVT_MAT_SHOWHIDE,c)
     if d['gui_show_mat']:
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_mat)
 
         # ----------------------- Mat -- parameters
 
         gu.caption2_(c,r,w,rh,'Materials', EVT_MAT_ADDMAT,EVT_MAT_DELALLMAT)
         r, c, w = gu.box2__in(W,cg,rh, c,r,w,h_mat_mats)
-        if len(mats)>0: gu.text(c,r,'          Model                   Name/Description')
-        else: r += (rh+srg)
         for k, v in mats.iteritems():
             r  -= rh
             i   = int(k)
             tid = int(v[11])      # text_id
             des = texts[str(tid)] # description
-            Draw.Menu       (d['mdlmnu'], EVT_INC+i,   c    , r, 140, rh, int(v[0])+1, 'Constitutive model: ex.: LinElastic', cb_mat_setmodel)
-            Draw.String     ('',          EVT_INC+tid, c+140, r, 220, rh, des, 32,     'Material name/description',           cb_mat_setname)
-            Draw.PushButton ('Del',       EVT_INC+i,   c+360, r,  40, rh,              'Delete this row',                     cb_mat_del)
+            Draw.Menu       (d['mdlmnu'], EVT_INC+i,   c    , r, 150, rh, int(v[0])+1, 'Constitutive model: ex.: LinElastic', cb_mat_setmodel)
+            Draw.PushButton ('Delete',    EVT_INC+i,   c+150, r,  80, rh,              'Delete this row',                     cb_mat_del)
+            r -= rh
+            gu.text (c,r,'Desc:')
+            Draw.String ('', EVT_INC+tid, c+50, r, 100, rh, des, 32,     'Material name/description',           cb_mat_setname)
             r -= rh
             if int(v[0])==0: # LinElastic
-                Draw.String ('E=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[1],   32, 'E: Young modulus',                                      cb_mat_setE)
-                Draw.String ('nu=',    EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[2],   32, 'nu: Poisson ratio',                                     cb_mat_setnu)
-            elif int(v[0])==1: # LinDiffusion
-                Draw.String ('k=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[3],   32, 'k: Diffusion coefficient',                              cb_mat_setk)
+                gu.text (c,r,'E = ')
+                Draw.String ('', EVT_INC+i, c+50 , r, 100, rh, '%g'%v[1],   32, 'E: Young modulus',                                      cb_mat_setE)
+                r -=rh
+                gu.text (c,r,'nu = ')
+                Draw.String ('', EVT_INC+i, c+50, r, 100, rh, '%g'%v[2],   32, 'nu: Poisson ratio',                                     cb_mat_setnu)
+            elif int(v[0])==1: # Flow
+                gu.text (c,r,'k = ')
+                Draw.String ('', EVT_INC+i, c+50, r, 100, rh, '%g'%v[3],   32, 'k: Diffusion coefficient',                              cb_mat_setk)
             elif int(v[0])==2: # CamClay
-                Draw.String ('lam=',   EVT_INC+i, c    , r, 80, rh, '%.4f'%v[4], 32, 'lam: Lambda',                                           cb_mat_setlam)
-                Draw.String ('kap=',   EVT_INC+i, c+ 80, r, 80, rh, '%.4f'%v[5], 32, 'kap: Kappa',                                            cb_mat_setkap)
-                Draw.String ('phics=', EVT_INC+i, c+160, r, 80, rh, '%.2f'%v[6], 32, 'phics: Shear angle at critical state',                  cb_mat_setphics)
-                Draw.String ('G=',     EVT_INC+i, c+240, r, 80, rh, '%g'  %v[7], 32, 'G: Shear modulus',                                      cb_mat_setG)
-                Draw.String ('v=',     EVT_INC+i, c+320, r, 80, rh, '%.4f'%v[8], 32, 'v: Specific volume',                                    cb_mat_setv)
-            elif int(v[0])==3: # BeamElastic
-                Draw.String ('E=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
-                Draw.String ('A=',     EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[ 9],  32, 'A: Cross-sectional area',                                cb_mat_setA)
-                Draw.String ('Izz=',   EVT_INC+i, c+160, r, 80, rh, '%g'%v[10],  32, 'Izz: Cross-sectional inertia',                           cb_mat_setIzz)
-            elif int(v[0])==4: # BiotElastic                                                                                                         
-                Draw.String ('E=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
-                Draw.String ('nu=',    EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[ 2],  32, 'nu: Poisson ratio',                                      cb_mat_setnu)
-                Draw.String ('k=',     EVT_INC+i, c+160, r, 80, rh, '%g'%v[ 3],  32, 'k: Isotropic permeability',                              cb_mat_setk)
-                Draw.String ('gw=',    EVT_INC+i, c+240, r, 80, rh, '%g'%v[12],  32, 'gw: Water specific weight',                              cb_mat_setgw)
-            elif int(v[0])==5: # Reinforcement
-                Draw.String ('E=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
-                Draw.String ('Ar=',    EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[13],  32, 'Ar: Area of reinforcement (steel cross sectional area)', cb_mat_setAr)
-                Draw.String ('At=',    EVT_INC+i, c+160, r, 80, rh, '%g'%v[14],  32, 'At: Total area of reinforcement (steel + covering)',     cb_mat_setAt)
-                Draw.String ('ks=',    EVT_INC+i, c+240, r, 80, rh, '%g'%v[15],  32, 'ks: Interfacial spring stiffness',                       cb_mat_setks)
-                r -= rh
-                Draw.String ('c=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[16],  32, 'c: Cohesion',                                            cb_mat_setc)
-                Draw.String ('phi=',   EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[17],  32, 'phi: friction angle',                                    cb_mat_setphi)
-            elif int(v[0])==6: # SpringElastic
-                Draw.String ('ks=',    EVT_INC+i, c    , r, 80, rh, '%g'%v[15],  32, 'ks: Spring stiffness',                                   cb_mat_setks)
-            elif int(v[0])==7: # RodElastic
+                Draw.String ('lam=',   EVT_INC+i, c    , r, 100, rh, '%.4f'%v[4], 32, 'lam: Lambda',                                           cb_mat_setlam)
+                Draw.String ('kap=',   EVT_INC+i, c+ 80, r, 100, rh, '%.4f'%v[5], 32, 'kap: Kappa',                                            cb_mat_setkap)
+                Draw.String ('phics=', EVT_INC+i, c+160, r, 100, rh, '%.2f'%v[6], 32, 'phics: Shear angle at critical state',                  cb_mat_setphics)
+                Draw.String ('G=',     EVT_INC+i, c+240, r, 100, rh, '%g'  %v[7], 32, 'G: Shear modulus',                                      cb_mat_setG)
+                Draw.String ('v=',     EVT_INC+i, c+320, r, 100, rh, '%.4f'%v[8], 32, 'v: Specific volume',                                    cb_mat_setv)
+            elif int(v[0])==3: # Beam
+                Draw.String ('E=',     EVT_INC+i, c    , r, 100, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
+                Draw.String ('A=',     EVT_INC+i, c+ 80, r, 100, rh, '%g'%v[ 9],  32, 'A: Cross-sectional area',                                cb_mat_setA)
+                Draw.String ('Izz=',   EVT_INC+i, c+160, r, 100, rh, '%g'%v[10],  32, 'Izz: Cross-sectional inertia',                           cb_mat_setIzz)
+            elif int(v[0])==7: # Rod
                 Draw.String ('E=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
                 Draw.String ('A=',     EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[ 9],  32, 'A: Cross-sectional area',                                cb_mat_setA)
             r -= srg
@@ -1098,8 +1116,9 @@ def gui():
 
     # ======================================================== FEM
 
-    gu.caption1(c,r,w,rh,'FEM',EVT_FEM_SHOWHIDE)
+    gu.caption1(c,r0-rh,w,rh,'FEM',EVT_FEM_SHOWHIDE,c+80)
     if d['gui_show_fem']:
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_fem)
 
         # ----------------------- FEM -- reinforcements
@@ -1304,24 +1323,34 @@ def gui():
         else: r -= rh
 
         # ----------------------- FEM -- END
-        r -= srg
-        Draw.PushButton ('Save stage/mats info', EVT_FEM_SAVESTAGES, c,     r, 140, rh, 'Save stage and materials information to a new object')
-        Draw.PushButton ('Read stage/mats info', EVT_FEM_READSTAGES, c+140, r, 140, rh, 'Read stage and materials information from another object')
         r -= rh
-        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c    , r, 100, rh, 'Run a FE analysis directly (without script)')
-        Draw.Toggle     ('full',             EVT_NONE,         c+100, r,  40, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
-        Draw.Toggle     ('C++',              EVT_NONE,         c+140, r,  40, rh, d['fem_cpp'], 'Generate C++ script', cb_fem_cpp)
-        Draw.PushButton ('Write script',     EVT_FEM_SCRIPT,   c+180, r, 100, rh, 'Generate script for FEM')
-        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+280, r, 120, rh, 'View results in ParaView')
+        Draw.PushButton ('Run analysis', EVT_FEM_RUN, c, r, 320, rh, 'Run a FE analysis directly (without script)')
+        r -= rh
+        Draw.PushButton ('Save stage/mats info', EVT_FEM_SAVESTAGES, c,     r, 160, rh, 'Save stage and materials information to a new object')
+        Draw.PushButton ('Read stage/mats info', EVT_FEM_READSTAGES, c+160, r, 160, rh, 'Read stage and materials information from another object')
+        r -= rh
+        gu.text (c,r,'Script:')
+        Draw.Toggle     ('Mesh+FEM (full)', EVT_NONE,       c+50,  r, 120, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
+        Draw.Toggle     ('C++',             EVT_NONE,       c+170, r,  40, rh, d['fem_cpp'], 'Generate C++ script', cb_fem_cpp)
+        Draw.PushButton ('Write script',    EVT_FEM_SCRIPT, c+210, r, 110, rh, 'Generate script for FEM')
         r, c, w = gu.box1_out(W,cg,rh, c,r)
     r -= rh
     r -= rg
 
     # ======================================================== Results
 
-    gu.caption1(c,r,w,rh,'RESULTS',EVT_RES_SHOWHIDE)
+    gu.caption1(c,r0-rh,w,rh,'RESULTS',EVT_RES_SHOWHIDE,c+160)
     if d['gui_show_res']:
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh, c,r,w,h_res)
+        gu.text (c,r,'Nodes:')
+        Draw.String     ('',       EVT_NONE,       c+50,  r, 190, rh, res_nodes,  256, 'List of node (separated by commas) to generate full output in report', cb_res_nodes)
+        Draw.PushButton ('Report', EVT_RES_REPORT, c+240, r,  80, rh, 'Generate report')
+        r -= rh
+        Draw.PushButton ('Delete results ',  EVT_RES_DELRES,   c,     r, 100, rh, 'Delete all results')
+        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+100, r, 220, rh, 'View results in ParaView')
+        r -= rh
+        r -= rh
         gu.caption2(c,r,w,rh,'Stage #                  / %d'%(res_nstages))
         if (res_nstages>0):
             Draw.Number ('', EVT_NONE, c+55, r+2, 60, rh-4, d['res_stage'], 1,100,'Show results of specific stage', cb_res_stage)
@@ -1338,11 +1367,6 @@ def gui():
             Draw.Toggle     ('Extra',     EVT_NONE,      c+180, r,    60,   rh, d['res_show_extra'] ,      'Show extra output'       , cb_res_show_ext)
             Draw.Toggle     ('Values',    EVT_NONE,      c+240, r,    60,   rh, d['res_ext_txt'] ,         'Show extra values'       , cb_res_ext_txt)
             r, c, w = gu.box1_out(W,cg,rh, c,r)
-        r -= rh
-        r -= srg
-        Draw.String     ('',                 EVT_NONE,       c,     r, 200, rh, res_nodes,  256, 'List of node (separated by commas) to generate full output in report', cb_res_nodes)
-        Draw.PushButton ('Generate report',  EVT_RES_REPORT, c+200, r, 120, rh,                  'Generate report')
-        Draw.PushButton ('Delete results ',  EVT_RES_DELRES, c+320, r, 100, rh,                  'Delete all results')
     r -= rg
 
 

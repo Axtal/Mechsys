@@ -99,7 +99,7 @@ def load_dict():
         dict['ptymnu'] = 'Problem Types %t|Reinforcement %x11|Spring %x10|Beam %x9|Rod %x8|Unsat %x7|Biot %x6|Diffusion %x5|Axis %x4|PStress %x3|PStrain %x2|Equilib %x1'
 
         # Models
-        dict['mdl']    = { 0:'LinElastic', 1:'LinDiffusion', 2:'CamClay', 3:'BeamElastic', 4:'BiotElastic', 5:'Reinforcement', 6:'SpringElastic', 7:'RodElastic' }
+        dict['mdl']    = { 0:'LinElastic', 1:'LinFlow', 2:'CamClay', 3:'Beam', 4:'BiotElastic', 5:'Reinforcement', 6:'SpringElastic', 7:'RodElastic' }
         dict['mdlmnu'] = 'Constitutive Models %t|RodElastic %x8|SpringElastic %x7|Reinforcement %x6|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
 
         # VTK Cell Type (tentative mapping)
