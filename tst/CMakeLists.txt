@@ -33,7 +33,8 @@ SET(PROGS_D # other tests
  serialize)
 
 SET(PROGS_F # mesh
-  mesh01)
+  mesh01
+  mesh02)
 
 IF(BLITZ_FOUND AND LINALG_FOUND AND Boost_FOUND AND FLTK_FOUND)
 	FOREACH(var ${PROGS_A})

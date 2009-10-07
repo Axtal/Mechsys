@@ -2,10 +2,10 @@ from numpy import *
 from pylab import *
 from data_handler import *
 
-ex = 4
+ex = 1
 
 if ex==1:
-    dat = read_table("fig_11_01_nod_1.res")
+    dat = read_table("fig_11_01_nod_1_-200.res")
 
     tsw = 1.0
     def calc_U(t):

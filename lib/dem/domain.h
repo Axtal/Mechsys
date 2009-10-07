@@ -189,15 +189,15 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, dou
             E[j].Push (Mesh::NVertsToEdge3D[nverts][j][1]);
         }
 
-        size_t nfaces = Mesh::NVertsToNFaces[nverts];
-        size_t nvperf = Mesh::NVertsToNVertsPerFace[nverts];
+        size_t nfaces = Mesh::NVertsToNFaces3D[nverts];
+        size_t nvperf = Mesh::NVertsToNVertsPerFace3D[nverts];
         Array<Array <int> > F(nfaces);
         for (size_t j=0; j<nfaces; ++j)
         {
             for (size_t k=0; k<nvperf; ++k)
             {
                 // TODO: check if face is planar or not
-                F[j].Push(Mesh::NVertsToFace[nverts][j][k]);
+                F[j].Push(Mesh::NVertsToFace3D[nverts][j][k]);
             }
         }
         Erosion(V,E,F,R);

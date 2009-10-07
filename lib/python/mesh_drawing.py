@@ -81,36 +81,43 @@ class Drawing:
             elif len(con)==3 or len(con)==6: nnod = 3
             elif len(con)==4 or len(con)==8: nnod = 4
             else: raise Exception("Drawing: number of nodes in element must be 2 (lin), 3 (tri), 6 (tri), 4 (quad), or 8 (quad)")
-            # centroid and edges for 2,3,4
-            dat.append((self.PH.MOVETO, (x0,y0)))
-            for j in range(1,nnod):
-                xj  = self.V[con[j]][2]
-                yj  = self.V[con[j]][3]
-                xc += xj
-                yc += yj
-                if len(con)<=4:
-                    dat.append((self.PH.LINETO, (xj,yj)))
-            # edges for 6,8
-            if len(con)==6:
-                dat.append((self.PH.LINETO,    (self.V[con[3]][2], self.V[con[3]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[1]][2], self.V[con[1]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[4]][2], self.V[con[4]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[2]][2], self.V[con[2]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[5]][2], self.V[con[5]][3])))
-            if len(con)==8:
-                dat.append((self.PH.LINETO,    (self.V[con[4]][2], self.V[con[4]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[1]][2], self.V[con[1]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[5]][2], self.V[con[5]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[2]][2], self.V[con[2]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[6]][2], self.V[con[6]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[3]][2], self.V[con[3]][3])))
-                dat.append((self.PH.LINETO,    (self.V[con[7]][2], self.V[con[7]][3])))
             if len(con)>2:
+                # centroid and edges for 2,3,4
+                dat.append((self.PH.MOVETO, (x0,y0)))
+                for j in range(1,nnod):
+                    xj  = self.V[con[j]][2]
+                    yj  = self.V[con[j]][3]
+                    xc += xj
+                    yc += yj
+                    if len(con)<=4:
+                        dat.append((self.PH.LINETO, (xj,yj)))
+                # edges for 6,8
+                if len(con)==6:
+                    dat.append((self.PH.LINETO,    (self.V[con[3]][2], self.V[con[3]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[1]][2], self.V[con[1]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[4]][2], self.V[con[4]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[2]][2], self.V[con[2]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[5]][2], self.V[con[5]][3])))
+                if len(con)==8:
+                    dat.append((self.PH.LINETO,    (self.V[con[4]][2], self.V[con[4]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[1]][2], self.V[con[1]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[5]][2], self.V[con[5]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[2]][2], self.V[con[2]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[6]][2], self.V[con[6]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[3]][2], self.V[con[3]][3])))
+                    dat.append((self.PH.LINETO,    (self.V[con[7]][2], self.V[con[7]][3])))
                 dat.append((self.PH.CLOSEPOLY, (0,0)))
-            # text
-            if with_ids:
                 xc = xc/nnod
                 yc = yc/nnod
+            else:
+                x1 = self.V[con[1]][2]
+                y1 = self.V[con[1]][3]
+                xc = x0 + 0.3*(x1-x0)
+                yc = y0 + 0.3*(y1-y0)
+                XY = array([[x0,y0],[x1,y1]])
+                ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='red', lw=8))
+            # text
+            if with_ids:
                 ax.text(xc,yc, c[0], backgroundcolor=self.lgreen,fontsize=self.fsz1)
                 # properties
                 if with_tags:

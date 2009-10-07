@@ -55,9 +55,10 @@ namespace Mesh
 #define NOEDGES3D {NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE}
 #define NOFACES   {NOFACE,NOFACE,NOFACE,NOFACE,NOFACE,NOFACE}
 
-size_t MaxNVerts2D      = 8;
-size_t NVertsToNEdges[] = {0,0,0,3,4,0,3,0,4};
-int    NVertsToEdge[][4/*edges*/][3/*verts per edge*/]=
+size_t MaxNVerts2D               = 8;
+size_t NVertsToNEdges2D[]        = {0,0,0,3,4,0,3,0,4};
+size_t NVertsToNVertsPerEdge2D[] = {0,0,0,2,2,0,3,0,3};
+int    NVertsToEdge2D[][4/*edges at most*/][3/*verts per edge at most*/]=
 {
     NOEDGES,NOEDGES,NOEDGES,               // 0,1,2 verts
     {{0,1,-1},{1,2,-1},{2,0,-1},NOEDGE},   // 3 verts => TRIANGLE
@@ -68,10 +69,10 @@ int    NVertsToEdge[][4/*edges*/][3/*verts per edge*/]=
     {{0,1,4},{1,2,5},{2,3,6},{3,0,7}}      // 8 verts => O2 QUAD
 };
 
-size_t MaxNVerts3D      = 20;
-size_t NVertsToNFaces[] = {0,0,0,0, 4, 0,0,0, 6, 0, 4, 0,0,0,0,0,0,0,0,0, 6};
-size_t NVertsToNVertsPerFace[] = {0,0,0,0, 3, 0,0,0, 4, 0, 6, 0,0,0,0,0,0,0,0,0, 8};
-int    NVertsToFace[][6/*faces*/][4/*verts per face*/]=
+size_t MaxNVerts3D               = 20;
+size_t NVertsToNFaces3D[]        = {0,0,0,0, 4, 0,0,0, 6, 0, 4, 0,0,0,0,0,0,0,0,0, 6};
+size_t NVertsToNVertsPerFace3D[] = {0,0,0,0, 3, 0,0,0, 4, 0, 6, 0,0,0,0,0,0,0,0,0, 8};
+int    NVertsToFace3D[][6/*faces at most*/][4/*verts per face at most*/]=
 {
     NOFACES,NOFACES,NOFACES,NOFACES,                                         //  0,1,2,3 verts
     {{0,3,2,-1},{0,1,3,-1},{0,2,1,-1},{1,2,3,-1},NOFACE,NOFACE},             //  4 verts => TETRA
@@ -84,7 +85,7 @@ int    NVertsToFace[][6/*faces*/][4/*verts per face*/]=
 };
 
 size_t NVertsToNEdges3D[] = {0,0,0,0, 6, 0,0,0, 12, 0, 6, 0,0,0,0,0,0,0,0,0, 12};
-int    NVertsToEdge3D[][12/*edges*/][3/*verts per edge*/]=
+int    NVertsToEdge3D[][12/*edges at most*/][3/*verts per edge at most*/]=
 {
     NOEDGES3D,NOEDGES3D,NOEDGES3D,NOEDGES3D,                                                                       //  0,1,2,3 verts
     {{0,1,-1},{1,2,-1},{2,0,-1},{0,3,-1},{1,3,-1},{2,3,-1},NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE,NOEDGE},             //  4 verts => TETRA
@@ -96,21 +97,21 @@ int    NVertsToEdge3D[][12/*edges*/][3/*verts per edge*/]=
     {{0,1,8},{1,2,9},{2,3,10},{3,0,11},{4,5,12},{5,6,13},{6,7,14},{7,4,15},{0,4,16},{1,5,17},{2,6,18},{3,7,19}}    // 20 verts => O2 HEX
 };
 
-#define BRYKEY(num_verts,idx_cell,idx_bry)                                    \
-    int vert_a, vert_b, vert_c=-1;                                            \
-    if (NDim==2)                                                              \
-    {                                                                         \
-        vert_a = Cells[idx_cell]->V[NVertsToEdge[num_verts][idx_bry][0]]->ID; \
-        vert_b = Cells[idx_cell]->V[NVertsToEdge[num_verts][idx_bry][1]]->ID; \
-        Util::Sort (vert_a,vert_b);                                           \
-    }                                                                         \
-    else                                                                      \
-    {                                                                         \
-        vert_a = Cells[idx_cell]->V[NVertsToFace[num_verts][idx_bry][0]]->ID; \
-        vert_b = Cells[idx_cell]->V[NVertsToFace[num_verts][idx_bry][1]]->ID; \
-        vert_c = Cells[idx_cell]->V[NVertsToFace[num_verts][idx_bry][2]]->ID; \
-        Util::Sort (vert_a,vert_b,vert_c);                                    \
-    }                                                                         \
+#define BRYKEY(num_verts,idx_cell,idx_bry)                                      \
+    int vert_a, vert_b, vert_c=-1;                                              \
+    if (NDim==2)                                                                \
+    {                                                                           \
+        vert_a = Cells[idx_cell]->V[NVertsToEdge2D[num_verts][idx_bry][0]]->ID; \
+        vert_b = Cells[idx_cell]->V[NVertsToEdge2D[num_verts][idx_bry][1]]->ID; \
+        Util::Sort (vert_a,vert_b);                                             \
+    }                                                                           \
+    else                                                                        \
+    {                                                                           \
+        vert_a = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][0]]->ID; \
+        vert_b = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][1]]->ID; \
+        vert_c = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][2]]->ID; \
+        Util::Sort (vert_a,vert_b,vert_c);                                      \
+    }                                                                           \
     BryKey_t brykey(vert_a,vert_b,vert_c);
 
 #undef NOEDGE
@@ -159,6 +160,9 @@ public:
     void FindNeigh  ();                                                   ///< Find neighbours of each cell
     void GenO2Verts ();                                                   ///< Generate O2 (mid) vertices
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
+
+    // Method to extend mesh
+    void AddLinCells (size_t NTagsOrPairs, bool WithETags, ...); ///< Set line cells given edge tags (tag,tag,tag,...) or pair of vertices (tag,v0,v1, tag,v0,v1, ...)
 
     // Methods
     void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
@@ -443,12 +447,65 @@ inline void Generic::SetCell (int i, int Tag, size_t NVerts, ...)
         Vec3_t p0;  p0 = Cells[i]->V[0]->C - Cells[i]->V[1]->C;
         Vec3_t p1;  p1 = Cells[i]->V[0]->C - Cells[i]->V[2]->C;
         Vec3_t p2 = blitz::cross(p0,p1);
-        if (fabs(p2(0))>1.0e-10 || fabs(p2(1)>1.0e-10)) throw new Fatal("Generic::SetCell: All vertices of cells must be on the x-y plane");
+        if (fabs(p2(0))>1.0e-10 || fabs(p2(1)>1.0e-10)) throw new Fatal("Generic::SetCell: In 2D, all vertices of cells must lie on the x-y plane");
         if (p2(2)<0.0) throw new Fatal("Generic::SetCell: Numbering of vertices is incorrect (must be counter-clockwise)");
     }
 
     // check
-    if (NDim==3 and fabs(sum_z)<1.0e-10) throw new Fatal("Generic::SetCell: In three-dimensions (NDim=3), the sum of Z coordinates of a Cell (%d, %d) cannot be zero",i,Tag);
+    if (NDim==3 and fabs(sum_z)<1.0e-10) throw new Fatal("Generic::SetCell: In 3D, the sum of all z coordinates of a Cell (%d, %d) must not be zero",i,Tag);
+}
+
+inline void Generic::AddLinCells (size_t NTagsPairs, bool WETags, ...)
+{
+    if (NDim==3) throw new Fatal("Generic::AddLinCells: Method not available for 3D yet");
+
+    va_list   arg_list;
+    va_start (arg_list, WETags);
+    for (size_t i=0; i<NTagsPairs; ++i)
+    {
+        int etag = va_arg(arg_list,int);
+        if (WETags)
+        {
+            bool found = false;
+            for (size_t j=0; j<TgdCells.Size(); ++j)
+            {
+                BryTag_t const & eftags = TgdCells[j]->BryTags;
+                for (BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
+                {
+                    if (etag==p->second)
+                    {
+                        int    eid    = p->first;
+                        size_t nv     = TgdCells[j]->V.Size();
+                        int    ivert0 = TgdCells[j]->V[NVertsToEdge2D[nv][eid][0]]->ID;
+                        int    ivert1 = TgdCells[j]->V[NVertsToEdge2D[nv][eid][1]]->ID;
+                        int    ivert2 = -1;
+                        if (NVertsToNVertsPerEdge2D[nv]>2) ivert2 = TgdCells[j]->V[NVertsToEdge2D[nv][eid][2]]->ID;
+                        if (ivert2<0)
+                        {
+                            Cells.Push (NULL);
+                            SetCell (Cells.Size()-1, etag, 2, ivert0, ivert1);
+                        }
+                        else
+                        {
+                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag, 2, ivert0, ivert2);
+                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag, 2, ivert2, ivert1);
+                        }
+                        found  = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) throw new Fatal("Generic::SetLinCells: Could not find cell with edge with tag = %d",etag);
+        }
+        else
+        {
+            int ivert0 = va_arg(arg_list,int);
+            int ivert1 = va_arg(arg_list,int);
+            Cells.Push (NULL);
+            SetCell (Cells.Size()-1, etag, 2, ivert0, ivert1);
+        }
+    }
+    va_end (arg_list);
 }
 
 inline void Generic::SetBryTag (int i, int iEdgeFace, int Tag)
@@ -467,7 +524,7 @@ inline void Generic::FindNeigh ()
     for (size_t i=0; i<Cells.Size(); ++i)
     {
         size_t nverts = Cells[i]->V.Size();
-        size_t nbrys  = (NDim==2 ? NVertsToNEdges[nverts] : NVertsToNFaces[nverts]);
+        size_t nbrys  = (NDim==2 ? NVertsToNEdges2D[nverts] : NVertsToNFaces3D[nverts]);
         for (size_t j=0; j<nbrys; ++j)
         {
             BRYKEY(nverts,i,j)
@@ -480,7 +537,7 @@ inline void Generic::FindNeigh ()
     for (size_t i=0; i<Cells.Size(); ++i)
     {
         size_t nverts = Cells[i]->V.Size();
-        size_t nbrys  = (NDim==2 ? NVertsToNEdges[nverts] : NVertsToNFaces[nverts]);
+        size_t nbrys  = (NDim==2 ? NVertsToNEdges2D[nverts] : NVertsToNFaces3D[nverts]);
         for (size_t j=0; j<nbrys; ++j)
         {
             BRYKEY(nverts,i,j)
@@ -531,12 +588,12 @@ inline void Generic::GenO2Verts ()
                 {
                     // allocate space for nv vertices
                     cell->V.PushN (NULL,nv);
-                    idx_vert = NVertsToEdge[2*nv][idx_edge][2];
+                    idx_vert = NVertsToEdge2D[2*nv][idx_edge][2];
                 }
                 else if (NVertsToVTKCell2D[nv]==VTK_QUADRATIC_TRIANGLE || NVertsToVTKCell2D[nv]==VTK_QUADRATIC_QUAD)
                 {
                     // OK. Space already allocated
-                    idx_vert = NVertsToEdge[nv][idx_edge][2];
+                    idx_vert = NVertsToEdge2D[nv][idx_edge][2];
                 }
                 else throw new Fatal("GenO2Verts::GenO2Verts: NDim==2D. Cell must be of type VTK_TRIANGLE (tri3) or VTK_QUAD (quad4) in order to generate O2 vertices. Number of vertices = %d is invalid",nv);
 
@@ -575,14 +632,14 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
             if (btag<0)
             {
                 int ibcell  = bcells.Size();
-                int nbverts = (NDim==3 ? NVertsToNVertsPerFace[nverts] : 2);
+                int nbverts = (NDim==3 ? NVertsToNVertsPerFace3D[nverts] : 2);
                 bcells.Push (new Cell);
                 bcells[ibcell]->ID  = Cells.Size()+ibcell;
                 bcells[ibcell]->Tag = btag;
                 for (int j=0; j<nbverts; ++j)
                 {
                     bcells[ibcell]->V.Push (new Vertex);
-                    bcells[ibcell]->V[j]->ID = (NDim==3 ? Cells[i]->V[NVertsToFace[nverts][ibry][j]]->ID : Cells[i]->V[NVertsToEdge[nverts][ibry][j]]->ID);
+                    bcells[ibcell]->V[j]->ID = (NDim==3 ? Cells[i]->V[NVertsToFace3D[nverts][ibry][j]]->ID : Cells[i]->V[NVertsToEdge2D[nverts][ibry][j]]->ID);
                 }
             }
         }

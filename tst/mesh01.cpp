@@ -106,6 +106,30 @@ int main(int argc, char **argv) try
 
     // 3D: unstructured
     {
+        Mesh::Unstructured mesh(/*NDim*/3);
+        mesh.Set (4,4,1,0,
+                  0., -1., 0.0, 0.0, 0.0,
+                  1., -2., 1.0, 0.0, 0.0,
+                  2., -3., 0.0, 1.0, 0.0,
+                  3., -4., 0.0, 0.0, 1.0,
+                      -1., 0.1, 0.1, 0.1, -1.0);
+        mesh.SetFac (0, -1, 1,  3., 0.,2.,3.);
+        mesh.SetFac (1, -2, 1,  3., 0.,3.,1.);
+        mesh.SetFac (2, -3, 1,  3., 0.,1.,2.);
+        mesh.SetFac (3, -4, 1,  3., 1.,2.,3.);
+        mesh.Generate (/*O2*/true);
+        mesh.WriteVTU ("mesh01_1tet");
+    }
+
+    // 3D: unstructured
+    {
+        Mesh::Unstructured mesh(/*NDim*/3);
+        mesh.GenBox  (/*O2*/true,/*V*/0.1);
+        mesh.WriteVTU ("mesh01_tet_box", /*VolSurfOrBoth*/0);
+    }
+
+    // 3D: unstructured
+    {
         Mesh::Unstructured mesh(3);                      // 3D
         mesh.Set (16, 12, 1, 1,                          // 18 points, 12 facets, 1 region, 1 hole
                    0., -1.,  0.0, 0.0, 0.0,              // id, vtag, x, y, z, <<<<<< points
@@ -141,30 +165,6 @@ int main(int argc, char **argv) try
         mesh.Generate ();
         mesh.WritePLY ("mesh01_tet_hole");
         mesh.WriteVTU ("mesh01_tet_hole");
-    }
-
-    // 3D: unstructured
-    {
-        Mesh::Unstructured mesh(/*NDim*/3);
-        mesh.GenBox  (/*O2*/true,/*V*/0.1);
-        mesh.WriteVTU ("mesh01_tet_box", /*VolSurfOrBoth*/0);
-    }
-
-    // 3D: unstructured
-    {
-        Mesh::Unstructured mesh(/*NDim*/3);
-        mesh.Set (4,4,1,0,
-                  0., -1., 0.0, 0.0, 0.0,
-                  1., -2., 1.0, 0.0, 0.0,
-                  2., -3., 0.0, 1.0, 0.0,
-                  3., -4., 0.0, 0.0, 1.0,
-                      -1., 0.1, 0.1, 0.1, -1.0);
-        mesh.SetFac (0, -1, 1,  3., 0.,2.,3.);
-        mesh.SetFac (1, -2, 1,  3., 0.,3.,1.);
-        mesh.SetFac (2, -3, 1,  3., 0.,1.,2.);
-        mesh.SetFac (3, -4, 1,  3., 1.,2.,3.);
-        mesh.Generate (/*O2*/true);
-        mesh.WriteVTU ("mesh01_1tet");
     }
 
     return 0;
