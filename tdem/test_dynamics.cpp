@@ -41,7 +41,7 @@ int main(int argc, char **argv) try
 	Vec3_t x(-10,0,0);     // position
     Vec3_t w(0,M_PI/50,0); // rot veloc
     Vec3_t v(1.,0,0);      // veloc
-	d.AddCube (x,0.3,3.,1.);
+	d.AddCube (-1, x,0.3,3.,1.);
     d.Particles[0]->v = v;
     d.Particles[0]->w = w;
 
@@ -49,7 +49,7 @@ int main(int argc, char **argv) try
     x =  10 , 0 , 0;
     w =   0 , 0 , 0;
     v = -1. , 0 , 0;
-    d.AddTetra (x,0.8,8.,1.);
+    d.AddTetra (-1, x,0.8,8.,1.);
     d.Particles[1]->v = v;
     d.Particles[1]->w = w;
 

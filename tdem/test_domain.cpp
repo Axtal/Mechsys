@@ -33,11 +33,11 @@ int main(int argc, char **argv) try
     Domain d;
 
     // add cube
-    d.AddCube (Vec3_t(20,0,0),1.,15,1.,0.,NULL);
+    d.AddCube (-1, Vec3_t(20,0,0),1.,15,1.,0.,NULL);
     double cube_vol = (4./3.)*PI + 3.*PI*15. + pow(15,3.0) + 6*pow(15,2.0);
 
     // add rice
-    d.AddRice (Vec3_t(0,0,0),1.,10.,1.,0.,NULL);
+    d.AddRice (-1, Vec3_t(0,0,0),1.,10.,1.,0.,NULL);
     double rice_vol = (4./3.)*PI + PI*10.0;
     Vec3_t rice_I((1./3.)*PI*100+(1./12.)*PI*1000+0.75*PI*10+(8./15.)*PI,
                   (1./3.)*PI*100+(1./12.)*PI*1000+0.75*PI*10+(8./15.)*PI,
