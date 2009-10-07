@@ -24,6 +24,7 @@ ENDIF(MAKE_TFEM_NEW_ONLY)
 
 SET(TESTS
   arch
+  beam
   labtest)
 
 IF(FEM_FOUND)

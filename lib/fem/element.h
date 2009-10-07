@@ -36,10 +36,6 @@ namespace FEM
 class Element
 {
 public:
-    // Static data
-    static Array<String> UKeys; ///< DOF keys such as 'ux', 'uy', 'uz'
-    static Array<String> SKeys; ///< State keys such as 'sx', 'sy', 'ea'
-
     // Constructor
     Element (int                  NDim,   ///< Space dimension
              Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
@@ -84,10 +80,9 @@ public:
     GeomType           GTy;    ///< Geometry type
     Array<Node*>       Con;    ///< Connectivity
     Array<State*>      Sta;    ///< State at the centre of the element or at each IP
+    Array<String>      UKeys;  ///< DOF keys such as 'ux', 'uy', 'uz'
+    Array<String>      SKeys;  ///< State keys such as 'sx', 'sy', 'ea'
 };
-
-Array<String> Element::UKeys;
-Array<String> Element::SKeys;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
