@@ -143,17 +143,17 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
     e0 = new Vec3_t(OrthoSys::e0);
     e1 = new Vec3_t(OrthoSys::e1);
 
-    AddPlane(InitialTag,Vec3_t(Lx/2.0,0.0,0.0),R,Lz,Ly,1.0,M_PI/2.0,e1);
+    AddPlane(InitialTag,Vec3_t(Lx/2.0,0.0,0.0),R,1.2*Lz,1.2*Ly,1.0,M_PI/2.0,e1);
 
-    AddPlane(InitialTag-1,Vec3_t(-Lx/2.0,0.0,0.0),R,Lz,Ly,1.0,M_PI/2.0,e1);
+    AddPlane(InitialTag-1,Vec3_t(-Lx/2.0,0.0,0.0),R,1.2*Lz,1.2*Ly,1.0,M_PI/2.0,e1);
 
-    AddPlane(InitialTag-2,Vec3_t(0.0,Ly/2.0,0.0),R,Lx,Lz,1.0,M_PI/2.0,e0);
+    AddPlane(InitialTag-2,Vec3_t(0.0,Ly/2.0,0.0),R,1.2*Lx,1.2*Lz,1.0,M_PI/2.0,e0);
 
-    AddPlane(InitialTag-3,Vec3_t(0.0,-Ly/2.0,0.0),R,Lx,Lz,1.0,M_PI/2.0,e0);
+    AddPlane(InitialTag-3,Vec3_t(0.0,-Ly/2.0,0.0),R,1.2*Lx,1.2*Lz,1.0,M_PI/2.0,e0);
 
-    AddPlane(InitialTag-4,Vec3_t(0.0,0.0,Lz/2.0),R,Lx,Ly,1.0);
+    AddPlane(InitialTag-4,Vec3_t(0.0,0.0,Lz/2.0),R,1.2*Lx,1.2*Ly,1.0);
 
-    AddPlane(InitialTag-5,Vec3_t(0.0,0.0,-Lz/2.0),R,Lx,Ly,1.0);
+    AddPlane(InitialTag-5,Vec3_t(0.0,0.0,-Lz/2.0),R,1.2*Lx,1.2*Ly,1.0);
 
     delete e0;
     delete e1;
@@ -566,6 +566,7 @@ inline void Domain::SetProps (Dict & D)
         }
         if (free_particle) FreeParticles.Push (Particles[i]);
     }
+    //std::cout << Particles.Size() << " " << FParticles.Size() << " " << FreeParticles.Size() << " " << RParticles.Size() << std::endl;
 }
 
 inline void Domain::Initialize (double dt)
@@ -580,39 +581,53 @@ inline void Domain::Initialize (double dt)
         {
             Particles[i]->Initialize (dt);
         }
-    }
+        //for (size_t i=0; i<Interactons.Size();i++)
+        //{
+            //delete Interactons[i];
+        //}
+        //Interactons.Resize(0);
 
-    for (size_t i=0; i<Interactons.Size();i++)
+        for (size_t i=0; i<FreeParticles.Size()-1; i++)
+        {
+            // initialize interactons
+            for (size_t j=i+1; j<FreeParticles.Size(); j++)
+            {
+                //std::cout << i << " " << j << std::endl;
+                Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
+            }
+        }
+        //std::cout << Interactons.Size() << std::endl;
+
+        for (size_t i=0; i<FreeParticles.Size(); i++)
+        {
+            for (size_t j=0; j<FParticles.Size(); j++)
+            {
+                //std::cout << i << " " << j << std::endl;
+                Interactons.Push (new Interacton(FreeParticles[i],FParticles[j]));
+            }
+
+            for (size_t j=0; j<RParticles.Size(); j++)
+            {
+                //std::cout << i << " " << j << std::endl;
+                Interactons.Push (new Interacton(FreeParticles[i],RParticles[j]));
+            }
+
+            for (size_t j=0; j<TParticles.Size(); j++)
+            {
+                //std::cout << i << " " << j << std::endl;
+                Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
+            }
+        }
+    }
+    else
     {
-        delete Interactons[i];
-    }
-    Interactons.Resize(0);
-
-    for (size_t i=0; i<FreeParticles.Size(); i++)
-    {
-        // initialize interactons
-        for (size_t j=i+1; j<FreeParticles.Size(); j++)
+        for (size_t i = 0;i < TParticles.Size();i++)
         {
-            Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
-        }
-
-        for (size_t j=0; j<FParticles.Size(); j++)
-        {
-            Interactons.Push (new Interacton(FreeParticles[i],FParticles[j]));
-        }
-
-        for (size_t j=0; j<RParticles.Size(); j++)
-        {
-            Interactons.Push (new Interacton(FreeParticles[i],RParticles[j]));
-        }
-
-        for (size_t j=0; j<TParticles.Size(); j++)
-        {
-            Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
+            TParticles[i]->Initialize(dt);
         }
     }
 
-
+    //std::cout << Interactons.Size() << std::endl;
 
     // set flag
     Initialized = true;
@@ -694,7 +709,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             fw << t;
             for (size_t i=0;i<TParticles.Size();i++)
             {
-                fw << FT[i](0) << " "<< FT[i](1) << " "<< FT[i](2) << " " << TParticles[i]->x(0)<< " " << TParticles[i]->x(1)<< " " << TParticles[i]->x(2)<<" ";
+                fw << " "<< FT[i](0) << " "<< FT[i](1) << " "<< FT[i](2) << " " << TParticles[i]->x(0)<< " " << TParticles[i]->x(1)<< " " << TParticles[i]->x(2)<<" ";
             }
             fw << endl;
 

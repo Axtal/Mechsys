@@ -33,6 +33,7 @@ if [ "$2" = "1" ]; then
 	    png=$(echo "$f" | tr '[pov]' '[png]');
         rm $f
     done
+    rm *png;
 fi
 
 exit 0

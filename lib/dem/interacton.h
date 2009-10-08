@@ -67,6 +67,7 @@ private:
 inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
     : P1(Pt1), P2(Pt2), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), Epot(0.0)
 {
+    //std::cout << P1 << " " << P2 << std::endl;
     CalcForce(0.1);
 }
 
@@ -135,7 +136,6 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
 
             // potential energy
             Epot += 0.5*Kn*delta*delta+0.5*Kt*dot(FMap[p],FMap[p]);
-            if (isnan(Epot)) std::cout << delta << " " << FMap[p] << std::endl;
         }
     }
 }
