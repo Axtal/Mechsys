@@ -2,7 +2,7 @@ from numpy import *
 from pylab import *
 from data_handler import *
 
-dat = read_table("wood_lewis_nod_34.res")
+dat = read_table("wood_lewis_nod_34_0.res")
 
 def solution(x,t):
     H = 1.0

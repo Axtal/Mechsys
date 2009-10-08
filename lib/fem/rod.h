@@ -86,10 +86,6 @@ inline Rod::Rod (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair co
     if (NDim==2) UKeys = "ux", "uy";
     else         UKeys = "ux", "uy", "uz";
 
-    // set SKeys in parent element
-    SKeys.Resize (3);
-    SKeys = "fa", "sa", "ea";
-
     // initialize DOFs
     if (NDim==2) for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy",    "fx fy");
     else         for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");

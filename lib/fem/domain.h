@@ -320,8 +320,10 @@ inline Domain & Domain::SetOutEles (char const * FNKey, int NEles, ...)
             std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
             OutEles.Push (ele);
             FilEles.Push (of);
+            SDPair dat;
+            Eles[ele]->GetState (dat);
             (*of) << Util::_6_3 << "Time";
-            for (size_t j=0; j<Eles[ele]->SKeys.Size(); ++j) (*of) << Util::_8s << Eles[ele]->SKeys[j];
+            for (size_t j=0; j<dat.Keys.Size(); ++j) (*of) << Util::_8s << dat.Keys[j];
             (*of) << "\n";
         }
     }
@@ -349,7 +351,7 @@ inline void Domain::OutResults (double Time) const
         (*FilEles[i]) << Util::_6_3 << Time;
         SDPair dat;
         Eles[ele]->GetState (dat);
-        for (size_t j=0; j<Eles[ele]->SKeys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(Eles[ele]->SKeys[j]);
+        for (size_t j=0; j<dat.Keys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(dat.Keys[j]);
         (*FilEles[i]) << "\n";
     }
 }
@@ -424,9 +426,11 @@ inline void Domain::PrintResults (std::ostream & os, Util::NumStream NF, int Idx
     Array<String> keys;
     for (size_t i=0; i<Eles.Size(); ++i)
     {
-        for (size_t j=0; j<Eles[i]->SKeys.Size(); ++j)
+        SDPair dat;
+        Eles[i]->GetState (dat);
+        for (size_t j=0; j<dat.Keys.Size(); ++j)
         {
-            if (keys.Find(Eles[i]->SKeys[j])<0) keys.Push (Eles[i]->SKeys[j]);
+            if (keys.Find(dat.Keys[j])<0) keys.Push (dat.Keys[j]);
         }
     }
 

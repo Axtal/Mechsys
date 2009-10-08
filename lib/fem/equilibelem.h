@@ -88,11 +88,6 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
         UKeys.Resize (NDim);
         UKeys = "ux", "uy";
 
-        // set SKeys in parent element
-        SKeys.Resize (8);
-        SKeys = "sx", "sy", "sz", "sxy", // stresses at centroid
-                "ex", "ey", "ez", "exy"; // strains at centroid
-
         // initialize DOFs
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy", "fx fy");
     }
@@ -101,11 +96,6 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
         // set UKeys in parent element
         UKeys.Resize (NDim);
         UKeys = "ux", "uy", "uz";
-
-        // set SKeys in parent element
-        SKeys.Resize (12);
-        SKeys = "sx", "sy", "sz", "sxy", "syz", "szx", // stresses at centroid
-                "ex", "ey", "ez", "exy", "eyz", "ezx"; // strains at centroid
 
         // initialize DOFs
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");

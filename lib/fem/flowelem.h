@@ -94,21 +94,6 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
 
     // initialize DOFs
     for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("H", "Q");
-
-    if (NDim==2)
-    {
-        // set SKeys in parent element
-        SKeys.Resize (4);
-        SKeys = "vx", "vy", // velocities at centroid
-                "gx", "gy"; // gradients at centroid
-    }
-    else // 3D
-    {
-        // set SKeys in parent element
-        SKeys.Resize (6);
-        SKeys = "vx", "vy", "vz", // velocities at centroid
-                "gx", "gy", "gz"; // gradients at centroid
-    }
 }
 
 inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)

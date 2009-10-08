@@ -82,10 +82,6 @@ inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
     if (NDim==2) { UKeys.Resize(3);  UKeys = "ux", "uy", "wz"; }
     else throw new Fatal("Beam::Beam: 3D Beam is not available yet");
 
-    // set SKeys in parent element
-    SKeys.Resize (3);
-    SKeys = "P", "V", "M"; // axial force, shear force, bending moment
-
     // initialize DOFs
     if (NDim==2) for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy wz", "fx fy mz");
     else {}

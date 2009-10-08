@@ -81,7 +81,6 @@ public:
     Array<Node*>       Con;    ///< Connectivity
     Array<State*>      Sta;    ///< State at the centre of the element or at each IP
     Array<String>      UKeys;  ///< DOF keys such as 'ux', 'uy', 'uz'
-    Array<String>      SKeys;  ///< State keys such as 'sx', 'sy', 'ea'
 };
 
 
