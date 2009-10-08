@@ -46,13 +46,13 @@ int main(int argc, char **argv) try
                  -1.0,   0.0, 0.0,
                  -2.0,  10.0, 0.0,
                  -3.0,  10.0, 1.0,
-                 -4.0,   0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
-    blks[0].SetNx (2);
+                 -4.0, 0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
+    blks[0].SetNx (10);
     blks[0].SetNy (1);
     Mesh::Structured mesh(/*NDim*/2);
     mesh.Generate    (blks,/*O2*/o2);
     mesh.AddLinCells (/*NTagsOrPairs*/1, /*WTags*/true, /*Tags*/-10);
-    mesh.WriteMPY    ("beam",/*OnlyMesh*/false);
+    mesh.WriteMPY    ("beam02_mesh",/*OnlyMesh*/false);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -60,11 +60,11 @@ int main(int argc, char **argv) try
     Dict prps;
     if (o2) prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad8"), TRUE);
     else    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), TRUE);
-    prps.Set(-10, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 3.194, 1.0, 1.0);
+    prps.Set(-10, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 1.0, 1.0, 1.0);
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 10.0, 0.2, TRUE);
+    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 1.0, 0.2, TRUE);
 
     // initial values
     Dict inis;
@@ -91,7 +91,8 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.WriteVTU ("beam");
+    dom.WriteVTU ("beam02_res");
+    dom.WriteMPY ("beam02_res", /*sf*/0.03);
 
     return 0;
 }

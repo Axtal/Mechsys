@@ -31,7 +31,7 @@ inline void Header (std::ostream & os)
 {
     // header
     os << "from numpy import array, sqrt\n";
-    os << "from pylab import figure, text, show, axis, plot\n";
+    os << "from pylab import figure, text, show, axis, plot, grid\n";
     os << "from pylab import matplotlib as MPL\n\n";
     os << "PH = MPL.path.Path\n";
     os << "PP = MPL.patches\n";
@@ -40,6 +40,7 @@ inline void Header (std::ostream & os)
     // colors
     os << "# colors\n";
     os << "pink    = (250/255.0,204/255.0,228/255.0)\n";
+    os << "dred    = (163/255.0,  0/255.0,  0/255.0)\n";
     os << "lblue   = (217/255.0,228/255.0,255/255.0)\n";
     os << "lgreen  = (100/255.0,241/255.0,193/255.0)\n";
     os << "dblue   = ( 45/255.0,  0/255.0,160/255.0)\n";
@@ -55,14 +56,16 @@ inline void Header (std::ostream & os)
 
 inline void AddPatch (std::ostream & os, char const * EdgeColor="dblue", char const * FaceColor="lblue")
 {
-    os << "cmd,vert = zip(*dat)\n";
-    os << "ph       = PH (vert, cmd)\n";
-    os << "pc       = PC (ph, edgecolor=" << EdgeColor << ", facecolor=" << FaceColor << ", linewidth=2)\n";
-    os << "ax.add_patch  (pc)\n\n";
+    os << "if len(dat)>0:\n";
+    os << "    cmd,vert = zip(*dat)\n";
+    os << "    ph       = PH (vert, cmd)\n";
+    os << "    pc       = PC (ph, edgecolor=" << EdgeColor << ", facecolor=" << FaceColor << ", linewidth=2)\n";
+    os << "    ax.add_patch  (pc)\n\n";
 }
 
 inline void Show (std::ostream & os)
 {
+    os << "grid()\n";
     os << "axis('scaled')\n";
     os << "show()\n";
 }

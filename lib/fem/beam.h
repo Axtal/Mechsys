@@ -43,14 +43,15 @@ public:
           Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);   ///< IdxEdgeOrFace is ignored
-    void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
-    void CalcM       (Mat_t & M)                            const; ///< Mass matrix
-    void CalcT       (Mat_t & T, double & l)                const; ///< Transformation matrix
-    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
-    void GetState    (SDPair & KeysVals, int none=-1)       const;
-    void Centroid    (Vec_t & X)                            const; ///< Centroid of element
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);           ///< IdxEdgeOrFace is ignored
+    void CalcK       (Mat_t & K)                                    const; ///< Stiffness matrix
+    void CalcM       (Mat_t & M)                                    const; ///< Mass matrix
+    void CalcT       (Mat_t & T, double & l)                        const; ///< Transformation matrix
+    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)         const;
+    void GetState    (SDPair & KeysVals, int none=-1)               const;
+    void Centroid    (Vec_t & X)                                    const; ///< Centroid of element
     void CalcRes     (double r, double & P, double & V, double & M) const; ///< Resultants: Axial force P, Shear force V, Bending moment M
+    void Draw        (std::ostream & os, double SF)                 const;
 
     // Constants
     double E;     ///< Young modulus
@@ -286,6 +287,75 @@ inline void Beam::CalcRes (double r, double & P, double & V, double & M) const
             M +=  (2.*qnr*lll+3.*qnl*lll-9.*qnr*s*ll-21.*qnl*s*ll+30.*qnl*ss*l+10.*qnr*sss-10.*qnl*sss)/(60.*l);
         }
     }
+}
+
+inline void Beam::Draw (std::ostream & os, double SF) const
+{
+    // constants
+    size_t ndiv = 10;
+
+    // coordinates
+    double x0 = Con[0]->Vert.C[0];
+    double y0 = Con[0]->Vert.C[1];
+    double x1 = Con[1]->Vert.C[0];
+    double y1 = Con[1]->Vert.C[1];
+
+    if (NDim==2)
+    {
+        // draw shape
+        os << "XY = array([["<<x0<<","<<y0<<"],["<<x1<<","<<y1<<"]])\n";
+        os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dred, lw=8))\n";
+
+        // derived variables
+        double l = sqrt(pow(x1-x0,2.0)+pow(y1-y0,2.0)); // length
+        double c = (x1-x0)/l;                           // cosine
+        double s = (y1-y0)/l;                           // sine
+
+        // normal
+        double xn = -s;
+        double yn =  c;
+
+        // results
+        double P, V, M, Mmax;
+        double r, x, y, rMmax;
+        double sf, xf, yf;
+        rMmax = 0.0;
+        CalcRes (rMmax, P, V, Mmax);
+        os << "dat_beam = []\n";
+        for (size_t i=0; i<ndiv+1; ++i)
+        {
+            r = static_cast<double>(i)/static_cast<double>(ndiv);
+            CalcRes (r, P, V, M);
+            x  = x0 + r*(x1-x0);
+            y  = y0 + r*(y1-y0);
+            sf = SF*M;
+            xf = x - sf*xn;
+            yf = y - sf*yn;
+            os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+            os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='blue', lw=1))\n";
+            if (i>0) os << "dat_beam.append((PH.LINETO, (" << xf << "," << yf << ")))\n";
+            else     os << "dat_beam.append((PH.MOVETO, (" << xf << "," << yf << ")))\n";
+            if (fabs(M)>fabs(Mmax)) { rMmax = r;  Mmax = M; }
+        }
+        os << "cmd_beam,vert_beam = zip(*dat_beam)\n";
+        os << "ph_beam       = PH (vert_beam, cmd_beam)\n";
+        os << "pc_beam       = PC (ph_beam, facecolor='none', edgecolor=dblue, linewidth=1)\n";
+        os << "ax.add_patch  (pc_beam)\n\n";
+
+        // max M
+        x  = x0 + rMmax*(x1-x0);
+        y  = y0 + rMmax*(y1-y0);
+        sf = SF*Mmax;
+        xf = x - sf*xn;
+        yf = y - sf*yn;
+        String buf;
+        buf.Printf ("%g",Mmax);
+        os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+        os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
+        os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+        //std::cout << "r(MaxM) = " << rMmax << "    MaxM = " << Mmax << std::endl;
+    }
+    else throw new Fatal("Beam::GetState: 3D Beam is not available yet");
 }
 
 

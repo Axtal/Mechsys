@@ -57,6 +57,7 @@ public:
 	void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
     void GetState    (SDPair & KeysVals, int none=-1)       const;
     void Centroid    (Vec_t & X)                            const; ///< Centroid of element
+    void Draw        (std::ostream & os, double SF)         const;
 
     // Constants
     double E; ///< Young modulus
@@ -195,6 +196,24 @@ inline void Rod::Centroid (Vec_t & X) const
     X(1) = (Con[0]->Vert.C[1] + Con[1]->Vert.C[1])/2.0;  if (NDim==3)
     X(2) = (Con[0]->Vert.C[2] + Con[1]->Vert.C[2])/2.0;
 }
+
+inline void Rod::Draw (std::ostream & os, double SF) const
+{
+    // coordinates
+    double x0 = Con[0]->Vert.C[0];
+    double y0 = Con[0]->Vert.C[1];
+    double x1 = Con[1]->Vert.C[0];
+    double y1 = Con[1]->Vert.C[1];
+
+    if (NDim==2)
+    {
+        // draw shape
+        os << "XY = array([["<<x0<<","<<y0<<"],["<<x1<<","<<y1<<"]])\n";
+        os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=orange, lw=4))\n";
+    }
+    else throw new Fatal("Rod::Draw: Method not available for 3D yet");
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 

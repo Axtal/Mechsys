@@ -65,7 +65,7 @@ public:
     void     PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
     bool     CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
     bool     CheckError   (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const; ///< At integration points
-    void     WriteMPY     (char const * FileKey) const;
+    void     WriteMPY     (char const * FileKey, double SFCoef=1.0)                        const; ///< SFCoef: Scale-factor coefficient
     void     WriteVTU     (char const * FileKey) const;
 
     // Data
@@ -558,12 +558,51 @@ inline bool Domain::CheckError (std::ostream & os, Table const & EleSol, SDPair 
     return error;
 }
 
-inline void Domain::WriteMPY (char const * FNKey) const
+inline void Domain::WriteMPY (char const * FNKey, double SFCoef) const
 {
+    // bounding box
+    Vec3_t min, max, del;
+    min = Nods[0]->Vert.C(0), Nods[0]->Vert.C(1), Nods[0]->Vert.C(2);
+    max = min;
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        if (Nods[i]->Vert.C(0)<min(0)) min(0) = Nods[i]->Vert.C(0);
+        if (Nods[i]->Vert.C(1)<min(1)) min(1) = Nods[i]->Vert.C(1);
+        if (Nods[i]->Vert.C(2)<min(2)) min(2) = Nods[i]->Vert.C(2);
+        if (Nods[i]->Vert.C(0)>max(0)) max(0) = Nods[i]->Vert.C(0);
+        if (Nods[i]->Vert.C(1)>max(1)) max(1) = Nods[i]->Vert.C(1);
+        if (Nods[i]->Vert.C(2)>max(2)) max(2) = Nods[i]->Vert.C(2);
+    }
+    del  = max - min;
+    double max_dist = Norm(del);
+
+    /*
+    // max element diagonal
+    Vec3_t min, max, del;
+    double diag, max_diag = 0.0;
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        min = Eles[i]->Con[0]->Vert.C(0), Eles[i]->Con[0]->Vert.C(1), Eles[i]->Con[0]->Vert.C(2);
+        max = min;
+        for (size_t j=0; j<Eles[i]->Con.Size(); ++j)
+        {
+            if (Eles[i]->Con[j]->Vert.C(0)<min(0)) min(0) = Eles[i]->Con[j]->Vert.C(0);
+            if (Eles[i]->Con[j]->Vert.C(1)<min(1)) min(1) = Eles[i]->Con[j]->Vert.C(1);
+            if (Eles[i]->Con[j]->Vert.C(2)<min(2)) min(2) = Eles[i]->Con[j]->Vert.C(2);
+            if (Eles[i]->Con[j]->Vert.C(0)>max(0)) max(0) = Eles[i]->Con[j]->Vert.C(0);
+            if (Eles[i]->Con[j]->Vert.C(1)>max(1)) max(1) = Eles[i]->Con[j]->Vert.C(1);
+            if (Eles[i]->Con[j]->Vert.C(2)>max(2)) max(2) = Eles[i]->Con[j]->Vert.C(2);
+        }
+        del  = max - min;
+        diag = Norm(del);
+        if (diag>max_diag) max_diag = diag;
+    }
+    */
+
     String fn(FNKey);  fn.append(".mpy");
     std::ofstream of(fn.CStr(), std::ios::out);
     MPL::Header   (of);
-    for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->Draw (of);
+    for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->Draw (of, SFCoef*max_dist);
     MPL::AddPatch (of);
     MPL::Show     (of);
     of.close      ();

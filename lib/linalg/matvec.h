@@ -598,6 +598,12 @@ inline void Eig (Mat3_t const & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t 
     throw new Fatal("matvec.h:Eig: Jacobi rotation did not converge");
 }
 
+/** Norm. */
+inline double Norm (Vec3_t const & V)
+{
+    return sqrt(blitz::dot(V,V));
+}
+
 /** Compare two vectors. */
 inline double CompareVectors (Vec3_t const & A, Vec3_t const & B)
 {

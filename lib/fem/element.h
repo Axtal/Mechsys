@@ -61,6 +61,7 @@ public:
     virtual void GetState     (SDPair & KeysVals, int IdxIP=-1)          const {} ///< IdxIP<0 => At the centroid
     virtual void GetState     (Array<SDPair> & Results)                  const {} ///< At each integration point (IP)
     virtual void Centroid     (Vec_t & X)                                const;   ///< Centroid of element
+    virtual void Draw         (std::ostream & os, double MaxDist)        const;   ///< Draw element with MatPlotLib
 
     // Methods that depend on GE
     void CoordMatrix   (Mat_t & C)                 const; ///< Matrix with coordinates of nodes
@@ -69,7 +70,6 @@ public:
     void CalcShape     (Mat_t const & C,  IntegPoint const & IP,  double & detJ, double & Coef) const; ///< Results are in GE->N
     void CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, double & detJ, double & Coef) const; ///< Results are in GE->FN
     void CoordsOfIP    (size_t IdxIP, Vec_t & X)   const; ///< x-y-z coordinates of integration point (IP)
-    void Draw          (std::ostream & os)         const; ///< Draw element with MatPlotLib
 
     // Data
     int                NDim;   ///< Space dimension
@@ -258,7 +258,7 @@ inline void Element::CoordsOfIP (size_t IdxIP, Vec_t & X) const
         X(j) += GE->N(i)*Con[i]->Vert.C[j];
 }
 
-inline void Element::Draw (std::ostream & os) const
+inline void Element::Draw (std::ostream & os, double MaxDist) const
 {
     if (GE==NULL) throw new Fatal("Element::CoordsIP: This method works only when GE (geometry element) is not NULL");
 
@@ -266,11 +266,8 @@ inline void Element::Draw (std::ostream & os) const
     os << "dat.append((PH.MOVETO, (" << Con[0]->Vert.C[0] << "," << Con[0]->Vert.C[1] << ")))\n";
     if (GE->NN<=4)
     {
-        for (size_t i=1; i<GE->NN; ++i)
-        {
-            if (i!=GE->NN-1) os << "dat.append((PH.LINETO,    (" << Con[i]->Vert.C[0] << "," << Con[i]->Vert.C[1] << ")))\n";
-            else             os << "dat.append((PH.CLOSEPOLY, (" << Con[i]->Vert.C[0] << "," << Con[i]->Vert.C[1] << ")))\n";
-        }
+        for (size_t i=1; i<GE->NN; ++i) os << "dat.append((PH.LINETO,    (" << Con[i]->Vert.C[0] << "," << Con[i]->Vert.C[1] << ")))\n";
+        os << "dat.append((PH.CLOSEPOLY, (" << Con[0]->Vert.C[0] << "," << Con[0]->Vert.C[1] << ")))\n";
     }
     else if (GE->NN==6)
     {

@@ -165,10 +165,11 @@ class Drawing:
         #self.circle(0,0, 5.0,pi/2.0,ax)
         #self.circle(0,0,15.0,pi/2.0,ax)
 
-        cmd,vert = zip(*dat)
-        ph0 = self.PH (vert, cmd)
-        pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.dblue, linewidth=2)
-        ax.add_patch  (pc0)
+        if len(dat)>0:
+            cmd,vert = zip(*dat)
+            ph0 = self.PH (vert, cmd)
+            pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.dblue, linewidth=2)
+            ax.add_patch  (pc0)
 
         # draw nodes
         if with_ids:
