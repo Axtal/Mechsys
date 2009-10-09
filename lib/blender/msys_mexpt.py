@@ -29,14 +29,14 @@ __version__ = "1.0.0"
 __bpydoc__  = """TODO"""
 
 import os
-from   Blender import *
-from   bpy     import *
+import Blender, bpy
+from   Blender import Window, Draw, BGL, Mathutils
 
 ############################################### get object and mesh
 
 # get active mesh object
 def get_active_mesh():
-    scn = data.scenes.active
+    scn = bpy.data.scenes.active
     obj = scn.objects.active
     if obj.type=='Mesh':
         edm = Window.EditMode()
@@ -94,7 +94,7 @@ def export_mesh(fn,outedg):
             # line
             s1  = ''    if i==0   else '     '
             s2  = ']\n' if i==nv1 else ',\n'
-            lin = '%s%s[%3d,%14.6e,%14.6e, %4d]%s' % (lin,s1,v.index,v.co[0],v.co[1],tag,s2)
+            lin = '%s%s[%4d, %4d, %14.6e,%14.6e]%s' % (lin,s1,v.index,tag,v.co[0],v.co[1],s2)
         fil.write(lin)
 
         # edges
@@ -114,8 +114,8 @@ def export_mesh(fn,outedg):
                 lin = '%s%s[%3d,%3d,%3d, %4d]%s' % (lin,s1,e.index,e.v1.index,e.v2.index,tag,s2)
             fil.write(lin)
 
-        # solids
-        lin = '\nS = ['
+        # cells
+        lin = '\nC = ['
         nf1 = len(msh.faces)-1
         for i, f in enumerate(msh.faces):
             # tag
@@ -125,17 +125,18 @@ def export_mesh(fn,outedg):
                 if obj.properties['stags'].has_key(sid):
                     tag = obj.properties['stags'][sid]
             # nodes
-            ln1  = ' ('
+            ln1  = ' ['
             fnv1 = len(f.verts)-1
             for j, v in enumerate(f.verts):
-                ss  = ')' if j==fnv1 else ','
+                ss  = ']' if j==fnv1 else ','
                 ln1 = '%s%3d%s' % (ln1,v.index,ss)
             # edges
             edgs = msh.findEdges(f.edge_keys)
-            ln2  = ' ('
+            ln2  = ' {'
             fne1 = len(edgs)-1
+            neta = 0
             for j, e in enumerate(edgs):
-                ss  = ')' if j==fne1 else ','
+                ss = ',' if neta>0 else ''
                 if outedg: ln2 = '%s%3d%s' % (ln2,e,ss)
                 else:
                     etag = 0
@@ -143,11 +144,13 @@ def export_mesh(fn,outedg):
                         eid = str(e)
                         if obj.properties['etags'].has_key(eid):
                             etag = obj.properties['etags'][eid]
-                    ln2 = '%s%4d%s' % (ln2,etag,ss)
+                            ln2  = '%s%s%4d:%4d' % (ln2,ss,j,etag)
+                            neta += 1
+            ln2 += '}'
             # line
             s1  = ''    if i==0   else '     '
             s2  = ']\n' if i==nf1 else ',\n'
-            lin = '%s%s[%3d,%s,%s, %4d]%s' % (lin,s1,f.index,ln1,ln2,tag,s2)
+            lin = '%s%s[%4d, %4d, %s,%s]%s' % (lin,s1,f.index,tag,ln1,ln2,s2)
         fil.write(lin)
 
         # close file
@@ -158,13 +161,13 @@ def export_mesh(fn,outedg):
 
 # dictionary to hold GUI data
 def load_dict():
-    d = Registry.GetKey('gui_dict')
+    d = Blender.Registry.GetKey('gui_dict')
     if not d:
         d            = {}
-        d['show']    = True
-        d['showvid'] = True
-        d['showeid'] = True
-        d['showsid'] = True
+        d['show']    = False
+        d['showvid'] = False
+        d['showeid'] = False
+        d['showsid'] = False
         d['showvta'] = True
         d['showeta'] = True
         d['showsta'] = True
@@ -172,15 +175,15 @@ def load_dict():
         d['neweta']  = -10
         d['newsta']  = -1
         d['outedg']  = False
-        Registry.SetKey('gui_dict', d)
+        Blender.Registry.SetKey('gui_dict', d)
     return d
 
 def set_key(key,val):
-    Registry.GetKey('gui_dict')[key] = val
+    Blender.Registry.GetKey('gui_dict')[key] = val
     Window.QRedrawAll()
 
 def get_key(key):
-    return Registry.GetKey('gui_dict')[key]
+    return Blender.Registry.GetKey('gui_dict')[key]
 
 ######################################################## Properties
 
@@ -206,13 +209,14 @@ def TC(func):
 ############################################################### GUI
 
 # constants
-EVT_NONE  = 0 # none
-EVT_SHOW  = 1 # show
-EVT_SHWET = 2 # show edge tags
-EVT_VTAG  = 3 # tag vertex
-EVT_ETAG  = 4 # tag edge
-EVT_STAG  = 5 # tag solid
-EVT_EXPT  = 6 # export
+EVT_NONE    = 0 # none
+EVT_SHOW    = 1 # show
+EVT_SHWET   = 2 # show edge tags
+EVT_VTAG    = 3 # tag vertex
+EVT_ETAG    = 4 # tag edge
+EVT_STAG    = 5 # tag solid
+EVT_EXPT    = 6 # export
+EVT_CLRTAGS = 7 # clear all tags
 
 # events
 def event(evt, val):
@@ -245,6 +249,16 @@ def bevent(evt):
             Window.QRedrawAll()
     elif evt==EVT_EXPT: # =========================================
         Window.FileSelector(cb_expmsh, 'Export mesh', 'outmesh.py')
+    elif evt==EVT_CLRTAGS: # =========================================
+        obj, msh, edm = get_active_mesh()
+        if msh!=None:
+            msg = 'Confirm delete ALL tags (and properties)?%t|Yes'
+            res  = Draw.PupMenu(msg)
+            if res>0:
+                for k, v in obj.properties.iteritems():
+                    print '[1;34mMechSys[0m: Object = ', obj.name, ' [1;35mDeleted property:[0m ', k
+                    obj.properties.pop(k)
+                Window.QRedrawAll()
 
 # callbacks
 def cb_show   (evt,val): set_key('show',   val)
@@ -332,7 +346,10 @@ def gui():
     Draw.Number     ('',          EVT_NONE, c   , r, 60, rh, d['newsta'], -1000, 0, 'New solid tag', cb_sta)
     Draw.PushButton ('Set S tag', EVT_STAG, c+60, r, 60, rh,                        'Set solids tag (0 => remove tag)')
 
-    r += rh
+    # control
+    r += (2*rh)
+    Draw.PushButton ('Clr Tags',  EVT_CLRTAGS, c+120+cg,r, 80, rh, 'Clear all tags')
+    r -= rh
     Draw.Toggle     ('Out edges', EVT_NONE, c+120+cg,r, 80, rh, d['outedg'], 'Output edges when exporting ?', cb_outedg)
     r -= rh
     Draw.PushButton ('Export',    EVT_EXPT, c+120+cg,r, 80, rh, 'Export mesh')
@@ -343,15 +360,15 @@ Draw.Register (gui, event, bevent)
 # load dictionary
 d = load_dict()
 
-# load script-link in case it is not available
-lnk = 'msys_mex3dlink.py'
-if not lnk in [t.name for t in Text.Get()]:
-    sdir = Get('scriptsdir')+sys.sep
-    print sdir+lnk
-    Text.Load(sdir+lnk)
+# load script-link
+lnk  = 'msys_mex3dlink.py'
+sdir = Blender.Get('scriptsdir')+Blender.sys.sep
+if lnk in [t.name for t in Blender.Text.Get()]:
+    Blender.Text.unlink(Blender.Text.Get(lnk))
+Blender.Text.Load(sdir+lnk)
 
 # connect View3D drawing script
-scn = data.scenes.active
+scn = bpy.data.scenes.active
 scn.clearScriptLinks()
 if scn.getScriptLinks('Redraw')==None:
     scn.addScriptLink(lnk,'Redraw')
