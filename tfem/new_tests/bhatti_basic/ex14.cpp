@@ -50,7 +50,7 @@ int main(int argc, char **argv) try
     mesh.SetCell  (2,   -2, /*NVerts*/2, 0, 2);
     mesh.SetCell  (3,   -2, /*NVerts*/2, 2, 3);
     mesh.SetCell  (4,   -3, /*NVerts*/2, 1, 2);
-    //mesh.WriteVTU ("ex14");
+    mesh.WriteMPY ("ex14");
     //cout << mesh << endl;
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////

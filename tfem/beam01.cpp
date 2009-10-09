@@ -150,6 +150,8 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(mesh, prps, Dict(), Dict());
 
+    cout << dom << endl;
+
     // solver
     FEM::Solver sol(dom);
     //sol.Scheme = FEM::Solver::FE_t;

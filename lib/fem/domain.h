@@ -56,17 +56,17 @@ public:
     ~Domain ();
 
     // Methods
-    Domain & SetBCs       (Dict const & BCs);
-    Domain & ClrBCs       ();
-    Domain & SetUVals     (SDPair const & UVals);
-    Domain & SetOutNods   (char const * FileKey, int NNods, bool WithTags, ...);
-    Domain & SetOutEles   (char const * FileKey, int NEles, ...);
-    void     OutResults   (double Time) const;
-    void     PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
-    bool     CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
-    bool     CheckError   (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const; ///< At integration points
-    void     WriteMPY     (char const * FileKey, double SFCoef=1.0)                        const; ///< SFCoef: Scale-factor coefficient
-    void     WriteVTU     (char const * FileKey) const;
+    void SetBCs       (Dict const & BCs);
+    void ClrBCs       ();
+    void SetUVals     (SDPair const & UVals);
+    void SetOutNods   (char const * FileKey, int NNods, bool WithTags, ...);
+    void SetOutEles   (char const * FileKey, int NEles, ...);
+    void OutResults   (double Time) const;
+    void PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
+    bool CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
+    bool CheckError   (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const; ///< At integration points
+    void WriteMPY     (char const * FileKey, double SFCoef=1.0)                        const; ///< SFCoef: Scale-factor coefficient
+    void WriteVTU     (char const * FileKey) const;
 
     // Data
     Mesh::Generic const & Msh;     ///< The mesh
@@ -147,7 +147,7 @@ inline Domain::~Domain()
     for (size_t i=0; i<FilEles.Size(); ++i) if (FilEles[i]!=NULL) { FilEles[i]->close(); delete FilEles[i]; }
 }
 
-inline Domain & Domain::SetBCs (Dict const & BCs)
+inline void Domain::SetBCs (Dict const & BCs)
 {
     // clear previous BCs
     ClrBCs ();
@@ -237,20 +237,17 @@ inline Domain & Domain::SetBCs (Dict const & BCs)
             }
         }
     }
-
-    return (*this);
 }
 
-inline Domain & Domain::ClrBCs ()
+inline void Domain::ClrBCs ()
 {
     for (size_t i=0; i<Nods.Size(); ++i) Nods[i]->ClrBCs ();
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
     NodsF.Resize (0);
     CalcF.Resize (0);
-    return (*this);
 }
 
-inline Domain & Domain::SetUVals (SDPair const & UVals)
+inline void Domain::SetUVals (SDPair const & UVals)
 {
     for (size_t i=0; i<Nods.Size(); ++i)
     {
@@ -259,10 +256,9 @@ inline Domain & Domain::SetUVals (SDPair const & UVals)
             Nods[i]->U[Nods[i]->UMap(p->first)] = p->second;
         }
     }
-    return (*this);
 }
 
-inline Domain & Domain::SetOutNods (char const * FNKey, int NNods, bool WTags, ...)
+inline void Domain::SetOutNods (char const * FNKey, int NNods, bool WTags, ...)
 {
     va_list   arg_list;
     va_start (arg_list, WTags);
@@ -303,10 +299,9 @@ inline Domain & Domain::SetOutNods (char const * FNKey, int NNods, bool WTags, .
         }
     }
     va_end (arg_list);
-    return (*this);
 }
 
-inline Domain & Domain::SetOutEles (char const * FNKey, int NEles, ...)
+inline void Domain::SetOutEles (char const * FNKey, int NEles, ...)
 {
     if (Eles.Size()==0) throw new Fatal("Domain::SetOutEles: Mesh must be set first by calling Domain::SetMesh");
     va_list   arg_list;
@@ -328,7 +323,6 @@ inline Domain & Domain::SetOutEles (char const * FNKey, int NEles, ...)
         }
     }
     va_end (arg_list);
-    return (*this);
 }
 
 inline void Domain::OutResults (double Time) const

@@ -91,9 +91,13 @@ inline Element::Element (int TheNDim, Mesh::Cell const & TheCell, Model const * 
     : NDim(TheNDim), Cell(TheCell), Mdl(TheMdl), GE(NULL), Active(Prp.HasKey("active") ? Prp("active") : true),
       GTy(SDPairToGType(Prp,(NDim==3?"d3d":"d2d")))
 {
-    // connectivity
+    // connectivity and shares information
     Con.Resize (Cell.V.Size());
-    for (size_t i=0; i<Con.Size(); ++i) Con[i] = Nodes[Cell.V[i]->ID];
+    for (size_t i=0; i<Con.Size(); ++i)
+    {
+       Con[i] = Nodes[Cell.V[i]->ID];
+       if (Active) Nodes[Cell.V[i]->ID]->Shares.Push (Cell.ID);
+    }
 
     // geometry element
     if (Prp.HasKey("geom"))

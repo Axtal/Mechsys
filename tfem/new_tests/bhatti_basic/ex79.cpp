@@ -238,7 +238,7 @@ int main(int argc, char **argv) try
     // draw elements with IPs
     std::ofstream of("ex79_elements.draw", std::ios::out);
     MPL::Header   (of);
-    for (size_t i=0; i<dom.Eles.Size(); ++i) dom.Eles[i]->Draw (of);
+    for (size_t i=0; i<dom.Eles.Size(); ++i) dom.Eles[i]->Draw (of, 1.0);
     MPL::AddPatch (of);
     MPL::Show     (of);
     of.close      ();
