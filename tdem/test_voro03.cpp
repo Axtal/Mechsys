@@ -79,8 +79,8 @@ int main(int argc, char **argv) try
     // TkODO this is not compiling: d.AddPlane(-3,r,0.1,10.0,1.0);
     // Dictionary of parameters
     Dict B;
-    B.Set(-2,"vx vy vz",0.0,0.0,0.0)
-     .Set(-3,"fx fy fz",0.0,0.0,-1.0);
+    B.Set(-2,"vx vy vz",0.0,0.0,0.0);
+    B.Set(-3,"fx fy fz",0.0,0.0,-1.0);
 
 
     // output

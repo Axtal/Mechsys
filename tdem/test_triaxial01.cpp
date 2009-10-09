@@ -34,12 +34,12 @@ int main(int argc, char **argv) try
 
     // First stage compression
     Dict A;
-    A.Set(-2,"fx fy fz",-15.0,0.0,0.0)
-     .Set(-3,"fx fy fz",15.0,0.0,0.0)
-     .Set(-4,"fx fy fz",0.0,-15.0,0.0)
-     .Set(-5,"fx fy fz",0.0,15.0,0.0)
-     .Set(-6,"fx fy fz",0.0,0.0,-7.5)
-     .Set(-7,"fx fy fz",0.0,0.0,7.5);
+    A.Set(-2,"fx fy fz",-15.0,0.0,0.0);
+    A.Set(-3,"fx fy fz",15.0,0.0,0.0);
+    A.Set(-4,"fx fy fz",0.0,-15.0,0.0);
+    A.Set(-5,"fx fy fz",0.0,15.0,0.0);
+    A.Set(-6,"fx fy fz",0.0,0.0,-7.5);
+    A.Set(-7,"fx fy fz",0.0,0.0,7.5);
 
     d.SetProps(A);
 
@@ -49,12 +49,12 @@ int main(int argc, char **argv) try
 
     //Second stage monotonic load
     Dict B;
-    B.Set(-2,"fx fy fz",-15.0,0.0,0.0)
-     .Set(-3,"fx fy fz",15.0,0.0,0.0)
-     .Set(-4,"fx fy fz",0.0,-15.0,0.0)
-     .Set(-5,"fx fy fz",0.0,15.0,0.0)
-     .Set(-6,"vx vy vz",0.0,0.0,-0.05)
-     .Set(-7,"vx vy vz",0.0,0.0,0.05);
+    B.Set(-2,"fx fy fz",-15.0,0.0,0.0);
+    B.Set(-3,"fx fy fz",15.0,0.0,0.0);
+    B.Set(-4,"fx fy fz",0.0,-15.0,0.0);
+    B.Set(-5,"fx fy fz",0.0,15.0,0.0);
+    B.Set(-6,"vx vy vz",0.0,0.0,-0.05);
+    B.Set(-7,"vx vy vz",0.0,0.0,0.05);
 
     d.SetProps(B);
 

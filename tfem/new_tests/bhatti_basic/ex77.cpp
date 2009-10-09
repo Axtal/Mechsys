@@ -128,9 +128,9 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set( -10, "qn",  -50.0)
-       .Set(-100, "ux",    0.0)
-       .Set(-200, "ux uy", 0.0,0.0);
+    bcs.Set( -10, "qn",  -50.0);
+    bcs.Set(-100, "ux",    0.0);
+    bcs.Set(-200, "ux uy", 0.0,0.0);
     dom.SetBCs (bcs);
     sol.Solve  ();
 

@@ -50,8 +50,8 @@ public:
     /** Ex:  pair("ux uy", 1.0,2.0)        OR   Case-A
      *       pair("ux=1.0  uy=2.0")        OR   Case-B
      *       pair("{'ux':1.0, 'uy':2.0}")       Case-C  (Python-Dict) */
-    SDPair & Set (const char * Str, ...);
-    SDPair & Set (const char * Str, va_list ArgList);
+    void Set (const char * Str, ...);
+    void Set (const char * Str, va_list ArgList);
 
     // Operators
     double operator() (char   const * Key) const;
@@ -80,7 +80,7 @@ public:
     /** Ex:  pair("a b", 1,2)        OR   Case-A
      *       pair("a=1  b=2")        OR   Case-B
      *       pair("{'a':1, 'b':2}")       Case-C  (Python-Dict) */
-    SIPair & Set (const char * Str, ...);
+    void Set (const char * Str, ...);
 
     // Operators
     double operator() (char const   * Key) const;
@@ -107,7 +107,7 @@ class ISPair : public IntStr_t
 public:
     /** Ex:  pair("-1 -2", "alpha","beta")    OR   Case-A
      *       pair("{-1:'alpha', -2:'beta'}")       Case-B  (Python-Dict) */
-    ISPair & Set (const char * Str, ...);
+    void Set (const char * Str, ...);
 
     // Operators
     char const * operator() (int Key) const;
@@ -132,7 +132,7 @@ class IDPair : public IntDbl_t
 public:
     /** Ex:  pair("-1 -2", 0.0,0.1)    OR   Case-A
      *       pair("{-1:0.0, -2:0.1}")       Case-B  (Python-Dict) */
-    IDPair & Set (const char * Str, ...);
+    void Set (const char * Str, ...);
 
     // Operators
     double operator() (int Key) const;
@@ -158,7 +158,7 @@ public:
     /** Ex:  dict(-1, "ux uy", 1.0,2.0)        OR   Case-A
      *       dict(-1, "ux=1.0  uy=2.0")        OR   Case-B
      *       dict(-1, "{'ux':1.0, 'uy':2.0}")       Case-C  (Python-Dict) */
-    Dict & Set (int Key, const char * Str, ...);
+    void Set (int Key, const char * Str, ...);
 
     // Operators
     SDPair const & operator() (int Key) const;
@@ -182,8 +182,8 @@ class Table : public Table_t
 public:
     /** Ex: Set("ux uy", 2, 1.0, 2.0,
      *                      3.0, 4.0);  */
-    Table & Set     (const char * StrKeys, size_t NumRows, ...);
-    Table & SetZero (const char * StrKeys, size_t NumRows);
+    void Set     (const char * StrKeys, size_t NumRows, ...);
+    void SetZero (const char * StrKeys, size_t NumRows);
 
     // Operators
     double operator() (String const & Key, size_t iRow) const;
@@ -302,7 +302,7 @@ std::ostream & operator<< (std::ostream & os, Table const & T)
 /////////////////////////////////////////////////////////////////////////////////// SDPair: Implementation /////
 
 
-inline SDPair & SDPair::Set(const char * Str, ...)
+inline void SDPair::Set(const char * Str, ...)
 {
     String str(Str);
     if (str.find(":")!=String::npos) // Case-C
@@ -360,10 +360,9 @@ inline SDPair & SDPair::Set(const char * Str, ...)
         }
         va_end (arg_list);
     }
-    return (*this);
 }
 
-inline SDPair & SDPair::Set(const char * Str, va_list ArgList)
+inline void SDPair::Set(const char * Str, va_list ArgList)
 {
     std::istringstream iss(Str);
     String key;
@@ -372,7 +371,6 @@ inline SDPair & SDPair::Set(const char * Str, va_list ArgList)
         if (Keys.Find(key)<0) Keys.Push(key);
         (*this)[key] = va_arg(ArgList,double);
     }
-    return (*this);
 }
 
 inline double SDPair::operator() (char const * Key) const
@@ -435,7 +433,7 @@ inline void SDPair::Val2Key (double Val, String & Key, double Tol) const
 /////////////////////////////////////////////////////////////////////////////////// SIPair: Implementation /////
 
 
-inline SIPair & SIPair::Set(const char * Str, ...)
+inline void SIPair::Set(const char * Str, ...)
 {
     String str(Str);
     if (str.find(":")!=String::npos) // Case-C
@@ -493,7 +491,6 @@ inline SIPair & SIPair::Set(const char * Str, ...)
         }
         va_end (arg_list);
     }
-    return (*this);
 }
 
 inline double SIPair::operator() (char const * Key) const
@@ -536,7 +533,7 @@ inline bool SIPair::HasKey (String const & Key) const
 /////////////////////////////////////////////////////////////////////////////////// ISPair: Implementation /////
 
 
-inline ISPair & ISPair::Set(const char * Str, ...)
+inline void ISPair::Set(const char * Str, ...)
 {
     String str(Str);
     if (str.find(":")!=String::npos) // Case-B
@@ -573,7 +570,6 @@ inline ISPair & ISPair::Set(const char * Str, ...)
         }
         va_end (arg_list);
     }
-    return (*this);
 }
 
 inline char const * ISPair::operator() (int Key) const
@@ -598,7 +594,7 @@ inline bool ISPair::HasKey (int Key) const
 /////////////////////////////////////////////////////////////////////////////////// IDPair: Implementation /////
 
 
-inline IDPair & IDPair::Set(const char * Str, ...)
+inline void IDPair::Set(const char * Str, ...)
 {
     String str(Str);
     if (str.find(":")!=String::npos) // Case-B
@@ -635,7 +631,6 @@ inline IDPair & IDPair::Set(const char * Str, ...)
         }
         va_end (arg_list);
     }
-    return (*this);
 }
 
 inline double IDPair::operator() (int Key) const
@@ -660,7 +655,7 @@ inline bool IDPair::HasKey (int Key) const
 ///////////////////////////////////////////////////////////////////////////////////// Dict: Implementation /////
 
 
-inline Dict & Dict::Set (int Key, const char * Str, ...)
+inline void Dict::Set (int Key, const char * Str, ...)
 {
     String str(Str);
          if (str.find(":")!=String::npos) { (*this)[Key].Set(Str); } // Case-C
@@ -676,7 +671,6 @@ inline Dict & Dict::Set (int Key, const char * Str, ...)
     {
         Keys.Push(Key);
     }
-    return (*this);
 }
 
 inline SDPair const & Dict::operator() (int Key) const
@@ -701,7 +695,7 @@ inline bool Dict::HasKey (int Key) const
 //////////////////////////////////////////////////////////////////////////////////// Table: Implementation /////
 
 
-inline Table & Table::Set (const char * StrKeys, size_t NumRows, ...)
+inline void Table::Set (const char * StrKeys, size_t NumRows, ...)
 {
     NRows = NumRows;
 
@@ -725,10 +719,9 @@ inline Table & Table::Set (const char * StrKeys, size_t NumRows, ...)
         }
     }
     va_end (arg_list);
-    return (*this);
 }
 
-inline Table & Table::SetZero (const char * StrKeys, size_t NumRows)
+inline void Table::SetZero (const char * StrKeys, size_t NumRows)
 {
     NRows = NumRows;
 
@@ -741,7 +734,6 @@ inline Table & Table::SetZero (const char * StrKeys, size_t NumRows)
         (*this)[key].Resize    (NRows);
         (*this)[key].SetValues (0.0);
     }
-    return (*this);
 }
 
 inline double Table::operator() (String const & Key, size_t iRow) const

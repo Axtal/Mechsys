@@ -166,9 +166,9 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-10, "uy", 0.0)
-       .Set(-30, "ux", 0.0)
-       .Set(-40, "qn", -DelP);
+    bcs.Set(-10, "uy", 0.0);
+    bcs.Set(-30, "ux", 0.0);
+    bcs.Set(-40, "qn", -DelP);
     dom.SetBCs (bcs);
 
     // output data

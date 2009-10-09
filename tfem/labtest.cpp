@@ -78,12 +78,12 @@ int main(int argc, char **argv) try
     ////////////////////////////////////////////////////////////////////////////////////////// Run /////
     
     Dict bcs;
-    bcs.Set(-10, "ux", 0.0)
-       .Set(-30, "uy", 0.0)
-       .Set(-50, "uz", 0.0)
-       .Set(-20, "qn", qx)
-       .Set(-40, "qn", qy)
-       .Set(-60, "uz", uz);
+    bcs.Set(-10, "ux", 0.0);
+    bcs.Set(-30, "uy", 0.0);
+    bcs.Set(-50, "uz", 0.0);
+    bcs.Set(-20, "qn", qx);
+    bcs.Set(-40, "qn", qy);
+    bcs.Set(-60, "uz", uz);
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/10);
 

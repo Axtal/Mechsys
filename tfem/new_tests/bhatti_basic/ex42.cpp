@@ -55,8 +55,8 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob active E A fra", PROB("Rod"), TRUE, 210000.0, 200.0, TRUE)
-        .Set(-2, "prob active E A fra", PROB("Rod"), TRUE, 210000.0, 600.0, TRUE);
+    prps.Set(-1, "prob active E A fra", PROB("Rod"), TRUE, 210000.0, 200.0, TRUE);
+    prps.Set(-2, "prob active E A fra", PROB("Rod"), TRUE, 210000.0, 600.0, TRUE);
 
     // domain
     FEM::Domain dom(mesh, prps, /*mdls*/Dict(), /*inis*/Dict());
@@ -103,8 +103,8 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-100, "ux uy uz", 0.0,0.0,0.0)
-       .Set(-200, "fy", -20000.0);
+    bcs.Set(-100, "ux uy uz", 0.0,0.0,0.0);
+    bcs.Set(-200, "fy", -20000.0);
     dom.SetBCs (bcs);
     sol.Solve  ();
 

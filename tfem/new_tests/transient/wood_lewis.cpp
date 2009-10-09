@@ -86,8 +86,8 @@ int main(int argc, char **argv) try
     
     // stage # 1 -----------------------------------------------------------
     Dict   bcs;
-    bcs.Set(-30, "flux", 0.0)
-       .Set(-40, "H",    1.0);
+    bcs.Set(-30, "flux", 0.0);
+    bcs.Set(-40, "H",    1.0);
     dom.SetBCs (bcs);
     sol.TransSolve (/*tf*/30.0, /*dt*/dt, /*dtOut*/2.0);
 

@@ -88,11 +88,11 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-100, "H",           110.0)
-       .Set( -20, "flux",        0.0)
-       .Set( -30, "conv h Tinf", 1.0, 55.0, 20.0)
-       .Set( -40, "flux",        8000.0)
-       .Set(  -1, "s",           5.0e+6);
+    bcs.Set(-100, "H",           110.0);
+    bcs.Set( -20, "flux",        0.0);
+    bcs.Set( -30, "conv h Tinf", 1.0, 55.0, 20.0);
+    bcs.Set( -40, "flux",        8000.0);
+    bcs.Set(  -1, "s",           5.0e+6);
     dom.SetBCs (bcs);
     sol.Solve  ();
     //sol.Solve  (10,1);

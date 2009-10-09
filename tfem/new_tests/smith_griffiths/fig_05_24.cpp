@@ -153,18 +153,18 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), TRUE, 8.0)
-        .Set(-2, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), TRUE, 8.0);
+    prps.Set(-1, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), TRUE, 8.0);
+    prps.Set(-2, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), TRUE, 8.0);
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu", MODEL("LinElastic"),  100.0, 0.3,  TRUE)
-        .Set(-2, "name E nu", MODEL("LinElastic"),   50.0, 0.3,  TRUE);
+    mdls.Set(-1, "name E nu", MODEL("LinElastic"),  100.0, 0.3,  TRUE);
+    mdls.Set(-2, "name E nu", MODEL("LinElastic"),   50.0, 0.3,  TRUE);
 
     // initial values
     Dict inis;
-    inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0)
-        .Set(-2, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
+    inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
+    inis.Set(-2, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
@@ -175,12 +175,12 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-100, "fz",  0.0417)
-       .Set(-200, "fz", -0.1667)
-    //bcs.Set( -40, "qy", -1.0)
-       .Set( -10, "ux",       0.0)
-       .Set( -20, "uy",       0.0)
-       .Set( -30, "ux uy uz", 0.0,0.0,0.0);
+    bcs.Set(-100, "fz",  0.0417);
+    bcs.Set(-200, "fz", -0.1667);
+    //bcs.Set( -40, "qy", -1.0);
+    bcs.Set( -10, "ux",       0.0);
+    bcs.Set( -20, "uy",       0.0);
+    bcs.Set( -30, "ux uy uz", 0.0,0.0,0.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;
     sol.Solve ();

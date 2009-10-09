@@ -128,8 +128,8 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     double cbx = (0.283/386.4)*pow(5000.0*2.0*Util::PI/60.0,2.0)/1000.0;
     Dict bcs;
-    bcs.Set(-100, "uy", 0.0)
-       .Set(  -1, "cbx", cbx); // centrifugal body force along x (will be multiplied by the radius at IP)
+    bcs.Set(-100, "uy", 0.0);
+    bcs.Set(  -1, "cbx", cbx); // centrifugal body force along x (will be multiplied by the radius at IP)
     dom.SetBCs (bcs);
     sol.Solve ();
 

@@ -71,9 +71,9 @@ int main(int argc, char **argv) try
     ////////////////////////////////////////////////////////////////////////////////////////// Run /////
     
     Dict bcs;
-    bcs.Set(-50, "uy", 0.0)
-       .Set(-51, "ux", 0.0)
-       .Set( -5, "fy", -10.0);
+    bcs.Set(-50, "uy",  0.0);
+    bcs.Set(-51, "ux",  0.0);
+    bcs.Set( -5, "fy", -10.0);
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/1);
 

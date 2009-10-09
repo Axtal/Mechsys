@@ -99,10 +99,10 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set( -10, "ux",  0.0)
-       .Set( -20, "uy",  0.0)
-       .Set(-100, "fy", -0.25)
-       .Set(-200, "fy", -0.5);
+    bcs.Set( -10, "ux",  0.0);
+    bcs.Set( -20, "uy",  0.0);
+    bcs.Set(-100, "fy", -0.25);
+    bcs.Set(-200, "fy", -0.5);
     dom.SetBCs (bcs);
     //cout << dom << endl;
     sol.Solve ();

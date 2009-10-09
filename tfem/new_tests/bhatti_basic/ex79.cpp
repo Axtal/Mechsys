@@ -224,9 +224,9 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     double p = 20; // pressure
     Dict bcs;
-    bcs.Set(-10, "uy", 0.0)
-       .Set(-20, "ux", 0.0)
-       .Set(-30, "qn", -p);
+    bcs.Set(-10, "uy", 0.0);
+    bcs.Set(-20, "ux", 0.0);
+    bcs.Set(-30, "qn", -p);
     dom.SetBCs (bcs);
     sol.Solve  ();
 

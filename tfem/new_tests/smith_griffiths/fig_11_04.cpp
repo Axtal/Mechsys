@@ -110,8 +110,8 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set( -10, "ux uy", 0.0)
-       .Set(-100, "ffunc", 0.0);
+    bcs.Set( -10, "ux uy", 0.0);
+    bcs.Set(-100, "ffunc", 0.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;
     sol.DynSolve (/*tf*/100.0, /*dt*/1.0, /*dtOut*/1.0);

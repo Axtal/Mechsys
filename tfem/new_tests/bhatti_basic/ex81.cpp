@@ -82,9 +82,9 @@ int main(int argc, char **argv) try
     SDPair uvs;
     Dict   bcs;
     uvs.Set("H", 50.0);
-    bcs.Set(-100, "H",           300.0)
-       .Set( -10, "conv h Tinf", 1.0, 200.0, 50.0)
-       .Set( -20, "flux",        0.0);
+    bcs.Set(-100, "H",           300.0);
+    bcs.Set( -10, "conv h Tinf", 1.0, 200.0, 50.0);
+    bcs.Set( -20, "flux",        0.0);
     dom.SetBCs     (bcs);
     dom.SetUVals   (uvs);
     sol.TransSolve (/*tf*/300.0, /*dt*/1.0, /*dtOut*/10.0);

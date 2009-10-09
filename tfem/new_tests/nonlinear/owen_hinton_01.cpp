@@ -84,9 +84,9 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-100, "ux uy", 0.0,0.0)
-       .Set(-200, "ux",    0.0)
-       .Set(-300, "ux fy", 0.0, -10.0);
+    bcs.Set(-100, "ux uy", 0.0,0.0);
+    bcs.Set(-200, "ux",    0.0);
+    bcs.Set(-300, "ux fy", 0.0, -10.0);
     dom.SetBCs (bcs);
 
     // weights
