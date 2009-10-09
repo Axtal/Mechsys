@@ -43,8 +43,9 @@ class Domain
 {
 public:
     typedef void (*pCalcF) (double t, double & fx, double & fy, double & fz); ///< Callback function
-    typedef std::map<int,pCalcF> FDatabase_t;                                 ///< Map tag to F function pointer
-    typedef std::map<int,Model*> Models_t;                                    ///< Map tag to model pointer
+    typedef std::map<int,pCalcF>   FDatabase_t; ///< Map tag to F function pointer
+    typedef std::map<int,Model*>   Models_t;    ///< Map tag to model pointer
+    typedef std::pair<Node*,Node*> Pin_t;       ///< Pins
 
     // Constructor
     Domain (Mesh::Generic const & Mesh,  ///< The mesh
@@ -56,6 +57,7 @@ public:
     ~Domain ();
 
     // Methods
+    void AddPin       (int IdOrTag);
     void SetBCs       (Dict const & BCs);
     void ClrBCs       ();
     void SetUVals     (SDPair const & UVals);
@@ -83,6 +85,8 @@ public:
     FDatabase_t           FFuncs;  ///< Database of pointers to F functions
     Array<Node*>          NodsF;   ///< Nodes with F specified through callback function
     Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to FNodes
+    Array<size_t>         Beams;   ///< Subset of elements of type Beam
+    Array<Pin_t>          Pins;    ///< Subset of nodes that are pinned
 };
 
 
@@ -133,6 +137,9 @@ inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict
             // inis
             if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), Nods));
             else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , Nods));
+
+            // set array of Beams
+            if (prob_name=="Beam") Beams.Push (Eles.Size()-1);
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
@@ -145,6 +152,48 @@ inline Domain::~Domain()
     for (size_t i=0; i<Eles   .Size(); ++i) if (Eles   [i]!=NULL) delete Eles   [i];
     for (size_t i=0; i<FilNods.Size(); ++i) if (FilNods[i]!=NULL) { FilNods[i]->close(); delete FilNods[i]; }
     for (size_t i=0; i<FilEles.Size(); ++i) if (FilEles[i]!=NULL) { FilEles[i]->close(); delete FilEles[i]; }
+}
+
+inline void Domain::AddPin (int IdOrTag)
+{
+    if (NDim!=2) throw new Fatal("Domain::AddPin: This method works only for 2D yet");
+
+    // find node
+    Node * nod = NULL;
+    if (IdOrTag<0) // vertex tag given
+    {
+        bool found = false;
+        for (size_t j=0; j<Msh.TgdVerts.Size(); ++j)
+        {
+            if (IdOrTag==Msh.TgdVerts[j]->Tag)
+            {
+                nod   = Nods[Msh.TgdVerts[j]->ID];
+                found = true;
+                break;
+            }
+        }
+        if (!found) throw new Fatal("Domain::AddPin: Could not find node with tag = %d", IdOrTag);
+    }
+    else nod = Nods[IdOrTag];
+
+    // check if node has rotation DOFs
+    if (nod->UMap.Keys.Find("wz")<0) throw new Fatal("Domain::AddPin: Node %d (%d) does not have rotation DOF (wz)",nod->Vert.ID,nod->Vert.Tag);
+
+    // set pin
+    for (size_t i=0; i<nod->Shares.Size(); ++i)
+    {
+        long elem_id = Beams.Find(nod->Shares[i]);
+        if (elem_id>=0) // share is a beam
+        {
+            if (Eles[elem_id]->Con[0]==nod)
+            {
+            }
+            else if (Eles[elem_id]->Con[1]==nod)
+            {
+            }
+            else throw new Fatal("Domain::AddPin: Node %d (%d) is not connected to Beam %d (%d)",nod->Vert.ID,nod->Vert.Tag,elem_id,Eles[elem_id]->Cell.Tag);
+        }
+    }
 }
 
 inline void Domain::SetBCs (Dict const & BCs)
