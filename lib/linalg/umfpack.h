@@ -20,6 +20,9 @@
 #ifndef MECHSYS_UMFPACK_H
 #define MECHSYS_UMFPACK_H
 
+// Std Lib
+#include <cmath> // for pow
+
 // UMFPACK
 extern "C" {
 #include <umfpack.h>
@@ -52,21 +55,21 @@ namespace UMFPACK
  */
 String ErrorMsg(int info)
 {
-	switch (info)
-	{
-		case UMFPACK_ERROR_out_of_memory           : return String("UMFPACK_ERROR_out_of_memory (-1)");
-		case UMFPACK_ERROR_invalid_Numeric_object  : return String("UMFPACK_ERROR_invalid_Numeric_object (-3)");
-		case UMFPACK_ERROR_invalid_Symbolic_object : return String("UMFPACK_ERROR_invalid_Symbolic_object (-4)");
-		case UMFPACK_ERROR_argument_missing        : return String("UMFPACK_ERROR_argument_missing (-5)");
-		case UMFPACK_ERROR_n_nonpositive           : return String("UMFPACK_ERROR_n_nonpositive (-6)");
-		case UMFPACK_ERROR_invalid_matrix          : return String("UMFPACK_ERROR_invalid_matrix (-8)");
-		case UMFPACK_ERROR_different_pattern       : return String("UMFPACK_ERROR_different_pattern (-11)");
-		case UMFPACK_ERROR_invalid_system          : return String("UMFPACK_ERROR_invalid_system (-13)");
-		case UMFPACK_ERROR_invalid_permutation     : return String("UMFPACK_ERROR_invalid_permutation (-15)");
-		case UMFPACK_ERROR_internal_error          : return String("UMFPACK_ERROR_internal_error (-911)");
-		case UMFPACK_ERROR_file_IO                 : return String("UMFPACK_ERROR_file_IO (-17)");
-		default                                    : { String r; r.Printf("Unknown UMFPACK_ERROR (%d)",info); return r; };
-	}
+    switch (info)
+    {
+        case UMFPACK_ERROR_out_of_memory           : return String("UMFPACK_ERROR_out_of_memory (-1)");
+        case UMFPACK_ERROR_invalid_Numeric_object  : return String("UMFPACK_ERROR_invalid_Numeric_object (-3)");
+        case UMFPACK_ERROR_invalid_Symbolic_object : return String("UMFPACK_ERROR_invalid_Symbolic_object (-4)");
+        case UMFPACK_ERROR_argument_missing        : return String("UMFPACK_ERROR_argument_missing (-5)");
+        case UMFPACK_ERROR_n_nonpositive           : return String("UMFPACK_ERROR_n_nonpositive (-6)");
+        case UMFPACK_ERROR_invalid_matrix          : return String("UMFPACK_ERROR_invalid_matrix (-8)");
+        case UMFPACK_ERROR_different_pattern       : return String("UMFPACK_ERROR_different_pattern (-11)");
+        case UMFPACK_ERROR_invalid_system          : return String("UMFPACK_ERROR_invalid_system (-13)");
+        case UMFPACK_ERROR_invalid_permutation     : return String("UMFPACK_ERROR_invalid_permutation (-15)");
+        case UMFPACK_ERROR_internal_error          : return String("UMFPACK_ERROR_internal_error (-911)");
+        case UMFPACK_ERROR_file_IO                 : return String("UMFPACK_ERROR_file_IO (-17)");
+        default                                    : { String r; r.Printf("Unknown UMFPACK_ERROR (%d)",info); return r; };
+    }
 }
 
 /** Solves \f$ {X} \leftarrow [A]^{-1}{B} \f$.
@@ -76,21 +79,34 @@ String ErrorMsg(int info)
  */
 inline void Solve(Sparse::Matrix<double,int> const & A, Vec_t const & B, Vec_t & X)
 {
-	if (A.Rows()!=A.Cols())         throw new Fatal("UMFPACK::Solve: A (%d x %d) matrix must be squared.",A.Rows(),A.Cols());
-	if (B.size()!=(size_t)A.Cols()) throw new Fatal("UMFPACK::Solve: B (%d x 1) vector must have a size equal to the number of columns of matrix A (%d)",B.size(),A.Cols());
-	if (X.size()!=B.size())         throw new Fatal("UMFPACK::Solve: X (%d x 1) vector must have the same size as B (%d)",X.size(),B.size());
-	double *null = (double *)NULL;
-	void *symbolic, *numeric;
-	int info = 0;
-	info = umfpack_di_symbolic      (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);      if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_symbolic failed. %s",ErrorMsg(info).CStr());
-	info = umfpack_di_numeric       (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);                 if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_numeric failed. %s",ErrorMsg(info).CStr());
-	       umfpack_di_free_symbolic (&symbolic);
-	info = umfpack_di_solve         (UMFPACK_A, A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), X.data, B.data, numeric, null, null); if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_solve failed. %s",ErrorMsg(info).CStr());
-	       umfpack_di_free_numeric  (&numeric);
+    if (A.Rows()!=A.Cols())         throw new Fatal("UMFPACK::Solve: A (%d x %d) matrix must be squared.",A.Rows(),A.Cols());
+    if (B.size()!=(size_t)A.Cols()) throw new Fatal("UMFPACK::Solve: B (%d x 1) vector must have a size equal to the number of columns of matrix A (%d)",B.size(),A.Cols());
+    if (X.size()!=B.size())         throw new Fatal("UMFPACK::Solve: X (%d x 1) vector must have the same size as B (%d)",X.size(),B.size());
+    double *null = (double *)NULL;
+    void *symbolic, *numeric;
+    int info = 0;
+    info = umfpack_di_symbolic      (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);      if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_symbolic failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_numeric       (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);                 if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_numeric failed. %s",ErrorMsg(info).CStr());
+           umfpack_di_free_symbolic (&symbolic);
+    info = umfpack_di_solve         (UMFPACK_A, A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), X.data, B.data, numeric, null, null); if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_solve failed. %s",ErrorMsg(info).CStr());
+           umfpack_di_free_numeric  (&numeric);
 }
 // TODO: Check: It seems that the following is not necessary
 //       (A sparse matrix is automatically created from the Triplet)
 inline void Solve(Sparse::Triplet<double,int> const & A, Vec_t const & B, Vec_t & X) { Solve(Sparse::Matrix<double,int>(A), B, X); }
+
+inline double Det(Sparse::Matrix<double,int> const & A)
+{
+    double *null = (double *)NULL;
+    void   *symbolic, *numeric;
+    int    info = 0;
+    double Mx, Ex;
+    info = umfpack_di_symbolic        (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);  if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_symbolic failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_numeric         (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);             if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
+           umfpack_di_free_symbolic   (&symbolic);
+    info = umfpack_di_get_determinant (&Mx, &Ex, numeric, null);                                                              if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
+    return Mx * pow (10.0, Ex);
+}
 
 }; // namespace UMFPACK
 
