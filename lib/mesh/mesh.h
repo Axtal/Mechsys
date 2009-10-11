@@ -361,6 +361,14 @@ inline void Generic::ReadMesh (char const * FileKey)
                         if (str=="]") break;
                         else if (str!=",") ThrowError (iss, "Cells: closing brackets of connectivity: ',' or ']' lacking");
                     }
+
+                    // set shares information
+                    for (size_t i=0; i<Cells[cid]->V.Size(); ++i)
+                    {
+                        Share sha = {Cells[cid],i};
+                        Cells[cid]->V[i]->Shares.Push (sha);
+                    }
+                    
                     iss >> comma;
                     iss >> str;
                     if (str!="{") ThrowError (iss, "Cells: opening braces of bry tags '{' lacking");
