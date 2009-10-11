@@ -75,7 +75,7 @@ public:
     size_t         Inc;    ///< Current increment
     size_t         Stp;    ///< Current (sub) step
     size_t         It;     ///< Current iteration
-    size_t         NEQ;    ///< Total number of equations (DOFs)
+    size_t         NEq;    ///< Total number of equations (DOFs)
     Array<long>    uDOFs;  ///< unknown DOFs
     Array<long>    pDOFs;  ///< prescribed DOFs (known equations)
     double         NormR;  ///< Euclidian norm of residual (R)
@@ -344,12 +344,8 @@ inline void Solver::AssembleKMA (double C1, double C2)
             }
         }
     }
-    // augment M11 and A11
-    for (size_t i=0; i<pDOFs.Size(); ++i)
-    {
-        M11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
-        A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
-    }
+    // augment A11
+    for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
 }
 
 inline void Solver::AssembleKCMA (double C1, double C2, double C3)
@@ -424,17 +420,17 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 inline void Solver::Initialize (bool Transient)
 {
     // assign equation numbers
-    NEQ = 0;
+    NEq = 0;
     uDOFs.Resize (0); // unknown DOFs
     pDOFs.Resize (0); // prescribed DOFs
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
         for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
         {
-            Dom.Nods[i]->EQ[j] = NEQ;
-            if (Dom.Nods[i]->pU[j]) pDOFs.Push (NEQ);
-            else                    uDOFs.Push (NEQ);
-            NEQ++;
+            Dom.Nods[i]->EQ[j] = NEq;
+            if (Dom.Nods[i]->pU[j]) pDOFs.Push (NEq);
+            else                    uDOFs.Push (NEq);
+            NEq++;
         }
     }
 
@@ -459,38 +455,38 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // allocate triplets
-    A11.AllocSpace (NEQ,NEQ,K11_size+pDOFs.Size()); // augmented
-    K12.AllocSpace (NEQ,NEQ,K12_size);
-    K21.AllocSpace (NEQ,NEQ,K21_size);
-    K22.AllocSpace (NEQ,NEQ,K22_size);
+    A11.AllocSpace (NEq,NEq,K11_size+pDOFs.Size()); // augmented
+    K12.AllocSpace (NEq,NEq,K12_size);
+    K21.AllocSpace (NEq,NEq,K21_size);
+    K22.AllocSpace (NEq,NEq,K22_size);
     if (Transient)
     {
-        K11.AllocSpace (NEQ,NEQ,K11_size);
-        M11.AllocSpace (NEQ,NEQ,K11_size+pDOFs.Size());
-        M12.AllocSpace (NEQ,NEQ,K12_size);
-        M21.AllocSpace (NEQ,NEQ,K21_size);
-        M22.AllocSpace (NEQ,NEQ,K22_size);
+        K11.AllocSpace (NEq,NEq,K11_size);
+        M11.AllocSpace (NEq,NEq,K11_size);
+        M12.AllocSpace (NEq,NEq,K12_size);
+        M21.AllocSpace (NEq,NEq,K21_size);
+        M22.AllocSpace (NEq,NEq,K22_size);
         if (DampTy!=None_t)
         {
-            C11.AllocSpace (NEQ,NEQ,K11_size);
-            C12.AllocSpace (NEQ,NEQ,K12_size);
-            C21.AllocSpace (NEQ,NEQ,K21_size);
-            C22.AllocSpace (NEQ,NEQ,K22_size);
+            C11.AllocSpace (NEq,NEq,K11_size);
+            C12.AllocSpace (NEq,NEq,K12_size);
+            C21.AllocSpace (NEq,NEq,K21_size);
+            C22.AllocSpace (NEq,NEq,K22_size);
         }
     }
 
     // initialize variables
-    R    .change_dim (NEQ);  set_to_zero (R);
-    F    .change_dim (NEQ);  set_to_zero (F);
-    F_int.change_dim (NEQ);  set_to_zero (F_int);
-    W    .change_dim (NEQ);  set_to_zero (W);
-    U    .change_dim (NEQ);  set_to_zero (U);
-    DU2  .change_dim (NEQ);  set_to_zero (DU2);
-    DF1  .change_dim (NEQ);  set_to_zero (DF1);
+    R    .change_dim (NEq);  set_to_zero (R);
+    F    .change_dim (NEq);  set_to_zero (F);
+    F_int.change_dim (NEq);  set_to_zero (F_int);
+    W    .change_dim (NEq);  set_to_zero (W);
+    U    .change_dim (NEq);  set_to_zero (U);
+    DU2  .change_dim (NEq);  set_to_zero (DU2);
+    DF1  .change_dim (NEq);  set_to_zero (DF1);
     if (Transient)
     {
-        V.change_dim (NEQ);  set_to_zero (V);
-        A.change_dim (NEQ);  set_to_zero (A);
+        V.change_dim (NEq);  set_to_zero (V);
+        A.change_dim (NEq);  set_to_zero (A);
     }
 
     // initialize F_int
@@ -519,7 +515,7 @@ inline void Solver::Initialize (bool Transient)
 inline void Solver::_FE_update (double tf)
 {
     // auxiliar vectors
-    Vec_t dU(NEQ), dF(NEQ);
+    Vec_t dU(NEq), dF(NEq);
 
     double dt = (tf-Time)/nSS;
     for (Stp=0; Stp<nSS; ++Stp)
@@ -540,8 +536,8 @@ inline void Solver::_FE_update (double tf)
 inline void Solver::_ME_update (double tf)
 {
     // auxiliar vectors
-    Vec_t dU_fe(NEQ), dU_tm(NEQ), dU_me(NEQ), U_me(NEQ), U_dif(NEQ);
-    Vec_t dF_fe(NEQ), dF_tm(NEQ), dF_me(NEQ), F_me(NEQ), F_dif(NEQ);
+    Vec_t dU_fe(NEq), dU_tm(NEq), dU_me(NEq), U_me(NEq), U_dif(NEq);
+    Vec_t dF_fe(NEq), dF_tm(NEq), dF_me(NEq), F_me(NEq), F_dif(NEq);
 
     // for each pseudo time T
     double T   = 0.0;
@@ -607,7 +603,7 @@ inline void Solver::_ME_update (double tf)
 inline void Solver::_NR_update (double tf)
 {
     // auxiliar vectors
-    Vec_t dU(NEQ), dF(NEQ);
+    Vec_t dU(NEq), dF(NEq);
 
     size_t max_it = It;
     double dt     = (tf-Time)/nSS;
@@ -667,9 +663,9 @@ inline void Solver::_SS22_update (double tf, double dt)
 {
     // auxiliar variables
     double fz;     // dummy variable
-    Vec_t Us(NEQ); // starred displacement
-    Vec_t Unew(NEQ), dU(NEQ);
-    Vec_t Alp(NEQ);
+    Vec_t Us(NEq); // starred displacement
+    Vec_t Unew(NEq), dU(NEq);
+    Vec_t Alp(NEq);
 
     while (Time<tf)
     {
@@ -721,8 +717,8 @@ inline void Solver::_GN22_update (double tf, double dt)
 {
     // auxiliar variables
     double fz;              // dummy variable
-    Vec_t As(NEQ), Vs(NEQ); // starred acceleration and velocity
-    Vec_t Unew(NEQ), dU(NEQ);
+    Vec_t As(NEq), Vs(NEq); // starred acceleration and velocity
+    Vec_t Unew(NEq), dU(NEq);
 
     // constants
     const double c1 = -2.0/(DynTh2*dt*dt);
