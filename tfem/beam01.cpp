@@ -143,6 +143,20 @@ int main(int argc, char **argv) try
             sf = 0.5;
             break;
         }
+        case 6:
+        {
+            mesh.SetSize (3, 2);
+            mesh.SetVert (0, -100,  0.0, 0.0);
+            mesh.SetVert (1, -300, L/2., 0.0);
+            mesh.SetVert (2, -200,    L, 0.0);
+            mesh.SetCell (0,   -1, 2, 0,1);
+            mesh.SetCell (1,   -1, 2, 1,2);
+
+            bcs.Set(-100, "ux uy", 0.0);
+            bcs.Set(-200, "uy",    0.0);
+            bcs.Set(  -1, "qn",   -1.0);
+            break;
+        }
         default: throw new Fatal("main: Test = %d is not available",tst);
     }
     mesh.WriteMPY ("beam01_mesh",/*OnlyMesh*/false);
@@ -150,7 +164,8 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(mesh, prps, Dict(), Dict());
 
-    cout << dom << endl;
+    // pins
+    if (tst==6) dom.AddPin (-300);
 
     // solver
     FEM::Solver sol(dom);

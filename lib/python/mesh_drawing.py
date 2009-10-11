@@ -22,11 +22,13 @@ class Drawing:
     # C=[[ 0, -1, [0,1,3,2], {0:-10,1:-20,2:-30,3:-40}]]
     #
     # pct: percentage of drawing limits to use for icons
-    def __init__(self, V,C, pct=0.001, fsz1=12, fsz2=10):
+    def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=10, fsz2=8):
         # mesh
-        self.V    = V
-        self.C    = C
-        self.ndim = len(V[0])-2
+        self.V      = V
+        self.C      = C
+        self.Pins   = Pins
+        self.Shares = Shares
+        self.ndim   = len(V[0])-2
         if not self.ndim==2: raise Exception("Drawing: NDim=%d is invalid"%self.ndim)
 
         # constants
@@ -57,7 +59,7 @@ class Drawing:
 
     # Draw mesh
     #==========
-    def draw_mesh(self, with_tags=True, with_ids=True):
+    def draw_mesh(self, with_tags=True, with_ids=True, with_shares=True):
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)
@@ -68,116 +70,158 @@ class Drawing:
         limsx = self.lims + array([-self.pct*dlim,+self.pct*dlim,-self.pct*dlim,+self.pct*dlim]) # extended limits
         ax.plot(limsx[:2],limsx[2:],'o',marker='None')
 
-        # cells
+        # draw solid cells
         dat = []
         for c in self.C:
-            # shape
-            con = c[2] # connectivity
-            x0  = self.V[con[0]][2]
-            y0  = self.V[con[0]][3]
-            xc  = x0 # element centre
-            yc  = y0 # element centre
-            if   len(con)==2:                nnod = 2
-            elif len(con)==3 or len(con)==6: nnod = 3
-            elif len(con)==4 or len(con)==8: nnod = 4
-            else: raise Exception("Drawing: number of nodes in element must be 2 (lin), 3 (tri), 6 (tri), 4 (quad), or 8 (quad)")
-            if len(con)>2:
-                # centroid and edges for 2,3,4
+            con  = c[2] # connectivity
+            nnod = len(con)
+            if nnod>2:
+                if len(con)==6: nnod = 3
+                if len(con)==8: nnod = 4
+                x0 = self.V[con[0]][2]
+                y0 = self.V[con[0]][3]
                 dat.append((self.PH.MOVETO, (x0,y0)))
-                for j in range(1,nnod):
-                    xj  = self.V[con[j]][2]
-                    yj  = self.V[con[j]][3]
-                    xc += xj
-                    yc += yj
-                    if len(con)<=4:
+                # edges for 3,4
+                if len(con)<=4:
+                    for j in range(1,nnod):
+                        xj = self.V[con[j]][2]
+                        yj = self.V[con[j]][3]
                         dat.append((self.PH.LINETO, (xj,yj)))
                 # edges for 6,8
                 if len(con)==6:
-                    dat.append((self.PH.LINETO,    (self.V[con[3]][2], self.V[con[3]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[1]][2], self.V[con[1]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[4]][2], self.V[con[4]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[2]][2], self.V[con[2]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[5]][2], self.V[con[5]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
                 if len(con)==8:
-                    dat.append((self.PH.LINETO,    (self.V[con[4]][2], self.V[con[4]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[1]][2], self.V[con[1]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[5]][2], self.V[con[5]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[2]][2], self.V[con[2]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[6]][2], self.V[con[6]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[3]][2], self.V[con[3]][3])))
-                    dat.append((self.PH.LINETO,    (self.V[con[7]][2], self.V[con[7]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[6]][2], self.V[con[6]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[7]][2], self.V[con[7]][3])))
                 dat.append((self.PH.CLOSEPOLY, (0,0)))
-                xc = xc/nnod
-                yc = yc/nnod
-            else:
-                x1 = self.V[con[1]][2]
-                y1 = self.V[con[1]][3]
-                xc = x0 + 0.3*(x1-x0)
-                yc = y0 + 0.3*(y1-y0)
-                XY = array([[x0,y0],[x1,y1]])
-                ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='red', lw=8))
-            # text
-            if with_ids:
-                ax.text(xc,yc, c[0], backgroundcolor=self.lgreen,fontsize=self.fsz1)
-                # properties
-                if with_tags:
-                    tag = c[1]
-                    txt = '%d' % tag
-                    ax.text(xc,yc, txt, va='top', fontsize=self.fsz2)
-            # edge tags
-            if with_tags:
-                for side, tag in c[3].iteritems():
-                    if tag<0: # has tag
-                        if len(con)==3:
-                            if   side==0: na, nb = con[0], con[1]
-                            elif side==1: na, nb = con[1], con[2]
-                            elif side==2: na, nb = con[2], con[0]
-                        elif len(con)==6:
-                            if   side==0: na, nb,  nc, nd = con[0], con[3],  con[3], con[1]
-                            elif side==1: na, nb,  nc, nd = con[1], con[4],  con[4], con[2]
-                            elif side==2: na, nb,  nc, nd = con[2], con[5],  con[5], con[0]
-                        elif len(con)==4:
-                            if   side==0: na, nb = con[0], con[1]
-                            elif side==1: na, nb = con[1], con[2]
-                            elif side==2: na, nb = con[2], con[3]
-                            elif side==3: na, nb = con[3], con[0]
-                        elif len(con)==8:
-                            if   side==0: na, nb,  nc, nd = con[0], con[4],  con[4], con[1]
-                            elif side==1: na, nb,  nc, nd = con[1], con[5],  con[5], con[2]
-                            elif side==2: na, nb,  nc, nd = con[2], con[6],  con[6], con[3]
-                            elif side==3: na, nb,  nc, nd = con[3], con[7],  con[7], con[0]
-                        xa = self.V[na][2]
-                        ya = self.V[na][3]
-                        xb = self.V[nb][2]
-                        yb = self.V[nb][3]
-                        xc = (xa+xb)/2.0
-                        yc = (ya+yb)/2.0
-                        ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                        if len(con)==6 or len(con)==8:
-                            xa = self.V[nc][2]
-                            ya = self.V[nc][3]
-                            xb = self.V[nd][2]
-                            yb = self.V[nd][3]
-                            xc = (xa+xb)/2.0
-                            yc = (ya+yb)/2.0
-                            ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-
-        #self.circle(0,0, 5.0,pi/2.0,ax)
-        #self.circle(0,0,15.0,pi/2.0,ax)
-
         if len(dat)>0:
             cmd,vert = zip(*dat)
             ph0 = self.PH (vert, cmd)
             pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.dblue, linewidth=2)
             ax.add_patch  (pc0)
 
+        # draw linear cells
+        for c in self.C:
+            con = c[2] # connectivity
+            if len(con)==2:
+                x0 = self.V[con[0]][2]
+                y0 = self.V[con[0]][3]
+                x1 = self.V[con[1]][2]
+                y1 = self.V[con[1]][3]
+                XY = array([[x0,y0],[x1,y1]])
+                ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='red', lw=4))
+
+        # text
+        if with_ids or with_tags:
+            for c in self.C:
+                # centre
+                con = c[2] # connectivity
+                if len(con)==2:
+                    x0 = self.V[con[0]][2]
+                    y0 = self.V[con[0]][3]
+                    x1 = self.V[con[1]][2]
+                    y1 = self.V[con[1]][3]
+                    xc = x0 + 0.3*(x1-x0)
+                    yc = y0 + 0.3*(y1-y0)
+                else:
+                    xc = self.V[con[0]][2]
+                    yc = self.V[con[0]][3]
+                    for j in range(1,len(con)):
+                        xc += self.V[con[j]][2]
+                        yc += self.V[con[j]][3]
+                    xc = xc/len(con)
+                    yc = yc/len(con)
+                # ids
+                if with_ids:
+                    ax.text(xc,yc, c[0], backgroundcolor=self.lgreen,fontsize=self.fsz1)
+                    # properties
+                    if with_tags:
+                        tag = c[1]
+                        txt = '%d' % tag
+                        ax.text(xc,yc, txt, va='top', fontsize=self.fsz2)
+                # edge tags
+                if with_tags:
+                    for side, tag in c[3].iteritems():
+                        if tag<0: # has tag
+                            if len(con)==3:
+                                if   side==0: na, nb = con[0], con[1]
+                                elif side==1: na, nb = con[1], con[2]
+                                elif side==2: na, nb = con[2], con[0]
+                            elif len(con)==6:
+                                if   side==0: na, nb,  nc, nd = con[0], con[3],  con[3], con[1]
+                                elif side==1: na, nb,  nc, nd = con[1], con[4],  con[4], con[2]
+                                elif side==2: na, nb,  nc, nd = con[2], con[5],  con[5], con[0]
+                            elif len(con)==4:
+                                if   side==0: na, nb = con[0], con[1]
+                                elif side==1: na, nb = con[1], con[2]
+                                elif side==2: na, nb = con[2], con[3]
+                                elif side==3: na, nb = con[3], con[0]
+                            elif len(con)==8:
+                                if   side==0: na, nb,  nc, nd = con[0], con[4],  con[4], con[1]
+                                elif side==1: na, nb,  nc, nd = con[1], con[5],  con[5], con[2]
+                                elif side==2: na, nb,  nc, nd = con[2], con[6],  con[6], con[3]
+                                elif side==3: na, nb,  nc, nd = con[3], con[7],  con[7], con[0]
+                            xa = self.V[na][2]
+                            ya = self.V[na][3]
+                            xb = self.V[nb][2]
+                            yb = self.V[nb][3]
+                            xc = (xa+xb)/2.0
+                            yc = (ya+yb)/2.0
+                            ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                            if len(con)==6 or len(con)==8:
+                                xa = self.V[nc][2]
+                                ya = self.V[nc][3]
+                                xb = self.V[nd][2]
+                                yb = self.V[nd][3]
+                                xc = (xa+xb)/2.0
+                                yc = (ya+yb)/2.0
+                                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+
+        #self.circle(0,0, 5.0,pi/2.0,ax)
+        #self.circle(0,0,15.0,pi/2.0,ax)
+
         # draw nodes
         if with_ids:
             for v in self.V:
-                text(v[2], v[3], '%d'%v[0], va='bottom', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
+                # ids
+                s = '%d' % v[0]
+                text(v[2], v[3], s, va='bottom', ha='left', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
                 tag = v[1]
+                # tag
                 if tag<0 and with_tags:
-                    text(v[2], v[3], '%d'%tag, va='top', color='black', backgroundcolor='white', fontsize=self.fsz2)
+                    text(v[2], v[3], '%d'%tag, va='top', color='black', backgroundcolor='none', fontsize=self.fsz2)
+                # shares
+                if v[0] in self.Shares and with_shares:
+                    s    = '('
+                    eles = self.Shares[v[0]]
+                    for i, e in enumerate(eles):
+                        if i==len(eles)-1: s += '%d)' % e
+                        else:              s += '%d,' % e
+                    text(v[2], v[3], s, va='bottom', ha='right', color='black', backgroundcolor='none', fontsize=self.fsz2)
+
+        # pins
+        for key, val in self.Pins.iteritems():
+            # ids
+            x = self.V[key][2]
+            y = self.V[key][3]
+            s = '(%d,' % key
+            for i in range(len(val)):
+                if i==len(val)-1: s += '%d)' % val[i]
+                else:             s += '%d,' % val[i]
+            text(x, y, s, va='bottom', ha='left', backgroundcolor=self.lyellow, fontsize=self.fsz1)
+            # tag
+            tag = self.V[key][1]
+            if tag<0 and with_tags:
+                text(x, y, '%d'%tag, va='top', color='black', backgroundcolor='none', fontsize=self.fsz2)
 
     # Show figure
     # ===========

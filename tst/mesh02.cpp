@@ -42,9 +42,58 @@ int main(int argc, char **argv) try
         blks[0].SetNy (1);
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate    (blks,/*O2*/true);
-        mesh.AddLinCells (/*NTagsOrPairs*/1, /*WTags*/true, /*Tags*/-10);
-        mesh.WriteMPY    ("mesh02",/*OnlyMesh*/false);
-        mesh.WriteVTU    ("mesh02");
+        mesh.AddLinCells (/*NItems*/1, /*EdgeTag*/-10);
+        mesh.WriteMPY    ("mesh02_1",/*OnlyMesh*/false);
+        mesh.WriteVTU    ("mesh02_1");
+        cout <<    " File <mesh02_1.mpy> generated\n";
+        cout <<    " File <mesh02_1.vtu> generated\n";
+    }
+
+    // 2D: structured
+    {
+        Array<Mesh::Block> blks(2);
+        blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
+                     -1.0,   0.0, 0.0,
+                     -2.0,   5.0, 0.0,
+                     -3.0,   5.0, 1.0,
+                     -4.0,   0.0, 1.0,  -10.0,-15.0,-30.0,-40.0);
+        blks[1].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
+                     -2.0,   5.0, 0.0,
+                     -5.0,  10.0, 0.0,
+                     -6.0,  10.0, 1.0,
+                     -3.0,   5.0, 1.0,  -10.0,-20.0,-30.0,0.0);
+        blks[0].SetNx (1);
+        blks[0].SetNy (1);
+        blks[1].SetNx (1);
+        blks[1].SetNy (1);
+        Mesh::Structured mesh(/*NDim*/2);
+        mesh.Generate    (blks,/*O2*/true);
+        mesh.AddLinCells (/*NItems*/2, /*EdgeTags*/-10,-15);
+        mesh.AddPin      (-2);
+        mesh.WriteMPY    ("mesh02_2",/*OnlyMesh*/false);
+        mesh.WriteVTU    ("mesh02_2");
+        cout <<    " File <mesh02_2.mpy> generated\n";
+        cout <<    " File <mesh02_2.vtu> generated\n";
+    }
+
+    // 2D: structured
+    {
+        Array<Mesh::Block> blks(1);
+        blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
+                     -1.0,   0.0,  0.0,
+                     -2.0,  10.0,  0.0,
+                     -3.0,  10.0, 10.0,
+                     -4.0,   0.0, 10.0,  -10.0,-20.0,-30.0,-40.0);
+        blks[0].SetNx (2);
+        blks[0].SetNy (2);
+        Mesh::Structured mesh(/*NDim*/2);
+        mesh.Generate    (blks,/*O2*/false);
+        mesh.AddLinCells (/*NItems*/4, /*IdsTags*/3,4,-51, 4,5,-52, 4,7,-53, 1,4,-54);
+        mesh.AddPin      (4);
+        mesh.WriteMPY    ("mesh02_3",/*OnlyMesh*/false);
+        mesh.WriteVTU    ("mesh02_3");
+        cout <<    " File <mesh02_3.mpy> generated\n";
+        cout <<    " File <mesh02_3.vtu> generated\n";
     }
 
     return 0;

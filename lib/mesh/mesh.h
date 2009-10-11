@@ -140,6 +140,7 @@ typedef boost::tuple<int,int,int>              BryKey_t;   ///< Edge/face key = 
 typedef std::pair<int,Cell*>                   NeighDat_t; ///< Pair: local edge/face ID, neighbour cell
 typedef std::map<BryKey_t, NeighDat_t>         Neighs_t;   ///< Map: edge/face key => neighbour data
 typedef std::map<BryKey_t, Array<NeighDat_t> > BryCell_t;  ///< Map: edge/face key => cells sharing this boundary (edge/face)
+typedef std::map<Vertex*,Array<Vertex*> >      Pin_t;      ///< Pin type
 
 struct Cell
 {
@@ -171,7 +172,7 @@ public:
 
     // Method to extend mesh
     void AddLinCells (size_t NItems, ...); ///< Set linear cells given edge tags (edg_tag,edg_tag,...) or pair of vertices (v0,v1,new_elem_tag, v0,v1,new_elem_tag, ...) or both
-    void BreakLin    (int VertexIdOrTag, Vec3_t const * dX=NULL, bool DoConnect=false, int ConnectionTag=0);
+    void AddPin      (int VertexIdOrTag);
 
     // Methods
     void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
@@ -188,6 +189,7 @@ public:
     Array<Vertex*> TgdVerts;  ///< Tagged Vertices
     Array<Cell*>   TgdCells;  ///< Tagged Cells
     BryCell_t      Bry2Cells; ///< map: bry (edge/face ids) => neighbours cells
+    Pin_t          Pins;      ///< Pins
 };
 
 
@@ -519,7 +521,7 @@ inline void Generic::AddLinCells (size_t NItems, ...)
     va_end (arg_list);
 }
 
-inline void Generic::BreakLin (int VertIdOrTag, Vec3_t const * dX, bool DoConnect, int ConnectionTag)
+inline void Generic::AddPin (int VertIdOrTag)
 {
     // find vertex
     Vertex * vert = NULL;
@@ -539,11 +541,10 @@ inline void Generic::BreakLin (int VertIdOrTag, Vec3_t const * dX, bool DoConnec
     }
     else vert = Verts[VertIdOrTag];
 
-    // break lins
+    // break linear elements connected to this vert
     Array<size_t> lins_to_disconnect;
     size_t idx_lin = 0;
-    size_t nshares = vert->Shares.Size();
-    for (size_t i=0; i<nshares; ++i)
+    for (size_t i=0; i<vert->Shares.Size(); ++i)
     {
         Cell * cell = vert->Shares[i].C;
         if (cell->V.Size()==2) // cell sharing this vertex is a lin2 (linear cell with 2 vertices)
@@ -552,8 +553,11 @@ inline void Generic::BreakLin (int VertIdOrTag, Vec3_t const * dX, bool DoConnec
             {
                 // add new vertex
                 Verts.Push (NULL);
-                if (dX==NULL) SetVert (Verts.Size()-1, vert->Tag, vert->C(0),          vert->C(1),          vert->C(2));
-                else          SetVert (Verts.Size()-1, vert->Tag, vert->C(0)+(*dX)(0), vert->C(1)+(*dX)(1), vert->C(2)+(*dX)(2));
+                //SetVert (Verts.Size()-1, vert->Tag, vert->C(0)-idx_lin*0.5, vert->C(1)-idx_lin*0.5, vert->C(2));
+                SetVert (Verts.Size()-1, vert->Tag, vert->C(0), vert->C(1), vert->C(2));
+
+                // set map of pins
+                Pins[vert].Push (Verts[Verts.Size()-1]);
 
                 // set connectivity of lin2
                 int idx = vert->Shares[i].N; // local vertex ID
@@ -563,13 +567,6 @@ inline void Generic::BreakLin (int VertIdOrTag, Vec3_t const * dX, bool DoConnec
 
                 // set this lin2 to be disconnected from vert
                 lins_to_disconnect.Push (i);
-
-                // add new lin2
-                if (DoConnect)
-                {
-                    AddLinCells (/*NItems*/1, /*v0*/vert->ID, /*v1*/Verts.Size()-1, ConnectionTag);
-                    //Cells.Push (NULL);
-                }
             }
             idx_lin++;
         }
@@ -888,11 +885,45 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 
 inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh, char const * Extra) const
 {
+    // header
     String fn(FileKey); fn.append(".mpy");
     std::ostringstream oss;
     oss << "from mesh_drawing import *\n\n";
     oss << (*this) << "\n";
-    oss << "d = Drawing(V,C)\n";
+
+    // pins
+    oss << "pins = {";
+    size_t npins = Pins.size();
+    size_t k     = 0;
+    for (Pin_t::const_iterator p=Pins.begin(); p!=Pins.end(); ++p)
+    {
+        oss << p->first->ID << ":[";
+        for (size_t i=0; i<p->second.Size(); ++i)
+        {
+            if (i==p->second.Size()-1) oss << p->second[i]->ID << "]";
+            else                       oss << p->second[i]->ID << ",";
+        }
+        if (k!=npins-1) oss << ",\n        ";
+        k++;
+    }
+    oss << "}\n\n";
+
+    // shares
+    oss << "shares = {";
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        oss << Verts[i]->ID << ":[";
+        for (size_t j=0; j<Verts[i]->Shares.Size(); ++j)
+        {
+            if (j==Verts[i]->Shares.Size()-1) oss << Verts[i]->Shares[j].C->ID << "]";
+            else                              oss << Verts[i]->Shares[j].C->ID << ",";
+        }
+        if (i!=Verts.Size()-1) oss << ",\n          ";
+    }
+    oss << "}\n\n";
+
+    // drawing
+    oss << "d = Drawing(V,C,pins,shares)\n";
     if (OnlyMesh) oss << "d.draw_mesh(with_tags=False,with_ids=False)\n";
     else          oss << "d.draw_mesh()\n";
     if (Extra!=NULL) oss << Extra;
