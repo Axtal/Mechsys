@@ -425,7 +425,9 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
             Cells[i]->V.Resize (tou.numberofcorners);
             for (size_t j=0; j<Cells[i]->V.Size(); ++j)
             {
+                Share sha = {Cells[i],j};
                 Cells[i]->V[j] = Verts[tou.trianglelist[i*tou.numberofcorners+FEM2TriPoint[j]]];
+                Cells[i]->V[j]->Shares.Push (sha);
             }
             bool has_bry_tag = false;
             for (size_t j=0; j<3; ++j)
@@ -490,7 +492,9 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
             Cells[i]->V.Resize (pou.numberofcorners);
             for (size_t j=0; j<Cells[i]->V.Size(); ++j)
             {
+                Share sha = {Cells[i],j};
                 Cells[i]->V[j] = Verts[pou.tetrahedronlist[i*pou.numberofcorners+FEM2TetPoint[j]]];
+                Cells[i]->V[j]->Shares.Push (sha);
             }
         }
 

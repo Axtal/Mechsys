@@ -119,14 +119,22 @@ int    NVertsToEdge3D[][12/*edges at most*/][3/*verts per edge at most*/]=
 #undef NOEDGES
 #undef NOFACES
 
-struct Vertex
+struct Cell; ///< Forward declaration due to the following definitions
+
+struct Share
 {
-    size_t ID;  ///< ID
-    int    Tag; ///< Tag
-    Vec3_t C;   ///< X, Y, and Z coordinates
+    Cell * C; ///< The cell
+    int    N; ///< Local node index. Example: 2D=>0,1,2,3, 3D=>0,1,2,3,4,5,6,7
 };
 
-struct  Cell;                                              ///< Forward declaration due to the follwoing typedefs
+struct Vertex
+{
+    size_t       ID;     ///< ID
+    int          Tag;    ///< Tag
+    Vec3_t       C;      ///< X, Y, and Z coordinates
+    Array<Share> Shares; ///< IDs of cells sharing this vertex
+};
+
 typedef std::map<int,int>                      BryTag_t;   ///< Map: edge/face ID => edge/face tag
 typedef boost::tuple<int,int,int>              BryKey_t;   ///< Edge/face key = (left_node,right_node) for edges or (node0,node1,node2) for faces
 typedef std::pair<int,Cell*>                   NeighDat_t; ///< Pair: local edge/face ID, neighbour cell
@@ -645,6 +653,11 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
         }
     }
 
+    // shares data
+    size_t max_nshares = 0;
+    for (size_t i=0; i<Verts.Size(); ++i) if (Verts[i]->Shares.Size()>max_nshares) max_nshares = Verts[i]->Shares.Size();
+    if (max_nshares<1) throw new Fatal("Mesh::WriteVTU: Max number of shares is wrong == 0");
+
     // data
     String fn(FileKey); fn.append(".vtu");
     std::ostringstream oss;
@@ -741,7 +754,7 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 
     // data -- nodes
     oss << "      <PointData Scalars=\"TheScalars\">\n";
-    oss << "        <DataArray type=\"Float32\" Name=\"" << "tag" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"" << "tag" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     for (size_t i=0; i<nn; ++i)
     {
@@ -750,11 +763,25 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
         VTU_NEWLINE (i,k,nn,nimax,oss);
     }
     oss << "        </DataArray>\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"" << "shares" << "\" NumberOfComponents=\""<< max_nshares <<"\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    for (size_t i=0; i<nn; ++i)
+    {
+        oss << "  ";
+        for (size_t j=0; j<max_nshares; ++j)
+        {
+            if (j<Verts[i]->Shares.Size()) oss << Verts[i]->Shares[j].C->ID << " ";
+            else                           oss << -1 << " ";
+        }
+        k++;
+        VTU_NEWLINE (i,k,nn,nimax/max_nshares-1,oss);
+    }
+    oss << "        </DataArray>\n";
     oss << "      </PointData>\n";
 
     // data -- elements
     oss << "      <CellData Scalars=\"TheScalars\">\n";
-    oss << "        <DataArray type=\"Float32\" Name=\"" << "tag" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"" << "tag" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     if (VolSurfOrBoth!=1)
     for (size_t i=0; i<nc; ++i)

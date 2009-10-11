@@ -151,17 +151,11 @@ class Structured : public virtual Mesh::Generic
 {
 public:
     // Structures
-    struct Share
-    {
-        Cell * E; ///< The element
-        int    N; ///< Local node index. Example: 2D=>0,1,2,3, 3D=>0,1,2,3,4,5,6,7
-    };
     struct VertexInfo
     {
         bool         OnBry;     ///< On boundary ?
         int          BlkNum;    ///< Number of the block which created this vertex
         bool         Dupl;      ///< Duplicated vertex ?
-        Array<Share> Shares;    ///< Shared elements
         Array<int>   BlkBryIDs; ///< IDs of boudaries (edges/faces) where this vertex is sitting on
     };
 
@@ -544,7 +538,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
                             {
                                 Share s = {e,m};
                                 if (vinfo[e->V[m]].OnBry) nvonbry++;
-                                vinfo[e->V[m]].Shares.Push (s);
+                                e->V[m]->Shares.Push (s);
                             }
                             // diagonal
                             double d = sqrt(pow(e->V[2]->C(0) - e->V[0]->C(0),2.0)+
@@ -588,7 +582,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
                             {
                                 Share s = {e,m};
                                 if (vinfo[e->V[m]].OnBry) nvonbry++;
-                                vinfo[e->V[m]].Shares.Push (s);
+                                e->V[m]->Shares.Push (s);
                             }
                             // diagonal
                             double d = sqrt(pow(e->V[6]->C(0) - e->V[0]->C(0),2.0)+
@@ -653,11 +647,13 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
                         {
                             vinfo[verts_bry[j]].Dupl = true;
                             // change elements' connectivities
-                            for (size_t k=0; k<vinfo[verts_bry[j]].Shares.Size(); ++k)
+                            for (size_t k=0; k<verts_bry[j]->Shares.Size(); ++k)
                             {
-                                Cell * e = vinfo[verts_bry[j]].Shares[k].E;
-                                int    n = vinfo[verts_bry[j]].Shares[k].N;
+                                Cell * e = verts_bry[j]->Shares[k].C;
+                                int    n = verts_bry[j]->Shares[k].N;
                                 e->V[n]  = verts_bry[i];
+                                Share sha = {e,n};
+                                verts_bry[i]->Shares.Push (sha);
                             }
                             ndupl++;
                         }

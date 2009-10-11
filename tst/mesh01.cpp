@@ -50,6 +50,7 @@ int main(int argc, char **argv) try
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate (blks,/*O2*/true);
         mesh.WriteVTU ("mesh01_quad");
+        cout << " File <mesh01_quad.vtu> generated\n";
     }
 
     // 2D: structured
@@ -58,6 +59,7 @@ int main(int argc, char **argv) try
         mesh.GenQRing (/*O2*/true,/*Nx*/4,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/6);
         mesh.WriteMPY ("mesh01_quad_ring", /*OnlyMesh*/false);
         mesh.WriteVTU ("mesh01_quad_ring", /*VolSurfOrBoth*/0);
+        cout << " File <mesh01_quad_ring.vtu> generated\n";
     }
 
     // 3D: structured
@@ -65,6 +67,7 @@ int main(int argc, char **argv) try
         Mesh::Structured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true);
         mesh.WriteVTU ("mesh01_hex_box", /*VolSurfOrBoth*/0);
+        cout << " File <mesh01_hex_box.vtu> generated\n";
     }
 
     // 2D: unstructured
@@ -102,6 +105,7 @@ int main(int argc, char **argv) try
         mesh.SetSeg (7,   0,  7, 4);        // id, etag, L, R
         mesh.Generate ();
         mesh.WriteVTU ("mesh01_tri", /*VolSurfOrBoth*/0);
+        cout << " File <mesh01_tri.vtu> generated\n";
     }
 
     // 3D: unstructured
@@ -119,6 +123,7 @@ int main(int argc, char **argv) try
         mesh.SetFac (3, -4, 1,  3., 1.,2.,3.);
         mesh.Generate (/*O2*/true);
         mesh.WriteVTU ("mesh01_1tet");
+        cout << " File <mesh01_1tet.vtu> generated\n";
     }
 
     // 3D: unstructured
@@ -126,6 +131,7 @@ int main(int argc, char **argv) try
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true,/*V*/0.1);
         mesh.WriteVTU ("mesh01_tet_box", /*VolSurfOrBoth*/0);
+        cout << " File <mesh01_tet_box.vtu> generated\n";
     }
 
     // 3D: unstructured
@@ -165,6 +171,7 @@ int main(int argc, char **argv) try
         mesh.Generate ();
         mesh.WritePLY ("mesh01_tet_hole");
         mesh.WriteVTU ("mesh01_tet_hole");
+        cout << " File <mesh01_tet_hole.vtu> generated\n";
     }
 
     return 0;
