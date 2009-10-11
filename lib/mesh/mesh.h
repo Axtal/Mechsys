@@ -170,7 +170,8 @@ public:
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
 
     // Method to extend mesh
-    void AddLinCells (size_t NTagsOrPairs, bool WithETags, ...); ///< Set line cells given edge tags (tag,tag,tag,...) or pair of vertices (tag,v0,v1, tag,v0,v1, ...)
+    void AddLinCells (size_t NItems, ...); ///< Set linear cells given edge tags (edg_tag,edg_tag,...) or pair of vertices (v0,v1,new_elem_tag, v0,v1,new_elem_tag, ...) or both
+    void BreakLin    (int VertexIdOrTag, Vec3_t const * dX=NULL, bool DoConnect=false, int ConnectionTag=0);
 
     // Methods
     void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
@@ -465,16 +466,16 @@ inline void Generic::SetCell (int i, int Tag, size_t NVerts, ...)
     if (NDim==3 and fabs(sum_z)<1.0e-10) throw new Fatal("Generic::SetCell: In 3D, the sum of all z coordinates of a Cell (%d, %d) must not be zero",i,Tag);
 }
 
-inline void Generic::AddLinCells (size_t NTagsPairs, bool WETags, ...)
+inline void Generic::AddLinCells (size_t NItems, ...)
 {
     if (NDim==3) throw new Fatal("Generic::AddLinCells: Method not available for 3D yet");
 
     va_list   arg_list;
-    va_start (arg_list, WETags);
-    for (size_t i=0; i<NTagsPairs; ++i)
+    va_start (arg_list, NItems);
+    for (size_t i=0; i<NItems; ++i)
     {
-        int etag = va_arg(arg_list,int);
-        if (WETags)
+        int etag_or_v0 = va_arg(arg_list,int);
+        if (etag_or_v0<0) // tag given
         {
             bool found = false;
             for (size_t j=0; j<TgdCells.Size(); ++j)
@@ -482,7 +483,7 @@ inline void Generic::AddLinCells (size_t NTagsPairs, bool WETags, ...)
                 BryTag_t const & eftags = TgdCells[j]->BryTags;
                 for (BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
                 {
-                    if (etag==p->second)
+                    if (etag_or_v0==p->second)
                     {
                         int    eid    = p->first;
                         size_t nv     = TgdCells[j]->V.Size();
@@ -493,29 +494,101 @@ inline void Generic::AddLinCells (size_t NTagsPairs, bool WETags, ...)
                         if (ivert2<0)
                         {
                             Cells.Push (NULL);
-                            SetCell (Cells.Size()-1, etag, 2, ivert0, ivert1);
+                            SetCell (Cells.Size()-1, etag_or_v0, 2, ivert0, ivert1);
                         }
                         else
                         {
-                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag, 2, ivert0, ivert2);
-                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag, 2, ivert2, ivert1);
+                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag_or_v0, 2, ivert0, ivert2);
+                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag_or_v0, 2, ivert2, ivert1);
                         }
                         found  = true;
                         break;
                     }
                 }
             }
-            if (!found) throw new Fatal("Generic::SetLinCells: Could not find cell with edge with tag = %d",etag);
+            if (!found) throw new Fatal("Generic::SetLinCells: Could not find cell with edge with tag = %d",etag_or_v0);
         }
-        else
+        else // vertices IDs given
         {
-            int ivert0 = va_arg(arg_list,int);
             int ivert1 = va_arg(arg_list,int);
+            int tag    = va_arg(arg_list,int);
             Cells.Push (NULL);
-            SetCell (Cells.Size()-1, etag, 2, ivert0, ivert1);
+            SetCell (Cells.Size()-1, tag, 2, etag_or_v0, ivert1);
         }
     }
     va_end (arg_list);
+}
+
+inline void Generic::BreakLin (int VertIdOrTag, Vec3_t const * dX, bool DoConnect, int ConnectionTag)
+{
+    // find vertex
+    Vertex * vert = NULL;
+    if (VertIdOrTag<0) // vertex tag given
+    {
+        bool found = false;
+        for (size_t i=0; i<TgdVerts.Size(); ++i)
+        {
+            if (VertIdOrTag==TgdVerts[i]->Tag)
+            {
+                vert  = Verts[TgdVerts[i]->ID];
+                found = true;
+                break;
+            }
+        }
+        if (!found) throw new Fatal("Mesh::AddPin: Could not find vertex with tag = %d", VertIdOrTag);
+    }
+    else vert = Verts[VertIdOrTag];
+
+    // break lins
+    Array<size_t> lins_to_disconnect;
+    size_t idx_lin = 0;
+    size_t nshares = vert->Shares.Size();
+    for (size_t i=0; i<nshares; ++i)
+    {
+        Cell * cell = vert->Shares[i].C;
+        if (cell->V.Size()==2) // cell sharing this vertex is a lin2 (linear cell with 2 vertices)
+        {
+            if (idx_lin>0) // do this for the second lin2 sharing this vertex on
+            {
+                // add new vertex
+                Verts.Push (NULL);
+                if (dX==NULL) SetVert (Verts.Size()-1, vert->Tag, vert->C(0),          vert->C(1),          vert->C(2));
+                else          SetVert (Verts.Size()-1, vert->Tag, vert->C(0)+(*dX)(0), vert->C(1)+(*dX)(1), vert->C(2)+(*dX)(2));
+
+                // set connectivity of lin2
+                int idx = vert->Shares[i].N; // local vertex ID
+                cell->V[idx] = Verts[Verts.Size()-1];
+                Share sha = {cell,idx};
+                Verts[Verts.Size()-1]->Shares.Push (sha);
+
+                // set this lin2 to be disconnected from vert
+                lins_to_disconnect.Push (i);
+
+                // add new lin2
+                if (DoConnect)
+                {
+                    AddLinCells (/*NItems*/1, /*v0*/vert->ID, /*v1*/Verts.Size()-1, ConnectionTag);
+                    //Cells.Push (NULL);
+                }
+            }
+            idx_lin++;
+        }
+    }
+    if (idx_lin<2) throw new Fatal("Mesh::AddPin: Vertex %d (%d) must be connected to at least two linear elements",vert->ID,vert->Tag);
+
+    // disconnect lins from vert
+    Array<Share> old_shares(vert->Shares);
+    vert->Shares.Resize (vert->Shares.Size()-lins_to_disconnect.Size());
+    size_t k = 0;
+    for (size_t i=0; i<old_shares.Size(); ++i)
+    {
+        if (lins_to_disconnect.Find(i)<0)
+        {
+            vert->Shares[k].C = old_shares[i].C;
+            vert->Shares[k].N = old_shares[i].N;
+            k++;
+        }
+    }
 }
 
 inline void Generic::SetBryTag (int i, int iEdgeFace, int Tag)
