@@ -476,10 +476,23 @@ inline bool Domain::CheckError (std::ostream & os, Table const & NodSol, Table c
         // calc error
         String key = NodSol.Keys[i];
         Array<double> err(NodSol.NRows);
-        for (size_t j=0; j<Nods.Size(); ++j)
+        if (key[0]=='R') // reaction
         {
-            if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
-            else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
+            String ukey;
+            for (size_t j=1; j<key.size(); ++j) ukey.Printf("%s%c",ukey.CStr(),key[j]);
+            for (size_t j=0; j<Nods.Size(); ++j)
+            {
+                size_t idx = Nods[j]->UMap(ukey); // idx of DOF
+                err[j] = fabs(Nods[j]->F[idx] - Nods[j]->Fa(idx,1.0) - NodSol(key,j));
+            }
+        }
+        else
+        {
+            for (size_t j=0; j<Nods.Size(); ++j)
+            {
+                if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
+                else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
+            }
         }
 
         // summary
@@ -510,8 +523,6 @@ inline bool Domain::CheckError (std::ostream & os, Table const & NodSol, Table c
         os << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
-
-    os << "\n";
 
     return error;
 }

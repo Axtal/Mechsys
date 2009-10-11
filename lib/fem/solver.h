@@ -76,6 +76,7 @@ public:
     size_t         Stp;    ///< Current (sub) step
     size_t         It;     ///< Current iteration
     size_t         NEq;    ///< Total number of equations (DOFs)
+    size_t         NLag;   ///< Number of Lagrange multipliers
     Array<long>    uDOFs;  ///< unknown DOFs
     Array<long>    pDOFs;  ///< prescribed DOFs (known equations)
     double         NormR;  ///< Euclidian norm of residual (R)
@@ -115,6 +116,7 @@ public:
     double    DynTh2;  ///< Dynamic coefficient Theta 2
 
 private:
+    void _set_A_Lag   ();                     ///< Set A matrix due to Lagrange multipliers
     void _FE_update   (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update   (double tf);            ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update   (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
@@ -212,6 +214,9 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
                 Dom.Nods[i]->F[j] = F(eq);
             }
         }
+
+        // clear F corresponding to Lagrange multipliers
+        for (size_t i=NEq-NLag; i<NEq; ++i) std::cout << "l = " << U(i) << "\n";
 
         // residual
         R     = F - F_int;
@@ -311,6 +316,11 @@ inline void Solver::AssembleKA ()
     }
     // augment A11
     for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
+    _set_A_Lag ();
+    Sparse::Matrix<double,int> Asp(A11);
+    Mat_t Adense;
+    Asp.GetDense(Adense);
+    std::cout << "A =\n" << PrintMatrix(Adense,"%8g");
 }
 
 inline void Solver::AssembleKMA (double C1, double C2)
@@ -434,6 +444,11 @@ inline void Solver::Initialize (bool Transient)
         }
     }
 
+    // number of Lagrange multipliers
+    NLag = Dom.Msh.Pins.size() * Dom.NDim;
+    NEq += NLag;
+    size_t nzlag = NLag * 2 * Dom.NDim; // number of extra non-zero values due to Lagrange multipliers
+
     // find total number of non-zero entries, including duplicates
     size_t K11_size = 0;
     size_t K12_size = 0;
@@ -455,7 +470,7 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // allocate triplets
-    A11.AllocSpace (NEq,NEq,K11_size+pDOFs.Size()); // augmented
+    A11.AllocSpace (NEq,NEq,K11_size+pDOFs.Size()+nzlag); // augmented
     K12.AllocSpace (NEq,NEq,K12_size);
     K21.AllocSpace (NEq,NEq,K21_size);
     K22.AllocSpace (NEq,NEq,K22_size);
@@ -510,6 +525,35 @@ inline void Solver::Initialize (bool Transient)
     NormR = Norm(R);
     //std::cout << "F     = \n" << PrintVector(F);
     //std::cout << "F_int = \n" << PrintVector(F_int);
+}
+
+inline void Solver::_set_A_Lag ()
+{
+    // set equations corresponding to Lagrange multipliers
+    if (Dom.Msh.Pins.size()>0)
+    {
+        Array<String> keys(Dom.NDim);
+        keys[0] = "ux";
+        keys[1] = "uy";  if (Dom.NDim==3)
+        keys[2] = "uz";
+        long eqlag = NEq - NLag;
+        for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
+        {
+            Node const & nod0 = (*Dom.Nods[p->first->ID]);
+            for (size_t i=0; i<p->second.Size(); ++i)
+            {
+                Node const & nod1 = (*Dom.Nods[p->second[i]->ID]);
+                for (int j=0; j<Dom.NDim; ++j)
+                {
+                    long eq0 = nod0.EQ[nod0.UMap(keys[j])];
+                    long eq1 = nod1.EQ[nod1.UMap(keys[j])];
+                    A11.PushEntry (eq0,eqlag,1.0);   A11.PushEntry (eq1,eqlag,-1.0);
+                    A11.PushEntry (eqlag,eq0,1.0);   A11.PushEntry (eqlag,eq1,-1.0);
+                    eqlag++;
+                }
+            }
+        }
+    }
 }
 
 inline void Solver::_FE_update (double tf)
