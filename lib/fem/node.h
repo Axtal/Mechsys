@@ -57,7 +57,6 @@ public:
     Array<double>        U;     ///< Current U value. Size = num DOF
     Array<double>        F;     ///< Current F value. Size = num DOF
     Array<long>          EQ;    ///< Equation numbers (of each DOF)
-    Array<size_t>        Shares;///< Ids of elements sharing this node
 };
 
 
@@ -106,7 +105,7 @@ std::ostream & operator<< (std::ostream & os, Node const & N)
         else      os << ", ";
     }
     os << Util::_4 << N.Vert.Tag;
-    os << " Shares=["; for (size_t i=0; i<N.Shares.Size(); ++i) os << N.Shares[i] << ","; os << "]";
+    os << " Shares=["; for (size_t i=0; i<N.Vert.Shares.Size(); ++i) os << N.Vert.Shares[i].C->ID << ","; os << "]";
     return os;
 }
 
