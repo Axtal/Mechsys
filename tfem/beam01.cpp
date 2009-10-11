@@ -152,8 +152,10 @@ int main(int argc, char **argv) try
             mesh.SetCell (0,   -1, 2, 0,1);
             mesh.SetCell (1,   -1, 2, 1,2);
 
-            bcs.Set(-100, "ux uy", 0.0);
-            bcs.Set(-200, "uy",    0.0);
+            mesh.AddPin (-300);
+
+            bcs.Set(-100, "ux uy wz", 0.0, 0.0, 0.0);
+            bcs.Set(-200, "ux uy", 0.0, 0.0, 0.0);
             bcs.Set(  -1, "qn",   -1.0);
             break;
         }
@@ -164,17 +166,15 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(mesh, prps, Dict(), Dict());
 
-    // pins
-    if (tst==6) dom.AddPin (-300);
-
     // solver
     FEM::Solver sol(dom);
     //sol.Scheme = FEM::Solver::FE_t;
-    sol.Scheme = FEM::Solver::NR_t;
+    //sol.Scheme = FEM::Solver::NR_t;
 
     // run
     dom.SetBCs (bcs);
-    sol.Solve  (/*NDiv*/1);
+    //cout << dom << endl;
+    sol.Solve  (/*NDiv*/10);
 
     // output
     dom.WriteMPY ("beam01_res", sf);

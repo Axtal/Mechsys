@@ -35,11 +35,6 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
-double BendingMoment (FEM::Cells const & C, double L, double x)
-{
-    double 
-}
-
 int main(int argc, char **argv) try
 {
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
@@ -69,8 +64,8 @@ int main(int argc, char **argv) try
 
     // check matrices
     {
-        double tol   = 1.0e-9;
-        double error = 0.0;
+        //double tol   = 1.0e-9;
+        //double error = 0.0;
         Mat_t K0c(6,6),K1c(6,6),K2c(6,6);
         Mat_t K0,K1,K2;
         dom.Eles[0]->CalcK(K0);
@@ -102,6 +97,7 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
     dom.PrintResults (cout);
+    dom.WriteMPY     ("ex46_res", /*sf*/0.01);
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -112,33 +108,8 @@ int main(int argc, char **argv) try
     Table ele_sol;
     //ele_sol.Set("                   ea                      sa                      fa", /*NRows*/5,
 
-    // bending moment
-    Mat_t M(7,2);
-    M = 0.0, -3.1642857142857132e+01,
-        1.0, -1.1035714285714279e+01,
-        2.0,  9.5714285714285747e+00,
-        2.0,  9.5714285714285641e+00,
-        3.0,  1.2178571428571418e+01,
-        4.0,  1.4785714285714272e+01,
-        4.0,  1.4785714285714279e+01,
-        5.0,  1.2392857142857141e+01,
-        6.0,  0.0000000000000000e+00;
-    for (size_t i=0; i<7; ++i)
-    {
-        int    idx;
-        double r;
-        if      (x<L)    { idx = 0;  r = x/L;        }
-        else if (x<2.*L) { idx = 1;  r = (x-L)/L;    }
-        else             { idx = 3;  r = (x-2.*L)/L; }
-        cout << "r = " << r << "  cell = " << idx;
-    }
-
-    // error tolerance
-    SDPair nod_tol, ele_tol;
-    nod_tol.Set("ux uy",    1.0e-15,1.0e-15);
-    ele_tol.Set("ea sa fa", 1.0e-15,1.0e-13,1.0e-10);
-
     // return error flag
+    SDPair nod_tol, ele_tol;
     return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

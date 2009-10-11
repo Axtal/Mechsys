@@ -117,6 +117,7 @@ public:
 
 private:
     void _set_A_Lag   ();                     ///< Set A matrix due to Lagrange multipliers
+    void _cor_F_pin   ();                     ///< Correct F values due to Pins (add contributions to original Node)
     void _FE_update   (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update   (double tf);            ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update   (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
@@ -215,8 +216,8 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
             }
         }
 
-        // clear F corresponding to Lagrange multipliers
-        for (size_t i=NEq-NLag; i<NEq; ++i) std::cout << "l = " << U(i) << "\n";
+        //std::cout << "F     = \n" << PrintVector(F);
+        //std::cout << "F_int = \n" << PrintVector(F_int);
 
         // residual
         R     = F - F_int;
@@ -317,10 +318,13 @@ inline void Solver::AssembleKA ()
     // augment A11
     for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
     _set_A_Lag ();
+    /*
     Sparse::Matrix<double,int> Asp(A11);
     Mat_t Adense;
     Asp.GetDense(Adense);
     std::cout << "A =\n" << PrintMatrix(Adense,"%8g");
+    std::cout << "det(A) = " << UMFPACK::Det(Asp) << std::endl;
+    */
 }
 
 inline void Solver::AssembleKMA (double C1, double C2)
@@ -556,6 +560,38 @@ inline void Solver::_set_A_Lag ()
     }
 }
 
+inline void Solver::_cor_F_pin ()
+{
+    // add contributions to original Node
+    if (Dom.Msh.Pins.size()>0)
+    {
+        Array<String> keys(Dom.NDim);
+        keys[0] = "ux";
+        keys[1] = "uy";  if (Dom.NDim==3)
+        keys[2] = "uz";
+        long eqlag = NEq - NLag;
+        for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
+        {
+            Node const & nod0 = (*Dom.Nods[p->first->ID]);
+            for (size_t i=0; i<p->second.Size(); ++i)
+            {
+                Node const & nod1 = (*Dom.Nods[p->second[i]->ID]);
+                for (int j=0; j<Dom.NDim; ++j)
+                {
+                    long eq0 = nod0.EQ[nod0.UMap(keys[j])];
+                    long eq1 = nod1.EQ[nod1.UMap(keys[j])];
+                    F(eq0)  += F(eq1);
+                    F(eq1)   = 0.0;
+                    F(eqlag) = 0.0;
+                    eqlag++;
+                }
+            }
+        }
+        //std::cout << "F     = \n" << PrintVector(F);
+        //std::cout << "F_int = \n" << PrintVector(F_int);
+    }
+}
+
 inline void Solver::_FE_update (double tf)
 {
     // auxiliar vectors
@@ -574,6 +610,7 @@ inline void Solver::_FE_update (double tf)
         U    += dU;
         F    += dF;
         Time += dt;
+        _cor_F_pin ();
     }
 }
 
@@ -612,6 +649,7 @@ inline void Solver::_ME_update (double tf)
         // local error
         U_dif = 0.5*(dU_tm - dU_fe);
         F_dif = 0.5*(dF_tm - dF_fe);
+        for (size_t i=NEq-NLag; i<NEq; ++i) { U_dif(i)=0.0; F_dif(i)=0.0; } // ignore equations corresponding to Lagrange multipliers
         double U_err = Norm(U_dif)/(1.0+Norm(U_me));
         double F_err = Norm(F_dif)/(1.0+Norm(F_me));
         double error = U_err + F_err;
@@ -630,6 +668,7 @@ inline void Solver::_ME_update (double tf)
             U     = U_me;
             F     = F_me;
             Time += dt;
+            _cor_F_pin ();
             if (m>mMax) m = mMax;
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
         }
@@ -663,6 +702,7 @@ inline void Solver::_NR_update (double tf)
         U    += dU;
         F    += dF;
         Time += dt;
+        _cor_F_pin ();
 
         // residual
         R     = F - F_int;
