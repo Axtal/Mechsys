@@ -445,6 +445,8 @@ inline void Generic::SetCell (int i, int Tag, size_t NVerts, ...)
         int ivert = va_arg(arg_list,int);
         if (Verts[ivert]==NULL) throw new Fatal("Generic::SetCell: Vert=%d of Cell %d, %d could not be found. Vertices must be set (with SetVert) before calling this method",ivert,i,Tag);
         Cells[i]->V[j] = Verts[ivert];
+        Share sha = {Cells[i],j};
+        Verts[ivert]->Shares.Push (sha);
         if (NDim==3) sum_z += Verts[ivert]->C(2);
     }
     va_end (arg_list);
