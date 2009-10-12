@@ -653,10 +653,26 @@ namespace OrthoSys
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
 
 // Cambridge invariants
-inline double p  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
-inline double ev (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
-inline double q  (Vec_t const & Sig) { double m = (Sig.size()>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
-inline double ed (Vec_t const & Eps) { double m = (Eps.size()>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
+inline double CalcCam_p  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
+inline double CalcCam_ev (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
+inline double CalcCam_q  (Vec_t const & Sig) { double m = (Sig.size()>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
+inline double CalcCam_ed (Vec_t const & Eps) { double m = (Eps.size()>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
+
+/** Deviator of Sig. */
+inline void Dev (Vec_t const & Sig, Vec_t & DevSig)
+{
+    double coef = (Sig(0)+Sig(1)+Sig(2))/3.0;
+    DevSig     = Sig;
+    DevSig(0) -= coef;
+    DevSig(1) -= coef;
+    DevSig(2) -= coef;
+}
+
+/** Trace of Sig. */
+inline double Tra (Vec_t const & Sig)
+{
+    return Sig(0)+Sig(1)+Sig(2);
+}
 
 /** Eigenprojectors of Sig. */
 inline void EigenProj (Vec_t const & Sig, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
@@ -815,6 +831,33 @@ inline void PrincVals (double sa, double sb, double sc, Vec3_t & L)
     L(0) =               - 2.0*sb/Util::SQ6 - sc/Util::SQ3;
     L(1) =  sa/Util::SQ2 +     sb/Util::SQ6 - sc/Util::SQ3;
     L(2) = -sa/Util::SQ2 +     sb/Util::SQ6 - sc/Util::SQ3;
+}
+
+/** Calculate M = max q/p at compression (phi: friction angle at compression (degrees)). */
+inline double Phi2M (double Phi, char const * Type="oct")
+{
+    double sphi = sin(Phi*Util::PI/180.0);
+    if      (strcmp(Type,"oct")==0) return 2.0*Util::SQ2*sphi/(3.0-sphi);
+    else if (strcmp(Type,"cam")==0) return 6.0*sphi/(3.0-sphi);
+    else if (strcmp(Type,"smp")==0)
+    {
+        double eta = 2.0*Util::SQ2*sphi/(3.0-sphi);
+        double c   = sqrt((2.0+Util::SQ2*eta-2.0*eta*eta)/(3.0*Util::SQ3*(Util::SQ2*eta+2.0)));
+        double a   = sqrt((2.0*eta+Util::SQ2)/Util::SQ6);
+        double b   = sqrt((Util::SQ2-eta)/Util::SQ6);
+        return sqrt((eta*eta+1.0)/(c*c*pow(a+2.0*b,2.0))-1.0);
+    }
+    else throw new Fatal("Phi2M: Method is not available for invariant Type==%s",Type);
+}
+
+/** Calculate phi (friction angle at compression (degrees)) given M (max q/p at compression). */
+inline double M2Phi (double M, char const * Type="oct")
+{
+    double sphi;
+    if      (strcmp(Type,"oct")==0) sphi = 3.0*M/(M+2.0*Util::SQ2);
+    else if (strcmp(Type,"cam")==0) sphi = 3.0*M/(M+6.0);
+    else throw new Fatal("M2Phi: Method is not available for invariant Type==%s",Type);
+    return asin(sphi)*180.0/Util::PI;
 }
 
 
