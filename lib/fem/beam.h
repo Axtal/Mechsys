@@ -25,7 +25,6 @@
 
 // MechSys
 #include "fem/element.h"
-#include "models/model.h"
 #include "util/util.h"
 
 namespace FEM
@@ -50,7 +49,7 @@ public:
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)         const;
     void GetState    (SDPair & KeysVals, int none=-1)               const;
     void Centroid    (Vec_t & X)                                    const; ///< Centroid of element
-    void CalcRes     (double r, double & P, double & V, double & M) const; ///< Resultants: Axial force P, Shear force V, Bending moment M
+    void CalcRes     (double r, double & N, double & V, double & M) const; ///< Resultants: Axial force N, Shear force V, Bending moment M
     void Draw        (std::ostream & os, double SF)                 const;
 
     // Constants
@@ -209,31 +208,34 @@ inline void Beam::CalcT (Mat_t & T, double & l) const
 
 inline void Beam::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 {
-    // get location array
-    Array<size_t> loc;
-    GetLoc (loc);
+    if (F_int!=NULL)
+    {
+        // get location array
+        Array<size_t> loc;
+        GetLoc (loc);
 
-    // element nodal displacements
-    Vec_t dUe(6);
-    for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
+        // element nodal displacements
+        Vec_t dUe(6);
+        for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
 
-    // K matrix
-    Mat_t K;
-    CalcK (K);
+        // K matrix
+        Mat_t K;
+        CalcK (K);
 
-    // element nodal forces
-    Vec_t dFe(6);
-    dFe = K * dUe;
+        // element nodal forces
+        Vec_t dFe(6);
+        dFe = K * dUe;
 
-    // add results to Fint (internal forces)
-    if (F_int!=NULL) for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
+        // add results to Fint (internal forces)
+        for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
+    }
 }
 
 inline void Beam::GetState (SDPair & KeysVals, int none) const
 {
-    double P, V, M;
-    CalcRes (/*rct*/0.5, P, V, M);
-    KeysVals.Set ("P V M",P,V,M);
+    double N, V, M;
+    CalcRes (/*rct*/0.5, N, V, M);
+    KeysVals.Set ("N V M",N,V,M);
 }
 
 inline void Beam::Centroid (Vec_t & X) const
@@ -244,7 +246,7 @@ inline void Beam::Centroid (Vec_t & X) const
     X(2) = (Con[0]->Vert.C[2] + Con[1]->Vert.C[2])/2.0;
 }
 
-inline void Beam::CalcRes (double r, double & P, double & V, double & M) const
+inline void Beam::CalcRes (double r, double & N, double & V, double & M) const
 {
     // rod length and T matrix
     double l;
@@ -271,7 +273,7 @@ inline void Beam::CalcRes (double r, double & P, double & V, double & M) const
         double lll = ll*l;
 
         // axial force
-        P = E*A*(Ul(3)-Ul(0))/l;
+        N = E*A*(Ul(3)-Ul(0))/l;
 
         // shear force
         V = E*Izz*((12.*Ul(1))/lll + (6.*Ul(2))/ll - (12.*Ul(4))/lll + (6.*Ul(5))/ll);
@@ -316,16 +318,16 @@ inline void Beam::Draw (std::ostream & os, double SF) const
         double yn =  c;
 
         // results
-        double P, V, M, Mmax;
+        double N, V, M, Mmax;
         double r, x, y, rMmax;
         double sf, xf, yf;
         rMmax = 0.0;
-        CalcRes (rMmax, P, V, Mmax);
+        CalcRes (rMmax, N, V, Mmax);
         os << "dat_beam = []\n";
         for (size_t i=0; i<ndiv+1; ++i)
         {
             r = static_cast<double>(i)/static_cast<double>(ndiv);
-            CalcRes (r, P, V, M);
+            CalcRes (r, N, V, M);
             x  = x0 + r*(x1-x0);
             y  = y0 + r*(y1-y0);
             sf = SF*M;

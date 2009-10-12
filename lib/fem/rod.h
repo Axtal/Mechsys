@@ -22,23 +22,9 @@
 
 // MechSys
 #include "fem/element.h"
-#include "models/model.h"
-
-using std::cout;
-using std::endl;
 
 namespace FEM
 {
-
-class RodState : public State
-{
-public:
-    RodState (int NDim) : State(NDim) {}
-    void Init    (SDPair const & Ini) { ea = (Ini.HasKey("ea") ? Ini("ea") : 0.0); }
-    void Backup  () { ea_bkp = ea; }
-    void Restore () { ea = ea_bkp; }
-    double ea, ea_bkp; ///< Axial strain
-};
 
 class Rod : public Element
 {
@@ -78,10 +64,6 @@ inline Rod::Rod (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair co
     E = Prp("E");
     A = Prp("A");
 
-    // allocate and initialize state (constant along element)
-    Sta.Push (new RodState(NDim));
-    Sta[0]->Init (Ini);
-    
     // set UKeys in parent element
     UKeys.Resize (NDim);
     if (NDim==2) UKeys = "ux", "uy";
@@ -150,43 +132,52 @@ inline void Rod::CalcT (Mat_t & T, double & l) const
 
 inline void Rod::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 {
-    // get location array
-    Array<size_t> loc;
-    GetLoc (loc);
+    if (F_int!=NULL)
+    {
+        // get location array
+        Array<size_t> loc;
+        GetLoc (loc);
 
-    // element nodal displacements
-    int nrows = Con.Size()*NDim; // number of rows in local K matrix
-    Vec_t dUe(nrows);
-    for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
+        // element nodal displacements
+        int nrows = Con.Size()*NDim; // number of rows in local K matrix
+        Vec_t dUe(nrows);
+        for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
 
-    // K matrix
-    Mat_t K;
-    CalcK (K);
+        // K matrix
+        Mat_t K;
+        CalcK (K);
 
-    // element nodal forces
-    Vec_t dFe(nrows);
-    dFe = K * dUe;
+        // element nodal forces
+        Vec_t dFe(nrows);
+        dFe = K * dUe;
 
-    // add results to Fint (internal forces)
-    if (F_int!=NULL) for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
+        // add results to Fint (internal forces)
+        for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
+    }
+}
 
+inline void Rod::GetState (SDPair & KeysVals, int none) const
+{
     // rod length and T matrix
     double l;
     Mat_t  T;
     CalcT (T, l);
 
-    // axial strain
-    Vec_t dUa(T * dUe); // dUa = T * dUe
-    double dea = (dUa(1)-dUa(0))/l;
-    static_cast<RodState*>(Sta[0])->ea += dea;
-}
+    // displacements in global coordinates
+    Vec_t U(2*NDim);
+    for (size_t j=0; j<2; ++j)
+    {
+        U(0+j*NDim) = Con[j]->U[Con[j]->UMap("ux")];
+        U(1+j*NDim) = Con[j]->U[Con[j]->UMap("uy")];  if (NDim==3)
+        U(2+j*NDim) = Con[j]->U[Con[j]->UMap("uz")];
+    }
 
-inline void Rod::GetState (SDPair & KeysVals, int none) const
-{
-    double ea = static_cast<RodState*>(Sta[0])->ea;
-    double sa = E*ea;
-    double fa = A*sa;
-    KeysVals.Set("fa sa ea",fa,sa,ea);
+    // displacements in local coordinates
+    Vec_t Ul(T * U);
+
+    // axial force
+    double N = E*A*(Ul(1)-Ul(0))/l;
+    KeysVals.Set ("N", N);
 }
 
 inline void Rod::Centroid (Vec_t & X) const
