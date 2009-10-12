@@ -48,7 +48,7 @@ int main(int argc, char **argv) try
     }
 
     Vec3_t L, dpdL, dqdL, dtdL, dev_L, Ii(1.0,1.0,1.0), Lb, Lc;
-    Vec_t  I(4), dev_sig(4), dI1(4),dI2(4),dI3(4), P0,P1,P2;
+    Vec_t  dev_sig(4), dI1(4),dI2(4),dI3(4), P0,P1,P2;
     double s1,s2,s3, p,q,t, p1,q1,q2,q3,t1;
     double I1,I2,I3, I1b,I2b,I3b;
     double s1b,s2b,s3b, sa,sb,sc, s1c,s2c,s3c;
@@ -59,13 +59,13 @@ int main(int argc, char **argv) try
     pqt2L     (p,q,t, Lb);
     OctCoords (L, sa,sb,sc);
     PrincVals (sa,sb,sc, Lc);
+    Dev       (sig, dev_sig);
+
     s1 =L (0);  s2 =L (1);  s3= L (2);  Util::Sort(s1,s2,s3);
     s1b=Lb(0);  s2b=Lb(1);  s3b=Lb(2);  Util::Sort(s1b,s2b,s3b);
     s1c=Lc(0);  s2c=Lc(1);  s3c=Lc(2);  Util::Sort(s1c,s2c,s3c);
 
-    I       = 1.0,1.0,1.0,0.0;
-    dev_sig = sig - ((sig(0)+sig(1)+sig(2))/3.0)*I;
-    dev_L   = L   - ((L(0)+L(1)+L(2))/3.0)*Ii;
+    dev_L   = L - ((L(0)+L(1)+L(2))/3.0)*Ii;
     q2      = Norm(dev_L);
     q3      = Norm(dev_sig);
     I1b     = s1+s2+s3;

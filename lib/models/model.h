@@ -33,7 +33,7 @@ class State
 {
 public:
     State (int NDim) {}
-    virtual void Init    (SDPair const & Ini) =0;
+    virtual void Init    (SDPair const & Ini, size_t NIvs=0) =0;
     virtual void Backup  () =0;
     virtual void Restore () =0;
 };
@@ -46,7 +46,8 @@ public:
 
     // Methods
     virtual void   InitIvs      (SDPair const & Ini, State * Sta)                        const =0;
-    virtual void   Stiffness    (State const * Sta, Mat_t & D, Array<Vec_t> * d=NULL)    const {}
+    virtual void   Stiffness    (State const * Sta, Mat_t & D, 
+                                 Array<double> * h=NULL, Vec_t * d=NULL)                 const {}
     virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt) const { alpInt=-1.0; return false; }
     virtual void   CorrectDrift (State * Sta)                                            const {}
     virtual double CalcDEz      (Vec_t const & DSig)                                     const { throw new Fatal("Model::CalcDEz: This method is not available yet"); return 0; }

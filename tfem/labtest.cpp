@@ -28,6 +28,7 @@
 #include "fem/solver.h"
 #include "models/linelastic.h"
 #include "models/elastoplastic.h"
+#include "models/camclay.h"
 #include "util/maps.h"
 #include "util/fatal.h"
 
@@ -38,9 +39,14 @@ using FEM::GEOM;
 
 int main(int argc, char **argv) try
 {
+    /*
     double qx = -10.0;
     double qy = -10.0;
     double uz = -0.02;
+    */
+    double qx = -100.0;
+    double qy = -100.0;
+    double uz = -0.01;
 
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
@@ -59,11 +65,13 @@ int main(int argc, char **argv) try
     // models
     Dict mdls;
     //mdls.Set(-1, "name E nu", MODEL("LinElastic"), 10.0, 0.2);
-    mdls.Set(-1, "name E nu fc sY", MODEL("ElastoPlastic"), 1.0, 0.3, FAILCRIT("VM"), 2.0);
+    //mdls.Set(-1, "name E nu fc sY", MODEL("ElastoPlastic"), 1.0, 0.3, FAILCRIT("VM"), 2.0);
+    mdls.Set(-1, "name  lam kap nu phi", MODEL("CamClay"), 0.01, 0.001, 0.3, M2Phi(1.0,"cam"));
 
     // initial values
     Dict inis;
-    inis.Set(-1, "sx sy sz sxy syz szx", -10.0,-10.0,-10.0,0.0,0.0,0.0);
+    //inis.Set(-1, "sx sy sz sxy syz szx", -10.0,-10.0,-10.0,0.0,0.0,0.0);
+    inis.Set(-1, "sx sy sz  v0", -100.0,-100.0,-100.0, 2.0);
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);

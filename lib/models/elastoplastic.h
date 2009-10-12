@@ -39,27 +39,31 @@ public:
     // Constructor
     ElastoPlastic (int NDim, SDPair const & Prms);
 
-    // Methods
-    void InitIvs      (SDPair const & Ini, State * Sta) const;
-    void Stiffness    (State const * Sta, Mat_t & D, Array<Vec_t> * d=NULL) const;
+    // Derived methods
+    void Stiffness    (State const * Sta, Mat_t & D,
+                       Array<double> * h=NULL, Vec_t * d=NULL)                 const;
     bool LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt) const;
-    void CorrectDrift (State * Sta) const;
+    void CorrectDrift (State * Sta)                                            const;
 
     // Internal methods
-    void   ELStiff   (EquilibState const * Sta, Mat_t & D)                         const;
-    void   EPStiff   (EquilibState const * Sta, Mat_t const & De, Vec_t const & V,
-                      Vec_t const & Y, Mat_t & Dep, Array<Vec_t> & dep)            const;
-    void   Gradients (EquilibState const * Sta, Vec_t & V, Vec_t & Y)              const;
-    void   FlowRule  (EquilibState const * Sta, Vec_t const & V, Vec_t & W)        const { W = V; }
-    void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H)        const {}
-    double YieldFunc (EquilibState const * Sta)                                    const;
-    double FailCrit  (EquilibState const * Sta) const { return YieldFunc (Sta); }
+    void ELStiff (EquilibState const * Sta, Mat_t & D) const;
+    void EPStiff (EquilibState const * Sta, Mat_t const & De, Vec_t const & V,
+                  Vec_t const & Y, Mat_t & Dep, Array<double> * h, Vec_t * d) const;
+
+    // Internal methods to be overloaded by derived classes
+    virtual void   InitIvs   (SDPair const & Ini, State * Sta)                      const;
+    virtual void   Gradients (EquilibState const * Sta, Vec_t & V, Vec_t & Y)       const;
+    virtual void   FlowRule  (EquilibState const * Sta, Vec_t const & V, Vec_t & W) const { W = V; }
+    virtual void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const {}
+    virtual double YieldFunc (EquilibState const * Sta)                             const;
+    virtual double FailCrit  (EquilibState const * Sta) const { return YieldFunc (Sta); }
 
     // Data
-    double  E;  ///< Young
-    double  nu; ///< Poisson
-    double  kY; ///< Coefficient for yielding
-    FCrit_t FC; ///< Failure criterion: VM:Von-Mises
+    double  E;   ///< Young
+    double  nu;  ///< Poisson
+    double  kY;  ///< Coefficient for yielding
+    FCrit_t FC;  ///< Failure criterion: VM:Von-Mises
+    bool    nlE; ///< Non-linear Young modulus (to be calculate from the mean stress as in Cam clay model)
 };
 
 
@@ -67,9 +71,10 @@ public:
 
 
 inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"ElastoPlastic"), FC(VM_t)
+    : Model (NDim,Prms,"ElastoPlastic"), FC(VM_t), nlE(false)
 {
-    E  = Prms("E");
+    if (Prms.HasKey("E")) E = Prms("E");
+    else nlE = true;
     nu = Prms("nu");
     if (Prms.HasKey("fc"))
     {
@@ -79,12 +84,12 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms)
         else if (fc=="DP") FC = DP_t;
         else if (fc=="MC") FC = MC_t;
         else throw new Fatal("ElastoPlastic::ElastoPlastic: Failure criterion fc=%s is not available",fc.CStr());
-    }
-    if (FC==VM_t)
-    {
-        if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
-        else if (Prms.HasKey("cu")) kY = 2.0*sqrt(2.0/3.0)*Prms("cu");
-        else throw new Fatal("ElastoPlastic::ElastoPlastic: With fc=VM (von Mises), either sY (uniaxial yield stress) or cu (undrained cohesion) must be provided");
+        if (FC==VM_t)
+        {
+            if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
+            else if (Prms.HasKey("cu")) kY = 2.0*sqrt(2.0/3.0)*Prms("cu");
+            else throw new Fatal("ElastoPlastic::ElastoPlastic: With fc=VM (von Mises), either sY (uniaxial yield stress) or cu (undrained cohesion) must be provided");
+        }
     }
 }
 
@@ -94,7 +99,7 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (Ini);
 }
 
-inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<Vec_t> * d) const
+inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<double> * h, Vec_t * d) const
 {
     // state
     EquilibState const * sta = static_cast<EquilibState const *>(Sta);
@@ -108,7 +113,7 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<Vec_t>
     {
         Vec_t V, Y;
         Gradients (sta, V, Y);
-        EPStiff   (sta, De, V, Y, D, (*d));
+        EPStiff   (sta, De, V, Y, D, h, d);
     }
     else D = De;
 }
@@ -205,7 +210,7 @@ inline void ElastoPlastic::ELStiff (EquilibState const * Sta, Mat_t & D) const
     }
 }
 
-inline void ElastoPlastic::EPStiff (EquilibState const * Sta, Mat_t const & De, Vec_t const & V, Vec_t const & Y, Mat_t & Dep, Array<Vec_t> & dep) const
+inline void ElastoPlastic::EPStiff (EquilibState const * Sta, Mat_t const & De, Vec_t const & V, Vec_t const & Y, Mat_t & Dep, Array<double> * h, Vec_t * d) const
 {
     Vec_t W, H;
     FlowRule  (Sta, V, W);
@@ -221,8 +226,12 @@ inline void ElastoPlastic::EPStiff (EquilibState const * Sta, Mat_t const & De, 
     Dep = De - (1.0/phi)*Dep;
     if (niv>0)
     {
-        dep.Resize (niv);
-        for (size_t i=0; i<niv; ++i) dep[i] = (H(i)/phi)*VDe;
+        if (h!=NULL && d!=NULL)
+        {
+            (*d) = VDe;
+            h->Resize (niv);
+            for (size_t i=0; i<niv; ++i) (*h)[i] = H(i)/phi;
+        }
     }
 }
 

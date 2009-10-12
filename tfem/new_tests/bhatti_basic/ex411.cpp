@@ -112,14 +112,14 @@ int main(int argc, char **argv) try
                  0.000000000000000e+00,  0.000000000000000e+00,  0.000000000000000e+00);
 
     Table ele_sol;
-    ele_sol.Set("                    P                       V                        M", /*NRows*/dom.Eles.Size(),
+    ele_sol.Set("                    N                       V                        M", /*NRows*/dom.Eles.Size(),
                 -7.697208350099685e+00,  1.017186578051514e+00,   1.405847939946401e+02,
                 -1.002678955238814e+01,  8.587068887342608e-01,  -2.808479399464011e+01);
 
     // error tolerance
     SDPair nod_tol, ele_tol;
     nod_tol.Set("ux uy wz", 1.0e-15,1.0e-15,1.0e-15);
-    ele_tol.Set("P  V  M",  1.0e-14,1.0e-14,1.0e-15);
+    ele_tol.Set("N  V  M",  1.0e-14,1.0e-14,1.0e-15);
 
     // return error flag
     return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);

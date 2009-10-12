@@ -96,12 +96,13 @@ inline void FlowUpdate::Update (Vec_t const & DGra, State * Sta, Vec_t & DVel) c
 
 inline void FlowUpdate::TangentIncs (FlowState const * sta, Vec_t & dgra, Vec_t & dvel, Vec_t & divs) const
 {
-    Mat_t        D;
-    Array<Vec_t> d;
-    Mdl->Stiffness (sta, D, &d);
+    Array<double> h;
+    Mat_t         D;
+    Vec_t         d;
+    Mdl->Stiffness (sta, D, &h, &d);
     dvel  = D * dgra;
     dvel *= -1.0;
-    for (size_t k=0; k<sta->Ivs.size(); ++k) divs(k) = dot(d[k],dgra);
+    for (size_t k=0; k<sta->Ivs.size(); ++k) divs(k) = h[k]*dot(d,dgra);
 }
 
 #endif // MECHSYS_FLOWUPDATE_H

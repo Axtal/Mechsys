@@ -35,7 +35,7 @@ public:
 	EquilibState (int NDim);
 
 	// Methods
-	void Init    (SDPair const & Ini);
+	void Init    (SDPair const & Ini, size_t NIvs=0);
     void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; LdgBkp=Ldg; }
     void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; Ldg=LdgBkp; }
 
@@ -63,7 +63,7 @@ inline EquilibState::EquilibState (int NDim)
     EpsBkp.change_dim(ncomp);  set_to_zero(EpsBkp);
 }
 
-inline void EquilibState::Init (SDPair const & Ini)
+inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
 {
 	if (Ini.HasKey("sx"))  Sig(0) = Ini("sx");
 	if (Ini.HasKey("sy"))  Sig(1) = Ini("sy");
@@ -82,6 +82,19 @@ inline void EquilibState::Init (SDPair const & Ini)
 		if (Ini.HasKey("sxz")) { error=true; key="sxz"; }
 		if (error) throw new Fatal("EquilibState::Init: For a 2D state, there are only 4 stress components. %s is not available",key.CStr());
 	}
+    if (NIvs>0)
+    {
+        Ivs.change_dim (NIvs);
+        set_to_zero (Ivs);
+        for (size_t i=0; i<NIvs; ++i)
+        {
+            String buf;
+            buf.Printf ("z%d",i);
+            if (Ini.HasKey(buf)) Ivs(i) = Ini(buf);
+        }
+        IvsBkp.change_dim (NIvs);
+        IvsBkp = Ivs;
+    }
 }
 
 inline void EquilibState::operator= (EquilibState const & A)

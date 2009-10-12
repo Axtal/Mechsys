@@ -35,7 +35,7 @@ public:
 	FlowState (int NDim);
 
 	// Methods
-	void Init    (SDPair const & Ini);
+	void Init    (SDPair const & Ini, size_t NIvs=0);
     void Backup  () { VelBkp=Vel; GraBkp=Gra; IvsBkp=Ivs; }
     void Restore () { Vel=VelBkp; Gra=GraBkp; Ivs=IvsBkp; }
 
@@ -58,7 +58,7 @@ inline FlowState::FlowState (int NDim)
     GraBkp.change_dim(NDim);  set_to_zero(GraBkp);
 }
 
-inline void FlowState::Init (SDPair const & Ini)
+inline void FlowState::Init (SDPair const & Ini, size_t NIvs)
 {
 	if (Ini.HasKey("vx")) Vel(0) = Ini("vx");
 	if (Ini.HasKey("vy")) Vel(1) = Ini("vy");
@@ -73,6 +73,19 @@ inline void FlowState::Init (SDPair const & Ini)
 		if (Ini.HasKey("vz")) { error=true; key="vz"; }
 		if (error) throw new Fatal("FlowState::Init: For a 2D state, there are only 4 stress components. %s is not available",key.CStr());
 	}
+    if (NIvs>0)
+    {
+        Ivs.change_dim (NIvs);
+        set_to_zero (Ivs);
+        for (size_t i=0; i<NIvs; ++i)
+        {
+            String buf;
+            buf.Printf ("z%d",i);
+            if (Ini.HasKey(buf)) Ivs(i) = Ini(buf);
+        }
+        IvsBkp.change_dim (NIvs);
+        IvsBkp = Ivs;
+    }
 }
 
 #endif // MECHSYS_FLOWSTATE_H

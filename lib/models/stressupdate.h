@@ -64,7 +64,7 @@ inline StressUpdate::StressUpdate (Model const * TheMdl)
       dTini  (1.0),
       mMin   (0.1),
       mMax   (10.0),
-      MaxSS  (2),
+      MaxSS  (20),
       CDrift (true)
 {
 }
@@ -180,11 +180,12 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
 
 inline void StressUpdate::TangentIncs (EquilibState const * sta, Vec_t & deps, Vec_t & dsig, Vec_t & divs) const
 {
-    Mat_t        D;
-    Array<Vec_t> d;
-    Mdl->Stiffness (sta, D, &d);
+    Array<double> h;
+    Mat_t         D;
+    Vec_t         d;
+    Mdl->Stiffness (sta, D, &h, &d);
     dsig = D * deps;
-    for (size_t k=0; k<sta->Ivs.size(); ++k) divs(k) = dot(d[k],deps);
+    for (size_t k=0; k<sta->Ivs.size(); ++k) divs(k) = h[k]*dot(d,deps);
 
     // calculate dez for plane-stress
     if (Mdl->GTy==pse_t) deps(2) = Mdl->CalcDEz(dsig);

@@ -34,8 +34,9 @@ public:
     LinElastic (int NDim, SDPair const & Prms);
 
     // Methods
-    void   InitIvs   (SDPair const & Ini, State * Sta) const;
-    void   Stiffness (State const * Sta, Mat_t & D, Array<Vec_t> * d=NULL) const;
+    void   InitIvs   (SDPair const & Ini, State * Sta)        const;
+    void   Stiffness (State const * Sta, Mat_t & D, 
+                      Array<double> * h=NULL, Vec_t * d=NULL) const;
     double CalcDEz   (Vec_t const & DSig) const;
 
     // Data
@@ -60,7 +61,7 @@ inline void LinElastic::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (Ini);
 }
 
-inline void LinElastic::Stiffness (State const * Sta, Mat_t & D, Array<Vec_t> * d) const
+inline void LinElastic::Stiffness (State const * Sta, Mat_t & D, Array<double> * h, Vec_t * d) const
 {
     if (NDim==2)
     {

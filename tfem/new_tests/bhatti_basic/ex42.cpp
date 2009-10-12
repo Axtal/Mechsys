@@ -123,15 +123,15 @@ int main(int argc, char **argv) try
                -1.781429675607220e-01, -2.468574484639203e+00, -3.674309229864785e-01);
 
     Table ele_sol;
-    ele_sol.Set("                   ea                      sa                      fa", /*NRows*/3,
-                 4.851090164257209e-04,  1.018728934494014e+02,  2.037457868988028e+04,
-                 3.146307367709220e-04,  6.607245472189362e+01,  1.321449094437872e+04,
-                -1.837154614932393e-04, -3.858024691358024e+01, -2.314814814814814e+04);
+    ele_sol.Set("                    N", /*NRows*/3,
+                 2.037457868988028e+04,
+                 1.321449094437872e+04,
+                -2.314814814814814e+04);
 
     // error tolerance
     SDPair nod_tol, ele_tol;
     nod_tol.Set("ux uy uz", 1.0e-15,1.0e-15,1.0e-15);
-    ele_tol.Set("ea sa fa", 1.0e-15,1.0e-13,1.0e-10);
+    ele_tol.Set("N",        1.0e-10);
 
     // return error flag
     return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
