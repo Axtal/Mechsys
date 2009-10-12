@@ -720,7 +720,7 @@ inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, doub
 }
 
 /** Octahedral invariants of Sig. */
-inline void OctInvs (Vec3_t & L, double & p, double & q, double & t, Vec3_t & dpdL, Vec3_t & dqdL, Vec3_t & dtdL, double qTol=1.0e-8)
+inline void OctInvs (Vec3_t const & L, double & p, double & q, double & t, Vec3_t & dpdL, Vec3_t & dqdL, Vec3_t & dtdL, double qTol=1.0e-8)
 {
     Vec3_t one(1.0,1.0,1.0), s;
     p    = -(L(0)+L(1)+L(2))/Util::SQ3;
@@ -742,6 +742,81 @@ inline void OctInvs (Vec3_t & L, double & p, double & q, double & t, Vec3_t & dp
         if (t>= 1.0) t =  1.0;
     }
 }
+
+/** Sig raised to the power of 2. */
+inline void Pow2 (Vec_t const & Sig, Vec_t & Sig2)
+{
+    size_t ncp = Sig.size();
+    Sig2.change_dim (ncp);
+    if (ncp==4)
+    {
+        Sig2 = Sig(0)*Sig(0) + Sig(3)*Sig(3)/2.0,
+               Sig(1)*Sig(1) + Sig(3)*Sig(3)/2.0,
+               Sig(2)*Sig(2),
+               Sig(0)*Sig(3) + Sig(1)*Sig(3);
+    }
+    else
+    {
+        Sig2 = Sig(0)*Sig(0)           + Sig(3)*Sig(3)/2.0       + Sig(5)*Sig(5)/2.0,
+               Sig(3)*Sig(3)/2.0       + Sig(1)*Sig(1)           + Sig(4)*Sig(4)/2.0,
+               Sig(5)*Sig(5)/2.0       + Sig(4)*Sig(4)/2.0       + Sig(2)*Sig(2),
+               Sig(0)*Sig(3)           + Sig(3)*Sig(1)           + Sig(5)*Sig(4)/Util::SQ2,
+               Sig(3)*Sig(5)/Util::SQ2 + Sig(1)*Sig(4)           + Sig(4)*Sig(2),
+               Sig(0)*Sig(5)           + Sig(3)*Sig(4)/Util::SQ2 + Sig(5)*Sig(2);
+    }
+}
+
+/** Characteristic invariants of Sig. */
+inline void CharInvs (Vec_t const & Sig, double & I1, double & I2, double & I3, Vec_t & dI1dSig, Vec_t & dI2dSig, Vec_t & dI3dSig)
+{
+    I1 = Sig(0) + Sig(1) + Sig(2);
+    I2 = Sig(0)*Sig(1) + Sig(1)*Sig(2) + Sig(2)*Sig(0) - Sig(3)*Sig(3)/2.0;
+    I3 = Sig(0)*Sig(1)*Sig(2) - Sig(2)*Sig(3)*Sig(3)/2.0;
+    size_t ncp = Sig.size();
+    dI1dSig.change_dim (ncp);
+    dI2dSig.change_dim (ncp);
+    dI3dSig.change_dim (ncp);
+    if (ncp>4)
+    {
+        I2 += (-Sig(4)*Sig(4)/2.0 - Sig(5)*Sig(5)/2.0);
+        I3 += (Sig(3)*Sig(4)*Sig(5)/Util::SQ2 - Sig(0)*Sig(4)*Sig(4)/2.0 - Sig(1)*Sig(5)*Sig(5)/2.0);
+        dI1dSig = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
+    }
+    else dI1dSig = 1.0, 1.0, 1.0, 0.0;
+    Vec_t Sig2(ncp);
+    Pow2 (Sig, Sig2);
+    dI2dSig = I1*dI1dSig - Sig;
+    dI3dSig = Sig2 - I1*Sig + I2*dI1dSig;
+}
+
+/** Calc principal values given octahedral invariants. */
+inline void pqt2L (double p, double q, double t, Vec3_t & L)
+{
+    double ttemp = (t<=-1.0 ? -1.0 : (t>=1.0 ? 1.0 : t));
+    double th    = asin(ttemp)/3.0;
+    L(0) = -p/Util::SQ3 + 2.0*q*sin(th-2.0*Util::PI/3.0)/Util::SQ6;
+    L(1) = -p/Util::SQ3 + 2.0*q*sin(th)                 /Util::SQ6;
+    L(2) = -p/Util::SQ3 + 2.0*q*sin(th+2.0*Util::PI/3.0)/Util::SQ6;
+}
+
+/** Calc octahedral coordinates given principal values. */
+inline void OctCoords (Vec3_t const & L, double & sa, double & sb, double & sc)
+{
+    Vec3_t l(L);
+    Util::Sort (l(0),l(1),l(2));
+    sa = Util::SQ2*(l(1)-l(2))/2.0;
+    sb = (l(2)+l(1)-2.0*l(0))/Util::SQ6;
+    sc = -(l(0)+l(1)+l(2))/Util::SQ3;
+}
+
+/** Calc principal values given octahedral coordinates. */
+inline void PrincVals (double sa, double sb, double sc, Vec3_t & L)
+{
+    L(0) =               - 2.0*sb/Util::SQ6 - sc/Util::SQ3;
+    L(1) =  sa/Util::SQ2 +     sb/Util::SQ6 - sc/Util::SQ3;
+    L(2) = -sa/Util::SQ2 +     sb/Util::SQ6 - sc/Util::SQ3;
+}
+
 
 Mat_t Isy_2d (4,4); ///< Idendity of 4th order
 Mat_t Psd_2d (4,4); ///< Projector: sym-dev

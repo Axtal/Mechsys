@@ -30,6 +30,7 @@ SET(PROGS_D # other tests
  linalg01
  linalg02
  linsolver
+ invariants
  serialize)
 
 SET(PROGS_F # mesh
