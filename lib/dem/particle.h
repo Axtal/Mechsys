@@ -67,6 +67,11 @@ public:
     Vec3_t         Tf;         ///< Fixed Torque over the particle
     Vec3_t         I;          ///< Vector containing the principal components of the inertia tensor
     Quaternion_t   Q;          ///< The quaternion representing the rotation
+    double         Kn;         ///< Normal stiffness
+    double         Kt;         ///< Tengential stiffness
+    double         Gn;         ///< Normal viscous coefficient
+    double         Gt;         ///< Tangential viscous coefficient
+    double         Mu;         ///< Microscpic coefficient of friction
     double         R;          ///< Spheroradius
     double         rho;        ///< Density
     double         V;          ///< Volume
@@ -109,7 +114,7 @@ public:
 // Constructor and destructor
 
 inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), v(v0), w(w0), R(TheR), rho(TheRho)
+    : Tag(TheTag), PropsReady(false), v(v0), w(w0), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), R(TheR), rho(TheRho)
 {
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;

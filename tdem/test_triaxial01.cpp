@@ -29,34 +29,19 @@ int main(int argc, char **argv) try
 {
     Domain d;
     // Creating the Voronoi packing of particles
-    d.AddVoronoiPacking(-1,0.1,4,4,10,4,4,10,1.0);
-    d.GenBox(-2,6,6,12,0.1);
+    d.AddVoronoiPacking(/*Tag*/-1,/*R*/0.1,/*Lx*/4,/*Ly*/4,/*Lz*/10,/*nx*/4,/*ny*/4,/*nz*/10,/*rho*/1.0);
+    d.GenBox(/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/12,/*R*/0.1);
 
     // First stage compression
-    Dict A;
-    A.Set(-2,"fx fy fz",-15.0,0.0,0.0);
-    A.Set(-3,"fx fy fz",15.0,0.0,0.0);
-    A.Set(-4,"fx fy fz",0.0,-15.0,0.0);
-    A.Set(-5,"fx fy fz",0.0,15.0,0.0);
-    A.Set(-6,"fx fy fz",0.0,0.0,-7.5);
-    A.Set(-7,"fx fy fz",0.0,0.0,7.5);
-
-    d.SetProps(A);
+    d.SetTriaxialTest(Vec3_t(/*sx*/1.0,/*sy*/1.0,/*sz*/1.0),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.0));
 
     d.WriteBPY("test_triaxial01");
 
     d.Solve (/*tf*/10, 0.001, /*dtOut*/0.1, "test_triaxial01a", /*CamPos*/Vec3_t(0,35,0));
 
     //Second stage monotonic load
-    Dict B;
-    B.Set(-2,"fx fy fz",-15.0,0.0,0.0);
-    B.Set(-3,"fx fy fz",15.0,0.0,0.0);
-    B.Set(-4,"fx fy fz",0.0,-15.0,0.0);
-    B.Set(-5,"fx fy fz",0.0,15.0,0.0);
-    B.Set(-6,"vx vy vz",0.0,0.0,-0.05);
-    B.Set(-7,"vx vy vz",0.0,0.0,0.05);
 
-    d.SetProps(B);
+    d.SetTriaxialTest(Vec3_t(/*sx*/1.0,/*sy*/1.0,/*sz*/0.0),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.005));
 
     d.Solve (/*tf*/40, 0.001, /*dtOut*/0.1, "test_triaxial01b", /*CamPos*/Vec3_t(0,35,0));
 }
