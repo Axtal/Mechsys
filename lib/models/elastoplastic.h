@@ -57,13 +57,13 @@ public:
     virtual void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const {}
     virtual double YieldFunc (EquilibState const * Sta)                             const;
     virtual double FailCrit  (EquilibState const * Sta) const { return YieldFunc (Sta); }
+    virtual double CalcE     (EquilibState const * Sta) const { return E; }
 
     // Data
     double  E;   ///< Young
     double  nu;  ///< Poisson
     double  kY;  ///< Coefficient for yielding
     FCrit_t FC;  ///< Failure criterion: VM:Von-Mises
-    bool    nlE; ///< Non-linear Young modulus (to be calculate from the mean stress as in Cam clay model)
 };
 
 
@@ -71,10 +71,9 @@ public:
 
 
 inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms)
-    : Model (NDim,Prms,"ElastoPlastic"), FC(VM_t), nlE(false)
+    : Model (NDim,Prms,"ElastoPlastic"), FC(VM_t)
 {
-    if (Prms.HasKey("E")) E = Prms("E");
-    else nlE = true;
+    E  = (Prms.HasKey("E") ? Prms("E") : 0.0);
     nu = Prms("nu");
     if (Prms.HasKey("fc"))
     {
@@ -114,8 +113,21 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<double
         Vec_t V, Y;
         Gradients (sta, V, Y);
         EPStiff   (sta, De, V, Y, D, h, d);
+        //cout << "Dep =\n" << PrintMatrix(D);
+
     }
-    else D = De;
+    else
+    {
+    	D = De;
+    	if (h!=NULL && d !=NULL)
+    	{
+    		h->Resize     (sta->Ivs.size());
+    		d->change_dim (sta->Sig.size());
+    		h->SetValues  (0.0);
+    		set_to_zero   ((*d));
+    	}
+        //cout << "De =\n" << PrintMatrix(D);
+    }
 }
 
 inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, double & alpInt) const
@@ -140,6 +152,8 @@ inline bool ElastoPlastic::LoadCond (State const * Sta, Vec_t const & DEps, doub
     // yield function values
     double f    = YieldFunc (sta);
     double f_tr = YieldFunc (&sta_tr);
+
+    //cout << "f = " << f << "   f_tr = " << f_tr << "\n";
 
     // going outside
     if (f_tr>0.0)
@@ -177,7 +191,7 @@ inline void ElastoPlastic::ELStiff (EquilibState const * Sta, Mat_t & D) const
         D.change_dim (4,4);
         if (GTy==pse_t)
         {
-            double c = E/(1.0-nu*nu);
+            double c = CalcE(Sta)/(1.0-nu*nu);
             D = c,    c*nu, 0.0,        0.0,
                 c*nu, c,    0.0,        0.0,
                 0.0,  0.0,  0.0,        0.0,
@@ -185,7 +199,7 @@ inline void ElastoPlastic::ELStiff (EquilibState const * Sta, Mat_t & D) const
         }
         else if (GTy==psa_t || GTy==axs_t)
         {
-            double c = E/((1.0+nu)*(1.0-2.0*nu));
+            double c = CalcE(Sta)/((1.0+nu)*(1.0-2.0*nu));
             D = c*(1.0-nu),       c*nu ,      c*nu ,            0.0,
                      c*nu ,  c*(1.0-nu),      c*nu ,            0.0,
                      c*nu ,       c*nu , c*(1.0-nu),            0.0,
@@ -198,7 +212,7 @@ inline void ElastoPlastic::ELStiff (EquilibState const * Sta, Mat_t & D) const
         if (GTy==d3d_t)
         {
             D.change_dim (6,6);
-            double c = E/((1.0+nu)*(1.0-2.0*nu));
+            double c = CalcE(Sta)/((1.0+nu)*(1.0-2.0*nu));
             D = c*(1.0-nu),       c*nu ,      c*nu ,            0.0,            0.0,            0.0,
                      c*nu ,  c*(1.0-nu),      c*nu ,            0.0,            0.0,            0.0,
                      c*nu ,       c*nu , c*(1.0-nu),            0.0,            0.0,            0.0,
@@ -212,18 +226,28 @@ inline void ElastoPlastic::ELStiff (EquilibState const * Sta, Mat_t & D) const
 
 inline void ElastoPlastic::EPStiff (EquilibState const * Sta, Mat_t const & De, Vec_t const & V, Vec_t const & Y, Mat_t & Dep, Array<double> * h, Vec_t * d) const
 {
+    // flow rule, hardening, and hp
     Vec_t W, H;
     FlowRule  (Sta, V, W);
     Hardening (Sta, W, H);
     double hp  = 0.0;
     size_t niv = size(Sta->Ivs);
     for (size_t i=0; i<niv; ++i) hp += Y(i)*H(i);
+
+    // auxiliar vectors
     Vec_t VDe;
     Mult (V, De, VDe);
     double phi = dot(VDe,W) - hp;
     Vec_t DeW(De*W);
-    Dyad (DeW, VDe, Dep);
-    Dep = De - (1.0/phi)*Dep;
+
+    // elastoplastic stiffness
+    size_t ncp = size(Sta->Sig);
+    Dep.change_dim (ncp,ncp);
+    for (size_t i=0; i<ncp; ++i)
+    for (size_t j=0; j<ncp; ++j)
+        Dep(i,j) = De(i,j) - DeW(i)*VDe(j)/phi;
+
+    // internal values stiffness
     if (niv>0)
     {
         if (h!=NULL && d!=NULL)

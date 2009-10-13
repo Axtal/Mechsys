@@ -653,10 +653,10 @@ namespace OrthoSys
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
 
 // Cambridge invariants
-inline double CalcCam_p  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
-inline double CalcCam_ev (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
-inline double CalcCam_q  (Vec_t const & Sig) { double m = (Sig.size()>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
-inline double CalcCam_ed (Vec_t const & Eps) { double m = (Eps.size()>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
+inline double Calc_pcam  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
+inline double Calc_ev    (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
+inline double Calc_qcam  (Vec_t const & Sig) { double m = (Sig.size()>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
+inline double Calc_ed    (Vec_t const & Eps) { double m = (Eps.size()>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
 
 /** Deviator of Sig. */
 inline void Dev (Vec_t const & Sig, Vec_t & DevSig)

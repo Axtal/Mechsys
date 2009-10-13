@@ -31,3 +31,5 @@ install_manifest.txt
 old_*
 mesh_drawing.py
 data_handler.py
+invariants.py
+plotter.py

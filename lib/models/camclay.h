@@ -38,6 +38,7 @@ public:
     void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const { H.change_dim(1);  H(0) = Sta->Ivs(0)*Tra(W)/chi; }
     double YieldFunc (EquilibState const * Sta)                             const;
     double FailCrit  (EquilibState const * Sta)                             const;
+    double CalcE     (EquilibState const * Sta) const { return fabs(Sta->Sig(0)+Sta->Sig(1)+Sta->Sig(2))*(1.0-2.0*nu)*v0/kap; }
 
     // Data
     double         lam;
@@ -46,6 +47,7 @@ public:
     double         phi;
     double         M;
     Vec_t          I;
+    mutable double v0;
     mutable double chi;
 };
 
@@ -73,7 +75,7 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (Ini, /*NIvs*/1);
 
     // specific void
-    double v0 = Ini("v0");
+    v0  = Ini("v0");
     chi = (kap-lam)/v0;
 
     // invariants
