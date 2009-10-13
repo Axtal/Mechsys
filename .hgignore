@@ -29,7 +29,10 @@ install_manifest.txt
 *.gnu
 *.bpy
 old_*
+*.pyc
 mesh_drawing.py
 data_handler.py
 invariants.py
 plotter.py
+mdl_tst_01.dat
+mdl_tst_02.dat

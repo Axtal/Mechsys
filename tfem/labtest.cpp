@@ -44,9 +44,9 @@ int main(int argc, char **argv) try
     double qy = -10.0;
     double uz = -0.02;
     */
-    double qx = -100.0;
-    double qy = -100.0;
-    double uz = -0.01;
+    double qx =  0.0;
+    double qy =  0.0;
+    double uz = -0.07;
 
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
@@ -80,8 +80,10 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    sol.Scheme = FEM::Solver::FE_t;
+    //sol.Scheme = FEM::Solver::FE_t;
     //sol.Scheme = FEM::Solver::NR_t;
+    //sol.nSS    = 1000;
+    //sol.MaxIt  = 1000;
 
     ////////////////////////////////////////////////////////////////////////////////////////// Run /////
     

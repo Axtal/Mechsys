@@ -64,7 +64,7 @@ inline StressUpdate::StressUpdate (Model const * TheMdl)
       dTini  (1.0),
       mMin   (0.1),
       mMax   (10.0),
-      MaxSS  (20),
+      MaxSS  (2000),
       CDrift (true)
 {
 }
