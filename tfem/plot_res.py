@@ -1,7 +1,7 @@
 from plotter import *
 from data_handler import *
 
-test = 1
+test = 3
 
 if test==1:
     p = Plotter()
@@ -25,3 +25,16 @@ if test==2:
     plot (-u,-f,'ro',lw=2)
     grid ()
     show ()
+
+if test==3:
+    dat  = read_table("labtest_uf.res")
+    u    = array(dat['u'])
+    fint = array(dat['f_int'])
+    fext = array(dat['f_ext'])
+    plot(-u,-fext,'r-',lw=2)
+    plot(-u,-fext,'ro')
+    plot(-u,-fint,'b-',lw=2)
+    plot(-u,-fint,'b*')
+    legend(['f_ext','f_ext','f_int','f_int'])
+    grid()
+    show()

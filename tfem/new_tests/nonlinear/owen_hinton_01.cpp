@@ -99,7 +99,7 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom, &DbgFun, &dat);
-    //sol.Scheme = FEM::Solver::NR_t;
+    sol.Scheme = FEM::Solver::NR_t;
 
     // solve
     sol.Solve (weights.Size(), &weights);

@@ -36,6 +36,28 @@ using std::cout;
 using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
+using Util::_6_3;
+using Util::_8s;
+
+struct DbgDat
+{
+    size_t node_id;
+    size_t dof_idx;
+    std::ofstream of;
+    ~DbgDat () { of.close (); }
+     DbgDat () : node_id(0), dof_idx(0)
+    {
+         of.open ("labtest_uf.res",std::ios::out);
+         of<<_6_3<<"Time"<<_8s<<"u"<< _8s<<"f_int"<<_8s<<"f_ext\n";
+    }
+};
+
+void DbgFun (FEM::Solver const & Sol, void * Dat)
+{
+    DbgDat * dat = static_cast<DbgDat*>(Dat);
+    long eq = Sol.Dom.Nods[dat->node_id]->EQ[dat->dof_idx];
+    dat->of << _6_3 << Sol.Time << _8s << Sol.U(eq) << _8s << Sol.F_int(eq) << _8s << Sol.F(eq) << endl;
+}
 
 int main(int argc, char **argv) try
 {
@@ -75,15 +97,24 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("labtest", /*NNod*/1, /*WithTags*/false, /*ID*/(nd==3 ?  6 : 6));
+    dom.SetOutNods ("labtest", /*NNod*/1, /*WithTags*/false, /*ID*/(nd==3 ?  7 : 7));
     dom.SetOutEles ("labtest", /*NEle*/1, /*ID*/(nd==3 ? 13 : 0));
 
+    // debug data
+    DbgDat dat;
+    dat.node_id = 7;
+    dat.dof_idx = dom.Nods[dat.node_id]->FMap("fz");
+ 
     // solver
-    FEM::Solver sol(dom);
+    FEM::Solver sol(dom, &DbgFun, &dat);
     //sol.Scheme = FEM::Solver::FE_t;
     //sol.Scheme = FEM::Solver::NR_t;
     //sol.nSS    = 1000;
     //sol.MaxIt  = 1000;
+    //sol.TolR   = 1.0e-1;
+    //sol.dTini = 0.01;
+    //sol.mMax = 2.0;
+    //sol.mMin = 0.01;
 
     ////////////////////////////////////////////////////////////////////////////////////////// Run /////
     
@@ -95,7 +126,32 @@ int main(int argc, char **argv) try
     bcs.Set(-40, "qn", qy);
     bcs.Set(-60, "uz", uz);
     dom.SetBCs (bcs);
-    sol.Solve  (/*NDiv*/10);
+    sol.Solve  (/*NDiv*/20);
+
+
+    /*
+    Dict bcs;
+    bcs.Set(-10, "ux", 0.0);
+    bcs.Set(-30, "uy", 0.0);
+    bcs.Set(-50, "uz", 0.0);
+    bcs.Set(-20, "qn", 0.0);
+    bcs.Set(-40, "qn", 0.0);
+    bcs.Set(-60, "qn", -150.0);
+    //bcs.Set(-60, "uz", -0.035);
+    dom.SetBCs (bcs);
+    sol.Solve  (20);
+
+    bcs.Set(-10, "ux", 0.0);
+    bcs.Set(-30, "uy", 0.0);
+    bcs.Set(-50, "uz", 0.0);
+    bcs.Set(-20, "qn", 0.0);
+    bcs.Set(-40, "qn", 0.0);
+    //bcs.Set(-60, "uz", 0.035);
+    bcs.Set(-60, "qn", 150.0);
+    dom.SetBCs (bcs);
+    sol.Solve  (20);
+    */
+
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
