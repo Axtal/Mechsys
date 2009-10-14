@@ -61,7 +61,7 @@ public:
     void SetUVals     (SDPair const & UVals);
     void SetOutNods   (char const * FileKey, int NNods, bool WithTags, ...);
     void SetOutEles   (char const * FileKey, int NEles, ...);
-    void OutResults   (double Time) const;
+    void OutResults   (double Time, Vec_t const & F_int) const;
     void PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
     bool CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
     bool CheckError   (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const; ///< At integration points
@@ -299,6 +299,11 @@ inline void Domain::SetOutNods (char const * FNKey, int NNods, bool WTags, ...)
                 buf.Printf ("R%s",Nods[nod]->UMap.Keys[j].CStr());
                 (*of) << Util::_8s << buf;
             }
+            for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
+            {
+                buf.Printf ("%s_int",Nods[nod]->FMap.Keys[j].CStr());
+                (*of) << Util::_8s << buf;
+            }
             (*of) << "\n";
         }
     }
@@ -329,7 +334,7 @@ inline void Domain::SetOutEles (char const * FNKey, int NEles, ...)
     va_end (arg_list);
 }
 
-inline void Domain::OutResults (double Time) const
+inline void Domain::OutResults (double Time, Vec_t const & F_int) const
 {
     // nodes
     for (size_t i=0; i<OutNods.Size(); ++i)
@@ -339,6 +344,7 @@ inline void Domain::OutResults (double Time) const
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->U[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j] - Nods[nod]->Fa(j,Time);
+        for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(Nods[nod]->EQ[j]);
         (*FilNods[i]) << "\n";
     }
 

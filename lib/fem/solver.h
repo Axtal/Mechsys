@@ -68,19 +68,20 @@ public:
     void Initialize   (bool Transient=false);                        ///< Initialize global matrices and vectors
 
     // Data
-    Domain const & Dom;    ///< Domain
-    pDbgFun        DbgFun; ///< Debug function
-    void         * DbgDat; ///< Debug data
-    double         Time;   ///< Current time (t)
-    size_t         Inc;    ///< Current increment
-    size_t         Stp;    ///< Current (sub) step
-    size_t         It;     ///< Current iteration
-    size_t         NEq;    ///< Total number of equations (DOFs)
-    size_t         NLag;   ///< Number of Lagrange multipliers
-    Array<long>    uDOFs;  ///< unknown DOFs
-    Array<long>    pDOFs;  ///< prescribed DOFs (known equations)
-    double         NormR;  ///< Euclidian norm of residual (R)
-    double         TolR;   ///< Tolerance for the norm of residual
+    Domain const & Dom;      ///< Domain
+    pDbgFun        DbgFun;   ///< Debug function
+    void         * DbgDat;   ///< Debug data
+    double         Time;     ///< Current time (t)
+    size_t         Inc;      ///< Current increment
+    size_t         Stp;      ///< Current (sub) step
+    size_t         It;       ///< Current iteration
+    size_t         NEq;      ///< Total number of equations (DOFs)
+    size_t         NLag;     ///< Number of Lagrange multipliers
+    Array<long>    uDOFs;    ///< unknown DOFs
+    Array<long>    pDOFs;    ///< prescribed DOFs (known equations)
+    double         NormR;    ///< Euclidian norm of residual (R)
+    double         TolR;     ///< Tolerance for the norm of residual
+    double         MaxNormF; ///< Max(Norm(F), Norm(Fint))
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -118,6 +119,8 @@ public:
 private:
     void _set_A_Lag   ();                     ///< Set A matrix due to Lagrange multipliers
     void _cor_F_pin   ();                     ///< Correct F values due to Pins (add contributions to original Node)
+    void _calc_resid  (bool WithAccel=false); ///< Calculate residual
+    void _cor_resid   (Vec_t & dU);           ///< Correct residual
     void _FE_update   (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update   (double tf);            ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update   (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
@@ -137,7 +140,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       Inc     (0),
       Stp     (0),
       It      (0),
-      TolR    (1.0e-9),
+      TolR    (1.0e-3),
       Scheme  (ME_t),
       nSS     (1),
       STOL    (1.0e-5),
@@ -169,9 +172,9 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
 
     // output initial state
     std::cout << "\n[1;37m--- Stage solution --- (steady) ----------------------------------------------\n";
-    std::cout << Util::_6_3 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_6_3 <<  Time  << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
-    Dom.OutResults (Time);
+    std::cout << Util::_6_3 << "Time" <<                                                Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_6_3 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
+    Dom.OutResults (Time, F_int);
 
     // weights
     bool   del_weights = false;
@@ -201,8 +204,8 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
 
         // update U, F, Time and elements to tout
         if      (Scheme==FE_t) { _FE_update (tout);  str.Printf("Forward-Euler (FE): nss = %d",Stp); }
-        else if (Scheme==ME_t) { _ME_update (tout);  str.Printf("Modified-Euler (ME): nss = %d",Stp); }
-        else if (Scheme==NR_t) { _NR_update (tout);  str.Printf("Newton-Rhapson (NR): nit = %d",It); }
+        else if (Scheme==ME_t) { _ME_update (tout);  str.Printf("Modified-Euler (ME): nss = %d   nit = %d",Stp,It); }
+        else if (Scheme==NR_t) { _NR_update (tout);  str.Printf("Newton-Rhapson (NR): nss = %d   nit = %d",Stp,It); }
         else throw new Fatal("Solver::Solve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -216,16 +219,9 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
             }
         }
 
-        //std::cout << "F     = \n" << PrintVector(F);
-        //std::cout << "F_int = \n" << PrintVector(F_int);
-
-        // residual
-        R     = F - F_int;
-        NormR = Norm(R);
-
         // output
-        std::cout << Util::_6_3 << Time << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
-        Dom.OutResults (Time);
+        std::cout << Util::_6_3 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        Dom.OutResults (Time, F_int);
 
         // next tout
         tout = Time + dt;
@@ -254,8 +250,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
     // output initial state
     std::cout << "\n[1;37m--- Stage solution --- (dynamic) ---------------------------------------------\n";
     std::cout << Util::_6_3 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_6_3 <<  Time  << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
-    Dom.OutResults (Time);
+    std::cout << Util::_6_3 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
+    Dom.OutResults (Time, F_int);
 
     // solve
     String str;
@@ -279,8 +275,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
         }
 
         // output
-        std::cout << Util::_6_3 << Time << (NormR>TolR?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
-        Dom.OutResults (Time);
+        std::cout << Util::_6_3 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        Dom.OutResults (Time, F_int);
 
         // next tout
         tout = Time + dtOut;
@@ -525,10 +521,7 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // calc residual
-    R     = F - F_int;
-    NormR = Norm(R);
-    //std::cout << "F     = \n" << PrintVector(F);
-    //std::cout << "F_int = \n" << PrintVector(F_int);
+    _calc_resid ();
 }
 
 inline void Solver::_set_A_Lag ()
@@ -592,6 +585,46 @@ inline void Solver::_cor_F_pin ()
     }
 }
 
+inline void Solver::_calc_resid (bool WithAccel)
+{
+    R = F - F_int;
+    if (WithAccel) Sparse::SubMult (M11, A, R); // R -= M11*A
+    NormR    = Norm(R);
+    MaxNormF = Util::Max (Norm(F), Norm(F_int));
+}
+
+inline void Solver::_cor_resid (Vec_t & dU)
+{
+    // iterations
+    size_t it = 0;
+    while (NormR>TolR*MaxNormF && it<MaxIt)
+    {
+        // debug
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+
+        // assemble global K matrix
+        if (!ModNR) AssembleKA ();
+
+        // clear unbalanced forces related to supports
+        for (size_t i=0; i<pDOFs.Size(); ++i) R(pDOFs[i]) = 0.0;
+
+        // calc corrector dU
+        UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
+
+        // update elements and displacements
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        U += dU;
+
+        // residual
+        _calc_resid ();
+
+        // next iteration
+        it++;
+    }
+    if (it>=MaxIt) throw new Fatal("Solver::_NR_update: Newton-Rhapson did not converge after %d iterations",it);
+    if (it>It) It = it;
+}
+
 inline void Solver::_FE_update (double tf)
 {
     // auxiliar vectors
@@ -611,7 +644,13 @@ inline void Solver::_FE_update (double tf)
         F    += dF;
         Time += dt;
         _cor_F_pin ();
+
+        // debug
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
+
+    // residual
+    _calc_resid ();
 }
 
 inline void Solver::_ME_update (double tf)
@@ -668,7 +707,9 @@ inline void Solver::_ME_update (double tf)
             U     = U_me;
             F     = F_me;
             Time += dt;
-            _cor_F_pin ();
+            _cor_F_pin  ();
+            _calc_resid ();
+            _cor_resid  (dU_me);
             if (m>mMax) m = mMax;
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
         }
@@ -688,8 +729,8 @@ inline void Solver::_NR_update (double tf)
     // auxiliar vectors
     Vec_t dU(NEq), dF(NEq);
 
-    size_t max_it = It;
-    double dt     = (tf-Time)/nSS;
+    It = 0;
+    double dt = (tf-Time)/nSS;
     for (Stp=0; Stp<nSS; ++Stp)
     {
         // calculate tangent increments
@@ -705,42 +746,9 @@ inline void Solver::_NR_update (double tf)
         _cor_F_pin ();
 
         // residual
-        R     = F - F_int;
-        NormR = Norm(R);
-
-        // iterations
-        It = 0;
-        while (NormR>TolR && It<MaxIt)
-        {
-            // debug
-            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-
-            // assemble global K matrix
-            if (!ModNR) AssembleKA ();
-
-            // clear unbalanced forces related to supports
-            for (size_t i=0; i<pDOFs.Size(); ++i) R(pDOFs[i]) = 0.0;
-
-            // calc corrector dU
-            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
-
-            // update elements and displacements
-            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-            U += dU;
-
-            // residual
-            R     = F - F_int;
-            NormR = Norm(R);
-
-            // next iteration
-            It++;
-        }
-        if (It>=MaxIt) throw new Fatal("Solver::_NR_update: Newton-Rhapson did not converge after %d iterations",It);
-        if (It>max_it) max_it = It;
+        _calc_resid ();
+        _cor_resid  (dU);
     }
-
-    // return max number of iterations
-    It = max_it;
 }
 
 inline void Solver::_SS22_update (double tf, double dt)
@@ -788,9 +796,7 @@ inline void Solver::_SS22_update (double tf, double dt)
         for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
 
         // residual
-        R = F - F_int;
-        Sparse::SubMult (M11, A, R); // R -= M11*A
-        NormR = Norm(R);
+        _calc_resid (true);
 
         // next time step
         Time += dt;
@@ -850,16 +856,7 @@ inline void Solver::_GN22_update (double tf, double dt)
         for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
 
         // residual
-        R = F - F_int;
-        Sparse::SubMult (M11, A, R); // R -= M11*A
-        NormR = Norm(R);
-
-        /*
-        cout << "F     = " << PrintVector(F);
-        cout << "dU    = " << PrintVector(dU);
-        cout << "R     = " << PrintVector(R);
-        cout << "NormR = " << NormR << endl;
-        */
+        _calc_resid (true);
 
         // next time step
         Time += dt;
