@@ -36,15 +36,18 @@ int main(int argc, char **argv) try
     // test vertex-edge distance
     {
         // vertex and edge
-        Vec3_t V(1,1,0);
-        Edge   E(Vec3_t(1,1,1),Vec3_t(0,0,0));
+        Vec3_t V(1,1,0),V1(1,1,1),V2(0,0,0);
+        Vec3_t *a = &V1,*b = &V2;
+        Edge   E(a,b);
 
         // distance
         Vec3_t Xi,Xf;
         Distance (V,E,Xi,Xf);
 
         // create edge for drawing
-        Edge D(Xi,Xf);
+        a = &Xi;
+        b = &Xf;
+        Edge D(a,b);
 
         // draw
         std::ofstream of("test_distances_VE.pov",std::ios::out);

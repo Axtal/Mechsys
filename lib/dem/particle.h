@@ -121,8 +121,8 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
     for (size_t i=0; i<V.Size(); i++) Verts.Push (new Vec3_t(V[i]));
     for (size_t i=0; i<F.Size(); i++)
     {
-        Array<Vec3_t> verts(F[i].Size());
-        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (*Verts[F[i][j]]);
+        Array<Vec3_t*> verts(F[i].Size());
+        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = Verts[F[i][j]];
         Faces.Push (new Face(verts));
     }
     for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
@@ -195,12 +195,12 @@ inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
 
     for (size_t i = 0; i < ne; i++)
     {
-        Edges[i]->Rotate(Q,V);
+        Edges[i]->UpdatedL();
     }
 
     for (size_t i = 0; i < nf; i++)
     {
-        Faces[i]->Rotate(Q,V);
+        Faces[i]->UpdatedL();
     }
 }
 
@@ -222,16 +222,6 @@ inline void Particle::Translate (Vec3_t & V)
     for (size_t i = 0; i < nv; i++)
     {
         *Verts[i] += V;
-    }
-
-    for (size_t i = 0; i < ne; i++)
-    {
-        Edges[i]->Translate(V);
-    }
-
-    for (size_t i = 0; i < nf; i++)
-    {
-        Faces[i]->Translate(V);
     }
 }
 
@@ -349,7 +339,7 @@ inline bool Particle::IsInside (Vec3_t & V)
         Vec3_t ct(0,0,0);
         for (size_t i = 0; i < Faces[k]->Edges.Size(); i++)
         {
-            ct += Faces[k]->Edges[i]->X0;
+            ct += *Faces[k]->Edges[i]->X0;
         }
         ct = ct/double(Faces[k]->Edges.Size());
         Vec3_t pro = V - ct;

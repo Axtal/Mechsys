@@ -29,49 +29,69 @@ class Face
 {
 public:
     // Constructor
-    Face (Array<Vec3_t> const & V); ///< V: vertices of face
+    Face (Array<Edge *> E); ///< E: Edges of the face
+    Face (Array<Vec3_t> & V);
+    Face (Array<Vec3_t*> & V);
     Face () {};
 
     // Destructor
     ~Face ();
 
+
     // Methods
-    void Rotate    (Quaternion_t const & Q, Vec3_t const & Xa); ///< Q: quaternion representing the rotation, Xa: position of the axis of rotation
-    void Translate (Vec3_t const & dX);                         ///< Translate edge by dX
+    void UpdatedL (); ///< UdatedL for each edge
     void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool BPY=false);
 
     // Data
     Array<Edge*> Edges; ///< Edges
+    bool         Allocate; ///< It allocates memory or not
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Face::Face (Array<Vec3_t> const & V)
+inline Face::Face (Array<Edge *> E)
 {
-    if (V.Size()<3) throw new Fatal("Face::Face: Number of vertices must be greater than 2");
-    Edges.Resize (V.Size());
-    for (size_t i=0; i<Edges.Size(); i++) 
+    Edges = E;
+    Allocate = false;
+}
+
+inline Face::Face (Array<Vec3_t> & V)
+{
+    for (size_t i = 0; i < V.Size() ; i++)
     {
-        if (i==V.Size()-1) Edges[i] = new Edge (V[i], V[0]);
-        else               Edges[i] = new Edge (V[i], V[i+1]);
+        Edges.Push(new Edge(&V[i],&V[(i+1)%V.Size()]));
     }
+    Allocate = true;
+}
+
+inline Face::Face(Array<Vec3_t*> & V)
+{
+    for (size_t i = 0; i < V.Size() ; i++)
+    {
+        Edges.Push(new Edge(V[i],V[(i+1)%V.Size()]));
+    }
+    Allocate = true;
 }
 
 inline Face::~Face ()
 {
-    for (size_t i=0; i<Edges.Size(); i++) delete Edges[i];
+    if (Allocate) 
+    {
+        for (size_t i = 0; i<Edges.Size();i++)
+        {
+            delete Edges[i];
+        }
+    }
 }
 
-inline void Face::Rotate (Quaternion_t const & Q, Vec3_t const & Xa)
+inline void Face::UpdatedL()
 {
-    for (size_t i=0; i<Edges.Size(); i++) Edges[i]->Rotate (Q,Xa);
-}
-
-inline void Face::Translate (Vec3_t const & dX)
-{
-    for (size_t i=0; i<Edges.Size(); i++) Edges[i]->Translate (dX);
+    for (size_t i = 0; i<Edges.Size();i++)
+    {
+        Edges[i]->UpdatedL();
+    }
 }
 
 inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bool BPY)
@@ -81,8 +101,8 @@ inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bo
     n = n/norm(n);
     for (size_t i=0; i<Edges.Size(); i++)
     {
-        vi.Push(Edges[i]->X0 - Radius*n);
-        vs.Push(Edges[i]->X0 + Radius*n);
+        vi.Push(*Edges[i]->X0 - Radius*n);
+        vs.Push(*Edges[i]->X0 + Radius*n);
     }
     if (BPY)
     {
