@@ -49,13 +49,12 @@ int main(int argc, char **argv) try
     x =  10 , 0 , 0;
     w =   0 , 0 , 0;
     v = -1. , 0 , 0;
-    d.AddTetra (-1, x,0.8,8.,1.);
+    d.AddTetra (-1, x,0.5,5.,1.);
     d.Particles[1]->v = v;
     d.Particles[1]->w = w;
 
     // initialize
     double dt = 0.001;
-    d.Initialize (dt);
 
     // initial constants
     Vec3_t l0(0,0,0);  // initial linear momentum
