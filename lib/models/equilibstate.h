@@ -36,8 +36,8 @@ public:
 
 	// Methods
 	void Init    (SDPair const & Ini, size_t NIvs=0);
-    void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; LdgBkp=Ldg; }
-    void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; Ldg=LdgBkp; }
+    void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; }
+    void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; }
 
     // Operators
     void operator= (EquilibState const & Another);
@@ -46,7 +46,7 @@ public:
 	Vec_t Sig, SigBkp; ///< Stress
 	Vec_t Eps, EpsBkp; ///< Strain
 	Vec_t Ivs, IvsBkp; ///< Internal values
-    bool  Ldg, LdgBkp; ///< Loading ?
+    bool  Ldg;         ///< Loading ?
 };
 
 
@@ -54,7 +54,7 @@ public:
 
 
 inline EquilibState::EquilibState (int NDim)
-	: State(NDim), Ldg(false), LdgBkp(false)
+	: State(NDim), Ldg(false)
 {
     int ncomp = NDim*2; // number of stress/strain components
     Sig   .change_dim(ncomp);  set_to_zero(Sig   );
@@ -102,7 +102,7 @@ inline void EquilibState::operator= (EquilibState const & A)
     Sig = A.Sig;  SigBkp = A.SigBkp;
     Eps = A.Eps;  EpsBkp = A.EpsBkp;
     Ivs = A.Ivs;  IvsBkp = A.IvsBkp;
-    Ldg = A.Ldg;  LdgBkp = A.LdgBkp;
+    Ldg = A.Ldg;
 }
 
 #endif // MECHSYS_EQUILIBSTATE_H
