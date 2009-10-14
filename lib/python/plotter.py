@@ -16,6 +16,7 @@ class Plotter:
     def plot(self,
         obj,                     # object: data_filename, TriaxTest, Domain
         fem_res         = True,  # data_file is .res file from FEM analysis
+        dem_res         = False, # data_file is .res file from DEM analysis
         mdl             = None,  # constitutive model
         eid             = 0,     # element ID for output (if Domain)
         div_by_p        = True,  # divide q by p ?
@@ -58,6 +59,18 @@ class Plotter:
                                        [float(r[h.index('ez' )])],
                                        [float(r[h.index('exy')])*sq2]]))
                 dot = ['r-','r-','r-','r-','r-','r-','r-','r-','r-']
+            elif dem_res:
+                for l in f:
+                    r = l.split()
+                    Sig.append(matrix([[float(r[h.index('sx' )])],
+                                       [float(r[h.index('sy' )])],
+                                       [float(r[h.index('sz' )])],
+                                       [0.0]]))
+                    Eps.append(matrix([[float(r[h.index('ex' )])],
+                                       [float(r[h.index('ey' )])],
+                                       [float(r[h.index('ez' )])],
+                                       [0.0]]))
+                dot = ['ro','r-','r-','r-','r-','r-','r-','r-','r-']
             else:
                 res = basename(obj).split('.')
                 kgf = res[1]=='kgf'         # stresses in kgf/cm^2 ?
