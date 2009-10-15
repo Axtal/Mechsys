@@ -25,8 +25,6 @@
 #include <cstdarg> // for va_list, va_start, va_end
 #include <cstdio>  // for vsnprintf
 
-#define _(STRING) (STRING) // for translation
-
 class String : public std::string
 {
 public:

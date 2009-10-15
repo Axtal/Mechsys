@@ -89,7 +89,7 @@ int SolveAndOutput(int SolverType, Mat_t & A, Vec_t & Y, Vec_t const & Ycorr)
 		Dense2Sparse   (A, S);
 		UMFPACK::Solve (S,B, Y); // Y <- inv(S)*B
 #else
-		throw new Fatal(_("UMFPACK is not available"));
+		throw new Fatal("UMFPACK is not available");
 #endif
 	}
 	else if (SolverType==3)
@@ -100,10 +100,10 @@ int SolveAndOutput(int SolverType, Mat_t & A, Vec_t & Y, Vec_t const & Ycorr)
 		Dense2Sparse(A,S);
 		//SuperLU::Solve(S, Y); // Y <- inv(S)*Y
 #else
-		throw new Fatal(_("SuperLU is not available"));
+		throw new Fatal("SuperLU is not available");
 #endif
 	}
-	else throw new Fatal(_("SolverType (%d) is invalid"),SolverType);
+	else throw new Fatal("SolverType (%d) is invalid",SolverType);
 
 	// Output
 	cout << sz << " x " << sz << endl;
