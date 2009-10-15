@@ -23,7 +23,7 @@
 // STL
 #include <string>
 #include <cstdarg> // for va_list, va_start, va_end
-#include <cstdlib> // for vsnprintf
+#include <cstdio>  // for vsnprintf
 
 #define _(STRING) (STRING) // for translation
 
