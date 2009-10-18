@@ -169,6 +169,10 @@ public:
 
     // Data
     Array<int> Keys;
+
+#ifdef USE_BOOST_PYTHON
+    void PySet (int Key, BPy::dict const & Pairs);
+#endif
 };
 
 
@@ -691,6 +695,21 @@ inline bool Dict::HasKey (int Key) const
     else                  return true;
 }
 
+#ifdef USE_BOOST_PYTHON
+
+inline void Dict::PySet (int Key, BPy::dict const & Pairs)
+{
+    BPy::object const & keys = Pairs.iterkeys();
+    BPy::object const & vals = Pairs.itervalues();
+    for (int i=0; i<BPy::len(Pairs); ++i)
+    {
+        String key  (BPy::extract<char const *>(keys.attr("next")()));
+        double val = BPy::extract<double      >(vals.attr("next")());
+        Set (Key, key.CStr(), val);
+    }
+}
+
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////// Table: Implementation /////
 

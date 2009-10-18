@@ -47,6 +47,7 @@ int main(int argc, char **argv) try
         blks[0].SetNy (3);
         blks[1].SetNx (4);
         blks[1].SetNy (3);
+        cout << blks << endl;
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate (blks,/*O2*/true);
         mesh.WriteVTU ("mesh01_quad");

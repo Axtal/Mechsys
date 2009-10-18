@@ -141,6 +141,13 @@ public:
      *     C = |  y0 y1 y2 y3 y4 y5 y6 y7 ... y17 y18 y19  |
      *         |_ z0 z1 z2 z3 z4 z5 z6 z7 ... z17 z18 z19 _|
      */
+
+#ifdef USE_BOOST_PYTHON
+    void PySet (BPy::dict const & Dat);
+#endif
+
+private:
+    void _initialize (size_t NVerts);
 };
 
 
@@ -176,6 +183,10 @@ public:
 
     // Data
     Vec_t N; ///< Shape functions
+
+#ifdef USE_BOOST_PYTHON
+    void PyGenerate (BPy::list const & Blks, bool O2);
+#endif
 };
 
 
@@ -187,31 +198,7 @@ inline void Block::Set (int TheNDim, int TheTag, size_t NVerts, ...)
     // allocate data
     NDim = TheNDim;
     Tag  = TheTag;
-    if (NDim==2)
-    {
-        if (NVerts==4 || NVerts==8)
-        {
-            C.change_dim      (NDim,8);
-            VTags.Resize      (8); // 8 vertices
-            BryTags.Resize    (4); // 4 edges
-            VTags.SetValues   (0);
-            BryTags.SetValues (0);
-        }
-        else throw new Fatal("Block::Set: With NDim=2 Number of vertices must be either 4 or 8 (%d is invalid)",NVerts);
-    }
-    else if (NDim==3)
-    {
-        if (NVerts==8 || NVerts==20)
-        {
-            C.change_dim      (NDim,20);
-            VTags.Resize      (20); // 20 vertices
-            BryTags.Resize    (6);  // 6 faces
-            VTags.SetValues   (0);
-            BryTags.SetValues (0);
-        }
-        else throw new Fatal("Block::Set: With NDim=3 Number of vertices must be either 8 or 20 (%d is invalid)",NVerts);
-    }
-    else throw new Fatal("Block::Set: NDim=%d is invalid",NDim);
+    _initialize (NVerts);
 
     // read data
     va_list   arg_list;
@@ -362,6 +349,38 @@ inline int Block::GetVTag (size_t i, size_t j, size_t k) const
     return 0;
 }
 
+inline void Block::_initialize (size_t NVerts)
+{
+    if (NDim==2)
+    {
+        if (NVerts==4 || NVerts==8)
+        {
+            C.change_dim      (NDim,8);
+            VTags.Resize      (8); // 8 vertices
+            BryTags.Resize    (4); // 4 edges
+            VTags.SetValues   (0);
+            BryTags.SetValues (0);
+        }
+        else throw new Fatal("Block::_initialize: With NDim=2 Number of vertices must be either 4 or 8 (%d is invalid)",NVerts);
+    }
+    else if (NDim==3)
+    {
+        if (NVerts==8 || NVerts==20)
+        {
+            C.change_dim      (NDim,20);
+            VTags.Resize      (20); // 20 vertices
+            BryTags.Resize    (6);  // 6 faces
+            VTags.SetValues   (0);
+            BryTags.SetValues (0);
+        }
+        else throw new Fatal("Block::_initialize: With NDim=3 Number of vertices must be either 8 or 20 (%d is invalid)",NVerts);
+    }
+    else throw new Fatal("Block::_initialize: NDim=%d is invalid",NDim);
+    SetNx (Nx);
+    SetNy (Ny);
+    SetNz (Nz);
+}
+
 std::ostream & operator<< (std::ostream & os, Block const & B)
 {
     os << "B={'ndim':" << B.NDim << ", 'tag':" << B.Tag;
@@ -386,6 +405,42 @@ std::ostream & operator<< (std::ostream & os, Block const & B)
     }
     return os;
 }
+
+#ifdef USE_BOOST_PYTHON
+
+inline void Block::PySet (BPy::dict const & Dat)
+{
+    // allocate data
+    NDim = BPy::extract<int>(Dat["ndim"])();
+    Tag  = BPy::extract<int>(Dat["tag"])();
+    Nx   = BPy::extract<int>(Dat["nx"])();
+    Ny   = BPy::extract<int>(Dat["ny"])();
+    Nz   = (Dat.has_key("nz") ? BPy::extract<int>(Dat["nz"])() : 0);
+    BPy::list const & verts = BPy::extract<BPy::list>(Dat["V"])();
+    size_t nverts = BPy::len(verts);
+    _initialize (nverts);
+
+    // read data
+    for (size_t i=0; i<nverts; ++i)
+    {
+        BPy::list const & line = BPy::extract<BPy::list>(verts[i])();
+        VTags[i] = BPy::extract<int   >(line[0])();
+        C(0,i)   = BPy::extract<double>(line[1])();
+        C(1,i)   = BPy::extract<double>(line[2])();  if (NDim==3)
+        C(2,i)   = BPy::extract<double>(line[3])();
+    }
+    if (Dat.has_key("brytags"))
+    {
+        BPy::list const & brytags = BPy::extract<BPy::list>(Dat["brytags"])();
+        for (size_t i=0; i<BryTags.Size(); ++i) BryTags[i] = BPy::extract<int>(brytags[i])();
+    }
+
+    // generate mid nodes
+    if (NDim==2 && nverts==4) GenMidNodes();
+    if (NDim==3 && nverts==8) GenMidNodes();
+}
+
+#endif
 
 
 //////////////////////////////////////////////////////////////////////////////////// Structured: Implementation /////////
@@ -889,6 +944,18 @@ inline void Structured::ShapeFunc (double r, double s, double t)
         N(19) = 0.25 *(1.0-r)  *(1.0+s)  *(1.0-t*t);
     }
 }
+
+#ifdef USE_BOOST_PYTHON
+
+inline void Structured::PyGenerate (BPy::list const & Blks, bool O2)
+{
+    size_t nblks = BPy::len(Blks);
+    Array<Block> blks(nblks);
+    for (size_t i=0; i<nblks; ++i) blks[i].PySet (BPy::extract<BPy::dict>(Blks[i])());
+    Generate (blks, O2);
+}
+
+#endif
 
 }; // namespace Mesh
 
