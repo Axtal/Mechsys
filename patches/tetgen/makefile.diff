@@ -1,7 +1,11 @@
 22c22
 < CXXFLAGS = -g
 ---
-> CXXFLAGS = -O2
+> CXXFLAGS = -O2 -fPIC
+28c28
+< PREDCXXFLAGS = -O0
+---
+> PREDCXXFLAGS = -O0 -fPIC
 55a56,57
 > all: tetlib
 > 
