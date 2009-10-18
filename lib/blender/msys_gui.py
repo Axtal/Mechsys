@@ -86,22 +86,27 @@ def background():
     BGL.glClearColor (0.725, 0.725, 0.725, 0.0)
     BGL.glClear      (Blender.BGL.GL_COLOR_BUFFER_BIT)
 
-def caption1(c,r,w,rh, lab, evt_showhide,c0=0):
+def caption1(c,r,w,rh, lab, c0, toggle_status,toggle_callback):
     caption1_clr      ()
     BGL.glRecti       (c, r, c+w, r+int(1.3*rh))
     BGL.glColor3f     (1.0, 1.0, 1.0)
     BGL.glRasterPos2i (c+5, r+5)
-    #Draw.Text         (lab)
-    #Draw.PushButton   ('Show/Hide', evt_showhide, c+w-5-70, r+3, 70, rh-4, 'Show/Hide this box')
-    Draw.PushButton   (lab, evt_showhide, c0+3, r+3, 80, rh, lab)
+    Draw.Toggle       (lab, 0, c0+3, r+3, 80, rh, toggle_status, lab, toggle_callback)
 
-def box1_in(W,cg,rh, c,r,w,h):
+def caption1_(c,r,w,rh, lab):
+    caption1_clr      ()
+    BGL.glRecti       (c, r, c+w, r+int(1.0*rh))
+    BGL.glColor3f     (1.0, 1.0, 1.0)
+    BGL.glRasterPos2i (c+5, r+5)
+    Draw.Text         (lab)
+
+def box1_in(W,cg,rh,rg, c,r,w,h):
     box1_clr      ()
     BGL.glRecti   (c,r-h,c+w,r)
-    return r-2*rh, c+cg, W-2*(c+cg)
+    return r-rh-rg, c+cg, W-2*(c+cg)
 
-def box1_out(W,cg,rh, c,r):
-    return r-rh, c-cg, W-2*(c-cg)
+def box1_out(W,cg,rh,rg, c,r):
+    return r-rh-rg, c-cg, W-2*(c-cg)
 
 def caption2(c,r,w,rh, lab):
     caption2_clr      ()
@@ -129,18 +134,18 @@ def caption2__(c,r,w,rh, lab, evt_add,evt_del,evt_delall):
     Draw.PushButton   ('Delete',     evt_del,    c+w-5-60-80,    r+2, 60, rh-4, 'Delete')
     Draw.PushButton   ('Delete all', evt_delall, c+w-5-80,       r+2, 80, rh-4, 'Delete all ')
 
-def box2_in(W,cg,rh, c,r,w,h):
+def box2_in(W,cg,rh,rg, c,r,w,h):
     box2_clr      ()
     BGL.glRecti   (c,r-h,c+w,r)
-    return r-2*rh, c+cg, W-2*(c+cg)
+    return r-rh-rg, c+cg, W-2*(c+cg)
 
-def box2__in(W,cg,rh, c,r,w,h):
+def box2__in(W,cg,rh,rg, c,r,w,h):
     box2_clr      ()
     BGL.glRecti   (c,r-h,c+w,r)
-    return r-rh, c+cg, W-2*(c+cg)
+    return r-rg, c+cg, W-2*(c+cg)
 
-def box2_out(W,cg,rh, c,r):
-    return r-2*rh, c-cg, W-2*(c-cg)
+def box2_out(W,cg,rh,rg, c,r):
+    return r-rh-rg, c-cg, W-2*(c-cg)
 
 def box2__out(W,cg,rh, c,r):
     return r-rh, c-cg, W-2*(c-cg)
