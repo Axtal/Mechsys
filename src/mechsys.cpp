@@ -36,10 +36,21 @@ namespace BPy = boost::python;
 #include "util/fatal.h"
 #include "mesh/mesh.h"
 #include "mesh/structured.h"
+#include "mesh/unstructured.h"
 #include "fem/element.h"
 #include "fem/rod.h"
 #include "fem/beam.h"
 
+// overloadings
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU, WriteVTU,   1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY, WriteMPY,   1, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate, PyGenerate, 1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,   GenBox,     0, 7)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenQRing, GenQRing,   0, 9)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate, Generate,   0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,   GenBox,     0, 5)
+
+// module
 BOOST_PYTHON_MODULE (mechsys)
 {
 
@@ -64,12 +75,24 @@ BPy::class_<Mesh::Block>("Block")
 
 // Generic
 BPy::class_<Mesh::Generic>("Generic","generic mesh", BPy::init<int>())
+    .def("WriteVTU", &Mesh::Generic::WriteVTU, MG_WriteVTU())
+    .def("WriteMPY", &Mesh::Generic::WriteMPY, MG_WriteMPY())
     .def(BPy::self_ns::str(BPy::self))
     ;
 
 // Structured
 BPy::class_<Mesh::Structured, BPy::bases<Mesh::Generic> >("Structured","structured mesh", BPy::init<int>())
-    .def("Generate", &Mesh::Structured::PyGenerate)
+    .def("Generate", &Mesh::Structured::PyGenerate, MS_Generate())
+    .def("GenBox",   &Mesh::Structured::GenBox,     MS_GenBox())
+    .def("GenQRing", &Mesh::Structured::GenQRing,   MS_GenQRing())
+    .def(BPy::self_ns::str(BPy::self))
+    ;
+
+// Unstructured
+BPy::class_<Mesh::Unstructured, BPy::bases<Mesh::Generic> >("Unstructured","Unstructured mesh", BPy::init<int>())
+    .def("Set",      &Mesh::Unstructured::PySet)
+    .def("Generate", &Mesh::Unstructured::Generate, MU_Generate())
+    .def("GenBox",   &Mesh::Unstructured::GenBox,   MU_GenBox())
     .def(BPy::self_ns::str(BPy::self))
     ;
 

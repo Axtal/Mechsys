@@ -223,6 +223,10 @@ public:
     // Data
     TriIO Tin; ///< Triangle structure: input PSLG
     TetIO Pin; ///< Tetgen structure: input PLC
+
+#ifdef USE_BOOST_PYTHON
+    void PySet (BPy::dict const & Dat);
+#endif
 };
 
 size_t Unstructured::FEM2TriPoint[] = {0,1,2,5,3,4};
@@ -691,6 +695,152 @@ inline void Unstructured::GenBox (bool O2, double MaxVolume, double Lx, double L
 
     Generate (O2);
 }
+
+#ifdef USE_BOOST_PYTHON
+
+inline void Unstructured::PySet (BPy::dict const & Dat)
+{
+    BPy::list const & pts = BPy::extract<BPy::list>(Dat["P"])(); // points
+    BPy::list const & rgs = BPy::extract<BPy::list>(Dat["R"])(); // regions
+    BPy::list const & hls = BPy::extract<BPy::list>(Dat["H"])(); // holes
+    BPy::list const & con = (NDim==2 ? BPy::extract<BPy::list>(Dat["S"])() : BPy::extract<BPy::list>(Dat["F"])()); /// segments/facets (connectivity)
+
+    size_t NPoints           = BPy::len(pts);
+    size_t NSegmentsOrFacets = BPy::len(con);
+    size_t NRegions          = BPy::len(rgs);
+    size_t NHoles            = BPy::len(hls);
+
+    if (NDim==2)
+    {
+        // erase previous PSLG
+        TriDeallocateAll (Tin);
+
+        // allocate PSLG
+        TriAllocate (NPoints, NSegmentsOrFacets, NRegions, NHoles, Tin);
+
+        // read points
+        for (size_t i=0; i<NPoints; ++i)
+        {
+            BPy::list const & line = BPy::extract<BPy::list>(pts[i])();
+            Tin.pointmarkerlist[i] = BPy::extract<int   >(line[0])(); // tag
+            Tin.pointlist[i*2  ]   = BPy::extract<double>(line[1])(); // x
+            Tin.pointlist[i*2+1]   = BPy::extract<double>(line[2])(); // y
+        }
+
+        // set regions
+        for (size_t i=0; i<NRegions; ++i)
+        {
+            BPy::list const & line = BPy::extract<BPy::list>(rgs[i])();
+            Tin.regionlist[i*4  ] = BPy::extract<double>(line[1])(); // x
+            Tin.regionlist[i*4+1] = BPy::extract<double>(line[2])(); // y
+            Tin.regionlist[i*4+2] = BPy::extract<int   >(line[0])(); // tag;
+            Tin.regionlist[i*4+3] = BPy::extract<double>(line[3])(); // MaxArea;
+        }
+
+        // set holes
+        for (size_t i=0; i<NHoles; ++i)
+        {
+            BPy::list const & line = BPy::extract<BPy::list>(hls[i])();
+            Tin.holelist[i*2  ] = BPy::extract<double>(line[0])(); // x
+            Tin.holelist[i*2+1] = BPy::extract<double>(line[1])(); // y
+        }
+
+        // set segments
+        for (size_t i=0; i<NSegmentsOrFacets; ++i)
+        {
+            BPy::list const & line   = BPy::extract<BPy::list>(con[i])();
+            Tin.segmentmarkerlist[i] = BPy::extract<int>(line[0])(); // ETag;
+            Tin.segmentlist[i*2  ]   = BPy::extract<int>(line[1])(); // L;
+            Tin.segmentlist[i*2+1]   = BPy::extract<int>(line[2])(); // R;
+        }
+    }
+    else if (NDim==3)
+    {
+        // erase previous PLC
+        Pin.deinitialize ();
+
+        // allocate PLC
+        Pin.initialize ();
+        
+        // points
+        Pin.firstnumber     = 0;
+        Pin.numberofpoints  = NPoints;
+        Pin.pointlist       = new double [NPoints*3];
+        Pin.pointmarkerlist = new int [NPoints];
+
+        // facets
+        Pin.numberoffacets  = NSegmentsOrFacets;
+        Pin.facetlist       = new TetIO::facet [NSegmentsOrFacets];
+        Pin.facetmarkerlist = new int [NSegmentsOrFacets];
+
+        // regions
+        Pin.numberofregions = NRegions;
+        Pin.regionlist      = new double [NRegions*5];
+
+        // holes
+        Pin.numberofholes = NHoles;
+        Pin.holelist      = new double [NHoles*3];
+
+        // read points
+        for (size_t i=0; i<NPoints; ++i)
+        {
+            BPy::list const & line = BPy::extract<BPy::list>(pts[i])();
+            Pin.pointmarkerlist[i] = BPy::extract<int   >(line[0])(); // tag
+            Pin.pointlist[i*3  ]   = BPy::extract<double>(line[1])(); // x
+            Pin.pointlist[i*3+1]   = BPy::extract<double>(line[2])(); // y
+            Pin.pointlist[i*3+2]   = BPy::extract<double>(line[3])(); // z
+        }
+
+        // set regions
+        for (size_t i=0; i<NRegions; ++i)
+        {
+            BPy::list const & line = BPy::extract<BPy::list>(rgs[i])();
+            Pin.regionlist[i*4  ] = BPy::extract<double>(line[1])(); // x
+            Pin.regionlist[i*4+1] = BPy::extract<double>(line[2])(); // y
+            Pin.regionlist[i*4+2] = BPy::extract<double>(line[3])(); // z
+            Pin.regionlist[i*4+3] = BPy::extract<int   >(line[0])(); // tag
+            Pin.regionlist[i*4+4] = BPy::extract<double>(line[4])(); // MaxVolume
+        }
+
+        // set holes
+        for (size_t i=0; i<NHoles; ++i)
+        {
+            BPy::list const & line = BPy::extract<BPy::list>(hls[i])();
+            Pin.holelist[i*2  ] = BPy::extract<double>(line[0])(); // x
+            Pin.holelist[i*2+1] = BPy::extract<double>(line[1])(); // y
+            Pin.holelist[i*2+2] = BPy::extract<double>(line[2])(); // z
+        }
+
+        // set facets
+        for (size_t i=0; i<NSegmentsOrFacets; ++i)
+        {
+            BPy::list const & line = BPy::extract<BPy::list>(con[i])();
+            Pin.facetmarkerlist[i] = BPy::extract<int      >(line[0])(); // FTag
+            BPy::list const & poly = BPy::extract<BPy::list>(line[1])(); // polygons
+            size_t NPolygons       = len(poly);
+            TetIO::facet * f       = &Pin.facetlist[i];
+            f->numberofpolygons    = NPolygons;
+            f->polygonlist         = new TetIO::polygon [NPolygons];
+            f->numberofholes       = 0;
+            f->holelist            = NULL;
+
+            // read polygons
+            for (size_t j=0; j<NPolygons; ++j)
+            {
+                BPy::list const & l = BPy::extract<BPy::list>(poly[j])();
+                TetIO::polygon * p  = &f->polygonlist[j];
+                int npoints         = BPy::len(l);
+                p->numberofvertices = npoints;
+                p->vertexlist       = new int [npoints];
+                for (int k=0; k<npoints; ++k)
+                    p->vertexlist[k] = BPy::extract<int>(l[k])(); // id
+            }
+        }
+    }
+    else throw new Fatal("Unstructured::Set: NDim must be either 2 or 3. NDim==%d is invalid",NDim);
+}
+
+#endif
 
 }; // namespace Mesh
 

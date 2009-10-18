@@ -185,7 +185,7 @@ public:
     Vec_t N; ///< Shape functions
 
 #ifdef USE_BOOST_PYTHON
-    void PyGenerate (BPy::list const & Blks, bool O2);
+    void PyGenerate (BPy::list const & Blks, bool O2=false);
 #endif
 };
 
