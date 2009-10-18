@@ -2,7 +2,7 @@ from numpy import *
 from pylab import *
 from data_handler import *
 
-test = 1
+test = 2
 
 if test==1:
     #dat = read_table("owen_hinton_nod_2.res")

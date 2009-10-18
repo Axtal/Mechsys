@@ -100,6 +100,7 @@ int main(int argc, char **argv) try
     // solver
     FEM::Solver sol(dom, &DbgFun, &dat);
     sol.Scheme = FEM::Solver::NR_t;
+    sol.TolR   = 1.0e-5;
 
     // solve
     sol.Solve (weights.Size(), &weights);
