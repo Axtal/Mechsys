@@ -49,6 +49,7 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,   GenBox,     0, 7)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenQRing, GenQRing,   0, 9)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate, Generate,   0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,   GenBox,     0, 5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY, WritePLY,   1, 2)
 
 // module
 BOOST_PYTHON_MODULE (mechsys)
@@ -93,6 +94,7 @@ BPy::class_<Mesh::Unstructured, BPy::bases<Mesh::Generic> >("Unstructured","Unst
     .def("Set",      &Mesh::Unstructured::PySet)
     .def("Generate", &Mesh::Unstructured::Generate, MU_Generate())
     .def("GenBox",   &Mesh::Unstructured::GenBox,   MU_GenBox())
+    .def("WritePLY", &Mesh::Unstructured::WritePLY, MU_WritePLY())
     .def(BPy::self_ns::str(BPy::self))
     ;
 

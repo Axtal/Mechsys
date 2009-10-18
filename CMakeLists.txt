@@ -60,7 +60,7 @@ IF(MAKE_OPTIMIZED)
 	ADD_DEFINITIONS(-O3)
 ENDIF(MAKE_OPTIMIZED)
 
-ADD_DEFINITIONS(-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
+ADD_DEFINITIONS(-fPIC -fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 
 INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
 

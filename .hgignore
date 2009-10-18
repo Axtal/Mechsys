@@ -13,6 +13,7 @@ install_manifest.txt
 *.o
 .cproject
 .project
+.pydevproject
 .DS_Store
 *.pvd
 *.vtu

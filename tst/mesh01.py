@@ -15,7 +15,7 @@ def tst1():
     mesh = Structured(2)       # 2D
     mesh.Generate (blks, True) # O2
     mesh.WriteVTU ("mesh01_quad_py")
-    print   " File <mesh01_quad_py.vtu> generated\n"
+    print   " File <mesh01_quad_py.vtu> generated"
 
 # 2D: structured
 def tst2():
@@ -23,14 +23,14 @@ def tst2():
     mesh.GenQRing (True, 4, 1, 100., 200., 6)    # O2 Nx Ny r R Nb
     mesh.WriteMPY ("mesh01_quad_ring_py", False) # OnlyMesh
     mesh.WriteVTU ("mesh01_quad_ring_py", 0)     # VolSurfOrBoth
-    print   " File <mesh01_quad_ring_py.vtu> generated\n"
+    print   " File <mesh01_quad_ring_py.vtu> generated"
 
 # 3D: structured
 def tst3():
     mesh = Structured(3)  # 3D
     mesh.GenBox   (True)  # O2
     mesh.WriteVTU ("mesh01_hex_box_py", 0) # VolSurfOrBoth
-    print   " File <mesh01_hex_box_py.vtu> generated\n"
+    print   " File <mesh01_hex_box_py.vtu> generated"
 
 # 2D: unstructured
 def tst4():
@@ -55,16 +55,16 @@ def tst4():
                     [  0,  7, 4]]})         # tag, L, R
     mesh.Generate ()
     mesh.WriteVTU ("mesh01_tri_py")
-    print   " File <mesh01_tri_py.vtu> generated\n"
+    print   " File <mesh01_tri_py.vtu> generated"
 
 # 3D: unstructured
 def tst5():
     mesh = Unstructured(3)
-    mesh.Set ({'P':[[-1., 0.0, 0.0, 0.0],
-                    [-2., 1.0, 0.0, 0.0],
-                    [-3., 0.0, 1.0, 0.0],
-                    [-4., 0.0, 0.0, 1.0]],
-               'R':[[-1., 0.1, 0.1, 0.1, -1.0]],
+    mesh.Set ({'P':[[-1, 0.0, 0.0, 0.0],
+                    [-2, 1.0, 0.0, 0.0],
+                    [-3, 0.0, 1.0, 0.0],
+                    [-4, 0.0, 0.0, 1.0]],
+               'R':[[-1, 0.1, 0.1, 0.1, -1.0]],
                'H':[],
                'F':[[-1, [[0, 2, 3]]],
                     [-2, [[0, 3, 1]]],
@@ -72,14 +72,14 @@ def tst5():
                     [-4, [[1, 2, 3]]]]})
     mesh.Generate (True) # O2
     mesh.WriteVTU ("mesh01_1tet_py")
-    print   " File <mesh01_1tet_py.vtu> generated\n"
+    print   " File <mesh01_1tet_py.vtu> generated"
 
 # 3D: unstructured
 def tst6():
     mesh = Unstructured(3)
     mesh.GenBox   (True, 0.1) # O2 MaxVolume
     mesh.WriteVTU ("mesh01_tet_box_py")
-    print "   File <mesh01_tet_box_py.vtu> generated\n"
+    print "   File <mesh01_tet_box_py.vtu> generated"
 
 # 3D: unstructured
 def tst7():
@@ -117,7 +117,7 @@ def tst7():
     mesh.Generate ()
     mesh.WritePLY ("mesh01_tet_hole_py")
     mesh.WriteVTU ("mesh01_tet_hole_py")
-    print   " File <mesh01_tet_hole_py.vtu> generated\n"
+    print   " File <mesh01_tet_hole_py.vtu> generated"
 
 # main
 if __name__=='__main__':
