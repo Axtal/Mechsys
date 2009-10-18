@@ -45,11 +45,11 @@ int main(int argc, char **argv) try
     mesh.SetVert  (1, -200, 1500, 3500);
     mesh.SetVert  (2,    0,  0.0, 5000);
     mesh.SetVert  (3, -100, 5000, 5000);
-    mesh.SetCell  (0,   -1, /*NVerts*/2, 0, 1);
-    mesh.SetCell  (1,   -1, /*NVerts*/2, 1, 3);
-    mesh.SetCell  (2,   -2, /*NVerts*/2, 0, 2);
-    mesh.SetCell  (3,   -2, /*NVerts*/2, 2, 3);
-    mesh.SetCell  (4,   -3, /*NVerts*/2, 1, 2);
+    mesh.SetCell  (0,   -1, Array<int>(0, 1));
+    mesh.SetCell  (1,   -1, Array<int>(1, 3));
+    mesh.SetCell  (2,   -2, Array<int>(0, 2));
+    mesh.SetCell  (3,   -2, Array<int>(2, 3));
+    mesh.SetCell  (4,   -3, Array<int>(1, 2));
     mesh.WriteMPY ("ex14");
     //cout << mesh << endl;
 
@@ -123,7 +123,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout);
+    dom.PrintResults ("%11.6g");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -149,6 +149,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("N",     1.0e-10);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

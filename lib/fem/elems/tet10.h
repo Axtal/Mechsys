@@ -191,7 +191,7 @@ inline void Tet10::FaceShape(double r, double s) const
     FN(5) = 4.0*s*(1.0-(r+s));
 }
 
-inline void Tet10::FaceDerivs(double r, double s, LinAlg::Matrix<double> & FaceDerivs) const
+inline void Tet10::FaceDerivs(double r, double s) const
 {
     /*           _     _ T
      *          |  dNi  |

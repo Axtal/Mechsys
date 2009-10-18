@@ -233,7 +233,7 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
     //cout << dom;
-    //dom.PrintResults (cout, Util::_12_6);
+    //dom.PrintResults ("%11.6g");
 
     // draw elements with IPs
     std::ofstream of("ex79_elements.draw", std::ios::out);
@@ -271,7 +271,7 @@ int main(int argc, char **argv) try
     ele_tol.Set("sx sy sxy", 2.0e-1,2.0e-1,1.0e-1);
 
     // return error flag
-           dom.CheckError (cout, elem_sol, ele_tol);
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    dom.CheckErrorIP (elem_sol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

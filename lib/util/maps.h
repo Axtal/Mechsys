@@ -65,6 +65,10 @@ public:
 
     // Data
     Array<String> Keys;
+
+#ifdef USE_BOOST_PYTHON
+    void PySet (BPy::dict const & Pairs);
+#endif
 };
 
 
@@ -196,6 +200,10 @@ public:
     // Data
     size_t        NRows;
     Array<String> Keys;
+
+#ifdef USE_BOOST_PYTHON
+    void PySet (BPy::list const & StrKeys, BPy::list const & Values);
+#endif
 };
 
 
@@ -432,6 +440,20 @@ inline void SDPair::Val2Key (double Val, String & Key, double Tol) const
         throw new Fatal("SDPair::Val2Key: Could not find Val=%g in map: %s",Val,oss.str().c_str());
     }
 }
+
+#ifdef USE_BOOST_PYTHON
+inline void SDPair::PySet (BPy::dict const & Pairs)
+{
+    BPy::object const & keys = Pairs.iterkeys();
+    BPy::object const & vals = Pairs.itervalues();
+    for (int i=0; i<BPy::len(Pairs); ++i)
+    {
+        char const * key = BPy::extract<char const *>(keys.attr("next")());
+        double       val = BPy::extract<double      >(vals.attr("next")());
+        Set (key, val);
+    }
+}
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////////// SIPair: Implementation /////
@@ -696,20 +718,19 @@ inline bool Dict::HasKey (int Key) const
 }
 
 #ifdef USE_BOOST_PYTHON
-
 inline void Dict::PySet (int Key, BPy::dict const & Pairs)
 {
     BPy::object const & keys = Pairs.iterkeys();
     BPy::object const & vals = Pairs.itervalues();
     for (int i=0; i<BPy::len(Pairs); ++i)
     {
-        String key  (BPy::extract<char const *>(keys.attr("next")()));
-        double val = BPy::extract<double      >(vals.attr("next")());
-        Set (Key, key.CStr(), val);
+        char const * key = BPy::extract<char const *>(keys.attr("next")());
+        double       val = BPy::extract<double      >(vals.attr("next")());
+        Set (Key, key, val);
     }
 }
-
 #endif
+
 
 //////////////////////////////////////////////////////////////////////////////////// Table: Implementation /////
 
@@ -778,6 +799,32 @@ inline void Table::SetVal (String const & Key, size_t iRow, double Value)
     }
     p->second[iRow] = Value;
 }
+
+#ifdef USE_BOOST_PYTHON
+inline void Table::PySet (BPy::list const & StrKeys, BPy::list const & Values)
+{
+    NRows = BPy::len(Values);
+
+    // retrieve keys and initialize table
+    size_t nkeys = BPy::len(StrKeys);
+    for (size_t i=0; i<nkeys; ++i)
+    {
+        char const * key = BPy::extract<char const *>(StrKeys[i])();
+        if (Keys.Find(key)<0) Keys.Push(key);
+        (*this)[key].Resize (NRows);
+    }
+
+    // read values
+    for (size_t i=0; i<NRows; ++i)
+    {
+        BPy::list const & line = BPy::extract<BPy::list>(Values[i])();
+        for (size_t j=0; j<Keys.Size(); ++j)
+        {
+            (*this)[Keys[j]][i] = BPy::extract<double>(line[j])();
+        }
+    }
+}
+#endif
 
 
 #endif // MECHSYS_MAPS_H

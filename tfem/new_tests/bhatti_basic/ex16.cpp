@@ -49,14 +49,13 @@ int main(int argc, char **argv) try
     mesh.SetVert   (3,    0, 2.0, 1.5, 0);
     mesh.SetVert   (4,    0, 4.0, 0.0, 0);
     mesh.SetVert   (5,    0, 4.0, 1.0, 0);
-    mesh.SetCell   (0,   -1, /*NVerts*/3, 0,2,3);
-    mesh.SetCell   (1,   -1, /*NVerts*/3, 3,1,0);
-    mesh.SetCell   (2,   -1, /*NVerts*/3, 2,4,5);
-    mesh.SetCell   (3,   -1, /*NVerts*/3, 5,3,2);
+    mesh.SetCell   (0,   -1, Array<int>(0,2,3));
+    mesh.SetCell   (1,   -1, Array<int>(3,1,0));
+    mesh.SetCell   (2,   -1, Array<int>(2,4,5));
+    mesh.SetCell   (3,   -1, Array<int>(5,3,2));
     mesh.SetBryTag (1, 0, -10);
     mesh.SetBryTag (3, 0, -10);
-    mesh.WriteVTU  ("ex16");
-    cout << mesh << endl;
+    mesh.WriteVTU  ("ex16_mesh");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -78,6 +77,7 @@ int main(int argc, char **argv) try
     dom.SetOutEles ("ex16", Array<int>(3,/*JustOne*/true));
 
     // check matrices
+    if (false)
     {
         double tol   = 1.0e-10;
         double error = 0.0;
@@ -133,11 +133,17 @@ int main(int argc, char **argv) try
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/10);
 
-    cout << dom << endl;
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout, Util::_12_6);
+    //cout << mesh << endl;
+    //cout << prps << endl;
+    //cout << mdls << endl;
+    //cout << inis << endl;
+    //cout << dom  << endl;
+    dom.PrintResults ("%11.6g");
+    dom.WriteMPY     ("ex16_mesh");
+    dom.WriteVTU     ("ex16");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -164,6 +170,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-12,1.0e-12,1.0e-15,1.0e-12, 1.0e-15,1.0e-15,1.0e-15,1.0e-15);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

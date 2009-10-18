@@ -46,8 +46,8 @@ int main(int argc, char **argv) try
     mesh.SetVert  (0, -100,  0.0,     0.0);
     mesh.SetVert  (1,    0,  L/sq2,   L/sq2);
     mesh.SetVert  (2, -100,  L/sq2+L, L/sq2);
-    mesh.SetCell  (0,   -1, /*NVerts*/2, 0, 1);
-    mesh.SetCell  (1,   -2, /*NVerts*/2, 1, 2);
+    mesh.SetCell  (0,   -1, Array<int>(0, 1));
+    mesh.SetCell  (1,   -2, Array<int>(1, 2));
     mesh.WriteMPY ("ex411", /*OnlyMesh*/false);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
@@ -100,7 +100,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout, Util::_20_15);
+    dom.PrintResults ("%11.6g");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -122,6 +122,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("N  V  M",  1.0e-14,1.0e-14,1.0e-15);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

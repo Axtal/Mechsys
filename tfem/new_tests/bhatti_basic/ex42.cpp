@@ -45,9 +45,9 @@ int main(int argc, char **argv) try
     mesh.SetVert  (1, -100, -1440, 1440,  0.0);
     mesh.SetVert  (2, -100,   0.0,  0.0,  0.0);
     mesh.SetVert  (3, -200,   0.0,  0.0, 2000);
-    mesh.SetCell  (0,   -1, /*NVerts*/2, 0, 3);
-    mesh.SetCell  (1,   -1, /*NVerts*/2, 1, 3);
-    mesh.SetCell  (2,   -2, /*NVerts*/2, 2, 3);
+    mesh.SetCell  (0,   -1, Array<int>(0, 3));
+    mesh.SetCell  (1,   -1, Array<int>(1, 3));
+    mesh.SetCell  (2,   -2, Array<int>(2, 3));
     //mesh.WriteVTU ("ex42");
     //cout << mesh << endl;
 
@@ -110,7 +110,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout);
+    dom.PrintResults ("%11.6g");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -134,6 +134,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("N",        1.0e-10);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

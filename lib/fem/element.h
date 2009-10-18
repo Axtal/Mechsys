@@ -354,9 +354,7 @@ Element * AllocElement(String const & Name, int NDim, Mesh::Cell const & Cell, M
 }; // namespace FEM
 
 #ifdef USE_BOOST_PYTHON
-
 double PyPROB (BPy::str const & Key) { return FEM::PROB(BPy::extract<char const *>(Key)()); }
-
 #endif
 
 #endif // MECHSYS_FEM_ELEMENT

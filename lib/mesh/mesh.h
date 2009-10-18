@@ -164,14 +164,14 @@ public:
     void ReadMesh   (char const * FileKey);                               ///< (.mesh) Erase old mesh and read mesh from python file
     void SetSize    (size_t NumVerts, size_t NumCells);                   ///< Erase old mesh and set number of vertices
     void SetVert    (int iVert, int Tag, double X, double Y, double Z=0); ///< Set vertex
-    void SetCell    (int iCell, int Tag, size_t NVerts, ...);             ///< Set element ... => connectivity
+    void SetCell    (int iCell, int Tag, Array<int> const & Con);         ///< Set element ... => connectivity
     void SetBryTag  (int iCell, int iEdgeFace, int Tag);                  ///< Set element's edge or face tag
     void FindNeigh  ();                                                   ///< Find neighbours of each cell
     void GenO2Verts ();                                                   ///< Generate O2 (mid) vertices
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
 
     // Method to extend mesh
-    void AddLinCells (size_t NItems, ...); ///< Set linear cells given edge tags (edg_tag,edg_tag,...) or pair of vertices (v0,v1,new_elem_tag, v0,v1,new_elem_tag, ...) or both
+    void AddLinCells (Array<int> const & IDsOrTags); ///< Set linear cells given edge tags (edg_tag,edg_tag,...) or pair of vertices (v0,v1,new_elem_tag, v0,v1,new_elem_tag, ...) or both
     void AddPin      (int VertexIdOrTag);
 
     // Methods
@@ -190,6 +190,11 @@ public:
     Array<Cell*>   TgdCells;  ///< Tagged Cells
     BryCell_t      Bry2Cells; ///< map: bry (edge/face ids) => neighbours cells
     Pin_t          Pins;      ///< Pins
+
+#ifdef USE_BOOST_PYTHON
+    void PySetCell     (int iCell, int Tag, BPy::list const Con) { SetCell (iCell, Tag, Array<int>(Con)); }
+    void PyAddLinCells (BPy::list const & IDsOrTags)             { AddLinCells (Array<int>(IDsOrTags)); }
+#endif
 };
 
 
@@ -435,8 +440,11 @@ inline void Generic::SetVert (int i, int Tag, double X, double Y, double Z)
     if (Tag<0) TgdVerts.Push (Verts[i]);
 }
 
-inline void Generic::SetCell (int i, int Tag, size_t NVerts, ...)
+inline void Generic::SetCell (int i, int Tag, Array<int> const & Con)
 {
+    // number of vertices
+    size_t NVerts = Con.Size();
+
     // check
     if (NDim==2) { if (NVertsToVTKCell2D[NVerts]<0) throw new Fatal("Generic::SetCell: In two-dimensions (NDim=2), Cell=%d with Tag=%d has invalid NVerts=%d",i,Tag,NVerts); }
     else         { if (NVertsToVTKCell3D[NVerts]<0) throw new Fatal("Generic::SetCell: In three-dimensions (NDim=3), Cell=%d with Tag=%d has invalid NVerts=%d",i,Tag,NVerts); }
@@ -448,19 +456,16 @@ inline void Generic::SetCell (int i, int Tag, size_t NVerts, ...)
     Cells[i]->V.Resize (NVerts);
 
     // set connectivity
-    double    sum_z = 0.0;
-    va_list   arg_list;
-    va_start (arg_list, NVerts);
+    double sum_z = 0.0;
     for (size_t j=0; j<NVerts; ++j)
     {
-        int ivert = va_arg(arg_list,int);
+        int ivert = Con[j];
         if (Verts[ivert]==NULL) throw new Fatal("Generic::SetCell: Vert=%d of Cell %d, %d could not be found. Vertices must be set (with SetVert) before calling this method",ivert,i,Tag);
         Cells[i]->V[j] = Verts[ivert];
         Share sha = {Cells[i],j};
         Verts[ivert]->Shares.Push (sha);
         if (NDim==3) sum_z += Verts[ivert]->C(2);
     }
-    va_end (arg_list);
 
     // check connectivity
     if (NDim==2 && Cells[i]->V.Size()>=3)
@@ -476,24 +481,26 @@ inline void Generic::SetCell (int i, int Tag, size_t NVerts, ...)
     if (NDim==3 and fabs(sum_z)<1.0e-10) throw new Fatal("Generic::SetCell: In 3D, the sum of all z coordinates of a Cell (%d, %d) must not be zero",i,Tag);
 }
 
-inline void Generic::AddLinCells (size_t NItems, ...)
+inline void Generic::AddLinCells (Array<int> const & IDsOrTags)
 {
     if (NDim==3) throw new Fatal("Generic::AddLinCells: Method not available for 3D yet");
 
-    va_list   arg_list;
-    va_start (arg_list, NItems);
-    for (size_t i=0; i<NItems; ++i)
+    bool with_tags = (IDsOrTags[0]<0 ? true : false);
+    size_t  nitems = (with_tags ? IDsOrTags.Size() : IDsOrTags.Size()/3);
+
+    size_t idx = 0;
+    for (size_t i=0; i<nitems; ++i)
     {
-        int etag_or_v0 = va_arg(arg_list,int);
-        if (etag_or_v0<0) // tag given
+        if (with_tags) // tag given
         {
+            int  etag  = IDsOrTags[idx];
             bool found = false;
             for (size_t j=0; j<TgdCells.Size(); ++j)
             {
                 BryTag_t const & eftags = TgdCells[j]->BryTags;
                 for (BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
                 {
-                    if (etag_or_v0==p->second)
+                    if (etag==p->second)
                     {
                         int    eid    = p->first;
                         size_t nv     = TgdCells[j]->V.Size();
@@ -504,29 +511,30 @@ inline void Generic::AddLinCells (size_t NItems, ...)
                         if (ivert2<0)
                         {
                             Cells.Push (NULL);
-                            SetCell (Cells.Size()-1, etag_or_v0, 2, ivert0, ivert1);
+                            SetCell (Cells.Size()-1, etag, Array<int>(ivert0,ivert1));
                         }
                         else
                         {
-                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag_or_v0, 2, ivert0, ivert2);
-                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag_or_v0, 2, ivert2, ivert1);
+                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag, Array<int>(ivert0,ivert2));
+                            Cells.Push (NULL);  SetCell (Cells.Size()-1, etag, Array<int>(ivert2,ivert1));
                         }
                         found  = true;
                         break;
                     }
                 }
             }
-            if (!found) throw new Fatal("Generic::SetLinCells: Could not find cell with edge with tag = %d",etag_or_v0);
+            if (!found) throw new Fatal("Generic::SetLinCells: Could not find cell with edge with tag = %d",etag);
+            idx++;
         }
         else // vertices IDs given
         {
-            int ivert1 = va_arg(arg_list,int);
-            int tag    = va_arg(arg_list,int);
+            int ivert0 = IDsOrTags[idx];  idx++;
+            int ivert1 = IDsOrTags[idx];  idx++;
+            int tag    = IDsOrTags[idx];  idx++;
             Cells.Push (NULL);
-            SetCell (Cells.Size()-1, tag, 2, etag_or_v0, ivert1);
+            SetCell (Cells.Size()-1, tag, Array<int>(ivert0,ivert1));
         }
     }
-    va_end (arg_list);
 }
 
 inline void Generic::AddPin (int VertIdOrTag)

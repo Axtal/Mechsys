@@ -96,4 +96,8 @@ Model * AllocModel(String const & Name, int NDim, SDPair const & Prms)
     return ptr;
 }
 
+#ifdef USE_BOOST_PYTHON
+double PyMODEL (BPy::str const & Key) { return MODEL(BPy::extract<char const *>(Key)()); }
+#endif
+
 #endif // MECHSYS_MODEL_H

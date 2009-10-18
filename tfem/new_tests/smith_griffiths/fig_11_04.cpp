@@ -78,9 +78,9 @@ int main(int argc, char **argv) try
     mesh.SetVert    (15,    0,    L,    H, 0);
     mesh.SetVert    (16,    0,    L,    h, 0);
     mesh.SetVert    (17, -100,    L,  0.0, 0);
-    mesh.SetCell    ( 0,   -1, /*NVerts*/8, 2,7,5,0, 4,6,3,1);
-    mesh.SetCell    ( 1,   -1, /*NVerts*/8, 7,12,10,5, 9,11,8,6);
-    mesh.SetCell    ( 2,   -1, /*NVerts*/8, 12,17,15,10, 14,16,13,11);
+    mesh.SetCell    ( 0,   -1, Array<int>( 2, 7, 5, 0,  4, 6, 3, 1));
+    mesh.SetCell    ( 1,   -1, Array<int>( 7,12,10, 5,  9,11, 8, 6));
+    mesh.SetCell    ( 2,   -1, Array<int>(12,17,15,10, 14,16,13,11));
     mesh.SetBryTag  ( 0, 3, -10);
     mesh.WriteMPY   ("fig_11_04",/*OnlyMesh*/false);
     

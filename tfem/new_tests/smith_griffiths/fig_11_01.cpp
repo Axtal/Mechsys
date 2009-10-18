@@ -54,7 +54,7 @@ int main(int argc, char **argv) try
     mesh.SetSize    (2/*verts*/, 1/*cells*/);
     mesh.SetVert    ( 0, -100,  0.0,  0.0, 0);
     mesh.SetVert    ( 1, -200,  1.0,  0.0, 0);
-    mesh.SetCell    ( 0,   -1, /*NVerts*/2, 0,1);
+    mesh.SetCell    ( 0,   -1, Array<int>(0,1));
     mesh.WriteMPY   ("fig_11_01",/*OnlyMesh*/false);
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////

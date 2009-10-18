@@ -35,6 +35,10 @@ public:
     Array (size_t Size) : _values(NULL) { Resize(Size); } ///< Alternative constructor
     Array (Array<Value_T> const & Other);                 ///< Copy constructor (needed when using Array< Array<...> >)
 
+#ifdef USE_BOOST_PYTHON
+    Array (BPy::list const & Dat);
+#endif
+
     // Alternative constructors
     Array (Value_T const & v0, bool JustOne);
     Array (Value_T const & v0, Value_T const & v1);
@@ -46,6 +50,16 @@ public:
     Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7);
     Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8);
     Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16, Value_T const & v17);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16, Value_T const & v17, Value_T const & v18);
+    Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16, Value_T const & v17, Value_T const & v18, Value_T const & v19);
 
     /** Destructor. */
     ~Array() { if (_values!=NULL) delete [] _values; }
@@ -116,6 +130,20 @@ inline Array<Value_T>::Array(Array<Value_T> const & Other)
     for (size_t i=0; i<_size; ++i)
         _values[i] = Other[i];
 }
+
+#ifdef USE_BOOST_PYTHON
+
+template<typename Value_T>
+inline Array<Value_T>::Array (BPy::list const & Dat)
+    : _values(NULL)
+{
+    size_t size = BPy::len(Dat);
+    Resize (size);
+    for (size_t i=0; i<size; ++i)
+        _values[i] = BPy::extract<Value_T>(Dat[i])();
+}
+
+#endif
 
 template<typename Value_T>
 inline Array<Value_T>::Array (Value_T const & v0, bool JustOne)
@@ -240,6 +268,231 @@ inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T co
     _values[7] = v7;
     _values[8] = v8;
     _values[9] = v9;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10)
+    : _values(NULL)
+{
+    Resize(11);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11)
+    : _values(NULL)
+{
+    Resize(12);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12)
+    : _values(NULL)
+{
+    Resize(13);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13)
+    : _values(NULL)
+{
+    Resize(14);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+    _values[13] = v13;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14)
+    : _values(NULL)
+{
+    Resize(15);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+    _values[13] = v13;
+    _values[14] = v14;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15)
+    : _values(NULL)
+{
+    Resize(16);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+    _values[13] = v13;
+    _values[14] = v14;
+    _values[15] = v15;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16)
+    : _values(NULL)
+{
+    Resize(17);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+    _values[13] = v13;
+    _values[14] = v14;
+    _values[15] = v15;
+    _values[16] = v16;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16, Value_T const & v17)
+    : _values(NULL)
+{
+    Resize(18);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+    _values[13] = v13;
+    _values[14] = v14;
+    _values[15] = v15;
+    _values[16] = v16;
+    _values[17] = v17;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16, Value_T const & v17, Value_T const & v18)
+    : _values(NULL)
+{
+    Resize(19);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+    _values[13] = v13;
+    _values[14] = v14;
+    _values[15] = v15;
+    _values[16] = v16;
+    _values[17] = v17;
+    _values[18] = v18;
+}
+
+template<typename Value_T>
+inline Array<Value_T>::Array (Value_T const & v0, Value_T const & v1, Value_T const & v2, Value_T const & v3, Value_T const & v4, Value_T const & v5, Value_T const & v6, Value_T const & v7, Value_T const & v8, Value_T const & v9, Value_T const & v10, Value_T const & v11, Value_T const & v12, Value_T const & v13, Value_T const & v14, Value_T const & v15, Value_T const & v16, Value_T const & v17, Value_T const & v18, Value_T const & v19)
+    : _values(NULL)
+{
+    Resize(20);
+    _values[ 0] = v0;
+    _values[ 1] = v1;
+    _values[ 2] = v2;
+    _values[ 3] = v3;
+    _values[ 4] = v4;
+    _values[ 5] = v5;
+    _values[ 6] = v6;
+    _values[ 7] = v7;
+    _values[ 8] = v8;
+    _values[ 9] = v9;
+    _values[10] = v10;
+    _values[11] = v11;
+    _values[12] = v12;
+    _values[13] = v13;
+    _values[14] = v14;
+    _values[15] = v15;
+    _values[16] = v16;
+    _values[17] = v17;
+    _values[18] = v18;
+    _values[19] = v19;
 }
 
 

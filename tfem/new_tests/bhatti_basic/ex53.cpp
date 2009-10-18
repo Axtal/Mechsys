@@ -56,12 +56,12 @@ int main(int argc, char **argv) try
     mesh.SetVert   (10, -100,  0.03,  0.0);
     mesh.SetVert   (11, -100,  0.045, 0.0);
     mesh.SetVert   (12, -100,  0.06,  0.0);
-    mesh.SetCell   ( 0,   -1, /*NVerts*/4,  8, 9, 4, 3);
-    mesh.SetCell   ( 1,   -1, /*NVerts*/4,  3, 4, 1, 0);
-    mesh.SetCell   ( 2,   -1, /*NVerts*/4,  9,10, 5, 4);
-    mesh.SetCell   ( 3,   -1, /*NVerts*/4,  4, 5, 2, 1);
-    mesh.SetCell   ( 4,   -1, /*NVerts*/4, 10,11, 6, 5);
-    mesh.SetCell   ( 5,   -1, /*NVerts*/4, 11,12, 7, 6);
+    mesh.SetCell   ( 0,   -1, Array<int>( 8, 9, 4, 3));
+    mesh.SetCell   ( 1,   -1, Array<int>( 3, 4, 1, 0));
+    mesh.SetCell   ( 2,   -1, Array<int>( 9,10, 5, 4));
+    mesh.SetCell   ( 3,   -1, Array<int>( 4, 5, 2, 1));
+    mesh.SetCell   ( 4,   -1, Array<int>(10,11, 6, 5));
+    mesh.SetCell   ( 5,   -1, Array<int>(11,12, 7, 6));
     mesh.SetBryTag (0, 3, -40);
     mesh.SetBryTag (1, 2, -30);  mesh.SetBryTag (1, 3, -40);
     mesh.SetBryTag (3, 1, -30);  mesh.SetBryTag (3, 2, -30);
@@ -101,7 +101,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout, Util::_12_6);
+    dom.PrintResults ("%11.6g");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -137,6 +137,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("gx gy", 1.0e-11, 1.0e-11);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

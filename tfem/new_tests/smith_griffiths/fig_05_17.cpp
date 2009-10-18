@@ -84,7 +84,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout, Util::_6s);
+    dom.PrintResults ("%11.6g");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
     
@@ -118,6 +118,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-5,1.0e-5,1.0e-5,1.0e-5, 1.0e-8,1.0e-7,1.0e-8,1.0e-7);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

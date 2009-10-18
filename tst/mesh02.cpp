@@ -42,7 +42,7 @@ int main(int argc, char **argv) try
         blks[0].SetNy (1);
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate    (blks,/*O2*/true);
-        mesh.AddLinCells (/*NItems*/1, /*EdgeTag*/-10);
+        mesh.AddLinCells (Array<int>(-10, /*JustOne*/true));
         mesh.WriteMPY    ("mesh02_1",/*OnlyMesh*/false);
         mesh.WriteVTU    ("mesh02_1");
         cout <<    " File <mesh02_1.mpy> generated\n";
@@ -68,7 +68,7 @@ int main(int argc, char **argv) try
         blks[1].SetNy (1);
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate    (blks,/*O2*/true);
-        mesh.AddLinCells (/*NItems*/2, /*EdgeTags*/-10,-15);
+        mesh.AddLinCells (Array<int>(-10,-15));
         mesh.AddPin      (-2);
         mesh.WriteMPY    ("mesh02_2",/*OnlyMesh*/false);
         mesh.WriteVTU    ("mesh02_2");
@@ -88,7 +88,7 @@ int main(int argc, char **argv) try
         blks[0].SetNy (2);
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate    (blks,/*O2*/false);
-        mesh.AddLinCells (/*NItems*/4, /*IdsTags*/3,4,-51, 4,5,-52, 4,7,-53, 1,4,-54);
+        mesh.AddLinCells (Array<int>(3,4,-51, 4,5,-52, 4,7,-53, 1,4,-54));
         mesh.AddPin      (4);
         mesh.WriteMPY    ("mesh02_3",/*OnlyMesh*/false);
         mesh.WriteVTU    ("mesh02_3");

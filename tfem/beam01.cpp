@@ -59,7 +59,7 @@ int main(int argc, char **argv) try
             mesh.SetSize (2, 1);
             mesh.SetVert (0, -100, 0.0, 0.0);
             mesh.SetVert (1, -200,   L, 0.0);
-            mesh.SetCell (0,    -1, 2, 0,1);
+            mesh.SetCell (0,    -1, Array<int>(0,1));
 
             bcs.Set(-100, "ux uy", 0.0);
             bcs.Set(-200, "uy",    0.0);
@@ -71,7 +71,7 @@ int main(int argc, char **argv) try
             mesh.SetSize (2, 1);
             mesh.SetVert (0, -100, 0.0, 0.0);
             mesh.SetVert (1, -200,   L, 0.0);
-            mesh.SetCell (0,    -1, 2, 0,1);
+            mesh.SetCell (0,    -1, Array<int>(0,1));
 
             bcs.Set(-100, "ux uy wz", 0.0);
             bcs.Set(  -1, "qn",      -1.0);
@@ -83,8 +83,8 @@ int main(int argc, char **argv) try
             mesh.SetVert (0, -100,  0.0, 0.0);
             mesh.SetVert (1,    0, L/2., 0.0);
             mesh.SetVert (2, -200,    L, 0.0);
-            mesh.SetCell (0,   -1, 2, 0,1);
-            mesh.SetCell (1,   -1, 2, 1,2);
+            mesh.SetCell (0,   -1, Array<int>(0,1));
+            mesh.SetCell (1,   -1, Array<int>(1,2));
 
             bcs.Set(-100, "ux uy wz", 0.0);
             bcs.Set(  -1, "qn",      -1.0);
@@ -99,11 +99,11 @@ int main(int argc, char **argv) try
             mesh.SetVert (3,    0,  7.5, 2.5);
             mesh.SetVert (4,    0,  2.5, 2.5);
             mesh.SetVert (5, -200,  5.0, 2.5);
-            mesh.SetCell (0,   -3, 2, 0,4);
-            mesh.SetCell (1,   -1, 2, 1,4);
-            mesh.SetCell (2,   -1, 2, 3,2);
-            mesh.SetCell (3,   -2, 2, 3,5);
-            mesh.SetCell (4,   -2, 2, 5,4);
+            mesh.SetCell (0,   -3, Array<int>(0,4));
+            mesh.SetCell (1,   -1, Array<int>(1,4));
+            mesh.SetCell (2,   -1, Array<int>(3,2));
+            mesh.SetCell (3,   -2, Array<int>(3,5));
+            mesh.SetCell (4,   -2, Array<int>(5,4));
 
             bcs.Set (-100, "ux uy", 0.0);
             bcs.Set (-200, "mz",   12.5);
@@ -124,16 +124,16 @@ int main(int argc, char **argv) try
             mesh.SetVert  (3,    0, 2*L, 2*L);
             mesh.SetVert  (4,    0, 3*L,   L);
             mesh.SetVert  (5, -100, 3*L, 0.0);
-            mesh.SetCell  (0,   -1, 2, 0,1);
-            mesh.SetCell  (1,   -1, 2, 1,2);
-            mesh.SetCell  (2,   -2, 2, 2,3);
-            mesh.SetCell  (3,   -1, 2, 3,4);
-            mesh.SetCell  (4,   -1, 2, 4,5);
-            //mesh.SetCell  (0,   -1, 2, 1,0);
-            //mesh.SetCell  (1,   -1, 2, 2,1);
-            //mesh.SetCell  (2,   -2, 2, 3,2);
-            //mesh.SetCell  (3,   -1, 2, 3,4);
-            //mesh.SetCell  (4,   -1, 2, 5,4);
+            mesh.SetCell  (0,   -1, Array<int>(0,1));
+            mesh.SetCell  (1,   -1, Array<int>(1,2));
+            mesh.SetCell  (2,   -2, Array<int>(2,3));
+            mesh.SetCell  (3,   -1, Array<int>(3,4));
+            mesh.SetCell  (4,   -1, Array<int>(4,5));
+            //mesh.SetCell  (0,   -1, Array<int>(1,0));
+            //mesh.SetCell  (1,   -1, Array<int>(2,1));
+            //mesh.SetCell  (2,   -2, Array<int>(3,2));
+            //mesh.SetCell  (3,   -1, Array<int>(3,4));
+            //mesh.SetCell  (4,   -1, Array<int>(5,4));
             
             bcs.Set (-100, "ux uy wz", 0.0);
             bcs.Set (  -2, "qn",      -1.0);
@@ -149,8 +149,8 @@ int main(int argc, char **argv) try
             mesh.SetVert (0, -100,  0.0, 0.0);
             mesh.SetVert (1, -300, L/2., 0.0);
             mesh.SetVert (2, -200,    L, 0.0);
-            mesh.SetCell (0,   -1, 2, 0,1);
-            mesh.SetCell (1,   -1, 2, 1,2);
+            mesh.SetCell (0,   -1, Array<int>(0,1));
+            mesh.SetCell (1,   -1, Array<int>(1,2));
 
             mesh.AddPin (-300);
 

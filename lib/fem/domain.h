@@ -62,10 +62,11 @@ public:
     void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags);
     void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags);
     void OutResults   (double Time, Vec_t const & F_int) const;
-    void PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
-    bool CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
-    bool CheckError   (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const; ///< At integration points
-    void WriteMPY     (char const * FileKey, double SFCoef=1.0)                        const; ///< SFCoef: Scale-factor coefficient
+    void PrintResults (char const * NF="%15.6g", int IdxIP=-1) const;       ///< IdxIP < 0 => Centroid
+    bool CheckError   (Table const & NodSol, Table const & EleSol, 
+                       SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
+    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;  ///< At integration points
+    void WriteMPY     (char const * FileKey, double SFCoef=1.0) const;      ///< SFCoef: Scale-factor coefficient
     void WriteVTU     (char const * FileKey) const;
 
     // Data
@@ -84,6 +85,11 @@ public:
     Array<Node*>          NodsF;   ///< Nodes with F specified through callback function
     Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to FNodes
     Array<size_t>         Beams;   ///< Subset of elements of type Beam
+
+#ifdef USE_BOOST_PYTHON
+    void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
+    void PySetOutEles (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutEles (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
+#endif
 };
 
 
@@ -369,9 +375,9 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     }
 }
 
-inline void Domain::PrintResults (std::ostream & os, Util::NumStream NF, int IdxIP) const
+inline void Domain::PrintResults (char const * NF, int IdxIP) const
 {
-    os << "\n[1;37m--- Results ------------------------------------------------------------------\n";
+    std::cout << "\n[1;37m--- Results ------------------------------------------------------------------\n";
 
     // nodes: ukeys, fkeys
     size_t neq = 0;
@@ -388,52 +394,64 @@ inline void Domain::PrintResults (std::ostream & os, Util::NumStream NF, int Idx
         }
     }
 
+    // number format for text
+    String nf(NF);
+    size_t pos;
+    pos=nf.find("g"); while (pos!=String::npos) { nf.replace(pos,1,"s"); pos=nf.find("g",pos+1); }
+    pos=nf.find("f"); while (pos!=String::npos) { nf.replace(pos,1,"s"); pos=nf.find("f",pos+1); }
+    pos=nf.find("e"); while (pos!=String::npos) { nf.replace(pos,1,"s"); pos=nf.find("e",pos+1); }
+
     // nodes: header
     String buf;
-    os << Util::_6 << "Node";
-    for (size_t i=0; i<ukeys.Size(); ++i) os << NF << ukeys[i];
-    for (size_t i=0; i<fkeys.Size(); ++i) os << NF << fkeys[i];
+    std::cout << Util::_6 << "Node";
+    for (size_t i=0; i<ukeys.Size(); ++i) { buf.Printf(nf, ukeys[i].CStr());  std::cout<<buf; }
+    for (size_t i=0; i<fkeys.Size(); ++i) { buf.Printf(nf, fkeys[i].CStr());  std::cout<<buf; }
     for (size_t i=0; i<ukeys.Size(); ++i)
     {
         buf.Printf ("R%s",ukeys[i].CStr());
-        os << NF << buf;
+        String tmp;
+        tmp.Printf (nf,buf.CStr());
+        std::cout << tmp;
     }
-    os << "[0m\n";
+    std::cout << "[0m\n";
 
     // nodes: data
     for (size_t i=0; i<Nods.Size(); ++i)
     {
-        os << Util::_6 << Nods[i]->Vert.ID;
+        std::cout << Util::_6 << Nods[i]->Vert.ID;
         for (size_t j=0; j<ukeys.Size(); ++j)
         {
             if (Nods[i]->UMap.HasKey(ukeys[j]))
             {
                 size_t idx = Nods[i]->UMap(ukeys[j]); // idx of DOF
-                os << NF << Nods[i]->U[idx];
+                buf.Printf(NF, Nods[i]->U[idx]);
             }
-            else os << NF << "---";
+            else buf.Printf(nf, "---");
+            std::cout << buf;
         }
         for (size_t j=0; j<fkeys.Size(); ++j)
         {
             if (Nods[i]->FMap.HasKey(fkeys[j]))
             {
                 size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
-                os << NF << Nods[i]->F[idx];
+                buf.Printf(NF, Nods[i]->F[idx]);
             }
-            else os << NF << "---";
+            else buf.Printf(nf, "---");
+            std::cout << buf;
         }
         for (size_t j=0; j<fkeys.Size(); ++j)
         {
             if (Nods[i]->FMap.HasKey(fkeys[j]))
             {
                 size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
-                os << NF << Nods[i]->F[idx] - Nods[i]->Fa(idx,1.0);
+                buf.Printf(NF, Nods[i]->F[idx] - Nods[i]->Fa(idx,1.0));
             }
-            else os << NF << "---";
+            else buf.Printf(nf, "---");
+            std::cout << buf;
         }
-        os << "\n";
+        std::cout << "\n";
     }
-    os << "\n";
+    std::cout << "\n";
 
     // elems: keys
     Array<String> keys;
@@ -448,39 +466,40 @@ inline void Domain::PrintResults (std::ostream & os, Util::NumStream NF, int Idx
     }
 
     // elems: header
-    os << "[1;37m" << Util::_6 << "Elem";
-    os << NF << "x";
-    os << NF << "y";  if (NDim==3)
-    os << NF << "z";
-    for (size_t i=0; i<keys.Size(); ++i) os << NF << keys[i];
-    os << "[0m\n";
+    std::cout << "[1;37m" << Util::_6 << "Elem";
+    buf.Printf(nf, "x");  std::cout << buf;
+    buf.Printf(nf, "y");  std::cout << buf;  if (NDim==3) {
+    buf.Printf(nf, "z");  std::cout << buf; }
+    for (size_t i=0; i<keys.Size(); ++i) { buf.Printf(nf, keys[i].CStr());  std::cout<<buf; }
+    std::cout << "[0m\n";
 
     // elems: data
     for (size_t i=0; i<Eles.Size(); ++i)
     {
-        os << Util::_6 << Eles[i]->Cell.ID;
+        std::cout << Util::_6 << Eles[i]->Cell.ID;
         Vec_t  X;
         SDPair dat;
         Eles[i]->GetState (dat, IdxIP);
         if (IdxIP<0) Eles[i]->Centroid   (X);
         else         Eles[i]->CoordsOfIP (IdxIP, X);
-        os << NF << X(0);
-        os << NF << X(1);  if (NDim==3)
-        os << NF << X(2);
+        buf.Printf(NF, X(0)); std::cout << buf;
+        buf.Printf(NF, X(1)); std::cout << buf;  if (NDim==3) {
+        buf.Printf(NF, X(2)); std::cout << buf; }
         for (size_t j=0; j<keys.Size(); ++j)
         {
-            if (dat.HasKey(keys[j])) os << NF << dat(keys[j]);
-            else                     os << NF << "---";
+            if (dat.HasKey(keys[j])) buf.Printf(NF, dat(keys[j]));
+            else                     buf.Printf(nf, "---");
+            std::cout << buf;
         }
-        os << "\n";
+        std::cout << "\n";
     }
 }
 
-inline bool Domain::CheckError (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const
+inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const
 {
     // header
-    os << "\n[1;37m--- Error Summary --- nodes and centroid -------------------------------------\n";
-    os << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
+    std::cout << "\n[1;37m--- Error Summary --- nodes and centroid -------------------------------------\n";
+    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
 
     // results
     bool error = false;
@@ -513,8 +532,8 @@ inline bool Domain::CheckError (std::ostream & os, Table const & NodSol, Table c
         // summary
         double max_err = err[err.Max()];
         double tol     = NodTol(key);
-        os << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
-        os << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
 
@@ -534,19 +553,19 @@ inline bool Domain::CheckError (std::ostream & os, Table const & NodSol, Table c
         // summary
         double max_err = err[err.Max()];
         double tol     = EleTol(key);
-        os << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
-        os << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
 
     return error;
 }
 
-inline bool Domain::CheckError (std::ostream & os, Table const & EleSol, SDPair const & EleTol) const
+inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const
 {
     // header
-    os << "\n[1;37m--- Error Summary --- integration points -------------------------------------\n";
-    os << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
+    std::cout << "\n[1;37m--- Error Summary --- integration points -------------------------------------\n";
+    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
 
     // results
     bool error = false;
@@ -572,12 +591,12 @@ inline bool Domain::CheckError (std::ostream & os, Table const & EleSol, SDPair 
         // summary
         double max_err = err[err.Max()];
         double tol     = EleTol(key);
-        os << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
-        os << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
 
-    os << "\n";
+    std::cout << "\n";
 
     return error;
 }

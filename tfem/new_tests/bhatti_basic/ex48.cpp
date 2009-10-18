@@ -46,9 +46,9 @@ int main(int argc, char **argv) try
     mesh.SetVert  (1, -200,    L, 0.0);
     mesh.SetVert  (2, -300, 2.*L, 0.0);
     mesh.SetVert  (3, -400, 3.*L, 0.0);
-    mesh.SetCell  (0,   -1, /*NVerts*/2, 0, 1);
-    mesh.SetCell  (1,   -1, /*NVerts*/2, 1, 2);
-    mesh.SetCell  (2,   -2, /*NVerts*/2, 2, 3);
+    mesh.SetCell  (0,   -1, Array<int>(0, 1));
+    mesh.SetCell  (1,   -1, Array<int>(1, 2));
+    mesh.SetCell  (2,   -2, Array<int>(2, 3));
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -115,7 +115,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout);
+    dom.PrintResults ("%11.6g");
     dom.WriteMPY     ("ex48_res",/*sf*/0.01);
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
@@ -132,7 +132,7 @@ int main(int argc, char **argv) try
     Table ele_sol;
     SDPair nod_tol, ele_tol;
     nod_tol.Set("ux uy wz  Rux Ruy Rwz", 1.0e-15,1.0e-15,1.0e-15, 1.0e-15,1.0e-13,1.0e-14);
-    err_flag = err_flag || dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    err_flag = err_flag || dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 
     // bending moment
     Mat_t Mmat(7,2);

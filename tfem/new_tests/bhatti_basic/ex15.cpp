@@ -48,10 +48,10 @@ int main(int argc, char **argv) try
     mesh.SetVert   (2,    0, 0.2, 0.3);
     mesh.SetVert   (3, -100, 0.0, 0.1);
     mesh.SetVert   (4,    0, 0.1, 0.1);
-    mesh.SetCell   (0,   -1, /*NVerts*/3, 0,1,4);
-    mesh.SetCell   (1,   -1, /*NVerts*/3, 1,2,4);
-    mesh.SetCell   (2,   -1, /*NVerts*/3, 2,3,4);
-    mesh.SetCell   (3,   -1, /*NVerts*/3, 0,4,3);
+    mesh.SetCell   (0,   -1, Array<int>(0,1,4));
+    mesh.SetCell   (1,   -1, Array<int>(1,2,4));
+    mesh.SetCell   (2,   -1, Array<int>(2,3,4));
+    mesh.SetCell   (3,   -1, Array<int>(0,4,3));
     mesh.SetBryTag (1, 0, -10);
     //mesh.WriteVTU  ("ex15");
     //mesh.WriteMPY  ("ex15",/*OnlyMesh*/false);
@@ -121,7 +121,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout, Util::_12_6);
+    dom.PrintResults ("%11.6g");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -147,6 +147,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("gx gy", 1.0e-12,1.0e-12);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

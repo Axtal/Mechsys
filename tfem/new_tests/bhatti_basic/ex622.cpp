@@ -56,8 +56,8 @@ int main(int argc, char **argv) try
     mesh.SetVert   (10, -100,  0.0,   0.0);
     mesh.SetVert   (11,    0,  0.0,   0.015);
     mesh.SetVert   (12,    0,  0.015, 0.0075);
-    mesh.SetCell   ( 0,   -1, /*NVerts*/8, 10,4,2,0, 12,3,1,11);
-    mesh.SetCell   ( 1,   -1, /*NVerts*/8, 10,8,6,4,  9,7,5,12);
+    mesh.SetCell   ( 0,   -1, Array<int>(10,4,2,0, 12,3,1,11));
+    mesh.SetCell   ( 1,   -1, Array<int>(10,8,6,4,  9,7,5,12));
     mesh.SetBryTag (0, 1, -30);
     mesh.SetBryTag (0, 2, -30);
     mesh.SetBryTag (0, 3, -40);
@@ -131,7 +131,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    dom.PrintResults (cout, Util::_12_6);
+    dom.PrintResults ("%11.6g");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 
@@ -163,6 +163,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("gx gy", 1.0e-11, 1.0e-10);
 
     // return error flag
-    return dom.CheckError (cout, nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

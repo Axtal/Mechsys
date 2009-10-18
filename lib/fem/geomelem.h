@@ -108,4 +108,8 @@ GeomElem * AllocGeomElem(String const & Name, int NDim)
 
 }; // namespace FEM
 
+#ifdef USE_BOOST_PYTHON
+double PyGEOM (BPy::str const & Key) { return FEM::GEOM(BPy::extract<char const *>(Key)()); }
+#endif
+
 #endif // MECHSYS_FEM_GEOMELEM

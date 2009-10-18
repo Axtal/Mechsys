@@ -40,16 +40,35 @@ namespace BPy = boost::python;
 #include "fem/element.h"
 #include "fem/rod.h"
 #include "fem/beam.h"
+#include "fem/equilibelem.h"
+#include "fem/geomelem.h"
+#include "fem/elems/tri3.h"
+#include "fem/elems/tri6.h"
+#include "fem/elems/quad4.h"
+#include "fem/elems/quad8.h"
+#include "fem/elems/hex8.h"
+#include "fem/elems/hex20.h"
+#include "fem/elems/tet10.h"
+#include "fem/domain.h"
+#include "fem/solver.h"
+#include "models/model.h"
+#include "models/linelastic.h"
+#include "models/elastoplastic.h"
+#include "models/camclay.h"
 
 // overloadings
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU, WriteVTU,   1, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY, WriteMPY,   1, 3)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate, PyGenerate, 1, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,   GenBox,     0, 7)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenQRing, GenQRing,   0, 9)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate, Generate,   0, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,   GenBox,     0, 5)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY, WritePLY,   1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU,     WriteVTU,     1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY,     WriteMPY,     1, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,     PyGenerate,   1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,       GenBox,       0, 7)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenQRing,     GenQRing,     0, 9)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,     Generate,     0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,       GenBox,       0, 5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
 
 // module
 BOOST_PYTHON_MODULE (mechsys)
@@ -57,9 +76,21 @@ BOOST_PYTHON_MODULE (mechsys)
 
 //////////////////////////////////////////////////////////////////////////////////// util /////
 
+// SDPair
+BPy::class_<SDPair>("SDPair")
+    .def("Set", &SDPair::PySet)
+    .def(BPy::self_ns::str(BPy::self))
+    ;
+
 // Dict
 BPy::class_<Dict>("Dict")
     .def("Set", &Dict::PySet)
+    .def(BPy::self_ns::str(BPy::self))
+    ;
+
+// Table
+BPy::class_<Table>("Table")
+    .def("Set", &Table::PySet)
     .def(BPy::self_ns::str(BPy::self))
     ;
 
@@ -76,8 +107,13 @@ BPy::class_<Mesh::Block>("Block")
 
 // Generic
 BPy::class_<Mesh::Generic>("Generic","generic mesh", BPy::init<int>())
-    .def("WriteVTU", &Mesh::Generic::WriteVTU, MG_WriteVTU())
-    .def("WriteMPY", &Mesh::Generic::WriteMPY, MG_WriteMPY())
+    .def("SetSize",     &Mesh::Generic::SetSize)
+    .def("SetVert",     &Mesh::Generic::SetVert,  MG_SetVert())
+    .def("SetCell",     &Mesh::Generic::PySetCell)
+    .def("SetBryTag",   &Mesh::Generic::SetBryTag)
+    .def("AddLinCells", &Mesh::Generic::PyAddLinCells)
+    .def("WriteVTU",    &Mesh::Generic::WriteVTU, MG_WriteVTU())
+    .def("WriteMPY",    &Mesh::Generic::WriteMPY, MG_WriteMPY())
     .def(BPy::self_ns::str(BPy::self))
     ;
 
@@ -100,7 +136,26 @@ BPy::class_<Mesh::Unstructured, BPy::bases<Mesh::Generic> >("Unstructured","Unst
 
 ///////////////////////////////////////////////////////////////////////////////////// fem /////
 
-// PROB
-BPy::def("PROB", PyPROB);
+// PROB, GEOM, and MODEL
+BPy::def("PROB",  PyPROB);
+BPy::def("GEOM",  PyGEOM);
+BPy::def("MODEL", PyMODEL);
+
+// Domain
+BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic const &, Dict const &, Dict const &, Dict const &>())
+    .def("SetBCs",       &FEM::Domain::SetBCs)
+    .def("SetOutNods",   &FEM::Domain::PySetOutNods)
+    .def("SetOutEles",   &FEM::Domain::PySetOutEles)
+    .def("PrintResults", &FEM::Domain::PrintResults, DO_PrintResults())
+    .def("WriteMPY",     &FEM::Domain::WriteMPY,     DO_WriteMPY())
+    .def("WriteVTU",     &FEM::Domain::WriteVTU)
+    .def("CheckError",   &FEM::Domain::CheckError)
+    .def(BPy::self_ns::str(BPy::self))
+    ;
+
+// Solver
+BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const &>())
+    .def("Solve", &FEM::Solver::Solve, SO_Solve())
+    ;
 
 } // BOOST_PYTHON_MODULE
