@@ -55,8 +55,8 @@ int main(int argc, char **argv) try
     mesh.SetCell   (3,   -1, /*NVerts*/3, 5,3,2);
     mesh.SetBryTag (1, 0, -10);
     mesh.SetBryTag (3, 0, -10);
-    //mesh.WriteVTU  ("ex16");
-    //cout << mesh << endl;
+    mesh.WriteVTU  ("ex16");
+    cout << mesh << endl;
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -74,8 +74,8 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("ex16",/*NNod*/4,/*WithTags*/false,/*ID*/0,1,2,3,5);
-    dom.SetOutEles ("ex16",/*NEle*/1,/*ID*/3);
+    dom.SetOutNods ("ex16", Array<int>(0,1,2,3,5));
+    dom.SetOutEles ("ex16", Array<int>(3,/*JustOne*/true));
 
     // check matrices
     {

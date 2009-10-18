@@ -161,8 +161,8 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("owen_hinton_02", /*NNod*/1, /*WithTags*/false, /*IDs*/41);
-    dom.SetOutEles ("owen_hinton_02", /*NEle*/1, /*IDs*/4);
+    dom.SetOutNods ("owen_hinton_02", Array<int>(41, /*JustOne*/true));
+    dom.SetOutEles ("owen_hinton_02", Array<int>(4,  /*JustOne*/true));
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

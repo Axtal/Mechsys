@@ -97,8 +97,8 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("labtest", /*NNod*/1, /*WithTags*/false, /*ID*/(nd==3 ?  7 : 7));
-    dom.SetOutEles ("labtest", /*NEle*/1, /*ID*/(nd==3 ? 13 : 0));
+    dom.SetOutNods ("labtest", Array<int>((nd==3 ?  7 : 7), /*JustOne*/true));
+    dom.SetOutEles ("labtest", Array<int>((nd==3 ? 13 : 0), /*JustOne*/true));
 
     // debug data
     DbgDat dat;
