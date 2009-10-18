@@ -59,8 +59,8 @@ public:
     void SetBCs       (Dict const & BCs);
     void ClrBCs       ();
     void SetUVals     (SDPair const & UVals);
-    void SetOutNods   (char const * FileKey, int NNods, bool WithTags, ...);
-    void SetOutEles   (char const * FileKey, int NEles, ...);
+    void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags);
+    void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags);
     void OutResults   (double Time, Vec_t const & F_int) const;
     void PrintResults (std::ostream & os, Util::NumStream NF=Util::_15_6, int IdxIP=-1) const; ///< IdxIP<0 => Centroid
     bool CheckError   (std::ostream & os, Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
@@ -262,15 +262,13 @@ inline void Domain::SetUVals (SDPair const & UVals)
     }
 }
 
-inline void Domain::SetOutNods (char const * FNKey, int NNods, bool WTags, ...)
+inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags)
 {
-    va_list   arg_list;
-    va_start (arg_list, WTags);
-    for (int i=0; i<NNods; ++i)
+    for (size_t i=0; i<IDsOrTags.Size(); ++i)
     {
-        int nod_or_tag = va_arg (arg_list,int);
+        int nod_or_tag = IDsOrTags[i];
         int nod = 0;
-        if (WTags)
+        if (nod_or_tag<0) // tag
         {
             bool found = false;
             for (size_t j=0; j<Msh.TgdVerts.Size(); ++j)
@@ -307,17 +305,29 @@ inline void Domain::SetOutNods (char const * FNKey, int NNods, bool WTags, ...)
             (*of) << "\n";
         }
     }
-    va_end (arg_list);
 }
 
-inline void Domain::SetOutEles (char const * FNKey, int NEles, ...)
+inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags)
 {
-    if (Eles.Size()==0) throw new Fatal("Domain::SetOutEles: Mesh must be set first by calling Domain::SetMesh");
-    va_list   arg_list;
-    va_start (arg_list, NEles);
-    for (int i=0; i<NEles; ++i)
+    for (size_t i=0; i<IDsOrTags.Size(); ++i)
     {
-        int ele = va_arg (arg_list,int);
+        int ele_or_tag = IDsOrTags[i];
+        int ele = 0;
+        if (ele_or_tag<0) // tag
+        {
+            bool found = false;
+            for (size_t j=0; j<Msh.TgdCells.Size(); ++j)
+            {
+                if (ele_or_tag==Msh.TgdCells[j]->Tag)
+                {
+                    ele   = Msh.TgdCells[j]->ID;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) throw new Fatal("Domain::SetOutEles: Could not find element with tag = %d", ele_or_tag);
+        }
+        else ele = ele_or_tag;
         if (OutEles.Find(ele)<0)
         {
             String buf; buf.Printf("%s_ele_%d.res",FNKey,ele);
@@ -331,7 +341,6 @@ inline void Domain::SetOutEles (char const * FNKey, int NEles, ...)
             (*of) << "\n";
         }
     }
-    va_end (arg_list);
 }
 
 inline void Domain::OutResults (double Time, Vec_t const & F_int) const
