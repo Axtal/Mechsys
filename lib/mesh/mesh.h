@@ -192,8 +192,9 @@ public:
     Pin_t          Pins;      ///< Pins
 
 #ifdef USE_BOOST_PYTHON
-    void PySetCell     (int iCell, int Tag, BPy::list const Con) { SetCell (iCell, Tag, Array<int>(Con)); }
-    void PyAddLinCells (BPy::list const & IDsOrTags)             { AddLinCells (Array<int>(IDsOrTags)); }
+    void PySetCell       (int iCell, int Tag, BPy::list const Con) { SetCell (iCell, Tag, Array<int>(Con)); }
+    void PyAddLinCells   (BPy::list const & IDsOrTags)             { AddLinCells (Array<int>(IDsOrTags)); }
+    void PyGetVertsEdges (BPy::list & V, BPy::list & E) const;
 #endif
 };
 
@@ -948,6 +949,50 @@ inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh, char const *
     of << oss.str();
     of.close();
 }
+
+#ifdef USE_BOOST_PYTHON
+inline void Generic::PyGetVertsEdges (BPy::list & V, BPy::list & E) const
+{
+    if (NDim==3)
+    {
+        // vertices
+        for (size_t i=0; i<Verts.Size(); ++i)
+            V.append (BPy::make_tuple(Verts[i]->C(0), Verts[i]->C(1), Verts[i]->C(2)));
+
+        // edges
+        for (size_t i=0; i<Cells.Size(); ++i)
+        {
+            size_t nv = Cells[i]->V.Size();
+            for (size_t j=0; j<NVertsToNEdges3D[nv]; ++j)
+            {
+                BPy::list pair;
+                pair.append (Cells[i]->V[NVertsToEdge3D[nv][j][0]]->ID);
+                pair.append (Cells[i]->V[NVertsToEdge3D[nv][j][1]]->ID);
+                E.append    (pair);
+            }
+        }
+    }
+    else
+    {
+        // vertices
+        for (size_t i=0; i<Verts.Size(); ++i)
+            V.append (BPy::make_tuple(Verts[i]->C(0), Verts[i]->C(1), 0.0));
+
+        // edges
+        for (size_t i=0; i<Cells.Size(); ++i)
+        {
+            size_t nv = Cells[i]->V.Size();
+            for (size_t j=0; j<NVertsToNEdges2D[nv]; ++j)
+            {
+                BPy::list pair;
+                pair.append (Cells[i]->V[NVertsToEdge2D[nv][j][0]]->ID);
+                pair.append (Cells[i]->V[NVertsToEdge2D[nv][j][1]]->ID);
+                E.append    (pair);
+            }
+        }
+    }
+}
+#endif
 
 }; // namespace Mesh
 

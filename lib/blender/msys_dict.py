@@ -43,7 +43,6 @@ def load_dict():
         dict['show_props']    = False
         dict['show_e_ids']    = False # edges
         dict['show_v_ids']    = False # vertices
-        dict['show_n_ids']    = False # nodes (FE mesh)
         dict['show_blks']     = True
         dict['show_axes']     = True
         dict['show_regs']     = True
@@ -51,8 +50,6 @@ def load_dict():
         dict['show_vtags']    = True
         dict['show_etags']    = True
         dict['show_ftags']    = True
-        dict['show_elems']    = False
-        dict['show_opac']     = 1#0.3
         # CAD
         dict['cad_x']         = '0.0'
         dict['cad_y']         = '0.0'
@@ -66,7 +63,6 @@ def load_dict():
         dict['hide_mesh']     = False
         dict['smsh_cpp']      = False # structured mesh: generate C++ script
         dict['umsh_cpp']      = False # unstructured mesh: generate C++ script
-        dict['mshsetfem']     = True  # set fem data after meshing?
         # FEM
         dict['fem_prob']      = 0
         dict['fem_stage']     = 0     # stage ID

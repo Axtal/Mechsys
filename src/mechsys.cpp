@@ -107,13 +107,14 @@ BPy::class_<Mesh::Block>("Block")
 
 // Generic
 BPy::class_<Mesh::Generic>("Generic","generic mesh", BPy::init<int>())
-    .def("SetSize",     &Mesh::Generic::SetSize)
-    .def("SetVert",     &Mesh::Generic::SetVert,  MG_SetVert())
-    .def("SetCell",     &Mesh::Generic::PySetCell)
-    .def("SetBryTag",   &Mesh::Generic::SetBryTag)
-    .def("AddLinCells", &Mesh::Generic::PyAddLinCells)
-    .def("WriteVTU",    &Mesh::Generic::WriteVTU, MG_WriteVTU())
-    .def("WriteMPY",    &Mesh::Generic::WriteMPY, MG_WriteMPY())
+    .def("SetSize",       &Mesh::Generic::SetSize)
+    .def("SetVert",       &Mesh::Generic::SetVert,  MG_SetVert())
+    .def("SetCell",       &Mesh::Generic::PySetCell)
+    .def("SetBryTag",     &Mesh::Generic::SetBryTag)
+    .def("AddLinCells",   &Mesh::Generic::PyAddLinCells)
+    .def("WriteVTU",      &Mesh::Generic::WriteVTU, MG_WriteVTU())
+    .def("WriteMPY",      &Mesh::Generic::WriteMPY, MG_WriteMPY())
+    .def("GetVertsEdges", &Mesh::Generic::PyGetVertsEdges)
     .def(BPy::self_ns::str(BPy::self))
     ;
 

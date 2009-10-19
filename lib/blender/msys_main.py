@@ -162,7 +162,6 @@ def delete_mesh():
         scn.objects.unlink (old_msh)
         obj.properties.pop('mesh_type')
         obj.properties.pop('msh_name')
-        obj.properties.pop('elems')
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
@@ -336,8 +335,6 @@ def cb_show_e_ids(evt,val): di.set_key ('show_e_ids', val)
 @try_catch
 def cb_show_v_ids(evt,val): di.set_key ('show_v_ids', val)
 @try_catch
-def cb_show_n_ids(evt,val): di.set_key ('show_n_ids', val)
-@try_catch
 def cb_show_blks (evt,val): di.set_key ('show_blks',  val)
 @try_catch
 def cb_show_axes (evt,val): di.set_key ('show_axes',  val)
@@ -349,10 +346,6 @@ def cb_show_vtags(evt,val): di.set_key ('show_vtags', val)
 def cb_show_etags(evt,val): di.set_key ('show_etags', val)
 @try_catch
 def cb_show_ftags(evt,val): di.set_key ('show_ftags', val)
-@try_catch
-def cb_show_elems(evt,val): di.set_key ('show_elems', val)
-@try_catch
-def cb_show_opac (evt,val): di.set_key ('show_opac',  val)
 @try_catch
 def cb_over(evt,val):
     edm, obj, msh = di.get_msh()
@@ -409,13 +402,11 @@ def cb_fillet_stp(evt,val): di.set_key('cad_stp', val)
 def cb_is3d(evt,val): di.props_set_val('is3d', val)
 @try_catch
 def cb_iso2(evt,val):
-    msg = 'This action will delete current mesh (and results). Confirm?%t|Yes'
+    msg = 'This action will delete current mesh. Confirm?%t|Yes'
     res = Blender.Draw.PupMenu(msg)
     if res>0:
         delete_mesh()
         di.props_set_val('iso2', val)
-@try_catch
-def cb_setfem(evt,val): di.set_key('mshsetfem', val)
 @try_catch
 def cb_frame (evt,val):
     if val==1: di.props_set_val('mesh_type', 'frame')
@@ -725,7 +716,7 @@ def gui():
         mat_extra_rows += d['mdl2nrow'][mdl]
 
     # height of boxes
-    h_set           = 7*rh+2*srg+2*rg
+    h_set           = 6*rh+2*srg+2*rg
     h_cad           = 4*rh+2*rg
     h_msh_stru_blks = rh+srg+2*rh*len(blks) if len(blks)>0 else 0
     h_msh_stru      = 2*rh+srg+h_msh_stru_blks+2*rg
@@ -734,7 +725,7 @@ def gui():
     h_msh_unst      = 4*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols+2*rg
     h_msh_ext_lins  = rh+srg+rh*len(lins) if len(lins)>0 else 0
     h_msh_ext       = rh+2*rg+h_msh_ext_lins
-    h_msh           = 12*rh+srg+h_msh_stru+h_msh_unst+2*rg+h_msh_ext
+    h_msh           = 11*rh+srg+h_msh_stru+h_msh_unst+2*rg+h_msh_ext
     h_mat_mats      = rg+(srg+rh)*len(mats)+rh*mat_extra_rows if len(mats)>0 else 0
     h_mat           = rh+h_mat_mats+2*rg
     h_fem_nbrys     = rh+srg+rh*len(nbrys) if len(nbrys)>0 else 0
@@ -770,11 +761,6 @@ def gui():
     Draw.Toggle ('V Tags',     EVT_NONE, c+ 80, r, 80, rh, d['show_vtags'], 'Show vertex tags'       , cb_show_vtags)
     Draw.Toggle ('E Tags',     EVT_NONE, c+160, r, 80, rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
     Draw.Toggle ('F Tags',     EVT_NONE, c+240, r, 80, rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
-    r -= rh
-    gu.text(c,r,"FEM:")
-    Draw.Slider ('',           EVT_NONE, c+ 80, r, 80, rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
-    Draw.Toggle ('Elements',   EVT_NONE, c+160, r, 80, rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
-    Draw.Toggle ('Nodes',      EVT_NONE, c+240, r, 80, rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
     r -= rh
     r -= srg
     Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 160, rh,           'Delete all properties')
@@ -834,8 +820,6 @@ def gui():
         Draw.Toggle      ('3D mesh',     EVT_NONE, c+80,  r, 80, rh, is3d,                     'Set 3D mesh',                       cb_is3d)
         Draw.Toggle      ('Frame Mesh',  EVT_NONE, c+160, r, 80, rh, isframe,         'Set frame (truss/beams only) mesh', cb_frame)
         Draw.Toggle      ('O2 Elements', EVT_NONE, c+240, r, 80, rh, iso2,            'Generate quadratic (o2) elements' , cb_iso2)
-        r -= rh
-        Draw.Toggle      ('Set FEM after remeshing', EVT_NONE, c+80, r, 160, rh, d['mshsetfem'],  'Set FEM data after meshing'       , cb_setfem)
         r -= srg
         r -= rh
         Draw.Toggle      ('Hide mesh',   EVT_NONE,         c,     r, 160, rh, d['hide_mesh'], 'Hide mesh', cb_hide_mesh)

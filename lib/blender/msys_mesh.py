@@ -83,8 +83,6 @@ class MeshData:
         if self.edm: Blender.Window.EditMode(1)
 
 
-
-
 # =========================================================================== Linear mesh
 
 @print_timing
@@ -510,98 +508,9 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False):
         mesh = Unstructured (m.ndim)
         mesh.Set      (dat)
         mesh.Generate ()
-        #add_mesh      (m.obj, mesh, 'unstruct')
-
-
-
-
-
-
+        add_mesh      (m.obj, mesh, 'unstruct')
 
 # ====================================================================================== Draw
-
-@print_timing
-def set_elems(obj, elems):
-    obj.properties['elems'] = elems
-    for sid in obj.properties['stages']:
-        stg = 'stg_'+sid
-        if not obj.properties[stg].has_key('eatts'): obj.properties[stg]['eatts'] = {} 
-        temp = {}
-        id   = 0
-        while obj.properties[stg]['eatts'].has_key(str(id)): id += 1
-        for k, v in elems.iteritems():
-            tag = int(v[0])
-            vtk = int(v[1])
-            if not temp.has_key(tag):
-                temp[tag] = True
-                old_id    = ''
-                for m, n in obj.properties[stg]['eatts'].iteritems(): # find old tag
-                    if int(n[0])==tag:
-                        old_id = m
-                        break
-                if old_id=='': # add new
-                    tid = di.props_push_new('texts', 'gam=20') # returns text_id  == tid
-                    obj.properties[stg]['eatts'][str(id)]    = di.new_eatt_props()
-                    obj.properties[stg]['eatts'][str(id)][0] = tag
-                    obj.properties[stg]['eatts'][str(id)][1] = di.key('vtk2ety')[vtk]
-                    obj.properties[stg]['eatts'][str(id)][2] = di.key('vtk2pty')[vtk]
-                    obj.properties[stg]['eatts'][str(id)][7] = tid
-                    id += 1
-                else:
-                    obj.properties[stg]['eatts'][old_id][1] = di.key('vtk2ety')[vtk]
-                    obj.properties[stg]['eatts'][old_id][2] = di.key('vtk2pty')[vtk]
-
-@print_timing
-def set_ebrys(obj):
-    if not di.key('mshsetfem'): return
-    # set edges boundaries
-    if obj.properties.has_key('etags'):
-        for sid in obj.properties['stages']:
-            stg = 'stg_'+sid
-            if not obj.properties[stg].has_key('ebrys'): obj.properties[stg]['ebrys'] = {} 
-            temp = {}
-            id   = 0
-            while obj.properties[stg]['ebrys'].has_key(str(id)): id += 1
-            for k, v in obj.properties['etags'].iteritems():
-                tag = int(v)
-                if not temp.has_key(tag):
-                    temp[tag] = True
-                    old_id    = ''
-                    for m, n in obj.properties[stg]['ebrys'].iteritems(): # find old tag
-                        if int(n[0])==tag:
-                            old_id = m
-                            break
-                    if old_id=='': # add new
-                        obj.properties[stg]['ebrys'][str(id)]    = di.new_ebry_props()
-                        obj.properties[stg]['ebrys'][str(id)][0] = tag
-                        id += 1
-
-@print_timing
-def set_fbrys(obj):
-    if not di.key('mshsetfem'): return
-    # 3D mesh?
-    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
-    # set faces boundaries
-    if is3d and obj.properties.has_key('ftags'):
-        for sid in obj.properties['stages']:
-            stg = 'stg_'+sid
-            if not obj.properties[stg].has_key('fbrys'): obj.properties[stg]['fbrys'] = {} 
-            temp = {}
-            id   = 0
-            while obj.properties[stg]['fbrys'].has_key(str(id)): id += 1
-            for k, v in obj.properties['ftags'].iteritems():
-                tag = int(v)
-                if not temp.has_key(tag):
-                    temp[tag] = True
-                    old_id    = ''
-                    for m, n in obj.properties[stg]['fbrys'].iteritems(): # find old tag
-                        if int(n[0])==tag:
-                            old_id = m
-                            break
-                    if old_id=='': # add new
-                        obj.properties[stg]['fbrys'][str(id)]    = di.new_fbry_props()
-                        obj.properties[stg]['fbrys'][str(id)][0] = tag
-                        id += 1
 
 @print_timing
 def add_mesh(obj, mesh, mesh_type):
@@ -615,9 +524,6 @@ def add_mesh(obj, mesh, mesh_type):
         except: pass
     else: msh_name = obj.name+'_msh'
 
-    # delete results
-    if obj.properties.has_key('res'): obj.properties.pop('res')
-
     # add new object/mesh to Blender
     scn                        = bpy.data.scenes.active
     new_msh                    = bpy.data.meshes.new      (msh_name)
@@ -626,22 +532,11 @@ def add_mesh(obj, mesh, mesh_type):
     obj.properties['msh_name'] = new_obj.name
     verts                      = []
     edges                      = []
-    mesh.get_verts       (verts)
-    mesh.get_edges       (edges)
+    mesh.GetVertsEdges   (verts, edges)
     new_msh.verts.extend (verts)
     new_msh.edges.extend (edges)
     new_obj.select       (0)
     obj.makeParent       ([new_obj])
-
-    # new stage
-    if not obj.properties.has_key('stages'): di.props_push_new_stage() # add to the current active object
-
-    # set elements, edges brys, and faces brys
-    elems = {}
-    mesh.get_elems (elems)
-    set_elems      (obj, elems)
-    set_ebrys      (obj)
-    set_fbrys      (obj)
 
     # set mesh type
     obj.properties['mesh_type'] = mesh_type
