@@ -83,7 +83,6 @@ EVT_MESH_ADDHOL      = 52 # add hole
 EVT_MESH_DELALLHOLS  = 53 # delete all holes
 EVT_MESH_GENUNSTRU   = 54 # generate unstructured mesh using MechSys module
 EVT_MESH_GENUNSTRUS  = 55 # script for unstructured mesh generation
-EVT_MESH_GENUNSTRUSN = 56 # (new) script for unstructured mesh generation
 # Mesh -- extra
 EVT_MESH_ADDLINE     = 60 # add linear element
 EVT_MESH_DELALLLINES = 61 # delete all linear elements
@@ -266,22 +265,8 @@ def button_event(evt):
     elif evt==EVT_MESH_DELALLREGS: di.props_del_all ('regs')
     elif evt==EVT_MESH_ADDHOL:     di.props_push_new('hols', di.new_hol_props())
     elif evt==EVT_MESH_DELALLHOLS: di.props_del_all ('hols')
-    elif evt==EVT_MESH_GENUNSTRU:
-        obj  = di.get_obj()
-        mesh = me.gen_unstruct_mesh(False,None,True)
-        me.add_mesh (obj, mesh, 'unstruct')
-    elif evt==EVT_MESH_GENUNSTRUS:
-        obj = di.get_obj()
-        txt = me.gen_unstruct_mesh(True,None,True,di.key('umsh_cpp'))
-        if not di.key('umsh_cpp'):
-            txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
-            txt.write('me.add_mesh (obj, mesh, "unstruct")\n')
-    elif evt==EVT_MESH_GENUNSTRUSN:
-        obj = di.get_obj()
-        txt = me.gen_unstruct_mesh_new(True,None,True,di.key('umsh_cpp'))
-        if not di.key('umsh_cpp'):
-            txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
-            txt.write('me.add_mesh (obj, mesh, "unstruct")\n')
+    elif evt==EVT_MESH_GENUNSTRU:  me.gen_unstruct_mesh ()
+    elif evt==EVT_MESH_GENUNSTRUS: me.gen_unstruct_mesh (True,None,di.key('umsh_cpp'))
 
     # ------------------------------------------------------------------------- Mesh -- extra
 
@@ -743,10 +728,10 @@ def gui():
     h_set           = 7*rh+2*srg+2*rg
     h_cad           = 4*rh+2*rg
     h_msh_stru_blks = rh+srg+2*rh*len(blks) if len(blks)>0 else 0
-    h_msh_stru      = 3*rh+srg+h_msh_stru_blks+2*rg
+    h_msh_stru      = 2*rh+srg+h_msh_stru_blks+2*rg
     h_msh_unst_regs = rh+srg+rh*len(regs) if len(regs)>0 else 0
     h_msh_unst_hols = rh+srg+rh*len(hols) if len(hols)>0 else 0
-    h_msh_unst      = 5*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols+2*rg
+    h_msh_unst      = 4*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols+2*rg
     h_msh_ext_lins  = rh+srg+rh*len(lins) if len(lins)>0 else 0
     h_msh_ext       = rh+2*rg+h_msh_ext_lins
     h_msh           = 12*rh+srg+h_msh_stru+h_msh_unst+2*rg+h_msh_ext
@@ -893,10 +878,9 @@ def gui():
         # ----------------------- Mesh -- structured -- END
 
         r -= srg
-        Draw.Toggle     ('C++',          EVT_NONE,          c,    r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
-        Draw.PushButton ('Write Script', EVT_MESH_GENSTRUS, c+40, r, 100, rh, 'Create script for structured mesh generation')
-        r -= rh
-        Draw.PushButton ('Generate (quadrilaterals/hexahedrons)', EVT_MESH_GENSTRU, c, r, 240, rh, 'Generated structured mesh')
+        Draw.Toggle     ('C++',          EVT_NONE,          c,     r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
+        Draw.PushButton ('Write Script', EVT_MESH_GENSTRUS, c+40,  r, 100, rh, 'Create script for structured mesh generation')
+        Draw.PushButton ('Generate',     EVT_MESH_GENSTRU,  c+140, r, 120, rh, 'Generated structured mesh')
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
 
         # ----------------------- Mesh -- unstructured
@@ -949,11 +933,9 @@ def gui():
         # ----------------------- Mesh -- unstructured -- END
 
         r -= srg
-        Draw.Toggle     ('C++',                EVT_NONE,            c,     r,  40, rh, d['umsh_cpp'], 'Generate C++ script', cb_umsh_cpp)
-        Draw.PushButton ('Write Script',       EVT_MESH_GENUNSTRUS, c+40,  r, 100, rh, 'Create script for unstructured mesh generation')
-        Draw.PushButton ('Write Script (new)', EVT_MESH_GENUNSTRUSN,c+140, r, 120, rh, 'Create script for unstructured mesh generation (new)')
-        r -= rh
-        Draw.PushButton ('Generate (triangles/tetrahedrons)', EVT_MESH_GENUNSTRU , c, r, 260, rh, 'Generated unstructured mesh')
+        Draw.Toggle     ('C++',          EVT_NONE,            c,     r,  40, rh, d['umsh_cpp'], 'Generate C++ script', cb_umsh_cpp)
+        Draw.PushButton ('Write Script', EVT_MESH_GENUNSTRUS, c+40,  r, 100, rh, 'Create script for unstructured mesh generation')
+        Draw.PushButton ('Generate',     EVT_MESH_GENUNSTRU , c+140, r, 120, rh, 'Generated unstructured mesh')
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r+rh)
 
         # ----------------------- Mesh -- extra elements
