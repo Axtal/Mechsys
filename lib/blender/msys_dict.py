@@ -33,7 +33,6 @@ def load_dict():
     if not dict:
         dict                  = {}
         # GUI
-        dict['gui_show_set']  = True
         dict['gui_show_cad']  = False
         dict['gui_show_mesh'] = False
         dict['gui_show_mat']  = False
@@ -48,6 +47,7 @@ def load_dict():
         dict['show_blks']     = True
         dict['show_axes']     = True
         dict['show_regs']     = True
+        dict['show_lins']     = True  # show linear elements
         dict['show_vtags']    = True
         dict['show_etags']    = True
         dict['show_ftags']    = True
@@ -60,49 +60,64 @@ def load_dict():
         dict['cad_rad']       = '0.0'
         dict['cad_stp']       = 10
         # MESH
-        dict['newvtag']       = -5
-        dict['newetag']       = -50
-        dict['newftag']       = -500
+        dict['newvtag']       = -100
+        dict['newetag']       = -10
+        dict['newftag']       = -10
         dict['hide_mesh']     = False
         dict['smsh_cpp']      = False # structured mesh: generate C++ script
         dict['umsh_cpp']      = False # unstructured mesh: generate C++ script
         dict['mshsetfem']     = True  # set fem data after meshing?
         # FEM
-        dict['show_reinfs']   = True  # show reinforcements
-        dict['show_lines']    = True  # show linear elements
+        dict['fem_prob']      = 0
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
         dict['fem_cpp']       = False # generate C++ script
-        # RESULTS
-        dict['res_stage']       = 1      # stage num
-        dict['show_res']        = False
-        dict['res_lbl']         = 0
-        dict['res_show_scalar'] = False
-        dict['res_warp_scale']  = '1'
-        dict['res_show_warp']   = True
-        dict['res_show_extra']  = True
-        dict['res_ext']         = 1
-        dict['res_ext_scale']   = '1'
-        dict['res_ext_txt']     = True
-
-        # Extra output
-        dict['extmnu'] = 'Extra output %t|V %x3|M %x2|N %x1'
-
-        # DOF Vars
-        dict['dfv']    = { 0:'ux', 1:'uy', 2:'uz', 3:'fx', 4:'fy', 5:'fz', 6:'u', 7:'f', 8:'Q', 9:'wz', 10:'mz', 11:'Qb', 12:'pwp', 13:'vol' }
-        dict['dfvmnu'] = 'DOF Vars %t|vol %x14|pwp %x13|Qb %x12|mz %x11|wz %x10|Q %x9|f %x8|u %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1'
-
-        # Geometry types
-        dict['gty']  =  { 0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20', 8:'Lin2' }
-        dict['gtymnu'] = 'Element Types %t|Lin2 %x9|Hex20 %x8|Hex8 %x7|Tet10 %x6|Tet4 %x5|Quad8 %x4|Quad4 %x3|Tri6 %x2|Tri3 %x1'
-
-        # Problem types
-        dict['pty'] = { 0:'Equilib', 1:'PStrain', 2:'PStress', 3:'Axis', 4:'Diffusion', 5:'Biot', 6:'Unsat', 7:'Rod', 8:'Beam', 9:'Spring', 10:'Reinforcement' }
-        dict['ptymnu'] = 'Problem Types %t|Reinforcement %x11|Spring %x10|Beam %x9|Rod %x8|Unsat %x7|Biot %x6|Diffusion %x5|Axis %x4|PStress %x3|PStrain %x2|Equilib %x1'
 
         # Models
-        dict['mdl']    = { 0:'LinElastic', 1:'LinFlow', 2:'CamClay', 3:'Beam', 4:'BiotElastic', 5:'Reinforcement', 6:'SpringElastic', 7:'RodElastic' }
-        dict['mdlmnu'] = 'Constitutive Models %t|RodElastic %x8|SpringElastic %x7|Reinforcement %x6|BiotElastic %x5|BeamElastic %x4|CamClay %x3|LinDiffusion %x2|LinElastic %x1'
+        dict['mdl']      = {0:'Rod', 1:'Beam', 2:'LinElastic', 3:'ElastoPlastic', 4:'CamClay', 5:'LinFlow'}
+        dict['mdlmnu']   = 'Models %t|LinFlow %x6|CamClay %x5|ElastoPlastic %x4|LinElastic %x3|Beam %x2|Rod %x1'
+        dict['mdl2nrow'] = {0:1, 1:1, 2:1, 3:2, 4:2, 5:1}
+        dict['fc']       = {0:'VM', 1:'DP', 2:'MC' }
+        dict['fcmnu']    = 'Failure Criteria %t|Mohr-Coulomb %x3|Drucker-Prager %x2|von Mises %x1'
+
+        # Problem types
+        dict['pty'] = { 0:'Equilib', 1:'Flow' }
+        dict['ptymnu'] = 'Problem Types %t|Flow (steady) %x2|Equilibrium (quasi-static) %x1'
+
+        # DOF vars
+        dict['pty2Ndfv'] = { # problem type to Node DOF vars
+                0:{0:'ux', 1:'uy', 2:'uz',  3:'fx', 4:'fy', 5:'fz',  6:'wz', 7:'mz'}, # Equilib 
+                1:{0:'H',  1:'Q'} }                                                   # Flow
+
+        dict['pty2Fdfv'] = { # problem type to Edge/Face DOF vars
+                0:{0:'ux', 1:'uy', 2:'uz',  3:'qx', 4:'qy', 5:'qz',  6:'qn', 7:'qnl', 8:'qnr'}, # Equilib 
+                1:{0:'conv', 1:'flux'} }                                                        # Flow
+
+        dict['pty2Nmnu'] = {
+                0:'N vars %t|mz %x8|wz %x7|fz %x6|fy %x5|fx %x4|uz %x3|uy %x2|ux %x1', # Equilib
+                1:'N vars %t|Q %x2|H %x1' }                                            # Flow
+
+        dict['pty2Fmnu'] = {
+                0:'E/F vars %t|qnr %x9|qnl %x8|qn %x7|qz %x6|qy %x5|qx %x4|uz %x3|uy %x2|ux %x1', # Equilib
+                1:'E/F vars %t|flux %x2|conv %x1' }                                               # Flow
+
+        # Problem/geometry
+        dict['pty2gepb'] = { # problem type to prob/geom type
+                0:{0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20', 8:'Rod', 9:'Beam' }, # Equilib
+                1:{0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20' } }                   # Flow
+
+        dict['pty2gpmnu'] = {
+                0:'Types %t|Beam %x10|Rod %x9|Hex20 %x8|Hex8 %x7|Tet10 %x6|Tet4 %x5|Quad8 %x4|Quad4 %x3|Tri6 %x2|Tri3 %x1', # Equilib
+                1:'Types %t|Hex20 %x8|Hex8 %x7|Tet10 %x6|Tet4 %x5|Quad8 %x4|Quad4 %x3|Tri6 %x2|Tri3 %x1' }                  # Flow
+
+        # Geometry types
+        dict['pty2gty'] = {
+                0:{0:'pse', 1:'psa', 2:'axs', 3:'d3d', 4:'fra'},
+                1:{0:'d2d', 1:'d3d' } }
+
+        dict['pty2gmnu'] = {
+                0:'Geometry type %t|fra %x5|d3d %x4|axs %x3|psa %x2|pse %x1',
+                1:'Geometry type %t|d3d %x2|d2d %x1' }
 
         # VTK Cell Type (tentative mapping)
         dict['vtk2ety'] = {  5:  0,   # VTK_TRIANGLE             => Tri3
@@ -237,34 +252,36 @@ def new_hol_props():
     x, y, z = Blender.Window.GetCursorPos()
     return [x,y,z] # 0:x, 1:y, 2:z
 
-def new_mat_props():
-    return [       0,     #   0:  ModelType (0:LinElastic)
-               200.0,     #   1:  E -- Young (LinElastic)
-                 0.2,     #   2:  nu -- Poisson (LinElastic)
-                 1.0,     #   3:  k -- diffusion coefficient (LinDiffusion)
-                 0.0891,  #   4:  lam -- lambda (CamClay)
-                 0.0196,  #   5:  kap -- kappa (CamClay)
-                31.6,     #   6:  phics -- shear angle at CS (CamClay)
-             18130.0,     #   7:  G -- shear modulus (kPa) (CamClay)
-                 1.6910,  #   8:  v -- initial specific volume (CamClay)
-                 1.0,     #   9:  A -- Beam: Area
-                 1.0,     #  10:  Izz -- Beam: Inertia
-                  -1,     #  11:  idx -- index to material name/description in 'texts'
-                10.0,     #  12:  gw -- water specific weight
-                 1.0,     #  13:  Ar -- area of reinforcement (steel cross sectional area) (Embedded)
-                 1.0,     #  14:  At -- total area of reinforcement (steel + covering) (Embedded)
-             1.0e+12,     #  15:  ks -- interfacial spring stiffness (Embedded)
-                 0.0,     #  16:  c  -- cohesion
-                20.0 ]    #  17:  phi -- friction angle
+def new_lin_props(): return [-200, 0, 1] # tag, N0, N1
 
-def new_reinf_props(): return [-100, 0.0,0.0,0.0, 1.0,1.0,0.0]  # tag, x0,y0,z0, x1,y1,z1
-def new_line_props():  return [-200, 0, 1]                      # tag, N0, N1
-def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1]          # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime, active?
-def new_nbry_props():  return [0.0,0.0,0.0, 0, 0.0]             # x,y,z, ux, val
-def new_nbID_props():  return [0, 0, 0.0]                       # ID, ux, val
-def new_ebry_props():  return [-10, 0, 0.0]                     # tag, ux, val
-def new_fbry_props():  return [-500, 0, 0.0]                    # tag, ux, val
-def new_eatt_props():  return [-1, 0, 1, -1, 1, 0, 0, -1]       # 0:tag, 1:ElemType, 2:ProbType, 3:MatID, 4:active?, 5:activate?, 6:deactivate?, 7:idx_txt
+def new_mat_props():
+    return [      0,    #   0:  ModelType
+                 -1,    #   1:  idx -- index to material name/description in 'texts'
+             1000.0,    #   2:  E   -- Young (LinElastic)
+                1.0,    #   3:  A   -- Beam: Area
+                1.0,    #   4:  Izz -- Beam: Inertia
+                0.3,    #   5:  nu  -- Poisson (LinElastic)
+                  0,    #   6:  fc  -- Failure criterion (ElastoPlastic)
+                0.0,    #   7:  sY  -- Yield stress (ElastoPlastic)
+               -1.0,    #   8:  cu  -- Undrained cohesion (ElastoPlastic)
+                0.01,   #   9:  lam -- lambda (CamClay)
+                0.001,  #  10:  kap -- kappa (CamClay)
+               25.0,    #  11:  phi -- shear angle at CS (CamClay)
+                1.0 ]   #  12:  k   -- diffusion coefficient (LinFlow)
+
+def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1] # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime, active?
+def new_nbry_props():  return [-100, 0, 0.0]           # tag, key, val
+def new_ebry_props():  return [-10,  0, 0.0]           # tag, key, val
+def new_fbry_props():  return [-10,  0, 0.0]           # tag, key, val
+def new_eatt_props():  return [ -1,    # 0: tag
+                                 0,    # 1: prob
+                                 0,    # 2: geom/prob
+                                 0,    # 3: gty
+                                -1,    # 4: material ID
+                                 0.0,  # 5: h (thickness)
+                                 1,    # 6: active
+                                 0,    # 7: activate?
+                                 0 ]   # 8:deactivate?
 
 
 # ============================================================================== Object Properties
@@ -340,7 +357,7 @@ def props_push_new_mat():
     obj = get_obj()
     mid = props_push_new('mats', new_mat_props()) # returns material_id == mid
     tid = props_push_new('texts', 'material')     # returns text_id     == tid
-    props_set_item('mats',mid,11,tid)             # description
+    props_set_item('mats',mid,1,tid)              # description
     Blender.Window.QRedrawAll()
 
 def props_del_all_mats():
@@ -350,7 +367,7 @@ def props_del_all_mats():
     if res>0:
         # delete description
         for mid, v in obj.properties['mats'].iteritems():
-            tid = str(int(v[11])) # text_id
+            tid = str(int(v[1])) # text_id
             obj.properties['texts'].pop(tid)
         if len(obj.properties['texts'])==0: obj.properties.pop('texts')
         # delete all materials
@@ -375,11 +392,6 @@ def props_push_new_stage():
             if int(v[0])==1: # first stage
                 obj.properties[stg] = obj.properties['stg_'+k]
                 break
-        # add new text for properties
-        if obj.properties[stg].has_key('eatts'):
-            for k, v in obj.properties[stg]['eatts'].iteritems():
-                tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
-                obj.properties[stg]['eatts'][k][7] = tid
     Blender.Window.QRedrawAll()
 
 def props_push_new_fem(stage_ids,key,props):
@@ -390,9 +402,6 @@ def props_push_new_fem(stage_ids,key,props):
         id = 0
         while obj.properties[stg][key].has_key(str(id)): id += 1
         obj.properties[stg][key][str(id)] = props
-        if key=='eatts':
-            tid = props_push_new('texts', 'gam=20') # returns text_id  == tid
-            obj.properties[stg]['eatts'][str(id)][7] = tid
     Blender.Window.QRedrawAll()
 
 def props_set_fem(stage_ids,key,id,item,val):
@@ -414,9 +423,6 @@ def props_del_fem(stage_ids,key,id):
         for sid in stage_ids:
             stg = 'stg_'+str(sid)
             obj = get_obj()
-            if key=='eatts':
-                tid = str(obj.properties[stg][key][str(id)][7])
-                if obj.properties['texts'].has_key(tid): obj.properties['texts'].pop(tid)
             obj.properties[stg][key].pop(str(id))
             if len(obj.properties[stg][key])==0: obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
@@ -436,10 +442,6 @@ def props_del_all_fem(stage_ids,key,with_confirmation=True):
         for sid in stage_ids:
             stg = 'stg_'+str(sid)
             if obj.properties[stg].has_key(key):
-                if key=='eatts':
-                    for k, v in obj.properties[stg][key].iteritems():
-                        tid = str(v[7])
-                        obj.properties['texts'].pop(tid)
                 obj.properties[stg].pop(key)
         Blender.Window.QRedrawAll()
 
@@ -484,12 +486,8 @@ def props_del_all_stages(with_confirmation=True):
         for sid, v in obj.properties['stages'].iteritems():
             # delete description
             obj.properties['texts'].pop(str(int(v[1]))) # v[1] == text ID
-            # delete eatt text
-            stg = 'stg_'+sid
-            if obj.properties[stg].has_key('eatts'):
-                for k, v in obj.properties[stg]['eatts'].iteritems():
-                    obj.properties['texts'].pop(str(v[7]))
             # delete stage
+            stg = 'stg_'+sid
             obj.properties.pop(stg)
         if len(obj.properties['texts'])==0: obj.properties.pop('texts')
         obj.properties.pop('stages')

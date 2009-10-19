@@ -68,7 +68,7 @@ def draw_yfix_2d(x0,y0, h, dy):
 
 
 # Transformation matrix
-if di.key('show_props') or di.key('show_res') or di.key('show_reinfs') or di.key('show_lines'):
+if di.key('show_props'):
     # Buffer
     view_matrix = Window.GetPerspMatrix()
     view_buffer = [view_matrix[i][j] for i in xrange(4) for j in xrange(4)]
@@ -255,40 +255,7 @@ if di.key('show_props'):
                             BGL.glRasterPos3f (v[2], v[3], v[4])
                             Draw.Text         (k+'('+str(int(v[0]))+')')
 
-                # restore mesh to local coordinates
-                msh.verts = ori
-
-
-# draw reinforcement tags
-if di.key('show_reinfs'):
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    for obj in obs:
-        if obj!=None and obj.type=='Mesh':
-            if Blender.Window.GetActiveLayer()==obj.Layer: # draw only if active layer corresponds to this object.Layer
-                if obj.properties.has_key('reinfs'):
-                    BGL.glColor3f (0.730, 0.681, 1.0)
-                    for k, v in obj.properties['reinfs'].iteritems():
-                        # text
-                        xc = (v[1]+v[4])/2.0
-                        yc = (v[2]+v[5])/2.0
-                        zc = (v[3]+v[6])/2.0
-                        BGL.glRasterPos3f (xc,yc,zc)
-                        Draw.Text         (str(int(v[0])))
-                        # line
-                        BGL.glBegin    (BGL.GL_LINES)
-                        BGL.glVertex3f (v[1],v[2],v[3])
-                        BGL.glVertex3f (v[4],v[5],v[6])
-                        BGL.glEnd      ()
-
-
-# draw linear elements
-if di.key('show_lines'):
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    for obj in obs:
-        if obj!=None and obj.type=='Mesh':
-            if Blender.Window.GetActiveLayer()==obj.Layer: # draw only if active layer corresponds to this object.Layer
+                # draw linear elements
                 if obj.properties.has_key('lines') and obj.properties.has_key('mesh_type'):
                     msh_obj = di.get_msh_obj (obj, False)
                     if msh_obj!=None:
@@ -306,138 +273,6 @@ if di.key('show_lines'):
                             BGL.glVertex3f (msh.verts[v[1]].co[0], msh.verts[v[1]].co[1], msh.verts[v[1]].co[2])
                             BGL.glVertex3f (msh.verts[v[2]].co[0], msh.verts[v[2]].co[1], msh.verts[v[2]].co[2])
                             BGL.glEnd      ()
-                        msh.verts = ori # restore mesh to local coordinates
 
-
-def sgn(val):
-    if val<0: return -1
-    else:     return  1
-
-# Results (visualisation)
-if di.key('show_res'):
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    for obj in obs:
-        if obj!=None and obj.type=='Mesh':
-            msh_obj = di.get_msh_obj (obj, False)
-            if msh_obj!=None and obj.properties.has_key('res'):
-
-                # get mesh and transform to global coordinates
-                msh = msh_obj.getData(mesh=1)
-                ori = [v for v in msh.verts] # create a copy before transforming to global coordinates
-                msh.transform (msh_obj.matrix)
-
-                # current stage
-                s = str(di.key('res_stage'))
-
-                # draw scalars text
-                if di.key('res_show_scalar'):
-                    lbl = obj.properties['res'][s]['idx2lbl'][str(di.key('res_lbl'))]
-                    BGL.glColor3f (0.0, 0.0, 0.0)
-                    for v in msh.verts:
-                        BGL.glRasterPos3f (v.co[0], v.co[1], v.co[2])
-                        Draw.Text         ('%g' % obj.properties['res'][s][lbl][v.index])
-
-                # draw warped mesh
-                if di.key('res_show_warp'):
-                    ux = obj.properties['res'][s]['ux'] if obj.properties['res'][s].has_key('ux') else []
-                    uy = obj.properties['res'][s]['uy'] if obj.properties['res'][s].has_key('uy') else []
-                    uz = obj.properties['res'][s]['uz'] if obj.properties['res'][s].has_key('uz') else []
-                    if len(ux)==0: ux = [0 for i in range(len(msh.verts))]
-                    if len(uy)==0: uy = [0 for i in range(len(msh.verts))]
-                    if len(uz)==0: uz = [0 for i in range(len(msh.verts))]
-                    m = float(di.key('res_warp_scale'))
-                    BGL.glColor3f (1.0, 1.0, 1.0)
-                    for e in msh.edges:
-                        BGL.glBegin    (BGL.GL_LINES)
-                        BGL.glVertex3f (e.v1.co[0]+m*ux[e.v1.index], e.v1.co[1]+m*uy[e.v1.index], e.v1.co[2]+m*uz[e.v1.index])
-                        BGL.glVertex3f (e.v2.co[0]+m*ux[e.v2.index], e.v2.co[1]+m*uy[e.v2.index], e.v2.co[2]+m*uz[e.v2.index])
-                        BGL.glEnd      ()
-
-                # draw extra
-                if di.key('res_show_extra') and len(obj.properties['res'][s]['extra'])>0:
-                    clrs = [(0.276,0.276,1.0), (0.934, 0.643, 0.19), (0.69,0.81,0.57)]
-                    exts = ['N', 'M', 'V']
-                    idx  = di.key('res_ext')
-                    ext  = exts[idx]
-                    key  = 'max_'+ext
-                    sca  = float(di.key('res_ext_scale'))
-                    BGL.glColor3f (clrs[idx][0], clrs[idx][1], clrs[idx][2])
-                    for ide in obj.properties['res'][s]['extra']:
-                        maxv  = obj.properties['res'][s][key][0] if obj.properties['res'][s][key][0]>0 else 1.0
-                        va    =        obj.properties['res'][s]['extra'][ide]['values']
-                        co    =        obj.properties['res'][s]['extra'][ide]['coords']
-                        no    = Vector(obj.properties['res'][s]['extra'][ide]['normal'])
-                        m     = va[ext][0]
-                        if ext=='N':
-                            sf   = m*sca/maxv
-                            epo1 = Vector([co['X'][0], co['Y'][0]]) + sf*no/2.0
-                            epo2 = Vector([co['X'][0], co['Y'][0]]) - sf*no/2.0
-                            if m<0.0: BGL.glColor3f (0.276, 0.276, 1.0)  # blue ==> + compression
-                            else:     BGL.glColor3f (0.8,   0.0,   0.0)  # red  ==> - tension
-                            for i, m in enumerate(va[ext]):
-                                sf  = m*sca/maxv
-                                sp  = Vector([co['X'][i], co['Y'][i]])
-                                ep1 = sp + sf*no/2.0
-                                ep2 = sp - sf*no/2.0
-                                BGL.glBegin    (BGL.GL_LINES)
-                                BGL.glVertex3f (sp [0], sp [1], 0.0)
-                                BGL.glVertex3f (ep1[0], ep1[1], 0.0)
-                                BGL.glEnd      ()
-                                BGL.glBegin    (BGL.GL_LINES)
-                                BGL.glVertex3f (sp [0], sp [1], 0.0)
-                                BGL.glVertex3f (ep2[0], ep2[1], 0.0)
-                                BGL.glEnd      ()
-                                if (i>0):
-                                    BGL.glBegin    (BGL.GL_LINES)
-                                    BGL.glVertex3f (epo1[0], epo1[1], 0.0)
-                                    BGL.glVertex3f (ep1 [0], ep1 [1], 0.0)
-                                    BGL.glEnd      ()
-                                    BGL.glBegin    (BGL.GL_LINES)
-                                    BGL.glVertex3f (epo2[0], epo2[1], 0.0)
-                                    BGL.glVertex3f (ep2 [0], ep2 [1], 0.0)
-                                    BGL.glEnd      ()
-                                epo1 = ep1
-                                epo2 = ep2
-                                if di.key('res_ext_txt'):
-                                    BGL.glRasterPos3f (sp[0], sp[1], 0.0)
-                                    Draw.Text ('%g' % m)
-                        else:
-                            c     = sgn(va['M'][1]) if ext=='V' else 1.0
-                            sf    = m*sca/maxv
-                            epold = Vector([co['X'][0], co['Y'][0]]) - sf*c*no # "-" ==> Moment are plotted to the tensioned side
-                            nv    = len(va[ext]) # number of values
-                            if ext=='V': BGL.glColor3f (0.69,  0.81,  0.57)
-                            else:        BGL.glColor3f (0.934, 0.643, 0.19)
-                            for i, m in enumerate(va[ext]):
-                                if ext=='V':
-                                    if   i==0:    c = -sgn(va['M'][1])
-                                    elif i==nv-1: c = -sgn(va['M'][nv-2])
-                                    else:         c = -sgn(va['M'][i])
-                                else: c = 1.0
-                                sf = m*sca/maxv
-                                sp = Vector([co['X'][i], co['Y'][i]])
-                                ep = sp - sf*c*no  # "-" ==> Moment are plotted to the tensioned side
-                                BGL.glBegin    (BGL.GL_LINES)
-                                BGL.glVertex3f (sp[0], sp[1], 0.0)
-                                BGL.glVertex3f (ep[0], ep[1], 0.0)
-                                BGL.glEnd      ()
-                                if (i>0):
-                                    BGL.glBegin    (BGL.GL_LINES)
-                                    BGL.glVertex3f (epold[0], epold[1], 0.0)
-                                    BGL.glVertex3f (ep[0], ep[1], 0.0)
-                                    BGL.glEnd      ()
-                                epold = ep
-                                if di.key('res_ext_txt'):
-                                    BGL.glRasterPos3f (ep[0], ep[1], 0.0)
-                                    if ext=='V': Draw.Text ('%g' % m)
-                                    else:        Draw.Text ('%g' % abs(m)) # show Moment as absolute values
-                    res = obj.properties['res'][s][key]
-                    m, e, x, y = res[0], res[1], res[2], res[3] # max, elem, x, y
-                    BGL.glColor3f (0.0, 0.0, 0.0)
-                    BGL.glRasterPos3f (x, y, 0.0)
-                    Draw.Text ('%g at e%d' % (m,e))
-
-
-                # Resore mesh to local coordinates
+                # restore mesh to local coordinates
                 msh.verts = ori

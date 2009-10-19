@@ -21,12 +21,12 @@
 
 """
 Name: 'MechSys'
-Blender: 2.46
+Blender: 2.48
 Group: 'Themes'
-Tooltip: 'CAD, Mesh generator, and FEM in Blender'
+Tooltip: 'Open Library for Mechanics'
 """
 __author__  = "Dorival Pedroso"
-__version__ = "06.05.08"
+__version__ = "19.10.09"
 __bpydoc__="""\
 TODO
 """
@@ -44,90 +44,74 @@ import msys_mesh as me
 import msys_dict as di
 import msys_fem  as fe
 import msys_gui  as gu
-import msys_res  as re
 
 #import rpdb2; rpdb2.start_embedded_debugger('msys')
 
 # ================================================================================= Constants
 
 CLOSE_VERT_TOL       = 1.0e-4 # tolerace to decide whether vertices are close to each other or not
-EVT_INC              = 10000 # increment used when passing IDs through events
-EVT_NONE             =  0 # used for buttons with callbacks
-EVT_REFRESH          =  1 # refresh all windows
+EVT_INC              = 10000  # increment used when passing IDs through events
+EVT_NONE             = 0      # used for buttons with callbacks
 # SETTINGS
-EVT_SET_SHOWHIDE     = 10 # show/hide SET box
-EVT_SET_DELPROPS     = 12 # delete all properties
+EVT_SET_DELPROPS     = 10 # delete all properties
 # CAD
-EVT_CAD_SHOWHIDE     = 20 # show/hide CAD box
-EVT_CAD_ADDXYZ       = 22 # type in values to define point(s)
-EVT_CAD_FILLET       = 23 # fillet two edges
-EVT_CAD_BREAK        = 24 # break edge
-EVT_CAD_BREAKM       = 25 # break edge at middle point
-EVT_CAD_EINT         = 26 # edge closest distance
-EVT_CAD_FPOINT       = 27 # read points from file
-EVT_CAD_FSPLINE      = 28 # create a spline from points in a file
-EVT_CAD_EXPTS        = 29 # export points to a file
+EVT_CAD_ADDXYZ       = 20 # type in values to define point(s)
+EVT_CAD_FILLET       = 21 # fillet two edges
+EVT_CAD_BREAK        = 22 # break edge
+EVT_CAD_BREAKM       = 23 # break edge at middle point
+EVT_CAD_EINT         = 24 # edge closest distance
+EVT_CAD_FPOINT       = 25 # read points from file
+EVT_CAD_FSPLINE      = 26 # create a spline from points in a file
+EVT_CAD_EXPTS        = 27 # export points to a file
 # Mesh
-EVT_MESH_SHOWHIDE    = 40 # show/hide MESH box
-EVT_MESH_SETVTAG     = 41 # set vertex tag
-EVT_MESH_SETETAG     = 42 # set edges tag
-EVT_MESH_SETFTAG     = 43 # set faces tag
-EVT_MESH_DELALLVTAGS = 44 # delete all vertex tags
-EVT_MESH_DELALLETAGS = 45 # delete all edge tags
-EVT_MESH_DELALLFTAGS = 46 # delete all face tags
-EVT_MESH_DELMESH     = 48 # delete mesh object
+EVT_MESH_SETVTAG     = 30 # set vertex tag
+EVT_MESH_SETETAG     = 31 # set edges tag
+EVT_MESH_SETFTAG     = 32 # set faces tag
+EVT_MESH_DELALLVTAGS = 33 # delete all vertex tags
+EVT_MESH_DELALLETAGS = 34 # delete all edge tags
+EVT_MESH_DELALLFTAGS = 35 # delete all face tags
+EVT_MESH_DELMESH     = 36 # delete mesh object
 # Mesh -- structured
-EVT_MESH_ADDBLK      = 60 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
-EVT_MESH_DELALLBLKS  = 61 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
-EVT_MESH_GENSTRU     = 62 # generate structured mesh using MechSys module
-EVT_MESH_GENSTRUS    = 63 # script for structured mesh generation
+EVT_MESH_ADDBLK      = 40 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
+EVT_MESH_DELALLBLKS  = 41 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
+EVT_MESH_GENSTRU     = 42 # generate structured mesh using MechSys module
+EVT_MESH_GENSTRUS    = 43 # script for structured mesh generation
 # Mesh -- unstructured
-EVT_MESH_ADDREG      = 70 # add region
-EVT_MESH_DELALLREGS  = 71 # delete all regions
-EVT_MESH_ADDHOL      = 72 # add hole
-EVT_MESH_DELALLHOLS  = 73 # delete all holes
-EVT_MESH_GENUNSTRU   = 74 # generate unstructured mesh using MechSys module
-EVT_MESH_GENUNSTRUS  = 75 # script for unstructured mesh generation
-EVT_MESH_GENUNSTRUSN = 76 # (new) script for unstructured mesh generation
+EVT_MESH_ADDREG      = 50 # add region
+EVT_MESH_DELALLREGS  = 51 # delete all regions
+EVT_MESH_ADDHOL      = 52 # add hole
+EVT_MESH_DELALLHOLS  = 53 # delete all holes
+EVT_MESH_GENUNSTRU   = 54 # generate unstructured mesh using MechSys module
+EVT_MESH_GENUNSTRUS  = 55 # script for unstructured mesh generation
+EVT_MESH_GENUNSTRUSN = 56 # (new) script for unstructured mesh generation
+# Mesh -- extra
+EVT_MESH_ADDLINE     = 60 # add linear element
+EVT_MESH_DELALLLINES = 61 # delete all linear elements
 # Materials
-EVT_MAT_SHOWHIDE     = 80 # show/hide CAD box
-EVT_MAT_ADDMAT       = 82 # add material
-EVT_MAT_DELALLMAT    = 83 # delete all materials
+EVT_MAT_ADDMAT       = 70 # add material
+EVT_MAT_DELALLMAT    = 71 # delete all materials
 # FEM
-EVT_FEM_SHOWHIDE     =  90 # show/hide FEM box
-EVT_FEM_ADDSTAGE     =  92 # add stage
-EVT_FEM_DELSTAGE     =  93 # add stage
-EVT_FEM_DELALLSTAGES =  94 # add stage
-EVT_FEM_ADDNBRY      =  95 # add nodes boundary (given coordinates)
-EVT_FEM_ADDNBID      =  96 # add nodes boundary (given nodes IDs)
-EVT_FEM_ADDEBRY      = 100 # add edges boundary
-EVT_FEM_ADDFBRY      = 101 # add faces boundary
-EVT_FEM_ADDEATT      = 102 # add element attributes
-EVT_FEM_DELALLNBRY   = 103 # delete all nodes boundary
-EVT_FEM_DELALLNBID   = 104 # delete all nodes boundary (IDs)
-EVT_FEM_DELALLEBRY   = 105 # delete all edges boundary
-EVT_FEM_DELALLFBRY   = 106 # delete all faces boundary
-EVT_FEM_DELALLEATT   = 200 # delete all element attributes
-EVT_FEM_RUN          = 201 # run a FE simulation
-EVT_FEM_SCRIPT       = 202 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 203 # view in ParaView
-EVT_FEM_SAVESTAGES   = 204 # save stage info to a new object
-EVT_FEM_READSTAGES   = 205 # read stage info from another object
-EVT_FEM_ADDREINF     = 206 # add reinforcement
-EVT_FEM_DELALLREINF  = 207 # delete all reinforcements
-EVT_FEM_ADDLINE      = 208 # add linear element
-EVT_FEM_DELALLLINES  = 209 # delete all linear elements
-# Results
-EVT_RES_SHOWHIDE     = 300 # show/hide results box
-EVT_RES_STATS        = 302 # show statistics
-EVT_RES_REPORT       = 303 # show statistics
-EVT_RES_DELRES       = 304 # delete results
+EVT_FEM_ADDSTAGE     = 80 # add stage
+EVT_FEM_DELSTAGE     = 81 # add stage
+EVT_FEM_DELALLSTAGES = 82 # add stage
+EVT_FEM_ADDNBRY      = 83 # add nodes boundary
+EVT_FEM_ADDEBRY      = 84 # add edges boundary
+EVT_FEM_ADDFBRY      = 85 # add faces boundary
+EVT_FEM_ADDEATT      = 86 # add element attributes
+EVT_FEM_DELALLNBRY   = 87 # delete all nodes boundary
+EVT_FEM_DELALLEBRY   = 88 # delete all edges boundary
+EVT_FEM_DELALLFBRY   = 89 # delete all faces boundary
+EVT_FEM_DELALLEATT   = 90 # delete all element attributes
+EVT_FEM_RUN          = 91 # run a FE simulation
+EVT_FEM_SCRIPT       = 92 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 93 # view in ParaView
+EVT_FEM_SAVESTAGES   = 94 # save stage info to a new object
+EVT_FEM_READSTAGES   = 95 # read stage info from another object
 
 
 # ==================================================================================== Events
 
 def hide_all():
-    di.set_key('gui_show_set',  False)
     di.set_key('gui_show_cad',  False)
     di.set_key('gui_show_mesh', False)
     di.set_key('gui_show_mat',  False)
@@ -137,12 +121,8 @@ def hide_all():
     Blender.Window.QRedrawAll()
 
 def show_only(key):
-    was_shown = di.key(key)
     hide_all()
-    #if was_shown: di.set_key(key, False)
-    #else:         di.set_key(key, True)
     di.set_key(key, True)
-    di.set_key('gui_inirow',    0)
     Blender.Window.QRedrawAll()
 
 # Handle input events
@@ -189,13 +169,10 @@ def delete_mesh():
 # Handle button events
 #@try_catch
 def button_event(evt):
-    if evt==EVT_REFRESH: Blender.Window.QRedrawAll()
 
     # ----------------------------------------------------------------------------------- Settings
 
-    if evt==EVT_SET_SHOWHIDE: show_only ('gui_show_set')
-
-    elif evt==EVT_SET_DELPROPS:
+    if evt==EVT_SET_DELPROPS:
         scn = bpy.data.scenes.active
         obs = scn.objects.selected
         if len(obs)>0:
@@ -213,7 +190,6 @@ def button_event(evt):
 
     # ----------------------------------------------------------------------------------- CAD
 
-    elif evt==EVT_CAD_SHOWHIDE: show_only        ('gui_show_cad')
     elif evt==EVT_CAD_ADDXYZ:   ca.add_point     (float(di.key('cad_x')), float(di.key('cad_y')), float(di.key('cad_z')))
     elif evt==EVT_CAD_FILLET:   ca.fillet        (float(di.key('cad_rad')), di.key('cad_stp'))
     elif evt==EVT_CAD_BREAK:    ca.break_edge    ()
@@ -224,8 +200,6 @@ def button_event(evt):
     elif evt==EVT_CAD_EXPTS:    Blender.Window.FileSelector(ca.export_points,        'Export Points', 'allpoints.txt')
 
     # ---------------------------------------------------------------------------------- Mesh
-
-    elif evt==EVT_MESH_SHOWHIDE: show_only ('gui_show_mesh')
 
     elif evt==EVT_MESH_SETVTAG:
         tag = di.key('newvtag')
@@ -268,12 +242,6 @@ def button_event(evt):
             delete_mesh()
             Blender.Window.QRedrawAll()
 
-    # ---------------------------------------------------------------------------------- Materials
-
-    elif evt==EVT_MAT_SHOWHIDE:  show_only            ('gui_show_mat')
-    elif evt==EVT_MAT_ADDMAT:    di.props_push_new_mat()
-    elif evt==EVT_MAT_DELALLMAT: di.props_del_all_mats()
-
     # -------------------------------------------------------------------- Mesh -- structured
 
     elif evt==EVT_MESH_ADDBLK:
@@ -292,7 +260,7 @@ def button_event(evt):
             txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
             txt.write('me.add_mesh (obj, mesh, "struct")\n')
 
-    # -------------------------------------------------------------------------- Unstructured
+    # ------------------------------------------------------------------ Mesh -- unstructured
 
     elif evt==EVT_MESH_ADDREG:     di.props_push_new('regs', di.new_reg_props())
     elif evt==EVT_MESH_DELALLREGS: di.props_del_all ('regs')
@@ -315,12 +283,18 @@ def button_event(evt):
             txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
             txt.write('me.add_mesh (obj, mesh, "unstruct")\n')
 
+    # ------------------------------------------------------------------------- Mesh -- extra
+
+    elif evt==EVT_MESH_ADDLINE:      di.props_push_new('lins', di.new_lin_props())
+    elif evt==EVT_MESH_DELALLLINES:  di.props_del_all ('lins')
+
+    # ---------------------------------------------------------------------------------- Materials
+
+    elif evt==EVT_MAT_ADDMAT:    di.props_push_new_mat()
+    elif evt==EVT_MAT_DELALLMAT: di.props_del_all_mats()
+
     # ----------------------------------------------------------------------------------- FEM 
 
-    elif evt==EVT_FEM_SHOWHIDE: show_only ('gui_show_fem')
-
-    elif evt==EVT_FEM_ADDREINF: di.props_push_new      ('reinfs', di.new_reinf_props())
-    elif evt==EVT_FEM_ADDLINE:  di.props_push_new      ('lines',  di.new_line_props())
     elif evt==EVT_FEM_ADDSTAGE: di.props_push_new_stage()
     elif evt==EVT_FEM_DELSTAGE: di.props_del_stage     ()
     elif evt==EVT_FEM_ADDNBRY:  di.props_push_new_fem  ([di.key('fem_stage')], 'nbrys', di.new_nbry_props())
@@ -331,8 +305,6 @@ def button_event(evt):
         sids = [k for k in obj.properties['stages']]
         di.props_push_new_fem (sids, 'eatts', di.new_eatt_props())
 
-    elif evt==EVT_FEM_DELALLREINF:  di.props_del_all('reinfs')
-    elif evt==EVT_FEM_DELALLLINES:  di.props_del_all('lines')
     elif evt==EVT_FEM_DELALLSTAGES: di.props_del_all_stages()
     elif evt==EVT_FEM_DELALLNBRY:   di.props_del_all_fem   (str(di.key('fem_stage')), 'nbrys')
     elif evt==EVT_FEM_DELALLEBRY:   di.props_del_all_fem   (str(di.key('fem_stage')), 'ebrys')
@@ -348,20 +320,11 @@ def button_event(evt):
     elif evt==EVT_FEM_SAVESTAGES: fe.save_stage_mats_info ()
     elif evt==EVT_FEM_READSTAGES: fe.read_stage_mats_info ()
 
-    # ----------------------------------------------------------------------------------- RES 
-
-    elif evt==EVT_RES_SHOWHIDE: show_only      ('gui_show_res')
-    elif evt==EVT_RES_STATS:    re.stage_stats (di.key('res_stage'))
-    elif evt==EVT_RES_REPORT:   re.report      ()
-    elif evt==EVT_RES_DELRES:
-        obj = di.get_obj()
-        if obj.properties.has_key('res'): obj.properties.pop('res')
-        Blender.Window.QRedrawAll()
-
 
 # ================================================================================= Callbacks
 
 # ---------------------------------- Show/Hide
+
 @try_catch
 def cb_gui_show_cad(evt,val):
     di.set_key ('gui_show_cad', val)
@@ -550,6 +513,27 @@ def cb_hols_setz(evt,val): di.props_set_item ('hols', evt-EVT_INC, 2, float(val)
 @try_catch
 def cb_hols_del (evt,val): di.props_del      ('hols', evt-EVT_INC)
 
+# ---------------------------------- Mesh -- extra -- linear elements
+
+@try_catch
+def cb_show_lins(evt,val): di.set_key ('show_lins', val)
+@try_catch
+def cb_mesh_letag (evt,val): di.props_set_item ('lins', evt-EVT_INC, 0, int(val))
+@try_catch
+def cb_mesh_getN0  (evt,val):
+    msh_obj = di.get_msh_obj (di.get_obj())
+    di.props_set_item ('lins', evt-EVT_INC, 1, di.find_node(msh_obj))
+@try_catch
+def cb_mesh_leN0  (evt,val): di.props_set_item ('lins', evt-EVT_INC, 1, float(val))
+@try_catch
+def cb_mesh_getN1  (evt,val):
+    msh_obj = di.get_msh_obj (di.get_obj())
+    di.props_set_item ('lins', evt-EVT_INC, 2, di.find_node(msh_obj))
+@try_catch
+def cb_mesh_leN1  (evt,val): di.props_set_item ('lins', evt-EVT_INC, 2, float(val))
+@try_catch
+def cb_mesh_ledel (evt,val): di.props_del      ('lins', evt-EVT_INC)
+
 # ---------------------------------- Materials -- mats
 
 @try_catch
@@ -557,97 +541,84 @@ def cb_mat_setname  (evt,val): di.props_set_text ('texts', evt-EVT_INC, val)
 @try_catch
 def cb_mat_setmodel (evt,val): di.props_set_item ('mats', evt-EVT_INC, 0, val-1)
 @try_catch
-def cb_mat_setE     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 1, float(val))
-@try_catch
-def cb_mat_setnu    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 2, float(val))
-@try_catch
-def cb_mat_setk     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 3, float(val))
-@try_catch
-def cb_mat_setlam   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 4, float(val))
-@try_catch
-def cb_mat_setkap   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 5, float(val))
-@try_catch
-def cb_mat_setphics (evt,val): di.props_set_item ('mats', evt-EVT_INC, 6, float(val))
-@try_catch
-def cb_mat_setG     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 7, float(val))
-@try_catch
-def cb_mat_setv     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 8, float(val))
-@try_catch
-def cb_mat_setA     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 9, float(val))
-@try_catch
-def cb_mat_setIzz   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 10, float(val))
-@try_catch
-def cb_mat_setgw    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 12, float(val))
-@try_catch
-def cb_mat_setAr    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 13, float(val))
-@try_catch
-def cb_mat_setAt    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 14, float(val))
-@try_catch
-def cb_mat_setks    (evt,val): di.props_set_item ('mats', evt-EVT_INC, 15, float(val))
-@try_catch
-def cb_mat_setc     (evt,val): di.props_set_item ('mats', evt-EVT_INC, 16, float(val))
-@try_catch
-def cb_mat_setphi   (evt,val): di.props_set_item ('mats', evt-EVT_INC, 17, float(val))
-@try_catch
 def cb_mat_del      (evt,val): di.props_del      ('mats', evt-EVT_INC)
+
+@try_catch
+def cb_mat_setE  (evt,val): di.props_set_item ('mats', evt-EVT_INC, 2, float(val))
+@try_catch
+def cb_mat_setA  (evt,val): di.props_set_item ('mats', evt-EVT_INC, 3, float(val))
+@try_catch
+def cb_mat_setIzz(evt,val): di.props_set_item ('mats', evt-EVT_INC, 4, float(val))
+@try_catch
+def cb_mat_setnu (evt,val): di.props_set_item ('mats', evt-EVT_INC, 5, float(val))
+@try_catch
+def cb_mat_setfc (evt,val): di.props_set_item ('mats', evt-EVT_INC, 6, val-1)
+@try_catch
+def cb_mat_setsY (evt,val): di.props_set_item ('mats', evt-EVT_INC, 7, float(val))
+@try_catch
+def cb_mat_setcu (evt,val): di.props_set_item ('mats', evt-EVT_INC, 8, float(val))
+@try_catch
+def cb_mat_setlam(evt,val): di.props_set_item ('mats', evt-EVT_INC, 9, float(val))
+@try_catch
+def cb_mat_setkap(evt,val): di.props_set_item ('mats', evt-EVT_INC, 10, float(val))
+@try_catch
+def cb_mat_setphi(evt,val): di.props_set_item ('mats', evt-EVT_INC, 11, float(val))
+@try_catch
+def cb_mat_setk  (evt,val): di.props_set_item ('mats', evt-EVT_INC, 12, float(val))
 
 # ---------------------------------- FEM -- nbrys
 
 @try_catch
-def cb_nbry_setx  (evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 0, float(val))
+def cb_nbry_tag(evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_nbry_sety  (evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 1, float(val))
+def cb_nbry_key(evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 1, val-1)
 @try_catch
-def cb_nbry_setz  (evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 2, float(val))
+def cb_nbry_val(evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 2, float(val))
 @try_catch
-def cb_nbry_setkey(evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 3, val-1)
-@try_catch
-def cb_nbry_setval(evt,val): di.props_set_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC, 4, float(val))
-@try_catch
-def cb_nbry_del   (evt,val): di.props_del_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC)
+def cb_nbry_del(evt,val): di.props_del_fem ([di.key('fem_stage')], 'nbrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- ebrys
 
 @try_catch
-def cb_ebry_settag(evt,val): di.props_set_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC, 0, int(val))
+def cb_ebry_tag(evt,val): di.props_set_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_ebry_setkey(evt,val): di.props_set_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC, 1, val-1)
+def cb_ebry_key(evt,val): di.props_set_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC, 1, val-1)
 @try_catch
-def cb_ebry_setval(evt,val): di.props_set_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC, 2, float(val))
+def cb_ebry_val(evt,val): di.props_set_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC, 2, float(val))
 @try_catch
-def cb_ebry_del   (evt,val): di.props_del_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC)
+def cb_ebry_del(evt,val): di.props_del_fem ([di.key('fem_stage')], 'ebrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- fbrys
 
 @try_catch
-def cb_fbry_settag(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC, 0, int(val))
+def cb_fbry_tag(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_fbry_setkey(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC, 1, val-1)
+def cb_fbry_key(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC, 1, val-1)
 @try_catch
-def cb_fbry_setval(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC, 2, float(val))
+def cb_fbry_val(evt,val): di.props_set_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC, 2, float(val))
 @try_catch
-def cb_fbry_del   (evt,val): di.props_del_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC)
+def cb_fbry_del(evt,val): di.props_del_fem ([di.key('fem_stage')], 'fbrys', evt-EVT_INC)
 
 # ---------------------------------- FEM -- eatts
 
 @try_catch
-def cb_eatt_settag  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 0, int(val))
+def cb_eatt_tag  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 0, int(val))
 @try_catch
-def cb_eatt_setety  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 1, int(val)-1)
+def cb_eatt_gebp (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 2, int(val)-1)
 @try_catch
-def cb_eatt_setpty  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 2, int(val)-1)
+def cb_eatt_gty  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 3, int(val)-1)
 @try_catch
-def cb_eatt_setmat  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 3, int(val)-1)
+def cb_eatt_mat  (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 4, int(val)-1)
 @try_catch
-def cb_eatt_isact   (evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 4, int(val))
+def cb_eatt_h    (evt,val): di.props_set_fem_all_stg ('eatts', evt-EVT_INC, 5, float(val))
 @try_catch
-def cb_eatt_act     (evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 5, int(val))
+def cb_eatt_isact(evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 6, int(val))
 @try_catch
-def cb_eatt_deact   (evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 6, int(val))
+def cb_eatt_act  (evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 7, int(val))
 @try_catch
-def cb_eatt_setprops(evt,val): di.props_set_text(                       'texts', evt-EVT_INC, val)
+def cb_eatt_deact(evt,val): di.props_set_fem ([di.key('fem_stage')], 'eatts', evt-EVT_INC, 8, int(val))
 @try_catch
-def cb_eatt_del     (evt,val): di.props_del_fem_all_stg ('eatts', evt-EVT_INC)
+def cb_eatt_del  (evt,val): di.props_del_fem_all_stg ('eatts', evt-EVT_INC)
 
 # ---------------------------------- FEM
 
@@ -656,62 +627,10 @@ def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
 @try_catch
 def cb_fem_cpp   (evt,val): di.set_key('fem_cpp', val)
 
-# ---------------------------------- FEM -- reinforcements (r)
-
-@try_catch
-def cb_show_reinfs(evt,val): di.set_key ('show_reinfs', val)
-@try_catch
-def cb_fem_rtag (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 0, int(val))
-@try_catch
-def cb_fem_rP0  (evt,val):
-    x, y, z = Blender.Window.GetCursorPos()
-    di.props_set_item ('reinfs', evt-EVT_INC, 1, x)
-    di.props_set_item ('reinfs', evt-EVT_INC, 2, y)
-    di.props_set_item ('reinfs', evt-EVT_INC, 3, z)
-@try_catch
-def cb_fem_rx0  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 1, float(val))
-@try_catch
-def cb_fem_ry0  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 2, float(val))
-@try_catch
-def cb_fem_rz0  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 3, float(val))
-@try_catch
-def cb_fem_rP1  (evt,val):
-    x, y, z = Blender.Window.GetCursorPos()
-    di.props_set_item ('reinfs', evt-EVT_INC, 4, x)
-    di.props_set_item ('reinfs', evt-EVT_INC, 5, y)
-    di.props_set_item ('reinfs', evt-EVT_INC, 6, z)
-@try_catch
-def cb_fem_rx1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 4, float(val))
-@try_catch
-def cb_fem_ry1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 5, float(val))
-@try_catch
-def cb_fem_rz1  (evt,val): di.props_set_item ('reinfs', evt-EVT_INC, 6, float(val))
-@try_catch
-def cb_fem_rdel (evt,val): di.props_del      ('reinfs', evt-EVT_INC)
-
-# ---------------------------------- FEM -- linear elements (le)
-
-@try_catch
-def cb_show_lines(evt,val): di.set_key ('show_lines', val)
-@try_catch
-def cb_fem_letag (evt,val): di.props_set_item ('lines', evt-EVT_INC, 0, int(val))
-@try_catch
-def cb_fem_getN0  (evt,val):
-    msh_obj = di.get_msh_obj (di.get_obj())
-    di.props_set_item ('lines', evt-EVT_INC, 1, di.find_node(msh_obj))
-@try_catch
-def cb_fem_leN0  (evt,val): di.props_set_item ('lines', evt-EVT_INC, 1, float(val))
-@try_catch
-def cb_fem_getN1  (evt,val):
-    msh_obj = di.get_msh_obj (di.get_obj())
-    di.props_set_item ('lines', evt-EVT_INC, 2, di.find_node(msh_obj))
-@try_catch
-def cb_fem_leN1  (evt,val): di.props_set_item ('lines', evt-EVT_INC, 2, float(val))
-@try_catch
-def cb_fem_ledel (evt,val): di.props_del      ('lines', evt-EVT_INC)
-
 # ---------------------------------- FEM -- stages
 
+@try_catch
+def cb_fem_prob  (evt,val): di.set_key ('fem_prob', val-1)
 @try_catch
 def cb_fem_stage (evt,val):
     obj = di.get_obj()
@@ -731,40 +650,6 @@ def cb_fem_ndiv       (evt,val): di.props_set_item ('stages', evt-EVT_INC, 4, in
 @try_catch
 def cb_fem_dtime      (evt,val): di.props_set_item ('stages', evt-EVT_INC, 5, float(val))
 
-# ---------------------------------- Results
-
-@try_catch
-def cb_res_show       (evt,val): di.set_key ('show_res',        val)
-@try_catch
-def cb_res_stage      (evt,val):
-    obj         = di.get_obj()
-    res_nstages = len(obj.properties['res'])
-    if   res_nstages==0:   di.set_key ('res_stage', 1)
-    elif val<=res_nstages: di.set_key ('res_stage', val)
-    else: Blender.Window.QRedrawAll()
-@try_catch
-def cb_res_lbl        (evt,val): di.set_key ('res_lbl',         val-1)
-@try_catch
-def cb_res_show_scalar(evt,val): di.set_key ('res_show_scalar', val)
-@try_catch
-def cb_res_warp_scale (evt,val): di.set_key ('res_warp_scale',  val)
-@try_catch
-def cb_res_show_warp  (evt,val): di.set_key ('res_show_warp',   val)
-
-@try_catch
-def cb_res_ext       (evt,val): di.set_key ('res_ext',         val-1)
-@try_catch
-def cb_res_show_ext  (evt,val): di.set_key ('res_show_extra',  val)
-@try_catch
-def cb_res_ext_scale (evt,val): di.set_key ('res_ext_scale',   val)
-@try_catch
-def cb_res_ext_txt   (evt,val): di.set_key ('res_ext_txt',     val)
-@try_catch
-def cb_res_nodes     (evt,val):
-    obj = di.get_obj()
-    obj.properties['res_nodes'] = val
-    Blender.Window.QRedrawAll()
-
 
 # ======================================================================================= GUI
 
@@ -778,28 +663,24 @@ def gui():
     except Exception, inst: edm, obj, msh = 0, None, None
 
     # Data from current selected object
-    markover    = False
-    is3d        = False
-    iso2        = False
-    isframe     = False
-    blks        = {}
-    minang      = -1.0
-    maxarea     = -1.0
-    regs        = {}
-    hols        = {}
-    mats        = {}
-    texts       = {}
-    stages      = {}
-    nstages     = 0
-    nbrys       = {}
-    ebrys       = {}
-    fbrys       = {}
-    eatts       = {}
-    reinfs      = {} # reinforcements
-    lines       = {} # linear elements
-    res_nstages = 0
-    res_nodes   = ''
-    lblmnu      = 'Labels %t'
+    markover = False
+    is3d     = False
+    iso2     = False
+    isframe  = False
+    blks     = {}
+    minang   = -1.0
+    maxarea  = -1.0
+    regs     = {}
+    hols     = {}
+    lins     = {}
+    mats     = {}
+    texts    = {}
+    stages   = {}
+    nstages  = 0
+    nbrys    = {}
+    ebrys    = {}
+    fbrys    = {}
+    eatts    = {}
     if obj!=None:
         if obj.properties.has_key('over'):  markover   = True
         if obj.properties.has_key('is3d'):  is3d       = obj.properties['is3d']
@@ -811,6 +692,7 @@ def gui():
         if obj.properties.has_key('maxarea'): maxarea  = obj.properties['maxarea']
         if obj.properties.has_key('regs'):    regs     = obj.properties['regs']
         if obj.properties.has_key('hols'):    hols     = obj.properties['hols']
+        if obj.properties.has_key('lins'):    lins     = obj.properties['lins']
         if obj.properties.has_key('mats'):    mats     = obj.properties['mats']
         if obj.properties.has_key('texts'):   texts    = obj.properties['texts']
         if obj.properties.has_key('stages'):  stages   = obj.properties['stages']
@@ -821,21 +703,16 @@ def gui():
             if obj.properties[stg].has_key('ebrys'): ebrys = obj.properties[stg]['ebrys']
             if obj.properties[stg].has_key('fbrys'): fbrys = obj.properties[stg]['fbrys']
             if obj.properties[stg].has_key('eatts'): eatts = obj.properties[stg]['eatts']
-        if obj.properties.has_key('res'):
-            res_nstages = len(obj.properties['res'])
-            stage_num   = str(d['res_stage'])
-            if obj.properties['res'].has_key(stage_num):
-                if obj.properties['res'][stage_num].has_key('lblmnu'):
-                    lblmnu = obj.properties['res'][stage_num]['lblmnu']
-        if obj.properties.has_key('res_nodes'): res_nodes = obj.properties['res_nodes']
-        if obj.properties.has_key('reinfs'):    reinfs    = obj.properties['reinfs']
-        if obj.properties.has_key('lines'):     lines     = obj.properties['lines']
+
+    # problem type
+    if isframe: di.set_key('fem_prob', 0)
+    pty = d['fem_prob']
 
     # materials menu
     matmnu   = 'Materials %t'
     matnames = {}
     for k, v in mats.iteritems():
-        tid              = int(v[11])      # text_id
+        tid              = int(v[1])       # text_id
         desc             = texts[str(tid)] # description
         matmnu          += '|'+desc+' %x'+str(int(k)+1)
         matnames[int(k)] = desc
@@ -856,11 +733,11 @@ def gui():
     w   = W-2*c
     r0  = r # initial r
 
-    # number of extra rows
-    mat_extra_rows = 2
+    # materials: extra rows
+    mat_extra_rows = 0
     for k, v in mats.iteritems():
         mdl = int(v[0])
-        if mdl==5: mat_extra_rows += 1 # Reinforcement
+        mat_extra_rows += d['mdl2nrow'][mdl]
 
     # height of boxes
     h_set           = 7*rh+2*srg+2*rg
@@ -870,16 +747,17 @@ def gui():
     h_msh_unst_regs = rh+srg+rh*len(regs) if len(regs)>0 else 0
     h_msh_unst_hols = rh+srg+rh*len(hols) if len(hols)>0 else 0
     h_msh_unst      = 5*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols+2*rg
-    h_msh           = 10*rh+srg+h_msh_stru+h_msh_unst+2*rg
-    h_mat_mats      = rh+srg+2*rh*(len(mats))+rh*mat_extra_rows+srg*len(mats) if len(mats)>0 else 0
+    h_msh_ext_lins  = rh+srg+rh*len(lins) if len(lins)>0 else 0
+    h_msh_ext       = rh+2*rg+h_msh_ext_lins
+    h_msh           = 12*rh+srg+h_msh_stru+h_msh_unst+2*rg+h_msh_ext
+    h_mat_mats      = rg+(srg+rh)*len(mats)+rh*mat_extra_rows if len(mats)>0 else 0
     h_mat           = rh+h_mat_mats+2*rg
-    h_fem_lines     = 2*rh+rh*len(lines) if len(lines)>0 else 0
     h_fem_nbrys     = rh+srg+rh*len(nbrys) if len(nbrys)>0 else 0
     h_fem_ebrys     = rh+srg+rh*len(ebrys) if len(ebrys)>0 else 0
     h_fem_fbrys     = rh+srg+rh*len(fbrys) if len(fbrys)>0 else 0
-    h_fem_eatts     = rh+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
+    h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 6*rh+2*rg+5*srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
-    h_fem           = 7*rh+srg+h_fem_stage+h_fem_lines+2*rg
+    h_fem           = 5*rh+srg+h_fem_stage+4*rg
 
     # clear background
     gu.background()
@@ -887,37 +765,36 @@ def gui():
     # ======================================================== Settings
 
     gu.caption1_(c,r0,w,rh,'SETTINGS')
-    if True: #d['gui_show_set']:
-        r = r0
-        r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_set)
-        Draw.Toggle ('Show/Hide All', EVT_NONE, c, r, 320, rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
-        r -= srg
-        r -= rh
-        gu.text(c,r,"Geometry:")
-        Draw.Toggle ('Vertices',   EVT_NONE, c+ 80, r, 80, rh, d['show_v_ids'], 'Show Vertex IDs'        , cb_show_v_ids)
-        Draw.Toggle ('Edges',      EVT_NONE, c+160, r, 80, rh, d['show_e_ids'], 'Show Edges IDs'         , cb_show_e_ids)
-        r -= rh
-        gu.text(c,r,"Mesh:")
-        Draw.Toggle ('Local Axes', EVT_NONE, c+ 80, r, 80, rh, d['show_axes'],  'Show local system axes' , cb_show_axes )
-        Draw.Toggle ('Blocks',     EVT_NONE, c+160, r, 80, rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks )
-        Draw.Toggle ('Regions',    EVT_NONE, c+240, r, 80, rh, d['show_regs'],  'Show regions and holes' , cb_show_regs )
-        r -= rh
-        gu.text(c,r,"Tags:")
-        Draw.Toggle ('V Tags',     EVT_NONE, c+ 80, r, 80, rh, d['show_vtags'], 'Show vertex tags'       , cb_show_vtags)
-        Draw.Toggle ('E Tags',     EVT_NONE, c+160, r, 80, rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
-        Draw.Toggle ('F Tags',     EVT_NONE, c+240, r, 80, rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
-        r -= rh
-        gu.text(c,r,"FEM:")
-        Draw.Slider ('',           EVT_NONE, c+ 80, r, 80, rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
-        Draw.Toggle ('Elements',   EVT_NONE, c+160, r, 80, rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
-        Draw.Toggle ('Nodes',      EVT_NONE, c+240, r, 80, rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
-        r -= rh
-        Draw.Toggle ('Show Lines', EVT_NONE, c+ 80, r, 80, rh, d['show_lines'], 'Show linear elements'   , cb_show_lines)
-        r -= rh
-        r -= srg
-        Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 160, rh,           'Delete all properties')
-        Draw.Toggle     ('Mark overlapping edges', EVT_NONE,         c+160, r, 160, rh, markover, 'Mark overlapping edges', cb_over)
-        r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
+    r = r0
+    r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_set)
+    Draw.Toggle ('Show/Hide All', EVT_NONE, c, r, 320, rh, d['show_props'], 'Show mesh properties'   , cb_show_props)
+    r -= srg
+    r -= rh
+    gu.text(c,r,"Geometry:")
+    Draw.Toggle ('Vertices',   EVT_NONE, c+ 80, r, 80, rh, d['show_v_ids'], 'Show Vertex IDs'        , cb_show_v_ids)
+    Draw.Toggle ('Edges',      EVT_NONE, c+160, r, 80, rh, d['show_e_ids'], 'Show Edges IDs'         , cb_show_e_ids)
+    r -= rh
+    gu.text(c,r,"Mesh:")
+    Draw.Toggle ('Local Axes', EVT_NONE, c+ 80, r, 80, rh, d['show_axes'],  'Show local system axes' , cb_show_axes)
+    Draw.Toggle ('Blocks',     EVT_NONE, c+160, r, 80, rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks)
+    r -= rh
+    Draw.Toggle ('Regs/Holes', EVT_NONE, c+ 80, r, 80, rh, d['show_regs'],  'Show regions and holes' , cb_show_regs)
+    Draw.Toggle ('Lines',      EVT_NONE, c+160, r, 80, rh, d['show_lins'],  'Show linear cells'      , cb_show_lins)
+    r -= rh
+    gu.text(c,r,"Tags:")
+    Draw.Toggle ('V Tags',     EVT_NONE, c+ 80, r, 80, rh, d['show_vtags'], 'Show vertex tags'       , cb_show_vtags)
+    Draw.Toggle ('E Tags',     EVT_NONE, c+160, r, 80, rh, d['show_etags'], 'Show edge tags'         , cb_show_etags)
+    Draw.Toggle ('F Tags',     EVT_NONE, c+240, r, 80, rh, d['show_ftags'], 'Show face tags'         , cb_show_ftags)
+    r -= rh
+    gu.text(c,r,"FEM:")
+    Draw.Slider ('',           EVT_NONE, c+ 80, r, 80, rh, d['show_opac'],0.0,1.0,0,'Set opacitity to paint faces with tags', cb_show_opac)
+    Draw.Toggle ('Elements',   EVT_NONE, c+160, r, 80, rh, d['show_elems'], 'Show elements tags'     , cb_show_elems)
+    Draw.Toggle ('Nodes',      EVT_NONE, c+240, r, 80, rh, d['show_n_ids'], 'Show mesh Nodes IDs'    , cb_show_n_ids)
+    r -= rh
+    r -= srg
+    Draw.PushButton ('Delete all properties',  EVT_SET_DELPROPS, c,     r, 160, rh,           'Delete all properties')
+    Draw.Toggle     ('Mark overlapping edges', EVT_NONE,         c+160, r, 160, rh, markover, 'Mark overlapping edges', cb_over)
+    r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rh
     r0 = r
 
@@ -1078,7 +955,37 @@ def gui():
         r -= rh
         Draw.PushButton ('Generate (triangles/tetrahedrons)', EVT_MESH_GENUNSTRU , c, r, 260, rh, 'Generated unstructured mesh')
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r+rh)
+
+        # ----------------------- Mesh -- extra elements
+
+        r -= rh
+        r -= rh
+        gu.caption2(c,r,w,rh,'Extra elements')
+        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_msh_ext)
+
+        # ----------------------- Mesh -- extra elements -- linear elements
+
+        gu.caption3(c,r,w,rh, 'Linear elements', EVT_MESH_ADDLINE,EVT_MESH_DELALLLINES)
+        r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_ext_lins)
+        if len(lins)>0: gu.text(c,r,'     Tag                        N0                          N1')
+        else: r += (rh+srg)
+        for k, v in lins.iteritems():
+            r -= rh
+            i  = int(k)
+            Draw.Number     ('',       EVT_INC+i, c,     r, 60, rh, v[0],-1000, 0, 'New linear element tag',   cb_mesh_letag)
+            Draw.PushButton ('Get N0', EVT_INC+i, c+ 60, r, 60, rh,                'Get N0 of linear element', cb_mesh_getN0)
+            Draw.Number     ('',       EVT_INC+i, c+120, r, 60, rh, v[1], 0, 1e8,  'N0: start point',          cb_mesh_leN0)
+            Draw.PushButton ('Get N1', EVT_INC+i, c+180, r, 60, rh,                'Get N1 of linear element', cb_mesh_getN1)
+            Draw.Number     ('',       EVT_INC+i, c+240, r, 60, rh, v[2], 0, 1e8,  'N1: end point',            cb_mesh_leN1)
+            Draw.PushButton ('Del',    EVT_INC+i, c+300, r, 40, rh,                'Delete this row',          cb_mesh_ledel)
+        r -= srg
+        r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+        # ----------------------- Mesh -- extra elements -- linear elements -- END
+
+        r, c, w = gu.box2_out(W,cg,rh,rg, c,r+rh)
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
+
     r -= rh
     r -= rg
 
@@ -1096,36 +1003,37 @@ def gui():
         for k, v in mats.iteritems():
             r  -= rh
             i   = int(k)
-            tid = int(v[11])      # text_id
+            tid = int(v[1])       # text_id
             des = texts[str(tid)] # description
-            Draw.Menu       (d['mdlmnu'], EVT_INC+i,   c    , r, 150, rh, int(v[0])+1, 'Constitutive model: ex.: LinElastic', cb_mat_setmodel)
-            Draw.PushButton ('Delete',    EVT_INC+i,   c+150, r,  80, rh,              'Delete this row',                     cb_mat_del)
+            Draw.Menu       (d['mdlmnu'], EVT_INC+i,   c,     r, 120, rh, int(v[0])+1, 'Constitutive model: ex.: LinElastic', cb_mat_setmodel)
+            Draw.String     ('',          EVT_INC+tid, c+120, r, 120, rh, des, 32,     'Material name/description',           cb_mat_setname)
+            Draw.PushButton ('Delete',    EVT_INC+i,   c+240, r,  60, rh,              'Delete this row',                     cb_mat_del)
             r -= rh
-            gu.text (c,r,'Desc:')
-            Draw.String ('', EVT_INC+tid, c+50, r, 100, rh, des, 32,     'Material name/description',           cb_mat_setname)
-            r -= rh
-            if int(v[0])==0: # LinElastic
-                gu.text (c,r,'E = ')
-                Draw.String ('', EVT_INC+i, c+50 , r, 100, rh, '%g'%v[1],   32, 'E: Young modulus',                                      cb_mat_setE)
-                r -=rh
-                gu.text (c,r,'nu = ')
-                Draw.String ('', EVT_INC+i, c+50, r, 100, rh, '%g'%v[2],   32, 'nu: Poisson ratio',                                     cb_mat_setnu)
-            elif int(v[0])==1: # Flow
-                gu.text (c,r,'k = ')
-                Draw.String ('', EVT_INC+i, c+50, r, 100, rh, '%g'%v[3],   32, 'k: Diffusion coefficient',                              cb_mat_setk)
-            elif int(v[0])==2: # CamClay
-                Draw.String ('lam=',   EVT_INC+i, c    , r, 100, rh, '%.4f'%v[4], 32, 'lam: Lambda',                                           cb_mat_setlam)
-                Draw.String ('kap=',   EVT_INC+i, c+ 80, r, 100, rh, '%.4f'%v[5], 32, 'kap: Kappa',                                            cb_mat_setkap)
-                Draw.String ('phics=', EVT_INC+i, c+160, r, 100, rh, '%.2f'%v[6], 32, 'phics: Shear angle at critical state',                  cb_mat_setphics)
-                Draw.String ('G=',     EVT_INC+i, c+240, r, 100, rh, '%g'  %v[7], 32, 'G: Shear modulus',                                      cb_mat_setG)
-                Draw.String ('v=',     EVT_INC+i, c+320, r, 100, rh, '%.4f'%v[8], 32, 'v: Specific volume',                                    cb_mat_setv)
-            elif int(v[0])==3: # Beam
-                Draw.String ('E=',     EVT_INC+i, c    , r, 100, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
-                Draw.String ('A=',     EVT_INC+i, c+ 80, r, 100, rh, '%g'%v[ 9],  32, 'A: Cross-sectional area',                                cb_mat_setA)
-                Draw.String ('Izz=',   EVT_INC+i, c+160, r, 100, rh, '%g'%v[10],  32, 'Izz: Cross-sectional inertia',                           cb_mat_setIzz)
-            elif int(v[0])==7: # Rod
-                Draw.String ('E=',     EVT_INC+i, c    , r, 80, rh, '%g'%v[ 1],  32, 'E: Young modulus',                                       cb_mat_setE)
-                Draw.String ('A=',     EVT_INC+i, c+ 80, r, 80, rh, '%g'%v[ 9],  32, 'A: Cross-sectional area',                                cb_mat_setA)
+            if int(v[0])==0: # Rod
+                Draw.String ('E = ', EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',        cb_mat_setE)
+                Draw.String ('A = ', EVT_INC+i, c+100, r, 100, rh, '%g'%v[3], 32, 'A: Cross-sectional area', cb_mat_setA)
+            elif int(v[0])==1: # Beam
+                Draw.String ('E = ',   EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',             cb_mat_setE)
+                Draw.String ('A = ',   EVT_INC+i, c+100, r, 100, rh, '%g'%v[3], 32, 'A: Cross-sectional area',      cb_mat_setA)
+                Draw.String ('Izz = ', EVT_INC+i, c+200, r, 100, rh, '%g'%v[4], 32, 'Izz: Cross-sectional inertia', cb_mat_setIzz)
+            elif int(v[0])==2: # LinElastic
+                Draw.String ('E = ',  EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',  cb_mat_setE)
+                Draw.String ('nu = ', EVT_INC+i, c+100, r, 100, rh, '%g'%v[5], 32, 'nu: Poisson ratio', cb_mat_setnu)
+            elif int(v[0])==3: # ElastoPlastic
+                Draw.String ('E = ',     EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',      cb_mat_setE)
+                Draw.String ('nu = ',    EVT_INC+i, c+100, r, 100, rh, '%g'%v[5], 32, 'nu: Poisson ratio',     cb_mat_setnu)
+                Draw.Menu   (d['fcmnu'], EVT_INC+i, c+200, r, 100, rh, int(v[6])+1,   'fc: failure criterion', cb_mat_setfc)
+                r -= rh
+                Draw.String ('sY = ', EVT_INC+i, c,     r, 100, rh, '%d'%v[7], 32, 'sY: Yield stress',       cb_mat_setsY)
+                Draw.String ('cu = ', EVT_INC+i, c+100, r, 100, rh, '%d'%v[8], 32, 'cu: Undrained cohesion', cb_mat_setcu)
+            elif int(v[0])==4: # CamClay
+                Draw.String ('lam = ', EVT_INC+i, c,     r, 100, rh, '%g'%v[ 9], 32, 'lam: Lambda',       cb_mat_setlam)
+                Draw.String ('kap = ', EVT_INC+i, c+100, r, 100, rh, '%g'%v[10], 32, 'kap: Kappa',        cb_mat_setkap)
+                Draw.String ('nu = ',  EVT_INC+i, c+200, r, 100, rh, '%g'%v[ 5], 32, 'nu: Poisson ratio', cb_mat_setnu)
+                r -= rh
+                Draw.String ('phi = ', EVT_INC+i, c, r, 100, rh, '%g'%v[11], 32, 'phi: Shear angle at critical state (compression/degrees)', cb_mat_setphi)
+            if int(v[0])==5: # LinFlow
+                Draw.String ('k = ', EVT_INC+i, c, r, 100, rh, '%g'%v[12], 32, 'k: Diffusion coefficient', cb_mat_setk)
             r -= srg
         r -= srg
         r -= rh
@@ -1142,26 +1050,10 @@ def gui():
     if d['gui_show_fem']:
         r = r0
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_fem)
-
-        # ----------------------- FEM -- linear elements
-
-        gu.caption2_(c,r,w,rh,'Linear elements',EVT_FEM_ADDLINE,EVT_FEM_DELALLLINES)
-        if len(lines)>0:
-            r, c, w = gu.box2__in(W,cg,rh,rg, c,r,w,h_fem_lines)
-            gu.text(c,r,'     Tag                        N0                          N1')
-            for k, v in lines.iteritems():
-                r -= rh
-                i  = int(k)
-                Draw.Number     ('',       EVT_INC+i, c,     r, 60, rh, v[0],-1000, 0, 'New linear element tag',   cb_fem_letag)
-                Draw.PushButton ('Get N0', EVT_INC+i, c+ 60, r, 60, rh,                'Get N0 of linear element', cb_fem_getN0)
-                Draw.Number     ('',       EVT_INC+i, c+120, r, 60, rh, v[1], 0, 1e8,  'N0: start point',          cb_fem_leN0)
-                Draw.PushButton ('Get N1', EVT_INC+i, c+180, r, 60, rh,                'Get N1 of linear element', cb_fem_getN1)
-                Draw.Number     ('',       EVT_INC+i, c+240, r, 60, rh, v[2], 0, 1e8,  'N1: end point',            cb_fem_leN1)
-                Draw.PushButton ('Del',    EVT_INC+i, c+300, r, 40, rh,                'Delete this row',          cb_fem_ledel)
-            r, c, w = gu.box2__out(W,cg,rh, c,r)
+        gu.text (c,r,"Problem:")
+        Draw.Menu (d['ptymnu'], EVT_NONE, c+80, r, 200, rh, d['fem_prob']+1, 'Problem type', cb_fem_prob)
         r -= rh
-        r -= rh
-        r -= srg
+        r -= rg
 
         # ----------------------- FEM -- stages
 
@@ -1188,71 +1080,14 @@ def gui():
             r -= rh
             r -= srg
 
-            # ----------------------- FEM -- nbrys
-
-            r -= srg
-            gu.caption3(c,r,w,rh,'Nodes BCs', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
-            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
-            if len(nbrys)>0: gu.text(c,r,'     ID         Key        Value')
-            else: r += (rh+srg)
-            for k, v in nbrys.iteritems():
-                r -= rh
-                i  = int(k)
-                Draw.Number     ('',          EVT_INC+i, c    , r, 60, rh, int(v[0]),0,10000, 'Set the node ID',                                                            cb_nbID_setID)
-                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_nbID_setkey)
-                Draw.String     ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 32,     'Value of essential/natural boundary condition',                              cb_nbID_setval)
-                Draw.PushButton ('Del',       EVT_INC+i, c+180, r, 40, rh,                    'Delete this row',                                                            cb_nbID_del)
-            r -= srg
-            r, c, w = gu.box3_out(W,cg,rh, c,r)
-
-            # ----------------------- FEM -- ebrys
-
-            r -= srg
-            gu.caption3(c,r,w,rh,'Edges BCs', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
-            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_ebrys)
-            if len(ebrys)>0: gu.text(c,r,'    Tag        Key        Value')
-            else: r += (rh+srg)
-            etags = [(int(v[0]),k) for k, v in ebrys.iteritems()]
-            etags.sort(reverse=True)
-            for tag, k in etags:
-                v  = ebrys[k]
-                r -= rh
-                i  = int(k)
-                Draw.Number     ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_ebry_settag)
-                Draw.Menu       (d['dfvmnu'], EVT_INC+i, c+ 60, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_ebry_setkey)
-                Draw.String     ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_ebry_setval)
-                Draw.PushButton ('Del',       EVT_INC+i, c+180, r, 40, rh,                    'Delete this row',                                                            cb_ebry_del)
-            r -= srg
-            r, c, w = gu.box3_out(W,cg,rh, c,r)
-
-            # ----------------------- FEM -- fbrys
-
-            r -= srg
-            gu.caption3(c,r,w,rh,'Faces BCs', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
-            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_fbrys)
-            if len(fbrys)>0: gu.text(c,r,'    Tag        Key        Value')
-            else: r += (rh+srg)
-            ftags = [(int(v[0]),k) for k, v in fbrys.iteritems()]
-            ftags.sort(reverse=True)
-            for tag, k in ftags:
-                v   = fbrys[k]
-                r  -= rh
-                i   = int(k)
-                Draw.Number      ('',          EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Set tag',                                                                    cb_fbry_settag)
-                Draw.Menu        (d['dfvmnu'], EVT_INC+i, c+ 60, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz corresponding to the essential/natural variable', cb_fbry_setkey)
-                Draw.String      ('',          EVT_INC+i, c+120, r, 60, rh, str(v[2]), 128,    'Value of essential/natural boundary condition',                              cb_fbry_setval)
-                Draw.PushButton  ('Del',       EVT_INC+i, c+180, r, 40, rh,                    'Delete this row',                                                            cb_fbry_del)
-            r -= srg
-            r, c, w = gu.box3_out(W,cg,rh, c,r)
-
             # ----------------------- FEM -- eatts
 
             r -= srg
             if num==1: gu.caption3 (c,r,w,rh,'Elements attributes', EVT_FEM_ADDEATT,EVT_FEM_DELALLEATT)
             else:      gu.caption3_(c,r,w,rh,'Elements attributes')
-            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_eatts)
-            if len(eatts)>0: gu.text(c,r,'    Tag         GeomType         ProbType         Material')
-            else: r += (rh+srg)
+            r, c, w = gu.box3__in(W,cg,rh, c,r,w,h_fem_eatts)
+            if len(eatts)==0: r += (rh+srg)
+            else:             r += srg
             if num>1:
                 for k, v in obj.properties['stages'].iteritems():
                     if int(v[0])==1: # first stage
@@ -1262,35 +1097,90 @@ def gui():
             etags = [(int(v[0]),k) for k, v in eatts.iteritems()]
             etags.sort(reverse=True)
             for tag, k in etags:
-                v     = eatts[k]
-                r    -= rh
-                i     = int(k)
-                tid   = int(v[7])       # text id
-                props = texts[str(tid)] # properties
+                v  = eatts[k]
+                r -= rh
+                i  = int(k)
                 if num==1:
-                    Draw.Number     ('',           EVT_INC+i,   c,     r-rh,  60, 2*rh, int(v[0]),-1000,0, 'Set tag',                             cb_eatt_settag)
-                    Draw.Menu       (d['gtymnu'],  EVT_INC+i,   c+ 60, r,    100,   rh, int(v[1])+1,       'Element type: ex.: Quad4, Hex8',      cb_eatt_setety)
-                    Draw.Menu       (d['ptymnu'],  EVT_INC+i,   c+160, r,     80,   rh, int(v[2])+1,       'Problem type: ex.: PStrain, Equilib', cb_eatt_setpty)
-                    Draw.Menu       (matmnu,       EVT_INC+i,   c+240, r,    110,   rh, int(v[3])+1,       'Choose material',                     cb_eatt_setmat)
-                    Draw.PushButton ('Del',        EVT_INC+i,   c+350, r-rh,  30, 2*rh,                    'Delete this row',                     cb_eatt_del)
+                    Draw.Number     ('',                  EVT_INC+i,   c,     r-rh, 60, 2*rh, int(v[0]),-1000,0, 'Set tag',                 cb_eatt_tag)
+                    Draw.Menu       (d['pty2gpmnu'][pty], EVT_INC+i,   c+ 60, r,    70,   rh, int(v[2])+1,       'Type: Beam, Quad4, Hex8', cb_eatt_gebp)
+                    Draw.Menu       (d['pty2gmnu'][pty],  EVT_INC+i,   c+130, r,    60,   rh, int(v[3])+1,       'Geometry type: psa, pse', cb_eatt_gty)
+                    Draw.String     ('',                  EVT_INC+i,   c+190, r,    70,   rh, 'h=%g'%v[5],32,    'h: Thickness',            cb_eatt_h)
+                    Draw.PushButton ('Del',               EVT_INC+i,   c+260, r-rh, 30, 2*rh,                    'Delete this row',         cb_eatt_del)
                     r -= rh
-                    Draw.String     ('',           EVT_INC+tid, c+ 60, r,    140,   rh, props,  128,       'Additional properties (gam=specific weight, cq=correct moment due to distributed load in beams...)', cb_eatt_setprops)
-                    Draw.Toggle     ('Is Active',  EVT_INC+i,   c+200, r,    150,   rh, int(v[4]),         'Is active ?',                            cb_eatt_isact)
+                    Draw.Menu       (matmnu,       EVT_INC+i, c+60,  r, 100, rh, int(v[4])+1,  'Choose material', cb_eatt_mat)
+                    Draw.Toggle     ('Is Active',  EVT_INC+i, c+160, r, 100, rh, int(v[6]),    'Active',          cb_eatt_isact)
                 else:
-                    etag =          str(featts[k][0])
-                    gtyp = d['gty'][int(featts[k][1])]
-                    ptyp = d['pty'][int(featts[k][2])]
-                    emat = matnames[int(featts[k][3])] if matnames.has_key(int(featts[k][3])) else ''
-                    prps = texts[str(str(int(featts[k][7])))] # properties
-                    gu.label_   (etag,                    c,     r-rh,  60, 2*rh)
-                    gu.label    (gtyp,                    c+ 60, r,    100,   rh)
-                    gu.label    (ptyp,                    c+160, r,     80,   rh)
-                    gu.label    (emat,                    c+240, r,    110,   rh)
+                    tag   =                str(int(featts[k][0]))
+                    gepb  = d['pty2gepb'][pty][int(featts[k][2])]
+                    gty   = d['pty2gty'] [pty][int(featts[k][3])]
+                    mat   = matnames          [int(featts[k][4])] if matnames.has_key(int(featts[k][4])) else ''
+                    thick =                    str(featts[k][5])
+                    gu.label_   (tag,                     c,  r-rh,  60, 2*rh)
+                    gu.label    (gepb,                    c+ 60, r,  70,   rh)
+                    gu.label    (gty,                     c+130, r,  60,   rh)
+                    gu.label    (thick,                   c+190, r,  70,   rh)
                     r -= rh
-                    gu.label    (prps,                    c+ 60, r,    140,   rh)
-                    Draw.Toggle ('Activate',   EVT_INC+i, c+200, r,     75,   rh, int(v[5]), 'Activate this element at this stage?',   cb_eatt_act)
-                    Draw.Toggle ('Deactivate', EVT_INC+i, c+275, r,     75,   rh, int(v[6]), 'Deactivate this element at this stage?', cb_eatt_deact)
+                    gu.label    (mat,                     c+ 60, r,   70,  rh)
+                    Draw.Toggle ('Activate',   EVT_INC+i, c+130, r,   60,  rh, int(v[7]), 'Activate this element at this stage?',   cb_eatt_act)
+                    Draw.Toggle ('Deactivate', EVT_INC+i, c+190, r,   70,  rh, int(v[8]), 'Deactivate this element at this stage?', cb_eatt_deact)
                 r -= srg
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+            # ----------------------- FEM -- nbrys
+
+            r -= srg
+            gu.caption3(c,r,w,rh,'Nodes BCs', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
+            if len(nbrys)>0: gu.text(c,r,'       Tag         Key         Value')
+            else: r += (rh+srg)
+            for k, v in nbrys.iteritems():
+                r -= rh
+                i  = int(k)
+                Draw.Number     ('',                 EVT_INC+i, c    , r, 80, rh, int(v[0]),-1000,-1,'Set tag',                     cb_nbry_tag)
+                Draw.Menu       (d['pty2Nmnu'][pty], EVT_INC+i, c+ 80, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz',  cb_nbry_key)
+                Draw.String     ('',                 EVT_INC+i, c+140, r, 80, rh, str(v[2]), 128,    'Value of boundary condition', cb_nbry_val)
+                Draw.PushButton ('Del',              EVT_INC+i, c+220, r, 40, rh,                    'Delete this row',             cb_nbry_del)
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+            # ----------------------- FEM -- ebrys
+
+            r -= srg
+            gu.caption3(c,r,w,rh,'Edges BCs', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_ebrys)
+            if len(ebrys)>0: gu.text(c,r,'       Tag         Key         Value')
+            else: r += (rh+srg)
+            etags = [(int(v[0]),k) for k, v in ebrys.iteritems()]
+            etags.sort(reverse=True)
+            for tag, k in etags:
+                v  = ebrys[k]
+                r -= rh
+                i  = int(k)
+                Draw.Number     ('',                 EVT_INC+i, c,     r, 80, rh, int(v[0]),-1000,-1,'Set tag',                     cb_ebry_tag)
+                Draw.Menu       (d['pty2Fmnu'][pty], EVT_INC+i, c+ 80, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz',  cb_ebry_key)
+                Draw.String     ('',                 EVT_INC+i, c+140, r, 80, rh, str(v[2]), 128,    'Value of boundary condition', cb_ebry_val)
+                Draw.PushButton ('Del',              EVT_INC+i, c+220, r, 40, rh,                    'Delete this row',             cb_ebry_del)
+            r -= srg
+            r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+            # ----------------------- FEM -- fbrys
+
+            r -= srg
+            gu.caption3(c,r,w,rh,'Faces BCs', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
+            r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_fbrys)
+            if len(fbrys)>0: gu.text(c,r,'       Tag         Key         Value')
+            else: r += (rh+srg)
+            ftags = [(int(v[0]),k) for k, v in fbrys.iteritems()]
+            ftags.sort(reverse=True)
+            for tag, k in ftags:
+                v   = fbrys[k]
+                r  -= rh
+                i   = int(k)
+                Draw.Number      ('',                 EVT_INC+i, c,     r, 80, rh, int(v[0]),-1000,-1,'Set tag',                    cb_fbry_tag)
+                Draw.Menu        (d['pty2Fmnu'][pty], EVT_INC+i, c+ 80, r, 60, rh, int(v[1])+1,       'Key such as ux, uy, fx, fz', cb_fbry_key)
+                Draw.String      ('',                 EVT_INC+i, c+140, r, 80, rh, str(v[2]), 128,    'Value boundary condition',   cb_fbry_val)
+                Draw.PushButton  ('Del',              EVT_INC+i, c+220, r, 40, rh,                    'Delete this row',            cb_fbry_del)
             r -= srg
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -1299,7 +1189,7 @@ def gui():
         else: r -= rh
 
         # ----------------------- FEM -- END
-        r -= rh
+        r -= rg
         Draw.PushButton ('Save stage/mats info', EVT_FEM_SAVESTAGES, c,     r, 160, rh, 'Save stage and materials information to a new object')
         Draw.PushButton ('Read stage/mats info', EVT_FEM_READSTAGES, c+160, r, 160, rh, 'Read stage and materials information from another object')
         r -= rh
@@ -1311,7 +1201,6 @@ def gui():
         Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c,     r, 160, rh, 'Run a FE analysis directly (without script)')
         Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+160, r, 160, rh, 'View results in ParaView')
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
-    r -= rh
     r -= rg
 
 

@@ -171,5 +171,10 @@ def box3_in(W,cg,rh, c,r,w,h):
     BGL.glRecti   (c,r-h,c+w,r)
     return r-rh, c+cg, W-2*(c+cg)
 
+def box3__in(W,cg,rh, c,r,w,h):
+    box3_clr      ()
+    BGL.glRecti   (c,r-h,c+w,r)
+    return r-rh, c+cg, W-2*(c+cg)
+
 def box3_out(W,cg,rh, c,r):
     return r-rh, c-cg, W-2*(c-cg)
