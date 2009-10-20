@@ -1,11 +1,20 @@
-from plotter import *
-from data_handler import *
+from pylab import legend, show
+from msys_plotter  import *
+from msys_readdata import *
+from msys_invariants import M_calc_phi
 
-test = 3
-
-if test==1:
-    p = Plotter()
-    p.plot ("labtest_ele_0.res", div_by_p=False)
+if True:
+    phi      = M_calc_phi(1.0,'cam')
+    Moct     = phi_calc_M(phi,'oct')
+    pf       = 150.0*sqrt(3.0)
+    qf       = Moct*pf
+    cu       = qf*sqrt(3.0)/(2.0*sqrt(2.0))
+    p        = Plotter()
+    p.fc_p   = pf
+    p.fc_phi = phi
+    p.fc_cu  = cu
+    p.fc_c   = 0.0
+    p.plot ("labtest_ele_0.res", draw_fl=True)
 
     # plot data
     dat = read_tables(['mdl_tst_01.dat','mdl_tst_02.dat'])
@@ -14,10 +23,10 @@ if test==1:
     for i, mev in enumerate(dat['mdl_tst_02']['mev']): dat['mdl_tst_02']['mev'][i] *= 100.0
     subplot(3,3,1); plot(dat['mdl_tst_01']['ed'],dat['mdl_tst_01']['q'],  'ko')
     subplot(3,3,4); plot(dat['mdl_tst_02']['ed'],dat['mdl_tst_02']['mev'],'ko')
+    show()
 
-    p.show()
 
-if test==2:
+if False:
     dat = read_table("labtest_nod_6.res")
     u   = array(dat['uz'])
     f   = array(dat['fz'])
@@ -26,7 +35,7 @@ if test==2:
     grid ()
     show ()
 
-if test==3:
+if False:
     dat  = read_table("labtest_uf.res")
     u    = array(dat['u'])
     fint = array(dat['f_int'])

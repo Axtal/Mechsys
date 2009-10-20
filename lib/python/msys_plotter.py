@@ -34,10 +34,11 @@ class Plotter:
         self.fc_ty     = ['VM','MC']  # failure criteria type (VM, DP, MC, MN)
         self.fc_clr    = ['c', 'b']   # failure criteria colors
         self.fc_lt     = ['-', '-']   # failure criteria linetype
-        self.fc_p      = 1.0          # p(oct) to be used when plotting FC in octahedral plane
+        self.fc_p      = 100.0        # p(oct) to be used when plotting FC in octahedral plane
         self.fc_t      = 1.0          # t=sin(3th) to be used when plotting FC in octahedral plane
-        self.fc_phi    = 20.0         # friction angle for FC
-        self.fc_c      = 1.0          # cohesion for FC
+        self.fc_cu     = 10.0         # cohesion for VM
+        self.fc_phi    = 25.0         # friction angle for FC
+        self.fc_c      = 0.0          # cohesion for FC
         self.fc_np     = 20           # number of points for drawing failure line
         self.isxyz     = (-1,0)       # indices for sxyz plot, use negative numbers for principal components
         self.devplot   = True         # plot s3-s1, s3-s2 instead of Ek, Sk
@@ -281,7 +282,7 @@ class Plotter:
         xmin, xmax = self.ax.get_xbound()
         ymin, ymax = self.ax.get_ybound()
         s3   = 1.0
-        smax = s3+max([abs(xmin),abs(xmax)])
+        smax = s3+max([1.1*abs(xmin),1.1*abs(xmax)])
         xmin, xmax = -smax, smax
         ymin, ymax = -smax, smax
         dx  = (xmax-xmin)/self.fc_np
@@ -307,10 +308,11 @@ class Plotter:
         ymin, ymax = self.ax.get_ybound()
         Dx    = xmax-xmin
         Dy    = ymax-ymin
-        xmin -= 2.0*Dx
-        xmax += 2.0*Dx
-        ymax += 0.5*Dy
-        ymin -= 0.5*Dy
+        DD    = max([Dx,Dy])
+        xmin -= 2.0*DD
+        xmax += 2.0*DD
+        ymax += 0.5*DD
+        ymin -= 0.5*DD
         dx    = (xmax-xmin)/self.fc_np
         dy    = (ymax-ymin)/self.fc_np
         x     = zeros ((self.fc_np,self.fc_np))
@@ -333,7 +335,7 @@ class Plotter:
     def failure_crit(self, sig, fc_ty):
         if fc_ty=='VM':
             p, q = sig_calc_p_q(sig)
-            f    = q - 2.0*(sqrt(2.0)/sqrt(3.0))*self.fc_c
+            f    = q - 2.0*(sqrt(2.0)/sqrt(3.0))*self.fc_cu
         elif fc_ty=='DP':
             sphi = sin(self.fc_phi*pi/180.0)
             cbar = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)

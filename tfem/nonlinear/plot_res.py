@@ -67,8 +67,9 @@ if False:
 
 if True:
     p        = Plotter()
+    p.fc_cu  = 12.0
     p.fc_c   = 12.0
-    p.fc_phi = 0.5
+    p.fc_phi = 0.1
     p.fc_p   = 0.0
     p.fc_np  = 40
     p.plot ("owen_hinton_02_ele_4.res", draw_fl=True)
