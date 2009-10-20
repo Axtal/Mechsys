@@ -1,10 +1,9 @@
-from numpy import *
-from pylab import *
-from data_handler import *
+from numpy import array
+from pylab import subplot, plot, grid, show
+from msys_readdata import read_table
+from msys_plotter import Plotter
 
-test = 2
-
-if test==1:
+if False:
     #dat = read_table("owen_hinton_nod_2.res")
     #uy = array(dat['uy'])
     #fy = array(dat['fy'])
@@ -27,7 +26,7 @@ if test==1:
     grid()
     show()
 
-if test==2:
+if False:
     P   = 18
     res = read_table("owen_hinton_02_P%d.res"%P)
     dat = read_table("owen_hinton_02_P%d.dat"%P)
@@ -39,7 +38,7 @@ if test==2:
     grid()
     show()
 
-if test==-2:
+if False:
     dat = read_table("owen_hinton_02_mesh.dat")
     for i in range(1,5):
         print (dat['x'][i]-dat['x'][i-1])/10.
@@ -47,7 +46,7 @@ if test==-2:
     #grid()
     #show()
 
-if test==22:
+if False:
     dat = read_table("owen_hinton_02_n41.res")
     u    = array(dat['ur'])
     fint = array(dat['fr_int'])
@@ -64,4 +63,9 @@ if test==22:
     plot(u,dat['P'],'r-',lw=2)
     grid()
 
+    show()
+
+if True:
+    p = Plotter()
+    p.plot ("owen_hinton_02_ele_4.res")
     show()

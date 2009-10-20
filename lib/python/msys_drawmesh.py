@@ -1,12 +1,26 @@
-# Copyright (C) 2009 Dorival M Pedroso
-# ------------------------------------
-# Finite Element Method (FEM)
+########################################################################
+# MechSys - Open Library for Mechanical Systems                        #
+# Copyright (C) 2009 Dorival M. Pedroso                                #
+#                                                                      #
+# This program is free software: you can redistribute it and/or modify #
+# it under the terms of the GNU General Public License as published by #
+# the Free Software Foundation, either version 3 of the License, or    #
+# any later version.                                                   #
+#                                                                      #
+# This program is distributed in the hope that it will be useful,      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         #
+# GNU General Public License for more details.                         #
+#                                                                      #
+# You should have received a copy of the GNU General Public License    #
+# along with this program. If not, see <http://www.gnu.org/licenses/>  #
+########################################################################
 
 from numpy import array, sqrt, linspace, pi, cos, sin
 from pylab import figure, text, show, axis
 from pylab import matplotlib as MPL
 
-class Drawing:
+class DrawMesh:
 
     # Constructor
     # ============
@@ -59,7 +73,7 @@ class Drawing:
 
     # Draw mesh
     #==========
-    def draw_mesh(self, with_tags=True, with_ids=True, with_shares=True):
+    def draw(self, with_tags=True, with_ids=True, with_shares=True):
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)

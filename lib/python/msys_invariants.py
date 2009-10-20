@@ -1,8 +1,23 @@
-# Copyright (C) 2009 Dorival M Pedroso
-# ------------------------------------
-# Models
+########################################################################
+# MechSys - Open Library for Mechanical Systems                        #
+# Copyright (C) 2009 Dorival M. Pedroso                                #
+#                                                                      #
+# This program is free software: you can redistribute it and/or modify #
+# it under the terms of the GNU General Public License as published by #
+# the Free Software Foundation, either version 3 of the License, or    #
+# any later version.                                                   #
+#                                                                      #
+# This program is distributed in the hope that it will be useful,      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         #
+# GNU General Public License for more details.                         #
+#                                                                      #
+# You should have received a copy of the GNU General Public License    #
+# along with this program. If not, see <http://www.gnu.org/licenses/>  #
+########################################################################
 
-from numpy import *
+from numpy import sqrt, matrix
+import numpy.linalg as npyla
 
 # Calculate ev and ed
 # ===================
@@ -229,14 +244,14 @@ def sig_calc_s123(sig,with_projs=False,do_sort=False):
                    [     0.0      ,     0.0      , sig[2,0] ]])
     if with_projs: # with eigenprojectors
         if do_sort: raise Exception('sig_calc_s123: do_sort cannot be used when with_projs==True')
-        s123, evecs = linalg.eig(smat)
+        s123, evecs = npyla.eig(smat)
         projs       = [] # eigenprojectors
         for v in evecs:
             Pmat = matrix(v.reshape(3,1)) * matrix(v)
             projs.append(matrix([[Pmat[0,0]],[Pmat[1,1]],[Pmat[2,2]],[Pmat[0,1]*sq2]]))
         return s123, projs
     else:
-        s123 = linalg.eigvalsh(smat)
+        s123 = npyla.eigvalsh(smat)
         if do_sort: s123.sort()#reverse=True)
         return s123
 
@@ -249,7 +264,7 @@ def eps_calc_e123(eps, do_sort=False):
     emat = matrix([[ eps[0,0]     , eps[3,0]/sq2 ,     0.0  ],
                    [ eps[3,0]/sq2 , eps[1,0]     ,     0.0  ],
                    [     0.0      ,     0.0      , eps[2,0] ]])
-    e123 = linalg.eigvalsh(emat)
+    e123 = npyla.eigvalsh(emat)
     if do_sort: e123.sort()
     return e123
 
