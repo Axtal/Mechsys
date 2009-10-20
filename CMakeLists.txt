@@ -29,7 +29,6 @@ OPTION(MAKE_OPTIMIZED     "Make optimized (-O3)"                              ON
 OPTION(MAKE_PYTHON_MODULE "Create python module (mechsys)"                    OFF)
 OPTION(MAKE_TST           "Compile tests"                                     OFF)
 OPTION(MAKE_TFEM          "Compile FEM tests"                                 OFF)
-OPTION(MAKE_TFEM_NEW_ONLY "Compile new FEM tests only"                        ON)
 OPTION(MAKE_TLBM          "Compile LBM tests"                                 OFF)
 OPTION(MAKE_TDEM          "Compile DEM tests"                                 ON)
 

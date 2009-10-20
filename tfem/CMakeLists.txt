@@ -16,12 +16,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-IF(MAKE_TFEM_NEW_ONLY)
-	SUBDIRS (new_tests)
-ELSE(MAKE_TFEM_NEW_ONLY)
-	SUBDIRS (coupled diffusion elasticity geotech new_tests)
-ENDIF(MAKE_TFEM_NEW_ONLY)
-
 SET(TESTS
   arch
   beam01
@@ -35,3 +29,5 @@ IF(FEM_FOUND)
 		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 	ENDFOREACH(var)
 ENDIF(FEM_FOUND)
+
+SUBDIRS (bhatti nonlinear smith_griffiths transient)
