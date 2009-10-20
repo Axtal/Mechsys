@@ -40,6 +40,7 @@ class Plotter:
         self.fc_c      = 1.0          # cohesion for FC
         self.fc_np     = 20           # number of points for drawing failure line
         self.isxyz     = (-1,0)       # indices for sxyz plot, use negative numbers for principal components
+        self.devplot   = True         # plot s3-s1, s3-s2 instead of Ek, Sk
         self.dot       = ['r-','r-','r-','r-','r-','r-','r-','r-','r-']
 
         # internal data
@@ -172,13 +173,21 @@ class Plotter:
         xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]',fontsize=fsz)
         ylabel (Ylbl,fontsize=fsz);  grid()
 
-        # 7) Ek, Sk ---------------------------------------------------------------------------
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (Ex, -Sx, self.dot[7], lw=lwd,linestyle='-')
-        plot   (Ey, -Sy, self.dot[7], lw=lwd,linestyle='--')
-        plot   (Ez, -Sz, self.dot[7], lw=lwd,linestyle='-.')
-        xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]',fontsize=fsz)
-        ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]',fontsize=fsz);  grid()
+        if self.devplot:
+            # 7) s3-s1, s3-s2
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (S3-S1, S3-S2, self.dot[7], lw=lwd,linestyle='-')
+            xlabel (r'$\sigma_3-\sigma_1$',fontsize=fsz);  ylabel(r'$\sigma_3-\sigma_2$',fontsize=fsz);  grid()
+            axis   ('equal')
+            if draw_fl: self.s123_fline()
+        else:
+            # 7) Ek, Sk ---------------------------------------------------------------------------
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ex, -Sx, self.dot[7], lw=lwd,linestyle='-')
+            plot   (Ey, -Sy, self.dot[7], lw=lwd,linestyle='--')
+            plot   (Ez, -Sz, self.dot[7], lw=lwd,linestyle='-.')
+            xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]',fontsize=fsz)
+            ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]',fontsize=fsz);  grid()
 
         # 8) sqrt(2.0)*Si, Sj ---------------------------------------------------------------------------
         self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
@@ -266,6 +275,31 @@ class Plotter:
                     f[i,j]  = self.failure_crit (sig, self.fc_ty[k])
             contour (sa, sb, f, [0.0], linewidths=1, colors=self.fc_clr[k], linetypes=self.fc_lt[k])
 
+    # Plot failure line in s1-s3, s2-s3 plane
+    # =======================================
+    def s123_fline(self):
+        xmin, xmax = self.ax.get_xbound()
+        ymin, ymax = self.ax.get_ybound()
+        s3   = 1.0
+        smax = s3+max([abs(xmin),abs(xmax)])
+        xmin, xmax = -smax, smax
+        ymin, ymax = -smax, smax
+        dx  = (xmax-xmin)/self.fc_np
+        dy  = (ymax-ymin)/self.fc_np
+        x   = zeros ((self.fc_np,self.fc_np))
+        y   = zeros ((self.fc_np,self.fc_np))
+        f   = zeros ((self.fc_np,self.fc_np))
+        for k in range(len(self.fc_ty)):
+            for i in range(self.fc_np):
+                for j in range(self.fc_np):
+                    x[i,j] = xmin + i*dx
+                    y[i,j] = ymin + j*dy
+                    s1     = s3 - x[i,j]
+                    s2     = s3 - y[i,j]
+                    sig    = matrix([[s1], [s2], [s3], [0.0]])
+                    f[i,j] = self.failure_crit (sig, self.fc_ty[k])
+            contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k])
+
     # Plot failure line in sxyz plane
     # ===============================
     def sxyz_fline(self):
@@ -273,7 +307,6 @@ class Plotter:
         ymin, ymax = self.ax.get_ybound()
         Dx    = xmax-xmin
         Dy    = ymax-ymin
-        if abs(ymin)<1.0e-7: ymin -= Dy
         xmin -= 2.0*Dx
         xmax += 2.0*Dx
         ymax += 0.5*Dy
