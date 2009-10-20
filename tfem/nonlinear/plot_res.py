@@ -66,6 +66,9 @@ if False:
     show()
 
 if True:
-    p = Plotter()
-    p.plot ("owen_hinton_02_ele_4.res")
+    p        = Plotter()
+    p.fc_c   = 12.0
+    p.fc_phi = 0.5
+    p.fc_p   = 0.0
+    p.plot ("owen_hinton_02_ele_4.res", draw_fl=True)
     show()

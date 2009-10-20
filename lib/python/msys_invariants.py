@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-from numpy import sqrt, matrix
+from numpy import sqrt, matrix, arcsin, sin, pi, array
 import numpy.linalg as npyla
 
 # Calculate ev and ed
