@@ -1,20 +1,27 @@
-from numpy import *
-from pylab import *
-from data_handler import *
+from numpy import linspace, pi, exp, sin
+from pylab import plot, grid, show
+from msys_readdata import *
 
-dat = read_table("wood_lewis_nod_34_0.res")
+if False:
+    dat = read_table("wood_lewis_nod_34_0.res")
 
-def solution(x,t):
-    H = 1.0
-    for k in range(1,11):
-        c  = pi*(2.0*k-1.0)
-        H -= (4.0/c)*exp(-t*(c/8.0)**2.0)*sin(c*x/8.0)
-    return H
+    def solution(x,t):
+        H = 1.0
+        for k in range(1,11):
+            c  = pi*(2.0*k-1.0)
+            H -= (4.0/c)*exp(-t*(c/8.0)**2.0)*sin(c*x/8.0)
+        return H
 
-T = linspace(0.0,30.0,100)
-H = solution(1.0,T)
+    T = linspace(0.0,30.0,100)
+    H = solution(1.0,T)
 
-plot(T,H,'b-',lw=2)
-plot(dat['Time'],dat['H'],'r-',lw=2)
-grid()
-show()
+    plot(T,H,'b-',lw=2)
+    plot(dat['Time'],dat['H'],'r-',lw=2)
+    grid()
+    show()
+
+if True:
+    dat = read_table("owen_hinton_03_nod_50_-200.res")
+    plot(dat['Time'],dat['uy'],'r-',lw=2)
+    grid()
+    show()

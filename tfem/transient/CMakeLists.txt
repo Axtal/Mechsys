@@ -17,7 +17,8 @@
 ########################################################################
 
 SET(TESTS
-  wood_lewis)
+  wood_lewis
+  owen_hinton_03)
 
 IF(FEM_FOUND)
 	FOREACH(var ${TESTS})

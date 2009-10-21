@@ -153,7 +153,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       MaxIt   (20),
       TScheme (SS11_t),
       Theta   (2./3.),
-      DScheme (SS22_t),
+      DScheme (GN22_t),
       DampTy  (None_t),
       DampAlp (0.5),
       DampBet (0.5),
@@ -826,6 +826,7 @@ inline void Solver::_GN22_update (double tf, double dt)
 
         // calc Fext_(n+1)
         set_to_zero (F);
+        for (size_t i=0; i<uDOFs.Size(); ++i) F(uDOFs[i]) = DF1(uDOFs[i]);
         for (size_t i=0; i<Dom.NodsF.Size(); ++i)
         {
             (*Dom.CalcF[i]) (Time+dt,        F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")]),

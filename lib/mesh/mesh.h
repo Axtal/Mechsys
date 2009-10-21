@@ -905,7 +905,7 @@ inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh, char const *
     // header
     String fn(FileKey); fn.append(".mpy");
     std::ostringstream oss;
-    oss << "from mesh_drawing import *\n\n";
+    oss << "from msys_drawmesh import *\n\n";
     oss << (*this) << "\n";
 
     // pins
@@ -940,9 +940,9 @@ inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh, char const *
     oss << "}\n\n";
 
     // drawing
-    oss << "d = Drawing(V,C,pins,shares)\n";
-    if (OnlyMesh) oss << "d.draw_mesh(with_tags=False,with_ids=False)\n";
-    else          oss << "d.draw_mesh()\n";
+    oss << "d = DrawMesh(V,C,pins,shares)\n";
+    if (OnlyMesh) oss << "d.draw(with_tags=False,with_ids=False)\n";
+    else          oss << "d.draw()\n";
     if (Extra!=NULL) oss << Extra;
     oss << "d.show()\n";
     std::ofstream of(fn.CStr(), std::ios::out);

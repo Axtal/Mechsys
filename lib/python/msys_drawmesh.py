@@ -212,7 +212,7 @@ class DrawMesh:
                 tag = v[1]
                 # tag
                 if tag<0 and with_tags:
-                    text(v[2], v[3], '%d'%tag, va='top', color='black', backgroundcolor='none', fontsize=self.fsz2)
+                    text(v[2], v[3], '%d'%tag, va='top', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
                 # shares
                 if v[0] in self.Shares and with_shares:
                     s    = '('
@@ -240,7 +240,7 @@ class DrawMesh:
     # Show figure
     # ===========
     def show(self):
-        axis('scaled')
+        axis('equal')
         show()
 
     # Add circle
