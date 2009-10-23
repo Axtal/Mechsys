@@ -555,6 +555,8 @@ inline void Solver::_set_A_Lag ()
 
 inline void Solver::_cor_F_pin ()
 {
+    std::cout << "F     = \n" << PrintVector(F,     "%8.3g");
+    std::cout << "F_int = \n" << PrintVector(F_int, "%8.3g");
     // add contributions to original Node
     if (Dom.Msh.Pins.size()>0)
     {
@@ -580,8 +582,8 @@ inline void Solver::_cor_F_pin ()
                 }
             }
         }
-        //std::cout << "F     = \n" << PrintVector(F);
-        //std::cout << "F_int = \n" << PrintVector(F_int);
+        std::cout << "F     = \n" << PrintVector(F,     "%8.3g");
+        std::cout << "F_int = \n" << PrintVector(F_int, "%8.3g");
     }
 }
 
