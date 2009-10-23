@@ -63,8 +63,6 @@ ADD_DEFINITIONS(-fPIC -fmessage-length=0) # Each error message will appear on a 
 
 INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
 
-ADD_DEFINITIONS(-static)
-
 # sub-directories
 SET(ALLDIRS)
 
