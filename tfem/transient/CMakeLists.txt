@@ -17,13 +17,23 @@
 ########################################################################
 
 SET(TESTS
-  wood_lewis
+  wood_lewis)
+
+SET(PROGS
   owen_hinton_03)
 
 IF(FEM_FOUND)
 	FOREACH(var ${TESTS})
 		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		ADD_TEST              (${var} ${var})
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+	ENDFOREACH(var)
+ENDIF(FEM_FOUND)
+
+IF(FEM_FOUND)
+	FOREACH(var ${PROGS})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 	ENDFOREACH(var)

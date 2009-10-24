@@ -1,4 +1,4 @@
-from numpy import linspace, pi, exp, sin
+from numpy import linspace, pi, exp, sin, array
 from pylab import plot, grid, show
 from msys_readdata import *
 
@@ -22,6 +22,7 @@ if False:
 
 if True:
     dat = read_table("owen_hinton_03_nod_50_-200.res")
-    plot(dat['Time'],dat['uy'],'r-',lw=2)
+    t = array(dat['Time'])
+    plot(1.e3*t,dat['ux'],'r-',lw=2)
     grid()
     show()

@@ -146,7 +146,7 @@ int main(int argc, char **argv) try
     double m    = (r+R)/2.0;
     double Alp  = 26.67*PI/180.0;
     double dalp = Alp/nc;
-    double alp  = 90.0*PI/180.0 - Alp;
+    double alp  = -Alp;
     double bet  = alp + dalp/2.0;
     double gam  = alp + dalp;
     size_t k    = 0;
@@ -170,8 +170,8 @@ int main(int argc, char **argv) try
         gam += dalp;
     }
     cout << "Generated: " << nv << " vertices and " << nc << " cells\n";
-    mesh.WriteMPY ("owen_hinton_03", /*OnlyMesh*/false);//, extra.CStr());
-    mesh.WriteVTU ("owen_hinton_03", /*VolSurfOrBoth*/0);
+    //mesh.WriteMPY ("owen_hinton_03", /*OnlyMesh*/false);//, extra.CStr());
+    //mesh.WriteVTU ("owen_hinton_03", /*VolSurfOrBoth*/0);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -194,11 +194,14 @@ int main(int argc, char **argv) try
     dom.SetOutEles ("owen_hinton_03", Array<int>(nc-1, /*JustOne*/true));
 
     // stage # 1 -----------------------------------------------------------
+    double Qn = -600.0;
+    double l  = R*1.0; // l = R*1rad
+    double qn = Qn/l;
     Dict bcs;
     bcs.Set(-100, "ux uy", 0.0,0.0);
-    bcs.Set(-200, "ux",    0.0);
-    bcs.Set(-300, "ux",    0.0);
-    bcs.Set(-10,  "qn", -600.0);
+    bcs.Set(-200, "uy",    0.0);
+    bcs.Set(-300, "uy",    0.0);
+    bcs.Set(-10,  "qn", qn);
     dom.SetBCs (bcs);
 
     // output data
@@ -210,11 +213,12 @@ int main(int argc, char **argv) try
     FEM::Solver sol(dom);
     //FEM::Solver sol(dom, &DbgFun, &dat);
     //sol.Scheme = FEM::Solver::NR_t;
+    //sol.DScheme = FEM::Solver::SS22_t;
     //sol.nSS    = 10;
     //sol.MaxIt  = 10;
 
     // solve
-    sol.DynSolve (2.0e-3, 0.4e-6, 1.0e-4);
+    sol.DynSolve (10.0e-3, 0.4e-6, 1.0e-4);
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
