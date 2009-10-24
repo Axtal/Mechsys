@@ -1,10 +1,8 @@
 from numpy import *
 from pylab import *
-from data_handler import *
+from msys_readdata import *
 
-ex = 1
-
-if ex==1:
+if True:
     dat = read_table("fig_11_01_nod_1_-200.res")
 
     tsw = 1.0
@@ -21,8 +19,8 @@ if ex==1:
     grid()
     show()
 
-if ex==4:
-    dat = read_table("fig_11_04_nod_17.res")
+if False:
+    dat = read_table("fig_11_04_nod_17_-100.res")
 
     plot(dat['Time'],dat['uy'],'r-',lw=2)
     plot(dat['Time'],dat['uy'],'ro',lw=2)

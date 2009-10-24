@@ -295,7 +295,7 @@ inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags
             std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
             OutNods.Push (nod);
             FilNods.Push (of);
-            (*of) << Util::_6_3 << "Time";
+            (*of) << Util::_8s << "Time";
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->UMap.Keys[j];
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->FMap.Keys[j];
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
@@ -342,7 +342,7 @@ inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags
             FilEles.Push (of);
             SDPair dat;
             Eles[ele]->GetState (dat);
-            (*of) << Util::_6_3 << "Time";
+            (*of) << Util::_8s << "Time";
             for (size_t j=0; j<dat.Keys.Size(); ++j) (*of) << Util::_8s << dat.Keys[j];
             (*of) << "\n";
         }
@@ -355,7 +355,7 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     for (size_t i=0; i<OutNods.Size(); ++i)
     {
         size_t nod = OutNods[i];
-        (*FilNods[i]) << Util::_6_3 << Time;
+        (*FilNods[i]) << Util::_8s << Time;
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->U[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j] - Nods[nod]->Fa(j,Time);
@@ -367,7 +367,7 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     for (size_t i=0; i<OutEles.Size(); ++i)
     {
         size_t ele = OutEles[i];
-        (*FilEles[i]) << Util::_6_3 << Time;
+        (*FilEles[i]) << Util::_8s << Time;
         SDPair dat;
         Eles[ele]->GetState (dat);
         for (size_t j=0; j<dat.Keys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(dat.Keys[j]);
