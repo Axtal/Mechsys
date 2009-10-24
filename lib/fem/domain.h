@@ -349,7 +349,6 @@ inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags
     }
 }
 
-
 inline void Domain::OutResults (double Time, Vec_t const & F_int) const
 {
     // nodes
