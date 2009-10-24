@@ -172,8 +172,8 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
 
     // output initial state
     std::cout << "\n[1;37m--- Stage solution --- (steady) ----------------------------------------------\n";
-    std::cout << Util::_6_3 << "Time" <<                                                Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_6_3 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
+    std::cout << Util::_10_6 << "Time" <<                                                Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_10_6 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
     Dom.OutResults (Time, F_int);
 
     // weights
@@ -220,7 +220,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
         }
 
         // output
-        std::cout << Util::_6_3 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
         Dom.OutResults (Time, F_int);
 
         // next tout
@@ -249,8 +249,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
 
     // output initial state
     std::cout << "\n[1;37m--- Stage solution --- (dynamic) ---------------------------------------------\n";
-    std::cout << Util::_6_3 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_6_3 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
+    std::cout << Util::_10_6 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_10_6 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
     Dom.OutResults (Time, F_int);
 
     // solve
@@ -275,7 +275,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
         }
 
         // output
-        std::cout << Util::_6_3 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
         Dom.OutResults (Time, F_int);
 
         // next tout
