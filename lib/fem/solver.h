@@ -43,10 +43,10 @@ class Solver
 {
 public:
     // enum
-    enum Scheme_t  { FE_t, ME_t, NR_t };   ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
-    enum TScheme_t { SS11_t };             ///< Transient time integration scheme: (Single step/O1/1st order)
-    enum DScheme_t { SS22_t, GN22_t, SG113_t };     ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
-    enum Damping_t { None_t, Rayleigh_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K)
+    enum Scheme_t  { FE_t, ME_t, NR_t };        ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
+    enum TScheme_t { SS11_t };                  ///< Transient time integration scheme: (Single step/O1/1st order)
+    enum DScheme_t { SS22_t, GN22_t, SG113_t }; ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum Damping_t { None_t, Rayleigh_t };      ///< Damping type: none, Rayleigh type (C=alp*M+bet*K)
 
     // typedefs
     typedef void (*pDbgFun) (Solver const & Sol, void * DbgDat); ///< Pointer to Debug function
@@ -598,11 +598,17 @@ inline void Solver::_cor_F_pin ()
 
 inline void Solver::_calc_resid (bool WithAccel)
 {
+    //std::cout << "\n";
+    //std::cout << "F  = " << PrintVector(F);
+    //std::cout << "Fi = " << PrintVector(F_int);
     R = F - F_int;
     if (WithAccel)
     {
         Sparse::SubMult (M11, A, R); // R -= M11*A
         if (DampTy!=None_t) Sparse::SubMult (C11, V, R); // R -= C11*V
+        //std::cout << "V  = " << PrintVector(V);
+        //std::cout << "A  = " << PrintVector(A);
+        //std::cout << "R  = " << PrintVector(R);
     }
     NormR    = Norm(R);
     MaxNormF = Util::Max (Norm(F), Norm(F_int));
@@ -889,35 +895,12 @@ inline void Solver::_SG113_update (double tf, double dt)
 
     // constants
     const double th = 0.5;
-    const double c1 = (1.0-th)*dt;
-    const double c2 = DampAk - c1;
-    const double c3 = DampAm + 1.0/(th*dt);
-    const double c4 = DampAk + th*dt;
+    const double c1 = 1.0/(th*dt);
+    const double c2 = th*dt;
+    const double c3 = (1.0-th)*dt;
 
-    // assemble global K and M matrices
-    if (K11.Top()==0)
-    {
-        AssembleKMA (c3, c4);
-
-        /*
-        Sparse::Matrix<double,int> k11(K11), k12(K12), k21(K21), k22(K22);
-        Sparse::Matrix<double,int> m11(M11), m12(M12), m21(M21), m22(M22);
-        Sparse::Matrix<double,int> a11(A11);
-        Mat_t kk11, kk12, kk21, kk22, kk;
-        Mat_t mm11, mm12, mm21, mm22, mm;
-        Mat_t aa11;
-        k11.GetDense(kk11), k12.GetDense(kk12), k21.GetDense(kk21), k22.GetDense(kk22);
-        m11.GetDense(mm11), m12.GetDense(mm12), m21.GetDense(mm21), m22.GetDense(mm22);
-        a11.GetDense(aa11);
-        kk = kk11 + kk12 + kk21 + kk22;
-        mm = mm11 + mm12 + mm21 + mm22;
-        //std::cout << "K = \n" << PrintMatrix(kk);
-        //std::cout << "M = \n" << PrintMatrix(mm);
-        std::cout << "K11 = \n" << PrintMatrix(kk11,"%15.6E",&pDOFs);
-        std::cout << "M11 = \n" << PrintMatrix(mm11,"%15.6E",&pDOFs);
-        std::cout << "A11 = \n" << PrintMatrix(aa11,"%15.6E",&pDOFs);
-        */
-    }
+    // assemble global K, C, and M matrices
+    if (K11.Top()==0) AssembleKCMA (c1, 1.0, c2); // A = c1*M + C + c2*K
 
     while (Time<tf)
     {
@@ -931,28 +914,27 @@ inline void Solver::_SG113_update (double tf, double dt)
             eqx    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
             eqy    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];  if (Dom.NDim==3)
             eqz    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")];
-            W(eqx) = th*dt*fx_new + c1*fx;
-            W(eqy) = th*dt*fy_new + c1*fy;  if (Dom.NDim==3)
-            W(eqz) = th*dt*fz_new + c1*fz;
+            W(eqx) = c2*fx_new + c3*fx;
+            W(eqy) = c2*fy_new + c3*fy;  if (Dom.NDim==3)
+            W(eqz) = c2*fz_new + c3*fz;
             F(eqx) = fx_new;
             F(eqy) = fy_new;  if (Dom.NDim==3)
             F(eqz) = fz_new;
         }
-        tmp = c3*U + (1.0/th)*V;
+        tmp = c1*U + (1.0/th)*V;
         Sparse::AddMult (M11, tmp, W); // W += M11*tmp
-        tmp = c2*U;
+        Sparse::AddMult (C11,   U, W); // W += C11*U
+        tmp = -c3*U;
         Sparse::AddMult (K11, tmp, W); // W += K11*tmp
 
         // calc new displacements, acceleration, and velocity
         UMFPACK::Solve (A11, W, Unew); // Unew = inv(A11)*W
-        Vnew = (1.0/(th*dt))*(Unew-U) - ((1.0-th)/th)*V;
-        Anew = (1.0/(th*dt))*(Vnew-V) - ((1.0-th)/th)*A;
-
+        Vnew = c1*(Unew-U) - ((1.0-th)/th)*V;
+        Anew = c1*(Vnew-V) - ((1.0-th)/th)*A;
+        
         // update elements
         dU = Unew - U;
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-
-        //std::cout << "Unew = " << PrintVector(Unew,"%12.4E",&pDOFs);
 
         // update displacements, velocities, and accelerations
         U = Unew;
