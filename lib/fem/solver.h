@@ -36,9 +36,6 @@
 #include "linalg/sparse_matrix.h"
 #include "linalg/umfpack.h"
 
-using std::cout;
-using std::endl;
-
 namespace FEM
 {
 
@@ -48,7 +45,7 @@ public:
     // enum
     enum Scheme_t  { FE_t, ME_t, NR_t };   ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
     enum TScheme_t { SS11_t };             ///< Transient time integration scheme: (Single step/O1/1st order)
-    enum DScheme_t { SS22_t, GN22_t };     ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum DScheme_t { SS22_t, GN22_t, SG113_t };     ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
     enum Damping_t { None_t, Rayleigh_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K)
 
     // typedefs
@@ -111,21 +108,22 @@ public:
     double    Theta;   ///< Transient scheme constant
     DScheme_t DScheme; ///< Dynamic scheme
     Damping_t DampTy;  ///< Damping type
-    double    DampAlp; ///< Rayleigh damping alpha coefficient
-    double    DampBet; ///< Rayleigh damping beta coefficient
+    double    DampAm;  ///< Rayleigh damping Am coefficient (C = Am*M + Ak*K)
+    double    DampAk;  ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
     double    DynTh1;  ///< Dynamic coefficient Theta 1
     double    DynTh2;  ///< Dynamic coefficient Theta 2
 
 private:
-    void _set_A_Lag   ();                     ///< Set A matrix due to Lagrange multipliers
-    void _cor_F_pin   ();                     ///< Correct F values due to Pins (add contributions to original Node)
-    void _calc_resid  (bool WithAccel=false); ///< Calculate residual
-    void _cor_resid   (Vec_t & dU);           ///< Correct residual
-    void _FE_update   (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
-    void _ME_update   (double tf);            ///< (Modified-Euler) Update Time and elements to tf
-    void _NR_update   (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
-    void _SS22_update (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
-    void _GN22_update (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
+    void _set_A_Lag    ();                     ///< Set A matrix due to Lagrange multipliers
+    void _cor_F_pin    ();                     ///< Correct F values due to Pins (add contributions to original Node)
+    void _calc_resid   (bool WithAccel=false); ///< Calculate residual
+    void _cor_resid    (Vec_t & dU);           ///< Correct residual
+    void _FE_update    (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
+    void _ME_update    (double tf);            ///< (Modified-Euler) Update Time and elements to tf
+    void _NR_update    (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
+    void _SS22_update  (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
+    void _GN22_update  (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
+    void _SG113_update (double tf, double dt); ///< (Smith-Griffiths prog 11.3 (theta-method)) Update Time and elements to tf
 };
 
 
@@ -155,8 +153,8 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       Theta   (2./3.),
       DScheme (GN22_t),
       DampTy  (None_t),
-      DampAlp (0.5),
-      DampBet (0.5),
+      DampAm  (0.5),
+      DampAk  (0.5),
       DynTh1  (0.5),
       DynTh2  (0.5)
 {
@@ -259,8 +257,9 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
     while (Time<tf)
     {
         // update U, F, Time and elements to tout
-        if      (DScheme==SS22_t) { _SS22_update (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
-        else if (DScheme==GN22_t) { _GN22_update (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
+        if      (DScheme==SS22_t)  { _SS22_update  (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
+        else if (DScheme==GN22_t)  { _GN22_update  (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
+        else if (DScheme==SG113_t) { _SG113_update (tout,dt);  str.Printf("Smith-Griffiths prog 11.3 (theta-method): nit = %d",It); }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -311,6 +310,16 @@ inline void Solver::AssembleKA ()
             }
         }
     }
+
+    /*
+    Sparse::Matrix<double,int> k11(A11), k12(K12), k21(K21), k22(K22);
+    Mat_t kk11, kk12, kk21, kk22, kk;
+    k11.GetDense(kk11), k12.GetDense(kk12), k21.GetDense(kk21), k22.GetDense(kk22);
+    kk = kk11 + kk12 + kk21 + kk22;
+    std::cout << "K   = \n" << PrintMatrix(kk);
+    std::cout << "K11 = \n" << PrintMatrix(kk11);
+    */
+
     // augment A11
     for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
     _set_A_Lag ();
@@ -385,7 +394,7 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
         Dom.Eles[k]->GetLoc (loc, pre);
         // calc C
         Mat_t C(K.num_rows(),K.num_cols());
-        C = DampAlp*M + DampBet*K;
+        C = DampAm*M + DampAk*K;
         // set K, C, M, and A matrices
         for (size_t i=0; i<loc.Size(); ++i)
         {
@@ -590,7 +599,11 @@ inline void Solver::_cor_F_pin ()
 inline void Solver::_calc_resid (bool WithAccel)
 {
     R = F - F_int;
-    if (WithAccel) Sparse::SubMult (M11, A, R); // R -= M11*A
+    if (WithAccel)
+    {
+        Sparse::SubMult (M11, A, R); // R -= M11*A
+        if (DampTy!=None_t) Sparse::SubMult (C11, V, R); // R -= C11*V
+    }
     NormR    = Norm(R);
     MaxNormF = Util::Max (Norm(F), Norm(F_int));
 }
@@ -855,6 +868,96 @@ inline void Solver::_GN22_update (double tf, double dt)
         dU = Unew - U;
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
         U = Unew;
+
+        // clear internal forces related to supports
+        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
+
+        // residual
+        _calc_resid (true);
+
+        // next time step
+        Time += dt;
+    }
+}
+
+inline void Solver::_SG113_update (double tf, double dt)
+{
+    // auxiliar variables
+    size_t eqx, eqy, eqz; // equation numbers
+    double fx, fy, fz, fx_new, fy_new, fz_new;
+    Vec_t Unew(NEq), Vnew(NEq), Anew(NEq), tmp(NEq), dU(NEq);
+
+    // constants
+    const double th = 0.5;
+    const double c1 = (1.0-th)*dt;
+    const double c2 = DampAk - c1;
+    const double c3 = DampAm + 1.0/(th*dt);
+    const double c4 = DampAk + th*dt;
+
+    // assemble global K and M matrices
+    if (K11.Top()==0)
+    {
+        AssembleKMA (c3, c4);
+
+        /*
+        Sparse::Matrix<double,int> k11(K11), k12(K12), k21(K21), k22(K22);
+        Sparse::Matrix<double,int> m11(M11), m12(M12), m21(M21), m22(M22);
+        Sparse::Matrix<double,int> a11(A11);
+        Mat_t kk11, kk12, kk21, kk22, kk;
+        Mat_t mm11, mm12, mm21, mm22, mm;
+        Mat_t aa11;
+        k11.GetDense(kk11), k12.GetDense(kk12), k21.GetDense(kk21), k22.GetDense(kk22);
+        m11.GetDense(mm11), m12.GetDense(mm12), m21.GetDense(mm21), m22.GetDense(mm22);
+        a11.GetDense(aa11);
+        kk = kk11 + kk12 + kk21 + kk22;
+        mm = mm11 + mm12 + mm21 + mm22;
+        //std::cout << "K = \n" << PrintMatrix(kk);
+        //std::cout << "M = \n" << PrintMatrix(mm);
+        std::cout << "K11 = \n" << PrintMatrix(kk11,"%15.6E",&pDOFs);
+        std::cout << "M11 = \n" << PrintMatrix(mm11,"%15.6E",&pDOFs);
+        std::cout << "A11 = \n" << PrintMatrix(aa11,"%15.6E",&pDOFs);
+        */
+    }
+
+    while (Time<tf)
+    {
+        // set workspace
+        set_to_zero (W);
+        for (size_t i=0; i<uDOFs.Size(); ++i) { W(uDOFs[i]) = dt*DF1(uDOFs[i]);   F(uDOFs[i]) = DF1(uDOFs[i]); }
+        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
+        {
+            (*Dom.CalcF[i]) (Time,    fx,     fy,     fz    );
+            (*Dom.CalcF[i]) (Time+dt, fx_new, fy_new, fz_new);
+            eqx    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
+            eqy    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];  if (Dom.NDim==3)
+            eqz    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")];
+            W(eqx) = th*dt*fx_new + c1*fx;
+            W(eqy) = th*dt*fy_new + c1*fy;  if (Dom.NDim==3)
+            W(eqz) = th*dt*fz_new + c1*fz;
+            F(eqx) = fx_new;
+            F(eqy) = fy_new;  if (Dom.NDim==3)
+            F(eqz) = fz_new;
+        }
+        tmp = c3*U + (1.0/th)*V;
+        Sparse::AddMult (M11, tmp, W); // W += M11*tmp
+        tmp = c2*U;
+        Sparse::AddMult (K11, tmp, W); // W += K11*tmp
+
+        // calc new displacements, acceleration, and velocity
+        UMFPACK::Solve (A11, W, Unew); // Unew = inv(A11)*W
+        Vnew = (1.0/(th*dt))*(Unew-U) - ((1.0-th)/th)*V;
+        Anew = (1.0/(th*dt))*(Vnew-V) - ((1.0-th)/th)*A;
+
+        // update elements
+        dU = Unew - U;
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+
+        //std::cout << "Unew = " << PrintVector(Unew,"%12.4E",&pDOFs);
+
+        // update displacements, velocities, and accelerations
+        U = Unew;
+        V = Vnew;
+        A = Anew;
 
         // clear internal forces related to supports
         for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;

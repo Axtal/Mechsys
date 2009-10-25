@@ -63,35 +63,50 @@ typedef mtl::dense2D<double, mtl::matrix::parameters<mtl::tag::col_major> > Mat_
 typedef mtl::dense_vector<double> Vec_t;
 
 /** Print vector. */
-inline String PrintVector (Vec_t const & V, char const * Fmt="%13g", double Tol=1.0e-13)
+inline String PrintVector (Vec_t const & V, char const * Fmt="%13g", Array<long> const * SkipR=NULL, double Tol=1.0e-13)
 {
     int m = V.size();
     String lin;
     for (int i=0; i<m; ++i)
     {
-        double val = (fabs(V(i))<Tol ? 0.0 : V(i));
-        String buf;  buf.Printf(Fmt,val);
-        lin.append(buf);
+        bool skip_row = false;
+        if (SkipR!=NULL) skip_row = (SkipR->Find(i)<0 ? false : true);
+        if (!skip_row)
+        {
+            double val = (fabs(V(i))<Tol ? 0.0 : V(i));
+            String buf;  buf.Printf(Fmt,val);
+            lin.append(buf);
+        }
     }
     lin.append("\n");
     return lin;
 }
 
 /** Print matrix. */
-inline String PrintMatrix (Mat_t const & M, char const * Fmt="%13g", double Tol=1.0e-13)
+inline String PrintMatrix (Mat_t const & M, char const * Fmt="%13g", Array<long> const * SkipRC=NULL, double Tol=1.0e-13)
 {
     int m = M.num_rows();
     int n = M.num_cols();
     String lin;
     for (int i=0; i<m; ++i)
     {
-        for (int j=0; j<n; ++j)
+        bool skip_row = false;
+        if (SkipRC!=NULL) skip_row = (SkipRC->Find(i)<0 ? false : true);
+        if (!skip_row)
         {
-            double val = (fabs(M(i,j))<Tol ? 0.0 : M(i,j));
-            String buf;  buf.Printf(Fmt,val);
-            lin.append(buf);
+            for (int j=0; j<n; ++j)
+            {
+                bool skip_col = false;
+                if (SkipRC!=NULL) skip_col = (SkipRC->Find(j)<0 ? false : true);
+                if (!skip_col)
+                {
+                    double val = (fabs(M(i,j))<Tol ? 0.0 : M(i,j));
+                    String buf;  buf.Printf(Fmt,val);
+                    lin.append(buf);
+                }
+            }
+            lin.append("\n");
         }
-        lin.append("\n");
     }
     return lin;
 }
