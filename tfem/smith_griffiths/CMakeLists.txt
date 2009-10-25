@@ -21,14 +21,25 @@ SET(TESTS
     fig_05_11
     fig_05_15
     fig_05_17
-    fig_05_24
+    fig_05_24)
+
+SET(PROGS
     fig_11_01
-    fig_11_04)
+    fig_11_04
+    fig_11_19)
 
 IF(FEM_FOUND)
 	FOREACH(var ${TESTS})
 		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		ADD_TEST              (${var} ${var})
+		TARGET_LINK_LIBRARIES (${var} ${LIBS})
+		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+	ENDFOREACH(var)
+ENDIF(FEM_FOUND)
+
+IF(FEM_FOUND)
+	FOREACH(var ${PROGS})
+		ADD_EXECUTABLE        (${var} "${var}.cpp")
 		TARGET_LINK_LIBRARIES (${var} ${LIBS})
 		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 	ENDFOREACH(var)
