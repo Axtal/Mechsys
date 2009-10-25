@@ -610,7 +610,9 @@ inline void Eig (Mat3_t const & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t 
         V0(2) = TM[2];
         V0(1) = TM[1];
     }
-    throw new Fatal("matvec.h:Eig: Jacobi rotation did not converge");
+    std::ostringstream oss;
+    oss << PrintMatrix(M);
+    throw new Fatal("matvec.h:Eig: Jacobi rotation did not converge\nM =\n%s",oss.str().c_str());
 }
 
 /** Norm. */

@@ -30,6 +30,7 @@
 #include "fem/equilibelem.h"
 #include "fem/domain.h"
 #include "fem/solver.h"
+#include "models/linelastic.h"
 #include "models/elastoplastic.h"
 #include "util/maps.h"
 #include "util/util.h"
@@ -81,7 +82,8 @@ int main(int argc, char **argv) try
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu sY psa", MODEL("ElastoPlastic"), 3.0e-7, 0.3, 5.0e+4, TRUE);
+    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 3.0e7, 0.3, TRUE);
+    //mdls.Set(-1, "name E nu sY psa", MODEL("ElastoPlastic"), 3.0e7, 0.3, 5.0e4, TRUE);
 
     // initial values
     Dict inis;
@@ -93,16 +95,19 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    sol.DScheme = FEM::Solver::GN22_t;
+    //sol.DScheme = FEM::Solver::SS22_t;
+    //sol.DScheme = FEM::Solver::GN22_t;
+    sol.DScheme = FEM::Solver::SG113_t;    sol.DampTy=FEM::Solver::Rayleigh_t;    sol.DampAm=0.0;    sol.DampAk=0.0;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set( -10, "qn", -1.0);
+    bcs.Set( -10, "qn", -180.0);
     bcs.Set(-100, "ux uy", 0.0,0.0);
     bcs.Set(-200, "ux",    0.0);
     dom.SetBCs (bcs);
     cout << dom << endl;
-    sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-6, /*dtOut*/0.5);
+    sol.DynSolve (/*tf*/0.004, /*dt*/1.0e-4, /*dtOut*/1.0e-4);
+    //sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-6, /*dtOut*/1.0e-4);
 
     return 0.0;
 }

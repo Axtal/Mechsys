@@ -775,7 +775,8 @@ inline void Solver::_NR_update (double tf)
 inline void Solver::_SS22_update (double tf, double dt)
 {
     // auxiliar variables
-    double fz;     // dummy variable
+    size_t eqx, eqy, eqz; // equation numbers
+    double fx, fy, fz, fx_new, fy_new, fz_new;
     Vec_t Us(NEq); // starred displacement
     Vec_t Unew(NEq), dU(NEq);
     Vec_t Alp(NEq);
@@ -787,16 +788,24 @@ inline void Solver::_SS22_update (double tf, double dt)
 
         // calc Fext_(n+1)
         set_to_zero (F);
-        for (size_t i=0; i<uDOFs.Size(); ++i) F(uDOFs[i]) = DF1(uDOFs[i]);
+        set_to_zero (W);
+        for (size_t i=0; i<uDOFs.Size(); ++i) { W(uDOFs[i]) = DF1(uDOFs[i]);   F(uDOFs[i]) = DF1(uDOFs[i]); }
         for (size_t i=0; i<Dom.NodsF.Size(); ++i)
         {
-            (*Dom.CalcF[i]) (Time+dt,        F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")]),
-                                             F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")]),
-                              (Dom.NDim==3 ? F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")]) : fz));
+            (*Dom.CalcF[i]) (Time,    fx,     fy,     fz    );
+            (*Dom.CalcF[i]) (Time+dt, fx_new, fy_new, fz_new);
+            eqx    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
+            eqy    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];  if (Dom.NDim==3)
+            eqz    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")];
+            W(eqx) = (1.0-DynTh1)*fx + DynTh1*fx_new;
+            W(eqy) = (1.0-DynTh1)*fy + DynTh1*fy_new;  if (Dom.NDim==3)
+            W(eqz) = (1.0-DynTh1)*fz + DynTh1*fz_new;
+            F(eqx) = fx_new;
+            F(eqy) = fy_new;  if (Dom.NDim==3)
+            F(eqz) = fz_new;
         }
 
         // set workspace
-        W = F;
         Sparse::SubMult (K11, Us, W); if (DampTy!=None_t) // W -= K11*Us
         Sparse::SubMult (C11, V,  W);                     // W -= C11*Vs
 
@@ -905,6 +914,7 @@ inline void Solver::_SG113_update (double tf, double dt)
     while (Time<tf)
     {
         // set workspace
+        set_to_zero (F);
         set_to_zero (W);
         for (size_t i=0; i<uDOFs.Size(); ++i) { W(uDOFs[i]) = dt*DF1(uDOFs[i]);   F(uDOFs[i]) = DF1(uDOFs[i]); }
         for (size_t i=0; i<Dom.NodsF.Size(); ++i)

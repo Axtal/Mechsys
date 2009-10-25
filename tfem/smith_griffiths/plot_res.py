@@ -19,7 +19,7 @@ if False:
     grid()
     show()
 
-if True:
+if False:
     res   = read_table("fig_11_04_nod_17_-100.res")
     p113d = read_table("sg_11_07_p113.dat")
     p113  = read_table("sg_11_07_p113.res")
@@ -28,10 +28,24 @@ if True:
     plot(res  ['Time'],res  ['uy'],'r-',lw=2)
     plot(p113d['Time'],p113d['uy'],'bo')
     plot(p113 ['Time'],p113 ['uy'],'b-')
+    plot(p113 ['Time'],p113 ['uy'],'b+')
     #plot(p114 ['Time'],p114 ['uy'],'b-',lw=1)
     #plot(p114 ['Time'],p114 ['uy'],'b+',lw=1)
 
     #legend(['MechSys','SG:p113d','SG:p113','SG:p114'],loc='upper left')
     legend(['MechSys','SG:p113d','SG:p113'],loc='upper left')
+    grid()
+    show()
+
+if True:
+    res  = read_table("fig_11_19_nod_30_-200.res")
+    p117 = read_table("sg_11_19.res")
+
+    plot(res ['Time'],res ['uy'],'r-',lw=2)
+    plot(p117['Time'],p117['uy'],'b-')
+    plot(p117['Time'],p117['uy'],'b+')
+
+    #legend(['MechSys','SG:p113d','SG:p113','SG:p114'],loc='upper left')
+    #legend(['MechSys','SG:p113d','SG:p113'],loc='upper left')
     grid()
     show()
