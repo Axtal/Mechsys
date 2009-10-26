@@ -82,8 +82,8 @@ int main(int argc, char **argv) try
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 3.0e7, 0.3, TRUE);
-    //mdls.Set(-1, "name E nu sY psa", MODEL("ElastoPlastic"), 3.0e7, 0.3, 5.0e4, TRUE);
+    //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 3.0e7, 0.3, TRUE);
+    mdls.Set(-1, "name E nu sY psa", MODEL("ElastoPlastic"), 3.0e7, 0.3, 5.0e4, TRUE);
 
     // initial values
     Dict inis;
@@ -97,12 +97,10 @@ int main(int argc, char **argv) try
     FEM::Solver sol(dom);
     //sol.DScheme = FEM::Solver::SS22_t;
     //sol.DScheme = FEM::Solver::GN22_t;
-    sol.DScheme = FEM::Solver::NM_t;
-    //sol.DScheme = FEM::Solver::CD_t;
-    //sol.DScheme = FEM::Solver::EX_t;
-    sol.TolR    = 1.0e-4;
-    sol.MaxIt   = 20;
     //sol.DScheme = FEM::Solver::SG113_t;    sol.DampTy=FEM::Solver::Rayleigh_t;    sol.DampAm=0.0;    sol.DampAk=0.0;
+    sol.DScheme = FEM::Solver::NM_t;
+    sol.TolR    = 1.0e-7;
+    sol.MaxIt   = 20;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
