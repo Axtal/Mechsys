@@ -45,8 +45,7 @@ public:
     // enum
     enum Scheme_t  { FE_t, ME_t, NR_t };        ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
     enum TScheme_t { SS11_t };                  ///< Transient time integration scheme: (Single step/O1/1st order)
-    enum DScheme_t { SS22_t, GN22_t, SG113_t,
-                     NM_t };                    ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum DScheme_t { SS22_t, GN22_t };          ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
     enum Damping_t { None_t, Rayleigh_t };      ///< Damping type: none, Rayleigh type (C=alp*M+bet*K)
 
     // typedefs
@@ -126,8 +125,6 @@ private:
     void _calc_F_Fnew  (double dt);            ///< Calculate F(t=Time) and F(t=Time+dt)
     void _SS22_update  (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
     void _GN22_update  (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
-    void _SG113_update (double tf, double dt); ///< (Smith-Griffiths prog 11.3 (theta-method)) Update Time and elements to tf
-    void _NM_update    (double tf, double dt); ///< Newmark: Update Time and elements to tf
 };
 
 
@@ -142,7 +139,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       Inc     (0),
       Stp     (0),
       It      (0),
-      TolR    (1.0e-3),
+      TolR    (1.0e-7),
       Scheme  (ME_t),
       nSS     (1),
       STOL    (1.0e-5),
@@ -157,7 +154,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       Theta   (2./3.),
       DScheme (GN22_t),
       DampTy  (None_t),
-      DampAm  (0.5),
+      DampAm  (0.005),
       DampAk  (0.5),
       DynTh1  (0.5),
       DynTh2  (0.5)
@@ -263,8 +260,6 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
         // update U, F, Time and elements to tout
         if      (DScheme==SS22_t)  { _SS22_update  (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
         else if (DScheme==GN22_t)  { _GN22_update  (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
-        else if (DScheme==SG113_t) { _SG113_update (tout,dt);  str.Printf("Smith-Griffiths prog 11.3 (theta-method): nit = %d",It); }
-        else if (DScheme==NM_t)    { _NM_update    (tout,dt);  str.Printf("Newmark: nit = %d",It); }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -868,147 +863,9 @@ inline void Solver::_SS22_update (double tf, double dt)
 inline void Solver::_GN22_update (double tf, double dt)
 {
     // auxiliar variables
-    Vec_t As(NEq), Vs(NEq); // starred acceleration and velocity
-    Vec_t Unew(NEq), dU(NEq);
-
-    // constants
-    const double c1 = -2.0/(DynTh2*dt*dt);
-    const double c2 = -2.0/(DynTh2*dt);
-    const double c3 = -(1.0-DynTh2)/DynTh2;
-    const double c4 = -2.0*DynTh1/(DynTh2*dt);
-    const double c5 = 1.0-2.0*DynTh1/DynTh2;
-    const double c6 = (1.0-DynTh1/DynTh2)*dt;
-
-    while (Time<tf)
-    {
-        // calc starred variables
-        As = c1*U + c2*V + c3*A;
-        Vs = c4*U + c5*V + c6*A;
-
-        // calc F and Fnew
-        _calc_F_Fnew (dt);
-
-        // set workspace
-        W = Fnew;
-        Sparse::SubMult (M11, As, W); if (DampTy!=None_t) // W -= M11*As
-        Sparse::SubMult (C11, Vs, W);                     // W -= C11*Vs
-
-        // assemble Amat
-        if (DampTy==None_t) AssembleKMA  (-c1, 1.0);
-        else                AssembleKCMA (-c1, -c4, 1.0);
-
-        // calc new displacements, acceleration, and velocity
-        UMFPACK::Solve (A11, W, Unew); // Unew = inv(A11)*W
-        A = As - c1*Unew;
-        V = Vs - c4*Unew;
-
-        // update elements and displacements
-        dU = Unew - U;
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0; // clear internal forces related to supports
-        U = Unew;
-
-        // residual
-        F = Fnew;
-        _calc_resid (true);
-        std::cout << "[1;31mNormR[0m = " << NormR << std::endl;
-
-        // iterations
-        size_t it = 0;
-        while (false)//NormR>TolR*MaxNormF && it<MaxIt)
-        {
-            // assemble Amat
-            if (!ModNR)
-            {
-                if (DampTy==None_t) AssembleKMA  (-c1, 1.0);
-                else                AssembleKCMA (-c1, -c4, 1.0);
-            }
-
-            // clear unbalanced forces related to supports
-            for (size_t i=0; i<pDOFs.Size(); ++i) R(pDOFs[i]) = 0.0;
-
-            // calc corrector dU
-            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
-
-            // update
-            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-            U += dU;
-            A  = As - c1*U;
-            V  = Vs - c4*U;
-
-            // residual
-            _calc_resid (true);
-            std::cout << "NormR = " << NormR << std::endl;
-
-            // next iteration
-            it++;
-        }
-        if (it>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark did not converge after %d iterations",it);
-        if (it>It) It = it;
-
-        // next time step
-        Time += dt;
-    }
-}
-
-inline void Solver::_SG113_update (double tf, double dt)
-{
-    // auxiliar variables
-    Vec_t Unew(NEq), Vnew(NEq), Anew(NEq), tmp(NEq), dU(NEq);
-
-    // constants
-    const double th = 0.5;
-    const double c1 = 1.0/(th*dt);
-    const double c2 = th*dt;
-    const double c3 = (1.0-th)*dt;
-
-    // assemble global K, C, and M matrices
-    if (K11.Top()==0) AssembleKCMA (c1, 1.0, c2); // A = c1*M + C + c2*K
-
-    while (Time<tf)
-    {
-        // calc F and Fnew
-        _calc_F_Fnew (dt);
-
-        // set workspace
-        W = (1.0-DynTh1)*F + DynTh1*Fnew;
-        tmp = c1*U + (1.0/th)*V;
-        Sparse::AddMult (M11, tmp, W); // W += M11*tmp
-        Sparse::AddMult (C11,   U, W); // W += C11*U
-        tmp = -c3*U;
-        Sparse::AddMult (K11, tmp, W); // W += K11*tmp
-
-        // calc new displacements, acceleration, and velocity
-        UMFPACK::Solve (A11, W, Unew); // Unew = inv(A11)*W
-        Vnew = c1*(Unew-U) - ((1.0-th)/th)*V;
-        Anew = c1*(Vnew-V) - ((1.0-th)/th)*A;
-        
-        // update elements
-        dU = Unew - U;
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-
-        // update variables
-        U = Unew;
-        V = Vnew;
-        A = Anew;
-        F = Fnew;
-
-        // clear internal forces related to supports
-        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
-
-        // residual
-        _calc_resid (true);
-
-        // next time step
-        Time += dt;
-    }
-}
-
-inline void Solver::_NM_update (double tf, double dt)
-{
-    // auxiliar variables
-    Vec_t Us(NEq), Vs(NEq), As(NEq), Unew(NEq), Vnew(NEq), dU(NEq), Anew(NEq);
-    Vec_t tmp(NEq);
+    Vec_t Us(NEq),   Vs(NEq);              // starred variables
+    Vec_t Unew(NEq), Vnew(NEq), Anew(NEq); // updated state
+    Vec_t dU(NEq);                         // displacement increment
 
     // constants
     const double c1 = dt*dt*(1.0-DynTh2)/2.0;
@@ -1018,12 +875,14 @@ inline void Solver::_NM_update (double tf, double dt)
 
     while (Time<tf)
     {
+        // predictor
         Us   = U + dt*V + c1*A;
         Vs   = V + c2*A;
         Unew = U;
         Anew = c3*(U - Us);
         Vnew = Vs + (DynTh1*dt)*Anew;
 
+        // iteratios
         for (It=0; It<MaxIt; ++It)
         {
             // assemble Amat
@@ -1035,15 +894,17 @@ inline void Solver::_NM_update (double tf, double dt)
 
             // residual
             R = Fnew - F_int;
-            Sparse::SubMult (M11, Anew, R);  if (DampTy!=None_t) { // R -= M11*Anew
-            Sparse::SubMult (C11, Vnew, R); }                      // R -= C11*Vnew
+            Sparse::SubMult (M11, Anew, R);  if (DampTy!=None_t)  // R -= M11*Anew
+            Sparse::SubMult (C11, Vnew, R);                       // R -= C11*Vnew
 
             // solve for dU
             UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
 
-            // update
+            // update elements
             for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
             for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0; // clear internal forces related to supports
+
+            // update state
             Unew += dU;
             Anew  = c3*(Unew - Us);
             Vnew  = Vs + (DynTh1*dt)*Anew;
@@ -1053,8 +914,9 @@ inline void Solver::_NM_update (double tf, double dt)
             MaxNormF = Util::Max (Norm(F), Norm(F_int));
             if (NormR<=TolR*MaxNormF) break;
         }
-        if (It>=MaxIt) throw new Fatal("Solver::_NM_update: Newmark did not converge after %d iterations",It);
+        if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
 
+        // update
         U = Unew;
         V = Vnew;
         A = Anew;

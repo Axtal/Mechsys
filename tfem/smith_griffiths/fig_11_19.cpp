@@ -96,11 +96,7 @@ int main(int argc, char **argv) try
     // solver
     FEM::Solver sol(dom);
     //sol.DScheme = FEM::Solver::SS22_t;
-    //sol.DScheme = FEM::Solver::GN22_t;
-    //sol.DScheme = FEM::Solver::SG113_t;    sol.DampTy=FEM::Solver::Rayleigh_t;    sol.DampAm=0.0;    sol.DampAk=0.0;
-    sol.DScheme = FEM::Solver::NM_t;
-    sol.TolR    = 1.0e-7;
-    sol.MaxIt   = 20;
+    sol.DScheme = FEM::Solver::GN22_t;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
@@ -109,8 +105,7 @@ int main(int argc, char **argv) try
     bcs.Set(-200, "ux",    0.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;
-    sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-5, /*dtOut*/1.0e-4);
-    //sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-6, /*dtOut*/1.0e-4);
+    sol.DynSolve (/*tf*/0.01, /*dt*/1.0e-4, /*dtOut*/1.0e-4);
 
     return 0.0;
 }

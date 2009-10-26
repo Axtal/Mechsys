@@ -19,7 +19,7 @@ if False:
     grid()
     show()
 
-if False:
+if True:
     res   = read_table("fig_11_04_nod_17_-100.res")
     p113d = read_table("sg_11_07_p113.dat")
     p113  = read_table("sg_11_07_p113.res")
