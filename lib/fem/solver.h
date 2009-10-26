@@ -45,7 +45,8 @@ public:
     // enum
     enum Scheme_t  { FE_t, ME_t, NR_t };        ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
     enum TScheme_t { SS11_t };                  ///< Transient time integration scheme: (Single step/O1/1st order)
-    enum DScheme_t { SS22_t, GN22_t, SG113_t }; ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum DScheme_t { SS22_t, GN22_t, SG113_t,
+                     NM_t, CD_t, EX_t, dME_t }; ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
     enum Damping_t { None_t, Rayleigh_t };      ///< Damping type: none, Rayleigh type (C=alp*M+bet*K)
 
     // typedefs
@@ -62,6 +63,7 @@ public:
     void AssembleKMA  (double Coef1, double Coef2);                  ///< A = Coef1*M + Coef2*K
     void AssembleKCMA (double Coef1, double Coef2, double Coef3);    ///< A = Coef1*M + Coef2*C + Coef3*K
     void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);           ///< Tangent increments: dU = inv(K)*dF
+    void DynTgIncs    (double dt, Vec_t & dU, Vec_t & dV);           ///< Dynamics: tg increments
     void Initialize   (bool Transient=false);                        ///< Initialize global matrices and vectors
 
     // Data
@@ -92,6 +94,8 @@ public:
     Vec_t W, U;     // Workspace, displacement
     Vec_t DU2, DF1; // Prescribed DU and DF
     Vec_t V, A;     // (Transient/Dynamic) velocity and acceleration
+    Vec_t Fnew;     // External force at n+1 (t=t+dt)
+    Vec_t Uprev;    // U(t=t-dt)
 
     // Constants for integration
     Scheme_t  Scheme;  ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
@@ -121,9 +125,14 @@ private:
     void _FE_update    (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update    (double tf);            ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update    (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
+    void _calc_F_Fnew  (double dt);            ///< Calculate F(t=Time) and F(t=Time+dt)
     void _SS22_update  (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
     void _GN22_update  (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
     void _SG113_update (double tf, double dt); ///< (Smith-Griffiths prog 11.3 (theta-method)) Update Time and elements to tf
+    void _NM_update    (double tf, double dt); ///< Newmark: Update Time and elements to tf
+    void _CD_update    (double tf, double dt); ///< Central difference: Update Time and elements to tf
+    void _EX_update    (double tf, double dt); ///< Explicit: Update Time and elements to tf
+    void _dyn_ME_update(double tf);            ///< Dynamic: (Modified-Euler) Update Time and elements to tf
 };
 
 
@@ -260,6 +269,10 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
         if      (DScheme==SS22_t)  { _SS22_update  (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
         else if (DScheme==GN22_t)  { _GN22_update  (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
         else if (DScheme==SG113_t) { _SG113_update (tout,dt);  str.Printf("Smith-Griffiths prog 11.3 (theta-method): nit = %d",It); }
+        else if (DScheme==NM_t)    { _NM_update    (tout,dt);  str.Printf("Newmark: nit = %d",It); }
+        else if (DScheme==CD_t)    { _CD_update    (tout,dt);  str.Printf("Central difference: nit = %d",It); }
+        else if (DScheme==EX_t)    { _EX_update    (tout,dt);  str.Printf("Explicit: nit = %d",It); }
+        else if (DScheme==dME_t)   { _dyn_ME_update(tout);     str.Printf("Dyn-Modified-Euler: nss = %d,  nit = %d",Stp,It); }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -288,6 +301,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
 
 inline void Solver::AssembleKA ()
 {
+    if (CteTg && A11.Top()>0) return; // constant tangent matrices => linear problems
     A11.ResetTop(); // reset top (position to insert new values) => clear triplet
     K12.ResetTop();
     K21.ResetTop();
@@ -334,6 +348,7 @@ inline void Solver::AssembleKA ()
 
 inline void Solver::AssembleKMA (double C1, double C2)
 {
+    if (CteTg && A11.Top()>0) return; // constant tangent matrices => linear problems
     K11.ResetTop(); // reset top (position to insert new values) => clear triplet
     K12.ResetTop();
     K21.ResetTop();
@@ -369,6 +384,7 @@ inline void Solver::AssembleKMA (double C1, double C2)
 
 inline void Solver::AssembleKCMA (double C1, double C2, double C3)
 {
+    if (CteTg && A11.Top()>0) return; // constant tangent matrices => linear problems
     if (DampTy!=Rayleigh_t) throw new Fatal("Solver::AssembleKCMA: Only Rayleigh damping implemented yet");
     K11.ResetTop(); // reset top (position to insert new values) => clear triplet
     K12.ResetTop();
@@ -415,7 +431,7 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
 inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 {
     // assemble global K matrix
-    if (K11.Top()==0 || CteTg==false) AssembleKA (); // not constant tangent matrices => non-linear problems
+    AssembleKA ();
 
     // assemble dF and W (workspace) vectors
     for (size_t i=0; i<uDOFs.Size(); ++i)
@@ -434,6 +450,28 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     UMFPACK::Solve  (A11,  W, dU); // dU   = inv(A11)*W
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
     Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
+}
+
+inline void Solver::DynTgIncs (double dt, Vec_t & dU, Vec_t & dV)
+{
+    // assemble Amat
+    if (DampTy==None_t) AssembleKMA  (1.0,      0.0);  // A = M +         0.0*K
+    else                AssembleKCMA (1.0, 0.0, 0.0);  // A = M + 0.0*C + 0.0*K
+
+    // calc F and Fnew
+    _calc_F_Fnew (dt);
+
+    // set workspace
+    W = F;
+    Sparse::SubMult (K11, U, W); if (DampTy!=None_t) // W -= K11*U
+    Sparse::SubMult (C11, V, W);                     // W -= C11*V
+
+    // solve for accelerations
+    UMFPACK::Solve (A11, W, A); // A = inv(A11)*W
+
+    // increments
+    dV = dt*A;
+    dU = dt*V;
 }
 
 inline void Solver::Initialize (bool Transient)
@@ -502,6 +540,7 @@ inline void Solver::Initialize (bool Transient)
     // initialize variables
     R    .change_dim (NEq);  set_to_zero (R);
     F    .change_dim (NEq);  set_to_zero (F);
+    Fnew .change_dim (NEq);  set_to_zero (Fnew);
     F_int.change_dim (NEq);  set_to_zero (F_int);
     W    .change_dim (NEq);  set_to_zero (W);
     U    .change_dim (NEq);  set_to_zero (U);
@@ -772,45 +811,66 @@ inline void Solver::_NR_update (double tf)
     }
 }
 
+inline void Solver::_calc_F_Fnew (double dt)
+{
+    set_to_zero (F);
+    set_to_zero (Fnew);
+    for (size_t i=0; i<uDOFs.Size(); ++i)
+    {
+        F   (uDOFs[i]) = DF1(uDOFs[i]);
+        Fnew(uDOFs[i]) = DF1(uDOFs[i]);
+    }
+    if (Dom.NDim==3)
+    {
+        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
+        {
+            long eqx = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
+            long eqy = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];
+            long eqz = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")];
+            (*Dom.CalcF[i]) (Time,    F   (eqx),  F   (eqy),  F   (eqz));
+            (*Dom.CalcF[i]) (Time+dt, Fnew(eqx),  Fnew(eqy),  Fnew(eqz));
+        }
+    }
+    else
+    {
+        double dummy;
+        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
+        {
+            long eqx = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
+            long eqy = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];
+            (*Dom.CalcF[i]) (Time,    F   (eqx),  F   (eqy),  dummy);
+            (*Dom.CalcF[i]) (Time+dt, Fnew(eqx),  Fnew(eqy),  dummy);
+        }
+    }
+}
+
 inline void Solver::_SS22_update (double tf, double dt)
 {
     // auxiliar variables
-    size_t eqx, eqy, eqz; // equation numbers
-    double fx, fy, fz, fx_new, fy_new, fz_new;
     Vec_t Us(NEq); // starred displacement
     Vec_t Unew(NEq), dU(NEq);
     Vec_t Alp(NEq);
 
     while (Time<tf)
     {
+        /*
+        EquilibElem const & ele = (*static_cast<EquilibElem const *>(Dom.Eles[4]));
+        std::cout << ele << std::endl;
+        */
+
         // calc starred variables
         Us = U + (DynTh1*dt)*V;
 
-        // calc Fext_(n+1)
-        set_to_zero (F);
-        set_to_zero (W);
-        for (size_t i=0; i<uDOFs.Size(); ++i) { W(uDOFs[i]) = DF1(uDOFs[i]);   F(uDOFs[i]) = DF1(uDOFs[i]); }
-        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
-        {
-            (*Dom.CalcF[i]) (Time,    fx,     fy,     fz    );
-            (*Dom.CalcF[i]) (Time+dt, fx_new, fy_new, fz_new);
-            eqx    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
-            eqy    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];  if (Dom.NDim==3)
-            eqz    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")];
-            W(eqx) = (1.0-DynTh1)*fx + DynTh1*fx_new;
-            W(eqy) = (1.0-DynTh1)*fy + DynTh1*fy_new;  if (Dom.NDim==3)
-            W(eqz) = (1.0-DynTh1)*fz + DynTh1*fz_new;
-            F(eqx) = fx_new;
-            F(eqy) = fy_new;  if (Dom.NDim==3)
-            F(eqz) = fz_new;
-        }
+        // calc F and Fnew
+        _calc_F_Fnew (dt);
 
         // set workspace
+        W = (1.0-DynTh1)*F + DynTh1*Fnew;
         Sparse::SubMult (K11, Us, W); if (DampTy!=None_t) // W -= K11*Us
         Sparse::SubMult (C11, V,  W);                     // W -= C11*Vs
 
         // assemble Amat
-        if (DampTy==None_t) AssembleKMA  (1.0, 0.5*DynTh2*dt*dt);
+        if (DampTy==None_t) AssembleKMA  (1.0,            0.5*DynTh2*dt*dt);
         else                AssembleKCMA (1.0, DynTh1*dt, 0.5*DynTh2*dt*dt);
 
         // calc new displacements, acceleration, and velocity
@@ -827,6 +887,7 @@ inline void Solver::_SS22_update (double tf, double dt)
         for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
 
         // residual
+        F = Fnew;
         _calc_resid (true);
 
         // next time step
@@ -837,7 +898,6 @@ inline void Solver::_SS22_update (double tf, double dt)
 inline void Solver::_GN22_update (double tf, double dt)
 {
     // auxiliar variables
-    double fz;              // dummy variable
     Vec_t As(NEq), Vs(NEq); // starred acceleration and velocity
     Vec_t Unew(NEq), dU(NEq);
 
@@ -855,18 +915,11 @@ inline void Solver::_GN22_update (double tf, double dt)
         As = c1*U + c2*V + c3*A;
         Vs = c4*U + c5*V + c6*A;
 
-        // calc Fext_(n+1)
-        set_to_zero (F);
-        for (size_t i=0; i<uDOFs.Size(); ++i) F(uDOFs[i]) = DF1(uDOFs[i]);
-        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
-        {
-            (*Dom.CalcF[i]) (Time+dt,        F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")]),
-                                             F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")]),
-                              (Dom.NDim==3 ? F(Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")]) : fz));
-        }
+        // calc F and Fnew
+        _calc_F_Fnew (dt);
 
         // set workspace
-        W = F;
+        W = Fnew;
         Sparse::SubMult (M11, As, W); if (DampTy!=None_t) // W -= M11*As
         Sparse::SubMult (C11, Vs, W);                     // W -= C11*Vs
 
@@ -882,13 +935,46 @@ inline void Solver::_GN22_update (double tf, double dt)
         // update elements and displacements
         dU = Unew - U;
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0; // clear internal forces related to supports
         U = Unew;
 
-        // clear internal forces related to supports
-        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
-
         // residual
+        F = Fnew;
         _calc_resid (true);
+        std::cout << "[1;31mNormR[0m = " << NormR << std::endl;
+
+        // iterations
+        size_t it = 0;
+        while (false)//NormR>TolR*MaxNormF && it<MaxIt)
+        {
+            // assemble Amat
+            if (!ModNR)
+            {
+                if (DampTy==None_t) AssembleKMA  (-c1, 1.0);
+                else                AssembleKCMA (-c1, -c4, 1.0);
+            }
+
+            // clear unbalanced forces related to supports
+            for (size_t i=0; i<pDOFs.Size(); ++i) R(pDOFs[i]) = 0.0;
+
+            // calc corrector dU
+            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
+
+            // update
+            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+            U += dU;
+            A  = As - c1*U;
+            V  = Vs - c4*U;
+
+            // residual
+            _calc_resid (true);
+            std::cout << "NormR = " << NormR << std::endl;
+
+            // next iteration
+            it++;
+        }
+        if (it>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark did not converge after %d iterations",it);
+        if (it>It) It = it;
 
         // next time step
         Time += dt;
@@ -898,8 +984,6 @@ inline void Solver::_GN22_update (double tf, double dt)
 inline void Solver::_SG113_update (double tf, double dt)
 {
     // auxiliar variables
-    size_t eqx, eqy, eqz; // equation numbers
-    double fx, fy, fz, fx_new, fy_new, fz_new;
     Vec_t Unew(NEq), Vnew(NEq), Anew(NEq), tmp(NEq), dU(NEq);
 
     // constants
@@ -913,24 +997,11 @@ inline void Solver::_SG113_update (double tf, double dt)
 
     while (Time<tf)
     {
+        // calc F and Fnew
+        _calc_F_Fnew (dt);
+
         // set workspace
-        set_to_zero (F);
-        set_to_zero (W);
-        for (size_t i=0; i<uDOFs.Size(); ++i) { W(uDOFs[i]) = dt*DF1(uDOFs[i]);   F(uDOFs[i]) = DF1(uDOFs[i]); }
-        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
-        {
-            (*Dom.CalcF[i]) (Time,    fx,     fy,     fz    );
-            (*Dom.CalcF[i]) (Time+dt, fx_new, fy_new, fz_new);
-            eqx    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
-            eqy    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];  if (Dom.NDim==3)
-            eqz    = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")];
-            W(eqx) = c2*fx_new + c3*fx;
-            W(eqy) = c2*fy_new + c3*fy;  if (Dom.NDim==3)
-            W(eqz) = c2*fz_new + c3*fz;
-            F(eqx) = fx_new;
-            F(eqy) = fy_new;  if (Dom.NDim==3)
-            F(eqz) = fz_new;
-        }
+        W = (1.0-DynTh1)*F + DynTh1*Fnew;
         tmp = c1*U + (1.0/th)*V;
         Sparse::AddMult (M11, tmp, W); // W += M11*tmp
         Sparse::AddMult (C11,   U, W); // W += C11*U
@@ -946,10 +1017,11 @@ inline void Solver::_SG113_update (double tf, double dt)
         dU = Unew - U;
         for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
 
-        // update displacements, velocities, and accelerations
+        // update variables
         U = Unew;
         V = Vnew;
         A = Anew;
+        F = Fnew;
 
         // clear internal forces related to supports
         for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
@@ -960,6 +1032,225 @@ inline void Solver::_SG113_update (double tf, double dt)
         // next time step
         Time += dt;
     }
+}
+
+inline void Solver::_NM_update (double tf, double dt)
+{
+    // auxiliar variables
+    Vec_t Us(NEq), Vs(NEq), As(NEq), Unew(NEq), Vnew(NEq), dU(NEq), Anew(NEq);
+    Vec_t tmp(NEq);
+
+    // constants
+    const double c1 = dt*dt*(1.0-DynTh2)/2.0;
+    const double c2 = dt*(1.0-DynTh1);
+    const double c3 = 2.0/(dt*dt*DynTh2);
+    const double c4 = 2.0*DynTh1/(dt*DynTh2);
+
+    while (Time<tf)
+    {
+        Us   = U + dt*V + c1*A;
+        Vs   = V + c2*A;
+        Unew = U;
+        Anew = c3*(U - Us);
+        Vnew = Vs + (DynTh1*dt)*Anew;
+
+        for (It=0; It<MaxIt; ++It)
+        {
+            // assemble Amat
+            if (DampTy==None_t) AssembleKMA  (c3,     1.0);  // A = c3*M        + K
+            else                AssembleKCMA (c3, c4, 1.0);  // A = c3*M + c4*C + K
+
+            // F and Fnew
+            _calc_F_Fnew (dt);
+
+            // residual
+            R = Fnew - F_int;
+            Sparse::SubMult (M11, Anew, R);  if (DampTy!=None_t) { // R -= M11*Anew
+            Sparse::SubMult (C11, Vnew, R); }                      // R -= C11*Vnew
+
+            // solve for dU
+            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
+
+            // update
+            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+            for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0; // clear internal forces related to supports
+            Unew += dU;
+            Anew  = c3*(Unew - Us);
+            Vnew  = Vs + (DynTh1*dt)*Anew;
+
+            // check convergence
+            NormR    = Norm(R);
+            MaxNormF = Util::Max (Norm(F), Norm(F_int));
+            if (NormR<=TolR*MaxNormF) break;
+        }
+        if (It>=MaxIt) throw new Fatal("Solver::_NM_update: Newmark did not converge after %d iterations",It);
+
+        U = Unew;
+        V = Vnew;
+        A = Anew;
+
+        // next time step
+        Time += dt;
+    }
+}
+
+inline void Solver::_CD_update (double tf, double dt)
+{
+    // auxiliar variables
+    Vec_t tmp(NEq), Unew(NEq), dU(NEq);
+
+    // constants
+    const double c1 = 0.5*dt;
+    const double c2 = dt*dt;
+
+    // previous U
+    if (Uprev.size()==0) Uprev = U;
+
+    while (Time<tf)
+    {
+        // assemble Amat
+        if (DampTy==None_t) AssembleKMA  (1.0,     0.0);  // A = M +        0.0*K
+        else                AssembleKCMA (1.0, c1, 0.0);  // A = M + c1*C + 0.0*K
+
+        // calc F and Fnew
+        _calc_F_Fnew (dt);
+
+        // set workspace
+        W   = c2*F - c2*F_int;
+        tmp = 2.0*U - Uprev;
+        Sparse::AddMult (M11, tmp, W); if (DampTy!=None_t) { // W += M11*tmp
+        tmp = c1*Uprev;
+        Sparse::AddMult (C11, tmp, W); }                     // W += C11*tmp
+
+        // solve for displacements
+        UMFPACK::Solve (A11, W, Unew); // Unew = inv(A11)*W
+
+        // update
+        V     = (0.5/dt)*(Unew-Uprev);
+        A     = (1.0/c2)*(Unew-2.0*U+Uprev);
+        Uprev = U;
+        U     = Unew;
+        dU    = Unew - U;
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+
+        // clear internal forces related to supports
+        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
+
+        // residual
+        _calc_resid (true);
+
+        // next time step
+        Time += dt;
+    }
+}
+
+inline void Solver::_EX_update (double tf, double dt)
+{
+    // auxiliar variables
+    Vec_t tmp(NEq), Unew(NEq), dU(NEq);
+
+    // constants
+    const double c1 = 0.5*dt*dt;
+
+    while (Time<tf)
+    {
+        // assemble Amat
+        if (DampTy==None_t) AssembleKMA  (1.0,      0.0);  // A = M +         0.0*K
+        else                AssembleKCMA (1.0, 0.0, 0.0);  // A = M + 0.0*C + 0.0*K
+
+        // calc F and Fnew
+        _calc_F_Fnew (dt);
+
+        // set workspace
+        W  = F - F_int;
+        if (DampTy!=None_t) Sparse::SubMult (C11, V, W); // W -= C11*V
+
+        // solve for acceleration
+        UMFPACK::Solve (A11, W, A); // A = inv(A11)*W
+
+        // update 
+        V  += dt*A;
+        dU  = dt*V + c1*A;
+        U  += dU;
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0; // clear internal forces related to supports
+
+        // residual
+        _calc_resid (true);
+
+        // next time step
+        Time += dt;
+    }
+}
+
+inline void Solver::_dyn_ME_update (double tf)
+{
+    // auxiliar vectors
+    Vec_t dU_fe(NEq), dU_tm(NEq), dU_me(NEq), U_me(NEq), U_dif(NEq);
+    Vec_t dV_fe(NEq), dV_tm(NEq), dV_me(NEq), V_me(NEq), V_dif(NEq);
+
+    // for each pseudo time T
+    double T  = 0.0;
+    double Dt = tf-Time;
+    double dT = dTini;
+    for (Stp=0; Stp<MaxSS; ++Stp)
+    {
+        // exit point
+        if (T>=1.0) break;
+
+        // backup state of elements
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->BackupState ();
+
+        // time increment
+        double dti = Dt*dT;
+
+        // FE state
+        DynTgIncs (dti, dU_fe, dV_fe);
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_fe);
+
+        // ME state
+        DynTgIncs (dti, dU_tm, dV_tm);
+        dU_me = 0.5*(dU_fe + dU_tm);
+        dV_me = 0.5*(dV_fe + dV_tm);
+        U_me  = U + dU_me;
+        V_me  = V + dV_me;
+
+        // local error
+        U_dif = 0.5*(dU_tm - dU_fe);
+        V_dif = 0.5*(dV_tm - dV_fe);
+        double U_err = Norm(U_dif)/(1.0+Norm(U_me));
+        double V_err = Norm(V_dif)/(1.0+Norm(V_me));
+        double error = U_err + V_err;
+
+        // step multiplier
+        double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
+
+        // restore state of elements
+        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->RestoreState ();
+
+        // update
+        if (error<STOL)
+        {
+            _calc_F_Fnew(dti);
+            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_me, &F_int);
+            T    += dT;
+            U     = U_me;
+            V     = V_me;
+            Time += dti;
+            F     = Fnew;
+            _calc_resid (true);
+            if (m>mMax) m = mMax;
+            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+        }
+        else if (m<mMin) m = mMin;
+
+        // change next step size
+        dT = m * dT;
+
+        // check for last increment
+        if (dT>1.0-T) dT = 1.0-T;
+    }
+    if (Stp>=MaxSS) throw new Fatal("Solver:_dyn_ME_update: Dynamic Modified-Euler (global integration) did not converge for %d steps",Stp);
 }
 
 }; // namespace FEM
