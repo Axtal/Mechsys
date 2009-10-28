@@ -73,8 +73,9 @@ int main(int argc, char **argv) try
     // test edge-edge distance
     {
         // two edges
-        Edge E1(Vec3_t(1.0,1.0,1.0), Vec3_t(0,0,0));
-        Edge E2(Vec3_t(0.5,1.0,0.0), Vec3_t(2,0,0));
+        Vec3_t a(-1.0,-1.0,1.0),b(1.0,1.0,1.0),c(-1.0,1.0,0.0),d(1.0,-1.0,0.0);
+        Edge E1(a,b);
+        Edge E2(c,d);
 
         // distance
         Vec3_t Xi,Xf;
@@ -83,27 +84,23 @@ int main(int argc, char **argv) try
         // create edge for drawing
         Edge D(Xi,Xf);
 
-        /*
-        Graph g("test_distances_EE",false);
-        Vec3_t p(0,0,10),v(0.5,0.5,0.5);
-        g.SetCamera(p,v);
-        g.DrawEdge(E1,0.2,"Blue");
-        g.DrawEdge(E2,0.2,"Blue");
-        g.DrawEdge(D,0.1,"Blue");
-        g.Close();
-        */
+        std::ofstream of2("test_distances_EE.bpy",std::ios::out);
+        BPYHeader   (of2);
+        E1.Draw     (of2,    /*R*/0.2, "", true);
+        E2.Draw     (of2,    /*R*/0.2, "", true);
+        D.Draw      (of2,    /*R*/0.1, "", true);
+        of2.close   ();
 
-        // check
-        //error += adsfasdfad
+        error += fabs(Distance(E1,E2)-1.0);
     }
 
     // test vertex-face distance
     {
         // vertex
-        Vec3_t V(1,1,1);
+        Vec3_t V(0.0,0.0,1.0);
 
         // face
-        Array<Vec3_t> C(3); // connectivity
+        Array<Vec3_t> C(4); // connectivity
         C[0] = -1.0,-1.0,0.0;
         C[1] = -1.0,1.0,0.0;
         C[2] =  1.0,1.0,0.0;
@@ -119,13 +116,14 @@ int main(int argc, char **argv) try
         Edge D(Xi,Xf);
 
         // draw
-        std::ofstream of("test_distances_VF",std::ios::out);
+        std::ofstream of("test_distances_VF.bpy",std::ios::out);
         BPYHeader   (of);
-        POVSetCam   (of, Vec3_t(4,2,2), Vec3_t(0,0,0));
-        POVDrawVert (V, of, /*R*/0.2, "Green");
-        F.Draw      (of,    /*R*/0.1, "Red");
-        D.Draw      (of,    /*R*/0.1, "Blue");
+        BPYDrawVert (V, of, /*R*/0.2);
+        F.Draw      (of,    /*R*/0.1, "",true);
+        D.Draw      (of,    /*R*/0.1, "",true);
         of.close    ();
+
+        error += fabs(Distance(V,F)-1.0);
     }
 
     cout << "error = " << (error>tol ? "[1;31m" : "[1;32m") << error << "[0m" << endl;

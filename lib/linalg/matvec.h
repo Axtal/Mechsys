@@ -35,6 +35,7 @@
 // MechSys
 #include "util/fatal.h"
 #include "util/util.h"
+#include "util/array.h"
 
 // LAPACK
 extern "C"

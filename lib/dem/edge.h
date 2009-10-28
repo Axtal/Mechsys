@@ -48,12 +48,12 @@ public:
 
 
 inline Edge::Edge (Vec3_t const * TheX0, Vec3_t const * TheX1)
-    : X0(TheX0), X1(TheX1), dL(X1-X0)
+    : X0(TheX0), X1(TheX1), dL(*X1-*X0)
 {
 }
 
 inline Edge::Edge (Vec3_t const & TheX0, Vec3_t const & TheX1)
-    : X0(&TheX0), X1(&TheX1), dL(X1-X0)
+    : X0(&TheX0), X1(&TheX1), dL(*X1-*X0)
 {
 }
 
