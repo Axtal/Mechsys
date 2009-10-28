@@ -41,7 +41,7 @@ class Domain
 {
 public:
     // Constructor
-    Domain () : Initialized(false) {}
+    Domain () : Initialized(false),IsTriaxial(false) {}
 
     // Destructor
     ~Domain();
