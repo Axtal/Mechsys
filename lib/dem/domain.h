@@ -71,7 +71,7 @@ public:
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
 
     // Methods
-    void SetProps   (Dict & D);                                    ///< Set the properties of individual grains by dictionaries
+    void SetBC      (Dict & D);                                    ///< Set the properties of individual grains by dictionaries
     void SetTriaxialTest(Vec3_t  Stress,Vec3_t  StrainRate);       ///< Setup the triaxial test;
     void Initialize (double dt);                                   ///< Set the particles to a initial state and asign the possible insteractions
     void Solve      (double tf, double dt, double dtOut,
@@ -538,7 +538,7 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
 }
 // Methods
 
-inline void Domain::SetProps (Dict & D)
+inline void Domain::SetBC (Dict & D)
 {
     TParticles.Resize(0);
     RParticles.Resize(0);
