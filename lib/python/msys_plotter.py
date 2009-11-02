@@ -18,7 +18,7 @@
 
 from os.path import basename
 from numpy   import sqrt, matrix, zeros, log, cos, pi, sin, tan
-from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour
+from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
 from msys_invariants import *
 from msys_readdata   import *
 
