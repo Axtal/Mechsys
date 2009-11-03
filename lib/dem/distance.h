@@ -184,17 +184,17 @@ inline double Distance (Vec3_t const & V0, Vec3_t const & V1)
 
 inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, double R)
 {
-
+    if (V.Size()<=3) throw new Fatal("There are no enough vertices to work with");
     Array<Face*> Faces;
     for (size_t i=0; i<F.Size(); i++)
     {
-        Array<Vec3_t> verts(F[i].Size());
-        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (V[F[i][j]]);
+        Array<Vec3_t*> verts(F[i].Size());
+        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (&V[F[i][j]]);
         Faces.Push (new Face(verts));
     }
     Array<Vec3_t> Normal(3);
     Array<Array <int> > VFlist;
-    V.Resize(0);
+    Array<Vec3_t> Vtemp;
     for (size_t i=0; i<F.Size()-2; i++)
     {
         Normal[0] = cross(Faces[i]->Edges[0]->dL,Faces[i]->Edges[1]->dL);
@@ -288,7 +288,7 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
                     }
                     if (belong)
                     {
-                        V.Push(Inter);
+                        Vtemp.Push(Inter);
                         Array<int> VFlistaux(0);
                         VFlistaux.Push(i);
                         VFlistaux.Push(j);
@@ -299,6 +299,8 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
             }
         }
     }
+    V = Vtemp;
+    if (V.Size()<=3) throw new Fatal("The erotion gave to few vertices to build a convex hull, try a smaller erotion parameter");
     Vec3_t cm(0,0,0);
     for (size_t i = 0; i < V.Size(); i++)
     {

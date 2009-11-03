@@ -46,11 +46,11 @@ public:
     ~Particle ();
 
     // Methods
-    void Initialize (double dt, size_t NCalls=5000); ///< Initialize this particle
-    void Rotate     (double dt);                     ///< Apply rotation on the particle once the total torque is found
-    void Rotate     (Quaternion_t & Q, Vec3_t & V);  ///< Apply rotation given by Quaternion Q at point v
-    void Translate  (double dt);                     ///< Apply translation once the total force is found
-    void Translate  (Vec3_t & t);                    ///< Apply translation by vector t
+    void Initialize (double dt = 1.0, size_t NCalls=5000);                          ///< Initialize this particle
+    void Rotate     (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
+    void Rotate     (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
+    void Translate  (double dt);                                                    ///< Apply translation once the total force is found
+    void Translate  (Vec3_t & t);                                                   ///< Apply translation by vector t
     void Draw       (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
 
     // Data

@@ -29,20 +29,21 @@ int main(int argc, char **argv) try
 {
     Domain d;
     // Creating the Voronoi packing of particles
-    d.AddVoronoiPacking(/*Tag*/-1,/*R*/0.1,/*Lx*/5,/*Ly*/5,/*Lz*/5,/*nx*/2,/*ny*/2,/*nz*/2,/*Periodic?*/false,/*rho*/1.0);
-    //d.GenBox(/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6,/*R*/0.1);
+    //d.AddVoronoiPacking(/*Tag*/-1,/*R*/0.1,/*Lx*/4,/*Ly*/4,/*Lz*/4,/*nx*/4,/*ny*/4,/*nz*/4,/*Periodic?*/true,/*rho*/1.0);
+    d.AddRice(-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
+    d.GenBox(/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6,/*R*/0.1);
 
     // First stage compression
-    //d.SetTriaxialTest(Vec3_t(/*sx*/1.0,/*sy*/1.0,/*sz*/1.0),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.0));
+    d.SetTriaxialTest(Vec3_t(/*sx*/0.1,/*sy*/0.1,/*sz*/0.1),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.0));
 
     d.WriteBPY("test_triaxial01");
 
-    //d.Solve (/*tf*/10, 0.001, /*dtOut*/0.1, "test_triaxial01a", /*CamPos*/Vec3_t(0,35,0));
+    d.Solve (/*tf*/10, 0.001, /*dtOut*/0.1, "test_triaxial01a", /*CamPos*/Vec3_t(0,35,0));
 
     //Second stage monotonic load
 
-    //d.SetTriaxialTest(Vec3_t(/*sx*/1.0,/*sy*/1.0,/*sz*/0.0),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.005));
+    d.SetTriaxialTest(Vec3_t(/*sx*/0.1,/*sy*/0.1,/*sz*/0.0),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.005));
 
-    //d.Solve (/*tf*/40, 0.001, /*dtOut*/0.1, "test_triaxial01b", /*CamPos*/Vec3_t(0,35,0));
+    d.Solve (/*tf*/40, 0.001, /*dtOut*/0.1, "test_triaxial01b", /*CamPos*/Vec3_t(0,35,0));
 }
 MECHSYS_CATCH

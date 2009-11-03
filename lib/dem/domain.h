@@ -73,7 +73,7 @@ public:
     // Methods
     void SetBC      (Dict & D);                                    ///< Set the properties of individual grains by dictionaries
     void SetTriaxialTest(Vec3_t  Stress,Vec3_t  StrainRate);       ///< Setup the triaxial test;
-    void Initialize (double dt);                                   ///< Set the particles to a initial state and asign the possible insteractions
+    void Initialize (double dt = 0.0);                             ///< Set the particles to a initial state and asign the possible insteractions
     void Solve      (double tf, double dt, double dtOut,
                      char const * FileKey, Vec3_t const & CamPos); ///< Run simulation
     void WritePOV   (char const * FileKey, Vec3_t const & CamPos); ///< Write POV file
@@ -150,17 +150,17 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
 
     if (Triaxial) InitialIndex = Particles.Size();
 
-    AddPlane(InitialTag,Vec3_t(Lx/2.0,0.0,0.0),R,1.2*Lz,1.2*Ly,1.0,M_PI/2.0,e1);
+    AddPlane(InitialTag,Vec3_t(Lx/2.0,0.0,0.0),R,1.4*Lz,1.4*Ly,0.5,M_PI/2.0,e1);
 
-    AddPlane(InitialTag-1,Vec3_t(-Lx/2.0,0.0,0.0),R,1.2*Lz,1.2*Ly,1.0,M_PI/2.0,e1);
+    AddPlane(InitialTag-1,Vec3_t(-Lx/2.0,0.0,0.0),R,1.4*Lz,1.4*Ly,0.5,M_PI/2.0,e1);
 
-    AddPlane(InitialTag-2,Vec3_t(0.0,Ly/2.0,0.0),R,1.2*Lx,1.2*Lz,1.0,M_PI/2.0,e0);
+    AddPlane(InitialTag-2,Vec3_t(0.0,Ly/2.0,0.0),R,1.4*Lx,1.4*Lz,0.5,M_PI/2.0,e0);
 
-    AddPlane(InitialTag-3,Vec3_t(0.0,-Ly/2.0,0.0),R,1.2*Lx,1.2*Lz,1.0,M_PI/2.0,e0);
+    AddPlane(InitialTag-3,Vec3_t(0.0,-Ly/2.0,0.0),R,1.4*Lx,1.4*Lz,0.5,M_PI/2.0,e0);
 
-    AddPlane(InitialTag-4,Vec3_t(0.0,0.0,Lz/2.0),R,1.2*Lx,1.2*Ly,1.0);
+    AddPlane(InitialTag-4,Vec3_t(0.0,0.0,Lz/2.0),R,1.4*Lx,1.4*Ly,0.5);
 
-    AddPlane(InitialTag-5,Vec3_t(0.0,0.0,-Lz/2.0),R,1.2*Lx,1.2*Ly,1.0);
+    AddPlane(InitialTag-5,Vec3_t(0.0,0.0,-Lz/2.0),R,1.4*Lx,1.4*Ly,0.5);
 
     delete e0;
     delete e1;
@@ -581,6 +581,8 @@ inline void Domain::SetTriaxialTest(Vec3_t TheStress, Vec3_t TheStrainRate)
 {
     if (!IsTriaxial) throw new Fatal("The container for the triaxial test has not be defined");
     if (((TheStress(0)!=0.0)&&(TheStrainRate(0)!=0.0))||((TheStress(1)!=0.0)&&(TheStrainRate(1)!=0.0))||((TheStress(2)!=0.0)&&(TheStrainRate(2)!=0.0))) throw new Fatal ("You cannot define a stress and a strain rate in the same direction");
+    std::cout << "[1;33m\n--- Setting up Triaxial Test -------------------------------------[0m\n";
+    double start = std::clock();
     Stress = TheStress;
     StrainRate = TheStrainRate;
     TParticles.Resize(0);
@@ -590,6 +592,10 @@ inline void Domain::SetTriaxialTest(Vec3_t TheStress, Vec3_t TheStrainRate)
     for(size_t i =0;i<InitialIndex;i++)
     {
         FreeParticles.Push(Particles[i]);
+    }
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Particles[i]->Initialize ();
     }
     if (Stress(0)!=0.0)
     {
@@ -633,57 +639,60 @@ inline void Domain::SetTriaxialTest(Vec3_t TheStress, Vec3_t TheStrainRate)
         TParticles.Push(Particles[InitialIndex+5]);
         TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,0.0,0.5*StrainRate(2)*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)));
     }
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 }
 
 inline void Domain::Initialize (double dt)
 {
-    // info
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
 
     if (!Initialized) 
     {
+        // info
+        double start = std::clock();
+        std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
         for (size_t i=0; i<Particles.Size(); i++)
         {
             Particles[i]->Initialize (dt);
         }
-        //for (size_t i=0; i<Interactons.Size();i++)
-        //{
-            //delete Interactons[i];
-        //}
-        //Interactons.Resize(0);
 
         for (size_t i=0; i<FreeParticles.Size()-1; i++)
         {
             // initialize interactons
             for (size_t j=i+1; j<FreeParticles.Size(); j++)
             {
-                //std::cout << i << " " << j << std::endl;
                 Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
             }
         }
-        //std::cout << Interactons.Size() << std::endl;
 
         for (size_t i=0; i<FreeParticles.Size(); i++)
         {
             for (size_t j=0; j<FParticles.Size(); j++)
             {
-                //std::cout << i << " " << j << std::endl;
                 Interactons.Push (new Interacton(FreeParticles[i],FParticles[j]));
             }
 
             for (size_t j=0; j<RParticles.Size(); j++)
             {
-                //std::cout << i << " " << j << std::endl;
                 Interactons.Push (new Interacton(FreeParticles[i],RParticles[j]));
             }
 
             for (size_t j=0; j<TParticles.Size(); j++)
             {
-                //std::cout << i << " " << j << std::endl;
                 Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
             }
         }
+        // set flag
+        Initialized = true;
+
+        // info
+        double Ekin, Epot, Etot;
+        Etot = CalcEnergy (Ekin, Epot);
+        double total = std::clock() - start;
+        std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+        std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
+        std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
+        std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
     }
     else
     {
@@ -693,19 +702,7 @@ inline void Domain::Initialize (double dt)
         }
     }
 
-    //std::cout << Interactons.Size() << std::endl;
 
-    // set flag
-    Initialized = true;
-
-    // info
-    double Ekin, Epot, Etot;
-    Etot = CalcEnergy (Ekin, Epot);
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
-    std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
-    std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
 }
 
 inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey, Vec3_t const & CamPos)
@@ -720,7 +717,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
 
     // solve
     size_t I=0;
-    double tout = dtOut;
+    double tout = 0.0;
     String fnw;
     fnw.Printf("%s_walls.txt",FileKey);
     ofstream fw(fnw.CStr());
@@ -793,7 +790,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             if (IsTriaxial)
             {
                 fw << t << " " << Stress(0) << " " << Stress(1) << " ";
-                if (Stress(2)==0.0) fw << 0.5*(FT[0](2)+FT[1](2)) << " ";
+                if (Stress(2)==0.0) fw << 0.5*(fabs(FT[0](2))+fabs(FT[1](2)))/((Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)))<< " ";
                 else fw << Stress(2) << " ";
                 fw << Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0) << " ";
                 fw << Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1) << " ";
