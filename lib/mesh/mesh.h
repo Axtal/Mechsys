@@ -468,14 +468,18 @@ inline void Generic::SetCell (int i, int Tag, Array<int> const & Con)
         if (NDim==3) sum_z += Verts[ivert]->C(2);
     }
 
-    // check connectivity
-    if (NDim==2 && Cells[i]->V.Size()>=3)
+    // check connectivity (2D)
+    if (NDim==2 && Cells[i]->V.Size()>2)
     {
-        Vec3_t p0;  p0 = Cells[i]->V[0]->C - Cells[i]->V[1]->C;
-        Vec3_t p1;  p1 = Cells[i]->V[0]->C - Cells[i]->V[2]->C;
-        Vec3_t p2 = blitz::cross(p0,p1);
-        if (fabs(p2(0))>1.0e-10 || fabs(p2(1)>1.0e-10)) throw new Fatal("Generic::SetCell: In 2D, all vertices of cells must lie on the x-y plane");
-        if (p2(2)<0.0) throw new Fatal("Generic::SetCell: Numbering of vertices is incorrect (must be counter-clockwise)");
+        Vec3_t p0, p1, p2;
+        for (size_t j=1; j<Cells[i]->V.Size()-1; ++j)
+        {
+            p0 = Cells[i]->V[j-1]->C - Cells[i]->V[j]->C;
+            p1 = Cells[i]->V[j+1]->C - Cells[i]->V[j]->C;
+            p2 = blitz::cross (p1,p0);
+            if (p2(2)<0.0) throw new Fatal("Generic::SetCell: Order of vertices is incorrect (it must be counter-clockwise)");
+            if (fabs(p2(0))>1.0e-10 || fabs(p2(1)>1.0e-10)) throw new Fatal("Generic::SetCell: In 2D, all vertices of cells must lie on the x-y plane");
+        }
     }
 
     // check

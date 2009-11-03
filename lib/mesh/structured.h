@@ -213,6 +213,19 @@ inline void Block::Set (int TheNDim, int TheTag, size_t NVerts, ...)
     for (size_t i=0; i<BryTags.Size(); ++i) BryTags[i] = static_cast<int>(va_arg(arg_list,double));
     va_end (arg_list);
 
+    // check connectivity (2D)
+    if (NDim==2)
+    {
+        Vec3_t p0, p1, p2;
+        for (size_t i=1; i<NVerts-1; ++i)
+        {
+            p0 = C(0,i-1)-C(0,i),  C(1,i-1)-C(1,i),  0.0;
+            p1 = C(0,i+1)-C(0,i),  C(1,i+1)-C(1,i),  0.0;
+            p2 = blitz::cross (p1,p0);
+            if (p2(2)<0.0) throw new Fatal("Mesh::Block::Set: Order of vertices is incorrect (it must be counter-clockwise)");
+        }
+    }
+
     // generate mid nodes
     if (NDim==2 && NVerts==4) GenMidNodes();
     if (NDim==3 && NVerts==8) GenMidNodes();
