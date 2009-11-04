@@ -816,12 +816,19 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             I++;
             if (IsTriaxial)
             {
+                double X0,Y0,Z0;
+                if(I==0) 
+                {
+                    X0 = Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0);
+                    Y0 = Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1);
+                    Z0 = Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2);
+                }
                 fw << t << " " << Stress(0) << " " << Stress(1) << " ";
                 if (Stress(2)==0.0) fw << 0.5*(fabs(FT[0](2))+fabs(FT[1](2)))/((Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)))<< " ";
                 else fw << Stress(2) << " ";
-                fw << Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0) << " ";
-                fw << Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1) << " ";
-                fw << Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2) << " ";
+                fw << (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0)-X0)/X0 << " ";
+                fw << (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-Y0)/Y0 << " ";
+                fw << (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-Z0)/Z0 << " ";
                 fw << endl;
             }
 
