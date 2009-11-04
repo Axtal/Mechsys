@@ -55,11 +55,20 @@ public:
     FrictionMap_t Fdee; ///< Static friction displacement for pair of edges
     FrictionMap_t Fdvf; ///< Static friction displacement for pair of vertex-face
     FrictionMap_t Fdfv; ///< Static friction displacement for pair of face-vertex
-
+protected:
     template<typename FeatureA_T, typename FeatureB_T>
     void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt);
 };
 
+
+class InteractonSphere: public Interacton
+{
+public:
+
+    InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
+    void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
+    FrictionMap_t Fdvv; ///< Static Friction displacement
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -139,14 +148,6 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
     }
 }
 
-class InteractonSphere: public Interacton
-{
-public:
-
-    InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
-    void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
-    FrictionMap_t Fdvv; ///< Static Friction displacement
-};
 
 inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
 {

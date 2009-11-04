@@ -26,6 +26,7 @@ using std::cout;
 using std::endl;
 using Util::PI;
 using Util::FmtErr;
+using DEM::Domain;
 
 int main(int argc, char **argv) try
 {

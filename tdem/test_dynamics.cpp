@@ -31,6 +31,7 @@
 using std::cout;
 using std::endl;
 using std::map;
+using DEM::Domain;
 
 int main(int argc, char **argv) try
 {

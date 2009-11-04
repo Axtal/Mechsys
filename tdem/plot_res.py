@@ -1,8 +1,13 @@
-from plotter import *
+from msys_plotter import *
 
 test = 1
 
 if test==1:
     p = Plotter()
-    p.plot ("test.res", fem_res=False, dem_res=True, div_by_p=False)
+    p.show_k = True
+    #p.fc_ty  = 'MC'
+    p.fc_p   = -0.3
+    p.fc_phi = 25.0
+    p.fc_cu  = 1
+    p.plot ("traxial64.txt", draw_fl=True)
     p.show ()

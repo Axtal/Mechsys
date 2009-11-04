@@ -23,6 +23,7 @@
 
 using std::cout;
 using std::endl;
+using DEM::Domain;
 
 // Random double between 0 and 1
 double rnd() {return double(rand())/RAND_MAX;}

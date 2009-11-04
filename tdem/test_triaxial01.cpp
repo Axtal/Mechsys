@@ -23,35 +23,19 @@
 
 using std::cout;
 using std::endl;
-
+using DEM::Domain;
 
 int main(int argc, char **argv) try
 {
-    size_t test = 1;
-    if (argc>1) test = atoi(argv[1]);
-
-    double sx, sy, sz, ez;
-
-    switch (test)
-    {
-        case 1:
-        {
-            sx = 0.1, 0.1.asdfasdfa
-
-            break;
-        }
-        defalut: throw new Fatal("Test == %d is not defined",test);
-    }
-
 
     Domain d;
     // Creating the Voronoi packing of particles
-    d.AddVoronoiPacking(/*Tag*/-1,/*R*/0.1,/*Lx*/6,/*Ly*/6,/*Lz*/6,/*nx*/6,/*ny*/6,/*nz*/6,/*Periodic?*/true,/*rho*/1.0);
-    //d.AddRice(-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
+    //d.AddVoronoiPacking(/*Tag*/-1,/*R*/0.1,/*Lx*/6,/*Ly*/6,/*Lz*/6,/*nx*/6,/*ny*/6,/*nz*/6,/*Periodic?*/true,/*rho*/1.0);
+    d.AddRice(-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     d.GenBox(/*InitialTag*/-2,/*Lx*/8,/*Ly*/8,/*Lz*/8,/*R*/0.1);
 
     // First stage compression
-    d.SetTriaxialTest(Vec3_t(/*sx*/0.1,/*sy*/0.1,/*sz*/0.1),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.0));
+    d.SetTxTest(Vec3_t(/*sx*/0.1,/*sy*/0.1,/*sz*/0.1),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.0));
 
     d.WriteBPY("test_triaxial01");
 
@@ -59,7 +43,7 @@ int main(int argc, char **argv) try
 
     //Second stage monotonic load
 
-    d.SetTriaxialTest(Vec3_t(/*sx*/0.1,/*sy*/0.1,/*sz*/0.0),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.005));
+    d.SetTxTest(Vec3_t(/*sx*/0.1,/*sy*/0.1,/*sz*/0.0),Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.005));
 
     d.Solve (/*tf*/40, 0.001, /*dtOut*/0.1, "test_triaxial01b", /*CamPos*/Vec3_t(0,35,0));
 }

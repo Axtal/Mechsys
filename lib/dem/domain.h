@@ -75,7 +75,7 @@ public:
 
     // Methods
     void SetBC      (Dict & D);                                    ///< Set the properties of individual grains by dictionaries
-    void SetTxTest  (Vec3_t  Stress,Vec3_t  StrainRate);           ///< Setup the triaxial test;
+    void SetTxTest  (Vec3_t  StrainRate,Vec3_t  Stress,Vec3_t  StressRate = Vec3_t(0.0,0.0,0.0));           ///< Setup the triaxial test;
     void Initialize (double dt = 0.0);                             ///< Set the particles to a initial state and asign the possible insteractions
     void Solve      (double tf, double dt, double dtOut,
                      char const * FileKey, Vec3_t const & CamPos); ///< Run simulation
@@ -92,6 +92,7 @@ public:
     bool               IsTriaxial;    ///< Check if the test is a triaxial test
     size_t             InitialIndex;  ///< Tag the first index of the container
     Vec3_t             Stress;        ///< The Applied stresses on the container;
+    Vec3_t             StressRate;    ///< The Applied stresses on the container;
     Vec3_t             StrainRate;    ///< The Strain rates on the container;
     Array<Particle*>   Particles;     ///< All particles in domain
     Array<Particle*>   FreeParticles; ///< Particles without constrains
@@ -584,18 +585,22 @@ inline void Domain::SetBC (Dict & D)
     //std::cout << Particles.Size() << " " << FParticles.Size() << " " << FreeParticles.Size() << " " << RParticles.Size() << std::endl;
 }
 
-inline void Domain::SetTxTest (Vec3_t TheStress, Vec3_t TheStrainRate)
+inline void Domain::SetTxTest (Vec3_t TheStrainRate,Vec3_t TheStress,Vec3_t TheStressRate)
 {
+    // Check if it is a triaxial test or not
     if (!IsTriaxial) throw new Fatal("The container for the triaxial test has not be defined");
     if (((TheStress(0)!=0.0)&&(TheStrainRate(0)!=0.0))||((TheStress(1)!=0.0)&&(TheStrainRate(1)!=0.0))||((TheStress(2)!=0.0)&&(TheStrainRate(2)!=0.0))) throw new Fatal ("You cannot define a stress and a strain rate in the same direction");
     std::cout << "[1;33m\n--- Setting up Triaxial Test -------------------------------------[0m\n";
     double start = std::clock();
     Stress = TheStress;
     StrainRate = TheStrainRate;
+    StressRate = TheStressRate;
     TParticles.Resize(0);
     RParticles.Resize(0);
     FParticles.Resize(0);
     FreeParticles.Resize(0);
+
+    // Initialize some of the free particles
     for(size_t i =0;i<InitialIndex;i++)
     {
         FreeParticles.Push(Particles[i]);
@@ -604,47 +609,57 @@ inline void Domain::SetTxTest (Vec3_t TheStress, Vec3_t TheStrainRate)
     {
         Particles[i]->Initialize ();
     }
+
+    // Now check if stress is presscribed and assign the corresponding force
     if (Stress(0)!=0.0)
     {
+        double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         FParticles.Push(Particles[InitialIndex]);
-        FParticles[FParticles.Size()-1]->Ff = Vec3_t(-Stress(0)*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0,0.0);
+        FParticles[FParticles.Size()-1]->Ff = Vec3_t(Stress(0)*area,0.0,0.0);
         FParticles.Push(Particles[InitialIndex+1]);
-        FParticles[FParticles.Size()-1]->Ff = Vec3_t(Stress(0)*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0,0.0);
+        FParticles[FParticles.Size()-1]->Ff = Vec3_t(-Stress(0)*area,0.0,0.0);
     }
     if (Stress(1)!=0.0)
     {
+        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         FParticles.Push(Particles[InitialIndex+2]);
-        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,-Stress(1)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0);
+        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,Stress(1)*area,0.0);
         FParticles.Push(Particles[InitialIndex+3]);
-        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,Stress(1)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0);
+        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,-Stress(1)*area,0.0);
     }
     if (Stress(2)!=0.0)
     {
+        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
         FParticles.Push(Particles[InitialIndex+4]);
-        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,0.0,-Stress(2)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)));
+        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,0.0,Stress(2)*area);
         FParticles.Push(Particles[InitialIndex+5]);
-        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,0.0,Stress(2)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)));
+        FParticles[FParticles.Size()-1]->Ff = Vec3_t(0.0,0.0,-Stress(2)*area);
     }
+
+    // The same with the strain rate
     if (StrainRate(0)!=0.0)
     {
+        double height = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0));
         TParticles.Push(Particles[InitialIndex]);
-        TParticles[TParticles.Size()-1]->v = Vec3_t(-0.5*StrainRate(0)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0)),0.0,0.0);
+        TParticles[TParticles.Size()-1]->v = Vec3_t(-0.5*StrainRate(0)*height,0.0,0.0);
         TParticles.Push(Particles[InitialIndex+1]);
-        TParticles[TParticles.Size()-1]->v = Vec3_t(0.5*StrainRate(0)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0)),0.0,0.0);
+        TParticles[TParticles.Size()-1]->v = Vec3_t(0.5*StrainRate(0)*height,0.0,0.0);
     }
     if (StrainRate(1)!=0.0)
     {
+        double height = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
         TParticles.Push(Particles[InitialIndex+2]);
-        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,-0.5*StrainRate(1)*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)),0.0);
+        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,-0.5*StrainRate(1)*height,0.0);
         TParticles.Push(Particles[InitialIndex+3]);
-        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,0.5*StrainRate(1)*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)),0.0);
+        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,0.5*StrainRate(1)*height,0.0);
     }
     if (StrainRate(2)!=0.0)
     {
+        double height = (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         TParticles.Push(Particles[InitialIndex+4]);
-        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,0.0,-0.5*StrainRate(2)*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)));
+        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,0.0,-0.5*StrainRate(2)*height);
         TParticles.Push(Particles[InitialIndex+5]);
-        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,0.0,0.5*StrainRate(2)*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)));
+        TParticles[TParticles.Size()-1]->v = Vec3_t(0.0,0.0,0.5*StrainRate(2)*height);
     }
     double total = std::clock() - start;
     std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
@@ -773,19 +788,23 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         {
             if (Stress(0)!=0.0)
             {
-                Particles[InitialIndex]->Ff = Vec3_t(-Stress(0)*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0,0.0);
-                Particles[InitialIndex+1]->Ff = Vec3_t(Stress(0)*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0,0.0);
+                double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+                Particles[InitialIndex]->Ff = Vec3_t(Stress(0)*area,0.0,0.0);
+                Particles[InitialIndex+1]->Ff = Vec3_t(-Stress(0)*area,0.0,0.0);
             }
             if (Stress(1)!=0.0)
             {
-                Particles[InitialIndex+2]->Ff = Vec3_t(0.0,-Stress(1)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0);
-                Particles[InitialIndex+3]->Ff = Vec3_t(0.0,Stress(1)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)),0.0);
+                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+                Particles[InitialIndex+2]->Ff = Vec3_t(0.0,Stress(1)*area,0.0);
+                Particles[InitialIndex+3]->Ff = Vec3_t(0.0,-Stress(1)*area,0.0);
             }
             if (Stress(2)!=0.0)
             {
-                Particles[InitialIndex+4]->Ff = Vec3_t(0.0,0.0,-Stress(2)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)));
-                Particles[InitialIndex+5]->Ff = Vec3_t(0.0,0.0,Stress(2)*(Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)));
+                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
+                Particles[InitialIndex+4]->Ff = Vec3_t(0.0,0.0,Stress(2)*area);
+                Particles[InitialIndex+5]->Ff = Vec3_t(0.0,0.0,-Stress(2)*area);
             }
+            Stress += dt*StressRate;
         }
         // output
         if (t>=tout)
