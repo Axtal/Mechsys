@@ -56,6 +56,9 @@ namespace BPy = boost::python;
 #include "models/elastoplastic.h"
 #include "models/camclay.h"
 
+// MechSys -- DEM
+#include "dem/domain.h"
+
 // overloadings
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU,     WriteVTU,     1, 2)
@@ -69,6 +72,8 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DEM_DomAddVPack, AddVoroPack,  8, 10)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DEM_DomGenBox,   GenBox,       5, 6)
 
 // module
 BOOST_PYTHON_MODULE (mechsys)
@@ -157,6 +162,14 @@ BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic con
 // Solver
 BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const &>())
     .def("Solve", &FEM::Solver::Solve, SO_Solve())
+    ;
+
+///////////////////////////////////////////////////////////////////////////////////// dem /////
+
+BPy::class_<DEM::Domain>("DEM_Domain")
+    .def("AddVoroPack", &DEM::Domain::AddVoroPack, DEM_DomAddVPack())
+    .def("GenBox",      &DEM::Domain::GenBox,      DEM_DomGenBox())
+    .def("WritePOV",    &DEM::Domain::PyWritePOV)
     ;
 
 } // BOOST_PYTHON_MODULE

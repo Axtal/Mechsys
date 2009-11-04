@@ -27,6 +27,23 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+    size_t test = 1;
+    if (argc>1) test = atoi(argv[1]);
+
+    double sx, sy, sz, ez;
+
+    switch (test)
+    {
+        case 1:
+        {
+            sx = 0.1, 0.1.asdfasdfa
+
+            break;
+        }
+        defalut: throw new Fatal("Test == %d is not defined",test);
+    }
+
+
     Domain d;
     // Creating the Voronoi packing of particles
     d.AddVoronoiPacking(/*Tag*/-1,/*R*/0.1,/*Lx*/6,/*Ly*/6,/*Lz*/6,/*nx*/6,/*ny*/6,/*nz*/6,/*Periodic?*/true,/*rho*/1.0);

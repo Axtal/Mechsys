@@ -37,6 +37,9 @@
 #include "mesh/mesh.h"
 #include "util/maps.h"
 
+namespace DEM
+{
+
 class Domain
 {
 public:
@@ -58,10 +61,10 @@ public:
                      double rho,   ///< Density of the material
                      double Rmin); ///< Minimun radius in units of the maximun radius
 
-    void GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial = true);  ///< Generate six walls with susscesive tags
+    void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial = true);  ///< Generate six walls with susscesive tags
     void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho=1.0); ///< Generate particles from a FEM mesh generator
     void GenFromVoro (int Tag, container & VC, double R, double rho=1.0); ///< Generate Particles from a Voronoi container
-    void AddVoronoiPacking (int Tag,double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,bool Periodic = true,double rho=1.0); ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
+    void AddVoroPack (int Tag,double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz,bool Periodic = true,double rho=1.0); ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
 
     // Single particle addition
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho=1.0, bool Erode=true);
@@ -72,7 +75,7 @@ public:
 
     // Methods
     void SetBC      (Dict & D);                                    ///< Set the properties of individual grains by dictionaries
-    void SetTriaxialTest(Vec3_t  Stress,Vec3_t  StrainRate);       ///< Setup the triaxial test;
+    void SetTxTest  (Vec3_t  Stress,Vec3_t  StrainRate);           ///< Setup the triaxial test;
     void Initialize (double dt = 0.0);                             ///< Set the particles to a initial state and asign the possible insteractions
     void Solve      (double tf, double dt, double dtOut,
                      char const * FileKey, Vec3_t const & CamPos); ///< Run simulation
@@ -96,6 +99,10 @@ public:
     Array<Particle*>   RParticles;    ///< Particles with rotation fixed
     Array<Particle*>   FParticles;    ///< Particles with applied force
     Array<Interacton*> Interactons;   ///< All interactons
+
+#ifdef USE_BOOST_PYTHON
+    void PyWritePOV (BPy::str const & FileKey, BPy::list const & CamPos);
+#endif
 };
 
 
@@ -255,7 +262,7 @@ inline void Domain::GenFromVoro (int Tag, container & VC,double R,double rho)
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::AddVoronoiPacking (int Tag,double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, bool Periodic, double rho)
+inline void Domain::AddVoroPack (int Tag,double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, bool Periodic, double rho)
 {
     const double x_min=-Lx/2.0, x_max=Lx/2.0;
     const double y_min=-Ly/2.0, y_max=Ly/2.0;
@@ -577,7 +584,7 @@ inline void Domain::SetBC (Dict & D)
     //std::cout << Particles.Size() << " " << FParticles.Size() << " " << FreeParticles.Size() << " " << RParticles.Size() << std::endl;
 }
 
-inline void Domain::SetTriaxialTest(Vec3_t TheStress, Vec3_t TheStrainRate)
+inline void Domain::SetTxTest (Vec3_t TheStress, Vec3_t TheStrainRate)
 {
     if (!IsTriaxial) throw new Fatal("The container for the triaxial test has not be defined");
     if (((TheStress(0)!=0.0)&&(TheStrainRate(0)!=0.0))||((TheStress(1)!=0.0)&&(TheStrainRate(1)!=0.0))||((TheStress(2)!=0.0)&&(TheStrainRate(2)!=0.0))) throw new Fatal ("You cannot define a stress and a strain rate in the same direction");
@@ -878,5 +885,16 @@ inline double Domain::CalcEnergy (double & Ekin, double & Epot)
     // total energy
     return Ekin + Epot;
 }
+
+#ifdef USE_BOOST_PYTHON
+inline void Domain::PyWritePOV (BPy::str const & FileKey, BPy::list const & CamPos)
+{
+    Vec3_t cam_pos;
+    cam_pos = BPy::extract<double>(CamPos[0])(), BPy::extract<double>(CamPos[1])(), BPy::extract<double>(CamPos[2])();
+    WritePOV (BPy::extract<char const *>(FileKey)(), cam_pos);
+}
+#endif
+
+}; // namespace DEM
 
 #endif // MECHSYS_DEM_DOMAIN_H
