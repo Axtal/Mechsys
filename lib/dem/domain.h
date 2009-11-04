@@ -646,22 +646,23 @@ inline void Domain::SetTriaxialTest(Vec3_t TheStress, Vec3_t TheStrainRate)
 inline void Domain::Initialize (double dt)
 {
 
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Particles[i]->Initialize (dt);
+    }
     if (!Initialized) 
     {
         // info
         double start = std::clock();
         std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
-        for (size_t i=0; i<Particles.Size(); i++)
-        {
-            Particles[i]->Initialize (dt);
-        }
 
         for (size_t i=0; i<FreeParticles.Size()-1; i++)
         {
             // initialize interactons
             for (size_t j=i+1; j<FreeParticles.Size(); j++)
             {
-                Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
+                if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) Interactons.Push (new InteractonSphere(FreeParticles[i],FreeParticles[j]));
+                else Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
             }
         }
 
