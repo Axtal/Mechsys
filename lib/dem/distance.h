@@ -146,6 +146,12 @@ inline void Distance (Face const & F, Vec3_t const & V, Vec3_t & Xi, Vec3_t & Xf
     Distance (V,F,Xf,Xi);
 }
 
+inline double Distance (Vec3_t const & V0, Vec3_t const & V1,Vec3_t & Xi, Vec3_t & Xf)
+{
+    Xi = V0;
+    Xf = Xf;
+}
+
 inline double Distance (Edge const & E, Vec3_t const & V)
 {
     Vec3_t Xi,Xf;

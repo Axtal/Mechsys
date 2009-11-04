@@ -36,10 +36,11 @@ public:
     typedef std::map<std::pair<int,int>,Vec3_t> FrictionMap_t;
 
     // Constructor and destructor
-     Interacton (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
+    Interacton () {};                            ///< Default constructor
+    Interacton (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
 
     // Methods
-    void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
+    virtual void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
 
     // Data
     Particle    * P1;   ///< First particle
@@ -55,7 +56,6 @@ public:
     FrictionMap_t Fdvf; ///< Static friction displacement for pair of vertex-face
     FrictionMap_t Fdfv; ///< Static friction displacement for pair of face-vertex
 
-private:
     template<typename FeatureA_T, typename FeatureB_T>
     void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt);
 };
@@ -67,7 +67,6 @@ private:
 inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
     : P1(Pt1), P2(Pt2), Kn(10000.0), Kt(5000.0), Gn(16.0), Gt(8.0), Mu(0.4), Epot(0.0)
 {
-    //std::cout << P1 << " " << P2 << std::endl;
     CalcForce(0.1);
 }
 
@@ -139,5 +138,38 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
         }
     }
 }
+
+class InteractonSphere: public Interacton
+{
+public:
+
+    InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
+    void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
+    FrictionMap_t Fdvv; ///< Static Friction displacement
+};
+
+inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
+{
+    P1 = Pt1;
+    P2 = Pt2;
+    Kn = 10000;
+    Kt = 5000;
+    Gn =16;
+    Gt = 8;
+    Mu = 0.4;
+    Epot = 0.0;
+
+    CalcForce(0.1);
+}
+
+inline void InteractonSphere::CalcForce(double dt)
+{
+    Epot = 0.0;
+    if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
+    {
+        _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,dt);
+    }
+}
+
 
 #endif //  MECHSYS_DEM_INTERACTON_H
