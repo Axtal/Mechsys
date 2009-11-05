@@ -20,6 +20,7 @@
 // MechSys
 #include "dem/domain.h"
 #include "util/fatal.h"
+#include "linalg/matvec.h"
 
 using std::cout;
 using std::endl;
@@ -27,34 +28,47 @@ using DEM::Domain;
 
 int main(int argc, char **argv) try
 {
-
-    // Setting the stress path with the invariants p,q,alpha for the p cte paths
-    double p = -0.1;
-    double q = 0.3;
-    double alpha = 15.0*M_PI/180.0;
-    
-    // the stress rates are functions of these invariants
-    double srx = q*sqrt(2.0/3.0)*cos(alpha)/40;
-    double sry = q*sqrt(1.0/2.0)*sin(alpha)/40-q*sqrt(1.0/6.0)*cos(alpha)/40;
-    double srz = -q*sqrt(1.0/2.0)*sin(alpha)/40-q*sqrt(1.0/6.0)*cos(alpha)/40;
-
+    // set the simulation domain ////////////////////////////////////////////////////////////////////////////
+    int    tag = -1;   // tag of particles
+    double R   = 0.1;  // spheroradius
+    double Lx  = 4.0;  // length of box
+    double Ly  = 4.0;  // length of box
+    double Lz  = 4.0;  // length of box
+    double nx  = 4;    // number of particles per side
+    double ny  = 4;    // number of particles per side
+    double nz  = 4;    // number of particles per side
+    bool   per = true; // periodic ?
+    double rho = 1.0;  // density
     Domain d;
-    // Creating the Voronoi packing of particles
-    d.AddVoroPack(/*Tag*/-1,/*R*/0.1,/*Lx*/4,/*Ly*/4,/*Lz*/4,/*nx*/4,/*ny*/4,/*nz*/4,/*Periodic?*/true,/*rho*/1.0);
-    //d.AddRice(-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
-    d.GenBox(/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6,/*R*/0.1);
+    //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, per, rho);
+    d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
+    d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R);
+    d.WriteBPY    ("test_triaxial01");
 
-    // First stage compression
-    d.SetTxTest(Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.0),Vec3_t(/*sx*/-0.1,/*sy*/-0.1,/*sz*/-0.1));
+    // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////
+    Vec3_t  cam_pos(0,35,0);           // position of camera
+    Vec3_t  sigf;                      // final stress state
+    bVec3_t peps(false, false, false); // prescribed strain rates ?
+    Vec3_t  depsdt;                    // strain rate
+    sigf = -0.1, -0.1, -0.1; // MPa
+    d.SetTxTest (sigf, peps, depsdt);
+    d.Solve     (/*tf*/10, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01a", cam_pos);
 
-    d.WriteBPY("test_triaxial01");
+    // stage 2: shearing wiht p-cte /////////////////////////////////////////////////////////////////////////
+    double pf  = 0.1;              // final p MPa
+    double qf  = 0.3;              // final q
+    double thf = -15.0*M_PI/180.0; // final theta
+    double tf  = sin(3.0*thf);     // final t = sin(3theta)
+    
+    // calc principal values (lf)
+    Vec3_t lf;
+    pqt2L (pf,qf,tf, lf);
+    sigf = lf(0), lf(1), lf(2);
 
-    d.Solve (/*tf*/10, 0.001, /*dtOut*/0.1, "test_triaxial01a", /*CamPos*/Vec3_t(0,35,0));
+    // run
+    d.SetTxTest (sigf, peps, depsdt);
+    d.Solve     (/*tf*/40, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01b", cam_pos);
 
-    //Second stage Stress Path
-
-    d.SetTxTest(Vec3_t(/*ex*/0.0,/*ey*/0.0,/*ez*/0.0),Vec3_t(/*sx*/-0.1,/*sy*/-0.1,/*sz*/-0.1),Vec3_t(/*srx*/srx,/*sry*/sry,/*srz*/srz));
-
-    d.Solve (/*tf*/40, 0.001, /*dtOut*/0.1, "test_triaxial01b", /*CamPos*/Vec3_t(0,35,0));
+    return 0;
 }
 MECHSYS_CATCH
