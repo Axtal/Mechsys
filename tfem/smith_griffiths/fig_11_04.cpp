@@ -82,7 +82,7 @@ int main(int argc, char **argv) try
     mesh.SetCell    ( 1,   -1, Array<int>( 7,12,10, 5,  9,11, 8, 6));
     mesh.SetCell    ( 2,   -1, Array<int>(12,17,15,10, 14,16,13,11));
     mesh.SetBryTag  ( 0, 3, -10);
-    mesh.WriteMPY   ("fig_11_04",/*OnlyMesh*/false);
+    mesh.WriteMPY   ("fig_11_04");
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

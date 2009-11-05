@@ -72,7 +72,7 @@ int main(int argc, char **argv) try
         mesh.SetBryTag (i, 3, -10);
         x += l;
     }
-    mesh.WriteMPY ("fig_11_19",/*OnlyMesh*/false);
+    mesh.WriteMPY ("fig_11_19");
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

@@ -170,8 +170,6 @@ int main(int argc, char **argv) try
         gam += dalp;
     }
     cout << "Generated: " << nv << " vertices and " << nc << " cells\n";
-    //mesh.WriteMPY ("owen_hinton_03", /*OnlyMesh*/false);//, extra.CStr());
-    //mesh.WriteVTU ("owen_hinton_03", /*VolSurfOrBoth*/0);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

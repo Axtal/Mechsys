@@ -111,7 +111,7 @@ int main(int argc, char **argv) try
     }
 
     // write mesh
-    mesh.WriteMPY ("fig_06_09",/*OnlyMesh*/false);
+    mesh.WriteMPY ("fig_06_09");
     
     /////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

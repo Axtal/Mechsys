@@ -60,7 +60,7 @@ int main(int argc, char **argv) try
     blks[0].SetNy (1);
     Mesh::Structured mesh(/*NDim*/2);
     mesh.Generate (blks,/*O2*/true);
-    mesh.WriteMPY ("wood_lewis",/*OnlyMesh*/false);
+    mesh.WriteMPY ("wood_lewis");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

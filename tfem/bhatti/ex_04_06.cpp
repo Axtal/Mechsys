@@ -50,7 +50,7 @@ int main(int argc, char **argv) try
     mesh.SetCell  (1,   -1, Array<int>(1, 2));
     mesh.SetCell  (2,   -2, Array<int>(2, 3));
     mesh.AddPin   (-300);
-    mesh.WriteMPY ("ex46",/*OnlyMesh*/false);
+    mesh.WriteMPY ("ex46");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

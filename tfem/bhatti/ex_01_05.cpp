@@ -53,8 +53,6 @@ int main(int argc, char **argv) try
     mesh.SetCell   (2,   -1, Array<int>(2,3,4));
     mesh.SetCell   (3,   -1, Array<int>(0,4,3));
     mesh.SetBryTag (1, 0, -10);
-    //mesh.WriteVTU  ("ex15");
-    //mesh.WriteMPY  ("ex15",/*OnlyMesh*/false);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

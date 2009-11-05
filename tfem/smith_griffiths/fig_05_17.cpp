@@ -46,7 +46,7 @@ int main(int argc, char **argv) try
     
     Mesh::Generic mesh(/*NDim*/2);
     mesh.ReadMesh ("fig_05_17");
-    mesh.WriteMPY ("fig_05_17",/*OnlyMesh*/false);
+    mesh.WriteMPY ("fig_05_17");
     mesh.WriteVTU ("fig_05_17");
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////

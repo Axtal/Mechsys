@@ -270,6 +270,8 @@ inline void Domain::SetUVals (SDPair const & UVals)
 
 inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags)
 {
+    // find ids
+    Array<int> ids;
     for (size_t i=0; i<IDsOrTags.Size(); ++i)
     {
         int nod_or_tag = IDsOrTags[i];
@@ -283,12 +285,18 @@ inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags
                 {
                     nod   = Msh.TgdVerts[j]->ID;
                     found = true;
-                    break;
+                    ids.Push (nod);
                 }
             }
-            if (!found) throw new Fatal("Domain::SetOutNods: Could not find node with tag = %d", nod_or_tag);
+            if (!found) throw new Fatal("Domain::SetOutNods: Could not find any node with tag = %d", nod_or_tag);
         }
-        else nod = nod_or_tag;
+        else ids.Push (nod_or_tag);
+    }
+
+    // set files
+    for (size_t i=0; i<ids.Size(); ++i)
+    {
+        int nod = ids[i];
         if (OutNods.Find(nod)<0)
         {
             String buf; buf.Printf("%s_nod_%d_%d.res",FNKey,nod,Nods[nod]->Vert.Tag);
@@ -315,6 +323,8 @@ inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags
 
 inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags)
 {
+    // find ids
+    Array<int> ids;
     for (size_t i=0; i<IDsOrTags.Size(); ++i)
     {
         int ele_or_tag = IDsOrTags[i];
@@ -322,21 +332,27 @@ inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags
         if (ele_or_tag<0) // tag
         {
             bool found = false;
-            for (size_t j=0; j<Msh.TgdCells.Size(); ++j)
+            for (size_t j=0; j<Msh.Cells.Size(); ++j)
             {
-                if (ele_or_tag==Msh.TgdCells[j]->Tag)
+                if (ele_or_tag==Msh.Cells[j]->Tag)
                 {
-                    ele   = Msh.TgdCells[j]->ID;
+                    ele   = Msh.Cells[j]->ID;
                     found = true;
-                    break;
+                    ids.Push (ele);
                 }
             }
-            if (!found) throw new Fatal("Domain::SetOutEles: Could not find element with tag = %d", ele_or_tag);
+            if (!found) throw new Fatal("Domain::SetOutEles: Could not find any element with tag = %d", ele_or_tag);
         }
-        else ele = ele_or_tag;
+        else ids.Push (ele_or_tag);
+    }
+
+    // set files
+    for (size_t i=0; i<ids.Size(); ++i)
+    {
+        int ele = ids[i];
         if (OutEles.Find(ele)<0)
         {
-            String buf; buf.Printf("%s_ele_%d.res",FNKey,ele);
+            String buf; buf.Printf("%s_ele_%d_%d.res",FNKey,ele,Eles[ele]->Cell.Tag);
             std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
             OutEles.Push (ele);
             FilEles.Push (of);
