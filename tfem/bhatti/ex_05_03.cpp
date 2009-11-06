@@ -67,7 +67,7 @@ int main(int argc, char **argv) try
     mesh.SetBryTag (3, 1, -30);  mesh.SetBryTag (3, 2, -30);
     mesh.SetBryTag (4, 2, -30);
     mesh.SetBryTag (5, 1, -20);  mesh.SetBryTag (5, 2, -30);
-    mesh.WriteMPY  ("ex53", /*OnlyMesh*/false);
+    mesh.WriteMPY  ("ex53");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

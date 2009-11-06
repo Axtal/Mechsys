@@ -52,7 +52,7 @@ int main(int argc, char **argv) try
     Mesh::Structured mesh(/*NDim*/2);
     mesh.Generate    (blks,/*O2*/o2);
     mesh.AddLinCells (Array<int>(-10, /*JustOne*/true));
-    mesh.WriteMPY    ("beam02_mesh",/*OnlyMesh*/false);
+    mesh.WriteMPY    ("beam02_mesh");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

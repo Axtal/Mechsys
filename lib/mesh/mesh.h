@@ -176,7 +176,7 @@ public:
 
     // Methods
     void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
-    void WriteMPY (char const * FileKey, bool OnlyMesh=true,
+    void WriteMPY (char const * FileKey, bool WithTags=true, bool WithIDs=true, bool WithShares=false,
                    char const * Extra=NULL) const;                   ///< (.mpy) Write Python script that calls mesh_drawing.py
 
     // Auxiliar methods
@@ -904,7 +904,7 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
     of.close();
 }
 
-inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh, char const * Extra) const
+inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs, bool WithShares, char const * Extra) const
 {
     // header
     String fn(FileKey); fn.append(".mpy");
@@ -945,8 +945,11 @@ inline void Generic::WriteMPY (char const * FileKey, bool OnlyMesh, char const *
 
     // drawing
     oss << "d = DrawMesh(V,C,pins,shares)\n";
-    if (OnlyMesh) oss << "d.draw(with_tags=False,with_ids=False)\n";
-    else          oss << "d.draw()\n";
+    String prms;
+    if (WithTags)   prms.append("True,"); else prms.append("False,");
+    if (WithIDs)    prms.append("True,"); else prms.append("False,");
+    if (WithShares) prms.append("True,"); else prms.append("False");
+    oss << "d.draw(" << prms << ")\n";
     if (Extra!=NULL) oss << Extra;
     oss << "d.show()\n";
     std::ofstream of(fn.CStr(), std::ios::out);

@@ -199,7 +199,7 @@ int main(int argc, char **argv) try
     Mesh::Structured mesh(/*NDim*/2);
     mesh.Generate (blks,/*O2*/true);
     //mesh.WriteVTU ("ex79");
-    mesh.WriteMPY  ("ex79",/*OnlyMesh*/true);
+    mesh.WriteMPY  ("ex79");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

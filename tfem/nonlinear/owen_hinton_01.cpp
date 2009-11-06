@@ -70,7 +70,7 @@ int main(int argc, char **argv) try
     mesh.SetVert  (2, -300,  0.0,   0.0);
     mesh.SetCell  (0,   -1, Array<int>(0, 1));
     mesh.SetCell  (1,   -1, Array<int>(1, 2));
-    mesh.WriteMPY ("owen_hinton_01",/*OnlyMesh*/false);
+    mesh.WriteMPY ("owen_hinton_01");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

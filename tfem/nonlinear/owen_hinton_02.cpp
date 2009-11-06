@@ -141,7 +141,7 @@ int main(int argc, char **argv) try
     Mesh::Structured mesh(/*NDim*/2);
     //mesh.GenQRing (/*O2*/true,/*Nx*/4,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/3,/*Ax*/1.0); // w = 1 + Ax*i
     mesh.GenQRing (/*O2*/true,/*Nx*/0,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/3,/*Ax*/0.0,/*NonLin*/false,/*Wx*/"1.662 2.164 3.034 3.092");
-    mesh.WriteMPY ("owen_hinton_02", /*OnlyMesh*/false);//, extra.CStr());
+    mesh.WriteMPY ("owen_hinton_02");//, extra.CStr());
     mesh.WriteVTU ("owen_hinton_02", /*VolSurfOrBoth*/0);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////

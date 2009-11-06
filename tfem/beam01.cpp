@@ -161,7 +161,7 @@ int main(int argc, char **argv) try
         }
         default: throw new Fatal("main: Test = %d is not available",tst);
     }
-    mesh.WriteMPY ("beam01_mesh",/*OnlyMesh*/false);
+    mesh.WriteMPY ("beam01_mesh");
 
     // domain
     FEM::Domain dom(mesh, prps, Dict(), Dict());
