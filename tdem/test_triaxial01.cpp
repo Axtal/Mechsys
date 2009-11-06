@@ -31,28 +31,34 @@ int main(int argc, char **argv) try
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
     int    tag = -1;   // tag of particles
     double R   = 0.1;  // spheroradius
-    double Lx  = 4.0;  // length of box
-    double Ly  = 4.0;  // length of box
-    double Lz  = 4.0;  // length of box
+    double Lx  = 4.0;  // length of cube with particles
+    double Ly  = 4.0;  // length of cube with particles
+    double Lz  = 4.0;  // length of cube with particles
     double nx  = 4;    // number of particles per side
     double ny  = 4;    // number of particles per side
     double nz  = 4;    // number of particles per side
     bool   per = true; // periodic ?
     double rho = 1.0;  // density
+
+    // domain
     Domain d;
+    d.CamPos = 0, 35, 0; // position of camera
+
+    // particles
     //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, per, rho);
-    d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
+    //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
+    //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
+    d.GenSpheres  (-1,4,1,1.0);
     d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R);
     d.WriteBPY    ("test_triaxial01");
 
     // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////
-    Vec3_t  cam_pos(0,35,0);           // position of camera
     Vec3_t  sigf;                      // final stress state
     bVec3_t peps(false, false, false); // prescribed strain rates ?
-    Vec3_t  depsdt;                    // strain rate
+    Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
     sigf = -0.1, -0.1, -0.1; // MPa
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/10, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01a", cam_pos);
+    d.Solve     (/*tf*/10, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01a");
 
     // stage 2: shearing wiht p-cte /////////////////////////////////////////////////////////////////////////
     double pf  = 0.1;              // final p MPa
@@ -66,8 +72,9 @@ int main(int argc, char **argv) try
     sigf = lf(0), lf(1), lf(2);
 
     // run
+    d.ResetEps  ();
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/40, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01b", cam_pos);
+    d.Solve     (/*tf*/40, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01b");
 
     return 0;
 }

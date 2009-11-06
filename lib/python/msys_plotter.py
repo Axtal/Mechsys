@@ -29,6 +29,7 @@ class Plotter:
         # data
         self.show_k    = False        # show k=dq/dp ?
         self.div_by_p  = False        # divide q by p ?
+        self.log_p     = True         # use log(p) instead of p ?
         self.q_neg_ext = False        # multiply q by -1 for extension (t<0, where t=sin(3th)
         self.pq_ty     = 'cam'        # invariants type
         self.fc_ty     = ['VM','MC']  # failure criteria type (VM, DP, MC, MN)
@@ -153,10 +154,15 @@ class Plotter:
         xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz); grid()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
-        X = log(P)
+        if self.log_p:
+            X    = log(P)
+            xlbl = r'$\ln{(p_{%s})}$'%(self.pq_ty)
+        else:
+            X    = P
+            xlbl = r'$p_{%s}$'%(self.pq_ty)
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
         plot   (X, Ev, self.dot[4], lw=lwd)
-        xlabel (r'$\ln{(p_{%s})}$'%(self.pq_ty),fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz);  grid()
+        xlabel (xlbl,fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz);  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
