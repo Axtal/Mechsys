@@ -126,6 +126,7 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
+    sol.CalcWork = true;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

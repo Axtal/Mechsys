@@ -79,6 +79,7 @@ public:
     double         NormR;    ///< Euclidian norm of residual (R)
     double         TolR;     ///< Tolerance for the norm of residual
     double         MaxNormF; ///< Max(Norm(F), Norm(Fint))
+    bool           CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -140,6 +141,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       Stp     (0),
       It      (0),
       TolR    (1.0e-7),
+      CalcWork(false),
       Scheme  (ME_t),
       nSS     (1),
       STOL    (1.0e-5),
@@ -219,8 +221,21 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
         }
 
         // output
-        std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str;
         Dom.OutResults (Time, F_int);
+
+        // calc work done == twice the stored (elastic) strain energy
+        if (CalcWork)
+        {
+            Sparse::Matrix<double,int> k11(A11), k12(K12), k21(K21), k22(K22);
+            Mat_t kk11, kk12, kk21, kk22;
+            k11.GetDense(kk11); k12.GetDense(kk12); k21.GetDense(kk21); k22.GetDense(kk22);
+            for (size_t i=0; i<pDOFs.Size(); ++i) kk11(pDOFs[i],pDOFs[i]) = 0.0;
+            Mat_t kk(kk11 + kk12 + kk21 + kk22);
+            Vec_t KU(kk*U);
+            std::cout << "     [1;37mWork = " << dot(U,KU) << " [0m";
+        }
+        std::cout << "\n";
 
         // next tout
         tout = Time + dt;
