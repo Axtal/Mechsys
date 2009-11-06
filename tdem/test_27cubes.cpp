@@ -65,8 +65,8 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////// First timestep /////
     
-    Vec3_t cam_pos(4.0,3.0,3.0);
-    d.WritePOV ("init_test_27cubes",cam_pos);
+    d.CamPos= 4.0,3.0,3.0;
+    d.WritePOV ("init_test_27cubes");
     d.WriteBPY ("init_test_27cubes");
 
     /////////////////////////////////////////////////////////////////////////////////////////////// Solve /////

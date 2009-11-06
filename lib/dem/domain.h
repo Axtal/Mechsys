@@ -140,10 +140,10 @@ inline void Domain::GenSpheres(int Tag, double L, size_t N, double rho)
     {
         Vec3_t pos(-L/2.0+R,-L/2.0+R,-L/2.0+R);
         size_t i = (n%N);
-        size_t j = (n/N)/(N*N);
+        size_t j = (n/N)%N;
         size_t k = (n/(N*N));
         pos += Vec3_t(2*i*R,2*j*R,2*k*R);
-        AddRice(Tag,pos,0.9*R,0.01*R,rho);
+        AddSphere(Tag,pos,R,rho);
     }
     
 

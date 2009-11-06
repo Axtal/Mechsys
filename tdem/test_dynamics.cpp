@@ -42,7 +42,8 @@ int main(int argc, char **argv) try
 	Vec3_t x(-10,0,0);     // position
     Vec3_t w(0,M_PI/50,0); // rot veloc
     Vec3_t v(1.,0,0);      // veloc
-	d.AddCube (-1, x,0.3,3.,1.);
+	//d.AddCube (-1, x,0.3,3.,1.);
+    d.AddSphere (-1,x,2.0,1.0);
     d.Particles[0]->v = v;
     d.Particles[0]->w = w;
 
@@ -50,7 +51,8 @@ int main(int argc, char **argv) try
     x =  10 , 0 , 0;
     w =   0 , 0 , 0;
     v = -1. , 0 , 0;
-    d.AddTetra (-1, x,0.5,5.,1.);
+    //d.AddTetra (-1, x,0.5,5.,1.);
+    d.AddSphere (-1,x,2.0,1.0);
     d.Particles[1]->v = v;
     d.Particles[1]->w = w;
 
@@ -66,8 +68,8 @@ int main(int argc, char **argv) try
     E0 = d.CalcEnergy (Ek0,Ep0); 
 
     // solve
-    Vec3_t cam_pos(0,10,0);
-    d.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, "test_dynamics", cam_pos);
+    d.CamPos = 0.0,30.0,0.0;
+    d.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, "test_dynamics");
 
     // final constants
     Vec3_t l1(0,0,0);  // initial linear momentum

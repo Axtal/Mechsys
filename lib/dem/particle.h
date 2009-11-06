@@ -218,7 +218,7 @@ inline void Particle::Translate (double dt)
 
 inline void Particle::Translate (Vec3_t & V)
 {
-    size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size();
+    size_t nv = Verts.Size();
     for (size_t i = 0; i < nv; i++)
     {
         *Verts[i] += V;
@@ -253,6 +253,12 @@ inline void Particle::CalcProps (size_t NCalls)
         x = *Verts[0];
         Q = 1,0,0,0;
         m = rho*V;
+        w = wb;
+        m = rho*V;
+        Ekin = 0.5*m*dot(v,v);
+        Erot = 0.5*(I(0)*w(0)*w(0)+I(1)*w(1)*w(1)+I(2)*w(2)*w(2));
+        Dmax = R;
+
     }
     else
     {
