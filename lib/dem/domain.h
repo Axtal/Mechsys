@@ -51,10 +51,10 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres  (int Tag, double L, size_t N, double rho);
-    void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial=true);  ///< Generate six walls with successive tags
-    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho=1.0);                     ///< Generate particles from a FEM mesh generator
-    void GenFromVoro (int Tag, container & VC, double R, double rho=1.0);                              ///< Generate Particles from a Voronoi container
+    void GenSpheres  (int Tag, double L, size_t N, double rho=1.0);                                                  ///< General spheres
+    void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial=true, double Cf=1.3); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho=1.0);                                   ///< Generate particles from a FEM mesh generator
+    void GenFromVoro (int Tag, container & VC, double R, double rho=1.0);                                            ///< Generate Particles from a Voronoi container
     void AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, bool Periodic=true, double rho=1.0); ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
 
     // Single particle addition
@@ -131,25 +131,23 @@ inline Domain::~Domain ()
 
 // Particle generation
 
-inline void Domain::GenSpheres(int Tag, double L, size_t N, double rho)
+inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho)
 {
-    // Define de radius from the configuration
-    double R = L/(2*N);
+    // find radius from the edge's length
+    double R = L/(2.0*N);
 
     for (size_t n=0; n<N*N*N; ++n) 
     {
-        Vec3_t pos(-L/2.0+R,-L/2.0+R,-L/2.0+R);
+        Vec3_t pos(-L/2.0+R, -L/2.0+R, -L/2.0+R);
         size_t i = (n%N);
         size_t j = (n/N)%N;
         size_t k = (n/(N*N));
-        pos += Vec3_t(2*i*R,2*j*R,2*k*R);
-        AddSphere(Tag,pos,R,rho);
+        pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
+        AddSphere (Tag,pos,R,rho);
     }
-    
-
 }
 
-inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial)
+inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf)
 {
     /*                         +----------------+
      *                       ,'|              ,'|
@@ -174,13 +172,12 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
     // add faces of box
     Vec3_t axis0(OrthoSys::e0); // rotation of face
     Vec3_t axis1(OrthoSys::e1); // rotation of face
-    const double cf = 1.4; // coefficient to make walls bigger than specified and avoid holes
-    AddPlane (InitialTag,  Vec3_t(Lx/2.0,0.0,0.0),  R, cf*Lz, cf*Ly, 0.5, M_PI/2.0, &axis1);
-    AddPlane (InitialTag-1,Vec3_t(-Lx/2.0,0.0,0.0), R, cf*Lz, cf*Ly, 0.5, M_PI/2.0, &axis1);
-    AddPlane (InitialTag-2,Vec3_t(0.0,Ly/2.0,0.0),  R, cf*Lx, cf*Lz, 0.5, M_PI/2.0, &axis0);
-    AddPlane (InitialTag-3,Vec3_t(0.0,-Ly/2.0,0.0), R, cf*Lx, cf*Lz, 0.5, M_PI/2.0, &axis0);
-    AddPlane (InitialTag-4,Vec3_t(0.0,0.0,Lz/2.0),  R, cf*Lx, cf*Ly, 0.5);
-    AddPlane (InitialTag-5,Vec3_t(0.0,0.0,-Lz/2.0), R, cf*Lx, cf*Ly, 0.5);
+    AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 0.5, M_PI/2.0, &axis1);
+    AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 0.5, M_PI/2.0, &axis1);
+    AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 0.5, M_PI/2.0, &axis0);
+    AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 0.5, M_PI/2.0, &axis0);
+    AddPlane (InitialTag-4, Vec3_t(0.0,0.0,Lz/2.0),  R, Cf*Lx, Cf*Ly, 0.5);
+    AddPlane (InitialTag-5, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 0.5);
 
     // initialize walls (required when calculating the length of packing, since will use the CG)
     for (size_t i=0; i<6; ++i) Particles[InitialIndex+i]->Initialize();

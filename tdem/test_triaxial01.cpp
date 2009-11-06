@@ -45,13 +45,15 @@ int main(int argc, char **argv) try
     d.CamPos = 0, 35, 0; // position of camera
 
     // particles
+    double L = 4.0; // length of edges of packing
+    size_t N = 4;   // number of spheres along each direction
     //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, per, rho);
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
-    d.GenSpheres  (-1,4,4,1.0);
-    d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R);
+    d.GenSpheres  (-1, L, N);
+    d.GenBox      (/*InitialTag*/-2, /*Lx*/1.1*L, /*Ly*/1.1*L, /*Lz*/1.1*L, R, /*Tx*/true, /*Cf*/1.1);
     d.WriteBPY    ("test_triaxial01");
-    //return 0;
+
     // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////
     Vec3_t  sigf;                      // final stress state
     bVec3_t peps(false, false, false); // prescribed strain rates ?
@@ -76,6 +78,6 @@ int main(int argc, char **argv) try
     d.SetTxTest (sigf, peps, depsdt);
     d.Solve     (/*tf*/40, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01b");
 
-    //return 0;
+    return 0;
 }
 MECHSYS_CATCH
