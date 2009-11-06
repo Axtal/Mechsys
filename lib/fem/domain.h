@@ -304,6 +304,9 @@ inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags
             OutNods.Push (nod);
             FilNods.Push (of);
             (*of) << Util::_8s << "Time";
+            (*of) << Util::_8s << "x";
+            (*of) << Util::_8s << "y";  if (NDim==3)
+            (*of) << Util::_8s << "z";
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->UMap.Keys[j];
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->FMap.Keys[j];
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
@@ -359,6 +362,9 @@ inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags
             SDPair dat;
             Eles[ele]->GetState (dat);
             (*of) << Util::_8s << "Time";
+            (*of) << Util::_8s << "x";
+            (*of) << Util::_8s << "y";  if (NDim==3)
+            (*of) << Util::_8s << "z";
             for (size_t j=0; j<dat.Keys.Size(); ++j) (*of) << Util::_8s << dat.Keys[j];
             (*of) << "\n";
         }
@@ -372,6 +378,9 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     {
         size_t nod = OutNods[i];
         (*FilNods[i]) << Util::_8s << Time;
+        (*FilNods[i]) << Util::_8s << Nods[nod]->Vert.C(0);
+        (*FilNods[i]) << Util::_8s << Nods[nod]->Vert.C(1);  if (NDim==3)
+        (*FilNods[i]) << Util::_8s << Nods[nod]->Vert.C(2);
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->U[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j] - Nods[nod]->Fa(j,Time);
@@ -385,7 +394,12 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
         size_t ele = OutEles[i];
         (*FilEles[i]) << Util::_8s << Time;
         SDPair dat;
+        Vec_t  Xct;
         Eles[ele]->GetState (dat);
+        Eles[ele]->Centroid (Xct);
+        (*FilEles[i]) << Util::_8s << Xct(0);
+        (*FilEles[i]) << Util::_8s << Xct(1);  if (NDim==3)
+        (*FilEles[i]) << Util::_8s << Xct(2);
         for (size_t j=0; j<dat.Keys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(dat.Keys[j]);
         (*FilEles[i]) << "\n";
     }
