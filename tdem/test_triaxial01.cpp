@@ -29,49 +29,50 @@ using DEM::Domain;
 int main(int argc, char **argv) try
 {
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
-    int    tag = -1;   // tag of particles
+    //int    tag = -1;   // tag of particles
     double R   = 0.1;  // spheroradius
-    double Lx  = 4.0;  // length of cube with particles
-    double Ly  = 4.0;  // length of cube with particles
-    double Lz  = 4.0;  // length of cube with particles
-    double nx  = 4;    // number of particles per side
-    double ny  = 4;    // number of particles per side
-    double nz  = 4;    // number of particles per side
-    bool   per = true; // periodic ?
-    double rho = 1.0;  // density
+    //double Lx  = 4.0;  // length of cube with particles
+    //double Ly  = 4.0;  // length of cube with particles
+    //double Lz  = 4.0;  // length of cube with particles
+    //double nx  = 4;    // number of particles per side
+    //double ny  = 4;    // number of particles per side
+    //double nz  = 4;    // number of particles per side
+    //bool   per = true; // periodic ?
+    //double rho = 1.0;  // density
 
     // domain
     Domain d;
-    d.CamPos = 0, 10, 3; // position of camera
+    d.CamPos = 0, 35, 0; // position of camera
 
     // particles
-    double L = 4.0; // length of edges of packing
-    size_t N = 4;   // number of spheres along each direction
     //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, per, rho);
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
-    d.GenSpheres  (-1, L, N);
-    d.GenBox      (/*InitialTag*/-2, /*Lx*/1.2*L, /*Ly*/1.2*L, /*Lz*/1.2*L, R, /*Tx*/true, /*Cf*/1.5);
+    d.GenSpheres  (-1,4,4,1.0);
+    d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R);
     d.WriteBPY    ("test_triaxial01");
-
+    //return 0;
     // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////
     Vec3_t  sigf;                      // final stress state
     bVec3_t peps(false, false, false); // prescribed strain rates ?
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
-    sigf = -0.1, -0.1, -0.1; // MPa
+    d.Sig = -0.1,-0.1,-0.1;
+    sigf =  -0.1,-0.1,-0.1;
     d.SetTxTest (sigf, peps, depsdt);
     d.Solve     (/*tf*/10, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01a");
+    //return 0;
 
     // stage 2: shearing wiht p-cte /////////////////////////////////////////////////////////////////////////
     double pf  = 0.1;              // final p MPa
     double qf  = 0.3;              // final q
-    double thf = -15.0*M_PI/180.0; // final theta
+    double thf = 30.0*M_PI/180.0; // final theta
     double tf  = sin(3.0*thf);     // final t = sin(3theta)
     
     // calc principal values (lf)
     Vec3_t lf;
     pqt2L (pf,qf,tf, lf);
     sigf = lf(0), lf(1), lf(2);
+    //cout << sigf << endl;
 
     // run
     d.ResetEps  ();
