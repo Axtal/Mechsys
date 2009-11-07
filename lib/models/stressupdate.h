@@ -31,7 +31,7 @@ class StressUpdate
 {
 public:
     // enum
-    enum Scheme_t { ME_t }; ///< Integration scheme
+    enum Scheme_t { ME_t, SingleFE_t }; ///< Integration scheme
 
     // Constructor
     StressUpdate (Model const * Mdl);
@@ -84,7 +84,15 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
     Vec_t deps(ncp);
     Vec_t divs(niv);
 
-    if (Scheme==ME_t)
+    if (Scheme==SingleFE_t) // without intersection detection (should be used for linear elasticity only)
+    {
+        deps = DEps;
+        TangentIncs (sta, deps, dsig, divs);
+        sta->Eps += deps;
+        sta->Sig += dsig;
+        sta->Ivs += divs;
+    }
+    else if (Scheme==ME_t)
     {
         // auxiliar variables
         EquilibState sta_1 (Mdl->NDim);              // intermediate state
