@@ -205,7 +205,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
 
         // update U, F, Time and elements to tout
         if      (Scheme==FE_t) { _FE_update (tout);  str.Printf("Forward-Euler (FE): nss = %d",Stp); }
-        else if (Scheme==ME_t) { _ME_update (tout);  str.Printf("Modified-Euler (ME): nss = %d   nit = %d",Stp,It); }
+        else if (Scheme==ME_t) { _ME_update (tout);  str.Printf("Modified-Euler (ME): nss = %d   maxIt = %d",Stp,It); }
         else if (Scheme==NR_t) { _NR_update (tout);  str.Printf("Newton-Rhapson (NR): nss = %d   nit = %d",Stp,It); }
         else throw new Fatal("Solver::Solve: Time integration scheme invalid");
 
@@ -661,7 +661,7 @@ inline void Solver::_cor_resid (Vec_t & dU)
         // next iteration
         it++;
     }
-    if (it>=MaxIt) throw new Fatal("Solver::_NR_update: Newton-Rhapson did not converge after %d iterations",it);
+    if (it>=MaxIt) throw new Fatal("Solver::_cor_resid (correct residual): Newton-Rhapson did not converge after %d iterations",it);
     if (it>It) It = it;
 }
 

@@ -56,7 +56,7 @@ public:
 
 
 inline CamClay::CamClay (int NDim, SDPair const & Prms)
-    : ElastoPlastic (NDim,Prms)
+    : ElastoPlastic (NDim,Prms,/*derived*/true)
 {
     lam = Prms("lam");
     kap = Prms("kap");

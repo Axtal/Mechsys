@@ -61,13 +61,13 @@ void DbgFun (FEM::Solver const & Sol, void * Dat)
 
 int main(int argc, char **argv) try
 {
-    /*
-    double qx = -10.0;
-    double qy = -10.0;
-    double uz = -0.02;
-    */
-    double qx =  0.0;
-    double qy =  0.0;
+    // index of model
+    size_t idx_mdl = 0;
+    if (argc>1) idx_mdl = atoi(argv[1]);
+
+    // path
+    double qx =  0.0; // delta pressure on the x-side (keep it constant)
+    double qy =  0.0; // delta pressure on the y-side (keep it constant)
     double uz = -0.07;
 
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
@@ -86,13 +86,31 @@ int main(int argc, char **argv) try
 
     // models
     Dict mdls;
-    //mdls.Set(-1, "name E nu", MODEL("LinElastic"), 10.0, 0.2);
-    //mdls.Set(-1, "name E nu fc sY", MODEL("ElastoPlastic"), 1.0, 0.3, FAILCRIT("VM"), 2.0);
-    mdls.Set(-1, "name  lam kap nu phi", MODEL("CamClay"), 0.01, 0.001, 0.3, M2Phi(1.0,"cam"));
+    switch (idx_mdl)
+    {
+        case 0: // Cam clay
+        {
+            cout << "\n[1;33m====================================== Cam clay ====================================[0m\n";
+            mdls.Set(-1, "name  lam kap nu phi", MODEL("CamClay"), 0.01, 0.001, 0.3, M2Phi(1.0,"cam"));
+            break;
+        }
+        case 1: // elasto-perfect-plastic with von Mises FC
+        {
+            cout << "\n[1;33m======================= Elasto-perfect-plastic with von Mises ======================[0m\n";
+            mdls.Set(-1, "name E nu fc sY", MODEL("ElastoPlastic"), 4000.0, 0.3, FAILCRIT("VM"), 150.0);
+            break;
+        }
+        case 2: // linear elastic
+        {
+            cout << "\n[1;33m==================================== Linear elastic ================================[0m\n";
+            mdls.Set(-1, "name E nu", MODEL("LinElastic"), 4000.0, 0.3);
+            break;
+        }
+        default: throw new Fatal("Index of model == %d is invalid. Valid values are 0,1,2",idx_mdl);
+    }
 
     // initial values
     Dict inis;
-    //inis.Set(-1, "sx sy sz sxy syz szx", -10.0,-10.0,-10.0,0.0,0.0,0.0);
     inis.Set(-1, "sx sy sz  v0", -100.0,-100.0,-100.0, 2.0);
 
     // domain
@@ -107,11 +125,7 @@ int main(int argc, char **argv) try
  
     // solver
     FEM::Solver sol(dom, &DbgFun, &dat);
-    //sol.Scheme = FEM::Solver::FE_t;
-    //sol.Scheme = FEM::Solver::NR_t;
-    //sol.nSS    = 1000;
-    //sol.MaxIt  = 1000;
-    //sol.TolR   = 1.0e-1;
+    sol.TolR   = 1.0e-3;
     //sol.dTini = 0.01;
     //sol.mMax = 2.0;
     //sol.mMin = 0.01;
@@ -127,31 +141,6 @@ int main(int argc, char **argv) try
     bcs.Set(-60, "uz", uz);
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/20);
-
-
-    /*
-    Dict bcs;
-    bcs.Set(-10, "ux", 0.0);
-    bcs.Set(-30, "uy", 0.0);
-    bcs.Set(-50, "uz", 0.0);
-    bcs.Set(-20, "qn", 0.0);
-    bcs.Set(-40, "qn", 0.0);
-    bcs.Set(-60, "qn", -150.0);
-    //bcs.Set(-60, "uz", -0.035);
-    dom.SetBCs (bcs);
-    sol.Solve  (20);
-
-    bcs.Set(-10, "ux", 0.0);
-    bcs.Set(-30, "uy", 0.0);
-    bcs.Set(-50, "uz", 0.0);
-    bcs.Set(-20, "qn", 0.0);
-    bcs.Set(-40, "qn", 0.0);
-    //bcs.Set(-60, "uz", 0.035);
-    bcs.Set(-60, "qn", 150.0);
-    dom.SetBCs (bcs);
-    sol.Solve  (20);
-    */
-
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 

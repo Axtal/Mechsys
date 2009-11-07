@@ -42,7 +42,7 @@ int main(int argc, char **argv) try
 
     // domain
     Domain d;
-    d.CamPos = 0, 35, 0; // position of camera
+    d.CamPos = 0, 10, 3; // position of camera
 
     // particles
     double L = 4.0; // length of edges of packing
@@ -51,7 +51,7 @@ int main(int argc, char **argv) try
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
     d.GenSpheres  (-1, L, N);
-    d.GenBox      (/*InitialTag*/-2, /*Lx*/1.1*L, /*Ly*/1.1*L, /*Lz*/1.1*L, R, /*Tx*/true, /*Cf*/1.1);
+    d.GenBox      (/*InitialTag*/-2, /*Lx*/1.2*L, /*Ly*/1.2*L, /*Lz*/1.2*L, R, /*Tx*/true, /*Cf*/1.5);
     d.WriteBPY    ("test_triaxial01");
 
     // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////

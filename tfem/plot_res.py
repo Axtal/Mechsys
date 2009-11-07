@@ -10,11 +10,12 @@ if True:
     qf       = Moct*pf
     cu       = qf*sqrt(3.0)/(2.0*sqrt(2.0))
     p        = Plotter()
+    p.show_k = True
     p.fc_p   = pf
     p.fc_phi = phi
     p.fc_cu  = cu
     p.fc_c   = 0.0
-    p.plot ("labtest_ele_0.res", draw_fl=True)
+    p.plot ("labtest_ele_0_-1.res", draw_fl=True)
 
     # plot data
     dat = read_tables(['mdl_tst_01.dat','mdl_tst_02.dat'])
@@ -25,16 +26,6 @@ if True:
     subplot(3,3,4); plot(dat['mdl_tst_02']['ed'],dat['mdl_tst_02']['mev'],'ko')
     show()
 
-
-if False:
-    dat = read_table("labtest_nod_6.res")
-    u   = array(dat['uz'])
-    f   = array(dat['fz'])
-    plot (-u,-f,'r-',lw=2)
-    plot (-u,-f,'ro',lw=2)
-    grid ()
-    show ()
-
 if False:
     dat  = read_table("labtest_uf.res")
     u    = array(dat['u'])
@@ -44,6 +35,15 @@ if False:
     plot(-u,-fext,'ro')
     plot(-u,-fint,'b-',lw=2)
     plot(-u,-fint,'b*')
-    legend(['f_ext','f_ext','f_int','f_int'])
+    legend(['f_ext','f_ext','f_int','f_int'], loc='lower right')
     grid()
     show()
+
+if False:
+    dat = read_table("labtest_nod_7_-7.res")
+    u   = array(dat['uz'])
+    f   = array(dat['fz'])
+    plot (-u,-f,'r-',lw=2)
+    plot (-u,-f,'ro',lw=2)
+    grid ()
+    show ()

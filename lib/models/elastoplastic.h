@@ -37,7 +37,7 @@ public:
     enum FCrit_t { VM_t, DP_t, MC_t }; ///< Failure criterion type
 
     // Constructor
-    ElastoPlastic (int NDim, SDPair const & Prms);
+    ElastoPlastic (int NDim, SDPair const & Prms, bool DerivedModel=false);
 
     // Derived methods
     void Stiffness    (State const * Sta, Mat_t & D,
@@ -70,25 +70,28 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms)
+inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived)
     : Model (NDim,Prms,"ElastoPlastic"), FC(VM_t)
 {
     E  = (Prms.HasKey("E") ? Prms("E") : 0.0);
     nu = Prms("nu");
-    if (Prms.HasKey("fc"))
+    if (!Derived)
     {
-        String fc;
-        FAILCRIT.Val2Key (Prms("fc"), fc);
-        if      (fc=="VM") FC = VM_t;
-        else if (fc=="DP") FC = DP_t;
-        else if (fc=="MC") FC = MC_t;
-        else throw new Fatal("ElastoPlastic::ElastoPlastic: Failure criterion fc=%s is not available",fc.CStr());
-    }
-    if (FC==VM_t)
-    {
-        if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
-        else if (Prms.HasKey("cu")) kY = 2.0*sqrt(2.0/3.0)*Prms("cu");
-        else throw new Fatal("ElastoPlastic::ElastoPlastic: With fc=VM (von Mises), either sY (uniaxial yield stress) or cu (undrained cohesion) must be provided");
+        if (Prms.HasKey("fc"))
+        {
+            String fc;
+            FAILCRIT.Val2Key (Prms("fc"), fc);
+            if      (fc=="VM") FC = VM_t;
+            else if (fc=="DP") FC = DP_t;
+            else if (fc=="MC") FC = MC_t;
+            else throw new Fatal("ElastoPlastic::ElastoPlastic: Failure criterion fc=%s is not available",fc.CStr());
+        }
+        if (FC==VM_t)
+        {
+            if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
+            else if (Prms.HasKey("cu")) kY = 2.0*sqrt(2.0/3.0)*Prms("cu");
+            else throw new Fatal("ElastoPlastic::ElastoPlastic: With fc=VM (von Mises), either sY (uniaxial yield stress) or cu (undrained cohesion) must be provided");
+        }
     }
 }
 
