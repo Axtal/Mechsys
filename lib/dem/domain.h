@@ -51,23 +51,24 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres  (int Tag, double L, size_t N, double rho=1.0);                                                  ///< General spheres
-    void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial=true, double Cf=1.3); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
-    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho=1.0);                                   ///< Generate particles from a FEM mesh generator
-    void GenFromVoro (int Tag, container & VC, double R, double rho=1.0);                                            ///< Generate Particles from a Voronoi container
-    void AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, bool Periodic=true, double rho=1.0); ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
+    void GenSpheres  (int Tag, double L, size_t N, double rho);                                             ///< General spheres
+    void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
+    void GenFromVoro (int Tag, container & VC, double R, double rho);                                       ///< Generate Particles from a Voronoi container
+    void AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
+                      double rho, bool Periodic);                                                           ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
 
     // Single particle addition
-    void AddVoroCell (int Tag, voronoicell & VC, double R, double rho=1.0, bool Erode=true);
-    void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
-    void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a rice at position X with spheroradius R, side of length L and density rho
-    void AddSphere   (int Tag, Vec3_t const & X, double R, double rho=1.0);                                           ///< Add sphere
-    void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
+    void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddTetra    (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a tetrahedron at position X with spheroradius R, side of length L and density rho
+    void AddRice     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a rice at position X with spheroradius R, side of length L and density rho
     void AddPlane    (int Tag, Vec3_t const & X, double R, double Lx,double Ly, double rho, double Angle=0, Vec3_t * Axis=NULL); ///< Add a cube at position X with spheroradius R, side of length L and density rho
+    void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
 
     // Methods
     void SetBC      (Dict & D);                                                 ///< Set the properties of individual grains by dictionaries
-    void Initialize (double dt = 0.0);                                          ///< Set the particles to a initial state and asign the possible insteractions
+    void Initialize (double dt=0.0);                                            ///< Set the particles to a initial state and asign the possible insteractions
     void Solve      (double tf, double dt, double dtOut, char const * FileKey); ///< Run simulation
     void WritePOV   (char const * FileKey);                                     ///< Write POV file
     void WriteBPY   (char const * FileKey);                                     ///< Write BPY (Blender) file
@@ -104,7 +105,13 @@ public:
     Vec3_t  L0;       ///< Initial length of the packing
 
 #ifdef USE_BOOST_PYTHON
-    void PyWritePOV (BPy::str const & FileKey, BPy::list const & CamPos);
+    void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
+    void PyAddCube   (int Tag, BPy::tuple const & X, double R, double L, double rho, double Ang, BPy::tuple const & Ax)            { Vec3_t a(Tup2Vec3(Ax)); AddCube  (Tag,Tup2Vec3(X),R,L,rho,Ang,&a); }
+    void PyAddTetra  (int Tag, BPy::tuple const & X, double R, double L, double rho, double Ang, BPy::tuple const & Ax)            { Vec3_t a(Tup2Vec3(Ax)); AddTetra (Tag,Tup2Vec3(X),R,L,rho,Ang,&a); }
+    void PyAddRice   (int Tag, BPy::tuple const & X, double R, double L, double rho, double Ang, BPy::tuple const & Ax)            { Vec3_t a(Tup2Vec3(Ax)); AddRice  (Tag,Tup2Vec3(X),R,L,rho,Ang,&a); }
+    void PyAddPlane  (int Tag, BPy::tuple const & X, double R, double Lx,double Ly, double rho, double Ang, BPy::tuple const & Ax) { Vec3_t a(Tup2Vec3(Ax)); AddPlane (Tag,Tup2Vec3(X),R,Lx,Ly,rho,Ang,&a); }
+    void PySetTxTest (BPy::tuple const & Sigf, BPy::tuple const & pEps, BPy::tuple  const & dEpsdt)                                { SetTxTest (Tup2Vec3(Sigf),Tup2Vec3(pEps),Tup2Vec3(dEpsdt)); }
+    void PySetCamPos (BPy::tuple const & PyCamPos)                                                                                 { CamPos = Tup2Vec3(PyCamPos); }
 #endif
 };
 
@@ -237,7 +244,7 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, dou
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::GenFromVoro (int Tag, container & VC,double R,double rho)
+inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho)
 {
     // info
     double start = std::clock();
@@ -258,7 +265,7 @@ inline void Domain::GenFromVoro (int Tag, container & VC,double R,double rho)
             {
                 if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
                 {
-                    AddVoroCell(Tag,c,R,rho);
+                    AddVoroCell(Tag,c,R,rho,true);
                     Vec3_t trans(x,y,z);
                     Particles[Particles.Size()-1]->Translate(trans);
                 }
@@ -272,7 +279,7 @@ inline void Domain::GenFromVoro (int Tag, container & VC,double R,double rho)
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::AddVoroPack (int Tag,double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, bool Periodic, double rho)
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic)
 {
     const double x_min=-Lx/2.0, x_max=Lx/2.0;
     const double y_min=-Ly/2.0, y_max=Ly/2.0;
@@ -301,62 +308,82 @@ inline void Domain::AddVoroPack (int Tag,double R, double Lx, double Ly, double 
 
 // Single particle addition
 
-inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho,bool Erode)
+inline void Domain::AddSphere (int Tag, const Vec3_t & X, double R, double rho)
 {
-    Array<Vec3_t> V(VC.p);
-    Array<Array <int> > E;
-    Array<int> Eaux(2);
-    for(int i=0;i<VC.p;i++) 
-    {
-        V[i] = Vec3_t(0.5*VC.pts[3*i],0.5*VC.pts[3*i+1],0.5*VC.pts[3*i+2]);
-        for(int j=0;j<VC.nu[i];j++) 
-        {
-            int k=VC.ed[i][j];
-            if (VC.ed[i][j]<i) 
-            {
-                Eaux[0] = i;
-                Eaux[1] = k;
-                E.Push(Eaux);
-            }
-        }
-    }
-    Array<Array <int> > F;
-    Array<int> Faux;
-    for(int i=0;i<VC.p;i++) 
-    {
-        for(int j=0;j<VC.nu[i];j++) 
-        {
-            int k=VC.ed[i][j];
-            if (k>=0) 
-            {
-                Faux.Push(i);
-                VC.ed[i][j]=-1-k;
-                int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
-                do 
-                {
-                    Faux.Push(k);
-                    int m=VC.ed[k][l];
-                    VC.ed[k][l]=-1-m;
-                    l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
-                    k=m;
-                } while (k!=i);
-                Array<int> Faux2(Faux.Size());
-                for (size_t l = 0; l < Faux.Size();l++)
-                {
-                    Faux2[l] = Faux[Faux.Size()-1-l];
-                }
+    // vertices
+    Array<Vec3_t> V(1);
+    V[0] = X;
 
-                F.Push(Faux2);
-                Faux.Clear();
-                Faux2.Clear();
-            }
-        }
-    }
-    VC.reset_edges();
-    if (Erode) Erosion(V,E,F,R);
+    // edges
+    Array<Array <int> > E(0); // no edges
+
+    // faces
+    Array<Array <int> > F(0); // no faces
 
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+}
+
+inline void Domain::AddCube (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+{
+    // vertices
+    Array<Vec3_t> V(8);
+    double l = L/2.0;
+    V[0] = -l, -l, -l;
+    V[1] =  l, -l, -l;
+    V[2] =  l,  l, -l;
+    V[3] = -l,  l, -l;
+    V[4] = -l, -l,  l;
+    V[5] =  l, -l,  l;
+    V[6] =  l,  l,  l;
+    V[7] = -l,  l,  l;
+
+    // edges
+    Array<Array <int> > E(12);
+    for (size_t i=0; i<12; ++i) E[i].Resize(2);
+    E[ 0] = 0, 1;
+    E[ 1] = 1, 2;
+    E[ 2] = 2, 3;
+    E[ 3] = 3, 0;
+    E[ 4] = 4, 5;
+    E[ 5] = 5, 6;
+    E[ 6] = 6, 7;
+    E[ 7] = 7, 4;
+    E[ 8] = 0, 4;
+    E[ 9] = 1, 5;
+    E[10] = 2, 6;
+    E[11] = 3, 7;
+
+    // faces
+    Array<Array <int> > F(6);
+    for (size_t i=0; i<6; i++) F[i].Resize(4);
+    F[0] = 4, 7, 3, 0;
+    F[1] = 1, 2, 6, 5;
+    F[2] = 0, 1, 5, 4;
+    F[3] = 2, 3, 7, 6;
+    F[4] = 0, 3, 2, 1;
+    F[5] = 4, 5, 6, 7;
+
+    // calculate the rotation
+    if (Axis==NULL)
+    {
+        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
+        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+    }
+    Quaternion_t q;
+    NormalizeRotation (Angle,(*Axis),q);
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Vec3_t t;
+        Rotation (V[i],q,t);
+        V[i] = t+X;
+    }
+
+    // add particle
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+
+    // clean up
+    delete Axis;
 }
 
 inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
@@ -447,84 +474,6 @@ inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, doub
     delete Axis;
 }
 
-inline void Domain::AddSphere (int Tag, const Vec3_t & X, double R, double rho)
-{
-    // vertices
-    Array<Vec3_t> V(1);
-    V[0] = X;
-
-    // edges
-    Array<Array <int> > E(0); // no edges
-
-    // faces
-    Array<Array <int> > F(0); // no faces
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-}
-
-inline void Domain::AddCube (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
-{
-    // vertices
-    Array<Vec3_t> V(8);
-    double l = L/2.0;
-    V[0] = -l, -l, -l;
-    V[1] =  l, -l, -l;
-    V[2] =  l,  l, -l;
-    V[3] = -l,  l, -l;
-    V[4] = -l, -l,  l;
-    V[5] =  l, -l,  l;
-    V[6] =  l,  l,  l;
-    V[7] = -l,  l,  l;
-
-    // edges
-    Array<Array <int> > E(12);
-    for (size_t i=0; i<12; ++i) E[i].Resize(2);
-    E[ 0] = 0, 1;
-    E[ 1] = 1, 2;
-    E[ 2] = 2, 3;
-    E[ 3] = 3, 0;
-    E[ 4] = 4, 5;
-    E[ 5] = 5, 6;
-    E[ 6] = 6, 7;
-    E[ 7] = 7, 4;
-    E[ 8] = 0, 4;
-    E[ 9] = 1, 5;
-    E[10] = 2, 6;
-    E[11] = 3, 7;
-
-    // faces
-    Array<Array <int> > F(6);
-    for (size_t i=0; i<6; i++) F[i].Resize(4);
-    F[0] = 4, 7, 3, 0;
-    F[1] = 1, 2, 6, 5;
-    F[2] = 0, 1, 5, 4;
-    F[3] = 2, 3, 7, 6;
-    F[4] = 0, 3, 2, 1;
-    F[5] = 4, 5, 6, 7;
-
-    // calculate the rotation
-    if (Axis==NULL)
-    {
-        Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
-        Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
-    }
-    Quaternion_t q;
-    NormalizeRotation (Angle,(*Axis),q);
-    for (size_t i=0; i<V.Size(); i++)
-    {
-        Vec3_t t;
-        Rotation (V[i],q,t);
-        V[i] = t+X;
-    }
-
-    // add particle
-    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
-    // clean up
-    delete Axis;
-}
-
 inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, double Ly, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
@@ -569,6 +518,64 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
 
     // clean up
     if (!ThereisanAxis) delete Axis;
+}
+
+inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho,bool Erode)
+{
+    Array<Vec3_t> V(VC.p);
+    Array<Array <int> > E;
+    Array<int> Eaux(2);
+    for(int i=0;i<VC.p;i++) 
+    {
+        V[i] = Vec3_t(0.5*VC.pts[3*i],0.5*VC.pts[3*i+1],0.5*VC.pts[3*i+2]);
+        for(int j=0;j<VC.nu[i];j++) 
+        {
+            int k=VC.ed[i][j];
+            if (VC.ed[i][j]<i) 
+            {
+                Eaux[0] = i;
+                Eaux[1] = k;
+                E.Push(Eaux);
+            }
+        }
+    }
+    Array<Array <int> > F;
+    Array<int> Faux;
+    for(int i=0;i<VC.p;i++) 
+    {
+        for(int j=0;j<VC.nu[i];j++) 
+        {
+            int k=VC.ed[i][j];
+            if (k>=0) 
+            {
+                Faux.Push(i);
+                VC.ed[i][j]=-1-k;
+                int l=VC.cycle_up(VC.ed[i][VC.nu[i]+j],k);
+                do 
+                {
+                    Faux.Push(k);
+                    int m=VC.ed[k][l];
+                    VC.ed[k][l]=-1-m;
+                    l=VC.cycle_up(VC.ed[k][VC.nu[k]+l],m);
+                    k=m;
+                } while (k!=i);
+                Array<int> Faux2(Faux.Size());
+                for (size_t l = 0; l < Faux.Size();l++)
+                {
+                    Faux2[l] = Faux[Faux.Size()-1-l];
+                }
+
+                F.Push(Faux2);
+                Faux.Clear();
+                Faux2.Clear();
+            }
+        }
+    }
+    VC.reset_edges();
+    if (Erode) Erosion(V,E,F,R);
+
+    // add particle
+    Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 }
 
 // Methods
@@ -1002,14 +1009,6 @@ inline void Domain::Output (char const * FileKey, size_t IdxOut, std::ostream & 
         OF << std::endl;
     }
 }
-
-#ifdef USE_BOOST_PYTHON
-inline void Domain::PyWritePOV (BPy::str const & FileKey, BPy::list const & CPos)
-{
-    CamPos = BPy::extract<double>(CPos[0])(), BPy::extract<double>(CPos[1])(), BPy::extract<double>(CPos[2])();
-    WritePOV (BPy::extract<char const *>(FileKey)());
-}
-#endif
 
 }; // namespace DEM
 

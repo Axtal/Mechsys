@@ -825,14 +825,38 @@ inline void CharInvs (Vec_t const & Sig, double & I1, double & I2, double & I3, 
 }
 
 /** Calc principal values given octahedral invariants. */
-inline void pqt2L (double p, double q, double t, Vec3_t & L)
+inline void pqt2L (double p, double q, double t, Vec3_t & L, char const * Type="oct")
 {
     double ttemp = (t<=-1.0 ? -1.0 : (t>=1.0 ? 1.0 : t));
     double th    = asin(ttemp)/3.0;
-    L(0) = -p/Util::SQ3 + 2.0*q*sin(th-2.0*Util::PI/3.0)/Util::SQ6;
-    L(1) = -p/Util::SQ3 + 2.0*q*sin(th)                 /Util::SQ6;
-    L(2) = -p/Util::SQ3 + 2.0*q*sin(th+2.0*Util::PI/3.0)/Util::SQ6;
+    if (strcmp(Type,"cam")==0)
+    {
+        L(0) = -p + 2.0*q*sin(th-2.0*Util::PI/3.0)/3.0;
+        L(1) = -p + 2.0*q*sin(th)                 /3.0;
+        L(2) = -p + 2.0*q*sin(th+2.0*Util::PI/3.0)/3.0;
+    }
+    else if (strcmp(Type,"oct")==0) // oct
+    {
+        L(0) = -p/Util::SQ3 + 2.0*q*sin(th-2.0*Util::PI/3.0)/Util::SQ6;
+        L(1) = -p/Util::SQ3 + 2.0*q*sin(th)                 /Util::SQ6;
+        L(2) = -p/Util::SQ3 + 2.0*q*sin(th+2.0*Util::PI/3.0)/Util::SQ6;
+    }
+    else throw new Fatal("pqt2L: Method is not available for invariant Type==%s",Type);
 }
+
+#ifdef USE_BOOST_PYTHON
+inline Vec3_t Tup2Vec3 (BPy::tuple const & T3)
+{
+    return Vec3_t(BPy::extract<double>(T3[0])(), BPy::extract<double>(T3[1])(), BPy::extract<double>(T3[2])());
+}
+
+inline BPy::tuple Pypqt2L (double p, double q, double t, BPy::str const & Type)
+{
+    Vec3_t l;
+    pqt2L (p, q, t, l, BPy::extract<char const *>(Type)());
+    return BPy::make_tuple (l(0), l(1), l(2));
+}
+#endif
 
 /** Calc octahedral coordinates given principal values. */
 inline void OctCoords (Vec3_t const & L, double & sa, double & sb, double & sc)

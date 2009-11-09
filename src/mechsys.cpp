@@ -55,6 +55,7 @@ namespace BPy = boost::python;
 #include "models/linelastic.h"
 #include "models/elastoplastic.h"
 #include "models/camclay.h"
+#include "linalg/matvec.h"
 
 // MechSys -- DEM
 #include "dem/domain.h"
@@ -72,8 +73,6 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DEM_DomAddVPack, AddVoroPack,  8, 10)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DEM_DomGenBox,   GenBox,       5, 6)
 
 // module
 BOOST_PYTHON_MODULE (mechsys)
@@ -101,6 +100,10 @@ BPy::class_<Table>("Table")
 
 // Fatal
 BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
+
+/////////////////////////////////////////////////////////////////////////////////// linalg ////
+
+BPy::def("pqt2L", Pypqt2L);
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
 
@@ -167,9 +170,20 @@ BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const
 ///////////////////////////////////////////////////////////////////////////////////// dem /////
 
 BPy::class_<DEM::Domain>("DEM_Domain")
-    .def("AddVoroPack", &DEM::Domain::AddVoroPack, DEM_DomAddVPack())
-    .def("GenBox",      &DEM::Domain::GenBox,      DEM_DomGenBox())
-    .def("WritePOV",    &DEM::Domain::PyWritePOV)
+    .def("GenSpheres",  &DEM::Domain::GenSpheres)
+    .def("GenBox",      &DEM::Domain::GenBox)
+    .def("AddVoroPack", &DEM::Domain::AddVoroPack)
+    .def("AddSphere",   &DEM::Domain::PyAddSphere)
+    .def("AddCube",     &DEM::Domain::PyAddCube)
+    .def("AddTetra",    &DEM::Domain::PyAddTetra)
+    .def("AddRice",     &DEM::Domain::PyAddRice)
+    .def("AddPlane",    &DEM::Domain::PyAddPlane)
+    .def("Solve",       &DEM::Domain::Solve)
+    .def("WritePOV",    &DEM::Domain::WritePOV)
+    .def("WriteBPY",    &DEM::Domain::WriteBPY)
+    .def("SetTxTest",   &DEM::Domain::PySetTxTest)
+    .def("ResetEps",    &DEM::Domain::ResetEps)
+    .def("SetCamPos",   &DEM::Domain::PySetCamPos)
     ;
 
 } // BOOST_PYTHON_MODULE

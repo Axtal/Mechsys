@@ -28,7 +28,6 @@ using DEM::Domain;
 
 int main(int argc, char **argv) try
 {
-    ifstream inf("parameters.txt");
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
     int    tag = -1;   // tag of particles
     double R   = 0.1;  // spheroradius
@@ -46,34 +45,33 @@ int main(int argc, char **argv) try
     d.CamPos = 0, 35, 0; // position of camera
 
     // particles
-    d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, per, rho);
+    //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, rho, per);
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
-    //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
+    d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
     //d.GenSpheres  (-1,4,4,1.0);
-    d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R);
+    cout << "shit 2\n";
+    d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R, /*Tx*/true, /*Cf*/1.3);
+    cout << "shit 3\n";
     d.WriteBPY    ("test_triaxial01");
     //return 0;
     // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////
     Vec3_t  sigf;                      // final stress state
     bVec3_t peps(false, false, false); // prescribed strain rates ?
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
-    d.Sig = -0.1,-0.1,-0.1;
     sigf =  -0.1,-0.1,-0.1;
     d.SetTxTest (sigf, peps, depsdt);
     d.Solve     (/*tf*/10, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01a");
     //return 0;
 
     // stage 2: shearing wiht p-cte /////////////////////////////////////////////////////////////////////////
-    double pf  = 0.1;              // final p MPa
-    double qf  = 0.15;              // final q
+    double pf  = 0.1;             // final p MPa
+    double qf  = 0.15;            // final q
     double thf = 30.0*M_PI/180.0; // final theta
-    inf >> thf;
-    thf *= M_PI/180;
-    double tf  = sin(3.0*thf);     // final t = sin(3theta)
+    double tf  = sin(3.0*thf);    // final t = sin(3theta)
     
     // calc principal values (lf)
     Vec3_t lf;
-    pqt2L (pf,qf,tf, lf);
+    pqt2L (pf,qf,tf, lf, "cam");
     sigf = lf(0), lf(1), lf(2);
     //cout << sigf << endl;
 
