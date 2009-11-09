@@ -46,6 +46,7 @@ public:
     void   ClrBCs ();
     size_t nDOF   () const { return UMap.Keys.Size(); }
     double Fa     (size_t iDOF, double Time) const { return Time*DF[iDOF]; } ///< F(applied)
+    void   GetState (SDPair & Sta) const;
 
     // Data
     Mesh::Vertex const & Vert;  ///< Geometric information: ID, Tag, coordinates
@@ -170,6 +171,16 @@ inline void Node::ClrBCs ()
         DU[i] = 0.0;
         DF[i] = 0.0;
         pU[i] = false;
+    }
+}
+
+inline void Node::GetState (SDPair & Sta) const
+{
+    Sta.clear ();
+    for (size_t i=0; i<nDOF(); ++i)
+    {
+        Sta.Set (UMap.Keys[i].CStr(), U[i]);
+        Sta.Set (FMap.Keys[i].CStr(), F[i]);
     }
 }
 
