@@ -829,13 +829,9 @@ inline void pqt2L (double p, double q, double t, Vec3_t & L)
 {
     double ttemp = (t<=-1.0 ? -1.0 : (t>=1.0 ? 1.0 : t));
     double th    = asin(ttemp)/3.0;
-    //L(0) = -p/Util::SQ3 + 2.0*q*sin(th-2.0*Util::PI/3.0)/Util::SQ6;
-    //L(1) = -p/Util::SQ3 + 2.0*q*sin(th)                 /Util::SQ6;
-    //L(2) = -p/Util::SQ3 + 2.0*q*sin(th+2.0*Util::PI/3.0)/Util::SQ6;
-    
-    L(0) = -p + 2.0*q*sin(th-2.0*Util::PI/3.0)/Util::SQ6;
-    L(1) = -p + 2.0*q*sin(th)                 /Util::SQ6;
-    L(2) = -p + 2.0*q*sin(th+2.0*Util::PI/3.0)/Util::SQ6;
+    L(0) = -p/Util::SQ3 + 2.0*q*sin(th-2.0*Util::PI/3.0)/Util::SQ6;
+    L(1) = -p/Util::SQ3 + 2.0*q*sin(th)                 /Util::SQ6;
+    L(2) = -p/Util::SQ3 + 2.0*q*sin(th+2.0*Util::PI/3.0)/Util::SQ6;
 }
 
 /** Calc octahedral coordinates given principal values. */

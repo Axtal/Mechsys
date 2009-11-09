@@ -28,27 +28,28 @@ using DEM::Domain;
 
 int main(int argc, char **argv) try
 {
+    ifstream inf("parameters.txt");
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
-    //int    tag = -1;   // tag of particles
+    int    tag = -1;   // tag of particles
     double R   = 0.1;  // spheroradius
-    //double Lx  = 4.0;  // length of cube with particles
-    //double Ly  = 4.0;  // length of cube with particles
-    //double Lz  = 4.0;  // length of cube with particles
-    //double nx  = 4;    // number of particles per side
-    //double ny  = 4;    // number of particles per side
-    //double nz  = 4;    // number of particles per side
-    //bool   per = true; // periodic ?
-    //double rho = 1.0;  // density
+    double Lx  = 4.0;  // length of cube with particles
+    double Ly  = 4.0;  // length of cube with particles
+    double Lz  = 4.0;  // length of cube with particles
+    double nx  = 4;    // number of particles per side
+    double ny  = 4;    // number of particles per side
+    double nz  = 4;    // number of particles per side
+    bool   per = true; // periodic ?
+    double rho = 1.0;  // density
 
     // domain
     Domain d;
     d.CamPos = 0, 35, 0; // position of camera
 
     // particles
-    //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, per, rho);
+    d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, per, rho);
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
-    d.GenSpheres  (-1,4,4,1.0);
+    //d.GenSpheres  (-1,4,4,1.0);
     d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R);
     d.WriteBPY    ("test_triaxial01");
     //return 0;
@@ -64,8 +65,10 @@ int main(int argc, char **argv) try
 
     // stage 2: shearing wiht p-cte /////////////////////////////////////////////////////////////////////////
     double pf  = 0.1;              // final p MPa
-    double qf  = 0.3;              // final q
+    double qf  = 0.15;              // final q
     double thf = 30.0*M_PI/180.0; // final theta
+    inf >> thf;
+    thf *= M_PI/180;
     double tf  = sin(3.0*thf);     // final t = sin(3theta)
     
     // calc principal values (lf)
