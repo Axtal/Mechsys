@@ -49,9 +49,7 @@ int main(int argc, char **argv) try
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
     //d.GenSpheres  (-1,4,4,1.0);
-    cout << "shit 2\n";
     d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R, /*Tx*/true, /*Cf*/1.3);
-    cout << "shit 3\n";
     d.WriteBPY    ("test_triaxial01");
     //return 0;
     // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////
@@ -78,7 +76,7 @@ int main(int argc, char **argv) try
     // run
     d.ResetEps  ();
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/40, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01b");
+    d.Solve     (/*tf*/100, /*dt*/0.001, /*dtOut*/0.1, "test_triaxial01b");
 
     return 0;
 }

@@ -17,7 +17,6 @@ rho = 1.0  # density
 d = DEM_Domain()
 #d.SetCamPos ((0., 35., 0.)) # position of camera
 
-print "shit 1"
 
 # particles
 Cf = 1.3 # walls length multiplier
@@ -25,13 +24,9 @@ Cf = 1.3 # walls length multiplier
 #d.AddRice     (-1, (0.0,0.0,0.0), 2.0, 0.1, 1.0, 0.0, (0.0,0.0,1.0))
 #X = (0.0,0.0,0.0)
 d.AddSphere   (-1, (0.0,0.0,0.0), 2.0, rho)
-print "shit 2"
 #d.GenSpheres  (-1,4,4,1.0)
 d.GenBox      (-2, 6, 6, 6, R, True, Cf)
-print "shit 3"
 d.WriteBPY    ("test_triaxial01")
-
-print "shit 4"
 
 # stage 1: isotropic compresssion ###################################
 tf     = 10.0
@@ -53,7 +48,7 @@ ttf = sin(3.0*thf)  # final t = sin(3theta)
 sigf = pqt2L (pf,qf,ttf, 'cam')
 
 # run
-tf = 40.0
+tf = 100.0
 d.ResetEps  ()
 d.SetTxTest (sigf, peps, depsdt)
 d.Solve     (tf, dt, dtOut, "test_triaxial01b")
