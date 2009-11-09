@@ -89,7 +89,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
         if (FC==VM_t)
         {
             if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
-            else if (Prms.HasKey("cu")) kY = 2.0*sqrt(2.0/3.0)*Prms("cu");
+            else if (Prms.HasKey("cu")) kY = (GTy==psa_t ? sqrt(2.0)*Prms("cu") : 2.0*sqrt(2.0/3.0)*Prms("cu"));
             else throw new Fatal("ElastoPlastic::ElastoPlastic: With fc=VM (von Mises), either sY (uniaxial yield stress) or cu (undrained cohesion) must be provided");
         }
     }
