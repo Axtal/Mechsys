@@ -51,7 +51,7 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres  (int Tag, double L, size_t N, double rho);                                             ///< General spheres
+    void GenSpheres  (int Tag, double L, size_t N, double rho, char const * Type);                          ///< General spheres
     void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
     void GenFromVoro (int Tag, container & VC, double R, double rho);                                       ///< Generate Particles from a Voronoi container
@@ -138,20 +138,52 @@ inline Domain::~Domain ()
 
 // Particle generation
 
-inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho)
+inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type)
 {
     // find radius from the edge's length
-    double R = L/(2.0*N);
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Generating packing of spheres -------------[0m\n";
 
-    for (size_t n=0; n<N*N*N; ++n) 
+    double R = L/(2.0*N);
+    if (strcmp(Type,"Normal")==0)
     {
-        Vec3_t pos(-L/2.0+R, -L/2.0+R, -L/2.0+R);
-        size_t i = (n%N);
-        size_t j = (n/N)%N;
-        size_t k = (n/(N*N));
-        pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
-        AddSphere (Tag,pos,R,rho);
+        for (size_t n=0; n<N*N*N; ++n) 
+        {
+            Vec3_t pos(-L/2.0+R, -L/2.0+R, -L/2.0+R);
+            size_t i = (n%N);
+            size_t j = (n/N)%N;
+            size_t k = (n/(N*N));
+            pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
+            AddSphere (Tag,pos,R,rho);
+        }
     }
+    else if (strcmp(Type,"HCP")==0)
+    {
+        size_t nx = N;
+        size_t ny = int(L/(sqrt(3.0)*R));
+        size_t nz = int(L/(sqrt(8.0/3.0)*R));
+        for (size_t k = 0; k < nz; k++)
+        {
+            for (size_t j = 0; j < ny; j++)
+            {
+                Vec3_t X;
+                if (k%2==0) X = Vec3_t(-2*R-L/2.0,R-L/2.0,2*R-L/2.0+k*sqrt(8.0/3.0)*R);
+                else X = Vec3_t(-R-L/2.0,R+sqrt(1.0/3.0)*R-L/2.0,2*R-L/2.0+k*sqrt(8.0/3.0)*R);
+                if (j%2==0) X += Vec3_t(R,j*sqrt(3.0)*R,0.0);
+                else X += Vec3_t(0.0,j*sqrt(3.0)*R,0.0);
+                for (size_t i = 0; i < nx; i++)
+                {
+                    X += Vec3_t(2*R,0.0,0.0);
+                    AddSphere(Tag,X,R,rho);
+                }
+            }
+        }
+
+    }
+    else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
 inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf)
@@ -301,8 +333,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
             }
         }
     }
-    con.draw_particles("voro_p.gnu");
-    con.draw_cells_gnuplot("voro_v.gnu");
     GenFromVoro(Tag,con,R,rho);
 }
 

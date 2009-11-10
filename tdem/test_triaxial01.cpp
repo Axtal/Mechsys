@@ -48,9 +48,10 @@ int main(int argc, char **argv) try
     //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, rho, per);
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
-    d.GenSpheres  (-1,4,4,1.0);
+    d.GenSpheres  (-1,4,4,1.0,"HCP");
     d.GenBox      (/*InitialTag*/-2,/*Lx*/6,/*Ly*/6,/*Lz*/6, R, /*Tx*/true, /*Cf*/1.3);
     d.WriteBPY    ("test_triaxial01");
+
     //return 0;
     // stage 1: isotropic compresssion //////////////////////////////////////////////////////////////////////
     Vec3_t  sigf;                      // final stress state
