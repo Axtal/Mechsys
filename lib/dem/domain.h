@@ -174,8 +174,7 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
                 for (size_t i = 0; i < nx; i++)
                 {
                     X += Vec3_t(2*R,0.0,0.0);
-                    if ((rand()>RAND_MAX/2)&&Eliminate) AddSphere(Tag,X,R,rho);
-                    else AddSphere(Tag,X,R,rho);
+                    if (((rand()>RAND_MAX/2)&&Eliminate)||(!Eliminate)) AddSphere(Tag,X,R,rho);
                 }
             }
         }
@@ -747,6 +746,53 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // calc force
         for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce ();
 
+        // calculate force for triaxial test and update stresses
+        if (IsTxTest)
+        {
+            Vec3_t force;
+            bool   update_sig = false;
+            if (pSig(0))
+            {
+                double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+                force = Sig(0)*area, 0.0, 0.0;
+                Particles[InitialIndex  ]->Ff =  force;
+                Particles[InitialIndex+1]->Ff = -force;
+                update_sig = true;
+            }
+            else 
+            {
+                double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+                Sig(0) = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
+            }
+            if (pSig(1))
+            {
+                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+                force = 0.0, Sig(1)*area, 0.0;
+                Particles[InitialIndex+2]->Ff =  force;
+                Particles[InitialIndex+3]->Ff = -force;
+                update_sig = true;
+            }
+            else 
+            {
+                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+                Sig(1) = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
+            }
+            if (pSig(2))
+            {
+                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
+                force = 0.0, 0.0, Sig(2)*area;
+                Particles[InitialIndex+4]->Ff =  force;
+                Particles[InitialIndex+5]->Ff = -force;
+                update_sig = true;
+            }
+            else 
+            {
+                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
+                Sig(2) = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
+            }
+            if (update_sig) Sig += dt*DSig/(tf-t0);
+        }
+
         // move free particles
         for (size_t i=0; i<FreeParticles.Size(); i++)
         {
@@ -755,19 +801,15 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         }
 
         // particles with translation constrained
-        Array<Vec3_t> FT(TParticles.Size());
         for (size_t i=0; i<TParticles.Size(); i++) 
         {
-            FT[i] = TParticles[i]->F;
             TParticles[i]->F = 0.0,0.0,0.0;
             TParticles[i]->Translate(dt);
         }
 
         // particles with rotation constrained
-        Array<Vec3_t> TT(RParticles.Size());
         for (size_t i=0; i<RParticles.Size(); i++)
         {
-            TT[i] = RParticles[i]->T;
             RParticles[i]->T = 0.0,0.0,0.0;
             RParticles[i]->Rotate(dt);
         }
@@ -785,37 +827,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             }
         }
 
-        // calculate force for triaxial test and update stresses
-        if (IsTxTest)
-        {
-            Vec3_t force;
-            bool   update_sig = false;
-            if (pSig(0))
-            {
-                double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-                force = Sig(0)*area, 0.0, 0.0;
-                Particles[InitialIndex  ]->Ff =  force;
-                Particles[InitialIndex+1]->Ff = -force;
-                update_sig = true;
-            }
-            if (pSig(1))
-            {
-                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-                force = 0.0, Sig(1)*area, 0.0;
-                Particles[InitialIndex+2]->Ff =  force;
-                Particles[InitialIndex+3]->Ff = -force;
-                update_sig = true;
-            }
-            if (pSig(2))
-            {
-                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-                force = 0.0, 0.0, Sig(2)*area;
-                Particles[InitialIndex+4]->Ff =  force;
-                Particles[InitialIndex+5]->Ff = -force;
-                update_sig = true;
-            }
-            if (update_sig) Sig += dt*DSig/(tf-t0);
-        }
 
         // next time position
         Time += dt;
@@ -898,7 +909,7 @@ inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t
     if (pEps(0))
     {
         double height = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0));
-        veloc = -0.5*dEpsdt(0)*height, 0.0, 0.0;
+        veloc = 0.5*dEpsdt(0)*height, 0.0, 0.0;
         TParticles.Push(Particles[InitialIndex]);
         TParticles[TParticles.Size()-1]->v = veloc;
         TParticles.Push(Particles[InitialIndex+1]);
@@ -919,7 +930,7 @@ inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t
     if (pEps(1))
     {
         double height = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-        veloc = 0.0, -0.5*dEpsdt(1)*height, 0.0;
+        veloc = 0.0, 0.5*dEpsdt(1)*height, 0.0;
         TParticles.Push(Particles[InitialIndex+2]);
         TParticles[TParticles.Size()-1]->v = veloc;
         TParticles.Push(Particles[InitialIndex+3]);
@@ -940,7 +951,7 @@ inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t
     if (pEps(2))
     {
         double height = (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        veloc = 0.0, 0.0, -0.5*dEpsdt(2)*height;
+        veloc = 0.0, 0.0, 0.5*dEpsdt(2)*height;
         TParticles.Push(Particles[InitialIndex+4]);
         TParticles[TParticles.Size()-1]->v = veloc;
         TParticles.Push(Particles[InitialIndex+5]);

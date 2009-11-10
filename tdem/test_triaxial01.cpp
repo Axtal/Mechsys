@@ -69,15 +69,18 @@ int main(int argc, char **argv) try
     double tf  = sin(3.0*thf);    // final t = sin(3theta)
     
     // calc principal values (lf)
-    Vec3_t lf;
-    pqt2L (pf,qf,tf, lf, "cam");
-    sigf = lf(0), lf(1), lf(2);
+    //Vec3_t lf;
+    //pqt2L (pf,qf,tf, lf, "cam");
+    //sigf = lf(0), lf(1), lf(2);
+    sigf = -0.1, -0.1, -0.1;
+    peps = false,false,true;
+    depsdt = Vec3_t(0.0,0.0,-0.2/30);
     //cout << sigf << endl;
 
     // run
     d.ResetEps  ();
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/100, /*dt*/0.001, /*dtOut*/2.0, "test_triaxial01b");
+    d.Solve     (/*tf*/40, /*dt*/0.001, /*dtOut*/2.0, "test_triaxial01b");
 
     return 0;
 }
