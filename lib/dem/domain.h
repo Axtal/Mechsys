@@ -51,7 +51,7 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres  (int Tag, double L, size_t N, double rho, char const * Type);                          ///< General spheres
+    void GenSpheres  (int Tag, double L, size_t N, double rho, char const * Type, bool Eliminate);          ///< General spheres
     void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
     void GenFromVoro (int Tag, container & VC, double R, double rho);                                       ///< Generate Particles from a Voronoi container
@@ -138,7 +138,7 @@ inline Domain::~Domain ()
 
 // Particle generation
 
-inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type)
+inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type, bool Eliminate)
 {
     // find radius from the edge's length
     double start = std::clock();
@@ -174,7 +174,8 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
                 for (size_t i = 0; i < nx; i++)
                 {
                     X += Vec3_t(2*R,0.0,0.0);
-                    AddSphere(Tag,X,R,rho);
+                    if ((rand()>RAND_MAX/2)&&Eliminate) AddSphere(Tag,X,R,rho);
+                    else AddSphere(Tag,X,R,rho);
                 }
             }
         }
