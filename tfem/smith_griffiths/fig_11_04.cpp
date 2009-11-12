@@ -118,7 +118,7 @@ int main(int argc, char **argv) try
     bcs.Set(-100, "ffunc", 0.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;
-    sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0);
+    sol.DynSolve (/*tf*/100, /*dt*/1.0, /*dtOut*/1.0, "fig_11_04");
 
     return 0.0;
 }

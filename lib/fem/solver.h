@@ -55,14 +55,14 @@ public:
     Solver (Domain const & Dom, pDbgFun DbgFun=NULL, void * DbgDat=NULL);
 
     // Methods
-    void Solve        (size_t NInc=1, Array<double> * Weights=NULL); ///< Solve steady/equilibrium equation
-    void TransSolve   (double tf, double dt, double dtOut);          ///< Solve transient equation
-    void DynSolve     (double tf, double dt, double dtOut);          ///< Solve dynamic equation
-    void AssembleKA   ();                                            ///< A = K11
-    void AssembleKMA  (double Coef1, double Coef2);                  ///< A = Coef1*M + Coef2*K
-    void AssembleKCMA (double Coef1, double Coef2, double Coef3);    ///< A = Coef1*M + Coef2*C + Coef3*K
-    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);           ///< Tangent increments: dU = inv(K)*dF
-    void Initialize   (bool Transient=false);                        ///< Initialize global matrices and vectors
+    void Solve        (size_t NInc=1, Array<double> * Weights=NULL);                   ///< Solve steady/equilibrium equation
+    void TransSolve   (double tf, double dt, double dtOut);                            ///< Solve transient equation
+    void DynSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic equation
+    void AssembleKA   ();                                                              ///< A = K11
+    void AssembleKMA  (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
+    void AssembleKCMA (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
+    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
+    void Initialize   (bool Transient=false);                                          ///< Initialize global matrices and vectors
 
     // Data
     Domain const & Dom;      ///< Domain
@@ -70,6 +70,7 @@ public:
     void         * DbgDat;   ///< Debug data
     double         Time;     ///< Current time (t)
     size_t         Inc;      ///< Current increment
+    size_t         IdxOut;   ///< Counter for generating VTU files in DynSolve
     size_t         Stp;      ///< Current (sub) step
     size_t         It;       ///< Current iteration
     size_t         NEq;      ///< Total number of equations (DOFs)
@@ -138,6 +139,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       DbgDat  (TheDbgDat),
       Time    (0.0),
       Inc     (0),
+      IdxOut  (0),
       Stp     (0),
       It      (0),
       TolR    (1.0e-7),
@@ -253,7 +255,7 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut)
 {
 }
 
-inline void Solver::DynSolve (double tf, double dt, double dtOut)
+inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * FileKey)
 {
     // info
     double start = std::clock();
@@ -292,8 +294,17 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut)
         std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
         Dom.OutResults (Time, F_int);
 
+        // write VTU
+        if (FileKey!=NULL)
+        {
+            String fkey;
+            fkey.Printf  ("%s_%08d", FileKey, IdxOut);
+            Dom.WriteVTU (fkey.CStr());
+        }
+
         // next tout
         tout = Time + dtOut;
+        IdxOut++;
     }
 
     // info
