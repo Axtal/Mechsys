@@ -764,7 +764,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     // solve
     double t0      = Time; // initial time
     size_t idx_out = 0;    // index of output
-    double tout    = 0.0;  // time position for output
+    double tout    = t0;  // time position for output
 
     // output initial state
     Output (FileKey, idx_out, fw);
