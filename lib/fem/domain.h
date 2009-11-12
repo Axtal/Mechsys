@@ -698,6 +698,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
     bool nod_displacements = false;
     bool nod_velocities    = false;
     bool ele_velocities    = false;
+    bool ele_gradients     = false;
     Array<String> nod_keys;
     Array<String> ele_keys;
     for (size_t i=0; i<nn; ++i)
@@ -718,6 +719,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
             if (ele_keys.Find(dat.Keys[j])<0) ele_keys.Push (dat.Keys[j]);
         }
         if (dat.HasKey("vx") || dat.HasKey("vy") || dat.HasKey("vz")) ele_velocities = true;
+        if (dat.HasKey("gx") || dat.HasKey("gy") || dat.HasKey("gz")) ele_gradients  = true;
         if (dat.HasKey("sx") || dat.HasKey("sy") || dat.HasKey("sz"))
         {
             if (ele_keys.Find("pcam")<0) ele_keys.Push ("pcam");
@@ -864,6 +866,22 @@ inline void Domain::WriteVTU (char const * FNKey) const
             oss << "  " << nsflo <<          dat("vx") << " ";
             oss <<         nsflo <<          dat("vy") << " ";
             oss <<         nsflo << (NDim==3?dat("vz"):0.0);
+            k++;
+            VTU_NEWLINE (i,k,ne,nfmax/3-1,oss);
+        }
+        oss << "        </DataArray>\n";
+    }
+    if (ele_gradients)
+    {
+        oss << "        <DataArray type=\"Float32\" Name=\"" << "g" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t i=0; i<ne; ++i)
+        {
+            SDPair dat;
+            Eles[i]->GetState (dat);
+            oss << "  " << nsflo <<          dat("gx") << " ";
+            oss <<         nsflo <<          dat("gy") << " ";
+            oss <<         nsflo << (NDim==3?dat("gz"):0.0);
             k++;
             VTU_NEWLINE (i,k,ne,nfmax/3-1,oss);
         }
