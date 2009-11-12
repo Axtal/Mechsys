@@ -20,6 +20,7 @@
 #####################################################################################
 
 SET(BLITZ_INCLUDE_SEARCH_PATH
+  $ENV{HOME}/pkg/blitz-0.9
   /usr/include
   /usr/local/include)
 

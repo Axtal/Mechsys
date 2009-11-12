@@ -20,10 +20,12 @@
 #####################################################################################
 
 SET(GSL_INCLUDE_SEARCH_PATH
+  $ENV{HOME}/pkg/gsl-1.13
   /usr/include
   /usr/local/include)
 
 SET(GSL_LIBRARY_SEARCH_PATH
+  $ENV{HOME}/pkg/gsl-1.13
   /usr/lib
   /usr/local/lib)
 

@@ -45,8 +45,8 @@ int main(int argc, char **argv) try
                    0.5*PI*10+(8./15.)*PI);
 
     // initialize
-    d.Particles[0]->Initialize(0.0,10000);
-    d.Particles[1]->Initialize(0.0,10000);
+    d.Particles[0]->Initialize(10000);
+    d.Particles[1]->Initialize(10000);
     d.Initialize (/*dt*/0.0);
 
     // check

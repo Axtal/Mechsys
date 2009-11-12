@@ -65,7 +65,7 @@ int main(int argc, char **argv) try
 
     // domain
     Domain d;
-    d.GenFromVoro (-1,con1, /*R*/radius);
+    d.GenFromVoro (-1,con1, /*R*/radius,1.0);
     for (size_t i=0; i < d.Particles.Size() ; ++i)
     {
         Vec3_t trans(x_min,y_min,z_min+2.0);

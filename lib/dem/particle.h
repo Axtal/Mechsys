@@ -46,7 +46,8 @@ public:
     ~Particle ();
 
     // Methods
-    void Initialize (double dt = 1.0, size_t NCalls=5000);                          ///< Initialize this particle
+    void Initialize (size_t NCalls=5000);                                           ///< Initialize this particle
+    void InitializeVelocity (double dt = 1.0);                                      ///< Initialize this particle
     void Rotate     (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
     void Rotate     (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
     void Translate  (double dt);                                                    ///< Apply translation once the total force is found
@@ -137,11 +138,14 @@ inline Particle::~Particle()
 
 // Methods
 
-inline void Particle::Initialize (double dt, size_t NCalls)
+inline void Particle::Initialize (size_t NCalls)
 {
     // calc properties
     if (!PropsReady) CalcProps (NCalls);
+}
 
+inline void Particle::InitializeVelocity (double dt)
+{
     // initialize the particle for the Verlet algorithm
     xb = x-v*dt;
     wb = w;
@@ -260,7 +264,7 @@ inline void Particle::CalcProps (size_t NCalls)
         Dmax = R;
 
     }
-    else
+    else 
     {
         double Xi[3] = { MinX() , MinY() , MinZ() };
         double Xs[3] = { MaxX() , MaxY() , MaxZ() };

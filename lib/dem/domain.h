@@ -651,12 +651,14 @@ inline void Domain::SetBC (Dict & D)
 
 inline void Domain::Initialize (double dt)
 {
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        Particles[i]->Initialize (dt);
-    }
     if (!Initialized)
     {
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            Particles[i]->Initialize();
+            Particles[i]->InitializeVelocity(dt);
+        }
+
         // info
         double start = std::clock();
         std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
@@ -702,9 +704,9 @@ inline void Domain::Initialize (double dt)
     }
     else
     {
-        for (size_t i = 0;i < TParticles.Size();i++)
+        for (size_t i=0; i<TParticles.Size(); i++)
         {
-            TParticles[i]->Initialize(dt);
+            TParticles[i]->InitializeVelocity(dt);
         }
     }
 }
