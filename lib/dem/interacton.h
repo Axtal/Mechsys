@@ -74,7 +74,7 @@ public:
 
 
 inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
-    : P1(Pt1), P2(Pt2), Kn(10000.0), Kt(5000.0), Gn(16.0), Gt(8.0), Mu(0.4), Epot(0.0)
+    : P1(Pt1), P2(Pt2), Kn(2*P1->Kn*P2->Kn/(P1->Kn + P2->Kn)), Kt(2*P1->Kt*P2->Kt/(P1->Kt + P2->Kt)), Gn(2*P1->Gn*P2->Gn/(P1->Gn + P2->Gn)), Gt(2*P1->Gt*P2->Gt/(P1->Gt + P2->Gt)), Mu(2*P1->Mu*P2->Mu/(P1->Mu + P2->Mu)), Epot(0.0)
 {
     CalcForce(0.1);
 }

@@ -25,7 +25,8 @@ SET(EXES
   test_voro01
   test_voro02
   test_voro03
-  test_triaxial01)
+  test_triaxial01
+  test_triaxial02)
 
 SET(TESTS
   test_distances)

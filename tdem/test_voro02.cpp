@@ -34,13 +34,11 @@ int main(int argc, char **argv) try
     const double x_min=-1, x_max=1;
     const double y_min=-1, y_max=1;
     const double z_min=-1, z_max=1;
-    const double cvol = (x_max-x_min)*(y_max-y_min)*(x_max-x_min);
 
     // number of blocks that the container is divided into
-    const int n_x=3, n_y=3, n_z=3;
+    const size_t n_x=3, n_y=3, n_z=3;
 
     // create voro container.allocate space for eight particles within each computational block
-    size_t num_particles = n_x*n_y*n_z;
     container con1 (x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z, true,true,true,8);
     container con2 (x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z, true,true,true,8);
 

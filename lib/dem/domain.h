@@ -67,7 +67,8 @@ public:
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
 
     // Methods
-    void SetBC      (Dict & D);                                                 ///< Set the properties of individual grains by dictionaries
+    void SetBC      (Dict & D);                                                 ///< Set the dynamic conditions of individual grains by dictionaries
+    void SetProps   (Dict & D);                                                 ///< Set the properties of individual grains by dictionaries
     void Initialize (double dt=0.0);                                            ///< Set the particles to a initial state and asign the possible insteractions
     void Solve      (double tf, double dt, double dtOut, char const * FileKey); ///< Run simulation
     void WritePOV   (char const * FileKey);                                     ///< Write POV file
@@ -646,7 +647,41 @@ inline void Domain::SetBC (Dict & D)
         }
         if (free_particle) FreeParticles.Push (Particles[i]);
     }
-    //std::cout << Particles.Size() << " " << FParticles.Size() << " " << FreeParticles.Size() << " " << RParticles.Size() << std::endl;
+}
+
+inline void Domain::SetProps (Dict & D)
+{
+    for (size_t i =0 ; i<Particles.Size(); i++)
+    {
+        for (size_t j=0; j<D.Keys.Size(); ++j)
+        {
+            int tag = D.Keys[j];
+            if (tag==Particles[i]->Tag)
+            {
+                SDPair const & p = D(tag);
+                if (p.HasKey("Gn"))
+                {
+                    Particles[i]->Gn = p("Gn");
+                }
+                if (p.HasKey("Gt"))
+                {
+                    Particles[i]->Gt = p("Gt");
+                }
+                if (p.HasKey("Kn"))
+                {
+                    Particles[i]->Kn = p("Kn");
+                }
+                if (p.HasKey("Kt"))
+                {
+                    Particles[i]->Kt = p("Kt");
+                }
+                if (p.HasKey("Mu"))
+                {
+                    Particles[i]->Mu = p("Mu");
+                }
+            }
+        }
+    }
 }
 
 inline void Domain::Initialize (double dt)
