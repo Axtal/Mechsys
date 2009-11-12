@@ -694,6 +694,42 @@ inline void Domain::WriteVTU (char const * FNKey) const
     size_t          nfmax =  6;        // number of floats in a line
     Util::NumStream nsflo = Util::_8s; // number format for floats
 
+    // check available data
+    bool nod_displacements = false;
+    bool nod_velocities    = false;
+    bool ele_velocities    = false;
+    Array<String> nod_keys;
+    Array<String> ele_keys;
+    for (size_t i=0; i<nn; ++i)
+    {
+        for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
+        {
+            if (nod_keys.Find(Nods[i]->UMap.Keys[j])<0) nod_keys.Push (Nods[i]->UMap.Keys[j]);
+        }
+        if (Nods[i]->UMap.HasKey("ux") || Nods[i]->UMap.HasKey("uy") || Nods[i]->UMap.HasKey("uz")) nod_displacements = true;
+        if (Nods[i]->UMap.HasKey("vx") || Nods[i]->UMap.HasKey("vy") || Nods[i]->UMap.HasKey("vz")) nod_velocities    = true;
+    }
+    for (size_t i=0; i<ne; ++i)
+    {
+        SDPair dat;
+        Eles[i]->GetState (dat);
+        for (size_t j=0; j<dat.Keys.Size(); ++j)
+        {
+            if (ele_keys.Find(dat.Keys[j])<0) ele_keys.Push (dat.Keys[j]);
+        }
+        if (dat.HasKey("vx") || dat.HasKey("vy") || dat.HasKey("vz")) ele_velocities = true;
+        if (dat.HasKey("sx") || dat.HasKey("sy") || dat.HasKey("sz"))
+        {
+            if (ele_keys.Find("pcam")<0) ele_keys.Push ("pcam");
+            if (ele_keys.Find("qcam")<0) ele_keys.Push ("qcam");
+        }
+    }
+    //std::cout << "nod_keys          = " << nod_keys          << std::endl;
+    //std::cout << "ele_keys          = " << ele_keys          << std::endl;
+    //std::cout << "nod_displacements = " << nod_displacements << std::endl;
+    //std::cout << "nod_velocities    = " << nod_velocities    << std::endl;
+    //std::cout << "ele_velocities    = " << ele_velocities    << std::endl;
+
     // header
     oss << "<?xml version=\"1.0\"?>\n";
     oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -751,25 +787,25 @@ inline void Domain::WriteVTU (char const * FNKey) const
     oss << "      </Cells>\n";
 
     // data -- nodes
-    if (Nods[0]->U.Size()==1)
+    oss << "      <PointData Scalars=\"point_scalars\">\n";
+    for (size_t i=0; i<nod_keys.Size(); ++i)
     {
-        String key = Nods[0]->UMap.Keys[0];
-        oss << "      <PointData Scalars=\"TheScalars\">\n";
-        oss << "        <DataArray type=\"Float32\" Name=\"" << key << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-        k = 0; oss << "        ";
-        for (size_t i=0; i<nn; ++i)
+        if (!(nod_keys[i]=="ux" || nod_keys[i]=="uy" || nod_keys[i]=="uz"))
         {
-            oss << (k==0?"  ":" ") << Nods[i]->Vert.Tag;
-            k++;
-            VTU_NEWLINE (i,k,nn,nimax,oss);
+            oss << "        <DataArray type=\"Float32\" Name=\"" << nod_keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+            k = 0; oss << "        ";
+            for (size_t j=0; j<nn; ++j)
+            {
+                oss << (k==0?"  ":" ") << Nods[j]->U[Nods[j]->UMap(nod_keys[i])];
+                k++;
+                VTU_NEWLINE (j,k,nn,nfmax-1,oss);
+            }
+            oss << "        </DataArray>\n";
         }
-        oss << "        </DataArray>\n";
-        oss << "      </PointData>\n";
     }
-    else if (Nods[0]->U.Size()==(size_t)NDim)
+    if (nod_displacements)
     {
-        oss << "      <PointData Vectors=\"TheVectors\">\n";
-        oss << "        <DataArray type=\"Float32\" Name=\"" << "U" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        oss << "        <DataArray type=\"Float32\" Name=\"" << "u" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
         k = 0; oss << "        ";
         for (size_t i=0; i<nn; ++i)
         {
@@ -780,23 +816,56 @@ inline void Domain::WriteVTU (char const * FNKey) const
             VTU_NEWLINE (i,k,nn,nfmax/3-1,oss);
         }
         oss << "        </DataArray>\n";
-        oss << "      </PointData>\n";
     }
+    oss << "      </PointData>\n";
 
     // data -- elements
-    oss << "      <CellData Scalars=\"TheScalars\">\n";
-    SDPair dat;
-    Eles[0]->GetState (dat);
-    for (size_t i=0; i<dat.Keys.Size(); ++i)
+    oss << "      <CellData Scalars=\"cell_scalars\">\n";
+    for (size_t i=0; i<ele_keys.Size(); ++i)
     {
-        oss << "        <DataArray type=\"Float32\" Name=\"" << dat.Keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-        k = 0; oss << "        ";
-        for (size_t j=0; j<ne; ++j)
+        if (!(ele_keys[i]=="vx" || ele_keys[i]=="vy" || ele_keys[i]=="vz") &&
+            !(ele_keys[i]=="gx" || ele_keys[i]=="gy" || ele_keys[i]=="gz"))
         {
-            Eles[j]->GetState (dat);
-            oss << (k==0?"  ":" ") << dat(dat.Keys[i]);
+            oss << "        <DataArray type=\"Float32\" Name=\"" << ele_keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+            k = 0; oss << "        ";
+            for (size_t j=0; j<ne; ++j)
+            {
+                SDPair dat;
+                Eles[j]->GetState (dat);
+                if (ele_keys[i]=="pcam" && dat.HasKey("sx"))
+                {
+                    double pcam = -(dat("sx")+dat("sy")+dat("sz"))/3.0;
+                    oss << (k==0?"  ":" ") << pcam;
+                }
+                else if (ele_keys[i]=="qcam" && dat.HasKey("sx"))
+                {
+                    double m    = (NDim==3 ? pow(dat("syz"),2.0)+pow(dat("szx"),2.0) : 0.0);
+                    double qcam = sqrt(pow(dat("sx")-dat("sy"),2.0) + pow(dat("sy")-dat("sz"),2.0) + pow(dat("sz")-dat("sx"),2.0) + 3.0*(pow(dat("sxy"),2.0)+m))/sqrt(2.0);
+                    oss << (k==0?"  ":" ") << qcam;
+                }
+                else
+                {
+                    oss << (k==0?"  ":" ") << (dat.HasKey(ele_keys[i]) ? dat(ele_keys[i]) : 0.0);
+                }
+                k++;
+                VTU_NEWLINE (j,k,ne,nfmax-1,oss);
+            }
+            oss << "        </DataArray>\n";
+        }
+    }
+    if (ele_velocities)
+    {
+        oss << "        <DataArray type=\"Float32\" Name=\"" << "v" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t i=0; i<ne; ++i)
+        {
+            SDPair dat;
+            Eles[i]->GetState (dat);
+            oss << "  " << nsflo <<          dat("vx") << " ";
+            oss <<         nsflo <<          dat("vy") << " ";
+            oss <<         nsflo << (NDim==3?dat("vz"):0.0);
             k++;
-            VTU_NEWLINE (j,k,nn,nfmax/3-1,oss);
+            VTU_NEWLINE (i,k,ne,nfmax/3-1,oss);
         }
         oss << "        </DataArray>\n";
     }
