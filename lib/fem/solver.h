@@ -64,7 +64,7 @@ public:
     void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
     void Initialize   (bool Transient=false);                                          ///< Initialize global matrices and vectors
 
-    // Data
+    // Data (read-only)
     Domain const & Dom;      ///< Domain
     pDbgFun        DbgFun;   ///< Debug function
     void         * DbgDat;   ///< Debug data
@@ -81,6 +81,7 @@ public:
     double         TolR;     ///< Tolerance for the norm of residual
     double         MaxNormF; ///< Max(Norm(F), Norm(Fint))
     bool           CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
+    bool           InitZed;  ///< Variables were already initalized (by Initialize() through Solve, TransSolve(), or DynSolve())
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -96,7 +97,7 @@ public:
     Vec_t V, A;     // (Transient/Dynamic) velocity and acceleration
     Vec_t Fnew;     // External force at n+1 (t=t+dt)
 
-    // Constants for integration
+    // Constants and flags (read-write)
     Scheme_t  Scheme;  ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
     size_t    nSS;     ///< FE and NR: number of substeps
     double    STOL;    ///< ME:
@@ -115,6 +116,7 @@ public:
     double    DampAk;  ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
     double    DynTh1;  ///< Dynamic coefficient Theta 1
     double    DynTh2;  ///< Dynamic coefficient Theta 2
+    bool      DynCont; ///< Continue dynamic simulation (after DySolve was called once)
 
 private:
     void _set_A_Lag    ();                     ///< Set A matrix due to Lagrange multipliers
@@ -144,6 +146,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       It      (0),
       TolR    (1.0e-7),
       CalcWork(false),
+      InitZed (false),
       Scheme  (ME_t),
       nSS     (1),
       STOL    (1.0e-5),
@@ -161,7 +164,8 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
       DampAm  (0.005),
       DampAk  (0.5),
       DynTh1  (0.5),
-      DynTh2  (0.5)
+      DynTh2  (0.5),
+      DynCont (true)
 {
 }
 
@@ -267,7 +271,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     std::cout << "\n[1;37m--- Stage solution --- (dynamic) ---------------------------------------------\n";
     std::cout << Util::_10_6 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
     std::cout << Util::_10_6 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
-    Dom.OutResults (Time, F_int);
+    if (IdxOut==0) Dom.OutResults (Time, F_int);
 
     // solve
     String str;
@@ -467,6 +471,9 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 
 inline void Solver::Initialize (bool Transient)
 {
+    // skip if variables were already initialized and Continue flag is on
+    if (InitZed && DynCont) return;
+
     // assign equation numbers
     NEq = 0;
     uDOFs.Resize (0); // unknown DOFs
@@ -561,6 +568,9 @@ inline void Solver::Initialize (bool Transient)
 
     // calc residual
     _calc_resid ();
+
+    // set initialized flag
+    InitZed = true;
 }
 
 inline void Solver::_set_A_Lag ()

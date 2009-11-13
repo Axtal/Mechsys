@@ -48,7 +48,7 @@ ttf = sin(3.0*thf)  # final t = sin(3theta)
 sigf = pqt2L (pf,qf,ttf, 'cam')
 
 # run
-tf = 100.0
+tf = 200.0
 d.ResetEps  ()
 d.SetTxTest (sigf, peps, depsdt)
 d.Solve     (tf, dt, dtOut, "test_triaxial01b")
