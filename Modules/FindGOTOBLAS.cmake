@@ -20,7 +20,7 @@
 #####################################################################################
 
 SET(GOTOBLAS_LIBRARY_SEARCH_PATH
-  $ENV{HOME}/opt/lib)
+  $ENV{HOME}/pkg/GotoBLAS2)
 
 FIND_LIBRARY(GOTOBLAS_GOTOBLAS NAMES goto PATHS ${GOTOBLAS_LIBRARY_SEARCH_PATH})
 

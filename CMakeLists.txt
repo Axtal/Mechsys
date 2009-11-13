@@ -26,6 +26,7 @@ OPTION(MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    OF
 OPTION(MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      OFF)
 OPTION(MAKE_PROFILING     "Make with profiling information (-pg)"             OFF)
 OPTION(MAKE_OPTIMIZED     "Make optimized (-O3)"                              ON)
+OPTION(MAKE_STATIC        "Make static (-static)"                             ON)
 OPTION(MAKE_PYTHON_MODULE "Create python module (mechsys)"                    OFF)
 OPTION(MAKE_TST           "Compile tests"                                     OFF)
 OPTION(MAKE_TFEM          "Compile FEM tests"                                 OFF)
@@ -58,6 +59,10 @@ ENDIF(MAKE_PROFILING)
 IF(MAKE_OPTIMIZED)
 	ADD_DEFINITIONS(-O3)
 ENDIF(MAKE_OPTIMIZED)
+
+IF(MAKE_STATIC)
+	ADD_DEFINITIONS(-static)
+ENDIF(MAKE_STATIC)
 
 ADD_DEFINITIONS(-fPIC -fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 
