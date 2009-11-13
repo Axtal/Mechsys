@@ -45,7 +45,7 @@ int main(int argc, char **argv) try
     d.CamPos = 0, 35, 0; // position of camera
 
     // particles
-    //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, rho, per);
+    //d.AddVoroPack (tag, R, Lx,Ly,Lz, nx,ny,nz, rho, per,1000);
     //d.AddRice     (-1,Vec3_t(0.0,0.0,0.0),2.0,0.1,1.0);
     //d.AddSphere   (-1, Vec3_t(0.0,0.0,0.0), /*R*/2.0, rho);
     d.GenSpheres  (-1,4,4,1.0,"HCP",true);

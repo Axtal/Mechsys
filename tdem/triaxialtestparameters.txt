@@ -4,6 +4,7 @@
 8.0      = Tangential dissipative coefficient
 0.4      = Microscopic friction coefficient
 0.1      = Spheroradius
+1200     = Seed of the random generator
 0.001    = Time step
 1.0      = Time step for output
 6.0      = Lx
@@ -17,11 +18,11 @@
 20       = Time span for the compression
 0        = Prescribed strain rate in X ?
 0        = Prescribed strain rate in Y ?
-0        = Prescribed strain rate in Z ?
+1        = Prescribed strain rate in Z ?
 0.0      = Final Strain x
 0.0      = Final Strain y
-0.0      = Final Strain z
+-0.2      = Final Strain z
 0.1      = Final pressure p
-0.3      = Final deviatoric stress q
+0.0      = Final deviatoric stress q
 30.0     = Angle of the stress path alpha
 200      = Final time for the test

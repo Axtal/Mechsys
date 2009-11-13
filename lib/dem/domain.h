@@ -56,7 +56,7 @@ public:
     void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
     void GenFromVoro (int Tag, container & VC, double R, double rho);                                       ///< Generate Particles from a Voronoi container
     void AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
-                      double rho, bool Periodic);                                                           ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
+                      double rho, bool Periodic,size_t Randomseed);                                         ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
 
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
@@ -312,8 +312,9 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho)
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic)
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed)
 {
+    srand(Randomseed);
     const double x_min=-Lx/2.0, x_max=Lx/2.0;
     const double y_min=-Ly/2.0, y_max=Ly/2.0;
     const double z_min=-Lz/2.0, z_max=Lz/2.0;
@@ -546,7 +547,15 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
 
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-
+    Particles[Particles.Size()-1]->Q    = q;
+    Particles[Particles.Size()-1]->I    = 1.0,1.0,1.0;
+    Particles[Particles.Size()-1]->V    = Lx*Ly*2*R;
+    Particles[Particles.Size()-1]->m    = rho*Lx*Ly*2*R;
+    Particles[Particles.Size()-1]->x    = X;
+    Particles[Particles.Size()-1]->Ekin = 0.0;
+    Particles[Particles.Size()-1]->Erot = 0.0;
+    Particles[Particles.Size()-1]->Dmax = sqrt(Lx*Lx+Ly*Ly)+R;
+    Particles[Particles.Size()-1]->PropsReady = true;
     // clean up
     if (!ThereisanAxis) delete Axis;
 }

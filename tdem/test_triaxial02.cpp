@@ -37,6 +37,7 @@ int main(int argc, char **argv) try
     double Gt;      //Tangential dissipative coefficient
     double Mu;      //Microscopic friction coefficient
     double R;       //Spheroradius
+    size_t seed;    //Seed of the ramdon generator
     double dt;      //Time step
     double dtOut;   //Time step for output
     double Lx;      //Lx
@@ -65,6 +66,7 @@ int main(int argc, char **argv) try
     infile >> Gt;       infile.ignore(200,'\n');
     infile >> Mu;       infile.ignore(200,'\n');
     infile >> R;        infile.ignore(200,'\n');
+    infile >> seed;     infile.ignore(200,'\n');
     infile >> dt;       infile.ignore(200,'\n');
     infile >> dtOut;    infile.ignore(200,'\n');
     infile >> Lx;       infile.ignore(200,'\n');
@@ -95,7 +97,7 @@ int main(int argc, char **argv) try
     d.CamPos = Vec3_t(0, 5*(Lx+Ly+Lz)/3.0, 0); // position of camera
 
     // particles
-    d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true);
+    d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed);
     d.GenBox      (/*InitialTag*/-2,/*Lx*/Lx+2.0,/*Ly*/Ly+2.0,/*Lz*/Lz+2.0, R, /*Tx*/true, /*Cf*/1.3);
     d.WriteBPY    ("test_triaxial");
 
