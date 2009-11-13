@@ -419,15 +419,16 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
     for (size_t k=0; k<Dom.Eles.Size(); ++k)
     {
         // calc K and M
-        Mat_t         K, M; // matrices
+        Mat_t         K, M, C; // matrices
         Array<size_t> loc;  // location array
         Array<bool>   pre;  // prescribed U ?
         Dom.Eles[k]->CalcK  (K);
         Dom.Eles[k]->CalcM  (M);
+        Dom.Eles[k]->CalcC  (C);
         Dom.Eles[k]->GetLoc (loc, pre);
         // calc C
-        Mat_t C(K.num_rows(),K.num_cols());
-        C = DampAm*M + DampAk*K;
+        //Mat_t C(K.num_rows(),K.num_cols());
+        //C = DampAm*M + DampAk*K;
         // set K, C, M, and A matrices
         for (size_t i=0; i<loc.Size(); ++i)
         {
@@ -919,7 +920,7 @@ inline void Solver::_GN22_update (double tf, double dt)
         Vnew = Vs + (DynTh1*dt)*Anew;
 
         // iteratios
-        for (It=0; It<MaxIt; ++It)
+        //for (It=0; It<MaxIt; ++It)
         {
             // assemble Amat
             if (DampTy==None_t) AssembleKMA  (c3,     1.0);  // A = c3*M        + K
@@ -950,7 +951,7 @@ inline void Solver::_GN22_update (double tf, double dt)
             MaxNormF = Util::Max (Norm(F), Norm(F_int));
             if (NormR<=TolR*MaxNormF) break;
         }
-        if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
+        //if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
 
         // update
         U = Unew;

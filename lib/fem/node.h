@@ -157,9 +157,9 @@ inline void Node::SetBCs (SDPair const & BCs)
         }
         else
         {
-            std::ostringstream oss;
-            oss << (*this);
-            throw new Fatal("Node::SetBCs: Node does not have key=%s.  %s", key.CStr(), oss.str().c_str());
+            //std::ostringstream oss;
+            //oss << (*this);
+            //throw new Fatal("Node::SetBCs: Node does not have key=%s.  %s", key.CStr(), oss.str().c_str());
         }
     }
 }
