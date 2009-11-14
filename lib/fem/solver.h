@@ -454,9 +454,9 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     // set prescribed dF
     set_to_zero (dF);
     set_to_zero (W);
-    for (NodeBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
+    for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
     {
-        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
             long   eq   = p->first->EQ[idof];
@@ -470,9 +470,9 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 
     // set prescribed dU
     set_to_zero (dU);
-    for (NodeBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
+    for (NodBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
     {
-        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
             long   eq   = p->first->EQ[idof];
@@ -507,9 +507,9 @@ inline void Solver::Initialize (bool Transient)
     pEQ.Resize    (0);
     pU .Resize    (NEq);
     pU .SetValues (false);
-    for (NodeBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
+    for (NodBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
     {
-        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
             long   eq   = p->first->EQ[idof];
@@ -520,9 +520,9 @@ inline void Solver::Initialize (bool Transient)
 
     // unknown equations
     uEQ.Resize (0);
-    for (NodeBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
+    for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
     {
-        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
             long   eq   = p->first->EQ[idof];
@@ -854,34 +854,19 @@ inline void Solver::_calc_F_Fnew (double dt)
     // loaded nodes
     set_to_zero (F);
     set_to_zero (Fnew);
-    for (NodeBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
+    for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
     {
-        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
             long   eq   = p->first->EQ[idof];
             if (!pU[eq]) // set dF for unknown variables only
             {
-                F(eq)    += q->second;
-                Fnew(eq) += q->second;
+                F   (eq) = (*p->second.second)(Time)    * q->second;
+                Fnew(eq) = (*p->second.second)(Time+dt) * q->second;
             }
         }
     }
-
-    /*
-    // nodes with multiplier to F
-    for (size_t i=0; i<Dom.NodsMF.Size(); ++i)
-    {
-        FEM::Node     const * nod   = Dom.NodsMF[i]->first;
-        Array<String> const & fkeys = Dom.NodsMF[i]->second;
-        for (size_t j=0; j<fkeys.Size(); ++j)
-        {
-            long eq = nod->EQ[nod->FMap(fkeys[j])];
-            F   (eq) *= (*Dom.CalcM[i]) (Time);
-            Fnew(eq) *= (*Dom.CalcM[i]) (Time+dt);
-        }
-    }
-    */
 
     // nodes with F function
     if (Dom.NDim==3)

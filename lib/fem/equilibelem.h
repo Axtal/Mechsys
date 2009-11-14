@@ -41,7 +41,7 @@ public:
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, 
-                      NodeBCs_t & pF, NodeBCs_t & pU);             ///< If setting body forces, IdxEdgeOrFace is ignored
+                      NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
     void CalcFint    (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
     void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                            const; ///< Mass matrix
@@ -106,7 +106,7 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     CalcFint ();
 }
 
-inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_t & pF, NodeBCs_t & pU)
+inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
     bool has_bx  = BCs.HasKey("bx");  // x component of body force
     bool has_by  = BCs.HasKey("by");  // y component of body force
@@ -165,11 +165,14 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeB
                 // add to dF
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    if (has_bx || has_cbx) pF[Con[j]][Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
-                    if (has_by           ) pF[Con[j]][Con[j]->FMap("fy")] += coef*GE->N(j)*by;
-                    if (has_bz           ) pF[Con[j]][Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+                    if (has_bx || has_cbx) pF[Con[j]].first[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
+                    if (has_by           ) pF[Con[j]].first[Con[j]->FMap("fy")] += coef*GE->N(j)*by;
+                    if (has_bz           ) pF[Con[j]].first[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
                 }
             }
+
+            // set CalcM
+            for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
         }
 
         // surface loading
@@ -240,11 +243,14 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeB
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]][Con[k]->FMap("fx")] += coef*GE->FN(j)*qx;
-                    pF[Con[k]][Con[k]->FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
-                    pF[Con[k]][Con[k]->FMap("fz")] += coef*GE->FN(j)*qz;
+                    pF[Con[k]].first[Con[k]->FMap("fx")] += coef*GE->FN(j)*qx;
+                    pF[Con[k]].first[Con[k]->FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
+                    pF[Con[k]].first[Con[k]->FMap("fz")] += coef*GE->FN(j)*qz;
                 }
             }
+
+            // set CalcM
+            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
         }
     }
 
@@ -257,9 +263,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeB
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            if (has_ux) pU[Con[k]][Con[k]->UMap("ux")] = ux;
-            if (has_uy) pU[Con[k]][Con[k]->UMap("uy")] = uy;
-            if (has_uz) pU[Con[k]][Con[k]->UMap("uz")] = uz;
+            if (has_ux) pU[Con[k]].first[Con[k]->UMap("ux")] = ux;
+            if (has_uy) pU[Con[k]].first[Con[k]->UMap("uy")] = uy;
+            if (has_uz) pU[Con[k]].first[Con[k]->UMap("uz")] = uz;
         }
     }
 }

@@ -33,7 +33,9 @@
 namespace FEM
 {
 
-typedef std::map<Node const *,IntDbl_t> NodeBCs_t; ///< Map Node => bry conds. (idxDOF,valueBCS)
+typedef double (*pCalcM) (double t);              ///< M(ultiplier) callback
+typedef std::pair<IntDbl_t,pCalcM>      BCData_t; ///< Bry conds data (idxDOF,valueBCs,multiplier)
+typedef std::map<Node const *,BCData_t> NodBCs_t; ///< Map Node => bry conds. (idxDOF,valueBCS)
 
 
 class Element
@@ -55,8 +57,8 @@ public:
     virtual void BackupState  ()                                         const;
     virtual void RestoreState ()                                         const;
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
-                               NodeBCs_t & pF, NodeBCs_t & pU)           {}
-    virtual void ClrBCs       ()                                         {}
+                               NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM) {}
+    virtual void ClrBCs       ()                                           {}
     virtual void CalcFint     (Vec_t * F_int=NULL)                       const { if (F_int!=NULL) for (size_t i=0; i<F_int->size(); ++i) (*F_int)(i) = 0.0; }
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
     virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }

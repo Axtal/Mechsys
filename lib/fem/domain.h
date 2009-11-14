@@ -39,12 +39,16 @@
 namespace FEM
 {
 
+inline double Multiplier (double t) { return 1.0; }
+
 class Domain
 {
 public:
-    typedef void (*pCalcF) (double t, double & fx, double & fy, double & fz); ///< Callback function
-    typedef std::map<int,pCalcF>   FDatabase_t; ///< Map tag to F function pointer
-    typedef std::map<int,Model*>   Models_t;    ///< Map tag to model pointer
+    // typedefs
+    typedef void (*pCalcF) (double t, double & fx, double & fy, double & fz); ///< F(orce) callback
+    typedef std::map<int,pCalcF>  FDatabase_t; ///< Map tag to F function pointer
+    typedef std::map<int,pCalcM>  MDatabase_t; ///< Map tag to M function pointer
+    typedef std::map<int,Model*>  Models_t;    ///< Map tag to model pointer
 
     // Constructor
     Domain (Mesh::Generic const & Mesh,  ///< The mesh
@@ -81,12 +85,13 @@ public:
     Array<size_t>         OutEles; ///< ID of elements for which output (results) is generated
     Array<std::ofstream*> FilNods; ///< Files with results at selected nodes (OutNods)
     Array<std::ofstream*> FilEles; ///< Files with results at selected elements (OutEles)
+    Array<size_t>         Beams;   ///< Subset of elements of type Beam
+    NodBCs_t              pU;      ///< Nodes with prescribed U
+    NodBCs_t              pF;      ///< Nodes with prescribed F
+    MDatabase_t           MFuncs;  ///< Database of pointers to M functions
     FDatabase_t           FFuncs;  ///< Database of pointers to F functions
     Array<Node*>          NodsF;   ///< Nodes with F specified through callback function
-    Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to FNodes
-    Array<size_t>         Beams;   ///< Subset of elements of type Beam
-    NodeBCs_t             pU;      ///< Nodes with prescribed U
-    NodeBCs_t             pF;      ///< Nodes with prescribed F
+    Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to NodsF
 
 #ifdef USE_BOOST_PYTHON
     void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
@@ -164,7 +169,7 @@ inline void Domain::SetBCs (Dict const & BCs)
     // clear previous BCs
     ClrBCs ();
 
-    // map key => keys set
+    // map tag/key => keys set
     std::map<int,bool> keys_set;
     for (size_t i=0; i<BCs.Keys.Size(); ++i) keys_set[BCs.Keys[i]] = false;
 
@@ -179,22 +184,23 @@ inline void Domain::SetBCs (Dict const & BCs)
             if (tag<0)
             {
                 size_t eid = Msh.TgdCells[i]->ID;
-                if (BCs.HasKey(tag)) Eles[eid]->SetBCs (idx_edge_or_face, BCs(tag), pF, pU);
-                else
+                if (BCs.HasKey(tag))
                 {
-                    //std::cout << "Domain::SetBCs: BCs dictionary does not have tag=" << tag << " for edge/face\n";
-                    /*
-                    std::ostringstream oss;
-                    oss << (*Eles[i]);
-                    throw new Fatal("Domain::SetBCs: BCs dictionary does not have tag=%d for edge/face. Elem: %s", tag, oss.str().c_str());
-                    */
+                    pCalcM calcm = &Multiplier;
+                    if (BCs(tag).HasKey("mfunc")) // callback specified
+                    {
+                        MDatabase_t::const_iterator p = MFuncs.find(tag);
+                        if (p!=MFuncs.end()) calcm = p->second;
+                        else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
+                    }
+                    Eles[eid]->SetBCs (idx_edge_or_face, BCs(tag), pF, pU, calcm);
+                    keys_set[tag] = true;
                 }
-                keys_set[tag] = true;
             }
         }
     }
 
-    // nodes (must be after elements)
+    // nodes
     for (size_t i=0; i<Msh.TgdVerts.Size(); ++i)
     {
         int tag = Msh.TgdVerts[i]->Tag;
@@ -210,26 +216,28 @@ inline void Domain::SetBCs (Dict const & BCs)
                     if (p!=FFuncs.end()) CalcF.Push (p->second);
                     else throw new Fatal("Domain::SetBCs: Callback function with tag=%d was not found in FFuncs database",tag);
                 }
-                else // Nods[nid]->SetBCs (BCs(tag));
+                else
                 {
+                    pCalcM calcm = &Multiplier;
+                    if (BCs(tag).HasKey("mfunc")) // callback specified
+                    {
+                        MDatabase_t::const_iterator p = MFuncs.find(tag);
+                        if (p!=MFuncs.end()) calcm = p->second;
+                        else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
+                    }
                     SDPair const & bcs = BCs(tag);
                     for (StrDbl_t::const_iterator p=bcs.begin(); p!=bcs.end(); ++p)
                     {
-                        if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]][Nods[nid]->UMap(p->first)]  = p->second;
-                        else if (Nods[nid]->FMap.HasKey(p->first)) pF[Nods[nid]][Nods[nid]->FMap(p->first)] += p->second;
+                        if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]].first[Nods[nid]->UMap(p->first)]  = p->second;
+                        else if (Nods[nid]->FMap.HasKey(p->first))
+                        {
+                            pF[Nods[nid]].first[Nods[nid]->FMap(p->first)] += p->second;
+                            pF[Nods[nid]].second = calcm;
+                        }
                     }
                 }
+                keys_set[tag] = true;
             }
-            else
-            {
-                //std::cout << "Domain::SetBCs: BCs dictionary does not have tag=" << tag << " for node\n";
-                /*
-                std::ostringstream oss;
-                oss << (*Nods[i]);
-                throw new Fatal("Domain::SetBCs: BCs dictionary does not have tag=%d for node. Node: %s", tag, oss.str().c_str());
-                */
-            }
-            keys_set[tag] = true;
         }
     }
 
@@ -238,14 +246,22 @@ inline void Domain::SetBCs (Dict const & BCs)
     {
         if (p->second==false)
         {
-            // try elements (property) tags
+            // try elements (property) tags => Beams for example
             bool found = false;
             for (size_t i=0; i<Msh.Cells.Size(); ++i)
             {
                 size_t eid = Msh.Cells[i]->ID;
-                if (Msh.Cells[i]->Tag==p->first)
+                int    tag = p->first;
+                if (Msh.Cells[i]->Tag==tag)
                 {
-                    Eles[eid]->SetBCs (/*ignored*/0, BCs(p->first), pF, pU);
+                    pCalcM calcm = &Multiplier;
+                    if (BCs(tag).HasKey("mfunc")) // callback specified
+                    {
+                        MDatabase_t::const_iterator p = MFuncs.find(tag);
+                        if (p!=MFuncs.end()) calcm = p->second;
+                        else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
+                    }
+                    Eles[eid]->SetBCs (/*ignored*/0, BCs(tag), pF, pU, calcm);
                     found = true;
                 }
             }
@@ -534,7 +550,7 @@ inline void Domain::PrintResults (char const * NF, int IdxIP) const
 inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const
 {
     /*
-        NodeBCs_t::const_iterator p = pF.find(Nods[nod]);
+        NodBCs_t::const_iterator p = pF.find(Nods[nod]);
         if (p==pF.end()) { for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << 0.0; }
         else
         {
@@ -940,30 +956,28 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
 
     os << "\n[1;37m--- Boundary Conditions ------------------------------------------------------[0m\n";
     os << "  Nodes with prescribed F:\n";
-    for (NodeBCs_t::const_iterator p=D.pF.begin(); p!=D.pF.end(); ++p)
+    for (NodBCs_t::const_iterator p=D.pF.begin(); p!=D.pF.end(); ++p)
     {
-        os << "   " << p->first->Vert.ID << ":{";
-        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        os << Util::_6 << p->first->Vert.ID << "  ";
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
-            long   eq   = p->first->EQ[idof];
-            if (q!=p->second.begin()) os << ", ";
-            os << "idof:" << idof << ", eq:" << eq << ", DF:" << q->second;
+            if (q!=p->second.first.begin()) os << "   ";
+            os << "D" << p->first->FMap.Keys[idof] << "=" << Util::_10_4 << q->second;
         }
-        os << "}\n";
+        os << "\n";
     }
     os << "\n  Nodes with prescribed U:\n";
-    for (NodeBCs_t::const_iterator p=D.pU.begin(); p!=D.pU.end(); ++p)
+    for (NodBCs_t::const_iterator p=D.pU.begin(); p!=D.pU.end(); ++p)
     {
-        os << "   " << p->first->Vert.ID << ":{";
-        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        os << Util::_6 << p->first->Vert.ID << "  ";
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
-            long   eq   = p->first->EQ[idof];
-            if (q!=p->second.begin()) os << ", ";
-            os << "idof:" << idof << ", eq:" << eq << ", DU:" << q->second;
+            if (q!=p->second.first.begin()) os << ", ";
+            os << "D" << p->first->UMap.Keys[idof] << "=" << Util::_10_6 << q->second;
         }
-        os << "}\n";
+        os << "\n";
     }
 
     return os;

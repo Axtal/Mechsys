@@ -44,7 +44,7 @@ public:
 
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
-                      NodeBCs_t & pF, NodeBCs_t & pU);                 ///< If setting body forces, IdxEdgeOrFace is ignored
+                      NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM);     ///< If setting body forces, IdxEdgeOrFace is ignored
     void ClrBCs      ();                                               ///< Clear BCs
     void CalcK       (Mat_t & K)                                const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                                const; ///< Mass matrix
@@ -97,7 +97,7 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("H", "Q");
 }
 
-inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_t & pF, NodeBCs_t & pU)
+inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
     bool has_s    = BCs.HasKey("s");    // source term
     bool has_H    = BCs.HasKey("H");    // potential
@@ -118,9 +118,10 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_
                 CalcShape (C, GE->IPs[i], detJ, coef);
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    pF[Con[j]][Con[j]->FMap("Q")] += s*coef*GE->N(j);
+                    pF[Con[j]].first[Con[j]->FMap("Q")] += s*coef*GE->N(j);
                 }
             }
+            for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
         }
 
         // flux
@@ -136,9 +137,10 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]][Con[k]->FMap("Q")] += coef*GE->FN(j)*qn;
+                    pF[Con[k]].first[Con[k]->FMap("Q")] += coef*GE->FN(j)*qn;
                 }
             }
+            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
         }
 
         // convection
@@ -160,9 +162,10 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]][Con[k]->FMap("Q")] += coef*GE->FN(j)*h*Tinf;
+                    pF[Con[k]].first[Con[k]->FMap("Q")] += coef*GE->FN(j)*h*Tinf;
                 }
             }
+            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
         }
     }
 
@@ -173,7 +176,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            pU[Con[k]][Con[k]->UMap("H")] = H;
+            pU[Con[k]].first[Con[k]->UMap("H")] = H;
         }
     }
 }
