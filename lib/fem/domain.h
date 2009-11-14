@@ -45,10 +45,8 @@ class Domain
 {
 public:
     // typedefs
-    typedef void (*pCalcF) (double t, double & fx, double & fy, double & fz); ///< F(orce) callback
-    typedef std::map<int,pCalcF>  FDatabase_t; ///< Map tag to F function pointer
-    typedef std::map<int,pCalcM>  MDatabase_t; ///< Map tag to M function pointer
-    typedef std::map<int,Model*>  Models_t;    ///< Map tag to model pointer
+    typedef std::map<int,pCalcM> MDatabase_t; ///< Map tag to M function pointer
+    typedef std::map<int,Model*> Models_t;    ///< Map tag to model pointer
 
     // Constructor
     Domain (Mesh::Generic const & Mesh,  ///< The mesh
@@ -89,9 +87,6 @@ public:
     NodBCs_t              pU;      ///< Nodes with prescribed U
     NodBCs_t              pF;      ///< Nodes with prescribed F
     MDatabase_t           MFuncs;  ///< Database of pointers to M functions
-    FDatabase_t           FFuncs;  ///< Database of pointers to F functions
-    Array<Node*>          NodsF;   ///< Nodes with F specified through callback function
-    Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to NodsF
 
 #ifdef USE_BOOST_PYTHON
     void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
@@ -209,31 +204,21 @@ inline void Domain::SetBCs (Dict const & BCs)
             size_t nid = Msh.TgdVerts[i]->ID;
             if (BCs.HasKey(tag))
             {
-                if (BCs(tag).HasKey("ffunc")) // callback specified
+                pCalcM calcm = &Multiplier;
+                if (BCs(tag).HasKey("mfunc")) // callback specified
                 {
-                    NodsF.Push (Nods[nid]);
-                    FDatabase_t::const_iterator p = FFuncs.find(tag);
-                    if (p!=FFuncs.end()) CalcF.Push (p->second);
-                    else throw new Fatal("Domain::SetBCs: Callback function with tag=%d was not found in FFuncs database",tag);
+                    MDatabase_t::const_iterator p = MFuncs.find(tag);
+                    if (p!=MFuncs.end()) calcm = p->second;
+                    else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
                 }
-                else
+                SDPair const & bcs = BCs(tag);
+                for (StrDbl_t::const_iterator p=bcs.begin(); p!=bcs.end(); ++p)
                 {
-                    pCalcM calcm = &Multiplier;
-                    if (BCs(tag).HasKey("mfunc")) // callback specified
+                    if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]].first[Nods[nid]->UMap(p->first)]  = p->second;
+                    else if (Nods[nid]->FMap.HasKey(p->first))
                     {
-                        MDatabase_t::const_iterator p = MFuncs.find(tag);
-                        if (p!=MFuncs.end()) calcm = p->second;
-                        else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
-                    }
-                    SDPair const & bcs = BCs(tag);
-                    for (StrDbl_t::const_iterator p=bcs.begin(); p!=bcs.end(); ++p)
-                    {
-                        if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]].first[Nods[nid]->UMap(p->first)]  = p->second;
-                        else if (Nods[nid]->FMap.HasKey(p->first))
-                        {
-                            pF[Nods[nid]].first[Nods[nid]->FMap(p->first)] += p->second;
-                            pF[Nods[nid]].second = calcm;
-                        }
+                        pF[Nods[nid]].first[Nods[nid]->FMap(p->first)] += p->second;
+                        pF[Nods[nid]].second = calcm;
                     }
                 }
                 keys_set[tag] = true;
@@ -278,8 +263,6 @@ inline void Domain::SetBCs (Dict const & BCs)
 inline void Domain::ClrBCs ()
 {
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
-    NodsF.Resize (0);
-    CalcF.Resize (0);
     pF.clear();
     pU.clear();
 }

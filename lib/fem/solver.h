@@ -867,30 +867,6 @@ inline void Solver::_calc_F_Fnew (double dt)
             }
         }
     }
-
-    // nodes with F function
-    if (Dom.NDim==3)
-    {
-        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
-        {
-            long eqx = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
-            long eqy = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];
-            long eqz = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fz")];
-            (*Dom.CalcF[i]) (Time,    F   (eqx),  F   (eqy),  F   (eqz));
-            (*Dom.CalcF[i]) (Time+dt, Fnew(eqx),  Fnew(eqy),  Fnew(eqz));
-        }
-    }
-    else
-    {
-        double dummy;
-        for (size_t i=0; i<Dom.NodsF.Size(); ++i)
-        {
-            long eqx = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fx")];
-            long eqy = Dom.NodsF[i]->EQ[Dom.NodsF[i]->FMap("fy")];
-            (*Dom.CalcF[i]) (Time,    F   (eqx),  F   (eqy),  dummy);
-            (*Dom.CalcF[i]) (Time+dt, Fnew(eqx),  Fnew(eqy),  dummy);
-        }
-    }
 }
 
 inline void Solver::_SS22_update (double tf, double dt)
