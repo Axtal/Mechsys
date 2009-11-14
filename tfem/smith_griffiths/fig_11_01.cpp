@@ -38,12 +38,10 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
-void calc_F (double t, double & fx, double & fy, double & fz)
+double Multiplier (double t)
 {
-    fx = 0.0;
-    fz = 0.0;
-    if (t>1.0) fy = 0.0;
-    else       fy = 3.194*sin(Util::PI*t);
+    if (t>1.0) return 0.0;
+    else       return 3.194*sin(Util::PI*t);
 }
 
 int main(int argc, char **argv) try
@@ -66,7 +64,7 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(mesh, prps, Dict(), Dict());
     dom.SetOutNods ("fig_11_01", Array<int>(1,/*JustOne*/true));
-    dom.FFuncs[-200] = &calc_F; // set database of callbacks
+    dom.MFuncs[-200] = &Multiplier; // set database of callbacks
 
     // solver
     FEM::Solver sol(dom);
@@ -75,7 +73,7 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set(-100, "ux uy wz", 0.0,0.0,0.0);
-    bcs.Set(-200, "ffunc", 0.0);
+    bcs.Set(-200, "fy mfunc", 1.0, 0.0);
     dom.SetBCs (bcs);
     sol.DynSolve (/*tf*/1.8, /*dt*/0.05, /*dtOut*/0.05, "fig_11_01");
 

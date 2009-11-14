@@ -178,9 +178,7 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom, &DbgFun, &dat);
-    //sol.Scheme = FEM::Solver::NR_t;
-    sol.nSS    = 10;
-    sol.MaxIt  = 10;
+    sol.TolR = 1.0e-4;
 
     // solve
     sol.Solve (NInc);
