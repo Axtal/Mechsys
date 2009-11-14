@@ -20,9 +20,16 @@ if False:
     grid()
     show()
 
-if True:
+if False:
     dat = read_table("owen_hinton_03_nod_50_-200.res")
     t = array(dat['Time'])
     plot(1.e3*t,dat['ux'],'r-',lw=2)
+    grid()
+    show()
+
+if True:
+    dat = read_table("zienk_shiomi_01_nod_20_-200.res")
+    T = array(dat['Time'])
+    plot(T,dat['pw'],'r-',lw=2)
     grid()
     show()

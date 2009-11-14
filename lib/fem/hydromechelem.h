@@ -58,8 +58,13 @@ public:
     void CalcN (Mat_t const & C, IntegPoint const & IP, Mat_t & N, double & detJ, double & Coef) const; ///< Shape functions matrix
 
     // Constants
-    double h;   ///< Thickness of the element
-    double rho; ///< Density
+    double h;    ///< Thickness of the element
+    double alp;  ///< Compressibility coefficient
+    double nn;   ///< Porosity
+    double rhoS; ///< Density of solids
+    double rhoF; ///< Density of fluid
+    double kk;   ///< Permeability
+    double Q;    ///< Storage due to compressibility
 };
 
 int HydroMechElem::NDOF = 0;
@@ -75,8 +80,13 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     if (GE==NULL) throw new Fatal("HydroMechElem::HydroMechElem: GE (geometry element) must be defined");
 
     // parameters/properties
-    h   = (Prp.HasKey("h")   ? Prp("h")   : 1.0);
-    rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
+    h    = (Prp.HasKey("h") ? Prp("h") : 1.0);
+    alp  = Prp("alp");
+    nn   = Prp("n");
+    rhoS = Prp("rhoS");
+    rhoF = Prp("rhoF");
+    kk   = Prp("k");
+    Q    = Prp("Q");
 
     // allocate and initialize state at each IP
     for (size_t i=0; i<GE->NIP; ++i)
@@ -129,6 +139,7 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, Nod
     bool has_ux  = BCs.HasKey("ux");  // x displacement
     bool has_uy  = BCs.HasKey("uy");  // y displacement
     bool has_uz  = BCs.HasKey("uz");  // z displacement
+    bool has_pw  = BCs.HasKey("pw");  // water pressure
 
     // force components specified
     if (has_bx || has_by || has_bz || has_cbx ||
@@ -264,17 +275,19 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, Nod
     }
 
     // prescribed displacements
-    else if (has_ux || has_uy || has_uz)
+    else if (has_ux || has_uy || has_uz || has_pw)
     {
         double ux = (has_ux ? BCs("ux") : 0.0);
         double uy = (has_uy ? BCs("uy") : 0.0);
         double uz = (has_uz ? BCs("uz") : 0.0);
+        double pw = (has_pw ? BCs("pw") : 0.0);
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
             if (has_ux) pU[Con[k]].first[Con[k]->UMap("ux")] = ux;
             if (has_uy) pU[Con[k]].first[Con[k]->UMap("uy")] = uy;
             if (has_uz) pU[Con[k]].first[Con[k]->UMap("uz")] = uz;
+            if (has_pw) pU[Con[k]].first[Con[k]->UMap("pw")] = pw;
         }
     }
 }
@@ -314,13 +327,9 @@ inline void HydroMechElem::CalcFint (Vec_t * F_int) const
 
 inline void HydroMechElem::CalcK (Mat_t & K) const
 {
-    double a = 1.0; // alpha
-    double n = 0.5; // porosity
-    double Q = 1.0e+5;
+    // submatrices
     size_t ncomp = 2*NDim; // number of stress/strain components
     size_t nrows = GE->NN*NDim; // number of rows in Ks (solid) matrix
-
-    // submatrices
     double detJ, coef;
     Mat_t C, D, B;
     Mat_t BtDB (nrows,nrows);
@@ -355,10 +364,10 @@ inline void HydroMechElem::CalcK (Mat_t & K) const
 
         // G1: coupling matrix 1
         BtIN = trans(B)*I*Np;
-        G1  += (coef*(a-n)) * BtIN;
+        G1  += (coef*(alp-nn)) * BtIN;
 
         // G2: coupling matrix 2
-        G2 += (coef*n) * BtIN;
+        G2 += (coef*nn) * BtIN;
 
         // P:
         NtN = trans(Np)*Np;
@@ -388,12 +397,8 @@ inline void HydroMechElem::CalcK (Mat_t & K) const
 
 inline void HydroMechElem::CalcM (Mat_t & M) const
 {
-    double n     = 0.5; // porosity
-    double rhoS  = 1.0; // density of solids
-    double rhoF  = 1.0; // density of fluid
-    size_t nrows = GE->NN*NDim; // number of rows in Ms (solid) matrix
-
     // submatrices
+    size_t nrows = GE->NN*NDim; // number of rows in Ms (solid) matrix
     double detJ, coef;
     Mat_t  C, Nu;
     Mat_t NtN (nrows,nrows);
@@ -407,10 +412,10 @@ inline void HydroMechElem::CalcM (Mat_t & M) const
         // Ms: solid mass
         CalcN (C, GE->IPs[i], Nu, detJ, coef);
         NtN = trans(Nu)*Nu;
-        Ms += ((1.0-n)*rhoS*coef) * NtN;
+        Ms += ((1.0-nn)*rhoS*coef) * NtN;
 
         // Mf: fluid mass
-        Mf += (n*rhoF*coef) * NtN;
+        Mf += (nn*rhoF*coef) * NtN;
     }
 
     // assemble M matrix
@@ -427,11 +432,8 @@ inline void HydroMechElem::CalcM (Mat_t & M) const
 
 inline void HydroMechElem::CalcC (Mat_t & C) const
 {
-    double n     = 0.5; // porosity
-    double k     = 1.0e-3; // permeability
-    size_t nrows = GE->NN*NDim; // number of rows in Ms (solid) matrix
-
     // submatrices
+    size_t nrows = GE->NN*NDim; // number of rows in Ms (solid) matrix
     double detJ, coef;
     Mat_t  Co, Nu;
     Mat_t NtN (nrows,nrows);
@@ -443,7 +445,7 @@ inline void HydroMechElem::CalcC (Mat_t & C) const
         // C1:
         CalcN (Co, GE->IPs[i], Nu, detJ, coef);
         NtN = trans(Nu)*Nu;
-        C1 += (n*n*k) * NtN;
+        C1 += (nn*nn*kk) * NtN;
     }
 
     // assemble C matrix

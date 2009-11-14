@@ -46,7 +46,7 @@ public:
     enum Scheme_t  { FE_t, ME_t, NR_t };        ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
     enum TScheme_t { SS11_t };                  ///< Transient time integration scheme: (Single step/O1/1st order)
     enum DScheme_t { SS22_t, GN22_t };          ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
-    enum Damping_t { None_t, Rayleigh_t };      ///< Damping type: none, Rayleigh type (C=alp*M+bet*K)
+    enum Damping_t { None_t, Rayleigh_t, HMCoup_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K), HydroMechCoupling
 
     // typedefs
     typedef void (*pDbgFun) (Solver const & Sol, void * DbgDat); ///< Pointer to Debug function
@@ -402,7 +402,6 @@ inline void Solver::AssembleKMA (double C1, double C2)
 inline void Solver::AssembleKCMA (double C1, double C2, double C3)
 {
     if (CteTg && A11.Top()>0) return; // constant tangent matrices => linear problems
-    if (DampTy!=Rayleigh_t) throw new Fatal("Solver::AssembleKCMA: Only Rayleigh damping implemented yet");
     K11.ResetTop(); // reset top (position to insert new values) => clear triplet
     K12.ResetTop();
     K21.ResetTop();
@@ -419,16 +418,15 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
     for (size_t k=0; k<Dom.Eles.Size(); ++k)
     {
         // calc K and M
-        Mat_t         K, M;//, C; // matrices
-        Array<size_t> loc;  // location array
-        Array<bool>   pre;  // prescribed U ?
+        Mat_t         K, M, C; // matrices
+        Array<size_t> loc;     // location array
+        Array<bool>   pre;     // prescribed U ?
         Dom.Eles[k]->CalcK  (K);
         Dom.Eles[k]->CalcM  (M);
-        //Dom.Eles[k]->CalcC  (C);
         Dom.Eles[k]->GetLoc (loc);
         // calc C
-        Mat_t C(K.num_rows(),K.num_cols());
-        C = DampAm*M + DampAk*K;
+        if (DampTy==Rayleigh_t) C = DampAm*M + DampAk*K;
+        if (DampTy==HMCoup_t)   Dom.Eles[k]->CalcC (C);
         // set K, C, M, and A matrices
         for (size_t i=0; i<loc.Size(); ++i)
         {

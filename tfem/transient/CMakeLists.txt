@@ -20,7 +20,8 @@ SET(TESTS
   wood_lewis)
 
 SET(PROGS
-  owen_hinton_03)
+  owen_hinton_03
+  zienk_shiomi_01)
 
 IF(FEM_FOUND)
 	FOREACH(var ${TESTS})
