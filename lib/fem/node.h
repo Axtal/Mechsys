@@ -41,74 +41,18 @@ public:
     Node (Mesh::Vertex const & TheVert) : Vert(TheVert) {}
 
     // Methods
-    void   AddDOF (char const * StrU, char const * StrF);
-    void   SetBCs (SDPair const & BCs);
-    void   ClrBCs ();
-    size_t nDOF   () const { return UMap.Keys.Size(); }
-    double Fa     (size_t iDOF, double Time) const { return Time*DF[iDOF]; } ///< F(applied)
+    void   AddDOF   (char const * StrU, char const * StrF);
+    size_t nDOF     () const { return UMap.Keys.Size(); }
     void   GetState (SDPair & Sta) const;
 
     // Data
     Mesh::Vertex const & Vert;  ///< Geometric information: ID, Tag, coordinates
     SIPair               UMap;  ///< U keys ("ux", "uy", ...) to index (0, 1, ...) map
     SIPair               FMap;  ///< F keys ("fx", "fy", ...) to index (0, 1, ...) map
-    Array<double>        DU;    ///< Delta U (if prescribed U) to be applied in one stage
-    Array<double>        DF;    ///< Delta F (if NOT pU) to be applied in one stage
-    Array<bool>          pU;    ///< Prescribed U (essential) ?
     Array<double>        U;     ///< Current U value. Size = num DOF
     Array<double>        F;     ///< Current F value. Size = num DOF
     Array<long>          EQ;    ///< Equation numbers (of each DOF)
 };
-
-
-///////////////////////////////////////////////////////////////////////////////////// operator << //////////////
-
-
-std::ostream & operator<< (std::ostream & os, Node const & N)
-{
-    os << Util::_6 << N.Vert.ID << " ";
-    for (size_t i=0; i<N.nDOF(); ++i)
-    {
-        os << "[";
-        os << "d" << N.UMap.Keys[i] << "=" << Util::_6_3 << N.DU[i] << ", ";
-        os << "d" << N.FMap.Keys[i] << "=" << Util::_6_3 << N.DF[i] << ", ";
-        os << "p" << N.UMap.Keys[i] << "=" << (N.pU[i]?"[1;31mT[0m":"F") << "]";
-        if (i!=N.nDOF()-1) os << " ";
-    }
-    os << " EQ=[";
-    for (size_t i=0; i<N.EQ.Size(); ++i)
-    {
-        os << N.EQ[i];
-        if (i!=N.EQ.Size()-1) os << ",";
-        else                  os << "]";
-    }
-    /*
-    os << " U=[";
-    for (size_t i=0; i<N.U.Size(); ++i)
-    {
-        os << N.U[i];
-        if (i!=N.U.Size()-1) os << ",";
-        else                 os << "]";
-    }
-    os << " F=[";
-    for (size_t i=0; i<N.F.Size(); ++i)
-    {
-        os << N.F[i];
-        if (i!=N.F.Size()-1) os << ",";
-        else                 os << "]";
-    }
-    */
-    os << " (";
-    for (int j=0; j<3; ++j)
-    {
-        os << Util::_6_3 << N.Vert.C[j];
-        if (j==2) os << ")";
-        else      os << ", ";
-    }
-    os << Util::_4 << N.Vert.Tag;
-    os << " Shares=["; for (size_t i=0; i<N.Vert.Shares.Size(); ++i) os << N.Vert.Shares[i].C->ID << ","; os << "]";
-    return os;
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////////// Node: Implementation /////
@@ -126,51 +70,10 @@ inline void Node::AddDOF (char const * StrU, char const * StrF)
             int idx = static_cast<int>(nDOF());
             UMap.Set   (u_key.CStr(), idx);
             FMap.Set   (f_key.CStr(), idx);
-            DU  .Push  (0.0);
-            DF  .Push  (0.0);
-            pU  .Push  (false);
             U   .Push  (0.0);
             F   .Push  (0.0);
             EQ  .Push  (-1);
         }
-    }
-}
-
-inline void Node::SetBCs (SDPair const & BCs)
-{
-    for (size_t i=0; i<BCs.Keys.Size(); ++i)
-    {
-        String key = BCs.Keys[i];
-        if (UMap.HasKey(key)) // essential
-        {
-            int idx = UMap(key);
-            DU[idx] = BCs(key); // set
-            //DF[idx] = 0.0;
-            pU[idx] = true;
-        }
-        else if (FMap.HasKey(key)) // natural
-        {
-            int idx  = FMap(key);
-            DU[idx]  = 0.0;
-            DF[idx] += BCs(key); // accumulate
-            pU[idx]  = false;
-        }
-        else
-        {
-            //std::ostringstream oss;
-            //oss << (*this);
-            //throw new Fatal("Node::SetBCs: Node does not have key=%s.  %s", key.CStr(), oss.str().c_str());
-        }
-    }
-}
-
-inline void Node::ClrBCs ()
-{
-    for (size_t i=0; i<nDOF(); ++i)
-    {
-        DU[i] = 0.0;
-        DF[i] = 0.0;
-        pU[i] = false;
     }
 }
 
@@ -182,6 +85,34 @@ inline void Node::GetState (SDPair & Sta) const
         Sta.Set (UMap.Keys[i].CStr(), U[i]);
         Sta.Set (FMap.Keys[i].CStr(), F[i]);
     }
+}
+
+std::ostream & operator<< (std::ostream & os, Node const & N)
+{
+    os << Util::_6 << N.Vert.ID << " ";
+    for (size_t i=0; i<N.nDOF(); ++i)
+    {
+        os << N.UMap.Keys[i] << " ";
+        os << N.FMap.Keys[i] << " ";
+        if (i!=N.nDOF()-1) os << " ";
+    }
+    os << " EQ=[";
+    for (size_t i=0; i<N.EQ.Size(); ++i)
+    {
+        os << N.EQ[i];
+        if (i!=N.EQ.Size()-1) os << ",";
+        else                  os << "]";
+    }
+    os << " (";
+    for (int j=0; j<3; ++j)
+    {
+        os << Util::_6_3 << N.Vert.C[j];
+        if (j==2) os << ")";
+        else      os << ", ";
+    }
+    os << Util::_4 << N.Vert.Tag;
+    //os << " Shares=["; for (size_t i=0; i<N.Vert.Shares.Size(); ++i) os << N.Vert.Shares[i].C->ID << ","; os << "]";
+    return os;
 }
 
 }; //namespace FEM

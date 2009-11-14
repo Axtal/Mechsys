@@ -42,7 +42,8 @@ public:
           Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);           ///< IdxEdgeOrFace is ignored
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
+                      NodeBCs_t & pF, NodeBCs_t & pU);                     ///< IdxEdgeOrFace is ignored
     void CalcK       (Mat_t & K)                                    const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                                    const; ///< Mass matrix
     void CalcT       (Mat_t & T, double & l)                        const; ///< Transformation matrix
@@ -87,7 +88,7 @@ inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
     else {}
 }
 
-inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
+inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_t & pF, NodeBCs_t & pU)
 {
     // length and T matrix
     double l;
@@ -119,9 +120,9 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
         // add to nodes
         for (size_t j=0; j<2; ++j)
         {
-            Con[j]->DF[Con[j]->FMap("fx")] += F(0+j*3);
-            Con[j]->DF[Con[j]->FMap("fy")] += F(1+j*3);
-            Con[j]->DF[Con[j]->FMap("mz")] += F(2+j*3);
+            pF[Con[j]][Con[j]->FMap("fx")] += F(0+j*3);
+            pF[Con[j]][Con[j]->FMap("fy")] += F(1+j*3);
+            pF[Con[j]][Con[j]->FMap("mz")] += F(2+j*3);
         }
     }
     else

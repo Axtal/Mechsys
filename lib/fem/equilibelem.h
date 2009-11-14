@@ -40,7 +40,8 @@ public:
                  Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);   ///< If setting body forces, IdxEdgeOrFace is ignored
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, 
+                      NodeBCs_t & pF, NodeBCs_t & pU);             ///< If setting body forces, IdxEdgeOrFace is ignored
     void CalcFint    (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
     void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                            const; ///< Mass matrix
@@ -105,83 +106,87 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     CalcFint ();
 }
 
-inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
+inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_t & pF, NodeBCs_t & pU)
 {
-    bool has_bx  = BCs.HasKey("bx");
-    bool has_by  = BCs.HasKey("by");
-    bool has_bz  = BCs.HasKey("bz");
-    bool has_cbx = BCs.HasKey("cbx"); // cbx: centrifugal body force along x (in axisymmetric problems)
-    if (has_bx || has_by || has_bz || has_cbx) // prescribed body forces
+    bool has_bx  = BCs.HasKey("bx");  // x component of body force
+    bool has_by  = BCs.HasKey("by");  // y component of body force
+    bool has_bz  = BCs.HasKey("bz");  // z component of body force
+    bool has_cbx = BCs.HasKey("cbx"); // centrifugal body force along x (in axisymmetric problems)
+    bool has_qx  = BCs.HasKey("qx");  // x component of distributed loading
+    bool has_qy  = BCs.HasKey("qy");  // y component of distributed loading
+    bool has_qz  = BCs.HasKey("qz");  // z component of distributed loading
+    bool has_qn  = BCs.HasKey("qn");  // normal distributed loading
+    bool has_qt  = BCs.HasKey("qt");  // tangential distributed loading (2D only)
+    bool has_ux  = BCs.HasKey("ux");  // x displacement
+    bool has_uy  = BCs.HasKey("uy");  // y displacement
+    bool has_uz  = BCs.HasKey("uz");  // z displacement
+
+    // force components specified
+    if (has_bx || has_by || has_bz || has_cbx ||
+        has_qx || has_qy || has_qz || has_qn  || has_qt)
     {
-        double bx = (has_bx  ? BCs("bx")  : 0.0);
-        double by = (has_by  ? BCs("by")  : 0.0);
-        double bz = (has_bz  ? BCs("bz")  : 0.0);
-               bx = (has_cbx ? BCs("cbx") : bx );
-        Mat_t C;
-        CoordMatrix (C);
-        //Vec_t Fb(GE->NN*NDim); set_to_zero(Fb);
-        for (size_t i=0; i<GE->NIP; ++i)
+        // body forces
+        if (has_bx || has_by || has_bz || has_cbx) // prescribed body forces
         {
-            // geometric data
-            GE->Shape  (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
-            GE->Derivs (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+            // matrix of coordinates of nodes
+            Mat_t C;
+            CoordMatrix (C);
+            
+            // loading
+            double bx = (has_bx  ? BCs("bx")  : 0.0);
+            double by = (has_by  ? BCs("by")  : 0.0);
+            double bz = (has_bz  ? BCs("bz")  : 0.0);
+                   bx = (has_cbx ? BCs("cbx") : bx );
 
-            // Jacobian and its determinant
-            Mat_t J(GE->dNdR * C); // J = dNdR * C
-            double detJ = Det(J);
-
-            // coefficient used during integration
-            double coef = h*detJ*GE->IPs[i].w;
-            if (GTy==axs_t)
+            // set
+            for (size_t i=0; i<GE->NIP; ++i)
             {
-                // calculate radius=x at this IP
-                double radius = 0.0;
-                for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
+                // geometric data
+                GE->Shape  (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+                GE->Derivs (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
 
-                // correct coef
-                if (has_cbx) coef *= radius*radius;
-                else         coef *= radius;
-            }
+                // Jacobian and its determinant
+                Mat_t J(GE->dNdR * C); // J = dNdR * C
+                double detJ = Det(J);
 
-            // add to dF
-            for (size_t j=0; j<GE->NN; ++j)
-            {
-                Con[j]->DF[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
-                Con[j]->DF[Con[j]->FMap("fy")] += coef*GE->N(j)*by;  if (NDim==3)
-                Con[j]->DF[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
-                //Fb(0+j*NDim) += coef*GE->N(j)*bx;
-                //Fb(1+j*NDim) += coef*GE->N(j)*by;  if (NDim==3)
-                //Fb(2+j*NDim) += coef*GE->N(j)*bz;
+                // coefficient used during integration
+                double coef = h*detJ*GE->IPs[i].w;
+                if (GTy==axs_t)
+                {
+                    // calculate radius=x at this IP
+                    double radius = 0.0;
+                    for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
+
+                    // correct coef
+                    if (has_cbx) coef *= radius*radius;
+                    else         coef *= radius;
+                }
+
+                // add to dF
+                for (size_t j=0; j<GE->NN; ++j)
+                {
+                    if (has_bx || has_cbx) pF[Con[j]][Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
+                    if (has_by           ) pF[Con[j]][Con[j]->FMap("fy")] += coef*GE->N(j)*by;
+                    if (has_bz           ) pF[Con[j]][Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+                }
             }
         }
-        //std::cout << bx << "   Fb(" << Cell.ID << ") = " << PrintVector(Fb);
-    }
-    else
-    {
-        bool has_ux = BCs.HasKey("ux");
-        bool has_uy = BCs.HasKey("uy");
-        bool has_uz = BCs.HasKey("uz");
-        if (has_ux || has_uy || has_uz) // prescribed displacements
-        {
-            for (size_t i=0; i<GE->NFN; ++i)
-            {
-                Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,i)]);
-                nod.SetBCs (BCs);
-            }
-        }
-        else // surface loading
+
+        // surface loading
+        if (has_qx || has_qy || has_qz || has_qn  || has_qt)
         {
             // matrix of coordinates of edge/face
-            Mat_t C;
-            FCoordMatrix (IdxEdgeOrFace, C);
+            Mat_t Cf;
+            FCoordMatrix (IdxEdgeOrFace, Cf);
 
             // loading
-            double qx = (BCs.HasKey("qx") ? BCs("qx") : 0.0);
-            double qy = (BCs.HasKey("qy") ? BCs("qy") : 0.0);
-            double qz = (BCs.HasKey("qz") ? BCs("qz") : 0.0);
-            double qn = (BCs.HasKey("qn") ? BCs("qn") : 0.0);
-            double qt = (BCs.HasKey("qt") ? BCs("qt") : 0.0);
+            double qx = (has_qx ? BCs("qx") : 0.0);
+            double qy = (has_qy ? BCs("qy") : 0.0);
+            double qz = (has_qz ? BCs("qz") : 0.0);
+            double qn = (has_qn ? BCs("qn") : 0.0);
+            double qt = (has_qt ? BCs("qt") : 0.0);
 
+            // set
             for (size_t i=0; i<GE->NFIP; ++i)
             {
                 // geometric data
@@ -189,33 +194,7 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                 GE->FaceDerivs (GE->FIPs[i].r, GE->FIPs[i].s);
 
                 // face/edge Jacobian and its determinant
-                Mat_t J(GE->FdNdR * C);
-
-                // normal to edge/face
-                Vec_t n(NDim); // normal multiplied by detJ
-                if (NDim==2) n = J(0,1), -J(0,0);
-                else
-                {
-                    // vectorial product
-                    Vec_t a(3);  a = J(0,0), J(0,1), J(0,2);
-                    Vec_t b(3);  b = J(1,0), J(1,1), J(1,2);
-                    n = a(1)*b(2) - a(2)*b(1),
-                        a(2)*b(0) - a(0)*b(2),
-                        a(0)*b(1) - a(1)*b(0);
-                }
-
-                // loading
-                if (NDim==2)
-                {
-                    qx = n(0)*qn - n(1)*qt;
-                    qy = n(1)*qn + n(0)*qt;
-                }
-                else
-                {
-                    qx = n(0)*qn;
-                    qy = n(1)*qn;
-                    qz = n(2)*qn;
-                }
+                Mat_t J(GE->FdNdR * Cf);
 
                 // coefficient used during integration
                 double coef = h*GE->FIPs[i].w; // *detJ is not neccessary since qx,qy,qz are already multiplied by detJ (due to normal)
@@ -227,15 +206,60 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                     coef *= radius; // correct coef
                 }
 
+                // calculate qx, qy and qz from qn and qt
+                if (has_qn || has_qt)
+                {
+                    // normal to edge/face
+                    Vec_t n(NDim); // normal multiplied by detJ
+                    if (NDim==2) n = J(0,1), -J(0,0);
+                    else
+                    {
+                        // vectorial product
+                        Vec_t a(3);  a = J(0,0), J(0,1), J(0,2);
+                        Vec_t b(3);  b = J(1,0), J(1,1), J(1,2);
+                        n = a(1)*b(2) - a(2)*b(1),
+                            a(2)*b(0) - a(0)*b(2),
+                            a(0)*b(1) - a(1)*b(0);
+                    }
+
+                    // loading
+                    if (NDim==2)
+                    {
+                        qx = n(0)*qn - n(1)*qt;
+                        qy = n(1)*qn + n(0)*qt;
+                    }
+                    else
+                    {
+                        qx = n(0)*qn;
+                        qy = n(1)*qn;
+                        qz = n(2)*qn;
+                    }
+                }
+
                 // add to dF
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
-                    Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,j)]);
-                    nod.DF[nod.FMap("fx")] += coef*GE->FN(j)*qx;
-                    nod.DF[nod.FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
-                    nod.DF[nod.FMap("fz")] += coef*GE->FN(j)*qz;
+                    size_t k = GE->FNode(IdxEdgeOrFace,j);
+                    pF[Con[k]][Con[k]->FMap("fx")] += coef*GE->FN(j)*qx;
+                    pF[Con[k]][Con[k]->FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
+                    pF[Con[k]][Con[k]->FMap("fz")] += coef*GE->FN(j)*qz;
                 }
             }
+        }
+    }
+
+    // prescribed displacements
+    else if (has_ux || has_uy || has_uz)
+    {
+        double ux = (has_ux ? BCs("ux") : 0.0);
+        double uy = (has_uy ? BCs("uy") : 0.0);
+        double uz = (has_uz ? BCs("uz") : 0.0);
+        for (size_t j=0; j<GE->NFN; ++j)
+        {
+            size_t k = GE->FNode(IdxEdgeOrFace,j);
+            if (has_ux) pU[Con[k]][Con[k]->UMap("ux")] = ux;
+            if (has_uy) pU[Con[k]][Con[k]->UMap("uy")] = uy;
+            if (has_uz) pU[Con[k]][Con[k]->UMap("uz")] = uz;
         }
     }
 }

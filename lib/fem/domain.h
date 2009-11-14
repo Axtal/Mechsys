@@ -85,6 +85,8 @@ public:
     Array<Node*>          NodsF;   ///< Nodes with F specified through callback function
     Array<pCalcF>         CalcF;   ///< Array with the F callbacks corresponding to FNodes
     Array<size_t>         Beams;   ///< Subset of elements of type Beam
+    NodeBCs_t             pU;      ///< Nodes with prescribed U
+    NodeBCs_t             pF;      ///< Nodes with prescribed F
 
 #ifdef USE_BOOST_PYTHON
     void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
@@ -177,7 +179,7 @@ inline void Domain::SetBCs (Dict const & BCs)
             if (tag<0)
             {
                 size_t eid = Msh.TgdCells[i]->ID;
-                if (BCs.HasKey(tag)) Eles[eid]->SetBCs (idx_edge_or_face, BCs(tag));
+                if (BCs.HasKey(tag)) Eles[eid]->SetBCs (idx_edge_or_face, BCs(tag), pF, pU);
                 else
                 {
                     //std::cout << "Domain::SetBCs: BCs dictionary does not have tag=" << tag << " for edge/face\n";
@@ -208,7 +210,15 @@ inline void Domain::SetBCs (Dict const & BCs)
                     if (p!=FFuncs.end()) CalcF.Push (p->second);
                     else throw new Fatal("Domain::SetBCs: Callback function with tag=%d was not found in FFuncs database",tag);
                 }
-                else Nods[nid]->SetBCs (BCs(tag));
+                else // Nods[nid]->SetBCs (BCs(tag));
+                {
+                    SDPair const & bcs = BCs(tag);
+                    for (StrDbl_t::const_iterator p=bcs.begin(); p!=bcs.end(); ++p)
+                    {
+                        if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]][Nods[nid]->UMap(p->first)]  = p->second;
+                        else if (Nods[nid]->FMap.HasKey(p->first)) pF[Nods[nid]][Nods[nid]->FMap(p->first)] += p->second;
+                    }
+                }
             }
             else
             {
@@ -235,7 +245,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                 size_t eid = Msh.Cells[i]->ID;
                 if (Msh.Cells[i]->Tag==p->first)
                 {
-                    Eles[eid]->SetBCs (/*ignored*/0, BCs(p->first));
+                    Eles[eid]->SetBCs (/*ignored*/0, BCs(p->first), pF, pU);
                     found = true;
                 }
             }
@@ -251,10 +261,11 @@ inline void Domain::SetBCs (Dict const & BCs)
 
 inline void Domain::ClrBCs ()
 {
-    for (size_t i=0; i<Nods.Size(); ++i) Nods[i]->ClrBCs ();
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
     NodsF.Resize (0);
     CalcF.Resize (0);
+    pF.clear();
+    pU.clear();
 }
 
 inline void Domain::SetUVals (SDPair const & UVals)
@@ -309,11 +320,6 @@ inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags
             (*of) << Util::_8s << "z";
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->UMap.Keys[j];
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->FMap.Keys[j];
-            for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
-            {
-                buf.Printf ("R%s",Nods[nod]->UMap.Keys[j].CStr());
-                (*of) << Util::_8s << buf;
-            }
             for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
             {
                 buf.Printf ("%s_int",Nods[nod]->FMap.Keys[j].CStr());
@@ -383,7 +389,6 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
         (*FilNods[i]) << Util::_8s << Nods[nod]->Vert.C(2);
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->U[j];
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j];
-        for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j] - Nods[nod]->Fa(j,Time);
         for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(Nods[nod]->EQ[j]);
         (*FilNods[i]) << "\n";
     }
@@ -471,12 +476,13 @@ inline void Domain::PrintResults (char const * NF, int IdxIP) const
         }
         for (size_t j=0; j<fkeys.Size(); ++j)
         {
-            if (Nods[i]->FMap.HasKey(fkeys[j]))
-            {
-                size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
-                buf.Printf(NF, Nods[i]->F[idx] - Nods[i]->Fa(idx,1.0));
-            }
-            else buf.Printf(nf, "---");
+            //if (Nods[i]->FMap.HasKey(fkeys[j]))
+            //{
+                //size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
+                //buf.Printf(NF, Nods[i]->F[idx] - Nods[i]->Fa(idx,1.0));
+            //}
+            //else
+                buf.Printf(nf, "---");
             std::cout << buf;
         }
         std::cout << "\n";
@@ -527,6 +533,20 @@ inline void Domain::PrintResults (char const * NF, int IdxIP) const
 
 inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const
 {
+    /*
+        NodeBCs_t::const_iterator p = pF.find(Nods[nod]);
+        if (p==pF.end()) { for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << 0.0; }
+        else
+        {
+            for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
+            {
+                IntDbl_t::const_iterator q = p->second.find(j);
+                if (q==p->second.end()) (*FilNods[i]) << Util::_8s << 0.0;
+                else                    (*FilNods[i]) << Util::_8s << Nods[nod]->F[j] - Nods[nod]->Fa(j,Time);
+            }
+        }
+    */
+
     // header
     std::cout << "\n[1;37m--- Error Summary --- nodes and centroid -------------------------------------\n";
     std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
@@ -544,11 +564,11 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
         {
             String ukey;
             for (size_t j=1; j<key.size(); ++j) ukey.Printf("%s%c",ukey.CStr(),key[j]);
-            for (size_t j=0; j<Nods.Size(); ++j)
-            {
-                size_t idx = Nods[j]->UMap(ukey); // idx of DOF
-                err[j] = fabs(Nods[j]->F[idx] - Nods[j]->Fa(idx,1.0) - NodSol(key,j));
-            }
+            //for (size_t j=0; j<Nods.Size(); ++j)
+            //{
+                //size_t idx = Nods[j]->UMap(ukey); // idx of DOF
+                //err[j] = fabs(Nods[j]->F[idx] - Nods[j]->Fa(idx,1.0) - NodSol(key,j));
+            //}
         }
         else
         {
@@ -917,6 +937,34 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
 
     os << "\n[1;37m--- Elements -----------------------------------------------------------------[0m\n";
     for (size_t i=0; i<D.Eles.Size(); ++i) os << (*D.Eles[i]) << "\n";
+
+    os << "\n[1;37m--- Boundary Conditions ------------------------------------------------------[0m\n";
+    os << "  Nodes with prescribed F:\n";
+    for (NodeBCs_t::const_iterator p=D.pF.begin(); p!=D.pF.end(); ++p)
+    {
+        os << "   " << p->first->Vert.ID << ":{";
+        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        {
+            size_t idof = q->first;
+            long   eq   = p->first->EQ[idof];
+            if (q!=p->second.begin()) os << ", ";
+            os << "idof:" << idof << ", eq:" << eq << ", DF:" << q->second;
+        }
+        os << "}\n";
+    }
+    os << "\n  Nodes with prescribed U:\n";
+    for (NodeBCs_t::const_iterator p=D.pU.begin(); p!=D.pU.end(); ++p)
+    {
+        os << "   " << p->first->Vert.ID << ":{";
+        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        {
+            size_t idof = q->first;
+            long   eq   = p->first->EQ[idof];
+            if (q!=p->second.begin()) os << ", ";
+            os << "idof:" << idof << ", eq:" << eq << ", DU:" << q->second;
+        }
+        os << "}\n";
+    }
 
     return os;
 }

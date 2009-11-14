@@ -75,8 +75,9 @@ public:
     size_t         It;       ///< Current iteration
     size_t         NEq;      ///< Total number of equations (DOFs)
     size_t         NLag;     ///< Number of Lagrange multipliers
-    Array<long>    uDOFs;    ///< unknown DOFs
-    Array<long>    pDOFs;    ///< prescribed DOFs (known equations)
+    Array<long>    uEQ;      ///< unknown equations
+    Array<long>    pEQ;      ///< prescribed equations
+    Array<bool>    pU;       ///< prescribed U
     double         NormR;    ///< Euclidian norm of residual (R)
     double         TolR;     ///< Tolerance for the norm of residual
     double         MaxNormF; ///< Max(Norm(F), Norm(Fint))
@@ -93,7 +94,6 @@ public:
     Vec_t R;        // Residual
     Vec_t F, F_int; // External and internal forces
     Vec_t W, U;     // Workspace, displacement
-    Vec_t DU2, DF1; // Prescribed DU and DF
     Vec_t V, A;     // (Transient/Dynamic) velocity and acceleration
     Vec_t Fnew;     // External force at n+1 (t=t+dt)
 
@@ -236,7 +236,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
             Sparse::Matrix<double,int> k11(A11), k12(K12), k21(K21), k22(K22);
             Mat_t kk11, kk12, kk21, kk22;
             k11.GetDense(kk11); k12.GetDense(kk12); k21.GetDense(kk21); k22.GetDense(kk22);
-            for (size_t i=0; i<pDOFs.Size(); ++i) kk11(pDOFs[i],pDOFs[i]) = 0.0;
+            for (size_t i=0; i<pEQ.Size(); ++i) kk11(pEQ[i],pEQ[i]) = 0.0;
             Mat_t kk(kk11 + kk12 + kk21 + kk22);
             Vec_t KU(kk*U);
             std::cout << "     [1;37mWork = " << dot(U,KU) << " [0m";
@@ -329,15 +329,15 @@ inline void Solver::AssembleKA ()
         Array<size_t> loc; // location array
         Array<bool>   pre; // prescribed U ?
         Dom.Eles[k]->CalcK  (K);
-        Dom.Eles[k]->GetLoc (loc, pre);
+        Dom.Eles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         {
             for (size_t j=0; j<loc.Size(); ++j)
             {
-                     if (!pre[i] && !pre[j]) A11.PushEntry (loc[i], loc[j], K(i,j));
-                else if (!pre[i] &&  pre[j]) K12.PushEntry (loc[i], loc[j], K(i,j));
-                else if ( pre[i] && !pre[j]) K21.PushEntry (loc[i], loc[j], K(i,j));
-                else if ( pre[i] &&  pre[j]) K22.PushEntry (loc[i], loc[j], K(i,j));
+                     if (!pU[loc[i]] && !pU[loc[j]]) A11.PushEntry (loc[i], loc[j], K(i,j));
+                else if (!pU[loc[i]] &&  pU[loc[j]]) K12.PushEntry (loc[i], loc[j], K(i,j));
+                else if ( pU[loc[i]] && !pU[loc[j]]) K21.PushEntry (loc[i], loc[j], K(i,j));
+                else if ( pU[loc[i]] &&  pU[loc[j]]) K22.PushEntry (loc[i], loc[j], K(i,j));
             }
         }
     }
@@ -352,7 +352,7 @@ inline void Solver::AssembleKA ()
     */
 
     // augment A11
-    for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
+    for (size_t i=0; i<pEQ.Size(); ++i) A11.PushEntry (pEQ[i],pEQ[i], 1.0);
     _set_A_Lag ();
     /*
     Sparse::Matrix<double,int> Asp(A11);
@@ -382,21 +382,21 @@ inline void Solver::AssembleKMA (double C1, double C2)
         Array<bool>   pre;  // prescribed U ?
         Dom.Eles[k]->CalcK  (K);
         Dom.Eles[k]->CalcM  (M);
-        Dom.Eles[k]->GetLoc (loc, pre);
+        Dom.Eles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         {
             for (size_t j=0; j<loc.Size(); ++j)
             {
-                     if (!pre[i] && !pre[j]) { A11.PushEntry (loc[i], loc[j], C1*M(i,j) + C2*K(i,j));
-                                               K11.PushEntry (loc[i], loc[j], K(i,j));  M11.PushEntry (loc[i], loc[j], M(i,j)); }
-                else if (!pre[i] &&  pre[j]) { K12.PushEntry (loc[i], loc[j], K(i,j));  M12.PushEntry (loc[i], loc[j], M(i,j)); }
-                else if ( pre[i] && !pre[j]) { K21.PushEntry (loc[i], loc[j], K(i,j));  M21.PushEntry (loc[i], loc[j], M(i,j)); }
-                else if ( pre[i] &&  pre[j]) { K22.PushEntry (loc[i], loc[j], K(i,j));  M22.PushEntry (loc[i], loc[j], M(i,j)); }
+                     if (!pU[loc[i]] && !pU[loc[j]]) { A11.PushEntry (loc[i], loc[j], C1*M(i,j) + C2*K(i,j));
+                                                       K11.PushEntry (loc[i], loc[j], K(i,j));  M11.PushEntry (loc[i], loc[j], M(i,j)); }
+                else if (!pU[loc[i]] &&  pU[loc[j]]) { K12.PushEntry (loc[i], loc[j], K(i,j));  M12.PushEntry (loc[i], loc[j], M(i,j)); }
+                else if ( pU[loc[i]] && !pU[loc[j]]) { K21.PushEntry (loc[i], loc[j], K(i,j));  M21.PushEntry (loc[i], loc[j], M(i,j)); }
+                else if ( pU[loc[i]] &&  pU[loc[j]]) { K22.PushEntry (loc[i], loc[j], K(i,j));  M22.PushEntry (loc[i], loc[j], M(i,j)); }
             }
         }
     }
     // augment A11
-    for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
+    for (size_t i=0; i<pEQ.Size(); ++i) A11.PushEntry (pEQ[i],pEQ[i], 1.0);
 }
 
 inline void Solver::AssembleKCMA (double C1, double C2, double C3)
@@ -425,7 +425,7 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
         Dom.Eles[k]->CalcK  (K);
         Dom.Eles[k]->CalcM  (M);
         //Dom.Eles[k]->CalcC  (C);
-        Dom.Eles[k]->GetLoc (loc, pre);
+        Dom.Eles[k]->GetLoc (loc);
         // calc C
         Mat_t C(K.num_rows(),K.num_cols());
         C = DampAm*M + DampAk*K;
@@ -434,16 +434,16 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
         {
             for (size_t j=0; j<loc.Size(); ++j)
             {
-                     if (!pre[i] && !pre[j]) { A11.PushEntry (loc[i], loc[j], C1*M(i,j) + C2*C(i,j) + C3*K(i,j));
-                                               K11.PushEntry (loc[i], loc[j], K(i,j));  C11.PushEntry (loc[i], loc[j], C(i,j));  M11.PushEntry (loc[i], loc[j], M(i,j)); }
-                else if (!pre[i] &&  pre[j]) { K12.PushEntry (loc[i], loc[j], K(i,j));  C12.PushEntry (loc[i], loc[j], C(i,j));  M12.PushEntry (loc[i], loc[j], M(i,j)); }
-                else if ( pre[i] && !pre[j]) { K21.PushEntry (loc[i], loc[j], K(i,j));  C21.PushEntry (loc[i], loc[j], C(i,j));  M21.PushEntry (loc[i], loc[j], M(i,j)); }
-                else if ( pre[i] &&  pre[j]) { K22.PushEntry (loc[i], loc[j], K(i,j));  C22.PushEntry (loc[i], loc[j], C(i,j));  M22.PushEntry (loc[i], loc[j], M(i,j)); }
+                     if (!pU[loc[i]] && !pU[loc[j]]) { A11.PushEntry (loc[i], loc[j], C1*M(i,j) + C2*C(i,j) + C3*K(i,j));
+                                                       K11.PushEntry (loc[i], loc[j], K(i,j));  C11.PushEntry (loc[i], loc[j], C(i,j));  M11.PushEntry (loc[i], loc[j], M(i,j)); }
+                else if (!pU[loc[i]] &&  pU[loc[j]]) { K12.PushEntry (loc[i], loc[j], K(i,j));  C12.PushEntry (loc[i], loc[j], C(i,j));  M12.PushEntry (loc[i], loc[j], M(i,j)); }
+                else if ( pU[loc[i]] && !pU[loc[j]]) { K21.PushEntry (loc[i], loc[j], K(i,j));  C21.PushEntry (loc[i], loc[j], C(i,j));  M21.PushEntry (loc[i], loc[j], M(i,j)); }
+                else if ( pU[loc[i]] &&  pU[loc[j]]) { K22.PushEntry (loc[i], loc[j], K(i,j));  C22.PushEntry (loc[i], loc[j], C(i,j));  M22.PushEntry (loc[i], loc[j], M(i,j)); }
             }
         }
     }
     // augment A11
-    for (size_t i=0; i<pDOFs.Size(); ++i) A11.PushEntry (pDOFs[i],pDOFs[i], 1.0);
+    for (size_t i=0; i<pEQ.Size(); ++i) A11.PushEntry (pEQ[i],pEQ[i], 1.0);
 }
 
 inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
@@ -451,16 +451,33 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     // assemble global K matrix
     AssembleKA ();
 
-    // assemble dF and W (workspace) vectors
-    for (size_t i=0; i<uDOFs.Size(); ++i)
+    // set prescribed dF
+    set_to_zero (dF);
+    set_to_zero (W);
+    for (NodeBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
     {
-        dF(uDOFs[i]) = dT*DF1(uDOFs[i]); // set dF1 equal to dT*DF1
-        W (uDOFs[i]) = dF(uDOFs[i]);     // set W1  equal to dF1
+        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        {
+            size_t idof = q->first;
+            long   eq   = p->first->EQ[idof];
+            if (!pU[eq]) // set dF for unknown variables only
+            {
+                dF(eq) = dT*q->second;
+                W (eq) = dT*q->second; // set W1 equal to dF1
+            }
+        }
     }
-    for (size_t i=0; i<pDOFs.Size(); ++i)
+
+    // set prescribed dU
+    set_to_zero (dU);
+    for (NodeBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
     {
-        dF(pDOFs[i]) = 0.0;              // clear dF2
-        W (pDOFs[i]) = dT*DU2(pDOFs[i]); // set W2 equal to dT*DU2
+        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        {
+            size_t idof = q->first;
+            long   eq   = p->first->EQ[idof];
+            W(eq) = dT*q->second; // set W2 equal to dU2
+        }
     }
 
     // calc dU and dF
@@ -477,16 +494,39 @@ inline void Solver::Initialize (bool Transient)
 
     // assign equation numbers
     NEq = 0;
-    uDOFs.Resize (0); // unknown DOFs
-    pDOFs.Resize (0); // prescribed DOFs
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
         for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
         {
             Dom.Nods[i]->EQ[j] = NEq;
-            if (Dom.Nods[i]->pU[j]) pDOFs.Push (NEq);
-            else                    uDOFs.Push (NEq);
             NEq++;
+        }
+    }
+
+    // prescribed equations and prescribed U
+    pEQ.Resize    (0);
+    pU .Resize    (NEq);
+    pU .SetValues (false);
+    for (NodeBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
+    {
+        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        {
+            size_t idof = q->first;
+            long   eq   = p->first->EQ[idof];
+            pU[eq] = true;
+            pEQ.Push (eq);
+        }
+    }
+
+    // unknown equations
+    uEQ.Resize (0);
+    for (NodeBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
+    {
+        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        {
+            size_t idof = q->first;
+            long   eq   = p->first->EQ[idof];
+            uEQ.Push (eq);
         }
     }
 
@@ -504,19 +544,19 @@ inline void Solver::Initialize (bool Transient)
     {
         Array<size_t> loc; // location array
         Array<bool>   pre; // prescribed U ?
-        Dom.Eles[k]->GetLoc (loc, pre);
+        Dom.Eles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         for (size_t j=0; j<loc.Size(); ++j)
         {
-                 if (!pre[i] && !pre[j]) K11_size++;
-            else if (!pre[i] &&  pre[j]) K12_size++;
-            else if ( pre[i] && !pre[j]) K21_size++;
-            else if ( pre[i] &&  pre[j]) K22_size++;
+                 if (!pU[loc[i]] && !pU[loc[j]]) K11_size++;
+            else if (!pU[loc[i]] &&  pU[loc[j]]) K12_size++;
+            else if ( pU[loc[i]] && !pU[loc[j]]) K21_size++;
+            else if ( pU[loc[i]] &&  pU[loc[j]]) K22_size++;
         }
     }
 
     // allocate triplets
-    A11.AllocSpace (NEq,NEq,K11_size+pDOFs.Size()+nzlag); // augmented
+    A11.AllocSpace (NEq,NEq,K11_size+pEQ.Size()+nzlag); // augmented
     K12.AllocSpace (NEq,NEq,K12_size);
     K21.AllocSpace (NEq,NEq,K21_size);
     K22.AllocSpace (NEq,NEq,K22_size);
@@ -543,8 +583,6 @@ inline void Solver::Initialize (bool Transient)
     F_int.change_dim (NEq);  set_to_zero (F_int);
     W    .change_dim (NEq);  set_to_zero (W);
     U    .change_dim (NEq);  set_to_zero (U);
-    DU2  .change_dim (NEq);  set_to_zero (DU2);
-    DF1  .change_dim (NEq);  set_to_zero (DF1);
     if (Transient)
     {
         V.change_dim (NEq);  set_to_zero (V);
@@ -562,8 +600,6 @@ inline void Solver::Initialize (bool Transient)
             long eq = Dom.Nods[i]->EQ[j];
             U (eq)  = Dom.Nods[i]->U [j];
             F (eq)  = Dom.Nods[i]->F [j];
-            if (Dom.Nods[i]->pU[j]) DU2(eq) = Dom.Nods[i]->DU[j];
-            else                    DF1(eq) = Dom.Nods[i]->DF[j];
         }
     }
 
@@ -668,7 +704,7 @@ inline void Solver::_cor_resid (Vec_t & dU)
         if (!ModNR) AssembleKA ();
 
         // clear unbalanced forces related to supports
-        for (size_t i=0; i<pDOFs.Size(); ++i) R(pDOFs[i]) = 0.0;
+        for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
 
         // calc corrector dU
         UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
@@ -815,13 +851,39 @@ inline void Solver::_NR_update (double tf)
 
 inline void Solver::_calc_F_Fnew (double dt)
 {
+    // loaded nodes
     set_to_zero (F);
     set_to_zero (Fnew);
-    for (size_t i=0; i<uDOFs.Size(); ++i)
+    for (NodeBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
     {
-        F   (uDOFs[i]) = DF1(uDOFs[i]);
-        Fnew(uDOFs[i]) = DF1(uDOFs[i]);
+        for (IntDbl_t::const_iterator q=p->second.begin(); q!=p->second.end(); ++q)
+        {
+            size_t idof = q->first;
+            long   eq   = p->first->EQ[idof];
+            if (!pU[eq]) // set dF for unknown variables only
+            {
+                F(eq)    += q->second;
+                Fnew(eq) += q->second;
+            }
+        }
     }
+
+    /*
+    // nodes with multiplier to F
+    for (size_t i=0; i<Dom.NodsMF.Size(); ++i)
+    {
+        FEM::Node     const * nod   = Dom.NodsMF[i]->first;
+        Array<String> const & fkeys = Dom.NodsMF[i]->second;
+        for (size_t j=0; j<fkeys.Size(); ++j)
+        {
+            long eq = nod->EQ[nod->FMap(fkeys[j])];
+            F   (eq) *= (*Dom.CalcM[i]) (Time);
+            Fnew(eq) *= (*Dom.CalcM[i]) (Time+dt);
+        }
+    }
+    */
+
+    // nodes with F function
     if (Dom.NDim==3)
     {
         for (size_t i=0; i<Dom.NodsF.Size(); ++i)
@@ -886,7 +948,7 @@ inline void Solver::_SS22_update (double tf, double dt)
         U = Unew;
 
         // clear internal forces related to supports
-        for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0;
+        for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0;
 
         // residual
         F = Fnew;
@@ -939,7 +1001,7 @@ inline void Solver::_GN22_update (double tf, double dt)
 
             // update elements
             for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
-            for (size_t i=0; i<pDOFs.Size(); ++i) F_int(pDOFs[i]) = 0.0; // clear internal forces related to supports
+            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
             Unew += dU;

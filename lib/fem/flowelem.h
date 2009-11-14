@@ -43,7 +43,8 @@ public:
               Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs);       ///< If setting body forces, IdxEdgeOrFace is ignored
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
+                      NodeBCs_t & pF, NodeBCs_t & pU);                 ///< If setting body forces, IdxEdgeOrFace is ignored
     void ClrBCs      ();                                               ///< Clear BCs
     void CalcK       (Mat_t & K)                                const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                                const; ///< Mass matrix
@@ -96,42 +97,36 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("H", "Q");
 }
 
-inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
+inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodeBCs_t & pF, NodeBCs_t & pU)
 {
-    if (BCs.HasKey("s")) // prescribed source term
-    {
-        double detJ, coef;
-        double s = BCs("s");
-        Mat_t C;
-        CoordMatrix (C);
-        //Vec_t Fs(Con.Size()); set_to_zero(Fs);
-        for (size_t i=0; i<GE->NIP; ++i)
-        {
-            CalcShape (C, GE->IPs[i], detJ, coef);
-            for (size_t j=0; j<GE->NN; ++j)
-            {
-                Con[j]->DF[Con[j]->FMap("Q")] += s*coef*GE->N(j);
-                //Fs(j) += coef*GE->N(j)*s;
-            }
-        }
-        //std::cout << s << "   Fs(" << Cell.ID << ") = " << PrintVector(Fs);
-    }
-    else
-    {
-        if (BCs.HasKey("H")) // prescribed potential (total head, temperature, ...)
-        {
-            for (size_t i=0; i<GE->NFN; ++i)
-            {
-                Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,i)]);
-                nod.SetBCs (BCs);
-            }
-        }
-        else if (BCs.HasKey("flux"))
-        {
-            // flux value
-            double qn = BCs("flux");
+    bool has_s    = BCs.HasKey("s");    // source term
+    bool has_H    = BCs.HasKey("H");    // potential
+    bool has_flux = BCs.HasKey("flux"); // flux
+    bool has_conv = BCs.HasKey("conv"); // convection
 
-            // add to dF
+    if (has_s || has_flux || has_conv)
+    {
+        // source term
+        if (has_s)
+        {
+            double detJ, coef;
+            double s = BCs("s");
+            Mat_t C;
+            CoordMatrix (C);
+            for (size_t i=0; i<GE->NIP; ++i)
+            {
+                CalcShape (C, GE->IPs[i], detJ, coef);
+                for (size_t j=0; j<GE->NN; ++j)
+                {
+                    pF[Con[j]][Con[j]->FMap("Q")] += s*coef*GE->N(j);
+                }
+            }
+        }
+
+        // flux
+        if (has_flux)
+        {
+            double qn = BCs("flux");
             double detJ, coef;
             Mat_t FC;
             FCoordMatrix (IdxEdgeOrFace, FC);
@@ -140,12 +135,14 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                 CalcFaceShape (FC, GE->FIPs[i], detJ, coef);
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
-                    Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,j)]);
-                    nod.DF[nod.FMap("Q")] += coef*GE->FN(j)*qn;
+                    size_t k = GE->FNode(IdxEdgeOrFace,j);
+                    pF[Con[k]][Con[k]->FMap("Q")] += coef*GE->FN(j)*qn;
                 }
             }
         }
-        else if (BCs.HasKey("conv"))
+
+        // convection
+        else if (has_conv)
         {
             // data
             double h    = BCs("h");    // convection coefficient
@@ -153,7 +150,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
             HasConv     = true;        // has convection
             Bry2h[IdxEdgeOrFace] = h;  // Map: bry => h
 
-            // add to dF
+            // add to pF
             double detJ, coef;
             Mat_t FC;
             FCoordMatrix (IdxEdgeOrFace, FC);
@@ -162,10 +159,21 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs)
                 CalcFaceShape (FC, GE->FIPs[i], detJ, coef);
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
-                    Node & nod = (*Con[GE->FNode(IdxEdgeOrFace,j)]);
-                    nod.DF[nod.FMap("Q")] += coef*GE->FN(j)*h*Tinf;
+                    size_t k = GE->FNode(IdxEdgeOrFace,j);
+                    pF[Con[k]][Con[k]->FMap("Q")] += coef*GE->FN(j)*h*Tinf;
                 }
             }
+        }
+    }
+
+    // potential
+    else if (has_H)
+    {
+        double H = BCs("H");
+        for (size_t j=0; j<GE->NFN; ++j)
+        {
+            size_t k = GE->FNode(IdxEdgeOrFace,j);
+            pU[Con[k]][Con[k]->UMap("H")] = H;
         }
     }
 }

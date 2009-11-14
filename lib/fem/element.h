@@ -33,6 +33,9 @@
 namespace FEM
 {
 
+typedef std::map<Node const *,IntDbl_t> NodeBCs_t; ///< Map Node => bry conds. (idxDOF,valueBCS)
+
+
 class Element
 {
 public:
@@ -49,10 +52,10 @@ public:
 
     // Methods
     virtual void GetLoc       (Array<size_t> & Loc)                      const;
-    virtual void GetLoc       (Array<size_t> & Loc, Array<bool> & Pre)   const;
     virtual void BackupState  ()                                         const;
     virtual void RestoreState ()                                         const;
-    virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs) {}
+    virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
+                               NodeBCs_t & pF, NodeBCs_t & pU)           {}
     virtual void ClrBCs       ()                                         {}
     virtual void CalcFint     (Vec_t * F_int=NULL)                       const { if (F_int!=NULL) for (size_t i=0; i<F_int->size(); ++i) (*F_int)(i) = 0.0; }
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
@@ -131,23 +134,6 @@ inline void Element::GetLoc (Array<size_t> & Loc) const
         {
             size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
             Loc[i*ndofs+j] = Con[i]->EQ[idx];
-        }
-    }
-}
-
-inline void Element::GetLoc (Array<size_t> & Loc, Array<bool> & Pre) const
-{
-    size_t nnods = Con.Size();
-    size_t ndofs = UKeys.Size();
-    Loc.Resize (nnods*ndofs);
-    Pre.Resize (nnods*ndofs);
-    for (size_t i=0; i<nnods; ++i)
-    {
-        for (size_t j=0; j<ndofs; ++j)
-        {
-            size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
-            Loc[i*ndofs+j] = Con[i]->EQ[idx];
-            Pre[i*ndofs+j] = Con[i]->pU[idx];
         }
     }
 }
