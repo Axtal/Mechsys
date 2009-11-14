@@ -111,6 +111,7 @@ int main(int argc, char **argv) try
 
     // return error flag
     SDPair nod_tol, ele_tol;
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    //return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return 1;
 }
 MECHSYS_CATCH
