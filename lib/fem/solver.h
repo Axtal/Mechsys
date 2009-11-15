@@ -327,7 +327,6 @@ inline void Solver::AssembleKA ()
     {
         Mat_t         K;   // K matrix
         Array<size_t> loc; // location array
-        Array<bool>   pre; // prescribed U ?
         Dom.Eles[k]->CalcK  (K);
         Dom.Eles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
@@ -379,7 +378,6 @@ inline void Solver::AssembleKMA (double C1, double C2)
     {
         Mat_t         K, M; // matrices
         Array<size_t> loc;  // location array
-        Array<bool>   pre;  // prescribed U ?
         Dom.Eles[k]->CalcK  (K);
         Dom.Eles[k]->CalcM  (M);
         Dom.Eles[k]->GetLoc (loc);
@@ -420,7 +418,6 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
         // calc K and M
         Mat_t         K, M, C; // matrices
         Array<size_t> loc;     // location array
-        Array<bool>   pre;     // prescribed U ?
         Dom.Eles[k]->CalcK  (K);
         Dom.Eles[k]->CalcM  (M);
         Dom.Eles[k]->GetLoc (loc);
@@ -541,7 +538,6 @@ inline void Solver::Initialize (bool Transient)
     for (size_t k=0; k<Dom.Eles.Size(); ++k)
     {
         Array<size_t> loc; // location array
-        Array<bool>   pre; // prescribed U ?
         Dom.Eles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         for (size_t j=0; j<loc.Size(); ++j)
