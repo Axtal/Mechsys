@@ -32,7 +32,13 @@ class HydroMechElem : public Element
 {
 public:
     // static
-    static int NDOF; ///< Number of DOFs
+    static size_t NDn; ///< Number of DOFs per node = NDim*2+1
+    static size_t NDt; ///< Total number of DOFs = GE->NN*NDn
+    static size_t NDs; ///< Total number of DOFs of solid matrix = GE->NN*NDim
+    static size_t NDp; ///< Total number of DOFs of pressure = GE->NN
+    static size_t NCo; ///< Number of stress/strain components = 2*NDim
+    static Mat_t  Im;  ///< Identity tensor (NCo,1)
+    static Vec_t  Iv;  ///< Identity tensor (NCo)
 
     // Constructor
     HydroMechElem (int                  NDim,   ///< Space dimension
@@ -67,7 +73,13 @@ public:
     double Q;    ///< Storage due to compressibility
 };
 
-int HydroMechElem::NDOF = 0;
+size_t HydroMechElem::NDn = 0;
+size_t HydroMechElem::NDt = 0;
+size_t HydroMechElem::NDs = 0;
+size_t HydroMechElem::NDp = 0;
+size_t HydroMechElem::NCo = 0;
+Mat_t  HydroMechElem::Im;
+Vec_t  HydroMechElem::Iv;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -95,29 +107,33 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
         Mdl->InitIvs (Ini, Sta[i]);
     }
 
-    // set number of NDOF for this class
-    if (NDOF==0) NDOF = GE->NN*(NDim*2+1);
+    // set constants of this class (once)
+    if (NDn==0)
+    {
+        NDn = NDim*2+1;
+        NDt = GE->NN*NDn;
+        NDs = GE->NN*NDim;
+        NDp = GE->NN;
+        NCo = 2*NDim;
+        Im.change_dim (NCo,1);
+        Iv.change_dim (NCo);
+        set_to_zero (Im);
+        set_to_zero (Iv);
+        Im(0,0)=1.0;   Im(1,0)=1.0;   Im(2,0)=1.0;
+        Iv(0)  =1.0;   Iv(1)  =1.0;   Iv(2)  =1.0;
+    }
 
-    // allocate state at centroid
-    Sta.Push (new EquilibState(NDim));
-    Mdl->InitIvs (Ini, Sta[Sta.Size()-1]);
-
+    // set UKeys in parent element and initialize DOFs
+    UKeys.Resize (NDn);
     if (NDim==2)
     {
-        // set UKeys in parent element
-        UKeys.Resize (NDim*2+1);
         UKeys = "ux", "uy", "pw", "Ux", "Uy";
-
-        // initialize DOFs
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy pw Ux Uy", "fx fy qw Fx Fy");
     }
     else // 3D
     {
-        // set UKeys in parent element
         UKeys.Resize (NDim*2+1);
         UKeys = "ux", "uy", "uz", "pw", "Ux", "Uy", "Uz";
-
-        // initialize DOFs
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz pw Ux Uy Uz", "fx fy fz qw Fx Fy Fz");
     }
 
@@ -140,6 +156,9 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, Nod
     bool has_uy  = BCs.HasKey("uy");  // y displacement
     bool has_uz  = BCs.HasKey("uz");  // z displacement
     bool has_pw  = BCs.HasKey("pw");  // water pressure
+    bool has_Ux  = BCs.HasKey("Ux");  // (water) x displacement
+    bool has_Uy  = BCs.HasKey("Uy");  // (water) y displacement
+    bool has_Uz  = BCs.HasKey("Uz");  // (water) z displacement
 
     // force components specified
     if (has_bx || has_by || has_bz || has_cbx ||
@@ -275,12 +294,16 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, Nod
     }
 
     // prescribed displacements
-    else if (has_ux || has_uy || has_uz || has_pw)
+    else if (has_ux || has_uy || has_uz || has_pw ||
+             has_Ux || has_Uy || has_Uz)
     {
         double ux = (has_ux ? BCs("ux") : 0.0);
         double uy = (has_uy ? BCs("uy") : 0.0);
         double uz = (has_uz ? BCs("uz") : 0.0);
         double pw = (has_pw ? BCs("pw") : 0.0);
+        double Ux = (has_Ux ? BCs("Ux") : 0.0);
+        double Uy = (has_Uy ? BCs("Uy") : 0.0);
+        double Uz = (has_Uz ? BCs("Uz") : 0.0);
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
@@ -288,71 +311,92 @@ inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, Nod
             if (has_uy) pU[Con[k]].first[Con[k]->UMap("uy")] = uy;
             if (has_uz) pU[Con[k]].first[Con[k]->UMap("uz")] = uz;
             if (has_pw) pU[Con[k]].first[Con[k]->UMap("pw")] = pw;
+            if (has_Ux) pU[Con[k]].first[Con[k]->UMap("Ux")] = Ux;
+            if (has_Uy) pU[Con[k]].first[Con[k]->UMap("Uy")] = Uy;
+            if (has_Uz) pU[Con[k]].first[Con[k]->UMap("Uz")] = Uz;
         }
     }
 }
 
 inline void HydroMechElem::CalcFint (Vec_t * F_int) const
 {
-    Array<size_t> loc;
-    GetLoc (loc);
-    //double detJ, coef;
+    // calc element forces
+    double detJ, coef;
     Mat_t  C, B;
-    Vec_t  Fe(NDOF);
-    set_to_zero (Fe);
+    Vec_t  BtSig (NDs);
+    Vec_t  fs    (NDs);
+    Vec_t  fp    (NDp);
+    Vec_t  fw    (NDs);
+    set_to_zero (fs);
+    set_to_zero (fp);
+    set_to_zero (fw);
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
-        //CalcB (C, GE->IPs[i], B, detJ, coef);
-        //Vec_t Btsig(trans(B)*static_cast<EquilibState const *>(Sta[i])->Sig);
-        //Fe += coef * (Btsig);
+        // force due to stress in solids
+        CalcB (C, GE->IPs[i], B, detJ, coef);
+        BtSig = trans(B)*static_cast<EquilibState const *>(Sta[i])->Sig;
+        fs += coef * BtSig;
     }
-    if (F_int==NULL) // set nodes
+
+    // assemble Fe vector (element force)
+    Vec_t Fe(NDt);
+    for (size_t i=0; i<NDs; ++i)
+    {
+        Fe(i)         = fs(i);
+        Fe(NDs+NDp+i) = fw(i);
+    }
+    for (size_t i=0; i<NDp; ++i) Fe(NDs+i) = fp(i);
+
+    // set nodes directy
+    if (F_int==NULL)
     {
         // add to F
         for (size_t i=0; i<GE->NN; ++i)
         {
-            //size_t k = 0;
-            //Con[i]->F[Con[i]->FMap("fx")] += Fe(k+i*NDOF);  k++;
-            //Con[i]->F[Con[i]->FMap("fy")] += Fe(k+i*NDOF);  k++;  if (NDim==3) {
-            //Con[i]->F[Con[i]->FMap("fz")] += Fe(k+i*NDOF);  k++; }
-            //Con[i]->F[Con[i]->FMap("qw")] += Fe(k+i*NDOF);  k++;
-            //Con[i]->F[Con[i]->FMap("Fx")] += Fe(k+i*NDOF);  k++;
-            //Con[i]->F[Con[i]->FMap("Fy")] += Fe(k+i*NDOF);  k++;  if (NDim==3) {
-            //Con[i]->F[Con[i]->FMap("Fz")] += Fe(k+i*NDOF); }
+            size_t k = 0;
+            Con[i]->F[Con[i]->FMap("fx")] += Fe(k+i*NDn);  k++;
+            Con[i]->F[Con[i]->FMap("fy")] += Fe(k+i*NDn);  k++;  if (NDim==3) {
+            Con[i]->F[Con[i]->FMap("fz")] += Fe(k+i*NDn);  k++; }
+            Con[i]->F[Con[i]->FMap("qw")] += Fe(k+i*NDn);  k++;
+            Con[i]->F[Con[i]->FMap("Fx")] += Fe(k+i*NDn);  k++;
+            Con[i]->F[Con[i]->FMap("Fy")] += Fe(k+i*NDn);  k++;  if (NDim==3) {
+            Con[i]->F[Con[i]->FMap("Fz")] += Fe(k+i*NDn); }
         }
     }
-    else for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += Fe(i);
+
+    // add to F_int
+    else
+    {
+        Array<size_t> loc;
+        GetLoc (loc);
+        for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += Fe(i);
+    }
 }
 
 inline void HydroMechElem::CalcK (Mat_t & K) const
 {
     // submatrices
-    size_t ncomp = 2*NDim; // number of stress/strain components
-    size_t nrows = GE->NN*NDim; // number of rows in Ks (solid) matrix
     double detJ, coef;
     Mat_t C, D, B;
-    Mat_t BtDB (nrows,nrows);
-    Mat_t Ks   (nrows,nrows);
-    Mat_t BtIN (nrows,GE->NN);
-    Mat_t G1   (nrows,GE->NN);
-    Mat_t G2   (nrows,GE->NN);
-    Mat_t NtN  (GE->NN,GE->NN);
-    Mat_t P    (GE->NN,GE->NN);
-    Mat_t I    (ncomp,1);
-    Mat_t Np   (1,GE->NN);
+    Mat_t BtDB (NDs,NDs);
+    Mat_t Ks   (NDs,NDs);
+    Mat_t BtIN (NDs,NDp);
+    Mat_t G1   (NDs,NDp);
+    Mat_t G2   (NDs,NDp);
+    Mat_t NtN  (NDp,NDp);
+    Mat_t P    (NDp,NDp);
+    Mat_t Np   (1,NDp);
     set_to_zero (Ks);
     set_to_zero (G1);
     set_to_zero (G2);
     set_to_zero (P);
-    set_to_zero (I);
     CoordMatrix (C);
-    I(0,0)=1.0;  I(1,0)=1.0;  I(2,0)=1.0;
     for (size_t i=0; i<GE->NIP; ++i)
     {
         // Np (pressure) matrix
         GE->Shape (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
-        for (size_t j=0; j<GE->NN; ++j) Np(0,j) = GE->N(j);
+        for (size_t j=0; j<NDp; ++j) Np(0,j) = GE->N(j);
 
         // B matrix
         CalcB (C, GE->IPs[i], B, detJ, coef);
@@ -363,7 +407,7 @@ inline void HydroMechElem::CalcK (Mat_t & K) const
         Ks  += coef * BtDB;
 
         // G1: coupling matrix 1
-        BtIN = trans(B)*I*Np;
+        BtIN = trans(B)*Im*Np;
         G1  += (coef*(alp-nn)) * BtIN;
 
         // G2: coupling matrix 2
@@ -375,22 +419,22 @@ inline void HydroMechElem::CalcK (Mat_t & K) const
     }
     
     // assemble K matrix
-    K.change_dim (NDOF,NDOF);
+    K.change_dim (NDt,NDt);
     set_to_zero (K);
-    for (size_t i=0; i<nrows; ++i)
+    for (size_t i=0; i<NDs; ++i)
     {
-        for (size_t j=0; j<nrows;  ++j) K(i,j) =  Ks(i,j);
-        for (size_t j=0; j<GE->NN; ++j)
+        for (size_t j=0; j<NDs; ++j) K(i,j) =  Ks(i,j);
+        for (size_t j=0; j<NDp; ++j)
         {
-            K(             i,nrows+j) = -G1(i,j);
-            K(nrows+GE->NN+i,nrows+j) = -G2(i,j);
+            K(        i,NDs+j) = -G1(i,j);
+            K(NDs+NDp+i,NDs+j) = -G2(i,j);
         }
     }
-    for (size_t i=0; i<GE->NN; ++i)
+    for (size_t i=0; i<NDp; ++i)
     {
-        for (size_t j=0; j<nrows;  ++j) K(nrows+i,             j) = -G1(j,i);
-        for (size_t j=0; j<GE->NN; ++j) K(nrows+i,nrows+       j) =   P(i,j);
-        for (size_t j=0; j<nrows;  ++j) K(nrows+i,nrows+GE->NN+j) = -G2(j,i);
+        for (size_t j=0; j<NDs; ++j) K(NDs+i,         j) = -G1(j,i);
+        for (size_t j=0; j<NDp; ++j) K(NDs+i, NDs+    j) =   P(i,j);
+        for (size_t j=0; j<NDs; ++j) K(NDs+i, NDs+NDp+j) = -G2(j,i);
     }
     //std::cout << "K = \n" << PrintMatrix(K);
 }
@@ -398,12 +442,11 @@ inline void HydroMechElem::CalcK (Mat_t & K) const
 inline void HydroMechElem::CalcM (Mat_t & M) const
 {
     // submatrices
-    size_t nrows = GE->NN*NDim; // number of rows in Ms (solid) matrix
     double detJ, coef;
     Mat_t  C, Nu;
-    Mat_t NtN (nrows,nrows);
-    Mat_t Ms  (nrows,nrows);
-    Mat_t Mf  (nrows,nrows);
+    Mat_t NtN (NDs,NDs);
+    Mat_t Ms  (NDs,NDs);
+    Mat_t Mf  (NDs,NDs);
     set_to_zero  (Ms);
     set_to_zero  (Mf);
     CoordMatrix  (C);
@@ -419,13 +462,13 @@ inline void HydroMechElem::CalcM (Mat_t & M) const
     }
 
     // assemble M matrix
-    M.change_dim (NDOF,NDOF);
+    M.change_dim (NDt,NDt);
     set_to_zero  (M);
-    for (size_t i=0; i<nrows; ++i)
-    for (size_t j=0; j<nrows; ++j)
+    for (size_t i=0; i<NDs; ++i)
+    for (size_t j=0; j<NDs; ++j)
     {
-        M(             i,              j) = Ms(i,j);
-        M(nrows+GE->NN+i, nrows+GE->NN+j) = Mf(i,j);
+        M(        i,         j) = Ms(i,j);
+        M(NDs+NDp+i, NDs+NDp+j) = Mf(i,j);
     }
     //std::cout << "M = \n" << PrintMatrix(M);
 }
@@ -433,11 +476,10 @@ inline void HydroMechElem::CalcM (Mat_t & M) const
 inline void HydroMechElem::CalcC (Mat_t & C) const
 {
     // submatrices
-    size_t nrows = GE->NN*NDim; // number of rows in Ms (solid) matrix
     double detJ, coef;
     Mat_t  Co, Nu;
-    Mat_t NtN (nrows,nrows);
-    Mat_t C1  (nrows,nrows);
+    Mat_t NtN (NDs,NDs);
+    Mat_t C1  (NDs,NDs);
     set_to_zero (C1);
     CoordMatrix (Co);
     for (size_t i=0; i<GE->NIP; ++i)
@@ -445,19 +487,19 @@ inline void HydroMechElem::CalcC (Mat_t & C) const
         // C1:
         CalcN (Co, GE->IPs[i], Nu, detJ, coef);
         NtN = trans(Nu)*Nu;
-        C1 += (nn*nn*kk) * NtN;
+        C1 += (nn*nn/kk) * NtN;
     }
 
     // assemble C matrix
-    C.change_dim (NDOF,NDOF);
+    C.change_dim (NDt,NDt);
     set_to_zero  (C);
-    for (size_t i=0; i<nrows; ++i)
-    for (size_t j=0; j<nrows; ++j)
+    for (size_t i=0; i<NDs; ++i)
+    for (size_t j=0; j<NDs; ++j)
     {
-        C(             i,              j) =  C1(i,j);
-        C(             i, nrows+GE->NN+j) = -C1(i,j);
-        C(nrows+GE->NN+i,              j) = -C1(j,i);
-        C(nrows+GE->NN+i, nrows+GE->NN+j) =  C1(i,j);
+        C(        i,         j) =  C1(i,j);
+        C(        i, NDs+NDp+j) = -C1(i,j);
+        C(NDs+NDp+i,         j) = -C1(j,i);
+        C(NDs+NDp+i, NDs+NDp+j) =  C1(i,j);
     }
     //std::cout << "C = \n" << PrintMatrix(C);
 }
@@ -483,8 +525,7 @@ inline void HydroMechElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t 
     Coef = h*detJ*IP.w;
 
     // B matrix
-    int ncomp = 2*NDim; // number of stress/strain components
-    B.change_dim (ncomp,GE->NN*NDim);
+    B.change_dim (NCo,NDs);
     set_to_zero  (B);
     if (NDim==2)
     {
@@ -548,7 +589,7 @@ inline void HydroMechElem::CalcN (Mat_t const & C, IntegPoint const & IP, Mat_t 
     Coef = h*detJ*IP.w;
 
     // N matrix
-    N.change_dim (NDim,GE->NN*NDim);
+    N.change_dim (NDim,NDs);
     set_to_zero  (N);
     if (GTy==axs_t)
     {
@@ -568,150 +609,109 @@ inline void HydroMechElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     GetLoc (loc);
 
     // element nodal displacements
-    Vec_t dUe(NDOF);
+    Vec_t dUe(NDt);
     for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
 
-
-    size_t nrows = GE->NN*NDim; // number of rows in Ms (solid) matrix
-    Vec_t dus(nrows);
-    Vec_t dpw(GE->NN);
-    Vec_t dUw(nrows);
-    for (size_t i=0; i<nrows; ++i)
+    // split dUe
+    Vec_t dus(NDs);
+    Vec_t dup(NDp);
+    Vec_t duw(NDs);
+    for (size_t i=0; i<NDs; ++i)
     {
         dus(i) = dUe(i);
-        dUw(i) = dUe(nrows+GE->NN+i);
+        duw(i) = dUe(NDs+NDp+i);
     }
-    for (size_t i=0; i<GE->NN; ++i) dpw(i) = dUe(nrows+i);
+    for (size_t i=0; i<NDp; ++i) dup(i) = dUe(NDs+i);
 
     // update state at each IP
     StressUpdate su(Mdl);
-    int ncomp = 2*NDim; // number of stress/strain components
     double detJ, coef;
     Mat_t  C, B;
-    Vec_t  df(nrows), dsig(ncomp), deps(ncomp);
-    set_to_zero (df);
+    Mat_t  Np(1,NDp);
+    Vec_t  dfs(NDs), dsig(NCo), deps(NCo);
+    Vec_t  dfp(NDp);
+    Vec_t  dfw(NDs);
+    set_to_zero (dfs);
+    set_to_zero (dfp);
+    set_to_zero (dfw);
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
+        // Np (pressure) matrix
+        GE->Shape (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+        for (size_t j=0; j<NDp; ++j) Np(0,j) = GE->N(j);
+
         // B matrix
         CalcB (C, GE->IPs[i], B, detJ, coef);
 
-        // strain and stress increments
+        // strain and (effective) stress increments
         deps = B * dus;
         su.Update (deps, Sta[i], dsig);
 
-        // element nodal forces
+        // water pressure increment and total stress increment
+        Vec_t tmp1(Np*dup);
+        double dp = tmp1(0);
+        dsig -= alp*dp*Iv;
+
+        // element nodal forces (solid)
         Vec_t Btdsig(trans(B)*dsig);
-        df += coef * Btdsig;
+        dfs += coef * Btdsig;
+
+        // dfp
+        //Vec_t tmp2(trans(B)*duw);
+        //double v = -coef*(alp-nn)*dot(deps,Iv);
+        //for (size_t j=0; j<NDp; ++j) dfp(j) += v*GE->N(j);
     }
 
-    // update state at centroid
-    //CalcB (C, GE->Rct, B, detJ, coef);
-    //deps = B * dUe;
-    //su.Update (deps, Sta[Sta.Size()-1], dsig);
+    //std::cout << "dfp = " << dfp << std::endl;
+    //throw new Fatal("stop");
 
-    // add results to Fint (internal forces)
     if (F_int!=NULL)
     {
-        //for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
+        // assemble dFe vector (element force)
+        Vec_t dFe(NDt);
+        for (size_t i=0; i<NDs; ++i)
+        {
+            dFe(i)         = dfs(i);
+            dFe(NDs+NDp+i) = dfw(i);
+        }
+        for (size_t i=0; i<NDp; ++i) dFe(NDs+i) = dfp(i);
+
+        // add results to Fint (internal forces)
+        for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
     }
 }
 
 inline void HydroMechElem::GetState (SDPair & KeysVals, int IdxIP) const
 {
-    double sq2 = sqrt(2.0);
-    if (false) // extrapolate, then interpolate at centroid
+    // average values
+    Vec_t sig_ave(NCo), eps_ave(NCo);
+    set_to_zero (sig_ave);
+    set_to_zero (eps_ave);
+    for (size_t i=0; i<Sta.Size(); ++i)
     {
-        // shape func matrix
-        Mat_t M, Mi;
-        ShapeMatrix (M);
-        Inv (M, Mi);
-
-        // shape at centroid
-        GE->Shape (GE->Rct.r, GE->Rct.s, GE->Rct.t);
-
-        // values at centroid
-        int ncomp = 2*NDim; // number of stress/strain components
-        Vec_t sig_ct(ncomp), eps_ct(ncomp);
-        set_to_zero (sig_ct);
-        set_to_zero (eps_ct);
-        for (int i=0; i<ncomp; ++i)
-        {
-            // extrapolate to nodes
-            Vec_t sig_at_IPs (GE->NIP);
-            Vec_t sig_at_Nods(GE->NN);
-            Vec_t eps_at_IPs (GE->NIP);
-            Vec_t eps_at_Nods(GE->NN);
-            for (size_t j=0; j<GE->NIP; ++j)
-            {
-                sig_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Sig(i);
-                eps_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Eps(i);
-            }
-            sig_at_Nods = Mi * sig_at_IPs;
-            eps_at_Nods = Mi * eps_at_IPs;
-
-            // interpolate to centroid
-            for (size_t j=0; j<GE->NN; ++j)
-            {
-                sig_ct(i) += GE->N(j)*sig_at_Nods(j);
-                eps_ct(i) += GE->N(j)*eps_at_Nods(j);
-            }
-        }
-        KeysVals.Set("sx sy sz sxy  ex ey ez exy",//  p q ev ed",
-                     sig_ct(0),sig_ct(1),sig_ct(2),sig_ct(3)/sq2,
-                     eps_ct(0),eps_ct(1),eps_ct(2),eps_ct(3)/sq2);
+        EquilibState const * sta = static_cast<EquilibState const *>(Sta[i]);
+        sig_ave += sta->Sig;
+        eps_ave += sta->Eps;
     }
-    else if (false) // average
+    sig_ave /= Sta.Size();
+    eps_ave /= Sta.Size();
+    if (NDim==2)
     {
-        // average values
-        int ncomp = 2*NDim; // number of stress/strain components
-        Vec_t sig_ave(ncomp), eps_ave(ncomp);
-        set_to_zero (sig_ave);
-        set_to_zero (eps_ave);
-        for (size_t i=0; i<Sta.Size(); ++i)
-        {
-            EquilibState const * sta = static_cast<EquilibState const *>(Sta[i]);
-            sig_ave += sta->Sig;
-            eps_ave += sta->Eps;
-        }
-        sig_ave /= Sta.Size();
-        eps_ave /= Sta.Size();
-        KeysVals.Set("sx sy sz sxy  ex ey ez exy",//  p q ev ed",
-                     sig_ave(0),sig_ave(1),sig_ave(2),sig_ave(3)/sq2,
-                     eps_ave(0),eps_ave(1),eps_ave(2),eps_ave(3)/sq2);
+        KeysVals.Set("sx sy sz sxy  ex ey ez exy",
+                     sig_ave(0),sig_ave(1),sig_ave(2),sig_ave(3)/Util::SQ2,
+                     eps_ave(0),eps_ave(1),eps_ave(2),eps_ave(3)/Util::SQ2);
     }
     else
     {
-        Vec_t const * sig;
-        Vec_t const * eps;
-        if (IdxIP<0) // centroid
-        {
-            sig = &(static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Sig);
-            eps = &(static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Eps);
-        }
-        else
-        {
-            sig = &(static_cast<EquilibState const *>(Sta[IdxIP])->Sig);
-            eps = &(static_cast<EquilibState const *>(Sta[IdxIP])->Eps);
-        }
-        if (NDim==2)
-        {
-            KeysVals.Set("sx sy sz sxy  ex ey ez exy",
-                         (*sig)(0),(*sig)(1),(*sig)(2),(*sig)(3)/sq2,
-                         (*eps)(0),(*eps)(1),(*eps)(2),(*eps)(3)/sq2);
-        }
-        else
-        {
-            KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
-                         (*sig)(0),(*sig)(1),(*sig)(2),(*sig)(3)/sq2,(*sig)(4)/sq2,(*sig)(5)/sq2,
-                         (*eps)(0),(*eps)(1),(*eps)(2),(*eps)(3)/sq2,(*eps)(4)/sq2,(*eps)(5)/sq2);
-        }
+        KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
+                     sig_ave(0),sig_ave(1),sig_ave(2),sig_ave(3)/Util::SQ2,sig_ave(4)/Util::SQ2,sig_ave(5)/Util::SQ2,
+                     eps_ave(0),eps_ave(1),eps_ave(2),eps_ave(3)/Util::SQ2,eps_ave(4)/Util::SQ2,eps_ave(5)/Util::SQ2);
     }
 }
 
 inline void HydroMechElem::GetState (Array<SDPair> & Results) const
 {
-    double sq2 = sqrt(2.0);
     Results.Resize (GE->NIP);
     for (size_t i=0; i<GE->NIP; ++i)
     {
@@ -720,14 +720,14 @@ inline void HydroMechElem::GetState (Array<SDPair> & Results) const
         if (NDim==2)
         {
             Results[i].Set("sx sy sz sxy  ex ey ez exy",
-                           sig(0),sig(1),sig(2),sig(3)/sq2,
-                           eps(0),eps(1),eps(2),eps(3)/sq2);
+                           sig(0),sig(1),sig(2),sig(3)/Util::SQ2,
+                           eps(0),eps(1),eps(2),eps(3)/Util::SQ2);
         }
         else
         {
             Results[i].Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
-                           sig(0),sig(1),sig(2),sig(3)/sq2,sig(4)/sq2,sig(5)/sq2,
-                           eps(0),eps(1),eps(2),eps(3)/sq2,eps(4)/sq2,eps(5)/sq2);
+                           sig(0),sig(1),sig(2),sig(3)/Util::SQ2,sig(4)/Util::SQ2,sig(5)/Util::SQ2,
+                           eps(0),eps(1),eps(2),eps(3)/Util::SQ2,eps(4)/Util::SQ2,eps(5)/Util::SQ2);
         }
     }
 }

@@ -272,8 +272,7 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
 
 inline void EquilibElem::CalcFint (Vec_t * F_int) const
 {
-    Array<size_t> loc;
-    GetLoc (loc);
+    // calc element force
     double detJ, coef;
     Mat_t  C, B;
     Vec_t  Fe(GE->NN*NDim);
@@ -285,7 +284,9 @@ inline void EquilibElem::CalcFint (Vec_t * F_int) const
         Vec_t Btsig(trans(B)*static_cast<EquilibState const *>(Sta[i])->Sig);
         Fe += coef * (Btsig);
     }
-    if (F_int==NULL) // set nodes
+    
+    // set nodes directly
+    if (F_int==NULL)
     {
         // add to F
         for (size_t i=0; i<GE->NN; ++i)
@@ -295,7 +296,14 @@ inline void EquilibElem::CalcFint (Vec_t * F_int) const
             Con[i]->F[Con[i]->FMap("fz")] += Fe(2+i*NDim);
         }
     }
-    else for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += Fe(i);
+
+    // add to F_int
+    else
+    {
+        Array<size_t> loc;
+        GetLoc (loc);
+        for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += Fe(i);
+    }
 }
 
 inline void EquilibElem::CalcK (Mat_t & K) const
