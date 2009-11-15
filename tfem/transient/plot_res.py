@@ -28,7 +28,10 @@ if False:
     show()
 
 if True:
-    dat = read_table("zienk_shiomi_01_nod_20_-200.res")
+    #dat = read_table("zienk_shiomi_01_nod_20_-200.res")
+    dat = read_table("zienk_shiomi_01_nod_2_0.res")
+    #dat = read_table("zienk_shiomi_01_nod_10_0.res")
+    #dat = read_table("zienk_shiomi_01_nod_18_0.res")
     T = array(dat['Time'])
     plot(T,dat['pw'],'r-',lw=2)
     grid()

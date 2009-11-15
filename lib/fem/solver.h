@@ -415,16 +415,18 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
     A11.ResetTop(); // reset top (position to insert new values) => clear triplet
     for (size_t k=0; k<Dom.Eles.Size(); ++k)
     {
-        // calc K and M
-        Mat_t         K, M, C; // matrices
-        Array<size_t> loc;     // location array
-        Dom.Eles[k]->CalcK  (K);
-        Dom.Eles[k]->CalcM  (M);
-        Dom.Eles[k]->GetLoc (loc);
-        // calc C
-        if (DampTy==Rayleigh_t) C = DampAm*M + DampAk*K;
-        if (DampTy==HMCoup_t)   Dom.Eles[k]->CalcC (C);
+        // matrices
+        Mat_t M, C, K;
+        if      (DampTy==HMCoup_t) Dom.Eles[k]->Matrices (M, C, K);
+        else if (DampTy==Rayleigh_t)
+        {
+            Dom.Eles[k]->CalcK (K);
+            Dom.Eles[k]->CalcM (M);
+            C = DampAm*M + DampAk*K;
+        }
         // set K, C, M, and A matrices
+        Array<size_t> loc;
+        Dom.Eles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         {
             for (size_t j=0; j<loc.Size(); ++j)
