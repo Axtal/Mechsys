@@ -151,13 +151,13 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
 
 inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
 {
-    P1 = Pt1;
-    P2 = Pt2;
-    Kn = 10000;
-    Kt = 5000;
-    Gn =16;
-    Gt = 8;
-    Mu = 0.4;
+    P1   = Pt1;
+    P2   = Pt2;
+    Kn   = 2*Pt1->Kn*Pt2->Kn/(Pt1->Kn+Pt2->Kn);
+    Kt   = 2*Pt1->Kt*Pt2->Kt/(Pt1->Kn+Pt2->Kt);
+    Gn   = 2*Pt1->Gn*Pt2->Gn/(Pt1->Gn+Pt2->Gn);
+    Gt   = 2*Pt1->Gt*Pt2->Gt/(Pt1->Gn+Pt2->Gt);
+    Mu   = 2*Pt1->Mu*Pt2->Mu/(Pt1->Mu+Pt2->Mu);
     Epot = 0.0;
 
     CalcForce(0.1);

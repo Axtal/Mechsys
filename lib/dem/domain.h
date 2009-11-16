@@ -51,12 +51,13 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres  (int Tag, double L, size_t N, double rho, char const * Type, bool Eliminate);          ///< General spheres
-    void GenBox      (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
-    void GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
-    void GenFromVoro (int Tag, container & VC, double R, double rho);                                       ///< Generate Particles from a Voronoi container
-    void AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
-                      double rho, bool Periodic,size_t Randomseed);                                         ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
+    void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type, bool Eliminate);          ///< General spheres
+    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenBoundingBox  (int InitialTag, double R, bool Triaxial, double Cf);                                  ///< Generate o bounding box enclosing the previous included particles.
+    void GenFromMesh     (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
+    void GenFromVoro     (int Tag, container & VC, double R, double rho);                                       ///< Generate Particles from a Voronoi container
+    void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
+                          double rho, bool Periodic,size_t Randomseed);                                         ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
 
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
@@ -67,12 +68,14 @@ public:
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
 
     // Methods
-    void SetBC      (Dict & D);                                                 ///< Set the dynamic conditions of individual grains by dictionaries
-    void SetProps   (Dict & D);                                                 ///< Set the properties of individual grains by dictionaries
-    void Initialize (double dt=0.0);                                            ///< Set the particles to a initial state and asign the possible insteractions
-    void Solve      (double tf, double dt, double dtOut, char const * FileKey); ///< Run simulation
-    void WritePOV   (char const * FileKey);                                     ///< Write POV file
-    void WriteBPY   (char const * FileKey);                                     ///< Write BPY (Blender) file
+    void SetBC          (Dict & D);                                                                   ///< Set the dynamic conditions of individual grains by dictionaries
+    void SetProps       (Dict & D);                                                                   ///< Set the properties of individual grains by dictionaries
+    void Initialize     (double dt=0.0);                                                              ///< Set the particles to a initial state and asign the possible insteractions
+    void Solve          (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
+    void WritePOV       (char const * FileKey);                                                       ///< Write POV file
+    void WriteBPY       (char const * FileKey);                                                       ///< Write BPY (Blender) file
+    void BoundingBox    (Vec3_t & minX, Vec3_t & maxX);                                               ///< Defines the rectangular box that encloses the particles.
+    void Center         ();                                                                           ///< Centers the domain
 
     // Methods for specific simulations
     void SetTxTest (Vec3_t  const & Sigf,    ///< Final state of stress
@@ -81,10 +84,10 @@ public:
     void ResetEps  ();                       ///< Reset strains and re-calculate initial lenght of packing
 
     // Auxiliar methods
-    void   LinearMomentum  (Vec3_t & L);                                                  ///< Return total momentum of the system
-    void   AngularMomentum (Vec3_t & L);                                                  ///< Return total angular momentum of the system
-    double CalcEnergy      (double & Ekin, double & Epot);                                ///< Return total energy of the system
-    void   Output          (char const * FileKey, size_t IdxOut, std::ostream & OutFile); ///< Output current state
+    void   LinearMomentum  (Vec3_t & L);                                                                    ///< Return total momentum of the system
+    void   AngularMomentum (Vec3_t & L);                                                                    ///< Return total angular momentum of the system
+    double CalcEnergy      (double & Ekin, double & Epot);                                                  ///< Return total energy of the system
+    void   Output          (char const * FileKey, size_t IdxOut, std::ostream & OutFile, bool RenderVideo); ///< Output current state
 
     // Data
     double             Time;          ///< Current time
@@ -224,6 +227,14 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
 
     // reset strains and find initial length of packing
     ResetEps ();
+}
+
+inline void Domain::GenBoundingBox (int InitialTag, double R, bool Triaxial, double Cf)
+{
+    Center();
+    Vec3_t minX,maxX;
+    BoundingBox(minX,maxX);
+    GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Triaxial, Cf);
 }
 
 inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho)
@@ -755,7 +766,7 @@ inline void Domain::Initialize (double dt)
     }
 }
 
-inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey)
+inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo)
 {
     // initialize
     if (FreeParticles.Size()==0) FreeParticles = Particles;
@@ -775,9 +786,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     size_t idx_out = 0;    // index of output
     double tout    = t0;  // time position for output
 
-    // output initial state
-    Output (FileKey, idx_out, fw);
-    idx_out++;
 
     // run
     while (Time<tf)
@@ -880,7 +888,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // output
         if (Time>=tout)
         {
-            Output (FileKey, idx_out, fw);
+            Output (FileKey, idx_out, fw, RenderVideo);
             tout += dtOut;
             idx_out++;
         }
@@ -923,6 +931,28 @@ inline void Domain::WriteBPY (char const * FileKey)
     of.close();
 }
 
+inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
+{
+    minX = Vec3_t(Particles[0]->MinX(), Particles[0]->MinY(), Particles[0]->MinZ());
+    maxX = Vec3_t(Particles[0]->MaxX(), Particles[0]->MaxY(), Particles[0]->MaxZ());
+    for (size_t i=1; i<Particles.Size(); i++)
+    {
+        if (minX(0)>Particles[i]->MinX()) minX(0) = Particles[i]->MinX();
+        if (minX(1)>Particles[i]->MinY()) minX(1) = Particles[i]->MinY();
+        if (minX(2)>Particles[i]->MinZ()) minX(2) = Particles[i]->MinZ();
+        if (maxX(0)<Particles[i]->MaxX()) maxX(0) = Particles[i]->MaxX();
+        if (maxX(1)<Particles[i]->MaxY()) maxX(1) = Particles[i]->MaxY();
+        if (maxX(2)<Particles[i]->MaxZ()) maxX(2) = Particles[i]->MaxZ();
+    }
+}
+
+inline void Domain::Center()
+{
+    Vec3_t minX,maxX;
+    BoundingBox(minX,maxX);
+    Vec3_t Transport(-0.5*(maxX+minX));
+    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Translate(Transport);
+}
 // Methods for specific simulations
 
 inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt)
@@ -958,8 +988,10 @@ inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t
         veloc = 0.5*dEpsdt(0)*height, 0.0, 0.0;
         TParticles.Push(Particles[InitialIndex]);
         TParticles[TParticles.Size()-1]->v = veloc;
+        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
         TParticles.Push(Particles[InitialIndex+1]);
         TParticles[TParticles.Size()-1]->v = -veloc;
+        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
     }
     else // Sig(0) prescribed
     {
@@ -979,8 +1011,10 @@ inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t
         veloc = 0.0, 0.5*dEpsdt(1)*height, 0.0;
         TParticles.Push(Particles[InitialIndex+2]);
         TParticles[TParticles.Size()-1]->v = veloc;
+        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
         TParticles.Push(Particles[InitialIndex+3]);
         TParticles[TParticles.Size()-1]->v = -veloc;
+        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
     }
     else // Sig(1) presscribed
     {
@@ -1000,8 +1034,10 @@ inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t
         veloc = 0.0, 0.0, 0.5*dEpsdt(2)*height;
         TParticles.Push(Particles[InitialIndex+4]);
         TParticles[TParticles.Size()-1]->v = veloc;
+        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
         TParticles.Push(Particles[InitialIndex+5]);
         TParticles[TParticles.Size()-1]->v = -veloc;
+        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
     }
     else // Sig(2) presscribed
     {
@@ -1069,11 +1105,11 @@ inline double Domain::CalcEnergy (double & Ekin, double & Epot)
     return Ekin + Epot;
 }
 
-inline void Domain::Output (char const * FileKey, size_t IdxOut, std::ostream & OF)
+inline void Domain::Output (char const * FileKey, size_t IdxOut, std::ostream & OF, bool RenderVideo)
 {
     String fn;
     fn.Printf ("%s_%08d", FileKey, IdxOut);
-    WritePOV  (fn.CStr());
+    if (RenderVideo) WritePOV  (fn.CStr());
 
     // output triaxial test data
     if (IsTxTest)
@@ -1087,7 +1123,6 @@ inline void Domain::Output (char const * FileKey, size_t IdxOut, std::ostream & 
 
         // stress
         double sig2 = Sig(2);
-        //if (sig2==0.0) sig2 = 0.5*(fabs(FT[0](2))+fabs(FT[1](2)))/((Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)));
         OF << Util::_10_6 << Time << Util::_8s << Sig(0) << Util::_8s << Sig(1) << Util::_8s << sig2;
 
         // strain

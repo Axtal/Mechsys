@@ -94,22 +94,23 @@ int main(int argc, char **argv) try
 
     // domain
     Domain d;
-    d.CamPos = Vec3_t(0, 5*(Lx+Ly+Lz)/3.0, 0); // position of camera
+    d.CamPos = Vec3_t(0, 3*(Lx+Ly+Lz)/3.0, 0); // position of camera
 
-    // particles
+    // particle
+    //d.GenSpheres  (-1,4,10,1.0,"HCP",true);
     d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed);
-    d.GenBox      (/*InitialTag*/-2,/*Lx*/Lx+2.0,/*Ly*/Ly+2.0,/*Lz*/Lz+2.0, R, /*Tx*/true, /*Cf*/1.3);
+    d.GenBoundingBox(/*InitialTag*/-2, R, /*Tx*/true, /*Cf*/1.3);
     d.WriteBPY    ("test_triaxial");
 
     // properties of particles
     Dict B;
     B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,0.0,0.0);
-    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,0.0,0.0);
-    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,0.0,0.0);
-    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,0.0,0.0);
-    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,0.0,0.0);
-    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,0.0,0.0);
+    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
     d.SetProps(B);
 
     // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
@@ -118,9 +119,9 @@ int main(int argc, char **argv) try
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
     sigf =  Vec3_t(-p0,-p0,-p0);
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxiala");
+    d.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxiala",true);
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialb");
+    d.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialb",true);
 
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
@@ -134,7 +135,7 @@ int main(int argc, char **argv) try
     // run
     d.ResetEps  ();
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialc");
+    d.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialc",true);
 
     return 0;
 }
