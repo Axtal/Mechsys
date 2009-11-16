@@ -979,6 +979,9 @@ inline void Solver::_GN22_update (double tf, double dt)
 
         // next time step
         Time += dt;
+
+        // debug
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
 }
 

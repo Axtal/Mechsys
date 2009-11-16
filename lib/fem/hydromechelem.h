@@ -127,12 +127,12 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     if (NDim==2)
     {
         UKeys = "ux", "uy", "pw";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy pw", "fx fy qw");
+        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy pw", "fx fy Qw");
     }
     else // 3D
     {
         UKeys = "ux", "uy", "uz", "pw";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz pw", "fx fy fz qw");
+        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz pw", "fx fy fz Qw");
     }
 
     // set F in nodes due to Fint
@@ -141,155 +141,178 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
 
 inline void HydroMechElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
-    bool has_bx  = BCs.HasKey("bx");  // x component of body force
-    bool has_by  = BCs.HasKey("by");  // y component of body force
-    bool has_bz  = BCs.HasKey("bz");  // z component of body force
-    bool has_cbx = BCs.HasKey("cbx"); // centrifugal body force along x (in axisymmetric problems)
-    bool has_qx  = BCs.HasKey("qx");  // x component of distributed loading
-    bool has_qy  = BCs.HasKey("qy");  // y component of distributed loading
-    bool has_qz  = BCs.HasKey("qz");  // z component of distributed loading
-    bool has_qn  = BCs.HasKey("qn");  // normal distributed loading
-    bool has_qt  = BCs.HasKey("qt");  // tangential distributed loading (2D only)
-    bool has_ux  = BCs.HasKey("ux");  // x displacement
-    bool has_uy  = BCs.HasKey("uy");  // y displacement
-    bool has_uz  = BCs.HasKey("uz");  // z displacement
-    bool has_pw  = BCs.HasKey("pw");  // water pressure
+    bool has_bx   = BCs.HasKey("bx");   // x component of body force
+    bool has_by   = BCs.HasKey("by");   // y component of body force
+    bool has_bz   = BCs.HasKey("bz");   // z component of body force
+    bool has_cbx  = BCs.HasKey("cbx");  // centrifugal body force along x (in axisymmetric problems)
+    bool has_qx   = BCs.HasKey("qx");   // x component of distributed loading
+    bool has_qy   = BCs.HasKey("qy");   // y component of distributed loading
+    bool has_qz   = BCs.HasKey("qz");   // z component of distributed loading
+    bool has_qn   = BCs.HasKey("qn");   // normal distributed loading
+    bool has_qt   = BCs.HasKey("qt");   // tangential distributed loading (2D only)
+    bool has_ux   = BCs.HasKey("ux");   // x displacement
+    bool has_uy   = BCs.HasKey("uy");   // y displacement
+    bool has_uz   = BCs.HasKey("uz");   // z displacement
+    bool has_pw   = BCs.HasKey("pw");   // water pressure
+    bool has_flux = BCs.HasKey("flux"); // normal flux to boundary
 
-    // force components specified
-    if (has_bx || has_by || has_bz || has_cbx ||
-        has_qx || has_qy || has_qz || has_qn  || has_qt)
+    // body forces
+    if (has_bx || has_by || has_bz || has_cbx) // prescribed body forces
     {
-        // body forces
-        if (has_bx || has_by || has_bz || has_cbx) // prescribed body forces
+        // matrix of coordinates of nodes
+        Mat_t C;
+        CoordMatrix (C);
+        
+        // loading
+        double bx = (has_bx  ? BCs("bx")  : 0.0);
+        double by = (has_by  ? BCs("by")  : 0.0);
+        double bz = (has_bz  ? BCs("bz")  : 0.0);
+               bx = (has_cbx ? BCs("cbx") : bx );
+
+        // set
+        for (size_t i=0; i<GE->NIP; ++i)
         {
-            // matrix of coordinates of nodes
-            Mat_t C;
-            CoordMatrix (C);
-            
-            // loading
-            double bx = (has_bx  ? BCs("bx")  : 0.0);
-            double by = (has_by  ? BCs("by")  : 0.0);
-            double bz = (has_bz  ? BCs("bz")  : 0.0);
-                   bx = (has_cbx ? BCs("cbx") : bx );
+            // geometric data
+            GE->Shape  (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+            GE->Derivs (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
 
-            // set
-            for (size_t i=0; i<GE->NIP; ++i)
+            // Jacobian and its determinant
+            Mat_t J(GE->dNdR * C); // J = dNdR * C
+            double detJ = Det(J);
+
+            // coefficient used during integration
+            double coef = h*detJ*GE->IPs[i].w;
+            if (GTy==axs_t)
             {
-                // geometric data
-                GE->Shape  (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
-                GE->Derivs (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+                // calculate radius=x at this IP
+                double radius = 0.0;
+                for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
 
-                // Jacobian and its determinant
-                Mat_t J(GE->dNdR * C); // J = dNdR * C
-                double detJ = Det(J);
+                // correct coef
+                if (has_cbx) coef *= radius*radius;
+                else         coef *= radius;
+            }
 
-                // coefficient used during integration
-                double coef = h*detJ*GE->IPs[i].w;
-                if (GTy==axs_t)
+            // add to dF
+            for (size_t j=0; j<GE->NN; ++j)
+            {
+                if (has_bx || has_cbx) pF[Con[j]].first[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
+                if (has_by           ) pF[Con[j]].first[Con[j]->FMap("fy")] += coef*GE->N(j)*by;
+                if (has_bz           ) pF[Con[j]].first[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+            }
+        }
+
+        // set CalcM
+        for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
+    }
+
+    // surface loading
+    if (has_qx || has_qy || has_qz || has_qn  || has_qt)
+    {
+        // matrix of coordinates of edge/face
+        Mat_t Cf;
+        FCoordMatrix (IdxEdgeOrFace, Cf);
+
+        // loading
+        double qx = (has_qx ? BCs("qx") : 0.0);
+        double qy = (has_qy ? BCs("qy") : 0.0);
+        double qz = (has_qz ? BCs("qz") : 0.0);
+        double qn = (has_qn ? BCs("qn") : 0.0);
+        double qt = (has_qt ? BCs("qt") : 0.0);
+
+        // set
+        for (size_t i=0; i<GE->NFIP; ++i)
+        {
+            // geometric data
+            GE->FaceShape  (GE->FIPs[i].r, GE->FIPs[i].s);
+            GE->FaceDerivs (GE->FIPs[i].r, GE->FIPs[i].s);
+
+            // face/edge Jacobian and its determinant
+            Mat_t J(GE->FdNdR * Cf);
+
+            // coefficient used during integration
+            double coef = h*GE->FIPs[i].w; // *detJ is not neccessary since qx,qy,qz are already multiplied by detJ (due to normal)
+            if (GTy==axs_t)
+            {
+                // calculate radius=x at this FIP
+                double radius = 0.0;
+                for (size_t j=0; j<GE->NFN; ++j) radius += GE->FN(j)*Con[GE->FNode(IdxEdgeOrFace,j)]->Vert.C[0];
+                coef *= radius; // correct coef
+            }
+
+            // calculate qx, qy and qz from qn and qt
+            if (has_qn || has_qt)
+            {
+                // normal to edge/face
+                Vec_t n(NDim); // normal multiplied by detJ
+                if (NDim==2) n = J(0,1), -J(0,0);
+                else
                 {
-                    // calculate radius=x at this IP
-                    double radius = 0.0;
-                    for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
-
-                    // correct coef
-                    if (has_cbx) coef *= radius*radius;
-                    else         coef *= radius;
+                    // vectorial product
+                    Vec_t a(3);  a = J(0,0), J(0,1), J(0,2);
+                    Vec_t b(3);  b = J(1,0), J(1,1), J(1,2);
+                    n = a(1)*b(2) - a(2)*b(1),
+                        a(2)*b(0) - a(0)*b(2),
+                        a(0)*b(1) - a(1)*b(0);
                 }
 
-                // add to dF
-                for (size_t j=0; j<GE->NN; ++j)
+                // loading
+                if (NDim==2)
                 {
-                    if (has_bx || has_cbx) pF[Con[j]].first[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
-                    if (has_by           ) pF[Con[j]].first[Con[j]->FMap("fy")] += coef*GE->N(j)*by;
-                    if (has_bz           ) pF[Con[j]].first[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+                    qx = n(0)*qn - n(1)*qt;
+                    qy = n(1)*qn + n(0)*qt;
+                }
+                else
+                {
+                    qx = n(0)*qn;
+                    qy = n(1)*qn;
+                    qz = n(2)*qn;
                 }
             }
 
-            // set CalcM
-            for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
-        }
-
-        // surface loading
-        if (has_qx || has_qy || has_qz || has_qn  || has_qt)
-        {
-            // matrix of coordinates of edge/face
-            Mat_t Cf;
-            FCoordMatrix (IdxEdgeOrFace, Cf);
-
-            // loading
-            double qx = (has_qx ? BCs("qx") : 0.0);
-            double qy = (has_qy ? BCs("qy") : 0.0);
-            double qz = (has_qz ? BCs("qz") : 0.0);
-            double qn = (has_qn ? BCs("qn") : 0.0);
-            double qt = (has_qt ? BCs("qt") : 0.0);
-
-            // set
-            for (size_t i=0; i<GE->NFIP; ++i)
+            // add to dF
+            for (size_t j=0; j<GE->NFN; ++j)
             {
-                // geometric data
-                GE->FaceShape  (GE->FIPs[i].r, GE->FIPs[i].s);
-                GE->FaceDerivs (GE->FIPs[i].r, GE->FIPs[i].s);
-
-                // face/edge Jacobian and its determinant
-                Mat_t J(GE->FdNdR * Cf);
-
-                // coefficient used during integration
-                double coef = h*GE->FIPs[i].w; // *detJ is not neccessary since qx,qy,qz are already multiplied by detJ (due to normal)
-                if (GTy==axs_t)
-                {
-                    // calculate radius=x at this FIP
-                    double radius = 0.0;
-                    for (size_t j=0; j<GE->NFN; ++j) radius += GE->FN(j)*Con[GE->FNode(IdxEdgeOrFace,j)]->Vert.C[0];
-                    coef *= radius; // correct coef
-                }
-
-                // calculate qx, qy and qz from qn and qt
-                if (has_qn || has_qt)
-                {
-                    // normal to edge/face
-                    Vec_t n(NDim); // normal multiplied by detJ
-                    if (NDim==2) n = J(0,1), -J(0,0);
-                    else
-                    {
-                        // vectorial product
-                        Vec_t a(3);  a = J(0,0), J(0,1), J(0,2);
-                        Vec_t b(3);  b = J(1,0), J(1,1), J(1,2);
-                        n = a(1)*b(2) - a(2)*b(1),
-                            a(2)*b(0) - a(0)*b(2),
-                            a(0)*b(1) - a(1)*b(0);
-                    }
-
-                    // loading
-                    if (NDim==2)
-                    {
-                        qx = n(0)*qn - n(1)*qt;
-                        qy = n(1)*qn + n(0)*qt;
-                    }
-                    else
-                    {
-                        qx = n(0)*qn;
-                        qy = n(1)*qn;
-                        qz = n(2)*qn;
-                    }
-                }
-
-                // add to dF
-                for (size_t j=0; j<GE->NFN; ++j)
-                {
-                    size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]].first[Con[k]->FMap("fx")] += coef*GE->FN(j)*qx;
-                    pF[Con[k]].first[Con[k]->FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
-                    pF[Con[k]].first[Con[k]->FMap("fz")] += coef*GE->FN(j)*qz;
-                }
+                size_t k = GE->FNode(IdxEdgeOrFace,j);
+                pF[Con[k]].first[Con[k]->FMap("fx")] += coef*GE->FN(j)*qx;
+                pF[Con[k]].first[Con[k]->FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
+                pF[Con[k]].first[Con[k]->FMap("fz")] += coef*GE->FN(j)*qz;
             }
-
-            // set CalcM
-            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
         }
+
+        // set CalcM
+        for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
+    }
+
+    // flux
+    if (has_flux)
+    {
+        double Qn = BCs("flux");
+        Mat_t Cf;
+        FCoordMatrix (IdxEdgeOrFace, Cf);
+        double detJ, coef;
+        for (size_t i=0; i<GE->NFIP; ++i)
+        {
+            CalcFaceShape (Cf, GE->FIPs[i], detJ, coef);
+            if (GTy==axs_t) // correct Coef for axisymmetric problems
+            {
+                double radius = 0.0; // calculate radius=x at this FIP
+                for (size_t j=0; j<GE->NFN; ++j) radius += GE->FN(j)*Con[GE->FNode(IdxEdgeOrFace,j)]->Vert.C[0];
+                coef *= radius; // correct coef
+            }
+            for (size_t j=0; j<GE->NFN; ++j)
+            {
+                size_t k = GE->FNode(IdxEdgeOrFace,j);
+                pF[Con[k]].first[Con[k]->FMap("Qw")] += coef*GE->FN(j)*Qn;
+            }
+        }
+
+        // set CalcM
+        for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
     }
 
     // prescribed displacements
-    else if (has_ux || has_uy || has_uz || has_pw)
+    if (has_ux || has_uy || has_uz || has_pw)
     {
         double ux = (has_ux ? BCs("ux") : 0.0);
         double uy = (has_uy ? BCs("uy") : 0.0);
@@ -505,7 +528,7 @@ inline void HydroMechElem::CalcFint (Vec_t * F_int) const
             Con[i]->F[Con[i]->FMap("fx")] += Fe(k+i*NDn);  k++;
             Con[i]->F[Con[i]->FMap("fy")] += Fe(k+i*NDn);  k++;  if (NDim==3) {
             Con[i]->F[Con[i]->FMap("fz")] += Fe(k+i*NDn);  k++; }
-            Con[i]->F[Con[i]->FMap("qw")] += Fe(k+i*NDn);  k++;
+            Con[i]->F[Con[i]->FMap("Qw")] += Fe(k+i*NDn);  k++;
         }
     }
 
