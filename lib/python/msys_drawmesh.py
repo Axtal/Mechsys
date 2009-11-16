@@ -36,7 +36,7 @@ class DrawMesh:
     # C=[[ 0, -1, [0,1,3,2], {0:-10,1:-20,2:-30,3:-40}]]
     #
     # pct: percentage of drawing limits to use for icons
-    def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=10, fsz2=8):
+    def __init__(self, V,C, Pins={}, Shares={}, pct=0.001, fsz1=8, fsz2=6):
         # mesh
         self.V      = V
         self.C      = C

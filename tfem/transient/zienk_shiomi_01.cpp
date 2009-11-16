@@ -22,6 +22,7 @@
 
 // STL
 #include <iostream>
+#include <fstream>
 
 // MechSys
 #include "mesh/structured.h"
@@ -43,6 +44,27 @@ using Util::_6_3;
 using Util::_8s;
 using Util::PI;
 
+void DbgFun (FEM::Solver const & Sol, void * Dat)
+{
+    String fn;
+    fn.Printf ("zienk_shiomi_01_%06.3f.res", Sol.Time);
+    std::ofstream of(fn.CStr(),std::ios::out);
+    of<< _8s << "x" << _8s << "y" << _8s << "pw" << "\n";
+    for (size_t i=0; i<Sol.Dom.Nods.Size(); ++i)
+    {
+        double x = Sol.Dom.Nods[i]->Vert.C(0);
+        double y = Sol.Dom.Nods[i]->Vert.C(1);
+        if (fabs(x)<0.001)
+        {
+            size_t ipw = Sol.Dom.Nods[i]->UMap("pw");
+            long   eq  = Sol.Dom.Nods[i]->EQ[ipw];
+            double pw  = Sol.U[eq];
+            of << _8s << x << _8s << y << _8s << pw << "\n";
+        }
+    }
+    of.close();
+}
+
 double Multiplier (double t)
 {
     double tsw = 0.1;
@@ -54,7 +76,7 @@ int main(int argc, char **argv) try
 {
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
     
-    bool o2 = false;
+    bool o2 = true;
     Array<Mesh::Block> blks(1);
     blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
                  -100., 0.0,  0.0,
@@ -79,8 +101,9 @@ int main(int argc, char **argv) try
     double n    =   0.3;
     double rhoS =   2.0;    // Mg/m^3
     double rhoF =   1.0;    // Mg/m^3
-    double k    =   1.0e-2; // m/s
+    double k    =   1.0e-2/9.81; // m/s
     double Q    = 1.0/(n/Kf+(alp-n)/Ks);
+    cout << "Q = " << Q << endl;
 
     // elements properties
     Dict prps;
@@ -98,12 +121,12 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
     if (o2) dom.SetOutNods ("zienk_shiomi_01", Array<int>(-100, -200));
-    else    dom.SetOutNods ("zienk_shiomi_01", Array<int>(-100, -200, 2, 10, 18));
+    else    dom.SetOutNods ("zienk_shiomi_01", Array<int>(-100, -200, 2,3, 10,11, 18,19));
             dom.SetOutEles ("zienk_shiomi_01", Array<int>(0, 5, 9));
     dom.MFuncs[-30] = &Multiplier;
 
     // solver
-    FEM::Solver sol(dom);
+    FEM::Solver sol(dom, &DbgFun);
     sol.DampTy = FEM::Solver::HMCoup_t;
     //sol.DynTh1 = 0.6;
     //sol.DynTh2 = 0.605;
@@ -119,12 +142,14 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set(-10, "ux uy Ux Uy",  0.0, 0.0, 0.0, 0.0);
-    bcs.Set(-20, "ux Ux",        0.0, 0.0);
-    bcs.Set(-30, "qn mfunc",      qn, 0.0);
-    bcs.Set(-30, "pw",           0.0);
+    //bcs.Set(-10, "ux uy flux",  0.0, 0.0, 0.0);
+    //bcs.Set(-20, "ux flux",     0.0, 0.0);
+    bcs.Set(-10, "ux uy Ux Uy flux",  0.0, 0.0, 0.0, 0.0, 0.0);
+    bcs.Set(-20, "ux Ux flux",        0.0, 0.0, 0.0);
+    bcs.Set(-30, "qn mfunc pw",        qn, 0.0, 0.0);
     dom.SetBCs (bcs);
-    sol.DynSolve (2.0, 0.01, 0.05, "zienk_shiomi_01");
+    cout << dom << endl;
+    sol.DynSolve (2.0, 0.01, 0.05);//, "zienk_shiomi_01");
 
     return 0;
 }
