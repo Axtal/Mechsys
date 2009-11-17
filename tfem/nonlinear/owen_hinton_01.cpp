@@ -98,12 +98,12 @@ int main(int argc, char **argv) try
     dat.eqx = 5; // eq for output
 
     // solver
-    FEM::Solver sol(dom, &DbgFun, &dat);
+    FEM::Solver sol(dom, /*OutFun*/NULL, /*OutDat*/NULL, &DbgFun, &dat);
     sol.Scheme = FEM::Solver::NR_t;
     sol.TolR   = 1.0e-5;
 
     // solve
-    sol.Solve (weights.Size(), &weights);
+    sol.Solve (weights.Size(), /*FileKey*/NULL, &weights);
 
     return 0;
 }
