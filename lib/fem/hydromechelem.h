@@ -48,6 +48,9 @@ public:
                    SDPair       const & Ini,    ///< Initial values
                    Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
+    // Destructor
+    ~HydroMechElem () { if (GEp!=NULL) delete GEp; }
+
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
@@ -70,6 +73,9 @@ public:
     double kk;   ///< Permeability
     double Qs;   ///< Storage due to compressibility
     double rho;  ///< Density of mixture
+
+    // Data
+    GeomElem * GEp;
 };
 
 size_t HydroMechElem::NDn = 0;
@@ -89,6 +95,10 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
 {
     // check GE
     if (GE==NULL) throw new Fatal("HydroMechElem::HydroMechElem: GE (geometry element) must be defined");
+
+    // allocate GEp
+    if (GE->Name=="Quad8") GEp = AllocGeomElem ("Quad4", NDim);
+    else throw new Fatal("HydroMechElem::HydroMechElem: Geom element must be Quad8");
 
     // parameters/properties
     h    = (Prp.HasKey("h") ? Prp("h") : 1.0);

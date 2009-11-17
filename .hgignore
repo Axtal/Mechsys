@@ -23,6 +23,7 @@ install_manifest.txt
 *.cal
 *.avi
 *.res
+*.out
 *.ply
 *.draw
 *.mpy

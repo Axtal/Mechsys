@@ -46,34 +46,6 @@ using Util::PI;
 
 void DbgFun (FEM::Solver const & Sol, void * Dat)
 {
-    size_t idx_nod = 0;
-    size_t idx_ux  = Sol.Dom.Nods[idx_nod]->UMap("ux");
-    size_t idx_uy  = Sol.Dom.Nods[idx_nod]->UMap("uy");
-    long   eq_ux   = Sol.Dom.Nods[idx_nod]->EQ[idx_ux];
-    long   eq_uy   = Sol.Dom.Nods[idx_nod]->EQ[idx_uy];
-    double ux      = Sol.U[eq_ux];
-    double uy      = Sol.U[eq_uy];
-    double vx      = Sol.V[eq_ux];
-    double vy      = Sol.V[eq_uy];
-    double ax      = Sol.A[eq_ux];
-    double ay      = Sol.A[eq_uy];
-    if (Sol.IdxOut==0)
-    {
-        std::ofstream of("results.res", std::ios::out);
-        of << "Time    ux   uy     vx    vy     ax    ay\n";
-        of << Sol.Time << " " << ux << " " << uy << " " << vx << " " << vy << " " << ax << " " << ay << endl;
-        of.close();
-    }
-    else
-    {
-        std::ofstream of("results.res", std::ios::app);
-        of << Sol.Time << " " << ux << " " << uy << " " << vx << " " << vy << " " << ax << " " << ay << endl;
-        of.close();
-    }
-}
-
-/*
-{
     String fn;
     fn.Printf ("zienk_shiomi_01_%06.3f.res", Sol.Time);
     std::ofstream of(fn.CStr(),std::ios::out);
@@ -92,7 +64,6 @@ void DbgFun (FEM::Solver const & Sol, void * Dat)
     }
     of.close();
 }
-*/
 
 double Multiplier (double t)
 {
@@ -157,7 +128,7 @@ int main(int argc, char **argv) try
     // solver
     FEM::Solver sol(dom, &DbgFun);
     sol.DampTy = FEM::Solver::HMCoup_t;
-    //sol.DScheme = FEM::Solver::GNHMCoup_t;
+    sol.DScheme = FEM::Solver::GNHMCoup_t;
     //sol.DynTh1 = 0.6;
     //sol.DynTh2 = 0.605;
 
