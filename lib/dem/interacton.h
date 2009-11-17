@@ -55,6 +55,7 @@ public:
     FrictionMap_t Fdee; ///< Static friction displacement for pair of edges
     FrictionMap_t Fdvf; ///< Static friction displacement for pair of vertex-face
     FrictionMap_t Fdfv; ///< Static friction displacement for pair of face-vertex
+    FrictionMap_t Fdvv; ///< Static Friction displacement for the vertex vertex pair
 protected:
     template<typename FeatureA_T, typename FeatureB_T>
     void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt);
@@ -67,7 +68,6 @@ public:
 
     InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
     void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
-    FrictionMap_t Fdvv; ///< Static Friction displacement
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -115,10 +115,10 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             Vec3_t vt = vrel - dot(n,vrel)*n;
             pair<int,int> p;
             p = make_pair(i,j);
-            if (FMap.count(p)) FMap[p] += vt*dt;
-            else FMap[p] = vt*dt;
+            FMap[p] += vt*dt;
             FMap[p] -= dot(FMap[p],n)*n;
-            Vec3_t tan = FMap[p]/norm(FMap[p]);
+            Vec3_t tan = FMap[p];
+            if (norm(tan)>1.0e-22) tan/=norm(tan);
             Vec3_t F = Kn*delta*n;
             if (norm(FMap[p])>Mu*norm(F)/Kt)
             {

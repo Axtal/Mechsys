@@ -97,7 +97,7 @@ int main(int argc, char **argv) try
     d.CamPos = Vec3_t(0, 3*(Lx+Ly+Lz)/3.0, 0); // position of camera
 
     // particle
-    //d.GenSpheres  (-1,4,10,1.0,"HCP",true);
+    //d.GenSpheres  (-1,4,5,1.0,"HCP",true);
     d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed);
     d.GenBoundingBox(/*InitialTag*/-2, R, /*Tx*/true, /*Cf*/1.3);
     d.WriteBPY    ("test_triaxial");
@@ -105,12 +105,12 @@ int main(int argc, char **argv) try
     // properties of particles
     Dict B;
     B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
     d.SetProps(B);
 
     // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////

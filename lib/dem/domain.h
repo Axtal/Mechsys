@@ -798,7 +798,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         }
 
         // calc force
-        for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce ();
+        for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce (dt);
 
         // calculate force for triaxial test and update stresses
         if (IsTxTest)
