@@ -43,31 +43,34 @@ class Solver
 {
 public:
     // enum
-    enum Scheme_t  { FE_t, ME_t, NR_t };        ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
-    enum TScheme_t { SS11_t };                  ///< Transient time integration scheme: (Single step/O1/1st order)
-    enum DScheme_t { SS22_t, GN22_t };          ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum Scheme_t  { FE_t, ME_t, NR_t };             ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
+    enum TScheme_t { SS11_t };                       ///< Transient time integration scheme: (Single step/O1/1st order)
+    enum DScheme_t { SS22_t, GN22_t, GNHMCoup_t };   ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
     enum Damping_t { None_t, Rayleigh_t, HMCoup_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K), HydroMechCoupling
 
     // typedefs
-    typedef void (*pDbgFun) (Solver const & Sol, void * DbgDat); ///< Pointer to Debug function
+    typedef void (*pOutFun) (Solver const & Sol, void * OutDat); ///< Pointer to output function
 
     // Constructor
-    Solver (Domain const & Dom, pDbgFun DbgFun=NULL, void * DbgDat=NULL);
+    Solver (Domain const & Dom, pOutFun OutFun=NULL, void * OutDat=NULL,
+                                pOutFun DbgFun=NULL, void * DbgDat=NULL);
 
     // Methods
-    void Solve        (size_t NInc=1, Array<double> * Weights=NULL);                   ///< Solve steady/equilibrium equation
-    void TransSolve   (double tf, double dt, double dtOut);                            ///< Solve transient equation
-    void DynSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic equation
-    void AssembleKA   ();                                                              ///< A = K11
-    void AssembleKMA  (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
-    void AssembleKCMA (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
-    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
-    void Initialize   (bool Transient=false);                                          ///< Initialize global matrices and vectors
+    void Solve        (size_t NInc=1, char const * FileKey=NULL, Array<double> * Weights=NULL); ///< Solve steady/equilibrium equation
+    void TransSolve   (double tf, double dt, double dtOut, char const * FileKey=NULL);          ///< Solve transient equation
+    void DynSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL);          ///< Solve dynamic equation
+    void AssembleKA   ();                                                                       ///< A = K11
+    void AssembleKMA  (double Coef1, double Coef2);                                             ///< A = Coef1*M + Coef2*K
+    void AssembleKCMA (double Coef1, double Coef2, double Coef3);                               ///< A = Coef1*M + Coef2*C + Coef3*K
+    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                                      ///< Tangent increments: dU = inv(K)*dF
+    void Initialize   (bool Transient=false);                                                   ///< Initialize global matrices and vectors
 
     // Data (read-only)
     Domain const & Dom;      ///< Domain
-    pDbgFun        DbgFun;   ///< Debug function
-    void         * DbgDat;   ///< Debug data
+    pOutFun        OutFun;   ///< Output function (called during output)
+    void         * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
+    pOutFun        DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
+    void         * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
     double         Time;     ///< Current time (t)
     size_t         Inc;      ///< Current increment
     size_t         IdxOut;   ///< Counter for generating VTU files in DynSolve
@@ -119,24 +122,27 @@ public:
     bool      DynCont; ///< Continue dynamic simulation (after DySolve was called once)
 
 private:
-    void _set_A_Lag    ();                     ///< Set A matrix due to Lagrange multipliers
-    void _cor_F_pin    ();                     ///< Correct F values due to Pins (add contributions to original Node)
-    void _calc_resid   (bool WithAccel=false); ///< Calculate residual
-    void _cor_resid    (Vec_t & dU);           ///< Correct residual
-    void _FE_update    (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
-    void _ME_update    (double tf);            ///< (Modified-Euler) Update Time and elements to tf
-    void _NR_update    (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
-    void _calc_F_Fnew  (double dt);            ///< Calculate F(t=Time) and F(t=Time+dt)
-    void _SS22_update  (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
-    void _GN22_update  (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
+    void _set_A_Lag       ();                     ///< Set A matrix due to Lagrange multipliers
+    void _cor_F_pin       ();                     ///< Correct F values due to Pins (add contributions to original Node)
+    void _calc_resid      (bool WithAccel=false); ///< Calculate residual
+    void _cor_resid       (Vec_t & dU);           ///< Correct residual
+    void _FE_update       (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
+    void _ME_update       (double tf);            ///< (Modified-Euler) Update Time and elements to tf
+    void _NR_update       (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
+    void _calc_F_Fnew     (double dt);            ///< Calculate F(t=Time) and F(t=Time+dt)
+    void _SS22_update     (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
+    void _GN22_update     (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
+    void _GNHMCoup_update (double tf, double dt); ///< (Generalized-Newmark Coupled) Update Time and elements to tf
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDat)
+inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDat, pOutFun TheDbgFun, void * TheDbgDat)
     : Dom     (TheDom),
+      OutFun  (TheOutFun),
+      OutDat  (TheOutDat),
       DbgFun  (TheDbgFun),
       DbgDat  (TheDbgDat),
       Time    (0.0),
@@ -169,7 +175,7 @@ inline Solver::Solver (Domain const & TheDom, pDbgFun TheDbgFun, void * TheDbgDa
 {
 }
 
-inline void Solver::Solve (size_t NInc, Array<double> * Weights)
+inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * Weights)
 {
     // info
     double start = std::clock();
@@ -181,7 +187,12 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
     std::cout << "\n[1;37m--- Stage solution --- (steady) ----------------------------------------------\n";
     std::cout << Util::_10_6 << "Time" <<                                                Util::_8s <<"Norm(R)" << "[0m\n";
     std::cout << Util::_10_6 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
-    Dom.OutResults (Time, F_int);
+    if (IdxOut==0)
+    {
+        Dom.OutResults (Time, F_int);
+        if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+    }
 
     // weights
     bool   del_weights = false;
@@ -227,8 +238,18 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
         }
 
         // output
+        IdxOut++;
         std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str;
         Dom.OutResults (Time, F_int);
+        if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
+
+        // write VTU
+        if (FileKey!=NULL)
+        {
+            String fkey;
+            fkey.Printf  ("%s_%08d", FileKey, IdxOut);
+            Dom.WriteVTU (fkey.CStr());
+        }
 
         // calc work done == twice the stored (elastic) strain energy
         if (CalcWork)
@@ -255,7 +276,7 @@ inline void Solver::Solve (size_t NInc, Array<double> * Weights)
     if (del_weights) delete Weights;
 }
 
-inline void Solver::TransSolve (double tf, double dt, double dtOut)
+inline void Solver::TransSolve (double tf, double dt, double dtOut, char const * FileKey)
 {
 }
 
@@ -271,7 +292,12 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     std::cout << "\n[1;37m--- Stage solution --- (dynamic) ---------------------------------------------\n";
     std::cout << Util::_10_6 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
     std::cout << Util::_10_6 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
-    if (IdxOut==0) Dom.OutResults (Time, F_int);
+    if (IdxOut==0)
+    {
+        Dom.OutResults (Time, F_int);
+        if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+    }
 
     // solve
     String str;
@@ -279,8 +305,9 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     while (Time<tf)
     {
         // update U, F, Time and elements to tout
-        if      (DScheme==SS22_t)  { _SS22_update  (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
-        else if (DScheme==GN22_t)  { _GN22_update  (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
+        if      (DScheme==SS22_t)      { _SS22_update     (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
+        else if (DScheme==GN22_t)      { _GN22_update     (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
+        else if (DScheme==GNHMCoup_t)  { _GNHMCoup_update (tout,dt);  str.Printf("Generalized-Newmark HM Coupled (GN22/GN11): nit = %d",It); }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -295,8 +322,10 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
         }
 
         // output
+        IdxOut++;
         std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
         Dom.OutResults (Time, F_int);
+        if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
         // write VTU
         if (FileKey!=NULL)
@@ -308,7 +337,6 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
 
         // next tout
         tout = Time + dtOut;
-        IdxOut++;
     }
 
     // info
@@ -917,6 +945,75 @@ inline void Solver::_SS22_update (double tf, double dt)
 }
 
 inline void Solver::_GN22_update (double tf, double dt)
+{
+    // auxiliar variables
+    Vec_t Us(NEq),   Vs(NEq);              // starred variables
+    Vec_t Unew(NEq), Vnew(NEq), Anew(NEq); // updated state
+    Vec_t dU(NEq);                         // displacement increment
+
+    // constants
+    const double c1 = dt*dt*(1.0-DynTh2)/2.0;
+    const double c2 = dt*(1.0-DynTh1);
+    const double c3 = 2.0/(dt*dt*DynTh2);
+    const double c4 = 2.0*DynTh1/(dt*DynTh2);
+
+    while (Time<tf)
+    {
+        // predictor
+        Us   = U + dt*V + c1*A;
+        Vs   = V + c2*A;
+        Unew = U;
+        Anew = c3*(U - Us);
+        Vnew = Vs + (DynTh1*dt)*Anew;
+
+        // iterations
+        for (It=0; It<MaxIt; ++It)
+        {
+            // assemble Amat
+            if (DampTy==None_t) AssembleKMA  (c3,     1.0);  // A = c3*M        + K
+            else                AssembleKCMA (c3, c4, 1.0);  // A = c3*M + c4*C + K
+
+            // F and Fnew
+            _calc_F_Fnew (dt);
+
+            // residual
+            R = Fnew - F_int;
+            Sparse::SubMult (M11, Anew, R);  if (DampTy!=None_t)  // R -= M11*Anew
+            Sparse::SubMult (C11, Vnew, R);                       // R -= C11*Vnew
+
+            // solve for dU
+            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
+
+            // update elements
+            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
+
+            // update state
+            Unew += dU;
+            Anew  = c3*(Unew - Us);
+            Vnew  = Vs + (DynTh1*dt)*Anew;
+
+            // check convergence
+            NormR    = Norm(R);
+            MaxNormF = Util::Max (Norm(F), Norm(F_int));
+            if (NormR<=TolR*MaxNormF) break;
+        }
+        if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
+
+        // update
+        U = Unew;
+        V = Vnew;
+        A = Anew;
+
+        // next time step
+        Time += dt;
+
+        // debug
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+    }
+}
+
+inline void Solver::_GNHMCoup_update (double tf, double dt)
 {
     // auxiliar variables
     Vec_t Us(NEq),   Vs(NEq);              // starred variables

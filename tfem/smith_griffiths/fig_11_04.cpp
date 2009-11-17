@@ -41,6 +41,42 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
+void OutFun (FEM::Solver const & Sol, void * Dat)
+{
+    size_t idx_nod = 17;
+    size_t idx_ux  = Sol.Dom.Nods[idx_nod]->UMap("ux");
+    size_t idx_uy  = Sol.Dom.Nods[idx_nod]->UMap("uy");
+    long   eq_ux   = Sol.Dom.Nods[idx_nod]->EQ[idx_ux];
+    long   eq_uy   = Sol.Dom.Nods[idx_nod]->EQ[idx_uy];
+    double ux      = Sol.U[eq_ux];
+    double uy      = Sol.U[eq_uy];
+    double vx      = Sol.V[eq_ux];
+    double vy      = Sol.V[eq_uy];
+    double ax      = Sol.A[eq_ux];
+    double ay      = Sol.A[eq_uy];
+    if (Sol.IdxOut==0)
+    {
+        std::ofstream of("fig_11_04.out", std::ios::out);
+        String str;
+        str.Printf ("%15s  %15s %15s  %15s %15s  %15s %15s\n", "Time","ux","uy","vx","vy","ax","ay");
+        of << str;
+        str.Printf ("%15.8e  %15.8e %15.8e  %15.8e %15.8e  %15.8e %15.8e\n", Sol.Time,ux,uy,vx,vy,ax,ay);
+        of << str;
+        //of << "Time    ux   uy     vx    vy     ax    ay\n";
+        //of << Sol.Time << " " << ux << " " << uy << " " << vx << " " << vy << " " << ax << " " << ay << endl;
+        of.close();
+    }
+    else
+    {
+        std::ofstream of("fig_11_04.out", std::ios::app);
+        String str;
+        str.Printf ("%15.8e  %15.8e %15.8e  %15.8e %15.8e  %15.8e %15.8e\n", Sol.Time,ux,uy,vx,vy,ax,ay);
+        of << str;
+        //of << Sol.Time << " " << ux << " " << uy << " " << vx << " " << vy << " " << ax << " " << ay << endl;
+        of.close();
+    }
+}
+
 double Multiplier (double t)
 {
     double omega = 0.3;
@@ -99,13 +135,12 @@ int main(int argc, char **argv) try
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
     dom.SetOutNods ("fig_11_04", Array<int>(17,/*JustOne*/true));
-    //dom.FFuncs[-100] = &calc_F; // set database of callbacks
     dom.MFuncs[-100] = &Multiplier; // set database of callbacks
 
     // solver
-    FEM::Solver sol(dom);
-    sol.DScheme = FEM::Solver::SS22_t;
-    //sol.DScheme = FEM::Solver::GN22_t;
+    FEM::Solver sol(dom, &OutFun);
+    //sol.DScheme = FEM::Solver::SS22_t;
+    sol.DScheme = FEM::Solver::GN22_t;
     sol.DampAm  = 0.005;
     sol.DampAk  = 0.272;
     sol.DampTy  = FEM::Solver::Rayleigh_t;

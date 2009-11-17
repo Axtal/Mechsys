@@ -37,7 +37,7 @@ if False:
     grid()
     show()
 
-if True:
+if False:
     res  = read_table("fig_11_19_nod_30_-200.res")
     p117 = read_table("sg_11_19.res")
 
@@ -48,4 +48,46 @@ if True:
     #legend(['MechSys','SG:p113d','SG:p113','SG:p114'],loc='upper left')
     #legend(['MechSys','SG:p113d','SG:p113'],loc='upper left')
     grid()
+    show()
+
+if True:
+    nod = 17
+    res = read_table("fig_11_04.out")
+
+    # displacements
+    subplot(2,2,1)
+    plot(res["Time"],res["ux"],'r-',lw=2)
+    plot(res["Time"],res["uy"],'b-',lw=2)
+    xlabel("Time");  ylabel("ux, uy")
+    legend(["ux","uy"],loc="upper left")
+    title("Displacements at node %d"%nod)
+    grid()
+
+    # velocities
+    subplot(2,2,2)
+    plot(res["Time"],res["vx"],'r-',lw=2)
+    plot(res["Time"],res["vy"],'b-',lw=2)
+    xlabel("Time");  ylabel("vx, vy")
+    legend(["vx","vy"],loc="upper left")
+    title("Velocities at node %d"%nod)
+    grid()
+
+    # accelerations
+    subplot(2,2,3)
+    plot(res["Time"],res["ax"],'r-',lw=2)
+    plot(res["Time"],res["ay"],'b-',lw=2)
+    xlabel("Time");  ylabel("ax, ay")
+    legend(["ax","ay"],loc="upper left")
+    title("Accelerations at node %d"%nod)
+    grid()
+
+    # disp-veloc
+    subplot(2,2,4)
+    plot(res["ux"],res["vx"],'r-',lw=2)
+    plot(res["uy"],res["vy"],'b-',lw=2)
+    xlabel("ux, uy");  ylabel("vx, vy")
+    legend(["vx-ux","vy-uy"],loc="upper left")
+    title("Disp-Veloc at node %d"%nod)
+    grid()
+
     show()
