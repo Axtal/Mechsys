@@ -39,9 +39,9 @@ public:
 	Lattice (Str_t  FileKey, ///< Key such as "mytest" to be used when generating output files: Ex.: mytest_11.vtk
 	         bool   Is3D,    ///< 
 			 double nu,		 ///< True viscosity
-	          	 size_t Nx,      ///< Number of cells along x direction
-	         	 size_t Ny,      ///< Number of cells along y direction
-	         	 size_t Nz=1,    ///< Number of cells along z direction
+	         size_t Nx,      ///< Number of cells along x direction
+	         size_t Ny,      ///< Number of cells along y direction
+	         size_t Nz=1,    ///< Number of cells along z direction
 			 double dt=1, 	 ///< Time step
 			 double h=1);    ///< Space viscosity
 
@@ -80,9 +80,10 @@ public:
 	Lattice * SetMultiComp (double Val) { _is_mc   = true; return this; } ///< Set the flag that defines if the analysis is multicomponent
 
 	// Set methods
-	void SetGravity    (double Gx, double Gy, double Gz=0.0);
-	void SetVelocityBC (size_t i, size_t j, Vec3_t const & V);
-	void SetDensityBC  (size_t i, size_t j, double Rho);
+	void SetGravity    (double Gx, double Gy, double Gz=0.0);             ///< Set tha value of the gravity acceleration
+	void SetVelocityBC (size_t i, size_t j, Vec3_t const & V);            ///< Set the velocity BC
+	void SetDensityBC  (size_t i, size_t j, double Rho);                  ///< Set a desnity BC
+    void SetSolid      (bool AllSolid = false);                           ///< Set the entire domain as soli
 
 	// Methods
 	void Solve        (double tIni, double tFin, double dtOut); ///< Solve
@@ -159,7 +160,6 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 	_Cs=h/dt;
 	_rho_ref*=h*h;
 	_tau=_dt*(_dt*3*_nu/(_h*_h)+0.5);
-	//std::cout << _Cs <<" "<< _dt <<" "<<_h<< std::endl;
 	// Gravity
 	_gravity = 0.0, 0.0, 0.0;
 
@@ -194,8 +194,6 @@ inline Lattice::Lattice(Str_t FileKey, bool Is3D, double nu, size_t Nx, size_t N
 			_right[i] = GetCell (_nx-1,i);
 		}
 	}
-	//dt=(_tau-0.5)*h*h/(3*nu);
-
 }
 
 inline Lattice::~Lattice()
@@ -239,21 +237,16 @@ inline double Lattice::Curl(size_t i, size_t j)
 	return dvydx - dvxdy;
 }
 
-
 inline double Lattice::Pstate(double Rho,double T)
 {
 	double omega=0.3443,a=2./49,b=2./21,R=1;
 	double alpha=(1+(0.37464+1.54226*omega-0.26992*omega*omega)*(1-sqrt(T/647.1))),Tr=T;
 	alpha*=alpha;
-	//std::cout<<Rho*R*Tr/(1-b*Rho)-a*alpha*Rho*Rho/(1+2*b*Rho-b*b*Rho*Rho)<<std::endl;
 	return Rho*R*Tr/(1-b*Rho)-a*alpha*Rho*Rho/(1+2*b*Rho-b*b*Rho*Rho);
 }
 
 inline double Lattice::Psi(double Rho)
 {
-	//if (Rho<0) std::cout<< Rho <<std::endl;
-	//std::cout<<sqrt(Pstate(Rho,125.)-Rho)<<std::endl;
-	//return sqrt(fabs(Pstate(Rho,125.)-Rho*_Cs*_Cs));
 	return fabs(Rho)*_psi_ref*(1.0-exp(-fabs(Rho)/_rho_ref))/Rho;
 }
 
@@ -274,6 +267,15 @@ inline void Lattice::SetDensityBC(size_t i, size_t j, double Rho)
 	LBM::Cell * c = GetCell(i,j);
 	_cpdens.Push (c);
 	c->SetRhoBC  (Rho);
+}
+
+inline void Lattice::SetSolid(bool AllSolid)
+{
+	for (size_t i=0; i<_size; i++)
+    {
+        _cells[i]->SetSolid(AllSolid);
+    }
+
 }
 
 inline void Lattice::Solve(double tIni, double tFin, double dtOut)
@@ -310,13 +312,10 @@ inline void Lattice::Stream()
 	for (size_t i=0; i<_size; ++i)
 	{
 		LBM::Cell * c = _cells[i];
-		//double rho = c->Density();
 		for (size_t k=0; k<_nneigh; ++k)
 		{
 			LBM::Cell * nb = _cells[c->Neigh(k)];
 			nb->TmpF(k) = c->F(k);
-			//if(c->F(k)>100) std::cout <<c->F(k)  << " " << k << " " << rho << " " << i << std::endl;
-
 		}
 	}
 
@@ -394,8 +393,6 @@ inline void Lattice::ApplyBC()
 
 inline void Lattice::Collide()
 {
-	double om,taup;
-	//std::cout <<om << " " << _Cs <<std::endl;
 	for (size_t i=0; i<_size; i++)
 	{
 		LBM::Cell * c = _cells[i];
@@ -405,35 +402,24 @@ inline void Lattice::Collide()
 			if (_is_mc)	v = c->MixVelocity(); // For multi-components analysis
 			else            c->Velocity(v,_Cs);   // Fore one component analysis
 			Vec3_t vn = v + _dt*(c->BForce())/(c->Density()*_h*_h);
-			//v+=_dt*(c->BForce())/(c->Density()*_h*_h);
 			Vec3_t F = c->BForce();
-			double rho = c->Density  ();
-			//if (rho<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->rho<0.0 detected",i%_nx,i/_nx);
-			//std::cout<< F <<std::endl;
-			//double sfeq=0,sfeqn=0;
-			taup=_tau;
-			for (size_t k=0; k<_nneigh; ++k) {
+			double rho = c->Density();
+            double tau = _tau;
+			for (size_t k=0; k<_nneigh; ++k)
+            {
 				double feqn = c->EqFun (k,vn,rho,_Cs);
-				if ((1-feqn/c->F(k))>taup) taup = (1-feqn/c->F(k));
-			}
-			om = _dt/taup;
+                if (tau<(1-feqn/c->F(k))) tau = (1-feqn/c->F(k));
+
+            }
+			double om = _dt/tau;
 			for (size_t k=0; k<_nneigh; ++k)
 			{
-				//double feq = c->EqFun (k,v,rho,_Cs);
 				double feqn = c->EqFun (k,vn,rho,_Cs);
-				//sfeq+=feq;
-				//sfeqn+=feqn;
-				//if (fabs(c->F(k))>100.) std::cout <<c->F(k)  << " " << k << " " << rho << " " << i << " " << feq << " " <<feqn << std::endl;
-				//if (i==524) std::cout <<c->F(k)  << " " << k << " " << rho << std::endl;
-				//c->F(k) = (1.0-om)*c->F(k) + om*feq+feqn-feq;
-				
 				c->F(k) = (1.0-om)*c->F(k) + om*feqn;
-				//if (i==375) std::cout <<c->F(k)  << " " << k << std::endl;
+                if (c->F(k) < 0.0) c->F(k) = 0.0;
+				if (isnan(c->F(k))) throw new Fatal("Lattice::Collide: Cell(%d,%d)->F(%d)=%f detected",i%_nx,i/_nx,k,c->F(k));
 				//if (c->F(k)<0.0) throw new Fatal("Lattice::Collide: Cell(%d,%d)->F(%d)=%f detected",i%_nx,i/_nx,k,c->F(k));
-				if (c->F(k)<0.0) c->F(k)=0;
-				//if (fabs(c->F(k)>100.)) std::cout <<c->F(k)  << " " << k << " " << rho << " " << i << " " << feq << " " << feqn << std::endl;
 			}
-			//if (i==522) std::cout << rho << " " << sfeq<< " "<<sfeqn <<" " << i << std::endl;
 		}
 	}
 }
@@ -488,8 +474,6 @@ inline void Lattice::ApplyForce()
 			double       G = (nb->IsSolid() ? _G_solid : _G);
 			F(0) += -G*psi*c->W(k)*nb_psi*c->C(k,0);
 			F(1) += -G*psi*c->W(k)*nb_psi*c->C(k,1);
-			//std::cout << Psi(nb->Density()) << std::endl;
-			//if (nb_psi<0) std::cout << nb_psi << std::endl;
 		}
 		c->BForce() = F;
 

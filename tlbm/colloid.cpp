@@ -53,21 +53,26 @@ int main(int argc, char **argv) try
 	double dt=1;
 
 	// Allocate lattice
-	LBM::Lattice l("cylinder", false, u_max*(2*radius)/Re, nx, ny, 1, h, dt);             
+	LBM::Lattice l("colloid", false, u_max*(2*radius)/Re, nx, ny, 1, h, dt);
+	l.SetTau(1.0);
 					
 
-	// Set tau
-
 	// Set walls (top and bottom)
-	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
-	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
+	//for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
+	//for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
-	// Set inner obstacle
-	int obsX = ny/2;   // x position
-	int obsY = ny/2+3; // y position
-    LBM::Disk Ball(Vec3_t(obsX, obsY, 0.0), Vec3_t(0.0,0.0,0.0), radius, 100.0, 1000.0, dt);
-	Ball.DrawDisk(l,dt);
+	// Set balls
+    LBM::Disk Ball1(Vec3_t(ny/2, ny/2+3, 0.0), Vec3_t(0.0,0.0,0.0), radius, 500.0, 10.0, dt);
+	Ball1.DrawDisk(l,dt);
+    LBM::Disk Ball2(Vec3_t(ny/2+30, ny/2-3, 0.0), Vec3_t(0.0,0.0,0.0), radius, 500.0, 1000.0, dt);
+	Ball2.DrawDisk(l,dt);
 
+	// Set walls
+    LBM::Disk Wall1(Vec3_t(2.0*nx/3.0, 80+ny, 0.0), Vec3_t(0.0,0.0,0.0), 120, 100.0, 10.0, dt);
+	Wall1.DrawDisk(l,dt);
+    LBM::Disk Wall2(Vec3_t(2.0*nx/3.0, -80, 0.0), Vec3_t(0.0,0.0,0.0), 120, 100.0, 10.0, dt);
+	Wall2.DrawDisk(l,dt);
+	
 	// Define boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
 	{
@@ -87,8 +92,45 @@ int main(int argc, char **argv) try
 		l.GetCell(i,j)->Initialize (rho0, v0, l.Cs());
 	}
 
+
+	size_t Tmax   = 30000; // max number of steps
+	size_t Tout   = 100;    // interval steps for output
+
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/15000.0,/*dtOut*/200.0);
-	//l.Solve(/*tIni*/0.0, /*tFin*/1.0, /*dt*/1.0, /*dtOut*/1.0);
+	for (size_t T=0; T<=Tmax; T++)
+	{
+		// Reset the force
+        Ball1.StartForce();
+        Ball2.StartForce();
+        l.SetSolid(false);
+		//for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
+		//for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
+		Wall1.DrawDisk(l,dt);
+		Wall2.DrawDisk(l,dt);
+        Ball1.DrawDisk(l,dt);
+        Ball2.DrawDisk(l,dt);
+		CalcForce(&Ball1,&Ball2);
+		CalcForce(&Ball1,&Wall1);
+		CalcForce(&Ball2,&Wall1);
+		CalcForce(&Ball1,&Wall2);
+		CalcForce(&Ball2,&Wall2);
+		Ball1.Move(dt);
+		Ball2.Move(dt);
+
+		l.ApplyForce   ();
+		l.Collide      ();
+		l.BounceBack   ();
+		l.Stream       ();
+		l.ApplyBC      ();
+
+		// File output
+		if (T % Tout == 0) 
+		{
+			String buf;
+			buf.Printf("[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = %d   TotalMass = %g[0m\n", T, l.TotalMass());
+			std::cout << buf;
+			l.WriteState (T);
+		}
+	}
 }
 MECHSYS_CATCH

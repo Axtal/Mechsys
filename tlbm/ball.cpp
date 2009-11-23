@@ -20,52 +20,18 @@
 #include <iostream>
 
 // MechSys
-#include "lbm/lattice.h"
+#include "lbm/dem.h"
 
 using std::cout;
 using std::endl;
 
 
-void DrawBall(LBM::Lattice & l, double & obsX, double & obsY, double radius, double vx, double vy, double & fx, double & fy, double dt, int T)
-{
-	for (size_t i=0; i<l.Nx(); ++i)
-	for (size_t j=0; j<l.Ny(); ++j)
-	{
-		// Set solids and set the magnus velocity
-		if (pow((int)obsX-(int)i,2.0) + pow((int)obsY-(int)j,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->SetSolid(vx, vy);
-		else 
-			l.GetCell(i,j)->SetSolid(false);
-	}
-
-	// Calculate de force in the solid
-	for (size_t i=0; i<l.Nx(); ++i)
-	for (size_t j=0; j<l.Ny(); ++j)
-	{
-		LBM::Cell * c = l.GetCell(i,j);
-		if (c->IsSolid())
-		{
-			double rho = 0.0;
-			for (size_t k=0; k<l.NNeigh(); k++) rho += c->F(k);
-			
-			for (size_t k=0; k<l.NNeigh(); ++k)
-			{
-				if (l.GetCell(c->Neigh(k))->IsSolid()) continue;
-				size_t op = c->Opp(k);
-				double alpha = 6.0*c->W(op)*rho;
-				fx += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,0);
-				fy += (2.0*c->F(op) - alpha*(c->C(op,0)*vx+c->C(op,1)*vy ))/dt*c->C(op,1);
-			}
-		}
-	}
-}
-
 int main(int argc, char **argv) try
 {
 	// Analysis constants
-	//double tau    = 1.0;
+	double tau    = 1.0;
 	int    nx     = 50;
-	int    ny     = 20;
+	int    ny     = 50;
 	double v0     = 0.1;
 	size_t Tmax   = 3000; // max number of steps
 	size_t Tout   = 1;    // interval steps for output
@@ -81,7 +47,7 @@ int main(int argc, char **argv) try
 				   1 			// time step
 				   );         
 
-	//l.SetTau(tau);
+	l.SetTau(tau);
 
 	// Define velocity and density boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
@@ -100,49 +66,22 @@ int main(int argc, char **argv) try
 		l.GetCell(i,j)->Initialize (rho0, v,l.Cs());
 	}
 
-	// Set inner ball
-	double obsX   = ny/2;    // center x position
-	double obsY   = ny/2+3;  // center y position
-	int    radius = 4; 
 
-	// Initial velocity and force
-	double vx = 0.0;
-	double vy = 0.0;
-	double fx = 0.0;
-	double fy = 0.0;
 
 	// Time and mass
 	double dt = 1.0;     // Time increment (equal to 1.00 for LB models)
-	double m  = 100.0;   // Total mass of the ball
 
-	DrawBall(l, obsX, obsY, radius, vx, vy, fx, fy, dt,0);
+    LBM::Disk Ball(Vec3_t(nx/3.0, ny/2.0, 0.0), Vec3_t(0.0,0.0,0.0), 4.0, 100.0, 1000.0, dt);
+    Ball.DrawDisk(l,dt);
 
-	std::cout << "Stage 0" << std::endl;
 	l.WriteState (0);
 
 	for (size_t T=1; T<=Tmax; T++)
 	{
 		// Reset the force
-		fx = 0.0;
-		fy = 0.0;
-
-		DrawBall(l, obsX, obsY, radius, vx, vy, fx, fy, dt,T);
-
-		// Update the velocity and the position of the ball
-		vx   += fx/m*dt;
-		vy   += fy/m*dt;
-		obsX += vx*dt;
-		obsY += vy*dt;
-
-		// Screen output
-		/*
-		std::cout << "obsX = " << obsX << std::endl;
-		std::cout << "obsY = " << obsY << std::endl;
-		std::cout << "fx   = " << fx << std::endl;
-		std::cout << "fy   = " << fy << std::endl;
-		std::cout << "vx   = " << vx << std::endl;
-		std::cout << "vy   = " << vy << std::endl;
-		*/
+        Ball.StartForce();
+        //l.SetSolid(false);
+        Ball.DrawDisk(l,dt);
 
 		l.ApplyForce   ();
 		l.Collide      ();

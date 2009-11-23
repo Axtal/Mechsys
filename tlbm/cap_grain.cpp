@@ -20,12 +20,10 @@
 #include <iostream>
 
 // MechSys
-#include "lbm/lattice.h"
+#include "lbm/dem.h"
 
 using std::cout;
 using std::endl;
-
-// Analysis constants
 double tau    = 1.0;
 int    nx     = 200;
 int    ny     = 200;
