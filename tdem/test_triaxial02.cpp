@@ -97,8 +97,8 @@ int main(int argc, char **argv) try
     d.CamPos = Vec3_t(0, 3*(Lx+Ly+Lz)/3.0, 0); // position of camera
 
     // particle
-    //d.GenSpheres  (-1,4,5,1.0,"HCP",true);
-    d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed);
+    d.GenSpheres  (-1,4,6,1.0,"HCP",true);
+    //d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed);
     d.GenBoundingBox(/*InitialTag*/-2, R, /*Tx*/true, /*Cf*/1.3);
     d.WriteBPY    ("test_triaxial");
 

@@ -33,13 +33,13 @@ class Particle
 {
 public:
     // Constructor
-    Particle(int                 Tag,         ///< Tag of the particle
-             Array<Vec3_t>       const & V,   ///< List of vertices
-             Array<Array <int> > const & E,   ///< List of edges with connectivity
-             Array<Array <int> > const & F,   ///< List of faces with connectivity
-             Vec3_t              const & v0,  ///< Initial velocity
-             Vec3_t              const & w0,  ///< Initial angular velocity
-             double                      R,   ///< Spheroradius
+    Particle(int                 Tag,              ///< Tag of the particle
+             Array<Vec3_t>       const & V,        ///< List of vertices
+             Array<Array <int> > const & E,        ///< List of edges with connectivity
+             Array<Array <int> > const & F,        ///< List of faces with connectivity
+             Vec3_t              const & v0,       ///< Initial velocity
+             Vec3_t              const & w0,       ///< Initial angular velocity
+             double                      R,        ///< Spheroradius
              double                      rho=1.0); ///< Density of the material
 
     // Destructor

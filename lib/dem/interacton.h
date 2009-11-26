@@ -50,12 +50,11 @@ public:
     double        Gn;   ///< Normal viscous coefficient
     double        Gt;   ///< Tangential viscous coefficient
     double        Mu;   ///< Microscpic coefficient of friction
-    double        Mur;  ///< Rolling resistance coefficient
-    double        Epot; ///< Ptential elastic energy
+    double        Epot; ///< Potential elastic energy
+    Vec3_t        Fn;   ///< Normal force between elements
     FrictionMap_t Fdee; ///< Static friction displacement for pair of edges
     FrictionMap_t Fdvf; ///< Static friction displacement for pair of vertex-face
     FrictionMap_t Fdfv; ///< Static friction displacement for pair of face-vertex
-    FrictionMap_t Fdvv; ///< Static Friction displacement for the vertex vertex pair
 protected:
     template<typename FeatureA_T, typename FeatureB_T>
     void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt);
@@ -65,9 +64,18 @@ protected:
 class InteractonSphere: public Interacton
 {
 public:
-
+    // Methods 
     InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
-    void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
+    void CalcForce (double dt = 0.0);                  ///< Calculates the contact force between particles
+    
+    // Data
+    FrictionMap_t Fdvv;                                ///< Static Friction displacement for the vertex vertex pair
+    Vec3_t        Fdr;                                 ///< Rolling displacement 
+    double        beta;                                ///< Rolling stiffness coefficient
+    double        eta;                                 ///< Plastic moment coefficient
+
+protected:
+    void _update_rolling_resistance(double dt);               ///< Calculates the rolling resistance torque
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -119,12 +127,12 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             FMap[p] -= dot(FMap[p],n)*n;
             Vec3_t tan = FMap[p];
             if (norm(tan)>1.0e-22) tan/=norm(tan);
-            Vec3_t F = Kn*delta*n;
-            if (norm(FMap[p])>Mu*norm(F)/Kt)
+            Fn = Kn*delta*n;
+            if (norm(FMap[p])>Mu*norm(Fn)/Kt)
             {
-                FMap[p] = Mu*norm(F)/Kt*tan;
+                FMap[p] = Mu*norm(Fn)/Kt*tan;
             }
-            F += Kt*FMap[p]+Gn*dot(n,vrel)*n+Gt*vt;
+            Vec3_t F = Fn + Kt*FMap[p] +Gn*dot(n,vrel)*n +Gt*vt;
             P1->F += -F;
             P2->F +=  F;
 
@@ -148,7 +156,6 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
     }
 }
 
-
 inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
 {
     P1   = Pt1;
@@ -158,15 +165,77 @@ inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
     Gn   = 2*Pt1->Gn*Pt2->Gn/(Pt1->Gn+Pt2->Gn);
     Gt   = 2*Pt1->Gt*Pt2->Gt/(Pt1->Gn+Pt2->Gt);
     Mu   = 2*Pt1->Mu*Pt2->Mu/(Pt1->Mu+Pt2->Mu);
-    Epot = 0.0;
+    beta = 0.12;
+    eta  = 1.0;
 
-    CalcForce(0.1);
+    Epot = 0.0;
+    Fdr  = 0.0, 0.0, 0.0;
+
+    CalcForce(0.0);
+}
+
+inline void InteractonSphere::_update_rolling_resistance(double dt)
+{
+    //Vec3_t t1,t2;
+    //Rotation(P1->w,P1->Q,t1);
+    //Rotation(P2->w,P2->Q,t2);
+    //Vec3_t Normal = Fn/norm(Fn);
+    //Vec3_t Vr = P1->R*P2->R*cross(Vec3_t(t2 - t1),Normal)/(P1->R+P2->R);
+    //Vec3_t Theta = cross(Vr,Normal);
+    //if (norm(Theta)>1.0e-22) Theta /= norm(Theta);
+    //double r = 0.5*(P1->R+P2->R);
+    //Fdr += norm(Vr)*dt*Theta/r;
+    //Vec3_t tan = Fdr;
+    //if (norm(tan)>1.0e-22) tan/=norm(tan);
+    //double Kr = beta*Kt*r*r;
+    //if (norm(Fdr)>eta*r*norm(Fn)/Kr)
+    //{
+        //Fdr = eta*r*norm(Fn)/Kr*tan;
+    //}
+    //Vec3_t Tr = -Kr*Fdr;
+    //Vec3_t T;
+    //Quaternion_t q;
+    //Conjugate (P1->Q,q);
+    //Rotation  (Tr,q,T);
+    //P2->T -= T;
+    //Conjugate (P2->Q,q);
+    //Rotation  (Tr,q,T);
+    //P1->T += T;
+
+    Vec3_t t1,t2;
+    Rotation(P1->w,P1->Q,t1);
+    Rotation(P2->w,P2->Q,t2);
+    Vec3_t Normal = Fn/norm(Fn);
+    Vec3_t Vr = P1->R*P2->R*cross(Vec3_t(t1 - t2),Normal)/(P1->R+P2->R);
+    Fdr += Vr*dt;
+    Fdr -= dot(Fdr,Normal)*Normal;
+    Vec3_t tan = Fdr;
+    if (norm(tan)>1.0e-22) tan/=norm(tan);
+    double Kr = beta*Kt;
+    if (norm(Fdr)>eta*norm(Fn)/Kr)
+    {
+        Fdr = eta*norm(Fn)/Kr*tan;
+    }
+    Vec3_t Ft = -Kr*Fdr;
+
+    Vec3_t Tt = P1->R*cross(Normal,Ft);
+    Vec3_t T;
+    Quaternion_t q;
+    Conjugate (P1->Q,q);
+    Rotation  (Tt,q,T);
+    P1->T += T;
+
+    Tt = P2->R*cross(Normal,Ft);
+    Conjugate (P2->Q,q);
+    Rotation  (Tt,q,T);
+    P2->T -= T;
 }
 
 inline void InteractonSphere::CalcForce(double dt)
 {
     Epot = 0.0;
     _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,dt);
+    if (Epot>0.0) _update_rolling_resistance(dt);
 }
 
 
