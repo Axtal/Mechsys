@@ -51,13 +51,14 @@ public:
     ~Domain();
 
     // Particle generation
-    void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type, bool Eliminate);          ///< General spheres
-    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf); ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
-    void GenBoundingBox  (int InitialTag, double R, bool Triaxial, double Cf);                                  ///< Generate o bounding box enclosing the previous included particles.
+    void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type, 
+                          size_t Randomseed, double fraction);                                                  ///< General spheres
+    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenBoundingBox  (int InitialTag, double R, double Cf);                                                 ///< Generate o bounding box enclosing the previous included particles.
     void GenFromMesh     (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
-    void GenFromVoro     (int Tag, container & VC, double R, double rho);                                       ///< Generate Particles from a Voronoi container
+    void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0);                  ///< Generate Particles from a Voronoi container
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
-                          double rho, bool Periodic,size_t Randomseed);                                         ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
+                          double rho, bool Periodic,size_t Randomseed, double fraction);                        ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
 
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
@@ -68,26 +69,20 @@ public:
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
 
     // Methods
-    void SetBC          (Dict & D);                                                                   ///< Set the dynamic conditions of individual grains by dictionaries
-    void SetProps       (Dict & D);                                                                   ///< Set the properties of individual grains by dictionaries
-    void Initialize     (double dt=0.0);                                                              ///< Set the particles to a initial state and asign the possible insteractions
-    void Solve          (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
-    void WritePOV       (char const * FileKey);                                                       ///< Write POV file
-    void WriteBPY       (char const * FileKey);                                                       ///< Write BPY (Blender) file
-    void BoundingBox    (Vec3_t & minX, Vec3_t & maxX);                                               ///< Defines the rectangular box that encloses the particles.
-    void Center         ();                                                                           ///< Centers the domain
+    void SetBC          (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
+    void SetProps       (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
+    void Initialize     (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
+    virtual void Solve  (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
+    void WritePOV       (char const * FileKey);                                                              ///< Write POV file
+    void WriteBPY       (char const * FileKey);                                                              ///< Write BPY (Blender) file
+    void BoundingBox    (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
+    void Center         ();                                                                                  ///< Centers the domain
 
-    // Methods for specific simulations
-    void SetTxTest (Vec3_t  const & Sigf,    ///< Final state of stress
-                    bVec3_t const & pEps,    ///< Are strain rates prescribed ?
-                    Vec3_t  const & dEpsdt); ///< Prescribed values of strain rate
-    void ResetEps  ();                       ///< Reset strains and re-calculate initial lenght of packing
 
     // Auxiliar methods
     void   LinearMomentum  (Vec3_t & L);                                                                    ///< Return total momentum of the system
     void   AngularMomentum (Vec3_t & L);                                                                    ///< Return total angular momentum of the system
     double CalcEnergy      (double & Ekin, double & Epot);                                                  ///< Return total energy of the system
-    void   Output          (char const * FileKey, size_t IdxOut, std::ostream & OutFile, bool RenderVideo); ///< Output current state
 
     // Data
     double             Time;          ///< Current time
@@ -102,11 +97,6 @@ public:
     Vec3_t             CamPos;        ///< Camera position for POV
 
     // Data for specific simulations
-    bool    IsTxTest; ///< Check if the test is a triaxial test
-    Vec3_t  Sig;      ///< Current stress state
-    Vec3_t  DSig;     ///< Total stress increment to be applied by Solve => after 
-    bVec3_t pSig;     ///< Prescribed stress ?
-    Vec3_t  L0;       ///< Initial length of the packing
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -119,6 +109,28 @@ public:
 #endif
 };
 
+class TriaxialDomain: public Domain
+{
+public:
+        
+    //Constructor and destructor
+    TriaxialDomain ();
+
+    // Methods for specific simulations
+    void SetTxTest (Vec3_t  const & Sigf,                                                            ///< Final state of stress
+                    bVec3_t const & pEps,                                                            ///< Are strain rates prescribed ?
+                    Vec3_t  const & dEpsdt);                                                         ///< Prescribed values of strain rate
+    void ResetEps  ();                                                                               ///< Reset strains and re-calculate initial lenght of packing
+    void Solve  (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
+    void Output (size_t IdxOut, std::ostream & OutFile);                                             ///< Output current state
+    
+    //Data
+    double  Vs;       ///< Volume occupied by the grains 
+    Vec3_t  Sig;      ///< Current stress state
+    Vec3_t  DSig;     ///< Total stress increment to be applied by Solve => after 
+    bVec3_t pSig;     ///< Prescribed stress ?
+    Vec3_t  L0;       ///< Initial length of the packing
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -126,11 +138,8 @@ public:
 // Constructor & Destructor
 
 inline Domain::Domain ()
-    : Time(0.0), Initialized(false), IsTxTest(false)
+    : Time(0.0), Initialized(false)
 {
-    Sig    = 0.0,   0.0,   0.0;
-    DSig   = 0.0,   0.0,   0.0;
-    pSig   = false, false, false;
     CamPos = 1.0, 2.0, 3.0;
 }
 
@@ -142,12 +151,12 @@ inline Domain::~Domain ()
 
 // Particle generation
 
-inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type, bool Eliminate)
+inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type, size_t Randomseed, double fraction)
 {
     // find radius from the edge's length
     double start = std::clock();
     std::cout << "[1;33m\n--- Generating packing of spheres -------------[0m\n";
-
+    srand(Randomseed);
     double R = L/(2.0*N);
     if (strcmp(Type,"Normal")==0)
     {
@@ -158,7 +167,7 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
             size_t j = (n/N)%N;
             size_t k = (n/(N*N));
             pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
-            AddSphere (Tag,pos,R,rho);
+            if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,R,rho);
         }
     }
     else if (strcmp(Type,"HCP")==0)
@@ -178,7 +187,7 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
                 for (size_t i = 0; i < nx; i++)
                 {
                     X += Vec3_t(2*R,0.0,0.0);
-                    if (((rand()>RAND_MAX/2)&&Eliminate)||(!Eliminate)) AddSphere(Tag,X,R,rho);
+                    if (rand()<fraction*RAND_MAX) AddSphere(Tag,X,R,rho);
                 }
             }
         }
@@ -190,7 +199,7 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, bool Triaxial, double Cf)
+inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf)
 {
     /*                         +----------------+
      *                       ,'|              ,'|
@@ -208,9 +217,8 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
      *               +----------------+'
      */
 
-    // set triaxial test
-    if (Triaxial) InitialIndex = Particles.Size();
-    IsTxTest = Triaxial;
+    
+    InitialIndex = Particles.Size();
 
     // add faces of box
     Vec3_t axis0(OrthoSys::e0); // rotation of face
@@ -225,16 +233,14 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
     // initialize walls (required when calculating the length of packing, since will use the CG)
     for (size_t i=0; i<6; ++i) Particles[InitialIndex+i]->Initialize();
 
-    // reset strains and find initial length of packing
-    ResetEps ();
 }
 
-inline void Domain::GenBoundingBox (int InitialTag, double R, bool Triaxial, double Cf)
+inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
 {
     Center();
     Vec3_t minX,maxX;
     BoundingBox(minX,maxX);
-    GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Triaxial, Cf);
+    GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf);
 }
 
 inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho)
@@ -288,7 +294,7 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, dou
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho)
+inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, double fraction)
 {
     // info
     double start = std::clock();
@@ -309,9 +315,12 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho)
             {
                 if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
                 {
-                    AddVoroCell(Tag,c,R,rho,true);
-                    Vec3_t trans(x,y,z);
-                    Particles[Particles.Size()-1]->Translate(trans);
+                    if (rand()<fraction*RAND_MAX)
+                    {
+                        AddVoroCell(Tag,c,R,rho,true);
+                        Vec3_t trans(x,y,z);
+                        Particles[Particles.Size()-1]->Translate(trans);
+                    }
                 }
             }
         }
@@ -323,7 +332,7 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho)
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed)
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed, double fraction)
 {
     srand(Randomseed);
     const double x_min=-Lx/2.0, x_max=Lx/2.0;
@@ -346,7 +355,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
             }
         }
     }
-    GenFromVoro(Tag,con,R,rho);
+    GenFromVoro(Tag,con,R,rho,fraction);
 }
 
 // Single particle addition
@@ -800,53 +809,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // calc force
         for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce (dt);
 
-        // calculate force for triaxial test and update stresses
-        if (IsTxTest)
-        {
-            Vec3_t force;
-            bool   update_sig = false;
-            if (pSig(0))
-            {
-                double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-                force = Sig(0)*area, 0.0, 0.0;
-                Particles[InitialIndex  ]->Ff =  force;
-                Particles[InitialIndex+1]->Ff = -force;
-                update_sig = true;
-            }
-            else 
-            {
-                double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-                Sig(0) = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
-            }
-            if (pSig(1))
-            {
-                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-                force = 0.0, Sig(1)*area, 0.0;
-                Particles[InitialIndex+2]->Ff =  force;
-                Particles[InitialIndex+3]->Ff = -force;
-                update_sig = true;
-            }
-            else 
-            {
-                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-                Sig(1) = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
-            }
-            if (pSig(2))
-            {
-                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-                force = 0.0, 0.0, Sig(2)*area;
-                Particles[InitialIndex+4]->Ff =  force;
-                Particles[InitialIndex+5]->Ff = -force;
-                update_sig = true;
-            }
-            else 
-            {
-                double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-                Sig(2) = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
-            }
-            if (update_sig) Sig += dt*DSig/(tf-t0);
-        }
-
         // move free particles
         for (size_t i=0; i<FreeParticles.Size(); i++)
         {
@@ -888,7 +850,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // output
         if (Time>=tout)
         {
-            Output (FileKey, idx_out, fw, RenderVideo);
+            String fn;
+            fn.Printf ("%s_%08d", FileKey, idx_out);
+            if (RenderVideo) WritePOV  (fn.CStr());
             tout += dtOut;
             idx_out++;
         }
@@ -953,13 +917,65 @@ inline void Domain::Center()
     Vec3_t Transport(-0.5*(maxX+minX));
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Translate(Transport);
 }
+
+// Auxiliar methods
+
+inline void Domain::LinearMomentum (Vec3_t & L)
+{
+    L = 0.,0.,0.;
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        L += Particles[i]->m*Particles[i]->v;
+    }
+}
+
+inline void Domain::AngularMomentum (Vec3_t & L)
+{
+    L = 0.,0.,0.;
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Vec3_t t1,t2;
+        t1 = Particles[i]->I(0)*Particles[i]->w(0),Particles[i]->I(1)*Particles[i]->w(1),Particles[i]->I(2)*Particles[i]->w(2);
+        Rotation (t1,Particles[i]->Q,t2);
+        L += Particles[i]->m*cross(Particles[i]->x,Particles[i]->v)+t2;
+    }
+}
+
+inline double Domain::CalcEnergy (double & Ekin, double & Epot)
+{
+    // kinematic energy
+    Ekin = 0.0;
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Ekin += Particles[i]->Ekin + Particles[i]->Erot;
+    }
+
+    // potential energy
+    Epot = 0.0;
+    for (size_t i=0; i<Interactons.Size(); i++)
+    {
+        Epot += Interactons[i]->Epot;
+    }
+
+    // total energy
+    return Ekin + Epot;
+}
+
+
 // Methods for specific simulations
 
-inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt)
+inline TriaxialDomain::TriaxialDomain ()
 {
-    // check if it is a triaxial test or not
-    if (!IsTxTest) throw new Fatal("Domain::SetTxTest: The container for the triaxial test has not be defined");
+    Time = 0.0;
+    Initialized = false;
+    Sig    = 0.0,   0.0,   0.0;
+    DSig   = 0.0,   0.0,   0.0;
+    pSig   = false, false, false;
+    CamPos = 1.0, 2.0, 3.0;
+}
 
+inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt)
+{
     // info
     std::cout << "[1;33m\n--- Setting up Triaxial Test -------------------------------------[0m\n";
     double start = std::clock();
@@ -1055,84 +1071,187 @@ inline void Domain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t
     std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 }
 
-inline void Domain::ResetEps ()
+inline void TriaxialDomain::ResetEps ()
 {
     L0(0) = Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0);
     L0(1) = Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1);
     L0(2) = Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2);
 }
 
-// Auxiliar methods
-
-inline void Domain::LinearMomentum (Vec3_t & L)
+inline void TriaxialDomain::Solve (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo)
 {
-    L = 0.,0.,0.;
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        L += Particles[i]->m*Particles[i]->v;
-    }
-}
+    // initialize
+    if (FreeParticles.Size()==0) FreeParticles = Particles;
+    Initialize (dt);
 
-inline void Domain::AngularMomentum (Vec3_t & L)
-{
-    L = 0.,0.,0.;
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        Vec3_t t1,t2;
-        t1 = Particles[i]->I(0)*Particles[i]->w(0),Particles[i]->I(1)*Particles[i]->w(1),Particles[i]->I(2)*Particles[i]->w(2);
-        Rotation (t1,Particles[i]->Q,t2);
-        L += Particles[i]->m*cross(Particles[i]->x,Particles[i]->v)+t2;
-    }
-}
+    // info
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
 
-inline double Domain::CalcEnergy (double & Ekin, double & Epot)
-{
-    // kinematic energy
-    Ekin = 0.0;
-    for (size_t i=0; i<Particles.Size(); i++)
+    // open file
+    String fnw;
+    fnw.Printf("%s_walls.res",FileKey);
+    std::ofstream fw(fnw.CStr());
+
+    // solve
+    double t0      = Time; // initial time
+    size_t idx_out = 0;    // index of output
+    double tout    = t0;  // time position for output
+    Vs = 0.0;
+    for (size_t i=0; i<FreeParticles.Size(); i++)
     {
-        Ekin += Particles[i]->Ekin + Particles[i]->Erot;
+        Vs += FreeParticles[i]->V;
     }
 
-    // potential energy
-    Epot = 0.0;
-    for (size_t i=0; i<Interactons.Size(); i++)
+    // run
+    while (Time<tf)
     {
-        Epot += Interactons[i]->Epot;
-    }
-
-    // total energy
-    return Ekin + Epot;
-}
-
-inline void Domain::Output (char const * FileKey, size_t IdxOut, std::ostream & OF, bool RenderVideo)
-{
-    String fn;
-    fn.Printf ("%s_%08d", FileKey, IdxOut);
-    if (RenderVideo) WritePOV  (fn.CStr());
-
-    // output triaxial test data
-    if (IsTxTest)
-    {
-        // header
-        if (IdxOut==0)
+        // initialize forces and torques
+        for (size_t i=0; i<Particles.Size(); i++)
         {
-            OF << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
-            OF <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez" << "\n";
+            Particles[i]->F = Particles[i]->Ff;
+            Particles[i]->T = Particles[i]->Tf;
         }
 
-        // stress
-        double sig2 = Sig(2);
-        OF << Util::_10_6 << Time << Util::_8s << Sig(0) << Util::_8s << Sig(1) << Util::_8s << sig2;
+        // calc force
+        for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce (dt);
 
-        // strain
-        OF << Util::_8s << (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0)-L0(0))/L0(0);
-        OF << Util::_8s << (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-L0(1))/L0(1);
-        OF << Util::_8s << (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-L0(2))/L0(2);
-        OF << std::endl;
+        // calculate force for triaxial test and update stresses
+        Vec3_t force;
+        bool   update_sig = false;
+        if (pSig(0))
+        {
+            double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+            force = Sig(0)*area, 0.0, 0.0;
+            Particles[InitialIndex  ]->Ff =  force;
+            Particles[InitialIndex+1]->Ff = -force;
+            update_sig = true;
+        }
+        else 
+        {
+            double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+            Sig(0) = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
+        }
+        if (pSig(1))
+        {
+            double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+            force = 0.0, Sig(1)*area, 0.0;
+            Particles[InitialIndex+2]->Ff =  force;
+            Particles[InitialIndex+3]->Ff = -force;
+            update_sig = true;
+        }
+        else 
+        {
+            double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+            Sig(1) = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
+        }
+        if (pSig(2))
+        {
+            double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
+            force = 0.0, 0.0, Sig(2)*area;
+            Particles[InitialIndex+4]->Ff =  force;
+            Particles[InitialIndex+5]->Ff = -force;
+            update_sig = true;
+        }
+        else 
+        {
+            double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
+            Sig(2) = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
+        }
+        if (update_sig) Sig += dt*DSig/(tf-t0);
+
+        // move free particles
+        for (size_t i=0; i<FreeParticles.Size(); i++)
+        {
+            FreeParticles[i]->Rotate    (dt);
+            FreeParticles[i]->Translate (dt);
+        }
+
+        // particles with translation constrained
+        for (size_t i=0; i<TParticles.Size(); i++) 
+        {
+            TParticles[i]->F = 0.0,0.0,0.0;
+            TParticles[i]->Translate(dt);
+        }
+
+        // particles with rotation constrained
+        for (size_t i=0; i<RParticles.Size(); i++)
+        {
+            RParticles[i]->T = 0.0,0.0,0.0;
+            RParticles[i]->Rotate(dt);
+        }
+
+        // particles with forces applied
+        for (size_t i=0; i<FParticles.Size(); i++)
+        {
+            double norm_Ff = norm(FParticles[i]->Ff);
+            if (norm_Ff>1.0e-7)
+            {
+                // set F as the projection of Ff
+                Vec3_t unit_Ff = FParticles[i]->Ff/norm_Ff; // unitary vector parallel to Ff
+                FParticles[i]->F = dot(FParticles[i]->F,unit_Ff)*unit_Ff;
+                FParticles[i]->Translate (dt);
+            }
+        }
+
+
+        // next time position
+        Time += dt;
+
+        // output
+        if (Time>=tout)
+        {
+            String fn;
+            fn.Printf ("%s_%08d", FileKey, idx_out);
+            if (RenderVideo) WritePOV  (fn.CStr());
+            Output (idx_out, fw);
+            tout += dtOut;
+            idx_out++;
+        }
     }
+
+    // close file
+    fw.close();
+
+    // info
+    double Ekin, Epot, Etot;
+    Etot = CalcEnergy (Ekin, Epot);
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
+    std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
+    std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
 }
 
+inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
+{
+
+    // output triaxial test data
+    // header
+    if (IdxOut==0)
+    {
+        OF << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
+        OF <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
+        OF <<                          Util::_8s << "vr" << "\n";
+    }
+
+    // stress
+    OF << Util::_10_6 << Time << Util::_8s << Sig(0) << Util::_8s << Sig(1) << Util::_8s << Sig(2);
+
+    // strain
+    OF << Util::_8s << (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0)-L0(0))/L0(0);
+    OF << Util::_8s << (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-L0(1))/L0(1);
+    OF << Util::_8s << (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-L0(2))/L0(2);
+
+    // void ratio
+    double volumecontainer = (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0))*
+                             (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*
+                             (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+
+    OF << Util::_8s << (volumecontainer-Vs)/Vs;
+    OF << std::endl;
+}
 }; // namespace DEM
+
 
 #endif // MECHSYS_DEM_DOMAIN_H
