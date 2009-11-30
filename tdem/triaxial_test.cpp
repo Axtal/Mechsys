@@ -127,9 +127,9 @@ int main(int argc, char **argv) try
     sigf =  Vec3_t(-p0,-p0,-p0);
     d.ResetEps  ();
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxiala",true);
+    d.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxiala",RenderVideo);
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialb",true);
+    d.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialb",RenderVideo);
 
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
@@ -143,7 +143,7 @@ int main(int argc, char **argv) try
     // run
     d.ResetEps  ();
     d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialc",true);
+    d.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialc",RenderVideo);
 
     return 0;
 }
