@@ -10,8 +10,10 @@ if test==1:
     p.fc_phi = 25.0
     p.fc_cu  = 1
     p.log_p  = False
-    #p.plot ("test_triaxial01a_walls.res", draw_fl=True)
-    #p.plot ("test_triaxial01b_walls.res", draw_fl=True)
+    #p.plot ("test_triaxiala_walls.res", draw_fl=True)
+    #p.show ()
+    #p.plot ("test_triaxialb_walls.res", draw_fl=True)
+    #p.show ()
     p.plot ("test_triaxialc_walls.res", draw_fl=True)
     p.show ()
 

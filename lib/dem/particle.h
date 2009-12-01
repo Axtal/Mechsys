@@ -25,7 +25,7 @@
 
 // MechSys
 #include "dem/face.h"
-#include "dem/distance.h"
+#include "dem/special_functions.h"
 #include "util/array.h"
 #include "numerical/montecarlo.h"
 

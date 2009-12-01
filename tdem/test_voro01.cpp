@@ -64,7 +64,7 @@ int main(int argc, char **argv) try
     // domain
     Domain d;
     d.AddVoroCell (-1,v,0.0,1.0,false);
-    d.AddVoroCell (-1,v,0.2,1.0,true);
+    d.AddVoroCell (-1,u,0.0,1.0,false);
 
     // tranlate particles
     Vec3_t trans(2.5,0,0);
@@ -74,7 +74,9 @@ int main(int argc, char **argv) try
     d.Particles[0]->v = Vec3_t(-0.5,0,0);
 
     d.WriteBPY ("test_voro01");
-    // solve
-    //d.Solve (/*tf*/30, 0.001, /*dtOut*/0.1, "test_voro01", /*CamPos*/Vec3_t(0,10,0));
+
+    d.Initialize(0.0);
+    cout << v.volume() << " " << d.Particles[0]->V << endl;
+    cout << u.volume() << " " << d.Particles[1]->V << endl;
 }
 MECHSYS_CATCH

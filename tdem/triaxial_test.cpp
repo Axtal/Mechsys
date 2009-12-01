@@ -107,11 +107,10 @@ int main(int argc, char **argv) try
     else if (ptype=="voronoi") d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
     else throw new Fatal("Packing for particle type not implmented yet");
     d.GenBoundingBox(/*InitialTag*/-2, R, /*Cf*/1.3);
-    d.WriteBPY    ("test_triaxial");
 
-    // properties of particles
+    // properties of particles prior the triaxial test
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
     B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
     B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
     B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
@@ -140,9 +139,20 @@ int main(int argc, char **argv) try
     peps = bVec3_t(pssrx, pssry, pssrz);
     depsdt = Vec3_t(srx/(Tf-T0), sry/(Tf-T0), srz/(Tf-T0));
 
+    // properties of particles at the start of  the triaxial test
+    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
+    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    d.SetProps(B);
+    
     // run
     d.ResetEps  ();
     d.SetTxTest (sigf, peps, depsdt);
+    d.ResetInteractons();
     d.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialc",RenderVideo);
 
     return 0;

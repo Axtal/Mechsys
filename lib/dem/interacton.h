@@ -82,7 +82,7 @@ protected:
 
 
 inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
-    : P1(Pt1), P2(Pt2), Kn(2*P1->Kn*P2->Kn/(P1->Kn + P2->Kn)), Kt(2*P1->Kt*P2->Kt/(P1->Kt + P2->Kt)), Gn(2*P1->Gn*P2->Gn/(P1->Gn + P2->Gn)), Gt(2*P1->Gt*P2->Gt/(P1->Gt + P2->Gt)), Mu(2*P1->Mu*P2->Mu/(P1->Mu + P2->Mu)), Epot(0.0)
+    : P1(Pt1), P2(Pt2), Kn(2*ReducedValue(P1->Kn,P2->Kn)), Kt(2*ReducedValue(P1->Kt,P2->Kt)), Gn(2*ReducedValue(P1->Gn,P2->Gn)), Gt(2*ReducedValue(P1->Gt,P2->Gt)), Mu(2*ReducedValue(P1->Mu,P2->Mu)), Epot(0.0)
 {
     CalcForce(0.1);
 }
@@ -109,7 +109,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
         Distance ((*A[i]), (*B[j]), xi, xf);
         double dist  = norm(xf-xi);
         double delta = P1->R + P2->R - dist;
-        if (delta>=0)
+        if (delta>0)
         {
             // update force
             Vec3_t n = (xf-xi)/dist;
@@ -160,11 +160,11 @@ inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
 {
     P1   = Pt1;
     P2   = Pt2;
-    Kn   = 2*Pt1->Kn*Pt2->Kn/(Pt1->Kn+Pt2->Kn);
-    Kt   = 2*Pt1->Kt*Pt2->Kt/(Pt1->Kn+Pt2->Kt);
-    Gn   = 2*Pt1->Gn*Pt2->Gn/(Pt1->Gn+Pt2->Gn);
-    Gt   = 2*Pt1->Gt*Pt2->Gt/(Pt1->Gn+Pt2->Gt);
-    Mu   = 2*Pt1->Mu*Pt2->Mu/(Pt1->Mu+Pt2->Mu);
+    Kn   = 2*ReducedValue(Pt1->Kn,Pt2->Kn);
+    Kt   = 2*ReducedValue(Pt1->Kt,Pt2->Kt);
+    Gn   = 2*ReducedValue(Pt1->Gn,Pt2->Gn);
+    Gt   = 2*ReducedValue(Pt1->Gt,Pt2->Gt);
+    Mu   = 2*ReducedValue(Pt1->Mu,Pt2->Mu);
     beta = 0.12;
     eta  = 1.0;
 
@@ -176,32 +176,6 @@ inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
 
 inline void InteractonSphere::_update_rolling_resistance(double dt)
 {
-    //Vec3_t t1,t2;
-    //Rotation(P1->w,P1->Q,t1);
-    //Rotation(P2->w,P2->Q,t2);
-    //Vec3_t Normal = Fn/norm(Fn);
-    //Vec3_t Vr = P1->R*P2->R*cross(Vec3_t(t2 - t1),Normal)/(P1->R+P2->R);
-    //Vec3_t Theta = cross(Vr,Normal);
-    //if (norm(Theta)>1.0e-22) Theta /= norm(Theta);
-    //double r = 0.5*(P1->R+P2->R);
-    //Fdr += norm(Vr)*dt*Theta/r;
-    //Vec3_t tan = Fdr;
-    //if (norm(tan)>1.0e-22) tan/=norm(tan);
-    //double Kr = beta*Kt*r*r;
-    //if (norm(Fdr)>eta*r*norm(Fn)/Kr)
-    //{
-        //Fdr = eta*r*norm(Fn)/Kr*tan;
-    //}
-    //Vec3_t Tr = -Kr*Fdr;
-    //Vec3_t T;
-    //Quaternion_t q;
-    //Conjugate (P1->Q,q);
-    //Rotation  (Tr,q,T);
-    //P2->T -= T;
-    //Conjugate (P2->Q,q);
-    //Rotation  (Tr,q,T);
-    //P1->T += T;
-
     Vec3_t t1,t2;
     Rotation(P1->w,P1->Q,t1);
     Rotation(P2->w,P2->Q,t2);

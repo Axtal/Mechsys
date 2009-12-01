@@ -69,20 +69,21 @@ public:
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
 
     // Methods
-    void SetBC          (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
-    void SetProps       (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
-    void Initialize     (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
-    virtual void Solve  (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
-    void WritePOV       (char const * FileKey);                                                              ///< Write POV file
-    void WriteBPY       (char const * FileKey);                                                              ///< Write BPY (Blender) file
-    void BoundingBox    (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
-    void Center         ();                                                                                  ///< Centers the domain
+    void SetBC            (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
+    void SetProps         (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
+    void Initialize       (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
+    virtual void Solve    (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
+    void WritePOV         (char const * FileKey);                                                              ///< Write POV file
+    void WriteBPY         (char const * FileKey);                                                              ///< Write BPY (Blender) file
+    void BoundingBox      (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
+    void Center           ();                                                                                  ///< Centers the domain
+    void ResetInteractons ();                                                                                  ///< Reset the interactons
 
 
     // Auxiliar methods
-    void   LinearMomentum  (Vec3_t & L);                                                                    ///< Return total momentum of the system
-    void   AngularMomentum (Vec3_t & L);                                                                    ///< Return total angular momentum of the system
-    double CalcEnergy      (double & Ekin, double & Epot);                                                  ///< Return total energy of the system
+    void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
+    void   AngularMomentum (Vec3_t & L);                                                                     ///< Return total angular momentum of the system
+    double CalcEnergy      (double & Ekin, double & Epot);                                                   ///< Return total energy of the system
 
     // Data
     double             Time;          ///< Current time
@@ -726,34 +727,7 @@ inline void Domain::Initialize (double dt)
         // info
         double start = std::clock();
         std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
-
-        for (size_t i=0; i<FreeParticles.Size()-1; i++)
-        {
-            // initialize interactons
-            for (size_t j=i+1; j<FreeParticles.Size(); j++)
-            {
-                if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) Interactons.Push (new InteractonSphere(FreeParticles[i],FreeParticles[j]));
-                else Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
-            }
-        }
-
-        for (size_t i=0; i<FreeParticles.Size(); i++)
-        {
-            for (size_t j=0; j<FParticles.Size(); j++)
-            {
-                Interactons.Push (new Interacton(FreeParticles[i],FParticles[j]));
-            }
-
-            for (size_t j=0; j<RParticles.Size(); j++)
-            {
-                Interactons.Push (new Interacton(FreeParticles[i],RParticles[j]));
-            }
-
-            for (size_t j=0; j<TParticles.Size(); j++)
-            {
-                Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
-            }
-        }
+        ResetInteractons();
         // set flag
         Initialized = true;
 
@@ -916,6 +890,38 @@ inline void Domain::Center()
     BoundingBox(minX,maxX);
     Vec3_t Transport(-0.5*(maxX+minX));
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Translate(Transport);
+}
+
+inline void Domain::ResetInteractons()
+{
+    for (size_t i=0; i<Interactons.Size(); ++i) if (Interactons[i]!=NULL) delete Interactons[i];
+    Interactons.Resize(0);
+    for (size_t i=0; i<FreeParticles.Size()-1; i++)
+    {
+        for (size_t j=i+1; j<FreeParticles.Size(); j++)
+        {
+            if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) Interactons.Push (new InteractonSphere(FreeParticles[i],FreeParticles[j]));
+            else Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
+        }
+    }
+
+    for (size_t i=0; i<FreeParticles.Size(); i++)
+    {
+        for (size_t j=0; j<FParticles.Size(); j++)
+        {
+            Interactons.Push (new Interacton(FreeParticles[i],FParticles[j]));
+        }
+
+        for (size_t j=0; j<RParticles.Size(); j++)
+        {
+            Interactons.Push (new Interacton(FreeParticles[i],RParticles[j]));
+        }
+
+        for (size_t j=0; j<TParticles.Size(); j++)
+        {
+            Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
+        }
+    }
 }
 
 // Auxiliar methods
@@ -1244,9 +1250,9 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     OF << Util::_8s << (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-L0(2))/L0(2);
 
     // void ratio
-    double volumecontainer = (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0))*
-                             (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*
-                             (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
+    double volumecontainer = (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0)-Particles[InitialIndex  ]->R+Particles[InitialIndex+1]->R)*
+                             (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-Particles[InitialIndex+2]->R+Particles[InitialIndex+3]->R)*
+                             (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-Particles[InitialIndex+4]->R+Particles[InitialIndex+5]->R);
 
     OF << Util::_8s << (volumecontainer-Vs)/Vs;
     OF << std::endl;
