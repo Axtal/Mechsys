@@ -141,7 +141,7 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         }
     }
     V = Vtemp;
-    if (V.Size()<=3) throw new Fatal("The erotion gave to few vertices to build a convex hull, try a smaller erotion parameter");
+    if (V.Size()<=3) throw new Fatal("The erosion gave to few vertices to build a convex hull, try a smaller erosion parameter");
     Vec3_t cm(0,0,0);
     for (size_t i = 0; i < V.Size(); i++)
     {

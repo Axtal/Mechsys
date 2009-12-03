@@ -72,13 +72,15 @@ public:
     void SetBC            (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
     void SetProps         (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize       (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
-    virtual void Solve    (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
+    void Solve    (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true);         ///< Run simulation
     void WritePOV         (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY         (char const * FileKey);                                                              ///< Write BPY (Blender) file
     void BoundingBox      (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
     void Center           ();                                                                                  ///< Centers the domain
     void ResetInteractons ();                                                                                  ///< Reset the interactons
-
+    virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
+    void EnergyOutput     (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
+    virtual void Output   (size_t IdxOut, std::ostream & OutFile) {};                                          ///< Output current state depends on the setup
 
     // Auxiliar methods
     void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
@@ -96,8 +98,10 @@ public:
     Array<Particle*>   FParticles;    ///< Particles with applied force
     Array<Interacton*> Interactons;   ///< All interactons
     Vec3_t             CamPos;        ///< Camera position for POV
+    double             Evis;          ///< Energy dissipated by the viscosity of the grains
+    double             Efric;         ///< Energy dissipated by friction
+    double             Wext;          ///< Work done by external forces
 
-    // Data for specific simulations
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -122,9 +126,9 @@ public:
                     bVec3_t const & pEps,                                                            ///< Are strain rates prescribed ?
                     Vec3_t  const & dEpsdt);                                                         ///< Prescribed values of strain rate
     void ResetEps  ();                                                                               ///< Reset strains and re-calculate initial lenght of packing
-    void Solve  (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
-    void Output (size_t IdxOut, std::ostream & OutFile);                                             ///< Output current state
-    
+    void Output    (size_t IdxOut, std::ostream & OutFile);                                          ///< Output current state of stress and strains.
+    void Setup     (double,double);                                                                  ///< For the triaxial test it will measure or set the strains and stresses
+
     //Data
     double  Vs;       ///< Volume occupied by the grains 
     Vec3_t  Sig;      ///< Current stress state
@@ -709,6 +713,14 @@ inline void Domain::SetProps (Dict & D)
                 {
                     Particles[i]->Mu = p("Mu");
                 }
+                if (p.HasKey("Beta"))
+                {
+                    Particles[i]->Beta = p("Beta");
+                }
+                if (p.HasKey("Eta"))
+                {
+                    Particles[i]->Eta = p("Eta");
+                }
             }
         }
     }
@@ -759,16 +771,25 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     double start = std::clock();
     std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
 
-    // open file
+    // open file for walls
     String fnw;
     fnw.Printf("%s_walls.res",FileKey);
     std::ofstream fw(fnw.CStr());
+
+    // open file for energy
+    String fne;
+    fne.Printf("%s_energy.res",FileKey);
+    std::ofstream fe(fne.CStr());
 
     // solve
     double t0      = Time; // initial time
     size_t idx_out = 0;    // index of output
     double tout    = t0;  // time position for output
 
+    //Initializing the energies
+    Evis = 0.0;
+    Efric = 0.0;
+    Wext = 0.0;
 
     // run
     while (Time<tf)
@@ -778,10 +799,18 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         {
             Particles[i]->F = Particles[i]->Ff;
             Particles[i]->T = Particles[i]->Tf;
+            Wext += dot(Particles[i]->Ff,Particles[i]->v)*dt;
         }
 
         // calc force
-        for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce (dt);
+        for (size_t i=0; i<Interactons.Size(); i++)
+        {
+            Interactons[i]->CalcForce (dt);
+            Evis += Interactons[i]-> dEvis;
+            Efric += Interactons[i]-> dEfric;
+        }
+
+        Setup(dt, tf-t0);
 
         // move free particles
         for (size_t i=0; i<FreeParticles.Size(); i++)
@@ -827,6 +856,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             String fn;
             fn.Printf ("%s_%08d", FileKey, idx_out);
             if (RenderVideo) WritePOV  (fn.CStr());
+            EnergyOutput (idx_out, fe);
+            Output (idx_out, fw);
             tout += dtOut;
             idx_out++;
         }
@@ -967,7 +998,21 @@ inline double Domain::CalcEnergy (double & Ekin, double & Epot)
     return Ekin + Epot;
 }
 
+inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
+{
 
+    // output triaxial test data
+    // header
+    if (IdxOut==0)
+    {
+        OF << Util::_10_6 << "Time" << Util::_8s << "Ekin" << Util::_8s << "Epot" << Util::_8s << "Evis" << Util::_8s << "Efric" << Util::_8s << "Wext" << std::endl;
+    }
+    double Ekin,Epot;
+    CalcEnergy(Ekin,Epot);
+    OF << Util::_10_6 << Time << Util::_8s << Ekin << Util::_8s << Epot << Util::_8s << Evis << Util::_8s << Efric << Util::_8s << Wext << std::endl;
+    
+
+}
 // Methods for specific simulations
 
 inline TriaxialDomain::TriaxialDomain ()
@@ -996,6 +1041,11 @@ inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps
     for (size_t i=0; i<InitialIndex;     i++) FreeParticles.Push(Particles[i]);
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Initialize ();
 
+    Vs = 0.0;
+    for (size_t i=0; i<FreeParticles.Size(); i++)
+    {
+        Vs += FreeParticles[i]->V;
+    }
     // total stress increment
     DSig = Sigf - Sig;
 
@@ -1084,45 +1134,8 @@ inline void TriaxialDomain::ResetEps ()
     L0(2) = Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2);
 }
 
-inline void TriaxialDomain::Solve (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo)
+inline void TriaxialDomain::Setup (double dt,double tspan)
 {
-    // initialize
-    if (FreeParticles.Size()==0) FreeParticles = Particles;
-    Initialize (dt);
-
-    // info
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
-
-    // open file
-    String fnw;
-    fnw.Printf("%s_walls.res",FileKey);
-    std::ofstream fw(fnw.CStr());
-
-    // solve
-    double t0      = Time; // initial time
-    size_t idx_out = 0;    // index of output
-    double tout    = t0;  // time position for output
-    Vs = 0.0;
-    for (size_t i=0; i<FreeParticles.Size(); i++)
-    {
-        Vs += FreeParticles[i]->V;
-    }
-
-    // run
-    while (Time<tf)
-    {
-        // initialize forces and torques
-        for (size_t i=0; i<Particles.Size(); i++)
-        {
-            Particles[i]->F = Particles[i]->Ff;
-            Particles[i]->T = Particles[i]->Tf;
-        }
-
-        // calc force
-        for (size_t i=0; i<Interactons.Size(); i++) Interactons[i]->CalcForce (dt);
-
-        // calculate force for triaxial test and update stresses
         Vec3_t force;
         bool   update_sig = false;
         if (pSig(0))
@@ -1164,69 +1177,7 @@ inline void TriaxialDomain::Solve (double tf, double dt, double dtOut, char cons
             double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
             Sig(2) = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
         }
-        if (update_sig) Sig += dt*DSig/(tf-t0);
-
-        // move free particles
-        for (size_t i=0; i<FreeParticles.Size(); i++)
-        {
-            FreeParticles[i]->Rotate    (dt);
-            FreeParticles[i]->Translate (dt);
-        }
-
-        // particles with translation constrained
-        for (size_t i=0; i<TParticles.Size(); i++) 
-        {
-            TParticles[i]->F = 0.0,0.0,0.0;
-            TParticles[i]->Translate(dt);
-        }
-
-        // particles with rotation constrained
-        for (size_t i=0; i<RParticles.Size(); i++)
-        {
-            RParticles[i]->T = 0.0,0.0,0.0;
-            RParticles[i]->Rotate(dt);
-        }
-
-        // particles with forces applied
-        for (size_t i=0; i<FParticles.Size(); i++)
-        {
-            double norm_Ff = norm(FParticles[i]->Ff);
-            if (norm_Ff>1.0e-7)
-            {
-                // set F as the projection of Ff
-                Vec3_t unit_Ff = FParticles[i]->Ff/norm_Ff; // unitary vector parallel to Ff
-                FParticles[i]->F = dot(FParticles[i]->F,unit_Ff)*unit_Ff;
-                FParticles[i]->Translate (dt);
-            }
-        }
-
-
-        // next time position
-        Time += dt;
-
-        // output
-        if (Time>=tout)
-        {
-            String fn;
-            fn.Printf ("%s_%08d", FileKey, idx_out);
-            if (RenderVideo) WritePOV  (fn.CStr());
-            Output (idx_out, fw);
-            tout += dtOut;
-            idx_out++;
-        }
-    }
-
-    // close file
-    fw.close();
-
-    // info
-    double Ekin, Epot, Etot;
-    Etot = CalcEnergy (Ekin, Epot);
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
-    std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
-    std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
+        if (update_sig) Sig += dt*DSig/(tspan);
 }
 
 inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
@@ -1238,7 +1189,7 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     {
         OF << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         OF <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
-        OF <<                          Util::_8s << "vr" << "\n";
+        OF <<                          Util::_8s << "vr" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
     }
 
     // stress
@@ -1255,9 +1206,22 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
                              (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-Particles[InitialIndex+4]->R+Particles[InitialIndex+5]->R);
 
     OF << Util::_8s << (volumecontainer-Vs)/Vs;
+
+    // Number of contacts and number of sliding contacts
+    double Nc = 0;
+    double Nsc = 0;
+    for (size_t i=0; i<Interactons.Size(); i++)
+    {
+        Nc += Interactons[i]->Nc;
+        Nsc += Interactons[i]->Nsc;
+    }
+
+    OF << Util::_8s << Nc << Util::_8s << Nsc;
+
     OF << std::endl;
+
+    
 }
 }; // namespace DEM
-
 
 #endif // MECHSYS_DEM_DOMAIN_H

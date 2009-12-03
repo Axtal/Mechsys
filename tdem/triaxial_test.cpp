@@ -39,6 +39,8 @@ int main(int argc, char **argv) try
     double Gn;          // Normal dissipative coefficient
     double Gt;          // Tangential dissipative coefficient
     double Mu;          // Microscopic friction coefficient
+    double Beta;        // Rolling stiffness coefficient (only for spheres)
+    double Eta;         // Plastic moment coefficient (only for spheres, 0 if rolling resistance is not used)
     double R;           // Spheroradius
     size_t seed;        // Seed of the ramdon generator
     double dt;          // Time step
@@ -71,6 +73,8 @@ int main(int argc, char **argv) try
     infile >> Gn;           infile.ignore(200,'\n');
     infile >> Gt;           infile.ignore(200,'\n');
     infile >> Mu;           infile.ignore(200,'\n');
+    infile >> Beta;         infile.ignore(200,'\n');
+    infile >> Eta;          infile.ignore(200,'\n');
     infile >> R;            infile.ignore(200,'\n');
     infile >> seed;         infile.ignore(200,'\n');
     infile >> dt;           infile.ignore(200,'\n');
@@ -110,13 +114,13 @@ int main(int argc, char **argv) try
 
     // properties of particles prior the triaxial test
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-5,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-6,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-7,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     d.SetProps(B);
 
     // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
@@ -140,13 +144,13 @@ int main(int argc, char **argv) try
     depsdt = Vec3_t(srx/(Tf-T0), sry/(Tf-T0), srz/(Tf-T0));
 
     // properties of particles at the start of  the triaxial test
-    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu);
-    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
-    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0);
+    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu ,Beta,Eta);
+    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     d.SetProps(B);
     
     // run
