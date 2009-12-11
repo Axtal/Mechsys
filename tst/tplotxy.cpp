@@ -24,6 +24,8 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 
+#define USE_FLTK
+
 // MechSys
 #include "util/array.h"
 #include "util/fatal.h"
@@ -68,15 +70,15 @@ public:
 
         // P0
         P0->EqScales (false).RecalcSF(true);
-        P0->AddCurve (&X, &Y0, "2*x");  P0->_C[0].Clr=FL_RED;   P0->_C[0].Lwd=2;  P0->_C[0].Pch=16;
-        P0->AddCurve (&X, &Y1, "x^2");  P0->_C[1].Clr=FL_BLUE;  P0->_C[1].Lwd=2;  P0->_C[1].Typ=GUI::CT_BOTH;
+        P0->AddCurve (&X, &Y0, "2*x");  P0->C[0].Clr=FL_RED;   P0->C[0].Lwd=2;  P0->C[0].Pch=16;
+        P0->AddCurve (&X, &Y1, "x^2");  P0->C[1].Clr=FL_BLUE;  P0->C[1].Lwd=2;  P0->C[1].Typ=GUI::CT_BOTH;
 
         // P1
         P1->EqScales (false).RecalcSF(true);
-        P1->AddCurve (&X, &Y2, "x");         P1->_C[0].Clr=FL_GREEN;    P1->_C[0].Lwd=1;  P1->_C[0].Typ=GUI::CT_LINES;
-        P1->AddCurve (&X, &Y3, "x/2");       P1->_C[1].Clr=FL_MAGENTA;  P1->_C[1].Lwd=1;  P1->_C[1].Typ=GUI::CT_BOTH;
-        P1->AddCurve (&X, &Y4, "log(1+x)");  P1->_C[2].Clr=FL_BLUE;     P1->_C[2].Lwd=1;  P1->_C[2].Typ=GUI::CT_BOTH;
-        P1->AddCurve (&X, &Y5, "sqrt(x)");   P1->_C[3].Clr=FL_CYAN;     P1->_C[3].Lwd=2;  P1->_C[3].Typ=GUI::CT_BOTH;
+        P1->AddCurve (&X, &Y2, "x");         P1->C[0].Clr=FL_GREEN;    P1->C[0].Lwd=1;  P1->C[0].Typ=GUI::CT_LINES;
+        P1->AddCurve (&X, &Y3, "x/2");       P1->C[1].Clr=FL_MAGENTA;  P1->C[1].Lwd=1;  P1->C[1].Typ=GUI::CT_BOTH;
+        P1->AddCurve (&X, &Y4, "log(1+x)");  P1->C[2].Clr=FL_BLUE;     P1->C[2].Lwd=1;  P1->C[2].Typ=GUI::CT_BOTH;
+        P1->AddCurve (&X, &Y5, "sqrt(x)");   P1->C[3].Clr=FL_CYAN;     P1->C[3].Lwd=2;  P1->C[3].Typ=GUI::CT_BOTH;
 
         // Set resizable and show window
         resizable (this);

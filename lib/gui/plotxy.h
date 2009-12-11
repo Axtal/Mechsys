@@ -27,12 +27,12 @@
 #include <iostream>
 
 // FLTK
-//#ifdef USE_FLTK
+#ifdef USE_FLTK
   #include <FL/Fl.H>
   #include <FL/Fl_Group.H>
   #include <FL/fl_draw.H>
   #include <FL/Enumerations.H> // for Fl_Color
-//#endif
+#endif
 
 // wxWidgets
 #ifdef USE_WXWIDGETS
@@ -40,10 +40,9 @@
   #include <wx/dcbuffer.h>
 #endif
 
-// Local
-//#include "defs.h"
-//#include "fatal.h"
-//#include "array.h"
+// MechSys
+#include "util/fatal.h"
+#include "util/array.h"
 
 namespace GUI
 {
@@ -64,23 +63,33 @@ struct CurveProps
 };
 
 /* Plot XY. */
-class PlotXY : public Fl_Group
+#if defined(USE_FLTK)
+  class PlotXY : public Fl_Group
+#elif defined(USE_WXWIDGETS)
+  class PlotXY : public wxWindow
+#else
+  #error MechSys:plotxy.h: Either USE_FLTK or USE_WXWIDGETS must be defined
+#endif
 {
 public:
     /* Constructor. */
+#if defined(USE_FLTK)
     PlotXY (int xmin, int ymin, int width, int height, char const * Title=NULL, char const * Xlbl=NULL, char const * Ylbl=NULL); // Screen coordinates
+#elif defined(USE_WXWIDGETS)
+    PlotXY (wxFrame * Parent, wxSize Size=wxDefaultSize);
+#endif
 
     /* Destructor. */
     virtual ~PlotXY () {}
 
     // Methods
-    void         AddCurve   (char const * Name);                                                   ///< Add curve (x-y values)
-    void         AddCurve   (Array<double> const * X, Array<double> const * Y, char const * Name); ///< Add curve (x-y values)
-    void         SetXY      (size_t i, Array<double> const * X, Array<double> const * Y);          ///< Set X and Y pointers
-    void         DelCurve   (size_t i);                                                            ///< Remove curve (x-y values)
-    void         CalcSF     ();                                                                    ///< Calculate scale factors
-    void         DrawRulers ();                                                                    ///< Draw rulers
-    void         DrawLegend ();                                                                    ///< Draw legend
+    void AddCurve   (char const * Name);                                                   ///< Add curve (x-y values)
+    void AddCurve   (Array<double> const * X, Array<double> const * Y, char const * Name); ///< Add curve (x-y values)
+    void SetXY      (size_t i, Array<double> const * X, Array<double> const * Y);          ///< Set X and Y pointers
+    void DelCurve   (size_t i);                                                            ///< Remove curve (x-y values)
+    void CalcSF     ();                                                                    ///< Calculate scale factors
+    void DrawRulers ();                                                                    ///< Draw rulers
+    void DrawLegend ();                                                                    ///< Draw legend
 
     // Set methods
     PlotXY & EqScales     (bool EQScales=true) { _eqsf=EQScales;  return (*this); } ///< Set equal scale factors
@@ -95,7 +104,7 @@ public:
     void draw ();
 
     // Data
-    Array<CurveProps>           _C; ///< Curve properties
+    Array<CurveProps> C; ///< Curve properties
 
 private:
     // Data
@@ -215,7 +224,7 @@ inline void PlotXY::AddCurve(char const * Name)
     // Add curve
     _X.Push(NULL);
     _Y.Push(NULL);
-    _C.Push(cp);
+    C .Push(cp);
 }
 
 inline void PlotXY::AddCurve(Array<double> const * X, Array<double> const * Y, char const * Name)
@@ -231,7 +240,7 @@ inline void PlotXY::AddCurve(Array<double> const * X, Array<double> const * Y, c
     // Add curve
     _X.Push(X);
     _Y.Push(Y);
-    _C.Push(cp);
+    C .Push(cp);
 }
 
 inline void PlotXY::SetXY(size_t i, Array<double> const * X, Array<double> const * Y)
@@ -261,7 +270,7 @@ inline void PlotXY::DelCurve(size_t i)
     // Remove
     _X.Remove(i);
     _Y.Remove(i);
-    _C.Remove(i);
+    C .Remove(i);
 }
 
 inline void PlotXY::CalcSF()
@@ -443,35 +452,35 @@ inline void PlotXY::DrawLegend()
                     throw new Fatal("PlotXY::DrawLegend(): (%s) X(%s)[%d] and Y(%s)[%d] must have the same size",_title,_blbl,_X[k]->Size(),_llbl,_Y[k]->Size());
                 
                 // Draw points
-                if (_C[k].Typ==CT_POINTS || _C[k].Typ==CT_BOTH)
+                if (C[k].Typ==CT_POINTS || C[k].Typ==CT_BOTH)
                 {
-                    fl_color      (_C[k].Clr);
+                    fl_color      (C[k].Clr);
                     fl_line_style (FL_SOLID, 1);
-                    if (_C[k].Pch==1) // Open circle
+                    if (C[k].Pch==1) // Open circle
                     {
-                        fl_circle (xi+len/2, yi, _C[k].Psz/2);
+                        fl_circle (xi+len/2, yi, C[k].Psz/2);
                     }
-                    else if (_C[k].Pch==16) // Filled circle
+                    else if (C[k].Pch==16) // Filled circle
                     {
-                        int r = _C[k].Psz/2;
+                        int r = C[k].Psz/2;
                         for (size_t i=0; i<_X[k]->Size(); ++i)
                             fl_pie (xi+len/2-r, yi-r, 2*r+1, 2*r+1, 0,360);
                     }
                 }
 
                 // Draw lines
-                if (_C[k].Typ==CT_LINES || _C[k].Typ==CT_BOTH)
+                if (C[k].Typ==CT_LINES || C[k].Typ==CT_BOTH)
                 {
                     if (_X[k]->Size()>1)
                     {
-                        fl_color      (_C[k].Clr);
-                        fl_line_style (_C[k].Lty, _C[k].Lwd);
+                        fl_color      (C[k].Clr);
+                        fl_line_style (C[k].Lty, C[k].Lwd);
                         fl_line       (xi, yi, xf, yi);
                     }
                 }
 
                 // Draw names
-                snprintf (buf, 256, "%s", _C[k].Nam); // format text
+                snprintf (buf, 256, "%s", C[k].Nam); // format text
                 fl_color (FL_BLACK);
                 fl_draw  (buf, xf+2, yi, 0, 0, FL_ALIGN_LEFT); // draw name
 
@@ -537,34 +546,33 @@ inline void PlotXY::draw()
         {
             // Check
             if (_X[k]==NULL || _Y[k]==NULL) break;
-            if (_X[k]->Size()!=_Y[k]->Size())
-                throw new Fatal("PlotXY::draw(): (%s) X(%s)[%d] and Y(%s)[%d] must have the same size",_title,_blbl,_X[k]->Size(),_llbl,_Y[k]->Size());
-            
+            if (_X[k]->Size()!=_Y[k]->Size()) throw new Fatal("PlotXY::draw(): (%s) X(%s)[%d] and Y(%s)[%d] must have the same size",_title,_blbl,_X[k]->Size(),_llbl,_Y[k]->Size());
+
             // Draw points
-            if (_C[k].Typ==CT_POINTS || _C[k].Typ==CT_BOTH)
+            if (C[k].Typ==CT_POINTS || C[k].Typ==CT_BOTH)
             {
-                fl_color      (_C[k].Clr);
+                fl_color      (C[k].Clr);
                 fl_line_style (FL_SOLID, 1);
-                if (_C[k].Pch==1) // Open circle
+                if (C[k].Pch==1) // Open circle
                 {
                     for (size_t i=0; i<_X[k]->Size(); ++i)
-                        fl_circle (_x((*_X[k])[i]), _y((*_Y[k])[i]), _C[k].Psz/2);
+                        fl_circle (_x((*_X[k])[i]), _y((*_Y[k])[i]), C[k].Psz/2);
                 }
-                else if (_C[k].Pch==16) // Filled circle
+                else if (C[k].Pch==16) // Filled circle
                 {
-                    int r = _C[k].Psz/2;
+                    int r = C[k].Psz/2;
                     for (size_t i=0; i<_X[k]->Size(); ++i)
                         fl_pie (_x((*_X[k])[i])-r, _y((*_Y[k])[i])-r, 2*r+1, 2*r+1, 0,360);
                 }
             }
 
             // Draw lines
-            if (_C[k].Typ==CT_LINES || _C[k].Typ==CT_BOTH)
+            if (C[k].Typ==CT_LINES || C[k].Typ==CT_BOTH)
             {
                 if (_X[k]->Size()>1)
                 {
-                    fl_color      (_C[k].Clr);
-                    fl_line_style (_C[k].Lty, _C[k].Lwd);
+                    fl_color      (C[k].Clr);
+                    fl_line_style (C[k].Lty, C[k].Lwd);
                     for (size_t i=0; i<_X[k]->Size()-1; ++i)
                         fl_line (_x((*_X[k])[i]), _y((*_Y[k])[i]), _x((*_X[k])[i+1]), _y((*_Y[k])[i+1]));
 

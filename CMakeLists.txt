@@ -212,6 +212,12 @@ IF(BLITZ_FOUND)
 	INCLUDE_DIRECTORIES(${BLITZ_INCLUDE_DIRS})
 ENDIF(BLITZ_FOUND)
 
+FIND_PACKAGE(wxWidgets COMPONENTS base core aui)
+IF(wxWidgets_FOUND)
+    INCLUDE(${wxWidgets_USE_FILE})
+    SET(LIBS ${LIBS} ${wxWidgets_LIBRARIES})
+ENDIF(wxWidgets_FOUND)
+
 ########################################################################### FEM
 
 SET(FEM_FOUND 0)
