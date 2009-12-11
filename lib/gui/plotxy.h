@@ -31,7 +31,6 @@
 #ifdef USE_FLTK
   #include <FL/Fl.H>
   #include <FL/Fl_Group.H>
-  #include <FL/fl_draw.H>
   #include <FL/Enumerations.H> // for Fl_Color
 #endif
 
@@ -57,6 +56,7 @@ struct CurveProps
     Pen_c     Pen;      ///< Pen: color, lty, lwd
     int       Pch;      ///< Point type
     int       Psz;      ///< Point size
+    bool      MaxY;     ///< Write Max Y ?
     char      Nam[256]; ///< Name
 };
 
@@ -87,6 +87,7 @@ public:
     void         CalcSF     ();                                                                    ///< Calculate scale factors
     void         DrawRulers ();                                                                    ///< Draw rulers
     void         DrawLegend ();                                                                    ///< Draw legend
+    void         Redraw     ();                                                                    ///< Force redraw
 
     // Set methods
     PlotXY & EqScales     (bool EQScales=true) { _eqsf=EQScales;  return (*this); } ///< Set equal scale factors
@@ -97,9 +98,12 @@ public:
     PlotXY & SetBTicksFmt (char const * Fmt="%4.1f", int Size=5);                   ///< Set bottom ruler ticks format, ex.: "%4.1f" => Size==5
     PlotXY & SetLTicksFmt (char const * Fmt="%3.1f", int Size=5);                   ///< Set left ruler ticks format, ex.: "%3.1f" => Size==5
 
-    /* Draw method (internal). */
-#ifdef USE_FLTK
+    // Draw methods (internal)
+#if defined(USE_FLTK)
     void draw ();
+#elif defined(USE_WXWIDGETS)
+    void OnPaint           (wxPaintEvent & Event);
+    void OnEraseBackground (wxEraseEvent & Event) { /* Empty implementation to prevent flicker */ }
 #endif
 
     // Data
@@ -141,6 +145,11 @@ private:
     int    _pavpad;     ///< Plot area vertical padding
     bool   _legatbot;   ///< Legend at bottom ?
     bool   _cptbr;      ///< Compact bottom ruler ?
+#if defined(USE_WXWIDGETS)
+    wxPen   _bg_pen;
+    wxBrush _bg_brush;
+    DECLARE_EVENT_TABLE()
+#endif
 
     // Curves
     Array<Array<double> const*> _X; ///< X curves (real coordinates)
@@ -225,10 +234,10 @@ inline PlotXY::PlotXY (wxFrame * Parent, char const * Title, char const * Xlbl, 
     else              strncpy (_llbl, Ylbl, 64);
 }
 
-inline CurveProps & PlotXY::AddCurve(char const * Name)
+inline CurveProps & PlotXY::AddCurve (char const * Name)
 {
     // Default properties
-    CurveProps cp = { CT_POINTS, Pen_c(), /*Pch*/1, /*Psz*/_hb*2 };
+    CurveProps cp = { CT_POINTS, Pen_c(), /*Pch*/1, /*Psz*/_hb*2, true };
     snprintf (cp.Nam, 256, "%s", Name);
 
     // Add curve
@@ -249,7 +258,7 @@ inline CurveProps & PlotXY::AddCurve (Array<double> const * X, Array<double> con
     else throw new Fatal("PlotXY::AddCurve: X and Y must NOT be NULL");
 
     // Default properties
-    CurveProps cp = { CT_POINTS, Pen_c(), /*Pch*/1, /*Psz*/_hb*2 };
+    CurveProps cp = { CT_POINTS, Pen_c(), /*Pch*/1, /*Psz*/_hb*2, true };
     snprintf (cp.Nam, 256, "%s", Name);
 
     // Add curve
@@ -277,7 +286,7 @@ inline CurveProps & PlotXY::SetXY (size_t i, Array<double> const * X, Array<doub
     return C[i];
 }
 
-inline void PlotXY::DelCurve(size_t i)
+inline void PlotXY::DelCurve (size_t i)
 {
     // Check
     if (i<0 || i>=_X.Size()) throw new Fatal("PlotXY::DelCurve: There is no Curve # %d added to this object",i);
@@ -288,7 +297,7 @@ inline void PlotXY::DelCurve(size_t i)
      C.Remove(i);
 }
 
-inline void PlotXY::CalcSF()
+inline void PlotXY::CalcSF ()
 {
     _Xmin = 0.0;
     _Ymin = 0.0;
@@ -348,7 +357,7 @@ inline void PlotXY::CalcSF()
     }
 }
 
-inline void PlotXY::DrawRulers()
+inline void PlotXY::DrawRulers ()
 {
 #ifdef USE_FLTK
     if (_brt>0) // bottom ruler
@@ -436,7 +445,7 @@ inline void PlotXY::DrawRulers()
 #endif
 }
 
-inline void PlotXY::DrawLegend()
+inline void PlotXY::DrawLegend ()
 {
 #ifdef USE_FLTK
     // Variables
@@ -515,38 +524,61 @@ inline void PlotXY::DrawLegend()
 #endif
 }
 
-inline PlotXY & PlotXY::BRuler(bool Visible, int nTicks)
+inline void PlotXY::Redraw ()
+{
+#if defined(USE_FLTK)
+    redraw();
+    Fl::wait(0);
+#elif defined(USE_WXWIDGETS)
+    Refresh();
+    Update();
+#endif
+}
+
+inline PlotXY & PlotXY::BRuler (bool Visible, int nTicks)
 {
     _brt = (Visible ? 27+12 : 0); // +12 to account for the label
     _bnt = nTicks;
     return (*this);
 }
 
-inline PlotXY & PlotXY::LRuler(bool Visible, int nTicks)
+inline PlotXY & PlotXY::LRuler (bool Visible, int nTicks)
 {
     _lrt = (Visible ? 27 : 0);
     _lnt = nTicks;
     return (*this);
 }
 
-inline PlotXY & PlotXY::SetBTicksFmt(char const * Fmt, int Size)
+inline PlotXY & PlotXY::SetBTicksFmt (char const * Fmt, int Size)
 {
     strncpy (_btifmt, Fmt, Size);  _btifmt[Size]='\0';
     return (*this);
 }
 
-inline PlotXY & PlotXY::SetLTicksFmt(char const * Fmt, int Size)
+inline PlotXY & PlotXY::SetLTicksFmt (char const * Fmt, int Size)
 {
     strncpy (_ltifmt, Fmt, Size);  _ltifmt[Size]='\0';
     return (*this);
 }
 
-#ifdef USE_FLTK
-inline void PlotXY::draw()
+#if defined(USE_FLTK)
+inline void PlotXY::draw ()
+#elif defined(USE_WXWIDGETS)
+inline void PlotXY::OnPaint (wxPaintEvent & Event)
+#endif
 {
     // Clear the background
+#if defined(USE_FLTK)
     fl_color (FL_WHITE);
     fl_rectf (x()+_lrt, y()+_trt, w()-_bhpad, h()-_bvpad);
+#elif defined(USE_WXWIDGETS)
+    wxBufferedPaintDC dc(this); // Device context
+    PrepareDC (dc);
+    dc.SetBrush      (_bg_brush);
+    dc.SetPen        (_bg_pen);
+    wxRect win_rect  (wxPoint(0,0), GetClientSize());
+    dc.DrawRectangle (win_rect);
+#endif
 
     // Calculate scale factors and draw rulers
     if (_recsf || !_sfok)
@@ -565,23 +597,24 @@ inline void PlotXY::draw()
         {
             // Check
             if (_X[k]==NULL || _Y[k]==NULL) break;
-            if (_X[k]->Size()!=_Y[k]->Size()) throw new Fatal("PlotXY::draw(): (%s) X(%s)[%d] and Y(%s)[%d] must have the same size",_title,_blbl,_X[k]->Size(),_llbl,_Y[k]->Size());
 
             // Draw points
             if (C[k].Typ==CT_POINTS || C[k].Typ==CT_BOTH)
             {
-                fl_color      (C[k].Pen.clr);
-                fl_line_style (FL_SOLID, 1);
+#if defined(USE_FLTK)
+                C[k].Pen.Activate (/*ForceSolid*/true);
+#elif defined(USE_WXWIDGETS)
+                C[k].Pen.Activate (dc, /*ForceSolid*/true);
+#endif
                 if (C[k].Pch==1) // Open circle
                 {
                     for (size_t i=0; i<_X[k]->Size(); ++i)
-                        fl_circle (_x((*_X[k])[i]), _y((*_Y[k])[i]), C[k].Psz/2);
+                        GUI_DRAW_CIRCLE (_x((*_X[k])[i]), _y((*_Y[k])[i]), C[k].Psz/2)
                 }
                 else if (C[k].Pch==16) // Filled circle
                 {
-                    int r = C[k].Psz/2;
                     for (size_t i=0; i<_X[k]->Size(); ++i)
-                        fl_pie (_x((*_X[k])[i])-r, _y((*_Y[k])[i])-r, 2*r+1, 2*r+1, 0,360);
+                        GUI_DRAW_FCIRCLE (_x((*_X[k])[i]), _y((*_Y[k])[i]), C[k].Psz/2)
                 }
             }
 
@@ -590,18 +623,30 @@ inline void PlotXY::draw()
             {
                 if (_X[k]->Size()>1)
                 {
-                    fl_color      (C[k].Pen.clr);
-                    fl_line_style (C[k].Pen.lty, C[k].Pen.lwd);
+#if defined(USE_FLTK)
+                    C[k].Pen.Activate ();
+#elif defined(USE_WXWIDGETS)
+                    C[k].Pen.Activate (dc);
+#endif
                     for (size_t i=0; i<_X[k]->Size()-1; ++i)
-                        fl_line (_x((*_X[k])[i]), _y((*_Y[k])[i]), _x((*_X[k])[i+1]), _y((*_Y[k])[i+1]));
+                        GUI_DRAW_LINE (_x((*_X[k])[i]), _y((*_Y[k])[i]), _x((*_X[k])[i+1]), _y((*_Y[k])[i+1]))
+                }
+            }
 
-
+            // Draw text
+            if (C[k].MaxY)
+            {
+                if (_X[k]->Size()>1)
+                {
                     char buf[256];
                     //snprintf (buf, 250, "%g, %g", (*_X[k])[_X[k]->Size()-1], (*_Y[k])[_X[k]->Size()-1]);
                     snprintf (buf, 250, "y=%g", (*_Y[k])[_X[k]->Size()-1]);
+#if defined(USE_FLTK)
                     fl_color (FL_BLACK);
                     fl_font  (0, 10);
-                    fl_draw  (buf, _x((*_X[k])[_X[k]->Size()-1]), _y((*_Y[k])[_X[k]->Size()-1]), 0,0, FL_ALIGN_RIGHT);
+#elif defined(USE_WXWIDGETS)
+#endif
+                    GUI_DRAW_TEXT (buf, _x((*_X[k])[_X[k]->Size()-1]), _y((*_Y[k])[_X[k]->Size()-1]), true);
                 }
             }
 
@@ -610,17 +655,24 @@ inline void PlotXY::draw()
         }
     }
 
+#if defined(USE_FLTK)
     // Draw border
     fl_color      (FL_BLACK);
     fl_line_style (FL_SOLID, 1);
     fl_rect       (x()+_lrt, y()+_trt, w()-_bhpad, h()-_bvpad);
-
     // Draw an all-around frame
     if (_wframe) fl_rect (x(), y(), w(), h());
+#endif
 }
+
+#if defined(USE_WXWIDGETS)
+BEGIN_EVENT_TABLE(PlotXY, wxWindow)
+    EVT_PAINT            (PlotXY::OnPaint)
+    EVT_ERASE_BACKGROUND (PlotXY::OnEraseBackground)
+END_EVENT_TABLE()
 #endif
 
-inline void PlotXY::_pretty(double Lo, double Hi, int nDiv, Array<double> & Vals)
+inline void PlotXY::_pretty (double Lo, double Hi, int nDiv, Array<double> & Vals)
 {
     // Constants
     const double rounding_eps   = 1.0e-7;

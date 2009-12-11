@@ -23,15 +23,28 @@
 // STL
 #include <map>
 
-// FLTK
-#ifdef USE_FLTK
+#if defined(USE_FLTK)
+  // FLTK
   #include <FL/Enumerations.H> // for Fl_Color
-#endif
-
-// wxWidgets
-#ifdef USE_WXWIDGETS
+  #include <FL/fl_draw.H>
+  #define GUI_DRAW_CIRCLE(x,y,r)     fl_circle (x, y, r);
+  #define GUI_DRAW_FCIRCLE(x,y,r)    fl_pie    (x-r, y-r, 2*r+1, 2*r+1, 0, 360);
+  #define GUI_DRAW_LINE(x0,y0,x1,y1) fl_line   (x0,y0, x1,y1);
+  #define GUI_DRAW_TEXT(t,x,y,ralign)               \
+    if (ralign) fl_draw (t,x,y,0,0,FL_ALIGN_RIGHT); \
+    else        fl_draw (t,x,y);
+#elif defined(USE_WXWIDGETS)
+  // wxWidgets
   #include <wx/pen.h>
   #include <wx/gdicmn.h>
+  #define GUI_DRAW_CIRCLE(x,y,r)     dc.DrawCircle (x, y, r);
+  #define GUI_DRAW_FCIRCLE(x,y,r)    dc.DrawCircle (x, y, r);
+  #define GUI_DRAW_LINE(x0,y0,x1,y1) dc.DrawLine   (x0,y0, x1,y1);
+  #define GUI_DRAW_TEXT(t,x,y,ralign)    \
+    wxCoord w,h;                         \
+    dc.GetTextExtent (t,&w,&h);          \
+    if (ralign) dc.DrawText (t,x-w,y-h); \
+    else        dc.DrawText (t,x,  y-h);
 #endif
 
 namespace GUI
@@ -43,6 +56,10 @@ typedef std::map<String,int>      Lty_t;
 #elif defined(USE_WXWIDGETS)
 typedef std::map<String,wxColour> Clr_t;
 typedef std::map<String,int>      Lty_t;
+#endif
+
+#if defined(USE_WXWIDGETS)
+wxColourDatabase ClrDb;
 #endif
 
 class Clr_c : public Clr_t
@@ -67,12 +84,19 @@ public:
         (*this)["dred"]     = FL_DARK_RED;
         (*this)["dyellow"]  = FL_DARK_YELLOW;
 #elif defined(USE_WXWIDGETS)
-        (*this)["black"]    = (*wxBLACK);
-        (*this)["blue"]     = (*wxBLUE);
-        (*this)["cyan"]     = (*wxCYAN);
-        (*this)["green"]    = (*wxGREEN);
-        (*this)["red"]      = (*wxRED);
-        (*this)["white"]    = (*wxWHITE);
+        if (ClrDb.Find("BLACK")      .Ok()) (*this)["black"]      = ClrDb.Find("BLACK");
+        if (ClrDb.Find("BLUE")       .Ok()) (*this)["blue"]       = ClrDb.Find("BLUE");
+        if (ClrDb.Find("CYAN")       .Ok()) (*this)["cyan"]       = ClrDb.Find("CYAN");
+        if (ClrDb.Find("GREEN")      .Ok()) (*this)["green"]      = ClrDb.Find("GREEN");
+        if (ClrDb.Find("MAGENTA")    .Ok()) (*this)["magenta"]    = ClrDb.Find("MAGENTA");
+        if (ClrDb.Find("RED")        .Ok()) (*this)["red"]        = ClrDb.Find("RED");
+        if (ClrDb.Find("WHITE")      .Ok()) (*this)["white"]      = ClrDb.Find("WHITE");
+        if (ClrDb.Find("YELLOW")     .Ok()) (*this)["yellow"]     = ClrDb.Find("YELLOW");
+        if (ClrDb.Find("BLUE VIOLET").Ok()) (*this)["blueviolet"] = ClrDb.Find("BLUE VIOLET");
+        if (ClrDb.Find("DARK GREEN") .Ok()) (*this)["dgreen"]     = ClrDb.Find("DARK GREEN");
+        if (ClrDb.Find("MAROON")     .Ok()) (*this)["maroon"]     = ClrDb.Find("MAROON");
+        if (ClrDb.Find("FIREBRICK")  .Ok()) (*this)["firebrick"]  = ClrDb.Find("FIREBRICK");
+        if (ClrDb.Find("ORANGE")     .Ok()) (*this)["orange"]     = ClrDb.Find("ORANGE");
 #endif
     }
 
@@ -138,11 +162,28 @@ public:
         lty = Lty(LtyName);
         lwd = Lwd;
 #elif defined(USE_WXWIDGETS)
-        pen.SetColour (Clr(ClrName));
-        pen.SetStyle  (Lty(LtyName));
-        pen.SetWidth  (Lwd);
+        pen .SetColour (Clr(ClrName));
+        pen .SetStyle  (Lty(LtyName));
+        pen .SetWidth  (Lwd);
+        spen.SetColour (Clr(ClrName));
+        spen.SetStyle  (Lty("solid"));
+        spen.SetWidth  (Lwd);
 #endif
     }
+
+#if defined(USE_FLTK)
+    void Activate (bool ForceSolid=false)
+    {
+        fl_color (clr);
+        if (ForceSolid) fl_line_style (FL_SOLID, 1);
+    }
+#elif defined(USE_WXWIDGETS)
+    void Activate (wxDC & DC, bool ForceSolid=false)
+    {
+        if (ForceSolid) DC.SetPen (spen);
+        else            DC.SetPen (pen);
+    }
+#endif
 
     // Data
 #if defined(USE_FLTK)
@@ -151,6 +192,7 @@ public:
     int      lwd;
 #elif defined(USE_WXWIDGETS)
     wxPen    pen;
+    wxPen    spen; // solid pen with the same color and width
 #endif
 };
 
