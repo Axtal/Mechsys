@@ -25,6 +25,7 @@
 #include <cfloat>  // for DBL_EPSILON
 #include <cstring> // for strncpy
 #include <iostream>
+#include <map>
 
 // FLTK
 #ifdef USE_FLTK
@@ -43,32 +44,28 @@
 // MechSys
 #include "util/fatal.h"
 #include "util/array.h"
+#include "gui/common.h"
 
 namespace GUI
 {
 
-/** Curve type. */
 enum CurveType { CT_POINTS, CT_LINES, CT_BOTH };
 
-/* Curve properties. */
 struct CurveProps
 {
     CurveType Typ;      ///< Curve type
-    Fl_Color  Clr;      ///< Color
-    int       Lty;      ///< Line type
-    int       Lwd;      ///< Line width
+    Pen_c     Pen;      ///< Pen: color, lty, lwd
     int       Pch;      ///< Point type
     int       Psz;      ///< Point size
     char      Nam[256]; ///< Name
 };
 
-/* Plot XY. */
 #if defined(USE_FLTK)
-  class PlotXY : public Fl_Group
+class PlotXY : public Fl_Group
 #elif defined(USE_WXWIDGETS)
-  class PlotXY : public wxWindow
+class PlotXY : public wxWindow
 #else
-  #error MechSys:plotxy.h: Either USE_FLTK or USE_WXWIDGETS must be defined
+#error MechSys:plotxy.h: Either USE_FLTK or USE_WXWIDGETS must be defined
 #endif
 {
 public:
@@ -76,20 +73,20 @@ public:
 #if defined(USE_FLTK)
     PlotXY (int xmin, int ymin, int width, int height, char const * Title=NULL, char const * Xlbl=NULL, char const * Ylbl=NULL); // Screen coordinates
 #elif defined(USE_WXWIDGETS)
-    PlotXY (wxFrame * Parent, wxSize Size=wxDefaultSize);
+    PlotXY (wxFrame * Parent, char const * Title=NULL, char const * Xlbl=NULL, char const * Ylbl=NULL);
 #endif
 
     /* Destructor. */
     virtual ~PlotXY () {}
 
     // Methods
-    void AddCurve   (char const * Name);                                                   ///< Add curve (x-y values)
-    void AddCurve   (Array<double> const * X, Array<double> const * Y, char const * Name); ///< Add curve (x-y values)
-    void SetXY      (size_t i, Array<double> const * X, Array<double> const * Y);          ///< Set X and Y pointers
-    void DelCurve   (size_t i);                                                            ///< Remove curve (x-y values)
-    void CalcSF     ();                                                                    ///< Calculate scale factors
-    void DrawRulers ();                                                                    ///< Draw rulers
-    void DrawLegend ();                                                                    ///< Draw legend
+    CurveProps & AddCurve   (char const * Name);                                                   ///< Add curve (x-y values)
+    CurveProps & AddCurve   (Array<double> const * X, Array<double> const * Y, char const * Name); ///< Add curve (x-y values)
+    CurveProps & SetXY      (size_t i, Array<double> const * X, Array<double> const * Y);          ///< Set X and Y pointers
+    void         DelCurve   (size_t i);                                                            ///< Remove curve (x-y values)
+    void         CalcSF     ();                                                                    ///< Calculate scale factors
+    void         DrawRulers ();                                                                    ///< Draw rulers
+    void         DrawLegend ();                                                                    ///< Draw legend
 
     // Set methods
     PlotXY & EqScales     (bool EQScales=true) { _eqsf=EQScales;  return (*this); } ///< Set equal scale factors
@@ -101,7 +98,9 @@ public:
     PlotXY & SetLTicksFmt (char const * Fmt="%3.1f", int Size=5);                   ///< Set left ruler ticks format, ex.: "%3.1f" => Size==5
 
     /* Draw method (internal). */
+#ifdef USE_FLTK
     void draw ();
+#endif
 
     // Data
     Array<CurveProps> C; ///< Curve properties
@@ -147,6 +146,13 @@ private:
     Array<Array<double> const*> _X; ///< X curves (real coordinates)
     Array<Array<double> const*> _Y; ///< Y curves (real coordinates)
 
+#if defined(USE_WXWIDGETS)
+    int x() const { return 0; }
+    int y() const { return 0; }
+    int w() const { int wi,he; GetClientSize(&wi,&he); return wi; }
+    int h() const { int wi,he; GetClientSize(&wi,&he); return he; }
+#endif
+
     // Private Methods
     int  _x      (double X) const { return static_cast<int>((x()+1+_lrt+_hb)              +_sfX*(X-_Xmin)); } ///< X in screen coordinates
     int  _y      (double Y) const { return static_cast<int>((y()+1+_trt+_vb)+(h()-_pavpad)-_sfY*(Y-_Ymin)); } ///< Y in screen coordinates
@@ -159,10 +165,13 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-/* public */
-
-inline PlotXY::PlotXY(int xmin, int ymin, int width, int height, char const * Title, char const * Xlbl, char const * Ylbl)
+#if defined(USE_FLTK)
+inline PlotXY::PlotXY (int xmin, int ymin, int width, int height, char const * Title, char const * Xlbl, char const * Ylbl)
     : Fl_Group (xmin,ymin,width,height,0),
+#elif defined(USE_WXWIDGETS)
+inline PlotXY::PlotXY (wxFrame * Parent, char const * Title, char const * Xlbl, char const * Ylbl)
+    : wxWindow (Parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE),
+#endif
       _sfX      (1.0),
       _sfY      (1.0),
       _eqsf     (false),
@@ -185,7 +194,9 @@ inline PlotXY::PlotXY(int xmin, int ymin, int width, int height, char const * Ti
       _legatbot (true),
       _cptbr    (true)
 {
+#ifdef USE_FLTK
     end();
+#endif
 
     // Set dependent constants
     _lrt    = 40;                     // left ruler
@@ -212,65 +223,69 @@ inline PlotXY::PlotXY(int xmin, int ymin, int width, int height, char const * Ti
     // Set y-label
     if (Ylbl==NULL) { strncpy (_llbl, "Y", 1);  _llbl[1]='\0'; }
     else              strncpy (_llbl, Ylbl, 64);
-    
 }
 
-inline void PlotXY::AddCurve(char const * Name)
+inline CurveProps & PlotXY::AddCurve(char const * Name)
 {
     // Default properties
-    CurveProps cp = { CT_POINTS, FL_BLACK, FL_SOLID, 1, 1, _hb*2 };
+    CurveProps cp = { CT_POINTS, Pen_c(), /*Pch*/1, /*Psz*/_hb*2 };
     snprintf (cp.Nam, 256, "%s", Name);
 
     // Add curve
     _X.Push(NULL);
     _Y.Push(NULL);
-    C .Push(cp);
+     C.Push(cp);
+
+    return C[C.Size()-1];
 }
 
-inline void PlotXY::AddCurve(Array<double> const * X, Array<double> const * Y, char const * Name)
+inline CurveProps & PlotXY::AddCurve (Array<double> const * X, Array<double> const * Y, char const * Name)
 {
     // Check
-    if (Y->Size()!=X->Size())
-        throw new Fatal("PlotXY::AddCurve: X (sz=%d) and Y (sz=%d) arrays must have the same size",X->Size(), Y->Size());
+    if (X!=NULL && Y!=NULL)
+    {
+        if (Y->Size()!=X->Size()) throw new Fatal("PlotXY::AddCurve: X (sz=%d) and Y (sz=%d) arrays must have the same size",X->Size(), Y->Size());
+    }
+    else throw new Fatal("PlotXY::AddCurve: X and Y must NOT be NULL");
 
     // Default properties
-    CurveProps cp = { CT_POINTS, FL_BLACK, FL_SOLID, 1, 1, _hb*2 };
+    CurveProps cp = { CT_POINTS, Pen_c(), /*Pch*/1, /*Psz*/_hb*2 };
     snprintf (cp.Nam, 256, "%s", Name);
 
     // Add curve
     _X.Push(X);
     _Y.Push(Y);
-    C .Push(cp);
+     C.Push(cp);
+
+    return C[C.Size()-1];
 }
 
-inline void PlotXY::SetXY(size_t i, Array<double> const * X, Array<double> const * Y)
+inline CurveProps & PlotXY::SetXY (size_t i, Array<double> const * X, Array<double> const * Y)
 {
-    // Check
-    if (i<0 || i>=_X.Size())
-        throw new Fatal("PlotXY::SetXY: There is no Curve # %d added to this object",i);
-
     // Check
     if (X!=NULL && Y!=NULL)
     {
-        if (Y->Size()!=X->Size())
-            throw new Fatal("PlotXY::SetXY: X (sz=%d) and Y (sz=%d) arrays must have the same size",X->Size(), Y->Size());
+        if (Y->Size()!=X->Size()) throw new Fatal("PlotXY::SetXY: X (sz=%d) and Y (sz=%d) arrays must have the same size",X->Size(), Y->Size());
     }
+    else throw new Fatal("PlotXY::SetXY: X and Y must NOT be NULL");
+    if (i<0 || i>=_X.Size()) throw new Fatal("PlotXY::SetXY: There is no Curve # %d added to this object",i);
 
     // Set curve
     _X[i] = X;
     _Y[i] = Y;
+
+    return C[i];
 }
 
 inline void PlotXY::DelCurve(size_t i)
 {
     // Check
-    if (i<0 || i>=_X.Size())
-        throw new Fatal("PlotXY::DelCurve: There is no Curve # %d added to this object",i);
+    if (i<0 || i>=_X.Size()) throw new Fatal("PlotXY::DelCurve: There is no Curve # %d added to this object",i);
 
     // Remove
     _X.Remove(i);
     _Y.Remove(i);
-    C .Remove(i);
+     C.Remove(i);
 }
 
 inline void PlotXY::CalcSF()
@@ -335,6 +350,7 @@ inline void PlotXY::CalcSF()
 
 inline void PlotXY::DrawRulers()
 {
+#ifdef USE_FLTK
     if (_brt>0) // bottom ruler
     {
         // variables
@@ -417,10 +433,12 @@ inline void PlotXY::DrawRulers()
         fl_color (FL_WHITE);
         fl_rectf (x()+w()-_rrt-_rlegw, y()+_trt, _rrt, h()-_trt-_brt-_blegh);
     }
+#endif
 }
 
 inline void PlotXY::DrawLegend()
 {
+#ifdef USE_FLTK
     // Variables
     char buf[256];
     int  xi   = x()+5;
@@ -448,13 +466,12 @@ inline void PlotXY::DrawLegend()
             {
                 // Check
                 if (_X[k]==NULL || _Y[k]==NULL) return;
-                if (_X[k]->Size()!=_Y[k]->Size())
-                    throw new Fatal("PlotXY::DrawLegend(): (%s) X(%s)[%d] and Y(%s)[%d] must have the same size",_title,_blbl,_X[k]->Size(),_llbl,_Y[k]->Size());
-                
+                if (_X[k]->Size()!=_Y[k]->Size()) throw new Fatal("PlotXY::DrawLegend(): (%s) X(%s)[%d] and Y(%s)[%d] must have the same size",_title,_blbl,_X[k]->Size(),_llbl,_Y[k]->Size());
+
                 // Draw points
                 if (C[k].Typ==CT_POINTS || C[k].Typ==CT_BOTH)
                 {
-                    fl_color      (C[k].Clr);
+                    fl_color      (C[k].Pen.clr);
                     fl_line_style (FL_SOLID, 1);
                     if (C[k].Pch==1) // Open circle
                     {
@@ -473,8 +490,8 @@ inline void PlotXY::DrawLegend()
                 {
                     if (_X[k]->Size()>1)
                     {
-                        fl_color      (C[k].Clr);
-                        fl_line_style (C[k].Lty, C[k].Lwd);
+                        fl_color      (C[k].Pen.clr);
+                        fl_line_style (C[k].Pen.lty, C[k].Pen.lwd);
                         fl_line       (xi, yi, xf, yi);
                     }
                 }
@@ -495,6 +512,7 @@ inline void PlotXY::DrawLegend()
     else
     {
     }
+#endif
 }
 
 inline PlotXY & PlotXY::BRuler(bool Visible, int nTicks)
@@ -523,6 +541,7 @@ inline PlotXY & PlotXY::SetLTicksFmt(char const * Fmt, int Size)
     return (*this);
 }
 
+#ifdef USE_FLTK
 inline void PlotXY::draw()
 {
     // Clear the background
@@ -551,7 +570,7 @@ inline void PlotXY::draw()
             // Draw points
             if (C[k].Typ==CT_POINTS || C[k].Typ==CT_BOTH)
             {
-                fl_color      (C[k].Clr);
+                fl_color      (C[k].Pen.clr);
                 fl_line_style (FL_SOLID, 1);
                 if (C[k].Pch==1) // Open circle
                 {
@@ -571,8 +590,8 @@ inline void PlotXY::draw()
             {
                 if (_X[k]->Size()>1)
                 {
-                    fl_color      (C[k].Clr);
-                    fl_line_style (C[k].Lty, C[k].Lwd);
+                    fl_color      (C[k].Pen.clr);
+                    fl_line_style (C[k].Pen.lty, C[k].Pen.lwd);
                     for (size_t i=0; i<_X[k]->Size()-1; ++i)
                         fl_line (_x((*_X[k])[i]), _y((*_Y[k])[i]), _x((*_X[k])[i+1]), _y((*_Y[k])[i+1]));
 
@@ -583,8 +602,6 @@ inline void PlotXY::draw()
                     fl_color (FL_BLACK);
                     fl_font  (0, 10);
                     fl_draw  (buf, _x((*_X[k])[_X[k]->Size()-1]), _y((*_Y[k])[_X[k]->Size()-1]), 0,0, FL_ALIGN_RIGHT);
-
-
                 }
             }
 
@@ -600,11 +617,9 @@ inline void PlotXY::draw()
 
     // Draw an all-around frame
     if (_wframe) fl_rect (x(), y(), w(), h());
-
 }
+#endif
 
-
-/* private */
 inline void PlotXY::_pretty(double Lo, double Hi, int nDiv, Array<double> & Vals)
 {
     // Constants
