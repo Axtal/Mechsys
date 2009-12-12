@@ -44,20 +44,20 @@ public:
         // Add widgets to window
         begin();
             // Widgets
-            P0 = new GUI::PlotXY (/*xmin*/50,  /*ymin*/50,  /*width*/400, /*height*/300, "First Graph");
-            P1 = new GUI::PlotXY (/*xmin*/100, /*ymin*/400, /*width*/400, /*height*/400, "Second Graph");
+            P0 = new GUI::PlotXY (/*xmin*/50,  /*ymin*/50,  /*width*/400, /*height*/300, "First Graph",  "x", "y(x)");
+            P1 = new GUI::PlotXY (/*xmin*/100, /*ymin*/400, /*width*/400, /*height*/400, "Second Graph", "x", "y(x)");
         end();
 
         // Calc data
         const int np = 20;
-        X .Resize(np);
-        Y0.Resize(np);
-        Y1.Resize(np);
-        Y2.Resize(np);
-        Y3.Resize(np);
-        Y4.Resize(np);
-        Y5.Resize(np);
-        for (int i=0; i<np; ++i)
+        X .Resize(np+1);
+        Y0.Resize(np+1);
+        Y1.Resize(np+1);
+        Y2.Resize(np+1);
+        Y3.Resize(np+1);
+        Y4.Resize(np+1);
+        Y5.Resize(np+1);
+        for (int i=0; i<np+1; ++i)
         {
             X [i] = static_cast<double>(i)/np;
             Y0[i] = 2.0*X[i];
@@ -69,16 +69,14 @@ public:
         }
 
         // P0
-        P0->EqScales (false).RecalcSF(true);
-        P0->AddCurve (&X, &Y0, "2*x").Pen.Set("red", "solid",2);  P0->C[0].Pch=16;
-        P0->AddCurve (&X, &Y1, "x^2").Pen.Set("blue","dot",  1);  P0->C[1].Typ=GUI::CT_BOTH;
+        P0->AddCurve (&X, &Y0, "2*x").Pen.Set("red", "solid",2);  P0->C[0].Pch=1;
+        P0->AddCurve (&X, &Y1, "x^2").Pen.Set("blue","dot",  1);  P0->C[1].Typ=GUI::CT_BOTH;  P0->C[1].Pch=2;
 
         // P1
-        P1->EqScales (false).RecalcSF(true);
-        P1->AddCurve (&X, &Y2, "x")       .Pen.Set("red",     "dash" , 2);  P1->C[0].Typ=GUI::CT_LINES;
-        P1->AddCurve (&X, &Y3, "x/2")     .Pen.Set("dgreen",  "solid", 3);  P1->C[1].Typ=GUI::CT_BOTH;
-        P1->AddCurve (&X, &Y4, "log(1+x)").Pen.Set("blue",    "solid", 1);  P1->C[2].Pch=16;
-        P1->AddCurve (&X, &Y5, "sqrt(x)") .Pen.Set("dmagenta","solid", 2);  P1->C[3].Typ=GUI::CT_BOTH;
+        P1->AddCurve (&X, &Y2, "x")       .Pen.Set("red",    "dash" , 2);  P1->C[0].Typ=GUI::CT_LINES;
+        P1->AddCurve (&X, &Y3, "x/2")     .Pen.Set("dgreen", "solid", 3);  P1->C[1].Typ=GUI::CT_BOTH;  P1->C[1].Pch=100;
+        P1->AddCurve (&X, &Y4, "log(1+x)").Pen.Set("blue",   "solid", 1);  P1->C[2].Typ=GUI::CT_BOTH;  P1->C[2].Pch=3;
+        P1->AddCurve (&X, &Y5, "sqrt(x)") .Pen.Set("orange", "solid", 2);  P1->C[3].Typ=GUI::CT_BOTH;  P1->C[3].Pch=4;
 
         // Set resizable and show window
         resizable (this);
