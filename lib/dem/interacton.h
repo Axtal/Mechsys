@@ -136,23 +136,19 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             pair<int,int> p;
             p = make_pair(i,j);
             Fn = Kn*delta*n;
-            Vec3_t Ft = Kt*FMap[p]+Gt*vt;
-            Vec3_t tan = Ft;
+            FMap[p] += vt*dt;
+            FMap[p] -= dot(FMap[p],n)*n;
+            Vec3_t tan = FMap[p];
             if (norm(tan)>1.0e-22) tan/=norm(tan);
-            if (norm(Ft)>Mu*norm(Fn))
+            if (norm(FMap[p])>Mu*norm(Fn)/Kt)
             {
                 // Count a sliding contact
                 Nsc++;
 
-                Ft = Mu*norm(Fn)*tan;
+                FMap[p] = Mu*norm(Fn)/Kt*tan;
                 dEfric += Kt*dot(FMap[p],Vec3_t(P2->v - P1->v))*dt;
             }
-            else 
-            {
-                FMap[p] += vt*dt;
-                FMap[p] -= dot(FMap[p],n)*n;
-            }
-            Vec3_t F = Fn + Ft + Gn*dot(n,vrel)*n;
+            Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
             P1->F += -F;
             P2->F +=  F;
             dEvis += dot(Vec3_t(Gn*dot(n,vrel)*n +Gt*vt),Vec3_t(P2->v - P1->v))*dt;
