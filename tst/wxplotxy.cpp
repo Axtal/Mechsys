@@ -32,7 +32,7 @@
 // MechSys
 #include "gui/plotxy.h"
 #include "gui/pixmaps/icon.xpm"
-#include "gui/pixmaps/gear.xpm"
+#include "gui/pixmaps/gear_sml.xpm"
 #include "gui/pixmaps/new.xpm"
 #include "gui/pixmaps/open.xpm"
 #include "gui/pixmaps/save.xpm"
@@ -101,7 +101,7 @@ MyFrame::MyFrame (const wxString & Title)
 {
     // settings
     Aui.SetManagedWindow (this);   // tell wxAuiManager to manage this frame
-    SetMinSize (wxSize(400,300));  // minimum size
+    SetMinSize (wxSize(640,480));  // minimum size
     SetIcon    (wxIcon(icon_xpm)); // set frame icon
 
     // menu and status bars
@@ -128,7 +128,7 @@ MyFrame::MyFrame (const wxString & Title)
     tb->AddTool (wxID_ANY, _("New file"),  new_xpm);
     tb->AddTool (wxID_ANY, _("Open file"), open_xpm);
     tb->AddTool (wxID_ANY, _("Save file"), save_xpm);
-    tb->AddTool (wxID_ANY, _("Run"),       gear_xpm);
+    tb->AddTool (wxID_ANY, _("Run"),       gear_sml_xpm);
     tb->AddTool (wxID_ANY, _("Stop"),      wxArtProvider::GetBitmap(wxART_ERROR));
     tb->SetToolBitmapSize(wxSize(16,16));
     tb->Realize();
