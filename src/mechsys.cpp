@@ -181,8 +181,6 @@ BPy::class_<DEM::Domain>("DEM_Domain")
     .def("Solve",       &DEM::Domain::Solve)
     .def("WritePOV",    &DEM::Domain::WritePOV)
     .def("WriteBPY",    &DEM::Domain::WriteBPY)
-    .def("SetTxTest",   &DEM::Domain::PySetTxTest)
-    .def("ResetEps",    &DEM::Domain::ResetEps)
     .def("SetCamPos",   &DEM::Domain::PySetCamPos)
     ;
 
