@@ -79,11 +79,11 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom active psa nip", PROB("HMEquilib"), GEOM("Quad8"), TRUE, TRUE, 4.0);
+    prps.Set(-1, "prob geom active psa nip", PROB("HMEquilib"), GEOM("Quad8"), 1.0, 1.0, 4.0);
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"),  1.0e+6, 0.3,  TRUE);
+    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"),  1.0e+6, 0.3,  1.0);
 
     // initial values
     Dict inis;

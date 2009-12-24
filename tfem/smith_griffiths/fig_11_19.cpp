@@ -78,12 +78,12 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom psa rho", PROB("Equilib"), GEOM("Quad8"), TRUE, 7.33e-4);
+    prps.Set(-1, "prob geom psa rho", PROB("Equilib"), GEOM("Quad8"), 1.0, 7.33e-4);
 
     // models
     Dict mdls;
-    //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 3.0e7, 0.3, TRUE);
-    mdls.Set(-1, "name E nu sY psa", MODEL("ElastoPlastic"), 3.0e7, 0.3, 5.0e4, TRUE);
+    //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 3.0e7, 0.3, 1.0);
+    mdls.Set(-1, "name E nu sY psa", MODEL("ElastoPlastic"), 3.0e7, 0.3, 5.0e4, 1.0);
 
     // initial values
     Dict inis;

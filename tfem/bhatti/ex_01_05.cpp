@@ -77,7 +77,7 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set( -10, "conv h Tinf", TRUE, 27.0, 20.0);
+    bcs.Set( -10, "conv h Tinf", 1.0, 27.0, 20.0);
     bcs.Set(-100, "H", 300.0);
     dom.SetBCs (bcs);
     sol.Solve  ();

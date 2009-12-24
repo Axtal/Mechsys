@@ -54,8 +54,8 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob E A Izz fra", PROB("Beam"), 420.0e+6, 0.0001, 4.0e-4, TRUE);
-    prps.Set(-2, "prob E A Izz fra", PROB("Beam"), 210.0e+6, 0.0001, 4.0e-4, TRUE);
+    prps.Set(-1, "prob E A Izz fra", PROB("Beam"), 420.0e+6, 0.0001, 4.0e-4, 1.0);
+    prps.Set(-2, "prob E A Izz fra", PROB("Beam"), 210.0e+6, 0.0001, 4.0e-4, 1.0);
 
     // domain
     FEM::Domain dom(mesh, prps, /*mdls*/Dict(), /*inis*/Dict());

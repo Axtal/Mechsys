@@ -52,13 +52,13 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom active axs nip", PROB("Equilib"), GEOM("Quad4"), TRUE, TRUE, 9.0);
-    prps.Set(-2, "prob geom active axs nip", PROB("Equilib"), GEOM("Quad4"), TRUE, TRUE, 9.0);
+    prps.Set(-1, "prob geom active axs nip", PROB("Equilib"), GEOM("Quad4"), 1.0, 1.0, 9.0);
+    prps.Set(-2, "prob geom active axs nip", PROB("Equilib"), GEOM("Quad4"), 1.0, 1.0, 9.0);
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu axs", MODEL("LinElastic"),  100.0, 0.3,  TRUE);
-    mdls.Set(-2, "name E nu axs", MODEL("LinElastic"), 1000.0, 0.45, TRUE);
+    mdls.Set(-1, "name E nu axs", MODEL("LinElastic"),  100.0, 0.3,  1.0);
+    mdls.Set(-2, "name E nu axs", MODEL("LinElastic"), 1000.0, 0.45, 1.0);
 
     // initial values
     Dict inis;

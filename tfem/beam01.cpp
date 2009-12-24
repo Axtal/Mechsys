@@ -46,7 +46,7 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set (-1, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 1.0, 1.0, 1.0);
+    prps.Set (-1, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
 
     // boundary conditions
     Dict bcs;
@@ -109,8 +109,8 @@ int main(int argc, char **argv) try
             bcs.Set (-200, "mz",   12.5);
             bcs.Set (  -2, "qn",   -9.2);
 
-            prps.Set (-2, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 1.0, 1.0, 1.0);
-            prps.Set (-3, "prob fra E A",         PROB("Rod"),  TRUE, 1.0, 1.0);
+            prps.Set (-2, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
+            prps.Set (-3, "prob fra E A",         PROB("Rod"),  1.0, 1.0, 1.0);
 
             sf = 0.005;
             break;
@@ -138,7 +138,7 @@ int main(int argc, char **argv) try
             bcs.Set (-100, "ux uy wz", 0.0);
             bcs.Set (  -2, "qn",      -1.0);
 
-            prps.Set (-2, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 1.0, 1.0, 1.0);
+            prps.Set (-2, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
 
             sf = 0.5;
             break;

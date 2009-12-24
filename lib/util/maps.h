@@ -26,16 +26,13 @@
 #include <sstream>  // for istringstream, ostringstream
 #include <cstdarg>  // for va_list, va_start, va_end
 #include <cmath>    // for fabs
+#include <fstream>
 #include <map>
 
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/string.h>
 #include <mechsys/util/numstreams.h>
-
-// Constants
-#define TRUE  1.0
-#define FALSE 0.0
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// SDPair
@@ -188,10 +185,15 @@ typedef std::map<String,Array<double> > Table_t;
 class Table : public Table_t
 {
 public:
+    // Constructor
+    Table () : NRows(0) {}
+
+    // Methods
     /** Ex: Set("ux uy", 2, 1.0, 2.0,
      *                      3.0, 4.0);  */
     void Set     (const char * StrKeys, size_t NumRows, ...);
     void SetZero (const char * StrKeys, size_t NumRows);
+    void Read    (const char * FileName);
 
     // Operators
     double operator() (String const & Key, size_t iRow) const;
@@ -303,7 +305,7 @@ std::ostream & operator<< (std::ostream & os, Table const & T)
     // values
     for (size_t i=0; i<T.NRows; ++i)
     {
-        for (size_t j=0; j<T.Keys.Size(); ++j) os << Util::_8s << T(T.Keys[j],i);
+        for (size_t j=0; j<T.Keys.Size(); ++j) os << Util::_6_3 << T(T.Keys[j],i);
         os << "\n";
     }
 
@@ -773,6 +775,50 @@ inline void Table::SetZero (const char * StrKeys, size_t NumRows)
         if (Keys.Find(key)<0) Keys.Push(key);
         (*this)[key].Resize    (NRows);
         (*this)[key].SetValues (0.0);
+    }
+}
+
+inline void Table::Read (const char * FileName)
+{
+    // open file
+    std::fstream fil(FileName, std::ios::in);
+    if (!fil.is_open()) throw new Fatal("Table::Read Could not open file < %s >",FileName);
+
+    // erase data
+    Table_t::clear();
+    NRows = 0;
+
+    // parse
+    bool header = true;
+    String line, str;
+    double val;
+    while (!fil.eof())
+    {
+        // read line
+        std::getline (fil,line);
+        std::istringstream iss(line);
+
+        // header
+        if (header)
+        {
+            while (iss>>str)
+            {
+                Keys.Push (str);
+                (*this)[str].Resize (0);
+            }
+            header = false;
+        }
+        else
+        {
+            for (size_t i=0; i<Keys.Size(); ++i)
+            {
+                if (iss>>val)
+                {
+                    (*this)[Keys[i]].Push (val);
+                    if (i==0) NRows++;
+                }
+            }
+        }
     }
 }
 

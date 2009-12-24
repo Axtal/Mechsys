@@ -47,12 +47,12 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    if (o2) prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Tri6"), TRUE);
-    else    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Tri3"), TRUE);
+    if (o2) prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Tri6"), 1.0);
+    else    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Tri3"), 1.0);
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 10.0, 0.2, TRUE);
+    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 10.0, 0.2, 1.0);
 
     // initial values
     Dict inis;

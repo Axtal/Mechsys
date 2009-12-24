@@ -58,13 +58,13 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    if (o2) prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad8"), TRUE);
-    else    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), TRUE);
-    prps.Set(-10, "prob fra rho E A Izz", PROB("Beam"), TRUE, 1.0, 1.0, 1.0, 1.0);
+    if (o2) prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad8"), 1.0);
+    else    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.0);
+    prps.Set(-10, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 1.0, 0.2, TRUE);
+    mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), 1.0, 0.2, 1.0);
 
     // initial values
     Dict inis;

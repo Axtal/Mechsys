@@ -153,13 +153,13 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), TRUE, 8.0);
-    prps.Set(-2, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), TRUE, 8.0);
+    prps.Set(-1, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), 1.0, 8.0);
+    prps.Set(-2, "prob geom active nip", PROB("Equilib"), GEOM("Hex20"), 1.0, 8.0);
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name E nu", MODEL("LinElastic"),  100.0, 0.3,  TRUE);
-    mdls.Set(-2, "name E nu", MODEL("LinElastic"),   50.0, 0.3,  TRUE);
+    mdls.Set(-1, "name E nu", MODEL("LinElastic"),  100.0, 0.3,  1.0);
+    mdls.Set(-2, "name E nu", MODEL("LinElastic"),   50.0, 0.3,  1.0);
 
     // initial values
     Dict inis;
