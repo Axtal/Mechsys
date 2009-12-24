@@ -196,8 +196,9 @@ public:
     void Read    (const char * FileName);
 
     // Operators
-    double operator() (String const & Key, size_t iRow) const;
-    void   SetVal     (String const & Key, size_t iRow, double Value);
+    Array<double> const & operator() (String const & Key) const;
+    double                operator() (String const & Key, size_t iRow) const;
+    void                  SetVal     (String const & Key, size_t iRow, double Value);
 
     // Data
     size_t        NRows;
@@ -820,6 +821,18 @@ inline void Table::Read (const char * FileName)
             }
         }
     }
+}
+
+inline Array<double> const & Table::operator() (String const & Key) const
+{
+    Table_t::const_iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        std::ostringstream oss;
+        oss << (*this);
+        throw new Fatal("Table::operator(): Table: %s does not have a key = '%s'",oss.str().c_str(),Key.CStr());
+    }
+    return p->second;
 }
 
 inline double Table::operator() (String const & Key, size_t iRow) const
