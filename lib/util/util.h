@@ -25,7 +25,7 @@
 #include <cfloat> // for DBL_EPSILON
 
 // MechSys
-#include "util/string.h"
+#include <mechsys/util/string.h>
 
 namespace Util
 {

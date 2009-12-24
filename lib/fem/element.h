@@ -21,14 +21,14 @@
 #define MECHSYS_FEM_ELEMENT_H
 
 // MechSys
-#include "geomtype.h"
-#include "mesh/mesh.h"
-#include "fem/node.h"
-#include "fem/geomelem.h"
-#include "models/model.h"
-#include "util/maps.h"
-#include "util/fatal.h"
-#include "linalg/matvec.h"
+#include <mechsys/geomtype.h>
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/fem/node.h>
+#include <mechsys/fem/geomelem.h>
+#include <mechsys/models/model.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/linalg/matvec.h>
 
 namespace FEM
 {

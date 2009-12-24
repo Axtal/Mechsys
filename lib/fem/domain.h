@@ -27,14 +27,14 @@
 #include <map>
 
 // MechSys
-#include "geomtype.h"
-#include "util/maps.h"
-#include "util/fatal.h"
-#include "util/numstreams.h"
-#include "models/model.h"
-#include "fem/element.h"
-#include "mesh/mesh.h"
-#include "draw.h"
+#include <mechsys/geomtype.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/numstreams.h>
+#include <mechsys/models/model.h>
+#include <mechsys/fem/element.h>
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/draw.h>
 
 namespace FEM
 {

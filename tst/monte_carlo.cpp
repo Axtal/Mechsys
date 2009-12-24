@@ -21,8 +21,8 @@
 #include <math.h>
 
 // MechSys
-#include "util/fatal.h"
-#include "numerical/montecarlo.h"
+#include <mechsys/util/fatal.h>
+#include <mechsys/numerical/montecarlo.h>
 
 using Numerical::MonteCarlo;
 

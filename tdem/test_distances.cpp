@@ -21,9 +21,9 @@
 #include <math.h>
 
 // MechSys
-#include "dem/graph.h"
-#include "dem/distance.h"
-#include "util/fatal.h"
+#include <mechsys/dem/graph.h>
+#include <mechsys/dem/distance.h>
+#include <mechsys/util/fatal.h>
 
 using std::cout;
 using std::endl;

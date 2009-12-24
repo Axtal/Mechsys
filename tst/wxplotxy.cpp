@@ -30,13 +30,13 @@
 #define USE_WXWIDGETS
 
 // MechSys
-#include "gui/plotxy.h"
-#include "gui/pixmaps/icon.xpm"
-#include "gui/pixmaps/gear_sml.xpm"
-#include "gui/pixmaps/new.xpm"
-#include "gui/pixmaps/open.xpm"
-#include "gui/pixmaps/save.xpm"
-#include "gui/wxrealnuminput.h"
+#include <mechsys/gui/plotxy.h>
+#include <mechsys/gui/pixmaps/icon.xpm>
+#include <mechsys/gui/pixmaps/gear_sml.xpm>
+#include <mechsys/gui/pixmaps/new.xpm>
+#include <mechsys/gui/pixmaps/open.xpm>
+#include <mechsys/gui/pixmaps/save.xpm>
+#include <mechsys/gui/wxrealnuminput.h>
 
 class MyFrame: public wxFrame
 {
@@ -66,7 +66,9 @@ public:
 };
 
 #define MYAPP_TITLE "Testing PlotXY"
-#include "gui/wxmyapp.h"
+
+// MechSys
+#include <mechsys/gui/wxmyapp.h>
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

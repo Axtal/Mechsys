@@ -25,9 +25,9 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "util/array.h"
-#include "util/fatal.h"
-#include "util/numstreams.h"
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/numstreams.h>
 
 typedef blitz::TinyVector<double,3> Vec3_t;
 

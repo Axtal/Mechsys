@@ -20,15 +20,15 @@
 #include <iostream>
 
 // MechSys
-#include "mesh/unstructured.h"
-#include "fem/elems/tri3.h"
-#include "fem/elems/tri6.h"
-#include "fem/equilibelem.h"
-#include "fem/domain.h"
-#include "fem/solver.h"
-#include "models/linelastic.h"
-#include "util/maps.h"
-#include "util/fatal.h"
+#include <mechsys/mesh/unstructured.h>
+#include <mechsys/fem/elems/tri3.h>
+#include <mechsys/fem/elems/tri6.h>
+#include <mechsys/fem/equilibelem.h>
+#include <mechsys/fem/domain.h>
+#include <mechsys/fem/solver.h>
+#include <mechsys/models/linelastic.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
 
 using std::cout;
 using std::endl;

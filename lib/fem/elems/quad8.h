@@ -21,9 +21,9 @@
 #define MECHSYS_FEM_QUAD8_H
 
 // MechSys
-#include "fem/node.h"
-#include "fem/geomelem.h"
-#include "vtkcelltype.h"
+#include <mechsys/fem/node.h>
+#include <mechsys/fem/geomelem.h>
+#include <mechsys/vtkcelltype.h>
 
 namespace FEM
 {

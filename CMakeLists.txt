@@ -65,7 +65,7 @@ ENDIF(MAKE_STATIC)
 
 ADD_DEFINITIONS(-fPIC -fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 
-INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR}/lib/)
+INCLUDE_DIRECTORIES(${MECHSYS_SOURCE_DIR})
 
 # sub-directories
 SET(ALLDIRS)
@@ -110,6 +110,7 @@ INCLUDE(${MECHSYS_SOURCE_DIR}/Modules/FindMTL.cmake)
 INCLUDE(${MECHSYS_SOURCE_DIR}/Modules/FindVORO.cmake)
 INCLUDE(${MECHSYS_SOURCE_DIR}/Modules/FindTRIANGLE.cmake)
 INCLUDE(${MECHSYS_SOURCE_DIR}/Modules/FindTETGEN.cmake)
+FIND_PACKAGE(wxWidgets COMPONENTS base core aui)
 
 SET(FLAGS  "")
 SET(LIBS   "")
@@ -212,7 +213,6 @@ IF(BLITZ_FOUND)
 	INCLUDE_DIRECTORIES(${BLITZ_INCLUDE_DIRS})
 ENDIF(BLITZ_FOUND)
 
-FIND_PACKAGE(wxWidgets COMPONENTS base core aui)
 IF(wxWidgets_FOUND)
     INCLUDE(${wxWidgets_USE_FILE})
     SET(LIBS ${LIBS} ${wxWidgets_LIBRARIES})

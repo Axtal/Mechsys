@@ -25,8 +25,8 @@
 #include <cmath>   // for sqrt
 
 // MechSys
-#include "models/model.h"
-#include "linalg/matvec.h"
+#include <mechsys/models/model.h>
+#include <mechsys/linalg/matvec.h>
 
 class FlowState : public State
 {

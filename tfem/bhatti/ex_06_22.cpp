@@ -23,14 +23,14 @@
 #include <iostream>
 
 // MechSys
-#include "mesh/mesh.h"
-#include "fem/elems/quad8.h"
-#include "fem/flowelem.h"
-#include "fem/domain.h"
-#include "fem/solver.h"
-#include "models/linflow.h"
-#include "util/maps.h"
-#include "util/fatal.h"
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/fem/elems/quad8.h>
+#include <mechsys/fem/flowelem.h>
+#include <mechsys/fem/domain.h>
+#include <mechsys/fem/solver.h>
+#include <mechsys/models/linflow.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
 
 using std::cout;
 using std::endl;

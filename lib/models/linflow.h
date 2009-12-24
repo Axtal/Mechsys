@@ -21,8 +21,8 @@
 #define MECHSYS_LINFLOW_H
 
 // MechSys
-#include "models/model.h"
-#include "models/flowstate.h"
+#include <mechsys/models/model.h>
+#include <mechsys/models/flowstate.h>
 
 class LinFlow : public Model
 {

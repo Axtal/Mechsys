@@ -25,11 +25,11 @@
 #include <map>
 
 // MechSys
-#include "mesh/mesh.h"
-#include "util/maps.h"
-#include "util/fatal.h"
-#include "util/numstreams.h"
-#include "linalg/matvec.h"
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/numstreams.h>
+#include <mechsys/linalg/matvec.h>
 
 namespace FEM
 {

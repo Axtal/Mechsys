@@ -24,8 +24,8 @@
 #include <iostream>
 
 // MechSys
-#include "models/model.h"
-#include "models/flowstate.h"
+#include <mechsys/models/model.h>
+#include <mechsys/models/flowstate.h>
 
 class FlowUpdate
 {

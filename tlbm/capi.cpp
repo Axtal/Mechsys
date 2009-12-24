@@ -21,7 +21,7 @@
 #include <stdlib.h>
 
 // MechSys
-#include "lbm/lattice.h"
+#include <mechsys/lbm/lattice.h>
 
 using std::cout;
 using std::endl;

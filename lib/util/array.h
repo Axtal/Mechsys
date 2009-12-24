@@ -24,7 +24,7 @@
 #include <algorithm> // for std::find, std::min_element, and std::max_element
 
 // MechSys
-#include "util/fatal.h"
+#include <mechsys/util/fatal.h>
 
 template<typename Value_T>
 class Array

@@ -24,7 +24,7 @@
 #include <cmath>
 
 // MechSys
-#include "dem/quaternion.h"
+#include <mechsys/dem/quaternion.h>
 
 class Edge
 {

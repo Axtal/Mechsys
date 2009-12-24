@@ -25,10 +25,10 @@
 #include <sstream>
 
 // MechSys
-#include "linalg/matvec.h"
-#include "linalg/sparse_triplet.h"
-#include "util/array.h"
-#include "util/numstreams.h"
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/linalg/sparse_triplet.h>
+#include <mechsys/util/array.h>
+#include <mechsys/util/numstreams.h>
 
 #ifdef DO_DEBUG
   using std::cout;

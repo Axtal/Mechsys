@@ -37,6 +37,10 @@
   #error MechSys:gui/common.h: Either USE_FLTK or USE_WXWIDGETS must be defined
 #endif
 
+// MechSys
+#include <mechsys/util/string.h>
+#include <mechsys/util/fatal.h>
+
 namespace GUI
 {
 

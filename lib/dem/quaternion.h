@@ -28,7 +28,7 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include <linalg/matvec.h>
+#include <mechsys/linalg/matvec.h>
 
 typedef blitz::TinyVector<double,4> Quaternion_t;
 

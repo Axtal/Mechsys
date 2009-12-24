@@ -21,8 +21,8 @@
 #include <stdlib.h>
 
 // MechSys
-#include "lbm/lattice.h"
-#include "lbm/mixture.h"
+#include <mechsys/lbm/lattice.h>
+#include <mechsys/lbm/mixture.h>
 
 using std::cout;
 using std::endl;

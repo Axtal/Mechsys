@@ -34,13 +34,13 @@
 #include <CGAL/Alpha_shape_2.h>
 
 // MechSys
-#include "util/array.h"
-#include "util/fatal.h"
-#include "util/lineparser.h"
-#include "linalg/vector.h"
-#include "linalg/matrix.h"
-#include "linalg/laexpr.h"
-#include "mesh/mesh.h"
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/lineparser.h>
+#include <mechsys/linalg/vector.h>
+#include <mechsys/linalg/matrix.h>
+#include <mechsys/linalg/laexpr.h>
+#include <mechsys/mesh/mesh.h>
 
 using LinAlg::Vector;
 using LinAlg::Matrix;

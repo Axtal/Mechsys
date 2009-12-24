@@ -21,10 +21,10 @@
 #include <cmath>
 
 // MechSys
-#include "linalg/matvec.h"
-#include "util/fatal.h"
-#include "util/array.h"
-#include "util/util.h"
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/array.h>
+#include <mechsys/util/util.h>
 
 using std::cout;
 using std::endl;

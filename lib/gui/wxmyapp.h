@@ -27,7 +27,7 @@
 #include "wx/log.h"
 
 // MechSys
-#include "util/fatal.h"
+#include <mechsys/util/fatal.h>
 
 class MyApp : public wxApp
 {

@@ -66,11 +66,11 @@
 #include <map>      // for std::clock
 
 // MechSys
-#include "mesh/mesh.h"
-#include "linalg/matvec.h"
-#include "util/array.h"
-#include "util/fatal.h"
-#include "util/util.h"
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
 
 namespace Mesh
 {

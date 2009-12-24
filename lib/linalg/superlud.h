@@ -24,10 +24,10 @@
 #include <superlu_ddefs.h>
 
 // MechSys
-#include "linalg/matvec.h"
-#include "linalg/sparse_crmatrix.h"
-#include "util/fatal.h"
-#include "util/util.h"
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/linalg/sparse_crmatrix.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
 
 #ifdef DO_DEBUG
   #include <iostream>

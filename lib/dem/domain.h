@@ -31,12 +31,12 @@
 #include "src/voro++.cc"
 
 // MechSys
-#include "dem/interacton.h"
-#include "util/array.h"
-#include "util/util.h"
-#include "util/numstreams.h"
-#include "mesh/mesh.h"
-#include "util/maps.h"
+#include <mechsys/dem/interacton.h>
+#include <mechsys/util/array.h>
+#include <mechsys/util/util.h>
+#include <mechsys/util/numstreams.h>
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/util/maps.h>
 
 namespace DEM
 {

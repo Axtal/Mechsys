@@ -32,33 +32,33 @@
 namespace BPy = boost::python;
 
 // MechSys
-#include "util/maps.h"
-#include "util/fatal.h"
-#include "mesh/mesh.h"
-#include "mesh/structured.h"
-#include "mesh/unstructured.h"
-#include "fem/element.h"
-#include "fem/rod.h"
-#include "fem/beam.h"
-#include "fem/equilibelem.h"
-#include "fem/geomelem.h"
-#include "fem/elems/tri3.h"
-#include "fem/elems/tri6.h"
-#include "fem/elems/quad4.h"
-#include "fem/elems/quad8.h"
-#include "fem/elems/hex8.h"
-#include "fem/elems/hex20.h"
-#include "fem/elems/tet10.h"
-#include "fem/domain.h"
-#include "fem/solver.h"
-#include "models/model.h"
-#include "models/linelastic.h"
-#include "models/elastoplastic.h"
-#include "models/camclay.h"
-#include "linalg/matvec.h"
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/mesh/structured.h>
+#include <mechsys/mesh/unstructured.h>
+#include <mechsys/fem/element.h>
+#include <mechsys/fem/rod.h>
+#include <mechsys/fem/beam.h>
+#include <mechsys/fem/equilibelem.h>
+#include <mechsys/fem/geomelem.h>
+#include <mechsys/fem/elems/tri3.h>
+#include <mechsys/fem/elems/tri6.h>
+#include <mechsys/fem/elems/quad4.h>
+#include <mechsys/fem/elems/quad8.h>
+#include <mechsys/fem/elems/hex8.h>
+#include <mechsys/fem/elems/hex20.h>
+#include <mechsys/fem/elems/tet10.h>
+#include <mechsys/fem/domain.h>
+#include <mechsys/fem/solver.h>
+#include <mechsys/models/model.h>
+#include <mechsys/models/linelastic.h>
+#include <mechsys/models/elastoplastic.h>
+#include <mechsys/models/camclay.h>
+#include <mechsys/linalg/matvec.h>
 
 // MechSys -- DEM
-#include "dem/domain.h"
+#include <mechsys/dem/domain.h>
 
 // overloadings
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)

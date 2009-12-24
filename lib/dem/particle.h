@@ -24,10 +24,10 @@
 #include <iostream>
 
 // MechSys
-#include "dem/face.h"
-#include "dem/special_functions.h"
-#include "util/array.h"
-#include "numerical/montecarlo.h"
+#include <mechsys/dem/face.h>
+#include <mechsys/dem/special_functions.h>
+#include <mechsys/util/array.h>
+#include <mechsys/numerical/montecarlo.h>
 
 class Particle
 {

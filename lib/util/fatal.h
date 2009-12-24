@@ -32,7 +32,7 @@
 #endif
 
 // MechSys
-#include "util/string.h"
+#include <mechsys/util/string.h>
 
 
 #ifdef USE_BOOST_PYTHON

@@ -21,7 +21,7 @@
 #define MECHSYS_CAMCLAY_H
 
 // MechSys
-#include "models/elastoplastic.h"
+#include <mechsys/models/elastoplastic.h>
 
 using std::cout;
 using std::endl;

@@ -29,9 +29,9 @@
 #include <map>
 
 // MechSys
-#include "util/array.h"
-#include "util/string.h"
-#include "util/numstreams.h"
+#include <mechsys/util/array.h>
+#include <mechsys/util/string.h>
+#include <mechsys/util/numstreams.h>
 
 // Constants
 #define TRUE  1.0

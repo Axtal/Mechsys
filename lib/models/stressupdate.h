@@ -24,8 +24,8 @@
 #include <iostream>
 
 // MechSys
-#include "models/model.h"
-#include "models/equilibstate.h"
+#include <mechsys/models/model.h>
+#include <mechsys/models/equilibstate.h>
 
 class StressUpdate
 {

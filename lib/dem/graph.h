@@ -24,8 +24,8 @@
 #include <iostream>
 
 // MechSys
-#include "util/array.h"
-#include "linalg/matvec.h"
+#include <mechsys/util/array.h>
+#include <mechsys/linalg/matvec.h>
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// PovRay /////

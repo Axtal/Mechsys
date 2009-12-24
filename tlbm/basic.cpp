@@ -20,8 +20,8 @@
 #include <iostream>
 
 // MechSys
-#include "lbm/lattice.h"
-#include "util/numstreams.h"
+#include <mechsys/lbm/lattice.h>
+#include <mechsys/util/numstreams.h>
 
 using std::cout;
 using std::endl;

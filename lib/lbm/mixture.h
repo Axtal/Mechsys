@@ -25,8 +25,8 @@
 #include <sstream> // for std::ostringstream
 
 // MechSys
-#include "lbm/cell.h"
-#include "lbm/lattice.h"
+#include <mechsys/lbm/cell.h>
+#include <mechsys/lbm/lattice.h>
 
 namespace LBM
 {

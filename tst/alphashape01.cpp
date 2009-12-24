@@ -21,11 +21,11 @@
 #include <ctime>  // for std::clock()
 
 // MechSys
-#include "mesh/alphashape.h"
-#include "util/array.h"
-#include "util/fatal.h"
-#include "util/numstreams.h"
-#include "linalg/matrix.h"
+#include <mechsys/mesh/alphashape.h>
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/numstreams.h>
+#include <mechsys/linalg/matrix.h>
 
 using std::cout;
 using std::endl;

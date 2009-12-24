@@ -27,9 +27,9 @@
 #define USE_FLTK
 
 // MechSys
-#include "util/array.h"
-#include "util/fatal.h"
-#include "gui/plotxy.h"
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/gui/plotxy.h>
 
 using std::cout;
 using std::endl;

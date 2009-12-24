@@ -21,9 +21,9 @@
 #include <cmath>
 
 // MechSys
-#include "util/fatal.h"
-#include "mesh/structured.h"
-#include "mesh/unstructured.h"
+#include <mechsys/util/fatal.h>
+#include <mechsys/mesh/structured.h>
+#include <mechsys/mesh/unstructured.h>
 
 using std::cout;
 using std::endl;

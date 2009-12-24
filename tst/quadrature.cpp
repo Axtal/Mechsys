@@ -21,9 +21,9 @@
 #include <cmath>
 
 // MechSys
-#include "numerical/quadrature.h"
-#include "util/fatal.h"
-#include "util/util.h"
+#include <mechsys/numerical/quadrature.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
 
 using std::cout;
 using std::endl;

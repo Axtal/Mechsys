@@ -21,9 +21,9 @@
 #define MECHSYS_DEM_FACE_H
 
 // MechSys
-#include "dem/edge.h"
-#include "dem/graph.h"
-#include "util/array.h"
+#include <mechsys/dem/edge.h>
+#include <mechsys/dem/graph.h>
+#include <mechsys/util/array.h>
 
 class Face
 {

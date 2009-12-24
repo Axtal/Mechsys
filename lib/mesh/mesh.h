@@ -34,12 +34,12 @@
 #include <boost/tuple/tuple_comparison.hpp>
 
 // MechSys
-#include "util/array.h"
-#include "util/fatal.h"
-#include "util/util.h"
-#include "util/numstreams.h"
-#include "linalg/matvec.h"
-#include "vtkcelltype.h"
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
+#include <mechsys/util/numstreams.h>
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/vtkcelltype.h>
 
 namespace Mesh
 {

@@ -24,10 +24,10 @@
 #include <gsl/gsl_linalg.h>
 
 // MechSys
-#include "dem/domain.h"
-#include "dem/distance.h"
-#include "util/fatal.h"
-#include "mesh/structured.h"
+#include <mechsys/dem/domain.h>
+#include <mechsys/dem/distance.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/mesh/structured.h>
 
 using std::cout;
 using std::endl;

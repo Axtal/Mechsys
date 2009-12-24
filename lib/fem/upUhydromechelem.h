@@ -21,9 +21,9 @@
 #define MECHSYS_FEM_HYDROMECHELEM_H
 
 // MechSys
-#include "fem/element.h"
-#include "models/equilibstate.h"
-#include "models/stressupdate.h"
+#include <mechsys/fem/element.h>
+#include <mechsys/models/equilibstate.h>
+#include <mechsys/models/stressupdate.h>
 
 namespace FEM
 {

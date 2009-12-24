@@ -21,8 +21,8 @@
 #define MECHSYS_LINELASTIC_H
 
 // MechSys
-#include "models/model.h"
-#include "models/equilibstate.h"
+#include <mechsys/models/model.h>
+#include <mechsys/models/equilibstate.h>
 
 using std::cout;
 using std::endl;

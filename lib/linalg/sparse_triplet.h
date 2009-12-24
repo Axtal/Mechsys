@@ -24,7 +24,7 @@
 #include <iostream>
 
 // MechSys
-#include "util/numstreams.h"
+#include <mechsys/util/numstreams.h>
 
 namespace Sparse
 {

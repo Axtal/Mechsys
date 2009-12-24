@@ -21,9 +21,9 @@
 #include <fstream>
 
 // MechSys
-#include "util/array.h"
-#include "util/fatal.h"
-#include "mesh/unstructured.h"
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/mesh/unstructured.h>
 
 using std::cout;
 using std::endl;

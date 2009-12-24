@@ -24,8 +24,8 @@
 #include <ostream>
 
 // MechSys
-#include "fem/element.h"
-#include "util/util.h"
+#include <mechsys/fem/element.h>
+#include <mechsys/util/util.h>
 
 namespace FEM
 {

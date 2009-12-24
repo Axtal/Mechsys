@@ -20,7 +20,8 @@
 #ifndef MECHSYS_LBM_DEM_H
 #define MECHSYS_LBM_DEM_H
 
-#include "lbm/mixture.h"
+// MechSys
+#include <mechsys/lbm/mixture.h>
 
 namespace LBM
 {

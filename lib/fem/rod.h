@@ -21,7 +21,7 @@
 #define MECHSYS_FEM_ROD_H
 
 // MechSys
-#include "fem/element.h"
+#include <mechsys/fem/element.h>
 
 namespace FEM
 {

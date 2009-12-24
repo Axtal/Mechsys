@@ -24,14 +24,14 @@
 #include <cmath>    // for cos
 
 // MechSys
-#include "mesh/mesh.h"
-#include "mesh/structured.h"
-#include "fem/beam.h"
-#include "fem/domain.h"
-#include "fem/solver.h"
-#include "util/maps.h"
-#include "util/util.h"
-#include "util/fatal.h"
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/mesh/structured.h>
+#include <mechsys/fem/beam.h>
+#include <mechsys/fem/domain.h>
+#include <mechsys/fem/solver.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/util.h>
+#include <mechsys/util/fatal.h>
 
 using std::cout;
 using std::endl;

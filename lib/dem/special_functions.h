@@ -21,7 +21,7 @@
 #define MECHSYS_DEM_SPECIAL_H
 
 // MechSys
-#include "dem/distance.h"
+#include <mechsys/dem/distance.h>
 
 inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, double R) // Mathematical morphology erosion
 {

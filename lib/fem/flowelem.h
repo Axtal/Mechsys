@@ -24,9 +24,9 @@
 #include <map>
 
 // MechSys
-#include "fem/element.h"
-#include "models/flowstate.h"
-#include "models/flowupdate.h"
+#include <mechsys/fem/element.h>
+#include <mechsys/models/flowstate.h>
+#include <mechsys/models/flowupdate.h>
 
 namespace FEM
 {

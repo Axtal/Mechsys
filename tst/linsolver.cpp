@@ -23,15 +23,15 @@
 
 // MechSys
 #ifdef HAVE_UMFPACK
-  #include "linalg/umfpack.h"
+  #include <mechsys/linalg/umfpack.h>
 #endif
 #ifdef HAVE_SUPERLU
-  #include "linalg/superlu.h"
+  #include <mechsys/linalg/superlu.h>
 #endif
-#include "linalg/matvec.h"
-#include "linalg/sparse_matrix.h"
-#include "linalg/sparse_triplet.h"
-#include "util/fatal.h"
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/linalg/sparse_matrix.h>
+#include <mechsys/linalg/sparse_triplet.h>
+#include <mechsys/util/fatal.h>
 
 using std::cout;
 using std::endl;

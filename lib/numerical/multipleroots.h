@@ -25,11 +25,11 @@
 #include <cfloat> // for DBL_EPSILON
 
 // MechSys
-#include "numerical/brentroot.h"
-#include "numerical/quadrature.h"
-#include "util/fatal.h"
-#include "util/array.h"
-#include "util/util.h"
+#include <mechsys/numerical/brentroot.h>
+#include <mechsys/numerical/quadrature.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/array.h>
+#include <mechsys/util/util.h>
 
 namespace Numerical
 {

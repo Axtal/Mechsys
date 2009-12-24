@@ -25,15 +25,15 @@
 #include <fstream>
 
 // MechSys
-#include "mesh/structured.h"
-#include "fem/elems/quad4.h"
-#include "fem/elems/quad8.h"
-#include "fem/hydromechelem.h"
-#include "models/linelastic.h"
-#include "fem/domain.h"
-#include "fem/solver.h"
-#include "util/maps.h"
-#include "util/fatal.h"
+#include <mechsys/mesh/structured.h>
+#include <mechsys/fem/elems/quad4.h>
+#include <mechsys/fem/elems/quad8.h>
+#include <mechsys/fem/hydromechelem.h>
+#include <mechsys/models/linelastic.h>
+#include <mechsys/fem/domain.h>
+#include <mechsys/fem/solver.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
 
 using std::cout;
 using std::endl;

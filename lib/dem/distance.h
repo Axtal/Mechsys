@@ -21,8 +21,8 @@
 #define MECHSYS_DEM_DISTANCE_H
 
 // MechSys
-#include "dem/edge.h"
-#include "dem/face.h"
+#include <mechsys/dem/edge.h>
+#include <mechsys/dem/face.h>
 
 inline void Distance (Vec3_t const & V, Edge const & E, Vec3_t & Xi, Vec3_t & Xf)
 {

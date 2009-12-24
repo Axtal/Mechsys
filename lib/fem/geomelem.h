@@ -21,11 +21,11 @@
 #define MECHSYS_FEM_GEOMELEM_H
 
 // MechSys
-#include "geomtype.h"
-#include "fem/quadrature.h"
-#include "fem/node.h"
-#include "util/string.h"
-#include "linalg/matvec.h"
+#include <mechsys/geomtype.h>
+#include <mechsys/fem/quadrature.h>
+#include <mechsys/fem/node.h>
+#include <mechsys/util/string.h>
+#include <mechsys/linalg/matvec.h>
 
 namespace FEM
 {

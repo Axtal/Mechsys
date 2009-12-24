@@ -24,9 +24,9 @@
 #include <cstring> // for strcmp
 
 // MechSys
-#include "util/string.h"
-#include "util/maps.h"
-#include "util/fatal.h"
+#include <mechsys/util/string.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
 
 enum GeomType { fra_t,   ///< Frame. Ex.: Truss, Beam, Spring
                 psa_t,   ///< Plane-strain

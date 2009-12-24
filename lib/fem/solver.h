@@ -29,12 +29,12 @@
 #include <blitz/tinyvec-et.h>
 
 // MechSys
-#include "fem/node.h"
-#include "fem/element.h"
-#include "fem/domain.h"
-#include "linalg/sparse_triplet.h"
-#include "linalg/sparse_matrix.h"
-#include "linalg/umfpack.h"
+#include <mechsys/fem/node.h>
+#include <mechsys/fem/element.h>
+#include <mechsys/fem/domain.h>
+#include <mechsys/linalg/sparse_triplet.h>
+#include <mechsys/linalg/sparse_matrix.h>
+#include <mechsys/linalg/umfpack.h>
 
 namespace FEM
 {

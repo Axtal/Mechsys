@@ -20,17 +20,17 @@
 #include <iostream>
 
 // MechSys
-#include "mesh/structured.h"
-#include "fem/elems/hex8.h"
-#include "fem/elems/hex20.h"
-#include "fem/equilibelem.h"
-#include "fem/domain.h"
-#include "fem/solver.h"
-#include "models/linelastic.h"
-#include "models/elastoplastic.h"
-#include "models/camclay.h"
-#include "util/maps.h"
-#include "util/fatal.h"
+#include <mechsys/mesh/structured.h>
+#include <mechsys/fem/elems/hex8.h>
+#include <mechsys/fem/elems/hex20.h>
+#include <mechsys/fem/equilibelem.h>
+#include <mechsys/fem/domain.h>
+#include <mechsys/fem/solver.h>
+#include <mechsys/models/linelastic.h>
+#include <mechsys/models/elastoplastic.h>
+#include <mechsys/models/camclay.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
 
 using std::cout;
 using std::endl;

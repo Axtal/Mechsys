@@ -62,10 +62,10 @@ extern "C"
 #undef TETLIBRARY
 
 // MechSys
-#include "util/array.h"
-#include "util/fatal.h"
-#include "mesh/mesh.h"
-#include "draw.h"
+#include <mechsys/util/array.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/mesh/mesh.h>
+#include <mechsys/draw.h>
 
 namespace Mesh
 {

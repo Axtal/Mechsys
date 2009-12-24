@@ -27,7 +27,7 @@
 #include <utility>
 
 // MechSys
-#include "dem/particle.h"
+#include <mechsys/dem/particle.h>
 
 class Interacton
 {

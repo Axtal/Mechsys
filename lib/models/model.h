@@ -24,10 +24,10 @@
 #include <iostream>
 
 // MechSys
-#include "geomtype.h"
-#include "util/maps.h"
-#include "util/fatal.h"
-#include "linalg/matvec.h"
+#include <mechsys/geomtype.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/linalg/matvec.h>
 
 class State
 {

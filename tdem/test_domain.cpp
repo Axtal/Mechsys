@@ -18,9 +18,9 @@
  ************************************************************************/
 
 // MechSys
-#include "dem/domain.h"
-#include "util/fatal.h"
-#include "util/util.h"
+#include <mechsys/dem/domain.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
 
 using std::cout;
 using std::endl;

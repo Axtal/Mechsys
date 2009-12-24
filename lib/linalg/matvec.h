@@ -33,9 +33,9 @@
 #include <blitz/tinymat.h>
 
 // MechSys
-#include "util/fatal.h"
-#include "util/util.h"
-#include "util/array.h"
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
+#include <mechsys/util/array.h>
 
 // LAPACK
 extern "C"

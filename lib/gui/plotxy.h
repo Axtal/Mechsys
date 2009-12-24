@@ -41,9 +41,9 @@
 #endif
 
 // MechSys
-#include "util/fatal.h"
-#include "util/array.h"
-#include "gui/common.h"
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/array.h>
+#include <mechsys/gui/common.h>
 
 namespace GUI
 {

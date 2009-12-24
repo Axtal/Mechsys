@@ -20,7 +20,7 @@
 #include <iostream>
 
 // MechSys
-#include "lbm/dem.h"
+#include <mechsys/lbm/dem.h>
 
 using std::cout;
 using std::endl;

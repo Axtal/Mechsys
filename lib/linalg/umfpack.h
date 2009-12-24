@@ -29,11 +29,11 @@ extern "C" {
 }
 
 // MechSys
-#include "linalg/matvec.h"
-#include "linalg/sparse_triplet.h"
-#include "linalg/sparse_matrix.h"
-#include "util/fatal.h"
-#include "util/util.h"
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/linalg/sparse_triplet.h>
+#include <mechsys/linalg/sparse_matrix.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
 
 #ifdef DO_DEBUG
   using std::cout;

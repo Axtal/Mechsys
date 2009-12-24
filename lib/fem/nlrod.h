@@ -21,8 +21,8 @@
 #define MECHSYS_FEM_NLROD_H
 
 // MechSys
-#include "fem/element.h"
-#include "models/model.h"
+#include <mechsys/fem/element.h>
+#include <mechsys/models/model.h>
 
 namespace FEM
 {

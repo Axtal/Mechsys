@@ -22,14 +22,14 @@
 #include <fstream>
 
 // MechSys
-#include "linalg/matvec.h"
-#include "linalg/umfpack.h"
-#include "models/linelastic.h"
-#include "models/elastoplastic.h"
-#include "models/camclay.h"
-#include "util/maps.h"
-#include "util/fatal.h"
-#include "util/numstreams.h"
+#include <mechsys/linalg/matvec.h>
+#include <mechsys/linalg/umfpack.h>
+#include <mechsys/models/linelastic.h>
+#include <mechsys/models/elastoplastic.h>
+#include <mechsys/models/camclay.h>
+#include <mechsys/util/maps.h>
+#include <mechsys/util/fatal.h>
+#include <mechsys/util/numstreams.h>
 
 using std::cout;
 using std::endl;
