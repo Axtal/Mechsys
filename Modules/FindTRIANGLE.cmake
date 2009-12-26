@@ -20,12 +20,12 @@
 #####################################################################################
 
 SET(TRIANGLE_INCLUDE_SEARCH_PATH
-  $ENV{HOME}/pkg/triangle
+  $ENV{HOME}/pkg/triangle1.6
   /usr/include
   /usr/local/include)
 
 SET(TRIANGLE_LIBRARY_SEARCH_PATH
-  $ENV{HOME}/pkg/triangle
+  $ENV{HOME}/pkg/triangle1.6
   /usr/lib
   /usr/local/lib)
 
