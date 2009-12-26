@@ -6,6 +6,10 @@
 < PREDCXXFLAGS = -O0
 ---
 > PREDCXXFLAGS = -O0 -fPIC
+41c41
+< SWITCHES = -Wall -DSELF_CHECK
+---
+> SWITCHES = -DSELF_CHECK
 55a56,57
 > all: tetlib
 > 
