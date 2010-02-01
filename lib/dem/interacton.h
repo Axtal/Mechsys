@@ -231,11 +231,13 @@ inline void InteractonSphere::_update_rolling_resistance(double dt)
 
 inline void InteractonSphere::CalcForce(double dt)
 {
-    Epot = 0.0;
-    dEvis = 0.0;
+    Epot   = 0.0;
+    dEvis  = 0.0;
     dEfric = 0.0;
-    Nc = 0;
-    Nsc = 0;
+    Nc     = 0;
+    Nsc    = 0;
+    WNc    = 0;
+    WNsc   = 0;
     _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,dt);
     if (Epot>0.0) _update_rolling_resistance(dt);
 }
