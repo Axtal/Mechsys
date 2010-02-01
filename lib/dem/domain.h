@@ -1188,7 +1188,8 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     {
         OF << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         OF <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
-        OF <<                          Util::_8s << "vr" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
+        OF <<                          Util::_8s << "vr" << Util::_8s << "Nc" << Util::_8s << "Nsc";
+        OF <<                                               Util::_8s << "WNc" << Util::_8s << "WNsc" << "\n";
     }
 
     // stress
@@ -1209,13 +1210,17 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     // Number of contacts and number of sliding contacts
     double Nc = 0;
     double Nsc = 0;
+    double WNc = 0;
+    double WNsc = 0;
     for (size_t i=0; i<Interactons.Size(); i++)
     {
         Nc += Interactons[i]->Nc;
         Nsc += Interactons[i]->Nsc;
+        WNc += Interactons[i]->WNc;
+        WNsc += Interactons[i]->WNsc;
     }
 
-    OF << Util::_8s << Nc << Util::_8s << Nsc;
+    OF << Util::_8s << Nc << Util::_8s << Nsc << Util::_8s << WNc << Util::_8s << WNsc;
 
     OF << std::endl;
 

@@ -20,7 +20,6 @@ SET(EXES
   test_distances
   test_domain
   test_27cubes
-  test_tetrahedra
   test_dynamics
   test_voro01
   test_voro02

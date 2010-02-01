@@ -55,6 +55,8 @@ public:
     double        dEfric;    ///< Energy dissipated by friction at time step
     size_t        Nc;        ///< Number of contacts
     size_t        Nsc;       ///< Number of sliding contacts
+    double        WNc;       ///< Weighted nymber of contacts
+    double        WNsc;      ///< Weighted number of sliding contacts
     Vec3_t        Fn;        ///< Normal force between elements
     FrictionMap_t Fdee;      ///< Static friction displacement for pair of edges
     FrictionMap_t Fdvf;      ///< Static friction displacement for pair of vertex-face
@@ -94,11 +96,13 @@ inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
 
 inline void Interacton::CalcForce (double dt)
 {
-    Epot = 0.0;
-    dEvis = 0.0;
+    Epot   = 0.0;
+    dEvis  = 0.0;
     dEfric = 0.0;
-    Nc = 0;
-    Nsc = 0;
+    Nc     = 0;
+    Nsc    = 0;
+    WNc    = 0;
+    WNsc   = 0;
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
     {
         _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,dt);
@@ -136,6 +140,8 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             pair<int,int> p;
             p = make_pair(i,j);
             Fn = Kn*delta*n;
+            WNc += norm(Fn);
+
             FMap[p] += vt*dt;
             FMap[p] -= dot(FMap[p],n)*n;
             Vec3_t tan = FMap[p];
@@ -144,6 +150,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             {
                 // Count a sliding contact
                 Nsc++;
+                WNsc += norm(Fn);
 
                 FMap[p] = Mu*norm(Fn)/Kt*tan;
                 dEfric += Kt*dot(FMap[p],Vec3_t(P2->v - P1->v))*dt;
