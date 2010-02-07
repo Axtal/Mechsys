@@ -72,7 +72,7 @@ public:
     void SetBC            (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
     void SetProps         (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize       (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
-    void Solve    (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true);         ///< Run simulation
+    void Solve            (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
     void WritePOV         (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY         (char const * FileKey);                                                              ///< Write BPY (Blender) file
     void BoundingBox      (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
@@ -81,6 +81,7 @@ public:
     virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
     void EnergyOutput     (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
     virtual void Output   (size_t IdxOut, std::ostream & OutFile) {};                                          ///< Output current state depends on the setup
+    virtual void OutputF  (std::ostream & OutFile) {};                                                         ///< Output final state depends on the setup
 
     // Auxiliar methods
     void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
@@ -126,6 +127,7 @@ public:
                     Vec3_t  const & dEpsdt);                                                         ///< Prescribed values of strain rate
     void ResetEps  ();                                                                               ///< Reset strains and re-calculate initial lenght of packing
     void Output    (size_t IdxOut, std::ostream & OutFile);                                          ///< Output current state of stress and strains.
+    void OutputF   (std::ostream & OutFile);                                                         ///< Output Final state of normal forces for statistics
     void Setup     (double,double);                                                                  ///< For the triaxial test it will measure or set the strains and stresses
 
     //Data
@@ -796,8 +798,13 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // initialize forces and torques
         for (size_t i=0; i<Particles.Size(); i++)
         {
+            //Set the force and torque to the fixed values
             Particles[i]->F = Particles[i]->Ff;
             Particles[i]->T = Particles[i]->Tf;
+
+            //Initialize the coordination number
+            Particles[i]->Cn = 0.0;
+
             Wext += dot(Particles[i]->Ff,Particles[i]->v)*dt;
         }
 
@@ -862,8 +869,18 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         }
     }
 
-    // close file
+    //Output of the final state, depends on the setup
+    String fnf;
+    fnf.Printf("%s_forces.res",FileKey);
+    std::ofstream ff(fnf.CStr());
+    OutputF(ff);
+
+
+
+    // close files
     fw.close();
+    fe.close();
+    ff.close();
 
     // info
     double Ekin, Epot, Etot;
@@ -1012,6 +1029,7 @@ inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
     
 
 }
+
 // Methods for specific simulations
 
 inline TriaxialDomain::TriaxialDomain ()
@@ -1188,8 +1206,7 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     {
         OF << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         OF <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
-        OF <<                          Util::_8s << "vr" << Util::_8s << "Nc" << Util::_8s << "Nsc";
-        OF <<                                               Util::_8s << "WNc" << Util::_8s << "WNsc" << "\n";
+        OF << Util::_8s   << "vr"   << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
     }
 
     // stress
@@ -1207,24 +1224,37 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
 
     OF << Util::_8s << (volumecontainer-Vs)/Vs;
 
-    // Number of contacts and number of sliding contacts
-    double Nc = 0;
-    double Nsc = 0;
-    double WNc = 0;
-    double WNsc = 0;
+    // Number of contacts Nc, number of sliding contacts Nsc and Coordination number Cn
+    double Cn = 0;
+    size_t Nc = 0;
+    size_t Nsc = 0;
     for (size_t i=0; i<Interactons.Size(); i++)
     {
         Nc += Interactons[i]->Nc;
         Nsc += Interactons[i]->Nsc;
-        WNc += Interactons[i]->WNc;
-        WNsc += Interactons[i]->WNsc;
     }
 
-    OF << Util::_8s << Nc << Util::_8s << Nsc << Util::_8s << WNc << Util::_8s << WNsc;
+    for (size_t i=0; i<FreeParticles.Size(); i++)
+    {
+        Cn += FreeParticles[i]->Cn/FreeParticles.Size();
+    }
+
+    OF << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
 
     OF << std::endl;
-
     
+}
+
+inline void TriaxialDomain::OutputF (std::ostream & OF)
+{
+    OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "Issliding" << "\n";
+    for (size_t i=0; i<Interactons.Size(); i++)
+    {
+        if (norm(Interactons[i]->Fnet)>1.0e-22) 
+        {
+            OF << Util::_10_6 << norm(Interactons[i]->Fnet) << Util::_8s << norm(Interactons[i]->Ftnet) << Util::_8s <<  Interactons[i]->Nsc << "\n";
+        }
+    }
 }
 }; // namespace DEM
 
