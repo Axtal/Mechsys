@@ -38,8 +38,8 @@ inline void POVHeader (std::ostream & os)
     os << "background {color White} \n";
     os << "light_source{<10,0,0> color White shadowless}  \n";
     os << "light_source{<-10,0,0> color White shadowless}  \n";
-    os << "light_source{<0,10,0> color White shadowless}  \n";
-    os << "light_source{<0,-10,0> color White shadowless}  \n";
+    //os << "light_source{<0,10,0> color White shadowless}  \n";
+    //os << "light_source{<0,-10,0> color White shadowless}  \n";
     os << "light_source{<0,0,10> color White shadowless}  \n";
     os << "light_source{<0,0,-10> color White shadowless}  \n";
 }   
@@ -67,7 +67,7 @@ inline void POVDrawPolygon (Array<Vec3_t> const & V, std::ostream & os, char con
         os << "<"<<V[i](0)<<","<<V[i](1)<<","<<V[i](2)<<">";
         os << ",<"<<V[(i+1)%N](0)<<","<<V[(i+1)%N](1)<<","<<V[(i+1)%N](2)<<">";
         os << ",<"<<mid(0)<<","<<mid(1)<<","<<mid(2)<<">";
-        os <<"\n pigment { color "<<Color<<" } }\n";
+        os <<"\n pigment { color "<<Color<<" } \n } \n ";
     }
 }
 

@@ -366,7 +366,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
 
 // Single particle addition
 
-inline void Domain::AddSphere (int Tag, const Vec3_t & X, double R, double rho)
+inline void Domain::AddSphere (int Tag,Vec3_t const & X, double R, double rho)
 {
     // vertices
     Array<Vec3_t> V(1);
@@ -382,7 +382,7 @@ inline void Domain::AddSphere (int Tag, const Vec3_t & X, double R, double rho)
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 }
 
-inline void Domain::AddCube (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
+inline void Domain::AddCube (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
 {
     // vertices
     Array<Vec3_t> V(8);
@@ -423,10 +423,12 @@ inline void Domain::AddCube (int Tag, const Vec3_t & X, double R, double L, doub
     F[5] = 4, 5, 6, 7;
 
     // calculate the rotation
+    bool ThereisanAxis = true;
     if (Axis==NULL)
     {
         Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
         Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
     }
     Quaternion_t q;
     NormalizeRotation (Angle,(*Axis),q);
@@ -441,7 +443,7 @@ inline void Domain::AddCube (int Tag, const Vec3_t & X, double R, double L, doub
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
-    delete Axis;
+    if (!ThereisanAxis) delete Axis;
 }
 
 inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
@@ -474,10 +476,12 @@ inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, dou
     F[3] = 1, 2, 3;
 
     // calculate the rotation
+    bool ThereisanAxis = true;
     if (Axis==NULL)
     {
         Angle   = (1.0*rand())/RAND_MAX*2*M_PI;
         Axis = new Vec3_t((1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX, (1.0*rand())/RAND_MAX);
+        ThereisanAxis = false;
     }
     Quaternion_t q;
     NormalizeRotation (Angle,(*Axis),q);
@@ -492,7 +496,7 @@ inline void Domain::AddTetra (int Tag, Vec3_t const & X, double R, double L, dou
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
 
     // clean up
-    delete Axis;
+    if (!ThereisanAxis) delete Axis;
 }
 
 inline void Domain::AddRice (int Tag, const Vec3_t & X, double R, double L, double rho, double Angle, Vec3_t * Axis)
@@ -899,7 +903,7 @@ inline void Domain::WritePOV (char const * FileKey)
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Red");
+    for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Gray");
     for (size_t i=0; i<TParticles.Size(); i++) TParticles[i]->Draw (of,"Col_Glass_Bluish");
     for (size_t i=0; i<RParticles.Size(); i++) RParticles[i]->Draw (of,"Col_Glass_Bluish");
     for (size_t i=0; i<FParticles.Size(); i++) FParticles[i]->Draw (of,"Col_Glass_Bluish");
