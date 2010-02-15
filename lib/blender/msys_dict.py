@@ -38,6 +38,7 @@ def load_dict():
         dict['gui_show_mat']  = False
         dict['gui_show_fem']  = False
         dict['gui_show_res']  = False
+        dict['gui_show_dem']  = False
         dict['gui_inirow']    = 0
         # SETTINGS
         dict['show_props']    = False

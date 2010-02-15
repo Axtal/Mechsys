@@ -111,6 +111,18 @@ public:
     void PyAddRice   (int Tag, BPy::tuple const & X, double R, double L, double rho, double Ang, BPy::tuple const & Ax)            { Vec3_t a(Tup2Vec3(Ax)); AddRice  (Tag,Tup2Vec3(X),R,L,rho,Ang,&a); }
     void PyAddPlane  (int Tag, BPy::tuple const & X, double R, double Lx,double Ly, double rho, double Ang, BPy::tuple const & Ax) { Vec3_t a(Tup2Vec3(Ax)); AddPlane (Tag,Tup2Vec3(X),R,Lx,Ly,rho,Ang,&a); }
     void PySetCamPos (BPy::tuple const & PyCamPos)                                                                                 { CamPos = Tup2Vec3(PyCamPos); }
+    void PyGetParticles(BPy::list & P)
+    {
+        for (size_t i=0; i<Particles.Size(); ++i)
+        {
+            BPy::list p,V,E,F;
+            Particles[i]->PyGetFeatures (V, E, F);
+            p.append (V);
+            p.append (E);
+            p.append (F);
+            P.append (p);
+        }
+    }
 #endif
 };
 

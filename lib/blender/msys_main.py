@@ -106,6 +106,8 @@ EVT_FEM_SCRIPT       = 92 # generate script for FEM
 EVT_FEM_PARAVIEW     = 93 # view in ParaView
 EVT_FEM_SAVESTAGES   = 94 # save stage info to a new object
 EVT_FEM_READSTAGES   = 95 # read stage info from another object
+# DEM
+EVT_DEM_GENERATE     = 100
 
 
 # ==================================================================================== Events
@@ -325,6 +327,10 @@ def cb_gui_show_mat(evt,val):
 def cb_gui_show_fem(evt,val):
     di.set_key ('gui_show_fem', val)
     show_only  ('gui_show_fem')
+@try_catch
+def cb_gui_show_dem(evt,val):
+    di.set_key ('gui_show_dem', val)
+    show_only  ('gui_show_dem')
 
 # ---------------------------------- Settings
 
@@ -734,6 +740,7 @@ def gui():
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 6*rh+2*rg+5*srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
     h_fem           = 5*rh+srg+h_fem_stage+4*rg
+    h_dem           = 5*rh
 
     # clear background
     gu.background()
@@ -1169,6 +1176,16 @@ def gui():
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rg
 
+    # ======================================================== DEM
+
+    gu.caption1(c,r0,w,rh,'DEM',c+320,d['gui_show_dem'],cb_gui_show_dem)
+    if d['gui_show_dem']:
+        r = r0
+        r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_dem)
+        Draw.PushButton ('Generate',     EVT_DEM_GENERATE, c+160, r, 80, rh, 'Generate the packing')
+        r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
+    r -= rh
+    r -= rg
 
 
 # Register GUI

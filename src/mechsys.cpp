@@ -59,6 +59,7 @@ namespace BPy = boost::python;
 
 // MechSys -- DEM
 #include <mechsys/dem/domain.h>
+#include <mechsys/dem/particle.h>
 
 // overloadings
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
@@ -182,6 +183,11 @@ BPy::class_<DEM::Domain>("DEM_Domain")
     .def("WritePOV",    &DEM::Domain::WritePOV)
     .def("WriteBPY",    &DEM::Domain::WriteBPY)
     .def("SetCamPos",   &DEM::Domain::PySetCamPos)
+    .def("GetParticles",&DEM::Domain::PyGetParticles)
     ;
+
+//BPy::class_<Particle>("Particle")
+    //.def("GetFeatures", &Particle::PyGetFeatures)
+    //;
 
 } // BOOST_PYTHON_MODULE

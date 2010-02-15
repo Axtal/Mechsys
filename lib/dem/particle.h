@@ -109,6 +109,42 @@ public:
     double Ixy (double * X); ///< Calculate the inertia tensor at X
     double Ixz (double * X); ///< Calculate the inertia tensor at X
     double Iyz (double * X); ///< Calculate the inertia tensor at X
+
+#ifdef USE_BOOST_PYTHON
+    void PyGetFeatures (BPy::list & V, BPy::list & E, BPy::list & F) const
+    {
+        // vertex-ID map
+        typedef std::map<Vec3_t const *,int> VertID_t;
+        VertID_t vids;
+
+        // vertices
+        for (size_t i=0; i<Verts.Size(); ++i)
+        {
+            V.append (BPy::make_tuple((*Verts[i])(0),(*Verts[i])(1),(*Verts[i])(2)));
+            vids[Verts[i]] = i;
+        }
+
+        // edges
+        for (size_t i=0; i<Edges.Size(); ++i)
+            E.append (BPy::make_tuple(vids[Edges[i]->X0], vids[Edges[i]->X1]));
+
+        // faces
+        for (size_t i=0; i<Faces.Size(); ++i)
+        {
+            /* // list of edges
+            BPy::list edges;
+            for (size_t j=0; j<Faces[i]->Edges.Size(); ++j)
+                edges.append (BPy::make_tuple(vids[Faces[i]->Edges[j]->X0], vids[Faces[i]->Edges[j]->X1]));
+            F.append (edges);
+            */
+            // list of vertices
+            BPy::list verts;
+            for (size_t j=0; j<Faces[i]->Edges.Size(); ++j)
+                verts.append (vids[Faces[i]->Edges[j]->X0]);
+            F.append (verts);
+        }
+    }
+#endif
 };
 
 
