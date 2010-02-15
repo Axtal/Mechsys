@@ -116,7 +116,8 @@ public:
         for (size_t i=0; i<Particles.Size(); ++i)
         {
             BPy::list p,V,E,F;
-            Particles[i]->PyGetFeatures (V, E, F);
+            double radius = Particles[i]->PyGetFeatures (V, E, F);
+            p.append (radius);
             p.append (V);
             p.append (E);
             p.append (F);

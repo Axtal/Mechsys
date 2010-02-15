@@ -69,6 +69,23 @@ def load_dict():
         dict['fem_stage']     = 0     # stage ID
         dict['fullsc']        = False # generate full script (for FEA)
         dict['fem_cpp']       = False # generate C++ script
+        # DEM
+        dict['dem_Lx']   = 4.0
+        dict['dem_Ly']   = 4.0
+        dict['dem_Lz']   = 4.0
+        dict['dem_Nx']   = 2
+        dict['dem_Ny']   = 2
+        dict['dem_Nz']   = 2
+        dict['dem_R']    = 0.1
+        dict['dem_rho']  = 1.0
+        dict['dem_seed'] = 123
+        dict['dem_prob'] = 1.0
+        dict['dem_pkg']  = 2
+        dict['dem_res']  = 8
+
+        # DEM packings
+        dict['dem_pkgs']     = {0:'Spheres', 1:'Spheres HCP', 2:'Voronoi'}
+        dict['dem_pkgs_mnu'] = 'Packing type %t|Voronoi %x3|Spheres HCP %x2|Spheres %x1'
 
         # Models
         dict['mdl']      = {0:'Rod', 1:'Beam', 2:'LinElastic', 3:'ElastoPlastic', 4:'CamClay', 5:'LinFlow'}

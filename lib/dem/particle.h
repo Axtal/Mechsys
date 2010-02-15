@@ -111,7 +111,7 @@ public:
     double Iyz (double * X); ///< Calculate the inertia tensor at X
 
 #ifdef USE_BOOST_PYTHON
-    void PyGetFeatures (BPy::list & V, BPy::list & E, BPy::list & F) const
+    double PyGetFeatures (BPy::list & V, BPy::list & E, BPy::list & F) const
     {
         // vertex-ID map
         typedef std::map<Vec3_t const *,int> VertID_t;
@@ -143,6 +143,8 @@ public:
                 verts.append (vids[Faces[i]->Edges[j]->X0]);
             F.append (verts);
         }
+
+        return R;
     }
 #endif
 };

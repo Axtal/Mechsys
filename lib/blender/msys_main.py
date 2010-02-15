@@ -42,7 +42,8 @@ import bpy
 import msys_cad  as ca
 import msys_mesh as me
 import msys_dict as di
-import msys_fem  as fe
+import msys_fem  as fem
+import msys_dem  as dem
 import msys_gui  as gu
 
 #import rpdb2; rpdb2.start_embedded_debugger('msys')
@@ -117,6 +118,7 @@ def hide_all():
     di.set_key('gui_show_mesh', False)
     di.set_key('gui_show_mat',  False)
     di.set_key('gui_show_fem',  False)
+    di.set_key('gui_show_dem',  False)
     di.set_key('gui_show_res',  False)
     di.set_key('gui_inirow',    0)
     Blender.Window.QRedrawAll()
@@ -167,7 +169,7 @@ def delete_mesh():
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-#@try_catch
+@try_catch
 def button_event(evt):
 
     # ----------------------------------------------------------------------------------- Settings
@@ -300,12 +302,15 @@ def button_event(evt):
         sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
         di.props_del_all_fem (sids, 'eatts')
 
-    elif evt==EVT_FEM_RUN:        fe.run_analysis         ()
-    elif evt==EVT_FEM_SCRIPT:     fe.run_analysis         (True)
-    elif evt==EVT_FEM_PARAVIEW:   fe.paraview             ()
-    elif evt==EVT_FEM_SAVESTAGES: fe.save_stage_mats_info ()
-    elif evt==EVT_FEM_READSTAGES: fe.read_stage_mats_info ()
+    elif evt==EVT_FEM_RUN:        fem.run_analysis         ()
+    elif evt==EVT_FEM_SCRIPT:     fem.run_analysis         (True)
+    elif evt==EVT_FEM_PARAVIEW:   fem.paraview             ()
+    elif evt==EVT_FEM_SAVESTAGES: fem.save_stage_mats_info ()
+    elif evt==EVT_FEM_READSTAGES: fem.read_stage_mats_info ()
 
+    # ----------------------------------------------------------------------------------- DEM 
+
+    elif evt==EVT_DEM_GENERATE: dem.generate ()
 
 # ================================================================================= Callbacks
 
@@ -632,6 +637,32 @@ def cb_fem_ndiv       (evt,val): di.props_set_item ('stages', evt-EVT_INC, 4, in
 @try_catch
 def cb_fem_dtime      (evt,val): di.props_set_item ('stages', evt-EVT_INC, 5, float(val))
 
+# ---------------------------------- DEM
+
+@try_catch
+def cb_dem_Lx(evt,val): di.set_key ('dem_Lx', float(val))
+@try_catch
+def cb_dem_Ly(evt,val): di.set_key ('dem_Ly', float(val))
+@try_catch
+def cb_dem_Lz(evt,val): di.set_key ('dem_Lz', float(val))
+@try_catch
+def cb_dem_Nx(evt,val): di.set_key ('dem_Nx', val)
+@try_catch
+def cb_dem_Ny(evt,val): di.set_key ('dem_Ny', val)
+@try_catch
+def cb_dem_Nz(evt,val): di.set_key ('dem_Nz', val)
+@try_catch
+def cb_dem_R(evt,val): di.set_key ('dem_R', float(val))
+@try_catch
+def cb_dem_rho(evt,val): di.set_key ('dem_rho', float(val))
+@try_catch
+def cb_dem_seed(evt,val): di.set_key ('dem_seed', val)
+@try_catch
+def cb_dem_prob(evt,val): di.set_key ('dem_prob', float(val))
+@try_catch
+def cb_dem_pkg(evt,val): di.set_key ('dem_pkg', val-1)
+@try_catch
+def cb_dem_res(evt,val): di.set_key ('dem_res', val)
 
 # ======================================================================================= GUI
 
@@ -740,7 +771,7 @@ def gui():
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 6*rh+2*rg+5*srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
     h_fem           = 5*rh+srg+h_fem_stage+4*rg
-    h_dem           = 5*rh
+    h_dem           = 7*rh+3*rg
 
     # clear background
     gu.background()
@@ -780,7 +811,7 @@ def gui():
 
     gu.caption1(c,r0,w,rh,'CAD',c,d['gui_show_cad'],cb_gui_show_cad)
     if d['gui_show_cad']:
-        r = r0
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_cad)
         Draw.String     ('X=',           EVT_NONE,        c,     r, 80, rh, d['cad_x'],128,     'Set the X value of the new point to be added',cb_set_x)
         Draw.String     ('Y=',           EVT_NONE,        c+ 80, r, 80, rh, d['cad_y'],128,     'Set the Y value of the new point to be added',cb_set_y)
@@ -806,7 +837,7 @@ def gui():
 
     gu.caption1(c,r0,w,rh,'MESH',c+80,d['gui_show_mesh'],cb_gui_show_mesh)
     if d['gui_show_mesh']:
-        r = r0
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_msh)
         gu.text (c,r,'Vertex tags:')
         Draw.Number      ('',          EVT_NONE,             c+ 80, r, 80, rh, d['newvtag'],   -1000, 0, 'New vertex tag',                      cb_vtag)
@@ -966,7 +997,7 @@ def gui():
 
     gu.caption1(c,r0,w,rh,'MATERIALS',c+160,d['gui_show_mat'],cb_gui_show_mat)
     if d['gui_show_mat']:
-        r = r0
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_mat)
 
         # ----------------------- Mat -- parameters
@@ -1019,9 +1050,9 @@ def gui():
 
     # ======================================================== FEM
 
-    gu.caption1(c,r0,w,rh,'FEM',c+240,d['gui_show_fem'],cb_gui_show_fem)
+    gu.caption1(c,r0-rh,w,rh,'FEM',c,d['gui_show_fem'],cb_gui_show_fem)
     if d['gui_show_fem']:
-        r = r0
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_fem)
         gu.text (c,r,"Problem:")
         Draw.Menu (d['ptymnu'], EVT_NONE, c+80, r, 200, rh, d['fem_prob']+1, 'Problem type', cb_fem_prob)
@@ -1178,11 +1209,29 @@ def gui():
 
     # ======================================================== DEM
 
-    gu.caption1(c,r0,w,rh,'DEM',c+320,d['gui_show_dem'],cb_gui_show_dem)
+    gu.caption1(c,r0-rh,w,rh,'DEM',c+80,d['gui_show_dem'],cb_gui_show_dem)
     if d['gui_show_dem']:
-        r = r0
+        r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_dem)
-        Draw.PushButton ('Generate',     EVT_DEM_GENERATE, c+160, r, 80, rh, 'Generate the packing')
+        gu.text(c,    r,'Lx:'); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Lx']), 128, 'Length of box', cb_dem_Lx)
+        gu.text(c+120,r,'R:');  Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_R']),  128, 'Radius',        cb_dem_R)
+        r -= rh
+        gu.text(c,    r,'Ly:');  Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Ly']),  128, 'Length of box', cb_dem_Ly)
+        gu.text(c+120,r,'rho:'); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_rho']), 128, 'Density',       cb_dem_rho)
+        r -= rh
+        gu.text(c,    r,'Lz:');   Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Lz']),  128,   'Length of box', cb_dem_Lz)
+        gu.text(c+120,r,'Seed:'); Draw.Number('', EVT_NONE, c+160, r, 60, rh, int(d['dem_seed']),1,1000,'Seed',          cb_dem_seed)
+        r -= rh
+        gu.text(c,    r,'Nx:');   Draw.Number('', EVT_NONE, c+40,  r, 60, rh, int(d['dem_Nx']),1,1000,'Number of x divisions', cb_dem_Nx)
+        gu.text(c+120,r,'Prob:'); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_prob']), 128,'Probability/fraction',  cb_dem_prob)
+        r -= rh
+        gu.text(c,r,'Ny:'); Draw.Number('', EVT_NONE,  c+40,  r, 60,  rh, int(d['dem_Ny']),1,1000,'Number of y divisions', cb_dem_Ny)
+        Draw.Menu (d['dem_pkgs_mnu'],       EVT_NONE,  c+120, r, 100, rh, int(d['dem_pkg'])+1,    'Packing type',          cb_dem_pkg)
+        r -= rh
+        gu.text(c,r,'Nz:'); Draw.Number('', EVT_NONE,  c+40, r, 60, rh, int(d['dem_Nz']),1,1000,'Number of z divisions', cb_dem_Nz)
+        r -= rh+rg
+        gu.text(c,r,'Resolution:'); Draw.Number('', EVT_NONE, c+80, r, 60, rh, int(d['dem_res']),3,128,'Resolution', cb_dem_res)
+        Draw.PushButton ('Generate', EVT_DEM_GENERATE, c+140, r, 100, rh, 'Generate the packing')
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rh
     r -= rg
