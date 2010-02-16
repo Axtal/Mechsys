@@ -82,6 +82,7 @@ public:
     void EnergyOutput     (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
     virtual void Output   (size_t IdxOut, std::ostream & OutFile) {};                                          ///< Output current state depends on the setup
     virtual void OutputF  (std::ostream & OutFile) {};                                                         ///< Output final state depends on the setup
+    void GSD              (size_t Nbins=10);                                                                   ///< Function to calculate the grain size distribution
 
     // Auxiliar methods
     void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
@@ -102,6 +103,11 @@ public:
     double             Evis;          ///< Energy dissipated by the viscosity of the grains
     double             Efric;         ///< Energy dissipated by friction
     double             Wext;          ///< Work done by external forces
+    double             Vs;            ///< Volume occupied by the grains
+    Array<double>      Vg;            ///< List of individual volumes for analisis
+    Array<double>      Dg;            ///< List of individual diameters for analisis
+    Array<double>      GSD_X;         ///< X data for the Grain size distribution
+    Array<double>      GSD_Y;         ///< X data for the Grain size distribution
 
 
 #ifdef USE_BOOST_PYTHON
@@ -144,8 +150,6 @@ public:
     void Setup     (double,double);                                                                  ///< For the triaxial test it will measure or set the strains and stresses
 
     //Data
-    double        Vs;   ///< Volume occupied by the grains
-    Array<double> Vg ;  ///< List of individual volumes for analisis
     Vec3_t        Sig;  ///< Current stress state
     Vec3_t        DSig; ///< Total stress increment to be applied by Solve => after
     bVec3_t       pSig; ///< Prescribed stress ?
@@ -796,6 +800,15 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     if (FreeParticles.Size()==0) FreeParticles = Particles;
     Initialize (dt);
 
+    Vs = 0.0;
+    for (size_t i=0; i<FreeParticles.Size(); i++)
+    {
+        Vs += FreeParticles[i]->V;
+        Vg.Push(FreeParticles[i]->V);
+        Dg.Push(FreeParticles[i]->Dmax);
+    }
+    GSD();
+
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
@@ -1070,6 +1083,24 @@ inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
 
 }
 
+inline void Domain::GSD (size_t Nbins)
+{
+    double Dmin = Dg[Dg.Min()];
+    double Dmax = Dg[Dg.Max()];
+    double Dspan = (Dmax-Dmin)/Nbins;
+    for (size_t i = 0;i <= Nbins;i++)
+    {
+        GSD_X.Push(i*Dspan+Dmin);
+        size_t cumsum = 0;
+        for (size_t j = 0;j < Dg.Size();j++)
+        {
+            if (Dg[j]<=i*Dspan+Dmin) cumsum++;
+        }
+        GSD_Y.Push(cumsum/FreeParticles.Size());
+    }
+
+}
+
 // Methods for specific simulations
 
 inline TriaxialDomain::TriaxialDomain ()
@@ -1098,12 +1129,6 @@ inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps
     for (size_t i=0; i<InitialIndex;     i++) FreeParticles.Push(Particles[i]);
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Initialize ();
 
-    Vs = 0.0;
-    for (size_t i=0; i<FreeParticles.Size(); i++)
-    {
-        Vs += FreeParticles[i]->V;
-        Vg.Push(FreeParticles[i]->V);
-    }
     // total stress increment
     DSig = Sigf - Sig;
 
