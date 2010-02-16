@@ -78,11 +78,13 @@ public:
     void BoundingBox      (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
     void Center           ();                                                                                  ///< Centers the domain
     void ResetInteractons ();                                                                                  ///< Reset the interactons
-    virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
     void EnergyOutput     (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
+    void GetGSD           (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;    ///< Get the Grain Size Distribution
+
+    // Methods to be derived
+    virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
     virtual void Output   (size_t IdxOut, std::ostream & OutFile) {};                                          ///< Output current state depends on the setup
     virtual void OutputF  (std::ostream & OutFile) {};                                                         ///< Output final state depends on the setup
-    void GSD              (size_t Nbins=10);                                                                   ///< Function to calculate the grain size distribution
 
     // Auxiliar methods
     void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
@@ -104,11 +106,6 @@ public:
     double             Efric;         ///< Energy dissipated by friction
     double             Wext;          ///< Work done by external forces
     double             Vs;            ///< Volume occupied by the grains
-    Array<double>      Vg;            ///< List of individual volumes for analisis
-    Array<double>      Dg;            ///< List of individual diameters for analisis
-    Array<double>      GSD_X;         ///< X data for the Grain size distribution
-    Array<double>      GSD_Y;         ///< X data for the Grain size distribution
-
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -128,6 +125,16 @@ public:
             p.append (E);
             p.append (F);
             P.append (p);
+        }
+    }
+    void PyGetGSD (BPy::list & X, BPy::list & Y, BPy::list & D, int NDiv=10)
+    {
+        Array<double> x, y, d;
+        GetGSD (x, y, d, NDiv);
+        for (size_t i=0; i<x.Size(); ++i)
+        {
+            X.append (x[i]);
+            Y.append (y[i]);
         }
     }
 #endif
@@ -763,11 +770,19 @@ inline void Domain::Initialize (double dt)
 {
     if (!Initialized)
     {
+        // initialize all particles
         for (size_t i=0; i<Particles.Size(); i++)
         {
             Particles[i]->Initialize();
             Particles[i]->InitializeVelocity(dt);
         }
+
+        // make freeparticles = particles
+        if (FreeParticles.Size()==0) FreeParticles = Particles;
+
+        // calc the total volume of particles (solids)
+        Vs = 0.0;
+        for (size_t i=0; i<FreeParticles.Size(); i++) Vs += FreeParticles[i]->V;
 
         // info
         double start = std::clock();
@@ -799,15 +814,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     // initialize
     if (FreeParticles.Size()==0) FreeParticles = Particles;
     Initialize (dt);
-
-    Vs = 0.0;
-    for (size_t i=0; i<FreeParticles.Size(); i++)
-    {
-        Vs += FreeParticles[i]->V;
-        Vg.Push(FreeParticles[i]->V);
-        Dg.Push(FreeParticles[i]->Dmax);
-    }
-    GSD();
 
     // info
     double start = std::clock();
@@ -1083,22 +1089,31 @@ inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
 
 }
 
-inline void Domain::GSD (size_t Nbins)
+inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv) const
 {
-    double Dmin = Dg[Dg.Min()];
-    double Dmax = Dg[Dg.Max()];
-    double Dspan = (Dmax-Dmin)/Nbins;
-    for (size_t i = 0;i <= Nbins;i++)
+    /*
+    // calc GSD information
+    Vs = 0.0;
+    for (size_t i=0; i<FreeParticles.Size(); i++)
     {
-        GSD_X.Push(i*Dspan+Dmin);
+        Vs += FreeParticles[i]->V;
+        Vg.Push(FreeParticles[i]->V);
+        Dg.Push(FreeParticles[i]->Dmax);
+    }
+    double Dmin  = Dg[Dg.Min()]; // minimum diameter
+    double Dmax  = Dg[Dg.Max()]; // maximum diameter
+    double Dspan = (Dmax-Dmin)/GSD_NDiv;
+    for (size_t i=0; i<=GSD_NDiv; i++)
+    {
+        GSD_X.Push (i*Dspan+Dmin);
         size_t cumsum = 0;
-        for (size_t j = 0;j < Dg.Size();j++)
+        for (size_t j=0; j<Dg.Size(); j++)
         {
             if (Dg[j]<=i*Dspan+Dmin) cumsum++;
         }
-        GSD_Y.Push(cumsum/FreeParticles.Size());
+        GSD_Y.Push (cumsum/FreeParticles.Size());
     }
-
+    */
 }
 
 // Methods for specific simulations

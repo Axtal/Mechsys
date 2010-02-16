@@ -37,6 +37,11 @@ def gen_pkg(is_ttt):
         dom.AddVoroPack (-1,d['dem_R'], d['dem_Lx'], d['dem_Ly'], d['dem_Lz'], d['dem_Nx'], d['dem_Ny'], d['dem_Nz'], d['dem_rho'], True, d['dem_seed'], d['dem_prob'])
     P = []
     dom.GetParticles (P)
+    X, Y = [], []
+    dom.Initialize ()
+    dom.GetGSD (X, Y)
+    print X
+    print Y
     add_particles    (P,d['dem_res'],d['dem_draw_verts'],d['dem_draw_edges'])
     if edm: Blender.Window.EditMode(1)
     Blender.Window.QRedrawAll()
