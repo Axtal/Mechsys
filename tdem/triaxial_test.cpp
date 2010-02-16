@@ -110,7 +110,11 @@ int main(int argc, char **argv) try
     if(ptype=="sphere") d.GenSpheres  (-1,Lx,nx,rho,"HCP", seed, fraction);
     else if (ptype=="voronoi") d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
     else throw new Fatal("Packing for particle type not implmented yet");
-    d.GenBoundingBox(/*InitialTag*/-2, R, /*Cf*/1.3);
+    //d.GenBoundingBox(/*InitialTag*/-2, R, /*Cf*/1.3);
+
+    d.FreeParticles=d.Particles;
+    d.WriteBPY("packing");
+    return 0;
 
     // properties of particles prior the triaxial test
     Dict B;

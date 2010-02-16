@@ -108,7 +108,10 @@ EVT_FEM_PARAVIEW     = 93 # view in ParaView
 EVT_FEM_SAVESTAGES   = 94 # save stage info to a new object
 EVT_FEM_READSTAGES   = 95 # read stage info from another object
 # DEM
-EVT_DEM_GENERATE     = 100
+EVT_DEM_GEN_PKG      = 100 # generate packing
+EVT_DEM_GEN_TTT      = 101 # generate true triaxial packing
+EVT_DEM_GEN_PY       = 102 # generate python script
+EVT_DEM_GEN_CPP      = 103 # generate C++ script
 
 
 # ==================================================================================== Events
@@ -169,7 +172,7 @@ def delete_mesh():
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-@try_catch
+#@try_catch
 def button_event(evt):
 
     # ----------------------------------------------------------------------------------- Settings
@@ -310,7 +313,10 @@ def button_event(evt):
 
     # ----------------------------------------------------------------------------------- DEM 
 
-    elif evt==EVT_DEM_GENERATE: dem.generate ()
+    elif evt==EVT_DEM_GEN_PKG: dem.gen_pkg (False)
+    elif evt==EVT_DEM_GEN_TTT: dem.gen_pkg (True)
+    elif evt==EVT_DEM_GEN_PY : dem.gen_py  (True)
+    elif evt==EVT_DEM_GEN_CPP: dem.gen_cpp ()
 
 # ================================================================================= Callbacks
 
@@ -663,6 +669,10 @@ def cb_dem_prob(evt,val): di.set_key ('dem_prob', float(val))
 def cb_dem_pkg(evt,val): di.set_key ('dem_pkg', val-1)
 @try_catch
 def cb_dem_res(evt,val): di.set_key ('dem_res', val)
+@try_catch
+def cb_dem_draw_verts(evt,val): di.set_key ('dem_draw_verts', val)
+@try_catch
+def cb_dem_draw_edges(evt,val): di.set_key ('dem_draw_edges', val)
 
 # ======================================================================================= GUI
 
@@ -771,7 +781,7 @@ def gui():
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 6*rh+2*rg+5*srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
     h_fem           = 5*rh+srg+h_fem_stage+4*rg
-    h_dem           = 7*rh+3*rg
+    h_dem           = 9*rh+3*rg
 
     # clear background
     gu.background()
@@ -1230,8 +1240,15 @@ def gui():
         r -= rh
         gu.text(c,r,'Nz:'); Draw.Number('', EVT_NONE,  c+40, r, 60, rh, int(d['dem_Nz']),1,1000,'Number of z divisions', cb_dem_Nz)
         r -= rh+rg
-        gu.text(c,r,'Resolution:'); Draw.Number('', EVT_NONE, c+80, r, 60, rh, int(d['dem_res']),3,128,'Resolution', cb_dem_res)
-        Draw.PushButton ('Generate', EVT_DEM_GENERATE, c+140, r, 100, rh, 'Generate the packing')
+        gu.text(c,r,'Resolution:'); Draw.Number('', EVT_NONE, c+80,  r, 60, rh, int(d['dem_res']),3,128,'Resolution',    cb_dem_res)
+        Draw.Toggle     ('Draw Verts',              EVT_NONE, c+140, r, 80, rh, d['dem_draw_verts'],    'Draw Vertices', cb_dem_draw_verts)
+        Draw.Toggle     ('Draw Edges',              EVT_NONE, c+220, r, 80, rh, d['dem_draw_edges'],    'Draw Edges',    cb_dem_draw_edges)
+        r -= rh
+        Draw.PushButton ('Generate Particles',   EVT_DEM_GEN_PKG, c,     r, 150, rh, 'Generate particles')
+        Draw.PushButton ('Generate TTT Packing', EVT_DEM_GEN_TTT, c+150, r, 150, rh, 'Generate true triaxial (TTT) packing')
+        r -= rh
+        Draw.PushButton ('Generate Python Script', EVT_DEM_GEN_PY,  c,     r, 150, rh, 'Generate Python script')
+        Draw.PushButton ('Generate C++ Script',    EVT_DEM_GEN_CPP, c+150, r, 150, rh, 'Generate C++ script')
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rh
     r -= rg

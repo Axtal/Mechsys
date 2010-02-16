@@ -184,6 +184,12 @@ BPy::class_<DEM::Domain>("DEM_Domain")
     .def("WriteBPY",    &DEM::Domain::WriteBPY)
     .def("SetCamPos",   &DEM::Domain::PySetCamPos)
     .def("GetParticles",&DEM::Domain::PyGetParticles)
+    .def("GenBoundingBox",&DEM::Domain::GenBoundingBox)
+    ;
+
+BPy::class_<DEM::TriaxialDomain, BPy::bases<DEM::Domain> >("DEM_TTTDomain")
+    .def("SetTxTest", &DEM::TriaxialDomain::PySetTxTest)
+    .def("ResetEps",  &DEM::TriaxialDomain::ResetEps)
     ;
 
 //BPy::class_<Particle>("Particle")
