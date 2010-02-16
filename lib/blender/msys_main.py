@@ -110,8 +110,7 @@ EVT_FEM_READSTAGES   = 95 # read stage info from another object
 # DEM
 EVT_DEM_GEN_PKG      = 100 # generate packing
 EVT_DEM_GEN_TTT      = 101 # generate true triaxial packing
-EVT_DEM_GEN_PY       = 102 # generate python script
-EVT_DEM_GEN_CPP      = 103 # generate C++ script
+EVT_DEM_GEN_SCR      = 102 # generate script
 
 
 # ==================================================================================== Events
@@ -313,10 +312,9 @@ def button_event(evt):
 
     # ----------------------------------------------------------------------------------- DEM 
 
-    elif evt==EVT_DEM_GEN_PKG: dem.gen_pkg (False)
-    elif evt==EVT_DEM_GEN_TTT: dem.gen_pkg (True)
-    elif evt==EVT_DEM_GEN_PY : dem.gen_py  (True)
-    elif evt==EVT_DEM_GEN_CPP: dem.gen_cpp ()
+    elif evt==EVT_DEM_GEN_PKG: dem.gen_pkg    (False)
+    elif evt==EVT_DEM_GEN_TTT: dem.gen_pkg    (True)
+    elif evt==EVT_DEM_GEN_SCR: dem.gen_script ()
 
 # ================================================================================= Callbacks
 
@@ -674,6 +672,47 @@ def cb_dem_draw_verts(evt,val): di.set_key ('dem_draw_verts', val)
 @try_catch
 def cb_dem_draw_edges(evt,val): di.set_key ('dem_draw_edges', val)
 
+@try_catch
+def cb_dem_iso_pf (evt,val): di.set_key ('dem_iso_pf', float(val))
+@try_catch
+def cb_dem_iso_timef (evt,val): di.set_key ('dem_iso_timef', float(val))
+@try_catch
+def cb_dem_iso_dt (evt,val): di.set_key ('dem_iso_dt', float(val))
+@try_catch
+def cb_dem_iso_dtout (evt,val): di.set_key ('dem_iso_dtout', float(val))
+@try_catch
+def cb_dem_iso_render (evt,val): di.set_key ('dem_iso_render', val)
+
+@try_catch
+def cb_dem_ttt_pf (evt,val): di.set_key ('dem_ttt_pf', float(val))
+@try_catch
+def cb_dem_ttt_qf (evt,val): di.set_key ('dem_ttt_qf', float(val))
+@try_catch
+def cb_dem_ttt_thf (evt,val): di.set_key ('dem_ttt_thf', float(val))
+@try_catch
+def cb_dem_ttt_pex (evt,val): di.set_key ('dem_ttt_pex', val)
+@try_catch
+def cb_dem_ttt_pey (evt,val): di.set_key ('dem_ttt_pey', val)
+@try_catch
+def cb_dem_ttt_pez (evt,val): di.set_key ('dem_ttt_pez', val)
+@try_catch
+def cb_dem_ttt_exf (evt,val): di.set_key ('dem_ttt_exf', float(val))
+@try_catch
+def cb_dem_ttt_eyf (evt,val): di.set_key ('dem_ttt_eyf', float(val))
+@try_catch
+def cb_dem_ttt_ezf (evt,val): di.set_key ('dem_ttt_ezf', float(val))
+@try_catch
+def cb_dem_ttt_timef (evt,val): di.set_key ('dem_ttt_timef', float(val))
+@try_catch
+def cb_dem_ttt_dt (evt,val): di.set_key ('dem_ttt_dt', float(val))
+@try_catch
+def cb_dem_ttt_dtout (evt,val): di.set_key ('dem_ttt_dtout', float(val))
+@try_catch
+def cb_dem_ttt_render (evt,val): di.set_key ('dem_ttt_render', val)
+
+@try_catch
+def cb_dem_cpp_script (evt,val): di.set_key ('dem_cpp_script', val)
+
 # ======================================================================================= GUI
 
 # Draw GUI
@@ -781,7 +820,11 @@ def gui():
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 6*rh+2*rg+5*srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
     h_fem           = 5*rh+srg+h_fem_stage+4*rg
-    h_dem           = 9*rh+3*rg
+    h_dem_pkg       = 8*rh+3*rg
+    h_dem_ttt_iso   = 3*rh+2*srg
+    h_dem_ttt_she   = 7*rh+2*srg
+    h_dem_ttt       = 6*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she
+    h_dem           = h_dem_pkg+srg+4*rh+h_dem_ttt
 
     # clear background
     gu.background()
@@ -1223,6 +1266,12 @@ def gui():
     if d['gui_show_dem']:
         r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_dem)
+
+        # ----------------------- DEM -- particle generation
+
+        gu.caption2(c,r,w,rh,'Particle generation')
+        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_pkg)
+
         gu.text(c,    r,'Lx:'); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Lx']), 128, 'Length of box', cb_dem_Lx)
         gu.text(c+120,r,'R:');  Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_R']),  128, 'Radius',        cb_dem_R)
         r -= rh
@@ -1246,9 +1295,78 @@ def gui():
         r -= rh
         Draw.PushButton ('Generate Particles',   EVT_DEM_GEN_PKG, c,     r, 150, rh, 'Generate particles')
         Draw.PushButton ('Generate TTT Packing', EVT_DEM_GEN_TTT, c+150, r, 150, rh, 'Generate true triaxial (TTT) packing')
+
+        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
+
+        # ----------------------- DEM -- True Triaxial Test
+
         r -= rh
-        Draw.PushButton ('Generate Python Script', EVT_DEM_GEN_PY,  c,     r, 150, rh, 'Generate Python script')
-        Draw.PushButton ('Generate C++ Script',    EVT_DEM_GEN_CPP, c+150, r, 150, rh, 'Generate C++ script')
+        gu.caption2(c,r,w,rh,'True Triaxial Test (TTT)')
+        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_ttt)
+
+        # ----------------------- DEM -- True Triaxial Test --- Stage 1
+
+        gu.caption3_(c,r,w,rh, 'Stage 1: Isotropic Compression')
+        r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_dem_ttt_iso)
+        r -= srg
+
+        gu.text(c, r,'pf:'); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_iso_pf']), 128, 'p at the and of isotropic compression', cb_dem_iso_pf)
+        r -= rh
+        gu.text(c,    r,'timef');
+        gu.text(c+60, r,'dt');
+        gu.text(c+120,r,'dtout');
+        r -= rh
+        Draw.String('', EVT_NONE, c,    r, 60, rh,     str(d['dem_iso_timef']), 128, 'final time',                cb_dem_iso_timef)
+        Draw.String('', EVT_NONE, c+60, r, 60, rh,     str(d['dem_iso_dt']),    128, 'time increment',            cb_dem_iso_dt)
+        Draw.String('', EVT_NONE, c+120,r, 60, rh,     str(d['dem_iso_dtout']), 128, 'time increment for output', cb_dem_iso_dtout)
+        Draw.Toggle ('Render', EVT_NONE, c+180, r, 60, rh, d['dem_iso_render'],      'Render video ?',            cb_dem_iso_render)
+        r -= srg
+        r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+        # ----------------------- DEM -- True Triaxial Test --- Stage 2
+
+        r -= rh
+        gu.caption3_(c,r,w,rh, 'Stage 2: Shear Loading')
+        r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_dem_ttt_she)
+        r -= srg
+
+        gu.text(c,     r,'pf');
+        gu.text(c+60,  r,'qf');
+        gu.text(c+120, r,'thf');
+        r -= rh
+        Draw.String('', EVT_NONE, c,     r, 60, rh, str(d['dem_ttt_pf']),  128, 'p at the and of shearing',  cb_dem_ttt_pf)
+        Draw.String('', EVT_NONE, c+60,  r, 60, rh, str(d['dem_ttt_qf']),  128, 'q at the and of shearing',  cb_dem_ttt_qf)
+        Draw.String('', EVT_NONE, c+120, r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
+        r -= rh
+        gu.text(c,     r,'Exf');
+        gu.text(c+60,  r,'Eyf');
+        gu.text(c+120, r,'Ezf');
+        r -= rh
+        Draw.String('', EVT_NONE, c,     r, 60, rh, str(d['dem_ttt_exf']), 128, 'Final Ex (strain)', cb_dem_ttt_exf)
+        Draw.String('', EVT_NONE, c+60,  r, 60, rh, str(d['dem_ttt_eyf']), 128, 'Final Ey (strain)', cb_dem_ttt_eyf)
+        Draw.String('', EVT_NONE, c+120, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)', cb_dem_ttt_ezf)
+        r -= rh
+        Draw.Toggle ('pEx', EVT_NONE, c,     r, 60, rh, d['dem_ttt_pex'], 'Prescribed Ex (strain)', cb_dem_ttt_pex)
+        Draw.Toggle ('pEy', EVT_NONE, c+60,  r, 60, rh, d['dem_ttt_pey'], 'Prescribed Ey (strain)', cb_dem_ttt_pey)
+        Draw.Toggle ('pEz', EVT_NONE, c+120, r, 60, rh, d['dem_ttt_pez'], 'Prescribed Ez (strain)', cb_dem_ttt_pez)
+        r -= rh
+        gu.text(c,    r,'timef');
+        gu.text(c+60, r,'dt');
+        gu.text(c+120,r,'dtout');
+        r -= rh
+        Draw.String('', EVT_NONE, c,    r, 60, rh,     str(d['dem_ttt_timef']), 128, 'final time',                cb_dem_ttt_timef)
+        Draw.String('', EVT_NONE, c+60, r, 60, rh,     str(d['dem_ttt_dt']),    128, 'time increment',            cb_dem_ttt_dt)
+        Draw.String('', EVT_NONE, c+120,r, 60, rh,     str(d['dem_ttt_dtout']), 128, 'time increment for output', cb_dem_ttt_dtout)
+        Draw.Toggle ('Render', EVT_NONE, c+180, r, 60, rh, d['dem_ttt_render'],      'Render video ?',            cb_dem_ttt_render)
+        r -= rh
+
+        r -= srg
+        r, c, w = gu.box3_out(W,cg,rh, c,r)
+
+        # ----------------------- DEM -- True Triaxial Test --- Stage 2 -- END
+
+        Draw.Toggle     ('C++',             EVT_NONE,        c,    r, 60,  rh, d['dem_cpp_script'], 'Generate C++ script instead of Python ?', cb_dem_cpp_script)
+        Draw.PushButton ('Generate Script', EVT_DEM_GEN_SCR, c+60, r, 150, rh, 'Generate Script')
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rh
     r -= rg

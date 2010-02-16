@@ -100,8 +100,6 @@ int main(int argc, char **argv) try
     infile >> Tf;           infile.ignore(200,'\n');
     }
 
-
-
     // domain
     TriaxialDomain d;
     d.CamPos = Vec3_t(0, 3*(Lx+Ly+Lz)/3.0, 0); // position of camera
@@ -111,10 +109,6 @@ int main(int argc, char **argv) try
     else if (ptype=="voronoi") d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
     else throw new Fatal("Packing for particle type not implmented yet");
     //d.GenBoundingBox(/*InitialTag*/-2, R, /*Cf*/1.3);
-
-    d.FreeParticles=d.Particles;
-    d.WriteBPY("packing");
-    return 0;
 
     // properties of particles prior the triaxial test
     Dict B;

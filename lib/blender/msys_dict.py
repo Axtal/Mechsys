@@ -84,6 +84,25 @@ def load_dict():
         dict['dem_res']        = 8
         dict['dem_draw_verts'] = True
         dict['dem_draw_edges'] = True
+        dict['dem_iso_pf']     = 5.0
+        dict['dem_iso_timef']  = 50.0
+        dict['dem_iso_dt']     = 0.001
+        dict['dem_iso_dtout']  = 1.0
+        dict['dem_iso_render'] = False
+        dict['dem_ttt_pf']     = 5.0
+        dict['dem_ttt_qf']     = 0.0
+        dict['dem_ttt_thf']    = 30.0
+        dict['dem_ttt_timef']  = 200.0
+        dict['dem_ttt_dt']     = 0.001
+        dict['dem_ttt_dtout']  = 1.0
+        dict['dem_ttt_pex']    = False
+        dict['dem_ttt_pey']    = False
+        dict['dem_ttt_pez']    = True
+        dict['dem_ttt_exf']    = 0.0
+        dict['dem_ttt_eyf']    = 0.0
+        dict['dem_ttt_ezf']    = -0.2
+        dict['dem_ttt_render'] = False
+        dict['dem_cpp_script'] = False
 
         # DEM packings
         dict['dem_pkgs']     = {0:'Spheres', 1:'Spheres HCP', 2:'Voronoi'}

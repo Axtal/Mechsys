@@ -844,6 +844,13 @@ inline void pqt2L (double p, double q, double t, Vec3_t & L, char const * Type="
     else throw new Fatal("pqt2L: Method is not available for invariant Type==%s",Type);
 }
 
+/** Calc principal values given octahedral invariants. */
+inline void pqTh2L (double p, double q, double Th, Vec3_t & L, char const * Type="oct")
+{
+    double t = sin(3.0*Th*M_PI/180.0);
+    pqt2L (p, q, t, L, Type);
+}
+
 #ifdef USE_BOOST_PYTHON
 inline Vec3_t Tup2Vec3 (BPy::tuple const & T3)
 {
@@ -852,6 +859,14 @@ inline Vec3_t Tup2Vec3 (BPy::tuple const & T3)
 
 inline BPy::tuple Pypqt2L (double p, double q, double t, BPy::str const & Type)
 {
+    Vec3_t l;
+    pqt2L (p, q, t, l, BPy::extract<char const *>(Type)());
+    return BPy::make_tuple (l(0), l(1), l(2));
+}
+
+inline BPy::tuple PypqTh2L (double p, double q, double Th, BPy::str const & Type)
+{
+    double t = sin(3.0*Th*M_PI/180.0);
     Vec3_t l;
     pqt2L (p, q, t, l, BPy::extract<char const *>(Type)());
     return BPy::make_tuple (l(0), l(1), l(2));
