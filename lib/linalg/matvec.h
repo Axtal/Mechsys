@@ -918,6 +918,24 @@ inline double M2Phi (double M, char const * Type="oct")
     return asin(sphi)*180.0/Util::PI;
 }
 
+/** Calculate q_failure for given undrained cohesion (cu) */
+inline double cu2qf (double cu, char const * qType="oct", bool psa=false)
+{
+    double coef = (psa ? sqrt(3.0) : 2.0);
+    if      (strcmp(qType,"oct")==0) return sqrt(2.0/3.0)*coef*cu;
+    else if (strcmp(qType,"cam")==0) return coef*cu;
+    else throw new Fatal("cu2qf: Method is not available for invariant qType==%s",qType);
+}
+
+/** Calculate undrained cohesion (cu) for given q_failure */
+inline double qf2cu (double qf, char const * qType="oct", bool psa=false)
+{
+    double coef = (psa ? sqrt(3.0) : 2.0);
+    if      (strcmp(qType,"oct")==0) return qf/(sqrt(2.0/3.0)*coef);
+    else if (strcmp(qType,"cam")==0) return qf/coef;
+    else throw new Fatal("qf2cu: Method is not available for invariant qType==%s",qType);
+}
+
 
 Mat_t Isy_2d (4,4); ///< Idendity of 4th order
 Mat_t Psd_2d (4,4); ///< Projector: sym-dev

@@ -127,10 +127,13 @@ class Plotter:
 
         # 0) q/p, Ed ---------------------------------------------------------------------------
         Y    = Q/P if self.div_by_p else Q
+        imaY = Y.argmax()
         Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
         plot   (Ed, Y, self.dot[0], lw=lwd)
         xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
+        text   (Ed[-1], Y[-1], '%g'%Y[-1])
+        text   (Ed[imaY], Y[imaY], '%g'%Y[imaY])
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
@@ -138,10 +141,13 @@ class Plotter:
         xlabel (r'$\varepsilon_v$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
 
         # 2) p, q ---------------------------------------------------------------------------
+        imaQ = Q.argmax()
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
         axhline (0.0,color='black'); axvline(0.0,color='black')
         plot    (P, Q, self.dot[2], lw=lwd)
         xlabel  (r'$p_{%s}$'%(self.pq_ty),fontsize=fsz);  ylabel(r'$q_{%s}$'%(self.pq_ty),fontsize=fsz);  grid()
+        text    (P[-1], Q[-1], '%g,%g'%(P[-1],Q[-1]))
+        text    (P[imaQ], Q[imaQ], '%g,%g'%(P[imaQ],Q[imaQ]))
         axis    ('equal')
         if self.show_k:
             k = (Q[-1]-Q[0])/(P[-1]-P[0])
@@ -363,6 +369,7 @@ class Plotter:
             sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
             I1,I2,I3 = char_invs(sig+sig0)
             f        = I1*I2 - kmn*I3
+        else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
 
     # Plot node

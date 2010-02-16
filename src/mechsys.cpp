@@ -61,7 +61,13 @@ namespace BPy = boost::python;
 #include <mechsys/dem/domain.h>
 #include <mechsys/dem/particle.h>
 
-// overloadings
+// functions overloadings
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_PHI2M, Phi2M, 1, 2)
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI, M2Phi, 1, 2)
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_CU2QF, cu2qf, 1, 3)
+BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_QF2CU, qf2cu, 1, 3)
+
+// member overloadings
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU,     WriteVTU,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY,     WriteMPY,     1, 3)
@@ -106,6 +112,10 @@ BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
 
 BPy::def("pqt2L",  Pypqt2L);
 BPy::def("pqTh2L", PypqTh2L);
+BPy::def("Phi2M",  Phi2M, FUN_PHI2M());
+BPy::def("M2Phi",  M2Phi, FUN_M2PHI());
+BPy::def("cu2qf",  cu2qf, FUN_CU2QF());
+BPy::def("qf2cu",  qf2cu, FUN_QF2CU());
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
 
