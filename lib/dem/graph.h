@@ -38,8 +38,8 @@ inline void POVHeader (std::ostream & os)
     os << "background {color White} \n";
     os << "light_source{<10,0,0> color White shadowless}  \n";
     os << "light_source{<-10,0,0> color White shadowless}  \n";
-    //os << "light_source{<0,10,0> color White shadowless}  \n";
-    //os << "light_source{<0,-10,0> color White shadowless}  \n";
+    os << "light_source{<0,10,0> color White shadowless}  \n";
+    os << "light_source{<0,-10,0> color White shadowless}  \n";
     os << "light_source{<0,0,10> color White shadowless}  \n";
     os << "light_source{<0,0,-10> color White shadowless}  \n";
 }   

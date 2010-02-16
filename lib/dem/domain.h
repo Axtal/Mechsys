@@ -144,11 +144,12 @@ public:
     void Setup     (double,double);                                                                  ///< For the triaxial test it will measure or set the strains and stresses
 
     //Data
-    double  Vs;       ///< Volume occupied by the grains 
-    Vec3_t  Sig;      ///< Current stress state
-    Vec3_t  DSig;     ///< Total stress increment to be applied by Solve => after 
-    bVec3_t pSig;     ///< Prescribed stress ?
-    Vec3_t  L0;       ///< Initial length of the packing
+    double        Vs;   ///< Volume occupied by the grains
+    Array<double> Vg ;  ///< List of individual volumes for analisis
+    Vec3_t        Sig;  ///< Current stress state
+    Vec3_t        DSig; ///< Total stress increment to be applied by Solve => after
+    bVec3_t       pSig; ///< Prescribed stress ?
+    Vec3_t        L0;   ///< Initial length of the packing
 
 #ifdef USE_BOOST_PYTHON
     void PySetTxTest (BPy::tuple const & Sigf, BPy::tuple const & pEps, BPy::tuple const & dEpsdt)
@@ -809,6 +810,18 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     fne.Printf("%s_energy.res",FileKey);
     std::ofstream fe(fne.CStr());
 
+    //open file for granulometry and writing into it
+    String fng;
+    fng.Printf("%s_granulometry.res",FileKey);
+    std::ofstream fg(fng.CStr());
+    fg << Util::_10_6 << "Volumes" << Util::_8s << "Diameters" << std::endl;
+    for (size_t i=0; i<FreeParticles.Size(); i++)
+    {
+        fg << Util::_10_6 << FreeParticles[i]->V << Util::_8s << 2*FreeParticles[i]->Dmax << std::endl;
+    }
+    fg.close();
+
+
     // solve
     double t0      = Time; // initial time
     size_t idx_out = 0;    // index of output
@@ -926,7 +939,7 @@ inline void Domain::WritePOV (char const * FileKey)
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Gray");
+    for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Red");
     for (size_t i=0; i<TParticles.Size(); i++) TParticles[i]->Draw (of,"Col_Glass_Bluish");
     for (size_t i=0; i<RParticles.Size(); i++) RParticles[i]->Draw (of,"Col_Glass_Bluish");
     for (size_t i=0; i<FParticles.Size(); i++) FParticles[i]->Draw (of,"Col_Glass_Bluish");
@@ -1089,6 +1102,7 @@ inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps
     for (size_t i=0; i<FreeParticles.Size(); i++)
     {
         Vs += FreeParticles[i]->V;
+        Vg.Push(FreeParticles[i]->V);
     }
     // total stress increment
     DSig = Sigf - Sig;
