@@ -111,6 +111,8 @@ EVT_FEM_READSTAGES   = 95 # read stage info from another object
 EVT_DEM_GEN_PKG      = 100 # generate packing
 EVT_DEM_GEN_TTT      = 101 # generate true triaxial packing
 EVT_DEM_GEN_SCR      = 102 # generate script
+EVT_DEM_RUN          = 103 # run simulation
+EVT_DEM_STOP         = 104 # stop simulation
 
 
 # ==================================================================================== Events
@@ -171,7 +173,7 @@ def delete_mesh():
         if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-#@try_catch
+@try_catch
 def button_event(evt):
 
     # ----------------------------------------------------------------------------------- Settings
@@ -315,6 +317,8 @@ def button_event(evt):
     elif evt==EVT_DEM_GEN_PKG: dem.gen_pkg    (False)
     elif evt==EVT_DEM_GEN_TTT: dem.gen_pkg    (True)
     elif evt==EVT_DEM_GEN_SCR: dem.gen_script ()
+    elif evt==EVT_DEM_RUN:     dem.run        ()
+    elif evt==EVT_DEM_STOP:    dem.stop       ()
 
 # ================================================================================= Callbacks
 
@@ -673,6 +677,21 @@ def cb_dem_draw_verts(evt,val): di.set_key ('dem_draw_verts', val)
 def cb_dem_draw_edges(evt,val): di.set_key ('dem_draw_edges', val)
 
 @try_catch
+def cb_dem_Kn (evt,val): di.set_key ('dem_Kn', float(val))
+@try_catch
+def cb_dem_mu (evt,val): di.set_key ('dem_mu', float(val))
+@try_catch
+def cb_dem_Kt (evt,val): di.set_key ('dem_Kt', float(val))
+@try_catch
+def cb_dem_beta (evt,val): di.set_key ('dem_beta', float(val))
+@try_catch
+def cb_dem_Gn (evt,val): di.set_key ('dem_Gn', float(val))
+@try_catch
+def cb_dem_eta (evt,val): di.set_key ('dem_eta', float(val))
+@try_catch
+def cb_dem_Gt (evt,val): di.set_key ('dem_Gt', float(val))
+
+@try_catch
 def cb_dem_iso_pf (evt,val): di.set_key ('dem_iso_pf', float(val))
 @try_catch
 def cb_dem_iso_timef (evt,val): di.set_key ('dem_iso_timef', float(val))
@@ -822,8 +841,8 @@ def gui():
     h_fem           = 5*rh+srg+h_fem_stage+4*rg
     h_dem_pkg       = 8*rh+3*rg
     h_dem_ttt_iso   = 3*rh+2*srg
-    h_dem_ttt_she   = 7*rh+2*srg
-    h_dem_ttt       = 6*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she
+    h_dem_ttt_she   = 5*rh+2*srg
+    h_dem_ttt       = 11*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she
     h_dem           = h_dem_pkg+srg+4*rh+h_dem_ttt
 
     # clear background
@@ -1304,13 +1323,26 @@ def gui():
         gu.caption2(c,r,w,rh,'True Triaxial Test (TTT)')
         r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_ttt)
 
+        gu.text(c,     r,'Kn:'  ); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Kn']),   128, 'Normal stiffness between particles',                   cb_dem_Kn)
+        gu.text(c+120, r,'mu:'  ); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_mu']),   128, 'Microscopic friction coefficient',                     cb_dem_mu)
+        r -= rh
+        gu.text(c,     r,'Kt:'  ); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Kt']),   128, 'Tangential stiffness between particles',               cb_dem_Kt)
+        gu.text(c+120, r,'beta:'); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_beta']), 128, 'Spheres only: rolling stiffness coefficient',          cb_dem_beta)
+        r -= rh
+        gu.text(c,     r,'Gn:'  ); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Gn']),   128, 'Normal dissipative coefficient between particles',     cb_dem_Gn)
+        gu.text(c+120, r,'eta:' ); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_eta']),  128, 'Spheres only: plastic moment coefficient (0 indicates that the rolling resistance will not be used)', cb_dem_eta)
+        r -= rh
+        gu.text(c,     r,'Gt:'  ); Draw.String('', EVT_NONE, c+40, r, 60, rh, str(d['dem_Gt']),   128, 'Tangential dissipative coefficient between particles', cb_dem_Gt)
+        r -= rh
+        r -= rh
+
         # ----------------------- DEM -- True Triaxial Test --- Stage 1
 
         gu.caption3_(c,r,w,rh, 'Stage 1: Isotropic Compression')
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_dem_ttt_iso)
         r -= srg
 
-        gu.text(c, r,'pf:'); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_iso_pf']), 128, 'p at the and of isotropic compression', cb_dem_iso_pf)
+        gu.text(c, r,'pf:'); Draw.String('', EVT_NONE, c+30, r, 60, rh, str(d['dem_iso_pf']), 128, 'p at the and of isotropic compression', cb_dem_iso_pf)
         r -= rh
         gu.text(c,    r,'timef');
         gu.text(c+60, r,'dt');
@@ -1330,25 +1362,17 @@ def gui():
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_dem_ttt_she)
         r -= srg
 
-        gu.text(c,     r,'pf');
-        gu.text(c+60,  r,'qf');
-        gu.text(c+120, r,'thf');
+        gu.text(c,     r,'pf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_pf']),  128, 'p at the and of shearing',  cb_dem_ttt_pf)
+        gu.text(c+110, r,'Exf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_exf']), 128, 'Final Ex (strain)',         cb_dem_ttt_exf)
+        Draw.Toggle     ('pEx:',                  EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pex'],       'Prescribed Ex (strain)',    cb_dem_ttt_pex)
         r -= rh
-        Draw.String('', EVT_NONE, c,     r, 60, rh, str(d['dem_ttt_pf']),  128, 'p at the and of shearing',  cb_dem_ttt_pf)
-        Draw.String('', EVT_NONE, c+60,  r, 60, rh, str(d['dem_ttt_qf']),  128, 'q at the and of shearing',  cb_dem_ttt_qf)
-        Draw.String('', EVT_NONE, c+120, r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
+        gu.text(c,     r,'qf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_qf']),  128, 'q at the and of shearing',  cb_dem_ttt_qf)
+        gu.text(c+110, r,'Eyf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_eyf']), 128, 'Final Ey (strain)',         cb_dem_ttt_eyf)
+        Draw.Toggle     ('pEy:',                  EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pey'],       'Prescribed Ey (strain)',    cb_dem_ttt_pey)
         r -= rh
-        gu.text(c,     r,'Exf');
-        gu.text(c+60,  r,'Eyf');
-        gu.text(c+120, r,'Ezf');
-        r -= rh
-        Draw.String('', EVT_NONE, c,     r, 60, rh, str(d['dem_ttt_exf']), 128, 'Final Ex (strain)', cb_dem_ttt_exf)
-        Draw.String('', EVT_NONE, c+60,  r, 60, rh, str(d['dem_ttt_eyf']), 128, 'Final Ey (strain)', cb_dem_ttt_eyf)
-        Draw.String('', EVT_NONE, c+120, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)', cb_dem_ttt_ezf)
-        r -= rh
-        Draw.Toggle ('pEx', EVT_NONE, c,     r, 60, rh, d['dem_ttt_pex'], 'Prescribed Ex (strain)', cb_dem_ttt_pex)
-        Draw.Toggle ('pEy', EVT_NONE, c+60,  r, 60, rh, d['dem_ttt_pey'], 'Prescribed Ey (strain)', cb_dem_ttt_pey)
-        Draw.Toggle ('pEz', EVT_NONE, c+120, r, 60, rh, d['dem_ttt_pez'], 'Prescribed Ez (strain)', cb_dem_ttt_pez)
+        gu.text(c,     r,'thf:'); Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
+        gu.text(c+110, r,'Ezf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)',         cb_dem_ttt_ezf)
+        Draw.Toggle     ('pEz:',                  EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pez'],       'Prescribed Ez (strain)',    cb_dem_ttt_pez)
         r -= rh
         gu.text(c,    r,'timef');
         gu.text(c+60, r,'dt');
@@ -1365,8 +1389,10 @@ def gui():
 
         # ----------------------- DEM -- True Triaxial Test --- Stage 2 -- END
 
-        Draw.Toggle     ('C++',             EVT_NONE,        c,    r, 60,  rh, d['dem_cpp_script'], 'Generate C++ script instead of Python ?', cb_dem_cpp_script)
-        Draw.PushButton ('Generate Script', EVT_DEM_GEN_SCR, c+60, r, 150, rh, 'Generate Script')
+        Draw.Toggle     ('C++',             EVT_NONE,        c,     r, 60,  rh, d['dem_cpp_script'], 'Generate C++ script instead of Python ?', cb_dem_cpp_script)
+        Draw.PushButton ('Generate Script', EVT_DEM_GEN_SCR, c+60,  r, 120, rh, 'Generate Script')
+        Draw.PushButton ('Run',             EVT_DEM_RUN,     c+180, r, 60,  rh, 'Run simulation')
+        Draw.PushButton ('Stop',            EVT_DEM_STOP,    c+240, r, 60,  rh, 'Stop simulation')
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rh
     r -= rg
