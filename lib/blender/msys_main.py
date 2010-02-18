@@ -103,16 +103,17 @@ EVT_FEM_DELALLEBRY   = 88 # delete all edges boundary
 EVT_FEM_DELALLFBRY   = 89 # delete all faces boundary
 EVT_FEM_DELALLEATT   = 90 # delete all element attributes
 EVT_FEM_RUN          = 91 # run a FE simulation
-EVT_FEM_SCRIPT       = 92 # generate script for FEM 
-EVT_FEM_PARAVIEW     = 93 # view in ParaView
-EVT_FEM_SAVESTAGES   = 94 # save stage info to a new object
-EVT_FEM_READSTAGES   = 95 # read stage info from another object
+EVT_FEM_STOP         = 92 # run a FE simulation
+EVT_FEM_SCRIPT       = 93 # generate script for FEM 
+EVT_FEM_PARAVIEW     = 94 # view in ParaView
+EVT_FEM_CLEAR        = 95 # clear error message
 # DEM
 EVT_DEM_GEN_PKG      = 100 # generate packing
 EVT_DEM_GEN_TTT      = 101 # generate true triaxial packing
 EVT_DEM_GEN_SCR      = 102 # generate script
 EVT_DEM_RUN          = 103 # run simulation
 EVT_DEM_STOP         = 104 # stop simulation
+EVT_DEM_CLEAR        = 105 # clear error message
 
 
 # ==================================================================================== Events
@@ -153,14 +154,17 @@ def event(evt, val):
         if d['gui_inirow']<0: d['gui_inirow'] += 180
         Blender.Window.QRedrawAll()
 
+
 def try_catch(func):
     def wrapper(*arg):
         try: func(*arg)
         except Exception, inst:
             msg = inst.args[0]
             print '[1;34mMechSys[0m: Error: '+'[1;31m'+msg+'[0m'
+            print '>>>>>>>>>>> exception caught by main <<<<<<<<<<<'
             Blender.Draw.PupMenu('ERROR|'+msg)
     return wrapper
+
 
 def delete_mesh():
     obj = di.get_obj()
@@ -168,12 +172,11 @@ def delete_mesh():
         old_msh = bpy.data.objects[obj.properties['msh_name']]
         scn     = bpy.data.scenes.active
         scn.objects.unlink (old_msh)
-        obj.properties.pop('mesh_type')
+        if obj.properties.has_key('msh_type'): obj.properties.pop('msh_type')
         obj.properties.pop('msh_name')
-        if obj.properties.has_key('res'): obj.properties.pop('res')
 
 # Handle button events
-@try_catch
+@try_catch ##################### comment this out to track errors
 def button_event(evt):
 
     # ----------------------------------------------------------------------------------- Settings
@@ -187,7 +190,10 @@ def button_event(evt):
             if result>0:
                 for o in obs:
                     for k, v in o.properties.iteritems():
-                        print '[1;34mMechSys[0m: Object = ', o.name, ' [1;35mDeleted property:[0m ', k, str(v)
+                        print '[1;34mMechSys[0m: Object = ', o.name, ' [1;35mDeleted property:[0m ', k
+                        if k=='msh_name':
+                            old_msh = bpy.data.objects[v]
+                            scn.objects.unlink (old_msh)
                         o.properties.pop(k)
                     for p in o.getAllProperties():
                         print '[1;34mMechSys[0m: Object = ', o.name, ' Deleted property: ', p.name, p.data
@@ -257,11 +263,11 @@ def button_event(evt):
     elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
     elif evt==EVT_MESH_GENSTRU:
         obj  = di.get_obj()
-        mesh = me.gen_struct_mesh(False,None,True)
+        mesh = me.gen_struct_mesh ()
         me.add_mesh (obj, mesh, 'struct')
     elif evt==EVT_MESH_GENSTRUS:
         obj = di.get_obj()
-        txt = me.gen_struct_mesh(True,None,True,di.key('smsh_cpp'))
+        txt = me.gen_struct_mesh(True,None,di.key('smsh_cpp'))
         if not di.key('smsh_cpp'):
             txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
             txt.write('me.add_mesh (obj, mesh, "struct")\n')
@@ -306,11 +312,13 @@ def button_event(evt):
         sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
         di.props_del_all_fem (sids, 'eatts')
 
-    elif evt==EVT_FEM_RUN:        fem.run_analysis         ()
-    elif evt==EVT_FEM_SCRIPT:     fem.run_analysis         (True)
-    elif evt==EVT_FEM_PARAVIEW:   fem.paraview             ()
-    elif evt==EVT_FEM_SAVESTAGES: fem.save_stage_mats_info ()
-    elif evt==EVT_FEM_READSTAGES: fem.read_stage_mats_info ()
+    elif evt==EVT_FEM_SCRIPT:   fem.gen_script ()
+    elif evt==EVT_FEM_RUN:      fem.run        ()
+    elif evt==EVT_FEM_STOP:     fem.stop       ()
+    elif evt==EVT_FEM_PARAVIEW: fem.paraview   ()
+    elif evt==EVT_FEM_CLEAR:
+        di.key('fem_fatal').value = 0
+        Blender.Window.QRedrawAll()
 
     # ----------------------------------------------------------------------------------- DEM 
 
@@ -319,6 +327,9 @@ def button_event(evt):
     elif evt==EVT_DEM_GEN_SCR: dem.gen_script ()
     elif evt==EVT_DEM_RUN:     dem.run        ()
     elif evt==EVT_DEM_STOP:    dem.stop       ()
+    elif evt==EVT_DEM_CLEAR:
+        di.key('dem_fatal').value = 0
+        Blender.Window.QRedrawAll()
 
 # ================================================================================= Callbacks
 
@@ -428,10 +439,10 @@ def cb_iso2(evt,val):
         di.props_set_val('iso2', val)
 @try_catch
 def cb_frame (evt,val):
-    if val==1: di.props_set_val('mesh_type', 'frame')
+    if val==1: di.props_set_val('msh_type', 'frame')
     else:
         obj = di.get_obj()
-        if obj.properties.has_key('mesh_type'): obj.properties.pop('mesh_type')
+        if obj.properties.has_key('msh_type'): obj.properties.pop('msh_type')
         Blender.Window.QRedrawAll()
 @try_catch
 def cb_vtag  (evt,val): di.set_key      ('newvtag', val)
@@ -618,14 +629,12 @@ def cb_eatt_del  (evt,val): di.props_del_fem_all_stg ('eatts', evt-EVT_INC)
 # ---------------------------------- FEM
 
 @try_catch
-def cb_fem_fullsc(evt,val): di.set_key('fullsc', val)
-@try_catch
 def cb_fem_cpp   (evt,val): di.set_key('fem_cpp', val)
 
 # ---------------------------------- FEM -- stages
 
 @try_catch
-def cb_fem_prob  (evt,val): di.set_key ('fem_prob', val-1)
+def cb_fem_prob  (evt,val): di.props_set_val ('pty', val-1)
 @try_catch
 def cb_fem_stage (evt,val):
     obj = di.get_obj()
@@ -762,12 +771,13 @@ def gui():
     ebrys    = {}
     fbrys    = {}
     eatts    = {}
+    pty      = 0
     if obj!=None:
         if obj.properties.has_key('over'):  markover   = True
         if obj.properties.has_key('is3d'):  is3d       = obj.properties['is3d']
         if obj.properties.has_key('iso2'):  iso2       = obj.properties['iso2']
-        if obj.properties.has_key('mesh_type'):
-            if obj.properties['mesh_type']=='frame': isframe = True
+        if obj.properties.has_key('msh_type'):
+            if obj.properties['msh_type']=='frame': isframe = True
         if obj.properties.has_key('blks'):    blks     = obj.properties['blks']
         if obj.properties.has_key('minang'):  minang   = obj.properties['minang']
         if obj.properties.has_key('maxarea'): maxarea  = obj.properties['maxarea']
@@ -784,10 +794,7 @@ def gui():
             if obj.properties[stg].has_key('ebrys'): ebrys = obj.properties[stg]['ebrys']
             if obj.properties[stg].has_key('fbrys'): fbrys = obj.properties[stg]['fbrys']
             if obj.properties[stg].has_key('eatts'): eatts = obj.properties[stg]['eatts']
-
-    # problem type
-    if isframe: di.set_key('fem_prob', 0)
-    pty = d['fem_prob']
+        if obj.properties.has_key('pty'):  pty = obj.properties['pty']
 
     # materials menu
     matmnu   = 'Materials %t'
@@ -838,12 +845,13 @@ def gui():
     h_fem_fbrys     = rh+srg+rh*len(fbrys) if len(fbrys)>0 else 0
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 6*rh+2*rg+5*srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
-    h_fem           = 5*rh+srg+h_fem_stage+4*rg
+    h_fem           = 5*rh+h_fem_stage+4*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
     h_dem_pkg       = 8*rh+3*rg
+    h_dem_cte       = 5*rh+srg
     h_dem_ttt_iso   = 3*rh+2*srg
     h_dem_ttt_she   = 5*rh+2*srg
-    h_dem_ttt       = 11*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she
-    h_dem           = h_dem_pkg+srg+4*rh+h_dem_ttt
+    h_dem_ttt       = 6*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she + (rh if (d['dem_running'].value or d['dem_fatal'].value) else 0)
+    h_dem           = h_dem_pkg+h_dem_cte+srg+6*rh+h_dem_ttt
 
     # clear background
     gu.background()
@@ -992,17 +1000,17 @@ def gui():
 
         gu.caption3(c,r,w,rh, 'Regions', EVT_MESH_ADDREG,EVT_MESH_DELALLREGS)
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_msh_unst_regs)
-        if len(regs)>0: gu.text(c,r,'     ID:Tag      max area        X             Y            Z')
+        if len(regs)>0: gu.text(c,r,'  ID:Tag     Amax        X           Y          Z')
         else: r += (rh+srg)
         for k, v in regs.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 80, rh, int(v[0]),-1000,-1,'Region tag',                  cb_regs_tag)
-            Draw.String     ('',         EVT_INC+i, c+ 80, r, 60, rh, '%g'%v[1],   32,   'Max area (-1 => use default)',cb_regs_maxarea)
-            Draw.String     ('',         EVT_INC+i, c+140, r, 60, rh, '%g'%v[2],   32,   'X of the region',             cb_regs_setx)
-            Draw.String     ('',         EVT_INC+i, c+200, r, 60, rh, '%g'%v[3],   32,   'Y of the region',             cb_regs_sety)
-            Draw.String     ('',         EVT_INC+i, c+260, r, 60, rh, '%g'%v[4],   32,   'Z of the region',             cb_regs_setz)
-            Draw.PushButton ('Del',      EVT_INC+i, c+320, r, 40, rh,                    'Delete this row',             cb_regs_del)
+            Draw.Number     (str(i)+':', EVT_INC+i, c,     r, 60, rh, int(v[0]),-1000,-1,'Region tag',                  cb_regs_tag)
+            Draw.String     ('',         EVT_INC+i, c+ 60, r, 50, rh, '%g'%v[1],   32,   'Max area (-1 => use default)',cb_regs_maxarea)
+            Draw.String     ('',         EVT_INC+i, c+110, r, 50, rh, '%g'%v[2],   32,   'X of the region',             cb_regs_setx)
+            Draw.String     ('',         EVT_INC+i, c+160, r, 50, rh, '%g'%v[3],   32,   'Y of the region',             cb_regs_sety)
+            Draw.String     ('',         EVT_INC+i, c+210, r, 50, rh, '%g'%v[4],   32,   'Z of the region',             cb_regs_setz)
+            Draw.PushButton ('Del',      EVT_INC+i, c+260, r, 30, rh,                    'Delete this row',             cb_regs_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -1085,30 +1093,30 @@ def gui():
             Draw.String     ('',          EVT_INC+tid, c+120, r, 120, rh, des, 32,     'Material name/description',           cb_mat_setname)
             Draw.PushButton ('Delete',    EVT_INC+i,   c+240, r,  60, rh,              'Delete this row',                     cb_mat_del)
             r -= rh
-            if int(v[0])==0: # Rod
+            if d['mdl'][int(v[0])]=='Rod': # Rod
                 Draw.String ('E = ', EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',        cb_mat_setE)
                 Draw.String ('A = ', EVT_INC+i, c+100, r, 100, rh, '%g'%v[3], 32, 'A: Cross-sectional area', cb_mat_setA)
-            elif int(v[0])==1: # Beam
+            elif d['mdl'][int(v[0])]=='Beam': # Beam
                 Draw.String ('E = ',   EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',             cb_mat_setE)
                 Draw.String ('A = ',   EVT_INC+i, c+100, r, 100, rh, '%g'%v[3], 32, 'A: Cross-sectional area',      cb_mat_setA)
                 Draw.String ('Izz = ', EVT_INC+i, c+200, r, 100, rh, '%g'%v[4], 32, 'Izz: Cross-sectional inertia', cb_mat_setIzz)
-            elif int(v[0])==2: # LinElastic
+            elif d['mdl'][int(v[0])]=='LinElastic': # LinElastic
                 Draw.String ('E = ',  EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',  cb_mat_setE)
                 Draw.String ('nu = ', EVT_INC+i, c+100, r, 100, rh, '%g'%v[5], 32, 'nu: Poisson ratio', cb_mat_setnu)
-            elif int(v[0])==3: # ElastoPlastic
+            elif d['mdl'][int(v[0])]=='ElastoPlastic': # ElastoPlastic
                 Draw.String ('E = ',     EVT_INC+i, c,     r, 100, rh, '%g'%v[2], 32, 'E: Young modulus',      cb_mat_setE)
                 Draw.String ('nu = ',    EVT_INC+i, c+100, r, 100, rh, '%g'%v[5], 32, 'nu: Poisson ratio',     cb_mat_setnu)
                 Draw.Menu   (d['fcmnu'], EVT_INC+i, c+200, r, 100, rh, int(v[6])+1,   'fc: failure criterion', cb_mat_setfc)
                 r -= rh
                 Draw.String ('sY = ', EVT_INC+i, c,     r, 100, rh, '%d'%v[7], 32, 'sY: Yield stress',       cb_mat_setsY)
                 Draw.String ('cu = ', EVT_INC+i, c+100, r, 100, rh, '%d'%v[8], 32, 'cu: Undrained cohesion', cb_mat_setcu)
-            elif int(v[0])==4: # CamClay
+            elif d['mdl'][int(v[0])]=='CamClay': # CamClay
                 Draw.String ('lam = ', EVT_INC+i, c,     r, 100, rh, '%g'%v[ 9], 32, 'lam: Lambda',       cb_mat_setlam)
                 Draw.String ('kap = ', EVT_INC+i, c+100, r, 100, rh, '%g'%v[10], 32, 'kap: Kappa',        cb_mat_setkap)
                 Draw.String ('nu = ',  EVT_INC+i, c+200, r, 100, rh, '%g'%v[ 5], 32, 'nu: Poisson ratio', cb_mat_setnu)
                 r -= rh
                 Draw.String ('phi = ', EVT_INC+i, c, r, 100, rh, '%g'%v[11], 32, 'phi: Shear angle at critical state (compression/degrees)', cb_mat_setphi)
-            if int(v[0])==5: # LinFlow
+            if d['mdl'][int(v[0])]=='LinFlow': # LinFlow
                 Draw.String ('k = ', EVT_INC+i, c, r, 100, rh, '%g'%v[12], 32, 'k: Diffusion coefficient', cb_mat_setk)
             r -= srg
         r -= srg
@@ -1127,7 +1135,7 @@ def gui():
         r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_fem)
         gu.text (c,r,"Problem:")
-        Draw.Menu (d['ptymnu'], EVT_NONE, c+80, r, 200, rh, d['fem_prob']+1, 'Problem type', cb_fem_prob)
+        Draw.Menu (d['ptymnu'], EVT_NONE, c+80, r, 200, rh, pty+1, 'Problem type', cb_fem_prob)
         r -= rh
         r -= rg
 
@@ -1171,7 +1179,7 @@ def gui():
                         break
                 featts = obj.properties[fstg]['eatts'] if obj.properties[fstg].has_key('eatts') else {} # first stage eatts
             etags = [(int(v[0]),k) for k, v in eatts.iteritems()]
-            etags.sort(reverse=True)
+            #etags.sort(reverse=True)
             for tag, k in etags:
                 v  = eatts[k]
                 r -= rh
@@ -1187,12 +1195,12 @@ def gui():
                     Draw.Toggle     ('Is Active',  EVT_INC+i, c+160, r, 100, rh, int(v[6]),    'Active',          cb_eatt_isact)
                 else:
                     tag   =                str(int(featts[k][0]))
-                    gepb  = d['pty2gepb'][pty][int(featts[k][2])]
+                    geom  = d['pty2geom'][pty][int(featts[k][2])]
                     gty   = d['pty2gty'] [pty][int(featts[k][3])]
                     mat   = matnames          [int(featts[k][4])] if matnames.has_key(int(featts[k][4])) else ''
                     thick =                    str(featts[k][5])
                     gu.label_   (tag,                     c,  r-rh,  60, 2*rh)
-                    gu.label    (gepb,                    c+ 60, r,  70,   rh)
+                    gu.label    (geom,                    c+ 60, r,  70,   rh)
                     gu.label    (gty,                     c+130, r,  60,   rh)
                     gu.label    (thick,                   c+190, r,  70,   rh)
                     r -= rh
@@ -1228,7 +1236,7 @@ def gui():
             if len(ebrys)>0: gu.text(c,r,'       Tag         Key         Value')
             else: r += (rh+srg)
             etags = [(int(v[0]),k) for k, v in ebrys.iteritems()]
-            etags.sort(reverse=True)
+            #etags.sort(reverse=True)
             for tag, k in etags:
                 v  = ebrys[k]
                 r -= rh
@@ -1248,7 +1256,7 @@ def gui():
             if len(fbrys)>0: gu.text(c,r,'       Tag         Key         Value')
             else: r += (rh+srg)
             ftags = [(int(v[0]),k) for k, v in fbrys.iteritems()]
-            ftags.sort(reverse=True)
+            #ftags.sort(reverse=True)
             for tag, k in ftags:
                 v   = fbrys[k]
                 r  -= rh
@@ -1265,17 +1273,21 @@ def gui():
         else: r -= rh
 
         # ----------------------- FEM -- END
-        r -= rg
-        Draw.PushButton ('Save stage/mats info', EVT_FEM_SAVESTAGES, c,     r, 160, rh, 'Save stage and materials information to a new object')
-        Draw.PushButton ('Read stage/mats info', EVT_FEM_READSTAGES, c+160, r, 160, rh, 'Read stage and materials information from another object')
         r -= rh
-        gu.text (c,r,'Script:')
-        Draw.Toggle     ('Mesh+FEM (full)', EVT_NONE,       c+50,  r, 110, rh, d['fullsc'], 'Generate full script (including mesh setting up)', cb_fem_fullsc)
-        Draw.Toggle     ('C++',             EVT_NONE,       c+160, r,  50, rh, d['fem_cpp'], 'Generate C++ script', cb_fem_cpp)
-        Draw.PushButton ('Write script',    EVT_FEM_SCRIPT, c+210, r, 110, rh, 'Generate script for FEM')
+        Draw.Toggle     ('C++',             EVT_NONE,       c,     r, 60,  rh, d['fem_cpp'], 'Generate C++ script instead of Python ?', cb_fem_cpp)
+        Draw.PushButton ('Generate Script', EVT_FEM_SCRIPT, c+60,  r, 120, rh, 'Generate Script for FE simulation')
+        Draw.PushButton ('Run',             EVT_FEM_RUN,    c+180, r, 60,  rh, 'Run simulation')
+        Draw.PushButton ('Stop',            EVT_FEM_STOP,   c+240, r, 60,  rh, 'Stop simulation')
+        if d['fem_running'].value:
+            r -= rh
+            gu.text (c, r, 'Simulation running ....................................................')
+        if d['fem_fatal'].value:
+            r -= rh
+            gu.text (c, r, 'Simulation FAILED (check terminal)')
+            Draw.PushButton ('clr', EVT_FEM_CLEAR, c+240, r, 60,  rh, 'Clear error message')
         r -= rh
-        Draw.PushButton ('Run analysis',     EVT_FEM_RUN,      c,     r, 160, rh, 'Run a FE analysis directly (without script)')
-        Draw.PushButton ('View in ParaView', EVT_FEM_PARAVIEW, c+160, r, 160, rh, 'View results in ParaView')
+        Draw.PushButton ('View results in ParaView', EVT_FEM_PARAVIEW, c, r, 180, rh, 'View results in ParaView')
+
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rg
 
@@ -1317,11 +1329,11 @@ def gui():
 
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
 
-        # ----------------------- DEM -- True Triaxial Test
+        # ----------------------- DEM -- constants
 
         r -= rh
-        gu.caption2(c,r,w,rh,'True Triaxial Test (TTT)')
-        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_ttt)
+        gu.caption2(c,r,w,rh,'Internal constants')
+        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_cte)
 
         gu.text(c,     r,'Kn:'  ); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Kn']),   128, 'Normal stiffness between particles',                   cb_dem_Kn)
         gu.text(c+120, r,'mu:'  ); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_mu']),   128, 'Microscopic friction coefficient',                     cb_dem_mu)
@@ -1334,7 +1346,13 @@ def gui():
         r -= rh
         gu.text(c,     r,'Gt:'  ); Draw.String('', EVT_NONE, c+40, r, 60, rh, str(d['dem_Gt']),   128, 'Tangential dissipative coefficient between particles', cb_dem_Gt)
         r -= rh
-        r -= rh
+
+        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
+
+        # ----------------------- DEM -- True Triaxial Test
+
+        gu.caption2(c,r,w,rh,'True Triaxial Test (TTT)')
+        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_ttt)
 
         # ----------------------- DEM -- True Triaxial Test --- Stage 1
 
@@ -1393,6 +1411,15 @@ def gui():
         Draw.PushButton ('Generate Script', EVT_DEM_GEN_SCR, c+60,  r, 120, rh, 'Generate Script')
         Draw.PushButton ('Run',             EVT_DEM_RUN,     c+180, r, 60,  rh, 'Run simulation')
         Draw.PushButton ('Stop',            EVT_DEM_STOP,    c+240, r, 60,  rh, 'Stop simulation')
+        if d['dem_running'].value:
+            r -= rh
+            gu.text (c, r, 'Simulation running ....................................................')
+        if d['dem_fatal'].value:
+            r -= rh
+            gu.text (c, r, 'Simulation FAILED (check terminal)')
+            Draw.PushButton ('clr', EVT_DEM_CLEAR, c+240, r, 60,  rh, 'Clear error message')
+
+        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rh
     r -= rg

@@ -160,22 +160,24 @@ if di.key('show_props'):
                             Draw.Text         (str(v))
                             if obj.properties.has_key(stg):
                                 if obj.properties[stg].has_key('ebrys'):
+                                    pty = obj.properties['pty']
                                     for m, n in obj.properties[stg]['ebrys'].iteritems():
                                         if int(n[0])==v:
                                             val = sgn(n[2])*0.1*s
                                             pos = [msh.edges[eid].v1.co + c*dP for c in [0.0,0.25,0.5,0.75,1.0]]
-                                            if di.key('dfv')[n[1]]=='fy':
+                                            dfv = di.key('pty2Fdfv')[pty][n[1]]
+                                            if dfv=='qy':
                                                 L = 0.05*s # arrow length
                                                 h = 0.4*L  # tip height
                                                 if n[2]<0:
                                                     for p in pos: draw_arrow_2d (p[0],p[1]+L, 0.0,-L, h)
                                                 else:
                                                     for p in pos: draw_arrow_2d (p[0],p[1], 0.0,L, h)
-                                            if di.key('dfv')[n[1]]=='fx':
+                                            if dfv=='qx':
                                                 for p in pos: draw_arrow_2d (p[0],p[1], val,0.0, 0.05*s)
-                                            if di.key('dfv')[n[1]]=='ux':
+                                            if dfv=='ux':
                                                 for p in pos: draw_xfix_2d  (p[0],p[1], 0.01*s, 0.005*s)
-                                            if di.key('dfv')[n[1]]=='uy':
+                                            if dfv=='uy':
                                                 for p in pos: draw_yfix_2d  (p[0],p[1], 0.01*s, 0.005*s)
                                             break
 
@@ -256,7 +258,7 @@ if di.key('show_props'):
                             Draw.Text         (k+'('+str(int(v[0]))+')')
 
                 # draw linear elements
-                if obj.properties.has_key('lines') and obj.properties.has_key('mesh_type'):
+                if obj.properties.has_key('lines') and obj.properties.has_key('msh_type'):
                     msh_obj = di.get_msh_obj (obj, False)
                     if msh_obj!=None:
                         msh = msh_obj.getData(mesh=1)

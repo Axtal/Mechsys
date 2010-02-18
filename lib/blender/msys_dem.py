@@ -40,8 +40,8 @@ def gen_pkg(is_ttt):
     dom.GetParticles (P)
     X, Y, D = [], [], []
     dom.GetGSD (X, Y, D)
-    print X
-    print Y
+    print 'GSD X = ', X
+    print 'GSD Y = ', Y
     add_particles(P,d['dem_res'],d['dem_draw_verts'],d['dem_draw_edges'])
     if edm: Blender.Window.EditMode(1)
     Blender.Window.QRedrawAll()
@@ -144,7 +144,7 @@ def gen_script():
         txt.write('    dom.SetTxTest (ttt_sigf, ttt_peps, ttt_depsdt);\n')
         txt.write('    dom.Solve     (ttt_timef, ttt_dt, ttt_dtout, "ttt_shearing", ttt_render);\n')
 
-        # bottom
+        # footer
         txt.write ('\n    return 0;\n')
         txt.write ('}\n')
         txt.write ('MECHSYS_CATCH\n')
@@ -298,67 +298,82 @@ def add_particles(P,res,draw_verts,draw_edges):
         for o in objs: scn.objects.unlink(o)
 
 
-def run_simulation():
-    d = di.load_dict()
-    print "\n#############################  running simulation  #################################\n"
+def run_simulation(running, fatal):
+    try:
+        d = di.load_dict()
 
-    # load MechSys
-    from mechsys import *
+        # load MechSys
+        from mechsys import *
 
-    # domain
-    dom = DEM_TTTDomain()
-    prp = Dict()
-    prp.Set (-1, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    prp.Set (-2, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    prp.Set (-3, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    prp.Set (-4, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    prp.Set (-5, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    prp.Set (-6, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    prp.Set (-7, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    dom.SetProps (prp)
+        # domain
+        dom = DEM_TTTDomain()
+        prp = Dict()
+        prp.Set (-1, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        prp.Set (-2, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        prp.Set (-3, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        prp.Set (-4, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        prp.Set (-5, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        prp.Set (-6, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        prp.Set (-7, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        dom.SetProps (prp)
 
-    # generate particles
-    if d['dem_pkg']==0: # Spheres
-        dom.GenSpheres (-1, d['dem_Lx'],d['dem_Nx'],d['dem_rho'], "Normal", d['dem_seed'],d['dem_prob'])
-    elif d['dem_pkg']==1: # Spheres HCP
-        dom.GenSpheres (-1, d['dem_Lx'],d['dem_Nx'],d['dem_rho'], "HCP", d['dem_seed'],d['dem_prob'])
-    elif d['dem_pkg']==2: # Voronoi
-        dom.AddVoroPack (-1, d['dem_R'],d['dem_Lx'],d['dem_Ly'],d['dem_Lz'],d['dem_Nx'],d['dem_Ny'],d['dem_Nz'],d['dem_rho'], True, d['dem_seed'],d['dem_prob'])
+        # generate particles
+        if d['dem_pkg']==0: # Spheres
+            dom.GenSpheres (-1, d['dem_Lx'],d['dem_Nx'],d['dem_rho'], "Normal", d['dem_seed'],d['dem_prob'])
+        elif d['dem_pkg']==1: # Spheres HCP
+            dom.GenSpheres (-1, d['dem_Lx'],d['dem_Nx'],d['dem_rho'], "HCP", d['dem_seed'],d['dem_prob'])
+        elif d['dem_pkg']==2: # Voronoi
+            dom.AddVoroPack (-1, d['dem_R'],d['dem_Lx'],d['dem_Ly'],d['dem_Lz'],d['dem_Nx'],d['dem_Ny'],d['dem_Nz'],d['dem_rho'], True, d['dem_seed'],d['dem_prob'])
 
-    # generate bounding box
-    dom.GenBoundingBox (-2, d['dem_R'],1.2)
+        # generate bounding box
+        dom.GenBoundingBox (-2, d['dem_R'],1.2)
 
-    # stage 1: isotropic compresssion
-    iso_sigf   = (-d['dem_iso_pf'], -d['dem_iso_pf'], -d['dem_iso_pf']) # final stress state
-    iso_peps   = (False, False, False)       # prescribed strain rates ?
-    iso_depsdt = (0.0, 0.0, 0.0)             # strain rate
-    dom.ResetEps  ()
-    dom.SetTxTest (iso_sigf, iso_peps, iso_depsdt)
-    dom.Solve     (d['dem_iso_timef']/2.0, d['dem_iso_dt'], d['dem_iso_dtout'], "ttt_isocomp_a", d['dem_iso_render'])
-    dom.SetTxTest (iso_sigf, iso_peps, iso_depsdt)
-    dom.Solve     (d['dem_iso_timef'],     d['dem_iso_dt'], d['dem_iso_dtout'], "ttt_isocomp_b", d['dem_iso_render'])
+        # stage 1: isotropic compresssion
+        iso_sigf   = (-d['dem_iso_pf'], -d['dem_iso_pf'], -d['dem_iso_pf']) # final stress state
+        iso_peps   = (False, False, False)       # prescribed strain rates ?
+        iso_depsdt = (0.0, 0.0, 0.0)             # strain rate
+        dom.ResetEps  ()
+        dom.SetTxTest (iso_sigf, iso_peps, iso_depsdt)
+        dom.Solve     (d['dem_iso_timef']/2.0, d['dem_iso_dt'], d['dem_iso_dtout'], "ttt_isocomp_a", d['dem_iso_render'])
+        dom.SetTxTest (iso_sigf, iso_peps, iso_depsdt)
+        dom.Solve     (d['dem_iso_timef'],     d['dem_iso_dt'], d['dem_iso_dtout'], "ttt_isocomp_b", d['dem_iso_render'])
 
-    # stage 2: triaxial test
-    prp.Set (-1, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":d['dem_mu'], "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-    ttt_sigf   = pqTh2L (d['dem_ttt_pf'], d['dem_ttt_qf'], d['dem_ttt_thf'], "cam")
-    ttt_peps   = (d['dem_ttt_pex'], d['dem_ttt_pey'], d['dem_ttt_pez'])
-    ttt_depsdt = (d['dem_ttt_exf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_eyf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_ezf']/(d['dem_ttt_timef']-d['dem_iso_timef']))
-    dom.SetProps  (prp)
-    dom.ResetEps  ()
-    dom.SetTxTest (ttt_sigf, ttt_peps, ttt_depsdt)
-    dom.Solve     (d['dem_ttt_timef'], d['dem_ttt_dt'], d['dem_ttt_dtout'], "ttt_shearing", d['dem_ttt_render'])
+        # stage 2: triaxial test
+        prp.Set (-1, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":d['dem_mu'], "Beta":d['dem_beta'], "Eta":d['dem_eta']})
+        ttt_sigf   = pqTh2L (d['dem_ttt_pf'], d['dem_ttt_qf'], d['dem_ttt_thf'], "cam")
+        ttt_peps   = (d['dem_ttt_pex'], d['dem_ttt_pey'], d['dem_ttt_pez'])
+        ttt_depsdt = (d['dem_ttt_exf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_eyf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_ezf']/(d['dem_ttt_timef']-d['dem_iso_timef']))
+        dom.SetProps  (prp)
+        dom.ResetEps  ()
+        dom.SetTxTest (ttt_sigf, ttt_peps, ttt_depsdt)
+        dom.Solve     (d['dem_ttt_timef'], d['dem_ttt_dt'], d['dem_ttt_dtout'], "ttt_shearing", d['dem_ttt_render'])
+
+        # notify parent that we have finished
+        running.value = 0
+
+    except Exception, inst:
+        print '[1;34mMechSys[0m: Error: '+'[1;31m'+inst.args[0]+'[0m'
+        print '>>>>>>>>>>> exception caught by msys_dem.run_simulation <<<<<<<<<<<'
+        running.value = 0
+        fatal  .value = 1
 
 
 def run():
     d = di.load_dict()
-    if d['dem_process']: raise Exception('Another simulation is already running')
-    d['dem_process'] = Process(target=run_simulation)
+    if d['dem_running'].value: raise Exception('Another DEM simulation is already running')
+    d['dem_running'].value = 1
+    d['dem_fatal']  .value = 0
+    d['dem_process'] = Process(target=run_simulation, args=(d['dem_running'],d['dem_fatal']))
+    print "\n#############################  DEM: running simulation  #################################\n"
+    Blender.Window.QRedrawAll()
     d['dem_process'].start()
+
 
 def stop():
     d = di.load_dict()
-    if d['dem_process']:
+    if d['dem_running'].value:
         d['dem_process'].terminate()
-        d['dem_process'] = None
-        print "\n#############################  simulation stoped  ##################################\n"
-    else: raise Exception('There is no simulation running')
+        d['dem_running'].value = 0
+        print "\n#############################  DEM: simulation stoped  ##################################\n"
+        Blender.Window.QRedrawAll()
+    else: raise Exception('There is no DEM simulation running')

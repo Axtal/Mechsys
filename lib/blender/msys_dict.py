@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+from   multiprocessing import Value
 import Blender
 import bpy
 import string
@@ -67,8 +68,10 @@ def load_dict():
         # FEM
         dict['fem_prob']      = 0
         dict['fem_stage']     = 0     # stage ID
-        dict['fullsc']        = False # generate full script (for FEA)
         dict['fem_cpp']       = False # generate C++ script
+        dict['fem_process']   = None
+        dict['fem_running']   = Value('i',0)
+        dict['fem_fatal']     = Value('i',0)
         # DEM
         dict['dem_Lx']         = 4.0
         dict['dem_Ly']         = 4.0
@@ -111,6 +114,8 @@ def load_dict():
         dict['dem_ttt_render'] = False
         dict['dem_cpp_script'] = False
         dict['dem_process']    = None
+        dict['dem_running']    = Value('i',0)
+        dict['dem_fatal']      = Value('i',0)
 
         # DEM packings
         dict['dem_pkgs']     = {0:'Spheres', 1:'Spheres HCP', 2:'Voronoi'}
@@ -145,7 +150,7 @@ def load_dict():
                 1:'E/F vars %t|flux %x2|conv %x1' }                                               # Flow
 
         # Problem/geometry
-        dict['pty2gepb'] = { # problem type to prob/geom type
+        dict['pty2geom'] = { # problem type to geom type
                 0:{0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20', 8:'Rod', 9:'Beam' }, # Equilib
                 1:{0:'Tri3', 1:'Tri6', 2:'Quad4', 3:'Quad8', 4:'Tet4', 5:'Tet10', 6:'Hex8', 7:'Hex20' } }                   # Flow
 
@@ -161,28 +166,6 @@ def load_dict():
         dict['pty2gmnu'] = {
                 0:'Geometry type %t|fra %x5|d3d %x4|axs %x3|psa %x2|pse %x1',
                 1:'Geometry type %t|d3d %x2|d2d %x1' }
-
-        # VTK Cell Type (tentative mapping)
-        dict['vtk2ety'] = {  5:  0,   # VTK_TRIANGLE             => Tri3
-                             9:  2,   # VTK_QUAD                 => Quad4
-                            10:  4,   # VTK_TETRA                => Tet4
-                            12:  6,   # VTK_HEXAHEDRON           => Hex8
-                            22:  1,   # VTK_QUADRATIC_TRIANGLE   => Tri6
-                            23:  3,   # VTK_QUADRATIC_QUAD       => Quad8
-                            24:  5,   # VTK_QUADRATIC_TETRA      => Tet10
-                            25:  7,   # VTK_QUADRATIC_HEXAHEDRON => Hex20
-                             3:  9 }  # VTK_LINE                 => Lin2
-
-        # VTK Problem Type (tentative mapping)
-        dict['vtk2pty'] = {  5: 1,   # VTK_TRIANGLE             => PStrain
-                             9: 1,   # VTK_QUAD                 => PStrain
-                            10: 0,   # VTK_TETRA                => Equilib
-                            12: 0,   # VTK_HEXAHEDRON           => Equilib
-                            22: 1,   # VTK_QUADRATIC_TRIANGLE   => PStrain
-                            23: 1,   # VTK_QUADRATIC_QUAD       => PStrain
-                            24: 0,   # VTK_QUADRATIC_TETRA      => Equilib
-                            25: 0,   # VTK_QUADRATIC_HEXAHEDRON => Equilib
-                             3: 0 }  # VTK_LINE                 => Equilib
 
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
@@ -205,11 +188,11 @@ def key(key):
 
 def get_msh_obj(obj,with_error=True):
     msh_obj = None
-    if obj.properties.has_key('mesh_type'): mesh_type = obj.properties['mesh_type']
+    if obj.properties.has_key('msh_type'): msh_type = obj.properties['msh_type']
     else:
         if with_error: raise Exception('Please, generate mesh first or set "Frame mesh" toggle')
         else: return msh_obj
-    if mesh_type=='frame': msh_obj = obj
+    if msh_type=='frame': msh_obj = obj
     else:
         if obj.properties.has_key('msh_name'): msh_obj = bpy.data.objects[obj.properties['msh_name']]
         else:
@@ -303,7 +286,7 @@ def new_mat_props():
              1000.0,    #   2:  E   -- Young (LinElastic)
                 1.0,    #   3:  A   -- Beam: Area
                 1.0,    #   4:  Izz -- Beam: Inertia
-                0.3,    #   5:  nu  -- Poisson (LinElastic)
+               0.25,    #   5:  nu  -- Poisson (LinElastic)
                   0,    #   6:  fc  -- Failure criterion (ElastoPlastic)
                 0.0,    #   7:  sY  -- Yield stress (ElastoPlastic)
                -1.0,    #   8:  cu  -- Undrained cohesion (ElastoPlastic)
@@ -317,11 +300,11 @@ def new_nbry_props():  return [-100, 0, 0.0]           # tag, key, val
 def new_ebry_props():  return [-10,  0, 0.0]           # tag, key, val
 def new_fbry_props():  return [-10,  0, 0.0]           # tag, key, val
 def new_eatt_props():  return [ -1,    # 0: tag
-                                 0,    # 1: prob
-                                 0,    # 2: geom/prob
-                                 0,    # 3: gty
+                                 0,    # 1: empty
+                                 0,    # 2: geom/prob: Beam, Quad4, Hex8, ...
+                                 0,    # 3: gty: psa, pse, ...
                                 -1,    # 4: material ID
-                                 0.0,  # 5: h (thickness)
+                                 1.0,  # 5: h (thickness)
                                  1,    # 6: active
                                  0,    # 7: activate?
                                  0 ]   # 8:deactivate?
@@ -435,6 +418,7 @@ def props_push_new_stage():
             if int(v[0])==1: # first stage
                 obj.properties[stg] = obj.properties['stg_'+k]
                 break
+    else: obj.properties['pty'] = 0
     Blender.Window.QRedrawAll()
 
 def props_push_new_fem(stage_ids,key,props):

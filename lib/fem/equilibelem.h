@@ -71,6 +71,7 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
     // parameters/properties
     h   = (Prp.HasKey("h")   ? Prp("h")   : 1.0);
     rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
+    if (h<1.0e-8) throw new Fatal("EquilibElem::EquilibElem: The thickness of the element must be greater than 1.0e-8. h=%g is invalid",h);
 
     // allocate and initialize state at each IP
     for (size_t i=0; i<GE->NIP; ++i)

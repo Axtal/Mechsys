@@ -16,106 +16,72 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-import subprocess
-import math
-import Blender
+from   multiprocessing import Process
+import subprocess, math
+import Blender, bpy
 from   Blender.Mathutils import Vector
-import bpy
 import mechsys   as ms
 import msys_dict as di
 import msys_mesh as me
 
 
-def save_stage_mats_info():
-    obj = di.get_obj()
-    xyz = obj.getLocation('worldspace')
-    t3d = Blender.Text3d.New(obj.name+'_saved')
-    t3d.setText("SAVED STAGES INFORMATION FROM %s"%obj.name)
-    scn = bpy.data.scenes.active
-    new_obj = scn.objects.new (t3d)
-    new_obj.makeDisplayList   () # rebuild the display list for this object
-    new_obj.setLocation       (xyz)
-    if obj.properties.has_key('stages'):
-        new_obj.properties['stages'] = obj.properties['stages']
-        new_obj.properties['texts']  = obj.properties['texts']
-        new_obj.properties['mats']   = obj.properties['mats']
-        for k, v in obj.properties.iteritems():
-            if k[:4]=='stg_':
-                new_obj.properties[k] = obj.properties[k]
-    Blender.Window.QRedrawAll()
+def get_prps_mdls(obj, pty, stg, cpp=False):
+    d    = di.load_dict()
+    prps = {}
+    mdls = {}
 
+    for k, v in obj.properties[stg]['eatts'].iteritems():
+        # prps
+        tag   = int(v[0])                      # ex: -1
+        geom  = d['pty2geom'][pty][int(v[2])]  # ex: Hex8
+        gty   = d['pty2gty'] [pty][int(v[3])]  # ex: psa
+        matID = str(int(v[4]))                 # mat id
+        act   = True if int(v[6]) else False   # active ?
+        prps[tag] = {'prob':d['pty'][pty], 'geom':geom, gty:1.0}
+        if gty=='pse': prps[tag]['h'] = v[5]   # thickness (for pse only)
 
-def read_stage_mats_info():
-    scn = bpy.data.scenes.active
-    obs = scn.objects.selected
-    if not len(obs)==2: raise Exception('Please, select one Text3D object and one Mesh object first')
-    if obs[0].type=='Mesh' and obs[1].type=='Text':
-        src = obs[1]
-        des = obs[0]
-    elif obs[0].type=='Text' and obs[1].type=='Mesh':
-        src = obs[0]
-        des = obs[1]
-    else: raise Exception('Please, select one Text3D object and one Mesh object first')
-    msg = 'Confirm copying stages/materials information from ('+src.name+') to ('+des.name+') ?%t|Yes'
-    res = Blender.Draw.PupMenu(msg)
-    if res>0:
-        if src.properties.has_key('stages'):
-            des.properties['stages'] = src.properties['stages']
-            des.properties['texts']  = src.properties['texts']
-            des.properties['mats']   = src.properties['mats']
-            for k, v in src.properties.iteritems():
-                if k[:4]=='stg_':
-                    des.properties[k] = src.properties[k]
-    Blender.Window.QRedrawAll()
+        # mdls
+        m    = obj.properties['mats'][matID]
+        name = d['mdl'][int(m[0])]
+        desc = obj.properties['texts'][str(int(m[1]))]
+        if name=='Rod':
+            mdls[tag] = {'name':name, gty:1.0, 'E':m[2], 'A':m[3]}
+        elif name=='Beam':
+            mdls[tag] = {'name':name, gty:1.0, 'E':m[2], 'A':m[3], 'Izz':m[4]}
+        elif name=='LinElastic':
+            mdls[tag] = {'name':name, gty:1.0, 'E':m[2], 'nu':m[5]}
+        elif name=='ElastoPlastic':
+            mdls[tag] = {'name':name, gty:1.0, 'E':m[2], 'nu':m[5], 'fc':d['fc'][m[6]], 'sY':m[7], 'cu':m[8]}
+        elif name=='CamClay':
+            mdls[tag] = {'name':name, gty:1.0, 'lam':m[9], 'kap':m[10], 'nu':m[5], 'phi':m[11]}
+        elif name=='LinFlow':
+            mdls[tag] = {'name':name, gty:1.0, 'k':m[12]}
 
+    if cpp:
+        # prps
+        for tag, prp in prps.iteritems():
+            keys, vals, count, num = '"', '', 1, len(prp)
+            for k, v in prp.iteritems():
+                keys += (k+'"' if count==num else k+' ')
+                if   k=='prob': vals += ('PROB("'+v+'")' if count==num else 'PROB("'+v+'"), ')
+                elif k=='geom': vals += ('GEOM("'+v+'")' if count==num else 'GEOM("'+v+'"), ')
+                else:           vals += (str(v)          if count==num else str(v)+', ')
+                count += 1
+            prp['CPPKEYS'] = keys
+            prp['CPPVALS'] = vals
 
-def get_mats(obj):
-    d = di.load_dict()
-    mats = {}
-    if obj.properties.has_key('mats'):
-        for k, v in obj.properties['mats'].iteritems():
-            desc = obj.properties['texts'][str(int(v[11]))]
-            if int(v[0])==0: # LinElastic
-                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g nu=%g' % (v[1],v[2]), desc]
-            elif int(v[0])==1: # LinDiffusion
-                mats[int(k)] = [d['mdl'][int(v[0])], 'k=%g' % (v[3]), desc]
-            elif int(v[0])==2: # CamClay
-                mats[int(k)] = [d['mdl'][int(v[0])], 'lam=%g kap=%g phics=%g G=%g v=%g' % (v[4],v[5],v[6],v[7],v[8]), desc]
-            elif int(v[0])==3: # BeamElastic
-                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g A=%g Izz=%g' % (v[1],v[9],v[10]), desc]
-            elif int(v[0])==4: # BiotElastic
-                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g nu=%g k=%g gw=%g' % (v[1],v[2],v[3],v[12]), desc]
-            elif int(v[0])==5: # Reinforcement
-                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g Ar=%g At=%g ks=%g c=%g phi=%g' % (v[1],v[13],v[14],v[15],v[16],v[17]), desc]
-            elif int(v[0])==6: # SpringElastic
-                mats[int(k)] = [d['mdl'][int(v[0])], 'ks=%g' % (v[15]), desc]
-            elif int(v[0])==7: # RodElastic
-                mats[int(k)] = [d['mdl'][int(v[0])], 'E=%g A=%g' % (v[1],v[9]), desc]
-    return mats
+        # mdls
+        for tag, mdl in mdls.iteritems():
+            keys, vals, count, num = '"', '', 1, len(mdl)
+            for k, v in mdl.iteritems():
+                keys += (k+'"' if count==num else k+' ')
+                if k=='name': vals += ('MODEL("'+v+'")' if count==num else 'MODEL("'+v+'"), ')
+                else:         vals += (str(v)           if count==num else str(v) + ', ')
+                count += 1
+            mdl['CPPKEYS'] = keys
+            mdl['CPPVALS'] = vals
 
-
-def get_eatts(obj,mats,stg):
-    d     = di.load_dict()
-    eatts = []
-    if obj.properties[stg].has_key('eatts'):
-        for k, v in obj.properties[stg]['eatts'].iteritems():
-            tag   = int(v[0])
-            gty   = d['gty'][int(v[1])]
-            pty   = d['pty'][int(v[2])]
-            inis  = 'ZERO'
-            matID = int(v[3])
-            prop  = obj.properties['texts'][str(int(v[7]))]
-            act   = True if int(v[4]) else False
-            if mats.has_key(matID):
-                mdl     = mats[matID][0]
-                prms    = mats[matID][1]
-                matdesc = mats[matID][2]
-            else:
-                mdl     = ''
-                prms    = ''
-                matdesc = '__no material__'
-            eatts.append ([tag, gty, pty, mdl, prms, inis, prop, '', act, matdesc])
-    return eatts
+    return prps, mdls
 
 
 def get_act_deact(obj,stg):
@@ -130,447 +96,334 @@ def get_act_deact(obj,stg):
     return activate, deactivate
 
 
-def get_brys(obj,stg):
-    d = di.load_dict()
+def get_brys(obj, stg, cpp=False):
+    d   = di.load_dict()
+    pty = obj.properties['pty']
+    nbrys, ebrys, fbrys = {}, {}, {}
 
-    # nbrys
-    nbrys = []
     if obj.properties[stg].has_key('nbrys'):
         for k, v in obj.properties[stg]['nbrys'].iteritems():
-            nbrys.append([v[0], v[1], v[2], d['dfv'][int(v[3])], v[4]])
+            nbrys[int(v[0])] = {d['pty2Ndfv'][pty][int(v[1])] : v[2]}
 
-    # nbsID
-    nbsID = []
-    if obj.properties[stg].has_key('nbsID'):
-        for k, v in obj.properties[stg]['nbsID'].iteritems():
-            nbsID.append([int(v[0]), d['dfv'][int(v[1])], v[2]])
-
-    # ebrys
-    ebrys = []
     if obj.properties[stg].has_key('ebrys'):
         for k, v in obj.properties[stg]['ebrys'].iteritems():
-            ebrys.append([int(v[0]), d['dfv'][int(v[1])], v[2]])
+            ebrys[int(v[0])] = {d['pty2Fdfv'][pty][int(v[1])] : v[2]}
 
-    # fbrys
-    fbrys = []
     if obj.properties[stg].has_key('fbrys'):
         for k, v in obj.properties[stg]['fbrys'].iteritems():
-            fbrys.append([int(v[0]), d['dfv'][int(v[1])], v[2]])
+            fbrys[int(v[0])] = {d['pty2Fdfv'][pty][int(v[1])] : v[2]}
 
-    return nbrys, nbsID, ebrys, fbrys
+    if cpp:
+        for tag, nbc in nbrys.iteritems():
+            keys, vals, count, num = '"', '', 1, len(nbc)
+            for k, v in nbc.iteritems():
+                keys  += (k+'"'  if count==num else k+' ')
+                vals  += (str(v) if count==num else str(v)+', ')
+                count += 1
+            nbc['CPPKEYS'] = keys
+            nbc['CPPVALS'] = vals
+
+        for tag, ebc in ebrys.iteritems():
+            keys, vals, count, num = '"', '', 1, len(ebc)
+            for k, v in ebc.iteritems():
+                keys  += (k+'"'  if count==num else k+' ')
+                vals  += (str(v) if count==num else str(v)+', ')
+                count += 1
+            ebc['CPPKEYS'] = keys
+            ebc['CPPVALS'] = vals
+
+        for tag, fbc in fbrys.iteritems():
+            keys, vals, count, num = '"', '', 1, len(fbc)
+            for k, v in fbc.iteritems():
+                keys  += (k+'"'  if count==num else k+' ')
+                vals  += (str(v) if count==num else str(v)+', ')
+                count += 1
+            fbc['CPPKEYS'] = keys
+            fbc['CPPVALS'] = vals
+
+    return nbrys, ebrys, fbrys
 
 
-def get_reinforcements(obj,is3d):
-    reinfs = {}
-    if obj.properties.has_key('reinfs'):
-        for k, v in obj.properties['reinfs'].iteritems():
-            tag = int(v[0])
-            if is3d: reinfs[(v[1],v[2],v[3], v[4],v[5],v[6])] = tag
-            else:    reinfs[(v[1],v[2],      v[4],v[5]     )] = tag
-    return reinfs
+def get_stage_info(obj, num):
+    stage = {}
+    for k, v in obj.properties['stages'].iteritems():
+        if int(v[0])==num:
+            stage['stg']   = 'stg_'+k
+            stage['desc']  = obj.properties['texts'][str(int(v[1]))]
+            stage['abf']   = True if int(v[2]) else False # apply body forces ?
+            stage['cdi']   = True if int(v[3]) else False # clear displacements ?
+            stage['ndiv']  = int(v[4])
+            stage['dtime'] =     v[5]
+            stage['act']   = int(v[6])
+    return stage
 
 
-def get_linear_elems(obj):
-    lines= {}
-    if obj.properties.has_key('lines'):
-        for k, v in obj.properties['lines'].iteritems():
-            lines[(v[1],v[2])] = v[0]
-    return lines
+class FEMData:
+    def __init__(self):
+        # get active object
+        self.obj = di.get_obj()
+        if not self.obj.properties.has_key('mats'):     raise Exception('Please define materials first')
+        if not self.obj.properties.has_key('pty'):      raise Exception('Please define the problem type first')
+        if not self.obj.properties.has_key('msh_type'): raise Exception('Please generate the mesh first or set the "Frame mesh" toggle')
+        if not self.obj.properties.has_key('stages'):   raise Exception('Please add stages first')
+        if not self.obj.properties.has_key('is3d'):     self.obj.properties['is3d'] = False
+
+        # input data
+        self.filekey  = self.obj.name+'_fem'                    # file key
+        self.pty      = self.obj.properties['pty']              # problem type
+        self.str_pty  = di.key('pty')[self.pty]                 # string for problem type, "Equilib", "Flow", ...
+        self.msh_type = self.obj.properties['msh_type']         # mesh type
+        self.nstages  = len(self.obj.properties['stages'])      # number of stages
+        self.ndim     = 3 if self.obj.properties['is3d'] else 2 # space dimension
+
+        # get first stage
+        stage_id, first_stg = di.find_stage (self.obj, 1)
+        if not self.obj.properties[first_stg].has_key('eatts'): raise Exception('Please define element attributes/properties first')
+
+        # materials and prps
+        self.cpp = True if di.key('fem_cpp') else False
+        self.prps, self.mdls = get_prps_mdls (self.obj, self.pty, first_stg, self.cpp)
 
 
-def run_analysis(gen_script=False):
-    Blender.Window.WaitCursor(1)
+def gen_script():
+    dat = FEMData()
+    if dat.cpp: # C++ script ===================================================================================================
+        txt = Blender.Text.New(dat.filekey+'.cpp')
 
-    # get active object
-    obj = di.get_obj()
+        # headers
+        txt.write ('// MechSys\n')
+        txt.write ('#include <mechsys/fem/fem.h>\n')
+        txt.write ('\nusing FEM::PROB;\n')
+        txt.write ('using FEM::GEOM;\n')
+        txt.write ('\nint main(int argc, char **argv) try\n')
+        txt.write ('{\n')
 
-    # check mesh type
-    if obj.properties.has_key('mesh_type'): mesh_type = obj.properties['mesh_type']
-    else: raise Exception('Please, generate mesh first or set "Frame mesh" toggle')
+        # mesh
+        txt.write ('    // mesh\n')
+        if   dat.msh_type=='struct':   me.gen_struct_mesh   (True, txt, True, False) # gen_script, txt, cpp, with_headers
+        elif dat.msh_type=='unstruct': me.gen_unstruct_mesh (True, txt, True, False) # gen_script, txt, cpp, with_headers
+        elif dat.msh_type=='frame':    me.gen_frame_mesh    (      txt, True, False) # gen_script, txt, cpp, with_headers
 
-    # check number of stages
-    if not obj.properties.has_key('stages'): raise Exception('Please, add stages first')
-    nstages = len(obj.properties['stages'])
+        # elements properties
+        txt.write ('\n    // elements properties\n')
+        txt.write ('    Dict prps;\n')
+        for tag, prp in dat.prps.iteritems(): txt.write ('    prps.Set ('+str(tag)+', '+prp['CPPKEYS']+', '+prp['CPPVALS']+');\n')
 
-    # first stage
-    sid, stg = di.find_stage (obj, 1)
+        # models
+        txt.write ('\n    // models\n')
+        txt.write ('    Dict mdls;\n')
+        for tag, mdl in dat.mdls.iteritems(): txt.write ('    mdls.Set ('+str(tag)+', '+mdl['CPPKEYS']+', '+mdl['CPPVALS']+');\n')
 
-    # materials and first eatts
-    mats  = get_mats  (obj)
-    eatts = get_eatts (obj, mats, stg)
-    if len(eatts)<1: raise Exception('Please, define element attributes first')
+        # initial values
+        txt.write ('\n    // initial values\n')
+        txt.write ('    Dict inis;\n')
+        for tag, mdl in dat.mdls.iteritems():
+            if   dat.str_pty=='Equilib': txt.write ('    inis.Set ('+str(tag)+', "sx sy sz sxy", 0.0, 0.0, 0.0, 0.0);\n')
+            elif dat.str_pty=='Flow':    txt.write ('    inis.Set ('+str(tag)+', "vx vy", 0.0, 0.0);\n')
 
-    # ndim
-    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
-    ndim = 3 if is3d else 2
-    print '[1;34mMechSys[0m: Running [1;31m%dD[0m simulation'%ndim
+        # domain
+        txt.write ('\n    // domain\n')
+        txt.write ('    FEM::Domain dom(mesh, prps, mdls, inis);\n')
 
-    # reinforcements
-    reinfs    = get_reinforcements (obj, is3d)
-    has_reinf = len(reinfs)>0
-
-    # linear elements
-    lines     = get_linear_elems (obj)
-    has_lines = len(lines)>0
-
-    if gen_script:
-
-        # create new script
-        txt = Blender.Text.New(obj.name+'_fem')
-
-        if di.key('fem_cpp'): # C++ script
-            # includes
-            txt.write ('// Std Lib\n')
-            txt.write ('#include <iostream>\n\n')
-            txt.write ('// MechSys\n')
-            txt.write ('#include "mechsys.h"\n')
-            txt.write ('#include "util/exception.h"\n\n')
-            txt.write ('#define T boost::make_tuple\n\n')
-
-            # main
-            txt.write ('int main(int argc, char **argv) try\n')
-            txt.write ('{\n\n')
-
-            # mesh
-            txt.write ('	////////////////////////////////////////////////////////////////////////////////////// Mesh /////\n\n')
-
-            if   mesh_type=='struct':   me.gen_struct_mesh   (True, txt, False, True)
-            elif mesh_type=='unstruct': me.gen_unstruct_mesh (True, txt, False, True)
-            elif mesh_type=='frame':    me.gen_frame_mesh    (      txt, False, True)
-            txt.write ('\n')
-
-            txt.write ('	////////////////////////////////////////////////////////////////////////////////////// FEM //////\n\n')
-
-            # data and solver
-            txt.write ('	// Data and Solver\n')
-            txt.write ('	FEM::Data   dat (%d);\n'        % ndim)
-            txt.write ('	FEM::Solver sol (dat, "%s");\n' % obj.name)
-
-            # element attributes
-            neatt = len(eatts)
-            txt.write ('\n	// Element attributes\n')
-            txt.write ('	FEM::EAtts_T eatts(%d);\n'%len(eatts))
-            for i, ea in enumerate(eatts):
-                if i==0:       estr  = '	eatts = '
-                else:          estr  = '	        '
-                if ea[8]:      estr += 'T(%d, "%s", "%s", "%s", "%s", "%s", "%s", FNULL, true )'#,  # %s\n'
-                else:          estr += 'T(%d, "%s", "%s", "%s", "%s", "%s", "%s", FNULL, false)'#,  # %s\n'
-                if i==neatt-1: estr += ';  // %s\n'
-                else:          estr += ',  // %s\n'
-                txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[6],ea[9]))
-
-            # set geometry: nodes and elements
-            txt.write ('\n	// Set nodes and elements (geometry)\n')
-            if mesh_type=='frame': txt.write ('	dat.SetOnlyFrame  (); // frame (beam/truss) mesh only\n')
-            txt.write ('	dat.SetNodesElems (&mesh, &eatts);\n')
-
-            # solve each stage
-            for num in range(1,nstages+1):
-
-                # find stage info
-                for k, v in obj.properties['stages'].iteritems():
-                    if int(v[0])==num:
-                        stg   = 'stg_'+k
-                        desc  = obj.properties['texts'][str(int(v[1]))]
-                        abf   = True if int(v[2]) else False # apply body forces ?
-                        cdi   = True if int(v[3]) else False # clear displacements ?
-                        ndiv  = int(v[4])
-                        dtime =     v[5]
-                        act   = int(v[6])
-                        break
-
-                # run only if stage is active
-                if act:
-
-                    # activate and deactivate elements
-                    txt.write ('\n	// Stage # %d --------------------------------------------------------------\n'%num)
-                    elem_act, elem_deact = get_act_deact (obj,stg)
-                    for k, v in elem_act.iteritems():
-                        if v: txt.write ('	dat.Activate (%d);\n'%(k))
-                    for k, v in elem_deact.iteritems():
-                        if v: txt.write ('	dat.Deactivate (%d);\n'%(k))
-
-                    # boundary conditions
-                    nbrys, nbsID, ebrys, fbrys = get_brys (obj,stg)
-                    if len(nbrys)>0: txt.write ('	FEM::NBrys_T nbrys(%d);\n'%len(nbrys))
-                    if len(ebrys)>0: txt.write ('	FEM::EBrys_T ebrys(%d);\n'%len(ebrys))
-                    if len(fbrys)>0: txt.write ('	FEM::FBrys_T fbrys(%d);\n'%len(fbrys))
-                    if len(nbrys)>0:
-                        txt.write ('	nbrys = ')
-                        for i, nb in enumerate(nbrys):
-                            if i<(len(nbrys)-1): txt.write('T(%g,%g,%g,"%s",%g), ' %(nb[0],nb[1],nb[2],nb[3],nb[4]))
-                            else:                txt.write('T(%g,%g,%g,"%s",%g);\n'%(nb[0],nb[1],nb[2],nb[3],nb[4]))
-                    if len(ebrys)>0:
-                        txt.write ('	ebrys = ')
-                        for i, eb in enumerate(ebrys):
-                            if i<(len(ebrys)-1): txt.write('T(%d,"%s",%g), ' %(eb[0],eb[1],eb[2]))
-                            else:                txt.write('T(%d,"%s",%g);\n'%(eb[0],eb[1],eb[2]))
-                    if len(fbrys)>0:
-                        txt.write ('	fbrys = ')
-                        for i, fb in enumerate(fbrys):
-                            if i<(len(fbrys)-1): txt.write('T(%d,"%s",%g), ' %(fb[0],fb[1],fb[2]))
-                            else:                txt.write('T(%d,"%s",%g);\n'%(fb[0],fb[1],fb[2]))
-                    txt.write ('	dat.SetBrys       (&mesh, ')
-                    if len(nbrys)>0: txt.write ('&nbrys, ')
-                    else:            txt.write ('NULL, ')
-                    if len(ebrys)>0: txt.write ('&ebrys, ')
-                    else:            txt.write ('NULL, ')
-                    if len(fbrys)>0: txt.write ('&fbrys);\n')
-                    else:            txt.write ('NULL);\n')
-                    for nb in nbsID:
-                        txt.write ('	dat.Nod('+str(nb[0])+')->Bry   ("'+nb[1]+'",'+str(nb[2])+');\n')
-
-                    # apply body forces
-                    if abf: txt.write ('	dat.AddVolForces  ();\n')
-
-                    # solve
-                    if cdi: txt.write ('	sol.SolveWithInfo (%d, %g, %d, "%s\\n", true);\n'%(ndiv,dtime,num,desc)) # clear displacements
-                    else:   txt.write ('	sol.SolveWithInfo (%d, %g, %d, "%s\\n");\n'      %(ndiv,dtime,num,desc))
-
-            # main
-            txt.write ('\n}\n')
-            txt.write ('catch (Exception * e) { e->Cout();  if (e->IsFatal()) {delete e; exit(1);}  delete e; }\n')
-            txt.write ('catch (char const * m) { std::cout<<"Fatal: "<<m<<std::endl;  exit(1); }\n')
-            txt.write ('catch (...) { std::cout << "Some exception (...) ocurred\\n"; } \n')
-
-        else: # Python script
-
-            # import libraries
-            if not di.key('fullsc'):
-                txt.write ('import Blender, bpy\n')
-                txt.write ('import msys_mesh as me\n')
-                txt.write ('import msys_fem  as mf\n')
-                txt.write ('import mechsys   as ms\n')
-            else: txt.write ('import mechsys as ms\n')
-
-            # change cursor
-            if not di.key('fullsc'):
-                txt.write ('\n# Show running cursor\n')
-                txt.write ('Blender.Window.WaitCursor(1)\n')
-
-            # mesh
-            txt.write ('\n###################################################################################### Mesh #####\n')
-
-            # generate mesh
-            txt.write ('\n# Mesh generation\n')
-            if not di.key('fullsc'):
-                txt.write ('obj  = bpy.data.objects["'+obj.name+'"]\n')
-                if   mesh_type=='struct':   txt.write ('mesh = me.gen_struct_mesh()\n')
-                elif mesh_type=='unstruct': txt.write ('mesh = me.gen_unstruct_mesh()\n')
-                elif mesh_type=='frame':    txt.write ('mesh = me.gen_frame_mesh()\n')
-            else:
-                if   mesh_type=='struct':   me.gen_struct_mesh   (True, txt)
-                elif mesh_type=='unstruct': me.gen_unstruct_mesh (True, txt)
-                elif mesh_type=='frame':    me.gen_frame_mesh    (      txt)
-
-            # FEM
-            txt.write ('\n###################################################################################### FEM ######\n')
-
-            # data and solver
-            txt.write ('\n# Data and Solver\n')
-            txt.write ('dat = ms.data   (%d)\n'        % ndim)
-            txt.write ('sol = ms.solver (dat, "%s")\n' % obj.name)
-
-            # element attributes
-            neatt = len(eatts)
-            txt.write ('\n# Element attributes\n')
-            for i, ea in enumerate(eatts):
-                if i==0:       estr  = 'eatts = ['
-                else:          estr  = '         '
-                if ea[8]:      estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", \'\', True ]'#,  # %s\n'
-                else:          estr += '[%d, "%s", "%s", "%s", "%s", "%s", "%s", \'\', False]'#,  # %s\n'
-                if i==neatt-1: estr += ']  # %s\n'
-                else:          estr += ',  # %s\n'
-                txt.write (estr % (ea[0],ea[1],ea[2],ea[3],ea[4],ea[5],ea[6],ea[9]))
-
-            # set geometry: nodes and elements
-            txt.write ('\n# Set nodes and elements (geometry)\n')
-            if mesh_type=='frame': txt.write ('dat.set_only_frame  () # frame (beam/truss) mesh only\n')
-            txt.write ('dat.set_nodes_elems (mesh, eatts)\n')
-
-            # add reinforcements
-            if has_reinf:
-                txt.write ('\n# Add reinforcements\n')
-                txt.write ('reinfs = '+reinfs.__str__()+'\n')
-                txt.write ('dat.add_reinfs (reinfs, eatts)\n')
-
-            # add linear elements
-            if has_lines:
-                txt.write ('\n# Add linear elements\n')
-                txt.write ('lines = '+lines.__str__()+'\n')
-                txt.write ('dat.add_lin_elems (lines, eatts)\n')
-
-            # solve each stage
-            for num in range(1,nstages+1):
-
-                # find stage info
-                for k, v in obj.properties['stages'].iteritems():
-                    if int(v[0])==num:
-                        stg   = 'stg_'+k
-                        desc  = obj.properties['texts'][str(int(v[1]))]
-                        abf   = True if int(v[2]) else False # apply body forces ?
-                        cdi   = True if int(v[3]) else False # clear displacements ?
-                        ndiv  = int(v[4])
-                        dtime =     v[5]
-                        act   = int(v[6])
-                        break
-
-                # run only if stage is active
-                if act:
-
-                    # activate and deactivate elements
-                    txt.write ('\n# Stage # %d --------------------------------------------------------------\n'%num)
-                    elem_act, elem_deact = get_act_deact (obj,stg)
-                    for k, v in elem_act.iteritems():
-                        if v: txt.write ('dat.activate (%d)\n'%(k))
-                    for k, v in elem_deact.iteritems():
-                        if v: txt.write ('dat.deactivate (%d)\n'%(k))
-
-                    # boundary conditions
-                    nbrys, nbsID, ebrys, fbrys = get_brys (obj,stg)
-                    if len(nbrys)>0: txt.write ('nbrys = '+nbrys.__str__()+'\n')
-                    if len(ebrys)>0: txt.write ('ebrys = '+ebrys.__str__()+'\n')
-                    if len(fbrys)>0: txt.write ('fbrys = '+fbrys.__str__()+'\n')
-                    txt.write ('dat.set_brys         (mesh, ')
-                    if len(nbrys)>0: txt.write ('nbrys, ')
-                    else:            txt.write ('[], ')
-                    if len(ebrys)>0: txt.write ('ebrys, ')
-                    else:            txt.write ('[], ')
-                    if len(fbrys)>0: txt.write ('fbrys)\n')
-                    else:            txt.write ('[])\n')
-                    for nb in nbsID:
-                        txt.write ('dat.nod('+str(nb[0])+').bry       ("'+nb[1]+'",'+str(nb[2])+')\n')
-
-                    # apply body forces
-                    if abf: txt.write ('dat.add_vol_forces   ()\n')
-
-                    # solve
-                    if cdi: txt.write ('sol.solve_with_info  (%d, %g, %d, "%s\\n", True)\n'%(ndiv,dtime,num,desc)) # clear displacements
-                    else:   txt.write ('sol.solve_with_info  (%d, %g, %d, "%s\\n")\n'      %(ndiv,dtime,num,desc))
-
-                    # save results
-                    if not di.key('fullsc'): txt.write ('mf.save_results      (sol, dat, obj, %d)\n'%num)
-
-            # change cursor
-            if not di.key('fullsc'):
-                txt.write ('\n# Hide running cursor\n')
-                txt.write ('Blender.Window.WaitCursor(0)\n')
-
-    else:
-        # get/set mesh
-        if   mesh_type=='struct':   mesh = me.gen_struct_mesh   ()
-        elif mesh_type=='unstruct': mesh = me.gen_unstruct_mesh ()
-        elif mesh_type=='frame':    mesh = me.gen_frame_mesh    ()
-
-        # data and solver
-        dat = ms.data   (ndim)
-        sol = ms.solver (dat, obj.name)
-
-        # element attributes
-        elem_atts = []
-        for ea in eatts: elem_atts.append(ea[:9])
-
-        # set geometry: nodes and elements
-        if mesh_type=='frame': dat.set_only_frame()
-        dat.set_nodes_elems (mesh, elem_atts)
-
-        # add reinforcements
-        if has_reinf: dat.add_reinfs (reinfs, elem_atts)
-
-        # add linear elements
-        if has_lines: dat.add_lin_elems (lines, elem_atts)
+        # solver
+        txt.write ('\n    // solver\n')
+        txt.write ('    FEM::Solver sol(dom);\n')
 
         # solve each stage
-        for num in range(1,nstages+1):
+        for num in range(1,dat.nstages+1):
 
             # find stage info
-            for k, v in obj.properties['stages'].iteritems():
-                if int(v[0])==num:
-                    stg   = 'stg_'+k
-                    desc  = obj.properties['texts'][str(int(v[1]))]
-                    abf   = True if int(v[2]) else False # apply body forces ?
-                    cdi   = True if int(v[3]) else False # clear displacements ?
-                    ndiv  = int(v[4])
-                    dtime =     v[5]
-                    act   = int(v[6])
-                    break
+            stage = get_stage_info (dat.obj, num)
 
             # run only if stage is active
-            if act:
-
-                # activate and deactivate elements
-                elem_act, elem_deact = get_act_deact (obj,stg)
-                for k, v in elem_act.iteritems():
-                    if v: dat.activate(k)
-                for k, v in elem_deact.iteritems():
-                    if v: dat.deactivate(k)
+            if stage['act']:
+                # stage #
+                txt.write ('\n    // stage # %d --------------------------------------------------------------\n'%num)
 
                 # boundary conditions
-                nbrys, nbsID, ebrys, fbrys = get_brys (obj,stg)
-                dat.set_brys (mesh, nbrys, ebrys, fbrys)
-                for nb in nbsID: dat.nod(nb[0]).bry(nb[1],nb[2])
-
-                # apply body forces
-                if abf: dat.add_vol_forces()
+                nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'], True) # obj, stg, cpp
+                if num==1: txt.write ('    Dict bcs;\n')
+                for tag, nbc in nbrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+nbc['CPPKEYS']+', '+nbc['CPPVALS']+');\n')
+                for tag, ebc in ebrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+ebc['CPPKEYS']+', '+ebc['CPPVALS']+');\n')
+                for tag, fbc in fbrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+fbc['CPPKEYS']+', '+fbc['CPPVALS']+');\n')
 
                 # solve
-                if cdi: sol.solve_with_info (ndiv,dtime,num,desc+'\n',True) # clear displacements
-                else:   sol.solve_with_info (ndiv,dtime,num,desc+'\n')
+                txt.write ('    sol.Solve (%d);\n'%(stage['ndiv']))
 
-                # save results
-                save_results (sol, dat, obj, num)
+        # output
+        txt.write ('\n    // output\n')
+        txt.write ('    dom.WriteVTU ("'+dat.filekey+'");\n')
 
-    # end
-    #Blender.Run(txt.name)
-    Blender.Window.WaitCursor(0)
+        # footer
+        txt.write ('\n    return 0;\n')
+        txt.write ('}\n')
+        txt.write ('MECHSYS_CATCH\n')
+
+    else: # Python script ===================================================================================================
+        txt = Blender.Text.New(dat.filekey+'.py')
+
+        # headers
+        txt.write ('# headers\n')
+        txt.write ('from mechsys import *\n')
+
+        # mesh
+        txt.write ('\n# mesh\n')
+        if   dat.msh_type=='struct':   me.gen_struct_mesh   (True, txt, False, False) # gen_script, txt, cpp, with_headers
+        elif dat.msh_type=='unstruct': me.gen_unstruct_mesh (True, txt, False, False) # gen_script, txt, cpp, with_headers
+        elif dat.msh_type=='frame':    me.gen_frame_mesh    (      txt, False, False) # gen_script, txt, cpp, with_headers
+
+        # elements properties
+        txt.write ('\n# elements properties\n')
+        txt.write ('prps = Dict()\n')
+        for tag, prp in dat.prps.iteritems():
+            str_prp = prp.__str__().replace('\''+prp['prob']+'\'','PROB("'+prp['prob']+'")').replace('\''+prp['geom']+'\'','GEOM("'+prp['geom']+'")')
+            txt.write ('prps.Set ('+str(tag)+', '+str_prp+')\n')
+
+        # models
+        txt.write ('\n# models\n')
+        txt.write ('mdls = Dict()\n')
+        for tag, mdl in dat.mdls.iteritems():
+            str_mdl = mdl.__str__().replace('\''+mdl['name']+'\'','MODEL("'+mdl['name']+'")')
+            txt.write ('mdls.Set ('+str(tag)+', '+str_mdl+')\n')
+
+        # initial values
+        txt.write ('\n# initial values\n')
+        txt.write ('inis = Dict()\n')
+        for tag, mdl in dat.mdls.iteritems():
+            if   dat.str_pty=='Equilib': txt.write ('inis.Set ('+str(tag)+', {"sx":0.0, "sy":0.0, "sz":0.0, "sxy":0.0})\n')
+            elif dat.str_pty=='Flow':    txt.write ('inis.Set ('+str(tag)+', {"vx":0.0, "vy":0.0})\n')
+
+        # domain
+        txt.write ('\n# domain\n')
+        txt.write ('dom = FEM_Domain (mesh, prps, mdls, inis)\n')
+
+        # solver
+        txt.write ('\n# solver\n')
+        txt.write ('sol = FEM_Solver (dom)\n')
+
+        # solve each stage
+        for num in range(1,dat.nstages+1):
+
+            # find stage info
+            stage = get_stage_info (dat.obj, num)
+
+            # run only if stage is active
+            if stage['act']:
+
+                # activate and deactivate elements
+                txt.write ('\n# stage # %d --------------------------------------------------------------\n'%num)
+                #elem_act, elem_deact = get_act_deact (obj,stg)
+                #for k, v in elem_act.iteritems():
+                    #if v: txt.write ('dom.activate (%d)\n'%(k))
+                #for k, v in elem_deact.iteritems():
+                    #if v: txt.write ('dom.deactivate (%d)\n'%(k))
+
+                # boundary conditions
+                nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'])
+                if num==1: txt.write ('bcs = Dict()\n')
+                for tag, nbc in nbrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+nbc.__str__()+')\n')
+                for tag, ebc in ebrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+ebc.__str__()+')\n')
+                for tag, fbc in fbrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+fbc.__str__()+')\n')
+
+                # apply body forces
+                if stage['abf']: pass
+
+                # clear displacements
+                if stage['cdi']: pass
+
+                # solve
+                txt.write ('sol.Solve (%d)\n'%(stage['ndiv']))
+
+        # output
+        txt.write ('\n# output\n')
+        txt.write ('dom.WriteVTU ("'+dat.filekey+'")\n')
 
 
-def save_results(sol, dat, obj, stage_num):
-    # dictionary
-    s = str(stage_num)
-    if not obj.properties.has_key('res'): obj.properties['res'] = {}
-    obj.properties['res'][s] = {}
+def run_simulation(running, fatal):
+    try:
+        dat = FEMData()
 
-    # menu with labels
-    obj.properties['res'][s]['idx2lbl'] = {} # map label index to label key
-    lbs = []
-    sol.out().get_labels (lbs)
-    menu = 'Labels %t|'
-    for i, l in enumerate(lbs):
-        obj.properties['res'][s]['idx2lbl'][str(i)] = l
-        menu += l + ' %x' + str(i+1) + '|'
-    obj.properties['res'][s]['lblmnu'] = menu
+        # mesh
+        if   dat.msh_type=='struct':   mesh = me.gen_struct_mesh   (False)
+        elif dat.msh_type=='unstruct': mesh = me.gen_unstruct_mesh (False)
+        elif dat.msh_type=='frame':    mesh = me.gen_frame_mesh    ()
 
-    # save results at nodes
-    for l in lbs:
-        vals = []
-        for i in range(dat.nnodes()): vals.append (sol.out().val(i, l))
-        obj.properties['res'][s][l] = vals
+        # elements properties
+        fem_prps = ms.Dict()
+        for tag, prp in dat.prps.iteritems():
+            prp['prob'] = ms.PROB(prp['prob'])
+            prp['geom'] = ms.GEOM(prp['geom'])
+            fem_prps.Set (tag, prp)
 
-    # save extra output
-    obj.properties['res'][s]['extra'] = {}
-    for i in range(dat.nelems()):
-        if dat.ele(i).has_extra() and dat.ele(i).is_active():
-            ide = str(i)
-            obj.properties['res'][s]['extra'][ide] = {}
-            dat.ele(i).calc_deps()
-            co, no, va = dict(), [], dict()
-            dat.ele(i).out_extra (co, no, va)
-            if co.has_key('X'):
-                if len(co['X'])>0:
-                    obj.properties['res'][s]['extra'][ide]['coords'] = co
-                    obj.properties['res'][s]['extra'][ide]['normal'] = no
-                    obj.properties['res'][s]['extra'][ide]['values'] = {}
-                    for k, v in va.iteritems():
-                        obj.properties['res'][s]['extra'][ide]['values'][k] = v
-                        # max value
-                        key  = 'max_'+k
-                        maxv = max([abs(val) for val in v])
-                        if obj.properties['res'][s].has_key(key):
-                            if maxv>obj.properties['res'][s][key][0]: obj.properties['res'][s][key] = [maxv, i, dat.ele(i).nod(0).x(), dat.ele(i).nod(0).y()]
-                        else: obj.properties['res'][s][key] = [maxv, i, dat.ele(i).nod(0).x(), dat.ele(i).nod(0).y()]
+        # models
+        fem_mdls = ms.Dict()
+        for tag, mdl in dat.mdls.iteritems():
+            mdl['name'] = ms.MODEL(mdl['name'])
+            fem_mdls.Set (tag, mdl)
 
+        # initial values
+        fem_inis = ms.Dict()
+        for tag, mdl in dat.mdls.iteritems():
+            if   dat.str_pty=='Equilib': fem_inis.Set (tag, {"sx":0.0, "sy":0.0, "sz":0.0, "sxy":0.0})
+            elif dat.str_pty=='Flow':    fem_inis.Set (tag, {"vx":0.0, "vy":0.0})
+
+        # domain
+        dom = ms.FEM_Domain (mesh, fem_prps, fem_mdls, fem_inis)
+
+        # solver
+        sol = ms.FEM_Solver (dom)
+
+        # solve each stage
+        bcs = ms.Dict()
+        for num in range(1,dat.nstages+1):
+
+            # find stage info
+            stage = get_stage_info (dat.obj, num)
+
+            # run only if stage is active
+            if stage['act']:
+
+                # boundary conditions
+                nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'])
+                for tag, nbc in nbrys.iteritems(): bcs.Set (tag, nbc)
+                for tag, ebc in ebrys.iteritems(): bcs.Set (tag, ebc)
+                for tag, fbc in fbrys.iteritems(): bcs.Set (tag, fbc)
+
+                # solve
+                sol.Solve (stage['ndiv'])
+
+        # output
+        dom.WriteVTU (dat.filekey)
+
+        # notify parent that we have finished
+        running.value = 0
+
+    except Exception, inst:
+        print '[1;34mMechSys[0m: Error: '+'[1;31m'+inst.args[0]+'[0m'
+        print '>>>>>>>>>>> exception caught by msys_fem.run_simulation <<<<<<<<<<<'
+        running.value = 0
+        fatal  .value = 1
+
+
+def run():
+    d = di.load_dict()
+    if d['fem_running'].value: raise Exception('Another FEM simulation is already running')
+    d['fem_running'].value = 1
+    d['fem_fatal']  .value = 0
+    d['fem_process'] = Process(target=run_simulation, args=(d['fem_running'],d['fem_fatal']))
+    print "\n#############################  FEM: running simulation  #################################\n"
     Blender.Window.QRedrawAll()
+    d['fem_process'].start()
+
+
+def stop():
+    d = di.load_dict()
+    if d['fem_running'].value:
+        d['fem_process'].terminate()
+        d['fem_running'].value = 0
+        print "\n#############################  FEM: simulation stoped  ##################################\n"
+        Blender.Window.QRedrawAll()
+    else: raise Exception('There is no FEM simulation running')
 
 
 def paraview():

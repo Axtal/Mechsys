@@ -36,8 +36,6 @@ def print_timing(func):
 
 class MeshData:
     def __init__(self):
-        Blender.Window.WaitCursor(1)
-
         # get active object
         self.edm, self.obj, self.msh = di.get_msh()
 
@@ -76,8 +74,6 @@ class MeshData:
                 self.etags[(self.msh.edges[eid].v1.index, self.msh.edges[eid].v2.index)] = v
 
     def __del__(self):
-        Blender.Window.WaitCursor(0)
-
         # restore local coordinates
         self.msh.verts = self.ori
         if self.edm: Blender.Window.EditMode(1)
@@ -87,8 +83,6 @@ class MeshData:
 
 @print_timing
 def gen_frame_mesh(txt=None,cpp=False):
-    if txt!=None: Blender.Window.WaitCursor(1)
-
     # get selected object and mesh
     edm, obj, msh = di.get_msh()
 
@@ -119,8 +113,8 @@ def gen_frame_mesh(txt=None,cpp=False):
             info = '// VertIdx, OnBry==True, X, Y, Z'
             txt.write('mesh.SetNVerts    (%d); // set number of vertices\n'%len(msh.verts))
             for i, v in enumerate(msh.verts):
-                if is3d: txt.write ('mesh.SetVert      (%d, true, %g,%g,%g); %s\n' % (i, v.co[0], v.co[1], v.co[2], info))
-                else:    txt.write ('mesh.SetVert      (%d, true, %g,%g); %s\n'    % (i, v.co[0], v.co[1],          info))
+                if is3d: txt.write ('mesh.SetVert      (%d, true, %s,%s,%s); %s\n' % (i, str(v.co[0]), str(v.co[1]), str(v.co[2]), info))
+                else:    txt.write ('mesh.SetVert      (%d, true, %s,%s); %s\n'    % (i, str(v.co[0]), str(v.co[1]),               info))
                 info = ''
 
             # elements
@@ -146,8 +140,8 @@ def gen_frame_mesh(txt=None,cpp=False):
             info = '# VertIdx, OnBry==True, X, Y, Z'
             txt.write ('mesh.set_nverts    (%d) # set number of vertices\n' % len(msh.verts))
             for i, v in enumerate(msh.verts):
-                if is3d: txt.write ('mesh.set_vert      (%d, True, %g,%g,%g) %s\n' % (i, v.co[0], v.co[1], v.co[2], info))
-                else:    txt.write ('mesh.set_vert      (%d, True, %g,%g) %s\n'    % (i, v.co[0], v.co[1],          info))
+                if is3d: txt.write ('mesh.set_vert      (%d, True, %s,%s,%s) %s\n' % (i, str(v.co[0]), str(v.co[1]), str(v.co[2]), info))
+                else:    txt.write ('mesh.set_vert      (%d, True, %s,%s) %s\n'    % (i, str(v.co[0]), str(v.co[1]),               info))
                 info = ''
 
             # elements
@@ -164,7 +158,6 @@ def gen_frame_mesh(txt=None,cpp=False):
                 txt.write ('mesh.set_elem_con  (%d,1,%d) %s\n'      % (i, e.v2.index, inf2)) # 1 == local node index
                 txt.write ('mesh.set_elem_etag (%d,0,%d) %s\n'      % (i, etags[key], inf3)) # 0 == local edge index
                 inf1 = inf2 = inf3 = ''
-        Blender.Window.WaitCursor(0)
 
     else: # run
 
@@ -198,9 +191,7 @@ def gen_frame_mesh(txt=None,cpp=False):
 # =========================================================================== Structured mesh
 
 @print_timing
-def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
-    if show_cursor: Blender.Window.WaitCursor(1)
-
+def gen_struct_mesh(gen_script=False,txt=None,cpp=False):
     # get active object
     edm, obj, msh = di.get_msh()
 
@@ -312,11 +303,11 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
                 txt.write ('	ve%d = ' % (ib))
                 for i, ve in enumerate(verts):
                     if is3d:
-                        if i<(len(verts)-1): txt.write ('T(%d,%g,%g,%g), '  % (ve[0],ve[1],ve[2],ve[3]))
-                        else:                txt.write ('T(%d,%g,%g,%g);\n' % (ve[0],ve[1],ve[2],ve[3]))
+                        if i<(len(verts)-1): txt.write ('T(%d,%s,%s,%s), '  % (ve[0],str(ve[1]),str(ve[2]),str(ve[3])))
+                        else:                txt.write ('T(%d,%s,%s,%s);\n' % (ve[0],str(ve[1]),str(ve[2]),str(ve[3])))
                     else:
-                        if i<(len(verts)-1): txt.write ('T(%d,%g,%g,0.0), '  % (ve[0],ve[1],ve[2]))
-                        else:                txt.write ('T(%d,%g,%g,0.0);\n' % (ve[0],ve[1],ve[2]))
+                        if i<(len(verts)-1): txt.write ('T(%d,%s,%s,0.0), '  % (ve[0],str(ve[1]),str(ve[2])))
+                        else:                txt.write ('T(%d,%s,%s,0.0);\n' % (ve[0],str(ve[1]),str(ve[2])))
                 txt.write ('	ed%d = ' % (ib))
                 for i, ed in enumerate(edges):
                     if i<(len(edges)-1): txt.write ('T(%d,%d), '  % (ed[0],ed[1]))
@@ -337,9 +328,9 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
                 if len(ftags)>0: txt.write ('&ft%d, ' % ib)
                 else:            txt.write ('NULL, ')
                 txt.write ('%d, %d, %d, %d);\n' % (origin,xp,yp,zp))
-                txt.write ('	bks[%d].SetNx (%d,%g,%d);\n' % (ib,nx,ax,linx))
-                txt.write ('	bks[%d].SetNy (%d,%g,%d);\n' % (ib,ny,ay,liny))
-                if is3d: txt.write ('	bks[%d].SetNz (%d,%g,%d);\n' % (ib,nz,az,linz))
+                txt.write ('	bks[%d].SetNx (%d,%s,%d);\n' % (ib,nx,str(ax),linx))
+                txt.write ('	bks[%d].SetNy (%d,%s,%d);\n' % (ib,ny,str(ay),liny))
+                if is3d: txt.write ('	bks[%d].SetNz (%d,%s,%d);\n' % (ib,nz,az,linz))
                 txt.write ('\n')
 
             else: # Python script
@@ -351,9 +342,9 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
                 txt.write ('            '+str(etags)+', # Edge Tags\n')
                 txt.write ('            '+str(ftags)+', # Face Tags\n')
                 txt.write ('            %d, %d, %d, %d) # Origin, X-Plus, Y-Plus, Z-Plus\n' % (origin,xp,yp,zp))
-                txt.write ('bks[%d].set_nx (%d,%g,%d)\n' % (ib,nx,ax,linx))
-                txt.write ('bks[%d].set_ny (%d,%g,%d)\n' % (ib,ny,ay,liny))
-                if is3d: txt.write ('bks[%d].set_nz (%d,%g,%d)\n' % (ib,nz,az,linz))
+                txt.write ('bks[%d].set_nx (%d,%s,%d)\n' % (ib,nx,str(ax),linx))
+                txt.write ('bks[%d].set_ny (%d,%s,%d)\n' % (ib,ny,str(ay),liny))
+                if is3d: txt.write ('bks[%d].set_nz (%d,%s,%d)\n' % (ib,nz,str(az),linz))
                 txt.write ('\n')
 
         else: # Run
@@ -386,7 +377,6 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
             if iso2: txt.write('mesh.set_o2     (True) # True=>Quadratic elements\n')
             txt.write('mesh.set_blocks (bks)\n')
             txt.write('mesh.generate   (True) # True=>WithInfo\n')
-        Blender.Window.WaitCursor(0)
         return txt
     else:
         if len(bks)>0:
@@ -395,47 +385,61 @@ def gen_struct_mesh(gen_script=False,txt=None,show_cursor=False,cpp=False):
             mesh.set_blocks (bks)
             mesh.generate   (True)
             print
-            if show_cursor: Blender.Window.WaitCursor(0)
             return mesh
 
 
 # ========================================================================= Unstructured mesh
 
 @print_timing
-def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False):
+def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
     m = MeshData()
     if gen_script:
-        if txt==None: txt = Blender.Text.New(m.obj.name+'_umesh')
+        key = '.cpp' if cpp else '.py'
+        if txt==None: txt = Blender.Text.New(m.obj.name+'_umesh'+key)
         if cpp: # C++ script
+
+            # header
+            if with_headers:
+                txt.write ('// MechSys\n')
+                txt.write ('#include <mechsys/fem/fem.h>\n')
+                txt.write ('\nint main(int argc, char **argv) try\n')
+                txt.write ('{\n')
+
             # points, regions, and holes
-            txt.write ('Mesh::Unstructured mesh(/*NDim*/%d);\n' % (m.ndim))
-            txt.write ('mesh.Set (%d/*points*/, %d/*segments*/, %d/*regions*/, %d/*holes*/,\n' % (m.nverts, m.nedges, m.nregs, m.nhols))
+            txt.write ('    Mesh::Unstructured mesh(/*NDim*/%d);\n' % (m.ndim))
+            txt.write ('    mesh.Set (%d/*points*/, %d/*segments*/, %d/*regions*/, %d/*holes*/,\n' % (m.nverts, m.nedges, m.nregs, m.nhols))
             lin = ''
             for v in m.msh.verts:
                 tag = 0
                 if v.index in m.vtags: tag = m.vtags[v.index]
-                if m.is3d: lin += '%4d.,  %4d.,  %6e, %6e, %6e,\n' % (v.index, tag, v.co[0], v.co[1], v.co[2])
-                else:      lin += '%4d.,  %4d.,  %6e, %6e,\n'      % (v.index, tag, v.co[0], v.co[1])
+                if m.is3d: lin += '    %4d.,  %4d.,  %6e, %6e, %6e,\n' % (v.index, tag, v.co[0], v.co[1], v.co[2])
+                else:      lin += '    %4d.,  %4d.,  %6e, %6e,\n'      % (v.index, tag, v.co[0], v.co[1])
             if m.nregs>0:
                 for k, v in m.obj.properties['regs'].iteritems():
-                    if m.is3d: lin += '        %4d.,  %6e, %6e, %6e, %8e,\n' % (v[0], v[2], v[3], v[4], v[1])
-                    else:      lin += '        %4d.,  %6e, %6e, %8e,\n'      % (v[0], v[2], v[3], v[1])
+                    if m.is3d: lin += '            %4d.,  %6e, %6e, %6e, %8e,\n' % (v[0], v[2], v[3], v[4], v[1])
+                    else:      lin += '            %4d.,  %6e, %6e, %8e,\n'      % (v[0], v[2], v[3], v[1])
             if m.nhols>0:
                 for k, v in m.obj.properties['hols'].iteritems():
-                    if is3d: lin += '             %6e, %6e, %6e,\n' % (v[0], v[1], v[2])
-                    else:    lin += '             %6e, %6e,\n'      % (v[0], v[1])
+                    if m.is3d: lin += '                 %6e, %6e, %6e,\n' % (v[0], v[1], v[2])
+                    else:      lin += '                 %6e, %6e,\n'      % (v[0], v[1])
             txt.write (lin[:len(lin)-2])
-            txt.write (');\n')
+            txt.write ('    );\n')
             for e in m.msh.edges:
                 key = (e.v1.index, e.v2.index)
                 tag = 0
                 if key in m.etags: tag = m.etags[key]
-                txt.write ('mesh.SetSeg (%4d, %4d, %4d, %4d);\n' % (e.index, tag, e.v1.index, e.v2.index))
+                txt.write ('    mesh.SetSeg (%4d, %4d, %4d, %4d);\n' % (e.index, tag, e.v1.index, e.v2.index))
             str_o2 = 'true' if m.iso2 else 'false'
-            txt.write ('mesh.Generate (/*O2*/%s, /*GlobalMaxArea*/%g);\n' % (str_o2,m.maxA))
-            txt.write ('mesh.WriteMPY (\"%s\", /*OnlyMesh*/false);\n' % (m.obj.name+'_umesh'))
+            txt.write ('    mesh.Generate (/*O2*/%s, /*GlobalMaxArea*/%s);\n' % (str_o2,str(m.maxA)))
+            txt.write ('    mesh.WriteMPY (\"%s\", /*WithTags*/true);\n' % (m.obj.name+'_umesh'))
+
+            # bottom
+            if with_headers:
+                txt.write ('}\n')
+                txt.write ('MECHSYS_CATCH\n')
 
         else: # Python script
+            if with_headers: txt.write ('from mechsys import *\n\n')
             txt.write ('mesh = Unstructured(%d)\n' % (m.ndim))
             lin = 'mesh.Set ({\'P\':['
             for v in m.msh.verts:
@@ -459,8 +463,8 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False):
             if m.nhols>0:
                 idx = 0
                 for k, v in m.obj.properties['hols'].iteritems():
-                    if is3d: lin += '[%6e, %6e, %6e]' % (v[0], v[1], v[2])
-                    else:    lin += '[%6e, %6e]'      % (v[0], v[1])
+                    if m.is3d: lin += '[%6e, %6e, %6e]' % (v[0], v[1], v[2])
+                    else:      lin += '[%6e, %6e]'      % (v[0], v[1])
                     if idx==m.nhols-1: lin += '],\n'
                     else:              lin += ',\n                '
                     idx += 1
@@ -480,8 +484,8 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False):
                     idx += 1
             str_o2 = 'True' if m.iso2 else 'False'
             txt.write (lin)
-            txt.write ('mesh.Generate (%s, %g)\n' % (str_o2,m.maxA))
-            txt.write ('mesh.WriteMPY (\"%s\", False)\n' % (m.obj.name+'_umesh'))
+            txt.write ('mesh.Generate (%s, %s) # O2, GlobalMaxArea\n' % (str_o2,str(m.maxA)))
+            txt.write ('mesh.WriteMPY (\"%s\", True) # FileKey, WithTags\n' % (m.obj.name+'_umesh'))
 
     else: # run
         dat = {'P':[], 'R':[], 'H':[]}
@@ -498,8 +502,8 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False):
                 else:      dat['R'].append ([int(v[0]), v[2], v[3], v[1]])
         if m.nhols>0:
             for k, v in m.obj.properties['hols'].iteritems():
-                if is3d: dat['H'].append ([v[0], v[1], v[2]])
-                else:    dat['H'].append ([v[0], v[1]])
+                if m.is3d: dat['H'].append ([v[0], v[1], v[2]])
+                else:      dat['H'].append ([v[0], v[1]])
         for e in m.msh.edges:
             key = (e.v1.index, e.v2.index)
             tag = 0
@@ -507,13 +511,14 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False):
             dat['S'].append ([tag, e.v1.index, e.v2.index])
         mesh = Unstructured (m.ndim)
         mesh.Set      (dat)
-        mesh.Generate ()
+        mesh.Generate (m.iso2, m.maxA)
         add_mesh      (m.obj, mesh, 'unstruct')
+        return mesh
 
 # ====================================================================================== Draw
 
 @print_timing
-def add_mesh(obj, mesh, mesh_type):
+def add_mesh(obj, mesh, msh_type):
     # delete old mesh
     if obj.properties.has_key('msh_name'):
         msh_name = obj.properties['msh_name']
@@ -539,7 +544,7 @@ def add_mesh(obj, mesh, mesh_type):
     obj.makeParent       ([new_obj])
 
     # set mesh type
-    obj.properties['mesh_type'] = mesh_type
+    obj.properties['msh_type'] = msh_type
 
     # redraw
     Blender.Window.QRedrawAll()
