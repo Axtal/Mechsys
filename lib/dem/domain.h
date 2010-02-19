@@ -52,14 +52,13 @@ public:
 
     // Particle generation
     void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type, 
-                          size_t Randomseed, double fraction);                                                  ///< General spheres
-    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
-    void GenBoundingBox  (int InitialTag, double R, double Cf);                                                 ///< Generate o bounding box enclosing the previous included particles.
-    void GenFromMesh     (int Tag, Mesh::Generic const & M, double R, double rho);                              ///< Generate particles from a FEM mesh generator
-    void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0);                  ///< Generate Particles from a Voronoi container
+                          size_t Randomseed, double fraction);                                                         ///< General spheres
+    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                       ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenBoundingBox  (int InitialTag, double R, double Cf);                                                        ///< Generate o bounding box enclosing the previous included particles.
+    void GenFromMesh     (int Tag, Mesh::Generic const & M, double R, double rho);                                     ///< Generate particles from a FEM mesh generator
+    void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);  ///< Generate Particles from a Voronoi container
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
-                          double rho, bool Periodic,size_t Randomseed, double fraction);                        ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
-
+                          double rho, bool Periodic,size_t Randomseed, double fraction, char const * Type=NULL);       ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -79,7 +78,7 @@ public:
     void Center           ();                                                                                  ///< Centers the domain
     void ResetInteractons ();                                                                                  ///< Reset the interactons
     void EnergyOutput     (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
-    void GetGSD           (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;    ///< Get the Grain Size Distribution
+    void GetGSD           (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
 
     // Methods to be derived
     virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
@@ -335,7 +334,7 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, dou
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, double fraction)
+inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, double fraction, char const *Type)
 {
     // info
     double start = std::clock();
@@ -347,6 +346,7 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, 
     int q,s;
     voronoicell c;
     s=l1.init(VC.ax,VC.bx,VC.ay,VC.by,VC.az,VC.bz,px,py,pz);
+
     do 
     {
         for(q=0;q<VC.co[s];q++) 
@@ -356,6 +356,7 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, 
             {
                 if(VC.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
                 {
+
                     if (rand()<fraction*RAND_MAX)
                     {
                         AddVoroCell(Tag,c,R,rho,true);
@@ -373,30 +374,74 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, 
     std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
-inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed, double fraction)
+inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed, double fraction, char const * Type)
 {
     srand(Randomseed);
     const double x_min=-Lx/2.0, x_max=Lx/2.0;
     const double y_min=-Ly/2.0, y_max=Ly/2.0;
     const double z_min=-Lz/2.0, z_max=Lz/2.0;
     container con(x_min,x_max,y_min,y_max,z_min,z_max,nx,ny,nz, Periodic,Periodic,Periodic,8);
-    size_t n = 0;
-    double qinter = 0.0;
+    int n = 0;
     for (size_t i=0; i<nx; i++)
     {
         for (size_t j=0; j<ny; j++)
         {
             for (size_t k=0; k<nz; k++)
             {
-                double x = x_min+(i+qinter+(1-2*qinter)*double(rand())/RAND_MAX)*(x_max-x_min)/nx;
-                double y = y_min+(j+qinter+(1-2*qinter)*double(rand())/RAND_MAX)*(y_max-y_min)/ny;
-                double z = z_min+(k+qinter+(1-2*qinter)*double(rand())/RAND_MAX)*(z_max-z_min)/nz;
-                con.put (n,x,y,z);
-                n++;
+                double x = x_min+(i+double(rand())/RAND_MAX)*(x_max-x_min)/nx;
+                double y = y_min+(j+double(rand())/RAND_MAX)*(y_max-y_min)/ny;
+                double z = z_min+(k+double(rand())/RAND_MAX)*(z_max-z_min)/nz;
+                if (((sqrt(x*x+y*y)<Lx/2.0)&&(Type=="cylinder"))||(Type!="cylinder"))
+                {
+                    con.put (n,x,y,z);
+                    n++;
+                }
             }
         }
     }
-    GenFromVoro(Tag,con,R,rho,fraction);
+
+    // info
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Generating particles from Voronoi tessellation -------------[0m\n";
+
+    fpoint x,y,z,px,py,pz;
+    container *cp = & con;
+    voropp_loop l1(cp);
+    int q,s;
+    voronoicell c;
+    s=l1.init(con.ax,con.bx,con.ay,con.by,con.az,con.bz,px,py,pz);
+
+    wall_cylinder cyl(0,0,0,0,0,1,Lx/2);
+    if (Type=="cylinder") con.add_wall(cyl);
+    do 
+    {
+        for(q=0;q<con.co[s];q++) 
+        {
+            x=con.p[s][con.sz*q]+px;y=con.p[s][con.sz*q+1]+py;z=con.p[s][con.sz*q+2]+pz;
+            if(x>con.ax&&x<con.bx&&y>con.ay&&y<con.by&&z>con.az&&z<con.bz) 
+            {
+                if(con.compute_cell(c,l1.ip,l1.jp,l1.kp,s,q,x,y,z)) 
+                {
+
+                    if (rand()<fraction*RAND_MAX)
+                    {
+                        AddVoroCell(Tag,c,R,rho,true);
+                        Vec3_t trans(x,y,z);
+                        Particle * P = Particles[Particles.Size()-1];
+                        P->Translate(trans);
+                        P->V = c.volume();
+                        P->Diam = sqrt((P->MaxX()-P->MinX())*(P->MaxX()-P->MinX())+(P->MaxY()-P->MinY())*(P->MaxY()-P->MinY())+(P->MaxZ()-P->MinZ())*(P->MaxX()-P->MinX()));
+                    }
+                }
+            }
+        }
+    } while((s=l1.inc(px,py,pz))!=-1);
+
+    // info
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+
 }
 
 // Single particle addition
@@ -1091,29 +1136,30 @@ inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
 
 inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv) const
 {
-    /*
+    
     // calc GSD information
-    Vs = 0.0;
+    Array<double> Vg;
+    double Vs = 0.0;
     for (size_t i=0; i<FreeParticles.Size(); i++)
     {
         Vs += FreeParticles[i]->V;
         Vg.Push(FreeParticles[i]->V);
-        Dg.Push(FreeParticles[i]->Dmax);
+        D.Push(FreeParticles[i]->Diam);
     }
-    double Dmin  = Dg[Dg.Min()]; // minimum diameter
-    double Dmax  = Dg[Dg.Max()]; // maximum diameter
-    double Dspan = (Dmax-Dmin)/GSD_NDiv;
-    for (size_t i=0; i<=GSD_NDiv; i++)
+    double Dmin  = D[D.Min()]; // minimum diameter
+    double Dmax  = D[D.Max()]; // maximum diameter
+    double Dspan = (Dmax-Dmin)/NDiv;
+    for (size_t i=0; i<=NDiv; i++)
     {
-        GSD_X.Push (i*Dspan+Dmin);
-        size_t cumsum = 0;
-        for (size_t j=0; j<Dg.Size(); j++)
+        X.Push (i*Dspan+Dmin);
+        double cumsum = 0;
+        for (size_t j=0; j<D.Size(); j++)
         {
-            if (Dg[j]<=i*Dspan+Dmin) cumsum++;
+            if (D[j]<=i*Dspan+Dmin) cumsum++;
         }
-        GSD_Y.Push (cumsum/FreeParticles.Size());
+        Y.Push (cumsum/FreeParticles.Size());
     }
-    */
+    
 }
 
 // Methods for specific simulations

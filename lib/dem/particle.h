@@ -82,6 +82,7 @@ public:
     double         Erot;       ///< Rotational energy of the particle
     double         Ekin;       ///< Kinetical energy of the particle
     double         Dmax;       ///< Maximal distance from the center of mass to the surface of the body
+    double         Diam;       ///< Diameter of the parallelogram containing the particle
     double         Cn;         ///< Coordination number (number of contacts)
     Array<Vec3_t*> Verts;      ///< Vertices
     Array<Edge*>   Edges;      ///< Edges

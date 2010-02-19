@@ -25,6 +25,7 @@ SET(EXES
   test_voro02
   test_voro03
   triaxial_test
+  cylinder_test
   figure)
 
 SET(TESTS
