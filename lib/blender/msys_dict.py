@@ -480,10 +480,6 @@ def props_del_stage():
         sid = str(Blender.Registry.GetKey('MechSysDict')['fem_stage'])
         tid = str(int(obj.properties['stages'][sid][1]))
         stg = 'stg_'+sid
-        # delete eatt text
-        if obj.properties[stg].has_key('eatts'):
-            for k, v in obj.properties[stg]['eatts'].iteritems():
-                obj.properties['texts'].pop(str(v[7]))
         # delete description
         obj.properties['texts'].pop(tid)
         # delete stage
