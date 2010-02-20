@@ -154,7 +154,10 @@ BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic con
 
 // Solver
 BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const &>())
-    .def("Solve", &FEM::Solver::Solve, SO_Solve())
+    .def("Solve",     &FEM::Solver::Solve, SO_Solve())
+    .def("SetScheme", &FEM::Solver::SetScheme)
+    .def_readwrite("MaxIt", &FEM::Solver::MaxIt)
+    .def_readwrite("TolR",  &FEM::Solver::TolR)
     ;
 
 ///////////////////////////////////////////////////////////////////////////////////// dem /////

@@ -248,12 +248,9 @@ def gen_script():
                 for tag, fbc in fbrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+fbc['CPPKEYS']+', '+fbc['CPPVALS']+');\n')
 
                 # solve
-                txt.write ('    dom.SetBCs (bcs);\n')
-                txt.write ('    sol.Solve  (%d);\n'%(stage['ndiv']))
-
-        # output
-        txt.write ('\n    // output\n')
-        txt.write ('    dom.WriteVTU ("'+dat.filekey+'");\n')
+                txt.write ('    dom.SetBCs   (bcs);\n')
+                txt.write ('    sol.Solve    (%d);\n'%(stage['ndiv']))
+                txt.write ('    dom.WriteVTU ("'+dat.filekey+'_'+stage['stg']+'");\n')
 
         # footer
         txt.write ('\n    return 0;\n')
@@ -333,12 +330,9 @@ def gen_script():
                 if stage['cdi']: pass
 
                 # solve
-                txt.write ('dom.SetBCs (bcs)\n')
-                txt.write ('sol.Solve  (%d)\n'%(stage['ndiv']))
-
-        # output
-        txt.write ('\n# output\n')
-        txt.write ('dom.WriteVTU ("'+dat.filekey+'")\n')
+                txt.write ('dom.SetBCs   (bcs)\n')
+                txt.write ('sol.Solve    (%d)\n'%(stage['ndiv']))
+                txt.write ('dom.WriteVTU ("'+dat.filekey+'_'+stage['stg']+'")\n')
 
 
 def run_simulation(running, fatal):
@@ -392,11 +386,9 @@ def run_simulation(running, fatal):
                 for tag, fbc in fbrys.iteritems(): bcs.Set (tag, fbc)
 
                 # solve
-                dom.SetBCs (bcs)
-                sol.Solve  (stage['ndiv'])
-
-        # output
-        dom.WriteVTU (dat.filekey)
+                dom.SetBCs   (bcs)
+                sol.Solve    (stage['ndiv'])
+                dom.WriteVTU (dat.filekey+'_'+stage['stg'])
 
         # notify parent that we have finished
         running.value = 0
@@ -431,12 +423,12 @@ def stop():
 
 def paraview():
     obj = di.get_obj()
-    fn  = obj.name+'_fem.vtu'
-    if Blender.sys.exists(fn):
-        Blender.Window.WaitCursor(1)
-        try: pid = subprocess.Popen(['paraview', '--data='+fn]).pid
+    if obj.properties.has_key('stages'):
+        for i in range(len(obj.properties['stages'])):
+            fn = obj.name+'_fem_stg_%d.vtu'%i
+            if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, run analysis first)')
+        try: pid = subprocess.Popen(['paraview', '--data='+obj.name+'_fem_stg_..vtu']).pid
         except:
             Blender.Window.WaitCursor(0)
             raise Exception('Paraview is not available, please install it first')
-        Blender.Window.WaitCursor(0)
-    else: raise Exception('File <'+fn+'> does not exist (please, run analysis first)')
+    else: raise Exception('Please add stages first and run the simulation')

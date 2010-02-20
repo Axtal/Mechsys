@@ -64,6 +64,8 @@ public:
     void AssembleKCMA (double Coef1, double Coef2, double Coef3);                               ///< A = Coef1*M + Coef2*C + Coef3*K
     void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                                      ///< Tangent increments: dU = inv(K)*dF
     void Initialize   (bool Transient=false);                                                   ///< Initialize global matrices and vectors
+    void SetScheme    (char const * StrScheme);                                                 ///< Set solution scheme: 'FE', 'ME', 'NR'
+    bool ResidOK      () const;                                                                 ///< Check if the residual is OK
 
     // Data (read-only)
     Domain const & Dom;      ///< Domain
@@ -185,8 +187,8 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
 
     // output initial state
     std::cout << "\n[1;37m--- Stage solution --- (steady) ----------------------------------------------\n";
-    std::cout << Util::_10_6 << "Time" <<                                                Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_10_6 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
+    std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR    << "[0m\n";
     if (IdxOut==0)
     {
         Dom.OutResults (Time, F_int);
@@ -239,7 +241,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
 
         // output
         IdxOut++;
-        std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str;
+        std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m    " << str;
         Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
@@ -290,8 +292,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
 
     // output initial state
     std::cout << "\n[1;37m--- Stage solution --- (dynamic) ---------------------------------------------\n";
-    std::cout << Util::_10_6 << "Time" <<                                       Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_10_6 <<  Time  << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR    << "[0m\n";
+    std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)" << "[0m\n";
+    std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR    << "[0m\n";
     if (IdxOut==0)
     {
         Dom.OutResults (Time, F_int);
@@ -323,7 +325,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
 
         // output
         IdxOut++;
-        std::cout << Util::_10_6 << Time << (NormR>TolR*MaxNormF?"[1;31m":"[1;32m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m    " << str << "\n";
         Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
@@ -634,6 +636,23 @@ inline void Solver::Initialize (bool Transient)
     InitZed = true;
 }
 
+inline void Solver::SetScheme (char const * StrScheme)
+{
+    if      (strcmp(StrScheme,"FE")==0) Scheme = FE_t;
+    else if (strcmp(StrScheme,"ME")==0) Scheme = ME_t;
+    else if (strcmp(StrScheme,"NR")==0) Scheme = NR_t;
+    else throw new Fatal("Solver::SetScheme: Key '%s' is invalid. The following keys are availabe: 'FE', 'ME', 'NR'",StrScheme);
+}
+
+inline bool Solver::ResidOK () const
+{
+    if (MaxNormF<1.0e-8) // particular case when MaxNormF is very small
+    {
+        return (NormR<TolR);
+    }
+    else return (NormR<TolR*MaxNormF);
+}
+
 inline void Solver::_set_A_Lag ()
 {
     // set equations corresponding to Lagrange multipliers
@@ -719,7 +738,7 @@ inline void Solver::_cor_resid (Vec_t & dU)
 {
     // iterations
     size_t it = 0;
-    while (NormR>TolR*MaxNormF && it<MaxIt)
+    while (!ResidOK() && it<MaxIt)
     {
         // debug
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
@@ -996,7 +1015,7 @@ inline void Solver::_GN22_update (double tf, double dt)
             // check convergence
             NormR    = Norm(R);
             MaxNormF = Util::Max (Norm(F), Norm(F_int));
-            if (NormR<=TolR*MaxNormF) break;
+            if (ResidOK()) break;
         }
         if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
 
@@ -1065,7 +1084,7 @@ inline void Solver::_GNHMCoup_update (double tf, double dt)
             // check convergence
             NormR    = Norm(R);
             MaxNormF = Util::Max (Norm(F), Norm(F_int));
-            if (NormR<=TolR*MaxNormF) break;
+            if (ResidOK()) break;
         }
         if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
 
