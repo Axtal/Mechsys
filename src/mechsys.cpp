@@ -58,6 +58,7 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_GetGSD,       PyGetGSD,     3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_DynSolve,     DynSolve,     3, 4)
 
 // module
 BOOST_PYTHON_MODULE (mechsys)
@@ -154,7 +155,8 @@ BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic con
 
 // Solver
 BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const &>())
-    .def("Solve",     &FEM::Solver::Solve, SO_Solve())
+    .def("Solve",     &FEM::Solver::Solve,    SO_Solve())
+    .def("DynSolve",  &FEM::Solver::DynSolve, SO_DynSolve())
     .def("SetScheme", &FEM::Solver::SetScheme)
     .def_readwrite("MaxIt", &FEM::Solver::MaxIt)
     .def_readwrite("TolR",  &FEM::Solver::TolR)

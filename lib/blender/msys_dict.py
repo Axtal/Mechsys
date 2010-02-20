@@ -130,7 +130,7 @@ def load_dict():
 
         # Problem types
         dict['pty'] = { 0:'Equilib', 1:'Flow' }
-        dict['ptymnu'] = 'Problem Types %t|Flow (steady) %x2|Equilibrium (quasi-static) %x1'
+        dict['ptymnu'] = 'Problem Types %t|Flow %x2|Equilibrium %x1'
 
         # DOF vars
         dict['pty2Ndfv'] = { # problem type to Node DOF vars
@@ -166,6 +166,16 @@ def load_dict():
         dict['pty2gmnu'] = {
                 0:'Geometry type %t|fra %x5|d3d %x4|axs %x3|psa %x2|pse %x1',
                 1:'Geometry type %t|d3d %x2|d2d %x1' }
+
+        # FEM constants
+        dict['Scheme_t']     = { 0:'FE', 1:'ME', 2:'NR' }             # Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
+        dict['TScheme_t']    = { 0:'SS11' }                           # Transient time integration scheme: (Single step/O1/1st order)
+        dict['DScheme_t']    = { 0:'SS22', 1:'GN22', 2:'GNHMCoup' }   # Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+        dict['Damping_t']    = { 0:'None', 1:'Rayleigh', 2:'HMCoup' } # Damping type: none, Rayleigh type (C=alp*M+bet*K), HydroMechCoupling
+        dict['schememnu']    = 'Solver scheme %t|Newton-Rhapson (NR) %x3|Modified-Euler (ME) %x2|Forward-Euler (FE) %x1'
+        dict['dschememnu']   = 'Dynamic Solver scheme %t|SS22 %x2|Newmark (GN22) %x1'
+        dict['stagetypemnu'] = 'Solver type %t|Dynamics %x3|Transient %x2|Quasi-static/Steady %x1'
+        dict['damptymnu']    = 'Damping type %t|Rayleigh %x2|None %x1'
 
         Blender.Registry.SetKey('MechSysDict', dict)
         print '[1;34mMechSys[0m: dictionary created'
@@ -295,7 +305,39 @@ def new_mat_props():
                25.0,    #  11:  phi -- shear angle at CS (CamClay)
                 1.0 ]   #  12:  k   -- diffusion coefficient (LinFlow)
 
-def new_stage_props(): return [1, -1, 0, 0, 1, 1.0, 1] # number, idx_desc(in texts), apply_body_forces?, clear_disps?, ndiv, dtime, active?
+def new_stage_props(): return [1,        #  0: number
+                               -1,       #  1: idx_desc(in texts)
+                               0,        #  2: apply_body_forces?
+                               0,        #  3: clear_disps?
+                               1,        #  4: ndiv
+                               1,        #  5: active?
+                               0,        #  6: type: 0=equilib/steady, 1=transient, 2=dynamics
+                               1.0,      #  7: tf        Final time
+                               0.01,     #  8: dt        time increment
+                               0.1,      #  9: dtOut     time increment for output
+                               1.0e-7,   # 10: TolR      Tolerance for the norm of residual
+                               False,    # 11: CalcWork  Calc work done == twice the stored (elastic) strain energy ? 
+                               1,        # 12: Scheme    Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler), NE_t (Newton-Rhapson)
+                               1,        # 13: nSS       FE and NR: number of substeps 
+                               1.0e-5,   # 14: STOL      ME: 
+                               1.0,      # 15: dTini     ME: 
+                               0.1,      # 16: mMin      ME: 
+                               10.0,     # 17: mMax      ME: 
+                               2000,     # 18: MaxSS     ME: 
+                               False,    # 19: CteTg     Constant tangent matrices (linear problems) => K will be calculated once 
+                               False,    # 20: ModNR     Modified Newton-Rhapson ? 
+                               20,       # 21: MaxIt     Max iterations (for Newton-Rhapson) 
+                               0,        # 22: TScheme   Transient scheme 
+                               2./3.,    # 23: Theta     Transient scheme constant 
+                               0,        # 24: DScheme   Dynamic scheme 
+                               0,        # 25: DampTy    Damping type 
+                               0.005,    # 26: DampAm    Rayleigh damping Am coefficient (C = Am*M + Ak*K) 
+                               0.5,      # 27: DampAk    Rayleigh damping Ak coefficient (C = Am*M + Ak*K) 
+                               0.5,      # 28: DynTh1    Dynamic coefficient Theta 1 
+                               0.5,      # 29: DynTh2    Dynamic coefficient Theta 2 
+                               True,     # 30: DynCont   Continue dynamic simulation (after DySolve was called once) 
+                               True]     # 31: Output VTU file each dtOut ?
+
 def new_nbry_props():  return [-100, 0, 0.0]           # tag, key, val
 def new_ebry_props():  return [-10,  0, 0.0]           # tag, key, val
 def new_fbry_props():  return [-10,  0, 0.0]           # tag, key, val

@@ -153,8 +153,13 @@ def get_stage_info(obj, num):
             stage['abf']   = True if int(v[2]) else False # apply body forces ?
             stage['cdi']   = True if int(v[3]) else False # clear displacements ?
             stage['ndiv']  = int(v[4])
-            stage['dtime'] =     v[5]
-            stage['act']   = int(v[6])
+            stage['act']   = int(v[5])
+            stage['type']  = int(v[6])
+            if stage['type']==2: # dynamics
+                stage['tf']     = float(v[7])
+                stage['dt']     = float(v[8])
+                stage['dtOut']  = float(v[9])
+                stage['outVTU'] = True if int(v[31]) else False
     return stage
 
 
@@ -249,7 +254,11 @@ def gen_script():
 
                 # solve
                 txt.write ('    dom.SetBCs   (bcs);\n')
-                txt.write ('    sol.Solve    (%d);\n'%(stage['ndiv']))
+                if stage['type']==0: # equilib/steady
+                    txt.write ('    sol.Solve    (%d);\n'%(stage['ndiv']))
+                elif stage['type']==2: # dynamics
+                    extra = ', "'+dat.filekey+'"' if stage['outVTU'] else ''
+                    txt.write ('    sol.DynSolve (%g, %g, %g%s); // tf,dt,dtOut,filekey\n' % (stage['tf'],stage['dt'],stage['dtOut'],extra))
                 txt.write ('    dom.WriteVTU ("'+dat.filekey+'_'+stage['stg']+'");\n')
 
         # footer
@@ -331,7 +340,11 @@ def gen_script():
 
                 # solve
                 txt.write ('dom.SetBCs   (bcs)\n')
-                txt.write ('sol.Solve    (%d)\n'%(stage['ndiv']))
+                if stage['type']==0: # equilib/steady
+                    txt.write ('sol.Solve    (%d)\n'%(stage['ndiv']))
+                elif stage['type']==2: # dynamics
+                    extra = ', "'+dat.filekey+'"' if stage['outVTU'] else ''
+                    txt.write ('sol.DynSolve (%g, %g, %g%s) # tf,dt,dtOut,filekey\n' % (stage['tf'],stage['dt'],stage['dtOut'],extra))
                 txt.write ('dom.WriteVTU ("'+dat.filekey+'_'+stage['stg']+'")\n')
 
 
@@ -386,8 +399,12 @@ def run_simulation(running, fatal):
                 for tag, fbc in fbrys.iteritems(): bcs.Set (tag, fbc)
 
                 # solve
-                dom.SetBCs   (bcs)
-                sol.Solve    (stage['ndiv'])
+                dom.SetBCs (bcs)
+                if stage['type']==0: # equilib/steady
+                    sol.Solve (stage['ndiv'])
+                elif stage['type']==2: # dynamics
+                    if stage['outVTU']: sol.DynSolve (stage['tf'],stage['dt'],stage['dtOut'],dat.filekey)
+                    else:               sol.DynSolve (stage['tf'],stage['dt'],stage['dtOut'])
                 dom.WriteVTU (dat.filekey+'_'+stage['stg'])
 
         # notify parent that we have finished
@@ -421,13 +438,19 @@ def stop():
     else: raise Exception('There is no FEM simulation running')
 
 
-def paraview():
+def paraview(dynamics=False):
     obj = di.get_obj()
     if obj.properties.has_key('stages'):
-        for i in range(len(obj.properties['stages'])):
-            fn = obj.name+'_fem_stg_%d.vtu'%i
+        if dynamics:
+            fn = obj.name+'_fem_00000001.vtu'
             if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, run analysis first)')
-        try: pid = subprocess.Popen(['paraview', '--data='+obj.name+'_fem_stg_..vtu']).pid
+            strkey = '_fem_..vtu'
+        else:
+            for i in range(len(obj.properties['stages'])):
+                fn = obj.name+'_fem_stg_%d.vtu'%i
+                if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, run analysis first)')
+            strkey = '_fem_stg_..vtu'
+        try: pid = subprocess.Popen(['paraview', '--data='+obj.name+strkey]).pid
         except:
             Blender.Window.WaitCursor(0)
             raise Exception('Paraview is not available, please install it first')

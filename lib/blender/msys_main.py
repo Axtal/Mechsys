@@ -106,7 +106,8 @@ EVT_FEM_RUN          = 91 # run a FE simulation
 EVT_FEM_STOP         = 92 # run a FE simulation
 EVT_FEM_SCRIPT       = 93 # generate script for FEM 
 EVT_FEM_PARAVIEW     = 94 # view in ParaView
-EVT_FEM_CLEAR        = 95 # clear error message
+EVT_FEM_DPARAVIEW    = 95 # view in ParaView (dynamics)
+EVT_FEM_CLEAR        = 96 # clear error message
 # DEM
 EVT_DEM_GEN_PKG      = 100 # generate packing
 EVT_DEM_GEN_TTT      = 101 # generate true triaxial packing
@@ -312,10 +313,11 @@ def button_event(evt):
         sids = [int(k) for k, v in obj.properties['stages'].iteritems()]
         di.props_del_all_fem (sids, 'eatts')
 
-    elif evt==EVT_FEM_SCRIPT:   fem.gen_script ()
-    elif evt==EVT_FEM_RUN:      fem.run        ()
-    elif evt==EVT_FEM_STOP:     fem.stop       ()
-    elif evt==EVT_FEM_PARAVIEW: fem.paraview   ()
+    elif evt==EVT_FEM_SCRIPT:    fem.gen_script ()
+    elif evt==EVT_FEM_RUN:       fem.run        ()
+    elif evt==EVT_FEM_STOP:      fem.stop       ()
+    elif evt==EVT_FEM_PARAVIEW:  fem.paraview   ()
+    elif evt==EVT_FEM_DPARAVIEW: fem.paraview   (True)
     elif evt==EVT_FEM_CLEAR:
         di.key('fem_fatal').value = 0
         Blender.Window.QRedrawAll()
@@ -642,17 +644,43 @@ def cb_fem_stage (evt,val):
         if val==v[0]: di.set_key('fem_stage', int(k))
     Blender.Window.QRedrawAll()
 @try_catch
-def cb_fem_stage_act  (evt,val): di.props_set_item ('stages', evt-EVT_INC, 6, int(val))
+def cb_fem_stage_desc       (evt,val): di.props_set_text ('texts', evt-EVT_INC, val)
 @try_catch
-def cb_fem_stage_desc (evt,val): di.props_set_text ('texts', evt-EVT_INC, val)
+def cb_fem_stage_apply_bf   (evt,val): di.props_set_item ('stages', evt-EVT_INC, 2, int(val))
 @try_catch
-def cb_fem_apply_bf   (evt,val): di.props_set_item ('stages', evt-EVT_INC, 2, int(val))
+def cb_fem_stage_clear_disp (evt,val): di.props_set_item ('stages', evt-EVT_INC, 3, int(val))
 @try_catch
-def cb_fem_clear_disp (evt,val): di.props_set_item ('stages', evt-EVT_INC, 3, int(val))
+def cb_fem_stage_ndiv       (evt,val): di.props_set_item ('stages', evt-EVT_INC, 4, int(val))
 @try_catch
-def cb_fem_ndiv       (evt,val): di.props_set_item ('stages', evt-EVT_INC, 4, int(val))
+def cb_fem_stage_act        (evt,val): di.props_set_item ('stages', evt-EVT_INC, 5, int(val))
 @try_catch
-def cb_fem_dtime      (evt,val): di.props_set_item ('stages', evt-EVT_INC, 5, float(val))
+def cb_fem_stage_type       (evt,val): di.props_set_item ('stages', evt-EVT_INC, 6, val-1)
+@try_catch
+def cb_fem_stage_tf         (evt,val): di.props_set_item ('stages', evt-EVT_INC, 7, float(val))
+@try_catch
+def cb_fem_stage_dt         (evt,val): di.props_set_item ('stages', evt-EVT_INC, 8, float(val))
+@try_catch
+def cb_fem_stage_dtOut      (evt,val): di.props_set_item ('stages', evt-EVT_INC, 9, float(val))
+@try_catch
+def cb_fem_stage_output     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 31, int(val))
+@try_catch
+def cb_fem_stage_tolR       (evt,val): di.props_set_item ('stages', evt-EVT_INC, 10, float(val))
+@try_catch
+def cb_fem_stage_calcWork   (evt,val): di.props_set_item ('stages', evt-EVT_INC, 11, int(val))
+@try_catch
+def cb_fem_stage_scheme     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 12, val-1)
+@try_catch
+def cb_fem_stage_dscheme    (evt,val): di.props_set_item ('stages', evt-EVT_INC, 24, val-1)
+@try_catch
+def cb_fem_stage_DampTy     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 25, val-1)
+@try_catch
+def cb_fem_stage_DampAm     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 26, float(val))
+@try_catch
+def cb_fem_stage_DampAk     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 27, float(val))
+@try_catch
+def cb_fem_stage_DynTh1     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 28, float(val))
+@try_catch
+def cb_fem_stage_DynTh2     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 29, float(val))
 
 # ---------------------------------- DEM
 
@@ -827,6 +855,17 @@ def gui():
         mdl = int(v[0])
         mat_extra_rows += d['mdl2nrow'][mdl]
 
+    # stages: extra rows
+    stg_extra_rows = 0
+    if len(stages)>0:
+        sid = str(d['fem_stage'])  # stage_id
+        if int(stages[sid][6])==0: # equilib/steady
+            stg_extra_rows = 2
+        elif int(stages[sid][6])==1: # transient
+            stg_extra_rows = 3
+        elif int(stages[sid][6])==2: # dynamics
+            stg_extra_rows = 6
+
     # height of boxes
     h_set           = 6*rh+2*srg+2*rg
     h_cad           = 4*rh+2*rg
@@ -840,12 +879,12 @@ def gui():
     h_msh           = 11*rh+srg+h_msh_stru+h_msh_unst+2*rg+h_msh_ext
     h_mat_mats      = rg+(srg+rh)*len(mats)+rh*mat_extra_rows if len(mats)>0 else 0
     h_mat           = rh+h_mat_mats+2*rg
-    h_fem_nbrys     = rh+srg+rh*len(nbrys) if len(nbrys)>0 else 0
-    h_fem_ebrys     = rh+srg+rh*len(ebrys) if len(ebrys)>0 else 0
-    h_fem_fbrys     = rh+srg+rh*len(fbrys) if len(fbrys)>0 else 0
+    h_fem_nbrys     = rh+srg+rh*len(nbrys)                  if len(nbrys)>0 else 0
+    h_fem_ebrys     = rh+srg+rh*len(ebrys)                  if len(ebrys)>0 else 0
+    h_fem_fbrys     = rh+srg+rh*len(fbrys)                  if len(fbrys)>0 else 0
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
-    h_fem_stage     = 6*rh+2*rg+5*srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts if len(stages)>0 else 0
-    h_fem           = 5*rh+h_fem_stage+4*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
+    h_fem_stage     = 13*rh+srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts+rh*stg_extra_rows
+    h_fem           = 5*rh+h_fem_stage+3*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
     h_dem_pkg       = 8*rh+3*rg
     h_dem_cte       = 5*rh+srg
     h_dem_ttt_iso   = 3*rh+2*srg
@@ -1143,26 +1182,10 @@ def gui():
 
         gu.caption2__(c,r,w,rh,'Stage #                  / %d'%(nstages),EVT_FEM_ADDSTAGE,EVT_FEM_DELSTAGE,EVT_FEM_DELALLSTAGES)
         if len(stages)>0:
-            i   = d['fem_stage']
-            sid = str(i)               # stage_id
+            sid = str(d['fem_stage'])  # stage_id
             num = int(stages[sid][0])  # num
-            tid = int(stages[sid][1])  # text_id
-            abf = int(stages[sid][2])  # apply body forces
-            cdi = int(stages[sid][3])  # clear displacements
-            ndi = int(stages[sid][4])  # ndiv
-            dti = '%g'%stages[sid][5]  # dtime
-            act = int(stages[sid][6])  # active?
-            des = texts[str(tid)]      # description
             Draw.Number ('', EVT_NONE, c+55, r+2, 60, rh-4, num, 0,99,'Show stage', cb_fem_stage)
             r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_fem_stage)
-            Draw.Toggle ('Active', EVT_INC+i,   c,    r,  80, rh, act,      'Set stage Active/Inactive during simulations?', cb_fem_stage_act)
-            Draw.String ('Desc: ', EVT_INC+tid, c+80, r, 220, rh, des, 256, 'Description of this stage',                     cb_fem_stage_desc)
-            r -= rh
-            Draw.Toggle ('Apply body forces',   EVT_INC+i, c,     r, 120, rh, abf,          'Apply body forces ?',                cb_fem_apply_bf)
-            Draw.Toggle ('Clear displacements', EVT_INC+i, c+120, r, 120, rh, cdi,          'Clear displacements (and strains)?', cb_fem_clear_disp)
-            Draw.Number ('',                    EVT_INC+i, c+240, r,  60, rh, ndi, 1,10000, 'Number of divisions',                cb_fem_ndiv)
-            r -= rh
-            r -= srg
 
             # ----------------------- FEM -- eatts
 
@@ -1213,7 +1236,7 @@ def gui():
 
             # ----------------------- FEM -- nbrys
 
-            r -= srg
+            r -= rh
             gu.caption3(c,r,w,rh,'Nodes BCs', EVT_FEM_ADDNBRY,EVT_FEM_DELALLNBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_nbrys)
             if len(nbrys)>0: gu.text(c,r,'       Tag         Key         Value')
@@ -1230,7 +1253,7 @@ def gui():
 
             # ----------------------- FEM -- ebrys
 
-            r -= srg
+            r -= rh
             gu.caption3(c,r,w,rh,'Edges BCs', EVT_FEM_ADDEBRY,EVT_FEM_DELALLEBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_ebrys)
             if len(ebrys)>0: gu.text(c,r,'       Tag         Key         Value')
@@ -1250,7 +1273,7 @@ def gui():
 
             # ----------------------- FEM -- fbrys
 
-            r -= srg
+            r -= rh
             gu.caption3(c,r,w,rh,'Faces BCs', EVT_FEM_ADDFBRY,EVT_FEM_DELALLFBRY)
             r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_fem_fbrys)
             if len(fbrys)>0: gu.text(c,r,'       Tag         Key         Value')
@@ -1269,8 +1292,50 @@ def gui():
             r, c, w = gu.box3_out(W,cg,rh, c,r)
 
             # ----------------------- FEM -- stages -- END
+
+            i   = d['fem_stage']       # stage_id
+            tid = int(stages[sid][1])  # text_id
+            r  -= rh
+            Draw.Toggle ('Active', EVT_INC+i,   c,    r,  80, rh,           int(stages[sid][5]),        'Set stage Active/Inactive during simulations?', cb_fem_stage_act)
+            Draw.String ('Desc: ', EVT_INC+tid, c+80, r, 220, rh, texts[str(int(stages[sid][1]))], 256, 'Description of this stage',                     cb_fem_stage_desc)
+            r -= rh
+            Draw.Toggle ('Apply body forces',   EVT_INC+i, c,     r, 150, rh, int(stages[sid][2]),      'Apply body forces ?',                cb_fem_stage_apply_bf)
+            Draw.Toggle ('Clear displacements', EVT_INC+i, c+150, r, 150, rh, int(stages[sid][3]),      'Clear displacements (and strains)?', cb_fem_stage_clear_disp)
+            r -= rh
+            Draw.Menu (d['stagetypemnu'], EVT_INC+i, c, r, 300, rh, int(stages[sid][6])+1, 'Stage type: equilib/steady, transient, dynamics',  cb_fem_stage_type)
+            r -= rh
+            r -= srg
+            if int(stages[sid][6])==0: # equilib/steady
+                gu.text(c,r,'Scheme:'); Draw.Menu (d['schememnu'], EVT_INC+i, c+60, r, 150, rh, int(stages[sid][12])+1, 'Global solution scheme',  cb_fem_stage_scheme)
+                r -= rh
+                gu.text(c,r,'NDiv:'); Draw.Number ('', EVT_INC+i, c+60, r, 60, rh, int(stages[sid][4]), 1,10000, 'Number of divisions', cb_fem_stage_ndiv)
+            elif int(stages[sid][6])==1: # transient
+                gu.text(c,    r,'tf:');    Draw.String ('', EVT_INC+i, c+60, r, 60, rh, '%g'%stages[sid][7], 128, 'Final time',                cb_fem_stage_tf);    r -= rh
+                gu.text(c,    r,'dt:');    Draw.String ('', EVT_INC+i, c+60, r, 60, rh, '%g'%stages[sid][8], 128, 'Time increment',            cb_fem_stage_dt);    r -= rh
+                gu.text(c,    r,'dtOut:'); Draw.String ('', EVT_INC+i, c+60, r, 60, rh, '%g'%stages[sid][9], 128, 'Time increment for output', cb_fem_stage_dtOut)
+            elif int(stages[sid][6])==2: # dynamics
+                gu.text(c, r,'Scheme:');  Draw.Menu (d['dschememnu'], EVT_INC+i, c+60, r, 120, rh, int(stages[sid][24])+1, 'Dynamics scheme', cb_fem_stage_dscheme)
+                r -= rh
+                gu.text(c, r,'Damping:'); Draw.Menu (d['damptymnu'],  EVT_INC+i, c+60, r, 120, rh, int(stages[sid][25])+1, 'Damping type',    cb_fem_stage_DampTy);
+                r -= rh
+                gu.text(c,     r,'DampAm:'); Draw.String ('', EVT_INC+i, c+60,  r, 60, rh, '%g'%stages[sid][26], 128, 'Damping coefficient Am (multiplies M matrix)', cb_fem_stage_DampAm);
+                gu.text(c+130, r,'DynTh1:'); Draw.String ('', EVT_INC+i, c+190, r, 60, rh, '%g'%stages[sid][28], 128, 'Dynamic coefficient Theta1',                   cb_fem_stage_DynTh1);
+                r -= rh
+                gu.text(c,     r,'DampAk:'); Draw.String ('', EVT_INC+i, c+60,  r, 60, rh, '%g'%stages[sid][27], 128, 'Damping coefficient Ak (multiplies K matrix)', cb_fem_stage_DampAk);
+                gu.text(c+130, r,'DynTh2:'); Draw.String ('', EVT_INC+i, c+190, r, 60, rh, '%g'%stages[sid][29], 128, 'Dynamic coefficient Theta2',                   cb_fem_stage_DynTh2);
+                r -= rh
+                gu.text(c,    r,'timef');
+                gu.text(c+60, r,'dt');
+                gu.text(c+120,r,'dtout');
+                r -= rh
+                Draw.String('',       EVT_INC+i, c,     r, 60, rh, '%g'%stages[sid][7], 128, 'Final time',                  cb_fem_stage_tf)
+                Draw.String('',       EVT_INC+i, c+60,  r, 60, rh, '%g'%stages[sid][8], 128, 'Time increment',              cb_fem_stage_dt)
+                Draw.String('',       EVT_INC+i, c+120, r, 60, rh, '%g'%stages[sid][9], 128, 'Time increment for output',   cb_fem_stage_dtOut)
+                Draw.Toggle('Output', EVT_INC+i, c+180, r, 60, rh, int(stages[sid][31]),     'Output VTU file each dtOut?', cb_fem_stage_output)
+            r -= rh
+            r -= srg
+
             r, c, w = gu.box2_out(W,cg,rh,rg, c,r+rh)
-        else: r -= rh
 
         # ----------------------- FEM -- END
         r -= rh
@@ -1286,7 +1351,8 @@ def gui():
             gu.text (c, r, 'Simulation FAILED (check terminal)')
             Draw.PushButton ('clr', EVT_FEM_CLEAR, c+240, r, 60,  rh, 'Clear error message')
         r -= rh
-        Draw.PushButton ('View results in ParaView', EVT_FEM_PARAVIEW, c, r, 180, rh, 'View results in ParaView')
+        Draw.PushButton ('ParaView: stages',     EVT_FEM_PARAVIEW,  c,     r, 150, rh, 'View results in ParaView for the end of stages')
+        Draw.PushButton ('ParaView: transient',  EVT_FEM_DPARAVIEW, c+150, r, 150, rh, 'View transient results in ParaView')
 
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rg
