@@ -176,7 +176,7 @@ def delete_mesh():
         obj.properties.pop('msh_name')
 
 # Handle button events
-@try_catch ##################### comment this out to track errors
+#@try_catch ##################### comment this out to track errors ######################################################################################################################################
 def button_event(evt):
 
     # ----------------------------------------------------------------------------------- Settings

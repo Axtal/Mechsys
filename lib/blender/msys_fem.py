@@ -25,7 +25,19 @@ import msys_dict as di
 import msys_mesh as me
 
 
-def get_prps_mdls(obj, pty, stg, cpp=False):
+def get_act_deact(obj, stg):
+    d = di.load_dict()
+    activate   = {}
+    deactivate = {}
+    if obj.properties[stg].has_key('eatts'):
+        for k, v in obj.properties[stg]['eatts'].iteritems():
+            tag             = int(v[0])
+            activate  [tag] = int(v[5])
+            deactivate[tag] = int(v[6])
+    return activate, deactivate
+
+
+def get_prps_mdls(obj, pty, stg, script=False, cpp=False):
     d    = di.load_dict()
     prps = {}
     mdls = {}
@@ -57,7 +69,7 @@ def get_prps_mdls(obj, pty, stg, cpp=False):
         elif name=='LinFlow':
             mdls[tag] = {'name':name, gty:1.0, 'k':m[12]}
 
-    if cpp:
+    if script and cpp:
         # prps
         for tag, prp in prps.iteritems():
             keys, vals, count, num = '"', '', 1, len(prp)
@@ -84,19 +96,7 @@ def get_prps_mdls(obj, pty, stg, cpp=False):
     return prps, mdls
 
 
-def get_act_deact(obj,stg):
-    d = di.load_dict()
-    activate   = {}
-    deactivate = {}
-    if obj.properties[stg].has_key('eatts'):
-        for k, v in obj.properties[stg]['eatts'].iteritems():
-            tag             = int(v[0])
-            activate  [tag] = int(v[5])
-            deactivate[tag] = int(v[6])
-    return activate, deactivate
-
-
-def get_brys(obj, stg, cpp=False):
+def get_brys(obj, stg, script=False, cpp=False):
     d   = di.load_dict()
     pty = obj.properties['pty']
     nbrys, ebrys, fbrys = {}, {}, {}
@@ -113,7 +113,7 @@ def get_brys(obj, stg, cpp=False):
         for k, v in obj.properties[stg]['fbrys'].iteritems():
             fbrys[int(v[0])] = {d['pty2Fdfv'][pty][int(v[1])] : v[2]}
 
-    if cpp:
+    if script and cpp:
         for tag, nbc in nbrys.iteritems():
             keys, vals, count, num = '"', '', 1, len(nbc)
             for k, v in nbc.iteritems():
@@ -159,7 +159,7 @@ def get_stage_info(obj, num):
 
 
 class FEMData:
-    def __init__(self):
+    def __init__(self, script=False):
         # get active object
         self.obj = di.get_obj()
         if not self.obj.properties.has_key('mats'):     raise Exception('Please define materials first')
@@ -182,11 +182,11 @@ class FEMData:
 
         # materials and prps
         self.cpp = True if di.key('fem_cpp') else False
-        self.prps, self.mdls = get_prps_mdls (self.obj, self.pty, first_stg, self.cpp)
+        self.prps, self.mdls = get_prps_mdls (self.obj, self.pty, first_stg, script, self.cpp)
 
 
 def gen_script():
-    dat = FEMData()
+    dat = FEMData(True)
     if dat.cpp: # C++ script ===================================================================================================
         txt = Blender.Text.New(dat.filekey+'.cpp')
 
@@ -241,14 +241,15 @@ def gen_script():
                 txt.write ('\n    // stage # %d --------------------------------------------------------------\n'%num)
 
                 # boundary conditions
-                nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'], True) # obj, stg, cpp
+                nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'], True, True) # obj, stg, script, cpp
                 if num==1: txt.write ('    Dict bcs;\n')
                 for tag, nbc in nbrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+nbc['CPPKEYS']+', '+nbc['CPPVALS']+');\n')
                 for tag, ebc in ebrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+ebc['CPPKEYS']+', '+ebc['CPPVALS']+');\n')
                 for tag, fbc in fbrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+fbc['CPPKEYS']+', '+fbc['CPPVALS']+');\n')
 
                 # solve
-                txt.write ('    sol.Solve (%d);\n'%(stage['ndiv']))
+                txt.write ('    dom.SetBCs (bcs);\n')
+                txt.write ('    sol.Solve  (%d);\n'%(stage['ndiv']))
 
         # output
         txt.write ('\n    // output\n')
@@ -319,7 +320,7 @@ def gen_script():
                     #if v: txt.write ('dom.deactivate (%d)\n'%(k))
 
                 # boundary conditions
-                nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'])
+                nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'], True) # obj, stg, script
                 if num==1: txt.write ('bcs = Dict()\n')
                 for tag, nbc in nbrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+nbc.__str__()+')\n')
                 for tag, ebc in ebrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+ebc.__str__()+')\n')
@@ -332,7 +333,8 @@ def gen_script():
                 if stage['cdi']: pass
 
                 # solve
-                txt.write ('sol.Solve (%d)\n'%(stage['ndiv']))
+                txt.write ('dom.SetBCs (bcs)\n')
+                txt.write ('sol.Solve  (%d)\n'%(stage['ndiv']))
 
         # output
         txt.write ('\n# output\n')
@@ -390,7 +392,8 @@ def run_simulation(running, fatal):
                 for tag, fbc in fbrys.iteritems(): bcs.Set (tag, fbc)
 
                 # solve
-                sol.Solve (stage['ndiv'])
+                dom.SetBCs (bcs)
+                sol.Solve  (stage['ndiv'])
 
         # output
         dom.WriteVTU (dat.filekey)
@@ -428,7 +431,7 @@ def stop():
 
 def paraview():
     obj = di.get_obj()
-    fn  = obj.name+'.pvd'
+    fn  = obj.name+'_fem.vtu'
     if Blender.sys.exists(fn):
         Blender.Window.WaitCursor(1)
         try: pid = subprocess.Popen(['paraview', '--data='+fn]).pid
