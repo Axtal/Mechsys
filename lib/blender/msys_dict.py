@@ -43,10 +43,11 @@ def load_dict():
         dict['gui_inirow']    = 0
         # SETTINGS
         dict['show_props']    = False
-        dict['show_e_ids']    = False # edges
-        dict['show_v_ids']    = False # vertices
+        dict['show_e_ids']    = True#False # edges
+        dict['show_v_ids']    = True#False # vertices
         dict['show_blks']     = True
-        dict['show_axes']     = True
+        dict['show_Bids']     = True
+        dict['show_axes']     = False#True
         dict['show_regs']     = True
         dict['show_lins']     = True  # show linear elements
         dict['show_vtags']    = True
@@ -720,3 +721,129 @@ def find_node(obj):
     msh.verts = ori # restore mesh to local coordinates
     if nid==None: raise Exception('Could not find any Node close to Cursor Position: x=%g, y=%g, z=%g'%(x,y,z))
     return nid
+
+
+######################################################################## Shortest path
+
+def find_shortest_path(graph, start, end, path=[]):
+    path = path + [start]
+    if start==end: return path
+    if not graph.has_key(start): return None
+    shortest = None
+    for node in graph[start]:
+        if node not in path:
+            newpath = find_shortest_path (graph, node, end, path)
+            if newpath:
+                if not shortest or len(newpath)<len(shortest):
+                    shortest = newpath
+    return shortest
+
+
+##################################################################### Block local IDs
+
+def block_local_ids(obj, blk_dat, with_edges_ids=False):
+    neds                     = int(blk_dat[17]) # number of edges
+    xeid, yeid, zeid         = int(blk_dat[1]), int(blk_dat[2]), int(blk_dat[3])
+    origin, xvid, yvid, zvid = int(blk_dat[4]), int(blk_dat[5]), int(blk_dat[6]), int(blk_dat[7])
+    if xeid<0 or yeid<0 or origin<0 or xvid<0 or yvid<0: return None
+
+    # build connectivity map: vertex id => edge ids
+    msh = obj.getData (mesh=1)
+    edges_to_remove = [xeid,yeid,zeid]
+    vid2eids = {}
+    for eid, ed in enumerate(msh.edges):
+        if not eid in edges_to_remove:
+            v0, v1 = ed.key[0], ed.key[1]
+            if v0 in vid2eids: vid2eids[v0].append (eid)
+            else:              vid2eids[v0] = [eid]
+            if v1 in vid2eids: vid2eids[v1].append (eid)
+            else:              vid2eids[v1] = [eid]
+
+    # find neighbours
+    neigh = {} # map: vertex id => ids of vertex neighbours
+    for vid, eids in vid2eids.iteritems():
+        neigh[vid] = []
+        for eid in eids:
+            v0, v1 = msh.edges[eid].key[0], msh.edges[eid].key[1]
+            if not v0==vid: neigh[vid].append (v0)
+            if not v1==vid: neigh[vid].append (v1)
+
+    # find local IDs
+    loc_vids = {}
+    if zeid>0 and zvid>0: # 3D
+        if neds==12: # hex8
+            v2 = find_shortest_path (neigh, xvid, yvid)[1]
+            v5 = find_shortest_path (neigh, xvid, zvid)[1]
+            v7 = find_shortest_path (neigh, yvid, zvid)[1]
+            v6 = find_shortest_path (neigh, v5, v7)[1]
+            loc_vids[origin]= 0
+            loc_vids[xvid]  = 1
+            loc_vids[v2]    = 2
+            loc_vids[yvid]  = 3
+            loc_vids[zvid]  = 4
+            loc_vids[v5]    = 5
+            loc_vids[v6]    = 6
+            loc_vids[v7]    = 7
+            return loc_vids
+
+        if neds==24: # hex20
+            res = find_shortest_path (neigh, xvid, yvid)
+            v2  = res[3]
+            loc_vids[origin] = 0
+            loc_vids[xvid]   = 8
+            loc_vids[yvid]   = 11
+            loc_vids[zvid]   = 16
+            loc_vids[res[1]] = 1
+            loc_vids[res[2]] = 9
+            loc_vids[res[3]] = 2
+            loc_vids[res[4]] = 10
+            loc_vids[res[5]] = 3
+            res = find_shortest_path (neigh, xvid, zvid)
+            v5  = res[3]
+            v4  = res[5]
+            loc_vids[res[2]] = 17
+            loc_vids[res[3]] = 5
+            loc_vids[res[4]] = 12
+            loc_vids[res[5]] = 4
+            res = find_shortest_path (neigh, yvid, zvid)
+            v7  = res[3]
+            loc_vids[res[2]] = 19
+            loc_vids[res[3]] = 7
+            loc_vids[res[4]] = 15
+            neigh.pop(v4) # remove v4
+            res = find_shortest_path (neigh, v5, v7)
+            v6  = res[2]
+            loc_vids[res[1]] = 13
+            loc_vids[res[2]] = 6
+            loc_vids[res[3]] = 14
+            res = find_shortest_path (neigh, v6, v2)
+            loc_vids[res[1]] = 18
+            return loc_vids
+
+    else: # 2D
+        if neds==4: # quad4
+            neigh.pop(xvid)
+            neigh.pop(yvid)
+            v2 = neigh.keys()[0]
+            loc_vids[origin] = 0
+            loc_vids[xvid]   = 1
+            loc_vids[v2]     = 2
+            loc_vids[yvid]   = 3
+            if with_edges_ids:
+                loc_eids = {(0,1):0,
+                            (1,2):1,
+                            (2,3):2,
+                            (0,3):3}
+            return loc_vids
+
+        if neds==8: # quad8
+            loc_vids[origin] = 0
+            loc_vids[xvid]   = 4
+            loc_vids[yvid]   = 7
+            res = find_shortest_path (neigh, xvid, yvid)
+            loc_vids[res[1]] = 1
+            loc_vids[res[2]] = 5
+            loc_vids[res[3]] = 2
+            loc_vids[res[4]] = 6
+            loc_vids[res[5]] = 3
+            return loc_vids

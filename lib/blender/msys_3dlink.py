@@ -93,8 +93,8 @@ if di.key('show_props'):
             if Blender.Window.GetActiveLayer()==obj.Layer:
 
                 # get mesh and transform to global coordinates
-                msh = obj.getData(mesh=1)
-                ori = [v for v in msh.verts] # create a copy in local coordinates
+                ori_msh = obj.getData(mesh=1)
+                msh     = ori_msh.copy()
                 msh.transform(obj.matrix)
 
                 # show overlapping edges
@@ -204,6 +204,17 @@ if di.key('show_props'):
                             BGL.glRasterPos3f (cen[0], cen[1], cen[2])
                             Draw.Text         ('blk:%d:%d'%(int(k),int(v[0])))
 
+                # draw IDs of vertices in blocks
+                if di.key('show_Bids'):
+                    if obj.properties.has_key('blks'):
+                        for k, v in obj.properties['blks'].iteritems(): # for each block
+                            res = di.block_local_ids (obj, v)
+                            if res:
+                                for gvid, lvid in res.iteritems():
+                                    BGL.glColor3f     (0.930, 0.830, 0.810)
+                                    BGL.glRasterPos3f (msh.verts[gvid].co[0], msh.verts[gvid].co[1], msh.verts[gvid].co[2])
+                                    Draw.Text         ('%d'%lvid)
+
                 # draw local axes
                 if di.key('show_axes'):
                     if obj.properties.has_key('blks'):
@@ -256,25 +267,3 @@ if di.key('show_props'):
                         for k, v in obj.properties['elems'].iteritems():
                             BGL.glRasterPos3f (v[2], v[3], v[4])
                             Draw.Text         (k+'('+str(int(v[0]))+')')
-
-                # draw linear elements
-                if obj.properties.has_key('lines') and obj.properties.has_key('msh_type'):
-                    msh_obj = di.get_msh_obj (obj, False)
-                    if msh_obj!=None:
-                        msh = msh_obj.getData(mesh=1)
-                        ori = [v for v in msh.verts] # create a copy before transforming to global coordinates
-                        msh.transform (obj.matrix)   # transform to global coordinates
-                        BGL.glColor3f (0.483, 0.709, 0.257)
-                        for k, v in obj.properties['lines'].iteritems():
-                            pos = msh.verts[v[1]].co + 0.40*(msh.verts[v[2]].co-msh.verts[v[1]].co)
-                            # text
-                            BGL.glRasterPos3f (pos[0], pos[1], pos[2])
-                            Draw.Text         (str(v[0]))
-                            # line
-                            BGL.glBegin    (BGL.GL_LINES)
-                            BGL.glVertex3f (msh.verts[v[1]].co[0], msh.verts[v[1]].co[1], msh.verts[v[1]].co[2])
-                            BGL.glVertex3f (msh.verts[v[2]].co[0], msh.verts[v[2]].co[1], msh.verts[v[2]].co[2])
-                            BGL.glEnd      ()
-
-                # restore mesh to local coordinates
-                msh.verts = ori

@@ -191,201 +191,101 @@ def gen_frame_mesh(txt=None,cpp=False):
 # =========================================================================== Structured mesh
 
 @print_timing
-def gen_struct_mesh(gen_script=False,txt=None,cpp=False):
-    # get active object
-    edm, obj, msh = di.get_msh()
-
-    # check for blocks
-    if not obj.properties.has_key('blks'):
-        if edm: Blender.Window.EditMode(1)
-        raise Exception('Please, define blocks first')
-    nblks = len(obj.properties['blks'])
-    if nblks<1:
-        if edm: Blender.Window.EditMode(1)
-        raise Exception('Please, define blocks first')
-
-    # 3D mesh? Quadratic elements ?
-    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
-    iso2 = obj.properties['iso2'] if obj.properties.has_key('iso2') else False
-
-    # transform vertices coordinates
-    ori = [v for v in msh.verts] # create a copy in local coordinates
-    msh.transform (obj.matrix)   # transform mesh to global coordinates
-
-    # create text for script
+def gen_struct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
+    m = MeshData()
+    if not m.obj.properties.has_key('blks'): raise Exception("Please add blocks first")
     if gen_script:
+        key = '.cpp' if cpp else '.py'
+        if txt==None: txt = Blender.Text.New(m.obj.name+'_smesh'+key)
+        if cpp: # C++ script
+            pass
 
-        if cpp:
-            if txt==None:
-                txt = Blender.Text.New(obj.name+'_smesh')
-            txt.write ('	Array<Mesh::Block> bks(%d);\n\n' % nblks)
+        else: # Python script
+            if with_headers: txt.write ('from mechsys import *\n\n')
 
-        else:
-            if txt==None:
-                txt = Blender.Text.New(obj.name+'_smesh')
-                txt.write ('import Blender, bpy\n')
-                txt.write ('import mechsys   as ms\n')
-                txt.write ('import msys_mesh as me\n\n')
-            txt.write ('bks = [ms.mesh_block() for i in range(%d)]\n\n' % nblks)
+            blks = {}
+            for k, v in m.obj.properties['blks'].iteritems(): # for each block
 
-    # generate list with blocks and face colors
-    ib  = 0
-    bks = []
-    for k, v in obj.properties['blks'].iteritems():
+                # local vertex ids
+                local_ids = di.block_local_ids (m.obj, v)
 
-        # origin and local system
-        origin, xp, yp, zp = int(v[4]), int(v[5]), int(v[6]), int(v[7])
-        if origin<0:
-            msh.verts = ori # restore local coordinates
-            if edm: Blender.Window.EditMode(1)
-            raise Exception('Please, assign local axes to this block (%d:%d)'%(int(k),int(v[0])))
-        if is3d and zp<0:
-            msh.verts = ori # restore local coordinates
-            if edm: Blender.Window.EditMode(1)
-            raise Exception('Please, define the Z-axis of this (3D) block (%d:%d)'%(int(k),int(v[0])))
+                # edges pairs
+                pair2edge = {}
+                if neds==4:
+                    pair2edge[(0,1)] = 0
+
+                blks['ndim'] = m.ndim
+                blks['tag']  = int(v[0])
+                blks['nx']   = int(v[8])
+                blks['ny']   = int(v[9])
+                blks['nz']   = int(v[10])
+                neds         = int(v[17]) # number of edges
+                blks['V']    = []
+                neds2nverts = {4:4, 8:8, 12:8, 24:20}
+                for i in range(neds2nverts[neds]):
+                    if m.is3d: blks['V'].append ([-1, 0.0, 0.0, 0.0])
+                    else:      blks['V'].append ([-1, 0.0, 0.0])
+                for gvid, lvid in local_ids.iteritems():
+                    if m.is3d:
+                        blks['V'][lvid][1] = m.msh.verts[gvid].co[0]
+                        blks['V'][lvid][2] = m.msh.verts[gvid].co[1]
+                        blks['V'][lvid][3] = m.msh.verts[gvid].co[2]
+                    else:
+                        blks['V'][lvid][1] = m.msh.verts[gvid].co[0]
+                        blks['V'][lvid][2] = m.msh.verts[gvid].co[1]
+
+                print m.etags
+
+
+            txt.write ('mesh = Structured(%d)\n' % (m.ndim))
+
+            print blks
 
         # divisions and weights
-        nx,   ny,   nz   = int(v[ 8]), int(v[ 9]), int(v[10])
-        ax,   ay,   az   =     v[11],      v[12],      v[13]
-        linx, liny, linz = int(v[14]), int(v[15]), int(v[16])
+        #nx,   ny,   nz   = int(v[ 8]), int(v[ 9]), int(v[10])
+        #ax,   ay,   az   =     v[11],      v[12],      v[13]
+        #linx, liny, linz = int(v[14]), int(v[15]), int(v[16])
 
         # vertices and edges
-        verts = []
-        edges = []
-        eids  = []
-        for i in range(18,18+int(v[17])): eids.append(int(v[i]))
-        for e in eids:
-            v1 = msh.edges[e].v1.index
-            v2 = msh.edges[e].v2.index
-            found_v1 = False
-            found_v2 = False
-            for ve in verts:
-                if ve[0]==v1: found_v1 = True
-                if ve[0]==v2: found_v2 = True
-            if is3d:
-                if not found_v1: verts.append ((v1, msh.verts[v1].co[0], msh.verts[v1].co[1], msh.verts[v1].co[2]))
-                if not found_v2: verts.append ((v2, msh.verts[v2].co[0], msh.verts[v2].co[1], msh.verts[v2].co[2]))
-            else:
-                if not found_v1: verts.append ((v1, msh.verts[v1].co[0], msh.verts[v1].co[1]))
-                if not found_v2: verts.append ((v2, msh.verts[v2].co[0], msh.verts[v2].co[1]))
-            edges.append((v1,v2))
+        #verts = []
+        #edges = []
+        #eids  = []
+        #for i in range(18,18+int(v[17])): eids.append(int(v[i]))
+        #for e in eids:
+            #v1 = msh.edges[e].v1.index
+            #v2 = msh.edges[e].v2.index
+            #found_v1 = False
+            #found_v2 = False
+            #for ve in verts:
+                #if ve[0]==v1: found_v1 = True
+                #if ve[0]==v2: found_v2 = True
+            #if is3d:
+                #if not found_v1: verts.append ((v1, msh.verts[v1].co[0], msh.verts[v1].co[1], msh.verts[v1].co[2]))
+                #if not found_v2: verts.append ((v2, msh.verts[v2].co[0], msh.verts[v2].co[1], msh.verts[v2].co[2]))
+            #else:
+                #if not found_v1: verts.append ((v1, msh.verts[v1].co[0], msh.verts[v1].co[1]))
+                #if not found_v2: verts.append ((v2, msh.verts[v2].co[0], msh.verts[v2].co[1]))
+            #edges.append((v1,v2))
 
         # etags
-        etags = []
-        if obj.properties.has_key('etags'):
-            for m, n in obj.properties['etags'].iteritems():
-                e = int(m)
-                if e in eids: etags.append((msh.edges[e].v1.index, msh.edges[e].v2.index, n))
+        #etags = []
+        #if obj.properties.has_key('etags'):
+            #for m, n in obj.properties['etags'].iteritems():
+                #e = int(m)
+                #if e in eids: etags.append((msh.edges[e].v1.index, msh.edges[e].v2.index, n))
 
         # ftags
-        ftags = []
-        veids = [x[0] for x in verts]
-        if is3d and obj.properties.has_key('ftags'):
-            for m, n in obj.properties['ftags'].iteritems():
-                vids = [int(vid) for vid in m.split('_')]
-                face_is_in_block = True
-                for vid in vids:
-                    if not vid in veids:
-                        face_is_in_block = False
-                        break
-                if face_is_in_block: ftags.append ((vids[0],vids[1],vids[2],vids[3],n))
-
-        # new block
-        if gen_script:
-
-            if cpp: # C++ script
-
-                txt.write ('	// Block # %d ----------------------------------------------------------------\n'%ib)
-                txt.write ('	Mesh::Verts_T ve%d(%d);\n' % (ib,len(verts)))
-                txt.write ('	Mesh::Edges_T ed%d(%d);\n' % (ib,len(edges)))
-                if len(etags)>0:          txt.write ('	Mesh::ETags_T et%d(%d);\n' % (ib,len(etags)))
-                if is3d and len(ftags)>0: txt.write ('	Mesh::FTags_T ft%d(%d);\n' % (ib,len(ftags)))
-                txt.write ('	ve%d = ' % (ib))
-                for i, ve in enumerate(verts):
-                    if is3d:
-                        if i<(len(verts)-1): txt.write ('T(%d,%s,%s,%s), '  % (ve[0],str(ve[1]),str(ve[2]),str(ve[3])))
-                        else:                txt.write ('T(%d,%s,%s,%s);\n' % (ve[0],str(ve[1]),str(ve[2]),str(ve[3])))
-                    else:
-                        if i<(len(verts)-1): txt.write ('T(%d,%s,%s,0.0), '  % (ve[0],str(ve[1]),str(ve[2])))
-                        else:                txt.write ('T(%d,%s,%s,0.0);\n' % (ve[0],str(ve[1]),str(ve[2])))
-                txt.write ('	ed%d = ' % (ib))
-                for i, ed in enumerate(edges):
-                    if i<(len(edges)-1): txt.write ('T(%d,%d), '  % (ed[0],ed[1]))
-                    else:                txt.write ('T(%d,%d);\n' % (ed[0],ed[1]))
-                if len(etags)>0:
-                    txt.write ('	et%d = ' % (ib))
-                    for i, et in enumerate(etags):
-                        if i<(len(etags)-1): txt.write ('T(%d,%d,%d), '  % (et[0],et[1],et[2]))
-                        else:                txt.write ('T(%d,%d,%d);\n' % (et[0],et[1],et[2]))
-                if len(ftags)>0:
-                    txt.write ('	ft%d = ' % (ib))
-                    for i, ft in enumerate(ftags):
-                        if i<(len(ftags)-1): txt.write ('T(%d,%d,%d,%d,%d), '  % (ft[0],ft[1],ft[2],ft[3],ft[4]))
-                        else:                txt.write ('T(%d,%d,%d,%d,%d);\n' % (ft[0],ft[1],ft[2],ft[3],ft[4]))
-                txt.write ('	bks[%d].Set (%d, ve%d, ed%d, ' % (ib,v[0],ib,ib))
-                if len(etags)>0: txt.write ('&et%d, ' % ib)
-                else:            txt.write ('NULL, ')
-                if len(ftags)>0: txt.write ('&ft%d, ' % ib)
-                else:            txt.write ('NULL, ')
-                txt.write ('%d, %d, %d, %d);\n' % (origin,xp,yp,zp))
-                txt.write ('	bks[%d].SetNx (%d,%s,%d);\n' % (ib,nx,str(ax),linx))
-                txt.write ('	bks[%d].SetNy (%d,%s,%d);\n' % (ib,ny,str(ay),liny))
-                if is3d: txt.write ('	bks[%d].SetNz (%d,%s,%d);\n' % (ib,nz,az,linz))
-                txt.write ('\n')
-
-            else: # Python script
-
-                txt.write ('# Block # %d ----------------------------------------------------------------\n'%ib)
-                txt.write ('bks[%d].set (%d, # Tag\n' % (ib,v[0]))
-                txt.write ('            '+str(verts)+', # Vertices\n')
-                txt.write ('            '+str(edges)+', # Edges\n')
-                txt.write ('            '+str(etags)+', # Edge Tags\n')
-                txt.write ('            '+str(ftags)+', # Face Tags\n')
-                txt.write ('            %d, %d, %d, %d) # Origin, X-Plus, Y-Plus, Z-Plus\n' % (origin,xp,yp,zp))
-                txt.write ('bks[%d].set_nx (%d,%s,%d)\n' % (ib,nx,str(ax),linx))
-                txt.write ('bks[%d].set_ny (%d,%s,%d)\n' % (ib,ny,str(ay),liny))
-                if is3d: txt.write ('bks[%d].set_nz (%d,%s,%d)\n' % (ib,nz,str(az),linz))
-                txt.write ('\n')
-
-        else: # Run
-
-            bks.append     (ms.mesh_block())
-            bks[-1].set    (int(v[0]), verts, edges, etags, ftags, origin, xp, yp, zp)
-            bks[-1].set_nx (nx,ax,linx)
-            bks[-1].set_ny (ny,ay,liny)
-            bks[-1].set_nz (nz,az,linz)
-
-        ib += 1
-
-    # Restore local coordinates
-    msh.verts = ori
-    if edm: Blender.Window.EditMode(1)
-
-    # generate mesh
-    if gen_script:
-        if cpp:
-            txt.write('	// Generate\n')
-            if is3d: txt.write('	Mesh::Structured mesh(true); // true=>3D\n')
-            else:    txt.write('	Mesh::Structured mesh(false); // false=>2D\n')
-            if iso2: txt.write('	mesh.SetO2     ();\n')
-            txt.write('	mesh.SetBlocks (bks);\n')
-            txt.write('	mesh.Generate  (true); // true=>WithInfo\n')
-        else:
-            txt.write('# Generate\n')
-            if is3d: txt.write('mesh = ms.mesh_structured(True) # True=>3D\n')
-            else:    txt.write('mesh = ms.mesh_structured(False) # False=>2D\n')
-            if iso2: txt.write('mesh.set_o2     (True) # True=>Quadratic elements\n')
-            txt.write('mesh.set_blocks (bks)\n')
-            txt.write('mesh.generate   (True) # True=>WithInfo\n')
-        return txt
-    else:
-        if len(bks)>0:
-            mesh = ms.mesh_structured (is3d)
-            if iso2: mesh.set_o2      (True)
-            mesh.set_blocks (bks)
-            mesh.generate   (True)
-            print
-            return mesh
+        #ftags = []
+        #veids = [x[0] for x in verts]
+        #if is3d and obj.properties.has_key('ftags'):
+            #for m, n in obj.properties['ftags'].iteritems():
+                #vids = [int(vid) for vid in m.split('_')]
+                #face_is_in_block = True
+                #for vid in vids:
+                    #if not vid in veids:
+                        #face_is_in_block = False
+                        #break
+                #if face_is_in_block: ftags.append ((vids[0],vids[1],vids[2],vids[3],n))
 
 
 # ========================================================================= Unstructured mesh

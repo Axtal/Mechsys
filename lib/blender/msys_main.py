@@ -369,6 +369,8 @@ def cb_show_v_ids(evt,val): di.set_key ('show_v_ids', val)
 @try_catch
 def cb_show_blks (evt,val): di.set_key ('show_blks',  val)
 @try_catch
+def cb_show_Bids (evt,val): di.set_key ('show_Bids',  val)
+@try_catch
 def cb_show_axes (evt,val): di.set_key ('show_axes',  val)
 @try_catch
 def cb_show_regs (evt,val): di.set_key ('show_regs',  val)
@@ -908,8 +910,9 @@ def gui():
     Draw.Toggle ('Edges',      EVT_NONE, c+160, r, 80, rh, d['show_e_ids'], 'Show Edges IDs'         , cb_show_e_ids)
     r -= rh
     gu.text(c,r,"Mesh:")
-    Draw.Toggle ('Local Axes', EVT_NONE, c+ 80, r, 80, rh, d['show_axes'],  'Show local system axes' , cb_show_axes)
-    Draw.Toggle ('Blocks',     EVT_NONE, c+160, r, 80, rh, d['show_blks'],  'Show blocks tags'       , cb_show_blks)
+    Draw.Toggle ('Local Axes', EVT_NONE, c+ 80, r, 80, rh, d['show_axes'],  'Show local system axes'  , cb_show_axes)
+    Draw.Toggle ('Blocks',     EVT_NONE, c+160, r, 80, rh, d['show_blks'],  'Show blocks tags'        , cb_show_blks)
+    Draw.Toggle ('B Loc IDs',  EVT_NONE, c+240, r, 80, rh, d['show_Bids'],  'Show local IDs of vertices in blocks', cb_show_Bids)
     r -= rh
     Draw.Toggle ('Regs/Holes', EVT_NONE, c+ 80, r, 80, rh, d['show_regs'],  'Show regions and holes' , cb_show_regs)
     Draw.Toggle ('Lines',      EVT_NONE, c+160, r, 80, rh, d['show_lins'],  'Show linear cells'      , cb_show_lins)
