@@ -43,11 +43,11 @@ def load_dict():
         dict['gui_inirow']    = 0
         # SETTINGS
         dict['show_props']    = False
-        dict['show_e_ids']    = True#False # edges
-        dict['show_v_ids']    = True#False # vertices
+        dict['show_e_ids']    = False # edges
+        dict['show_v_ids']    = False # vertices
         dict['show_blks']     = True
-        dict['show_Bids']     = True
-        dict['show_axes']     = False#True
+        dict['show_Bids']     = False
+        dict['show_axes']     = True
         dict['show_regs']     = True
         dict['show_lins']     = True  # show linear elements
         dict['show_vtags']    = True
@@ -741,18 +741,20 @@ def find_shortest_path(graph, start, end, path=[]):
 
 ##################################################################### Block local IDs
 
-def block_local_ids(obj, blk_dat, with_edges_ids=False):
+def block_local_ids(obj, blk_dat):
     neds                     = int(blk_dat[17]) # number of edges
     xeid, yeid, zeid         = int(blk_dat[1]), int(blk_dat[2]), int(blk_dat[3])
     origin, xvid, yvid, zvid = int(blk_dat[4]), int(blk_dat[5]), int(blk_dat[6]), int(blk_dat[7])
     if xeid<0 or yeid<0 or origin<0 or xvid<0 or yvid<0: return None
 
     # build connectivity map: vertex id => edge ids
+    blk_eids = []
+    for i in range(neds): blk_eids.append (int(blk_dat[18+i]))
     msh = obj.getData (mesh=1)
     edges_to_remove = [xeid,yeid,zeid]
     vid2eids = {}
     for eid, ed in enumerate(msh.edges):
-        if not eid in edges_to_remove:
+        if eid in blk_eids and not eid in edges_to_remove:
             v0, v1 = ed.key[0], ed.key[1]
             if v0 in vid2eids: vid2eids[v0].append (eid)
             else:              vid2eids[v0] = [eid]
@@ -829,11 +831,6 @@ def block_local_ids(obj, blk_dat, with_edges_ids=False):
             loc_vids[xvid]   = 1
             loc_vids[v2]     = 2
             loc_vids[yvid]   = 3
-            if with_edges_ids:
-                loc_eids = {(0,1):0,
-                            (1,2):1,
-                            (2,3):2,
-                            (0,3):3}
             return loc_vids
 
         if neds==8: # quad8

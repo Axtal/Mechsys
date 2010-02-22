@@ -448,6 +448,19 @@ inline void Block::PySet (BPy::dict const & Dat)
         for (size_t i=0; i<BryTags.Size(); ++i) BryTags[i] = BPy::extract<int>(brytags[i])();
     }
 
+    // check connectivity (2D)
+    if (NDim==2)
+    {
+        Vec3_t p0, p1, p2;
+        for (size_t i=1; i<nverts-1; ++i)
+        {
+            p0 = C(0,i-1)-C(0,i),  C(1,i-1)-C(1,i),  0.0;
+            p1 = C(0,i+1)-C(0,i),  C(1,i+1)-C(1,i),  0.0;
+            p2 = blitz::cross (p1,p0);
+            if (p2(2)<0.0) throw new Fatal("Mesh::Block::PySet: Order of vertices is incorrect (it must be counter-clockwise)");
+        }
+    }
+
     // generate mid nodes
     if (NDim==2 && nverts==4) GenMidNodes();
     if (NDim==3 && nverts==8) GenMidNodes();

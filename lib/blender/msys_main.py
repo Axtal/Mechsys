@@ -262,16 +262,8 @@ def button_event(evt):
         di.props_push_new('blks', props, True, 18, 18+int(props[17]))
 
     elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
-    elif evt==EVT_MESH_GENSTRU:
-        obj  = di.get_obj()
-        mesh = me.gen_struct_mesh ()
-        me.add_mesh (obj, mesh, 'struct')
-    elif evt==EVT_MESH_GENSTRUS:
-        obj = di.get_obj()
-        txt = me.gen_struct_mesh(True,None,di.key('smsh_cpp'))
-        if not di.key('smsh_cpp'):
-            txt.write('\nobj = bpy.data.objects["'+obj.name+'"]\n')
-            txt.write('me.add_mesh (obj, mesh, "struct")\n')
+    elif evt==EVT_MESH_GENSTRU:    me.gen_struct_mesh ()
+    elif evt==EVT_MESH_GENSTRUS:   me.gen_struct_mesh (True,None,di.key('smsh_cpp'))
 
     # ------------------------------------------------------------------ Mesh -- unstructured
 
@@ -885,7 +877,7 @@ def gui():
     h_fem_ebrys     = rh+srg+rh*len(ebrys)                  if len(ebrys)>0 else 0
     h_fem_fbrys     = rh+srg+rh*len(fbrys)                  if len(fbrys)>0 else 0
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
-    h_fem_stage     = 13*rh+srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts+rh*stg_extra_rows
+    h_fem_stage     = 13*rh+srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts+rh*stg_extra_rows if len(stages)>0 else 0
     h_fem           = 5*rh+h_fem_stage+3*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
     h_dem_pkg       = 8*rh+3*rg
     h_dem_cte       = 5*rh+srg
@@ -1001,21 +993,21 @@ def gui():
         for k, v in blks.iteritems():
             r -= rh
             i  = int(k)
-            Draw.Number     (str(i)+':', EVT_INC+i, c     , r-rh, 60, 2*rh, int(v[0]), -1000, -1,'Block tag',                       cb_blk_tag)
-            Draw.PushButton ('X',        EVT_INC+i, c+ 60 , r,    20,   rh,                      'Set X-axis',                      cb_blk_xax)
-            Draw.PushButton ('Y',        EVT_INC+i, c+ 80 , r,    20,   rh,                      'Set Y-axis',                      cb_blk_yax)
-            Draw.PushButton ('Z',        EVT_INC+i, c+100 , r,    20,   rh,                      'Set Z-axis',                      cb_blk_zax)
-            Draw.Number     ('',         EVT_INC+i, c+120 , r,    60,   rh, int(v[ 8]), 1, 1000, 'Number of divisions along X',     cb_blk_nx)
-            Draw.Number     ('',         EVT_INC+i, c+180 , r,    60,   rh, int(v[ 9]), 1, 1000, 'Number of divisions along Y',     cb_blk_ny)
-            Draw.Number     ('',         EVT_INC+i, c+240 , r,    60,   rh, int(v[10]), 1, 1000, 'Number of divisions along Z',     cb_blk_nz)
+            Draw.Number     (str(i)+':', EVT_INC+i, c     , r-rh, 50, 2*rh, int(v[0]), -1000, -1,'Block tag',                       cb_blk_tag)
+            Draw.PushButton ('X',        EVT_INC+i, c+ 50 , r,    20,   rh,                      'Set X-axis',                      cb_blk_xax)
+            Draw.PushButton ('Y',        EVT_INC+i, c+ 70 , r,    20,   rh,                      'Set Y-axis',                      cb_blk_yax)
+            Draw.PushButton ('Z',        EVT_INC+i, c+ 90 , r,    20,   rh,                      'Set Z-axis',                      cb_blk_zax)
+            Draw.Number     ('',         EVT_INC+i, c+110 , r,    50,   rh, int(v[ 8]), 1, 1000, 'Number of divisions along X',     cb_blk_nx)
+            Draw.Number     ('',         EVT_INC+i, c+160 , r,    50,   rh, int(v[ 9]), 1, 1000, 'Number of divisions along Y',     cb_blk_ny)
+            Draw.Number     ('',         EVT_INC+i, c+210 , r,    50,   rh, int(v[10]), 1, 1000, 'Number of divisions along Z',     cb_blk_nz)
             r -= rh
-            Draw.Toggle     ('X',        EVT_INC+i, c+ 60 , r,    20,   rh, int(v[14]),          'Set nonlinear divisions along X', cb_blk_nlx)
-            Draw.Toggle     ('Y',        EVT_INC+i, c+ 80 , r,    20,   rh, int(v[15]),          'Set nonlinear divisions along Y', cb_blk_nly)
-            Draw.Toggle     ('Z',        EVT_INC+i, c+100 , r,    20,   rh, int(v[16]),          'Set nonlinear divisions along Z', cb_blk_nlz)
-            Draw.String     ('aX=',      EVT_INC+i, c+120 , r,    60,   rh, str(v[11]),      32, 'Set division coefficient aX',     cb_blk_ax)
-            Draw.String     ('aY=',      EVT_INC+i, c+180 , r,    60,   rh, str(v[12]),      32, 'Set division coefficient aY',     cb_blk_ay)
-            Draw.String     ('aZ=',      EVT_INC+i, c+240 , r,    60,   rh, str(v[13]),      32, 'Set division coefficient aZ',     cb_blk_az)
-            Draw.PushButton ('Del',      EVT_INC+i, c+300 , r,    40, 2*rh,                      'Delete this row',                 cb_blk_del)
+            Draw.Toggle     ('X',        EVT_INC+i, c+ 50 , r,    20,   rh, int(v[14]),          'Set nonlinear divisions along X', cb_blk_nlx)
+            Draw.Toggle     ('Y',        EVT_INC+i, c+ 70 , r,    20,   rh, int(v[15]),          'Set nonlinear divisions along Y', cb_blk_nly)
+            Draw.Toggle     ('Z',        EVT_INC+i, c+ 90 , r,    20,   rh, int(v[16]),          'Set nonlinear divisions along Z', cb_blk_nlz)
+            Draw.String     ('aX=',      EVT_INC+i, c+110 , r,    50,   rh, str(v[11]),      32, 'Set division coefficient aX',     cb_blk_ax)
+            Draw.String     ('aY=',      EVT_INC+i, c+160 , r,    50,   rh, str(v[12]),      32, 'Set division coefficient aY',     cb_blk_ay)
+            Draw.String     ('aZ=',      EVT_INC+i, c+210 , r,    50,   rh, str(v[13]),      32, 'Set division coefficient aZ',     cb_blk_az)
+            Draw.PushButton ('Del',      EVT_INC+i, c+260 , r,    30, 2*rh,                      'Delete this row',                 cb_blk_del)
         r -= srg
         r, c, w = gu.box3_out(W,cg,rh, c,r)
 
@@ -1339,6 +1331,8 @@ def gui():
             r -= srg
 
             r, c, w = gu.box2_out(W,cg,rh,rg, c,r+rh)
+
+        else: r -= rh
 
         # ----------------------- FEM -- END
         r -= rh

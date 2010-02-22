@@ -21,7 +21,7 @@ import time
 import Blender
 import bpy
 import msys_dict as di
-from   mechsys import *
+import mechsys as ms
 
 
 def print_timing(func):
@@ -37,11 +37,11 @@ def print_timing(func):
 class MeshData:
     def __init__(self):
         # get active object
-        self.edm, self.obj, self.msh = di.get_msh()
+        self.edm, self.obj, ori_msh = di.get_msh()
 
         # transform vertices coordinates
-        self.ori = [v for v in self.msh.verts] # create a copy in local coordinates
-        self.msh.transform (self.obj.matrix)   # transform mesh to global coordinates
+        self.msh = ori_msh.copy()
+        self.msh.transform (self.obj.matrix) # transform mesh to global coordinates
 
         # 3D mesh? Quadratic elements ?
         self.is3d = self.obj.properties['is3d'] if self.obj.properties.has_key('is3d') else False
@@ -73,9 +73,69 @@ class MeshData:
                 eid = int(k)
                 self.etags[(self.msh.edges[eid].v1.index, self.msh.edges[eid].v2.index)] = v
 
+        # get ftags
+        self.ftags = {}
+        if self.obj.properties.has_key('ftags'):
+            for k, v in self.obj.properties['ftags'].iteritems():
+                vids = [int(vid) for vid in k.split('_')]
+                self.ftags[(vids[0],vids[1],vids[2])] = v
+
+        # get blocks
+        if self.obj.properties.has_key('blks'):
+
+            neds2nverts = {4:4, 8:8, 12:8, 24:20}
+            neds2edges  = {4:{(0,1):0, (1,2):1, (2,3):2, (0,3):3}, # quad4
+                           8:[(0,1), (1,2), (2,3), (3,0)],    # quad8
+                           12:[],   # hex8
+                           24:[]}   # hex20
+
+            self.blks = []
+            for k, v in self.obj.properties['blks'].iteritems(): # for each block
+
+                # block data
+                blk         = {}
+                blk['ndim'] = self.ndim
+                blk['tag']  = int(v[0])
+                blk['nx']   = int(v[8])
+                blk['ny']   = int(v[9])
+                blk['nz']   = int(v[10])
+                nedges      = int(v[17]) # number of edges
+
+                # map: global vertices ids to local vertices ids
+                gids2lids = di.block_local_ids (self.obj, v)
+                if not gids2lids: raise Exception('Please define all blocks (local axes, divisions, etc.) first')
+
+                # vertices
+                blk['V'] = []
+                for i in range(neds2nverts[nedges]):
+                    if self.is3d: blk['V'].append ([-1, 0.0, 0.0, 0.0])
+                    else:         blk['V'].append ([-1, 0.0, 0.0])
+                for gvid, lvid in gids2lids.iteritems():
+                    if self.is3d:
+                        blk['V'][lvid][1] = self.msh.verts[gvid].co[0]
+                        blk['V'][lvid][2] = self.msh.verts[gvid].co[1]
+                        blk['V'][lvid][3] = self.msh.verts[gvid].co[2]
+                    else:
+                        blk['V'][lvid][1] = self.msh.verts[gvid].co[0]
+                        blk['V'][lvid][2] = self.msh.verts[gvid].co[1]
+
+                # find brytags
+                if self.is3d: blk['brytags'] = [0 for i in range(6)]
+                else:         blk['brytags'] = [0 for i in range(4)]
+                if len(self.etags)>0: # edge tags
+                    for gedpair, etag in self.etags.iteritems():                    # gedpair=global edge pair
+                        ledpair = (gids2lids[gedpair[0]],gids2lids[gedpair[1]])     # local edge pair
+                        if ledpair[0]>ledpair[1]: ledpair = (ledpair[1],ledpair[0]) # sort local edge pair
+                        leid = neds2edges[nedges][ledpair]                          # local edge id
+                        blk['brytags'][leid] = etag
+
+                if len(self.ftags)>0: # edge tags
+                    print self.ftags
+
+                # add blk to blks
+                self.blks.append (blk)
+
     def __del__(self):
-        # restore local coordinates
-        self.msh.verts = self.ori
         if self.edm: Blender.Window.EditMode(1)
 
 
@@ -198,94 +258,57 @@ def gen_struct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
         key = '.cpp' if cpp else '.py'
         if txt==None: txt = Blender.Text.New(m.obj.name+'_smesh'+key)
         if cpp: # C++ script
-            pass
+
+            # header
+            if with_headers:
+                txt.write ('// MechSys\n')
+                txt.write ('#include <mechsys/fem/fem.h>\n')
+                txt.write ('\nint main(int argc, char **argv) try\n')
+                txt.write ('{\n')
+
+            # blocks
+            txt.write ('    Array<Mesh::Block> blks(%d);\n'%len(m.blks))
+            for i, blk in enumerate(m.blks):
+                txt.write ('    blks[%d].Set (/*NDim*/%d, /*Tag*/%d, /*NVert*/%d,\n'%(i, m.ndim, blk['tag'], len(blk['V'])))
+                for v in blk['V']:
+                    if m.is3d: txt.write ('                  %6.1f, %13.6e, %13.6e, %13.6e,\n'%(v[0],v[1],v[2],v[3]))
+                    else:      txt.write ('                  %6.1f, %13.6e, %13.6e,\n'        %(v[0],v[1],v[2]))
+                txt.write ('                  ')
+                nb = len(blk['brytags'])
+                for j, b in enumerate(blk['brytags']):
+                    if j==nb-1: txt.write ('%6.1f);\n'%b)
+                    else:       txt.write ('%6.1f, '%b)
+                txt.write ('    blks[%d].SetNx (%d);\n'%(i,blk['nx']))
+                txt.write ('    blks[%d].SetNy (%d);\n'%(i,blk['ny']))
+                if m.is3d: txt.write ('    blks[%d].SetNz (%d);\n'%(i,blk['nz']))
+
+            str_o2 = 'true' if m.iso2 else 'false'
+            txt.write ('    Mesh::Structured mesh(/*NDim*/%d);\n' % (m.ndim))
+            txt.write ('    mesh.Generate (blks, /*O2*/'+str_o2+');\n')
+            if m.is3d: txt.write ('    mesh.WriteVTU (\"%s\");\n' % (m.obj.name+'_smesh'))
+            else:      txt.write ('    mesh.WriteMPY (\"%s\", true);\n' % (m.obj.name+'_smesh'))
+
+            # bottom
+            if with_headers:
+                txt.write ('}\n')
+                txt.write ('MECHSYS_CATCH\n')
 
         else: # Python script
+            str_o2 = 'True' if m.iso2 else 'False'
             if with_headers: txt.write ('from mechsys import *\n\n')
+            txt.write ('blks = '+m.blks.__str__()+'\n')
+            txt.write ('mesh = Structured(%d) # ndim\n' % (m.ndim))
+            txt.write ('mesh.Generate (blks, '+str_o2+') # blks, o2?\n')
+            if m.is3d: txt.write ('mesh.WriteVTU (\"%s\") # FileKey\n' % (m.obj.name+'_smesh'))
+            else:      txt.write ('mesh.WriteMPY (\"%s\", True) # FileKey, WithTags\n' % (m.obj.name+'_smesh'))
 
-            blks = {}
-            for k, v in m.obj.properties['blks'].iteritems(): # for each block
-
-                # local vertex ids
-                local_ids = di.block_local_ids (m.obj, v)
-
-                # edges pairs
-                pair2edge = {}
-                if neds==4:
-                    pair2edge[(0,1)] = 0
-
-                blks['ndim'] = m.ndim
-                blks['tag']  = int(v[0])
-                blks['nx']   = int(v[8])
-                blks['ny']   = int(v[9])
-                blks['nz']   = int(v[10])
-                neds         = int(v[17]) # number of edges
-                blks['V']    = []
-                neds2nverts = {4:4, 8:8, 12:8, 24:20}
-                for i in range(neds2nverts[neds]):
-                    if m.is3d: blks['V'].append ([-1, 0.0, 0.0, 0.0])
-                    else:      blks['V'].append ([-1, 0.0, 0.0])
-                for gvid, lvid in local_ids.iteritems():
-                    if m.is3d:
-                        blks['V'][lvid][1] = m.msh.verts[gvid].co[0]
-                        blks['V'][lvid][2] = m.msh.verts[gvid].co[1]
-                        blks['V'][lvid][3] = m.msh.verts[gvid].co[2]
-                    else:
-                        blks['V'][lvid][1] = m.msh.verts[gvid].co[0]
-                        blks['V'][lvid][2] = m.msh.verts[gvid].co[1]
-
-                print m.etags
-
-
-            txt.write ('mesh = Structured(%d)\n' % (m.ndim))
-
-            print blks
-
-        # divisions and weights
-        #nx,   ny,   nz   = int(v[ 8]), int(v[ 9]), int(v[10])
-        #ax,   ay,   az   =     v[11],      v[12],      v[13]
-        #linx, liny, linz = int(v[14]), int(v[15]), int(v[16])
-
-        # vertices and edges
-        #verts = []
-        #edges = []
-        #eids  = []
-        #for i in range(18,18+int(v[17])): eids.append(int(v[i]))
-        #for e in eids:
-            #v1 = msh.edges[e].v1.index
-            #v2 = msh.edges[e].v2.index
-            #found_v1 = False
-            #found_v2 = False
-            #for ve in verts:
-                #if ve[0]==v1: found_v1 = True
-                #if ve[0]==v2: found_v2 = True
-            #if is3d:
-                #if not found_v1: verts.append ((v1, msh.verts[v1].co[0], msh.verts[v1].co[1], msh.verts[v1].co[2]))
-                #if not found_v2: verts.append ((v2, msh.verts[v2].co[0], msh.verts[v2].co[1], msh.verts[v2].co[2]))
-            #else:
-                #if not found_v1: verts.append ((v1, msh.verts[v1].co[0], msh.verts[v1].co[1]))
-                #if not found_v2: verts.append ((v2, msh.verts[v2].co[0], msh.verts[v2].co[1]))
-            #edges.append((v1,v2))
-
-        # etags
-        #etags = []
-        #if obj.properties.has_key('etags'):
-            #for m, n in obj.properties['etags'].iteritems():
-                #e = int(m)
-                #if e in eids: etags.append((msh.edges[e].v1.index, msh.edges[e].v2.index, n))
-
-        # ftags
-        #ftags = []
-        #veids = [x[0] for x in verts]
-        #if is3d and obj.properties.has_key('ftags'):
-            #for m, n in obj.properties['ftags'].iteritems():
-                #vids = [int(vid) for vid in m.split('_')]
-                #face_is_in_block = True
-                #for vid in vids:
-                    #if not vid in veids:
-                        #face_is_in_block = False
-                        #break
-                #if face_is_in_block: ftags.append ((vids[0],vids[1],vids[2],vids[3],n))
+    else: # run
+        mesh = ms.Structured (m.ndim)
+        mesh.Generate (m.blks, m.iso2)
+        if m.is3d: mesh.WriteVTU (m.obj.name+'_smesh')
+        else:      mesh.WriteMPY (m.obj.name+'_smesh', True) # FileKey, WithTags
+        add_mesh (m.obj, mesh, 'struct')
+        return mesh
 
 
 # ========================================================================= Unstructured mesh
@@ -331,7 +354,8 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
                 txt.write ('    mesh.SetSeg (%4d, %4d, %4d, %4d);\n' % (e.index, tag, e.v1.index, e.v2.index))
             str_o2 = 'true' if m.iso2 else 'false'
             txt.write ('    mesh.Generate (/*O2*/%s, /*GlobalMaxArea*/%s);\n' % (str_o2,str(m.maxA)))
-            txt.write ('    mesh.WriteMPY (\"%s\", /*WithTags*/true);\n' % (m.obj.name+'_umesh'))
+            if m.is3d: txt.write ('    mesh.WriteVTU (\"%s\");\n' % (m.obj.name+'_umesh'))
+            else:      txt.write ('    mesh.WriteMPY (\"%s\", /*WithTags*/true);\n' % (m.obj.name+'_umesh'))
 
             # bottom
             if with_headers:
@@ -385,7 +409,8 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
             str_o2 = 'True' if m.iso2 else 'False'
             txt.write (lin)
             txt.write ('mesh.Generate (%s, %s) # O2, GlobalMaxArea\n' % (str_o2,str(m.maxA)))
-            txt.write ('mesh.WriteMPY (\"%s\", True) # FileKey, WithTags\n' % (m.obj.name+'_umesh'))
+            if m.is3d: txt.write ('mesh.WriteVTU (\"%s\") # FileKey\n' % (m.obj.name+'_umesh'))
+            else:      txt.write ('mesh.WriteMPY (\"%s\", True) # FileKey, WithTags\n' % (m.obj.name+'_umesh'))
 
     else: # run
         dat = {'P':[], 'R':[], 'H':[]}
@@ -409,10 +434,12 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
             tag = 0
             if key in m.etags: tag = m.etags[key]
             dat['S'].append ([tag, e.v1.index, e.v2.index])
-        mesh = Unstructured (m.ndim)
+        mesh = ms.Unstructured (m.ndim)
         mesh.Set      (dat)
         mesh.Generate (m.iso2, m.maxA)
-        add_mesh      (m.obj, mesh, 'unstruct')
+        if m.is3d: mesh.WriteVTU (m.obj.name+'_umesh')
+        else:      mesh.WriteMPY (m.obj.name+'_umesh', True) # FileKey, WithTags
+        add_mesh (m.obj, mesh, 'unstruct')
         return mesh
 
 # ====================================================================================== Draw
