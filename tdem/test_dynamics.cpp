@@ -38,13 +38,13 @@ int main(int argc, char **argv) try
 {
     // domain
 	Domain d;
+    d.Alpha = 0.1;
 
     // add cube
 	Vec3_t x(-10,0,0);     // position
     Vec3_t w(0,M_PI/5,0); // rot veloc
     Vec3_t v(1.,0,0);      // veloc
-	//d.AddCube (-1, x,0.3,3.,1.);
-    d.AddSphere (-1,x,2.0,1.0);
+	d.AddCube (-1, x,0.3,3.,1.);
     d.Particles[0]->v = v;
     d.Particles[0]->w = w;
 
@@ -52,13 +52,17 @@ int main(int argc, char **argv) try
     x =  10 , 0 , 0;
     w =   0 , 0 , 0;
     v = -1. , 0 , 0;
-    //d.AddTetra (-1, x,0.5,5.,1.);
-    d.AddSphere (-1,x,2.0,1.0);
+    d.AddTetra (-1, x,0.5,5.,1.);
     d.Particles[1]->v = v;
     d.Particles[1]->w = w;
 
+    Dict B;
+    B.Set(-1,"Gn Gt Mu",0.0,0.0,0.0);
+    d.SetProps(B);
+
     // initialize
-    double dt = 0.001;
+    double dt = 0.00001;
+    d.Initialize(dt);
 
     // initial constants
     Vec3_t l0(0,0,0);  // initial linear momentum
@@ -86,6 +90,10 @@ int main(int argc, char **argv) try
     double err_p = norm(p1-p0);
     double err_E = fabs(E1-E0);
     double error = err_l + err_p + err_E;
+    cout << "Error in angular momentum = " << err_l <<endl;
+    cout << "Error in linear  momentum = " << err_p <<endl;
+    cout << "Error in total energy     = " << err_E <<endl;
+
 
     // results
     if (error>tol) return 1;

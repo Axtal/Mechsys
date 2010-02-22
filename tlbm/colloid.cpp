@@ -24,13 +24,14 @@
 
 using std::cout;
 using std::endl;
+using LBM::Disk;
 
 // Analysis constants
-double u_max  = 0.1;
+double u_max  = 0.01;
 double Re     = 100;
 int    nx     = 400;
-int    ny     = 100;
-int    radius = ny/10 + 1;
+int    ny     = 400;
+int    radius = 5;
 
 double CalcViscosity()
 {
@@ -55,24 +56,30 @@ int main(int argc, char **argv) try
 	// Allocate lattice
 	LBM::Lattice l("colloid", false, u_max*(2*radius)/Re, nx, ny, 1, h, dt);
 	l.SetTau(1.0);
+
+
+
+    // set balls
+    Array<Disk> Ball;
+    for(double y = radius+10; y <=ny;y+=radius+10)
+    {
+        Ball.Push(Disk(Vec3_t(nx/20, y, 0.0), Vec3_t(0.0,0.0,0.0), radius, 500.0, 10.0, dt));
+    }
 					
 
-	// Set walls (top and bottom)
-	//for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
-	//for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
-
-	// Set balls
-    LBM::Disk Ball1(Vec3_t(ny/2, ny/2+3, 0.0), Vec3_t(0.0,0.0,0.0), radius, 500.0, 10.0, dt);
-	Ball1.DrawDisk(l,dt);
-    LBM::Disk Ball2(Vec3_t(ny/2+30, ny/2-3, 0.0), Vec3_t(0.0,0.0,0.0), radius, 500.0, 1000.0, dt);
-	Ball2.DrawDisk(l,dt);
-
 	// Set walls
-    LBM::Disk Wall1(Vec3_t(2.0*nx/3.0, 80+ny, 0.0), Vec3_t(0.0,0.0,0.0), 120, 100.0, 10.0, dt);
-	Wall1.DrawDisk(l,dt);
-    LBM::Disk Wall2(Vec3_t(2.0*nx/3.0, -80, 0.0), Vec3_t(0.0,0.0,0.0), 120, 100.0, 10.0, dt);
-	Wall2.DrawDisk(l,dt);
-	
+    Array<Disk> Wall;
+    Wall.Push(Disk(Vec3_t((0.45*double(nx)), 480  , 0.0), Vec3_t(0.0,0.0,0.0), 120, 50.0, 10.0, dt));
+    Wall.Push(Disk(Vec3_t((0.45*double(nx)), -80  , 0.0), Vec3_t(0.0,0.0,0.0), 120, 50.0, 10.0, dt));
+    Wall.Push(Disk(Vec3_t((0.45*double(nx)), 200  , 0.0), Vec3_t(0.0,0.0,0.0), 150, 50.0, 10.0, dt));
+
+    for (size_t j=0;j<Wall.Size();j++)
+    {
+        Wall[j].DrawDisk(l,dt);
+    }
+
+	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
+	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 	// Define boundary conditions
 	for (size_t j=0; j<l.Ny(); j++)
 	{
@@ -99,23 +106,37 @@ int main(int argc, char **argv) try
 	// Solve
 	for (size_t T=0; T<=Tmax; T++)
 	{
-		// Reset the force
-        Ball1.StartForce();
-        Ball2.StartForce();
         l.SetSolid(false);
-		//for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
-		//for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
-		Wall1.DrawDisk(l,dt);
-		Wall2.DrawDisk(l,dt);
-        Ball1.DrawDisk(l,dt);
-        Ball2.DrawDisk(l,dt);
-		CalcForce(&Ball1,&Ball2);
-		CalcForce(&Ball1,&Wall1);
-		CalcForce(&Ball2,&Wall1);
-		CalcForce(&Ball1,&Wall2);
-		CalcForce(&Ball2,&Wall2);
-		Ball1.Move(dt);
-		Ball2.Move(dt);
+
+		// Reset the force
+        for (size_t i=0;i<Ball.Size();i++)
+        {
+            Ball[i].StartForce();
+            Ball[i].DrawDisk(l,dt);
+            for (size_t j=0;j<Wall.Size();j++)
+            {
+                CalcForce(&Ball[i],&Wall[j]);
+            }
+        }
+        for (size_t j=0;j<Wall.Size();j++)
+        {
+		    Wall[j].DrawDisk(l,dt);
+        }
+
+	    for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
+	    for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
+
+        for (size_t i=0;i<Ball.Size()-1;i++)
+        {
+            for (size_t j=i+1;j<Ball.Size();j++)
+            {
+                CalcForce(&Ball[i],&Ball[j]);
+            }
+        }
+        for (size_t i=0;i<Ball.Size();i++)
+        {
+            Ball[i].Move(dt);
+        }
 
 		l.ApplyForce   ();
 		l.Collide      ();

@@ -46,13 +46,15 @@ public:
     ~Particle ();
 
     // Methods
-    void Initialize (size_t NCalls=5000);                                           ///< Initialize this particle
-    void InitializeVelocity (double dt = 1.0);                                      ///< Initialize this particle
-    void Rotate     (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
-    void Rotate     (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
-    void Translate  (double dt);                                                    ///< Apply translation once the total force is found
-    void Translate  (Vec3_t & t);                                                   ///< Apply translation by vector t
-    void Draw       (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
+    void Initialize         (size_t NCalls=5000);                                           ///< Initialize this particle
+    void InitializeVelocity (double dt = 1.0);                                              ///< Initialize this particle
+    void Rotate             (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
+    void Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
+    void Translate          (double dt);                                                    ///< Apply translation once the total force is found
+    void Translate          (Vec3_t & t);                                                   ///< Apply translation by vector t
+    void ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
+    double MaxDisplacement  ();                                                             ///< Maximun displacement for the verlet algorithm
+    void Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
 
     // Data
     int            Tag;        ///< Tag of the particle
@@ -84,6 +86,7 @@ public:
     double         Dmax;       ///< Maximal distance from the center of mass to the surface of the body
     double         Diam;       ///< Diameter of the parallelogram containing the particle
     double         Cn;         ///< Coordination number (number of contacts)
+    Array<Vec3_t*> Vertso;     ///< Original postion of the Vertices
     Array<Vec3_t*> Verts;      ///< Vertices
     Array<Edge*>   Edges;      ///< Edges
     Array<Face*>   Faces;      ///< Faces
@@ -161,7 +164,11 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 {
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
-    for (size_t i=0; i<V.Size(); i++) Verts.Push (new Vec3_t(V[i]));
+    for (size_t i=0; i<V.Size(); i++)
+    {
+        Verts.Push (new Vec3_t(V[i]));
+        Vertso.Push (new Vec3_t(V[i]));
+    }
     for (size_t i=0; i<F.Size(); i++)
     {
         Array<Vec3_t*> verts(F[i].Size());
@@ -174,6 +181,7 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 inline Particle::~Particle()
 {
     for (size_t i=0; i<Verts.Size(); ++i) delete Verts[i];
+    for (size_t i=0; i<Vertso.Size(); ++i) delete Vertso[i];
     for (size_t i=0; i<Edges.Size(); ++i) delete Edges[i];
     for (size_t i=0; i<Faces.Size(); ++i) delete Faces[i];
 }
@@ -269,6 +277,25 @@ inline void Particle::Translate (Vec3_t & V)
     {
         *Verts[i] += V;
     }
+}
+
+inline void Particle::ResetDisplacements ()
+{
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        (*Vertso[i]) = (*Verts[i]);
+    }
+}
+
+inline double Particle::MaxDisplacement ()
+{
+    double md = 0.0;
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        double mpd = Distance((*Vertso[i]),(*Verts[i]));
+        if (mpd>md) md = mpd;
+    }
+    return md;
 }
 
 inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)

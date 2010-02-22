@@ -68,17 +68,20 @@ public:
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
 
     // Methods
-    void SetBC            (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
-    void SetProps         (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
-    void Initialize       (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
-    void Solve            (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
-    void WritePOV         (char const * FileKey);                                                              ///< Write POV file
-    void WriteBPY         (char const * FileKey);                                                              ///< Write BPY (Blender) file
-    void BoundingBox      (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
-    void Center           ();                                                                                  ///< Centers the domain
-    void ResetInteractons ();                                                                                  ///< Reset the interactons
-    void EnergyOutput     (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
-    void GetGSD           (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
+    void SetBC             (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
+    void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
+    void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
+    void Solve             (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
+    void WritePOV          (char const * FileKey);                                                              ///< Write POV file
+    void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
+    void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
+    void Center            ();                                                                                  ///< Centers the domain
+    void ResetInteractons  ();                                                                                  ///< Reset the interactons
+    void ResetDisplacements();                                                                                  ///< Reset the displacements
+    double MaxDisplacement ();                                                                                  ///< Calculate maximun displacement
+    void ResetContacts     ();                                                                                  ///< Reset the displacements
+    void EnergyOutput      (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
+    void GetGSD            (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
 
     // Methods to be derived
     virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
@@ -105,6 +108,7 @@ public:
     double             Efric;         ///< Energy dissipated by friction
     double             Wext;          ///< Work done by external forces
     double             Vs;            ///< Volume occupied by the grains
+    double             Alpha;         ///< Verlet distance
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -178,7 +182,7 @@ public:
 // Constructor & Destructor
 
 inline Domain::Domain ()
-    : Time(0.0), Initialized(false)
+    : Time(0.0), Initialized(false), Alpha(0.1)
 {
     CamPos = 1.0, 2.0, 3.0;
 }
@@ -859,6 +863,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     // initialize
     if (FreeParticles.Size()==0) FreeParticles = Particles;
     Initialize (dt);
+    ResetDisplacements();
+    ResetContacts();
 
     // info
     double start = std::clock();
@@ -971,6 +977,13 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             tout += dtOut;
             idx_out++;
         }
+
+        if (MaxDisplacement()>Alpha)
+        {
+            ResetDisplacements();
+            ResetContacts();
+        }
+
     }
 
     //Output of the final state, depends on the setup
@@ -1072,6 +1085,33 @@ inline void Domain::ResetInteractons()
         {
             Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
         }
+    }
+}
+
+inline void Domain::ResetDisplacements()
+{
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Particles[i]->ResetDisplacements();
+    }
+}
+
+inline double Domain::MaxDisplacement()
+{
+    double md = 0.0;
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        double mpd = Particles[i]->MaxDisplacement();
+        if (mpd > md) md = mpd;
+    }
+    return md;
+}
+
+inline void Domain::ResetContacts()
+{
+    for (size_t i=0; i<Interactons.Size(); i++)
+    {
+        Interactons[i]->UpdateContacts(Alpha);
     }
 }
 

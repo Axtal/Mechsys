@@ -34,36 +34,43 @@ class Interacton
 public:
     // typedefs
     typedef std::map<std::pair<int,int>,Vec3_t> FrictionMap_t;
+    typedef Array<pair<int,int> > ListContacts_t;
 
     // Constructor and destructor
     Interacton () {};                            ///< Default constructor
     Interacton (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
 
     // Methods
-    virtual void CalcForce (double dt = 0.0); ///< Calculates the contact force between particles
+    virtual void UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
+    virtual void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
 
     // Data
-    Particle    * P1;        ///< First particle
-    Particle    * P2;        ///< Second particle
-    double        Kn;        ///< Normal stiffness
-    double        Kt;        ///< Tengential stiffness
-    double        Gn;        ///< Normal viscous coefficient
-    double        Gt;        ///< Tangential viscous coefficient
-    double        Mu;        ///< Microscpic coefficient of friction
-    double        Epot;      ///< Potential elastic energy
-    double        dEvis;     ///< Energy dissipated in viscosity at time step
-    double        dEfric;    ///< Energy dissipated by friction at time step
-    size_t        Nc;        ///< Number of contacts
-    size_t        Nsc;       ///< Number of sliding contacts
-    Vec3_t        Fn;        ///< Normal force between elements
-    Vec3_t        Fnet;      ///< Net normal force
-    Vec3_t        Ftnet;     ///< Net tangential force
-    FrictionMap_t Fdee;      ///< Static friction displacement for pair of edges
-    FrictionMap_t Fdvf;      ///< Static friction displacement for pair of vertex-face
-    FrictionMap_t Fdfv;      ///< Static friction displacement for pair of face-vertex
+    Particle     * P1;        ///< First particle
+    Particle     * P2;        ///< Second particle
+    double         Kn;        ///< Normal stiffness
+    double         Kt;        ///< Tengential stiffness
+    double         Gn;        ///< Normal viscous coefficient
+    double         Gt;        ///< Tangential viscous coefficient
+    double         Mu;        ///< Microscpic coefficient of friction
+    double         Epot;      ///< Potential elastic energy
+    double         dEvis;     ///< Energy dissipated in viscosity at time step
+    double         dEfric;    ///< Energy dissipated by friction at time step
+    size_t         Nc;        ///< Number of contacts
+    size_t         Nsc;       ///< Number of sliding contacts
+    Vec3_t         Fn;        ///< Normal force between elements
+    Vec3_t         Fnet;      ///< Net normal force
+    Vec3_t         Ftnet;     ///< Net tangential force
+    ListContacts_t Lee;       ///< List of edge-edge contacts 
+    ListContacts_t Lvf;       ///< List of vertex-face contacts 
+    ListContacts_t Lfv;       ///< List of face-vertex contacts
+    FrictionMap_t  Fdee;      ///< Static friction displacement for pair of edges
+    FrictionMap_t  Fdvf;      ///< Static friction displacement for pair of vertex-face
+    FrictionMap_t  Fdfv;      ///< Static friction displacement for pair of face-vertex
 protected:
     template<typename FeatureA_T, typename FeatureB_T>
-    void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt);
+    void _update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt);
+    template<typename FeatureA_T, typename FeatureB_T>
+    void _update_contacts        (FeatureA_T & A, FeatureB_T & B, ListContacts_t & L, double alpha);
 };
 
 
@@ -72,13 +79,15 @@ class InteractonSphere: public Interacton
 public:
     // Methods 
     InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
+    void UpdateContacts (double alpha);                ///< Update contacts by verlet algorithm
     void CalcForce (double dt = 0.0);                  ///< Calculates the contact force between particles
     
     // Data
-    FrictionMap_t Fdvv;                                ///< Static Friction displacement for the vertex vertex pair
-    Vec3_t        Fdr;                                 ///< Rolling displacement 
-    double        beta;                                ///< Rolling stiffness coefficient
-    double        eta;                                 ///< Plastic moment coefficient
+    FrictionMap_t  Fdvv;                                ///< Static Friction displacement for the vertex vertex pair
+    ListContacts_t Lvv;                                 ///< Static Friction displacement for the vertex vertex pair
+    Vec3_t         Fdr;                                 ///< Rolling displacement 
+    double         beta;                                ///< Rolling stiffness coefficient
+    double         eta;                                 ///< Plastic moment coefficient
 
 protected:
     void _update_rolling_resistance(double dt);               ///< Calculates the rolling resistance torque
@@ -94,6 +103,20 @@ inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
     CalcForce(0.0);
 }
 
+
+inline void Interacton::UpdateContacts (double alpha)
+{
+    Lee.Resize(0);
+    Lvf.Resize(0);
+    Lfv.Resize(0);
+    if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha)
+    {
+        _update_contacts (P1->Edges,P2->Edges,Lee,alpha);
+        _update_contacts (P1->Verts,P2->Faces,Lvf,alpha);
+        _update_contacts (P1->Faces,P2->Verts,Lfv,alpha);
+    }
+}
+
 inline void Interacton::CalcForce (double dt)
 {
     Epot   = 0.0;
@@ -105,9 +128,9 @@ inline void Interacton::CalcForce (double dt)
     Ftnet   = 0.0;
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
     {
-        _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,dt);
-        _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,dt);
-        _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,dt);
+        _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
+        _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
+        _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
     }
 
     //If there is at least a contact, increase the coordination number of the particles
@@ -119,12 +142,13 @@ inline void Interacton::CalcForce (double dt)
 }
 
 template<typename FeatureA_T, typename FeatureB_T>
-inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, double dt)
+inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt)
 {
     // update
-    for (size_t i=0; i<A.Size(); ++i)
-    for (size_t j=0; j<B.Size(); ++j)
+    for (size_t k=0; k<L.Size(); ++k)
     {
+        size_t i = L[k].first;
+        size_t j = L[k].second;
         Vec3_t xi, xf;
         Distance ((*A[i]), (*B[j]), xi, xf);
         double dist  = norm(xf-xi);
@@ -187,6 +211,22 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
     }
 }
 
+template<typename FeatureA_T, typename FeatureB_T>
+inline void Interacton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListContacts_t & L, double alpha)
+{
+    for (size_t i=0; i<A.Size(); ++i)
+    for (size_t j=0; j<B.Size(); ++j)
+    {
+        if (Distance ((*A[i]), (*B[j]))<=P1->R+P2->R+2*alpha)
+        {
+            pair<int,int> p;
+            p = make_pair(i,j);
+            L.Push(p);
+        }
+    }
+
+}
+
 inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
 {
     P1   = Pt1;
@@ -245,7 +285,7 @@ inline void InteractonSphere::CalcForce(double dt)
     Nsc    = 0;
     Fnet   = 0.0;
     Ftnet  = 0.0;
-    _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,dt);
+    _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
     if (Epot>0.0) _update_rolling_resistance(dt);
 
 
@@ -257,5 +297,13 @@ inline void InteractonSphere::CalcForce(double dt)
     }
 }
 
+inline void InteractonSphere::UpdateContacts (double alpha)
+{
+    Lvv.Resize(0);
 
+    if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha)
+    {
+        _update_contacts (P1->Verts,P2->Verts,Lvv,alpha);
+    }
+}
 #endif //  MECHSYS_DEM_INTERACTON_H
