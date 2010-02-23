@@ -38,7 +38,7 @@ int main(int argc, char **argv) try
 {
     // domain
 	Domain d;
-    d.Alpha = 0.1;
+    d.Alpha = 1111111111110.1;
 
     // add cube
 	Vec3_t x(-10,0,0);     // position
