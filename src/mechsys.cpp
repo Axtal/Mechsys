@@ -57,6 +57,7 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_GetGSD,       PyGetGSD,     3, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_AddVoroPack,  AddVoroPack,  12,13)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_DynSolve,     DynSolve,     3, 4)
 
@@ -166,8 +167,9 @@ BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const
 
 BPy::class_<DEM::Domain>("DEM_Domain")
     .def("GenSpheres",     &DEM::Domain::GenSpheres)
+    .def("GenFromMesh",    &DEM::Domain::GenFromMesh)
     .def("GenBox",         &DEM::Domain::GenBox)
-    .def("AddVoroPack",    &DEM::Domain::AddVoroPack)
+    .def("AddVoroPack",    &DEM::Domain::AddVoroPack, DO_AddVoroPack())
     .def("AddSphere",      &DEM::Domain::PyAddSphere)
     .def("AddCube",        &DEM::Domain::PyAddCube)
     .def("AddTetra",       &DEM::Domain::PyAddTetra)

@@ -78,6 +78,7 @@ class MeshData:
         if self.obj.properties.has_key('ftags'):
             for k, v in self.obj.properties['ftags'].iteritems():
                 vids = [int(vid) for vid in k.split('_')]
+                vids.sort()
                 self.ftags[(vids[0],vids[1],vids[2])] = v
 
         # get blocks
@@ -137,6 +138,14 @@ class MeshData:
 
     def __del__(self):
         if self.edm: Blender.Window.EditMode(1)
+
+    def get_face_tag(self, msh_face):
+        tag  = 0
+        vids = [v.index for v in msh_face.verts]
+        vids.sort()
+        vids = (vids[0],vids[1],vids[2])
+        if vids in self.ftags: tag = self.ftags[vids]
+        return tag
 
 
 # =========================================================================== Linear mesh
@@ -394,7 +403,17 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
                     idx += 1
             else: lin += '],\n'
             if m.is3d:
-                pass
+                lin += '           \'F\':['
+                nfs = len(m.msh.faces)
+                for idf, f in enumerate(m.msh.faces):
+                    lin += '[%4d, [[' % m.get_face_tag(f)
+                    nvs = len(f.verts)
+                    for idv, v in enumerate(f.verts):
+                        lin += '%d' % v.index
+                        if idv==nvs-1:
+                            if idf==nfs-1: lin += ']]]]})\n'
+                            else:          lin += ']]],\n                '
+                        else:          lin += ', '
             else:
                 lin += '           \'S\':['
                 idx = 0
@@ -429,11 +448,16 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
             for k, v in m.obj.properties['hols'].iteritems():
                 if m.is3d: dat['H'].append ([v[0], v[1], v[2]])
                 else:      dat['H'].append ([v[0], v[1]])
-        for e in m.msh.edges:
-            key = (e.v1.index, e.v2.index)
-            tag = 0
-            if key in m.etags: tag = m.etags[key]
-            dat['S'].append ([tag, e.v1.index, e.v2.index])
+        if m.is3d:
+            dat['F'] = []
+            for f in m.msh.faces:
+                dat['F'].append ([m.get_face_tag(f), [[v.index for v in f.verts]]])
+        else:
+            for e in m.msh.edges:
+                key = (e.v1.index, e.v2.index)
+                tag = 0
+                if key in m.etags: tag = m.etags[key]
+                dat['S'].append ([tag, e.v1.index, e.v2.index])
         mesh = ms.Unstructured (m.ndim)
         mesh.Set      (dat)
         mesh.Generate (m.iso2, m.maxA)

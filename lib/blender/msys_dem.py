@@ -22,8 +22,14 @@ from   Blender import Mesh
 from   bpy     import data
 from   Blender.Mathutils import Vector
 import msys_dict as di
-import math
+import msys_mesh as me
 import mechsys as ms
+import subprocess, math
+
+# for plotting
+from numpy import sqrt, matrix, zeros, log, cos, pi, sin, tan
+from pylab import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
+
 
 def gen_pkg(is_ttt):
     Blender.Window.WaitCursor(1)
@@ -36,16 +42,27 @@ def gen_pkg(is_ttt):
         dom.GenSpheres (-1,d['dem_Lx'],d['dem_Nx'],d['dem_rho'],'HCP',d['dem_seed'],d['dem_prob'])
     elif d['dem_pkg']==2: # Voronoi
         dom.AddVoroPack (-1,d['dem_R'], d['dem_Lx'], d['dem_Ly'], d['dem_Lz'], d['dem_Nx'], d['dem_Ny'], d['dem_Nz'], d['dem_rho'], True, d['dem_seed'], d['dem_prob'])
+    elif d['dem_pkg']==3: # Read Mesh
+        mesh = me.gen_unstruct_mesh (False)
+        dom.GenFromMesh (-1, mesh, d['dem_R'], d['dem_rho'])
     P = []
     dom.GetParticles (P)
     X, Y, D = [], [], []
-    dom.GetGSD (X, Y, D)
-    print 'GSD X = ', X
-    print 'GSD Y = ', Y
     add_particles(P,d['dem_res'],d['dem_draw_verts'],d['dem_draw_edges'])
     if edm: Blender.Window.EditMode(1)
     Blender.Window.QRedrawAll()
     Blender.Window.WaitCursor(0)
+
+    dom.GetGSD (X, Y, D)
+    plot(X,Y)
+    show()
+    #print 'GSD X = ', X
+    #print 'GSD Y = ', Y
+    #print 'GSD D = ', D
+    #try: pid = subprocess.Popen(['paraview', '--data='+obj.name+strkey]).pid
+    #except:
+        #Blender.Window.WaitCursor(0)
+        #raise Exception('Paraview is not available, please install it first')
 
 
 def gen_script():
@@ -210,6 +227,9 @@ def gen_script():
             txt.write ('dom.GenSpheres (-1, %g, %d, %g, %s, %d, %g) # tag,Lx,Nx,rho,type,seed,prob\n' % (d['dem_Lx'],d['dem_Nx'],d['dem_rho'],'"HCP"',   d['dem_seed'],d['dem_prob']))
         elif d['dem_pkg']==2: # Voronoi
             txt.write ('dom.AddVoroPack (-1, %g, %g,%g,%g, %d,%d,%d, %g, True, %d, %g) # tag, R, Lx,Ly,Lz, Nx,Ny,Nz, rho,seed,prob\n' % (d['dem_R'],d['dem_Lx'],d['dem_Ly'],d['dem_Lz'],d['dem_Nx'],d['dem_Ny'],d['dem_Nz'],d['dem_rho'],d['dem_seed'],d['dem_prob']))
+        elif d['dem_pkg']==3: # Read Mesh
+            me.gen_unstruct_mesh (True, txt, False, False) # gen_script, txt, cpp, with_headers
+            txt.write ('dom.GenFromMesh (-1, mesh, %g, %g)\n' % (d['dem_R'], d['dem_rho']))
 
         # generate bounding box
         txt.write ('\n# generate bounding box\n')
@@ -302,12 +322,9 @@ def run_simulation(running, fatal):
     try:
         d = di.load_dict()
 
-        # load MechSys
-        from mechsys import *
-
         # domain
-        dom = DEM_TTTDomain()
-        prp = Dict()
+        dom = ms.DEM_TTTDomain()
+        prp = ms.Dict()
         prp.Set (-1, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
         prp.Set (-2, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
         prp.Set (-3, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":0.0, "Beta":d['dem_beta'], "Eta":d['dem_eta']})
@@ -324,6 +341,9 @@ def run_simulation(running, fatal):
             dom.GenSpheres (-1, d['dem_Lx'],d['dem_Nx'],d['dem_rho'], "HCP", d['dem_seed'],d['dem_prob'])
         elif d['dem_pkg']==2: # Voronoi
             dom.AddVoroPack (-1, d['dem_R'],d['dem_Lx'],d['dem_Ly'],d['dem_Lz'],d['dem_Nx'],d['dem_Ny'],d['dem_Nz'],d['dem_rho'], True, d['dem_seed'],d['dem_prob'])
+        elif d['dem_pkg']==3: # Read Mesh
+            mesh = me.gen_unstruct_mesh (False)
+            dom.GenFromMesh (-1, mesh, d['dem_R'], d['dem_rho'])
 
         # generate bounding box
         dom.GenBoundingBox (-2, d['dem_R'],1.2)
@@ -340,7 +360,7 @@ def run_simulation(running, fatal):
 
         # stage 2: triaxial test
         prp.Set (-1, {"Kn":d['dem_Kn'], "Kt":d['dem_Kt'], "Gn":d['dem_Gn'], "Gt":d['dem_Gt'], "Mu":d['dem_mu'], "Beta":d['dem_beta'], "Eta":d['dem_eta']})
-        ttt_sigf   = pqTh2L (d['dem_ttt_pf'], d['dem_ttt_qf'], d['dem_ttt_thf'], "cam")
+        ttt_sigf   = ms.pqTh2L (d['dem_ttt_pf'], d['dem_ttt_qf'], d['dem_ttt_thf'], "cam")
         ttt_peps   = (d['dem_ttt_pex'], d['dem_ttt_pey'], d['dem_ttt_pez'])
         ttt_depsdt = (d['dem_ttt_exf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_eyf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_ezf']/(d['dem_ttt_timef']-d['dem_iso_timef']))
         dom.SetProps  (prp)

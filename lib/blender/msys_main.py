@@ -84,6 +84,7 @@ EVT_MESH_ADDHOL      = 52 # add hole
 EVT_MESH_DELALLHOLS  = 53 # delete all holes
 EVT_MESH_GENUNSTRU   = 54 # generate unstructured mesh using MechSys module
 EVT_MESH_GENUNSTRUS  = 55 # script for unstructured mesh generation
+#EVT_MESH_PARAVIEW
 # Mesh -- extra
 EVT_MESH_ADDLINE     = 60 # add linear element
 EVT_MESH_DELALLLINES = 61 # delete all linear elements
@@ -177,7 +178,7 @@ def delete_mesh():
         obj.properties.pop('msh_name')
 
 # Handle button events
-#@try_catch ##################### comment this out to track errors ######################################################################################################################################
+@try_catch ##################### comment this out to track errors ######################################################################################################################################
 def button_event(evt):
 
     # ----------------------------------------------------------------------------------- Settings
@@ -1445,15 +1446,15 @@ def gui():
 
         gu.text(c,     r,'pf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_pf']),  128, 'p at the and of shearing',  cb_dem_ttt_pf)
         gu.text(c+110, r,'Exf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_exf']), 128, 'Final Ex (strain)',         cb_dem_ttt_exf)
-        Draw.Toggle     ('pEx:',                  EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pex'],       'Prescribed Ex (strain)',    cb_dem_ttt_pex)
+        Draw.Toggle     ('pEx',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pex'],       'Prescribed Ex (strain)',    cb_dem_ttt_pex)
         r -= rh
         gu.text(c,     r,'qf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_qf']),  128, 'q at the and of shearing',  cb_dem_ttt_qf)
         gu.text(c+110, r,'Eyf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_eyf']), 128, 'Final Ey (strain)',         cb_dem_ttt_eyf)
-        Draw.Toggle     ('pEy:',                  EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pey'],       'Prescribed Ey (strain)',    cb_dem_ttt_pey)
+        Draw.Toggle     ('pEy',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pey'],       'Prescribed Ey (strain)',    cb_dem_ttt_pey)
         r -= rh
         gu.text(c,     r,'thf:'); Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
         gu.text(c+110, r,'Ezf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)',         cb_dem_ttt_ezf)
-        Draw.Toggle     ('pEz:',                  EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pez'],       'Prescribed Ez (strain)',    cb_dem_ttt_pez)
+        Draw.Toggle     ('pEz',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pez'],       'Prescribed Ez (strain)',    cb_dem_ttt_pez)
         r -= rh
         gu.text(c,    r,'timef');
         gu.text(c+60, r,'dt');

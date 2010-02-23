@@ -240,6 +240,11 @@ size_t Unstructured::FEM2TetFace [] = {3,1,0,2};
 
 inline void Unstructured::Set (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles, ...)
 {
+    // check
+    if (NPoints<3)           throw new Fatal("Mesh::Unstructured::Set: The number of points must be greater than 2. (%d is invalid)",NPoints);
+    if (NSegmentsOrFacets<3) throw new Fatal("Mesh::Unstructured::Set: The number of segments or faces must be greater than 2. (%d is invalid)",NSegmentsOrFacets);
+    if (NRegions<1)          throw new Fatal("Mesh::Unstructured::Set: The number of regions must be greater than 1. (%d is invalid)",NRegions);
+
     if (NDim==2)
     {
         // erase previous PSLG
@@ -709,6 +714,11 @@ inline void Unstructured::PySet (BPy::dict const & Dat)
     size_t NSegmentsOrFacets = BPy::len(con);
     size_t NRegions          = BPy::len(rgs);
     size_t NHoles            = BPy::len(hls);
+
+    // check
+    if (NPoints<3)           throw new Fatal("Mesh::Unstructured::PySet: The number of points must be greater than 2. (%d is invalid)",NPoints);
+    if (NSegmentsOrFacets<3) throw new Fatal("Mesh::Unstructured::PySet: The number of segments or faces must be greater than 2. (%d is invalid)",NSegmentsOrFacets);
+    if (NRegions<1)          throw new Fatal("Mesh::Unstructured::PySet: The number of regions must be greater than 1. (%d is invalid)",NRegions);
 
     if (NDim==2)
     {

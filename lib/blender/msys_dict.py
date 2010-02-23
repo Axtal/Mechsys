@@ -84,7 +84,7 @@ def load_dict():
         dict['dem_rho']        = 1.0
         dict['dem_seed']       = 123
         dict['dem_prob']       = 1.0
-        dict['dem_pkg']        = 1
+        dict['dem_pkg']        = 1    # 0:Spheres, 1:HCP, 2:Voronoi, 3:Mesh
         dict['dem_res']        = 8
         dict['dem_draw_verts'] = True
         dict['dem_draw_edges'] = True
@@ -99,7 +99,7 @@ def load_dict():
         dict['dem_iso_timef']  = 50.0
         dict['dem_iso_dt']     = 0.001
         dict['dem_iso_dtout']  = 1.0
-        dict['dem_iso_render'] = False
+        dict['dem_iso_render'] = True
         dict['dem_ttt_pf']     = 5.0
         dict['dem_ttt_qf']     = 0.0
         dict['dem_ttt_thf']    = 30.0
@@ -112,15 +112,15 @@ def load_dict():
         dict['dem_ttt_exf']    = 0.0
         dict['dem_ttt_eyf']    = 0.0
         dict['dem_ttt_ezf']    = -0.2
-        dict['dem_ttt_render'] = False
+        dict['dem_ttt_render'] = True
         dict['dem_cpp_script'] = False
         dict['dem_process']    = None
         dict['dem_running']    = Value('i',0)
         dict['dem_fatal']      = Value('i',0)
 
         # DEM packings
-        dict['dem_pkgs']     = {0:'Spheres', 1:'Spheres HCP', 2:'Voronoi'}
-        dict['dem_pkgs_mnu'] = 'Packing type %t|Voronoi %x3|Spheres HCP %x2|Spheres %x1'
+        dict['dem_pkgs']     = {0:'Spheres', 1:'Spheres HCP', 2:'Voronoi', 3:'From Mesh'}
+        dict['dem_pkgs_mnu'] = 'Packing type %t|From Mesh %x4|Voronoi %x3|Spheres HCP %x2|Spheres %x1'
 
         # Models
         dict['mdl']      = {0:'Rod', 1:'Beam', 2:'LinElastic', 3:'ElastoPlastic', 4:'CamClay', 5:'LinFlow'}
