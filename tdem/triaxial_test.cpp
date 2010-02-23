@@ -20,6 +20,7 @@
 // MechSys
 #include <mechsys/dem/domain.h>
 #include <mechsys/util/fatal.h>
+#include <mechsys/mesh/unstructured.h>
 #include <mechsys/linalg/matvec.h>
 
 using std::cout;
@@ -107,7 +108,13 @@ int main(int argc, char **argv) try
     // particle
     if(ptype=="sphere") d.GenSpheres  (-1,Lx,nx,rho,"HCP", seed, fraction);
     else if (ptype=="voronoi") d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
-    else throw new Fatal("Packing for particle type not implmented yet");
+    else if (ptype=="tetra") 
+    {
+        Mesh::Unstructured mesh(/*NDim*/3);
+        mesh.GenBox  (/*O2*/false,/*V*/0.1*Lx*Ly*Lz,Lx,Ly,Lz);
+        d.GenFromMesh (-1,mesh,/*R*/R,/*rho*/rho);
+    }
+    else throw new Fatal("Packing for particle type not implemented yet");
     d.GenBoundingBox(/*InitialTag*/-2, R, /*Cf*/1.3);
 
     // properties of particles prior the triaxial test

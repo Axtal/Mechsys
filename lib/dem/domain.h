@@ -434,7 +434,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                         Particle * P = Particles[Particles.Size()-1];
                         P->Translate(trans);
                         P->V = c.volume();
-                        P->Diam = sqrt((P->MaxX()-P->MinX())*(P->MaxX()-P->MinX())+(P->MaxY()-P->MinY())*(P->MaxY()-P->MinY())+(P->MaxZ()-P->MinZ())*(P->MaxX()-P->MinX()));
                     }
                 }
             }
@@ -1177,14 +1176,18 @@ inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
 inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv) const
 {
     
+    //if (FreeParticles.Size()==0) FreeParticles = Particles;
     // calc GSD information
     Array<double> Vg;
     double Vs = 0.0;
-    for (size_t i=0; i<FreeParticles.Size(); i++)
+
+    for (size_t i=0; i<Particles.Size(); i++)
     {
-        Vs += FreeParticles[i]->V;
-        Vg.Push(FreeParticles[i]->V);
-        D.Push(FreeParticles[i]->Diam);
+        Particle * P = Particles[i];
+        double Diam = sqrt((P->MaxX()-P->MinX())*(P->MaxX()-P->MinX())+(P->MaxY()-P->MinY())*(P->MaxY()-P->MinY())+(P->MaxZ()-P->MinZ())*(P->MaxX()-P->MinX()));
+        Vs += Particles[i]->V;
+        Vg.Push(Particles[i]->V);
+        D.Push(Diam);
     }
     double Dmin  = D[D.Min()]; // minimum diameter
     double Dmax  = D[D.Max()]; // maximum diameter
@@ -1197,7 +1200,7 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
         {
             if (D[j]<=i*Dspan+Dmin) cumsum++;
         }
-        Y.Push (cumsum/FreeParticles.Size());
+        Y.Push (cumsum/Particles.Size());
     }
     
 }
