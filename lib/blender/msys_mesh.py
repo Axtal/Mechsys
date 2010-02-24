@@ -48,6 +48,11 @@ class MeshData:
         self.iso2 = self.obj.properties['iso2'] if self.obj.properties.has_key('iso2') else False
         self.ndim = 3 if self.is3d else 2
 
+        # check if all z values are zero in 2D mesh
+        if not self.is3d:
+            for v in self.msh.verts:
+                if abs(v.co[2])>1.0e-7: raise Exception('In 2D meshes, the z coordinate of all points must be zero (z=%g is invalid)'%v.co[2])
+
         # max area
         self.maxA = self.obj.properties['maxarea'] if self.obj.properties.has_key('maxarea') else -1.0
 

@@ -117,6 +117,7 @@ EVT_DEM_GEN_SCR      = 102 # generate script
 EVT_DEM_RUN          = 103 # run simulation
 EVT_DEM_STOP         = 104 # stop simulation
 EVT_DEM_CLEAR        = 105 # clear error message
+EVT_DEM_GSD          = 106 # generate GSD
 
 
 # ==================================================================================== Events
@@ -328,6 +329,7 @@ def button_event(evt):
     elif evt==EVT_DEM_CLEAR:
         di.key('dem_fatal').value = 0
         Blender.Window.QRedrawAll()
+    elif evt==EVT_DEM_GSD:      dem.gen_GSD  (False) # is_ttt
 
 # ================================================================================= Callbacks
 
@@ -883,7 +885,7 @@ def gui():
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 13*rh+srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts+rh*stg_extra_rows if len(stages)>0 else 0
     h_fem           = 5*rh+h_fem_stage+3*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
-    h_dem_pkg       = 8*rh+3*rg
+    h_dem_pkg       = 9*rh+3*rg
     h_dem_cte       = 5*rh+srg
     h_dem_ttt_iso   = 3*rh+2*srg
     h_dem_ttt_she   = 5*rh+2*srg
@@ -1393,8 +1395,10 @@ def gui():
         Draw.Toggle     ('Draw Verts',              EVT_NONE, c+140, r, 80, rh, d['dem_draw_verts'],    'Draw Vertices', cb_dem_draw_verts)
         Draw.Toggle     ('Draw Edges',              EVT_NONE, c+220, r, 80, rh, d['dem_draw_edges'],    'Draw Edges',    cb_dem_draw_edges)
         r -= rh
-        Draw.PushButton ('Generate Particles',   EVT_DEM_GEN_PKG, c,     r, 150, rh, 'Generate particles')
-        Draw.PushButton ('Generate TTT Packing', EVT_DEM_GEN_TTT, c+150, r, 150, rh, 'Generate true triaxial (TTT) packing')
+        Draw.PushButton ('Generate Particles',      EVT_DEM_GEN_PKG,  c,     r, 150, rh, 'Generate particles')
+        Draw.PushButton ('Generate TTT Packing',    EVT_DEM_GEN_TTT,  c+150, r, 150, rh, 'Generate true triaxial (TTT) packing')
+        r -= rh
+        Draw.PushButton ('Grain Size Distribution', EVT_DEM_GSD,      c,     r, 150, rh, 'Generate Grain Size Distribution (GSD)')
 
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
 

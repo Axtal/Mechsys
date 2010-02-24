@@ -26,13 +26,8 @@ import msys_mesh as me
 import mechsys as ms
 import subprocess, math
 
-# for plotting
-from numpy import sqrt, matrix, zeros, log, cos, pi, sin, tan
-from pylab import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
 
-
-def gen_pkg(is_ttt):
-    Blender.Window.WaitCursor(1)
+def gen_pkg(is_ttt, draw=True):
     edm = Blender.Window.EditMode()
     d   = di.load_dict()
     dom = ms.DEM_TTTDomain() if is_ttt else ms.DEM_Domain()
@@ -45,24 +40,40 @@ def gen_pkg(is_ttt):
     elif d['dem_pkg']==3: # Read Mesh
         mesh = me.gen_unstruct_mesh (False)
         dom.GenFromMesh (-1, mesh, d['dem_R'], d['dem_rho'])
-    P = []
-    dom.GetParticles (P)
-    X, Y, D = [], [], []
-    add_particles(P,d['dem_res'],d['dem_draw_verts'],d['dem_draw_edges'])
+    if draw:
+        P = []
+        dom.GetParticles (P)
+        add_particles(P,d['dem_res'],d['dem_draw_verts'],d['dem_draw_edges'])
     if edm: Blender.Window.EditMode(1)
     Blender.Window.QRedrawAll()
-    Blender.Window.WaitCursor(0)
+    return dom
 
+
+def gen_GSD(is_ttt):
+    obj = di.get_obj()
+    dom = gen_pkg(is_ttt,False)
+    X, Y, D = [], [], []
     dom.GetGSD (X, Y, D)
-    plot(X,Y)
-    show()
-    #print 'GSD X = ', X
-    #print 'GSD Y = ', Y
-    #print 'GSD D = ', D
-    #try: pid = subprocess.Popen(['paraview', '--data='+obj.name+strkey]).pid
-    #except:
-        #Blender.Window.WaitCursor(0)
-        #raise Exception('Paraview is not available, please install it first')
+    lin  = 'from numpy import sqrt, matrix, zeros, log, cos, pi, sin, tan\n'
+    lin += 'from pylab import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show\n'
+    lin += '\n'
+    lin += 'X = '+X.__str__()+'\n'
+    lin += 'Y = '+Y.__str__()+'\n'
+    lin += 'D = '+D.__str__()+'\n'
+    lin += '\n'
+    lin += 'plot(X,Y, "ro")\n'
+    lin += 'plot(X,Y, "r-", lw=2)\n'
+    lin += 'xlabel("diameters")\n'
+    lin += 'ylabel("% passing")\n'
+    lin += 'grid()\n'
+    lin += 'show()\n'
+    f = open(obj.name+'_GSD.py', 'w')
+    f.write (lin)
+    f.close ()
+    try: pid = subprocess.Popen(['python', obj.name+'_GSD.py']).pid
+    except:
+        Blender.Window.WaitCursor(0)
+        raise Exception('Python (Matplotlib) command failed')
 
 
 def gen_script():
@@ -261,6 +272,7 @@ def gen_script():
 
 
 def add_particles(P,res,draw_verts,draw_edges):
+    Blender.Window.WaitCursor(1)
     scn = data.scenes.active
     for p in P:
         # features
@@ -316,6 +328,7 @@ def add_particles(P,res,draw_verts,draw_edges):
         obj.join (objs)
         obj.getData(mesh=True).remDoubles (0.001)
         for o in objs: scn.objects.unlink(o)
+    Blender.Window.WaitCursor(0)
 
 
 def run_simulation(running, fatal):
