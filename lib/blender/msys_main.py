@@ -77,6 +77,7 @@ EVT_MESH_ADDBLK      = 40 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_DELALLBLKS  = 41 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_GENSTRU     = 42 # generate structured mesh using MechSys module
 EVT_MESH_GENSTRUS    = 43 # script for structured mesh generation
+EVT_MESH_PARAVIEW_S  = 44 # view structured mesh in ParaView
 # Mesh -- unstructured
 EVT_MESH_ADDREG      = 50 # add region
 EVT_MESH_DELALLREGS  = 51 # delete all regions
@@ -84,7 +85,7 @@ EVT_MESH_ADDHOL      = 52 # add hole
 EVT_MESH_DELALLHOLS  = 53 # delete all holes
 EVT_MESH_GENUNSTRU   = 54 # generate unstructured mesh using MechSys module
 EVT_MESH_GENUNSTRUS  = 55 # script for unstructured mesh generation
-#EVT_MESH_PARAVIEW
+EVT_MESH_PARAVIEW_U  = 56 # view unstructured mesh in ParaView
 # Mesh -- extra
 EVT_MESH_ADDLINE     = 60 # add linear element
 EVT_MESH_DELALLLINES = 61 # delete all linear elements
@@ -265,6 +266,7 @@ def button_event(evt):
     elif evt==EVT_MESH_DELALLBLKS: di.props_del_all('blks')
     elif evt==EVT_MESH_GENSTRU:    me.gen_struct_mesh ()
     elif evt==EVT_MESH_GENSTRUS:   me.gen_struct_mesh (True,None,di.key('smsh_cpp'))
+    elif evt==EVT_MESH_PARAVIEW_S: me.paraview ()
 
     # ------------------------------------------------------------------ Mesh -- unstructured
 
@@ -274,6 +276,7 @@ def button_event(evt):
     elif evt==EVT_MESH_DELALLHOLS: di.props_del_all ('hols')
     elif evt==EVT_MESH_GENUNSTRU:  me.gen_unstruct_mesh ()
     elif evt==EVT_MESH_GENUNSTRUS: me.gen_unstruct_mesh (True,None,di.key('umsh_cpp'))
+    elif evt==EVT_MESH_PARAVIEW_U: me.paraview (True)
 
     # ------------------------------------------------------------------------- Mesh -- extra
 
@@ -1015,9 +1018,10 @@ def gui():
         # ----------------------- Mesh -- structured -- END
 
         r -= srg
-        Draw.Toggle     ('C++',          EVT_NONE,          c,     r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
-        Draw.PushButton ('Write Script', EVT_MESH_GENSTRUS, c+40,  r, 100, rh, 'Create script for structured mesh generation')
-        Draw.PushButton ('Generate',     EVT_MESH_GENSTRU,  c+140, r, 120, rh, 'Generated structured mesh')
+        Draw.Toggle     ('C++',          EVT_NONE,            c,     r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
+        Draw.PushButton ('Write Script', EVT_MESH_GENSTRUS,   c+40,  r,  90, rh, 'Create script for structured mesh generation')
+        Draw.PushButton ('Generate',     EVT_MESH_GENSTRU,    c+120, r,  90, rh, 'Generated structured mesh')
+        Draw.PushButton ('ParaView',     EVT_MESH_PARAVIEW_S, c+210, r,  90, rh, 'View structured mesh in ParaView')
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
 
         # ----------------------- Mesh -- unstructured
@@ -1071,8 +1075,9 @@ def gui():
 
         r -= srg
         Draw.Toggle     ('C++',          EVT_NONE,            c,     r,  40, rh, d['umsh_cpp'], 'Generate C++ script', cb_umsh_cpp)
-        Draw.PushButton ('Write Script', EVT_MESH_GENUNSTRUS, c+40,  r, 100, rh, 'Create script for unstructured mesh generation')
-        Draw.PushButton ('Generate',     EVT_MESH_GENUNSTRU , c+140, r, 120, rh, 'Generated unstructured mesh')
+        Draw.PushButton ('Write Script', EVT_MESH_GENUNSTRUS, c+40,  r,  80, rh, 'Create script for unstructured mesh generation')
+        Draw.PushButton ('Generate',     EVT_MESH_GENUNSTRU , c+120, r,  90, rh, 'Generated unstructured mesh')
+        Draw.PushButton ('ParaView',     EVT_MESH_PARAVIEW_U, c+210, r,  90, rh, 'View unstructured mesh in ParaView')
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r+rh)
 
         # ----------------------- Mesh -- extra elements

@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-import math
+import math, subprocess
 import time
 import Blender
 import bpy
@@ -86,9 +86,14 @@ class MeshData:
 
             neds2nverts = {4:4, 8:8, 12:8, 24:20}
             neds2edges  = {4:{(0,1):0, (1,2):1, (2,3):2, (0,3):3}, # quad4
-                           8:[(0,1), (1,2), (2,3), (3,0)],    # quad8
-                           12:[],   # hex8
-                           24:[]}   # hex20
+                           8:{(0,4):0, (1,4):0, (1,5):1, (2,5):1, (2,6):2, (3,6):2, (3,7):3, (0,7):3}} # quad8
+            neds2faces  = {12:{(0,3,4,7):0,(1,2,5,6):1,(0,1,4,5):2,(2,3,6,7):3,(0,1,2,3):4,(4,5,6,7):5}, # hex8
+                           24:{(0,3,4,7, 11,15,16,19):0,
+                               (1,2,5,6,  9,16,17,18):1,
+                               (0,1,4,5,  8,12,16,17):2,
+                               (2,3,6,7, 10,14,18,19):3,
+                               (0,1,2,3,  8, 9,10,11):4,
+                               (4,5,6,7, 12,13,14,15):5}} # hex20
 
             self.blks = []
             for k, v in self.obj.properties['blks'].iteritems(): # for each block
@@ -123,15 +128,24 @@ class MeshData:
                 # find brytags
                 if self.is3d: blk['brytags'] = [0 for i in range(6)]
                 else:         blk['brytags'] = [0 for i in range(4)]
-                if len(self.etags)>0: # edge tags
+                if not self.is3d and len(self.etags)>0: # edge tags
                     for gedpair, etag in self.etags.iteritems():                    # gedpair=global edge pair
-                        ledpair = (gids2lids[gedpair[0]],gids2lids[gedpair[1]])     # local edge pair
-                        if ledpair[0]>ledpair[1]: ledpair = (ledpair[1],ledpair[0]) # sort local edge pair
-                        leid = neds2edges[nedges][ledpair]                          # local edge id
-                        blk['brytags'][leid] = etag
+                        if gedpair[0] in gids2lids and gedpair[1] in gids2lids:     # if this edge is in the block
+                            ledpair = (gids2lids[gedpair[0]],gids2lids[gedpair[1]])     # local edge pair
+                            if ledpair[0]>ledpair[1]: ledpair = (ledpair[1],ledpair[0]) # sort local edge pair
+                            loceid = neds2edges[nedges][ledpair]                        # local edge id
+                            blk['brytags'][loceid] = etag
 
-                if len(self.ftags)>0: # edge tags
-                    print self.ftags
+                if self.is3d and len(self.ftags)>0: # edge tags
+                    for gvidtri, ftag in self.ftags.iteritems(): # gvidtup=global vertex triple
+                        lvidtri = [gids2lids[gvidtri[0]],gids2lids[gvidtri[1]],gids2lids[gvidtri[2]]] # local vertex triplet
+                        locfid  = -1
+                        for lvids, lfid in neds2faces[nedges].iteritems():
+                            if lvidtri[0] in lvids and lvidtri[1] in lvids and lvidtri[2] in lvids:
+                                locfid = lfid
+                                break
+                        if locfid<0: raise Exception('msys_mesh.py: __internal error__: local face id (locfid) not found')
+                        blk['brytags'][locfid] = ftag
 
                 # add blk to blks
                 self.blks.append (blk)
@@ -317,6 +331,8 @@ def gen_struct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
         if m.is3d: mesh.WriteVTU (m.obj.name+'_smesh')
         else:      mesh.WriteMPY (m.obj.name+'_smesh', True) # FileKey, WithTags
         add_mesh (m.obj, mesh, 'struct')
+        if with_headers: # for FEM
+            mesh.WriteVTU (m.obj.name+'_smesh')
         return mesh
 
 
@@ -464,6 +480,8 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
         if m.is3d: mesh.WriteVTU (m.obj.name+'_umesh')
         else:      mesh.WriteMPY (m.obj.name+'_umesh', True) # FileKey, WithTags
         add_mesh (m.obj, mesh, 'unstruct')
+        if with_headers: # for FEM
+            mesh.WriteVTU (m.obj.name+'_umesh')
         return mesh
 
 # ====================================================================================== Draw
@@ -499,3 +517,16 @@ def add_mesh(obj, mesh, msh_type):
 
     # redraw
     Blender.Window.QRedrawAll()
+
+
+def paraview(unstructured=False):
+    obj = di.get_obj()
+    if obj.properties.has_key('msh_name'):
+        if unstructured: fn = obj.name+'_umesh.vtu'
+        else:            fn = obj.name+'_smesh.vtu'
+        if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, generate mesh first)')
+        try: pid = subprocess.Popen(['paraview', '--data='+fn]).pid
+        except:
+            Blender.Window.WaitCursor(0)
+            raise Exception('Paraview is not available, please install it first')
+    else: raise Exception('Please generate mesh first')

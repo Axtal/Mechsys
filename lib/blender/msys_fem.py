@@ -446,10 +446,11 @@ def paraview(dynamics=False):
             if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, run analysis first)')
             strkey = '_fem_..vtu'
         else:
-            for i in range(len(obj.properties['stages'])):
+            nstages = len(obj.properties['stages'])
+            for i in range(nstages):
                 fn = obj.name+'_fem_stg_%d.vtu'%i
                 if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, run analysis first)')
-            strkey = '_fem_stg_..vtu'
+            strkey = '_fem_stg_..vtu' if nstages>1 else '_fem_stg_0.vtu'
         try: pid = subprocess.Popen(['paraview', '--data='+obj.name+strkey]).pid
         except:
             Blender.Window.WaitCursor(0)

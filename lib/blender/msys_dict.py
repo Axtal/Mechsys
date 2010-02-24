@@ -772,7 +772,32 @@ def block_local_ids(obj, blk_dat):
 
     # find local IDs
     loc_vids = {}
-    if zeid>0 and zvid>0: # 3D
+    if zeid<0 and zvid<0: # 2D
+
+        if neds==4: # quad4
+            neigh.pop(xvid)
+            neigh.pop(yvid)
+            v2 = neigh.keys()[0]
+            loc_vids[origin] = 0
+            loc_vids[xvid]   = 1
+            loc_vids[v2]     = 2
+            loc_vids[yvid]   = 3
+            return loc_vids
+
+        elif neds==8: # quad8
+            loc_vids[origin] = 0
+            loc_vids[xvid]   = 4
+            loc_vids[yvid]   = 7
+            res = find_shortest_path (neigh, xvid, yvid)
+            loc_vids[res[1]] = 1
+            loc_vids[res[2]] = 5
+            loc_vids[res[3]] = 2
+            loc_vids[res[4]] = 6
+            loc_vids[res[5]] = 3
+            return loc_vids
+
+    else: # 3D
+
         if neds==12: # hex8
             v2 = find_shortest_path (neigh, xvid, yvid)[1]
             v5 = find_shortest_path (neigh, xvid, zvid)[1]
@@ -788,7 +813,7 @@ def block_local_ids(obj, blk_dat):
             loc_vids[v7]    = 7
             return loc_vids
 
-        if neds==24: # hex20
+        elif neds==24: # hex20
             res = find_shortest_path (neigh, xvid, yvid)
             v2  = res[3]
             loc_vids[origin] = 0
@@ -820,27 +845,4 @@ def block_local_ids(obj, blk_dat):
             loc_vids[res[3]] = 14
             res = find_shortest_path (neigh, v6, v2)
             loc_vids[res[1]] = 18
-            return loc_vids
-
-    else: # 2D
-        if neds==4: # quad4
-            neigh.pop(xvid)
-            neigh.pop(yvid)
-            v2 = neigh.keys()[0]
-            loc_vids[origin] = 0
-            loc_vids[xvid]   = 1
-            loc_vids[v2]     = 2
-            loc_vids[yvid]   = 3
-            return loc_vids
-
-        if neds==8: # quad8
-            loc_vids[origin] = 0
-            loc_vids[xvid]   = 4
-            loc_vids[yvid]   = 7
-            res = find_shortest_path (neigh, xvid, yvid)
-            loc_vids[res[1]] = 1
-            loc_vids[res[2]] = 5
-            loc_vids[res[3]] = 2
-            loc_vids[res[4]] = 6
-            loc_vids[res[5]] = 3
             return loc_vids
