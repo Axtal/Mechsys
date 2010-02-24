@@ -31,6 +31,11 @@ OPTION(MAKE_TST           "Compile tests"                                     OF
 OPTION(MAKE_TFEM          "Compile FEM tests"                                 OFF)
 OPTION(MAKE_TLBM          "Compile LBM tests"                                 OFF)
 OPTION(MAKE_TDEM          "Compile DEM tests"                                 ON)
+OPTION(USE_OPENMP         "Use OpenMP"                                        OFF)
+
+#IF(USE_OPENMP)
+    #SET(USE_OPENMP 1)
+#ENDIF(USE_OPENMP)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)
