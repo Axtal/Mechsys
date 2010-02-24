@@ -700,6 +700,10 @@ inline void Generic::GenO2Verts ()
 
                 // set pointer to vertex
                 cell->V[idx_vert] = Verts[Verts.Size()-1];
+
+                // set shares information
+                Share sha = {cell,idx_vert};
+                Verts[Verts.Size()-1]->Shares.Push (sha);
             }
         }
     }
