@@ -42,6 +42,7 @@ class Plotter:
         self.fc_c      = 0.0          # cohesion for FC
         self.fc_np     = 20           # number of points for drawing failure line
         self.isxyz     = (-1,0)       # indices for sxyz plot, use negative numbers for principal components
+        self.idx_max   = -1           # maximum index for plotting: -1 => everything
         self.devplot   = True         # plot s3-s1, s3-s2 instead of Ek, Sk
         self.dot       = ['r-','r-','r-','r-','r-','r-','r-','r-','r-']
 
@@ -73,7 +74,8 @@ class Plotter:
                                        [-float( dat['Exy'][i] )*sq2/div]]))
             self.dot = ['k+','k+','k+','k+','k+','k+','k+','k+','k+']
         else:
-            for i in range(len(dat['sx'])):
+            idx_max = len(dat['sx']) if self.idx_max<0 else self.idx_max
+            for i in range(idx_max):
                 Sig.append(matrix([[float( dat['sx' ][i] )],
                                    [float( dat['sy' ][i] )],
                                    [float( dat['sz' ][i] )],
