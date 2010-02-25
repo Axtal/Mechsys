@@ -145,6 +145,8 @@ BPy::def("MODEL", PyMODEL);
 // Domain
 BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic const &, Dict const &, Dict const &, Dict const &>())
     .def("SetBCs",       &FEM::Domain::SetBCs)
+    .def("Gravity",      &FEM::Domain::Gravity)
+    .def("SetUVals",     &FEM::Domain::SetUVals)
     .def("SetOutNods",   &FEM::Domain::PySetOutNods)
     .def("SetOutEles",   &FEM::Domain::PySetOutEles)
     .def("PrintResults", &FEM::Domain::PrintResults, DO_PrintResults())

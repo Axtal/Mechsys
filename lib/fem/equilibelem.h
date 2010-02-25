@@ -42,6 +42,7 @@ public:
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, 
                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void Gravity     (NodBCs_t & pF, pCalcM CalcM, double gAccel); ///< Apply gravity
     void CalcFint    (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
     void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                            const; ///< Mass matrix
@@ -269,6 +270,47 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
             if (has_uz) pU[Con[k]].first[Con[k]->UMap("uz")] = uz;
         }
     }
+}
+
+inline void EquilibElem::Gravity (NodBCs_t & pF, pCalcM CalcM, double gAccel)
+{
+    // matrix of coordinates of nodes
+    Mat_t C;
+    CoordMatrix (C);
+    
+    // set
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        // geometric data
+        GE->Shape  (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+        GE->Derivs (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+
+        // Jacobian and its determinant
+        Mat_t J(GE->dNdR * C); // J = dNdR * C
+        double detJ = Det(J);
+
+        // coefficient used during integration
+        double coef = h*detJ*GE->IPs[i].w;
+        if (GTy==axs_t)
+        {
+            // calculate radius=x at this IP
+            double radius = 0.0;
+            for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
+
+            // correct coef
+            coef *= radius;
+        }
+
+        // add to dF
+        for (size_t j=0; j<GE->NN; ++j)
+        {
+            if (NDim==2) pF[Con[j]].first[Con[j]->FMap("fy")] += -coef*GE->N(j)*rho*gAccel;
+            else         pF[Con[j]].first[Con[j]->FMap("fz")] += -coef*GE->N(j)*rho*gAccel;
+        }
+    }
+
+    // set CalcM
+    for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
 }
 
 inline void EquilibElem::CalcFint (Vec_t * F_int) const

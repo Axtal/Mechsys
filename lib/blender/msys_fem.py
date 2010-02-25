@@ -243,22 +243,40 @@ def gen_script():
             # run only if stage is active
             if stage['act']:
                 # stage #
-                txt.write ('\n    // stage # %d --------------------------------------------------------------\n'%num)
+                txt.write ('\n    // stage # %d ==============================================================\n'%num)
 
                 # boundary conditions
+                txt.write ('\n    // boundary conditions\n')
                 nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'], True, True) # obj, stg, script, cpp
                 if num==1: txt.write ('    Dict bcs;\n')
                 for tag, nbc in nbrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+nbc['CPPKEYS']+', '+nbc['CPPVALS']+');\n')
                 for tag, ebc in ebrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+ebc['CPPKEYS']+', '+ebc['CPPVALS']+');\n')
                 for tag, fbc in fbrys.iteritems(): txt.write ('    bcs.Set ('+str(tag)+', '+fbc['CPPKEYS']+', '+fbc['CPPVALS']+');\n')
+                txt.write ('    dom.SetBCs (bcs);\n')
+
+                # apply body forces
+                if stage['abf']:
+                    txt.write ('\n    // apply body forces\n')
+                    txt.write ('    dom.Gravity ();\n')
 
                 # solve
-                txt.write ('    dom.SetBCs   (bcs);\n')
+                txt.write ('\n    // solve\n')
                 if stage['type']==0: # equilib/steady
-                    txt.write ('    sol.Solve    (%d);\n'%(stage['ndiv']))
+                    txt.write ('    sol.Solve (%d);\n'%(stage['ndiv']))
                 elif stage['type']==2: # dynamics
                     extra = ', "'+dat.filekey+'"' if stage['outVTU'] else ''
                     txt.write ('    sol.DynSolve (%g, %g, %g%s); // tf,dt,dtOut,filekey\n' % (stage['tf'],stage['dt'],stage['dtOut'],extra))
+
+                # clear displacements
+                if stage['cdi']:
+                    txt.write ('\n    // clear displacements\n')
+                    txt.write ('    SDPair uvs;\n')
+                    if dat.ndim==2: txt.write ('    uvs.Set ("ux uy", 0.0,0.0);\n')
+                    else:           txt.write ('    uvs.Set ("ux uy uz", 0.0,0.0,0.0);\n')
+                    txt.write ('    dom.SetUVals (uvs);\n')
+
+                # output
+                txt.write ('\n    // output\n')
                 txt.write ('    dom.WriteVTU ("'+dat.filekey+'_'+stage['stg']+'");\n')
 
         # footer
@@ -318,7 +336,7 @@ def gen_script():
             if stage['act']:
 
                 # activate and deactivate elements
-                txt.write ('\n# stage # %d --------------------------------------------------------------\n'%num)
+                txt.write ('\n# stage # %d ==============================================================\n'%num)
                 #elem_act, elem_deact = get_act_deact (obj,stg)
                 #for k, v in elem_act.iteritems():
                     #if v: txt.write ('dom.activate (%d)\n'%(k))
@@ -326,25 +344,37 @@ def gen_script():
                     #if v: txt.write ('dom.deactivate (%d)\n'%(k))
 
                 # boundary conditions
+                txt.write ('\n# boundary conditions\n')
                 nbrys, ebrys, fbrys = get_brys (dat.obj, stage['stg'], True) # obj, stg, script
                 if num==1: txt.write ('bcs = Dict()\n')
                 for tag, nbc in nbrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+nbc.__str__()+')\n')
                 for tag, ebc in ebrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+ebc.__str__()+')\n')
                 for tag, fbc in fbrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+fbc.__str__()+')\n')
+                txt.write ('dom.SetBCs (bcs)\n')
 
                 # apply body forces
-                if stage['abf']: pass
-
-                # clear displacements
-                if stage['cdi']: pass
+                if stage['abf']:
+                    txt.write ('\n# apply body forces\n')
+                    txt.write ('dom.Gravity ()\n')
 
                 # solve
-                txt.write ('dom.SetBCs   (bcs)\n')
+                txt.write ('\n# solve\n')
                 if stage['type']==0: # equilib/steady
-                    txt.write ('sol.Solve    (%d)\n'%(stage['ndiv']))
+                    txt.write ('sol.Solve (%d)\n'%(stage['ndiv']))
                 elif stage['type']==2: # dynamics
                     extra = ', "'+dat.filekey+'"' if stage['outVTU'] else ''
                     txt.write ('sol.DynSolve (%g, %g, %g%s) # tf,dt,dtOut,filekey\n' % (stage['tf'],stage['dt'],stage['dtOut'],extra))
+
+                # clear displacements
+                if stage['cdi']:
+                    txt.write ('\n# clear displacements\n')
+                    txt.write ('uvs = SDPair()\n')
+                    if dat.ndim==2: txt.write ('uvs.Set ({"ux":0.0, "uy":0.0})\n')
+                    else:           txt.write ('uvs.Set ({"ux":0.0, "uy":0.0, "uz":0.0})\n')
+                    txt.write ('dom.SetUVals (uvs)\n')
+
+                # output
+                txt.write ('\n# output\n')
                 txt.write ('dom.WriteVTU ("'+dat.filekey+'_'+stage['stg']+'")\n')
 
 
@@ -397,14 +427,26 @@ def run_simulation(running, fatal):
                 for tag, nbc in nbrys.iteritems(): bcs.Set (tag, nbc)
                 for tag, ebc in ebrys.iteritems(): bcs.Set (tag, ebc)
                 for tag, fbc in fbrys.iteritems(): bcs.Set (tag, fbc)
+                dom.SetBCs (bcs)
+
+                # apply body forces
+                if stage['abf']: dom.Gravity ()
 
                 # solve
-                dom.SetBCs (bcs)
                 if stage['type']==0: # equilib/steady
                     sol.Solve (stage['ndiv'])
                 elif stage['type']==2: # dynamics
                     if stage['outVTU']: sol.DynSolve (stage['tf'],stage['dt'],stage['dtOut'],dat.filekey)
                     else:               sol.DynSolve (stage['tf'],stage['dt'],stage['dtOut'])
+
+                # clear displacements
+                if stage['cdi']:
+                    uvs = ms.SDPair()
+                    if dat.ndim==2: uvs.Set ({"ux":0.0, "uy":0.0})
+                    else:           uvs.Set ({"ux":0.0, "uy":0.0, "uz":0.0})
+                    dom.SetUVals (uvs)
+
+                # output
                 dom.WriteVTU (dat.filekey+'_'+stage['stg'])
 
         # notify parent that we have finished

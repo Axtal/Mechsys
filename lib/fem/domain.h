@@ -60,6 +60,7 @@ public:
     // Methods
     void SetBCs       (Dict const & BCs);
     void ClrBCs       ();
+    void Gravity      ();
     void SetUVals     (SDPair const & UVals);
     void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags);
     void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags);
@@ -76,6 +77,7 @@ public:
     Dict          const & Prps;    ///< Element properties
     Dict          const & Inis;    ///< Initial values
     int                   NDim;    ///< Space dimension
+    double                gAccel;  ///< Gravity acceleration
     Models_t              Mdls;    ///< Models
     Array<Node*>          Nods;    ///< Nodes
     Array<Element*>       Eles;    ///< Elements
@@ -99,7 +101,7 @@ public:
 
 
 inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis)
-    : Msh(TheMesh), Prps(ThePrps), Inis(TheInis), NDim(TheMesh.NDim)
+    : Msh(TheMesh), Prps(ThePrps), Inis(TheInis), NDim(TheMesh.NDim), gAccel(9.81)
 {
     // check
     //if (Prps.Keys.Size()!=TheMdls.Keys.Size()) throw new Fatal("Domain::Domain: Prps and Mdls dictionaries must have the same number of tags");
@@ -265,6 +267,22 @@ inline void Domain::ClrBCs ()
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
     pF.clear();
     pU.clear();
+}
+
+inline void Domain::Gravity ()
+{
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        int tag = Eles[i]->Cell.Tag;
+        pCalcM calcm = &Multiplier;
+        if (Prps(tag).HasKey("mfunc"))
+        {
+            MDatabase_t::const_iterator p = MFuncs.find(tag);
+            if (p!=MFuncs.end()) calcm = p->second;
+            else throw new Fatal("Domain::Gravity: Multiplier function with tag=%d was not found in MFuncs database",tag);
+        }
+        Eles[i]->Gravity (pF, calcm, gAccel);
+    }
 }
 
 inline void Domain::SetUVals (SDPair const & UVals)

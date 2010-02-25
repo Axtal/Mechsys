@@ -59,6 +59,7 @@ public:
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
                                NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM) {}
     virtual void ClrBCs       ()                                           {}
+    virtual void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel) {}
     virtual void CalcFint     (Vec_t * F_int=NULL)                       const { if (F_int!=NULL) for (size_t i=0; i<F_int->size(); ++i) (*F_int)(i) = 0.0; }
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
     virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }
