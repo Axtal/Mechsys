@@ -60,17 +60,17 @@ public:
     // Methods
     void SetBCs       (Dict const & BCs);
     void ClrBCs       ();
-    void Gravity      ();
-    void SetUVals     (SDPair const & UVals);
-    void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags);
-    void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags);
-    void OutResults   (double Time, Vec_t const & F_int) const;
+    void Gravity      ();                                                   ///< Apply gravity
+    void SetUVals     (SDPair const & UVals);                               ///< Set U values
+    void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set nodes for output
+    void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set elements for output
+    void OutResults   (double Time, Vec_t const & F_int) const;             ///< Do output results
     void PrintResults (char const * NF="%15.6g", int IdxIP=-1) const;       ///< IdxIP < 0 => Centroid
     bool CheckError   (Table const & NodSol, Table const & EleSol, 
                        SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
     bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;  ///< At integration points
     void WriteMPY     (char const * FileKey, double SFCoef=1.0) const;      ///< SFCoef: Scale-factor coefficient
-    void WriteVTU     (char const * FileKey) const;
+    void WriteVTU     (char const * FileKey) const;                         ///< Write file for ParaView
 
     // Data
     Mesh::Generic const & Msh;     ///< The mesh
@@ -103,16 +103,11 @@ public:
 inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis)
     : Msh(TheMesh), Prps(ThePrps), Inis(TheInis), NDim(TheMesh.NDim), gAccel(9.81)
 {
-    // check
-    //if (Prps.Keys.Size()!=TheMdls.Keys.Size()) throw new Fatal("Domain::Domain: Prps and Mdls dictionaries must have the same number of tags");
-    //if (Prps.Keys.Size()!=TheInis.Keys.Size()) throw new Fatal("Domain::Domain: Prps and Inis dictionaries must have the same number of tags");
-
     // allocate models
     for (size_t i=0; i<TheMdls.Keys.Size(); ++i)
     {
         int tag = TheMdls.Keys[i];
         if (!Prps.HasKey(tag)) throw new Fatal("Domain::Domain: Prps and Mdls dictionaries must have the same tags");
-        if (!Inis.HasKey(tag)) throw new Fatal("Domain::Domain: Inis and Mdls dictionaries must have the same tags");
         if (TheMdls(tag).HasKey("name"))
         {
             String model_name;
