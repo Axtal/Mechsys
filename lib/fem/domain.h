@@ -764,6 +764,34 @@ inline void Domain::WriteVTU (char const * FNKey) const
     //std::cout << "nod_velocities    = " << nod_velocities    << std::endl;
     //std::cout << "ele_velocities    = " << ele_velocities    << std::endl;
 
+    // extrapolate data
+    Array<String> nod_keys_extrap; // keys of extrapolated results
+    Array<SDPair> nod_results(nn); // results at each node
+    for (size_t i=0; i<ne; ++i)
+    {
+        Array<SDPair> loc_res; // local results: size==number of nodes in element
+        Eles[i]->StateAtNodes (loc_res);
+        for (size_t j=0; j<Eles[i]->Con.Size(); ++j) 
+        {
+            size_t vid = Eles[i]->Con[j]->Vert.ID;
+            for (StrDbl_t::const_iterator it=loc_res[j].begin(); it!=loc_res[j].end(); ++it)
+            {
+                String key("count_"+it->first);
+                if (nod_results[vid].HasKey(it->first))
+                {
+                    nod_results[vid][it->first] += it->second;
+                    nod_results[vid][key]       += 1.0;
+                }
+                else
+                {
+                    nod_results[vid].Set(it->first.CStr(), it->second);
+                    nod_results[vid].Set(key.CStr(),       1.0);
+                }
+                if (nod_keys_extrap.Find(it->first)<0) nod_keys_extrap.Push (it->first);
+            }
+        }
+    }
+
     // header
     oss << "<?xml version=\"1.0\"?>\n";
     oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -848,6 +876,19 @@ inline void Domain::WriteVTU (char const * FNKey) const
             oss <<         nsflo << (NDim==3?Nods[i]->U[Nods[i]->UMap("uz")]:0.0);
             k++;
             VTU_NEWLINE (i,k,nn,nfmax/3-1,oss);
+        }
+        oss << "        </DataArray>\n";
+    }
+    for (size_t i=0; i<nod_keys_extrap.Size(); ++i)
+    {
+        oss << "        <DataArray type=\"Float32\" Name=\"" << nod_keys_extrap[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t j=0; j<nn; ++j)
+        {
+            String ckey("count_"+nod_keys_extrap[i]);
+            oss << (k==0?"  ":" ") << nod_results[j](nod_keys_extrap[i])/nod_results[j](ckey);
+            k++;
+            VTU_NEWLINE (j,k,nn,nfmax-1,oss);
         }
         oss << "        </DataArray>\n";
     }

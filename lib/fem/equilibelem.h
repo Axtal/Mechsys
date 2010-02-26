@@ -40,15 +40,16 @@ public:
                  Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, 
-                      NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
-    void Gravity     (NodBCs_t & pF, pCalcM CalcM, double gAccel); ///< Apply gravity
-    void CalcFint    (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
-    void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
-    void CalcM       (Mat_t & M)                            const; ///< Mass matrix
-    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
-    void GetState    (SDPair & KeysVals, int IdxIP=-1)      const; ///< IdxIP<0 => At centroid
-    void GetState    (Array<SDPair> & Results)              const; ///< At each integration point (IP)
+    void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, 
+                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel); ///< Apply gravity
+    void CalcFint     (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
+    void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
+    void CalcM        (Mat_t & M)                            const; ///< Mass matrix
+    void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
+    void GetState     (SDPair & KeysVals, int IdxIP=-1)      const; ///< IdxIP<0 => At centroid
+    void GetState     (Array<SDPair> & Results)              const; ///< Get state (internal values: sig, eps) at each integration point (IP)
+    void StateAtNodes (Array<SDPair> & Results)              const; ///< Get state (internal values: sig, eps) at each node (applies extrapolation)
 
     // Internal methods
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
@@ -81,9 +82,42 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
         Mdl->InitIvs (Ini, Sta[i]);
     }
 
-    // allocate state at centroid
-    Sta.Push (new EquilibState(NDim));
-    Mdl->InitIvs (Ini, Sta[Sta.Size()-1]);
+    // set initial values
+    if (Ini.HasKey("geostatic"))
+    {
+        if (GTy==pse_t)                       throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, geometry cannot be of 'plane-stress' (pse) type");
+        if (!Ini.HasKey("K0"))                throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'K0' must be provided in 'Ini' dictionary");
+        if (!Ini.HasKey("gam"))               throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses, 'gam' must be provided in 'Ini' dictionary");
+        if (NDim==2 && !Ini.HasKey("y_surf")) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses in 2D, 'y_surf' must be provided in 'Ini' dictionary");
+        if (NDim==3 && !Ini.HasKey("z_surf")) throw new Fatal("EquilibElem::EquilibElem: For geostatic stresses in 3D, 'z_surf' must be provided in 'Ini' dictionary");
+        double K0   = Ini("K0");
+        double gam  = Ini("gam");
+        double surf = (NDim==2 ? Ini("y_surf") : Ini("z_surf"));
+        Vec_t X; // coords of IP
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            CoordsOfIP (i, X);
+            Vec_t & sig = static_cast<EquilibState *>(Sta[i])->Sig;
+            if (NDim==2)
+            {
+                double h = fabs(surf-X(1));
+                sig(1) = -gam*h;    // sy
+                sig(0) = K0*sig(1); // sx
+                sig(2) = K0*sig(1); // sz
+                sig(3) = 0.0;       // sxy*sq2
+            }
+            else // 3D
+            {
+                double h = fabs(surf-X(2));
+                sig(2) = -gam*h;    // sz
+                sig(0) = K0*sig(2); // sx
+                sig(1) = K0*sig(2); // sy
+                sig(3) = 0.0;       // sxy*sq2
+                sig(4) = 0.0;       // syz*sq2
+                sig(5) = 0.0;       // szx*sq2
+            }
+        }
+    }
 
     if (NDim==2)
     {
@@ -519,11 +553,6 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         dFe += coef * (Btdsig);
     }
 
-    // update state at centroid
-    CalcB (C, GE->Rct, B, detJ, coef);
-    deps = B * dUe;
-    su.Update (deps, Sta[Sta.Size()-1], dsig);
-
     // add results to Fint (internal forces)
     if (F_int!=NULL) for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
 }
@@ -531,92 +560,77 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 inline void EquilibElem::GetState (SDPair & KeysVals, int IdxIP) const
 {
     double sq2 = sqrt(2.0);
-    if (false) // extrapolate, then interpolate at centroid
+    int ncomp = 2*NDim; // number of stress/strain components
+    Vec_t sig(ncomp), eps(ncomp);
+    set_to_zero (sig);
+    set_to_zero (eps);
+    if (IdxIP<0) // centroid
     {
-        // shape func matrix
-        Mat_t M, Mi;
-        ShapeMatrix (M);
-        Inv (M, Mi);
-
-        // shape at centroid
-        GE->Shape (GE->Rct.r, GE->Rct.s, GE->Rct.t);
-
-        // values at centroid
-        int ncomp = 2*NDim; // number of stress/strain components
-        Vec_t sig_ct(ncomp), eps_ct(ncomp);
-        set_to_zero (sig_ct);
-        set_to_zero (eps_ct);
-        for (int i=0; i<ncomp; ++i)
+        if (false) // extrapolate, then interpolate at centroid
         {
-            // extrapolate to nodes
-            Vec_t sig_at_IPs (GE->NIP);
-            Vec_t sig_at_Nods(GE->NN);
-            Vec_t eps_at_IPs (GE->NIP);
-            Vec_t eps_at_Nods(GE->NN);
-            for (size_t j=0; j<GE->NIP; ++j)
-            {
-                sig_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Sig(i);
-                eps_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Eps(i);
-            }
-            sig_at_Nods = Mi * sig_at_IPs;
-            eps_at_Nods = Mi * eps_at_IPs;
+            // shape func matrix
+            Mat_t M, Mi;
+            ShapeMatrix (M);
+            Inv (M, Mi);
 
-            // interpolate to centroid
-            for (size_t j=0; j<GE->NN; ++j)
+            // shape at centroid
+            GE->Shape (GE->Rct.r, GE->Rct.s, GE->Rct.t);
+
+            // values at centroid
+            for (int i=0; i<ncomp; ++i)
             {
-                sig_ct(i) += GE->N(j)*sig_at_Nods(j);
-                eps_ct(i) += GE->N(j)*eps_at_Nods(j);
+                // extrapolate to nodes
+                Vec_t sig_at_IPs (GE->NIP);
+                Vec_t sig_at_Nods(GE->NN);
+                Vec_t eps_at_IPs (GE->NIP);
+                Vec_t eps_at_Nods(GE->NN);
+                for (size_t j=0; j<GE->NIP; ++j)
+                {
+                    sig_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Sig(i);
+                    eps_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Eps(i);
+                }
+                sig_at_Nods = Mi * sig_at_IPs;
+                eps_at_Nods = Mi * eps_at_IPs;
+
+                // interpolate to centroid
+                for (size_t j=0; j<GE->NN; ++j)
+                {
+                    sig(i) += GE->N(j)*sig_at_Nods(j);
+                    eps(i) += GE->N(j)*eps_at_Nods(j);
+                }
             }
         }
-        KeysVals.Set("sx sy sz sxy  ex ey ez exy",//  p q ev ed",
-                     sig_ct(0),sig_ct(1),sig_ct(2),sig_ct(3)/sq2,
-                     eps_ct(0),eps_ct(1),eps_ct(2),eps_ct(3)/sq2);
+        else if (true)
+        {
+            // average values
+            for (size_t i=0; i<Sta.Size(); ++i)
+            {
+                EquilibState const * sta = static_cast<EquilibState const *>(Sta[i]);
+                sig += sta->Sig;
+                eps += sta->Eps;
+            }
+            sig /= Sta.Size();
+            eps /= Sta.Size();
+        }
     }
-    else if (false) // average
+    else // at specified IP
     {
-        // average values
-        int ncomp = 2*NDim; // number of stress/strain components
-        Vec_t sig_ave(ncomp), eps_ave(ncomp);
-        set_to_zero (sig_ave);
-        set_to_zero (eps_ave);
-        for (size_t i=0; i<Sta.Size(); ++i)
-        {
-            EquilibState const * sta = static_cast<EquilibState const *>(Sta[i]);
-            sig_ave += sta->Sig;
-            eps_ave += sta->Eps;
-        }
-        sig_ave /= Sta.Size();
-        eps_ave /= Sta.Size();
-        KeysVals.Set("sx sy sz sxy  ex ey ez exy",//  p q ev ed",
-                     sig_ave(0),sig_ave(1),sig_ave(2),sig_ave(3)/sq2,
-                     eps_ave(0),eps_ave(1),eps_ave(2),eps_ave(3)/sq2);
+        sig = static_cast<EquilibState const *>(Sta[IdxIP])->Sig;
+        eps = static_cast<EquilibState const *>(Sta[IdxIP])->Eps;
+    }
+
+    // results
+    if (NDim==2)
+    {
+        KeysVals.Set("sx sy sz sxy  ex ey ez exy",
+                     sig(0),sig(1),sig(2),sig(3)/sq2,
+                     eps(0),eps(1),eps(2),eps(3)/sq2);
     }
     else
     {
-        Vec_t const * sig;
-        Vec_t const * eps;
-        if (IdxIP<0) // centroid
-        {
-            sig = &(static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Sig);
-            eps = &(static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Eps);
-        }
-        else
-        {
-            sig = &(static_cast<EquilibState const *>(Sta[IdxIP])->Sig);
-            eps = &(static_cast<EquilibState const *>(Sta[IdxIP])->Eps);
-        }
-        if (NDim==2)
-        {
-            KeysVals.Set("sx sy sz sxy  ex ey ez exy",
-                         (*sig)(0),(*sig)(1),(*sig)(2),(*sig)(3)/sq2,
-                         (*eps)(0),(*eps)(1),(*eps)(2),(*eps)(3)/sq2);
-        }
-        else
-        {
-            KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
-                         (*sig)(0),(*sig)(1),(*sig)(2),(*sig)(3)/sq2,(*sig)(4)/sq2,(*sig)(5)/sq2,
-                         (*eps)(0),(*eps)(1),(*eps)(2),(*eps)(3)/sq2,(*eps)(4)/sq2,(*eps)(5)/sq2);
-        }
+        KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
+                     sig(0),sig(1),sig(2),sig(3)/sq2,sig(4)/sq2,sig(5)/sq2,
+                     eps(0),eps(1),eps(2),eps(3)/sq2,eps(4)/sq2,eps(5)/sq2);
     }
 }
 
@@ -639,6 +653,58 @@ inline void EquilibElem::GetState (Array<SDPair> & Results) const
             Results[i].Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
                            sig(0),sig(1),sig(2),sig(3)/sq2,sig(4)/sq2,sig(5)/sq2,
                            eps(0),eps(1),eps(2),eps(3)/sq2,eps(4)/sq2,eps(5)/sq2);
+        }
+    }
+}
+
+inline void EquilibElem::StateAtNodes (Array<SDPair> & Results) const
+{
+    // shape func matrix
+    Mat_t M, Mi;
+    ShapeMatrix (M);
+    Inv (M, Mi);
+
+    // labels
+    int ncomp = 2*NDim; // number of stress/strain components
+    Array<String> skeys(ncomp), ekeys(ncomp);
+    if (NDim==2)
+    {
+        skeys = "sx", "sy", "sz", "sxy";
+        ekeys = "ex", "ey", "ez", "exy";
+    }
+    else
+    {
+        skeys = "sx", "sy", "sz", "sxy", "syz", "szx";
+        ekeys = "ex", "ey", "ez", "exy", "eyz", "ezx";
+    }
+
+    // extrapolate
+    double sq2 = sqrt(2.0);
+    Results.Resize (GE->NN);
+    for (int i=0; i<ncomp; ++i)
+    {
+        // collect values for one component
+        Vec_t sig_at_IPs (GE->NIP);
+        Vec_t sig_at_Nods(GE->NN);
+        Vec_t eps_at_IPs (GE->NIP);
+        Vec_t eps_at_Nods(GE->NN);
+        for (size_t j=0; j<GE->NIP; ++j)
+        {
+            sig_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Sig(i);
+            eps_at_IPs(j) = static_cast<EquilibState const *>(Sta[j])->Eps(i);
+        }
+        //std::cout << sig_at_IPs << std::endl;
+
+        // extrapolate to nodes
+        sig_at_Nods = Mi * sig_at_IPs;
+        eps_at_Nods = Mi * eps_at_IPs;
+
+        // results
+        double coef = (i>3 ? sq2 : 1.0);
+        for (size_t j=0; j<GE->NN; ++j)
+        {
+            Results[j].Set (skeys[i].CStr(), sig_at_Nods(j)/coef);
+            Results[j].Set (ekeys[i].CStr(), eps_at_Nods(j)/coef);
         }
     }
 }

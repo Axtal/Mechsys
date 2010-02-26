@@ -100,7 +100,7 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
     bcs.Set( -10, "ux",     0.0);
-    bcs.Set( -20, "ux uy",  0.0);
+    bcs.Set( -20, "ux uy",  0.0, 0.0);
     bcs.Set( -30, "qn",    -1.0);
     dom.SetBCs (bcs);
     //cout << dom << endl;

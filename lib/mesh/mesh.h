@@ -182,6 +182,10 @@ public:
     // Auxiliar methods
     void ThrowError (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
 
+    // Other methods
+    void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
+    void GenGroundSG (size_t Nx, size_t Ny, double Dx=1.0, double Dy=1.0);                                                  ///< Smith-Griffiths' ground
+
     // Data
     int            NDim;      ///< Space dimension
     Array<Vertex*> Verts;     ///< Vertices
@@ -959,6 +963,94 @@ inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
+}
+
+inline void Generic::GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx)
+{
+    // constants
+    size_t nx = X.Size();                      // number of columns
+    size_t ny = Y.Size();                      // number of rows
+    size_t nc = (nx-1)*(ny-1);                 // number of cells
+    size_t nv = nx*ny + nx*(ny-1) + (nx-1)*ny; // number of vertices
+
+    // check
+    if (NDim!=2) throw new Fatal("Mesh::Generic::GenGroundSG: This method is only available for 2D yet");
+    for (size_t j=1; j<nx; ++j) if (X[j]<X[j-1]) throw new Fatal("Mesh::Generic::GenGroundSG: x-coordinates must be increasing");
+    for (size_t j=1; j<ny; ++j) if (Y[j]>Y[j-1]) throw new Fatal("Mesh::Generic::GenGroundSG: y-coordinates must be decreasing");
+
+    // set size
+    SetSize (nv, nc);
+
+    // generate mesh
+    size_t idx_vert = 0;
+    size_t idx_cell = 0;
+    for (size_t i=0; i<nx-1; ++i)
+    {
+        // vertices: first column
+        if (i==0)
+        {
+            for (size_t j=0; j<ny; ++j)
+            {
+                SetVert (idx_vert, 0, X[i], Y[j]);
+                idx_vert++;
+                if (j!=ny-1) // intermediate nodes
+                {
+                    double dy = Y[j+1] - Y[j];
+                    SetVert (idx_vert, 0, X[i], Y[j]+dy/2.0);
+                    idx_vert++;
+                }
+            }
+        }
+
+        // vertices: second column
+        double dx = X[i+1] - X[i];
+        for (size_t j=0; j<ny; ++j)
+        {
+            SetVert (idx_vert, 0, X[i]+dx/2.0, Y[j]);
+            idx_vert++;
+        }
+
+        // vertices: third column
+        for (size_t j=0; j<ny; ++j)
+        {
+            SetVert (idx_vert, 0, X[i]+dx, Y[j]);
+            idx_vert++;
+            if (j!=ny-1)
+            {
+                double dy = Y[j+1] - Y[j];
+                SetVert (idx_vert, 0, X[i]+dx, Y[j]+dy/2.0);
+                idx_vert++;
+            }
+        }
+
+        // set cells
+        for (size_t j=0; j<ny-1; ++j)
+        {
+            int a = (3*ny-1)*i + 2*j;
+            int b = (3*ny-1)*i + (2*ny-1) + j;
+            int c = a + 3*ny - 1;
+            SetCell (idx_cell, -1, Array<int>(a+2, c+2, c, a,  b+1, c+1, b, a+1));
+            if (i==0)    SetBryTag (idx_cell, 3, -10);
+            if (i==nx-2) SetBryTag (idx_cell, 1, -20);
+            if (j==ny-2) SetBryTag (idx_cell, 0, -30);
+            if (j==0) // footing
+            {
+                if (X[i]+0.95*dx<=FootingLx)
+                    SetBryTag (idx_cell, 2, -40);
+            }
+            idx_cell++;
+        }
+    }
+}
+
+inline void Generic::GenGroundSG (size_t Nx, size_t Ny, double Dx, double Dy)
+{
+    Array<double> X(Nx);
+    Array<double> Y(Ny);
+    for (size_t i=0; i<Nx; ++i) X[i] =  static_cast<double>(i)*Dx;
+    for (size_t i=0; i<Ny; ++i) Y[i] = -static_cast<double>(i)*Dy;
+    Y[0] = 0.0;
+    GenGroundSG (X, Y);
 }
 
 #ifdef USE_BOOST_PYTHON
