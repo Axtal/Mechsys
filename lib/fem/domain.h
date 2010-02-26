@@ -744,19 +744,14 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
     for (size_t i=0; i<ne; ++i)
     {
-        SDPair dat;
-        Eles[i]->GetState (dat);
-        for (size_t j=0; j<dat.Keys.Size(); ++j)
+        Array<String> keys;
+        Eles[i]->StateKeys (keys);
+        for (size_t j=0; j<keys.Size(); ++j)
         {
-            if (ele_keys.Find(dat.Keys[j])<0) ele_keys.Push (dat.Keys[j]);
+            if (ele_keys.Find(keys[j])<0) ele_keys.Push (keys[j]);
         }
-        if (dat.HasKey("vx") || dat.HasKey("vy") || dat.HasKey("vz")) ele_velocities = true;
-        if (dat.HasKey("gx") || dat.HasKey("gy") || dat.HasKey("gz")) ele_gradients  = true;
-        if (dat.HasKey("sx") || dat.HasKey("sy") || dat.HasKey("sz"))
-        {
-            if (ele_keys.Find("pcam")<0) ele_keys.Push ("pcam");
-            if (ele_keys.Find("qcam")<0) ele_keys.Push ("qcam");
-        }
+        if (keys.Find("vx")>=0 || keys.Find("vy")>=0 || keys.Find("vz")>=0) ele_velocities = true;
+        if (keys.Find("gx")>=0 || keys.Find("gy")>=0 || keys.Find("gz")>=0) ele_gradients  = true;
     }
     //std::cout << "nod_keys          = " << nod_keys          << std::endl;
     //std::cout << "ele_keys          = " << ele_keys          << std::endl;
@@ -765,29 +760,25 @@ inline void Domain::WriteVTU (char const * FNKey) const
     //std::cout << "ele_velocities    = " << ele_velocities    << std::endl;
 
     // extrapolate data
-    Array<String> nod_keys_extrap; // keys of extrapolated results
-    Array<SDPair> nod_results(nn); // results at each node
+    size_t nreskeys = ele_keys.Size(); // number of results keys
+    Mat_t nod_results (nn,nreskeys);   // results at nodes
+    Mat_t nod_count   (nn,nreskeys);   // count how many times a variable was added to this node
+    set_to_zero (nod_results);
+    set_to_zero (nod_count);
     for (size_t i=0; i<ne; ++i)
     {
         Array<SDPair> loc_res; // local results: size==number of nodes in element
         Eles[i]->StateAtNodes (loc_res);
-        for (size_t j=0; j<Eles[i]->Con.Size(); ++j) 
+        for (size_t j=0; j<nreskeys; ++j)
         {
-            size_t vid = Eles[i]->Con[j]->Vert.ID;
-            for (StrDbl_t::const_iterator it=loc_res[j].begin(); it!=loc_res[j].end(); ++it)
+            if (loc_res[0].HasKey(ele_keys[j]))
             {
-                String key("count_"+it->first);
-                if (nod_results[vid].HasKey(it->first))
+                for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
                 {
-                    nod_results[vid][it->first] += it->second;
-                    nod_results[vid][key]       += 1.0;
+                    size_t vid = Eles[i]->Con[k]->Vert.ID;
+                    nod_results(vid, j) += loc_res[k](ele_keys[j]);
+                    nod_count  (vid, j) += 1.0;
                 }
-                else
-                {
-                    nod_results[vid].Set(it->first.CStr(), it->second);
-                    nod_results[vid].Set(key.CStr(),       1.0);
-                }
-                if (nod_keys_extrap.Find(it->first)<0) nod_keys_extrap.Push (it->first);
             }
         }
     }
@@ -879,14 +870,14 @@ inline void Domain::WriteVTU (char const * FNKey) const
         }
         oss << "        </DataArray>\n";
     }
-    for (size_t i=0; i<nod_keys_extrap.Size(); ++i)
+    for (size_t i=0; i<ele_keys.Size(); ++i)
     {
-        oss << "        <DataArray type=\"Float32\" Name=\"" << nod_keys_extrap[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        oss << "        <DataArray type=\"Float32\" Name=\"" << ele_keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
         k = 0; oss << "        ";
         for (size_t j=0; j<nn; ++j)
         {
-            String ckey("count_"+nod_keys_extrap[i]);
-            oss << (k==0?"  ":" ") << nod_results[j](nod_keys_extrap[i])/nod_results[j](ckey);
+            double den = (nod_count(j,i)>0.0 ? nod_count(j,i) : 1.0);
+            oss << (k==0?"  ":" ") << nod_results(j,i)/den;
             k++;
             VTU_NEWLINE (j,k,nn,nfmax-1,oss);
         }
@@ -907,21 +898,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
             {
                 SDPair dat;
                 Eles[j]->GetState (dat);
-                if (ele_keys[i]=="pcam" && dat.HasKey("sx"))
-                {
-                    double pcam = -(dat("sx")+dat("sy")+dat("sz"))/3.0;
-                    oss << (k==0?"  ":" ") << pcam;
-                }
-                else if (ele_keys[i]=="qcam" && dat.HasKey("sx"))
-                {
-                    double m    = (NDim==3 ? pow(dat("syz"),2.0)+pow(dat("szx"),2.0) : 0.0);
-                    double qcam = sqrt(pow(dat("sx")-dat("sy"),2.0) + pow(dat("sy")-dat("sz"),2.0) + pow(dat("sz")-dat("sx"),2.0) + 3.0*(pow(dat("sxy"),2.0)+m))/sqrt(2.0);
-                    oss << (k==0?"  ":" ") << qcam;
-                }
-                else
-                {
-                    oss << (k==0?"  ":" ") << (dat.HasKey(ele_keys[i]) ? dat(ele_keys[i]) : 0.0);
-                }
+                oss << (k==0?"  ":" ") << (dat.HasKey(ele_keys[i]) ? dat(ele_keys[i]) : 0.0);
                 k++;
                 VTU_NEWLINE (j,k,ne,nfmax-1,oss);
             }

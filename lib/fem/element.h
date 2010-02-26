@@ -66,6 +66,7 @@ public:
     virtual void CalcC        (Mat_t & C)                                const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
     virtual void Matrices     (Mat_t & M, Mat_t & C, Mat_t & K)          const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
     virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)     const {}
+    virtual void StateKeys    (Array<String> & Keys)                     const {} ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
     virtual void GetState     (SDPair & KeysVals, int IdxIP=-1)          const {} ///< IdxIP<0 => At the centroid
     virtual void GetState     (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each integration point (IP)
     virtual void StateAtNodes (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each node (applies extrapolation)

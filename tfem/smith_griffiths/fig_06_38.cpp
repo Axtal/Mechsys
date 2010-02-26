@@ -65,31 +65,11 @@ int main(int argc, char **argv) try
 
     // domain
     Dict inis;
-    //inis.Set(-1, "sx sy sz sxy", 1.0,2.0,3.0,4.0);
-    //inis.Set(-2, "sx sy sz sxy", 1.0,2.0,3.0,4.0);
-    //inis.Set(-3, "sx sy sz sxy", 1.0,2.0,3.0,4.0);
     inis.Set(-1, "geostatic K0 gam y_surf", 1.0, 1.0, gam, 0.0);
     inis.Set(-2, "geostatic K0 gam y_surf", 1.0, 1.0, gam, 0.0);
     inis.Set(-3, "geostatic K0 gam y_surf", 1.0, 1.0, gam, 0.0);
     FEM::Domain dom(mesh, prps, mdls, inis);
     dom.WriteVTU  ("fig_06_38_stg_0");
-
-    Array<SDPair> res;
-    dom.Eles[0]->StateAtNodes (res);
-    for (size_t i=0; i<res.Size(); ++i)
-    {
-        cout << res[i] << endl;
-    }
-    cout << "NIPs = " << dom.Eles[0]->GE->NIP << endl;
-    return 0;
-
-    // generate geo-static stresses
-    //IDPair K0s;
-    //K0s.Set("-1", 1.0);
-    //K0s.Set("-2", 1.0);
-    //K0s.Set("-3", 1.0);
-    //dom.GeoStatic (/*y at Surface*/0.0, K0s);
-    //dom.WriteVTU  ("fig_06_38_stg_0");
 
     // solver
     FEM::Solver sol(dom);
@@ -104,16 +84,8 @@ int main(int argc, char **argv) try
     bcs.Set(-30, "ux uy",  0.0, 0.0);
     dom.SetBCs (bcs);
 
-    // apply body forces
-    dom.Gravity ();
-
     // solve
     sol.Solve (1);
-
-    // clear displacements
-    SDPair uvs;
-    uvs.Set ("ux uy", 0.0,0.0);
-    dom.SetUVals (uvs);
 
     // output
     dom.WriteVTU ("fig_06_38_stg_1");

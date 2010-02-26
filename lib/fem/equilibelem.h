@@ -47,6 +47,7 @@ public:
     void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM        (Mat_t & M)                            const; ///< Mass matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
+    void StateKeys    (Array<String> & Keys)                 const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
     void GetState     (SDPair & KeysVals, int IdxIP=-1)      const; ///< IdxIP<0 => At centroid
     void GetState     (Array<SDPair> & Results)              const; ///< Get state (internal values: sig, eps) at each integration point (IP)
     void StateAtNodes (Array<SDPair> & Results)              const; ///< Get state (internal values: sig, eps) at each node (applies extrapolation)
@@ -557,6 +558,13 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     if (F_int!=NULL) for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
 }
 
+inline void EquilibElem::StateKeys (Array<String> & Keys) const
+{
+    Keys.Resize (2*2*NDim+2);
+    if (NDim==2) Keys = "sx", "sy", "sz", "sxy",  "ex", "ey", "ez", "exy",  "pcam", "qcam";
+    else         Keys = "sx", "sy", "sz", "sxy", "syz", "szx",  "ex", "ey", "ez", "exy", "eyz", "ezx",  "pcam", "qcam";
+}
+
 inline void EquilibElem::GetState (SDPair & KeysVals, int IdxIP) const
 {
     double sq2 = sqrt(2.0);
@@ -622,15 +630,17 @@ inline void EquilibElem::GetState (SDPair & KeysVals, int IdxIP) const
     // results
     if (NDim==2)
     {
-        KeysVals.Set("sx sy sz sxy  ex ey ez exy",
+        KeysVals.Set("sx sy sz sxy  ex ey ez exy  pcam qcam",
                      sig(0),sig(1),sig(2),sig(3)/sq2,
-                     eps(0),eps(1),eps(2),eps(3)/sq2);
+                     eps(0),eps(1),eps(2),eps(3)/sq2,
+                     Calc_pcam(sig), Calc_qcam(sig));
     }
     else
     {
-        KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
+        KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx  pcam qcam",
                      sig(0),sig(1),sig(2),sig(3)/sq2,sig(4)/sq2,sig(5)/sq2,
-                     eps(0),eps(1),eps(2),eps(3)/sq2,eps(4)/sq2,eps(5)/sq2);
+                     eps(0),eps(1),eps(2),eps(3)/sq2,eps(4)/sq2,eps(5)/sq2,
+                     Calc_pcam(sig), Calc_qcam(sig));
     }
 }
 
@@ -644,15 +654,17 @@ inline void EquilibElem::GetState (Array<SDPair> & Results) const
         Vec_t const & eps = static_cast<EquilibState const *>(Sta[i])->Eps;
         if (NDim==2)
         {
-            Results[i].Set("sx sy sz sxy  ex ey ez exy",
+            Results[i].Set("sx sy sz sxy  ex ey ez exy  pcam qcam",
                            sig(0),sig(1),sig(2),sig(3)/sq2,
-                           eps(0),eps(1),eps(2),eps(3)/sq2);
+                           eps(0),eps(1),eps(2),eps(3)/sq2,
+                           Calc_pcam(sig), Calc_qcam(sig));
         }
         else
         {
-            Results[i].Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx",
+            Results[i].Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx  pcam qcam",
                            sig(0),sig(1),sig(2),sig(3)/sq2,sig(4)/sq2,sig(5)/sq2,
-                           eps(0),eps(1),eps(2),eps(3)/sq2,eps(4)/sq2,eps(5)/sq2);
+                           eps(0),eps(1),eps(2),eps(3)/sq2,eps(4)/sq2,eps(5)/sq2,
+                           Calc_pcam(sig), Calc_qcam(sig));
         }
     }
 }
@@ -706,6 +718,16 @@ inline void EquilibElem::StateAtNodes (Array<SDPair> & Results) const
             Results[j].Set (skeys[i].CStr(), sig_at_Nods(j)/coef);
             Results[j].Set (ekeys[i].CStr(), eps_at_Nods(j)/coef);
         }
+    }
+
+    // derived results
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        double pcam = -(Results[i]("sx")+Results[i]("sy")+Results[i]("sz"))/3.0;
+        double m    = (NDim==3 ? pow(Results[i]("syz"),2.0)+pow(Results[i]("szx"),2.0) : 0.0);
+        double qcam = sqrt(pow(Results[i]("sx")-Results[i]("sy"),2.0) + pow(Results[i]("sy")-Results[i]("sz"),2.0) + pow(Results[i]("sz")-Results[i]("sx"),2.0) + 3.0*(pow(Results[i]("sxy"),2.0)+m))/sqrt(2.0);
+        Results[i].Set ("pcam", pcam);
+        Results[i].Set ("qcam", qcam);
     }
 }
 
