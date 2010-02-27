@@ -1352,7 +1352,6 @@ inline void TriaxialDomain::Setup (double dt,double tspan)
             double q2_3 = (Sig(2)+Pf)/sin(Thf+2.0*Util::PI/3.0);
             Sig(0) = -Pf + q2_3*sin(Thf-2.0*Util::PI/3.0);
             Sig(1) = -Pf + q2_3*sin(Thf);
-            //std::cout << q2_3 << std:: endl;
         }
 
     }
