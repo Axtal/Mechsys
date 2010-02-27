@@ -28,8 +28,7 @@
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/numstreams.h>
-
-typedef blitz::TinyVector<double,3> Vec3_t;
+#include <mechsys/linalg/matvec.h>
 
 namespace LBM
 {
@@ -52,11 +51,11 @@ public:
 	Cell (size_t ID, bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz=1);
 
 	// Set methods
-	void Initialize (double Rho0, Vec3_t const & V0,double Cs);                                          ///< V0: Initial velocity, Rho0: Initial density
-	void SetSolid   (bool IsSolid=true)                          { _is_solid = IsSolid; }                ///< Set solid cell
-	void SetSolid   (double Vx, double Vy, double Vz=0.0)        { _is_solid = true; _vel_bc=Vx,Vy,Vz; } ///< Set solid cell
-	void SetRhoBC   (double Rho)                                 { _rho_bc = Rho; }                      ///< Set density boundary condition
-	void SetVelBC   (Vec3_t const &  V)                          { _vel_bc = V;   }                      ///< Set velocity boundary condition
+	void Initialize (double Rho0, Vec3_t const & V0,double Cs);                                                           ///< V0: Initial velocity, Rho0: Initial density
+	void SetSolid   (bool IsSolid=true)                                { _is_solid = IsSolid; }                           ///< Set solid cell
+	void SetSolid   (double Vx, double Vy, double G=1.0)               { _is_solid = true; _vel_bc=Vx,Vy,0.0; _gamma = G;} ///< Set solid cell
+	void SetRhoBC   (double Rho)                                       { _rho_bc = Rho; }                                 ///< Set density boundary condition
+	void SetVelBC   (Vec3_t const &  V)                                { _vel_bc = V;   }                                 ///< Set velocity boundary condition
 
 	// Access methods
     bool     IsSolid ()                   const { return _is_solid;  }                  ///< Is solid or fluid cell?
@@ -85,11 +84,11 @@ public:
 	// Output methods
 	void OutState (double Time, std::ofstream & of, bool Header=false) const; ///< Output the current state of this cell
 
-protected:
 	// Data
 	bool             _is_3d;    ///< Is 3D?
 	bool             _is_solid; ///< Solid cell or fluid cell?
 	double           _tau;      ///< Characteristic collision time
+	double           _gamma;    ///< Solid/fluid ratio
 	size_t           _nneigh;   ///< Number of neighbours
 	double           _rho_bc;   ///< Initial density from boundary condition
 	Vec3_t           _vel_bc;   ///< Initial velocity from boundary condition

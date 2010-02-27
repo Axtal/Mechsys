@@ -38,7 +38,7 @@ int main(int argc, char **argv) try
 {
     // domain
 	Domain d;
-    d.Alpha = 110.1;
+    d.Alpha = 0.1;
 
     // add cube
 	Vec3_t x(-10,0,0);     // position
@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
     d.SetProps(B);
 
     // initialize
-    double dt = 0.00001;
+    double dt = 0.001;
     d.Initialize(dt);
 
     // initial constants

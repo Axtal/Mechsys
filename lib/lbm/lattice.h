@@ -99,7 +99,7 @@ public:
 	void SetOutCells (Array<size_t> const & Cells, Str_t FileKey); ///< Set cells to output for each timestep
 	void OutCells    (bool Header=false) const;                    ///< Output cells selected for output for each timestep
 
-protected:
+
 	String       _file_key; ///< File key used as part of the output filenames
 	bool         _is_3d;    ///< Flag that defines if the analysis is 3D
 	bool         _is_mc;    ///< Flag to define if the analysis is multi-component
@@ -431,7 +431,8 @@ inline void Lattice::BounceBack()
 	{
 		LBM::Cell * c = _cells[i];
 		if (c->IsSolid())
-		{
+		{   
+            // Old Bounce back
 			// Copy values to the temporary f_tmp
 			for (size_t i=1; i<_nneigh; i++) c->TmpF(i) = c->F(i);
 
@@ -453,6 +454,23 @@ inline void Lattice::BounceBack()
 			c->F(6) += -(6.0*c->W(8)*rho) * (c->C(8,0)*c->VelBC(0) + c->C(8,1)*c->VelBC(1));
 			c->F(7) += -(6.0*c->W(5)*rho) * (c->C(5,0)*c->VelBC(0) + c->C(5,1)*c->VelBC(1));
 			c->F(8) += -(6.0*c->W(6)*rho) * (c->C(6,0)*c->VelBC(0) + c->C(6,1)*c->VelBC(1));
+
+			//double rho = c->Density();
+            //double tau = _tau;
+            //double om = _dt/tau;
+            //Vec3_t v;
+			//c->Velocity(v,_Cs);   // Fore one component analysis
+			//for (size_t k=0; k<_nneigh; ++k)
+			//{
+				//double feqn = c->EqFun (k,v,rho,_Cs);
+                //double feqnop = c->EqFun (Cell::OPPOSITE2D[k],v,rho,_Cs);
+                //double feqnb = c->EqFun (k,c->_vel_bc,rho,_Cs);
+                //double gamma = c->_gamma;
+                //double beta = gamma*(tau-0.5)/((1-gamma)+(tau-0.5));
+                //double fm = c->TmpF(Cell::OPPOSITE2D[k])-c->TmpF(k)+feqnb-feqnop;
+				//c->F(k) = c->TmpF(k) + om*(1-beta)*(feqn-c->TmpF(k))+beta*fm;
+            //}
+
 
 		}
 	}

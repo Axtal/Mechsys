@@ -27,7 +27,7 @@ using std::endl;
 using LBM::Disk;
 
 // Analysis constants
-double u_max  = 0.01;
+double u_max  = 0.1;
 double Re     = 100;
 int    nx     = 400;
 int    ny     = 400;
@@ -63,7 +63,7 @@ int main(int argc, char **argv) try
     Array<Disk> Ball;
     for(double y = radius+10; y <=ny;y+=radius+10)
     {
-        Ball.Push(Disk(Vec3_t(nx/20, y, 0.0), Vec3_t(0.0,0.0,0.0), radius, 500.0, 10.0, dt));
+        Ball.Push(Disk(Vec3_t(nx/20, y, 0.0), Vec3_t(0.0,0.0,0.0), radius, 400.0, 10.0, dt));
     }
 					
 
@@ -111,7 +111,7 @@ int main(int argc, char **argv) try
 		// Reset the force
         for (size_t i=0;i<Ball.Size();i++)
         {
-            Ball[i].StartForce();
+            Ball[i].StartForce(Vec3_t(-0.1*Ball[i].v));
             Ball[i].DrawDisk(l,dt);
             for (size_t j=0;j<Wall.Size();j++)
             {

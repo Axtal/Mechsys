@@ -55,6 +55,7 @@ int main(int argc, char **argv) try
     double rho;         // rho
     double p0;          // Pressure for the isotropic compression
     double T0;          // Time span for the compression
+    bool   pcte;        // Flag for a p=cte stresspath
     bool   pssrx;       // Prescribed strain rate in X ?
     bool   pssry;       // Prescribed strain rate in Y ?
     bool   pssrz;       // Prescribed strain rate in Z ?
@@ -89,6 +90,7 @@ int main(int argc, char **argv) try
     infile >> rho;          infile.ignore(200,'\n');
     infile >> p0;           infile.ignore(200,'\n');
     infile >> T0;           infile.ignore(200,'\n');
+    infile >> pcte;         infile.ignore(200,'\n');
     infile >> pssrx;        infile.ignore(200,'\n');
     infile >> pssry;        infile.ignore(200,'\n');
     infile >> pssrz;        infile.ignore(200,'\n');
@@ -142,6 +144,9 @@ int main(int argc, char **argv) try
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     double tf  = sin(3.0*thf*M_PI/180.0);    // final t = sin(3theta)
+    d.Thf = thf*M_PI/180;                    // Assign the angle of the stresspath to a internal variable
+    d.Pf = p0;                               // Assign the pressure also as an internal variable
+    d.IsPcte = pcte;                         // Is a P=cte path?
     Vec3_t lf;
     pqt2L (pf, qf, tf, lf, "cam");
     sigf = lf(0), lf(1), lf(2);
