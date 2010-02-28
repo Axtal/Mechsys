@@ -20,18 +20,23 @@
 // MechSys
 #include <mechsys/dem/domain.h>
 #include <mechsys/util/fatal.h>
+#include <mechsys/util/util.h>
 #include <mechsys/mesh/unstructured.h>
 #include <mechsys/linalg/matvec.h>
 
 using std::cout;
 using std::endl;
-using DEM::TriaxialDomain;
 
 int main(int argc, char **argv) try
 {
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
-    
-    ifstream infile("triaxialtestparameters.txt");
+
+    if (argc!=2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
+    String filekey  (argv[1]);
+    String filename (filekey+".inp");
+    if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
+    ifstream infile(filename.CStr());
+
     String ptype;       // Particle type 
     bool   RenderVideo; // Decide is video should be render
     double fraction;    // Fraction of particles to be generated
@@ -67,57 +72,57 @@ int main(int argc, char **argv) try
     double thf;         // Angle of the stress path alpha
     double Tf;          // Final time for the test
     {
-    infile >> ptype;        infile.ignore(200,'\n');
-    infile >> RenderVideo;  infile.ignore(200,'\n');
-    infile >> fraction;     infile.ignore(200,'\n');
-    infile >> Kn;           infile.ignore(200,'\n');
-    infile >> Kt;           infile.ignore(200,'\n');
-    infile >> Gn;           infile.ignore(200,'\n');
-    infile >> Gt;           infile.ignore(200,'\n');
-    infile >> Mu;           infile.ignore(200,'\n');
-    infile >> Beta;         infile.ignore(200,'\n');
-    infile >> Eta;          infile.ignore(200,'\n');
-    infile >> R;            infile.ignore(200,'\n');
-    infile >> seed;         infile.ignore(200,'\n');
-    infile >> dt;           infile.ignore(200,'\n');
-    infile >> dtOut;        infile.ignore(200,'\n');
-    infile >> Lx;           infile.ignore(200,'\n');
-    infile >> Ly;           infile.ignore(200,'\n');
-    infile >> Lz;           infile.ignore(200,'\n');
-    infile >> nx;           infile.ignore(200,'\n');
-    infile >> ny;           infile.ignore(200,'\n');
-    infile >> nz;           infile.ignore(200,'\n');
-    infile >> rho;          infile.ignore(200,'\n');
-    infile >> p0;           infile.ignore(200,'\n');
-    infile >> T0;           infile.ignore(200,'\n');
-    infile >> pcte;         infile.ignore(200,'\n');
-    infile >> pssrx;        infile.ignore(200,'\n');
-    infile >> pssry;        infile.ignore(200,'\n');
-    infile >> pssrz;        infile.ignore(200,'\n');
-    infile >> srx;          infile.ignore(200,'\n');
-    infile >> sry;          infile.ignore(200,'\n');
-    infile >> srz;          infile.ignore(200,'\n');
-    infile >> pf;           infile.ignore(200,'\n');
-    infile >> qf;           infile.ignore(200,'\n');
-    infile >> thf;          infile.ignore(200,'\n');
-    infile >> Tf;           infile.ignore(200,'\n');
+        infile >> ptype;        infile.ignore(200,'\n');
+        infile >> RenderVideo;  infile.ignore(200,'\n');
+        infile >> fraction;     infile.ignore(200,'\n');
+        infile >> Kn;           infile.ignore(200,'\n');
+        infile >> Kt;           infile.ignore(200,'\n');
+        infile >> Gn;           infile.ignore(200,'\n');
+        infile >> Gt;           infile.ignore(200,'\n');
+        infile >> Mu;           infile.ignore(200,'\n');
+        infile >> Beta;         infile.ignore(200,'\n');
+        infile >> Eta;          infile.ignore(200,'\n');
+        infile >> R;            infile.ignore(200,'\n');
+        infile >> seed;         infile.ignore(200,'\n');
+        infile >> dt;           infile.ignore(200,'\n');
+        infile >> dtOut;        infile.ignore(200,'\n');
+        infile >> Lx;           infile.ignore(200,'\n');
+        infile >> Ly;           infile.ignore(200,'\n');
+        infile >> Lz;           infile.ignore(200,'\n');
+        infile >> nx;           infile.ignore(200,'\n');
+        infile >> ny;           infile.ignore(200,'\n');
+        infile >> nz;           infile.ignore(200,'\n');
+        infile >> rho;          infile.ignore(200,'\n');
+        infile >> p0;           infile.ignore(200,'\n');
+        infile >> T0;           infile.ignore(200,'\n');
+        infile >> pcte;         infile.ignore(200,'\n');
+        infile >> pssrx;        infile.ignore(200,'\n');
+        infile >> pssry;        infile.ignore(200,'\n');
+        infile >> pssrz;        infile.ignore(200,'\n');
+        infile >> srx;          infile.ignore(200,'\n');
+        infile >> sry;          infile.ignore(200,'\n');
+        infile >> srz;          infile.ignore(200,'\n');
+        infile >> pf;           infile.ignore(200,'\n');
+        infile >> qf;           infile.ignore(200,'\n');
+        infile >> thf;          infile.ignore(200,'\n');
+        infile >> Tf;           infile.ignore(200,'\n');
     }
 
     // domain
-    TriaxialDomain d;
-    d.CamPos = Vec3_t(0, 3*(Lx+Ly+Lz)/3.0, 0); // position of camera
+    DEM::TriaxialDomain dom;
+    dom.CamPos = Vec3_t(0.1*Lx, 0.7*(Lx+Ly+Lz), 0.15*Lz); // position of camera
 
     // particle
-    if(ptype=="sphere") d.GenSpheres  (-1,Lx,nx,rho,"HCP", seed, fraction);
-    else if (ptype=="voronoi") d.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
-    else if (ptype=="tetra") 
+    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
+    else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/false,/*V*/0.1*Lx*Ly*Lz,Lx,Ly,Lz);
-        d.GenFromMesh (-1,mesh,/*R*/R,/*rho*/rho);
+        dom.GenFromMesh (-1,mesh,/*R*/R,/*rho*/rho);
     }
     else throw new Fatal("Packing for particle type not implemented yet");
-    d.GenBoundingBox(/*InitialTag*/-2, R, /*Cf*/1.3);
+    dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
 
     // properties of particles prior the triaxial test
     Dict B;
@@ -128,46 +133,40 @@ int main(int argc, char **argv) try
     B.Set(-5,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-6,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-7,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    d.SetProps(B);
+    dom.SetProps(B);
 
     // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
+    String fkey_a(filekey+"_a");
+    String fkey_b(filekey+"_b");
     Vec3_t  sigf;                      // final stress state
     bVec3_t peps(false, false, false); // prescribed strain rates ?
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
     sigf =  Vec3_t(-p0,-p0,-p0);
-    d.ResetEps  ();
-    d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxiala",RenderVideo);
-    d.SetTxTest (sigf, peps, depsdt);
-    d.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialb",RenderVideo);
-
+    dom.ResetEps  ();
+    dom.SetTxTest (sigf, peps, depsdt);
+    dom.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, fkey_a.CStr(), RenderVideo);
+    dom.SetTxTest (sigf, peps, depsdt);
+    dom.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, fkey_b.CStr(), RenderVideo);
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
-    double tf  = sin(3.0*thf*M_PI/180.0);    // final t = sin(3theta)
-    d.Thf = thf*M_PI/180;                    // Assign the angle of the stresspath to a internal variable
-    d.Pf = p0;                               // Assign the pressure also as an internal variable
-    d.IsPcte = pcte;                         // Is a P=cte path?
+    String fkey_c(filekey+"_c");
+    dom.Thf    = thf*M_PI/180.0;  // Assign the angle of the stresspath to a internal variable
+    dom.Pf     = p0;              // Assign the pressure also as an internal variable
+    dom.IsPcte = pcte;            // Is a P=cte path?
     Vec3_t lf;
-    pqt2L (pf, qf, tf, lf, "cam");
-    sigf = lf(0), lf(1), lf(2);
-    peps = bVec3_t(pssrx, pssry, pssrz);
+    pqTh2L (pf, qf, thf, lf, "cam");
+    sigf   = lf(0), lf(1), lf(2);
+    peps   = bVec3_t(pssrx, pssry, pssrz);
     depsdt = Vec3_t(srx/(Tf-T0), sry/(Tf-T0), srz/(Tf-T0));
 
     // properties of particles at the start of  the triaxial test
-    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu ,Beta,Eta);
-    B.Set(-2,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-3,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-4,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-5,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-6,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    B.Set(-7,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
-    d.SetProps(B);
+    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu,Beta,Eta);
+    dom.SetProps(B);
     
     // run
-    d.ResetEps  ();
-    d.SetTxTest (sigf, peps, depsdt);
-    d.ResetInteractons();
-    d.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, "test_triaxialc",RenderVideo);
+    dom.ResetEps  ();
+    dom.SetTxTest (sigf, peps, depsdt);
+    dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, fkey_c.CStr(), RenderVideo);
 
     return 0;
 }

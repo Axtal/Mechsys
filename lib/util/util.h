@@ -23,6 +23,7 @@
 // STL
 #include <cmath>
 #include <cfloat> // for DBL_EPSILON
+#include <fstream>
 
 // MechSys
 #include <mechsys/util/string.h>
@@ -127,6 +128,17 @@ std::ostream & operator<< (std::ostream & os, FmtErr const & P)
     str.Printf (P.Fmt.CStr(), P.Error);
     os << (P.Error>P.Tol ? "[1;31m" : "[1;32m") << str << "[0m";
     return os;
+}
+
+inline bool FileExists (String const & Filename)
+{
+    std::ifstream file(Filename.CStr(), std::ios::in);
+    if (file.fail()) return false;
+    else
+    {
+        file.close();
+        return true;
+    }
 }
 
 }; // namespace Util
