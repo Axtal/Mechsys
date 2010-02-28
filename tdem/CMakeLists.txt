@@ -17,6 +17,7 @@
 ########################################################################
 
 SET(EXES
+  ttt
   test_distances
   test_domain
   test_27cubes
@@ -25,7 +26,6 @@ SET(EXES
   test_voro01
   test_voro02
   test_voro03
-  triaxial_test
   cylinder_test
   figure)
 
