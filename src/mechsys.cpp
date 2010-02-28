@@ -190,6 +190,9 @@ BPy::class_<DEM::Domain>("DEM_Domain")
 BPy::class_<DEM::TriaxialDomain, BPy::bases<DEM::Domain> >("DEM_TTTDomain")
     .def("SetTxTest", &DEM::TriaxialDomain::PySetTxTest)
     .def("ResetEps",  &DEM::TriaxialDomain::ResetEps)
+    .def_readwrite("Thf",     &DEM::TriaxialDomain::Thf)
+    .def_readwrite("Pf",      &DEM::TriaxialDomain::Pf)
+    .def_readwrite("IsPcte",  &DEM::TriaxialDomain::IsPcte)
     ;
 
 //BPy::class_<Particle>("Particle")

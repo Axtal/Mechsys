@@ -20,6 +20,7 @@ from   multiprocessing import Process
 import Blender
 from   Blender import Mesh
 from   bpy     import data
+from   numpy   import pi
 from   Blender.Mathutils import Vector
 import msys_dict as di
 import msys_mesh as me
@@ -109,7 +110,8 @@ def gen_script():
         txt.write ('    double iso_timef  = %g;\n' % d['dem_iso_timef'])
         txt.write ('    double iso_dt     = %g;\n' % d['dem_iso_dt'])
         txt.write ('    double iso_dtout  = %g;\n' % d['dem_iso_dtout'])
-        txt.write ('    bool   iso_render = %s;\n' % ('True' if d['dem_iso_render'] else 'false'))
+        txt.write ('    bool   iso_render = %s;\n' % ('true' if d['dem_iso_render'] else 'false'))
+        txt.write ('    bool   ttt_pcte   = %s;\n' % ('true' if d['dem_ttt_pcte'] else 'false'))
         txt.write ('    double ttt_pf     = %g;\n' % d['dem_ttt_pf'])
         txt.write ('    double ttt_qf     = %g;\n' % d['dem_ttt_qf'])
         txt.write ('    double ttt_thf    = %g;\n' % d['dem_ttt_thf'])
@@ -122,7 +124,7 @@ def gen_script():
         txt.write ('    double ttt_timef  = %g;\n' % d['dem_ttt_timef'])
         txt.write ('    double ttt_dt     = %g;\n' % d['dem_ttt_dt'])
         txt.write ('    double ttt_dtout  = %g;\n' % d['dem_ttt_dtout'])
-        txt.write ('    bool   ttt_render = %s;\n' % ('True' if d['dem_ttt_render'] else 'false'))
+        txt.write ('    bool   ttt_render = %s;\n' % ('true' if d['dem_ttt_render'] else 'false'))
 
         # domain
         txt.write ('\n    // domain\n')
@@ -145,6 +147,9 @@ def gen_script():
             txt.write ('    dom.GenSpheres (-1, %g, %d, %g, %s, %d, %g); // tag,Lx,Nx,rho,type,seed,prob\n' % (d['dem_Lx'],d['dem_Nx'],d['dem_rho'],'"HCP"',   d['dem_seed'],d['dem_prob']))
         elif d['dem_pkg']==2: # Voronoi
             txt.write ('    dom.AddVoroPack (-1, %g, %g,%g,%g, %d,%d,%d, %g, True, %d, %g); // tag, R, Lx,Ly,Lz, Nx,Ny,Nz, rho,seed,prob\n' % (d['dem_R'],d['dem_Lx'],d['dem_Ly'],d['dem_Lz'],d['dem_Nx'],d['dem_Ny'],d['dem_Nz'],d['dem_rho'],d['dem_seed'],d['dem_prob']))
+        elif d['dem_pkg']==3: # Read Mesh
+            me.gen_unstruct_mesh (True, txt, True, False) # gen_script, txt, cpp, with_headers
+            txt.write ('dom.GenFromMesh (-1, mesh, %g, %g);\n' % (d['dem_R'], d['dem_rho']))
 
         # generate bounding box
         txt.write ('\n    // generate bounding box\n')
@@ -167,6 +172,10 @@ def gen_script():
         txt.write('    Vec3_t  ttt_sigf;  pqTh2L (ttt_pf, ttt_qf, ttt_thf, ttt_sigf, "cam");\n')
         txt.write('    bVec3_t ttt_peps   (ttt_pex, ttt_pey, ttt_pez);\n')
         txt.write('    Vec3_t  ttt_depsdt (ttt_exf/(ttt_timef-iso_timef), ttt_eyf/(ttt_timef-iso_timef), ttt_ezf/(ttt_timef-iso_timef));\n')
+        if d['dem_ttt_pcte']:
+            txt.write('    dom.Thf    = ttt_thf*M_PI/180.0;\n')
+            txt.write('    dom.Pf     = iso_pf;\n')
+            txt.write('    dom.IsPcte = true;\n')
         txt.write('    dom.SetProps  (prp);\n')
         txt.write('    dom.ResetEps  ();\n')
         txt.write('    dom.SetTxTest (ttt_sigf, ttt_peps, ttt_depsdt);\n')
@@ -184,6 +193,7 @@ def gen_script():
 
         # load MechSys
         txt.write ('# load MechSys\n')
+        txt.write ('from numpy   import pi\n')
         txt.write ('from mechsys import *\n')
 
         # constants
@@ -203,6 +213,7 @@ def gen_script():
         txt.write ('iso_dt     = %g\n' % d['dem_iso_dt'])
         txt.write ('iso_dtout  = %g\n' % d['dem_iso_dtout'])
         txt.write ('iso_render = %s\n' % ('True' if d['dem_iso_render'] else 'False'))
+        txt.write ('ttt_pcte   = %s\n' % ('True' if d['dem_ttt_pcte'] else 'False'))
         txt.write ('ttt_pf     = %g\n' % d['dem_ttt_pf'])
         txt.write ('ttt_qf     = %g\n' % d['dem_ttt_qf'])
         txt.write ('ttt_thf    = %g\n' % d['dem_ttt_thf'])
@@ -263,6 +274,10 @@ def gen_script():
         txt.write('ttt_sigf   = pqTh2L (ttt_pf, ttt_qf, ttt_thf, "cam")\n')
         txt.write('ttt_peps   = (ttt_pex, ttt_pey, ttt_pez)\n')
         txt.write('ttt_depsdt = (ttt_exf/(ttt_timef-iso_timef), ttt_eyf/(ttt_timef-iso_timef), ttt_ezf/(ttt_timef-iso_timef))\n')
+        if d['dem_ttt_pcte']:
+            txt.write('dom.Thf    = ttt_thf*pi/180.0\n')
+            txt.write('dom.Pf     = iso_pf\n')
+            txt.write('dom.IsPcte = True\n')
         txt.write('dom.SetProps  (prp)\n')
         txt.write('dom.ResetEps  ()\n')
         txt.write('dom.SetTxTest (ttt_sigf, ttt_peps, ttt_depsdt)\n')
@@ -376,6 +391,10 @@ def run_simulation(running, fatal):
         ttt_sigf   = ms.pqTh2L (d['dem_ttt_pf'], d['dem_ttt_qf'], d['dem_ttt_thf'], "cam")
         ttt_peps   = (d['dem_ttt_pex'], d['dem_ttt_pey'], d['dem_ttt_pez'])
         ttt_depsdt = (d['dem_ttt_exf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_eyf']/(d['dem_ttt_timef']-d['dem_iso_timef']), d['dem_ttt_ezf']/(d['dem_ttt_timef']-d['dem_iso_timef']))
+        if d['dem_ttt_pcte']:
+            dom.Thf    = d['dem_ttt_thf']*pi/180.0
+            dom.Pf     = d['dem_iso_pf']
+            dom.IsPcte = True
         dom.SetProps  (prp)
         dom.ResetEps  ()
         dom.SetTxTest (ttt_sigf, ttt_peps, ttt_depsdt)

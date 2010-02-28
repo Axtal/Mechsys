@@ -100,6 +100,9 @@ def load_dict():
         dict['dem_iso_dt']     = 0.001
         dict['dem_iso_dtout']  = 1.0
         dict['dem_iso_render'] = True
+        dict['dem_ttt_comp']   = True
+        dict['dem_ttt_ext']    = False
+        dict['dem_ttt_pcte']   = False
         dict['dem_ttt_pf']     = 5.0
         dict['dem_ttt_qf']     = 0.0
         dict['dem_ttt_thf']    = 30.0

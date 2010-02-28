@@ -740,6 +740,26 @@ def cb_dem_iso_dtout (evt,val): di.set_key ('dem_iso_dtout', float(val))
 def cb_dem_iso_render (evt,val): di.set_key ('dem_iso_render', val)
 
 @try_catch
+def cb_dem_ttt_comp (evt,val):
+    di.set_key ('dem_ttt_comp', 1)
+    di.set_key ('dem_ttt_ext',  0)
+    di.set_key ('dem_ttt_pcte', 0)
+    di.set_key ('dem_ttt_ezf', -abs(di.key('dem_ttt_ezf')))
+    di.set_key ('dem_ttt_thf', 30.0)
+@try_catch
+def cb_dem_ttt_ext  (evt,val):
+    di.set_key ('dem_ttt_comp', 0)
+    di.set_key ('dem_ttt_ext',  1)
+    di.set_key ('dem_ttt_pcte', 0)
+    di.set_key ('dem_ttt_ezf', abs(di.key('dem_ttt_ezf')))
+    di.set_key ('dem_ttt_thf', -30.0)
+@try_catch
+def cb_dem_ttt_pcte (evt,val):
+    di.set_key ('dem_ttt_comp', 0)
+    di.set_key ('dem_ttt_ext',  0)
+    di.set_key ('dem_ttt_pcte', 1)
+    di.set_key ('dem_ttt_ezf', -abs(di.key('dem_ttt_ezf')))
+@try_catch
 def cb_dem_ttt_pf (evt,val): di.set_key ('dem_ttt_pf', float(val))
 @try_catch
 def cb_dem_ttt_qf (evt,val): di.set_key ('dem_ttt_qf', float(val))
@@ -756,7 +776,10 @@ def cb_dem_ttt_exf (evt,val): di.set_key ('dem_ttt_exf', float(val))
 @try_catch
 def cb_dem_ttt_eyf (evt,val): di.set_key ('dem_ttt_eyf', float(val))
 @try_catch
-def cb_dem_ttt_ezf (evt,val): di.set_key ('dem_ttt_ezf', float(val))
+def cb_dem_ttt_ezf (evt,val):
+    if   di.key('dem_ttt_comp'): di.set_key ('dem_ttt_ezf', -abs(float(val)))
+    elif di.key('dem_ttt_ext'):  di.set_key ('dem_ttt_ezf', abs(float(val)))
+    else:                        di.set_key ('dem_ttt_ezf', -abs(float(val)))
 @try_catch
 def cb_dem_ttt_timef (evt,val): di.set_key ('dem_ttt_timef', float(val))
 @try_catch
@@ -888,7 +911,7 @@ def gui():
     h_dem_pkg       = 9*rh+3*rg
     h_dem_cte       = 5*rh+srg
     h_dem_ttt_iso   = 3*rh+2*srg
-    h_dem_ttt_she   = 5*rh+2*srg
+    h_dem_ttt_she   = 4*rh+3*srg
     h_dem_ttt       = 6*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she + (rh if (d['dem_running'].value or d['dem_fatal'].value) else 0)
     h_dem           = h_dem_pkg+h_dem_cte+srg+6*rh+h_dem_ttt
 
@@ -1453,17 +1476,33 @@ def gui():
         r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_dem_ttt_she)
         r -= srg
 
-        gu.text(c,     r,'pf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_pf']),  128, 'p at the and of shearing',  cb_dem_ttt_pf)
-        gu.text(c+110, r,'Exf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_exf']), 128, 'Final Ex (strain)',         cb_dem_ttt_exf)
-        Draw.Toggle     ('pEx',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pex'],       'Prescribed Ex (strain)',    cb_dem_ttt_pex)
+        Draw.Toggle ('Compression', EVT_NONE, c,     r, 80, rh, d['dem_ttt_comp'], 'Compression',  cb_dem_ttt_comp)
+        Draw.Toggle ('Extension',   EVT_NONE, c+80,  r, 80, rh, d['dem_ttt_ext'],  'Extension ',   cb_dem_ttt_ext)
+        Draw.Toggle ('p-Cte',       EVT_NONE, c+160, r, 80, rh, d['dem_ttt_pcte'], 'p constant ?', cb_dem_ttt_pcte)
         r -= rh
-        gu.text(c,     r,'qf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_qf']),  128, 'q at the and of shearing',  cb_dem_ttt_qf)
-        gu.text(c+110, r,'Eyf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_eyf']), 128, 'Final Ey (strain)',         cb_dem_ttt_eyf)
-        Draw.Toggle     ('pEy',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pey'],       'Prescribed Ey (strain)',    cb_dem_ttt_pey)
-        r -= rh
-        gu.text(c,     r,'thf:'); Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
-        gu.text(c+110, r,'Ezf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)',         cb_dem_ttt_ezf)
-        Draw.Toggle     ('pEz',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pez'],       'Prescribed Ez (strain)',    cb_dem_ttt_pez)
+        r -= srg
+
+
+        if d['dem_ttt_comp'] or d['dem_ttt_ext']: # compression or extension
+            gu.text(c,     r,'Ezf:'); Draw.String('', EVT_NONE, c+30, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)', cb_dem_ttt_ezf)
+        else:
+            gu.text(c,     r,'Ezf:'); Draw.String('', EVT_NONE, c+30, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)',         cb_dem_ttt_ezf)
+            gu.text(c+110, r,'Thf:'); Draw.String('', EVT_NONE, c+150,r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
+
+        #gu.text(c, r,'pf:');
+        #if d['dem_ttt_pcte']: gu.label (str(d['dem_ttt_pf']), c+30,  r, 60, rh)
+        #else:                 Draw.String('', EVT_NONE,       c+30,  r, 60, rh, str(d['dem_ttt_pf']),  128, 'p at the and of shearing',  cb_dem_ttt_pf)
+
+        #gu.text(c+110, r,'Exf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_exf']), 128, 'Final Ex (strain)',         cb_dem_ttt_exf)
+        #Draw.Toggle     ('pEx',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pex'],       'Prescribed Ex (strain)',    cb_dem_ttt_pex)
+        #r -= rh
+        #gu.text(c,     r,'qf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_qf']),  128, 'q at the and of shearing',  cb_dem_ttt_qf)
+        #gu.text(c+110, r,'Eyf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_eyf']), 128, 'Final Ey (strain)',         cb_dem_ttt_eyf)
+        #Draw.Toggle     ('pEy',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pey'],       'Prescribed Ey (strain)',    cb_dem_ttt_pey)
+        #r -= rh
+        #gu.text(c,     r,'thf:'); Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
+        #gu.text(c+110, r,'Ezf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)',         cb_dem_ttt_ezf)
+        #Draw.Toggle     ('pEz',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pez'],       'Prescribed Ez (strain)',    cb_dem_ttt_pez)
         r -= rh
         gu.text(c,    r,'timef');
         gu.text(c+60, r,'dt');
