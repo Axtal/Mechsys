@@ -42,10 +42,12 @@ class Plotter:
         self.fc_c      = 0.0                    # cohesion for FC
         self.fc_np     = 20                     # number of points for drawing failure line
         self.isxyz     = (-1,0)                 # indices for sxyz plot, use negative numbers for principal components
-        self.idx_max   = -1                     # maximum index for plotting: -1 => everything
         self.devplot   = True                   # plot s3-s1, s3-s2 instead of Ek, Sk
         self.pcte      = False                  # pcte in Ev x p (logp) plot?
         self.justone   = -1                     # all plots = -1
+        self.maxed     = -1                     # max Ed to stop the lines
+        self.maxev     = -1                     # max Ev to stop the lines
+        self.maxidx    = -1                     # max index of data to plot
 
         # internal data
         self.ax = None # current axes
@@ -74,8 +76,7 @@ class Plotter:
                                        [-float( dat['Ez' ][i] )/div],
                                        [-float( dat['Exy'][i] )*sq2/div]]))
         else:
-            idx_max = len(dat['sx']) if self.idx_max<0 else self.idx_max
-            for i in range(idx_max):
+            for i in range(len(dat['sx'])):
                 Sig.append(matrix([[float( dat['sx' ][i] )],
                                    [float( dat['sy' ][i] )],
                                    [float( dat['sz' ][i] )],
@@ -123,10 +124,26 @@ class Plotter:
         rc('font', family='serif') # set font
         fsz   = 14                 # font size
         lwd   = 2                  # linewidth
-        nhplt = 3 # number of horizontal plots
-        nvplt = 3 # number of vertical plots
-        iplot = 1 # index of plot
-        imaQ  = Q.argmax()
+        nhplt = 3                  # number of horizontal plots
+        nvplt = 3                  # number of vertical plots
+        iplot = 1                  # index of plot
+        imaQ  = Q.argmax()         # index of q_max
+        ilst  = len(P)-1           # index of last point 
+        ima   = ilst if self.maxidx<0 else self.maxidx # max index of data to plot
+        if self.maxed>0:
+            imaEd = ima
+            for k, ed in enumerate(Ed):
+                if ed>=self.maxed:
+                    imaEd = k
+                    break
+            ima = imaEd if imaEd<ima else ima
+        if self.maxev>0:
+            imaEv = ima
+            for k, ev in enumerate(Ev):
+                if ev>=self.maxev:
+                    imaEv = k
+                    break
+            ima = imaEv if imaEv<ima else ima
         if self.justone>0:
             nhplt = 1
             nvplt = 1
@@ -134,27 +151,26 @@ class Plotter:
         # 0) q/p, Ed ---------------------------------------------------------------------------
         if self.justone==0 or self.justone<0:
             Y    = Q/P if self.div_by_p else Q
-            imaY = Y.argmax()
             Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
             self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ed, Y, color=clr, lw=lwd)
-            plot   (Ed[imaY], Y[imaY], 'o', color=clr)
-            plot   (Ed[-1], Y[-1], 's', color=clr)
+            plot (Ed[:ima], Y[:ima], color=clr, lw=lwd)
+            if imaQ<=ima: plot (Ed[imaQ], Y[imaQ], 'o', color=clr)
+            if ilst<=ima: plot (Ed[-1],   Y[-1],   's', color=clr)
             xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
-            if txtlst: text (Ed[-1], Y[-1], '%g'%Y[-1])
-            if txtmax: text (Ed[imaY], Y[imaY], '%g'%Y[imaY])
+            if txtmax and imaQ<=ima: text (Ed[imaQ], Y[imaQ], '%g'%Y[imaQ])
+            if txtlst and ilst<=ima: text (Ed[-1],   Y[-1],   '%g'%Y[-1])
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
         if self.justone==1 or self.justone<0:
             self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ev, Y, lw=lwd, color=clr)
+            plot   (Ev[:ima], Y[:ima], lw=lwd, color=clr)
             xlabel (r'$\varepsilon_v$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
 
         # 2) p, q ---------------------------------------------------------------------------
         if self.justone==2 or self.justone<0:
             self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             axhline (0.0,color='black'); axvline(0.0,color='black')
-            plot    (P, Q, lw=lwd, color=clr)
+            plot    (P[:ima], Q[:ima], lw=lwd, color=clr)
             xlabel  (r'$p_{%s}$'%(self.pq_ty),fontsize=fsz);  ylabel(r'$q_{%s}$'%(self.pq_ty),fontsize=fsz);  grid()
             axis    ('equal')
             if self.show_k:
@@ -165,29 +181,29 @@ class Plotter:
         # 3) Ed, Ev ---------------------------------------------------------------------------
         if self.justone==3 or self.justone<0:
             self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ed, Ev, lw=lwd, color=clr)
+            plot   (Ed[:ima], Ev[:ima], lw=lwd, color=clr)
             xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz); grid()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
         if self.justone==4 or self.justone<0:
             if self.log_p:
-                X    = log(P)
+                X    = log(P[:ima])
                 xlbl = r'$\ln{(p_{%s})}$'%(self.pq_ty)
             else:
-                X    = P
+                X    = P[:ima]
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
             if self.pcte:
                 for k, x in enumerate(X): X[k] = X[0]
             self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (X, Ev, lw=lwd, color=clr)
+            plot   (X[:ima], Ev[:ima], lw=lwd, color=clr)
             xlabel (xlbl,fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz);  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
         if self.justone==5 or self.justone<0:
             self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Sa, Sb, color=clr, lw=lwd)
-            plot   (Sa[imaQ], Sb[imaQ], 'o', color=clr)
-            plot   (Sa[-1],   Sb[-1],   's', color=clr)
+            plot   (Sa[:ima], Sb[:ima], color=clr, lw=lwd)
+            if imaQ<=ima: plot (Sa[imaQ], Sb[imaQ], 'o', color=clr)
+            if ilst<=ima: plot (Sa[ilst], Sb[ilst], 's', color=clr)
             axis   ('equal')
             xlabel (r'$\sigma_a$',fontsize=fsz);  ylabel(r'$\sigma_b$',fontsize=fsz);  grid()
             if draw_ros: self.oct_rosette()
@@ -196,9 +212,9 @@ class Plotter:
         # 6) Ek, Q/P ---------------------------------------------------------------------------
         if self.justone==6 or self.justone<0:
             self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (E1, Y, lw=lwd,linestyle='-', color=clr)
-            plot   (E2, Y, lw=lwd,linestyle='--', color=clr)
-            plot   (E3, Y, lw=lwd,linestyle='-.', color=clr)
+            plot   (E1[:ima], Y[:ima], lw=lwd,linestyle='-', color=clr)
+            plot   (E2[:ima], Y[:ima], lw=lwd,linestyle='--', color=clr)
+            plot   (E3[:ima], Y[:ima], lw=lwd,linestyle='-.', color=clr)
             xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]',fontsize=fsz)
             ylabel (Ylbl,fontsize=fsz);  grid()
 
@@ -206,7 +222,7 @@ class Plotter:
             if self.justone==7 or self.justone<0:
                 # 7) s3-s1, s3-s2
                 self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (S3-S1, S3-S2, lw=lwd,linestyle='-', color=clr)
+                plot   (S3[:ima]-S1[:ima], S3[:ima]-S2[:ima], lw=lwd,linestyle='-', color=clr)
                 xlabel (r'$\sigma_3-\sigma_1$',fontsize=fsz);  ylabel(r'$\sigma_3-\sigma_2$',fontsize=fsz);  grid()
                 axis   ('equal')
                 if draw_fl: self.s123_fline(S3[imaQ])
@@ -214,16 +230,16 @@ class Plotter:
             # 7) Ek, Sk ---------------------------------------------------------------------------
             if self.justone==7 or self.justone<0:
                 self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (Ex, -Sx, lw=lwd,linestyle='-', color=clr)
-                plot   (Ey, -Sy, lw=lwd,linestyle='--', color=clr)
-                plot   (Ez, -Sz, lw=lwd,linestyle='-.', color=clr)
+                plot   (Ex[:ima], -Sx[:ima], lw=lwd,linestyle='-', color=clr)
+                plot   (Ey[:ima], -Sy[:ima], lw=lwd,linestyle='--', color=clr)
+                plot   (Ez[:ima], -Sz[:ima], lw=lwd,linestyle='-.', color=clr)
                 xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]',fontsize=fsz)
                 ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]',fontsize=fsz);  grid()
 
         # 8) sqrt(2.0)*Si, Sj ---------------------------------------------------------------------------
         if self.justone==8 or self.justone<0:
             self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
-            plot   (-sqrt(2.0)*Si, -Sj,  lw=lwd, color=clr)
+            plot   (-sqrt(2.0)*Si[:ima], -Sj[:ima],  lw=lwd, color=clr)
             xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]),fontsize=fsz);  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]),fontsize=fsz);  grid()
             axis   ('equal')
             if draw_fl: self.sxyz_fline()
