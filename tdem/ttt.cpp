@@ -60,7 +60,7 @@ int main(int argc, char **argv) try
     double rho;         // rho
     double p0;          // Pressure for the isotropic compression
     double T0;          // Time span for the compression
-    bool   pcte;        // Flag for a p=cte stresspath
+    bool   isfailure;   // Flag for a failure stress path
     bool   pssrx;       // Prescribed strain rate in X ?
     bool   pssry;       // Prescribed strain rate in Y ?
     bool   pssrz;       // Prescribed strain rate in Z ?
@@ -70,6 +70,7 @@ int main(int argc, char **argv) try
     double pf;          // Final pressure p
     double qf;          // Final deviatoric stress q
     double thf;         // Angle of the stress path alpha
+    double alpf;        // Angle of the p q plane
     double Tf;          // Final time for the test
     {
         infile >> ptype;        infile.ignore(200,'\n');
@@ -95,7 +96,7 @@ int main(int argc, char **argv) try
         infile >> rho;          infile.ignore(200,'\n');
         infile >> p0;           infile.ignore(200,'\n');
         infile >> T0;           infile.ignore(200,'\n');
-        infile >> pcte;         infile.ignore(200,'\n');
+        infile >> isfailure;    infile.ignore(200,'\n');
         infile >> pssrx;        infile.ignore(200,'\n');
         infile >> pssry;        infile.ignore(200,'\n');
         infile >> pssrz;        infile.ignore(200,'\n');
@@ -105,6 +106,7 @@ int main(int argc, char **argv) try
         infile >> pf;           infile.ignore(200,'\n');
         infile >> qf;           infile.ignore(200,'\n');
         infile >> thf;          infile.ignore(200,'\n');
+        infile >> alpf;         infile.ignore(200,'\n');
         infile >> Tf;           infile.ignore(200,'\n');
     }
 
@@ -143,16 +145,13 @@ int main(int argc, char **argv) try
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
     sigf =  Vec3_t(-p0,-p0,-p0);
     dom.ResetEps  ();
-    dom.SetTxTest (sigf, peps, depsdt);
+    dom.SetTxTest (sigf, peps, depsdt,false,0,0);
     dom.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, fkey_a.CStr(), RenderVideo);
-    dom.SetTxTest (sigf, peps, depsdt);
+    dom.SetTxTest (sigf, peps, depsdt,false,0,0);
     dom.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, fkey_b.CStr(), RenderVideo);
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
-    dom.Thf    = thf*M_PI/180.0;  // Assign the angle of the stresspath to a internal variable
-    dom.Pf     = p0;              // Assign the pressure also as an internal variable
-    dom.IsPcte = pcte;            // Is a P=cte path?
     Vec3_t lf;
     pqTh2L (pf, qf, thf, lf, "cam");
     sigf   = lf(0), lf(1), lf(2);
@@ -165,7 +164,8 @@ int main(int argc, char **argv) try
     
     // run
     dom.ResetEps  ();
-    dom.SetTxTest (sigf, peps, depsdt);
+    dom.SetTxTest (sigf, peps, depsdt, isfailure, thf*M_PI/180, alpf*M_PI/180);
+    dom.ResetInteractons();
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, fkey_c.CStr(), RenderVideo);
 
     return 0;

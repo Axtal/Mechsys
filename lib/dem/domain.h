@@ -151,22 +151,26 @@ public:
     TriaxialDomain ();
 
     // Methods for specific simulations
-    void SetTxTest (Vec3_t  const & Sigf,                                                            ///< Final state of stress
-                    bVec3_t const & pEps,                                                            ///< Are strain rates prescribed ?
-                    Vec3_t  const & dEpsdt);                                                         ///< Prescribed values of strain rate
-    void ResetEps  ();                                                                               ///< Reset strains and re-calculate initial lenght of packing
-    void Output    (size_t IdxOut, std::ostream & OutFile);                                          ///< Output current state of stress and strains.
-    void OutputF   (std::ostream & OutFile);                                                         ///< Output Final state of normal forces for statistics
-    void Setup     (double,double);                                                                  ///< For the triaxial test it will measure or set the strains and stresses
+    void SetTxTest (Vec3_t  const & Sigf,                     ///< Final state of stress
+                    bVec3_t const & pEps,                     ///< Are strain rates prescribed ?
+                    Vec3_t  const & dEpsdt,                   ///< Prescribed values of strain rate
+                    bool    IsFailure,                        ///< Check if it is a test to find failure point
+                    double  theta,                            ///< Angle in the hydrostatic pressure plane
+                    double  alpha);                           ///< Angle of the slope in the p q plane
+    void ResetEps  ();                                        ///< Reset strains and re-calculate initial lenght of packing
+    void Output    (size_t IdxOut, std::ostream & OutFile);   ///< Output current state of stress and strains.
+    void OutputF   (std::ostream & OutFile);                  ///< Output Final state of normal forces for statistics
+    void Setup     (double,double);                           ///< For the triaxial test it will measure or set the strains and stresses
 
     //Data
-    bool          IsPcte;  ///< Is a pressure constant essay?
-    double        Thf;     ///< Angle in the p=cte plane
-    double        Pf;      ///< Isotropic pressure for the P=cte plane
-    Vec3_t        Sig;     ///< Current stress state
-    Vec3_t        DSig;    ///< Total stress increment to be applied by Solve => after
-    bVec3_t       pSig;    ///< Prescribed stress ?
-    Vec3_t        L0;      ///< Initial length of the packing
+    bool          IsFailure;  ///< Is a failuretest ?
+    double        Thf;        ///< Angle in the p=cte plane
+    double        Alp;        ///< Angle in the p q plane
+    Vec3_t        Sig;        ///< Current stress state
+    Vec3_t        Sig0;       ///< Initial stress state
+    Vec3_t        DSig;       ///< Total stress increment to be applied by Solve => after
+    bVec3_t       pSig;       ///< Prescribed stress ?
+    Vec3_t        L0;         ///< Initial length of the packing
 
 #ifdef USE_BOOST_PYTHON
     void PySetTxTest (BPy::tuple const & Sigf, BPy::tuple const & pEps, BPy::tuple const & dEpsdt)
@@ -1218,14 +1222,21 @@ inline TriaxialDomain::TriaxialDomain ()
     DSig   = 0.0,   0.0,   0.0;
     pSig   = false, false, false;
     CamPos = 1.0, 2.0, 3.0;
-    IsPcte = false;
+    IsFailure = false;
 }
 
-inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt)
+inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt, bool TheIsFailure, double theta, double alpha)
 {
     // info
     std::cout << "[1;33m\n--- Setting up Triaxial Test -------------------------------------[0m\n";
     double start = std::clock();
+
+    // Store setting up data
+    IsFailure = TheIsFailure;
+    Thf = theta;
+    Alp = alpha;
+    if (IsFailure) Sig0 = Sig;
+
 
     // resize arrays
     TParticles   .Resize(0);
@@ -1327,31 +1338,38 @@ inline void TriaxialDomain::ResetEps ()
 
 inline void TriaxialDomain::Setup (double dt,double tspan)
 {
-    if (IsPcte)
+    if (IsFailure)
     {
         if (!pSig(0))
         {
             double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-            Sig(0) = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
-            double q2_3 = (Sig(0)+Pf)/sin(Thf-2.0*Util::PI/3.0);
-            Sig(1) = -Pf + q2_3*sin(Thf);
-            Sig(2) = -Pf + q2_3*sin(Thf+2.0*Util::PI/3.0);
+            double sig = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
+            double dsig = sig - Sig0(0);
+            double r = dsig/((2.0/3.0)*sin(Alp)*sin(Thf-2.0*Util::PI/3.0)-cos(Alp));
+            Sig(0) = Sig0(0)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf-2.0*Util::PI/3.0);
+            Sig(1) = Sig0(1)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf);
+            Sig(2) = Sig0(2)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf+2.0*Util::PI/3.0);
         }
         if (!pSig(1))
         {
             double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-            Sig(1) = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
-            double q2_3 = (Sig(1)+Pf)/sin(Thf);
-            Sig(0) = -Pf + q2_3*sin(Thf-2.0*Util::PI/3.0);
-            Sig(2) = -Pf + q2_3*sin(Thf+2.0*Util::PI/3.0);
+            double sig = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
+            double dsig = sig - Sig0(1);
+            double r = dsig/((2.0/3.0)*sin(Alp)*sin(Thf)-cos(Alp));
+            Sig(0) = Sig0(0)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf-2.0*Util::PI/3.0);
+            Sig(1) = Sig0(1)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf);
+            Sig(2) = Sig0(2)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf+2.0*Util::PI/3.0);
         }
         if (!pSig(2))
         {
             double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-            Sig(2) = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
-            double q2_3 = (Sig(2)+Pf)/sin(Thf+2.0*Util::PI/3.0);
-            Sig(0) = -Pf + q2_3*sin(Thf-2.0*Util::PI/3.0);
-            Sig(1) = -Pf + q2_3*sin(Thf);
+            double sig = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
+            double dsig = sig - Sig0(2);
+            double r = dsig/((2.0/3.0)*sin(Alp)*sin(Thf+2.0*Util::PI/3.0)-cos(Alp));
+            Sig(0) = Sig0(0)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf-2.0*Util::PI/3.0);
+            Sig(1) = Sig0(1)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf);
+            Sig(2) = Sig0(2)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf+2.0*Util::PI/3.0);
+            std::cout<< Sig << Sig0 << std::endl;
         }
 
     }
@@ -1363,9 +1381,9 @@ inline void TriaxialDomain::Setup (double dt,double tspan)
         force = Sig(0)*area, 0.0, 0.0;
         Particles[InitialIndex  ]->Ff =  force;
         Particles[InitialIndex+1]->Ff = -force;
-        if (!IsPcte) update_sig = true;
+        if (!IsFailure) update_sig = true;
     }
-    else if (!IsPcte)
+    else if (!IsFailure)
     {
         double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         Sig(0) = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
@@ -1376,9 +1394,9 @@ inline void TriaxialDomain::Setup (double dt,double tspan)
         force = 0.0, Sig(1)*area, 0.0;
         Particles[InitialIndex+2]->Ff =  force;
         Particles[InitialIndex+3]->Ff = -force;
-        if (!IsPcte) update_sig = true;
+        if (!IsFailure) update_sig = true;
     }
-    else if (!IsPcte)
+    else if (!IsFailure)
     {
         double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         Sig(1) = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
@@ -1389,9 +1407,9 @@ inline void TriaxialDomain::Setup (double dt,double tspan)
         force = 0.0, 0.0, Sig(2)*area;
         Particles[InitialIndex+4]->Ff =  force;
         Particles[InitialIndex+5]->Ff = -force;
-        if (!IsPcte) update_sig = true;
+        if (!IsFailure) update_sig = true;
     }
-    else if (!IsPcte)
+    else if (!IsFailure)
     {
         double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
         Sig(2) = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
