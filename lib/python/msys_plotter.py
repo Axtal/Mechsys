@@ -27,32 +27,32 @@ class Plotter:
     # ===========
     def __init__(self):
         # data
-        self.show_k    = False        # show k=dq/dp ?
-        self.div_by_p  = False        # divide q by p ?
-        self.log_p     = True         # use log(p) instead of p ?
-        self.q_neg_ext = False        # multiply q by -1 for extension (t<0, where t=sin(3th)
-        self.pq_ty     = 'cam'        # invariants type
-        self.fc_ty     = ['VM','MC']  # failure criteria type (VM, DP, MC, MN)
-        self.fc_clr    = ['c', 'b']   # failure criteria colors
-        self.fc_lt     = ['-', '-']   # failure criteria linetype
-        self.fc_p      = 100.0        # p(oct) to be used when plotting FC in octahedral plane
-        self.fc_t      = 1.0          # t=sin(3th) to be used when plotting FC in octahedral plane
-        self.fc_cu     = 10.0         # cohesion for VM
-        self.fc_phi    = 25.0         # friction angle for FC
-        self.fc_c      = 0.0          # cohesion for FC
-        self.fc_np     = 20           # number of points for drawing failure line
-        self.isxyz     = (-1,0)       # indices for sxyz plot, use negative numbers for principal components
-        self.idx_max   = -1           # maximum index for plotting: -1 => everything
-        self.devplot   = True         # plot s3-s1, s3-s2 instead of Ek, Sk
-        self.pcte      = False        # pcte in Ev x p (logp) plot?
-        self.dot       = ['r-','r-','r-','r-','r-','r-','r-','r-','r-']
+        self.show_k    = False                  # show k=dq/dp ?
+        self.div_by_p  = False                  # divide q by p ?
+        self.log_p     = True                   # use log(p) instead of p ?
+        self.q_neg_ext = False                  # multiply q by -1 for extension (t<0, where t=sin(3th)
+        self.pq_ty     = 'cam'                  # invariants type
+        self.fc_ty     = ['VM','MC']            # failure criteria type (VM, DP, MC, MN)
+        self.fc_clr    = ['c', 'b', 'k', 'm']   # failure criteria colors
+        self.fc_lt     = ['-', '-', '-', '-']   # failure criteria linetype
+        self.fc_p      = 100.0                  # p(oct) to be used when plotting FC in octahedral plane
+        self.fc_t      = 1.0                    # t=sin(3th) to be used when plotting FC in octahedral plane
+        self.fc_cu     = 10.0                   # cohesion for VM
+        self.fc_phi    = 25.0                   # friction angle for FC
+        self.fc_c      = 0.0                    # cohesion for FC
+        self.fc_np     = 20                     # number of points for drawing failure line
+        self.isxyz     = (-1,0)                 # indices for sxyz plot, use negative numbers for principal components
+        self.idx_max   = -1                     # maximum index for plotting: -1 => everything
+        self.devplot   = True                   # plot s3-s1, s3-s2 instead of Ek, Sk
+        self.pcte      = False                  # pcte in Ev x p (logp) plot?
+        self.justone   = -1                     # all plots = -1
 
         # internal data
         self.ax = None # current axes
 
     # Plot results
     # ============
-    def plot(self, filename, draw_fl=False):
+    def plot(self, filename, clr='red', draw_fl=False, draw_ros=True, txtlst=True, txtmax=True):
         # load data
         dat = read_table(filename)
         Sig = []
@@ -73,7 +73,6 @@ class Plotter:
                                        [-float( dat['Ey' ][i] )/div],
                                        [-float( dat['Ez' ][i] )/div],
                                        [-float( dat['Exy'][i] )*sq2/div]]))
-            self.dot = ['k+','k+','k+','k+','k+','k+','k+','k+','k+']
         else:
             idx_max = len(dat['sx']) if self.idx_max<0 else self.idx_max
             for i in range(idx_max):
@@ -127,92 +126,107 @@ class Plotter:
         nhplt = 3 # number of horizontal plots
         nvplt = 3 # number of vertical plots
         iplot = 1 # index of plot
+        imaQ  = Q.argmax()
+        if self.justone>0:
+            nhplt = 1
+            nvplt = 1
 
         # 0) q/p, Ed ---------------------------------------------------------------------------
-        Y    = Q/P if self.div_by_p else Q
-        imaY = Y.argmax()
-        Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (Ed, Y, self.dot[0], lw=lwd)
-        xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
-        text   (Ed[-1], Y[-1], '%g'%Y[-1])
-        text   (Ed[imaY], Y[imaY], '%g'%Y[imaY])
+        if self.justone==0 or self.justone<0:
+            Y    = Q/P if self.div_by_p else Q
+            imaY = Y.argmax()
+            Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ed, Y, color=clr, lw=lwd)
+            plot   (Ed[imaY], Y[imaY], 'o', color=clr)
+            plot   (Ed[-1], Y[-1], 's', color=clr)
+            xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
+            if txtlst: text (Ed[-1], Y[-1], '%g'%Y[-1])
+            if txtmax: text (Ed[imaY], Y[imaY], '%g'%Y[imaY])
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (Ev, Y, self.dot[1], lw=lwd)
-        xlabel (r'$\varepsilon_v$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
+        if self.justone==1 or self.justone<0:
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ev, Y, lw=lwd, color=clr)
+            xlabel (r'$\varepsilon_v$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
 
         # 2) p, q ---------------------------------------------------------------------------
-        imaQ = Q.argmax()
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        axhline (0.0,color='black'); axvline(0.0,color='black')
-        plot    (P, Q, self.dot[2], lw=lwd)
-        xlabel  (r'$p_{%s}$'%(self.pq_ty),fontsize=fsz);  ylabel(r'$q_{%s}$'%(self.pq_ty),fontsize=fsz);  grid()
-        text    (P[-1], Q[-1], '%g,%g'%(P[-1],Q[-1]))
-        text    (P[imaQ], Q[imaQ], '%g,%g'%(P[imaQ],Q[imaQ]))
-        axis    ('equal')
-        if self.show_k:
-            k = (Q[-1]-Q[0])/(P[-1]-P[0])
-            text ((P[0]+P[-1])/2.0,(Q[0]+Q[-1])/2.0,'k = %g'%k,fontsize=14,color='black',ha='left')
-        if draw_fl: self.pq_fline()
+        if self.justone==2 or self.justone<0:
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            axhline (0.0,color='black'); axvline(0.0,color='black')
+            plot    (P, Q, lw=lwd, color=clr)
+            xlabel  (r'$p_{%s}$'%(self.pq_ty),fontsize=fsz);  ylabel(r'$q_{%s}$'%(self.pq_ty),fontsize=fsz);  grid()
+            axis    ('equal')
+            if self.show_k:
+                k = (Q[-1]-Q[0])/(P[-1]-P[0])
+                text ((P[0]+P[-1])/2.0,(Q[0]+Q[-1])/2.0,'k = %g'%k,fontsize=14,color='black',ha='left')
+            if draw_fl: self.pq_fline()
 
         # 3) Ed, Ev ---------------------------------------------------------------------------
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (Ed, Ev, self.dot[3], lw=lwd)
-        xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz); grid()
+        if self.justone==3 or self.justone<0:
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ed, Ev, lw=lwd, color=clr)
+            xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz); grid()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
-        if self.log_p:
-            X    = log(P)
-            xlbl = r'$\ln{(p_{%s})}$'%(self.pq_ty)
-        else:
-            X    = P
-            xlbl = r'$p_{%s}$'%(self.pq_ty)
-        if self.pcte:
-            for k, x in enumerate(X): X[k] = X[0]
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (X, Ev, self.dot[4], lw=lwd)
-        xlabel (xlbl,fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz);  grid()
+        if self.justone==4 or self.justone<0:
+            if self.log_p:
+                X    = log(P)
+                xlbl = r'$\ln{(p_{%s})}$'%(self.pq_ty)
+            else:
+                X    = P
+                xlbl = r'$p_{%s}$'%(self.pq_ty)
+            if self.pcte:
+                for k, x in enumerate(X): X[k] = X[0]
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (X, Ev, lw=lwd, color=clr)
+            xlabel (xlbl,fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz);  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (Sa, Sb, self.dot[5], lw=lwd)
-        axis   ('equal')
-        xlabel (r'$\sigma_a$',fontsize=fsz);  ylabel(r'$\sigma_b$',fontsize=fsz);  grid()
-        self.oct_rosette()
-        if draw_fl: self.oct_fline()
+        if self.justone==5 or self.justone<0:
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Sa, Sb, color=clr, lw=lwd)
+            plot   (Sa[imaQ], Sb[imaQ], 'o', color=clr)
+            plot   (Sa[-1],   Sb[-1],   's', color=clr)
+            axis   ('equal')
+            xlabel (r'$\sigma_a$',fontsize=fsz);  ylabel(r'$\sigma_b$',fontsize=fsz);  grid()
+            if draw_ros: self.oct_rosette()
+            if draw_fl:  self.oct_fline()
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (E1, Y, self.dot[6], lw=lwd,linestyle='-')
-        plot   (E2, Y, self.dot[6], lw=lwd,linestyle='--')
-        plot   (E3, Y, self.dot[6], lw=lwd,linestyle='-.')
-        xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]',fontsize=fsz)
-        ylabel (Ylbl,fontsize=fsz);  grid()
+        if self.justone==6 or self.justone<0:
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (E1, Y, lw=lwd,linestyle='-', color=clr)
+            plot   (E2, Y, lw=lwd,linestyle='--', color=clr)
+            plot   (E3, Y, lw=lwd,linestyle='-.', color=clr)
+            xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]',fontsize=fsz)
+            ylabel (Ylbl,fontsize=fsz);  grid()
 
         if self.devplot:
-            # 7) s3-s1, s3-s2
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (S3-S1, S3-S2, self.dot[7], lw=lwd,linestyle='-')
-            xlabel (r'$\sigma_3-\sigma_1$',fontsize=fsz);  ylabel(r'$\sigma_3-\sigma_2$',fontsize=fsz);  grid()
-            axis   ('equal')
-            if draw_fl: self.s123_fline()
+            if self.justone==7 or self.justone<0:
+                # 7) s3-s1, s3-s2
+                self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+                plot   (S3-S1, S3-S2, lw=lwd,linestyle='-', color=clr)
+                xlabel (r'$\sigma_3-\sigma_1$',fontsize=fsz);  ylabel(r'$\sigma_3-\sigma_2$',fontsize=fsz);  grid()
+                axis   ('equal')
+                if draw_fl: self.s123_fline(S3[imaQ])
         else:
             # 7) Ek, Sk ---------------------------------------------------------------------------
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ex, -Sx, self.dot[7], lw=lwd,linestyle='-')
-            plot   (Ey, -Sy, self.dot[7], lw=lwd,linestyle='--')
-            plot   (Ez, -Sz, self.dot[7], lw=lwd,linestyle='-.')
-            xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]',fontsize=fsz)
-            ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]',fontsize=fsz);  grid()
+            if self.justone==7 or self.justone<0:
+                self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+                plot   (Ex, -Sx, lw=lwd,linestyle='-', color=clr)
+                plot   (Ey, -Sy, lw=lwd,linestyle='--', color=clr)
+                plot   (Ez, -Sz, lw=lwd,linestyle='-.', color=clr)
+                xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]',fontsize=fsz)
+                ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]',fontsize=fsz);  grid()
 
         # 8) sqrt(2.0)*Si, Sj ---------------------------------------------------------------------------
-        self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
-        plot   (-sqrt(2.0)*Si, -Sj, self.dot[8],  lw=lwd)
-        xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]),fontsize=fsz);  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]),fontsize=fsz);  grid()
-        axis   ('equal')
-        if draw_fl: self.sxyz_fline()
+        if self.justone==8 or self.justone<0:
+            self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
+            plot   (-sqrt(2.0)*Si, -Sj,  lw=lwd, color=clr)
+            xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]),fontsize=fsz);  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]),fontsize=fsz);  grid()
+            axis   ('equal')
+            if draw_fl: self.sxyz_fline()
 
     # Plot octahedral rosette
     # =======================
@@ -295,11 +309,10 @@ class Plotter:
 
     # Plot failure line in s1-s3, s2-s3 plane
     # =======================================
-    def s123_fline(self):
+    def s123_fline(self, s3):
         xmin, xmax = self.ax.get_xbound()
         ymin, ymax = self.ax.get_ybound()
-        s3   = 1.0
-        smax = s3+max([1.1*abs(xmin),1.1*abs(xmax)])
+        smax = s3+max([2.2*abs(xmin),2.2*abs(xmax)])
         xmin, xmax = -smax, smax
         ymin, ymax = -smax, smax
         dx  = (xmax-xmin)/self.fc_np
@@ -372,8 +385,21 @@ class Plotter:
             cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
             kmn      = (9.0-sphi**2.0)/(1.0-sphi**2.0)
             sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
-            I1,I2,I3 = char_invs(sig+sig0)
+            sig_     = sig+sig0
+            l        = sig_calc_s123(sig_)
+            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
+            I1,I2,I3 = char_invs(sig_)
             f        = I1*I2 - kmn*I3
+        elif fc_ty=='LD':
+            sphi     = sin(self.fc_phi*pi/180.0)
+            cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
+            kld      = ((3.0-sphi)**3.0)/((1.0+sphi)*((1.0-sphi)**2))
+            sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
+            sig_     = sig+sig0
+            l        = sig_calc_s123(sig_)
+            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
+            I1,I2,I3 = char_invs(sig_)
+            f        = I1**3.0 - kld*I3
         else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
 
