@@ -44,6 +44,7 @@ class Plotter:
         self.isxyz     = (-1,0)       # indices for sxyz plot, use negative numbers for principal components
         self.idx_max   = -1           # maximum index for plotting: -1 => everything
         self.devplot   = True         # plot s3-s1, s3-s2 instead of Ek, Sk
+        self.pcte      = False        # pcte in Ev x p (logp) plot?
         self.dot       = ['r-','r-','r-','r-','r-','r-','r-','r-','r-']
 
         # internal data
@@ -168,6 +169,8 @@ class Plotter:
         else:
             X    = P
             xlbl = r'$p_{%s}$'%(self.pq_ty)
+        if self.pcte:
+            for k, x in enumerate(X): X[k] = X[0]
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
         plot   (X, Ev, self.dot[4], lw=lwd)
         xlabel (xlbl,fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz);  grid()
