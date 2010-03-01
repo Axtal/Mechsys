@@ -1045,6 +1045,8 @@ inline void Generic::GenGroundSG (Array<double> const & X, Array<double> const &
 
 inline void Generic::GenGroundSG (size_t Nx, size_t Ny, double Dx, double Dy)
 {
+    if (Nx<2) throw new Fatal("Generic::GenGroundSG: Number of columns along x must be at least two. Nx=%d is invalid",Nx);
+    if (Ny<2) throw new Fatal("Generic::GenGroundSG: Number of columns along y must be at least two. Ny=%d is invalid",Ny);
     Array<double> X(Nx);
     Array<double> Y(Ny);
     for (size_t i=0; i<Nx; ++i) X[i] =  static_cast<double>(i)*Dx;

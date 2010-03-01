@@ -88,6 +88,7 @@ public:
     double         MaxNormF; ///< Max(Norm(F), Norm(Fint))
     bool           CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
     bool           InitZed;  ///< Variables were already initalized (by Initialize() through Solve, TransSolve(), or DynSolve())
+    Array<Node*>   ActNods;  ///< Active nodes
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -229,13 +230,13 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
         else throw new Fatal("Solver::Solve: Time integration scheme invalid");
 
         // update nodes to tout
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        for (size_t i=0; i<ActNods.Size(); ++i)
         {
-            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            for (size_t j=0; j<ActNods[i]->nDOF(); ++j)
             {
-                long eq = Dom.Nods[i]->EQ[j];
-                Dom.Nods[i]->U[j] = U(eq);
-                Dom.Nods[i]->F[j] = F(eq);
+                long eq = ActNods[i]->EQ[j];
+                ActNods[i]->U[j] = U(eq);
+                ActNods[i]->F[j] = F(eq);
             }
         }
 
@@ -313,13 +314,13 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
         // update nodes to tout
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        for (size_t i=0; i<ActNods.Size(); ++i)
         {
-            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            for (size_t j=0; j<ActNods[i]->nDOF(); ++j)
             {
-                long eq = Dom.Nods[i]->EQ[j];
-                Dom.Nods[i]->U[j] = U(eq);
-                Dom.Nods[i]->F[j] = F(eq);
+                long eq = ActNods[i]->EQ[j];
+                ActNods[i]->U[j] = U(eq);
+                ActNods[i]->F[j] = F(eq);
             }
         }
 
@@ -519,14 +520,19 @@ inline void Solver::Initialize (bool Transient)
     // skip if variables were already initialized and Continue flag is on
     if (InitZed && DynCont) return;
 
-    // assign equation numbers
+    // assign equation numbers and set active nodes
     NEq = 0;
+    ActNods.Resize(0);
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {
-        for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+        if (Dom.Nods[i]->NShares>0)
         {
-            Dom.Nods[i]->EQ[j] = NEq;
-            NEq++;
+            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            {
+                Dom.Nods[i]->EQ[j] = NEq;
+                NEq++;
+            }
+            ActNods.Push (Dom.Nods[i]);
         }
     }
 
@@ -619,13 +625,13 @@ inline void Solver::Initialize (bool Transient)
     for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->CalcFint (&F_int);
 
     // set variables
-    for (size_t i=0; i<Dom.Nods.Size(); ++i)
+    for (size_t i=0; i<ActNods.Size(); ++i)
     {
-        for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+        for (size_t j=0; j<ActNods[i]->nDOF(); ++j)
         {
-            long eq = Dom.Nods[i]->EQ[j];
-            U (eq)  = Dom.Nods[i]->U [j];
-            F (eq)  = Dom.Nods[i]->F [j];
+            long eq = ActNods[i]->EQ[j];
+            U (eq)  = ActNods[i]->U [j];
+            F (eq)  = ActNods[i]->F [j];
         }
     }
 
@@ -665,10 +671,10 @@ inline void Solver::_set_A_Lag ()
         long eqlag = NEq - NLag;
         for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
         {
-            Node const & nod0 = (*Dom.Nods[p->first->ID]);
+            Node const & nod0 = (*ActNods[p->first->ID]);
             for (size_t i=0; i<p->second.Size(); ++i)
             {
-                Node const & nod1 = (*Dom.Nods[p->second[i]->ID]);
+                Node const & nod1 = (*ActNods[p->second[i]->ID]);
                 for (int j=0; j<Dom.NDim; ++j)
                 {
                     long eq0 = nod0.EQ[nod0.UMap(keys[j])];
@@ -696,10 +702,10 @@ inline void Solver::_cor_F_pin ()
         long eqlag = NEq - NLag;
         for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
         {
-            Node const & nod0 = (*Dom.Nods[p->first->ID]);
+            Node const & nod0 = (*ActNods[p->first->ID]);
             for (size_t i=0; i<p->second.Size(); ++i)
             {
-                Node const & nod1 = (*Dom.Nods[p->second[i]->ID]);
+                Node const & nod1 = (*ActNods[p->second[i]->ID]);
                 for (int j=0; j<Dom.NDim; ++j)
                 {
                     long eq0 = nod0.EQ[nod0.UMap(keys[j])];

@@ -25,6 +25,7 @@ SET(TESTS
 
 SET(PROGS
     fig_06_09
+    fig_06_35
     fig_06_38
     fig_09_08
     fig_11_01

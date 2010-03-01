@@ -38,7 +38,7 @@ class Node
 {
 public:
     // Constructor
-    Node (Mesh::Vertex const & TheVert) : Vert(TheVert) {}
+    Node (Mesh::Vertex const & TheVert) : Vert(TheVert), NShares(0) {}
 
     // Methods
     void   AddDOF   (char const * StrU, char const * StrF);
@@ -46,12 +46,13 @@ public:
     void   GetState (SDPair & Sta) const;
 
     // Data
-    Mesh::Vertex const & Vert;  ///< Geometric information: ID, Tag, coordinates
-    SIPair               UMap;  ///< U keys ("ux", "uy", ...) to index (0, 1, ...) map
-    SIPair               FMap;  ///< F keys ("fx", "fy", ...) to index (0, 1, ...) map
-    Array<double>        U;     ///< Current U value. Size = num DOF
-    Array<double>        F;     ///< Current F value. Size = num DOF
-    Array<long>          EQ;    ///< Equation numbers (of each DOF)
+    Mesh::Vertex const & Vert;    ///< Geometric information: ID, Tag, coordinates
+    SIPair               UMap;    ///< U keys ("ux", "uy", ...) to index (0, 1, ...) map
+    SIPair               FMap;    ///< F keys ("fx", "fy", ...) to index (0, 1, ...) map
+    Array<double>        U;       ///< Current U value. Size = num DOF
+    Array<double>        F;       ///< Current F value. Size = num DOF
+    Array<long>          EQ;      ///< Equation numbers (of each DOF)
+    long                 NShares; ///< Number of active elements sharing this node
 };
 
 

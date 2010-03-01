@@ -70,6 +70,7 @@ public:
     virtual void GetState     (SDPair & KeysVals, int IdxIP=-1)          const {} ///< IdxIP<0 => At the centroid
     virtual void GetState     (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each integration point (IP)
     virtual void StateAtNodes (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each node (applies extrapolation)
+    virtual void Deactivate   ()                                               {} ///< Deactivate element
     virtual void Centroid     (Vec_t & X)                                const;   ///< Centroid of element
     virtual void Draw         (std::ostream & os, double MaxDist)        const;   ///< Draw element with MatPlotLib
 
@@ -103,7 +104,11 @@ inline Element::Element (int TheNDim, Mesh::Cell const & TheCell, Model const * 
 {
     // connectivity
     Con.Resize (Cell.V.Size());
-    for (size_t i=0; i<Con.Size(); ++i) Con[i] = Nodes[Cell.V[i]->ID];
+    for (size_t i=0; i<Con.Size(); ++i)
+    {
+        Con[i] = Nodes[Cell.V[i]->ID];
+        if (Active) Con[i]->NShares++;
+    }
 
     // geometry element
     if (Prp.HasKey("geom"))

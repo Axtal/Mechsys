@@ -34,25 +34,23 @@ int main(int argc, char **argv) try
 
     // generate mesh
     Mesh::Generic mesh(/*NDim*/2);
-    mesh.GenGroundSG (/*Nx*/5, /*Ny*/5);
+    mesh.GenGroundSG (/*Nx*/2, /*Ny*/6);
 
     // layer 1
-    mesh.Cells[ 8]->Tag = -2;
-    mesh.Cells[12]->Tag = -2;
+    mesh.Cells[0]->Tag = -2;
 
     // layer 2
-    mesh.Cells[ 9]->Tag = -3;
-    mesh.Cells[13]->Tag = -3;
+    mesh.Cells[1]->Tag = -3;
 
     // output
-    mesh.WriteMPY ("fig_06_38");
+    mesh.WriteMPY ("fig_06_35");
     
     /////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
     // elements properties
     double gam = 20.0;     // kN/m3
     double rho = gam/9.81; // Mg/m3
-    double K0  = 1.0;
+    double K0  = 0.5;
     Dict prps;
     prps.Set(-1, "prob geom psa  rho", PROB("Equilib"),GEOM("Quad8"),1.0, rho);
     prps.Set(-2, "prob geom psa  rho", PROB("Equilib"),GEOM("Quad8"),1.0, rho);
@@ -70,10 +68,13 @@ int main(int argc, char **argv) try
     inis.Set(-2, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
     inis.Set(-3, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.WriteVTU  ("fig_06_38_stg_0");
+    dom.WriteVTU  ("fig_06_35_stg_0");
 
-    cout << "Element # 8\n";
-    dom.Eles[8]->Deactivate();
+    cout << "Element # 0\n";
+    dom.Eles[0]->Deactivate();
+
+    cout << "\nElement # 1\n";
+    dom.Eles[1]->Deactivate();
 
     return 0;
 
@@ -94,6 +95,6 @@ int main(int argc, char **argv) try
     sol.Solve (1);
 
     // output
-    dom.WriteVTU ("fig_06_38_stg_1");
+    dom.WriteVTU ("fig_06_35_stg_1");
 }
 MECHSYS_CATCH

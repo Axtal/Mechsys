@@ -51,6 +51,7 @@ public:
     void GetState     (SDPair & KeysVals, int IdxIP=-1)      const; ///< IdxIP<0 => At centroid
     void GetState     (Array<SDPair> & Results)              const; ///< Get state (internal values: sig, eps) at each integration point (IP)
     void StateAtNodes (Array<SDPair> & Results)              const; ///< Get state (internal values: sig, eps) at each node (applies extrapolation)
+    void Deactivate   ();                                           ///< Activate element
 
     // Internal methods
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
@@ -82,6 +83,12 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
         Sta.Push (new EquilibState(NDim));
         Mdl->InitIvs (Ini, Sta[i]);
     }
+
+
+    // allocate state at centroid
+    Sta.Push (new EquilibState(NDim));
+    Mdl->InitIvs (Ini, Sta[Sta.Size()-1]);
+
 
     // set initial values
     if (Ini.HasKey("geostatic"))
@@ -554,6 +561,13 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         dFe += coef * (Btdsig);
     }
 
+
+    // update state at centroid
+    CalcB (C, GE->Rct, B, detJ, coef);
+    deps = B * dUe;
+    su.Update (deps, Sta[Sta.Size()-1], dsig);
+
+
     // add results to Fint (internal forces)
     if (F_int!=NULL) for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
 }
@@ -574,7 +588,12 @@ inline void EquilibElem::GetState (SDPair & KeysVals, int IdxIP) const
     set_to_zero (eps);
     if (IdxIP<0) // centroid
     {
-        if (false) // extrapolate, then interpolate at centroid
+        if (true) // IP of centroid
+        {
+            sig = static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Sig;
+            eps = static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Eps;
+        }
+        else if (false) // extrapolate, then interpolate at centroid
         {
             // shape func matrix
             Mat_t M, Mi;
@@ -608,7 +627,7 @@ inline void EquilibElem::GetState (SDPair & KeysVals, int IdxIP) const
                 }
             }
         }
-        else if (true)
+        else if (false)
         {
             // average values
             for (size_t i=0; i<Sta.Size(); ++i)
@@ -729,6 +748,57 @@ inline void EquilibElem::StateAtNodes (Array<SDPair> & Results) const
         Results[i].Set ("pcam", pcam);
         Results[i].Set ("qcam", qcam);
     }
+}
+
+inline void EquilibElem::Deactivate ()
+{
+    if (!Active) throw new Fatal("EquilibElem::Deactivate: Element %d is already inactive",Cell.ID);
+
+    double gAccel = 9.81;
+
+    // calc element force
+    double detJ, coef;
+    Mat_t  C, B;
+    Vec_t  F(GE->NN*NDim);
+    set_to_zero (F);
+    CoordMatrix (C);
+    size_t idx_grav = (NDim==2 ? 1 : 2);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        // internal forces
+        GE->Shape (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+        CalcB     (C, GE->IPs[i], B, detJ, coef);
+        Vec_t Btsig(trans(B)*static_cast<EquilibState const *>(Sta[i])->Sig);
+        F += coef * (Btsig);
+
+        // body forces
+        for (size_t j=0; j<GE->NN; ++j)
+            F(idx_grav+j*NDim) += coef*GE->N(j)*rho*gAccel;
+    }
+
+    /*
+    for (size_t j=0; j<GE->NN; ++j)
+    {
+        std::cout << Util::_4 << Con[j]->Vert.ID << ": ";
+        for (size_t k=0; k<NDim; ++k) std::cout << Util::_6_3 << F(k+j*NDim);
+        std::cout << std::endl;
+    }
+    */
+
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        // add to F
+        Con[i]->F[Con[i]->FMap("fx")] += F(0+i*NDim);
+        Con[i]->F[Con[i]->FMap("fy")] += F(1+i*NDim);  if (NDim==3)
+        Con[i]->F[Con[i]->FMap("fz")] += F(2+i*NDim);
+
+        // remove sharing information
+        Con[i]->NShares--;
+        if (Con[i]->NShares<0) throw new Fatal("EquilibElem::Deactivate: __internal_error__: NShares==%d must be positive",Con[i]->NShares<0);
+    }
+
+    // deactivate element
+    Active = false;
 }
 
 
