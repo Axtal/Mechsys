@@ -146,6 +146,7 @@ BPy::def("MODEL", PyMODEL);
 BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic const &, Dict const &, Dict const &, Dict const &>())
     .def("SetBCs",       &FEM::Domain::SetBCs)
     .def("Gravity",      &FEM::Domain::Gravity)
+    .def("Deactivate",   &FEM::Domain::Deactivate)
     .def("SetUVals",     &FEM::Domain::SetUVals)
     .def("SetOutNods",   &FEM::Domain::PySetOutNods)
     .def("SetOutEles",   &FEM::Domain::PySetOutEles)
@@ -190,9 +191,6 @@ BPy::class_<DEM::Domain>("DEM_Domain")
 BPy::class_<DEM::TriaxialDomain, BPy::bases<DEM::Domain> >("DEM_TTTDomain")
     .def("SetTxTest", &DEM::TriaxialDomain::PySetTxTest)
     .def("ResetEps",  &DEM::TriaxialDomain::ResetEps)
-    .def_readwrite("Thf",     &DEM::TriaxialDomain::Thf)
-    .def_readwrite("Pf",      &DEM::TriaxialDomain::Pf)
-    .def_readwrite("IsPcte",  &DEM::TriaxialDomain::IsPcte)
     ;
 
 //BPy::class_<Particle>("Particle")

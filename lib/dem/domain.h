@@ -173,12 +173,12 @@ public:
     Vec3_t        L0;         ///< Initial length of the packing
 
 #ifdef USE_BOOST_PYTHON
-    void PySetTxTest (BPy::tuple const & Sigf, BPy::tuple const & pEps, BPy::tuple const & dEpsdt)
+    void PySetTxTest (BPy::tuple const & Sigf, BPy::tuple const & pEps, BPy::tuple const & dEpsdt, bool IsFailure, double theta, double alpha)
     {
         Vec3_t  sigf   (Tup2Vec3(Sigf));
         bVec3_t peps   (Tup2Vec3(pEps));
         Vec3_t  depsdt (Tup2Vec3(dEpsdt));
-        SetTxTest (sigf, peps, depsdt);
+        SetTxTest (sigf, peps, depsdt, IsFailure, theta, alpha);
     }
 #endif
 };
