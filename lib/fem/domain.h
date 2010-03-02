@@ -61,6 +61,7 @@ public:
     void SetBCs       (Dict const & BCs);
     void ClrBCs       ();
     void Gravity      ();                                                   ///< Apply gravity
+    void Deactivate   (int EleTag);                                         ///< Deactivate all elements with EleTag
     void SetUVals     (SDPair const & UVals);                               ///< Set U values
     void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set nodes for output
     void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set elements for output
@@ -277,6 +278,25 @@ inline void Domain::Gravity ()
             else throw new Fatal("Domain::Gravity: Multiplier function with tag=%d was not found in MFuncs database",tag);
         }
         Eles[i]->Gravity (pF, calcm, gAccel);
+    }
+}
+
+inline void Domain::Deactivate (int EleTag)
+{
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        int tag = Eles[i]->Cell.Tag;
+        if (tag==EleTag)
+        {
+            pCalcM calcm = &Multiplier;
+            if (Prps(tag).HasKey("mfunc"))
+            {
+                MDatabase_t::const_iterator p = MFuncs.find(tag);
+                if (p!=MFuncs.end()) calcm = p->second;
+                else throw new Fatal("Domain::Deactivate: Multiplier function with tag=%d was not found in MFuncs database",tag);
+            }
+            Eles[i]->Deactivate (pF, calcm, gAccel, pU);
+        }
     }
 }
 

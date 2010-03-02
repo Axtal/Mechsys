@@ -68,27 +68,28 @@ public:
     bool ResidOK      () const;                                                                 ///< Check if the residual is OK
 
     // Data (read-only)
-    Domain const & Dom;      ///< Domain
-    pOutFun        OutFun;   ///< Output function (called during output)
-    void         * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
-    pOutFun        DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
-    void         * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
-    double         Time;     ///< Current time (t)
-    size_t         Inc;      ///< Current increment
-    size_t         IdxOut;   ///< Counter for generating VTU files in DynSolve
-    size_t         Stp;      ///< Current (sub) step
-    size_t         It;       ///< Current iteration
-    size_t         NEq;      ///< Total number of equations (DOFs)
-    size_t         NLag;     ///< Number of Lagrange multipliers
-    Array<long>    uEQ;      ///< unknown equations
-    Array<long>    pEQ;      ///< prescribed equations
-    Array<bool>    pU;       ///< prescribed U
-    double         NormR;    ///< Euclidian norm of residual (R)
-    double         TolR;     ///< Tolerance for the norm of residual
-    double         MaxNormF; ///< Max(Norm(F), Norm(Fint))
-    bool           CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
-    bool           InitZed;  ///< Variables were already initalized (by Initialize() through Solve, TransSolve(), or DynSolve())
-    Array<Node*>   ActNods;  ///< Active nodes
+    Domain  const & Dom;      ///< Domain
+    pOutFun         OutFun;   ///< Output function (called during output)
+    void          * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
+    pOutFun         DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
+    void          * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
+    double          Time;     ///< Current time (t)
+    size_t          Inc;      ///< Current increment
+    size_t          IdxOut;   ///< Counter for generating VTU files in DynSolve
+    size_t          Stp;      ///< Current (sub) step
+    size_t          It;       ///< Current iteration
+    size_t          NEq;      ///< Total number of equations (DOFs)
+    size_t          NLag;     ///< Number of Lagrange multipliers
+    Array<long>     uEQ;      ///< unknown equations
+    Array<long>     pEQ;      ///< prescribed equations
+    Array<bool>     pU;       ///< prescribed U
+    double          NormR;    ///< Euclidian norm of residual (R)
+    double          TolR;     ///< Tolerance for the norm of residual
+    double          MaxNormF; ///< Max(Norm(F), Norm(Fint))
+    bool            CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
+    bool            InitZed;  ///< Variables were already initalized (by Initialize() through Solve, TransSolve(), or DynSolve())
+    Array<Node*>    ActNods;  ///< Active nodes
+    Array<Element*> ActEles;  ///< Active elements
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -354,12 +355,12 @@ inline void Solver::AssembleKA ()
     K12.ResetTop();
     K21.ResetTop();
     K22.ResetTop();
-    for (size_t k=0; k<Dom.Eles.Size(); ++k)
+    for (size_t k=0; k<ActEles.Size(); ++k)
     {
         Mat_t         K;   // K matrix
         Array<size_t> loc; // location array
-        Dom.Eles[k]->CalcK  (K);
-        Dom.Eles[k]->GetLoc (loc);
+        ActEles[k]->CalcK  (K);
+        ActEles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         {
             for (size_t j=0; j<loc.Size(); ++j)
@@ -405,13 +406,13 @@ inline void Solver::AssembleKMA (double C1, double C2)
     M21.ResetTop();
     M22.ResetTop();
     A11.ResetTop(); // reset top (position to insert new values) => clear triplet
-    for (size_t k=0; k<Dom.Eles.Size(); ++k)
+    for (size_t k=0; k<ActEles.Size(); ++k)
     {
         Mat_t         K, M; // matrices
         Array<size_t> loc;  // location array
-        Dom.Eles[k]->CalcK  (K);
-        Dom.Eles[k]->CalcM  (M);
-        Dom.Eles[k]->GetLoc (loc);
+        ActEles[k]->CalcK  (K);
+        ActEles[k]->CalcM  (M);
+        ActEles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         {
             for (size_t j=0; j<loc.Size(); ++j)
@@ -444,20 +445,20 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
     M21.ResetTop();
     M22.ResetTop();
     A11.ResetTop(); // reset top (position to insert new values) => clear triplet
-    for (size_t k=0; k<Dom.Eles.Size(); ++k)
+    for (size_t k=0; k<ActEles.Size(); ++k)
     {
         // matrices
         Mat_t M, C, K;
-        if      (DampTy==HMCoup_t) Dom.Eles[k]->Matrices (M, C, K);
+        if      (DampTy==HMCoup_t) ActEles[k]->Matrices (M, C, K);
         else if (DampTy==Rayleigh_t)
         {
-            Dom.Eles[k]->CalcK (K);
-            Dom.Eles[k]->CalcM (M);
+            ActEles[k]->CalcK (K);
+            ActEles[k]->CalcM (M);
             C = DampAm*M + DampAk*K;
         }
         // set K, C, M, and A matrices
         Array<size_t> loc;
-        Dom.Eles[k]->GetLoc (loc);
+        ActEles[k]->GetLoc (loc);
         for (size_t i=0; i<loc.Size(); ++i)
         {
             for (size_t j=0; j<loc.Size(); ++j)
@@ -568,22 +569,27 @@ inline void Solver::Initialize (bool Transient)
     NEq += NLag;
     size_t nzlag = NLag * 2 * Dom.NDim; // number of extra non-zero values due to Lagrange multipliers
 
-    // find total number of non-zero entries, including duplicates
+    // find total number of non-zero entries, including duplicates, and assign active elements
     size_t K11_size = 0;
     size_t K12_size = 0;
     size_t K21_size = 0;
     size_t K22_size = 0;
+    ActEles.Resize(0);
     for (size_t k=0; k<Dom.Eles.Size(); ++k)
     {
-        Array<size_t> loc; // location array
-        Dom.Eles[k]->GetLoc (loc);
-        for (size_t i=0; i<loc.Size(); ++i)
-        for (size_t j=0; j<loc.Size(); ++j)
+        if (Dom.Eles[k]->Active)
         {
-                 if (!pU[loc[i]] && !pU[loc[j]]) K11_size++;
-            else if (!pU[loc[i]] &&  pU[loc[j]]) K12_size++;
-            else if ( pU[loc[i]] && !pU[loc[j]]) K21_size++;
-            else if ( pU[loc[i]] &&  pU[loc[j]]) K22_size++;
+            Array<size_t> loc; // location array
+            Dom.Eles[k]->GetLoc (loc);
+            for (size_t i=0; i<loc.Size(); ++i)
+            for (size_t j=0; j<loc.Size(); ++j)
+            {
+                     if (!pU[loc[i]] && !pU[loc[j]]) K11_size++;
+                else if (!pU[loc[i]] &&  pU[loc[j]]) K12_size++;
+                else if ( pU[loc[i]] && !pU[loc[j]]) K21_size++;
+                else if ( pU[loc[i]] &&  pU[loc[j]]) K22_size++;
+            }
+            ActEles.Push (Dom.Eles[k]);
         }
     }
 
@@ -622,7 +628,7 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // initialize F_int
-    for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->CalcFint (&F_int);
+    for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->CalcFint (&F_int);
 
     // set variables
     for (size_t i=0; i<ActNods.Size(); ++i)
@@ -759,7 +765,7 @@ inline void Solver::_cor_resid (Vec_t & dU)
         UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
 
         // update elements and displacements
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
         U += dU;
 
         // residual
@@ -784,7 +790,7 @@ inline void Solver::_FE_update (double tf)
         TgIncs (dt, dU, dF);
 
         // update elements
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
 
         // update U, F, and Time
         U    += dU;
@@ -816,14 +822,14 @@ inline void Solver::_ME_update (double tf)
         if (T>=1.0) break;
 
         // backup state of elements
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->BackupState ();
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->BackupState ();
 
         // time increment
         double dt = Dt*dT;
 
         // FE state
         TgIncs (dt, dU_fe, dF_fe);
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_fe);
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU_fe);
 
         // ME state
         TgIncs (dt, dU_tm, dF_tm);
@@ -844,12 +850,12 @@ inline void Solver::_ME_update (double tf)
         double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
 
         // restore state of elements
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->RestoreState ();
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->RestoreState ();
 
         // update
         if (error<STOL)
         {
-            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU_me, &F_int);
+            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU_me, &F_int);
             T    += dT;
             U     = U_me;
             F     = F_me;
@@ -884,7 +890,7 @@ inline void Solver::_NR_update (double tf)
         TgIncs (dt, dU, dF);
 
         // update elements
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
 
         // update U, F, and Time
         U    += dU;
@@ -928,7 +934,7 @@ inline void Solver::_SS22_update (double tf, double dt)
     while (Time<tf)
     {
         /*
-        EquilibElem const & ele = (*static_cast<EquilibElem const *>(Dom.Eles[4]));
+        EquilibElem const & ele = (*static_cast<EquilibElem const *>(ActEles[4]));
         std::cout << ele << std::endl;
         */
 
@@ -954,7 +960,7 @@ inline void Solver::_SS22_update (double tf, double dt)
 
         // update elements and displacements
         dU = Unew - U;
-        for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
         U = Unew;
 
         // clear internal forces related to supports
@@ -1010,7 +1016,7 @@ inline void Solver::_GN22_update (double tf, double dt)
             UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
 
             // update elements
-            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
             for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
@@ -1079,7 +1085,7 @@ inline void Solver::_GNHMCoup_update (double tf, double dt)
             UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
 
             // update elements
-            for (size_t i=0; i<Dom.Eles.Size(); ++i) Dom.Eles[i]->UpdateState (dU, &F_int);
+            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
             for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state

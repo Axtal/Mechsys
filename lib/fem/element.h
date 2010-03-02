@@ -53,13 +53,15 @@ public:
     ~Element ();
 
     // Methods
-    virtual void GetLoc       (Array<size_t> & Loc)                      const;
-    virtual void BackupState  ()                                         const;
-    virtual void RestoreState ()                                         const;
+    virtual void GetLoc       (Array<size_t> & Loc)                      const;   ///< Get location vector for mounting K/M matrices
+    virtual void BackupState  ()                                         const;   ///< Backup element state
+    virtual void RestoreState ()                                         const;   ///< Restore element state
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
-                               NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM) {}
-    virtual void ClrBCs       ()                                           {}
-    virtual void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel) {}
+                               NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM) {}     ///< Set boundary conditions
+    virtual void ClrBCs       ()                                           {}     ///< Clear boundary conditions
+    virtual void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel) {}     ///< Apply gravity (body forces)
+    virtual void Deactivate   (NodBCs_t & pF, pCalcM CalcM, double gAccel,
+                               NodBCs_t & pU)                              {}     ///< Deactivate element
     virtual void CalcFint     (Vec_t * F_int=NULL)                       const { if (F_int!=NULL) for (size_t i=0; i<F_int->size(); ++i) (*F_int)(i) = 0.0; }
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
     virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }
@@ -70,7 +72,6 @@ public:
     virtual void GetState     (SDPair & KeysVals, int IdxIP=-1)          const {} ///< IdxIP<0 => At the centroid
     virtual void GetState     (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each integration point (IP)
     virtual void StateAtNodes (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each node (applies extrapolation)
-    virtual void Deactivate   ()                                               {} ///< Deactivate element
     virtual void Centroid     (Vec_t & X)                                const;   ///< Centroid of element
     virtual void Draw         (std::ostream & os, double MaxDist)        const;   ///< Draw element with MatPlotLib
 

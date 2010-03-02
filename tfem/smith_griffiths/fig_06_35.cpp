@@ -70,14 +70,6 @@ int main(int argc, char **argv) try
     FEM::Domain dom(mesh, prps, mdls, inis);
     dom.WriteVTU  ("fig_06_35_stg_0");
 
-    cout << "Element # 0\n";
-    dom.Eles[0]->Deactivate();
-
-    cout << "\nElement # 1\n";
-    dom.Eles[1]->Deactivate();
-
-    return 0;
-
     // solver
     FEM::Solver sol(dom);
     //sol.Scheme = FEM::Solver::FE_t;
@@ -90,6 +82,9 @@ int main(int argc, char **argv) try
     bcs.Set(-20, "ux",     0.0);
     bcs.Set(-30, "ux uy",  0.0, 0.0);
     dom.SetBCs (bcs);
+    dom.Deactivate(-2);
+    cout << endl;
+    dom.Deactivate(-3);
 
     // solve
     sol.Solve (1);
