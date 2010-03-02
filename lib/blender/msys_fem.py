@@ -32,8 +32,8 @@ def get_act_deact(obj, stg):
     if obj.properties[stg].has_key('eatts'):
         for k, v in obj.properties[stg]['eatts'].iteritems():
             tag             = int(v[0])
-            activate  [tag] = int(v[5])
-            deactivate[tag] = int(v[6])
+            activate  [tag] = int(v[7])
+            deactivate[tag] = int(v[8])
     return activate, deactivate
 
 
@@ -335,13 +335,8 @@ def gen_script():
             # run only if stage is active
             if stage['act']:
 
-                # activate and deactivate elements
+                # stage
                 txt.write ('\n# stage # %d ==============================================================\n'%num)
-                #elem_act, elem_deact = get_act_deact (obj,stg)
-                #for k, v in elem_act.iteritems():
-                    #if v: txt.write ('dom.activate (%d)\n'%(k))
-                #for k, v in elem_deact.iteritems():
-                    #if v: txt.write ('dom.deactivate (%d)\n'%(k))
 
                 # boundary conditions
                 txt.write ('\n# boundary conditions\n')
@@ -351,6 +346,13 @@ def gen_script():
                 for tag, ebc in ebrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+ebc.__str__()+')\n')
                 for tag, fbc in fbrys.iteritems(): txt.write ('bcs.Set ('+str(tag)+', '+fbc.__str__()+')\n')
                 txt.write ('dom.SetBCs (bcs)\n')
+
+                # activate and deactivate elements
+                elem_act, elem_deact = get_act_deact (dat.obj, stage['stg'])
+                for k, v in elem_act.iteritems():
+                    if v: txt.write ('dom.Activate (%d)\n'%(k))
+                for k, v in elem_deact.iteritems():
+                    if v: txt.write ('dom.Deactivate (%d)\n'%(k))
 
                 # apply body forces
                 if stage['abf']:
@@ -428,6 +430,13 @@ def run_simulation(running, fatal):
                 for tag, ebc in ebrys.iteritems(): bcs.Set (tag, ebc)
                 for tag, fbc in fbrys.iteritems(): bcs.Set (tag, fbc)
                 dom.SetBCs (bcs)
+
+                # activate and deactivate elements
+                elem_act, elem_deact = get_act_deact (dat.obj, stage['stg'])
+                for k, v in elem_act.iteritems():
+                    if v: dom.Activate (k)
+                for k, v in elem_deact.iteritems():
+                    if v: dom.Deactivate (k)
 
                 # apply body forces
                 if stage['abf']: dom.Gravity ()

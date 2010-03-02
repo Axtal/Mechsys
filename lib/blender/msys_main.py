@@ -1044,7 +1044,7 @@ def gui():
 
         r -= srg
         Draw.Toggle     ('C++',          EVT_NONE,            c,     r,  40, rh, d['smsh_cpp'], 'Generate C++ script', cb_smsh_cpp)
-        Draw.PushButton ('Write Script', EVT_MESH_GENSTRUS,   c+40,  r,  90, rh, 'Create script for structured mesh generation')
+        Draw.PushButton ('Write Script', EVT_MESH_GENSTRUS,   c+40,  r,  80, rh, 'Create script for structured mesh generation')
         Draw.PushButton ('Generate',     EVT_MESH_GENSTRU,    c+120, r,  90, rh, 'Generated structured mesh')
         Draw.PushButton ('ParaView',     EVT_MESH_PARAVIEW_S, c+210, r,  90, rh, 'View structured mesh in ParaView')
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r)

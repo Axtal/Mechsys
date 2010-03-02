@@ -353,7 +353,7 @@ def new_eatt_props():  return [ -1,    # 0: tag
                                  1.0,  # 5: h (thickness)
                                  1,    # 6: active
                                  0,    # 7: activate?
-                                 0 ]   # 8:deactivate?
+                                 0 ]   # 8: deactivate?
 
 
 # ============================================================================== Object Properties
