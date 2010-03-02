@@ -153,6 +153,9 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
 
 inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
+    // check
+    if (!Active) throw new Fatal("EquilibElem::SetBCs: Element %d is inactive",Cell.ID);
+
     bool has_bx  = BCs.HasKey("bx");  // x component of body force
     bool has_by  = BCs.HasKey("by");  // y component of body force
     bool has_bz  = BCs.HasKey("bz");  // z component of body force
@@ -317,6 +320,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
 
 inline void EquilibElem::Gravity (NodBCs_t & pF, pCalcM CalcM, double gAccel)
 {
+    // check
+    if (!Active) throw new Fatal("EquilibElem::Gravity: Element %d is inactive",Cell.ID);
+
     // matrix of coordinates of nodes
     Mat_t C;
     CoordMatrix (C);

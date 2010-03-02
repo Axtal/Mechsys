@@ -87,7 +87,6 @@ public:
     double          TolR;     ///< Tolerance for the norm of residual
     double          MaxNormF; ///< Max(Norm(F), Norm(Fint))
     bool            CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
-    bool            InitZed;  ///< Variables were already initalized (by Initialize() through Solve, TransSolve(), or DynSolve())
     Array<Node*>    ActNods;  ///< Active nodes
     Array<Element*> ActEles;  ///< Active elements
 
@@ -123,7 +122,6 @@ public:
     double    DampAk;  ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
     double    DynTh1;  ///< Dynamic coefficient Theta 1
     double    DynTh2;  ///< Dynamic coefficient Theta 2
-    bool      DynCont; ///< Continue dynamic simulation (after DySolve was called once)
 
 private:
     void _set_A_Lag       ();                     ///< Set A matrix due to Lagrange multipliers
@@ -156,7 +154,6 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       It      (0),
       TolR    (1.0e-7),
       CalcWork(false),
-      InitZed (false),
       Scheme  (ME_t),
       nSS     (1),
       STOL    (1.0e-5),
@@ -174,8 +171,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       DampAm  (0.005),
       DampAk  (0.5),
       DynTh1  (0.5),
-      DynTh2  (0.5),
-      DynCont (true)
+      DynTh2  (0.5)
 {
 }
 
@@ -518,9 +514,6 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 
 inline void Solver::Initialize (bool Transient)
 {
-    // skip if variables were already initialized and Continue flag is on
-    if (InitZed && DynCont) return;
-
     // assign equation numbers and set active nodes
     NEq = 0;
     ActNods.Resize(0);
@@ -643,9 +636,6 @@ inline void Solver::Initialize (bool Transient)
 
     // calc residual
     _calc_resid ();
-
-    // set initialized flag
-    InitZed = true;
 }
 
 inline void Solver::SetScheme (char const * StrScheme)

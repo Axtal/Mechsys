@@ -177,7 +177,7 @@ inline void Domain::SetBCs (Dict const & BCs)
             if (tag<0)
             {
                 size_t eid = Msh.TgdCells[i]->ID;
-                if (BCs.HasKey(tag))
+                if (BCs.HasKey(tag) && Eles[eid]->Active)
                 {
                     pCalcM calcm = &Multiplier;
                     if (BCs(tag).HasKey("mfunc")) // callback specified
@@ -200,7 +200,7 @@ inline void Domain::SetBCs (Dict const & BCs)
         if (tag<0)
         {
             size_t nid = Msh.TgdVerts[i]->ID;
-            if (BCs.HasKey(tag))
+            if (BCs.HasKey(tag) && Nods[nid]->NShares>0)
             {
                 pCalcM calcm = &Multiplier;
                 if (BCs(tag).HasKey("mfunc")) // callback specified
@@ -269,15 +269,18 @@ inline void Domain::Gravity ()
 {
     for (size_t i=0; i<Eles.Size(); ++i)
     {
-        int tag = Eles[i]->Cell.Tag;
-        pCalcM calcm = &Multiplier;
-        if (Prps(tag).HasKey("mfunc"))
+        if (Eles[i]->Active)
         {
-            MDatabase_t::const_iterator p = MFuncs.find(tag);
-            if (p!=MFuncs.end()) calcm = p->second;
-            else throw new Fatal("Domain::Gravity: Multiplier function with tag=%d was not found in MFuncs database",tag);
+            int tag = Eles[i]->Cell.Tag;
+            pCalcM calcm = &Multiplier;
+            if (Prps(tag).HasKey("mfunc"))
+            {
+                MDatabase_t::const_iterator p = MFuncs.find(tag);
+                if (p!=MFuncs.end()) calcm = p->second;
+                else throw new Fatal("Domain::Gravity: Multiplier function with tag=%d was not found in MFuncs database",tag);
+            }
+            Eles[i]->Gravity (pF, calcm, gAccel);
         }
-        Eles[i]->Gravity (pF, calcm, gAccel);
     }
 }
 
@@ -736,10 +739,9 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef) const
 inline void Domain::WriteVTU (char const * FNKey) const
 {
     // data
-    String fn(FNKey); fn.append(".vtu");
-    std::ostringstream oss;
-    size_t nn = Nods.Size(); // number of nodes
-    size_t ne = Eles.Size(); // number of elements
+    size_t nn     = Nods.Size(); // number of nodes
+    size_t ne     = Eles.Size(); // number of elements
+    size_t ne_act = 0;           // number of active elements
 
     // constants
     size_t          nimax = 40;        // number of integers in a line
@@ -755,29 +757,31 @@ inline void Domain::WriteVTU (char const * FNKey) const
     Array<String> ele_keys;
     for (size_t i=0; i<nn; ++i)
     {
-        for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
+        if (Nods[i]->NShares>0)
         {
-            if (nod_keys.Find(Nods[i]->UMap.Keys[j])<0) nod_keys.Push (Nods[i]->UMap.Keys[j]);
+            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
+            {
+                if (nod_keys.Find(Nods[i]->UMap.Keys[j])<0) nod_keys.Push (Nods[i]->UMap.Keys[j]);
+            }
+            if (Nods[i]->UMap.HasKey("ux") || Nods[i]->UMap.HasKey("uy") || Nods[i]->UMap.HasKey("uz")) nod_displacements = true;
+            if (Nods[i]->UMap.HasKey("vx") || Nods[i]->UMap.HasKey("vy") || Nods[i]->UMap.HasKey("vz")) nod_velocities    = true;
         }
-        if (Nods[i]->UMap.HasKey("ux") || Nods[i]->UMap.HasKey("uy") || Nods[i]->UMap.HasKey("uz")) nod_displacements = true;
-        if (Nods[i]->UMap.HasKey("vx") || Nods[i]->UMap.HasKey("vy") || Nods[i]->UMap.HasKey("vz")) nod_velocities    = true;
     }
     for (size_t i=0; i<ne; ++i)
     {
-        Array<String> keys;
-        Eles[i]->StateKeys (keys);
-        for (size_t j=0; j<keys.Size(); ++j)
+        if (Eles[i]->Active)
         {
-            if (ele_keys.Find(keys[j])<0) ele_keys.Push (keys[j]);
+            Array<String> keys;
+            Eles[i]->StateKeys (keys);
+            for (size_t j=0; j<keys.Size(); ++j)
+            {
+                if (ele_keys.Find(keys[j])<0) ele_keys.Push (keys[j]);
+            }
+            if (keys.Find("vx")>=0 || keys.Find("vy")>=0 || keys.Find("vz")>=0) ele_velocities = true;
+            if (keys.Find("gx")>=0 || keys.Find("gy")>=0 || keys.Find("gz")>=0) ele_gradients  = true;
+            ne_act++;
         }
-        if (keys.Find("vx")>=0 || keys.Find("vy")>=0 || keys.Find("vz")>=0) ele_velocities = true;
-        if (keys.Find("gx")>=0 || keys.Find("gy")>=0 || keys.Find("gz")>=0) ele_gradients  = true;
     }
-    //std::cout << "nod_keys          = " << nod_keys          << std::endl;
-    //std::cout << "ele_keys          = " << ele_keys          << std::endl;
-    //std::cout << "nod_displacements = " << nod_displacements << std::endl;
-    //std::cout << "nod_velocities    = " << nod_velocities    << std::endl;
-    //std::cout << "ele_velocities    = " << ele_velocities    << std::endl;
 
     // extrapolate data
     size_t nreskeys = ele_keys.Size(); // number of results keys
@@ -787,27 +791,31 @@ inline void Domain::WriteVTU (char const * FNKey) const
     set_to_zero (nod_count);
     for (size_t i=0; i<ne; ++i)
     {
-        Array<SDPair> loc_res; // local results: size==number of nodes in element
-        Eles[i]->StateAtNodes (loc_res);
-        for (size_t j=0; j<nreskeys; ++j)
+        if (Eles[i]->Active)
         {
-            if (loc_res[0].HasKey(ele_keys[j]))
+            Array<SDPair> loc_res; // local results: size==number of nodes in element
+            Eles[i]->StateAtNodes (loc_res);
+            for (size_t j=0; j<nreskeys; ++j)
             {
-                for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
+                if (loc_res[0].HasKey(ele_keys[j]))
                 {
-                    size_t vid = Eles[i]->Con[k]->Vert.ID;
-                    nod_results(vid, j) += loc_res[k](ele_keys[j]);
-                    nod_count  (vid, j) += 1.0;
+                    for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
+                    {
+                        size_t vid = Eles[i]->Con[k]->Vert.ID;
+                        nod_results(vid, j) += loc_res[k](ele_keys[j]);
+                        nod_count  (vid, j) += 1.0;
+                    }
                 }
             }
         }
     }
 
     // header
+    std::ostringstream oss;
     oss << "<?xml version=\"1.0\"?>\n";
     oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     oss << "  <UnstructuredGrid>\n";
-    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << ne << "\">\n";
+    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << ne_act << "\">\n";
 
     // nodes: coordinates
     oss << "      <Points>\n";
@@ -830,10 +838,13 @@ inline void Domain::WriteVTU (char const * FNKey) const
     k = 0; oss << "        ";
     for (size_t i=0; i<ne; ++i)
     {
-        oss << "  ";
-        for (size_t j=0; j<Eles[i]->Con.Size(); ++j) oss << Eles[i]->Con[j]->Vert.ID << " ";
-        k++;
-        VTU_NEWLINE (i,k,ne,nimax/Eles[i]->Con.Size(),oss);
+        if (Eles[i]->Active)
+        {
+            oss << "  ";
+            for (size_t j=0; j<Eles[i]->Con.Size(); ++j) oss << Eles[i]->Con[j]->Vert.ID << " ";
+            k++;
+            VTU_NEWLINE (i,k,ne,nimax/Eles[i]->Con.Size(),oss);
+        }
     }
     oss << "        </DataArray>\n";
     oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
@@ -841,20 +852,26 @@ inline void Domain::WriteVTU (char const * FNKey) const
     size_t offset = 0;
     for (size_t i=0; i<ne; ++i)
     {
-        offset += Eles[i]->Con.Size();
-        oss << (k==0?"  ":" ") << offset;
-        k++;
-        VTU_NEWLINE (i,k,ne,nimax,oss);
+        if (Eles[i]->Active)
+        {
+            offset += Eles[i]->Con.Size();
+            oss << (k==0?"  ":" ") << offset;
+            k++;
+            VTU_NEWLINE (i,k,ne,nimax,oss);
+        }
     }
     oss << "        </DataArray>\n";
     oss << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     for (size_t i=0; i<ne; ++i)
     {
-        if (NDim==2) oss << (k==0?"  ":" ") << NVertsToVTKCell2D[Eles[i]->Con.Size()];
-        else         oss << (k==0?"  ":" ") << NVertsToVTKCell3D[Eles[i]->Con.Size()];
-        k++;
-        VTU_NEWLINE (i,k,ne,nimax,oss);
+        if (Eles[i]->Active)
+        {
+            if (NDim==2) oss << (k==0?"  ":" ") << NVertsToVTKCell2D[Eles[i]->Con.Size()];
+            else         oss << (k==0?"  ":" ") << NVertsToVTKCell3D[Eles[i]->Con.Size()];
+            k++;
+            VTU_NEWLINE (i,k,ne,nimax,oss);
+        }
     }
     oss << "        </DataArray>\n";
     oss << "      </Cells>\n";
@@ -869,7 +886,8 @@ inline void Domain::WriteVTU (char const * FNKey) const
             k = 0; oss << "        ";
             for (size_t j=0; j<nn; ++j)
             {
-                oss << (k==0?"  ":" ") << Nods[j]->U[Nods[j]->UMap(nod_keys[i])];
+                double val = (Nods[j]->NShares>0 ? Nods[j]->U[Nods[j]->UMap(nod_keys[i])] : 0.0);
+                oss << (k==0?"  ":" ") << val;
                 k++;
                 VTU_NEWLINE (j,k,nn,nfmax-1,oss);
             }
@@ -882,9 +900,18 @@ inline void Domain::WriteVTU (char const * FNKey) const
         k = 0; oss << "        ";
         for (size_t i=0; i<nn; ++i)
         {
-            oss << "  " << nsflo <<          Nods[i]->U[Nods[i]->UMap("ux")] << " ";
-            oss <<         nsflo <<          Nods[i]->U[Nods[i]->UMap("uy")] << " ";
-            oss <<         nsflo << (NDim==3?Nods[i]->U[Nods[i]->UMap("uz")]:0.0);
+            if (Nods[i]->NShares>0)
+            {
+                oss << "  " << nsflo <<          Nods[i]->U[Nods[i]->UMap("ux")] << " ";
+                oss <<         nsflo <<          Nods[i]->U[Nods[i]->UMap("uy")] << " ";
+                oss <<         nsflo << (NDim==3?Nods[i]->U[Nods[i]->UMap("uz")]:0.0);
+            }
+            else
+            {
+                oss << "  " << nsflo << 0.0 << " ";
+                oss <<         nsflo << 0.0 << " ";
+                oss <<         nsflo << 0.0;
+            }
             k++;
             VTU_NEWLINE (i,k,nn,nfmax/3-1,oss);
         }
@@ -905,66 +932,13 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
     oss << "      </PointData>\n";
 
-    // data -- elements
-    oss << "      <CellData Scalars=\"cell_scalars\">\n";
-    for (size_t i=0; i<ele_keys.Size(); ++i)
-    {
-        if (!(ele_keys[i]=="vx" || ele_keys[i]=="vy" || ele_keys[i]=="vz") &&
-            !(ele_keys[i]=="gx" || ele_keys[i]=="gy" || ele_keys[i]=="gz"))
-        {
-            oss << "        <DataArray type=\"Float32\" Name=\"" << ele_keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-            k = 0; oss << "        ";
-            for (size_t j=0; j<ne; ++j)
-            {
-                SDPair dat;
-                Eles[j]->GetState (dat);
-                oss << (k==0?"  ":" ") << (dat.HasKey(ele_keys[i]) ? dat(ele_keys[i]) : 0.0);
-                k++;
-                VTU_NEWLINE (j,k,ne,nfmax-1,oss);
-            }
-            oss << "        </DataArray>\n";
-        }
-    }
-    if (ele_velocities)
-    {
-        oss << "        <DataArray type=\"Float32\" Name=\"" << "v" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-        k = 0; oss << "        ";
-        for (size_t i=0; i<ne; ++i)
-        {
-            SDPair dat;
-            Eles[i]->GetState (dat);
-            oss << "  " << nsflo <<          dat("vx") << " ";
-            oss <<         nsflo <<          dat("vy") << " ";
-            oss <<         nsflo << (NDim==3?dat("vz"):0.0);
-            k++;
-            VTU_NEWLINE (i,k,ne,nfmax/3-1,oss);
-        }
-        oss << "        </DataArray>\n";
-    }
-    if (ele_gradients)
-    {
-        oss << "        <DataArray type=\"Float32\" Name=\"" << "g" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-        k = 0; oss << "        ";
-        for (size_t i=0; i<ne; ++i)
-        {
-            SDPair dat;
-            Eles[i]->GetState (dat);
-            oss << "  " << nsflo <<          dat("gx") << " ";
-            oss <<         nsflo <<          dat("gy") << " ";
-            oss <<         nsflo << (NDim==3?dat("gz"):0.0);
-            k++;
-            VTU_NEWLINE (i,k,ne,nfmax/3-1,oss);
-        }
-        oss << "        </DataArray>\n";
-    }
-    oss << "      </CellData>\n";
-
     // Bottom
     oss << "    </Piece>\n";
     oss << "  </UnstructuredGrid>\n";
     oss << "</VTKFile>" << std::endl;
 
     // Write to file
+    String fn(FNKey); fn.append(".vtu");
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
