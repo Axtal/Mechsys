@@ -26,6 +26,8 @@ SET(EXES
   test_voro01
   test_voro02
   test_voro03
+  test_read
+  test_write
   cylinder_test
   figure)
 
