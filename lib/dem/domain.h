@@ -1071,10 +1071,70 @@ inline void Domain::Save (char const * FileKey)
         group_id = H5Gcreate(file_id, par.CStr(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 
-        // Storing the spheroradius
+        // Storing some scalar variables
         double dat[1];
         dat[0] = Particles[i]->R;
         H5LTmake_dataset_double(group_id,"SR",1,dims,dat);
+        dat[0] = Particles[i]->rho;
+        H5LTmake_dataset_double(group_id,"Rho",1,dims,dat);
+        dat[0] = Particles[i]->m;
+        H5LTmake_dataset_double(group_id,"m",1,dims,dat);
+        dat[0] = Particles[i]->V;
+        H5LTmake_dataset_double(group_id,"V",1,dims,dat);
+        dat[0] = Particles[i]->Diam;
+        H5LTmake_dataset_double(group_id,"Diam",1,dims,dat);
+        dat[0] = Particles[i]->Dmax;
+        H5LTmake_dataset_double(group_id,"Dmax",1,dims,dat);
+
+        int tag[1];
+        tag[0] = Particles[i]->Tag;
+        H5LTmake_dataset_int(group_id,"Tag",1,dims,tag);
+
+        // Storing vectorial variables
+        double cd[3];
+        hsize_t dd[1];
+        dd[0] = 3;
+
+        cd[0]=Particles[i]->x(0);
+        cd[1]=Particles[i]->x(1);
+        cd[2]=Particles[i]->x(2);
+        H5LTmake_dataset_double(group_id,"x",1,dd,cd);
+
+        cd[0]=Particles[i]->xb(0);
+        cd[1]=Particles[i]->xb(1);
+        cd[2]=Particles[i]->xb(2);
+        H5LTmake_dataset_double(group_id,"xb",1,dd,cd);
+
+        cd[0]=Particles[i]->v(0);
+        cd[1]=Particles[i]->v(1);
+        cd[2]=Particles[i]->v(2);
+        H5LTmake_dataset_double(group_id,"v",1,dd,cd);
+
+        cd[0]=Particles[i]->w(0);
+        cd[1]=Particles[i]->w(1);
+        cd[2]=Particles[i]->w(2);
+        H5LTmake_dataset_double(group_id,"w",1,dd,cd);
+
+        cd[0]=Particles[i]->wb(0);
+        cd[1]=Particles[i]->wb(1);
+        cd[2]=Particles[i]->wb(2);
+        H5LTmake_dataset_double(group_id,"wb",1,dd,cd);
+
+        cd[0]=Particles[i]->I(0);
+        cd[1]=Particles[i]->I(1);
+        cd[2]=Particles[i]->I(2);
+        H5LTmake_dataset_double(group_id,"I",1,dd,cd);
+
+        double cq[4];
+        dd[0] = 4;
+        cd[0]=Particles[i]->Q(0);
+        cd[1]=Particles[i]->Q(1);
+        cd[2]=Particles[i]->Q(2);
+        cd[3]=Particles[i]->Q(3);
+        H5LTmake_dataset_double(group_id,"Q",1,dd,cd);
+
+
+
 
         // Storing the number of vertices of each particle
         data[0] = Particles[i]->Verts.Size();
@@ -1125,7 +1185,8 @@ inline void Domain::Save (char const * FileKey)
             String parv;
             parv.Printf("Faces_%08d",j);
             int co[Particles[i]->FaceCon[j].Size()];
-            hsize_t dim[1]={Particles[i]->FaceCon[j].Size()};
+            hsize_t dim[1];
+            dim[0]= Particles[i]->FaceCon[j].Size();
             for (size_t k=0;k<Particles[i]->FaceCon[j].Size();k++)
             {
                 co[k]=Particles[i]->FaceCon[j][k];
@@ -1164,10 +1225,8 @@ inline void Domain::Load (char const * FileKey)
         par.Printf("/Particle_%08d",i);
         group_id = H5Gopen(file_id, par.CStr(),H5P_DEFAULT);
 
-        // Storing the spheroradius
-        double dat[1];
-        H5LTread_dataset_double(group_id,"SR",dat);
-        double R = dat[0];
+
+
 
         // Loading the Vertices
         H5LTread_dataset_int(group_id,"n_vertices",data);
@@ -1233,7 +1292,47 @@ inline void Domain::Load (char const * FileKey)
 
         }
 
-        Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,R,1.0));
+        Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
+
+        // Loading the scalar quantities of the particle
+        double dat[1];
+        H5LTread_dataset_double(group_id,"SR",dat);
+        Particles[Particles.Size()-1]->R = dat[0];
+        H5LTread_dataset_double(group_id,"Rho",dat);
+        Particles[Particles.Size()-1]->rho = dat[0];
+        H5LTread_dataset_double(group_id,"m",dat);
+        Particles[Particles.Size()-1]->m = dat[0];
+        H5LTread_dataset_double(group_id,"V",dat);
+        Particles[Particles.Size()-1]->V = dat[0];
+        H5LTread_dataset_double(group_id,"Diam",dat);
+        Particles[Particles.Size()-1]->Diam = dat[0];
+        H5LTread_dataset_double(group_id,"Dmax",dat);
+        Particles[Particles.Size()-1]->Dmax = dat[0];
+        
+        int tag[1];
+        H5LTread_dataset_int(group_id,"Tag",tag);
+        Particles[Particles.Size()-1]->Tag = tag[0];
+
+        // Loading vectorial variables
+        double cd[3];
+
+        H5LTread_dataset_double(group_id,"x",cd);
+        Particles[Particles.Size()-1]->x = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"xb",cd);
+        Particles[Particles.Size()-1]->xb = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"w",cd);
+        Particles[Particles.Size()-1]->w = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"wb",cd);
+        Particles[Particles.Size()-1]->wb = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"I",cd);
+        Particles[Particles.Size()-1]->I = Vec3_t(cd[0],cd[1],cd[2]);
+
+
+        double cq[4];
+        H5LTread_dataset_double(group_id,"Q",cq);
+        Particles[Particles.Size()-1]->Q = Quaternion_t(cq[0],cq[1],cq[2],cq[3]);
+
+        Particles[Particles.Size()-1]->PropsReady = true;
 
     }
 
