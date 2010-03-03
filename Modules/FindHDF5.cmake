@@ -20,10 +20,10 @@
 #####################################################################################
 
 SET(HDF5_INCLUDE_SEARCH_PATH
-  /usr/include/)
+  $ENV{HOME}/pkg/hdf5-1.8.4/include/)
 
 SET(HDF5_LIBRARY_SEARCH_PATH
-  /usr/lib)
+  $ENV{HOME}/pkg/hdf5-1.8.4/lib/)
 
 FIND_PATH(HDF5_H     hdf5.h         ${UMFPACK_INCLUDE_SEARCH_PATH})
 FIND_PATH(HDF5_HL_H  hdf5_hl.h      ${UMFPACK_INCLUDE_SEARCH_PATH})

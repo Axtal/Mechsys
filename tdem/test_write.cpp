@@ -29,9 +29,9 @@ int main( void )
 {
     Domain dom;
     dom.AddVoroPack (-1, 0.1, 10.0, 10.0, 10.0, 10, 10, 10, 1.0, true, 1200, 1.0);
-    dom.Save("domain");
+    dom.Save("domainwrite");
     dom.FreeParticles = dom.Particles;
-    dom.WritePOV("domain1");
+    dom.WritePOV("domainwrite");
     
     return 0;
 }

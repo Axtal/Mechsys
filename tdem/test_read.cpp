@@ -30,9 +30,10 @@ int main( void )
 {
 
     Domain dom;
-    dom.Load("domain");
+    dom.Load("domainwrite");
     dom.FreeParticles = dom.Particles;
-    dom.WritePOV("domain");
+    dom.WritePOV("domainread");
+    dom.Save("domainread");
     return 0;
 
 }
