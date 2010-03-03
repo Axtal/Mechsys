@@ -27,6 +27,11 @@
 #include <fstream>
 #include <ctime>    // for std::clock
 
+// Hdf5
+#include "hdf5.h"
+#include "hdf5_hl.h"
+
+
 // Voro++
 #include "src/voro++.cc"
 
@@ -74,6 +79,8 @@ public:
     void Solve             (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
     void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
+    void Save              (char const * FileKey);                                                              ///< Save the current domain
+    void Load              (char const * FileKey);                                                              ///< Load the domain form a file
     void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
     void Center            ();                                                                                  ///< Centers the domain
     void ResetInteractons  ();                                                                                  ///< Reset the interactons
@@ -1037,6 +1044,202 @@ inline void Domain::WriteBPY (char const * FileKey)
     BPYHeader(of);
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"",true);
     of.close();
+}
+
+inline void Domain::Save (char const * FileKey)
+{
+
+    // Opening the file for writing
+    String fn(FileKey);
+    fn.append(".hdf5");
+    hid_t file_id;
+    file_id = H5Fcreate(fn.CStr(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+    // Storing the number of particles in the domain
+    int data[1];
+    data[0]=Particles.Size();
+    hsize_t dims[1];
+    dims[0]=1;
+    H5LTmake_dataset_int(file_id,"/NP",1,dims,data);
+
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        // Creating the string and the group for each particle
+        hid_t group_id;
+        String par;
+        par.Printf("/Particle_%08d",i);
+        group_id = H5Gcreate(file_id, par.CStr(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+
+        // Storing the spheroradius
+        double dat[1];
+        dat[0] = Particles[i]->R;
+        H5LTmake_dataset_double(group_id,"SR",1,dims,dat);
+
+        // Storing the number of vertices of each particle
+        data[0] = Particles[i]->Verts.Size();
+        H5LTmake_dataset_int(group_id,"n_vertices",1,dims,data);
+        hid_t gv_id;
+        gv_id = H5Gcreate(group_id,"Verts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+        // Storing each vertex 
+        for (size_t j=0;j<Particles[i]->Verts.Size();j++)
+        {
+            String parv;
+            parv.Printf("Verts_%08d",j);
+            double cod[3];
+            cod[0]=(*Particles[i]->Verts[j])(0);
+            cod[1]=(*Particles[i]->Verts[j])(1);
+            cod[2]=(*Particles[i]->Verts[j])(2);
+            hsize_t dim[1];
+            dim[0]=3;
+            H5LTmake_dataset_double(gv_id,parv.CStr(),1,dim,cod);
+        }
+
+        // Number of edges of the particle
+        data[0] = Particles[i]->Edges.Size();
+        H5LTmake_dataset_int(group_id,"n_edges",1,dims,data);
+        gv_id = H5Gcreate(group_id,"Edges", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+        // Edges
+        for (size_t j=0;j<Particles[i]->Edges.Size();j++)
+        {
+            String parv;
+            parv.Printf("Edges_%08d",j);
+            int co[2];
+            co[0] = Particles[i]->EdgeCon[j][0];
+            co[1] = Particles[i]->EdgeCon[j][1];
+            hsize_t dim[1];
+            dim[0] =2;
+            H5LTmake_dataset_int(gv_id,parv.CStr(),1,dim,co);
+        }
+        
+        // Number of faces of the particle
+        data[0] = Particles[i]->Faces.Size();
+        H5LTmake_dataset_int(group_id,"n_faces",1,dims,data);
+        gv_id = H5Gcreate(group_id,"Faces", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        
+        // Faces
+        for (size_t j=0;j<Particles[i]->Faces.Size();j++)
+        {
+            String parv;
+            parv.Printf("Faces_%08d",j);
+            int co[Particles[i]->FaceCon[j].Size()];
+            hsize_t dim[1]={Particles[i]->FaceCon[j].Size()};
+            for (size_t k=0;k<Particles[i]->FaceCon[j].Size();k++)
+            {
+                co[k]=Particles[i]->FaceCon[j][k];
+            }
+            H5LTmake_dataset_int(gv_id,parv.CStr(),1,dim,co);
+        }
+        
+    }
+
+    H5Fclose(file_id);
+
+
+}
+
+inline void Domain::Load (char const * FileKey)
+{
+    // Opening the file for reading
+    String fn(FileKey);
+    fn.append(".hdf5");
+    hid_t file_id;
+    file_id = H5Fopen(fn.CStr(), H5F_ACC_RDONLY, H5P_DEFAULT);
+
+    // Number of particles in the domain
+    int data[1];
+    hsize_t dims[1];
+    H5LTread_dataset_int(file_id,"/NP",data);
+    size_t NP = data[0];
+
+    // Loading the particles
+    for (size_t i=0; i<NP; i++)
+    {
+
+        // Creating the string and the group for each particle
+        hid_t group_id;
+        String par;
+        par.Printf("/Particle_%08d",i);
+        group_id = H5Gopen(file_id, par.CStr(),H5P_DEFAULT);
+
+        // Storing the spheroradius
+        double dat[1];
+        H5LTread_dataset_double(group_id,"SR",dat);
+        double R = dat[0];
+
+        // Loading the Vertices
+        H5LTread_dataset_int(group_id,"n_vertices",data);
+        size_t nv = data[0];
+        hid_t gv_id;
+        gv_id = H5Gopen(group_id,"Verts", H5P_DEFAULT);
+        Array<Vec3_t> V;
+
+        for (size_t j=0;j<nv;j++)
+        {
+            String parv;
+            parv.Printf("Verts_%08d",j);
+            double cod[3];
+            H5LTread_dataset_double(gv_id,parv.CStr(),cod);
+            V.Push(Vec3_t(cod[0],cod[1],cod[2]));
+        }
+        
+        // Loading the edges
+        H5LTread_dataset_int(group_id,"n_edges",data);
+        size_t ne = data[0];
+        gv_id = H5Gopen(group_id,"Edges", H5P_DEFAULT);
+        Array<Array <int> > E;
+
+        for (size_t j=0;j<ne;j++)
+        {
+            String parv;
+            parv.Printf("Edges_%08d",j);
+            int cod[2];
+            H5LTread_dataset_int(gv_id,parv.CStr(),cod);
+            Array<int> Ep(2);
+            Ep[0]=cod[0];
+            Ep[1]=cod[1];
+            E.Push(Ep);
+        }
+
+        // Loading the faces
+
+        // Number of faces of the particle
+        H5LTread_dataset_int(group_id,"n_faces",data);
+        size_t nf = data[0];
+        gv_id = H5Gopen(group_id,"Faces", H5P_DEFAULT);
+        Array<Array <int> > F;
+        
+        // Faces
+        for (size_t j=0;j<nf;j++)
+        {
+            String parv;
+            parv.Printf("Faces_%08d",j);
+            hsize_t dim[1];
+            H5LTget_dataset_info(gv_id,parv.CStr(),dim,NULL,NULL);
+            size_t ns = (size_t)dim[0];
+            int co[ns];
+            Array<int> Fp(ns);
+
+            H5LTread_dataset_int(gv_id,parv.CStr(),co);
+            
+            for (size_t k=0;k<ns;k++)
+            {
+                Fp[k] = co[k];
+            }
+
+            F.Push(Fp);
+
+        }
+
+        Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,R,1.0));
+
+    }
+
+
+
+
 }
 
 inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)

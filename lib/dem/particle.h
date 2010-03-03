@@ -57,39 +57,41 @@ public:
     void Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
 
     // Data
-    int            Tag;        ///< Tag of the particle
-    bool           PropsReady; ///< Are the properties calculated ready ?
-    Vec3_t         x;          ///< Position of the center of mass
-    Vec3_t         xb;         ///< Former position for the Verlet algorithm
-    Vec3_t         v;          ///< Velocity
-    Vec3_t         w;          ///< Angular velocity
-    Vec3_t         wb;         ///< Former angular velocity for the leap frog algorithm
-    Vec3_t         F;          ///< Force over the particle
-    Vec3_t         Ff;         ///< Fixed Force over the particle
-    Vec3_t         T;          ///< Torque over the particle
-    Vec3_t         Tf;         ///< Fixed Torque over the particle
-    Vec3_t         I;          ///< Vector containing the principal components of the inertia tensor
-    Quaternion_t   Q;          ///< The quaternion representing the rotation
-    double         Kn;         ///< Normal stiffness
-    double         Kt;         ///< Tengential stiffness
-    double         Gn;         ///< Normal viscous coefficient
-    double         Gt;         ///< Tangential viscous coefficient
-    double         Mu;         ///< Microscpic coefficient of friction
-    double         Beta;       ///< Microscpic coefficient of friction
-    double         Eta;        ///< Microscpic coefficient of friction
-    double         R;          ///< Spheroradius
-    double         rho;        ///< Density
-    double         V;          ///< Volume
-    double         m;          ///< Mass
-    double         Erot;       ///< Rotational energy of the particle
-    double         Ekin;       ///< Kinetical energy of the particle
-    double         Dmax;       ///< Maximal distance from the center of mass to the surface of the body
-    double         Diam;       ///< Diameter of the parallelogram containing the particle
-    double         Cn;         ///< Coordination number (number of contacts)
-    Array<Vec3_t*> Vertso;     ///< Original postion of the Vertices
-    Array<Vec3_t*> Verts;      ///< Vertices
-    Array<Edge*>   Edges;      ///< Edges
-    Array<Face*>   Faces;      ///< Faces
+    int                 Tag;             ///< Tag of the particle
+    bool                PropsReady;      ///< Are the properties calculated ready ?
+    Vec3_t              x;               ///< Position of the center of mass
+    Vec3_t              xb;              ///< Former position for the Verlet algorithm
+    Vec3_t              v;               ///< Velocity
+    Vec3_t              w;               ///< Angular velocity
+    Vec3_t              wb;              ///< Former angular velocity for the leap frog algorithm
+    Vec3_t              F;               ///< Force over the particle
+    Vec3_t              Ff;              ///< Fixed Force over the particle
+    Vec3_t              T;               ///< Torque over the particle
+    Vec3_t              Tf;              ///< Fixed Torque over the particle
+    Vec3_t              I;               ///< Vector containing the principal components of the inertia tensor
+    Quaternion_t        Q;               ///< The quaternion representing the rotation
+    double              Kn;              ///< Normal stiffness
+    double              Kt;              ///< Tengential stiffness
+    double              Gn;              ///< Normal viscous coefficient
+    double              Gt;              ///< Tangential viscous coefficient
+    double              Mu;              ///< Microscopic coefficient of friction
+    double              Beta;            ///< Rolling stiffness coeffcient
+    double              Eta;             ///< Plastic moment coefficient
+    double              R;               ///< Spheroradius
+    double              rho;             ///< Density
+    double              V;               ///< Volume
+    double              m;               ///< Mass
+    double              Erot;            ///< Rotational energy of the particle
+    double              Ekin;            ///< Kinetical energy of the particle
+    double              Dmax;            ///< Maximal distance from the center of mass to the surface of the body
+    double              Diam;            ///< Diameter of the parallelogram containing the particle
+    double              Cn;              ///< Coordination number (number of contacts)
+    Array<Vec3_t*>      Vertso;          ///< Original postion of the Vertices
+    Array<Vec3_t*>      Verts;           ///< Vertices
+    Array<Array <int> > EdgeCon;         ///< Conectivity of Edges
+    Array<Array <int> > FaceCon;         ///< Conectivity of Faces
+    Array<Edge*>        Edges;           ///< Edges
+    Array<Face*>        Faces;           ///< Faces
 
     // Auxiliar methods
     void   CalcProps (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
@@ -164,6 +166,10 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 {
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
+
+    EdgeCon = E;
+    FaceCon = F;
+
     for (size_t i=0; i<V.Size(); i++)
     {
         Verts.Push (new Vec3_t(V[i]));

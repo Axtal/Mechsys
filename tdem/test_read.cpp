@@ -1,68 +1,38 @@
-/*
- * =====================================================================================
- *
- *       Filename:  multithread.cpp
- *
- *    Description:  multi thread
- *
- *        Version:  1.0
- *        Created:  24/02/10 15:08:57
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  YOUR NAME (), 
- *        Company:  
- *
- * =====================================================================================
-*/
-#include "hdf5.h"
-#include "hdf5_hl.h"
+/************************************************************************
+ * MechSys - Open Library for Mechanical Systems                        *
+ * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
+ *                                                                      *
+ * This program is free software: you can redistribute it and/or modify *
+ * it under the terms of the GNU General Public License as published by *
+ * the Free Software Foundation, either version 3 of the License, or    *
+ * any later version.                                                   *
+ *                                                                      *
+ * This program is distributed in the hope that it will be useful,      *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of       *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         *
+ * GNU General Public License for more details.                         *
+ *                                                                      *
+ * You should have received a copy of the GNU General Public License    *
+ * along with this program. If not, see <http://www.gnu.org/licenses/>  *
+ ************************************************************************/
+
+
 #include <iostream>
+#include <mechsys/dem/domain.h>
 
-#define RANK 2
 
-using namespace std;
+using std::cout;
+using std::endl;
+using DEM::Domain;
 
 int main( void )
 {
 
- hid_t       file_id;
- double      *data;
- hsize_t     dims[1];
- herr_t      status;
- size_t     i, j, nrow, n_values;
-
- /* open file from ex_lite1.c */
- file_id = H5Fopen ("muu.msys", H5F_ACC_RDONLY, H5P_DEFAULT);
-
- /* read dataset */
- //status = H5LTread_dataset_double(file_id,"/Particle/cod",data);
-
- /* get the dimensions of the dataset */
- status = H5LTget_dataset_info(file_id,"/Particle/cod",dims,NULL,NULL);
-
- cout << dims[0] << endl;
-
- data = new double[5];
- status = H5LTread_dataset_double(file_id,"/Particle/cod",data);
- cout << data[2] << endl;
-
-
- /* print it by rows */
- //n_values = (size_t)(dims[0] * dims[1]);
- //nrow = (size_t)dims[0];
- //cout << nrow << endl;
-
- //for (i=0; i<n_values/nrow; i++ )
- //{
-  //for (j=0; j<nrow; j++)
-   //printf ("  %d", data[i*nrow + j]);
-  //printf ("\n");
- //}
-
- /* close file */
- status = H5Fclose (file_id);
-
- return 0;
+    Domain dom;
+    dom.Load("domain");
+    dom.FreeParticles = dom.Particles;
+    dom.WritePOV("domain");
+    return 0;
 
 }

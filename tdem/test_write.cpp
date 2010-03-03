@@ -1,54 +1,37 @@
-/*
- * =====================================================================================
- *
- *       Filename:  multithread.cpp
- *
- *    Description:  multi thread
- *
- *        Version:  1.0
- *        Created:  24/02/10 15:08:57
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  YOUR NAME (), 
- *        Company:  
- *
- * =====================================================================================
-*/
-#include "hdf5.h"
-#include "hdf5_hl.h"
+/************************************************************************
+ * MechSys - Open Library for Mechanical Systems                        *
+ * Copyright (C) 2005 Dorival M. Pedroso, Raul Durand                   *
+ * Copyright (C) 2009 Sergio Galindo                                    *
+ *                                                                      *
+ * This program is free software: you can redistribute it and/or modify *
+ * it under the terms of the GNU General Public License as published by *
+ * the Free Software Foundation, either version 3 of the License, or    *
+ * any later version.                                                   *
+ *                                                                      *
+ * This program is distributed in the hope that it will be useful,      *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of       *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         *
+ * GNU General Public License for more details.                         *
+ *                                                                      *
+ * You should have received a copy of the GNU General Public License    *
+ * along with this program. If not, see <http://www.gnu.org/licenses/>  *
+ ************************************************************************/
+
+
 #include <vector>
 
-using namespace std;
-
-class numero
-{
-public:
-    int n;
-    vector<int> V;
-};
+#include <mechsys/dem/domain.h>
+using std::cout;
+using std::endl;
+using DEM::Domain;
 
 int main( void )
 {
-
-hid_t       file_id, group_id;
- hsize_t     dims[1]={1},dims2[1]={5};
- int         data[1]={5};
- double      cod[5]={1.5,123.1,10.5,1.00003,2.0};
- herr_t      status;
-
- /* create a HDF5 file */
- file_id = H5Fcreate ("muu.msys", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-
- group_id = H5Gcreate(file_id, "/Particle", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
- /* create and write an integer type dataset named "dset" */
- status = H5LTmake_dataset(file_id,"/Particle/nv",1,dims,H5T_NATIVE_INT,data);
- status = H5LTmake_dataset(file_id,"/Particle/cod",1,dims2,H5T_NATIVE_DOUBLE,cod);
-
- /* close file */
- H5Gclose(group_id);
- status = H5Fclose (file_id);
-
- return 0;
+    Domain dom;
+    dom.AddVoroPack (-1, 0.1, 10.0, 10.0, 10.0, 10, 10, 10, 1.0, true, 1200, 1.0);
+    dom.Save("domain");
+    dom.FreeParticles = dom.Particles;
+    dom.WritePOV("domain1");
+    
+    return 0;
 }
