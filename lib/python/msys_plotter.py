@@ -18,7 +18,7 @@
 
 from os.path import basename
 from numpy   import sqrt, matrix, zeros, log, cos, pi, sin, tan
-from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
+from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show, rcParams, savefig, axes, legend
 from msys_invariants import *
 from msys_readdata   import *
 
@@ -27,34 +27,38 @@ class Plotter:
     # ===========
     def __init__(self):
         # data
-        self.show_k    = False                  # show k=dq/dp ?
-        self.div_by_p  = False                  # divide q by p ?
-        self.log_p     = True                   # use log(p) instead of p ?
-        self.q_neg_ext = False                  # multiply q by -1 for extension (t<0, where t=sin(3th)
-        self.pq_ty     = 'cam'                  # invariants type
-        self.fc_ty     = ['VM','MC']            # failure criteria type (VM, DP, MC, MN)
-        self.fc_clr    = ['c', 'b', 'k', 'm']   # failure criteria colors
-        self.fc_lt     = ['-', '-', '-', '-']   # failure criteria linetype
-        self.fc_p      = 100.0                  # p(oct) to be used when plotting FC in octahedral plane
-        self.fc_t      = 1.0                    # t=sin(3th) to be used when plotting FC in octahedral plane
-        self.fc_cu     = 10.0                   # cohesion for VM
-        self.fc_phi    = 25.0                   # friction angle for FC
-        self.fc_c      = 0.0                    # cohesion for FC
-        self.fc_np     = 20                     # number of points for drawing failure line
-        self.isxyz     = (-1,0)                 # indices for sxyz plot, use negative numbers for principal components
-        self.devplot   = True                   # plot s3-s1, s3-s2 instead of Ek, Sk
-        self.pcte      = False                  # pcte in Ev x p (logp) plot?
-        self.justone   = -1                     # all plots = -1
-        self.maxed     = -1                     # max Ed to stop the lines
-        self.maxev     = -1                     # max Ev to stop the lines
-        self.maxidx    = -1                     # max index of data to plot
-
-        # internal data
-        self.ax = None # current axes
+        self.show_k    = False                                    # show k=dq/dp ?
+        self.div_by_p  = False                                    # divide q by p ?
+        self.log_p     = True                                     # use log(p) instead of p ?
+        self.q_neg_ext = False                                    # multiply q by -1 for extension (t<0, where t=sin(3th)
+        self.pq_ty     = 'cam'                                    # invariants type
+        self.fc_ty     = ['MC','MN','LD','VM']                    # failure criteria type (VM, DP, MC, MN)
+        self.fc_clr    = ['k', 'k', 'k', 'k']                     # failure criteria colors
+        self.fc_ls     = ['solid', 'dashed', 'dotted', 'dashdot'] # failure criteria linestyles
+        self.fc_p      = 100.0                                    # p(oct) to be used when plotting FC in octahedral plane
+        self.fc_t      = 1.0                                      # t=sin(3th) to be used when plotting FC in octahedral plane
+        self.fc_cu     = 10.0                                     # cohesion for VM
+        self.fc_phi    = 25.0                                     # friction angle for FC
+        self.fc_c      = 0.0                                      # cohesion for FC
+        self.fc_np     = 20                                       # number of points for drawing failure line
+        self.isxyz     = (-1,0)                                   # indices for sxyz plot, use negative numbers for principal components
+        self.devplot   = True                                     # plot s3-s1, s3-s2 instead of Ek, Sk
+        self.pcte      = False                                    # pcte in Ev x p (logp) plot?
+        self.justone   = -1                                       # all plots = -1
+        self.maxed     = -1                                       # max Ed to stop the lines
+        self.maxev     = -1                                       # max Ev to stop the lines
+        self.maxidx    = -1                                       # max index of data to plot
+        self.axesdat   = [0.11,0.15,0.98-0.11,0.95-0.15]          # geometry of figure
+        self.ms        = 4                                        # marker size in points
+        self.set_eps   = False                                    # set geometry for eps (savefig)
+        self.only_six  = True                                     # only 2 x 3 instead of 3 x 3 plots?
+        self.proport   = 0.75                                     # proportion (Aesthetic ratio): golden_mean = (sqrt(5)-1.0)/2.0 0.628
+        self.lwd       = 2                                        # linewidth
 
     # Plot results
     # ============
-    def plot(self, filename, clr='red', draw_fl=False, draw_ros=True, txtlst=True, txtmax=True):
+    def plot(self, filename, clr='red', draw_fl=False, draw_ros=True, txtlst=True, txtmax=True,
+                             label=None, marker='None', markevery=None):
         # load data
         dat = read_table(filename)
         Sig = []
@@ -122,8 +126,6 @@ class Plotter:
         # constants
         rc('text', usetex=True)    # set LaTeX
         rc('font', family='serif') # set font
-        fsz   = 14                 # font size
-        lwd   = 2                  # linewidth
         nhplt = 3                  # number of horizontal plots
         nvplt = 3                  # number of vertical plots
         iplot = 1                  # index of plot
@@ -144,45 +146,57 @@ class Plotter:
                     imaEv = k
                     break
             ima = imaEv if imaEv<ima else ima
-        if self.justone>0:
-            nhplt = 1
-            nvplt = 1
+        if self.only_six:
+            nhplt = 2
+            nvplt = 3
+
+        # set for eps
+        if self.set_eps:
+            if self.justone>=0:
+                self.set_fig_for_eps(multiplot=False)
+                if self.justone==5: axes([0.05,0.05,.95,.95])
+                else: axes(self.axesdat) # this needs to be after set_eps
+            else:
+                self.set_fig_for_eps(multiplot=True)
+                axes([0.,0.,0.99,0.99]) # this needs to be after set_eps
 
         # 0) q/p, Ed ---------------------------------------------------------------------------
         if self.justone==0 or self.justone<0:
             Y    = Q/P if self.div_by_p else Q
             Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot (Ed[:ima], Y[:ima], color=clr, lw=lwd)
-            if imaQ<=ima: plot (Ed[imaQ], Y[imaQ], 'o', color=clr)
-            if ilst<=ima: plot (Ed[-1],   Y[-1],   's', color=clr)
-            xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
-            if txtmax and imaQ<=ima: text (Ed[imaQ], Y[imaQ], '%g'%Y[imaQ])
-            if txtlst and ilst<=ima: text (Ed[-1],   Y[-1],   '%g'%Y[-1])
+            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot (Ed[:ima], Y[:ima], color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            if imaQ<=ima: plot (Ed[imaQ], Y[imaQ], '^', color=clr)
+            if ilst<=ima: plot (Ed[-1],   Y[-1],   '^', color=clr)
+            xlabel (r'$\varepsilon_d$ [\%]');  ylabel(Ylbl);  grid()
+            if txtmax and imaQ<=ima: text (Ed[imaQ], Y[imaQ], '%.2f'%Y[imaQ], fontsize=8)
+            if txtlst and ilst<=ima: text (Ed[-1],   Y[-1],   '%.2f'%Y[-1],   fontsize=8)
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
         if self.justone==1 or self.justone<0:
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ev[:ima], Y[:ima], lw=lwd, color=clr)
-            xlabel (r'$\varepsilon_v$ [\%]',fontsize=fsz);  ylabel(Ylbl,fontsize=fsz);  grid()
+            Y    = Q/P if self.div_by_p else Q
+            Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
+            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ev[:ima], Y[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            xlabel (r'$\varepsilon_v$ [\%]');  ylabel(Ylbl);  grid()
 
         # 2) p, q ---------------------------------------------------------------------------
         if self.justone==2 or self.justone<0:
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             axhline (0.0,color='black'); axvline(0.0,color='black')
-            plot    (P[:ima], Q[:ima], lw=lwd, color=clr)
-            xlabel  (r'$p_{%s}$'%(self.pq_ty),fontsize=fsz);  ylabel(r'$q_{%s}$'%(self.pq_ty),fontsize=fsz);  grid()
+            if draw_fl: self.pq_fline(0.1*min(P),2.0*max(P),min(Q),max(Q))
+            plot    (P[:ima], Q[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            xlabel  (r'$p_{%s}$'%(self.pq_ty));  ylabel(r'$q_{%s}$'%(self.pq_ty));  grid()
             axis    ('equal')
             if self.show_k:
                 k = (Q[-1]-Q[0])/(P[-1]-P[0])
-                text ((P[0]+P[-1])/2.0,(Q[0]+Q[-1])/2.0,'k = %g'%k,fontsize=14,color='black',ha='left')
-            if draw_fl: self.pq_fline()
+                text ((P[0]+P[-1])/2.0,(Q[0]+Q[-1])/2.0,'k = %g'%k,color='black',ha='left', fontsize=10)
 
         # 3) Ed, Ev ---------------------------------------------------------------------------
         if self.justone==3 or self.justone<0:
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ed[:ima], Ev[:ima], lw=lwd, color=clr)
-            xlabel (r'$\varepsilon_d$ [\%]',fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz); grid()
+            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (Ed[:ima], Ev[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            xlabel (r'$\varepsilon_d$ [\%]');  ylabel(r'$\varepsilon_v$ [\%]'); grid()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
         if self.justone==4 or self.justone<0:
@@ -194,87 +208,84 @@ class Plotter:
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
             if self.pcte:
                 for k, x in enumerate(X): X[k] = X[0]
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (X[:ima], Ev[:ima], lw=lwd, color=clr)
-            xlabel (xlbl,fontsize=fsz);  ylabel(r'$\varepsilon_v$ [\%]',fontsize=fsz);  grid()
+            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (X[:ima], Ev[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [\%]');  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
         if self.justone==5 or self.justone<0:
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Sa[:ima], Sb[:ima], color=clr, lw=lwd)
-            if imaQ<=ima: plot (Sa[imaQ], Sb[imaQ], 'o', color=clr)
-            if ilst<=ima: plot (Sa[ilst], Sb[ilst], 's', color=clr)
-            axis   ('equal')
-            xlabel (r'$\sigma_a$',fontsize=fsz);  ylabel(r'$\sigma_b$',fontsize=fsz);  grid()
-            if draw_ros: self.oct_rosette()
-            if draw_fl:  self.oct_fline()
+            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            if draw_ros: self.oct_rosette(min(Sa),max(Sa),min(Sb),max(Sb))
+            if draw_fl:  self.oct_fline  (min(Sa),max(Sa),min(Sb),max(Sb))
+            plot   (Sa[:ima], Sb[:ima], color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            if imaQ<=ima: plot (Sa[imaQ], Sb[imaQ], '^', color=clr)
+            if ilst<=ima: plot (Sa[ilst], Sb[ilst], '^', color=clr)
+            axis ('equal')
+            axis ('off')
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
-        if self.justone==6 or self.justone<0:
-            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (E1[:ima], Y[:ima], lw=lwd,linestyle='-', color=clr)
-            plot   (E2[:ima], Y[:ima], lw=lwd,linestyle='--', color=clr)
-            plot   (E3[:ima], Y[:ima], lw=lwd,linestyle='-.', color=clr)
-            xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]',fontsize=fsz)
-            ylabel (Ylbl,fontsize=fsz);  grid()
+        if self.justone==6 or self.justone<0 and not self.only_six:
+            if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (E1[:ima], Y[:ima], lw=self.lwd,linestyle='-',  color=clr)
+            plot   (E2[:ima], Y[:ima], lw=self.lwd,linestyle='--', color=clr)
+            plot   (E3[:ima], Y[:ima], lw=self.lwd,linestyle='-.', color=clr)
+            xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]')
+            ylabel (Ylbl);  grid()
 
         if self.devplot:
-            if self.justone==7 or self.justone<0:
+            if self.justone==7 or self.justone<0 and not self.only_six:
                 # 7) s3-s1, s3-s2
-                self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (S3[:ima]-S1[:ima], S3[:ima]-S2[:ima], lw=lwd,linestyle='-', color=clr)
-                xlabel (r'$\sigma_3-\sigma_1$',fontsize=fsz);  ylabel(r'$\sigma_3-\sigma_2$',fontsize=fsz);  grid()
-                axis   ('equal')
+                if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
                 if draw_fl: self.s123_fline(S3[imaQ])
+                plot   (S3[:ima]-S1[:ima], S3[:ima]-S2[:ima], lw=self.lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+                xlabel (r'$\sigma_3-\sigma_1$');  ylabel(r'$\sigma_3-\sigma_2$');  grid()
+                axis   ('equal')
         else:
             # 7) Ek, Sk ---------------------------------------------------------------------------
-            if self.justone==7 or self.justone<0:
-                self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (Ex[:ima], -Sx[:ima], lw=lwd,linestyle='-', color=clr)
-                plot   (Ey[:ima], -Sy[:ima], lw=lwd,linestyle='--', color=clr)
-                plot   (Ez[:ima], -Sz[:ima], lw=lwd,linestyle='-.', color=clr)
-                xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]',fontsize=fsz)
-                ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]',fontsize=fsz);  grid()
+            if self.justone==7 or self.justone<0 and not self.only_six:
+                if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+                plot   (Ex[:ima], -Sx[:ima], lw=self.lwd,linestyle='-', color=clr)
+                plot   (Ey[:ima], -Sy[:ima], lw=self.lwd,linestyle='--', color=clr)
+                plot   (Ez[:ima], -Sz[:ima], lw=self.lwd,linestyle='-.', color=clr)
+                xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]')
+                ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]');  grid()
 
         # 8) sqrt(2.0)*Si, Sj ---------------------------------------------------------------------------
-        if self.justone==8 or self.justone<0:
-            self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
-            plot   (-sqrt(2.0)*Si[:ima], -Sj[:ima],  lw=lwd, color=clr)
-            xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]),fontsize=fsz);  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]),fontsize=fsz);  grid()
-            axis   ('equal')
+        if self.justone==8 or self.justone<0 and not self.only_six:
+            if self.justone<0: self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
             if draw_fl: self.sxyz_fline()
+            plot   (-sqrt(2.0)*Si[:ima], -Sj[:ima],  lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]));  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]));  grid()
+            axis   ('equal')
 
     # Plot octahedral rosette
     # =======================
-    def oct_rosette(self):
-        xmin, xmax = self.ax.get_xbound()
-        ymin, ymax = self.ax.get_ybound()
+    def oct_rosette(self, xmin, xmax, ymin, ymax):
         r  = sqrt((xmax-xmin)**2. + (ymax-ymin)**2.)
         cf = 0.2
-        l1 = (             0.0  ,    r            ) # line: 1 end points
+        cr = 1.1
+        l1 = (             0.0  , cr*r            ) # line: 1 end points
         l2 = (-cf*r*cos(pi/6.0) ,-cf*r*sin(pi/6.0)) # line: 2 end points
         l3 = ( cf*r*cos(pi/6.0) ,-cf*r*sin(pi/6.0)) # line: 3 end points
-        l4 = (   -r*cos(pi/6.0) ,    r*sin(pi/6.0)) # line: 4 = neg 1 end points
-        lo = (   -r*cos(pi/3.0) ,    r*sin(pi/3.0)) # line: origin of cylindrical system
+        l4 = (-cr*r*cos(pi/6.0) , cr*r*sin(pi/6.0)) # line: 4 = neg 1 end points
+        lo = (-cr*r*cos(pi/3.0) , cr*r*sin(pi/3.0)) # line: origin of cylindrical system
         # main lines
-        plot([0.0,l1[0]],[0.0,l1[1]],'k-')
-        plot([0.0,l2[0]],[0.0,l2[1]],'k-')
-        plot([0.0,l3[0]],[0.0,l3[1]],'k-')
+        plot([0.0,l1[0]],[0.0,l1[1]],'k-', color='gray')
+        plot([0.0,l2[0]],[0.0,l2[1]],'k-', color='gray')
+        plot([0.0,l3[0]],[0.0,l3[1]],'k-', color='gray')
         # reference
-        plot([0.0,l4[0]],[0.0, l4[1]],'k--')
-        plot([0.0,lo[0]],[0.0, lo[1]],'k--')
+        plot([0.0,l4[0]],[0.0, l4[1]],'k-', color='gray')
+        plot([0.0,lo[0]],[0.0, lo[1]],'k-', color='gray')
         # text
-        text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^o$')
-        text(l2[0],l2[1],r'$-\sigma_2$',ha='right')
-        text(l3[0],l3[1],r'$-\sigma_3$')
-        text(lo[0],lo[1],r'$\theta=0^o$',ha='center')
-        text(l4[0],l4[1],r'$\theta=-30^o$',ha='right')
+        text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^\circ$', ha='center', fontsize=8)
+        text(l2[0],l2[1],r'$-\sigma_2$',                  ha='right',  fontsize=8)
+        text(l3[0],l3[1],r'$-\sigma_3$',                  ha='left',   fontsize=8)
+        text(lo[0],lo[1],r'$\theta=0^\circ$',             ha='center', fontsize=8)
+        text(l4[0],l4[1],r'$\theta=-30^\circ$',           ha='left',   fontsize=8)
 
     # Plot failure line in p-q plane
     # ==============================
-    def pq_fline(self):
-        pmin, pmax = self.ax.get_xbound()
-        qmin, qmax = self.ax.get_ybound()
+    def pq_fline(self, pmin, pmax, qmin, qmax):
         Dp    = pmax-pmin
         Dq    = qmax-qmin
         pmin -= 0.5*Dp
@@ -294,19 +305,18 @@ class Plotter:
                     sig    = matrix([[s123[0]],[s123[1]],[s123[2]],[0.0]])
                     f[i,j] = self.failure_crit (sig, self.fc_ty[k])
                     if self.fc_t<0.0: q[i,j] = -q[i,j]
-            contour (p, q, f, [0.0], linewidths=1, colors=self.fc_clr[k], linetypes=self.fc_lt[k])
+            contour (p, q, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
 
     # Plot failure line in octahedral plane
     # =====================================
-    def oct_fline(self):
-        samin, samax = self.ax.get_xbound()
-        sbmin, sbmax = self.ax.get_ybound()
+    def oct_fline(self, samin, samax, sbmin, sbmax):
+        r      = sqrt((samax-samin)**2. + (sbmax-sbmin)**2.)
         Dsa    = samax-samin
         Dsb    = sbmax-sbmin
-        samin -= 0.05*Dsa
-        samax += 0.05*Dsa
-        sbmin -= 0.05*Dsb
-        sbmax += 0.05*Dsb
+        samin -= 0.1*Dsa + r*cos(pi/6.0)
+        samax += 0.1*Dsa + 0.4*r*cos(pi/6.0)
+        sbmin -= 0.1*Dsb
+        sbmax += 0.1*Dsb
         dsa    = (samax-samin)/self.fc_np
         dsb    = (sbmax-sbmin)/self.fc_np
         sa     = zeros ((self.fc_np,self.fc_np))
@@ -321,7 +331,7 @@ class Plotter:
                     s123    = oct_calc_s123 (sa[i,j], sb[i,j], sc)
                     sig     = matrix([[s123[0]],[s123[1]],[s123[2]],[0.0]])
                     f[i,j]  = self.failure_crit (sig, self.fc_ty[k])
-            contour (sa, sb, f, [0.0], linewidths=1, colors=self.fc_clr[k], linetypes=self.fc_lt[k])
+            contour (sa, sb, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
 
     # Plot failure line in s1-s3, s2-s3 plane
     # =======================================
@@ -345,7 +355,7 @@ class Plotter:
                     s2     = s3 - y[i,j]
                     sig    = matrix([[s1], [s2], [s3], [0.0]])
                     f[i,j] = self.failure_crit (sig, self.fc_ty[k])
-            contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k])
+            contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
 
     # Plot failure line in sxyz plane
     # ===============================
@@ -374,7 +384,7 @@ class Plotter:
                     y[i,j] = ymin + j*dy
                     sig    = matrix([[-x[i,j]/sq2], [-x[i,j]/sq2], [-y[i,j]], [0.0]])
                     f[i,j] = self.failure_crit (sig, self.fc_ty[k])
-            contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k])
+            contour (x, y, f, [0.0], linewidths=1, colors=self.fc_clr[k], linestyles=self.fc_ls[k], label=self.fc_ty[k])
 
     # Failure criterion
     # =================
@@ -439,7 +449,6 @@ class Plotter:
         # constants
         rc('text', usetex=True)    # set LaTeX
         rc('font', family='serif') # set font
-        fsz   = 14                 # font size
         lwd   = 2                  # linewidth
         nhplt = 1                  # number of horizontal plots
         nvplt = 2                  # number of vertical plots
@@ -448,15 +457,51 @@ class Plotter:
         # ux, fx
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
         plot   (Ux,Fx,'r-',linewidth=lwd)
-        xlabel (r'$u_x$',fontsize=fsz)
-        ylabel (r'$f_x$',fontsize=fsz);  grid()
+        xlabel (r'$u_x$')
+        ylabel (r'$f_x$');  grid()
 
         # uy, fy
         self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
         plot   (Uy,Fy,'r-',linewidth=lwd)
-        xlabel (r'$u_y$',fontsize=fsz)
-        ylabel (r'$f_y$',fontsize=fsz);  grid()
+        xlabel (r'$u_y$')
+        ylabel (r'$f_y$');  grid()
 
     # Show figure
     # ===========
     def show(self): show()
+
+    # Set figure for eps
+    # ==================
+    def set_fig_for_eps(self, small=False, multiplot=False):
+        fig_width_pt  = 246.0 if not multiplot else 492.0 # Get this from LaTeX using \showthe\columnwidth
+        inches_per_pt = 1.0/72.27                         # Convert pt to inch
+        fig_width     = fig_width_pt*inches_per_pt  # width in inches
+        fig_height    = fig_width*self.proport      # height in inches
+        fig_size      = [fig_width,fig_height]
+        if small:
+            params = {'backend':         'ps',
+                      'axes.labelsize':  8,
+                      'text.fontsize':   8,
+                      'legend.fontsize': 8,
+                      'xtick.labelsize': 6,
+                      'ytick.labelsize': 6,
+                      'text.usetex':     True,
+                      'figure.figsize': fig_size}
+        else:
+            params = {'backend':         'ps',
+                      'axes.labelsize':  10,
+                      'text.fontsize':   10,
+                      'legend.fontsize': 10,
+                      'xtick.labelsize': 8,
+                      'ytick.labelsize': 8,
+                      'text.usetex':     True,
+                      'figure.figsize': fig_size}
+        rcParams.update(params)
+
+    # FC legend
+    # =========
+    def fc_leg(self, loc='center right'):
+        lines = []
+        for k in range(len(self.fc_ty)):
+            lines.append (plot([0],[0],linestyle=self.fc_ls[k],color=self.fc_clr[k]))
+        legend (lines, self.fc_ty, loc=loc)
