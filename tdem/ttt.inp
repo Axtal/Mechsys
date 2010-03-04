@@ -1,4 +1,4 @@
-sphere   = ptype:       Particle type (voronoi, sphere and tetrahedra mesh so far)
+voronoi  = ptype:       Particle type (voronoi, sphere and tetrahedra mesh so far)
 1        = RenderVideo: 1 if video should be render, 0 otherwise
 0.8      = fraction:    Fraction of Particles to appear
 10000.0  = Kn:          Normal stiffness
@@ -17,7 +17,7 @@ sphere   = ptype:       Particle type (voronoi, sphere and tetrahedra mesh so fa
 5.0      = Lz:          Lz (irrelevant for spheres)
 5        = nx:          nx (number of spheres per cube size)
 5        = ny:          ny (irrelevant for spheres)
-5        = nz:          nz (irrelevant for spheres)
+10       = nz:          nz (irrelevant for spheres)
 1.0      = rho:         rho
 5.0      = p0:          Pressure for the isotropic compression
 50       = T0:          Time span for the compression

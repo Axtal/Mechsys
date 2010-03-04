@@ -39,14 +39,15 @@ int main(int argc, char **argv) try
     
     /////////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
-    //Domain d;
+    Domain d;
 
     //////////////////////////////////////////////////////////////////////////////////// Figures to draw ///
     
-    //d.AddVoroPack (-1, 0.1, 10,10,10, 10,10,10, 1.0, true, 1000, 1.0);
-    //d.FreeParticles = d.Particles; //Neccesary for the particles to be drawn
-    //d.CamPos= 14.0,13.0,13.0;
-    //d.WritePOV ("figure");
+    //d.AddVoroPack (-1, 0.1, 2,2,2, 2,2,5, 1.0, true, 1000, 1.0, 0.8);
+    d.GenRice(-1,1,1,0.2,1.0,80000,1.0);
+    d.FreeParticles = d.Particles; //Neccesary for the particles to be drawn
+    d.CamPos= 14.0,13.0,13.0;
+    d.WriteBPY ("figure");
 
     /////////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
