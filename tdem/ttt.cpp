@@ -36,7 +36,8 @@ int main(int argc, char **argv) try
     String filename (filekey+".inp");
     if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
     ifstream infile(filename.CStr());
-
+    
+    double verlet;      // Verlet distance for optimization
     String ptype;       // Particle type 
     bool   RenderVideo; // Decide is video should be render
     double fraction;    // Fraction of particles to be generated
@@ -73,6 +74,7 @@ int main(int argc, char **argv) try
     double alpf;        // Angle of the p q plane
     double Tf;          // Final time for the test
     {
+        infile >> verlet;       infile.ignore(200,'\n');
         infile >> ptype;        infile.ignore(200,'\n');
         infile >> RenderVideo;  infile.ignore(200,'\n');
         infile >> fraction;     infile.ignore(200,'\n');
@@ -123,7 +125,7 @@ int main(int argc, char **argv) try
         mesh.GenBox  (/*O2*/false,/*V*/0.1*Lx*Ly*Lz,Lx,Ly,Lz);
         dom.GenFromMesh (-1,mesh,/*R*/R,/*rho*/rho);
     }
-    else if (ptype=="rice") 
+    else if (ptype=="rice");
     else throw new Fatal("Packing for particle type not implemented yet");
     dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
 

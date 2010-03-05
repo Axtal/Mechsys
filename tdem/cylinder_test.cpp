@@ -35,7 +35,7 @@ int main(int argc, char **argv) try
     d.CamPos = Vec3_t(0, 0.0, 2.0*16.0); // position of camera
 
     // particle
-    d.AddVoroPack (-1, 0.1, 16,16,1, 16,16,1, 1.0, false, 1000, 1.0, "cylinder");
+    d.AddVoroPack (-1, 0.1, 16,16,1, 16,16,1, 1.0, false, 1000, 1.0);
     d.FreeParticles = d.Particles;
     d.WritePOV("cylinder");
     d.WriteBPY("cylinder");

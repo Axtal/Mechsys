@@ -160,10 +160,11 @@ class Plotter:
                 self.set_fig_for_eps(multiplot=True)
                 axes([0.,0.,0.99,0.99]) # this needs to be after set_eps
 
+        Y    = Q/P if self.div_by_p else Q
+        Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
+
         # 0) q/p, Ed ---------------------------------------------------------------------------
         if self.justone==0 or self.justone<0:
-            Y    = Q/P if self.div_by_p else Q
-            Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Ed[:ima], Y[:ima], color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             if imaQ<=ima: plot (Ed[imaQ], Y[imaQ], '^', color=clr)
@@ -174,8 +175,6 @@ class Plotter:
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
         if self.justone==1 or self.justone<0:
-            Y    = Q/P if self.div_by_p else Q
-            Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (Ev[:ima], Y[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (r'$\varepsilon_v$ [\%]');  ylabel(Ylbl);  grid()

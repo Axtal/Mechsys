@@ -51,6 +51,7 @@ class Domain
 public:
     // Constructor
     Domain();
+    Domain(double verlet) {Alpha=verlet;};
 
     // Destructor
     ~Domain();
@@ -94,7 +95,7 @@ public:
     // Methods to be derived
     virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
     virtual void Output   (size_t IdxOut, std::ostream & OutFile) {};                                          ///< Output current state depends on the setup
-    virtual void OutputF  (std::ostream & OutFile) {};                                                         ///< Output final state depends on the setup
+    virtual void OutputF  (char const * FileKey) {};                                                           ///< Output final state depends on the setup
 
     // Auxiliar methods
     void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
@@ -167,7 +168,7 @@ public:
                     double  alpha);                           ///< Angle of the slope in the p q plane
     void ResetEps  ();                                        ///< Reset strains and re-calculate initial lenght of packing
     void Output    (size_t IdxOut, std::ostream & OutFile);   ///< Output current state of stress and strains.
-    void OutputF   (std::ostream & OutFile);                  ///< Output Final state of normal forces for statistics
+    void OutputF   (char const * FileKey);                    ///< Output Final state of normal forces for statistics
     void Setup     (double,double);                           ///< For the triaxial test it will measure or set the strains and stresses
 
     //Data
@@ -940,6 +941,15 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             //Set the force and torque to the fixed values
             Particles[i]->F = Particles[i]->Ff;
             Particles[i]->T = Particles[i]->Tf;
+            for (size_t n=0;n<3;n++)
+            {
+                for (size_t m=0;m<3;m++)  
+                {
+                    Particles[i]->M(n,m)=0.0;
+                    Particles[i]->B(n,m)=0.0;
+                }
+            }
+            
 
             //Initialize the coordination number
             Particles[i]->Cn = 0.0;
@@ -1016,17 +1026,13 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     }
 
     //Output of the final state, depends on the setup
-    String fnf;
-    fnf.Printf("%s_forces.res",FileKey);
-    std::ofstream ff(fnf.CStr());
-    OutputF(ff);
+    OutputF(FileKey);
 
 
 
     // close files
     fw.close();
     fe.close();
-    ff.close();
 
     // info
     double Ekin, Epot, Etot;
@@ -1687,7 +1693,6 @@ inline void TriaxialDomain::Setup (double dt,double tspan)
             Sig(0) = Sig0(0)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf-2.0*Util::PI/3.0);
             Sig(1) = Sig0(1)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf);
             Sig(2) = Sig0(2)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf+2.0*Util::PI/3.0);
-            std::cout<< Sig << Sig0 << std::endl;
         }
 
     }
@@ -1783,8 +1788,12 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     
 }
 
-inline void TriaxialDomain::OutputF (std::ostream & OF)
+inline void TriaxialDomain::OutputF (char const * FileKey)
 {
+    String fn;
+    fn.Printf("%s_forces.res",FileKey);
+    std::ofstream OF(fn.CStr());
+
     OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "Issliding" << "\n";
     for (size_t i=0; i<Interactons.Size(); i++)
     {
@@ -1793,6 +1802,43 @@ inline void TriaxialDomain::OutputF (std::ostream & OF)
             OF << Util::_10_6 << norm(Interactons[i]->Fnet) << Util::_8s << norm(Interactons[i]->Ftnet) << Util::_8s <<  Interactons[i]->Nsc << "\n";
         }
     }
+    OF.close();
+
+    String f;
+    f.Printf("%s_stress.res",FileKey);
+    std::ofstream SF(f.CStr());
+    Mat3_t S;
+    for (size_t m;m<3;m++)
+    {
+        for (size_t n;n<3;n++)
+        {
+            S(m,n)=0.0;
+        }
+    }
+
+    double volumecontainer = (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0)-Particles[InitialIndex  ]->R+Particles[InitialIndex+1]->R)*
+                             (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-Particles[InitialIndex+2]->R+Particles[InitialIndex+3]->R)*
+                             (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-Particles[InitialIndex+4]->R+Particles[InitialIndex+5]->R);
+    for (size_t i=0; i<FreeParticles.Size(); i++)
+    {
+        for (size_t m=0;m<3;m++)
+        {
+            for (size_t n=0;n<3;n++)
+            {
+                S(m,n)+=FreeParticles[i]->M(m,n)/volumecontainer;
+            }
+        }
+    }
+    for (size_t m=0;m<3;m++)
+    {
+        for (size_t n=0;n<3;n++)
+        {
+            SF << Util::_10_6 << S(m,n) << Util::_8s;
+        }
+        SF << std::endl;
+    }
+    SF.close();
+
 }
 }; // namespace DEM
 

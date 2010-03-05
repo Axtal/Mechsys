@@ -70,6 +70,8 @@ public:
     Vec3_t              Tf;              ///< Fixed Torque over the particle
     Vec3_t              I;               ///< Vector containing the principal components of the inertia tensor
     Quaternion_t        Q;               ///< The quaternion representing the rotation
+    Mat3_t              M;               ///< Momment tensor for the calculation of stress
+    Mat3_t              B;               ///< Fabric tnesor for the study of structure
     double              Kn;              ///< Normal stiffness
     double              Kt;              ///< Tengential stiffness
     double              Gn;              ///< Normal viscous coefficient
