@@ -189,7 +189,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
                 Nsc++;
 
                 FMap[p] = Mu*norm(Fn)/Kt*tan;
-                dEfric += Kt*dot(FMap[p],vrel)*dt;
+                dEfric += Kt*dot(FMap[p],vt)*dt;
             }
             Ftnet += Kt*FMap[p];
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;

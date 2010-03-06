@@ -1,14 +1,14 @@
 0.1      = Verlet:      Verlet distance for optimization
 voronoi   = ptype:       Particle type (voronoi, sphere and tetrahedra mesh so far)
 0        = RenderVideo: 1 if video should be render, 0 otherwise
-0.8      = fraction:    Fraction of Particles to appear
+1.0      = fraction:    Fraction of Particles to appear
 10000.0  = Kn:          Normal stiffness
 5000.0   = Kt:          Tangential stiffness
 16.0     = Gn:          Normal dissipative coefficient
-0.0      = Gt:          Tangential dissipative coefficient
+8.0      = Gt:          Tangential dissipative coefficient
 0.4      = Mu:          Microscopic friction coefficient
 0.12     = Beta:        Rolling stiffness coefficient (only for spheres)
-0.0      = Eta:         Plastic moment coefficient (only for spheres, 0 if rolling resistance is not used)
+1.0      = Eta:         Plastic moment coefficient (only for spheres, 0 if rolling resistance is not used)
 0.1      = R:           Spheroradius
 1200     = seed:        Seed of the random generator
 0.0005    = dt:          Time step
