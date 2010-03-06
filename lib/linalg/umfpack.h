@@ -79,9 +79,9 @@ String ErrorMsg(int info)
  */
 inline void Solve(Sparse::Matrix<double,int> const & A, Vec_t const & B, Vec_t & X)
 {
-    if (A.Rows()!=A.Cols())         throw new Fatal("UMFPACK::Solve: A (%d x %d) matrix must be squared.",A.Rows(),A.Cols());
-    if (B.size()!=(size_t)A.Cols()) throw new Fatal("UMFPACK::Solve: B (%d x 1) vector must have a size equal to the number of columns of matrix A (%d)",B.size(),A.Cols());
-    if (X.size()!=B.size())         throw new Fatal("UMFPACK::Solve: X (%d x 1) vector must have the same size as B (%d)",X.size(),B.size());
+    if (A.Rows()!=A.Cols())        throw new Fatal("UMFPACK::Solve: A (%d x %d) matrix must be squared.",A.Rows(),A.Cols());
+    if (size(B)!=(size_t)A.Cols()) throw new Fatal("UMFPACK::Solve: B (%d x 1) vector must have a size equal to the number of columns of matrix A (%d)",size(B),A.Cols());
+    if (size(X)!=size(B))          throw new Fatal("UMFPACK::Solve: X (%d x 1) vector must have the same size as B (%d)",size(X),size(B));
     double *null = (double *)NULL;
     void *symbolic, *numeric;
     int info = 0;

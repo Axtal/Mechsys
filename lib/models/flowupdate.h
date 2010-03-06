@@ -74,8 +74,8 @@ inline void FlowUpdate::Update (Vec_t const & DGra, State * Sta, Vec_t & DVel) c
     FlowState * sta = static_cast<FlowState*>(Sta);
     DVel = sta->Vel; // temporary copy to calculate increment later
 
-    Vec_t dvel(sta->Vel.size());
-    Vec_t divs(sta->Ivs.size());
+    Vec_t dvel(size(sta->Vel));
+    Vec_t divs(size(sta->Ivs));
 
     if (Scheme==FE_t)
     {
@@ -102,7 +102,7 @@ inline void FlowUpdate::TangentIncs (FlowState const * sta, Vec_t & dgra, Vec_t 
     Mdl->Stiffness (sta, D, &h, &d);
     dvel  = D * dgra;
     dvel *= -1.0;
-    for (size_t k=0; k<sta->Ivs.size(); ++k) divs(k) = h[k]*dot(d,dgra);
+    for (size_t k=0; k<size(sta->Ivs); ++k) divs(k) = h[k]*dot(d,dgra);
 }
 
 #endif // MECHSYS_FLOWUPDATE_H

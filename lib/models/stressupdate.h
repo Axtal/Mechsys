@@ -76,8 +76,8 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
     DSig = sta->Sig; // temporary copy to calculate increment later
 
     // constants
-    size_t ncp = sta->Sig.size(); // num of stress components
-    size_t niv = sta->Ivs.size(); // num of internal variables
+    size_t ncp = size(sta->Sig); // num of stress components
+    size_t niv = size(sta->Ivs); // num of internal variables
 
     // auxiliar variables
     Vec_t dsig(ncp);
@@ -193,7 +193,7 @@ inline void StressUpdate::TangentIncs (EquilibState const * sta, Vec_t & deps, V
     Vec_t         d;
     Mdl->Stiffness (sta, D, &h, &d);
     dsig = D * deps;
-    for (size_t k=0; k<sta->Ivs.size(); ++k) divs(k) = h[k]*dot(d,deps);
+    for (size_t k=0; k<size(sta->Ivs); ++k) divs(k) = h[k]*dot(d,deps);
 
     // calculate dez for plane-stress
     if (Mdl->GTy==pse_t) deps(2) = Mdl->CalcDEz(dsig);

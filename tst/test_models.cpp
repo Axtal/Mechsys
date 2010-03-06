@@ -89,7 +89,7 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     Sparse::AddMult (D22, deps, dsig); // dsig2 += D22*deps2
 
     // return increments
-    for (size_t k=0; k<Sta->Ivs.size(); ++k) divs(k) = h[k]*dot(d,deps);
+    for (size_t k=0; k<size(Sta->Ivs); ++k) divs(k) = h[k]*dot(d,deps);
 }
 
 void PrintResults (EquilibState const & Sta, bool WithHeader=false)
@@ -97,7 +97,7 @@ void PrintResults (EquilibState const & Sta, bool WithHeader=false)
     if (WithHeader)
     {
         String key("%8s %8s %8s %8s  %10s %10s %10s %10s  %8s %8s %10s %10s %10s  ");
-        for (size_t iv=0; iv<Sta.Ivs.size(); ++iv)
+        for (size_t iv=0; iv<size(Sta.Ivs); ++iv)
         {
             String buf0, buf1;
             buf0.Printf ("z%d",iv);
@@ -120,7 +120,7 @@ void PrintResults (EquilibState const & Sta, bool WithHeader=false)
                             100.*Sta.Eps(0),100.*Sta.Eps(1),100.*Sta.Eps(2),100.*Sta.Eps(3)/SQ2,
                             pcam,qcam,qcam/pcam,100.*ev,100.*ed);
     cout << lin;
-    for (size_t iv=0; iv<Sta.Ivs.size(); ++iv)
+    for (size_t iv=0; iv<size(Sta.Ivs); ++iv)
     {
         String buf;
         buf.Printf ("%8g",Sta.Ivs(iv));
@@ -203,7 +203,7 @@ int main(int argc, char **argv) try
     mdl->InitIvs (inis, &sta);
 
     // number of internal values
-    size_t niv = sta.Ivs.size();
+    size_t niv = size(sta.Ivs);
 
     // allocate memory
     D11.AllocSpace (6,6, 50);

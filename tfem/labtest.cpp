@@ -100,7 +100,13 @@ int main(int argc, char **argv) try
             mdls.Set(-1, "name E nu fc sY", MODEL("ElastoPlastic"), 4000.0, 0.3, FAILCRIT("VM"), 150.0);
             break;
         }
-        case 2: // linear elastic
+        case 2: // elasto-perfect-plastic with Mohr-Coulomb FC
+        {
+            cout << "\n[1;33m======================= Elasto-perfect-plastic with Mohr-Coulomb ===================[0m\n";
+            mdls.Set(-1, "name E nu fc c phi", MODEL("ElastoPlastic"), 4000.0, 0.3, FAILCRIT("MC"), 9.0, 0.0);
+            break;
+        }
+        case 3: // linear elastic
         {
             cout << "\n[1;33m==================================== Linear elastic ================================[0m\n";
             mdls.Set(-1, "name E nu", MODEL("LinElastic"), 4000.0, 0.3);

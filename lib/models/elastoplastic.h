@@ -63,6 +63,8 @@ public:
     double  E;   ///< Young
     double  nu;  ///< Poisson
     double  kY;  ///< Coefficient for yielding
+    double  sphi;
+    double  cbar;
     FCrit_t FC;  ///< Failure criterion: VM:Von-Mises
 };
 
@@ -91,6 +93,11 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
             if      (Prms.HasKey("sY")) kY = sqrt(2.0/3.0)*Prms("sY");
             else if (Prms.HasKey("cu")) kY = (GTy==psa_t ? sqrt(2.0)*Prms("cu") : 2.0*sqrt(2.0/3.0)*Prms("cu"));
             else throw new Fatal("ElastoPlastic::ElastoPlastic: With fc=VM (von Mises), either sY (uniaxial yield stress) or cu (undrained cohesion) must be provided");
+        }
+        if (FC==MC_t)
+        {
+            sphi = sin(Prms("phi")*Util::PI/180.0);
+            cbar = sqrt(3.0)*Prms("c")/tan(Prms("phi")*Util::PI/180.0);
         }
     }
 }
@@ -124,8 +131,8 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<double
     	D = De;
     	if (h!=NULL && d !=NULL)
     	{
-    		h->Resize     (sta->Ivs.size());
-    		d->change_dim (sta->Sig.size());
+    		h->Resize     (size(sta->Ivs));
+    		d->change_dim (size(sta->Sig));
     		h->SetValues  (0.0);
     		set_to_zero   ((*d));
     	}
@@ -285,17 +292,19 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta, Vec_t & V, Vec_t
     }
     else if (FC==MC_t)
     {
-        /*
-        th   = arcsin(t)/3.0
-        g    = self.g(th)
-        dfdp = -g
-        dfdq = 1.0
-        if t>-0.999 and t<0.999:
-            dgdth = g*(sqrt(3.0)*sin(th)+self.sphi*cos(th))/(sqrt(3.0)*cos(th)-self.sphi*sin(th))
-            dfdth = -(p+self.cbar)*dgdth
-            dthdt = 1.0/(3.0*sqrt(1.0-t**2.0))
-            dfdt  = dfdth*dthdt
-        */
+        double p, q, t;
+        OctInvs (Sta->Sig, p, q, t);
+        double th = asin(t)/3.0;
+        double g  = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th));
+        dfdp = -g;
+        dfdq = 1.0;
+        if (t>-0.999 && t<0.999)
+        {
+            double dgdth = g*(sqrt(3.0)*sin(th)+sphi*cos(th))/(sqrt(3.0)*cos(th)-sphi*sin(th));
+            double dfdth = -(p+cbar)*dgdth;
+            double dthdt = 1.0/(3.0*sqrt(1.0-t*t));
+            dfdt  = dfdth*dthdt;
+        }
     }
 
     // derivatives of (oct) invariants w.r.t principal values (L)
@@ -325,8 +334,9 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
     }
     else if (FC==MC_t)
     {
-        //th   = arcsin(t)/3.0
-        //f    = q - (p + self.cbar)*self.g(th)
+        double th = asin(t)/3.0;
+        double g  = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th));
+        f = q - (p + cbar)*g;
     }
     return f;
 }
@@ -335,8 +345,8 @@ inline void ElastoPlastic::CorrectDrift (State * Sta) const
 {
     EquilibState * sta = static_cast<EquilibState *>(Sta);
     double fnew  = YieldFunc (sta);
-    size_t ncp   = sta->Sig.size();
-    size_t niv   = sta->Ivs.size();
+    size_t ncp   = size(sta->Sig);
+    size_t niv   = size(sta->Ivs);
     size_t it    = 0;
     size_t maxIt = 10;
     double tol   = 1.0e-8;

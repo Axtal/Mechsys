@@ -62,7 +62,7 @@ public:
     virtual void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel) {}     ///< Apply gravity (body forces)
     virtual void Deactivate   (NodBCs_t & pF, pCalcM CalcM, double gAccel,
                                NodBCs_t & pU)                              {}     ///< Deactivate element
-    virtual void CalcFint     (Vec_t * F_int=NULL)                       const { if (F_int!=NULL) for (size_t i=0; i<F_int->size(); ++i) (*F_int)(i) = 0.0; }
+    virtual void CalcFint     (Vec_t * F_int=NULL)                       const { if (F_int!=NULL) for (size_t i=0; i<size((*F_int)); ++i) (*F_int)(i) = 0.0; }
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
     virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }
     virtual void CalcC        (Mat_t & C)                                const { throw new Fatal("Element::CalcC: Method not implement for this element"); }

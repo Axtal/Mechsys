@@ -66,7 +66,7 @@ typedef mtl::dense_vector<double> Vec_t;
 /** Print vector. */
 inline String PrintVector (Vec_t const & V, char const * Fmt="%13g", Array<long> const * SkipR=NULL, double Tol=1.0e-13)
 {
-    int m = V.size();
+    int m = size(V);
     String lin;
     for (int i=0; i<m; ++i)
     {
@@ -115,8 +115,8 @@ inline String PrintMatrix (Mat_t const & M, char const * Fmt="%13g", Array<long>
 /** Compare two vectors. */
 inline double CompareVectors (Vec_t const & A, Vec_t const & B)
 {
-    size_t m = A.size();
-    if (m!=B.size()) throw new Fatal("matvec.h:CompareVectors: vectors A_%d and B_%d must have the same size",m,B.size());
+    size_t m = size(A);
+    if (m!=size(B)) throw new Fatal("matvec.h:CompareVectors: vectors A_%d and B_%d must have the same size",m,size(B));
     double error = 0.0;
     for (size_t i=0; i<m; ++i)
         error += fabs(A(i)-B(i));
@@ -334,7 +334,7 @@ inline void Inv (Mat_t const & M, Mat_t & Mi, double Tol=1.0e-10)
         Svd(M, U, S, Vt);
         Mat_t Di(m,n);
         set_to_zero(Di);
-        for (size_t i=0; i<S.size(); ++i)
+        for (size_t i=0; i<size(S); ++i)
         {
             if (S(i)>Tol) Di(i,i) = 1.0/S(i);
         }
@@ -349,7 +349,7 @@ inline void Sol (Mat_t & M, Vec_t & X)
 {
     int  m = M.num_rows();
     int  n = M.num_cols();
-    int mv = X.size();
+    int mv = size(X);
     if (m!=n)  throw new Fatal("Sol: Matrix must be square");
     if (m!=mv) throw new Fatal("Sol: Vector X must have the same number of rows of matrix M");
 
@@ -389,9 +389,9 @@ inline double Norm (Vec_t const & V)
 /** Dyadic product. */
 inline void Dyad (Vec_t const & A, Vec_t const & B, Mat_t & M)
 {
-    M.change_dim(A.size(),B.size());
-    for (size_t i=0; i<A.size(); ++i)
-    for (size_t j=0; j<B.size(); ++j)
+    M.change_dim(size(A),size(B));
+    for (size_t i=0; i<size(A); ++i)
+    for (size_t j=0; j<size(B); ++j)
         M(i,j) = A(i) * B(j);
 }
 
@@ -674,8 +674,8 @@ namespace OrthoSys
 // Cambridge invariants
 inline double Calc_pcam  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
 inline double Calc_ev    (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
-inline double Calc_qcam  (Vec_t const & Sig) { double m = (Sig.size()>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
-inline double Calc_ed    (Vec_t const & Eps) { double m = (Eps.size()>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
+inline double Calc_qcam  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
+inline double Calc_ed    (Vec_t const & Eps) { double m = (size(Eps)>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
 
 /** Deviator of Sig. */
 inline void Dev (Vec_t const & Sig, Vec_t & DevSig)
@@ -696,7 +696,7 @@ inline double Tra (Vec_t const & Sig)
 /** Eigenprojectors of Sig. */
 inline void EigenProj (Vec_t const & Sig, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
 {
-    size_t ncp = Sig.size();
+    size_t ncp = size(Sig);
     Mat3_t sig;
     if (ncp==4)
     {
@@ -733,7 +733,7 @@ inline void EigenProj (Vec_t const & Sig, Vec3_t & L, Vec_t & P0, Vec_t & P1, Ve
 /** Octahedral invariants of Sig. */
 inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double qTol=1.0e-8)
 {
-    size_t ncp = Sig.size();
+    size_t ncp = size(Sig);
     Vec_t I(ncp), s(ncp);
     set_to_zero (I);
     set_to_zero (s);
@@ -781,7 +781,7 @@ inline void OctInvs (Vec3_t const & L, double & p, double & q, double & t, Vec3_
 /** Sig raised to the power of 2. */
 inline void Pow2 (Vec_t const & Sig, Vec_t & Sig2)
 {
-    size_t ncp = Sig.size();
+    size_t ncp = size(Sig);
     Sig2.change_dim (ncp);
     if (ncp==4)
     {
@@ -807,7 +807,7 @@ inline void CharInvs (Vec_t const & Sig, double & I1, double & I2, double & I3, 
     I1 = Sig(0) + Sig(1) + Sig(2);
     I2 = Sig(0)*Sig(1) + Sig(1)*Sig(2) + Sig(2)*Sig(0) - Sig(3)*Sig(3)/2.0;
     I3 = Sig(0)*Sig(1)*Sig(2) - Sig(2)*Sig(3)*Sig(3)/2.0;
-    size_t ncp = Sig.size();
+    size_t ncp = size(Sig);
     dI1dSig.change_dim (ncp);
     dI2dSig.change_dim (ncp);
     dI3dSig.change_dim (ncp);

@@ -60,37 +60,45 @@ int main(int argc, char **argv) try
 
     // models
     Dict mdls;
-    mdls.Set(-1, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
-    mdls.Set(-2, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
-    mdls.Set(-3, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
+    //mdls.Set(-1, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
+    //mdls.Set(-2, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
+    //mdls.Set(-3, "name psa  E nu", MODEL("LinElastic"),1.0,  1.0e+5, 0.49);
+    mdls.Set(-1, "name psa  E nu  fc c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, FAILCRIT("MC"), 9.0, 0.0);
+    mdls.Set(-2, "name psa  E nu  fc c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, FAILCRIT("MC"), 9.0, 0.0);
+    mdls.Set(-3, "name psa  E nu  fc c phi", MODEL("LinElastic"),1.0,  1.0e+5, 0.49, FAILCRIT("MC"), 9.0, 0.0);
 
-    // domain
+    // initial values
     Dict inis;
     inis.Set(-1, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
     inis.Set(-2, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
     inis.Set(-3, "geostatic K0 gam y_surf", 1.0, K0, gam, 0.0);
-    FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.WriteVTU  ("fig_06_38_stg_0");
 
+    // domain
+    FEM::Domain dom(mesh, prps, mdls, inis);
+    dom.SetOutNods ("fig_06_38", Array<int>(28, 29, 30, 31));
+    dom.WriteVTU   ("fig_06_38_stg_0");
 
     // solver
     FEM::Solver sol(dom);
     //sol.Scheme = FEM::Solver::FE_t;
 
     // stage # 1 ==============================================================
-
-    // boundary conditions
     Dict bcs;
-    bcs.Set(-10, "ux",     0.0);
-    bcs.Set(-20, "ux",     0.0);
-    bcs.Set(-30, "ux uy",  0.0, 0.0);
-    dom.SetBCs (bcs);
+    bcs.Set (-10, "ux",     0.0);
+    bcs.Set (-20, "ux",     0.0);
+    bcs.Set (-30, "ux uy",  0.0, 0.0);
+    dom.SetBCs     (bcs);
     dom.Deactivate (-2);
+    sol.Solve      (10);
+    dom.WriteVTU   ("fig_06_38_stg_1");
 
-    // solve
-    sol.Solve (1);
-
-    // output
-    dom.WriteVTU ("fig_06_38_stg_1");
+    // stage # 2 ==============================================================
+    bcs.Set (-10, "ux",     0.0);
+    bcs.Set (-20, "ux",     0.0);
+    bcs.Set (-30, "ux uy",  0.0, 0.0);
+    dom.SetBCs     (bcs);
+    dom.Deactivate (-3);
+    sol.Solve      (10);
+    dom.WriteVTU   ("fig_06_38_stg_2");
 }
 MECHSYS_CATCH

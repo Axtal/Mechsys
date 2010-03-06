@@ -1,9 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
-sudo apt-get install g++ make gfortran libblitz0-dev libsuitesparse-dev \
-                     libboost-python1.37-dev libigraph-dev libsuperlu3-dev
-
-#sudo apt-get install g++ make gfortran libblitz0-dev libsuitesparse-dev \
-#                     libgsl0-dev libboost-python-dev libsuperlu3-dev
+sudo apt-get install g++ cmake gfortran libblitz0-dev libboost-python1.40-dev \
+                     libgsl0-dev mercurial subversion wget

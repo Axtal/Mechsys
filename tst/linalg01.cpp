@@ -34,7 +34,7 @@ double CheckSvd (char const * Key, Mat_t const & M, Mat_t const & CorrectU, Vec_
     Vec_t S;
 	Svd (M, U, S, Vt);
     set_to_zero(D);
-    for (size_t i=0; i<S.size(); ++i) D(i,i) = S(i);
+    for (size_t i=0; i<size(S); ++i) D(i,i) = S(i);
     Mat_t UDVt (U*D*Vt); // == M
     double err_U    = CompareMatrices (U, CorrectU);
     double err_Vt   = CompareMatrices (Vt,CorrectVt);

@@ -17,6 +17,7 @@
 ########################################################################
 
 SET(EXES
+  nonconvex
   ttt
   test_distances
   test_domain
