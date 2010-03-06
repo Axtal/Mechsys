@@ -54,6 +54,7 @@ int main(int argc, char **argv) try
     dom.CamPos= cx,cy,cz;
     dom.WritePOV ("nonconvex");
     dom.WriteBPY ("nonconvex");
+    dom.Save     ("nonconvex");
     return 0;
 }
 MECHSYS_CATCH

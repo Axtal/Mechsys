@@ -186,6 +186,8 @@ BPy::class_<DEM::Domain>("DEM_Domain")
     .def("GetParticles",   &DEM::Domain::PyGetParticles)
     .def("GenBoundingBox", &DEM::Domain::GenBoundingBox)
     .def("SetProps",       &DEM::Domain::SetProps)
+    .def("Save",           &DEM::Domain::Save)
+    .def("Load",           &DEM::Domain::Load)
     ;
 
 BPy::class_<DEM::TriaxialDomain, BPy::bases<DEM::Domain> >("DEM_TTTDomain")
