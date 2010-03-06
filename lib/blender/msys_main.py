@@ -35,6 +35,7 @@ TODO
 #   /Applications/blender.app/Contents/MacOS/.blender/scripts/
 
 # Modules
+import os
 import Blender
 from   Blender import Draw, BGL
 from   Blender.Mathutils import Vector

@@ -78,7 +78,12 @@ def gen_GSD(is_ttt):
 
 
 def load_hdf(filename):
-    print filename
+    dom = ms.DEM_Domain()
+    dom.Load (filename.replace('.hdf5',''))
+    d = di.load_dict()
+    P = []
+    dom.GetParticles (P)
+    add_particles(P,d['dem_res'],d['dem_draw_verts'],d['dem_draw_edges'])
 
 
 def gen_script():

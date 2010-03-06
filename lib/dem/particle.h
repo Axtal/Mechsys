@@ -232,18 +232,18 @@ inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, dou
             {
                 Edges.Push (new Edge((*Verts[v0]), (*Verts[v1])));
                 key2edge[keya] = Edges[Edges.Size()-1];
-                EdgeCon.Push (v0); // TODO: we may remove this
-                EdgeCon.Push (v1); // TODO: we may remove this
+                EdgeCon.Push (Array<int>((int)v0,(int)v1)); // TODO: we may remove this
             }
         }
 
         // faces
         Array<Vec3_t*> verts(nvf);
+        FaceCon.Push (Array<int>()); // TODO: we may remove this
         for (size_t j=0; j<nvf; ++j)
         {
             v0 = M.Cells[i]->V[j]->ID;
             verts[j] = Verts[v0];
-            FaceCon.Push (v0); // TODO: we may remove this
+            FaceCon[FaceCon.Size()-1].Push (v0); // TODO: we may remove this
         }
         Faces.Push (new Face(verts));
     }
