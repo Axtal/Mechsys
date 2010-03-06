@@ -55,28 +55,29 @@ def get_selected_edges(msh):
 ############################################################ Export
 
 # export mesh to a file
-def export_mesh(fn,outedg):
+def export_mesh(fn,outedg,is3d):
     obj, msh, edm = get_active_mesh()
     if msh!=None:
 
         # check
-        for f in msh.faces:
-            nv = len(f.verts)
-            va = f.verts[0]
-            for i in range(1,nv-1):
-                vb = f.verts[i]
-                vc = f.verts[i+1]
-                a  = vb.co-va.co
-                b  = vc.co-va.co
-                c  = Mathutils.CrossVecs(a, b)
-                # check if face is parallel to x-y a plane
-                if abs(c[0])>0.00001 or abs(c[1])>0.00001:
-                    if edm: Window.EditMode(1)
-                    raise Exception('All faces must be parallel to x-y plane')
-                # check connectivity
-                if c[1]<0.0:
-                    if edm: Window.EditMode(1)
-                    raise Exception('Mesh connectivity is invalid (nodes numbering order is incorrect)')
+        if not is3d:
+            for f in msh.faces:
+                nv = len(f.verts)
+                va = f.verts[0]
+                for i in range(1,nv-1):
+                    vb = f.verts[i]
+                    vc = f.verts[i+1]
+                    a  = vb.co-va.co
+                    b  = vc.co-va.co
+                    c  = Mathutils.CrossVecs(a, b)
+                    # check if face is parallel to x-y a plane
+                    if abs(c[0])>0.00001 or abs(c[1])>0.00001:
+                        if edm: Window.EditMode(1)
+                        raise Exception('All faces must be parallel to x-y plane')
+                    # check connectivity
+                    if c[1]<0.0:
+                        if edm: Window.EditMode(1)
+                        raise Exception('Mesh connectivity is invalid (nodes numbering order is incorrect)')
 
         # open file
         fil = open(fn,'w')
@@ -94,7 +95,8 @@ def export_mesh(fn,outedg):
             # line
             s1  = ''    if i==0   else '     '
             s2  = ']\n' if i==nv1 else ',\n'
-            lin = '%s%s[%4d, %4d, %14.6e,%14.6e]%s' % (lin,s1,v.index,tag,v.co[0],v.co[1],s2)
+            if is3d: lin = '%s%s[%4d, %4d, %14.6e,%14.6e,%14.6e]%s' % (lin,s1,v.index,tag,v.co[0],v.co[1],v.co[2],s2)
+            else:    lin = '%s%s[%4d, %4d, %14.6e,%14.6e,%14.6e]%s' % (lin,s1,v.index,tag,v.co[0],v.co[1],s2)
         fil.write(lin)
 
         # edges
@@ -175,6 +177,7 @@ def load_dict():
         d['neweta']  = -10
         d['newsta']  = -1
         d['outedg']  = False
+        d['is3d']    = False
         Blender.Registry.SetKey('gui_dict', d)
     return d
 
@@ -272,12 +275,13 @@ def cb_vta    (evt,val): set_key('newvta', val)
 def cb_eta    (evt,val): set_key('neweta', val)
 def cb_sta    (evt,val): set_key('newsta', val)
 def cb_outedg (evt,val): set_key('outedg', val)
+def cb_is3d   (evt,val): set_key('is3d',   val)
 def cb_expmsh (fn):
     if os.path.exists(fn):
         msg = 'Overwrite file <'+fn+'> ?%t|Yes'
         res = Draw.PupMenu(msg)
-        if res>0: export_mesh(fn,get_key('outedg'))
-    else: export_mesh(fn,get_key('outedg'))
+        if res>0: export_mesh(fn,get_key('outedg'),get_key('is3d'))
+    else: export_mesh(fn,get_key('outedg'),get_key('is3d'))
 
 # window
 def gui():
@@ -323,7 +327,7 @@ def gui():
     Draw.Toggle ('S Tags', EVT_NONE, c+180, r, 60, rh, d['showsta'], 'Show solids tags',    cb_showsta)
 
     # draw MESH box ===============================================
-    h  = 4*rh
+    h  = 5*rh+srh
     c -= cg
     r -= (srh+2*rh)
     BGL.glColor3f     (0.573, 0.512, 0.585)
@@ -337,8 +341,9 @@ def gui():
     # draw MESH widgets
     c += cg
     r -= (rh+srh)
-    Draw.Number     ('',          EVT_NONE, c   , r, 60, rh, d['newvta'], -1000, 0, 'New vertex tag', cb_vta)
-    Draw.PushButton ('Set V tag', EVT_VTAG, c+60, r, 60, rh,                        'Set vertices tag (0 => remove tag)')
+    Draw.Number     ('',          EVT_NONE,    c   ,    r, 60, rh, d['newvta'], -1000, 0, 'New vertex tag', cb_vta)
+    Draw.PushButton ('Set V tag', EVT_VTAG,    c+60,    r, 60, rh,                        'Set vertices tag (0 => remove tag)')
+    Draw.PushButton ('Clr Tags',  EVT_CLRTAGS, c+120+cg,r, 80, rh, 'Clear all tags')
     r -= rh
     Draw.Number     ('',          EVT_NONE, c   , r, 60, rh, d['neweta'], -1000, 0, 'New edge tag', cb_eta)
     Draw.PushButton ('Set E tag', EVT_ETAG, c+60, r, 60, rh,                        'Set edges tag (0 => remove tag)')
@@ -347,12 +352,11 @@ def gui():
     Draw.PushButton ('Set S tag', EVT_STAG, c+60, r, 60, rh,                        'Set solids tag (0 => remove tag)')
 
     # control
-    r += (2*rh)
-    Draw.PushButton ('Clr Tags',  EVT_CLRTAGS, c+120+cg,r, 80, rh, 'Clear all tags')
     r -= rh
-    Draw.Toggle     ('Out edges', EVT_NONE, c+120+cg,r, 80, rh, d['outedg'], 'Output edges when exporting ?', cb_outedg)
-    r -= rh
-    Draw.PushButton ('Export',    EVT_EXPT, c+120+cg,r, 80, rh, 'Export mesh')
+    r -= srh
+    Draw.Toggle     ('Out edges', EVT_NONE, c,     r, 80, rh, d['outedg'], 'Output edges when exporting ?', cb_outedg)
+    Draw.Toggle     ('3D Mesh',   EVT_NONE, c+80,  r, 80, rh, d['is3d'],   '3D mesh', cb_is3d)
+    Draw.PushButton ('Export',    EVT_EXPT, c+160, r, 80, rh, 'Export mesh')
 
 # register window
 Draw.Register (gui, event, bevent)
