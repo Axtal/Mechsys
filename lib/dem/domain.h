@@ -111,6 +111,7 @@ public:
     Array<Particle*>   RParticles;    ///< Particles with rotation fixed
     Array<Particle*>   FParticles;    ///< Particles with applied force
     Array<Interacton*> Interactons;   ///< All interactons
+    Array<Interacton*> CInteractons;  ///< Contact interactons
     Vec3_t             CamPos;        ///< Camera position for POV
     double             Evis;          ///< Energy dissipated by the viscosity of the grains
     double             Efric;         ///< Energy dissipated by friction
@@ -853,7 +854,12 @@ inline void Domain::Initialize (double dt)
         {
             Particles[i]->Initialize();
             Particles[i]->InitializeVelocity(dt);
+            Particles[i]->Index = i;
         }
+        //Initializing the energies
+        Evis = 0.0;
+        Efric = 0.0;
+        Wext = 0.0;
 
         // make freeparticles = particles
         if (FreeParticles.Size()==0) FreeParticles = Particles;
@@ -927,11 +933,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     size_t idx_out = 0;    // index of output
     double tout    = t0;  // time position for output
 
-    //Initializing the energies
-    Evis = 0.0;
-    Efric = 0.0;
-    Wext = 0.0;
-
+    
     // run
     while (Time<tf)
     {
@@ -958,11 +960,11 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         }
 
         // calc force
-        for (size_t i=0; i<Interactons.Size(); i++)
+        for (size_t i=0; i<CInteractons.Size(); i++)
         {
-            Interactons[i]->CalcForce (dt);
-            Evis += Interactons[i]-> dEvis;
-            Efric += Interactons[i]-> dEfric;
+            CInteractons[i]->CalcForce (dt);
+            Evis += CInteractons[i]-> dEvis;
+            Efric += CInteractons[i]-> dEfric;
         }
 
         Setup(dt, tf-t0);
@@ -1439,9 +1441,10 @@ inline double Domain::MaxDisplacement()
 
 inline void Domain::ResetContacts()
 {
+    CInteractons.Resize(0);
     for (size_t i=0; i<Interactons.Size(); i++)
     {
-        Interactons[i]->UpdateContacts(Alpha);
+        if(Interactons[i]->UpdateContacts(Alpha)) CInteractons.Push(Interactons[i]);
     }
 }
 

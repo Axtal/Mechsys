@@ -58,6 +58,7 @@ public:
 
     // Data
     int                 Tag;             ///< Tag of the particle
+    size_t              Index;           ///< index of the particle in the domain
     bool                PropsReady;      ///< Are the properties calculated ready ?
     Vec3_t              x;               ///< Position of the center of mass
     Vec3_t              xb;              ///< Former position for the Verlet algorithm

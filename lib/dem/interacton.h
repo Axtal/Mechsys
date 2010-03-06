@@ -41,12 +41,14 @@ public:
     Interacton (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
 
     // Methods
-    virtual void UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
+    virtual bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
     virtual void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
 
     // Data
     Particle     * P1;        ///< First particle
     Particle     * P2;        ///< Second particle
+    size_t         I1;        ///< Index of the first particle
+    size_t         I2;        ///< Index of the second particle
     double         Kn;        ///< Normal stiffness
     double         Kt;        ///< Tengential stiffness
     double         Gn;        ///< Normal viscous coefficient
@@ -79,7 +81,7 @@ class InteractonSphere: public Interacton
 public:
     // Methods 
     InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
-    void UpdateContacts (double alpha);                ///< Update contacts by verlet algorithm
+    bool UpdateContacts (double alpha);                ///< Update contacts by verlet algorithm
     void CalcForce (double dt = 0.0);                  ///< Calculates the contact force between particles
     
     // Data
@@ -88,7 +90,6 @@ public:
     Vec3_t         Fdr;                                 ///< Rolling displacement 
     double         beta;                                ///< Rolling stiffness coefficient
     double         eta;                                 ///< Plastic moment coefficient
-    bool           neigh;                               ///< Check if it is a close particle
 
 protected:
     void _update_rolling_resistance(double dt);               ///< Calculates the rolling resistance torque
@@ -101,11 +102,13 @@ inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
     : P1(Pt1), P2(Pt2), Kn(2*ReducedValue(P1->Kn,P2->Kn)), Kt(2*ReducedValue(P1->Kt,P2->Kt)), Gn(2*ReducedValue(P1->Gn,P2->Gn)), 
       Gt(2*ReducedValue(P1->Gt,P2->Gt)), Mu(2*ReducedValue(P1->Mu,P2->Mu)), Epot(0.0)
 {
+    I1 = P1->Index;
+    I2 = P2->Index;
     CalcForce(0.0);
 }
 
 
-inline void Interacton::UpdateContacts (double alpha)
+inline bool Interacton::UpdateContacts (double alpha)
 {
     Lee.Resize(0);
     Lvf.Resize(0);
@@ -115,7 +118,9 @@ inline void Interacton::UpdateContacts (double alpha)
         _update_contacts (P1->Edges,P2->Edges,Lee,alpha);
         _update_contacts (P1->Verts,P2->Faces,Lvf,alpha);
         _update_contacts (P1->Faces,P2->Verts,Lfv,alpha);
+        return true;
     }
+    else return false;
 }
 
 inline void Interacton::CalcForce (double dt)
@@ -184,7 +189,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
                 Nsc++;
 
                 FMap[p] = Mu*norm(Fn)/Kt*tan;
-                dEfric += Kt*dot(FMap[p],Vec3_t(P2->v - P1->v))*dt;
+                dEfric += Kt*dot(FMap[p],vrel)*dt;
             }
             Ftnet += Kt*FMap[p];
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
@@ -244,6 +249,8 @@ inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
 {
     P1   = Pt1;
     P2   = Pt2;
+    I1 = P1->Index;
+    I2 = P2->Index;
     Kn   = 2*ReducedValue(Pt1->Kn,Pt2->Kn);
     Kt   = 2*ReducedValue(Pt1->Kt,Pt2->Kt);
     Gn   = 2*ReducedValue(Pt1->Gn,Pt2->Gn);
@@ -253,8 +260,6 @@ inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
     eta  = 2*ReducedValue(Pt1->Eta,Pt2->Eta);
     Nc = 0;
     Nsc = 0;
-
-    neigh = false;
 
     Epot = 0.0;
     Fdr  = 0.0, 0.0, 0.0;
@@ -296,32 +301,28 @@ inline void InteractonSphere::_update_rolling_resistance(double dt)
 
 inline void InteractonSphere::CalcForce(double dt)
 {
-    if(neigh)
+    Epot   = 0.0;
+    dEvis  = 0.0;
+    dEfric = 0.0;
+    Nc     = 0;
+    Nsc    = 0;
+    Fnet   = 0.0;
+    Ftnet  = 0.0;
+    _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
+    if (Epot>0.0) _update_rolling_resistance(dt);
+
+
+    //If there is at least a contact, increase the coordination number of the particles
+    if (Nc>0) 
     {
-        Epot   = 0.0;
-        dEvis  = 0.0;
-        dEfric = 0.0;
-        Nc     = 0;
-        Nsc    = 0;
-        Fnet   = 0.0;
-        Ftnet  = 0.0;
-        _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
-        if (Epot>0.0) _update_rolling_resistance(dt); // TODO: why using
-                                                      // Epot here ??
-
-
-        //If there is at least a contact, increase the coordination number of the particles
-        if (Nc>0) 
-        {
-            P1->Cn++;
-            P2->Cn++;
-        }
+        P1->Cn++;
+        P2->Cn++;
     }
 }
 
-inline void InteractonSphere::UpdateContacts (double alpha)
+inline bool InteractonSphere::UpdateContacts (double alpha)
 {
-    if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha) neigh =true;
-    else neigh = false;
+    if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha) return true;
+    else return false;
 }
 #endif //  MECHSYS_DEM_INTERACTON_H
