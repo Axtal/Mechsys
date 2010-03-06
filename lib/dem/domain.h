@@ -979,6 +979,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // particles with translation constrained
         for (size_t i=0; i<TParticles.Size(); i++) 
         {
+            Wext -= dot(TParticles[i]->F,TParticles[i]->v)*dt;
             TParticles[i]->F = 0.0,0.0,0.0;
             TParticles[i]->Translate(dt);
         }

@@ -195,7 +195,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
             P1->F += -F;
             P2->F +=  F;
-            dEvis += dot(Vec3_t(Gn*dot(n,vrel)*n +Gt*vt),vrel)*dt;
+            dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
 
             // torque
             Vec3_t T, Tt, temp;
