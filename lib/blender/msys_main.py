@@ -118,6 +118,7 @@ EVT_DEM_RUN          = 103 # run simulation
 EVT_DEM_STOP         = 104 # stop simulation
 EVT_DEM_CLEAR        = 105 # clear error message
 EVT_DEM_GSD          = 106 # generate GSD
+EVT_DEM_LOAD_HDF     = 107 # read HDF5 file
 
 
 # ==================================================================================== Events
@@ -330,6 +331,7 @@ def button_event(evt):
         di.key('dem_fatal').value = 0
         Blender.Window.QRedrawAll()
     elif evt==EVT_DEM_GSD:      dem.gen_GSD  (False) # is_ttt
+    elif evt==EVT_DEM_LOAD_HDF: Blender.Window.FileSelector(cb_dem_hdf, 'Load HDF')
 
 # ================================================================================= Callbacks
 
@@ -791,6 +793,10 @@ def cb_dem_ttt_render (evt,val): di.set_key ('dem_ttt_render', val)
 
 @try_catch
 def cb_dem_cpp_script (evt,val): di.set_key ('dem_cpp_script', val)
+@try_catch
+def cb_dem_hdf(fn):
+    if os.path.exists(fn): dem.load_hdf(fn);
+    else: raise Exception("File does not exist")
 
 # ======================================================================================= GUI
 
@@ -909,11 +915,12 @@ def gui():
     h_fem_stage     = 13*rh+srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts+rh*stg_extra_rows if len(stages)>0 else 0
     h_fem           = 5*rh+h_fem_stage+3*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
     h_dem_pkg       = 9*rh+3*rg
+    h_dem_hdf       = rh+2*rg
     h_dem_cte       = 5*rh+srg
     h_dem_ttt_iso   = 3*rh+2*srg
     h_dem_ttt_she   = 4*rh+3*srg
     h_dem_ttt       = 6*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she + (rh if (d['dem_running'].value or d['dem_fatal'].value) else 0)
-    h_dem           = h_dem_pkg+h_dem_cte+srg+6*rh+h_dem_ttt
+    h_dem           = h_dem_pkg+h_dem_hdf+h_dem_cte+srg+8*rh+h_dem_ttt
 
     # clear background
     gu.background()
@@ -1422,6 +1429,16 @@ def gui():
         Draw.PushButton ('Generate TTT Packing',    EVT_DEM_GEN_TTT,  c+150, r, 150, rh, 'Generate true triaxial (TTT) packing')
         r -= rh
         Draw.PushButton ('Grain Size Distribution', EVT_DEM_GSD,      c,     r, 150, rh, 'Generate Grain Size Distribution (GSD)')
+
+        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
+
+        # ----------------------- DEM -- read HDF5
+
+        r -= rh
+        gu.caption2(c,r,w,rh,'Read HDF5')
+        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_hdf)
+
+        Draw.PushButton ('Read HDF5', EVT_DEM_LOAD_HDF, c, r, 100, rh, 'Read HDF5')
 
         r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
 

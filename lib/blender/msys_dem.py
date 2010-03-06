@@ -77,6 +77,10 @@ def gen_GSD(is_ttt):
         raise Exception('Python (Matplotlib) command failed')
 
 
+def load_hdf(filename):
+    print filename
+
+
 def gen_script():
     Blender.Window.WaitCursor(1)
     d = di.load_dict()
