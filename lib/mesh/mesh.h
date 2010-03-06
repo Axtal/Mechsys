@@ -155,13 +155,13 @@ class Generic
 {
 public:
     // Constructor
-    Generic (int TheNDim) : NDim(TheNDim) {}
+    Generic (int TheNDim) : NDim(TheNDim), IsShell(false) {}
 
     // Destructor
     virtual ~Generic () { Erase(); }
 
     // Set methods
-    void ReadMesh   (char const * FileKey);                               ///< (.mesh) Erase old mesh and read mesh from python file
+    void ReadMesh   (char const * FileKey, bool IsShell=false);           ///< (.mesh) Erase old mesh and read mesh from python file
     void SetSize    (size_t NumVerts, size_t NumCells);                   ///< Erase old mesh and set number of vertices
     void SetVert    (int iVert, int Tag, double X, double Y, double Z=0); ///< Set vertex
     void SetCell    (int iCell, int Tag, Array<int> const & Con);         ///< Set element ... => connectivity
@@ -188,6 +188,7 @@ public:
 
     // Data
     int            NDim;      ///< Space dimension
+    bool           IsShell;   ///< Is shell mesh ? (only surface)
     Array<Vertex*> Verts;     ///< Vertices
     Array<Cell*>   Cells;     ///< Cells
     Array<Vertex*> TgdVerts;  ///< Tagged Vertices
@@ -279,8 +280,12 @@ inline void Generic::ThrowError (std::istringstream & iss, char const * Message)
     throw new Fatal("Generic::ReadMesh: Mesh file format invalid\n    %s\n    %s",Message,str.CStr());
 }
 
-inline void Generic::ReadMesh (char const * FileKey)
+inline void Generic::ReadMesh (char const * FileKey, bool Shell)
 {
+    // shell mesh ?
+    IsShell = Shell;
+
+    // open file
     String fn(FileKey); fn.append(".mesh");
     std::fstream fil(fn.CStr(), std::ios::in);
     if (!fil.is_open()) throw new Fatal("Generic::ReadMesh: Could not open file < %s >",fn.CStr());
@@ -663,6 +668,8 @@ inline void Generic::FindNeigh ()
 
 inline void Generic::GenO2Verts ()
 {
+    if (IsShell) throw new Fatal("Generic::GenO2Verts: This mehtod is not ready for Shell meshes yet");
+
     // generate neighbours map
     if (Bry2Cells.empty()) FindNeigh ();
 
@@ -726,6 +733,8 @@ inline void Generic::Erase ()
 
 inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 {
+    if (IsShell) throw new Fatal("Generic::WriteVTU: This mehtod is not ready for Shell meshes yet");
+
     // Vol=0, Surf=1, Both=2
 
     // boundary cells (for plotting bry tags)
@@ -914,6 +923,8 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 
 inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs, bool WithShares, char const * Extra) const
 {
+    if (IsShell) throw new Fatal("Generic::WriteMPY: This mehtod is not ready for Shell meshes yet");
+
     // header
     String fn(FileKey); fn.append(".mpy");
     std::ostringstream oss;
