@@ -19,6 +19,7 @@ fi
 TRIANGLE=triangle1.6
 TETGEN=tetgen1.4.3
 VORO=voro++0.3.1
+HDF5=hdf5-1.8.4-patch1
 
 test -d $HOME/pkg || mkdir $HOME/pkg
 
@@ -74,6 +75,22 @@ wget http://mechsys.nongnu.org/software/$VORO.tar.gz
 tar xzvf $VORO.tar.gz
 cd $VORO
 sh ~/mechsys/patches/voro/do_patch.sh
+
+echo
+echo "[1;31mDownloading HDF5    ########################################################################################################[0m"
+echo
+cd ~/pkg
+if [ -d "$HOME/pkg/$HDF5" ]; then
+    rm -rf $HOME/pkg/$HDF5
+fi
+if [ -e $HDF5.tar.gz ]; then
+    rm $HDF5.tar.gz;
+fi
+wget http://www.hdfgroup.org/ftp/HDF5/current/src/$HDF5.tar.gz
+tar xzvf $HDF5.tar.gz
+cd $HDF5
+./configure
+make
 
 echo
 echo "[1;32mFinished   #################################################################################################################[0m"

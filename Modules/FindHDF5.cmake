@@ -20,16 +20,17 @@
 #####################################################################################
 
 SET(HDF5_INCLUDE_SEARCH_PATH
-  $ENV{HOME}/pkg/hdf5-1.8.4/include/)
+  $ENV{HOME}/pkg/hdf5-1.8.4-patch1)
 
 SET(HDF5_LIBRARY_SEARCH_PATH
-  $ENV{HOME}/pkg/hdf5-1.8.4/lib/)
+  $ENV{HOME}/pkg/hdf5-1.8.4-patch1/src/.libs
+  $ENV{HOME}/pkg/hdf5-1.8.4-patch1/hl/src/.libs)
 
-FIND_PATH(HDF5_H     hdf5.h         ${HDF5_INCLUDE_SEARCH_PATH})
-FIND_PATH(HDF5_HL_H  hdf5_hl.h      ${HDF5_INCLUDE_SEARCH_PATH})
+FIND_PATH(HDF5_H    src/hdf5.h       ${HDF5_INCLUDE_SEARCH_PATH})
+FIND_PATH(HDF5_HL_H hl/src/hdf5_hl.h ${HDF5_INCLUDE_SEARCH_PATH})
 
-FIND_LIBRARY(HDF5        NAMES hdf5        PATHS ${HDF5_LIBRARY_SEARCH_PATH})
-FIND_LIBRARY(HDF5_HL     NAMES hdf5_hl     PATHS ${HDF5_LIBRARY_SEARCH_PATH})
+FIND_LIBRARY(HDF5    NAMES hdf5    PATHS ${HDF5_LIBRARY_SEARCH_PATH})
+FIND_LIBRARY(HDF5_HL NAMES hdf5_hl PATHS ${HDF5_LIBRARY_SEARCH_PATH})
 
 SET(HDF5_FOUND 1)
 FOREACH(var HDF5_H HDF5_HL_H HDF5 HDF5_HL)
