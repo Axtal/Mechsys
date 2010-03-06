@@ -28,6 +28,7 @@
 #include <mechsys/dem/special_functions.h>
 #include <mechsys/util/array.h>
 #include <mechsys/numerical/montecarlo.h>
+#include <mechsys/mesh/mesh.h>
 
 class Particle
 {
@@ -41,6 +42,9 @@ public:
              Vec3_t              const & w0,       ///< Initial angular velocity
              double                      R,        ///< Spheroradius
              double                      rho=1.0); ///< Density of the material
+
+    // Alternative constructor
+    Particle (int Tag, Mesh::Generic const & M, double R, double rho=1.0);
 
     // Destructor
     ~Particle ();
@@ -91,8 +95,8 @@ public:
     double              Cn;              ///< Coordination number (number of contacts)
     Array<Vec3_t*>      Vertso;          ///< Original postion of the Vertices
     Array<Vec3_t*>      Verts;           ///< Vertices
-    Array<Array <int> > EdgeCon;         ///< Conectivity of Edges
-    Array<Array <int> > FaceCon;         ///< Conectivity of Faces
+    Array<Array <int> > EdgeCon;         ///< Conectivity of Edges TODO: why do we need this ?
+    Array<Array <int> > FaceCon;         ///< Conectivity of Faces TODO: why do we need this ?
     Array<Edge*>        Edges;           ///< Edges
     Array<Face*>        Faces;           ///< Faces
 
@@ -185,6 +189,64 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
         Faces.Push (new Face(verts));
     }
     for (size_t i=0; i<E.Size(); i++) Edges.Push (new Edge((*Verts[E[i][0]]), (*Verts[E[i][1]])));
+}
+
+inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, double TheRho)
+    : Tag(TheTag), PropsReady(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
+{
+    Ff = 0.0,0.0,0.0;
+    Tf = 0.0,0.0,0.0;
+
+    // check if mesh is Shell
+    if (!M.IsShell) throw new Fatal("Particle::Particle: Mesh must be of Shell type");
+
+    // vertices
+    size_t nv = M.Verts.Size();
+    for (size_t i=0; i<nv; ++i)
+    {
+        Verts .Push (new Vec3_t(M.Verts[i]->C(0), M.Verts[i]->C(1), M.Verts[i]->C(2)));
+        Vertso.Push (new Vec3_t(M.Verts[i]->C(0), M.Verts[i]->C(1), M.Verts[i]->C(2)));
+    }
+
+    // edges and faces
+    typedef std::map<std::pair<int,int>,Edge*> Key2Edge_t;
+    Key2Edge_t key2edge;        // map edge pair (v0,v1) to Edge* in Edges
+    size_t nf = M.Cells.Size(); // number of faces: each cell is one face
+    for (size_t i=0; i<nf; ++i)
+    {
+        // number of vertices per face
+        size_t nvf = M.Cells[i]->V.Size();
+
+        // edges
+        size_t v0, v1;
+        std::pair<int,int> keya, keyb;
+        for (size_t j=0; j<nvf; ++j)
+        {
+            v0   = M.Cells[i]->V[j]->ID;
+            v1   = M.Cells[i]->V[(j+1)%nvf]->ID;
+            keya = std::make_pair(v0,v1);
+            keyb = std::make_pair(v1,v0);
+            Key2Edge_t::const_iterator ita = key2edge.find(keya);
+            Key2Edge_t::const_iterator itb = key2edge.find(keyb);
+            if (ita==key2edge.end() && itb==key2edge.end()) // new edge
+            {
+                Edges.Push (new Edge((*Verts[v0]), (*Verts[v1])));
+                key2edge[keya] = Edges[Edges.Size()-1];
+                EdgeCon.Push (v0); // TODO: we may remove this
+                EdgeCon.Push (v1); // TODO: we may remove this
+            }
+        }
+
+        // faces
+        Array<Vec3_t*> verts(nvf);
+        for (size_t j=0; j<nvf; ++j)
+        {
+            v0 = M.Cells[i]->V[j]->ID;
+            verts[j] = Verts[v0];
+            FaceCon.Push (v0); // TODO: we may remove this
+        }
+        Faces.Push (new Face(verts));
+    }
 }
 
 inline Particle::~Particle()
