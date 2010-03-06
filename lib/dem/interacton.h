@@ -306,7 +306,8 @@ inline void InteractonSphere::CalcForce(double dt)
         Fnet   = 0.0;
         Ftnet  = 0.0;
         _update_disp_calc_force (P1->Verts,P2->Verts,Fdvv,Lvv,dt);
-        if (Epot>0.0) _update_rolling_resistance(dt);
+        if (Epot>0.0) _update_rolling_resistance(dt); // TODO: why using
+                                                      // Epot here ??
 
 
         //If there is at least a contact, increase the coordination number of the particles

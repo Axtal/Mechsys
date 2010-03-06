@@ -28,9 +28,8 @@
 #include <ctime>    // for std::clock
 
 // Hdf5
-#include "hdf5.h"
-#include "hdf5_hl.h"
-
+#include <src/hdf5.h>
+#include <hl/src/hdf5_hl.h>
 
 // Voro++
 #include "src/voro++.cc"
@@ -893,7 +892,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     // initialize
     if (FreeParticles.Size()==0) FreeParticles = Particles;
     Initialize (dt);
-    ResetDisplacements(); // we don't need this here, since the constructor
+    ResetDisplacements(); // TODO: we don't need this here, since the constructor
                           // of each particle already sets Vertso = Verts
     ResetContacts();
 
