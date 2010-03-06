@@ -893,7 +893,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     // initialize
     if (FreeParticles.Size()==0) FreeParticles = Particles;
     Initialize (dt);
-    ResetDisplacements();
+    ResetDisplacements(); // we don't need this here, since the constructor
+                          // of each particle already sets Vertso = Verts
     ResetContacts();
 
     // info
