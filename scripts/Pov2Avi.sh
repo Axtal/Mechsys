@@ -17,7 +17,7 @@ PNGs=""
 echo ""
 echo "----- Generate PNGs --------------------------------------------"
 for f in $POVs; do
-    povray -V -D +H640 +W640 +FN +I$f -V 2> /dev/null
+    povray -V -D +H640 +W480 +FN +I$f -V 2> /dev/null
     png=$(echo "$f" | tr '[pov]' '[png]');
     PNGs="$PNGs,$png"
 done
