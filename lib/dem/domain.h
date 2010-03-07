@@ -78,7 +78,7 @@ public:
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
     void Solve             (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
-    void WritePOV          (char const * FileKey);                                                              ///< Write POV file
+    void WritePOV          (char const * FileKey, bool AllParticles=false);                                     ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
@@ -1047,17 +1047,24 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
     std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
 }
 
-inline void Domain::WritePOV (char const * FileKey)
+inline void Domain::WritePOV (char const * FileKey, bool AllParticles)
 {
     String fn(FileKey);
     fn.append(".pov");
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Red");
-    for (size_t i=0; i<TParticles.Size(); i++) TParticles[i]->Draw (of,"Col_Glass_Bluish");
-    for (size_t i=0; i<RParticles.Size(); i++) RParticles[i]->Draw (of,"Col_Glass_Bluish");
-    for (size_t i=0; i<FParticles.Size(); i++) FParticles[i]->Draw (of,"Col_Glass_Bluish");
+    if (AllParticles)
+    {
+        for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"Red");
+    }
+    else
+    {
+        for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Red");
+        for (size_t i=0; i<TParticles.Size(); i++) TParticles[i]->Draw (of,"Col_Glass_Bluish");
+        for (size_t i=0; i<RParticles.Size(); i++) RParticles[i]->Draw (of,"Col_Glass_Bluish");
+        for (size_t i=0; i<FParticles.Size(); i++) FParticles[i]->Draw (of,"Col_Glass_Bluish");
+    }
     of.close();
 }
 

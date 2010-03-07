@@ -352,6 +352,13 @@ def add_particles(P,res,draw_verts,draw_edges):
         obj.join (objs)
         obj.getData(mesh=True).remDoubles (0.001)
         for o in objs: scn.objects.unlink(o)
+
+        # assign material/color
+        red = Blender.Material.New('Red')
+        red.rgbCol = 1, 0, 0
+        msh.materials = [red]
+        for f in msh.faces: f.mat = 0
+
     Blender.Window.WaitCursor(0)
 
 

@@ -37,7 +37,7 @@ using DEM::Domain;
 int main(int argc, char **argv) try
 {
     // camera coordinates
-    double cx=1., cy=1., cz=1.;
+    double cx=2., cy=2., cz=2.;
     if (argc>1) cx = atof(argv[1]);
     if (argc>2) cy = atof(argv[2]);
     if (argc>3) cz = atof(argv[3]);
@@ -47,9 +47,32 @@ int main(int argc, char **argv) try
     mesh.ReadMesh("nonconvex", /*IsShell*/true); // read file nonconvex.mesh
     Particle * p0 = new Particle(-1, mesh, 0.1);
 
+    // another particle
+    Array<Vec3_t> V;
+    Array< Array<int> > E,F;
+    V.Push (Vec3_t(0.,0.,1.1));
+    V.Push (Vec3_t(1.,0.,1.1));
+    V.Push (Vec3_t(1.,1.,1.1));
+    V.Push (Vec3_t(0.,1.,1.1));
+    V.Push (Vec3_t(0.,0.,1.5));
+    V.Push (Vec3_t(1.,0.,1.5));
+    V.Push (Vec3_t(1.,1.,1.5));
+    V.Push (Vec3_t(0.,1.,1.5));
+    E.Push (Array<int>(0,4));
+    E.Push (Array<int>(1,5));
+    E.Push (Array<int>(2,6));
+    E.Push (Array<int>(3,7));
+    E.Push (Array<int>(4,5));
+    E.Push (Array<int>(5,6));
+    E.Push (Array<int>(6,7));
+    E.Push (Array<int>(7,4));
+    F.Push (Array<int>(4,5,6,7));
+    Particle * p1 = new Particle(-1, V,E,F, Vec3_t(0.,0.,0.), Vec3_t(0.,0.,0.), 0.1);
+
     // domain
 	Domain dom;
     dom.Particles.Push (p0);
+    dom.Particles.Push (p1);
     dom.FreeParticles = dom.Particles;
     dom.CamPos= cx,cy,cz;
     dom.WritePOV ("nonconvex");
