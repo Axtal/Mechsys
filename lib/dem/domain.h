@@ -1159,11 +1159,11 @@ inline void Domain::Save (char const * FileKey)
 
         double cq[4];
         dd[0] = 4;
-        cd[0]=Particles[i]->Q(0);
-        cd[1]=Particles[i]->Q(1);
-        cd[2]=Particles[i]->Q(2);
-        cd[3]=Particles[i]->Q(3);
-        H5LTmake_dataset_double(group_id,"Q",1,dd,cd);
+        cq[0]=Particles[i]->Q(0);
+        cq[1]=Particles[i]->Q(1);
+        cq[2]=Particles[i]->Q(2);
+        cq[3]=Particles[i]->Q(3);
+        H5LTmake_dataset_double(group_id,"Q",1,dd,cq);
 
 
 
@@ -1243,7 +1243,6 @@ inline void Domain::Load (char const * FileKey)
 
     // Number of particles in the domain
     int data[1];
-    hsize_t dims[1];
     H5LTread_dataset_int(file_id,"/NP",data);
     size_t NP = data[0];
 
@@ -1760,7 +1759,7 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     {
         OF << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         OF <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
-        OF << Util::_8s   << "vr"   << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
+        OF << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
     }
 
     // stress
@@ -1782,10 +1781,13 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
     double Cn = 0;
     size_t Nc = 0;
     size_t Nsc = 0;
-    for (size_t i=0; i<Interactons.Size(); i++)
+    for (size_t i=0; i<CInteractons.Size(); i++)
     {
-        Nc += Interactons[i]->Nc;
-        Nsc += Interactons[i]->Nsc;
+        if(CInteractons[i]->I2<InitialIndex)
+        {
+            Nc += CInteractons[i]->Nc;
+            Nsc += CInteractons[i]->Nsc;
+        }
     }
 
     for (size_t i=0; i<FreeParticles.Size(); i++)
@@ -1805,12 +1807,12 @@ inline void TriaxialDomain::OutputF (char const * FileKey)
     fn.Printf("%s_forces.res",FileKey);
     std::ofstream OF(fn.CStr());
 
-    OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "Issliding" << "\n";
-    for (size_t i=0; i<Interactons.Size(); i++)
+    OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
+    for (size_t i=0; i<CInteractons.Size(); i++)
     {
-        if (norm(Interactons[i]->Fnet)>1.0e-22) 
+        if ((norm(CInteractons[i]->Fnet)>1.0e-22)&&(CInteractons[i]->I2<InitialIndex))
         {
-            OF << Util::_10_6 << norm(Interactons[i]->Fnet) << Util::_8s << norm(Interactons[i]->Ftnet) << Util::_8s <<  Interactons[i]->Nsc << "\n";
+            OF << Util::_10_6 << norm(CInteractons[i]->Fnet) << Util::_8s << norm(CInteractons[i]->Ftnet) << Util::_8s <<  CInteractons[i]->Nc << Util::_8s <<  CInteractons[i]->Nsc << "\n";
         }
     }
     OF.close();
@@ -1819,9 +1821,9 @@ inline void TriaxialDomain::OutputF (char const * FileKey)
     f.Printf("%s_stress.res",FileKey);
     std::ofstream SF(f.CStr());
     Mat3_t S;
-    for (size_t m;m<3;m++)
+    for (size_t m=0;m<3;m++)
     {
-        for (size_t n;n<3;n++)
+        for (size_t n=0;n<3;n++)
         {
             S(m,n)=0.0;
         }

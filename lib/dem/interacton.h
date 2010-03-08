@@ -118,7 +118,8 @@ inline bool Interacton::UpdateContacts (double alpha)
         _update_contacts (P1->Edges,P2->Edges,Lee,alpha);
         _update_contacts (P1->Verts,P2->Faces,Lvf,alpha);
         _update_contacts (P1->Faces,P2->Verts,Lfv,alpha);
-        return true;
+        if (Lee.Size()>0||Lvf.Size()>0||Lfv.Size()>0) return true;
+        else return false;
     }
     else return false;
 }
@@ -132,12 +133,15 @@ inline void Interacton::CalcForce (double dt)
     Nsc    = 0;
     Fnet   = 0.0;
     Ftnet   = 0.0;
-    if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
-    {
-        _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
-        _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
-        _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
-    }
+    //if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
+    //{
+        //_update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
+        //_update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
+        //_update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
+    //}
+    _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
+    _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
+    _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
 
     //If there is at least a contact, increase the coordination number of the particles
     if (Nc>0) 

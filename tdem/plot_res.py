@@ -2,7 +2,7 @@ from pylab import savefig
 from msys_plotter import *
 import mechsys as ms
 
-voronoi = 1 # 0 => spheres
+voronoi = 0 # 0 => spheres
 
 if voronoi: # voronoi
     qcamf      = 9.35
@@ -56,8 +56,9 @@ else:
     p.pcte     = True
     p.justone  = -1
     p.fc_np    = 20
-    p.plot ("th_30/th_30_c_walls.res",   clr='blue',   txtmax=True,  txtlst=True,  draw_fl=True,  draw_ros=True)
-    p.plot ("th_15/th_15_c_walls.res",   clr='orange', txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)
+    p.plot ("ttt_c_walls.res",   clr='blue',   txtmax=True,  txtlst=True,  draw_fl=True,  draw_ros=True)
+    #p.plot ("th_30/th_30_c_walls.res",   clr='blue',   txtmax=True,  txtlst=True,  draw_fl=True,  draw_ros=True)
+    #p.plot ("th_15/th_15_c_walls.res",   clr='orange', txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)
     #p.plot ("th_00/th_00_c_walls.res",   clr='black',  txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)
     #p.plot ("th_-15/th_-15_c_walls.res", clr='red',    txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)
     #p.plot ("th_-30/th_-30_c_walls.res", clr='cyan',   txtmax=False, txtlst=False, draw_fl=False, draw_ros=False)

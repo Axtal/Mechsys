@@ -114,6 +114,7 @@ int main(int argc, char **argv) try
 
     // domain
     DEM::TriaxialDomain dom;
+    dom.Alpha=verlet;
     dom.CamPos = Vec3_t(0.1*Lx, 0.7*(Lx+Ly+Lz), 0.15*Lz); // position of camera
 
     // particle
