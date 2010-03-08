@@ -319,6 +319,16 @@ def M_calc_phi(M,Type='oct'):
     return arcsin(sphi)*180.0/pi
 
 
+# Calculate cu
+# ============
+# Calculate undrained cohesion (cu) for given q_failure
+def qf_calc_cu(qf, qType="oct", psa=False):
+    coef = sqrt(3.0) if psa else 2.0
+    if   qType=="oct": return qf/(sqrt(2.0/3.0)*coef)
+    elif qType=="cam": return qf/coef
+    else: raise Exception("qf_calc_cu: Method is not available for invariant qType==%s"%qType)
+
+
 # Calculate pf and qf for a proportional load path
 # ================================================
 # p and q are 'cam' invariants

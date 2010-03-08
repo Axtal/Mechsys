@@ -38,9 +38,10 @@ class Plotter:
         self.fc_p      = 100.0                                    # p(oct) to be used when plotting FC in octahedral plane
         self.fc_t      = 1.0                                      # t=sin(3th) to be used when plotting FC in octahedral plane
         self.fc_cu     = 10.0                                     # cohesion for VM
-        self.fc_phi    = 25.0                                     # friction angle for FC
+        self.fc_phi    = -1                                       # friction angle for FC
         self.fc_c      = 0.0                                      # cohesion for FC
         self.fc_np     = 20                                       # number of points for drawing failure line
+        self.rst_phi   = True                                     # show fc_phi in Rosette
         self.isxyz     = (-1,0)                                   # indices for sxyz plot, use negative numbers for principal components
         self.devplot   = True                                     # plot s3-s1, s3-s2 instead of Ek, Sk
         self.pcte      = False                                    # pcte in Ev x p (logp) plot?
@@ -57,7 +58,7 @@ class Plotter:
 
     # Plot results
     # ============
-    def plot(self, filename, clr='red', draw_fl=False, draw_ros=True, txtlst=True, txtmax=True,
+    def plot(self, filename, clr='red', draw_fl=False, draw_ros=False, txtlst=False, txtmax=False,
                              label=None, marker='None', markevery=None):
         # load data
         dat = read_table(filename)
@@ -122,6 +123,7 @@ class Plotter:
                 ikeys = ['x','y','z']
             Ev[i] *= 100.0 # convert strains to percentage
             Ed[i] *= 100.0
+        QdivP = Q/P
 
         # constants
         rc('text', usetex=True)    # set LaTeX
@@ -129,7 +131,6 @@ class Plotter:
         nhplt = 3                  # number of horizontal plots
         nvplt = 3                  # number of vertical plots
         iplot = 1                  # index of plot
-        imaQ  = Q.argmax()         # index of q_max
         ilst  = len(P)-1           # index of last point 
         ima   = ilst if self.maxidx<0 else self.maxidx # max index of data to plot
         if self.maxed>0:
@@ -150,6 +151,13 @@ class Plotter:
             nhplt = 2
             nvplt = 3
 
+        # calc friction angle
+        imaQP = QdivP[:ima].argmax()
+        if draw_fl and self.fc_phi<0:
+            self.fc_phi = M_calc_phi (QdivP[imaQP], self.pq_ty)
+            self.fc_p   = P[imaQP]*sqrt(3.0) if self.pq_ty=='cam' else P[imaQP]
+            self.fc_cu  = qf_calc_cu (Q[imaQP], self.pq_ty)
+
         # set for eps
         if self.set_eps:
             if self.justone>=0:
@@ -160,18 +168,19 @@ class Plotter:
                 self.set_fig_for_eps(multiplot=True)
                 axes([0.,0.,0.99,0.99]) # this needs to be after set_eps
 
-        Y    = Q/P if self.div_by_p else Q
+        # q p ratio and label
+        Y = QdivP if self.div_by_p else Q
         Ylbl = r'$q_{%s}/p_{%s}$'%(self.pq_ty,self.pq_ty) if self.div_by_p else r'$q_{%s}$'%(self.pq_ty)
 
         # 0) q/p, Ed ---------------------------------------------------------------------------
         if self.justone==0 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Ed[:ima], Y[:ima], color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            if imaQ<=ima: plot (Ed[imaQ], Y[imaQ], '^', color=clr)
-            if ilst<=ima: plot (Ed[-1],   Y[-1],   '^', color=clr)
+            if imaQP<=ima: plot (Ed[imaQP], Y[imaQP], '^', color=clr)
+            if ilst <=ima: plot (Ed[-1],    Y[-1],   '^', color=clr)
             xlabel (r'$\varepsilon_d$ [\%]');  ylabel(Ylbl);  grid()
-            if txtmax and imaQ<=ima: text (Ed[imaQ], Y[imaQ], '%.2f'%Y[imaQ], fontsize=8)
-            if txtlst and ilst<=ima: text (Ed[-1],   Y[-1],   '%.2f'%Y[-1],   fontsize=8)
+            if txtmax and imaQP<=ima: text (Ed[imaQP], Y[imaQP], '%.2f'%Y[imaQP], fontsize=8)
+            if txtlst and ilst <=ima: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
         if self.justone==1 or self.justone<0:
@@ -213,12 +222,13 @@ class Plotter:
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
         if self.justone==5 or self.justone<0:
+            pcoef = 1.0#P[imaQP]
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            if draw_ros: self.oct_rosette(min(Sa),max(Sa),min(Sb),max(Sb))
-            if draw_fl:  self.oct_fline  (min(Sa),max(Sa),min(Sb),max(Sb))
-            plot   (Sa[:ima], Sb[:ima], color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            if imaQ<=ima: plot (Sa[imaQ], Sb[imaQ], '^', color=clr)
-            if ilst<=ima: plot (Sa[ilst], Sb[ilst], '^', color=clr)
+            if draw_ros: self.oct_rosette(min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
+            if draw_fl:  self.oct_fline  (min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
+            plot (Sa[:ima]/pcoef, Sb[:ima]/pcoef, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            if imaQP<=ima: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
+            if ilst <=ima: plot (Sa[ilst]/pcoef,  Sb[ilst]/pcoef,  '^', color=clr)
             axis ('equal')
             axis ('off')
 
@@ -281,6 +291,8 @@ class Plotter:
         text(l3[0],l3[1],r'$-\sigma_3$',                  ha='left',   fontsize=8)
         text(lo[0],lo[1],r'$\theta=0^\circ$',             ha='center', fontsize=8)
         text(l4[0],l4[1],r'$\theta=-30^\circ$',           ha='left',   fontsize=8)
+        if self.rst_phi:
+            text(0.0,l2[1]-0.05*r,r'$\phi_{comp}=%2.1f^\circ$'%self.fc_phi, ha='center', va='top', fontsize=10)
 
     # Plot failure line in p-q plane
     # ==============================
