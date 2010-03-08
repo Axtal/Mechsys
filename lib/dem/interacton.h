@@ -29,26 +29,40 @@
 // MechSys
 #include <mechsys/dem/particle.h>
 
-class Interacton
+// typedefs
+typedef std::map<std::pair<int,int>,Vec3_t> FrictionMap_t;
+typedef Array<pair<int,int> > ListContacts_t;
+
+class Interacton   //General class for interactons
 {
 public:
-    // typedefs
-    typedef std::map<std::pair<int,int>,Vec3_t> FrictionMap_t;
-    typedef Array<pair<int,int> > ListContacts_t;
 
     // Constructor and destructor
     Interacton () {};                            ///< Default constructor
-    Interacton (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
 
     // Methods
-    virtual bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
-    virtual void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
+    virtual bool UpdateContacts (double alpha) =0;    ///< Update contacts by verlet algorithm
+    virtual void CalcForce      (double dt = 0.0) =0; ///< Calculates the contact force between particles
 
     // Data
     Particle     * P1;        ///< First particle
     Particle     * P2;        ///< Second particle
     size_t         I1;        ///< Index of the first particle
     size_t         I2;        ///< Index of the second particle
+};
+
+class CInteracton: public Interacton // Interacton for collision
+{
+public:
+    // Constructor
+    CInteracton (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
+    CInteracton () {};
+
+    // Methods
+    virtual bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
+    virtual void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
+
+    // Data
     double         Kn;        ///< Normal stiffness
     double         Kt;        ///< Tengential stiffness
     double         Gn;        ///< Normal viscous coefficient
@@ -75,12 +89,11 @@ protected:
     void _update_contacts        (FeatureA_T & A, FeatureB_T & B, ListContacts_t & L, double alpha);
 };
 
-
-class InteractonSphere: public Interacton
+class CInteractonSphere: public CInteracton // Collision interacton for spheres
 {
 public:
     // Methods 
-    InteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
+    CInteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
     bool UpdateContacts (double alpha);                ///< Update contacts by verlet algorithm
     void CalcForce (double dt = 0.0);                  ///< Calculates the contact force between particles
     
@@ -97,18 +110,25 @@ protected:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+// Collision interacton
 
-inline Interacton::Interacton (Particle * Pt1, Particle * Pt2)
-    : P1(Pt1), P2(Pt2), Kn(2*ReducedValue(P1->Kn,P2->Kn)), Kt(2*ReducedValue(P1->Kt,P2->Kt)), Gn(2*ReducedValue(P1->Gn,P2->Gn)), 
-      Gt(2*ReducedValue(P1->Gt,P2->Gt)), Mu(2*ReducedValue(P1->Mu,P2->Mu)), Epot(0.0)
+inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
 {
-    I1 = P1->Index;
-    I2 = P2->Index;
+    P1              = Pt1;
+    P2              = Pt2;
+    I1              = P1->Index;
+    I2              = P2->Index;
+    Kn              = 2*ReducedValue(Pt1->Kn,Pt2->Kn);
+    Kt              = 2*ReducedValue(Pt1->Kt,Pt2->Kt);
+    Gn              = 2*ReducedValue(Pt1->Gn,Pt2->Gn);
+    Gt              = 2*ReducedValue(Pt1->Gt,Pt2->Gt);
+    Mu              = 2*ReducedValue(Pt1->Mu,Pt2->Mu);
+    I1              = P1->Index;
+    I2              = P2->Index;
     CalcForce(0.0);
 }
 
-
-inline bool Interacton::UpdateContacts (double alpha)
+inline bool CInteracton::UpdateContacts (double alpha)
 {
     Lee.Resize(0);
     Lvf.Resize(0);
@@ -124,7 +144,7 @@ inline bool Interacton::UpdateContacts (double alpha)
     else return false;
 }
 
-inline void Interacton::CalcForce (double dt)
+inline void CInteracton::CalcForce (double dt)
 {
     Epot   = 0.0;
     dEvis  = 0.0;
@@ -133,12 +153,6 @@ inline void Interacton::CalcForce (double dt)
     Nsc    = 0;
     Fnet   = 0.0;
     Ftnet   = 0.0;
-    //if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax)
-    //{
-        //_update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
-        //_update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
-        //_update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
-    //}
     _update_disp_calc_force (P1->Edges,P2->Edges,Fdee,Lee,dt);
     _update_disp_calc_force (P1->Verts,P2->Faces,Fdvf,Lvf,dt);
     _update_disp_calc_force (P1->Faces,P2->Verts,Fdfv,Lfv,dt);
@@ -152,7 +166,7 @@ inline void Interacton::CalcForce (double dt)
 }
 
 template<typename FeatureA_T, typename FeatureB_T>
-inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt)
+inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt)
 {
     // update
     for (size_t k=0; k<L.Size(); ++k)
@@ -234,7 +248,7 @@ inline void Interacton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B,
 }
 
 template<typename FeatureA_T, typename FeatureB_T>
-inline void Interacton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListContacts_t & L, double alpha)
+inline void CInteracton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListContacts_t & L, double alpha)
 {
     for (size_t i=0; i<A.Size(); ++i)
     for (size_t j=0; j<B.Size(); ++j)
@@ -249,7 +263,9 @@ inline void Interacton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListCo
 
 }
 
-inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
+//Collision interacton for spheres
+
+inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
 {
     P1   = Pt1;
     P2   = Pt2;
@@ -272,7 +288,7 @@ inline InteractonSphere::InteractonSphere (Particle * Pt1, Particle * Pt2)
     CalcForce(0.0);
 }
 
-inline void InteractonSphere::_update_rolling_resistance(double dt)
+inline void CInteractonSphere::_update_rolling_resistance(double dt)
 {
     Vec3_t t1,t2;
     Rotation(P1->w,P1->Q,t1);
@@ -303,7 +319,7 @@ inline void InteractonSphere::_update_rolling_resistance(double dt)
     P2->T -= T;
 }
 
-inline void InteractonSphere::CalcForce(double dt)
+inline void CInteractonSphere::CalcForce(double dt)
 {
     Epot   = 0.0;
     dEvis  = 0.0;
@@ -324,7 +340,7 @@ inline void InteractonSphere::CalcForce(double dt)
     }
 }
 
-inline bool InteractonSphere::UpdateContacts (double alpha)
+inline bool CInteractonSphere::UpdateContacts (double alpha)
 {
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha) return true;
     else return false;

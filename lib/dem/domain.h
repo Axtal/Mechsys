@@ -110,8 +110,8 @@ public:
     Array<Particle*>   TParticles;    ///< Particles with translation fixed
     Array<Particle*>   RParticles;    ///< Particles with rotation fixed
     Array<Particle*>   FParticles;    ///< Particles with applied force
-    Array<Interacton*> Interactons;   ///< All interactons
-    Array<Interacton*> CInteractons;  ///< Contact interactons
+    Array<CInteracton*> Interactons;   ///< All interactons
+    Array<CInteracton*> CInteractons;  ///< Contact interactons
     Vec3_t             CamPos;        ///< Camera position for POV
     double             Evis;          ///< Energy dissipated by the viscosity of the grains
     double             Efric;         ///< Energy dissipated by friction
@@ -1403,8 +1403,8 @@ inline void Domain::ResetInteractons()
     {
         for (size_t j=i+1; j<FreeParticles.Size(); j++)
         {
-            if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) Interactons.Push (new InteractonSphere(FreeParticles[i],FreeParticles[j]));
-            else Interactons.Push (new Interacton(FreeParticles[i],FreeParticles[j]));
+            if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) Interactons.Push (new CInteractonSphere(FreeParticles[i],FreeParticles[j]));
+            else Interactons.Push (new CInteracton(FreeParticles[i],FreeParticles[j]));
         }
     }
 
@@ -1412,17 +1412,17 @@ inline void Domain::ResetInteractons()
     {
         for (size_t j=0; j<FParticles.Size(); j++)
         {
-            Interactons.Push (new Interacton(FreeParticles[i],FParticles[j]));
+            Interactons.Push (new CInteracton(FreeParticles[i],FParticles[j]));
         }
 
         for (size_t j=0; j<RParticles.Size(); j++)
         {
-            Interactons.Push (new Interacton(FreeParticles[i],RParticles[j]));
+            Interactons.Push (new CInteracton(FreeParticles[i],RParticles[j]));
         }
 
         for (size_t j=0; j<TParticles.Size(); j++)
         {
-            Interactons.Push (new Interacton(FreeParticles[i],TParticles[j]));
+            Interactons.Push (new CInteracton(FreeParticles[i],TParticles[j]));
         }
     }
 }
