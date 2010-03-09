@@ -192,15 +192,15 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             x2 = x - P2->x;
             Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
             Vec3_t vt = vrel - dot(n,vrel)*n;
-            pair<int,int> p;
-            p = make_pair(i,j);
             Fn = Kn*delta*n;
             Fnet += Fn;
 
+            pair<int,int> p;
+            p = make_pair(i,j);
             FMap[p] += vt*dt;
             FMap[p] -= dot(FMap[p],n)*n;
             Vec3_t tan = FMap[p];
-            if (norm(tan)>1.0e-22) tan/=norm(tan);
+            if (norm(tan)>0.0) tan/=norm(tan);
             if (norm(FMap[p])>Mu*norm(Fn)/Kt)
             {
                 // Count a sliding contact
@@ -216,15 +216,13 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
 
             // torque
-            Vec3_t T, Tt, temp;
-            temp = x - P1->x;
-            Tt = cross (temp,F);
+            Vec3_t T, Tt;
+            Tt = cross (x1,F);
             Quaternion_t q;
             Conjugate (P1->Q,q);
             Rotation  (Tt,q,T);
             P1->T -= T;
-            temp = x - P2->x;
-            Tt = cross (temp,F);
+            Tt = cross (x2,F);
             Conjugate (P2->Q,q);
             Rotation  (Tt,q,T);
             P2->T += T;
@@ -298,7 +296,7 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Fdr += Vr*dt;
     Fdr -= dot(Fdr,Normal)*Normal;
     Vec3_t tan = Fdr;
-    if (norm(tan)>1.0e-22) tan/=norm(tan);
+    if (norm(tan)>0.0) tan/=norm(tan);
     double Kr = beta*Kt;
     if (norm(Fdr)>eta*Mu*norm(Fn)/Kr)
     {

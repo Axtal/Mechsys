@@ -228,8 +228,9 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
 
 inline double ReducedValue(double A, double B) //Reduced Value for two quantities
 {
-    if ((fabs(A)<=1.e-22)||(fabs(B)<=1.e-22)) return 0.0;
-    else return A*B/(A+B);
+    double result = A*B;
+    if (result>0.0) result/=(A+B);
+    return result;
 }
 
 #endif //MECHSYS_DEM_SPECIAL_H

@@ -83,7 +83,7 @@ public:
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
     void BoundingBox       (Vec3_t & minX, Vec3_t & maxX);                                                      ///< Defines the rectangular box that encloses the particles.
-    void Center            ();                                                                                  ///< Centers the domain
+    void Center            (Vec3_t C = Vec3_t(0.0,0.0,0.0));                                                    ///< Centers the domain around C
     void ResetInteractons  ();                                                                                  ///< Reset the interactons
     void ResetDisplacements();                                                                                  ///< Reset the displacements
     double MaxDisplacement ();                                                                                  ///< Calculate maximun displacement
@@ -769,6 +769,7 @@ inline void Domain::SetBC (Dict & D)
     TParticles.Resize(0);
     RParticles.Resize(0);
     FParticles.Resize(0);
+    FreeParticles.Resize(0);
     for (size_t i =0 ; i<Particles.Size(); i++)
     {
         bool free_particle = true;
@@ -800,6 +801,7 @@ inline void Domain::SetBC (Dict & D)
         }
         if (free_particle) FreeParticles.Push (Particles[i]);
     }
+    ResetInteractons();
 }
 
 inline void Domain::SetProps (Dict & D)
@@ -843,6 +845,7 @@ inline void Domain::SetProps (Dict & D)
             }
         }
     }
+    ResetInteractons();
 }
 
 inline void Domain::Initialize (double dt)
@@ -861,17 +864,9 @@ inline void Domain::Initialize (double dt)
         Efric = 0.0;
         Wext = 0.0;
 
-        // make freeparticles = particles
-        if (FreeParticles.Size()==0) FreeParticles = Particles;
-
-        // calc the total volume of particles (solids)
-        Vs = 0.0;
-        for (size_t i=0; i<FreeParticles.Size(); i++) Vs += FreeParticles[i]->V;
-
         // info
         double start = std::clock();
         std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
-        ResetInteractons();
         // set flag
         Initialized = true;
 
@@ -896,7 +891,14 @@ inline void Domain::Initialize (double dt)
 inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo)
 {
     // initialize
-    if (FreeParticles.Size()==0) FreeParticles = Particles;
+    if (FreeParticles.Size()==0) 
+    {
+        FreeParticles = Particles;
+        ResetInteractons();
+    }
+    // calc the total volume of particles (solids)
+    Vs = 0.0;
+    for (size_t i=0; i<FreeParticles.Size(); i++) Vs += FreeParticles[i]->V;
     Initialize (dt);
     ResetDisplacements(); // TODO: we don't need this here, since the constructor
                           // of each particle already sets Vertso = Verts
@@ -1227,7 +1229,7 @@ inline void Domain::Save (char const * FileKey)
         }
         
     }
-
+   
     H5Fclose(file_id);
 
 
@@ -1368,7 +1370,7 @@ inline void Domain::Load (char const * FileKey)
     }
 
 
-
+    H5Fclose(file_id);
 
 }
 
@@ -1387,11 +1389,12 @@ inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
     }
 }
 
-inline void Domain::Center()
+inline void Domain::Center(Vec3_t C)
 {
     Vec3_t minX,maxX;
     BoundingBox(minX,maxX);
     Vec3_t Transport(-0.5*(maxX+minX));
+    Transport += C;
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Translate(Transport);
 }
 

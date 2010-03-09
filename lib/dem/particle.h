@@ -470,7 +470,7 @@ inline bool Particle::IsInside (Vec3_t & V)
             return inside;
         }
     }
-    if (nf>2)
+    if (nf>3)
     {
         size_t k = 0;
         double Mindistance = Distance(V,*Faces[k]);
