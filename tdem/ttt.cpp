@@ -126,7 +126,7 @@ int main(int argc, char **argv) try
         mesh.GenBox  (/*O2*/false,/*V*/0.1*Lx*Ly*Lz,Lx,Ly,Lz);
         dom.GenFromMesh (-1,mesh,/*R*/R,/*rho*/rho);
     }
-    else if (ptype=="rice");
+    else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");
     dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
 
@@ -140,6 +140,7 @@ int main(int argc, char **argv) try
     B.Set(-6,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-7,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     dom.SetProps(B);
+    dom.Save(filekey.CStr());
 
     // stage 1: isotropic compresssion  //////////////////////////////////////////////////////////////////////
     String fkey_a(filekey+"_a");

@@ -801,7 +801,6 @@ inline void Domain::SetBC (Dict & D)
         }
         if (free_particle) FreeParticles.Push (Particles[i]);
     }
-    ResetInteractons();
 }
 
 inline void Domain::SetProps (Dict & D)
@@ -845,7 +844,7 @@ inline void Domain::SetProps (Dict & D)
             }
         }
     }
-    ResetInteractons();
+    //ResetInteractons();
 }
 
 inline void Domain::Initialize (double dt)
@@ -864,6 +863,9 @@ inline void Domain::Initialize (double dt)
         Efric = 0.0;
         Wext = 0.0;
 
+        // initialize
+        if (FreeParticles.Size()==0) FreeParticles = Particles;
+        ResetInteractons();
         // info
         double start = std::clock();
         std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
@@ -890,20 +892,14 @@ inline void Domain::Initialize (double dt)
 
 inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo)
 {
-    // initialize
-    if (FreeParticles.Size()==0) 
-    {
-        FreeParticles = Particles;
-        ResetInteractons();
-    }
-    // calc the total volume of particles (solids)
-    Vs = 0.0;
-    for (size_t i=0; i<FreeParticles.Size(); i++) Vs += FreeParticles[i]->V;
     Initialize (dt);
     ResetDisplacements(); // TODO: we don't need this here, since the constructor
                           // of each particle already sets Vertso = Verts
     ResetContacts();
 
+    // calc the total volume of particles (solids)
+    Vs = 0.0;
+    for (size_t i=0; i<FreeParticles.Size(); i++) Vs += FreeParticles[i]->V;
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
