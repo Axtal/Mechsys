@@ -17,8 +17,10 @@
 ########################################################################
 
 from os.path import basename
-from numpy   import sqrt, matrix, zeros, log, cos, pi, sin, tan
-from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show, rcParams, savefig, axes, legend
+from numpy   import sqrt, matrix, zeros, log, cos, pi, sin, tan, linspace, polyfit
+from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
+from pylab   import rcParams, savefig, axes, legend, gca, title
+from pylab   import matplotlib as MPL
 from msys_invariants import *
 from msys_readdata   import *
 
@@ -35,16 +37,17 @@ class Plotter:
         self.fc_ty     = ['MC','MN','LD','VM']                    # failure criteria type (VM, DP, MC, MN)
         self.fc_clr    = ['k', 'k', 'k', 'k']                     # failure criteria colors
         self.fc_ls     = ['solid', 'dashed', 'dotted', 'dashdot'] # failure criteria linestyles
-        self.fc_p      = 100.0                                    # p(oct) to be used when plotting FC in octahedral plane
+        self.fc_poct   = 100.0*sqrt(3.0)                          # p(oct) to be used when plotting FC in octahedral plane
         self.fc_t      = 1.0                                      # t=sin(3th) to be used when plotting FC in octahedral plane
         self.fc_cu     = 10.0                                     # cohesion for VM
         self.fc_phi    = -1                                       # friction angle for FC
         self.fc_c      = 0.0                                      # cohesion for FC
-        self.fc_np     = 20                                       # number of points for drawing failure line
+        self.fc_np     = 40                                       # number of points for drawing failure line
+        self.oct_norm  = False                                    # normalize plot in octahedral plane by p ?
         self.rst_phi   = True                                     # show fc_phi in Rosette
         self.isxyz     = (-1,0)                                   # indices for sxyz plot, use negative numbers for principal components
         self.devplot   = True                                     # plot s3-s1, s3-s2 instead of Ek, Sk
-        self.pcte      = False                                    # pcte in Ev x p (logp) plot?
+        self.pcte      = -1                                       # if pcte>0 => pcte in Ev x p (logp) plot?
         self.justone   = -1                                       # all plots = -1
         self.maxed     = -1                                       # max Ed to stop the lines
         self.maxev     = -1                                       # max Ev to stop the lines
@@ -56,40 +59,19 @@ class Plotter:
         self.proport   = 0.75                                     # proportion (Aesthetic ratio): golden_mean = (sqrt(5)-1.0)/2.0 0.628
         self.lwd       = 2                                        # linewidth
 
+        # matplotlib's structures
+        self.PH = MPL.path.Path
+        self.PP = MPL.patches
+        self.PC = MPL.patches.PathPatch
+        # colors
+        self.lgray = (180/255.,180/255.,180/255.)
+
     # Plot results
     # ============
     def plot(self, filename, clr='red', draw_fl=False, draw_ros=False, txtlst=False, txtmax=False,
-                             label=None, marker='None', markevery=None):
+                             label=None, marker='None', markevery=None, calc_phi=False):
         # load data
-        dat = read_table(filename)
-        Sig = []
-        Eps = []
-        sq2 = sqrt(2.0)
-        if dat.has_key('Sx'): # old data file
-            res = basename(filename).split('.')
-            kgf = res[1]=='kgf'         # stresses in kgf/cm^2 ?
-            pct = res[2]=='pct'         # strains in percentage ?
-            mul = 98.0  if kgf else 1.0 # multiplier for stresses
-            div = 100.0 if pct else 1.0 # divider for strains
-            for i in range(len(dat['Sx'])):
-                Sig.append(mul*matrix([[-float( dat['Sx' ][i] )],
-                                       [-float( dat['Sy' ][i] )],
-                                       [-float( dat['Sz' ][i] )],
-                                       [-float( dat['Sxy'][i] )*sq2]]))
-                Eps.append(    matrix([[-float( dat['Ex' ][i] )/div],
-                                       [-float( dat['Ey' ][i] )/div],
-                                       [-float( dat['Ez' ][i] )/div],
-                                       [-float( dat['Exy'][i] )*sq2/div]]))
-        else:
-            for i in range(len(dat['sx'])):
-                Sig.append(matrix([[float( dat['sx' ][i] )],
-                                   [float( dat['sy' ][i] )],
-                                   [float( dat['sz' ][i] )],
-                                   [float( dat['sxy'][i] if dat.has_key('sxy') else 0.0 )*sq2]]))
-                Eps.append(matrix([[float( dat['ex' ][i] )],
-                                   [float( dat['ey' ][i] )],
-                                   [float( dat['ez' ][i] )],
-                                   [float( dat['exy'][i] if dat.has_key('sxy') else 0.0 )*sq2]]))
+        Sig, Eps = self.load_data (filename)
 
         # calculate additional variables
         np         = len(Sig) # number of points
@@ -104,7 +86,7 @@ class Plotter:
         for i in range(np):
             P [i], Q [i]        = sig_calc_p_q   (Sig[i], Type=self.pq_ty)
             T [i]               = sig_calc_t     (Sig[i])
-            s123                = sig_calc_s123  (Sig[i], do_sort=True)
+            s123                = sig_calc_s123  (Sig[i], do_sort=False)
             Sa[i], Sb[i], Sc[i] = s123_calc_oct  (s123)
             S1[i], S2[i], S3[i] = s123  [0], s123  [1], s123  [2]
             Sx[i], Sy[i], Sz[i] = Sig[i][0], Sig[i][1], Sig[i][2]
@@ -152,17 +134,16 @@ class Plotter:
             nvplt = 3
 
         # calc friction angle
-        imaQP = QdivP[:ima].argmax()
-        if draw_fl and self.fc_phi<0:
-            self.fc_phi = M_calc_phi (QdivP[imaQP], self.pq_ty)
-            self.fc_p   = P[imaQP]*sqrt(3.0) if self.pq_ty=='cam' else P[imaQP]
-            self.fc_cu  = qf_calc_cu (Q[imaQP], self.pq_ty)
+        imaQP = QdivP[:ima].argmax() # index of QP used to calculate phi
+        if calc_phi or self.fc_phi<0: self.fc_phi = M_calc_phi (QdivP[imaQP], self.pq_ty)
+        self.fc_poct = P[imaQP]*sqrt(3.0) if self.pq_ty=='cam' else P[imaQP]
+        self.fc_cu   = qf_calc_cu (Q[imaQP], self.pq_ty)
 
         # set for eps
         if self.set_eps:
             if self.justone>=0:
                 self.set_fig_for_eps(multiplot=False)
-                if self.justone==5: axes([0.05,0.05,.95,.95])
+                if self.justone==5: axes([0.01,0.01,.99,.99])
                 else: axes(self.axesdat) # this needs to be after set_eps
             else:
                 self.set_fig_for_eps(multiplot=True)
@@ -177,7 +158,7 @@ class Plotter:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot (Ed[:ima], Y[:ima], color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             if imaQP<=ima: plot (Ed[imaQP], Y[imaQP], '^', color=clr)
-            if ilst <=ima: plot (Ed[-1],    Y[-1],   '^', color=clr)
+            #if ilst <=ima: plot (Ed[-1],    Y[-1],   '^', color=clr)
             xlabel (r'$\varepsilon_d$ [\%]');  ylabel(Ylbl);  grid()
             if txtmax and imaQP<=ima: text (Ed[imaQP], Y[imaQP], '%.2f'%Y[imaQP], fontsize=8)
             if txtlst and ilst <=ima: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
@@ -214,21 +195,21 @@ class Plotter:
             else:
                 X    = P[:ima]
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
-            if self.pcte:
-                for k, x in enumerate(X): X[k] = X[0]
+            if self.pcte>0:
+                for k, x in enumerate(X): X[k] = self.pcte
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (X[:ima], Ev[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [\%]');  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
         if self.justone==5 or self.justone<0:
-            pcoef = 1.0#P[imaQP]
+            pcoef = self.fc_poct if self.oct_norm else 1.0
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if draw_ros: self.oct_rosette(min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
             if draw_fl:  self.oct_fline  (min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
             plot (Sa[:ima]/pcoef, Sb[:ima]/pcoef, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             if imaQP<=ima: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
-            if ilst <=ima: plot (Sa[ilst]/pcoef,  Sb[ilst]/pcoef,  '^', color=clr)
+            #if ilst <=ima: plot (Sa[ilst]/pcoef,  Sb[ilst]/pcoef,  '^', color=clr)
             axis ('equal')
             axis ('off')
 
@@ -245,7 +226,7 @@ class Plotter:
             if self.justone==7 or self.justone<0 and not self.only_six:
                 # 7) s3-s1, s3-s2
                 if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                if draw_fl: self.s123_fline(S3[imaQ])
+                if draw_fl: self.s123_fline(S3[imaQP])
                 plot   (S3[:ima]-S1[:ima], S3[:ima]-S2[:ima], lw=self.lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
                 xlabel (r'$\sigma_3-\sigma_1$');  ylabel(r'$\sigma_3-\sigma_2$');  grid()
                 axis   ('equal')
@@ -269,7 +250,7 @@ class Plotter:
 
     # Plot octahedral rosette
     # =======================
-    def oct_rosette(self, xmin, xmax, ymin, ymax):
+    def oct_rosette(self, xmin, xmax, ymin, ymax, draw_circ=True):
         r  = sqrt((xmax-xmin)**2. + (ymax-ymin)**2.)
         cf = 0.2
         cr = 1.1
@@ -279,20 +260,25 @@ class Plotter:
         l4 = (-cr*r*cos(pi/6.0) , cr*r*sin(pi/6.0)) # line: 4 = neg 1 end points
         lo = (-cr*r*cos(pi/3.0) , cr*r*sin(pi/3.0)) # line: origin of cylindrical system
         # main lines
-        plot([0.0,l1[0]],[0.0,l1[1]],'k-', color='gray')
-        plot([0.0,l2[0]],[0.0,l2[1]],'k-', color='gray')
-        plot([0.0,l3[0]],[0.0,l3[1]],'k-', color='gray')
+        plot([0.0,l1[0]],[0.0,l1[1]],'k-', color=self.lgray)
+        plot([0.0,l2[0]],[0.0,l2[1]],'k-', color=self.lgray)
+        plot([0.0,l3[0]],[0.0,l3[1]],'k-', color=self.lgray)
         # reference
-        plot([0.0,l4[0]],[0.0, l4[1]],'k-', color='gray')
-        plot([0.0,lo[0]],[0.0, lo[1]],'k-', color='gray')
+        plot([0.0,l4[0]],[0.0, l4[1]],'k-', color=self.lgray)
+        plot([0.0,lo[0]],[0.0, lo[1]],'k-', color=self.lgray)
         # text
-        text(l1[0],l1[1],r'$-\sigma_1,\theta=+30^\circ$', ha='center', fontsize=8)
-        text(l2[0],l2[1],r'$-\sigma_2$',                  ha='right',  fontsize=8)
-        text(l3[0],l3[1],r'$-\sigma_3$',                  ha='left',   fontsize=8)
-        text(lo[0],lo[1],r'$\theta=0^\circ$',             ha='center', fontsize=8)
-        text(l4[0],l4[1],r'$\theta=-30^\circ$',           ha='left',   fontsize=8)
+        txt = '/p_{oct}' if self.oct_norm else ''
+        text(l1[0],l1[1],r'$-\sigma_1%s,\theta=+30^\circ$'%txt, ha='center', fontsize=8)
+        text(l2[0],l2[1],r'$-\sigma_2%s$'%txt,                  ha='right',  fontsize=8)
+        text(l3[0],l3[1],r'$-\sigma_3%s$'%txt,                  ha='left',   fontsize=8)
+        text(lo[0],lo[1],r'$\theta=0^\circ$',                   ha='center', fontsize=8)
+        text(l4[0],l4[1],r'$\theta=-30^\circ$',                 ha='left',   fontsize=8)
         if self.rst_phi:
             text(0.0,l2[1]-0.05*r,r'$\phi_{comp}=%2.1f^\circ$'%self.fc_phi, ha='center', va='top', fontsize=10)
+        if draw_circ:
+            M = phi_calc_M (self.fc_phi, 'oct')
+            R = M if self.oct_norm else self.fc_poct*M
+            self.draw_arc(gca(), 0.,0.,R, 0.85*pi/2., 1.05*(pi/2.+pi/3.), self.lgray)
 
     # Plot failure line in p-q plane
     # ==============================
@@ -324,15 +310,15 @@ class Plotter:
         r      = sqrt((samax-samin)**2. + (sbmax-sbmin)**2.)
         Dsa    = samax-samin
         Dsb    = sbmax-sbmin
-        samin -= 0.1*Dsa + r*cos(pi/6.0)
-        samax += 0.1*Dsa + 0.4*r*cos(pi/6.0)
-        sbmin -= 0.1*Dsb
-        sbmax += 0.1*Dsb
+        samin -= 0.01*Dsa +     r*cos(pi/6.0)
+        samax += 0.01*Dsa + 0.3*r*cos(pi/6.0)
+        sbmin -= 0.01*Dsb
+        sbmax += 0.01*Dsb + 0.1*r
         dsa    = (samax-samin)/self.fc_np
         dsb    = (sbmax-sbmin)/self.fc_np
         sa     = zeros ((self.fc_np,self.fc_np))
         sb     = zeros ((self.fc_np,self.fc_np))
-        sc     = self.fc_p
+        sc     = 1.0 if self.oct_norm else self.fc_poct
         f      = zeros ((self.fc_np,self.fc_np))
         for k in range(len(self.fc_ty)):
             for i in range(self.fc_np):
@@ -515,4 +501,91 @@ class Plotter:
         lines = []
         for k in range(len(self.fc_ty)):
             lines.append (plot([0],[0],linestyle=self.fc_ls[k],color=self.fc_clr[k]))
-        legend (lines, self.fc_ty, loc=loc)
+        legend (lines, self.fc_ty, loc=loc, prop={'size':9})
+
+    # Draw arc
+    # ========
+    def draw_arc(self, ax, xc,yc,R, alp_min,alp_max, eclr, fclr='None', lwd=1, res=200):
+        A   = linspace(alp_min,alp_max,res)
+        dat = [(self.PH.MOVETO, (R*cos(alp_min),R*sin(alp_min)))]
+        for a in A:
+            x = xc + R*cos(a)
+            y = yc + R*sin(a)
+            dat.append((self.PH.LINETO, (x,y)))
+        cmd,vert = zip(*dat)
+        ph = self.PH (vert, cmd)
+        pc = self.PC (ph, facecolor=fclr, edgecolor=eclr, linewidth=lwd)
+        ax.add_patch (pc)
+
+    # Find phi
+    # ========
+    def find_phi(self, files, phi_adopted=-1, tit=r'Results from compression test ($\theta=-30^\circ$)'):
+        # load data and calculate additional variables
+        phi_ave = 0.0
+        p_at_qpmax, q_at_qpmax = [], []
+        for f in files:
+            Sig, Eps = self.load_data (f)
+            np       = len(Sig) # number of points
+            P,  Q    = zeros(np), zeros(np)
+            for i in range(np):
+                P[i], Q[i] = sig_calc_p_q (Sig[i], Type='cam')
+            QdivP     = Q/P
+            iQdivPmax = QdivP.argmax()
+            phi_ave  += M_calc_phi (QdivP[iQdivPmax], 'cam')
+            q_at_qpmax.append (Q[iQdivPmax])
+            p_at_qpmax.append (P[iQdivPmax])
+
+        # phi fit
+        M, b    = polyfit (p_at_qpmax,q_at_qpmax,1)
+        phi_fit = M_calc_phi (M,'cam')
+        phi_ave /= len(p_at_qpmax)
+
+        # plot
+        self.set_fig_for_eps()
+        xlabel(r'$p_{cam}$'); ylabel(r'$q_{cam}$')
+        X = linspace(0., max(p_at_qpmax), 100)
+        grid  ()
+        plot  (X,M*X, 'r-', label=r'fitting ($\phi=%2.1f, b=%2.3f$)'%(phi_fit,b))
+        plot  (p_at_qpmax, q_at_qpmax, 'r^', label=r'data', clip_on=False)
+        #title (tit)
+        if phi_adopted>0:
+            Madopt = phi_calc_M (phi_adopted, 'cam')
+            plot (X,Madopt*X, 'b-', marker='.', markevery=15, label=r'$\phi_{adopted}=%2.1f$'%phi_adopted)
+        legend(loc='upper left')
+
+        return phi_fit, b, phi_ave
+
+
+    # Load Data
+    # =========
+    def load_data(self, filename):
+        dat = read_table(filename)
+        Sig = []
+        Eps = []
+        sq2 = sqrt(2.0)
+        if dat.has_key('Sx'): # old data file
+            res = basename(filename).split('.')
+            kgf = res[1]=='kgf'         # stresses in kgf/cm^2 ?
+            pct = res[2]=='pct'         # strains in percentage ?
+            mul = 98.0  if kgf else 1.0 # multiplier for stresses
+            div = 100.0 if pct else 1.0 # divider for strains
+            for i in range(len(dat['Sx'])):
+                Sig.append(mul*matrix([[-float( dat['Sx' ][i] )],
+                                       [-float( dat['Sy' ][i] )],
+                                       [-float( dat['Sz' ][i] )],
+                                       [-float( dat['Sxy'][i] )*sq2]]))
+                Eps.append(    matrix([[-float( dat['Ex' ][i] )/div],
+                                       [-float( dat['Ey' ][i] )/div],
+                                       [-float( dat['Ez' ][i] )/div],
+                                       [-float( dat['Exy'][i] )*sq2/div]]))
+        else:
+            for i in range(len(dat['sx'])):
+                Sig.append(matrix([[float( dat['sx' ][i] )],
+                                   [float( dat['sy' ][i] )],
+                                   [float( dat['sz' ][i] )],
+                                   [float( dat['sxy'][i] if dat.has_key('sxy') else 0.0 )*sq2]]))
+                Eps.append(matrix([[float( dat['ex' ][i] )],
+                                   [float( dat['ey' ][i] )],
+                                   [float( dat['ez' ][i] )],
+                                   [float( dat['exy'][i] if dat.has_key('sxy') else 0.0 )*sq2]]))
+        return Sig, Eps
