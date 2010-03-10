@@ -17,9 +17,9 @@
 ########################################################################
 
 from os.path import basename
-from numpy   import sqrt, matrix, zeros, log, cos, pi, sin, tan, linspace, polyfit
+from numpy   import exp, sqrt, matrix, zeros, log, cos, pi, sin, tan, linspace, polyfit
 from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
-from pylab   import rcParams, savefig, axes, legend, gca, title
+from pylab   import rcParams, savefig, axes, legend, gca, title, figure, clf, annotate
 from pylab   import matplotlib as MPL
 from msys_invariants import *
 from msys_readdata   import *
@@ -413,6 +413,16 @@ class Plotter:
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig_)
             f        = I1*I2 - kmn*I3
+        elif fc_ty=='MNnl':
+            sphi     = sin(self.fc_phi*pi/180.0)
+            cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
+            kmn      = (9.0-sphi**2.0)/(1.0-sphi**2.0)
+            sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
+            sig_     = sig+sig0
+            l        = sig_calc_s123(sig_)
+            if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
+            I1,I2,I3 = char_invs(sig_)
+            f        = I1*I2 - kmn*I3
         elif fc_ty=='LD':
             sphi     = sin(self.fc_phi*pi/180.0)
             cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
@@ -517,9 +527,17 @@ class Plotter:
         pc = self.PC (ph, facecolor=fclr, edgecolor=eclr, linewidth=lwd)
         ax.add_patch (pc)
 
+    # Ref curve model
+    # ===============
+    def refcurve(self, x, A, B, c, bet):
+        c1 = bet*(A-B)
+        c2 = exp(-c*bet)
+        c3 = 1.0-c2
+        return A*x - log(c3+c2*exp(c1*x))/bet
+
     # Find phi
     # ========
-    def find_phi(self, files, phi_adopted=-1, tit=r'Results from compression test ($\theta=-30^\circ$)'):
+    def find_phi(self, files, phi_adopted=-1, find_refcte=True, A=-1,B=-1,c=-1,bet=1, txt='comp', tit=r'Results from compression test ($\theta=-30^\circ$)'):
         # load data and calculate additional variables
         phi_ave = 0.0
         p_at_qpmax, q_at_qpmax = [], []
@@ -535,23 +553,36 @@ class Plotter:
             q_at_qpmax.append (Q[iQdivPmax])
             p_at_qpmax.append (P[iQdivPmax])
 
+        if find_refcte:
+            A, a = polyfit(p_at_qpmax[0:2],q_at_qpmax[0:2],1)
+            B, c = polyfit(p_at_qpmax[2:4],q_at_qpmax[2:4],1)
+        print 'A =', A, '  B =', B, '  c =', c
+
         # phi fit
         M, b    = polyfit (p_at_qpmax,q_at_qpmax,1)
         phi_fit = M_calc_phi (M,'cam')
         phi_ave /= len(p_at_qpmax)
 
+        phi_ini = M_calc_phi (A,'cam')
+        phi_fin = M_calc_phi (B,'cam')
+
         # plot
+        self.proport = 1.0
         self.set_fig_for_eps()
+        axes([0.12,0.12,0.85,0.75])
         xlabel(r'$p_{cam}$'); ylabel(r'$q_{cam}$')
         X = linspace(0., max(p_at_qpmax), 100)
         grid  ()
-        plot  (X,M*X, 'r-', label=r'fitting ($\phi=%2.1f, b=%2.3f$)'%(phi_fit,b))
-        plot  (p_at_qpmax, q_at_qpmax, 'r^', label=r'data', clip_on=False)
-        #title (tit)
-        if phi_adopted>0:
-            Madopt = phi_calc_M (phi_adopted, 'cam')
-            plot (X,Madopt*X, 'b-', marker='.', markevery=15, label=r'$\phi_{adopted}=%2.1f$'%phi_adopted)
-        legend(loc='upper left')
+        print 'phi_fit = ', phi_fit, '   b_fit = ', b
+        p0, = plot (X,b+M*X,'g-', label='fit', marker='.', markevery=10)
+        p1, = plot (X,self.refcurve(X,A,B,c,bet),'b-',linewidth=2, label=r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(A,B,c,bet))
+        p2, = plot (p_at_qpmax, q_at_qpmax, 'r^', clip_on=False)
+        p3, = plot ([0],[0],'b-',linewidth=2)
+        l1  = legend([p1], [r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(A,B,c,bet)], bbox_to_anchor=(0,1.03,1,0.1), loc=3, mode='expand', borderaxespad=0.)
+        l2  = legend([p0,p2], [r'fit: $\phi=%2.2f^\circ, b=%2.3f$'%(phi_fit,b), 'DEM data'], loc='upper left')
+        l3  = legend([p3], [r'$\phi_{ini}=%2.2f^\circ, \phi_{fin}=%2.2f^\circ$'%(phi_ini,phi_fin)], loc='lower right')
+        gca().add_artist(l1)
+        gca().add_artist(l2)
 
         return phi_fit, b, phi_ave
 
