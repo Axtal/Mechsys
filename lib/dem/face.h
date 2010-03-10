@@ -39,7 +39,10 @@ public:
 
 
     // Methods
-    void UpdatedL (); ///< UdatedL for each edge
+    void UpdatedL ();               ///< UdatedL for each edge
+    void Normal   (Vec3_t & N);     ///< Calculates the normal vecto rof the face
+    void Centroid (Vec3_t & C);     ///< Calculates the centroid of the polygonal face
+    double Area   ();               ///< Calculates the area of the face
     void Draw      (std::ostream & os, double Radius=1.0, char const * Color="Blue", bool BPY=false);
 
     // Data
@@ -92,6 +95,34 @@ inline void Face::UpdatedL()
     {
         Edges[i]->UpdatedL();
     }
+}
+
+inline void Face::Normal(Vec3_t & N)
+{
+    N = cross(Edges[0]->dL, Edges[1]->dL);
+    N = N/norm(N);
+}
+
+inline void Face::Centroid(Vec3_t & N)
+{
+    N = Vec3_t(0.0,0.0,0.0);
+    for (size_t i=0; i<Edges.Size(); i++)
+    {
+        N += *Edges[i]->X0;
+    }
+    N/=Edges.Size();
+}
+
+inline double Face::Area()
+{
+    Vec3_t N;
+    Normal(N);
+    double area=0;
+    for (size_t i=0; i<Edges.Size(); i++)
+    {
+        area += 0.5*dot(N,cross(*Edges[i]->X0,*Edges[(i+1)%Edges.Size()]->X0));
+    }
+    return area;
 }
 
 inline void Face::Draw (std::ostream & os, double Radius, char const * Color, bool BPY)

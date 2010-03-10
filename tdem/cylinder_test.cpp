@@ -70,17 +70,19 @@ int main(int argc, char **argv) try
         mesh.SetFac ( 8,  0, 1,  4.,  8., 9.,13.,12.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
         mesh.SetFac ( 9,  0, 1,  4., 10.,11.,15.,14.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
         mesh.Generate();
+        //mesh.FindNeigh();
+        //cout<<mesh<<endl;
 
-        d.GenFromMesh(-1,mesh,0.1,1.0);
+        d.GenFromMesh(-1,mesh,0.1,1.0,true);
         d.Center(Vec3_t(0.0,0.0,5.0));
         d.AddPlane(-2,OrthoSys::O,0.1,100,100,1.0);
         d.WriteBPY(filekey.CStr());
         d.Initialize();
-        d.Save(filekey.CStr());
+        //d.Save(filekey.CStr());
     }
     else 
     {
-        d.Load(filekey.CStr());
+        //d.Load(filekey.CStr());
     }
     Array<double> X,Y,D;
     d.GetGSD(X,Y,D);
@@ -104,7 +106,7 @@ int main(int argc, char **argv) try
         d.FreeParticles[i]->Ff = d.FreeParticles[i]->m*Vec3_t(0.0,0.0,-9.8);
     }
 
-    d.Solve     (/*tf*/5, /*dt*/0.001, /*dtOut*/0.1, filekey.CStr(), true);
+    d.Solve     (/*tf*/5, /*dt*/0.001, /*dtOut*/0.05, filekey.CStr(), true);
 
     return 0;
 }

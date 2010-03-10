@@ -61,7 +61,7 @@ public:
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);      ///< General rices
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                       ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenBoundingBox  (int InitialTag, double R, double Cf);                                                        ///< Generate o bounding box enclosing the previous included particles.
-    void GenFromMesh     (int Tag, Mesh::Generic const & M, double R, double rho);                                     ///< Generate particles from a FEM mesh generator
+    void GenFromMesh     (int Tag, Mesh::Generic & M, double R, double rho, bool cohesion=false);                ///< Generate particles from a FEM mesh generator
     void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);  ///< Generate Particles from a Voronoi container
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
                           double rho, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                 ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
@@ -112,6 +112,7 @@ public:
     Array<Particle*>   FParticles;    ///< Particles with applied force
     Array<CInteracton*> Interactons;   ///< All interactons
     Array<CInteracton*> CInteractons;  ///< Contact interactons
+    Array<BInteracton*> BInteractons;  ///< Cohesion interactons
     Vec3_t             CamPos;        ///< Camera position for POV
     double             Evis;          ///< Energy dissipated by the viscosity of the grains
     double             Efric;         ///< Energy dissipated by friction
@@ -323,13 +324,12 @@ inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
     GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf);
 }
 
-inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, double rho)
+inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rho, bool Cohesion)
 {
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Generating particles from mesh -----------------------------[0m\n";
 
-    Array <Array <int> > Empty;
     for (size_t i=0; i<M.Cells.Size(); ++i)
     {
         Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
@@ -366,6 +366,32 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic const & M, double R, dou
 
         // add particle
         Particles.Push (new Particle(Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+        Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+    }
+
+    Array<Array <int> > Neigh(Particles.Size());
+    Array<Array <int> > FNeigh(Particles.Size());
+    if(Cohesion)
+    {
+        M.FindNeigh();
+        //std::cout << M;
+        for (size_t i=0; i<M.Cells.Size(); ++i) 
+        {
+            for (Mesh::Neighs_t::const_iterator p=M.Cells[i]->Neighs.begin(); p!=M.Cells[i]->Neighs.end(); ++p)
+            {
+                Neigh[i].Push(p->second.second->ID);
+                FNeigh[i].Push(p->second.first);
+            }           
+        }
+        for (size_t i=0; i<Neigh.Size(); ++i)
+        {
+            for (size_t j=0; j<Neigh[i].Size(); ++j)
+            {
+                size_t index = Neigh[Neigh[i][j]].Find(i);
+                if (Neigh[i][j]>i) BInteractons.Push(new BInteracton(Particles[i],Particles[Neigh[i][j]],FNeigh[i][j],FNeigh[Neigh[i][j]][index]));
+            }
+        }
+        
     }
 
     // info
@@ -965,6 +991,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
             Efric += CInteractons[i]-> dEfric;
         }
 
+        for (size_t i=0; i<BInteractons.Size(); i++) BInteractons[i]->CalcForce(dt);
         Setup(dt, tf-t0);
 
         // move free particles

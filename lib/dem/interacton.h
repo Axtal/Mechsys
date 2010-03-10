@@ -108,6 +108,31 @@ protected:
     void _update_rolling_resistance(double dt);               ///< Calculates the rolling resistance torque
 };
 
+class BInteracton: public Interacton // Interacton for cohesion
+{
+public:
+    BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, size_t Fi2); ///< Constructor requires pointers to both particles and alos the indixes of the size they share
+
+    // Methods
+    bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
+    void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
+
+    // Data
+    size_t F1;                             ///< Index of the shared face for particle 1
+    size_t F2;                             ///< Index of the shared face for particle 2
+    double Area;                           ///< Area of the shared side
+    double Bn;                             ///< Elastic normal constant for the cohesion
+    double Bt;                             ///< Elastic tangential constant for the cohesion
+    double Bm;                             ///< Elastic for the cohesion torque
+    double L0;                             ///< Equilibrium distance
+    Vec3_t Lt;                             ///< Tangential displacement
+    double t;
+    double epsn;                          
+    double epst;
+    bool valid;
+
+};
+
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 // Collision interacton
@@ -123,8 +148,6 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     Gn              = 2*ReducedValue(Pt1->Gn,Pt2->Gn);
     Gt              = 2*ReducedValue(Pt1->Gt,Pt2->Gt);
     Mu              = 2*ReducedValue(Pt1->Mu,Pt2->Mu);
-    I1              = P1->Index;
-    I2              = P2->Index;
     CalcForce(0.0);
 }
 
@@ -343,4 +366,66 @@ inline bool CInteractonSphere::UpdateContacts (double alpha)
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha) return true;
     else return false;
 }
+
+//Cohesion interacton
+
+inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, size_t Fi2)
+{
+    P1              = Pt1;
+    P2              = Pt2;
+    F1              = Fi1;
+    F2              = Fi2;
+    I1              = P1->Index;
+    I2              = P2->Index;
+    Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
+    Bn              = 1000.0*Area;
+    Bt              =  500.0*Area;
+    Bm              =  500.0*Area;
+
+    Vec3_t t1;
+    P1->Faces[F1]->Normal(t1);
+    Vec3_t c1,c2;
+    P1->Faces[F1]->Centroid(c1);
+    P2->Faces[F2]->Centroid(c2);
+    L0              = dot(t1,c2-c1);
+    Lt              = 0.0,0.0,0.0;
+    t = 0.0;
+    valid = true;
+}
+
+inline bool BInteracton::UpdateContacts (double alpha)
+{
+    return true;
+}
+
+inline void BInteracton::CalcForce(double dt)
+{
+    if (valid)
+    {
+        Vec3_t n;
+        P1->Faces[F1]->Normal(n);
+        Vec3_t c1,c2;
+        P1->Faces[F1]->Centroid(c1);
+        P2->Faces[F2]->Centroid(c2);
+        double delta = (dot(c2-c1,n)-L0)/L0;
+        Vec3_t Fn = -Bn*delta*n;
+        Vec3_t x = c1+0.5*delta*n;
+        Vec3_t t1,t2,x1,x2;
+        Rotation(P1->w,P1->Q,t1);
+        Rotation(P2->w,P2->Q,t2);
+        x1 = x - P1->x;
+        x2 = x - P2->x;
+        Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
+        Vec3_t vt = vrel - dot(n,vrel)*n;
+        Lt += vt*dt;
+        Lt -= dot(Lt,n)*n;
+        Vec3_t Ft = (Bt/L0)*Lt;
+        P1->F -= Fn+Ft;
+        P2->F += Fn+Ft;
+        //if (fabs(delta)>0.1) valid = false;
+    }
+    
+    t+=dt;
+}
+
 #endif //  MECHSYS_DEM_INTERACTON_H
