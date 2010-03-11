@@ -58,6 +58,7 @@ class Plotter:
         self.only_six  = True                                     # only 2 x 3 instead of 3 x 3 plots?
         self.proport   = 0.75                                     # proportion (Aesthetic ratio): golden_mean = (sqrt(5)-1.0)/2.0 0.628
         self.lwd       = 2                                        # linewidth
+        self.fc_prms   = {'A':None,'B':None,'c':None,'bet':None}  # nonlinear FC parameters
 
         # matplotlib's structures
         self.PH = MPL.path.Path
@@ -414,14 +415,13 @@ class Plotter:
             I1,I2,I3 = char_invs(sig_)
             f        = I1*I2 - kmn*I3
         elif fc_ty=='MNnl':
-            sphi     = sin(self.fc_phi*pi/180.0)
-            cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
-            kmn      = (9.0-sphi**2.0)/(1.0-sphi**2.0)
-            sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
-            sig_     = sig+sig0
-            l        = sig_calc_s123(sig_)
+            p, q = sig_calc_p_q (sig, 'cam')
+            M    = self.refcurve(p)/p if p>0.0 else self.fc_prms['A']
+            sphi = 3.0*M/(M+6.0)
+            kmn  = (9.0-sphi**2.0)/(1.0-sphi**2.0)
+            l    = sig_calc_s123(sig)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
-            I1,I2,I3 = char_invs(sig_)
+            I1,I2,I3 = char_invs(sig)
             f        = I1*I2 - kmn*I3
         elif fc_ty=='LD':
             sphi     = sin(self.fc_phi*pi/180.0)
@@ -529,7 +529,12 @@ class Plotter:
 
     # Ref curve model
     # ===============
-    def refcurve(self, x, A, B, c, bet):
+    def refcurve(self, x, A=None, B=None, c=None, bet=None):
+        if A==None:
+            A   = self.fc_prms['A']
+            B   = self.fc_prms['B']
+            c   = self.fc_prms['c']
+            bet = self.fc_prms['bet']
         c1 = bet*(A-B)
         c2 = exp(-c*bet)
         c3 = 1.0-c2
@@ -554,8 +559,8 @@ class Plotter:
             p_at_qpmax.append (P[iQdivPmax])
 
         if find_refcte:
-            A, a = polyfit(p_at_qpmax[0:2],q_at_qpmax[0:2],1)
-            B, c = polyfit(p_at_qpmax[2:4],q_at_qpmax[2:4],1)
+            A, a = polyfit(p_at_qpmax[:2],q_at_qpmax[:2],1)
+            B, c = polyfit(p_at_qpmax[-2:],q_at_qpmax[-2:],1)
         print 'A =', A, '  B =', B, '  c =', c
 
         # phi fit
@@ -572,10 +577,10 @@ class Plotter:
         axes([0.12,0.12,0.85,0.75])
         xlabel(r'$p_{cam}$'); ylabel(r'$q_{cam}$')
         X = linspace(0., max(p_at_qpmax), 100)
-        grid  ()
+        grid ()
         print 'phi_fit = ', phi_fit, '   b_fit = ', b
         p0, = plot (X,b+M*X,'g-', label='fit', marker='.', markevery=10)
-        p1, = plot (X,self.refcurve(X,A,B,c,bet),'b-',linewidth=2, label=r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(A,B,c,bet))
+        p1, = plot (X,self.refcurve(X,A,B,c,bet),'b-',linewidth=1, label=r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(A,B,c,bet))
         p2, = plot (p_at_qpmax, q_at_qpmax, 'r^', clip_on=False)
         p3, = plot ([0],[0],'b-',linewidth=2)
         l1  = legend([p1], [r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(A,B,c,bet)], bbox_to_anchor=(0,1.03,1,0.1), loc=3, mode='expand', borderaxespad=0.)
