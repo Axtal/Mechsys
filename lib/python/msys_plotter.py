@@ -500,8 +500,8 @@ class Plotter:
     # ========
     def draw_arc(self, ax, xc,yc,R, alp_min,alp_max, eclr, fclr='None', lwd=1, res=200):
         A   = linspace(alp_min,alp_max,res)
-        dat = [(self.PH.MOVETO, (R*cos(alp_min),R*sin(alp_min)))]
-        for a in A:
+        dat = [(self.PH.MOVETO, (xc+R*cos(alp_min),yc+R*sin(alp_min)))]
+        for a in A[1:]:
             x = xc + R*cos(a)
             y = yc + R*sin(a)
             dat.append((self.PH.LINETO, (x,y)))
@@ -524,21 +524,28 @@ class Plotter:
 
     # Find phi
     # ========
-    def find_phi(self, files, with_refcurve=False, find_refcte=False, txt='comp'):
+    def find_phi(self, files, with_refcurve=False, find_refcte=False, mcirc=False, txt='comp'):
         # load data and calculate additional variables
         phi_ave = 0.0
-        p_at_qpmax, q_at_qpmax = [], []
+        p_at_qpmax, q_at_qpmax                = [], []
+        s1_at_qpmax, s2_at_qpmax, s3_at_qpmax = [], [], []
         for f in files:
-            Sig, Eps = self.load_data (f)
-            np       = len(Sig) # number of points
-            P,  Q    = zeros(np), zeros(np)
+            Sig, Eps   = self.load_data (f)
+            np         = len(Sig) # number of points
+            P,  Q      = zeros(np), zeros(np)
+            S1, S2, S3 = zeros(np), zeros(np), zeros(np) # principal stresses
             for i in range(np):
-                P[i], Q[i] = sig_calc_p_q (Sig[i], Type='cam')
-            QdivP     = Q/P
-            iQdivPmax = QdivP.argmax()
-            phi_ave  += M_calc_phi (QdivP[iQdivPmax], 'cam')
-            q_at_qpmax.append (Q[iQdivPmax])
-            p_at_qpmax.append (P[iQdivPmax])
+                P[i], Q[i]          = sig_calc_p_q  (Sig[i], Type='cam')
+                s123                = sig_calc_s123 (Sig[i], do_sort=True)
+                S1[i], S2[i], S3[i] = s123[0], s123[1], s123[2]
+            QdivP    = Q/P
+            imaQP    = QdivP.argmax()
+            phi_ave += M_calc_phi (QdivP[imaQP], 'cam')
+            q_at_qpmax .append (Q [imaQP])
+            p_at_qpmax .append (P [imaQP])
+            s1_at_qpmax.append (S1[imaQP])
+            s2_at_qpmax.append (S2[imaQP])
+            s3_at_qpmax.append (S3[imaQP])
 
         if with_refcurve:
             if find_refcte:
@@ -561,21 +568,40 @@ class Plotter:
         phi_ave /= len(p_at_qpmax)
 
         # plot
-        x = linspace(0., max(X), 100)
+        if mcirc: x = linspace(0., -min([min(s1_at_qpmax),min(s2_at_qpmax),min(s3_at_qpmax)]), 100)
+        else:     x = linspace(0., max(X), 100)
         self.proport = 1.0
         self.set_fig_for_eps()
         if with_refcurve: axes([0.12,0.12,0.85,0.75])
         else:             axes([0.12,0.12,0.85,0.85])
-        xlabel(r'$p_{cam}$'); ylabel(r'$q_{cam}$')
+        if mcirc: xlabel(r'$-\sigma_{i}$'); ylabel(r'$\tau$')
+        else:     xlabel(r'$p_{cam}$'); ylabel(r'$q_{cam}$')
         grid ()
-        if with_refcurve:
+        if mcirc: axis('equal')
+        if with_refcurve and not mcirc:
             p2, = plot (x, self.refcurve(x),'b-', marker='.', markevery=10, linewidth=1)
             p3, = plot ([0],[0],'b-',linewidth=2)
             lb  = legend([p2], [r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(self.fc_prms['A'],self.fc_prms['B'],self.fc_prms['c'],self.fc_prms['bet'])],
                          bbox_to_anchor=(0,1.03,1,0.1), loc=3, mode='expand', borderaxespad=0.)
             lc  = legend([p3], [r'$\phi_{ini}=%2.2f^\circ, \phi_{fin}=%2.2f^\circ$'%(phi_ini,phi_fin)], loc='lower right')
-        p0, = plot (x, M*x, 'g-', marker='None', markevery=10, linewidth=1)
-        p1, = plot (X, Y,   'r^', clip_on=False)
+        alp = tan(phi_fit*pi/180.) if mcirc else M
+        p0, = plot (x, alp*x, 'g-', marker='None', markevery=10, linewidth=1)
+        if mcirc:
+            for k, s1 in enumerate(s1_at_qpmax):
+                s1 = -s1
+                #s2 = -s2_at_qpmax[k]
+                s3 = -s3_at_qpmax[k]
+                #C0 =     (s1+s2)/2.
+                #C1 =     (s2+s3)/2.
+                C2 =     (s3+s1)/2.
+                #R0 = abs((s1-s2)/2.)
+                #R1 = abs((s2-s3)/2.)
+                R2 = abs((s3-s1)/2.)
+                #self.draw_arc(gca(), C0,0.,R0, 0., pi, 'red', res=30)
+                #self.draw_arc(gca(), C1,0.,R1, 0., pi, 'red', res=30)
+                self.draw_arc(gca(), C2,0.,R2, 0., pi, 'red', res=30)
+            p1, = plot ([0], [0], 'r-')
+        else: p1, = plot (X, Y, 'r^', clip_on=False)
         la  = legend([p0,p1], [r'fit: $\phi=%2.2f^\circ$'%(phi_fit), 'DEM data'], loc='upper left')
         if with_refcurve:
             gca().add_artist(lb)
