@@ -50,7 +50,7 @@ int main(int argc, char **argv) try
 
     // add tetrahedron
     x =  10 , 0 , 0;
-    w =   0 , 0 , 0;
+    w =   0 , 0 , M_PI/10.;
     v = -1. , 0 , 0;
     d.AddTetra (-1, x,0.5,5.,1.);
     d.Particles[1]->v = v;
@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
     d.SetProps(B);
 
     // initialize
-    double dt = 0.001;
+    double dt = 0.0001;
     d.Initialize(dt);
 
     // initial constants
@@ -75,6 +75,7 @@ int main(int argc, char **argv) try
     // solve
     d.CamPos = 0.0,30.0,0.0;
     d.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, "test_dynamics", true);
+    d.Save("test_dynamics");
 
     // final constants
     Vec3_t l1(0,0,0);  // initial linear momentum

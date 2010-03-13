@@ -57,7 +57,7 @@ int main(int argc, char **argv) try
                   13.,  0.,  3.0, 3.0, 2.0,               // id, vtag, x, y, z,
                   14.,  0.,  3.0, 3.0, 3.0,               // id, vtag, x, y, z,
                   15.,  0.,  2.0, 3.0, 3.0,               // id, vtag, x, y, z,
-                        0.,  0.2, 0.2, 0.2, -1.0,        //      tag, x, y, z, max{volume} <<<<<<< regions
+                        0.,  0.2, 0.2, 0.2, 3.0,        //      tag, x, y, z, max{volume} <<<<<<< regions
                              2.5, 1.5, 2.5);             //           x, y, z, <<<<<<< holes
         mesh.SetFac ( 0,  0, 2,  4.,  0.,1.,2.,3.,4., 8.,9.,10.,11.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
         mesh.SetFac ( 1,  0, 2,  4.,  4.,5.,6.,7.,4., 12.,13.,14.,15.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
@@ -106,7 +106,7 @@ int main(int argc, char **argv) try
         d.FreeParticles[i]->Ff = d.FreeParticles[i]->m*Vec3_t(0.0,0.0,-9.8);
     }
 
-    d.Solve     (/*tf*/5, /*dt*/0.001, /*dtOut*/0.05, filekey.CStr(), true);
+    d.Solve     (/*tf*/5.0, /*dt*/0.00005, /*dtOut*/0.05, filekey.CStr(), true);
 
     return 0;
 }

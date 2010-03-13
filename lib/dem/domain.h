@@ -362,11 +362,20 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rh
                 F[j].Push(Mesh::NVertsToFace3D[nverts][j][k]);
             }
         }
+        //Particle P(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho);
+        //P.CalcProps(5000,false);
         Erosion(V,E,F,R);
 
         // add particle
         Particles.Push (new Particle(Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-        Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+        //Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+        //Particles[Particles.Size()-1]->x     = P.x;
+        //Particles[Particles.Size()-1]->V     = P.V;
+        //Particles[Particles.Size()-1]->m     = P.m;
+        //Particles[Particles.Size()-1]->I     = P.I;
+        //Particles[Particles.Size()-1]->Q     = P.Q;
+        //Particles[Particles.Size()-1]->Dmax  = P.Dmax;
+        //Particles[Particles.Size()-1]->PropsReady = true;
     }
 
     Array<Array <int> > Neigh(Particles.Size());

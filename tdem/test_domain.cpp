@@ -34,19 +34,58 @@ int main(int argc, char **argv) try
     Domain d;
 
     // add cube
-    d.AddCube (-1, Vec3_t(20,0,0),1.,15,1.,0.,NULL);
+    d.AddCube (-1, Vec3_t(20,0,0),1.,15.0,1.,0.0,&OrthoSys::e0);
     double cube_vol = (4./3.)*PI + 3.*PI*15. + pow(15,3.0) + 6*pow(15,2.0);
 
     // add rice
-    d.AddRice (-1, Vec3_t(0,0,0),1.,10.,1.,0.,NULL);
+    d.AddRice (-1, Vec3_t(40,0,0),1.,10.,1.,0.,NULL);
     double rice_vol = (4./3.)*PI + PI*10.0;
     Vec3_t rice_I((1./3.)*PI*100+(1./12.)*PI*1000+0.75*PI*10+(8./15.)*PI,
                   (1./3.)*PI*100+(1./12.)*PI*1000+0.75*PI*10+(8./15.)*PI,
                    0.5*PI*10+(8./15.)*PI);
 
+    // add tetrahedron
+
+    //vertices
+    Array<Vec3_t> V(4);
+    V[0] = -0.019294513013112358, 1.4, 2.989488614614216;
+    V[1] = -0.3719223593595582,   1.4, 4.4;
+    V[2] =  0.3333333333333335,   1.4, 4.4;
+    V[3] = -0.3719223593595582,  -0.7157670780786753, 4.4;
+    
+    // edges
+    Array<Array <int> > E(6);
+    for (size_t i=0; i<6; ++i) E[i].Resize(2);
+    E[0] = 0, 1;
+    E[1] = 1, 2;
+    E[2] = 2, 0;
+    E[3] = 0, 3;
+    E[4] = 1, 3;
+    E[5] = 2, 3;
+
+    // face
+    Array<Array <int> > F;
+    F.Resize(4);
+    for (size_t i=0; i<4; ++i) F[i].Resize(3);
+    F[0] = 0, 1, 2;
+    F[1] = 0, 3, 1;
+    F[2] = 0, 2, 3;
+    F[3] = 1, 3, 2;
+    d.Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
+
+
+    d.Particles[0]->Index=0;
+    d.Particles[1]->Index=1;
+    d.Particles[2]->Index=2;
+
     // initialize
-    d.Particles[0]->Initialize(10000);
-    d.Particles[1]->Initialize(10000);
+    d.Particles[0]->Initialize(100000,false);
+    d.Particles[1]->Initialize(100000,false);
+    d.Particles[2]->Initialize(100000,false);
+
+    d.AddSphere(-1,d.Particles[2]->x,0.2,1.0);
+
+
     d.Initialize (/*dt*/0.0);
 
     // check
@@ -70,7 +109,12 @@ int main(int argc, char **argv) try
     cout << "  Rice Center of mass    = " << d.Particles[1]->x(0) << ", " << d.Particles[1]->x(1) << ", " << d.Particles[1]->x(2) << endl;
     cout << "  Rice Moment of inertia = " << d.Particles[1]->I(0) << " (" << rice_I(0) << "), " << d.Particles[1]->I(1) << " (" << rice_I(1) << "), " << d.Particles[1]->I(2) << " (" << rice_I(2) << ") ==> Error = " << FmtErr(rice_err_I,rice_tol_I) << "\n";
     cout << "  Rice Quaternion        = " << d.Particles[1]->Q(0) << ", " << d.Particles[1]->Q(1) << ", " << d.Particles[1]->Q(2) << ", " << d.Particles[1]->Q(3) << "\n";
-
+    cout << endl;
+    cout << "  Tetra Volume            = " << d.Particles[2]->V    << " ( is inside? " << d.Particles[2]->IsInside(d.Particles[2]->x) << ")\n";
+    cout << "  Tetra Center of mass    = " << d.Particles[2]->x(0) << ", " << d.Particles[2]->x(1) << ", " << d.Particles[2]->x(2) << "\n";
+    cout << "  Tetra Moment of inertia = " << d.Particles[2]->I(0) << ", " << d.Particles[2]->I(1) << ", " << d.Particles[2]->I(2) << "\n";
+    cout << "  Tetra Quaternion        = " << d.Particles[2]->Q(0) << ", " << d.Particles[2]->Q(1) << ", " << d.Particles[2]->Q(2) << ", " << d.Particles[2]->Q(3) << "\n";
+    
     // draw
     d.WriteBPY ("test_domain");
 

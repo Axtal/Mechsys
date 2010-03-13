@@ -126,10 +126,10 @@ public:
     double Bm;                             ///< Elastic for the cohesion torque
     double L0;                             ///< Equilibrium distance
     Vec3_t Lt;                             ///< Tangential displacement
+    double An;                             ///< Angular displacement
+    double eps;                            ///< Maximun strain before fracture
+    bool valid;                            ///< Check if the bound has not been broken
     double t;
-    double epsn;                          
-    double epst;
-    bool valid;
 
 };
 
@@ -214,6 +214,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             x1 = x - P1->x;
             x2 = x - P2->x;
             Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
+            //if(isnan(norm(vrel))) std::cout << I1 << " " << I2 << " " << P1->w << P2->w << t1 << t2 << x1 << x2 <<std::endl;
             Vec3_t vt = vrel - dot(n,vrel)*n;
             Fn = Kn*delta*n;
             Fnet += Fn;
@@ -237,7 +238,6 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             P1->F += -F;
             P2->F +=  F;
             dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;
-
             // torque
             Vec3_t T, Tt;
             Tt = cross (x1,F);
@@ -389,8 +389,10 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     P2->Faces[F2]->Centroid(c2);
     L0              = dot(t1,c2-c1);
     Lt              = 0.0,0.0,0.0;
-    t = 0.0;
-    valid = true;
+    An              = 0.0;
+    eps             = 10.0;
+    valid           = true;
+    t=0.0;
 }
 
 inline bool BInteracton::UpdateContacts (double alpha)
@@ -402,13 +404,19 @@ inline void BInteracton::CalcForce(double dt)
 {
     if (valid)
     {
+        // Calculate the normal vector and centroid of the contact face
         Vec3_t n;
         P1->Faces[F1]->Normal(n);
         Vec3_t c1,c2;
         P1->Faces[F1]->Centroid(c1);
         P2->Faces[F2]->Centroid(c2);
+
+        // Normal force
         double delta = (dot(c2-c1,n)-L0)/L0;
         Vec3_t Fn = -Bn*delta*n;
+
+
+        // Tangential force
         Vec3_t x = c1+0.5*delta*n;
         Vec3_t t1,t2,x1,x2;
         Rotation(P1->w,P1->Q,t1);
@@ -422,10 +430,23 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t Ft = (Bt/L0)*Lt;
         P1->F -= Fn+Ft;
         P2->F += Fn+Ft;
-        //if (fabs(delta)>0.1) valid = false;
+
+        // Torque
+        An+=dot(t1-t2,n)*dt;
+        Vec3_t T,Tt = Bm*An*n;
+        Quaternion_t q;
+        Conjugate (P1->Q,q);
+        Rotation  (Tt,q,T);
+        P1->T -= T;
+        Conjugate (P2->Q,q);
+        Rotation  (Tt,q,T);
+        P2->T += T;
+
+        t+=dt;
+
+        // Breaking point
+        //if ((fabs(delta)>eps)||(norm(Lt)/L0>eps)||(fabs(An)*sqrt(Area/Util::PI)>eps)) valid = false;
     }
-    
-    t+=dt;
 }
 
 #endif //  MECHSYS_DEM_INTERACTON_H

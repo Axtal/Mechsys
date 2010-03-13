@@ -126,6 +126,11 @@ inline double MonteCarlo<Instance>::Integrate(pFun p2Fun, double * ri, double * 
             gsl_monte_vegas_state *wsv;
             wsv = gsl_monte_vegas_alloc (WORKSPACE_SIZE);
             gsl_monte_vegas_integrate(&f,ri,rs,3,_NCALLS,r,wsv,&result,&error);
+            //do
+            //{
+                //gsl_monte_vegas_integrate(&f,ri,rs,3,_NCALLS/5,r,wsv,&result,&error);
+            //}
+            //while(fabs(gsl_monte_vegas_chisq(wsv)-1.0)>0.01);
             gsl_monte_vegas_free (wsv);
             break;
         }
