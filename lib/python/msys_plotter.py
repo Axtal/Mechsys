@@ -23,6 +23,7 @@ from pylab   import rcParams, savefig, axes, legend, gca, title, figure, clf, an
 from pylab   import matplotlib as MPL
 from msys_invariants import *
 from msys_readdata   import *
+from msys_linfit     import *
 
 class Plotter:
     # Constructor
@@ -114,28 +115,10 @@ class Plotter:
         nhplt = 3                  # number of horizontal plots
         nvplt = 3                  # number of vertical plots
         iplot = 1                  # index of plot
-        ilst  = len(P)-1           # index of last point 
-        ima   = ilst if self.maxidx<0 else self.maxidx # max index of data to plot
-        if self.maxed>0:
-            imaEd = ima
-            for k, ed in enumerate(Ed):
-                if ed>=self.maxed:
-                    imaEd = k
-                    break
-            ima = imaEd if imaEd<ima else ima
-        if self.maxev>0:
-            imaEv = ima
-            for k, ev in enumerate(Ev):
-                if ev>=self.maxev:
-                    imaEv = k
-                    break
-            ima = imaEv if imaEv<ima else ima
-        if self.only_six:
-            nhplt = 2
-            nvplt = 3
+        if self.only_six: nhplt, nvplt = 2, 3
 
         # calc friction angle
-        imaQP = QdivP[:ima].argmax() # index of QP used to calculate phi
+        imaQP = QdivP.argmax() # index of QP used to calculate phi
         if calc_phi or self.fc_phi<0: self.fc_phi = M_calc_phi (QdivP[imaQP], self.pq_ty)
         self.fc_poct = P[imaQP]*sqrt(3.0) if self.pq_ty=='cam' else P[imaQP]
         self.fc_cu   = qf_calc_cu (Q[imaQP], self.pq_ty)
@@ -157,17 +140,17 @@ class Plotter:
         # 0) q/p, Ed ---------------------------------------------------------------------------
         if self.justone==0 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot (Ed[:ima], Y[:ima], color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            if imaQP<=ima: plot (Ed[imaQP], Y[imaQP], '^', color=clr)
-            #if ilst <=ima: plot (Ed[-1],    Y[-1],   '^', color=clr)
+            plot (Ed, Y, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot (Ed[imaQP], Y[imaQP], '^', color=clr)
+            #plot (Ed[-1],    Y[-1],    '^', color=clr)
             xlabel (r'$\varepsilon_d$ [\%]');  ylabel(Ylbl);  grid()
-            if txtmax and imaQP<=ima: text (Ed[imaQP], Y[imaQP], '%.2f'%Y[imaQP], fontsize=8)
-            if txtlst and ilst <=ima: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
+            if txtmax: text (Ed[imaQP], Y[imaQP], '%.2f'%Y[imaQP], fontsize=8)
+            if txtlst: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
 
         # 1) q/p, Ev ---------------------------------------------------------------------------
         if self.justone==1 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ev[:ima], Y[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot   (Ev, Y, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (r'$\varepsilon_v$ [\%]');  ylabel(Ylbl);  grid()
 
         # 2) p, q ---------------------------------------------------------------------------
@@ -175,7 +158,7 @@ class Plotter:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             axhline (0.0,color='black'); axvline(0.0,color='black')
             if draw_fl: self.pq_fline(0.1*min(P),2.0*max(P),min(Q),max(Q))
-            plot    (P[:ima], Q[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot    (P, Q, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel  (r'$p_{%s}$'%(self.pq_ty));  ylabel(r'$q_{%s}$'%(self.pq_ty));  grid()
             axis    ('equal')
             if self.show_k:
@@ -185,21 +168,21 @@ class Plotter:
         # 3) Ed, Ev ---------------------------------------------------------------------------
         if self.justone==3 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (Ed[:ima], Ev[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot   (Ed, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (r'$\varepsilon_d$ [\%]');  ylabel(r'$\varepsilon_v$ [\%]'); grid()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
         if self.justone==4 or self.justone<0:
             if self.log_p:
-                X    = log(P[:ima])
+                X    = log(P)
                 xlbl = r'$\ln{(p_{%s})}$'%(self.pq_ty)
             else:
-                X    = P[:ima]
+                X    = P
                 xlbl = r'$p_{%s}$'%(self.pq_ty)
             if self.pcte>0:
                 for k, x in enumerate(X): X[k] = self.pcte
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (X[:ima], Ev[:ima], lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot   (X, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [\%]');  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
@@ -208,18 +191,18 @@ class Plotter:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             if draw_ros: self.oct_rosette(min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
             if draw_fl:  self.oct_fline  (min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
-            plot (Sa[:ima]/pcoef, Sb[:ima]/pcoef, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            if imaQP<=ima: plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
-            #if ilst <=ima: plot (Sa[ilst]/pcoef,  Sb[ilst]/pcoef,  '^', color=clr)
+            plot (Sa/pcoef, Sb/pcoef, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
+            #plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
             axis ('equal')
             axis ('off')
 
         # 6) Ek, Q/P ---------------------------------------------------------------------------
         if self.justone==6 or self.justone<0 and not self.only_six:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-            plot   (E1[:ima], Y[:ima], lw=self.lwd,linestyle='-',  color=clr)
-            plot   (E2[:ima], Y[:ima], lw=self.lwd,linestyle='--', color=clr)
-            plot   (E3[:ima], Y[:ima], lw=self.lwd,linestyle='-.', color=clr)
+            plot   (E1, Y, lw=self.lwd,linestyle='-',  color=clr)
+            plot   (E2, Y, lw=self.lwd,linestyle='--', color=clr)
+            plot   (E3, Y, lw=self.lwd,linestyle='-.', color=clr)
             xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]')
             ylabel (Ylbl);  grid()
 
@@ -228,16 +211,16 @@ class Plotter:
                 # 7) s3-s1, s3-s2
                 if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
                 if draw_fl: self.s123_fline(S3[imaQP])
-                plot   (S3[:ima]-S1[:ima], S3[:ima]-S2[:ima], lw=self.lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+                plot   (S3-S1, S3-S2, lw=self.lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
                 xlabel (r'$\sigma_3-\sigma_1$');  ylabel(r'$\sigma_3-\sigma_2$');  grid()
                 axis   ('equal')
         else:
             # 7) Ek, Sk ---------------------------------------------------------------------------
             if self.justone==7 or self.justone<0 and not self.only_six:
                 if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-                plot   (Ex[:ima], -Sx[:ima], lw=self.lwd,linestyle='-', color=clr)
-                plot   (Ey[:ima], -Sy[:ima], lw=self.lwd,linestyle='--', color=clr)
-                plot   (Ez[:ima], -Sz[:ima], lw=self.lwd,linestyle='-.', color=clr)
+                plot   (Ex, -Sx, lw=self.lwd,linestyle='-', color=clr)
+                plot   (Ey, -Sy, lw=self.lwd,linestyle='--', color=clr)
+                plot   (Ez, -Sz, lw=self.lwd,linestyle='-.', color=clr)
                 xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]')
                 ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]');  grid()
 
@@ -245,7 +228,7 @@ class Plotter:
         if self.justone==8 or self.justone<0 and not self.only_six:
             if self.justone<0: self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
             if draw_fl: self.sxyz_fline()
-            plot   (-sqrt(2.0)*Si[:ima], -Sj[:ima],  lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
+            plot   (-sqrt(2.0)*Si, -Sj,  lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
             xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]));  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]));  grid()
             axis   ('equal')
 
@@ -529,20 +512,19 @@ class Plotter:
 
     # Ref curve model
     # ===============
-    def refcurve(self, x, A=None, B=None, c=None, bet=None):
-        if A==None:
-            A   = self.fc_prms['A']
-            B   = self.fc_prms['B']
-            c   = self.fc_prms['c']
-            bet = self.fc_prms['bet']
-        c1 = bet*(A-B)
-        c2 = exp(-c*bet)
-        c3 = 1.0-c2
+    def refcurve(self, x):
+        A   = self.fc_prms['A']
+        B   = self.fc_prms['B']
+        c   = self.fc_prms['c']
+        bet = self.fc_prms['bet']
+        c1  = bet*(A-B)
+        c2  = exp(-c*bet)
+        c3  = 1.0-c2
         return A*x - log(c3+c2*exp(c1*x))/bet
 
     # Find phi
     # ========
-    def find_phi(self, files, phi_adopted=-1, find_refcte=True, A=-1,B=-1,c=-1,bet=1, txt='comp', tit=r'Results from compression test ($\theta=-30^\circ$)'):
+    def find_phi(self, files, with_refcurve=False, find_refcte=False, txt='comp'):
         # load data and calculate additional variables
         phi_ave = 0.0
         p_at_qpmax, q_at_qpmax = [], []
@@ -558,38 +540,48 @@ class Plotter:
             q_at_qpmax.append (Q[iQdivPmax])
             p_at_qpmax.append (P[iQdivPmax])
 
-        if find_refcte:
-            A, a = polyfit(p_at_qpmax[:2],q_at_qpmax[:2],1)
-            B, c = polyfit(p_at_qpmax[-2:],q_at_qpmax[-2:],1)
-        print 'A =', A, '  B =', B, '  c =', c
+        if with_refcurve:
+            if find_refcte:
+                X, Y = array(p_at_qpmax[:2]), array(q_at_qpmax[:2])
+                f0   = LinFit(X,Y, tls=False, cmx=False)
+                self.fc_prms['A'] = f0.m
+                X, Y = array(p_at_qpmax[-2:]), array(q_at_qpmax[-2:])
+                f1   = LinFit(X,Y, tls=False, cmx=True)
+                self.fc_prms['B']   = f1.m
+                self.fc_prms['c']   = f1.c
+                self.fc_prms['bet'] = 1.0
+            phi_ini = M_calc_phi (self.fc_prms['A'],'cam')
+            phi_fin = M_calc_phi (self.fc_prms['B'],'cam')
 
         # phi fit
-        M, b    = polyfit (p_at_qpmax,q_at_qpmax,1)
-        phi_fit = M_calc_phi (M,'cam')
+        X, Y     = array(p_at_qpmax), array(q_at_qpmax)
+        f        = LinFit (X, Y, tls=True, cmx=False)
+        M        = f.m
+        phi_fit  = M_calc_phi (M,'cam')
         phi_ave /= len(p_at_qpmax)
 
-        phi_ini = M_calc_phi (A,'cam')
-        phi_fin = M_calc_phi (B,'cam')
-
         # plot
+        x = linspace(0., max(X), 100)
         self.proport = 1.0
         self.set_fig_for_eps()
-        axes([0.12,0.12,0.85,0.75])
+        if with_refcurve: axes([0.12,0.12,0.85,0.75])
+        else:             axes([0.12,0.12,0.85,0.85])
         xlabel(r'$p_{cam}$'); ylabel(r'$q_{cam}$')
-        X = linspace(0., max(p_at_qpmax), 100)
         grid ()
-        print 'phi_fit = ', phi_fit, '   b_fit = ', b
-        p0, = plot (X,b+M*X,'g-', label='fit', marker='.', markevery=10)
-        p1, = plot (X,self.refcurve(X,A,B,c,bet),'b-',linewidth=1, label=r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(A,B,c,bet))
-        p2, = plot (p_at_qpmax, q_at_qpmax, 'r^', clip_on=False)
-        p3, = plot ([0],[0],'b-',linewidth=2)
-        l1  = legend([p1], [r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(A,B,c,bet)], bbox_to_anchor=(0,1.03,1,0.1), loc=3, mode='expand', borderaxespad=0.)
-        l2  = legend([p0,p2], [r'fit: $\phi=%2.2f^\circ, b=%2.3f$'%(phi_fit,b), 'DEM data'], loc='upper left')
-        l3  = legend([p3], [r'$\phi_{ini}=%2.2f^\circ, \phi_{fin}=%2.2f^\circ$'%(phi_ini,phi_fin)], loc='lower right')
-        gca().add_artist(l1)
-        gca().add_artist(l2)
+        if with_refcurve:
+            p2, = plot (x, self.refcurve(x),'b-', marker='.', markevery=10, linewidth=1)
+            p3, = plot ([0],[0],'b-',linewidth=2)
+            lb  = legend([p2], [r'$A=%2.2f, B=%2.2f, c=%2.2f, \beta=%2.2f$'%(self.fc_prms['A'],self.fc_prms['B'],self.fc_prms['c'],self.fc_prms['bet'])],
+                         bbox_to_anchor=(0,1.03,1,0.1), loc=3, mode='expand', borderaxespad=0.)
+            lc  = legend([p3], [r'$\phi_{ini}=%2.2f^\circ, \phi_{fin}=%2.2f^\circ$'%(phi_ini,phi_fin)], loc='lower right')
+        p0, = plot (x, M*x, 'g-', marker='None', markevery=10, linewidth=1)
+        p1, = plot (X, Y,   'r^', clip_on=False)
+        la  = legend([p0,p1], [r'fit: $\phi=%2.2f^\circ$'%(phi_fit), 'DEM data'], loc='upper left')
+        if with_refcurve:
+            gca().add_artist(lb)
+            gca().add_artist(lc)
 
-        return phi_fit, b, phi_ave
+        return phi_fit, phi_ave
 
 
     # Load Data
@@ -600,6 +592,7 @@ class Plotter:
         Eps = []
         sq2 = sqrt(2.0)
         if dat.has_key('Sx'): # old data file
+            raise Exception('load_data: old data file: with Sx: not ready yet')
             res = basename(filename).split('.')
             kgf = res[1]=='kgf'         # stresses in kgf/cm^2 ?
             pct = res[2]=='pct'         # strains in percentage ?
@@ -624,4 +617,9 @@ class Plotter:
                                    [float( dat['ey' ][i] )],
                                    [float( dat['ez' ][i] )],
                                    [float( dat['exy'][i] if dat.has_key('sxy') else 0.0 )*sq2]]))
+                Ev, Ed = eps_calc_ev_ed (Eps[len(Eps)-1])
+                Ev *= 100.0 # convert strains to percentage
+                Ed *= 100.0
+                if self.maxed>0 and Ed>self.maxed: break
+                if self.maxev>0 and Ev>self.maxev: break
         return Sig, Eps
