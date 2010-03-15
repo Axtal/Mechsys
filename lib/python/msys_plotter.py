@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+import os, subprocess
 from os.path import basename
 from numpy   import exp, sqrt, matrix, zeros, log, cos, pi, sin, tan, linspace, polyfit
 from pylab   import rc, subplot, plot, xlabel, ylabel, grid, axhline, axvline, axis, text, contour, show
@@ -127,11 +128,11 @@ class Plotter:
         if self.set_eps:
             if self.justone>=0:
                 self.set_fig_for_eps(multiplot=False)
-                if self.justone==5: axes([0.01,0.01,.99,.99])
-                else: axes(self.axesdat) # this needs to be after set_eps
+                #if self.justone==5: axes([0.01,0.01,.99,.99])
+                #else: axes(self.axesdat) # this needs to be after set_eps
             else:
                 self.set_fig_for_eps(multiplot=True)
-                axes([0.,0.,0.99,0.99]) # this needs to be after set_eps
+                #axes([0.,0.,0.99,0.99]) # this needs to be after set_eps
 
         # q p ratio and label
         Y = QdivP if self.div_by_p else Q
@@ -388,11 +389,14 @@ class Plotter:
             g    = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th))
             f    = q - (p + cbar)*g
         elif fc_ty=='MN':
-            sphi     = sin(self.fc_phi*pi/180.0)
-            cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
-            kmn      = (9.0-sphi**2.0)/(1.0-sphi**2.0)
-            sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
-            sig_     = sig+sig0
+            #sphi     = sin(self.fc_phi*pi/180.0)
+            #cbar     = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
+            #kmn      = (9.0-sphi**2.0)/(1.0-sphi**2.0)
+            #sig0     = cbar*matrix([[1.0],[1.0],[1.0],[0.0]])
+            #sig_     = sig+sig0
+            tgphi2   = tan(self.fc_phi*pi/180.0)**2.0
+            kmn      = 9.0 + 8.0*tgphi2
+            sig_     = sig
             l        = sig_calc_s123(sig_)
             if l[0]>0.0 or l[1]>0.0 or l[2]>0.0: return -1.0e+8
             I1,I2,I3 = char_invs(sig_)
@@ -490,7 +494,7 @@ class Plotter:
 
     # FC legend
     # =========
-    def fc_leg(self, loc='center right'):
+    def fc_leg(self, loc='best'):
         lines = []
         for k in range(len(self.fc_ty)):
             lines.append (plot([0],[0],linestyle=self.fc_ls[k],color=self.fc_clr[k]))
@@ -649,3 +653,18 @@ class Plotter:
                 if self.maxed>0 and Ed>self.maxed: break
                 if self.maxev>0 and Ev>self.maxev: break
         return Sig, Eps
+
+
+    # Save and crop EPS
+    # =================
+    def save_eps(self, filekey):
+        # save
+        savefig (filekey+'.eps', bbox_inches='tight')
+
+        # crop
+        subprocess.check_call (['ps2eps', '-q', '-l', '-f', '%s.eps'%filekey])
+
+        # rename
+        os.rename ('%s.eps.eps'%filekey, '%s.eps'%filekey)
+
+        print "<[1;34m%s.eps[0m> created"%filekey
