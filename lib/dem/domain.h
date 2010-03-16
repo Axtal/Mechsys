@@ -61,7 +61,7 @@ public:
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);      ///< General rices
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                       ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenBoundingBox  (int InitialTag, double R, double Cf);                                                        ///< Generate o bounding box enclosing the previous included particles.
-    void GenFromMesh     (int Tag, Mesh::Generic & M, double R, double rho, bool cohesion=false);                ///< Generate particles from a FEM mesh generator
+    void GenFromMesh     (int Tag, Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true);        ///< Generate particles from a FEM mesh generator
     void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);  ///< Generate Particles from a Voronoi container
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
                           double rho, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                 ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
@@ -110,7 +110,7 @@ public:
     Array<Particle*>   TParticles;    ///< Particles with translation fixed
     Array<Particle*>   RParticles;    ///< Particles with rotation fixed
     Array<Particle*>   FParticles;    ///< Particles with applied force
-    Array<CInteracton*> Interactons;   ///< All interactons
+    Array<Interacton*> Interactons;   ///< All interactons
     Array<CInteracton*> CInteractons;  ///< Contact interactons
     Array<BInteracton*> BInteractons;  ///< Cohesion interactons
     Vec3_t             CamPos;        ///< Camera position for POV
@@ -324,11 +324,13 @@ inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
     GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf);
 }
 
-inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rho, bool Cohesion)
+inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC)
 {
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Generating particles from mesh -----------------------------[0m\n";
+
+    size_t IIndex = Particles.Size();
 
     for (size_t i=0; i<M.Cells.Size(); ++i)
     {
@@ -362,24 +364,46 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rh
                 F[j].Push(Mesh::NVertsToFace3D[nverts][j][k]);
             }
         }
-        //Particle P(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho);
-        //P.CalcProps(5000,false);
+        double vol; // volume of the polyhedron
+        Vec3_t CM;  // Center of mass of the polyhedron
+        Mat3_t It;  // Inertia tensor of the polyhedron
+        PolyhedraMP(V,F,vol,CM,It);
         Erosion(V,E,F,R);
 
         // add particle
         Particles.Push (new Particle(Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-        //Particles[Particles.Size()-1]->Index = Particles.Size()-1;
-        //Particles[Particles.Size()-1]->x     = P.x;
-        //Particles[Particles.Size()-1]->V     = P.V;
-        //Particles[Particles.Size()-1]->m     = P.m;
-        //Particles[Particles.Size()-1]->I     = P.I;
-        //Particles[Particles.Size()-1]->Q     = P.Q;
-        //Particles[Particles.Size()-1]->Dmax  = P.Dmax;
-        //Particles[Particles.Size()-1]->PropsReady = true;
+        Particles[Particles.Size()-1]->Index = Particles.Size()-1;
+        if (!MC)
+        {
+            Particles[Particles.Size()-1]->x     = CM;
+            Particles[Particles.Size()-1]->V     = vol;
+            Particles[Particles.Size()-1]->m     = vol*rho;
+            Vec3_t I;
+            Quaternion_t Q;
+            Vec3_t xp,yp,zp;
+            Eig(It,I,xp,yp,zp);
+            I *= rho;
+            Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+            Q(1) = (yp(2)-zp(1))/(4*Q(0));
+            Q(2) = (zp(0)-xp(2))/(4*Q(0));
+            Q(3) = (xp(1)-yp(0))/(4*Q(0));
+            Q = Q/norm(Q);
+            Particles[Particles.Size()-1]->I     = I;
+            Particles[Particles.Size()-1]->Q     = Q;
+            double Dmax = Distance(CM,V[0])+R;
+            for (size_t i=1; i<V.Size(); ++i)
+            {
+                if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
+            }
+            Particles[Particles.Size()-1]->Ekin = 0.0;
+            Particles[Particles.Size()-1]->Erot = 0.0;
+            Particles[Particles.Size()-1]->Dmax  = Dmax;
+            Particles[Particles.Size()-1]->PropsReady = true;
+        }
     }
 
-    Array<Array <int> > Neigh(Particles.Size());
-    Array<Array <int> > FNeigh(Particles.Size());
+    Array<Array <int> > Neigh(Particles.Size()-IIndex);
+    Array<Array <int> > FNeigh(Particles.Size()-IIndex);
     if(Cohesion)
     {
         M.FindNeigh();
@@ -397,7 +421,7 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rh
             for (size_t j=0; j<Neigh[i].Size(); ++j)
             {
                 size_t index = Neigh[Neigh[i][j]].Find(i);
-                if (Neigh[i][j]>i) BInteractons.Push(new BInteracton(Particles[i],Particles[Neigh[i][j]],FNeigh[i][j],FNeigh[Neigh[i][j]][index]));
+                if (Neigh[i][j]>i) BInteractons.Push(new BInteracton(Particles[i+IIndex],Particles[Neigh[i][j]+IIndex],FNeigh[i][j],FNeigh[Neigh[i][j]][index]));
             }
         }
         
@@ -993,14 +1017,16 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         }
 
         // calc force
+        for (size_t i=0; i<Interactons.Size(); i++)
+        {
+            Interactons[i]->CalcForce (dt);
+        }
         for (size_t i=0; i<CInteractons.Size(); i++)
         {
-            CInteractons[i]->CalcForce (dt);
             Evis += CInteractons[i]-> dEvis;
             Efric += CInteractons[i]-> dEfric;
         }
 
-        for (size_t i=0; i<BInteractons.Size(); i++) BInteractons[i]->CalcForce(dt);
         Setup(dt, tf-t0);
 
         // move free particles
@@ -1432,14 +1458,14 @@ inline void Domain::Center(Vec3_t C)
 
 inline void Domain::ResetInteractons()
 {
-    for (size_t i=0; i<Interactons.Size(); ++i) if (Interactons[i]!=NULL) delete Interactons[i];
-    Interactons.Resize(0);
+    for (size_t i=0; i<CInteractons.Size(); ++i) if (CInteractons[i]!=NULL) delete CInteractons[i];
+    CInteractons.Resize(0);
     for (size_t i=0; i<FreeParticles.Size()-1; i++)
     {
         for (size_t j=i+1; j<FreeParticles.Size(); j++)
         {
-            if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) Interactons.Push (new CInteractonSphere(FreeParticles[i],FreeParticles[j]));
-            else Interactons.Push (new CInteracton(FreeParticles[i],FreeParticles[j]));
+            if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) CInteractons.Push (new CInteractonSphere(FreeParticles[i],FreeParticles[j]));
+            else CInteractons.Push (new CInteracton(FreeParticles[i],FreeParticles[j]));
         }
     }
 
@@ -1447,17 +1473,17 @@ inline void Domain::ResetInteractons()
     {
         for (size_t j=0; j<FParticles.Size(); j++)
         {
-            Interactons.Push (new CInteracton(FreeParticles[i],FParticles[j]));
+            CInteractons.Push (new CInteracton(FreeParticles[i],FParticles[j]));
         }
 
         for (size_t j=0; j<RParticles.Size(); j++)
         {
-            Interactons.Push (new CInteracton(FreeParticles[i],RParticles[j]));
+            CInteractons.Push (new CInteracton(FreeParticles[i],RParticles[j]));
         }
 
         for (size_t j=0; j<TParticles.Size(); j++)
         {
-            Interactons.Push (new CInteracton(FreeParticles[i],TParticles[j]));
+            CInteractons.Push (new CInteracton(FreeParticles[i],TParticles[j]));
         }
     }
 }
@@ -1483,10 +1509,14 @@ inline double Domain::MaxDisplacement()
 
 inline void Domain::ResetContacts()
 {
-    CInteractons.Resize(0);
-    for (size_t i=0; i<Interactons.Size(); i++)
+    Interactons.Resize(0);
+    for (size_t i=0; i<CInteractons.Size(); i++)
     {
-        if(Interactons[i]->UpdateContacts(Alpha)) CInteractons.Push(Interactons[i]);
+        if(CInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(CInteractons[i]);
+    }
+    for (size_t i=0; i<BInteractons.Size(); i++)
+    {
+        if(BInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(BInteractons[i]);
     }
 }
 
@@ -1524,9 +1554,9 @@ inline double Domain::CalcEnergy (double & Ekin, double & Epot)
 
     // potential energy
     Epot = 0.0;
-    for (size_t i=0; i<Interactons.Size(); i++)
+    for (size_t i=0; i<CInteractons.Size(); i++)
     {
-        Epot += Interactons[i]->Epot;
+        Epot += CInteractons[i]->Epot;
     }
 
     // total energy

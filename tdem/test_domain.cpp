@@ -53,7 +53,7 @@ int main(int argc, char **argv) try
     V[2] =  0.3333333333333335,   1.4, 4.4;
     V[3] = -0.3719223593595582,  -0.7157670780786753, 4.4;
     
-    // edges
+     //edges
     Array<Array <int> > E(6);
     for (size_t i=0; i<6; ++i) E[i].Resize(2);
     E[0] = 0, 1;
@@ -63,7 +63,7 @@ int main(int argc, char **argv) try
     E[4] = 1, 3;
     E[5] = 2, 3;
 
-    // face
+     //face
     Array<Array <int> > F;
     F.Resize(4);
     for (size_t i=0; i<4; ++i) F[i].Resize(3);
@@ -74,14 +74,25 @@ int main(int argc, char **argv) try
     d.Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
 
 
+    Mesh::Generic mesh(/*NDim*/3);
+    mesh.SetSize(4,1);
+    mesh.SetVert(1,-1, 2.0, 2.0, 4.0);
+    mesh.SetVert(0,-1,-2.0,-2.0, 4.0);
+    mesh.SetVert(2,-1, 2.0,-2.0, 0.0);
+    mesh.SetVert(3,-1,-2.0, 2.0, 0.0);
+    mesh.SetCell(0,-1,Array<int>(0,1,2,3));
+    d.GenFromMesh (-1,mesh,/*R*/0.1,/*rho*/1.0,true,true);
+
     d.Particles[0]->Index=0;
     d.Particles[1]->Index=1;
     d.Particles[2]->Index=2;
+    d.Particles[3]->Index=3;
 
     // initialize
-    d.Particles[0]->Initialize(100000,false);
-    d.Particles[1]->Initialize(100000,false);
-    d.Particles[2]->Initialize(100000,false);
+    d.Particles[0]->Initialize(5000);
+    d.Particles[1]->Initialize(5000);
+    d.Particles[2]->Initialize(5000);
+    d.Particles[3]->Initialize(10000);
 
     d.AddSphere(-1,d.Particles[2]->x,0.2,1.0);
 
@@ -114,6 +125,12 @@ int main(int argc, char **argv) try
     cout << "  Tetra Center of mass    = " << d.Particles[2]->x(0) << ", " << d.Particles[2]->x(1) << ", " << d.Particles[2]->x(2) << "\n";
     cout << "  Tetra Moment of inertia = " << d.Particles[2]->I(0) << ", " << d.Particles[2]->I(1) << ", " << d.Particles[2]->I(2) << "\n";
     cout << "  Tetra Quaternion        = " << d.Particles[2]->Q(0) << ", " << d.Particles[2]->Q(1) << ", " << d.Particles[2]->Q(2) << ", " << d.Particles[2]->Q(3) << "\n";
+    cout << endl;
+    cout << "  Tetra Volume            = " << d.Particles[3]->V    << " ( is inside? " << d.Particles[2]->IsInside(d.Particles[2]->x) << ")\n";
+    cout << "  Tetra Center of mass    = " << d.Particles[3]->x(0) << ", " << d.Particles[3]->x(1) << ", " << d.Particles[3]->x(2) << "\n";
+    cout << "  Tetra Moment of inertia = " << d.Particles[3]->I(0) << ", " << d.Particles[3]->I(1) << ", " << d.Particles[3]->I(2) << "\n";
+    cout << "  Tetra Quaternion        = " << d.Particles[3]->Q(0) << ", " << d.Particles[3]->Q(1) << ", " << d.Particles[3]->Q(2) << ", " << d.Particles[2]->Q(3) << "\n";
+    cout << endl;
     
     // draw
     d.WriteBPY ("test_domain");

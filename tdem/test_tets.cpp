@@ -39,22 +39,44 @@ int main(int argc, char **argv) try
     
     /////////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
-    Mesh::Unstructured mesh(/*NDim*/3);
-    mesh.GenBox  (/*O2*/false,/*V*/0.05);
-    mesh.WriteVTU ("test_tets");
-    cout << " File <test_tets.vtu> generated\n";
+    Mesh::Generic mesh(/*NDim*/3);
+    mesh.SetSize(5,2);
+    mesh.SetVert(0,-1,-7.0, 0.0, 3.0);
+    mesh.SetVert(1,-1, 4.0, 0.0, 0.0);
+    mesh.SetVert(2,-1, 0.0, 0.0, 6.0);
+    mesh.SetVert(3,-1, 0.0, 4.0, 0.0);
+    mesh.SetVert(4,-1, 0.0,-4.0, 0.0);
+    mesh.SetCell(0,-1,Array<int>(3,4,1,2));
+    mesh.SetCell(1,-1,Array<int>(3,0,4,2));
 
     /////////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
     Domain d;
-    d.GenFromMesh (-1,mesh,/*R*/0.01,/*rho*/1.0);
-
+    d.GenFromMesh (-1,mesh,/*R*/0.3,/*rho*/1.0,true,false);
+    d.Center(Vec3_t(0.0,0.0,3.5));
+    d.AddPlane(-2,OrthoSys::O,0.3,100,100,1.0);
+    d.Initialize();
+    d.Save("test_tets");
     //////////////////////////////////////////////////////////////////////////////////// First timestep /////
     
+    //Fix the plane 
+    Dict B;
+    B.Set(-2,"vx vy vz",0.0,0.0,0.0);
+    d.SetBC(B);
+
     d.CamPos= 4.0,3.0,3.0;
     d.WritePOV ("test_tets");
     d.WriteBPY ("test_tets");
 
+    // Initialize the gravity on the particles
+    for (size_t i=0;i<d.FreeParticles.Size();i++)
+    {
+        d.FreeParticles[i]->Ff = d.FreeParticles[i]->m*Vec3_t(0.0,0.0,-9.8);
+    }
+
+    d.CamPos = Vec3_t(0.0, 20.0, 2.5); // position of camera
+    d.ResetInteractons();
+    d.Solve     (/*tf*/5.0, /*dt*/0.0005, /*dtOut*/0.1, "test_tets", true);
     return 0;    
 }
 MECHSYS_CATCH

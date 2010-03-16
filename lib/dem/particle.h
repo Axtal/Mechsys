@@ -50,7 +50,7 @@ public:
     ~Particle ();
 
     // Methods
-    void Initialize         (size_t NCalls=5000,bool MC=true);                              ///< Initialize this particle
+    void Initialize         (size_t NCalls=5000);                             ///< Initialize this particle
     void InitializeVelocity (double dt = 1.0);                                              ///< Initialize this particle
     void Rotate             (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
     void Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
@@ -101,7 +101,7 @@ public:
     Array<Face*>        Faces;           ///< Faces
     double t;
     // Auxiliar methods
-    void   CalcProps (size_t NCalls=5000, bool MC=false); ///< Calculate properties: mass, center of mass, and moment of inertia
+    void   CalcProps (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
     bool   IsInside  (Vec3_t & V);                        ///< Find whether the point V is inside the particle or not
     double IsInside  (double * V);                        ///< Find whether the point V is inside the particle or not
     double MaxX      ();                                  ///< Find Maximun X coordinate
@@ -261,10 +261,10 @@ inline Particle::~Particle()
 
 // Methods
 
-inline void Particle::Initialize (size_t NCalls, bool MC)
+inline void Particle::Initialize (size_t NCalls)
 {
     // calc properties
-    if (!PropsReady) CalcProps (NCalls, MC);
+    if (!PropsReady) CalcProps (NCalls);
 }
 
 inline void Particle::InitializeVelocity (double dt)
@@ -342,6 +342,7 @@ inline void Particle::Translate (double dt)
     x    = xa;
     Ekin = 0.5*m*dot(v,v);
     Translate (temp);
+    //if(isnan(norm(x))) std::cout << t << " " << Index << F << std::endl;
 }
 
 inline void Particle::Translate (Vec3_t & V)
@@ -391,7 +392,7 @@ inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
 
 // Auxiliar methods
 
-inline void Particle::CalcProps (size_t NCalls, bool MC)
+inline void Particle::CalcProps (size_t NCalls)
 {
     if (Verts.Size()==1 && Edges.Size()==0 && Faces.Size()==0)
     {
@@ -408,99 +409,22 @@ inline void Particle::CalcProps (size_t NCalls, bool MC)
     else 
     {
         Mat3_t It;
-        if (MC)
-        {
-            double Xi[3] = { MinX() , MinY() , MinZ() };
-            double Xs[3] = { MaxX() , MaxY() , MaxZ() };
-            Numerical::MonteCarlo<Particle> MC(this, Numerical::VEGAS, NCalls);
-            V       = MC.Integrate(&Particle::Vol, Xi,Xs);
-            x(0)    = MC.Integrate(&Particle::Xc,  Xi,Xs)/V;
-            x(1)    = MC.Integrate(&Particle::Yc,  Xi,Xs)/V;
-            x(2)    = MC.Integrate(&Particle::Zc,  Xi,Xs)/V;
-            It(0,0) = MC.Integrate(&Particle::Ixx, Xi,Xs);
-            It(1,1) = MC.Integrate(&Particle::Iyy, Xi,Xs);
-            It(2,2) = MC.Integrate(&Particle::Izz, Xi,Xs);
-            It(1,0) = MC.Integrate(&Particle::Ixy, Xi,Xs);
-            It(2,0) = MC.Integrate(&Particle::Ixz, Xi,Xs);
-            It(2,1) = MC.Integrate(&Particle::Iyz, Xi,Xs);
-            It(0,1) = It(1,0);
-            It(0,2) = It(2,0);
-            It(1,2) = It(2,1);
-        }
-        else 
-        {
-            V=0;
-            x=0.0,0.0,0.0;
-            for (size_t i=0;i<Faces.Size();i++)
-            {
-                Vec3_t C;
-                Faces[i]->Centroid(C);
-                double x0 = C(0);
-                double y0 = C(1);
-                double z0 = C(2);
-                for (size_t j=0;j<Faces[i]->Edges.Size();j++)
-                {
-                    double x1 = (*Faces[i]->Edges[j]->X0)(0);
-                    double x2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(0);
-                    double y1 = (*Faces[i]->Edges[j]->X0)(1);
-                    double y2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(1);
-                    double z1 = (*Faces[i]->Edges[j]->X0)(2);
-                    double z2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(2);
-                    double d0 = (y1-y0)*(z2-z0)-(y2-y0)*(z1-z0);
-                    double d1 = (z1-z0)*(x2-x0)-(z2-z0)*(x1-x0);
-                    double d2 = (x1-x0)*(y2-y0)-(x2-x0)*(y1-y0);
-                    V += d0*(x0+x1+x2)/6;
-                    double ixx = d0*(x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))/12.0;
-                    double iyy = d1*(y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))/12.0;
-                    double izz = d2*(z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))/12.0;
-                    x += 0.5*Vec3_t(ixx,iyy,izz);
-                }
-            }
-            x/=V;
-            It(0,0) = 0.0;
-            It(1,1) = 0.0;
-            It(2,2) = 0.0;
-            It(1,0) = 0.0;
-            It(2,0) = 0.0;
-            It(2,1) = 0.0;
-            for (size_t i=0;i<Faces.Size();i++)
-            {
-                Vec3_t C;
-                Faces[i]->Centroid(C);
-                double x0 = C(0)-x(0);
-                double y0 = C(1)-x(1);
-                double z0 = C(2)-x(2);
-                for (size_t j=0;j<Faces[i]->Edges.Size();j++)
-                {
-                    double x1 = (*Faces[i]->Edges[j]->X0)(0)-x(0);
-                    double x2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(0)-x(0);
-                    double y1 = (*Faces[i]->Edges[j]->X0)(1)-x(1);
-                    double y2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(1)-x(1);
-                    double z1 = (*Faces[i]->Edges[j]->X0)(2)-x(2);
-                    double z2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(2)-x(2);
-                    double d0 = (y1-y0)*(z2-z0)-(y2-y0)*(z1-z0);
-                    double d1 = (z1-z0)*(x2-x0)-(z2-z0)*(x1-x0);
-                    double d2 = (x1-x0)*(y2-y0)-(x2-x0)*(y1-y0);
-                    double ixxx = d0*(x0*x0*x0+x0*x0*x1+x0*x1*x1+x1*x1*x1+x2*(x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2)))/20.0;
-                    double iyyy = d1*(y0*y0*y0+y0*y0*y1+y0*y1*y1+y1*y1*y1+y2*(y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2)))/20.0;
-                    double izzz = d2*(z0*z0*z0+z0*z0*z1+z0*z1*z1+z1*z1*z1+z2*(z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2)))/20.0;
-                    double ixxy = d0*(y0*((x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))+x0*(x0+x1+x2+x0))+y1*((x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))+x1*(x0+x1+x2+x1))+y2*(x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))+x2*(x0+x1+x2+x2))/60.0;
-                    double iyyz = d1*(z0*((y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))+y0*(y0+y1+y2+y0))+z1*((y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))+y1*(y0+y1+y2+y1))+z2*(y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))+y2*(y0+y1+y2+y2))/60.0;
-                    double izzx = d2*(x0*((z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))+z0*(z0+z1+z2+z0))+x1*((z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))+z1*(z0+z1+z2+z1))+x2*(z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))+z2*(z0+z1+z2+z2))/60.0;
-
-                    It(0,0) += (1.0/3.0)*(iyyy+izzz);
-                    It(1,1) += (1.0/3.0)*(ixxx+izzz);
-                    It(2,2) += (1.0/3.0)*(iyyy+izzz);
-                    It(1,0) -= 0.5*ixxy;
-                    It(2,0) -= 0.5*izzx;
-                    It(2,1) -= 0.5*iyyz;
-                }
-            }
-            It(0,1) = It(1,0);
-            It(0,2) = It(2,0);
-            It(1,2) = It(2,1);
-            //std::cout << It << x << "V=" << V <<std::endl;
-        }
+        double Xi[3] = { MinX() , MinY() , MinZ() };
+        double Xs[3] = { MaxX() , MaxY() , MaxZ() };
+        Numerical::MonteCarlo<Particle> MC(this, Numerical::VEGAS, NCalls);
+        V       = MC.Integrate(&Particle::Vol, Xi,Xs);
+        x(0)    = MC.Integrate(&Particle::Xc,  Xi,Xs)/V;
+        x(1)    = MC.Integrate(&Particle::Yc,  Xi,Xs)/V;
+        x(2)    = MC.Integrate(&Particle::Zc,  Xi,Xs)/V;
+        It(0,0) = MC.Integrate(&Particle::Ixx, Xi,Xs);
+        It(1,1) = MC.Integrate(&Particle::Iyy, Xi,Xs);
+        It(2,2) = MC.Integrate(&Particle::Izz, Xi,Xs);
+        It(1,0) = MC.Integrate(&Particle::Ixy, Xi,Xs);
+        It(2,0) = MC.Integrate(&Particle::Ixz, Xi,Xs);
+        It(2,1) = MC.Integrate(&Particle::Iyz, Xi,Xs);
+        It(0,1) = It(1,0);
+        It(0,2) = It(2,0);
+        It(1,2) = It(2,1);
 
         Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);

@@ -145,8 +145,8 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     I2              = P2->Index;
     Kn              = 2*ReducedValue(Pt1->Kn,Pt2->Kn);
     Kt              = 2*ReducedValue(Pt1->Kt,Pt2->Kt);
-    Gn              = 2*ReducedValue(Pt1->Gn,Pt2->Gn);
-    Gt              = 2*ReducedValue(Pt1->Gt,Pt2->Gt);
+    Gn              = 2*ReducedValue(Pt1->Gn,Pt2->Gn)*ReducedValue(Pt1->m,Pt2->m);
+    Gt              = 2*ReducedValue(Pt1->Gt,Pt2->Gt)*ReducedValue(Pt1->m,Pt2->m);
     Mu              = 2*ReducedValue(Pt1->Mu,Pt2->Mu);
     CalcForce(0.0);
 }
@@ -202,6 +202,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->R + P2->R - dist;
         if (delta>0)
         {
+            if (delta > 0.5*min(P1->R,P2->R)) throw new Fatal("Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
             // Count a contact
             Nc++;
 
@@ -294,8 +295,8 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     I2 = P2->Index;
     Kn   = 2*ReducedValue(Pt1->Kn,Pt2->Kn);
     Kt   = 2*ReducedValue(Pt1->Kt,Pt2->Kt);
-    Gn   = 2*ReducedValue(Pt1->Gn,Pt2->Gn);
-    Gt   = 2*ReducedValue(Pt1->Gt,Pt2->Gt);
+    Gn   = 2*ReducedValue(Pt1->Gn,Pt2->Gn)*ReducedValue(Pt1->m,Pt2->m);
+    Gt   = 2*ReducedValue(Pt1->Gt,Pt2->Gt)*ReducedValue(Pt1->m,Pt2->m);
     Mu   = 2*ReducedValue(Pt1->Mu,Pt2->Mu);
     beta = 2*ReducedValue(Pt1->Beta,Pt2->Beta);
     eta  = 2*ReducedValue(Pt1->Eta,Pt2->Eta);
