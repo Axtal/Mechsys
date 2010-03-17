@@ -341,8 +341,11 @@ inline void Particle::Translate (double dt)
     xb   = x;
     x    = xa;
     Ekin = 0.5*m*dot(v,v);
-    Translate (temp);
-    //if(isnan(norm(x))) std::cout << t << " " << Index << F << std::endl;
+    size_t nv = Verts.Size();
+    for (size_t i = 0; i < nv; i++)
+    {
+        *Verts[i] += temp;
+    }
 }
 
 inline void Particle::Translate (Vec3_t & V)
@@ -352,6 +355,8 @@ inline void Particle::Translate (Vec3_t & V)
     {
         *Verts[i] += V;
     }
+    x += V;
+    xb += V;
 }
 
 inline void Particle::ResetDisplacements ()
@@ -404,7 +409,6 @@ inline void Particle::CalcProps (size_t NCalls)
         Ekin = 0.5*m*dot(v,v);
         Erot = 0.5*(I(0)*w(0)*w(0)+I(1)*w(1)*w(1)+I(2)*w(2)*w(2));
         Dmax = R;
-
     }
     else 
     {

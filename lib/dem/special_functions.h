@@ -26,6 +26,89 @@
 // Stl
 #include <algorithm>
 
+// Some functions for the mass properties integration
+inline double f1(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
+{
+    return V0(i)+V1(i)+V2(i);
+}
+
+inline double f2(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
+{
+    return V0(i)*V0(i)+V0(i)*V1(i)+V1(i)*V1(i)+V2(i)*f1(i,V0,V1,V2);
+}
+
+inline double f3(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
+{
+    return V0(i)*V0(i)*V0(i)+V0(i)*V0(i)*V1(i)+V0(i)*V1(i)*V1(i)+V1(i)*V1(i)*V1(i)+V2(i)*f2(i,V0,V1,V2);
+}
+
+inline double g0(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
+{
+    return f2(i,V0,V1,V2)+V0(i)*(f1(i,V0,V1,V2)+V0(i));
+}
+
+inline double g1(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
+{
+    return f2(i,V0,V1,V2)+V1(i)*(f1(i,V0,V1,V2)+V1(i));
+}
+
+inline double g2(size_t i, Vec3_t const & V0, Vec3_t const & V1, Vec3_t const & V2)
+{
+    return f2(i,V0,V1,V2)+V2(i)*(f1(i,V0,V1,V2)+V2(i));
+}
+
+inline void PolyhedraMP(Array<Vec3_t> & V, Array<Array <int> > & F, double & vol, Vec3_t & CM, Mat3_t & It) // Calculate mass properties of general polyhedra
+{
+    vol = 0.0;
+    CM = 0.0,0.0,0.0;
+    It(0,0) = 0.0;
+    It(1,1) = 0.0;
+    It(2,2) = 0.0;
+    It(1,0) = 0.0;
+    It(2,0) = 0.0;
+    It(2,1) = 0.0;
+    It(0,1) = 0.0;
+    It(0,2) = 0.0;
+    It(1,2) = 0.0;
+    Array<Face*> Faces;
+    for (size_t i=0; i<F.Size(); i++)
+    {
+        Array<Vec3_t*> verts(F[i].Size());
+        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (&V[F[i][j]]);
+        Faces.Push (new Face(verts));
+    }
+    for (size_t i=0;i<F.Size();i++)
+    {
+        Vec3_t V0;
+        Faces[i]->Centroid(V0);
+        for (size_t j=0;j<Faces[i]->Edges.Size();j++)
+        {
+            Vec3_t V1 = *Faces[i]->Edges[j]->X0;
+            Vec3_t V2 = *Faces[i]->Edges[(j+1)%Faces[i]->Edges.Size()]->X0;
+            Vec3_t d = cross(Vec3_t(V1-V0),Vec3_t(V2-V0));
+            vol += d(2)*(f1(2,V0,V1,V2))/6;
+            CM += Vec3_t(d(0)*f2(0,V0,V1,V2),d(1)*f2(1,V0,V1,V2),d(2)*f2(2,V0,V1,V2))/24.0;
+            It(0,0) += (d(1)*f3(1,V0,V1,V2)+d(2)*f3(2,V0,V1,V2))/60.0;
+            It(1,1) += (d(0)*f3(0,V0,V1,V2)+d(2)*f3(2,V0,V1,V2))/60.0;
+            It(2,2) += (d(1)*f3(1,V0,V1,V2)+d(0)*f3(0,V0,V1,V2))/60.0;
+            It(1,0) -= d(0)*(V0(1)*g0(0,V0,V1,V2)+V1(1)*g1(0,V0,V1,V2)+V2(1)*g2(0,V0,V1,V2))/120.0;
+            It(2,1) -= d(1)*(V0(2)*g0(1,V0,V1,V2)+V1(2)*g1(1,V0,V1,V2)+V2(2)*g2(1,V0,V1,V2))/120.0;
+            It(0,2) -= d(2)*(V0(0)*g0(2,V0,V1,V2)+V1(0)*g1(2,V0,V1,V2)+V2(0)*g2(2,V0,V1,V2))/120.0;
+        }
+    }
+    CM/=vol;
+    It(0,0) -= (CM(1)*CM(1)+CM(2)*CM(2))*vol;
+    It(1,1) -= (CM(0)*CM(0)+CM(2)*CM(2))*vol;
+    It(2,2) -= (CM(0)*CM(0)+CM(1)*CM(1))*vol;
+    It(1,0) += CM(0)*CM(1)*vol;
+    It(0,2) += CM(0)*CM(2)*vol;
+    It(2,1) += CM(2)*CM(1)*vol;
+    It(0,1)  = It(1,0);
+    It(2,0)  = It(0,2);
+    It(1,2)  = It(2,1);
+
+}
+
 inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, double R) // Mathematical morphology erosion
 {
     if (V.Size()<=3) throw new Fatal("There are no enough vertices to work with");
@@ -227,87 +310,6 @@ inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int>
         }
     }
     F = Ftemp;
-}
-
-inline void PolyhedraMP(Array<Vec3_t> & V, Array<Array <int> > & F, double & vol, Vec3_t & CM, Mat3_t & It) // Calculate mass properties of general polyhedra
-{
-    vol = 0.0;
-    CM = 0.0,0.0,0.0;    
-    Array<Face*> Faces;
-    for (size_t i=0; i<F.Size(); i++)
-    {
-        Array<Vec3_t*> verts(F[i].Size());
-        for (size_t j=0; j<F[i].Size(); ++j) verts[j] = (&V[F[i][j]]);
-        Faces.Push (new Face(verts));
-    }
-    for (size_t i=0;i<F.Size();i++)
-    {
-        Vec3_t C;
-        Faces[i]->Centroid(C);
-        double x0 = C(0);
-        double y0 = C(1);
-        double z0 = C(2);
-        for (size_t j=0;j<Faces[i]->Edges.Size();j++)
-        {
-            double x1 = (*Faces[i]->Edges[j]->X0)(0);
-            double x2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(0);
-            double y1 = (*Faces[i]->Edges[j]->X0)(1);
-            double y2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(1);
-            double z1 = (*Faces[i]->Edges[j]->X0)(2);
-            double z2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(2);
-            double d0 = (y1-y0)*(z2-z0)-(y2-y0)*(z1-z0);
-            double d1 = (z1-z0)*(x2-x0)-(z2-z0)*(x1-x0);
-            double d2 = (x1-x0)*(y2-y0)-(x2-x0)*(y1-y0);
-            vol += d0*(x0+x1+x2)/6;
-            double ixx = d0*(x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))/12.0;
-            double iyy = d1*(y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))/12.0;
-            double izz = d2*(z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))/12.0;
-            CM += 0.5*Vec3_t(ixx,iyy,izz);
-        }
-    }
-    CM/=vol;
-    It(0,0) = 0.0;
-    It(1,1) = 0.0;
-    It(2,2) = 0.0;
-    It(1,0) = 0.0;
-    It(2,0) = 0.0;
-    It(2,1) = 0.0;
-    for (size_t i=0;i<Faces.Size();i++)
-    {
-        Vec3_t C;
-        Faces[i]->Centroid(C);
-        double x0 = C(0)-CM(0);
-        double y0 = C(1)-CM(1);
-        double z0 = C(2)-CM(2);
-        for (size_t j=0;j<Faces[i]->Edges.Size();j++)
-        {
-            double x1 = (*Faces[i]->Edges[j]->X0)(0)-CM(0);
-            double x2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(0)-CM(0);
-            double y1 = (*Faces[i]->Edges[j]->X0)(1)-CM(1);
-            double y2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(1)-CM(1);
-            double z1 = (*Faces[i]->Edges[j]->X0)(2)-CM(2);
-            double z2 = (*Faces[i]->Edges[(j+1)%(Faces[i]->Edges.Size())]->X0)(2)-CM(2);
-            double d0 = (y1-y0)*(z2-z0)-(y2-y0)*(z1-z0);
-            double d1 = (z1-z0)*(x2-x0)-(z2-z0)*(x1-x0);
-            double d2 = (x1-x0)*(y2-y0)-(x2-x0)*(y1-y0);
-            double ixxx = d0*(x0*x0*x0+x0*x0*x1+x0*x1*x1+x1*x1*x1+x2*(x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2)))/20.0;
-            double iyyy = d1*(y0*y0*y0+y0*y0*y1+y0*y1*y1+y1*y1*y1+y2*(y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2)))/20.0;
-            double izzz = d2*(z0*z0*z0+z0*z0*z1+z0*z1*z1+z1*z1*z1+z2*(z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2)))/20.0;
-            double ixxy = d0*(y0*((x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))+x0*(x0+x1+x2+x0))+y1*((x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))+x1*(x0+x1+x2+x1))+y2*(x0*x0+x0*x1+x1*x1+x2*(x0+x1+x2))+x2*(x0+x1+x2+x2))/60.0;
-            double iyyz = d1*(z0*((y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))+y0*(y0+y1+y2+y0))+z1*((y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))+y1*(y0+y1+y2+y1))+z2*(y0*y0+y0*y1+y1*y1+y2*(y0+y1+y2))+y2*(y0+y1+y2+y2))/60.0;
-            double izzx = d2*(x0*((z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))+z0*(z0+z1+z2+z0))+x1*((z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))+z1*(z0+z1+z2+z1))+x2*(z0*z0+z0*z1+z1*z1+z2*(z0+z1+z2))+z2*(z0+z1+z2+z2))/60.0;
-
-            It(0,0) += (1.0/3.0)*(iyyy+izzz);
-            It(1,1) += (1.0/3.0)*(ixxx+izzz);
-            It(2,2) += (1.0/3.0)*(iyyy+izzz);
-            It(1,0) -= 0.5*ixxy;
-            It(2,0) -= 0.5*izzx;
-            It(2,1) -= 0.5*iyyz;
-        }
-    }
-    It(0,1) = It(1,0);
-    It(0,2) = It(2,0);
-    It(1,2) = It(2,1);
 }
 
 inline double ReducedValue(double A, double B) //Reduced Value for two quantities

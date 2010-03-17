@@ -129,7 +129,6 @@ public:
     double An;                             ///< Angular displacement
     double eps;                            ///< Maximun strain before fracture
     bool valid;                            ///< Check if the bound has not been broken
-    double t;
 
 };
 
@@ -202,7 +201,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->R + P2->R - dist;
         if (delta>0)
         {
-            if (delta > 0.5*min(P1->R,P2->R)) throw new Fatal("Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
+            if (delta > 0.8*(P1->R+P2->R)) throw new Fatal("Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
             // Count a contact
             Nc++;
 
@@ -215,7 +214,6 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             x1 = x - P1->x;
             x2 = x - P2->x;
             Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
-            //if(isnan(norm(vrel))) std::cout << I1 << " " << I2 << " " << P1->w << P2->w << t1 << t2 << x1 << x2 <<std::endl;
             Vec3_t vt = vrel - dot(n,vrel)*n;
             Fn = Kn*delta*n;
             Fnet += Fn;
@@ -391,14 +389,13 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     L0              = dot(t1,c2-c1);
     Lt              = 0.0,0.0,0.0;
     An              = 0.0;
-    eps             = 10.0;
+    eps             = 0.1;
     valid           = true;
-    t=0.0;
 }
 
 inline bool BInteracton::UpdateContacts (double alpha)
 {
-    return true;
+    return valid;
 }
 
 inline void BInteracton::CalcForce(double dt)
@@ -443,10 +440,8 @@ inline void BInteracton::CalcForce(double dt)
         Rotation  (Tt,q,T);
         P2->T += T;
 
-        t+=dt;
-
         // Breaking point
-        //if ((fabs(delta)>eps)||(norm(Lt)/L0>eps)||(fabs(An)*sqrt(Area/Util::PI)>eps)) valid = false;
+        if ((fabs(delta)>eps)||(norm(Lt)/L0>eps)||(fabs(An)*sqrt(Area/Util::PI)>eps)) valid = false;
     }
 }
 

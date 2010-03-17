@@ -76,12 +76,12 @@ int main(int argc, char **argv) try
 
     Mesh::Generic mesh(/*NDim*/3);
     mesh.SetSize(4,1);
-    mesh.SetVert(1,-1, 2.0, 2.0, 4.0);
-    mesh.SetVert(0,-1,-2.0,-2.0, 4.0);
-    mesh.SetVert(2,-1, 2.0,-2.0, 0.0);
-    mesh.SetVert(3,-1,-2.0, 2.0, 0.0);
+    mesh.SetVert(1,-1, 4.0, 2.0, 4.1);
+    mesh.SetVert(0,-1, 0.0,-2.0, 4.1);
+    mesh.SetVert(2,-1, 4.0,-2.0, 0.1);
+    mesh.SetVert(3,-1, 0.0, 2.0, 0.1);
     mesh.SetCell(0,-1,Array<int>(0,1,2,3));
-    d.GenFromMesh (-1,mesh,/*R*/0.1,/*rho*/1.0,true,true);
+    d.GenFromMesh (-1,mesh,/*R*/0.1,/*rho*/1.0,true,false);
 
     d.Particles[0]->Index=0;
     d.Particles[1]->Index=1;
@@ -92,12 +92,12 @@ int main(int argc, char **argv) try
     d.Particles[0]->Initialize(5000);
     d.Particles[1]->Initialize(5000);
     d.Particles[2]->Initialize(5000);
-    d.Particles[3]->Initialize(10000);
+    d.Particles[3]->Initialize(5000);
 
     d.AddSphere(-1,d.Particles[2]->x,0.2,1.0);
 
 
-    d.Initialize (/*dt*/0.0);
+    //d.Initialize (/*dt*/0.0);
 
     // check
     double cube_tol_vol = 1.0;
