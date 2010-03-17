@@ -1,9 +1,9 @@
 from numpy import array
-from pylab import subplot, plot, grid, show
+from pylab import *
 from msys_readdata import read_table
 from msys_plotter import Plotter
 
-if True:
+if False:
     dat = read_table("owen_hinton_01.res")
     u    = array(dat['u'])
     fint = array(dat['fint'])
@@ -38,26 +38,33 @@ if False:
     #grid()
     #show()
 
-if False:
-    dat = read_table("owen_hinton_02_n41.res")
-    u    = array(dat['ur'])
-    fint = array(dat['fr_int'])
-    fext = array(dat['fr_ext'])
+if True:
+    res  = read_table("owen_hinton_02_n41.res")
+    dat  = read_table("owen_hinton_02_pu.dat")
+    da0  = read_table("jiang.dat")
+    ud   = array(dat['u'])
+    u    = array(res['ur'])
+    fint = array(res['fr_int'])
+    fext = array(res['fr_ext'])
 
-    subplot(1,2,1)
-    plot(u,fext,'r-',lw=2)
-    plot(u,fext,'ro')
-    plot(u,fint,'b-',lw=2)
-    plot(u,fint,'b*')
-    grid()
+    #subplot(1,2,1)
+    #plot(u,fext,'r-',lw=2)
+    #plot(u,fext,'ro')
+    #plot(u,fint,'b-',lw=2)
+    #plot(u,fint,'b*')
+    #xlabel('u'); ylabel('force')
+    #grid()
 
-    subplot(1,2,2)
-    plot(u,dat['P'],'r-',lw=2)
+    #subplot(1,2,2)
+    plot(u,res['P'],'r-',lw=2)
+    plot(da0['u'],da0['p'],'gd')
+    plot(ud/100,dat['p'],'bo')
+    xlabel('u'); ylabel('P')
     grid()
 
     show()
 
-if True:
+if False:
     p        = Plotter()
     p.fc_cu  = 12.0
     p.fc_c   = 12.0

@@ -45,25 +45,25 @@ using Util::_8s;
 const double DelP = 18.0;
 const size_t NInc = 10;
 
-struct DbgDat
+struct OutDat
 {
     Array<int> POut;
     std::ofstream of;
-    ~DbgDat () { of.close (); }
-     DbgDat ()
+    ~OutDat () { of.close (); }
+     OutDat ()
     {
          of.open ("owen_hinton_02_n41.res",std::ios::out);
          of<<_6_3<<"Time" << _8s<< "P" <<_8s<<"ur"<< _8s<<"fr_int"<<_8s<<"fr_ext\n"; // radial displacement and forces
-         of<<_6_3<<  0    << _8s<<  0  <<_8s<< 0  << _8s<<  0     <<_8s<<  0 << endl;
     }
 };
 
-void DbgFun (FEM::Solver const & Sol, void * Dat)
+void OutFun (FEM::Solver const & Sol, void * Dat)
 {
-    DbgDat * dat = static_cast<DbgDat*>(Dat);
+    OutDat * dat = static_cast<OutDat*>(Dat);
 
     // current P
-    double P = (Sol.Inc+1)*DelP/NInc;
+    size_t inc = (Sol.IdxOut==0 ? 0 : Sol.Inc+1);
+    double P   = inc*DelP/NInc;
 
     //////////////////////////////////////////////////////////////////////////////////// Control Node /////
     
@@ -172,12 +172,12 @@ int main(int argc, char **argv) try
     dom.SetBCs (bcs);
 
     // output data
-    DbgDat dat;
+    OutDat dat;
     dat.POut.Resize (4);
     dat.POut = 8, 12, 14, 18;
 
     // solver
-    FEM::Solver sol(dom, &DbgFun, &dat);
+    FEM::Solver sol(dom, &OutFun, &dat);
     sol.TolR = 1.0e-4;
 
     // solve
