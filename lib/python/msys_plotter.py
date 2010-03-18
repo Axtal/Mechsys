@@ -36,7 +36,7 @@ class Plotter:
         self.log_p     = True                                     # use log(p) instead of p ?
         self.q_neg_ext = False                                    # multiply q by -1 for extension (t<0, where t=sin(3th)
         self.pq_ty     = 'cam'                                    # invariants type
-        self.fc_ty     = ['MC','MN','LD','VM']                    # failure criteria type (VM, DP, MC, MN)
+        self.fc_ty     = ['MC','MN']                              # failure criteria type (VM, DP, MC, MN)
         self.fc_clr    = ['k', 'k', 'k', 'k']                     # failure criteria colors
         self.fc_ls     = ['solid', 'dashed', 'dotted', 'dashdot'] # failure criteria linestyles
         self.fc_poct   = 100.0*sqrt(3.0)                          # p(oct) to be used when plotting FC in octahedral plane

@@ -409,7 +409,7 @@ def run_simulation(running, fatal):
         # initial values
         fem_inis = ms.Dict()
         for tag, mdl in dat.mdls.iteritems():
-            if   dat.str_pty=='Equilib': fem_inis.Set (tag, {"sx":1.0, "sy":1.0, "sz":1.0, "sxy":1.0, "v0":1.5})
+            if   dat.str_pty=='Equilib': fem_inis.Set (tag, {"sx":-1.0, "sy":-1.0, "sz":-1.0, "sxy":0.0, "v0":1.5})
             elif dat.str_pty=='Flow':    fem_inis.Set (tag, {"vx":0.0, "vy":0.0})
 
         # domain
@@ -422,6 +422,7 @@ def run_simulation(running, fatal):
         # solver
         sol = ms.FEM_Solver (dom)
         sol.TolR = 1.0e-2
+        sol.STOL = 1.0e-3
 
         # solve each stage
         bcs = ms.Dict()
@@ -526,7 +527,7 @@ def plot_res(ele):
             if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, set elements for output and run analysis first)')
             lin  = 'from msys_plotter import *\n'
             lin += 'plt = Plotter()\n'
-            lin += 'plt.plot ("%s")\n'%fn
+            lin += 'plt.plot ("%s", draw_fl=True, draw_ros=True)\n'%fn
             lin += 'show()\n'
             f = open(obj.name+'_plot.py', 'w')
             f.write (lin)
