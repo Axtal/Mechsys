@@ -198,7 +198,7 @@ public:
     static size_t FEM2TetFace []; ///< Map MechSys/FEM nodes to HSI-Tetgen edges
 
     // Constructor
-    Unstructured (int NDim) : Mesh::Generic(NDim) { TriSetAllToNull(Tin); Pin.deinitialize(); }
+    Unstructured (int NDim);
 
     // Destructor
     ~Unstructured () { TriDeallocateAll(Tin); }
@@ -208,17 +208,20 @@ public:
      *
      * see tst/mesh01 for example
      *
-     *  Note:
-     *     After NHoles, all data must be (double)   */
-    void Set    (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles, ...);
-    void SetSeg (size_t iSegment, int ETag, int L, int R);
-    void SetFac (size_t iFacet,   int FTag, size_t NPolygons, ...);
+     *  Note:  After NPolygons, all data must be (double)   */
+    void Set    (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles);
+    void SetReg (size_t iReg, int RTag, double MaxAreaOrVolume, double X, double Y, double Z=0.0);
+    void SetHol (size_t iHol, double X, double Y, double Z=0.0);
+    void SetPnt (size_t iPnt, int PTag, double X, double Y, double Z=0.0);
+    void SetSeg (size_t iSeg, int ETag, int L, int R);
+    void SetFac (size_t iFac, int FTag, size_t NPolygons, ...);
 
     // Methods
     void Generate (bool O2=false, double GlobalMaxArea=-1, bool WithInfo=true); ///< Generate
     void WritePLY (char const * FileKey, bool Blender=true);                    ///< (.ply)
     void GenBox   (bool O2=false, double MaxVolume=-1.0,
                    double Lx=1.0, double Ly=1.0, double Lz=1.0);                ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
+    bool IsSet    () const;                                                     ///< Check if points/edges/faces were already set
 
     // Data
     TriIO Tin; ///< Triangle structure: input PSLG
@@ -227,6 +230,14 @@ public:
 #ifdef USE_BOOST_PYTHON
     void PySet (BPy::dict const & Dat);
 #endif
+
+private:
+    // Data
+    bool _lst_reg_set; ///< Was the last region (NRegions-1) set ?
+    bool _lst_hol_set; ///< Was the last hole (NHoles-1) set ?
+    bool _lst_pnt_set; ///< Was the last point (NPoints-1) set ?
+    bool _lst_seg_set; ///< Was the last segment (NSegmentsOrFacets-1) set ?
+    bool _lst_fac_set; ///< Was the last face (NSegmentsOrFacets-1) set ?
 };
 
 size_t Unstructured::FEM2TriPoint[] = {0,1,2,5,3,4};
@@ -237,13 +248,31 @@ size_t Unstructured::FEM2TetFace [] = {3,1,0,2};
 
 /////////////////////////////////////////////////////////////////////////////////////////// PLC: Implementation /////
 
+inline Unstructured::Unstructured (int NDim)
+    : Mesh::Generic (NDim),
+      _lst_reg_set  (false),
+      _lst_hol_set  (false),
+      _lst_pnt_set  (false),
+      _lst_seg_set  (false),
+      _lst_fac_set  (false)
+{
+    TriSetAllToNull  (Tin);
+    Pin.deinitialize (); 
+}
 
-inline void Unstructured::Set (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles, ...)
+inline void Unstructured::Set (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles)
 {
     // check
     if (NPoints<3)           throw new Fatal("Mesh::Unstructured::Set: The number of points must be greater than 2. (%d is invalid)",NPoints);
     if (NSegmentsOrFacets<3) throw new Fatal("Mesh::Unstructured::Set: The number of segments or faces must be greater than 2. (%d is invalid)",NSegmentsOrFacets);
     if (NRegions<1)          throw new Fatal("Mesh::Unstructured::Set: The number of regions must be greater than 1. (%d is invalid)",NRegions);
+
+    // flags
+    _lst_reg_set = false;
+    _lst_hol_set = false;
+    _lst_pnt_set = false;
+    _lst_seg_set = false;
+    _lst_fac_set = false;
 
     if (NDim==2)
     {
@@ -252,37 +281,6 @@ inline void Unstructured::Set (size_t NPoints, size_t NSegmentsOrFacets, size_t 
 
         // allocate PSLG
         TriAllocate (NPoints, NSegmentsOrFacets, NRegions, NHoles, Tin);
-
-        // read points
-        va_list   arg_list;
-        va_start (arg_list, NHoles);
-        for (size_t i=0; i<NPoints; ++i)
-        {
-            int id  = static_cast<int>(va_arg(arg_list,double)); // point id
-            int tag = static_cast<int>(va_arg(arg_list,double)); // point tag
-            if (id!=(int)i) throw new Fatal("Unstructured::Set: Points must be numbered from 0 to %d in ascending order. Problem with point %d",NPoints-1,id);
-            Tin.pointlist[i*2  ]   = va_arg(arg_list,double);
-            Tin.pointlist[i*2+1]   = va_arg(arg_list,double);
-            Tin.pointmarkerlist[i] = tag;
-        }
-
-        // set regions
-        for (size_t i=0; i<NRegions; ++i)
-        {
-            int tag = static_cast<int>(va_arg(arg_list,double)); // region tag
-            Tin.regionlist[i*4  ] = va_arg(arg_list,double);
-            Tin.regionlist[i*4+1] = va_arg(arg_list,double);
-            Tin.regionlist[i*4+2] = tag;
-            Tin.regionlist[i*4+3] = va_arg(arg_list,double); // MaxArea;
-        }
-
-        // set holes
-        for (size_t i=0; i<NHoles; ++i)
-        {
-            Tin.holelist[i*2  ] = va_arg(arg_list,double);
-            Tin.holelist[i*2+1] = va_arg(arg_list,double);
-        }
-        va_end (arg_list);
     }
     else if (NDim==3)
     {
@@ -310,42 +308,65 @@ inline void Unstructured::Set (size_t NPoints, size_t NSegmentsOrFacets, size_t 
         // holes
         Pin.numberofholes = NHoles;
         Pin.holelist      = new double [NHoles*3];
-
-        // read points
-        va_list   arg_list;
-        va_start (arg_list, NHoles);
-        for (size_t i=0; i<NPoints; ++i)
-        {
-            int id  = static_cast<int>(va_arg(arg_list,double)); // point id
-            int tag = static_cast<int>(va_arg(arg_list,double)); // point tag
-            if (id!=(int)i) throw new Fatal("Unstructured::Set: Points must be numbered from 0 to %d in ascending order. Problem with point %d",NPoints-1,id);
-            Pin.pointlist[i*3  ]   = va_arg(arg_list,double);
-            Pin.pointlist[i*3+1]   = va_arg(arg_list,double);
-            Pin.pointlist[i*3+2]   = va_arg(arg_list,double);
-            Pin.pointmarkerlist[i] = tag;
-        }
-
-        // set regions
-        for (size_t i=0; i<NRegions; ++i)
-        {
-            int tag = static_cast<int>(va_arg(arg_list,double)); // region tag
-            Pin.regionlist[i*4  ] = va_arg(arg_list,double);
-            Pin.regionlist[i*4+1] = va_arg(arg_list,double);
-            Pin.regionlist[i*4+2] = va_arg(arg_list,double);
-            Pin.regionlist[i*4+3] = tag;
-            Pin.regionlist[i*4+4] = va_arg(arg_list,double); // MaxVolume;
-        }
-
-        // set holes
-        for (size_t i=0; i<NHoles; ++i)
-        {
-            Pin.holelist[i*2  ] = va_arg(arg_list,double);
-            Pin.holelist[i*2+1] = va_arg(arg_list,double);
-            Pin.holelist[i*2+2] = va_arg(arg_list,double);
-        }
-        va_end (arg_list);
     }
     else throw new Fatal("Unstructured::Set: NDim must be either 2 or 3. NDim==%d is invalid",NDim);
+}
+
+inline void Unstructured::SetReg (size_t iReg, int RTag, double MaxAreaOrVolume, double X, double Y, double Z)
+{
+    if (NDim==2)
+    {
+        Tin.regionlist[iReg*4  ] = X;
+        Tin.regionlist[iReg*4+1] = Y;
+        Tin.regionlist[iReg*4+2] = RTag;
+        Tin.regionlist[iReg*4+3] = MaxAreaOrVolume;
+        if (iReg==Tin.numberofregions-1) _lst_reg_set = true;
+    }
+    else if (NDim==3)
+    {
+        Pin.regionlist[iReg*5  ] = X;
+        Pin.regionlist[iReg*5+1] = Y;
+        Pin.regionlist[iReg*5+2] = Z;
+        Pin.regionlist[iReg*5+3] = RTag;
+        Pin.regionlist[iReg*5+4] = MaxAreaOrVolume;
+        if (iReg==Pin.numberofregions-1) _lst_reg_set = true;
+    }
+}
+
+inline void Unstructured::SetHol (size_t iHol, double X, double Y, double Z)
+{
+    if (NDim==2)
+    {
+        Tin.holelist[iHol*2  ] = X;
+        Tin.holelist[iHol*2+1] = Y;
+        if (iHol==Tin.numberofholes-1) _lst_hol_set = true;
+    }
+    else if (NDim==3)
+    {
+        Pin.holelist[iHol*3  ] = X;
+        Pin.holelist[iHol*3+1] = Y;
+        Pin.holelist[iHol*3+2] = Z;
+        if (iHol==Pin.numberofholes-1) _lst_hol_set = true;
+    }
+}
+
+inline void Unstructured::SetPnt (size_t iPnt, int PTag, double X, double Y, double Z)
+{
+    if (NDim==2)
+    {
+        Tin.pointlist[iPnt*2  ]   = X;
+        Tin.pointlist[iPnt*2+1]   = Y;
+        Tin.pointmarkerlist[iPnt] = PTag;
+        if (iPnt==Tin.numberofpoints-1) _lst_pnt_set = true;
+    }
+    else if (NDim==3)
+    {
+        Pin.pointlist[iPnt*3  ]   = X;
+        Pin.pointlist[iPnt*3+1]   = Y;
+        Pin.pointlist[iPnt*3+2]   = Z;
+        Pin.pointmarkerlist[iPnt] = PTag;
+        if (iPnt==Pin.numberofpoints-1) _lst_pnt_set = true;
+    }
 }
 
 inline void Unstructured::SetSeg (size_t iSeg, int ETag, int L, int R)
@@ -353,12 +374,13 @@ inline void Unstructured::SetSeg (size_t iSeg, int ETag, int L, int R)
     Tin.segmentlist[iSeg*2  ]   = L;
     Tin.segmentlist[iSeg*2+1]   = R;
     Tin.segmentmarkerlist[iSeg] = ETag;
+    if (iSeg==Tin.numberofsegments-1) _lst_seg_set = true;
 }
 
-inline void Unstructured::SetFac (size_t iFacet, int FTag, size_t NPolygons, ...)
+inline void Unstructured::SetFac (size_t iFac, int FTag, size_t NPolygons, ...)
 {
-    Pin.facetmarkerlist[iFacet] = FTag;
-    TetIO::facet * f    = &Pin.facetlist[iFacet];
+    Pin.facetmarkerlist[iFac] = FTag;
+    TetIO::facet * f    = &Pin.facetlist[iFac];
     f->numberofpolygons = NPolygons;
     f->polygonlist      = new TetIO::polygon [NPolygons];
     f->numberofholes    = 0;
@@ -380,10 +402,15 @@ inline void Unstructured::SetFac (size_t iFacet, int FTag, size_t NPolygons, ...
         }
     }
     va_end (arg_list);
+
+    if (iFac==Pin.numberoffacets-1) _lst_fac_set = true;
 }
 
 inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo)
 {
+    // check
+    if (!IsSet()) throw new Fatal("Unstructured::Generate: Please, set the input data (regions,points,segments/facets) first.");
+
     // info
     double start = std::clock();
 
@@ -680,25 +707,38 @@ inline void Unstructured::WritePLY (char const * FileKey, bool Blender)
 
 inline void Unstructured::GenBox (bool O2, double MaxVolume, double Lx, double Ly, double Lz)
 {
-    Set (8, 6, 1, 0,                 // nverts, nfaces, nregs, nholes
-         0., -1.,   0.0,  0.0,  0.0, // id, vtag, x, y, z
-         1., -2.,    Lx,  0.0,  0.0,
-         2., -3.,    Lx,   Ly,  0.0,
-         3., -4.,   0.0,   Ly,  0.0,
-         4., -5.,   0.0,  0.0,   Lz,
-         5., -6.,    Lx,  0.0,   Lz,
-         6., -7.,    Lx,   Ly,   Lz,
-         7., -8.,   0.0,   Ly,   Lz,
-             -1.,  Lx/2., Ly/2., Lz/2., MaxVolume); // tag, reg_x, reg_y, reg_z, max_vol
-
-    SetFac (0, -10, 1,  4., 0.,3.,7.,4.); // id, ftag, npolys, nverts, v0,v1,v2,v3
+    Set    (8, 6, 1, 0);               // nverts, nfaces, nregs, nholes
+    SetPnt (0, -1,   0.0,  0.0,  0.0); // id, vtag, x, y, z
+    SetPnt (1, -2,    Lx,  0.0,  0.0);
+    SetPnt (2, -3,    Lx,   Ly,  0.0);
+    SetPnt (3, -4,   0.0,   Ly,  0.0);
+    SetPnt (4, -5,   0.0,  0.0,   Lz);
+    SetPnt (5, -6,    Lx,  0.0,   Lz);
+    SetPnt (6, -7,    Lx,   Ly,   Lz);
+    SetPnt (7, -8,   0.0,   Ly,   Lz);
+    SetReg (0, -1, MaxVolume,  Lx/2., Ly/2., Lz/2.); // id, tag, max_vol, reg_x, reg_y, reg_z
+    SetFac (0, -10, 1,  4., 0.,3.,7.,4.);            // id, ftag, npolys, nverts, v0,v1,v2,v3
     SetFac (1, -20, 1,  4., 1.,2.,6.,5.);
     SetFac (2, -30, 1,  4., 0.,1.,5.,4.);
     SetFac (3, -40, 1,  4., 2.,3.,7.,6.);
     SetFac (4, -50, 1,  4., 0.,1.,2.,3.);
     SetFac (5, -60, 1,  4., 4.,5.,6.,7.);
-
     Generate (O2);
+}
+
+inline bool Unstructured::IsSet () const
+{
+    if (NDim==2)
+    {
+        bool hol_ok = (Tin.numberofholes>0 ? _lst_hol_set : true);
+        return (_lst_reg_set && hol_ok && _lst_pnt_set && _lst_seg_set);
+    }
+    if (NDim==3)
+    {
+        bool hol_ok = (Pin.numberofholes>0 ? _lst_hol_set : true);
+        return (_lst_reg_set && hol_ok && _lst_pnt_set && _lst_fac_set);
+    }
+    return false;
 }
 
 #ifdef USE_BOOST_PYTHON
@@ -715,19 +755,11 @@ inline void Unstructured::PySet (BPy::dict const & Dat)
     size_t NRegions          = BPy::len(rgs);
     size_t NHoles            = BPy::len(hls);
 
-    // check
-    if (NPoints<3)           throw new Fatal("Mesh::Unstructured::PySet: The number of points must be greater than 2. (%d is invalid)",NPoints);
-    if (NSegmentsOrFacets<3) throw new Fatal("Mesh::Unstructured::PySet: The number of segments or faces must be greater than 2. (%d is invalid)",NSegmentsOrFacets);
-    if (NRegions<1)          throw new Fatal("Mesh::Unstructured::PySet: The number of regions must be greater than 1. (%d is invalid)",NRegions);
+    // allocate memory
+    Set (NPoints, NSegmentsOrFacets, NRegions, NHoles);
 
     if (NDim==2)
     {
-        // erase previous PSLG
-        TriDeallocateAll (Tin);
-
-        // allocate PSLG
-        TriAllocate (NPoints, NSegmentsOrFacets, NRegions, NHoles, Tin);
-
         // read points
         for (size_t i=0; i<NPoints; ++i)
         {
@@ -766,31 +798,6 @@ inline void Unstructured::PySet (BPy::dict const & Dat)
     }
     else if (NDim==3)
     {
-        // erase previous PLC
-        Pin.deinitialize ();
-
-        // allocate PLC
-        Pin.initialize ();
-        
-        // points
-        Pin.firstnumber     = 0;
-        Pin.numberofpoints  = NPoints;
-        Pin.pointlist       = new double [NPoints*3];
-        Pin.pointmarkerlist = new int [NPoints];
-
-        // facets
-        Pin.numberoffacets  = NSegmentsOrFacets;
-        Pin.facetlist       = new TetIO::facet [NSegmentsOrFacets];
-        Pin.facetmarkerlist = new int [NSegmentsOrFacets];
-
-        // regions
-        Pin.numberofregions = NRegions;
-        Pin.regionlist      = new double [NRegions*5];
-
-        // holes
-        Pin.numberofholes = NHoles;
-        Pin.holelist      = new double [NHoles*3];
-
         // read points
         for (size_t i=0; i<NPoints; ++i)
         {
@@ -805,20 +812,20 @@ inline void Unstructured::PySet (BPy::dict const & Dat)
         for (size_t i=0; i<NRegions; ++i)
         {
             BPy::list const & line = BPy::extract<BPy::list>(rgs[i])();
-            Pin.regionlist[i*4  ] = BPy::extract<double>(line[1])(); // x
-            Pin.regionlist[i*4+1] = BPy::extract<double>(line[2])(); // y
-            Pin.regionlist[i*4+2] = BPy::extract<double>(line[3])(); // z
-            Pin.regionlist[i*4+3] = BPy::extract<int   >(line[0])(); // tag
-            Pin.regionlist[i*4+4] = BPy::extract<double>(line[4])(); // MaxVolume
+            Pin.regionlist[i*5  ] = BPy::extract<double>(line[1])(); // x
+            Pin.regionlist[i*5+1] = BPy::extract<double>(line[2])(); // y
+            Pin.regionlist[i*5+2] = BPy::extract<double>(line[3])(); // z
+            Pin.regionlist[i*5+3] = BPy::extract<int   >(line[0])(); // tag
+            Pin.regionlist[i*5+4] = BPy::extract<double>(line[4])(); // MaxVolume
         }
 
         // set holes
         for (size_t i=0; i<NHoles; ++i)
         {
             BPy::list const & line = BPy::extract<BPy::list>(hls[i])();
-            Pin.holelist[i*2  ] = BPy::extract<double>(line[0])(); // x
-            Pin.holelist[i*2+1] = BPy::extract<double>(line[1])(); // y
-            Pin.holelist[i*2+2] = BPy::extract<double>(line[2])(); // z
+            Pin.holelist[i*3  ] = BPy::extract<double>(line[0])(); // x
+            Pin.holelist[i*3+1] = BPy::extract<double>(line[1])(); // y
+            Pin.holelist[i*3+2] = BPy::extract<double>(line[2])(); // z
         }
 
         // set facets
@@ -848,6 +855,13 @@ inline void Unstructured::PySet (BPy::dict const & Dat)
         }
     }
     else throw new Fatal("Unstructured::Set: NDim must be either 2 or 3. NDim==%d is invalid",NDim);
+
+    // flags
+    _lst_reg_set = true;
+    _lst_hol_set = (NHoles>0 ? true : false);
+    _lst_pnt_set = true;
+    _lst_seg_set = (NDim==2 ? true : false);
+    _lst_fac_set = (NDim==3 ? true : false);
 }
 
 #endif

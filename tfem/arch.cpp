@@ -42,6 +42,7 @@ int main(int argc, char **argv) try
     double A  = 0.5;
     bool   o2 = false;
     #include "arch.h"
+    mesh.WriteMPY ("arch", false);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

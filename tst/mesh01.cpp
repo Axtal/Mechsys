@@ -83,26 +83,26 @@ int main(int argc, char **argv) try
                      -10
         */
         
-        Mesh::Unstructured mesh(2);         // 2D
-        mesh.Set (8, 8, 1, 1,               // 8 points, 8 segments, 1 region, 1 hole
-                  0., -1.0, 0.0, 0.0,       // id, vtag, x, y, <<<<<< points
-                  1., -2.0, 1.5, 0.0,       // id, vtag, x, y,
-                  2., -3.0, 1.5, 1.5,       // id, vtag, x, y,
-                  3., -4.0, 0.0, 1.5,       // id, vtag, x, y,
-                  4.,  0.0, 0.5, 0.5,       // id, vtag, x, y,
-                  5.,  0.0, 1.0, 0.5,       // id, vtag, x, y,
-                  6.,  0.0, 1.0, 1.0,       // id, vtag, x, y,
-                  7.,  0.0, 0.5, 1.0,       // id, vtag, x, y,
-                      -1.0, 0.2, 0.8, -1.0, //      tag, x, y, max{area} <<<<<<< regions
-                            0.7, 0.7);      //           x, y, <<<<<<< holes
-        mesh.SetSeg (0, -10,  0, 1);        // id, etag, L, R <<<<<<<<<<<< segments
-        mesh.SetSeg (1, -20,  1, 2);        // id, etag, L, R
-        mesh.SetSeg (2, -30,  2, 3);        // id, etag, L, R
-        mesh.SetSeg (3, -40,  3, 0);        // id, etag, L, R
-        mesh.SetSeg (4,   0,  4, 5);        // id, etag, L, R
-        mesh.SetSeg (5,   0,  5, 6);        // id, etag, L, R
-        mesh.SetSeg (6,   0,  6, 7);        // id, etag, L, R
-        mesh.SetSeg (7,   0,  7, 4);        // id, etag, L, R
+        Mesh::Unstructured mesh(/*NDim*/2);
+        mesh.Set    (8, 8, 1, 1);            // 8 points, 8 segments, 1 region, 1 hole
+        mesh.SetReg (0, -1, -1.0, 0.2, 0.8); // id, tag, max{area}, x, y <<<<<<< regions
+        mesh.SetHol (0, 0.7, 0.7);           // id, x, y <<<<<<< holes
+        mesh.SetPnt (0, -1, 0.0, 0.0);       // id, vtag, x, y <<<<<< points
+        mesh.SetPnt (1, -2, 1.5, 0.0);       // id, vtag, x, y
+        mesh.SetPnt (2, -3, 1.5, 1.5);       // id, vtag, x, y
+        mesh.SetPnt (3, -4, 0.0, 1.5);       // id, vtag, x, y
+        mesh.SetPnt (4,  0, 0.5, 0.5);       // id, vtag, x, y
+        mesh.SetPnt (5,  0, 1.0, 0.5);       // id, vtag, x, y
+        mesh.SetPnt (6,  0, 1.0, 1.0);       // id, vtag, x, y
+        mesh.SetPnt (7,  0, 0.5, 1.0);       // id, vtag, x, y
+        mesh.SetSeg (0, -10,  0, 1);         // id, etag, L, R <<<<<<<<<<<< segments
+        mesh.SetSeg (1, -20,  1, 2);         // id, etag, L, R
+        mesh.SetSeg (2, -30,  2, 3);         // id, etag, L, R
+        mesh.SetSeg (3, -40,  3, 0);         // id, etag, L, R
+        mesh.SetSeg (4,   0,  4, 5);         // id, etag, L, R
+        mesh.SetSeg (5,   0,  5, 6);         // id, etag, L, R
+        mesh.SetSeg (6,   0,  6, 7);         // id, etag, L, R
+        mesh.SetSeg (7,   0,  7, 4);         // id, etag, L, R
         mesh.Generate ();
         mesh.WriteVTU ("mesh01_tri", /*VolSurfOrBoth*/0);
         cout << " File <mesh01_tri.vtu> generated\n";
@@ -111,12 +111,12 @@ int main(int argc, char **argv) try
     // 3D: unstructured
     {
         Mesh::Unstructured mesh(/*NDim*/3);
-        mesh.Set (4,4,1,0,
-                  0., -1., 0.0, 0.0, 0.0,
-                  1., -2., 1.0, 0.0, 0.0,
-                  2., -3., 0.0, 1.0, 0.0,
-                  3., -4., 0.0, 0.0, 1.0,
-                      -1., 0.1, 0.1, 0.1, -1.0);
+        mesh.Set    (4,4,1,0);
+        mesh.SetReg (0, -1, -1.0, 0.1, 0.1, 0.1);
+        mesh.SetPnt (0, -1, 0.0, 0.0, 0.0);
+        mesh.SetPnt (1, -2, 1.0, 0.0, 0.0);
+        mesh.SetPnt (2, -3, 0.0, 1.0, 0.0);
+        mesh.SetPnt (3, -4, 0.0, 0.0, 1.0);
         mesh.SetFac (0, -1, 1,  3., 0.,2.,3.);
         mesh.SetFac (1, -2, 1,  3., 0.,3.,1.);
         mesh.SetFac (2, -3, 1,  3., 0.,1.,2.);
@@ -136,26 +136,26 @@ int main(int argc, char **argv) try
 
     // 3D: unstructured
     {
-        Mesh::Unstructured mesh(3);                      // 3D
-        mesh.Set (16, 12, 1, 1,                          // 18 points, 12 facets, 1 region, 1 hole
-                   0., -1.,  0.0, 0.0, 0.0,              // id, vtag, x, y, z, <<<<<< points
-                   1., -2.,  1.5, 0.0, 0.0,              // id, vtag, x, y, z,
-                   2., -3.,  1.5, 1.5, 0.0,              // id, vtag, x, y, z,
-                   3., -4.,  0.0, 1.5, 0.0,              // id, vtag, x, y, z,
-                   4.,  0.,  0.0, 0.0, 1.5,              // id, vtag, x, y, z, <<<<<< points
-                   5.,  0.,  1.5, 0.0, 1.5,              // id, vtag, x, y, z,
-                   6.,  0.,  1.5, 1.5, 1.5,              // id, vtag, x, y, z,
-                   7.,  0.,  0.0, 1.5, 1.5,              // id, vtag, x, y, z,
-                   8.,  0.,  0.5, 0.5, 0.5,              // id, vtag, x, y, z,
-                   9.,  0.,  1.0, 0.5, 0.5,              // id, vtag, x, y, z,
-                  10.,  0.,  1.0, 1.0, 0.5,              // id, vtag, x, y, z,
-                  11.,  0.,  0.5, 1.0, 0.5,              // id, vtag, x, y, z,
-                  12.,  0.,  0.5, 0.5, 1.0,              // id, vtag, x, y, z,
-                  13.,  0.,  1.0, 0.5, 1.0,              // id, vtag, x, y, z,
-                  14.,  0.,  1.0, 1.0, 1.0,              // id, vtag, x, y, z,
-                  15.,  0.,  0.5, 1.0, 1.0,              // id, vtag, x, y, z,
-                       -1.,  0.2, 0.2, 0.2, -1.0,        //      tag, x, y, z, max{volume} <<<<<<< regions
-                             0.7, 0.7, 0.7);             //           x, y, z, <<<<<<< holes
+        Mesh::Unstructured mesh(/*NDim*/3);
+        mesh.Set    (16, 12, 1, 1);                      // 16 points, 12 facets, 1 region, 1 hole
+        mesh.SetReg ( 0, -1, -1.0, 0.2, 0.2, 0.2);       // id, tag, max{volume}, x, y, z <<<<<<< regions
+        mesh.SetHol ( 0, 0.7, 0.7, 0.7);                 // id, x, y, z <<<<<<< holes
+        mesh.SetPnt ( 0, -1,  0.0, 0.0, 0.0);            // id, vtag, x, y, z <<<<<< points
+        mesh.SetPnt ( 1, -2,  1.5, 0.0, 0.0);            // id, vtag, x, y, z
+        mesh.SetPnt ( 2, -3,  1.5, 1.5, 0.0);            // id, vtag, x, y, z
+        mesh.SetPnt ( 3, -4,  0.0, 1.5, 0.0);            // id, vtag, x, y, z
+        mesh.SetPnt ( 4,  0,  0.0, 0.0, 1.5);            // id, vtag, x, y, z <<<<<< points
+        mesh.SetPnt ( 5,  0,  1.5, 0.0, 1.5);            // id, vtag, x, y, z
+        mesh.SetPnt ( 6,  0,  1.5, 1.5, 1.5);            // id, vtag, x, y, z
+        mesh.SetPnt ( 7,  0,  0.0, 1.5, 1.5);            // id, vtag, x, y, z
+        mesh.SetPnt ( 8,  0,  0.5, 0.5, 0.5);            // id, vtag, x, y, z
+        mesh.SetPnt ( 9,  0,  1.0, 0.5, 0.5);            // id, vtag, x, y, z
+        mesh.SetPnt (10,  0,  1.0, 1.0, 0.5);            // id, vtag, x, y, z
+        mesh.SetPnt (11,  0,  0.5, 1.0, 0.5);            // id, vtag, x, y, z
+        mesh.SetPnt (12,  0,  0.5, 0.5, 1.0);            // id, vtag, x, y, z
+        mesh.SetPnt (13,  0,  1.0, 0.5, 1.0);            // id, vtag, x, y, z
+        mesh.SetPnt (14,  0,  1.0, 1.0, 1.0);            // id, vtag, x, y, z
+        mesh.SetPnt (15,  0,  0.5, 1.0, 1.0);            // id, vtag, x, y, z
         mesh.SetFac ( 0, -1, 1,  4.,  0.,3.,7.,4.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
         mesh.SetFac ( 1, -2, 1,  4.,  1.,2.,6.,5.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
         mesh.SetFac ( 2, -3, 1,  4.,  0.,1.,5.,4.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
