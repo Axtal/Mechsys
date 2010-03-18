@@ -111,6 +111,8 @@ EVT_FEM_SCRIPT       = 93 # generate script for FEM
 EVT_FEM_PARAVIEW     = 94 # view in ParaView
 EVT_FEM_DPARAVIEW    = 95 # view in ParaView (dynamics)
 EVT_FEM_CLEAR        = 96 # clear error message
+EVT_FEM_PLOTRESN     = 97 # plot results at node
+EVT_FEM_PLOTRESE     = 98 # plot results at element
 # DEM
 EVT_DEM_GEN_PKG      = 100 # generate packing
 EVT_DEM_GEN_TTT      = 101 # generate true triaxial packing
@@ -320,6 +322,8 @@ def button_event(evt):
     elif evt==EVT_FEM_CLEAR:
         di.key('fem_fatal').value = 0
         Blender.Window.QRedrawAll()
+    elif evt==EVT_FEM_PLOTRESN: fem.plot_res (False)
+    elif evt==EVT_FEM_PLOTRESE: fem.plot_res (True)
 
     # ----------------------------------------------------------------------------------- DEM 
 
@@ -684,6 +688,14 @@ def cb_fem_stage_DampAk     (evt,val): di.props_set_item ('stages', evt-EVT_INC,
 def cb_fem_stage_DynTh1     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 28, float(val))
 @try_catch
 def cb_fem_stage_DynTh2     (evt,val): di.props_set_item ('stages', evt-EVT_INC, 29, float(val))
+@try_catch
+def cb_fem_nout (evt,val): di.props_set_val ('nout', val)
+@try_catch
+def cb_fem_eout (evt,val): di.props_set_val ('eout', val)
+@try_catch
+def cb_fem_nout_plt (evt,val): di.set_key ('fem_nout_plt', val-1)
+@try_catch
+def cb_fem_eout_plt (evt,val): di.set_key ('fem_eout_plt', val-1)
 
 # ---------------------------------- DEM
 
@@ -830,6 +842,8 @@ def gui():
     fbrys    = {}
     eatts    = {}
     pty      = 0
+    nout     = ''
+    eout     = ''
     if obj!=None:
         if obj.properties.has_key('over'):  markover   = True
         if obj.properties.has_key('is3d'):  is3d       = obj.properties['is3d']
@@ -852,7 +866,9 @@ def gui():
             if obj.properties[stg].has_key('ebrys'): ebrys = obj.properties[stg]['ebrys']
             if obj.properties[stg].has_key('fbrys'): fbrys = obj.properties[stg]['fbrys']
             if obj.properties[stg].has_key('eatts'): eatts = obj.properties[stg]['eatts']
-        if obj.properties.has_key('pty'):  pty = obj.properties['pty']
+        if obj.properties.has_key('pty'):  pty  = obj.properties['pty']
+        if obj.properties.has_key('nout'): nout = obj.properties['nout']
+        if obj.properties.has_key('eout'): eout = obj.properties['eout']
 
     # materials menu
     matmnu   = 'Materials %t'
@@ -896,6 +912,16 @@ def gui():
         elif int(stages[sid][6])==2: # dynamics
             stg_extra_rows = 6
 
+    # nodes and elements for output
+    nout_mnu = 'Nodes for output %t'
+    eout_mnu = 'Elements for output %t'
+    if len(nout)>0:
+        for idx, nod in enumerate(nout.split(' ')):
+            nout_mnu += '|Node ' + str(nod) + '%x' + str(idx+1)
+    if len(eout)>0:
+        for idx, nod in enumerate(eout.split(' ')):
+            eout_mnu += '|Node ' + str(nod) + '%x' + str(idx+1)
+
     # height of boxes
     h_set           = 6*rh+2*srg+2*rg
     h_cad           = 4*rh+2*rg
@@ -914,7 +940,7 @@ def gui():
     h_fem_fbrys     = rh+srg+rh*len(fbrys)                  if len(fbrys)>0 else 0
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 13*rh+srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts+rh*stg_extra_rows if len(stages)>0 else 0
-    h_fem           = 5*rh+h_fem_stage+3*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
+    h_fem           = 8*rh+h_fem_stage+3*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
     h_dem_pkg       = 9*rh+3*rg
     h_dem_hdf       = rh+2*rg
     h_dem_cte       = 5*rh+srg
@@ -1375,6 +1401,10 @@ def gui():
 
         # ----------------------- FEM -- END
         r -= rh
+        Draw.String     ('Nodes for Output: ',    EVT_NONE, c, r, 300, rh, nout, 300, 'Ids or tags of nodes for output (separated by space)',    cb_fem_nout)
+        r -= rh
+        Draw.String     ('Elements for Output: ', EVT_NONE, c, r, 300, rh, eout, 300, 'Ids or tags of elements for output (separated by space)', cb_fem_eout)
+        r -= rh
         Draw.Toggle     ('C++',             EVT_NONE,       c,     r, 60,  rh, d['fem_cpp'], 'Generate C++ script instead of Python ?', cb_fem_cpp)
         Draw.PushButton ('Generate Script', EVT_FEM_SCRIPT, c+60,  r, 120, rh, 'Generate Script for FE simulation')
         Draw.PushButton ('Run',             EVT_FEM_RUN,    c+180, r, 60,  rh, 'Run simulation')
@@ -1389,6 +1419,11 @@ def gui():
         r -= rh
         Draw.PushButton ('ParaView: stages',     EVT_FEM_PARAVIEW,  c,     r, 150, rh, 'View results in ParaView for the end of stages')
         Draw.PushButton ('ParaView: transient',  EVT_FEM_DPARAVIEW, c+150, r, 150, rh, 'View transient results in ParaView')
+        r -= rh
+        Draw.Menu       (nout_mnu,  EVT_INC+i,        c,     r, 80, rh, d['fem_nout_plt']+1, 'Node for which output is to be plotted',    cb_fem_nout_plt)
+        Draw.PushButton ('N: Plot', EVT_FEM_PLOTRESN, c+80,  r, 70, rh, 'Equilibrium: Plot results at centroid of element')
+        Draw.Menu       (eout_mnu,  EVT_INC+i,        c+150, r, 80, rh, d['fem_eout_plt']+1, 'Element for which output is to be plotted', cb_fem_eout_plt)
+        Draw.PushButton ('E: Plot', EVT_FEM_PLOTRESE, c+230, r, 70, rh, 'Equilibrium: Plot results at centroid of element')
 
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rg

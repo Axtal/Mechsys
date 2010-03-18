@@ -423,43 +423,6 @@ class Plotter:
         else: raise Exception('failure_crit: fc_ty==%s is invalid' % fc_ty)
         return f
 
-    # Plot node
-    # =========
-    def plot_node(self, obj):
-        if obj.__class__.__name__=='str': # data file/fem results
-            # load data
-            f = open(obj,'r')
-            h = f.readline().split() # header
-            Ux, Uy = [], []
-            Fx, Fy = [], []
-            for l in f:
-                r = l.split()
-                Ux.append(-float(r[h.index('ux')]))
-                Uy.append(-float(r[h.index('uy')]))
-                Fx.append(-float(r[h.index('fx')]))
-                Fy.append(-float(r[h.index('fy')]))
-        else: raise Exception('Plotter:plot_node works only with obj=str')
-
-        # constants
-        rc('text', usetex=True)    # set LaTeX
-        rc('font', family='serif') # set font
-        lwd   = 2                  # linewidth
-        nhplt = 1                  # number of horizontal plots
-        nvplt = 2                  # number of vertical plots
-        iplot = 1
-
-        # ux, fx
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (Ux,Fx,'r-',linewidth=lwd)
-        xlabel (r'$u_x$')
-        ylabel (r'$f_x$');  grid()
-
-        # uy, fy
-        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
-        plot   (Uy,Fy,'r-',linewidth=lwd)
-        xlabel (r'$u_y$')
-        ylabel (r'$f_y$');  grid()
-
     # Show figure
     # ===========
     def show(self): show()
@@ -668,3 +631,35 @@ class Plotter:
         os.rename ('%s.eps.eps'%filekey, '%s.eps'%filekey)
 
         print "<[1;34m%s.eps[0m> created"%filekey
+
+    # Plot node
+    # =========
+    def plot_node(self, filename):
+        dat = read_table(filename)
+
+        # constants
+        rc('text', usetex=True)               # set LaTeX
+        rc('font', family='serif')            # set font
+        lwd   = 2                             # linewidth
+        nhplt = 1                             # number of horizontal plots
+        nvplt = 3 if dat.has_key('fz') else 2 # number of vertical plots
+        iplot = 1
+
+        # ux, fx
+        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+        plot   (dat['ux'],dat['fx'],'r-',linewidth=lwd)
+        xlabel (r'$u_x$')
+        ylabel (r'$f_x$');  grid()
+
+        # uy, fy
+        self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+        plot   (dat['uy'],dat['fy'],'r-',linewidth=lwd)
+        xlabel (r'$u_y$')
+        ylabel (r'$f_y$');  grid()
+
+        # uz, fz
+        if dat.has_key('fz'):
+            self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
+            plot   (dat['uz'],dat['fz'],'r-',linewidth=lwd)
+            xlabel (r'$u_z$')
+            ylabel (r'$f_z$');  grid()

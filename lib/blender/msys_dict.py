@@ -73,6 +73,8 @@ def load_dict():
         dict['fem_process']   = None
         dict['fem_running']   = Value('i',0)
         dict['fem_fatal']     = Value('i',0)
+        dict['fem_nout_plt']  = 0
+        dict['fem_eout_plt']  = 0
         # DEM
         dict['dem_Lx']         = 4.0
         dict['dem_Ly']         = 4.0

@@ -189,6 +189,10 @@ class FEMData:
         self.cpp = True if di.key('fem_cpp') else False
         self.prps, self.mdls = get_prps_mdls (self.obj, self.pty, first_stg, script, self.cpp)
 
+        # nodes and elements for output
+        self.nout, self.eout = [], []
+        if self.obj.properties.has_key('nout'): self.nout = [int(n) for n in self.obj.properties['nout'].split(' ')]
+        if self.obj.properties.has_key('eout'): self.eout = [int(e) for e in self.obj.properties['eout'].split(' ')]
 
 def gen_script():
     dat = FEMData(True)
@@ -405,14 +409,19 @@ def run_simulation(running, fatal):
         # initial values
         fem_inis = ms.Dict()
         for tag, mdl in dat.mdls.iteritems():
-            if   dat.str_pty=='Equilib': fem_inis.Set (tag, {"sx":0.0, "sy":0.0, "sz":0.0, "sxy":0.0})
+            if   dat.str_pty=='Equilib': fem_inis.Set (tag, {"sx":1.0, "sy":1.0, "sz":1.0, "sxy":1.0, "v0":1.5})
             elif dat.str_pty=='Flow':    fem_inis.Set (tag, {"vx":0.0, "vy":0.0})
 
         # domain
         dom = ms.FEM_Domain (mesh, fem_prps, fem_mdls, fem_inis)
 
+        # nodes and elements for output
+        if len(dat.nout)>0: dom.SetOutNods (dat.filekey, dat.nout)
+        if len(dat.eout)>0: dom.SetOutEles (dat.filekey, dat.eout)
+
         # solver
         sol = ms.FEM_Solver (dom)
+        sol.TolR = 1.0e-2
 
         # solve each stage
         bcs = ms.Dict()
@@ -507,3 +516,40 @@ def paraview(dynamics=False):
             Blender.Window.WaitCursor(0)
             raise Exception('Paraview is not available, please install it first')
     else: raise Exception('Please add stages first and run the simulation')
+
+def plot_res(ele):
+    obj = di.get_obj()
+    if ele:
+        if obj.properties.has_key('eout'):
+            eout = [int(e) for e in obj.properties['eout'].split()][di.key('fem_eout_plt')]
+            fn   = obj.name+"_fem_ele_%d_-1.res"%eout
+            if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, set elements for output and run analysis first)')
+            lin  = 'from msys_plotter import *\n'
+            lin += 'plt = Plotter()\n'
+            lin += 'plt.plot ("%s")\n'%fn
+            lin += 'show()\n'
+            f = open(obj.name+'_plot.py', 'w')
+            f.write (lin)
+            f.close ()
+            try: pid = subprocess.Popen(['python', obj.name+'_plot.py']).pid
+            except:
+                Blender.Window.WaitCursor(0)
+                raise Exception('FEM:plot_res: Python (Matplotlib) command failed')
+        else: raise Exception('FEM: Calculation did not have any element for output')
+    else:
+        if obj.properties.has_key('nout'):
+            nout = [int(n) for n in obj.properties['nout'].split()][di.key('fem_nout_plt')]
+            fn   = obj.name+"_fem_nod_%d_-1.res"%nout
+            if not Blender.sys.exists(fn): raise Exception('File <'+fn+'> does not exist (please, set nodes for output and run analysis first)')
+            lin  = 'from msys_plotter import *\n'
+            lin += 'plt = Plotter()\n'
+            lin += 'plt.plot_node ("%s")\n'%fn
+            lin += 'show()\n'
+            f = open(obj.name+'_plot.py', 'w')
+            f.write (lin)
+            f.close ()
+            try: pid = subprocess.Popen(['python', obj.name+'_plot.py']).pid
+            except:
+                Blender.Window.WaitCursor(0)
+                raise Exception('FEM:plot_res: Python (Matplotlib) command failed')
+        else: raise Exception('FEM: Calculation did not have any node for output')
