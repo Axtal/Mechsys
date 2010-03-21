@@ -1420,9 +1420,9 @@ def gui():
         Draw.PushButton ('ParaView: stages',     EVT_FEM_PARAVIEW,  c,     r, 150, rh, 'View results in ParaView for the end of stages')
         Draw.PushButton ('ParaView: transient',  EVT_FEM_DPARAVIEW, c+150, r, 150, rh, 'View transient results in ParaView')
         r -= rh
-        Draw.Menu       (nout_mnu,  EVT_INC+i,        c,     r, 80, rh, d['fem_nout_plt']+1, 'Node for which output is to be plotted',    cb_fem_nout_plt)
+        Draw.Menu       (nout_mnu,  EVT_INC,          c,     r, 80, rh, d['fem_nout_plt']+1, 'Node for which output is to be plotted',    cb_fem_nout_plt)
         Draw.PushButton ('N: Plot', EVT_FEM_PLOTRESN, c+80,  r, 70, rh, 'Equilibrium: Plot results at centroid of element')
-        Draw.Menu       (eout_mnu,  EVT_INC+i,        c+150, r, 80, rh, d['fem_eout_plt']+1, 'Element for which output is to be plotted', cb_fem_eout_plt)
+        Draw.Menu       (eout_mnu,  EVT_INC,          c+150, r, 80, rh, d['fem_eout_plt']+1, 'Element for which output is to be plotted', cb_fem_eout_plt)
         Draw.PushButton ('E: Plot', EVT_FEM_PLOTRESE, c+230, r, 70, rh, 'Equilibrium: Plot results at centroid of element')
 
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
