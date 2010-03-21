@@ -117,10 +117,10 @@ int main(int argc, char **argv) try
         mesh.SetPnt (1, -2, 1.0, 0.0, 0.0);
         mesh.SetPnt (2, -3, 0.0, 1.0, 0.0);
         mesh.SetPnt (3, -4, 0.0, 0.0, 1.0);
-        mesh.SetFac (0, -1, 1,  3., 0.,2.,3.);
-        mesh.SetFac (1, -2, 1,  3., 0.,3.,1.);
-        mesh.SetFac (2, -3, 1,  3., 0.,1.,2.);
-        mesh.SetFac (3, -4, 1,  3., 1.,2.,3.);
+        mesh.SetFac (0, -1, Array<int>(0,2,3));
+        mesh.SetFac (1, -2, Array<int>(0,3,1));
+        mesh.SetFac (2, -3, Array<int>(0,1,2));
+        mesh.SetFac (3, -4, Array<int>(1,2,3));
         mesh.Generate (/*O2*/true);
         mesh.WriteVTU ("mesh01_1tet");
         cout << " File <mesh01_1tet.vtu> generated\n";
@@ -156,18 +156,18 @@ int main(int argc, char **argv) try
         mesh.SetPnt (13,  0,  1.0, 0.5, 1.0);            // id, vtag, x, y, z
         mesh.SetPnt (14,  0,  1.0, 1.0, 1.0);            // id, vtag, x, y, z
         mesh.SetPnt (15,  0,  0.5, 1.0, 1.0);            // id, vtag, x, y, z
-        mesh.SetFac ( 0, -1, 1,  4.,  0.,3.,7.,4.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 1, -2, 1,  4.,  1.,2.,6.,5.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 2, -3, 1,  4.,  0.,1.,5.,4.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 3, -4, 1,  4.,  2.,3.,7.,6.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 4, -5, 1,  4.,  0.,1.,2.,3.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 5, -6, 1,  4.,  4.,5.,6.,7.);      // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 6,  0, 1,  4.,  8.,11.,15.,12.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 7,  0, 1,  4.,  9.,10.,14.,13.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 8,  0, 1,  4.,  8., 9.,13.,12.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac ( 9,  0, 1,  4., 10.,11.,15.,14.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac (10,  0, 1,  4.,  8., 9.,10.,11.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-        mesh.SetFac (11,  0, 1,  4., 12.,13.,14.,15.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 0, -1, Array<int>( 0, 3, 7, 4));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 1, -2, Array<int>( 1, 2, 6, 5));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 2, -3, Array<int>( 0, 1, 5, 4));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 3, -4, Array<int>( 2, 3, 7, 6));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 4, -5, Array<int>( 0, 1, 2, 3));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 5, -6, Array<int>( 4, 5, 6, 7));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 6,  0, Array<int>( 8,11,15,12));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 7,  0, Array<int>( 9,10,14,13));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 8,  0, Array<int>( 8, 9,13,12));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac ( 9,  0, Array<int>(10,11,15,14));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac (10,  0, Array<int>( 8, 9,10,11));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+        mesh.SetFac (11,  0, Array<int>(12,13,14,15));   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
         mesh.Generate ();
         mesh.WritePLY ("mesh01_tet_hole");
         mesh.WriteVTU ("mesh01_tet_hole");

@@ -34,25 +34,25 @@ def tst3():
 
 # 2D: unstructured
 def tst4():
-    mesh = Unstructured(2)                  # 2D
-    mesh.Set ({'P':[[ -1, 0.0, 0.0],        # tag, x, y <<<<<<<<<<<<<<<<< points
-                    [ -2, 1.5, 0.0],        # tag, x, y
-                    [ -3, 1.5, 1.5],        # tag, x, y
-                    [ -4, 0.0, 1.5],        # tag, x, y
-                    [  0, 0.5, 0.5],        # tag, x, y
-                    [  0, 1.0, 0.5],        # tag, x, y
-                    [  0, 1.0, 1.0],        # tag, x, y
-                    [  0, 0.5, 1.0]],       # tag, x, y
-               'R':[[ -1, 0.2, 0.8, -1.0]], # tag, x, y, max{area} <<<<<< regions
-               'H':[[     0.7, 0.7]],       #      x, y  <<<<<<<<<<<<<<<< holes
-               'S':[[-10,  0, 1],           # tag, L, R  <<<<<<<<<<<<<<<< segments
-                    [-20,  1, 2],           # tag, L, R
-                    [-30,  2, 3],           # tag, L, R
-                    [-40,  3, 0],           # tag, L, R
-                    [  0,  4, 5],           # tag, L, R
-                    [  0,  5, 6],           # tag, L, R
-                    [  0,  6, 7],           # tag, L, R
-                    [  0,  7, 4]]})         # tag, L, R
+    mesh = Unstructured(2)                    # 2D
+    mesh.Set ({'pts':[[ -1, 0.0, 0.0],        # tag, x, y <<<<<<<<<<<<<<<<< points
+                      [ -2, 1.5, 0.0],        # tag, x, y
+                      [ -3, 1.5, 1.5],        # tag, x, y
+                      [ -4, 0.0, 1.5],        # tag, x, y
+                      [  0, 0.5, 0.5],        # tag, x, y
+                      [  0, 1.0, 0.5],        # tag, x, y
+                      [  0, 1.0, 1.0],        # tag, x, y
+                      [  0, 0.5, 1.0]],       # tag, x, y
+               'rgs':[[ -1, -1.0, 0.2, 0.8]], # tag, max{area}, x, y <<<<<< regions
+               'hls':[[     0.7, 0.7]],       #      x, y  <<<<<<<<<<<<<<<< holes
+               'con':[[-10,  0, 1],           # tag, L, R  <<<<<<<<<<<<<<<< segments
+                      [-20,  1, 2],           # tag, L, R
+                      [-30,  2, 3],           # tag, L, R
+                      [-40,  3, 0],           # tag, L, R
+                      [  0,  4, 5],           # tag, L, R
+                      [  0,  5, 6],           # tag, L, R
+                      [  0,  6, 7],           # tag, L, R
+                      [  0,  7, 4]]})         # tag, L, R
     mesh.Generate ()
     mesh.WriteVTU ("mesh01_tri_py")
     print   " File <mesh01_tri_py.vtu> generated"
@@ -60,16 +60,16 @@ def tst4():
 # 3D: unstructured
 def tst5():
     mesh = Unstructured(3)
-    mesh.Set ({'P':[[-1, 0.0, 0.0, 0.0],
-                    [-2, 1.0, 0.0, 0.0],
-                    [-3, 0.0, 1.0, 0.0],
-                    [-4, 0.0, 0.0, 1.0]],
-               'R':[[-1, 0.1, 0.1, 0.1, -1.0]],
-               'H':[],
-               'F':[[-1, [[0, 2, 3]]],
-                    [-2, [[0, 3, 1]]],
-                    [-3, [[0, 1, 2]]],
-                    [-4, [[1, 2, 3]]]]})
+    mesh.Set ({'pts':[[-1, 0.0, 0.0, 0.0],
+                      [-2, 1.0, 0.0, 0.0],
+                      [-3, 0.0, 1.0, 0.0],
+                      [-4, 0.0, 0.0, 1.0]],
+               'rgs':[[-1, -1.0, 0.1, 0.1, 0.1]],
+               'hls':[],
+               'con':[[-1, [0, 2, 3]],
+                      [-2, [0, 3, 1]],
+                      [-3, [0, 1, 2]],
+                      [-4, [1, 2, 3]]]})
     mesh.Generate (True) # O2
     mesh.WriteVTU ("mesh01_1tet_py")
     print   " File <mesh01_1tet_py.vtu> generated"
@@ -83,37 +83,37 @@ def tst6():
 
 # 3D: unstructured
 def tst7():
-    mesh = Unstructured(3)                         # 3D
-    mesh.Set ({'P':[[-1,  0.0, 0.0, 0.0],          # id, vtag, x, y, z, <<<<<< points
-                    [-2,  1.5, 0.0, 0.0],          # id, vtag, x, y, z,
-                    [-3,  1.5, 1.5, 0.0],          # id, vtag, x, y, z,
-                    [-4,  0.0, 1.5, 0.0],          # id, vtag, x, y, z,
-                    [ 0,  0.0, 0.0, 1.5],          # id, vtag, x, y, z, <<<<<< points
-                    [ 0,  1.5, 0.0, 1.5],          # id, vtag, x, y, z,
-                    [ 0,  1.5, 1.5, 1.5],          # id, vtag, x, y, z,
-                    [ 0,  0.0, 1.5, 1.5],          # id, vtag, x, y, z,
-                    [ 0,  0.5, 0.5, 0.5],          # id, vtag, x, y, z,
-                    [ 0,  1.0, 0.5, 0.5],          # id, vtag, x, y, z,
-                    [ 0,  1.0, 1.0, 0.5],          # id, vtag, x, y, z,
-                    [ 0,  0.5, 1.0, 0.5],          # id, vtag, x, y, z,
-                    [ 0,  0.5, 0.5, 1.0],          # id, vtag, x, y, z,
-                    [ 0,  1.0, 0.5, 1.0],          # id, vtag, x, y, z,
-                    [ 0,  1.0, 1.0, 1.0],          # id, vtag, x, y, z,
-                    [ 0,  0.5, 1.0, 1.0]],         # id, vtag, x, y, z,
-               'R':[[-1,  0.2, 0.2, 0.2, -1.0]],   #      tag, x, y, z, max{volume} <<<<<<< regions
-               'H':[[     0.7, 0.7, 0.7]],         #           x, y, z, <<<<<<< holes
-               'F':[[-1, [[ 0, 3, 7, 4]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [-2, [[ 1, 2, 6, 5]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [-3, [[ 0, 1, 5, 4]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [-4, [[ 2, 3, 7, 6]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [-5, [[ 0, 1, 2, 3]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [-6, [[ 4, 5, 6, 7]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [ 0, [[ 8,11,15,12]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [ 0, [[ 9,10,14,13]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [ 0, [[ 8, 9,13,12]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [ 0, [[10,11,15,14]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [ 0, [[ 8, 9,10,11]]],         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
-                    [ 0, [[12,13,14,15]]]]})       # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+    mesh = Unstructured(3)                           # 3D
+    mesh.Set ({'pts':[[-1,  0.0, 0.0, 0.0],          # id, vtag, x, y, z, <<<<<< points
+                      [-2,  1.5, 0.0, 0.0],          # id, vtag, x, y, z,
+                      [-3,  1.5, 1.5, 0.0],          # id, vtag, x, y, z,
+                      [-4,  0.0, 1.5, 0.0],          # id, vtag, x, y, z,
+                      [ 0,  0.0, 0.0, 1.5],          # id, vtag, x, y, z, <<<<<< points
+                      [ 0,  1.5, 0.0, 1.5],          # id, vtag, x, y, z,
+                      [ 0,  1.5, 1.5, 1.5],          # id, vtag, x, y, z,
+                      [ 0,  0.0, 1.5, 1.5],          # id, vtag, x, y, z,
+                      [ 0,  0.5, 0.5, 0.5],          # id, vtag, x, y, z,
+                      [ 0,  1.0, 0.5, 0.5],          # id, vtag, x, y, z,
+                      [ 0,  1.0, 1.0, 0.5],          # id, vtag, x, y, z,
+                      [ 0,  0.5, 1.0, 0.5],          # id, vtag, x, y, z,
+                      [ 0,  0.5, 0.5, 1.0],          # id, vtag, x, y, z,
+                      [ 0,  1.0, 0.5, 1.0],          # id, vtag, x, y, z,
+                      [ 0,  1.0, 1.0, 1.0],          # id, vtag, x, y, z,
+                      [ 0,  0.5, 1.0, 1.0]],         # id, vtag, x, y, z,
+               'rgs':[[-1,  -1.0, 0.2, 0.2, 0.2]],   #      tag, max{vol}, x, y, z <<<<<<< regions
+               'hls':[[     0.7, 0.7, 0.7]],         #           x, y, z, <<<<<<< holes
+               'con':[[-1, [ 0, 3, 7, 4]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [-2, [ 1, 2, 6, 5]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [-3, [ 0, 1, 5, 4]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [-4, [ 2, 3, 7, 6]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [-5, [ 0, 1, 2, 3]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [-6, [ 4, 5, 6, 7]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [ 0, [ 8,11,15,12]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [ 0, [ 9,10,14,13]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [ 0, [ 8, 9,13,12]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [ 0, [10,11,15,14]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [ 0, [ 8, 9,10,11]],           # id, ftag, npolygons,  npoints, point0,point1,point2,point3
+                      [ 0, [12,13,14,15]]]})         # id, ftag, npolygons,  npoints, point0,point1,point2,point3
     mesh.Generate ()
     mesh.WritePLY ("mesh01_tet_hole_py")
     mesh.WriteVTU ("mesh01_tet_hole_py")

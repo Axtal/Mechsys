@@ -37,36 +37,36 @@ int main(int argc, char **argv) try
     
     Domain d;
     d.CamPos = Vec3_t(0.0, 20.0, 2.5); // position of camera
-    Mesh::Unstructured mesh(3);                                     // 3D
-    mesh.Set    (16, 10, 1, 1);                                     // 18 points, 12 facets, 1 region, 1 hole
-    mesh.SetReg (0,  0.,  3.0,  0.2, 0.2, 0.2);                     // id, tag, max{volume}, x, y, z <<<<<<< regions
-    mesh.SetHol (0,  2.5, 1.5, 2.5);                                // id, x, y, z, <<<<<<< holes
-    mesh.SetPnt ( 0,  0,  0.0, 0.0, 0.0);                           // id, vtag, x, y, z, <<<<<< points
-    mesh.SetPnt ( 1,  0,  5.0, 0.0, 0.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt ( 2,  0,  5.0, 0.0, 5.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt ( 3,  0,  0.0, 0.0, 5.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt ( 4,  0,  0.0, 3.0, 0.0);                           // id, vtag, x, y, z, <<<<<< points
-    mesh.SetPnt ( 5,  0,  5.0, 3.0, 0.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt ( 6,  0,  5.0, 3.0, 5.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt ( 7,  0,  0.0, 3.0, 5.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt ( 8,  0,  2.0, 0.0, 2.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt ( 9,  0,  3.0, 0.0, 2.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt (10,  0,  3.0, 0.0, 3.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt (11,  0,  2.0, 0.0, 3.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt (12,  0,  2.0, 3.0, 2.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt (13,  0,  3.0, 3.0, 2.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt (14,  0,  3.0, 3.0, 3.0);                           // id, vtag, x, y, z,
-    mesh.SetPnt (15,  0,  2.0, 3.0, 3.0);                           // id, vtag, x, y, z,
-    mesh.SetFac ( 0,  0, 2,  4.,  0.,1.,2.,3.,4., 8.,9.,10.,11.);   // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 1,  0, 2,  4.,  4.,5.,6.,7.,4., 12.,13.,14.,15.); // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 2,  0, 1,  4.,  0.,3.,7.,4.);                     // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 3,  0, 1,  4.,  1.,2.,6.,5.);                     // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 4,  0, 1,  4.,  0.,1.,5.,4.);                     // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 5,  0, 1,  4.,  2.,3.,7.,6.);                     // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 6,  0, 1,  4.,  8.,11.,15.,12.);                  // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 7,  0, 1,  4.,  9.,10.,14.,13.);                  // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 8,  0, 1,  4.,  8., 9.,13.,12.);                  // id, ftag, npolygons,  npoints, point0,point1,point2,point3
-    mesh.SetFac ( 9,  0, 1,  4., 10.,11.,15.,14.);                  // id, ftag, npolygons,  npoints, point0,point1,point2,point3
+    Mesh::Unstructured mesh(3);                  // 3D
+    mesh.Set    (16, 10, 1, 1);                  // 18 points, 12 facets, 1 region, 1 hole
+    mesh.SetReg (0,  0.,  3.0,  0.2, 0.2, 0.2);  // id, tag, max{volume}, x, y, z <<<<<<< regions
+    mesh.SetHol (0,  2.5, 1.5, 2.5);             // id, x, y, z, <<<<<<< holes
+    mesh.SetPnt ( 0,  0,  0.0, 0.0, 0.0);        // id, vtag, x, y, z, <<<<<< points
+    mesh.SetPnt ( 1,  0,  5.0, 0.0, 0.0);        // id, vtag, x, y, z,
+    mesh.SetPnt ( 2,  0,  5.0, 0.0, 5.0);        // id, vtag, x, y, z,
+    mesh.SetPnt ( 3,  0,  0.0, 0.0, 5.0);        // id, vtag, x, y, z,
+    mesh.SetPnt ( 4,  0,  0.0, 3.0, 0.0);        // id, vtag, x, y, z, <<<<<< points
+    mesh.SetPnt ( 5,  0,  5.0, 3.0, 0.0);        // id, vtag, x, y, z,
+    mesh.SetPnt ( 6,  0,  5.0, 3.0, 5.0);        // id, vtag, x, y, z,
+    mesh.SetPnt ( 7,  0,  0.0, 3.0, 5.0);        // id, vtag, x, y, z,
+    mesh.SetPnt ( 8,  0,  2.0, 0.0, 2.0);        // id, vtag, x, y, z,
+    mesh.SetPnt ( 9,  0,  3.0, 0.0, 2.0);        // id, vtag, x, y, z,
+    mesh.SetPnt (10,  0,  3.0, 0.0, 3.0);        // id, vtag, x, y, z,
+    mesh.SetPnt (11,  0,  2.0, 0.0, 3.0);        // id, vtag, x, y, z,
+    mesh.SetPnt (12,  0,  2.0, 3.0, 2.0);        // id, vtag, x, y, z,
+    mesh.SetPnt (13,  0,  3.0, 3.0, 2.0);        // id, vtag, x, y, z,
+    mesh.SetPnt (14,  0,  3.0, 3.0, 3.0);        // id, vtag, x, y, z,
+    mesh.SetPnt (15,  0,  2.0, 3.0, 3.0);        // id, vtag, x, y, z,
+    mesh.SetFac ( 0,  0, Array<int>( 0, 1, 2, 3), Array<int>( 8, 9,10,11));
+    mesh.SetFac ( 1,  0, Array<int>( 4, 5, 6, 7), Array<int>(12,13,14,15));
+    mesh.SetFac ( 2,  0, Array<int>( 0, 3, 7, 4));
+    mesh.SetFac ( 3,  0, Array<int>( 1, 2, 6, 5));
+    mesh.SetFac ( 4,  0, Array<int>( 0, 1, 5, 4));
+    mesh.SetFac ( 5,  0, Array<int>( 2, 3, 7, 6));
+    mesh.SetFac ( 6,  0, Array<int>( 8,11,15,12));
+    mesh.SetFac ( 7,  0, Array<int>( 9,10,14,13));
+    mesh.SetFac ( 8,  0, Array<int>( 8, 9,13,12));
+    mesh.SetFac ( 9,  0, Array<int>(10,11,15,14));
     mesh.Generate();
 
     d.GenFromMesh(-1,mesh,0.1,1.0,true,false);
@@ -92,16 +92,16 @@ int main(int argc, char **argv) try
     mesh2.SetPnt (13,  0,  3.0, 3.0, 2.0);
     mesh2.SetPnt (14,  0,  3.0, 3.0, 3.0);
     mesh2.SetPnt (15,  0,  2.0, 3.0, 3.0);
-    mesh2.SetFac ( 0,  0, 2,  4.,  0.,1.,2.,3.,4., 8.,9.,10.,11.);
-    mesh2.SetFac ( 1,  0, 2,  4.,  4.,5.,6.,7.,4., 12.,13.,14.,15.);
-    mesh2.SetFac ( 2,  0, 1,  4.,  0.,3.,7.,4.);
-    mesh2.SetFac ( 3,  0, 1,  4.,  1.,2.,6.,5.);
-    mesh2.SetFac ( 4,  0, 1,  4.,  0.,1.,5.,4.);
-    mesh2.SetFac ( 5,  0, 1,  4.,  2.,3.,7.,6.);
-    mesh2.SetFac ( 6,  0, 1,  4.,  8.,11.,15.,12.);
-    mesh2.SetFac ( 7,  0, 1,  4.,  9.,10.,14.,13.);
-    mesh2.SetFac ( 8,  0, 1,  4.,  8., 9.,13.,12.);
-    mesh2.SetFac ( 9,  0, 1,  4., 10.,11.,15.,14.);
+    mesh2.SetFac ( 0,  0, Array<int>( 0, 1, 2, 3), Array<int>( 8, 9,10,11));
+    mesh2.SetFac ( 1,  0, Array<int>( 4, 5, 6, 7), Array<int>(12,13,14,15));
+    mesh2.SetFac ( 2,  0, Array<int>( 0, 3, 7, 4));
+    mesh2.SetFac ( 3,  0, Array<int>( 1, 2, 6, 5));
+    mesh2.SetFac ( 4,  0, Array<int>( 0, 1, 5, 4));
+    mesh2.SetFac ( 5,  0, Array<int>( 2, 3, 7, 6));
+    mesh2.SetFac ( 6,  0, Array<int>( 8,11,15,12));
+    mesh2.SetFac ( 7,  0, Array<int>( 9,10,14,13));
+    mesh2.SetFac ( 8,  0, Array<int>( 8, 9,13,12));
+    mesh2.SetFac ( 9,  0, Array<int>(10,11,15,14));
     mesh2.Generate();
     d.GenFromMesh(-1,mesh2,0.1,1.0,true,false);
 

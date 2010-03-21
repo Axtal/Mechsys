@@ -205,19 +205,17 @@ public:
 
     /** 2D: Set Planar Straight Line Graph (PSLG)
      *  3D: Set Piecewise Linear Complex (PLC)
-     *
-     * see tst/mesh01 for example
-     *
-     *  Note:  After NPolygons, all data must be (double)   */
+     * see tst/mesh01 for example */
     void Set    (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles);
     void SetReg (size_t iReg, int RTag, double MaxAreaOrVolume, double X, double Y, double Z=0.0);
     void SetHol (size_t iHol, double X, double Y, double Z=0.0);
     void SetPnt (size_t iPnt, int PTag, double X, double Y, double Z=0.0);
     void SetSeg (size_t iSeg, int ETag, int L, int R);
-    void SetFac (size_t iFac, int FTag, size_t NPolygons, ...);
+    void SetFac (size_t iFac, int FTag, Array<int> const & VertsOnFace);
+    void SetFac (size_t iFac, int FTag, Array<int> const & Polygon1, Array<int> const & Polygon2);
 
     // Methods
-    void Generate (bool O2=false, double GlobalMaxArea=-1, bool WithInfo=true); ///< Generate
+    void Generate (bool O2=false, double GlobalMaxArea=-1, bool WithInfo=true, bool Quiet=true); ///< Generate
     void WritePLY (char const * FileKey, bool Blender=true);                    ///< (.ply)
     void GenBox   (bool O2=false, double MaxVolume=-1.0,
                    double Lx=1.0, double Ly=1.0, double Lz=1.0);                ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
@@ -262,6 +260,12 @@ inline Unstructured::Unstructured (int NDim)
 
 inline void Unstructured::Set (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles)
 {
+
+    std::cout << "NRegions = " << NRegions << std::endl;
+    std::cout << "NPoints = " << NPoints << std::endl;
+    std::cout << "NFacets = " << NSegmentsOrFacets << std::endl;
+    std::cout << "NHoles = " << NHoles << std::endl;
+
     // check
     if (NPoints<3)           throw new Fatal("Mesh::Unstructured::Set: The number of points must be greater than 2. (%d is invalid)",NPoints);
     if (NSegmentsOrFacets<3) throw new Fatal("Mesh::Unstructured::Set: The number of segments or faces must be greater than 2. (%d is invalid)",NSegmentsOrFacets);
@@ -378,38 +382,56 @@ inline void Unstructured::SetSeg (size_t iSeg, int ETag, int L, int R)
     if ((int)iSeg==Tin.numberofsegments-1) _lst_seg_set = true;
 }
 
-inline void Unstructured::SetFac (size_t iFac, int FTag, size_t NPolygons, ...)
+inline void Unstructured::SetFac (size_t iFac, int FTag, Array<int> const & VertsOnFace)
 {
     if (NDim==2) throw new Fatal("Unstructured::SetSeg: This method must be called for 3D meshes only");
 
     Pin.facetmarkerlist[iFac] = FTag;
     TetIO::facet * f    = &Pin.facetlist[iFac];
-    f->numberofpolygons = NPolygons;
-    f->polygonlist      = new TetIO::polygon [NPolygons];
+    f->numberofpolygons = 1;
+    f->polygonlist      = new TetIO::polygon [f->numberofpolygons];
     f->numberofholes    = 0;
     f->holelist         = NULL;
 
-    // read polygons
-    va_list   arg_list;
-    va_start (arg_list, NPolygons);
-    for (size_t i=0; i<NPolygons; ++i)
-    {
-        TetIO::polygon * p  = &f->polygonlist[i];
-        int npoints         = static_cast<int>(va_arg(arg_list,double));
-        p->numberofvertices = npoints;
-        p->vertexlist       = new int [npoints];
-        for (int j=0; j<npoints; ++j)
-        {
-            int id = static_cast<int>(va_arg(arg_list,double));
-            p->vertexlist[j] = id;
-        }
-    }
-    va_end (arg_list);
+    // read vertices
+    TetIO::polygon * p  = &f->polygonlist[0];
+    int npoints         = static_cast<int>(VertsOnFace.Size());
+    p->numberofvertices = npoints;
+    p->vertexlist       = new int [npoints];
+    for (int j=0; j<npoints; ++j) p->vertexlist[j] = VertsOnFace[j];
 
     if ((int)iFac==Pin.numberoffacets-1) _lst_fac_set = true;
 }
 
-inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo)
+inline void Unstructured::SetFac (size_t iFac, int FTag, Array<int> const & Polygon1, Array<int> const & Polygon2)
+{
+    if (NDim==2) throw new Fatal("Unstructured::SetSeg: This method must be called for 3D meshes only");
+
+    Pin.facetmarkerlist[iFac] = FTag;
+    TetIO::facet * f    = &Pin.facetlist[iFac];
+    f->numberofpolygons = 2;
+    f->polygonlist      = new TetIO::polygon [f->numberofpolygons];
+    f->numberofholes    = 0;
+    f->holelist         = NULL;
+
+    // read vertices of polygon 1
+    TetIO::polygon * p1  = &f->polygonlist[0];
+    int np1              = static_cast<int>(Polygon1.Size());
+    p1->numberofvertices = np1;
+    p1->vertexlist       = new int [np1];
+    for (int j=0; j<np1; ++j) p1->vertexlist[j] = Polygon1[j];
+
+    // read vertices of polygon 2
+    TetIO::polygon * p2  = &f->polygonlist[1];
+    int np2              = static_cast<int>(Polygon2.Size());
+    p2->numberofvertices = np2;
+    p2->vertexlist       = new int [np2];
+    for (int j=0; j<np2; ++j) p2->vertexlist[j] = Polygon2[j];
+
+    if ((int)iFac==Pin.numberoffacets-1) _lst_fac_set = true;
+}
+
+inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo, bool Quiet)
 {
     // check
     if (!IsSet()) throw new Fatal("Unstructured::Generate: Please, set the input data (regions,points,segments/facets) first.");
@@ -419,7 +441,8 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
 
     // parameters
     double min_angle = -1;
-    String prms("QpzA"); // Q=quiet, p=poly, q=quality, z=zero
+    String prms("pzA"); // Q=quiet, p=poly, q=quality, z=zero
+    if (Quiet)           prms.Printf("Q%s",   prms.CStr());
     if (GlobalMaxArea>0) prms.Printf("%sa%f", prms.CStr(), GlobalMaxArea);
     if (min_angle>0)     prms.Printf("%sq%f", prms.CStr(), min_angle);
     else                 prms.Printf("%sq",   prms.CStr());
@@ -493,12 +516,18 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
     }
     else
     {
+        //for (size_t i=0; i<Pin.numberofpoints; ++i) std::cout << Util::_20_15 << Pin.pointlist[i*3] << " " << Util::_20_15 << Pin.pointlist[i*3+1] << " " << Util::_20_15 << Pin.pointlist[i*3+2] << std::endl;
+
+        //prms = "CpJVVV"; // debug
+
         // generate
         prms.append("f");
         char sw[prms.size()+1];
         strcpy (sw, prms.CStr());
         TetIO pou;
         tetrahedralize (sw, &Pin, &pou);
+
+        return;
 
         // verts
         Verts.Resize (pou.numberofpoints);
@@ -724,12 +753,12 @@ inline void Unstructured::GenBox (bool O2, double MaxVolume, double Lx, double L
     SetPnt (6, -7,    Lx,   Ly,   Lz);
     SetPnt (7, -8,   0.0,   Ly,   Lz);
     SetReg (0, -1, MaxVolume,  Lx/2., Ly/2., Lz/2.); // id, tag, max_vol, reg_x, reg_y, reg_z
-    SetFac (0, -10, 1,  4., 0.,3.,7.,4.);            // id, ftag, npolys, nverts, v0,v1,v2,v3
-    SetFac (1, -20, 1,  4., 1.,2.,6.,5.);
-    SetFac (2, -30, 1,  4., 0.,1.,5.,4.);
-    SetFac (3, -40, 1,  4., 2.,3.,7.,6.);
-    SetFac (4, -50, 1,  4., 0.,1.,2.,3.);
-    SetFac (5, -60, 1,  4., 4.,5.,6.,7.);
+    SetFac (0, -10, Array<int>(0,3,7,4));            // id, ftag, npolys, nverts, v0,v1,v2,v3
+    SetFac (1, -20, Array<int>(1,2,6,5));
+    SetFac (2, -30, Array<int>(0,1,5,4));
+    SetFac (3, -40, Array<int>(2,3,7,6));
+    SetFac (4, -50, Array<int>(0,1,2,3));
+    SetFac (5, -60, Array<int>(4,5,6,7));
     Generate (O2);
 }
 
@@ -752,10 +781,10 @@ inline bool Unstructured::IsSet () const
 
 inline void Unstructured::PySet (BPy::dict const & Dat)
 {
-    BPy::list const & pts = BPy::extract<BPy::list>(Dat["P"])(); // points
-    BPy::list const & rgs = BPy::extract<BPy::list>(Dat["R"])(); // regions
-    BPy::list const & hls = BPy::extract<BPy::list>(Dat["H"])(); // holes
-    BPy::list const & con = (NDim==2 ? BPy::extract<BPy::list>(Dat["S"])() : BPy::extract<BPy::list>(Dat["F"])()); /// segments/facets (connectivity)
+    BPy::list const & pts = BPy::extract<BPy::list>(Dat["pts"])(); // points
+    BPy::list const & rgs = BPy::extract<BPy::list>(Dat["rgs"])(); // regions
+    BPy::list const & hls = BPy::extract<BPy::list>(Dat["hls"])(); // holes
+    BPy::list const & con = BPy::extract<BPy::list>(Dat["con"])(); /// segments/facets (connectivity)
 
     size_t NPoints           = BPy::len(pts);
     size_t NSegmentsOrFacets = BPy::len(con);
@@ -765,110 +794,38 @@ inline void Unstructured::PySet (BPy::dict const & Dat)
     // allocate memory
     Set (NPoints, NSegmentsOrFacets, NRegions, NHoles);
 
+    // read regions
+    for (size_t i=0; i<NRegions; ++i) SetReg (i, BPy::extract<int   >(rgs[i][0])(),         // tag
+                                                 BPy::extract<double>(rgs[i][1])(),         // MaxArea/MaxVolume
+                                                 BPy::extract<double>(rgs[i][2])(),         // x
+                                                 BPy::extract<double>(rgs[i][3])(),         // y
+                                      (NDim==3 ? BPy::extract<double>(rgs[i][4])() : 0.0)); // z
+
+    // read holes
+    for (size_t i=0; i<NHoles; ++i) SetHol (i, BPy::extract<double>(hls[i][0])(),         // x
+                                               BPy::extract<double>(hls[i][1])(),         // y
+                                    (NDim==3 ? BPy::extract<double>(hls[i][2])() : 0.0)); // z
+
+    // read points
+    for (size_t i=0; i<NPoints; ++i) SetPnt (i, BPy::extract<int   >(pts[i][0])(),         // tag
+                                                BPy::extract<double>(pts[i][1])(),         // x
+                                                BPy::extract<double>(pts[i][2])(),         // y
+                                     (NDim==3 ? BPy::extract<double>(pts[i][3])() : 0.0)); // y
+
+    // read segments
     if (NDim==2)
     {
-        // read points
-        for (size_t i=0; i<NPoints; ++i)
-        {
-            BPy::list const & line = BPy::extract<BPy::list>(pts[i])();
-            Tin.pointmarkerlist[i] = BPy::extract<int   >(line[0])(); // tag
-            Tin.pointlist[i*2  ]   = BPy::extract<double>(line[1])(); // x
-            Tin.pointlist[i*2+1]   = BPy::extract<double>(line[2])(); // y
-        }
-
-        // set regions
-        for (size_t i=0; i<NRegions; ++i)
-        {
-            BPy::list const & line = BPy::extract<BPy::list>(rgs[i])();
-            Tin.regionlist[i*4  ] = BPy::extract<double>(line[1])(); // x
-            Tin.regionlist[i*4+1] = BPy::extract<double>(line[2])(); // y
-            Tin.regionlist[i*4+2] = BPy::extract<int   >(line[0])(); // tag;
-            Tin.regionlist[i*4+3] = BPy::extract<double>(line[3])(); // MaxArea;
-        }
-
-        // set holes
-        for (size_t i=0; i<NHoles; ++i)
-        {
-            BPy::list const & line = BPy::extract<BPy::list>(hls[i])();
-            Tin.holelist[i*2  ] = BPy::extract<double>(line[0])(); // x
-            Tin.holelist[i*2+1] = BPy::extract<double>(line[1])(); // y
-        }
-
-        // set segments
-        for (size_t i=0; i<NSegmentsOrFacets; ++i)
-        {
-            BPy::list const & line   = BPy::extract<BPy::list>(con[i])();
-            Tin.segmentmarkerlist[i] = BPy::extract<int>(line[0])(); // ETag;
-            Tin.segmentlist[i*2  ]   = BPy::extract<int>(line[1])(); // L;
-            Tin.segmentlist[i*2+1]   = BPy::extract<int>(line[2])(); // R;
-        }
+        for (size_t i=0; i<NSegmentsOrFacets; ++i) SetSeg (i, BPy::extract<int>(con[i][0])(),  // tag
+                                                              BPy::extract<int>(con[i][1])(),  // L
+                                                              BPy::extract<int>(con[i][2])()); // R
     }
-    else if (NDim==3)
+
+    // read facets
+    else
     {
-        // read points
-        for (size_t i=0; i<NPoints; ++i)
-        {
-            BPy::list const & line = BPy::extract<BPy::list>(pts[i])();
-            Pin.pointmarkerlist[i] = BPy::extract<int   >(line[0])(); // tag
-            Pin.pointlist[i*3  ]   = BPy::extract<double>(line[1])(); // x
-            Pin.pointlist[i*3+1]   = BPy::extract<double>(line[2])(); // y
-            Pin.pointlist[i*3+2]   = BPy::extract<double>(line[3])(); // z
-        }
-
-        // set regions
-        for (size_t i=0; i<NRegions; ++i)
-        {
-            BPy::list const & line = BPy::extract<BPy::list>(rgs[i])();
-            Pin.regionlist[i*5  ] = BPy::extract<double>(line[1])(); // x
-            Pin.regionlist[i*5+1] = BPy::extract<double>(line[2])(); // y
-            Pin.regionlist[i*5+2] = BPy::extract<double>(line[3])(); // z
-            Pin.regionlist[i*5+3] = BPy::extract<int   >(line[0])(); // tag
-            Pin.regionlist[i*5+4] = BPy::extract<double>(line[4])(); // MaxVolume
-        }
-
-        // set holes
-        for (size_t i=0; i<NHoles; ++i)
-        {
-            BPy::list const & line = BPy::extract<BPy::list>(hls[i])();
-            Pin.holelist[i*3  ] = BPy::extract<double>(line[0])(); // x
-            Pin.holelist[i*3+1] = BPy::extract<double>(line[1])(); // y
-            Pin.holelist[i*3+2] = BPy::extract<double>(line[2])(); // z
-        }
-
-        // set facets
-        for (size_t i=0; i<NSegmentsOrFacets; ++i)
-        {
-            BPy::list const & line = BPy::extract<BPy::list>(con[i])();
-            Pin.facetmarkerlist[i] = BPy::extract<int      >(line[0])(); // FTag
-            BPy::list const & poly = BPy::extract<BPy::list>(line[1])(); // polygons
-            size_t NPolygons       = len(poly);
-            TetIO::facet * f       = &Pin.facetlist[i];
-            f->numberofpolygons    = NPolygons;
-            f->polygonlist         = new TetIO::polygon [NPolygons];
-            f->numberofholes       = 0;
-            f->holelist            = NULL;
-
-            // read polygons
-            for (size_t j=0; j<NPolygons; ++j)
-            {
-                BPy::list const & l = BPy::extract<BPy::list>(poly[j])();
-                TetIO::polygon * p  = &f->polygonlist[j];
-                int npoints         = BPy::len(l);
-                p->numberofvertices = npoints;
-                p->vertexlist       = new int [npoints];
-                for (int k=0; k<npoints; ++k)
-                    p->vertexlist[k] = BPy::extract<int>(l[k])(); // id
-            }
-        }
+        for (size_t i=0; i<NSegmentsOrFacets; ++i) SetFac (i,            BPy::extract<int      >(con[i][0])(),   // tag
+                                                              Array<int>(BPy::extract<BPy::list>(con[i][1])())); // verts
     }
-    else throw new Fatal("Unstructured::Set: NDim must be either 2 or 3. NDim==%d is invalid",NDim);
-
-    // flags
-    _lst_reg_set = true;
-    _lst_hol_set = (NHoles>0 ? true : false);
-    _lst_pnt_set = true;
-    _lst_seg_set = (NDim==2 ? true : false);
-    _lst_fac_set = (NDim==3 ? true : false);
 }
 
 #endif

@@ -65,6 +65,7 @@ EVT_CAD_EINT         = 24 # edge closest distance
 EVT_CAD_FPOINT       = 25 # read points from file
 EVT_CAD_FSPLINE      = 26 # create a spline from points in a file
 EVT_CAD_EXPTS        = 27 # export points to a file
+EVT_CAD_INRIAMESH    = 38 # read INRIA mesh
 # Mesh
 EVT_MESH_SETVTAG     = 30 # set vertex tag
 EVT_MESH_SETETAG     = 31 # set edges tag
@@ -218,6 +219,7 @@ def button_event(evt):
     elif evt==EVT_CAD_FPOINT:   Blender.Window.FileSelector(ca.add_points_from_file, 'Read X Y Z columns')
     elif evt==EVT_CAD_FSPLINE:  Blender.Window.FileSelector(ca.add_spline_from_file, 'Read X Y Z columns')
     elif evt==EVT_CAD_EXPTS:    Blender.Window.FileSelector(ca.export_points,        'Export Points', 'allpoints.txt')
+    elif evt==EVT_CAD_INRIAMESH: Blender.Window.FileSelector(ca.read_inria_mesh, 'Read INRIA mesh', '*.mesh')
 
     # ---------------------------------------------------------------------------------- Mesh
 
@@ -1006,6 +1008,7 @@ def gui():
         Draw.PushButton ('Read spline',  EVT_CAD_FSPLINE, c+240, r, 80, rh,                     'Add a spline by reading its points from file')
         r-=rh
         Draw.PushButton ('Export points',EVT_CAD_EXPTS,   c,     r, 80, rh,                     'Export points to a file')
+        Draw.PushButton ('Read INRIA mesh',EVT_CAD_INRIAMESH, c+80,r, 160,rh,                     'Read INRIA mesh')
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rh
     r -= rg

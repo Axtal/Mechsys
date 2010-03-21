@@ -63,6 +63,7 @@ class MeshData:
         # number of vertices and segments
         self.nverts = len(self.msh.verts)
         self.nedges = len(self.msh.edges)
+        self.nfaces = len(self.msh.faces)
 
         # get vtags
         self.vtags = {}
@@ -359,29 +360,41 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
                 txt.write ('{\n')
 
             # points, regions, and holes
+            if m.is3d: num_eorf, txt_eorf = m.nfaces, 'faces'
+            else:      num_eorf, txt_eorf = m.nedges, 'segments'
             txt.write ('    Mesh::Unstructured mesh(/*NDim*/%d);\n' % (m.ndim))
-            txt.write ('    mesh.Set (%d/*points*/, %d/*segments*/, %d/*regions*/, %d/*holes*/,\n' % (m.nverts, m.nedges, m.nregs, m.nhols))
+            txt.write ('    mesh.Set (%d/*points*/, %d/*%s*/, %d/*regions*/, %d/*holes*/);\n' % (m.nverts, num_eorf, txt_eorf, m.nregs, m.nhols))
             lin = ''
+            if m.nregs>0:
+                for k, v in m.obj.properties['regs'].iteritems():
+                    if m.is3d: lin += '    mesh.SetReg (%4d, %4d,  %8e,  %6e, %6e, %6e);\n' % (int(k), v[0], v[1], v[2], v[3], v[4])
+                    else:      lin += '    mesh.SetReg (%4d, %4d,  %8e,  %6e, %6e);\n'      % (int(k), v[0], v[1], v[2], v[3])
+            if m.nhols>0:
+                for k, v in m.obj.properties['hols'].iteritems():
+                    if m.is3d: lin += '    mesh.SetHol (%4d, %6e, %6e, %6e,\n' % (int(k), v[0], v[1], v[2])
+                    else:      lin += '    mesh.SetHol (%4d, %6e, %6e,\n'      % (int(k), v[0], v[1])
             for v in m.msh.verts:
                 tag = 0
                 if v.index in m.vtags: tag = m.vtags[v.index]
-                if m.is3d: lin += '    %4d.,  %4d.,  %6e, %6e, %6e,\n' % (v.index, tag, v.co[0], v.co[1], v.co[2])
-                else:      lin += '    %4d.,  %4d.,  %6e, %6e,\n'      % (v.index, tag, v.co[0], v.co[1])
-            if m.nregs>0:
-                for k, v in m.obj.properties['regs'].iteritems():
-                    if m.is3d: lin += '            %4d.,  %6e, %6e, %6e, %8e,\n' % (v[0], v[2], v[3], v[4], v[1])
-                    else:      lin += '            %4d.,  %6e, %6e, %8e,\n'      % (v[0], v[2], v[3], v[1])
-            if m.nhols>0:
-                for k, v in m.obj.properties['hols'].iteritems():
-                    if m.is3d: lin += '                 %6e, %6e, %6e,\n' % (v[0], v[1], v[2])
-                    else:      lin += '                 %6e, %6e,\n'      % (v[0], v[1])
-            txt.write (lin[:len(lin)-2])
-            txt.write ('    );\n')
-            for e in m.msh.edges:
-                key = (e.v1.index, e.v2.index)
-                tag = 0
-                if key in m.etags: tag = m.etags[key]
-                txt.write ('    mesh.SetSeg (%4d, %4d, %4d, %4d);\n' % (e.index, tag, e.v1.index, e.v2.index))
+                if m.is3d: lin += '    mesh.SetPnt (%4d,  %4d,  %6e, %6e, %6e);\n' % (v.index, tag, v.co[0], v.co[1], v.co[2])
+                else:      lin += '    mesh.SetPnt (%4d,  %4d,  %6e, %6e);\n'      % (v.index, tag, v.co[0], v.co[1])
+            txt.write (lin)
+            if m.is3d:
+                for idf, f in enumerate(m.msh.faces):
+                    lin = ''
+                    nvs = len(f.verts)
+                    lin += '    mesh.SetFac (%4d, %4d, Array<int>('%(idf,m.get_face_tag(f))
+                    for idv, v in enumerate(f.verts):
+                        lin += '%d' % v.index
+                        if idv==nvs-1: lin += '));\n'
+                        else:          lin += ', '
+                    txt.write (lin)
+            else:
+                for e in m.msh.edges:
+                    key = (e.v1.index, e.v2.index)
+                    tag = 0
+                    if key in m.etags: tag = m.etags[key]
+                    txt.write ('    mesh.SetSeg (%4d, %4d, %4d, %4d);\n' % (e.index, tag, e.v1.index, e.v2.index))
             str_o2 = 'true' if m.iso2 else 'false'
             txt.write ('    mesh.Generate (/*O2*/%s, /*GlobalMaxArea*/%s);\n' % (str_o2,str(m.maxA)))
             if m.is3d: txt.write ('    mesh.WriteVTU (\"%s\");\n' % (m.obj.name+'_umesh'))
@@ -395,48 +408,47 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
         else: # Python script
             if with_headers: txt.write ('from mechsys import *\n\n')
             txt.write ('mesh = Unstructured(%d)\n' % (m.ndim))
-            lin = 'mesh.Set ({\'P\':['
+            lin = 'mesh.Set ({\'pts\':['
             for v in m.msh.verts:
                 tag = 0
                 if v.index in m.vtags: tag = m.vtags[v.index]
                 if m.is3d: lin += '[%4d, %6e, %6e, %6e]' % (tag, v.co[0], v.co[1], v.co[2])
                 else:      lin += '[%4d, %6e, %6e]'      % (tag, v.co[0], v.co[1])
                 if v.index==m.nverts-1: lin += '],\n'
-                else:                   lin += ',\n                '
-            lin += '           \'R\':['
+                else:                   lin += ',\n                  '
+            lin += '           \'rgs\':['
             if m.nregs>0:
                 idx = 0
                 for k, v in m.obj.properties['regs'].iteritems():
-                    if m.is3d: lin += '[%4d, %6e, %6e, %6e, %6e]' % (v[0], v[2], v[3], v[4], v[1])
-                    else:      lin += '[%4d, %6e, %6e, %6e]'      % (v[0], v[2], v[3], v[1])
+                    if m.is3d: lin += '[%4d, %8e, %6e, %6e, %6e]' % (v[0], v[1], v[2], v[3], v[4])
+                    else:      lin += '[%4d, %8e, %6e, %6e]'      % (v[0], v[1], v[2], v[3])
                     if idx==m.nregs-1: lin += '],\n'
-                    else:              lin += ',\n                '
+                    else:              lin += ',\n                  '
                     idx += 1
             else: lin += '],\n'
-            lin += '           \'H\':['
+            lin += '           \'hls\':['
             if m.nhols>0:
                 idx = 0
                 for k, v in m.obj.properties['hols'].iteritems():
                     if m.is3d: lin += '[%6e, %6e, %6e]' % (v[0], v[1], v[2])
                     else:      lin += '[%6e, %6e]'      % (v[0], v[1])
                     if idx==m.nhols-1: lin += '],\n'
-                    else:              lin += ',\n                '
+                    else:              lin += ',\n                  '
                     idx += 1
             else: lin += '],\n'
             if m.is3d:
-                lin += '           \'F\':['
-                nfs = len(m.msh.faces)
+                lin += '           \'con\':['
                 for idf, f in enumerate(m.msh.faces):
-                    lin += '[%4d, [[' % m.get_face_tag(f)
+                    lin += '[%4d, [' % m.get_face_tag(f)
                     nvs = len(f.verts)
                     for idv, v in enumerate(f.verts):
                         lin += '%d' % v.index
                         if idv==nvs-1:
-                            if idf==nfs-1: lin += ']]]]})\n'
-                            else:          lin += ']]],\n                '
-                        else:          lin += ', '
+                            if idf==m.nfaces-1: lin += ']]]})\n'
+                            else:               lin += ']],\n                  '
+                        else:                   lin += ', '
             else:
-                lin += '           \'S\':['
+                lin += '           \'con\':['
                 idx = 0
                 for e in m.msh.edges:
                     key = (e.v1.index, e.v2.index)
@@ -444,7 +456,7 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
                     if key in m.etags: tag = m.etags[key]
                     lin += '[%4d, %4d, %4d]' % (tag, e.v1.index, e.v2.index)
                     if idx==m.nedges-1: lin += ']})\n'
-                    else:               lin += ',\n                '
+                    else:               lin += ',\n                  '
                     idx += 1
             str_o2 = 'True' if m.iso2 else 'False'
             txt.write (lin)
@@ -453,32 +465,30 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
             else:      txt.write ('mesh.WriteMPY (\"%s\", True) # FileKey, WithTags\n' % (m.obj.name+'_umesh'))
 
     else: # run
-        dat = {'P':[], 'R':[], 'H':[]}
-        if m.is3d: dat['F'] = []
-        else:      dat['S'] = []
+        dat = {'pts':[], 'rgs':[], 'hls':[], 'con':[]}
         for v in m.msh.verts:
             tag = 0
             if v.index in m.vtags: tag = m.vtags[v.index]
-            if m.is3d: dat['P'].append ([tag, v.co[0], v.co[1], v.co[2]])
-            else:      dat['P'].append ([tag, v.co[0], v.co[1]])
+            if m.is3d: dat['pts'].append ([tag, v.co[0], v.co[1], v.co[2]])
+            else:      dat['pts'].append ([tag, v.co[0], v.co[1]])
         if m.nregs>0:
             for k, v in m.obj.properties['regs'].iteritems():
-                if m.is3d: dat['R'].append ([int(v[0]), v[2], v[3], v[4], v[1]])
-                else:      dat['R'].append ([int(v[0]), v[2], v[3], v[1]])
+                if m.is3d: dat['rgs'].append ([int(v[0]), v[1], v[2], v[3], v[4]])
+                else:      dat['rgs'].append ([int(v[0]), v[1], v[2], v[3]])
         if m.nhols>0:
             for k, v in m.obj.properties['hols'].iteritems():
-                if m.is3d: dat['H'].append ([v[0], v[1], v[2]])
-                else:      dat['H'].append ([v[0], v[1]])
+                if m.is3d: dat['hls'].append ([v[0], v[1], v[2]])
+                else:      dat['hls'].append ([v[0], v[1]])
         if m.is3d:
-            dat['F'] = []
+            dat['con'] = []
             for f in m.msh.faces:
-                dat['F'].append ([m.get_face_tag(f), [[v.index for v in f.verts]]])
+                dat['con'].append ([m.get_face_tag(f), [v.index for v in f.verts]])
         else:
             for e in m.msh.edges:
                 key = (e.v1.index, e.v2.index)
                 tag = 0
                 if key in m.etags: tag = m.etags[key]
-                dat['S'].append ([tag, e.v1.index, e.v2.index])
+                dat['con'].append ([tag, e.v1.index, e.v2.index])
         mesh = ms.Unstructured (m.ndim)
         mesh.Set      (dat)
         mesh.Generate (m.iso2, m.maxA)

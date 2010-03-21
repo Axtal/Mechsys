@@ -45,13 +45,14 @@ BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_CU2QF, cu2qf, 1, 3)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_QF2CU, qf2cu, 1, 3)
 
 // member overloadings
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU,     WriteVTU,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY,     WriteMPY,     1, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,     PyGenerate,   1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,       GenBox,       0, 7)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenQRing,     GenQRing,     0, 9)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,     Generate,     0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,     Generate,     0, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,       GenBox,       0, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_GetGSD,       PyGetGSD,     3, 4)
@@ -108,6 +109,7 @@ BPy::class_<Mesh::Block>("Block")
 
 // Generic
 BPy::class_<Mesh::Generic>("Generic","generic mesh", BPy::init<int>())
+    .def("ReadMesh",      &Mesh::Generic::ReadMesh, MG_ReadMesh())
     .def("SetSize",       &Mesh::Generic::SetSize)
     .def("SetVert",       &Mesh::Generic::SetVert,  MG_SetVert())
     .def("SetCell",       &Mesh::Generic::PySetCell)

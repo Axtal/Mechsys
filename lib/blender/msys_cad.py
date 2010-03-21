@@ -270,3 +270,45 @@ def break_edge(at_mid=False):
         else: raise Exception('Please, select only one edge (obj=%s)' % obj.name)
         if edm: Blender.Window.EditMode(1)
     else: raise Exception('Please, select a Mesh object before calling this function')
+
+
+def read_inria_mesh(filename):
+    Blender.Window.WaitCursor(1)
+    fil = open(filename,'r')
+    cmd = 'read_Vertices'
+    V   = [] # vertices
+    T   = [] # triangles
+    nv  = 0  # number of vertices
+    nvr = 0  # number of vertices just read
+    nt  = 0  # number of triangles
+    ntr = 0  # number of triangles just read
+    for lin in fil.readlines():
+        wds = lin.split()
+        if cmd=='read_Vertices':
+            if wds[0]=='Vertices': cmd = 'read_nv'
+        elif cmd=='read_nv':
+            nv  = int(wds[0])
+            cmd = 'read_vert'
+        elif cmd=='read_vert' and not nvr==nv:
+            V.append ((float(wds[0]), float(wds[1]), float(wds[2])))
+            nvr += 1
+            if nvr==nv: cmd = 'read_Triangles'
+        elif cmd=='read_Triangles':
+            if wds[0]=='Triangles': cmd = 'read_nt'
+        elif cmd=='read_nt':
+            nt  = int(wds[0])
+            cmd = 'read_triang'
+        elif cmd=='read_triang' and not ntr==nt:
+            T.append ((int(wds[0])-1, int(wds[1])-1, int(wds[2])-1))
+            ntr += 1
+    edm = Blender.Window.EditMode()
+    if edm: Blender.Window.EditMode(0) # exit edm
+    key = Blender.sys.basename(Blender.sys.splitext(filename)[0])
+    msh = bpy.data.meshes.new(key)
+    msh.verts.extend(V)
+    msh.faces.extend(T)
+    scn = bpy.data.scenes.active
+    obj = scn.objects.new(msh,key)
+    if edm: Blender.Window.EditMode(1) # enter edm
+    Blender.Window.RedrawAll()
+    Blender.Window.WaitCursor(0)
