@@ -389,7 +389,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     L0              = dot(t1,c2-c1);
     Lt              = 0.0,0.0,0.0;
     An              = 0.0;
-    eps             = 1.1;
+    eps             = 0.1;
     valid           = true;
 }
 
@@ -441,7 +441,7 @@ inline void BInteracton::CalcForce(double dt)
         P2->T += T;
 
         // Breaking point
-        if ((fabs(delta)>eps)||(norm(Lt)/L0>eps)||(fabs(An)*sqrt(Area/Util::PI)>eps)) valid = false;
+        if (fabs(delta)+norm(Lt)+fabs(An)*sqrt(Area/Util::PI)>L0*eps) valid = false;
     }
 }
 

@@ -815,10 +815,37 @@ inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho
         }
     }
     VC.reset_edges();
+    double vol; // volume of the polyhedron
+    Vec3_t CM;  // Center of mass of the polyhedron
+    Mat3_t It;  // Inertia tensor of the polyhedron
+    PolyhedraMP(V,F,vol,CM,It);
     if (Erode) Erosion(V,E,F,R);
-
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+    Particles[Particles.Size()-1]->x     = CM;
+    Particles[Particles.Size()-1]->V     = vol;
+    Particles[Particles.Size()-1]->m     = vol*rho;
+    Vec3_t I;
+    Quaternion_t Q;
+    Vec3_t xp,yp,zp;
+    Eig(It,I,xp,yp,zp);
+    I *= rho;
+    Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
+    Q(1) = (yp(2)-zp(1))/(4*Q(0));
+    Q(2) = (zp(0)-xp(2))/(4*Q(0));
+    Q(3) = (xp(1)-yp(0))/(4*Q(0));
+    Q = Q/norm(Q);
+    Particles[Particles.Size()-1]->I     = I;
+    Particles[Particles.Size()-1]->Q     = Q;
+    double Dmax = Distance(CM,V[0])+R;
+    for (size_t i=1; i<V.Size(); ++i)
+    {
+        if (Distance(CM,V[i])+R > Dmax) Dmax = Distance(CM,V[i])+R;
+    }
+    Particles[Particles.Size()-1]->Ekin = 0.0;
+    Particles[Particles.Size()-1]->Erot = 0.0;
+    Particles[Particles.Size()-1]->Dmax  = Dmax;
+    Particles[Particles.Size()-1]->PropsReady = true;
 }
 
 // Methods
