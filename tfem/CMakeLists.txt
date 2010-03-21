@@ -22,12 +22,10 @@ SET(TESTS
   beam02
   labtest)
 
-IF(FEM_FOUND)
-	FOREACH(var ${TESTS})
-		ADD_EXECUTABLE        (${var} "${var}.cpp")
-		TARGET_LINK_LIBRARIES (${var} ${LIBS})
-		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
-	ENDFOREACH(var)
-ENDIF(FEM_FOUND)
+FOREACH(var ${TESTS})
+    ADD_EXECUTABLE        (${var} "${var}.cpp")
+    TARGET_LINK_LIBRARIES (${var} ${LIBS})
+    SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+ENDFOREACH(var)
 
 SUBDIRS (bhatti nonlinear smith_griffiths transient)

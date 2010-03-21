@@ -31,11 +31,9 @@ SET(TESTS
   ex_07_09
   ex_08_01)
 
-IF(FEM_FOUND)
-	FOREACH(var ${TESTS})
-		ADD_EXECUTABLE        (${var} "${var}.cpp")
-		ADD_TEST              (${var} ${var})
-		TARGET_LINK_LIBRARIES (${var} ${LIBS})
-		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
-	ENDFOREACH(var)
-ENDIF(FEM_FOUND)
+FOREACH(var ${TESTS})
+    ADD_EXECUTABLE        (${var} "${var}.cpp")
+    ADD_TEST              (${var} ${var})
+    TARGET_LINK_LIBRARIES (${var} ${LIBS})
+    SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+ENDFOREACH(var)

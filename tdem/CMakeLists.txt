@@ -37,15 +37,11 @@ SET(TESTS
   #test_domain
   #test_dynamics)
 
-IF(BLITZ_FOUND AND VORO_FOUND)
-	FOREACH(var ${EXES})
-		ADD_EXECUTABLE        (${var} "${var}.cpp")
-		TARGET_LINK_LIBRARIES (${var} ${LIBS})
-	ENDFOREACH(var)
-ENDIF(BLITZ_FOUND AND VORO_FOUND)
+FOREACH(var ${EXES})
+    ADD_EXECUTABLE        (${var} "${var}.cpp")
+    TARGET_LINK_LIBRARIES (${var} ${LIBS})
+ENDFOREACH(var)
 
-IF(BLITZ_FOUND AND VORO_FOUND)
-	FOREACH(var ${TESTS})
-        ADD_TEST (${var} ${var})
-	ENDFOREACH(var)
-ENDIF(BLITZ_FOUND AND VORO_FOUND)
+FOREACH(var ${TESTS})
+    ADD_TEST (${var} ${var})
+ENDFOREACH(var)

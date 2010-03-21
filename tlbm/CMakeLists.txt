@@ -16,17 +16,21 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-IF(BLITZ_FOUND)
-	ADD_EXECUTABLE        (basic              basic.cpp) 
-	ADD_EXECUTABLE        (cylinder        cylinder.cpp) 
-	ADD_EXECUTABLE        (colloid          colloid.cpp) 
-	ADD_EXECUTABLE        (bubble            bubble.cpp) 
-	ADD_EXECUTABLE        (ball		     	   ball.cpp) 
-	ADD_EXECUTABLE        (drop                drop.cpp) 
-	ADD_EXECUTABLE        (magnus            magnus.cpp) 
-	ADD_EXECUTABLE        (multicomp      multicomp.cpp) 
-	ADD_EXECUTABLE        (cap_grain      cap_grain.cpp) 
-	ADD_EXECUTABLE        (capi                capi.cpp) 
-	ADD_EXECUTABLE        (dam                  dam.cpp) 
-	ADD_EXECUTABLE        (porous            porous.cpp) 
-ENDIF(BLITZ_FOUND)
+SET(PROGS
+    basic
+    cylinder
+    colloid
+    bubble
+    ball
+    drop
+    magnus
+    multicomp
+    cap_grain
+    capi
+    dam
+    porous)
+
+FOREACH(var ${PROGS})
+    ADD_EXECUTABLE        (${var} "${var}.cpp")
+    TARGET_LINK_LIBRARIES (${var} ${LIBS})
+ENDFOREACH(var)
