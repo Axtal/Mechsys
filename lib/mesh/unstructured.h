@@ -371,6 +371,7 @@ inline void Unstructured::SetPnt (size_t iPnt, int PTag, double X, double Y, dou
 
 inline void Unstructured::SetSeg (size_t iSeg, int ETag, int L, int R)
 {
+    if (NDim==3) throw new Fatal("Unstructured::SetSeg: This method must be called for 2D meshes only");
     Tin.segmentlist[iSeg*2  ]   = L;
     Tin.segmentlist[iSeg*2+1]   = R;
     Tin.segmentmarkerlist[iSeg] = ETag;
@@ -379,6 +380,8 @@ inline void Unstructured::SetSeg (size_t iSeg, int ETag, int L, int R)
 
 inline void Unstructured::SetFac (size_t iFac, int FTag, size_t NPolygons, ...)
 {
+    if (NDim==2) throw new Fatal("Unstructured::SetSeg: This method must be called for 3D meshes only");
+
     Pin.facetmarkerlist[iFac] = FTag;
     TetIO::facet * f    = &Pin.facetlist[iFac];
     f->numberofpolygons = NPolygons;
@@ -552,6 +555,10 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
             if (has_bry_tag) TgdCells.Push (Cells[icell]);
         }
     }
+
+    // check
+    if (Verts.Size()<1) throw new Fatal("Unstructured::Generate: Failed with %d vertices and %d cells", Verts.Size(), Cells.Size());
+    if (Cells.Size()<1) throw new Fatal("Unstructured::Generate: Failed with %d vertices and %d cells", Verts.Size(), Cells.Size());
 
     // info
     if (WithInfo)
