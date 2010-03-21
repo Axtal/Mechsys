@@ -320,7 +320,7 @@ inline void Unstructured::SetReg (size_t iReg, int RTag, double MaxAreaOrVolume,
         Tin.regionlist[iReg*4+1] = Y;
         Tin.regionlist[iReg*4+2] = RTag;
         Tin.regionlist[iReg*4+3] = MaxAreaOrVolume;
-        if (iReg==Tin.numberofregions-1) _lst_reg_set = true;
+        if ((int)iReg==Tin.numberofregions-1) _lst_reg_set = true;
     }
     else if (NDim==3)
     {
@@ -329,7 +329,7 @@ inline void Unstructured::SetReg (size_t iReg, int RTag, double MaxAreaOrVolume,
         Pin.regionlist[iReg*5+2] = Z;
         Pin.regionlist[iReg*5+3] = RTag;
         Pin.regionlist[iReg*5+4] = MaxAreaOrVolume;
-        if (iReg==Pin.numberofregions-1) _lst_reg_set = true;
+        if ((int)iReg==Pin.numberofregions-1) _lst_reg_set = true;
     }
 }
 
@@ -339,14 +339,14 @@ inline void Unstructured::SetHol (size_t iHol, double X, double Y, double Z)
     {
         Tin.holelist[iHol*2  ] = X;
         Tin.holelist[iHol*2+1] = Y;
-        if (iHol==Tin.numberofholes-1) _lst_hol_set = true;
+        if ((int)iHol==Tin.numberofholes-1) _lst_hol_set = true;
     }
     else if (NDim==3)
     {
         Pin.holelist[iHol*3  ] = X;
         Pin.holelist[iHol*3+1] = Y;
         Pin.holelist[iHol*3+2] = Z;
-        if (iHol==Pin.numberofholes-1) _lst_hol_set = true;
+        if ((int)iHol==Pin.numberofholes-1) _lst_hol_set = true;
     }
 }
 
@@ -357,7 +357,7 @@ inline void Unstructured::SetPnt (size_t iPnt, int PTag, double X, double Y, dou
         Tin.pointlist[iPnt*2  ]   = X;
         Tin.pointlist[iPnt*2+1]   = Y;
         Tin.pointmarkerlist[iPnt] = PTag;
-        if (iPnt==Tin.numberofpoints-1) _lst_pnt_set = true;
+        if ((int)iPnt==Tin.numberofpoints-1) _lst_pnt_set = true;
     }
     else if (NDim==3)
     {
@@ -365,7 +365,7 @@ inline void Unstructured::SetPnt (size_t iPnt, int PTag, double X, double Y, dou
         Pin.pointlist[iPnt*3+1]   = Y;
         Pin.pointlist[iPnt*3+2]   = Z;
         Pin.pointmarkerlist[iPnt] = PTag;
-        if (iPnt==Pin.numberofpoints-1) _lst_pnt_set = true;
+        if ((int)iPnt==Pin.numberofpoints-1) _lst_pnt_set = true;
     }
 }
 
@@ -374,7 +374,7 @@ inline void Unstructured::SetSeg (size_t iSeg, int ETag, int L, int R)
     Tin.segmentlist[iSeg*2  ]   = L;
     Tin.segmentlist[iSeg*2+1]   = R;
     Tin.segmentmarkerlist[iSeg] = ETag;
-    if (iSeg==Tin.numberofsegments-1) _lst_seg_set = true;
+    if ((int)iSeg==Tin.numberofsegments-1) _lst_seg_set = true;
 }
 
 inline void Unstructured::SetFac (size_t iFac, int FTag, size_t NPolygons, ...)
@@ -403,7 +403,7 @@ inline void Unstructured::SetFac (size_t iFac, int FTag, size_t NPolygons, ...)
     }
     va_end (arg_list);
 
-    if (iFac==Pin.numberoffacets-1) _lst_fac_set = true;
+    if ((int)iFac==Pin.numberoffacets-1) _lst_fac_set = true;
 }
 
 inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo)
