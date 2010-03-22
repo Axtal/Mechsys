@@ -527,8 +527,6 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
         TetIO pou;
         tetrahedralize (sw, &Pin, &pou);
 
-        return;
-
         // verts
         Verts.Resize (pou.numberofpoints);
         for (size_t i=0; i<Verts.Size(); ++i)

@@ -766,7 +766,7 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
     // shares data
     size_t max_nshares = 0;
     for (size_t i=0; i<Verts.Size(); ++i) if (Verts[i]->Shares.Size()>max_nshares) max_nshares = Verts[i]->Shares.Size();
-    if (max_nshares<1) throw new Fatal("Mesh::WriteVTU: Max number of shares is wrong == 0");
+    if (max_nshares<1) throw new Fatal("Mesh::WriteVTU: Max number of shares (%d) is wrong", max_nshares);
 
     // data
     String fn(FileKey); fn.append(".vtu");
