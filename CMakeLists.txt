@@ -33,6 +33,7 @@ OPTION(A_WITH_TST           "Compile tests"                                     
 OPTION(A_WITH_TFEM          "Compile FEM tests"                                 OFF)
 OPTION(A_WITH_TLBM          "Compile LBM tests"                                 OFF)
 OPTION(A_WITH_TDEM          "Compile DEM tests"                                 OFF)
+OPTION(A_WITH_TSPH          "Compile SPH tests"                                 OFF)
 OPTION(A_WITH_OPTIONAL      "Make with optional dependencies"                   OFF)
 
 # needed when building Debian package
@@ -88,6 +89,10 @@ ENDIF(A_WITH_TLBM)
 IF(A_WITH_TDEM)
 	SET(ALLDIRS ${ALLDIRS} tdem)
 ENDIF(A_WITH_TDEM)
+
+IF(A_WITH_TSPH)
+	SET(ALLDIRS ${ALLDIRS} tsph)
+ENDIF(A_WITH_TSPH)
 
 SUBDIRS(${ALLDIRS})
 
