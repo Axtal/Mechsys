@@ -600,6 +600,21 @@ class Plotter:
                                        [-float( dat['Ey' ][i] )/div],
                                        [-float( dat['Ez' ][i] )/div],
                                        [-float( dat['Exy'][i] )*sq2/div]]))
+        elif dat.has_key('Sa'): # old data file
+            for i in range(len(dat['Sa'])):
+                Sig.append(matrix([[-float( dat['Sr' ][i] )],
+                                   [-float( dat['St' ][i] )],
+                                   [-float( dat['Sa' ][i] )],
+                                   [-float( dat['Sat'][i] if dat.has_key('Sat') else 0.0)*sq2]]))
+                Eps.append(matrix([[-float( dat['Er' ][i] )/100.],
+                                   [-float( dat['Et' ][i] )/100.],
+                                   [-float( dat['Ea' ][i] )/100.],
+                                   [-float( dat['Eat'][i] if dat.has_key('Eat') else 0.0)*sq2/100.]]))
+                Ev, Ed = eps_calc_ev_ed (Eps[len(Eps)-1])
+                Ev *= 100.0 # convert strains to percentage
+                Ed *= 100.0
+                if self.maxed>0 and Ed>self.maxed: break
+                if self.maxev>0 and Ev>self.maxev: break
         else:
             for i in range(len(dat['sx'])):
                 Sig.append(matrix([[float( dat['sx' ][i] )],
