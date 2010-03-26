@@ -30,8 +30,8 @@ inline double SPHKernel(double r,double h)
 {
     double C = 1.0/(h*h*h*M_PI);
     double q = r/h;
-    if ((q>=0.0)&&(q<1)) return 1-(3.0/2.0)*q*q+(3.0/4.0)*q*q*q;
-    else if (q<=2)       return (1.0/4.0)*(2-q)*(2-q)*(2-q);
+    if ((q>=0.0)&&(q<1)) return C*(1-(3.0/2.0)*q*q+(3.0/4.0)*q*q*q);
+    else if (q<=2)       return C*((1.0/4.0)*(2-q)*(2-q)*(2-q));
     else                 return 0.0;
 }
 
@@ -39,9 +39,17 @@ inline double GradSPHKernel(double r, double h)
 {
     double C = 1.0/(h*h*h*M_PI);
     double q = r/h;
-    if ((q>=0.0)&&(q<1)) return 1-3.0*q+(9.0/4.0)*q*q;
-    else if (q<=2)       return -(3.0/4.0)*(2-q)*(2-q);
+    if ((q>=0.0)&&(q<1)) return C*(1-3.0*q+(9.0/4.0)*q*q);
+    else if (q<=2)       return C*(-(3.0/4.0)*(2-q)*(2-q));
     else                 return 0.0;
 }
+
+inline double Pressure(double rho)
+{
+    double P0 = 0.5;
+    double rho0 = 2.861;
+    return P0*(pow(rho/rho0,7)-1);
+}
+
 
 #endif // MECHSYS_SPH_SPECIAL_H

@@ -1902,7 +1902,7 @@ inline void TriaxialDomain::OutputF (char const * FileKey)
     OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
     for (size_t i=0; i<CInteractons.Size(); i++)
     {
-        if ((norm(CInteractons[i]->Fnet)>1.0e-22)&&(CInteractons[i]->I2<InitialIndex))
+        if (norm(CInteractons[i]->Fnet)>0.0)
         {
             OF << Util::_10_6 << norm(CInteractons[i]->Fnet) << Util::_8s << norm(CInteractons[i]->Ftnet) << Util::_8s <<  CInteractons[i]->Nc << Util::_8s <<  CInteractons[i]->Nsc << "\n";
         }

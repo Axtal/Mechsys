@@ -17,15 +17,27 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
+// Std lib
+#include <math.h>
 
 // MechSys
 #include <mechsys/sph/domain.h>
 
+using std::cout;
+using std::endl;
+
 int main(int argc, char **argv) try
 {
     SPHDomain dom;
-    dom.AddBox(OrthoSys::O,3,3,3,0.5,1.0,false);
-    dom.WritePOV("test01");
+    dom.AddBox(Vec3_t(5.5,0.0,5.0),1,10,10,0.5,1.0,true);
+    dom.AddBox(Vec3_t(-5.5,0.0,5.0),1,10,10,0.5,1.0,true);
+    //dom.AddBox(Vec3_t(0.0,5.5,5.0),10,1,10,0.5,1.0,true);
+    //dom.AddBox(Vec3_t(0.0,-5.5,5.0),10,1,10,0.5,1.0,true);
+    //dom.AddBox(Vec3_t(0.0,0.0,-0.5),10,10,1,0.5,1.0,true);
+    //dom.AddBox(Vec3_t(-3.5,0.0,5.0),3,1,10,0.5,1.0,false);
     dom.WriteBPY("test01");
+
+    double dt = 0.001;
+
 }
 MECHSYS_CATCH

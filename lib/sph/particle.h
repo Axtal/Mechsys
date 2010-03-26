@@ -37,11 +37,14 @@ public:
     // Data
     bool   IsFree;                  ///< Check is the particle is free to move or not
     Vec3_t x;                       ///< Position of the particle
+    Vec3_t xb;                      ///< Previous position by verlet algorithm
     Vec3_t v;                       ///< Velocity of the particle
-    Vec3_t vb;                      ///< Previous velocity of the particle for the leap frog algorithm
     Vec3_t a;                       ///< Acceleration of the particle
     double Pressure;                ///< Pressure at the position of the particle
     double Density;                 ///< Density at the position of the particle
+    double Densityb;                ///< Previous density for the Verlet integrator
+    double Density0;                ///< Initial density  of the particle
+    double dDensity;                ///< Pressure rate of change in time
     double h;                       ///< Smoothing length of the particle
 
 
@@ -54,14 +57,31 @@ public:
 inline SPHParticle::SPHParticle(Vec3_t const & x0, Vec3_t const & v0, double density0, double h0,bool Fixed)
 {
     x = x0;
+    xb = x;
     v = v0;
     Density = density0;
+    Densityb = Density;
+    Density0 = Density;
     IsFree = !Fixed;
     h = h0;
 }
 
 inline void SPHParticle::Move (double dt)
 {
+    if (IsFree)
+    {
+        // Evolve position and velocity
+        Vec3_t xa;
+        xa = 2*x - xb + a*dt*dt;
+        v = 0.5*(xa - xb)/dt;
+        xb = x;
+        x = xa;
+
+        // Evolve density
+        double dens = Density;
+        Density = Densityb + 2*dt*dDensity;
+        Densityb = dens;
+    }
 }
 
 
