@@ -335,25 +335,38 @@ inline void PlotXY::Redraw ()
 
 inline void PlotXY::CalcSF ()
 {
-    _Xmin = 0.0;
-    _Ymin = 0.0;
-    _Xmax = 1.0;
-    _Ymax = 1.0;
-    size_t idx_first = 0;
+    // initialize min/max
+    bool found = false;
+    for (size_t k=0; k<_X.Size(); ++k)
+    {
+        if (_X[k]!=NULL && _Y[k]!=NULL)
+        {
+            if (_X[k]->Size()>1 && _Y[k]->Size()>1)
+            {
+                _Xmin = (*_X[k])[0];
+                _Ymin = (*_Y[k])[0];
+                _Xmax = (*_X[k])[1];
+                _Ymax = (*_Y[k])[1];
+                found = true;
+                break;
+            }
+        }
+    }
+    if (!found)
+    {
+        _Xmin = 0.0;
+        _Ymin = 0.0;
+        _Xmax = 1.0;
+        _Ymax = 1.0;
+    }
+
+    // find min/max
     for (size_t k=0; k<_X.Size(); ++k)
     {
         // Check input
-        if (_X[k]==NULL || _Y[k]==NULL)  break;
-        if (_X[k]->Size()<2 || _Y[k]->Size()<2) { idx_first = k+1; continue; }
+        if (_X[k]==NULL     || _Y[k]==NULL    ) continue;
+        if (_X[k]->Size()<2 || _Y[k]->Size()<2) continue;
 
-        // Bounding box
-        if (k==idx_first)
-        {
-            _Xmin = (*_X[k])[0];
-            _Ymin = (*_Y[k])[0];
-            _Xmax = (*_X[k])[1];
-            _Ymax = (*_Y[k])[1];
-        }
         for (size_t i=0; i<_X[k]->Size(); ++i)
         {
             if ((*_X[k])[i]<_Xmin) _Xmin = (*_X[k])[i];
@@ -361,9 +374,6 @@ inline void PlotXY::CalcSF ()
             if ((*_X[k])[i]>_Xmax) _Xmax = (*_X[k])[i];
             if ((*_Y[k])[i]>_Ymax) _Ymax = (*_Y[k])[i];
         }
-
-        // Next curve
-        k++;
     }
 
     // Scale factors
