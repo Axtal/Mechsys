@@ -421,7 +421,7 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rh
             for (size_t j=0; j<Neigh[i].Size(); ++j)
             {
                 size_t index = Neigh[Neigh[i][j]].Find(i);
-                if (Neigh[i][j]>i) BInteractons.Push(new BInteracton(Particles[i+IIndex],Particles[Neigh[i][j]+IIndex],FNeigh[i][j],FNeigh[Neigh[i][j]][index]));
+                if ((size_t)Neigh[i][j]>i) BInteractons.Push(new BInteracton(Particles[i+IIndex],Particles[Neigh[i][j]+IIndex],FNeigh[i][j],FNeigh[Neigh[i][j]][index]));
             }
         }
         

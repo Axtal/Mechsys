@@ -22,18 +22,18 @@ ENABLE_TESTING         ()
 
 # Flags
 OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/link?" OFF)
-OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    OFF)
-OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      OFF)
-OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"             OFF)
-OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                              ON)
+OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    ON)
+OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      ON)
+OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"             ON)
+OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                              OFF)
 
 # Features
-OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)"                    ON)
+OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)"                    OFF)
 OPTION(A_WITH_TST           "Compile tests"                                     OFF)
 OPTION(A_WITH_TFEM          "Compile FEM tests"                                 OFF)
 OPTION(A_WITH_TLBM          "Compile LBM tests"                                 OFF)
-OPTION(A_WITH_TDEM          "Compile DEM tests"                                 OFF)
-OPTION(A_WITH_TSPH          "Compile SPH tests"                                 OFF)
+OPTION(A_WITH_TDEM          "Compile DEM tests"                                 ON)
+OPTION(A_WITH_TSPH          "Compile SPH tests"                                 ON)
 OPTION(A_WITH_OPTIONAL      "Make with optional dependencies"                   OFF)
 
 # needed when building Debian package

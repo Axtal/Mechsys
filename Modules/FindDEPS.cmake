@@ -16,9 +16,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SET (FLAGS  "")
-SET (LIBS   "")
-SET (LFLAGS "")
+SET (FLAGS  "${FLAGS}")
+SET (LIBS    ${LIBS})
+SET (LFLAGS "${LFLAGS}")
 SET (DEPS_OK TRUE)
 
 SET     (Boost_USE_STATIC_LIBS ON)
@@ -29,7 +29,7 @@ else(Boost_FOUND)
     SET (DEPS_OK FALSE)
 endif(Boost_FOUND)
 
-INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake)
+INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake   )
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindGSL.cmake     )
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindHDF5.cmake    )
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindMTL.cmake     )

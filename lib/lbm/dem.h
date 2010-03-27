@@ -210,9 +210,9 @@ inline void Disk::DrawDisk(LBM::Lattice & l, double dt)
 			double rho = 0.0;
 			for (size_t k=0; k<l.NNeigh(); k++) rho += c->F(k);
             
-            double gamma = c->_gamma;
-            double tau = l._tau;
-            double beta = gamma*(tau-0.5)/((1-gamma)+(tau-0.5));
+            //double gamma = c->_gamma; // TODO: what is this ?
+            //double tau = l._tau;      // TODO: what is this ?
+            //double beta = gamma*(tau-0.5)/((1-gamma)+(tau-0.5)); // TODO: what is this?
             Vec3_t v;
             c->Velocity(v,l._Cs);
 			
