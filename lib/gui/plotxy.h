@@ -339,17 +339,15 @@ inline void PlotXY::CalcSF ()
     _Ymin = 0.0;
     _Xmax = 1.0;
     _Ymax = 1.0;
-    size_t k = 0;
-    while (k<_X.Size())
+    size_t idx_first = 0;
+    for (size_t k=0; k<_X.Size(); ++k)
     {
         // Check input
-        if (_X[k]==NULL)     break;
-        if (_Y[k]==NULL)     break;
-        if (_X[k]->Size()<2) break;
-        if (_Y[k]->Size()<2) break;
+        if (_X[k]==NULL || _Y[k]==NULL)  break;
+        if (_X[k]->Size()<2 || _Y[k]->Size()<2) { idx_first = k+1; continue; }
 
         // Bounding box
-        if (k==0)
+        if (k==idx_first)
         {
             _Xmin = (*_X[k])[0];
             _Ymin = (*_Y[k])[0];
@@ -530,11 +528,8 @@ inline void PlotXY::DrawLegend (DeviceContext & DC)
                 // Draw lines
                 if (C[k].Typ==CT_LINES || C[k].Typ==CT_BOTH)
                 {
-                    if (_X[k]->Size()>1)
-                    {
-                        C[k].Pen.Activate (DC);
-                        GUI_DRAW_LINE (DC, xi, yi, xf, yi);
-                    }
+                    C[k].Pen.Activate (DC);
+                    GUI_DRAW_LINE (DC, xi, yi, xf, yi);
                 }
 
                 // Draw names
@@ -589,7 +584,7 @@ inline void PlotXY::DrawCurves (DeviceContext & DC)
         for (size_t k=0; k<_X.Size(); ++k)
         {
             // Check
-            if (_X[k]==NULL || _Y[k]==NULL) break;
+            if (_X[k]==NULL || _Y[k]==NULL) continue;
 
             // Draw points
             if (C[k].Typ==CT_POINTS || C[k].Typ==CT_BOTH)
