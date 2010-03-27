@@ -29,7 +29,7 @@ OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                              
 
 # Features
 OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)"                    OFF)
-OPTION(A_WITH_TST           "Compile tests"                                     OFF)
+OPTION(A_WITH_TEST          "Compile tests"                                     OFF)
 OPTION(A_WITH_TFEM          "Compile FEM tests"                                 OFF)
 OPTION(A_WITH_TLBM          "Compile LBM tests"                                 OFF)
 OPTION(A_WITH_TDEM          "Compile DEM tests"                                 ON)
@@ -74,9 +74,9 @@ IF(A_WITH_PYTHON_MODULE)
 	SET(ALLDIRS ${ALLDIRS} src)
 ENDIF(A_WITH_PYTHON_MODULE)
 
-IF(A_WITH_TST)
-	SET(ALLDIRS ${ALLDIRS} tst)
-ENDIF(A_WITH_TST)
+IF(A_WITH_TEST)
+	SET(ALLDIRS ${ALLDIRS} test)
+ENDIF(A_WITH_TEST)
 
 IF(A_WITH_TFEM)
 	SET(ALLDIRS ${ALLDIRS} tfem)
