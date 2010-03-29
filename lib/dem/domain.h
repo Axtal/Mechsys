@@ -45,12 +45,18 @@
 namespace DEM
 {
 
+//typedef double (*ptCalcM) (double t);              ///< M(ultiplier) callback
+//typedef std::pair<IntDbl_t,pCalcM>      BCData_t; ///< Bry conds data (idxDOF,valueBCs,multiplier)
+//typedef std::map<Node const *,BCData_t> NodBCs_t; ///< Map Node => bry conds. (idxDOF,valueBCS)
+
 class Domain
 {
 public:
+    // typedefs
+    typedef void (*ptFun_t) (Domain const & Dom, void * UserData);
+
     // Constructor
-    Domain();
-    Domain(double verlet) {Alpha=verlet;};
+    Domain(void * UserData=NULL);
 
     // Destructor
     ~Domain();
@@ -61,7 +67,7 @@ public:
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);      ///< General rices
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                       ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenBoundingBox  (int InitialTag, double R, double Cf);                                                        ///< Generate o bounding box enclosing the previous included particles.
-    void GenFromMesh     (int Tag, Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true);        ///< Generate particles from a FEM mesh generator
+    void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true);                 ///< Generate particles from a FEM mesh generator
     void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);  ///< Generate Particles from a Voronoi container
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
                           double rho, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                 ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
@@ -74,10 +80,10 @@ public:
     void AddVoroCell (int Tag, voronoicell & VC, double R, double rho, bool Erode);                                              ///< Add Voronoi cell
 
     // Methods
-    void SetBC             (Dict & D);                                                                          ///< Set the dynamic conditions of individual grains by dictionaries
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
-    void Solve             (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo = true); ///< Run simulation
+    void Solve             (double tf, double dt, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
+                            char const * FileKey=NULL);                                                        ///< Run simulation
     void WritePOV          (char const * FileKey, bool AllParticles=false);                                     ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
     void Save              (char const * FileKey);                                                              ///< Save the current domain
@@ -90,6 +96,36 @@ public:
     void ResetContacts     ();                                                                                  ///< Reset the displacements
     void EnergyOutput      (size_t IdxOut, std::ostream & OutFile);                                             ///< Output of the energy variables
     void GetGSD            (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
+
+    // Access methods
+    Particle * GetParticle (int Tag, bool Check=true) // Check: check if there are more than one particle with tag=Tag
+    {
+        size_t idx;
+        size_t count = 0;
+        for (size_t i=0; i<Particles.Size(); ++i)
+        {
+            if (Particles[i]->Tag==Tag)
+            {
+                if (!Check) return Particles[i];
+                idx = i;
+                count++;
+            }
+        }
+        if      (count==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
+        else if (count>1)  throw new Fatal("Domain::GetParticle: There are more than one particle with Tag==%d",Tag);
+        return Particles[idx];
+    }
+
+    void GetParticles (int Tag, Array<Particle*> & P)
+    {
+        P.Resize(0);
+        for (size_t i=0; i<Particles.Size(); ++i)
+        {
+            if (Particles[i]->Tag==Tag) P.Push(Particles[i]);
+        }
+        if (P.Size()==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
+    }
+
 
     // Methods to be derived
     virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
@@ -119,6 +155,8 @@ public:
     double             Wext;          ///< Work done by external forces
     double             Vs;            ///< Volume occupied by the grains
     double             Alpha;         ///< Verlet distance
+    void *             UserData;      ///< Some user data
+    bool               Finished;      ///< Has the simulation finished
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -198,8 +236,8 @@ public:
 
 // Constructor & Destructor
 
-inline Domain::Domain ()
-    : Time(0.0), Initialized(false), Alpha(0.1)
+inline Domain::Domain (void * UD)
+    : Time(0.0), Initialized(false), Alpha(0.1), UserData(UD)
 {
     CamPos = 1.0, 2.0, 3.0;
 }
@@ -324,7 +362,7 @@ inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
     GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf);
 }
 
-inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC)
+inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC)
 {
     // info
     double start = std::clock();
@@ -371,7 +409,7 @@ inline void Domain::GenFromMesh (int Tag, Mesh::Generic & M, double R, double rh
         Erosion(V,E,F,R);
 
         // add particle
-        Particles.Push (new Particle(Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
+        Particles.Push (new Particle(M.Cells[i]->Tag, V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
         Particles[Particles.Size()-1]->Index = Particles.Size()-1;
         if (!MC)
         {
@@ -850,45 +888,6 @@ inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho
 
 // Methods
 
-inline void Domain::SetBC (Dict & D)
-{
-    TParticles.Resize(0);
-    RParticles.Resize(0);
-    FParticles.Resize(0);
-    FreeParticles.Resize(0);
-    for (size_t i =0 ; i<Particles.Size(); i++)
-    {
-        bool free_particle = true;
-        for (size_t j=0; j<D.Keys.Size(); ++j)
-        {
-            int tag = D.Keys[j];
-            if (tag==Particles[i]->Tag)
-            {
-                SDPair const & p = D(tag);
-                if (p.HasKey("vx") || p.HasKey("vy") || p.HasKey("vz")) // translation specified
-                {
-                    TParticles.Push (Particles[i]);
-                    TParticles[TParticles.Size()-1]->v = Vec3_t(p("vx"),p("vy"),p("vz"));
-                    free_particle = false;
-                }
-                if (p.HasKey("wx") || p.HasKey("wy") || p.HasKey("wz")) // rotation specified
-                {
-                    RParticles.Push (Particles[i]);
-                    RParticles[RParticles.Size()-1]->w = Vec3_t(p("wx"),p("wy"),p("wz"));
-                    free_particle = false;
-                }
-                if (p.HasKey("fx") || p.HasKey("fy") || p.HasKey("fz")) // Applied force specified
-                {
-                    FParticles.Push (Particles[i]);
-                    FParticles[FParticles.Size()-1]->Ff = Vec3_t(p("fx"),p("fy"),p("fz"));
-                    free_particle = false;
-                }
-            }
-        }
-        if (free_particle) FreeParticles.Push (Particles[i]);
-    }
-}
-
 inline void Domain::SetProps (Dict & D)
 {
     for (size_t i =0 ; i<Particles.Size(); i++)
@@ -976,55 +975,48 @@ inline void Domain::Initialize (double dt)
     }
 }
 
-inline void Domain::Solve (double tf, double dt, double dtOut, char const * FileKey, bool RenderVideo)
+inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * FileKey)
 {
+    // initialize particles
     Initialize (dt);
-    ResetDisplacements(); // TODO: we don't need this here, since the constructor
-                          // of each particle already sets Vertso = Verts
+
+    // set the displacement of the particles to zero (for the Halo)
+    ResetDisplacements();
+
+    // build the map of possible contacts (for the Halo)
     ResetContacts();
 
     // calc the total volume of particles (solids)
     Vs = 0.0;
     for (size_t i=0; i<FreeParticles.Size(); i++) Vs += FreeParticles[i]->V;
+
     // info
     double start = std::clock();
     std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
 
-    // open file for walls
-    String fnw;
-    fnw.Printf("%s_walls.res",FileKey);
-    std::ofstream fw(fnw.CStr());
-
-    // open file for energy
-    String fne;
-    fne.Printf("%s_energy.res",FileKey);
-    std::ofstream fe(fne.CStr());
-
-    //open file for granulometry and writing into it
-    String fng;
-    fng.Printf("%s_granulometry.res",FileKey);
-    std::ofstream fg(fng.CStr());
-    fg << Util::_10_6 << "Volumes" << Util::_8s << "Diameters" << std::endl;
-    for (size_t i=0; i<FreeParticles.Size(); i++)
-    {
-        fg << Util::_10_6 << FreeParticles[i]->V << Util::_8s << 2*FreeParticles[i]->Dmax << std::endl;
-    }
-    fg.close();
-
-
     // solve
     double t0      = Time; // initial time
     size_t idx_out = 0;    // index of output
-    double tout    = t0;  // time position for output
+    double tout    = t0;   // time position for output
 
-    
+    // report
+    Finished = false;
+    if (ptReport!=NULL) (*ptReport) ((*this), UserData);
+
+    // string to output energy data, if user gives the FileKey
+    std::ostringstream oss_energy; 
+    EnergyOutput (idx_out, oss_energy);
+
     // run
     while (Time<tf)
     {
+        // tell the user function to update its data
+        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
+
         // initialize forces and torques
         for (size_t i=0; i<Particles.Size(); i++)
         {
-            //Set the force and torque to the fixed values
+            // set the force and torque to the fixed values
             Particles[i]->F = Particles[i]->Ff;
             Particles[i]->T = Particles[i]->Tf;
             for (size_t n=0;n<3;n++)
@@ -1035,62 +1027,33 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
                     Particles[i]->B(n,m)=0.0;
                 }
             }
-            
 
-            //Initialize the coordination number
+            // initialize the coordination (number of contacts per particle) number
             Particles[i]->Cn = 0.0;
 
+            // external work added to the system by the fixed forces Ff
             Wext += dot(Particles[i]->Ff,Particles[i]->v)*dt;
         }
 
-        // calc force
+        // calc contact forces: collision and bonding (cohesion)
         for (size_t i=0; i<Interactons.Size(); i++)
         {
             Interactons[i]->CalcForce (dt);
         }
+
+        // calculate the collision energy
         for (size_t i=0; i<CInteractons.Size(); i++)
         {
-            Evis += CInteractons[i]-> dEvis;
+            Evis  += CInteractons[i]-> dEvis;
             Efric += CInteractons[i]-> dEfric;
         }
 
-        Setup(dt, tf-t0);
-
-        // move free particles
-        for (size_t i=0; i<FreeParticles.Size(); i++)
+        // move particles
+        for (size_t i=0; i<Particles.Size(); i++)
         {
-            FreeParticles[i]->Rotate    (dt);
-            FreeParticles[i]->Translate (dt);
+            Particles[i]->Rotate    (dt);
+            Particles[i]->Translate (dt);
         }
-
-        // particles with translation constrained
-        for (size_t i=0; i<TParticles.Size(); i++) 
-        {
-            Wext -= dot(TParticles[i]->F,TParticles[i]->v)*dt;
-            TParticles[i]->F = 0.0,0.0,0.0;
-            TParticles[i]->Translate(dt);
-        }
-
-        // particles with rotation constrained
-        for (size_t i=0; i<RParticles.Size(); i++)
-        {
-            RParticles[i]->T = 0.0,0.0,0.0;
-            RParticles[i]->Rotate(dt);
-        }
-
-        // particles with forces applied
-        for (size_t i=0; i<FParticles.Size(); i++)
-        {
-            double norm_Ff = norm(FParticles[i]->Ff);
-            if (norm_Ff>1.0e-7)
-            {
-                // set F as the projection of Ff
-                Vec3_t unit_Ff = FParticles[i]->Ff/norm_Ff; // unitary vector parallel to Ff
-                FParticles[i]->F = dot(FParticles[i]->F,unit_Ff)*unit_Ff;
-                FParticles[i]->Translate (dt);
-            }
-        }
-
 
         // next time position
         Time += dt;
@@ -1098,31 +1061,39 @@ inline void Domain::Solve (double tf, double dt, double dtOut, char const * File
         // output
         if (Time>=tout)
         {
-            String fn;
-            fn.Printf ("%s_%08d", FileKey, idx_out);
-            if (RenderVideo) WritePOV  (fn.CStr());
-            EnergyOutput (idx_out, fe);
-            Output (idx_out, fw);
-            tout += dtOut;
             idx_out++;
+            if (ptReport!=NULL) (*ptReport) ((*this), UserData);
+            if (FileKey!=NULL)
+            {
+                String fn;
+                fn.Printf    ("%s_%08d", FileKey, idx_out);
+                WritePOV     (fn.CStr());
+                EnergyOutput (idx_out, oss_energy);
+            }
+            tout += dtOut;
         }
 
+        // update the Halos
         if (MaxDisplacement()>Alpha)
         {
             ResetDisplacements();
             ResetContacts();
         }
-
     }
 
-    //Output of the final state, depends on the setup
-    OutputF(FileKey);
+    // last output
+    Finished = true;
+    if (ptReport!=NULL) (*ptReport) ((*this), UserData);
 
-
-
-    // close files
-    fw.close();
-    fe.close();
+    // save energy data
+    if (FileKey!=NULL)
+    {
+        String fn;
+        fn.Printf("%s_energy.res",FileKey);
+        std::ofstream fe(fn.CStr());
+        fe << oss_energy.str();
+        fe.close();
+    }
 
     // info
     double Ekin, Epot, Etot;
@@ -1485,32 +1456,30 @@ inline void Domain::Center(Vec3_t C)
 
 inline void Domain::ResetInteractons()
 {
-    for (size_t i=0; i<CInteractons.Size(); ++i) if (CInteractons[i]!=NULL) delete CInteractons[i];
-    CInteractons.Resize(0);
-    for (size_t i=0; i<FreeParticles.Size()-1; i++)
+    // delete old interactors
+    for (size_t i=0; i<CInteractons.Size(); ++i)
     {
-        for (size_t j=i+1; j<FreeParticles.Size(); j++)
-        {
-            if (FreeParticles[i]->Verts.Size()==1&&FreeParticles[j]->Verts.Size()==1) CInteractons.Push (new CInteractonSphere(FreeParticles[i],FreeParticles[j]));
-            else CInteractons.Push (new CInteracton(FreeParticles[i],FreeParticles[j]));
-        }
+        if (CInteractons[i]!=NULL) delete CInteractons[i];
     }
 
-    for (size_t i=0; i<FreeParticles.Size(); i++)
+    // new interactors
+    CInteractons.Resize(0);
+    for (size_t i=0; i<Particles.Size()-1; i++)
     {
-        for (size_t j=0; j<FParticles.Size(); j++)
+        bool pi_has_vf = (Particles[i]->vxf || Particles[i]->vyf || Particles[i]->vzf);
+        for (size_t j=i+1; j<Particles.Size(); j++)
         {
-            CInteractons.Push (new CInteracton(FreeParticles[i],FParticles[j]));
-        }
+            bool pj_has_vf = (Particles[j]->vxf || Particles[j]->vyf || Particles[j]->vzf);
 
-        for (size_t j=0; j<RParticles.Size(); j++)
-        {
-            CInteractons.Push (new CInteracton(FreeParticles[i],RParticles[j]));
-        }
+            // if both particles have any component specified, don't create any intereactor
+            if (pi_has_vf && pj_has_vf) continue;
 
-        for (size_t j=0; j<TParticles.Size(); j++)
-        {
-            CInteractons.Push (new CInteracton(FreeParticles[i],TParticles[j]));
+            // if both particles are spheres (just one vertex)
+            if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
+                CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
+
+            // normal particles
+            else CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
         }
     }
 }
@@ -1592,8 +1561,6 @@ inline double Domain::CalcEnergy (double & Ekin, double & Epot)
 
 inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
 {
-
-    // output triaxial test data
     // header
     if (IdxOut==0)
     {
@@ -1602,14 +1569,10 @@ inline void Domain::EnergyOutput (size_t IdxOut, std::ostream & OF)
     double Ekin,Epot;
     CalcEnergy(Ekin,Epot);
     OF << Util::_10_6 << Time << Util::_8s << Ekin << Util::_8s << Epot << Util::_8s << Evis << Util::_8s << Efric << Util::_8s << Wext << std::endl;
-    
-
 }
 
 inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv) const
 {
-    
-    //if (FreeParticles.Size()==0) FreeParticles = Particles;
     // calc GSD information
     Array<double> Vg;
     double Vs = 0.0;
@@ -1635,7 +1598,6 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
         }
         Y.Push (cumsum/Particles.Size());
     }
-    
 }
 
 // Methods for specific simulations

@@ -91,6 +91,8 @@ public:
     void OnKillFocus (wxFocusEvent   & Event);
     void OnTextEnter (wxCommandEvent & Event); /// TODO: correct this: It seems to send changed event twice!
 
+    // Methods
+    double GetVal () const { double val; GetValue().ToDouble(&val); return val; }
 private:
     // Event table
     DECLARE_EVENT_TABLE()

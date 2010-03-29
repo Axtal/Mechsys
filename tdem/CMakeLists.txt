@@ -29,6 +29,7 @@ SET(EXES
   test_voro03
   test_read
   test_write
+  test_beam
   cylinder_test
   figure)
 

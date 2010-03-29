@@ -389,7 +389,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     L0              = dot(t1,c2-c1);
     Lt              = 0.0,0.0,0.0;
     An              = 0.0;
-    eps             = 0.1;
+    eps             = 10.1;
     valid           = true;
 }
 

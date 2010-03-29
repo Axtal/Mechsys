@@ -71,6 +71,7 @@ public:
     Vec3_t              wb;              ///< Former angular velocity for the leap frog algorithm
     Vec3_t              F;               ///< Force over the particle
     Vec3_t              Ff;              ///< Fixed Force over the particle
+    bool                vxf, vyf, vzf;   ///< Fixed components of velocity
     Vec3_t              T;               ///< Torque over the particle
     Vec3_t              Tf;              ///< Fixed Torque over the particle
     Vec3_t              I;               ///< Vector containing the principal components of the inertia tensor
@@ -99,7 +100,7 @@ public:
     Array<Array <int> > FaceCon;         ///< Conectivity of Faces TODO: why do we need this ?
     Array<Edge*>        Edges;           ///< Edges
     Array<Face*>        Faces;           ///< Faces
-    double t;
+
     // Auxiliar methods
     void   CalcProps (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
     bool   IsInside  (Vec3_t & V);                        ///< Find whether the point V is inside the particle or not
@@ -171,10 +172,12 @@ public:
 inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
     : Tag(TheTag), PropsReady(false), v(v0), w(w0), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
 {
+    vxf = false;
+    vyf = false;
+    vzf = false;
+
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
-
-    t=0.0;
 
     EdgeCon = E;
     FaceCon = F;
@@ -308,7 +311,6 @@ inline void Particle::Rotate (double dt)
     Q  = Qd/norm(Qd);
     Rotate (Q,x);
     Erot=0.5*(I(0)*wx*wx+I(1)*wy*wy+I(2)*wz*wz);
-    t+=dt;
 }
 
 inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
@@ -334,6 +336,9 @@ inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
 
 inline void Particle::Translate (double dt)
 {
+    if (vxf) F(0) = 0.0;
+    if (vyf) F(1) = 0.0;
+    if (vzf) F(2) = 0.0;
     Vec3_t temp,xa;
     xa    = 2*x - xb + F*(dt*dt/m);
     temp  = xa - x;
