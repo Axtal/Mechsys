@@ -41,7 +41,7 @@ IF(NOT INSTALL_ROOT)
 	SET(INSTALL_ROOT /)
 ENDIF(NOT INSTALL_ROOT)
 
-ADD_DEFINITIONS     (-fPIC -fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
+ADD_DEFINITIONS     (-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 INCLUDE_DIRECTORIES (${MECHSYS_SOURCE_DIR})
 
 ### FLAGS ###############################################################################################
