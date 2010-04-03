@@ -122,6 +122,7 @@ public:
     int  TicLen;    ///< Length of tick line
     int  LinLen;    ///< Line length in legend
     int  LinDx;     ///< Spacing between legend items
+    bool ShowLastY; ///< Show text with the last y value ?
 
     // Data
     Array<CurveProps> C;        ///< Curve properties
@@ -214,6 +215,7 @@ inline PlotXY::PlotXY (wxFrame * Parent, char const * Title, char const * Xlbl, 
       TicLen    (9),
       LinLen    (40),
       LinDx     (20),
+      ShowLastY (true),
       _sfX      (1.0),
       _sfY      (1.0),
       _sfok     (false),
@@ -636,7 +638,7 @@ inline void PlotXY::DrawCurves (DeviceContext & DC)
             // Draw text
             if (C[k].LstY)
             {
-                if (_X[k]->Size()>1)
+                if (_X[k]->Size()>1 && ShowLastY)
                 {
                     char buf[256];
                     //snprintf (buf, 250, "%g, %g", (*_X[k])[_X[k]->Size()-1], (*_Y[k])[_X[k]->Size()-1]);
