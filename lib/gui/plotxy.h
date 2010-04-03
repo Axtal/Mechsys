@@ -87,6 +87,8 @@ public:
     // Set methods
     PlotXY & SetBTicksFmt (char const * Fmt="%4.1f") { strcpy (_btifmt, Fmt); return (*this); } ///< Set bottom ruler ticks format
     PlotXY & SetLTicksFmt (char const * Fmt="%3.1f") { strcpy (_ltifmt, Fmt); return (*this); } ///< Set left ruler ticks format
+    PlotXY & SetXlbl      (char const * Xlbl)        { strcpy (_blbl,  Xlbl); return (*this); } ///< Set x (bottom) label
+    PlotXY & SetYlbl      (char const * Ylbl)        { strcpy (_llbl,  Ylbl); return (*this); } ///< Set x (left) label
 
     // Draw methods (internal)
     void CalcSF     ();                   ///< Calculate scale factors
