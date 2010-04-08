@@ -84,7 +84,7 @@ public:
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
     void Solve             (double tf, double dt, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
                             char const * FileKey=NULL);                                                        ///< Run simulation
-    void WritePOV          (char const * FileKey, bool AllParticles=false);                                     ///< Write POV file
+    void WritePOV          (char const * FileKey);                                                             ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
@@ -142,10 +142,6 @@ public:
     bool               Initialized;   ///< System (particles and interactons) initialized ?
     size_t             InitialIndex;  ///< Tag the first index of the container
     Array<Particle*>   Particles;     ///< All particles in domain
-    Array<Particle*>   FreeParticles; ///< Particles without constrains
-    Array<Particle*>   TParticles;    ///< Particles with translation fixed
-    Array<Particle*>   RParticles;    ///< Particles with rotation fixed
-    Array<Particle*>   FParticles;    ///< Particles with applied force
     Array<Interacton*> Interactons;   ///< All interactons
     Array<CInteracton*> CInteractons;  ///< Contact interactons
     Array<BInteracton*> BInteractons;  ///< Cohesion interactons
@@ -949,7 +945,6 @@ inline void Domain::Initialize (double dt)
         Wext = 0.0;
 
         // initialize
-        if (FreeParticles.Size()==0) FreeParticles = Particles;
         ResetInteractons();
         // info
         double start = std::clock();
@@ -968,11 +963,14 @@ inline void Domain::Initialize (double dt)
     }
     else
     {
-        for (size_t i=0; i<TParticles.Size(); i++)
+        for (size_t i=0; i<Particles.Size(); i++)
         {
-            TParticles[i]->InitializeVelocity(dt);
+            if (Particles[i]->vxf) Particles[i]->xb(0) = Particles[i]->x(0) - Particles[i]->v(0)*dt;
+            if (Particles[i]->vyf) Particles[i]->xb(1) = Particles[i]->x(1) - Particles[i]->v(1)*dt;
+            if (Particles[i]->vzf) Particles[i]->xb(2) = Particles[i]->x(2) - Particles[i]->v(2)*dt;
         }
     }
+
 }
 
 inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * FileKey)
@@ -988,7 +986,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     // calc the total volume of particles (solids)
     Vs = 0.0;
-    for (size_t i=0; i<FreeParticles.Size(); i++) Vs += FreeParticles[i]->V;
+    for (size_t i=0; i<Particles.Size(); i++) 
+    {
+        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf&&!Particles[i]->wyf&&!Particles[i]->wzf)Vs += Particles[i]->V;
+    }
 
     // info
     double start = std::clock();
@@ -1105,23 +1106,17 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
 }
 
-inline void Domain::WritePOV (char const * FileKey, bool AllParticles)
+inline void Domain::WritePOV (char const * FileKey)
 {
     String fn(FileKey);
     fn.append(".pov");
     std::ofstream of(fn.CStr(), std::ios::out);
     POVHeader (of);
     POVSetCam (of, CamPos, OrthoSys::O);
-    if (AllParticles)
+    for (size_t i=0; i<Particles.Size(); i++)
     {
-        for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"Red");
-    }
-    else
-    {
-        for (size_t i=0; i<FreeParticles.Size(); i++) FreeParticles[i]->Draw (of,"Red");
-        for (size_t i=0; i<TParticles.Size(); i++) TParticles[i]->Draw (of,"Col_Glass_Bluish");
-        for (size_t i=0; i<RParticles.Size(); i++) RParticles[i]->Draw (of,"Col_Glass_Bluish");
-        for (size_t i=0; i<FParticles.Size(); i++) FParticles[i]->Draw (of,"Col_Glass_Bluish");
+        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf&&!Particles[i]->wyf&&!Particles[i]->wzf) Particles[i]->Draw(of,"Red");
+        else Particles[i]->Draw(of,"Col_Glass_Bluish");
     }
     of.close();
 }
@@ -1626,15 +1621,8 @@ inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps
     if (IsFailure) Sig0 = Sig;
 
 
-    // resize arrays
-    TParticles   .Resize(0);
-    RParticles   .Resize(0);
-    FParticles   .Resize(0);
-    FreeParticles.Resize(0);
-
-    // initialize some of the free particles
-    for (size_t i=0; i<InitialIndex;     i++) FreeParticles.Push(Particles[i]);
-    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Initialize ();
+    // initialize particles
+    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Initialize();
 
     // total stress increment
     DSig = Sigf - Sig;
@@ -1648,21 +1636,23 @@ inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps
     {
         double height = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0));
         veloc = 0.5*dEpsdt(0)*height, 0.0, 0.0;
-        TParticles.Push(Particles[InitialIndex]);
-        TParticles[TParticles.Size()-1]->v = veloc;
-        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
-        TParticles.Push(Particles[InitialIndex+1]);
-        TParticles[TParticles.Size()-1]->v = -veloc;
-        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex  ]->v  =  veloc;
+        Particles[InitialIndex  ]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex  ]->Fixvelocities();
+        Particles[InitialIndex+1]->v  = -veloc;
+        Particles[InitialIndex+1]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex+1]->Fixvelocities();
     }
     else // Sig(0) prescribed
     {
         double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         force = Sig(0)*area, 0.0, 0.0;
-        FParticles.Push(Particles[InitialIndex]);
-        FParticles[FParticles.Size()-1]->Ff = force;
-        FParticles.Push(Particles[InitialIndex+1]);
-        FParticles[FParticles.Size()-1]->Ff = -force;
+        Particles[InitialIndex  ]->Ff =  force;
+        Particles[InitialIndex  ]->Fixvelocities();
+        Particles[InitialIndex  ]->vxf = false;
+        Particles[InitialIndex+1]->Ff = -force;
+        Particles[InitialIndex+1]->Fixvelocities();
+        Particles[InitialIndex+1]->vxf = false;
         pSig(0) = true;
     }
 
@@ -1671,21 +1661,23 @@ inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps
     {
         double height = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
         veloc = 0.0, 0.5*dEpsdt(1)*height, 0.0;
-        TParticles.Push(Particles[InitialIndex+2]);
-        TParticles[TParticles.Size()-1]->v = veloc;
-        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
-        TParticles.Push(Particles[InitialIndex+3]);
-        TParticles[TParticles.Size()-1]->v = -veloc;
-        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex+2]->v  =  veloc;
+        Particles[InitialIndex+2]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex+2]->Fixvelocities();
+        Particles[InitialIndex+3]->v  = -veloc;
+        Particles[InitialIndex+3]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex+3]->Fixvelocities();
     }
     else // Sig(1) presscribed
     {
         double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         force = 0.0, Sig(1)*area, 0.0;
-        FParticles.Push(Particles[InitialIndex+2]);
-        FParticles[FParticles.Size()-1]->Ff = force;
-        FParticles.Push(Particles[InitialIndex+3]);
-        FParticles[FParticles.Size()-1]->Ff = -force;
+        Particles[InitialIndex+2]->Ff =  force;
+        Particles[InitialIndex+2]->Fixvelocities();
+        Particles[InitialIndex+2]->vyf = false;
+        Particles[InitialIndex+3]->Ff = -force;
+        Particles[InitialIndex+3]->Fixvelocities();
+        Particles[InitialIndex+3]->vyf = false;
         pSig(1) = true;
     }
 
@@ -1694,21 +1686,23 @@ inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps
     {
         double height = (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
         veloc = 0.0, 0.0, 0.5*dEpsdt(2)*height;
-        TParticles.Push(Particles[InitialIndex+4]);
-        TParticles[TParticles.Size()-1]->v = veloc;
-        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
-        TParticles.Push(Particles[InitialIndex+5]);
-        TParticles[TParticles.Size()-1]->v = -veloc;
-        TParticles[TParticles.Size()-1]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex+4]->v  =  veloc;
+        Particles[InitialIndex+4]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex+4]->Fixvelocities();
+        Particles[InitialIndex+5]->v  = -veloc;
+        Particles[InitialIndex+5]->Ff = 0.0,0.0,0.0;
+        Particles[InitialIndex+5]->Fixvelocities();
     }
     else // Sig(2) presscribed
     {
         double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
         force = 0.0, 0.0, Sig(2)*area;
-        FParticles.Push(Particles[InitialIndex+4]);
-        FParticles[FParticles.Size()-1]->Ff = force;
-        FParticles.Push(Particles[InitialIndex+5]);
-        FParticles[FParticles.Size()-1]->Ff = -force;
+        Particles[InitialIndex+2]->Ff =  force;
+        Particles[InitialIndex+2]->Fixvelocities();
+        Particles[InitialIndex+2]->vzf = false;
+        Particles[InitialIndex+3]->Ff = -force;
+        Particles[InitialIndex+3]->Fixvelocities();
+        Particles[InitialIndex+3]->vzf = false;
         pSig(2) = true;
     }
 
@@ -1844,9 +1838,9 @@ inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
         }
     }
 
-    for (size_t i=0; i<FreeParticles.Size(); i++)
+    for (size_t i=0; i<Particles.Size(); i++)
     {
-        Cn += FreeParticles[i]->Cn/FreeParticles.Size();
+        Cn += Particles[i]->Cn/Particles.Size();
     }
 
     OF << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
@@ -1892,7 +1886,7 @@ inline void TriaxialDomain::OutputF (char const * FileKey)
         {
             for (size_t n=0;n<3;n++)
             {
-                S(m,n)+=FreeParticles[i]->M(m,n)/volumecontainer;
+                S(m,n)+=Particles[i]->M(m,n)/volumecontainer;
             }
         }
     }

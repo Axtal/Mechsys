@@ -51,7 +51,7 @@ else:
     p.fc_c     = 0.0
     p.fc_np    = 40
     p.log_p    = False
-    p.div_by_p = False
+    p.div_by_p = True
     p.fc_ty    = ['MN', 'LD', 'MC', 'VM']
     p.pcte     = True
     p.justone  = -1

@@ -50,7 +50,7 @@ public:
     ~Particle ();
 
     // Methods
-    void Initialize         (size_t NCalls=5000);                             ///< Initialize this particle
+    void Initialize         (size_t NCalls=5000);                                           ///< Initialize this particle
     void InitializeVelocity (double dt = 1.0);                                              ///< Initialize this particle
     void Rotate             (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
     void Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
@@ -59,6 +59,8 @@ public:
     void ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
     double MaxDisplacement  ();                                                             ///< Maximun displacement for the verlet algorithm
     void Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
+    void Fixvelocities      () {vxf = true; vyf = true; vzf = true; 
+                                wxf = true; wyf = true; wzf = true;};                       ///< Fix all velocities
 
     // Data
     int                 Tag;             ///< Tag of the particle
@@ -72,6 +74,7 @@ public:
     Vec3_t              F;               ///< Force over the particle
     Vec3_t              Ff;              ///< Fixed Force over the particle
     bool                vxf, vyf, vzf;   ///< Fixed components of velocity
+    bool                wxf, wyf, wzf;   ///< Fixed components of angular velocity
     Vec3_t              T;               ///< Torque over the particle
     Vec3_t              Tf;              ///< Fixed Torque over the particle
     Vec3_t              I;               ///< Vector containing the principal components of the inertia tensor
