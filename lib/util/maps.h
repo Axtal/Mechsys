@@ -217,6 +217,7 @@ std::ostream & operator<< (std::ostream & os, SDPair const & P)
 {
     int nkeys = P.size();
     int k     = 0;
+    /*
     os << "{";
     for (size_t i=0; i<P.Keys.Size(); ++i)
     {
@@ -227,6 +228,15 @@ std::ostream & operator<< (std::ostream & os, SDPair const & P)
         k++;
     }
     os << "}";
+    */
+    for (size_t i=0; i<P.Keys.Size(); ++i)
+    {
+        String key = P.Keys[i];
+        String val;  val.Printf("%g",P(key));
+        os << key << "=" << val;
+        if (k<nkeys-1) os << "  ";
+        k++;
+    }
     return os;
 }
 

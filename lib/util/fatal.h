@@ -40,12 +40,12 @@
                         catch (char const * m)         { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";  exit(1); }                       \
                         catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; exit(1); } \
                         catch (std::exception & e)     { std::cout<<"[1;31mFatal: "<<e.what()                <<"[0m\n"; exit(1); } \
-                        catch (...)                    { std::cout<<"[1;31mFatal: Some exception (...) ocurred[0m\n"; exit(1); }
+                        catch (...)                    { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; exit(1); }
 #else
   #define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;  exit(1); }                                           \
                         catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";  exit(1); }                     \
                         catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()              <<"[0m\n"; exit(1); } \
-                        catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) ocurred[0m\n"; exit(1); }
+                        catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; exit(1); }
 #endif
  
 
