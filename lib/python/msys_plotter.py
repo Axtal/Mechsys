@@ -233,6 +233,30 @@ class Plotter:
             xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]));  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]));  grid()
             axis   ('equal')
 
+        # 9) Mohr-circles -----------------------------------------------------------------------------
+        if self.justone==9:
+            #each = 5
+            #for k in range(0,np,each):
+            max_s = max([max(-S1), max(-S2), max(-S3)])
+            for k in [np-2,np-1]:
+                s1 = -S1[k]
+                s2 = -S2[k]
+                s3 = -S3[k]
+                C0 =     (s1+s2)/2.
+                C1 =     (s2+s3)/2.
+                C2 =     (s3+s1)/2.
+                R0 = abs((s1-s2)/2.)
+                R1 = abs((s2-s3)/2.)
+                R2 = abs((s3-s1)/2.)
+                self.draw_arc(gca(), C0,0.,R0, 0., pi, clr, res=30)
+                self.draw_arc(gca(), C1,0.,R1, 0., pi, clr, res=30)
+                self.draw_arc(gca(), C2,0.,R2, 0., pi, clr, res=30)
+            p1, = plot ([0], [0], 'r-')
+            p2, = plot ([0,max_s],[0,max_s*tan(self.fc_phi*pi/180.)],'-',color='orange')
+            xlabel (r'$-\sigma_i$');  ylabel(r'$\tau$');  grid()
+            axis   ('equal')
+
+
     # Plot octahedral rosette
     # =======================
     def oct_rosette(self, xmin, xmax, ymin, ymax, draw_circ=True):
