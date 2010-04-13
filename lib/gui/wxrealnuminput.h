@@ -112,6 +112,11 @@ private:
 inline void WxRealNumInput::OnChar(wxKeyEvent & Event)
 {
     if (!isalpha(Event.GetKeyCode())) Event.Skip(); // Input is ok, so skip to main loop
+    else
+    {
+        if (Event.GetKeyCode()==69)  Event.Skip(); // "E"
+        if (Event.GetKeyCode()==101) Event.Skip(); // "e"
+    }
 }
 
 inline void WxRealNumInput::OnSetFocus(wxFocusEvent & Event)
