@@ -45,7 +45,6 @@ int main(int argc, char **argv) try
     
     //d.AddVoroPack (-1, 0.1, 2,2,2, 2,2,5, 1.0, true, 1000, 1.0, 0.8);
     d.GenRice(-1,1,1,0.2,1.0,80000,1.0);
-    d.FreeParticles = d.Particles; //Neccesary for the particles to be drawn
     d.CamPos= 14.0,13.0,13.0;
     d.WriteBPY ("figure");
 
@@ -60,7 +59,6 @@ int main(int argc, char **argv) try
     e.AddCube(1,Vec3_t(-0.0,0.0,0.0),0.01,1.4,1.0,30,&axis);
     e.AddCube(1,Vec3_t( 5.0,0.0,0.0),0.30,1.4,1.0,30,&axis);
     e.CamPos =  0.0,15.0,0.0;
-    e.FreeParticles = e.Particles; //Neccesary for the particles to be drawn
     e.WritePOV("figure2");
 
 

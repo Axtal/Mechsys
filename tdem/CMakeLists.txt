@@ -26,7 +26,6 @@ SET(EXES
   test_dynamics
   test_voro01
   test_voro02
-  test_voro03
   test_read
   test_write
   test_beam

@@ -45,9 +45,6 @@
 namespace DEM
 {
 
-//typedef double (*ptCalcM) (double t);              ///< M(ultiplier) callback
-//typedef std::pair<IntDbl_t,pCalcM>      BCData_t; ///< Bry conds data (idxDOF,valueBCs,multiplier)
-//typedef std::map<Node const *,BCData_t> NodBCs_t; ///< Map Node => bry conds. (idxDOF,valueBCS)
 
 class Domain
 {
@@ -138,21 +135,22 @@ public:
     double CalcEnergy      (double & Ekin, double & Epot);                                                   ///< Return total energy of the system
 
     // Data
-    double             Time;          ///< Current time
-    bool               Initialized;   ///< System (particles and interactons) initialized ?
-    size_t             InitialIndex;  ///< Tag the first index of the container
-    Array<Particle*>   Particles;     ///< All particles in domain
-    Array<Interacton*> Interactons;   ///< All interactons
-    Array<CInteracton*> CInteractons;  ///< Contact interactons
-    Array<BInteracton*> BInteractons;  ///< Cohesion interactons
-    Vec3_t             CamPos;        ///< Camera position for POV
-    double             Evis;          ///< Energy dissipated by the viscosity of the grains
-    double             Efric;         ///< Energy dissipated by friction
-    double             Wext;          ///< Work done by external forces
-    double             Vs;            ///< Volume occupied by the grains
-    double             Alpha;         ///< Verlet distance
-    void *             UserData;      ///< Some user data
-    bool               Finished;      ///< Has the simulation finished
+    double              Time;            ///< Current time
+    bool                Initialized;     ///< System (particles and interactons) initialized ?
+    Array<Particle*>    Particles;       ///< All particles in domain
+    Array<Interacton*>  Interactons;     ///< All interactons
+    Array<CInteracton*> CInteractons;    ///< Contact interactons
+    Array<BInteracton*> BInteractons;    ///< Cohesion interactons
+    Vec3_t              CamPos;          ///< Camera position for POV
+    double              Evis;            ///< Energy dissipated by the viscosity of the grains
+    double              Efric;           ///< Energy dissipated by friction
+    double              Wext;            ///< Work done by external forces
+    double              Vs;              ///< Volume occupied by the grains
+    double              Alpha;           ///< Verlet distance
+    void *              UserData;        ///< Some user data
+    String              FileKey;         ///< File Key for output files
+    size_t              idx_out;         ///< Index of output
+    bool                Finished;        ///< Has the simulation finished
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -183,46 +181,6 @@ public:
             X.append (x[i]);
             Y.append (y[i]);
         }
-    }
-#endif
-};
-
-class TriaxialDomain: public Domain
-{
-public:
-        
-    //Constructor and destructor
-    TriaxialDomain ();
-
-    // Methods for specific simulations
-    void SetTxTest (Vec3_t  const & Sigf,                     ///< Final state of stress
-                    bVec3_t const & pEps,                     ///< Are strain rates prescribed ?
-                    Vec3_t  const & dEpsdt,                   ///< Prescribed values of strain rate
-                    bool    IsFailure,                        ///< Check if it is a test to find failure point
-                    double  theta,                            ///< Angle in the hydrostatic pressure plane
-                    double  alpha);                           ///< Angle of the slope in the p q plane
-    void ResetEps  ();                                        ///< Reset strains and re-calculate initial lenght of packing
-    void Output    (size_t IdxOut, std::ostream & OutFile);   ///< Output current state of stress and strains.
-    void OutputF   (char const * FileKey);                    ///< Output Final state of normal forces for statistics
-    void Setup     (double,double);                           ///< For the triaxial test it will measure or set the strains and stresses
-
-    //Data
-    bool          IsFailure;  ///< Is a failuretest ?
-    double        Thf;        ///< Angle in the p=cte plane
-    double        Alp;        ///< Angle in the p q plane
-    Vec3_t        Sig;        ///< Current stress state
-    Vec3_t        Sig0;       ///< Initial stress state
-    Vec3_t        DSig;       ///< Total stress increment to be applied by Solve => after
-    bVec3_t       pSig;       ///< Prescribed stress ?
-    Vec3_t        L0;         ///< Initial length of the packing
-
-#ifdef USE_BOOST_PYTHON
-    void PySetTxTest (BPy::tuple const & Sigf, BPy::tuple const & pEps, BPy::tuple const & dEpsdt, bool IsFailure, double theta, double alpha)
-    {
-        Vec3_t  sigf   (Tup2Vec3(Sigf));
-        bVec3_t peps   (Tup2Vec3(pEps));
-        Vec3_t  depsdt (Tup2Vec3(dEpsdt));
-        SetTxTest (sigf, peps, depsdt, IsFailure, theta, alpha);
     }
 #endif
 };
@@ -333,21 +291,21 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
      */
 
     
-    InitialIndex = Particles.Size();
-
     // add faces of box
     Vec3_t axis0(OrthoSys::e0); // rotation of face
     Vec3_t axis1(OrthoSys::e1); // rotation of face
     AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 0.5, M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize();
     AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 0.5, M_PI/2.0, &axis1);
+    Particles[Particles.Size()-1]->Initialize();
     AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 0.5, M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize();
     AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 0.5, M_PI/2.0, &axis0);
+    Particles[Particles.Size()-1]->Initialize();
     AddPlane (InitialTag-4, Vec3_t(0.0,0.0,Lz/2.0),  R, Cf*Lx, Cf*Ly, 0.5);
+    Particles[Particles.Size()-1]->Initialize();
     AddPlane (InitialTag-5, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 0.5);
-
-    // initialize walls (required when calculating the length of packing, since will use the CG)
-    for (size_t i=0; i<6; ++i) Particles[InitialIndex+i]->Initialize();
-
+    Particles[Particles.Size()-1]->Initialize();
 }
 
 inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
@@ -973,8 +931,13 @@ inline void Domain::Initialize (double dt)
 
 }
 
-inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * FileKey)
+inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey)
 {
+
+    // Assigning some domain particles especifically to the output
+    FileKey.Printf("%s",TheFileKey);
+    idx_out = 0;
+
     // initialize particles
     Initialize (dt);
 
@@ -987,7 +950,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // calc the total volume of particles (solids)
     Vs = 0.0;
     for (size_t i=0; i<Particles.Size(); i++) 
-    {
+    { 
         if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf&&!Particles[i]->wyf&&!Particles[i]->wzf)Vs += Particles[i]->V;
     }
 
@@ -997,7 +960,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     // solve
     double t0      = Time; // initial time
-    size_t idx_out = 0;    // index of output
     double tout    = t0;   // time position for output
 
     // report
@@ -1011,8 +973,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // run
     while (Time<tf)
     {
-        // tell the user function to update its data
-        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
 
         // initialize forces and torques
         for (size_t i=0; i<Particles.Size(); i++)
@@ -1049,6 +1009,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             Efric += CInteractons[i]-> dEfric;
         }
 
+        // tell the user function to update its data
+        if (ptSetup!=NULL) (*ptSetup) ((*this), UserData);
+
         // move particles
         for (size_t i=0; i<Particles.Size(); i++)
         {
@@ -1064,10 +1027,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         {
             idx_out++;
             if (ptReport!=NULL) (*ptReport) ((*this), UserData);
-            if (FileKey!=NULL)
+            if (TheFileKey!=NULL)
             {
                 String fn;
-                fn.Printf    ("%s_%08d", FileKey, idx_out);
+                fn.Printf    ("%s_%08d", TheFileKey, idx_out);
                 WritePOV     (fn.CStr());
                 EnergyOutput (idx_out, oss_energy);
             }
@@ -1087,10 +1050,10 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     if (ptReport!=NULL) (*ptReport) ((*this), UserData);
 
     // save energy data
-    if (FileKey!=NULL)
+    if (TheFileKey!=NULL)
     {
         String fn;
-        fn.Printf("%s_energy.res",FileKey);
+        fn.Printf("%s_energy.res",TheFileKey);
         std::ofstream fe(fn.CStr());
         fe << oss_energy.str();
         fe.close();
@@ -1595,312 +1558,5 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
     }
 }
 
-// Methods for specific simulations
-
-inline TriaxialDomain::TriaxialDomain ()
-{
-    Time = 0.0;
-    Initialized = false;
-    Sig    = 0.0,   0.0,   0.0;
-    DSig   = 0.0,   0.0,   0.0;
-    pSig   = false, false, false;
-    CamPos = 1.0, 2.0, 3.0;
-    IsFailure = false;
-}
-
-inline void TriaxialDomain::SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt, bool TheIsFailure, double theta, double alpha)
-{
-    // info
-    std::cout << "[1;33m\n--- Setting up Triaxial Test -------------------------------------[0m\n";
-    double start = std::clock();
-
-    // Store setting up data
-    IsFailure = TheIsFailure;
-    Thf = theta;
-    Alp = alpha;
-    if (IsFailure) Sig0 = Sig;
-
-
-    // initialize particles
-    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Initialize();
-
-    // total stress increment
-    DSig = Sigf - Sig;
-
-    // assume all strains prescribed by default
-    pSig = false, false, false;
-
-    // Eps(0) prescribed ?
-    Vec3_t veloc, force;
-    if (pEps(0))
-    {
-        double height = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0));
-        veloc = 0.5*dEpsdt(0)*height, 0.0, 0.0;
-        Particles[InitialIndex  ]->v  =  veloc;
-        Particles[InitialIndex  ]->Ff = 0.0,0.0,0.0;
-        Particles[InitialIndex  ]->Fixvelocities();
-        Particles[InitialIndex+1]->v  = -veloc;
-        Particles[InitialIndex+1]->Ff = 0.0,0.0,0.0;
-        Particles[InitialIndex+1]->Fixvelocities();
-    }
-    else // Sig(0) prescribed
-    {
-        double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        force = Sig(0)*area, 0.0, 0.0;
-        Particles[InitialIndex  ]->Ff =  force;
-        Particles[InitialIndex  ]->Fixvelocities();
-        Particles[InitialIndex  ]->vxf = false;
-        Particles[InitialIndex+1]->Ff = -force;
-        Particles[InitialIndex+1]->Fixvelocities();
-        Particles[InitialIndex+1]->vxf = false;
-        pSig(0) = true;
-    }
-
-    // Eps(1) prescribed ?
-    if (pEps(1))
-    {
-        double height = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-        veloc = 0.0, 0.5*dEpsdt(1)*height, 0.0;
-        Particles[InitialIndex+2]->v  =  veloc;
-        Particles[InitialIndex+2]->Ff = 0.0,0.0,0.0;
-        Particles[InitialIndex+2]->Fixvelocities();
-        Particles[InitialIndex+3]->v  = -veloc;
-        Particles[InitialIndex+3]->Ff = 0.0,0.0,0.0;
-        Particles[InitialIndex+3]->Fixvelocities();
-    }
-    else // Sig(1) presscribed
-    {
-        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        force = 0.0, Sig(1)*area, 0.0;
-        Particles[InitialIndex+2]->Ff =  force;
-        Particles[InitialIndex+2]->Fixvelocities();
-        Particles[InitialIndex+2]->vyf = false;
-        Particles[InitialIndex+3]->Ff = -force;
-        Particles[InitialIndex+3]->Fixvelocities();
-        Particles[InitialIndex+3]->vyf = false;
-        pSig(1) = true;
-    }
-
-    // Eps(2) prescribed ?
-    if (pEps(2))
-    {
-        double height = (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        veloc = 0.0, 0.0, 0.5*dEpsdt(2)*height;
-        Particles[InitialIndex+4]->v  =  veloc;
-        Particles[InitialIndex+4]->Ff = 0.0,0.0,0.0;
-        Particles[InitialIndex+4]->Fixvelocities();
-        Particles[InitialIndex+5]->v  = -veloc;
-        Particles[InitialIndex+5]->Ff = 0.0,0.0,0.0;
-        Particles[InitialIndex+5]->Fixvelocities();
-    }
-    else // Sig(2) presscribed
-    {
-        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-        force = 0.0, 0.0, Sig(2)*area;
-        Particles[InitialIndex+2]->Ff =  force;
-        Particles[InitialIndex+2]->Fixvelocities();
-        Particles[InitialIndex+2]->vzf = false;
-        Particles[InitialIndex+3]->Ff = -force;
-        Particles[InitialIndex+3]->Fixvelocities();
-        Particles[InitialIndex+3]->vzf = false;
-        pSig(2) = true;
-    }
-
-    // info
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-}
-
-inline void TriaxialDomain::ResetEps ()
-{
-    L0(0) = Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0);
-    L0(1) = Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1);
-    L0(2) = Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2);
-}
-
-inline void TriaxialDomain::Setup (double dt,double tspan)
-{
-    if (IsFailure)
-    {
-        if (!pSig(0))
-        {
-            double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-            double sig = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
-            double dsig = sig - Sig0(0);
-            double r = dsig/((2.0/3.0)*sin(Alp)*sin(Thf-2.0*Util::PI/3.0)-cos(Alp));
-            Sig(0) = Sig0(0)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf-2.0*Util::PI/3.0);
-            Sig(1) = Sig0(1)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf);
-            Sig(2) = Sig0(2)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf+2.0*Util::PI/3.0);
-        }
-        if (!pSig(1))
-        {
-            double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-            double sig = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
-            double dsig = sig - Sig0(1);
-            double r = dsig/((2.0/3.0)*sin(Alp)*sin(Thf)-cos(Alp));
-            Sig(0) = Sig0(0)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf-2.0*Util::PI/3.0);
-            Sig(1) = Sig0(1)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf);
-            Sig(2) = Sig0(2)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf+2.0*Util::PI/3.0);
-        }
-        if (!pSig(2))
-        {
-            double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-            double sig = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
-            double dsig = sig - Sig0(2);
-            double r = dsig/((2.0/3.0)*sin(Alp)*sin(Thf+2.0*Util::PI/3.0)-cos(Alp));
-            Sig(0) = Sig0(0)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf-2.0*Util::PI/3.0);
-            Sig(1) = Sig0(1)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf);
-            Sig(2) = Sig0(2)-r*cos(Alp) + (2.0/3.0)*r*sin(Alp)*sin(Thf+2.0*Util::PI/3.0);
-        }
-
-    }
-    Vec3_t force;
-    bool   update_sig = false;
-    if (pSig(0))
-    {
-        double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        force = Sig(0)*area, 0.0, 0.0;
-        Particles[InitialIndex  ]->Ff =  force;
-        Particles[InitialIndex+1]->Ff = -force;
-        if (!IsFailure) update_sig = true;
-    }
-    else if (!IsFailure)
-    {
-        double area = (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        Sig(0) = -0.5*(fabs(Particles[InitialIndex  ]->F(0))+fabs(Particles[InitialIndex+1]->F(0)))/area;
-    }
-    if (pSig(1))
-    {
-        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        force = 0.0, Sig(1)*area, 0.0;
-        Particles[InitialIndex+2]->Ff =  force;
-        Particles[InitialIndex+3]->Ff = -force;
-        if (!IsFailure) update_sig = true;
-    }
-    else if (!IsFailure)
-    {
-        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2));
-        Sig(1) = -0.5*(fabs(Particles[InitialIndex+2]->F(1))+fabs(Particles[InitialIndex+3]->F(1)))/area;
-    }
-    if (pSig(2))
-    {
-        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-        force = 0.0, 0.0, Sig(2)*area;
-        Particles[InitialIndex+4]->Ff =  force;
-        Particles[InitialIndex+5]->Ff = -force;
-        if (!IsFailure) update_sig = true;
-    }
-    else if (!IsFailure)
-    {
-        double area = (Particles[InitialIndex]->x(0)-Particles[InitialIndex+1]->x(0))*(Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1));
-        Sig(2) = -0.5*(fabs(Particles[InitialIndex+4]->F(2))+fabs(Particles[InitialIndex+5]->F(2)))/area;
-    }
-    if (update_sig) Sig += dt*DSig/(tspan);
-}
-
-inline void TriaxialDomain::Output (size_t IdxOut, std::ostream & OF)
-{
-
-    // output triaxial test data
-    // header
-    if (IdxOut==0)
-    {
-        OF << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
-        OF <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
-        OF << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
-    }
-
-    // stress
-    OF << Util::_10_6 << Time << Util::_8s << Sig(0) << Util::_8s << Sig(1) << Util::_8s << Sig(2);
-
-    // strain
-    OF << Util::_8s << (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0)-L0(0))/L0(0);
-    OF << Util::_8s << (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-L0(1))/L0(1);
-    OF << Util::_8s << (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-L0(2))/L0(2);
-
-    // void ratio
-    double volumecontainer = (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0)-Particles[InitialIndex  ]->R+Particles[InitialIndex+1]->R)*
-                             (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-Particles[InitialIndex+2]->R+Particles[InitialIndex+3]->R)*
-                             (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-Particles[InitialIndex+4]->R+Particles[InitialIndex+5]->R);
-
-    OF << Util::_8s << (volumecontainer-Vs)/Vs;
-
-    // Number of contacts Nc, number of sliding contacts Nsc and Coordination number Cn
-    double Cn = 0;
-    size_t Nc = 0;
-    size_t Nsc = 0;
-    for (size_t i=0; i<CInteractons.Size(); i++)
-    {
-        if(CInteractons[i]->I2<InitialIndex)
-        {
-            Nc += CInteractons[i]->Nc;
-            Nsc += CInteractons[i]->Nsc;
-        }
-    }
-
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        Cn += Particles[i]->Cn/Particles.Size();
-    }
-
-    OF << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
-
-    OF << std::endl;
-    
-}
-
-inline void TriaxialDomain::OutputF (char const * FileKey)
-{
-    String fn;
-    fn.Printf("%s_forces.res",FileKey);
-    std::ofstream OF(fn.CStr());
-
-    OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
-    for (size_t i=0; i<CInteractons.Size(); i++)
-    {
-        if (norm(CInteractons[i]->Fnet)>0.0)
-        {
-            OF << Util::_10_6 << norm(CInteractons[i]->Fnet) << Util::_8s << norm(CInteractons[i]->Ftnet) << Util::_8s <<  CInteractons[i]->Nc << Util::_8s <<  CInteractons[i]->Nsc << "\n";
-        }
-    }
-    OF.close();
-
-    String f;
-    f.Printf("%s_stress.res",FileKey);
-    std::ofstream SF(f.CStr());
-    Mat3_t S;
-    for (size_t m=0;m<3;m++)
-    {
-        for (size_t n=0;n<3;n++)
-        {
-            S(m,n)=0.0;
-        }
-    }
-
-    double volumecontainer = (Particles[InitialIndex  ]->x(0)-Particles[InitialIndex+1]->x(0)-Particles[InitialIndex  ]->R+Particles[InitialIndex+1]->R)*
-                             (Particles[InitialIndex+2]->x(1)-Particles[InitialIndex+3]->x(1)-Particles[InitialIndex+2]->R+Particles[InitialIndex+3]->R)*
-                             (Particles[InitialIndex+4]->x(2)-Particles[InitialIndex+5]->x(2)-Particles[InitialIndex+4]->R+Particles[InitialIndex+5]->R);
-    for (size_t i=0; i<FreeParticles.Size(); i++)
-    {
-        for (size_t m=0;m<3;m++)
-        {
-            for (size_t n=0;n<3;n++)
-            {
-                S(m,n)+=Particles[i]->M(m,n)/volumecontainer;
-            }
-        }
-    }
-    for (size_t m=0;m<3;m++)
-    {
-        for (size_t n=0;n<3;n++)
-        {
-            SF << Util::_10_6 << S(m,n) << Util::_8s;
-        }
-        SF << std::endl;
-    }
-    SF.close();
-
-}
-}; // namespace DEM
-
+};
 #endif // MECHSYS_DEM_DOMAIN_H

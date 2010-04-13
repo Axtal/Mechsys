@@ -39,7 +39,7 @@ int main(int argc, char **argv) try
     d.CamPos = Vec3_t(0.0, 20.0, 2.5); // position of camera
     Mesh::Unstructured mesh(3);                  // 3D
     mesh.Set    (16, 10, 1, 1);                  // 18 points, 12 facets, 1 region, 1 hole
-    mesh.SetReg (0,  0.,  3.0,  0.2, 0.2, 0.2);  // id, tag, max{volume}, x, y, z <<<<<<< regions
+    mesh.SetReg (0,  -1,  3.0,  0.2, 0.2, 0.2);  // id, tag, max{volume}, x, y, z <<<<<<< regions
     mesh.SetHol (0,  2.5, 1.5, 2.5);             // id, x, y, z, <<<<<<< holes
     mesh.SetPnt ( 0,  0,  0.0, 0.0, 0.0);        // id, vtag, x, y, z, <<<<<< points
     mesh.SetPnt ( 1,  0,  5.0, 0.0, 0.0);        // id, vtag, x, y, z,
@@ -69,12 +69,12 @@ int main(int argc, char **argv) try
     mesh.SetFac ( 9,  0, Array<int>(10,11,15,14));
     mesh.Generate();
 
-    d.GenFromMesh(-1,mesh,0.1,1.0,true,false);
+    d.GenFromMesh(mesh,0.1,1.0,true,false);
     d.Center(Vec3_t(0.0,1.5,8.0));
 
     Mesh::Unstructured mesh2(3);
     mesh2.Set    (16, 10, 1, 1);
-    mesh2.SetReg (0, 0, 3.0,  0.2, 0.2, 0.2);
+    mesh2.SetReg (0, -1, 3.0,  0.2, 0.2, 0.2);
     mesh2.SetHol (0, 2.5, 1.5, 2.5);
     mesh2.SetPnt ( 0,  0,  0.0, 0.0, 0.0);
     mesh2.SetPnt ( 1,  0,  5.0, 0.0, 0.0);
@@ -103,7 +103,7 @@ int main(int argc, char **argv) try
     mesh2.SetFac ( 8,  0, Array<int>( 8, 9,13,12));
     mesh2.SetFac ( 9,  0, Array<int>(10,11,15,14));
     mesh2.Generate();
-    d.GenFromMesh(-1,mesh2,0.1,1.0,true,false);
+    d.GenFromMesh(mesh2,0.1,1.0,true,false);
 
 
     d.AddPlane(-2,Vec3_t(0.0,0.0,-0.2),0.2,100,100,1.0);
@@ -122,18 +122,17 @@ int main(int argc, char **argv) try
     fg.close();
 
 
-    //Fix the plane 
-    Dict B;
-    B.Set(-2,"vx vy vz",0.0,0.0,0.0);
-    d.SetBC(B);
+    //Fix the plane
+    Particle * p = d.GetParticle(-2,true);
+    p->Fixvelocities();
 
     // Initialize the gravity on the particles
-    for (size_t i=0;i<d.FreeParticles.Size();i++)
+    for (size_t i=0;i<d.Particles.Size();i++)
     {
-        d.FreeParticles[i]->Ff = d.FreeParticles[i]->m*Vec3_t(0.0,0.0,-9.8);
+        d.Particles[i]->Ff = d.Particles[i]->m*Vec3_t(0.0,0.0,-9.8);
     }
 
-    d.Solve     (/*tf*/10.0, /*dt*/0.00005, /*dtOut*/0.1, filekey.CStr(), true);
+    d.Solve     (/*tf*/10.0, /*dt*/0.00005, /*dtOut*/0.1, NULL, NULL, filekey.CStr());
 
     return 0;
 }

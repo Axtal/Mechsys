@@ -97,6 +97,6 @@ int main(int argc, char **argv) try
     // Output the Voronoi cells in gnuplot format
     //con.draw_cells_gnuplot("test_voro02_v.gnu");
     d.CamPos = 0.0,5.0,3.0;
-    d.Solve (/*tf*/30, 0.001, /*dtOut*/0.1, "test_voro02", true);
+    d.Solve (/*tf*/30, 0.001, /*dtOut*/0.1, NULL, NULL, "test_voro02");
 }
 MECHSYS_CATCH

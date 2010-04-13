@@ -31,7 +31,6 @@ int main( void )
 
     Domain dom;
     dom.Load("domainwrite");
-    dom.FreeParticles = dom.Particles;
     dom.WritePOV("domainread");
     dom.WriteBPY("domainread");
     dom.Save("domainread");
