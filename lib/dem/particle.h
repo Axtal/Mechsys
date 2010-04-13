@@ -179,6 +179,10 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
     vyf = false;
     vzf = false;
 
+    wxf = false;
+    wyf = false;
+    wzf = false;
+
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
 
@@ -287,6 +291,10 @@ inline void Particle::Rotate (double dt)
     q1 = 0.5*Q(1);
     q2 = 0.5*Q(2);
     q3 = 0.5*Q(3);
+
+    if (wxf) T(0) = 0.0;
+    if (wyf) T(1) = 0.0;
+    if (wzf) T(2) = 0.0;
 
     Vec3_t Td;
     Td(0)=(T(0)+(I(1)-I(2))*wb(1)*wb(2))/I(0);

@@ -81,7 +81,7 @@ int main(int argc, char **argv) try
     mesh.SetVert(2,-1, 4.0,-2.0, 0.1);
     mesh.SetVert(3,-1, 0.0, 2.0, 0.1);
     mesh.SetCell(0,-1,Array<int>(0,1,2,3));
-    d.GenFromMesh (-1,mesh,/*R*/0.1,/*rho*/1.0,true,false);
+    d.GenFromMesh (mesh,/*R*/0.1,/*rho*/1.0,true,false);
 
     d.Particles[0]->Index=0;
     d.Particles[1]->Index=1;

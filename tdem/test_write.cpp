@@ -31,7 +31,6 @@ int main( void )
     dom.AddVoroPack (-1, 0.1, 2.0, 2.0, 2.0, 2, 4, 8, 1.0, true, 1200, 1.0,1.0);
     dom.Initialize();
     dom.Save("domainwrite");
-    dom.FreeParticles = dom.Particles;
     dom.WritePOV("domainwrite");
     
     return 0;

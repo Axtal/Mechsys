@@ -109,7 +109,6 @@ int main(int argc, char **argv) try
     dom.GenFromMesh (mesh, 0.1, 1., cohesion, montecarlo);
     dom.Save ("test_beam");
     dom.CamPos = cam_x, cam_y, cam_z;
-    dom.WritePOV ("test_beam", true);
 
     // connect
     dat.p = dom.GetParticle (-3);

@@ -52,7 +52,7 @@ int main(int argc, char **argv) try
     /////////////////////////////////////////////////////////////////////////////////////////// Domain /////
     
     Domain d;
-    d.GenFromMesh (-1,mesh,/*R*/0.3,/*rho*/1.0,true,false);
+    d.GenFromMesh (mesh,/*R*/0.3,/*rho*/1.0,true,false);
     d.Center(Vec3_t(0.0,0.0,3.5));
     d.AddPlane(-2,OrthoSys::O,0.3,100,100,1.0);
     d.Initialize();
@@ -60,23 +60,22 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////// First timestep /////
     
     //Fix the plane 
-    Dict B;
-    B.Set(-2,"vx vy vz",0.0,0.0,0.0);
-    d.SetBC(B);
+    Particle * p = d.GetParticle(-2,true);
+    p->Fixvelocities();
 
     d.CamPos= 4.0,3.0,3.0;
     d.WritePOV ("test_tets");
     d.WriteBPY ("test_tets");
 
     // Initialize the gravity on the particles
-    for (size_t i=0;i<d.FreeParticles.Size();i++)
+    for (size_t i=0;i<d.Particles.Size();i++)
     {
-        d.FreeParticles[i]->Ff = d.FreeParticles[i]->m*Vec3_t(0.0,0.0,-9.8);
+        d.Particles[i]->Ff = d.Particles[i]->m*Vec3_t(0.0,0.0,-9.8);
     }
 
     d.CamPos = Vec3_t(0.0, 20.0, 2.5); // position of camera
     d.ResetInteractons();
-    d.Solve     (/*tf*/5.0, /*dt*/0.0005, /*dtOut*/0.1, "test_tets", true);
+    d.Solve     (/*tf*/5.0, /*dt*/0.0005, /*dtOut*/0.1, NULL, NULL, "test_tets");
     return 0;    
 }
 MECHSYS_CATCH

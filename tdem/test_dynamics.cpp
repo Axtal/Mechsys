@@ -74,7 +74,7 @@ int main(int argc, char **argv) try
 
     // solve
     d.CamPos = 0.0,30.0,0.0;
-    d.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, "test_dynamics", true);
+    d.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, NULL, NULL, "test_dynamics");
     d.Save("test_dynamics");
 
     // final constants

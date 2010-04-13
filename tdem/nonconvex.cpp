@@ -83,7 +83,6 @@ int main(int argc, char **argv) try
     dom.AddPlane  (-1, Vec3_t(6.,0.,0.), /*R*/0.1, /*Lx*/1.0, /*Ly*/1.0, /*rho*/1.0);
 
     // domain
-    dom.FreeParticles = dom.Particles;
     dom.WritePOV ("nonconvex");
     dom.Save     ("nonconvex");
     return 0;
