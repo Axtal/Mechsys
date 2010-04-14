@@ -116,7 +116,7 @@ int main(int argc, char **argv) try
 		}
 	}
 
-	size_t Tmax = 2000;
+	size_t Tmax = 1000;
 	size_t Tout = 10;
 
 	double vx = 0.0;
@@ -162,7 +162,7 @@ int main(int argc, char **argv) try
 		for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 		for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
-		if (T>1000)
+		if (T>Tmax)
 		{
 			vx += fx/m*dt;
 			vy += fy/m*dt;

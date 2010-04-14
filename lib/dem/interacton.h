@@ -377,9 +377,9 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     I1              = P1->Index;
     I2              = P2->Index;
     Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
-    Bn              = 1000.0*Area;
-    Bt              =  500.0*Area;
-    Bm              =  500.0*Area;
+    Bn              = 100000.0*Area;
+    Bt              =  50000.0*Area;
+    Bm              =  50000.0*Area;
 
     Vec3_t t1;
     P1->Faces[F1]->Normal(t1);
@@ -389,7 +389,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     L0              = dot(t1,c2-c1);
     Lt              = 0.0,0.0,0.0;
     An              = 0.0;
-    eps             = 10.1;
+    eps             = 0.01;
     valid           = true;
 }
 

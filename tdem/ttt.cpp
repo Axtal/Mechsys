@@ -41,7 +41,7 @@ struct UserData
     Vec3_t             DSig;         ///< Total stress increment to be applied by Solve => after
     bVec3_t            pSig;         ///< Prescribed stress ?
     Vec3_t             L0;           ///< Initial length of the packing
-    std::ostringstream oss_ss;       ///< Output string for stress strain data
+    std::ofstream      oss_ss;         ///< file for stress strain data
 
 };
 
@@ -244,7 +244,12 @@ void Report (DEM::Domain const & dom, void *UD)
     // header
     if (dom.idx_out==0)
     {
-        dat.oss_ss.str("");
+        String fs;
+        fs.Printf("%s_walls.res",dom.FileKey.CStr());
+        dat.oss_ss = std::ofstream(fs.CStr());
+        fns << dat.oss_ss.str();
+        fns.close();
+
         dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         dat.oss_ss <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
         dat.oss_ss << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
@@ -291,11 +296,6 @@ void Report (DEM::Domain const & dom, void *UD)
     }
     else
     {
-        String fs;
-        fs.Printf("%s_walls.res",dom.FileKey.CStr());
-        std::ofstream fns(fs.CStr());
-        fns << dat.oss_ss.str();
-        fns.close();
         String fn;
         fn.Printf("%s_forces.res",dom.FileKey.CStr());
         std::ofstream OF(fn.CStr());

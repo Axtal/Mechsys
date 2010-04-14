@@ -30,6 +30,7 @@ SET(EXES
   test_write
   test_beam
   cylinder_test
+  brazil_test
   figure)
 
 SET(TESTS

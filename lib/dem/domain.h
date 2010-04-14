@@ -97,7 +97,7 @@ public:
     // Access methods
     Particle * GetParticle (int Tag, bool Check=true) // Check: check if there are more than one particle with tag=Tag
     {
-        size_t idx;
+        size_t idx=0;
         size_t count = 0;
         for (size_t i=0; i<Particles.Size(); ++i)
         {
