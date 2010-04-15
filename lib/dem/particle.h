@@ -59,8 +59,7 @@ public:
     void ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
     double MaxDisplacement  ();                                                             ///< Maximun displacement for the verlet algorithm
     void Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
-    void Fixvelocities      () {vxf = true; vyf = true; vzf = true; 
-                                wxf = true; wyf = true; wzf = true;};                       ///< Fix all velocities
+    void FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
 
     // Data
     int                 Tag;             ///< Tag of the particle
@@ -409,6 +408,13 @@ inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
     {
         Faces[i]->Draw(os,R,Color,BPY);
     }
+}
+
+inline void Particle::FixVeloc (double vx, double vy, double vz)
+{
+    v   = vx, vy, vz;
+    vxf = true; vyf = true; vzf = true; 
+    wxf = true; wyf = true; wzf = true;
 }
 
 // Auxiliar methods

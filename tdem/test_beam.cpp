@@ -64,7 +64,7 @@ void Setup (DEM::Domain const & Dom, void * UD)
 {
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
-    dat.p->Ff=0.0,0.0,cos(0.3*Dom.Time);
+    dat.p->Ff=0.0,0.0,0.1*cos(0.3*Dom.Time);
 }
 
 //void Report (DEM::Domain const & Dom, void * UD)
@@ -115,7 +115,7 @@ int main(int argc, char **argv) try
 
     // fix -2
     Particle * p = dom.GetParticle (-2);
-    p->v=0.0,0.0,0.0;  p->vxf=true;  p->vyf=true;  p->vzf=true;
+    p->FixVeloc();
 
     double tf        = 100.;
     double dt        = 0.001;

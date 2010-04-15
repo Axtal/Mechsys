@@ -98,7 +98,7 @@ int    NVertsToEdge3D[][12/*edges at most*/][3/*verts per edge at most*/]=
 };
 
 #define BRYKEY(num_verts,idx_cell,idx_bry)                                      \
-    int vert_a, vert_b, vert_c=-1;                                              \
+    int vert_a, vert_b, vert_c=-1, vert_d=-1;                                   \
     if (NDim==2)                                                                \
     {                                                                           \
         vert_a = Cells[idx_cell]->V[NVertsToEdge2D[num_verts][idx_bry][0]]->ID; \
@@ -110,9 +110,10 @@ int    NVertsToEdge3D[][12/*edges at most*/][3/*verts per edge at most*/]=
         vert_a = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][0]]->ID; \
         vert_b = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][1]]->ID; \
         vert_c = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][2]]->ID; \
-        Util::Sort (vert_a,vert_b,vert_c);                                      \
+        vert_d = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][3]]->ID; \
+        Util::Sort (vert_a,vert_b,vert_c,vert_d);                               \
     }                                                                           \
-    BryKey_t brykey(vert_a,vert_b,vert_c);
+    BryKey_t brykey(vert_a,vert_b,vert_c,vert_d);
 
 #undef NOEDGE
 #undef NOFACE
@@ -136,7 +137,7 @@ struct Vertex
 };
 
 typedef std::map<int,int>                      BryTag_t;   ///< Map: edge/face ID => edge/face tag
-typedef boost::tuple<int,int,int>              BryKey_t;   ///< Edge/face key = (left_node,right_node) for edges or (node0,node1,node2) for faces
+typedef boost::tuple<int,int,int,int>          BryKey_t;   ///< Edge/face key = (left_node,right_node) for edges or (node0,node1,node2) for faces
 typedef std::pair<int,Cell*>                   NeighDat_t; ///< Pair: local edge/face ID, neighbour cell
 typedef std::map<BryKey_t, NeighDat_t>         Neighs_t;   ///< Map: edge/face key => neighbour data
 typedef std::map<BryKey_t, Array<NeighDat_t> > BryCell_t;  ///< Map: edge/face key => cells sharing this boundary (edge/face)
@@ -209,7 +210,7 @@ public:
 
 std::ostream & operator<< (std::ostream & os, BryKey_t const & BK)
 {
-    os << "(" << boost::get<0>(BK) << "," << boost::get<1>(BK) << "," << boost::get<2>(BK) << ")";
+    os << "(" << boost::get<0>(BK) << "," << boost::get<1>(BK) << "," << boost::get<2>(BK) << "," << boost::get<3>(BK) << ")";
     return os;
 }
 

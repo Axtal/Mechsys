@@ -81,6 +81,18 @@ inline void Sort (Val_T & a, Val_T & b, Val_T & c)
     if (b<a) Util::Swap (a,b);
 }
 
+/** Sort four values on an ascending order. */
+template <typename Val_T>
+inline void Sort (Val_T & a, Val_T & b, Val_T & c, Val_T & d)
+{
+    if (b<a) Util::Swap (b,a);
+    if (c<b) Util::Swap (c,b);
+    if (d<c) Util::Swap (d,c);
+    if (b<a) Util::Swap (b,a);
+    if (c<b) Util::Swap (c,b);
+    if (b<a) Util::Swap (b,a);
+}
+
 /** Find best square for given rows and columns. */
 /*
 inline void FindBestSquare (int Size, int & nRow, int & nCol)

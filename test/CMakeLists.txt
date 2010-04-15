@@ -34,6 +34,7 @@ SET(PROGS_D # other tests
  linsolver
  invariants
  test_models
+ sandbox
  serialize)
 
 SET(PROGS_F # mesh
@@ -71,14 +72,12 @@ IF(GSL_FOUND)
 ENDIF(GSL_FOUND)
 
 
-IF(BLITZ_FOUND AND LINALG_FOUND)
-	FOREACH(var ${PROGS_D})
-		ADD_EXECUTABLE        (${var} "${var}.cpp")
-		ADD_TEST              (${var} ${var})
-		TARGET_LINK_LIBRARIES (${var} ${LIBS})
-		SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
-	ENDFOREACH(var)
-ENDIF(BLITZ_FOUND AND LINALG_FOUND)
+FOREACH(var ${PROGS_D})
+    ADD_EXECUTABLE        (${var} "${var}.cpp")
+    ADD_TEST              (${var} ${var})
+    TARGET_LINK_LIBRARIES (${var} ${LIBS})
+    SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
+ENDFOREACH(var)
 
 
 IF(TETGEN_FOUND AND TRIANGLE_FOUND)
