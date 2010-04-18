@@ -22,9 +22,7 @@
 #include <iomanip>
 
 // MechSys
-#ifdef HAVE_UMFPACK
-  #include <mechsys/linalg/umfpack.h>
-#endif
+#include <mechsys/linalg/umfpack.h>
 #ifdef HAVE_SUPERLU
   #include <mechsys/linalg/superlu.h>
 #endif
@@ -82,15 +80,11 @@ int SolveAndOutput(int SolverType, Mat_t & A, Vec_t & Y, Vec_t const & Ycorr)
 	}
 	else if (SolverType==2)
 	{
-#ifdef HAVE_UMFPACK
 		cout << "[1;33m... UMFPACK ...[0m" << endl;
 		Vec_t             B(Y);
 		Sparse::Matrix<double,int> S;
 		Dense2Sparse   (A, S);
 		UMFPACK::Solve (S,B, Y); // Y <- inv(S)*B
-#else
-		throw new Fatal("UMFPACK is not available");
-#endif
 	}
 	else if (SolverType==3)
 	{

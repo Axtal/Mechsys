@@ -26,6 +26,7 @@ OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    
 OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      ON)
 OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"             ON)
 OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                              OFF)
+OPTION(A_MAKE_WX_MONO       "Use wxWidgets monolithic libraries ?"              OFF)
 
 # Features
 OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)"                    OFF)
@@ -65,6 +66,10 @@ ENDIF(A_MAKE_PROFILING)
 IF(A_MAKE_OPTIMIZED)
 	ADD_DEFINITIONS(-O3)
 ENDIF(A_MAKE_OPTIMIZED)
+
+IF(A_MAKE_WX_MONO)
+	SET(WXMONO TRUE)
+ENDIF(A_MAKE_WX_MONO)
 
 ### FEATURES ############################################################################################
 

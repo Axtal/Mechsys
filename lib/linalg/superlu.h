@@ -53,7 +53,7 @@ inline void Solve(Sparse::Matrix<double,int> const & A, Vec_t & X)
 {
 #ifndef DNDEBUG
 	if (A.Rows()!=A.Cols()) throw new Fatal("SuperLU::Solve: The matrix A (%d x %d) must be squared.",A.Rows(),A.Cols());
-	if (X.size()!=A.Cols()) throw new Fatal("SuperLU::Solve: The vector X (%d x 1) must have a size equal to the number of columns of matrix A (%d)",X.size(),A.Cols());
+	if (size(X)!=A.Cols()) throw new Fatal("SuperLU::Solve: The vector X (%d x 1) must have a size equal to the number of columns of matrix A (%d)",size(X),A.Cols());
 #endif
 
 	// Size

@@ -20,7 +20,11 @@ SET (FLAGS  "${FLAGS}")
 SET (LIBS    ${LIBS})
 SET (LFLAGS "${LFLAGS}")
 
-FIND_PACKAGE (wxWidgets COMPONENTS base core aui)
+if(WXMONO)
+    FIND_PACKAGE (wxWidgets COMPONENTS base core)
+else(WXMONO)
+    FIND_PACKAGE (wxWidgets COMPONENTS base core aui)
+endif(WXMONO)
 
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindCGAL.cmake    )
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindFLTK.cmake    )
