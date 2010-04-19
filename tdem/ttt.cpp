@@ -73,22 +73,22 @@ void SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt
     {
         double height = (D.Particles[UD.InitialIndex]->x(0)-D.Particles[UD.InitialIndex+1]->x(0));
         veloc = 0.5*dEpsdt(0)*height, 0.0, 0.0;
-        D.Particles[UD.InitialIndex  ]->v  =  veloc;
         D.Particles[UD.InitialIndex  ]->Ff = 0.0,0.0,0.0;
-        D.Particles[UD.InitialIndex  ]->Fixvelocities();
-        D.Particles[UD.InitialIndex+1]->v  = -veloc;
+        D.Particles[UD.InitialIndex  ]->FixVeloc();
+        D.Particles[UD.InitialIndex  ]->v  =  veloc;
         D.Particles[UD.InitialIndex+1]->Ff = 0.0,0.0,0.0;
-        D.Particles[UD.InitialIndex+1]->Fixvelocities();
+        D.Particles[UD.InitialIndex+1]->FixVeloc();
+        D.Particles[UD.InitialIndex+1]->v  = -veloc;
     }
     else // UD.Sig(0) prescribed
     {
         double area = (D.Particles[UD.InitialIndex+2]->x(1)-D.Particles[UD.InitialIndex+3]->x(1))*(D.Particles[UD.InitialIndex+4]->x(2)-D.Particles[UD.InitialIndex+5]->x(2));
         force = UD.Sig(0)*area, 0.0, 0.0;
         D.Particles[UD.InitialIndex  ]->Ff =  force;
-        D.Particles[UD.InitialIndex  ]->Fixvelocities();
+        D.Particles[UD.InitialIndex  ]->FixVeloc();
         D.Particles[UD.InitialIndex  ]->vxf = false;
         D.Particles[UD.InitialIndex+1]->Ff = -force;
-        D.Particles[UD.InitialIndex+1]->Fixvelocities();
+        D.Particles[UD.InitialIndex+1]->FixVeloc();
         D.Particles[UD.InitialIndex+1]->vxf = false;
         UD.pSig(0) = true;
     }
@@ -98,22 +98,22 @@ void SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt
     {
         double height = (D.Particles[UD.InitialIndex+2]->x(1)-D.Particles[UD.InitialIndex+3]->x(1));
         veloc = 0.0, 0.5*dEpsdt(1)*height, 0.0;
-        D.Particles[UD.InitialIndex+2]->v  =  veloc;
         D.Particles[UD.InitialIndex+2]->Ff = 0.0,0.0,0.0;
-        D.Particles[UD.InitialIndex+2]->Fixvelocities();
-        D.Particles[UD.InitialIndex+3]->v  = -veloc;
+        D.Particles[UD.InitialIndex+2]->FixVeloc();
+        D.Particles[UD.InitialIndex+2]->v  =  veloc;
         D.Particles[UD.InitialIndex+3]->Ff = 0.0,0.0,0.0;
-        D.Particles[UD.InitialIndex+3]->Fixvelocities();
+        D.Particles[UD.InitialIndex+3]->FixVeloc();
+        D.Particles[UD.InitialIndex+3]->v  = -veloc;
     }
     else // UD.Sig(1) presscribed
     {
         double area = (D.Particles[UD.InitialIndex]->x(0)-D.Particles[UD.InitialIndex+1]->x(0))*(D.Particles[UD.InitialIndex+4]->x(2)-D.Particles[UD.InitialIndex+5]->x(2));
         force = 0.0, UD.Sig(1)*area, 0.0;
         D.Particles[UD.InitialIndex+2]->Ff =  force;
-        D.Particles[UD.InitialIndex+2]->Fixvelocities();
+        D.Particles[UD.InitialIndex+2]->FixVeloc();
         D.Particles[UD.InitialIndex+2]->vyf = false;
         D.Particles[UD.InitialIndex+3]->Ff = -force;
-        D.Particles[UD.InitialIndex+3]->Fixvelocities();
+        D.Particles[UD.InitialIndex+3]->FixVeloc();
         D.Particles[UD.InitialIndex+3]->vyf = false;
         UD.pSig(1) = true;
     }
@@ -123,22 +123,22 @@ void SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt
     {
         double height = (D.Particles[UD.InitialIndex+4]->x(2)-D.Particles[UD.InitialIndex+5]->x(2));
         veloc = 0.0, 0.0, 0.5*dEpsdt(2)*height;
-        D.Particles[UD.InitialIndex+4]->v  =  veloc;
         D.Particles[UD.InitialIndex+4]->Ff = 0.0,0.0,0.0;
-        D.Particles[UD.InitialIndex+4]->Fixvelocities();
-        D.Particles[UD.InitialIndex+5]->v  = -veloc;
+        D.Particles[UD.InitialIndex+4]->FixVeloc();
+        D.Particles[UD.InitialIndex+4]->v  =  veloc;
         D.Particles[UD.InitialIndex+5]->Ff = 0.0,0.0,0.0;
-        D.Particles[UD.InitialIndex+5]->Fixvelocities();
+        D.Particles[UD.InitialIndex+5]->FixVeloc();
+        D.Particles[UD.InitialIndex+5]->v  = -veloc;
     }
     else // UD.Sig(2) presscribed
     {
         double area = (D.Particles[UD.InitialIndex]->x(0)-D.Particles[UD.InitialIndex+1]->x(0))*(D.Particles[UD.InitialIndex+2]->x(1)-D.Particles[UD.InitialIndex+3]->x(1));
         force = 0.0, 0.0, UD.Sig(2)*area;
         D.Particles[UD.InitialIndex+4]->Ff =  force;
-        D.Particles[UD.InitialIndex+4]->Fixvelocities();
+        D.Particles[UD.InitialIndex+4]->FixVeloc();
         D.Particles[UD.InitialIndex+4]->vzf = false;
         D.Particles[UD.InitialIndex+5]->Ff = -force;
-        D.Particles[UD.InitialIndex+5]->Fixvelocities();
+        D.Particles[UD.InitialIndex+5]->FixVeloc();
         D.Particles[UD.InitialIndex+5]->vzf = false;
         UD.pSig(2) = true;
     }
@@ -246,104 +246,105 @@ void Report (DEM::Domain const & dom, void *UD)
     {
         String fs;
         fs.Printf("%s_walls.res",dom.FileKey.CStr());
-        dat.oss_ss = std::ofstream(fs.CStr());
-        fns << dat.oss_ss.str();
-        fns.close();
+        dat.oss_ss.open(fs.CStr());
 
         dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "sx" << Util::_8s << "sy" << Util::_8s << "sz";
         dat.oss_ss <<                          Util::_8s << "ex" << Util::_8s << "ey" << Util::_8s << "ez";
         dat.oss_ss << Util::_8s   << "e"    << Util::_8s << "Cn" << Util::_8s << "Nc" << Util::_8s << "Nsc" << "\n";
     }
-
-    if (!dom.Finished) 
+    else 
     {
-        // stress
-        dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dat.Sig(0) << Util::_8s << dat.Sig(1) << Util::_8s << dat.Sig(2);
-
-        // strain
-        dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dat.L0(0))/dat.L0(0);
-        dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dat.L0(1))/dat.L0(1);
-        dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dat.L0(2))/dat.L0(2);
-
-        // void ratio
-        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->R+dom.Particles[dat.InitialIndex+1]->R)*
-                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->R+dom.Particles[dat.InitialIndex+3]->R)*
-                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->R+dom.Particles[dat.InitialIndex+5]->R);
-
-        dat.oss_ss << Util::_8s << (volumecontainer-dom.Vs)/dom.Vs;
-
-        // Number of contacts Nc, number of sliding contacts Nsc and Coordination number Cn
-        double Cn = 0;
-        size_t Nc = 0;
-        size_t Nsc = 0;
-        for (size_t i=0; i<dom.CInteractons.Size(); i++)
+        if (!dom.Finished) 
         {
-            if(dom.CInteractons[i]->I2<dat.InitialIndex)
+            // stress
+            dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << dat.Sig(0) << Util::_8s << dat.Sig(1) << Util::_8s << dat.Sig(2);
+
+            // strain
+            dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dat.L0(0))/dat.L0(0);
+            dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dat.L0(1))/dat.L0(1);
+            dat.oss_ss << Util::_8s << (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dat.L0(2))/dat.L0(2);
+
+            // void ratio
+            double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->R+dom.Particles[dat.InitialIndex+1]->R)*
+                                     (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->R+dom.Particles[dat.InitialIndex+3]->R)*
+                                     (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->R+dom.Particles[dat.InitialIndex+5]->R);
+
+            dat.oss_ss << Util::_8s << (volumecontainer-dom.Vs)/dom.Vs;
+
+            // Number of contacts Nc, number of sliding contacts Nsc and Coordination number Cn
+            double Cn = 0;
+            size_t Nc = 0;
+            size_t Nsc = 0;
+            for (size_t i=0; i<dom.CInteractons.Size(); i++)
             {
-                Nc += dom.CInteractons[i]->Nc;
-                Nsc += dom.CInteractons[i]->Nsc;
+                if(dom.CInteractons[i]->I2<dat.InitialIndex)
+                {
+                    Nc += dom.CInteractons[i]->Nc;
+                    Nsc += dom.CInteractons[i]->Nsc;
+                }
             }
-        }
 
-        for (size_t i=0; i<dom.Particles.Size(); i++)
-        {
-            Cn += dom.Particles[i]->Cn/dom.Particles.Size();
-        }
-
-        dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
-
-        dat.oss_ss << std::endl;
-    }
-    else
-    {
-        String fn;
-        fn.Printf("%s_forces.res",dom.FileKey.CStr());
-        std::ofstream OF(fn.CStr());
-        OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
-
-        for (size_t i=0; i<dom.CInteractons.Size(); i++)
-        {
-            if (norm(dom.CInteractons[i]->Fnet)>0.0)
+            for (size_t i=0; i<dom.Particles.Size(); i++)
             {
-                OF << Util::_10_6 << norm(dom.CInteractons[i]->Fnet) << Util::_8s << norm(dom.CInteractons[i]->Ftnet) << Util::_8s <<  dom.CInteractons[i]->Nc << Util::_8s <<  dom.CInteractons[i]->Nsc << "\n";
+                Cn += dom.Particles[i]->Cn/dom.Particles.Size();
             }
-        }
-        OF.close();
 
-        String f;
-        f.Printf("%s_stress.res",dom.FileKey.CStr());
-        std::ofstream SF(f.CStr());
-        Mat3_t S;
-        for (size_t m=0;m<3;m++)
+            dat.oss_ss << Util::_8s << Cn << Util::_8s << Nc << Util::_8s << Nsc;
+
+            dat.oss_ss << std::endl;
+        }
+        else
         {
-            for (size_t n=0;n<3;n++)
+            dat.oss_ss.close();
+            String fn;
+            fn.Printf("%s_forces.res",dom.FileKey.CStr());
+            std::ofstream OF(fn.CStr());
+            OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
+
+            for (size_t i=0; i<dom.CInteractons.Size(); i++)
             {
-                S(m,n)=0.0;
+                if (norm(dom.CInteractons[i]->Fnet)>0.0)
+                {
+                    OF << Util::_10_6 << norm(dom.CInteractons[i]->Fnet) << Util::_8s << norm(dom.CInteractons[i]->Ftnet) << Util::_8s <<  dom.CInteractons[i]->Nc << Util::_8s <<  dom.CInteractons[i]->Nsc << "\n";
+                }
             }
-        }
-        double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->R+dom.Particles[dat.InitialIndex+1]->R)*
-                                 (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->R+dom.Particles[dat.InitialIndex+3]->R)*
-                                 (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->R+dom.Particles[dat.InitialIndex+5]->R);
+            OF.close();
 
-        for (size_t i=0; i<dom.Particles.Size(); i++)
-        {
+            String f;
+            f.Printf("%s_stress.res",dom.FileKey.CStr());
+            std::ofstream SF(f.CStr());
+            Mat3_t S;
             for (size_t m=0;m<3;m++)
             {
                 for (size_t n=0;n<3;n++)
                 {
-                    S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
+                    S(m,n)=0.0;
                 }
             }
-        }
-        for (size_t m=0;m<3;m++)
-        {
-            for (size_t n=0;n<3;n++)
+            double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->R+dom.Particles[dat.InitialIndex+1]->R)*
+                                     (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->R+dom.Particles[dat.InitialIndex+3]->R)*
+                                     (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->R+dom.Particles[dat.InitialIndex+5]->R);
+
+            for (size_t i=0; i<dom.Particles.Size(); i++)
             {
-                SF << Util::_10_6 << S(m,n) << Util::_8s;
+                for (size_t m=0;m<3;m++)
+                {
+                    for (size_t n=0;n<3;n++)
+                    {
+                        S(m,n)+=dom.Particles[i]->M(m,n)/volumecontainer;
+                    }
+                }
             }
-            SF << std::endl;
+            for (size_t m=0;m<3;m++)
+            {
+                for (size_t n=0;n<3;n++)
+                {
+                    SF << Util::_10_6 << S(m,n) << Util::_8s;
+                }
+                SF << std::endl;
+            }
+            SF.close();
         }
-        SF.close();
     }
 }
 
@@ -488,14 +489,14 @@ int main(int argc, char **argv) try
     depsdt = Vec3_t(srx/(Tf-T0), sry/(Tf-T0), srz/(Tf-T0));
 
     // properties of particles at the start of  the triaxial test
-    B.Set(-1,"Kn Kt Gn Gt Mu",Kn,Kt,Gn,Gt,Mu,Beta,Eta);
+    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu,Beta,Eta);
     dom.SetProps(B);
     
     // run
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
-    dom.ResetInteractons();
     dat.tspan = Tf - dom.Time;
+    dom.ResetInteractons();
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr());
 
     return 0;

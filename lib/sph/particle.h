@@ -31,7 +31,7 @@ class SPHParticle
 public:
 
     // Constructor
-    SPHParticle(Vec3_t const & x0, Vec3_t const & v0, double density0, double h0, bool Fixed);
+    SPHParticle(Vec3_t const & x0, Vec3_t const & v0, double density0, double h0, bool Fixed=false);
 
 
     // Data
@@ -51,6 +51,7 @@ public:
     // Methods
     void Move (double dt);                                                  ///< Update the important quantities of te simulation
     void StartAccel (Vec3_t acc = Vec3_t(0.0,0.0,0.0)) {a = acc;};          ///< Start the acceleration of the particle with one predefined value
+    void Translate  (Vec3_t const & V) {x+=V; xb+=V;};                      ///< Trasnlate a SPH particle a vector V
 
 };
 
@@ -80,6 +81,7 @@ inline void SPHParticle::Move (double dt)
         // Evolve density
         double dens = Density;
         Density = Densityb + 2*dt*dDensity;
+        //std::cout << Density << std::endl;
         Densityb = dens;
     }
 }

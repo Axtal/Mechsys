@@ -21,6 +21,7 @@
 
 // MechSys
 #include <mechsys/lbm/lattice.h>
+#include <mechsys/util/maps.h>
 
 using std::cout;
 using std::endl;
@@ -38,10 +39,8 @@ int main(int argc, char **argv) try
 	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
 	// Set grains
-    /*
-	FileParser::Table grains;
-	FileParser fp("circles.out");
-	fp.ReadTable(grains);
+	Table grains;
+	grains.Read("circles.out");
 	for (size_t i=0; i<grains["Xc"].Size(); ++i)
 	{
 		double xc = grains["Xc"][i]*200.0;
@@ -54,8 +53,6 @@ int main(int argc, char **argv) try
 			if (dd<=r*r) l.GetCell(i,j)->SetSolid();
 		}
 	}
-    */
-	
 	// Initial conditions
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)

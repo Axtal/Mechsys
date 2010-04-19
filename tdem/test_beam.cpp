@@ -64,7 +64,7 @@ void Setup (DEM::Domain const & Dom, void * UD)
 {
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
-    dat.p->Ff=0.0,0.0,0.1*cos(0.3*Dom.Time);
+    dat.p->Ff=0.0,0.0,0.0*cos(0.3*Dom.Time);
 }
 
 //void Report (DEM::Domain const & Dom, void * UD)
@@ -107,6 +107,7 @@ int main(int argc, char **argv) try
     bool cohesion   = true;
     bool montecarlo = false;
     dom.GenFromMesh (mesh, 0.1, 1., cohesion, montecarlo);
+    dom.Center();
     dom.Save ("test_beam");
     dom.CamPos = cam_x, cam_y, cam_z;
 
@@ -119,9 +120,9 @@ int main(int argc, char **argv) try
 
     double tf        = 100.;
     double dt        = 0.001;
-    double dtOut     = 0.5;
+    double dtOut     = 0.001;
     //char   filekey[] = "test_beam";
     //bool   render    = false;
-    dom.Solve (tf,dt,dtOut, &Setup, NULL, "test_beam");
+    dom.Solve (tf,dt,dtOut, &Setup, NULL, "test_beam",false);
 }
 MECHSYS_CATCH

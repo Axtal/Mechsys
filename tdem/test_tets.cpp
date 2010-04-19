@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
     
     //Fix the plane 
     Particle * p = d.GetParticle(-2,true);
-    p->Fixvelocities();
+    p->FixVeloc();
 
     d.CamPos= 4.0,3.0,3.0;
     d.WritePOV ("test_tets");

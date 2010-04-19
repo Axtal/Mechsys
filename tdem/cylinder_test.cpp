@@ -124,7 +124,7 @@ int main(int argc, char **argv) try
 
     //Fix the plane
     Particle * p = d.GetParticle(-2,true);
-    p->Fixvelocities();
+    p->FixVeloc();
 
     // Initialize the gravity on the particles
     for (size_t i=0;i<d.Particles.Size();i++)

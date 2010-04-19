@@ -80,8 +80,8 @@ public:
     void SetProps          (Dict & D);                                                                          ///< Set the properties of individual grains by dictionaries
     void Initialize        (double dt=0.0);                                                                     ///< Set the particles to a initial state and asign the possible insteractions
     void Solve             (double tf, double dt, double dtOut, ptFun_t ptSetup=NULL, ptFun_t ptReport=NULL,
-                            char const * FileKey=NULL);                                                        ///< Run simulation
-    void WritePOV          (char const * FileKey);                                                             ///< Write POV file
+                            char const * FileKey=NULL, bool RenderVideo=true);                                  ///< Run simulation
+    void WritePOV          (char const * FileKey);                                                              ///< Write POV file
     void WriteBPY          (char const * FileKey);                                                              ///< Write BPY (Blender) file
     void Save              (char const * FileKey);                                                              ///< Save the current domain
     void Load              (char const * FileKey);                                                              ///< Load the domain form a file
@@ -931,7 +931,7 @@ inline void Domain::Initialize (double dt)
 
 }
 
-inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey)
+inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, bool RenderVideo)
 {
 
     // Assigning some domain particles especifically to the output
@@ -1031,7 +1031,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             {
                 String fn;
                 fn.Printf    ("%s_%08d", TheFileKey, idx_out);
-                WritePOV     (fn.CStr());
+                if(RenderVideo) WritePOV     (fn.CStr());
                 EnergyOutput (idx_out, oss_energy);
             }
             tout += dtOut;

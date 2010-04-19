@@ -47,7 +47,7 @@ inline double GradSPHKernel(double r, double h)
 inline double Pressure(double rho)
 {
     double P0 = 0.5;
-    double rho0 = 2.861;
+    double rho0 = 2.8;
     return P0*(pow(rho/rho0,7)-1);
 }
 

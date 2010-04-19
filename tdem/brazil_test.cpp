@@ -28,22 +28,59 @@ using std::endl;
 using std::ofstream;
 using DEM::Domain;
 
+struct UserData
+{
+    Particle         * p1;  // Upper plane
+    Particle         * p2;  // Lower plane
+    Vec3_t          force;  // Force on planes
+    std::ofstream  oss_ss;  // File to store the forces
+};
+
+void Setup (DEM::Domain const & dom, void *UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+    dat.force = 0.5*(dat.p2->F-dat.p1->F);
+}
+
+void Report (DEM::Domain const & dom, void *UD)
+{
+    UserData & dat = (*static_cast<UserData *>(UD));
+    if (dom.idx_out==0)
+    {
+        String fs;
+        fs.Printf("%s_walls.res",dom.FileKey.CStr());
+        dat.oss_ss.open(fs.CStr());
+        dat.oss_ss << Util::_10_6 << "Time" << Util::_8s << "fx" << Util::_8s << "fy" << Util::_8s << "fz \n";
+    }
+    else 
+    {
+        if (!dom.Finished) 
+        {
+            dat.oss_ss << Util::_10_6 << dom.Time << Util::_8s << fabs(dat.force(0)) << Util::_8s << fabs(dat.force(1)) << Util::_8s << fabs(dat.force(2)) << std::endl;
+        }
+        else
+        {
+            dat.oss_ss.close();
+        }
+    }
+}
+
 int main(int argc, char **argv) try
 {
     if (argc!=2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
     String filekey  (argv[1]);
     String filename (filekey+".hdf5");
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
-    
-    Domain d;
-    d.CamPos = Vec3_t(10.0, 30.0,5.0); // position of camera
+    UserData dat; 
+    Domain d(&dat);
     Mesh::Unstructured mesh(3);                  // 3D
 
     size_t n_divisions = 30;
     double thickness = 5.0;
-    double radius = 10.0;
+    double radius = 20.0;
+    d.CamPos = Vec3_t(radius, 3*radius,0.5*radius); // position of camera
     mesh.Set    (2*n_divisions, 2+n_divisions, 1, 0);                  // 18 points, 12 facets, 1 region, 1 hole
-    mesh.SetReg (0,  -1,  -1,  0.0, 0.0, 0.0);  // id, tag, max{volume}, x, y, z <<<<<<< regions
+    mesh.SetReg (0,  -1,  10.0,  0.0, 0.0, 0.0);  // id, tag, max{volume}, x, y, z <<<<<<< regions
     Array<int> Front;
     Array<int> Back;
     for(size_t i=0; i<n_divisions; i++)
@@ -65,21 +102,23 @@ int main(int argc, char **argv) try
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
-    d.AddPlane(-2, Vec3_t(0.0,0.0,Xmin(2)-0.1), 0.1, 2.4*radius, 1.2*thickness, 1.0);
-    d.AddPlane(-3, Vec3_t(0.0,0.0,Xmax(2)+0.1), 0.1, 2.4*radius, 1.2*thickness, 1.0);
+    d.AddPlane(-2, Vec3_t(0.0,0.0,Xmin(2)-0.1), 0.1, 0.1*radius, 1.2*thickness, 1.0);
+    d.AddPlane(-3, Vec3_t(0.0,0.0,Xmax(2)+0.1), 0.1, 0.1*radius, 1.2*thickness, 1.0);
 
-    Vec3_t velocity(0.0,0.0,0.1);
+    Vec3_t velocity(0.0,0.0,0.001*radius/10.0);
 
     Particle * p1 = d.GetParticle(-2);
     Particle * p2 = d.GetParticle(-3);
-    p1->Fixvelocities();
+    p1->FixVeloc();
     p1->v =  velocity;
-    p2->Fixvelocities();
+    p2->FixVeloc();
     p2->v = -velocity;
+    dat.p1=p1;
+    dat.p2=p2;
 
     d.WriteBPY(filekey.CStr());
 
-    d.Solve(10.0, 0.001, 0.1, NULL, NULL, filekey.CStr());
+    d.Solve(10.0, 0.00005, 0.1, &Setup, &Report, filekey.CStr());
 
 
     return 0;

@@ -29,15 +29,28 @@ using std::endl;
 int main(int argc, char **argv) try
 {
     SPHDomain dom;
-    dom.AddBox(Vec3_t(5.5,0.0,5.0),1,10,10,0.5,1.0,true);
-    dom.AddBox(Vec3_t(-5.5,0.0,5.0),1,10,10,0.5,1.0,true);
-    //dom.AddBox(Vec3_t(0.0,5.5,5.0),10,1,10,0.5,1.0,true);
-    //dom.AddBox(Vec3_t(0.0,-5.5,5.0),10,1,10,0.5,1.0,true);
-    //dom.AddBox(Vec3_t(0.0,0.0,-0.5),10,10,1,0.5,1.0,true);
-    //dom.AddBox(Vec3_t(-3.5,0.0,5.0),3,1,10,0.5,1.0,false);
-    dom.WriteBPY("test01");
+    dom.CamPos = 0.0,30.0,0.0;
+    //dom.CamPos = 0.0,5.0,0.0;
+    dom.Gravity = 0.0,0.0,-0.05;
+    //dom.AddBox(Vec3_t (5.5,0.0,5.0), 1,10,10,0.5,0.7,2.0,true);
+    //dom.AddBox(Vec3_t(-5.5,0.0,5.0), 1,10,10,0.5,0.7,2.0,true);
+    //dom.AddBox(Vec3_t( 0.0,5.5,5.0), 10,1,10,0.5,0.7,2.0,true);
+    //dom.AddBox(Vec3_t(0.0,-5.5,5.0), 10,1,10,0.5,0.7,2.0,true);
+    //dom.AddBox(Vec3_t(0.0,0.0,-0.5), 10,10,1,0.5,0.7,2.0,true);
+    //dom.AddBox(Vec3_t(-3.5,0.0,5.0),  3,1,10,0.5,0.7,2.0,false);
+    //dom.AddBox(Vec3_t(0.0,0.0,0.0),  10,1,10,0.5,0.7,2.8,false);
+    //dom.Particles.Push(new SPHParticle(Vec3_t( 0.3,0.0,0.0),OrthoSys::O,2.8,0.5));
+    //dom.Particles.Push(new SPHParticle(Vec3_t(-0.3,0.0,0.0),OrthoSys::O,2.8,0.5));
+    
+    dom.AddBox(Vec3_t (-10.5, 0.0, 0.0), 1,1,20,0.5,0.5,4.8,true);
+    dom.AddBox(Vec3_t ( 10.5, 0.0, 0.0), 1,1,20,0.5,0.5,4.8,true);
+    dom.AddBox(Vec3_t ( 0.0, 0.0,-10.5), 22,1,1,0.5,0.5,4.8,true);
+    dom.AddRandomBox(Vec3_t(-5.0,0.0,0.0),10,0,20,10,1,20,2.8,0.5);
 
-    double dt = 0.001;
+    dom.WriteBPY("test01");
+    dom.WritePOV("test01");
+    dom.Solve(/*tf*/200.0,/*dt*/0.01,/*dtOut*/0.5,"test01");
+    return 0;
 
 }
 MECHSYS_CATCH

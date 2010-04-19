@@ -124,6 +124,8 @@ public:
     double Bn;                             ///< Elastic normal constant for the cohesion
     double Bt;                             ///< Elastic tangential constant for the cohesion
     double Bm;                             ///< Elastic for the cohesion torque
+    double Gn;                             ///< Dissipative normal constant
+    double Gt;                             ///< Dissipative tangential constant
     double L0;                             ///< Equilibrium distance
     Vec3_t Lt;                             ///< Tangential displacement
     double An;                             ///< Angular displacement
@@ -377,9 +379,11 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     I1              = P1->Index;
     I2              = P2->Index;
     Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
-    Bn              = 100000.0*Area;
-    Bt              =  50000.0*Area;
-    Bm              =  50000.0*Area;
+    Bn              = 10.e5*Area;
+    Bt              =  5.e5*Area;
+    Bm              =  5.e5*Area;
+    Gn              =  2*16.0*ReducedValue(P1->m,P2->m);
+    Gn              =  2*8.0*ReducedValue(P1->m,P2->m);
 
     Vec3_t t1;
     P1->Faces[F1]->Normal(t1);
@@ -425,10 +429,9 @@ inline void BInteracton::CalcForce(double dt)
         Vec3_t vt = vrel - dot(n,vrel)*n;
         Lt += vt*dt;
         Lt -= dot(Lt,n)*n;
-        Vec3_t Ft = (Bt/L0)*Lt;
+        Vec3_t Ft = (Bt/L0)*Lt+Gt*vt+Gn*dot(n,vrel)*n;
         P1->F -= Fn+Ft;
         P2->F += Fn+Ft;
-
         // Torque
         An+=dot(t1-t2,n)*dt;
         Vec3_t T,Tt = Bm*An*n;
@@ -441,7 +444,7 @@ inline void BInteracton::CalcForce(double dt)
         P2->T += T;
 
         // Breaking point
-        if (fabs(delta)+norm(Lt)+fabs(An)*sqrt(Area/Util::PI)>L0*eps) valid = false;
+        //if (fabs(delta)+norm(Lt)+fabs(An)*sqrt(Area/Util::PI)>L0*eps) valid = false;
     }
 }
 
