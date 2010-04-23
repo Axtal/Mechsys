@@ -122,6 +122,7 @@ inline void WxRealNumInput::OnChar(wxKeyEvent & Event)
 inline void WxRealNumInput::OnSetFocus(wxFocusEvent & Event)
 {
     _buffer = GetValue(); // save a buffered value
+    Event.Skip();
 }
 
 inline void WxRealNumInput::OnKillFocus(wxFocusEvent & Event)
