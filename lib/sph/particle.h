@@ -25,6 +25,7 @@
 
 // MechSys
 #include <mechsys/linalg/matvec.h>
+#include <mechsys/dem/special_functions.h>
 
 class SPHParticle
 {
@@ -36,6 +37,7 @@ public:
 
     // Data
     bool   IsFree;                  ///< Check is the particle is free to move or not
+    Vec3_t xo;                      ///< Previous position of the particle for the Verlet algorithm
     Vec3_t x;                       ///< Position of the particle
     Vec3_t xb;                      ///< Previous position by verlet algorithm
     Vec3_t v;                       ///< Velocity of the particle
@@ -52,6 +54,8 @@ public:
     void Move (double dt);                                                  ///< Update the important quantities of te simulation
     void StartAccel (Vec3_t acc = Vec3_t(0.0,0.0,0.0)) {a = acc;};          ///< Start the acceleration of the particle with one predefined value
     void Translate  (Vec3_t const & V) {x+=V; xb+=V;};                      ///< Trasnlate a SPH particle a vector V
+    void ResetDisplacements ();                                             ///< Reset the displacmeent for the verlet algorithm
+    double MaxDisplacement ();                                              ///< Find the maximun displacement
 
 };
 
@@ -84,6 +88,16 @@ inline void SPHParticle::Move (double dt)
         //std::cout << Density << std::endl;
         Densityb = dens;
     }
+}
+
+inline void SPHParticle::ResetDisplacements ()
+{
+    xo = x;
+}
+
+inline double SPHParticle::MaxDisplacement ()
+{
+    return Distance(x,xo);
 }
 
 

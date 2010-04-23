@@ -28,7 +28,8 @@ SET(PROGS
     cap_grain
     capi
     dam
-    porous)
+    porous
+    swell)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
