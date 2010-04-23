@@ -21,9 +21,7 @@
 #define MECHSYS_SPH_DOMAIN_H
 
 // Mechsys
-#include <mechsys/sph/particle.h>
-#include <mechsys/sph/special_functions.h>
-#include <mechsys/dem/special_functions.h>
+#include <mechsys/sph/interacton.h>
 #include <mechsys/dem/graph.h>
 
 
@@ -39,18 +37,26 @@ public:
     void AddRandomBox(Vec3_t const &V, double Lx, double Ly, double Lz,
                                        size_t nx, size_t ny, size_t nz, double rho0, double R, size_t RandomSeed=100);            ///< Add box of random positioned particles
     void StartAcceleration (Vec3_t const & a = Vec3_t(0.0,0.0,0.0));                                                              ///< Add a fixed acceleration
-    void ComputeAcceleration ();                                                                                                  ///< Compute the accleration due to the other particles
+    void ComputeAcceleration (double dt);                                                                                          ///< Compute the accleration due to the other particles
     void Move                (double dt);                                                                                         ///< Compute the accleration due to the other particles
     void WriteBPY (char const * FileKey);                                                                                         ///< Draw the entire domain in a POV file
     void WritePOV (char const * FileKey);                                                                                         ///< Draw the entire domain in a blender file
+    void ResetInteractons();                                                                                                      ///< Reset the interacton array
+    void ResetDisplacements();                                                                                                    ///< Reset the particles displacement
+    void ResetContacts();                                                                                                    ///< Reset the possible interactons
+    double MaxDisplacement();                                                                                                       ///< Find max displacement of particles
     void Solve    (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo=true);                           ///< The solving function
 
     // Data
-    Vec3_t               CamPos;      ///< Camera position
-    Vec3_t               Gravity;     ///< Gravity acceleration
-    Array <SPHParticle*> Particles;   ///< Array of SPH particles
-    size_t               idx_out;     ///< Index for output pourposes
-    double               Time;        ///< The simulation Time
+    Vec3_t                  CamPos;         ///< Camera position
+    Vec3_t                  Gravity;        ///< Gravity acceleration
+    Array <SPHParticle*>    Particles;      ///< Array of SPH particles
+    Array <SPHInteracton*>  Interactons;    ///< Array of SPH interactons
+    Array <SPHInteracton*>  PInteractons;   ///< Array of SPH possible interactons
+    size_t                  idx_out;        ///< Index for output pourposes
+    double                  Time;           ///< The simulation Time
+    size_t                  SInt;           ///< Size of the interacton array
+    double                  Alpha;          ///< Parameter for verlet lists
 
 };
 
@@ -62,6 +68,7 @@ inline SPHDomain::SPHDomain ()
     CamPos = 1.0,2.0,3.0;
     Time = 0.0;
     Gravity = 0.0,0.0,0.0;
+    Alpha = 0.5;
 }
 
 
@@ -85,7 +92,7 @@ inline void SPHDomain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, doub
     const double x_min=-Lx/2.0+V(0), x_max=Lx/2.0+V(0);
     const double y_min=-Ly/2.0+V(1), y_max=Ly/2.0+V(1);
     const double z_min=-Lz/2.0+V(2), z_max=Lz/2.0+V(2);
-    double qin = 0.8;
+    double qin = 0.95;
     srand(RandomSeed);
     for (size_t i=0; i<nx; i++)
     {
@@ -111,34 +118,36 @@ inline void SPHDomain::StartAcceleration (Vec3_t const & a)
     }
 }
 
-inline void SPHDomain::ComputeAcceleration ()
+inline void SPHDomain::ComputeAcceleration (double dt)
 {
-    for (size_t i=0; i<Particles.Size(); i++)
-    {
-        for (size_t j=0; j<Particles.Size(); j++)
-        {
-            if ((Particles[i]->IsFree)&&(i!=j))
-            {
-                double di = Particles[i]->Density;
-                double dj = Particles[j]->Density;
-                double d0 = Particles[j]->Density0;
-                double h  = 2*ReducedValue(Particles[i]->h,Particles[j]->h);
-                Vec3_t vij = Particles[j]->v - Particles[i]->v;
-                Vec3_t rij = Particles[j]->x - Particles[i]->x;
 
+    for (size_t i=0; i<PInteractons.Size(); i++) PInteractons[i]->CalcForce(dt);
+    //for (size_t i=0; i<Particles.Size(); i++)
+    //{
+        //for (size_t j=0; j<Particles.Size(); j++)
+        //{
+            //if ((Particles[i]->IsFree)&&(i!=j))
+            //{
+                //double di = Particles[i]->Density;
+                //double dj = Particles[j]->Density;
+                //double d0 = Particles[j]->Density0;
+                //double h  = 2*ReducedValue(Particles[i]->h,Particles[j]->h);
+                //Vec3_t vij = Particles[j]->v - Particles[i]->v;
+                //Vec3_t rij = Particles[j]->x - Particles[i]->x;
+//
                 //Calculate the fictional viscosity
-                double alphacij = 1.0;
+                //double alphacij = 1.0;
                 //double beta = 1.0;
-                double muij = h*dot(vij,rij)/(dot(rij,rij)+0.01*h*h);
-                double piij;
+                //double muij = h*dot(vij,rij)/(dot(rij,rij)+0.01*h*h);
+                //double piij;
                 //if (dot(vij,rij)<0) piij = 2*(-alphacij*muij+beta*muij*muij)/(di+dj);
                 //else                piij = 0.0;
-                piij = -alphacij*muij;
-                Particles[i]->a += d0*(Pressure(di)/(di*di)+Pressure(dj)/(dj*dj)+piij)*rij*GradSPHKernel(norm(rij),h)/norm(rij);
-                Particles[i]-> dDensity += d0*dot(vij,rij)*GradSPHKernel(norm(rij),h)/norm(rij);
-            }
-        }
-    }
+                //piij = -alphacij*muij;
+                //Particles[i]->a += d0*(Pressure(di)/(di*di)+Pressure(dj)/(dj*dj)+piij)*rij*GradSPHKernel(norm(rij),h)/norm(rij);
+                //Particles[i]-> dDensity += d0*dot(vij,rij)*GradSPHKernel(norm(rij),h)/norm(rij);
+            //}
+        //}
+    //}
 }
 
 inline void SPHDomain::Move (double dt)
@@ -171,16 +180,75 @@ inline void SPHDomain::WriteBPY (char const * FileKey)
     of.close();
 }
 
+inline void SPHDomain::ResetInteractons()
+{
+    // delete old interactors
+    for (size_t i=0; i<Interactons.Size(); ++i)
+    {
+        if (Interactons[i]!=NULL) delete Interactons[i];
+    }
+
+    // new interactors
+    Interactons.Resize(0);
+    for (size_t i=0; i<Particles.Size()-1; i++)
+    {
+        for (size_t j=i+1; j<Particles.Size(); j++)
+        {
+            // if both particles are fixed, don't create any intereactor
+            if (!Particles[i]->IsFree && !Particles[j]->IsFree) continue;
+            else 
+            {
+                //SPHInteracton * I = new SPHInteracton(Particles[i],Particles[j]);
+                //if (I->UpdateContacts(Alpha)) Interactons.Push(I);
+                //else delete I;
+                Interactons.Push(new SPHInteracton(Particles[i],Particles[j]));
+            }
+        }
+    }
+}
+
+inline void SPHDomain::ResetDisplacements()
+{
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        Particles[i]->ResetDisplacements();
+    }
+}
+
+inline void SPHDomain::ResetContacts()
+{
+    PInteractons.Resize(0);
+    for (size_t i=0; i<Interactons.Size(); i++)
+    {
+        if(Interactons[i]->UpdateContacts(Alpha)) PInteractons.Push(Interactons[i]);
+    }
+}
+
+inline double SPHDomain::MaxDisplacement()
+{
+    double md = 0.0;
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        double mpd = Particles[i]->MaxDisplacement();
+        if (mpd > md) md = mpd;
+    }
+    return md;
+}
+
 inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo)
 {
     idx_out = 0;
     double tout = Time;
 
+    ResetInteractons();
+    ResetDisplacements();
+    ResetContacts();
+
     while (Time<tf)
     {
         // Calculate the acceleration for each particle
         StartAcceleration(Gravity);
-        ComputeAcceleration();
+        ComputeAcceleration(dt);
 
         // Move each particle
         Move(dt);
@@ -201,6 +269,13 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
             }
             tout += dtOut;
         }
+
+        if (MaxDisplacement()>Alpha)
+        {
+            ResetDisplacements();
+            ResetContacts();
+        }
+        
     }
 
 

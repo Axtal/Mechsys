@@ -46,9 +46,16 @@ inline double GradSPHKernel(double r, double h)
 
 inline double Pressure(double rho)
 {
-    double P0 = 0.5;
-    double rho0 = 2.8;
+    double P0 = 10.0;
+    double rho0 = 10.0;
     return P0*(pow(rho/rho0,7)-1);
+}
+
+inline double SoundSpeed(double rho)
+{
+    double P0 = 10.0;
+    double rho0 = 10.0;
+    return sqrt(7*P0*(pow(rho/rho0,6)/rho0));
 }
 
 
