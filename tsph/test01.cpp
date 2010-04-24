@@ -42,14 +42,14 @@ int main(int argc, char **argv) try
     //dom.Particles.Push(new SPHParticle(Vec3_t( 0.3,0.0,0.0),OrthoSys::O,2.8,0.5));
     //dom.Particles.Push(new SPHParticle(Vec3_t(-0.3,0.0,0.0),OrthoSys::O,2.8,0.5));
     
-    dom.AddBox(Vec3_t (-20.5, 0.0, 0.0), 1,1,40,0.5,0.5,30.0,true);
-    dom.AddBox(Vec3_t ( 20.5, 0.0, 0.0), 1,1,40,0.5,0.5,30.0,true);
-    dom.AddBox(Vec3_t ( 0.0, 0.0,-20.5), 42,1,1,0.5,0.5,30.0,true);
+    dom.AddBox(Vec3_t (-20.5, 0.0, 0.0), 1,1,40,0.5,0.5,20.0,true);
+    dom.AddBox(Vec3_t ( 20.5, 0.0, 0.0), 1,1,40,0.5,0.5,20.0,true);
+    dom.AddBox(Vec3_t ( 0.0, 0.0,-20.5), 42,1,1,0.5,0.5,20.0,true);
     dom.AddRandomBox(Vec3_t(-10.0,0.0,0.0),20,0,40,20,1,40,10.0,0.5);
 
     dom.WriteBPY("test01");
     dom.WritePOV("test01");
-    dom.Solve(/*tf*/200.0,/*dt*/0.001,/*dtOut*/5,"test01");
+    dom.Solve(/*tf*/400.0,/*dt*/0.001,/*dtOut*/4,"test01");
     return 0;
 
 }

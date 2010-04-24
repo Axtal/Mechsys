@@ -24,6 +24,8 @@
 #include <mechsys/sph/interacton.h>
 #include <mechsys/dem/graph.h>
 
+// H5Part
+#include <src/H5Part.h>
 
 class SPHDomain
 {
@@ -33,19 +35,22 @@ public:
     SPHDomain();
 
     // Methods
-    void AddBox(Vec3_t const & x, size_t nx, size_t ny, size_t nz, double h, double s,  double rho0, bool Fixed);                 ///< Add a box of SPHparticles
+    void AddBox(Vec3_t const & x, size_t nx, size_t ny, size_t nz, double h, double s,  double rho0, bool Fixed);      ///< Add a box of SPHparticles
     void AddRandomBox(Vec3_t const &V, double Lx, double Ly, double Lz,
-                                       size_t nx, size_t ny, size_t nz, double rho0, double R, size_t RandomSeed=100);            ///< Add box of random positioned particles
-    void StartAcceleration (Vec3_t const & a = Vec3_t(0.0,0.0,0.0));                                                              ///< Add a fixed acceleration
-    void ComputeAcceleration (double dt);                                                                                          ///< Compute the accleration due to the other particles
-    void Move                (double dt);                                                                                         ///< Compute the accleration due to the other particles
-    void WriteBPY (char const * FileKey);                                                                                         ///< Draw the entire domain in a POV file
-    void WritePOV (char const * FileKey);                                                                                         ///< Draw the entire domain in a blender file
-    void ResetInteractons();                                                                                                      ///< Reset the interacton array
-    void ResetDisplacements();                                                                                                    ///< Reset the particles displacement
-    void ResetContacts();                                                                                                    ///< Reset the possible interactons
-    double MaxDisplacement();                                                                                                       ///< Find max displacement of particles
-    void Solve    (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo=true);                           ///< The solving function
+                                       size_t nx, size_t ny, size_t nz, double rho0, double R, size_t RandomSeed=100); ///< Add box of random positioned particles
+    void StartAcceleration (Vec3_t const & a = Vec3_t(0.0,0.0,0.0));                                                   ///< Add a fixed acceleration
+    void ComputeAcceleration (double dt);                                                                              ///< Compute the accleration due to the other particles
+    void Move                (double dt);                                                                              ///< Compute the accleration due to the other particles
+    void WriteBPY (char const * FileKey);                                                                              ///< Draw the entire domain in a POV file
+    void WritePOV (char const * FileKey);                                                                              ///< Draw the entire domain in a blender file
+    void OpenH5Part (char const * FileKey);                                                                            ///< Open the H5Part file for writing
+    void WriteH5Part ();                                                                                               ///< Write in the H5Part file
+    void CloseH5Part ();                                                                                               ///< Close the H5Part file
+    void ResetInteractons();                                                                                           ///< Reset the interacton array
+    void ResetDisplacements();                                                                                         ///< Reset the particles displacement
+    void ResetContacts();                                                                                              ///< Reset the possible interactons
+    double MaxDisplacement();                                                                                          ///< Find max displacement of particles
+    void Solve    (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo=true);                ///< The solving function
 
     // Data
     Vec3_t                  CamPos;         ///< Camera position
@@ -57,6 +62,7 @@ public:
     double                  Time;           ///< The simulation Time
     size_t                  SInt;           ///< Size of the interacton array
     double                  Alpha;          ///< Parameter for verlet lists
+    H5PartFile              *FileID;        ///< File ID for paraview visualization
 
 };
 
@@ -180,6 +186,45 @@ inline void SPHDomain::WriteBPY (char const * FileKey)
     of.close();
 }
 
+inline void SPHDomain::OpenH5Part (char const * FileKey)
+{
+    String fn(FileKey);
+    fn.append(".h5part");
+    FileID = H5PartOpenFile(fn.CStr(),H5PART_WRITE);
+}
+
+inline void SPHDomain::CloseH5Part ()
+{
+    H5PartCloseFile(FileID);
+}
+
+inline void SPHDomain::WriteH5Part()
+{
+    
+    H5PartSetStep(FileID,idx_out-1);
+    H5PartSetNumParticles(FileID,Particles.Size());
+
+
+    double *x,*y,*z,*d;
+    x = new double [Particles.Size()];
+    y = new double [Particles.Size()];
+    z = new double [Particles.Size()];
+    d = new double [Particles.Size()];
+
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        x[i] = Particles[i]->x(0); 
+        y[i] = Particles[i]->x(1); 
+        z[i] = Particles[i]->x(2); 
+        d[i] = Particles[i]->Density; 
+    }
+    
+    H5PartWriteDataFloat64(FileID,"x_0",x);
+    H5PartWriteDataFloat64(FileID,"x_1",y);
+    H5PartWriteDataFloat64(FileID,"x_2",z);
+    H5PartWriteDataFloat64(FileID,"den",d);
+}
+
 inline void SPHDomain::ResetInteractons()
 {
     // delete old interactors
@@ -244,6 +289,8 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
     ResetDisplacements();
     ResetContacts();
 
+    OpenH5Part(TheFileKey);
+
     while (Time<tf)
     {
         // Calculate the acceleration for each particle
@@ -266,6 +313,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
                 String fn;
                 fn.Printf    ("%s_%08d", TheFileKey, idx_out);
                 if(RenderVideo) WritePOV     (fn.CStr());
+                WriteH5Part();
             }
             tout += dtOut;
         }
@@ -277,6 +325,8 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
         }
         
     }
+
+    CloseH5Part();
 
 
 }
