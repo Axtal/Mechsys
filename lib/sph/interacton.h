@@ -51,8 +51,8 @@ inline SPHInteracton::SPHInteracton (SPHParticle * Pt1, SPHParticle * Pt2)
     P1 = Pt1;
     P2 = Pt2;
     h  = 2*ReducedValue(P1->h,P2->h);
-    alpha = 0.1;
-    beta = 0.1;
+    alpha = 0.25;
+    beta = 0.25;
 }
 
 inline void SPHInteracton::CalcForce(double dt)

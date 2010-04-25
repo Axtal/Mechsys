@@ -74,7 +74,7 @@ inline SPHDomain::SPHDomain ()
     CamPos = 1.0,2.0,3.0;
     Time = 0.0;
     Gravity = 0.0,0.0,0.0;
-    Alpha = 0.5;
+    Alpha = 0.1;
 }
 
 
@@ -126,34 +126,7 @@ inline void SPHDomain::StartAcceleration (Vec3_t const & a)
 
 inline void SPHDomain::ComputeAcceleration (double dt)
 {
-
     for (size_t i=0; i<PInteractons.Size(); i++) PInteractons[i]->CalcForce(dt);
-    //for (size_t i=0; i<Particles.Size(); i++)
-    //{
-        //for (size_t j=0; j<Particles.Size(); j++)
-        //{
-            //if ((Particles[i]->IsFree)&&(i!=j))
-            //{
-                //double di = Particles[i]->Density;
-                //double dj = Particles[j]->Density;
-                //double d0 = Particles[j]->Density0;
-                //double h  = 2*ReducedValue(Particles[i]->h,Particles[j]->h);
-                //Vec3_t vij = Particles[j]->v - Particles[i]->v;
-                //Vec3_t rij = Particles[j]->x - Particles[i]->x;
-//
-                //Calculate the fictional viscosity
-                //double alphacij = 1.0;
-                //double beta = 1.0;
-                //double muij = h*dot(vij,rij)/(dot(rij,rij)+0.01*h*h);
-                //double piij;
-                //if (dot(vij,rij)<0) piij = 2*(-alphacij*muij+beta*muij*muij)/(di+dj);
-                //else                piij = 0.0;
-                //piij = -alphacij*muij;
-                //Particles[i]->a += d0*(Pressure(di)/(di*di)+Pressure(dj)/(dj*dj)+piij)*rij*GradSPHKernel(norm(rij),h)/norm(rij);
-                //Particles[i]-> dDensity += d0*dot(vij,rij)*GradSPHKernel(norm(rij),h)/norm(rij);
-            //}
-        //}
-    //}
 }
 
 inline void SPHDomain::Move (double dt)
@@ -205,24 +178,45 @@ inline void SPHDomain::WriteH5Part()
     H5PartSetNumParticles(FileID,Particles.Size());
 
 
-    double *x,*y,*z,*d;
+    double *x,*y,*z,*d,*P,*vx,*vy,*vz;
     x = new double [Particles.Size()];
     y = new double [Particles.Size()];
     z = new double [Particles.Size()];
+    vx = new double [Particles.Size()];
+    vy = new double [Particles.Size()];
+    vz = new double [Particles.Size()];
     d = new double [Particles.Size()];
+    P = new double [Particles.Size()];
 
     for (size_t i=0; i<Particles.Size(); i++)
     {
         x[i] = Particles[i]->x(0); 
         y[i] = Particles[i]->x(1); 
         z[i] = Particles[i]->x(2); 
+        vx[i] = Particles[i]->v(0); 
+        vy[i] = Particles[i]->v(1); 
+        vz[i] = Particles[i]->v(2); 
         d[i] = Particles[i]->Density; 
+        P[i] = Pressure(d[i]); 
     }
     
     H5PartWriteDataFloat64(FileID,"x_0",x);
     H5PartWriteDataFloat64(FileID,"x_1",y);
     H5PartWriteDataFloat64(FileID,"x_2",z);
-    H5PartWriteDataFloat64(FileID,"den",d);
+    H5PartWriteDataFloat64(FileID,"v_0",vx);
+    H5PartWriteDataFloat64(FileID,"v_1",vy);
+    H5PartWriteDataFloat64(FileID,"v_2",vz);
+    H5PartWriteDataFloat64(FileID,"Density",d);
+    H5PartWriteDataFloat64(FileID,"Pressure",P);
+
+    delete [] x; 
+    delete [] y; 
+    delete [] z; 
+    delete [] vx;
+    delete [] vy;
+    delete [] vz;
+    delete [] d; 
+    delete [] P; 
 }
 
 inline void SPHDomain::ResetInteractons()
