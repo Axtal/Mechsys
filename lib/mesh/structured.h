@@ -116,6 +116,7 @@ public:
     bool   BryIDs      (size_t i, size_t j, size_t k, Array<int> & BryIDs) const; ///< ID of boundary sides (edges or faces) of the block where i,j,k is located on
     int    GetVTag     (size_t i, size_t j, size_t k) const;                      ///< Get vertex tag
     void   AddArcCtr   (int Side, double x, double y, double R, double Tol=1.0e-8); ///< Add Arc constraint to nodes along side # Side
+    void   AddCylXCtr  (int Side, double y, double z, double R, double Tol=1.0e-8); ///< Constarint: cylinder parallel to x
     void   ApplyCtr    (Array<int> const & Sides, Vertex & V) const;                ///< Apply constraints to Vertex V which is belong to sides Sides
 
     // Data
@@ -186,6 +187,8 @@ public:
     void GenQRing  (bool O2=true, int Nx=2, int Ny=2, double r=1.0, double R=2.0,
                     size_t Nb=2, double Ax=1.0, bool NonLin=false,
                     char const * WeightsX=NULL);                                   ///< Generate a quarter of a ring
+    void GenQRing  (bool O2, int Nx, int Ny, int Nz, double r, double R, double t); ///< Generate a quarter of a 3D ring (t=thickness)
+    void GenQDisk  (bool O2, int Nx1, int Nx2, int Ny, double r, double R);         ///< Generate a quarter of a disk
     void ShapeFunc (double r, double s, double t);                                 ///< Calculate shape function. Return results on N
 
     // Data
@@ -381,14 +384,26 @@ inline int Block::GetVTag (size_t i, size_t j, size_t k) const
     return 0;
 }
 
-inline void Block::AddArcCtr (int Side, double x, double y, double r, double Tol)
+inline void Block::AddArcCtr (int Side, double xc, double yc, double R, double Tol)
 {
     SDPair data;
     data.Set ("type",1.0); // 1.0 = Arc
-    data.Set ("x",x);
-    data.Set ("y",y);
-    data.Set ("r",r);
-    data.Set ("tol",Tol);
+    data.Set ("xc", xc);
+    data.Set ("yc", yc);
+    data.Set ("R",  R);
+    data.Set ("Tol",Tol);
+    Side2Ctr[Side]   = data;
+    SideHasCtr[Side] = true;
+}
+
+inline void Block::AddCylXCtr (int Side, double yc, double zc, double R, double Tol)
+{
+    SDPair data;
+    data.Set ("type",2.0); // 2.0 = Cylinder parallel to x
+    data.Set ("xc", yc);
+    data.Set ("yc", zc);
+    data.Set ("R",  R);
+    data.Set ("Tol",Tol);
     Side2Ctr[Side]   = data;
     SideHasCtr[Side] = true;
 }
@@ -401,27 +416,38 @@ inline void Block::ApplyCtr (Array<int> const & Sides, Vertex & V) const
         if (SideHasCtr[side])
         {
             Side2Ctr_t::const_iterator it = Side2Ctr.find(side);
+            double *X, *Y;
             if (static_cast<int>(it->second("type"))==1) // arc
             {
-                double x   = V.C(0);
-                double y   = V.C(1);
-                double xc  = it->second("x");
-                double yc  = it->second("y");
-                double r   = it->second("r");
-                double tol = it->second("tol");
-                double F   = pow(x-xc,2.0) + pow(y-yc,2.0) - r*r;
-                if (fabs(F)>tol)
-                {
-                    double nx = 2.0*(x-xc);
-                    double ny = 2.0*(y-yc);
-                    double A  = nx*nx + ny*ny;
-                    double B  = 2.0*nx*(x-xc) + 2.0*ny*(y-yc);
-                    double D  = B*B - 4.0*A*F;
-                    if (D<0.0) throw new Fatal("Mesh::Block::ApplyCtr: Constraint failed with D=%g",D);
-                    double a = (F<0.0 ? (-B+sqrt(D))/(2.0*A) : (-B-sqrt(D))/(2.0*A));
-                    V.C(0) = x + a*nx;
-                    V.C(1) = y + a*ny;
-                }
+                X = &V.C(0);
+                Y = &V.C(1);
+            }
+            else if (static_cast<int>(it->second("type"))==2) // cylinder parallel to x
+            {
+                X = &V.C(1);
+                Y = &V.C(2);
+            }
+            double x   = (*X);
+            double y   = (*Y);
+            double xc  = it->second("xc");
+            double yc  = it->second("yc");
+            double R   = it->second("R");
+            double tol = it->second("Tol");
+            double F   = pow(x-xc,2.0) + pow(y-yc,2.0) - R*R;
+            if (fabs(F)>tol)
+            {
+                //std::cout << "F_{before} = " << F;
+                double nx = 2.0*(x-xc);
+                double ny = 2.0*(y-yc);
+                double A  = nx*nx + ny*ny;
+                double B  = 2.0*nx*(x-xc) + 2.0*ny*(y-yc);
+                double D  = B*B - 4.0*A*F;
+                if (D<0.0) throw new Fatal("Mesh::Block::ApplyCtr: Constraint failed with D=%g",D);
+                double a = (F<0.0 ? (-B+sqrt(D))/(2.0*A) : (-B-sqrt(D))/(2.0*A));
+                (*X) = x + a*nx;
+                (*Y) = y + a*ny;
+                F = pow((*X)-xc,2.0) + pow((*Y)-yc,2.0) - R*R;
+                //std::cout << "   F_{after} = " << F << std::endl;
             }
         }
     }
@@ -619,8 +645,9 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
                             v1->C            = c(0), c(1), (NDim==3?c(2):0.0);
                             vinfo[v1].BlkNum = b;
                             vinfo[v1].Dupl   = false;
-                            if (i==Blks[b].Nx) vinfo[v1].OnBry = Blks[b].BryIDs(i-1,j,k, vinfo[v1].BlkBryIDs);
-                            else               vinfo[v1].OnBry = Blks[b].BryIDs(i,  j,k, vinfo[v1].BlkBryIDs);
+                            size_t m = (Blks[b].Nx==1 ? 2 : i-1);
+                            if (i==Blks[b].Nx) vinfo[v1].OnBry = Blks[b].BryIDs(m,j,k, vinfo[v1].BlkBryIDs);
+                            else               vinfo[v1].OnBry = Blks[b].BryIDs(i,j,k, vinfo[v1].BlkBryIDs);
                             if (vinfo[v1].OnBry)
                             {
                                 verts_bry.Push (v1);
@@ -637,8 +664,9 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
                             v2->C            = c(0), c(1), (NDim==3?c(2):0.0);
                             vinfo[v2].BlkNum = b;
                             vinfo[v2].Dupl   = false;
-                            if (j==Blks[b].Ny) vinfo[v2].OnBry = Blks[b].BryIDs(i,j-1,k, vinfo[v2].BlkBryIDs);
-                            else               vinfo[v2].OnBry = Blks[b].BryIDs(i,j,  k, vinfo[v2].BlkBryIDs);
+                            size_t m = (Blks[b].Ny==1 ? 2 : j-1);
+                            if (j==Blks[b].Ny) vinfo[v2].OnBry = Blks[b].BryIDs(i,m,k, vinfo[v2].BlkBryIDs);
+                            else               vinfo[v2].OnBry = Blks[b].BryIDs(i,j,k, vinfo[v2].BlkBryIDs);
                             if (vinfo[v2].OnBry)
                             {
                                 verts_bry.Push (v2);
@@ -655,8 +683,9 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
                             v3->C            = c(0), c(1), (NDim==3?c(2):0.0);
                             vinfo[v3].BlkNum = b;
                             vinfo[v3].Dupl   = false;
-                            if (k==Blks[b].Nz) vinfo[v3].OnBry = Blks[b].BryIDs(i,j,k-1, vinfo[v3].BlkBryIDs);
-                            else               vinfo[v3].OnBry = Blks[b].BryIDs(i,j,k,   vinfo[v3].BlkBryIDs);
+                            size_t m = (Blks[b].Nz==1 ? 2 : k-1);
+                            if (k==Blks[b].Nz) vinfo[v3].OnBry = Blks[b].BryIDs(i,j,m, vinfo[v3].BlkBryIDs);
+                            else               vinfo[v3].OnBry = Blks[b].BryIDs(i,j,k, vinfo[v3].BlkBryIDs);
                             if (vinfo[v3].OnBry)
                             {
                                 verts_bry.Push (v3);
@@ -970,6 +999,115 @@ inline void Structured::GenQRing (bool O2, int Nx, int Ny, double r, double R, s
         blks[i].AddArcCtr (/*side*/1, /*x*/0.0, /*y*/0.0, R);
         blks[i].AddArcCtr (/*side*/3, /*x*/0.0, /*y*/0.0, r);
     }
+    NDim = 2;
+    Generate (blks,O2);
+}
+
+inline void Structured::GenQRing (bool O2, int Nx, int Ny, int Nz, double r, double R, double t)
+{
+    double m = r + (R-r)/2.0;
+    double a = r*cos(Util::PI/4.0);
+    double b = R*cos(Util::PI/4.0);
+    Array<Mesh::Block> blks(1);
+    blks[0].Set (3, -1, 20,
+                 0. , 0.0  , r   , 0.0 , //  0
+                 0. , t    , r   , 0.0 , //  1
+                 0. , t    , R   , 0.0 , //  2
+                 0. , 0.0  , R   , 0.0 , //  3
+
+                 0. , 0.0  , 0.0 , r   , //  4
+                 0. , t    , 0.0 , r   , //  5
+                 0. , t    , 0.0 , R   , //  6
+                 0. , 0.0  , 0.0 , R   , //  7
+
+                 0. , t/2. , r   , 0.0 , //  8
+                 0. , t    , m   , 0.0 , //  9
+                 0. , t/2. , R   , 0.0 , // 10
+                 0. , 0.0  , m   , 0.0 , // 11
+
+                 0. , t/2. , 0.0 , r   , // 12
+                 0. , t    , 0.0 , m   , // 13
+                 0. , t/2. , 0.0 , R   , // 14
+                 0. , 0.0  , 0.0 , m   , // 15
+
+                 0. , 0.0  , a   , a   , // 16
+                 0. , t    , a   , a   , // 17
+                 0. , t    , b   , b   , // 18
+                 0. , 0.0  , b   , b   , // 19
+
+                 -10.,-20.,-30.,-40.,-50.,-60.); // face tags
+
+    blks[0].SetNx (Nx);
+    blks[0].SetNy (Ny);
+    blks[0].SetNz (Nz);
+
+    blks[0].AddCylXCtr (2, 0.0, 0.0, r);
+    blks[0].AddCylXCtr (3, 0.0, 0.0, R);
+
+    NDim = 3;
+    Generate (blks, O2);
+}
+
+inline void Structured::GenQDisk (bool O2, int Nx1, int Nx2, int Ny, double r, double R)
+{
+    Array<Block> blks(3);
+    double m = r + (R-r)/2.0;
+    double n = r/2.0;
+    double a = r*cos(Util::PI/4.0);
+    double b = r*cos(Util::PI/8.0);
+    double c = r*sin(Util::PI/8.0);
+    double A = R*cos(Util::PI/4.0);
+    double B = R*cos(Util::PI/8.0);
+    double C = R*sin(Util::PI/8.0);
+    double d = m*cos(Util::PI/4.0);
+
+    blks[0].Set (2, -1, 8,
+                 0. , 0.0 , 0.0 , 
+                 0. , r   , 0.0 , 
+                 0. , a   , a   , 
+                 0. , 0.0 , r   , 
+                 0. , n   , 0.0 , 
+                 0. , b   , c   , 
+                 0. , c   , b   , 
+                 0. , 0.0 , n   , 
+                 -1., -11., -22., -3.);
+
+    blks[1].Set (2, -1, 8,
+                 0. , r   , 0.0 , 
+                 0. , R   , 0.0 , 
+                 0. , A   , A   , 
+                 0. , a   , a   , 
+                 0. , m   , 0.0 , 
+                 0. , B   , C   , 
+                 0. , d   , d   , 
+                 0. , b   , c   , 
+                 -1., -2., -33., -11.);
+
+    blks[2].Set (2, -1, 8,
+                 0. , a   , a   , 
+                 0. , A   , A   , 
+                 0. , 0.0 , R   , 
+                 0. , 0.0 , r   , 
+                 0. , d   , d   , 
+                 0. , C   , B   , 
+                 0. , 0.0 , m   , 
+                 0. , c   , b   , 
+                 -33., -2., -3., -22.);
+
+    blks[0].SetNx (Nx1);
+    blks[0].SetNy (Ny );
+    blks[1].SetNx (Nx2);
+    blks[1].SetNy (Ny );
+    blks[2].SetNx (Nx2);
+    blks[2].SetNy (Nx1);
+
+    blks[0].AddArcCtr (1, 0.0, 0.0, r);
+    blks[0].AddArcCtr (2, 0.0, 0.0, r);
+    blks[1].AddArcCtr (1, 0.0, 0.0, R);
+    blks[1].AddArcCtr (3, 0.0, 0.0, r);
+    blks[2].AddArcCtr (1, 0.0, 0.0, R);
+    blks[2].AddArcCtr (3, 0.0, 0.0, r);
+
     NDim = 2;
     Generate (blks,O2);
 }
