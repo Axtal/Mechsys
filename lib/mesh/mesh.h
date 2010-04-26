@@ -71,7 +71,7 @@ int    NVertsToEdge2D[][4/*edges at most*/][3/*verts per edge at most*/]=
 
 size_t MaxNVerts3D               = 20;
 size_t NVertsToNFaces3D[]        = {0,0,0,0, 4, 0,0,0, 6, 0, 4, 0,0,0,0,0,0,0,0,0, 6};
-size_t NVertsToNVertsPerFace3D[] = {0,0,0,0, 3, 0,0,0, 4, 0, 6, 0,0,0,0,0,0,0,0,0, 8};
+size_t NVertsToNVertsPerFace3D[] = {0,0,0,0, 3, 0,0,0, 4, 0, 3, 0,0,0,0,0,0,0,0,0, 4}; // disregarding O2 nodes
 int    NVertsToFace3D[][6/*faces at most*/][4/*verts per face at most*/]=
 {
     NOFACES,NOFACES,NOFACES,NOFACES,                                         //  0,1,2,3 verts
@@ -734,7 +734,7 @@ inline void Generic::Erase ()
 
 inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 {
-    if (IsShell) throw new Fatal("Generic::WriteVTU: This mehtod is not ready for Shell meshes yet");
+    if (IsShell) throw new Fatal("Generic::WriteVTU: This method is not ready for Shell meshes yet");
 
     // Vol=0, Surf=1, Both=2
 
