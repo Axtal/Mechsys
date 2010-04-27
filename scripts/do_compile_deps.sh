@@ -52,6 +52,7 @@ TRIANGLE=triangle1.6
 TETGEN=tetgen1.4.3
 VORO=voro++0.3.1
 HDF5=hdf5-1.8.4-patch1
+H5PART=H5Part-1.6.0
 MTL4=mtl4
 
 test -d $HOME/pkg || mkdir $HOME/pkg
@@ -59,7 +60,10 @@ test -d $HOME/pkg || mkdir $HOME/pkg
 download_and_compile() {
     IS_SVN=0
     DO_PATCH=1
+    DO_CONF=0
     DO_MAKE=1
+    CONF_PRMS=""
+    DO_LNS=0 # create symbolic links
     case "$1" in
         triangle)
             PKG=$TRIANGLE
@@ -78,6 +82,14 @@ download_and_compile() {
             PKG=$HDF5
             LOCATION=http://www.hdfgroup.org/ftp/HDF5/current/src/$HDF5.tar.gz
             DO_PATCH=0
+            DO_LNS=1
+            ;;
+        h5part)
+            PKG=$H5PART
+            LOCATION=https://codeforge.lbl.gov/frs/download.php/149/$H5PART.tar.gz
+            DO_PATCH=0
+            DO_CONF=1
+            CONF_PRMS="--with-hdf5path=$HOME/pkg/$HDF5/"
             ;;
         mtl4)
             PKG=$MTL4
@@ -130,9 +142,18 @@ download_and_compile() {
         echo "        . . . patching . . ."
         sh ~/mechsys/patches/${1}/do_patch.sh
     fi
+    if [ "$DO_CONF" -eq 1 ]; then
+        echo "        . . . configuring . . ."
+        ./configure $CONF_PRMS 2> /dev/null
+    fi
     if [ "$DO_MAKE" -eq 1 ]; then
         echo "        . . . compiling . . ."
         make > /dev/null 2> /dev/null
+    fi
+    if [ "$DO_LNS" -eq 1 ]; then
+        echo "        . . . symbolic links . . ."
+        ln -s src/ include
+        ln -s src/.libs/ lib
     fi
 }
 
@@ -140,6 +161,7 @@ download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
 download_and_compile hdf5
+download_and_compile h5part
 download_and_compile mtl4
 
 echo

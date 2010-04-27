@@ -28,8 +28,8 @@
 #include <ctime>    // for std::clock
 
 // Hdf5
-#include <src/hdf5.h>
-#include <hl/src/hdf5_hl.h>
+#include <hdf5.h>
+#include <hdf5_hl.h>
 
 // Voro++
 #include "src/voro++.cc"
