@@ -18,7 +18,8 @@
 
 SET(TESTS
   owen_hinton_01
-  owen_hinton_02)
+  owen_hinton_02
+  owen_salonen)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
