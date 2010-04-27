@@ -261,10 +261,10 @@ inline Unstructured::Unstructured (int NDim)
 inline void Unstructured::Set (size_t NPoints, size_t NSegmentsOrFacets, size_t NRegions, size_t NHoles)
 {
 
-    std::cout << "NRegions = " << NRegions << std::endl;
-    std::cout << "NPoints = " << NPoints << std::endl;
-    std::cout << "NFacets = " << NSegmentsOrFacets << std::endl;
-    std::cout << "NHoles = " << NHoles << std::endl;
+    //std::cout << "NRegions = " << NRegions << std::endl;
+    //std::cout << "NPoints = " << NPoints << std::endl;
+    //std::cout << "NFacets = " << NSegmentsOrFacets << std::endl;
+    //std::cout << "NHoles = " << NHoles << std::endl;
 
     // check
     if (NPoints<3)           throw new Fatal("Mesh::Unstructured::Set: The number of points must be greater than 2. (%d is invalid)",NPoints);

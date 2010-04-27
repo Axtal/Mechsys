@@ -30,7 +30,9 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-    // 2D: structured
+    //////////////////////////////////////// 2D: structured //////////////////////////////////////////////////
+    
+    // 1) mesh01_quad
     {
         Array<Mesh::Block> blks(2);
         blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
@@ -53,7 +55,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_quad.vtu> generated\n";
     }
 
-    // 2D: structured
+    // 2) mesh01_quad_ring
     {
         Mesh::Structured mesh(/*NDim*/2);
         mesh.GenQRing (/*O2*/true,/*Nx*/4,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/6);
@@ -62,7 +64,39 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_quad_ring.vtu> generated\n";
     }
 
-    // 3D: structured
+    // 3) mesh01_qring2d
+    {
+        bool   o2 = true;
+        double r  = 2.5;
+        double R  = 3.5;
+        int    nx = 2;
+        int    ny = 20;
+        int    nb = 1;
+        double ax = 0.0;
+        bool   nl = false;
+        Mesh::Structured mesh(2);
+        mesh.GenQRing (o2,nx,ny,r,R,nb,ax,nl);
+        mesh.WriteMPY ("mesh01_qring2d");
+        cout << " File <mesh01_qring2d.mpy> generated\n";
+    }
+
+    // 4) mesh01_qdisk2d
+    {
+        bool   o2  = true;
+        double r   = 2.5;
+        double R   = 3.5;
+        int    nx1 = 10;
+        int    nx2 = 5;
+        int    ny  = 10;
+        Mesh::Structured mesh(2);
+        mesh.GenQDisk (o2, nx1, nx2, ny, r, R);
+        mesh.WriteMPY ("mesh01_qdisk2d", false, false);
+        cout << " File <mesh01_qdisk2d.mpy> generated\n";
+    }
+
+    //////////////////////////////////////// 3D: structured //////////////////////////////////////////////////
+    
+    // 5) mesh01_hex_box
     {
         Mesh::Structured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true);
@@ -70,7 +104,24 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_hex_box.vtu> generated\n";
     }
 
-    // 2D: unstructured
+    // 6) mesh01_qring3d
+    {
+        bool   o2 = true;
+        double r  = 2.5;
+        double R  = 3.5;
+        double t  = 0.5;
+        int    nx = 2;
+        int    ny = 2;
+        int    nz = 9;
+        Mesh::Structured mesh(3);
+        mesh.GenQRing (o2, nx, ny, nz, r, R, t);
+        mesh.WriteVTU ("mesh01_qring3d");
+        cout << " File <mesh01_qring3d.vtu> generated\n";
+    }
+
+    //////////////////////////////////////// 2D: unstructured ////////////////////////////////////////////////
+    
+    // 7) mesh01_tri
     {
         /*           -20
               -4@-----------@-3
@@ -108,7 +159,9 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_tri.vtu> generated\n";
     }
 
-    // 3D: unstructured
+    //////////////////////////////////////// 3D: unstructured ////////////////////////////////////////////////
+    
+    // 8) mesh01_1tet
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.Set    (4,4,1,0);
@@ -126,7 +179,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_1tet.vtu> generated\n";
     }
 
-    // 3D: unstructured
+    // 9) mesh01_tet_box
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true,/*V*/0.1);
@@ -134,7 +187,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_tet_box.vtu> generated\n";
     }
 
-    // 3D: unstructured
+    // 10) mesh01_tet_hole
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.Set    (16, 12, 1, 1);                      // 16 points, 12 facets, 1 region, 1 hole
