@@ -54,7 +54,7 @@ public:
     virtual void   InitIvs   (SDPair const & Ini, State * Sta)                      const;
     virtual void   Gradients (EquilibState const * Sta, Vec_t & V, Vec_t & Y)       const;
     virtual void   FlowRule  (EquilibState const * Sta, Vec_t const & V, Vec_t & W) const { W = V; }
-    virtual void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const {}
+    virtual void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const;
     virtual double YieldFunc (EquilibState const * Sta)                             const;
     virtual double FailCrit  (EquilibState const * Sta) const { return YieldFunc (Sta); }
     virtual double CalcE     (EquilibState const * Sta) const { return E; }
@@ -63,6 +63,7 @@ public:
     double  E;   ///< Young
     double  nu;  ///< Poisson
     double  kY;  ///< Coefficient for yielding
+    double  Hb;  ///< Hardening coefficient H_bar
     double  sphi;
     double  cbar;
     FCrit_t FC;  ///< Failure criterion: VM:Von-Mises
@@ -77,6 +78,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
 {
     E  = (Prms.HasKey("E") ? Prms("E") : 0.0);
     nu = Prms("nu");
+    Hb = 0.0;
     if (!Derived)
     {
         if (Prms.HasKey("fc"))
@@ -99,13 +101,22 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
             sphi = sin(Prms("phi")*Util::PI/180.0);
             cbar = sqrt(3.0)*Prms("c")/tan(Prms("phi")*Util::PI/180.0);
         }
+        if (Prms.HasKey("Hp")) Hb = sqrt(2.0/3.0)*Prms("Hp"); // H_prime
     }
 }
 
 inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
 {
+    // initialize state
     EquilibState * sta = static_cast<EquilibState*>(Sta);
-    sta->Init (Ini);
+    sta->Init (Ini, /*NIvs*/1);
+
+    // internal variables: size of YS
+    sta->Ivs(0) = kY;
+
+    // check initial yield function
+    double f = YieldFunc (sta);
+    if (f>1.0e-8) throw new Fatal("ElastoPlastic:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
 }
 
 inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<double> * h, Vec_t * d) const
@@ -318,6 +329,16 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta, Vec_t & V, Vec_t
 
     // gradient w.r.t sig
     V = dfdL(0)*P0 + dfdL(1)*P1 + dfdL(2)*P2;
+
+    // dFdz0
+    Y.change_dim (1);
+    Y(0) = -1.0;
+}
+
+inline void ElastoPlastic::Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const
+{
+    H.change_dim(1);
+    H(0) = Hb;
 }
 
 inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
@@ -326,7 +347,7 @@ inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
     OctInvs (Sta->Sig, p, q, t);
     if (FC==VM_t)
     {
-        f = q - kY;
+        f = q - Sta->Ivs(0);
     }
     else if (FC==DP_t)
     {
