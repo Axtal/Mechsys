@@ -677,6 +677,10 @@ inline double Calc_ev    (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);   
 inline double Calc_qcam  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
 inline double Calc_ed    (Vec_t const & Eps) { double m = (size(Eps)>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
 
+// Octahedral invariants
+inline double Calc_poct  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/sqrt(3.0); }
+inline double Calc_qoct  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(3.0); }
+
 /** Deviator of Sig. */
 inline void Dev (Vec_t const & Sig, Vec_t & DevSig)
 {
@@ -734,17 +738,12 @@ inline void EigenProj (Vec_t const & Sig, Vec3_t & L, Vec_t & P0, Vec_t & P1, Ve
 inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double qTol=1.0e-8)
 {
     size_t ncp = size(Sig);
-    Vec_t I(ncp), s(ncp);
-    set_to_zero (I);
-    set_to_zero (s);
-    I(0) = 1.0;
-    I(1) = 1.0;
-    I(2) = 1.0;
+    Vec_t s;
+    Dev (Sig, s);
     double m = (ncp>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0);
     p = -(Sig(0)+Sig(1)+Sig(2))/Util::SQ3;
     q = sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(3.0);
     t = 0.0;
-    s = Sig - ((Sig(0)+Sig(1)+Sig(2))/3.0)*I;
     if (q>qTol)
     {
         double det_s = s(0)*s(1)*s(2) - s(2)*s(3)*s(3)/2.0; // TODO: extend to 3D

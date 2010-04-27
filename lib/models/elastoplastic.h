@@ -56,17 +56,16 @@ public:
     virtual void   FlowRule  (EquilibState const * Sta, Vec_t const & V, Vec_t & W) const { W = V; }
     virtual void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const;
     virtual double YieldFunc (EquilibState const * Sta)                             const;
-    virtual double FailCrit  (EquilibState const * Sta) const { return YieldFunc (Sta); }
     virtual double CalcE     (EquilibState const * Sta) const { return E; }
 
     // Data
-    double  E;   ///< Young
-    double  nu;  ///< Poisson
-    double  kY;  ///< Coefficient for yielding
-    double  Hb;  ///< Hardening coefficient H_bar
-    double  sphi;
-    double  cbar;
-    FCrit_t FC;  ///< Failure criterion: VM:Von-Mises
+    double  E;    ///< Young
+    double  nu;   ///< Poisson
+    FCrit_t FC;   ///< Failure criterion: VM:Von-Mises
+    double  kY;   ///< Coefficient for yielding
+    double  Hb;   ///< Hardening coefficient H_bar
+    double  sphi; ///< Sin(phi) friction angle
+    double  cbar; ///< Cohesion_bar
 };
 
 
@@ -74,13 +73,15 @@ public:
 
 
 inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived)
-    : Model (NDim,Prms,"ElastoPlastic"), FC(VM_t)
+    : Model (NDim,Prms,"ElastoPlastic")
 {
-    E  = (Prms.HasKey("E") ? Prms("E") : 0.0);
-    nu = Prms("nu");
-    Hb = 0.0;
     if (!Derived)
     {
+        E  = Prms("E");
+        nu = Prms("nu");
+        FC = VM_t;
+        kY = 0.0;
+        Hb = 0.0;
         if (Prms.HasKey("fc"))
         {
             String fc;
@@ -101,7 +102,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
             sphi = sin(Prms("phi")*Util::PI/180.0);
             cbar = sqrt(3.0)*Prms("c")/tan(Prms("phi")*Util::PI/180.0);
         }
-        if (Prms.HasKey("Hp")) Hb = sqrt(2.0/3.0)*Prms("Hp"); // H_prime
+        if (Prms.HasKey("Hp")) Hb = (2.0/3.0)*Prms("Hp"); // H_prime
     }
 }
 
@@ -112,7 +113,7 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (Ini, /*NIvs*/1);
 
     // internal variables: size of YS
-    sta->Ivs(0) = kY;
+    sta->Ivs(0) = kY; // TODO: write this expression for DP and MC
 
     // check initial yield function
     double f = YieldFunc (sta);
@@ -135,7 +136,6 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<double
         Gradients (sta, V, Y);
         EPStiff   (sta, De, V, Y, D, h, d);
         //cout << "Dep =\n" << PrintMatrix(D);
-
     }
     else
     {
@@ -282,29 +282,33 @@ inline void ElastoPlastic::EPStiff (EquilibState const * Sta, Mat_t const & De, 
 
 inline void ElastoPlastic::Gradients (EquilibState const * Sta, Vec_t & V, Vec_t & Y) const
 {
+    /*
     // eigenvalues and eigenprojectors
     Vec3_t L;
     Vec_t  P0,P1,P2;
     EigenProj (Sta->Sig, L, P0, P1, P2);
 
-    // derivatives w.r.t. (oct) invariants
+    // oct invariants and its derivatives w.r.t principal values (L)
+    double p,q,t;
+    Vec3_t dpdL,dqdL,dtdL;
+    OctInvs (L, p, q, t, dpdL, dqdL, dtdL);
+
+    // derivatives of f w.r.t. oct invariants
     double dfdp=0., dfdq=0., dfdt=0.;
+    Y.change_dim (1); // dfdz0
     if (FC==VM_t)
     {
         dfdp = 0.0;
         dfdq = 1.0;
+        Y(0) = -1.0;
     }
     else if (FC==DP_t)
     {
-        /*
-        dfdp = -self.kdp
-        dfdq = 1.0
-        */
+        //dfdp = -self.kdp
+        //dfdq = 1.0
     }
     else if (FC==MC_t)
     {
-        double p, q, t;
-        OctInvs (Sta->Sig, p, q, t);
         double th = asin(t)/3.0;
         double g  = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th));
         dfdp = -g;
@@ -318,21 +322,23 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta, Vec_t & V, Vec_t
         }
     }
 
-    // derivatives of (oct) invariants w.r.t principal values (L)
-    double p,q,t;
-    Vec3_t dpdL,dqdL,dtdL;
-    OctInvs (L, p, q, t, dpdL, dqdL, dtdL);
-
     // gradient w.r.t principal values (L)
     Vec3_t dfdL;
     dfdL = dfdp*dpdL + dfdq*dqdL + dfdt*dtdL;
 
     // gradient w.r.t sig
     V = dfdL(0)*P0 + dfdL(1)*P1 + dfdL(2)*P2;
+    */
 
-    // dFdz0
-    Y.change_dim (1);
-    Y(0) = -1.0;
+    if (FC==VM_t)
+    {
+        double qoct = Calc_qoct (Sta->Sig);
+        Vec_t s;
+        Dev (Sta->Sig, s);
+        V = s/qoct;
+        Y.change_dim (1); // dfdz0
+        Y(0) = -1.0;
+    }
 }
 
 inline void ElastoPlastic::Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const
@@ -343,23 +349,24 @@ inline void ElastoPlastic::Hardening (EquilibState const * Sta, Vec_t const & W,
 
 inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
 {
-    double p, q, t, f;
-    OctInvs (Sta->Sig, p, q, t);
     if (FC==VM_t)
     {
-        f = q - Sta->Ivs(0);
+        double qoct = Calc_qoct (Sta->Sig);
+        return qoct - Sta->Ivs(0);
     }
     else if (FC==DP_t)
     {
-        //f  = q - (p + self.cbar)*self.kdp
+        // q - (p + self.cbar)*self.kdp
     }
     else if (FC==MC_t)
     {
+        double p, q, t;
+        OctInvs (Sta->Sig, p, q, t);
         double th = asin(t)/3.0;
         double g  = sqrt(2.0)*sphi/(sqrt(3.0)*cos(th)-sphi*sin(th));
-        f = q - (p + cbar)*g;
+        return q - (p + cbar)*g;
     }
-    return f;
+    return 0;
 }
 
 inline void ElastoPlastic::CorrectDrift (State * Sta) const
