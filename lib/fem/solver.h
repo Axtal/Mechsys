@@ -111,6 +111,7 @@ public:
     double    mMin;    ///< ME:
     double    mMax;    ///< ME:
     size_t    MaxSS;   ///< ME:
+    bool      SSOut;   ///< SubSteps ouput in ME ?
     bool      CteTg;   ///< Constant tangent matrices (linear problems) => K will be calculated once
     bool      ModNR;   ///< Modified Newton-Rhapson ?
     size_t    MaxIt;   ///< Max iterations (for Newton-Rhapson)
@@ -161,6 +162,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       mMin    (0.1),
       mMax    (10.0),
       MaxSS   (2000),
+      SSOut   (true),
       CteTg   (false),
       ModNR   (false),
       MaxIt   (20),
@@ -240,7 +242,8 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
         // output
         IdxOut++;
         std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m    " << str;
-        Dom.OutResults (Time, F_int);
+        if (Scheme!=ME_t) Dom.OutResults (Time, F_int);
+        else if (!SSOut)  Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
         // write VTU
@@ -855,6 +858,7 @@ inline void Solver::_ME_update (double tf)
             _cor_resid  (dU_me);
             if (m>mMax) m = mMax;
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+            if (SSOut) Dom.OutResults (Time, F_int);
         }
         else if (m<mMin) m = mMin;
 
