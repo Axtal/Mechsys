@@ -172,106 +172,162 @@ inline void Domain::SetBCs (Dict const & BCs)
     // clear previous BCs
     ClrBCs ();
 
-    // map tag/key => keys set
-    std::map<int,bool> keys_set;
-    for (size_t i=0; i<BCs.Keys.Size(); ++i) keys_set[BCs.Keys[i]] = false;
-
-    // elements
-    for (size_t i=0; i<Msh.TgdCells.Size(); ++i)
+    // set maps with bry info
+    typedef std::pair<Element*,int> eleside_t;  // (element,side) pair
+    std::map<eleside_t,int> eleside2tag_to_ubc; // map: ele/side ==> tag to U bry cond
+    std::map<eleside_t,int> eleside2tag_to_fbc; // map: ele/side ==> tag to F bry cond
+    std::map<Node*,int>     nod2tag_to_ubc;     // map: node ==> tag to U bry cond
+    std::map<Node*,int>     nod2tag_to_fbc;     // map: node ==> tag to F bry cond
+    for (size_t i=0; i<BCs.Keys.Size(); ++i)
     {
-        Mesh::BryTag_t const & eftags = Msh.TgdCells[i]->BryTags;
-        for (Mesh::BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
+        int bc_tag = BCs.Keys[i];
+        SDPair const & bcs = BCs(bc_tag);
+        bool found = false;
+
+        // find elements with edges set with this bc_tag
+        for (size_t j=0; j<Msh.TgdCells.Size(); ++j)
         {
-            int idx_edge_or_face = p->first;
-            int tag              = p->second;
-            if (tag<0)
+            size_t eid = Msh.TgdCells[j]->ID;
+            if (Eles[eid]->Active)
             {
-                size_t eid = Msh.TgdCells[i]->ID;
-                if (BCs.HasKey(tag) && Eles[eid]->Active)
+                Mesh::BryTag_t const & eftags = Msh.TgdCells[j]->BryTags;
+                for (Mesh::BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
                 {
-                    pCalcM calcm = &Multiplier;
-                    if (BCs(tag).HasKey("mfunc")) // callback specified
+                    int idx_side = p->first;
+                    int side_tag = p->second;
+                    if (side_tag==bc_tag) // found
                     {
-                        MDatabase_t::const_iterator p = MFuncs.find(tag);
-                        if (p!=MFuncs.end()) calcm = p->second;
-                        else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
+                        found = true;
+                        bool is_U_type = false;
+                        for (size_t k=0; k<bcs.Keys.Size(); ++k)
+                        {
+                            if (Eles[eid]->UKeys.Find(bcs.Keys[k])>=0)
+                            {
+                                is_U_type = true;
+                                break;
+                            }
+                        }
+                        eleside_t es(Eles[eid],idx_side);
+                        if (is_U_type) eleside2tag_to_ubc[es] = bc_tag;
+                        else           eleside2tag_to_fbc[es] = bc_tag;
                     }
-                    Eles[eid]->SetBCs (idx_edge_or_face, BCs(tag), pF, pU, calcm);
-                    keys_set[tag] = true;
                 }
             }
         }
-    }
 
-    // nodes
-    for (size_t i=0; i<Msh.TgdVerts.Size(); ++i)
-    {
-        int tag = Msh.TgdVerts[i]->Tag;
-        if (tag<0)
+        // find nodes with tags equal to this bc_tag
+        for (size_t j=0; j<Msh.TgdVerts.Size(); ++j)
         {
-            size_t nid = Msh.TgdVerts[i]->ID;
-            if (BCs.HasKey(tag) && Nods[nid]->NShares>0)
+            size_t nid = Msh.TgdVerts[j]->ID;
+            if (Nods[nid]->NShares>0) // active
             {
-                SDPair const & bcs = BCs(tag);
-                pCalcM calcm = &Multiplier;
-                if (bcs.HasKey("mfunc")) // callback specified
+                if (Msh.TgdVerts[j]->Tag==bc_tag) // found
                 {
-                    MDatabase_t::const_iterator p = MFuncs.find(tag);
-                    if (p!=MFuncs.end()) calcm = p->second;
-                    else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
-                }
-                if (bcs.HasKey("inclsupport")) // inclined support specified
-                {
-                    if (NDim!=2) throw new Fatal("Domain::SetBCs: Inclined support is only implemented for 2D problems so far");
-                    InclSupport[Nods[nid]] = bcs("alpha");
-                }
-                else
-                {
-                    for (StrDbl_t::const_iterator p=bcs.begin(); p!=bcs.end(); ++p)
+                    found = true;
+                    bool is_U_type = false;
+                    for (size_t k=0; k<bcs.Keys.Size(); ++k)
                     {
-                        if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]].first[Nods[nid]->UMap(p->first)]  = p->second;
-                        else if (Nods[nid]->FMap.HasKey(p->first))
+                        if (Nods[nid]->UMap.HasKey(bcs.Keys[k]) || (bcs.Keys[k]=="inclsupport"))
                         {
-                            pF[Nods[nid]].first[Nods[nid]->FMap(p->first)] += p->second;
-                            pF[Nods[nid]].second = calcm;
+                            is_U_type = true;
+                            break;
                         }
                     }
+                    if (is_U_type) nod2tag_to_ubc[Nods[nid]] = bc_tag;
+                    else           nod2tag_to_fbc[Nods[nid]] = bc_tag;
                 }
-                keys_set[tag] = true;
             }
+        }
+
+        if (!found) 
+        {
+            // find elements with tags equal to this bc_tag. Special cases: qn of beams, s (source term), cbx (cetrifugal body force), ...
+            for (size_t j=0; j<Msh.Cells.Size(); ++j)
+            {
+                size_t eid = Msh.Cells[j]->ID;
+                if (Eles[eid]->Active)
+                {
+                    if (Msh.Cells[j]->Tag==bc_tag) // found
+                    {
+                        found = true;
+                        int idx_side = 0; // irrelevant
+                        eleside_t es(Eles[eid],idx_side);
+                        eleside2tag_to_fbc[es] = bc_tag;
+                    }
+                }
+            }
+            if (!found) throw new Fatal("FEM::Domain::SetBCs: Could not find any edge/face of element or node (or line element) with boundary Tag=%d",bc_tag);
         }
     }
 
-    // check if all keys were set
-    for (std::map<int,bool>::const_iterator p=keys_set.begin(); p!=keys_set.end(); ++p)
+    // set F bcs at sides (edges/faces) of elements (or at the element itself => Line elements/beams)
+    for (std::map<eleside_t,int>::iterator p=eleside2tag_to_fbc.begin(); p!=eleside2tag_to_fbc.end(); ++p)
     {
-        if (p->second==false)
+        Element      * ele      = p->first.first;
+        int            idx_side = p->first.second;
+        int            bc_tag   = p->second;
+        SDPair const & bcs      = BCs(bc_tag);
+        pCalcM         calcm    = &Multiplier;
+
+        if (bcs.HasKey("mfunc")) // callback specified
         {
-            // try elements (property) tags => Beams for example
-            bool found = false;
-            for (size_t i=0; i<Msh.Cells.Size(); ++i)
-            {
-                size_t eid = Msh.Cells[i]->ID;
-                int    tag = p->first;
-                if (Msh.Cells[i]->Tag==tag)
-                {
-                    pCalcM calcm = &Multiplier;
-                    if (BCs(tag).HasKey("mfunc")) // callback specified
-                    {
-                        MDatabase_t::const_iterator p = MFuncs.find(tag);
-                        if (p!=MFuncs.end()) calcm = p->second;
-                        else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
-                    }
-                    Eles[eid]->SetBCs (/*ignored*/0, BCs(tag), pF, pU, calcm);
-                    found = true;
-                }
-            }
-            if (!found) 
-            {
-                std::ostringstream oss;
-                oss << BCs(p->first);
-                throw new Fatal("Domain::SetBCs: Keys=%s of BCs dictionary were not set. Probably neither Verts or Cells have tag=%d",oss.str().c_str(),p->first);
-            }
+            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
+            if (q!=MFuncs.end()) calcm = q->second;
+            else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
+        }
+
+        ele->SetBCs (idx_side, bcs, pF, pU, calcm);
+    }
+
+    // set F bcs at nodes
+    for (std::map<Node*,int>::iterator p=nod2tag_to_fbc.begin(); p!=nod2tag_to_fbc.end(); ++p)
+    {
+        Node         * nod     = p->first;
+        int            bc_tag  = p->second;
+        SDPair const & bcs     = BCs(bc_tag);
+        pCalcM         calcm   = &Multiplier;
+
+        if (bcs.HasKey("mfunc")) // callback specified
+        {
+            MDatabase_t::const_iterator q = MFuncs.find(bc_tag);
+            if (q!=MFuncs.end()) calcm = q->second;
+            else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
+        }
+
+        for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
+        {
+            pF[nod].first[nod->FMap(q->first)] += q->second;
+            pF[nod].second = calcm;
+        }
+    }
+
+    // set U bcs at sides (edges/faces) of elements
+    for (std::map<eleside_t,int>::iterator p=eleside2tag_to_ubc.begin(); p!=eleside2tag_to_ubc.end(); ++p)
+    {
+        Element      * ele      = p->first.first;
+        int            idx_side = p->first.second;
+        int            bc_tag   = p->second;
+        SDPair const & bcs      = BCs(bc_tag);
+
+        ele->SetBCs (idx_side, bcs, pF, pU, NULL);
+    }
+
+    // set U bcs at nodes
+    for (std::map<Node*,int>::iterator p=nod2tag_to_ubc.begin(); p!=nod2tag_to_ubc.end(); ++p)
+    {
+        Node         * nod     = p->first;
+        int            bc_tag  = p->second;
+        SDPair const & bcs     = BCs(bc_tag);
+
+        if (bcs.HasKey("inclsupport"))
+        {
+            if (NDim!=2) throw new Fatal("FEM::Domain::SetBCs: Inclined support is not implemented for 3D problems yet");
+            InclSupport[nod] = bcs("alpha");
+        }
+        else
+        {
+            for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
+                pU[nod].first[nod->UMap(q->first)] = q->second;
         }
     }
 }
