@@ -185,7 +185,8 @@ public:
 
     // Other methods
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
-    void GenGroundSG (size_t Nx, size_t Ny, double Dx=1.0, double Dy=1.0);                                                  ///< Smith-Griffiths' ground
+    void GenGroundSG (size_t Nx, size_t Ny, double Dx=1.0, double Dy=1.0);                    ///< Smith-Griffiths' ground
+    void GenSector   (size_t Nr, size_t Nth, double r, double R, double ThetaRad);            ///< Generate a Circular sector
 
     // Data
     int            NDim;      ///< Space dimension
@@ -1065,6 +1066,96 @@ inline void Generic::GenGroundSG (size_t Nx, size_t Ny, double Dx, double Dy)
     for (size_t i=0; i<Ny; ++i) Y[i] = -static_cast<double>(i)*Dy;
     Y[0] = 0.0;
     GenGroundSG (X, Y);
+}
+
+inline void Generic::GenSector (size_t Nr, size_t Nth, double r, double R, double Theta)
+{
+    // check
+    if (Nr<2)    throw new Fatal("Mesh::Generic::GenSector: Nr (number of lines/columns for each radii) must be greater than or equal to 2");
+    if (Nth<2)   throw new Fatal("Mesh::Generic::GenSector: Nth (number of lines/rows for each theta) must be greater than or equal to 2");
+    if (NDim!=2) throw new Fatal("Mesh::Generic::GenSector: This method is only available for 2D yet");
+
+    // constants
+    size_t nc  = (Nr-1)*(Nth-1);                   // number of cells
+    size_t nv  = Nr*Nth + Nr*(Nth-1) + (Nr-1)*Nth; // number of vertices
+    double dr  = (R-r)/(Nr-1);                     // delta radius
+    double dth = Theta/(Nth-1);                    // delta theta
+
+    // set size
+    SetSize (nv, nc);
+
+    // generate mesh
+    size_t idx_vert = 0;
+    size_t idx_cell = 0;
+    for (size_t i=0; i<Nr-1; ++i)
+    {
+        double radius = r+i*dr;
+
+        // vertices: first column
+        if (i==0)
+        {
+            for (size_t j=0; j<Nth; ++j)
+            {
+                double th = Theta-j*dth;
+                double x  = radius*cos(th);
+                double y  = radius*sin(th);
+                SetVert (idx_vert, 0, x, y);
+                idx_vert++;
+                if (j!=Nth-1) // intermediate nodes
+                {
+                    th -= dth/2.0;
+                    x   = radius*cos(th);
+                    y   = radius*sin(th);
+                    SetVert (idx_vert, 0, x, y);
+                    idx_vert++;
+                }
+            }
+        }
+
+        // vertices: middle column
+        radius += dr/2.0;
+        for (size_t j=0; j<Nth; ++j)
+        {
+            double th = Theta-j*dth;
+            double x  = radius*cos(th);
+            double y  = radius*sin(th);
+            SetVert (idx_vert, 0, x, y);
+            idx_vert++;
+        }
+
+        // vertices: last column
+        radius += dr/2.0;
+        for (size_t j=0; j<Nth; ++j)
+        {
+            double th = Theta-j*dth;
+            double x  = radius*cos(th);
+            double y  = radius*sin(th);
+            SetVert (idx_vert, 0, x, y);
+            idx_vert++;
+            if (j!=Nth-1)
+            {
+                th -= dth/2.0;
+                x   = radius*cos(th);
+                y   = radius*sin(th);
+                SetVert (idx_vert, 0, x, y);
+                idx_vert++;
+            }
+        }
+
+        // set cells
+        for (size_t j=0; j<Nth-1; ++j)
+        {
+            int a = (3*Nth-1)*i + 2*j;
+            int b = (3*Nth-1)*i + (2*Nth-1) + j;
+            int c = a + 3*Nth - 1;
+            SetCell (idx_cell, -1, Array<int>(a+2, c+2, c, a,  b+1, c+1, b, a+1));
+            if (i==0)     SetBryTag (idx_cell, 3, -10);
+            if (i==Nr-2)  SetBryTag (idx_cell, 1, -20);
+            if (j==Nth-2) SetBryTag (idx_cell, 0, -30);
+            if (j==0)     SetBryTag (idx_cell, 2, -40);
+            idx_cell++;
+        }
+    }
 }
 
 #ifdef USE_BOOST_PYTHON
