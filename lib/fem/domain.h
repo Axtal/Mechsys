@@ -39,6 +39,8 @@
 namespace FEM
 {
 
+typedef std::map<Node*,double> InclSupport_t; ///< Inclined support type. Maps Node ==> alpha
+
 inline double Multiplier (double t) { return 1.0; }
 
 class Domain
@@ -90,6 +92,8 @@ public:
     NodBCs_t              pU;      ///< Nodes with prescribed U
     NodBCs_t              pF;      ///< Nodes with prescribed F
     MDatabase_t           MFuncs;  ///< Database of pointers to M functions
+    Array<String>         DisplKeys;   ///< Displacement keys
+    InclSupport_t         InclSupport; ///< Inclined support
 
 #ifdef USE_BOOST_PYTHON
     void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
@@ -146,6 +150,12 @@ inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
+
+    // displacement keys
+    DisplKeys.Resize (NDim);
+    DisplKeys[0] = "ux";
+    DisplKeys[1] = "uy";  if (NDim==3)
+    DisplKeys[2] = "uz";
 }
 
 inline Domain::~Domain()
@@ -202,21 +212,29 @@ inline void Domain::SetBCs (Dict const & BCs)
             size_t nid = Msh.TgdVerts[i]->ID;
             if (BCs.HasKey(tag) && Nods[nid]->NShares>0)
             {
+                SDPair const & bcs = BCs(tag);
                 pCalcM calcm = &Multiplier;
-                if (BCs(tag).HasKey("mfunc")) // callback specified
+                if (bcs.HasKey("mfunc")) // callback specified
                 {
                     MDatabase_t::const_iterator p = MFuncs.find(tag);
                     if (p!=MFuncs.end()) calcm = p->second;
                     else throw new Fatal("Domain::SetBCs: Multiplier function with tag=%d was not found in MFuncs database",tag);
                 }
-                SDPair const & bcs = BCs(tag);
-                for (StrDbl_t::const_iterator p=bcs.begin(); p!=bcs.end(); ++p)
+                if (bcs.HasKey("inclsupport")) // inclined support specified
                 {
-                    if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]].first[Nods[nid]->UMap(p->first)]  = p->second;
-                    else if (Nods[nid]->FMap.HasKey(p->first))
+                    if (NDim!=2) throw new Fatal("Domain::SetBCs: Inclined support is only implemented for 2D problems so far");
+                    InclSupport[Nods[nid]] = bcs("alpha");
+                }
+                else
+                {
+                    for (StrDbl_t::const_iterator p=bcs.begin(); p!=bcs.end(); ++p)
                     {
-                        pF[Nods[nid]].first[Nods[nid]->FMap(p->first)] += p->second;
-                        pF[Nods[nid]].second = calcm;
+                        if      (Nods[nid]->UMap.HasKey(p->first)) pU[Nods[nid]].first[Nods[nid]->UMap(p->first)]  = p->second;
+                        else if (Nods[nid]->FMap.HasKey(p->first))
+                        {
+                            pF[Nods[nid]].first[Nods[nid]->FMap(p->first)] += p->second;
+                            pF[Nods[nid]].second = calcm;
+                        }
                     }
                 }
                 keys_set[tag] = true;
@@ -263,6 +281,7 @@ inline void Domain::ClrBCs ()
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
     pF.clear();
     pU.clear();
+    InclSupport.clear();
 }
 
 inline void Domain::Gravity ()

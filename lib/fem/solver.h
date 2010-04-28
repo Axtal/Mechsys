@@ -80,7 +80,6 @@ public:
     size_t          It;       ///< Current iteration
     size_t          NEq;      ///< Total number of equations (DOFs)
     size_t          NLag;     ///< Number of Lagrange multipliers
-    Array<long>     uEQ;      ///< unknown equations
     Array<long>     pEQ;      ///< prescribed equations
     Array<bool>     pU;       ///< prescribed U
     double          NormR;    ///< Euclidian norm of residual (R)
@@ -126,7 +125,7 @@ public:
 
 private:
     void _set_A_Lag       ();                     ///< Set A matrix due to Lagrange multipliers
-    void _cor_F_pin       ();                     ///< Correct F values due to Pins (add contributions to original Node)
+    void _cor_Lag         ();                     ///< Correct F values due to Lagrange multipliers
     void _calc_resid      (bool WithAccel=false); ///< Calculate residual
     void _cor_resid       (Vec_t & dU);           ///< Correct residual
     void _FE_update       (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
@@ -384,12 +383,13 @@ inline void Solver::AssembleKA ()
     // augment A11
     for (size_t i=0; i<pEQ.Size(); ++i) A11.PushEntry (pEQ[i],pEQ[i], 1.0);
     _set_A_Lag ();
+
     /*
     Sparse::Matrix<double,int> Asp(A11);
     Mat_t Adense;
     Asp.GetDense(Adense);
-    std::cout << "A =\n" << PrintMatrix(Adense,"%8g");
-    std::cout << "det(A) = " << UMFPACK::Det(Asp) << std::endl;
+    std::cout << "\nA =\n" << PrintMatrix(Adense,"%12.2f");
+    std::cout << "\ndet(A) = " << UMFPACK::Det(Asp) << "\n\n";
     */
 }
 
@@ -548,23 +548,15 @@ inline void Solver::Initialize (bool Transient)
         }
     }
 
-    // unknown equations
-    uEQ.Resize (0);
-    for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
-    {
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
-        {
-            size_t idof = q->first;
-            long   eq   = p->first->EQ[idof];
-            uEQ.Push (eq);
-        }
-    }
-
     // number of Lagrange multipliers
-    NLag = Dom.Msh.Pins.size() * Dom.NDim;
+    size_t nlag_pins = Dom.Msh.Pins.size()*Dom.NDim; // number of Lag mult due to pins
+    size_t nlag_insu = Dom.InclSupport.size();       // number of Lag mult due to inclined supports
+    NLag = nlag_pins + nlag_insu;                    // total number of Lagrange multipliers
     NEq += NLag;
-    size_t nzlag = NLag * 2 * Dom.NDim; // number of extra non-zero values due to Lagrange multipliers
 
+    // number of extra non-zero values due to Lagrange multipliers
+    size_t nzlag = nlag_pins*2*Dom.NDim + nlag_insu*2*Dom.NDim;
+    
     // find total number of non-zero entries, including duplicates, and assign active elements
     size_t K11_size = 0;
     size_t K12_size = 0;
@@ -661,13 +653,11 @@ inline bool Solver::ResidOK () const
 inline void Solver::_set_A_Lag ()
 {
     // set equations corresponding to Lagrange multipliers
+    long eqlag = NEq - NLag;
+
+    // pins
     if (Dom.Msh.Pins.size()>0)
     {
-        Array<String> keys(Dom.NDim);
-        keys[0] = "ux";
-        keys[1] = "uy";  if (Dom.NDim==3)
-        keys[2] = "uz";
-        long eqlag = NEq - NLag;
         for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
         {
             Node const & nod0 = (*ActNods[p->first->ID]);
@@ -676,8 +666,8 @@ inline void Solver::_set_A_Lag ()
                 Node const & nod1 = (*ActNods[p->second[i]->ID]);
                 for (int j=0; j<Dom.NDim; ++j)
                 {
-                    long eq0 = nod0.EQ[nod0.UMap(keys[j])];
-                    long eq1 = nod1.EQ[nod1.UMap(keys[j])];
+                    long eq0 = nod0.EQ[nod0.UMap(Dom.DisplKeys[j])];
+                    long eq1 = nod1.EQ[nod1.UMap(Dom.DisplKeys[j])];
                     A11.PushEntry (eq0,eqlag,1.0);   A11.PushEntry (eq1,eqlag,-1.0);
                     A11.PushEntry (eqlag,eq0,1.0);   A11.PushEntry (eqlag,eq1,-1.0);
                     eqlag++;
@@ -685,20 +675,40 @@ inline void Solver::_set_A_Lag ()
             }
         }
     }
+
+    // inclined supports
+    if (Dom.InclSupport.size()>0)
+    {
+        for (InclSupport_t::const_iterator p=Dom.InclSupport.begin(); p!=Dom.InclSupport.end(); ++p)
+        {
+            Node const & nod = (*p->first);
+            double s = sin(p->second); // sin(alpha)
+            double c = cos(p->second); // cos(alpha)
+            long eq0 = nod.EQ[nod.UMap(Dom.DisplKeys[0])]; // ~ ux
+            long eq1 = nod.EQ[nod.UMap(Dom.DisplKeys[1])]; // ~ uy
+            A11.PushEntry (eqlag, eq0,  s);
+            A11.PushEntry (eqlag, eq1, -c);
+            A11.PushEntry (eq0, eqlag,  s);
+            A11.PushEntry (eq1, eqlag, -c);
+            eqlag++;
+        }
+    }
 }
 
-inline void Solver::_cor_F_pin ()
+inline void Solver::_cor_Lag ()
 {
-    //std::cout << "F     = \n" << PrintVector(F,     "%8.3g");
-    //std::cout << "F_int = \n" << PrintVector(F_int, "%8.3g");
+    /*
+    std::cout << "\n######################################  _cor_Lag(): Before\n";
+    std::cout << "F     = " << PrintVector(F,     "%15.8f");
+    std::cout << "F_int = " << PrintVector(F_int, "%15.8f");
+    */
+    
     // add contributions to original Node
+    long eqlag = NEq - NLag;
+
+    // pins
     if (Dom.Msh.Pins.size()>0)
     {
-        Array<String> keys(Dom.NDim);
-        keys[0] = "ux";
-        keys[1] = "uy";  if (Dom.NDim==3)
-        keys[2] = "uz";
-        long eqlag = NEq - NLag;
         for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
         {
             Node const & nod0 = (*ActNods[p->first->ID]);
@@ -707,18 +717,38 @@ inline void Solver::_cor_F_pin ()
                 Node const & nod1 = (*ActNods[p->second[i]->ID]);
                 for (int j=0; j<Dom.NDim; ++j)
                 {
-                    long eq0 = nod0.EQ[nod0.UMap(keys[j])];
-                    long eq1 = nod1.EQ[nod1.UMap(keys[j])];
-                    F(eq0)  += F(eq1);
-                    F(eq1)   = 0.0;
-                    F(eqlag) = 0.0;
+                    long eq0 = nod0.EQ[nod0.UMap(Dom.DisplKeys[j])];
+                    long eq1 = nod1.EQ[nod1.UMap(Dom.DisplKeys[j])];
+                    F(eq0) = -U(eqlag);
+                    F(eq1) =  U(eqlag);
                     eqlag++;
                 }
             }
         }
-        //std::cout << "F     = \n" << PrintVector(F,     "%8.3g");
-        //std::cout << "F_int = \n" << PrintVector(F_int, "%8.3g");
     }
+
+    // inclined supports
+    if (Dom.InclSupport.size()>0)
+    {
+        for (InclSupport_t::const_iterator p=Dom.InclSupport.begin(); p!=Dom.InclSupport.end(); ++p)
+        {
+            Node const & nod = (*p->first);
+            double s = sin(p->second); // sin(alpha)
+            double c = cos(p->second); // cos(alpha)
+            long eq0 = nod.EQ[nod.UMap(Dom.DisplKeys[0])]; // ~ ux
+            long eq1 = nod.EQ[nod.UMap(Dom.DisplKeys[1])]; // ~ uy
+            F(eq0) = -U(eqlag)*s;
+            F(eq1) =  U(eqlag)*c;
+            eqlag++;
+        }
+    }
+
+    /*
+    std::cout << "\n######################################  _cor_Lag(): After\n";
+    std::cout << "F     = " << PrintVector(F,     "%15.8f");
+    std::cout << "F_int = " << PrintVector(F_int, "%15.8f");
+    std::cout << std::endl;
+    */
 }
 
 inline void Solver::_calc_resid (bool WithAccel)
@@ -789,7 +819,7 @@ inline void Solver::_FE_update (double tf)
         U    += dU;
         F    += dF;
         Time += dt;
-        _cor_F_pin ();
+        _cor_Lag ();
 
         // debug
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
@@ -853,7 +883,7 @@ inline void Solver::_ME_update (double tf)
             U     = U_me;
             F     = F_me;
             Time += dt;
-            _cor_F_pin  ();
+            _cor_Lag    ();
             _calc_resid ();
             _cor_resid  (dU_me);
             if (m>mMax) m = mMax;
@@ -890,7 +920,7 @@ inline void Solver::_NR_update (double tf)
         U    += dU;
         F    += dF;
         Time += dt;
-        _cor_F_pin ();
+        _cor_Lag ();
 
         // residual
         _calc_resid ();
