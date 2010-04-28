@@ -623,6 +623,14 @@ inline double Norm (Vec3_t const & V)
     return sqrt(blitz::dot(V,V));
 }
 
+/** Dyadic product. */
+inline void Dyad (Vec3_t const & A, Vec3_t const & B, Mat3_t & M)
+{
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+        M(i,j) = A(i) * B(j);
+}
+
 /** Compare two vectors. */
 inline double CompareVectors (Vec3_t const & A, Vec3_t const & B)
 {
