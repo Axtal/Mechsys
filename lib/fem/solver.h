@@ -697,11 +697,11 @@ inline void Solver::_set_A_Lag ()
 
 inline void Solver::_cor_Lag ()
 {
-	/*
+    /*
     std::cout << "\n######################################  _cor_Lag(): Before\n";
     std::cout << "F     = " << PrintVector(F,     "%15.3f");
     std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
-	*/
+    */
     
     // add contributions to original Node
     long eqlag = NEq - NLag;
@@ -719,8 +719,12 @@ inline void Solver::_cor_Lag ()
                 {
                     long eq0 = nod0.EQ[nod0.UMap(Dom.DisplKeys[j])];
                     long eq1 = nod1.EQ[nod1.UMap(Dom.DisplKeys[j])];
-                    F(eq0) += -U(eqlag);
-                    F(eq1) +=  U(eqlag);
+                    //F(eq0) += -U(eqlag);
+                    //F(eq1) +=  U(eqlag);
+                    F    (eq0) = 0.0;
+                    F    (eq1) = 0.0;
+                    F_int(eq0) = 0.0;
+                    F_int(eq1) = 0.0;
                     eqlag++;
                 }
             }
@@ -733,12 +737,19 @@ inline void Solver::_cor_Lag ()
         for (InclSupport_t::const_iterator p=Dom.InclSupport.begin(); p!=Dom.InclSupport.end(); ++p)
         {
             Node const & nod = (*p->first);
-            double s = sin(p->second); // sin(alpha)
-            double c = cos(p->second); // cos(alpha)
+            //double s = sin(p->second); // sin(alpha)
+            //double c = cos(p->second); // cos(alpha)
             long eq0 = nod.EQ[nod.UMap(Dom.DisplKeys[0])]; // ~ ux
             long eq1 = nod.EQ[nod.UMap(Dom.DisplKeys[1])]; // ~ uy
-            F(eq0) += -U(eqlag)*s;
-            F(eq1) +=  U(eqlag)*c;
+            //F(eq0) += -U(eqlag)*s;
+            //F(eq1) +=  U(eqlag)*c;
+            F    (eq0) = 0.0;
+            F    (eq1) = 0.0;
+            F_int(eq0) = 0.0;
+            F_int(eq1) = 0.0;
+
+            //std::cout << Util::_12_4<< -U(eqlag)*s << "  " << Util::_12_4<< U(eqlag)*c << std::endl;
+
             eqlag++;
         }
     }
@@ -748,7 +759,7 @@ inline void Solver::_cor_Lag ()
     std::cout << "F     = " << PrintVector(F,     "%15.3f");
     std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
     std::cout << std::endl;
-	*/
+    */
 }
 
 inline void Solver::_calc_resid (bool WithAccel)

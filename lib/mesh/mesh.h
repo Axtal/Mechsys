@@ -1100,7 +1100,7 @@ inline void Generic::GenSector (size_t Nr, size_t Nth, double r, double R, doubl
                 double th = Theta-j*dth;
                 double x  = radius*cos(th);
                 double y  = radius*sin(th);
-                SetVert (idx_vert, 0, x, y);
+                SetVert (idx_vert, (j==0 ? -100 : (j==Nth-1 ? -200 : 0)), x, y);
                 idx_vert++;
                 if (j!=Nth-1) // intermediate nodes
                 {
@@ -1120,7 +1120,7 @@ inline void Generic::GenSector (size_t Nr, size_t Nth, double r, double R, doubl
             double th = Theta-j*dth;
             double x  = radius*cos(th);
             double y  = radius*sin(th);
-            SetVert (idx_vert, 0, x, y);
+            SetVert (idx_vert, (j==0 ? -100 : (j==Nth-1 ? -200 : 0)), x, y);
             idx_vert++;
         }
 
@@ -1131,7 +1131,7 @@ inline void Generic::GenSector (size_t Nr, size_t Nth, double r, double R, doubl
             double th = Theta-j*dth;
             double x  = radius*cos(th);
             double y  = radius*sin(th);
-            SetVert (idx_vert, 0, x, y);
+            SetVert (idx_vert, (j==0 ? -100 : (j==Nth-1 ? -200 : 0)), x, y);
             idx_vert++;
             if (j!=Nth-1)
             {
