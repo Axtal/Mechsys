@@ -697,11 +697,11 @@ inline void Solver::_set_A_Lag ()
 
 inline void Solver::_cor_Lag ()
 {
-    /*
+	/*
     std::cout << "\n######################################  _cor_Lag(): Before\n";
-    std::cout << "F     = " << PrintVector(F,     "%15.8f");
-    std::cout << "F_int = " << PrintVector(F_int, "%15.8f");
-    */
+    std::cout << "F     = " << PrintVector(F,     "%15.3f");
+    std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
+	*/
     
     // add contributions to original Node
     long eqlag = NEq - NLag;
@@ -719,8 +719,8 @@ inline void Solver::_cor_Lag ()
                 {
                     long eq0 = nod0.EQ[nod0.UMap(Dom.DisplKeys[j])];
                     long eq1 = nod1.EQ[nod1.UMap(Dom.DisplKeys[j])];
-                    F(eq0) = -U(eqlag);
-                    F(eq1) =  U(eqlag);
+                    F(eq0) += -U(eqlag);
+                    F(eq1) +=  U(eqlag);
                     eqlag++;
                 }
             }
@@ -737,18 +737,18 @@ inline void Solver::_cor_Lag ()
             double c = cos(p->second); // cos(alpha)
             long eq0 = nod.EQ[nod.UMap(Dom.DisplKeys[0])]; // ~ ux
             long eq1 = nod.EQ[nod.UMap(Dom.DisplKeys[1])]; // ~ uy
-            F(eq0) = -U(eqlag)*s;
-            F(eq1) =  U(eqlag)*c;
+            F(eq0) += -U(eqlag)*s;
+            F(eq1) +=  U(eqlag)*c;
             eqlag++;
         }
     }
 
     /*
     std::cout << "\n######################################  _cor_Lag(): After\n";
-    std::cout << "F     = " << PrintVector(F,     "%15.8f");
-    std::cout << "F_int = " << PrintVector(F_int, "%15.8f");
+    std::cout << "F     = " << PrintVector(F,     "%15.3f");
+    std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
     std::cout << std::endl;
-    */
+	*/
 }
 
 inline void Solver::_calc_resid (bool WithAccel)
