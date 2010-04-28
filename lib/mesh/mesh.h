@@ -110,6 +110,7 @@ int    NVertsToEdge3D[][12/*edges at most*/][3/*verts per edge at most*/]=
         vert_a = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][0]]->ID; \
         vert_b = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][1]]->ID; \
         vert_c = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][2]]->ID; \
+        if (NVertsToNVertsPerFace3D[num_verts]>3)                               \
         vert_d = Cells[idx_cell]->V[NVertsToFace3D[num_verts][idx_bry][3]]->ID; \
         Util::Sort (vert_a,vert_b,vert_c,vert_d);                               \
     }                                                                           \
