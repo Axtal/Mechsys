@@ -27,6 +27,27 @@ using std::cout;
 using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
+using Util::_6_3;
+using Util::_8s;
+
+struct DbgDat
+{
+    long eqx; // equation number for output
+    std::ofstream of;
+    ~DbgDat () { of.close (); }
+     DbgDat ()
+    {
+         of.open ("nayak_zienk_01.res",std::ios::out);
+         of<<_6_3<<"Time"<<_8s<<"u"<< _8s<<"fint"<<_8s<<"fext\n";
+         of<<_6_3<<  0   <<_8s<< 0 << _8s<<  0   <<_8s<<  0 << endl;
+    }
+};
+
+void DbgFun (FEM::Solver const & Sol, void * Dat)
+{
+    DbgDat * dat = static_cast<DbgDat*>(Dat);
+    dat->of << _6_3 << Sol.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+}
 
 int main(int argc, char **argv) try
 {
@@ -53,19 +74,29 @@ int main(int argc, char **argv) try
     mdls.Set(-1, "name E nu fc sY Hp axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
-    FEM::Solver sol(dom);
+
+    // debug data
+    DbgDat dat;
+    dat.eqx = 4; // eq for output
+
+    // solver
+    FEM::Solver sol(dom, NULL, NULL, &DbgFun, &dat);
     //sol.Scheme = FEM::Solver::FE_t;
     //sol.Scheme = FEM::Solver::NR_t;
-    //sol.TolR = 1.0e-1;
+    sol.TolR  = 1.0e-2;
+    sol.STOL  = 1.0e-7;
+    sol.dTini = 0.1;
+    sol.SSOut = false;
 
     // solve
     dom.SetOutNods ("nayak_zienk_01", Array<int>(0,1,2));
+    dom.SetOutEles ("nayak_zienk_01", Array<int>(0,1,2));
     Dict bcs;
     bcs.Set      (-100, "inclsupport alpha", 1.0, th);
     bcs.Set      (-30,  "uy", 0.0);
-    bcs.Set      (-10,  "qn", -13000.0);
+    bcs.Set      (-10,  "qn", -13900.0);
     dom.SetBCs   (bcs);
-    sol.Solve    (20);
+    sol.Solve    (100);
     dom.WriteVTU ("nayak_zienk_01");
 
     // end
