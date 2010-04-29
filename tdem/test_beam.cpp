@@ -64,7 +64,7 @@ void Setup (DEM::Domain const & Dom, void * UD)
 {
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
-    dat.p->Ff=0.0,0.0,0.0*cos(0.3*Dom.Time);
+    dat.p->Ff=0.0,0.0,10.0*cos(0.3*Dom.Time);
 }
 
 //void Report (DEM::Domain const & Dom, void * UD)
@@ -75,18 +75,19 @@ void Setup (DEM::Domain const & Dom, void * UD)
 
 int main(int argc, char **argv) try
 {
+
     // input
-    double cam_x=4, cam_y=5, cam_z=3;
+    double cam_x=20, cam_y=0, cam_z=0;
     if (argc>1) cam_x = atof(argv[1]);
     if (argc>2) cam_y = atof(argv[2]);
     if (argc>3) cam_z = atof(argv[3]);
 
     // gen beam
     size_t nx = 1;
-    size_t ny = 4;
+    size_t ny = 10;
     size_t nz = 1;
     double lx = 1.;
-    double ly = 4.;
+    double ly = 10.;
     double lz = 1.;
     Mesh::Structured mesh(3);
     mesh.GenBox (false, nx, ny, nz, lx, ly, lz);
@@ -102,6 +103,7 @@ int main(int argc, char **argv) try
     // user data and domain
     UserData dat;
     DEM::Domain dom(&dat);
+    dom.Alpha = 0.001;
 
     // gen particles
     bool cohesion   = true;
@@ -118,11 +120,11 @@ int main(int argc, char **argv) try
     Particle * p = dom.GetParticle (-2);
     p->FixVeloc();
 
-    double tf        = 100.;
-    double dt        = 0.001;
-    double dtOut     = 0.001;
+    double tf        = 200.;
+    double dt        = 0.0001;
+    double dtOut     = 0.5;
     //char   filekey[] = "test_beam";
     //bool   render    = false;
-    dom.Solve (tf,dt,dtOut, &Setup, NULL, "test_beam",false);
+    dom.Solve (tf,dt,dtOut, &Setup, NULL, "test_beam",true);
 }
 MECHSYS_CATCH

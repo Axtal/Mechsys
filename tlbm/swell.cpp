@@ -21,6 +21,7 @@
 
 // MechSys
 #include <mechsys/lbm/dem.h>
+#include <mechsys/util/maps.h>
 
 using std::cout;
 using std::endl;
@@ -66,27 +67,40 @@ int main(int argc, char **argv) try
 		           1);      
 
 	// Set walls (top and bottom)
-	l.SetG(-6.0)->SetGSolid(-10.5);
+	l.SetG(-8.0)->SetGSolid(-10.0);
 
 	// Define Initial conditions: velocity speed and density
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-	    l.GetCell(i,j)->Initialize (0.1, Vec3_t(0.0,0.0,0.0),l.Cs());
+	    l.GetCell(i,j)->Initialize (0.04, Vec3_t(0.0,0.0,0.0),l.Cs());
 	}
-    DrawOpenCircle (l,100, 80,11,0.2);
-    DrawFluidCircle(l,100, 80,10,2.8);
 
-    DrawOpenCircle (l,120, 90,11,0.2);
-    DrawFluidCircle(l,120, 90,10,2.8);
+	// Set grains
+	Table grains;
+	grains.Read("circles.out");
+	for (size_t i=0; i<grains["Xc"].Size(); ++i)
+	{
+		double xc = grains["Xc"][i]*nx;
+		double yc = grains["Yc"][i]*ny;
+		double r  = grains["R" ][i]*0.9*nx;
+        DrawOpenCircle (l, xc, yc, r  ,0.4);
+        DrawFluidCircle(l, xc, yc, r-1,3.95);
+	}
 
-    DrawOpenCircle (l, 80,110,11,0.2);
-    DrawFluidCircle(l, 80,110,10,2.8);
+    //DrawOpenCircle (l,100, 80,11,0.2);
+    //DrawFluidCircle(l,100, 80,10,2.8);
+//
+    //DrawOpenCircle (l,120, 90,11,0.2);
+    //DrawFluidCircle(l,120, 90,10,2.8);
+//
+    //DrawOpenCircle (l, 80,110,11,0.2);
+    //DrawFluidCircle(l, 80,110,10,2.8);
+//
+    //DrawOpenCircle (l,100,120,11,0.2);
+    //DrawFluidCircle(l,100,120,10,2.8);
 
-    DrawOpenCircle (l,100,120,11,0.2);
-    DrawFluidCircle(l,100,120,10,2.8);
 
-
-	l.Solve(/*tIni*/0.0, /*tFin*/5000.0, /*dtOut*/50.);
+	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dtOut*/50.);
 }
 MECHSYS_CATCH

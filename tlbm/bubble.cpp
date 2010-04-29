@@ -47,7 +47,7 @@ int main(int argc, char **argv) try
 
 	// Set constants
 	std::cout << l.Tau() << " "<< l.dt()<<std::endl;
-	l.SetG(-6.0);
+	l.SetG(-8.0);
 
 	// Initialize cells
 	
@@ -63,6 +63,6 @@ int main(int argc, char **argv) try
 	}
 
 	// Solve
-	l.Solve(/*tIni*/0.0, /*tFin*/2000.0, /*dtOut*/1.);
+	l.Solve(/*tIni*/0.0, /*tFin*/20000.0, /*dtOut*/100.);
 }
 MECHSYS_CATCH

@@ -128,6 +128,7 @@ public:
     double Gt;                             ///< Dissipative tangential constant
     double L0;                             ///< Equilibrium distance
     Vec3_t Lt;                             ///< Tangential displacement
+    Vec3_t Ltb;                            ///< Tangential displacement two time steps before
     double An;                             ///< Angular displacement
     double eps;                            ///< Maximun strain before fracture
     bool valid;                            ///< Check if the bound has not been broken
@@ -379,11 +380,11 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     I1              = P1->Index;
     I2              = P2->Index;
     Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
-    Bn              = 10.e5*Area;
-    Bt              =  5.e5*Area;
-    Bm              =  5.e5*Area;
+    Bn              = 10.e3*Area;
+    Bt              =  5.e1*Area;
+    Bm              =  5.e3*Area;
     Gn              =  2*16.0*ReducedValue(P1->m,P2->m);
-    Gn              =  2*8.0*ReducedValue(P1->m,P2->m);
+    Gt              =  2*8.0*ReducedValue(P1->m,P2->m);
 
     Vec3_t t1;
     P1->Faces[F1]->Normal(t1);
@@ -392,6 +393,7 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     P2->Faces[F2]->Centroid(c2);
     L0              = dot(t1,c2-c1);
     Lt              = 0.0,0.0,0.0;
+    Ltb             = 0.0,0.0,0.0;
     An              = 0.0;
     eps             = 0.01;
     valid           = true;
@@ -407,8 +409,10 @@ inline void BInteracton::CalcForce(double dt)
     if (valid)
     {
         // Calculate the normal vector and centroid of the contact face
-        Vec3_t n;
-        P1->Faces[F1]->Normal(n);
+        Vec3_t n1,n2,n;
+        P1->Faces[F1]->Normal(n1);
+        P2->Faces[F2]->Normal(n2);
+        n = 0.5*(n1-n2);
         Vec3_t c1,c2;
         P1->Faces[F1]->Centroid(c1);
         P2->Faces[F2]->Centroid(c2);
@@ -427,8 +431,10 @@ inline void BInteracton::CalcForce(double dt)
         x2 = x - P2->x;
         Vec3_t vrel = -((P2->v-P1->v)+cross(t2,x2)-cross(t1,x1));
         Vec3_t vt = vrel - dot(n,vrel)*n;
-        Lt += vt*dt;
+        Vec3_t temp = Lt;
+        Lt = Ltb + 2*vt*dt;
         Lt -= dot(Lt,n)*n;
+        Ltb = temp;
         Vec3_t Ft = (Bt/L0)*Lt+Gt*vt+Gn*dot(n,vrel)*n;
         P1->F -= Fn+Ft;
         P2->F += Fn+Ft;

@@ -177,16 +177,15 @@ inline void SPHDomain::WriteH5Part()
     H5PartSetStep(FileID,idx_out-1);
     H5PartSetNumParticles(FileID,Particles.Size());
 
-
-    double *x,*y,*z,*d,*P,*vx,*vy,*vz;
-    x = new double [Particles.Size()];
-    y = new double [Particles.Size()];
-    z = new double [Particles.Size()];
-    vx = new double [Particles.Size()];
-    vy = new double [Particles.Size()];
-    vz = new double [Particles.Size()];
-    d = new double [Particles.Size()];
-    P = new double [Particles.Size()];
+    double x [Particles.Size()];
+    double y [Particles.Size()];
+    double z [Particles.Size()];
+    double vx [Particles.Size()];
+    double vy [Particles.Size()];
+    double vz [Particles.Size()];
+    double d [Particles.Size()];
+    double m [Particles.Size()];
+    double P [Particles.Size()];
 
     for (size_t i=0; i<Particles.Size(); i++)
     {
@@ -197,26 +196,19 @@ inline void SPHDomain::WriteH5Part()
         vy[i] = Particles[i]->v(1); 
         vz[i] = Particles[i]->v(2); 
         d[i] = Particles[i]->Density; 
+        m[i] = Particles[i]->Density0;
         P[i] = Pressure(d[i]); 
     }
     
-    H5PartWriteDataFloat64(FileID,"x_0",x);
-    H5PartWriteDataFloat64(FileID,"x_1",y);
-    H5PartWriteDataFloat64(FileID,"x_2",z);
-    H5PartWriteDataFloat64(FileID,"v_0",vx);
-    H5PartWriteDataFloat64(FileID,"v_1",vy);
-    H5PartWriteDataFloat64(FileID,"v_2",vz);
+    H5PartWriteDataFloat64(FileID,"Coords_0",x);
+    H5PartWriteDataFloat64(FileID,"Coords_1",y);
+    H5PartWriteDataFloat64(FileID,"Coords_2",z);
+    H5PartWriteDataFloat64(FileID,"Velocity_0",vx);
+    H5PartWriteDataFloat64(FileID,"Velocity_1",vy);
+    H5PartWriteDataFloat64(FileID,"Velocity_2",vz);
     H5PartWriteDataFloat64(FileID,"Density",d);
+    H5PartWriteDataFloat64(FileID,"Mass",m);
     H5PartWriteDataFloat64(FileID,"Pressure",P);
-
-    delete [] x; 
-    delete [] y; 
-    delete [] z; 
-    delete [] vx;
-    delete [] vy;
-    delete [] vz;
-    delete [] d; 
-    delete [] P; 
 }
 
 inline void SPHDomain::ResetInteractons()
@@ -284,7 +276,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
     ResetContacts();
 
     OpenH5Part(TheFileKey);
-
+//
     while (Time<tf)
     {
         // Calculate the acceleration for each particle
