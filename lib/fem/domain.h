@@ -173,11 +173,12 @@ inline void Domain::SetBCs (Dict const & BCs)
     ClrBCs ();
 
     // set maps with bry info
-    typedef std::pair<Element*,int> eleside_t;  // (element,side) pair
-    std::map<eleside_t,int> eleside2tag_to_ubc; // map: ele/side ==> tag to U bry cond
-    std::map<eleside_t,int> eleside2tag_to_fbc; // map: ele/side ==> tag to F bry cond
-    std::map<Node*,int>     nod2tag_to_ubc;     // map: node ==> tag to U bry cond
-    std::map<Node*,int>     nod2tag_to_fbc;     // map: node ==> tag to F bry cond
+    typedef std::pair<Element*,int> eleside_t;       // (element,side) pair
+    typedef std::pair<int,SDPair>   tagbcs_t;        // (tag,bcs data) pair
+    std::map<eleside_t,tagbcs_t> eleside2tag_to_ubc; // map: (ele,side) ==> U bry cond
+    std::map<eleside_t,tagbcs_t> eleside2tag_to_fbc; // map: (ele,side) ==> F bry cond
+    std::map<Node*,tagbcs_t>     nod2tag_to_ubc;     // map: node ==> U bry cond
+    std::map<Node*,tagbcs_t>     nod2tag_to_fbc;     // map: node ==> F bry cond
     for (size_t i=0; i<BCs.Keys.Size(); ++i)
     {
         int bc_tag = BCs.Keys[i];
@@ -198,18 +199,20 @@ inline void Domain::SetBCs (Dict const & BCs)
                     if (side_tag==bc_tag) // found
                     {
                         found = true;
-                        bool is_U_type = false;
-                        for (size_t k=0; k<bcs.Keys.Size(); ++k)
+                        eleside_t es(Eles[eid],idx_side);
+                        for (size_t k=0; k<bcs.Keys.Size(); ++k) // we have to split Ubcs from Fbcs
                         {
                             if (Eles[eid]->UKeys.Find(bcs.Keys[k])>=0)
                             {
-                                is_U_type = true;
-                                break;
+                                eleside2tag_to_ubc[es].first = bc_tag;
+                                eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                            }
+                            else
+                            {
+                                eleside2tag_to_fbc[es].first = bc_tag;
+                                eleside2tag_to_fbc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
                             }
                         }
-                        eleside_t es(Eles[eid],idx_side);
-                        if (is_U_type) eleside2tag_to_ubc[es] = bc_tag;
-                        else           eleside2tag_to_fbc[es] = bc_tag;
                     }
                 }
             }
@@ -224,17 +227,28 @@ inline void Domain::SetBCs (Dict const & BCs)
                 if (Msh.TgdVerts[j]->Tag==bc_tag) // found
                 {
                     found = true;
-                    bool is_U_type = false;
-                    for (size_t k=0; k<bcs.Keys.Size(); ++k)
+                    for (size_t k=0; k<bcs.Keys.Size(); ++k) // we have to split Ubcs from Fbcs
                     {
-                        if (Nods[nid]->UMap.HasKey(bcs.Keys[k]) || (bcs.Keys[k]=="inclsupport"))
+                        if (bcs.Keys[k]=="inclsupport")
                         {
-                            is_U_type = true;
+                            nod2tag_to_ubc[Nods[nid]].first  = bc_tag;
+                            nod2tag_to_ubc[Nods[nid]].second = bcs;
                             break;
                         }
+                        else
+                        {
+                            if (Nods[nid]->UMap.HasKey(bcs.Keys[k]))
+                            {
+                                nod2tag_to_ubc[Nods[nid]].first = bc_tag;
+                                nod2tag_to_ubc[Nods[nid]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                            }
+                            else
+                            {
+                                nod2tag_to_fbc[Nods[nid]].first = bc_tag;
+                                nod2tag_to_fbc[Nods[nid]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                            }
+                        }
                     }
-                    if (is_U_type) nod2tag_to_ubc[Nods[nid]] = bc_tag;
-                    else           nod2tag_to_fbc[Nods[nid]] = bc_tag;
                 }
             }
         }
@@ -252,7 +266,8 @@ inline void Domain::SetBCs (Dict const & BCs)
                         found = true;
                         int idx_side = 0; // irrelevant
                         eleside_t es(Eles[eid],idx_side);
-                        eleside2tag_to_fbc[es] = bc_tag;
+                        eleside2tag_to_fbc[es].first  = bc_tag;
+                        eleside2tag_to_fbc[es].second = bcs;
                     }
                 }
             }
@@ -261,12 +276,12 @@ inline void Domain::SetBCs (Dict const & BCs)
     }
 
     // set F bcs at sides (edges/faces) of elements (or at the element itself => Line elements/beams)
-    for (std::map<eleside_t,int>::iterator p=eleside2tag_to_fbc.begin(); p!=eleside2tag_to_fbc.end(); ++p)
+    for (std::map<eleside_t,tagbcs_t>::iterator p=eleside2tag_to_fbc.begin(); p!=eleside2tag_to_fbc.end(); ++p)
     {
         Element      * ele      = p->first.first;
         int            idx_side = p->first.second;
-        int            bc_tag   = p->second;
-        SDPair const & bcs      = BCs(bc_tag);
+        int            bc_tag   = p->second.first;
+        SDPair const & bcs      = p->second.second;
         pCalcM         calcm    = &Multiplier;
 
         if (bcs.HasKey("mfunc")) // callback specified
@@ -280,12 +295,12 @@ inline void Domain::SetBCs (Dict const & BCs)
     }
 
     // set F bcs at nodes
-    for (std::map<Node*,int>::iterator p=nod2tag_to_fbc.begin(); p!=nod2tag_to_fbc.end(); ++p)
+    for (std::map<Node*,tagbcs_t>::iterator p=nod2tag_to_fbc.begin(); p!=nod2tag_to_fbc.end(); ++p)
     {
-        Node         * nod     = p->first;
-        int            bc_tag  = p->second;
-        SDPair const & bcs     = BCs(bc_tag);
-        pCalcM         calcm   = &Multiplier;
+        Node         * nod    = p->first;
+        int            bc_tag = p->second.first;
+        SDPair const & bcs    = p->second.second;
+        pCalcM         calcm  = &Multiplier;
 
         if (bcs.HasKey("mfunc")) // callback specified
         {
@@ -302,22 +317,20 @@ inline void Domain::SetBCs (Dict const & BCs)
     }
 
     // set U bcs at sides (edges/faces) of elements
-    for (std::map<eleside_t,int>::iterator p=eleside2tag_to_ubc.begin(); p!=eleside2tag_to_ubc.end(); ++p)
+    for (std::map<eleside_t,tagbcs_t>::iterator p=eleside2tag_to_ubc.begin(); p!=eleside2tag_to_ubc.end(); ++p)
     {
         Element      * ele      = p->first.first;
         int            idx_side = p->first.second;
-        int            bc_tag   = p->second;
-        SDPair const & bcs      = BCs(bc_tag);
+        SDPair const & bcs      = p->second.second;
 
         ele->SetBCs (idx_side, bcs, pF, pU, NULL);
     }
 
     // set U bcs at nodes
-    for (std::map<Node*,int>::iterator p=nod2tag_to_ubc.begin(); p!=nod2tag_to_ubc.end(); ++p)
+    for (std::map<Node*,tagbcs_t>::iterator p=nod2tag_to_ubc.begin(); p!=nod2tag_to_ubc.end(); ++p)
     {
-        Node         * nod     = p->first;
-        int            bc_tag  = p->second;
-        SDPair const & bcs     = BCs(bc_tag);
+        Node         * nod = p->first;
+        SDPair const & bcs = p->second.second;
 
         if (bcs.HasKey("inclsupport"))
         {
