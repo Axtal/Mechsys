@@ -96,7 +96,47 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////// 3D: structured //////////////////////////////////////////////////
     
-    // 5) mesh01_hex_box
+    // 5) mesh01_blk_box
+    {
+        /*
+                          4----------------7
+                        ,'|              ,'|
+                      ,'  |            ,'  |
+                    ,'    | -60   -10,'    |
+                  ,'      |        ,'      |
+                5'===============6'        |
+                |         |      |    -40  |
+                |    -30  |      |         |
+                |         0- - - | -  - - -3
+                |       ,'       |       ,'
+                |     ,' -20     |     ,'
+                |   ,'        -50|   ,'
+                | ,'             | ,'
+                1----------------2'
+        */
+        double Lx=1. , Ly=1. , Lz=2.;
+        size_t Nx=2  , Ny=2  , Nz=3;
+        Array<Mesh::Block> blks(1);
+        blks[0].Set (/*NDim*/3, /*Tag*/-1, /*NVert*/8,
+                     -1.,  0.0, 0.0, 0.0,  // tag, x, y, z
+                     -2.,   Lx, 0.0, 0.0, 
+                     -3.,   Lx,  Ly, 0.0, 
+                     -4.,  0.0,  Ly, 0.0,
+                     -5.,  0.0, 0.0,  Lz,  // tag, x, y, z
+                     -6.,   Lx, 0.0,  Lz, 
+                     -7.,   Lx,  Ly,  Lz, 
+                     -8.,  0.0,  Ly,  Lz,
+                     -10.,-20.,-30.,-40.,-50.,-60.); // face tags
+        blks[0].SetNx (Nx);
+        blks[0].SetNy (Ny);
+        blks[0].SetNz (Nz);
+        Mesh::Structured mesh(/*NDim*/3);
+        mesh.Generate (blks,true);
+        mesh.WriteVTU ("mesh01_blk_box");
+        cout << " File <mesh01_blk_box.vtu> generated\n";
+    }
+
+    // 6) mesh01_hex_box
     {
         Mesh::Structured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true);
@@ -104,7 +144,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_hex_box.vtu> generated\n";
     }
 
-    // 6) mesh01_qring3d
+    // 7) mesh01_qring3d
     {
         bool   o2 = true;
         double r  = 2.5;
@@ -121,7 +161,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////// 2D: unstructured ////////////////////////////////////////////////
     
-    // 7) mesh01_tri
+    // 8) mesh01_tri
     {
         /*           -20
               -4@-----------@-3
@@ -161,7 +201,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////// 3D: unstructured ////////////////////////////////////////////////
     
-    // 8) mesh01_1tet
+    // 9) mesh01_1tet
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.Set    (4,4,1,0);
@@ -179,7 +219,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_1tet.vtu> generated\n";
     }
 
-    // 9) mesh01_tet_box
+    // 10) mesh01_tet_box
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/true,/*V*/0.1);
@@ -187,7 +227,7 @@ int main(int argc, char **argv) try
         cout << " File <mesh01_tet_box.vtu> generated\n";
     }
 
-    // 10) mesh01_tet_hole
+    // 11) mesh01_tet_hole
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.Set    (16, 12, 1, 1);                      // 16 points, 12 facets, 1 region, 1 hole
