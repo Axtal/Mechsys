@@ -64,7 +64,7 @@ void Setup (DEM::Domain const & Dom, void * UD)
 {
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
-    dat.p->Ff=0.0,0.0,10.0*cos(0.3*Dom.Time);
+    dat.p->Ff=0.0,0.0,1.0*cos(0.3*Dom.Time);
 }
 
 //void Report (DEM::Domain const & Dom, void * UD)
