@@ -32,29 +32,6 @@
 using std::cout;
 using std::endl;
 
-/*
-class TTT
-{
-public:
-    Particle * LidZ, LidX,LidY;
-    void SayHi() { cout << "TTT says hi\n"; }
-    double Lx0, Ly0, Lz0;
-    double Lx,  Ly,  Lz;
-private:
-};
-*/
-
-
-/*
-void Setup (DEM::Domain const & Dom, void * Data)
-{
-    //TTT const & ttt = (*static_cast<TTT const *>(Data));
-    TTT & ttt = (*static_cast<TTT *>(Data));
-    ttt.LidX->x - ttt.LidX->R;
-    ttt.SayHi();
-}
-*/
-
 struct UserData
 {
     Particle * p; // the particle at which the force is to be applied
@@ -64,7 +41,7 @@ void Setup (DEM::Domain const & Dom, void * UD)
 {
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));
-    dat.p->Ff=0.0,0.0,1.0*cos(0.3*Dom.Time);
+    dat.p->Ff=0.0,0.0,3.0*cos(0.3*Dom.Time);
 }
 
 //void Report (DEM::Domain const & Dom, void * UD)
