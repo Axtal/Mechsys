@@ -37,7 +37,10 @@ int main(int argc, char **argv) try
     bool unitest = false; // uniaxial test ?
     bool is2d    = true;
 
-    if (argc>1) is2d = atoi(argv[1]);
+    cout << "\nUsage:\n\t" << argv[0] << "  [0,1](is2d)  [0,1](unitest)\n" << endl;
+    if (argc>1) is2d    = atoi(argv[1]);
+    if (argc>2) unitest = atoi(argv[2]);
+    if (unitest) is2d = false;
 
     double r  = 2.5;
     double R  = 3.5;
@@ -87,8 +90,8 @@ int main(int argc, char **argv) try
     Dict prps, mdls;
     if (is2d)
     {
-        prps.Set(-1, "prob geom pse h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), 1.0, t);
-        mdls.Set(-1, "name E nu fc sY Hp pse", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
+        prps.Set(-1, "prob geom psa h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), 1.0, t);
+        mdls.Set(-1, "name E nu fc sY Hp psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
         //mdls.Set(-1, "name E nu pse", MODEL("LinElastic"), E, nu, 1.0);
     }
     else
@@ -99,9 +102,8 @@ int main(int argc, char **argv) try
     }
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
     FEM::Solver sol(dom);
-    //sol.Scheme = FEM::Solver::FE_t;
-    //sol.Scheme = FEM::Solver::NR_t;
-    sol.TolR = 1.0e-2;
+    sol.SetScheme ("NR");
+    sol.SSOut = true;
 
     // solve
     if (unitest)
@@ -118,15 +120,16 @@ int main(int argc, char **argv) try
     }
     else
     {
+        double DelP = -18000.0;
         if (is2d)
         {
             dom.SetOutNods ("owen_salonen_2d", Array<int>(0,1,2, 27,28,29));
             Dict bcs;
             bcs.Set      (-10, "uy", 0.0);
             bcs.Set      (-30, "ux", 0.0);
-            bcs.Set      (-40, "qn", -20000.0);
+            bcs.Set      (-40, "qn", DelP);
             dom.SetBCs   (bcs);
-            sol.Solve    (2000);
+            sol.Solve    (10);
             dom.WriteVTU ("owen_salonen_2d");
         }
         else
@@ -136,7 +139,7 @@ int main(int argc, char **argv) try
             bcs.Set      (-10, "ux", 0.0);
             bcs.Set      (-50, "uz", 0.0);
             bcs.Set      (-60, "uy", 0.0);
-            bcs.Set      (-30, "qn", -7500.0);
+            bcs.Set      (-30, "qn", DelP);
             dom.SetBCs   (bcs);
             sol.Solve    (10);
             dom.WriteVTU ("owen_salonen_3d");

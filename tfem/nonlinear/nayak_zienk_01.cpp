@@ -81,26 +81,32 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom, NULL, NULL, &DbgFun, &dat);
-    //sol.Scheme = FEM::Solver::FE_t;
-    sol.Scheme = FEM::Solver::NR_t;
-    //sol.Scheme = FEM::Solver::NZ_t;
-    //sol.TolR  = 1.0e-2;
-    //sol.MaxIt = 20;
-    //sol.ModNR = true;
-    //sol.STOL  = 1.0e-7;
-    //sol.dTini = 0.1;
-    sol.SSOut = false;
+    //sol.SetScheme ("NR");
+    sol.SSOut = true;
 
     // solve
-    dom.SetOutNods ("nayak_zienk_01", Array<int>(0,1,2));
+    dom.SetOutNods ("nayak_zienk_01", Array<int>(0,1,2,17));
     dom.SetOutEles ("nayak_zienk_01", Array<int>(0,1,2));
     Dict bcs;
     bcs.Set      (-100, "inclsupport alpha", 1.0, th);
     bcs.Set      (-30,  "uy", 0.0);
-    bcs.Set      (-10,  "qn", -13900.0);
+    bcs.Set      (-10,  "qn", -13920.0);
     dom.SetBCs   (bcs);
     sol.Solve    (40);
     dom.WriteVTU ("nayak_zienk_01");
+
+    /* It seems that as the plastification zone advances, the two matrices Ke and Kep
+     * become different. Each time a new plastification happens in a subincrement, the
+     * new K is different, then the subincrement must be subdivided.
+     *
+     * After a first plastification occurs, the two matrices FE and ME will be similar
+     * and then the update is faster. If plastification happens inside the subincrement
+     * it will be slow.
+     *
+     * This my be the reason why ME uses many NSS intercalated with a few. Ex.: nss=1
+     * nss=1 nss=1 nss=48 nss=1 nss=3 nss=1 nss=29 ...
+     *
+     * Thus, it seems that the ME is capturing the moment of plastification */
 
     // end
 	return 0;
