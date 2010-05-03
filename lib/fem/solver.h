@@ -160,7 +160,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       mMin    (0.1),
       mMax    (10.0),
       MaxSS   (2000),
-      SSOut   (true),
+      SSOut   (false),
       CteTg   (false),
       ModNR   (false),
       MaxIt   (20),
@@ -894,10 +894,9 @@ inline void Solver::_ME_update (double tf)
             _cal_resid ();
             _cor_resid (dU_me);
             if (m>mMax) m = mMax;
-            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-            if (SSOut)
+            if (SSOut || (DbgFun!=NULL))
             {
-                // update nodes to Time
+                // update nodes
                 for (size_t i=0; i<ActNods.Size(); ++i)
                 {
                     for (size_t j=0; j<ActNods[i]->nDOF(); ++j)
@@ -907,8 +906,9 @@ inline void Solver::_ME_update (double tf)
                         ActNods[i]->F[j] = F(eq);
                     }
                 }
-                Dom.OutResults (Time, F_int);
             }
+            if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
+            if (SSOut) Dom.OutResults (Time, F_int);
         }
         else if (m<mMin) m = mMin;
 
