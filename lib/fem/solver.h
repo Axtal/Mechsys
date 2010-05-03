@@ -125,8 +125,7 @@ public:
 
 private:
     void _set_A_Lag       ();                     ///< Set A matrix due to Lagrange multipliers
-    void _cor_Lag         ();                     ///< Correct F values due to Lagrange multipliers
-    void _calc_resid      (bool WithAccel=false); ///< Calculate residual
+    void _cal_resid       (bool WithAccel=false); ///< Calculate residual
     void _cor_resid       (Vec_t & dU);           ///< Correct residual
     void _FE_update       (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update       (double tf);            ///< (Modified-Euler) Update Time and elements to tf
@@ -630,7 +629,7 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // calc residual
-    _calc_resid ();
+    _cal_resid ();
 }
 
 inline void Solver::SetScheme (char const * StrScheme)
@@ -695,18 +694,18 @@ inline void Solver::_set_A_Lag ()
     }
 }
 
-inline void Solver::_cor_Lag ()
+inline void Solver::_cal_resid (bool WithAccel)
 {
     /*
-    std::cout << "\n######################################  _cor_Lag(): Before\n";
+    std::cout << "\n######################################   Before\n";
     std::cout << "F     = " << PrintVector(F,     "%15.3f");
     std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
     */
     
-    // add contributions to original Node
+    // number of the first equation corresponding to Lagrange multipliers
     long eqlag = NEq - NLag;
 
-    // pins
+    // clear forces due to pins
     if (Dom.Msh.Pins.size()>0)
     {
         for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
@@ -731,7 +730,7 @@ inline void Solver::_cor_Lag ()
         }
     }
 
-    // inclined supports
+    // clear forces due to inclined supports
     if (Dom.InclSupport.size()>0)
     {
         for (InclSupport_t::const_iterator p=Dom.InclSupport.begin(); p!=Dom.InclSupport.end(); ++p)
@@ -754,19 +753,21 @@ inline void Solver::_cor_Lag ()
         }
     }
 
+    // clear forces due to supports
+    for (size_t i=0; i<pEQ.Size(); ++i)
+    {
+        F_int(pEQ[i]) = 0.0;
+        F    (pEQ[i]) = 0.0;
+    }
+
     /*
-    std::cout << "\n######################################  _cor_Lag(): After\n";
+    std::cout << "\n######################################   After\n";
     std::cout << "F     = " << PrintVector(F,     "%15.3f");
     std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
     std::cout << std::endl;
     */
-}
 
-inline void Solver::_calc_resid (bool WithAccel)
-{
-    //std::cout << "\n";
-    //std::cout << "F  = " << PrintVector(F);
-    //std::cout << "Fi = " << PrintVector(F_int);
+    // calculate residual
     R = F - F_int;
     if (WithAccel)
     {
@@ -792,9 +793,6 @@ inline void Solver::_cor_resid (Vec_t & dU)
         // assemble global K matrix
         if (!ModNR) AssembleKA ();
 
-        // clear unbalanced forces related to supports
-        for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
-
         // calc corrector dU
         UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
 
@@ -803,12 +801,12 @@ inline void Solver::_cor_resid (Vec_t & dU)
         U += dU;
 
         // residual
-        _calc_resid ();
+        _cal_resid ();
 
         // next iteration
         it++;
     }
-    if (it>=MaxIt) throw new Fatal("Solver::_cor_resid (correct residual): Newton-Rhapson did not converge after %d iterations",it);
+    if (it>=MaxIt) throw new Fatal("Solver::_cor_resid: Residual correction did not converge after %d iterations.\n\t(%e>=%e)  (NormR>=TolR*MaxNormF).\n\tNormR         = %g\n\tMaxNormF      = %g\n\tTolR          = %e\n\tTolR*MaxNormF = %e",it,NormR,TolR*MaxNormF,NormR,MaxNormF,TolR,TolR*MaxNormF);
     if (it>It) It = it;
 }
 
@@ -830,14 +828,13 @@ inline void Solver::_FE_update (double tf)
         U    += dU;
         F    += dF;
         Time += dt;
-        _cor_Lag ();
 
         // debug
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
 
     // residual
-    _calc_resid ();
+    _cal_resid ();
 }
 
 inline void Solver::_ME_update (double tf)
@@ -894,9 +891,8 @@ inline void Solver::_ME_update (double tf)
             U     = U_me;
             F     = F_me;
             Time += dt;
-            _cor_Lag    ();
-            _calc_resid ();
-            _cor_resid  (dU_me);
+            _cal_resid ();
+            _cor_resid (dU_me);
             if (m>mMax) m = mMax;
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
             if (SSOut) Dom.OutResults (Time, F_int);
@@ -931,11 +927,10 @@ inline void Solver::_NR_update (double tf)
         U    += dU;
         F    += dF;
         Time += dt;
-        _cor_Lag ();
 
         // residual
-        _calc_resid ();
-        _cor_resid  (dU);
+        _cal_resid ();
+        _cor_resid (dU);
     }
 }
 
@@ -998,12 +993,9 @@ inline void Solver::_SS22_update (double tf, double dt)
         for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
         U = Unew;
 
-        // clear internal forces related to supports
-        for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0;
-
         // residual
         F = Fnew;
-        _calc_resid (true);
+        _cal_resid (/*WithAccel*/true);
 
         // next time step
         Time += dt;
@@ -1052,7 +1044,6 @@ inline void Solver::_GN22_update (double tf, double dt)
 
             // update elements
             for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
-            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
             Unew += dU;
@@ -1121,7 +1112,6 @@ inline void Solver::_GNHMCoup_update (double tf, double dt)
 
             // update elements
             for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
-            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
             Unew += dU;
