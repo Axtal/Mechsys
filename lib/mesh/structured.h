@@ -427,6 +427,7 @@ inline void Block::ApplyCtr (Array<int> const & Sides, Vertex & V) const
                 X = &V.C(1);
                 Y = &V.C(2);
             }
+            else throw new Fatal("Mesh::Block: __internal_error__: Unknown constraint type (%d)",it->second("type"));
             double x   = (*X);
             double y   = (*Y);
             double xc  = it->second("xc");
