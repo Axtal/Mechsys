@@ -895,7 +895,20 @@ inline void Solver::_ME_update (double tf)
             _cor_resid (dU_me);
             if (m>mMax) m = mMax;
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-            if (SSOut) Dom.OutResults (Time, F_int);
+            if (SSOut)
+            {
+                // update nodes to Time
+                for (size_t i=0; i<ActNods.Size(); ++i)
+                {
+                    for (size_t j=0; j<ActNods[i]->nDOF(); ++j)
+                    {
+                        long eq = ActNods[i]->EQ[j];
+                        ActNods[i]->U[j] = U(eq);
+                        ActNods[i]->F[j] = F(eq);
+                    }
+                }
+                Dom.OutResults (Time, F_int);
+            }
         }
         else if (m<mMin) m = mMin;
 
