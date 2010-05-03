@@ -72,7 +72,8 @@ public:
     bool CheckError   (Table const & NodSol, Table const & EleSol, 
                        SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
     bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;  ///< At integration points
-    void WriteMPY     (char const * FileKey, double SFCoef=1.0) const;      ///< SFCoef: Scale-factor coefficient
+    void WriteMPY     (char const * FileKey, double SFCoef=1.0,
+                       char const * Extra=NULL) const;                      ///< SFCoef: Scale-factor coefficient
     void WriteVTU     (char const * FileKey) const;                         ///< Write file for ParaView
 
     // Data
@@ -774,7 +775,7 @@ inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) c
     return error;
 }
 
-inline void Domain::WriteMPY (char const * FNKey, double SFCoef) const
+inline void Domain::WriteMPY (char const * FNKey, double SFCoef, char const * Extra) const
 {
     // bounding box
     Vec3_t min, max, del;
@@ -820,6 +821,7 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef) const
     MPL::Header   (of);
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->Draw (of, SFCoef*max_dist);
     MPL::AddPatch (of);
+    if (Extra!=NULL) of << Extra;
     MPL::Show     (of);
     of.close      ();
 }
