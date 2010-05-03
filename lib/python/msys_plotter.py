@@ -47,6 +47,7 @@ class Plotter:
         self.fc_np     = 40                                       # number of points for drawing failure line
         self.oct_norm  = False                                    # normalize plot in octahedral plane by p ?
         self.rst_phi   = True                                     # show fc_phi in Rosette
+        self.rst_circ  = True                                     # draw circle in Rosette
         self.isxyz     = (-1,0)                                   # indices for sxyz plot, use negative numbers for principal components
         self.devplot   = True                                     # plot s3-s1, s3-s2 instead of Ek, Sk
         self.pcte      = -1                                       # if pcte>0 => pcte in Ev x p (logp) plot?
@@ -120,9 +121,10 @@ class Plotter:
 
         # calc friction angle
         imaQP = QdivP.argmax() # index of QP used to calculate phi
-        if calc_phi or self.fc_phi<0: self.fc_phi = M_calc_phi (QdivP[imaQP], self.pq_ty)
-        self.fc_poct = P[imaQP]*sqrt(3.0) if self.pq_ty=='cam' else P[imaQP]
-        self.fc_cu   = qf_calc_cu (Q[imaQP], self.pq_ty)
+        if calc_phi or self.fc_phi<0:
+            self.fc_phi  = M_calc_phi (QdivP[imaQP], self.pq_ty)
+            self.fc_poct = P[imaQP]*sqrt(3.0) if self.pq_ty=='cam' else P[imaQP]
+            self.fc_cu   = qf_calc_cu (Q[imaQP], self.pq_ty)
 
         # set for eps
         if self.set_eps:
@@ -259,7 +261,7 @@ class Plotter:
 
     # Plot octahedral rosette
     # =======================
-    def oct_rosette(self, xmin, xmax, ymin, ymax, draw_circ=True):
+    def oct_rosette(self, xmin, xmax, ymin, ymax):
         r  = sqrt((xmax-xmin)**2. + (ymax-ymin)**2.)
         cf = 0.2
         cr = 1.1
@@ -284,7 +286,7 @@ class Plotter:
         text(l4[0],l4[1],r'$\theta=-30^\circ$',                 ha='left',   fontsize=8)
         if self.rst_phi:
             text(0.0,l2[1]-0.05*r,r'$\phi_{comp}=%2.1f^\circ$'%self.fc_phi, ha='center', va='top', fontsize=10)
-        if draw_circ:
+        if self.rst_circ:
             M = phi_calc_M (self.fc_phi, 'oct')
             R = M if self.oct_norm else self.fc_poct*M
             self.draw_arc(gca(), 0.,0.,R, 0.85*pi/2., 1.05*(pi/2.+pi/3.), self.lgray)
