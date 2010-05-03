@@ -16,7 +16,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-
 // STL
 #include <iostream>
 
@@ -37,7 +36,7 @@ struct DbgDat
     ~DbgDat () { of.close (); }
      DbgDat ()
     {
-         of.open ("nayak_zienk_01.res",std::ios::out);
+         of.open ("ep_test.res",std::ios::out);
          of<<_6_3<<"Time"<<_8s<<"u"<< _8s<<"fint"<<_8s<<"fext\n";
          of<<_6_3<<  0   <<_8s<< 0 << _8s<<  0   <<_8s<<  0 << endl;
     }
@@ -51,16 +50,16 @@ void DbgFun (FEM::Solver const & Sol, void * Dat)
 
 int main(int argc, char **argv) try
 {
-    //if (argc>1) is2d = atoi(argv[1]);
-
-    double r  = 3.0;
-    double R  = 6.0;
-    double th = 4.0*Util::PI/180.0;
-
     // mesh
     Mesh::Structured mesh(2);
-    mesh.GenSector (/*Nr*/4, /*Nth*/2, r, R, th);
-    mesh.WriteMPY  ("nayak_zienk_01");
+    mesh.SetSize   (4, 1);
+    mesh.SetVert   (0, -100, 0.0, 0.0);
+    mesh.SetVert   (1, -200, 1.0, 0.0);
+    mesh.SetVert   (2, -300, 1.0, 1.0);
+    mesh.SetVert   (3, -400, 0.0, 1.0);
+    mesh.SetCell   (0, -1, Array<int>(0,1,2,3));
+    mesh.SetBryTag (0, 2, -10);
+    mesh.WriteMPY  ("ep_test");
 
     // parameters
     double E  = 10.0e+6;
@@ -70,37 +69,30 @@ int main(int argc, char **argv) try
 
     // props, domain, and solver
     Dict prps, mdls;
-    prps.Set(-1, "prob geom axs", PROB("Equilib"), GEOM("Quad8"), 1.0);
-    mdls.Set(-1, "name E nu fc sY Hp axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
+    prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.0);
+    mdls.Set(-1, "name E nu fc sY Hp psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
 
     // debug data
     DbgDat dat;
-    dat.eqx = 4; // eq for output
+    dat.eqx = 5; // eq for output
 
     // solver
     FEM::Solver sol(dom, NULL, NULL, &DbgFun, &dat);
-    //sol.Scheme = FEM::Solver::FE_t;
     sol.Scheme = FEM::Solver::NR_t;
-    //sol.Scheme = FEM::Solver::NZ_t;
-    //sol.TolR  = 1.0e-2;
-    //sol.MaxIt = 20;
-    //sol.ModNR = true;
-    //sol.STOL  = 1.0e-7;
-    //sol.dTini = 0.1;
-    sol.SSOut = false;
 
     // solve
-    dom.SetOutNods ("nayak_zienk_01", Array<int>(0,1,2));
-    dom.SetOutEles ("nayak_zienk_01", Array<int>(0,1,2));
+    dom.SetOutNods ("ep_test", Array<int>(1,2,3));
+    dom.SetOutEles ("ep_test", Array<int>(0,true));
     Dict bcs;
-    bcs.Set      (-100, "inclsupport alpha", 1.0, th);
-    bcs.Set      (-30,  "uy", 0.0);
-    bcs.Set      (-10,  "qn", -13900.0);
+    bcs.Set      (-100, "ux uy", 0.0, 0.0);
+    bcs.Set      (-200, "uy",    0.0);
+    bcs.Set      (-400, "ux",    0.0);
+    bcs.Set      (-10,  "qn", -11500.0);
     dom.SetBCs   (bcs);
-    sol.Solve    (40);
-    dom.WriteVTU ("nayak_zienk_01");
+    sol.Solve    (10);
+    dom.WriteVTU ("ep_test");
 
     // end
 	return 0;

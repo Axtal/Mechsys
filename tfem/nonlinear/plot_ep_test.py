@@ -2,19 +2,19 @@ from numpy import *
 from pylab import *
 from msys_readdata import *
 
-plt = 1
+plt = 0
 
 if plt==0:
-    dat = read_table("nayak_zienk_01.res")
+    dat = read_table("ep_test.res")
     u    = array(dat['u'])
     fint = array(dat['fint'])
     fext = array(dat['fext'])
 
-    plot(u,fext,'r-',lw=2,label='Fext')
-    plot(u,fext,'ro')
+    plot(-u,-fext,'r-',lw=4,label='Fext')
+    plot(-u,-fext,'rs')
 
-    plot(u,fint,'b-',lw=2,label='Fint')
-    plot(u,fint,'b*')
+    plot(-u,-fint,'k-',lw=2,label='Fint')
+    plot(-u,-fint,'k.')
 
     xlabel('U')
     ylabel('F')

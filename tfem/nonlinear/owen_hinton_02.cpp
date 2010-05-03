@@ -42,12 +42,11 @@ using Util::_4;
 using Util::_6_3;
 using Util::_8s;
 
-const double DelP = 18.0;
-const size_t NInc = 10;
+const double DelP = 19.0;
+const size_t NInc = 19;
 
 struct OutDat
 {
-    Array<int> POut;
     std::ofstream of;
     ~OutDat () { of.close (); }
      OutDat ()
@@ -62,13 +61,12 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
     OutDat * dat = static_cast<OutDat*>(Dat);
 
     // current P
-    size_t inc = (Sol.IdxOut==0 ? 0 : Sol.Inc+1);
-    double P   = inc*DelP/NInc;
+    double P = Sol.Time*DelP;
 
     //////////////////////////////////////////////////////////////////////////////////// Control Node /////
     
     {
-        size_t inod = 5;//41;
+        size_t inod = 41;
         FEM::Node const & nod = (*Sol.Dom.Nods[inod]);
         long   eqx    = nod.EQ[nod.FMap("fx")];
         long   eqy    = nod.EQ[nod.FMap("fy")];
@@ -84,11 +82,8 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
     /////////////////////////////////////////////////////////////////////////////////////////// Elems /////
 
     {
-        // time to output ?
-        if (dat->POut.Find((int)P)<0) return;
-
         // header
-        String fn;  fn.Printf("owen_hinton_02_P%d.res",(int)P);
+        String fn;  fn.Printf("owen_hinton_02_P%g.res",P);
         std::ofstream of(fn.CStr(), std::ios::out);
         of << _8s<<"P" << _8s<< "r" << _8s<< "sr" << _8s<< "st" << _8s<< "srt" << "\n";
 
@@ -137,12 +132,16 @@ int main(int argc, char **argv) try
 {
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
     
-    String extra("from pylab import *\nfrom data_handler import *\ndat = read_table('owen_hinton_02_mesh.dat')\nplot(dat['x'],dat['y'],'ro',lw=3)\n");
+    String extra("\
+from pylab import *\n\
+from msys_readdata import *\n\
+dat = read_table('owen_hinton_02_mesh.dat')\n\
+plot(dat['x'],dat['y'],'ro',lw=3)\n");
     Mesh::Structured mesh(/*NDim*/2);
     //mesh.GenQRing (/*O2*/true,/*Nx*/4,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/3,/*Ax*/1.0); // w = 1 + Ax*i
-    mesh.GenQRing (/*O2*/true,/*Nx*/0,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/3,/*Ax*/0.0,/*NonLin*/false,/*Wx*/"1.662 2.164 3.034 3.092");
-    mesh.WriteMPY ("owen_hinton_02");//, extra.CStr());
-    mesh.WriteVTU ("owen_hinton_02", /*VolSurfOrBoth*/0);
+    mesh.GenQRing (/*O2*/true,/*Nx*/0,/*Ny*/1,/*r*/100.,/*R*/200.,/*Nb*/3,/*Ax*/0.0,/*NonLin*/false,/*Wx*/"1.661998255 2.1643892556 3.0339121415 3.0918803339");
+    mesh.WriteMPY ("owen_hinton_02", /*WithTags*/true, /*WithIDs*/true, /*WithShares*/false, extra.CStr());
+    mesh.WriteVTU ("owen_hinton_02", /*VolSurfOrBoth: Vol=0, Surf=1, Both=2*/0);
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -173,12 +172,10 @@ int main(int argc, char **argv) try
 
     // output data
     OutDat dat;
-    dat.POut.Resize (4);
-    dat.POut = 8, 12, 14, 18;
 
     // solver
     FEM::Solver sol(dom, &OutFun, &dat);
-    sol.TolR = 1.0e-4;
+    sol.SetScheme ("NR");
 
     // solve
     sol.Solve (NInc);
@@ -186,7 +183,17 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
     // draw elements with IPs
-    dom.WriteMPY ("owen_hinton_02_elems");
+    String ext("\
+from numpy import *\n\
+from pylab import *\n\
+A = linspace(0.0,pi/2.0,200)\n\
+X = 100.0*cos(A)\n\
+Y = 100.0*sin(A)\n\
+plot(X,Y,'r-',lw=2)\n\
+X = 200.0*cos(A)\n\
+Y = 200.0*sin(A)\n\
+plot(X,Y,'r-',lw=2)\n");
+    dom.WriteMPY ("owen_hinton_02_elems", /*SFCoef*/1.0, ext.CStr());
 
     return 0;
 }

@@ -4,7 +4,9 @@ from msys_readdata import read_table
 from msys_plotter  import Plotter
 from msys_linfit   import LinFit
 
-if False:
+plt = 0
+
+if plt==0:
     # data
     d1  = read_table("owen_salonen_fig5.dat")
     d2  = read_table("owen_salonen_fig5_bilinear.dat")
@@ -44,7 +46,7 @@ if False:
     grid()
     show()
 
-if True:
+elif plt==1:
     r1 = read_table("owen_salonen_3d_nod_0_-1.res")
     r2 = read_table("owen_salonen_3d_nod_2_-2.res")
     r3 = read_table("owen_salonen_3d_nod_81_-5.res")
