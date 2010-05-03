@@ -50,7 +50,7 @@ public:
                                  Array<double> * h=NULL, Vec_t * d=NULL)                 const {}
     virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt) const { alpInt=-1.0; return false; }
     virtual void   CorrectDrift (State * Sta)                                            const {}
-    virtual double CalcDEz      (Vec_t const & DSig)                                     const { throw new Fatal("Model::CalcDEz: This method is not available yet"); return 0; }
+    virtual double CalcDEz      (State const * Sta, Vec_t const & DSig)                  const { throw new Fatal("Model::CalcDEz: This method is not available yet"); return 0; }
 
     // Data
     int      NDim; ///< Space dimension: 2 or 3

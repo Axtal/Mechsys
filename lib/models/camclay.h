@@ -43,7 +43,6 @@ public:
     // Data
     double         lam;
     double         kap;
-    double         nu;
     double         phi;
     double         M;
     Vec_t          I;

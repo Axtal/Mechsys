@@ -196,7 +196,7 @@ inline void StressUpdate::TangentIncs (EquilibState const * sta, Vec_t & deps, V
     for (size_t k=0; k<size(sta->Ivs); ++k) divs(k) = h[k]*dot(d,deps);
 
     // calculate dez for plane-stress
-    if (Mdl->GTy==pse_t) deps(2) = Mdl->CalcDEz(dsig);
+    if (Mdl->GTy==pse_t) deps(2) = Mdl->CalcDEz(sta, dsig);
 }
 
 #endif // MECHSYS_STRESSUPDATE_H

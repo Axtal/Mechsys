@@ -37,7 +37,7 @@ public:
     void   InitIvs   (SDPair const & Ini, State * Sta)        const;
     void   Stiffness (State const * Sta, Mat_t & D, 
                       Array<double> * h=NULL, Vec_t * d=NULL) const;
-    double CalcDEz   (Vec_t const & DSig) const;
+    double CalcDEz   (State const * Sta, Vec_t const & DSig)  const;
 
     // Data
     double E;
@@ -101,7 +101,7 @@ inline void LinElastic::Stiffness (State const * Sta, Mat_t & D, Array<double> *
     }
 }
 
-inline double LinElastic::CalcDEz (Vec_t const & DSig) const
+inline double LinElastic::CalcDEz (State const * Sta, Vec_t const & DSig) const
 {
     if (GTy!=pse_t) throw new Fatal("LinElastic::CalcDEz: %dD: This method is not available for GeometryType = %s",NDim,GTypeToStr(GTy).CStr());
     return -nu*(DSig(0)+DSig(1))/E;

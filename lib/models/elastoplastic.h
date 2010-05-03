@@ -40,10 +40,11 @@ public:
     ElastoPlastic (int NDim, SDPair const & Prms, bool DerivedModel=false);
 
     // Derived methods
-    void Stiffness    (State const * Sta, Mat_t & D,
-                       Array<double> * h=NULL, Vec_t * d=NULL)                 const;
-    bool LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt) const;
-    void CorrectDrift (State * Sta)                                            const;
+    void   Stiffness    (State const * Sta, Mat_t & D,
+                         Array<double> * h=NULL, Vec_t * d=NULL)                 const;
+    bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt) const;
+    void   CorrectDrift (State * Sta)                                            const;
+    double CalcDEz      (State const * Sta, Vec_t const & DSig)                        const;
 
     // Internal methods
     void ELStiff (EquilibState const * Sta, Mat_t & D) const;
@@ -73,7 +74,9 @@ public:
 
 
 inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived)
-    : Model (NDim,Prms,"ElastoPlastic")
+    : Model (NDim,Prms,"ElastoPlastic"),
+      E     (0.0),
+      nu    (0.0)
 {
     if (!Derived)
     {
@@ -148,6 +151,17 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Array<double
     		set_to_zero   ((*d));
     	}
         //cout << "De =\n" << PrintMatrix(D);
+    }
+
+    // plane stress
+    if (GTy==pse_t)
+    {
+        size_t ncp = size(sta->Sig);
+        for (size_t i=0; i<ncp; ++i)
+        {
+            D(2,i) = 0.0;
+            D(i,2) = 0.0;
+        }
     }
 }
 
@@ -400,6 +414,12 @@ inline void ElastoPlastic::CorrectDrift (State * Sta) const
     if (it>=maxIt) throw new Fatal("ElastoPlastic::CorrectDrift: Yield surface drift correction dit not converge after %d iterations",it);
 }
 
+inline double ElastoPlastic::CalcDEz (State const * Sta, Vec_t const & DSig) const
+{
+    if (GTy!=pse_t) throw new Fatal("ElastoPlastic::CalcDEz: %dD: This method is not available for GeometryType = %s",NDim,GTypeToStr(GTy).CStr());
+    EquilibState const * sta = static_cast<EquilibState const *>(Sta);
+    return -nu*(DSig(0)+DSig(1))/CalcE(sta);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 
