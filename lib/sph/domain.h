@@ -75,6 +75,7 @@ inline SPHDomain::SPHDomain ()
     Time = 0.0;
     Gravity = 0.0,0.0,0.0;
     Alpha = 0.1;
+    FileID = NULL;
 }
 
 
@@ -275,7 +276,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
     ResetDisplacements();
     ResetContacts();
 
-    OpenH5Part(TheFileKey);
+    //OpenH5Part(TheFileKey);
 //
     while (Time<tf)
     {
@@ -299,7 +300,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
                 String fn;
                 fn.Printf    ("%s_%08d", TheFileKey, idx_out);
                 if(RenderVideo) WritePOV     (fn.CStr());
-                WriteH5Part();
+                //WriteH5Part();
             }
             tout += dtOut;
         }
@@ -312,7 +313,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
         
     }
 
-    CloseH5Part();
+    //CloseH5Part();
 
 
 }

@@ -31,7 +31,8 @@ SET(EXES
   test_beam
   cylinder_test
   brazil_test
-  figure)
+  figure
+  2Dcompression)
 
 SET(TESTS
   test_distances)

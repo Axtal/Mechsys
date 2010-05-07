@@ -18,17 +18,15 @@
 
 // Std Lib
 #include <iostream>
+#include <fstream>
 
 // MechSys
-#include <mechsys/lbm/dem.h>
 #include <mechsys/util/maps.h>
+#include <mechsys/lbm/lattice.h>
 
 using std::cout;
 using std::endl;
-int    nx     = 200;
-int    ny     = 200;
-//double omega  = 0.001;  // Angular velocity in the surface of the obstacle
-
+using std::ifstream;
 
 void DrawOpenCircle(LBM::Lattice & l, double obsX, double obsY, double radius, double tol)
 {
@@ -56,51 +54,64 @@ void DrawFluidCircle(LBM::Lattice & l , double obsX, double obsY, double radius,
 
 int main(int argc, char **argv) try
 {
+    if (argc!=2) throw new Fatal("This program must be called with one argument: the name of the data input file without the '.inp' suffix.\nExample:\t %s filekey\n",argv[0]);
+    String filekey  (argv[1]);
+    String filename (filekey+".inp");
+    if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
+    ifstream infile(filename.CStr());
+    int         nx;     // Number of cells in the x direction
+    int         ny;     // Number of cells in the y direction
+    double      Gs;     // Interaction constant for fluid-solid
+    double      Gf;     // Interaction constant for fluid-fluid
+    double      densv;  // Density for the vapour phase
+    double      densl;  // Density for the liquid phase
+     
+    // Reading from the file
+    infile >> nx;     infile.ignore(200,'\n'); 
+    infile >> ny;     infile.ignore(200,'\n');
+    infile >> Gs;     infile.ignore(200,'\n');
+    infile >> Gf;     infile.ignore(200,'\n');
+    infile >> densv;  infile.ignore(200,'\n');
+    infile >> densl;  infile.ignore(200,'\n');
+
+
 	// Allocate lattice
-	LBM::Lattice l("swell",   // FileKey
-	               false,    // Is3D
+	LBM::Lattice l(filekey.CStr(),   // FileKey
+	               false,            // Is3D
 		           1./6.,
-	               nx,       // Nx
+	               nx,               // Nx
 	               ny,
 		           1,
 		           1,
 		           1);      
 
 	// Set walls (top and bottom)
-	l.SetG(-8.0)->SetGSolid(-10.0);
+	l.SetG(-Gf)->SetGSolid(-Gs);
+	l.SetTau(1.0);
+
 
 	// Define Initial conditions: velocity speed and density
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-	    l.GetCell(i,j)->Initialize (0.04, Vec3_t(0.0,0.0,0.0),l.Cs());
+	    l.GetCell(i,j)->Initialize (densv, Vec3_t(0.0,0.0,0.0),l.Cs());
 	}
 
 	// Set grains
 	Table grains;
-	grains.Read("circles.out");
+    String outname (filekey+".out");
+	grains.Read(outname.CStr());
 	for (size_t i=0; i<grains["Xc"].Size(); ++i)
 	{
 		double xc = grains["Xc"][i]*nx;
 		double yc = grains["Yc"][i]*ny;
 		double r  = grains["R" ][i]*0.9*nx;
-        DrawOpenCircle (l, xc, yc, r  ,0.4);
-        DrawFluidCircle(l, xc, yc, r-1,3.95);
+        if ((xc+r<nx)&&(xc-r>0)&&(yc+r<ny)&&(yc-r>0))
+        {
+            DrawOpenCircle (l, xc, yc, r  ,0.4);
+            DrawFluidCircle(l, xc, yc, r-1,densl);
+        }
 	}
-
-    //DrawOpenCircle (l,100, 80,11,0.2);
-    //DrawFluidCircle(l,100, 80,10,2.8);
-//
-    //DrawOpenCircle (l,120, 90,11,0.2);
-    //DrawFluidCircle(l,120, 90,10,2.8);
-//
-    //DrawOpenCircle (l, 80,110,11,0.2);
-    //DrawFluidCircle(l, 80,110,10,2.8);
-//
-    //DrawOpenCircle (l,100,120,11,0.2);
-    //DrawFluidCircle(l,100,120,10,2.8);
-
-
-	l.Solve(/*tIni*/0.0, /*tFin*/10000.0, /*dtOut*/50.);
+	l.Solve(/*tIni*/0.0, /*tFin*/40000.0, /*dtOut*/200.);
 }
 MECHSYS_CATCH

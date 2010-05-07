@@ -32,7 +32,8 @@ int main(int argc, char **argv) try
 	LBM::Lattice l(/*FileKey*/"drop", /*Is3D*/false,1.0, /*Nx*/100, /*Ny*/100,1,1,1);
 
 	// Set constants
-	l.SetG(-16.0)->SetGSolid(-0.0);
+	l.SetG(-120.0)->SetGSolid(-500.0);
+    l.SetTau(1.0);
 
 	// Set Gravity
 	l.SetGravity (0.0, -0.0005);
@@ -50,9 +51,9 @@ int main(int argc, char **argv) try
 	{
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->Initialize (/*Rho*/ 1.5, v0,l.Cs());
+			l.GetCell(i,j)->Initialize (/*Rho*/ 1000.0, v0,l.Cs());
 		else
-			l.GetCell(i,j)->Initialize (/*Rho*/ 1.0, v0,l.Cs());
+			l.GetCell(i,j)->Initialize (/*Rho*/ 1.4e1, v0,l.Cs());
 	}
 
 	// Solve
