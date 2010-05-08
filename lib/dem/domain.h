@@ -60,14 +60,14 @@ public:
 
     // Particle generation
     void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type, 
-                          size_t Randomseed, double fraction);                                                         ///< General spheres
-    void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);      ///< General rices
-    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                       ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
-    void GenBoundingBox  (int InitialTag, double R, double Cf);                                                        ///< Generate o bounding box enclosing the previous included particles.
-    void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true);                 ///< Generate particles from a FEM mesh generator
-    void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);  ///< Generate Particles from a Voronoi container
+                          size_t Randomseed, double fraction);                                                                              ///< General spheres
+    void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                           ///< General rices
+    void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                                            ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
+    void GenBoundingBox  (int InitialTag, double R, double Cf);                                                                             ///< Generate o bounding box enclosing the previous included particles.
+    void GenFromMesh     (Mesh::Generic & M, double R, double rho, bool cohesion=false, bool MC=true, double thickness = 0.0);              ///< Generate particles from a FEM mesh generator
+    void GenFromVoro     (int Tag, container & VC, double R, double rho, double fraction=1.0,char const * Type=NULL);                       ///< Generate Particles from a Voronoi container
     void AddVoroPack     (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, 
-                          double rho, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                 ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
+                          double rho, bool Periodic,size_t Randomseed, double fraction, double q=0.0);                                      ///< Generate a Voronoi Packing wiht dimensions Li and polihedra per side ni
     // Single particle addition
     void AddSphere   (int Tag, Vec3_t const & X, double R, double rho);                                                          ///< Add sphere
     void AddCube     (int Tag, Vec3_t const & X, double R, double L, double rho, double Angle=0, Vec3_t * Axis=NULL);            ///< Add a cube at position X with spheroradius R, side of length L and density rho
@@ -316,7 +316,7 @@ inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
     GenBox(InitialTag, maxX(0)-minX(0)+2*R, maxX(1)-minX(1)+2*R, maxX(2)-minX(2)+2*R, R, Cf);
 }
 
-inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC)
+inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC, double thickness)
 {
     // info
     double start = std::clock();
@@ -326,36 +326,77 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
 
     for (size_t i=0; i<M.Cells.Size(); ++i)
     {
-        Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
-        size_t nverts = verts.Size();
 
-        // verts
-        Array<Vec3_t> V(nverts);
-        for (size_t j=0; j<nverts; ++j)
+        Array<Vec3_t> V;             // Array of vertices
+        Array<Array <int> > E;       // Array of edges
+        Array<Array <int> > F;       // array of faces
+        if (M.NDim==3)
         {
-            V[j] = verts[j]->C;
-        }
+            Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
+            size_t nverts = verts.Size();
 
-        // edges
-        size_t nedges = Mesh::NVertsToNEdges3D[nverts];
-        Array<Array <int> > E(nedges);
-        for (size_t j=0; j<nedges; ++j)
-        {
-            E[j].Push (Mesh::NVertsToEdge3D[nverts][j][0]);
-            E[j].Push (Mesh::NVertsToEdge3D[nverts][j][1]);
-        }
-
-        size_t nfaces = Mesh::NVertsToNFaces3D[nverts];
-        size_t nvperf = Mesh::NVertsToNVertsPerFace3D[nverts];
-        Array<Array <int> > F(nfaces);
-        for (size_t j=0; j<nfaces; ++j)
-        {
-            for (size_t k=0; k<nvperf; ++k)
+            // verts
+            V.Resize(nverts);
+            for (size_t j=0; j<nverts; ++j)
             {
-                // TODO: check if face is planar or not
-                F[j].Push(Mesh::NVertsToFace3D[nverts][j][k]);
+                V[j] = verts[j]->C;
+            }
+
+            // edges
+            size_t nedges = Mesh::NVertsToNEdges3D[nverts];
+            E.Resize(nedges);
+            for (size_t j=0; j<nedges; ++j)
+            {
+                E[j].Push (Mesh::NVertsToEdge3D[nverts][j][0]);
+                E[j].Push (Mesh::NVertsToEdge3D[nverts][j][1]);
+            }
+
+            size_t nfaces = Mesh::NVertsToNFaces3D[nverts];
+            size_t nvperf = Mesh::NVertsToNVertsPerFace3D[nverts];
+            F.Resize(nfaces);
+            for (size_t j=0; j<nfaces; ++j)
+            {
+                for (size_t k=0; k<nvperf; ++k)
+                {
+                    // TODO: check if face is planar or not
+                    F[j].Push(Mesh::NVertsToFace3D[nverts][j][k]);
+                }
             }
         }
+        else if (M.NDim==2)
+        {
+            Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
+            size_t nverts = verts.Size();
+            V.Resize(2*nverts);
+            for (size_t j=0; j<nverts; ++j)
+            {
+                V[j] = verts[j]->C;
+                V[j+nverts] = verts[j]->C + Vec3_t(0.0,0.0,thickness);
+            }
+            size_t nedges = 3*nverts;
+            E.Resize(nedges);
+            for (size_t j=0; j<nverts; ++j)
+            {
+                E[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]);
+                E[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]);
+                E[j+nverts].Push (Mesh::NVertsToEdge2D[nverts][j][0]+nverts);
+                E[j+nverts].Push (Mesh::NVertsToEdge2D[nverts][j][1]+nverts);
+                E[j+2*nverts].Push(j);
+                E[j+2*nverts].Push(j+nverts);
+            }
+            size_t nfaces = nverts+2;
+            F.Resize(nfaces);
+            for (size_t j=0; j<nverts; ++j)
+            {
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]);
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]);
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][1]+nverts);
+                F[j].Push (Mesh::NVertsToEdge2D[nverts][j][0]+nverts);
+                F[nverts].Push(nverts-1-j);
+                F[nverts+1].Push(j+nverts);
+            }
+        }
+
         double vol; // volume of the polyhedron
         Vec3_t CM;  // Center of mass of the polyhedron
         Mat3_t It;  // Inertia tensor of the polyhedron

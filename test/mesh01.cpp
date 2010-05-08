@@ -195,6 +195,7 @@ int main(int argc, char **argv) try
         mesh.SetSeg (6,   0,  6, 7);         // id, etag, L, R
         mesh.SetSeg (7,   0,  7, 4);         // id, etag, L, R
         mesh.Generate ();
+        mesh.FindNeigh ();
         mesh.WriteVTU ("mesh01_tri", /*VolSurfOrBoth*/0);
         cout << " File <mesh01_tri.vtu> generated\n";
     }

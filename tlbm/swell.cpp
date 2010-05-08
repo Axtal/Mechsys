@@ -65,6 +65,8 @@ int main(int argc, char **argv) try
     double      Gf;     // Interaction constant for fluid-fluid
     double      densv;  // Density for the vapour phase
     double      densl;  // Density for the liquid phase
+    int         Tf;     // final time
+    int         dTout;  // time sapn for output
      
     // Reading from the file
     infile >> nx;     infile.ignore(200,'\n'); 
@@ -73,6 +75,8 @@ int main(int argc, char **argv) try
     infile >> Gf;     infile.ignore(200,'\n');
     infile >> densv;  infile.ignore(200,'\n');
     infile >> densl;  infile.ignore(200,'\n');
+    infile >> Tf;     infile.ignore(200,'\n');
+    infile >> dTout;  infile.ignore(200,'\n');
 
 
 	// Allocate lattice
@@ -108,10 +112,10 @@ int main(int argc, char **argv) try
 		double r  = grains["R" ][i]*0.9*nx;
         if ((xc+r<nx)&&(xc-r>0)&&(yc+r<ny)&&(yc-r>0))
         {
-            DrawOpenCircle (l, xc, yc, r  ,0.4);
-            DrawFluidCircle(l, xc, yc, r-1,densl);
+            DrawOpenCircle (l, xc, yc, r+1,0.4);
+            DrawFluidCircle(l, xc, yc, r  ,densl);
         }
 	}
-	l.Solve(/*tIni*/0.0, /*tFin*/40000.0, /*dtOut*/200.);
+	l.Solve(/*tIni*/0.0, /*tFin*/Tf, /*dtOut*/dTout);
 }
 MECHSYS_CATCH
