@@ -56,16 +56,17 @@ public:
                                 pOutFun DbgFun=NULL, void * DbgDat=NULL);
 
     // Methods
-    void Solve        (size_t NInc=1, char const * FileKey=NULL, Array<double> * Weights=NULL); ///< Solve steady/equilibrium equation
-    void TransSolve   (double tf, double dt, double dtOut, char const * FileKey=NULL);          ///< Solve transient equation
-    void DynSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL);          ///< Solve dynamic equation
-    void AssembleKA   ();                                                                       ///< A = K11
-    void AssembleKMA  (double Coef1, double Coef2);                                             ///< A = Coef1*M + Coef2*K
-    void AssembleKCMA (double Coef1, double Coef2, double Coef3);                               ///< A = Coef1*M + Coef2*C + Coef3*K
-    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                                      ///< Tangent increments: dU = inv(K)*dF
-    void Initialize   (bool Transient=false);                                                   ///< Initialize global matrices and vectors
-    void SetScheme    (char const * StrScheme);                                                 ///< Set solution scheme: 'FE', 'ME', 'NR'
-    bool ResidOK      () const;                                                                 ///< Check if the residual is OK
+    void Solve        (size_t NInc=1, char const * FileKey=NULL,
+                       Array<double> * Weights=NULL, bool NonLinWei=false);            ///< Solve steady/equilibrium equation
+    void TransSolve   (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient equation
+    void DynSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic equation
+    void AssembleKA   ();                                                              ///< A = K11
+    void AssembleKMA  (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
+    void AssembleKCMA (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
+    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
+    void Initialize   (bool Transient=false);                                          ///< Initialize global matrices and vectors
+    void SetScheme    (char const * StrScheme);                                        ///< Set solution scheme: 'FE', 'ME', 'NR'
+    bool ResidOK      () const;                                                        ///< Check if the residual is OK
 
     // Data (read-only)
     Domain  const & Dom;      ///< Domain
@@ -175,7 +176,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
 {
 }
 
-inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * Weights)
+inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * Weights, bool NonLinWei)
 {
     // info
     double start = std::clock();
@@ -201,7 +202,22 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
     {
         Weights = new Array<double>;
         Weights->Resize (NInc);
-        for (size_t i=0; i<NInc; ++i) (*Weights)[i] = 1.0/NInc;
+        if (NonLinWei)
+        {
+            double delx = 1.0/NInc;
+            for (size_t i=0; i<NInc; ++i)
+            {
+                double xi = 1.0-delx*i;
+                double xj = 1.0-delx*(i+1);
+                double yi = pow(xi,3.0);
+                double yj = pow(xj,3.0);
+                (*Weights)[i] = yi-yj;
+            }
+        }
+        else
+        {
+            for (size_t i=0; i<NInc; ++i) (*Weights)[i] = 1.0/NInc;
+        }
         del_weights = true;
     }
     else if (NInc!=Weights->Size()) throw new Fatal("Solver::Solve: Array with weights must have size equal to NDiv (%d)",NInc);
