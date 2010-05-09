@@ -332,6 +332,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
         Array<Array <int> > F;       // array of faces
         if (M.NDim==3)
         {
+            if (thickness > 0.0) throw new Fatal("Domain::GenFromMesh: Thickness should not be used in a 3D mesh");
             Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
             size_t nverts = verts.Size();
 
@@ -365,6 +366,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
         }
         else if (M.NDim==2)
         {
+            if (thickness <= 0.0) throw new Fatal("Domain::GenFromMesh: Thickness should be positive in a 2D mesh");
             Array<Mesh::Vertex*> const & verts = M.Cells[i]->V;
             size_t nverts = verts.Size();
             V.Resize(2*nverts);
@@ -909,9 +911,25 @@ inline void Domain::SetProps (Dict & D)
                 {
                     Particles[i]->Kt = p("Kt");
                 }
+                if (p.HasKey("Bn"))
+                {
+                    Particles[i]->Bn = p("Bn");
+                }
+                if (p.HasKey("Bt"))
+                {
+                    Particles[i]->Bt = p("Bt");
+                }
+                if (p.HasKey("Bm"))
+                {
+                    Particles[i]->Bm = p("Bm");
+                }
                 if (p.HasKey("Mu"))
                 {
                     Particles[i]->Mu = p("Mu");
+                }
+                if (p.HasKey("eps"))
+                {
+                    Particles[i]->eps = p("eps");
                 }
                 if (p.HasKey("Beta"))
                 {
@@ -924,7 +942,14 @@ inline void Domain::SetProps (Dict & D)
             }
         }
     }
-    //ResetInteractons();
+    for (size_t i=0; i<BInteractons.Size(); i++)
+    {
+        BInteractons[i]->UpdateParameters();
+    }
+    for (size_t i=0; i<CInteractons.Size(); i++)
+    {
+        CInteractons[i]->UpdateParameters();
+    }
 }
 
 inline void Domain::Initialize (double dt)
@@ -1119,7 +1144,11 @@ inline void Domain::WritePOV (char const * FileKey)
     POVSetCam (of, CamPos, OrthoSys::O);
     for (size_t i=0; i<Particles.Size(); i++)
     {
-        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf&&!Particles[i]->wyf&&!Particles[i]->wzf) Particles[i]->Draw(of,"Red");
+        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf&&!Particles[i]->wyf&&!Particles[i]->wzf)
+        {
+            if(Particles[i]->IsBroken) Particles[i]->Draw(of,"Black");
+            else                       Particles[i]->Draw(of,"Red");
+        }
         else Particles[i]->Draw(of,"Col_Glass_Bluish");
     }
     of.close();

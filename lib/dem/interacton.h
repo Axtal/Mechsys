@@ -41,8 +41,9 @@ public:
     Interacton () {};                            ///< Default constructor
 
     // Methods
-    virtual bool UpdateContacts (double alpha) =0;    ///< Update contacts by verlet algorithm
-    virtual void CalcForce      (double dt = 0.0) =0; ///< Calculates the contact force between particles
+    virtual bool UpdateContacts   (double alpha) =0;    ///< Update contacts by verlet algorithm
+    virtual void CalcForce        (double dt = 0.0) =0; ///< Calculates the contact force between particles
+    virtual void UpdateParameters () =0;                ///< Update the parameters
 
     // Data
     Particle     * P1;        ///< First particle
@@ -61,6 +62,7 @@ public:
     // Methods
     virtual bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
     virtual void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
+    virtual void UpdateParameters ();              ///< Update the parameters
 
     // Data
     double         Kn;        ///< Normal stiffness
@@ -94,9 +96,10 @@ class CInteractonSphere: public CInteracton // Collision interacton for spheres
 public:
     // Methods 
     CInteractonSphere (Particle * Pt1, Particle * Pt2); ///< Constructor requires pointers to both particles
-    bool UpdateContacts (double alpha);                ///< Update contacts by verlet algorithm
-    void CalcForce (double dt = 0.0);                  ///< Calculates the contact force between particles
-    
+    bool UpdateContacts (double alpha);                 ///< Update contacts by verlet algorithm
+    void CalcForce (double dt = 0.0);                   ///< Calculates the contact force between particles
+    void UpdateParameters ();                           ///< Update the parameters
+
     // Data
     FrictionMap_t  Fdvv;                                ///< Static Friction displacement for the vertex vertex pair
     ListContacts_t Lvv;                                 ///< List of vertices
@@ -116,6 +119,7 @@ public:
     // Methods
     bool UpdateContacts (double alpha);    ///< Update contacts by verlet algorithm
     void CalcForce      (double dt = 0.0); ///< Calculates the contact force between particles
+    void UpdateParameters ();              ///< Update the parameters in case they change
 
     // Data
     size_t F1;                             ///< Index of the shared face for particle 1
@@ -190,6 +194,15 @@ inline void CInteracton::CalcForce (double dt)
     }
 }
 
+inline void CInteracton::UpdateParameters ()
+{
+    Kn              = 2*ReducedValue(P1->Kn,P2->Kn);
+    Kt              = 2*ReducedValue(P1->Kt,P2->Kt);
+    Gn              = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
+    Gt              = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
+    Mu              = 2*ReducedValue(P1->Mu,P2->Mu);
+}
+
 template<typename FeatureA_T, typename FeatureB_T>
 inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B, FrictionMap_t & FMap, ListContacts_t & L, double dt)
 {
@@ -204,7 +217,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->R + P2->R - dist;
         if (delta>0)
         {
-            if (delta > 0.8*(P1->R+P2->R)) throw new Fatal("Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
+            if (delta > 0.8*(P1->R+P2->R)) throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
             // Count a contact
             Nc++;
 
@@ -369,6 +382,16 @@ inline bool CInteractonSphere::UpdateContacts (double alpha)
     else return false;
 }
 
+inline void CInteractonSphere::UpdateParameters ()
+{
+    Kn   = 2*ReducedValue(P1->Kn,P2->Kn);
+    Kt   = 2*ReducedValue(P1->Kt,P2->Kt);
+    Gn   = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
+    Gt   = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
+    Mu   = 2*ReducedValue(P1->Mu,P2->Mu);
+    beta = 2*ReducedValue(P1->Beta,P2->Beta);
+    eta  = 2*ReducedValue(P1->Eta,P2->Eta);
+}
 //Cohesion interacton
 
 inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, size_t Fi2)
@@ -380,11 +403,12 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     I1              = P1->Index;
     I2              = P2->Index;
     Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
-    Bn              = 10.e3*Area;
-    Bt              =  5.e1*Area;
-    Bm              =  5.e3*Area;
-    Gn              =  2*16.0*ReducedValue(P1->m,P2->m);
-    Gt              =  2*8.0*ReducedValue(P1->m,P2->m);
+    Bn              = 2*ReducedValue(P1->Bn,P2->Bn)*Area;
+    Bt              = 2*ReducedValue(P1->Bt,P2->Bt)*Area;
+    Bm              = 2*ReducedValue(P1->Bm,P2->Bm)*Area;
+    Gn              = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
+    Gt              = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
+    eps             = 2*ReducedValue(P1->eps,P2->eps);
 
     Vec3_t t1;
     P1->Faces[F1]->Normal(t1);
@@ -395,7 +419,6 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     Lt              = 0.0,0.0,0.0;
     Ltb             = 0.0,0.0,0.0;
     An              = 0.0;
-    eps             = 0.01;
     valid           = true;
 }
 
@@ -450,8 +473,22 @@ inline void BInteracton::CalcForce(double dt)
         P2->T += T;
 
         // Breaking point
-        //if (fabs(delta)+norm(Lt)+fabs(An)*sqrt(Area/Util::PI)>L0*eps) valid = false;
+        if (fabs(delta)+norm(Lt)+fabs(An)*sqrt(Area/Util::PI)>L0*eps) 
+        {
+            valid = false;
+            P1->IsBroken = true;
+            P2->IsBroken = true;
+        }
     }
 }
 
+inline void BInteracton::UpdateParameters ()
+{
+    Bn              = 2*ReducedValue(P1->Bn,P2->Bn)*Area;
+    Bt              = 2*ReducedValue(P1->Bt,P2->Bt)*Area;
+    Bm              = 2*ReducedValue(P1->Bm,P2->Bm)*Area;
+    Gn              = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
+    Gt              = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
+    eps             = 2*ReducedValue(P1->eps,P2->eps);
+}
 #endif //  MECHSYS_DEM_INTERACTON_H

@@ -73,39 +73,43 @@ int main(int argc, char **argv) try
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
     UserData dat; 
     Domain d(&dat);
-    Mesh::Unstructured mesh(3);                  // 3D
+    Mesh::Unstructured mesh(2);
 
     size_t n_divisions = 30;
     double thickness = 5.0;
     double radius = 20.0;
-    d.CamPos = Vec3_t(radius, 3*radius,0.5*radius); // position of camera
-    mesh.Set    (2*n_divisions, 2+n_divisions, 1, 0);                  // 18 points, 12 facets, 1 region, 1 hole
-    mesh.SetReg (0,  -1,  10.0,  0.0, 0.0, 0.0);  // id, tag, max{volume}, x, y, z <<<<<<< regions
-    Array<int> Front;
-    Array<int> Back;
+    double Bn = 1.0e6;
+    double Bt = 3.3e5;
+    double Bm = 3.3e5;
+    double Gn =  16.0;
+    double Gt =   8.0;
+    double eps = 0.01;
+    d.CamPos = Vec3_t(radius, 0.5*radius,3*radius); // position of camera
+    mesh.Set    (n_divisions, n_divisions, 1, 0);  // division, edges, regions and holes
+    mesh.SetReg (0,  -1,  3.0,  0.0, 0.0);  // id, tag, max{volume}, x, y, z <<<<<<< regions
     for(size_t i=0; i<n_divisions; i++)
     {
-        mesh.SetPnt(i  , 0, radius*cos(2*i*M_PI/n_divisions),-thickness/2.0,radius*sin(2*i*M_PI/n_divisions));
-        mesh.SetPnt(n_divisions+i, 0, radius*cos(2*i*M_PI/n_divisions), thickness/2.0,radius*sin(2*i*M_PI/n_divisions));
+        mesh.SetPnt(i  , 0, radius*cos(2*i*M_PI/n_divisions),radius*sin(2*i*M_PI/n_divisions));
     }
     for(size_t i=0; i<n_divisions; i++)
     {
-        mesh.SetFac(i, 0, Array<int>(i,(i+1)%n_divisions,(i+1)%n_divisions+n_divisions,i+n_divisions));
-        Front.Push(i);
-        Back.Push(i+n_divisions);
+        mesh.SetSeg(i, 0, i, (i+1)%n_divisions);
     }
-    mesh.SetFac(n_divisions, 0,Front);
-    mesh.SetFac(n_divisions+1, 0,Back);
 
     mesh.Generate();
-    d.GenFromMesh(mesh,0.1,3.0,true,false);
+    d.GenFromMesh(mesh,0.1,3.0,true,false,thickness);
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
-    d.AddPlane(-2, Vec3_t(0.0,0.0,Xmin(2)-0.1), 0.1, 0.1*radius, 1.2*thickness, 1.0);
-    d.AddPlane(-3, Vec3_t(0.0,0.0,Xmax(2)+0.1), 0.1, 0.1*radius, 1.2*thickness, 1.0);
+    d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5,0.0), 0.5, 0.1*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+    d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5,0.0), 0.5, 0.1*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+    
+    // properties of particles prior the brazilian test
+    Dict B;
+    B.Set(-1,"Bn Bt Bm Gn Gt eps",Bn,Bt,Bm,Gn,Gt,eps);
+    d.SetProps(B);
 
-    Vec3_t velocity(0.0,0.0,0.001*radius/10.0);
+    Vec3_t velocity(0.0,0.1*radius/10.0,0.0);
 
     Particle * p1 = d.GetParticle(-2);
     Particle * p2 = d.GetParticle(-3);
@@ -118,7 +122,7 @@ int main(int argc, char **argv) try
 
     d.WriteBPY(filekey.CStr());
 
-    d.Solve(10.0, 0.00005, 0.1, &Setup, &Report, filekey.CStr());
+    d.Solve(10.0, 0.0005, 0.1, &Setup, &Report, filekey.CStr());
 
 
     return 0;

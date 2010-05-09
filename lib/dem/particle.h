@@ -65,6 +65,7 @@ public:
     int                 Tag;             ///< Tag of the particle
     size_t              Index;           ///< index of the particle in the domain
     bool                PropsReady;      ///< Are the properties calculated ready ?
+    bool                IsBroken;        ///< True if the particle has at least one broken bond in cohesive simulations
     Vec3_t              x;               ///< Position of the center of mass
     Vec3_t              xb;              ///< Former position for the Verlet algorithm
     Vec3_t              v;               ///< Velocity
@@ -82,9 +83,13 @@ public:
     Mat3_t              B;               ///< Fabric tnesor for the study of structure
     double              Kn;              ///< Normal stiffness
     double              Kt;              ///< Tengential stiffness
+    double              Bn;              ///< Spring constant for normal bonding
+    double              Bt;              ///< Spring constant for tangential bonding
+    double              Bm;              ///< Spring constant for torque bonding
     double              Gn;              ///< Normal viscous coefficient
     double              Gt;              ///< Tangential viscous coefficient
     double              Mu;              ///< Microscopic coefficient of friction
+    double              eps;             ///< Maximun strain supported before breaking
     double              Beta;            ///< Rolling stiffness coeffcient
     double              Eta;             ///< Plastic moment coefficient
     double              R;               ///< Spheroradius
@@ -172,7 +177,7 @@ public:
 // Constructor and destructor
 
 inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), v(v0), w(w0), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
+    : Tag(TheTag), PropsReady(false), IsBroken(false), v(v0), w(w0), Kn(10000.0), Kt(5000.0), Bn(1.0e4), Bt(5.e3), Bm(5.e3), Gn(16.), Gt(8), Mu(0.4), eps(1.0e-3) , Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
 {
     vxf = false;
     vyf = false;
@@ -203,7 +208,7 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 }
 
 inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Kn(10000.0), Kt(5000.0), Gn(16.), Gt(8), Mu(0.4), Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
+    : Tag(TheTag), PropsReady(false), IsBroken(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Kn(10000.0), Kt(5000.0), Bn(1.0e4), Bt(5.e3), Bm(5.e3), Gn(16.), Gt(8), Mu(0.4), eps(1.0e-3), Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
 {
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;

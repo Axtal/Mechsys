@@ -37,7 +37,7 @@ int main(int argc, char **argv) try
     // set the simulation domain ////////////////////////////////////////////////////////////////////////////
     
     Domain d;
-    d.CamPos = Vec3_t(0.0, 2.5, 20.0); // position of camera
+    d.CamPos = Vec3_t(0.0, 2.5, 30.0); // position of camera
     Mesh::Unstructured mesh(/*NDim*/2);
     mesh.Set    (8, 8, 1, 1);            // 8 points, 8 segments, 1 region, 1 hole
     mesh.SetReg (0, -1, -1.0, 0.2, 0.2); // id, tag, max{area}, x, y <<<<<<< regions
@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
     mesh.Generate ();
 
     d.GenFromMesh(mesh,/*spheroradius*/0.1,/*density*/1.0,/*iscohesive*/true,/*montecarlo mass properties*/false,/*thickness*/2.0);
-    d.Center(Vec3_t(-0.5,8.0,0.0));
+    d.Center(Vec3_t(0.0,8.0,1.0));
 
     d.GenFromMesh(mesh,/*spheroradius*/0.1,/*density*/1.0,/*iscohesive*/true,/*montecarlo mass properties*/false,/*thickness*/2.0);
 
