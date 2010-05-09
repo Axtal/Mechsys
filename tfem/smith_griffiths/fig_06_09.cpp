@@ -21,32 +21,92 @@
 #include <cmath>
 
 // MechSys
-#include <mechsys/util/fatal.h>
-#include <mechsys/mesh/structured.h>
-#include <mechsys/mesh/unstructured.h>
+#include <mechsys/fem/fem.h>
 
 using std::cout;
 using std::endl;
+using Util::_6_3;
+using Util::_8s;
+using FEM::PROB;
+using FEM::GEOM;
+
+double DelP = 520.0;
+
+struct OutDat
+{
+    long eqx; // equation number for output
+    std::ofstream of;
+    double prev_time;
+    ~OutDat () { of.close (); }
+     OutDat (char const * FileKey)
+    {
+        char buf[64];
+        sprintf (buf,"%s.res",FileKey);
+        of.open (buf,std::ios::out);
+        of<<_6_3<<"Time"<<_8s<<"u"<< _8s<<"fint"<<_8s<<"fext\n";
+    }
+};
+
+void OutFun (FEM::Solver const & Sol, void * Dat)
+{
+    OutDat * dat = static_cast<OutDat*>(Dat);
+    dat->of << _6_3 << Sol.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+}
 
 int main(int argc, char **argv) try
 {
-    /////////////////////////////////////////////////////////////////////////////////////////// Mesh /////
+    // input
+    char const * scheme = "ME";
+    if (argc>1) scheme = argv[1];
+    char filekey[128];
+    sprintf (filekey,"fig_06_09_%s",scheme);
 
-    // coordinates
-    Array<double> X(9);
-    Array<double> Y(5);
-    X = 0.0, 1.0, 2.0, 3.0, 4.0, 5.5, 7.0, 9.0, 12.0;
-    Y = 0.0, -1.25, -2.5, -3.75, -5.0;
-    double Lx = 2.0; // length of footing
-
-    // generate mesh
+    // mesh
+    Array<double> X(0.0, 1.0, 2.0, 3.0, 4.0, 5.5, 7.0, 9.0, 12.0);
+    Array<double> Y(0.0, -1.25, -2.5, -3.75, -5.0);
     Mesh::Generic mesh(/*NDim*/2);
-    mesh.GenGroundSG (X, Y, Lx);
+    mesh.GenGroundSG (X, Y, /*length_of_footing*/2.0);
+    mesh.WriteMPY    (filekey);
 
-    // write mesh
-    mesh.WriteMPY ("fig_06_09");
+    // parameters
+    double E  = 1.0e+5;
+    double nu = 0.3;
+    double cu = 100.0;
+    double Hp = 0.0;
     
-    /////////////////////////////////////////////////////////////////////////////////////////// FEM /////
+    // props, models, and domain
+    Dict prps, mdls;
+    prps.Set(-1, "prob geom psa nip", PROB("Equilib"), GEOM("Quad8"), 1.0, 4.0);
+    mdls.Set(-1, "name E nu fc cu Hp psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), cu, Hp, 1.0);
+    //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
+    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
 
+    // debug data
+    OutDat dat(filekey);
+    dat.eqx = 1; // eq for output
+
+    // solver
+    FEM::Solver sol(dom, &OutFun, &dat);
+    sol.SetScheme (scheme);
+    if (strcmp(scheme,"FE")==0) sol.nSS = 1000;
+    //sol.STOL = 1.0e+9;
+
+    // weights
+    Array<double> weights(10);
+    weights = 200., 100., 50., 50., 50., 30., 20., 10., 5., 5.;
+    for (size_t i=0; i<weights.Size(); ++i) weights[i] /= DelP;
+
+    // solve
+    dom.SetOutNods (filekey, Array<int>(0,9,14,23,28));
+    dom.SetOutEles (filekey, Array<int>(0,4));
+    Dict bcs;
+    bcs.Set      (-10, "ux",    0.0);
+    bcs.Set      (-20, "ux",  0.0);
+    bcs.Set      (-30, "ux uy", 0.0, 0.0);
+    bcs.Set      (-40, "qn",    -DelP);
+    dom.SetBCs   (bcs);
+    sol.Solve    (weights.Size(), /*FileKey*/NULL, &weights);
+    //sol.Solve    (10, /*FileKey*/NULL, /*weigts*/NULL, true);
+    dom.WriteVTU (filekey);
 }
 MECHSYS_CATCH
