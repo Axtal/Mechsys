@@ -1,0 +1,11 @@
+30            n_divisions;        
+5.0           thickness;          
+20.0          radius;             
+1.0e5         Bn;                 
+3.3e4         Bt;                 
+3.3e4         Bm;                 
+16.0          Gn;                 
+8.0           Gt;                 
+0.01          eps;                
+10.0          Amax;
+

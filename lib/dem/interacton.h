@@ -413,8 +413,8 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     Vec3_t t1;
     P1->Faces[F1]->Normal(t1);
     Vec3_t c1,c2;
-    P1->Faces[F1]->Centroid(c1);
-    P2->Faces[F2]->Centroid(c2);
+    c1 = P1->x;
+    c2 = P2->x;
     L0              = dot(t1,c2-c1);
     Lt              = 0.0,0.0,0.0;
     Ltb             = 0.0,0.0,0.0;
@@ -437,12 +437,12 @@ inline void BInteracton::CalcForce(double dt)
         P2->Faces[F2]->Normal(n2);
         n = 0.5*(n1-n2);
         Vec3_t c1,c2;
-        P1->Faces[F1]->Centroid(c1);
-        P2->Faces[F2]->Centroid(c2);
+        c1 = P1->x;
+        c2 = P2->x;
 
         // Normal force
         double delta = (dot(c2-c1,n)-L0)/L0;
-        Vec3_t Fn = -Bn*delta*n;
+        Vec3_t Fn = -Bn*(delta/L0)*n;
 
 
         // Tangential force
@@ -458,12 +458,12 @@ inline void BInteracton::CalcForce(double dt)
         Lt = Ltb + 2*vt*dt;
         Lt -= dot(Lt,n)*n;
         Ltb = temp;
-        Vec3_t Ft = (Bt/L0)*Lt+Gt*vt+Gn*dot(n,vrel)*n;
+        Vec3_t Ft = (Bt/L0)*Lt+Gt*vt/L0+Gn*dot(n,vrel)*n/L0;
         P1->F -= Fn+Ft;
         P2->F += Fn+Ft;
         // Torque
         An+=dot(t1-t2,n)*dt;
-        Vec3_t T,Tt = Bm*An*n;
+        Vec3_t T,Tt = Bm*An*n/L0;
         Quaternion_t q;
         Conjugate (P1->Q,q);
         Rotation  (Tt,q,T);
