@@ -896,6 +896,8 @@ inline void Solver::_ME_update (double tf)
         // step multiplier
         double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
 
+        //std::cout << m << "  " << U_err << "  " << F_err << "  " << std::endl;
+
         // restore state of elements
         for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->RestoreState ();
 

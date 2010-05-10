@@ -31,22 +31,22 @@
 class EquilibState : public State
 {
 public:
-	// Constructor
-	EquilibState (int NDim);
+    // Constructor
+    EquilibState (int NDim);
 
-	// Methods
-	void Init    (SDPair const & Ini, size_t NIvs=0);
-    void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; }
-    void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; }
+    // Methods
+    void Init    (SDPair const & Ini, size_t NIvs=0);
+    void Backup  () { SigBkp=Sig; EpsBkp=Eps; IvsBkp=Ivs; LdgBkp=Ldg; }
+    void Restore () { Sig=SigBkp; Eps=EpsBkp; Ivs=IvsBkp; Ldg=LdgBkp; }
 
     // Operators
     void operator= (EquilibState const & Another);
 
-	// Data
-	Vec_t Sig, SigBkp; ///< Stress
-	Vec_t Eps, EpsBkp; ///< Strain
-	Vec_t Ivs, IvsBkp; ///< Internal values
-    bool  Ldg;         ///< Loading ?
+    // Data
+    Vec_t Sig, SigBkp; ///< Stress
+    Vec_t Eps, EpsBkp; ///< Strain
+    Vec_t Ivs, IvsBkp; ///< Internal values
+    bool  Ldg, LdgBkp; ///< Loading ?
 };
 
 
@@ -54,7 +54,7 @@ public:
 
 
 inline EquilibState::EquilibState (int NDim)
-	: State(NDim), Ldg(false)
+    : State(NDim), Ldg(false), LdgBkp(false)
 {
     int ncomp = NDim*2; // number of stress/strain components
     Sig   .change_dim(ncomp);  set_to_zero(Sig   );
@@ -65,23 +65,23 @@ inline EquilibState::EquilibState (int NDim)
 
 inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
 {
-	if (Ini.HasKey("sx"))  Sig(0) = Ini("sx");
-	if (Ini.HasKey("sy"))  Sig(1) = Ini("sy");
-	if (Ini.HasKey("sz"))  Sig(2) = Ini("sz");
-	if (Ini.HasKey("sxy")) Sig(3) = Ini("sxy")*sqrt(2.0);
-	if (num_rows(Sig)>4)
-	{
-		if (Ini.HasKey("syz")) Sig(4) = Ini("syz")*sqrt(2.0);
-		if (Ini.HasKey("sxz")) Sig(5) = Ini("sxz")*sqrt(2.0);
-	}
-	else
-	{
-		bool error = false;
-		String key;
-		if (Ini.HasKey("syz")) { error=true; key="syz"; }
-		if (Ini.HasKey("sxz")) { error=true; key="sxz"; }
-		if (error) throw new Fatal("EquilibState::Init: For a 2D state, there are only 4 stress components. %s is not available",key.CStr());
-	}
+    if (Ini.HasKey("sx"))  Sig(0) = Ini("sx");
+    if (Ini.HasKey("sy"))  Sig(1) = Ini("sy");
+    if (Ini.HasKey("sz"))  Sig(2) = Ini("sz");
+    if (Ini.HasKey("sxy")) Sig(3) = Ini("sxy")*sqrt(2.0);
+    if (num_rows(Sig)>4)
+    {
+        if (Ini.HasKey("syz")) Sig(4) = Ini("syz")*sqrt(2.0);
+        if (Ini.HasKey("sxz")) Sig(5) = Ini("sxz")*sqrt(2.0);
+    }
+    else
+    {
+        bool error = false;
+        String key;
+        if (Ini.HasKey("syz")) { error=true; key="syz"; }
+        if (Ini.HasKey("sxz")) { error=true; key="sxz"; }
+        if (error) throw new Fatal("EquilibState::Init: For a 2D state, there are only 4 stress components. %s is not available",key.CStr());
+    }
     if (NIvs>0)
     {
         Ivs.change_dim (NIvs);
@@ -102,7 +102,7 @@ inline void EquilibState::operator= (EquilibState const & A)
     Sig = A.Sig;  SigBkp = A.SigBkp;
     Eps = A.Eps;  EpsBkp = A.EpsBkp;
     Ivs = A.Ivs;  IvsBkp = A.IvsBkp;
-    Ldg = A.Ldg;
+    Ldg = A.Ldg;  LdgBkp = A.LdgBkp;
 }
 
 #endif // MECHSYS_EQUILIBSTATE_H
