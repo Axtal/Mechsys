@@ -21,17 +21,15 @@ SET(EXES
   ttt
   test_distances
   test_domain
-  test_27cubes
-  test_tets
   test_dynamics
-  test_voro01
-  test_voro02
   test_read
   test_write
   test_beam
   cylinder_test
   brazil_test
-  figure)
+  figure
+  test_01
+  test_02)
 
 SET(TESTS
   test_distances)

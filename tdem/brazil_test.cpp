@@ -78,13 +78,17 @@ int main(int argc, char **argv) try
     size_t n_divisions = 30;
     double thickness   = 5.0;
     double radius      = 20.0;
-    double Bn          = 1.0e5;
-    double Bt          = 3.3e4;
-    double Bm          = 3.3e4;
+    double Bn          = 1.0e6;
+    double Bt          = 3.3e5;
+    double Bm          = 3.3e5;
     double Gn          = 16.0;
     double Gt          = 8.0;
     double eps         = 0.01;
     double Amax        = 10.0;
+    double width       = 0.5;
+    double dt          = 0.0001;
+    double dtOut       = 0.1;
+    double Tf          = 10.0;
 
     infile >> n_divisions;        infile.ignore(200,'\n');
     infile >> thickness;          infile.ignore(200,'\n');
@@ -96,6 +100,10 @@ int main(int argc, char **argv) try
     infile >> Gt;                 infile.ignore(200,'\n');
     infile >> eps;                infile.ignore(200,'\n');
     infile >> Amax;               infile.ignore(200,'\n');
+    infile >> width;              infile.ignore(200,'\n');
+    infile >> dt;                 infile.ignore(200,'\n');
+    infile >> dtOut;              infile.ignore(200,'\n');
+    infile >> Tf;                 infile.ignore(200,'\n');
 
 
     d.CamPos = Vec3_t(0.0, 0.0, 3*radius); // position of camera
@@ -115,8 +123,8 @@ int main(int argc, char **argv) try
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
-    d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5,0.0), 0.5, 0.5*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
-    d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5,0.0), 0.5, 0.5*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+    d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5,0.0), 0.5, width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+    d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5,0.0), 0.5, width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
     
     // properties of particles prior the brazilian test
     Dict B;
@@ -136,7 +144,7 @@ int main(int argc, char **argv) try
 
     d.WriteBPY(filekey.CStr());
 
-    d.Solve(10.0, 0.0005, 0.1, &Setup, &Report, filekey.CStr());
+    d.Solve(Tf, dt, dtOut, &Setup, &Report, filekey.CStr());
 
 
     return 0;

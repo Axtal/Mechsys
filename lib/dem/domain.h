@@ -60,7 +60,7 @@ public:
 
     // Particle generation
     void GenSpheres      (int Tag, double L, size_t N, double rho, char const * Type, 
-                          size_t Randomseed, double fraction);                                                                              ///< General spheres
+                          size_t Randomseed, double fraction, double RminFraction = 1.0);                                                   ///< General spheres
     void GenRice         (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction);                           ///< General rices
     void GenBox          (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf);                                            ///< Generate six walls with successive tags. Cf is a coefficient to make walls bigger than specified in order to avoid gaps
     void GenBoundingBox  (int InitialTag, double R, double Cf);                                                                             ///< Generate o bounding box enclosing the previous included particles.
@@ -204,7 +204,7 @@ inline Domain::~Domain ()
 
 // Particle generation
 
-inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type, size_t Randomseed, double fraction)
+inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type, size_t Randomseed, double fraction, double RminFraction)
 {
     // find radius from the edge's length
     double start = std::clock();
@@ -220,7 +220,7 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
             size_t j = (n/N)%N;
             size_t k = (n/(N*N));
             pos += Vec3_t(2.0*i*R, 2.0*j*R, 2.0*k*R);
-            if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,R,rho);
+            if (rand()<fraction*RAND_MAX) AddSphere (Tag,pos,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
         }
     }
     else if (strcmp(Type,"HCP")==0)
