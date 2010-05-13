@@ -89,6 +89,7 @@ int main(int argc, char **argv) try
     double dt          = 0.0001;
     double dtOut       = 0.1;
     double Tf          = 10.0;
+    double strf        = 0.01;
 
     infile >> n_divisions;        infile.ignore(200,'\n');
     infile >> thickness;          infile.ignore(200,'\n');
@@ -104,6 +105,7 @@ int main(int argc, char **argv) try
     infile >> dt;                 infile.ignore(200,'\n');
     infile >> dtOut;              infile.ignore(200,'\n');
     infile >> Tf;                 infile.ignore(200,'\n');
+    infile >> strf;               infile.ignore(200,'\n');
 
 
     d.CamPos = Vec3_t(0.0, 0.0, 3*radius); // position of camera
@@ -128,10 +130,12 @@ int main(int argc, char **argv) try
     
     // properties of particles prior the brazilian test
     Dict B;
-    B.Set(-1,"Bn Bt Bm Gn Gt eps",Bn,Bt,Bm,Gn,Gt,eps);
+    B.Set(-1,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn,Bt);
+    B.Set(-2,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn,Bt);
+    B.Set(-3,"Bn Bt Bm Gn Gt eps Kn Kt",Bn,Bt,Bm,Gn,Gt,eps,Bn,Bt);
     d.SetProps(B);
 
-    Vec3_t velocity(0.0,0.1*radius/10.0,0.0);
+    Vec3_t velocity(0.0,strf*radius/Tf,0.0);
 
     Particle * p1 = d.GetParticle(-2);
     Particle * p2 = d.GetParticle(-3);
