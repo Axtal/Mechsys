@@ -1504,10 +1504,21 @@ inline void Domain::ResetInteractons()
 
             // if both particles are spheres (just one vertex)
             if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
-                CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
+            {
+                //CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
+                CInteractonSphere *p = new CInteractonSphere(Particles[i],Particles[j]);
+                if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                else delete p;
+            }
 
             // normal particles
-            else CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
+            else
+            {
+                //CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
+                CInteracton *p = new CInteracton(Particles[i],Particles[j]);
+                if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                else delete p;
+            }
         }
     }
 }
@@ -1533,6 +1544,50 @@ inline double Domain::MaxDisplacement()
 
 inline void Domain::ResetContacts()
 {
+    ///*
+    for (size_t i=0; i<Particles.Size()-1; i++)
+    {
+        bool pi_has_vf = (Particles[i]->vxf || Particles[i]->vyf || Particles[i]->vzf);
+        for (size_t j=i+1; j<Particles.Size(); j++)
+        {
+            bool pj_has_vf = (Particles[j]->vxf || Particles[j]->vyf || Particles[j]->vzf);
+            if (pi_has_vf && pj_has_vf) continue;
+            
+            // checking if the interacton exist for that pair of particles
+            bool exist = false;
+            for (size_t k=0; k<CInteractons.Size(); k++)
+            {
+                if (CInteractons[k]->P1->Index==i&&CInteractons[k]->P2->Index==j)
+                {
+                    exist = true;
+                    break;
+                }
+            }
+
+            // If it doesn't add it to the CInteracton array
+            if (!exist)
+            {
+                // if both particles are spheres (just one vertex)
+                if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
+                {
+                    //CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
+                    CInteractonSphere *p = new CInteractonSphere(Particles[i],Particles[j]);
+                    if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                    else delete p;
+                }
+
+                // normal particles
+                else
+                {
+                    //CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
+                    CInteracton *p = new CInteracton(Particles[i],Particles[j]);
+                    if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                    else delete p;
+                }
+            }
+        }
+    }
+    //*/
     Interactons.Resize(0);
     for (size_t i=0; i<CInteractons.Size(); i++)
     {
