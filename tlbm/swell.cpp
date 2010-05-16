@@ -40,6 +40,25 @@ void DrawOpenCircle(LBM::Lattice & l, double obsX, double obsY, double radius, d
 	}
 }
 
+void DrawBullEyeCircle(LBM::Lattice & l, double obsX, double obsY, double radius, double thickness, size_t n_div, double arc)
+{
+	for (size_t i=0; i<l.Nx(); i++)
+	for (size_t j=0; j<l.Ny(); j++)
+	{
+        double r2 = pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0);
+		if ((r2>(1-thickness)*(1-thickness)*radius*radius)&&(r2<radius*radius))
+		{
+            double angle = atan2(int(j)-obsY,int(i)-obsX)*180.0/M_PI;
+            bool solid = true;
+            for (size_t k=0;k<n_div;k++)
+            {
+                double angled = -180.0 + k*360.0/n_div;
+                if (fabs(angle-angled)<arc) solid = false;
+            }
+			if (solid) l.GetCell(i,j)->SetSolid();
+		}
+    }
+}
 void DrawFluidCircle(LBM::Lattice & l , double obsX, double obsY, double radius, double density)
 {
 	for (size_t i=0; i<l.Nx(); i++)
@@ -66,7 +85,9 @@ int main(int argc, char **argv) try
     double      densv;  // Density for the vapour phase
     double      densl;  // Density for the liquid phase
     int         Tf;     // final time
-    int         dTout;  // time sapn for output
+    int         dTout;  // time span for output
+    int         n_div;  // number of divitions
+    double      arc;    // arc length of holes
      
     // Reading from the file
     infile >> nx;     infile.ignore(200,'\n'); 
@@ -77,6 +98,8 @@ int main(int argc, char **argv) try
     infile >> densl;  infile.ignore(200,'\n');
     infile >> Tf;     infile.ignore(200,'\n');
     infile >> dTout;  infile.ignore(200,'\n');
+    infile >> n_div;  infile.ignore(200,'\n');
+    infile >> arc;    infile.ignore(200,'\n');
 
 
 	// Allocate lattice
@@ -112,8 +135,9 @@ int main(int argc, char **argv) try
 		double r  = grains["R" ][i]*0.9*nx;
         if ((xc+r<nx)&&(xc-r>0)&&(yc+r<ny)&&(yc-r>0))
         {
-            DrawOpenCircle (l, xc, yc, r+1,0.4);
-            DrawFluidCircle(l, xc, yc, r  ,densl);
+            //DrawOpenCircle (l, xc, yc, r+1,0.4);
+            DrawBullEyeCircle (l, xc, yc, 1.1*r,0.1,n_div,arc);
+            DrawFluidCircle(l, xc, yc, 0.9*1.1*r ,densl);
         }
 	}
 	l.Solve(/*tIni*/0.0, /*tFin*/Tf, /*dtOut*/dTout);

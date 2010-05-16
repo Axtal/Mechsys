@@ -60,6 +60,7 @@ public:
     double MaxDisplacement  ();                                                             ///< Maximun displacement for the verlet algorithm
     void Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
     void FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
+    bool IsFree             () {return !vxf&&!vyf&&!vzf&&!vxf&&!vyf&&!vzf;};                ///< Ask if the particle has any constrain in its movement
 
     // Data
     int                 Tag;             ///< Tag of the particle

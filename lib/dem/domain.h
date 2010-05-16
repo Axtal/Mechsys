@@ -1464,12 +1464,12 @@ inline void Domain::BoundingBox(Vec3_t & minX, Vec3_t & maxX)
     maxX = Vec3_t(Particles[0]->MaxX(), Particles[0]->MaxY(), Particles[0]->MaxZ());
     for (size_t i=1; i<Particles.Size(); i++)
     {
-        if (minX(0)>Particles[i]->MinX()) minX(0) = Particles[i]->MinX();
-        if (minX(1)>Particles[i]->MinY()) minX(1) = Particles[i]->MinY();
-        if (minX(2)>Particles[i]->MinZ()) minX(2) = Particles[i]->MinZ();
-        if (maxX(0)<Particles[i]->MaxX()) maxX(0) = Particles[i]->MaxX();
-        if (maxX(1)<Particles[i]->MaxY()) maxX(1) = Particles[i]->MaxY();
-        if (maxX(2)<Particles[i]->MaxZ()) maxX(2) = Particles[i]->MaxZ();
+        if (minX(0)>Particles[i]->MinX()&&Particles[i]->IsFree()) minX(0) = Particles[i]->MinX();
+        if (minX(1)>Particles[i]->MinY()&&Particles[i]->IsFree()) minX(1) = Particles[i]->MinY();
+        if (minX(2)>Particles[i]->MinZ()&&Particles[i]->IsFree()) minX(2) = Particles[i]->MinZ();
+        if (maxX(0)<Particles[i]->MaxX()&&Particles[i]->IsFree()) maxX(0) = Particles[i]->MaxX();
+        if (maxX(1)<Particles[i]->MaxY()&&Particles[i]->IsFree()) maxX(1) = Particles[i]->MaxY();
+        if (maxX(2)<Particles[i]->MaxZ()&&Particles[i]->IsFree()) maxX(2) = Particles[i]->MaxZ();
     }
 }
 
