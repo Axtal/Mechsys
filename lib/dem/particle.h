@@ -61,7 +61,7 @@ void BuildParticlePropsDataType (ParticleProps & P, MPI::Datatype & MPIType)
     MPI::Aint origin, addr[nblks];
 
     origin  = MPI::Get_address (&P);
-    addr[0] = MPI::Get_address (&(P.Kn));
+    addr[0] = MPI::Get_address (&(P.Props.Kn));
 
     // displacements
     MPI::Aint disps[nblks];
@@ -231,20 +231,29 @@ void BuildParticleDataType (size_t VertsSize, Particle const & P, MPI::Datatype 
 #endif
 
 
-std::ostream & operator<< (std::ostream & os, Particle const & P)
-{
-    os << "Tag   = " << P.Tag  << std::endl;
-}
-
-
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
 // Constructor and destructor
 
 inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int> > const & E, Array<Array <int> > const & F, Vec3_t const & v0, Vec3_t const & w0, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), IsBroken(false), v(v0), w(w0), Kn(10000.0), Kt(5000.0), Bn(1.0e4), Bt(5.e3), Bm(5.e3), Gn(16.), Gt(8), Mu(0.4), eps(1.0e-3) , Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
+    : Tag(TheTag), PropsReady(false), IsBroken(false), v(v0), w(w0)
 {
+    Props.Kn = 1.0e4;   
+    Props.Kt = 5.0e3;   
+    Props.Bn = 1.0e4;   
+    Props.Bt = 5.0e3;   
+    Props.Bm = 5.0e3;
+    Props.Gn = 16.0;   
+    Props.Gt = 8.0;   
+    Props.Mu = 0.4;   
+    Props.eps = 0.01;  
+    Props.Beta = 0.12; 
+    Props.Eta = 1.0;  
+    Props.R = TheR;    
+    Props.rho = TheRho;  
+
+
     vxf = false;
     vyf = false;
     vzf = false;
@@ -274,8 +283,22 @@ inline Particle::Particle (int TheTag, Array<Vec3_t> const & V, Array<Array <int
 }
 
 inline Particle::Particle (int TheTag, Mesh::Generic const & M, double TheR, double TheRho)
-    : Tag(TheTag), PropsReady(false), IsBroken(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0)), Kn(10000.0), Kt(5000.0), Bn(1.0e4), Bt(5.e3), Bm(5.e3), Gn(16.), Gt(8), Mu(0.4), eps(1.0e-3), Beta(0.12), Eta(1.0), R(TheR), rho(TheRho)
+    : Tag(TheTag), PropsReady(false), IsBroken(false), v(Vec3_t(0.0,0.0,0.0)), w(Vec3_t(0.0,0.0,0.0))
 {
+    Props.Kn = 1.0e4;   
+    Props.Kt = 5.0e3;   
+    Props.Bn = 1.0e4;   
+    Props.Bt = 5.0e3;   
+    Props.Bm = 5.0e3;
+    Props.Gn = 16.0;   
+    Props.Gt = 8.0;   
+    Props.Mu = 0.4;   
+    Props.eps = 0.01;  
+    Props.Beta = 0.12; 
+    Props.Eta = 1.0;  
+    Props.R = TheR;    
+    Props.rho = TheRho;  
+
     Ff = 0.0,0.0,0.0;
     Tf = 0.0,0.0,0.0;
 
@@ -421,12 +444,12 @@ inline void Particle::Translate (double dt)
     if (vyf) F(1) = 0.0;
     if (vzf) F(2) = 0.0;
     Vec3_t temp,xa;
-    xa    = 2*x - xb + F*(dt*dt/m);
+    xa    = 2*x - xb + F*(dt*dt/Props.m);
     temp  = xa - x;
     v    = 0.5*(xa - xb)/dt;
     xb   = x;
     x    = xa;
-    Ekin = 0.5*m*dot(v,v);
+    Ekin = 0.5*Props.m*dot(v,v);
     size_t nv = Verts.Size();
     for (size_t i = 0; i < nv; i++)
     {
@@ -468,16 +491,16 @@ inline void Particle::Draw (std::ostream & os, char const * Color, bool BPY)
 {
     for (size_t i=0; i<Verts.Size(); ++i)
     {
-        if (BPY) BPYDrawVert((*Verts[i]),os,R);
-        else POVDrawVert((*Verts[i]),os,R,Color); 
+        if (BPY) BPYDrawVert((*Verts[i]),os,Props.R);
+        else POVDrawVert((*Verts[i]),os,Props.R,Color); 
     }
     for (size_t i=0; i<Edges.Size(); ++i)
     {
-        Edges[i]->Draw(os,R,Color,BPY);
+        Edges[i]->Draw(os,Props.R,Color,BPY);
     }
     for (size_t i=0; i<Faces.Size(); ++i)
     {
-        Faces[i]->Draw(os,R,Color,BPY);
+        Faces[i]->Draw(os,Props.R,Color,BPY);
     }
 }
 
@@ -494,15 +517,15 @@ inline void Particle::CalcProps (size_t NCalls)
 {
     if (Verts.Size()==1 && Edges.Size()==0 && Faces.Size()==0)
     {
-        V = (4./3.)*M_PI*R*R*R;
-        I = Vec3_t((8./15.)*M_PI*pow(R,5.),(8./15.)*M_PI*pow(R,5.),(8./15.)*M_PI*pow(R,5.));
+        Props.V = (4./3.)*M_PI*Props.R*Props.R*Props.R;
+        I = Vec3_t((8./15.)*M_PI*pow(Props.R,5.),(8./15.)*M_PI*pow(Props.R,5.),(8./15.)*M_PI*pow(Props.R,5.));
         x = *Verts[0];
         Q = 1,0,0,0;
-        m = rho*V;
-        I*= rho;
-        Ekin = 0.5*m*dot(v,v);
+        Props.m = Props.rho*Props.V;
+        I*= Props.rho;
+        Ekin = 0.5*Props.m*dot(v,v);
         Erot = 0.5*(I(0)*w(0)*w(0)+I(1)*w(1)*w(1)+I(2)*w(2)*w(2));
-        Dmax = R;
+        Dmax = Props.R;
     }
     else 
     {
@@ -510,10 +533,10 @@ inline void Particle::CalcProps (size_t NCalls)
         double Xi[3] = { MinX() , MinY() , MinZ() };
         double Xs[3] = { MaxX() , MaxY() , MaxZ() };
         Numerical::MonteCarlo<Particle> MC(this, Numerical::VEGAS, NCalls);
-        V       = MC.Integrate(&Particle::Vol, Xi,Xs);
-        x(0)    = MC.Integrate(&Particle::Xc,  Xi,Xs)/V;
-        x(1)    = MC.Integrate(&Particle::Yc,  Xi,Xs)/V;
-        x(2)    = MC.Integrate(&Particle::Zc,  Xi,Xs)/V;
+        Props.V       = MC.Integrate(&Particle::Vol, Xi,Xs);
+        x(0)    = MC.Integrate(&Particle::Xc,  Xi,Xs)/Props.V;
+        x(1)    = MC.Integrate(&Particle::Yc,  Xi,Xs)/Props.V;
+        x(2)    = MC.Integrate(&Particle::Zc,  Xi,Xs)/Props.V;
         It(0,0) = MC.Integrate(&Particle::Ixx, Xi,Xs);
         It(1,1) = MC.Integrate(&Particle::Iyy, Xi,Xs);
         It(2,2) = MC.Integrate(&Particle::Izz, Xi,Xs);
@@ -526,7 +549,7 @@ inline void Particle::CalcProps (size_t NCalls)
 
         Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);
-        I *= rho;
+        I *= Props.rho;
         Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
         Q(1) = (yp(2)-zp(1))/(4*Q(0));
         Q(2) = (zp(0)-xp(2))/(4*Q(0));
@@ -534,13 +557,13 @@ inline void Particle::CalcProps (size_t NCalls)
         Q = Q/norm(Q);
         Rotation(w,Q,wb);
         w = wb;
-        m = rho*V;
-        Ekin = 0.5*m*dot(v,v);
+        Props.m = Props.rho*Props.V;
+        Ekin = 0.5*Props.m*dot(v,v);
         Erot = 0.5*(I(0)*w(0)*w(0)+I(1)*w(1)*w(1)+I(2)*w(2)*w(2));
-        Dmax = Distance(x,(*Verts[0]))+R;
+        Dmax = Distance(x,(*Verts[0]))+Props.R;
         for (size_t i=1; i<Verts.Size(); ++i)
         {
-            if (Distance(x,(*Verts[i]))+R > Dmax) Dmax = Distance(x,(*Verts[i]))+R;
+            if (Distance(x,(*Verts[i]))+Props.R > Dmax) Dmax = Distance(x,(*Verts[i]))+Props.R;
         }
     }
     PropsReady = true;
@@ -552,7 +575,7 @@ inline bool Particle::IsInside (Vec3_t & V)
     size_t nv = Verts.Size(),ne = Edges.Size(),nf = Faces.Size();
     for (size_t i = 0; i < nv; i++)
     {
-        if (Distance(V,*Verts[i]) < R) {
+        if (Distance(V,*Verts[i]) < Props.R) {
             inside = true;
             return inside;
         }
@@ -560,14 +583,14 @@ inline bool Particle::IsInside (Vec3_t & V)
 
     for (size_t i = 0; i < ne; i++)
     {
-        if (Distance(V,*Edges[i]) < R) {
+        if (Distance(V,*Edges[i]) < Props.R) {
             inside = true;
             return inside;
         }
     }
     for (size_t i = 0; i < nf; i++)
     {
-        if (Distance(V,*Faces[i]) < R) {
+        if (Distance(V,*Faces[i]) < Props.R) {
             inside = true;
             return inside;
         }
@@ -608,60 +631,60 @@ inline double Particle::IsInside (double * V)
 
 inline double Particle::MaxX ()
 {
-    double result = (*Verts[0])(0)+R;
+    double result = (*Verts[0])(0)+Props.R;
     for (size_t i = 1; i < Verts.Size(); i++)
     {
-        if ((*Verts[i])(0)+R > result) result = (*Verts[i])(0)+R; 
+        if ((*Verts[i])(0)+Props.R > result) result = (*Verts[i])(0)+Props.R; 
     }
     return result;
 }
 
 inline double Particle::MaxY ()
 {
-    double result = (*Verts[0])(1)+R;
+    double result = (*Verts[0])(1)+Props.R;
     for (size_t i = 1; i < Verts.Size(); i++)
     {
-        if ((*Verts[i])(1)+R > result) result = (*Verts[i])(1)+R; 
+        if ((*Verts[i])(1)+Props.R > result) result = (*Verts[i])(1)+Props.R; 
     }
     return result;
 }
 
 inline double Particle::MaxZ ()
 {
-    double result = (*Verts[0])(2)+R;
+    double result = (*Verts[0])(2)+Props.R;
     for (size_t i = 1; i < Verts.Size(); i++)
     {
-        if ((*Verts[i])(2)+R > result) result = (*Verts[i])(2)+R; 
+        if ((*Verts[i])(2)+Props.R > result) result = (*Verts[i])(2)+Props.R; 
     }
     return result;
 }
 
 inline double Particle::MinX ()
 {
-    double result = (*Verts[0])(0)-R;
+    double result = (*Verts[0])(0)-Props.R;
     for (size_t i = 1; i < Verts.Size(); i++)
     {
-        if ((*Verts[i])(0)-R < result) result = (*Verts[i])(0)-R; 
+        if ((*Verts[i])(0)-Props.R < result) result = (*Verts[i])(0)-Props.R; 
     }
     return result;
 }
 
 inline double Particle::MinY ()
 {
-    double result = (*Verts[0])(1)-R;
+    double result = (*Verts[0])(1)-Props.R;
     for (size_t i = 1; i < Verts.Size(); i++)
     {
-        if ((*Verts[i])(1)-R < result) result = (*Verts[i])(1)-R; 
+        if ((*Verts[i])(1)-Props.R < result) result = (*Verts[i])(1)-Props.R; 
     }
     return result;
 }
 
 inline double Particle::MinZ ()
 {
-    double result = (*Verts[0])(2)-R;
+    double result = (*Verts[0])(2)-Props.R;
     for (size_t i = 1; i < Verts.Size(); i++)
     {
-        if ((*Verts[i])(2)-R < result) result = (*Verts[i])(2)-R; 
+        if ((*Verts[i])(2)-Props.R < result) result = (*Verts[i])(2)-Props.R; 
     }
     return result;
 }

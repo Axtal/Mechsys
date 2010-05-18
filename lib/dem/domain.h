@@ -411,8 +411,8 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
         if (!MC)
         {
             Particles[Particles.Size()-1]->x     = CM;
-            Particles[Particles.Size()-1]->V     = vol;
-            Particles[Particles.Size()-1]->m     = vol*rho;
+            Particles[Particles.Size()-1]->Props.V     = vol;
+            Particles[Particles.Size()-1]->Props.m     = vol*rho;
             Vec3_t I;
             Quaternion_t Q;
             Vec3_t xp,yp,zp;
@@ -558,7 +558,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
                         Vec3_t trans(x,y,z);
                         Particle * P = Particles[Particles.Size()-1];
                         P->Translate(trans);
-                        P->V = c.volume();
+                        P->Props.V = c.volume();
                     }
                 }
             }
@@ -785,14 +785,14 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
 
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-    Particles[Particles.Size()-1]->Q    = q;
-    Particles[Particles.Size()-1]->I    = 1.0,1.0,1.0;
-    Particles[Particles.Size()-1]->V    = Lx*Ly*2*R;
-    Particles[Particles.Size()-1]->m    = rho*Lx*Ly*2*R;
-    Particles[Particles.Size()-1]->x    = X;
-    Particles[Particles.Size()-1]->Ekin = 0.0;
-    Particles[Particles.Size()-1]->Erot = 0.0;
-    Particles[Particles.Size()-1]->Dmax = sqrt(Lx*Lx+Ly*Ly)+R;
+    Particles[Particles.Size()-1]->Q          = q;
+    Particles[Particles.Size()-1]->I          = 1.0,1.0,1.0;
+    Particles[Particles.Size()-1]->Props.V    = Lx*Ly*2*R;
+    Particles[Particles.Size()-1]->Props.m    = rho*Lx*Ly*2*R;
+    Particles[Particles.Size()-1]->x          = X;
+    Particles[Particles.Size()-1]->Ekin       = 0.0;
+    Particles[Particles.Size()-1]->Erot       = 0.0;
+    Particles[Particles.Size()-1]->Dmax       = sqrt(Lx*Lx+Ly*Ly)+R;
     Particles[Particles.Size()-1]->PropsReady = true;
     // clean up
     if (!ThereisanAxis) delete Axis;
@@ -857,9 +857,9 @@ inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho
     if (Erode) Erosion(V,E,F,R);
     // add particle
     Particles.Push (new Particle(Tag,V,E,F,OrthoSys::O,OrthoSys::O,R,rho));
-    Particles[Particles.Size()-1]->x     = CM;
-    Particles[Particles.Size()-1]->V     = vol;
-    Particles[Particles.Size()-1]->m     = vol*rho;
+    Particles[Particles.Size()-1]->x       = CM;
+    Particles[Particles.Size()-1]->Props.V = vol;
+    Particles[Particles.Size()-1]->Props.m = vol*rho;
     Vec3_t I;
     Quaternion_t Q;
     Vec3_t xp,yp,zp;
@@ -897,47 +897,47 @@ inline void Domain::SetProps (Dict & D)
                 SDPair const & p = D(tag);
                 if (p.HasKey("Gn"))
                 {
-                    Particles[i]->Gn = p("Gn");
+                    Particles[i]->Props.Gn = p("Gn");
                 }
                 if (p.HasKey("Gt"))
                 {
-                    Particles[i]->Gt = p("Gt");
+                    Particles[i]->Props.Gt = p("Gt");
                 }
                 if (p.HasKey("Kn"))
                 {
-                    Particles[i]->Kn = p("Kn");
+                    Particles[i]->Props.Kn = p("Kn");
                 }
                 if (p.HasKey("Kt"))
                 {
-                    Particles[i]->Kt = p("Kt");
+                    Particles[i]->Props.Kt = p("Kt");
                 }
                 if (p.HasKey("Bn"))
                 {
-                    Particles[i]->Bn = p("Bn");
+                    Particles[i]->Props.Bn = p("Bn");
                 }
                 if (p.HasKey("Bt"))
                 {
-                    Particles[i]->Bt = p("Bt");
+                    Particles[i]->Props.Bt = p("Bt");
                 }
                 if (p.HasKey("Bm"))
                 {
-                    Particles[i]->Bm = p("Bm");
+                    Particles[i]->Props.Bm = p("Bm");
                 }
                 if (p.HasKey("Mu"))
                 {
-                    Particles[i]->Mu = p("Mu");
+                    Particles[i]->Props.Mu = p("Mu");
                 }
                 if (p.HasKey("eps"))
                 {
-                    Particles[i]->eps = p("eps");
+                    Particles[i]->Props.eps = p("eps");
                 }
                 if (p.HasKey("Beta"))
                 {
-                    Particles[i]->Beta = p("Beta");
+                    Particles[i]->Props.Beta = p("Beta");
                 }
                 if (p.HasKey("Eta"))
                 {
-                    Particles[i]->Eta = p("Eta");
+                    Particles[i]->Props.Eta = p("Eta");
                 }
             }
         }
@@ -1017,7 +1017,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     Vs = 0.0;
     for (size_t i=0; i<Particles.Size(); i++) 
     { 
-        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf&&!Particles[i]->wyf&&!Particles[i]->wzf)Vs += Particles[i]->V;
+        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf
+            &&!Particles[i]->wyf&&!Particles[i]->wzf)  Vs += Particles[i]->Props.V;
     }
 
     // info
@@ -1191,13 +1192,13 @@ inline void Domain::Save (char const * FileKey)
 
         // Storing some scalar variables
         double dat[1];
-        dat[0] = Particles[i]->R;
+        dat[0] = Particles[i]->Props.R;
         H5LTmake_dataset_double(group_id,"SR",1,dims,dat);
-        dat[0] = Particles[i]->rho;
+        dat[0] = Particles[i]->Props.rho;
         H5LTmake_dataset_double(group_id,"Rho",1,dims,dat);
-        dat[0] = Particles[i]->m;
+        dat[0] = Particles[i]->Props.m;
         H5LTmake_dataset_double(group_id,"m",1,dims,dat);
-        dat[0] = Particles[i]->V;
+        dat[0] = Particles[i]->Props.V;
         H5LTmake_dataset_double(group_id,"V",1,dims,dat);
         dat[0] = Particles[i]->Diam;
         H5LTmake_dataset_double(group_id,"Diam",1,dims,dat);
@@ -1414,13 +1415,13 @@ inline void Domain::Load (char const * FileKey)
         // Loading the scalar quantities of the particle
         double dat[1];
         H5LTread_dataset_double(group_id,"SR",dat);
-        Particles[Particles.Size()-1]->R = dat[0];
+        Particles[Particles.Size()-1]->Props.R = dat[0];
         H5LTread_dataset_double(group_id,"Rho",dat);
-        Particles[Particles.Size()-1]->rho = dat[0];
+        Particles[Particles.Size()-1]->Props.rho = dat[0];
         H5LTread_dataset_double(group_id,"m",dat);
-        Particles[Particles.Size()-1]->m = dat[0];
+        Particles[Particles.Size()-1]->Props.m = dat[0];
         H5LTread_dataset_double(group_id,"V",dat);
-        Particles[Particles.Size()-1]->V = dat[0];
+        Particles[Particles.Size()-1]->Props.V = dat[0];
         H5LTread_dataset_double(group_id,"Diam",dat);
         Particles[Particles.Size()-1]->Diam = dat[0];
         H5LTread_dataset_double(group_id,"Dmax",dat);
@@ -1606,7 +1607,7 @@ inline void Domain::LinearMomentum (Vec3_t & L)
     L = 0.,0.,0.;
     for (size_t i=0; i<Particles.Size(); i++)
     {
-        L += Particles[i]->m*Particles[i]->v;
+        L += Particles[i]->Props.m*Particles[i]->v;
     }
 }
 
@@ -1618,7 +1619,7 @@ inline void Domain::AngularMomentum (Vec3_t & L)
         Vec3_t t1,t2;
         t1 = Particles[i]->I(0)*Particles[i]->w(0),Particles[i]->I(1)*Particles[i]->w(1),Particles[i]->I(2)*Particles[i]->w(2);
         Rotation (t1,Particles[i]->Q,t2);
-        L += Particles[i]->m*cross(Particles[i]->x,Particles[i]->v)+t2;
+        L += Particles[i]->Props.m*cross(Particles[i]->x,Particles[i]->v)+t2;
     }
 }
 
@@ -1664,8 +1665,8 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
     {
         Particle * P = Particles[i];
         double Diam = sqrt((P->MaxX()-P->MinX())*(P->MaxX()-P->MinX())+(P->MaxY()-P->MinY())*(P->MaxY()-P->MinY())+(P->MaxZ()-P->MinZ())*(P->MaxX()-P->MinX()));
-        Vs += Particles[i]->V;
-        Vg.Push(Particles[i]->V);
+        Vs += Particles[i]->Props.V;
+        Vg.Push(Particles[i]->Props.V);
         D.Push(Diam);
     }
     double Dmin  = D[D.Min()]; // minimum diameter

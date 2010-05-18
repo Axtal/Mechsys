@@ -89,7 +89,7 @@ int main(int argc, char **argv) try
     p->v = -inivel,0.0,0.0;
     p->w = angveltab*inipos/R,-inivel/R , 0.0;
     dom.Initialize(dt);
-    p->Ff = 0.0,0.0,-p->m*g;
+    p->Ff = 0.0,0.0,-p->Props.m*g;
     dat.p = p;
 
     //Set Gt = 0 the friction coefficient and the rolling coefficient equal to zero

@@ -48,7 +48,7 @@ int main(int argc, char **argv) try
     p = dom.GetParticle(-1);
     p->v  = velocity , 0.0, 0.0;
     dom.Initialize(dt);
-    p->Ff = 0.0,0.0,-p->m*g;
+    p->Ff = 0.0,0.0,-p->Props.m*g;
     // setting the tangential viscosity coeffcient Gt to 0 and the friction coefficient to the desired value
     Dict B;
     B.Set(-1,"Gt mu Kn Kt",0.0,0.4,1.0e8,5.0e7);

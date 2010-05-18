@@ -89,7 +89,7 @@ int main(int argc, char **argv) try
     // Initialize the gravity on the particles
     for (size_t i=0;i<d.Particles.Size();i++)
     {
-        d.Particles[i]->Ff = d.Particles[i]->m*Vec3_t(0.0,-9.8,0.0);
+        d.Particles[i]->Ff = d.Particles[i]->Props.m*Vec3_t(0.0,-9.8,0.0);
     }
 
     d.Solve     (/*tf*/10.0, /*dt*/0.00005, /*dtOut*/0.1, NULL, NULL, filekey.CStr());

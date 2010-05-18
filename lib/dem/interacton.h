@@ -149,11 +149,11 @@ inline CInteracton::CInteracton (Particle * Pt1, Particle * Pt2)
     P2              = Pt2;
     I1              = P1->Index;
     I2              = P2->Index;
-    Kn              = 2*ReducedValue(Pt1->Kn,Pt2->Kn);
-    Kt              = 2*ReducedValue(Pt1->Kt,Pt2->Kt);
-    Gn              = 2*ReducedValue(Pt1->Gn,Pt2->Gn)*ReducedValue(Pt1->m,Pt2->m);
-    Gt              = 2*ReducedValue(Pt1->Gt,Pt2->Gt)*ReducedValue(Pt1->m,Pt2->m);
-    Mu              = 2*ReducedValue(Pt1->Mu,Pt2->Mu);
+    Kn              = 2*ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
+    Kt              = 2*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
+    Gn              = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
+    Gt              = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
+    Mu              = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
     CalcForce(0.0);
 }
 
@@ -196,11 +196,11 @@ inline void CInteracton::CalcForce (double dt)
 
 inline void CInteracton::UpdateParameters ()
 {
-    Kn              = 2*ReducedValue(P1->Kn,P2->Kn);
-    Kt              = 2*ReducedValue(P1->Kt,P2->Kt);
-    Gn              = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
-    Gt              = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
-    Mu              = 2*ReducedValue(P1->Mu,P2->Mu);
+    Kn              = 2*ReducedValue(P1->Props.Kn,P2->Props.Kn);
+    Kt              = 2*ReducedValue(P1->Props.Kt,P2->Props.Kt);
+    Gn              = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
+    Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
+    Mu              = 2*ReducedValue(P1->Props.Mu,P2->Props.Mu);
 }
 
 template<typename FeatureA_T, typename FeatureB_T>
@@ -214,16 +214,16 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         Vec3_t xi, xf;
         Distance ((*A[i]), (*B[j]), xi, xf);
         double dist  = norm(xf-xi);
-        double delta = P1->R + P2->R - dist;
+        double delta = P1->Props.R + P2->Props.R - dist;
         if (delta>0)
         {
-            if (delta > 0.8*(P1->R+P2->R)) throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
+            if (delta > 0.8*(P1->Props.R+P2->Props.R)) throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
             // Count a contact
             Nc++;
 
             // update force
             Vec3_t n = (xf-xi)/dist;
-            Vec3_t x = xi+n*((P1->R*P1->R-P2->R*P2->R+dist*dist)/(2*dist));
+            Vec3_t x = xi+n*((P1->Props.R*P1->Props.R-P2->Props.R*P2->Props.R+dist*dist)/(2*dist));
             Vec3_t t1,t2,x1,x2;
             Rotation(P1->w,P1->Q,t1);
             Rotation(P2->w,P2->Q,t2);
@@ -289,7 +289,7 @@ inline void CInteracton::_update_contacts (FeatureA_T & A, FeatureB_T & B, ListC
     for (size_t i=0; i<A.Size(); ++i)
     for (size_t j=0; j<B.Size(); ++j)
     {
-        if (Distance ((*A[i]), (*B[j]))<=P1->R+P2->R+2*alpha)
+        if (Distance ((*A[i]), (*B[j]))<=P1->Props.R+P2->Props.R+2*alpha)
         {
             pair<int,int> p;
             p = make_pair(i,j);
@@ -307,13 +307,13 @@ inline CInteractonSphere::CInteractonSphere (Particle * Pt1, Particle * Pt2)
     P2   = Pt2;
     I1 = P1->Index;
     I2 = P2->Index;
-    Kn   = 2*ReducedValue(Pt1->Kn,Pt2->Kn);
-    Kt   = 2*ReducedValue(Pt1->Kt,Pt2->Kt);
-    Gn   = 2*ReducedValue(Pt1->Gn,Pt2->Gn)*ReducedValue(Pt1->m,Pt2->m);
-    Gt   = 2*ReducedValue(Pt1->Gt,Pt2->Gt)*ReducedValue(Pt1->m,Pt2->m);
-    Mu   = 2*ReducedValue(Pt1->Mu,Pt2->Mu);
-    beta = 2*ReducedValue(Pt1->Beta,Pt2->Beta);
-    eta  = 2*ReducedValue(Pt1->Eta,Pt2->Eta);
+    Kn   = 2*ReducedValue(Pt1->Props.Kn,Pt2->Props.Kn);
+    Kt   = 2*ReducedValue(Pt1->Props.Kt,Pt2->Props.Kt);
+    Gn   = 2*ReducedValue(Pt1->Props.Gn,Pt2->Props.Gn)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
+    Gt   = 2*ReducedValue(Pt1->Props.Gt,Pt2->Props.Gt)*ReducedValue(Pt1->Props.m,Pt2->Props.m);
+    Mu   = 2*ReducedValue(Pt1->Props.Mu,Pt2->Props.Mu);
+    beta = 2*ReducedValue(Pt1->Props.Beta,Pt2->Props.Beta);
+    eta  = 2*ReducedValue(Pt1->Props.Eta,Pt2->Props.Eta);
     Nc = 0;
     Nsc = 0;
 
@@ -330,7 +330,7 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     Rotation(P1->w,P1->Q,t1);
     Rotation(P2->w,P2->Q,t2);
     Vec3_t Normal = Fn/norm(Fn);
-    Vec3_t Vr = P1->R*P2->R*cross(Vec3_t(t1 - t2),Normal)/(P1->R+P2->R);
+    Vec3_t Vr = P1->Props.R*P2->Props.R*cross(Vec3_t(t1 - t2),Normal)/(P1->Props.R+P2->Props.R);
     Fdr += Vr*dt;
     Fdr -= dot(Fdr,Normal)*Normal;
     Vec3_t tan = Fdr;
@@ -342,14 +342,14 @@ inline void CInteractonSphere::_update_rolling_resistance(double dt)
     }
     Vec3_t Ft = -Kr*Fdr;
 
-    Vec3_t Tt = P1->R*cross(Normal,Ft);
+    Vec3_t Tt = P1->Props.R*cross(Normal,Ft);
     Vec3_t T;
     Quaternion_t q;
     Conjugate (P1->Q,q);
     Rotation  (Tt,q,T);
     P1->T += T;
 
-    Tt = P2->R*cross(Normal,Ft);
+    Tt = P2->Props.R*cross(Normal,Ft);
     Conjugate (P2->Q,q);
     Rotation  (Tt,q,T);
     P2->T -= T;
@@ -384,13 +384,13 @@ inline bool CInteractonSphere::UpdateContacts (double alpha)
 
 inline void CInteractonSphere::UpdateParameters ()
 {
-    Kn   = 2*ReducedValue(P1->Kn,P2->Kn);
-    Kt   = 2*ReducedValue(P1->Kt,P2->Kt);
-    Gn   = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
-    Gt   = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
-    Mu   = 2*ReducedValue(P1->Mu,P2->Mu);
-    beta = 2*ReducedValue(P1->Beta,P2->Beta);
-    eta  = 2*ReducedValue(P1->Eta,P2->Eta);
+    Kn   = 2*ReducedValue(P1->Props.Kn,P2->Props.Kn);
+    Kt   = 2*ReducedValue(P1->Props.Kt,P2->Props.Kt);
+    Gn   = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
+    Gt   = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
+    Mu   = 2*ReducedValue(P1->Props.Mu,P2->Props.Mu);
+    beta = 2*ReducedValue(P1->Props.Beta,P2->Props.Beta);
+    eta  = 2*ReducedValue(P1->Props.Eta,P2->Props.Eta);
 }
 //Cohesion interacton
 
@@ -403,12 +403,12 @@ inline BInteracton::BInteracton (Particle * Pt1, Particle * Pt2, size_t Fi1, siz
     I1              = P1->Index;
     I2              = P2->Index;
     Area            = 0.5*(P1->Faces[F1]->Area()+P2->Faces[F2]->Area());
-    Bn              = 2*ReducedValue(P1->Bn,P2->Bn)*Area;
-    Bt              = 2*ReducedValue(P1->Bt,P2->Bt)*Area;
-    Bm              = 2*ReducedValue(P1->Bm,P2->Bm)*Area;
-    Gn              = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
-    Gt              = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
-    eps             = 2*ReducedValue(P1->eps,P2->eps);
+    Bn              = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn)*Area;
+    Bt              = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt)*Area;
+    Bm              = 2*ReducedValue(P1->Props.Bm,P2->Props.Bm)*Area;
+    Gn              = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
+    Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
+    eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
 
     Vec3_t t1;
     P1->Faces[F1]->Normal(t1);
@@ -484,11 +484,11 @@ inline void BInteracton::CalcForce(double dt)
 
 inline void BInteracton::UpdateParameters ()
 {
-    Bn              = 2*ReducedValue(P1->Bn,P2->Bn)*Area;
-    Bt              = 2*ReducedValue(P1->Bt,P2->Bt)*Area;
-    Bm              = 2*ReducedValue(P1->Bm,P2->Bm)*Area;
-    Gn              = 2*ReducedValue(P1->Gn,P2->Gn)*ReducedValue(P1->m,P2->m);
-    Gt              = 2*ReducedValue(P1->Gt,P2->Gt)*ReducedValue(P1->m,P2->m);
-    eps             = 2*ReducedValue(P1->eps,P2->eps);
+    Bn              = 2*ReducedValue(P1->Props.Bn,P2->Props.Bn)*Area;
+    Bt              = 2*ReducedValue(P1->Props.Bt,P2->Props.Bt)*Area;
+    Bm              = 2*ReducedValue(P1->Props.Bm,P2->Props.Bm)*Area;
+    Gn              = 2*ReducedValue(P1->Props.Gn,P2->Props.Gn)*ReducedValue(P1->Props.m,P2->Props.m);
+    Gt              = 2*ReducedValue(P1->Props.Gt,P2->Props.Gt)*ReducedValue(P1->Props.m,P2->Props.m);
+    eps             = 2*ReducedValue(P1->Props.eps,P2->Props.eps);
 }
 #endif //  MECHSYS_DEM_INTERACTON_H
