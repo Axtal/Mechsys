@@ -30,11 +30,55 @@
 #include <mechsys/numerical/montecarlo.h>
 #include <mechsys/mesh/mesh.h>
 
+struct ParticleProps
+{
+    double  Kn;   ///< Normal stiffness
+    double  Kt;   ///< Tengential stiffness
+    double  Bn;   ///< Spring constant for normal bonding
+    double  Bt;   ///< Spring constant for tangential bonding
+    double  Bm;   ///< Spring constant for torque bonding
+    double  Gn;   ///< Normal viscous coefficient
+    double  Gt;   ///< Tangential viscous coefficient
+    double  Mu;   ///< Microscopic coefficient of friction
+    double  eps;  ///< Maximun strain supported before breaking
+    double  Beta; ///< Rolling stiffness coeffcient
+    double  Eta;  ///< Plastic moment coefficient
+    double  R;    ///< Spheroradius
+    double  rho;  ///< Density
+    double  V;    ///< Volume
+    double  m;    ///< Mass
+};
+
+#ifdef USE_MPI
+void BuildParticlePropsDataType (ParticleProps & P, MPI::Datatype & MPIType)
+{
+    // blocks
+    MPI::Datatype types [] = {MPI::DOUBLE};
+    int           blklen[] = {15};
+
+    // addresses
+    const int nblks = 1;
+    MPI::Aint origin, addr[nblks];
+
+    origin  = MPI::Get_address (&P);
+    addr[0] = MPI::Get_address (&(P.Kn));
+
+    // displacements
+    MPI::Aint disps[nblks];
+    for (int i=0; i<nblks; ++i) disps[i] = addr[i] - origin;
+
+    // create type
+    MPIType = MPI::Datatype::Create_struct (nblks, blklen, disps, types); 
+    MPIType.Commit();
+}
+#endif
+
+
 class Particle
 {
 public:
     // Constructor
-    Particle(int                 Tag,              ///< Tag of the particle
+    Particle(int                         Tag,      ///< Tag of the particle
              Array<Vec3_t>       const & V,        ///< List of vertices
              Array<Array <int> > const & E,        ///< List of edges with connectivity
              Array<Array <int> > const & F,        ///< List of faces with connectivity
@@ -50,64 +94,52 @@ public:
     ~Particle ();
 
     // Methods
-    void Initialize         (size_t NCalls=5000);                                           ///< Initialize this particle
-    void InitializeVelocity (double dt = 1.0);                                              ///< Initialize this particle
-    void Rotate             (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
-    void Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
-    void Translate          (double dt);                                                    ///< Apply translation once the total force is found
-    void Translate          (Vec3_t & t);                                                   ///< Apply translation by vector t
-    void ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
-    double MaxDisplacement  ();                                                             ///< Maximun displacement for the verlet algorithm
-    void Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
-    void FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
-    bool IsFree             () {return !vxf&&!vyf&&!vzf&&!vxf&&!vyf&&!vzf;};                ///< Ask if the particle has any constrain in its movement
+    void   Initialize         (size_t NCalls=5000);                                           ///< Initialize this particle
+    void   InitializeVelocity (double dt = 1.0);                                              ///< Initialize this particle
+    void   Rotate             (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
+    void   Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
+    void   Translate          (double dt);                                                    ///< Apply translation once the total force is found
+    void   Translate          (Vec3_t & t);                                                   ///< Apply translation by vector t
+    void   ResetDisplacements ();                                                             ///< Reset the displacements for the verlet algorithm
+    double MaxDisplacement    ();                                                             ///< Maximun displacement for the verlet algorithm
+    void   Draw               (std::ostream & os, char const * Color="Blue", bool BPY=false); ///< Draw the particle
+    void   FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
+    bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!vxf&&!vyf&&!vzf;};                ///< Ask if the particle has any constrain in its movement
 
     // Data
-    int                 Tag;             ///< Tag of the particle
-    size_t              Index;           ///< index of the particle in the domain
-    bool                PropsReady;      ///< Are the properties calculated ready ?
-    bool                IsBroken;        ///< True if the particle has at least one broken bond in cohesive simulations
-    Vec3_t              x;               ///< Position of the center of mass
-    Vec3_t              xb;              ///< Former position for the Verlet algorithm
-    Vec3_t              v;               ///< Velocity
-    Vec3_t              w;               ///< Angular velocity
-    Vec3_t              wb;              ///< Former angular velocity for the leap frog algorithm
-    Vec3_t              F;               ///< Force over the particle
-    Vec3_t              Ff;              ///< Fixed Force over the particle
-    bool                vxf, vyf, vzf;   ///< Fixed components of velocity
-    bool                wxf, wyf, wzf;   ///< Fixed components of angular velocity
-    Vec3_t              T;               ///< Torque over the particle
-    Vec3_t              Tf;              ///< Fixed Torque over the particle
-    Vec3_t              I;               ///< Vector containing the principal components of the inertia tensor
-    Quaternion_t        Q;               ///< The quaternion representing the rotation
-    Mat3_t              M;               ///< Momment tensor for the calculation of stress
-    Mat3_t              B;               ///< Fabric tnesor for the study of structure
-    double              Kn;              ///< Normal stiffness
-    double              Kt;              ///< Tengential stiffness
-    double              Bn;              ///< Spring constant for normal bonding
-    double              Bt;              ///< Spring constant for tangential bonding
-    double              Bm;              ///< Spring constant for torque bonding
-    double              Gn;              ///< Normal viscous coefficient
-    double              Gt;              ///< Tangential viscous coefficient
-    double              Mu;              ///< Microscopic coefficient of friction
-    double              eps;             ///< Maximun strain supported before breaking
-    double              Beta;            ///< Rolling stiffness coeffcient
-    double              Eta;             ///< Plastic moment coefficient
-    double              R;               ///< Spheroradius
-    double              rho;             ///< Density
-    double              V;               ///< Volume
-    double              m;               ///< Mass
-    double              Erot;            ///< Rotational energy of the particle
-    double              Ekin;            ///< Kinetical energy of the particle
-    double              Dmax;            ///< Maximal distance from the center of mass to the surface of the body
-    double              Diam;            ///< Diameter of the parallelogram containing the particle
-    double              Cn;              ///< Coordination number (number of contacts)
-    Array<Vec3_t*>      Vertso;          ///< Original postion of the Vertices
-    Array<Vec3_t*>      Verts;           ///< Vertices
-    Array<Array <int> > EdgeCon;         ///< Conectivity of Edges TODO: why do we need this ?
-    Array<Array <int> > FaceCon;         ///< Conectivity of Faces TODO: why do we need this ?
-    Array<Edge*>        Edges;           ///< Edges
-    Array<Face*>        Faces;           ///< Faces
+    long            Tag;             ///< Tag of the particle
+    long            Index;           ///< index of the particle in the domain
+    bool            PropsReady;      ///< Are the properties calculated ready ?
+    bool            IsBroken;        ///< True if the particle has at least one broken bond in cohesive simulations
+    bool            vxf, vyf, vzf;   ///< Fixed components of velocity
+    bool            wxf, wyf, wzf;   ///< Fixed components of angular velocity
+    Vec3_t          x;               ///< Position of the center of mass
+    Vec3_t          xb;              ///< Former position for the Verlet algorithm
+    Vec3_t          v;               ///< Velocity
+    Vec3_t          w;               ///< Angular velocity
+    Vec3_t          wb;              ///< Former angular velocity for the leap frog algorithm
+    Vec3_t          F;               ///< Force over the particle
+    Vec3_t          Ff;              ///< Fixed Force over the particle
+    Vec3_t          T;               ///< Torque over the particle
+    Vec3_t          Tf;              ///< Fixed Torque over the particle
+    Vec3_t          I;               ///< Vector containing the principal components of the inertia tensor
+    Quaternion_t    Q;               ///< The quaternion representing the rotation
+    Mat3_t          M;               ///< Momment tensor for the calculation of stress
+    Mat3_t          B;               ///< Fabric tnesor for the study of structure
+    double          Erot;            ///< Rotational energy of the particle
+    double          Ekin;            ///< Kinetical energy of the particle
+    double          Dmax;            ///< Maximal distance from the center of mass to the surface of the body
+    double          Diam;            ///< Diameter of the parallelogram containing the particle
+    double          Cn;              ///< Coordination number (number of contacts)
+    Array<Vec3_t*>  Verts;           ///< Vertices
+
+    // Data -- not needed during communications
+    ParticleProps       Props;       ///< Properties
+    Array<Vec3_t*>      Vertso;      ///< Original postion of the Vertices
+    Array<Array <int> > EdgeCon;     ///< Conectivity of Edges TODO: why do we need this ?
+    Array<Array <int> > FaceCon;     ///< Conectivity of Faces TODO: why do we need this ?
+    Array<Edge*>        Edges;       ///< Edges
+    Array<Face*>        Faces;       ///< Faces
 
     // Auxiliar methods
     void   CalcProps (size_t NCalls=5000); ///< Calculate properties: mass, center of mass, and moment of inertia
@@ -170,6 +202,39 @@ public:
     }
 #endif
 };
+
+
+#ifdef USE_MPI
+void BuildParticleDataType (size_t VertsSize, Particle const & P, MPI::Datatype & MPIType)
+{
+    // blocks
+    MPI::Datatype types [] = {MPI::LONG, MPI::BOOL, MPI::DOUBLE};
+    int           blklen[] = {2,8,57+VertsSize*3};
+
+    // addresses
+    const int nblks = 3;
+    MPI::Aint origin, addr[nblks];
+
+    origin  = MPI::Get_address (&P);
+    addr[0] = MPI::Get_address (&(P.Tag));
+    addr[1] = MPI::Get_address (&(P.PropsReady));
+    addr[2] = MPI::Get_address (&(P.x.data()));
+
+    // displacements
+    MPI::Aint disps[nblks];
+    for (int i=0; i<nblks; ++i) disps[i] = addr[i] - origin;
+
+    // create type
+    MPIType = MPI::Datatype::Create_struct (nblks, blklen, disps, types); 
+    MPIType.Commit();
+}
+#endif
+
+
+std::ostream & operator<< (std::ostream & os, Particle const & P)
+{
+    os << "Tag   = " << P.Tag  << std::endl;
+}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
