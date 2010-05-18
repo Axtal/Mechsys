@@ -31,9 +31,8 @@ public:
     LinFlow (int NDim, SDPair const & Prms);
 
     // Methods
-    void InitIvs   (SDPair const & Ini, State * Sta)        const;
-    void Stiffness (State const * Sta, Mat_t & D,
-                    Array<double> * h=NULL, Vec_t * d=NULL) const;
+    void InitIvs   (SDPair const & Ini, State * Sta)                              const;
+    void Stiffness (State const * Sta, Mat_t & D, Vec_t * h=NULL, Vec_t * d=NULL) const;
 
     // Data
     double kx;
@@ -69,7 +68,7 @@ inline void LinFlow::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (Ini);
 }
 
-inline void LinFlow::Stiffness (State const * Sta, Mat_t & D, Array<double> * h, Vec_t * d) const
+inline void LinFlow::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, Vec_t * d) const
 {
     D.change_dim (NDim,NDim);
     if (NDim==2)

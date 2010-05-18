@@ -188,12 +188,15 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
 
 inline void StressUpdate::TangentIncs (EquilibState const * sta, Vec_t & deps, Vec_t & dsig, Vec_t & divs) const
 {
-    Array<double> h;
-    Mat_t         D;
-    Vec_t         d;
-    Mdl->Stiffness (sta, D, &h, &d);
-    dsig = D * deps;
-    for (size_t k=0; k<size(sta->Ivs); ++k) divs(k) = h[k]*dot(d,deps);
+    Mat_t D;
+    if (size(sta->Ivs)>0)
+    {
+        Vec_t h, d;
+        Mdl->Stiffness (sta, D, &h, &d);
+        divs = h*dot(d,deps);
+    }
+    else Mdl->Stiffness (sta, D);
+    dsig = D*deps;
 
     // calculate dez for plane-stress
     if (Mdl->GTy==pse_t) deps(2) = Mdl->CalcDEz(sta, dsig);
