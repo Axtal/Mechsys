@@ -185,9 +185,13 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
     Initialize ();
 
     // output initial state
-    std::cout << "\n[1;37m--- Stage solution --- (steady) ----------------------------------------------\n";
-    std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR    << "[0m\n";
+    String str;
+    if      (Scheme==FE_t) str.Printf("FE");
+    else if (Scheme==ME_t) str.Printf("ME");
+    else if (Scheme==NR_t) str.Printf("NR");
+    std::cout << "\n[1;37m--- Stage solution --- (steady) --- (" << str << ") -------------------------------------------\n";
+    std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)"        << Util::_4<<"NSS" << Util::_4<<"NIT" << "[0m" << std::endl;
+    std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR <<"[0m" << Util::_4<<"---" << Util::_4<<"---" << std::endl;
     if (IdxOut==0)
     {
         Dom.OutResults (Time, F_int);
@@ -225,7 +229,6 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
     if (fabs(sum_weights-1.0)>1.0e-9) throw new Fatal("Solver::Solver: Sum of weights must be equal to 1.0 (Sum(W)=%g is invalid)",sum_weights);
 
     // solve
-    String str;
     double t0 = Time;     // current time
     double tf = t0 + 1.0; // final time
     double Dt = tf - t0;  // total time increment
@@ -237,10 +240,9 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
         tout = Time + dt;          // time for output
 
         // update U, F, Time and elements to tout
-        if      (Scheme==FE_t) { _FE_update (tout);  str.Printf("Forward-Euler (FE): nss = %d",Stp); }
-        else if (Scheme==ME_t) { _ME_update (tout);  str.Printf("Modified-Euler (ME): nss = %d   maxIt = %d",Stp,It); }
-        else if (Scheme==NR_t) { _NR_update (tout);  str.Printf("Newton-Rhapson (NR): nss = %d   nit = %d",Stp,It); }
-        else throw new Fatal("Solver::Solve: Time integration scheme invalid");
+        if      (Scheme==FE_t) _FE_update (tout);
+        else if (Scheme==ME_t) _ME_update (tout);
+        else if (Scheme==NR_t) _NR_update (tout);
 
         // update nodes to tout
         for (size_t i=0; i<ActNods.Size(); ++i)
@@ -255,7 +257,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
 
         // output
         IdxOut++;
-        std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m    " << str;
+        std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m" << Util::_4<<Stp << Util::_4<<It;
         if (Scheme!=ME_t) Dom.OutResults (Time, F_int);
         else if (!SSOut)  Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
@@ -266,6 +268,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
             String fkey;
             fkey.Printf  ("%s_%08d", FileKey, IdxOut);
             Dom.WriteVTU (fkey.CStr());
+            std::cout << "  File <[1;34m" << fkey << ".vtu[0m> saved  ";
         }
 
         // calc work done == twice the stored (elastic) strain energy
@@ -277,9 +280,9 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
             for (size_t i=0; i<pEQ.Size(); ++i) kk11(pEQ[i],pEQ[i]) = 0.0;
             Mat_t kk(kk11 + kk12 + kk21 + kk22);
             Vec_t KU(kk*U);
-            std::cout << "     [1;37mWork = " << dot(U,KU) << " [0m";
+            std::cout << "  [1;37mWork = " << dot(U,KU) << " [0m";
         }
-        std::cout << "\n";
+        std::cout << std::endl;
 
         // next tout
         tout = Time + dt;
