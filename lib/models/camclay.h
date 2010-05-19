@@ -57,21 +57,30 @@ public:
 inline CamClay::CamClay (int NDim, SDPair const & Prms)
     : ElastoPlastic (NDim,Prms,/*derived*/true)
 {
+    // parameters
     lam = Prms("lam");
     kap = Prms("kap");
     nu  = Prms("nu");
     phi = Prms("phi");
     M   = Phi2M(phi);
-    I.change_dim(2*NDim);
+
+    // constants
+    I.change_dim (NCps);
     if (NDim==2) I = 1.0, 1.0, 1.0, 0.0;
     else         I = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
+
+    // internal values
+    NIvs = 1;
+    Y.change_dim (NIvs);
+    H.change_dim (NIvs);
+    IvNames.Push ("z0");
 }
 
 inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
 {
     // initialize state
     EquilibState * sta = static_cast<EquilibState*>(Sta);
-    sta->Init (Ini, /*NIvs*/1);
+    sta->Init (Ini, NIvs);
 
     // specific void
     v0  = Ini("v0");

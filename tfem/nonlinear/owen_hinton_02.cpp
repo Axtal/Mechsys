@@ -94,7 +94,7 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
         {
             FEM::Element const & ele = (*Sol.Dom.Eles[i]);
             Array<SDPair> res;
-            ele.GetState (res);
+            ele.StateAtIPs (res);
             for (size_t j=0; j<ele.GE->NIP; ++j)
             {
                 if (fabs(ele.GE->IPs[j].s)<1.0e-5) // mid point

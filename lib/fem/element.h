@@ -69,9 +69,10 @@ public:
     virtual void Matrices     (Mat_t & M, Mat_t & C, Mat_t & K)          const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
     virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)     const {}
     virtual void StateKeys    (Array<String> & Keys)                     const {} ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
-    virtual void GetState     (SDPair & KeysVals, int IdxIP=-1)          const {} ///< IdxIP<0 => At the centroid
-    virtual void GetState     (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each integration point (IP)
-    virtual void StateAtNodes (Array<SDPair> & Results)                  const {} ///< Get state (internal values: sig, eps) at each node (applies extrapolation)
+    virtual void StateAtIP    (SDPair & KeysVals, int IdxIP)             const {} ///< Get state at IP
+    virtual void StateAtIPs   (Array<SDPair> & Results)                  const;   ///< Get state (internal values: sig, eps) at all integration points
+    virtual void StateAtCt    (SDPair & Results)                         const;   ///< Get state at centroid
+    virtual void StateAtNodes (Array<SDPair> & Results)                  const;   ///< Get state (internal values: sig, eps) at all nodes (applies extrapolation)
     virtual void Centroid     (Vec_t & X)                                const;   ///< Centroid of element
     virtual void Draw         (std::ostream & os, double MaxDist)        const;   ///< Draw element with MatPlotLib
 
@@ -230,6 +231,77 @@ inline void Element::CalcFaceShape (Mat_t const & FC, IntegPoint const & FIP, do
 
     // coefficient used during integration
     Coef = detJ*FIP.w;
+}
+
+inline void Element::StateAtIPs (Array<SDPair> & Results) const
+{
+    if (GE==NULL) throw new Fatal("Element::StateAtIPs: This method works only when GE (geometry element) is not NULL");
+
+    // one set of results per IP
+    Results.Resize (GE->NIP);
+    for (size_t i=0; i<GE->NIP; ++i) StateAtIP (Results[i], i);
+}
+
+inline void Element::StateAtCt (SDPair & Results) const
+{
+    if (GE==NULL) throw new Fatal("Element::StateAtCt: This method works only when GE (geometry element) is not NULL");
+
+    // keys
+    Array<String> keys;
+    StateKeys (keys);
+
+    // state at IPs
+    Array<SDPair> state_at_IPs;
+    StateAtIPs (state_at_IPs);
+
+    // average
+    Results.clear();
+    for (size_t k=0; k<keys.Size(); ++k)
+    {
+        // average values at IPs
+        double val = 0.0;
+        for (size_t i=0; i<GE->NIP; ++i) val += state_at_IPs[i](keys[k]);
+        val /= GE->NIP;
+
+        // set results
+        Results.Set (keys[k].CStr(), val);
+    }
+}
+
+inline void Element::StateAtNodes (Array<SDPair> & Results) const
+{
+    if (GE==NULL) throw new Fatal("Element::StateAtNodes: This method works only when GE (geometry element) is not NULL");
+
+    // resize results array (one set of results per node)
+    Results.Resize (GE->NN);
+
+    // shape func matrix
+    Mat_t M, Mi;
+    ShapeMatrix (M);
+    Inv (M, Mi);
+
+    // keys
+    Array<String> keys;
+    StateKeys (keys);
+
+    // state at IPs
+    Array<SDPair> state_at_IPs;
+    StateAtIPs (state_at_IPs);
+
+    // extrapolate
+    Vec_t val_at_IPs (GE->NIP); // values at IPs
+    Vec_t val_at_Nods(GE->NN);  // values at nodes
+    for (size_t k=0; k<keys.Size(); ++k)
+    {
+        // gather values from IPs
+        for (size_t i=0; i<GE->NIP; ++i) val_at_IPs(i) = state_at_IPs[i](keys[k]);
+
+        // extrapolate to nodes
+        val_at_Nods = Mi * val_at_IPs;
+
+        // scatter values to nodes
+        for (size_t i=0; i<GE->NN; ++i) Results[i].Set (keys[k].CStr(), val_at_Nods(i));
+    }
 }
 
 inline void Element::Centroid (Vec_t & X) const

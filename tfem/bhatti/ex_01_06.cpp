@@ -55,8 +55,8 @@ int main(int argc, char **argv) try
     mesh.SetCell   (3,   -1, Array<int>(5,3,2));
     mesh.SetBryTag (1, 0, -10);
     mesh.SetBryTag (3, 0, -10);
-    mesh.WriteVTU  ("ex16_mesh");
-    mesh.WriteMPY  ("ex16_mesh");
+    //mesh.WriteVTU  ("ex16_mesh");
+    //mesh.WriteMPY  ("ex16_mesh");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -144,8 +144,8 @@ int main(int argc, char **argv) try
     //cout << inis << endl;
     //cout << dom  << endl;
     dom.PrintResults ("%11.6g");
-    dom.WriteMPY     ("ex16_dom");
-    dom.WriteVTU     ("ex16_res");
+    //dom.WriteMPY     ("ex16_dom");
+    //dom.WriteVTU     ("ex16_res");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 

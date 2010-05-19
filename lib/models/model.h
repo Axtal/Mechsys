@@ -52,10 +52,13 @@ public:
     virtual double CalcDEz      (State const * Sta, Vec_t const & DSig)                        const { throw new Fatal("Model::CalcDEz: This method is not available yet"); return 0; }
 
     // Data
-    int      NDim; ///< Space dimension: 2 or 3
-    SDPair   Prms; ///< Parameters
-    GeomType GTy;  ///< Geometry type
-    String   Name; ///< Model name. Ex: LinElastic
+    int           NDim;    ///< Space dimension: 2 or 3
+    SDPair        Prms;    ///< Parameters
+    GeomType      GTy;     ///< Geometry type
+    String        Name;    ///< Model name. Ex: LinElastic
+    size_t        NCps;    ///< Number of stress/strain components
+    size_t        NIvs;    ///< Number of internal values
+    Array<String> IvNames; ///< Names of internal values
 };
 
 
@@ -63,7 +66,7 @@ public:
 
 
 inline Model::Model (int TheNDim, SDPair const & ThePrms, char const * TheName)
-    : NDim(TheNDim), Prms(ThePrms), GTy(SDPairToGType(ThePrms,(TheNDim==3?"d3d":"d2d"))), Name(TheName)
+    : NDim(TheNDim), Prms(ThePrms), GTy(SDPairToGType(ThePrms,(TheNDim==3?"d3d":"d2d"))), Name(TheName), NCps(0), NIvs(0)
 {
 }
 

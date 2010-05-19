@@ -42,16 +42,18 @@ public:
           Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
-                      NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM);         ///< IdxEdgeOrFace is ignored
-    void CalcK       (Mat_t & K)                                    const; ///< Stiffness matrix
-    void CalcM       (Mat_t & M)                                    const; ///< Mass matrix
-    void CalcT       (Mat_t & T, double & l)                        const; ///< Transformation matrix
-    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)         const;
-    void GetState    (SDPair & KeysVals, int none=-1)               const;
-    void Centroid    (Vec_t & X)                                    const; ///< Centroid of element
-    void CalcRes     (double r, double & N, double & V, double & M) const; ///< Resultants: Axial force N, Shear force V, Bending moment M
-    void Draw        (std::ostream & os, double SF)                 const;
+    void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
+                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM);         ///< IdxEdgeOrFace is ignored
+    void CalcK        (Mat_t & K)                                    const; ///< Stiffness matrix
+    void CalcM        (Mat_t & M)                                    const; ///< Mass matrix
+    void CalcT        (Mat_t & T, double & l)                        const; ///< Transformation matrix
+    void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)         const;
+    void StateKeys    (Array<String> & Keys)                         const; ///< Get state keys
+    void StateAtCt    (SDPair & KeysVals)                            const; ///< State at centroid
+    void StateAtNodes (Array<SDPair> & Results)                      const; ///< State at nodes
+    void Centroid     (Vec_t & X)                                    const; ///< Centroid of element
+    void CalcRes      (double r, double & N, double & V, double & M) const; ///< Resultants: Axial force N, Shear force V, Bending moment M
+    void Draw         (std::ostream & os, double SF)                 const;
 
     // Constants
     double E;     ///< Young modulus
@@ -235,11 +237,26 @@ inline void Beam::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     }
 }
 
-inline void Beam::GetState (SDPair & KeysVals, int none) const
+inline void Beam::StateKeys (Array<String> & Keys) const
+{
+    Keys.Resize (3);
+    Keys = "N", "V", "M";
+}
+
+inline void Beam::StateAtCt (SDPair & KeysVals) const
 {
     double N, V, M;
     CalcRes (/*rct*/0.5, N, V, M);
     KeysVals.Set ("N V M",N,V,M);
+}
+
+inline void Beam::StateAtNodes (Array<SDPair> & Results) const
+{
+    SDPair res;
+    StateAtCt (res);
+    Results.Resize (2);
+    Results[0] = res;
+    Results[1] = res;
 }
 
 inline void Beam::Centroid (Vec_t & X) const

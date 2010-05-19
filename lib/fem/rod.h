@@ -38,12 +38,14 @@ public:
          Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Methods
-    void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
-    void CalcT       (Mat_t & T, double & l)                const; ///< Transformation matrix
-	void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
-    void GetState    (SDPair & KeysVals, int none=-1)       const;
-    void Centroid    (Vec_t & X)                            const; ///< Centroid of element
-    void Draw        (std::ostream & os, double SF)         const;
+    void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
+    void CalcT        (Mat_t & T, double & l)                const; ///< Transformation matrix
+	void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const;
+    void StateKeys    (Array<String> & Keys)                 const; ///< Get state keys
+    void StateAtCt    (SDPair & KeysVals)                    const; ///< State at centroid
+    void StateAtNodes (Array<SDPair> & Results)              const; ///< State at nodes
+    void Centroid     (Vec_t & X)                            const; ///< Centroid of element
+    void Draw         (std::ostream & os, double SF)         const;
 
     // Constants
     double E; ///< Young modulus
@@ -156,7 +158,13 @@ inline void Rod::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     }
 }
 
-inline void Rod::GetState (SDPair & KeysVals, int none) const
+inline void Rod::StateKeys (Array<String> & Keys) const
+{
+    Keys.Resize (1);
+    Keys[0] = "N";
+}
+
+inline void Rod::StateAtCt (SDPair & KeysVals) const
 {
     // rod length and T matrix
     double l;
@@ -178,6 +186,15 @@ inline void Rod::GetState (SDPair & KeysVals, int none) const
     // axial force
     double N = E*A*(Ul(1)-Ul(0))/l;
     KeysVals.Set ("N", N);
+}
+
+inline void Rod::StateAtNodes (Array<SDPair> & Results) const
+{
+    SDPair res;
+    StateAtCt (res);
+    Results.Resize (2);
+    Results[0] = res;
+    Results[1] = res;
 }
 
 inline void Rod::Centroid (Vec_t & X) const

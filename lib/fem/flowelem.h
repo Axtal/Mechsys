@@ -49,7 +49,8 @@ public:
     void CalcK       (Mat_t & K)                                const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                                const; ///< Mass matrix
 	void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)     const; ///< Update state at IPs
-    void GetState    (SDPair & KeysVals, int IdxIP=-1)          const; ///< IdxIP<0 => At centroid
+    void StateKeys   (Array<String> & Keys)                     const; ///< Get state keys, ex: vx, vy, gx, gy
+    void StateAtIP   (SDPair & KeysVals, int IdxIP)             const; ///< State at IP
 
     // Internal methods
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
@@ -84,10 +85,6 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
         Sta.Push (new FlowState(NDim));
         Mdl->InitIvs (Ini, Sta[i]);
     }
-
-    // allocate state at centroid
-    Sta.Push (new FlowState(NDim));
-    Mdl->InitIvs (Ini, Sta[Sta.Size()-1]);
 
     // set UKeys in parent element
     UKeys.Resize (1);
@@ -340,40 +337,45 @@ inline void FlowElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         }
     }
 
-    // update state at centroid
-    CalcB (C, GE->Rct, B, detJ, coef);
-    dgra = B * dUe;
-    fu.Update (dgra, Sta[Sta.Size()-1], dvel);
-
     // add results to Fint (internal forces)
     if (F_int!=NULL) for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
 }
 
-inline void FlowElem::GetState (SDPair & KeysVals, int IdxIP) const
+inline void FlowElem::StateKeys (Array<String> & Keys) const
 {
-    Vec_t const * vel;
-    Vec_t const * gra;
-    if (IdxIP<0) // centroid
+    Keys.Resize (2*NDim + Mdl->NIvs);
+    size_t k=0;
+    Keys[k++] = "vx";
+    Keys[k++] = "vy";
+    if (NDim==3)
     {
-        vel = &(static_cast<FlowState const *>(Sta[Sta.Size()-1])->Vel);
-        gra = &(static_cast<FlowState const *>(Sta[Sta.Size()-1])->Gra);
+        Keys[k++] = "vz";
     }
-    else
+    Keys[k++] = "gx";
+    Keys[k++] = "gy";
+    if (NDim==3)
     {
-        vel = &(static_cast<FlowState const *>(Sta[IdxIP])->Vel);
-        gra = &(static_cast<FlowState const *>(Sta[IdxIP])->Gra);
+        Keys[k++] = "gz";
     }
+    for (size_t i=0; i<Mdl->NIvs; ++i) Keys[k++] = Mdl->IvNames[i];
+}
+
+inline void FlowElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
+{
+    Vec_t const & vel = static_cast<FlowState const *>(Sta[IdxIP])->Vel;
+    Vec_t const & gra = static_cast<FlowState const *>(Sta[IdxIP])->Gra;
+
     if (NDim==2)
     {
         KeysVals.Set("vx vy  gx gy",
-                     (*vel)(0),(*vel)(1),
-                     (*gra)(0),(*gra)(1));
+                     vel(0), vel(1),
+                     gra(0), gra(1));
     }
     else
     {
         KeysVals.Set("vx vy vz  gx gy gz",
-                     (*vel)(0),(*vel)(1),(*vel)(2),
-                     (*gra)(0),(*gra)(1),(*gra)(2));
+                     vel(0), vel(1), vel(2),
+                     gra(0), gra(1), gra(2));
     }
 }
 

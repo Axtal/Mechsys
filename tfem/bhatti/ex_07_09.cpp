@@ -45,8 +45,8 @@ void CentroidSolution (double Pressure, double radius, double Radius, FEM::Eleme
     // results
     Vec_t  ct;
     SDPair res;
-    E.Centroid (ct);
-    E.GetState (res);
+    E.Centroid  (ct);
+    E.StateAtCt (res);
     double x = ct(0);
     double y = ct(1);
 
@@ -97,7 +97,7 @@ void CentroidSolution (double Pressure, double radius, double Radius, FEM::Eleme
 void ElemSolution (double Pressure, double radius, double Radius, FEM::Element const & E, Table & Sol, bool Silent=true)
 {
     Array<SDPair> res(E.GE->NIP);
-    E.GetState (res);
+    E.StateAtIPs (res);
 
     for (size_t i=0; i<E.GE->NIP; ++i)
     {
@@ -199,7 +199,7 @@ int main(int argc, char **argv) try
     Mesh::Structured mesh(/*NDim*/2);
     mesh.Generate (blks,/*O2*/true);
     //mesh.WriteVTU ("ex79");
-    mesh.WriteMPY  ("ex79");
+    //mesh.WriteMPY  ("ex79");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

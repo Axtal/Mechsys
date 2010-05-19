@@ -48,7 +48,7 @@ int main(int argc, char **argv) try
     mesh.SetVert  (2, -100,  L/sq2+L, L/sq2);
     mesh.SetCell  (0,   -1, Array<int>(0, 1));
     mesh.SetCell  (1,   -2, Array<int>(1, 2));
-    mesh.WriteMPY ("ex411");
+    //mesh.WriteMPY ("ex411");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 

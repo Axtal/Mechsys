@@ -50,7 +50,7 @@ int main(int argc, char **argv) try
     mesh.SetCell  (2,   -1, Array<int>(0, 1));
     mesh.SetCell  (3,   -1, Array<int>(1, 3));
     mesh.SetCell  (4,   -1, Array<int>(2, 3));
-    mesh.WriteMPY ("ex117");
+    //mesh.WriteMPY ("ex117");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
     dom.PrintResults ("%15.6g");
-    dom.WriteVTU     ("ex117");
+    //dom.WriteVTU     ("ex117");
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 

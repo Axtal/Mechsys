@@ -68,7 +68,8 @@ public:
     void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set nodes for output
     void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set elements for output
     void OutResults   (double Time, Vec_t const & F_int) const;             ///< Do output results
-    void PrintResults (char const * NF="%15.6g", int IdxIP=-1) const;       ///< IdxIP < 0 => Centroid
+    void PrintResults (char const * NF="%15.6g") const;                     ///< Print results
+    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;  ///< At nodes
     bool CheckError   (Table const & NodSol, Table const & EleSol, 
                        SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
     bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;  ///< At integration points
@@ -489,13 +490,13 @@ inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags
             std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
             OutEles.Push (ele);
             FilEles.Push (of);
-            SDPair dat;
-            Eles[ele]->GetState (dat);
+            Array<String> keys;
+            Eles[ele]->StateKeys (keys);
             (*of) << Util::_8s << "Time";
             (*of) << Util::_8s << "x";
             (*of) << Util::_8s << "y";  if (NDim==3)
             (*of) << Util::_8s << "z";
-            for (size_t j=0; j<dat.Keys.Size(); ++j) (*of) << Util::_8s << dat.Keys[j];
+            for (size_t j=0; j<keys.Size(); ++j) (*of) << Util::_8s << keys[j];
             (*of) << "\n";
         }
     }
@@ -524,8 +525,8 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
         (*FilEles[i]) << Util::_8s << Time;
         SDPair dat;
         Vec_t  Xct;
-        Eles[ele]->GetState (dat);
-        Eles[ele]->Centroid (Xct);
+        Eles[ele]->StateAtCt (dat);
+        Eles[ele]->Centroid  (Xct);
         (*FilEles[i]) << Util::_8s << Xct(0);
         (*FilEles[i]) << Util::_8s << Xct(1);  if (NDim==3)
         (*FilEles[i]) << Util::_8s << Xct(2);
@@ -534,7 +535,7 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     }
 }
 
-inline void Domain::PrintResults (char const * NF, int IdxIP) const
+inline void Domain::PrintResults (char const * NF) const
 {
     std::cout << "\n[1;37m--- Results ------------------------------------------------------------------\n";
 
@@ -618,7 +619,7 @@ inline void Domain::PrintResults (char const * NF, int IdxIP) const
     for (size_t i=0; i<Eles.Size(); ++i)
     {
         SDPair dat;
-        Eles[i]->GetState (dat);
+        Eles[i]->StateAtCt (dat);
         for (size_t j=0; j<dat.Keys.Size(); ++j)
         {
             if (keys.Find(dat.Keys[j])<0) keys.Push (dat.Keys[j]);
@@ -639,9 +640,8 @@ inline void Domain::PrintResults (char const * NF, int IdxIP) const
         std::cout << Util::_6 << Eles[i]->Cell.ID;
         Vec_t  X;
         SDPair dat;
-        Eles[i]->GetState (dat, IdxIP);
-        if (IdxIP<0) Eles[i]->Centroid   (X);
-        else         Eles[i]->CoordsOfIP (IdxIP, X);
+        Eles[i]->StateAtCt (dat);
+        Eles[i]->Centroid  (X);
         buf.Printf(NF, X(0)); std::cout << buf;
         buf.Printf(NF, X(1)); std::cout << buf;  if (NDim==3) {
         buf.Printf(NF, X(2)); std::cout << buf; }
@@ -653,6 +653,38 @@ inline void Domain::PrintResults (char const * NF, int IdxIP) const
         }
         std::cout << "\n";
     }
+}
+
+inline bool Domain::CheckError (Table const & NodSol, SDPair const & NodTol) const
+{
+    // header
+    std::cout << "\n[1;37m--- Error Summary --- nodes --------------------------------------------------\n";
+    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
+
+    // results
+    bool error = false;
+
+    // nodes
+    for (size_t i=0; i<NodSol.Keys.Size(); ++i)
+    {
+        // calc error
+        String key = NodSol.Keys[i];
+        Array<double> err(NodSol.NRows);
+        for (size_t j=0; j<Nods.Size(); ++j)
+        {
+            if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
+            else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
+        }
+
+        // summary
+        double max_err = err[err.Max()];
+        double tol     = NodTol(key);
+        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        if (max_err>tol) error = true;
+    }
+
+    return error;
 }
 
 inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const
@@ -720,7 +752,7 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
         for (size_t j=0; j<Eles.Size(); ++j)
         {
             SDPair dat;
-            Eles[j]->GetState (dat);
+            Eles[j]->StateAtCt (dat);
             err [j] = fabs(dat(key) - EleSol(key,j));
         }
 
@@ -754,7 +786,7 @@ inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) c
         {
             if (Eles[j]->GE==NULL) throw new Fatal("Domain::CheckError: This method works only when GE (geometry element) is not NULL");
             Array<SDPair> res;
-            Eles[j]->GetState (res);
+            Eles[j]->StateAtIPs (res);
             for (size_t k=0; k<Eles[j]->GE->NIP; ++k)
             {
                 size_t row = k + j*Eles[j]->GE->NIP;

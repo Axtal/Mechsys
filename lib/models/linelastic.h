@@ -50,8 +50,9 @@ public:
 inline LinElastic::LinElastic (int NDim, SDPair const & Prms)
     : Model (NDim,Prms,"LinElastic")
 {
-    E  = Prms("E");
-    nu = Prms("nu");
+    NCps = 2*NDim;
+    E    = Prms("E");
+    nu   = Prms("nu");
 }
 
 inline void LinElastic::InitIvs (SDPair const & Ini, State * Sta) const

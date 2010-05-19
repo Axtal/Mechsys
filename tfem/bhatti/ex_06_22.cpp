@@ -63,7 +63,7 @@ int main(int argc, char **argv) try
     mesh.SetBryTag (0, 3, -40);
     mesh.SetBryTag (1, 1, -20);
     mesh.SetBryTag (1, 2, -30);
-    mesh.WriteMPY  ("ex622");
+    //mesh.WriteMPY  ("ex622");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -152,17 +152,11 @@ int main(int argc, char **argv) try
                  1.446754222244301e+02,
                  1.291320079882026e+02);
 
-    Table ele_sol;
-    ele_sol.Set("gx gy", dom.Eles.Size(),
-                -2.552961113487533e+02,  9.610687199598173e+02,
-                -2.218639218150420e+02,  1.155327451435747e+03);
-
     // error tolerance
-    SDPair nod_tol, ele_tol;
+    SDPair nod_tol;
     nod_tol.Set("H", 1.0e-12);
-    ele_tol.Set("gx gy", 1.0e-11, 1.0e-10);
 
     // return error flag
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckError (nod_sol, nod_tol);
 }
 MECHSYS_CATCH

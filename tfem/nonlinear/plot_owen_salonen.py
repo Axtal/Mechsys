@@ -58,9 +58,9 @@ elif plt==1:
     r2 = read_table("owen_salonen_3d_nod_2_-2.res")
     r3 = read_table("owen_salonen_3d_nod_81_-5.res")
     p1 = array(r1['Time'])*delp
-    #plot (r1['uy'],p1,'b-',lw=3,marker='s',clip_on=False,label='MechSys (3D)')
-    #plot (r2['uy'],p1,'r-',lw=2,marker='+',clip_on=False)
-    #plot (r3['uz'],p1,'b-',lw=2,marker='.',clip_on=False)
+    plot (r1['uy'],p1,'b-',lw=3,marker='s',clip_on=False,label='MechSys (3D)')
+    plot (r2['uy'],p1,'r-',lw=2,marker='+',clip_on=False)
+    plot (r3['uz'],p1,'b-',lw=2,marker='.',clip_on=False)
 
     s1 = read_table("owen_salonen_2d_nod_0_0.res")
     s2 = read_table("owen_salonen_2d_nod_27_0.res")

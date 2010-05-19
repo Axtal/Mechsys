@@ -67,7 +67,7 @@ int main(int argc, char **argv) try
     mesh.SetBryTag (4, 1, -10);
     mesh.SetBryTag (5, 1, -20);
     mesh.SetBryTag (7, 1, -20);
-    mesh.WriteMPY  ("fig_05_02");
+    //mesh.WriteMPY  ("fig_05_02");
     
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -107,10 +107,6 @@ int main(int argc, char **argv) try
     //cout << dom << endl;
     sol.Solve ();
 
-    //////////////////////////////////////////////////////////////////////////////////////// Output ////
-
-    dom.PrintResults ("%11.6g");
-
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
     
     Table nod_sol;
@@ -126,22 +122,47 @@ int main(int argc, char **argv) try
                  3.900E-07,  0.000E+00);
 
     Table ele_sol;
-    ele_sol.Set("sx sy sxy  ex ey exy", dom.Eles.Size(),
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0,
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0,
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0,
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0,
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0,
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0,
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0,
-                 0.0, -1.0, 0.0,  3.90E-07, -9.10E-07, 0.0);
+    ele_sol.Set("sx sy sxy", dom.Eles.Size()*3/*nip*/,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, -1.0, 0.0);
 
     // error tolerance
     SDPair nod_tol, ele_tol;
-    nod_tol.Set("ux uy", 1.0e-15, 1.0e-15);
-    ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-15,1.0e-14,1.0e-15,1.0e-15, 1.0e-15,1.0e-15,1.0e-15,1.0e-15);
+    nod_tol.Set("ux uy",      1.0e-15, 1.0e-15);
+    ele_tol.Set("sx sy sxy ", 1.0e-15, 1.0e-14, 1.0e-15);
 
     // return error flag
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    bool err_nods = dom.CheckError   (nod_sol, nod_tol);
+    bool err_eles = dom.CheckErrorIP (ele_sol, ele_tol);
+    return (err_nods || err_eles);
 }
 MECHSYS_CATCH

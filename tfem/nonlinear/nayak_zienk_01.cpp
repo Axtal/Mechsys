@@ -92,7 +92,7 @@ int main(int argc, char **argv) try
     bcs.Set      (-30,  "uy", 0.0);
     bcs.Set      (-10,  "qn", -13920.0);
     dom.SetBCs   (bcs);
-    sol.Solve    (40);
+    sol.Solve    (40, "nayak_zienk_01");
     dom.WriteVTU ("nayak_zienk_01");
 
     /* It seems that as the plastification zone advances, the two matrices Ke and Kep

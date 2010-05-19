@@ -53,7 +53,7 @@ public:
     virtual void   InitIvs   (SDPair const & Ini, State * Sta) const;
     virtual void   Gradients (EquilibState const * Sta)        const;
     virtual void   FlowRule  (EquilibState const * Sta)        const { W = V; }
-    virtual void   Hardening (EquilibState const * Sta)        const { H(0) = Hb; }
+    virtual void   Hardening (EquilibState const * Sta)        const;
     virtual double YieldFunc (EquilibState const * Sta)        const;
     virtual double CalcE     (EquilibState const * Sta)        const { return E; }
 
@@ -67,8 +67,6 @@ public:
     double  cbar; ///< Cohesion_bar
 
     // State data (mutable/scratch-pad)
-    mutable size_t ncp;  ///< Number of stress/strain components (4:2D or 6:3D)
-    mutable size_t niv;  ///< Number of internal values
     mutable Vec_t  V;    ///< Gradient of the yield surface
     mutable Vec_t  Y;    ///< Derivative of the yield surface w.r.t internal variables
     mutable Vec_t  W;    ///< Plastic flow rule direction
@@ -86,8 +84,16 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
       E     (0.0),
       nu    (0.0)
 {
+    // number of stress/strain components
+    NCps = 2*NDim;
+    V  .change_dim (NCps);
+    W  .change_dim (NCps);
+    De .change_dim (NCps,NCps);
+    Dep.change_dim (NCps,NCps);
+
     if (!Derived)
     {
+        // parameters
         E  = Prms("E");
         nu = Prms("nu");
         FC = VM_t;
@@ -114,6 +120,14 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
             cbar = sqrt(3.0)*Prms("c")/tan(Prms("phi")*Util::PI/180.0);
         }
         if (Prms.HasKey("Hp")) Hb = (2.0/3.0)*Prms("Hp"); // H_prime
+
+        // internal values
+        NIvs = 3;
+        Y.change_dim (NIvs);
+        H.change_dim (NIvs);
+        IvNames.Push ("z0");
+        IvNames.Push ("evp");
+        IvNames.Push ("edp");
     }
 }
 
@@ -121,30 +135,16 @@ inline void ElastoPlastic::InitIvs (SDPair const & Ini, State * Sta) const
 {
     // initialize state
     EquilibState * sta = static_cast<EquilibState*>(Sta);
-    sta->Init (Ini, /*NIvs*/1);
+    sta->Init (Ini, NIvs);
 
     // internal variables: size of YS
-    sta->Ivs(0) = kY; // TODO: write this expression for DP and MC
+    sta->Ivs(0) = kY;  // TODO: write this expression for DP and MC
+    sta->Ivs(1) = 0.0; // evp
+    sta->Ivs(2) = 0.0; // edp
 
     // check initial yield function
     double f = YieldFunc (sta);
     if (f>1.0e-8) throw new Fatal("ElastoPlastic:InitIvs: stress point (sig=(%g,%g,%g,%g]) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,f,sta->Ivs(0));
-
-    // resize variables (just once)
-    ncp = size(sta->Sig);
-    niv = 1;
-    if (size(V)!=ncp)
-    {
-        V  .change_dim (ncp);
-        W  .change_dim (ncp);
-        De .change_dim (ncp,ncp);
-        Dep.change_dim (ncp,ncp);
-    }
-    if (size(Y)!=niv)
-    {
-        Y.change_dim (niv);
-        H.change_dim (niv);
-    }
 }
 
 inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, Vec_t * d) const
@@ -167,8 +167,8 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, V
     	D = De;
     	if (h!=NULL && d !=NULL)
     	{
-    		h->change_dim (niv);
-    		d->change_dim (ncp);
+    		h->change_dim (NIvs);
+    		d->change_dim (NCps);
     		set_to_zero   ((*h));
     		set_to_zero   ((*d));
     	}
@@ -178,7 +178,7 @@ inline void ElastoPlastic::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, V
     // plane stress
     if (GTy==pse_t)
     {
-        for (size_t i=0; i<ncp; ++i)
+        for (size_t i=0; i<NCps; ++i)
         {
             D(2,i) = 0.0;
             D(i,2) = 0.0;
@@ -291,12 +291,12 @@ inline void ElastoPlastic::EPStiff (EquilibState const * Sta, Vec_t * h, Vec_t *
     Vec_t DeW(De*W);
 
     // elastoplastic stiffness
-    for (size_t i=0; i<ncp; ++i)
-    for (size_t j=0; j<ncp; ++j)
+    for (size_t i=0; i<NCps; ++i)
+    for (size_t j=0; j<NCps; ++j)
         Dep(i,j) = De(i,j) - DeW(i)*VDe(j)/phi;
 
     // internal values stiffness
-    if (niv>0)
+    if (NIvs>0)
     {
         if (h!=NULL && d!=NULL)
         {
@@ -363,7 +363,18 @@ inline void ElastoPlastic::Gradients (EquilibState const * Sta) const
         Dev (Sta->Sig, s);
         V = s/qoct;
         Y(0) = -1.0; // dfdz0
+        Y(1) = 0.0;
+        Y(2) = 0.0;
     }
+}
+
+inline void ElastoPlastic::Hardening (EquilibState const * Sta) const
+{
+    Vec_t dev_W;
+    Dev (W, dev_W);
+    H(0) = Hb; 
+    H(1) = Tra  (W);
+    H(2) = Norm (dev_W);
 }
 
 inline double ElastoPlastic::YieldFunc (EquilibState const * Sta) const
@@ -395,7 +406,7 @@ inline void ElastoPlastic::CorrectDrift (State * Sta) const
     size_t it    = 0;
     size_t maxIt = 10;
     double tol   = 1.0e-8;
-    Vec_t  VDe(ncp), DeW(ncp);
+    Vec_t  VDe(NCps), DeW(NCps);
     while (fnew>tol)
     {
         Gradients (sta);
