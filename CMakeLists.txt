@@ -24,7 +24,7 @@ ENABLE_TESTING         ()
 OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/link?" OFF)
 OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    ON)
 OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      ON)
-OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"             ON)
+OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"             OFF)
 OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                              OFF)
 OPTION(A_MAKE_WX_MONO       "Use wxWidgets monolithic libraries ?"              OFF)
 
@@ -36,6 +36,9 @@ OPTION(A_WITH_TLBM          "Compile LBM tests"                                 
 OPTION(A_WITH_TDEM          "Compile DEM tests"                                 ON)
 OPTION(A_WITH_TSPH          "Compile SPH tests"                                 ON)
 OPTION(A_WITH_OPTIONAL      "Make with optional dependencies"                   OFF)
+
+# Options
+OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"              OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)

@@ -416,6 +416,21 @@ typedef blitz::TinyMatrix<double,3,3> Mat3_t;
 typedef blitz::TinyVector<double,3> Vec3_t;
 typedef blitz::TinyVector<bool,3>  bVec3_t;
 
+/** Print vector. */
+inline String PrintVector (Vec3_t const & V, char const * Fmt="%13g", double Tol=1.0e-13)
+{
+    int m = 3;
+    String lin;
+    for (int i=0; i<m; ++i)
+    {
+        double val = (fabs(V(i))<Tol ? 0.0 : V(i));
+        String buf;  buf.Printf(Fmt,val);
+        lin.append(buf);
+    }
+    lin.append("\n");
+    return lin;
+}
+
 /** Print matrix. */
 inline String PrintMatrix (Mat3_t const & M, char const * Fmt="%13g", double Tol=1.0e-13)
 {

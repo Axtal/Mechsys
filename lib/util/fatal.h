@@ -31,21 +31,28 @@
   namespace BPy = boost::python;
 #endif
 
+// Macros
+#ifdef USE_MPI
+  #define MECHSYS_FIN MPI::Finalize();
+#else
+  #define MECHSYS_FIN 
+#endif
+
 // MechSys
 #include <mechsys/util/string.h>
 
 
 #ifdef USE_BOOST_PYTHON
-  #define MECHSYS_CATCH catch (Fatal      * e)         { e->Cout();  delete e;  exit(1); }                                             \
-                        catch (char const * m)         { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";  exit(1); }                       \
-                        catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; exit(1); } \
-                        catch (std::exception & e)     { std::cout<<"[1;31mFatal: "<<e.what()                <<"[0m\n"; exit(1); } \
-                        catch (...)                    { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; exit(1); }
+  #define MECHSYS_CATCH catch (Fatal      * e)         { e->Cout();  delete e;                                              MECHSYS_FIN return 1; } \
+                        catch (char const * m)         { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                        MECHSYS_FIN return 1; } \
+                        catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; MECHSYS_FIN return 1; } \
+                        catch (std::exception & e)     { std::cout<<"[1;31mFatal: "<<e.what()                <<"[0m\n"; MECHSYS_FIN return 1; } \
+                        catch (...)                    { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n";  MECHSYS_FIN return 1; }
 #else
-  #define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;  exit(1); }                                           \
-                        catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";  exit(1); }                     \
-                        catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()              <<"[0m\n"; exit(1); } \
-                        catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; exit(1); }
+  #define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                             MECHSYS_FIN return 1; } \
+                        catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                       MECHSYS_FIN return 1; } \
+                        catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()              <<"[0m\n";  MECHSYS_FIN return 1; } \
+                        catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; MECHSYS_FIN return 1; }
 #endif
  
 

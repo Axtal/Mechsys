@@ -30,6 +30,11 @@
 #include <mechsys/numerical/montecarlo.h>
 #include <mechsys/mesh/mesh.h>
 
+// MPI
+#ifdef USE_MPI
+  #include <mpi.h>
+#endif
+
 struct ParticleProps
 {
     double  Kn;   ///< Normal stiffness
@@ -50,8 +55,14 @@ struct ParticleProps
 };
 
 #ifdef USE_MPI
-void BuildParticlePropsDataType (ParticleProps & P, MPI::Datatype & MPIType)
+
+MPI::Datatype MPI_Part_Props_Type;
+
+void BuildParticlePropsDataType (MPI::Datatype & MPIType)
 {
+    // dummy properties
+    ParticleProps p;
+
     // blocks
     MPI::Datatype types [] = {MPI::DOUBLE};
     int           blklen[] = {15};
@@ -60,8 +71,8 @@ void BuildParticlePropsDataType (ParticleProps & P, MPI::Datatype & MPIType)
     const int nblks = 1;
     MPI::Aint origin, addr[nblks];
 
-    origin  = MPI::Get_address (&P);
-    addr[0] = MPI::Get_address (&(P.Props.Kn));
+    origin  = MPI::Get_address (&p);
+    addr[0] = MPI::Get_address (&(p.Kn));
 
     // displacements
     MPI::Aint disps[nblks];
@@ -71,6 +82,7 @@ void BuildParticlePropsDataType (ParticleProps & P, MPI::Datatype & MPIType)
     MPIType = MPI::Datatype::Create_struct (nblks, blklen, disps, types); 
     MPIType.Commit();
 }
+
 #endif
 
 
@@ -78,6 +90,7 @@ class Particle
 {
 public:
     // Constructor
+    Particle() {}
     Particle(int                         Tag,      ///< Tag of the particle
              Array<Vec3_t>       const & V,        ///< List of vertices
              Array<Array <int> > const & E,        ///< List of edges with connectivity
@@ -106,9 +119,9 @@ public:
     void   FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
     bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!vxf&&!vyf&&!vzf;};                ///< Ask if the particle has any constrain in its movement
 
-    // Data
-    long            Tag;             ///< Tag of the particle
-    long            Index;           ///< index of the particle in the domain
+    // Data -- in MPI data type
+    int             Tag;             ///< Tag of the particle
+    size_t          Index;           ///< index of the particle in the domain
     bool            PropsReady;      ///< Are the properties calculated ready ?
     bool            IsBroken;        ///< True if the particle has at least one broken bond in cohesive simulations
     bool            vxf, vyf, vzf;   ///< Fixed components of velocity
@@ -131,7 +144,9 @@ public:
     double          Dmax;            ///< Maximal distance from the center of mass to the surface of the body
     double          Diam;            ///< Diameter of the parallelogram containing the particle
     double          Cn;              ///< Coordination number (number of contacts)
-    Array<Vec3_t*>  Verts;           ///< Vertices
+
+    // Data -- not in MPI data type
+    Array<Vec3_t*> Verts;            ///< Vertices
 
     // Data -- not needed during communications
     ParticleProps       Props;       ///< Properties
@@ -204,21 +219,58 @@ public:
 };
 
 
-#ifdef USE_MPI
-void BuildParticleDataType (size_t VertsSize, Particle const & P, MPI::Datatype & MPIType)
+std::ostream & operator<< (std::ostream & os, Particle const & P)
 {
+    os << "Tag           = "  << P.Tag        << std::endl;
+    os << "Index         = "  << P.Index      << std::endl;
+    os << "PropsReady    = "  << P.PropsReady << std::endl;
+    os << "IsBroken      = "  << P.IsBroken   << std::endl;
+    os << "vxf, vyf, vzf = "  << P.vxf << ", " << P.vyf << ", " << P.vzf << std::endl;
+    os << "wxf, wyf, wzf = "  << P.wxf << ", " << P.wyf << ", " << P.wzf << std::endl;
+    os << "x             = "  << PrintVector(P.x );
+    os << "xb            = "  << PrintVector(P.xb);
+    os << "v             = "  << PrintVector(P.v );
+    os << "w             = "  << PrintVector(P.w );
+    os << "wb            = "  << PrintVector(P.wb);
+    os << "F             = "  << PrintVector(P.F );
+    os << "Ff            = "  << PrintVector(P.Ff);
+    os << "T             = "  << PrintVector(P.T );
+    os << "Tf            = "  << PrintVector(P.Tf);
+    os << "I             = "  << PrintVector(P.I );
+    os << "Q             = "  << P.Q << std::endl;
+    os << "M             =\n" << PrintMatrix(P.M );
+    os << "B             =\n" << PrintMatrix(P.B );
+    os << "Erot          = "  << P.Erot << std::endl;
+    os << "Ekin          = "  << P.Ekin << std::endl;
+    os << "Dmax          = "  << P.Dmax << std::endl;
+    os << "Diam          = "  << P.Diam << std::endl;
+    os << "Cn            = "  << P.Cn   << std::endl;
+    return os;
+}
+
+
+#ifdef USE_MPI
+
+MPI::Datatype MPI_Particle_Type;
+
+void BuildParticleDataType (MPI::Datatype & MPIType)
+{
+    // dummy particle
+    Particle p;
+
     // blocks
-    MPI::Datatype types [] = {MPI::LONG, MPI::BOOL, MPI::DOUBLE};
-    int           blklen[] = {2,8,57+VertsSize*3};
+    MPI::Datatype types [] = {MPI::INT, MPI::UNSIGNED_LONG, MPI::BOOL, MPI::DOUBLE};
+    int           blklen[] = {1,1,8,57};
 
     // addresses
-    const int nblks = 3;
+    const int nblks = 4;
     MPI::Aint origin, addr[nblks];
 
-    origin  = MPI::Get_address (&P);
-    addr[0] = MPI::Get_address (&(P.Tag));
-    addr[1] = MPI::Get_address (&(P.PropsReady));
-    addr[2] = MPI::Get_address (&(P.x.data()));
+    origin  = MPI::Get_address (&p);
+    addr[0] = MPI::Get_address (&(p.Tag));
+    addr[1] = MPI::Get_address (&(p.Index));
+    addr[2] = MPI::Get_address (&(p.PropsReady));
+    addr[3] = MPI::Get_address (p.x.data());
 
     // displacements
     MPI::Aint disps[nblks];
@@ -228,6 +280,7 @@ void BuildParticleDataType (size_t VertsSize, Particle const & P, MPI::Datatype 
     MPIType = MPI::Datatype::Create_struct (nblks, blklen, disps, types); 
     MPIType.Commit();
 }
+
 #endif
 
 

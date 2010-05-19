@@ -666,7 +666,7 @@ inline void EquilibElem::GetState (SDPair & KeysVals, int IdxIP) const
     set_to_zero (eps);
     if (IdxIP<0) // centroid
     {
-        if (true) // IP of centroid
+        if (false) // IP of centroid
         {
             sig = static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Sig;
             eps = static_cast<EquilibState const *>(Sta[Sta.Size()-1])->Eps;
@@ -705,7 +705,7 @@ inline void EquilibElem::GetState (SDPair & KeysVals, int IdxIP) const
                 }
             }
         }
-        else if (false)
+        else if (true)
         {
             // average values
             for (size_t i=0; i<Sta.Size(); ++i)

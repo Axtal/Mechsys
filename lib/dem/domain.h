@@ -45,7 +45,6 @@
 namespace DEM
 {
 
-
 class Domain
 {
 public:
@@ -1684,5 +1683,6 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
     }
 }
 
-};
+}; // namespace DEM
+
 #endif // MECHSYS_DEM_DOMAIN_H
