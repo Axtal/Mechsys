@@ -3,7 +3,9 @@ from msys_plotter  import *
 from msys_readdata import *
 from msys_invariants import M_calc_phi
 
-if True:
+plt = 0
+
+if plt==0:
     phi      = M_calc_phi(1.0,'cam')
     Moct     = phi_calc_M(phi,'oct')
     pf       = 150.0*sqrt(3.0)
@@ -26,7 +28,7 @@ if True:
     subplot(2,3,4); plot(dat['mdl_tst_02']['ed'],dat['mdl_tst_02']['mev'],'ko')
     show()
 
-if False:
+elif plt==1:
     dat  = read_table("labtest_uf.res")
     u    = array(dat['u'])
     fint = array(dat['f_int'])
@@ -39,7 +41,7 @@ if False:
     grid()
     show()
 
-if False:
+elif plt==2:
     dat = read_table("labtest_nod_7_-7.res")
     u   = array(dat['uz'])
     f   = array(dat['fz'])

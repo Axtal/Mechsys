@@ -361,16 +361,32 @@ inline void Element::Draw (std::ostream & os, double MaxDist) const
         os << "dat.append((PH.CLOSEPOLY, (" << Con[0]->Vert.C(0) << "," << Con[0]->Vert.C(1) << ")))\n";
     }
 
+    // model has deviatoric plastic strain ?
+    bool has_edp = false;
+    if (Mdl->IvNames.Find("edp")>=0) has_edp = true;
+
     // draw IPs
     os << "x_ips, y_ips = [], []\n";
+    os << "x_edp, y_edp = [], []\n";
     for (size_t i=0; i<GE->NIP; ++i)
     {
         Vec_t X;
         CoordsOfIP (i,X);
         os << "x_ips.append(" << X(0) << ")\n";
         os << "y_ips.append(" << X(1) << ")\n";
+        if (has_edp)
+        {
+            SDPair res;
+            StateAtIP (res, i);
+            if (res("edp")>0.0)
+            {
+                os << "x_edp.append(" << X(0) << ")\n";
+                os << "y_edp.append(" << X(1) << ")\n";
+            }
+        }
     }
-    os << "plot(x_ips,y_ips,'r*')\n";
+    os << "plot(x_ips,y_ips,'r*',zorder=1)\n";
+    if (has_edp) os << "plot(x_edp,y_edp,'ko',ms=9,zorder=2)\n";
 }
 
 std::ostream & operator<< (std::ostream & os, Element const & E)

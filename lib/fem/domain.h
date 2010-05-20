@@ -854,7 +854,7 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, char const * Ex
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->Draw (of, SFCoef*max_dist);
     MPL::AddPatch (of);
     if (Extra!=NULL) of << Extra;
-    MPL::Show     (of);
+    MPL::SaveFig  (FNKey, of);
     of.close      ();
 }
 

@@ -3,7 +3,7 @@ from pylab import *
 from msys_readdata import read_table
 from msys_plotter import Plotter
 
-plt = 2
+plt = 3
 
 if plt==0:
     dat = read_table("owen_hinton_01.res")

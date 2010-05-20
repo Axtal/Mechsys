@@ -33,9 +33,10 @@ using Util::_8s;
 struct DbgDat
 {
     long eqx; // equation number for output
+    int  idx_out;
     std::ofstream of;
     ~DbgDat () { of.close (); }
-     DbgDat ()
+     DbgDat () : idx_out(0)
     {
          of.open ("nayak_zienk_01.res",std::ios::out);
          of<<_6_3<<"Time"<<_8s<<"u"<< _8s<<"fint"<<_8s<<"fext\n";
@@ -47,6 +48,13 @@ void DbgFun (FEM::Solver const & Sol, void * Dat)
 {
     DbgDat * dat = static_cast<DbgDat*>(Dat);
     dat->of << _6_3 << Sol.Time << _8s << Sol.U(dat->eqx) << _8s << Sol.F_int(dat->eqx) << _8s << Sol.F(dat->eqx) << endl;
+
+    /*
+    String fn;
+    fn.Printf ("nayak_zienk_01_%04d", dat->idx_out);
+    Sol.Dom.WriteMPY (fn.CStr());
+    dat->idx_out++;
+    */
 }
 
 int main(int argc, char **argv) try
@@ -60,7 +68,7 @@ int main(int argc, char **argv) try
     // mesh
     Mesh::Structured mesh(2);
     mesh.GenSector (/*Nr*/4, /*Nth*/2, r, R, th);
-    mesh.WriteMPY  ("nayak_zienk_01");
+    //mesh.WriteMPY  ("nayak_zienk_01");
 
     // parameters
     double E  = 10.0e+6;
@@ -92,7 +100,8 @@ int main(int argc, char **argv) try
     bcs.Set      (-30,  "uy", 0.0);
     bcs.Set      (-10,  "qn", -13920.0);
     dom.SetBCs   (bcs);
-    sol.Solve    (40, "nayak_zienk_01");
+    sol.Solve    (40);
+    //sol.Solve    (40, "nayak_zienk_01");
     dom.WriteVTU ("nayak_zienk_01");
 
     /* It seems that as the plastification zone advances, the two matrices Ke and Kep

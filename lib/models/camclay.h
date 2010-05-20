@@ -33,11 +33,11 @@ public:
     CamClay (int NDim, SDPair const & Prms);
 
     // Derived methods
-    void   InitIvs   (SDPair const & Ini, State * Sta)                      const;
-    void   Gradients (EquilibState const * Sta, Vec_t & V, Vec_t & Y)       const;
-    void   Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const;
-    double YieldFunc (EquilibState const * Sta)                             const;
-    double FailCrit  (EquilibState const * Sta)                             const;
+    void   InitIvs   (SDPair const & Ini, State * Sta) const;
+    void   Gradients (EquilibState const * Sta)        const;
+    void   Hardening (EquilibState const * Sta)        const;
+    double YieldFunc (EquilibState const * Sta)        const;
+    double FailCrit  (EquilibState const * Sta)        const;
     double CalcE     (EquilibState const * Sta) const { return fabs(Sta->Sig(0)+Sta->Sig(1)+Sta->Sig(2))*(1.0-2.0*nu)*v0/kap; }
 
     // Data
@@ -98,7 +98,7 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
     if (f>1.0e-8) throw new Fatal("CamClay:InitIvs: stress point (sig=(%g,%g,%g,%g], p=%g, q=%g) is outside yield surface (f=%g) with z0=%g",sta->Sig(0),sta->Sig(1),sta->Sig(2),sta->Sig(3)/Util::SQ2,p,q,f,sta->Ivs(0));
 }
 
-inline void CamClay::Gradients (EquilibState const * Sta, Vec_t & V, Vec_t & Y) const
+inline void CamClay::Gradients (EquilibState const * Sta) const
 {
     // invariants
     double p,q,t;
@@ -112,7 +112,7 @@ inline void CamClay::Gradients (EquilibState const * Sta, Vec_t & V, Vec_t & Y) 
     Y(0) = -M*M*p;
 }
 
-inline void CamClay::Hardening (EquilibState const * Sta, Vec_t const & W, Vec_t & H) const
+inline void CamClay::Hardening (EquilibState const * Sta) const
 {
     H.change_dim(1);
     H(0) = Sta->Ivs(0)*Tra(W)/chi;

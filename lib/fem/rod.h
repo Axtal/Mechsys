@@ -40,7 +40,7 @@ public:
     // Methods
     void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcT        (Mat_t & T, double & l)                const; ///< Transformation matrix
-	void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const;
+    void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const;
     void StateKeys    (Array<String> & Keys)                 const; ///< Get state keys
     void StateAtCt    (SDPair & KeysVals)                    const; ///< State at centroid
     void StateAtNodes (Array<SDPair> & Results)              const; ///< State at nodes

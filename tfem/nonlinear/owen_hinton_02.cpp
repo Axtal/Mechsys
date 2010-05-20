@@ -178,7 +178,7 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
     sol.SetScheme ("NR");
 
     // solve
-    sol.Solve (NInc);
+    sol.Solve (NInc, "owen_hinton_02");
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 

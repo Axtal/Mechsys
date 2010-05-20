@@ -2,7 +2,7 @@ from numpy import *
 from pylab import *
 from msys_readdata import *
 
-plt = 1
+plt = 0
 
 if plt==0:
     dat = read_table("nayak_zienk_01.res")

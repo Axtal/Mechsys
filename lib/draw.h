@@ -31,7 +31,7 @@ inline void Header (std::ostream & os)
 {
     // header
     os << "from numpy import array, sqrt\n";
-    os << "from pylab import figure, text, show, axis, plot, grid\n";
+    os << "from pylab import figure, text, show, axis, plot, grid, savefig\n";
     os << "from pylab import matplotlib as MPL\n\n";
     os << "PH = MPL.path.Path\n";
     os << "PP = MPL.patches\n";
@@ -68,6 +68,15 @@ inline void Show (std::ostream & os)
     os << "grid()\n";
     os << "axis('scaled')\n";
     os << "show()\n";
+}
+
+inline void SaveFig (char const * FileKey, std::ostream & os)
+{
+    String fn(FileKey);
+    fn.append(".png");
+    os << "grid()\n";
+    os << "axis('scaled')\n";
+    os << "savefig('"<< fn << "')\n";
 }
 
 }; // namespace MPL
