@@ -63,28 +63,23 @@ int main(int argc, char **argv) try
         // send data
         for (int k=1; k<nprocs; ++k)
         {
-            MPI::COMM_WORLD.Send (p,  /*number of part.*/1, MPI_Particle_Type,  /*destination*/k, TAG_PARTICLE);
-            MPI::COMM_WORLD.Send (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/k, TAG_VERTSIZE);
-            for (size_t i=0; i<verts_size; ++i)
-                MPI::COMM_WORLD.Send (p->Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/k, TAG_VERTICES);
+            p->SendParticle(k,TAG_PARTICLE);
         }
+
+        // draw the cube
+        dom.WriteBPY("proc_0");
     }
     else
     {
+        DEM::Domain dom;
         // dummy particle
-        Particle p;
+        Particle  *p = new Particle();
+        p->ReceiveParticle(TAG_PARTICLE);
 
-        // send data
-        MPI::COMM_WORLD.Recv (&p, /*number of part.*/1, MPI_Particle_Type,  /*destination*/0, TAG_PARTICLE);
-        MPI::COMM_WORLD.Recv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/0, TAG_VERTSIZE);
-
-        for (size_t i=0; i<verts_size; ++i)
-        {
-            p.Verts.Push (new Vec3_t(0,0,0));
-            MPI::COMM_WORLD.Recv (p.Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/0, TAG_VERTICES);
-        }
-
-        cout << "processor # " << my_id << " has got the following particle: \n" << p;
+        // include the particle in the domain and draw it
+        dom.Particles.Push(p);
+        dom.WriteBPY("proc_1");
+        cout << "processor # " << my_id << " has got the following particle: \n" << *p;
     }
 
     cout << "processor # " << my_id << " has finished" << endl;

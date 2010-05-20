@@ -59,12 +59,26 @@ void DrawBullEyeCircle(LBM::Lattice & l, double obsX, double obsY, double radius
 		}
     }
 }
-void DrawFluidCircle(LBM::Lattice & l , double obsX, double obsY, double radius, double density)
+
+void DrawFluidDisk(LBM::Lattice & l , double obsX, double obsY, double radius, double density)
 {
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
+		{
+			l.GetCell(i,j)->Initialize (density, Vec3_t(0.0,0.0,0.0),l.Cs());
+		}
+    }
+}
+
+void DrawFluidCircle(LBM::Lattice & l , double obsX, double obsY, double r1, double r2, double density)
+{
+	for (size_t i=0; i<l.Nx(); i++)
+	for (size_t j=0; j<l.Ny(); j++)
+	{
+        double r = pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0);
+		if (r>=r1*r1&&r<r2*r2) // circle equation
 		{
 			l.GetCell(i,j)->Initialize (density, Vec3_t(0.0,0.0,0.0),l.Cs());
 		}
@@ -137,7 +151,8 @@ int main(int argc, char **argv) try
         {
             //DrawOpenCircle (l, xc, yc, r+1,0.4);
             DrawBullEyeCircle (l, xc, yc, 1.1*r,0.1,n_div,arc);
-            DrawFluidCircle(l, xc, yc, 0.9*1.1*r ,densl);
+            DrawFluidDisk(l, xc, yc, 0.9*1.1*r ,densl);
+            DrawFluidCircle(l, xc, yc, 1.1*r,1.3*r, densl);
         }
 	}
 	l.Solve(/*tIni*/0.0, /*tFin*/Tf, /*dtOut*/dTout);

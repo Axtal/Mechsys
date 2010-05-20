@@ -119,6 +119,13 @@ public:
     void   FixVeloc           (double vx=0.0, double vy=0.0, double vz=0.0);                  ///< Fix all velocities
     bool   IsFree             () {return !vxf&&!vyf&&!vzf&&!vxf&&!vyf&&!vzf;};                ///< Ask if the particle has any constrain in its movement
 
+// Methods to be used when MPI is used
+#ifdef USE_MPI
+    void SendParticle         (int n, int MsgID);                                              ///< Send particle to process n
+    void ReceiveParticle      (int MsgID);                                                     ///< Receives a particle from any process
+#endif
+
+
     // Data -- in MPI data type
     int             Tag;             ///< Tag of the particle
     size_t          Index;           ///< index of the particle in the domain
@@ -151,8 +158,8 @@ public:
     // Data -- not needed during communications
     ParticleProps       Props;       ///< Properties
     Array<Vec3_t*>      Vertso;      ///< Original postion of the Vertices
-    Array<Array <int> > EdgeCon;     ///< Conectivity of Edges TODO: why do we need this ?
-    Array<Array <int> > FaceCon;     ///< Conectivity of Faces TODO: why do we need this ?
+    Array<Array <int> > EdgeCon;     ///< Conectivity of Edges 
+    Array<Array <int> > FaceCon;     ///< Conectivity of Faces 
     Array<Edge*>        Edges;       ///< Edges
     Array<Face*>        Faces;       ///< Faces
 
@@ -563,6 +570,42 @@ inline void Particle::FixVeloc (double vx, double vy, double vz)
     vxf = true; vyf = true; vzf = true; 
     wxf = true; wyf = true; wzf = true;
 }
+
+// MPI exclusive methods
+#ifdef USE_MPI
+inline void Particle::SendParticle(int n, int MsgID)
+{
+    MPI::Request snd_part = MPI::COMM_WORLD.Isend (this,  /*number of part.*/1, MPI_Particle_Type,  /*destination*/n, MsgID);
+    size_t verts_size = Verts.Size();
+    MPI::Request snd_nvert = MPI::COMM_WORLD.Isend (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID+1);
+    //MPI::COMM_WORLD.Send (this,  /*number of part.*/1, MPI_Particle_Type,  /*destination*/n, MsgID);
+    //size_t verts_size = Verts.Size();
+    //MPI::COMM_WORLD.Send (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID+1);
+    //for (size_t i=0; i<verts_size; ++i)
+    //{
+        //MPI::COMM_WORLD.Send (Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID+2);
+    //}
+    snd_part.Wait();
+    snd_nvert.Wait();
+}
+
+inline void Particle::ReceiveParticle(int MsgID)
+{
+    MPI::Request rcv_part = MPI::COMM_WORLD.Irecv (this, /*number of part.*/1, MPI_Particle_Type, MPI::ANY_SOURCE, MsgID);
+    size_t verts_size;
+    MPI::Request rcv_nvert = MPI::COMM_WORLD.Irecv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID+1);
+    //MPI::COMM_WORLD.Recv (this, /*number of part.*/1, MPI_Particle_Type, MPI::ANY_SOURCE, MsgID);
+    //size_t verts_size;
+    //MPI::COMM_WORLD.Recv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID+1);
+    //for (size_t i=0; i<verts_size; ++i)
+    //{
+        //Verts.Push (new Vec3_t(0,0,0));
+        //MPI::COMM_WORLD.Recv (Verts[i]->data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID+2);
+    //}
+    rcv_part.Wait();
+    rcv_nvert.Wait();
+}
+#endif
 
 // Auxiliar methods
 
