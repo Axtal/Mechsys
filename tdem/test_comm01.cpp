@@ -44,8 +44,9 @@ int main(int argc, char **argv) try
     int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
     int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
 
-    // create particle data type
+    // create particle data types
     BuildParticleDataType (MPI_Particle_Type);
+    BuildParticlePropsDataType (MPI_Part_Props_Type);
 
     // check
     cout << "hi, I'm processor # " << my_id << endl;
@@ -58,6 +59,7 @@ int main(int argc, char **argv) try
         DEM::Domain dom;
         dom.AddCube (-1, /*x*/Vec3_t(0.5,0.5,0.5), /*R*/0.1, /*L*/1.0, /*rho*/1.0);
         Particle * p = dom.GetParticle (-1);
+        p->Index = 10;
         verts_size = p->Verts.Size();
 
         // send data
@@ -79,7 +81,7 @@ int main(int argc, char **argv) try
         // include the particle in the domain and draw it
         dom.Particles.Push(p);
         dom.WriteBPY("proc_1");
-        cout << "processor # " << my_id << " has got the following particle: \n" << *p;
+        //cout << "processor # " << my_id << " has got the following particle: \n" << *p;
     }
 
     cout << "processor # " << my_id << " has finished" << endl;

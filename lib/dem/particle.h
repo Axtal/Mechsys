@@ -573,38 +573,85 @@ inline void Particle::FixVeloc (double vx, double vy, double vz)
 
 // MPI exclusive methods
 #ifdef USE_MPI
+
 inline void Particle::SendParticle(int n, int MsgID)
 {
-    MPI::Request snd_part = MPI::COMM_WORLD.Isend (this,  /*number of part.*/1, MPI_Particle_Type,  /*destination*/n, MsgID);
+    // Sending properties
+    MPI::COMM_WORLD.Send (&this->Props,  /*number of props.*/1, MPI_Part_Props_Type,  /*destination*/n, MsgID);
+    MPI::COMM_WORLD.Send (this,  /*number of part.*/1, MPI_Particle_Type,  /*destination*/n, MsgID);
+
+    // Sending vertices
     size_t verts_size = Verts.Size();
-    MPI::Request snd_nvert = MPI::COMM_WORLD.Isend (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID+1);
-    //MPI::COMM_WORLD.Send (this,  /*number of part.*/1, MPI_Particle_Type,  /*destination*/n, MsgID);
-    //size_t verts_size = Verts.Size();
-    //MPI::COMM_WORLD.Send (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID+1);
-    //for (size_t i=0; i<verts_size; ++i)
-    //{
-        //MPI::COMM_WORLD.Send (Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID+2);
-    //}
-    snd_part.Wait();
-    snd_nvert.Wait();
+    MPI::COMM_WORLD.Send (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
+    for (size_t i=0; i<verts_size; ++i)
+    {
+        MPI::COMM_WORLD.Send (Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
+    }
+
+    // Sending edges
+    size_t edge_size = Edges.Size();
+    MPI::COMM_WORLD.Send (&edge_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
+    for (size_t i=0; i<edge_size; ++i)
+    {
+        MPI::COMM_WORLD.Send (&EdgeCon[i][0], /*number*/2, MPI::INT, /*destination*/n, MsgID);
+    }
+
+    // Sending faces
+    size_t face_size = Faces.Size();
+    MPI::COMM_WORLD.Send (&face_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
+    for (size_t i=0; i<face_size; ++i)
+    {
+        size_t verts_face = FaceCon[i].Size();
+        MPI::COMM_WORLD.Send (&verts_face, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
+        MPI::COMM_WORLD.Send (&FaceCon[i][0], /*number*/verts_face, MPI::INT, /*destination*/n, MsgID);
+    }
 }
 
 inline void Particle::ReceiveParticle(int MsgID)
 {
-    MPI::Request rcv_part = MPI::COMM_WORLD.Irecv (this, /*number of part.*/1, MPI_Particle_Type, MPI::ANY_SOURCE, MsgID);
+    // Receiving properties
+    MPI::COMM_WORLD.Recv (&this->Props, /*number of part.*/1, MPI_Part_Props_Type, MPI::ANY_SOURCE, MsgID);
+    MPI::COMM_WORLD.Recv (this, /*number of part.*/1, MPI_Particle_Type, MPI::ANY_SOURCE, MsgID);
+
+    // Receiving vertices
     size_t verts_size;
-    MPI::Request rcv_nvert = MPI::COMM_WORLD.Irecv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID+1);
-    //MPI::COMM_WORLD.Recv (this, /*number of part.*/1, MPI_Particle_Type, MPI::ANY_SOURCE, MsgID);
-    //size_t verts_size;
-    //MPI::COMM_WORLD.Recv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID+1);
-    //for (size_t i=0; i<verts_size; ++i)
-    //{
-        //Verts.Push (new Vec3_t(0,0,0));
-        //MPI::COMM_WORLD.Recv (Verts[i]->data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID+2);
-    //}
-    rcv_part.Wait();
-    rcv_nvert.Wait();
+    MPI::COMM_WORLD.Recv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
+    for (size_t i=0; i<verts_size; ++i)
+    {
+        Verts.Push (new Vec3_t(0,0,0));
+        MPI::COMM_WORLD.Recv (Verts[i]->data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+    }
+
+    // Receiving edges
+    size_t edge_size;
+    MPI::COMM_WORLD.Recv (&edge_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
+    for (size_t i=0; i<edge_size; ++i)
+    {
+        Array<int> D(2);
+        EdgeCon.Push(D);
+        MPI::COMM_WORLD.Recv (&EdgeCon[i][0], /*number*/2, MPI::INT, MPI::ANY_SOURCE, MsgID);
+    }
+    for (size_t i=0; i<EdgeCon.Size(); i++) Edges.Push (new Edge((*Verts[EdgeCon[i][0]]), (*Verts[EdgeCon[i][1]])));
+
+    // Receiving faces
+    size_t face_size;
+    MPI::COMM_WORLD.Recv (&face_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
+    for (size_t i=0; i<face_size; ++i)
+    {
+        size_t verts_face;
+        MPI::COMM_WORLD.Recv (&verts_face, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
+        Array<int> D(verts_face);
+        FaceCon.Push(D);
+        MPI::COMM_WORLD.Recv (&FaceCon[i][0], /*number*/verts_face, MPI::INT, MPI::ANY_SOURCE, MsgID);
+    }
+    for (size_t i=0; i<FaceCon.Size(); i++)
+    {
+        Array<Vec3_t*> verts(FaceCon[i].Size());
+        for (size_t j=0; j<FaceCon[i].Size(); ++j) verts[j] = Verts[FaceCon[i][j]];
+        Faces.Push (new Face(verts));
+    }
 }
+
 #endif
 
 // Auxiliar methods

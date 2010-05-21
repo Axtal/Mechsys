@@ -1144,7 +1144,7 @@ inline void Domain::WritePOV (char const * FileKey)
     POVSetCam (of, CamPos, OrthoSys::O);
     for (size_t i=0; i<Particles.Size(); i++)
     {
-        if (!Particles[i]->vxf&&!Particles[i]->vyf&&!Particles[i]->vzf&&!Particles[i]->wxf&&!Particles[i]->wyf&&!Particles[i]->wzf)
+        if (Particles[i]->IsFree())
         {
             if(Particles[i]->IsBroken) Particles[i]->Draw(of,"Black");
             else                       Particles[i]->Draw(of,"Red");
