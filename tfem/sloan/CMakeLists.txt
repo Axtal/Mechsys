@@ -17,15 +17,11 @@
 ########################################################################
 
 SET(TESTS
-  arch
-  beam01
-  beam02
-  labtest)
+    abbo_sloan_01)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
+    #ADD_TEST              (${var} ${var})
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 ENDFOREACH(var)
-
-SUBDIRS (bhatti nonlinear sloan smith_griffiths transient)

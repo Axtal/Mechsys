@@ -29,6 +29,7 @@
 #include <mechsys/fem/geomelem.h>
 #include <mechsys/fem/elems/tri3.h>
 #include <mechsys/fem/elems/tri6.h>
+#include <mechsys/fem/elems/tri15.h>
 #include <mechsys/fem/elems/quad4.h>
 #include <mechsys/fem/elems/quad8.h>
 #include <mechsys/fem/elems/hex8.h>
