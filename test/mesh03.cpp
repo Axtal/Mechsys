@@ -35,7 +35,7 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////// 2D: structured //////////////////////////////////////////////////
     
-    // 1) mesh03_quad2tri
+    // 1) mesh03_quad8_to_tri6
     {
         Array<Mesh::Block> blks(1);
         blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
@@ -43,14 +43,34 @@ int main(int argc, char **argv) try
                      -2.0,  3.0, 0.0,
                      -3.0,  3.0, 2.0,
                      -4.0,  0.0, 2.0,  -10.0,-20.0,-30.0,-40.0);
-        blks[0].SetNx (2);
+        blks[0].SetNx (3);
         blks[0].SetNy (2);
         Mesh::Structured mesh(/*NDim*/2);
         mesh.Generate    (blks,/*O2*/true);
         mesh.Quad8ToTri6 ();
         mesh.FindNeigh   ();
-        mesh.WriteMPY ("mesh03_quad2tri", /*tags*/true, /*ids*/true, /*shares*/true);
-        cout << " File <mesh03_quad2tri.mpy> generated\n";
+        mesh.Check       ();
+        mesh.WriteMPY ("mesh03_quad8_to_tri6", /*tags*/true, /*ids*/true, /*shares*/true);
+        cout << " File <mesh03_quad8_to_tri6.mpy> generated\n";
+    }
+
+    // 2) mesh03_tri6_to_tri15
+    {
+        Array<Mesh::Block> blks(1);
+        blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
+                     -1.0,  0.0, 0.0,
+                     -2.0,  3.0, 0.0,
+                     -3.0,  3.0, 2.0,
+                     -4.0,  0.0, 2.0,  -10.0,-20.0,-30.0,-40.0);
+        blks[0].SetNx (3);
+        blks[0].SetNy (2);
+        Mesh::Structured mesh(/*NDim*/2);
+        mesh.Generate    (blks,/*O2*/true);
+        mesh.Quad8ToTri6 ();
+        mesh.Tri6ToTri15 ();
+        mesh.Check       ();
+        mesh.WriteMPY ("mesh03_tri6_to_tri15", /*tags*/true, /*ids*/true, /*shares*/true);
+        cout << " File <mesh03_tri6_to_tri15.mpy> generated\n";
     }
 
     return 0;

@@ -90,25 +90,23 @@ class DrawMesh:
             con  = c[2] # connectivity
             nnod = len(con)
             if nnod>2:
-                if len(con)==6: nnod = 3
-                if len(con)==8: nnod = 4
                 x0 = self.V[con[0]][2]
                 y0 = self.V[con[0]][3]
                 dat.append((self.PH.MOVETO, (x0,y0)))
                 # edges for 3,4
-                if len(con)<=4:
+                if nnod<=4:
                     for j in range(1,nnod):
                         xj = self.V[con[j]][2]
                         yj = self.V[con[j]][3]
                         dat.append((self.PH.LINETO, (xj,yj)))
                 # edges for 6,8
-                if len(con)==6:
+                if nnod==6:
                     dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
-                if len(con)==8:
+                if nnod==8:
                     dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
@@ -116,6 +114,18 @@ class DrawMesh:
                     dat.append((self.PH.LINETO, (self.V[con[6]][2], self.V[con[6]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
                     dat.append((self.PH.LINETO, (self.V[con[7]][2], self.V[con[7]][3])))
+                if nnod==15:
+                    dat.append((self.PH.LINETO, (self.V[con[ 6]][2], self.V[con[ 6]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 3]][2], self.V[con[ 3]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 7]][2], self.V[con[ 7]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 1]][2], self.V[con[ 1]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 8]][2], self.V[con[ 8]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 4]][2], self.V[con[ 4]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 9]][2], self.V[con[ 9]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 2]][2], self.V[con[ 2]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[10]][2], self.V[con[10]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[ 5]][2], self.V[con[ 5]][3])))
+                    dat.append((self.PH.LINETO, (self.V[con[11]][2], self.V[con[11]][3])))
                 dat.append((self.PH.CLOSEPOLY, (0,0)))
         if len(dat)>0:
             cmd,vert = zip(*dat)
@@ -139,7 +149,8 @@ class DrawMesh:
             for c in self.C:
                 # centre
                 con = c[2] # connectivity
-                if len(con)==2:
+                nnod = len(con)
+                if nnod==2:
                     x0 = self.V[con[0]][2]
                     y0 = self.V[con[0]][3]
                     x1 = self.V[con[1]][2]
@@ -149,11 +160,11 @@ class DrawMesh:
                 else:
                     xc = self.V[con[0]][2]
                     yc = self.V[con[0]][3]
-                    for j in range(1,len(con)):
+                    for j in range(1,nnod):
                         xc += self.V[con[j]][2]
                         yc += self.V[con[j]][3]
-                    xc = xc/len(con)
-                    yc = yc/len(con)
+                    xc = xc/nnod
+                    yc = yc/nnod
                 # text
                 txt = '   '
                 if with_tags: txt = '%s%d' % (txt,c[1])
@@ -167,26 +178,31 @@ class DrawMesh:
                 if with_ids:   ax.text(xc,yc, c[0], ha='right', backgroundcolor=self.orange,fontsize=self.fsz1)
                 # edge tags
                 if with_tags:
+                    nnod = len(con)
                     for side, tag in c[3].iteritems():
                         if tag<0: # has tag
-                            if len(con)==3:
+                            if nnod==3:
                                 if   side==0: na, nb = con[0], con[1]
                                 elif side==1: na, nb = con[1], con[2]
                                 elif side==2: na, nb = con[2], con[0]
-                            elif len(con)==6:
+                            elif nnod==6:
                                 if   side==0: na, nb,  nc, nd = con[0], con[3],  con[3], con[1]
                                 elif side==1: na, nb,  nc, nd = con[1], con[4],  con[4], con[2]
                                 elif side==2: na, nb,  nc, nd = con[2], con[5],  con[5], con[0]
-                            elif len(con)==4:
+                            elif nnod==4:
                                 if   side==0: na, nb = con[0], con[1]
                                 elif side==1: na, nb = con[1], con[2]
                                 elif side==2: na, nb = con[2], con[3]
                                 elif side==3: na, nb = con[3], con[0]
-                            elif len(con)==8:
+                            elif nnod==8:
                                 if   side==0: na, nb,  nc, nd = con[0], con[4],  con[4], con[1]
                                 elif side==1: na, nb,  nc, nd = con[1], con[5],  con[5], con[2]
                                 elif side==2: na, nb,  nc, nd = con[2], con[6],  con[6], con[3]
                                 elif side==3: na, nb,  nc, nd = con[3], con[7],  con[7], con[0]
+                            elif nnod==15:
+                                if   side==0: na,nb, nc,nd, ne,nf, ng,nh = con[0],con[ 6], con[ 6],con[3], con[3],con[ 7], con[ 7],con[1]
+                                elif side==1: na,nb, nc,nd, ne,nf, ng,nh = con[1],con[ 8], con[ 8],con[4], con[4],con[ 9], con[ 9],con[2]
+                                elif side==2: na,nb, nc,nd, ne,nf, ng,nh = con[2],con[10], con[10],con[5], con[5],con[11], con[11],con[0]
                             xa = self.V[na][2]
                             ya = self.V[na][3]
                             xb = self.V[nb][2]
@@ -194,11 +210,26 @@ class DrawMesh:
                             xc = (xa+xb)/2.0
                             yc = (ya+yb)/2.0
                             ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
-                            if len(con)==6 or len(con)==8:
+                            if nnod==6 or nnod==8 or nnod==15:
                                 xa = self.V[nc][2]
                                 ya = self.V[nc][3]
                                 xb = self.V[nd][2]
                                 yb = self.V[nd][3]
+                                xc = (xa+xb)/2.0
+                                yc = (ya+yb)/2.0
+                                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                            if nnod==15:
+                                xa = self.V[ne][2]
+                                ya = self.V[ne][3]
+                                xb = self.V[nf][2]
+                                yb = self.V[nf][3]
+                                xc = (xa+xb)/2.0
+                                yc = (ya+yb)/2.0
+                                ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)
+                                xa = self.V[ng][2]
+                                ya = self.V[ng][3]
+                                xb = self.V[nh][2]
+                                yb = self.V[nh][3]
                                 xc = (xa+xb)/2.0
                                 yc = (ya+yb)/2.0
                                 ax.text(xc,yc, '(%d)'%tag, ha='center', va='center', fontsize=self.fsz2, backgroundcolor=self.pink)

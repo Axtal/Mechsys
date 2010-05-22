@@ -181,6 +181,7 @@ public:
     void AddPin      (int VertexIdOrTag);
 
     // Methods
+    void Check    (double Tol=1.0e-3) const;                         ///< Check if there are overlapping nodes
     void WriteVTU (char const * FileKey, int VolSurfOrBoth=0) const; ///< (.vtu) Write output file for ParaView. Vol=0, Surf=1, Both=2
     void WriteMPY (char const * FileKey, bool WithTags=true, bool WithIDs=true, bool WithShares=false,
                    char const * Extra=NULL) const;                   ///< (.mpy) Write Python script that calls mesh_drawing.py
@@ -192,7 +193,9 @@ public:
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
     void GenGroundSG (size_t Nx, size_t Ny, double Dx=1.0, double Dy=1.0);                    ///< Smith-Griffiths' ground
     void GenSector   (size_t Nr, size_t Nth, double r, double R, double ThetaRad);            ///< Generate a Circular sector
-    void Quad8ToTri6 (); ///< Convert Quad8 mesh to Tri6 mesh
+    void Quad8ToTri6 ();                                    ///< Convert Quad8 mesh to Tri6 mesh
+    void Tri6ToTri15 ();                                    ///< Convert Tri6 mesh to Tri15 mesh
+    void Tri6Shape   (double r, double s, Vec_t & N) const; ///< Tri6 Shape functions (used in Tri6ToTri15). N(6) needs to be pre-resized
 
     // Data
     int            NDim;      ///< Space dimension
@@ -758,6 +761,18 @@ inline void Generic::Erase ()
     if (TgdCells.Size()>0) TgdCells.Resize(0);
 }
 
+inline void Generic::Check (double Tol) const
+{
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        for (size_t j=i+1; j<Verts.Size(); ++j)
+        {
+            double dist = Norm(Verts[i]->C - Verts[j]->C);
+            if (dist<Tol) throw new Fatal("Generic::Check: Found two vertices (%d and %d) with distance=%g smaller than %g",Verts[i]->ID,Verts[j]->ID,dist,Tol);
+        }
+    }
+}
+
 inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 {
     if (IsShell) throw new Fatal("Generic::WriteVTU: This method is not ready for Shell meshes yet");
@@ -985,7 +1000,15 @@ inline void Generic::WriteMPY (char const * FileKey, bool WithTags, bool WithIDs
             if (j==Verts[i]->Shares.Size()-1) oss << Verts[i]->Shares[j].C->ID << "]";
             else                              oss << Verts[i]->Shares[j].C->ID << ",";
         }
-        if (i!=Verts.Size()-1) oss << ",\n          ";
+        if (Verts[i]->Shares.Size()>0)
+        {
+            if (i!=Verts.Size()-1) oss << ",\n          ";
+        }
+        else
+        {
+            if (i!=Verts.Size()-1) oss << "],\n          ";
+            else                   oss << "]";
+        }
     }
     oss << "}\n\n";
 
@@ -1237,6 +1260,123 @@ inline void Generic::Quad8ToTri6 ()
 
     // delete old mesh
     for (size_t i=0; i<old_cells.Size(); ++i) delete old_cells[i];
+}
+
+inline void Generic::Tri6ToTri15 ()
+{
+    // find neighbours
+    FindNeigh ();
+
+    // expand connectivity array
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        if (Cells[i]->V.Size()!=6) throw new Fatal("Mesh::Tri6ToTri15: This method only works for Tri6s (NVerts=%d is invalid)",Cells[i]->V.Size());
+        for (size_t j=0; j<9; ++j) Cells[i]->V.Push (NULL);
+    }
+
+    // data
+    Vec_t N(6);   // Tri6 shape functions
+    Mat_t C(2,6); // matrix of coordinates
+    Vec_t R(9);   // natural r coord of new nodes (6->14)
+    Vec_t S(9);   // natural s coord of new nodes (6->14)
+    R = 1.0/4.0 , 3.0/4.0 , 3.0/4.0 , 1.0/4.0 , 0.0     , 0.0     , 1.0/4.0 , 1.0/2.0 , 1.0/4.0;
+    S = 0.0     , 0.0     , 1.0/4.0 , 3.0/4.0 , 3.0/4.0 , 1.0/4.0 , 1.0/4.0 , 1.0/4.0 , 1.0/2.0;
+
+    // convert
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        // indices of vertices of Tri6
+        size_t i0 = Cells[i]->V[0]->ID;
+        size_t i1 = Cells[i]->V[1]->ID;
+        size_t i2 = Cells[i]->V[2]->ID;
+        size_t i3 = Cells[i]->V[3]->ID;
+        size_t i4 = Cells[i]->V[4]->ID;
+        size_t i5 = Cells[i]->V[5]->ID;
+
+        // matrix of coordinates
+        C = Verts[i0]->C(0), Verts[i1]->C(0), Verts[i2]->C(0), Verts[i3]->C(0), Verts[i4]->C(0), Verts[i5]->C(0),
+            Verts[i0]->C(1), Verts[i1]->C(1), Verts[i2]->C(1), Verts[i3]->C(1), Verts[i4]->C(1), Verts[i5]->C(1);
+
+        // border nodes
+        for (size_t j=6; j<12; ++j)
+        {
+            if (Cells[i]->V[j]==NULL) // not set yet
+            {
+                // new vertex
+                Tri6Shape (R(j-6), S(j-6), N);
+                Vec_t x(C*N);
+                int iv = PushVert (/*tag*/0, x(0), x(1));
+
+                // set cell and shares
+                Cells[i]->V[j] = Verts[iv];
+                Share sha = {Cells[i],j};
+                Verts[iv]->Shares.Push (sha);
+
+                // set neighbours
+                int idx  = (j-6)%2; // 0 or 1 (first or second node on side)
+                int side = (j-6)/2; // side of new vertex
+                for (Neighs_t::const_iterator p=Cells[i]->Neighs.begin(); p!=Cells[i]->Neighs.end(); ++p)
+                {
+                    if (side==p->second.first)
+                    {
+                        // find J: index of vertex in neighbour
+                        Cell * neigh = p->second.second;
+                        Neighs_t::const_iterator it = neigh->Neighs.find(p->first);
+                        if (it==neigh->Neighs.end()) throw new Fatal("Mesh::Tri6ToTri15: __internal_error__");
+                        int neigh_side = it->second.first;
+                        int neigh_idx  = (1-idx) + neigh_side*2;
+                        int J = 6 + neigh_idx;
+
+                        // set cell and shares
+                        neigh->V[J] = Verts[iv];
+                        Share neigh_sha = {neigh,J};
+                        Verts[iv]->Shares.Push (neigh_sha);
+                    }
+                }
+            }
+        }
+
+        // centre nodes
+        for (size_t j=12; j<15; ++j)
+        {
+            // new vertex
+            Tri6Shape (R(j-6), S(j-6), N);
+            Vec_t x(C*N);
+            int iv = PushVert (/*tag*/0, x(0), x(1));
+
+            // set cell and shares
+            Cells[i]->V[j] = Verts[iv];
+            Share sha = {Cells[i],j};
+            Verts[iv]->Shares.Push (sha);
+        }
+    }
+}
+
+inline void Generic::Tri6Shape (double r, double s, Vec_t & N) const
+{
+    /*    s
+     *    ^
+     *    |
+     *  2
+     *    @,(0,1)
+     *    | ',
+     *    |   ',
+     *    |     ',
+     *    |       ',   4
+     *  5 @          @
+     *    |           ',
+     *    |             ',
+     *    |               ',
+     *    |(0,0)            ', (1,0)
+     *    @---------@---------@  --> r
+     *  0           3          1
+     */
+    N(0) = 1.0-(r+s)*(3.0-2.0*(r+s));
+    N(1) = r*(2.0*r-1.0);
+    N(2) = s*(2.0*s-1.0);
+    N(3) = 4.0*r*(1.0-(r+s));
+    N(4) = 4.0*r*s;
+    N(5) = 4.0*s*(1.0-(r+s));
 }
 
 #ifdef USE_BOOST_PYTHON
