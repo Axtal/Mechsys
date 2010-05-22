@@ -172,6 +172,10 @@ public:
     void GenO2Verts ();                                                   ///< Generate O2 (mid) vertices
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
 
+    // Push methods
+    int PushVert (int Tag, double X, double Y, double Z=0); ///< Push vertex
+    int PushCell (int Tag, Array<int> const & Con);         ///< Push element
+
     // Method to extend mesh
     void AddLinCells (Array<int> const & IDsOrTags); ///< Set linear cells given edge tags (edg_tag,edg_tag,...) or pair of vertices (v0,v1,new_elem_tag, v0,v1,new_elem_tag, ...) or both
     void AddPin      (int VertexIdOrTag);
@@ -188,6 +192,7 @@ public:
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
     void GenGroundSG (size_t Nx, size_t Ny, double Dx=1.0, double Dy=1.0);                    ///< Smith-Griffiths' ground
     void GenSector   (size_t Nr, size_t Nth, double r, double R, double ThetaRad);            ///< Generate a Circular sector
+    void Quad8ToTri6 (); ///< Convert Quad8 mesh to Tri6 mesh
 
     // Data
     int            NDim;      ///< Space dimension
@@ -259,6 +264,7 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
             os << "(" << boost::get<0>(p->first);
             os << "," << boost::get<1>(p->first);
             os << "," << boost::get<2>(p->first);
+            os << "," << boost::get<3>(p->first);
             os << "):";
             os << "[" << p->second.first << "," << p->second.second->ID << "]";
         }
@@ -441,6 +447,14 @@ inline void Generic::SetSize (size_t NumVerts, size_t NumCells)
     TgdCells.Resize (0);
 }
 
+inline int Generic::PushVert (int Tag, double X, double Y, double Z)
+{
+    Verts.Push (NULL);
+    int i = static_cast<int>(Verts.Size())-1;
+    SetVert (i, Tag, X, Y, Z);
+    return i;
+}
+
 inline void Generic::SetVert (int i, int Tag, double X, double Y, double Z)
 {
     // set Verts
@@ -451,6 +465,14 @@ inline void Generic::SetVert (int i, int Tag, double X, double Y, double Z)
 
     // set TgdVerts
     if (Tag<0) TgdVerts.Push (Verts[i]);
+}
+
+inline int Generic::PushCell (int Tag, Array<int> const & Con)
+{
+    Cells.Push (NULL);
+    int i = static_cast<int>(Cells.Size())-1;
+    SetCell (i, Tag, Con);
+    return i;
 }
 
 inline void Generic::SetCell (int i, int Tag, Array<int> const & Con)
@@ -634,6 +656,7 @@ inline void Generic::SetBryTag (int i, int iEdgeFace, int Tag)
 inline void Generic::FindNeigh ()
 {
     // build Bry2Cells map
+    Bry2Cells.clear();
     for (size_t i=0; i<Cells.Size(); ++i)
     {
         size_t nverts = Cells[i]->V.Size();
@@ -649,6 +672,7 @@ inline void Generic::FindNeigh ()
     // set neighbours information in cells
     for (size_t i=0; i<Cells.Size(); ++i)
     {
+        Cells[i]->Neighs.clear();
         size_t nverts = Cells[i]->V.Size();
         size_t nbrys  = (NDim==2 ? NVertsToNEdges2D[nverts] : NVertsToNFaces3D[nverts]);
         for (size_t j=0; j<nbrys; ++j)
@@ -1157,6 +1181,62 @@ inline void Generic::GenSector (size_t Nr, size_t Nth, double r, double R, doubl
             idx_cell++;
         }
     }
+}
+
+inline void Generic::Quad8ToTri6 ()
+{
+    // copy pointers of old mesh
+    Array<Cell*> old_cells(Cells.Size());
+    for (size_t i=0; i<old_cells.Size(); ++i) old_cells[i] = Cells[i];
+    Cells   .Resize (old_cells.Size()*2);
+    TgdCells.Resize (0);
+    Cells.SetValues (NULL);
+
+    // erase shares information
+    for (size_t i=0; i<Verts.Size(); ++i) Verts[i]->Shares.Resize(0);
+
+    // new mesh
+    int icell = 0;
+    for (size_t i=0; i<old_cells.Size(); ++i)
+    {
+        // check
+        if (old_cells[i]->V.Size()!=8) throw new Fatal("Mesh::Quad8ToTri6: This method only works for Quad8s (NVerts=%d is invalid)",old_cells[i]->V.Size());
+
+        // indices of vertices of Quad8
+        size_t i0 = old_cells[i]->V[0]->ID;
+        size_t i1 = old_cells[i]->V[1]->ID;
+        size_t i2 = old_cells[i]->V[2]->ID;
+        size_t i3 = old_cells[i]->V[3]->ID;
+        size_t i4 = old_cells[i]->V[4]->ID;
+        size_t i5 = old_cells[i]->V[5]->ID;
+        size_t i6 = old_cells[i]->V[6]->ID;
+        size_t i7 = old_cells[i]->V[7]->ID;
+
+        // new vertex
+        Vec3_t xnew = 0.5*(Verts[i0]->C + Verts[i2]->C);
+        int iv = PushVert (/*tag*/0, xnew(0), xnew(1), xnew(2));
+
+        // new connectivities
+        Array<int> con0(6), con1(6);
+        con0 = i0, i1, i2,  i4, i5, iv;
+        con1 = i0, i2, i3,  iv, i6, i7;
+
+        // new cells
+        SetCell (icell++, old_cells[i]->Tag, con0);
+        SetCell (icell++, old_cells[i]->Tag, con1);
+
+        // boundary tags
+        for (BryTag_t::const_iterator p=old_cells[i]->BryTags.begin(); p!=old_cells[i]->BryTags.end(); ++p)
+        {
+            if (p->first==0) SetBryTag (icell-2, /*side*/0, /*tag*/p->second);
+            if (p->first==1) SetBryTag (icell-2, /*side*/1, /*tag*/p->second);
+            if (p->first==2) SetBryTag (icell-1, /*side*/1, /*tag*/p->second);
+            if (p->first==3) SetBryTag (icell-1, /*side*/2, /*tag*/p->second);
+        }
+    }
+
+    // delete old mesh
+    for (size_t i=0; i<old_cells.Size(); ++i) delete old_cells[i];
 }
 
 #ifdef USE_BOOST_PYTHON

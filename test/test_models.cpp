@@ -50,9 +50,8 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     set_to_zero  (dsig);
 
     // get stiffness
-    Array<double> h;
-    Mat_t         D;
-    Vec_t         d;
+    Mat_t D;
+    Vec_t h, d;
     Mdl->Stiffness (Sta, D, &h, &d);
 
     // assemble
@@ -89,7 +88,7 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     Sparse::AddMult (D22, deps, dsig); // dsig2 += D22*deps2
 
     // return increments
-    for (size_t k=0; k<size(Sta->Ivs); ++k) divs(k) = h[k]*dot(d,deps);
+    divs = h*dot(d,deps);
 }
 
 void PrintResults (EquilibState const & Sta, bool WithHeader=false)
@@ -139,7 +138,7 @@ struct Increments
 int main(int argc, char **argv) try
 {
     // input
-    int  tst       = 3;
+    int  tst       = 2;
     int  ninc      = 20;
     bool cor_drift = true;
     bool print_res = true;

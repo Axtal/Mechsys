@@ -39,7 +39,8 @@ SET(PROGS_D # other tests
 
 SET(PROGS_F # mesh
   mesh01
-  mesh02)
+  mesh02
+  mesh03)
 
 SET(PROGS_G # tests requiring wxWidgets
   wxplotxy

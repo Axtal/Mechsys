@@ -1,19 +1,20 @@
-from plotter import *
-from data_handler import *
+from msys_plotter  import *
+from msys_readdata import *
 
 tst = 1
 
 if tst==1 or tst==2:
     p = Plotter()
-    p.plot ("test_models.res", show_k=True,div_by_p=False,draw_ys=False,draw_fl=False,dpt_out=1,pqty='cam',closed_form=False)
+    p.show_k = True
+    p.plot ("test_models.res")
 
     # plot data
-    dat = read_tables(['mdl_tst_01.dat','mdl_tst_02.dat'])
+    dat = read_tables(['../tfem/mdl_tst_01.dat','../tfem/mdl_tst_02.dat'])
     for i, ed  in enumerate(dat['mdl_tst_01']['ed']):  dat['mdl_tst_01']['ed'] [i] *= (sqrt(3.0/2.0)*100.0)
     for i, ed  in enumerate(dat['mdl_tst_02']['ed']):  dat['mdl_tst_02']['ed'] [i] *= (sqrt(3.0/2.0)*100.0)
     for i, mev in enumerate(dat['mdl_tst_02']['mev']): dat['mdl_tst_02']['mev'][i] *= 100.0
-    subplot(3,3,1); plot(dat['mdl_tst_01']['ed'],dat['mdl_tst_01']['q'],  'ko')
-    subplot(3,3,4); plot(dat['mdl_tst_02']['ed'],dat['mdl_tst_02']['mev'],'ko')
+    subplot(2,3,1); plot(dat['mdl_tst_01']['ed'],dat['mdl_tst_01']['q'],  'ko')
+    subplot(2,3,4); plot(dat['mdl_tst_02']['ed'],dat['mdl_tst_02']['mev'],'ko')
 
     p.show()
 

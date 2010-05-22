@@ -154,14 +154,17 @@ class DrawMesh:
                         yc += self.V[con[j]][3]
                     xc = xc/len(con)
                     yc = yc/len(con)
-                # ids
-                if with_ids:
-                    ax.text(xc,yc, c[0], backgroundcolor=self.lgreen,fontsize=self.fsz1)
-                    # properties
-                    if with_tags:
-                        tag = c[1]
-                        txt = '%d' % tag
-                        ax.text(xc,yc, txt, va='top', fontsize=self.fsz2)
+                # text
+                txt = '   '
+                if with_tags: txt = '%s%d' % (txt,c[1])
+                if len(c[4])>0: txt += '\n   '
+                for brykey, side_id in c[4].iteritems():
+                    # neighbours
+                    side = side_id[0]
+                    eid  = side_id[1]
+                    txt  = '%s %d' % (txt,eid)
+                if len(txt)>0: ax.text(xc,yc, txt,  ha='left',  backgroundcolor=self.lgreen,fontsize=self.fsz2)
+                if with_ids:   ax.text(xc,yc, c[0], ha='right', backgroundcolor=self.orange,fontsize=self.fsz1)
                 # edge tags
                 if with_tags:
                     for side, tag in c[3].iteritems():
@@ -206,6 +209,14 @@ class DrawMesh:
         # draw nodes
         if with_ids:
             for v in self.V:
+                # shares
+                if v[0] in self.Shares and with_shares:
+                    s    = '('
+                    eles = self.Shares[v[0]]
+                    for i, e in enumerate(eles):
+                        if i==len(eles)-1: s += '%d) .' % e
+                        else:              s += '%d,' % e
+                    text(v[2], v[3], s, va='bottom', ha='right', color='black', backgroundcolor='white', fontsize=self.fsz2)
                 # ids
                 s = '%d' % v[0]
                 text(v[2], v[3], s, va='bottom', ha='left', color='black', backgroundcolor=self.lyellow, fontsize=self.fsz1)
@@ -213,14 +224,6 @@ class DrawMesh:
                 # tag
                 if tag<0 and with_tags:
                     text(v[2], v[3], '%d'%tag, va='top', color='black', backgroundcolor=self.orange, fontsize=self.fsz2)
-                # shares
-                if v[0] in self.Shares and with_shares:
-                    s    = '('
-                    eles = self.Shares[v[0]]
-                    for i, e in enumerate(eles):
-                        if i==len(eles)-1: s += '%d)' % e
-                        else:              s += '%d,' % e
-                    text(v[2], v[3], s, va='bottom', ha='right', color='black', backgroundcolor='none', fontsize=self.fsz2)
 
         # pins
         for key, val in self.Pins.iteritems():
