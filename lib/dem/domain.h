@@ -1190,12 +1190,35 @@ inline void Domain::WritePOV (char const * FileKey)
 
 inline void Domain::WriteBPY (char const * FileKey)
 {
+#ifdef USE_MPI
+    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
+    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
+    String fn(FileKey);
+    fn.append(".bpy");
+    std::ofstream of;
+    if (my_id==0)
+    {
+        of.open(fn.CStr(), std::ios::out);
+        BPYHeader(of);
+    }
+    else
+    {
+        int command;
+        MPI::COMM_WORLD.Recv (&command, /*number*/1, MPI::INT, /*destination*/my_id-1, 1);
+        of.open(fn.CStr(), std::ios::out | std::ios::app);
+    }
+    for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"",true);
+    of.close();
+    int command = 0;
+    if (my_id < nprocs-1) MPI::COMM_WORLD.Send (&command, /*number*/1, MPI::INT, /*destination*/my_id+1, 1);
+#else
     String fn(FileKey);
     fn.append(".bpy");
     std::ofstream of(fn.CStr(), std::ios::out);
     BPYHeader(of);
     for (size_t i=0; i<Particles.Size(); i++) Particles[i]->Draw (of,"",true);
     of.close();
+#endif
 }
 
 inline void Domain::Save (char const * FileKey)

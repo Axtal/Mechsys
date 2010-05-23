@@ -67,7 +67,20 @@ int main(int argc, char **argv) try
         }
 
         // draw the cube
-        dom.WriteBPY("proc_0");
+        dom.WriteBPY("proc");
+        dom.WritePOV("proc");
+    }
+    else if (my_id==1)
+    {
+        DEM::Domain dom;
+        // dummy particle
+        Particle  *p = new Particle();
+        p->ReceiveParticle(TAG_PARTICLE);
+        Vec3_t trans(-1.5,0.0,0.0);
+        p->Translate(trans);
+        // include the particle in the domain and draw it
+        dom.Particles.Push(p);
+        dom.WriteBPY("proc");
         dom.WritePOV("proc");
     }
     else
@@ -82,7 +95,7 @@ int main(int argc, char **argv) try
 
         // include the particle in the domain and draw it
         dom.Particles.Push(p);
-        dom.WriteBPY("proc_1");
+        dom.WriteBPY("proc");
         dom.WritePOV("proc");
         //cout << "processor # " << my_id << " has got the following particle: \n" << *p;
     }
