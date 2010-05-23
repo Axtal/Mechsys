@@ -119,6 +119,32 @@ typedef enum {
 #ifndef MECHSYS_VTKCELLTYPE_H
 #define MECHSYS_VTKCELLTYPE_H
 
+int NVertsToVTKNVerts2D[] = {-1,                // 0 verts
+                             -1,                // 1 vert
+                              2,                // 2 verts
+                              3,                // 3
+                              4,                // 4
+                             -1,                // 5
+                              6,                // 6
+                             -1,                // 7
+                              8,                // 8
+                             -1,-1,-1,-1,-1,-1, // 9,10,11,12,13,14
+                              6};               // 15
+
+int NVertsToVTKNVerts3D[] = {-1,                         //  0 verts
+                             -1,                         //  1 vert
+                              2,                         //  2 verts
+                             -1,                         //  3
+                              4,                         //  4
+                             -1,                         //  5
+                             -1,                         //  6
+                             -1,                         //  7
+                              8,                         //  8
+                             -1,                         //  9
+                             10,                         // 10
+                             -1,-1,-1,-1,-1,-1,-1,-1,-1, // 11,12,13,14,15,16,17,18,19
+                             20};                        // 20
+
 int NVertsToVTKCell2D[] = {-1,                     // 0 verts
                            -1,                     // 1 vert
                            VTK_LINE,               // 2 verts
@@ -127,7 +153,9 @@ int NVertsToVTKCell2D[] = {-1,                     // 0 verts
                            -1,                     // 5
                            VTK_QUADRATIC_TRIANGLE, // 6
                            -1,                     // 7
-                           VTK_QUADRATIC_QUAD};    // 8
+                           VTK_QUADRATIC_QUAD,     // 8
+                           -1,-1,-1,-1,-1,-1,      // 9,10,11,12,13,14
+                           VTK_QUADRATIC_TRIANGLE};// 15
 
 int NVertsToVTKCell3D[] = {-1,                         //  0 verts
                            -1,                         //  1 vert

@@ -852,7 +852,7 @@ inline void Solver::_FE_update (double tf)
 inline void Solver::_ME_update (double tf)
 {
     // auxiliar vectors
-    Vec_t dU_fe(NEq), dU_tm(NEq), dU_me(NEq), U_me(NEq), U_dif(NEq);
+    Vec_t dU_fe(NEq), dU_tm(NEq), dU_me(NEq), U_me(NEq);//, U_dif(NEq);
     Vec_t dF_fe(NEq), dF_tm(NEq), dF_me(NEq), F_me(NEq), F_dif(NEq);
 
     // for each pseudo time T
@@ -882,12 +882,13 @@ inline void Solver::_ME_update (double tf)
         F_me  = F + dF_me;
 
         // local error
-        U_dif = 0.5*(dU_tm - dU_fe);
+        //U_dif = 0.5*(dU_tm - dU_fe);
         F_dif = 0.5*(dF_tm - dF_fe);
-        for (size_t i=NEq-NLag; i<NEq; ++i) { U_dif(i)=0.0; F_dif(i)=0.0; } // ignore equations corresponding to Lagrange multipliers
-        double U_err = Norm(U_dif)/(1.0+Norm(U_me));
+        for (size_t i=NEq-NLag; i<NEq; ++i) { /*U_dif(i)=0.0;*/ F_dif(i)=0.0; } // ignore equations corresponding to Lagrange multipliers
+        //double U_err = Norm(U_dif)/(1.0+Norm(U_me));
         double F_err = Norm(F_dif)/(1.0+Norm(F_me));
-        double error = U_err + F_err;
+        //double error = U_err + F_err;
+        double error = F_err;
 
         // step multiplier
         double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
