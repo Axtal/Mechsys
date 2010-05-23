@@ -123,11 +123,6 @@ public:
     }
 
 
-    // Methods to be derived
-    virtual void Setup    (double,double) {};                                                                  ///< Special method depends on the Setup
-    virtual void Output   (size_t IdxOut, std::ostream & OutFile) {};                                          ///< Output current state depends on the setup
-    virtual void OutputF  (char const * FileKey) {};                                                           ///< Output final state depends on the setup
-
     // Auxiliar methods
     void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
     void   AngularMomentum (Vec3_t & L);                                                                     ///< Return total angular momentum of the system
@@ -182,6 +177,12 @@ public:
         }
     }
 #endif
+
+    // MPI Data and methods
+#ifdef USE_MPI
+    Array<Particle*>    BdryParticles;  ///< Array of particles in the boundary
+#endif
+    
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -1137,6 +1138,38 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
 inline void Domain::WritePOV (char const * FileKey)
 {
+#ifdef USE_MPI
+    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
+    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
+    String fn(FileKey);
+    fn.append(".pov");
+    std::ofstream of;
+    if (my_id==0)
+    {
+        of.open(fn.CStr(), std::ios::out);
+        POVHeader (of);
+        POVSetCam (of, CamPos, OrthoSys::O);
+    }
+    else
+    {
+        int command;
+        MPI::COMM_WORLD.Recv (&command, /*number*/1, MPI::INT, /*destination*/my_id-1, 1);
+        of.open(fn.CStr(), std::ios::out | std::ios::app);
+    }
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        if (Particles[i]->IsFree())
+        {
+            if(Particles[i]->IsBroken) Particles[i]->Draw(of,"Black");
+            else                       Particles[i]->Draw(of,"Red");
+        }
+        else Particles[i]->Draw(of,"Col_Glass_Bluish");
+    }
+    of.close();
+    int command = 0;
+    if (my_id < nprocs-1) MPI::COMM_WORLD.Send (&command, /*number*/1, MPI::INT, /*destination*/my_id+1, 1);
+    
+#else
     String fn(FileKey);
     fn.append(".pov");
     std::ofstream of(fn.CStr(), std::ios::out);
@@ -1152,6 +1185,7 @@ inline void Domain::WritePOV (char const * FileKey)
         else Particles[i]->Draw(of,"Col_Glass_Bluish");
     }
     of.close();
+#endif
 }
 
 inline void Domain::WriteBPY (char const * FileKey)
@@ -1494,30 +1528,32 @@ inline void Domain::ResetInteractons()
     CInteractons.Resize(0);
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
-        bool pi_has_vf = (Particles[i]->vxf || Particles[i]->vyf || Particles[i]->vzf);
+        bool pi_has_vf = !Particles[i]->IsFree();
         for (size_t j=i+1; j<Particles.Size(); j++)
         {
-            bool pj_has_vf = (Particles[j]->vxf || Particles[j]->vyf || Particles[j]->vzf);
+            bool pj_has_vf = !Particles[j]->IsFree();
 
-            // if both particles have any component specified, don't create any intereactor
-            if (pi_has_vf && pj_has_vf) continue;
+            bool close = (Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
+
+            // if both particles have any component specified or they are far away, don't create any intereactor
+            if ((pi_has_vf && pj_has_vf) || !close ) continue;
 
             // if both particles are spheres (just one vertex)
             if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
             {
-                //CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
-                CInteractonSphere *p = new CInteractonSphere(Particles[i],Particles[j]);
-                if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
-                else delete p;
+                CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
+                //CInteractonSphere *p = new CInteractonSphere(Particles[i],Particles[j]);
+                //if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                //else delete p;
             }
 
             // normal particles
             else
             {
-                //CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
-                CInteracton *p = new CInteracton(Particles[i],Particles[j]);
-                if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
-                else delete p;
+                CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
+                //CInteracton *p = new CInteracton(Particles[i],Particles[j]);
+                //if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                //else delete p;
             }
         }
     }
@@ -1547,11 +1583,13 @@ inline void Domain::ResetContacts()
     ///*
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
-        bool pi_has_vf = (Particles[i]->vxf || Particles[i]->vyf || Particles[i]->vzf);
+        bool pi_has_vf = !Particles[i]->IsFree();
         for (size_t j=i+1; j<Particles.Size(); j++)
         {
-            bool pj_has_vf = (Particles[j]->vxf || Particles[j]->vyf || Particles[j]->vzf);
-            if (pi_has_vf && pj_has_vf) continue;
+            bool pj_has_vf = !Particles[j]->IsFree();
+
+            bool close = (Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
+            if ((pi_has_vf && pj_has_vf) || !close) continue;
             
             // checking if the interacton exist for that pair of particles
             bool exist = false;
@@ -1570,19 +1608,19 @@ inline void Domain::ResetContacts()
                 // if both particles are spheres (just one vertex)
                 if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
                 {
-                    //CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
-                    CInteractonSphere *p = new CInteractonSphere(Particles[i],Particles[j]);
-                    if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
-                    else delete p;
+                    CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
+                    //CInteractonSphere *p = new CInteractonSphere(Particles[i],Particles[j]);
+                    //if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                    //else delete p;
                 }
 
                 // normal particles
                 else
                 {
-                    //CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
-                    CInteracton *p = new CInteracton(Particles[i],Particles[j]);
-                    if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
-                    else delete p;
+                    CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
+                    //CInteracton *p = new CInteracton(Particles[i],Particles[j]);
+                    //if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
+                    //else delete p;
                 }
             }
         }
@@ -1591,7 +1629,10 @@ inline void Domain::ResetContacts()
     Interactons.Resize(0);
     for (size_t i=0; i<CInteractons.Size(); i++)
     {
-        if(CInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(CInteractons[i]);
+        //if (Distance(CInteractons[i]->P1->x,CInteractons[i]->P2->x)<=CInteractons[i]->P1->Dmax+CInteractons[i]->P2->Dmax+2*Alpha)
+        //{
+            if(CInteractons[i]->UpdateContacts(Alpha)) Interactons.Push(CInteractons[i]);
+        //}
     }
     for (size_t i=0; i<BInteractons.Size(); i++)
     {

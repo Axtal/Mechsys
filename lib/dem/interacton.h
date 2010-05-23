@@ -380,6 +380,7 @@ inline bool CInteractonSphere::UpdateContacts (double alpha)
 {
     if (Distance(P1->x,P2->x)<=P1->Dmax+P2->Dmax+2*alpha) return true;
     else return false;
+    //return true;
 }
 
 inline void CInteractonSphere::UpdateParameters ()

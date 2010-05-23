@@ -33,8 +33,6 @@ using std::cout;
 using std::endl;
 
 #define TAG_PARTICLE 10000
-#define TAG_VERTSIZE 10001
-#define TAG_VERTICES 10002
 
 int main(int argc, char **argv) try
 {
@@ -70,6 +68,7 @@ int main(int argc, char **argv) try
 
         // draw the cube
         dom.WriteBPY("proc_0");
+        dom.WritePOV("proc");
     }
     else
     {
@@ -77,10 +76,14 @@ int main(int argc, char **argv) try
         // dummy particle
         Particle  *p = new Particle();
         p->ReceiveParticle(TAG_PARTICLE);
+        Vec3_t trans(-0.5,0.0,0.0);
+        p->Translate(trans);
+
 
         // include the particle in the domain and draw it
         dom.Particles.Push(p);
         dom.WriteBPY("proc_1");
+        dom.WritePOV("proc");
         //cout << "processor # " << my_id << " has got the following particle: \n" << *p;
     }
 
