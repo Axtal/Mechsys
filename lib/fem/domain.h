@@ -962,8 +962,9 @@ inline void Domain::WriteVTU (char const * FNKey) const
     {
         if (Eles[i]->Active)
         {
+            size_t nne = (NDim==2 ? NVertsToVTKNVerts2D[Eles[i]->Con.Size()] : NVertsToVTKNVerts3D[Eles[i]->Con.Size()]);
             oss << "  ";
-            for (size_t j=0; j<Eles[i]->Con.Size(); ++j) oss << Eles[i]->Con[j]->Vert.ID << " ";
+            for (size_t j=0; j<nne; ++j) oss << Eles[i]->Con[j]->Vert.ID << " ";
             k++;
             VTU_NEWLINE (i,k,ne,nimax/Eles[i]->Con.Size(),oss);
         }
@@ -976,7 +977,8 @@ inline void Domain::WriteVTU (char const * FNKey) const
     {
         if (Eles[i]->Active)
         {
-            offset += Eles[i]->Con.Size();
+            size_t nne = (NDim==2 ? NVertsToVTKNVerts2D[Eles[i]->Con.Size()] : NVertsToVTKNVerts3D[Eles[i]->Con.Size()]);
+            offset += nne;
             oss << (k==0?"  ":" ") << offset;
             k++;
             VTU_NEWLINE (i,k,ne,nimax,oss);

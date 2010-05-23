@@ -23,7 +23,6 @@
 // MechSys
 #include <mechsys/fem/node.h>
 #include <mechsys/fem/geomelem.h>
-#include <mechsys/vtkcelltype.h>
 
 namespace FEM
 {
@@ -39,7 +38,6 @@ public:
 
     // Derived methods
     void   SetIPs     (int TotNIP);
-    int    VTKType    () const { return VTK_HEXAHEDRON; }
     size_t FNode      (size_t IdxFace, size_t IdxFNode) const { return Face2Node[IdxFace][IdxFNode]; }
     void   Shape      (double r, double s, double t)    const;
     void   Derivs     (double r, double s, double t)    const;

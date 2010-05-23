@@ -44,7 +44,6 @@ public:
 
     // Methods to be overloaded
     virtual void   SetIPs     (int TotNIP)                            =0;
-    virtual int    VTKType    ()                                const =0;
     virtual size_t FNode      (size_t IdxFace, size_t IdxFNode) const =0;
     virtual void   Shape      (double r, double s, double t)    const =0;
     virtual void   Derivs     (double r, double s, double t)    const =0;
