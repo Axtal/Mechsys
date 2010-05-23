@@ -240,7 +240,8 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
                 Mat_t J(GE->FdNdR * Cf);
 
                 // coefficient used during integration
-                double coef = h*GE->FIPs[i].w; // *detJ is not neccessary since qx,qy,qz are already multiplied by detJ (due to normal)
+                double coef = h*GE->FIPs[i].w; // *detJ is not necessary since qx,qy,qz are already multiplied by detJ (due to normal)
+
                 if (GTy==axs_t)
                 {
                     // calculate radius=x at this FIP
@@ -264,6 +265,8 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
                             a(2)*b(0) - a(0)*b(2),
                             a(0)*b(1) - a(1)*b(0);
                     }
+
+                    //std::cout << "n = " << PrintVector(n);
 
                     // loading
                     if (NDim==2)
@@ -291,6 +294,15 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
 
             // set CalcM
             for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
+
+            /*
+            for (size_t j=0; j<GE->NFN; ++j)
+            {
+                size_t k = GE->FNode(IdxEdgeOrFace,j);
+                std::cout << pF[Con[GE->FNode(IdxEdgeOrFace,j)]].first[Con[k]->FMap("fx")] << "  ";
+                std::cout << pF[Con[GE->FNode(IdxEdgeOrFace,j)]].first[Con[k]->FMap("fy")] << std::endl;
+            }
+            */
         }
     }
 

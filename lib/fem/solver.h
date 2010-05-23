@@ -715,6 +715,9 @@ inline void Solver::_set_A_Lag ()
 
 inline void Solver::_cal_resid (bool WithAccel)
 {
+    // calculate residual
+    R = F - F_int;
+
     /*
     std::cout << "\n######################################   Before\n";
     std::cout << "F     = " << PrintVector(F,     "%15.3f");
@@ -739,10 +742,8 @@ inline void Solver::_cal_resid (bool WithAccel)
                     long eq1 = nod1.EQ[nod1.UMap(Dom.DisplKeys[j])];
                     //F(eq0) += -U(eqlag);
                     //F(eq1) +=  U(eqlag);
-                    F    (eq0) = 0.0;
-                    F    (eq1) = 0.0;
-                    F_int(eq0) = 0.0;
-                    F_int(eq1) = 0.0;
+                    R(eq0) = 0.0;
+                    R(eq1) = 0.0;
                     eqlag++;
                 }
             }
@@ -761,10 +762,8 @@ inline void Solver::_cal_resid (bool WithAccel)
             long eq1 = nod.EQ[nod.UMap(Dom.DisplKeys[1])]; // ~ uy
             //F(eq0) += -U(eqlag)*s;
             //F(eq1) +=  U(eqlag)*c;
-            F    (eq0) = 0.0;
-            F    (eq1) = 0.0;
-            F_int(eq0) = 0.0;
-            F_int(eq1) = 0.0;
+            R(eq0) = 0.0;
+            R(eq1) = 0.0;
 
             //std::cout << Util::_12_4<< -U(eqlag)*s << "  " << Util::_12_4<< U(eqlag)*c << std::endl;
 
@@ -773,11 +772,7 @@ inline void Solver::_cal_resid (bool WithAccel)
     }
 
     // clear forces due to supports
-    for (size_t i=0; i<pEQ.Size(); ++i)
-    {
-        F_int(pEQ[i]) = 0.0;
-        F    (pEQ[i]) = 0.0;
-    }
+    for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
 
     /*
     std::cout << "\n######################################   After\n";
@@ -786,8 +781,6 @@ inline void Solver::_cal_resid (bool WithAccel)
     std::cout << std::endl;
     */
 
-    // calculate residual
-    R = F - F_int;
     if (WithAccel)
     {
         Sparse::SubMult (M11, A, R); // R -= M11*A
