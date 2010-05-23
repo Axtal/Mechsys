@@ -35,6 +35,7 @@ using std::cout;
 using std::endl;
 using Util::_6_3;
 using Util::_8s;
+using Util::_10_6;
 using Util::SQ2;
 
 Sparse::Triplet<double,int> D11,D12,D21,D22;
@@ -87,7 +88,7 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     Sparse::AddMult (D21, deps, dsig); // dsig2 += D21*deps1
     Sparse::AddMult (D22, deps, dsig); // dsig2 += D22*deps2
 
-    // return increments
+    // calc divs
     divs = h*dot(d,deps);
 }
 
@@ -138,10 +139,10 @@ struct Increments
 int main(int argc, char **argv) try
 {
     // input
-    int  tst       = 2;
-    int  ninc      = 20;
+    int  tst       = 4;
+    int  ninc      = 10;
     bool cor_drift = true;
-    bool print_res = true;
+    bool print_res = false;
     if (argc>1) tst       = atoi(argv[1]);
     if (argc>2) ninc      = atoi(argv[2]);
     if (argc>3) cor_drift = atoi(argv[3]);
@@ -150,37 +151,57 @@ int main(int argc, char **argv) try
     // path
     Array<Increments> incs;
 
+    // default constants (for tests 1-4)
+    double E   = 6000.0;
+    double nu  = 0.3;
+    double p0  = 100.0;
+    double M   = 1.0;
+    double pf  = 3.0*p0/(3.0-M);
+    double qf  = M*pf;
+    double phi = M2Phi(M,"cam");
+    incs.Resize (1);
+    incs[0].dey = -0.1;
+
     // model, parameters, and initial values
     String name;
     SDPair prms, inis;
     switch (tst)
     {
-        case 1:
+        case 1: // Elastic
         {
-            // model
+            cout << "[1;33m================================ (1) Elastic ===================================[0m\n";
             name = "LinElastic";
-            prms.Set ("E nu", 6000.0, 0.3);
-            inis.Set ("sx sy sz", -100.0,-100.0,-100.0);
-
-            // increments
-            incs.Resize (1);
-            incs[0].dey = -0.07;
+            prms.Set ("E nu", E, nu);
+            inis.Set ("sx sy sz", -p0,-p0,-p0);
             break;
         }
-        case 2:
+        case 2: // von Mises
         {
-            // model
+            cout << "[1;33m================================ (2) von Mises =================================[0m\n";
+            name = "ElastoPlastic";
+            prms.Set ("E nu fc sY Hp", E, nu, FAILCRIT("VM"), qf, 0.0);
+            inis.Set ("sx sy sz", -p0,-p0,-p0);
+            break;
+        }
+        case 3: // Mohr-Coulomb
+        {
+            cout << "[1;33m================================ (3) Mohr-Coulomb ==============================[0m\n";
+            name = "ElastoPlastic";
+            prms.Set ("E nu fc c phi psi NonAssoc", E, nu, FAILCRIT("MC"), 0.1, phi, 1.0, 1.);
+            inis.Set ("sx sy sz", -p0,-p0,-p0);
+            break;
+        }
+        case 4: // CamClay
+        {
+            cout << "[1;33m================================ (4) Cam-Clay ==================================[0m\n";
             name = "CamClay";
-            prms.Set ("lam kap nu phi", 0.01, 0.001, 0.3, M2Phi(1.0,"cam"));
-            inis.Set ("sx sy sz v0", -100.0,-100.0,-100.0, 2.0);
-
-            // increments
-            incs.Resize (1);
-            incs[0].dey = -0.07;
+            prms.Set ("lam kap nu phi", 0.01, 0.001, nu, phi);
+            inis.Set ("sx sy sz v0", -p0,-p0,-p0, 2.0);
             break;
         }
-        case 3:
+        case 5:
         {
+            cout << "[1;33m================================ (5) Cam-Clay ==================================[0m\n";
             // model
             name = "CamClay";
             prms.Set ("lam kap nu phi", 0.0891, 0.0196, 0.2, 31.6);
@@ -212,10 +233,8 @@ int main(int argc, char **argv) try
 
     // output initial state
     std::ostringstream oss;
-    oss << _6_3 << "Time";
     oss << _8s<< "sx"   << _8s<< "sy"   << _8s<< "sz" << _8s<< "sxy" << _8s<< "syz" << _8s<< "szx";
     oss << _8s<< "ex"   << _8s<< "ey"   << _8s<< "ez" << _8s<< "exy" << _8s<< "eyz" << _8s<< "ezx" << "\n";
-    oss << _6_3 << 0;
     for (size_t i=0; i<6; ++i) oss << _8s<< sta.Sig(i);
     for (size_t i=0; i<6; ++i) oss << _8s<< sta.Eps(i);
     oss << "\n";
@@ -242,7 +261,6 @@ int main(int argc, char **argv) try
     double MaxSS  = 2000;
 
     // for each state
-    int time = 1;
     for (size_t i=0; i<incs.Size(); ++i)
     {
         // set prescribed increments
@@ -280,6 +298,11 @@ int main(int argc, char **argv) try
 
                 // drift correction
                 if (cor_drift) mdl->CorrectDrift (&sta);
+
+                // output
+                for (size_t i=0; i<6; ++i) oss << _8s<< sta.Sig(i);
+                for (size_t i=0; i<6; ++i) oss << _8s<< sta.Eps(i);
+                oss << "\n";
             }
 
             // set loading flag (must be after intersection because the TgIncs during intersection must be calc with Ldg=false)
@@ -332,6 +355,11 @@ int main(int argc, char **argv) try
 
                     // limit change on stepsize
                     if (m>mMax) m = mMax;
+
+                    // output
+                    for (size_t i=0; i<6; ++i) oss << _8s<< sta.Sig(i);
+                    for (size_t i=0; i<6; ++i) oss << _8s<< sta.Eps(i);
+                    oss << "\n";
                 }
                 else if (m<mMin) m = mMin;
 
@@ -343,20 +371,17 @@ int main(int argc, char **argv) try
             }
             if (k>=MaxSS) throw new Fatal("main: Modified-Euler did not converge after %d substeps",k);
 
-            // output
-            oss << _6_3<< time;
-            for (size_t i=0; i<6; ++i) oss << _8s<< sta.Sig(i);
-            for (size_t i=0; i<6; ++i) oss << _8s<< sta.Eps(i);
-            oss << "\n";
-            time++;
-
             // print results
             if (print_res) PrintResults (sta);
+
+            cout << "increment = " << j << endl;
         }
     }
 
     // output file
-    std::ofstream of("test_models.res", std::ios::out);
+    String fn;
+    fn.Printf("test_models_%d.res",tst);
+    std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
 
