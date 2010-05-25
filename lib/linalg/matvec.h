@@ -84,17 +84,19 @@ inline String PrintVector (Vec_t const & V, char const * Fmt="%13g", Array<long>
 }
 
 /** Print matrix. */
-inline String PrintMatrix (Mat_t const & M, char const * Fmt="%13g", Array<long> const * SkipRC=NULL, double Tol=1.0e-13)
+inline String PrintMatrix (Mat_t const & M, char const * Fmt="%13g", Array<long> const * SkipRC=NULL, double Tol=1.0e-13, bool NumPy=false)
 {
     int m = M.num_rows();
     int n = M.num_cols();
     String lin;
+    if (NumPy) lin.append("matrix([[");
     for (int i=0; i<m; ++i)
     {
         bool skip_row = false;
         if (SkipRC!=NULL) skip_row = (SkipRC->Find(i)<0 ? false : true);
         if (!skip_row)
         {
+            if (NumPy && i!=0) lin.append("        [");
             for (int j=0; j<n; ++j)
             {
                 bool skip_col = false;
@@ -104,9 +106,12 @@ inline String PrintMatrix (Mat_t const & M, char const * Fmt="%13g", Array<long>
                     double val = (fabs(M(i,j))<Tol ? 0.0 : M(i,j));
                     String buf;  buf.Printf(Fmt,val);
                     lin.append(buf);
+                    if (NumPy && j!=n-1) lin.append(",");
                 }
             }
-            lin.append("\n");
+            if (NumPy && i!=m-1) lin.append("],");
+            if (NumPy && i==m-1) lin.append("]])");
+            else lin.append("\n");
         }
     }
     return lin;
@@ -151,42 +156,6 @@ inline double CheckDiagonal (Mat_t const & M, bool CheckUnitDiag=false)
     return error;
 }
 
-// recursive definition of determinant using expansion by minors. By Paul Bourke.
-inline double __determinant (bool First, Mat_t const * M, double **A, int n)
-{
-    double det = 0;
-    if      (n<1)  throw new Fatal("__determinant: n==%d must be greater than 1",n);
-    else if (n==1) throw new Fatal("__determinant: n==%d must be greater than 1",n);
-    else if (n==2)
-    {
-        if (First) det = (*M)(0, 0)*(*M)(1, 1) - (*M)(1, 0)*(*M)(0, 1);
-        else       det =   A [0][0]*  A [1][1] -   A [1][0]*  A [0][1];
-    }
-    else
-    {
-        for (int j1=0; j1<n; j1++)
-        {
-            double **mat = (double**)malloc((n-1)*sizeof(double *));
-            for (int i=0; i<n-1; i++) mat[i] = (double*)malloc((n-1)*sizeof(double));
-            for (int i=1; i<n;   i++)
-            {
-                int j2 = 0;
-                for (int j=0; j<n; j++)
-                {
-                    if (j==j1) continue;
-                    mat[i-1][j2] = (First ? (*M)(i,j) : A[i][j]);
-                    j2++;
-                }
-            }
-            double coef = (First ? (*M)(0,j1) : A[0][j1]);
-            det += pow(-1.0,1.0+j1+1.0) * coef * __determinant(false, NULL, mat, n-1);
-            for (int i=0; i<n-1; i++) free(mat[i]);
-            free(mat);
-        }
-    }
-    return det;
-}
-
 /** Determinant. */
 inline double Det (Mat_t const & M)
 {
@@ -219,7 +188,29 @@ inline double Det (Mat_t const & M)
     }
     else if (m==n)
     {
-        return __determinant (true, &M, NULL, m);
+        // factorization
+        int   info = 0;
+        int * ipiv = new int [m];
+        Mat_t Mcpy(M);
+        dgetrf_(&m,         // M
+                &m,         // N
+                Mcpy.data,  // double * A
+                &m,         // LDA
+                ipiv,       // Pivot indices
+                &info);     // INFO
+        if (info!=0) throw new Fatal ("matvec.h::Det: LAPACK: LU factorization failed");
+
+        // determinant
+        double det = 1.0;
+        for (int i=0; i<m; ++i)
+        {
+            if (ipiv[i]!=(i+1)) det = -det * Mcpy(i,i);
+            else                det =  det * Mcpy(i,i);
+        }
+
+        // end
+        delete [] ipiv;
+        return det;
     }
     else throw new Fatal("matvec.h:Det: Method is not implemented for (%d x %d) matrices yet",m,n);
 }
