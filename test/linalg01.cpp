@@ -30,9 +30,9 @@ using std::endl;
 
 double CheckSvd (char const * Key, Mat_t const & M, Mat_t const & CorrectU, Vec_t const & CorrectS, Mat_t const & CorrectVt, double Tol)
 {
-	Mat_t U, Vt, D(M.num_rows(),M.num_cols());
+    Mat_t U, Vt, D(M.num_rows(),M.num_cols());
     Vec_t S;
-	Svd (M, U, S, Vt);
+    Svd (M, U, S, Vt);
     set_to_zero(D);
     for (size_t i=0; i<size(S); ++i) D(i,i) = S(i);
     Mat_t UDVt (U*D*Vt); // == M
@@ -40,40 +40,40 @@ double CheckSvd (char const * Key, Mat_t const & M, Mat_t const & CorrectU, Vec_
     double err_Vt   = CompareMatrices (Vt,CorrectVt);
     double err_S    = CompareVectors  (S, CorrectS);
     double err_UDVt = CompareMatrices (UDVt, M);
-	cout << Key << ": error(U)      = " << (err_U    >Tol ? "[1;31m" : "[1;32m") << err_U     << "[0m\n";
-	cout << Key << ": error(Vt)     = " << (err_Vt   >Tol ? "[1;31m" : "[1;32m") << err_Vt    << "[0m\n";
-	cout << Key << ": error(S)      = " << (err_S    >Tol ? "[1;31m" : "[1;32m") << err_S     << "[0m\n";
-	cout << Key << ": error(UDVt)   = " << (err_UDVt >Tol ? "[1;31m" : "[1;32m") << err_UDVt  << "[0m\n";
-	return err_U + err_Vt + err_S + err_UDVt;
+    cout << Key << ": error(U)      = " << (err_U    >Tol ? "[1;31m" : "[1;32m") << err_U     << "[0m\n";
+    cout << Key << ": error(Vt)     = " << (err_Vt   >Tol ? "[1;31m" : "[1;32m") << err_Vt    << "[0m\n";
+    cout << Key << ": error(S)      = " << (err_S    >Tol ? "[1;31m" : "[1;32m") << err_S     << "[0m\n";
+    cout << Key << ": error(UDVt)   = " << (err_UDVt >Tol ? "[1;31m" : "[1;32m") << err_UDVt  << "[0m\n";
+    return err_U + err_Vt + err_S + err_UDVt;
 }
 
 double CheckInv (char const * Key, Mat_t const & M, Mat_t const & CorrectInvM, double Tol)
 {
-	Mat_t Mi;
-	Inv (M, Mi);
-	Mat_t MMi  (M*Mi);
+    Mat_t Mi;
+    Inv (M, Mi);
+    Mat_t MMi  (M*Mi);
     Mat_t MMiM (M*Mi*M); // == M
-	double err_Mi   = CompareMatrices (Mi,CorrectInvM);
-	double err_MMi  = CheckDiagonal   (MMi);
+    double err_Mi   = CompareMatrices (Mi,CorrectInvM);
+    double err_MMi  = CheckDiagonal   (MMi);
     double err_MMiM = CompareMatrices (MMiM, M);
-	cout << Key << ": error(Inv)    = " << (err_Mi  >Tol ? "[1;31m" : "[1;32m") << err_Mi   << "[0m\n";
-	cout << Key << ": error(M*Mi)   = " << (err_MMi >Tol ? "[1;31m" : "[1;32m") << err_MMi  << "[0m\n";
-	cout << Key << ": error(M*Mi*M) = " << (err_MMiM>Tol ? "[1;31m" : "[1;32m") << err_MMiM << "[0m\n";
-	return err_Mi + err_MMi + err_MMiM;
+    cout << Key << ": error(Inv)    = " << (err_Mi  >Tol ? "[1;31m" : "[1;32m") << err_Mi   << "[0m\n";
+    cout << Key << ": error(M*Mi)   = " << (err_MMi >Tol ? "[1;31m" : "[1;32m") << err_MMi  << "[0m\n";
+    cout << Key << ": error(M*Mi*M) = " << (err_MMiM>Tol ? "[1;31m" : "[1;32m") << err_MMiM << "[0m\n";
+    return err_Mi + err_MMi + err_MMiM;
 }
 
 double CheckDet (char const * Key, Mat_t const & M, double CorrectDet, double Tol)
 {
-	double detM     = Det(M);
-	double err_detM = fabs(detM - CorrectDet);
-	cout << Key << ": error(Det)    = " << (err_detM>Tol ? "[1;31m" : "[1;32m") << err_detM << "[0m\n";
-	return err_detM;
+    double detM     = Det(M);
+    double err_detM = fabs(detM - CorrectDet);
+    cout << Key << ": error(Det)    = " << (err_detM>Tol ? "[1;31m" : "[1;32m") << err_detM << "[0m\n";
+    return err_detM;
 }
 
 int main(int argc, char **argv) try
 {
-	///// SVD correct values //////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
+    ///// SVD correct values //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
     Mat_t corInvA(2,2);
     corInvA =
      -2.0000000000000000e+00,  1.0000000000000000e+00,
@@ -199,65 +199,69 @@ int main(int argc, char **argv) try
         0.         , 0. , 0. , 1. , 0.       , 
         -sqrt(0.8) , 0. , 0. , 0. , sqrt(0.2);
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	double tol   = 1.0e-11;
-	double error = 0.0;
+    double tol       = 1.0e-11;
+    double tol_det   = 1.0e-9;
+    double error     = 0.0;
+    double error_det = 0.0;
 
-	cout << "--- A --------------------------------------------\n";
-	Mat_t A(2,2);
-	A = 1,  2,
-	    3,  4;
-	double corDetA = -2.0;
-	error += CheckInv ("A", A, corInvA, tol);
-	error += CheckDet ("A", A, corDetA, tol);
-	error += CheckSvd ("A", A, corUA, corSA, corVtA, tol);
+    cout << "--- A --------------------------------------------\n";
+    Mat_t A(2,2);
+    A = 1,  2,
+        3,  4;
+    double corDetA = -2.0;
+    error += CheckInv ("A", A, corInvA, tol);
+    error += CheckDet ("A", A, corDetA, tol);
+    error += CheckSvd ("A", A, corUA, corSA, corVtA, tol);
 
-	cout << "\n--- B --------------------------------------------\n";
-	Mat_t B(3,3);
-	B = 10,  1,  2,
-	     3, 20,  4,
-	     5,  6, 30;
-	double corDetB = 5526.0;
-	error += CheckInv ("B", B, corInvB, tol);
-	error += CheckDet ("B", B, corDetB, tol);
-	error += CheckSvd ("B", B, corUB, corSB, corVtB, tol);
+    cout << "\n--- B --------------------------------------------\n";
+    Mat_t B(3,3);
+    B = 10,  1,  2,
+         3, 20,  4,
+         5,  6, 30;
+    double corDetB = 5526.0;
+    error += CheckInv ("B", B, corInvB, tol);
+    error += CheckDet ("B", B, corDetB, tol);
+    error += CheckSvd ("B", B, corUB, corSB, corVtB, tol);
 
-	cout << "\n--- C --------------------------------------------\n";
-	Mat_t C(5,5);
-	C = 12, 28, 22, 20,  8,
-	     0,  3,  5, 17, 28,
-	    56,  0, 23,  1,  0,
-	    12, 29, 27, 10,  1,
-	     9,  4, 13,  8, 22;
-	double corDetC = -167402.0;
-	error += CheckInv ("C", C, corInvC, tol);
-	error += CheckDet ("C", C, corDetC, tol);
-	error += CheckSvd ("C", C, corUC, corSC, corVtC, tol);
+    cout << "\n--- C --------------------------------------------\n";
+    Mat_t C(5,5);
+    C = 12, 28, 22, 20,  8,
+         0,  3,  5, 17, 28,
+        56,  0, 23,  1,  0,
+        12, 29, 27, 10,  1,
+         9,  4, 13,  8, 22;
+    double corDetC = -167402.0;
+    cout << "det(C) = " << Det(C) << endl;
+    error     += CheckInv ("C", C, corInvC, tol);
+    error_det += CheckDet ("C", C, corDetC, tol_det);
+    error     += CheckSvd ("C", C, corUC, corSC, corVtC, tol);
 
-	cout << "\n--- D --------------------------------------------\n";
-	Mat_t D(5,6);
-	D = 12, 28, 22, 20,  8,  1,
-	     0,  3,  5, 17, 28,  1,
-	    56,  0, 23,  1,  0,  1,
-	    12, 29, 27, 10,  1,  1,
-	     9,  4, 13,  8, 22,  1;
-	error += CheckInv ("D", D, corInvD, tol);
-	error += CheckSvd ("D", D, corUD, corSD, corVtD, tol);
+    cout << "\n--- D --------------------------------------------\n";
+    Mat_t D(5,6);
+    D = 12, 28, 22, 20,  8,  1,
+         0,  3,  5, 17, 28,  1,
+        56,  0, 23,  1,  0,  1,
+        12, 29, 27, 10,  1,  1,
+         9,  4, 13,  8, 22,  1;
+    error += CheckInv ("D", D, corInvD, tol);
+    error += CheckSvd ("D", D, corUD, corSD, corVtD, tol);
 
-	cout << "\n--- E --------------------------------------------\n";
-	Mat_t E(4,5);
-	E = 1, 0, 0, 0, 2,
+    cout << "\n--- E --------------------------------------------\n";
+    Mat_t E(4,5);
+    E = 1, 0, 0, 0, 2,
         0, 0, 3, 0, 0,
         0, 0, 0, 0, 0,
         0, 4, 0, 0, 0;
-	error += CheckInv ("E", E, corInvE, tol);
-	error += CheckSvd ("E", E, corUE, corSE, corVtE, tol);
+    error += CheckInv ("E", E, corInvE, tol);
+    error += CheckSvd ("E", E, corUE, corSE, corVtE, tol);
 
-	cout << "\n--- error ----------------------------------------\n";
-	cout << "error = " << (error>tol ? "[1;31m" : "[1;32m") << error << "[0m" << endl;
+    cout << "\n--- error ----------------------------------------\n";
+    cout << "error     = " << (error    >tol     ? "[1;31m" : "[1;32m") << error     << "[0m" << endl;
+    cout << "error_det = " << (error_det>tol_det ? "[1;31m" : "[1;32m") << error_det << "[0m" << endl;
 
-	if (error>tol) return 1;
-	else return 0;
+    if (error>tol || error_det>tol_det) return 1;
+    else return 0;
 }
 MECHSYS_CATCH

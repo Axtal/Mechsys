@@ -101,8 +101,8 @@ int SolveAndOutput(int SolverType, Mat_t & A, Vec_t & Y, Vec_t const & Ycorr)
 
 	// Output
 	cout << sz << " x " << sz << endl;
-	cout << "Y     = " << Y;
-	cout << "Ycorr = " << Ycorr << endl; // Ycorrect
+	cout << "Y     = " << PrintVector(Y,    "%12g");
+	cout << "Ycorr = " << PrintVector(Ycorr,"%12g") << endl; // Ycorrect
 
 	// Calculate error
 	double norm_corr = 0.0;
