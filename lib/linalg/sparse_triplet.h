@@ -60,6 +60,9 @@ public:
     /** Constructor (must call AllocSpace() and PushEntry() methods later). */
      Triplet();
 
+    /** Constructing given other 4 triplets. */
+     Triplet(Triplet<Value_T,Index_T> const & A, Triplet<Value_T,Index_T> const & B, Triplet<Value_T,Index_T> const & C, Triplet<Value_T,Index_T> const & D);
+
     /** Destructor. */
     ~Triplet();
 
@@ -141,6 +144,37 @@ inline Triplet<Value_T,Index_T>::~Triplet()
     if (_Ai!=NULL) delete [] _Ai;
     if (_Aj!=NULL) delete [] _Aj;
     if (_Ax!=NULL) delete [] _Ax;
+}
+
+template<typename Value_T, typename Index_T>
+inline Triplet<Value_T,Index_T>::Triplet(Triplet<Value_T,Index_T> const & A, Triplet<Value_T,Index_T> const & B, Triplet<Value_T,Index_T> const & C, Triplet<Value_T,Index_T> const & D)
+    : _nrows (0),
+      _ncols (0),
+      _size  (0),
+      _top   (0),
+      _Ai    (NULL),
+      _Aj    (NULL),
+      _Ax    (NULL),
+      _ns    (&Util::_8s)
+{
+    /*
+    std::cout << A.Rows() << " " << B.Rows() << " " << C.Rows() << " " << D.Rows() << " " << std::endl;
+    std::cout << A.Cols() << " " << B.Cols() << " " << C.Cols() << " " << D.Cols() << " " << std::endl;
+    */
+
+    // check
+    int m = A.Rows();
+    int n = A.Cols();
+    if (B.Rows()!=m || B.Cols()!=n ||
+        C.Rows()!=m || C.Cols()!=n || 
+        D.Rows()!=m || D.Cols()!=n) throw new Fatal("Sparse::Triplet: When construction with other 4 triplets, all triplets must have the same number of rows and columns");
+
+    // set
+    AllocSpace (m, n, A.Top()+B.Top()+C.Top()+D.Top());
+    for (int k=0; k<A.Top(); ++k) PushEntry (A.Ai(k), A.Aj(k), A.Ax(k));
+    for (int k=0; k<B.Top(); ++k) PushEntry (B.Ai(k), B.Aj(k), B.Ax(k));
+    for (int k=0; k<C.Top(); ++k) PushEntry (C.Ai(k), C.Aj(k), C.Ax(k));
+    for (int k=0; k<D.Top(); ++k) PushEntry (D.Ai(k), D.Aj(k), D.Ax(k));
 }
 
 // Methods
