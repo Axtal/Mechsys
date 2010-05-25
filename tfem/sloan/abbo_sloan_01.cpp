@@ -94,7 +94,8 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    //sol.SetScheme("NR");
+    //sol.SetScheme("FE");
+    sol.SetScheme("NR");
     sol.STOL = 1.0e-4;
 
     // solve

@@ -133,7 +133,7 @@ int main(int argc, char **argv) try
     bcs.Set( -10, "qn",   -20.0);
     bcs.Set(-100, "ux uy", 0.0,0.0);
     dom.SetBCs (bcs);
-    sol.Solve  (/*NDiv*/10);
+    sol.Solve  (/*NDiv*/1);
 
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////

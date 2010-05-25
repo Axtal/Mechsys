@@ -20,7 +20,8 @@ SET(TESTS
   arch
   beam01
   beam02
-  labtest)
+  labtest
+  oneelem)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
