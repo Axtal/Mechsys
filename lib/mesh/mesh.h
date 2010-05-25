@@ -230,6 +230,7 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
     os << "V=[";
     for (size_t i=0; i<M.Verts.Size(); ++i)
     {
+        if (M.Verts[i]==NULL) throw new Fatal("Mesh::operator<<: Vertex %d was not defined",i);
         os << "[" << Util::_4  << M.Verts[i]->ID;
         os << "," << Util::_4  << M.Verts[i]->Tag;
         os << "," << Util::_8s << M.Verts[i]->C(0);
@@ -243,6 +244,7 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
     os << "\nC=[";
     for (size_t i=0; i<M.Cells.Size(); ++i)
     {
+        if (M.Cells[i]==NULL) throw new Fatal("Mesh::operator<<: Cell %d was not defined",i);
         os << "[" << Util::_4 << M.Cells[i]->ID;
         os << "," << Util::_4 << M.Cells[i]->Tag;
         os << ", [";
