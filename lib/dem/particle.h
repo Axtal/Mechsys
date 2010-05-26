@@ -107,7 +107,7 @@ public:
     ~Particle ();
 
     // Methods
-    void   Initialize         (size_t NCalls=5000);                                           ///< Initialize this particle
+    void   Initialize         (size_t i=0, size_t NCalls=5000);                                           ///< Initialize this particle
     void   InitializeVelocity (double dt = 1.0);                                              ///< Initialize this particle
     void   Rotate             (double dt);                                                    ///< Apply rotation on the particle once the total torque is found
     void   Rotate             (Quaternion_t & Q, Vec3_t & V);                                 ///< Apply rotation given by Quaternion Q at point v
@@ -121,8 +121,10 @@ public:
 
 // Methods to be used when MPI is used
 #ifdef USE_MPI
-    void SendParticle         (int n, int MsgID);                                              ///< Send particle to process n
-    void ReceiveParticle      (int MsgID);                                                     ///< Receives a particle from any process
+    void SendParticle               (int n, int MsgID); ///< Send particle to process n
+    void ReceiveParticle            (int MsgID);        ///< Receives a particle from any process
+    void SendDynamicParticle        (int n, int MsgID); ///< Send just relevant data for force calculation
+    void ReceiveDynamicParticle     (int n, int MsgID); ///< Receive just the dynamic relevant data
 #endif
 
 
@@ -424,10 +426,14 @@ inline Particle::~Particle()
 
 // Methods
 
-inline void Particle::Initialize (size_t NCalls)
+inline void Particle::Initialize (size_t i, size_t NCalls)
 {
     // calc properties
-    if (!PropsReady) CalcProps (NCalls);
+    if (!PropsReady)
+    {
+        Index = i;
+        CalcProps (NCalls);
+    }
 }
 
 inline void Particle::InitializeVelocity (double dt)

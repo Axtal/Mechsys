@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
     d.SetProps(B);
 
     // initialize
-    double dt = 0.0001;
+    double dt = 1.0e-5;
     d.Initialize(dt);
 
     // initial constants
@@ -71,6 +71,7 @@ int main(int argc, char **argv) try
     d.LinearMomentum  (p0);
     d.AngularMomentum (l0);
     E0 = d.CalcEnergy (Ek0,Ep0); 
+    d.Save("test_dynamics");
 
     // solve
     d.CamPos = 0.0,30.0,0.0;

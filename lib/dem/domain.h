@@ -180,7 +180,10 @@ public:
 
     // MPI Data and methods
 #ifdef USE_MPI
-    Array<Particle*>    BdryParticles;  ///< Array of particles in the boundary
+    Array<Particle*> TheirBdryParticles;  ///< Array of particles in the boundary belonging to a different domain
+    Array<Particle*> MyBdryParticles;     ///< Array of particles in the boundary belonging to this domain
+    void UpdateBoundaries ();             ///< Method to update boundaries for parallel computing
+    double GeneralMaxDisplacement();      ///< Maxdisplacement among all domains
 #endif
     
 };
@@ -295,17 +298,17 @@ inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, dou
     Vec3_t axis0(OrthoSys::e0); // rotation of face
     Vec3_t axis1(OrthoSys::e1); // rotation of face
     AddPlane (InitialTag,   Vec3_t(Lx/2.0,0.0,0.0),  R, Cf*Lz, Cf*Ly, 0.5, M_PI/2.0, &axis1);
-    Particles[Particles.Size()-1]->Initialize();
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
     AddPlane (InitialTag-1, Vec3_t(-Lx/2.0,0.0,0.0), R, Cf*Lz, Cf*Ly, 0.5, M_PI/2.0, &axis1);
-    Particles[Particles.Size()-1]->Initialize();
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
     AddPlane (InitialTag-2, Vec3_t(0.0,Ly/2.0,0.0),  R, Cf*Lx, Cf*Lz, 0.5, M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize();
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
     AddPlane (InitialTag-3, Vec3_t(0.0,-Ly/2.0,0.0), R, Cf*Lx, Cf*Lz, 0.5, M_PI/2.0, &axis0);
-    Particles[Particles.Size()-1]->Initialize();
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
     AddPlane (InitialTag-4, Vec3_t(0.0,0.0,Lz/2.0),  R, Cf*Lx, Cf*Ly, 0.5);
-    Particles[Particles.Size()-1]->Initialize();
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
     AddPlane (InitialTag-5, Vec3_t(0.0,0.0,-Lz/2.0), R, Cf*Lx, Cf*Ly, 0.5);
-    Particles[Particles.Size()-1]->Initialize();
+    Particles[Particles.Size()-1]->Initialize(Particles.Size()-1);
 }
 
 inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
@@ -959,9 +962,8 @@ inline void Domain::Initialize (double dt)
         // initialize all particles
         for (size_t i=0; i<Particles.Size(); i++)
         {
-            Particles[i]->Initialize();
+            Particles[i]->Initialize(i);
             Particles[i]->InitializeVelocity(dt);
-            Particles[i]->Index = i;
         }
         //Initializing the energies
         Evis = 0.0;
@@ -1012,6 +1014,11 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     // build the map of possible contacts (for the Halo)
     ResetContacts();
+
+    // Define boundary and domain particles
+#ifdef USE_MPI
+     UpdateBoundaries();
+#endif
 
     // calc the total volume of particles (solids)
     Vs = 0.0;
@@ -1104,11 +1111,19 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
             tout += dtOut;
         }
 
+#ifdef USE_MPI
+        double maxdis = GeneralMaxDisplacement();
+#else 
+        double maxdis = MaxDisplacement();
+#endif
         // update the Halos
-        if (MaxDisplacement()>Alpha)
+        if (maxdis>Alpha)
         {
             ResetDisplacements();
             ResetContacts();
+#ifdef USE_MPI
+            UpdateBoundaries();
+#endif
         }
     }
 
@@ -1260,6 +1275,10 @@ inline void Domain::Save (char const * FileKey)
         H5LTmake_dataset_double(group_id,"Diam",1,dims,dat);
         dat[0] = Particles[i]->Dmax;
         H5LTmake_dataset_double(group_id,"Dmax",1,dims,dat);
+        int datint[1];
+        datint[0] = Particles[i]->Index;
+        H5LTmake_dataset_int(group_id,"Index",1,dims,datint);
+
 
         int tag[1];
         tag[0] = Particles[i]->Tag;
@@ -1378,6 +1397,11 @@ inline void Domain::Save (char const * FileKey)
 
 inline void Domain::Load (char const * FileKey)
 {
+#ifdef USE_MPI
+    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
+    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
+#endif
+
     // Opening the file for reading
     String fn(FileKey);
     fn.append(".hdf5");
@@ -1398,6 +1422,16 @@ inline void Domain::Load (char const * FileKey)
         String par;
         par.Printf("/Particle_%08d",i);
         group_id = H5Gopen(file_id, par.CStr(),H5P_DEFAULT);
+
+        // Finding the particle's position for the domain decomposition
+        double X[3];
+        H5LTread_dataset_double(group_id,"x",X);
+
+#ifdef USE_MPI
+        //Domain decomposition by the yz plane crossing the origin
+        if (nprocs>1) if((my_id==0&&X[0]>0)||(my_id==1&&X[0]<0)) continue;
+#endif
+        //std::cout << "hi" << std::endl;
 
 
 
@@ -1468,6 +1502,24 @@ inline void Domain::Load (char const * FileKey)
 
         Particles.Push (new Particle(-1,V,E,F,OrthoSys::O,OrthoSys::O,0.1,1.0));
 
+        // Loading vectorial variables
+        Particles[Particles.Size()-1]->x = Vec3_t(X[0],X[1],X[2]);
+        double cd[3];
+        H5LTread_dataset_double(group_id,"xb",cd);
+        Particles[Particles.Size()-1]->xb = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"v",cd);
+        Particles[Particles.Size()-1]->v = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"w",cd);
+        Particles[Particles.Size()-1]->w = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"wb",cd);
+        Particles[Particles.Size()-1]->wb = Vec3_t(cd[0],cd[1],cd[2]);
+        H5LTread_dataset_double(group_id,"I",cd);
+        Particles[Particles.Size()-1]->I = Vec3_t(cd[0],cd[1],cd[2]);
+
+        double cq[4];
+        H5LTread_dataset_double(group_id,"Q",cq);
+        Particles[Particles.Size()-1]->Q = Quaternion_t(cq[0],cq[1],cq[2],cq[3]);
+
         // Loading the scalar quantities of the particle
         double dat[1];
         H5LTread_dataset_double(group_id,"SR",dat);
@@ -1482,30 +1534,12 @@ inline void Domain::Load (char const * FileKey)
         Particles[Particles.Size()-1]->Diam = dat[0];
         H5LTread_dataset_double(group_id,"Dmax",dat);
         Particles[Particles.Size()-1]->Dmax = dat[0];
-        
+        int datint[1];
+        H5LTread_dataset_int(group_id,"Index",datint);
+        Particles[Particles.Size()-1]->Index = datint[0];
         int tag[1];
         H5LTread_dataset_int(group_id,"Tag",tag);
         Particles[Particles.Size()-1]->Tag = tag[0];
-
-        // Loading vectorial variables
-        double cd[3];
-
-        H5LTread_dataset_double(group_id,"x",cd);
-        Particles[Particles.Size()-1]->x = Vec3_t(cd[0],cd[1],cd[2]);
-        H5LTread_dataset_double(group_id,"xb",cd);
-        Particles[Particles.Size()-1]->xb = Vec3_t(cd[0],cd[1],cd[2]);
-        H5LTread_dataset_double(group_id,"w",cd);
-        Particles[Particles.Size()-1]->w = Vec3_t(cd[0],cd[1],cd[2]);
-        H5LTread_dataset_double(group_id,"wb",cd);
-        Particles[Particles.Size()-1]->wb = Vec3_t(cd[0],cd[1],cd[2]);
-        H5LTread_dataset_double(group_id,"I",cd);
-        Particles[Particles.Size()-1]->I = Vec3_t(cd[0],cd[1],cd[2]);
-
-
-        double cq[4];
-        H5LTread_dataset_double(group_id,"Q",cq);
-        Particles[Particles.Size()-1]->Q = Quaternion_t(cq[0],cq[1],cq[2],cq[3]);
-
         Particles[Particles.Size()-1]->PropsReady = true;
 
     }
@@ -1632,18 +1666,12 @@ inline void Domain::ResetContacts()
                 if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
                 {
                     CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
-                    //CInteractonSphere *p = new CInteractonSphere(Particles[i],Particles[j]);
-                    //if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
-                    //else delete p;
                 }
 
                 // normal particles
                 else
                 {
                     CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
-                    //CInteracton *p = new CInteracton(Particles[i],Particles[j]);
-                    //if (p->UpdateContacts(Alpha)) CInteractons.Push(p);
-                    //else delete p;
                 }
             }
         }
@@ -1746,6 +1774,98 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
         Y.Push (cumsum/Particles.Size());
     }
 }
+
+#ifdef USE_MPI
+// Methods needed for parallelization
+inline void Domain::UpdateBoundaries ()
+{
+    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
+    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
+    size_t number_new = 0;
+    for (size_t i=0; i<Particles.Size(); i++)
+    {
+        if (nprocs==2) 
+        if ((Particles[i]->MaxX()+Alpha>0&&my_id==0)||(Particles[i]->MinX()-Alpha<0&&my_id==1))
+        {
+            bool exist = false;
+            for (size_t j=0; j<MyBdryParticles.Size();j++)
+            {
+                if (MyBdryParticles[j]->Index==Particles[i]->Index)
+                {
+                    exist = true;
+                    break;
+                }
+            }
+            if (!exist)
+            {
+                MyBdryParticles.Push(Particles[i]);
+                number_new++;
+            }
+        }
+    }
+
+    // Communicating the new boundary particles
+    if (my_id==0)
+    {
+        MPI::COMM_WORLD.Send (&number_new, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/1, 1);
+        for (size_t i=0;i<number_new;i++)
+        {
+            //std::cout << "im" << my_id << " " <<std::endl;
+            MyBdryParticles[MyBdryParticles.Size()-1-i]->SendParticle(1,2);
+            //std::cout << "im" << my_id << std::endl;
+        }
+
+        size_t number_new_other;
+        MPI::COMM_WORLD.Recv (&number_new_other, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/1, 3);
+        for (size_t i=0;i<number_new_other;i++)
+        {
+            // Dummy particle
+            Particle  *p = new Particle();
+            p->ReceiveParticle(4);
+            TheirBdryParticles.Push(p);
+            std::cout << "hi im "<<my_id<<"and i receive particle"<<TheirBdryParticles[0]->Index<<std::endl;
+        }
+    }
+
+    
+    if (my_id==1)
+    {
+        size_t number_new_other;
+        MPI::COMM_WORLD.Recv (&number_new_other, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/0, 1);
+        for (size_t i=0;i<number_new_other;i++)
+        {
+            // Dummy particle
+            Particle  *p = new Particle();
+            p->ReceiveParticle(2);
+            TheirBdryParticles.Push(p);
+            std::cout << "hi im "<<my_id<<"and i receive particle"<<TheirBdryParticles[0]->Index<<std::endl;
+            //std::cout << "im" << my_id << std::endl;
+        }
+
+        MPI::COMM_WORLD.Send (&number_new, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/0, 3);
+        for (size_t i=0;i<number_new;i++)
+        {
+            MyBdryParticles[MyBdryParticles.Size()-1-i]->SendParticle(0,4);
+        }
+    }
+
+}
+
+inline double Domain::GeneralMaxDisplacement ()
+{
+    int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
+    //int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
+    double localmaxdis = MaxDisplacement();
+    MPI::Request req_send = MPI::COMM_WORLD.Isend(&localmaxdis,/*number*/1,MPI::DOUBLE,/*destination*/(my_id==0?1:0),1000);
+    double othermaxdis;
+    MPI::Request req_recv = MPI::COMM_WORLD.Irecv(&othermaxdis,/*number*/1,MPI::DOUBLE,/*destination*/MPI::ANY_SOURCE,1000);
+    req_send.Wait();
+    req_recv.Wait();
+
+    return (localmaxdis>othermaxdis?localmaxdis:othermaxdis);
+}
+
+#endif
 
 }; // namespace DEM
 

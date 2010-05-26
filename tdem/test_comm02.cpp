@@ -32,59 +32,33 @@
 using std::cout;
 using std::endl;
 
-#define TAG_PARTICLE 10000
 
 int main(int argc, char **argv) try
 {
-#ifdef USE_MPI
     // init
     MPI::Init (argc, argv);
     int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
-    int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
+    //int nprocs = MPI::COMM_WORLD.Get_size(); // Number of processors
 
     // create particle data type
     BuildParticleDataType (MPI_Particle_Type);
-
-    // check
-    cout << "hi, I'm processor # " << my_id << endl;
-
-    // destinations
-    if (nprocs<2) throw new Fatal("The number of processors needs to be greater than 1");
-    Array<int> destinations;
-    for (int i=0; i<nprocs; ++i)
-    {
-        if (my_id!=i) destinations.Push(i);
-    }
-
-    // gen particle
+    BuildParticlePropsDataType (MPI_Part_Props_Type);
+    
     DEM::Domain dom;
-    dom.AddRice (-(my_id+1), /*x*/Vec3_t(0.5,0.5,0.5), /*R*/0.1, /*L*/1.0, /*rho*/1.0);
-    Particle * p_snd = dom.GetParticle (-(my_id+1));
+    dom.Load("test_dynamics");
+    String fn;
+    fn.Printf("proc_%d",my_id);
+    dom.Save(fn.CStr());
 
-    // dummy particle
-    Particle p_rcv;
+    // Running the simulation
+    double dt = 1.0e-5;
+    dom.CamPos = 0.0,30.0,0.0;
+    dom.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, NULL, NULL, "test_comm02");
 
-    for (int k=0; k<nprocs-1; ++k)
-    {
-        MPI::Request snd_part = MPI::COMM_WORLD.Isend (p_snd,  /*number*/1, MPI_Particle_Type, destinations[k], TAG_PARTICLE);
-        MPI::Request rcv_part = MPI::COMM_WORLD.Irecv (&p_rcv, /*number*/1, MPI_Particle_Type, MPI::ANY_SOURCE, TAG_PARTICLE);
-
-        // Wait for all requests to finish
-        MPI::Status st;
-        snd_part.Wait();
-        rcv_part.Wait(st);
-
-        cout << "processor # " << my_id << " sent particle "     << p_snd->Tag << " to proc # "   << destinations[k] << endl;
-        cout << "processor # " << my_id << " received particle " << p_rcv.Tag  << endl;
-    }
-
-    cout << "processor # " << my_id << " has finished" << endl;
 
     // end
     MPI::Finalize();
     return 0;
-#else
-    throw new Fatal("This program needs MPI");
-#endif
+
 }
 MECHSYS_CATCH
