@@ -124,7 +124,9 @@ public:
     void SendParticle               (int n, int MsgID); ///< Send particle to process n
     void ReceiveParticle            (int MsgID);        ///< Receives a particle from any process
     void SendDynamicParticle        (int n, int MsgID); ///< Send just relevant data for force calculation
-    void ReceiveDynamicParticle     (int n, int MsgID); ///< Receive just the dynamic relevant data
+    void ReceiveDynamicParticle     (int MsgID);        ///< Receive just the dynamic relevant data
+    void SendForce                  (int n, int MsgID); ///< Send force
+    void ReceiveForce               (int MsgID);        ///< Receive force
 #endif
 
 
@@ -516,6 +518,7 @@ inline void Particle::Translate (double dt)
     xb   = x;
     x    = xa;
     Ekin = 0.5*Props.m*dot(v,v);
+    //std::cout << Index << " " << v << " " << F << std::endl;
     size_t nv = Verts.Size();
     for (size_t i = 0; i < nv; i++)
     {
@@ -658,6 +661,64 @@ inline void Particle::ReceiveParticle(int MsgID)
     }
 }
 
+inline void Particle::SendDynamicParticle(int n, int MsgID)
+{
+    // Sending vertices
+    size_t verts_size = Verts.Size();
+    MPI::COMM_WORLD.Send (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, /*destination*/n, MsgID);
+    for (size_t i=0; i<verts_size; ++i)
+    {
+        MPI::COMM_WORLD.Send (Verts[i]->data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
+    }
+
+    // Sending vectorial properties
+    MPI::COMM_WORLD.Send (x.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
+    MPI::COMM_WORLD.Send (v.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
+    MPI::COMM_WORLD.Send (w.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
+    MPI::COMM_WORLD.Send (Q.data(), /*number*/4, MPI::DOUBLE, /*destination*/n, MsgID);
+
+    //std::cout << Index << " " << x << std::endl;
+}
+
+inline void Particle::ReceiveDynamicParticle(int MsgID)
+{
+    // Sending vertices
+    size_t verts_size;
+    MPI::COMM_WORLD.Recv (&verts_size, /*number*/1, MPI::UNSIGNED_LONG, MPI::ANY_SOURCE, MsgID);
+    for (size_t i=0; i<verts_size; ++i)
+    {
+        MPI::COMM_WORLD.Recv (Verts[i]->data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+    }
+
+    // Sending vectorial properties
+    MPI::COMM_WORLD.Recv (x.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+    MPI::COMM_WORLD.Recv (v.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+    MPI::COMM_WORLD.Recv (w.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+    MPI::COMM_WORLD.Recv (Q.data(), /*number*/4, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+
+
+    //std::cout << Index << " " << v << std::endl;
+}
+
+inline void Particle::SendForce(int n, int MsgID)
+{
+    MPI::COMM_WORLD.Send (F.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
+    MPI::COMM_WORLD.Send (T.data(), /*number*/3, MPI::DOUBLE, /*destination*/n, MsgID);
+}
+
+inline void Particle::ReceiveForce(int MsgID)
+{
+    // Temporal force and torque
+    Vec3_t Ft,Tt;
+    MPI::COMM_WORLD.Recv (Ft.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+    MPI::COMM_WORLD.Recv (Tt.data(), /*number*/3, MPI::DOUBLE, MPI::ANY_SOURCE, MsgID);
+
+    //if(norm(Ft)>0.0) std::cout << Index << " " << Ft << std::endl;
+
+    //Add this quantities to my force and torque
+    F += Ft;
+    T += Tt;
+}
 #endif
 
 // Auxiliar methods
