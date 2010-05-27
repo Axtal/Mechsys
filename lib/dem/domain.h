@@ -181,11 +181,11 @@ public:
     // MPI Data and methods
 #ifdef USE_MPI
     //Data
-    int My_Id;                               ///< Id of the processor
-    Array<Particle*> TheirBdryParticles;     ///< Array of particles in the boundary belonging to a different domain
-    Array<Particle*> MyBdryParticles;        ///< Array of particles in the boundary belonging to this domain
-    map<size_t,size_t> Global2LocalID;       ///< Map that register the relation between local and global ID
-    Array <pair<int,int>> Other_Interactons; ///< Keep a list of the other domain interactons
+    int My_Id;                            ///< Id of the processor
+    Array<Particle*> TheirBdryParticles;  ///< Array of particles in the boundary belonging to a different domain
+    Array<Particle*> MyBdryParticles;     ///< Array of particles in the boundary belonging to this domain
+    map<size_t,size_t> Global2LocalID;    ///< Map that register the relation between local and global ID
+
 
     //Methods
     void UpdateBoundaries ();             ///< Method to update boundaries for parallel computing
@@ -205,7 +205,9 @@ inline Domain::Domain (void * UD)
     : Time(0.0), Initialized(false), Alpha(0.1), UserData(UD)
 {
     CamPos = 1.0, 2.0, 3.0;
+#ifdef USE_MPI
     My_Id  = MPI::COMM_WORLD.Get_rank(); // processor ID
+#endif
 }
 
 inline Domain::~Domain ()
@@ -1660,8 +1662,8 @@ inline void Domain::ResetInteractons()
                 CInteractons.Push (new CInteracton(Particles[i],TheirBdryParticles[j]));
             }
         }
-#endif
     }
+#endif
 }
 
 inline void Domain::ResetDisplacements()
@@ -1727,10 +1729,10 @@ inline void Domain::ResetContacts()
         }
     }
 
+#ifdef USE_MPI
     for (size_t i=0; i<Particles.Size(); i++)
     {
         bool pi_has_vf = !Particles[i]->IsFree();
-#ifdef USE_MPI
         //std::cout << Time << " " << TheirBdryParticles.Size()<<std::endl;
         for (size_t j=0; j<TheirBdryParticles.Size(); j++)
         {
@@ -1754,7 +1756,7 @@ inline void Domain::ResetContacts()
             }
 
             // If it doesn't add it to the CInteracton array
-            if (!exist)
+            if (!exist&&My_Id==1)
             {
                 // if both particles are spheres (just one vertex)
                 if (Particles[i]->Verts.Size()==1 && TheirBdryParticles[j]->Verts.Size()==1)
@@ -1770,8 +1772,8 @@ inline void Domain::ResetContacts()
                 }
             }
         }
-#endif
     }
+#endif
     //*/
     Interactons.Resize(0);
     for (size_t i=0; i<CInteractons.Size(); i++)
