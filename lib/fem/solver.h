@@ -772,7 +772,7 @@ inline void Solver::_cal_resid (bool WithAccel)
     }
 
     // clear forces due to supports
-    for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
+    //for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
 
     /*
     std::cout << "\n######################################   After\n";
@@ -795,6 +795,8 @@ inline void Solver::_cal_resid (bool WithAccel)
 
 inline void Solver::_cor_resid (Vec_t & dU)
 {
+    Vec_t dF(NEq);
+
     // iterations
     size_t it = 0;
     while (!ResidOK() && it<MaxIt)
@@ -806,11 +808,19 @@ inline void Solver::_cor_resid (Vec_t & dU)
         if (!ModNR) AssembleKA ();
 
         // calc corrector dU
-        UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
+        set_to_zero (dF);
+        for (size_t i=0; i<pEQ.Size(); ++i)
+        {
+            dF(pEQ[i]) = -R(pEQ[i]); // dF2 = -R2
+            R (pEQ[i]) = 0.0;        // R2  = 0
+        }
+        UMFPACK::Solve  (A11, R,  dU); // dU1 = inv(A11)*R1
+        Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1  =>  dF2 = K21*dU1 - R2
 
-        // update elements and displacements
+        // update
         for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
         U += dU;
+        F += dF;
 
         // residual
         _cal_resid ();
@@ -852,7 +862,7 @@ inline void Solver::_FE_update (double tf)
 inline void Solver::_ME_update (double tf)
 {
     // auxiliar vectors
-    Vec_t dU_fe(NEq), dU_tm(NEq), dU_me(NEq), U_me(NEq);//, U_dif(NEq);
+    Vec_t dU_fe(NEq), dU_tm(NEq), dU_me(NEq), U_me(NEq), U_dif(NEq);
     Vec_t dF_fe(NEq), dF_tm(NEq), dF_me(NEq), F_me(NEq), F_dif(NEq);
 
     // for each pseudo time T
@@ -882,13 +892,12 @@ inline void Solver::_ME_update (double tf)
         F_me  = F + dF_me;
 
         // local error
-        //U_dif = 0.5*(dU_tm - dU_fe);
+        U_dif = 0.5*(dU_tm - dU_fe);
         F_dif = 0.5*(dF_tm - dF_fe);
-        for (size_t i=NEq-NLag; i<NEq; ++i) { /*U_dif(i)=0.0;*/ F_dif(i)=0.0; } // ignore equations corresponding to Lagrange multipliers
-        //double U_err = Norm(U_dif)/(1.0+Norm(U_me));
+        for (size_t i=NEq-NLag; i<NEq; ++i) { U_dif(i)=0.0; F_dif(i)=0.0; } // ignore equations corresponding to Lagrange multipliers
+        double U_err = Norm(U_dif)/(1.0+Norm(U_me));
         double F_err = Norm(F_dif)/(1.0+Norm(F_me));
-        //double error = U_err + F_err;
-        double error = F_err;
+        double error = U_err + F_err;
 
         // step multiplier
         double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
@@ -907,7 +916,7 @@ inline void Solver::_ME_update (double tf)
             F     = F_me;
             Time += dt;
             _cal_resid ();
-            _cor_resid (dU_me);
+            //_cor_resid (dU_me);
             if (m>mMax) m = mMax;
             if (SSOut || (DbgFun!=NULL))
             {

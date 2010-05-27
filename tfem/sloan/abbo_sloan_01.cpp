@@ -33,20 +33,30 @@ using FEM::GEOM;
 int main(int argc, char **argv) try
 {
     // input
-    bool quad8 = false;
-    if (argc>1) quad8 = atoi(argv[1]);
+    bool   quad8      = false;
+    int    ninc       = 10;
+    bool   calc_error = false;
+    double STOL       = 1.0e-7;
+    if (argc>1) quad8      = atoi(argv[1]);
+    if (argc>2) ninc       = atoi(argv[2]);
+    if (argc>3) calc_error = atoi(argv[3]);
+    if (argc>4) STOL       = atof(argv[4]);
+
+    // file key
     String fkey("abbo_sloan_01");
     if (quad8) 
     {
-        cout << "\n[1;33m=================================== Quad8 ======================================[0m\n";
+        cout << "\n[1;35m=================================== Quad8 ======================================[0m\n";
         fkey.append("_quad8");
     }
     else
     {
-        cout << "\n[1;33m=================================== Tri15 ======================================[0m\n";
+        cout << "\n[1;35m=================================== Tri15 ======================================[0m\n";
         fkey.append("_tri15");
     }
-    //fkey.append("_ref");
+    String buf;
+    buf.Printf("_%d_%g",ninc,STOL);
+    fkey.append(buf);
 
     // constants
     double a  = 1;
@@ -95,8 +105,8 @@ int main(int argc, char **argv) try
     // solver
     FEM::Solver sol(dom);
     //sol.SetScheme("FE");
-    sol.SetScheme("NR");
-    sol.STOL = 1.0e-4;
+    //sol.SetScheme("NR");
+    sol.STOL = STOL;
 
     // solve
     if (quad8) dom.SetOutNods (fkey.CStr(), Array<int>(0,6,22));
@@ -106,10 +116,20 @@ int main(int argc, char **argv) try
     bcs.Set      (-20, "uy", 0.0);
     bcs.Set      (-30, "ux", del);
     dom.SetBCs   (bcs);
-    sol.Solve    (10);
+    sol.Solve    (ninc);
     dom.WriteVTU (fkey.CStr());
 
-    //dom.PrintResults();
+    // results
+    std::ostringstream oss;
+    for (size_t i=0; i<dom.Nods.Size(); ++i)
+    {
+        oss << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("ux")] << " ";
+        oss << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("uy")] << std::endl;
+    }
+    fkey.append(".disp");
+    std::ofstream of(fkey.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 
     // end
     return 0;

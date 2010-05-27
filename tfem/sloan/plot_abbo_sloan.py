@@ -2,7 +2,10 @@ from numpy import *
 from pylab import *
 from msys_readdata import *
 
-plt = 0
+plt  = 0
+ninc = 10
+stol = 1.0e-7
+ref  = False
 
 def plot_one(data,txt,clr,marker,lwd,hline=False,dutxt=0.0,a=1.0,c=10.0,t=0.2):
     fx = []
@@ -26,25 +29,26 @@ def plot_one(data,txt,clr,marker,lwd,hline=False,dutxt=0.0,a=1.0,c=10.0,t=0.2):
         text    (max_u+dutxt,max_q/c,r'$%g$'%(max_q/c), color=clr)
 
 if plt==0:
-    tri15 = [read_table("abbo_sloan_01_tri15_nod_0_0.res"),
-             read_table("abbo_sloan_01_tri15_nod_6_0.res"),
-             read_table("abbo_sloan_01_tri15_nod_22_0.res"),
-             read_table("abbo_sloan_01_tri15_nod_44_0.res"),
-             read_table("abbo_sloan_01_tri15_nod_45_0.res")]
+    tri15 = [read_table("abbo_sloan_01_tri15_%d_%g_nod_0_0.res"%(ninc,stol)),
+             read_table("abbo_sloan_01_tri15_%d_%g_nod_6_0.res"%(ninc,stol)),
+             read_table("abbo_sloan_01_tri15_%d_%g_nod_22_0.res"%(ninc,stol)),
+             read_table("abbo_sloan_01_tri15_%d_%g_nod_44_0.res"%(ninc,stol)),
+             read_table("abbo_sloan_01_tri15_%d_%g_nod_45_0.res"%(ninc,stol))]
 
-    quad8 = [read_table("abbo_sloan_01_quad8_nod_0_0.res"),
-             read_table("abbo_sloan_01_quad8_nod_6_0.res"),
-             read_table("abbo_sloan_01_quad8_nod_22_0.res")]
+    quad8 = [read_table("abbo_sloan_01_quad8_%d_%g_nod_0_0.res"%(ninc,stol)),
+             read_table("abbo_sloan_01_quad8_%d_%g_nod_6_0.res"%(ninc,stol)),
+             read_table("abbo_sloan_01_quad8_%d_%g_nod_22_0.res"%(ninc,stol))]
 
-    tri15_ref = [read_table("abbo_sloan_01_tri15_ref_nod_0_0.res"),
-                 read_table("abbo_sloan_01_tri15_ref_nod_6_0.res"),
-                 read_table("abbo_sloan_01_tri15_ref_nod_22_0.res"),
-                 read_table("abbo_sloan_01_tri15_ref_nod_44_0.res"),
-                 read_table("abbo_sloan_01_tri15_ref_nod_45_0.res")]
+    if ref:
+        tri15_ref = [read_table("abbo_sloan_01_tri15_ref_nod_0_0.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_6_0.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_22_0.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_44_0.res"),
+                     read_table("abbo_sloan_01_tri15_ref_nod_45_0.res")]
 
-    quad8_ref = [read_table("abbo_sloan_01_quad8_ref_nod_0_0.res"),
-                 read_table("abbo_sloan_01_quad8_ref_nod_6_0.res"),
-                 read_table("abbo_sloan_01_quad8_ref_nod_22_0.res")]
+        quad8_ref = [read_table("abbo_sloan_01_quad8_ref_nod_0_0.res"),
+                     read_table("abbo_sloan_01_quad8_ref_nod_6_0.res"),
+                     read_table("abbo_sloan_01_quad8_ref_nod_22_0.res")]
 
     plot_one (quad8,'Quad8','red', 'None',2,True,0.05)
     plot_one (tri15,'Tri15','blue','None',1,True,0.1)

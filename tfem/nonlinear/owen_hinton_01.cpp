@@ -86,12 +86,14 @@ int main(int argc, char **argv) try
     Dict bcs;
     bcs.Set(-100, "ux uy", 0.0,0.0);
     bcs.Set(-200, "ux",    0.0);
-    bcs.Set(-300, "ux fy", 0.0, -10.0);
+    bcs.Set(-300, "ux uy", 0.0, -2.0);
     dom.SetBCs (bcs);
 
     // weights
-    Array<double> weights(2);
-    weights = 0.8, 0.2;
+    //Array<double> weights(2);
+    //weights = 0.8, 0.2;
+    Array<double> weights(10);
+    weights = 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
 
     // debug data
     DbgDat dat;
