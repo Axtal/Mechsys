@@ -1262,6 +1262,11 @@ inline void Generic::Quad8ToTri6 ()
 
     // delete old mesh
     for (size_t i=0; i<old_cells.Size(); ++i) delete old_cells[i];
+
+    // info
+    std::cout <<         "    ----- After Quad8ToTri6 -----" << std::endl;
+    std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
+    std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
 }
 
 inline void Generic::Tri6ToTri15 ()
@@ -1352,6 +1357,11 @@ inline void Generic::Tri6ToTri15 ()
             Verts[iv]->Shares.Push (sha);
         }
     }
+
+    // info
+    std::cout <<         "    ----- After Tri6ToTri15 -----" << std::endl;
+    std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
+    std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
 }
 
 inline void Generic::Tri6Shape (double r, double s, Vec_t & N) const
