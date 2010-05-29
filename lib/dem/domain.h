@@ -1108,6 +1108,21 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         CommunicateForce();
 #endif
 
+        // output
+        if (Time>=tout)
+        {
+            idx_out++;
+            if (ptReport!=NULL) (*ptReport) ((*this), UserData);
+            if (TheFileKey!=NULL)
+            {
+                String fn;
+                fn.Printf    ("%s_%08d", TheFileKey, idx_out);
+                if(RenderVideo) WritePOV     (fn.CStr());
+                EnergyOutput (idx_out, oss_energy);
+            }
+            tout += dtOut;
+        }
+
         // move particles
         for (size_t i=0; i<Particles.Size(); i++)
         {
@@ -1123,20 +1138,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         // next time position
         Time += dt;
 
-        // output
-        if (Time>=tout)
-        {
-            idx_out++;
-            if (ptReport!=NULL) (*ptReport) ((*this), UserData);
-            if (TheFileKey!=NULL)
-            {
-                String fn;
-                fn.Printf    ("%s_%08d", TheFileKey, idx_out);
-                if(RenderVideo) WritePOV     (fn.CStr());
-                EnergyOutput (idx_out, oss_energy);
-            }
-            tout += dtOut;
-        }
 
 #ifdef USE_MPI
         double maxdis = GeneralMaxDisplacement();
@@ -1623,6 +1624,7 @@ inline void Domain::ResetInteractons()
 
             // if both particles have any component specified or they are far away, don't create any intereactor
             if ((pi_has_vf && pj_has_vf) || !close ) continue;
+            //if ((pi_has_vf && pj_has_vf)) continue;
 
             // if both particles are spheres (just one vertex)
             if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
@@ -1702,8 +1704,10 @@ inline void Domain::ResetContacts()
             bool exist = false;
             for (size_t k=0; k<CInteractons.Size(); k++)
             {
-                bool index_i = CInteractons[k]->P1->Index==Particles[i]->Index;
-                bool index_j = CInteractons[k]->P2->Index==Particles[j]->Index;
+                //bool index_i = CInteractons[k]->P1->Index==Particles[i]->Index;
+                //bool index_j = CInteractons[k]->P2->Index==Particles[j]->Index;
+                bool index_i = CInteractons[k]->P1==Particles[i];
+                bool index_j = CInteractons[k]->P2==Particles[j];
                 if (index_i&&index_j)
                 {
                     exist = true;

@@ -122,6 +122,7 @@ int main(int argc, char **argv) try
 
     mesh.Generate();
     d.GenFromMesh(mesh,0.1*sqrt(Amax/10),3.0,true,false,thickness);
+    d.Alpha = 0.1*sqrt(Amax/10);
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);

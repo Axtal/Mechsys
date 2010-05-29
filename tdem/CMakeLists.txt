@@ -32,7 +32,8 @@ SET(EXES
   test_02
   test_comm01
   test_comm02
-  generate_hdf5)
+  generate_hdf5
+  bearing_capacity)
 
 SET(TESTS
   test_distances)
