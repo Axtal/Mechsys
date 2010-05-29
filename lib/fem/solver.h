@@ -84,9 +84,7 @@ public:
     Array<long>     pEQ;      ///< prescribed equations
     Array<bool>     pU;       ///< prescribed U
     double          NormR;    ///< Euclidian norm of residual (R)
-    double          TolR;     ///< Tolerance for the norm of residual
     double          MaxNormF; ///< Max(Norm(F), Norm(Fint))
-    bool            CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
     Array<Node*>    ActNods;  ///< Active nodes
     Array<Element*> ActEles;  ///< Active elements
 
@@ -104,37 +102,41 @@ public:
     Vec_t Fnew;     // External force at n+1 (t=t+dt)
 
     // Constants and flags (read-write)
-    Scheme_t  Scheme;  ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
-    size_t    nSS;     ///< FE and NR: number of substeps
-    double    STOL;    ///< ME:
-    double    dTini;   ///< ME:
-    double    mMin;    ///< ME:
-    double    mMax;    ///< ME:
-    size_t    MaxSS;   ///< ME:
-    bool      SSOut;   ///< SubSteps ouput in ME ?
-    bool      CteTg;   ///< Constant tangent matrices (linear problems) => K will be calculated once
-    bool      ModNR;   ///< Modified Newton-Rhapson ?
-    size_t    MaxIt;   ///< Max iterations (for Newton-Rhapson)
-    TScheme_t TScheme; ///< Transient scheme
-    double    Theta;   ///< Transient scheme constant
-    DScheme_t DScheme; ///< Dynamic scheme
-    Damping_t DampTy;  ///< Damping type
-    double    DampAm;  ///< Rayleigh damping Am coefficient (C = Am*M + Ak*K)
-    double    DampAk;  ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
-    double    DynTh1;  ///< Dynamic coefficient Theta 1
-    double    DynTh2;  ///< Dynamic coefficient Theta 2
+    Scheme_t  Scheme;   ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
+    bool      CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
+    size_t    nSS;      ///< FE and NR: number of substeps
+    double    STOL;     ///< ME:
+    double    dTini;    ///< ME:
+    double    dTlast;   ///< ME:
+    double    mMin;     ///< ME:
+    double    mMax;     ///< ME:
+    size_t    MaxSS;    ///< ME:
+    bool      SSOut;    ///< SubSteps ouput in ME ?
+    bool      CteTg;    ///< Constant tangent matrices (linear problems) => K will be calculated once
+    bool      ModNR;    ///< Modified Newton-Rhapson ?
+    double    TolR;     ///< Tolerance for the norm of residual
+    bool      CorR;     ///< Correct residual ?
+    size_t    MaxIt;    ///< Max iterations (for Newton-Rhapson)
+    TScheme_t TScheme;  ///< Transient scheme
+    double    Theta;    ///< Transient scheme constant
+    DScheme_t DScheme;  ///< Dynamic scheme
+    Damping_t DampTy;   ///< Damping type
+    double    DampAm;   ///< Rayleigh damping Am coefficient (C = Am*M + Ak*K)
+    double    DampAk;   ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
+    double    DynTh1;   ///< Dynamic coefficient Theta 1
+    double    DynTh2;   ///< Dynamic coefficient Theta 2
 
 private:
-    void _set_A_Lag       ();                     ///< Set A matrix due to Lagrange multipliers
-    void _cal_resid       (bool WithAccel=false); ///< Calculate residual
-    void _cor_resid       (Vec_t & dU);           ///< Correct residual
-    void _FE_update       (double tf);            ///< (Forward-Euler)  Update Time and elements to tf
-    void _ME_update       (double tf);            ///< (Modified-Euler) Update Time and elements to tf
-    void _NR_update       (double tf);            ///< (Newton-Rhapson) Update Time and elements to tf
-    void _calc_F_Fnew     (double dt);            ///< Calculate F(t=Time) and F(t=Time+dt)
-    void _SS22_update     (double tf, double dt); ///< (Single-Step) Update Time and elements to tf
-    void _GN22_update     (double tf, double dt); ///< (Generalized-Newmark) Update Time and elements to tf
-    void _GNHMCoup_update (double tf, double dt); ///< (Generalized-Newmark Coupled) Update Time and elements to tf
+    void _set_A_Lag       ();                       ///< Set A matrix due to Lagrange multipliers
+    void _cal_resid       (bool WithAccel=false);   ///< Calculate residual
+    void _cor_resid       (Vec_t & dU, Vec_t & dF); ///< Correct residual
+    void _FE_update       (double tf);              ///< (Forward-Euler)  Update Time and elements to tf
+    void _ME_update       (double tf);              ///< (Modified-Euler) Update Time and elements to tf
+    void _NR_update       (double tf);              ///< (Newton-Rhapson) Update Time and elements to tf
+    void _calc_F_Fnew     (double dt);              ///< Calculate F(t=Time) and F(t=Time+dt)
+    void _SS22_update     (double tf, double dt);   ///< (Single-Step) Update Time and elements to tf
+    void _GN22_update     (double tf, double dt);   ///< (Generalized-Newmark) Update Time and elements to tf
+    void _GNHMCoup_update (double tf, double dt);   ///< (Generalized-Newmark Coupled) Update Time and elements to tf
 };
 
 
@@ -152,18 +154,20 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       IdxOut  (0),
       Stp     (0),
       It      (0),
-      TolR    (1.0e-7),
-      CalcWork(false),
       Scheme  (ME_t),
+      CalcWork(false),
       nSS     (1),
       STOL    (1.0e-5),
       dTini   (1.0),
+      dTlast  (-1.0),
       mMin    (0.1),
       mMax    (10.0),
       MaxSS   (2000),
       SSOut   (false),
       CteTg   (false),
       ModNR   (false),
+      TolR    (1.0e-7),
+      CorR    (true),
       MaxIt   (20),
       TScheme (SS11_t),
       Theta   (2./3.),
@@ -793,9 +797,9 @@ inline void Solver::_cal_resid (bool WithAccel)
     MaxNormF = Util::Max (Norm(F), Norm(F_int));
 }
 
-inline void Solver::_cor_resid (Vec_t & dU)
+inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
 {
-    Vec_t dF(NEq);
+    if (!CorR) return;
 
     // iterations
     size_t it = 0;
@@ -867,7 +871,7 @@ inline void Solver::_ME_update (double tf)
 
     // for each pseudo time T
     double T   = 0.0;
-    double dT  = dTini;
+    double dT  = (dTlast>0.0 ? dTlast : dTini);
     double Dt  = tf-Time;
     for (Stp=0; Stp<MaxSS; ++Stp)
     {
@@ -915,8 +919,6 @@ inline void Solver::_ME_update (double tf)
             U     = U_me;
             F     = F_me;
             Time += dt;
-            _cal_resid ();
-            //_cor_resid (dU_me);
             if (m>mMax) m = mMax;
             if (SSOut || (DbgFun!=NULL))
             {
@@ -941,8 +943,13 @@ inline void Solver::_ME_update (double tf)
 
         // check for last increment
         if (dT>1.0-T) dT = 1.0-T;
+        else dTlast = dT;
     }
     if (Stp>=MaxSS) throw new Fatal("Solver:_ME_update: Modified-Euler (global integration) did not converge for %d steps",Stp);
+
+    // correct residual
+    _cal_resid ();
+    _cor_resid (dU_me, dF_me);
 }
 
 inline void Solver::_NR_update (double tf)
@@ -967,7 +974,10 @@ inline void Solver::_NR_update (double tf)
 
         // residual
         _cal_resid ();
-        _cor_resid (dU);
+        _cor_resid (dU, dF);
+
+        // debug
+        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
 }
 

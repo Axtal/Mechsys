@@ -75,27 +75,38 @@ public:
     bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;  ///< At integration points
     void WriteMPY     (char const * FileKey, double SFCoef=1.0,
                        char const * Extra=NULL) const;                      ///< SFCoef: Scale-factor coefficient
+    void NodalResults () const;                                             ///< Extrapolate results from element to nodes
     void WriteVTU     (char const * FileKey) const;                         ///< Write file for ParaView
 
     // Data
-    Mesh::Generic const & Msh;     ///< The mesh
-    Dict          const & Prps;    ///< Element properties
-    Dict          const & Inis;    ///< Initial values
-    int                   NDim;    ///< Space dimension
-    double                gAccel;  ///< Gravity acceleration
-    Models_t              Mdls;    ///< Models
-    Array<Node*>          Nods;    ///< Nodes
-    Array<Element*>       Eles;    ///< Elements
-    Array<size_t>         OutNods; ///< ID of nodes for which output (results) is generated
-    Array<size_t>         OutEles; ///< ID of elements for which output (results) is generated
-    Array<std::ofstream*> FilNods; ///< Files with results at selected nodes (OutNods)
-    Array<std::ofstream*> FilEles; ///< Files with results at selected elements (OutEles)
-    Array<size_t>         Beams;   ///< Subset of elements of type Beam
-    NodBCs_t              pU;      ///< Nodes with prescribed U
-    NodBCs_t              pF;      ///< Nodes with prescribed F
-    MDatabase_t           MFuncs;  ///< Database of pointers to M functions
+    Mesh::Generic const & Msh;         ///< The mesh
+    Dict          const & Prps;        ///< Element properties
+    Dict          const & Inis;        ///< Initial values
+    int                   NDim;        ///< Space dimension
+    double                gAccel;      ///< Gravity acceleration
+    Models_t              Mdls;        ///< Models
+    Array<Node*>          Nods;        ///< Nodes
+    Array<Element*>       Eles;        ///< Elements
+    Array<size_t>         OutNods;     ///< ID of nodes for which output (results) is generated
+    Array<size_t>         OutEles;     ///< ID of elements for which output (results) is generated
+    Array<std::ofstream*> FilNods;     ///< Files with results at selected nodes (OutNods)
+    Array<std::ofstream*> FilEles;     ///< Files with results at selected elements (OutEles)
+    Array<size_t>         Beams;       ///< Subset of elements of type Beam
+    NodBCs_t              pU;          ///< Nodes with prescribed U
+    NodBCs_t              pF;          ///< Nodes with prescribed F
+    MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
     InclSupport_t         InclSupport; ///< Inclined support
+
+    // Nodal results
+    size_t        NActNods;    ///< Number of active nodes
+    size_t        NActEles;    ///< Number of active elements
+    bool          HasDisps;    ///< Has displacements (ux, ...) ?
+    bool          HasVeloc;    ///< Has velocities (vx, ...) ?
+    Array<String> NodKeys;     ///< All node keys (ux, uy, T, ...)
+    Array<String> EleKeys;     ///< All element keys (sx, sy, vx, vy, ...)
+    mutable Mat_t NodResults;  ///< Extrapolated nodal results
+    mutable Mat_t NodResCount; ///< Count how many times a variable (key) was added to a node
 
 #ifdef USE_BOOST_PYTHON
     void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
@@ -345,6 +356,48 @@ inline void Domain::SetBCs (Dict const & BCs)
                 pU[nod].first[nod->UMap(q->first)] = q->second;
         }
     }
+
+    // check available nodal data
+    NActNods = 0;
+    HasDisps = false;
+    String key;
+    NodKeys.Resize (0);
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        if (Nods[i]->NShares>0) // active node
+        {
+            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
+            {
+                key = Nods[i]->UMap.Keys[j];
+                if (NodKeys.Find(key)<0) NodKeys.Push (key);
+                if (key=="ux") HasDisps = true;
+            }
+            NActNods++;
+        }
+    }
+
+    // check available element data
+    NActEles = 0;
+    HasVeloc = false;
+    Array<String> keys;
+    EleKeys.Resize (0);
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        if (Eles[i]->Active) // active element
+        {
+            Eles[i]->StateKeys (keys);
+            for (size_t j=0; j<keys.Size(); ++j)
+            {
+                if (EleKeys.Find(keys[j])<0) EleKeys.Push (keys[j]);
+                if (keys[j]=="vx") HasVeloc = true;
+            }
+            NActEles++;
+        }
+    }
+
+    // resize matrices
+    NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
+    NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
 }
 
 inline void Domain::ClrBCs ()
@@ -858,86 +911,48 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, char const * Ex
     of.close      ();
 }
 
-inline void Domain::WriteVTU (char const * FNKey) const
+inline void Domain::NodalResults () const
 {
-    // data
-    size_t nn     = Nods.Size(); // number of nodes
-    size_t ne     = Eles.Size(); // number of elements
-    size_t ne_act = 0;           // number of active elements
-
-    // constants
-    size_t          nimax = 40;        // number of integers in a line
-    size_t          nfmax =  6;        // number of floats in a line
-    Util::NumStream nsflo = Util::_8s; // number format for floats
-
-    // check available data
-    bool nod_displacements = false;
-    bool nod_velocities    = false;
-    bool ele_velocities    = false;
-    bool ele_gradients     = false;
-    Array<String> nod_keys;
-    Array<String> ele_keys;
-    for (size_t i=0; i<nn; ++i)
-    {
-        if (Nods[i]->NShares>0)
-        {
-            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
-            {
-                if (nod_keys.Find(Nods[i]->UMap.Keys[j])<0) nod_keys.Push (Nods[i]->UMap.Keys[j]);
-            }
-            if (Nods[i]->UMap.HasKey("ux") || Nods[i]->UMap.HasKey("uy") || Nods[i]->UMap.HasKey("uz")) nod_displacements = true;
-            if (Nods[i]->UMap.HasKey("vx") || Nods[i]->UMap.HasKey("vy") || Nods[i]->UMap.HasKey("vz")) nod_velocities    = true;
-        }
-    }
-    for (size_t i=0; i<ne; ++i)
-    {
-        if (Eles[i]->Active)
-        {
-            Array<String> keys;
-            Eles[i]->StateKeys (keys);
-            for (size_t j=0; j<keys.Size(); ++j)
-            {
-                if (ele_keys.Find(keys[j])<0) ele_keys.Push (keys[j]);
-            }
-            if (keys.Find("vx")>=0 || keys.Find("vy")>=0 || keys.Find("vz")>=0) ele_velocities = true;
-            if (keys.Find("gx")>=0 || keys.Find("gy")>=0 || keys.Find("gz")>=0) ele_gradients  = true;
-            ne_act++;
-        }
-    }
-
     // extrapolate data
-    size_t nreskeys = ele_keys.Size(); // number of results keys
-    Mat_t nod_results (nn,nreskeys);   // results at nodes
-    Mat_t nod_count   (nn,nreskeys);   // count how many times a variable was added to this node
-    set_to_zero (nod_results);
-    set_to_zero (nod_count);
-    for (size_t i=0; i<ne; ++i)
+    set_to_zero (NodResults);
+    set_to_zero (NodResCount);
+    for (size_t i=0; i<Eles.Size(); ++i)
     {
-        if (Eles[i]->Active)
+        if (Eles[i]->Active) // active element
         {
             Array<SDPair> loc_res; // local results: size==number of nodes in element
             Eles[i]->StateAtNodes (loc_res);
-            for (size_t j=0; j<nreskeys; ++j)
+            for (size_t j=0; j<EleKeys.Size(); ++j)
             {
-                if (loc_res[0].HasKey(ele_keys[j]))
+                if (loc_res[0].HasKey(EleKeys[j]))
                 {
                     for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
                     {
                         size_t vid = Eles[i]->Con[k]->Vert.ID;
-                        nod_results(vid, j) += loc_res[k](ele_keys[j]);
-                        nod_count  (vid, j) += 1.0;
+                        NodResults (vid, j) += loc_res[k](EleKeys[j]);
+                        NodResCount(vid, j) += 1.0;
                     }
                 }
             }
         }
     }
+}
+
+inline void Domain::WriteVTU (char const * FNKey) const
+{
+    // extrapolate results
+    NodalResults ();
+
+    // data
+    size_t nn = Nods.Size(); // number of nodes
+    size_t ne = Eles.Size(); // number of elements
 
     // header
     std::ostringstream oss;
     oss << "<?xml version=\"1.0\"?>\n";
     oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     oss << "  <UnstructuredGrid>\n";
-    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << ne_act << "\">\n";
+    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << NActEles << "\">\n";
 
     // nodes: coordinates
     oss << "      <Points>\n";
@@ -945,11 +960,11 @@ inline void Domain::WriteVTU (char const * FNKey) const
     size_t k = 0; oss << "        ";
     for (size_t i=0; i<nn; ++i)
     {
-        oss << "  " << nsflo <<          Nods[i]->Vert.C(0) << " ";
-        oss <<         nsflo <<          Nods[i]->Vert.C(1) << " ";
-        oss <<         nsflo << (NDim==3?Nods[i]->Vert.C(2):0.0);
+        oss << "  " << Util::_8s <<          Nods[i]->Vert.C(0) << " ";
+        oss <<         Util::_8s <<          Nods[i]->Vert.C(1) << " ";
+        oss <<         Util::_8s << (NDim==3?Nods[i]->Vert.C(2):0.0);
         k++;
-        VTU_NEWLINE (i,k,nn,nfmax/3-1,oss);
+        VTU_NEWLINE (i,k,nn,6/3-1,oss);
     }
     oss << "        </DataArray>\n";
     oss << "      </Points>\n";
@@ -966,7 +981,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
             oss << "  ";
             for (size_t j=0; j<nne; ++j) oss << Eles[i]->Con[j]->Vert.ID << " ";
             k++;
-            VTU_NEWLINE (i,k,ne,nimax/Eles[i]->Con.Size(),oss);
+            VTU_NEWLINE (i,k,ne,40/Eles[i]->Con.Size(),oss);
         }
     }
     oss << "        </DataArray>\n";
@@ -981,7 +996,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
             offset += nne;
             oss << (k==0?"  ":" ") << offset;
             k++;
-            VTU_NEWLINE (i,k,ne,nimax,oss);
+            VTU_NEWLINE (i,k,ne,40,oss);
         }
     }
     oss << "        </DataArray>\n";
@@ -994,7 +1009,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
             if (NDim==2) oss << (k==0?"  ":" ") << NVertsToVTKCell2D[Eles[i]->Con.Size()];
             else         oss << (k==0?"  ":" ") << NVertsToVTKCell3D[Eles[i]->Con.Size()];
             k++;
-            VTU_NEWLINE (i,k,ne,nimax,oss);
+            VTU_NEWLINE (i,k,ne,40,oss);
         }
     }
     oss << "        </DataArray>\n";
@@ -1002,23 +1017,25 @@ inline void Domain::WriteVTU (char const * FNKey) const
 
     // data -- nodes
     oss << "      <PointData Scalars=\"point_scalars\">\n";
-    for (size_t i=0; i<nod_keys.Size(); ++i)
+    for (size_t i=0; i<NodKeys.Size(); ++i)
     {
-        if (!(nod_keys[i]=="ux" || nod_keys[i]=="uy" || nod_keys[i]=="uz"))
+        if (!(NodKeys[i]=="ux" || NodKeys[i]=="uy" || NodKeys[i]=="uz"))
         {
-            oss << "        <DataArray type=\"Float32\" Name=\"" << nod_keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+            oss << "        <DataArray type=\"Float32\" Name=\"" << NodKeys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
             k = 0; oss << "        ";
             for (size_t j=0; j<nn; ++j)
             {
-                double val = (Nods[j]->NShares>0 ? Nods[j]->U[Nods[j]->UMap(nod_keys[i])] : 0.0);
+                double val = (Nods[j]->NShares>0 ? Nods[j]->U[Nods[j]->UMap(NodKeys[i])] : 0.0);
                 oss << (k==0?"  ":" ") << val;
                 k++;
-                VTU_NEWLINE (j,k,nn,nfmax-1,oss);
+                VTU_NEWLINE (j,k,nn,6-1,oss);
             }
             oss << "        </DataArray>\n";
         }
     }
-    if (nod_displacements)
+
+    // data -- nodes -- displacements
+    if (HasDisps)
     {
         oss << "        <DataArray type=\"Float32\" Name=\"" << "u" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
         k = 0; oss << "        ";
@@ -1026,42 +1043,81 @@ inline void Domain::WriteVTU (char const * FNKey) const
         {
             if (Nods[i]->NShares>0)
             {
-                oss << "  " << nsflo <<          Nods[i]->U[Nods[i]->UMap("ux")] << " ";
-                oss <<         nsflo <<          Nods[i]->U[Nods[i]->UMap("uy")] << " ";
-                oss <<         nsflo << (NDim==3?Nods[i]->U[Nods[i]->UMap("uz")]:0.0);
+                oss << "  " << Util::_8s <<          Nods[i]->U[Nods[i]->UMap("ux")] << " ";
+                oss <<         Util::_8s <<          Nods[i]->U[Nods[i]->UMap("uy")] << " ";
+                oss <<         Util::_8s << (NDim==3?Nods[i]->U[Nods[i]->UMap("uz")]:0.0);
             }
             else
             {
-                oss << "  " << nsflo << 0.0 << " ";
-                oss <<         nsflo << 0.0 << " ";
-                oss <<         nsflo << 0.0;
+                oss << "  " << Util::_8s << 0.0 << " ";
+                oss <<         Util::_8s << 0.0 << " ";
+                oss <<         Util::_8s << 0.0;
             }
             k++;
-            VTU_NEWLINE (i,k,nn,nfmax/3-1,oss);
+            VTU_NEWLINE (i,k,nn,6/3-1,oss);
         }
         oss << "        </DataArray>\n";
     }
-    for (size_t i=0; i<ele_keys.Size(); ++i)
+
+    // data -- nodes -- extrapolated values
+    for (size_t i=0; i<EleKeys.Size(); ++i)
     {
-        oss << "        <DataArray type=\"Float32\" Name=\"" << ele_keys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        if (!(EleKeys[i]=="vx" || EleKeys[i]=="vy" || EleKeys[i]=="vz"))
+        {
+            oss << "        <DataArray type=\"Float32\" Name=\"" << EleKeys[i] << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+            k = 0; oss << "        ";
+            for (size_t j=0; j<nn; ++j)
+            {
+                double den = (NodResCount(j,i)>0.0 ? NodResCount(j,i) : 1.0);
+                oss << (k==0?"  ":" ") << NodResults(j,i)/den;
+                k++;
+                VTU_NEWLINE (j,k,nn,6-1,oss);
+            }
+            oss << "        </DataArray>\n";
+        }
+    }
+
+    // data -- nodes -- velocities
+    if (HasVeloc)
+    {
+        size_t idx_vx=-1, idx_vy=-1, idx_vz=-1;
+        for (size_t i=0; i<EleKeys.Size(); ++i)
+        {
+            if (EleKeys[i]=="vx") idx_vx = i;
+            if (EleKeys[i]=="vy") idx_vy = i;
+            if (EleKeys[i]=="vz") idx_vz = i;
+        }
+        oss << "        <DataArray type=\"Float32\" Name=\"" << "v" << "\" NumberOfComponents=\"3\" format=\"ascii\">\n";
         k = 0; oss << "        ";
         for (size_t j=0; j<nn; ++j)
         {
-            double den = (nod_count(j,i)>0.0 ? nod_count(j,i) : 1.0);
-            oss << (k==0?"  ":" ") << nod_results(j,i)/den;
+            if (Nods[j]->NShares>0)
+            {
+                oss << "  " << Util::_8s <<            NodResults(j,idx_vx) / (NodResCount(j,idx_vx)>0.0 ? NodResCount(j,idx_vx) : 1.0) << " ";
+                oss <<         Util::_8s <<            NodResults(j,idx_vy) / (NodResCount(j,idx_vy)>0.0 ? NodResCount(j,idx_vy) : 1.0) << " ";
+                oss <<         Util::_8s << (NDim==3 ? NodResults(j,idx_vz) / (NodResCount(j,idx_vz)>0.0 ? NodResCount(j,idx_vz) : 1.0) : 0.0);
+            }
+            else
+            {
+                oss << "  " << Util::_8s << 0.0 << " ";
+                oss <<         Util::_8s << 0.0 << " ";
+                oss <<         Util::_8s << 0.0;
+            }
             k++;
-            VTU_NEWLINE (j,k,nn,nfmax-1,oss);
+            VTU_NEWLINE (j,k,nn,6/3-1,oss);
         }
         oss << "        </DataArray>\n";
     }
+
+    // data -- nodes -- end
     oss << "      </PointData>\n";
 
-    // Bottom
+    // bottom
     oss << "    </Piece>\n";
     oss << "  </UnstructuredGrid>\n";
     oss << "</VTKFile>" << std::endl;
 
-    // Write to file
+    // write to file
     String fn(FNKey); fn.append(".vtu");
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
