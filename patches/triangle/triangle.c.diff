@@ -58,18 +58,22 @@
 >   }
 14553a14581
 >   temarks = *triedgemarks;
-14574a14603,14608
+14574a14603,14612
 >     en = elementnumber - b->firstnumber;
 >     for (triangleloop.orient=0; triangleloop.orient<3; triangleloop.orient++) {
 >       tspivot(triangleloop, checkmark);
->       temarks[en*3+triangleloop.orient] = mark(checkmark);
+>       if ((checkmark.ss==NULL) || (checkmark.ss==m->dummysub)) {
+>         temarks[en*3+triangleloop.orient] = 0;
+>       } else {
+>         temarks[en*3+triangleloop.orient] = mark(checkmark);
+>       }
 >     }
 >     triangleloop.orient = 0;
-15669c15703
+15669c15707
 < void triangulate(char *triswitches, struct triangulateio *in,
 ---
 > void triangulate(char const * triswitches, struct triangulateio *in,
-15909c15943
+15909c15947
 <     writeelements(&m, &b, &out->trianglelist, &out->triangleattributelist);
 ---
 >     writeelements(&m, &b, &out->trianglelist, &out->triangleattributelist, &out->triedgemarks);
