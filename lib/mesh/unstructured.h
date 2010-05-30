@@ -221,6 +221,9 @@ public:
                    double Lx=1.0, double Ly=1.0, double Lz=1.0);                ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
     bool IsSet    () const;                                                     ///< Check if points/edges/faces were already set
 
+    // Alternative methods
+    void Delaunay (Array<double> const & X, Array<double> const & Y, int Tag=-1); ///< Find Delaunay triangulation of a set of points
+
     // Data
     TriIO Tin; ///< Triangle structure: input PSLG
     TetIO Pin; ///< Tetgen structure: input PLC
@@ -773,6 +776,69 @@ inline bool Unstructured::IsSet () const
         return (_lst_reg_set && hol_ok && _lst_pnt_set && _lst_fac_set);
     }
     return false;
+}
+
+inline void Unstructured::Delaunay (Array<double> const & X, Array<double> const & Y, int Tag)
+{
+    // check
+    if (NDim==3)            throw new Fatal("Unstructured::Delaunay: This method is only available for 2D");
+    if (X.Size()!=Y.Size()) throw new Fatal("Unstructured::Delaunay: Size of X and Y arrays must be equal (%d!=%d)",X.Size(),Y.Size());
+
+    // erase previous PSLG
+    TriDeallocateAll (Tin);
+
+    // allocate only the pointlist array inside Triangle's IO structure
+    size_t npoints = X.Size();
+	Tin.pointlist      = (double*)malloc(npoints*2*sizeof(double));
+	Tin.numberofpoints = npoints;
+
+    // set points
+    for (size_t i=0; i<npoints; ++i)
+    {
+        Tin.pointlist[0+i*2] = X[i];
+        Tin.pointlist[1+i*2] = Y[i];
+    }
+
+    // triangulate
+    TriIO tou;
+    TriSetAllToNull (tou);
+    triangulate ("Qz", &Tin, &tou, NULL); // Quiet, zero-based
+
+    // verts
+    Verts.Resize (tou.numberofpoints);
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        Verts[i]      = new Vertex;
+        Verts[i]->ID  = i;
+        Verts[i]->Tag = 0;
+        Verts[i]->C   = tou.pointlist[i*2], tou.pointlist[i*2+1], 0.0;
+    }
+
+    // cells
+    Cells.Resize (tou.numberoftriangles);
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        Cells[i]      = new Cell;
+        Cells[i]->ID  = i;
+        Cells[i]->Tag = Tag;
+        Cells[i]->V.Resize (tou.numberofcorners);
+        for (size_t j=0; j<Cells[i]->V.Size(); ++j)
+        {
+            Share sha = {Cells[i],j};
+            Cells[i]->V[j] = Verts[tou.trianglelist[i*tou.numberofcorners+FEM2TriPoint[j]]];
+            Cells[i]->V[j]->Shares.Push (sha);
+        }
+    }
+
+    // clean up
+    /* After triangulate (with -p switch), tou.regionlist gets the content of Tin.regionlist and
+     * tou.holelist gets the content of Tin.holelist. Thus, these output variables must be set
+     * to NULL in order to tell TriDeallocateAll to ignore them and do not double-free memory. */
+    //tou.regionlist      = NULL;
+    //tou.numberofregions = 0;
+    //tou.holelist        = NULL;
+    //tou.numberofholes   = 0;
+    TriDeallocateAll (tou);
 }
 
 #ifdef USE_BOOST_PYTHON
