@@ -51,28 +51,28 @@ public:
 	Cell (size_t ID, bool Is3D, double Tau, long i, long j, long k, size_t Nx, size_t Ny, size_t Nz=1);
 
 	// Set methods
-	void Initialize (double Rho0, Vec3_t const & V0,double Cs);                                                           ///< V0: Initial velocity, Rho0: Initial density
-	void SetSolid   (bool IsSolid=true)                                { _is_solid = IsSolid; }                           ///< Set solid cell
-	void SetSolid   (double Vx, double Vy, double G=1.0)               { _is_solid = true; _vel_bc=Vx,Vy,0.0; _gamma = G;} ///< Set solid cell
-	void SetRhoBC   (double Rho)                                       { _rho_bc = Rho; }                                 ///< Set density boundary condition
-	void SetVelBC   (Vec3_t const &  V)                                { _vel_bc = V;   }                                 ///< Set velocity boundary condition
+	void Initialize (double Rho0, Vec3_t const & V0,double Cs);                                                              ///< V0: Initial velocity, Rho0: Initial density
+	void SetSolid   (bool IsSolid=true,double G=1.0)                   { _is_solid = IsSolid; _G_solid = G;}                 ///< Set solid cell
+	void SetSolid   (double Vx, double Vy, double G=1.0)               { _is_solid = true; _vel_bc=Vx,Vy,0.0; _G_solid = G;} ///< Set solid cell
+	void SetRhoBC   (double Rho)                                       { _rho_bc = Rho; }                                    ///< Set density boundary condition
+	void SetVelBC   (Vec3_t const &  V)                                { _vel_bc = V;   }                                    ///< Set velocity boundary condition
 
 	// Access methods
-    bool     IsSolid ()                   const { return _is_solid;  }                  ///< Is solid or fluid cell?
-    double   RhoBC   ()                   const { return _rho_bc;    }                  ///< Initial density
-    double   VelBC   (size_t i)           const { return _vel_bc(i); }                  ///< Component of initial velocity
-    double   W       (size_t k)           const { return _w[k];      }                  ///< Component of weight
-    double   C       (size_t k, size_t i) const { return _c[k][i];   }                  ///< Component of local velocity
-    size_t   Opp     (size_t k)           const { return OPPOSITE2D[k];}                ///< Calculate the opposite direction
-    size_t   Neigh   (size_t k)           const { return _neigh[k];  }                  ///< Returns the index of neighbour k
-    bool     Left    () const                   { return static_cast<bool>(_side[0]);}  ///< Is this cell on the left side of lattice ?
-    bool     Right   () const                   { return static_cast<bool>(_side[1]);}  ///< Is this cell on the right side of lattice ?
-    bool     Bottom  () const                   { return static_cast<bool>(_side[2]);}  ///< Is this cell on the bottom side of lattice ?
-    bool     Top     () const                   { return static_cast<bool>(_side[3]);}  ///< Is this cell on the top side of lattice ?
-    double & F       (size_t Index)             { return _f[Index];      }              ///< Return the current value of the distribution function
-    double & TmpF    (size_t Index)             { return _f_tmp[Index];  }              ///< Return the current value of the distribution function
-    double & Tau     ()                         { return _tau;       }                  ///< Return the viscosity
-    Vec3_t & BForce  ()                         { return _bforce;        }              ///< Body force
+	bool     IsSolid ()                   const { return _is_solid;  }                                                       ///< Is solid or fluid cell?
+	double   RhoBC   ()                   const { return _rho_bc;    }                                                       ///< Initial density
+	double   VelBC   (size_t i)           const { return _vel_bc(i); }                                                       ///< Component of initial velocity
+	double   W       (size_t k)           const { return _w[k];      }                                                       ///< Component of weight
+	double   C       (size_t k, size_t i) const { return _c[k][i];   }                                                       ///< Component of local velocity
+	size_t   Opp     (size_t k)           const { return OPPOSITE2D[k];}                                                     ///< Calculate the opposite direction
+	size_t   Neigh   (size_t k)           const { return _neigh[k];  }                                                       ///< Returns the index of neighbour k
+	bool     Left    () const                   { return static_cast<bool>(_side[0]);}                                       ///< Is this cell on the left side of lattice ?
+	bool     Right   () const                   { return static_cast<bool>(_side[1]);}                                       ///< Is this cell on the right side of lattice ?
+	bool     Bottom  () const                   { return static_cast<bool>(_side[2]);}                                       ///< Is this cell on the bottom side of lattice ?
+	bool     Top     () const                   { return static_cast<bool>(_side[3]);}                                       ///< Is this cell on the top side of lattice ?
+	double & F       (size_t Index)             { return _f[Index];      }                                                   ///< Return the current value of the distribution function
+	double & TmpF    (size_t Index)             { return _f_tmp[Index];  }                                                   ///< Return the current value of the distribution function
+	double & Tau     ()                         { return _tau;       }                                                       ///< Return the viscosity
+	Vec3_t & BForce  ()                         { return _bforce;        }                                                   ///< Body force
 	
 	
 	// Methods
@@ -89,6 +89,7 @@ public:
 	bool             _is_solid; ///< Solid cell or fluid cell?
 	double           _tau;      ///< Characteristic collision time
 	double           _gamma;    ///< Solid/fluid ratio
+	double           _G_solid;  ///< Interaction constant with the fluid
 	size_t           _nneigh;   ///< Number of neighbours
 	double           _rho_bc;   ///< Initial density from boundary condition
 	Vec3_t           _vel_bc;   ///< Initial velocity from boundary condition
@@ -206,10 +207,7 @@ inline void Cell::Velocity(Vec3_t & V,double Cs) const
 			            V(1) += _f[k]*_c[k][1]/rho;
 			if (_is_3d) V(2) += _f[k]*_c[k][2]/rho;
 		}
-		//std::cout<<Cs<<" "<<V(0)<<std::endl;
 		V*=Cs;
-		//std::cout<<"b"<<V(0)<<std::endl;
-
 	}
 }
 

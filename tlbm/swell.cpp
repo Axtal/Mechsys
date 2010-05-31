@@ -40,13 +40,15 @@ void DrawOpenCircle(LBM::Lattice & l, double obsX, double obsY, double radius, d
 	}
 }
 
-void DrawBullEyeCircle(LBM::Lattice & l, double obsX, double obsY, double radius, double thickness, size_t n_div, double arc)
+void DrawBullEyeCircle(LBM::Lattice & l, double obsX, double obsY, double radius, double thickness, size_t n_div, double arc, double Gmin, double Gmax)
 {
 	for (size_t i=0; i<l.Nx(); i++)
 	for (size_t j=0; j<l.Ny(); j++)
 	{
-        double r2 = pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0);
-		if ((r2>(1-thickness)*(1-thickness)*radius*radius)&&(r2<radius*radius))
+        double r0 = (1-thickness)*radius;
+        double r1 = radius;
+        double r2 = sqrt(pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0));
+		if ((r2>r0)&&(r2<r1))
 		{
             double angle = atan2(int(j)-obsY,int(i)-obsX)*180.0/M_PI;
             bool solid = true;
@@ -55,7 +57,7 @@ void DrawBullEyeCircle(LBM::Lattice & l, double obsX, double obsY, double radius
                 double angled = -180.0 + k*360.0/n_div;
                 if (fabs(angle-angled)<arc) solid = false;
             }
-			if (solid) l.GetCell(i,j)->SetSolid();
+			if (solid) l.GetCell(i,j)->SetSolid(true,(r1-r2)/(r1-r0)*(Gmin-Gmax)+Gmax);
 		}
     }
 }
@@ -150,9 +152,9 @@ int main(int argc, char **argv) try
         if ((xc+r<nx)&&(xc-r>0)&&(yc+r<ny)&&(yc-r>0))
         {
             //DrawOpenCircle (l, xc, yc, r+1,0.4);
-            DrawBullEyeCircle (l, xc, yc, 1.1*r,0.1,n_div,arc);
+            DrawBullEyeCircle (l, xc, yc, 1.1*r,0.1,n_div,arc,0.0,-Gs);
             DrawFluidDisk(l, xc, yc, 0.9*1.1*r ,densl);
-            DrawFluidCircle(l, xc, yc, 1.1*r,1.3*r, densl);
+            DrawFluidCircle(l, xc, yc, 1.1*r,1.2*r, densl);
         }
 	}
 	l.Solve(/*tIni*/0.0, /*tFin*/Tf, /*dtOut*/dTout);

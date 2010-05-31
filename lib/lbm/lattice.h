@@ -100,34 +100,34 @@ public:
 	void OutCells    (bool Header=false) const;                    ///< Output cells selected for output for each timestep
 
 
-	String       _file_key; ///< File key used as part of the output filenames
-	bool         _is_3d;    ///< Flag that defines if the analysis is 3D
-	bool         _is_mc;    ///< Flag to define if the analysis is multi-component
-	double       _tau;      ///< 
-	double       _G;        ///< Interaction strenght
-	double       _G_solid;  ///< Interaction strenght with solids
-	double       _rho_ref;  ///< Density reference value
-	double       _psi_ref;  ///< Interaction potential reference value
-	double 	     _nu;	///< Real viscosity
-	size_t       _nx;       ///< Number of cells in the x direction
-	size_t       _ny;       ///< Number of cells in the y direction
-	size_t       _nz;       ///< Number of cells in the z direction
-	double       _dt;	///< Time step
-	size_t       _size;     ///< Total number of cells
-	size_t       _T;        ///< Normalized time
-	double       _h;  	///< Space step
-	double       _Cs;	///< Speed of sound in the grid 		
-	Vec3_t       _gravity;  ///< Value of the applied gravity
-	size_t       _nneigh;   ///< Number of neighbors
-	Array<Cell*> _cells;    ///< Array of cell pointers
-	Array<Cell*> _bottom;   ///< Array of cell pointers of the bottom line
-	Array<Cell*> _top;      ///< Array of cell pointers of the left side
-	Array<Cell*> _left;     ///< 
-	Array<Cell*> _right;    ///< 
-	Array<Cell*> _front;    ///< 
-	Array<Cell*> _back;     ///< 
-	Array<Cell*> _cpveloc;  ///< Cells with prescribed velocity
-	Array<Cell*> _cpdens;   ///< Cells with prescribed density
+	String                _file_key;    ///< File key used as part of the output filenames
+	bool                  _is_3d;       ///< Flag that defines if the analysis is 3D
+	bool                  _is_mc;       ///< Flag to define if the analysis is multi-component
+	double                _tau;         ///< 
+	double                _G;           ///< Interaction strenght
+	double                _G_solid;     ///< Interaction strenght with solids
+	double                _rho_ref;     ///< Density reference value
+	double                _psi_ref;     ///< Interaction potential reference value
+	double		          _nu;          ///< Real viscosity
+	size_t                _nx;          ///< Number of cells in the x direction
+	size_t                _ny;          ///< Number of cells in the y direction
+	size_t                _nz;          ///< Number of cells in the z direction
+	double                _dt;          ///< Time step
+	size_t                _size;        ///< Total number of cells
+	size_t                _T;           ///< Normalized time
+	double                _h;           ///< Space step
+	double                _Cs;          ///< Speed of sound in the grid
+	Vec3_t                _gravity;     ///< Value of the applied gravity
+	size_t                _nneigh;      ///< Number of neighbors
+	Array<Cell*>          _cells;       ///< Array of cell pointers
+	Array<Cell*>          _bottom;      ///< Array of cell pointers of the bottom line
+	Array<Cell*>          _top;         ///< Array of cell pointers of the left side
+	Array<Cell*>          _left;        ///< 
+	Array<Cell*>          _right;       ///< 
+	Array<Cell*>          _front;       ///< 
+	Array<Cell*>          _back;        ///< 
+	Array<Cell*>          _cpveloc;     ///< Cells with prescribed velocity
+	Array<Cell*>          _cpdens;      ///< Cells with prescribed density
 	Array<size_t>         _cells_out;   ///< Indices of cells to generate output for each timestep
 	Array<std::ofstream*> _cells_files; ///< Files to output cells information for each timestep
 
@@ -489,7 +489,7 @@ inline void Lattice::ApplyForce()
 		{
 			LBM::Cell * nb = _cells[c->Neigh(k)];
 			double  nb_psi = (nb->IsSolid() ? 1.0      : Psi(nb->Density()));
-			double       G = (nb->IsSolid() ? _G_solid : _G);
+			double       G = (nb->IsSolid() ? nb->_G_solid : _G);
 			F(0) += -G*psi*c->W(k)*nb_psi*c->C(k,0);
 			F(1) += -G*psi*c->W(k)*nb_psi*c->C(k,1);
 		}
