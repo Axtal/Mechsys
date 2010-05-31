@@ -172,6 +172,11 @@ public:
     void GenO2Verts ();                                                   ///< Generate O2 (mid) vertices
     void Erase      ();                                                   ///< Erase current mesh (deallocate memory)
 
+    // Tag methods (can be called after the mesh is created)
+    void TagLine    (double y0, double AlpRad, int Tag, double Tol=1.0e-5);           ///< Set tag for line y = y0 + tan(AlpRad)*x
+    void TagHSeg    (double y, double xMin, double xMax, int Tag, double Tol=1.0e-5); ///< Set tag for horizontal segment inside xMin and xMax
+    void GroundTags (int LTag=-10, int RTag=-10, int BTag=-20, double Tol=1.0e-5);    ///< Set tags for the left and right (vertical) edges and bottom (horizontal) edge
+
     // Push methods
     int PushVert (int Tag, double X, double Y, double Z=0); ///< Push vertex
     int PushCell (int Tag, Array<int> const & Con);         ///< Push element
@@ -187,7 +192,8 @@ public:
                    char const * Extra=NULL) const;                   ///< (.mpy) Write Python script that calls mesh_drawing.py
 
     // Auxiliar methods
-    void ThrowError (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
+    void BoundingBox (Vec3_t & Min, Vec3_t & Max)                     const; ///< Limits of mesh
+    void ThrowError  (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
 
     // Other methods
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
@@ -195,6 +201,7 @@ public:
     void GenSector   (size_t Nr, size_t Nth, double r, double R, double ThetaRad);            ///< Generate a Circular sector
     void Quad8ToTri6 ();                                    ///< Convert Quad8 mesh to Tri6 mesh
     void Tri6ToTri15 ();                                    ///< Convert Tri6 mesh to Tri15 mesh
+    void Tri3ToTri6  ();                                    ///< Convert Tri3 mesh to Tri6 mesh
     void Tri6Shape   (double r, double s, Vec_t & N) const; ///< Tri6 Shape functions (used in Tri6ToTri15). N(6) needs to be pre-resized
 
     // Data
@@ -278,6 +285,21 @@ std::ostream & operator<< (std::ostream & os, Generic const & M)
         else                     os << "],\n   ";
     }
     return os;
+}
+
+inline void Generic::BoundingBox (Vec3_t & Min, Vec3_t & Max) const
+{
+    Min = Verts[0]->C(0), Verts[0]->C(1), Verts[0]->C(2);
+    Max = Verts[0]->C(0), Verts[0]->C(1), Verts[0]->C(2);
+    for (size_t i=1; i<Verts.Size(); ++i)
+    {
+        if (Verts[i]->C(0)<Min(0)) Min(0) = Verts[i]->C(0);
+        if (Verts[i]->C(1)<Min(1)) Min(1) = Verts[i]->C(1);
+        if (Verts[i]->C(2)<Min(2)) Min(2) = Verts[i]->C(2);
+        if (Verts[i]->C(0)>Max(0)) Max(0) = Verts[i]->C(0);
+        if (Verts[i]->C(1)>Max(1)) Max(1) = Verts[i]->C(1);
+        if (Verts[i]->C(2)>Max(2)) Max(2) = Verts[i]->C(2);
+    }
 }
 
 inline void Generic::ThrowError (std::istringstream & iss, char const * Message) const
@@ -761,6 +783,98 @@ inline void Generic::Erase ()
     if (Cells   .Size()>0) Cells   .Resize(0);
     if (TgdVerts.Size()>0) TgdVerts.Resize(0);
     if (TgdCells.Size()>0) TgdCells.Resize(0);
+}
+
+inline void Generic::TagLine (double y0, double AlpRad, int Tag, double Tol)
+{
+    if (NDim==3) throw new Fatal("Generic::TagLine: This method is only available for 2D meshes");
+    if ((AlpRad < -Util::PI/2.0) || (AlpRad > Util::PI/2.0)) throw new Fatal("Generic::TagLine: This method only works for non-vertical lines ( -pi/2 < AlpRad < pi/2 )");
+    double m = tan(AlpRad);
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        size_t nverts = Cells[i]->V.Size();
+        size_t nbrys  = NVertsToNEdges2D[nverts];
+        for (size_t j=0; j<nbrys; ++j)
+        {
+            BRYKEY(nverts,i,j)
+            double xa = Verts[vert_a]->C(0);
+            double ya = Verts[vert_a]->C(1);
+            double xb = Verts[vert_b]->C(0);
+            double yb = Verts[vert_b]->C(1);
+            double err_a = fabs(ya - (y0 + m*xa));
+            double err_b = fabs(yb - (y0 + m*xb));
+            if ((err_a<=Tol) && (err_b<=Tol)) // two vertices are on (y=c+m*x) line
+            {
+                SetBryTag (i, j, Tag);
+            }
+        }
+    }
+}
+
+inline void Generic::TagHSeg (double y, double xMin, double xMax, int Tag, double Tol)
+{
+    if (NDim==3) throw new Fatal("Generic::TagHSeg: This method is only available for 2D meshes");
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        size_t nverts = Cells[i]->V.Size();
+        size_t nbrys  = NVertsToNEdges2D[nverts];
+        for (size_t j=0; j<nbrys; ++j)
+        {
+            BRYKEY(nverts,i,j)
+            double xa = Verts[vert_a]->C(0);
+            double ya = Verts[vert_a]->C(1);
+            double xb = Verts[vert_b]->C(0);
+            double yb = Verts[vert_b]->C(1);
+            if ((fabs(ya-y)<Tol) && (fabs(yb-y)<Tol))
+            {
+                if ((xa>=xMin) && (xa<=xMax) && (xb>=xMin) && (xb<=xMax))
+                {
+                    SetBryTag (i, j, Tag);
+                }
+            }
+        }
+    }
+}
+
+inline void Generic::GroundTags (int LTag, int RTag, int BTag, double Tol)
+{
+    if (NDim==3) throw new Fatal("Generic::GroundTags: This method is only available for 2D meshes");
+    Vec3_t min, max;
+    BoundingBox (min, max);
+    double left_vert_x   = min(0); // left vertical line
+    double right_vert_x  = max(0); // right vertical line
+    double bottom_horz_y = min(1); // bottom horizontal line
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        size_t nverts = Cells[i]->V.Size();
+        size_t nbrys  = NVertsToNEdges2D[nverts];
+        for (size_t j=0; j<nbrys; ++j)
+        {
+            BRYKEY(nverts,i,j)
+            double xa = Verts[vert_a]->C(0);
+            double ya = Verts[vert_a]->C(1);
+            double xb = Verts[vert_b]->C(0);
+            double yb = Verts[vert_b]->C(1);
+
+            // left vertical line
+            if ((fabs(xa-left_vert_x)<Tol) && (fabs(xb-left_vert_x)<Tol))
+            {
+                SetBryTag (i, j, LTag);
+            }
+            
+            // right vertical line
+            if ((fabs(xa-right_vert_x)<Tol) && (fabs(xb-right_vert_x)<Tol))
+            {
+                SetBryTag (i, j, RTag);
+            }
+
+            // bottom horizontal line
+            if ((fabs(ya-bottom_horz_y)<Tol) && (fabs(yb-bottom_horz_y)<Tol))
+            {
+                SetBryTag (i, j, BTag);
+            }
+        }
+    }
 }
 
 inline void Generic::Check (double Tol) const
@@ -1360,6 +1474,66 @@ inline void Generic::Tri6ToTri15 ()
 
     // info
     std::cout <<         "    ----- After Tri6ToTri15 -----" << std::endl;
+    std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
+    std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
+}
+
+inline void Generic::Tri3ToTri6 ()
+{
+    // find neighbours
+    FindNeigh ();
+
+    // expand connectivity array
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        if (Cells[i]->V.Size()!=3) throw new Fatal("Mesh::Tri3ToTri6: This method only works for Tri3s (NVerts=%d is invalid)",Cells[i]->V.Size());
+        for (size_t j=0; j<3; ++j) Cells[i]->V.Push (NULL);
+    }
+
+    // convert
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        // border nodes
+        for (size_t j=3; j<6; ++j)
+        {
+            if (Cells[i]->V[j]==NULL) // not set yet
+            {
+                // new vertex
+                int side = j-3; // side of new vertex
+                BRYKEY(/*nverts*/3,i,side)
+                double xm = (Verts[vert_a]->C(0)+Verts[vert_b]->C(0))/2.0;
+                double ym = (Verts[vert_a]->C(1)+Verts[vert_b]->C(1))/2.0;
+                int    iv = PushVert (/*tag*/0, xm, ym);
+
+                // set cell and shares
+                Cells[i]->V[j] = Verts[iv];
+                Share sha = {Cells[i],j};
+                Verts[iv]->Shares.Push (sha);
+
+                // set neighbours
+                for (Neighs_t::const_iterator p=Cells[i]->Neighs.begin(); p!=Cells[i]->Neighs.end(); ++p)
+                {
+                    if (side==p->second.first)
+                    {
+                        // find J: index of vertex in neighbour
+                        Cell * neigh = p->second.second;
+                        Neighs_t::const_iterator it = neigh->Neighs.find(p->first);
+                        if (it==neigh->Neighs.end()) throw new Fatal("Mesh::Tri3ToTri6: __internal_error__");
+                        int neigh_side = it->second.first;
+                        int J = 3 + neigh_side;
+
+                        // set cell and shares
+                        neigh->V[J] = Verts[iv];
+                        Share neigh_sha = {neigh,J};
+                        Verts[iv]->Shares.Push (neigh_sha);
+                    }
+                }
+            }
+        }
+    }
+
+    // info
+    std::cout <<         "    ----- After Tri3ToTri6 ------" << std::endl;
     std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
     std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
 }
