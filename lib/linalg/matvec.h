@@ -32,6 +32,10 @@
 #include <blitz/tinyvec-et.h>
 #include <blitz/tinymat.h>
 
+// GSL
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
+
 // MechSys
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
@@ -479,148 +483,31 @@ inline void Sol (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e
     X(2) = Mi(2,0)*B(0) + Mi(2,1)*B(1) + Mi(2,2)*B(2);
 }
 
-/** Eigenvalues and eigenvectors. */
-inline void Eig (Mat3_t const & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t & V2)
+/** Eigenvalues and eigenvectors. NOTE: This function changes the matrix M. */
+inline void Eig (Mat3_t & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t & V2)
 {
-    const double maxIt  = 30;      // Max number of iterations
-    const double errTol = 1.0e-15; // Erro: Tolerance
-    const double zero   = 1.0e-10; // Erro: Tolerance
+    // calculate
+    gsl_matrix_view m = gsl_matrix_view_array (M.data(), 3, 3);
+    gsl_vector * eval = gsl_vector_alloc      (3);
+    gsl_matrix * evec = gsl_matrix_alloc      (3, 3);
+    gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc (3);
+    gsl_eigen_symmv (&m.matrix, eval, evec, w);
 
-    // check for symmetric matrix
-    if (fabs(M(0,1)-M(1,0))>errTol) throw new Fatal("matvec.h:Eig: Matrix M must be symmetric");
-    if (fabs(M(0,2)-M(2,0))>errTol) throw new Fatal("matvec.h:Eig: Matrix M must be symmetric");
-    if (fabs(M(1,2)-M(2,1))>errTol) throw new Fatal("matvec.h:Eig: Matrix M must be symmetric");
+    // eigenvalues
+    L = gsl_vector_get(eval,0), gsl_vector_get(eval,1), gsl_vector_get(eval,2);
 
-    double UT[3]; // Values of the Upper Triangle part of symmetric matrix A
-    double th;    // theta = (Aii-Ajj)/2Aij
-    double c;     // Cossine
-    double s;     // Sine
-    double cc;    // Cossine squared
-    double ss;    // Sine squared
-    double t;     // Tangent
-    double Temp;  // Auxiliar variable
-    double TM[3]; // Auxiliar array
-    double sumUT; // Sum of upper triangle of abs(A) that measures the error
-    int    it;    // Iteration number
-    double h;     // Difference L[i]-L[j]
+    // eigenvectors
+    gsl_vector_view ev = gsl_matrix_column (evec,0);
+    V0 = gsl_vector_get    (&ev.vector,0), gsl_vector_get(&ev.vector,1), gsl_vector_get(&ev.vector,2);
+    ev = gsl_matrix_column (evec,1);
+    V1 = gsl_vector_get    (&ev.vector,0), gsl_vector_get(&ev.vector,1), gsl_vector_get(&ev.vector,2);
+    ev = gsl_matrix_column (evec,2);
+    V2 = gsl_vector_get    (&ev.vector,0), gsl_vector_get(&ev.vector,1), gsl_vector_get(&ev.vector,2);
 
-    // Initialize eigenvalues which correnspond to the diagonal part of A
-    L(0)=M(0,0); L(1)=M(1,1); L(2)=M(2,2);
-
-    // Initialize Upper Triangle part of A matrix (array[3])
-    UT[0]=M(0,1); UT[1]=M(1,2); UT[2]=M(0,2);
-
-    // Initialize eigenvectors
-    V0(0)=1.0; V1(0)=0.0; V2(0)=0.0;
-    V0(1)=0.0; V1(1)=1.0; V2(1)=0.0;
-    V0(2)=0.0; V1(2)=0.0; V2(2)=1.0;
-
-    // Iterations
-    for (it=1; it<=maxIt; ++it)
-    {
-        // Check error
-        sumUT = fabs(UT[0])+fabs(UT[1])+fabs(UT[2]);
-        if (sumUT<=errTol) return;
-
-        // i=0, j=1 ,r=2 (p=3)
-        h = L(0)-L(1);
-        if (fabs(h)<zero) t=1.0;
-        else
-        {
-            th = 0.5*h/UT[0];
-            t  = 1.0/(fabs(th)+sqrt(th*th+1.0));
-            if (th<0.0) t=-t;
-        }
-        c  = 1.0/sqrt(1.0+t*t);
-        s  = c*t;
-        cc = c*c;
-        ss = s*s;
-        // Zeroes term UT[0]
-        Temp  = cc*L(0) + 2.0*c*s*UT[0] + ss*L(1);
-        L(1)  = ss*L(0) - 2.0*c*s*UT[0] + cc*L(1);
-        L(0)  = Temp;
-        UT[0] = 0.0;
-        Temp  = c*UT[2] + s*UT[1];
-        UT[1] = c*UT[1] - s*UT[2];
-        UT[2] = Temp;
-        // Actualize eigenvectors
-        TM[0] = s*V1(0) + c*V0(0);
-        TM[1] = s*V1(1) + c*V0(1);
-        TM[2] = s*V1(2) + c*V0(2);
-        V1(0) = c*V1(0) - s*V0(0);
-        V1(1) = c*V1(1) - s*V0(1);
-        V1(2) = c*V1(2) - s*V0(2);
-        V0(0) = TM[0];
-        V0(1) = TM[1];
-        V0(2) = TM[2];
-
-        // i=1, j=2 ,r=0 (p=4)
-        h = L(1)-L(2);
-        if (fabs(h)<zero) t=1.0;
-        else
-        {
-            th = 0.5*h/UT[1];
-            t  = 1.0/(fabs(th)+sqrt(th*th+1.0));
-            if (th<0.0) t=-t;
-        }
-        c  = 1.0/sqrt(1.0+t*t);
-        s  = c*t;
-        cc = c*c;
-        ss = s*s;
-        // Zeroes term UT[1]
-        Temp  = cc*L(1) + 2.0*c*s*UT[1] + ss*L(2);
-        L(2)  = ss*L(1) - 2.0*c*s*UT[1] + cc*L(2);
-        L(1)  = Temp;
-        UT[1] = 0.0;
-        Temp  = c*UT[0] + s*UT[2];
-        UT[2] = c*UT[2] - s*UT[0];
-        UT[0] = Temp;
-        // Actualize eigenvectors
-        TM[1] = s*V2(1) + c*V1(1);
-        TM[2] = s*V2(2) + c*V1(2);
-        TM[0] = s*V2(0) + c*V1(0);
-        V2(1) = c*V2(1) - s*V1(1);
-        V2(2) = c*V2(2) - s*V1(2);
-        V2(0) = c*V2(0) - s*V1(0);
-        V1(1) = TM[1];
-        V1(2) = TM[2];
-        V1(0) = TM[0];
-
-        // i=0, j=2 ,r=1 (p=5)
-        h = L(0)-L(2);
-        if (fabs(h)<zero) t=1.0;
-        else
-        {
-            th = 0.5*h/UT[2];
-            t  = 1.0/(fabs(th)+sqrt(th*th+1.0));
-            if (th<0.0) t=-t;
-        }
-        c  = 1.0/sqrt(1.0+t*t);
-        s  = c*t;
-        cc = c*c;
-        ss = s*s;
-        // Zeroes term UT[2]
-        Temp  = cc*L(0) + 2.0*c*s*UT[2] + ss*L(2);
-        L(2)  = ss*L(0) - 2.0*c*s*UT[2] + cc*L(2);
-        L(0)  = Temp;
-        UT[2] = 0.0;
-        Temp  = c*UT[0] + s*UT[1];
-        UT[1] = c*UT[1] - s*UT[0];
-        UT[0] = Temp;
-        // Actualize eigenvectors
-        TM[0] = s*V2(0) + c*V0(0);
-        TM[2] = s*V2(2) + c*V0(2);
-        TM[1] = s*V2(1) + c*V0(1);
-        V2(0) = c*V2(0) - s*V0(0);
-        V2(2) = c*V2(2) - s*V0(2);
-        V2(1) = c*V2(1) - s*V0(1);
-        V0(0) = TM[0];
-        V0(2) = TM[2];
-        V0(1) = TM[1];
-    }
-    std::ostringstream oss;
-    oss << PrintMatrix(M);
-    throw new Fatal("matvec.h:Eig: Jacobi rotation did not converge\nM =\n%s",oss.str().c_str());
+    // clean up
+    gsl_eigen_symmv_free (w);
+    gsl_vector_free      (eval);
+    gsl_matrix_free      (evec);
 }
 
 /** Norm. */

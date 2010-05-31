@@ -32,20 +32,18 @@ int main(int argc, char **argv) try
 {
     /////////////////////////////////////////////////////////////////////////////////////////// Correct values /////
 
-    Vec3_t corLM;
-    corLM = 9.0230601363860448e+00, -2.1085368531900723e+01, 3.2062308395514684e+01;
+    Vec3_t corLM, corV0M, corV1M, corV2M;
+    corLM  =  3.2062308395514684e+01,  9.0230601363860448e+00, -2.1085368531900723e+01;
+    corV0M =  2.4142214133881629e-01,  1.2938771667600124e-01,  9.6175577380369870e-01;
+    corV1M =  9.6413836337045689e-01,  8.0603801105791670e-02, -2.5286408112785591e-01;
+    corV2M =  1.1023867719052860e-01, -9.8831262565074463e-01,  1.0528811913323206e-01;
 
-    Vec3_t corV0M;
-    corV0M =
-      9.6413836337045689e-01,  8.0603801105791670e-02, -2.5286408112785591e-01;
-
-    Vec3_t corV1M;
-    corV1M =
-     -1.1023867719052860e-01,  9.8831262565074463e-01, -1.0528811913323206e-01;
-
-    Vec3_t corV2M;
-    corV2M =
-      2.4142214133881629e-01,  1.2938771667600124e-01,  9.6175577380369870e-01;
+    double sq2h = sqrt(2.0)/2.0;
+    Vec3_t corLM2, corV0M2, corV1M2, corV2M2;
+    corLM2  =  1.0,   -3.0, -1.0;
+    corV0M2 =  sq2h,  sq2h,  0.0;
+    corV1M2 = -sq2h,  sq2h,  0.0;
+    corV2M2 =   0.0,   0.0,  1.0;
     
     Vec3_t corxA;
     corxA = 4.0, -2.0, -2.0;
@@ -55,24 +53,39 @@ int main(int argc, char **argv) try
 
     /////////////////////////////////////////////////////////////////////////////////////////// Eigen-problem /////
 
+	cout << "\n--- eigen problem --------------------------------\n";
     Mat3_t M;
     M = 10.0,   4.0,  5.0,
          4.0, -20.0,  6.0,
          5.0,   6.0, 30.0;
-
+    cout << "M  =\n" << PrintMatrix(M);
     Vec3_t L, V0, V1, V2;
     Eig (M, L, V0, V1, V2);
-
-	cout << "\n--- eigen problem --------------------------------\n";
-    cout << "M  =\n" << M  << endl;
-    cout << "L  =\n" << L  << endl;
-    cout << "V0 =\n" << V0 << endl;
-    cout << "V1 =\n" << V1 << endl;
-    cout << "V2 =\n" << V2 << endl;
+    cout << "M  =\n" << PrintMatrix(M);
+    cout << "L  ="   << PrintVector(L);
+    cout << "V0 ="   << PrintVector(V0);
+    cout << "V1 ="   << PrintVector(V1);
+    cout << "V2 ="   << PrintVector(V2);
     error += CompareVectors (L,  corLM);
     error += CompareVectors (V0, corV0M);
     error += CompareVectors (V1, corV1M);
     error += CompareVectors (V2, corV2M);
+
+    cout << endl;
+    M = -1.0,   2.0,   0.0,
+         2.0,  -1.0,   0.0,
+         0.0,   0.0,  -1.0;
+    cout << "M  =\n" << PrintMatrix(M);
+    Eig (M, L, V0, V1, V2);
+    cout << "M  =\n" << PrintMatrix(M);
+    cout << "L  ="   << PrintVector(L);
+    cout << "V0 ="   << PrintVector(V0);
+    cout << "V1 ="   << PrintVector(V1);
+    cout << "V2 ="   << PrintVector(V2);
+    error += CompareVectors (L,  corLM2);
+    error += CompareVectors (V0, corV0M2);
+    error += CompareVectors (V1, corV1M2);
+    error += CompareVectors (V2, corV2M2);
 
     /////////////////////////////////////////////////////////////////////////////////////////// Solver /////
     
@@ -85,9 +98,9 @@ int main(int argc, char **argv) try
     Sol (A, b, x); // x = inv(A)*b
 
 	cout << "\n--- solve A*b = x --------------------------------\n";
-    cout << "A =\n" << A << endl;
-    cout << "b =\n" << b << endl;
-    cout << "x =\n" << x << endl;
+    cout << "A =\n" << PrintMatrix(A);
+    cout << "b ="   << PrintVector(b);
+    cout << "x ="   << PrintVector(x);
     error += CompareVectors (x, corxA);
 
 	cout << "\n--- error ----------------------------------------\n";
