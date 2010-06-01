@@ -36,10 +36,12 @@ int main(int argc, char **argv) try
 {
     bool unitest = false; // uniaxial test ?
     bool is2d    = true;
+    bool NR      = true;
 
     cout << "\nUsage:\n\t" << argv[0] << "  [0,1](is2d)  [0,1](unitest)\n" << endl;
     if (argc>1) is2d    = atoi(argv[1]);
     if (argc>2) unitest = atoi(argv[2]);
+    if (argc>3) NR      = atoi(argv[3]);
     if (unitest) is2d = false;
 
     double r  = 2.5;
@@ -102,7 +104,7 @@ int main(int argc, char **argv) try
     }
     FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
     FEM::Solver sol(dom);
-    //sol.SetScheme ("NR");
+    if (NR) sol.SetScheme ("NR");
     sol.SSOut = true;
 
     // solve

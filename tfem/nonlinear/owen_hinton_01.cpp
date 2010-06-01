@@ -86,7 +86,7 @@ int main(int argc, char **argv) try
     Dict bcs;
     bcs.Set(-100, "ux uy", 0.0,0.0);
     bcs.Set(-200, "ux",    0.0);
-    bcs.Set(-300, "ux uy", 0.0, -2.0);
+    bcs.Set(-300, "ux uy", 0.0, -2.6);
     dom.SetBCs (bcs);
 
     // weights
@@ -103,6 +103,8 @@ int main(int argc, char **argv) try
     FEM::Solver sol(dom, /*OutFun*/NULL, /*OutDat*/NULL, &DbgFun, &dat);
     sol.Scheme = FEM::Solver::NR_t;
     sol.TolR   = 1.0e-5;
+    sol.ModNR  = true;
+    sol.CteTg  = true;
 
     // solve
     sol.Solve (weights.Size(), /*FileKey*/NULL, &weights);

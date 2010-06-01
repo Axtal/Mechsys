@@ -34,8 +34,12 @@ int main(int argc, char **argv) try
     Array<double> X(5), Y(5);
     X = 0.0, 1.0, 1.0, 0.0, 0.5;
     Y = 0.0, 0.0, 1.0, 1.0, 0.5;
-    mesh.Delaunay (X, Y, /*Tag*/-1);
-    mesh.WriteMPY ("delaunay01");
+    mesh.Delaunay   (X, Y, /*Tag*/-1);
+    mesh.TagLine    (/*y0*/0.0, /*AlpRad*/ 45.0*Util::PI/180.0, -33);
+    mesh.TagLine    (/*y0*/1.0, /*AlpRad*/-45.0*Util::PI/180.0, -44);
+    mesh.TagHSeg    (/*y*/1.0, /*xMin*/0.0, /*xMax*/1.0, -55);
+    mesh.GroundTags (/*L*/-10, /*R*/-20, /*B*/-30);
+    mesh.WriteMPY   ("delaunay01");
     cout << " File <delaunay01.mpy> generated\n";
     return 0;
 }

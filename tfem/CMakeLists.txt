@@ -21,7 +21,8 @@ SET(TESTS
   beam01
   beam02
   labtest
-  oneelem)
+  oneelem
+  shapefun)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

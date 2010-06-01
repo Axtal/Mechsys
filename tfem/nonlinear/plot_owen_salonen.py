@@ -4,7 +4,7 @@ from msys_readdata import read_table
 from msys_plotter  import Plotter
 from msys_linfit   import LinFit
 
-plt = 0
+plt = 1
 
 if plt==0:
     # data

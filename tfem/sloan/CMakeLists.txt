@@ -17,7 +17,8 @@
 ########################################################################
 
 SET(TESTS
-    abbo_sloan_01)
+    abbo_sloan_01
+    abbo_sloan_02)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

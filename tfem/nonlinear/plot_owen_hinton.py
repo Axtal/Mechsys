@@ -3,23 +3,24 @@ from pylab import *
 from msys_readdata import read_table
 from msys_plotter import Plotter
 
-plt = 0
+plt = 1
 
 if plt==0:
     dat = read_table("owen_hinton_01.res")
-    d2  = read_table("owen_hinton_01_disp.res")
     u    = array(dat['u'])
-    u2   = array(d2 ['u'])
     fint = array(dat['fint'])
     fext = array(dat['fext'])
-    fi2  = array(d2 ['fint'])
-    fe2  = array(d2 ['fext'])
+
+    #d2  = read_table("owen_hinton_01_disp.res")
+    #u2   = array(d2 ['u'])
+    #fi2  = array(d2 ['fint'])
+    #fe2  = array(d2 ['fext'])
 
     plot(-u,-fint,'b-',lw=4, marker='s', clip_on=False)
-    plot(-u2,-fi2,'r-',lw=4, marker='*', clip_on=False)
+    #plot(-u2,-fi2,'r-',lw=4, marker='*', clip_on=False)
 
     plot(-u,-fext,'c-',lw=2, clip_on=False)
-    plot(-u2,-fe2,'m-',lw=2, clip_on=False)
+    #plot(-u2,-fe2,'m-',lw=2, clip_on=False)
 
     grid()
     show()

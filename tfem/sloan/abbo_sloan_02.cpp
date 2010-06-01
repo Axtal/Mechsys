@@ -16,7 +16,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-/*  Abbo & Sloan (1996): Figure 1 p1747 
+/*  Abbo & Sloan (1996): Figure 5 p1751 
  *  ===================================  */
 
 // STL
@@ -35,7 +35,7 @@ int main(int argc, char **argv) try
     // input
     bool   quad8      = false;
     int    ninc       = 10;
-    bool   calc_error = true;
+    bool   calc_error = false;
     double STOL       = 1.0e-7;
     bool   NR         = false;
     bool   FE         = false;
@@ -49,7 +49,7 @@ int main(int argc, char **argv) try
     if (argc>7) CorR       = atoi(argv[7]);
 
     // file key
-    String fkey("abbo_sloan_01");
+    String fkey("abbo_sloan_02");
     if (quad8) 
     {
         cout << "\n[1;35m=================================== Quad8 ======================================[0m\n";
@@ -60,71 +60,83 @@ int main(int argc, char **argv) try
         cout << "\n[1;35m=================================== Tri15 ======================================[0m\n";
         fkey.append("_tri15");
     }
-    String buf;
-    if (!NR && !FE) buf.Printf("_%d_%g",ninc,STOL);
-    else            buf.Printf("_%d",   ninc);
-    fkey.append(buf);
 
     // constants
-    double a  = 1;
-    double b  = a*2;
-    int    nx = 5;
-    double t  = (b-a)/5;
+    double B = 2.0;   // footing width
+    double b = B/2.0; // footing half width
 
     // mesh
-    Array<Mesh::Block> blks(1);
-    blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
-                 0.,  a, 0.0,
-                 0.,  b, 0.0,
-                 0.,  b,   t,
-                 0.,  a,   t,  -10., 0., -20., -30.);
-    blks[0].SetNx (nx);
-    blks[0].SetNy (1);
-    Mesh::Structured mesh(/*NDim*/2);
-    mesh.Generate (blks,/*O2*/true);
-    if (!quad8)
+    Mesh::Generic * mesh;
+    if (quad8)
     {
-        mesh.Quad8ToTri6 ();
-        mesh.Tri6ToTri15 ();
+        Array<Mesh::Block> blks(2);
+        blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
+                     0.,  0.0, 0.0,
+                     0.,    b, 0.0,
+                     0.,    b, 5*B,
+                     0.,  0.0, 5*B,  -20., 0., -30., -10.);
+        blks[1].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
+                     0.,    b, 0.0,
+                     0.,  5*B, 0.0,
+                     0.,  5*B, 5*B,
+                     0.,    b, 5*B,  -20., -10., 0., 0.);
+        blks[0].SetNx ( 2);
+        blks[0].SetNy ( 4, /*Ax*/-1.0, /*NonLin*/true);
+        blks[1].SetNx ( 4, /*Ax*/ 1.0, /*NonLin*/true);
+        blks[1].SetNy ( 4, /*Ax*/-1.0, /*NonLin*/true);
+        Mesh::Structured * msh = new Mesh::Structured (2); // 2D
+        msh->Generate (blks,/*O2*/true);
+        mesh = msh;
     }
-    mesh.Check    ();
-    mesh.WriteMPY (fkey.CStr(), /*tags*/true, /*ids*/true, /*shares*/true);
+    else
+    {
+        Table tab;
+        tab.Read ("abbo_sloan_fig5.points");
+        Mesh::Unstructured * msh = new Mesh::Unstructured (2); // 2D
+        msh->Delaunay    (tab("x"), tab("y"), /*Tag*/-1);
+        msh->TagHSeg     (/*y*/10.0, /*xMin*/0.0, /*xMax*/b, -30);
+        msh->GroundTags  (/*L*/-10, /*R*/-10, /*B*/-20);
+        msh->Tri3ToTri6  ();
+        msh->Tri6ToTri15 ();
+        mesh = msh;
+    }
+    mesh->Check    ();
+    mesh->WriteMPY (fkey.CStr(), /*tags*/true, /*ids*/true, /*shares*/false);
 
     // parameters
-    double E   = 100000.;
-    double nu  = 0.3;
-    double sY  = 100.;
-    double Hp  = 0.0;
     double c   = 10.0;
+    double G   = 4000.0;
+    double nu  = 0.3;
+    double E   = 2.0*G*(1.0+nu);
     double phi = 30.0;
-    double del = 0.3*a*1.0e-3;
+    double del = 0.16*B;
 
     // props and domain
     double geom = (quad8 ? GEOM("Quad8") : GEOM("Tri15"));
     double nip  = (quad8 ? 4.0           : 16.0);
     Dict prps, mdls;
-    prps.Set(-1, "prob geom axs nip", PROB("Equilib"), geom, 1.0, nip);
-    //mdls.Set(-1, "name E nu fc sY Hp axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
-    mdls.Set(-1, "name E nu fc c phi axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("MC"), c, phi, 1.0);
-    //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
-    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
+    prps.Set(-1, "prob geom psa nip", PROB("Equilib"), geom, 1.0, nip);
+    //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), E, nu, 1.0);
+    mdls.Set(-1, "name E nu fc c phi psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("MC"), c, phi, 1.0);
+    FEM::Domain dom((*mesh), prps, mdls, /*inis*/Dict());
 
     // solver
     FEM::Solver sol(dom);
     if (NR) sol.SetScheme("NR");
     if (FE) sol.SetScheme("FE");
-    sol.STOL = STOL;
-    sol.CorR = CorR;
+    sol.STOL  = STOL;
+    sol.CorR  = CorR;
+    sol.MaxIt = 30;
 
     // output nodes
-    Array<int> nods = (quad8 ? Array<int>(0,6,22) : Array<int>(0,6,22,44,45));
+    Array<int> nods = (quad8 ? Array<int>(12,43,13,44,14) : Array<int>(0,207,60,206,13,240,69,239,12));
     dom.SetOutNods (fkey.CStr(), nods);
 
     // solve
     Dict bcs;
-    bcs.Set      (-10, "uy", 0.0);
+    bcs.Set      (-10, "ux", 0.0);
     bcs.Set      (-20, "uy", 0.0);
-    bcs.Set      (-30, "ux", del);
+    bcs.Set      (-30, "uy", -del);
     dom.SetBCs   (bcs);
     sol.Solve    (ninc);
     dom.WriteVTU (fkey.CStr());
@@ -144,6 +156,7 @@ int main(int argc, char **argv) try
         stress << Util::_20_15 << dom.NodResults(i,idx_sx)                << " ";
         stress << Util::_20_15 << dom.NodResults(i,idx_sy)                << std::endl;
     }
+    String buf;
     buf.Printf("%s.disp",fkey.CStr());
     std::ofstream of1(buf.CStr(), std::ios::out);
     of1 << disp.str();
@@ -180,12 +193,15 @@ int main(int argc, char **argv) try
     }
 
     // pressure
-    Vec_t f(nods.Size());
-    for (size_t i=0; i<nods.Size(); ++i) f(i) = dom.Nods[nods[i]]->F[dom.Nods[nods[i]]->FMap("fx")];
-    double q = (quad8 ? sqrt(2.0)*Norm(f)/t : 90.0*Norm(f)/(sqrt(2290.0)*t));
-    std::cout << "Error (q/c)    = " << Util::_8s << fabs(q/c-1.0174) << "      q/c = " << Util::_10_6 << (q/c) << "    (1.0174)" << std::endl;
+    //double L  = b/2.0;
+    //size_t nn = (nods.Size()+1)/2;
+    //Vec_t f1(nn), f2(nn);
+    //for (size_t i=0; i<nn; ++i) f1(i) = dom.Nods[nods[i]]->F[dom.Nods[nods[i]]->FMap("fx")];
+    //double q1 = (quad8 ? sqrt(2.0)*Norm(f1)/L : 90.0*Norm(f1)/(sqrt(2290.0)*L));
+    //std::cout << "Error (q/c)    = " << Util::_8s << fabs(q1/c-30.1396) << "      q/c = " << Util::_10_6 << (q1/c) << "    (30.1396)" << std::endl;
 
     // end
+    delete mesh;
     return 0;
 }
 MECHSYS_CATCH

@@ -98,9 +98,9 @@ int main(int argc, char **argv) try
     Dict bcs;
     bcs.Set      (-100, "inclsupport alpha", 1.0, th);
     bcs.Set      (-30,  "uy", 0.0);
-    bcs.Set      (-10,  "qn", -13920.0);
+    bcs.Set      (-10,  "qn", -13930.0);
     dom.SetBCs   (bcs);
-    sol.Solve    (40);
+    sol.Solve    (40, NULL, NULL, /*NonLinWei*/true);
     //sol.Solve    (40, "nayak_zienk_01");
     dom.WriteVTU ("nayak_zienk_01");
 
