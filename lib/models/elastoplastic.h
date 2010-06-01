@@ -134,6 +134,7 @@ inline ElastoPlastic::ElastoPlastic (int NDim, SDPair const & Prms, bool Derived
         }
         if (FC==MC_t)
         {
+            if (fabs(Prms("phi"))<1.0e-3) throw new Fatal("ElastoPlastic::ElastoPlastic: Friction angle phi must be greater than zero (1.0e-3)");
             // constants
             spsi = (Prms.HasKey("psi") ? sin(Prms("psi")*Util::PI/180.0) : 0.0);
             sphi = sin(Prms("phi")*Util::PI/180.0);
@@ -316,7 +317,8 @@ inline void ElastoPlastic::EPStiff (EquilibState const * Sta, Vec_t * h, Vec_t *
     Vec_t VDe;
     Mult (V, De, VDe);
     double phi = dot(VDe,W) - hp;
-    Vec_t DeW(De*W);
+    Vec_t DeW(NCps);
+    DeW = De*W;
 
     // elastoplastic stiffness
     for (size_t i=0; i<NCps; ++i)
