@@ -808,6 +808,7 @@ inline void Domain::AddPlane (int Tag, const Vec3_t & X, double R, double Lx, do
     Particles[Particles.Size()-1]->Erot       = 0.0;
     Particles[Particles.Size()-1]->Dmax       = sqrt(Lx*Lx+Ly*Ly)+R;
     Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
     // clean up
     if (!ThereisanAxis) delete Axis;
 }
@@ -895,6 +896,7 @@ inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho
     Particles[Particles.Size()-1]->Erot = 0.0;
     Particles[Particles.Size()-1]->Dmax  = Dmax;
     Particles[Particles.Size()-1]->PropsReady = true;
+    Particles[Particles.Size()-1]->Index = Particles.Size()-1;
 }
 
 // Methods

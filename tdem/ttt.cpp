@@ -442,7 +442,7 @@ int main(int argc, char **argv) try
 
     // particle
     if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction, 0.8);
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
@@ -453,10 +453,11 @@ int main(int argc, char **argv) try
     else throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
     dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
+    dom.WriteBPY("ttt");
 
     // properties of particles prior the triaxial test
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu ,Beta,Eta);
     B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
@@ -496,7 +497,7 @@ int main(int argc, char **argv) try
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
-    dom.ResetInteractons();
+    //dom.ResetInteractons();
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo);
 
     return 0;
