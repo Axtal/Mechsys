@@ -39,7 +39,7 @@ class Plotter:
         self.fc_ty     = ['MC','MN']                              # failure criteria type (VM, DP, MC, MN)
         self.fc_clr    = ['k', 'k', 'k', 'k']                     # failure criteria colors
         self.fc_ls     = ['solid', 'dashed', 'dotted', 'dashdot'] # failure criteria linestyles
-        self.fc_poct   = 100.0*sqrt(3.0)                          # p(oct) to be used when plotting FC in octahedral plane
+        self.fc_poct   = -1*sqrt(3.0)                             # -1 => use last. p(oct) to be used when plotting FC in octahedral plane
         self.fc_t      = 1.0                                      # t=sin(3th) to be used when plotting FC in octahedral plane
         self.fc_cu     = 10.0                                     # cohesion for VM
         self.fc_phi    = -1                                       # friction angle for FC
@@ -112,8 +112,8 @@ class Plotter:
         QdivP = Q/P
 
         # constants
-        rc('text', usetex=True)    # set LaTeX
-        rc('font', family='serif') # set font
+        #rc('text', usetex=True)    # set LaTeX
+        #rc('font', family='serif') # set font
         nhplt = 3                  # number of horizontal plots
         nvplt = 3                  # number of vertical plots
         iplot = 1                  # index of plot
@@ -125,6 +125,7 @@ class Plotter:
             self.fc_phi  = M_calc_phi (QdivP[imaQP], self.pq_ty)
             self.fc_poct = P[imaQP]*sqrt(3.0) if self.pq_ty=='cam' else P[imaQP]
             self.fc_cu   = qf_calc_cu (Q[imaQP], self.pq_ty)
+        elif self.fc_poct<0: self.fc_poct = P[-1]*sqrt(3.0) if self.pq_ty=='cam' else P[-1]
 
         # set for eps
         if self.set_eps:
@@ -146,7 +147,7 @@ class Plotter:
             plot (Ed, Y, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             plot (Ed[imaQP], Y[imaQP], '^', color=clr)
             #plot (Ed[-1],    Y[-1],    '^', color=clr)
-            #xlabel (r'$\varepsilon_d$ [\%]');  ylabel(Ylbl);  grid()
+            xlabel (r'$\varepsilon_d$ [\%]');  ylabel(Ylbl);  grid()
             if txtmax: text (Ed[imaQP], Y[imaQP], '%.2f'%Y[imaQP], fontsize=8)
             if txtlst: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
 
@@ -154,7 +155,7 @@ class Plotter:
         if self.justone==1 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (Ev, Y, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            #xlabel (r'$\varepsilon_v$ [\%]');  ylabel(Ylbl);  grid()
+            xlabel (r'$\varepsilon_v$ [\%]');  ylabel(Ylbl);  grid()
 
         # 2) p, q ---------------------------------------------------------------------------
         if self.justone==2 or self.justone<0:
@@ -162,7 +163,7 @@ class Plotter:
             axhline (0.0,color='black'); axvline(0.0,color='black')
             if draw_fl: self.pq_fline(0.1*min(P),2.0*max(P),min(Q),max(Q))
             plot    (P, Q, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            #xlabel  (r'$p_{%s}$'%(self.pq_ty));  ylabel(r'$q_{%s}$'%(self.pq_ty));  grid()
+            xlabel  (r'$p_{%s}$'%(self.pq_ty));  ylabel(r'$q_{%s}$'%(self.pq_ty));  grid()
             axis    ('equal')
             if self.show_k:
                 k = (Q[-1]-Q[0])/(P[-1]-P[0])
@@ -172,7 +173,7 @@ class Plotter:
         if self.justone==3 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (Ed, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            #xlabel (r'$\varepsilon_d$ [\%]');  ylabel(r'$\varepsilon_v$ [\%]'); grid()
+            xlabel (r'$\varepsilon_d$ [\%]');  ylabel(r'$\varepsilon_v$ [\%]'); grid()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
         if self.justone==4 or self.justone<0:
@@ -186,7 +187,7 @@ class Plotter:
                 for k, x in enumerate(X): X[k] = self.pcte
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (X, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            #xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [\%]');  grid()
+            xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [\%]');  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
         if self.justone==5 or self.justone<0:
@@ -196,7 +197,7 @@ class Plotter:
             if draw_fl:  self.oct_fline  (min(Sa)/pcoef,max(Sa)/pcoef,min(Sb)/pcoef,max(Sb)/pcoef)
             plot (Sa/pcoef, Sb/pcoef, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             plot (Sa[imaQP]/pcoef, Sb[imaQP]/pcoef, '^', color=clr)
-            #plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
+            plot (Sa[-1   ]/pcoef,  Sb[-1  ]/pcoef, '^', color=clr)
             axis ('equal')
             axis ('off')
 
@@ -206,7 +207,7 @@ class Plotter:
             plot   (E1, Y, lw=self.lwd,linestyle='-',  color=clr)
             plot   (E2, Y, lw=self.lwd,linestyle='--', color=clr)
             plot   (E3, Y, lw=self.lwd,linestyle='-.', color=clr)
-            #xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]')
+            xlabel (r'$\varepsilon_1$[--], $\varepsilon_2$[- -], $\varepsilon_3$[- .]')
             ylabel (Ylbl);  grid()
 
         if self.devplot:
@@ -215,7 +216,7 @@ class Plotter:
                 if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
                 if draw_fl: self.s123_fline(S3[imaQP])
                 plot   (S3-S1, S3-S2, lw=self.lwd,linestyle='-', color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-                #xlabel (r'$\sigma_3-\sigma_1$');  ylabel(r'$\sigma_3-\sigma_2$');  grid()
+                xlabel (r'$\sigma_3-\sigma_1$');  ylabel(r'$\sigma_3-\sigma_2$');  grid()
                 axis   ('equal')
         else:
             # 7) Ek, Sk ---------------------------------------------------------------------------
@@ -224,7 +225,7 @@ class Plotter:
                 plot   (Ex, -Sx, lw=self.lwd,linestyle='-', color=clr)
                 plot   (Ey, -Sy, lw=self.lwd,linestyle='--', color=clr)
                 plot   (Ez, -Sz, lw=self.lwd,linestyle='-.', color=clr)
-                #xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]')
+                xlabel (r'$\varepsilon_x$[--], $\varepsilon_y$[- -], $\varepsilon_z$[- .]')
                 ylabel (r'$-\sigma_x$[--], $-\sigma_y$[- -], $-\sigma_z$[- .]');  grid()
 
         # 8) sqrt(2.0)*Si, Sj ---------------------------------------------------------------------------
@@ -232,7 +233,7 @@ class Plotter:
             if self.justone<0: self.ax = subplot (nhplt,nvplt,iplot);  iplot += 1
             if draw_fl: self.sxyz_fline()
             plot   (-sqrt(2.0)*Si, -Sj,  lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            #xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]));  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]));  grid()
+            xlabel (r'$-\sqrt{2}\sigma_%s$'%(ikeys[abs(self.isxyz[0])]));  ylabel(r'$-\sigma_%s$'%(ikeys[abs(self.isxyz[1])]));  grid()
             axis   ('equal')
 
         # 9) Mohr-circles -----------------------------------------------------------------------------
@@ -255,7 +256,7 @@ class Plotter:
                 self.draw_arc(gca(), C2,0.,R2, 0., pi, clr, res=30)
             p1, = plot ([0], [0], 'r-')
             p2, = plot ([0,max_s],[0,max_s*tan(self.fc_phi*pi/180.)],'-',color='orange')
-            #xlabel (r'$-\sigma_i$');  ylabel(r'$\tau$');  grid()
+            xlabel (r'$-\sigma_i$');  ylabel(r'$\tau$');  grid()
             axis   ('equal')
 
 

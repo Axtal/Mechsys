@@ -40,6 +40,7 @@ struct NumStream
 
 //                    bool  integ  scien   w   p  reset
 NumStream _a     = {  true, false, false,  0,  0, false }; ///< Boolean
+NumStream _2     = { false,  true, false,  2,  0, false }; ///< Integer
 NumStream _3     = { false,  true, false,  3,  0, false }; ///< Integer
 NumStream _4     = { false,  true, false,  4,  0, false }; ///< Integer
 NumStream _6     = { false,  true, false,  6,  0, false }; ///< Integer
@@ -48,6 +49,8 @@ NumStream _3s    = { false, false,  true,  0,  3, false }; ///< Scientific
 NumStream _6s    = { false, false,  true,  0,  6, false }; ///< Scientific
 NumStream _8s    = { false, false,  true,  0,  8, false }; ///< Scientific
 NumStream _15s   = { false, false,  true,  0, 15, false }; ///< Scientific
+NumStream _3_2   = { false, false, false,  3,  2, false }; ///< General
+NumStream _4_2   = { false, false, false,  4,  2, false }; ///< General
 NumStream _6_2   = { false, false, false,  6,  3, false }; ///< General
 NumStream _6_3   = { false, false, false,  6,  3, false }; ///< General
 NumStream _6_4   = { false, false, false,  6,  4, false }; ///< General
