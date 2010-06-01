@@ -71,7 +71,7 @@ const int Quad8::Face2Node[4][3] = {{ 0, 1, 4 },
 inline Quad8::Quad8 (int NDim)
     : GeomElem(NDim, /*NN*/8, /*NFN*/3, /*rCt*/0.0, /*sCt*/0.0, /*tCt*/0.0, "Quad8")
 {
-    SetIPs (9);
+    SetIPs (4);
 }
 
 inline void Quad8::SetIPs (int TotNIP)
