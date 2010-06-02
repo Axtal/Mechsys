@@ -472,7 +472,8 @@ int main(int argc, char **argv) try
     Vec3_t  sigf;                      // final stress state
     bVec3_t peps(false, false, false); // prescribed strain rates ?
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
-    sigf =  Vec3_t(-p0,-p0,-p0);
+
+    sigf =  Vec3_t(-50,-50,-50);
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
     dat.tspan = T0/2.0 - dom.Time;
@@ -481,13 +482,22 @@ int main(int argc, char **argv) try
     dat.tspan = T0 - dom.Time;
     dom.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo);
 
+    sigf =  Vec3_t(-p0,-p0,-p0);
+    ResetEps  (dom,dat);
+    SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
+    dat.tspan = 3.0*T0/2.0 - dom.Time;
+    dom.Solve     (/*tf*/3.0*T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo);
+    SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
+    dat.tspan = 2*T0 - dom.Time;
+    dom.Solve     (/*tf*/2*T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo);
+
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
     Vec3_t lf;
     pqTh2L (pf, qf, thf, lf, "cam");
     sigf   = lf(0), lf(1), lf(2);
     peps   = bVec3_t(pssrx, pssry, pssrz);
-    depsdt = Vec3_t(srx/(Tf-T0), sry/(Tf-T0), srz/(Tf-T0));
+    depsdt = Vec3_t(srx/(Tf-dom.Time), sry/(Tf-dom.Time), srz/(Tf-dom.Time));
 
     // properties of particles at the start of  the triaxial test
     B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu,Beta,Eta);

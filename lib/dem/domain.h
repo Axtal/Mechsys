@@ -1622,11 +1622,14 @@ inline void Domain::ResetInteractons()
         {
             bool pj_has_vf = !Particles[j]->IsFree();
 
-            bool close = (Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
 
             // if both particles have any component specified or they are far away, don't create any intereactor
+#ifdef OPTIMIZE_DEM_MEM
+            bool close = (Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
             if ((pi_has_vf && pj_has_vf) || !close ) continue;
-            //if ((pi_has_vf && pj_has_vf)) continue;
+#else
+            if ((pi_has_vf && pj_has_vf)) continue;
+#endif
 
             // if both particles are spheres (just one vertex)
             if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
@@ -1691,7 +1694,8 @@ inline double Domain::MaxDisplacement()
 
 inline void Domain::ResetContacts()
 {
-    ///*
+#ifdef OPTIMIZE_DEM_MEM
+    Array<CInteracton*> Temp = CInteractons;
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
         bool pi_has_vf = !Particles[i]->IsFree();
@@ -1704,12 +1708,10 @@ inline void Domain::ResetContacts()
             
             // checking if the interacton exist for that pair of particles
             bool exist = false;
-            for (size_t k=0; k<CInteractons.Size(); k++)
+            for (size_t k=0; k<Temp.Size(); k++)
             {
-                //bool index_i = CInteractons[k]->P1->Index==Particles[i]->Index;
-                //bool index_j = CInteractons[k]->P2->Index==Particles[j]->Index;
-                bool index_i = CInteractons[k]->P1==Particles[i];
-                bool index_j = CInteractons[k]->P2==Particles[j];
+                bool index_i = Temp[k]->P1==Particles[i];
+                bool index_j = Temp[k]->P2==Particles[j];
                 if (index_i&&index_j)
                 {
                     exist = true;
@@ -1734,6 +1736,7 @@ inline void Domain::ResetContacts()
             }
         }
     }
+#endif
 
 #ifdef USE_MPI
     for (size_t i=0; i<Particles.Size(); i++)
@@ -1780,7 +1783,7 @@ inline void Domain::ResetContacts()
         }
     }
 #endif
-    //*/
+
     Interactons.Resize(0);
     for (size_t i=0; i<CInteractons.Size(); i++)
     {

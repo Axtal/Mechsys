@@ -32,15 +32,6 @@ int main(int argc, char **argv) try
     dom.CamPos = 0.0,60.0,0.0;
     //dom.CamPos = 0.0,5.0,0.0;
     dom.Gravity = 0.0,0.0,-0.05;
-    //dom.AddBox(Vec3_t (5.5,0.0,5.0), 1,10,10,0.5,0.7,2.0,true);
-    //dom.AddBox(Vec3_t(-5.5,0.0,5.0), 1,10,10,0.5,0.7,2.0,true);
-    //dom.AddBox(Vec3_t( 0.0,5.5,5.0), 10,1,10,0.5,0.7,2.0,true);
-    //dom.AddBox(Vec3_t(0.0,-5.5,5.0), 10,1,10,0.5,0.7,2.0,true);
-    //dom.AddBox(Vec3_t(0.0,0.0,-0.5), 10,10,1,0.5,0.7,2.0,true);
-    //dom.AddBox(Vec3_t(-3.5,0.0,5.0),  3,1,10,0.5,0.7,2.0,false);
-    //dom.AddBox(Vec3_t(0.0,0.0,0.0),  10,1,10,0.5,0.7,2.8,false);
-    //dom.Particles.Push(new SPHParticle(Vec3_t( 0.3,0.0,0.0),OrthoSys::O,2.8,0.5));
-    //dom.Particles.Push(new SPHParticle(Vec3_t(-0.3,0.0,0.0),OrthoSys::O,2.8,0.5));
     
     dom.AddBox(Vec3_t (-20.5, 0.0, 0.0), 1,1,40,0.5,0.5,20.0,true);
     dom.AddBox(Vec3_t ( 20.5, 0.0, 0.0), 1,1,40,0.5,0.5,20.0,true);

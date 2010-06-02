@@ -116,3 +116,7 @@ if(A_USE_MPI)
         MESSAGE ("Could not find OpenMPI. OK, compiling without it")
     endif(MPI_FOUND)
 endif(A_USE_MPI)
+
+if(A_OPTIMIZE_DEM_MEM)
+    ADD_DEFINITIONS (-DOPTIMIZE_DEM_MEM)
+endif(A_USE_MPI)

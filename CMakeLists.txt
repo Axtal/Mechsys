@@ -39,6 +39,7 @@ OPTION(A_WITH_OPTIONAL      "Make with optional dependencies"                   
 
 # Options
 OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"              OFF)
+OPTION(A_OPTIMIZE_DEM_MEM   "Optimize DEM code for memory instead of speed"     OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)

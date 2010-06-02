@@ -276,8 +276,8 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
     ResetDisplacements();
     ResetContacts();
 
-    //OpenH5Part(TheFileKey);
-//
+    OpenH5Part(TheFileKey);
+
     while (Time<tf)
     {
         // Calculate the acceleration for each particle
@@ -300,7 +300,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
                 String fn;
                 fn.Printf    ("%s_%08d", TheFileKey, idx_out);
                 if(RenderVideo) WritePOV     (fn.CStr());
-                //WriteH5Part();
+                WriteH5Part();
             }
             tout += dtOut;
         }
@@ -313,7 +313,7 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
         
     }
 
-    //CloseH5Part();
+    CloseH5Part();
 
 
 }
