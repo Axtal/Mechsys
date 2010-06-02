@@ -75,6 +75,10 @@ IF(A_MAKE_WX_MONO)
 	SET(WXMONO TRUE)
 ENDIF(A_MAKE_WX_MONO)
 
+if(A_OPTIMIZE_DEM_MEM)
+    ADD_DEFINITIONS (-DOPTIMIZE_DEM_MEM)
+endif(A_OPTIMIZE_DEM_MEM)
+
 ### FEATURES ############################################################################################
 
 SET(ALLDIRS) # sub-directories
