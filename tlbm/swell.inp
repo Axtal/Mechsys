@@ -1,0 +1,12 @@
+400         nx;     // Number of cells in the x direction
+400         ny;     // Number of cells in the y direction
+320         Gsmax;  // Interaction constant for fluid-solid
+320         Gsmin;  // Interaction constant for fluid-solid
+120         Gf;     // Interaction constant for fluid-fluid
+0.0001      densv;  // Density for the vapour phase
+900         densl;  // Density for the liquid phase
+100000      Tf;     // final time
+1000        dTout;  // time sapn for output
+32          n_div;  // number of holes
+1.0         arc;    // arc length of hole
+0.1         thickness; // thickness percentage

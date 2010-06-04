@@ -94,28 +94,32 @@ int main(int argc, char **argv) try
     String filename (filekey+".inp");
     if (!Util::FileExists(filename)) throw new Fatal("File <%s> not found",filename.CStr());
     ifstream infile(filename.CStr());
-    int         nx;     // Number of cells in the x direction
-    int         ny;     // Number of cells in the y direction
-    double      Gs;     // Interaction constant for fluid-solid
-    double      Gf;     // Interaction constant for fluid-fluid
-    double      densv;  // Density for the vapour phase
-    double      densl;  // Density for the liquid phase
-    int         Tf;     // final time
-    int         dTout;  // time span for output
-    int         n_div;  // number of divitions
-    double      arc;    // arc length of holes
+    int         nx;        // Number of cells in the x direction
+    int         ny;        // Number of cells in the y direction
+    double      Gsmax;     // Interaction constant for fluid-solid
+    double      Gsmin;     // Interaction constant for fluid-solid
+    double      Gf;        // Interaction constant for fluid-fluid
+    double      densv;     // Density for the vapour phase
+    double      densl;     // Density for the liquid phase
+    int         Tf;        // final time
+    int         dTout;     // time span for output
+    int         n_div;     // number of divitions
+    double      arc;       // arc length of holes
+    double      thickness; // thickness percentage
      
     // Reading from the file
-    infile >> nx;     infile.ignore(200,'\n'); 
-    infile >> ny;     infile.ignore(200,'\n');
-    infile >> Gs;     infile.ignore(200,'\n');
-    infile >> Gf;     infile.ignore(200,'\n');
-    infile >> densv;  infile.ignore(200,'\n');
-    infile >> densl;  infile.ignore(200,'\n');
-    infile >> Tf;     infile.ignore(200,'\n');
-    infile >> dTout;  infile.ignore(200,'\n');
-    infile >> n_div;  infile.ignore(200,'\n');
-    infile >> arc;    infile.ignore(200,'\n');
+    infile >> nx;           infile.ignore(200,'\n'); 
+    infile >> ny;           infile.ignore(200,'\n');
+    infile >> Gsmax;        infile.ignore(200,'\n');
+    infile >> Gsmin;        infile.ignore(200,'\n');
+    infile >> Gf;           infile.ignore(200,'\n');
+    infile >> densv;        infile.ignore(200,'\n');
+    infile >> densl;        infile.ignore(200,'\n');
+    infile >> Tf;           infile.ignore(200,'\n');
+    infile >> dTout;        infile.ignore(200,'\n');
+    infile >> n_div;        infile.ignore(200,'\n');
+    infile >> arc;          infile.ignore(200,'\n');
+    infile >> thickness;    infile.ignore(200,'\n');
 
 
 	// Allocate lattice
@@ -129,7 +133,7 @@ int main(int argc, char **argv) try
 		           1);      
 
 	// Set walls (top and bottom)
-	l.SetG(-Gf)->SetGSolid(-Gs);
+	l.SetG(-Gf);
 	l.SetTau(1.0);
 
 
@@ -152,9 +156,9 @@ int main(int argc, char **argv) try
         if ((xc+r<nx)&&(xc-r>0)&&(yc+r<ny)&&(yc-r>0))
         {
             //DrawOpenCircle (l, xc, yc, r+1,0.4);
-            DrawBullEyeCircle (l, xc, yc, 1.1*r,0.1,n_div,arc,0.0,-Gs);
+            DrawBullEyeCircle (l, xc, yc, 1.1*r,0.1,n_div,arc,-Gsmin,-Gsmax);
             DrawFluidDisk(l, xc, yc, 0.9*1.1*r ,densl);
-            DrawFluidCircle(l, xc, yc, 1.1*r,1.2*r, densl);
+            DrawFluidCircle(l, xc, yc, 1.1*r,(1.1+thickness)*r, densl);
         }
 	}
 	l.Solve(/*tIni*/0.0, /*tFin*/Tf, /*dtOut*/dTout);
