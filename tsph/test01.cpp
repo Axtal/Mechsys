@@ -30,7 +30,7 @@ int main(int argc, char **argv) try
 {
     Vec3_t Xmax( 20.5, 20.5,0.0);
     Vec3_t Xmin(-20.5,-20.5,0.0);
-    iVec3_t Div(100,100,1);
+    iVec3_t Div(200,200,1);
     SPHDomain dom(Div,Xmin,Xmax);
     dom.CamPos = 0.0,60.0,0.0;
     dom.Gravity = 0.0,-0.05,0.0;

@@ -184,8 +184,9 @@ inline void SPHDomain::WriteVTK (char const * FileKey)
 	oss << "SPACING "      << (DXmax(0)-DXmin(0))/N_side(0) << " " << (DXmax(1)-DXmin(1))/N_side(1)  << " " << (DXmax(2)-DXmin(2))/N_side(2)  << "\n";
 	oss << "POINT_DATA "   << N_side(0)*N_side(1)*N_side(2) << "\n";
 
-    Array<double> rho(N_side(0)*N_side(1)*N_side(2));       //Array of density
+    Array<double> rho(N_side(0)*N_side(1)*N_side(2));    //Array of density
     Array<double> Press(N_side(0)*N_side(1)*N_side(2));  //Array of pressures
+    Array<double> Water(N_side(0)*N_side(1)*N_side(2));  //Array of water content
 
     for (size_t i = 0;i < N_side(0)*N_side(1)*N_side(2); ++i)
     {
@@ -194,12 +195,15 @@ inline void SPHDomain::WriteVTK (char const * FileKey)
                  (DXmax(2)-DXmin(2))/N_side(2)*(i%N_side(2))          +DXmin(2));
         rho [i] = 0.0;
         Press [i] = 0.0;
+        Water [i] = 0.0;
         for (size_t j = 0;j < Particles.Size();j++)
         {
             if (Particles[j]->IsFree) 
             {
-                rho[i]      += Particles[j]->Density*SPHKernel(x,Particles[j]->x,Particles[j]->h);
-                Press[i]    += Pressure(Particles[j]->Density)*SPHKernel(x,Particles[j]->x,Particles[j]->h);
+                double Ker = SPHKernel(x,Particles[j]->x,Particles[j]->h);
+                rho[i]      += Particles[j]->Density*Ker;
+                Press[i]    += Pressure(Particles[j]->Density)*Ker;
+                Water[i]    += Particles[j]->Density0/Particles[j]->Density*Ker;
             }
         }
     }
@@ -221,6 +225,14 @@ inline void SPHDomain::WriteVTK (char const * FileKey)
         oss << Press[i] << "\n";
     }
     
+	//Free surface
+	oss << "SCALARS Water float 1\n";
+	oss << "LOOKUP_TABLE default\n";
+    for (size_t i = 0;i < N_side(0)*N_side(1)*N_side(2); ++i)
+    {
+        oss << Water[i] << "\n";
+    }
+
 	// Open/create file, write to file, and close file
     String fn(FileKey);
     fn.append(".vtk");

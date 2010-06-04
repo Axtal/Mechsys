@@ -236,6 +236,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
 
             pair<int,int> p;
             p = make_pair(i,j);
+            if (FMap.count(p)==0) FMap[p] = 0.0,0.0,0.0;
             FMap[p] += vt*dt;
             FMap[p] -= dot(FMap[p],n)*n;
             Vec3_t tan = FMap[p];

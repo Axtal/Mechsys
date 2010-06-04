@@ -43,6 +43,8 @@ struct UserData
     Vec3_t             L0;           ///< Initial length of the packing
     std::ofstream      oss_ss;         ///< file for stress strain data
 
+    //Constructor
+    UserData() {Sig = 0.0,0.0,0.0;}     
 };
 
 void SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt, double theta, double alpha, bool TheStrainCtrl, UserData & UD, DEM::Domain const & D)
@@ -56,7 +58,6 @@ void SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt
     UD.Thf = theta;
     UD.Alp = alpha;
     if (TheStrainCtrl) UD.Sig0 = UD.Sig;
-
 
     // initialize particles
     for (size_t i=0; i<D.Particles.Size(); i++) D.Particles[i]->Initialize();
@@ -453,11 +454,10 @@ int main(int argc, char **argv) try
     else throw new Fatal("Packing for particle type not implemented yet");
     dat.InitialIndex = dom.Particles.Size();
     dom.GenBoundingBox (/*InitialTag*/-2, R, /*Cf*/1.3);
-    dom.WriteBPY("ttt");
 
     // properties of particles prior the triaxial test
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu ,Beta,Eta);
+    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
@@ -473,23 +473,14 @@ int main(int argc, char **argv) try
     bVec3_t peps(false, false, false); // prescribed strain rates ?
     Vec3_t  depsdt(0.0,0.0,0.0);       // strain rate
 
-    sigf =  Vec3_t(-50,-50,-50);
-    ResetEps  (dom,dat);
-    SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
-    dat.tspan = T0/2.0 - dom.Time;
-    dom.Solve     (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo);
-    SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
-    dat.tspan = T0 - dom.Time;
-    dom.Solve     (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo);
-
     sigf =  Vec3_t(-p0,-p0,-p0);
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
-    dat.tspan = 3.0*T0/2.0 - dom.Time;
-    dom.Solve     (/*tf*/3.0*T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo);
+    dat.tspan = T0/2.0 - dom.Time;
+    dom.Solve  (/*tf*/T0/2.0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_a.CStr(),RenderVideo);
     SetTxTest (sigf, peps, depsdt,0,0,false,dat,dom);
-    dat.tspan = 2*T0 - dom.Time;
-    dom.Solve     (/*tf*/2*T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo);
+    dat.tspan = T0 - dom.Time;
+    dom.Solve (/*tf*/T0, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_b.CStr(),RenderVideo);
 
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
@@ -507,7 +498,7 @@ int main(int argc, char **argv) try
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
-    //dom.ResetInteractons();
+    dom.ResetInteractons();
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo);
 
     return 0;
