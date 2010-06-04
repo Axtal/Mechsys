@@ -24,15 +24,15 @@
 #include <mechsys/sph/interacton.h>
 #include <mechsys/dem/graph.h>
 
-// H5Part
-#include <src/H5Part.h>
-
 class SPHDomain
 {
 public:
 
     // Constructor
-    SPHDomain();
+    SPHDomain(iVec3_t n, Vec3_t Xmin, Vec3_t Xmax);  ///< Constructor with a vector containing the number of divisions per length, and Xmin Xmax defining the limits of the rectangular domain to be plotted
+
+    // Destructor
+    ~SPHDomain ();
 
     // Methods
     void AddBox(Vec3_t const & x, size_t nx, size_t ny, size_t nz, double h, double s,  double rho0, bool Fixed);      ///< Add a box of SPHparticles
@@ -43,9 +43,7 @@ public:
     void Move                (double dt);                                                                              ///< Compute the accleration due to the other particles
     void WriteBPY (char const * FileKey);                                                                              ///< Draw the entire domain in a POV file
     void WritePOV (char const * FileKey);                                                                              ///< Draw the entire domain in a blender file
-    void OpenH5Part (char const * FileKey);                                                                            ///< Open the H5Part file for writing
-    void WriteH5Part ();                                                                                               ///< Write in the H5Part file
-    void CloseH5Part ();                                                                                               ///< Close the H5Part file
+    void WriteVTK (char const * FileKey);                                                                              ///< Draw the entire domain in a VTK file
     void ResetInteractons();                                                                                           ///< Reset the interacton array
     void ResetDisplacements();                                                                                         ///< Reset the particles displacement
     void ResetContacts();                                                                                              ///< Reset the possible interactons
@@ -60,22 +58,30 @@ public:
     Array <SPHInteracton*>  PInteractons;   ///< Array of SPH possible interactons
     size_t                  idx_out;        ///< Index for output pourposes
     double                  Time;           ///< The simulation Time
-    size_t                  SInt;           ///< Size of the interacton array
     double                  Alpha;          ///< Parameter for verlet lists
-    H5PartFile              *FileID;        ///< File ID for paraview visualization
-
+    iVec3_t                 N_side;         ///< Vector containing number of division per side of the domain
+    Vec3_t                  DXmin;          ///< Point defining the bottom limit of the rectangle domain
+    Vec3_t                  DXmax;          ///< Point defining the top limit of the rectangle domain
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 // Constructor
-inline SPHDomain::SPHDomain ()
+inline SPHDomain::SPHDomain (iVec3_t n, Vec3_t Xmin, Vec3_t Xmax)
 {
-    CamPos = 1.0,2.0,3.0;
-    Time = 0.0;
+    CamPos  = 1.0,2.0,3.0;
+    Time    = 0.0;
     Gravity = 0.0,0.0,0.0;
-    Alpha = 0.1;
-    FileID = NULL;
+    Alpha   = 0.1;
+    N_side  = n;
+    DXmin   = Xmin;
+    DXmax   = Xmax;
+}
+
+inline SPHDomain::~SPHDomain ()
+{
+    for (size_t i=0; i<Particles.Size();   ++i) if (Particles  [i]!=NULL) delete Particles  [i];
+    for (size_t i=0; i<Interactons.Size(); ++i) if (Interactons[i]!=NULL) delete Interactons[i];
 }
 
 
@@ -95,7 +101,9 @@ inline void SPHDomain::AddBox(Vec3_t const & V, size_t nx, size_t ny, size_t nz,
 }
 
 inline void SPHDomain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho0, double R, size_t RandomSeed)
-{
+{ 
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Generating random packing of spheres -------------[0m\n";
     const double x_min=-Lx/2.0+V(0), x_max=Lx/2.0+V(0);
     const double y_min=-Ly/2.0+V(1), y_max=Ly/2.0+V(1);
     const double z_min=-Lz/2.0+V(2), z_max=Lz/2.0+V(2);
@@ -114,6 +122,9 @@ inline void SPHDomain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, doub
             }
         }
     }
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
 }
 
 inline void SPHDomain::StartAcceleration (Vec3_t const & a)
@@ -160,56 +171,63 @@ inline void SPHDomain::WriteBPY (char const * FileKey)
     of.close();
 }
 
-inline void SPHDomain::OpenH5Part (char const * FileKey)
+inline void SPHDomain::WriteVTK (char const * FileKey)
 {
-    String fn(FileKey);
-    fn.append(".h5part");
-    FileID = H5PartOpenFile(fn.CStr(),H5PART_WRITE);
-}
+	// Header
+	std::ostringstream oss;
+	oss << "# vtk DataFile Version 2.0\n";
+	oss << "TimeStep = " << idx_out << "\n";
+	oss << "ASCII\n";
+	oss << "DATASET STRUCTURED_POINTS\n";
+	oss << "DIMENSIONS "   << N_side(0)                     << " " << N_side(1)                      << " " << N_side(2)                      << "\n";
+	oss << "ORIGIN "       << DXmin(0)                      << " " << DXmin(1)                       << " " << DXmin(2)                       << "\n";
+	oss << "SPACING "      << (DXmax(0)-DXmin(0))/N_side(0) << " " << (DXmax(1)-DXmin(1))/N_side(1)  << " " << (DXmax(2)-DXmin(2))/N_side(2)  << "\n";
+	oss << "POINT_DATA "   << N_side(0)*N_side(1)*N_side(2) << "\n";
 
-inline void SPHDomain::CloseH5Part ()
-{
-    H5PartCloseFile(FileID);
-}
+    Array<double> rho(N_side(0)*N_side(1)*N_side(2));       //Array of density
+    Array<double> Press(N_side(0)*N_side(1)*N_side(2));  //Array of pressures
 
-inline void SPHDomain::WriteH5Part()
-{
-    
-    H5PartSetStep(FileID,idx_out-1);
-    H5PartSetNumParticles(FileID,Particles.Size());
-
-    double x [Particles.Size()];
-    double y [Particles.Size()];
-    double z [Particles.Size()];
-    double vx [Particles.Size()];
-    double vy [Particles.Size()];
-    double vz [Particles.Size()];
-    double d [Particles.Size()];
-    double m [Particles.Size()];
-    double P [Particles.Size()];
-
-    for (size_t i=0; i<Particles.Size(); i++)
+    for (size_t i = 0;i < N_side(0)*N_side(1)*N_side(2); ++i)
     {
-        x[i] = Particles[i]->x(0); 
-        y[i] = Particles[i]->x(1); 
-        z[i] = Particles[i]->x(2); 
-        vx[i] = Particles[i]->v(0); 
-        vy[i] = Particles[i]->v(1); 
-        vz[i] = Particles[i]->v(2); 
-        d[i] = Particles[i]->Density; 
-        m[i] = Particles[i]->Density0;
-        P[i] = Pressure(d[i]); 
+        Vec3_t x((DXmax(0)-DXmin(0))/N_side(0)*(i%N_side(0))          +DXmin(0),
+                 (DXmax(1)-DXmin(1))/N_side(1)*(i/N_side(0)/N_side(2))+DXmin(1),
+                 (DXmax(2)-DXmin(2))/N_side(2)*(i%N_side(2))          +DXmin(2));
+        rho [i] = 0.0;
+        Press [i] = 0.0;
+        for (size_t j = 0;j < Particles.Size();j++)
+        {
+            if (Particles[j]->IsFree) 
+            {
+                rho[i]      += Particles[j]->Density*SPHKernel(x,Particles[j]->x,Particles[j]->h);
+                Press[i]    += Pressure(Particles[j]->Density)*SPHKernel(x,Particles[j]->x,Particles[j]->h);
+            }
+        }
+    }
+
+
+	//Density field
+	oss << "SCALARS Density float 1\n";
+	oss << "LOOKUP_TABLE default\n";
+    for (size_t i = 0;i < N_side(0)*N_side(1)*N_side(2); ++i)
+    {
+        oss << rho[i] << "\n";
+    }
+
+	//Density field
+	oss << "SCALARS Pressure float 1\n";
+	oss << "LOOKUP_TABLE default\n";
+    for (size_t i = 0;i < N_side(0)*N_side(1)*N_side(2); ++i)
+    {
+        oss << Press[i] << "\n";
     }
     
-    H5PartWriteDataFloat64(FileID,"Coords_0",x);
-    H5PartWriteDataFloat64(FileID,"Coords_1",y);
-    H5PartWriteDataFloat64(FileID,"Coords_2",z);
-    H5PartWriteDataFloat64(FileID,"Velocity_0",vx);
-    H5PartWriteDataFloat64(FileID,"Velocity_1",vy);
-    H5PartWriteDataFloat64(FileID,"Velocity_2",vz);
-    H5PartWriteDataFloat64(FileID,"Density",d);
-    H5PartWriteDataFloat64(FileID,"Mass",m);
-    H5PartWriteDataFloat64(FileID,"Pressure",P);
+	// Open/create file, write to file, and close file
+    String fn(FileKey);
+    fn.append(".vtk");
+	std::ofstream  of;
+	of.open (fn.CStr(), std::ios::out);
+	of << oss.str();
+	of.close();
 }
 
 inline void SPHDomain::ResetInteractons()
@@ -269,6 +287,8 @@ inline double SPHDomain::MaxDisplacement()
 
 inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo)
 {
+    double start = std::clock();
+    std::cout << "[1;33m\n--- Solving  --------------------------------------[0m\n";
     idx_out = 0;
     double tout = Time;
 
@@ -276,7 +296,6 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
     ResetDisplacements();
     ResetContacts();
 
-    OpenH5Part(TheFileKey);
 
     while (Time<tf)
     {
@@ -297,10 +316,13 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
             idx_out++;
             if (TheFileKey!=NULL)
             {
-                String fn;
-                fn.Printf    ("%s_%08d", TheFileKey, idx_out);
-                if(RenderVideo) WritePOV     (fn.CStr());
-                WriteH5Part();
+                if(RenderVideo)
+                {
+                    String fn;
+                    fn.Printf    ("%s_%08d", TheFileKey, idx_out);
+                    WritePOV     (fn.CStr());
+                    WriteVTK     (fn.CStr());
+                }
             }
             tout += dtOut;
         }
@@ -312,10 +334,8 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
         }
         
     }
-
-    CloseH5Part();
-
-
+    double total = std::clock() - start;
+    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 }
 
 #endif // MECHSYS_SPH_DOMAIN_H

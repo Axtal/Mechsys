@@ -44,6 +44,12 @@ inline double GradSPHKernel(double r, double h)
     else                 return 0.0;
 }
 
+inline double SPHKernel(Vec3_t & x, Vec3_t & xp, double h)
+{
+    double r = norm(xp-x);
+    return SPHKernel(r,h);
+}
+
 inline double Pressure(double rho)
 {
     double P0 = 10.0;

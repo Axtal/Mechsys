@@ -409,7 +409,8 @@ typedef blitz::TinyMatrix<double,3,3> Mat3_t;
 
 /** 3x1 Vector. */
 typedef blitz::TinyVector<double,3> Vec3_t;
-typedef blitz::TinyVector<bool,3>  bVec3_t;
+typedef blitz::TinyVector<size_t,3> iVec3_t;
+typedef blitz::TinyVector<bool,3>   bVec3_t;
 
 /** Print vector. */
 inline String PrintVector (Vec3_t const & V, char const * Fmt="%13g", double Tol=1.0e-13)
