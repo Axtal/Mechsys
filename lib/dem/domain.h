@@ -26,6 +26,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>    // for std::clock
+#include <set>
 
 // Hdf5
 #include <hdf5.h>
@@ -129,22 +130,23 @@ public:
     double CalcEnergy      (double & Ekin, double & Epot);                                                   ///< Return total energy of the system
 
     // Data
-    double              Time;            ///< Current time
-    bool                Initialized;     ///< System (particles and interactons) initialized ?
-    Array<Particle*>    Particles;       ///< All particles in domain
-    Array<Interacton*>  Interactons;     ///< All interactons
-    Array<CInteracton*> CInteractons;    ///< Contact interactons
-    Array<BInteracton*> BInteractons;    ///< Cohesion interactons
-    Vec3_t              CamPos;          ///< Camera position for POV
-    double              Evis;            ///< Energy dissipated by the viscosity of the grains
-    double              Efric;           ///< Energy dissipated by friction
-    double              Wext;            ///< Work done by external forces
-    double              Vs;              ///< Volume occupied by the grains
-    double              Alpha;           ///< Verlet distance
-    void *              UserData;        ///< Some user data
-    String              FileKey;         ///< File Key for output files
-    size_t              idx_out;         ///< Index of output
-    bool                Finished;        ///< Has the simulation finished
+    bool                Initialized;                                    ///< System (particles and interactons) initialized ?
+    bool                Finished;                                       ///< Has the simulation finished
+    Array<Particle*>    Particles;                                      ///< All particles in domain
+    Array<Interacton*>  Interactons;                                    ///< All interactons
+    Array<CInteracton*> CInteractons;                                   ///< Contact interactons
+    Array<BInteracton*> BInteractons;                                   ///< Cohesion interactons
+    Vec3_t              CamPos;                                         ///< Camera position for POV
+    double              Time;                                           ///< Current time
+    double              Evis;                                           ///< Energy dissipated by the viscosity of the grains
+    double              Efric;                                          ///< Energy dissipated by friction
+    double              Wext;                                           ///< Work done by external forces
+    double              Vs;                                             ///< Volume occupied by the grains
+    double              Alpha;                                          ///< Verlet distance
+    void *              UserData;                                       ///< Some user data
+    String              FileKey;                                        ///< File Key for output files
+    size_t              idx_out;                                        ///< Index of output
+    set<pair<Particle *, Particle *> > Listofpairs;                     ///< List of pair of particles associated per interacton for memory optimization
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -202,7 +204,7 @@ public:
 // Constructor & Destructor
 
 inline Domain::Domain (void * UD)
-    : Time(0.0), Initialized(false), Alpha(0.1), UserData(UD)
+    :  Initialized(false), Time(0.0), Alpha(0.1), UserData(UD)
 {
     CamPos = 1.0, 2.0, 3.0;
 #ifdef USE_MPI
@@ -1627,6 +1629,7 @@ inline void Domain::ResetInteractons()
 #ifdef OPTIMIZE_DEM_MEM
             bool close = (Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
             if ((pi_has_vf && pj_has_vf) || !close ) continue;
+            Listofpairs.insert(make_pair(Particles[i],Particles[j]));
 #else
             if ((pi_has_vf && pj_has_vf)) continue;
 #endif
@@ -1707,33 +1710,38 @@ inline void Domain::ResetContacts()
             if ((pi_has_vf && pj_has_vf) || !close) continue;
             
             // checking if the interacton exist for that pair of particles
-            bool exist = false;
-            for (size_t k=0; k<Temp.Size(); k++)
+            //bool exist = false;
+            set<pair<Particle *, Particle *> >::iterator it = Listofpairs.find(make_pair(Particles[i],Particles[j]));
+            if (it != Listofpairs.end())
             {
-                bool index_i = Temp[k]->P1==Particles[i];
-                bool index_j = Temp[k]->P2==Particles[j];
-                if (index_i&&index_j)
-                {
-                    exist = true;
-                    break;
-                }
+                break;
             }
+            //for (size_t k=0; k<Temp.Size(); k++)
+            //{
+                //bool index_i = Temp[k]->P1==Particles[i];
+                //bool index_j = Temp[k]->P2==Particles[j];
+                //if (index_i&&index_j)
+                //{
+                    //exist = true;
+                    //break;
+                //}
+            //}
 
             // If it doesn't add it to the CInteracton array
-            if (!exist)
-            {
+            //if (!exist)
+            //{
                 // if both particles are spheres (just one vertex)
-                if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
-                {
-                    CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
-                }
-
-                // normal particles
-                else
-                {
-                    CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
-                }
+            if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
+            {
+                CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
             }
+
+            // normal particles
+            else
+            {
+                CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
+            }
+            //}
         }
     }
 #endif
