@@ -44,7 +44,7 @@ class IsoSurf
 {
 public:
     // Constructor & Destructor
-    IsoSurf (MeshGrid const & MG, GridCallBack Func, void * UserData=NULL);
+    IsoSurf (MeshGrid const & MG, GridCallBack Func, void * UserData=NULL, double PointSize=3.0);
 
     // Destructor
     ~IsoSurf ();
@@ -62,6 +62,7 @@ public:
     void WriteFile   (char const * Filename);
 
     // Data
+    bool ShowPoints;
     bool ShowIsoSurf;
     bool ShowVectors;
     bool ShowOutline;
@@ -71,6 +72,8 @@ private:
     vtkDoubleArray                 * _scalars;
     vtkDoubleArray                 * _vectors;
     vtkStructuredGrid              * _sgrid;
+    vtkDataSetMapper               * _sgrid_mapper;
+    vtkActor                       * _sgrid_actor;
     vtkMarchingContourFilter       * _isosurf;
     vtkPolyDataMapper              * _isosurf_mapper;
     vtkActor                       * _isosurf_actor;
@@ -87,8 +90,9 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline IsoSurf::IsoSurf (MeshGrid const & MG, GridCallBack Func, void * UserData)
-    : ShowIsoSurf (true),
+inline IsoSurf::IsoSurf (MeshGrid const & MG, GridCallBack Func, void * UserData, double PointSize)
+    : ShowPoints  (false),
+      ShowIsoSurf (true),
       ShowVectors (true),
       ShowOutline (false)
 {
@@ -106,7 +110,7 @@ inline IsoSurf::IsoSurf (MeshGrid const & MG, GridCallBack Func, void * UserData
     Vec3_t x, v;
     for (int i=0; i<MG.Length(); ++i)
     {
-        x = MG.X(i), MG.Y(i), MG.Z(i);
+        x = MG.X[i], MG.Y[i], MG.Z[i];
         (*Func) (x, f, v, UserData);
         _points  -> InsertPoint  (i, x(0), x(1), x(2));
         _scalars -> InsertTuple1 (i, f);
@@ -114,11 +118,17 @@ inline IsoSurf::IsoSurf (MeshGrid const & MG, GridCallBack Func, void * UserData
     }
 
     // create VTK StructuredGrid
-    _sgrid = vtkStructuredGrid ::New();
-    _sgrid -> SetDimensions    (MG.nX(), MG.nY(), MG.nZ());
-    _sgrid -> SetPoints        (_points);
-    _sgrid -> GetPointData     () -> SetScalars(_scalars);
-    _sgrid -> GetPointData     () -> SetVectors(_vectors);
+    _sgrid        = vtkStructuredGrid ::New();
+    _sgrid_mapper = vtkDataSetMapper  ::New();
+    _sgrid_actor  = vtkActor          ::New();
+    _sgrid        -> SetDimensions    (MG.nX(), MG.nY(), MG.nZ());
+    _sgrid        -> SetPoints        (_points);
+    _sgrid        -> GetPointData     () -> SetScalars(_scalars);
+    _sgrid        -> GetPointData     () -> SetVectors(_vectors);
+    _sgrid_mapper -> SetInput         (_sgrid);
+    _sgrid_actor  -> SetMapper        (_sgrid_mapper);
+    _sgrid_actor  -> GetProperty() -> SetRepresentationToPoints ();
+    _sgrid_actor  -> GetProperty() -> SetPointSize (PointSize);
 
     // isosurf
     _isosurf        = vtkMarchingContourFilter ::New();
@@ -157,6 +167,8 @@ inline IsoSurf::~IsoSurf ()
     _scalars         -> Delete();
     _vectors         -> Delete();
     _sgrid           -> Delete();
+    _sgrid_mapper    -> Delete();
+    _sgrid_actor     -> Delete();
     _outline         -> Delete();
     _outline_mapper  -> Delete();
     _outline_actor   -> Delete();
@@ -192,6 +204,7 @@ inline void IsoSurf::WriteFile (char const * Filename)
 
 inline void IsoSurf::AddActorsTo (VTKWin & Win)
 {
+    if (ShowPoints)  Win.AddActor (_sgrid_actor);
     if (ShowIsoSurf) Win.AddActor (_isosurf_actor);
     if (ShowVectors) Win.AddActor (_hedgehog_actor);
     if (ShowOutline) Win.AddActor (_outline_actor);

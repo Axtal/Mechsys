@@ -55,8 +55,8 @@ public:
     vtkCamera   * GetCamera () { return _camera;   }
 
     // Set methods
-    VTKWin & SetViewDefault ();
-    VTKWin & SetViewPIplane ();
+    VTKWin & SetViewDefault (bool RevCam=false);
+    VTKWin & SetViewPIplane (bool RevCam=false);
     VTKWin & SetBgColor     (char const * Name="white") { _bg_clr = Colors::Get(Name);  return (*this); }
 
 private:
@@ -151,18 +151,20 @@ inline void VTKWin::WritePNG (char const * Filename)
     writer     -> Delete();
 }
 
-inline VTKWin & VTKWin::SetViewDefault ()
+inline VTKWin & VTKWin::SetViewDefault (bool RevCam)
 {
-    _camera->SetViewUp     (0,0,1);
-    _camera->SetPosition   (2,1,1);
+    double c = (RevCam ? -1 : 1);
+    _camera->SetViewUp     (0,0,c);
+    _camera->SetPosition   (2*c,c,c);
     _camera->SetFocalPoint (0,0,0);
     return (*this);
 }
 
-inline VTKWin & VTKWin::SetViewPIplane ()
+inline VTKWin & VTKWin::SetViewPIplane (bool RevCam)
 {
-    _camera->SetViewUp     (0,0,1);
-    _camera->SetPosition   (1,1,1);
+    double c = (RevCam ? -1 : 1);
+    _camera->SetViewUp     (0,0,c);
+    _camera->SetPosition   (c,c,c);
     _camera->SetFocalPoint (0,0,0);
     return (*this);
 }

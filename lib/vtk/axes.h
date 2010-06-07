@@ -40,7 +40,7 @@ class Axes
 {
 public:
     // Constructor & Destructor
-     Axes (double Scale=1.0, bool DrawHydroLine=false);
+     Axes (double Scale=1.0, bool DrawHydroLine=false, bool Reverse=false);
     ~Axes ();
 
     // Set Methods
@@ -64,14 +64,15 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Axes::Axes (double Scale, bool DrawHydroLine)
+inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse)
 {
     // Points
+    double cte = (Reverse ? -Scale : Scale);
     vtkPoints * points = vtkPoints::New();  points->SetNumberOfPoints(6);
-    points->InsertPoint(0, 0,0,0);  points->InsertPoint(1, Scale*1.0,       0.0,       0.0);
-    points->InsertPoint(2, 0,0,0);  points->InsertPoint(3,       0.0, Scale*1.0,       0.0);
-    points->InsertPoint(4, 0,0,0);  points->InsertPoint(5,       0.0,       0.0, Scale*1.0); if (DrawHydroLine) {
-    points->InsertPoint(6, 0,0,0);  points->InsertPoint(7, Scale*1.0, Scale*1.0, Scale*1.0); }
+    points->InsertPoint(0, 0,0,0);  points->InsertPoint(1, cte, 0.0, 0.0);
+    points->InsertPoint(2, 0,0,0);  points->InsertPoint(3, 0.0, cte, 0.0);
+    points->InsertPoint(4, 0,0,0);  points->InsertPoint(5, 0.0, 0.0, cte); if (DrawHydroLine) {
+    points->InsertPoint(6, 0,0,0);  points->InsertPoint(7, cte, cte, cte); }
 
     // Lines
     vtkLine * line_X = vtkLine::New(); // X axis
@@ -115,16 +116,26 @@ inline Axes::Axes (double Scale, bool DrawHydroLine)
     _x_label_actor->SetTextProperty (_text_prop);
     _y_label_actor->SetTextProperty (_text_prop);
     _z_label_actor->SetTextProperty (_text_prop);
-    _x_label_actor->SetPosition     (Scale*1,0,0);
-    _y_label_actor->SetPosition     (0,Scale*1,0);
-    _z_label_actor->SetPosition     (0,0,Scale*1);
-    _x_label_actor->SetOrientation  (90,0,180);
-    _y_label_actor->SetOrientation  (90,90,0);
-    _z_label_actor->SetOrientation  (90,90,45);
+    _x_label_actor->SetPosition     (cte,0,0);
+    _y_label_actor->SetPosition     (0,cte,0);
+    _z_label_actor->SetPosition     (0,0,cte);
     _x_label_actor->SetScale        (0.003*Scale);
     _y_label_actor->SetScale        (0.003*Scale);
     _z_label_actor->SetScale        (0.003*Scale);
-    SetLabels ();
+    if (Reverse)
+    {
+        _x_label_actor->SetOrientation (-90,0,-180);
+        _y_label_actor->SetOrientation (-90,-90,0);
+        _z_label_actor->SetOrientation (-90,-90,45);
+        SetLabels ("-x", "-y", "-z");
+    }
+    else
+    {
+        _x_label_actor->SetOrientation (90,0,180);
+        _y_label_actor->SetOrientation (90,90,0);
+        _z_label_actor->SetOrientation (90,90,45);
+        SetLabels ();
+    }
 }
 
 inline Axes::~Axes ()

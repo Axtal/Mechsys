@@ -34,7 +34,7 @@ int main(int argc, char **argv) try
                 0.0,1.0,6,  // Y
                 0.0,1.0,6); // Z
 
-    Triangulate T(mg.X(), mg.Y(), mg.Z(), mg.Length(), "triangulation02.vtk");
+    Triangulate T(mg.X, mg.Y, mg.Z, mg.Length(), "triangulation02.vtk");
     T.Start();
 
     cout << "Triangulate done. File <triangulation02.vtk> saved\n";

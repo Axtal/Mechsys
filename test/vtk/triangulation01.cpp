@@ -52,7 +52,7 @@ int main(int argc, char **argv) try
     points->Allocate(mg.Length());
     for (int i=0; i<mg.Length(); ++i)
     {
-        double P[3] = {mg.X(i), mg.Y(i), mg.Z(i)};
+        double P[3] = {mg.X[i], mg.Y[i], mg.Z[i]};
         points->InsertPoint(i,P);
     }
 

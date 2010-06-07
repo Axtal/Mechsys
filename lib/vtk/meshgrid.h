@@ -39,35 +39,30 @@ public:
     // Destructor
     ~MeshGrid ();
 
-    int            nX     ()      const {            return _nX;     }
-    int            nY     ()      const {            return _nY;     }
-    int            nZ     ()      const {            return _nZ;     }
-    int            Length ()      const {            return _length; }
-    double         X      (int i) const { _check();  return _X[i];   }
-    double         Y      (int i) const { _check();  return _Y[i];   }
-    double         Z      (int i) const { _check();  return _Z[i];   }
-    double const * X      ()      const { _check();  return _X;      }
-    double const * Y      ()      const { _check();  return _Y;      }
-    double const * Z      ()      const { _check();  return _Z;      }
+    // Methods
+    int nX     () const { return _nX;     }
+    int nY     () const { return _nY;     }
+    int nZ     () const { return _nZ;     }
+    int Length () const { return _length; }
+
+    // Data
+    double * X;
+    double * Y;
+    double * Z;
 
 private:
-    int      _nX;
-    int      _nY;
-    int      _nZ;
-    int      _length;
-    double * _X;
-    double * _Y;
-    double * _Z;
-    void _check () const;
+    int _nX;
+    int _nY;
+    int _nZ;
+    int _length;
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline MeshGrid::MeshGrid (double StartX, double EndX, double StepX,
-                           double StartY, double EndY, double StepY)
-    : _nX(0), _nY(0), _nZ(0), _length(0), _X(NULL), _Y(NULL), _Z(NULL)
+inline MeshGrid::MeshGrid (double StartX, double EndX, double StepX, double StartY, double EndY, double StepY)
+    : X(NULL), Y(NULL), Z(NULL), _nX(0), _nY(0), _nZ(0), _length(0)
 {
     double NumX = (EndX-StartX+StepX)/StepX;
     double NumY = (EndY-StartY+StepY)/StepY;
@@ -82,36 +77,28 @@ inline MeshGrid::MeshGrid (double StartX, double EndX, double StepX,
     _nY     = nY;
     _length = nX*nY;
 
-    _X = new double [_length];
-    _Y = new double [_length];
+    X = new double [_length];
+    Y = new double [_length];
 
     int    k=0;
-    double X;
-    double Y=StartY;
+    double x;
+    double y = StartY;
     for (int j=0; j<nY; ++j)
     {
-        X=StartX;
+        x = StartX;
         for (int i=0; i<nX; ++i)
         {
-            _X[k] = X;
-            _Y[k] = Y;
-            X=X+StepX;
+            X[k] = x;
+            Y[k] = y;
+            x += StepX;
             k++;
         }
-        Y=Y+StepY;
+        y += StepY;
     }
 }
 
-inline MeshGrid::~MeshGrid ()
-{
-    if (_X!=NULL) delete [] _X;
-    if (_Y!=NULL) delete [] _Y;
-    if (_Z!=NULL) delete [] _Z;
-}
-
-inline MeshGrid::MeshGrid(double StartX, double EndX, int nX,
-                          double StartY, double EndY, int nY)
-    : _nX(0), _nY(0), _nZ(0), _length(0), _X(NULL), _Y(NULL), _Z(NULL)
+inline MeshGrid::MeshGrid(double StartX, double EndX, int nX, double StartY, double EndY, int nY)
+    : X(NULL), Y(NULL), Z(NULL), _nX(0), _nY(0), _nZ(0), _length(0)
 {
     if (nX<1) throw new Fatal("MeshGrid::MeshGrid: nX must be greater than 0");
     if (nY<1) throw new Fatal("MeshGrid::MeshGrid: nY must be greater than 0");
@@ -123,30 +110,28 @@ inline MeshGrid::MeshGrid(double StartX, double EndX, int nX,
     _nY     = nY;
     _length = nX*nY;
 
-    _X = new double [_length];
-    _Y = new double [_length];
+    X = new double [_length];
+    Y = new double [_length];
 
-    int  k=0;
-    double X;
-    double Y=StartY;
+    int k = 0;
+    double x;
+    double y = StartY;
     for (int j=0; j<nY; ++j)
     {
-        X=StartX;
+        x = StartX;
         for (int i=0; i<nX; ++i)
         {
-            _X[k] = X;
-            _Y[k] = Y;
-            X=X+StepX;
+            X[k] = x;
+            Y[k] = y;
+            x += StepX;
             k++;
         }
-        Y=Y+StepY;
+        y += StepY;
     }
 }
 
-inline MeshGrid::MeshGrid(double StartX, double EndX, int nX,
-                          double StartY, double EndY, int nY,
-                          double StartZ, double EndZ, int nZ)
-    : _nX(0), _nY(0), _nZ(0), _length(0), _X(NULL), _Y(NULL), _Z(NULL)
+inline MeshGrid::MeshGrid(double StartX, double EndX, int nX, double StartY, double EndY, int nY, double StartZ, double EndZ, int nZ)
+    : X(NULL), Y(NULL), Z(NULL), _nX(0), _nY(0), _nZ(0), _length(0)
 {
     if (nX<1) throw new Fatal("MeshGrid::MeshGrid: nX must be greater than 0");
     if (nY<1) throw new Fatal("MeshGrid::MeshGrid: nY must be greater than 0");
@@ -161,48 +146,48 @@ inline MeshGrid::MeshGrid(double StartX, double EndX, int nX,
     _nZ     = nZ;
     _length = nX*nY*nZ;
 
-    _X = new double [_length];
-    _Y = new double [_length];
-    _Z = new double [_length];
+    X = new double [_length];
+    Y = new double [_length];
+    Z = new double [_length];
 
-    int  p=0;
-    double X;
-    double Y;
-    double Z=StartZ;
+    int p = 0;
+    double x;
+    double y;
+    double z = StartZ;
     for (int k=0; k<nZ; ++k)
     {
-        Y=StartY;
+        y = StartY;
         for (int j=0; j<nY; ++j)
         {
-            X=StartX;
+            x = StartX;
             for (int i=0; i<nX; ++i)
             {
-                _X[p] = X;
-                _Y[p] = Y;
-                _Z[p] = Z;
-                X=X+StepX;
+                X[p] = x;
+                Y[p] = y;
+                Z[p] = z;
+                x += StepX;
                 p++;
             }
-            Y=Y+StepY;
+            y += StepY;
         }
-        Z=Z+StepZ;
+        z += StepZ;
     }
 }
 
-inline void MeshGrid::_check () const
+inline MeshGrid::~MeshGrid ()
 {
-    if (_X==NULL) throw new Fatal("MeshGrid::_check: _X array is NULL");
-    if (_Y==NULL) throw new Fatal("MeshGrid::_check: _Y array is NULL");
-    if (_Z==NULL) throw new Fatal("MeshGrid::_check: _Z array is NULL");
+    if (X!=NULL) delete [] X;
+    if (Y!=NULL) delete [] Y;
+    if (Z!=NULL) delete [] Z;
 }
 
 std::ostream & operator<< (std::ostream & os, MeshGrid & mg)
 {
     for (int i=0; i<mg.Length(); ++i)
     {
-        if (mg.nX()>0) os << mg.X(i) << "   ";
-        if (mg.nY()>0) os << mg.Y(i) << "   ";
-        if (mg.nZ()>0) os << mg.Z(i) << "   ";
+        if (mg.nX()>0) os << mg.X[i] << "   ";
+        if (mg.nY()>0) os << mg.Y[i] << "   ";
+        if (mg.nZ()>0) os << mg.Z[i] << "   ";
         os << std::endl;
     }
     return os;
