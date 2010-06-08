@@ -121,13 +121,13 @@ int main(int argc, char **argv) try
     }
 
     mesh.Generate();
-    d.GenFromMesh(mesh,0.1*sqrt(Amax/1),3.0,true,false,thickness);
-    d.Alpha = 0.1*sqrt(Amax/1);
+    d.GenFromMesh(mesh,0.1*sqrt(Amax/10),3.0,true,false,thickness);
+    d.Alpha = 0.1*sqrt(Amax/10);
     d.Center();
     Vec3_t Xmin,Xmax;
     d.BoundingBox(Xmin,Xmax);
-    d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5*sqrt(Amax/1),0.0), 0.5*sqrt(Amax/1), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
-    d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5*sqrt(Amax/1),0.0), 0.5*sqrt(Amax/1), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+    d.AddPlane(-2, Vec3_t(0.0,Xmin(1)-0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
+    d.AddPlane(-3, Vec3_t(0.0,Xmax(1)+0.5*sqrt(Amax/10),0.0), 0.5*sqrt(Amax/10), width*radius, 1.2*thickness, 1.0, M_PI/2.0, &OrthoSys::e0);
     
     // properties of particles prior the brazilian test
     Dict B;

@@ -1698,7 +1698,6 @@ inline double Domain::MaxDisplacement()
 inline void Domain::ResetContacts()
 {
 #ifdef OPTIMIZE_DEM_MEM
-    Array<CInteracton*> Temp = CInteractons;
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
         bool pi_has_vf = !Particles[i]->IsFree();
@@ -1710,27 +1709,14 @@ inline void Domain::ResetContacts()
             if ((pi_has_vf && pj_has_vf) || !close) continue;
             
             // checking if the interacton exist for that pair of particles
-            //bool exist = false;
             set<pair<Particle *, Particle *> >::iterator it = Listofpairs.find(make_pair(Particles[i],Particles[j]));
             if (it != Listofpairs.end())
             {
-                break;
+                continue;
             }
-            //for (size_t k=0; k<Temp.Size(); k++)
-            //{
-                //bool index_i = Temp[k]->P1==Particles[i];
-                //bool index_j = Temp[k]->P2==Particles[j];
-                //if (index_i&&index_j)
-                //{
-                    //exist = true;
-                    //break;
-                //}
-            //}
-
-            // If it doesn't add it to the CInteracton array
-            //if (!exist)
-            //{
-                // if both particles are spheres (just one vertex)
+            Listofpairs.insert(make_pair(Particles[i],Particles[j]));
+            
+            // if both particles are spheres (just one vertex)
             if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
             {
                 CInteractons.Push (new CInteractonSphere(Particles[i],Particles[j]));
@@ -1741,7 +1727,6 @@ inline void Domain::ResetContacts()
             {
                 CInteractons.Push (new CInteracton(Particles[i],Particles[j]));
             }
-            //}
         }
     }
 #endif
