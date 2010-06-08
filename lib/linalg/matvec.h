@@ -484,8 +484,25 @@ inline void Sol (Mat3_t const & M, Vec3_t const & B, Vec3_t & X, double Tol=1.0e
     X(2) = Mi(2,0)*B(0) + Mi(2,1)*B(1) + Mi(2,2)*B(2);
 }
 
+/** Eigenvalues. NOTE: This function changes the matrix M. */
+inline void Eig (Mat3_t & M, Vec3_t & L)
+{
+    // calculate
+    gsl_matrix_view m = gsl_matrix_view_array (M.data(), 3, 3);
+    gsl_vector * eval = gsl_vector_alloc      (3);
+    gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
+    gsl_eigen_symm (&m.matrix, eval, w);
+
+    // eigenvalues
+    L = gsl_vector_get(eval,0), gsl_vector_get(eval,1), gsl_vector_get(eval,2);
+
+    // clean up
+    gsl_eigen_symm_free (w);
+    gsl_vector_free     (eval);
+}
+
 /** Eigenvalues and eigenvectors. NOTE: This function changes the matrix M. */
-inline void Eig (Mat3_t & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t & V2)
+inline void Eig (Mat3_t & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t & V2, bool SortAsc=false, bool SortDesc=false)
 {
     // calculate
     gsl_matrix_view m = gsl_matrix_view_array (M.data(), 3, 3);
@@ -493,6 +510,10 @@ inline void Eig (Mat3_t & M, Vec3_t & L, Vec3_t & V0, Vec3_t & V1, Vec3_t & V2)
     gsl_matrix * evec = gsl_matrix_alloc      (3, 3);
     gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc (3);
     gsl_eigen_symmv (&m.matrix, eval, evec, w);
+
+    // sort
+    if (SortAsc)  gsl_eigen_symmv_sort (eval, evec, GSL_EIGEN_SORT_VAL_ASC);
+    if (SortDesc) gsl_eigen_symmv_sort (eval, evec, GSL_EIGEN_SORT_VAL_DESC);
 
     // eigenvalues
     L = gsl_vector_get(eval,0), gsl_vector_get(eval,1), gsl_vector_get(eval,2);
@@ -570,55 +591,67 @@ namespace OrthoSys
     int __dummy_init_ortho_sys = __init_ortho_sys();
 }
 
+#ifdef USE_BOOST_PYTHON
+inline Vec3_t Tup2Vec3 (BPy::tuple const & T3)
+{
+    return Vec3_t(BPy::extract<double>(T3[0])(), BPy::extract<double>(T3[1])(), BPy::extract<double>(T3[2])());
+}
+#endif
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////////
 
-// Cambridge invariants
-inline double Calc_pcam  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
-inline double Calc_ev    (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
-inline double Calc_qcam  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
-inline double Calc_ed    (Vec_t const & Eps) { double m = (size(Eps)>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
 
-// Octahedral invariants
-inline double Calc_poct  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/sqrt(3.0); }
-inline double Calc_qoct  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(3.0); }
-
-/** Deviator of Sig. */
-inline void Dev (Vec_t const & Sig, Vec_t & DevSig)
+/** Deviator of 2nd order symmetric tensor Ten. */
+inline void Dev (Vec_t const & Ten, Vec_t & DevTen)
 {
-    double coef = (Sig(0)+Sig(1)+Sig(2))/3.0;
-    DevSig     = Sig;
-    DevSig(0) -= coef;
-    DevSig(1) -= coef;
-    DevSig(2) -= coef;
+    double coef = (Ten(0)+Ten(1)+Ten(2))/3.0;
+    DevTen     = Ten;
+    DevTen(0) -= coef;
+    DevTen(1) -= coef;
+    DevTen(2) -= coef;
 }
 
-/** Trace of Sig. */
-inline double Tra (Vec_t const & Sig)
+/** Trace of 2nd order symmetric tensor Ten. */
+inline double Tra (Vec_t const & Ten)
 {
-    return Sig(0)+Sig(1)+Sig(2);
+    return Ten(0)+Ten(1)+Ten(2);
 }
 
-/** Eigenprojectors of Sig. */
-inline void EigenProj (Vec_t const & Sig, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
+/** Creates the matrix representation of 2nd order symmetric tensor Ten. */
+inline void Ten2Mat (Vec_t const & Ten, Mat3_t & Mat)
 {
-    size_t ncp = size(Sig);
-    Mat3_t sig;
+    // matrix of tensor
+    size_t ncp = size(Ten);
     if (ncp==4)
     {
-        sig = Sig(0),            Sig(3)/Util::SQ2,     0.0,
-              Sig(3)/Util::SQ2,  Sig(1),               0.0,
-                           0.0,               0.0,  Sig(2);
+        Mat = Ten(0),            Ten(3)/Util::SQ2,     0.0,
+              Ten(3)/Util::SQ2,  Ten(1),               0.0,
+                           0.0,               0.0,  Ten(2);
     }
-    else
+    else if (ncp==6)
     {
-        sig = Sig(0),            Sig(3)/Util::SQ2,  Sig(5)/Util::SQ2,
-              Sig(3)/Util::SQ2,  Sig(1),            Sig(4)/Util::SQ2,
-              Sig(5)/Util::SQ2,  Sig(4)/Util::SQ2,  Sig(2);
+        Mat = Ten(0),            Ten(3)/Util::SQ2,  Ten(5)/Util::SQ2,
+              Ten(3)/Util::SQ2,  Ten(1),            Ten(4)/Util::SQ2,
+              Ten(5)/Util::SQ2,  Ten(4)/Util::SQ2,  Ten(2);
         
     }
+    else throw new Fatal("matvec.h::Ten2Mat: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Eigenprojectors of 2nd order symmetric tensor Ten. */
+inline void EigenProj (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
+{
+    // matrix of tensor
+    Mat3_t ten;
+    Ten2Mat (Ten, ten);
+
+    // eigen-values and vectors
     Vec3_t v0,v1,v2;
-    Eig (sig, L, v0, v1, v2);
+    Eig (ten, L, v0, v1, v2);
+
+    // eigen-projectors
+    size_t ncp = size(Ten);
     P0.change_dim (ncp);
     P1.change_dim (ncp);
     P2.change_dim (ncp);
@@ -636,6 +669,90 @@ inline void EigenProj (Vec_t const & Sig, Vec3_t & L, Vec_t & P0, Vec_t & P1, Ve
     }
 }
 
+/** 2nd order symmetric tensor Ten raised to the power of 2. */
+inline void Pow2 (Vec_t const & Ten, Vec_t & Ten2)
+{
+    size_t ncp = size(Ten);
+    Ten2.change_dim (ncp);
+    if (ncp==4)
+    {
+        Ten2 = Ten(0)*Ten(0) + Ten(3)*Ten(3)/2.0,
+               Ten(1)*Ten(1) + Ten(3)*Ten(3)/2.0,
+               Ten(2)*Ten(2),
+               Ten(0)*Ten(3) + Ten(1)*Ten(3);
+    }
+    else if (ncp==6)
+    {
+        Ten2 = Ten(0)*Ten(0)           + Ten(3)*Ten(3)/2.0       + Ten(5)*Ten(5)/2.0,
+               Ten(3)*Ten(3)/2.0       + Ten(1)*Ten(1)           + Ten(4)*Ten(4)/2.0,
+               Ten(5)*Ten(5)/2.0       + Ten(4)*Ten(4)/2.0       + Ten(2)*Ten(2),
+               Ten(0)*Ten(3)           + Ten(3)*Ten(1)           + Ten(5)*Ten(4)/Util::SQ2,
+               Ten(3)*Ten(5)/Util::SQ2 + Ten(1)*Ten(4)           + Ten(4)*Ten(2),
+               Ten(0)*Ten(5)           + Ten(3)*Ten(4)/Util::SQ2 + Ten(5)*Ten(2);
+    }
+    else throw new Fatal("matvec.h::Pow2: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Determinant of 2nd order symmetric tensor Ten. */
+inline double Det (Vec_t const & Ten)
+{
+    size_t ncp = size(Ten);
+    if (ncp==4)
+    {
+        return   Ten(0)*Ten(1)*Ten(2)
+               - Ten(2)*Ten(3)*Ten(3)/2.0;
+    }
+    else if (ncp==6)
+    {
+        return   Ten(0)*Ten(1)*Ten(2) 
+               + Ten(3)*Ten(4)*Ten(5)/sqrt(2.0) 
+               - Ten(0)*Ten(4)*Ten(4)/2.0
+               - Ten(1)*Ten(5)*Ten(5)/2.0
+               - Ten(2)*Ten(3)*Ten(3)/2.0;
+    }
+    else throw new Fatal("matvec.h::Det: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Characteristic invariants of 2nd order symmetric tensor Ten. */
+inline void CharInvs (Vec_t const & Ten, double & I1, double & I2, double & I3, Vec_t & dI1dTen, Vec_t & dI2dTen, Vec_t & dI3dTen)
+{
+    I1 = Ten(0) + Ten(1) + Ten(2);
+    I2 = Ten(0)*Ten(1) + Ten(1)*Ten(2) + Ten(2)*Ten(0) - Ten(3)*Ten(3)/2.0;
+    I3 = Ten(0)*Ten(1)*Ten(2) - Ten(2)*Ten(3)*Ten(3)/2.0;
+    size_t ncp = size(Ten);
+    dI1dTen.change_dim (ncp);
+    dI2dTen.change_dim (ncp);
+    dI3dTen.change_dim (ncp);
+    if (ncp>4)
+    {
+        I2 += (-Ten(4)*Ten(4)/2.0 - Ten(5)*Ten(5)/2.0);
+        I3 += (Ten(3)*Ten(4)*Ten(5)/Util::SQ2 - Ten(0)*Ten(4)*Ten(4)/2.0 - Ten(1)*Ten(5)*Ten(5)/2.0);
+        dI1dTen = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
+    }
+    else dI1dTen = 1.0, 1.0, 1.0, 0.0;
+    Vec_t Ten2(ncp);
+    Pow2 (Ten, Ten2);
+    dI2dTen = I1*dI1dTen - Ten;
+    dI3dTen = Ten2 - I1*Ten + I2*dI1dTen;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////// Invariants ////////////
+
+
+// Cambridge invariants
+inline double Calc_pcam  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/3.0; }
+inline double Calc_ev    (Vec_t const & Eps) { return   Eps(0)+Eps(1)+Eps(2);      }
+inline double Calc_qcam  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(2.0); }
+inline double Calc_ed    (Vec_t const & Eps) { double m = (size(Eps)>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))*(sqrt(2.0)/3.0); }
+
+// Octahedral invariants
+inline double Calc_poct  (Vec_t const & Sig) { return -(Sig(0)+Sig(1)+Sig(2))/sqrt(3.0); }
+inline double Calc_evoct (Vec_t const & Eps) { return  (Eps(0)+Eps(1)+Eps(2))/sqrt(3.0); }
+inline double Calc_qoct  (Vec_t const & Sig) { double m = (size(Sig)>4 ? pow(Sig(4),2.0)+pow(Sig(5),2.0) : 0.0); return sqrt(pow(Sig(0)-Sig(1),2.0) + pow(Sig(1)-Sig(2),2.0) + pow(Sig(2)-Sig(0),2.0) + 3.0*(pow(Sig(3),2.0)+m))/sqrt(3.0); }
+inline double Calc_edoct (Vec_t const & Eps) { double m = (size(Eps)>4 ? pow(Eps(4),2.0)+pow(Eps(5),2.0) : 0.0); return sqrt(pow(Eps(0)-Eps(1),2.0) + pow(Eps(1)-Eps(2),2.0) + pow(Eps(2)-Eps(0),2.0) + 3.0*(pow(Eps(3),2.0)+m))/sqrt(3.0); }
+
+
 /** Octahedral invariants of Sig. */
 inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, double qTol=1.0e-8)
 {
@@ -648,7 +765,7 @@ inline void OctInvs (Vec_t const & Sig, double & p, double & q, double & t, doub
     t = 0.0;
     if (q>qTol)
     {
-        double det_s = s(0)*s(1)*s(2) - s(2)*s(3)*s(3)/2.0; // TODO: extend to 3D
+        double det_s = Det(s);
         t = -3.0*Util::SQ6*det_s/(q*q*q);
         if (t<=-1.0) t = -1.0;
         if (t>= 1.0) t =  1.0;
@@ -679,76 +796,9 @@ inline void OctInvs (Vec3_t const & L, double & p, double & q, double & t, Vec3_
     }
 }
 
-/** Sig raised to the power of 2. */
-inline void Pow2 (Vec_t const & Sig, Vec_t & Sig2)
+/** Calc principal values given octahedral invariants. (-pi <= th(rad) <= pi) */
+inline void pqth2L (double p, double q, double th, Vec3_t & L, char const * Type="oct")
 {
-    size_t ncp = size(Sig);
-    Sig2.change_dim (ncp);
-    if (ncp==4)
-    {
-        Sig2 = Sig(0)*Sig(0) + Sig(3)*Sig(3)/2.0,
-               Sig(1)*Sig(1) + Sig(3)*Sig(3)/2.0,
-               Sig(2)*Sig(2),
-               Sig(0)*Sig(3) + Sig(1)*Sig(3);
-    }
-    else
-    {
-        Sig2 = Sig(0)*Sig(0)           + Sig(3)*Sig(3)/2.0       + Sig(5)*Sig(5)/2.0,
-               Sig(3)*Sig(3)/2.0       + Sig(1)*Sig(1)           + Sig(4)*Sig(4)/2.0,
-               Sig(5)*Sig(5)/2.0       + Sig(4)*Sig(4)/2.0       + Sig(2)*Sig(2),
-               Sig(0)*Sig(3)           + Sig(3)*Sig(1)           + Sig(5)*Sig(4)/Util::SQ2,
-               Sig(3)*Sig(5)/Util::SQ2 + Sig(1)*Sig(4)           + Sig(4)*Sig(2),
-               Sig(0)*Sig(5)           + Sig(3)*Sig(4)/Util::SQ2 + Sig(5)*Sig(2);
-    }
-}
-
-/** Characteristic invariants of Sig. */
-inline void CharInvs (Vec_t const & Sig, double & I1, double & I2, double & I3, Vec_t & dI1dSig, Vec_t & dI2dSig, Vec_t & dI3dSig)
-{
-    I1 = Sig(0) + Sig(1) + Sig(2);
-    I2 = Sig(0)*Sig(1) + Sig(1)*Sig(2) + Sig(2)*Sig(0) - Sig(3)*Sig(3)/2.0;
-    I3 = Sig(0)*Sig(1)*Sig(2) - Sig(2)*Sig(3)*Sig(3)/2.0;
-    size_t ncp = size(Sig);
-    dI1dSig.change_dim (ncp);
-    dI2dSig.change_dim (ncp);
-    dI3dSig.change_dim (ncp);
-    if (ncp>4)
-    {
-        I2 += (-Sig(4)*Sig(4)/2.0 - Sig(5)*Sig(5)/2.0);
-        I3 += (Sig(3)*Sig(4)*Sig(5)/Util::SQ2 - Sig(0)*Sig(4)*Sig(4)/2.0 - Sig(1)*Sig(5)*Sig(5)/2.0);
-        dI1dSig = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
-    }
-    else dI1dSig = 1.0, 1.0, 1.0, 0.0;
-    Vec_t Sig2(ncp);
-    Pow2 (Sig, Sig2);
-    dI2dSig = I1*dI1dSig - Sig;
-    dI3dSig = Sig2 - I1*Sig + I2*dI1dSig;
-}
-
-/** Calc principal values given octahedral invariants. (-1 <= t <= 1) (-30 <= theta <= 30) */
-inline void pqt2L (double p, double q, double t, Vec3_t & L, char const * Type="oct")
-{
-    double ttemp = (t<=-1.0 ? -1.0 : (t>=1.0 ? 1.0 : t));
-    double th    = asin(ttemp)/3.0;
-    if (strcmp(Type,"cam")==0)
-    {
-        L(0) = -p + 2.0*q*sin(th-2.0*Util::PI/3.0)/3.0;
-        L(1) = -p + 2.0*q*sin(th)                 /3.0;
-        L(2) = -p + 2.0*q*sin(th+2.0*Util::PI/3.0)/3.0;
-    }
-    else if (strcmp(Type,"oct")==0) // oct
-    {
-        L(0) = -p/Util::SQ3 + 2.0*q*sin(th-2.0*Util::PI/3.0)/Util::SQ6;
-        L(1) = -p/Util::SQ3 + 2.0*q*sin(th)                 /Util::SQ6;
-        L(2) = -p/Util::SQ3 + 2.0*q*sin(th+2.0*Util::PI/3.0)/Util::SQ6;
-    }
-    else throw new Fatal("pqt2L: Method is not available for invariant Type==%s",Type);
-}
-
-/** Calc principal values given octahedral invariants. (-pi <= theta <= pi) */
-inline void pqTh2L (double p, double q, double ThDeg, Vec3_t & L, char const * Type="oct")
-{
-    double th = ThDeg*M_PI/180.0;
     if (strcmp(Type,"cam")==0)
     {
         L(0) = -p + 2.0*q*sin(th-2.0*Util::PI/3.0)/3.0;
@@ -765,43 +815,17 @@ inline void pqTh2L (double p, double q, double ThDeg, Vec3_t & L, char const * T
 }
 
 #ifdef USE_BOOST_PYTHON
-inline Vec3_t Tup2Vec3 (BPy::tuple const & T3)
-{
-    return Vec3_t(BPy::extract<double>(T3[0])(), BPy::extract<double>(T3[1])(), BPy::extract<double>(T3[2])());
-}
-
-inline BPy::tuple Pypqt2L (double p, double q, double t, BPy::str const & Type)
+inline BPy::tuple Pypqth2L (double p, double q, double th, BPy::str const & Type)
 {
     Vec3_t l;
-    pqt2L (p, q, t, l, BPy::extract<char const *>(Type)());
-    return BPy::make_tuple (l(0), l(1), l(2));
-}
-
-inline BPy::tuple PypqTh2L (double p, double q, double ThDeg, BPy::str const & Type)
-{
-    Vec3_t l;
-    pqTh2L (p, q, ThDeg, l, BPy::extract<char const *>(Type)());
+    pqth2L (p, q, th, l, BPy::extract<char const *>(Type)());
     return BPy::make_tuple (l(0), l(1), l(2));
 }
 #endif
 
-/** Calc octahedral coordinates given principal values. */
-inline void OctCoords (Vec3_t const & L, double & sa, double & sb, double & sc)
-{
-    Vec3_t l(L);
-    Util::Sort (l(0),l(1),l(2));
-    sa = Util::SQ2*(l(1)-l(2))/2.0;
-    sb = (l(2)+l(1)-2.0*l(0))/Util::SQ6;
-    sc = -(l(0)+l(1)+l(2))/Util::SQ3;
-}
 
-/** Calc principal values given octahedral coordinates. */
-inline void PrincVals (double sa, double sb, double sc, Vec3_t & L)
-{
-    L(0) =               - 2.0*sb/Util::SQ6 - sc/Util::SQ3;
-    L(1) =  sa/Util::SQ2 +     sb/Util::SQ6 - sc/Util::SQ3;
-    L(2) = -sa/Util::SQ2 +     sb/Util::SQ6 - sc/Util::SQ3;
-}
+///////////////////////////////////////////////////////////////////////// Failure criteria constants /////////////
+
 
 /** Calculate M = max q/p at compression (phi: friction angle at compression (degrees)). */
 inline double Phi2M (double Phi, char const * Type="oct")
@@ -829,47 +853,5 @@ inline double M2Phi (double M, char const * Type="oct")
     else throw new Fatal("M2Phi: Method is not available for invariant Type==%s",Type);
     return asin(sphi)*180.0/Util::PI;
 }
-
-/** Calculate q_failure for given undrained cohesion (cu) */
-inline double cu2qf (double cu, char const * qType="oct", bool psa=false)
-{
-    double coef = (psa ? sqrt(3.0) : 2.0);
-    if      (strcmp(qType,"oct")==0) return sqrt(2.0/3.0)*coef*cu;
-    else if (strcmp(qType,"cam")==0) return coef*cu;
-    else throw new Fatal("cu2qf: Method is not available for invariant qType==%s",qType);
-}
-
-/** Calculate undrained cohesion (cu) for given q_failure */
-inline double qf2cu (double qf, char const * qType="oct", bool psa=false)
-{
-    double coef = (psa ? sqrt(3.0) : 2.0);
-    if      (strcmp(qType,"oct")==0) return qf/(sqrt(2.0/3.0)*coef);
-    else if (strcmp(qType,"cam")==0) return qf/coef;
-    else throw new Fatal("qf2cu: Method is not available for invariant qType==%s",qType);
-}
-
-
-Mat_t Isy_2d (4,4); ///< Idendity of 4th order
-Mat_t Psd_2d (4,4); ///< Projector: sym-dev
-Mat_t IdI_2d (4,4); ///< 2nd order I dyadic 2nd order I
-
-int __init_tensors()
-{
-    Isy_2d = 1.0;
-
-    Psd_2d = 1.0;
-    Psd_2d(0,0)= 2.0/3.0;  Psd_2d(0,1)=-1.0/3.0;  Psd_2d(0,2)=-1.0/3.0;
-    Psd_2d(1,0)=-1.0/3.0;  Psd_2d(1,1)= 2.0/3.0;  Psd_2d(1,2)=-1.0/3.0;
-    Psd_2d(2,0)=-1.0/3.0;  Psd_2d(2,1)=-1.0/3.0;  Psd_2d(2,2)= 2.0/3.0;
-
-    IdI_2d = 0.0;
-    IdI_2d(0,0)=1.0;  IdI_2d(0,1)=1.0;  IdI_2d(0,2)=1.0;
-    IdI_2d(1,0)=1.0;  IdI_2d(1,1)=1.0;  IdI_2d(1,2)=1.0;
-    IdI_2d(2,0)=1.0;  IdI_2d(2,1)=1.0;  IdI_2d(2,2)=1.0;
-
-    return 0;
-}
-
-int __dummy_init_tensors = __init_tensors();
 
 #endif // MECHSYS_MATVEC_H

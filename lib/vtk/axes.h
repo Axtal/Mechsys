@@ -40,11 +40,12 @@ class Axes
 {
 public:
     // Constructor & Destructor
-     Axes (double Scale=1.0, bool DrawHydroLine=false, bool Reverse=false);
+     Axes (double Scale=1.0, bool DrawHydroLine=false, bool Reverse=false, bool Full=false);
     ~Axes ();
 
     // Set Methods
-    void SetLabels (char const * X="x", char const * Y="y", char const * Z="z", char const * Color="black", int SizePt=20, bool Shadow=true);
+    void SetLabels    (char const * X= "x", char const * Y= "y", char const * Z= "z", char const * Color="blue", int SizePt=22, bool Shadow=true);
+    void SetNegLabels (char const * X="-x", char const * Y="-y", char const * Z="-z", char const * Color="red",  int SizePt=22, bool Shadow=true);
 
     // Methods
     void AddActorsTo (VTKWin & Win);
@@ -56,7 +57,11 @@ private:
     vtkTextActor3D      * _x_label_actor;
     vtkTextActor3D      * _y_label_actor;
     vtkTextActor3D      * _z_label_actor;
+    vtkTextActor3D      * _negx_label_actor;
+    vtkTextActor3D      * _negy_label_actor;
+    vtkTextActor3D      * _negz_label_actor;
     vtkTextProperty     * _text_prop;
+    vtkTextProperty     * _neg_text_prop;
     void _start_text_prop ();
 };
 
@@ -64,15 +69,26 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse)
+inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
+    : _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL)
 {
     // Points
-    double cte = (Reverse ? -Scale : Scale);
+    double cte = ((Reverse && (!Full)) ? -Scale : Scale);
     vtkPoints * points = vtkPoints::New();  points->SetNumberOfPoints(6);
-    points->InsertPoint(0, 0,0,0);  points->InsertPoint(1, cte, 0.0, 0.0);
-    points->InsertPoint(2, 0,0,0);  points->InsertPoint(3, 0.0, cte, 0.0);
-    points->InsertPoint(4, 0,0,0);  points->InsertPoint(5, 0.0, 0.0, cte); if (DrawHydroLine) {
-    points->InsertPoint(6, 0,0,0);  points->InsertPoint(7, cte, cte, cte); }
+    if (Full)
+    {
+        points->InsertPoint(0, -cte, 0.0, 0.0);  points->InsertPoint(1, cte, 0.0, 0.0);
+        points->InsertPoint(2,  0.0,-cte, 0.0);  points->InsertPoint(3, 0.0, cte, 0.0);
+        points->InsertPoint(4,  0.0, 0.0,-cte);  points->InsertPoint(5, 0.0, 0.0, cte); if (DrawHydroLine) {
+        points->InsertPoint(6, -cte,-cte,-cte);  points->InsertPoint(7, cte, cte, cte); }
+    }
+    else
+    {
+        points->InsertPoint(0, 0,0,0);  points->InsertPoint(1, cte, 0.0, 0.0);
+        points->InsertPoint(2, 0,0,0);  points->InsertPoint(3, 0.0, cte, 0.0);
+        points->InsertPoint(4, 0,0,0);  points->InsertPoint(5, 0.0, 0.0, cte); if (DrawHydroLine) {
+        points->InsertPoint(6, 0,0,0);  points->InsertPoint(7, cte, cte, cte); }
+    }
 
     // Lines
     vtkLine * line_X = vtkLine::New(); // X axis
@@ -127,7 +143,8 @@ inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse)
         _x_label_actor->SetOrientation (-90,0,-180);
         _y_label_actor->SetOrientation (-90,-90,0);
         _z_label_actor->SetOrientation (-90,-90,45);
-        SetLabels ("-x", "-y", "-z");
+        if (Full) SetLabels ( "x",  "y",  "z");
+        else      SetLabels ("-x", "-y", "-z");
     }
     else
     {
@@ -135,6 +152,35 @@ inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse)
         _y_label_actor->SetOrientation (90,90,0);
         _z_label_actor->SetOrientation (90,90,45);
         SetLabels ();
+    }
+    if (Full)
+    {
+        _neg_text_prop    = vtkTextProperty ::New();
+        _negx_label_actor = vtkTextActor3D  ::New();
+        _negy_label_actor = vtkTextActor3D  ::New();
+        _negz_label_actor = vtkTextActor3D  ::New();
+        _negx_label_actor->SetTextProperty (_neg_text_prop);
+        _negy_label_actor->SetTextProperty (_neg_text_prop);
+        _negz_label_actor->SetTextProperty (_neg_text_prop);
+        _negx_label_actor->SetPosition     (-cte,0,0);
+        _negy_label_actor->SetPosition     (0,-cte,0);
+        _negz_label_actor->SetPosition     (0,0,-cte);
+        _negx_label_actor->SetScale        (0.003*Scale);
+        _negy_label_actor->SetScale        (0.003*Scale);
+        _negz_label_actor->SetScale        (0.003*Scale);
+        if (Reverse)
+        {
+            _negx_label_actor->SetOrientation  (-90,0,-180);
+            _negy_label_actor->SetOrientation  (-90,-90,0);
+            _negz_label_actor->SetOrientation  (-90,-90,45);
+        }
+        else
+        {
+            _negx_label_actor->SetOrientation  (90,0,180);
+            _negy_label_actor->SetOrientation  (90,90,0);
+            _negz_label_actor->SetOrientation  (90,90,45);
+        }
+        SetNegLabels ();
     }
 }
 
@@ -147,6 +193,9 @@ inline Axes::~Axes ()
     _y_label_actor -> Delete();
     _z_label_actor -> Delete();
     _text_prop     -> Delete();
+    if (_negx_label_actor!=NULL) _negx_label_actor -> Delete();
+    if (_negy_label_actor!=NULL) _negy_label_actor -> Delete();
+    if (_negz_label_actor!=NULL) _negz_label_actor -> Delete();
 }
 
 inline void Axes::AddActorsTo (VTKWin & Win)
@@ -155,6 +204,9 @@ inline void Axes::AddActorsTo (VTKWin & Win)
     Win.AddActor(reinterpret_cast<vtkActor*>(_x_label_actor));
     Win.AddActor(reinterpret_cast<vtkActor*>(_y_label_actor));
     Win.AddActor(reinterpret_cast<vtkActor*>(_z_label_actor));
+    if (_negx_label_actor!=NULL) Win.AddActor(reinterpret_cast<vtkActor*>(_negx_label_actor));
+    if (_negy_label_actor!=NULL) Win.AddActor(reinterpret_cast<vtkActor*>(_negy_label_actor));
+    if (_negz_label_actor!=NULL) Win.AddActor(reinterpret_cast<vtkActor*>(_negz_label_actor));
 }
 
 inline void Axes::SetLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
@@ -167,6 +219,18 @@ inline void Axes::SetLabels (char const * X, char const * Y, char const * Z, cha
     _text_prop     -> SetColor    (c(0), c(1), c(2));
     if (Shadow) _text_prop -> ShadowOn ();
     else        _text_prop -> ShadowOff();
+}
+
+inline void Axes::SetNegLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
+{
+    Vec3_t c = Colors::Get(Color);
+    _negx_label_actor -> SetInput    (X);
+    _negy_label_actor -> SetInput    (Y);
+    _negz_label_actor -> SetInput    (Z);
+    _neg_text_prop    -> SetFontSize (SizePt);
+    _neg_text_prop    -> SetColor    (c(0), c(1), c(2));
+    if (Shadow) _neg_text_prop -> ShadowOn ();
+    else        _neg_text_prop -> ShadowOff();
 }
 
 #endif // MECHSYS_AXES_H
