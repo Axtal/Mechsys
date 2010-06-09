@@ -991,7 +991,6 @@ inline void Domain::Initialize (double dt)
 
 inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, ptFun_t ptReport, char const * TheFileKey, bool RenderVideo)
 {
-
     // Assigning some domain particles especifically to the output
     FileKey.Printf("%s",TheFileKey);
     idx_out = 0;
@@ -1023,12 +1022,12 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
 
     // solve
-    double t0      = Time; // initial time
-    double tout    = t0;   // time position for output
+    double t0   = Time;     // initial time
+    double tout = t0+dtOut; // time position for output
 
     // report
     Finished = false;
-    if (ptReport!=NULL) (*ptReport) ((*this), UserData);
+    if (ptReport!=NULL && Time<dt) (*ptReport) ((*this), UserData);
 
     // string to output energy data, if user gives the FileKey
     std::ostringstream oss_energy; 
