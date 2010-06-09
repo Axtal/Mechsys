@@ -28,6 +28,7 @@
 #include <vtkStructuredGridWriter.h>
 #include <vtkStructuredGridOutlineFilter.h>
 #include <vtkHedgeHog.h>
+#include <vtkDataSetMapper.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkLookupTable.h>
 #include <vtkProperty.h>

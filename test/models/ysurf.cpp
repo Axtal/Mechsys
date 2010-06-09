@@ -57,14 +57,14 @@ int main(int argc, char **argv) try
     ElastoPlastic mdl(/*NDim*/3, prms);
 
     // grid
-    MeshGrid oct(   0.0,  10.0,   np,  // p
-                    0.0,  10.0,   np,  // q
-                 -180.0, 180.0, 2*np); // alpha
+    MeshGrid oct(0.0,  10.0,   np,  // p
+                 0.0,  10.0,   np,  // q
+                 -PI,    PI, 2*np); // th
     MeshGrid sig(0,0,np, 0,0,np, 0,0,2*np);
     for (int i=0; i<oct.Length(); ++i)
     {
         Vec3_t L;
-        pqTh2L (oct.X[i], oct.Y[i], oct.Z[i], L, "cam");
+        pqth2L (oct.X[i], oct.Y[i], oct.Z[i], L, "cam");
         sig.X[i] = L(0);
         sig.Y[i] = L(1);
         sig.Z[i] = L(2);

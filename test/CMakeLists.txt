@@ -32,7 +32,6 @@ SET(PROGS_D # other tests
  linalg01
  linalg02
  linsolver
- invariants
  test_models
  sandbox
  serialize)

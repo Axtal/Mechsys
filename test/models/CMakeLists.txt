@@ -17,10 +17,21 @@
 ########################################################################
 
 SET(PROGS
-  ysurf)
+  ysurf
+  invariants02)
+
+SET(TESTS
+  invariants01)
 
 FOREACH(var ${PROGS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
+    TARGET_LINK_LIBRARIES (${var} ${LIBS})
+    SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+ENDFOREACH(var)
+
+FOREACH(var ${TESTS})
+    ADD_EXECUTABLE        (${var} "${var}.cpp")
+    ADD_TEST              (${var} ${var})
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 ENDFOREACH(var)
