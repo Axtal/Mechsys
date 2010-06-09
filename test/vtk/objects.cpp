@@ -22,6 +22,7 @@
 // MechSys
 #include <mechsys/vtk/axes.h>
 #include <mechsys/vtk/sphere.h>
+#include <mechsys/vtk/cylinder.h>
 #include <mechsys/vtk/cube.h>
 #include <mechsys/vtk/plane.h>
 #include <mechsys/vtk/vtkwin.h>
@@ -29,11 +30,12 @@
 
 int main(int argc, char **argv) try
 {
-    Axes   ax(/*scale*/2, /*hydroline*/true);
-    Sphere sp(/*x*/  Vec3_t(1,1,1), /*R*/0.5);
-    Cube   cu(/*Cen*/Vec3_t(0.5,1.0,0.5), /*lx*/1.0, /*ly*/2.0, /*lz*/0.5);
-    Plane  pl(/*Ori*/Vec3_t(0,0,0), /*P1*/Vec3_t(2,0,0), /*P2*/Vec3_t(0,2,0), /*normal*/Vec3_t(0,0,1));
-    Plane  p2(/*Cen*/Vec3_t(1,1,1), /*n*/Vec3_t(1,1,1));
+    Axes     ax(/*scale*/2, /*hydroline*/true);
+    Sphere   sp(/*x*/  Vec3_t(1,1,1), /*R*/0.5);
+    Cube     cu(/*Cen*/Vec3_t(0.5,1.0,0.5), /*lx*/1.0, /*ly*/2.0, /*lz*/0.5);
+    Plane    pl(/*Ori*/Vec3_t(0,0,0), /*P1*/Vec3_t(2,0,0), /*P2*/Vec3_t(0,2,0), /*normal*/Vec3_t(0,0,1));
+    Plane    p2(/*Cen*/Vec3_t(1,1,1), /*n*/Vec3_t(1,1,1));
+    Cylinder cy(/*X*/Vec3_t(0.0,0.0,0.0), /*V*/Vec3_t(2.0,2.0,0.0), /*R*/0.1, /*Cap*/false, /*Res*/30);
     p2.SetColor ("green");
 
     VTKWin win;
@@ -42,6 +44,7 @@ int main(int argc, char **argv) try
     cu.AddActorsTo (win);
     pl.AddActorsTo (win);
     p2.AddActorsTo (win);
+    cy.AddActorsTo (win);
     win.Show();
     win.WritePNG("objects.png");
     cout << "file <[1;34mobjects.png[0m> written" << endl;
