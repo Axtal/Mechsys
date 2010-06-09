@@ -95,58 +95,33 @@ public:
     void GetGSD            (Array<double> & X, Array<double> & Y, Array<double> & D, size_t NDiv=10) const;     ///< Get the Grain Size Distribution
 
     // Access methods
-    Particle * GetParticle (int Tag, bool Check=true) // Check: check if there are more than one particle with tag=Tag
-    {
-        size_t idx=0;
-        size_t count = 0;
-        for (size_t i=0; i<Particles.Size(); ++i)
-        {
-            if (Particles[i]->Tag==Tag)
-            {
-                if (!Check) return Particles[i];
-                idx = i;
-                count++;
-            }
-        }
-        if      (count==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
-        else if (count>1)  throw new Fatal("Domain::GetParticle: There are more than one particle with Tag==%d",Tag);
-        return Particles[idx];
-    }
-
-    void GetParticles (int Tag, Array<Particle*> & P)
-    {
-        P.Resize(0);
-        for (size_t i=0; i<Particles.Size(); ++i)
-        {
-            if (Particles[i]->Tag==Tag) P.Push(Particles[i]);
-        }
-        if (P.Size()==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
-    }
-
+    Particle       * GetParticle  (int Tag, bool Check=true);       ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
+    Particle const & GetParticle  (int Tag, bool Check=true) const; ///< Find first particle with Tag. Check => check if there are more than one particle with tag=Tag
+    void             GetParticles (int Tag, Array<Particle*> & P);  ///< Find all particles with Tag
 
     // Auxiliar methods
-    void   LinearMomentum  (Vec3_t & L);                                                                     ///< Return total momentum of the system
-    void   AngularMomentum (Vec3_t & L);                                                                     ///< Return total angular momentum of the system
-    double CalcEnergy      (double & Ekin, double & Epot);                                                   ///< Return total energy of the system
+    void   LinearMomentum  (Vec3_t & L);                    ///< Return total momentum of the system
+    void   AngularMomentum (Vec3_t & L);                    ///< Return total angular momentum of the system
+    double CalcEnergy      (double & Ekin, double & Epot);  ///< Return total energy of the system
 
     // Data
-    bool                Initialized;                                    ///< System (particles and interactons) initialized ?
-    bool                Finished;                                       ///< Has the simulation finished
-    Array<Particle*>    Particles;                                      ///< All particles in domain
-    Array<Interacton*>  Interactons;                                    ///< All interactons
-    Array<CInteracton*> CInteractons;                                   ///< Contact interactons
-    Array<BInteracton*> BInteractons;                                   ///< Cohesion interactons
-    Vec3_t              CamPos;                                         ///< Camera position for POV
-    double              Time;                                           ///< Current time
-    double              Evis;                                           ///< Energy dissipated by the viscosity of the grains
-    double              Efric;                                          ///< Energy dissipated by friction
-    double              Wext;                                           ///< Work done by external forces
-    double              Vs;                                             ///< Volume occupied by the grains
-    double              Alpha;                                          ///< Verlet distance
-    void *              UserData;                                       ///< Some user data
-    String              FileKey;                                        ///< File Key for output files
-    size_t              idx_out;                                        ///< Index of output
-    set<pair<Particle *, Particle *> > Listofpairs;                     ///< List of pair of particles associated per interacton for memory optimization
+    bool                Initialized;                 ///< System (particles and interactons) initialized ?
+    bool                Finished;                    ///< Has the simulation finished
+    Array<Particle*>    Particles;                   ///< All particles in domain
+    Array<Interacton*>  Interactons;                 ///< All interactons
+    Array<CInteracton*> CInteractons;                ///< Contact interactons
+    Array<BInteracton*> BInteractons;                ///< Cohesion interactons
+    Vec3_t              CamPos;                      ///< Camera position for POV
+    double              Time;                        ///< Current time
+    double              Evis;                        ///< Energy dissipated by the viscosity of the grains
+    double              Efric;                       ///< Energy dissipated by friction
+    double              Wext;                        ///< Work done by external forces
+    double              Vs;                          ///< Volume occupied by the grains
+    double              Alpha;                       ///< Verlet distance
+    void *              UserData;                    ///< Some user data
+    String              FileKey;                     ///< File Key for output files
+    size_t              idx_out;                     ///< Index of output
+    set<pair<Particle *, Particle *> > Listofpairs;  ///< List of pair of particles associated per interacton for memory optimization
 
 #ifdef USE_BOOST_PYTHON
     void PyAddSphere (int Tag, BPy::tuple const & X, double R, double rho)                                                         { AddSphere (Tag,Tup2Vec3(X),R,rho); }
@@ -1870,6 +1845,52 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
         }
         Y.Push (cumsum/Particles.Size());
     }
+}
+
+inline Particle * Domain::GetParticle (int Tag, bool Check)
+{
+    size_t idx   = 0;
+    size_t count = 0;
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        if (Particles[i]->Tag==Tag)
+        {
+            if (!Check) return Particles[i];
+            idx = i;
+            count++;
+        }
+    }
+    if      (count==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
+    else if (count>1)  throw new Fatal("Domain::GetParticle: There are more than one particle with Tag==%d",Tag);
+    return Particles[idx];
+}
+
+inline Particle const & Domain::GetParticle (int Tag, bool Check) const
+{
+    size_t idx   = 0;
+    size_t count = 0;
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        if (Particles[i]->Tag==Tag)
+        {
+            if (!Check) return (*Particles[i]);
+            idx = i;
+            count++;
+        }
+    }
+    if      (count==0) throw new Fatal("Domain::GetParticle: Could not find Particle with Tag==%d",Tag);
+    else if (count>1)  throw new Fatal("Domain::GetParticle: There are more than one particle with Tag==%d",Tag);
+    return (*Particles[idx]);
+}
+
+inline void Domain::GetParticles (int Tag, Array<Particle*> & P)
+{
+    P.Resize(0);
+    for (size_t i=0; i<Particles.Size(); ++i)
+    {
+        if (Particles[i]->Tag==Tag) P.Push(Particles[i]);
+    }
+    if (P.Size()==0) throw new Fatal("Domain::GetParticles: Could not find any Particle with Tag==%d",Tag);
 }
 
 #ifdef USE_MPI
