@@ -80,6 +80,10 @@ public:
     void      SetValues (Value_T const & V);                          ///< Set all values to be equal to V
     void      Clear     () { Resize(0); }                             ///< Clear array
 
+    // Access methods
+    Value_T       & Last ()       { return _values[_size-1]; } ///< Return the last element
+    Value_T const & Last () const { return _values[_size-1]; } ///< Return the last element
+
     // Operators
     Value_T       & operator[] (size_t i);                 ///< Access operator (write)
     Value_T const & operator[] (size_t i) const;           ///< Access operator (read)

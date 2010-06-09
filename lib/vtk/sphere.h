@@ -39,6 +39,7 @@ public:
 
     // Methods
     void AddActorsTo (VTKWin & Win) { Win.AddActor(_sphere_actor); }
+    void SetCenter   (Vec3_t const & x) { _sphere->SetCenter (x(0), x(1), x(2)); }
 
     // Set methods
     Sphere & SetColor (char const * Name="brown", double Opacity=0.8);

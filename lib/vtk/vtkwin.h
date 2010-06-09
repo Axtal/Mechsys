@@ -47,6 +47,7 @@ public:
     void AddActor (vtkActor * TheActor);
     void DelActor (vtkActor * TheActor) { _renderer -> RemoveActor(TheActor); }
     void AddLight (vtkLight * Light)    { _renderer -> AddLight(Light);       }
+    void Render   ();
     void Show     ();
     void WritePNG (char const * Filename);
 
@@ -126,11 +127,16 @@ inline void VTKWin::AddActor (vtkActor * TheActor)
     _renderer -> ResetCamera     ();
 }
 
+inline void VTKWin::Render ()
+{
+    _renderer -> SetBackground (_bg_clr(0), _bg_clr(1), _bg_clr(2));
+    _ren_win  -> Render        ();
+}
+
 inline void VTKWin::Show ()
 {
-    _renderer   -> SetBackground (_bg_clr(0), _bg_clr(1), _bg_clr(2));
-    _ren_win    -> Render        ();
-    _interactor -> Start         ();
+    Render ();
+    _interactor->Start ();
 }
 
 inline void VTKWin::WritePNG (char const * Filename)

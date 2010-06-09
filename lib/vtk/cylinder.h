@@ -46,7 +46,8 @@ public:
     void AddActorsTo (VTKWin & Win) { Win.AddActor(_cylin_actor); }
 
     // Set methods
-    Cylinder & SetColor (char const * Name="peacock", double Opacity=0.8);
+    Cylinder & SetColor  (char const * Name="peacock", double Opacity=0.8);
+    void       SetPoints (Vec3_t const & X0, Vec3_t const & X1);
 
 private:
     vtkGlyph3D        * _cylin;
@@ -129,6 +130,23 @@ inline Cylinder & Cylinder::SetColor (char const * Name, double Opacity)
     _cylin_actor->GetProperty()->SetColor   (c(0), c(1), c(2));
     _cylin_actor->GetProperty()->SetOpacity (Opacity);
     return (*this);
+}
+
+inline void Cylinder::SetPoints (Vec3_t const & X0, Vec3_t const & X1)
+{
+    Vec3_t V(X1-X0);
+    vtkPoints     * points   = vtkPoints     ::New();
+    vtkFloatArray * vectors  = vtkFloatArray ::New();
+    vtkPolyData   * polydata = static_cast<vtkPolyData*>(_cylin->GetInput());
+    points   -> SetNumberOfPoints     (1);
+    points   -> InsertPoint           (0, X0(0), X0(1), X0(2));
+    vectors  -> SetNumberOfComponents (3);
+    vectors  -> SetNumberOfTuples     (1);
+    vectors  -> InsertTuple3          (0, V(0), V(1), V(2));
+    polydata -> SetPoints             (points);
+    polydata -> GetPointData() -> SetVectors(vectors);
+    points   -> Delete();
+    vectors  -> Delete();
 }
 
 #endif // MECHSYS_CYLINDER_H

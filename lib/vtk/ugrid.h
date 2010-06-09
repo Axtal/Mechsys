@@ -51,7 +51,9 @@ public:
     int InsertNextCell  (int Type, vtkIdList * PtIds)  { return _grid->InsertNextCell  (Type,PtIds); }
 
     // Set methods
-    UGrid & SetColor (char const * Name="peacock", double Opacity=0.8);
+    UGrid & SetColor     (char const * Name="peacock", double Opacity=0.8);
+    void    SetPoint     (int Id, double X, double Y, double Z) { _pnts->SetPoint (Id, X,Y,Z); }
+    void    UpdatePoints () { _grid->SetPoints(NULL);  _grid->SetPoints(_pnts); }
 
 private:
     vtkPoints           * _pnts;
