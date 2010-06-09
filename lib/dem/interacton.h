@@ -217,7 +217,8 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
         double delta = P1->Props.R + P2->Props.R - dist;
         if (delta>0)
         {
-            if (delta > 0.8*(P1->Props.R+P2->Props.R)) throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d and %d",P1->Index,P2->Index);
+            if (delta > 0.8*(P1->Props.R+P2->Props.R)) throw new Fatal("Interacton::_update_disp_calc_force: Maximun overlap detected between particles %d(%d) and %d(%d)",P1->Index,P1->Tag,P2->Index,P2->Tag);
+
             // Count a contact
             Nc++;
 
