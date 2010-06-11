@@ -234,7 +234,6 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Vec3_t vt = vrel - dot(n,vrel)*n;
             Fn = Kn*delta*n;
             Fnet += Fn;
-
             pair<int,int> p;
             p = make_pair(i,j);
             if (FMap.count(p)==0) FMap[p] = 0.0,0.0,0.0;
@@ -266,7 +265,6 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Conjugate (P2->Q,q);
             Rotation  (Tt,q,T);
             P2->T += T;
-
             //Transfering the branch vector information
             for (size_t m=0;m<3;m++)
             {

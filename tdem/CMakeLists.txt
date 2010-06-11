@@ -19,6 +19,7 @@
 SET(EXES
   nonconvex
   ttt
+  ttt2
   test_distances
   test_domain
   test_dynamics
@@ -32,7 +33,8 @@ SET(EXES
   test_02
   test_comm01
   test_comm02
-  generate_hdf5)
+  generate_hdf5
+  genpack)
 
 SET(TESTS
   test_distances)

@@ -485,7 +485,7 @@ int main(int argc, char **argv) try
     // stage 2: The proper triaxial test /////////////////////////////////////////////////////////////////////////
     String fkey_c(filekey+"_c");
     Vec3_t lf;
-    pqTh2L (pf, qf, thf, lf, "cam");
+    pqth2L (pf, qf, thf, lf, "cam");
     sigf   = lf(0), lf(1), lf(2);
     peps   = bVec3_t(pssrx, pssry, pssrz);
     depsdt = Vec3_t(srx/(Tf-dom.Time), sry/(Tf-dom.Time), srz/(Tf-dom.Time));

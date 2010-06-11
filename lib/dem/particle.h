@@ -483,6 +483,7 @@ inline void Particle::Rotate (double dt)
     Q  = Qd/norm(Qd);
     Rotate (Q,x);
     Erot=0.5*(I(0)*wx*wx+I(1)*wy*wy+I(2)*wz*wz);
+
 }
 
 inline void Particle::Rotate (Quaternion_t & Q,Vec3_t & V)
@@ -511,6 +512,7 @@ inline void Particle::Translate (double dt)
     if (vxf) F(0) = 0.0;
     if (vyf) F(1) = 0.0;
     if (vzf) F(2) = 0.0;
+    if(isnan(norm(F))) throw new Fatal("Particle::Translate: The force is not a number %d(%d), try reducing the time step",Index,Tag);
     Vec3_t temp,xa;
     xa    = 2*x - xb + F*(dt*dt/Props.m);
     temp  = xa - x;
@@ -519,6 +521,7 @@ inline void Particle::Translate (double dt)
     x    = xa;
     Ekin = 0.5*Props.m*dot(v,v);
     //std::cout << Index << " " << v << " " << F << std::endl;
+
     size_t nv = Verts.Size();
     for (size_t i = 0; i < nv; i++)
     {

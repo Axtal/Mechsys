@@ -856,6 +856,9 @@ inline void Domain::AddVoroCell (int Tag, voronoicell & VC, double R, double rho
     Quaternion_t Q;
     Vec3_t xp,yp,zp;
     Eig(It,I,xp,yp,zp);
+    bool destrogiro = dot(cross(xp,yp),zp)>0;
+    if (!destrogiro) xp = -xp;
+
     I *= rho;
     Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
     Q(1) = (yp(2)-zp(1))/(4*Q(0));
