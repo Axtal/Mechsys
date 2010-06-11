@@ -26,6 +26,7 @@
 #include <mechsys/vtk/cylinder.h>
 #include <mechsys/vtk/plane.h>
 #include <mechsys/vtk/sphere.h>
+#include <mechsys/vtk/text.h>
 #include <mechsys/vtk/win.h>
 #include <mechsys/util/fatal.h>
 
@@ -36,6 +37,7 @@ int main(int argc, char **argv) try
     VTK::Sphere   sp(/*x*/Vec3_t(0.75,0.75,0.75), /*R*/0.25);
     VTK::Cube     cu(/*Cen*/Vec3_t(0.0,0.0,0.0), /*lx*/1.0, /*ly*/1.0, /*lz*/1.0);
     VTK::Cylinder cy(/*X*/Vec3_t(0.0,0.0,0.0), /*V*/Vec3_t(1.0,0.0,0.0), /*R*/0.1, /*Cap*/false, /*Res*/30);
+    VTK::Text     tx(/*X*/Vec3_t(0.8,0.3,0.5), "VTK");
     //Plane    pl(/*Ori*/Vec3_t(0,0,0), /*P1*/Vec3_t(2,0,0), /*P2*/Vec3_t(0,2,0), /*normal*/Vec3_t(0,0,1));
     //Plane    p2(/*Cen*/Vec3_t(1,1,1), /*n*/Vec3_t(1,1,1));
     //p2.SetColor ("green");
@@ -48,6 +50,7 @@ int main(int argc, char **argv) try
     sp.AddTo (win);
     cu.AddTo (win);
     cy.AddTo (win);
+    tx.AddTo (win);
     //pl.AddActorsTo (win);
     //p2.AddActorsTo (win);
     win.Show();
