@@ -26,23 +26,31 @@
 #include <vtkProperty.h>
 
 // MechSys
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/util/colors.h>
+
+namespace VTK
+{
 
 class Cube
 {
 public:
     // Constructor & Destructor
-     Cube (Vec3_t const & Cen, double Lx=1.0, double Ly=1.0, double Lz=1.0);
+     Cube ();
     ~Cube ();
 
+    // Alternative constructor
+    Cube (Vec3_t const & Cen, double Lx=1.0, double Ly=1.0, double Lz=1.0);
+
     // Set methods
+    Cube & SetCenter    (Vec3_t const & X);
+    Cube & SetLengths   (double Lx=1.0, double Ly=1.0, double Lz=1.0);
     Cube & SetColor     (char const * Name="yellow", double Opacity=1.0);
     Cube & SetWireColor (char const * Name="black");
-    Cube & SetWireWidth (int          Width=1.0);
+    Cube & SetWireWidth (int Width=1.0);
 
     // Methods
-    void AddActorsTo (VTKWin & Win) { Win.AddActor(_cube_actor);  Win.AddActor(_wire_actor); }
+    void AddTo (VTK::Win & win) { win.AddActor(_cube_actor);  win.AddActor(_wire_actor); }
 
 private:
     vtkCubeSource     * _cube;
@@ -50,46 +58,29 @@ private:
     vtkActor          * _cube_actor;
     vtkPolyDataMapper * _wire_mapper;
     vtkActor          * _wire_actor;
+    void _create ();
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
+inline Cube::Cube ()
+{
+    _create      ();
+    SetColor     ();
+    SetWireColor ();
+    SetWireWidth ();
+}
+
 inline Cube::Cube (Vec3_t const & Cen, double Lx, double Ly, double Lz)
 {
-    // create object
-    _cube        = vtkCubeSource     ::New();
-    _cube_mapper = vtkPolyDataMapper ::New();
-    _cube_actor  = vtkActor          ::New();
-    _cube        -> SetCenter          (Cen(0), Cen(1), Cen(2));
-    _cube        -> SetXLength         (Lx);
-    _cube        -> SetYLength         (Ly);
-    _cube        -> SetZLength         (Lz);
-    _cube_mapper -> SetInputConnection (_cube->GetOutputPort());
-    _cube_actor  -> SetMapper          (_cube_mapper);
-    SetColor ();
-
-    // borders
-    _wire_mapper = vtkPolyDataMapper ::New();
-    _wire_actor  = vtkActor          ::New();
-    _wire_mapper -> SetInput            (_cube->GetOutput());
-    _wire_mapper -> ScalarVisibilityOff ();
-    _wire_actor  -> SetMapper           (_wire_mapper);
-    _wire_actor  -> GetProperty         ()->SetRepresentationToWireframe();
-
-    _cube_mapper->SetResolveCoincidentTopologyPolygonOffsetParameters(0,1);
-    _cube_mapper->SetResolveCoincidentTopologyToPolygonOffset();
-    _wire_mapper->SetResolveCoincidentTopologyPolygonOffsetParameters(1,1);
-    _wire_mapper->SetResolveCoincidentTopologyToPolygonOffset();
-
-    // same color for inside and outside edges
-    _wire_mapper->ScalarVisibilityOff();
-    _wire_actor->GetProperty()->SetAmbient(1.0);
-    _wire_actor->GetProperty()->SetDiffuse(0.0);
-    _wire_actor->GetProperty()->SetSpecular(0.0);
-    SetWireWidth ();
+    _create      ();
+    SetCenter    (Cen);
+    SetLengths   (Lx, Ly, Lz);
+    SetColor     ();
     SetWireColor ();
+    SetWireWidth ();
 }
 
 inline Cube::~Cube ()
@@ -101,10 +92,24 @@ inline Cube::~Cube ()
     _wire_actor  -> Delete();
 }
 
+inline Cube & Cube::SetCenter (Vec3_t const & X)
+{
+    _cube -> SetCenter (X(0), X(1), X(2));
+    return (*this);
+}
+
+inline Cube & Cube::SetLengths (double Lx, double Ly, double Lz)
+{
+    _cube -> SetXLength (Lx);
+    _cube -> SetYLength (Ly);
+    _cube -> SetZLength (Lz);
+    return (*this);
+}
+
 inline Cube & Cube::SetColor (char const * Name, double Opacity)
 {
     Vec3_t c(Colors::Get(Name));
-    _cube_actor->GetProperty()->SetColor   (c(0), c(1), c(2));
+    _cube_actor->GetProperty()->SetColor   (c.data());
     _cube_actor->GetProperty()->SetOpacity (Opacity);
     return (*this);
 }
@@ -112,7 +117,7 @@ inline Cube & Cube::SetColor (char const * Name, double Opacity)
 inline Cube & Cube::SetWireColor (char const * Name) 
 {
     Vec3_t c(Colors::Get(Name));
-    _wire_actor->GetProperty()->SetColor (c(0),c(1),c(2));
+    _wire_actor->GetProperty()->SetColor (c.data());
     return (*this); 
 }
 
@@ -121,5 +126,37 @@ inline Cube & Cube::SetWireWidth (int Width)
     _wire_actor->GetProperty()->SetLineWidth(Width);
     return (*this); 
 }
+
+inline void Cube::_create ()
+{
+    // create object
+    _cube        = vtkCubeSource       ::New();
+    _cube_mapper = vtkPolyDataMapper   ::New();
+    _cube_actor  = vtkActor            ::New();
+    _cube_mapper -> SetInputConnection (_cube->GetOutputPort());
+    _cube_actor  -> SetMapper          (_cube_mapper);
+
+    // borders
+    _wire_mapper = vtkPolyDataMapper    ::New();
+    _wire_actor  = vtkActor             ::New();
+    _wire_mapper -> SetInput            (_cube->GetOutput());
+    _wire_mapper -> ScalarVisibilityOff ();
+    _wire_actor  -> SetMapper           (_wire_mapper);
+    _wire_actor  -> GetProperty         ()->SetRepresentationToWireframe();
+
+    // set mapper
+    _cube_mapper -> SetResolveCoincidentTopologyPolygonOffsetParameters (0,1);
+    _cube_mapper -> SetResolveCoincidentTopologyToPolygonOffset         ();
+    _wire_mapper -> SetResolveCoincidentTopologyPolygonOffsetParameters (1,1);
+    _wire_mapper -> SetResolveCoincidentTopologyToPolygonOffset         ();
+
+    // same color for inside and outside edges
+    _wire_mapper -> ScalarVisibilityOff          ();
+    _wire_actor  -> GetProperty() -> SetAmbient  (1.0);
+    _wire_actor  -> GetProperty() -> SetDiffuse  (0.0);
+    _wire_actor  -> GetProperty() -> SetSpecular (0.0);
+}
+
+}; // namespace VTK
 
 #endif // MECHSYS_CUBE_H

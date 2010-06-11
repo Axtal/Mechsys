@@ -21,7 +21,7 @@
 #include <cmath>
 
 // MechSys
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/vtk/arrow.h>
 #include <mechsys/vtk/axes.h>
 
@@ -30,15 +30,17 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-    Axes ax(2.0, true);
+    VTK::Axes ax(2.0, true);
 
-    Arrow a1(Vec3_t(0.0,0.0,0.0), Vec3_t(1.0,0.0,0.0));
-    Arrow a2(Vec3_t(1.0,1.0,1.0), Vec3_t(1.0,0.0,0.0));
-    Arrow a3(Vec3_t(0.0,0.0,0.0), Vec3_t(0.0,1.0,0.0));
-    Arrow a4(Vec3_t(0.0,0.0,0.0), Vec3_t(0.0,0.0,1.0));
-    Arrow a5(Vec3_t(0.0,0.0,0.0), Vec3_t(1.0,1.0,1.0));
-    Arrow a6(Vec3_t(0.0,0.0,0.0), Vec3_t(2.0,2.0,2.0), /*BodRad*/0.005, /*TipRad*/0.01, /*TipLen*/0.50, /*Resolution*/18);
-    Arrow a7(Vec3_t(0.5,0.5,0.5), Vec3_t(0.5,0.5,0.5));
+    VTK::Arrow a1(Vec3_t(0.0,0.0,0.0), Vec3_t(1.0,0.0,0.0));
+    VTK::Arrow a2(Vec3_t(1.0,1.0,1.0), Vec3_t(1.0,0.0,0.0));
+    VTK::Arrow a3(Vec3_t(0.0,0.0,0.0), Vec3_t(0.0,1.0,0.0));
+    VTK::Arrow a4(Vec3_t(0.0,0.0,0.0), Vec3_t(0.0,0.0,1.0));
+    VTK::Arrow a5(Vec3_t(0.0,0.0,0.0), Vec3_t(1.0,1.0,1.0));
+    VTK::Arrow a6(Vec3_t(0.0,0.0,0.0), Vec3_t(2.0,2.0,2.0));
+    VTK::Arrow a7(Vec3_t(0.8,0.8,0.2), Vec3_t(0.8,0.2,0.8));
+
+    a6.SetGeometry (0.05, 0.025, 0.01);
 
     a1.SetColor ("red"    );
     a2.SetColor ("green"  );
@@ -48,16 +50,16 @@ int main(int argc, char **argv) try
     a6.SetColor ("black"  );
     a7.SetColor ("peacock");
 
-    VTKWin win;
-    ax.AddActorsTo (win);
-    a1.AddActorsTo (win);
-    a2.AddActorsTo (win);
-    a3.AddActorsTo (win);
-    a4.AddActorsTo (win);
-    a5.AddActorsTo (win);
-    a6.AddActorsTo (win);
-    a7.AddActorsTo (win);
-    win.Show       ();
+    VTK::Win win;
+    ax.AddTo (win);
+    a1.AddTo (win);
+    a2.AddTo (win);
+    a3.AddTo (win);
+    a4.AddTo (win);
+    a5.AddTo (win);
+    a6.AddTo (win);
+    a7.AddTo (win);
+    win.Show ();
 
     return 0;
 }

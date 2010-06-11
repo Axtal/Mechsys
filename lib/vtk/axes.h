@@ -33,22 +33,28 @@
 #include <vtkTextProperty.h>
 
 // MechSys
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/util/colors.h>
+
+namespace VTK
+{
 
 class Axes
 {
 public:
     // Constructor & Destructor
-     Axes (double Scale=1.0, bool DrawHydroLine=false, bool Reverse=false, bool Full=false);
+     Axes ();
     ~Axes ();
+
+    // Alternative constructor
+    Axes (double Scale, bool DrawHydroLine=false, bool Reverse=false, bool Full=false);
 
     // Set Methods
     void SetLabels    (char const * X= "x", char const * Y= "y", char const * Z= "z", char const * Color="blue", int SizePt=22, bool Shadow=true);
     void SetNegLabels (char const * X="-x", char const * Y="-y", char const * Z="-z", char const * Color="red",  int SizePt=22, bool Shadow=true);
 
     // Methods
-    void AddActorsTo (VTKWin & Win);
+    void AddTo (VTK::Win & win);
 
 private:
     vtkUnstructuredGrid * _axes;
@@ -62,17 +68,78 @@ private:
     vtkTextActor3D      * _negz_label_actor;
     vtkTextProperty     * _text_prop;
     vtkTextProperty     * _neg_text_prop;
-    void _start_text_prop ();
+    void _create (double Scale=1.0, bool DrawHydroLine=false, bool Reverse=false, bool Full=false);
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
-    : _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL)
+inline Axes::Axes ()
+    : _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL), _neg_text_prop(NULL)
 {
-    // Points
+    _create ();
+}
+
+inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
+    : _negx_label_actor(NULL), _negy_label_actor(NULL), _negz_label_actor(NULL), _neg_text_prop(NULL)
+{
+    _create (Scale, DrawHydroLine, Reverse, Full);
+}
+
+inline Axes::~Axes ()
+{
+    _axes          -> Delete();
+    _axes_mapper   -> Delete();
+    _axes_actor    -> Delete();
+    _x_label_actor -> Delete();
+    _y_label_actor -> Delete();
+    _z_label_actor -> Delete();
+    _text_prop     -> Delete();
+    if (_negx_label_actor!=NULL) _negx_label_actor -> Delete();
+    if (_negy_label_actor!=NULL) _negy_label_actor -> Delete();
+    if (_negz_label_actor!=NULL) _negz_label_actor -> Delete();
+    if (_neg_text_prop   !=NULL) _neg_text_prop    -> Delete();
+}
+
+inline void Axes::AddTo (VTK::Win & win)
+{
+    win.AddActor(_axes_actor);
+    win.AddActor(reinterpret_cast<vtkActor*>(_x_label_actor));
+    win.AddActor(reinterpret_cast<vtkActor*>(_y_label_actor));
+    win.AddActor(reinterpret_cast<vtkActor*>(_z_label_actor));
+    if (_negx_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(_negx_label_actor));
+    if (_negy_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(_negy_label_actor));
+    if (_negz_label_actor!=NULL) win.AddActor(reinterpret_cast<vtkActor*>(_negz_label_actor));
+}
+
+inline void Axes::SetLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
+{
+    Vec3_t c = Colors::Get(Color);
+    _x_label_actor -> SetInput    (X);
+    _y_label_actor -> SetInput    (Y);
+    _z_label_actor -> SetInput    (Z);
+    _text_prop     -> SetFontSize (SizePt);
+    _text_prop     -> SetColor    (c.data());
+    if (Shadow) _text_prop -> ShadowOn ();
+    else        _text_prop -> ShadowOff();
+}
+
+inline void Axes::SetNegLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
+{
+    Vec3_t c = Colors::Get(Color);
+    _negx_label_actor -> SetInput    (X);
+    _negy_label_actor -> SetInput    (Y);
+    _negz_label_actor -> SetInput    (Z);
+    _neg_text_prop    -> SetFontSize (SizePt);
+    _neg_text_prop    -> SetColor    (c.data());
+    if (Shadow) _neg_text_prop -> ShadowOn ();
+    else        _neg_text_prop -> ShadowOff();
+}
+
+inline void Axes::_create (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
+{
+    // points
     double cte = ((Reverse && (!Full)) ? -Scale : Scale);
     vtkPoints * points = vtkPoints::New();  points->SetNumberOfPoints(6);
     if (Full)
@@ -90,7 +157,7 @@ inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
         points->InsertPoint(6, 0,0,0);  points->InsertPoint(7, cte, cte, cte); }
     }
 
-    // Lines
+    // lines
     vtkLine * line_X = vtkLine::New(); // X axis
     vtkLine * line_Y = vtkLine::New(); // Y axis
     vtkLine * line_Z = vtkLine::New(); // Z axis
@@ -100,7 +167,7 @@ inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
     line_Z->GetPointIds()->SetNumberOfIds(2); line_Z->GetPointIds()->SetId(0,4);  line_Z->GetPointIds()->SetId(1,5); if (DrawHydroLine) {
     line_H->GetPointIds()->SetNumberOfIds(2); line_H->GetPointIds()->SetId(0,6);  line_H->GetPointIds()->SetId(1,7); }
 
-    // Grid
+    // grid
     _axes = vtkUnstructuredGrid::New();
     _axes->Allocate(3,3);
     _axes->InsertNextCell(line_X->GetCellType(),line_X->GetPointIds());
@@ -109,7 +176,7 @@ inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
     _axes->InsertNextCell(line_H->GetCellType(),line_H->GetPointIds()); }
     _axes->SetPoints(points);
 
-    // Mapper and actor
+    // mapper and actor
     _axes_mapper = vtkDataSetMapper ::New();
     _axes_actor  = vtkActor         ::New();
     _axes_mapper -> SetInput        (_axes);
@@ -117,14 +184,14 @@ inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
     _axes_actor  -> GetProperty     () -> SetColor       (0.0,0.0,0.0); 
     _axes_actor  -> GetProperty     () -> SetDiffuseColor(0.0,0.0,0.0); 
 
-    // Clean up
+    // clean up
     points -> Delete();
     line_X -> Delete();
     line_Y -> Delete();
     line_Z -> Delete();
     line_H -> Delete();
 
-    // Text
+    // text
     _text_prop     = vtkTextProperty ::New();
     _x_label_actor = vtkTextActor3D  ::New();
     _y_label_actor = vtkTextActor3D  ::New();
@@ -184,53 +251,6 @@ inline Axes::Axes (double Scale, bool DrawHydroLine, bool Reverse, bool Full)
     }
 }
 
-inline Axes::~Axes ()
-{
-    _axes          -> Delete();
-    _axes_mapper   -> Delete();
-    _axes_actor    -> Delete();
-    _x_label_actor -> Delete();
-    _y_label_actor -> Delete();
-    _z_label_actor -> Delete();
-    _text_prop     -> Delete();
-    if (_negx_label_actor!=NULL) _negx_label_actor -> Delete();
-    if (_negy_label_actor!=NULL) _negy_label_actor -> Delete();
-    if (_negz_label_actor!=NULL) _negz_label_actor -> Delete();
-}
-
-inline void Axes::AddActorsTo (VTKWin & Win)
-{
-    Win.AddActor(_axes_actor);
-    Win.AddActor(reinterpret_cast<vtkActor*>(_x_label_actor));
-    Win.AddActor(reinterpret_cast<vtkActor*>(_y_label_actor));
-    Win.AddActor(reinterpret_cast<vtkActor*>(_z_label_actor));
-    if (_negx_label_actor!=NULL) Win.AddActor(reinterpret_cast<vtkActor*>(_negx_label_actor));
-    if (_negy_label_actor!=NULL) Win.AddActor(reinterpret_cast<vtkActor*>(_negy_label_actor));
-    if (_negz_label_actor!=NULL) Win.AddActor(reinterpret_cast<vtkActor*>(_negz_label_actor));
-}
-
-inline void Axes::SetLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
-{
-    Vec3_t c = Colors::Get(Color);
-    _x_label_actor -> SetInput    (X);
-    _y_label_actor -> SetInput    (Y);
-    _z_label_actor -> SetInput    (Z);
-    _text_prop     -> SetFontSize (SizePt);
-    _text_prop     -> SetColor    (c(0), c(1), c(2));
-    if (Shadow) _text_prop -> ShadowOn ();
-    else        _text_prop -> ShadowOff();
-}
-
-inline void Axes::SetNegLabels (char const * X, char const * Y, char const * Z, char const * Color, int SizePt, bool Shadow)
-{
-    Vec3_t c = Colors::Get(Color);
-    _negx_label_actor -> SetInput    (X);
-    _negy_label_actor -> SetInput    (Y);
-    _negz_label_actor -> SetInput    (Z);
-    _neg_text_prop    -> SetFontSize (SizePt);
-    _neg_text_prop    -> SetColor    (c(0), c(1), c(2));
-    if (Shadow) _neg_text_prop -> ShadowOn ();
-    else        _neg_text_prop -> ShadowOff();
-}
+}; // namespace VTK
 
 #endif // MECHSYS_AXES_H

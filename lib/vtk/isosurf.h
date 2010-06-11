@@ -34,10 +34,13 @@
 #include <vtkProperty.h>
 
 // MechSys
-#include <mechsys/vtk/meshgrid.h>
-#include <mechsys/vtk/vtkwin.h>
-#include <mechsys/linalg/matvec.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/util/array.h>
+#include <mechsys/util/meshgrid.h>
+#include <mechsys/linalg/matvec.h>
+
+namespace VTK
+{
 
 typedef void (*GridCallBack) (Vec3_t X, double & F, Vec3_t & V, void * UserData);
 
@@ -59,8 +62,8 @@ public:
     void SetVecF      (double F=0.0, double Tol=1.0e-3);
 
     // Methods
-    void AddActorsTo (VTKWin & Win);
-    void WriteFile   (char const * Filename);
+    void AddTo     (VTK::Win & win);
+    void WriteFile (char const * Filename);
 
     // Data
     bool ShowPoints;
@@ -203,12 +206,12 @@ inline void IsoSurf::WriteFile (char const * Filename)
     writer -> Delete      ();
 }
 
-inline void IsoSurf::AddActorsTo (VTKWin & Win)
+inline void IsoSurf::AddTo (VTK::Win & win)
 {
-    if (ShowPoints)  Win.AddActor (_sgrid_actor);
-    if (ShowIsoSurf) Win.AddActor (_isosurf_actor);
-    if (ShowVectors) Win.AddActor (_hedgehog_actor);
-    if (ShowOutline) Win.AddActor (_outline_actor);
+    if (ShowPoints)  win.AddActor (_sgrid_actor);
+    if (ShowIsoSurf) win.AddActor (_isosurf_actor);
+    if (ShowVectors) win.AddActor (_hedgehog_actor);
+    if (ShowOutline) win.AddActor (_outline_actor);
 }
 
 inline void IsoSurf::SetVecF (double F, double Tol)
@@ -222,5 +225,7 @@ inline void IsoSurf::SetVecF (double F, double Tol)
         if (fabs(f)>Tol) vectors->SetTuple3 (i, 0.0, 0.0, 0.0);
     }
 }
+
+}; // namespace VTK
 
 #endif // MECHSYS_ISOSURF_H

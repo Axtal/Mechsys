@@ -30,7 +30,7 @@
 #include <vtkProperty.h>
 
 // MechSys
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/util/colors.h>
 #include <mechsys/linalg/matvec.h>
 
@@ -44,7 +44,7 @@ public:
     ~UGrid ();
 
     // Methods
-    void AddActorsTo (VTKWin & Win) { Win.AddActor(_grid_actor); }
+    void AddTo (VTK::Win & win) { win.AddActor(_grid_actor); }
 
     // Add methods
     int InsertNextPoint (double X, double Y, double Z) { return _pnts->InsertNextPoint (X,Y,Z);      }

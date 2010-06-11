@@ -22,9 +22,9 @@
 
 // MechSys
 #include <mechsys/vtk/isosurf.h>
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/vtk/axes.h>
-#include <mechsys/vtk/meshgrid.h>
+#include <mechsys/util/meshgrid.h>
 #include <mechsys/util/fatal.h>
 
 using std::cout;
@@ -63,7 +63,7 @@ int main(int argc, char **argv) try
     dat.r = 0.25;
 
     // iso surface
-    IsoSurf iso(mg, &Func, &dat);
+    VTK::IsoSurf iso(mg, &Func, &dat);
     iso.ShowVectors = true;
     iso.ShowOutline = true;
     iso.SetIsoColor ("brown", 0.6);
@@ -72,13 +72,13 @@ int main(int argc, char **argv) try
     cout << "File <[1;34misosurf01.vtk[0m> written" << endl;
 
     // axes
-    Axes ax(1.2, /*HydroLine*/true);
+    VTK::Axes axe(1.2, /*HydroLine*/true);
 
     // window
-    VTKWin win;
-    iso.AddActorsTo (win);
-    ax .AddActorsTo (win);
-    win.Show();
+    VTK::Win win;
+    iso.AddTo (win);
+    axe.AddTo (win);
+    win.Show  ();
 
     // end
     return 0;

@@ -29,9 +29,12 @@
 #include <vtkProperty.h>
 
 // MechSys
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/util/colors.h>
 #include <mechsys/linalg/matvec.h>
+
+namespace VTK
+{
 
 class Plane
 {
@@ -44,7 +47,7 @@ public:
     ~Plane ();
 
     // Methods
-    void AddActorsTo (VTKWin & Win) { Win.AddActor(_plane_actor); }
+    void AddTo (VTK::Win & win) { win.AddActor(_plane_actor); }
 
     // Set methods
     Plane & SetColor (char const * Name="light_salmon", double Opacity=0.5);
@@ -95,9 +98,11 @@ inline Plane::~Plane ()
 inline Plane & Plane::SetColor (char const * Name, double Opacity)
 {
     Vec3_t c(Colors::Get(Name));
-    _plane_actor->GetProperty()->SetColor   (c(0), c(1), c(2));
+    _plane_actor->GetProperty()->SetColor   (c.data());
     _plane_actor->GetProperty()->SetOpacity (Opacity);
     return (*this);
 }
+
+}; // namespace VTK
 
 #endif // MECHSYS_PLANE_H

@@ -19,134 +19,147 @@
 #ifndef MECHSYS_CYLINDER_H
 #define MECHSYS_CYLINDER_H
 
+// Std Lib
+#include <cmath>
+
 // VTK
-#include <vtkGlyph3D.h>
 #include <vtkCylinderSource.h>
-#include <vtkPolyDataMapper.h>
-#include <vtkFloatArray.h>
-#include <vtkPointData.h>
 #include <vtkTransform.h>
 #include <vtkTransformFilter.h>
-#include <vtkLODActor.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkActor.h>
 #include <vtkProperty.h>
 
 // MechSys
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/util/colors.h>
 #include <mechsys/linalg/matvec.h>
+
+namespace VTK
+{
 
 class Cylinder
 {
 public:
     // Constructor & Destructor
-     Cylinder (Vec3_t const & X0, Vec3_t const & X1, double Radius, bool Capping=true, int Resolution=20);
+     Cylinder ();
     ~Cylinder ();
 
-    // Methods
-    void AddActorsTo (VTKWin & Win) { Win.AddActor(_cylin_actor); }
+    // Alternative constructor
+    Cylinder (Vec3_t const & X0, Vec3_t const & X1, double Radius, bool Capping=true, int Resolution=20);
 
     // Set methods
-    Cylinder & SetColor  (char const * Name="peacock", double Opacity=0.8);
-    void       SetPoints (Vec3_t const & X0, Vec3_t const & X1);
+    Cylinder & SetRadius     (double Radius);
+    Cylinder & SetPoints     (Vec3_t const & X0, Vec3_t const & X1);
+    Cylinder & SetResolution (int Res=20);
+    Cylinder & SetColor      (char const * Name="olive", double Opacity=1.0);
+
+    // Methods
+    void AddTo (VTK::Win & win) { win.AddActor(_cylin_actor); }
 
 private:
-    vtkGlyph3D        * _cylin;
-    vtkPolyDataMapper * _cylin_mapper;
-    vtkLODActor       * _cylin_actor;
+    vtkCylinderSource  * _cylin;
+    vtkTransformFilter * _transform;
+    vtkPolyDataMapper  * _cylin_mapper;
+    vtkActor           * _cylin_actor;
+    void _create (bool Cap=true);
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Cylinder::Cylinder (Vec3_t const & X0, Vec3_t const & X1, double Radius, bool Capping, int Resolution)
+inline Cylinder::Cylinder ()
 {
-    // cylinder length
-    Vec3_t V(X1-X0);
+    _create       ();
+    SetResolution ();
+    SetColor      ();
+}
 
-    // create cylinder
-    double len = Norm(V);
-    double cen = len/2.0;
-    vtkCylinderSource * cylin = vtkCylinderSource ::New(); // will be parallel to y-axis
-    cylin -> SetCenter     (0.0, cen, 0.0);
-    cylin -> SetRadius     (Radius);
-    cylin -> SetHeight     (len);
-    cylin -> SetCapping    (Capping);
-    cylin -> SetResolution (Resolution);
-
-    // rotate around z axis because glyph3D needs the cylinder to be parallel to the x-axis
-    vtkTransform       * rotate        = vtkTransform       ::New();
-    vtkTransformFilter * cylin_along_x = vtkTransformFilter ::New();
-    rotate        -> RotateZ      (-90.0);
-    cylin_along_x -> SetTransform (rotate);
-    cylin_along_x -> SetInput     (cylin->GetOutput());
-
-    // setup data for the glyph
-    vtkPoints     * points   = vtkPoints     ::New();
-    vtkFloatArray * vectors  = vtkFloatArray ::New();
-    vtkPolyData   * polydata = vtkPolyData   ::New();
-    points   -> SetNumberOfPoints     (1);
-    points   -> InsertPoint           (0, X0(0), X0(1), X0(2));
-    vectors  -> SetNumberOfComponents (3);
-    vectors  -> SetNumberOfTuples     (1);
-    vectors  -> InsertTuple3          (0, V(0), V(1), V(2));
-    polydata -> SetPoints             (points);
-    polydata -> GetPointData() -> SetVectors(vectors);
-
-    // create the glyph
-    _cylin =  vtkGlyph3D                   ::New();
-    _cylin -> SetInput                     (polydata);
-    _cylin -> SetSource                    (cylin_along_x->GetPolyDataOutput());
-    _cylin -> SetVectorModeToUseVector     ();
-    _cylin -> SetScaleModeToDataScalingOff ();
-
-    // create mapper and actor
-    _cylin_mapper = vtkPolyDataMapper   ::New();
-    _cylin_actor  = vtkLODActor         ::New();
-    _cylin_mapper -> SetInputConnection (_cylin->GetOutputPort());
-    _cylin_actor  -> SetMapper          (_cylin_mapper);
-    _cylin_actor  -> VisibilityOn       ();
-    SetColor ();
-
-    // clean up
-    cylin         -> Delete();
-    rotate        -> Delete();
-    cylin_along_x -> Delete();
-    points        -> Delete();
-    vectors       -> Delete();
-    polydata      -> Delete();
+inline Cylinder::Cylinder (Vec3_t const & X0, Vec3_t const & X1, double R, bool Cap, int Res)
+{
+    _create       (Cap);
+    SetRadius     (R);
+    SetPoints     (X0, X1);
+    SetResolution (Res);
+    SetColor      ();
 }
 
 inline Cylinder::~Cylinder ()
 {
     _cylin        -> Delete();
+    _transform    -> Delete();
     _cylin_mapper -> Delete();
     _cylin_actor  -> Delete();
+}
+
+inline Cylinder & Cylinder::SetRadius (double R)
+{
+    _cylin->SetRadius (R);
+    return (*this);
+}
+
+inline Cylinder & Cylinder::SetPoints (Vec3_t const & X0, Vec3_t const & X1)
+{
+    // update length
+    Vec3_t V(X1-X0);
+    _cylin->SetHeight (Norm(V));
+
+    // translate
+    Vec3_t cen(X0+0.5*V); // center of cylin
+    vtkTransform * affine = vtkTransform ::New();
+    affine->Translate (cen(0), cen(1), cen(2));
+
+    // rotate
+    Vec3_t vy(0.0, 1.0, 0.0); // direction of cylinder source
+    double angle = (180.0/Util::PI)*acos(dot(vy,V)/norm(V)); // angle of rotation
+    if (angle>0.0)
+    {
+        Vec3_t axis = cross(vy, V); // axis of rotation
+        if (norm(axis)>0.0)         // not parallel
+        {
+            affine->RotateWXYZ (angle, axis.data());
+        }
+        else // parallel and oposite (alpha=180)
+        {
+            affine->RotateWXYZ (angle, 0.0, 0.0, 1.0); // use z-direction for mirroring
+        }
+    }
+
+    // tranform
+    _transform->SetTransform (affine);
+
+    // clean up
+    affine->Delete ();
+    return (*this);
+}
+
+inline Cylinder & Cylinder::SetResolution (int Res)
+{
+    _cylin->SetResolution (Res);
+    return (*this);
 }
 
 inline Cylinder & Cylinder::SetColor (char const * Name, double Opacity)
 {
     Vec3_t c(Colors::Get(Name));
-    _cylin_actor->GetProperty()->SetColor   (c(0), c(1), c(2));
+    _cylin_actor->GetProperty()->SetColor   (c.data());
     _cylin_actor->GetProperty()->SetOpacity (Opacity);
     return (*this);
 }
 
-inline void Cylinder::SetPoints (Vec3_t const & X0, Vec3_t const & X1)
+inline void Cylinder::_create (bool Cap)
 {
-    Vec3_t V(X1-X0);
-    vtkPoints     * points   = vtkPoints     ::New();
-    vtkFloatArray * vectors  = vtkFloatArray ::New();
-    vtkPolyData   * polydata = static_cast<vtkPolyData*>(_cylin->GetInput());
-    points   -> SetNumberOfPoints     (1);
-    points   -> InsertPoint           (0, X0(0), X0(1), X0(2));
-    vectors  -> SetNumberOfComponents (3);
-    vectors  -> SetNumberOfTuples     (1);
-    vectors  -> InsertTuple3          (0, V(0), V(1), V(2));
-    polydata -> SetPoints             (points);
-    polydata -> GetPointData() -> SetVectors(vectors);
-    points   -> Delete();
-    vectors  -> Delete();
+    _cylin        = vtkCylinderSource  ::New();
+    _transform    = vtkTransformFilter ::New();
+    _cylin_mapper = vtkPolyDataMapper  ::New();
+    _cylin_actor  = vtkActor           ::New();
+    _cylin        -> SetCapping        (Cap);
+    _transform    -> SetInput          (_cylin->GetOutput());
+    _cylin_mapper -> SetInput          (_transform->GetPolyDataOutput());
+    _cylin_actor  -> SetMapper         (_cylin_mapper);
 }
+
+}; // namespace VTK
 
 #endif // MECHSYS_CYLINDER_H

@@ -33,15 +33,18 @@
 #include <mechsys/util/string.h>
 #include <mechsys/util/colors.h>
 
-class VTKWin
+namespace VTK
+{
+
+class Win
 {
 public:
     // Constructors
-    VTKWin (int Width=300, int Height=300);
-    VTKWin (vtkRenderWindowInteractor * vtkRWI, int Width=300, int Height=300);
+    Win (int Width=300, int Height=300);
+    Win (vtkRenderWindowInteractor * vtkRWI, int Width=300, int Height=300);
 
     // Destructor
-    ~VTKWin ();
+    ~Win ();
 
     // Methods
     void AddActor (vtkActor * TheActor);
@@ -56,9 +59,9 @@ public:
     vtkCamera   * GetCamera () { return _camera;   }
 
     // Set methods
-    VTKWin & SetViewDefault (bool RevCam=false);
-    VTKWin & SetViewPIplane (bool RevCam=false);
-    VTKWin & SetBgColor     (char const * Name="white") { _bg_clr = Colors::Get(Name);  return (*this); }
+    Win & SetViewDefault (bool RevCam=false);
+    Win & SetViewPIplane (bool RevCam=false);
+    Win & SetBgColor     (char const * Name="white") { _bg_clr = Colors::Get(Name);  return (*this); }
 
 private:
     Vec3_t                      _bg_clr;
@@ -73,7 +76,7 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline VTKWin::VTKWin (int Width, int Height)
+inline Win::Win (int Width, int Height)
 {
     _camera = vtkCamera::New();
     SetViewDefault();
@@ -92,7 +95,7 @@ inline VTKWin::VTKWin (int Width, int Height)
     SetBgColor ();
 }
 
-inline VTKWin::VTKWin (vtkRenderWindowInteractor * vtkRWI, int Width, int Height)
+inline Win::Win (vtkRenderWindowInteractor * vtkRWI, int Width, int Height)
 {
     _camera = vtkCamera::New();
     SetViewDefault();
@@ -111,7 +114,7 @@ inline VTKWin::VTKWin (vtkRenderWindowInteractor * vtkRWI, int Width, int Height
     SetBgColor ();
 }
 
-inline VTKWin::~VTKWin ()
+inline Win::~Win ()
 {
     _camera     -> Delete();
     _renderer   -> Delete();
@@ -120,26 +123,26 @@ inline VTKWin::~VTKWin ()
     _int_switch -> Delete();
 }
 
-inline void VTKWin::AddActor (vtkActor * TheActor)
+inline void Win::AddActor (vtkActor * TheActor)
 {
     _renderer -> AddActor        (TheActor);
     _renderer -> SetActiveCamera (_camera);
     _renderer -> ResetCamera     ();
 }
 
-inline void VTKWin::Render ()
+inline void Win::Render ()
 {
     _renderer -> SetBackground (_bg_clr(0), _bg_clr(1), _bg_clr(2));
     _ren_win  -> Render        ();
 }
 
-inline void VTKWin::Show ()
+inline void Win::Show ()
 {
     Render ();
     _interactor->Start ();
 }
 
-inline void VTKWin::WritePNG (char const * Filename)
+inline void Win::WritePNG (char const * Filename)
 {
     // Window to image filter
     vtkWindowToImageFilter * win_to_img = vtkWindowToImageFilter::New();
@@ -157,7 +160,7 @@ inline void VTKWin::WritePNG (char const * Filename)
     writer     -> Delete();
 }
 
-inline VTKWin & VTKWin::SetViewDefault (bool RevCam)
+inline Win & Win::SetViewDefault (bool RevCam)
 {
     double c = (RevCam ? -1 : 1);
     _camera->SetViewUp     (0,0,c);
@@ -166,7 +169,7 @@ inline VTKWin & VTKWin::SetViewDefault (bool RevCam)
     return (*this);
 }
 
-inline VTKWin & VTKWin::SetViewPIplane (bool RevCam)
+inline Win & Win::SetViewPIplane (bool RevCam)
 {
     double c = (RevCam ? -1 : 1);
     _camera->SetViewUp     (0,0,c);
@@ -174,5 +177,7 @@ inline VTKWin & VTKWin::SetViewPIplane (bool RevCam)
     _camera->SetFocalPoint (0,0,0);
     return (*this);
 }
+
+}; // namespace VTK
 
 #endif // MECHSYS_VTKWIN_H

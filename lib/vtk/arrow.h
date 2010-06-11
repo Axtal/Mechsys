@@ -19,158 +19,205 @@
 #ifndef MECHSYS_ARROW3D_H
 #define MECHSYS_ARROW3D_H
 
+// Std Lib
+#include <cmath>
+
 // VTK
 #include <vtkConeSource.h>
 #include <vtkCylinderSource.h>
 #include <vtkAppendPolyData.h>
 #include <vtkTransform.h>
 #include <vtkTransformFilter.h>
-#include <vtkPoints.h>
-#include <vtkFloatArray.h>
-#include <vtkPolyData.h>
-#include <vtkPointData.h>
-#include <vtkArrowSource.h>
-#include <vtkGlyph3D.h>
 #include <vtkPolyDataMapper.h>
+#include <vtkActor.h>
 #include <vtkProperty.h>
-#include <vtkLODActor.h>
 
 // MechSys
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/util/colors.h>
 #include <mechsys/linalg/matvec.h>
+
+/*                +-------------------------------+ 
+ *                |            length             |
+ *                +-----------------------+-------+
+ *                |        bod_len        |tip_len|
+ *                |                       |       |
+ *                                        `.      ----+  
+ *                                        | ``.       |
+ *             +  +-----------------------|    ``.    |
+ *     bod_rad |  |           +           |   +   >   | tip_rad   
+ *             +  +-----------|-----------|   |_-'    |
+ *                |           |           | _-|       |
+ *                |           |           ''  |     --+  
+ *                |           |               |
+ *                +-----------+---------------+-------> y axis
+ *                |           |               |    
+ *                y0      y_bod_cen      y_tip_cen
+ */
+
+namespace VTK
+{
 
 class Arrow
 {
 public:
-    /*                +-------------------------------+ 
-     *                |            length             |
-     *                +-----------------------+-------+
-     *                |        bod_len        |tip_len|
-     *                |                       |       |
-     *                                        `.      ----+  
-     *                                        | ``.       |
-     *             +  +-----------------------|    ``.    |
-     *     bod_rad |  |           +           |   +   >   | tip_rad   
-     *             +  +-----------|-----------|   |_-'    |
-     *                |           |           | _-|       |
-     *                |           |           ''  |     --+  
-     *                |           |               |
-     *                +-----------+---------------+-------> y axis
-     *                |           |               |    
-     *                y0      y_bod_cen      y_tip_cen
-     */
-
     // Constructor & Destructor
-     Arrow (Vec3_t const & X, Vec3_t const & V, double BodRad=0.015, double TipRad=0.03, double TipLen=0.12, int Resolution=18);
+     Arrow ();
     ~Arrow ();
 
+    // Alternative constructor
+    Arrow (Vec3_t const & X0, Vec3_t const & V, double ConPct=0.1, double ConRad=0.03, double CylRad=0.015, int Res=20);
+
     // Set methods
-    Arrow & SetColor (char const * Name="yellow", double Opacity=1.0);
+    Arrow & SetGeometry   (double ConPct=0.1, double ConRad=0.03, double CylRad=0.015);
+    Arrow & SetResolution (int Resolution=20);
+    Arrow & SetColor      (char const * Name="yellow", double Opacity=1.0);
+    Arrow & SetVector     (Vec3_t const & X0, Vec3_t const & V);
+    Arrow & SetPoints     (Vec3_t const & X0, Vec3_t const & X1);
 
     // Methods
-    void AddActorsTo (VTKWin & Win) { Win.AddActor(_vector_actor); }
-
-    // Data
-    double BodRad;     // body (cylinder) radius
-    double TipRad;     // tip (cone) radius
-    double TipLen;     // tip (cone) length/height
-    int    Resolution; // number of facets
+    void AddTo (VTK::Win & win) { win.AddActor(_arrow_actor); }
 
 private:
-    // Data
-    vtkGlyph3D        * _vector;
-    vtkPolyDataMapper * _vector_mapper;
-    vtkLODActor       * _vector_actor;
+    double               _con_pct;
+    double               _tot_len;
+    vtkConeSource      * _cone;
+    vtkCylinderSource  * _cylin;
+    vtkTransformFilter * _transform;
+    vtkAppendPolyData  * _arrow;
+    vtkPolyDataMapper  * _arrow_mapper;
+    vtkActor           * _arrow_actor;
+    void _create        ();
+    void _update_length ();
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Arrow::Arrow (Vec3_t const & X, Vec3_t const & V, double BR, double TR, double TL, int Res)
-    : BodRad(BR), TipRad(TR), TipLen(TL), Resolution(Res)
+inline Arrow::Arrow ()
+    : _tot_len (1.0)
 {
-    // Dimensions
-    double length  = Norm(V);
-    double bod_len = length-TipLen;
-    double bod_cen = bod_len/2.0;
-    double tip_cen = bod_len+TipLen/2.0;
+    _create       ();
+    SetGeometry   ();
+    SetResolution ();
+    SetColor      ();
+}
 
-    // Create the body (cylinder) and tip (cone) of the arrow
-    vtkConeSource     * cone  = vtkConeSource     ::New();
-    vtkCylinderSource * cylin = vtkCylinderSource ::New();
-    vtkAppendPolyData * arrow = vtkAppendPolyData ::New();
-    cylin -> SetCenter     (0.0, bod_cen, 0.0);
-    cylin -> SetHeight     (bod_len);
-    cylin -> SetRadius     (BodRad);
-    cylin -> SetResolution (Resolution);
-    cone  -> SetCenter     (0.0, tip_cen, 0.0);
-    cone  -> SetDirection  (0,1,0); // because cylinder direction is along y-axis
-    cone  -> SetHeight     (TipLen);
-    cone  -> SetRadius     (TipRad);
-    cone  -> SetResolution (Resolution);
-    arrow -> AddInput      (cone->GetOutput());
-    arrow -> AddInput      (cylin->GetOutput());
-
-    // Rotate arrow around z axis because glyph3D creates arrows parallel to the x-axis
-    vtkTransform       * rotate        = vtkTransform       ::New();
-    vtkTransformFilter * arrow_along_x = vtkTransformFilter ::New();
-    rotate        -> RotateZ      (-90.0);
-    arrow_along_x -> SetTransform (rotate);
-    arrow_along_x -> SetInput     (arrow->GetOutput());
-
-    // Setup data for the glyph
-    vtkPoints     * points   = vtkPoints     ::New();
-    vtkFloatArray * vectors  = vtkFloatArray ::New();
-    vtkPolyData   * polydata = vtkPolyData   ::New();
-    points   -> SetNumberOfPoints     (1);
-    points   -> InsertPoint           (0, X(0), X(1), X(2));
-    vectors  -> SetNumberOfComponents (3);
-    vectors  -> SetNumberOfTuples     (1);
-    vectors  -> InsertTuple3          (0, V(0), V(1), V(2));
-    polydata -> SetPoints             (points);
-    polydata -> GetPointData() -> SetVectors(vectors);
-
-    // Create the glyph
-    _vector =  vtkGlyph3D                   ::New();
-    _vector -> SetInput                     (polydata);
-    _vector -> SetSource                    (arrow_along_x->GetPolyDataOutput());
-    _vector -> SetVectorModeToUseVector     ();
-    _vector -> SetScaleModeToDataScalingOff ();
-
-    // Create mapper and actor
-    _vector_mapper = vtkPolyDataMapper   ::New();
-    _vector_actor  = vtkLODActor         ::New();
-    _vector_mapper -> SetInputConnection (_vector->GetOutputPort());
-    _vector_actor  -> SetMapper          (_vector_mapper);
-    _vector_actor  -> VisibilityOn       ();
-    SetColor ();
-
-    // Clean up
-    cone          -> Delete();
-    cylin         -> Delete();
-    arrow         -> Delete();
-    rotate        -> Delete();
-    arrow_along_x -> Delete();
-    points        -> Delete();
-    vectors       -> Delete();
-    polydata      -> Delete();
+inline Arrow::Arrow (Vec3_t const & X0, Vec3_t const & V, double ConPct, double ConRad, double CylRad, int Res)
+    : _tot_len (norm(V))
+{
+    _create       ();
+    SetGeometry   (ConPct, ConRad, CylRad);
+    SetResolution (Res);
+    SetColor      ();
+    SetVector     (X0, V);
 }
 
 inline Arrow::~Arrow ()
 {
-    _vector        -> Delete();
-    _vector_mapper -> Delete();
-    _vector_actor  -> Delete();
+    _cone         -> Delete();
+    _cylin        -> Delete();
+    _transform    -> Delete();
+    _arrow        -> Delete();
+    _arrow_mapper -> Delete();
+    _arrow_actor  -> Delete();
+}
+
+inline Arrow & Arrow::SetGeometry (double ConPct, double ConRad, double CylRad)
+{
+    _con_pct = ConPct;
+    _update_length ();
+    _cone  -> SetRadius (ConRad);
+    _cylin -> SetRadius (CylRad);
+    return (*this);
+}
+
+inline Arrow & Arrow::SetResolution (int Res)
+{
+    _cone  -> SetResolution (Res);
+    _cylin -> SetResolution (Res);
+    return (*this);
 }
 
 inline Arrow & Arrow::SetColor (char const * Name, double Opacity)
 {
     Vec3_t c(Colors::Get(Name));
-    _vector_actor->GetProperty()->SetColor   (c(0), c(1), c(2));
-    _vector_actor->GetProperty()->SetOpacity (Opacity);
+    _arrow_actor->GetProperty()->SetColor   (c.data());
+    _arrow_actor->GetProperty()->SetOpacity (Opacity);
     return (*this);
 }
+
+inline Arrow & Arrow::SetVector (Vec3_t const & X0, Vec3_t const & V)
+{
+    // update length
+    _tot_len = Norm(V);
+    _update_length ();
+
+    // translate
+    Vec3_t cen(X0+0.5*V); // center of arrow
+    vtkTransform * affine = vtkTransform ::New();
+    affine->Translate (cen(0), cen(1), cen(2));
+
+    // rotate
+    Vec3_t vy(0.0, 1.0, 0.0); // direction of cylinder source
+    double angle = (180.0/Util::PI)*acos(dot(vy,V)/norm(V)); // angle of rotation
+    if (angle>0.0)
+    {
+        Vec3_t axis = cross(vy, V); // axis of rotation
+        if (norm(axis)>0.0)         // not parallel
+        {
+            affine->RotateWXYZ (angle, axis.data());
+        }
+        else // parallel and oposite (alpha=180)
+        {
+            affine->RotateWXYZ (angle, 0.0, 0.0, 1.0); // use z-direction for mirroring
+        }
+    }
+
+    // tranform
+    _transform->SetTransform (affine);
+
+    // clean up
+    affine->Delete ();
+    return (*this);
+}
+
+inline Arrow & Arrow::SetPoints(Vec3_t const & X0, Vec3_t const & X1)
+{
+    SetVector (X0, X1-X0);
+    return (*this);
+}
+
+inline void Arrow::_create ()
+{
+    _cone         = vtkConeSource      ::New();
+    _cylin        = vtkCylinderSource  ::New();
+    _arrow        = vtkAppendPolyData  ::New();
+    _transform    = vtkTransformFilter ::New();
+    _arrow_mapper = vtkPolyDataMapper  ::New();
+    _arrow_actor  = vtkActor           ::New();
+    _cone         -> SetDirection      (0.0, 1.0, 0.0);
+    _arrow        -> AddInput          (_cone->GetOutput());
+    _arrow        -> AddInput          (_cylin->GetOutput());
+    _transform    -> SetInput          (_arrow->GetOutput());
+    _arrow_mapper -> SetInput          (_transform->GetPolyDataOutput());
+    _arrow_actor  -> SetMapper         (_arrow_mapper);
+}
+
+inline void Arrow::_update_length ()
+{
+    double con_len = _con_pct*_tot_len;      // cone length/height
+    double cyl_len = _tot_len-con_len;       // cylinder length/height
+    double con_cen = (_tot_len-con_len)/2.0; // cone center
+    double cyl_cen = -con_len/2.0;           // cylinder center
+
+    _cone  -> SetCenter (0.0, con_cen, 0.0);
+    _cone  -> SetHeight (con_len);
+    _cylin -> SetCenter (0.0, cyl_cen, 0.0);
+    _cylin -> SetHeight (cyl_len);
+}
+
+}; // namespace VTK
 
 #endif // MECHSYS_ARROW3D_H

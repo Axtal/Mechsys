@@ -19,9 +19,6 @@
 #ifndef MECHSYS_TRIANGULATE_H
 #define MECHSYS_TRIANGULATE_H
 
-// Std Lib
-#include <vector>
-
 // VTK
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
@@ -29,97 +26,40 @@
 #include <vtkUnstructuredGridWriter.h>
 
 // MechSys
-#include <mechsys/vtk/meshgrid.h>
+#include <mechsys/util/meshgrid.h>
+#include <mechsys/util/array.h>
 
-class Triangulate
+namespace VTK
 {
-public:
-    // Constructors
-    Triangulate (double const * X,
-                 double const * Y,
-                 double const * Z, int Size, char const * Filename);
 
-    Triangulate (std::vector<double> & X,
-                 std::vector<double> & Y,
-                 std::vector<double> & Z, char const * Filename);
-
-    // Methods
-    void Start ();
-
-private:
-    bool                  _use_vector;
-    int                   _npoints;
-    char const          * _filename;
-    double const        * _X; 
-    double const        * _Y; 
-    double const        * _Z; 
-    std::vector<double>   _vX;
-    std::vector<double>   _vY;
-    std::vector<double>   _vZ;
-};
-
-
-/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
-
-
-inline Triangulate::Triangulate (double const * X,
-                                 double const * Y,
-                                 double const * Z, int Size, char const * Filename)
-    : _use_vector(false), _npoints(Size), _filename(Filename), _X(X), _Y(Y), _Z(Z)
+void Triangulate (double const * X, double const * Y, double const * Z, size_t Size, char const * Filename, double Tol=1.0e-3)
 {
-    if (Size<1) throw new Fatal("Triangulate::Triangulate: Size of arrays must be greater than zero");
-}
+    // check
+    if (Size<1) throw new Fatal("VTK::Triangulate: Size of arrays must be greater than zero");
 
-inline Triangulate::Triangulate (std::vector<double> & X,
-                                 std::vector<double> & Y,
-                                 std::vector<double> & Z, char const * Filename)
-    : _use_vector(true), _npoints(X.size()), _filename(Filename), _X(NULL), _Y(NULL), _Z(NULL), _vX(X), _vY(Y), _vZ(Z)
-{
-    if (X.size()<1)         throw new Fatal("Triangulate::Triangulate: Size of arrays must be greater than zero");
-    if (X.size()!=Y.size()) throw new Fatal("Triangulate::Triangulate: X, Y, and Z arrays must have the same size");
-    if (X.size()!=Z.size()) throw new Fatal("Triangulate::Triangulate: X, Y, and Z arrays must have the same size");
-}
-
-inline void Triangulate::Start ()
-{
-    // Create VTK points
+    // create VTK points
     vtkPoints * points = vtkPoints::New();
-    points->Allocate(_npoints);
-    if (_use_vector)
-    {
-        for (int i=0; i<_npoints; ++i)
-        {
-            double P[3] = {_vX[i], _vY[i], _vZ[i]};
-            points->InsertPoint(i,P);
-        }
-    }
-    else 
-    {
-        for (int i=0; i<_npoints; ++i)
-        {
-            double P[3] = {_X[i], _Y[i], _Z[i]};
-            points->InsertPoint(i,P);
-        }
-    }
+    points->Allocate (Size);
+    for (size_t i=0; i<Size; ++i) points->InsertPoint (i, X[i], Y[i], Z[i]);
 
     // Create a 3D triangulation
     //   - The Tolerance is the distance that nearly coincident points are merged together.
     //   - Delaunay does better if points are well spaced.
     //   - The alpha value is the radius of circumcircles, circumspheres.
     //     Any mesh entity whose circumcircle is smaller than this value is output.
-    vtkPolyData   * vertices = vtkPolyData::New();
-    vtkDelaunay3D * delaunay = vtkDelaunay3D::New();
-    vertices -> SetPoints(points);
-    delaunay -> SetInput(vertices);
-    delaunay -> SetTolerance(0.01);
-    delaunay -> SetAlpha(0.2);
+    vtkPolyData   * vertices = vtkPolyData   ::New();
+    vtkDelaunay3D * delaunay = vtkDelaunay3D ::New();
+    vertices -> SetPoints    (points);
+    delaunay -> SetInput     (vertices);
+    delaunay -> SetTolerance (Tol);
+    delaunay -> SetAlpha     (0.2);
     delaunay -> BoundingTriangulationOff();
 
     // Write file
-    vtkUnstructuredGridWriter * writer = vtkUnstructuredGridWriter::New();
-    writer -> SetInputConnection(delaunay->GetOutputPort());
-    writer -> SetFileName(_filename);
-    writer -> Write();
+    vtkUnstructuredGridWriter * writer = vtkUnstructuredGridWriter ::New();
+    writer -> SetInputConnection (delaunay->GetOutputPort());
+    writer -> SetFileName        (Filename);
+    writer -> Write              ();
 
     // Clean up
     points   -> Delete();
@@ -127,5 +67,15 @@ inline void Triangulate::Start ()
     delaunay -> Delete();
     writer   -> Delete();
 }
+
+void Triangulate (Array<double> const & X, Array<double> const & Y, Array<double> const & Z, char const * Filename, double Tol=1.0e-3)
+{
+    if (X.Size()<1)         throw new Fatal("VTK::Triangulate: Size of arrays must be greater than zero");
+    if (X.Size()!=Y.Size()) throw new Fatal("VTK::Triangulate: X, Y, and Z arrays must have the same size");
+    if (X.Size()!=Z.Size()) throw new Fatal("VTK::Triangulate: X, Y, and Z arrays must have the same size");
+    Triangulate (X.GetPtr(), Y.GetPtr(), Z.GetPtr(), X.Size(), Filename, Tol);
+}
+
+}; // namespace VTK
 
 #endif // MECHSYS_TRIANGULATE_H

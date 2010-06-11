@@ -30,8 +30,8 @@
 #include <vtkPolyDataMapper.h>
 
 // MechSys
-#include <mechsys/vtk/meshgrid.h>
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
+#include <mechsys/util/meshgrid.h>
 #include <mechsys/util/fatal.h>
 
 using std::cout;
@@ -91,10 +91,10 @@ int main(int argc, char **argv) try
     outline_actor  -> GetProperty () -> SetColor(0,0,0);
 
     // Window
-    VTKWin win;
-    win.AddActor(actor);
-    win.AddActor(outline_actor);
-    win.Show();
+    VTK::Win win;
+    win.AddActor (actor);
+    win.AddActor (outline_actor);
+    win.Show     ();
 
     // Clean up
     points         -> Delete();

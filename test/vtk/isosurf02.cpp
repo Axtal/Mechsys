@@ -22,9 +22,9 @@
 
 // MechSys
 #include <mechsys/vtk/isosurf.h>
-#include <mechsys/vtk/vtkwin.h>
+#include <mechsys/vtk/win.h>
 #include <mechsys/vtk/axes.h>
-#include <mechsys/vtk/meshgrid.h>
+#include <mechsys/util/meshgrid.h>
 #include <mechsys/util/fatal.h>
 
 using std::cout;
@@ -65,19 +65,19 @@ int main(int argc, char **argv) try
     dat.r = 0.25;
 
     // iso surface
-    IsoSurf iso(mg, &Func, &dat);
+    VTK::IsoSurf iso(mg, &Func, &dat);
     iso.ShowVectors = true;
     iso.SetVecScale (0.1);
     iso.SetVecF     (0.0, /*Tol*/1.0e-2);
 
     // axes
-    Axes ax(1.2, /*HydroLine*/true);
+    VTK::Axes ax(1.2, /*HydroLine*/true);
 
     // window
-    VTKWin win;
-    iso.AddActorsTo (win);
-    ax .AddActorsTo (win);
-    win.Show();
+    VTK::Win win;
+    iso.AddTo (win);
+    ax .AddTo (win);
+    win.Show  ();
 
     // end
     return 0;
