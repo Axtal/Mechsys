@@ -19,7 +19,6 @@
 SET(EXES
   nonconvex
   ttt
-  ttt2
   test_distances
   test_domain
   test_dynamics
