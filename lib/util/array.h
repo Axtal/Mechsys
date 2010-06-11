@@ -66,7 +66,6 @@ public:
 
     // Methods
     size_t    Size      () const { return _size; }                    ///< Returns the size
-    Value_T * GetPtr    ()       { return _values; }                  ///< Returns a pointer to the values
     void      Resize    (size_t  Size,  double SzFactor=1.2);         ///< Resize the array
     void      Push      (Value_T const & Value, double SzFactor=1.2); ///< Add a new entry increasing the size if necessary
     void      PushN     (Value_T const & Value, size_t Num,
@@ -81,8 +80,10 @@ public:
     void      Clear     () { Resize(0); }                             ///< Clear array
 
     // Access methods
-    Value_T       & Last ()       { return _values[_size-1]; } ///< Return the last element
-    Value_T const & Last () const { return _values[_size-1]; } ///< Return the last element
+    Value_T       * GetPtr ()       { return _values; }          ///< Returns a pointer to the values
+    Value_T const * GetPtr () const { return _values; }          ///< Returns a pointer to the values
+    Value_T       & Last   ()       { return _values[_size-1]; } ///< Return the last element
+    Value_T const & Last   () const { return _values[_size-1]; } ///< Return the last element
 
     // Operators
     Value_T       & operator[] (size_t i);                 ///< Access operator (write)
