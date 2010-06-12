@@ -36,7 +36,7 @@ class Cube
 {
 public:
     // Constructor & Destructor
-     Cube ();
+     Cube () { _create(); }
     ~Cube ();
 
     // Alternative constructor
@@ -65,22 +65,11 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Cube::Cube ()
-{
-    _create      ();
-    SetColor     ();
-    SetWireColor ();
-    SetWireWidth ();
-}
-
 inline Cube::Cube (Vec3_t const & Cen, double Lx, double Ly, double Lz)
 {
-    _create      ();
-    SetCenter    (Cen);
-    SetLengths   (Lx, Ly, Lz);
-    SetColor     ();
-    SetWireColor ();
-    SetWireWidth ();
+    _create    ();
+    SetCenter  (Cen);
+    SetLengths (Lx, Ly, Lz);
 }
 
 inline Cube::~Cube ()
@@ -155,6 +144,11 @@ inline void Cube::_create ()
     _wire_actor  -> GetProperty() -> SetAmbient  (1.0);
     _wire_actor  -> GetProperty() -> SetDiffuse  (0.0);
     _wire_actor  -> GetProperty() -> SetSpecular (0.0);
+
+    // set colors and wire width
+    SetColor     ();
+    SetWireColor ();
+    SetWireWidth ();
 }
 
 }; // namespace VTK

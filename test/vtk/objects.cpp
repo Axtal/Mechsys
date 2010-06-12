@@ -38,10 +38,10 @@ int main(int argc, char **argv) try
     VTK::Cube     cu(/*Cen*/Vec3_t(0.0,0.0,0.0), /*lx*/1.0, /*ly*/1.0, /*lz*/1.0);
     VTK::Cylinder cy(/*X*/Vec3_t(0.0,0.0,0.0), /*V*/Vec3_t(1.0,0.0,0.0), /*R*/0.1, /*Cap*/false, /*Res*/30);
     VTK::Text     tx(/*X*/Vec3_t(0.8,0.3,0.5), "VTK");
-    //Plane    pl(/*Ori*/Vec3_t(0,0,0), /*P1*/Vec3_t(2,0,0), /*P2*/Vec3_t(0,2,0), /*normal*/Vec3_t(0,0,1));
-    //Plane    p2(/*Cen*/Vec3_t(1,1,1), /*n*/Vec3_t(1,1,1));
-    //p2.SetColor ("green");
+    VTK::Plane    pl(/*Ori*/Vec3_t(0,0,0), /*P1*/Vec3_t(2,0,0), /*P2*/Vec3_t(0,2,0), /*normal*/Vec3_t(0,0,1));
+    VTK::Plane    p2(/*Cen*/Vec3_t(1,1,1), /*n*/Vec3_t(1,1,1));
 
+    p2.SetColor ("green");
     cu.SetColor ("peacock", 0.1);
 
     VTK::Win win;
@@ -51,8 +51,8 @@ int main(int argc, char **argv) try
     cu.AddTo (win);
     cy.AddTo (win);
     tx.AddTo (win);
-    //pl.AddActorsTo (win);
-    //p2.AddActorsTo (win);
+    pl.AddTo (win);
+    p2.AddTo (win);
     win.Show();
     win.WritePNG("objects.png");
     cout << "file <[1;34mobjects.png[0m> written" << endl;
