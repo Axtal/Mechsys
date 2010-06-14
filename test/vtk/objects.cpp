@@ -26,6 +26,7 @@
 #include <mechsys/vtk/cylinder.h>
 #include <mechsys/vtk/plane.h>
 #include <mechsys/vtk/sphere.h>
+#include <mechsys/vtk/spheres.h>
 #include <mechsys/vtk/text.h>
 #include <mechsys/vtk/win.h>
 #include <mechsys/util/fatal.h>
@@ -44,6 +45,25 @@ int main(int argc, char **argv) try
     p2.SetColor ("green");
     cu.SetColor ("peacock", 0.1);
 
+    Array<Vec3_t> X(3);
+    Array<double> R(3);
+    X[0] = 0.0, 0.0, 1.0;
+    X[1] = 1.0, 0.0, 1.0;
+    X[2] = 0.0, 1.0, 1.0;
+    R    = 0.1, 0.2, 0.3;
+    VTK::Spheres ss(X, R);
+    ss.SetCenter (0, Vec3_t(1,1,1));
+    ss.SetRadius (0, 0.05);
+
+    Array<double> x(3),y(3),z(3);
+    x = 0.0, 1.0, 0.0;
+    y = 0.0, 0.0, 1.0;
+    z = 0.5, 0.5, 0.5;
+    VTK::Spheres s2;
+    s2.SetSpheres (x, y, z, &R);
+    s2.SetColor   ("aquamarine", 0.5);
+    s2.ShowIds    ();
+
     VTK::Win win;
     ax.AddTo (win);
     ar.AddTo (win);
@@ -53,6 +73,8 @@ int main(int argc, char **argv) try
     tx.AddTo (win);
     pl.AddTo (win);
     p2.AddTo (win);
+    ss.AddTo (win);
+    s2.AddTo (win);
     win.Show();
     win.WritePNG("objects.png");
     cout << "file <[1;34mobjects.png[0m> written" << endl;

@@ -53,6 +53,11 @@ public:
     void SetLabels    (char const * X= "x", char const * Y= "y", char const * Z= "z", char const * Color="blue", int SizePt=22, bool Shadow=true);
     void SetNegLabels (char const * X="-x", char const * Y="-y", char const * Z="-z", char const * Color="red",  int SizePt=22, bool Shadow=true);
 
+    // Get Methods
+    vtkTextActor3D & XLabel() { return (*_x_label_actor); }
+    vtkTextActor3D & YLabel() { return (*_y_label_actor); }
+    vtkTextActor3D & ZLabel() { return (*_z_label_actor); }
+
     // Methods
     void AddTo (VTK::Win & win);
 

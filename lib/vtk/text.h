@@ -70,8 +70,7 @@ inline Text & Text::SetProps (double Scale, int SizePt, bool Shadow)
 {
     _text_actor -> SetScale    (Scale);
     _text_prop  -> SetFontSize (SizePt);
-    if (Shadow) _text_prop -> ShadowOn ();
-    else        _text_prop -> ShadowOff();
+    _text_prop  -> SetShadow   (Shadow);
     return (*this);
 }
 
