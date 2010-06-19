@@ -31,7 +31,7 @@
 
 // MechSys
 #include <mechsys/vtk/win.h>
-#include <mechsys/util/meshgrid.h>
+#include <mechsys/vtk/sgrid.h>
 #include <mechsys/util/fatal.h>
 
 using std::cout;
@@ -43,18 +43,9 @@ int main(int argc, char **argv) try
     if (argc>1) ndiv = atoi(argv[1]);
 
     // Create a meshgrid
-    MeshGrid mg(0.0,1.0,ndiv,  // X
-                0.0,1.0,ndiv,  // Y
-                0.0,1.0,ndiv); // Z
-
-    // Create VTK points
-    vtkPoints * points = vtkPoints::New();
-    points->Allocate(mg.Length());
-    for (int i=0; i<mg.Length(); ++i)
-    {
-        double P[3] = {mg.X[i], mg.Y[i], mg.Z[i]};
-        points->InsertPoint(i,P);
-    }
+    VTK::SGrid gri(ndiv,0.0,1.0,  // X
+                   ndiv,0.0,1.0,  // Y
+                   ndiv,0.0,1.0); // Z
 
     // Create a 3D triangulation
     //   - The Tolerance is the distance that nearly coincident points are merged together.
@@ -63,7 +54,7 @@ int main(int argc, char **argv) try
     //     Any mesh entity whose circumcircle is smaller than this value is output.
     vtkPolyData   * vertices = vtkPolyData::New();
     vtkDelaunay3D * delaunay = vtkDelaunay3D::New();
-    vertices -> SetPoints(points);
+    vertices -> SetPoints(gri.GetPoints());
     delaunay -> SetInput(vertices);
     delaunay -> SetTolerance(0.01);
     delaunay -> SetAlpha(0.2);
@@ -97,7 +88,6 @@ int main(int argc, char **argv) try
     win.Show     ();
 
     // Clean up
-    points         -> Delete();
     vertices       -> Delete();
     delaunay       -> Delete();
     shrink         -> Delete();

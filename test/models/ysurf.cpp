@@ -23,9 +23,8 @@
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
-#include <mechsys/vtk/meshgrid.h>
-#include <mechsys/vtk/sphere.h>
 #include <mechsys/vtk/axes.h>
+#include <mechsys/vtk/sgrid.h>
 #include <mechsys/vtk/isosurf.h>
 
 using std::cout;
@@ -47,9 +46,20 @@ void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
 
 int main(int argc, char **argv) try
 {
-    // input
-    int np = 10;
-    if (argc>1) np = atoi(argv[1]);
+    // number:  nx ny nz
+    Array<int> N(11, 11, 21);
+    if (argc>1) N[0] = atoi(argv[1]);
+    if (argc>2) N[1] = atoi(argv[2]);
+    if (argc>3) N[2] = atoi(argv[3]);
+    if (N[0]<2) throw new Fatal("nx must be greater than 1");
+    if (N[1]<2) throw new Fatal("ny must be greater than 1");
+    if (N[2]<2) throw new Fatal("nz must be greater than 1");
+
+    // limits
+    Array<double> L(6);
+    //     0   1     2   3     4    5
+    //   pmi pma   qmi qma  thmi thma
+    L =    0, 10,    0, 10,  -PI,  PI;
 
     // model
     SDPair prms;
@@ -57,34 +67,38 @@ int main(int argc, char **argv) try
     ElastoPlastic mdl(/*NDim*/3, prms);
 
     // grid
-    MeshGrid oct(0.0,  10.0,   np,  // p
-                 0.0,  10.0,   np,  // q
-                 -PI,    PI, 2*np); // th
-    MeshGrid sig(0,0,np, 0,0,np, 0,0,2*np);
-    for (int i=0; i<oct.Length(); ++i)
+    VTK::SGrid gri(N, L);
+
+    // rotate
+    Vec3_t x, l;
+    for (int i=0; i<gri.Size(); ++i)
     {
-        Vec3_t L;
-        pqth2L (oct.X[i], oct.Y[i], oct.Z[i], L, "cam");
-        sig.X[i] = L(0);
-        sig.Y[i] = L(1);
-        sig.Z[i] = L(2);
+        gri.GetPoint (i, x);
+        pqth2L       (x(0), x(1), x(2), l, "cam");
+        gri.SetPoint (i, l);
     }
 
-    // window and axes
-    VTKWin win;
-    win.SetViewDefault (/*reverse*/true);
-    Axes ax(/*scale*/20, /*hydroline*/true, /*reverse*/true);
-    ax.AddActorsTo (win);
+    // set function
+    gri.SetFunc (&Func, &mdl);
+
+    // write file
+    gri.WriteVTK ("ysurf");
+    cout << "file [1;34m<ysurf.vtk>[0m written" << endl;
 
     // isosurf
-    IsoSurf iso(sig, &Func, &mdl);
-    iso.ShowPoints  = true;
+    VTK::IsoSurf iso(gri);
     iso.ShowVectors = false;
-    iso.AddActorsTo (win);
-    iso.WriteFile  ("ysurf.vtk");
+
+    // window and axes
+    VTK::Win  win;
+    VTK::Axes axe(/*scale*/20, /*hydroline*/true, /*reverse*/true);
+    win.SetViewDefault (/*reverse*/true);
+    axe.AddTo (win);
+    gri.AddTo (win);
+    iso.AddTo (win);
+    win.Show  ();
 
     // end
-    win.Show ();
     return 0;
 }
 MECHSYS_CATCH

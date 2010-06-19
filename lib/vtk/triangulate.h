@@ -26,7 +26,7 @@
 #include <vtkUnstructuredGridWriter.h>
 
 // MechSys
-#include <mechsys/util/meshgrid.h>
+#include <mechsys/vtk/sgrid.h>
 #include <mechsys/util/array.h>
 
 namespace VTK
@@ -74,6 +74,33 @@ void Triangulate (Array<double> const & X, Array<double> const & Y, Array<double
     if (X.Size()!=Y.Size()) throw new Fatal("VTK::Triangulate: X, Y, and Z arrays must have the same size");
     if (X.Size()!=Z.Size()) throw new Fatal("VTK::Triangulate: X, Y, and Z arrays must have the same size");
     Triangulate (X.GetPtr(), Y.GetPtr(), Z.GetPtr(), X.Size(), Filename, Tol);
+}
+
+void Triangulate (VTK::SGrid & G, char const * Filename, double Tol=1.0e-3)
+{
+    // Create a 3D triangulation
+    //   - The Tolerance is the distance that nearly coincident points are merged together.
+    //   - Delaunay does better if points are well spaced.
+    //   - The alpha value is the radius of circumcircles, circumspheres.
+    //     Any mesh entity whose circumcircle is smaller than this value is output.
+    vtkPolyData   * vertices = vtkPolyData   ::New();
+    vtkDelaunay3D * delaunay = vtkDelaunay3D ::New();
+    vertices -> SetPoints    (G.GetPoints());
+    delaunay -> SetInput     (vertices);
+    delaunay -> SetTolerance (Tol);
+    delaunay -> SetAlpha     (0.2);
+    delaunay -> BoundingTriangulationOff();
+
+    // Write file
+    vtkUnstructuredGridWriter * writer = vtkUnstructuredGridWriter ::New();
+    writer -> SetInputConnection (delaunay->GetOutputPort());
+    writer -> SetFileName        (Filename);
+    writer -> Write              ();
+
+    // Clean up
+    vertices -> Delete();
+    delaunay -> Delete();
+    writer   -> Delete();
 }
 
 }; // namespace VTK

@@ -21,7 +21,7 @@
 
 // MechSys
 #include <mechsys/vtk/triangulate.h>
-#include <mechsys/util/meshgrid.h>
+#include <mechsys/vtk/sgrid.h>
 #include <mechsys/util/fatal.h>
 
 using std::cout;
@@ -30,11 +30,11 @@ using std::endl;
 int main(int argc, char **argv) try
 {
     // Create a meshgrid
-    MeshGrid mg(0.0,1.0,6,  // X
-                0.0,1.0,6,  // Y
-                0.0,1.0,6); // Z
+    VTK::SGrid gri(6,0.0,1.0,  // X
+                   6,0.0,1.0,  // Y
+                   6,0.0,1.0); // Z
 
-    VTK::Triangulate (mg.X, mg.Y, mg.Z, mg.Length(), "triangulation02.vtk");
+    VTK::Triangulate (gri, "triangulation02.vtk");
 
     cout << "Triangulate done. File <triangulation02.vtk> saved\n";
 

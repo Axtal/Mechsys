@@ -94,7 +94,6 @@ inline void Sort (Val_T & a, Val_T & b, Val_T & c, Val_T & d)
 }
 
 /** Find best square for given rows and columns. */
-/*
 inline void FindBestSquare (int Size, int & nRow, int & nCol)
 {
     nRow = -1;  // not found
@@ -124,7 +123,6 @@ inline void FindBestSquare (int Size, int & nRow, int & nCol)
         }
     }
 }
-*/
 
 struct FmtErr
 {

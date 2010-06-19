@@ -21,10 +21,10 @@
 #include <cmath>
 
 // MechSys
+#include <mechsys/vtk/sgrid.h>
 #include <mechsys/vtk/isosurf.h>
 #include <mechsys/vtk/win.h>
 #include <mechsys/vtk/axes.h>
-#include <mechsys/util/meshgrid.h>
 #include <mechsys/util/fatal.h>
 
 using std::cout;
@@ -50,32 +50,44 @@ void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
 
 int main(int argc, char **argv) try
 {
-    // input
-    size_t ndiv = 20;
-    if (argc>1) ndiv = atoi(argv[1]);
+    // number:  nx ny nz
+    Array<int> N(11, 11, 21);
+    if (argc>1) N[0] = atoi(argv[1]);
+    if (argc>2) N[1] = atoi(argv[2]);
+    if (argc>3) N[2] = atoi(argv[3]);
+    if (N[0]<2) throw new Fatal("nx must be greater than 1");
+    if (N[1]<2) throw new Fatal("ny must be greater than 1");
+    if (N[2]<2) throw new Fatal("nz must be greater than 1");
 
-    // meshgrid
-    MeshGrid mg(0.0,1.0,ndiv, 0.0,1.0,ndiv, 0.0,1.0,ndiv);
+    // limits
+    Array<double> L(6);
+    L = 0,1, 0,1, 0,1;
 
     // data
     Data dat;
     dat.c = 0.5, 0.5, 0.5;
     dat.r = 0.25;
 
-    // iso surface
-    VTK::IsoSurf iso(mg, &Func, &dat);
-    iso.ShowVectors = true;
-    iso.ShowOutline = true;
-    iso.SetIsoColor ("brown", 0.6);
-    iso.WriteFile   ("isosurf01.vtk");
-    iso.SetVecScale (0.1);
+    // sgrid
+    VTK::SGrid gri;
+    gri.Resize     (N,L);
+    gri.SetFunc    (&Func, &dat);
+    gri.WriteVTK   ("isosurf01");
+    gri.ShowPoints ();
     cout << "File <[1;34misosurf01.vtk[0m> written" << endl;
+
+    // iso surface
+    VTK::IsoSurf iso(gri);
+    iso.ShowVectors = true;
+    iso.SetIsoColor ("brown", 0.6);
+    iso.SetVecScale (0.1);
 
     // axes
     VTK::Axes axe(1.2, /*HydroLine*/true);
 
     // window
     VTK::Win win;
+    gri.AddTo (win);
     iso.AddTo (win);
     axe.AddTo (win);
     win.Show  ();
