@@ -83,6 +83,8 @@ inline IsoSurf::IsoSurf (VTK::SGrid & G)
     _isosurf_actor  = vtkActor                 ::New();
 	_isosurf_lt     = vtkLookupTable           ::New();
     _isosurf        -> SetInput                (G.GetGrid());
+    _isosurf        -> ComputeNormalsOff       ();
+    _isosurf        -> ComputeGradientsOff     ();
     _isosurf_mapper -> SetInputConnection      (_isosurf->GetOutputPort());
     _isosurf_mapper -> SetLookupTable          (_isosurf_lt);
     _isosurf_actor  -> SetMapper               (_isosurf_mapper);

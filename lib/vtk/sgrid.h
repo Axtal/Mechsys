@@ -41,7 +41,7 @@
 namespace VTK
 {
 
-typedef void (*GridCallBack) (Vec3_t X, double & F, Vec3_t & V, void * UserData);
+typedef void (*GridCallBack) (Vec3_t const & X, double & F, Vec3_t & V, void * UserData);
 
 class SGrid
 {
@@ -67,11 +67,13 @@ public:
     SGrid & SetFunc  (GridCallBack Func, void * UserData=NULL) { _func=Func;  _udat=UserData;  _calc_f();  return (*this); }
 
     // Access methods
-    int                 Size      ()                  const { return _points->GetNumberOfPoints(); }
-    void                GetPoint  (int i, Vec3_t & x) const { _points->GetPoint (i, x.data());     }
-    void                SetPoint  (int i, Vec3_t & x)       { _points->SetPoint (i, x.data());     }
-    vtkStructuredGrid * GetGrid   ()                        { return _sgrid;                       }
-    vtkPoints         * GetPoints ()                        { return _points;                      }
+    int                 Size       ()                  const { return _points->GetNumberOfPoints(); }
+    void                GetPoint   (int i, Vec3_t & x) const { _points->GetPoint (i, x.data());     }
+    void                SetPoint   (int i, Vec3_t & x)       { _points->SetPoint (i, x.data());     }
+    vtkStructuredGrid * GetGrid    ()                        { return _sgrid;                       }
+    vtkPoints         * GetPoints  ()                        { return _points;                      }
+    vtkDoubleArray    * GetScalars ()                        { return _scalars;                     }
+    vtkDoubleArray    * GetVectors ()                        { return _vectors;                     }
     
     // Methods
     void ShowWire   ()             { _sgrid_actor->GetProperty()->SetRepresentationToWireframe(); }
