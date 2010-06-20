@@ -21,6 +21,7 @@ SET(PROGS
   isosurf01
   isosurf02
   objects
+  sgridarrows
   triangulation01
   triangulation02)
 

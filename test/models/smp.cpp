@@ -20,83 +20,98 @@
 #include <iostream>
 
 // MechSys
-#include <mechsys/models/elastoplastic.h>
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/vtk/axes.h>
+#include <mechsys/vtk/arrows.h>
 #include <mechsys/vtk/sgrid.h>
-#include <mechsys/vtk/isosurf.h>
 
 using std::cout;
 using std::endl;
 using Util::PI;
+using Util::SQ3;
 
-void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+void FuncOCT (Vec3_t X, double & F, Vec3_t & V, void * UserData)
 {
-    ElastoPlastic const * mdl = static_cast<ElastoPlastic*>(UserData);
+    F = 0;
+    V = -1.0/SQ3, -1.0/SQ3, -1.0/SQ3;
+}
 
-    EquilibState sta(/*NDim*/3);
-    sta.Sig = X(0), X(1), X(2), 0.0, 0.0, 0.0;
-    F = mdl->YieldFunc (&sta);
+void FuncSMP (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+{
+    Vec3_t noct(-1.0/SQ3, -1.0/SQ3, -1.0/SQ3);
+    F = 0;
+    //if (X(0)<0.0 && X(1)<0.0 && X(2)<0.0)
+    {
+        double I2  = X(0)*X(1) + X(1)*X(2) + X(2)*X(0);
+        double I3  = X(0)*X(1)*X(2);
+        double cof = sqrt(-I3/I2);
+        //V = -cof/sqrt(-X(0)), -cof/sqrt(-X(1)), -cof/sqrt(-X(2));
+        //V = -1.0/sqrt(-X(0)), -1.0/sqrt(-X(1)), -1.0/sqrt(-X(2));
+        V = 1.0/X(0), 1.0/X(1), 1.0/X(2);
+        //V = 1.0/(1.0+X(0)), 1.0/(1.0+X(1)), 1.0/(1.0+X(2));
+        V = V/norm(V);
 
-    cout << F << endl;
+        Vec3_t p(dot(V,noct)*noct);
+        V = V - p;
 
-    V = 1.0, 0.0, 0.0;
+    }
+    //else V = 0.0, 0.0, 0.0;
 }
 
 int main(int argc, char **argv) try
 {
     // number:  nx ny nz
-    Array<int> N(11, 11, 21);
-    if (argc>1) N[0] = atoi(argv[1]);
-    if (argc>2) N[1] = atoi(argv[2]);
-    if (argc>3) N[2] = atoi(argv[3]);
+    Array<int> N(5, 3, 51);
+    double scale = 6.0;
+    if (argc>1) N[0]  = atoi(argv[1]);
+    if (argc>2) N[1]  = atoi(argv[2]);
+    if (argc>3) N[2]  = atoi(argv[3]);
+    if (argc>4) scale = atof(argv[4]);
     if (N[0]<2) throw new Fatal("nx must be greater than 1");
     if (N[1]<2) throw new Fatal("ny must be greater than 1");
     if (N[2]<2) throw new Fatal("nz must be greater than 1");
 
     // limits
-    Array<double> L(6);
-    //     0   1     2   3     4    5
-    //   pmi pma   qmi qma  thmi thma
-    L =   -5, 10,    0, 15,  -PI,  PI;
-
-    // model
-    SDPair prms;
-    prms.Set("E nu fc c phi", 1000.0, 0.3, FAILCRIT("MC"), 1.0, 30.0);
-    ElastoPlastic mdl(/*NDim*/3, prms);
+    Array<double> L(0.1,10,  0,15,  -PI,PI);
 
     // grid
-    VTK::SGrid gri(N, L);
+    VTK::SGrid gri_oct(N, L);
+    VTK::SGrid gri_smp(N, L);
+    gri_oct.ShowPoints ();
+    gri_smp.ShowPoints ();
 
     // rotate
     Vec3_t x, l;
-    for (int i=0; i<gri.Size(); ++i)
+    for (int i=0; i<gri_oct.Size(); ++i)
     {
-        gri.GetPoint (i, x);
-        pqth2L       (x(0), x(1), x(2), l, "cam");
-        gri.SetPoint (i, l);
+        gri_oct.GetPoint (i, x);
+        pqth2L           (x(0), x(1), x(2), l, "cam");
+        gri_oct.SetPoint (i, l);
+        gri_smp.SetPoint (i, l);
     }
 
     // set function
-    gri.SetFunc (&Func, &mdl);
+    gri_oct.SetFunc (&FuncOCT);
+    gri_smp.SetFunc (&FuncSMP);
 
-    // write file
-    gri.WriteVTK ("ysurf");
-    cout << "file [1;34m<ysurf.vtk>[0m written" << endl;
-
-    // isosurf
-    VTK::IsoSurf iso(gri);
-    iso.ShowVectors = false;
+    // arrows
+    VTK::Arrows arr_oct(gri_oct);
+    VTK::Arrows arr_smp(gri_smp);
+    arr_oct.SetScale (scale);
+    arr_smp.SetScale (scale);
+    arr_smp.SetColor ("red");
 
     // window and axes
     VTK::Win  win;
     VTK::Axes axe(/*scale*/20, /*hydroline*/true, /*reverse*/true);
     win.SetViewDefault (/*reverse*/true);
-    axe.AddTo (win);
-    gri.AddTo (win);
-    iso.AddTo (win);
-    win.Show  ();
+    axe    .AddTo (win);
+    gri_oct.AddTo (win);
+    arr_oct.AddTo (win);
+    gri_smp.AddTo (win);
+    arr_smp.AddTo (win);
+    win    .Show  ();
 
     // end
     return 0;

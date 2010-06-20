@@ -24,30 +24,26 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/vtk/axes.h>
+#include <mechsys/vtk/arrows.h>
 #include <mechsys/vtk/sgrid.h>
 #include <mechsys/vtk/isosurf.h>
 
 using std::cout;
 using std::endl;
 using Util::PI;
+using Util::SQ3;
 
 void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
 {
-    ElastoPlastic const * mdl = static_cast<ElastoPlastic*>(UserData);
-
-    EquilibState sta(/*NDim*/3);
-    sta.Sig = X(0), X(1), X(2), 0.0, 0.0, 0.0;
-    F = mdl->YieldFunc (&sta);
-
-    cout << F << endl;
-
-    V = 1.0, 0.0, 0.0;
+    F = 0;
+    if (X(2)>0.1) V = 0.0, 0.0, -0.5;
+    else          V = 0.0, 0.0, 0.5;
 }
 
 int main(int argc, char **argv) try
 {
     // number:  nx ny nz
-    Array<int> N(11, 11, 21);
+    Array<int> N(3, 3, 2);
     if (argc>1) N[0] = atoi(argv[1]);
     if (argc>2) N[1] = atoi(argv[2]);
     if (argc>3) N[2] = atoi(argv[3]);
@@ -56,46 +52,21 @@ int main(int argc, char **argv) try
     if (N[2]<2) throw new Fatal("nz must be greater than 1");
 
     // limits
-    Array<double> L(6);
-    //     0   1     2   3     4    5
-    //   pmi pma   qmi qma  thmi thma
-    L =   -5, 10,    0, 15,  -PI,  PI;
-
-    // model
-    SDPair prms;
-    prms.Set("E nu fc c phi", 1000.0, 0.3, FAILCRIT("MC"), 1.0, 30.0);
-    ElastoPlastic mdl(/*NDim*/3, prms);
+    Array<double> L(0,1, 0,1, 0,1);
 
     // grid
-    VTK::SGrid gri(N, L);
+    VTK::SGrid gri(N, L, &Func);
+    gri.ShowPoints ();
 
-    // rotate
-    Vec3_t x, l;
-    for (int i=0; i<gri.Size(); ++i)
-    {
-        gri.GetPoint (i, x);
-        pqth2L       (x(0), x(1), x(2), l, "cam");
-        gri.SetPoint (i, l);
-    }
-
-    // set function
-    gri.SetFunc (&Func, &mdl);
-
-    // write file
-    gri.WriteVTK ("ysurf");
-    cout << "file [1;34m<ysurf.vtk>[0m written" << endl;
-
-    // isosurf
-    VTK::IsoSurf iso(gri);
-    iso.ShowVectors = false;
+    // arrows
+    VTK::Arrows arr(gri);
 
     // window and axes
     VTK::Win  win;
-    VTK::Axes axe(/*scale*/20, /*hydroline*/true, /*reverse*/true);
-    win.SetViewDefault (/*reverse*/true);
+    VTK::Axes axe(/*scale*/1.1);
     axe.AddTo (win);
     gri.AddTo (win);
-    iso.AddTo (win);
+    arr.AddTo (win);
     win.Show  ();
 
     // end
