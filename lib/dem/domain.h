@@ -231,7 +231,7 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
                 for (size_t i = 0; i < nx; i++)
                 {
                     X += Vec3_t(2*R,0.0,0.0);
-                    if (rand()<fraction*RAND_MAX) AddSphere(Tag,X,R,rho);
+                    if (rand()<fraction*RAND_MAX) AddSphere(Tag,X,R*RminFraction+(1.0*rand())/RAND_MAX*(R-R*RminFraction),rho);
                 }
             }
         }
@@ -1030,7 +1030,7 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
 
     // report
     Finished = false;
-    if (ptReport!=NULL && Time<dt) (*ptReport) ((*this), UserData);
+    if (ptReport!=NULL) (*ptReport) ((*this), UserData);
 
     // string to output energy data, if user gives the FileKey
     std::ostringstream oss_energy; 
