@@ -39,8 +39,8 @@ int main(int argc, char **argv) try
 	l.SetGravity (0.0, -0.0005);
 
 	// Set walls (top and bottom)
-	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid(true, -1800);
-	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid(true, -1800);
+	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid(true, -200);
+	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid(true, -200);
 
 	// Set drop
 	int obsX   = l.Nx()/2; // x position
@@ -51,9 +51,9 @@ int main(int argc, char **argv) try
 	{
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->Initialize (/*Rho*/ 1000.0, v0,l.Cs());
+			l.GetCell(i,j)->Initialize (/*Rho*/ 544.0, v0,l.Cs());
 		else
-			l.GetCell(i,j)->Initialize (/*Rho*/ 1.4e1, v0,l.Cs());
+			l.GetCell(i,j)->Initialize (/*Rho*/ 8.4e1, v0,l.Cs());
 	}
 
 	// Solve

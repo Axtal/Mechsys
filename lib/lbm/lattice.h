@@ -247,7 +247,8 @@ inline double Lattice::Pstate(double Rho,double T)
 
 inline double Lattice::Psi(double Rho)
 {
-	return fabs(Rho)*_psi_ref*(1.0-exp(-fabs(Rho)/_rho_ref))/Rho;
+	//return fabs(Rho)*_psi_ref*(1.0-exp(-fabs(Rho)/_rho_ref))/Rho;
+    return _psi_ref*exp(-_rho_ref/Rho);
 }
 
 inline void Lattice::SetGravity(double Gx, double Gy, double Gz)
@@ -409,6 +410,8 @@ inline void Lattice::Collide()
             {
 				double feqn = c->EqFun (k,vn,rho,_Cs);
                 if (tau<_dt*(1-feqn/c->F(k))) tau = _dt*(1-feqn/c->F(k));
+                //std::cout << tau << std::endl;
+                //if (tau<_dt*(1-feqn/c->F(k))) throw new Fatal("Lattice::Collide: Cell(%d,%d)->F(%d)=%f detected",i%_nx,i/_nx,k,c->F(k));
             }
 			double om = _dt/tau;
 			for (size_t k=0; k<_nneigh; ++k)
