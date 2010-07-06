@@ -587,9 +587,9 @@ inline double Norm (Vec3_t const & V)
 /** Dyadic product. */
 inline void Dyad (Vec3_t const & A, Vec3_t const & B, Mat3_t & M)
 {
-    for (size_t i=0; i<3; ++i)
-    for (size_t j=0; j<3; ++j)
-        M(i,j) = A(i) * B(j);
+    M(0,0)=A(0)*B(0);  M(0,1)=A(0)*B(1);  M(0,2)=A(0)*B(2);
+    M(1,0)=A(1)*B(0);  M(1,1)=A(1)*B(1);  M(1,2)=A(1)*B(2);
+    M(2,0)=A(2)*B(0);  M(2,1)=A(2)*B(1);  M(2,2)=A(2)*B(2);
 }
 
 /** Clear vector. */
