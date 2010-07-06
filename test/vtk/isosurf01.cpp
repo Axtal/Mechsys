@@ -36,7 +36,7 @@ struct Data
     double r; // radius of sphere
 };
 
-void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+void Func (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
     Data const * d = static_cast<Data*>(UserData);
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv) try
     // iso surface
     VTK::IsoSurf iso(gri);
     iso.ShowVectors = true;
-    iso.SetIsoColor ("brown", 0.6);
+    iso.SetColor    ("brown", 0.6);
     iso.SetVecScale (0.1);
 
     // axes

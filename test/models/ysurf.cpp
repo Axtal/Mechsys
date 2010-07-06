@@ -31,23 +31,25 @@ using std::cout;
 using std::endl;
 using Util::PI;
 
-void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+void Func (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
-    ElastoPlastic const * mdl = static_cast<ElastoPlastic*>(UserData);
-
-    EquilibState sta(/*NDim*/3);
-    sta.Sig = X(0), X(1), X(2), 0.0, 0.0, 0.0;
-    F = mdl->YieldFunc (&sta);
-
-    cout << F << endl;
-
-    V = 1.0, 0.0, 0.0;
+    F = 1.0e+10;
+    V = 0.0, 0.0, 0.0;
+    if (X(0)<0.0 && X(1)<0.0 && X(2)<0.0)
+    {
+        ElastoPlastic const * mdl = static_cast<ElastoPlastic*>(UserData);
+        EquilibState sta(/*NDim*/3), gra(/*NDim*/3);
+        sta.Sig = X(0), X(1), X(2), 0.0, 0.0, 0.0;
+        F = mdl->YieldFunc (&sta);
+        mdl->Gradients (&gra);
+    }
 }
 
-int main(int argc, char **argv) try
+int main (int argc, char **argv) try
 {
     // number:  nx ny nz
-    Array<int> N(11, 11, 21);
+    Array<int> N(30, 30, 60);
+    double scale = 6.0;
     if (argc>1) N[0] = atoi(argv[1]);
     if (argc>2) N[1] = atoi(argv[2]);
     if (argc>3) N[2] = atoi(argv[3]);
@@ -63,7 +65,8 @@ int main(int argc, char **argv) try
 
     // model
     SDPair prms;
-    prms.Set("E nu fc c phi", 1000.0, 0.3, FAILCRIT("MC"), 1.0, 30.0);
+    //prms.Set("E nu fc c phi", 1000.0, 0.3, FAILCRIT("MC"), 1.0, 30.0);
+    prms.Set("E nu fc phi", 1000.0, 0.3, FAILCRIT("MN"), 30.0);
     ElastoPlastic mdl(/*NDim*/3, prms);
 
     // grid
@@ -94,7 +97,7 @@ int main(int argc, char **argv) try
     VTK::Axes axe(/*scale*/20, /*hydroline*/true, /*reverse*/true);
     win.SetViewDefault (/*reverse*/true);
     axe.AddTo (win);
-    gri.AddTo (win);
+    //gri.AddTo (win);
     iso.AddTo (win);
     win.Show  ();
 

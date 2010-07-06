@@ -36,10 +36,11 @@ using Util::SQ3;
 
 const double PHI   = 30.0*PI/180.0;
 const double SPHI  = sin(PHI);
+const double ALPHA = (1.0+SPHI)/(1.0-SPHI);
 const double kDP   = 2.0*SQ2*SPHI/(3.0-SPHI);
 const double kMN   = (9.0-SPHI*SPHI)/(1.0-SPHI*SPHI);
+const double kSMP  = 2.0*SQ2*tan(PHI)/3.0;
 const double POCT0 = 0.0;
-
 
 inline void NormalOCT (Vec3_t const & L, Vec3_t & n, Mat3_t & dndL)
 {
@@ -104,13 +105,44 @@ inline void SigTauDerivs (Vec3_t const & L, Vec3_t const & n, Mat3_t const & dnd
 
 struct Data
 {
-    Data () : Oct(false), Check(true), Tol(1.0e-6) {}
+    Data () : Oct(false), Aniso(false), Obliq(true), Check(true), c(0.0), Tol(1.0e-6), a(0,0,1), k(-1) {}
     bool   Oct;
+    bool   Aniso;
+    bool   Obliq;
     bool   Check;
+    double c;
     double Tol;
+    Vec3_t a;
+    double k;
+    double CalcK ()
+    {
+        double M = 1.0/sqrt(2.0*ALPHA+1.0);
+        double N = sqrt(ALPHA)*M;
+        //double K = (2.0*N*N+(a(2)+a(1))*c*N+ALPHA*M*M+a(0)*ALPHA*c*M)/((a(2)+a(1))*c*N+a(0)*c*M+1.0);
+        double K = (2.0*N*N+(a(1)+a(0))*c*N+ALPHA*M*M+a(2)*ALPHA*c*M)/((a(1)+a(0))*c*N+a(2)*c*M+1.0);
+
+        //return sqrt(pow(ALPHA-K,2.0)*M*M + 2.0*pow(1.0-K,2.0)*N*N)/K;
+        return sqrt(pow(ALPHA-K,2.0)*M*M + 2.0*pow(1.0-K,2.0)*N*N)/K;
+    }
 };
 
 void FuncSMP (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
+{
+    V = 0,0,0;
+    Vec3_t x(X-POCT0/SQ3);
+    if (x(0)<0.0 && x(1)<0.0 && x(2)<0.0)
+    {
+        double I1   = x(0)+x(1)+x(2);
+        double I2   = x(0)*x(1) + x(1)*x(2) + x(2)*x(0);
+        double I3   = x(0)*x(1)*x(2);
+        double ssmp = -3.0*I3/I2;
+        double tsmp = sqrt(I1*I3/I2-pow(3.0*I3/I2,2.0));
+        F = tsmp/ssmp - kSMP;
+    }
+    else F = 1.0e+10;
+}
+
+void Func (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
     // data
     Data * dat = static_cast<Data*>(UserData);
@@ -123,6 +155,7 @@ void FuncSMP (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
     Mat3_t dndL;
     Vec3_t dsigdL, dtaudL;
     double sig, tau;
+    double k = (dat->Oct ? sqrt(kMN/9.0-1.0) : sqrt(kMN/9.0-1.0));
 
     if (x(0)<0.0 && x(1)<0.0 && x(2)<0.0)
     {
@@ -130,33 +163,60 @@ void FuncSMP (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
         if (dat->Oct) NormalOCT (x, n, dndL);
         else          NormalSMP (x, n, dndL);
 
-        // invariants and derivatives
-        SigTauDerivs (x, n, dndL, sig, tau, dsigdL, dtaudL);
-        V = (1.0/sig)*dtaudL - (tau/(sig*sig))*dsigdL;
-        V /= norm(V);
-        
-        // check
-        if (dat->Check)
+        if (dat->Aniso)
         {
-            // stresses on plane n
             Vec3_t t(x(0)*n(0), x(1)*n(1), x(2)*n(2));
-            Vec3_t p(dot(t,n)*n);
-            Vec3_t q(t-p);
-            double sign = norm(p);
-            double taun = norm(q);
-            if ((fabs(sign-sig) > dat->Tol) || (fabs(taun-tau) > dat->Tol)) throw new Fatal("FuncSMP: Stress invariants are different\n\tsign != sig (%g != %g => Error = %g)\nor\ttaun != tau (%g != %g => Error = %g)",sign,sig,fabs(sign-sig),taun,tau,fabs(taun-tau));
-
-            if (dat->Oct)
+            Vec3_t b = dat->c * dat->a + n;
+            Vec3_t p,q;
+            if (dat->Obliq)
             {
+                double A = dot(t,b);
+                double B = dot(b,n);
+                p = (A/B)*n;
             }
-            else // SMP
+            else
             {
-                double I1   = x(0)+x(1)+x(2);
-                double I2   = x(0)*x(1) + x(1)*x(2) + x(2)*x(0);
-                double I3   = x(0)*x(1)*x(2);
-                double ssmp = -3.0*I3/I2;
-                double tsmp = sqrt(I1*I3/I2-pow(3.0*I3/I2,2.0));
-                if ((fabs(ssmp-sig) > dat->Tol) || (fabs(tsmp-tau) > dat->Tol)) throw new Fatal("FuncSMP: Stress invariants are different\n\tssmp != sig (%g != %g => Error = %g)\nor\ttsmp != tau (%g != %g => Error = %g)",ssmp,sig,fabs(ssmp-sig),tsmp,tau,fabs(tsmp-tau));
+                n = b/norm(b);
+                p = dot(t,b)*b;
+            }
+            q   = t - p;
+            sig = norm(p);
+            tau = norm(q);
+            V   = 0,0,0;
+
+            if (dat->k>0) k = dat->k;
+            else          k = dat->CalcK();
+        }
+        else
+        {
+            // invariants and derivatives
+            SigTauDerivs (x, n, dndL, sig, tau, dsigdL, dtaudL);
+            V = (1.0/sig)*dtaudL - (tau/(sig*sig))*dsigdL;
+            V /= norm(V);
+            
+            // check
+            if (dat->Check)
+            {
+                // stresses on plane n
+                Vec3_t t(x(0)*n(0), x(1)*n(1), x(2)*n(2));
+                Vec3_t p(dot(t,n)*n);
+                Vec3_t q(t-p);
+                double sign = norm(p);
+                double taun = norm(q);
+                if ((fabs(sign-sig) > dat->Tol) || (fabs(taun-tau) > dat->Tol)) throw new Fatal("FuncSMP: Stress invariants are different\n\tsign != sig (%g != %g => Error = %g)\nor\ttaun != tau (%g != %g => Error = %g)",sign,sig,fabs(sign-sig),taun,tau,fabs(taun-tau));
+
+                if (dat->Oct)
+                {
+                }
+                else // SMP
+                {
+                    double I1   = x(0)+x(1)+x(2);
+                    double I2   = x(0)*x(1) + x(1)*x(2) + x(2)*x(0);
+                    double I3   = x(0)*x(1)*x(2);
+                    double ssmp = -3.0*I3/I2;
+                    double tsmp = sqrt(I1*I3/I2-pow(3.0*I3/I2,2.0));
+                    if ((fabs(ssmp-sig) > dat->Tol) || (fabs(tsmp-tau) > dat->Tol)) throw new Fatal("FuncSMP: Stress invariants are different\n\tssmp != sig (%g != %g => Error = %g)\nor\ttsmp != tau (%g != %g => Error = %g)",ssmp,sig,fabs(ssmp-sig),tsmp,tau,fabs(tsmp-tau));
+                }
             }
         }
 
@@ -167,19 +227,13 @@ void FuncSMP (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
         //cout << n << endl;
         //n *= sqrt(-I3/I2);
 
-        //Vec3_t a(0.0,0.0,1.0);
-        //double alp = 0.5;
-        //n = alp*a + (1.0-alp)*n;
-        //n = alp*a + n;
-        //n /= norm(n);
-
         //double qoct = sqrt(pow(X(0)-X(1),2.0) + pow(X(1)-X(2),2.0) + pow(X(2)-X(0),2.0))/SQ3;
         //double poct = -(X(0)+X(1)+X(2))/SQ3;
         //cout << poct << " " << sig << "  " << qoct << " " << tau << endl;
 
         //F = I1*I2/I3 - kMN;
         //F = tsmp/ssmp - sqrt(kMN/9.0-1.0);
-        F = tau/sig - sqrt(kMN/9.0-1.0);
+        F = tau/sig - k;
         //F = tau/sig - kMN;
         //F = qoct/poct - kDP;
     }
@@ -192,18 +246,31 @@ void FuncSMP (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 
 int main(int argc, char **argv) try
 {
+    // data
+    Data dat;
+
     // number:  nx ny nz
-    Array<int> N(5, 3, 51);
-    bool   oct   = false;
+    Array<int> N(10, 10, 30);
     double scale = 6.0;
-    if (argc>1) N[0]  = atoi(argv[1]);
-    if (argc>2) N[1]  = atoi(argv[2]);
-    if (argc>3) N[2]  = atoi(argv[3]);
-    if (argc>4) oct   = atoi(argv[4]);
-    if (argc>5) scale = atof(argv[5]);
+    if (argc> 1) N[0]      = atoi(argv[ 1]);
+    if (argc> 2) N[1]      = atoi(argv[ 2]);
+    if (argc> 3) N[2]      = atoi(argv[ 3]);
+    if (argc> 4) dat.Oct   = atoi(argv[ 4]);
+    if (argc> 5) dat.Aniso = atoi(argv[ 5]);
+    if (argc> 6) dat.Obliq = atoi(argv[ 6]);
+    if (argc> 7) dat.c     = atof(argv[ 7]);
+    if (argc> 8) dat.k     = atof(argv[ 8]);
+    if (argc> 9) dat.a(0)  = atof(argv[ 9]);
+    if (argc>10) dat.a(1)  = atof(argv[10]);
+    if (argc>11) dat.a(2)  = atof(argv[11]);
+    if (argc>12) scale     = atof(argv[12]);
     if (N[0]<2) throw new Fatal("nx must be greater than 1");
     if (N[1]<2) throw new Fatal("ny must be greater than 1");
     if (N[2]<2) throw new Fatal("nz must be greater than 1");
+
+    cout << "k(mn) = " << sqrt(kMN/9.0-1.0) << endl;
+    cout << "k     = " << dat.k << endl;
+    cout << "CalcK = " << dat.CalcK() << endl;
 
     // limits
     double pcam_min = 0.1;
@@ -211,48 +278,57 @@ int main(int argc, char **argv) try
     Array<double> L(pcam_min,pcam_max,  0,15,  -PI,PI);
 
     // grid
-    VTK::SGrid gri(N, L);
-    gri.ShowPoints ();
+    VTK::SGrid gr0(N, L);
+    VTK::SGrid gr1(N, L);
+    //gr0.ShowPoints ();
 
     // rotate
     Vec3_t x, l;
-    for (int i=0; i<gri.Size(); ++i)
+    for (int i=0; i<gr0.Size(); ++i)
     {
-        gri.GetPoint (i, x);
+        gr0.GetPoint (i, x);
         pqth2L       (x(0), x(1), x(2), l, "cam");
-        gri.SetPoint (i, l);
+        gr0.SetPoint (i, l);
+        gr1.SetPoint (i, l);
     }
 
     // set function
-    Data dat;
-    dat.Oct = oct;
-    gri.SetFunc (&FuncSMP, &dat);
-    gri.FilterV (0.0, 1.0e-2);
+    gr0.SetFunc (&Func,    &dat);
+    gr1.SetFunc (&FuncSMP, &dat);
+    gr0.FilterV (0.0, 1.0e-2);
+    gr1.FilterV (0.0, 1.0e-2);
 
     // arrows
-    //VTK::Arrows arr(gri);
+    //VTK::Arrows arr(gr0);
     //arr.SetScale (scale);
     //arr.SetColor ("red");
 
     // cylinder
-    //double poct_max = pcam_max*sqrt(3.0);
-    //double rad = kDP*poct_max;
-    //VTK::Cylinder cyl(Vec3_t(0,0,0), Vec3_t(-pcam_max,-pcam_max,-pcam_max), rad, false);
-    //cyl.SetColor ("yellow", 0.5);
+    double poct_max = pcam_max*sqrt(3.0);
+    double rad = kDP*poct_max;
+    VTK::Cylinder cyl(Vec3_t(0,0,0), Vec3_t(-pcam_max,-pcam_max,-pcam_max), rad, false);
+    cyl.SetColor ("black", 0.5);
+    cyl.SetWire  ();
 
     // isosurface
-    VTK::IsoSurf iso(gri);
+    VTK::IsoSurf is0(gr0);
+    VTK::IsoSurf is1(gr1);
+    is0.SetColor ("red");
+    is1.SetColor ("black",1.0);
+    is1.SetWire  ();
 
     // window and axes
     VTK::Win  win;
     VTK::Axes axe(/*scale*/20, /*hydroline*/true, /*reverse*/true);
     win.SetViewDefault (/*reverse*/true);
     axe.AddTo (win);
-    //gri.AddTo (win);
+    //gr0.AddTo (win);
     //arr.AddTo (win);
-    iso.AddTo (win);
-    //cyl.AddTo (win);
+    is0.AddTo (win);
+    is1.AddTo (win);
+    cyl.AddTo (win);
     win.Show  ();
+    win.WritePNG ("fcrit.png");
 
     // end
     return 0;

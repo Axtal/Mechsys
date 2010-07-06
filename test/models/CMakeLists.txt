@@ -17,10 +17,14 @@
 ########################################################################
 
 SET(PROGS
+  driver
+  eigenbases
+  invariants02)
+
+SET(VTK_PROGS
   smp
   fcrit
-  ysurf
-  invariants02)
+  ysurf)
 
 SET(TESTS
   invariants01)
@@ -30,6 +34,14 @@ FOREACH(var ${PROGS})
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 ENDFOREACH(var)
+
+if(A_USE_VTK)
+    FOREACH(var ${VTK_PROGS})
+        ADD_EXECUTABLE        (${var} "${var}.cpp")
+        TARGET_LINK_LIBRARIES (${var} ${LIBS})
+        SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
+    ENDFOREACH(var)
+endif(A_USE_VTK)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

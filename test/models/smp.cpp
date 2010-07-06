@@ -31,13 +31,13 @@ using std::endl;
 using Util::PI;
 using Util::SQ3;
 
-void FuncOCT (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+void FuncOCT (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
     F = 0;
     V = -1.0/SQ3, -1.0/SQ3, -1.0/SQ3;
 }
 
-void FuncSMP (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+void FuncSMP (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
     Vec3_t noct(-1.0/SQ3, -1.0/SQ3, -1.0/SQ3);
     F = 0;

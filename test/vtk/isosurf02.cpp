@@ -36,7 +36,7 @@ struct Data
     double r; // radius of sphere
 };
 
-void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+void Func (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
     Data const * d = static_cast<Data*>(UserData);
 

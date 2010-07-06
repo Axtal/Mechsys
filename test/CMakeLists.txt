@@ -31,8 +31,8 @@ SET(PROGS_C # tests requiring GSL
 SET(PROGS_D # other tests 
  linalg01
  linalg02
+ linalg03
  linsolver
- test_models
  sandbox
  serialize)
 
@@ -98,4 +98,8 @@ IF(wxWidgets_FOUND)
 ENDIF(wxWidgets_FOUND)
 
 
-SUBDIRS(models vtk)
+if (A_USE_VTK)
+    SUBDIRS(models vtk)
+else (A_USE_VTK)
+    SUBDIRS(models)
+endif (A_USE_VTK)

@@ -33,7 +33,7 @@ using std::endl;
 using Util::PI;
 using Util::SQ3;
 
-void Func (Vec3_t X, double & F, Vec3_t & V, void * UserData)
+void Func (Vec3_t const & X, double & F, Vec3_t & V, void * UserData)
 {
     F = 0;
     if (X(2)>0.1) V = 0.0, 0.0, -0.5;
