@@ -53,6 +53,7 @@ public:
     Cylinder & SetPoints     (Vec3_t const & X0, Vec3_t const & X1);
     Cylinder & SetResolution (int Res=20);
     Cylinder & SetColor      (char const * Name="olive", double Opacity=1.0);
+    Cylinder & SetWire       () { _cylin_actor->GetProperty()->SetRepresentationToWireframe();  return (*this); }
 
     // Methods
     void AddTo (VTK::Win & win) { win.AddActor(_cylin_actor); }

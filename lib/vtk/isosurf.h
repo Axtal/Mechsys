@@ -46,11 +46,12 @@ public:
     ~IsoSurf ();
 
     // Set methods
-    void SetIsoColors (Array<String> const & Names, double Opacity=1.0);
-    void SetIsoColor  (char const * Name="blue",    double Opacity=1.0) { SetIsoColors(Array<String>(Name,true), Opacity); }
-    void SetIsoValue  (double F=0.0)                                    { _isosurf->SetValue       (0,F);                  }
-    void GenIsoValues (int NSurfs, double fMin, double fMax)            { _isosurf->GenerateValues (NSurfs,fMin,fMax);     }
-    void SetVecScale  (double Factor=1.0)                               { _hedgehog->SetScaleFactor(Factor);               }
+    void SetColors   (Array<String> const & Names, double Opacity=1.0);
+    void SetColor    (char const * Name="blue",    double Opacity=1.0) { SetColors(Array<String>(Name,true), Opacity); }
+    void SetValue    (double F=0.0)                                    { _isosurf->SetValue       (0,F);               }
+    void GenValues   (int NSurfs, double fMin, double fMax)            { _isosurf->GenerateValues (NSurfs,fMin,fMax);  }
+    void SetVecScale (double Factor=1.0)                               { _hedgehog->SetScaleFactor(Factor);            }
+    void SetWire     ()                                                { _isosurf_actor->GetProperty()->SetRepresentationToWireframe(); }
 
     // Methods
     void AddTo (VTK::Win & win);
@@ -88,8 +89,8 @@ inline IsoSurf::IsoSurf (VTK::SGrid & G)
     _isosurf_mapper -> SetInputConnection      (_isosurf->GetOutputPort());
     _isosurf_mapper -> SetLookupTable          (_isosurf_lt);
     _isosurf_actor  -> SetMapper               (_isosurf_mapper);
-    SetIsoColor ();
-    SetIsoValue ();
+    SetColor ();
+    SetValue ();
 
     // hedgehog
     _hedgehog        = vtkHedgeHog         ::New();
@@ -112,7 +113,7 @@ inline IsoSurf::~IsoSurf ()
     _hedgehog_actor  -> Delete();
 }
 
-inline void IsoSurf::SetIsoColors (Array<String> const & Colors, double Opacity)
+inline void IsoSurf::SetColors (Array<String> const & Colors, double Opacity)
 {
     _isosurf_lt->SetNumberOfColors (Colors.Size());
     _isosurf_lt->Build             ();
