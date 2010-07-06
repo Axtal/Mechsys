@@ -446,6 +446,33 @@ inline String PrintMatrix (Mat3_t const & M, char const * Fmt="%13g", double Tol
     return lin;
 }
 
+/** Compare two vectors. */
+inline double CompareVectors (Vec3_t const & A, Vec3_t const & B)
+{
+    double error = 0.0;
+    for (size_t i=0; i<3; ++i)
+        error += fabs(A(i)-B(i));
+    return error;
+}
+
+/** Compare two matrices. */
+inline double CompareMatrices (Mat3_t const & A, Mat3_t const & B)
+{
+    double error = 0.0;
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+        error += fabs(A(i,j)-B(i,j));
+    return error;
+}
+
+/** Transpose.*/
+inline void Trans (Mat3_t const & M, Mat3_t & Mt)
+{
+    Mt(0,0)=M(0,0);   Mt(0,1)=M(1,0);   Mt(0,2)=M(2,0);
+    Mt(1,0)=M(0,1);   Mt(1,1)=M(1,1);   Mt(1,2)=M(2,1);
+    Mt(2,0)=M(0,2);   Mt(2,1)=M(1,2);   Mt(2,2)=M(2,2);
+}
+
 /** Determinant.*/
 inline double Det (Mat3_t const & M)
 {
@@ -453,6 +480,25 @@ inline double Det (Mat3_t const & M)
                  - M(0,1)*(M(1,0)*M(2,2) - M(1,2)*M(2,0))
                  + M(0,2)*(M(1,0)*M(2,1) - M(1,1)*M(2,0));
     return det;
+}
+
+/** Inverse.*/
+inline void Inv (Mat3_t const & M, Mat3_t & Mi, double Tol=1.0e-10)
+{
+    double det =   M(0,0)*(M(1,1)*M(2,2) - M(1,2)*M(2,1))
+                 - M(0,1)*(M(1,0)*M(2,2) - M(1,2)*M(2,0))
+                 + M(0,2)*(M(1,0)*M(2,1) - M(1,1)*M(2,0));
+
+    if (fabs(det)<Tol)
+    {
+        std::ostringstream oss;
+        oss << PrintMatrix(M);
+        throw new Fatal("matvec.h::Inv: 3x3 matrix inversion failed with null (%g) determinat. M =\n%s",Tol,oss.str().c_str());
+    }
+
+    Mi(0,0)=(M(1,1)*M(2,2)-M(1,2)*M(2,1))/det;  Mi(0,1)=(M(0,2)*M(2,1)-M(0,1)*M(2,2))/det;  Mi(0,2)=(M(0,1)*M(1,2)-M(0,2)*M(1,1))/det;
+    Mi(1,0)=(M(1,2)*M(2,0)-M(1,0)*M(2,2))/det;  Mi(1,1)=(M(0,0)*M(2,2)-M(0,2)*M(2,0))/det;  Mi(1,2)=(M(0,2)*M(1,0)-M(0,0)*M(1,2))/det;
+    Mi(2,0)=(M(1,0)*M(2,1)-M(1,1)*M(2,0))/det;  Mi(2,1)=(M(0,1)*M(2,0)-M(0,0)*M(2,1))/det;  Mi(2,2)=(M(0,0)*M(1,1)-M(0,1)*M(1,0))/det;
 }
 
 /** Linear Solver. {X} = [M]^{-1}{B}  */
@@ -546,15 +592,6 @@ inline void Dyad (Vec3_t const & A, Vec3_t const & B, Mat3_t & M)
         M(i,j) = A(i) * B(j);
 }
 
-/** Compare two vectors. */
-inline double CompareVectors (Vec3_t const & A, Vec3_t const & B)
-{
-    double error = 0.0;
-    for (size_t i=0; i<3; ++i)
-        error += fabs(A(i)-B(i));
-    return error;
-}
-
 /** Clear vector. */
 inline void set_to_zero (Vec3_t & V)
 {
@@ -618,7 +655,7 @@ inline double Tra (Vec_t const & Ten)
     return Ten(0)+Ten(1)+Ten(2);
 }
 
-/** Creates the matrix representation of 2nd order symmetric tensor Ten. */
+/** Creates the matrix representation of 2nd order symmetric tensor Ten (Mandel's representation). */
 inline void Ten2Mat (Vec_t const & Ten, Mat3_t & Mat)
 {
     // matrix of tensor
@@ -639,34 +676,20 @@ inline void Ten2Mat (Vec_t const & Ten, Mat3_t & Mat)
     else throw new Fatal("matvec.h::Ten2Mat: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
 
-/** Eigenprojectors of 2nd order symmetric tensor Ten. */
-inline void EigenProj (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
+/** Creates a 2nd order symmetric tensor Ten (using Mandel's representation) based on its matrix components. NOTE: This method does not check if matrix is symmetric. */
+inline void Mat2Ten (Mat3_t const & Mat, Vec_t & Ten, size_t NumComponents)
 {
-    // matrix of tensor
-    Mat3_t ten;
-    Ten2Mat (Ten, ten);
-
-    // eigen-values and vectors
-    Vec3_t v0,v1,v2;
-    Eig (ten, L, v0, v1, v2);
-
-    // eigen-projectors
-    size_t ncp = size(Ten);
-    P0.change_dim (ncp);
-    P1.change_dim (ncp);
-    P2.change_dim (ncp);
-    if (ncp==4)
+    // tensor from matrix
+    Ten.change_dim (NumComponents);
+    if (NumComponents==4)
     {
-        P0 = v0(0)*v0(0), v0(1)*v0(1), v0(2)*v0(2), v0(0)*v0(1)*Util::SQ2;
-        P1 = v1(0)*v1(0), v1(1)*v1(1), v1(2)*v1(2), v1(0)*v1(1)*Util::SQ2;
-        P2 = v2(0)*v2(0), v2(1)*v2(1), v2(2)*v2(2), v2(0)*v2(1)*Util::SQ2;
+        Ten = Mat(0,0), Mat(1,1), Mat(2,2), Util::SQ2*Mat(0,1);
     }
-    else
+    else if (NumComponents==6)
     {
-        P0 = v0(0)*v0(0), v0(1)*v0(1), v0(2)*v0(2), v0(0)*v0(1)*Util::SQ2, v0(1)*v0(2)*Util::SQ2, v0(2)*v0(0)*Util::SQ2;
-        P1 = v1(0)*v1(0), v1(1)*v1(1), v1(2)*v1(2), v1(0)*v1(1)*Util::SQ2, v1(1)*v1(2)*Util::SQ2, v1(2)*v1(0)*Util::SQ2;
-        P2 = v2(0)*v2(0), v2(1)*v2(1), v2(2)*v2(2), v2(0)*v2(1)*Util::SQ2, v2(1)*v2(2)*Util::SQ2, v2(2)*v2(0)*Util::SQ2;
+        Ten = Mat(0,0), Mat(1,1), Mat(2,2), Util::SQ2*Mat(0,1), Util::SQ2*Mat(1,2), Util::SQ2*Mat(2,0);
     }
+    else throw new Fatal("matvec.h::Mat2Ten: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
 
 /** 2nd order symmetric tensor Ten raised to the power of 2. */
@@ -705,7 +728,7 @@ inline double Det (Vec_t const & Ten)
     else if (ncp==6)
     {
         return   Ten(0)*Ten(1)*Ten(2) 
-               + Ten(3)*Ten(4)*Ten(5)/sqrt(2.0) 
+               + Ten(3)*Ten(4)*Ten(5)/Util::SQ2
                - Ten(0)*Ten(4)*Ten(4)/2.0
                - Ten(1)*Ten(5)*Ten(5)/2.0
                - Ten(2)*Ten(3)*Ten(3)/2.0;
@@ -713,7 +736,66 @@ inline double Det (Vec_t const & Ten)
     else throw new Fatal("matvec.h::Det: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
 }
 
+/** Inverse of 2nd order symmetric tensor T. */
+inline void Inv (Vec_t const & T, Vec_t & Ti, double Tol=1.0e-10)
+{
+    size_t ncp = size(T);
+    Ti.change_dim (ncp);
+    if (ncp==4)
+    {
+        double det =  T(0)*T(1)*T(2)
+                    - T(2)*T(3)*T(3)/2.0;
+
+        if (fabs(det)<Tol)
+        {
+            std::ostringstream oss;  oss<<T;
+            throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat. T =\n%s",Tol,oss.str().c_str());
+        }
+
+        Ti(0) = T(1)*T(2)/det;
+        Ti(1) = T(0)*T(2)/det;
+        Ti(2) = (T(0)*T(1)-2.0*T(3)*T(3))/det;
+        Ti(3) = -2.0*T(2)*T(3)/det;
+    }
+    else if (ncp==6)
+    {
+        double det =  T(0)*T(1)*T(2) 
+                    + T(3)*T(4)*T(5)/Util::SQ2
+                    - T(0)*T(4)*T(4)/2.0
+                    - T(1)*T(5)*T(5)/2.0
+                    - T(2)*T(3)*T(3)/2.0;
+
+        if (fabs(det)<Tol)
+        {
+            std::ostringstream oss;  oss<<T;
+            throw new Fatal("matvec.h::Inv: inverse of 2nd order symmetric tensor failed with null (%g) determinat. T =\n%s",Tol,oss.str().c_str());
+        }
+
+        Ti(0) = (T(1)*T(2)-T(4)*T(4)/2.0)/det;
+        Ti(1) = (T(0)*T(2)-T(5)*T(5)/2.0)/det;
+        Ti(2) = (T(0)*T(1)-T(3)*T(3)/2.0)/det;
+        Ti(3) = ((T(4)*T(5))/Util::SQ2-T(2)*T(3))/det;
+        Ti(4) = ((T(3)*T(5))/Util::SQ2-T(0)*T(4))/det;
+        Ti(5) = ((T(3)*T(4))/Util::SQ2-T(1)*T(5))/det;
+    }
+    else throw new Fatal("matvec.h::Inv: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
 /** Characteristic invariants of 2nd order symmetric tensor Ten. */
+inline void CharInvs (Vec_t const & Ten, double & I1, double & I2, double & I3)
+{
+    I1 = Ten(0) + Ten(1) + Ten(2);
+    I2 = Ten(0)*Ten(1) + Ten(1)*Ten(2) + Ten(2)*Ten(0) - Ten(3)*Ten(3)/2.0;
+    I3 = Ten(0)*Ten(1)*Ten(2) - Ten(2)*Ten(3)*Ten(3)/2.0;
+    size_t ncp = size(Ten);
+    if (ncp>4)
+    {
+        I2 += (-Ten(4)*Ten(4)/2.0 - Ten(5)*Ten(5)/2.0);
+        I3 += (Ten(3)*Ten(4)*Ten(5)/Util::SQ2 - Ten(0)*Ten(4)*Ten(4)/2.0 - Ten(1)*Ten(5)*Ten(5)/2.0);
+    }
+}
+
+/** Characteristic invariants of 2nd order symmetric tensor Ten and their derivatives. */
 inline void CharInvs (Vec_t const & Ten, double & I1, double & I2, double & I3, Vec_t & dI1dTen, Vec_t & dI2dTen, Vec_t & dI3dTen)
 {
     I1 = Ten(0) + Ten(1) + Ten(2);
@@ -734,6 +816,71 @@ inline void CharInvs (Vec_t const & Ten, double & I1, double & I2, double & I3, 
     Pow2 (Ten, Ten2);
     dI2dTen = I1*dI1dTen - Ten;
     dI3dTen = Ten2 - I1*Ten + I2*dI1dTen;
+}
+
+/** Eigenprojectors of 2nd order symmetric tensor Ten. */
+inline void EigenProj (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
+{
+    // matrix of tensor
+    Mat3_t ten;
+    Ten2Mat (Ten, ten);
+
+    // eigen-values and vectors
+    Vec3_t v0,v1,v2;
+    Eig (ten, L, v0, v1, v2);
+
+    // eigen-projectors
+    size_t ncp = size(Ten);
+    P0.change_dim (ncp);
+    P1.change_dim (ncp);
+    P2.change_dim (ncp);
+    if (ncp==4)
+    {
+        P0 = v0(0)*v0(0), v0(1)*v0(1), v0(2)*v0(2), v0(0)*v0(1)*Util::SQ2;
+        P1 = v1(0)*v1(0), v1(1)*v1(1), v1(2)*v1(2), v1(0)*v1(1)*Util::SQ2;
+        P2 = v2(0)*v2(0), v2(1)*v2(1), v2(2)*v2(2), v2(0)*v2(1)*Util::SQ2;
+    }
+    else
+    {
+        P0 = v0(0)*v0(0), v0(1)*v0(1), v0(2)*v0(2), v0(0)*v0(1)*Util::SQ2, v0(1)*v0(2)*Util::SQ2, v0(2)*v0(0)*Util::SQ2;
+        P1 = v1(0)*v1(0), v1(1)*v1(1), v1(2)*v1(2), v1(0)*v1(1)*Util::SQ2, v1(1)*v1(2)*Util::SQ2, v1(2)*v1(0)*Util::SQ2;
+        P2 = v2(0)*v2(0), v2(1)*v2(1), v2(2)*v2(2), v2(0)*v2(1)*Util::SQ2, v2(1)*v2(2)*Util::SQ2, v2(2)*v2(0)*Util::SQ2;
+    }
+}
+
+/** Eigenprojectors of 2nd order symmetric tensor Ten. */
+inline void EigenProjAnalytic (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t & P1, Vec_t & P2)
+{
+    // identity tensor
+    size_t ncp = size(Ten);
+    Vec_t I(ncp);
+    set_to_zero(I);
+    I(0)=1.0;  I(1)=1.0;  I(2)=1.0;
+
+    // characteristics invariants
+    double I1,I2,I3;
+    CharInvs (Ten,I1,I2,I3);
+
+    // inverse tensor
+    Vec_t Ti;
+    Inv (Ten, Ti);
+
+    // eigen-values/projectors
+    P0.change_dim (ncp);
+    P1.change_dim (ncp);
+    P2.change_dim (ncp);
+    Vec_t * P[3] = {&P0, &P1, &P2}; // all three eigen projectors
+    double alpha = 2.0*sqrt(I1*I1-3.0*I2);
+    double theta = acos((2.0*I1*I1*I1-9.0*I1*I2+27.0*I3)/(2.0*pow(I1*I1-3.0*I2,3.0/2.0)));
+    //std::cout << "I1 = " << I1 << ",  I2 = " << I2 << ",  I3 = " << I3 << ",  I1*I1-3*I2 = " << I1*I1-3.0*I2 << std::endl;
+    //std::cout << "alpha = " << alpha << ",  theta = " << theta << std::endl;
+    for (size_t k=0; k<3; ++k)
+    {
+        L(k) = (I1+alpha*cos((theta+2.0*Util::PI*(1.0+k))/3.0))/3.0;
+        if (fabs(L(k)<1.0e-14)) throw new Fatal("matvec.h:EigenProjAnalytic: L(%d)=%g must be non-zero",k,L(k));
+        double coef = L(k)/(2.0*L(k)*L(k)-L(k)*I1+I3/L(k));
+        (*P[k]) = coef*(Ten+(L(k)-I1)*I+(I3/L(k))*Ti);
+    }
 }
 
 
