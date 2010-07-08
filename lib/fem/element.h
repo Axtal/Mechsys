@@ -66,7 +66,7 @@ public:
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
     virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }
     virtual void CalcC        (Mat_t & C)                                const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
-    virtual void Matrices     (Mat_t & M, Mat_t & C, Mat_t & K)          const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
+    virtual void CalcKCM      (Mat_t & KK, Mat_t & CC, Mat_t & MM)       const { throw new Fatal("Element::CalcKCM: Method not implement for this element"); }
     virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)     const {}
     virtual void StateKeys    (Array<String> & Keys)                     const {} ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
     virtual void StateAtIP    (SDPair & KeysVals, int IdxIP)             const {} ///< Get state at IP

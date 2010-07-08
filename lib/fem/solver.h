@@ -136,7 +136,6 @@ private:
     void _calc_F_Fnew     (double dt);              ///< Calculate F(t=Time) and F(t=Time+dt)
     void _SS22_update     (double tf, double dt);   ///< (Single-Step) Update Time and elements to tf
     void _GN22_update     (double tf, double dt);   ///< (Generalized-Newmark) Update Time and elements to tf
-    void _GNHMCoup_update (double tf, double dt);   ///< (Generalized-Newmark Coupled) Update Time and elements to tf
 };
 
 
@@ -329,9 +328,8 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     while (Time<tf)
     {
         // update U, F, Time and elements to tout
-        if      (DScheme==SS22_t)      { _SS22_update     (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
-        else if (DScheme==GN22_t)      { _GN22_update     (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
-        else if (DScheme==GNHMCoup_t)  { _GNHMCoup_update (tout,dt);  str.Printf("Generalized-Newmark HM Coupled (GN22/GN11): nit = %d",It); }
+        if      (DScheme==SS22_t) { _SS22_update (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
+        else if (DScheme==GN22_t) { _GN22_update (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -470,7 +468,7 @@ inline void Solver::AssembleKCMA (double C1, double C2, double C3)
     {
         // matrices
         Mat_t M, C, K;
-        if      (DampTy==HMCoup_t) ActEles[k]->Matrices (M, C, K);
+        if      (DampTy==HMCoup_t) ActEles[k]->CalcKCM (K, C, M);
         else if (DampTy==Rayleigh_t)
         {
             ActEles[k]->CalcK (K);
@@ -1091,74 +1089,7 @@ inline void Solver::_GN22_update (double tf, double dt)
 
             // update elements
             for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
-
-            // update state
-            Unew += dU;
-            Anew  = c3*(Unew - Us);
-            Vnew  = Vs + (DynTh1*dt)*Anew;
-
-            // check convergence
-            NormR    = Norm(R);
-            MaxNormF = Util::Max (Norm(F), Norm(F_int));
-            if (ResidOK()) break;
-        }
-        if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
-
-        // update
-        U = Unew;
-        V = Vnew;
-        A = Anew;
-
-        // next time step
-        Time += dt;
-
-        // debug
-        if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-    }
-}
-
-inline void Solver::_GNHMCoup_update (double tf, double dt)
-{
-    // auxiliar variables
-    Vec_t Us(NEq),   Vs(NEq);              // starred variables
-    Vec_t Unew(NEq), Vnew(NEq), Anew(NEq); // updated state
-    Vec_t dU(NEq);                         // displacement increment
-
-    // constants
-    const double c1 = dt*dt*(1.0-DynTh2)/2.0;
-    const double c2 = dt*(1.0-DynTh1);
-    const double c3 = 2.0/(dt*dt*DynTh2);
-    const double c4 = 2.0*DynTh1/(dt*DynTh2);
-
-    while (Time<tf)
-    {
-        // predictor
-        Us   = U + dt*V + c1*A;
-        Vs   = V + c2*A;
-        Unew = U;
-        Anew = c3*(U - Us);
-        Vnew = Vs + (DynTh1*dt)*Anew;
-
-        // iterations
-        for (It=0; It<MaxIt; ++It)
-        {
-            // assemble Amat
-            if (DampTy==None_t) AssembleKMA  (c3,     1.0);  // A = c3*M        + K
-            else                AssembleKCMA (c3, c4, 1.0);  // A = c3*M + c4*C + K
-
-            // F and Fnew
-            _calc_F_Fnew (dt);
-
-            // residual
-            R = Fnew - F_int;
-            Sparse::SubMult (M11, Anew, R);  if (DampTy!=None_t)  // R -= M11*Anew
-            Sparse::SubMult (C11, Vnew, R);                       // R -= C11*Vnew
-
-            // solve for dU
-            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
-
-            // update elements
-            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
+            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
             Unew += dU;
