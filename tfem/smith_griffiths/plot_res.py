@@ -2,7 +2,9 @@ from numpy import *
 from pylab import *
 from msys_readdata import *
 
-if False:
+plt = 2
+
+if plt==0:
     dat = read_table("fig_11_01_nod_1_-200.res")
 
     tsw = 1.0
@@ -19,11 +21,11 @@ if False:
     grid()
     show()
 
-if False:
+if plt==1:
     res   = read_table("fig_11_04_nod_17_-100.res")
     p113d = read_table("sg_11_07_p113.dat")
-    p113  = read_table("sg_11_07_p113.res")
-    p114  = read_table("sg_11_07_p114.res")
+    p113  = read_table("sg_11_07_p113.sim")
+    p114  = read_table("sg_11_07_p114.sim")
 
     plot(res  ['Time'],res  ['uy'],'r-',lw=2)
     plot(p113d['Time'],p113d['uy'],'bo')
@@ -37,9 +39,9 @@ if False:
     grid()
     show()
 
-if False:
+if plt==2:
     res  = read_table("fig_11_19_nod_30_-200.res")
-    p117 = read_table("sg_11_19.res")
+    p117 = read_table("sg_11_19.sim")
 
     plot(res ['Time'],res ['uy'],'r-',lw=2)
     plot(p117['Time'],p117['uy'],'b-')
@@ -50,7 +52,7 @@ if False:
     grid()
     show()
 
-if True:
+if plt==3:
     nod = 17
     res = read_table("fig_11_04.out")
 
