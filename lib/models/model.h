@@ -47,9 +47,13 @@ public:
     // Methods
     virtual void   InitIvs      (SDPair const & Ini, State * Sta)                              const =0;
     virtual void   Stiffness    (State const * Sta, Mat_t & D, Vec_t * h=NULL, Vec_t * d=NULL) const {}
+    virtual void   Stiffness    (State const * Sta, Mat_t & D, Mat_t & Dw, Vec_t * h=NULL, Vec_t * d=NULL) const {}
+    virtual void   Hydraulic    (State const * Sta, Mat_t & Kw, double & ChiW, double & InvQs)             const { throw new Fatal("Model::Hydraulic: This method is not available in this model (%s)",Name.CStr()); return NULL; }
     virtual bool   LoadCond     (State const * Sta, Vec_t const & DEps, double & alpInt)       const { alpInt=-1.0; return false; }
     virtual void   CorrectDrift (State * Sta)                                                  const {}
-    virtual double CalcDEz      (State const * Sta, Vec_t const & DSig)                        const { throw new Fatal("Model::CalcDEz: This method is not available yet"); return 0; }
+    virtual double CalcDEz      (State const * Sta, Vec_t const & DSig)                        const { throw new Fatal("Model::CalcDEz: This method is not available in this model (%s)",Name.CStr()); return 0; }
+
+    // HydroMech methods
 
     // Data
     int           NDim;    ///< Space dimension: 2 or 3
