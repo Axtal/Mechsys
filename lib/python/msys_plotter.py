@@ -42,6 +42,7 @@ class Plotter:
         self.fc_poct   = -1*sqrt(3.0)                             # -1 => use last. p(oct) to be used when plotting FC in octahedral plane
         self.fc_t      = 1.0                                      # t=sin(3th) to be used when plotting FC in octahedral plane
         self.fc_cu     = 10.0                                     # cohesion for VM
+        self.fc_psa    = False                                    # change cu for plane strain for VM ?
         self.fc_phi    = -1                                       # friction angle for FC
         self.fc_c      = 0.0                                      # cohesion for FC
         self.fc_np     = 40                                       # number of points for drawing failure line
@@ -112,11 +113,9 @@ class Plotter:
         QdivP = Q/P
 
         # constants
-        #rc('text', usetex=True)    # set LaTeX
-        #rc('font', family='serif') # set font
-        nhplt = 3                  # number of horizontal plots
-        nvplt = 3                  # number of vertical plots
-        iplot = 1                  # index of plot
+        nhplt = 3  # number of horizontal plots
+        nvplt = 3  # number of vertical plots
+        iplot = 1  # index of plot
         if self.only_six: nhplt, nvplt = 2, 3
 
         # calc friction angle
@@ -147,7 +146,7 @@ class Plotter:
             plot (Ed, Y, color=clr, lw=self.lwd, label=label, marker=marker, markevery=markevery, ms=self.ms)
             plot (Ed[imaQP], Y[imaQP], '^', color=clr)
             #plot (Ed[-1],    Y[-1],    '^', color=clr)
-            xlabel (r'$\varepsilon_d$ [\%]');  ylabel(Ylbl);  grid()
+            xlabel (r'$\varepsilon_d$ [%]');  ylabel(Ylbl);  grid()
             if txtmax: text (Ed[imaQP], Y[imaQP], '%.2f'%Y[imaQP], fontsize=8)
             if txtlst: text (Ed[-1],    Y[-1],    '%.2f'%Y[-1],    fontsize=8)
 
@@ -155,7 +154,7 @@ class Plotter:
         if self.justone==1 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (Ev, Y, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            xlabel (r'$\varepsilon_v$ [\%]');  ylabel(Ylbl);  grid()
+            xlabel (r'$\varepsilon_v$ [%]');  ylabel(Ylbl);  grid()
 
         # 2) p, q ---------------------------------------------------------------------------
         if self.justone==2 or self.justone<0:
@@ -173,7 +172,7 @@ class Plotter:
         if self.justone==3 or self.justone<0:
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (Ed, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            xlabel (r'$\varepsilon_d$ [\%]');  ylabel(r'$\varepsilon_v$ [\%]'); grid()
+            xlabel (r'$\varepsilon_d$ [%]');  ylabel(r'$\varepsilon_v$ [%]'); grid()
 
         # 4) lnp, Ev ---------------------------------------------------------------------------
         if self.justone==4 or self.justone<0:
@@ -187,7 +186,7 @@ class Plotter:
                 for k, x in enumerate(X): X[k] = self.pcte
             if self.justone<0: self.ax = subplot(nhplt,nvplt,iplot);  iplot += 1
             plot   (X, Ev, lw=self.lwd, color=clr, label=label, marker=marker, markevery=markevery, ms=self.ms)
-            xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [\%]');  grid()
+            xlabel (xlbl);  ylabel(r'$\varepsilon_v$ [%]');  grid()
 
         # 5) Sa, Sb ---------------------------------------------------------------------------
         if self.justone==5 or self.justone<0:
@@ -400,7 +399,9 @@ class Plotter:
     def failure_crit(self, sig, fc_ty):
         if fc_ty=='VM':
             p, q = sig_calc_p_q(sig)
-            f    = q - 2.0*(sqrt(2.0)/sqrt(3.0))*self.fc_cu
+            if self.fc_psa: k = sqrt(2.0)*self.fc_cu
+            else:           k = 2.0*(sqrt(2.0)/sqrt(3.0))*self.fc_cu
+            f    = q - k
         elif fc_ty=='DP':
             sphi = sin(self.fc_phi*pi/180.0)
             cbar = sqrt(3.0)*self.fc_c/tan(self.fc_phi*pi/180.0)
