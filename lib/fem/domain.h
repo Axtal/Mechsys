@@ -324,8 +324,11 @@ inline void Domain::SetBCs (Dict const & BCs)
 
         for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
         {
-            pF[nod].first[nod->FMap(q->first)] += q->second;
-            pF[nod].second = calcm;
+            if (q->first!="mfunc")
+            {
+                pF[nod].first[nod->FMap(q->first)] += q->second;
+                pF[nod].second = calcm;
+            }
         }
     }
 
