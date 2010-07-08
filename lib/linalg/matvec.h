@@ -390,7 +390,7 @@ inline void Dyad (Vec_t const & A, Vec_t const & B, Mat_t & M)
         M(i,j) = A(i) * B(j);
 }
 
-/** Left multiplication. {B} = {A}*[M]  */
+/** Left multiplication. {B} = {A}*[M]. NOTE: this is not efficient for large matrices.  */
 inline void Mult (Vec_t const & A, Mat_t const & M, Vec_t & B)
 {
     B.change_dim (M.num_cols());
@@ -590,6 +590,14 @@ inline void Dyad (Vec3_t const & A, Vec3_t const & B, Mat3_t & M)
     M(0,0)=A(0)*B(0);  M(0,1)=A(0)*B(1);  M(0,2)=A(0)*B(2);
     M(1,0)=A(1)*B(0);  M(1,1)=A(1)*B(1);  M(1,2)=A(1)*B(2);
     M(2,0)=A(2)*B(0);  M(2,1)=A(2)*B(1);  M(2,2)=A(2)*B(2);
+}
+
+/** Matrix multiplication. */
+inline void Mult (Mat3_t const & A, Mat3_t const & B, Mat3_t & M)
+{
+    M(0,0)=A(0,2)*B(2,0)+A(0,1)*B(1,0)+A(0,0)*B(0,0);  M(0,1)=A(0,2)*B(2,1)+A(0,1)*B(1,1)+A(0,0)*B(0,1);  M(0,2)=A(0,2)*B(2,2)+A(0,1)*B(1,2)+A(0,0)*B(0,2);
+    M(1,0)=A(1,2)*B(2,0)+B(1,0)*A(1,1)+B(0,0)*A(1,0);  M(1,1)=A(1,2)*B(2,1)+A(1,1)*B(1,1)+B(0,1)*A(1,0);  M(1,2)=A(1,2)*B(2,2)+A(1,1)*B(1,2)+B(0,2)*A(1,0);
+    M(2,0)=A(2,2)*B(2,0)+B(1,0)*A(2,1)+B(0,0)*A(2,0);  M(2,1)=B(2,1)*A(2,2)+B(1,1)*A(2,1)+B(0,1)*A(2,0);  M(2,2)=A(2,2)*B(2,2)+B(1,2)*A(2,1)+B(0,2)*A(2,0);
 }
 
 /** Clear vector. */
