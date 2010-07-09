@@ -69,7 +69,7 @@ int main(int argc, char **argv) try
 
     // elements properties
     Dict prps;
-    prps.Set(-1, "prob geom", PROB("Flow"), GEOM("Quad8"));
+    prps.Set(-1, "prob geom nip", PROB("Flow"), GEOM("Quad8"), 9.);
 
     // models
     Dict mdls;
