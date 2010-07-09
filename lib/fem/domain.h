@@ -75,6 +75,7 @@ public:
     bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;  ///< At integration points
     void WriteMPY     (char const * FileKey, double SFCoef=1.0,
                        char const * Extra=NULL) const;                      ///< SFCoef: Scale-factor coefficient
+    void AvailableData();                                                   ///< Check available data and resize results matrices
     void NodalResults () const;                                             ///< Extrapolate results from element to nodes
     void WriteVTU     (char const * FileKey) const;                         ///< Write file for ParaView
 
@@ -169,6 +170,9 @@ inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict
     DisplKeys[0] = "ux";
     DisplKeys[1] = "uy";  if (NDim==3)
     DisplKeys[2] = "uz";
+
+    // check available data
+    AvailableData ();
 }
 
 inline Domain::~Domain()
@@ -360,47 +364,8 @@ inline void Domain::SetBCs (Dict const & BCs)
         }
     }
 
-    // check available nodal data
-    NActNods = 0;
-    HasDisps = false;
-    String key;
-    NodKeys.Resize (0);
-    for (size_t i=0; i<Nods.Size(); ++i)
-    {
-        if (Nods[i]->NShares>0) // active node
-        {
-            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
-            {
-                key = Nods[i]->UMap.Keys[j];
-                if (NodKeys.Find(key)<0) NodKeys.Push (key);
-                if (key=="ux") HasDisps = true;
-            }
-            NActNods++;
-        }
-    }
-
-    // check available element data
-    NActEles = 0;
-    HasVeloc = false;
-    Array<String> keys;
-    EleKeys.Resize (0);
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        if (Eles[i]->Active) // active element
-        {
-            Eles[i]->StateKeys (keys);
-            for (size_t j=0; j<keys.Size(); ++j)
-            {
-                if (EleKeys.Find(keys[j])<0) EleKeys.Push (keys[j]);
-                if (keys[j]=="vx") HasVeloc = true;
-            }
-            NActEles++;
-        }
-    }
-
-    // resize matrices
-    NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
-    NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
+    // check available data
+    AvailableData ();
 }
 
 inline void Domain::ClrBCs ()
@@ -912,6 +877,51 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, char const * Ex
     if (Extra!=NULL) of << Extra;
     MPL::SaveFig  (FNKey, of);
     of.close      ();
+}
+
+inline void Domain::AvailableData ()
+{
+    // check available nodal data
+    NActNods = 0;
+    HasDisps = false;
+    String key;
+    NodKeys.Resize (0);
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        if (Nods[i]->NShares>0) // active node
+        {
+            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
+            {
+                key = Nods[i]->UMap.Keys[j];
+                if (NodKeys.Find(key)<0) NodKeys.Push (key);
+                if (key=="ux") HasDisps = true;
+            }
+            NActNods++;
+        }
+    }
+
+    // check available element data
+    NActEles = 0;
+    HasVeloc = false;
+    Array<String> keys;
+    EleKeys.Resize (0);
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        if (Eles[i]->Active) // active element
+        {
+            Eles[i]->StateKeys (keys);
+            for (size_t j=0; j<keys.Size(); ++j)
+            {
+                if (EleKeys.Find(keys[j])<0) EleKeys.Push (keys[j]);
+                if (keys[j]=="vx") HasVeloc = true;
+            }
+            NActEles++;
+        }
+    }
+
+    // resize matrices
+    NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
+    NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
 }
 
 inline void Domain::NodalResults () const
