@@ -45,7 +45,7 @@ public:
     // enum
     enum Scheme_t  { FE_t, ME_t, NR_t };             ///< Steady time integration scheme: Forward-Euler, Modified-Euler, Newton-Rhapson
     enum TScheme_t { SS11_t };                       ///< Transient time integration scheme: (Single step/O1/1st order)
-    enum DScheme_t { SS22_t, GN22_t, GNHMCoup_t };   ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
+    enum DScheme_t { GN22_t };                       ///< Dynamic time integration scheme: (Single step/O2/2nd order), (Generalized Newmark/O2/2nd order)
     enum Damping_t { None_t, Rayleigh_t, HMCoup_t }; ///< Damping type: none, Rayleigh type (C=alp*M+bet*K), HydroMechCoupling
 
     // typedefs
@@ -95,11 +95,12 @@ public:
     Sparse::Triplet<double,int> A11;             ///< A=K  or  A=C1*M+C2*K  or  A=C1*M+C2*C+C3*K
 
     // Vectors
-    Vec_t R;        // Residual
-    Vec_t F, F_int; // External and internal forces
-    Vec_t W, U;     // Workspace, displacement
-    Vec_t V, A;     // (Transient/Dynamic) velocity and acceleration
-    Vec_t Fnew;     // External force at n+1 (t=t+dt)
+    Vec_t R;            ///< Residual
+    Vec_t F, F_int;     ///< External and internal forces
+    Vec_t W, U;         ///< Workspace, displacement
+    Vec_t V, A;         ///< (Transient/Dynamic) velocity and acceleration
+    Vec_t dU, dF;       ///< Increments of U and F
+    Vec_t Us, Vs;       ///< starred variables (for GN22)
 
     // Constants and flags (read-write)
     Scheme_t  Scheme;   ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
@@ -133,8 +134,7 @@ private:
     void _FE_update       (double tf);              ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update       (double tf);              ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update       (double tf);              ///< (Newton-Rhapson) Update Time and elements to tf
-    void _calc_F_Fnew     (double dt);              ///< Calculate F(t=Time) and F(t=Time+dt)
-    void _SS22_update     (double tf, double dt);   ///< (Single-Step) Update Time and elements to tf
+    void _presc_F         (double t);               ///< Calculate prescribed F(t=Time)
     void _GN22_update     (double tf, double dt);   ///< (Generalized-Newmark) Update Time and elements to tf
 };
 
@@ -328,8 +328,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     while (Time<tf)
     {
         // update U, F, Time and elements to tout
-        if      (DScheme==SS22_t) { _SS22_update (tout,dt);  str.Printf("Single-Step (SS22): nit = %d",It); }
-        else if (DScheme==GN22_t) { _GN22_update (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
+        if (DScheme==GN22_t) { _GN22_update (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
         else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
 
         // update nodes to tout
@@ -625,14 +624,17 @@ inline void Solver::Initialize (bool Transient)
     // initialize variables
     R    .change_dim (NEq);  set_to_zero (R);
     F    .change_dim (NEq);  set_to_zero (F);
-    Fnew .change_dim (NEq);  set_to_zero (Fnew);
     F_int.change_dim (NEq);  set_to_zero (F_int);
     W    .change_dim (NEq);  set_to_zero (W);
     U    .change_dim (NEq);  set_to_zero (U);
+    dU   .change_dim (NEq);  set_to_zero (dU);
+    dF   .change_dim (NEq);  set_to_zero (dF);
     if (Transient)
     {
-        V.change_dim (NEq);  set_to_zero (V);
-        A.change_dim (NEq);  set_to_zero (A);
+        V .change_dim (NEq);  set_to_zero (V);
+        A .change_dim (NEq);  set_to_zero (A);
+        Us.change_dim (NEq);  set_to_zero (Us);
+        Vs.change_dim (NEq);  set_to_zero (Vs);
     }
 
     // initialize F_int
@@ -836,9 +838,6 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
 
 inline void Solver::_FE_update (double tf)
 {
-    // auxiliar vectors
-    Vec_t dU(NEq), dF(NEq);
-
     double dt = (tf-Time)/nSS;
     for (Stp=0; Stp<nSS; ++Stp)
     {
@@ -952,9 +951,6 @@ inline void Solver::_ME_update (double tf)
 
 inline void Solver::_NR_update (double tf)
 {
-    // auxiliar vectors
-    Vec_t dU(NEq), dF(NEq);
-
     It = 0;
     double dt = (tf-Time)/nSS;
     for (Stp=0; Stp<nSS; ++Stp)
@@ -979,81 +975,21 @@ inline void Solver::_NR_update (double tf)
     }
 }
 
-inline void Solver::_calc_F_Fnew (double dt)
+inline void Solver::_presc_F (double t)
 {
-    // loaded nodes
-    set_to_zero (F);
-    set_to_zero (Fnew);
     for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
     {
         for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
             long   eq   = p->first->EQ[idof];
-            if (!pU[eq]) // set dF for unknown variables only
-            {
-                F   (eq) = (*p->second.second)(Time)    * q->second;
-                Fnew(eq) = (*p->second.second)(Time+dt) * q->second;
-            }
+            F(eq) = (*p->second.second)(t) * q->second;
         }
-    }
-}
-
-inline void Solver::_SS22_update (double tf, double dt)
-{
-    // auxiliar variables
-    Vec_t Us(NEq); // starred displacement
-    Vec_t Unew(NEq), dU(NEq);
-    Vec_t Alp(NEq);
-
-    while (Time<tf)
-    {
-        /*
-        EquilibElem const & ele = (*static_cast<EquilibElem const *>(ActEles[4]));
-        std::cout << ele << std::endl;
-        */
-
-        // calc starred variables
-        Us = U + (DynTh1*dt)*V;
-
-        // calc F and Fnew
-        _calc_F_Fnew (dt);
-
-        // set workspace
-        W = (1.0-DynTh1)*F + DynTh1*Fnew;
-        Sparse::SubMult (K11, Us, W); if (DampTy!=None_t) // W -= K11*Us
-        Sparse::SubMult (C11, V,  W);                     // W -= C11*Vs
-
-        // assemble Amat
-        if (DampTy==None_t) AssembleKMA  (1.0,            0.5*DynTh2*dt*dt);
-        else                AssembleKCMA (1.0, DynTh1*dt, 0.5*DynTh2*dt*dt);
-
-        // calc new displacements, acceleration, and velocity
-        UMFPACK::Solve (A11, W, Alp); // Alp = inv(A11)*W
-        Unew = U + dt*V + (0.5*dt*dt)*Alp;
-        V    = V + dt*Alp;
-
-        // update elements and displacements
-        dU = Unew - U;
-        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
-        U = Unew;
-
-        // residual
-        F = Fnew;
-        _cal_resid (/*WithAccel*/true);
-
-        // next time step
-        Time += dt;
     }
 }
 
 inline void Solver::_GN22_update (double tf, double dt)
 {
-    // auxiliar variables
-    Vec_t Us(NEq),   Vs(NEq);              // starred variables
-    Vec_t Unew(NEq), Vnew(NEq), Anew(NEq); // updated state
-    Vec_t dU(NEq);                         // displacement increment
-
     // constants
     const double c1 = dt*dt*(1.0-DynTh2)/2.0;
     const double c2 = dt*(1.0-DynTh1);
@@ -1063,38 +999,35 @@ inline void Solver::_GN22_update (double tf, double dt)
     while (Time<tf)
     {
         // predictor
-        Us   = U + dt*V + c1*A;
-        Vs   = V + c2*A;
-        Unew = U;
-        Anew = c3*(U - Us);
-        Vnew = Vs + (DynTh1*dt)*Anew;
+        Us = U + dt*V + c1*A;
+        Vs = V + c2*A;
+        A  = c3*(U - Us);
+        V  = Vs + (DynTh1*dt)*A;
 
         // iterations
         for (It=0; It<MaxIt; ++It)
         {
+            // new F and residual
+            _presc_F (Time+dt);
+            R = F - F_int;
+
             // assemble Amat
             if (DampTy==None_t) AssembleKMA  (c3,     1.0);  // A = c3*M        + K
             else                AssembleKCMA (c3, c4, 1.0);  // A = c3*M + c4*C + K
 
-            // F and Fnew
-            _calc_F_Fnew (dt);
-
-            // residual
-            R = Fnew - F_int;
-            Sparse::SubMult (M11, Anew, R);  if (DampTy!=None_t)  // R -= M11*Anew
-            Sparse::SubMult (C11, Vnew, R);                       // R -= C11*Vnew
-
             // solve for dU
-            UMFPACK::Solve (A11, R, dU); // dU = inv(A11)*R
+            Sparse::SubMult (M11, A, R);  if (DampTy!=None_t)  // R -= M11*A
+            Sparse::SubMult (C11, V, R);                       // R -= C11*V
+            UMFPACK::Solve  (A11, R, dU);                      // dU = inv(A11)*R
 
             // update elements
             for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
-            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
+            for (size_t i=0; i<pEQ.Size();     ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
-            Unew += dU;
-            Anew  = c3*(Unew - Us);
-            Vnew  = Vs + (DynTh1*dt)*Anew;
+            U += dU;
+            A  = c3*(U - Us);
+            V  = Vs + (DynTh1*dt)*A;
 
             // check convergence
             NormR    = Norm(R);
@@ -1102,11 +1035,6 @@ inline void Solver::_GN22_update (double tf, double dt)
             if (ResidOK()) break;
         }
         if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
-
-        // update
-        U = Unew;
-        V = Vnew;
-        A = Anew;
 
         // next time step
         Time += dt;
