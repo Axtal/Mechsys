@@ -53,6 +53,8 @@ public:
     Array<double>        F;       ///< Current F value. Size = num DOF
     Array<long>          EQ;      ///< Equation numbers (of each DOF)
     long                 NShares; ///< Number of active elements sharing this node
+    Array<double>        NaddU;   ///< Number of times a value was added to U (for initialization purposes)
+                                  // TODO: remove NaddU, since this wastes memory (it's being used by HydroMech only)
 };
 
 
@@ -74,6 +76,7 @@ inline void Node::AddDOF (char const * StrU, char const * StrF)
             U   .Push  (0.0);
             F   .Push  (0.0);
             EQ  .Push  (-1);
+            NaddU.Push (0.0);
         }
     }
 }

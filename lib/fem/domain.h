@@ -165,6 +165,18 @@ inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
 
+    // divide U values in nodes by the number of times elements added to a U var
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        if (Nods[i]->NShares>0) // active
+        {
+            for (size_t j=0; j<Nods[i]->U.Size(); ++j)
+            {
+                if (Nods[i]->NaddU[j]>0.0) Nods[i]->U[j] /= Nods[i]->NaddU[j];
+            }
+        }
+    }
+
     // displacement keys
     DisplKeys.Resize (NDim);
     DisplKeys[0] = "ux";
