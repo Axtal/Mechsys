@@ -23,6 +23,7 @@
 // MechSys
 #include <mechsys/fem/element.h>
 #include <mechsys/models/hmstate.h>
+#include <mechsys/models/hmupdate.h>
 
 using std::cout;
 using std::endl;
@@ -64,7 +65,6 @@ public:
     void Interp   (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & Bp, Mat_t & N, Mat_t & Np, double & detJ, double & Coef) const; ///< Interpolation matrices
 
     // Constants
-    double h;    ///< Thickness of the element
     double alp;  ///< Compressibility coefficient
     double nn;   ///< Porosity
     double rhoS; ///< Density of solids
@@ -105,46 +105,6 @@ inline HMupElem::HMupElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
         Mdl->InitIvs (Ini, Sta[i]); // initialize with effective stresses
     }
 
-    // set initial values
-    if (Ini.HasKey("geostatic"))
-    {
-        if (!Ini.HasKey("K0"))                 throw new Fatal("HMupElem::HMupElem: For geostatic stresses, 'K0' must be provided in 'Ini' dictionary");
-        if (!Ini.HasKey("gamT"))               throw new Fatal("HMupElem::HMupElem: For geostatic stresses, 'gamT' must be provided in 'Ini' dictionary");
-        if (!Ini.HasKey("gamW"))               throw new Fatal("HMupElem::HMupElem: For geostatic stresses, 'gamW' must be provided in 'Ini' dictionary");
-        if (NDim==2 && !Ini.HasKey("y_surf"))  throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 2D, 'y_surf' (domain surface) must be provided in 'Ini' dictionary");
-        if (NDim==3 && !Ini.HasKey("z_surf"))  throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 3D, 'z_surf' (domain surface) must be provided in 'Ini' dictionary");
-        if (NDim==2 && !Ini.HasKey("y_water")) throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 2D, 'y_water' (water table) must be provided in 'Ini' dictionary");
-        if (NDim==3 && !Ini.HasKey("z_water")) throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 3D, 'z_water' (water table) must be provided in 'Ini' dictionary");
-        double K0    = Ini("K0");
-        double gamT  = Ini("gamT");
-        double gamW  = Ini("gamW");
-        double surf  = (NDim==2 ? Ini("y_surf")  : Ini("z_surf"));
-        double water = (NDim==2 ? Ini("y_water") : Ini("z_water"));
-        Vec_t X; // coords of IP
-        for (size_t i=0; i<GE->NIP; ++i)
-        {
-            // get coordinates of IP
-            CoordsOfIP (i, X);
-            double z = (NDim==2 ? X(1) : X(2)); // position of point
-            if (z>surf) throw new Fatal("HMupElem::HMupElem: y_surf(2D) or z_surf(3D) must be higher than every point in the domain.\n\tThere is a point [%g,%g,%g] above surf=%g.",X(0),X(1),(NDim==3?X(2):0.0),surf);
-
-            // calculate compressive stress and pressure
-            double hs   = surf -z;  // column of (wet) soil
-            double hw   = water-z;  // column of water
-            double sv   = gamT*hs;  // compressive total vertical stress
-            double pw   = gamW*hw;  // pore-water pressure
-            if (Ini.HasKey("force_zero_pw")) { if (pw<0.0) pw = 0.0; }
-            double sv_  = sv-pw;    // compressive effective vertical stress
-            double sh_  = K0*sv_;   // compressive effective horizontal stress
-
-            // set effective stress and water pore-pressure
-            Vec_t & sig = static_cast<HMState*>(Sta[i])->Sig;
-            if (NDim==2) sig = -sh_, -sv_, -sh_, 0.0;
-            else         sig = -sh_, -sh_, -sv_, 0.0, 0.0, 0.0;
-            static_cast<HMState*>(Sta[i])->pw = pw;
-        }
-    }
-
     // set constants of this class (once)
     if (NDn==0)
     {
@@ -172,6 +132,61 @@ inline HMupElem::HMupElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     {
         UKeys = "ux", "uy", "uz", "pw";
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz pw", "fx fy fz Qw");
+    }
+
+    // set initial values
+    if (Ini.HasKey("geostatic"))
+    {
+        if (!Ini.HasKey("K0"))                 throw new Fatal("HMupElem::HMupElem: For geostatic stresses, 'K0' must be provided in 'Ini' dictionary");
+        if (!Ini.HasKey("gamT"))               throw new Fatal("HMupElem::HMupElem: For geostatic stresses, 'gamT' must be provided in 'Ini' dictionary");
+        if (!Ini.HasKey("gamW"))               throw new Fatal("HMupElem::HMupElem: For geostatic stresses, 'gamW' must be provided in 'Ini' dictionary");
+        if (NDim==2 && !Ini.HasKey("y_surf"))  throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 2D, 'y_surf' (domain surface) must be provided in 'Ini' dictionary");
+        if (NDim==3 && !Ini.HasKey("z_surf"))  throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 3D, 'z_surf' (domain surface) must be provided in 'Ini' dictionary");
+        if (NDim==2 && !Ini.HasKey("y_water")) throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 2D, 'y_water' (water table) must be provided in 'Ini' dictionary");
+        if (NDim==3 && !Ini.HasKey("z_water")) throw new Fatal("HMupElem::HMupElem: For geostatic stresses in 3D, 'z_water' (water table) must be provided in 'Ini' dictionary");
+        double K0    = Ini("K0");
+        double gamT  = Ini("gamT");
+        double gamW  = Ini("gamW");
+        double surf  = (NDim==2 ? Ini("y_surf")  : Ini("z_surf"));
+        double water = (NDim==2 ? Ini("y_water") : Ini("z_water"));
+        Vec_t X;                  // coords of IP
+        Vec_t pw_at_IPs(GE->NIP); // pw at each IP
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            // get coordinates of IP
+            CoordsOfIP (i, X);
+            double z = (NDim==2 ? X(1) : X(2)); // position of point
+            if (z>surf) throw new Fatal("HMupElem::HMupElem: y_surf(2D) or z_surf(3D) must be higher than every point in the domain.\n\tThere is a point [%g,%g,%g] above surf=%g.",X(0),X(1),(NDim==3?X(2):0.0),surf);
+
+            // calculate compressive stress and pressure
+            double hs   = fabs(surf-z); // column of (wet) soil
+            double hw   = water-z;      // column of water
+            double sv   = gamT*hs;      // compressive total vertical stress
+            double pw   = gamW*hw;      // pore-water pressure
+            if (Ini.HasKey("force_zero_pw")) { if (pw<0.0) pw = 0.0; }
+            double sv_  = sv-pw;        // compressive effective vertical stress
+            double sh_  = K0*sv_;       // compressive effective horizontal stress
+
+            // set effective stress and water pore-pressure
+            Vec_t & sig = static_cast<HMState*>(Sta[i])->Sig;
+            if (NDim==2) sig = -sh_, -sv_, -sh_, 0.0;
+            else         sig = -sh_, -sh_, -sv_, 0.0, 0.0, 0.0;
+            static_cast<HMState*>(Sta[i])->pw = pw;
+
+            // pw at IP
+            pw_at_IPs(i) = pw;
+        }
+
+        // extrapolate pw to nodes
+        Mat_t M, Mi;
+        ShapeMatrix (M);
+        Inv (M, Mi);
+        Vec_t pw_at_Nods(Mi * pw_at_IPs);
+        for (size_t i=0; i<GE->NN; ++i)
+        {
+            Con[i]->U    [Con[i]->UMap("pw")] += pw_at_Nods(i);
+            Con[i]->NaddU[Con[i]->UMap("pw")] += 1.0;
+        }
     }
 
     // set F in nodes due to Fint
@@ -220,7 +235,7 @@ inline void HMupElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
             double detJ = Det(J);
 
             // coefficient used during integration
-            double coef = h*detJ*GE->IPs[i].w;
+            double coef = detJ*GE->IPs[i].w;
             if (GTy==axs_t)
             {
                 // calculate radius=x at this IP
@@ -270,7 +285,7 @@ inline void HMupElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
             Mat_t J(GE->FdNdR * Cf);
 
             // coefficient used during integration
-            double coef = h*GE->FIPs[i].w; // *detJ is not neccessary since qx,qy,qz are already multiplied by detJ (due to normal)
+            double coef = GE->FIPs[i].w; // *detJ is not neccessary since qx,qy,qz are already multiplied by detJ (due to normal)
             if (GTy==axs_t)
             {
                 // calculate radius=x at this FIP
@@ -475,7 +490,7 @@ inline void HMupElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B,
     Mat_t dNdX(Ji * GE->dNdR); // dNdX = Inv(J) * dNdR
 
     // coefficient used during integration
-    Coef = h*detJ*IP.w;
+    Coef = detJ*IP.w;
 
     // B matrix
     B.change_dim (NCo,NDs);
@@ -546,9 +561,9 @@ inline void HMupElem::CalcFint (Vec_t * F_int) const
     double detJ, coef;
     Mat_t C, B, Bp, N, Np, Kw;
     Vec_t BtSig (NDs);
-    Vec_t fs    (NDs);
+    Vec_t fu    (NDs);
     Vec_t fp    (NDp);
-    set_to_zero (fs);
+    set_to_zero (fu);
     set_to_zero (fp);
     CoordMatrix (C);
     Vec_t sig(NDim*2); // total stress
@@ -560,17 +575,12 @@ inline void HMupElem::CalcFint (Vec_t * F_int) const
         // hydraulic variables
         Mdl->Hydraulic (Sta[i], Kw, chiw, invQs);
 
-        // force due to stress in solids
-        HMState const & sta = static_cast<HMState const *>(Sta[i]);
+        // force due to displacements
+        HMState const * sta = static_cast<HMState const *>(Sta[i]);
         sig   = sta->Sig - (alp*chiw*sta->pw)*Iv;
         BtSig = trans(B)*sig;
-        fs   += coef * BtSig;
+        fu   += coef * BtSig;
     }
-
-    // assemble Fe vector (element force)
-    Vec_t Fe(NDt);
-    for (size_t i=0; i<NDs; ++i) Fe(i)     = fs(i);
-    for (size_t i=0; i<NDp; ++i) Fe(NDs+i) = fp(i);
 
     // set nodes directly
     if (F_int==NULL)
@@ -578,20 +588,23 @@ inline void HMupElem::CalcFint (Vec_t * F_int) const
         // add to F
         for (size_t i=0; i<GE->NN; ++i)
         {
-            size_t k = 0;
-            Con[i]->F[Con[i]->FMap("fx")] += Fe(k+i*NDn);  k++;
-            Con[i]->F[Con[i]->FMap("fy")] += Fe(k+i*NDn);  k++;  if (NDim==3) {
-            Con[i]->F[Con[i]->FMap("fz")] += Fe(k+i*NDn);  k++; }
-            Con[i]->F[Con[i]->FMap("Qw")] += Fe(k+i*NDn);  k++;
+            Con[i]->F[Con[i]->FMap("fx")] += fu(0+i*NDim);
+            Con[i]->F[Con[i]->FMap("fy")] += fu(1+i*NDim); if (NDim==3) {
+            Con[i]->F[Con[i]->FMap("fz")] += fu(2+i*NDim); }
+            Con[i]->F[Con[i]->FMap("Qw")] += fp(i);
         }
     }
 
     // add to F_int
     else
     {
-        Array<size_t> loc;
-        GetLoc (loc);
-        for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += Fe(i);
+        for (size_t i=0; i<GE->NN; ++i)
+        {
+            (*F_int)(Con[i]->EQ[Con[i]->FMap("fx")]) += fu(0+i*NDim);
+            (*F_int)(Con[i]->EQ[Con[i]->FMap("fy")]) += fu(1+i*NDim); if (NDim==3) {
+            (*F_int)(Con[i]->EQ[Con[i]->FMap("fz")]) += fu(2+i*NDim); }
+            (*F_int)(Con[i]->EQ[Con[i]->FMap("Qw")]) += fp(i);
+        }
     }
 }
 
@@ -627,8 +640,9 @@ inline void HMupElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
 
         // strain and (effective) stress increments
+        Vec_t tmp(Np*dup);
         deps = B * dus;
-        dpw  = Dot(Np,dup);
+        dpw  = tmp(0);
         su.Update (dpw, deps, Sta[i], dsig);
         dsig -= (alp*chiw*dpw)*Iv; // dsig is now total stress increment
 
@@ -641,7 +655,7 @@ inline void HMupElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
         // element nodal forces (fluid)
         dgra    = Bp * dup;
-        dvel    = Km * dgra;
+        dvel    = Kw * dgra;
         Bptdvel = trans(Bp)*dvel;
         dfp    += coef * Bptdvel; // add here S
     }
@@ -682,14 +696,14 @@ inline void HMupElem::StateKeys (Array<String> & Keys) const
     //           sig,eps       p,q,ev,ed       pw
     Keys.Resize (2*Mdl->NCps + 4 + Mdl->NIvs + 1);
     size_t k=0;
-    Keys[k++] = "sx";
-    Keys[k++] = "sy";
-    Keys[k++] = "sz";
-    Keys[k++] = "sxy";
+    Keys[k++] = "sx'";
+    Keys[k++] = "sy'";
+    Keys[k++] = "sz'";
+    Keys[k++] = "sxy'";
     if (NDim==3)
     {
-        Keys[k++] = "syz";
-        Keys[k++] = "szx";
+        Keys[k++] = "syz'";
+        Keys[k++] = "szx'";
     }
     Keys[k++] = "ex";
     Keys[k++] = "ey";
@@ -700,12 +714,12 @@ inline void HMupElem::StateKeys (Array<String> & Keys) const
         Keys[k++] = "eyz";
         Keys[k++] = "ezx";
     }
-    Keys[k++] = "pcam";
+    Keys[k++] = "pcam'";
     Keys[k++] = "qcam";
     Keys[k++] = "ev";
     Keys[k++] = "ed";
     for (size_t i=0; i<Mdl->NIvs; ++i) Keys[k++] = Mdl->IvNames[i];
-    Keys[k++] = "pw";
+    Keys[k++] = "pwIP"; // cannot be pw, since ParaView SegFaults in case there are point and cell data with the same name
 }
 
 inline void HMupElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
@@ -717,14 +731,14 @@ inline void HMupElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
     if (NDim==2)
     {
-        KeysVals.Set("sx sy sz sxy  ex ey ez exy  pcam qcam  ev ed  pw",
+        KeysVals.Set("sx' sy' sz' sxy'  ex ey ez exy  pcam' qcam  ev ed  pwIP",
                      sig(0), sig(1), sig(2), sig(3)/Util::SQ2,
                      eps(0), eps(1), eps(2), eps(3)/Util::SQ2,
                      Calc_pcam(sig), Calc_qcam(sig), Calc_ev(eps), Calc_ed(eps), pw);
     }
     else
     {
-        KeysVals.Set("sx sy sz sxy syz szx  ex ey ez exy eyz ezx  pcam qcam  ev ed  pw",
+        KeysVals.Set("sx' sy' sz' sxy' syz' szx'  ex ey ez exy eyz ezx  pcam' qcam  ev ed  pwIP",
                      sig(0), sig(1), sig(2), sig(3)/Util::SQ2, sig(4)/Util::SQ2, sig(5)/Util::SQ2,
                      eps(0), eps(1), eps(2), eps(3)/Util::SQ2, eps(4)/Util::SQ2, eps(5)/Util::SQ2,
                      Calc_pcam(sig), Calc_qcam(sig), Calc_ev(eps), Calc_ed(eps), pw);
