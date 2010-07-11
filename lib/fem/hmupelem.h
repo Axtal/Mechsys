@@ -54,6 +54,8 @@ public:
     // Methods
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void CalcK       (Vec_t const & U, double Alpha, double dt, Mat_t & KK, Vec_t & dF) const;
+    void CalcKC      (Mat_t & KK, Mat_t & CC)               const; ///< Augmented stiffness(K) and damping(C) matrices
     void CalcKCM     (Mat_t & KK, Mat_t & CC, Mat_t & MM)   const; ///< Augmented stiffness(K), damping(C), and mass(M) matrices
     void CalcFint    (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
@@ -389,7 +391,7 @@ inline void HMupElem::Matrices (Mat_t & M, Mat_t & K, Mat_t & Q, Mat_t & Qb, Mat
     M .change_dim (NDs,NDs); // mass matrix
     K .change_dim (NDs,NDs); // stiffness matrix
     Q .change_dim (NDs,NDp); // coupling matrix
-    Qb.change_dim (NDs,NDp); // coupling matrix (bar)
+    Qb.change_dim (NDp,NDs); // coupling matrix (bar)
     H .change_dim (NDp,NDp); // permeability matrix
     S .change_dim (NDp,NDp); // compressibility matrix
     set_to_zero (M);
@@ -400,40 +402,79 @@ inline void HMupElem::Matrices (Mat_t & M, Mat_t & K, Mat_t & Q, Mat_t & Qb, Mat
     set_to_zero (S);
 
     // auxiliar matrices
-    double chiw, invQs;
+    double Sw=1, chiw, Cs;
     double detJ, coef;
-    Vec_t Dw;
-    Mat_t C, D, B, Bp, N, Np, Kw;
+    Vec_t Dwv;
+    Mat_t C, D, Dw, B, Bp, N, Np, Kw;
+    Mat_t X      (Im.num_rows(),1);
     Mat_t NtN    (NDs,NDs);
     Mat_t BtDB   (NDs,NDs);
-    Mat_t BtINp  (NDs,NDp);
+    Mat_t BtXNp  (NDs,NDp);
+    Mat_t NptItB (NDp,NDs);
     Mat_t BptkBp (NDp,NDp);
     Mat_t NptNp  (NDp,NDp);
     CoordMatrix  (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
-        Mdl->Hydraulic (Sta[i], Kw, chiw, invQs);
-        Mdl->Stiffness (Sta[i], D, Dw);
-        Interp (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+        //Sw = static_cast<HMState const *>(Sta[i])->Sw;
+        Interp         (C, GE->IPs[i], B, Bp, N, Np, detJ, coef);
+        Mdl->Hydraulic (Sta[i], Kw, chiw, Cs);
+        Mdl->Stiffness (Sta[i], D, Dwv);
+        Vec2ColMat     (Dwv, Dw);
+        X      = Dw - chiw*Im;
         NtN    = trans(N)*N;
         BtDB   = trans(B)*D*B;
-        BtINp  = trans(B)*Im*Np;
+        BtXNp  = trans(B)*X*Np;
+        NptItB = trans(Np)*trans(Im)*B;
         BptkBp = trans(Bp)*Kw*Bp;
         NptNp  = trans(Np)*Np;
-        M     += (coef*rho)      * NtN;
-        K     += (coef)          * BtDB;
-        Q     += (coef*alp*chiw) * BtINp;
-        Qb    += (coef*alp)      * BtINp;
-        H     += (coef)          * BptkBp;
-        S     += (coef*invQs)    * NptNp;
+        M     += (coef*rho) * NtN;
+        K     += (coef)     * BtDB;
+        Q     += (coef)     * BtXNp;
+        Qb    += (coef*Sw)  * NptItB;
+        H     += (coef)     * BptkBp;
+        S     += (coef*Cs)  * NptNp;
     }
 
-    //cout << "M  = \n" << PrintMatrix(M);
-    //cout << "K  = \n" << PrintMatrix(K);
-    //cout << "Q  = \n" << PrintMatrix(Q);
-    //cout << "Qb = \n" << PrintMatrix(Qb);
-    //cout << "H  = \n" << PrintMatrix(H);
-    //cout << "S  = \n" << PrintMatrix(S);
+    //cout << "M  = \n" << PrintMatrix(M, "%18.8e");
+    //cout << "K  = \n" << PrintMatrix(K, "%14.4e");
+    //cout << "Q  = \n" << PrintMatrix(Q, "%14.4e");
+    //cout << "Qb = \n" << PrintMatrix(Mat_t(-1.0*Qb),"%14.4e");
+    //cout << "H  = \n" << PrintMatrix(Mat_t(-1.0*H), "%14.4e");
+    //cout << "S  = \n" << PrintMatrix(S, "%14.4e");
+}
+
+inline void HMupElem::CalcK (Vec_t const & U, double Alpha, double dt, Mat_t & KK, Vec_t & dF) const
+{
+    // submatrices
+    Mat_t     M, K, Q, Qb, H, S;
+    Matrices (M, K, Q, Qb, H, S);
+
+    // pressure vector
+    Vec_t Up(NDp);
+    for (size_t i=0; i<GE->NN; ++i) Up(i) = U(Con[i]->EQ[Con[i]->FMap("Qw")]);
+
+    // auxiliar vector
+    Vec_t HUp(H*Up);
+
+    // assemble
+    KK.change_dim (NDt,NDt);
+    set_to_zero   (KK);
+    for (size_t i=0; i<NDs; ++i)
+    {
+        for (size_t j=0; j<NDs; ++j) KK(i,j)     = K(i,j);
+        for (size_t j=0; j<NDp; ++j) KK(i,NDs+j) = Q(i,j);
+    }
+    for (size_t i=0; i<NDp; ++i)
+    {
+        for (size_t j=0; j<NDs; ++j) KK(NDs+i,j)     = Qb(i,j);
+        for (size_t j=0; j<NDp; ++j) KK(NDs+i,NDs+j) = S(i,j) + Alpha*dt*H(i,j);
+        dF(Con[i]->EQ[Con[i]->FMap("Qw")]) += -dt*HUp(i);
+    }
+
+    //cout << "KK = \n" << PrintMatrix(KK);
+    //cout << "CC = \n" << PrintMatrix(CC);
+    //cout << "MM = \n" << PrintMatrix(MM);
 }
 
 inline void HMupElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
@@ -457,11 +498,11 @@ inline void HMupElem::CalcKCM (Mat_t & KK, Mat_t & CC, Mat_t & MM) const
             CC(i,j) = 0.0; // Rayleigh: Am*M + Ak*K
             KK(i,j) = K(i,j);
         }
-        for (size_t j=0; j<NDp; ++j) KK(i,NDs+j) = -Q(i,j);
+        for (size_t j=0; j<NDp; ++j) KK(i,NDs+j) = Q(i,j);
     }
     for (size_t i=0; i<NDp; ++i)
     {
-        for (size_t j=0; j<NDs; ++j) CC(NDs+i,j) = Qb(j,i);
+        for (size_t j=0; j<NDs; ++j) CC(NDs+i,j) = Qb(i,j);
         for (size_t j=0; j<NDp; ++j)
         {
             CC(NDs+i,NDs+j) = S(i,j);
@@ -488,6 +529,16 @@ inline void HMupElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B,
     Mat_t Ji;
     Inv (J, Ji);
     Mat_t dNdX(Ji * GE->dNdR); // dNdX = Inv(J) * dNdR
+
+    //cout << "dNdR =\n" << PrintMatrix(GE->dNdR,"%14.4e");
+    //cout << "C =\n" << PrintMatrix(C,"%14.4e");
+    //cout << "J =\n" << PrintMatrix(J,"%14.4e");
+    //cout << "dNdR =\n" << PrintMatrix(GE->dNdR,"%18.8e");
+    //cout << "C =\n" << PrintMatrix(C,"%18.8e");
+    //cout << "J =\n" << PrintMatrix(J,"%18.8e");
+    //cout << "Ji =\n" << PrintMatrix(Ji,"%18.8e");
+    //cout << "IP = " << IP.r << " " << IP.s << " " << IP.t << endl;
+    //cout << "dNdX =\n" << PrintMatrix(dNdX,"%18.8e");
 
     // coefficient used during integration
     Coef = detJ*IP.w;
@@ -662,6 +713,10 @@ inline void HMupElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
     if (F_int!=NULL)
     {
+        //Mat_t M, K, Q, Qb, H, S;
+        //Matrices (M, K, Q, Qb, H, S);
+        //dfp += (1.0/0.1)*Qb*dus + (1.0/0.1)*S*dup;
+
         // assemble dFe vector (element force)
         Vec_t dFe(NDt);
         for (size_t i=0; i<NDs; ++i) dFe(i)     = dfs(i);
