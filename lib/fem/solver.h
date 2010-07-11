@@ -975,19 +975,6 @@ inline void Solver::_NR_update (double tf)
     }
 }
 
-inline void Solver::_presc_F (double t)
-{
-    for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
-    {
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
-        {
-            size_t idof = q->first;
-            long   eq   = p->first->EQ[idof];
-            F(eq) = (*p->second.second)(t) * q->second;
-        }
-    }
-}
-
 inline void Solver::_GN22_update (double tf, double dt)
 {
     // constants
@@ -1004,12 +991,32 @@ inline void Solver::_GN22_update (double tf, double dt)
         A  = c3*(U - Us);
         V  = Vs + (DynTh1*dt)*A;
 
+        // new F
+        for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
+        {
+            for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+            {
+                size_t idof = q->first;
+                long   eq   = p->first->EQ[idof];
+                if (!pU[eq]) // set dF for unknown variables only
+                {
+                    double dFdt = (*p->second.second)(Time+DynTh1*dt);
+                    F(eq) += dFdt*dt;
+                    //F(eq) = (*p->second.second)(Time+DynTh1*dt);
+                }
+            }
+        }
+        double normF = Norm(F);
+
         // iterations
         for (It=0; It<MaxIt; ++It)
         {
             // new F and residual
-            _presc_F (Time+dt);
             R = F - F_int;
+            //std::cout << "F    = " << PrintVector(F,     "%8.2f");
+            //std::cout << "Fint = " << PrintVector(F_int, "%8.2f");
+            //std::cout << "R    = " << PrintVector(R,     "%8.2f");
+            //std::cout << std::endl;
 
             // assemble Amat
             if (DampTy==None_t) AssembleKMA  (c3,     1.0);  // A = c3*M        + K
@@ -1031,7 +1038,7 @@ inline void Solver::_GN22_update (double tf, double dt)
 
             // check convergence
             NormR    = Norm(R);
-            MaxNormF = Util::Max (Norm(F), Norm(F_int));
+            MaxNormF = Util::Max (normF, Norm(F_int));
             if (ResidOK()) break;
         }
         if (It>=MaxIt) throw new Fatal("Solver::_GN22_update: Generalized-Newmark (GN22) did not converge after %d iterations",It);
