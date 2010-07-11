@@ -17,8 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_STRESSUPDATE_H
-#define MECHSYS_STRESSUPDATE_H
+#ifndef MECHSYS_HMUPDATE_H
+#define MECHSYS_HMUPDATE_H
 
 // Std Lib
 #include <iostream>
@@ -89,7 +89,8 @@ inline void HMUpdate::Update (double Dpw, Vec_t const & DEps, State * Sta, Vec_t
     {
         dpw  = Dpw;
         deps = DEps;
-        TangentIncs (sta, deps, dsig, divs);
+        TangentIncs (sta, dpw, deps, dsig, divs);
+        sta->pw  += dpw;
         sta->Eps += deps;
         sta->Sig += dsig;
         sta->Ivs += divs;
@@ -114,7 +115,7 @@ inline void HMUpdate::Update (double Dpw, Vec_t const & DEps, State * Sta, Vec_t
             // update to intersection
             dpw  = aint*Dpw;
             deps = aint*DEps;
-            TangentIncs (sta, deps, dsig, divs);
+            TangentIncs (sta, dpw, deps, dsig, divs);
             sta->Eps += deps;
             sta->Sig += dsig;
             sta->Ivs += divs;
@@ -212,4 +213,4 @@ inline void HMUpdate::TangentIncs (HMState const * sta, double dpw, Vec_t const 
     dsig = D*deps + Dw*dpw;
 }
 
-#endif // MECHSYS_STRESSUPDATE_H
+#endif // MECHSYS_HMUPDATE_H

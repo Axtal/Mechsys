@@ -34,9 +34,9 @@ public:
     HMElastic (int NDim, SDPair const & Prms);
 
     // Methods
-    void InitIvs   (SDPair const & Ini, State * Sta)                                          const;
-    void Stiffness (State const * Sta, Mat_t & D, Vec_t & Dw, Vec_t * h=NULL, Vec_t * d=NULL) const;
-    void Hydraulic (State const * Sta, Mat_t & Kw, double & ChiW, double & InvQs)             const;
+    void InitIvs   (SDPair const & Ini, State * Sta)                                           const;
+    void Stiffness (State const * Sta, Mat_t & D, Vec_t & Dw, Vec_t * h=NULL, Vec_t * d=NULL)  const;
+    void Hydraulic (State const * Sta, Mat_t & Kw, double & ChiW, double & InvQs) const;
 
     // Data
     double E;
@@ -54,6 +54,7 @@ inline HMElastic::HMElastic (int NDim, SDPair const & Prms)
     NCps = 2*NDim;
     E    = Prms("E");
     nu   = Prms("nu");
+    double gamW = Prms("gamW");
     double kw  = (Prms.HasKey("kw")  ? Prms("kw")  : 1.0);
     double kwx = (Prms.HasKey("kwx") ? Prms("kwx") : kw);
     double kwy = (Prms.HasKey("kwy") ? Prms("kwy") : kw);
@@ -70,6 +71,7 @@ inline HMElastic::HMElastic (int NDim, SDPair const & Prms)
              0.0, kwy, 0.0,
              0.0, 0.0, kwz;
     }
+    Kw /= gamW;
 }
 
 inline void HMElastic::InitIvs (SDPair const & Ini, State * Sta) const
@@ -78,8 +80,11 @@ inline void HMElastic::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (Ini);
 }
 
-inline void HMElastic::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, Vec_t * d) const
+inline void HMElastic::Stiffness (State const * Sta, Mat_t & D, Vec_t & Dw, Vec_t * h, Vec_t * d) const
 {
+    Dw.change_dim(NCps);
+    set_to_zero(Dw);
+
     if (NDim==2)
     {
         D.change_dim (4,4);
