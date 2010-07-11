@@ -400,6 +400,13 @@ inline void Mult (Vec_t const & A, Mat_t const & M, Vec_t & B)
         B(j) += A(i)*M(i,j);
 }
 
+/** Create column matrix from vector. */
+inline void Vec2ColMat (Vec_t const & V, Mat_t & M)
+{
+    M.change_dim (size(V),1);
+    for (size_t i=0; i<size(V); ++i) M(i,0) = V(i);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////// Tiny MatVec /////
 
