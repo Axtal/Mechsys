@@ -39,6 +39,7 @@ public:
     double YieldFunc (EquilibState const * Sta)        const;
     double FailCrit  (EquilibState const * Sta)        const;
     double CalcE     (EquilibState const * Sta) const { return fabs(Sta->Sig(0)+Sta->Sig(1)+Sta->Sig(2))*(1.0-2.0*nu)*v0/kap; }
+    //double CalcE     (EquilibState const * Sta) const { return 6000.0; }
 
     // Data
     double         lam;
@@ -107,14 +108,12 @@ inline void CamClay::Gradients (EquilibState const * Sta) const
     Dev     (Sta->Sig, dev_sig);
 
     // gradients
-    Y.change_dim (1);
     V    = (M*M*(Sta->Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
     Y(0) = -M*M*p;
 }
 
 inline void CamClay::Hardening (EquilibState const * Sta) const
 {
-    H.change_dim(1);
     H(0) = Sta->Ivs(0)*Tra(W)/chi;
 }
 

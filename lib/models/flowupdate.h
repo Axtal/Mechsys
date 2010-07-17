@@ -37,8 +37,7 @@ public:
     FlowUpdate (Model const * Mdl);
 
     // Methods
-    void Update      (Vec_t const & DGra, State * Sta, Vec_t & DVel) const;
-    void TangentIncs (FlowState const * sta, Vec_t & dgra, Vec_t & dvel, Vec_t & divs) const;
+    void Update (Vec_t const & DGra, State * Sta, Vec_t & DVel) const;
 
     // Data
     Model const * Mdl;
@@ -82,7 +81,7 @@ inline void FlowUpdate::Update (Vec_t const & DGra, State * Sta, Vec_t & DVel) c
         Vec_t dgra(DGra/NDiv);
         for (size_t i=0; i<NDiv; ++i)
         {
-            TangentIncs (sta, dgra, dvel, divs);
+            Mdl->TgIncs (sta, dgra, dvel, divs);
             sta->Vel += dvel;
             sta->Gra += dgra;
             sta->Ivs += divs;
@@ -92,19 +91,6 @@ inline void FlowUpdate::Update (Vec_t const & DGra, State * Sta, Vec_t & DVel) c
 
     // return total stress increment
     DVel = sta->Vel - DVel;
-}
-
-inline void FlowUpdate::TangentIncs (FlowState const * sta, Vec_t & dgra, Vec_t & dvel, Vec_t & divs) const
-{
-    Mat_t D;
-    if (size(sta->Ivs)>0)
-    {
-        Vec_t h, d;
-        Mdl->Stiffness (sta, D, &h, &d);
-        divs = h*dot(d,dgra);
-    }
-    else Mdl->Stiffness (sta, D);
-    dvel = -1.0*D*dgra;
 }
 
 #endif // MECHSYS_FLOWUPDATE_H

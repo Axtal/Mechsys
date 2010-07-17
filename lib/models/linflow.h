@@ -31,13 +31,15 @@ public:
     LinFlow (int NDim, SDPair const & Prms);
 
     // Methods
-    void InitIvs   (SDPair const & Ini, State * Sta)                              const;
-    void Stiffness (State const * Sta, Mat_t & D, Vec_t * h=NULL, Vec_t * d=NULL) const;
+    void InitIvs   (SDPair const & Ini, State * Sta)                             const;
+    void TgIncs    (State const * Sta, Vec_t & DGra, Vec_t & DVel, Vec_t & DIvs) const { DVel = -1.0*D*DGra; }
+    void Stiffness (State const * Sta, Mat_t & TheD)                             const { TheD = D; }
 
     // Data
     double kx;
     double ky;
     double kz;
+    Mat_t  D;
 };
 
 
@@ -47,6 +49,7 @@ public:
 inline LinFlow::LinFlow (int NDim, SDPair const & Prms)
     : Model (NDim,Prms,"LinFlow")
 {
+    // parameters
     if (Prms.HasKey("k"))
     {
         double k = Prms("k");
@@ -60,16 +63,8 @@ inline LinFlow::LinFlow (int NDim, SDPair const & Prms)
         ky = Prms("ky");  if (NDim==3)
         kz = Prms("kz");
     }
-}
 
-inline void LinFlow::InitIvs (SDPair const & Ini, State * Sta) const
-{
-    FlowState * sta = static_cast<FlowState*>(Sta);
-    sta->Init (Ini);
-}
-
-inline void LinFlow::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, Vec_t * d) const
-{
+    // stiffness
     D.change_dim (NDim,NDim);
     if (NDim==2)
     {
@@ -82,6 +77,12 @@ inline void LinFlow::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, Vec_t *
             0.0,  ky, 0.0,
             0.0, 0.0,  kz;
     }
+}
+
+inline void LinFlow::InitIvs (SDPair const & Ini, State * Sta) const
+{
+    FlowState * sta = static_cast<FlowState*>(Sta);
+    sta->Init (Ini);
 }
 
 

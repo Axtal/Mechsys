@@ -34,13 +34,14 @@ public:
     LinElastic (int NDim, SDPair const & Prms);
 
     // Methods
-    void   InitIvs   (SDPair const & Ini, State * Sta)                              const;
-    void   Stiffness (State const * Sta, Mat_t & D, Vec_t * h=NULL, Vec_t * d=NULL) const;
-    double CalcDEz   (State const * Sta, Vec_t const & DSig)                        const;
+    void InitIvs   (SDPair const & Ini, State * Sta)                             const;
+    void TgIncs    (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;
+    void Stiffness (State const * Sta, Mat_t & D)                                const { D = De; }
 
     // Data
     double E;
     double nu;
+    Mat_t  De;
 };
 
 
@@ -50,9 +51,47 @@ public:
 inline LinElastic::LinElastic (int NDim, SDPair const & Prms)
     : Model (NDim,Prms,"LinElastic")
 {
-    NCps = 2*NDim;
-    E    = Prms("E");
-    nu   = Prms("nu");
+    // parameters
+    E  = Prms("E");
+    nu = Prms("nu");
+
+    // elastic stiffness
+    if (NDim==2)
+    {
+        De.change_dim (4,4);
+        if (GTy==pse_t)
+        {
+            double c = E/(1.0-nu*nu);
+            De = c,    c*nu, 0.0,        0.0,
+                 c*nu, c,    0.0,        0.0,
+                 0.0,  0.0,  0.0,        0.0,
+                 0.0,  0.0,  0.0, c*(1.0-nu);
+        }
+        else if (GTy==psa_t || GTy==axs_t)
+        {
+            double c = E/((1.0+nu)*(1.0-2.0*nu));
+            De = c*(1.0-nu),       c*nu ,      c*nu ,            0.0,
+                      c*nu ,  c*(1.0-nu),      c*nu ,            0.0,
+                      c*nu ,       c*nu , c*(1.0-nu),            0.0,
+                       0.0 ,        0.0 ,       0.0 , c*(1.0-2.0*nu);
+        }
+        else throw new Fatal("LinElastic::Stiffness: 2D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
+    }
+    else
+    {
+        if (GTy==d3d_t)
+        {
+            De.change_dim (6,6);
+            double c = E/((1.0+nu)*(1.0-2.0*nu));
+            De = c*(1.0-nu),       c*nu ,      c*nu ,            0.0,            0.0,            0.0,
+                      c*nu ,  c*(1.0-nu),      c*nu ,            0.0,            0.0,            0.0,
+                      c*nu ,       c*nu , c*(1.0-nu),            0.0,            0.0,            0.0,
+                       0.0 ,        0.0 ,       0.0 , c*(1.0-2.0*nu),            0.0,            0.0,
+                       0.0 ,        0.0 ,       0.0 ,            0.0, c*(1.0-2.0*nu),            0.0,
+                       0.0 ,        0.0 ,       0.0 ,            0.0,            0.0, c*(1.0-2.0*nu);
+        }
+        else throw new Fatal("LinElastic::Stiffness: 3D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
+    }
 }
 
 inline void LinElastic::InitIvs (SDPair const & Ini, State * Sta) const
@@ -61,51 +100,12 @@ inline void LinElastic::InitIvs (SDPair const & Ini, State * Sta) const
     sta->Init (Ini);
 }
 
-inline void LinElastic::Stiffness (State const * Sta, Mat_t & D, Vec_t * h, Vec_t * d) const
+inline void LinElastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const
 {
-    if (NDim==2)
-    {
-        D.change_dim (4,4);
-        if (GTy==pse_t)
-        {
-            double c = E/(1.0-nu*nu);
-            D = c,    c*nu, 0.0,        0.0,
-                c*nu, c,    0.0,        0.0,
-                0.0,  0.0,  0.0,        0.0,
-                0.0,  0.0,  0.0, c*(1.0-nu);
-        }
-        else if (GTy==psa_t || GTy==axs_t)
-        {
-            double c = E/((1.0+nu)*(1.0-2.0*nu));
-            D = c*(1.0-nu),       c*nu ,      c*nu ,            0.0,
-                     c*nu ,  c*(1.0-nu),      c*nu ,            0.0,
-                     c*nu ,       c*nu , c*(1.0-nu),            0.0,
-                      0.0 ,        0.0 ,       0.0 , c*(1.0-2.0*nu);
-        }
-        else throw new Fatal("LinElastic::Stiffness: 2D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
-    }
-    else
-    {
-        if (GTy==d3d_t)
-        {
-            D.change_dim (6,6);
-            double c = E/((1.0+nu)*(1.0-2.0*nu));
-            D = c*(1.0-nu),       c*nu ,      c*nu ,            0.0,            0.0,            0.0,
-                     c*nu ,  c*(1.0-nu),      c*nu ,            0.0,            0.0,            0.0,
-                     c*nu ,       c*nu , c*(1.0-nu),            0.0,            0.0,            0.0,
-                      0.0 ,        0.0 ,       0.0 , c*(1.0-2.0*nu),            0.0,            0.0,
-                      0.0 ,        0.0 ,       0.0 ,            0.0, c*(1.0-2.0*nu),            0.0,
-                      0.0 ,        0.0 ,       0.0 ,            0.0,            0.0, c*(1.0-2.0*nu);
-        }
-        else throw new Fatal("LinElastic::Stiffness: 3D: This model is not available for GeometryType = %s",GTypeToStr(GTy).CStr());
-    }
+    DSig = De*DEps;
+    if (GTy==pse_t) DEps(2) = -nu*(DSig(0)+DSig(1))/E;
 }
 
-inline double LinElastic::CalcDEz (State const * Sta, Vec_t const & DSig) const
-{
-    if (GTy!=pse_t) throw new Fatal("LinElastic::CalcDEz: %dD: This method is not available for GeometryType = %s",NDim,GTypeToStr(GTy).CStr());
-    return -nu*(DSig(0)+DSig(1))/E;
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////// Autoregistration /////
 

@@ -37,8 +37,7 @@ public:
     StressUpdate (Model const * Mdl);
 
     // Methods
-    void Update      (Vec_t const & DEps, State * Sta, Vec_t & DSig) const;
-    void TangentIncs (EquilibState const * sta, Vec_t & deps, Vec_t & dsig, Vec_t & divs) const;
+    void Update (Vec_t const & DEps, State * Sta, Vec_t & DSig) const;
 
     // Data
     Model const * Mdl;
@@ -87,7 +86,7 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
     if (Scheme==SingleFE_t) // without intersection detection (should be used for linear elasticity only)
     {
         deps = DEps;
-        TangentIncs (sta, deps, dsig, divs);
+        Mdl->TgIncs (sta, deps, dsig, divs);
         sta->Eps += deps;
         sta->Sig += dsig;
         sta->Ivs += divs;
@@ -110,7 +109,7 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
         {
             // update to intersection
             deps = aint*DEps;
-            TangentIncs (sta, deps, dsig, divs);
+            Mdl->TgIncs (sta, deps, dsig, divs);
             sta->Eps += deps;
             sta->Sig += dsig;
             sta->Ivs += divs;
@@ -137,11 +136,11 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
 
             // FE and ME increments
             deps_1 = dT*deps;
-            TangentIncs (sta, deps_1, dsig_1, divs_1);
+            Mdl->TgIncs (sta, deps_1, dsig_1, divs_1);
             sta_1.Eps = sta->Eps + deps_1;
             sta_1.Sig = sta->Sig + dsig_1;
             sta_1.Ivs = sta->Ivs + divs_1;
-            TangentIncs (&sta_1, deps_1, dsig_2, divs_2);
+            Mdl->TgIncs (&sta_1, deps_1, dsig_2, divs_2);
             sta_ME.Sig = sta->Sig + 0.5*(dsig_1+dsig_2);
             sta_ME.Ivs = sta->Ivs + 0.5*(divs_1+divs_2);
 
@@ -167,6 +166,9 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
                 // drift correction
                 if (CDrift) Mdl->CorrectDrift (sta);
 
+                // update stress path in model
+                Mdl->UpdatePath (sta, deps_1, Vec_t(0.5*(dsig_1+dsig_2)));
+
                 // limit change on stepsize
                 if (m>mMax) m = mMax;
             }
@@ -184,22 +186,6 @@ inline void StressUpdate::Update (Vec_t const & DEps, State * Sta, Vec_t & DSig)
 
     // return total stress increment
     DSig = sta->Sig - DSig;
-}
-
-inline void StressUpdate::TangentIncs (EquilibState const * sta, Vec_t & deps, Vec_t & dsig, Vec_t & divs) const
-{
-    Mat_t D;
-    if (size(sta->Ivs)>0)
-    {
-        Vec_t h, d;
-        Mdl->Stiffness (sta, D, &h, &d);
-        divs = h*dot(d,deps);
-    }
-    else Mdl->Stiffness (sta, D);
-    dsig = D*deps;
-
-    // calculate dez for plane-stress
-    if (Mdl->GTy==pse_t) deps(2) = Mdl->CalcDEz(sta, dsig);
 }
 
 #endif // MECHSYS_STRESSUPDATE_H
