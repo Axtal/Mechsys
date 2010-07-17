@@ -898,6 +898,98 @@ inline void EigenProjAnalytic (Vec_t const & Ten, Vec3_t & L, Vec_t & P0, Vec_t 
     }
 }
 
+/** Initialize (global) fourth order identity tensor. */
+inline void Calc_IIsym (size_t NCp, Mat_t & IIsym)
+{
+    IIsym.change_dim(NCp,NCp);
+    if (NCp==4)
+    {
+        IIsym = 1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0;
+    }
+    else if (NCp==6)
+    {
+        IIsym = 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
+    }
+    else throw new Fatal("matvec.h::Calc_IIsym: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Initialize (global) IdyI fourth order tensor. */
+inline void Calc_IdyI (size_t NCp, Mat_t & IdyI)
+{
+    IdyI.change_dim(NCp,NCp);
+    if (NCp==4)
+    {
+        IdyI = 1.0, 1.0, 1.0, 0.0,
+               1.0, 1.0, 1.0, 0.0,
+               1.0, 1.0, 1.0, 0.0,
+               0.0, 0.0, 0.0, 0.0;
+    }
+    else if (NCp==6)
+    {
+        IdyI = 1.0, 1.0, 1.0, 0.0, 0.0, 0.0,
+               1.0, 1.0, 1.0, 0.0, 0.0, 0.0,
+               1.0, 1.0, 1.0, 0.0, 0.0, 0.0,
+               0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+               0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+               0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    }
+    else throw new Fatal("matvec.h::Calc_IIsym: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Initialize (global) fourth order symmetric-deviatoric tensor. */
+inline void Calc_Psd (size_t NCp, Mat_t & Psd)
+{
+    Psd.change_dim(NCp,NCp);
+    if (NCp==4)
+    {
+        Psd =  2.0/3.0, -1.0/3.0, -1.0/3.0, 0.0,
+              -1.0/3.0,  2.0/3.0, -1.0/3.0, 0.0,
+              -1.0/3.0, -1.0/3.0,  2.0/3.0, 0.0,
+                   0.0,      0.0,      0.0, 1.0;
+    }
+    else if (NCp==6)
+    {
+        Psd =  2.0/3.0, -1.0/3.0, -1.0/3.0, 0.0, 0.0, 0.0,
+              -1.0/3.0,  2.0/3.0, -1.0/3.0, 0.0, 0.0, 0.0,
+              -1.0/3.0, -1.0/3.0,  2.0/3.0, 0.0, 0.0, 0.0,
+                   0.0,      0.0,      0.0, 1.0, 0.0, 0.0,
+                   0.0,      0.0,      0.0, 0.0, 1.0, 0.0,
+                   0.0,      0.0,      0.0, 0.0, 0.0, 1.0;
+    }
+    else throw new Fatal("matvec.h::Calc_IIsym: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
+/** Initialize (global) fourth order isotropic tensor. */
+inline void Calc_Piso (size_t NCp, Mat_t & Piso)
+{
+    Piso.change_dim(NCp,NCp);
+    if (NCp==4)
+    {
+        Piso = 1.0/3.0, 1.0/3.0, 1.0/3.0, 0.0,
+               1.0/3.0, 1.0/3.0, 1.0/3.0, 0.0,
+               1.0/3.0, 1.0/3.0, 1.0/3.0, 0.0,
+                   0.0,     0.0,     0.0, 0.0;
+    }
+    else if (NCp==6)
+    {
+        Piso = 1.0/3.0, 1.0/3.0, 1.0/3.0, 0.0, 0.0, 0.0,
+               1.0/3.0, 1.0/3.0, 1.0/3.0, 0.0, 0.0, 0.0,
+               1.0/3.0, 1.0/3.0, 1.0/3.0, 0.0, 0.0, 0.0,
+                   0.0,     0.0,     0.0, 0.0, 0.0, 0.0,
+                   0.0,     0.0,     0.0, 0.0, 0.0, 0.0,
+                   0.0,     0.0,     0.0, 0.0, 0.0, 0.0;
+    }
+    else throw new Fatal("matvec.h::Calc_IIsym: This method is only available for 2nd order symmetric tensors with either 4 or 6 components according to Mandel's representation");
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////// Invariants ////////////
 
