@@ -27,6 +27,9 @@
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/models/camclay.h>
+#include <mechsys/models/unconv01.h>
+#include <mechsys/models/unconv02.h>
+#include <mechsys/models/unconv03.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/numstreams.h>
@@ -52,8 +55,7 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
 
     // get stiffness
     Mat_t D;
-    Vec_t h, d;
-    Mdl->Stiffness (Sta, D, &h, &d);
+    Mdl->Stiffness (Sta, D);
 
     // assemble
     for (size_t i=0; i<6; ++i)
@@ -89,44 +91,7 @@ void TgIncs (Model const * Mdl, EquilibState const * Sta, double dT, Vec_t const
     Sparse::AddMult (D22, deps, dsig); // dsig2 += D22*deps2
 
     // calc divs
-    divs = h*dot(d,deps);
-}
-
-void PrintResults (EquilibState const & Sta, bool WithHeader=false)
-{
-    if (WithHeader)
-    {
-        String key("%8s %8s %8s %8s  %10s %10s %10s %10s  %8s %8s %10s %10s %10s  ");
-        for (size_t iv=0; iv<size(Sta.Ivs); ++iv)
-        {
-            String buf0, buf1;
-            buf0.Printf ("z%d",iv);
-            buf1.Printf ("%8s",buf0.CStr());
-            key.append  (buf1);
-        }
-        String lin;
-        lin.Printf (key.CStr(), "sx","sy","sz","sxy", "ex","ey","ez","exy", "p","q","q/p","ev","ed");
-        cout << lin << '\n';
-    }
-
-    double pcam = Calc_pcam (Sta.Sig);
-    double qcam = Calc_qcam (Sta.Sig);
-    double ev   = Calc_ev   (Sta.Eps);
-    double ed   = Calc_ed   (Sta.Eps);
-
-    String key("%8g %8g %8g %8g  %10.3e %10.3e %10.3e %10.3e  %8g %8g %10g %10.3e %10.3e  ");
-    String lin;
-    lin.Printf (key.CStr(),      Sta.Sig(0),     Sta.Sig(1),     Sta.Sig(2),     Sta.Sig(3)/SQ2,
-                            100.*Sta.Eps(0),100.*Sta.Eps(1),100.*Sta.Eps(2),100.*Sta.Eps(3)/SQ2,
-                            pcam,qcam,qcam/pcam,100.*ev,100.*ed);
-    cout << lin;
-    for (size_t iv=0; iv<size(Sta.Ivs); ++iv)
-    {
-        String buf;
-        buf.Printf ("%8g",Sta.Ivs(iv));
-        cout << buf;
-    }
-    cout << "\n";
+    Mdl->TgIncs (Sta, deps, dsig, divs);
 }
 
 struct Increments
@@ -138,15 +103,21 @@ struct Increments
 
 int main(int argc, char **argv) try
 {
+    cout << Util::_8s << endl;
+
     // input
     int  tst       = 4;
+    bool isotrop   = false;
+    bool pcte      = false;
+    bool pstrain   = false;
     int  ninc      = 10;
     bool cor_drift = true;
-    bool print_res = false;
     if (argc>1) tst       = atoi(argv[1]);
-    if (argc>2) ninc      = atoi(argv[2]);
-    if (argc>3) cor_drift = atoi(argv[3]);
-    if (argc>4) print_res = atoi(argv[4]);
+    if (argc>2) isotrop   = atoi(argv[2]);
+    if (argc>3) pcte      = atoi(argv[3]);
+    if (argc>4) pstrain   = atoi(argv[4]);
+    if (argc>5) ninc      = atoi(argv[5]);
+    if (argc>6) cor_drift = atoi(argv[6]);
 
     // path
     Array<Increments> incs;
@@ -159,8 +130,42 @@ int main(int argc, char **argv) try
     double pf  = 3.0*p0/(3.0-M);
     double qf  = M*pf;
     double phi = M2Phi(M,"cam");
+    double K   = E/(3.0*(1.0-2.0*nu));
+    double G   = E/(2.0*(1.0+nu));
     incs.Resize (1);
-    incs[0].dey = -0.1;
+    if (isotrop)
+    {
+        incs[0].dsx = -p0;
+        incs[0].dsy = -p0;
+        incs[0].dsz = -p0;
+    }
+    else
+    {
+        if (pcte)
+        {
+            incs[0].dsz = -60.0;
+            incs[0].dsx = -incs[0].dsz/2.0;
+            incs[0].dsy = -incs[0].dsz/2.0;
+        }
+        else if (pstrain)
+        {
+            cout << "pstrain" << endl;
+            /* TODO: check this
+            incs[0].dez = -0.001;
+            incs[0].dex = 1.0e-9;
+            incs[0].dey = 1.0e-9;
+            */
+            double pf  = p0;
+            double qf  = 100.0;
+            double thf = 0.0;
+            Vec3_t L;
+            pqth2L (pf,qf,thf,L,"cam");
+            incs[0].dsx = L(0)-(-p0);
+            incs[0].dsy = L(1)-(-p0);
+            incs[0].dsz = L(2)-(-p0);
+        }
+        else incs[0].dey = -0.04;
+    }
 
     // model, parameters, and initial values
     String name;
@@ -214,6 +219,58 @@ int main(int argc, char **argv) try
             incs[2].dsz = -481.0;
             break;
         }
+        case 6: // Unconv01
+        {
+            cout << "[1;33m================================ (6) Unconv 01 =================================[0m\n";
+            name = "Unconv01";
+            double l0    = 0.001;
+            double l1    = 0.005;
+            double l3    = 0.008;
+            double betb  = 100.0;
+            double betbb = 100.0;
+            double v0    = 2.0;
+            double xR10  = log(p0*sqrt(3.0));
+            double xR30  = xR10+0.1;
+            prms.Set ("l0 l1 l3 betb betbb phi K G", l0, l1, l3, betb, betbb, phi, K, G);
+            inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
+            break;
+        }
+        case 7: // Unconv02
+        {
+            cout << "[1;33m================================ (7) Unconv 02 =================================[0m\n";
+            name = "Unconv02";
+            double k0    = 0.05;
+            double k1    = -0.2;
+            double betk  = 10.0;
+            double ev1   = -0.01/100.;
+            double l0    = 0.001;
+            double l1    = 0.005;
+            double l3    = 0.008;
+            double betb  = 100.0;
+            double betbb = 100.0;
+            double v0    = 2.0;
+            double xR10  = log(p0*sqrt(3.0));
+            double xR30  = xR10+0.1;
+            prms.Set ("l0 l1 l3 betb betbb phi nu k0 k1 betk ev1", l0, l1, l3, betb, betbb, phi, nu, k0, k1, betk, ev1);
+            inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
+            break;
+        }
+        case 8: // Unconv03
+        {
+            cout << "[1;33m================================ (8) Unconv 03 =================================[0m\n";
+            name = "Unconv03";
+            double l0    = 0.001;
+            double l1    = 0.005;
+            double l3    = 0.008;
+            double betb  = 100.0;
+            double betbb = 100.0;
+            double v0    = 2.0;
+            double xR10  = log(p0*sqrt(3.0));
+            double xR30  = xR10+0.2;
+            prms.Set ("l0 l1 l3 betb betbb phi nu", l0, l1, l3, betb, betbb, phi, nu);
+            inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
+            break;
+        }
         default: throw new Fatal("main: Test = %d is not available",tst);
     }
     Model * mdl = AllocModel (name, /*NDim*/3, prms);
@@ -234,13 +291,12 @@ int main(int argc, char **argv) try
     // output initial state
     std::ostringstream oss;
     oss << _8s<< "sx"   << _8s<< "sy"   << _8s<< "sz" << _8s<< "sxy" << _8s<< "syz" << _8s<< "szx";
-    oss << _8s<< "ex"   << _8s<< "ey"   << _8s<< "ez" << _8s<< "exy" << _8s<< "eyz" << _8s<< "ezx" << "\n";
-    for (size_t i=0; i<6; ++i) oss << _8s<< sta.Sig(i);
-    for (size_t i=0; i<6; ++i) oss << _8s<< sta.Eps(i);
+    oss << _8s<< "ex"   << _8s<< "ey"   << _8s<< "ez" << _8s<< "exy" << _8s<< "eyz" << _8s<< "ezx";
+    for (size_t i=0; i<niv; ++i) oss << _8s<< mdl->IvNames[i]; oss << "\n";
+    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Sig(i);
+    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Eps(i);
+    for (size_t i=0; i<niv; ++i) oss << _8s<< sta.Ivs(i);
     oss << "\n";
-
-    // print results
-    if (print_res) PrintResults (sta, /*WithHeader*/true);
 
     // auxiliar variables
     Vec_t DEps   (6), DSig   (6);               // total increments for one stage
@@ -270,9 +326,9 @@ int main(int argc, char **argv) try
         DSig(0) = incs[i].dsx;
         DSig(1) = incs[i].dsy;
         DSig(2) = incs[i].dsz;
-        if (fabs(incs[i].dex)>1.0e-8) { DEps(0) = incs[i].dex;  pDEps[0] = true; }
-        if (fabs(incs[i].dey)>1.0e-8) { DEps(1) = incs[i].dey;  pDEps[1] = true; }
-        if (fabs(incs[i].dez)>1.0e-8) { DEps(2) = incs[i].dez;  pDEps[2] = true; }
+        if (fabs(incs[i].dex)>1.0e-10) { DEps(0) = incs[i].dex;  pDEps[0] = true; }
+        if (fabs(incs[i].dey)>1.0e-10) { DEps(1) = incs[i].dey;  pDEps[1] = true; }
+        if (fabs(incs[i].dez)>1.0e-10) { DEps(2) = incs[i].dez;  pDEps[2] = true; }
 
         // for each increment
         deps = DEps/ninc;
@@ -300,8 +356,9 @@ int main(int argc, char **argv) try
                 if (cor_drift) mdl->CorrectDrift (&sta);
 
                 // output
-                for (size_t i=0; i<6; ++i) oss << _8s<< sta.Sig(i);
-                for (size_t i=0; i<6; ++i) oss << _8s<< sta.Eps(i);
+                for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Sig(i);
+                for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Eps(i);
+                for (size_t i=0; i<niv; ++i) oss << _8s<< sta.Ivs(i);
                 oss << "\n";
             }
 
@@ -309,6 +366,9 @@ int main(int argc, char **argv) try
             sta   .Ldg = ldg;
             sta_1 .Ldg = ldg;
             sta_ME.Ldg = ldg;
+
+            // update stress path in model
+            mdl->UpdatePath (&sta, deps_tr, dsig_tr);
 
             // for each pseudo time T
             double T  = 0.0;
@@ -353,12 +413,16 @@ int main(int argc, char **argv) try
                     // drift correction
                     if (cor_drift) mdl->CorrectDrift (&sta);
 
+                    // update stress path in model
+                    mdl->UpdatePath (&sta, Vec_t(0.5*(deps_1+deps_2)), Vec_t(0.5*(dsig_1+dsig_2)));
+
                     // limit change on stepsize
                     if (m>mMax) m = mMax;
 
                     // output
-                    for (size_t i=0; i<6; ++i) oss << _8s<< sta.Sig(i);
-                    for (size_t i=0; i<6; ++i) oss << _8s<< sta.Eps(i);
+                    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Sig(i);
+                    for (size_t i=0; i<6;   ++i) oss << _8s<< sta.Eps(i);
+                    for (size_t i=0; i<niv; ++i) oss << _8s<< sta.Ivs(i);
                     oss << "\n";
                 }
                 else if (m<mMin) m = mMin;
@@ -370,9 +434,6 @@ int main(int argc, char **argv) try
                 if (dT>1.0-T) dT = 1.0-T;
             }
             if (k>=MaxSS) throw new Fatal("main: Modified-Euler did not converge after %d substeps",k);
-
-            // print results
-            if (print_res) PrintResults (sta);
 
             cout << "increment = " << j << endl;
         }
