@@ -152,7 +152,6 @@ download_and_compile() {
 download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
-download_and_compile hdf5
 download_and_compile mtl4
 
 echo
