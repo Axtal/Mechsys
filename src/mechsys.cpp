@@ -41,8 +41,6 @@ namespace BPy = boost::python;
 // functions overloadings
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_PHI2M, Phi2M, 1, 2)
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI, M2Phi, 1, 2)
-BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_CU2QF, cu2qf, 1, 3)
-BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_QF2CU, qf2cu, 1, 3)
 
 // member overloadings
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
@@ -51,17 +49,17 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU,     WriteVTU,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY,     WriteMPY,     1, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,     PyGenerate,   1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,       GenBox,       0, 7)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenQRing,     GenQRing,     0, 9)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,     Generate,     0, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,       GenBox,       0, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_GetGSD,       PyGetGSD,     3, 4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_AddVoroPack,  AddVoroPack,  12,13)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WritePOV,     WritePOV,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_DynSolve,     DynSolve,     3, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_GenSpheres,   GenSpheres,   7, 8)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_GenFromMesh,  GenFromMesh,  3, 6)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_AddVoroPack,  AddVoroPack,  12,13)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_GetGSD,       PyGetGSD,     3, 4)
 
 // module
 BOOST_PYTHON_MODULE (mechsys)
@@ -92,12 +90,9 @@ BPy::register_exception_translator<Fatal *>(&PyExceptTranslator);
 
 /////////////////////////////////////////////////////////////////////////////////// linalg ////
 
-BPy::def("pqt2L",  Pypqt2L);
-BPy::def("pqTh2L", PypqTh2L);
+BPy::def("pqth2L", Pypqth2L);
 BPy::def("Phi2M",  Phi2M, FUN_PHI2M());
 BPy::def("M2Phi",  M2Phi, FUN_M2PHI());
-BPy::def("cu2qf",  cu2qf, FUN_CU2QF());
-BPy::def("qf2cu",  qf2cu, FUN_QF2CU());
 
 //////////////////////////////////////////////////////////////////////////////////// mesh /////
 
@@ -125,7 +120,6 @@ BPy::class_<Mesh::Generic>("Generic","generic mesh", BPy::init<int>())
 BPy::class_<Mesh::Structured, BPy::bases<Mesh::Generic> >("Structured","structured mesh", BPy::init<int>())
     .def("Generate", &Mesh::Structured::PyGenerate, MS_Generate())
     .def("GenBox",   &Mesh::Structured::GenBox,     MS_GenBox())
-    .def("GenQRing", &Mesh::Structured::GenQRing,   MS_GenQRing())
     .def(BPy::self_ns::str(BPy::self))
     ;
 
@@ -156,7 +150,6 @@ BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic con
     .def("PrintResults", &FEM::Domain::PrintResults, DO_PrintResults())
     .def("WriteMPY",     &FEM::Domain::WriteMPY,     DO_WriteMPY())
     .def("WriteVTU",     &FEM::Domain::WriteVTU)
-    .def("CheckError",   &FEM::Domain::CheckError)
     .def(BPy::self_ns::str(BPy::self))
     ;
 
@@ -172,18 +165,17 @@ BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const
 ///////////////////////////////////////////////////////////////////////////////////// dem /////
 
 BPy::class_<DEM::Domain>("DEM_Domain")
-    .def("GenSpheres",     &DEM::Domain::GenSpheres)
-    .def("GenFromMesh",    &DEM::Domain::GenFromMesh)
+    .def("GenSpheres",     &DEM::Domain::GenSpheres,  DE_GenSpheres())
+    .def("GenFromMesh",    &DEM::Domain::GenFromMesh, DE_GenFromMesh())
     .def("GenBox",         &DEM::Domain::GenBox)
-    .def("AddVoroPack",    &DEM::Domain::AddVoroPack, DO_AddVoroPack())
+    .def("AddVoroPack",    &DEM::Domain::AddVoroPack, DE_AddVoroPack())
     .def("AddSphere",      &DEM::Domain::PyAddSphere)
     .def("AddCube",        &DEM::Domain::PyAddCube)
     .def("AddTetra",       &DEM::Domain::PyAddTetra)
     .def("AddRice",        &DEM::Domain::PyAddRice)
     .def("AddPlane",       &DEM::Domain::PyAddPlane)
-    .def("GetGSD",         &DEM::Domain::PyGetGSD, DO_GetGSD())
-    .def("Solve",          &DEM::Domain::Solve)
-    .def("WritePOV",       &DEM::Domain::WritePOV, DO_WritePOV())
+    .def("GetGSD",         &DEM::Domain::PyGetGSD,    DE_GetGSD())
+    .def("WritePOV",       &DEM::Domain::WritePOV)
     .def("WriteBPY",       &DEM::Domain::WriteBPY)
     .def("SetCamPos",      &DEM::Domain::PySetCamPos)
     .def("GetParticles",   &DEM::Domain::PyGetParticles)
@@ -192,14 +184,5 @@ BPy::class_<DEM::Domain>("DEM_Domain")
     .def("Save",           &DEM::Domain::Save)
     .def("Load",           &DEM::Domain::Load)
     ;
-
-BPy::class_<DEM::TriaxialDomain, BPy::bases<DEM::Domain> >("DEM_TTTDomain")
-    .def("SetTxTest", &DEM::TriaxialDomain::PySetTxTest)
-    .def("ResetEps",  &DEM::TriaxialDomain::ResetEps)
-    ;
-
-//BPy::class_<Particle>("Particle")
-    //.def("GetFeatures", &Particle::PyGetFeatures)
-    //;
 
 } // BOOST_PYTHON_MODULE

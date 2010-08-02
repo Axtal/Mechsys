@@ -143,7 +143,7 @@ int main(int argc, char **argv) try
     {
         if (pcte)
         {
-            incs[0].dsz = -60.0;
+            incs[0].dsz = -80.0;
             incs[0].dsx = -incs[0].dsz/2.0;
             incs[0].dsy = -incs[0].dsz/2.0;
         }
@@ -240,17 +240,17 @@ int main(int argc, char **argv) try
             cout << "[1;33m================================ (7) Unconv 02 =================================[0m\n";
             name = "Unconv02";
             double k0    = 0.05;
-            double k1    = -0.2;
-            double betk  = 10.0;
+            double k1    = -0.5;
+            double betk  = 5.0;
             double ev1   = -0.01/100.;
             double l0    = 0.001;
             double l1    = 0.005;
-            double l3    = 0.008;
-            double betb  = 100.0;
-            double betbb = 100.0;
+            double l3    = 0.02;
+            double betb  = 50.0;
+            double betbb = 50.0;
             double v0    = 2.0;
             double xR10  = log(p0*sqrt(3.0));
-            double xR30  = xR10+0.1;
+            double xR30  = xR10;
             prms.Set ("l0 l1 l3 betb betbb phi nu k0 k1 betk ev1", l0, l1, l3, betb, betbb, phi, nu, k0, k1, betk, ev1);
             inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
             break;
@@ -261,12 +261,12 @@ int main(int argc, char **argv) try
             name = "Unconv03";
             double l0    = 0.001;
             double l1    = 0.005;
-            double l3    = 0.008;
-            double betb  = 100.0;
-            double betbb = 100.0;
+            double l3    = 0.02;
+            double betb  = 40.0;
+            double betbb = 40.0;
             double v0    = 2.0;
             double xR10  = log(p0*sqrt(3.0));
-            double xR30  = xR10+0.2;
+            double xR30  = xR10+0.5;
             prms.Set ("l0 l1 l3 betb betbb phi nu", l0, l1, l3, betb, betbb, phi, nu);
             inis.Set ("sx sy sz v0 xR10 xR30", -p0,-p0,-p0, v0, xR10, xR30);
             break;

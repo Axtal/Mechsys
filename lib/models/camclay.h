@@ -45,10 +45,14 @@ public:
     double         lam;
     double         kap;
     double         phi;
-    double         M;
     Vec_t          I;
     mutable double v0;
     mutable double chi;
+    double         Mcs;
+    double         wcs;
+
+
+    double CalcM (double const & sin3th) const;
 };
 
 
@@ -63,7 +67,8 @@ inline CamClay::CamClay (int NDim, SDPair const & Prms)
     kap = Prms("kap");
     nu  = Prms("nu");
     phi = Prms("phi");
-    M   = Phi2M(phi);
+    Mcs = Phi2M(phi,"oct");
+    wcs = pow((3.0-sin(phi))/(3.0+sin(phi)),4.0);
 
     // constants
     I.change_dim (NCps);
@@ -92,6 +97,7 @@ inline void CamClay::InitIvs (SDPair const & Ini, State * Sta) const
     OctInvs (sta->Sig, p,q,t);
 
     // internal variables
+    double M = CalcM(t);
     sta->Ivs(0) = (Ini.HasKey("z0") ? Ini("z0") : p+(q*q)/(p*M*M));
 
     // check initial yield function
@@ -108,8 +114,27 @@ inline void CamClay::Gradients (EquilibState const * Sta) const
     Dev     (Sta->Sig, dev_sig);
 
     // gradients
+    double M = CalcM(t);
     V    = (M*M*(Sta->Ivs(0)-2.0*p)/(Util::SQ3))*I + 2.0*dev_sig;
     Y(0) = -M*M*p;
+
+    if (false)//q>1.0e-10)
+    {
+        double ss3th = pow(t,2.0);
+        double cos3th;
+        if (ss3th>1.0) cos3th = 0.0;
+        else           cos3th = sqrt(1.0-ss3th);
+        if (cos3th>1.0e-10)
+        {
+            Vec_t SS,dev_SS,dth_dsig;
+            double dM_dth = (0.75*M*(1.0-wcs)*cos3th) / (1.0+wcs+(wcs-1.0)*t);
+            Pow2 (dev_sig, SS);
+            dev_SS   = SS - (I * (SS(0)+SS(1)+SS(2))/3.0);
+            dth_dsig = (1.5/(q*q*cos3th)) * (dev_SS*(3.0/q) - dev_sig*t);
+            V       += dth_dsig*(2.0*M*p*(Sta->Ivs(0)-p)*dM_dth);
+        }
+    }
+
 }
 
 inline void CamClay::Hardening (EquilibState const * Sta) const
@@ -121,6 +146,7 @@ inline double CamClay::YieldFunc (EquilibState const * Sta) const
 {
     double p,q,t;
     OctInvs (Sta->Sig, p,q,t);
+    double M = CalcM(t);
     return q*q + (p - Sta->Ivs(0))*p*M*M;
 }
 
@@ -128,7 +154,13 @@ inline double CamClay::FailCrit (EquilibState const * Sta) const
 {
     double p,q,t;
     OctInvs (Sta->Sig, p,q,t);
+    double M = CalcM(t);
     return q - M*p;
+}
+
+inline double CamClay::CalcM (double const & sin3th) const
+{
+    return Mcs;//*pow(2.0*wcs/(1.0+wcs+(wcs-1.0)*sin3th),0.25);
 }
 
 

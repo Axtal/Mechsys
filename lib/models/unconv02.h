@@ -92,7 +92,7 @@ private:
         double evr   = ev1 - k1*ed;
         double distk = ev - evr;
         if (distk<0.0) distk = 0.0;
-        kapbb = -0.01;//k0+(k1-k0)*exp(-betk*distk);
+        kapbb = k0+(k1-k0)*exp(-betk*distk);
         //A     = -(1.01-sin(alpha))*lambb;
         //B     = -kapbb*sin(alpha);
         A     = -lambb;

@@ -32,6 +32,8 @@ install_manifest.txt
 *.mesh
 *.gnu
 *.bpy
+*.disp
+*.stress
 old_*
 *.pyc
 mesh_drawing.py

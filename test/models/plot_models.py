@@ -4,7 +4,7 @@ from msys_readdata   import *
 from numpy import array, log, sqrt
 from pylab import plot, show, grid, legend, xlabel, ylabel
 
-tst = 7
+tst = 10
 
 if tst==0:
     p = Plotter()
@@ -127,8 +127,8 @@ if tst==7:
     p.fc_poct = 150.0*sqrt(3.0)
     p.show_k  = True
     p.lwd=1; p.plot ("test_models_4.res", clr='blue', marker='s',    markevery=10, label='CCM', draw_fl=True,draw_ros=True)
-    #p.lwd=1; p.plot ("test_models_7.res", clr='red',  marker='+',    markevery=10, label='Unconv02')
-    p.lwd=1; p.plot ("test_models_8.res", clr='red',  marker='+',    markevery=10, label='Unconv03')
+    p.lwd=1; p.plot ("test_models_7.res", clr='red',  marker='+',    markevery=10, label='Unconv02')
+    #p.lwd=1; p.plot ("test_models_8.res", clr='red',  marker='+',    markevery=10, label='Unconv03')
     legend()
     p.show()
 
@@ -201,3 +201,19 @@ if tst==9:
     legend ()
     grid   ()
     show   ()
+
+if tst==10:
+    p = Plotter()
+    #p.fc_c    = 0.1
+    p.fc_phi  = M_calc_phi(1,'cam')
+    p.fc_poct = 150.0*sqrt(3.0)
+    p.show_k  = True
+    #p.set_eps = True
+    #p.lwd=1; p.plot ("test_models_4.res", clr='blue', marker='s',    markevery=10, label='Cam clay', draw_fl=True,draw_ros=True)
+    p.lwd=1; p.plot ("test_models_7.res", clr='red',  marker='+',    markevery=10, label='Unconventional 2')
+    #p.lwd=1; p.plot ("test_models_8.res", clr='red',  marker='+',    markevery=10, label='Unconventional 1')
+    subplot(2,3,3)
+    legend()
+    p.show()
+    #p.save_eps("dilatancy")
+

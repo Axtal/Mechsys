@@ -61,17 +61,20 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////// Determinat and Inverse ///
     
 	cout << "\n--- determinat and inverse -----------------------\n";
-    Mat3_t M, Mi, MxMi;
+    Mat3_t M, Mi, MxMi, MxM, MxMblitz;
     M = 10.0,   4.0,  5.0,
          4.0, -20.0,  6.0,
          5.0,   6.0, 30.0;
-    Inv (M, Mi);
-    MxMi = product(M,Mi);
+    Inv  (M, Mi);
+    Mult (M,Mi, MxMi);
+    Mult (M,M, MxM);
+    MxMblitz = blitz::product (M,M);
     cout << "M  =\n"    << PrintMatrix(M);
     cout << "Mi =\n"    << PrintMatrix(Mi);
     cout << "M*Mi = \n" << PrintMatrix(MxMi);
     error += fabs(Det(M)-corDetM);
-    error += CompareMatrices (Mi, corMi);
+    error += CompareMatrices (Mi,  corMi);
+    error += CompareMatrices (MxM, MxMblitz);
 
     ////////////////////////////////////////////////////////////////////////////////////////////// Tensors ////////
     
@@ -93,14 +96,13 @@ int main(int argc, char **argv) try
     Ten2Mat   (P0, p0);
     Ten2Mat   (P1, p1);
     Ten2Mat   (P2, p2);
-    p0xp0 = product(p0,p0);
-    p0xp1 = product(p0,p1);
-    cout << "L  = "     << PrintVector(L);
-    cout << "P0 = "     << PrintVector(P0);
-    cout << "P1 = "     << PrintVector(P1);
-    cout << "P2 = "     << PrintVector(P2);
-    cout << "P0*P0 =\n" << PrintMatrix(p0xp0);
-    cout << "P0*P1 =\n" << PrintMatrix(p0xp1);
+    cout << "L     = " << PrintVector(L);
+    cout << "P0    = " << PrintVector(P0);
+    cout << "P1    = " << PrintVector(P1);
+    cout << "P2    = " << PrintVector(P2);
+    cout << "detP0 = " << Det(p0) << endl;
+    cout << "detP1 = " << Det(p1) << endl;
+    cout << "detP2 = " << Det(p2) << endl;
     error += CompareVectors  (L,  corL);
     error += CompareVectors  (P0, corP0);
     error += CompareVectors  (P1, corP1);
@@ -108,6 +110,20 @@ int main(int argc, char **argv) try
     error += CompareMatrices (p0, corP0m);
     error += CompareMatrices (p1, corP1m);
     error += CompareMatrices (p2, corP2m);
+    Mat3_t * P[3] = {&p0,&p1,&p2};
+    Mat3_t PxP, zero;
+    set_to_zero(zero);
+    for (size_t i=0; i<3; ++i)
+    for (size_t j=0; j<3; ++j)
+    {
+        Mult ((*P[i]), (*P[j]), PxP);
+        //cout << "P" << i << "*P" << j << " =\n" << PrintMatrix(PxP);
+        if (i==j) error += CompareMatrices (PxP, (*P[i]));
+        else      error += CompareMatrices (PxP, zero);
+    }
+    //Mat3_t P0i;
+    //Inv (p0, P0i);
+    //cout << "P0i = " << PrintMatrix(P0i);
 
     /////////////////////////////////////////////////////////////////////////////////////////// Error /////////////
     

@@ -2,9 +2,23 @@ from numpy import *
 from pylab import *
 from msys_readdata import *
 
-plt  = 1
-ref  = False
-quad = 0
+plt = 1
+ref = 0
+
+quad8 = 1
+both  = False
+ninc  = 10
+STOL  = 1.0e-7
+NR    = 1
+FE    = 0
+
+if plt==0: fkey = "abbo_sloan_01"
+else:      fkey = "abbo_sloan_02"
+if not both:
+    if quad8: fkey += "_quad8"
+    else:     fkey += "_tri15"
+if NR or FE: fkey += "_%d"%ninc
+else:        fkey += "_%d_%g"%(ninc,STOL)
 
 def plot_one(data,txt,clr,marker,lwd,hline=False,dutxt=0.0,a=1.0,c=10.0,t=0.2):
     fx = []
@@ -28,30 +42,23 @@ def plot_one(data,txt,clr,marker,lwd,hline=False,dutxt=0.0,a=1.0,c=10.0,t=0.2):
         text    (max_u+dutxt,max_q/c,r'$%g$'%(max_q/c), color=clr)
 
 if plt==0:
-    if quad:
-        quad8 = [read_table("abbo_sloan_01_quad8_nod_0_0.res"),
-                 read_table("abbo_sloan_01_quad8_nod_6_0.res"),
-                 read_table("abbo_sloan_01_quad8_nod_22_0.res")]
+    # loaded nodes
+    if quad8:
+        quad8 = [read_table("%s_nod_0_0.res" %fkey),
+                 read_table("%s_nod_6_0.res" %fkey),
+                 read_table("%s_nod_22_0.res"%fkey)]
     else:
-        tri15 = [read_table("abbo_sloan_01_tri15_nod_0_0.res"),
-                 read_table("abbo_sloan_01_tri15_nod_6_0.res"),
-                 read_table("abbo_sloan_01_tri15_nod_22_0.res"),
-                 read_table("abbo_sloan_01_tri15_nod_44_0.res"),
-                 read_table("abbo_sloan_01_tri15_nod_45_0.res")]
+        tri15 = [read_table("%s_nod_0_0.res" %fkey),
+                 read_table("%s_nod_6_0.res" %fkey),
+                 read_table("%s_nod_22_0.res"%fkey),
+                 read_table("%s_nod_44_0.res"%fkey),
+                 read_table("%s_nod_45_0.res"%fkey)]
 
-    if ref:
-        tri15_ref = [read_table("abbo_sloan_01_tri15_ref_nod_0_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_6_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_22_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_44_0.res"),
-                     read_table("abbo_sloan_01_tri15_ref_nod_45_0.res")]
+    # with reference solution
+    if ref: passs
 
-        quad8_ref = [read_table("abbo_sloan_01_quad8_ref_nod_0_0.res"),
-                     read_table("abbo_sloan_01_quad8_ref_nod_6_0.res"),
-                     read_table("abbo_sloan_01_quad8_ref_nod_22_0.res")]
-
-    if quad: plot_one (quad8,'Quad8','red', 'None',2,True,0.05)
-    else:    plot_one (tri15,'Tri15','blue','None',1,True,0.1)
+    if quad8: plot_one (quad8,'Quad8','red', 'None',2,True,0.05)
+    else:     plot_one (tri15,'Tri15','blue','None',1,True,0.1)
 
     axhline (1.0174, color='k')
     text    (0,1.0174,r'$1.0174$')

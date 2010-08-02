@@ -17,7 +17,7 @@ if plt==0:
     p.fc_phi = phi
     p.fc_cu  = cu
     p.fc_c   = 0.0
-    p.plot ("labtest_ele_0_-1.res", draw_fl=True)
+    p.plot ("labtest_ele_0_-1.res", draw_fl=True, draw_ros=True)
 
     # plot data
     dat = read_tables(['mdl_tst_01.dat','mdl_tst_02.dat'])

@@ -50,7 +50,7 @@ public:
 
     // Scratchpad
     mutable Vec_t  V,Vb,VDe,DeW,devSig,depsEl; ///< vectors
-    mutable double p,q,t,A0,A2,R,c;            ///< invariants and gradients
+    mutable double p,q,t,A0,A2,R,c,yb;         ///< invariants and gradients
     mutable double lamb,lambb,kapbb,hp;        ///< hardening coefficients
 
 private:
@@ -74,6 +74,8 @@ private:
             A2 = 0.0;
         //}
         V = ((R*R-1.0)/Util::SQ3)*I + (2.0/(M*M*p))*devSig;
+        //yb = -1.0;
+        yb = -M*M*p;
         //if (R>1.0) throw new Fatal("Unconv03::_calc_invariants_and_gradients: R(%g) must be smaller than 1",R);
     }
     void _calc_hardening (EquilibState const * Sta) const ///< calculate: lamb,lambb,kapbb,Vb,hp (must be after _calc_invariants_and_gradients)
@@ -208,6 +210,7 @@ inline void Unconv03::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec
     // volume strain increment and internal variables
     double dev = Calc_ev(DEps);
     double v   = sta->Ivs(3);
+    double pb  = sta->Ivs(2);
 
     // increments
     if (sta->Ldg)
@@ -261,11 +264,11 @@ inline void Unconv03::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec
         // increment of internal values
         Vec_t VDe;
         Mult (V, De, VDe);
-        DIvs(0) = 0.0;
         DIvs(1) = 0.0;
-        DIvs(2) = 0.0;
-        DIvs(3) = 0.0;
+        DIvs(2) = -dot(V,DSig)/yb;
+        DIvs(3) = v*dev;
         DIvs(4) = 0.0;
+        DIvs(0) = DIvs(2)/pb;
     }
 
     //cout << endl;
@@ -323,7 +326,7 @@ inline bool Unconv03::LoadCond (State const * Sta, Vec_t const & DEps, double & 
     //cout << "DEps = " << PrintVector(DEps);
     //cout << "num  = " << num << endl;
     if (fabs(num)<1.0e-12) return true; // neutral loading
-    if (num<0.0) throw new Fatal("Unconv03::LoadCond: num(%g)<0 not ready yet",num);
+    //if (num<0.0) throw new Fatal("Unconv03::LoadCond: num(%g)<0 not ready yet",num);
     return (num>0.0);
 }
 

@@ -43,9 +43,15 @@ if plt==2:
     res  = read_table("fig_11_19_nod_30_-200.res")
     p117 = read_table("sg_11_19.sim")
 
+    subplot(1,2,1)
     plot(res ['Time'],res ['uy'],'r-',lw=2)
     plot(p117['Time'],p117['uy'],'b-')
     plot(p117['Time'],p117['uy'],'b+')
+
+    subplot(1,2,2)
+    plot(res ['Time'],res ['fy'  ],'r-',lw=2)
+    plot(p117['Time'],p117['load'],'b-')
+    plot(p117['Time'],p117['load'],'b+')
 
     #legend(['MechSys','SG:p113d','SG:p113','SG:p114'],loc='upper left')
     #legend(['MechSys','SG:p113d','SG:p113'],loc='upper left')

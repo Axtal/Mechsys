@@ -40,8 +40,11 @@ using FEM::GEOM;
 
 double Multiplier (double t)
 {
+    //if (t>1.0) return 0.0;
+    //else       return 3.194*sin(Util::PI*t);
+
     if (t>1.0) return 0.0;
-    else       return 3.194*sin(Util::PI*t);
+    else       return 3.194*Util::PI*cos(Util::PI*t);
 }
 
 int main(int argc, char **argv) try

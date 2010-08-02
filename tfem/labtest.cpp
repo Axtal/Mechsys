@@ -29,6 +29,7 @@
 #include <mechsys/models/linelastic.h>
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/models/camclay.h>
+#include <mechsys/models/unconv03.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 
@@ -63,12 +64,11 @@ int main(int argc, char **argv) try
 {
     // index of model
     size_t idx_mdl = 0;
+    bool   NR      = false;
+    bool   pstrain = false;
     if (argc>1) idx_mdl = atoi(argv[1]);
-
-    // path
-    double qx =  0.0; // delta pressure on the x-side (keep it constant)
-    double qy =  0.0; // delta pressure on the y-side (keep it constant)
-    double uz = -0.07;
+    if (argc>2) NR      = atoi(argv[2]);
+    if (argc>3) pstrain = atoi(argv[3]);
 
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
@@ -84,6 +84,10 @@ int main(int argc, char **argv) try
     if (o2) prps.Set(-1, "prob geom", PROB("Equilib"), GEOM("Hex20"));
     else    prps.Set(-1, "prob geom", PROB("Equilib"), GEOM("Hex8"));
 
+    // initial values
+    Dict inis;
+    inis.Set(-1, "sx sy sz  v0", -100.0,-100.0,-100.0, 2.0);
+
     // models
     Dict mdls;
     switch (idx_mdl)
@@ -96,14 +100,15 @@ int main(int argc, char **argv) try
         }
         case 1: // elasto-perfect-plastic with von Mises FC
         {
+            double cu = 120.0/sqrt(3.0);
             cout << "\n[1;33m======================= Elasto-perfect-plastic with von Mises ======================[0m\n";
-            mdls.Set(-1, "name E nu fc sY", MODEL("ElastoPlastic"), 4000.0, 0.3, FAILCRIT("VM"), 150.0);
+            mdls.Set(-1, "name E nu fc cu", MODEL("ElastoPlastic"), 4000.0, 0.3, FAILCRIT("VM"), cu);
             break;
         }
         case 2: // elasto-perfect-plastic with Mohr-Coulomb FC
         {
             cout << "\n[1;33m======================= Elasto-perfect-plastic with Mohr-Coulomb ===================[0m\n";
-            mdls.Set(-1, "name E nu fc c phi", MODEL("ElastoPlastic"), 4000.0, 0.3, FAILCRIT("MC"), 9.0, 0.0);
+            mdls.Set(-1, "name E nu fc c phi", MODEL("ElastoPlastic"), 4000.0, 0.3, FAILCRIT("MC"), 0.0, M2Phi(1.0,"cam"));
             break;
         }
         case 3: // linear elastic
@@ -112,12 +117,25 @@ int main(int argc, char **argv) try
             mdls.Set(-1, "name E nu", MODEL("LinElastic"), 4000.0, 0.3);
             break;
         }
+        case 4:
+        {
+            cout << "\n[1;33m==================================== Unconv 03 =====================================[0m\n";
+            double l0    = 0.001;
+            double l1    = 0.005;
+            double l3    = 0.008;
+            double betb  = 100.0;
+            double betbb = 100.0;
+            double v0    = 2.0;
+            double xR10  = log(150.0*sqrt(3.0));
+            double xR30  = xR10+0.1;
+            double phi   = M2Phi(1.0,"cam");
+            double nu    = 0.3;
+            mdls.Set (-1, "name l0 l1 l3 betb betbb phi nu", MODEL("Unconv03"), l0, l1, l3, betb, betbb, phi, nu);
+            inis.Set (-1, "sx sy sz v0 xR10 xR30", -100.0,-100.0,-100.0, v0, xR10, xR30);
+            break;
+        }
         default: throw new Fatal("Index of model == %d is invalid. Valid values are 0,1,2",idx_mdl);
     }
-
-    // initial values
-    Dict inis;
-    inis.Set(-1, "sx sy sz  v0", -100.0,-100.0,-100.0, 2.0);
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
@@ -131,6 +149,7 @@ int main(int argc, char **argv) try
  
     // solver
     FEM::Solver sol(dom, &DbgFun, &dat);
+    if (NR) sol.SetScheme("NR");
     sol.TolR   = 1.0e-3;
     //sol.dTini = 0.01;
     //sol.mMax = 2.0;
@@ -139,14 +158,68 @@ int main(int argc, char **argv) try
     ////////////////////////////////////////////////////////////////////////////////////////// Run /////
     
     Dict bcs;
-    bcs.Set(-10, "ux", 0.0);
-    bcs.Set(-30, "uy", 0.0);
-    bcs.Set(-50, "uz", 0.0);
-    bcs.Set(-20, "qn", qx);
-    bcs.Set(-40, "qn", qy);
-    bcs.Set(-60, "uz", uz);
-    dom.SetBCs (bcs);
-    sol.Solve  (/*NDiv*/20);
+    bcs.Set(-10, "ux",  0.0);
+    bcs.Set(-30, "uy",  0.0);
+    bcs.Set(-50, "uz",  0.0);
+    if (pstrain)
+    {
+        bcs.Set(-20, "ux",  0.0); // delta pressure on the x-side (keep it constant)
+        //bcs.Set(-40, "qn",  0.0); // delta pressure on the y-side (keep it constant)
+        bcs.Set(-60, "uz", -0.07);
+        dom.SetBCs (bcs);
+        sol.Solve  (/*NDiv*/20, NULL,NULL,true);
+    }
+    else
+    {
+        bool   disp = false;
+        double dqn  = 150.0;
+        if (disp)
+        {
+            bcs.Set(-20, "qn",  0.0); // delta pressure on the x-side (keep it constant)
+            bcs.Set(-40, "qn",  0.0); // delta pressure on the y-side (keep it constant)
+            bcs.Set(-60, "uz", -0.07);
+        }
+        else
+        {
+            bcs.Set(-20, "qn",  0.0); // delta pressure on the x-side (keep it constant)
+            bcs.Set(-40, "qn",  0.0); // delta pressure on the y-side (keep it constant)
+            bcs.Set(-60, "qn", -dqn);
+        }
+        dom.SetBCs (bcs);
+        sol.Solve  (/*NDiv*/20, NULL,NULL,true);
+
+        // TODO: crazy behaviour
+        //bcs.Set(-60, "uz", -uz);
+        //dom.SetBCs (bcs);
+        //sol.Solve  (/*NDiv*/20);
+
+        bcs.clear();
+        bcs.Set(-10, "ux", 0.0);
+        bcs.Set(-30, "uy", 0.0);
+        bcs.Set(-50, "uz", 0.0);
+        if (!disp)
+        {
+            bcs.Set(-20, "qn", 0.0);
+            bcs.Set(-40, "qn", 0.0);
+            bcs.Set(-60, "qn", dqn);
+            dom.SetBCs (bcs);
+            sol.Solve  (/*NDiv*/20);
+        }
+
+        bcs.clear();
+        bcs.Set(-10, "ux", 0.0);
+        bcs.Set(-30, "uy", 0.0);
+        bcs.Set(-50, "uz", 0.0);
+        if (!disp)
+        {
+            bcs.Set(-20, "qn", 0.0);
+            bcs.Set(-40, "qn", 0.0);
+            bcs.Set(-60, "qn", -dqn);
+            dom.SetBCs (bcs);
+            sol.SSOut = true;
+            sol.Solve  (/*NDiv*/20);
+        }
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 

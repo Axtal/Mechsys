@@ -224,7 +224,7 @@ public:
             F.append (verts);
         }
 
-        return R;
+        return Props.R;
     }
 #endif
 };
