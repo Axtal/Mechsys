@@ -22,6 +22,7 @@
 
 // STL
 #include <iostream>
+#include <fstream>
 
 // MechSys
 #include <mechsys/util/numstreams.h>
@@ -89,6 +90,9 @@ public:
     // Auxiliar methods
     void                    SetNS (Util::NumStream & NS) { _ns = &NS; } ///< Set the NumStream, a structure to aid format output of numbers
     Util::NumStream const & NS    () const           { return (*_ns); } ///< Return the NumStream, a structure to aid format output of numbers
+
+    // Output methods
+    void WriteSMAT (char const * FileKey) const; ///< Write .smat file for vismatrix
 
 private:
     // Data
@@ -289,6 +293,17 @@ inline Value_T const * Triplet<Value_T,Index_T>::GetAxPtr() const
     return _Ax;
 }
 
+template<typename Value_T, typename Index_T>
+inline void Triplet<Value_T,Index_T>::WriteSMAT (char const * FileKey) const
+{
+    String fn(FileKey);
+    fn.append(".smat");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << Rows() << "  " << Cols() << "  " << Top() << std::endl;
+    for (int k=0; k<Top(); ++k)
+        of << Ai(k) << "  " << Aj(k) << "  " << Ax(k) << std::endl;
+    of.close();
+}
 
 /** Ouptuts a sparse matrix in triplet format. */
 template<typename Value_T, typename Index_T>
