@@ -20,12 +20,12 @@
 #####################################################################################
 
 SET(HDF5_INCLUDE_SEARCH_PATH
-  $ENV{HOME}/pkg/hdf5-1.8.4-patch1/src
-  $ENV{HOME}/pkg/hdf5-1.8.4-patch1/hl/src)
+  $ENV{HOME}/pkg/hdf5-1.8.5/src
+  $ENV{HOME}/pkg/hdf5-1.8.5/hl/src)
 
 SET(HDF5_LIBRARY_SEARCH_PATH
-  $ENV{HOME}/pkg/hdf5-1.8.4-patch1/src/.libs
-  $ENV{HOME}/pkg/hdf5-1.8.4-patch1/hl/src/.libs)
+  $ENV{HOME}/pkg/hdf5-1.8.5/src/.libs
+  $ENV{HOME}/pkg/hdf5-1.8.5/hl/src/.libs)
 
 FIND_PATH(HDF5_H    hdf5.h    ${HDF5_INCLUDE_SEARCH_PATH})
 FIND_PATH(HDF5_HL_H hdf5_hl.h ${HDF5_INCLUDE_SEARCH_PATH})

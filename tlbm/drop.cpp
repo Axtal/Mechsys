@@ -32,15 +32,15 @@ int main(int argc, char **argv) try
 	LBM::Lattice l(/*FileKey*/"drop", /*Is3D*/false,1.0/6.0, /*Nx*/100, /*Ny*/100,1,1,1);
 
 	// Set constants
-	l.SetG(-120.0);
+	l.SetG(-200.0);
     //l.SetTau(1.0);
 
 	// Set Gravity
-	l.SetGravity (0.0, -0.0005);
+	l.SetGravity (0.0, -0.0000);
 
 	// Set walls (top and bottom)
-	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid(true, -200);
-	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid(true, -200);
+	for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid(true, -1000);
+	for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid(true, -1000);
 
 	// Set drop
 	int obsX   = l.Nx()/2; // x position
@@ -51,9 +51,9 @@ int main(int argc, char **argv) try
 	{
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		if (pow((int)(i)-obsX,2.0) + pow((int)(j)-obsY,2.0) <= pow(radius,2.0)) // circle equation
-			l.GetCell(i,j)->Initialize (/*Rho*/ 544.0, v0,l.Cs());
+			l.GetCell(i,j)->Initialize (/*Rho*/ 2000, v0,l.Cs());
 		else
-			l.GetCell(i,j)->Initialize (/*Rho*/ 8.4e1, v0,l.Cs());
+			l.GetCell(i,j)->Initialize (/*Rho*/ 0.0001, v0,l.Cs());
 	}
 
 	// Solve

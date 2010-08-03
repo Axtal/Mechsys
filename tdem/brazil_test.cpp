@@ -36,13 +36,13 @@ struct UserData
     std::ofstream  oss_ss;  // File to store the forces
 };
 
-void Setup (DEM::Domain const & dom, void *UD)
+void Setup (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     dat.force = 0.5*(dat.p2->F-dat.p1->F);
 }
 
-void Report (DEM::Domain const & dom, void *UD)
+void Report (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     if (dom.idx_out==0)

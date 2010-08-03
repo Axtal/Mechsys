@@ -46,7 +46,7 @@ inline void POVHeader (std::ostream & os)
 
 inline void POVSetCam (std::ostream & os, const Vec3_t & X, const Vec3_t & F)
 {
-    os << "camera { location <"<<X(0)<<","<<X(1)<<","<<X(2)<<"> sky <0,0,1> look_at <"<<F(0)<<","<<F(1)<<","<<F(2)<<"> }\n";
+    os << "camera { location <"<<X(0)<<","<<X(1)<<","<<X(2)<<"> sky <0,0,-1> look_at <"<<F(0)<<","<<F(1)<<","<<F(2)<<"> }\n";
 }
 
 inline void POVDrawVert (Vec3_t const & V, std::ostream & os, double Radius=1.0, char const * Color="Blue")

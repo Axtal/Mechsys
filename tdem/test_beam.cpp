@@ -37,7 +37,7 @@ struct UserData
     Particle * p; // the particle at which the force is to be applied
 };
 
-void Setup (DEM::Domain const & Dom, void * UD)
+void Setup (DEM::Domain & Dom, void * UD)
 {
     // force at -3
     UserData & dat = (*static_cast<UserData *>(UD));

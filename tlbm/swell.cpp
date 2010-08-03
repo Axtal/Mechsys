@@ -157,7 +157,7 @@ int main(int argc, char **argv) try
         {
             //DrawOpenCircle (l, xc, yc, r+1,0.4);
             DrawBullEyeCircle (l, xc, yc, 1.1*r,0.1,n_div,arc,-Gsmin,-Gsmax);
-            DrawFluidDisk(l, xc, yc, 0.9*1.1*r ,densl);
+            DrawFluidCircle(l, xc, yc, 0.15*1.1*r, 0.9*1.1*r ,densl);
             DrawFluidCircle(l, xc, yc, 1.1*r,(1.1+thickness)*r, densl);
         }
 	}

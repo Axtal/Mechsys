@@ -38,7 +38,7 @@ struct UserData
     std::ofstream      oss_ss; // The output file
 };
 
-void Report (DEM::Domain const & dom, void *UD)
+void Report (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
 

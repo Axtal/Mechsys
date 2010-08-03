@@ -41,7 +41,6 @@ OPTION(A_WITH_OPTIONAL      "Make with optional dependencies"                   
 OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"              OFF)
 OPTION(A_USE_VTK            "Use visualisation toolkit ?"                       OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                   OFF)
-OPTION(A_OPT_DEM_MEM        "Optimize DEM code for memory instead of speed"     ON)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)
@@ -72,10 +71,6 @@ ENDIF(A_MAKE_PROFILING)
 IF(A_MAKE_OPTIMIZED)
 	ADD_DEFINITIONS(-O3)
 ENDIF(A_MAKE_OPTIMIZED)
-
-IF(A_OPT_DEM_MEM)
-    ADD_DEFINITIONS (-DOPTIMIZE_DEM_MEM)
-ENDIF(A_OPT_DEM_MEM)
 
 ### FEATURES ############################################################################################
 

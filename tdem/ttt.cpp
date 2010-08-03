@@ -157,7 +157,7 @@ void ResetEps(DEM::Domain const & dom, UserData & UD)
     UD.L0(2) = dom.Particles[UD.InitialIndex+4]->x(2)-dom.Particles[UD.InitialIndex+5]->x(2);
 }
 
-void Setup (DEM::Domain const & dom, void * UD)
+void Setup (DEM::Domain & dom, void * UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     if (dat.StrainCtrl)
@@ -238,7 +238,7 @@ void Setup (DEM::Domain const & dom, void * UD)
     if (update_sig) dat.Sig += dat.dt*dat.DSig/(dat.tspan);
 }
 
-void Report (DEM::Domain const & dom, void *UD)
+void Report (DEM::Domain & dom, void *UD)
 {
     UserData & dat = (*static_cast<UserData *>(UD));
     // output triaxial test data
@@ -442,8 +442,8 @@ int main(int argc, char **argv) try
     dat.dt = dt;
 
     // particle
-    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
-    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction, 0.8);
+    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction,0.5);
+    else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
     else if (ptype=="tetra")
     {
         Mesh::Unstructured mesh(/*NDim*/3);
@@ -457,7 +457,7 @@ int main(int argc, char **argv) try
 
     // properties of particles prior the triaxial test
     Dict B;
-    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
+    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu ,Beta,Eta);
     B.Set(-2,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-3,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
     B.Set(-4,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,0.0,Beta,Eta);
@@ -491,14 +491,14 @@ int main(int argc, char **argv) try
     depsdt = Vec3_t(srx/(Tf-dom.Time), sry/(Tf-dom.Time), srz/(Tf-dom.Time));
 
     // properties of particles at the start of  the triaxial test
-    B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu,Beta,Eta);
-    dom.SetProps(B);
+    //B.Set(-1,"Kn Kt Gn Gt Mu Beta Eta",Kn,Kt,Gn,Gt,Mu,Beta,Eta);
+    //dom.SetProps(B);
     
     // run
     ResetEps  (dom,dat);
     SetTxTest (sigf, peps, depsdt, thf*M_PI/180, alpf*M_PI/180, isfailure, dat, dom);
     dat.tspan = Tf - dom.Time;
-    dom.ResetInteractons();
+    //dom.ResetInteractons();
     dom.Solve     (/*tf*/Tf, /*dt*/dt, /*dtOut*/dtOut, &Setup, &Report, fkey_c.CStr(),RenderVideo);
 
     return 0;

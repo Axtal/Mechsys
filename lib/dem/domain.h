@@ -50,7 +50,7 @@ class Domain
 {
 public:
     // typedefs
-    typedef void (*ptFun_t) (Domain const & Dom, void * UserData);
+    typedef void (*ptFun_t) (Domain & Dom, void * UserData);
 
     // Constructor
     Domain(void * UserData=NULL);
@@ -1603,13 +1603,9 @@ inline void Domain::ResetInteractons()
 
 
             // if both particles have any component specified or they are far away, don't create any intereactor
-#ifdef OPTIMIZE_DEM_MEM
             bool close = (Distance(Particles[i]->x,Particles[j]->x)<=Particles[i]->Dmax+Particles[j]->Dmax+2*Alpha);
             if ((pi_has_vf && pj_has_vf) || !close ) continue;
             Listofpairs.insert(make_pair(Particles[i],Particles[j]));
-#else
-            if ((pi_has_vf && pj_has_vf)) continue;
-#endif
 
             // if both particles are spheres (just one vertex)
             if (Particles[i]->Verts.Size()==1 && Particles[j]->Verts.Size()==1)
@@ -1674,7 +1670,6 @@ inline double Domain::MaxDisplacement()
 
 inline void Domain::ResetContacts()
 {
-#ifdef OPTIMIZE_DEM_MEM
     for (size_t i=0; i<Particles.Size()-1; i++)
     {
         bool pi_has_vf = !Particles[i]->IsFree();
@@ -1706,7 +1701,6 @@ inline void Domain::ResetContacts()
             }
         }
     }
-#endif
 
 #ifdef USE_MPI
     for (size_t i=0; i<Particles.Size(); i++)

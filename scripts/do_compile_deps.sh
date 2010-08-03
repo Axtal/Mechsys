@@ -51,7 +51,7 @@ fi
 TRIANGLE=triangle1.6
 TETGEN=tetgen1.4.3
 VORO=voro++0.3.1
-HDF5=hdf5-1.8.4-patch1
+HDF5=hdf5-1.8.5
 MTL4=mtl4
 
 test -d $HOME/pkg || mkdir $HOME/pkg

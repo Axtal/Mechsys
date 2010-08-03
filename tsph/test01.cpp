@@ -28,17 +28,17 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
-    Vec3_t Xmax( 20.5, 20.5,0.0);
-    Vec3_t Xmin(-20.5,-20.5,0.0);
+    Vec3_t Xmax( 20.5,  20.5, 0.0);
+    Vec3_t Xmin(-20.5, -20.5, 0.0);
     iVec3_t Div(200,200,1);
     SPHDomain dom(Div,Xmin,Xmax);
-    dom.CamPos = 0.0,60.0,0.0;
+    dom.CamPos = 0.0,0.0,60.0;
     dom.Gravity = 0.0,-0.05,0.0;
     
-    dom.AddBox(Vec3_t (-20.5, 0.0, 0.0), 1,40,1,0.5,0.5,20.0,true);
-    dom.AddBox(Vec3_t ( 20.5, 0.0, 0.0), 1,40,1,0.5,0.5,20.0,true);
-    dom.AddBox(Vec3_t ( 0.0, -20.5,0.0), 42,1,1,0.5,0.5,20.0,true);
-    dom.AddRandomBox(Vec3_t(-10.0,0.0,0.0),20,40,0,20,40,1,10.0,0.5);
+    dom.AddBox(Vec3_t (-20.5, 0.0, 0.0), 1,40,1,0.5,0.5,15.0,true);
+    dom.AddBox(Vec3_t ( 20.5, 0.0, 0.0), 1,40,1,0.5,0.5,15.0,true);
+    dom.AddBox(Vec3_t ( 0.0,-20.5,0.0), 42,1,1,0.5,0.5, 15.0,true);
+    dom.AddRandomBox(Vec3_t(-10.0,0.0,0.0),20,40,0,20,40,1,10.0,1.5);
 
     dom.Solve(/*tf*/400.0,/*dt*/0.001,/*dtOut*/4,"test01");
     return 0;
