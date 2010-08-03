@@ -536,8 +536,14 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 
 inline void Solver::Initialize (bool Transient)
 {
-    // assign equation numbers and set active nodes
+    // assign equation numbers corresponding to local DOFs of elements
     NEq = 0;
+    for (size_t i=0; i<Dom.Eles.Size(); ++i)
+    {
+        if (Dom.Eles[i]->Active) Dom.Eles[i]->IncNLocDOF (NEq);
+    }
+
+    // assign equation numbers and set active nodes
     ActNods.Resize(0);
     for (size_t i=0; i<Dom.Nods.Size(); ++i)
     {

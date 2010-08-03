@@ -34,6 +34,7 @@ install_manifest.txt
 *.bpy
 *.disp
 *.stress
+*.smat
 old_*
 *.pyc
 mesh_drawing.py

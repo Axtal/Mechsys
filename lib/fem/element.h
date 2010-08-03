@@ -53,6 +53,7 @@ public:
     ~Element ();
 
     // Methods
+    virtual void IncNLocDOF   (size_t & NEq)                             const {} ///< Increment the number of local DOFs
     virtual void GetLoc       (Array<size_t> & Loc)                      const;   ///< Get location vector for mounting K/M matrices
     virtual void BackupState  ()                                         const;   ///< Backup element state
     virtual void RestoreState ()                                         const;   ///< Restore element state

@@ -17,17 +17,10 @@
 ########################################################################
 
 SET(TESTS
-  arch
-  beam01
-  beam02
-  labtest
-  oneelem
-  shapefun)
+    mix01)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}")
 ENDFOREACH(var)
-
-SUBDIRS (bhatti nonlinear sloan smith_griffiths transient mixed)
