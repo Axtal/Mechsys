@@ -17,9 +17,11 @@
 ########################################################################
 
 SET(MECHSYS_INCLUDE_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/mechsys
   $ENV{HOME}/mechsys)
 
 SET(MECHSYS_MODULES_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/mechsys
   $ENV{HOME}/mechsys)
 
 FIND_PATH(MECHSYS_MECHSYS_H mechsys/gui/wxmyapp.h   ${MECHSYS_INCLUDE_SEARCH_PATH})

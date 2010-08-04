@@ -8,14 +8,18 @@ echo "* You can call this script with an option to force recompiling everything 
 echo "* and/or an option to also download packages                               *"
 echo "*                                                                          *"
 echo "* Example:                                                                 *"
-echo "*   sh ~/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}                    *"
+echo "*   sh $MECHSYS_ROOT/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}                    *"
 echo "*                                                                          *"
 echo "* By default, the code will not be compiled if this was done before.       *"
 echo "****************************************************************************"
 
-if [ -d "$HOME/mechsys" ]; then
+if [ ! -n "$MECHSYS_ROOT" ]; then
+  $MECHSYS_ROOT = $HOME  
+fi
+
+if [ -d "$MECHSYS_ROOT/mechsys" ]; then
     echo
-    echo "Found: $HOME/mechsys ==> OK"
+    echo "Found: $MECHSYS_ROOT/mechsys ==> OK"
 else
     echo
     echo "Directory named 'mechsys' does not exist"
@@ -54,7 +58,7 @@ VORO=voro++0.3.1
 HDF5=hdf5-1.8.5
 MTL4=mtl4
 
-test -d $HOME/pkg || mkdir $HOME/pkg
+test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
 
 download_and_compile() {
     IS_SVN=0
@@ -98,15 +102,15 @@ download_and_compile() {
     esac
     echo
     echo "********************************** ${1} ********************************"
-    cd ~/pkg
-    if [ -d "$HOME/pkg/$PKG" ]; then
+    cd $MECHSYS_ROOT/pkg
+    if [ -d "$MECHSYS_ROOT/pkg/$PKG" ]; then
         if [ "$RECOMPILE" -eq 1 ]; then
             echo "    Recompiling $PKG"
             if [ "$IS_SVN" -eq 1 ]; then
                 echo "    Updating $PKG SVN repository"
                 svn co $LOCATION $PKG
             else
-                rm -rf $HOME/pkg/$PKG
+                rm -rf $MECHSYS_ROOT/pkg/$PKG
             fi
         else
             echo "    Using existing $PKG"
@@ -132,7 +136,7 @@ download_and_compile() {
     cd $PKG
     if [ "$DO_PATCH" -eq 1 ]; then
         echo "        . . . patching . . ."
-        sh ~/mechsys/patches/${1}/do_patch.sh
+        sh $MECHSYS_ROOT/mechsys/patches/${1}/do_patch.sh
     fi
     if [ "$DO_CONF" -eq 1 ]; then
         echo "        . . . configuring . . ."

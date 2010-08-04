@@ -20,6 +20,9 @@
 #####################################################################################
 
 SET(UMFPACK_INCLUDE_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/SuiteSparse/UFconfig
+  $ENV{MECHSYS_ROOT}/pkg/SuiteSparse/AMD/Include
+  $ENV{MECHSYS_ROOT}/pkg/SuiteSparse/UMFPACK/Include
   $ENV{HOME}/pkg/SuiteSparse/UFconfig
   $ENV{HOME}/pkg/SuiteSparse/AMD/Include
   $ENV{HOME}/pkg/SuiteSparse/UMFPACK/Include
@@ -27,6 +30,8 @@ SET(UMFPACK_INCLUDE_SEARCH_PATH
   /usr/include/suitesparse)
 
 SET(UMFPACK_LIBRARY_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/SuiteSparse/AMD/Lib
+  $ENV{MECHSYS_ROOT}/pkg/SuiteSparse/UMFPACK/Lib
   $ENV{HOME}/pkg/SuiteSparse/AMD/Lib
   $ENV{HOME}/pkg/SuiteSparse/UMFPACK/Lib
   /usr/lib)

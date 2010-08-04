@@ -20,6 +20,7 @@
 #####################################################################################
 
 SET(GOTOBLAS_LIBRARY_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/GotoBLAS2
   $ENV{HOME}/pkg/GotoBLAS2)
 
 FIND_LIBRARY(GOTOBLAS_GOTOBLAS NAMES goto2 PATHS ${GOTOBLAS_LIBRARY_SEARCH_PATH})

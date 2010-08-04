@@ -22,11 +22,13 @@
 SET(SUPERLU_INCLUDE_SEARCH_PATH
   $ENV{HOME}/opt/include
   $ENV{HOME}/opt/include/superlu
-  /usr/include/superlu)
+  /usr/include/superlu
+  /usr/local/include/superlu)
 
 SET(SUPERLU_LIBRARY_SEARCH_PATH
   $ENV{HOME}/opt/lib
-  /usr/lib)
+  /usr/lib
+  /usr/local/lib)
 
 FIND_PATH(SUPERLU_INC1_H  slu_ddefs.h    ${SUPERLU_INCLUDE_SEARCH_PATH})
 #FIND_PATH(SUPERLU_INC1_H  dsp_defs.h     ${SUPERLU_INCLUDE_SEARCH_PATH})

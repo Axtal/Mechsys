@@ -20,10 +20,14 @@
 #####################################################################################
 
 SET(HDF5_INCLUDE_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.5/src
+  $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.5/hl/src  
   $ENV{HOME}/pkg/hdf5-1.8.5/src
   $ENV{HOME}/pkg/hdf5-1.8.5/hl/src)
 
 SET(HDF5_LIBRARY_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.5/src/.libs
+  $ENV{MECHSYS_ROOT}/pkg/hdf5-1.8.5/hl/src/.libs 
   $ENV{HOME}/pkg/hdf5-1.8.5/src/.libs
   $ENV{HOME}/pkg/hdf5-1.8.5/hl/src/.libs)
 

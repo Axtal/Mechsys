@@ -20,6 +20,7 @@
 #####################################################################################
 
 SET(MTL_INCLUDE_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/mtl4
   $ENV{HOME}/pkg/mtl4
   /usr/include
   /usr/local/include)

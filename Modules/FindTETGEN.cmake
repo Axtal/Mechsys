@@ -20,11 +20,13 @@
 #####################################################################################
 
 SET(TETGEN_INCLUDE_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/tetgen1.4.3
   $ENV{HOME}/pkg/tetgen1.4.3
   /usr/include
   /usr/local/include)
 
 SET(TETGEN_LIBRARY_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/tetgen1.4.3
   $ENV{HOME}/pkg/tetgen1.4.3
   /usr/lib
   /usr/local/lib)

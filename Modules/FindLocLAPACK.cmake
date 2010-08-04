@@ -20,6 +20,8 @@
 #####################################################################################
 
 SET(LocLAPACK_LIBRARY_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/lapack-3.2.1
+  $ENV{MECHSYS_ROOT}/pkg/BLAS
   $ENV{HOME}/pkg/lapack-3.2.1
   $ENV{HOME}/pkg/BLAS)
 

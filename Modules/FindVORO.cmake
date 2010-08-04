@@ -20,6 +20,7 @@
 #####################################################################################
 
 SET(VORO_INCLUDE_SEARCH_PATH
+  $ENV{MECHSYS_ROOT}/pkg/voro++0.3.1
   $ENV{HOME}/pkg/voro++0.3.1
   /usr/include
   /usr/local/include)
