@@ -23,7 +23,7 @@
 // MechSys
 #include <mechsys/fem/element.h>
 #include <mechsys/models/equilibstate.h>
-#include <mechsys/models/stressupdate.h>
+#include <mechsys/models/strainupdate.h>
 
 using std::cout;
 using std::endl;
@@ -64,6 +64,7 @@ public:
     // Internal methods
     void Matrices (Mat_t & A, Mat_t & Q) const;
     void Interp   (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & N, Mat_t & Nsig, double & detJ, double & Coef) const; ///< Interpolation matrices
+    void Interp   (Mat_t const & C, IntegPoint const & IP, Mat_t & Nsig, double & detJ, double & Coef) const; ///< Interpolation matrices
 
     // Constants
     GeomElem   * GEs;        ///< Local nodes
@@ -97,11 +98,11 @@ inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
         NDu = NDim*GE->NN;
     }
 
-    // allocate and initialize state at each local node
-    for (size_t i=0; i<GEs->NN; ++i)
+    // allocate and initialize state at each IP
+    for (size_t i=0; i<GE->NIP; ++i)
     {
         Sta.Push (new EquilibState(NDim));
-        Mdl->InitIvs (Ini, Sta[i]); // initialize with effective stresses
+        Mdl->InitIvs (Ini, Sta[i]);
     }
 
     // set UKeys in parent element and initialize DOFs
@@ -304,10 +305,7 @@ inline void USigElem::GetLoc (Array<size_t> & Loc) const
 {
     // Sig DOFs
     Loc.Resize (NDs + NDu);
-    for (size_t i=0; i<NDs; ++i)
-    {
-        Loc[i] = FirstEQsig + i;
-    }
+    for (size_t i=0; i<NDs; ++i) Loc[i] = FirstEQsig + i;
 
     // U DOFs
     for (size_t i=0; i<GE->NN; ++i)
@@ -328,58 +326,27 @@ inline void USigElem::Matrices (Mat_t & A, Mat_t & Q) const
     set_to_zero  (A);
     set_to_zero  (Q);
 
-    // vector of stress components
-    //size_t niv = Sta[0]->Ivs.Size();
-    //Vec_t sig_vec(NDs);
-    //Vec_t eps_vec(NDs);
-    //Vec_t ivs_vec(niv*GEs->NN);
-    //for (size_t i=0; i<GEs->NN; ++i)
-    //{
-        //for (size_t j=0; j<NCo; ++j)
-        //{
-            //sig_vec[i*GEs->NN+j] = Sta[i]->Sig[j];
-            //eps_vec[i*GEs->NN+j] = Sta[i]->Eps[j];
-        //}
-        //for (size_t j=0; j<niv; ++j)
-            //ivs_vec[i*GEs->NN+j] = Sta[i]->Ivs[j];
-    //}
-
-
     // auxiliar matrices
-    //Vec_t sig(NCo);
-    //EquilibState sta(NDim);
     double detJ, coef;
-    Mat_t NtDiN  (NDs,NDs);
-    Mat_t NtB    (NDs,NDu);
-    Mat_t N, Nsig, B, C, D(NCo,NCo), Di;
-    CoordMatrix  (C);
-
-    double E  = 1000.0;
-    double nu = 0.2;
-    double c  = E/((1.0+nu)*(1.0-2.0*nu));
-    D = c*(1.0-nu),       c*nu ,      c*nu ,            0.0,
-             c*nu ,  c*(1.0-nu),      c*nu ,            0.0,
-             c*nu ,       c*nu , c*(1.0-nu),            0.0,
-              0.0 ,        0.0 ,       0.0 , c*(1.0-2.0*nu);
+    Mat_t NtDiN (NDs,NDs);
+    Mat_t NtB   (NDs,NDu);
+    Mat_t N, Nsig, B, C, D, Di;
+    CoordMatrix (C);
 
     for (size_t i=0; i<GE->NIP; ++i)
     {
+        // interpolation
         Interp (C, GE->IPs[i], B, N, Nsig, detJ, coef);
 
         // calc D
-        //sig = Nsig*sig_vec;
-        //eps = Nsig*eps_vec;
-        //sta.Sig = sig;
-        //sta.Eps = eps;
-        //sta.Ivs = ivs;
-        //ivs = Nsig*sig_vec;
-        //Mdl->Stiffness (sta, D);
+        Mdl->Stiffness (Sta[i], D);
         Inv (D, Di);
 
+        // matrices
         NtDiN = trans(Nsig)*Di*Nsig;
         NtB   = trans(Nsig)*B;
-        A    += (coef)     * NtDiN;
-        Q    += (coef)     * NtB;
+        A    += (-coef) * NtDiN;
+        Q    += (coef)  * NtB;
     }
 
     //cout << "A  = \n" << PrintMatrix(A, "%18.8e");
@@ -401,8 +368,6 @@ inline void USigElem::CalcK (Mat_t & K) const
             K(NDs+j,i) = Q(i,j);
         }
     }
-
-    //cout << "K = \n" << PrintMatrix(K);
 }
 
 inline void USigElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & N, Mat_t & Nsig, double & detJ, double & Coef) const
@@ -485,13 +450,100 @@ inline void USigElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B,
         Nsig(i,i+j*NCo) = GEs->N(j);
 }
 
+inline void USigElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & Nsig, double & detJ, double & Coef) const
+{
+    // deriv of shape func w.r.t natural coordinates
+    GE ->Shape  (IP.r, IP.s, IP.t);
+    GE ->Derivs (IP.r, IP.s, IP.t);
+    GEs->Shape  (IP.r, IP.s, IP.t);
+
+    // Jacobian and its determinant
+    Mat_t J(GE->dNdR * C); // J = dNdR * C
+    detJ = Det(J);
+
+    // deriv of shape func w.r.t real coordinates
+    Mat_t Ji;
+    Inv (J, Ji);
+    Mat_t dNdX(Ji * GE->dNdR); // dNdX = Inv(J) * dNdR
+
+    // coefficient used during integration
+    Coef = detJ*IP.w;
+    if (GTy==axs_t)
+    {
+        // correct Coef
+        double radius = 0.0; // radius=x at this IP
+        for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
+        Coef *= radius;
+    }
+
+    // Nsig matrix
+    Nsig.change_dim (NCo,NDs);
+    set_to_zero     (Nsig);
+    for (size_t i=0; i<NCo;     ++i)
+    for (size_t j=0; j<GEs->NN; ++j)
+        Nsig(i,i+j*NCo) = GEs->N(j);
+}
+
 inline void USigElem::CalcFint (Vec_t * F_int) const
 {
 }
 
 inline void USigElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 {
-    std::cout << "dU = " << PrintVector(dU);
+    // stress increment
+    Vec_t dSe(NDs);
+    for (size_t i=0; i<NDs; ++i) dSe(i) = dU[FirstEQsig+i];
+
+    // displacement increment
+    Vec_t dUe(NDu);
+    for (size_t i=0; i<GE->NN; ++i)
+    for (int    j=0; j<NDim;   ++j)
+    {
+        size_t idx = Con[i]->UMap(UKeys[j]);
+        dUe(i*NDim+j) = dU[Con[i]->EQ[idx]];
+    }
+
+    // update F_int
+    if (F_int!=NULL)
+    {
+        StrainUpdate su(Mdl);
+        double detJ, coef;
+        Mat_t C, B, N, Nsig;
+        Vec_t dF1(NDs), dF2(NDu), dsig(NCo), deps(NCo), deps_i(NCo);
+        CoordMatrix (C);
+        set_to_zero (dF1);
+        set_to_zero (dF2);
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            // interpolation
+            Interp (C, GE->IPs[i], B, N, Nsig, detJ, coef);
+
+            // stress and strain increments
+            dsig = Nsig * dSe;
+            su.Update (dsig, Sta[i], deps_i);
+
+            // internal f1
+            Vec_t Ntdeps_i(trans(Nsig)*deps_i);
+            dF1 += (-coef) * Ntdeps_i;
+
+            // internal f1
+            deps = B * dUe;
+            Vec_t Ntdeps(trans(Nsig)*deps);
+            dF1 += (coef) * Ntdeps;
+
+            // internal f2
+            Vec_t Btdsig(trans(B)*dsig);
+            dF2 += coef * (Btdsig);
+        }
+
+        for (size_t i=0; i<NDs; ++i) (*F_int)(FirstEQsig+i) += dF1(i);
+        for (size_t i=0; i<GE->NN; ++i)
+        for (int    j=0; j<NDim;   ++j)
+        {
+            size_t idx = Con[i]->UMap(UKeys[j]);
+            (*F_int)(Con[i]->EQ[idx]) += dF2(i*NDim+j);
+        }
+    }
 }
 
 inline void USigElem::StateKeys (Array<String> & Keys) const

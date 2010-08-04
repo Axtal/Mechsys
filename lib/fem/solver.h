@@ -786,8 +786,8 @@ inline void Solver::_cal_resid (bool WithAccel)
 
     /*
     std::cout << "\n######################################   After\n";
-    std::cout << "F     = " << PrintVector(F,     "%15.3f");
-    std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
+    std::cout << "F     = " << PrintVector(F,     "%10.3f");
+    std::cout << "F_int = " << PrintVector(F_int, "%10.3f");
     std::cout << std::endl;
     */
 

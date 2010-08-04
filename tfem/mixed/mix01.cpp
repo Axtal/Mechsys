@@ -22,6 +22,7 @@
 // MechSys
 #include <mechsys/fem/fem.h>
 #include <mechsys/fem/usigelem.h>
+#include <mechsys/models/nlelastic.h>
 
 using std::cout;
 using std::endl;
@@ -33,8 +34,16 @@ using FEM::Solver;
 int main(int argc, char **argv) try
 {
     // input
-    bool standard = false;
-    if (argc>1) standard = atoi(argv[1]);
+    bool mixed  = true;
+    bool nonlin = true;
+    int  ninc   = 10;
+    bool FE     = false;
+    bool NR     = false;
+    if (argc>1) mixed  = atoi(argv[1]);
+    if (argc>2) nonlin = atoi(argv[2]);
+    if (argc>3) ninc   = atoi(argv[3]);
+    if (argc>4) FE     = atoi(argv[4]);
+    if (argc>5) NR     = atoi(argv[5]);
 
     // mesh
     Array<Mesh::Block> blks(1);
@@ -49,13 +58,28 @@ int main(int argc, char **argv) try
     mesh.Generate (blks,/*O2*/true);
     mesh.WriteMPY ("mix01");
 
-    // properties and domain
-    Dict prps, mdls, inis;
-    if (standard) prps.Set (-1, "prob geom psa nip", PROB("Equilib"), GEOM("Quad8"), 1., 4.0);
-    else          prps.Set (-1, "prob geom psa nip", PROB("USig"),    GEOM("Quad8"), 1., 4.0);
-    mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
+    // elements properties
+    Dict prps;
+    if (mixed) prps.Set (-1, "prob geom psa nip", PROB("USig"),    GEOM("Quad8"), 1., 4.0);
+    else       prps.Set (-1, "prob geom psa nip", PROB("Equilib"), GEOM("Quad8"), 1., 4.0);
+
+    // model parameters
+    Dict mdls;
+    double E  = 1000.0;
+    double nu = 0.2;
+    double K  = E/(3.0*(1.0-2.0*nu));
+    double G  = E/(2.0*(1.0+nu));
+    if (nonlin) mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"),  K, G, 1.6, 1.0, 1.);
+    else        mdls.Set (-1, "name E nu psa",          MODEL("LinElastic"), E, nu, 1.);
+
+    // initial values
+    Dict inis;
     inis.Set (-1, "sx sy", 0.0, 0.0);
+
+    // domain
     Domain dom(mesh, prps, mdls, inis);
+    dom.SetOutNods ("mix01", Array<int>(2,5,12));
+    dom.SetOutEles ("mix01", Array<int>(0,1));
 
     //Mat_t A,Q;
     //FEM::USigElem * ele = static_cast<FEM::USigElem*>(dom.Eles[0]);
@@ -65,7 +89,10 @@ int main(int argc, char **argv) try
 
     // solver
     Solver sol(dom);
-    sol.SetScheme ("FE");
+    sol.STOL = 1.0e-7;
+    sol.TolR = 1.0e-10;
+    if (FE) sol.SetScheme ("FE");
+    if (NR) sol.SetScheme ("NR");
 
     sol.Initialize ();
     sol.AssembleKA ();
@@ -75,15 +102,16 @@ int main(int argc, char **argv) try
     Dict bcs;
     bcs.Set      (-1,  "ux uy", 0.0, 0.0);
     bcs.Set      (-40, "ux",    0.0);
-    bcs.Set      (-20, "qn",    1.0);
+    bcs.Set      (-20, "qn",    10.0);
     dom.SetBCs   (bcs);
-    sol.Solve    ();
+    sol.Solve    (ninc);
     //dom.WriteVTU ("mix01");
 
     cout << endl;
     cout << "Node # 5: U = " << dom.Nods[5]->U << endl;
     cout << endl;
     
+    dom.PrintResults();
 
     return 0;
 }
