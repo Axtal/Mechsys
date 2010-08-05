@@ -26,6 +26,8 @@
 #include <mechsys/fem/rod.h>
 #include <mechsys/fem/beam.h>
 #include <mechsys/fem/equilibelem.h>
+#include <mechsys/fem/usigelem.h>
+#include <mechsys/fem/usigepselem.h>
 #include <mechsys/fem/geomelem.h>
 #include <mechsys/fem/elems/tri3.h>
 #include <mechsys/fem/elems/tri6.h>

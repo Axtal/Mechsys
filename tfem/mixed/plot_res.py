@@ -20,3 +20,16 @@ if plt==1:
     legend (loc='best')
     grid   ()
     show   ()
+
+if plt==2:
+    res     = read_table("mix02_nod_7_0.res")
+    ux      = array(res['ux'])
+    fxe     = array(res['fx'])
+    fxi     = array(res['fx_int'])
+    plot   (ux,fxe,'ro', label='fe')
+    plot   (ux,fxi,'b-', label='fi')
+    xlabel ('ux')
+    ylabel ('fx')
+    legend (loc='best')
+    grid   ()
+    show   ()

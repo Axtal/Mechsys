@@ -23,17 +23,7 @@
 #include <iostream>
 
 // MechSys
-#include <mechsys/mesh/mesh.h>
-#include <mechsys/mesh/structured.h>
-#include <mechsys/fem/elems/quad8.h>
-#include <mechsys/fem/equilibelem.h>
-#include <mechsys/fem/domain.h>
-#include <mechsys/fem/solver.h>
-#include <mechsys/models/linelastic.h>
-#include <mechsys/util/maps.h>
-#include <mechsys/util/util.h>
-#include <mechsys/util/fatal.h>
-#include <mechsys/draw.h>
+#include <mechsys/fem/fem.h>
 
 using std::cout;
 using std::endl;
@@ -154,6 +144,14 @@ void ElemSolution (double Pressure, double radius, double Radius, FEM::Element c
 
 int main(int argc, char **argv) try
 {
+    // input
+    bool   mixed    = false;
+    bool   usigeps  = true;
+    String geom_sig = "Quad4";
+    if (argc>1) mixed    = atoi(argv[1]);
+    if (argc>2) usigeps  = atoi(argv[2]);
+    if (argc>3) geom_sig =      argv[3];
+
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
 
     double r =  5.0; // inner radius
@@ -204,8 +202,9 @@ int main(int argc, char **argv) try
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
     // elements properties
+    double prob = (mixed ? (usigeps ? PROB("USigEps") : PROB("USig")) : PROB("Equilib"));
     Dict prps;
-    prps.Set(-1, "prob geom active  gam psa  nip", PROB("Equilib"), GEOM("Quad8"), 1.0,  0.0, 1.0, 9.0);
+    prps.Set(-1, "prob geom active  gam psa  nip", prob, GEOM("Quad8"), 1.0,  0.0, 1.0, 4.);
 
     // models
     Dict mdls;
