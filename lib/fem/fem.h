@@ -39,6 +39,7 @@
 #include <mechsys/fem/solver.h>
 #include <mechsys/models/model.h>
 #include <mechsys/models/linelastic.h>
+#include <mechsys/models/nlelastic.h>
 #include <mechsys/models/elastoplastic.h>
 #include <mechsys/models/camclay.h>
 #include <mechsys/linalg/matvec.h>

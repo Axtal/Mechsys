@@ -31,6 +31,10 @@ namespace FEM
 class EquilibElem : public Element
 {
 public:
+    // Static
+    static size_t NCo; ///< Number of stress/strain components == 2*NDim
+    static size_t NDu; ///< Number of DOFs (displacements) == NN*NDim
+
     // Constructor
     EquilibElem (int                  NDim,   ///< Space dimension
                  Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
@@ -45,7 +49,6 @@ public:
     void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel); ///< Apply gravity
     void Deactivate   (NodBCs_t & pF, pCalcM CalcM, double gAccel,
                        NodBCs_t & pU);                              ///< Deactivate element
-    void CalcFint     (Vec_t * F_int=NULL)                   const; ///< Calculate or set Fint. Set nodes if F_int==NULL
     void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM        (Mat_t & M)                            const; ///< Mass matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
@@ -61,6 +64,9 @@ public:
     double rho; ///< Density
 };
 
+size_t EquilibElem::NCo = 0;
+size_t EquilibElem::NDu = 0;
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -70,6 +76,13 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
 {
     // check GE
     if (GE==NULL) throw new Fatal("EquilibElem::EquilibElem: GE (geometry element) must be defined");
+
+    // set constants of this class (just once)
+    if (NDu==0)
+    {
+        NCo = 2*NDim;
+        NDu = NDim*GE->NN;
+    }
 
     // parameters/properties
     h   = (Prp.HasKey("h")   ? Prp("h")   : 1.0);
@@ -120,27 +133,38 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
         }
     }
 
+    // set UKeys in parent element and initialize DOFs
     if (NDim==2)
     {
-        // set UKeys in parent element
         UKeys.Resize (NDim);
         UKeys = "ux", "uy";
-
-        // initialize DOFs
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy", "fx fy");
     }
     else // 3D
     {
-        // set UKeys in parent element
         UKeys.Resize (NDim);
         UKeys = "ux", "uy", "uz";
-
-        // initialize DOFs
         for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
     }
 
-    // set F in nodes due to Fint
-    CalcFint ();
+    // set F in nodes due to initial stresses
+    double detJ, coef;
+    Mat_t  C, B;
+    Vec_t  Fe(NDu);
+    CoordMatrix (C);
+    set_to_zero (Fe);
+    for (size_t i=0; i<GE->NIP; ++i)
+    {
+        CalcB (C, GE->IPs[i], B, detJ, coef);
+        Vec_t const & sig = static_cast<EquilibState const *>(Sta[i])->Sig;
+        Fe += (coef) * trans(B)*sig;
+    }
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        Con[i]->F[Con[i]->FMap("fx")] += Fe(0+i*NDim);
+        Con[i]->F[Con[i]->FMap("fy")] += Fe(1+i*NDim);  if (NDim==3)
+        Con[i]->F[Con[i]->FMap("fz")] += Fe(2+i*NDim);
+    }
 }
 
 inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
@@ -374,7 +398,7 @@ inline void EquilibElem::Deactivate (NodBCs_t & pF, pCalcM CalcM, double gAccel,
     // calc force to be applied after removal of element
     double detJ, coef;
     Mat_t  C, B;
-    Vec_t  Fi(GE->NN*NDim), Fb(GE->NN*NDim);
+    Vec_t  Fi(NDu), Fb(NDu);
     set_to_zero (Fi);
     set_to_zero (Fb);
     CoordMatrix (C);
@@ -384,8 +408,8 @@ inline void EquilibElem::Deactivate (NodBCs_t & pF, pCalcM CalcM, double gAccel,
         // internal forces
         GE->Shape (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
         CalcB     (C, GE->IPs[i], B, detJ, coef);
-        Vec_t Btsig(trans(B)*static_cast<EquilibState const *>(Sta[i])->Sig);
-        Fi += coef * (Btsig);
+        Vec_t const & sig = static_cast<EquilibState const *>(Sta[i])->Sig;
+        Fi += (coef) * trans(B)*sig;
 
         // body forces
         for (size_t j=0; j<GE->NN; ++j)
@@ -437,76 +461,33 @@ inline void EquilibElem::Deactivate (NodBCs_t & pF, pCalcM CalcM, double gAccel,
     Active = false;
 }
 
-inline void EquilibElem::CalcFint (Vec_t * F_int) const
-{
-    // calc element force
-    double detJ, coef;
-    Mat_t  C, B;
-    Vec_t  Fe(GE->NN*NDim);
-    set_to_zero (Fe);
-    CoordMatrix (C);
-    for (size_t i=0; i<GE->NIP; ++i)
-    {
-        CalcB (C, GE->IPs[i], B, detJ, coef);
-        Vec_t Btsig(trans(B)*static_cast<EquilibState const *>(Sta[i])->Sig);
-        Fe += coef * (Btsig);
-    }
-    
-    // set nodes directly
-    if (F_int==NULL)
-    {
-        // add to F
-        for (size_t i=0; i<GE->NN; ++i)
-        {
-            Con[i]->F[Con[i]->FMap("fx")] += Fe(0+i*NDim);
-            Con[i]->F[Con[i]->FMap("fy")] += Fe(1+i*NDim);  if (NDim==3)
-            Con[i]->F[Con[i]->FMap("fz")] += Fe(2+i*NDim);
-        }
-    }
-
-    // add to F_int
-    else
-    {
-        Array<size_t> loc;
-        GetLoc (loc);
-        for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += Fe(i);
-    }
-}
-
 inline void EquilibElem::CalcK (Mat_t & K) const
 {
     double detJ, coef;
     Mat_t C, D, B;
-    int nrows = GE->NN*NDim; // number of rows in local K matrix
-    K.change_dim (nrows,nrows);
+    K.change_dim (NDu, NDu);
     set_to_zero  (K);
     CoordMatrix  (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
         Mdl->Stiffness (Sta[i], D);
         CalcB (C, GE->IPs[i], B, detJ, coef);
-        Mat_t BtDB(trans(B)*D*B);
-        K += coef * (BtDB);
+        K += (coef) * trans(B)*D*B;
     }
-    //std::cout << "D = \n" << PrintMatrix(D);
-    //std::cout << "K = \n" << PrintMatrix(K);
 }
 
 inline void EquilibElem::CalcM (Mat_t & M) const
 {
     double detJ, coef;
     Mat_t  C, N;
-    int nrows = GE->NN*NDim; // number of rows in local M matrix
-    M.change_dim (nrows,nrows);
+    M.change_dim (NDu, NDu);
     set_to_zero  (M);
     CoordMatrix  (C);
     for (size_t i=0; i<GE->NIP; ++i)
     {
         CalcN (C, GE->IPs[i], N, detJ, coef);
-        Mat_t NtN(trans(N)*N);
-        M += (rho*coef) * (NtN);
+        M += (rho*coef) * trans(N)*N;
     }
-    //std::cout << "M = \n" << PrintMatrix(M);
 }
 
 inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const
@@ -518,9 +499,6 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
     Mat_t J(GE->dNdR * C); // J = dNdR * C
     detJ = Det(J);
 
-    //std::cout << "J = \n" << PrintMatrix(J);
-    //std::cout << "detJ = " << detJ << "\n";
-
     // deriv of shape func w.r.t real coordinates
     Mat_t Ji;
     Inv (J, Ji);
@@ -530,8 +508,7 @@ inline void EquilibElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & 
     Coef = h*detJ*IP.w;
 
     // B matrix
-    int nrows = GE->NN*NDim; // number of rows in local K matrix
-    B.change_dim (Mdl->NCps,nrows);
+    B.change_dim (NCo, NDu);
     set_to_zero  (B);
     if (NDim==2)
     {
@@ -595,8 +572,7 @@ inline void EquilibElem::CalcN (Mat_t const & C, IntegPoint const & IP, Mat_t & 
     Coef = h*detJ*IP.w;
 
     // N matrix
-    int nrows = GE->NN*NDim; // number of rows in local K matrix
-    N.change_dim (NDim,nrows);
+    N.change_dim (NDim, NDu);
     set_to_zero  (N);
     if (GTy==axs_t)
     {
@@ -616,15 +592,14 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     GetLoc (loc);
 
     // element nodal displacements
-    int nrows = GE->NN*NDim; // number of rows in local K matrix
-    Vec_t dUe(nrows);
+    Vec_t dUe(NDu);
     for (size_t i=0; i<loc.Size(); ++i) dUe(i) = dU(loc[i]);
 
     // update state at each IP
     StressUpdate su(Mdl);
     double detJ, coef;
     Mat_t  C, B;
-    Vec_t  dFe(nrows), dsig(Mdl->NCps), deps(Mdl->NCps);
+    Vec_t  dFe(NDu), dsig(NCo), deps(NCo);
     set_to_zero (dFe);
     CoordMatrix (C);
     for (size_t i=0; i<GE->NIP; ++i)
@@ -637,8 +612,7 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         su.Update (deps, Sta[i], dsig);
 
         // element nodal forces
-        Vec_t Btdsig(trans(B)*dsig);
-        dFe += coef * (Btdsig);
+        dFe += (coef) * trans(B)*dsig;
     }
 
     // add results to Fint (internal forces)
@@ -647,31 +621,8 @@ inline void EquilibElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
 inline void EquilibElem::StateKeys (Array<String> & Keys) const
 {
-    Keys.Resize (2*Mdl->NCps + 4 + Mdl->NIvs);
-    size_t k=0;
-    Keys[k++] = "sx";
-    Keys[k++] = "sy";
-    Keys[k++] = "sz";
-    Keys[k++] = "sxy";
-    if (NDim==3)
-    {
-        Keys[k++] = "syz";
-        Keys[k++] = "szx";
-    }
-    Keys[k++] = "ex";
-    Keys[k++] = "ey";
-    Keys[k++] = "ez";
-    Keys[k++] = "exy";
-    if (NDim==3)
-    {
-        Keys[k++] = "eyz";
-        Keys[k++] = "ezx";
-    }
-    Keys[k++] = "pcam";
-    Keys[k++] = "qcam";
-    Keys[k++] = "ev";
-    Keys[k++] = "ed";
-    for (size_t i=0; i<Mdl->NIvs; ++i) Keys[k++] = Mdl->IvNames[i];
+    Keys = EquilibState::Keys;
+    for (size_t i=0; i<Mdl->NIvs; ++i) Keys.Push (Mdl->IvNames[i]);
 }
 
 inline void EquilibElem::StateAtIP (SDPair & KeysVals, int IdxIP) const

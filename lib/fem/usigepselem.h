@@ -17,19 +17,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>  *
  ************************************************************************/
 
-#ifndef MECHSYS_FEM_USIGELEM_H
-#define MECHSYS_FEM_USIGELEM_H
+#ifndef MECHSYS_FEM_USIGEPSELEM_H
+#define MECHSYS_FEM_USIGEPSELEM_H
 
 // MechSys
 #include <mechsys/fem/element.h>
 #include <mechsys/models/equilibstate.h>
-#include <mechsys/models/strainupdate.h>
 #include <mechsys/models/stressupdate.h>
 
 namespace FEM
 {
 
-class USigElem : public Element
+class USigEpsElem : public Element
 {
 public:
     // Static
@@ -38,18 +37,18 @@ public:
     static size_t NDu; ///< Number of DOFs (displacements) == NN*NDim
 
     // Constructor
-    USigElem (int                  NDim,   ///< Space dimension
-              Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
-              Model        const * Mdl,    ///< Model
-              SDPair       const & Prp,    ///< Properties
-              SDPair       const & Ini,    ///< Initial values
-              Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
+    USigEpsElem (int                  NDim,   ///< Space dimension
+                 Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
+                 Model        const * Mdl,    ///< Model
+                 SDPair       const & Prp,    ///< Properties
+                 SDPair       const & Ini,    ///< Initial values
+                 Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
 
     // Destructor
-    ~USigElem () { if (GEs!=NULL) delete GEs; }
+    ~USigEpsElem () { if (GEs!=NULL) delete GEs; }
 
     // Methods
-    void IncNLocDOF  (size_t & NEq)                         const { FirstEQ = NEq;   NEq += NDs; }
+    void IncNLocDOF  (size_t & NEq)                         const { FirstEQ = NEq;   NEq += 2*NDs; }
     void GetLoc      (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
@@ -59,36 +58,37 @@ public:
     void StateAtIP   (SDPair & KeysVals, int IdxIP)         const; ///< Get state at IP
 
     // Internal methods
-    void Matrices (Mat_t & A, Mat_t & Q) const;
+    void Matrices (Mat_t & A, Mat_t & E, Mat_t & Q) const;
     void Interp   (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & N, Mat_t & Ns, double & detJ, double & Coef) const; ///< Interpolation matrices
 
     // Constants
-    bool         StrainResid; ///< Strain-residual formulation ?
-    GeomElem   * GEs;         ///< Local nodes
-    mutable long FirstEQ;     ///< First equation of sig DOF
+    GeomElem   * GEs;      ///< Local nodes
+    mutable long FirstEQ;  ///< First equation of sig DOF
 };
 
-size_t USigElem::NCo = 0;
-size_t USigElem::NDs = 0;
-size_t USigElem::NDu = 0;
+size_t USigEpsElem::NCo = 0;
+size_t USigEpsElem::NDs = 0;
+size_t USigEpsElem::NDu = 0;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
-    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), StrainResid(true)
+inline USigEpsElem::USigEpsElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
+    : Element(NDim,Cell,Mdl,Prp,Ini,Nodes)
 {
     // check GE
-    if (GE==NULL)   throw new Fatal("USigElem::USigElem: GE (geometry element) must be defined");
-    if (GTy==pse_t) throw new Fatal("USigElem::USigElem: This element does not work for plane-stress (pse)");
-
-    // properties
-    if (Prp.HasKey("strain_resid")) StrainResid = true;
+    if (GE==NULL)   throw new Fatal("USigEpsElem::USigEpsElem: GE (geometry element) must be defined");
+    if (GTy==pse_t) throw new Fatal("USigEpsElem::USigEpsElem: This element does not work for plane-stress (pse)");
 
     // local nodes
-    if (strcmp(GE->Name.CStr(),"Quad8")==0) GEs = AllocGeomElem ("Quad4", NDim);
-    else throw new Fatal("USigElem::USigElem: GE must be Quad8 for the time being");
+    if (Prp.HasKey("geom_sig"))
+    {
+        String geom_sig;
+        GEOM.Val2Key (Prp("geom_sig"), geom_sig);
+        GEs = AllocGeomElem (geom_sig, NDim);
+    }
+    else GEs = AllocGeomElem (GE->Name, NDim);
 
     // set constants of this class (just once)
     if (NDs==0)
@@ -103,6 +103,42 @@ inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     {
         Sta.Push (new EquilibState(NDim));
         Mdl->InitIvs (Ini, Sta[i]);
+    }
+
+    // set initial values
+    if (Ini.HasKey("geostatic"))
+    {
+        if (!Ini.HasKey("K0"))                throw new Fatal("USigEpsElem::USigEpsElem: For geostatic stresses, 'K0' must be provided in 'Ini' dictionary");
+        if (!Ini.HasKey("gam"))               throw new Fatal("USigEpsElem::USigEpsElem: For geostatic stresses, 'gam' must be provided in 'Ini' dictionary");
+        if (NDim==2 && !Ini.HasKey("y_surf")) throw new Fatal("USigEpsElem::USigEpsElem: For geostatic stresses in 2D, 'y_surf' must be provided in 'Ini' dictionary");
+        if (NDim==3 && !Ini.HasKey("z_surf")) throw new Fatal("USigEpsElem::USigEpsElem: For geostatic stresses in 3D, 'z_surf' must be provided in 'Ini' dictionary");
+        double K0   = Ini("K0");
+        double gam  = Ini("gam");
+        double surf = (NDim==2 ? Ini("y_surf") : Ini("z_surf"));
+        Vec_t X; // coords of IP
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            CoordsOfIP (i, X);
+            Vec_t & sig = static_cast<EquilibState *>(Sta[i])->Sig;
+            if (NDim==2)
+            {
+                double h = fabs(surf-X(1));
+                sig(1) = -gam*h;    // sy
+                sig(0) = K0*sig(1); // sx
+                sig(2) = K0*sig(1); // sz
+                sig(3) = 0.0;       // sxy*sq2
+            }
+            else // 3D
+            {
+                double h = fabs(surf-X(2));
+                sig(2) = -gam*h;    // sz
+                sig(0) = K0*sig(2); // sx
+                sig(1) = K0*sig(2); // sy
+                sig(3) = 0.0;       // sxy*sq2
+                sig(4) = 0.0;       // syz*sq2
+                sig(5) = 0.0;       // szx*sq2
+            }
+        }
     }
 
     // set UKeys in parent element and initialize DOFs
@@ -138,10 +174,10 @@ inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     }
 }
 
-inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
+inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
     // check
-    if (!Active) throw new Fatal("USigElem::SetBCs: Element %d is inactive",Cell.ID);
+    if (!Active) throw new Fatal("USigEpsElem::SetBCs: Element %d is inactive",Cell.ID);
 
     bool has_bx  = BCs.HasKey("bx");  // x component of body force
     bool has_by  = BCs.HasKey("by");  // y component of body force
@@ -261,8 +297,6 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
                             a(0)*b(1) - a(1)*b(0);
                     }
 
-                    //std::cout << "n = " << PrintVector(n);
-
                     // loading
                     if (NDim==2)
                     {
@@ -289,15 +323,6 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
 
             // set CalcM
             for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
-
-            /*
-            for (size_t j=0; j<GE->NFN; ++j)
-            {
-                size_t k = GE->FNode(IdxEdgeOrFace,j);
-                std::cout << pF[Con[GE->FNode(IdxEdgeOrFace,j)]].first[Con[k]->FMap("fx")] << "  ";
-                std::cout << pF[Con[GE->FNode(IdxEdgeOrFace,j)]].first[Con[k]->FMap("fy")] << std::endl;
-            }
-            */
         }
     }
 
@@ -317,11 +342,11 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
     }
 }
 
-inline void USigElem::GetLoc (Array<size_t> & Loc) const
+inline void USigEpsElem::GetLoc (Array<size_t> & Loc) const
 {
-    // Sig DOFs
-    Loc.Resize (NDs + NDu);
-    for (size_t i=0; i<NDs; ++i) Loc[i] = FirstEQ + i;
+    // Sig and Eps DOFs
+    Loc.Resize (2*NDs + NDu);
+    for (size_t i=0; i<2*NDs; ++i) Loc[i] = FirstEQ + i;
 
     // U DOFs
     for (size_t i=0; i<GE->NN; ++i)
@@ -329,17 +354,19 @@ inline void USigElem::GetLoc (Array<size_t> & Loc) const
         for (size_t j=0; j<UKeys.Size(); ++j)
         {
             size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
-            Loc[NDs + i*NDim+j] = Con[i]->EQ[idx];
+            Loc[2*NDs + i*NDim+j] = Con[i]->EQ[idx];
         }
     }
 }
 
-inline void USigElem::Matrices (Mat_t & A, Mat_t & Q) const
+inline void USigEpsElem::Matrices (Mat_t & A, Mat_t & E, Mat_t & Q) const
 {
     // submatrices
     A.change_dim (NDs,NDs);
-    Q.change_dim (NDs,NDu);
+    E.change_dim (NDs,NDu);
+    Q.change_dim (NDs,NDs);
     set_to_zero  (A);
+    set_to_zero  (E);
     set_to_zero  (Q);
 
     // auxiliar matrices
@@ -356,68 +383,35 @@ inline void USigElem::Matrices (Mat_t & A, Mat_t & Q) const
         Mdl->Stiffness (Sta[i], D);
 
         // matrices
-        Q += (coef) * trans(Ns)*B;
-        if (StrainResid)
-        {
-            Inv (D, Di);
-            A += (-coef) * trans(Ns)*Di*Ns;
-        }
-        else
-        {
-            A += (-coef) * trans(B)*D*B;
-        }
+        A +=  (coef) * trans(Ns)*D*Ns;
+        E +=  (coef) * trans(Ns)*B;
+        Q += (-coef) * trans(Ns)*Ns;
     }
-
-    //cout << "A    = \n" << PrintMatrix(A, "%14.3e");
-    //cout << "detA = "   << Det(A) << endl;
-    //cout << "Q    = \n" << PrintMatrix(Q, "%14.3e");
-    //cout << "detQ = "   << Det(Q) << endl;
 }
 
-inline void USigElem::CalcK (Mat_t & K) const
+inline void USigEpsElem::CalcK (Mat_t & K) const
 {
-    Mat_t A, Q;
-    Matrices (A, Q);
-    K.change_dim (NDs+NDu,NDs+NDu);
+    Mat_t A, E, Q;
+    Matrices (A, E, Q);
+    K.change_dim (2*NDs+NDu, 2*NDs+NDu);
     set_to_zero  (K);
-    if (StrainResid)
+    for (size_t i=0; i<NDs; ++i)
     {
-        for (size_t i=0; i<NDs; ++i)
+        for (size_t j=0; j<NDs; ++j)
         {
-            for (size_t j=0; j<NDs; ++j) K(i,j) = A(i,j);
-            for (size_t j=0; j<NDu; ++j)
-            {
-                K(i,NDs+j) = Q(i,j);
-                K(NDs+j,i) = Q(i,j);
-            }
+            K(i,    j) = A(i,j);
+            K(i,NDs+j) = Q(i,j);
+            K(NDs+i,j) = Q(j,i);
         }
-    }
-    else
-    {
-        for (size_t i=0; i<NDu; ++i)
+        for (size_t j=0; j<NDu; ++j)
         {
-            for (size_t j=0; j<NDs; ++j)
-            {
-                K(i,    j) = Q(j,i);
-                K(NDu+i,j) = Q(j,i);
-            }
-            for (size_t j=0; j<NDu; ++j) K(i,NDs+j) = A(i,j);
+            K(  NDs+i, 2*NDs+j) = E(i,j);
+            K(2*NDs+j,   NDs+i) = E(i,j);
         }
-        /*
-        for (size_t i=0; i<NDu; ++i)
-        {
-            for (size_t j=0; j<NDu; ++j) K(NDs+i,NDs+j) = A(i,j);
-            for (size_t j=0; j<NDs; ++j)
-            {
-                K(j,NDs+i) = Q(j,i);
-                K(NDs+i,j) = Q(j,i);
-            }
-        }
-        */
     }
 }
 
-inline void USigElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & N, Mat_t & Ns, double & detJ, double & Coef) const
+inline void USigEpsElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B, Mat_t & N, Mat_t & Ns, double & detJ, double & Coef) const
 {
     // deriv of shape func w.r.t natural coordinates
     GE ->Shape  (IP.r, IP.s, IP.t);
@@ -437,7 +431,7 @@ inline void USigElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B,
     Coef = detJ*IP.w;
 
     // B matrix
-    B.change_dim (NCo,NDu);
+    B.change_dim (NCo, NDu);
     set_to_zero  (B);
     if (NDim==2)
     {
@@ -497,11 +491,16 @@ inline void USigElem::Interp (Mat_t const & C, IntegPoint const & IP, Mat_t & B,
         Ns(i,i+j*NCo) = GEs->N(j);
 }
 
-inline void USigElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
+inline void USigEpsElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 {
-    // stress increment
+    // stress and strain increments
     Vec_t dSe(NDs);
-    for (size_t i=0; i<NDs; ++i) dSe(i) = dU[FirstEQ+i];
+    Vec_t dEe(NDs);
+    for (size_t i=0; i<NDs; ++i)
+    {
+        dEe(i) = dU[FirstEQ+i];
+        dSe(i) = dU[FirstEQ+NDs+i];
+    }
 
     // displacement increment
     Vec_t dUe(NDu);
@@ -517,63 +516,54 @@ inline void USigElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     {
         double detJ, coef;
         Mat_t C, B, N, Ns;
-        Vec_t dsig(NCo), deps(NCo), dF1(NDs), dF2(NDu);
+        Vec_t dsig(NCo), deps(NCo), deps_u(NCo), dF1(NDs), dF2(NDs), dF3(NDu);
         CoordMatrix (C);
         set_to_zero (dF1);
         set_to_zero (dF2);
+        set_to_zero (dF3);
         for (size_t i=0; i<GE->NIP; ++i)
         {
             // interpolation
             Interp (C, GE->IPs[i], B, N, Ns, detJ, coef);
 
             // (external) stress and strain increment
-            dsig = Ns * dSe;
-            deps = B  * dUe;
+            dsig   = Ns * dSe;
+            deps   = Ns * dEe;
+            deps_u = B  * dUe;
 
-            if (StrainResid)
-            {
-                // (internal) strain increment
-                Vec_t deps_i(NCo);
-                StrainUpdate staup(Mdl);
-                staup.Update (dsig, Sta[i], deps_i);
+            // (internal) strain increment
+            Vec_t dsig_i(NCo);
+            StressUpdate steup(Mdl);
+            steup.Update (deps, Sta[i], dsig_i);
 
-                // (internal) forces
-                dF1 += (-coef) * trans(Ns)*deps_i;
-                dF1 +=  (coef) * trans(Ns)*deps;
-                dF2 +=  (coef) * trans(B)*dsig;
-            }
-            else
-            {
-                // (internal) stress increment
-                Vec_t dsig_i(NCo);
-                StressUpdate steup(Mdl);
-                steup.Update (deps, Sta[i], dsig_i);
-
-                // (internal) forces
-                dF1 +=  (coef) * trans(Ns)*deps;
-                dF2 +=  (coef) * trans(B)*dsig;
-                dF2 += (-coef) * trans(B)*dsig_i;
-            }
+            // (internal) forces
+            dF1 += (coef) * trans(Ns)*(dsig_i - dsig);
+            dF2 += (coef) * trans(Ns)*(deps_u - deps);
+            dF3 += (coef) * trans(B)*dsig;
         }
 
         // add to F_int
-        for (size_t i=0; i<NDs; ++i) (*F_int)(FirstEQ+i) += dF1(i);
+        for (size_t i=0; i<NDs; ++i)
+        {
+            (*F_int)(FirstEQ+i)     += dF1(i);
+            (*F_int)(FirstEQ+NDs+i) += dF2(i);
+        }
         for (size_t i=0; i<GE->NN; ++i)
         for (int    j=0; j<NDim;   ++j)
         {
             size_t idx = Con[i]->UMap(UKeys[j]);
-            (*F_int)(Con[i]->EQ[idx]) += dF2(i*NDim+j);
+            (*F_int)(Con[i]->EQ[idx]) += dF3(i*NDim+j);
         }
     }
 }
 
-inline void USigElem::StateKeys (Array<String> & Keys) const
+inline void USigEpsElem::StateKeys (Array<String> & Keys) const
 {
     Keys = EquilibState::Keys;
     for (size_t i=0; i<Mdl->NIvs; ++i) Keys.Push (Mdl->IvNames[i]);
 }
 
-inline void USigElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
+inline void USigEpsElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 {
     Vec_t const & sig = static_cast<EquilibState const *>(Sta[IdxIP])->Sig;
     Vec_t const & eps = static_cast<EquilibState const *>(Sta[IdxIP])->Eps;
@@ -601,19 +591,19 @@ inline void USigElem::StateAtIP (SDPair & KeysVals, int IdxIP) const
 
 
 // Allocate a new element
-Element * USigElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new USigElem(NDim,Cell,Mdl,Prp,Ini,Nodes); }
+Element * USigEpsElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes) { return new USigEpsElem(NDim,Cell,Mdl,Prp,Ini,Nodes); }
 
 // Register element
-int USigElemRegister()
+int USigEpsElemRegister()
 {
-    ElementFactory["USig"] = USigElemMaker;
-    PROB.Set ("USig", (double)PROB.Keys.Size());
+    ElementFactory["USigEps"] = USigEpsElemMaker;
+    PROB.Set ("USigEps", (double)PROB.Keys.Size());
     return 0;
 }
 
 // Call register
-int __USigElem_dummy_int  = USigElemRegister();
+int __USigEpsElem_dummy_int  = USigEpsElemRegister();
 
 }; // namespace FEM
 
-#endif // MECHSYS_FEM_USIGELEM_H
+#endif // MECHSYS_FEM_USIGEPSELEM_H

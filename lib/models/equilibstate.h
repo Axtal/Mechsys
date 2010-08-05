@@ -31,6 +31,9 @@
 class EquilibState : public State
 {
 public:
+    // static
+    static Array<String> Keys;
+
     // Constructor
     EquilibState (int NDim);
 
@@ -49,6 +52,8 @@ public:
     bool  Ldg, LdgBkp; ///< Loading ?
 };
 
+Array<String> EquilibState::Keys;
+
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
@@ -61,6 +66,23 @@ inline EquilibState::EquilibState (int NDim)
     Eps   .change_dim(ncomp);  set_to_zero(Eps   );
     SigBkp.change_dim(ncomp);  set_to_zero(SigBkp);
     EpsBkp.change_dim(ncomp);  set_to_zero(EpsBkp);
+
+    if (Keys.Size()==0)
+    {
+        Keys.Resize (2*ncomp+4);
+        if (NDim==2) 
+        {
+            Keys = "sx",   "sy",   "sz", "sxy",
+                   "ex",   "ey",   "ez", "exy",
+                   "pcam", "qcam", "ev", "ed";
+        }
+        else
+        {
+            Keys = "sx",   "sy",   "sz", "sxy", "syz", "szx",
+                   "ex",   "ey",   "ez", "exy", "eyz", "ezx",
+                   "pcam", "qcam", "ev", "ed";
+        }
+    }
 }
 
 inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)

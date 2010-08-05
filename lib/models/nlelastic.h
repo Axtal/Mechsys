@@ -89,10 +89,25 @@ inline void NLElastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Ve
 
 inline void NLElastic::InvTgIncs (State const * Sta, Vec_t & DSig, Vec_t & DEps, Vec_t & DIvs) const
 {
+    /*
     Mat_t Ce(NCps,NCps);
     Stiffness (Sta, De);
     Inv (De, Ce);
     DEps = Ce*DSig;
+    */
+
+    EquilibState const * sta = static_cast<EquilibState const *>(Sta);
+    double ev = Calc_ev (sta->Eps);
+    double ed = Calc_ed (sta->Eps);
+    double K  = K0*exp(-alp*ev*100.0);
+    double G  = G0*exp(-bet*ed*100.0);
+    double ck = (K<1.0e-14 ? 1.0e+14 : (1.0/(9.0*K)));
+    double cg = (G<1.0e-14 ? 1.0e+14 : (1.0/(2.0*G)));
+    Mat_t Ce(NCps,NCps);
+    Ce   = cg*Psd + ck*IdyI;
+    DEps = Ce*DSig;
+
+    //cout << ev << "   " << K << endl;
 }
 
 inline void NLElastic::Stiffness (State const * Sta, Mat_t & D) const

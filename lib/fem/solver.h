@@ -643,17 +643,15 @@ inline void Solver::Initialize (bool Transient)
         Vs.change_dim (NEq);  set_to_zero (Vs);
     }
 
-    // initialize F_int
-    for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->CalcFint (&F_int);
-
     // set variables
     for (size_t i=0; i<ActNods.Size(); ++i)
     {
         for (size_t j=0; j<ActNods[i]->nDOF(); ++j)
         {
-            long eq = ActNods[i]->EQ[j];
-            U (eq)  = ActNods[i]->U [j];
-            F (eq)  = ActNods[i]->F [j];
+            long  eq  = ActNods[i]->EQ[j];
+            U    (eq) = ActNods[i]->U [j];
+            F    (eq) = ActNods[i]->F [j];
+            F_int(eq) = ActNods[i]->F [j];
         }
     }
 
