@@ -33,6 +33,13 @@
 #include <boost/tuple/tuple_io.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
 
+// ParMETIS
+#ifdef USE_PMETIS
+extern "C" {
+  #include <metis.h>
+}
+#endif
+
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
@@ -177,6 +184,7 @@ struct Cell
     Array<Vertex*> V;       ///< Connectivity
     BryTag_t       BryTags; ///< Boundary (edge/face) tags: map iEdgeFace => Tag
     Neighs_t       Neighs;  ///< Neighbours information: map edge/face key => neighbour data (local edge/face ID, pointer to neighbour Cell)
+    int            DomID;   ///< Domain ID
 };
 
 class Generic
@@ -221,6 +229,7 @@ public:
     void BoundingBox (Vec3_t & Min, Vec3_t & Max)                     const; ///< Limits of mesh
     void ThrowError  (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
     void Adjacency   (Array<int> & Xadj, Array<int> & Adjncy)         const; ///< Find list of adjacent elements
+    void PartDomain  (int NParts);                                           ///< Partition domain
 
     // Other methods
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
@@ -367,6 +376,25 @@ inline void Generic::Adjacency (Array<int> & Xadj, Array<int> & Adjncy) const
         }
         Xadj.Push (Xadj.Last()+neigh.Size());
     }
+}
+
+inline void Generic::PartDomain (int NParts)
+{
+#ifdef USE_PMETIS
+    Array<int> Xadj, Adjncy;
+    Adjacency (Xadj, Adjncy);
+    int n          = Cells.Size();
+    int wgtflag    = 0; // No weights
+    int numflag    = 0; // zero numbering
+    int options[5] = {0,0,0,0,0};
+    int edgecut;
+    int * part = new int [n];
+    METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
+    for (int i=0; i<n; ++i) Cells[i]->DomID = part[i];
+    delete [] part;
+#else
+    throw new Fatal("Generic::PartDomain: This method requires ParMETIS");
+#endif
 }
 
 inline void Generic::ReadMesh (char const * FileKey, bool Shell)
@@ -1117,6 +1145,16 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
         oss << (k==0?"  ":" ") << bcells[i]->Tag;
         k++;
         VTU_NEWLINE (i,k,nb,nimax,oss);
+    }
+    oss << "        </DataArray>\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"" << "dom" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    if (VolSurfOrBoth!=1)
+    for (size_t i=0; i<nc; ++i)
+    {
+        oss << (k==0?"  ":" ") << Cells[i]->DomID;
+        k++;
+        VTU_NEWLINE (i,k,nc,nimax,oss);
     }
     oss << "        </DataArray>\n";
     oss << "      </CellData>\n";

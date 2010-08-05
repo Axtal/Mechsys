@@ -36,6 +36,7 @@ public:
     // Methods
     void InitIvs   (SDPair const & Ini, State * Sta)                             const;
     void TgIncs    (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const;
+    void InvTgIncs (State const * Sta, Vec_t & DSig, Vec_t & DEps, Vec_t & DIvs) const;
     void Stiffness (State const * Sta, Mat_t & D)                                const { D = De; }
 
     // Data
@@ -98,6 +99,13 @@ inline void LinElastic::InitIvs (SDPair const & Ini, State * Sta) const
 {
     EquilibState * sta = static_cast<EquilibState*>(Sta);
     sta->Init (Ini);
+}
+
+inline void LinElastic::InvTgIncs (State const * Sta, Vec_t & DSig, Vec_t & DEps, Vec_t & DIvs) const
+{
+    Mat_t Ce(NCps,NCps);
+    Inv (De, Ce);
+    DEps = Ce*DSig;
 }
 
 inline void LinElastic::TgIncs (State const * Sta, Vec_t & DEps, Vec_t & DSig, Vec_t & DIvs) const

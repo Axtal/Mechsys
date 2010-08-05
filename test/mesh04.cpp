@@ -23,26 +23,21 @@
 // MechSys
 #include <mechsys/util/fatal.h>
 #include <mechsys/mesh/structured.h>
-#include <mechsys/mesh/unstructured.h>
-
-// ParMETIS
-#ifdef USE_PMETIS
-extern "C" {
-  #include <metis.h>
-}
-#endif
 
 using std::cout;
 using std::endl;
 
 int main(int argc, char **argv) try
 {
-    int nx = 3;
-    int ny = 2;
-    if (argc>1) nx = atoi(argv[1]);
-    if (argc>2) ny = atoi(argv[2]);
+    // input
+    int nx     = 3;
+    int ny     = 3;
+    int nparts = 2;
+    if (argc>1) nx     = atoi(argv[1]);
+    if (argc>2) ny     = atoi(argv[2]);
+    if (argc>3) nparts = atoi(argv[3]);
 
-    Array<int> Xadj, Adjncy;
+    // mesh
     Array<Mesh::Block> blks(1);
     blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
                  -1.0,  0.0, 0.0,
@@ -52,27 +47,16 @@ int main(int argc, char **argv) try
     blks[0].SetNx (nx);
     blks[0].SetNy (ny);
     Mesh::Structured mesh(/*NDim*/2);
-    mesh.Generate  (blks,/*O2*/false);
-    mesh.WriteMPY  ("mesh04");
-    mesh.Adjacency (Xadj, Adjncy);
-    cout << "Xadj   = " << Xadj   << endl;
-    cout << "Adjncy = " << Adjncy << endl;
-    cout << " File <mesh04.mpy> generated\n";
+    mesh.Generate (blks,/*O2*/false);
 
-#ifdef USE_PMETIS
-    int n          = mesh.Cells.Size();
-    int wgtflag    = 0; // No weights
-    int numflag    = 0; // zero numbering
-    int nparts     = 2; // num of partitions
-    int options[5] = {0,0,0,0,0};
-    int edgecut;
-    int part[n];
-    METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nparts, options, &edgecut, part);
-    cout << "edgecut = " << edgecut << endl;
-    cout << "part = ";
-    for (int i=0; i<n; ++i) cout << part[i] << ", ";
+    // partitions
+    mesh.PartDomain (nparts);
+    for (size_t i=0; i<mesh.Cells.Size(); ++i) cout << mesh.Cells[i]->DomID << " ";
     cout << endl;
-#endif
+
+    // output
+    mesh.WriteMPY ("mesh04");
+    mesh.WriteVTU ("mesh04");
 
     return 0;
 }
