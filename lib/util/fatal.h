@@ -33,6 +33,7 @@
 
 // Macros
 #ifdef USE_MPI
+  #include <mpi.h>
   #define MECHSYS_FIN MPI::Finalize();
 #else
   #define MECHSYS_FIN 

@@ -41,6 +41,7 @@ OPTION(A_WITH_OPTIONAL      "Make with optional dependencies"                   
 OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"              OFF)
 OPTION(A_USE_VTK            "Use visualisation toolkit ?"                       OFF)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                   OFF)
+OPTION(A_USE_PMETIS         "Use ParMETIS ?"                                    OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)

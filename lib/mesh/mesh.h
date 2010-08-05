@@ -97,6 +97,32 @@ int    NVertsToEdge3D[][12/*edges at most*/][3/*verts per edge at most*/]=
     {{0,1,8},{1,2,9},{2,3,10},{3,0,11},{4,5,12},{5,6,13},{6,7,14},{7,4,15},{0,4,16},{1,5,17},{2,6,18},{3,7,19}}    // 20 verts => O2 HEX
 };
 
+size_t NVertsToGeoNVerts2D[] = {-1,                // 0 verts
+                                -1,                // 1 vert
+                                 2,                // 2 verts
+                                 3,                // 3
+                                 4,                // 4
+                                -1,                // 5
+                                 3,                // 6
+                                -1,                // 7
+                                 4,                // 8
+                                -1,-1,-1,-1,-1,-1, // 9,10,11,12,13,14
+                                 3};               // 15
+
+size_t NVertsToGeoNVerts3D[] = {-1,                         //  0 verts
+                                -1,                         //  1 vert
+                                 2,                         //  2 verts
+                                -1,                         //  3
+                                 4,                         //  4
+                                -1,                         //  5
+                                -1,                         //  6
+                                -1,                         //  7
+                                 8,                         //  8
+                                -1,                         //  9
+                                 4,                         // 10
+                                -1,-1,-1,-1,-1,-1,-1,-1,-1, // 11,12,13,14,15,16,17,18,19
+                                 8};                        // 20
+
 #define BRYKEY(num_verts,idx_cell,idx_bry)                                      \
     int vert_a, vert_b, vert_c=-1, vert_d=-1;                                   \
     if (NDim==2)                                                                \
@@ -194,6 +220,7 @@ public:
     // Auxiliar methods
     void BoundingBox (Vec3_t & Min, Vec3_t & Max)                     const; ///< Limits of mesh
     void ThrowError  (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
+    void Adjacency   (Array<int> & Xadj, Array<int> & Adjncy)         const; ///< Find list of adjacent elements
 
     // Other methods
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
@@ -314,6 +341,32 @@ inline void Generic::ThrowError (std::istringstream & iss, char const * Message)
         pos = str.find(" ",pos+1);
     }
     throw new Fatal("Generic::ReadMesh: Mesh file format invalid\n    %s\n    %s",Message,str.CStr());
+}
+
+inline void Generic::Adjacency (Array<int> & Xadj, Array<int> & Adjncy) const
+{
+    Xadj.Push (0);
+    for (size_t i=0; i<Cells.Size(); ++i)
+    {
+        size_t nv = (NDim==2 ? NVertsToGeoNVerts2D[Cells[i]->V.Size()] : NVertsToGeoNVerts3D[Cells[i]->V.Size()]);
+        Array<Cell*> neigh;
+        for (size_t j=0; j<nv; ++j)
+        {
+            Array<Share> const & sha = Cells[i]->V[j]->Shares;
+            for (size_t k=0; k<sha.Size(); ++k)
+            {
+                if (sha[k].C!=Cells[i])
+                {
+                    if (neigh.Find(sha[k].C)<0)
+                    {
+                        neigh .Push (sha[k].C);
+                        Adjncy.Push (sha[k].C->ID);
+                    }
+                }
+            }
+        }
+        Xadj.Push (Xadj.Last()+neigh.Size());
+    }
 }
 
 inline void Generic::ReadMesh (char const * FileKey, bool Shell)
