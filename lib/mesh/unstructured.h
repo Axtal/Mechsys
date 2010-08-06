@@ -59,6 +59,7 @@ extern "C"
 // Hang Si' Tetgen
 #define TETLIBRARY
 #include "tetgen.h"
+#undef REAL
 #undef TETLIBRARY
 
 // MechSys

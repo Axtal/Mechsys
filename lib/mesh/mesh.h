@@ -35,6 +35,7 @@
 
 // ParMETIS
 #ifdef USE_PMETIS
+  #include <mpi.h>
 extern "C" {
   #include <metis.h>
 }
