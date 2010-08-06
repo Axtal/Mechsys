@@ -397,17 +397,29 @@ inline void Generic::Adjacency (Array<int> & Xadj, Array<int> & Adjncy, bool Ful
 
 inline void Generic::PartDomain (int NParts, bool Full)
 {
-#ifdef USE_PMETIS
-    // find domains of elements
-    Array<int> Xadj, Adjncy;
-    Adjacency (Xadj, Adjncy, Full);
-    int n          = Cells.Size();
-    int wgtflag    = 0; // No weights
-    int numflag    = 0; // zero numbering
-    int options[5] = {0,0,0,0,0};
-    int edgecut;
+    // partition domain
+    int n      = Cells.Size();
     int * part = new int [n];
-    METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
+    if (NParts>1)
+    {
+#ifdef USE_PMETIS
+        Array<int> Xadj, Adjncy;
+        Adjacency (Xadj, Adjncy, Full);
+        int wgtflag    = 0; // No weights
+        int numflag    = 0; // zero numbering
+        int options[5] = {0,0,0,0,0};
+        int edgecut;
+        METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
+#else
+        throw new Fatal("Generic::PartDomain: This method requires ParMETIS");
+#endif
+    }
+    else 
+    {
+        for (int i=0; i<n; ++i) part[i] = 0;
+    }
+
+    // find domains of elements
     for (int i=0; i<n; ++i) Cells[i]->PartID = part[i];
     delete [] part;
 
@@ -420,9 +432,6 @@ inline void Generic::PartDomain (int NParts, bool Full)
             if (Verts[i]->PartIDs.Find(sha[k].C->PartID)<0) Verts[i]->PartIDs.Push (sha[k].C->PartID);
         }
     }
-#else
-    throw new Fatal("Generic::PartDomain: This method requires ParMETIS");
-#endif
 }
 
 inline void Generic::ReadMesh (char const * FileKey, bool Shell)
