@@ -165,11 +165,11 @@ struct Share
 
 struct Vertex
 {
-    size_t       ID;     ///< ID
-    int          Tag;    ///< Tag
-    Vec3_t       C;      ///< X, Y, and Z coordinates
-    Array<Share> Shares; ///< IDs of cells sharing this vertex
-    Array<int>   DomIDs; ///< Domains in which this vertex is located in
+    size_t       ID;      ///< ID
+    int          Tag;     ///< Tag
+    Vec3_t       C;       ///< X, Y, and Z coordinates
+    Array<Share> Shares;  ///< IDs of cells sharing this vertex
+    Array<int>   PartIDs; ///< Partitions (domains) in which this vertex is located in
 };
 
 typedef std::map<int,int>                      BryTag_t;   ///< Map: edge/face ID => edge/face tag
@@ -186,7 +186,7 @@ struct Cell
     Array<Vertex*> V;       ///< Connectivity
     BryTag_t       BryTags; ///< Boundary (edge/face) tags: map iEdgeFace => Tag
     Neighs_t       Neighs;  ///< Neighbours information: map edge/face key => neighbour data (local edge/face ID, pointer to neighbour Cell)
-    int            DomID;   ///< Domain ID
+    int            PartID;  ///< Partition (domain) ID
 };
 
 class Generic
@@ -398,6 +398,7 @@ inline void Generic::Adjacency (Array<int> & Xadj, Array<int> & Adjncy, bool Ful
 inline void Generic::PartDomain (int NParts, bool Full)
 {
 #ifdef USE_PMETIS
+    // find domains of elements
     Array<int> Xadj, Adjncy;
     Adjacency (Xadj, Adjncy, Full);
     int n          = Cells.Size();
@@ -407,8 +408,18 @@ inline void Generic::PartDomain (int NParts, bool Full)
     int edgecut;
     int * part = new int [n];
     METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
-    for (int i=0; i<n; ++i) Cells[i]->DomID = part[i];
+    for (int i=0; i<n; ++i) Cells[i]->PartID = part[i];
     delete [] part;
+
+    // find domais of nodes
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        Array<Share> const & sha = Verts[i]->Shares;
+        for (size_t k=0; k<sha.Size(); ++k)
+        {
+            if (Verts[i]->PartIDs.Find(sha[k].C->PartID)<0) Verts[i]->PartIDs.Push (sha[k].C->PartID);
+        }
+    }
 #else
     throw new Fatal("Generic::PartDomain: This method requires ParMETIS");
 #endif
@@ -1021,7 +1032,12 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
 
     // shares data
     size_t max_nshares = 0;
-    for (size_t i=0; i<Verts.Size(); ++i) if (Verts[i]->Shares.Size()>max_nshares) max_nshares = Verts[i]->Shares.Size();
+    size_t max_nparts  = 0;
+    for (size_t i=0; i<Verts.Size(); ++i)
+    {
+        if (Verts[i]->Shares .Size()>max_nshares) max_nshares = Verts[i]->Shares .Size();
+        if (Verts[i]->PartIDs.Size()>max_nparts ) max_nparts  = Verts[i]->PartIDs.Size();
+    }
     if (max_nshares<1) throw new Fatal("Mesh::WriteVTU: Max number of shares (%d) is wrong", max_nshares);
 
     // data
@@ -1143,6 +1159,20 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
         VTU_NEWLINE (i,k,nn,nimax/max_nshares-1,oss);
     }
     oss << "        </DataArray>\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"" << "part" << "\" NumberOfComponents=\""<< max_nparts <<"\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    for (size_t i=0; i<nn; ++i)
+    {
+        oss << "  ";
+        for (size_t j=0; j<max_nparts; ++j)
+        {
+            if (j<Verts[i]->PartIDs.Size()) oss << Verts[i]->PartIDs[j] << " ";
+            else                            oss << -1 << " ";
+        }
+        k++;
+        VTU_NEWLINE (i,k,nn,nimax/max_nparts-1,oss);
+    }
+    oss << "        </DataArray>\n";
     oss << "      </PointData>\n";
 
     // data -- elements
@@ -1164,12 +1194,12 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
         VTU_NEWLINE (i,k,nb,nimax,oss);
     }
     oss << "        </DataArray>\n";
-    oss << "        <DataArray type=\"Int32\" Name=\"" << "dom" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+    oss << "        <DataArray type=\"Int32\" Name=\"" << "part" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     if (VolSurfOrBoth!=1)
     for (size_t i=0; i<nc; ++i)
     {
-        oss << (k==0?"  ":" ") << Cells[i]->DomID;
+        oss << (k==0?"  ":" ") << Cells[i]->PartID;
         k++;
         VTU_NEWLINE (i,k,nc,nimax,oss);
     }
