@@ -168,6 +168,7 @@ struct Vertex
     int          Tag;    ///< Tag
     Vec3_t       C;      ///< X, Y, and Z coordinates
     Array<Share> Shares; ///< IDs of cells sharing this vertex
+    Array<int>   DomIDs; ///< Domains in which this vertex is located in
 };
 
 typedef std::map<int,int>                      BryTag_t;   ///< Map: edge/face ID => edge/face tag
@@ -226,10 +227,10 @@ public:
                    char const * Extra=NULL) const;                   ///< (.mpy) Write Python script that calls mesh_drawing.py
 
     // Auxiliar methods
-    void BoundingBox (Vec3_t & Min, Vec3_t & Max)                     const; ///< Limits of mesh
-    void ThrowError  (std::istringstream & iss, char const * Message) const; ///< Used in ReadMesh
-    void Adjacency   (Array<int> & Xadj, Array<int> & Adjncy)         const; ///< Find list of adjacent elements
-    void PartDomain  (int NParts);                                           ///< Partition domain
+    void BoundingBox (Vec3_t & Min, Vec3_t & Max)                              const; ///< Limits of mesh
+    void ThrowError  (std::istringstream & iss, char const * Message)          const; ///< Used in ReadMesh
+    void Adjacency   (Array<int> & Xadj, Array<int> & Adjncy, bool Full=false);       ///< Find list of adjacent elements
+    void PartDomain  (int NParts, bool Full=false);                                   ///< Partition domain
 
     // Other methods
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
@@ -352,37 +353,52 @@ inline void Generic::ThrowError (std::istringstream & iss, char const * Message)
     throw new Fatal("Generic::ReadMesh: Mesh file format invalid\n    %s\n    %s",Message,str.CStr());
 }
 
-inline void Generic::Adjacency (Array<int> & Xadj, Array<int> & Adjncy) const
+inline void Generic::Adjacency (Array<int> & Xadj, Array<int> & Adjncy, bool Full)
 {
     Xadj.Push (0);
-    for (size_t i=0; i<Cells.Size(); ++i)
+    if (Full)
     {
-        size_t nv = (NDim==2 ? NVertsToGeoNVerts2D[Cells[i]->V.Size()] : NVertsToGeoNVerts3D[Cells[i]->V.Size()]);
-        Array<Cell*> neigh;
-        for (size_t j=0; j<nv; ++j)
+        for (size_t i=0; i<Cells.Size(); ++i)
         {
-            Array<Share> const & sha = Cells[i]->V[j]->Shares;
-            for (size_t k=0; k<sha.Size(); ++k)
+            size_t nv = (NDim==2 ? NVertsToGeoNVerts2D[Cells[i]->V.Size()] : NVertsToGeoNVerts3D[Cells[i]->V.Size()]);
+            Array<Cell*> neigh;
+            for (size_t j=0; j<nv; ++j)
             {
-                if (sha[k].C!=Cells[i])
+                Array<Share> const & sha = Cells[i]->V[j]->Shares;
+                for (size_t k=0; k<sha.Size(); ++k)
                 {
-                    if (neigh.Find(sha[k].C)<0)
+                    if (sha[k].C!=Cells[i])
                     {
-                        neigh .Push (sha[k].C);
-                        Adjncy.Push (sha[k].C->ID);
+                        if (neigh.Find(sha[k].C)<0)
+                        {
+                            neigh .Push (sha[k].C);
+                            Adjncy.Push (sha[k].C->ID);
+                        }
                     }
                 }
             }
+            Xadj.Push (Xadj.Last()+neigh.Size());
         }
-        Xadj.Push (Xadj.Last()+neigh.Size());
+    }
+    else
+    {
+        FindNeigh ();
+        for (size_t i=0; i<Cells.Size(); ++i)
+        {
+            for (Neighs_t::const_iterator p=Cells[i]->Neighs.begin(); p!=Cells[i]->Neighs.end(); ++p)
+            {
+                Adjncy.Push (p->second.second->ID);
+            }
+            Xadj.Push (Xadj.Last()+Cells[i]->Neighs.size());
+        }
     }
 }
 
-inline void Generic::PartDomain (int NParts)
+inline void Generic::PartDomain (int NParts, bool Full)
 {
 #ifdef USE_PMETIS
     Array<int> Xadj, Adjncy;
-    Adjacency (Xadj, Adjncy);
+    Adjacency (Xadj, Adjncy, Full);
     int n          = Cells.Size();
     int wgtflag    = 0; // No weights
     int numflag    = 0; // zero numbering

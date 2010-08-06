@@ -30,12 +30,14 @@ using std::endl;
 int main(int argc, char **argv) try
 {
     // input
-    int nx     = 3;
-    int ny     = 3;
-    int nparts = 2;
+    int  nx     = 3;
+    int  ny     = 3;
+    int  nparts = 2;
+    bool full   = false;
     if (argc>1) nx     = atoi(argv[1]);
     if (argc>2) ny     = atoi(argv[2]);
     if (argc>3) nparts = atoi(argv[3]);
+    if (argc>4) full   = atoi(argv[4]);
 
     // mesh
     Array<Mesh::Block> blks(1);
@@ -50,9 +52,9 @@ int main(int argc, char **argv) try
     mesh.Generate (blks,/*O2*/false);
 
     // partitions
-    mesh.PartDomain (nparts);
-    for (size_t i=0; i<mesh.Cells.Size(); ++i) cout << mesh.Cells[i]->DomID << " ";
-    cout << endl;
+    mesh.PartDomain (nparts, full);
+    //for (size_t i=0; i<mesh.Cells.Size(); ++i) cout << mesh.Cells[i]->DomID << " ";
+    //cout << endl;
 
     // output
     mesh.WriteMPY ("mesh04");
