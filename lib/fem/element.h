@@ -47,7 +47,7 @@ public:
              Model        const * Mdl,    ///< Model
              SDPair       const & Prp,    ///< Properties
              SDPair       const & Ini,    ///< Initial values
-             Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
+             Array<Node*> const & Nodes); ///< Connectivity
 
     // Destructor
     ~Element ();
@@ -106,10 +106,10 @@ inline Element::Element (int TheNDim, Mesh::Cell const & TheCell, Model const * 
       GTy(SDPairToGType(Prp,(NDim==3?"d3d":"d2d")))
 {
     // connectivity
-    Con.Resize (Cell.V.Size());
-    for (size_t i=0; i<Con.Size(); ++i)
+    Con.Resize (Nodes.Size());
+    for (size_t i=0; i<Nodes.Size(); ++i)
     {
-        Con[i] = Nodes[Cell.V[i]->ID];
+        Con[i] = Nodes[i];
         if (Active) Con[i]->NShares++;
     }
 

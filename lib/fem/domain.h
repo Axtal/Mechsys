@@ -36,10 +36,14 @@
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/draw.h>
 
+using std::cout;
+using std::endl;
+
 namespace FEM
 {
 
 typedef std::map<Node*,double> InclSupport_t; ///< Inclined support type. Maps Node ==> alpha
+typedef std::map<Node*,Array<double> > Res_t;
 
 inline double Multiplier (double t) { return 1.0; }
 
@@ -108,8 +112,8 @@ public:
     bool          HasVeloc;    ///< Has velocities (vx, ...) ?
     Array<String> NodKeys;     ///< All node keys (ux, uy, T, ...)
     Array<String> EleKeys;     ///< All element keys (sx, sy, vx, vy, ...)
-    mutable Mat_t NodResults;  ///< Extrapolated nodal results
-    mutable Mat_t NodResCount; ///< Count how many times a variable (key) was added to a node
+    mutable Res_t NodResults;  ///< Extrapolated nodal results
+    mutable Res_t NodResCount; ///< Count how many times a variable (key) was added to a node
 
 #ifdef USE_BOOST_PYTHON
     void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
@@ -120,6 +124,53 @@ public:
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
+
+std::ostream & operator<< (std::ostream & os, Domain const & D)
+{
+    os << "\n[1;37m--- Models -------------------------------------------------------------------[0m\n";
+    for (Domain::Models_t::const_iterator p=D.Mdls.begin(); p!=D.Mdls.end(); ++p)
+        os << p->first << " " << (*p->second) << std::endl;
+
+    os << "\n[1;37m--- Elements properties ------------------------------------------------------[0m\n";
+    os << D.Prps << std::endl;
+
+    os << "\n[1;37m--- Initial values -----------------------------------------------------------[0m\n";
+    os << D.Inis << std::endl;
+
+    os << "\n[1;37m--- Nodes --------------------------------------------------------------------[0m\n";
+    for (size_t i=0; i<D.Nods.Size(); ++i) os << (*D.Nods[i]) << "\n";
+
+    os << "\n[1;37m--- Elements -----------------------------------------------------------------[0m\n";
+    for (size_t i=0; i<D.Eles.Size(); ++i) os << (*D.Eles[i]) << "\n";
+
+    os << "\n[1;37m--- Boundary Conditions ------------------------------------------------------[0m\n";
+    os << "  Nodes with prescribed F:\n";
+    for (NodBCs_t::const_iterator p=D.pF.begin(); p!=D.pF.end(); ++p)
+    {
+        os << Util::_6 << p->first->Vert.ID << "  ";
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        {
+            size_t idof = q->first;
+            if (q!=p->second.first.begin()) os << "   ";
+            os << "D" << p->first->FMap.Keys[idof] << "=" << Util::_10_4 << q->second;
+        }
+        os << "\n";
+    }
+    os << "\n  Nodes with prescribed U:\n";
+    for (NodBCs_t::const_iterator p=D.pU.begin(); p!=D.pU.end(); ++p)
+    {
+        os << Util::_6 << p->first->Vert.ID << "  ";
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        {
+            size_t idof = q->first;
+            if (q!=p->second.first.begin()) os << ", ";
+            os << "D" << p->first->UMap.Keys[idof] << "=" << Util::_10_6 << q->second;
+        }
+        os << "\n";
+    }
+
+    return os;
+}
 
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FKey, Array<int> const * OutV, Array<int> const * OutC)
     : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
@@ -139,11 +190,18 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     }
 
     // set nodes from mesh
+    std::map<int,Node*> VertID2Node;
+    int nverts_shared = 0;
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
+#ifdef USE_MPI
+        if (Msh.Verts[i]->PartIDs.Size()>1) nverts_shared++;
+        if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
+#endif
         // new node
         Nods.Push (new Node((*Msh.Verts[i])));
         if (Msh.Verts[i]->Tag<0) TgdNods.Push (Nods.Last());
+        VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
         // set list of nodes for output
         if (FKey!=NULL && OutV!=NULL)
@@ -173,6 +231,9 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     // set elements from mesh
     for (size_t i=0; i<Msh.Cells.Size(); ++i)
     {
+#ifdef USE_MPI
+        if (Msh.Cells[i]->PartID!=MPI::COMM_WORLD.Get_rank()) continue;
+#endif
         int tag = Msh.Cells[i]->Tag;
         if (!Prps.HasKey(tag)) throw new Fatal("Domain::SetMesh: Dictionary of element properties does not have tag=%d",tag);
         if (Prps(tag).HasKey("prob"))
@@ -186,9 +247,13 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             Models_t::const_iterator m = Mdls.find(tag);
             if (m!=Mdls.end()) mdl = m->second;
 
-            // inis
-            if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), Nods));
-            else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , Nods));
+            // connectivity
+            Array<Node*> nodes(Msh.Cells[i]->V.Size());
+            for (size_t k=0; k<nodes.Size(); ++k) nodes[k] = VertID2Node[Msh.Cells[i]->V[k]->ID];
+
+            // allocate element
+            if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), nodes));
+            else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , nodes));
 
             // set array of Beams
             if (prob_name=="Beam") Beams.Push (Eles.Size()-1);
@@ -218,6 +283,79 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
+
+#ifdef USE_MPI
+    // communicate DOFs
+    int my_id  = MPI::COMM_WORLD.Get_rank();
+    int nprocs = MPI::COMM_WORLD.Get_size();
+    int ndofs;
+    int pos     = 0;
+    int outsize = 256*nverts_shared;
+    char outbuf[outsize];
+    for (size_t i=0; i<Msh.Verts.Size(); ++i)
+    {
+        if (Msh.Verts[i]->PartIDs.Size()>1) // shared vertex
+        {
+            if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0)
+            {
+                ndofs = 0;
+                MPI::INT.Pack (&ndofs, 1, &outbuf, outsize, pos, MPI::COMM_WORLD);
+                //cout << "proc # " << my_id << ", fucked node: writing ndofs = " << ndofs << endl;
+            }
+            else
+            {
+                Array<String> const & ukeys = VertID2Node[Msh.Verts[i]->ID]->UMap.Keys;
+                Array<String> const & fkeys = VertID2Node[Msh.Verts[i]->ID]->FMap.Keys;
+                ndofs = 2*ukeys.Size();
+                MPI::INT.Pack (&ndofs, 1, &outbuf, outsize, pos, MPI::COMM_WORLD);
+                //cout << "proc # " << my_id << ", normal node: writing ndofs = " << ndofs << endl;
+                for (size_t i=0; i<ukeys.Size(); ++i)
+                {
+                    //MPI::CHAR.Pack (ukeys[i].CStr(), ukeys[i].size()+1, &outbuf, outsize, pos, MPI::COMM_WORLD);
+                    //MPI::CHAR.Pack (fkeys[i].CStr(), fkeys[i].size()+1, &outbuf, outsize, pos, MPI::COMM_WORLD);
+                }
+            }
+        }
+    }
+
+    pos = 0;
+    for (size_t i=0; i<Msh.Verts.Size(); ++i)
+    {
+        if (Msh.Verts[i]->PartIDs.Size()>1) // shared vertex
+        {
+            if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0)
+            {
+                MPI::INT.Unpack (&outbuf, outsize, &ndofs, 1, pos, MPI::COMM_WORLD);
+                //cout << "proc # " << my_id << ", fucked node: reading ndofs = " << ndofs << endl;
+            }
+            else
+            {
+                MPI::INT.Unpack (&outbuf, outsize, &ndofs, 1, pos, MPI::COMM_WORLD);
+                //cout << "proc # " << my_id << ", normal node: reading ndofs = " << ndofs << endl;
+                Array<String> ukeys(ndofs/2);
+                Array<String> fkeys(ndofs/2);
+                for (int i=0; i<ndofs/2; ++i)
+                {
+                    //MPI::CHAR.Unpack (&outbuf, outsize, ukeys[i], ukeys[i].size()+1, pos, MPI::COMM_WORLD);
+                    //MPI::CHAR.Unpack (&outbuf, outsize, fkeys[i], fkeys[i].size()+1, pos, MPI::COMM_WORLD);
+                }
+            }
+        }
+    }
+
+    //if (my_id==0)
+    //{
+        //for (size_t i=0; i<nprocs; ++i)
+        //{
+            //MPI::COMM_WORLD.Recv (u_dofs, /*number*/1, MPI::INT, /*destination*/my_id-1, 1);
+            //
+        //}
+
+    //}
+    //else MPI::COMM_WORLD.Send (u_dofs, /*number*/1, MPI::SIDataType, /*destination*/0, SEND_TO_ZERO);
+
+    
+#endif
 
     // divide U values in nodes by the number of times elements added to a U var
     for (size_t i=0; i<Nods.Size(); ++i)
@@ -883,15 +1021,15 @@ inline void Domain::AvailableData ()
     }
 
     // resize matrices
-    NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
-    NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
+    //NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
+    //NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
 }
 
 inline void Domain::NodalResults () const
 {
     // extrapolate data
-    set_to_zero (NodResults);
-    set_to_zero (NodResCount);
+    for (Res_t::iterator p=NodResults .begin(); p!=NodResults .end(); ++p) p->second.SetValues(0.0);
+    for (Res_t::iterator p=NodResCount.begin(); p!=NodResCount.end(); ++p) p->second.SetValues(0.0);
     for (size_t i=0; i<Eles.Size(); ++i)
     {
         if (Eles[i]->Active) // active element
@@ -904,9 +1042,8 @@ inline void Domain::NodalResults () const
                 {
                     for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
                     {
-                        size_t vid = Eles[i]->Con[k]->Vert.ID;
-                        NodResults (vid, j) += loc_res[k](EleKeys[j]);
-                        NodResCount(vid, j) += 1.0;
+                        NodResults [Eles[i]->Con[k]][j] += loc_res[k](EleKeys[j]);
+                        NodResCount[Eles[i]->Con[k]][j] += 1.0;
                     }
                 }
             }
@@ -917,7 +1054,9 @@ inline void Domain::NodalResults () const
 inline void Domain::WriteVTU (char const * FNKey) const
 {
     // extrapolate results
-    NodalResults ();
+    //NodalResults ();
+
+    cout << "here 1\n";
 
     // data
     size_t nn = Nods.Size(); // number of nodes
@@ -934,8 +1073,10 @@ inline void Domain::WriteVTU (char const * FNKey) const
     oss << "      <Points>\n";
     oss << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     size_t k = 0; oss << "        ";
+    std::map<int,int> VertID2LocID;
     for (size_t i=0; i<nn; ++i)
     {
+        VertID2LocID[Nods[i]->Vert.ID] = i;
         oss << "  " << Util::_8s <<          Nods[i]->Vert.C(0) << " ";
         oss <<         Util::_8s <<          Nods[i]->Vert.C(1) << " ";
         oss <<         Util::_8s << (NDim==3?Nods[i]->Vert.C(2):0.0);
@@ -944,6 +1085,8 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
     oss << "        </DataArray>\n";
     oss << "      </Points>\n";
+
+    cout << "here 2\n";
 
     // elements: connectivity, offsets, types
     oss << "      <Cells>\n";
@@ -955,7 +1098,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
         {
             size_t nne = (NDim==2 ? NVertsToVTKNVerts2D[Eles[i]->Con.Size()] : NVertsToVTKNVerts3D[Eles[i]->Con.Size()]);
             oss << "  ";
-            for (size_t j=0; j<nne; ++j) oss << Eles[i]->Con[j]->Vert.ID << " ";
+            for (size_t j=0; j<nne; ++j) oss << VertID2LocID[Eles[i]->Con[j]->Vert.ID] << " ";
             k++;
             VTU_NEWLINE (i,k,ne,40/Eles[i]->Con.Size(),oss);
         }
@@ -990,6 +1133,8 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
     oss << "        </DataArray>\n";
     oss << "      </Cells>\n";
+
+    cout << "here 3\n";
 
     // data -- nodes
     oss << "      <PointData Scalars=\"point_scalars\">\n";
@@ -1036,6 +1181,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
 
     // data -- nodes -- extrapolated values
+    /*
     for (size_t i=0; i<EleKeys.Size(); ++i)
     {
         if (!(EleKeys[i]=="vx" || EleKeys[i]=="vy" || EleKeys[i]=="vz"))
@@ -1044,14 +1190,16 @@ inline void Domain::WriteVTU (char const * FNKey) const
             k = 0; oss << "        ";
             for (size_t j=0; j<nn; ++j)
             {
-                double den = (NodResCount(j,i)>0.0 ? NodResCount(j,i) : 1.0);
-                oss << (k==0?"  ":" ") << NodResults(j,i)/den;
+                //Nods[j]
+                //double den = (NodResCount(j,i)>0.0 ? NodResCount(j,i) : 1.0);
+                //oss << (k==0?"  ":" ") << NodResults(j,i)/den;
                 k++;
                 VTU_NEWLINE (j,k,nn,6-1,oss);
             }
             oss << "        </DataArray>\n";
         }
     }
+    */
 
     // data -- nodes -- velocities
     if (HasVeloc)
@@ -1069,9 +1217,9 @@ inline void Domain::WriteVTU (char const * FNKey) const
         {
             if (Nods[j]->NShares>0)
             {
-                oss << "  " << Util::_8s <<            NodResults(j,idx_vx) / (NodResCount(j,idx_vx)>0.0 ? NodResCount(j,idx_vx) : 1.0) << " ";
-                oss <<         Util::_8s <<            NodResults(j,idx_vy) / (NodResCount(j,idx_vy)>0.0 ? NodResCount(j,idx_vy) : 1.0) << " ";
-                oss <<         Util::_8s << (NDim==3 ? NodResults(j,idx_vz) / (NodResCount(j,idx_vz)>0.0 ? NodResCount(j,idx_vz) : 1.0) : 0.0);
+                //oss << "  " << Util::_8s <<            NodResults(j,idx_vx) / (NodResCount(j,idx_vx)>0.0 ? NodResCount(j,idx_vx) : 1.0) << " ";
+                //oss <<         Util::_8s <<            NodResults(j,idx_vy) / (NodResCount(j,idx_vy)>0.0 ? NodResCount(j,idx_vy) : 1.0) << " ";
+                //oss <<         Util::_8s << (NDim==3 ? NodResults(j,idx_vz) / (NodResCount(j,idx_vz)>0.0 ? NodResCount(j,idx_vz) : 1.0) : 0.0);
             }
             else
             {
@@ -1098,53 +1246,6 @@ inline void Domain::WriteVTU (char const * FNKey) const
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
-}
-
-std::ostream & operator<< (std::ostream & os, Domain const & D)
-{
-    os << "\n[1;37m--- Models -------------------------------------------------------------------[0m\n";
-    for (Domain::Models_t::const_iterator p=D.Mdls.begin(); p!=D.Mdls.end(); ++p)
-        os << p->first << " " << (*p->second) << std::endl;
-
-    os << "\n[1;37m--- Elements properties ------------------------------------------------------[0m\n";
-    os << D.Prps << std::endl;
-
-    os << "\n[1;37m--- Initial values -----------------------------------------------------------[0m\n";
-    os << D.Inis << std::endl;
-
-    os << "\n[1;37m--- Nodes --------------------------------------------------------------------[0m\n";
-    for (size_t i=0; i<D.Nods.Size(); ++i) os << (*D.Nods[i]) << "\n";
-
-    os << "\n[1;37m--- Elements -----------------------------------------------------------------[0m\n";
-    for (size_t i=0; i<D.Eles.Size(); ++i) os << (*D.Eles[i]) << "\n";
-
-    os << "\n[1;37m--- Boundary Conditions ------------------------------------------------------[0m\n";
-    os << "  Nodes with prescribed F:\n";
-    for (NodBCs_t::const_iterator p=D.pF.begin(); p!=D.pF.end(); ++p)
-    {
-        os << Util::_6 << p->first->Vert.ID << "  ";
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
-        {
-            size_t idof = q->first;
-            if (q!=p->second.first.begin()) os << "   ";
-            os << "D" << p->first->FMap.Keys[idof] << "=" << Util::_10_4 << q->second;
-        }
-        os << "\n";
-    }
-    os << "\n  Nodes with prescribed U:\n";
-    for (NodBCs_t::const_iterator p=D.pU.begin(); p!=D.pU.end(); ++p)
-    {
-        os << Util::_6 << p->first->Vert.ID << "  ";
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
-        {
-            size_t idof = q->first;
-            if (q!=p->second.first.begin()) os << ", ";
-            os << "D" << p->first->UMap.Keys[idof] << "=" << Util::_10_6 << q->second;
-        }
-        os << "\n";
-    }
-
-    return os;
 }
 
 }; // namespace FEM
