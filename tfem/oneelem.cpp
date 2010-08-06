@@ -50,12 +50,14 @@ int main(int argc, char **argv) try
     mesh.WriteMPY ("oneelem");
 
     // props and domain
+    Array<int> out_verts(0,1,2,3);
+    Array<int> out_cells(0,true);
     Dict prps, mdls;
     prps.Set(-1, "prob geom psa nip", PROB("Equilib"), GEOM("Quad4"), 1.0, 4.0);
     mdls.Set(-1, "name E nu fc sY Hp psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
     //mdls.Set(-1, "name E nu fc c phi pse", MODEL("ElastoPlastic"), E, nu, FAILCRIT("MC"), c, phi, 1.0);
     //mdls.Set(-1, "name E nu pse", MODEL("LinElastic"), E, nu, 1.0);
-    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
+    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "oneelem", &out_verts, &out_cells);
 
     // solver
     FEM::Solver sol(dom);
@@ -65,8 +67,6 @@ int main(int argc, char **argv) try
 
     // solve
     Dict bcs;
-    dom.SetOutNods   ("oneelem", Array<int>(0,1,2,3));
-    dom.SetOutEles   ("oneelem", Array<int>(0,true));
     bcs.Set          (-100, "ux uy", 0.0, 0.0);
     bcs.Set          (-200, "ux",    del);
     bcs.Set          (-300, "ux",    del);

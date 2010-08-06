@@ -574,7 +574,7 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // number of Lagrange multipliers
-    size_t nlag_pins = Dom.Msh.Pins.size()*Dom.NDim; // number of Lag mult due to pins
+    size_t nlag_pins = 0;//Dom.Msh.Pins.size()*Dom.NDim; // number of Lag mult due to pins
     size_t nlag_insu = Dom.InclSupport.size();       // number of Lag mult due to inclined supports
     NLag = nlag_pins + nlag_insu;                    // total number of Lagrange multipliers
     NEq += NLag;
@@ -682,6 +682,7 @@ inline void Solver::_set_A_Lag ()
     long eqlag = NEq - NLag;
 
     // pins
+    /*
     if (Dom.Msh.Pins.size()>0)
     {
         for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
@@ -701,6 +702,7 @@ inline void Solver::_set_A_Lag ()
             }
         }
     }
+    */
 
     // inclined supports
     if (Dom.InclSupport.size()>0)
@@ -736,6 +738,7 @@ inline void Solver::_cal_resid (bool WithAccel)
     long eqlag = NEq - NLag;
 
     // clear forces due to pins
+    /*
     if (Dom.Msh.Pins.size()>0)
     {
         for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
@@ -757,6 +760,7 @@ inline void Solver::_cal_resid (bool WithAccel)
             }
         }
     }
+    */
 
     // clear forces due to inclined supports
     if (Dom.InclSupport.size()>0)

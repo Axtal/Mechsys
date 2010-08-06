@@ -89,20 +89,28 @@ int main(int argc, char **argv) try
     double Hp = 4.58e+5;
 
     // props, domain, and solver
+    String fkey;
+    Array<int> out_verts;
     Dict prps, mdls;
     if (is2d)
     {
+        out_verts.Resize(6);
+        fkey      = "owen_salonen_2d";
+        out_verts = 0,1,2, 27,28,29;
         prps.Set(-1, "prob geom pse h", PROB("Equilib"), (o2 ? GEOM("Quad8") : GEOM("Quad4")), 1.0, t);
         mdls.Set(-1, "name E nu fc sY Hp pse", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
         //mdls.Set(-1, "name E nu pse", MODEL("LinElastic"), E, nu, 1.0);
     }
     else
     {
+        out_verts.Resize(8);
+        fkey      = "owen_salonen_3d";
+        out_verts = -1,-2,-3,-4,-5,-6,-7,-8;
         prps.Set(-1, "prob geom", PROB("Equilib"), (o2 ? GEOM("Hex20") : GEOM("Hex8")));
         mdls.Set(-1, "name E nu fc sY Hp", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp);
         //mdls.Set(-1, "name E nu", MODEL("LinElastic"), E, nu);
     }
-    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
+    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), fkey.CStr(), &out_verts);
     FEM::Solver sol(dom);
     if (NR) sol.SetScheme ("NR");
     sol.SSOut = true;
@@ -110,7 +118,6 @@ int main(int argc, char **argv) try
     // solve
     if (unitest)
     {
-        dom.SetOutEles ("owen_salonen_uni", Array<int>(0, /*JustOne*/true));
         Dict bcs;
         bcs.Set      (-10, "ux", 0.0);
         bcs.Set      (-30, "uy", 0.0);
@@ -125,7 +132,6 @@ int main(int argc, char **argv) try
         double DelP = -18000.0;
         if (is2d)
         {
-            dom.SetOutNods ("owen_salonen_2d", Array<int>(0,1,2, 27,28,29));
             Dict bcs;
             bcs.Set      (-10, "uy", 0.0);
             bcs.Set      (-30, "ux", 0.0);
@@ -136,7 +142,6 @@ int main(int argc, char **argv) try
         }
         else
         {
-            dom.SetOutNods ("owen_salonen_3d", Array<int>(-1,-2,-3,-4,-5,-6,-7,-8));
             Dict bcs;
             bcs.Set      (-10, "ux", 0.0);
             bcs.Set      (-50, "uz", 0.0);

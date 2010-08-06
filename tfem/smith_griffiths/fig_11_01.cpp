@@ -66,7 +66,6 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, Dict(), Dict());
-    dom.SetOutNods ("fig_11_01", Array<int>(1,/*JustOne*/true));
     dom.MFuncs[-200] = &Multiplier; // set database of callbacks
 
     // solver

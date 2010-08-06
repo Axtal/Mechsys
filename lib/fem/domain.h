@@ -51,10 +51,13 @@ public:
     typedef std::map<int,Model*> Models_t;    ///< Map tag to model pointer
 
     // Constructor
-    Domain (Mesh::Generic const & Mesh,  ///< The mesh
-            Dict const          & Prps,  ///< Element properties
-            Dict const          & Mdls,  ///< Model names and parameters
-            Dict const          & Inis); ///< Initial values
+    Domain (Mesh::Generic const & Msh,        ///< The mesh
+            Dict const          & Prps,       ///< Element properties
+            Dict const          & Mdls,       ///< Model names and parameters
+            Dict const          & Inis,       ///< Initial values
+            char const          * FKey=NULL,  ///< File key to be used during output of results
+            Array<int>    const * OutV=NULL,  ///< IDs or Tags of vertices to generate output
+            Array<int>    const * OutC=NULL); ///< IDs or Tags of cells to generate output
 
     // Destructor
     ~Domain ();
@@ -65,8 +68,6 @@ public:
     void Gravity      ();                                                   ///< Apply gravity
     void Deactivate   (int EleTag);                                         ///< Deactivate all elements with EleTag
     void SetUVals     (SDPair const & UVals);                               ///< Set U values
-    void SetOutNods   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set nodes for output
-    void SetOutEles   (char const * FileKey, Array<int> const & IDsOrTags); ///< Set elements for output
     void OutResults   (double Time, Vec_t const & F_int) const;             ///< Do output results
     void PrintResults (char const * NF="%15.6g") const;                     ///< Print results
     bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;  ///< At nodes
@@ -80,16 +81,17 @@ public:
     void WriteVTU     (char const * FileKey) const;                         ///< Write file for ParaView
 
     // Data
-    Mesh::Generic const & Msh;         ///< The mesh
     Dict          const & Prps;        ///< Element properties
     Dict          const & Inis;        ///< Initial values
     int                   NDim;        ///< Space dimension
     double                gAccel;      ///< Gravity acceleration
     Models_t              Mdls;        ///< Models
-    Array<Node*>          Nods;        ///< Nodes
-    Array<Element*>       Eles;        ///< Elements
-    Array<size_t>         OutNods;     ///< ID of nodes for which output (results) is generated
-    Array<size_t>         OutEles;     ///< ID of elements for which output (results) is generated
+    Array<Node*>          Nods;        ///< (Allocated memory) Nodes
+    Array<Element*>       Eles;        ///< (Allocated memory) Elements
+    Array<Node*>          TgdNods;     ///< Tagged Nodes (at boundaries)
+    Array<Element*>       TgdEles;     ///< Tagged Elements (at boundaries)
+    Array<Node*>          OutNods;     ///< Nodes for which output (results) is generated
+    Array<Element*>       OutEles;     ///< Elements for which output (results) is generated
     Array<std::ofstream*> FilNods;     ///< Files with results at selected nodes (OutNods)
     Array<std::ofstream*> FilEles;     ///< Files with results at selected elements (OutEles)
     Array<size_t>         Beams;       ///< Subset of elements of type Beam
@@ -119,8 +121,8 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis)
-    : Msh(TheMesh), Prps(ThePrps), Inis(TheInis), NDim(TheMesh.NDim), gAccel(9.81)
+inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FKey, Array<int> const * OutV, Array<int> const * OutC)
+    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
 {
     // allocate models
     for (size_t i=0; i<TheMdls.Keys.Size(); ++i)
@@ -137,7 +139,36 @@ inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict
     }
 
     // set nodes from mesh
-    for (size_t i=0; i<Msh.Verts.Size(); ++i) Nods.Push (new Node((*Msh.Verts[i])));
+    for (size_t i=0; i<Msh.Verts.Size(); ++i)
+    {
+        // new node
+        Nods.Push (new Node((*Msh.Verts[i])));
+        if (Msh.Verts[i]->Tag<0) TgdNods.Push (Nods.Last());
+
+        // set list of nodes for output
+        if (FKey!=NULL && OutV!=NULL)
+        {
+            if (OutV->Find(Msh.Verts[i]->ID)>=0 || OutV->Find(Msh.Verts[i]->Tag)>=0)
+            {
+                String buf; buf.Printf("%s_nod_%d_%d.res", FKey, Msh.Verts[i]->ID, Msh.Verts[i]->Tag);
+                std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
+                OutNods.Push (Nods.Last());
+                FilNods.Push (of);
+                (*of) << Util::_8s << "Time";
+                (*of) << Util::_8s << "x";
+                (*of) << Util::_8s << "y";  if (NDim==3)
+                (*of) << Util::_8s << "z";
+                for (size_t k=0; k<Nods.Last()->nDOF(); ++k) (*of) << Util::_8s << Nods.Last()->UMap.Keys[k];
+                for (size_t k=0; k<Nods.Last()->nDOF(); ++k) (*of) << Util::_8s << Nods.Last()->FMap.Keys[k];
+                for (size_t k=0; k<Nods.Last()->nDOF(); ++k)
+                {
+                    buf.Printf ("%s_int", Nods.Last()->FMap.Keys[k].CStr());
+                    (*of) << Util::_8s << buf;
+                }
+                (*of) << "\n";
+            }
+        }
+    }
 
     // set elements from mesh
     for (size_t i=0; i<Msh.Cells.Size(); ++i)
@@ -161,6 +192,29 @@ inline Domain::Domain (Mesh::Generic const & TheMesh, Dict const & ThePrps, Dict
 
             // set array of Beams
             if (prob_name=="Beam") Beams.Push (Eles.Size()-1);
+
+            // tagged elements
+            if (Msh.Cells[i]->BryTags.size()>0 || prob_name=="Beam") TgdEles.Push (Eles.Last());
+
+            // set list of elements for output
+            if (FKey!=NULL && OutC!=NULL)
+            {
+                if (OutC->Find(Msh.Cells[i]->ID)>=0 || OutC->Find(Msh.Cells[i]->Tag)>=0)
+                {
+                    String buf; buf.Printf("%s_ele_%d_%d.res", FKey, Msh.Cells[i]->ID, Msh.Cells[i]->Tag);
+                    std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
+                    OutEles.Push (Eles.Last());
+                    FilEles.Push (of);
+                    Array<String> keys;
+                    Eles.Last()->StateKeys (keys);
+                    (*of) << Util::_8s << "Time";
+                    (*of) << Util::_8s << "x";
+                    (*of) << Util::_8s << "y";  if (NDim==3)
+                    (*of) << Util::_8s << "z";
+                    for (size_t j=0; j<keys.Size(); ++j) (*of) << Util::_8s << keys[j];
+                    (*of) << "\n";
+                }
+            }
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
@@ -215,12 +269,11 @@ inline void Domain::SetBCs (Dict const & BCs)
         bool found = false;
 
         // find elements with edges set with this bc_tag
-        for (size_t j=0; j<Msh.TgdCells.Size(); ++j)
+        for (size_t j=0; j<TgdEles.Size(); ++j)
         {
-            size_t eid = Msh.TgdCells[j]->ID;
-            if (Eles[eid]->Active)
+            if (TgdEles[j]->Active)
             {
-                Mesh::BryTag_t const & eftags = Msh.TgdCells[j]->BryTags;
+                Mesh::BryTag_t const & eftags = TgdEles[j]->Cell.BryTags;
                 for (Mesh::BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
                 {
                     int idx_side = p->first;
@@ -228,10 +281,10 @@ inline void Domain::SetBCs (Dict const & BCs)
                     if (side_tag==bc_tag) // found
                     {
                         found = true;
-                        eleside_t es(Eles[eid],idx_side);
+                        eleside_t es(TgdEles[j],idx_side);
                         for (size_t k=0; k<bcs.Keys.Size(); ++k) // we have to split Ubcs from Fbcs
                         {
-                            if (Eles[eid]->UKeys.Find(bcs.Keys[k])>=0)
+                            if (TgdEles[j]->UKeys.Find(bcs.Keys[k])>=0)
                             {
                                 eleside2tag_to_ubc[es].first = bc_tag;
                                 eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
@@ -248,33 +301,32 @@ inline void Domain::SetBCs (Dict const & BCs)
         }
 
         // find nodes with tags equal to this bc_tag
-        for (size_t j=0; j<Msh.TgdVerts.Size(); ++j)
+        for (size_t j=0; j<TgdNods.Size(); ++j)
         {
-            size_t nid = Msh.TgdVerts[j]->ID;
-            if (Nods[nid]->NShares>0) // active
+            if (TgdNods[j]->NShares>0) // active
             {
-                if (Msh.TgdVerts[j]->Tag==bc_tag) // found
+                if (TgdNods[j]->Vert.Tag==bc_tag) // found
                 {
                     found = true;
                     for (size_t k=0; k<bcs.Keys.Size(); ++k) // we have to split Ubcs from Fbcs
                     {
                         if (bcs.Keys[k]=="inclsupport")
                         {
-                            nod2tag_to_ubc[Nods[nid]].first  = bc_tag;
-                            nod2tag_to_ubc[Nods[nid]].second = bcs;
+                            nod2tag_to_ubc[TgdNods[j]].first  = bc_tag;
+                            nod2tag_to_ubc[TgdNods[j]].second = bcs;
                             break;
                         }
                         else
                         {
-                            if (Nods[nid]->UMap.HasKey(bcs.Keys[k]))
+                            if (TgdNods[j]->UMap.HasKey(bcs.Keys[k]))
                             {
-                                nod2tag_to_ubc[Nods[nid]].first = bc_tag;
-                                nod2tag_to_ubc[Nods[nid]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                                nod2tag_to_ubc[TgdNods[j]].first = bc_tag;
+                                nod2tag_to_ubc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
                             }
                             else
                             {
-                                nod2tag_to_fbc[Nods[nid]].first = bc_tag;
-                                nod2tag_to_fbc[Nods[nid]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                                nod2tag_to_fbc[TgdNods[j]].first = bc_tag;
+                                nod2tag_to_fbc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
                             }
                         }
                     }
@@ -285,16 +337,15 @@ inline void Domain::SetBCs (Dict const & BCs)
         if (!found) 
         {
             // find elements with tags equal to this bc_tag. Special cases: qn of beams, s (source term), cbx (cetrifugal body force), ...
-            for (size_t j=0; j<Msh.Cells.Size(); ++j)
+            for (size_t j=0; j<Eles.Size(); ++j)
             {
-                size_t eid = Msh.Cells[j]->ID;
-                if (Eles[eid]->Active)
+                if (Eles[j]->Active)
                 {
-                    if (Msh.Cells[j]->Tag==bc_tag) // found
+                    if (Eles[j]->Cell.Tag==bc_tag) // found
                     {
                         found = true;
                         int idx_side = 0; // irrelevant
-                        eleside_t es(Eles[eid],idx_side);
+                        eleside_t es(Eles[j],idx_side);
                         eleside2tag_to_fbc[es].first  = bc_tag;
                         eleside2tag_to_fbc[es].second = bcs;
                     }
@@ -437,129 +488,29 @@ inline void Domain::SetUVals (SDPair const & UVals)
     }
 }
 
-inline void Domain::SetOutNods (char const * FNKey, Array<int> const & IDsOrTags)
-{
-    // find ids
-    Array<int> ids;
-    for (size_t i=0; i<IDsOrTags.Size(); ++i)
-    {
-        int nod_or_tag = IDsOrTags[i];
-        int nod = 0;
-        if (nod_or_tag<0) // tag
-        {
-            bool found = false;
-            for (size_t j=0; j<Msh.TgdVerts.Size(); ++j)
-            {
-                if (nod_or_tag==Msh.TgdVerts[j]->Tag)
-                {
-                    nod   = Msh.TgdVerts[j]->ID;
-                    found = true;
-                    ids.Push (nod);
-                }
-            }
-            if (!found) throw new Fatal("Domain::SetOutNods: Could not find any node with tag = %d", nod_or_tag);
-        }
-        else ids.Push (nod_or_tag);
-    }
-
-    // set files
-    for (size_t i=0; i<ids.Size(); ++i)
-    {
-        int nod = ids[i];
-        if (OutNods.Find(nod)<0)
-        {
-            String buf; buf.Printf("%s_nod_%d_%d.res",FNKey,nod,Nods[nod]->Vert.Tag);
-            std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
-            OutNods.Push (nod);
-            FilNods.Push (of);
-            (*of) << Util::_8s << "Time";
-            (*of) << Util::_8s << "x";
-            (*of) << Util::_8s << "y";  if (NDim==3)
-            (*of) << Util::_8s << "z";
-            for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->UMap.Keys[j];
-            for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*of) << Util::_8s << Nods[nod]->FMap.Keys[j];
-            for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
-            {
-                buf.Printf ("%s_int",Nods[nod]->FMap.Keys[j].CStr());
-                (*of) << Util::_8s << buf;
-            }
-            (*of) << "\n";
-        }
-    }
-}
-
-inline void Domain::SetOutEles (char const * FNKey, Array<int> const & IDsOrTags)
-{
-    // find ids
-    Array<int> ids;
-    for (size_t i=0; i<IDsOrTags.Size(); ++i)
-    {
-        int ele_or_tag = IDsOrTags[i];
-        int ele = 0;
-        if (ele_or_tag<0) // tag
-        {
-            bool found = false;
-            for (size_t j=0; j<Msh.Cells.Size(); ++j)
-            {
-                if (ele_or_tag==Msh.Cells[j]->Tag)
-                {
-                    ele   = Msh.Cells[j]->ID;
-                    found = true;
-                    ids.Push (ele);
-                }
-            }
-            if (!found) throw new Fatal("Domain::SetOutEles: Could not find any element with tag = %d", ele_or_tag);
-        }
-        else ids.Push (ele_or_tag);
-    }
-
-    // set files
-    for (size_t i=0; i<ids.Size(); ++i)
-    {
-        int ele = ids[i];
-        if (OutEles.Find(ele)<0)
-        {
-            String buf; buf.Printf("%s_ele_%d_%d.res",FNKey,ele,Eles[ele]->Cell.Tag);
-            std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
-            OutEles.Push (ele);
-            FilEles.Push (of);
-            Array<String> keys;
-            Eles[ele]->StateKeys (keys);
-            (*of) << Util::_8s << "Time";
-            (*of) << Util::_8s << "x";
-            (*of) << Util::_8s << "y";  if (NDim==3)
-            (*of) << Util::_8s << "z";
-            for (size_t j=0; j<keys.Size(); ++j) (*of) << Util::_8s << keys[j];
-            (*of) << "\n";
-        }
-    }
-}
-
 inline void Domain::OutResults (double Time, Vec_t const & F_int) const
 {
     // nodes
     for (size_t i=0; i<OutNods.Size(); ++i)
     {
-        size_t nod = OutNods[i];
         (*FilNods[i]) << Util::_8s << Time;
-        (*FilNods[i]) << Util::_8s << Nods[nod]->Vert.C(0);
-        (*FilNods[i]) << Util::_8s << Nods[nod]->Vert.C(1);  if (NDim==3)
-        (*FilNods[i]) << Util::_8s << Nods[nod]->Vert.C(2);
-        for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->U[j];
-        for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << Nods[nod]->F[j];
-        for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(Nods[nod]->EQ[j]);
+        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(0);
+        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(1);  if (NDim==3)
+        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(2);
+        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->U[j];
+        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->F[j];
+        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(OutNods[i]->EQ[j]);
         (*FilNods[i]) << "\n";
     }
 
     // elements
     for (size_t i=0; i<OutEles.Size(); ++i)
     {
-        size_t ele = OutEles[i];
         (*FilEles[i]) << Util::_8s << Time;
         SDPair dat;
         Vec_t  Xct;
-        Eles[ele]->StateAtCt (dat);
-        Eles[ele]->Centroid  (Xct);
+        OutEles[i]->StateAtCt (dat);
+        OutEles[i]->Centroid  (Xct);
         (*FilEles[i]) << Util::_8s << Xct(0);
         (*FilEles[i]) << Util::_8s << Xct(1);  if (NDim==3)
         (*FilEles[i]) << Util::_8s << Xct(2);

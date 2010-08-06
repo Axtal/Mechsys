@@ -75,7 +75,6 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("fig_06_38", Array<int>(28, 29, 30, 31));
     dom.WriteVTU   ("fig_06_38_stg_0");
 
     // solver

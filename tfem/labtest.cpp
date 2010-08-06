@@ -138,9 +138,9 @@ int main(int argc, char **argv) try
     }
 
     // domain
-    FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("labtest", Array<int>((nd==3 ?  7 : 7), /*JustOne*/true));
-    dom.SetOutEles ("labtest", Array<int>((nd==3 ? 13 : 0), /*JustOne*/true));
+    Array<int> out_verts((nd==3 ?  7 : 7), /*JustOne*/true);
+    Array<int> out_cells((nd==3 ? 13 : 0), /*JustOne*/true);
+    FEM::Domain dom(mesh, prps, mdls, inis, "labtest", &out_verts, &out_cells);
 
     // debug data
     DbgDat dat;

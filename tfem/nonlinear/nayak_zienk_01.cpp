@@ -77,11 +77,13 @@ int main(int argc, char **argv) try
     double Hp = 0.0;
 
     // props, domain, and solver
+    Array<int> out_verts(0,1,2,17);
+    Array<int> out_cells(0,1,2);
     Dict prps, mdls;
     prps.Set(-1, "prob geom axs", PROB("Equilib"), GEOM("Quad8"), 1.0);
     mdls.Set(-1, "name E nu fc sY Hp axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
-    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
+    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "nayak_zienk_01", &out_verts, &out_cells);
 
     // debug data
     DbgDat dat;
@@ -93,8 +95,6 @@ int main(int argc, char **argv) try
     sol.SSOut = true;
 
     // solve
-    dom.SetOutNods ("nayak_zienk_01", Array<int>(0,1,2,17));
-    dom.SetOutEles ("nayak_zienk_01", Array<int>(0,1,2));
     Dict bcs;
     bcs.Set      (-100, "inclsupport alpha", 1.0, th);
     bcs.Set      (-30,  "uy", 0.0);

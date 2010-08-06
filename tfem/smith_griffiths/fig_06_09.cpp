@@ -97,8 +97,6 @@ int main(int argc, char **argv) try
     for (size_t i=0; i<weights.Size(); ++i) weights[i] /= DelP;
 
     // solve
-    dom.SetOutNods (filekey, Array<int>(0,9,14,23,28));
-    dom.SetOutEles (filekey, Array<int>(0,4));
     Dict bcs;
     bcs.Set      (-10, "ux",    0.0);
     bcs.Set      (-20, "ux",  0.0);

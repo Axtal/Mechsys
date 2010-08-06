@@ -60,9 +60,8 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(mesh, prps, mdls, inis);
-    //dom.SetOutNods ("arch", Array<int>(0,192));
-    dom.SetOutNods ("arch", Array<int>(-5,-6,-7));
+    Array<int> out_verts(-5,-6,-7); // 0,192
+    FEM::Domain dom(mesh, prps, mdls, inis, "arch", &out_verts);
 
     // solver
     FEM::Solver sol(dom);

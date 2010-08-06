@@ -159,9 +159,9 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("owen_hinton_02", Array<int>(41, /*JustOne*/true));
-    dom.SetOutEles ("owen_hinton_02", Array<int>(4,  /*JustOne*/true));
+    Array<int> out_verts(41, /*JustOne*/true);
+    Array<int> out_cells(4,  /*JustOne*/true);
+    FEM::Domain dom(mesh, prps, mdls, inis, "owen_hinton_02", &out_verts, &out_cells);
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
