@@ -8,13 +8,13 @@ echo "* You can call this script with an option to force recompiling everything 
 echo "* and/or an option to also download packages                               *"
 echo "*                                                                          *"
 echo "* Example:                                                                 *"
-echo "*   sh $MECHSYS_ROOT/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}                    *"
+echo "*   sh $MECHSYS_ROOT/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}        *"
 echo "*                                                                          *"
 echo "* By default, the code will not be compiled if this was done before.       *"
 echo "****************************************************************************"
 
 if [ ! -n "$MECHSYS_ROOT" ]; then
-  $MECHSYS_ROOT = $HOME  
+  MECHSYS_ROOT=$HOME  
 fi
 
 if [ -d "$MECHSYS_ROOT/mechsys" ]; then

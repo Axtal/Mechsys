@@ -67,13 +67,6 @@ else(GSL_FOUND)
     SET (DEPS_OK FALSE)
 endif(GSL_FOUND)
 
-if(HDF5_FOUND)
-	INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIRS})
-	SET (LIBS ${LIBS} ${HDF5_LIBRARIES})
-else(HDF5_FOUND)
-    SET (DEPS_OK FALSE)
-endif(HDF5_FOUND)
-
 if(MTL_FOUND)
 	INCLUDE_DIRECTORIES (${MTL_INCLUDE_DIRS})
 else(MTL_FOUND)
@@ -108,6 +101,13 @@ else(VORO_FOUND)
 endif(VORO_FOUND)
 
 # Options ##############################################################
+
+if(HDF5_FOUND)
+	INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIRS})
+	SET (LIBS ${LIBS} ${HDF5_LIBRARIES})
+else(HDF5_FOUND)
+    MESSAGE ("Could not find HDF5. OK, compiling without it")
+endif(HDF5_FOUND)
 
 if(MUMPS_FOUND)
 	INCLUDE_DIRECTORIES (${MUMPS_INCLUDE_DIRS})
