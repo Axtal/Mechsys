@@ -43,7 +43,7 @@ LMETISDIR = /usr/lib
 # variable below); for both parallel and sequential analysis choose the second 
 # line (remember to add -Dparmetis in the ORDERINGSF variable below)
 
-LMETIS    = -L$(LMETISDIR) -lmetis
+#LMETIS    = -L$(LMETISDIR) -lmetis
 LMETIS    = -L$(LMETISDIR) -lparmetis -lmetis
 
 # The following variables will be used in the compilation process.
@@ -83,7 +83,7 @@ LIBPAR = $(SCALAP)
 INCSEQ = -I$(topdir)/libseq
 LIBSEQ  =  -L$(topdir)/libseq -lmpiseq
 #LIBBLAS = -L/usr/lib/xmm/ -lf77blas -latlas
-LIBBLAS = -L/local/BLAS -lblas
+LIBBLAS = -L/usr/lib -lblas
 LIBOTHERS = -lpthread
 #Preprocessor defs for calling Fortran from C (-DAdd_ or -DAdd__ or -DUPPER)
 CDEFS   = -DAdd_
