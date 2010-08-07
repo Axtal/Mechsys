@@ -432,7 +432,9 @@ inline void Domain::SetBCs (Dict const & BCs)
                     }
                 }
             }
+#ifndef USE_MPI
             if (!found) throw new Fatal("FEM::Domain::SetBCs: Could not find any edge/face of element or node (or line element) with boundary Tag=%d",bc_tag);
+#endif
         }
     }
 

@@ -1168,20 +1168,23 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
         VTU_NEWLINE (i,k,nn,nimax/max_nshares-1,oss);
     }
     oss << "        </DataArray>\n";
-    oss << "        <DataArray type=\"Int32\" Name=\"" << "part" << "\" NumberOfComponents=\""<< max_nparts <<"\" format=\"ascii\">\n";
-    k = 0; oss << "        ";
-    for (size_t i=0; i<nn; ++i)
+    if (max_nparts>0)
     {
-        oss << "  ";
-        for (size_t j=0; j<max_nparts; ++j)
+        oss << "        <DataArray type=\"Int32\" Name=\"" << "part" << "\" NumberOfComponents=\""<< max_nparts <<"\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t i=0; i<nn; ++i)
         {
-            if (j<Verts[i]->PartIDs.Size()) oss << Verts[i]->PartIDs[j] << " ";
-            else                            oss << -1 << " ";
+            oss << "  ";
+            for (size_t j=0; j<max_nparts; ++j)
+            {
+                if (j<Verts[i]->PartIDs.Size()) oss << Verts[i]->PartIDs[j] << " ";
+                else                            oss << -1 << " ";
+            }
+            k++;
+            VTU_NEWLINE (i,k,nn,nimax/max_nparts-1,oss);
         }
-        k++;
-        VTU_NEWLINE (i,k,nn,nimax/max_nparts-1,oss);
+        oss << "        </DataArray>\n";
     }
-    oss << "        </DataArray>\n";
     oss << "      </PointData>\n";
 
     // data -- elements
@@ -1203,16 +1206,19 @@ inline void Generic::WriteVTU (char const * FileKey, int VolSurfOrBoth) const
         VTU_NEWLINE (i,k,nb,nimax,oss);
     }
     oss << "        </DataArray>\n";
-    oss << "        <DataArray type=\"Int32\" Name=\"" << "part" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-    k = 0; oss << "        ";
-    if (VolSurfOrBoth!=1)
-    for (size_t i=0; i<nc; ++i)
+    if (max_nparts>0)
     {
-        oss << (k==0?"  ":" ") << Cells[i]->PartID;
-        k++;
-        VTU_NEWLINE (i,k,nc,nimax,oss);
+        oss << "        <DataArray type=\"Int32\" Name=\"" << "part" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        if (VolSurfOrBoth!=1)
+        for (size_t i=0; i<nc; ++i)
+        {
+            oss << (k==0?"  ":" ") << Cells[i]->PartID;
+            k++;
+            VTU_NEWLINE (i,k,nc,nimax,oss);
+        }
+        oss << "        </DataArray>\n";
     }
-    oss << "        </DataArray>\n";
     oss << "      </CellData>\n";
 
     // Bottom

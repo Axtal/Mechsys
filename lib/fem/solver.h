@@ -541,18 +541,19 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     Sparse::SubMult (K12,  W,  W); // W1  -= K12*dU2
 #ifdef USE_MPI
     DMUMPS_STRUC_C ms;
-    ms.n            = 81*2;//TotNEq;
     ms.comm_fortran = -987654;
     ms.sym          =  0; // 0=unsymmetric, 1=sym(pos-def), 2=symmetric(undef)
     ms.par          =  1; // host also works
     ms.job          = -1; // force initialisation
     dmumps_c (&ms); // init
-    ms.icntl[2]     =  1;
-    ms.icntl[3]     = -1;
-    ms.icntl[7]     =  5;
-    ms.icntl[8]     =  0;
-    ms.icntl[21]    =  0;
-    ms.icntl[18]    =  3;
+    ms.n            = 32;//TotNEq;
+#define ICNTL(I) icntl[(I)-1]
+    ms.ICNTL(2)     =  1;
+    ms.ICNTL(3)     =  6;
+    ms.ICNTL(7)     =  5;
+    ms.ICNTL(8)     =  0;
+    ms.ICNTL(21)    =  0;
+    ms.ICNTL(18)    =  3;
     ms.nz_loc       =  A11.Top();
     ms.irn_loc      =  A11.GetAiPtr();
     ms.jcn_loc      =  A11.GetAjPtr();
@@ -561,15 +562,27 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 
     int my_id  = MPI::COMM_WORLD.Get_rank();
     //int nprocs = MPI::COMM_WORLD.Get_size();
-    if (my_id==0)
-    {
-        Vec_t rhs(81*2);
-        rhs = 1.0;
-        ms.rhs = rhs.data;
-    }
+    Vec_t rhs(ms.n);
+    rhs = 1.0;
+    ms.rhs = rhs.data;
     dmumps_c (&ms);
+    cout << "ms.nz   = " << A11.Top() << endl;
+    cout << "info[0] = " << ms.info[0] << endl;
+    cout << "info[1] = " << ms.info[1] << endl;
+    cout << "info[2] = " << ms.info[2] << endl;
+    cout << "rhs = " << PrintVector(rhs);
+    //if (my_id==0)
+    {
+        Vec_t res(ms.n);
+        cout << "ms.n = " << ms.n << endl;
+        for (int i=0; i<ms.n; ++i) cout << ms.rhs[i] << " "; cout << endl;
+        //for (int i=0; i<ms.n; ++i) res(i) = ms.rhs[i];
+        //cout << "res = " << PrintVector(res);
+    }
 #else
+    W = 1.0;
     UMFPACK::Solve  (A11,  W, dU); // dU   = inv(A11)*W
+    cout << "dU = " << PrintVector(dU);
 #endif
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
     Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
@@ -611,7 +624,7 @@ inline void Solver::Initialize (bool Transient)
     MPI::COMM_WORLD.Scan (send_alloc_dofs.GetPtr(), recv_alloc_dofs.GetPtr(), nprocs, MPI::INT, MPI::SUM);
 
     // correct equation numbers
-    NEq = 0;
+    NEq = 1;
     if (my_id>0)
     {
         for (int i=0; i<my_id; ++i) NEq += recv_alloc_dofs[i];

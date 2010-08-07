@@ -31,9 +31,15 @@ using FEM::GEOM;
 int main(int argc, char **argv) try
 {
     // mpi
+#ifdef USE_MPI
     MPI::Init (argc, argv);
     int my_id  = MPI::COMM_WORLD.Get_rank();
     int nprocs = MPI::COMM_WORLD.Get_size();
+    cout << "========================= parallel =========================" << endl;
+#else
+    int my_id = -1;
+    cout << "========================= serial ===========================" << endl;
+#endif
 
     // input
     int  nx     = 3;
@@ -54,7 +60,9 @@ int main(int argc, char **argv) try
     blks[0].SetNy (ny);
     Mesh::Structured mesh(/*NDim*/2);
     mesh.Generate   (blks,/*O2*/false);
+#ifdef USE_MPI
     mesh.PartDomain (nprocs, full);
+#endif
     mesh.WriteVTU   ("para01_mesh");
 
     // domain
@@ -68,9 +76,9 @@ int main(int argc, char **argv) try
     // output
     String buf;
     buf.Printf ("para01_%d",my_id);
-    dom.WriteVTU (buf.CStr());
 
     FEM::Solver sol(dom);
+    sol.SetScheme("FE");
     //sol.Initialize ();
     //sol.AssembleKA ();
     //sol.A11.WriteSMAT (buf.CStr());
@@ -83,8 +91,12 @@ int main(int argc, char **argv) try
     dom.SetBCs (bcs);
     sol.Solve  ();
 
+    dom.WriteVTU (buf.CStr());
+
     // end
+#ifdef USE_MPI
     MPI::Finalize();
+#endif
     return 0;
 }
 MECHSYS_CATCH
