@@ -42,7 +42,7 @@ public:
                  Model        const * Mdl,    ///< Model
                  SDPair       const & Prp,    ///< Properties
                  SDPair       const & Ini,    ///< Initial values
-                 Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
+                 Array<Node*> const & Nodes); ///< Connectivity
 
     // Destructor
     ~USigEpsElem () { if (GEs!=NULL) delete GEs; }

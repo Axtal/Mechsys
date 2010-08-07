@@ -41,7 +41,7 @@ public:
                  Model        const * Mdl,    ///< Model
                  SDPair       const & Prp,    ///< Properties
                  SDPair       const & Ini,    ///< Initial values
-                 Array<Node*> const & Nodes); ///< Array with all nodes (used to set the connectivity)
+                 Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
     void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, 
@@ -658,7 +658,9 @@ Element * EquilibElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl,
 // Register element
 int EquilibElemRegister()
 {
-    ElementFactory["Equilib"] = EquilibElemMaker;
+    ElementFactory["Equilib"]   = EquilibElemMaker;
+    ElementVarKeys["Equilib2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys["Equilib3D"] = std::make_pair ("ux uy uz", "fx fy fz");
     PROB.Set ("Equilib", (double)PROB.Keys.Size());
     return 0;
 }
