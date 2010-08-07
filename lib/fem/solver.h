@@ -542,17 +542,16 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 #ifdef USE_MPI
     DMUMPS_STRUC_C ms;
     ms.comm_fortran = -987654;
-    ms.sym          =  0; // 0=unsymmetric, 1=sym(pos-def), 2=symmetric(undef)
-    ms.par          =  1; // host also works
-    ms.job          = -1; // force initialisation
-    dmumps_c (&ms); // init
-    ms.n            = 32;//TotNEq;
+    ms.sym          =  0;    // 0=unsymmetric, 1=sym(pos-def), 2=symmetric(undef)
+    ms.par          =  1;    // host also works
+    ms.job          = -1;    // force initialisation
+    dmumps_c (&ms);          // init
+    ms.n            = NEq-1; //TotNEq;
 #define ICNTL(I) icntl[(I)-1]
     ms.ICNTL(2)     =  1;
-    ms.ICNTL(3)     =  6;
+    ms.ICNTL(3)     = -1;
     ms.ICNTL(7)     =  5;
     ms.ICNTL(8)     =  0;
-    ms.ICNTL(21)    =  0;
     ms.ICNTL(18)    =  3;
     ms.nz_loc       =  A11.Top();
     ms.irn_loc      =  A11.GetAiPtr();
@@ -561,28 +560,27 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     ms.job          =  6; // reorder, factor and solve
 
     int my_id  = MPI::COMM_WORLD.Get_rank();
-    //int nprocs = MPI::COMM_WORLD.Get_size();
     Vec_t rhs(ms.n);
-    rhs = 1.0;
+    for (int i=0; i<ms.n; ++i) W[i]=W[i+1]; // !!! improve code (shift pointer position) 
+    MPI::COMM_WORLD.Reduce (W.data, rhs.data, ms.n, MPI::DOUBLE, MPI::SUM, 0);
     ms.rhs = rhs.data;
-    dmumps_c (&ms);
-    cout << "ms.nz   = " << A11.Top() << endl;
-    cout << "info[0] = " << ms.info[0] << endl;
-    cout << "info[1] = " << ms.info[1] << endl;
-    cout << "info[2] = " << ms.info[2] << endl;
-    cout << "rhs = " << PrintVector(rhs);
-    //if (my_id==0)
-    {
+    if (my_id==0)
+      {
         Vec_t res(ms.n);
-        cout << "ms.n = " << ms.n << endl;
-        for (int i=0; i<ms.n; ++i) cout << ms.rhs[i] << " "; cout << endl;
-        //for (int i=0; i<ms.n; ++i) res(i) = ms.rhs[i];
-        //cout << "res = " << PrintVector(res);
-    }
+	for (int i=0; i<ms.n; ++i) res(i) = ms.rhs[i];
+        cout << "RHS = " << PrintVector(res);
+      }
+    dmumps_c (&ms);
+    if (my_id==0)
+      {
+        Vec_t res(ms.n);
+	for (int i=0; i<ms.n; ++i) res(i) = ms.rhs[i];
+        cout << "SOL = " << PrintVector(res);
+      }
 #else
-    W = 1.0;
+    cout << "RHS = " << PrintVector(W);
     UMFPACK::Solve  (A11,  W, dU); // dU   = inv(A11)*W
-    cout << "dU = " << PrintVector(dU);
+    cout << "SOL = " << PrintVector(dU);
 #endif
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
     Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
@@ -628,7 +626,6 @@ inline void Solver::Initialize (bool Transient)
     if (my_id>0)
     {
         for (int i=0; i<my_id; ++i) NEq += recv_alloc_dofs[i];
-        //cout << "Proc # " << my_id << ", received: recv_alloc_dofs = " << recv_alloc_dofs << ",  NEq = " << NEq << endl;
     }
 
     // assign equation numbers corresponding to local DOFs of elements
@@ -694,13 +691,21 @@ inline void Solver::Initialize (bool Transient)
             {
                 for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
                 {
-                    Dom.InterNodes[j]->EQ[k] = inter_eq[m];
+		    Dom.InterNodes[j]->EQ[k] = inter_eq[m];
                     m++;
                 }
             }
         }
     }
-
+    
+    // set total NEq in all procs  
+    if (my_id+1==nprocs)
+      {
+	NEq = 1;
+        for (int i=0; i<nprocs; ++i) NEq += recv_alloc_dofs[i];
+      }  
+    MPI::COMM_WORLD.Bcast (&NEq, 1, MPI::INT, nprocs-1);
+    
     // Debug
     /*
     Array<int> eqs, ids;
