@@ -63,10 +63,25 @@ int main(int argc, char **argv) try
     mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
     FEM::Domain dom(mesh, prps, mdls, inis);
 
+    //cout << dom << endl;
+
     // output
     String buf;
     buf.Printf ("para01_%d",my_id);
     dom.WriteVTU (buf.CStr());
+
+    FEM::Solver sol(dom);
+    //sol.Initialize ();
+    //sol.AssembleKA ();
+    //sol.A11.WriteSMAT (buf.CStr());
+
+    Dict bcs;
+    bcs.Set (-1, "ux uy", 0.0, 0.0);
+    bcs.Set (-2, "ux uy", 0.0, 0.0);
+    bcs.Set (-3, "fy",    -10.0);
+    bcs.Set (-4, "fy",    -10.0);
+    dom.SetBCs (bcs);
+    sol.Solve  ();
 
     // end
     MPI::Finalize();

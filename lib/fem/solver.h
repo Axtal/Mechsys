@@ -28,6 +28,13 @@
 // Blitz++
 #include <blitz/tinyvec-et.h>
 
+// MUMPS
+#ifdef USE_MPI
+   extern "C" {
+   #include "dmumps_c.h"
+   }
+#endif
+
 // MechSys
 #include <mechsys/fem/node.h>
 #include <mechsys/fem/element.h>
@@ -35,6 +42,9 @@
 #include <mechsys/linalg/sparse_triplet.h>
 #include <mechsys/linalg/sparse_matrix.h>
 #include <mechsys/linalg/umfpack.h>
+
+using std::cout;
+using std::endl;
 
 namespace FEM
 {
@@ -529,13 +539,166 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 
     // calc dU and dF
     Sparse::SubMult (K12,  W,  W); // W1  -= K12*dU2
+#ifdef USE_MPI
+    DMUMPS_STRUC_C ms;
+    ms.n            = 81*2;//TotNEq;
+    ms.comm_fortran = -987654;
+    ms.sym          =  0; // 0=unsymmetric, 1=sym(pos-def), 2=symmetric(undef)
+    ms.par          =  1; // host also works
+    ms.job          = -1; // force initialisation
+    dmumps_c (&ms); // init
+    ms.icntl[2]     =  1;
+    ms.icntl[3]     = -1;
+    ms.icntl[7]     =  5;
+    ms.icntl[8]     =  0;
+    ms.icntl[21]    =  0;
+    ms.icntl[18]    =  3;
+    ms.nz_loc       =  A11.Top();
+    ms.irn_loc      =  A11.GetAiPtr();
+    ms.jcn_loc      =  A11.GetAjPtr();
+    ms.a_loc        =  A11.GetAxPtr();
+    ms.job          =  6; // reorder, factor and solve
+
+    int my_id  = MPI::COMM_WORLD.Get_rank();
+    //int nprocs = MPI::COMM_WORLD.Get_size();
+    if (my_id==0)
+    {
+        Vec_t rhs(81*2);
+        rhs = 1.0;
+        ms.rhs = rhs.data;
+    }
+    dmumps_c (&ms);
+#else
     UMFPACK::Solve  (A11,  W, dU); // dU   = inv(A11)*W
+#endif
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
     Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
 }
 
 inline void Solver::Initialize (bool Transient)
 {
+#ifdef USE_MPI
+
+    int my_id  = MPI::COMM_WORLD.Get_rank();
+    int nprocs = MPI::COMM_WORLD.Get_size();
+
+    // compute equation numbers corresponding to local DOFs of elements
+    NEq = 0;
+    for (size_t i=0; i<Dom.Eles.Size(); ++i)
+    {
+        if (Dom.Eles[i]->Active) Dom.Eles[i]->IncNLocDOF (NEq);
+    }
+
+    // compute equation numbers
+    for (size_t i=0; i<Dom.Nods.Size(); ++i)
+    {
+        if (Dom.Nods[i]->NShares>0)
+        {
+            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            {
+                // only the domain with smallest ID will set EQ number
+                int min_part_id = Dom.Nods[i]->Vert.PartIDs[Dom.Nods[i]->Vert.PartIDs.Min()];
+                if (min_part_id==my_id) NEq++;
+            }
+        }
+    }
+
+    // communicate the number of DOFs numbered
+    Array<int> send_alloc_dofs(nprocs); // number of dofs just allocated in this processor
+    Array<int> recv_alloc_dofs(nprocs); // number of dofs just allocated in this processor
+    send_alloc_dofs.SetValues (0);
+    send_alloc_dofs[my_id] = NEq;
+    MPI::COMM_WORLD.Scan (send_alloc_dofs.GetPtr(), recv_alloc_dofs.GetPtr(), nprocs, MPI::INT, MPI::SUM);
+
+    // correct equation numbers
+    NEq = 0;
+    if (my_id>0)
+    {
+        for (int i=0; i<my_id; ++i) NEq += recv_alloc_dofs[i];
+        //cout << "Proc # " << my_id << ", received: recv_alloc_dofs = " << recv_alloc_dofs << ",  NEq = " << NEq << endl;
+    }
+
+    // assign equation numbers corresponding to local DOFs of elements
+    for (size_t i=0; i<Dom.Eles.Size(); ++i)
+    {
+        if (Dom.Eles[i]->Active) Dom.Eles[i]->IncNLocDOF (NEq);
+    }
+
+    // assign equation numbers and set active nodes
+    ActNods.Resize(0);
+    for (size_t i=0; i<Dom.Nods.Size(); ++i)
+    {
+        if (Dom.Nods[i]->NShares>0)
+        {
+            for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+            {
+                int min_part_id = Dom.Nods[i]->Vert.PartIDs[Dom.Nods[i]->Vert.PartIDs.Min()];
+                if (min_part_id==my_id) // only the domain with smallest ID will set EQ number
+                {
+                    Dom.Nods[i]->EQ[j] = NEq;
+                    NEq++;
+                }
+                else Dom.Nods[i]->EQ[j] = -1;
+            }
+            ActNods.Push (Dom.Nods[i]);
+        }
+    }
+
+    // post messages
+    const int TAG_SENT_EQ = 1000;
+    for (int i=my_id+1; i<nprocs; ++i)
+    {
+        Array<int> inter_eq; // equation of interface DOFs
+        for (size_t j=0; j<Dom.InterNodes.Size(); ++j)
+        {
+            int  min_part_id       =  Dom.InterNodes[j]->Vert.PartIDs[Dom.InterNodes[j]->Vert.PartIDs.Min()]; // the smallest proc is the one supposed to send always
+            bool do_send_to_proc_i = (Dom.InterNodes[j]->Vert.PartIDs.Find(i)>=0); // found processor on the interface and has higher id than me
+            if (my_id==min_part_id && do_send_to_proc_i)
+            {
+                for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
+                    inter_eq.Push (Dom.InterNodes[j]->EQ[k]);
+            }
+        }
+        //cout << "Proc # " << my_id << ", sent to # " << i << " : inter_eq = " << inter_eq << endl;
+        MPI::Request req_send = MPI::COMM_WORLD.Isend (inter_eq.GetPtr(), inter_eq.Size(), MPI::INT, i, TAG_SENT_EQ);
+    }
+
+    // receive messages
+    MPI::Status status;
+    for (int i=0; i<my_id; ++i)
+    {
+        MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, TAG_SENT_EQ, status);
+        int source = status.Get_source();
+        int count  = status.Get_count(MPI::INT);
+        Array<int> inter_eq(count); // equation of interface DOFs
+        MPI::COMM_WORLD.Recv (inter_eq.GetPtr(), count, MPI::INT, source, TAG_SENT_EQ);
+
+        int m = 0;
+        for (size_t j=0; j<Dom.InterNodes.Size(); ++j)
+        {
+            int min_part_id = Dom.InterNodes[j]->Vert.PartIDs[Dom.InterNodes[j]->Vert.PartIDs.Min()]; // the smallest proc is the one supposed to send always
+            if (source==min_part_id)
+            {
+                for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
+                {
+                    Dom.InterNodes[j]->EQ[k] = inter_eq[m];
+                    m++;
+                }
+            }
+        }
+    }
+
+    // Debug
+    /*
+    Array<int> eqs, ids;
+    for (size_t i=0; i<Dom.Nods.Size(); ++i)
+    { if (Dom.Nods[i]->NShares>0) { for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j) { eqs.Push (Dom.Nods[i]->EQ[j]);  ids.Push (Dom.Nods[i]->Vert.ID); } } }
+    cout << "Proc # " << my_id << ", eqs = " << eqs << endl;
+    //cout << "Proc # " << my_id << ", ids = " << ids << endl;
+    */
+
+#else // serial code
+
     // assign equation numbers corresponding to local DOFs of elements
     NEq = 0;
     for (size_t i=0; i<Dom.Eles.Size(); ++i)
@@ -557,6 +720,8 @@ inline void Solver::Initialize (bool Transient)
             ActNods.Push (Dom.Nods[i]);
         }
     }
+
+#endif
 
     // prescribed equations and prescribed U
     pEQ.Resize    (0);

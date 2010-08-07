@@ -104,6 +104,9 @@ public:
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
     InclSupport_t         InclSupport; ///< Inclined support
+#ifdef USE_MPI
+    Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions
+#endif
 
     // Nodal results
     size_t        NActNods;    ///< Number of active nodes
@@ -191,11 +194,9 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 
     // set nodes from mesh
     std::map<int,Node*> VertID2Node;
-    int nverts_shared = 0;
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
 #ifdef USE_MPI
-        if (Msh.Verts[i]->PartIDs.Size()>1) nverts_shared++;
         if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
 #endif
         // new node
@@ -203,6 +204,21 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         if (Msh.Verts[i]->Tag<0) TgdNods.Push (Nods.Last());
         VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
+#ifdef USE_MPI
+        // add DOFs to interface nodes (between partitions)
+        if (Msh.Verts[i]->PartIDs.Size()>1) // this is a shared node (between partitions)
+        {
+            InterNodes.Push (Nods.Last());
+            for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
+            {
+                int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
+                String prob_name_ND;
+                PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
+                prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
+                Nods.Last()->AddDOF (ElementVarKeys[prob_name_ND].first.CStr(), ElementVarKeys[prob_name_ND].second.CStr());
+            }
+        }
+#endif
         // set list of nodes for output
         if (FKey!=NULL && OutV!=NULL)
         {
@@ -283,79 +299,6 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
-
-#ifdef USE_MPI
-    // communicate DOFs
-    int my_id  = MPI::COMM_WORLD.Get_rank();
-    int nprocs = MPI::COMM_WORLD.Get_size();
-    int ndofs;
-    int pos     = 0;
-    int outsize = 256*nverts_shared;
-    char outbuf[outsize];
-    for (size_t i=0; i<Msh.Verts.Size(); ++i)
-    {
-        if (Msh.Verts[i]->PartIDs.Size()>1) // shared vertex
-        {
-            if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0)
-            {
-                ndofs = 0;
-                MPI::INT.Pack (&ndofs, 1, &outbuf, outsize, pos, MPI::COMM_WORLD);
-                //cout << "proc # " << my_id << ", fucked node: writing ndofs = " << ndofs << endl;
-            }
-            else
-            {
-                Array<String> const & ukeys = VertID2Node[Msh.Verts[i]->ID]->UMap.Keys;
-                Array<String> const & fkeys = VertID2Node[Msh.Verts[i]->ID]->FMap.Keys;
-                ndofs = 2*ukeys.Size();
-                MPI::INT.Pack (&ndofs, 1, &outbuf, outsize, pos, MPI::COMM_WORLD);
-                //cout << "proc # " << my_id << ", normal node: writing ndofs = " << ndofs << endl;
-                for (size_t i=0; i<ukeys.Size(); ++i)
-                {
-                    //MPI::CHAR.Pack (ukeys[i].CStr(), ukeys[i].size()+1, &outbuf, outsize, pos, MPI::COMM_WORLD);
-                    //MPI::CHAR.Pack (fkeys[i].CStr(), fkeys[i].size()+1, &outbuf, outsize, pos, MPI::COMM_WORLD);
-                }
-            }
-        }
-    }
-
-    pos = 0;
-    for (size_t i=0; i<Msh.Verts.Size(); ++i)
-    {
-        if (Msh.Verts[i]->PartIDs.Size()>1) // shared vertex
-        {
-            if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0)
-            {
-                MPI::INT.Unpack (&outbuf, outsize, &ndofs, 1, pos, MPI::COMM_WORLD);
-                //cout << "proc # " << my_id << ", fucked node: reading ndofs = " << ndofs << endl;
-            }
-            else
-            {
-                MPI::INT.Unpack (&outbuf, outsize, &ndofs, 1, pos, MPI::COMM_WORLD);
-                //cout << "proc # " << my_id << ", normal node: reading ndofs = " << ndofs << endl;
-                Array<String> ukeys(ndofs/2);
-                Array<String> fkeys(ndofs/2);
-                for (int i=0; i<ndofs/2; ++i)
-                {
-                    //MPI::CHAR.Unpack (&outbuf, outsize, ukeys[i], ukeys[i].size()+1, pos, MPI::COMM_WORLD);
-                    //MPI::CHAR.Unpack (&outbuf, outsize, fkeys[i], fkeys[i].size()+1, pos, MPI::COMM_WORLD);
-                }
-            }
-        }
-    }
-
-    //if (my_id==0)
-    //{
-        //for (size_t i=0; i<nprocs; ++i)
-        //{
-            //MPI::COMM_WORLD.Recv (u_dofs, /*number*/1, MPI::INT, /*destination*/my_id-1, 1);
-            //
-        //}
-
-    //}
-    //else MPI::COMM_WORLD.Send (u_dofs, /*number*/1, MPI::SIDataType, /*destination*/0, SEND_TO_ZERO);
-
-    
-#endif
 
     // divide U values in nodes by the number of times elements added to a U var
     for (size_t i=0; i<Nods.Size(); ++i)

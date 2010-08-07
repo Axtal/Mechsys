@@ -439,6 +439,10 @@ Element * AllocElement(String const & Name, int NDim, Mesh::Cell const & Cell, M
     return ptr;
 }
 
+typedef std::map<String, std::pair<String,String> > ElementVarKeys_t;
+
+ElementVarKeys_t ElementVarKeys;
+
 }; // namespace FEM
 
 #ifdef USE_BOOST_PYTHON
