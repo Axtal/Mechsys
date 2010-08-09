@@ -104,6 +104,7 @@ public:
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
     InclSupport_t         InclSupport; ///< Inclined support
+    bool                  Parallel;    ///< Run parallel version ?
 #ifdef USE_MPI
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions
 #endif
@@ -176,7 +177,7 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
 }
 
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FKey, Array<int> const * OutV, Array<int> const * OutC)
-    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
+    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81), Parallel(false)
 {
     // allocate models
     for (size_t i=0; i<TheMdls.Keys.Size(); ++i)
@@ -197,7 +198,11 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
 #ifdef USE_MPI
-        if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
+        if (Parallel)
+        {
+            // skip vertices that aren't in this partition
+            if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
+        }
 #endif
         // new node
         Nods.Push (new Node((*Msh.Verts[i])));
@@ -205,17 +210,20 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
 #ifdef USE_MPI
-        // add DOFs to interface nodes (between partitions)
-        if (Msh.Verts[i]->PartIDs.Size()>1) // this is a shared node (between partitions)
+        if (Parallel)
         {
-            InterNodes.Push (Nods.Last());
-            for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
+            // add DOFs to interface nodes (between partitions)
+            if (Msh.Verts[i]->PartIDs.Size()>1) // this is a shared node (between partitions)
             {
-                int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
-                String prob_name_ND;
-                PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
-                prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
-                Nods.Last()->AddDOF (ElementVarKeys[prob_name_ND].first.CStr(), ElementVarKeys[prob_name_ND].second.CStr());
+                InterNodes.Push (Nods.Last());
+                for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
+                {
+                    int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
+                    String prob_name_ND;
+                    PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
+                    prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
+                    Nods.Last()->AddDOF (ElementVarKeys[prob_name_ND].first.CStr(), ElementVarKeys[prob_name_ND].second.CStr());
+                }
             }
         }
 #endif
@@ -248,7 +256,11 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     for (size_t i=0; i<Msh.Cells.Size(); ++i)
     {
 #ifdef USE_MPI
-        if (Msh.Cells[i]->PartID!=MPI::COMM_WORLD.Get_rank()) continue;
+        if (Parallel)
+        {
+            // skip elements that aren't in this partition
+            if (Msh.Cells[i]->PartID!=MPI::COMM_WORLD.Get_rank()) continue;
+        }
 #endif
         int tag = Msh.Cells[i]->Tag;
         if (!Prps.HasKey(tag)) throw new Fatal("Domain::SetMesh: Dictionary of element properties does not have tag=%d",tag);
@@ -432,9 +444,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                     }
                 }
             }
-#ifndef USE_MPI
-            if (!found) throw new Fatal("FEM::Domain::SetBCs: Could not find any edge/face of element or node (or line element) with boundary Tag=%d",bc_tag);
-#endif
+            if (!Parallel && !found) throw new Fatal("FEM::Domain::SetBCs: Could not find any edge/face of element or node (or line element) with boundary Tag=%d",bc_tag);
         }
     }
 

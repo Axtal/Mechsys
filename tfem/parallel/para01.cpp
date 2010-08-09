@@ -30,24 +30,31 @@ using FEM::GEOM;
 
 int main(int argc, char **argv) try
 {
-    // mpi
-#ifdef USE_MPI
-    MPI::Init (argc, argv);
-    int my_id  = MPI::COMM_WORLD.Get_rank();
-    int nprocs = MPI::COMM_WORLD.Get_size();
-    cout << "========================= parallel =========================" << endl;
-#else
-    int my_id = -1;
-    cout << "========================= serial ===========================" << endl;
-#endif
-
     // input
-    int  nx     = 3;
-    int  ny     = 3;
-    bool full   = false;
-    if (argc>1) nx   = atoi(argv[1]);
-    if (argc>2) ny   = atoi(argv[2]);
-    if (argc>3) full = atoi(argv[3]);
+    bool parallel  = true;
+    int  nx        = 3;
+    int  ny        = 3;
+    bool part_full = false;
+    if (argc>1) parallel  = atoi(argv[1]);
+    if (argc>2) nx        = atoi(argv[2]);
+    if (argc>3) ny        = atoi(argv[3]);
+    if (argc>4) part_full = atoi(argv[4]);
+
+    // mpi
+    int my_id  = -1;
+    int nprocs = 1;
+    if (parallel)
+    {
+#ifdef USE_MPI
+        MPI::Init (argc, argv);
+        my_id  = MPI::COMM_WORLD.Get_rank();
+        nprocs = MPI::COMM_WORLD.Get_size();
+        cout << "\n========================= parallel =========================" << endl;
+#else
+        throw new Fatal("main.cpp: this code wasn't compiled with USE_MPI ==> parallel version is not available");
+#endif
+    }
+    else cout << "\n========================= serial ===========================" << endl;
 
     // mesh
     Array<Mesh::Block> blks(1);
@@ -59,17 +66,16 @@ int main(int argc, char **argv) try
     blks[0].SetNx (nx);
     blks[0].SetNy (ny);
     Mesh::Structured mesh(/*NDim*/2);
-    mesh.Generate   (blks,/*O2*/false);
-#ifdef USE_MPI
-    mesh.PartDomain (nprocs, full);
-#endif
-    mesh.WriteVTU   ("para01_mesh");
+    mesh.Generate (blks,/*O2*/false);
+    if (parallel) mesh.PartDomain (nprocs, part_full);
+    mesh.WriteVTU ("para01_mesh");
 
     // domain
     Dict prps, mdls, inis;
     prps.Set (-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.);
     mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
     FEM::Domain dom(mesh, prps, mdls, inis);
+    dom.Parallel = parallel;
 
     //cout << dom << endl;
 
@@ -95,7 +101,7 @@ int main(int argc, char **argv) try
 
     // end
 #ifdef USE_MPI
-    MPI::Finalize();
+    if (parallel) MPI::Finalize();
 #endif
     return 0;
 }

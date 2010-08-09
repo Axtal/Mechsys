@@ -88,11 +88,10 @@ public:
     Value_T const * GetAxPtr () const;          ///< Access non-zero values (read)
 
     // Auxiliar methods
-    void                    SetNS (Util::NumStream & NS) { _ns = &NS; } ///< Set the NumStream, a structure to aid format output of numbers
-    Util::NumStream const & NS    () const           { return (*_ns); } ///< Return the NumStream, a structure to aid format output of numbers
-
-    // Output methods
-    void WriteSMAT (char const * FileKey, double Tol=1.0e-14) const; ///< Write .smat file for vismatrix
+    void                    SetNS      (Util::NumStream & NS) { _ns = &NS; }             ///< Set the NumStream, a structure to aid format output of numbers
+    Util::NumStream const & NS         () const           { return (*_ns); }             ///< Return the NumStream, a structure to aid format output of numbers
+    void                    WriteSMAT  (char const * FileKey, double Tol=1.0e-14) const; ///< Write .smat file for vismatrix
+    void                    IncIndices (Index_T Delta);                                  ///< Increment i,j indices by Delta
 
 private:
     // Data
@@ -317,6 +316,16 @@ inline void Triplet<Value_T,Index_T>::WriteSMAT (char const * FileKey, double To
 
     // close file
     of.close();
+}
+
+template<typename Value_T, typename Index_T>
+inline void Triplet<Value_T,Index_T>::IncIndices (Index_T Delta)
+{
+    for (int k=0; k<Top(); ++k)
+    {
+        _Ai[k] += Delta;
+        _Aj[k] += Delta;
+    }
 }
 
 /** Ouptuts a sparse matrix in triplet format. */
