@@ -110,7 +110,7 @@ int main(int argc, char **argv) try
 
     sol.Solve        (10);
     dom.WriteVTU     (fkey.CStr());
-    dom.PrintResults ();
+    dom.PrintResults ("%12.6g", /*with_elems*/false);
 
     // end
 #ifdef USE_MPI

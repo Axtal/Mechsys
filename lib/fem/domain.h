@@ -36,9 +36,6 @@
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/draw.h>
 
-using std::cout;
-using std::endl;
-
 namespace FEM
 {
 
@@ -72,20 +69,20 @@ public:
     // Methods
     void SetBCs       (Dict const & BCs);
     void ClrBCs       ();
-    void Gravity      ();                                                   ///< Apply gravity
-    void Deactivate   (int EleTag);                                         ///< Deactivate all elements with EleTag
-    void SetUVals     (SDPair const & UVals);                               ///< Set U values
-    void OutResults   (double Time, Vec_t const & F_int) const;             ///< Do output results
-    void PrintResults (char const * NF="%15.6g") const;                     ///< Print results
-    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;  ///< At nodes
+    void Gravity      ();                                                    ///< Apply gravity
+    void Deactivate   (int EleTag);                                          ///< Deactivate all elements with EleTag
+    void SetUVals     (SDPair const & UVals);                                ///< Set U values
+    void OutResults   (double Time, Vec_t const & F_int) const;              ///< Do output results
+    void PrintResults (char const * NF="%15.6g", bool WithElems=true) const; ///< Print results
+    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;   ///< At nodes
     bool CheckError   (Table const & NodSol, Table const & EleSol, 
-                       SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
-    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;  ///< At integration points
+                       SDPair const & NodTol, SDPair const & EleTol) const;  ///< At nodes and centroid
+    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;   ///< At integration points
     void WriteMPY     (char const * FileKey, double SFCoef=1.0,
-                       char const * Extra=NULL) const;                      ///< SFCoef: Scale-factor coefficient
-    void AvailableData();                                                   ///< Check available data and resize results matrices
-    void NodalResults () const;                                             ///< Extrapolate results from element to nodes
-    void WriteVTU     (char const * FileKey) const;                         ///< Write file for ParaView
+                       char const * Extra=NULL) const;                       ///< SFCoef: Scale-factor coefficient
+    void AvailableData();                                                    ///< Check available data and resize results matrices
+    void NodalResults () const;                                              ///< Extrapolate results from element to nodes
+    void WriteVTU     (char const * FileKey) const;                          ///< Write file for ParaView
 
     // Data
     Dict          const & Prps;        ///< Element properties
@@ -476,8 +473,6 @@ inline void Domain::SetBCs (Dict const & BCs)
         }
 
         ele->SetBCs (idx_side, bcs, pF, pU, calcm);
-
-        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (F at ELEMENTS) bc_tag = " << bc_tag << "  " << bcs << endl;
     }
 
     // set F bcs at nodes
@@ -503,8 +498,6 @@ inline void Domain::SetBCs (Dict const & BCs)
                 pF[nod].second = calcm;
             }
         }
-
-        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (F at NODES) bc_tag = " << bc_tag << "  " << bcs << endl;
     }
 
     // set U bcs at sides (edges/faces) of elements
@@ -515,8 +508,6 @@ inline void Domain::SetBCs (Dict const & BCs)
         SDPair const & bcs      = p->second.second;
 
         ele->SetBCs (idx_side, bcs, pF, pU, NULL);
-
-        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (U at ELEMENTS) ele.ID = " << ele->Cell.ID << "  " << bcs << endl;
     }
 
     // set U bcs at nodes
@@ -535,8 +526,6 @@ inline void Domain::SetBCs (Dict const & BCs)
             for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
                 pU[nod].first[nod->UMap(q->first)] = q->second;
         }
-
-        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (U at NODES) nod.Tag = " << nod->Vert.Tag << "  " << bcs << endl;
     }
 
     // check available data
@@ -631,7 +620,7 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     }
 }
 
-inline void Domain::PrintResults (char const * NF) const
+inline void Domain::PrintResults (char const * NF, bool WithElems) const
 {
     std::cout << "\n[1;37m--- Results ------------------------------------------------------------------\n";
 
@@ -711,43 +700,46 @@ inline void Domain::PrintResults (char const * NF) const
     std::cout << "\n";
 
     // elems: keys
-    Array<String> keys;
-    for (size_t i=0; i<Eles.Size(); ++i)
+    if (WithElems)
     {
-        SDPair dat;
-        Eles[i]->StateAtCt (dat);
-        for (size_t j=0; j<dat.Keys.Size(); ++j)
+        Array<String> keys;
+        for (size_t i=0; i<Eles.Size(); ++i)
         {
-            if (keys.Find(dat.Keys[j])<0) keys.Push (dat.Keys[j]);
+            SDPair dat;
+            Eles[i]->StateAtCt (dat);
+            for (size_t j=0; j<dat.Keys.Size(); ++j)
+            {
+                if (keys.Find(dat.Keys[j])<0) keys.Push (dat.Keys[j]);
+            }
         }
-    }
 
-    // elems: header
-    std::cout << "[1;37m" << Util::_6 << "Elem";
-    buf.Printf(nf, "x");  std::cout << buf;
-    buf.Printf(nf, "y");  std::cout << buf;  if (NDim==3) {
-    buf.Printf(nf, "z");  std::cout << buf; }
-    for (size_t i=0; i<keys.Size(); ++i) { buf.Printf(nf, keys[i].CStr());  std::cout<<buf; }
-    std::cout << "[0m\n";
+        // elems: header
+        std::cout << "[1;37m" << Util::_6 << "Elem";
+        buf.Printf(nf, "x");  std::cout << buf;
+        buf.Printf(nf, "y");  std::cout << buf;  if (NDim==3) {
+        buf.Printf(nf, "z");  std::cout << buf; }
+        for (size_t i=0; i<keys.Size(); ++i) { buf.Printf(nf, keys[i].CStr());  std::cout<<buf; }
+        std::cout << "[0m\n";
 
-    // elems: data
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        std::cout << Util::_6 << Eles[i]->Cell.ID;
-        Vec_t  X;
-        SDPair dat;
-        Eles[i]->StateAtCt (dat);
-        Eles[i]->Centroid  (X);
-        buf.Printf(NF, X(0)); std::cout << buf;
-        buf.Printf(NF, X(1)); std::cout << buf;  if (NDim==3) {
-        buf.Printf(NF, X(2)); std::cout << buf; }
-        for (size_t j=0; j<keys.Size(); ++j)
+        // elems: data
+        for (size_t i=0; i<Eles.Size(); ++i)
         {
-            if (dat.HasKey(keys[j])) buf.Printf(NF, dat(keys[j]));
-            else                     buf.Printf(nf, "---");
-            std::cout << buf;
+            std::cout << Util::_6 << Eles[i]->Cell.ID;
+            Vec_t  X;
+            SDPair dat;
+            Eles[i]->StateAtCt (dat);
+            Eles[i]->Centroid  (X);
+            buf.Printf(NF, X(0)); std::cout << buf;
+            buf.Printf(NF, X(1)); std::cout << buf;  if (NDim==3) {
+            buf.Printf(NF, X(2)); std::cout << buf; }
+            for (size_t j=0; j<keys.Size(); ++j)
+            {
+                if (dat.HasKey(keys[j])) buf.Printf(NF, dat(keys[j]));
+                else                     buf.Printf(nf, "---");
+                std::cout << buf;
+            }
+            std::cout << "\n";
         }
-        std::cout << "\n";
     }
 }
 
@@ -1030,8 +1022,6 @@ inline void Domain::WriteVTU (char const * FNKey) const
     // extrapolate results
     //NodalResults ();
 
-    cout << "here 1\n";
-
     // data
     size_t nn = Nods.Size(); // number of nodes
     size_t ne = Eles.Size(); // number of elements
@@ -1059,8 +1049,6 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
     oss << "        </DataArray>\n";
     oss << "      </Points>\n";
-
-    cout << "here 2\n";
 
     // elements: connectivity, offsets, types
     oss << "      <Cells>\n";
@@ -1107,8 +1095,6 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
     oss << "        </DataArray>\n";
     oss << "      </Cells>\n";
-
-    cout << "here 3\n";
 
     // data -- nodes
     oss << "      <PointData Scalars=\"point_scalars\">\n";

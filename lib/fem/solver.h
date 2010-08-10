@@ -28,13 +28,6 @@
 // Blitz++
 #include <blitz/tinyvec-et.h>
 
-// MUMPS
-#ifdef USE_MPI
-   extern "C" {
-   #include "dmumps_c.h"
-   }
-#endif
-
 // MechSys
 #include <mechsys/fem/node.h>
 #include <mechsys/fem/element.h>
@@ -42,9 +35,7 @@
 #include <mechsys/linalg/sparse_triplet.h>
 #include <mechsys/linalg/sparse_matrix.h>
 #include <mechsys/linalg/umfpack.h>
-
-using std::cout;
-using std::endl;
+#include <mechsys/linalg/mumps.h>
 
 namespace FEM
 {
@@ -63,20 +54,21 @@ public:
 
     // Constructor
     Solver (Domain const & Dom, pOutFun OutFun=NULL, void * OutDat=NULL,
-                                pOutFun DbgFun=NULL, void * DbgDat=NULL);
+                                pOutFun DbgFun=NULL, void * DbgDat=NULL); ///< Allocate solver object
 
     // Methods
-    void Solve        (size_t NInc=1, char const * FileKey=NULL,
-                       Array<double> * Weights=NULL, bool NonLinWei=false);            ///< Solve steady/equilibrium equation
-    void TransSolve   (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient equation
-    void DynSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic equation
-    void AssembleKA   ();                                                              ///< A = K11
-    void AssembleKMA  (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
-    void AssembleKCMA (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
-    void TgIncs       (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
-    void Initialize   (bool Transient=false);                                          ///< Initialize global matrices and vectors
-    void SetScheme    (char const * StrScheme);                                        ///< Set solution scheme: 'FE', 'ME', 'NR'
-    bool ResidOK      () const;                                                        ///< Check if the residual is OK
+    void Solve          (size_t NInc=1, char const * FileKey=NULL,
+                         Array<double> * Weights=NULL, bool NonLinWei=false);            ///< Solve steady/equilibrium equation
+    void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient equation
+    void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic equation
+    void AssembleKA     ();                                                              ///< A = K11
+    void AssembleKMA    (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
+    void AssembleKCMA   (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
+    void TgIncs         (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
+    void UpdateElements (Vec_t const & dU, bool CalcFint);                               ///< Update elements
+    void Initialize     (bool Transient=false);                                          ///< Initialize global matrices and vectors
+    void SetScheme      (char const * StrScheme);                                        ///< Set solution scheme: 'FE', 'ME', 'NR'
+    bool ResidOK        () const;                                                        ///< Check if the residual is OK
 
     // Data (read-only)
     Domain  const & Dom;      ///< Domain
@@ -111,6 +103,7 @@ public:
     Vec_t V, A;         ///< (Transient/Dynamic) velocity and acceleration
     Vec_t dU, dF;       ///< Increments of U and F
     Vec_t Us, Vs;       ///< starred variables (for GN22)
+    Vec_t TmpVec;       ///< Temporary vector (for parallel Allreduce)
 
     // Constants and flags (read-write)
     Scheme_t  Scheme;   ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
@@ -266,8 +259,6 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
                 ActNods[i]->U[j] = U(eq);
                 ActNods[i]->F[j] = F(eq);
             }
-
-            //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", Node # " << ActNods[i]->Vert.ID << "  U,F = " << ActNods[i]->U << "  " << ActNods[i]->F << endl;
         }
 
         // output
@@ -540,74 +531,11 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     }
 
     // correct W
-    Sparse::SubMult (K12,  W,  W); // W1  -= K12*dU2
+    Sparse::SubMult (K12, W, W); // W1 -= K12*dU2
 
     // calc dU and dF
-    if (FEM::Domain::PARA)
-    {
-#ifdef USE_MPI
-        // collect RHS==dU from all processors into proc # 0
-        int my_id = MPI::COMM_WORLD.Get_rank();
-        MPI::COMM_WORLD.Reduce (W.data, dU.data, NEq, MPI::DOUBLE, MPI::SUM, /*dest*/0);
-
-        //if (my_id==0) { cout << " ~~~~~~~~~~ parallel ~~~~~~~~~~ \n"; cout << "RHS = dU = \n"; for (size_t i=0; i<NEq; ++i) cout << "   " << dU(i) << "\n"; cout << endl; }
-
-        // initialize MUMPS
-        DMUMPS_STRUC_C ms;
-        ms.comm_fortran = -987654;
-        ms.sym          =  0;    // 0=unsymmetric, 1=sym(pos-def), 2=symmetric(undef)
-        ms.par          =  1;    // host also works
-        ms.job          = -1;    // force initialisation
-        dmumps_c (&ms);          // do initialize
-
-        // set matrix and rhs
-        A11.IncIndices(1);
-        ms.n       = NEq;
-        ms.nz_loc  = A11.Top();
-        ms.irn_loc = A11.GetAiPtr();
-        ms.jcn_loc = A11.GetAjPtr();
-        ms.a_loc   = A11.GetAxPtr();
-        if (my_id==0) ms.rhs = dU.data;
-
-        // solve
-        ms.icntl[1  -1] = -1; // output messages
-        ms.icntl[2  -1] = -1; // warnings
-        ms.icntl[3  -1] = -1; // global information
-        ms.icntl[4  -1] = -1; // message level
-        ms.icntl[5  -1] =  0; // assembled matrix (needed for distributed matrix)
-        ms.icntl[7  -1] =  5; // use metis for pivoting
-        ms.icntl[8  -1] =  0; // no scaling
-        ms.icntl[18 -1] =  3; // distributed matrix
-        ms.job          =  6; // reorder, factor and solve
-        dmumps_c (&ms);       // do solve
-        if (ms.info[1-1]<0)
-        {
-            switch (ms.info[1-1])
-            {
-                case -6: case -10: throw new Fatal("Solver::TgIncs: MUMPS failed: matrix is singular");
-                case -13:          throw new Fatal("Solver::TgIncs: MUMPS failed: not enough memory");
-                default:           throw new Fatal("Solver::TgIncs: MUMPS failed: error # %d",ms.info[1-1]);
-            }
-        }
-
-        // finalize MUMPS
-        ms.job = -2;    // finalize
-        dmumps_c (&ms); // do finalize
-
-        // distribute solution
-        MPI::COMM_WORLD.Bcast (dU.data, NEq, MPI::DOUBLE, /*from*/0);
-
-        //cout << "Proc # " << my_id << ", SOL = \n"; for (size_t i=0; i<NEq; ++i) cout << "   " << dU(i) << "\n"; cout << endl;
-#endif
-    }
-    else
-    {
-        //cout << " ~~~~~~~~~~ serial ~~~~~~~~~~ \n"; cout << "RHS = \n"; for (size_t i=0; i<size(W); ++i) cout << "   " << W(i) << "\n"; cout << endl;
-
-        UMFPACK::Solve  (A11,  W, dU); // dU   = inv(A11)*W
-
-        //cout << "SOL = \n"; for (size_t i=0; i<size(dU); ++i) cout << "   " << dU(i) << "\n"; cout << endl;
-    }
+    if (FEM::Domain::PARA) MUMPS  ::Solve (A11, W, dU); // dU = inv(A11)*W
+    else                   UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
 
     // calc dF2
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
@@ -617,9 +545,35 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     if (FEM::Domain::PARA)
     {
         // join dF
-        //MPI::COMM_WORLD.Bcast (dF.data, NEq, MPI::DOUBLE, /*from*/0);
+        //std::cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << " BEFORE: dF = " << PrintVector(dF);
+        MPI::COMM_WORLD.Allreduce (dF.data, TmpVec.data, NEq, MPI::DOUBLE, MPI::SUM);
+        dF = TmpVec;
+        //std::cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << " AFTER:  dF = " << PrintVector(dF);
     }
+    //else std::cout << "dF = " << PrintVector(dF);
 #endif
+}
+
+inline void Solver::UpdateElements (Vec_t const & dU, bool CalcFint)
+{
+    if (CalcFint)
+    {
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
+#ifdef USE_MPI
+        if (FEM::Domain::PARA)
+        {
+            // join F_int
+            //std::cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << " BEFORE: F_int = " << PrintVector(F_int);
+            MPI::COMM_WORLD.Allreduce (F_int.data, TmpVec.data, NEq, MPI::DOUBLE, MPI::SUM);
+            F_int = TmpVec;
+            //std::cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << " AFTER:  F_int = " << PrintVector(F_int);
+        }
+#endif
+    }
+    else
+    {
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU);
+    }
 }
 
 inline void Solver::Initialize (bool Transient)
@@ -706,7 +660,6 @@ inline void Solver::Initialize (bool Transient)
                         inter_eq.Push (Dom.InterNodes[j]->EQ[k]);
                 }
             }
-            //cout << "Proc # " << my_id << ", sent to # " << i << " : inter_eq = " << inter_eq << endl;
             MPI::Request req_send = MPI::COMM_WORLD.Isend (inter_eq.GetPtr(), inter_eq.Size(), MPI::INT, i, TAG_SENT_EQ);
         }
 
@@ -742,15 +695,6 @@ inline void Solver::Initialize (bool Transient)
             for (int i=0; i<nprocs; ++i) NEq += recv_alloc_dofs[i];
         }
         MPI::COMM_WORLD.Bcast (&NEq, 1, MPI::INT, /*from*/nprocs-1); // last processor will broadcast to everyone else
-
-        // Debug
-        /*
-        Array<int> eqs, ids;
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
-        { if (Dom.Nods[i]->NShares>0) { for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j) { eqs.Push (Dom.Nods[i]->EQ[j]);  ids.Push (Dom.Nods[i]->Vert.ID); } } }
-        cout << "Proc # " << my_id << ", eqs = " << eqs << endl;
-        //cout << "Proc # " << my_id << ", ids = " << ids << endl;
-        */
 #else
         throw new Fatal("Solver::Initialize: Parallel code is not available (not compiled)");
 #endif
@@ -779,8 +723,6 @@ inline void Solver::Initialize (bool Transient)
             }
         }
     }
-
-    cout << "\nNEq = " << NEq << endl << endl;
 
     // prescribed equations and prescribed U
     pEQ.Resize    (0);
@@ -852,13 +794,14 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // initialize variables
-    R    .change_dim (NEq);  set_to_zero (R);
-    F    .change_dim (NEq);  set_to_zero (F);
-    F_int.change_dim (NEq);  set_to_zero (F_int);
-    W    .change_dim (NEq);  set_to_zero (W);
-    U    .change_dim (NEq);  set_to_zero (U);
-    dU   .change_dim (NEq);  set_to_zero (dU);
-    dF   .change_dim (NEq);  set_to_zero (dF);
+    R     .change_dim (NEq);  set_to_zero (R);
+    F     .change_dim (NEq);  set_to_zero (F);
+    F_int .change_dim (NEq);  set_to_zero (F_int);
+    W     .change_dim (NEq);  set_to_zero (W);
+    U     .change_dim (NEq);  set_to_zero (U);
+    dU    .change_dim (NEq);  set_to_zero (dU);
+    dF    .change_dim (NEq);  set_to_zero (dF);
+    TmpVec.change_dim (NEq);  set_to_zero (TmpVec);
     if (Transient)
     {
         V .change_dim (NEq);  set_to_zero (V);
@@ -954,8 +897,8 @@ inline void Solver::_cal_resid (bool WithAccel)
 
     /*
     std::cout << "\n######################################   Before\n";
-    std::cout << "F     = " << PrintVector(F,     "%15.3f");
-    std::cout << "F_int = " << PrintVector(F_int, "%15.3f");
+    std::cout << "F     = " << PrintVector(F,     "%10.3f");
+    std::cout << "F_int = " << PrintVector(F_int, "%10.3f");
     */
     
     // number of the first equation corresponding to Lagrange multipliers
@@ -1054,7 +997,7 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
         Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1  =>  dF2 = K21*dU1 - R2
 
         // update
-        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
+        UpdateElements (dU, /*CalcFint*/true);
         U += dU;
         F += dF;
 
@@ -1077,7 +1020,7 @@ inline void Solver::_FE_update (double tf)
         TgIncs (dt, dU, dF);
 
         // update elements
-        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
+        UpdateElements (dU, /*CalcFint*/true);
 
         // update U, F, and Time
         U    += dU;
@@ -1115,7 +1058,7 @@ inline void Solver::_ME_update (double tf)
 
         // FE state
         TgIncs (dt, dU_fe, dF_fe);
-        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU_fe);
+        UpdateElements (dU_fe, /*CalcFint*/false);
 
         // ME state
         TgIncs (dt, dU_tm, dF_tm);
@@ -1135,15 +1078,13 @@ inline void Solver::_ME_update (double tf)
         // step multiplier
         double m = (error>0.0 ? 0.9*sqrt(STOL/error) : mMax);
 
-        //std::cout << m << "  " << U_err << "  " << F_err << "  " << std::endl;
-
         // restore state of elements
         for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->RestoreState ();
 
         // update
         if (error<STOL)
         {
-            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU_me, &F_int);
+            UpdateElements (dU_me, /*CalcFint*/true);
             T    += dT;
             U     = U_me;
             F     = F_me;
@@ -1191,7 +1132,7 @@ inline void Solver::_NR_update (double tf)
         TgIncs (dt, dU, dF);
 
         // update elements
-        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
+        UpdateElements (dU, /*CalcFint*/true);
 
         // update U, F, and Time
         U    += dU;
@@ -1260,8 +1201,8 @@ inline void Solver::_GN22_update (double tf, double dt)
             UMFPACK::Solve  (A11, R, dU);                      // dU = inv(A11)*R
 
             // update elements
-            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
-            for (size_t i=0; i<pEQ.Size();     ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
+            UpdateElements (dU, /*CalcFint*/true);
+            for (size_t i=0; i<pEQ.Size(); ++i) F_int(pEQ[i]) = 0.0; // clear internal forces related to supports
 
             // update state
             U += dU;
