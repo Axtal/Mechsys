@@ -80,7 +80,7 @@ int main(int argc, char **argv) try
     Dict prps, mdls, inis;
     prps.Set (-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.);
     //mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
-    mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 1.0, 1.0, 1.);
+    mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
     FEM::Domain dom(mesh, prps, mdls, inis);
 
     buf = fkey + "_dom_before.txt";
@@ -91,16 +91,23 @@ int main(int argc, char **argv) try
     // output
 
     FEM::Solver sol(dom);
-    sol.SetScheme("FE");
+    //sol.SetScheme("NR");
+    //sol.CorR = false;
     //sol.Initialize ();
     //sol.AssembleKA ();
     //sol.A11.WriteSMAT (fkey.CStr());
 
     Dict bcs;
+    /*
     bcs.Set (-100, "ux uy", 0.0, 0.0);
-    bcs.Set (-200, "uy",    0.0);
+    //bcs.Set (-200, "uy",    0.0);
+    bcs.Set (-10, "uy",    0.0);
     bcs.Set (-300, "fy",    -10.0);
     bcs.Set (-400, "fy",    -20.0);
+    */
+    bcs.Set (-300, "fy",    -30.0);
+    bcs.Set (-400, "ux uy", 0.0, 0.0);
+    bcs.Set (-10,  "uy", -0.1);
     dom.SetBCs (bcs);
 
     buf = fkey + "_dom_after.txt";
@@ -108,6 +115,7 @@ int main(int argc, char **argv) try
     of1 << dom << endl;
     of1.close();
 
+    //sol.Solve        (1);
     sol.Solve        (10);
     dom.WriteVTU     (fkey.CStr());
     dom.PrintResults ("%12.6g", /*with_elems*/false);

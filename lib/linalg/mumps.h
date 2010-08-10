@@ -43,12 +43,19 @@ namespace MUMPS
  * THIS METHOD ALTERS MATRIX A
  *
  */
-inline void Solve (Sparse::Triplet<double,int> & A, Vec_t const & B, Vec_t & X)
+inline void Solve (Sparse::Triplet<double,int> & A, Vec_t const & B, Vec_t & X, bool Prod=false)
 {
 #ifdef USE_MPI
     // collect B from all processors into X==RHS in processor # 0
     int neq = A.Rows();
-    MPI::COMM_WORLD.Reduce (B.data, X.data, neq, MPI::DOUBLE, MPI::SUM, /*dest*/0);
+    if (Prod)
+    {
+        MPI::COMM_WORLD.Reduce (B.data, X.data, neq, MPI::DOUBLE, MPI::PROD, /*dest*/0);
+    }
+    else
+    {
+        MPI::COMM_WORLD.Reduce (B.data, X.data, neq, MPI::DOUBLE, MPI::SUM, /*dest*/0);
+    }
 
     // initialize MUMPS
     DMUMPS_STRUC_C ms;
