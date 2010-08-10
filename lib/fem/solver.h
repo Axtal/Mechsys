@@ -191,13 +191,24 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
     Initialize ();
 
     // output initial state
-    String str;
-    if      (Scheme==FE_t) str.Printf("FE");
-    else if (Scheme==ME_t) str.Printf("ME");
-    else if (Scheme==NR_t) str.Printf("NR");
-    std::cout << "\n[1;37m--- Stage solution --- (steady) --- (" << str << ") -------------------------------------------\n";
-    std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)"        << Util::_4<<"NSS" << Util::_4<<"NIT" << "[0m" << std::endl;
-    std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR <<"[0m" << Util::_4<<"---" << Util::_4<<"---" << std::endl;
+    bool show = false;
+    if (FEM::Domain::PARA)
+    {
+#if USE_MPI
+        if (MPI::COMM_WORLD.Get_rank()==0) show = true;
+#endif
+    }
+    else show = true;
+    if (show)
+    {
+        String str;
+        if      (Scheme==FE_t) str.Printf("FE");
+        else if (Scheme==ME_t) str.Printf("ME");
+        else if (Scheme==NR_t) str.Printf("NR");
+        std::cout << "\n[1;37m--- Stage solution --- (steady) --- (" << str << ") -------------------------------------------\n";
+        std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)"        << Util::_4<<"NSS" << Util::_4<<"NIT" << "[0m" << std::endl;
+        std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR <<"[0m" << Util::_4<<"---" << Util::_4<<"---" << std::endl;
+    }
     if (IdxOut==0)
     {
         Dom.OutResults (Time, F_int);
@@ -263,7 +274,10 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
 
         // output
         IdxOut++;
-        std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m" << Util::_4<<Stp << Util::_4<<It;
+        if (show)
+        {
+            std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m" << Util::_4<<Stp << Util::_4<<It;
+        }
         if (Scheme!=ME_t) Dom.OutResults (Time, F_int);
         else if (!SSOut)  Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
@@ -288,15 +302,18 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
             Vec_t KU(kk*U);
             std::cout << "  [1;37mWork = " << dot(U,KU) << " [0m";
         }
-        std::cout << std::endl;
+        if (show) std::cout << std::endl;
 
         // next tout
         tout = Time + dt;
     }
 
     // info
-    double total = std::clock() - start;
-    std::cout << Util::_reset << "[1;36m Time elapsed = " <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    if (show)
+    {
+        double total = std::clock() - start;
+        std::cout << Util::_reset << "[1;36m Time elapsed = " <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
+    }
 
     // clean up
     if (del_weights) delete Weights;
@@ -558,17 +575,26 @@ inline void Solver::UpdateElements (Vec_t const & dU, bool CalcFint)
 {
     if (CalcFint)
     {
-        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
-#ifdef USE_MPI
         if (FEM::Domain::PARA)
         {
-            // join F_int
-            //std::cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << " BEFORE: F_int = " << PrintVector(F_int);
-            MPI::COMM_WORLD.Allreduce (F_int.data, TmpVec.data, NEq, MPI::DOUBLE, MPI::SUM);
-            F_int = TmpVec;
-            //std::cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << " AFTER:  F_int = " << PrintVector(F_int);
-        }
+#ifdef USE_MPI
+            // set TmpVec = F_int in processor 0
+            if (MPI::COMM_WORLD.Get_rank()==0) TmpVec = F_int;
+
+            // zeroes TmpVec in all other processors to accumulate dFint
+            else set_to_zero (TmpVec);
+
+            // calc dFint in TmpVec (in Proc # 0, TmpVec = F_int + dFint_proc0)
+            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &TmpVec);
+
+            // join dF_int (zeroes F_int and add TmpVec to it)
+            MPI::COMM_WORLD.Allreduce (TmpVec.data, F_int.data, NEq, MPI::DOUBLE, MPI::SUM);
 #endif
+        }
+        else
+        {
+            for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &F_int);
+        }
     }
     else
     {
