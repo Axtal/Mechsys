@@ -56,48 +56,61 @@ int main(int argc, char **argv) try
     }
     else cout << "\n========================= serial ===========================" << endl;
 
+    // fkey
+    String fkey, buf;
+    fkey.Printf ("para01_%d", my_id);
+
     // mesh
     Array<Mesh::Block> blks(1);
     blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
-                 -1.0,  0.0, 0.0,
-                 -2.0,  1.0, 0.0,
-                 -3.0,  1.0, 1.0,
-                 -4.0,  0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
+                 -100.,  0.0, 0.0,
+                 -200.,  1.0, 0.0,
+                 -300.,  1.0, 1.0,
+                 -400.,  0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
     blks[0].SetNx (nx);
     blks[0].SetNy (ny);
     Mesh::Structured mesh(/*NDim*/2);
     mesh.Generate (blks,/*O2*/false);
     if (parallel) mesh.PartDomain (nprocs, part_full);
-    mesh.WriteVTU ("para01_mesh");
+    buf = fkey + "_mesh";
+    mesh.WriteVTU (buf.CStr());
 
     // domain
+    FEM::Domain::PARA = parallel;
     Dict prps, mdls, inis;
     prps.Set (-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.);
-    mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
+    //mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
+    mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 1.0, 1.0, 1.);
     FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.Parallel = parallel;
 
-    //cout << dom << endl;
+    buf = fkey + "_dom_before.txt";
+    std::ofstream of1(buf.CStr(), std::ios::out);
+    of1 << dom << endl;
+    of1.close();
 
     // output
-    String buf;
-    buf.Printf ("para01_%d",my_id);
 
     FEM::Solver sol(dom);
     sol.SetScheme("FE");
     //sol.Initialize ();
     //sol.AssembleKA ();
-    //sol.A11.WriteSMAT (buf.CStr());
+    //sol.A11.WriteSMAT (fkey.CStr());
 
     Dict bcs;
-    bcs.Set (-1, "ux uy", 0.0, 0.0);
-    bcs.Set (-2, "ux uy", 0.0, 0.0);
-    bcs.Set (-3, "fy",    -10.0);
-    bcs.Set (-4, "fy",    -10.0);
+    bcs.Set (-100, "ux uy", 0.0, 0.0);
+    bcs.Set (-200, "uy",    0.0);
+    bcs.Set (-300, "fy",    -10.0);
+    bcs.Set (-400, "fy",    -20.0);
     dom.SetBCs (bcs);
-    sol.Solve  ();
 
-    dom.WriteVTU (buf.CStr());
+    buf = fkey + "_dom_after.txt";
+    of1.open(buf.CStr(), std::ios::out);
+    of1 << dom << endl;
+    of1.close();
+
+    sol.Solve        (10);
+    dom.WriteVTU     (fkey.CStr());
+    dom.PrintResults ();
 
     // end
 #ifdef USE_MPI

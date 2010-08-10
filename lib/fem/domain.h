@@ -50,6 +50,9 @@ inline double Multiplier (double t) { return 1.0; }
 class Domain
 {
 public:
+    // static
+    static bool PARA; ///< Parallel code ?
+
     // typedefs
     typedef std::map<int,pCalcM> MDatabase_t; ///< Map tag to M function pointer
     typedef std::map<int,Model*> Models_t;    ///< Map tag to model pointer
@@ -104,7 +107,6 @@ public:
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
     InclSupport_t         InclSupport; ///< Inclined support
-    bool                  Parallel;    ///< Run parallel version ?
 #ifdef USE_MPI
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions
 #endif
@@ -124,6 +126,8 @@ public:
     void PySetOutEles (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutEles (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
 #endif
 };
+
+bool Domain::PARA = false;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -177,7 +181,7 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
 }
 
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FKey, Array<int> const * OutV, Array<int> const * OutC)
-    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81), Parallel(false)
+    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
 {
     // allocate models
     for (size_t i=0; i<TheMdls.Keys.Size(); ++i)
@@ -198,7 +202,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
 #ifdef USE_MPI
-        if (Parallel)
+        if (PARA)
         {
             // skip vertices that aren't in this partition
             if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
@@ -210,7 +214,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
 #ifdef USE_MPI
-        if (Parallel)
+        if (PARA)
         {
             // add DOFs to interface nodes (between partitions)
             if (Msh.Verts[i]->PartIDs.Size()>1) // this is a shared node (between partitions)
@@ -256,7 +260,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     for (size_t i=0; i<Msh.Cells.Size(); ++i)
     {
 #ifdef USE_MPI
-        if (Parallel)
+        if (PARA)
         {
             // skip elements that aren't in this partition
             if (Msh.Cells[i]->PartID!=MPI::COMM_WORLD.Get_rank()) continue;
@@ -345,6 +349,13 @@ inline Domain::~Domain()
 
 inline void Domain::SetBCs (Dict const & BCs)
 {
+    // check
+    for (size_t i=0; i<BCs.Keys.Size(); ++i)
+    {
+        long pos = Prps.Keys.Find (BCs.Keys[i]);
+        if (pos>=0) throw new Fatal("Domain::SetBCs: Boundary keys (%d) cannot be equal to property keys (%d)", BCs.Keys[i], Prps.Keys[pos]);
+    }
+
     // clear previous BCs
     ClrBCs ();
 
@@ -444,7 +455,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                     }
                 }
             }
-            if (!Parallel && !found) throw new Fatal("FEM::Domain::SetBCs: Could not find any edge/face of element or node (or line element) with boundary Tag=%d",bc_tag);
+            if (!PARA && !found) throw new Fatal("FEM::Domain::SetBCs: Could not find any edge/face of element or node (or line element) with boundary Tag=%d",bc_tag);
         }
     }
 
@@ -465,6 +476,8 @@ inline void Domain::SetBCs (Dict const & BCs)
         }
 
         ele->SetBCs (idx_side, bcs, pF, pU, calcm);
+
+        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (F at ELEMENTS) bc_tag = " << bc_tag << "  " << bcs << endl;
     }
 
     // set F bcs at nodes
@@ -490,6 +503,8 @@ inline void Domain::SetBCs (Dict const & BCs)
                 pF[nod].second = calcm;
             }
         }
+
+        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (F at NODES) bc_tag = " << bc_tag << "  " << bcs << endl;
     }
 
     // set U bcs at sides (edges/faces) of elements
@@ -500,6 +515,8 @@ inline void Domain::SetBCs (Dict const & BCs)
         SDPair const & bcs      = p->second.second;
 
         ele->SetBCs (idx_side, bcs, pF, pU, NULL);
+
+        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (U at ELEMENTS) ele.ID = " << ele->Cell.ID << "  " << bcs << endl;
     }
 
     // set U bcs at nodes
@@ -518,6 +535,8 @@ inline void Domain::SetBCs (Dict const & BCs)
             for (StrDbl_t::const_iterator q=bcs.begin(); q!=bcs.end(); ++q)
                 pU[nod].first[nod->UMap(q->first)] = q->second;
         }
+
+        //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", (U at NODES) nod.Tag = " << nod->Vert.Tag << "  " << bcs << endl;
     }
 
     // check available data

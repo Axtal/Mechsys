@@ -266,6 +266,8 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
                 ActNods[i]->U[j] = U(eq);
                 ActNods[i]->F[j] = F(eq);
             }
+
+            //cout << "Proc # " << MPI::COMM_WORLD.Get_rank() << ", Node # " << ActNods[i]->Vert.ID << "  U,F = " << ActNods[i]->U << "  " << ActNods[i]->F << endl;
         }
 
         // output
@@ -541,15 +543,14 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     Sparse::SubMult (K12,  W,  W); // W1  -= K12*dU2
 
     // calc dU and dF
-    if (Dom.Parallel)
+    if (FEM::Domain::PARA)
     {
 #ifdef USE_MPI
-        // collect RHS from all processors into proc # 0
+        // collect RHS==dU from all processors into proc # 0
         int my_id = MPI::COMM_WORLD.Get_rank();
-        Vec_t rhs(NEq);
-        MPI::COMM_WORLD.Reduce (W.data, rhs.data, NEq, MPI::DOUBLE, MPI::SUM, /*dest*/0);
+        MPI::COMM_WORLD.Reduce (W.data, dU.data, NEq, MPI::DOUBLE, MPI::SUM, /*dest*/0);
 
-        if (my_id==0) { cout << " ~~~~~~~~~~ parallel ~~~~~~~~~~ \n"; cout << "RHS = \n"; for (size_t i=0; i<NEq; ++i) cout << "   " << rhs(i) << "\n"; cout << endl; }
+        //if (my_id==0) { cout << " ~~~~~~~~~~ parallel ~~~~~~~~~~ \n"; cout << "RHS = dU = \n"; for (size_t i=0; i<NEq; ++i) cout << "   " << dU(i) << "\n"; cout << endl; }
 
         // initialize MUMPS
         DMUMPS_STRUC_C ms;
@@ -566,7 +567,7 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
         ms.irn_loc = A11.GetAiPtr();
         ms.jcn_loc = A11.GetAjPtr();
         ms.a_loc   = A11.GetAxPtr();
-        if (my_id==0) ms.rhs = rhs.data;
+        if (my_id==0) ms.rhs = dU.data;
 
         // solve
         ms.icntl[1  -1] = -1; // output messages
@@ -594,28 +595,36 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
         dmumps_c (&ms); // do finalize
 
         // distribute solution
-        MPI::COMM_WORLD.Bcast (rhs.data, NEq, MPI::DOUBLE, /*from*/0);
+        MPI::COMM_WORLD.Bcast (dU.data, NEq, MPI::DOUBLE, /*from*/0);
 
-        if (my_id==0) { cout << "SOL = \n"; for (size_t i=0; i<NEq; ++i) cout << "   " << rhs(i) << "\n"; cout << endl; }
+        //cout << "Proc # " << my_id << ", SOL = \n"; for (size_t i=0; i<NEq; ++i) cout << "   " << dU(i) << "\n"; cout << endl;
 #endif
     }
     else
     {
-        cout << " ~~~~~~~~~~ serial ~~~~~~~~~~ \n"; cout << "RHS = \n"; for (size_t i=0; i<size(W); ++i) cout << "   " << W(i) << "\n"; cout << endl;
+        //cout << " ~~~~~~~~~~ serial ~~~~~~~~~~ \n"; cout << "RHS = \n"; for (size_t i=0; i<size(W); ++i) cout << "   " << W(i) << "\n"; cout << endl;
 
         UMFPACK::Solve  (A11,  W, dU); // dU   = inv(A11)*W
 
-        cout << "SOL = \n"; for (size_t i=0; i<size(dU); ++i) cout << "   " << dU(i) << "\n"; cout << endl;
+        //cout << "SOL = \n"; for (size_t i=0; i<size(dU); ++i) cout << "   " << dU(i) << "\n"; cout << endl;
     }
 
     // calc dF2
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
     Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
+
+#ifdef USE_MPI
+    if (FEM::Domain::PARA)
+    {
+        // join dF
+        //MPI::COMM_WORLD.Bcast (dF.data, NEq, MPI::DOUBLE, /*from*/0);
+    }
+#endif
 }
 
 inline void Solver::Initialize (bool Transient)
 {
-    if (Dom.Parallel)
+    if (FEM::Domain::PARA)
     {
 #ifdef USE_MPI
         int my_id  = MPI::COMM_WORLD.Get_rank();
