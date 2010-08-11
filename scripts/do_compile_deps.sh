@@ -2,6 +2,10 @@
 
 set -e
 
+if [ ! -n "$MECHSYS_ROOT" ]; then
+  MECHSYS_ROOT=$HOME  
+fi
+
 echo
 echo "****************************************************************************"
 echo "* You can call this script with an option to force recompiling everything  *"
@@ -12,10 +16,6 @@ echo "*   sh $MECHSYS_ROOT/mechsys/scripts/do_compile_deps.sh {0,1} {0,1}       
 echo "*                                                                          *"
 echo "* By default, the code will not be compiled if this was done before.       *"
 echo "****************************************************************************"
-
-if [ ! -n "$MECHSYS_ROOT" ]; then
-  MECHSYS_ROOT=$HOME  
-fi
 
 if [ -d "$MECHSYS_ROOT/mechsys" ]; then
     echo
@@ -52,13 +52,28 @@ if [ "$#" -gt 1 ]; then
     fi
 fi
 
+test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
+
 TRIANGLE=triangle1.6
 TETGEN=tetgen1.4.3
 VORO=voro++0.3.1
-HDF5=hdf5-1.8.5
 MTL4=mtl4
+SCALAPACK=scalapack_installer
+SCALAPACK_DIR=scalapack_installer_0.96
+MUMPS=MUMPS_4.9.2
 
-test -d $MECHSYS_ROOT/pkg || mkdir $MECHSYS_ROOT/pkg
+compile_scalapack() {
+    LDIR=$MECHSYS_ROOT/pkg/$SCALAPACK_DIR/lib
+    python setup.py --notesting --mpiincdir=/usr/lib/openmpi/include/ --lapacklib=/usr/lib/liblapack.so --blaslib=/usr/lib/libblas.so
+    ln -s $LDIR/blacs.a    $LDIR/libblacs.a
+    ln -s $LDIR/blacsC.a   $LDIR/libblacsC.a
+    ln -s $LDIR/blacsF77.a $LDIR/libblacsF77.a
+}
+
+compile_mumps() {
+    cp $MECHSYS_ROOT/mechsys/patches/mumps/Makefile.inc .
+    make
+}
 
 download_and_compile() {
     IS_SVN=0
@@ -66,33 +81,47 @@ download_and_compile() {
     DO_CONF=0
     DO_MAKE=1
     CONF_PRMS=""
-    DO_LNS=0 # create symbolic links
+    CMD=""
     case "$1" in
         triangle)
             PKG=$TRIANGLE
+            PKG_DIR=$PKG
             LOCATION=http://mechsys.nongnu.org/software/$PKG.tar.gz
             ;;
         tetgen)
             PKG=$TETGEN
+            PKG_DIR=$PKG
             LOCATION=http://mechsys.nongnu.org/software/$PKG.tar.gz
             ;;
         voro)
             PKG=$VORO
+            PKG_DIR=$PKG
             LOCATION=http://mechsys.nongnu.org/software/$PKG.tar.gz
             DO_MAKE=0
             ;;
-        hdf5)
-            PKG=$HDF5
-            LOCATION=http://www.hdfgroup.org/ftp/HDF5/current/src/$HDF5.tar.gz
-            DO_PATCH=0
-            DO_LNS=1
-            ;;
         mtl4)
             PKG=$MTL4
+            PKG_DIR=$PKG
             LOCATION=https://svn.osl.iu.edu/tlc/trunk/mtl4/trunk
             IS_SVN=1
             DO_PATCH=0
             DO_MAKE=0
+            ;;
+        scalapack)
+            PKG=$SCALAPACK
+            PKG_DIR=$SCALAPACK_DIR
+            LOCATION=http://www.netlib.org/scalapack/$PKG.tgz
+            DO_PATCH=0
+            DO_MAKE=0
+            CMD=compile_scalapack
+            ;;
+        mumps)
+            PKG=$MUMPS
+            PKG_DIR=$PKG
+            LOCATION=""
+            DO_PATCH=0
+            DO_MAKE=0
+            CMD=compile_mumps
             ;;
         *)
             echo
@@ -102,20 +131,24 @@ download_and_compile() {
     esac
     echo
     echo "********************************** ${1} ********************************"
+
+    # erase existent directory ?
     cd $MECHSYS_ROOT/pkg
-    if [ -d "$MECHSYS_ROOT/pkg/$PKG" ]; then
+    if [ -d "$MECHSYS_ROOT/pkg/$PKG_DIR" ]; then
         if [ "$RECOMPILE" -eq 1 ]; then
             echo "    Recompiling $PKG"
             if [ "$IS_SVN" -eq 1 ]; then
                 echo "    Updating $PKG SVN repository"
                 svn co $LOCATION $PKG
             else
-                rm -rf $MECHSYS_ROOT/pkg/$PKG
+                rm -rf $MECHSYS_ROOT/pkg/$PKG_DIR
             fi
         else
-            echo "    Using existing $PKG"
+            echo "    Using existing $PKG_DIR"
             return
         fi
+
+    # download SVN package
     else
         echo "    New compilation of $PKG"
         if [ "$IS_SVN" -eq 1 ]; then
@@ -123,33 +156,55 @@ download_and_compile() {
             svn co $LOCATION $PKG
         fi
     fi
+
+    # download and uncompressing package
     if [ "$IS_SVN" -eq 0 ]; then
         if [ -e $PKG.tar.gz ]; then
             echo "    Using local <$PKG.tar.gz>"
         else
-            echo "    Downloading $PKG.tar.gz"
-            wget $LOCATION
+            if [ -e $PKG.tgz ]; then
+                echo "    Using local <$PKG.tgz>"
+            else
+                echo "    Downloading package"
+                if [ -z "$LOCATION" ]; then
+                    echo "    Please, download <$PKG.tar.gz> first"
+                    return
+                else
+                    wget $LOCATION
+                fi
+            fi
         fi
         echo "        . . . uncompressing . . ."
-        tar xzf $PKG.tar.gz
+        if [ -e $PKG.tar.gz ]; then
+            tar xzf $PKG.tar.gz
+        else
+            tar xzf $PKG.tgz
+        fi
     fi
-    cd $PKG
+
+    # patch
+    cd $PKG_DIR
     if [ "$DO_PATCH" -eq 1 ]; then
         echo "        . . . patching . . ."
         sh $MECHSYS_ROOT/mechsys/patches/${1}/do_patch.sh
     fi
+
+    # configure
     if [ "$DO_CONF" -eq 1 ]; then
         echo "        . . . configuring . . ."
         ./configure $CONF_PRMS 2> /dev/null
     fi
+
+    # compilation
     if [ "$DO_MAKE" -eq 1 ]; then
         echo "        . . . compiling . . ."
         make > /dev/null 2> /dev/null
     fi
-    if [ "$DO_LNS" -eq 1 ]; then
-        echo "        . . . symbolic links . . ."
-        ln -s src/ include
-        ln -s src/.libs/ lib
+
+    # given command
+    if [ ! -z "$CMD" ]; then
+        echo "        . . . command . . . . . ."
+        $CMD
     fi
 }
 
@@ -157,6 +212,8 @@ download_and_compile triangle
 download_and_compile tetgen
 download_and_compile voro
 download_and_compile mtl4
+download_and_compile scalapack
+download_and_compile mumps
 
 echo
 echo "Finished ###################################################################"

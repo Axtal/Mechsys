@@ -32,9 +32,9 @@
 using std::cout;
 using std::endl;
 
-
 int main(int argc, char **argv) try
 {
+#ifdef USE_MPI
     // init
     MPI::Init (argc, argv);
     int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
@@ -55,10 +55,9 @@ int main(int argc, char **argv) try
     dom.CamPos = 0.0,30.0,0.0;
     dom.Solve(/*tf*/30.0, dt, /*dtOut*/0.5, NULL, NULL, "test_comm02");
 
-
     // end
     MPI::Finalize();
     return 0;
-
+#endif
 }
-MECHSYS_CATCH
+MECHSYS_MPI_CATCH

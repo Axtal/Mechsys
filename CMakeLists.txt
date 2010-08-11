@@ -17,31 +17,28 @@
 ########################################################################
 
 PROJECT                (MECHSYS)
-CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
+CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 ENABLE_TESTING         ()
 
 # Flags
-OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/link?" OFF)
-OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                    ON)
-OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                      ON)
-OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"             OFF)
-OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                              OFF)
-OPTION(A_MAKE_WX_MONO       "Use wxWidgets monolithic libraries ?"              ON)
-
-# Features
-OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)"                    OFF)
-OPTION(A_WITH_TEST          "Compile tests"                                     OFF)
-OPTION(A_WITH_TFEM          "Compile FEM tests"                                 OFF)
-OPTION(A_WITH_TLBM          "Compile LBM tests"                                 OFF)
-OPTION(A_WITH_TDEM          "Compile DEM tests"                                 ON)
-OPTION(A_WITH_TSPH          "Compile SPH tests"                                 ON)
-OPTION(A_WITH_OPTIONAL      "Make with optional dependencies"                   OFF)
-
-# Options
-OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"              OFF)
-OPTION(A_USE_VTK            "Use visualisation toolkit ?"                       OFF)
-OPTION(A_USE_WXW            "Use wxWidgets ?"                                   OFF)
-OPTION(A_USE_PMETIS         "Use ParMETIS ?"                                    OFF)
+OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/linking?" OFF)
+OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                       ON)
+OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                         ON)
+OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"                OFF)
+OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                                 OFF)
+OPTION(A_MAKE_WX_MONO       "Use wxWidgets monolithic libraries ?"                 ON)
+                                                                                   
+# Options                                                                          
+OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"                 OFF)
+OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
+                                                                                   
+# Features                                                                         
+OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)"                       OFF)
+OPTION(A_WITH_TEST          "Compile general tests"                                OFF)
+OPTION(A_WITH_TFEM          "Compile FEM tests"                                    OFF)
+OPTION(A_WITH_TLBM          "Compile LBM tests"                                    OFF)
+OPTION(A_WITH_TDEM          "Compile DEM tests"                                    OFF)
+OPTION(A_WITH_TSPH          "Compile SPH tests"                                    OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)
@@ -73,6 +70,16 @@ IF(A_MAKE_OPTIMIZED)
 	ADD_DEFINITIONS(-O3)
 ENDIF(A_MAKE_OPTIMIZED)
 
+### OPTIONS #############################################################################################
+
+IF(A_USE_MPI)
+    ADD_DEFINITIONS (-DUSE_MPI)
+ENDIF(A_USE_MPI)
+
+IF(A_USE_WXW)
+    ADD_DEFINITIONS (-DUSE_MPI)
+ENDIF(A_USE_WXW)
+
 ### FEATURES ############################################################################################
 
 SET(ALLDIRS) # sub-directories
@@ -101,20 +108,18 @@ IF(A_WITH_TSPH)
 	SET(ALLDIRS ${ALLDIRS} tsph)
 ENDIF(A_WITH_TSPH)
 
-SUBDIRS(${ALLDIRS})
+IF(ALLDIRS)
+    SUBDIRS(${ALLDIRS})
+ENDIF(ALLDIRS)
 
 ### DEPENDENCIES ########################################################################################
 
-# essential dependencies
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindDEPS.cmake)
-if(NOT DEPS_OK)
-    MESSAGE("Not all dependencies were satisfied")
-endif(NOT DEPS_OK)
+if(MISSING)
+    MESSAGE("Missing dependencies =${MISSING}")
+endif(MISSING)
 
-# optional dependencies
-if(A_WITH_OPTIONAL)
-    INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindOPTDEPS.cmake)
-endif(A_WITH_OPTIONAL)
+### PYTHON MODULE #######################################################################################
 
 if(A_WITH_PYTHON_MODULE)
     INCLUDE (FindPythonLibs)
