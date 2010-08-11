@@ -111,6 +111,9 @@ int main(int argc, char **argv) try
     double phi = 30.0;
     double del = 0.16*B;
 
+    // output nodes
+    Array<int> out_verts = (quad8 ? Array<int>(12,43,13,44,14) : Array<int>(0,207,60,206,13,240,69,239,12));
+
     // props and domain
     double geom = (quad8 ? GEOM("Quad8") : GEOM("Tri15"));
     double nip  = (quad8 ? 4.0           : 16.0);
@@ -118,7 +121,7 @@ int main(int argc, char **argv) try
     prps.Set(-1, "prob geom psa nip", PROB("Equilib"), geom, 1.0, nip);
     //mdls.Set(-1, "name E nu psa", MODEL("LinElastic"), E, nu, 1.0);
     mdls.Set(-1, "name E nu fc c phi psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("MC"), c, phi, 1.0);
-    FEM::Domain dom((*mesh), prps, mdls, /*inis*/Dict());
+    FEM::Domain dom((*mesh), prps, mdls, /*inis*/Dict(), fkey.CStr(), &out_verts);
 
     // solver
     FEM::Solver sol(dom);
@@ -127,10 +130,6 @@ int main(int argc, char **argv) try
     sol.STOL  = STOL;
     sol.CorR  = CorR;
     sol.MaxIt = 30;
-
-    // output nodes
-    Array<int> nods = (quad8 ? Array<int>(12,43,13,44,14) : Array<int>(0,207,60,206,13,240,69,239,12));
-    dom.SetOutNods (fkey.CStr(), nods);
 
     // solve
     Dict bcs;
@@ -153,8 +152,8 @@ int main(int argc, char **argv) try
     {
         disp   << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("ux")] << " ";
         disp   << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("uy")] << std::endl;
-        stress << Util::_20_15 << dom.NodResults(i,idx_sx)                << " ";
-        stress << Util::_20_15 << dom.NodResults(i,idx_sy)                << std::endl;
+        //stress << Util::_20_15 << dom.NodResults(i,idx_sx)                << " ";
+        //stress << Util::_20_15 << dom.NodResults(i,idx_sy)                << std::endl;
     }
     String buf;
     buf.Printf("%s.disp",fkey.CStr());
@@ -178,8 +177,8 @@ int main(int argc, char **argv) try
         {
             u(0+i*2) = dom.Nods[i]->U[dom.Nods[i]->UMap("ux")];
             u(1+i*2) = dom.Nods[i]->U[dom.Nods[i]->UMap("uy")];
-            s(0+i*2) = dom.NodResults(i,idx_sx);
-            s(1+i*2) = dom.NodResults(i,idx_sy);
+            //s(0+i*2) = dom.NodResults(i,idx_sx);
+            //s(1+i*2) = dom.NodResults(i,idx_sy);
             fu >> u_ref(0+i*2) >> u_ref(1+i*2);
             fs >> s_ref(0+i*2) >> s_ref(1+i*2);
         }

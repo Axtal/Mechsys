@@ -78,7 +78,7 @@ public:
     bool CheckError   (Table const & NodSol, Table const & EleSol, 
                        SDPair const & NodTol, SDPair const & EleTol) const;  ///< At nodes and centroid
     bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;   ///< At integration points
-    void WriteMPY     (char const * FileKey, double SFCoef=1.0,
+    void WriteMPY     (char const * FileKey, double SFCoef=1.0, bool PNG=false,
                        char const * Extra=NULL) const;                       ///< SFCoef: Scale-factor coefficient
     void AvailableData();                                                    ///< Check available data and resize results matrices
     void NodalResults () const;                                              ///< Extrapolate results from element to nodes
@@ -346,13 +346,6 @@ inline Domain::~Domain()
 
 inline void Domain::SetBCs (Dict const & BCs)
 {
-    // check
-    for (size_t i=0; i<BCs.Keys.Size(); ++i)
-    {
-        long pos = Prps.Keys.Find (BCs.Keys[i]);
-        if (pos>=0) throw new Fatal("Domain::SetBCs: Boundary keys (%d) cannot be equal to property keys (%d)", BCs.Keys[i], Prps.Keys[pos]);
-    }
-
     // clear previous BCs
     ClrBCs ();
 
@@ -444,6 +437,19 @@ inline void Domain::SetBCs (Dict const & BCs)
                 {
                     if (Eles[j]->Cell.Tag==bc_tag) // found
                     {
+                        // problem name
+                        String prob_name_ND;
+                        PROB.Val2Key (Prps(Eles[j]->Cell.Tag)("prob"), prob_name_ND);
+                        prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
+
+                        // check if bc key is not U or F
+                        for (size_t k=0; k<bcs.Keys.Size(); ++k)
+                        {
+                            if (Util::HasKey(ElementVarKeys[prob_name_ND].first, bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
+                            if (Util::HasKey(ElementVarKeys[prob_name_ND].second,bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
+                        }
+
+                        // map bcs
                         found = true;
                         int idx_side = 0; // irrelevant
                         eleside_t es(Eles[j],idx_side);
@@ -895,7 +901,7 @@ inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) c
     return error;
 }
 
-inline void Domain::WriteMPY (char const * FNKey, double SFCoef, char const * Extra) const
+inline void Domain::WriteMPY (char const * FNKey, double SFCoef, bool PNG, char const * Extra) const
 {
     // bounding box
     Vec3_t min, max, del;
@@ -942,8 +948,9 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, char const * Ex
     for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->Draw (of, SFCoef*max_dist);
     MPL::AddPatch (of);
     if (Extra!=NULL) of << Extra;
-    MPL::SaveFig  (FNKey, of);
-    of.close      ();
+    if (PNG) MPL::SaveFig (FNKey, of);
+    else     MPL::Show    (of);
+    of.close ();
 }
 
 inline void Domain::AvailableData ()

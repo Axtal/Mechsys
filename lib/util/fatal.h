@@ -27,16 +27,13 @@
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  #include <boost/python.hpp> // this includes everything
+  #include <boost/errors.hpp>
   namespace BPy = boost::python;
 #endif
 
-// Macros
+// MPI
 #ifdef USE_MPI
   #include <mpi.h>
-  #define MECHSYS_FIN MPI::Finalize();
-#else
-  #define MECHSYS_FIN 
 #endif
 
 // MechSys
@@ -44,18 +41,31 @@
 
 
 #ifdef USE_BOOST_PYTHON
-  #define MECHSYS_CATCH catch (Fatal      * e)         { e->Cout();  delete e;                                              MECHSYS_FIN return 1; } \
-                        catch (char const * m)         { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                        MECHSYS_FIN return 1; } \
-                        catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; MECHSYS_FIN return 1; } \
-                        catch (std::exception & e)     { std::cout<<"[1;31mFatal: "<<e.what()                <<"[0m\n"; MECHSYS_FIN return 1; } \
-                        catch (...)                    { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n";  MECHSYS_FIN return 1; }
+  #define MECHSYS_BPY_CATCH     catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; return 1; }
+  #define MECHSYS_BPY_MPI_CATCH catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; MPI::COMM_WORLD.Abort(666); }
 #else
-  #define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                             MECHSYS_FIN return 1; } \
-                        catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                       MECHSYS_FIN return 1; } \
-                        catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()              <<"[0m\n";  MECHSYS_FIN return 1; } \
-                        catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; MECHSYS_FIN return 1; }
+  #define MECHSYS_BPY_CATCH
+  #define MECHSYS_BPY_MPI_CATCH
 #endif
- 
+
+
+#define MECHSYS_MPI_INIT MPI::Init(argc, argv); \
+                         MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
+
+
+#define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                             return 1; } \
+                      catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                       return 1; } \
+                      catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()<<"[0m\n";                return 1; } \
+                      MECHSYS_BPY_CATCH                                                                                          \
+                      catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; return 1; }
+
+
+#define MECHSYS_MPI_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                                                                MPI::COMM_WORLD.Abort(666); } \
+                          catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                                                          MPI::COMM_WORLD.Abort(666); } \
+                          catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()<<"[0m\n";                                                   MPI::COMM_WORLD.Abort(666); } \
+                          catch (MPI::Exception e)   { std::cout<<"[1;31mFatal: MPI Error # "<<e.Get_error_code()<<": "<<e.Get_error_string()<<"[0m\n"; MPI::COMM_WORLD.Abort(666); } \
+                          MECHSYS_BPY_MPI_CATCH                                                                                                                                           \
+                          catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n";                                    MPI::COMM_WORLD.Abort(666); }
 
 class Fatal
 {
@@ -70,7 +80,6 @@ public:
 private:
 	String _msg;
 };
-
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////

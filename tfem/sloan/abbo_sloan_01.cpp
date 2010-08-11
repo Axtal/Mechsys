@@ -99,6 +99,9 @@ int main(int argc, char **argv) try
     double phi = 30.0;
     double del = 0.3*a*1.0e-3;
 
+    // output vertices
+    Array<int> out_verts = (quad8 ? Array<int>(0,6,22) : Array<int>(0,6,22,44,45));
+
     // props and domain
     double geom = (quad8 ? GEOM("Quad8") : GEOM("Tri15"));
     double nip  = (quad8 ? 4.0           : 16.0);
@@ -107,7 +110,7 @@ int main(int argc, char **argv) try
     //mdls.Set(-1, "name E nu fc sY Hp axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
     mdls.Set(-1, "name E nu fc c phi axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("MC"), c, phi, 1.0);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
-    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict());
+    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), fkey.CStr(), &out_verts);
 
     // solver
     FEM::Solver sol(dom);
@@ -115,10 +118,6 @@ int main(int argc, char **argv) try
     if (FE) sol.SetScheme("FE");
     sol.STOL = STOL;
     sol.CorR = CorR;
-
-    // output nodes
-    Array<int> nods = (quad8 ? Array<int>(0,6,22) : Array<int>(0,6,22,44,45));
-    dom.SetOutNods (fkey.CStr(), nods);
 
     // solve
     Dict bcs;
@@ -141,8 +140,8 @@ int main(int argc, char **argv) try
     {
         disp   << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("ux")] << " ";
         disp   << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("uy")] << std::endl;
-        stress << Util::_20_15 << dom.NodResults(i,idx_sx)                << " ";
-        stress << Util::_20_15 << dom.NodResults(i,idx_sy)                << std::endl;
+        //stress << Util::_20_15 << dom.NodResults(i,idx_sx)                << " ";
+        //stress << Util::_20_15 << dom.NodResults(i,idx_sy)                << std::endl;
     }
     buf.Printf("%s.disp",fkey.CStr());
     std::ofstream of1(buf.CStr(), std::ios::out);
@@ -165,8 +164,8 @@ int main(int argc, char **argv) try
         {
             u(0+i*2) = dom.Nods[i]->U[dom.Nods[i]->UMap("ux")];
             u(1+i*2) = dom.Nods[i]->U[dom.Nods[i]->UMap("uy")];
-            s(0+i*2) = dom.NodResults(i,idx_sx);
-            s(1+i*2) = dom.NodResults(i,idx_sy);
+            //s(0+i*2) = dom.NodResults(i,idx_sx);
+            //s(1+i*2) = dom.NodResults(i,idx_sy);
             fu >> u_ref(0+i*2) >> u_ref(1+i*2);
             fs >> s_ref(0+i*2) >> s_ref(1+i*2);
         }
@@ -180,8 +179,8 @@ int main(int argc, char **argv) try
     }
 
     // pressure
-    Vec_t f(nods.Size());
-    for (size_t i=0; i<nods.Size(); ++i) f(i) = dom.Nods[nods[i]]->F[dom.Nods[nods[i]]->FMap("fx")];
+    Vec_t f(out_verts.Size());
+    for (size_t i=0; i<out_verts.Size(); ++i) f(i) = dom.Nods[out_verts[i]]->F[dom.Nods[out_verts[i]]->FMap("fx")];
     double q = (quad8 ? sqrt(2.0)*Norm(f)/t : 90.0*Norm(f)/(sqrt(2290.0)*t));
     std::cout << "Error (q/c)    = " << Util::_8s << fabs(q/c-1.0174) << "      q/c = " << Util::_10_6 << (q/c) << "    (1.0174)" << std::endl;
 

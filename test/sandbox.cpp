@@ -30,13 +30,26 @@ using std::endl;
 
 int main(int argc, char **argv) try
 {
+    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+
     int a,b,c,d;
     a = 10;
     b = 2;
     c = 7;
     d = 1;
+    cout << "Sorting: " << a << " " << b << " " << c << " " << d << endl;
     Util::Sort(a,b,c,d);
-    cout << a << " " << b << " " << c << " " << d << " " << endl;
+    cout << "Result:  " << a << " " << b << " " << c << " " << d << endl;
+
+    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+
+    String keys("ux uy uz  fx fy fz");
+    cout << "Keys: " << keys << endl;
+    cout << "Is 'fx' in Keys ? => " << (Util::HasKey(keys,"fx") ? " YES " : " NO ") << endl;
+    cout << "Is 'FX' in Keys ? => " << (Util::HasKey(keys,"FX") ? " YES " : " NO ") << endl;
+    cout << "Is 'Fx' in Keys ? => " << (Util::HasKey(keys,"Fx") ? " YES " : " NO ") << endl;
+    cout << "Is 'fX' in Keys ? => " << (Util::HasKey(keys,"fX") ? " YES " : " NO ") << endl;
+    cout << "Is 'uy' in Keys ? => " << (Util::HasKey(keys,"uy") ? " YES " : " NO ") << endl;
 
     return 0;
 }

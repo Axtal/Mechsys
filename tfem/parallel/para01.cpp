@@ -126,4 +126,4 @@ int main(int argc, char **argv) try
 #endif
     return 0;
 }
-MECHSYS_CATCH
+MECHSYS_MPI_CATCH

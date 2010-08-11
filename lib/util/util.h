@@ -151,6 +151,15 @@ inline bool FileExists (String const & Filename)
     }
 }
 
+inline bool HasKey (String const & KeysSepBySpace, String const & Key)
+{
+    std::istringstream iss(KeysSepBySpace);
+    String key;
+    bool has_key = false;
+    while (iss>>key && !has_key) has_key = (key==Key);
+    return has_key;
+}
+
 }; // namespace Util
 
 #endif // MECHSYS_SORT_H
