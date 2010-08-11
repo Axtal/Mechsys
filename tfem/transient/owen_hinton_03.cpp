@@ -187,9 +187,9 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("owen_hinton_03", Array<int>(-200, /*JustOne*/true));
-    dom.SetOutEles ("owen_hinton_03", Array<int>(nc-1, /*JustOne*/true));
+    Array<int> out_verts(-200, /*JustOne*/true);
+    Array<int> out_cells(nc-1, /*JustOne*/true);
+    FEM::Domain dom(mesh, prps, mdls, inis, "owen_hinton_03", &out_verts, &out_cells);
 
     // stage # 1 -----------------------------------------------------------
     double Qn = -600.0;

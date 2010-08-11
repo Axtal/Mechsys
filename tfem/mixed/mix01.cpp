@@ -84,9 +84,9 @@ int main(int argc, char **argv) try
     inis.Set (-1, "sx sy sz", -10.0, -10.0, -10.0);
 
     // domain
-    Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("mix01", Array<int>(2,5,12));
-    dom.SetOutEles ("mix01", Array<int>(0,1));
+    Array<int> out_verts(2,5,12);
+    Array<int> out_cells(0,1);
+    Domain dom(mesh, prps, mdls, inis, "mix01", &out_verts, &out_cells);
 
     // solver
     Solver sol(dom);

@@ -77,8 +77,8 @@ int main(int argc, char **argv) try
     inis.Set(-1, "vx vy", 0.0,0.0);
 
     // domain
-    FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.SetOutNods ("wood_lewis", Array<int>(0,10,24,34));
+    Array<int> out_verts(0,10,24,34);
+    FEM::Domain dom(mesh, prps, mdls, inis, "wood_lewis", &out_verts);
 
     // solver
     FEM::Solver sol(dom);
