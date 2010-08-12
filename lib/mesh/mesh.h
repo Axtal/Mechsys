@@ -34,7 +34,7 @@
 #include <boost/tuple/tuple_comparison.hpp>
 
 // ParMETIS
-#ifdef USE_PMETIS
+#if defined(HAS_PARMETIS) && defined(HAS_MPI)
   #include <mpi.h>
 extern "C" {
   #include <metis.h>
@@ -402,7 +402,7 @@ inline void Generic::PartDomain (int NParts, bool Full)
     int * part = new int [n];
     if (NParts>1)
     {
-#ifdef USE_PMETIS
+#if defined(HAS_PARMETIS) && defined(HAS_MPI)
         Array<int> Xadj, Adjncy;
         Adjacency (Xadj, Adjncy, Full);
         int wgtflag    = 0; // No weights
@@ -411,7 +411,7 @@ inline void Generic::PartDomain (int NParts, bool Full)
         int edgecut;
         METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
 #else
-        throw new Fatal("Generic::PartDomain: This method requires ParMETIS");
+        throw new Fatal("Generic::PartDomain: This method requires ParMETIS and MPI");
 #endif
     }
     else 

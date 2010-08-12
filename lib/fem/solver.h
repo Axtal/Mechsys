@@ -1010,63 +1010,66 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
         // assemble global K matrix
         if (!ModNR) AssembleKA ();
 
-#ifdef USE_MPI
-        // set workspace: R
-        set_to_zero (dF);
-        for (size_t i=0; i<pEQ.Size(); ++i)
-        {
-            dF(pEQ[i]) = -R(pEQ[i]); // dF2 = -R2
-            //R (pEQ[i]) = 0.0;        // R2  = 0
-        }
-
-        if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()>0) R = 1.0;
-
-        // set workspace: R
-        for (size_t i=0; i<pEQ.Size(); ++i)
-        {
-            R (pEQ[i]) = 0.0;        // R2  = 0
-        }
-
-        for (size_t i=0; i<Dom.InterNodes.Size(); ++i)
-        {
-            for (size_t j=0; j<Dom.InterNodes[i]->nDOF(); ++j)
-            {
-                long   eq   = Dom.InterNodes[i]->EQ[j];
-                size_t nint = Dom.InterNodes[i]->Vert.PartIDs.Size();
-                dF(eq) /= static_cast<double>(nint);
-                //R (eq) /= static_cast<double>(nint);
-            }
-        }
-#endif
-
-        // calc corrector dU
-        if (FEM::Domain::PARA) 
-        {
-            //R /= MPI::COMM_WORLD.Get_size();
-            MUMPS  ::Solve (A11, R,  dU, /*Prod*/true); // dU1 = inv(A11)*R1
-        }
-        else UMFPACK::Solve (A11, R,  dU); // dU1 = inv(A11)*R1
-
-        //std::cout << "NormdU = " << Util::_8s << Norm(dU) << std::endl;
-        //std::cout << "F     = " << PrintVector(F,    "%14.6e");
-        //std::cout << "F_int = " << PrintVector(F_int,"%14.6e");
-        //std::cout << "R         = " << PrintVector(R,    "%14.6e");
-        //std::cout << "NormR     = " << Util::_8s << Norm(R) << std::endl;
-        //std::cout << "NormF     = " << Util::_8s << Norm(F) << std::endl;
-        //std::cout << "NormF_int = " << Util::_8s << Norm(F_int) << std::endl;
-
-
-        // calc dF
-        Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1  =>  dF2 = K21*dU1 - R2
-
-#ifdef USE_MPI
         if (FEM::Domain::PARA)
         {
+#ifdef USE_MPI
+            // set workspace: R
+            set_to_zero (dF);
+            for (size_t i=0; i<pEQ.Size(); ++i)
+            {
+                dF(pEQ[i]) = -R(pEQ[i]); // dF2 = -R2
+            }
+
+            if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()>0) R = 1.0;
+
+            // set workspace: R
+            for (size_t i=0; i<pEQ.Size(); ++i)
+            {
+                R (pEQ[i]) = 0.0;        // R2  = 0
+            }
+
+            for (size_t i=0; i<Dom.InterNodes.Size(); ++i)
+            {
+                for (size_t j=0; j<Dom.InterNodes[i]->nDOF(); ++j)
+                {
+                    long   eq   = Dom.InterNodes[i]->EQ[j];
+                    size_t nint = Dom.InterNodes[i]->Vert.PartIDs.Size();
+                    dF(eq) /= static_cast<double>(nint);
+                }
+            }
+
+            // solve
+            MUMPS::Solve (A11, R,  dU, /*Prod*/true); // dU1 = inv(A11)*R1
+
+            // calc dF
+            Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1  =>  dF2 = K21*dU1 - R2
+
             // join dF
             MPI::COMM_WORLD.Allreduce (dF.data, TmpVec.data, NEq, MPI::DOUBLE, MPI::SUM);
             dF = TmpVec;
-        }
 #endif
+        }
+        else
+        {
+            // calc corrector dU
+            set_to_zero (dF);
+            for (size_t i=0; i<pEQ.Size(); ++i)
+            {
+                dF(pEQ[i]) = -R(pEQ[i]); // dF2 = -R2
+                R (pEQ[i]) = 0.0;        // R2  = 0
+            }
+
+            // solve
+            UMFPACK::Solve (A11, R,  dU); // dU1 = inv(A11)*R1
+
+            // calc dF
+            Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1  =>  dF2 = K21*dU1 - R2
+        }
+
+        //std::cout << "Norm(dU) = " << Util::_8s << Norm(dU)    << std::endl;
+        //std::cout << "Norm(R)  = " << Util::_8s << Norm(R)     << std::endl;
+        //std::cout << "Norm(F)  = " << Util::_8s << Norm(F)     << std::endl;
+        //std::cout << "Norm(Fi) = " << Util::_8s << Norm(F_int) << std::endl;
 
         // update
         UpdateElements (dU, /*CalcFint*/true);
@@ -1075,18 +1078,6 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
 
         // residual
         _cal_resid ();
-
-        //std::cout << "R     = " << PrintVector(R,    "%14.6e");
-        //std::cout << "dU    = " << PrintVector(dU,   "%14.6e");
-        //std::cout << "dF    = " << PrintVector(dF,   "%14.6e");
-        //std::cout << "F     = " << PrintVector(F,    "%14.6e");
-        //std::cout << "F_int = " << PrintVector(F_int,"%14.6e");
-        //std::cout << "NormdU    = " << Norm(dU  ) << std::endl;
-        //std::cout << "NormdF    = " << Norm(dF  ) << std::endl;
-        //std::cout << "NormF     = " << Norm(F   ) << std::endl;
-        //std::cout << "NormF_int = " << Norm(F_int) << std::endl;
-        //std::cout << "NormR     = " << Norm(R) << std::endl;
-        //std::cout << std::endl;
 
         // next iteration
         it++;

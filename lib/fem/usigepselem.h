@@ -498,8 +498,8 @@ inline void USigEpsElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     Vec_t dEe(NDs);
     for (size_t i=0; i<NDs; ++i)
     {
-        dEe(i) = dU[FirstEQ+i];
-        dSe(i) = dU[FirstEQ+NDs+i];
+        dEe(i) = dU(FirstEQ+i);
+        dSe(i) = dU(FirstEQ+NDs+i);
     }
 
     // displacement increment
@@ -508,7 +508,7 @@ inline void USigEpsElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     for (int    j=0; j<NDim;   ++j)
     {
         size_t idx = Con[i]->UMap(UKeys[j]);
-        dUe(i*NDim+j) = dU[Con[i]->EQ[idx]];
+        dUe(i*NDim+j) = dU(Con[i]->EQ[idx]);
     }
 
     // update F_int
