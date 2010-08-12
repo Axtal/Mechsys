@@ -28,6 +28,11 @@
 // Blitz++
 #include <blitz/tinyvec-et.h>
 
+// MPI
+#ifdef USE_MPI
+  #include <mpi.h>
+#endif
+
 // MechSys
 #include <mechsys/fem/node.h>
 #include <mechsys/fem/element.h>
@@ -1005,7 +1010,7 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
         // assemble global K matrix
         if (!ModNR) AssembleKA ();
 
-
+#ifdef USE_MPI
         // set workspace: R
         set_to_zero (dF);
         for (size_t i=0; i<pEQ.Size(); ++i)
@@ -1032,6 +1037,7 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
                 //R (eq) /= static_cast<double>(nint);
             }
         }
+#endif
 
         // calc corrector dU
         if (FEM::Domain::PARA) 

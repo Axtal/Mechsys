@@ -19,8 +19,8 @@
 SET(EXES
   test01)
 
-
 FOREACH(var ${EXES})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
+    SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)

@@ -95,7 +95,7 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    //sol.Scheme = FEM::Solver::FE_t;
+    sol.Scheme = FEM::Solver::FE_t;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
