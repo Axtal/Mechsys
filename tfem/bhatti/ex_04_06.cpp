@@ -77,7 +77,7 @@ int main(int argc, char **argv) try
     //dom.WriteMPY     ("ex46_res", /*sf*/0.01);
 
     int i = sol.NEq-sol.NLag;
-    cout << "\n[1;31mlambda0 = " << sol.U[i] << ",    lambda1 = " << sol.U[i+1] << endl << "[0m\n";
+    cout << "\n[1;31mlambda0 = " << sol.U(i) << ",    lambda1 = " << sol.U(i+1) << endl << "[0m\n";
 
     //////////////////////////////////////////////////////////////////////////////////////// Check /////
 

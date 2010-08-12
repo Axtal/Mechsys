@@ -26,6 +26,14 @@
 // MechSys
 #include <mechsys/util/fatal.h>
 
+extern "C"
+{
+    // BLAS
+    void dscal_(int const *N, double const *alpha, double *X, int const *incX);
+	void dcopy_(int const *N, double const *X, int const *incX, double *Y, int const *incY);
+	void daxpy_(int const *N, double const *alpha, double const *X, int const *incX, double *Y, int const *incY);
+}
+
 namespace LinAlg
 {
 
@@ -66,6 +74,8 @@ public:
     void            operator=  (Vector<Value_T> const & R); ///< Assignment operator
     void            operator+= (Vector<Value_T> const & R); ///< Plus-assignment operator
     void            operator-= (Vector<Value_T> const & R); ///< Minus-assignment operator
+    void            operator/= (Value_T const & Scalar);    ///< Division operator
+    void            operator*= (Value_T const & Scalar);    ///< Multiplication operator
     Value_T &       operator() (int i);                     ///< Write i value of vector
     const Value_T & operator() (int i) const;               ///< Read i value of vector
 
@@ -76,7 +86,7 @@ public:
     public:
         CommaAssign(Value_T * Values, int & Size, Value_T const & FirstValue):_values(Values),_size(Size),_index(0) 
         { 
-            if (_values==NULL) throw new Fatal("Vector::CommaAssign::CommaAssign (_values==NULL). The vector must be resized prior to use this method.");
+            if (_values==NULL) throw new Fatal("Vector::CommaAssign::CommaAssign (_values==NULL). The vector must be resized before calling this method.");
             _values[0] = FirstValue;
             for (int i=1; i<_size; ++i)
                 _values[i] = static_cast<Value_T>(0);
@@ -128,15 +138,15 @@ public:
 
 template<typename Value_T>
 inline Vector<Value_T>::Vector(int Size)
+    : _size(0), _values(NULL), data(_values)
 {
-#ifndef DNDEBUG
-    if (Size<=0) throw new Fatal("Vector::Vector(Size): (Size<=0). The number of components (Size=%d) must be greater than zero.",Size);
-#endif
-    _size   = Size;
-    _values = new Value_T [_size];
-    for (int i=0; i<_size; ++i)
-        _values[i] = static_cast<Value_T>(0);
-    data = _values;
+    if (Size>0)
+    {
+        _size   = Size;
+        _values = new Value_T [_size];
+        for (int i=0; i<_size; ++i) _values[i] = static_cast<Value_T>(0);
+        data = _values;
+    }
 }
 
 template<typename Value_T>
@@ -161,7 +171,7 @@ template<typename Value_T>
 inline const Value_T * Vector<Value_T>::GetPtr() const
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized prior to get the pointer to its values.");
+    //if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized prior to get the pointer to its values.");
 #endif
     return _values;
 }
@@ -170,7 +180,7 @@ template<typename Value_T>
 inline Value_T * Vector<Value_T>::GetPtr()
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized prior to get the pointer to its values.");
+    //if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized prior to get the pointer to its values.");
 #endif
     return _values;
 }
@@ -180,16 +190,22 @@ inline Value_T * Vector<Value_T>::GetPtr()
 template<typename Value_T>
 inline void Vector<Value_T>::Resize(int Size)
 {
-#ifndef DNDEBUG
-    if (Size<=0) throw new Fatal("Vector::Resize(Size): (Size<=0). The number of components (Size=%d) must be greater than zero.",Size);
-#endif
-    if (Size==_size && _values!=NULL) return;   
-    if (_values!=NULL) delete [] _values;
-    _size   = Size;
-    _values = new Value_T [_size];
-    for (int i=0; i<_size; ++i)
-        _values[i] = static_cast<Value_T>(0);
-    data = _values;
+    if (Size>0)
+    {
+        if (Size==_size && _values!=NULL) return;   
+        if (_values!=NULL) delete [] _values;
+        _size   = Size;
+        _values = new Value_T [_size];
+        data    = _values;
+        for (int i=0; i<_size; ++i) _values[i] = static_cast<Value_T>(0);
+    }
+    else
+    {
+        if (_values!=NULL) delete [] _values;
+        _size   = 0;
+        _values = NULL;
+        data    = _values;
+    }
 }
 
 template<typename Value_T>
@@ -210,48 +226,75 @@ inline void Vector<Value_T>::operator= (Vector<Value_T> const & R)
 #ifndef DNDEBUG
     if (&R==this) throw new Fatal("Vector::operator= The right-hand-size of this operation (LHS = RHS) must not be equal to the LHS.");
 #endif
-    // Reallocate if they are different (LHS != RHS)
-    if (R.Size() != _size)
+
+    // reallocate if they are different (LHS != RHS)
+    if (_values==NULL || R.Size()!=_size)
     {
         _size = R.Size();
-        if (_values != NULL) delete [] _values;
+        if (_values!=NULL) delete [] _values;
         _values = new Value_T [_size];
+        data    = _values;
     }
-    
-    // Copy values
-    for (int i=0; i<_size; ++i)
-        _values[i] = R._values[i];
+
+    // copy
+    int i = 1;
+    int j = 1;
+    dcopy_ (&_size, R.GetPtr(), &i, _values, &j);
 }
 
 template<typename Value_T>
 inline void Vector<Value_T>::operator+= (Vector<Value_T> const & R)
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Vector::operator+= (_values==NULL). The vector must be resized prior to use this method.");
+    if (_values==NULL  ) throw new Fatal("Vector::operator+= (_values==NULL). The vector must be resized before calling this method.");
     if (R.Size()!=_size) throw new Fatal("Vector::operator+= (R.Size()!=_size). The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d).",R.Size(),_size);
 #endif
-    // Add values
-    for (int i=0; i<_size; ++i)
-        _values[i] += R._values[i];
+    Value_T a = 1.0;
+    int     i = 1;
+    int     j = 1;
+	daxpy_ (&_size, &a, R.GetPtr(), &i, _values, &j);
 }
 
 template<typename Value_T>
 inline void Vector<Value_T>::operator-= (Vector<Value_T> const & R)
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Vector::operator-= (_values==NULL). The vector must be resized prior to use this method.");
+    if (_values==NULL  ) throw new Fatal("Vector::operator-= (_values==NULL). The vector must be resized before calling this method.");
     if (R.Size()!=_size) throw new Fatal("Vector::operator-= (R.Size()!=_size). The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d).",R.Size(),_size);
 #endif
-    // Subtract values
-    for (int i=0; i<_size; ++i)
-        _values[i] -= R._values[i];
+    Value_T a = -1.0;
+    int     i = 1;
+    int     j = 1;
+	daxpy_ (&_size, &a, R.GetPtr(), &i, _values, &j);
+}
+
+template<typename Value_T>
+inline void Vector<Value_T>::operator/= (Value_T const & Scalar)
+{
+#ifndef DNDEBUG
+    if (_values==NULL) throw new Fatal("Vector::operator/= (_values==NULL). The vector must be resized before calling this method.");
+#endif
+    Value_T a = 1.0/Scalar;
+    int     d = 1;
+    dscal_ (&_size, &a, _values, &d);
+}
+
+template<typename Value_T>
+inline void Vector<Value_T>::operator*= (Value_T const & Scalar)
+{
+#ifndef DNDEBUG
+    if (_values==NULL) throw new Fatal("Vector::operator*= (_values==NULL). The vector must be resized before calling this method.");
+#endif
+    Value_T a = Scalar;
+    int     d = 1;
+    dscal_ (&_size, &a, _values, &d);
 }
 
 template<typename Value_T>
 inline Value_T & Vector<Value_T>::operator() (int i)
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Vector::operator() (_values==NULL). The vector must be resized prior to use this method.");
+    if (_values==NULL  ) throw new Fatal("Vector::operator() (_values==NULL). The vector must be resized before calling this method.");
     if (i<0 || i>=_size) throw new Fatal("Vector::operator() (i<0 || i>=_size). The index (i=%d) for a component must be greater than/or equal to zero and smaller than the number of components (size=%d).",i,_size);
 #endif
     return _values[i];
@@ -261,7 +304,7 @@ template<typename Value_T>
 inline const Value_T & Vector<Value_T>::operator() (int i) const
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Vector::operator() (_values==NULL). The vector must be resized prior to use this method.");
+    if (_values==NULL  ) throw new Fatal("Vector::operator() (_values==NULL). The vector must be resized before calling this method.");
     if (i<0 || i>=_size) throw new Fatal("Vector::operator() (i<0 || i>=_size). The index (i=%d) for a component must be greater than/or equal to zero and smaller than the number of components (size=%d).",i,_size);
 #endif
     return _values[i];

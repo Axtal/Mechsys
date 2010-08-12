@@ -26,6 +26,14 @@
 // MechSys
 #include <mechsys/util/fatal.h>
 
+extern "C"
+{
+    // BLAS
+    void dscal_(int const *N, double const *alpha, double *X, int const *incX);
+	void dcopy_(int const *N, double const *X, int const *incX, double *Y, int const *incY);
+	void daxpy_(int const *N, double const *alpha, double const *X, int const *incX, double *Y, int const *incY);
+}
+
 namespace LinAlg
 {
 
@@ -74,6 +82,8 @@ public:
     void            operator=  (Matrix<Value_T> const & R); ///< Assignment operator
     void            operator+= (Matrix<Value_T> const & R); ///< Plus-assignment operator
     void            operator-= (Matrix<Value_T> const & R); ///< Minus-assignment operator
+    void            operator/= (Value_T const & Scalar);    ///< Division operator
+    void            operator*= (Value_T const & Scalar);    ///< Multiplication operator
     Value_T &       operator() (int i, int j);              ///< Write ij value of matrix
     const Value_T & operator() (int i, int j) const;        ///< Read ij value of matrix
     
@@ -139,17 +149,17 @@ public:
 
 template<typename Value_T>
 inline Matrix<Value_T>::Matrix(int Rows, int Cols)
+    : _rows(0), _cols(0), _values(NULL), data(_values)
 {
-#ifndef DNDEBUG
-    if (Rows<=0) throw new Fatal("Matrix::Matrix(Rows,Cols): (Rows<=0). The number of Rows (%d) must be greater than zero.",Rows);
-    if (Cols<=0) throw new Fatal("Matrix::Matrix(Rows,Cols): (Cols<=0). The number of Cols (%d) must be greater than zero.",Cols);
-#endif
-    _rows = Rows;
-    _cols = Cols;
-    _values = new Value_T [_rows*_cols];
-    for (int i=0; i<_rows*_cols; ++i)
-        _values[i] = static_cast<Value_T>(0);
-    data = _values;
+    if (Rows>0 && Cols>0)
+    {
+        _rows = Rows;
+        _cols = Cols;
+        _values = new Value_T [_rows*_cols];
+        for (int i=0; i<_rows*_cols; ++i)
+            _values[i] = static_cast<Value_T>(0);
+        data = _values;
+    }
 }
 
 template<typename Value_T>
@@ -181,7 +191,7 @@ template<typename Value_T>
 inline Value_T * Matrix<Value_T>::GetPtr()
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Matrix::GetPtr: (_values==NULL). The matrix must be resized prior to get a pointer to its values.");
+    //if (_values==NULL) throw new Fatal("Matrix::GetPtr: (_values==NULL). The matrix must be resized prior to get a pointer to its values.");
 #endif
     return _values;
 }
@@ -190,7 +200,7 @@ template<typename Value_T>
 inline const Value_T * Matrix<Value_T>::GetPtr() const
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Matrix::GetPtr: (_values==NULL). The matrix must be resized prior to get a pointer to its values.");
+    //if (_values==NULL) throw new Fatal("Matrix::GetPtr: (_values==NULL). The matrix must be resized prior to get a pointer to its values.");
 #endif
     return _values;
 }
@@ -200,18 +210,24 @@ inline const Value_T * Matrix<Value_T>::GetPtr() const
 template<typename Value_T>
 inline void Matrix<Value_T>::Resize(int Rows, int Cols)
 {
-#ifndef DNDEBUG
-    if (Rows<=0) throw new Fatal("Matrix::Resize: (Rows<=0). The number of Rows (%d) must be greater than zero.",Rows);
-    if (Cols<=0) throw new Fatal("Matrix::Resize: (Cols<=0). The number of Cols (%d) must be greater than zero.",Cols);
-#endif
-    if (Rows==_rows && Cols==_cols && _values!=NULL) return;    
-    if (_values!=NULL) delete [] _values;
-    _rows = Rows;
-    _cols = Cols;
-    _values = new Value_T [_rows*_cols];
-    for (int i=0; i<_rows*_cols; ++i)
-        _values[i] = static_cast<Value_T>(0);
-    data = _values;
+    if (Rows>0 && Cols>0)
+    {
+        if (Rows==_rows && Cols==_cols && _values!=NULL) return;    
+        if (_values!=NULL) delete [] _values;
+        _rows   = Rows;
+        _cols   = Cols;
+        _values = new Value_T [_rows*_cols];
+        data    = _values;
+        for (int i=0; i<_rows*_cols; ++i) _values[i] = static_cast<Value_T>(0);
+    }
+    else
+    {
+        if (_values!=NULL) delete [] _values;
+        _rows   = 0;
+        _cols   = 0;
+        _values = NULL;
+        data    = _values;
+    }
 }
 
 template<typename Value_T>
@@ -232,19 +248,22 @@ inline void Matrix<Value_T>::operator= (Matrix<Value_T> const & R)
 #ifndef DNDEBUG
     if (&R==this) throw new Fatal("Matrix::operator= The right-hand-size of this operation (LHS = RHS) must not be equal to the LHS.");
 #endif
-    // Reallocate if they are different (LHS != RHS)
-    if (R.Rows() != _rows || R.Cols() != _cols)
+
+    // reallocate if they are different (LHS != RHS)
+    if (_values==NULL || R.Rows()!=_rows || R.Cols()!=_cols)
     {
         _rows = R.Rows();
         _cols = R.Cols();
-        if (_values != NULL) delete [] _values;
+        if (_values!=NULL) delete [] _values;
         _values = new Value_T [_rows*_cols];
+        data    = _values;
     }
-    
-    // Copy values
-    int _components=_rows*_cols;
-    for (int i=0; i<_components; ++i)
-        _values[i] = R._values[i];
+
+    // copy
+    int n = _rows*_cols;
+    int i = 1;
+    int j = 1;
+    dcopy_ (&n, R.GetPtr(), &i, _values, &j);
 }
 
 template<typename Value_T>
@@ -255,10 +274,11 @@ inline void Matrix<Value_T>::operator+= (Matrix<Value_T> const & R)
     if (R.Rows()!=_rows) throw new Fatal("Matrix::operator+= (R.Rows()!=_rows). The number of Rows of the LHS (%d) must be equal to the number of rows of the RHS (%d).",R.Rows(),_rows);
     if (R.Cols()!=_cols) throw new Fatal("Matrix::operator+= (R.Rows()!=_cols). The number of Cols of the LHS (%d) must be equal to the number of cols of the RHS (%d).",R.Cols(),_cols);
 #endif
-    // Add values
-    int _components=_rows*_cols;
-    for (int i=0; i<_components; ++i)
-        _values[i] += R._values[i];
+    int     n = _rows*_cols;
+    Value_T a = 1.0;
+    int     i = 1;
+    int     j = 1;
+	daxpy_ (&n, &a, R.GetPtr(), &i, _values, &j);
 }
 
 template<typename Value_T>
@@ -269,10 +289,35 @@ inline void Matrix<Value_T>::operator-= (Matrix<Value_T> const & R)
     if (R.Rows()!=_rows) throw new Fatal("Matrix::operator-= (R.Rows()!=_rows). The number of Rows of the LHS (%d) must be equal to the number of rows of the RHS (%d).",R.Rows(),_rows);
     if (R.Cols()!=_cols) throw new Fatal("Matrix::operator-= (R.Rows()!=_cols). The number of Cols of the LHS (%d) must be equal to the number of cols of the RHS (%d).",R.Cols(),_cols);
 #endif
-    // Subtract values
-    int _components=_rows*_cols;
-    for (int i=0; i<_components; ++i)
-        _values[i] -= R._values[i];
+    int     n = _rows*_cols;
+    Value_T a = -1.0;
+    int     i = 1;
+    int     j = 1;
+	daxpy_ (&n, &a, R.GetPtr(), &i, _values, &j);
+}
+
+template<typename Value_T>
+inline void Matrix<Value_T>::operator/= (Value_T const & Scalar)
+{
+#ifndef DNDEBUG
+    if (_values==NULL) throw new Fatal("Matrix::operator/= (_values==NULL). The matrix must be resized before calling this method.");
+#endif
+    int     n = _rows*_cols;
+    Value_T a = 1.0/Scalar;
+    int     d = 1;
+    dscal_ (&n, &a, _values, &d);
+}
+
+template<typename Value_T>
+inline void Matrix<Value_T>::operator*= (Value_T const & Scalar)
+{
+#ifndef DNDEBUG
+    if (_values==NULL) throw new Fatal("Matrix::operator*= (_values==NULL). The matrix must be resized before calling this method.");
+#endif
+    int     n = _rows*_cols;
+    Value_T a = Scalar;
+    int     d = 1;
+    dscal_ (&n, &a, _values, &d);
 }
 
 template<typename Value_T>

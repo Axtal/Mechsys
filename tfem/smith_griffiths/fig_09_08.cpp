@@ -26,7 +26,6 @@
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/mesh/structured.h>
 #include <mechsys/fem/elems/quad8.h>
-#include <mechsys/fem/hydromechelem.h>
 #include <mechsys/fem/domain.h>
 #include <mechsys/fem/solver.h>
 #include <mechsys/models/linelastic.h>

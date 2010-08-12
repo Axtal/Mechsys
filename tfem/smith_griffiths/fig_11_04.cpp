@@ -48,12 +48,12 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
     size_t idx_uy  = Sol.Dom.Nods[idx_nod]->UMap("uy");
     long   eq_ux   = Sol.Dom.Nods[idx_nod]->EQ[idx_ux];
     long   eq_uy   = Sol.Dom.Nods[idx_nod]->EQ[idx_uy];
-    double ux      = Sol.U[eq_ux];
-    double uy      = Sol.U[eq_uy];
-    double vx      = Sol.V[eq_ux];
-    double vy      = Sol.V[eq_uy];
-    double ax      = Sol.A[eq_ux];
-    double ay      = Sol.A[eq_uy];
+    double ux      = Sol.U(eq_ux);
+    double uy      = Sol.U(eq_uy);
+    double vx      = Sol.V(eq_ux);
+    double vy      = Sol.V(eq_uy);
+    double ax      = Sol.A(eq_ux);
+    double ay      = Sol.A(eq_uy);
     if (Sol.IdxOut==0)
     {
         std::ofstream of("fig_11_04.out", std::ios::out);
