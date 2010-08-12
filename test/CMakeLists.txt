@@ -32,6 +32,7 @@ SET(PROGS_D # other tests
  linalg01
  linalg02
  linalg03
+ tlaexpr
  linsolver
  sandbox
  serialize)

@@ -30,6 +30,7 @@ OPTION(A_MAKE_WX_MONO       "Use wxWidgets monolithic libraries ?"              
                                                                                    
 # Options                                                                          
 OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"                 OFF)
+OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" ON)
 OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
                                                                                    
 # Features                                                                         
@@ -76,6 +77,10 @@ ENDIF(A_MAKE_OPTIMIZED)
 IF(A_USE_MPI)
     ADD_DEFINITIONS (-DUSE_MPI)
 ENDIF(A_USE_MPI)
+
+IF(A_USE_MTL4)
+    ADD_DEFINITIONS (-DUSE_MTL4)
+ENDIF(A_USE_MTL4)
 
 IF(A_USE_WXW)
     ADD_DEFINITIONS (-DUSE_MPI)

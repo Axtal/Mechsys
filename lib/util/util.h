@@ -24,6 +24,7 @@
 #include <cmath>
 #include <cfloat> // for DBL_EPSILON
 #include <fstream>
+#include <sstream> // for istringstream
 
 // MechSys
 #include <mechsys/util/string.h>

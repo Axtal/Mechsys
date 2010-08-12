@@ -22,11 +22,9 @@
 
 // Std Lib
 #include <iostream>
+#include <cstring>   // for strcmp
 #include <cmath>     // for sqrt, pow
 #include <algorithm> // for min, max
-
-// Boost
-#include <boost/numeric/mtl/mtl.hpp>
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
@@ -61,11 +59,34 @@ extern "C"
 /////////////////////////////////////////////////////////////////////////////////////////// General MatVec /////
 
 
+#ifdef USE_MTL4
+
+// Boost/MTL4
+#include <boost/numeric/mtl/mtl.hpp>
+
 /** Dense matrix (general). */
 typedef mtl::dense2D<double, mtl::matrix::parameters<mtl::tag::col_major> > Mat_t;
 
 /** Dense vector (general). */
 typedef mtl::dense_vector<double> Vec_t;
+
+#else
+
+#include <mechsys/linalg/vector.h>
+#include <mechsys/linalg/matrix.h>
+#include <mechsys/linalg/laexpr.h>
+
+typedef LinAlg::Vector<double> Vec_t;
+typedef LinAlg::Matrix<double> Mat_t;
+
+double dot         (Vec_t const & V, Vec_t const & W) { return LinAlg::Dot(V,W); }
+size_t size        (Vec_t const & V) { return V.Size(); }
+void   set_to_zero (Vec_t       & V) { V.SetValues(0.0); }
+void   set_to_zero (Mat_t       & M) { M.SetValues(0.0); }
+size_t num_rows    (Vec_t const & V) { return V.Size(); }
+size_t num_rows    (Mat_t const & M) { return M.Rows(); }
+
+#endif
 
 /** Print vector. */
 inline String PrintVector (Vec_t const & V, char const * Fmt="%13g", Array<long> const * SkipR=NULL, double Tol=1.0e-13)
