@@ -93,6 +93,7 @@ int main(int argc, char **argv) try
     FEM::Solver sol(dom, NULL, NULL, &DbgFun, &dat);
     //sol.SetScheme ("NR");
     sol.SSOut = true;
+    sol.SetIncsW (40, /*NonLinWei*/true);
 
     // solve
     Dict bcs;
@@ -100,7 +101,7 @@ int main(int argc, char **argv) try
     bcs.Set      (-30,  "uy", 0.0);
     bcs.Set      (-10,  "qn", -13930.0);
     dom.SetBCs   (bcs);
-    sol.Solve    (40, NULL, NULL, /*NonLinWei*/true);
+    sol.Solve    (40);
     //sol.Solve    (40, "nayak_zienk_01");
     dom.WriteVTU ("nayak_zienk_01");
 

@@ -92,9 +92,9 @@ int main(int argc, char **argv) try
     //sol.STOL = 1.0e+9;
 
     // weights
-    Array<double> weights(10);
-    weights = 200., 100., 50., 50., 50., 30., 20., 10., 5., 5.;
-    for (size_t i=0; i<weights.Size(); ++i) weights[i] /= DelP;
+    sol.IncsW.Resize (10);
+    sol.IncsW = 200., 100., 50., 50., 50., 30., 20., 10., 5., 5.;
+    for (size_t i=0; i<sol.IncsW.Size(); ++i) sol.IncsW[i] /= DelP;
 
     // solve
     Dict bcs;
@@ -103,8 +103,7 @@ int main(int argc, char **argv) try
     bcs.Set      (-30, "ux uy", 0.0, 0.0);
     bcs.Set      (-40, "qn",    -DelP);
     dom.SetBCs   (bcs);
-    sol.Solve    (weights.Size(), /*FileKey*/NULL, &weights);
-    //sol.Solve    (10, /*FileKey*/NULL, /*weigts*/NULL, true);
+    sol.Solve    (sol.IncsW.Size());
     dom.WriteVTU (filekey);
 }
 MECHSYS_CATCH

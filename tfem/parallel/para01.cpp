@@ -79,8 +79,8 @@ int main(int argc, char **argv) try
     FEM::Domain::PARA = parallel;
     Dict prps, mdls, inis;
     prps.Set (-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.);
-    //mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
-    mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
+    mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
+    //mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
     FEM::Domain dom(mesh, prps, mdls, inis);
 
     buf = fkey + "_dom_before.txt";

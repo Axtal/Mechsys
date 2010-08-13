@@ -62,10 +62,9 @@ public:
                                 pOutFun DbgFun=NULL, void * DbgDat=NULL); ///< Allocate solver object
 
     // Methods
-    void Solve          (size_t NInc=1, char const * FileKey=NULL,
-                         Array<double> * Weights=NULL, bool NonLinWei=false);            ///< Solve steady/equilibrium equation
-    void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient equation
-    void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic equation
+    void Solve          (size_t NInc=1, char const * FileKey=NULL);                      ///< Solve quasi-static problem
+    void TransSolve     (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve transient problem
+    void DynSolve       (double tf, double dt, double dtOut, char const * FileKey=NULL); ///< Solve dynamic problem
     void AssembleKA     ();                                                              ///< A = K11
     void AssembleKMA    (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
     void AssembleKCMA   (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
@@ -73,6 +72,7 @@ public:
     void UpdateElements (Vec_t const & dU, bool CalcFint);                               ///< Update elements
     void Initialize     (bool Transient=false);                                          ///< Initialize global matrices and vectors
     void SetScheme      (char const * StrScheme);                                        ///< Set solution scheme: 'FE', 'ME', 'NR'
+    void SetIncsW       (size_t NInc, bool NonLinWei=false);                             ///< Set weights for quasi-static problem (If Weights.Size()==0: generate weights)
     bool ResidOK        () const;                                                        ///< Check if the residual is OK
 
     // Data (read-only)
@@ -81,6 +81,7 @@ public:
     void          * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
     pOutFun         DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
     void          * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
+    bool            Root;     ///< Root processor ?
     double          Time;     ///< Current time (t)
     size_t          Inc;      ///< Current increment
     size_t          IdxOut;   ///< Counter for generating VTU files in DynSolve
@@ -94,6 +95,32 @@ public:
     double          MaxNormF; ///< Max(Norm(F), Norm(Fint))
     Array<Node*>    ActNods;  ///< Active nodes
     Array<Element*> ActEles;  ///< Active elements
+
+    // Data (read-write)
+    Scheme_t      Scheme;   ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
+    bool          CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
+    size_t        nSS;      ///< FE and NR: number of substeps
+    double        STOL;     ///< ME:
+    double        dTini;    ///< ME:
+    double        dTlast;   ///< ME:
+    double        mMin;     ///< ME:
+    double        mMax;     ///< ME:
+    size_t        MaxSS;    ///< ME:
+    bool          SSOut;    ///< SubSteps ouput in ME ?
+    bool          CteTg;    ///< Constant tangent matrices (linear problems) => K will be calculated once
+    bool          ModNR;    ///< Modified Newton-Rhapson ?
+    double        TolR;     ///< Tolerance for the norm of residual
+    bool          CorR;     ///< Correct residual ?
+    size_t        MaxIt;    ///< Max iterations (for Newton-Rhapson)
+    TScheme_t     TScheme;  ///< Transient scheme
+    double        Theta;    ///< Transient scheme constant
+    DScheme_t     DScheme;  ///< Dynamic scheme
+    Damping_t     DampTy;   ///< Damping type
+    double        DampAm;   ///< Rayleigh damping Am coefficient (C = Am*M + Ak*K)
+    double        DampAk;   ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
+    double        DynTh1;   ///< Dynamic coefficient Theta 1
+    double        DynTh2;   ///< Dynamic coefficient Theta 2
+    Array<double> IncsW;    ///< Increments weights used in Solve
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -110,40 +137,16 @@ public:
     Vec_t Us, Vs;       ///< starred variables (for GN22)
     Vec_t TmpVec;       ///< Temporary vector (for parallel Allreduce)
 
-    // Constants and flags (read-write)
-    Scheme_t  Scheme;   ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
-    bool      CalcWork; ///< Calc work done == twice the stored (elastic) strain energy ?
-    size_t    nSS;      ///< FE and NR: number of substeps
-    double    STOL;     ///< ME:
-    double    dTini;    ///< ME:
-    double    dTlast;   ///< ME:
-    double    mMin;     ///< ME:
-    double    mMax;     ///< ME:
-    size_t    MaxSS;    ///< ME:
-    bool      SSOut;    ///< SubSteps ouput in ME ?
-    bool      CteTg;    ///< Constant tangent matrices (linear problems) => K will be calculated once
-    bool      ModNR;    ///< Modified Newton-Rhapson ?
-    double    TolR;     ///< Tolerance for the norm of residual
-    bool      CorR;     ///< Correct residual ?
-    size_t    MaxIt;    ///< Max iterations (for Newton-Rhapson)
-    TScheme_t TScheme;  ///< Transient scheme
-    double    Theta;    ///< Transient scheme constant
-    DScheme_t DScheme;  ///< Dynamic scheme
-    Damping_t DampTy;   ///< Damping type
-    double    DampAm;   ///< Rayleigh damping Am coefficient (C = Am*M + Ak*K)
-    double    DampAk;   ///< Rayleigh damping Ak coefficient (C = Am*M + Ak*K)
-    double    DynTh1;   ///< Dynamic coefficient Theta 1
-    double    DynTh2;   ///< Dynamic coefficient Theta 2
-
 private:
-    void _set_A_Lag       ();                       ///< Set A matrix due to Lagrange multipliers
-    void _cal_resid       (bool WithAccel=false);   ///< Calculate residual
-    void _cor_resid       (Vec_t & dU, Vec_t & dF); ///< Correct residual
-    void _FE_update       (double tf);              ///< (Forward-Euler)  Update Time and elements to tf
-    void _ME_update       (double tf);              ///< (Modified-Euler) Update Time and elements to tf
-    void _NR_update       (double tf);              ///< (Newton-Rhapson) Update Time and elements to tf
-    void _presc_F         (double t);               ///< Calculate prescribed F(t=Time)
-    void _GN22_update     (double tf, double dt);   ///< (Generalized-Newmark) Update Time and elements to tf
+    void _set_A_Lag   ();                          ///< Set A matrix due to Lagrange multipliers
+    void _cal_resid   (bool WithAccel=false);      ///< Calculate residual
+    void _cor_resid   (Vec_t & dU, Vec_t & dF);    ///< Correct residual
+    void _FE_update   (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
+    void _ME_update   (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
+    void _NR_update   (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
+    void _presc_F     (double t);                  ///< Calculate prescribed F(t=Time)
+    void _GN22_update (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
+    void _time_print  (char const * Comment=NULL); ///< Print timestep data
 };
 
 
@@ -156,6 +159,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       OutDat  (TheOutDat),
       DbgFun  (TheDbgFun),
       DbgDat  (TheDbgDat),
+      Root    (true),
       Time    (0.0),
       Inc     (0),
       IdxOut  (0),
@@ -185,34 +189,25 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       DynTh1  (0.5),
       DynTh2  (0.5)
 {
+#if HAS_MPI
+    if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) Root = false;
+#endif
 }
 
-inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * Weights, bool NonLinWei)
+inline void Solver::Solve (size_t NInc, char const * FileKey)
 {
     // info
-    Util::Stopwatch stopwatch;
+    Util::Stopwatch stopwatch(/*only_root*/FEM::Domain::PARA);
 
     // initialize global matrices and vectors
     Initialize ();
 
     // output initial state
-    bool show = false;
-    if (FEM::Domain::PARA)
+    if (Root)
     {
-#if HAS_MPI
-        if (MPI::COMM_WORLD.Get_rank()==0) show = true;
-#endif
-    }
-    else show = true;
-    if (show)
-    {
-        String str;
-        if      (Scheme==FE_t) str.Printf("FE");
-        else if (Scheme==ME_t) str.Printf("ME");
-        else if (Scheme==NR_t) str.Printf("NR");
-        printf("\n%s--- Stage solution --- (steady) --- (%s) -------------------------------------------\n",TERM_CLR1,str.CStr());
-        std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)"        << Util::_4<<"NSS" << Util::_4<<"NIT" << "[0m" << std::endl;
-        std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR <<"[0m" << Util::_4<<"---" << Util::_4<<"---" << std::endl;
+        if      (Scheme==FE_t) _time_print ("Quasi-static --- FE");
+        else if (Scheme==ME_t) _time_print ("Quasi-static --- ME");
+        else if (Scheme==NR_t) _time_print ("Quasi-static --- NR");
     }
     if (IdxOut==0)
     {
@@ -222,33 +217,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
     }
 
     // weights
-    bool   del_weights = false;
-    double sum_weights = 0.0;
-    if (Weights==NULL)
-    {
-        Weights = new Array<double>;
-        Weights->Resize (NInc);
-        if (NonLinWei)
-        {
-            double delx = 1.0/NInc;
-            for (size_t i=0; i<NInc; ++i)
-            {
-                double xi = 1.0-delx*i;
-                double xj = 1.0-delx*(i+1);
-                double yi = pow(xi,3.0);
-                double yj = pow(xj,3.0);
-                (*Weights)[i] = yi-yj;
-            }
-        }
-        else
-        {
-            for (size_t i=0; i<NInc; ++i) (*Weights)[i] = 1.0/NInc;
-        }
-        del_weights = true;
-    }
-    else if (NInc!=Weights->Size()) throw new Fatal("Solver::Solve: Array with weights must have size equal to NDiv (%d)",NInc);
-    for (size_t i=0; i<NInc; ++i) sum_weights += (*Weights)[i];
-    if (fabs(sum_weights-1.0)>1.0e-9) throw new Fatal("Solver::Solver: Sum of weights must be equal to 1.0 (Sum(W)=%g is invalid)",sum_weights);
+    if (IncsW.Size()!=NInc) SetIncsW (NInc);
 
     // solve
     double t0 = Time;     // current time
@@ -258,8 +227,8 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
     for (Inc=0; Inc<NInc; ++Inc)
     {
         // timestep
-        dt   = (*Weights)[Inc]*Dt; // timestep
-        tout = Time + dt;          // time for output
+        dt   = IncsW[Inc]*Dt; // timestep
+        tout = Time + dt;     // time for output
 
         // update U, F, Time and elements to tout
         if      (Scheme==FE_t) _FE_update (tout);
@@ -279,10 +248,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
 
         // output
         IdxOut++;
-        if (show)
-        {
-            std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m" << Util::_4<<Stp << Util::_4<<It;
-        }
+        if (Root) _time_print ();
         if (Scheme!=ME_t) Dom.OutResults (Time, F_int);
         else if (!SSOut)  Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
@@ -293,28 +259,11 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
             String fkey;
             fkey.Printf  ("%s_%08d", FileKey, IdxOut);
             Dom.WriteVTU (fkey.CStr());
-            std::cout << "  File <[1;34m" << fkey << ".vtu[0m> saved  ";
         }
-
-        // calc work done == twice the stored (elastic) strain energy
-        if (CalcWork)
-        {
-            Sparse::Matrix<double,int> k11(A11), k12(K12), k21(K21), k22(K22);
-            Mat_t kk11, kk12, kk21, kk22;
-            k11.GetDense(kk11); k12.GetDense(kk12); k21.GetDense(kk21); k22.GetDense(kk22);
-            for (size_t i=0; i<pEQ.Size(); ++i) kk11(pEQ[i],pEQ[i]) = 0.0;
-            Mat_t kk(kk11 + kk12 + kk21 + kk22);
-            Vec_t KU(kk*U);
-            std::cout << "  [1;37mWork = " << dot(U,KU) << " [0m";
-        }
-        if (show) std::cout << std::endl;
 
         // next tout
         tout = Time + dt;
     }
-
-    // clean up
-    if (del_weights) delete Weights;
 }
 
 inline void Solver::TransSolve (double tf, double dt, double dtOut, char const * FileKey)
@@ -324,15 +273,16 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut, char const *
 inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * FileKey)
 {
     // info
-    Util::Stopwatch stopwatch;
+    Util::Stopwatch stopwatch(/*only_root*/FEM::Domain::PARA);
 
     // initialize global matrices and vectors
     Initialize (/*Transient*/true);
 
     // output initial state
-    std::cout << "\n[1;37m--- Stage solution --- (dynamic) ---------------------------------------------\n";
-    std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)" << "[0m\n";
-    std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR    << "[0m\n";
+    if (Root)
+    {
+        if (DScheme==GN22_t) _time_print ("Dynamic ------ GN22");
+    }
     if (IdxOut==0)
     {
         Dom.OutResults (Time, F_int);
@@ -341,13 +291,11 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     }
 
     // solve
-    String str;
     double tout = Time + dtOut; // time for output
     while (Time<tf)
     {
         // update U, F, Time and elements to tout
-        if (DScheme==GN22_t) { _GN22_update (tout,dt);  str.Printf("Generalized-Newmark (GN22): nit = %d",It); }
-        else throw new Fatal("Solver::DynSolve: Time integration scheme invalid");
+        if (DScheme==GN22_t) _GN22_update (tout,dt);
 
         // update nodes to tout
         for (size_t i=0; i<ActNods.Size(); ++i)
@@ -362,7 +310,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
 
         // output
         IdxOut++;
-        std::cout << Util::_10_6 << Time << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR << "[0m    " << str << "\n";
+        if (Root) _time_print ();
         Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
@@ -848,6 +796,27 @@ inline void Solver::SetScheme (char const * StrScheme)
     else throw new Fatal("Solver::SetScheme: Key '%s' is invalid. The following keys are availabe: 'FE', 'ME', 'NR'",StrScheme);
 }
 
+inline void Solver::SetIncsW (size_t NInc, bool NonLinWei)
+{
+    IncsW.Resize (NInc);
+    if (NonLinWei)
+    {
+        double delx = 1.0/NInc;
+        for (size_t i=0; i<NInc; ++i)
+        {
+            double xi = 1.0-delx*i;
+            double xj = 1.0-delx*(i+1);
+            double yi = pow(xi,3.0);
+            double yj = pow(xj,3.0);
+            IncsW[i] = yi-yj;
+        }
+    }
+    else
+    {
+        for (size_t i=0; i<NInc; ++i) IncsW[i] = 1.0/NInc;
+    }
+}
+
 inline bool Solver::ResidOK () const
 {
     if (MaxNormF<1.0e-8) // particular case when MaxNormF is very small
@@ -1286,6 +1255,16 @@ inline void Solver::_GN22_update (double tf, double dt)
         // debug
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
+}
+
+inline void Solver::_time_print (char const * Comment)
+{
+    if (Comment!=NULL)
+    {
+        printf("\n%s--- Stage solution --- %s -----------------------------------------%s\n",TERM_CLR1,Comment,TERM_RST);
+        printf("%s%10s  %12s  %4s  %4s%s\n",TERM_CLR2,"Time","Norm(R)","NSS","NIT",TERM_RST);
+    }
+    printf("%10.6f  %s%8e%s  %4d  %4d\n",Time,(ResidOK()?TERM_GREEN:TERM_RED),NormR,TERM_RST,Stp,It);
 }
 
 }; // namespace FEM

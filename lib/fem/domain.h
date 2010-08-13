@@ -635,7 +635,7 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
 
 inline void Domain::PrintResults (char const * NF, bool WithElems) const
 {
-    printf("\n%s--- Results ------------------------------------------------------------------\n",TERM_CLR1);
+    printf("\n%s--- Results ------------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     // nodes: ukeys, fkeys
     size_t neq = 0;
@@ -661,7 +661,7 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
 
     // nodes: header
     String buf;
-    std::cout << Util::_6 << "Node";
+    std::cout << TERM_CLR2 << Util::_6 << "Node";
     for (size_t i=0; i<ukeys.Size(); ++i) { buf.Printf(nf, ukeys[i].CStr());  std::cout<<buf; }
     for (size_t i=0; i<fkeys.Size(); ++i) { buf.Printf(nf, fkeys[i].CStr());  std::cout<<buf; }
     for (size_t i=0; i<ukeys.Size(); ++i)
@@ -759,8 +759,8 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
 inline bool Domain::CheckError (Table const & NodSol, SDPair const & NodTol) const
 {
     // header
-    printf("\n%s--- Error Summary --- nodes --------------------------------------------------\n",TERM_CLR1);
-    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("\n%s--- Error Summary --- nodes --------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
     printf("%s\n",TERM_RST);
 
     // results
@@ -806,8 +806,8 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
     */
 
     // header
-    printf("\n%s--- Error Summary --- nodes and centroid -------------------------------------\n",TERM_CLR1);
-    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("\n%s--- Error Summary --- nodes and centroid -------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
     printf("%s\n",TERM_RST);
 
     // results
@@ -873,8 +873,8 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
 inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const
 {
     // header
-    printf("\n%s--- Error Summary --- integration points -------------------------------------\n",TERM_CLR1);
-    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("\n%s--- Error Summary --- integration points -------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
     printf("%s\n",TERM_RST);
 
     // results
