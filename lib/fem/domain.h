@@ -104,7 +104,7 @@ public:
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
     InclSupport_t         InclSupport; ///< Inclined support
-#ifdef USE_MPI
+#ifdef HAS_MPI
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions
 #endif
 
@@ -132,23 +132,30 @@ bool Domain::PARA = false;
 
 std::ostream & operator<< (std::ostream & os, Domain const & D)
 {
-    os << "\n[1;37m--- Models -------------------------------------------------------------------[0m\n";
+    String buf;
+    buf.Printf("\n%s--- Models -------------------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
     for (Domain::Models_t::const_iterator p=D.Mdls.begin(); p!=D.Mdls.end(); ++p)
         os << p->first << " " << (*p->second) << std::endl;
 
-    os << "\n[1;37m--- Elements properties ------------------------------------------------------[0m\n";
+    buf.Printf("\n%s--- Elements properties ------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
     os << D.Prps << std::endl;
 
-    os << "\n[1;37m--- Initial values -----------------------------------------------------------[0m\n";
+    buf.Printf("\n%s--- Initial values -----------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
     os << D.Inis << std::endl;
 
-    os << "\n[1;37m--- Nodes --------------------------------------------------------------------[0m\n";
+    buf.Printf("\n%s--- Nodes --------------------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
     for (size_t i=0; i<D.Nods.Size(); ++i) os << (*D.Nods[i]) << "\n";
 
-    os << "\n[1;37m--- Elements -----------------------------------------------------------------[0m\n";
+    buf.Printf("\n%s--- Elements -----------------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
     for (size_t i=0; i<D.Eles.Size(); ++i) os << (*D.Eles[i]) << "\n";
 
-    os << "\n[1;37m--- Boundary Conditions ------------------------------------------------------[0m\n";
+    buf.Printf("\n%s--- Boundary Conditions ------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
     os << "  Nodes with prescribed F:\n";
     for (NodBCs_t::const_iterator p=D.pF.begin(); p!=D.pF.end(); ++p)
     {
@@ -198,7 +205,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     std::map<int,Node*> VertID2Node;
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
-#ifdef USE_MPI
+#ifdef HAS_MPI
         if (PARA)
         {
             // skip vertices that aren't in this partition
@@ -210,7 +217,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         if (Msh.Verts[i]->Tag<0) TgdNods.Push (Nods.Last());
         VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
-#ifdef USE_MPI
+#ifdef HAS_MPI
         if (PARA)
         {
             // add DOFs to interface nodes (between partitions)
@@ -256,7 +263,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     // set elements from mesh
     for (size_t i=0; i<Msh.Cells.Size(); ++i)
     {
-#ifdef USE_MPI
+#ifdef HAS_MPI
         if (PARA)
         {
             // skip elements that aren't in this partition
@@ -628,7 +635,7 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
 
 inline void Domain::PrintResults (char const * NF, bool WithElems) const
 {
-    std::cout << "\n[1;37m--- Results ------------------------------------------------------------------\n";
+    printf("\n%s--- Results ------------------------------------------------------------------\n",TERM_CLR1);
 
     // nodes: ukeys, fkeys
     size_t neq = 0;
@@ -664,7 +671,7 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
         tmp.Printf (nf,buf.CStr());
         std::cout << tmp;
     }
-    std::cout << "[0m\n";
+    printf("%s\n",TERM_RST);
 
     // nodes: data
     for (size_t i=0; i<Nods.Size(); ++i)
@@ -720,12 +727,12 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
         }
 
         // elems: header
-        std::cout << "[1;37m" << Util::_6 << "Elem";
+        std::cout << TERM_CLR2 << Util::_6 << "Elem";
         buf.Printf(nf, "x");  std::cout << buf;
         buf.Printf(nf, "y");  std::cout << buf;  if (NDim==3) {
         buf.Printf(nf, "z");  std::cout << buf; }
         for (size_t i=0; i<keys.Size(); ++i) { buf.Printf(nf, keys[i].CStr());  std::cout<<buf; }
-        std::cout << "[0m\n";
+        std::cout << TERM_RST << std::endl;
 
         // elems: data
         for (size_t i=0; i<Eles.Size(); ++i)
@@ -752,8 +759,9 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
 inline bool Domain::CheckError (Table const & NodSol, SDPair const & NodTol) const
 {
     // header
-    std::cout << "\n[1;37m--- Error Summary --- nodes --------------------------------------------------\n";
-    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
+    printf("\n%s--- Error Summary --- nodes --------------------------------------------------\n",TERM_CLR1);
+    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("%s\n",TERM_RST);
 
     // results
     bool error = false;
@@ -774,7 +782,7 @@ inline bool Domain::CheckError (Table const & NodSol, SDPair const & NodTol) con
         double max_err = err[err.Max()];
         double tol     = NodTol(key);
         std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
 
@@ -798,8 +806,9 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
     */
 
     // header
-    std::cout << "\n[1;37m--- Error Summary --- nodes and centroid -------------------------------------\n";
-    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
+    printf("\n%s--- Error Summary --- nodes and centroid -------------------------------------\n",TERM_CLR1);
+    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("%s\n",TERM_RST);
 
     // results
     bool error = false;
@@ -833,7 +842,7 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
         double max_err = err[err.Max()];
         double tol     = NodTol(key);
         std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
 
@@ -854,7 +863,7 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
         double max_err = err[err.Max()];
         double tol     = EleTol(key);
         std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
 
@@ -864,8 +873,9 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
 inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const
 {
     // header
-    std::cout << "\n[1;37m--- Error Summary --- integration points -------------------------------------\n";
-    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << "[0m\n";
+    printf("\n%s--- Error Summary --- integration points -------------------------------------\n",TERM_CLR1);
+    std::cout << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("%s\n",TERM_RST);
 
     // results
     bool error = false;
@@ -892,7 +902,7 @@ inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) c
         double max_err = err[err.Max()];
         double tol     = EleTol(key);
         std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? "[1;31m" : "[1;32m") << Util::_8s<<max_err << "[0m" << Util::_8s<<err.Norm() << "\n";
+        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
 

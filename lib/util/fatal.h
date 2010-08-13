@@ -32,7 +32,7 @@
 #endif
 
 // MPI
-#ifdef USE_MPI
+#ifdef HAS_MPI
   #include <mpi.h>
 #endif
 
@@ -41,8 +41,8 @@
 
 
 #ifdef USE_BOOST_PYTHON
-  #define MECHSYS_BPY_CATCH     catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; return 1; }
-  #define MECHSYS_BPY_MPI_CATCH catch (BPy::error_already_set) { std::cout<<"[1;31mFatal: "; PyErr_Print(); std::cout<<"[0m\n"; MPI::COMM_WORLD.Abort(666); }
+  #define MECHSYS_BPY_CATCH     catch (BPy::error_already_set) { printf("%sFatal: ",TERM_RED); PyErr_Print(); printf("%s\n",TERM_RST); return 1; }
+  #define MECHSYS_BPY_MPI_CATCH catch (BPy::error_already_set) { printf("%sFatal: ",TERM_RED); PyErr_Print(); printf("%s\n",TERM_RST); MPI::COMM_WORLD.Abort(666); }
 #else
   #define MECHSYS_BPY_CATCH
   #define MECHSYS_BPY_MPI_CATCH
@@ -53,19 +53,19 @@
                          MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
 
 
-#define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                             return 1; } \
-                      catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                       return 1; } \
-                      catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()<<"[0m\n";                return 1; } \
-                      MECHSYS_BPY_CATCH                                                                                          \
-                      catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n"; return 1; }
+#define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                                   return 1; } \
+                      catch (char const * m)     { printf("%sFatal: %s%s\n",TERM_RED,m       ,TERM_RST);                   return 1; } \
+                      catch (std::exception & e) { printf("%sFatal: %s%s\n",TERM_RED,e.what(),TERM_RST);                   return 1; } \
+                      MECHSYS_BPY_CATCH                                                                                                \
+                      catch (...)                { printf("%sFatal: Some exception (...) occurred%s\n",TERM_RED,TERM_RST); return 1; }
 
 
-#define MECHSYS_MPI_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                                                                MPI::COMM_WORLD.Abort(666); } \
-                          catch (char const * m)     { std::cout<<"[1;31mFatal: "<<m<<"[0m\n";                                                          MPI::COMM_WORLD.Abort(666); } \
-                          catch (std::exception & e) { std::cout<<"[1;31mFatal: "<<e.what()<<"[0m\n";                                                   MPI::COMM_WORLD.Abort(666); } \
-                          catch (MPI::Exception e)   { std::cout<<"[1;31mFatal: MPI Error # "<<e.Get_error_code()<<": "<<e.Get_error_string()<<"[0m\n"; MPI::COMM_WORLD.Abort(666); } \
-                          MECHSYS_BPY_MPI_CATCH                                                                                                                                           \
-                          catch (...)                { std::cout<<"[1;31mFatal: Some exception (...) occurred[0m\n";                                    MPI::COMM_WORLD.Abort(666); }
+#define MECHSYS_MPI_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                                                                 MPI::COMM_WORLD.Abort(666); } \
+                          catch (char const * m)     { printf("%sFatal: %s%s\n",                 TERM_RED,m,       TERM_RST);                                MPI::COMM_WORLD.Abort(666); } \
+                          catch (std::exception & e) { printf("%sFatal: %s%s\n",                 TERM_RED,e.what(),TERM_RST);                                MPI::COMM_WORLD.Abort(666); } \
+                          catch (MPI::Exception e)   { printf("%sFatal: MPI Error # %d : %s%s\n",TERM_RED,e.Get_error_code(),e.Get_error_string(),TERM_RST); MPI::COMM_WORLD.Abort(666); } \
+                          MECHSYS_BPY_MPI_CATCH                                                                                                                                            \
+                          catch (...)                { printf("%sFatal: Some exception (...) occurred%s\n",TERM_RED,TERM_RST);                               MPI::COMM_WORLD.Abort(666); }
 
 class Fatal
 {
@@ -74,7 +74,7 @@ public:
 	Fatal (String const & Fmt, ...);
 
 	// Methods
-	void   Cout () const { std::cout << "[1;31m" << "Fatal: " << _msg.CStr() << "[0m" << std::endl; }
+	void   Cout () const { printf("%sFatal: %s%s\n", TERM_RED, _msg.CStr(), TERM_RST); }
 	String Msg  () const { return _msg; }
 
 private:

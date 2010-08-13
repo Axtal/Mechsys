@@ -20,71 +20,20 @@ PROJECT                (MECHSYS)
 CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
 ENABLE_TESTING         ()
 
-# Flags
-OPTION(A_MAKE_VERBOSE       "Show additional messages during compilation/linking?" OFF)
-OPTION(A_MAKE_ALL_WARNINGS  "Make with all warnings (-Wall)"                       ON)
-OPTION(A_MAKE_DEBUG_SYMBOLS "Make with debug symbols (-g)"                         ON)
-OPTION(A_MAKE_PROFILING     "Make with profiling information (-pg)"                OFF)
-OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                                 OFF)
-OPTION(A_MAKE_WX_MONO       "Use wxWidgets monolithic libraries ?"                 ON)
-                                                                                   
-# Options                                                                          
-OPTION(A_USE_MPI            "Compile parallel code with OpenMPI ?"                 OFF)
-OPTION(A_USE_MTL4           "Use MTL4 instead of included Vector/Matrix library ?" ON)
-OPTION(A_USE_WXW            "Use wxWidgets ?"                                      OFF)
-                                                                                   
 # Features                                                                         
-OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)"                       OFF)
-OPTION(A_WITH_TEST          "Compile general tests"                                OFF)
-OPTION(A_WITH_TFEM          "Compile FEM tests"                                    OFF)
-OPTION(A_WITH_TLBM          "Compile LBM tests"                                    OFF)
-OPTION(A_WITH_TDEM          "Compile DEM tests"                                    OFF)
-OPTION(A_WITH_TSPH          "Compile SPH tests"                                    OFF)
+OPTION(A_WITH_PYTHON_MODULE "Create python module (mechsys)" OFF)
+OPTION(A_WITH_TEST          "Compile general tests"          OFF)
+OPTION(A_WITH_TFEM          "Compile FEM tests"              OFF)
+OPTION(A_WITH_TLBM          "Compile LBM tests"              OFF)
+OPTION(A_WITH_TDEM          "Compile DEM tests"              OFF)
+OPTION(A_WITH_TSPH          "Compile SPH tests"              OFF)
 
 # needed when building Debian package
 IF(NOT INSTALL_ROOT)
 	SET(INSTALL_ROOT /)
 ENDIF(NOT INSTALL_ROOT)
 
-ADD_DEFINITIONS     (-fmessage-length=0) # Each error message will appear on a single line; no line-wrapping will be done.
 INCLUDE_DIRECTORIES (${MECHSYS_SOURCE_DIR})
-
-### FLAGS ###############################################################################################
-
-IF(A_MAKE_VERBOSE)
-	SET(CMAKE_VERBOSE_MAKEFILE TRUE)
-ENDIF(A_MAKE_VERBOSE)
-
-IF(A_MAKE_ALL_WARNINGS)
-	ADD_DEFINITIONS(-Wall)
-ENDIF(A_MAKE_ALL_WARNINGS)
-
-IF(A_MAKE_DEBUG_SYMBOLS)
-	ADD_DEFINITIONS(-g)
-ENDIF(A_MAKE_DEBUG_SYMBOLS)
-
-IF(A_MAKE_PROFILING)
-	ADD_DEFINITIONS(-pg)
-    SET(LFLAGS "${LFLAGS} -pg")
-ENDIF(A_MAKE_PROFILING)
-
-IF(A_MAKE_OPTIMIZED)
-	ADD_DEFINITIONS(-O3)
-ENDIF(A_MAKE_OPTIMIZED)
-
-### OPTIONS #############################################################################################
-
-IF(A_USE_MPI)
-    ADD_DEFINITIONS (-DUSE_MPI)
-ENDIF(A_USE_MPI)
-
-IF(A_USE_MTL4)
-    ADD_DEFINITIONS (-DUSE_MTL4)
-ENDIF(A_USE_MTL4)
-
-IF(A_USE_WXW)
-    ADD_DEFINITIONS (-DUSE_MPI)
-ENDIF(A_USE_WXW)
 
 ### FEATURES ############################################################################################
 

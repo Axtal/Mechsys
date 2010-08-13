@@ -210,7 +210,7 @@ inline void Mixture::Solve(double tIni, double tFin, double dtOut)
 		if (t>=tout)
 		{
 			String buf;
-			buf.Printf("[1;34mMechSys[0m::LBM::Mixture::Solve: [1;31mt=%g   T=%d   TotalMass[0]=%g   TotalMass[1]=%g[0m\n", t, _T, _latts[0]->TotalMass(), _latts[1]->TotalMass());
+			buf.Printf("LBM::Mixture::Solve: mt=%g   T=%d   TotalMass[0]=%g   TotalMass[1]=%g\n", t, _T, _latts[0]->TotalMass(), _latts[1]->TotalMass());
 			std::cout << buf;
 			_T++;
 			tout += dtOut;

@@ -24,6 +24,54 @@
 #include <string>
 #include <cstdarg> // for va_list, va_start, va_end
 #include <cstdio>  // for vsnprintf
+#include <stdio.h> // for printf
+
+// color codes for the terminal
+#define TERM_RST           "[0m"
+#define TERM_CLR_BLACK     "[30m"
+#define TERM_CLR_BLACK_H   "[1;30m"
+#define TERM_CLR_WHITE     "[37m"
+#define TERM_CLR_WHITE_H   "[1;37m"
+#define TERM_CLR_RED       "[31m"
+#define TERM_CLR_RED_H     "[1;31m"
+#define TERM_CLR_GREEN     "[32m"
+#define TERM_CLR_GREEN_H   "[1;32m"
+#define TERM_CLR_YELLOW    "[33m"
+#define TERM_CLR_YELLOW_H  "[1;33m"
+#define TERM_CLR_BLUE      "[34m"
+#define TERM_CLR_BLUE_H    "[1;34m"
+#define TERM_CLR_MAGENTA   "[35m"
+#define TERM_CLR_MAGENTA_H "[1;35m"
+#define TERM_CLR_CYAN      "[36m"
+#define TERM_CLR_CYAN_H    "[1;36m"
+
+#ifdef TERM_WHITEBG
+  #define TERM_CLR1  TERM_CLR_BLACK_H
+  #define TERM_CLR2  TERM_CLR_BLACK
+  #define TERM_CLR3  TERM_CLR_BLUE
+  #define TERM_CLR4  TERM_CLR_CYAN
+  #define TERM_CLR5  TERM_CLR_MAGENTA
+  #define TERM_RED   TERM_CLR_RED_H
+  #define TERM_GREEN TERM_CLR_GREEN
+#else
+  #ifdef TERM_NOCOLORS
+    #define TERM_CLR1  ""
+    #define TERM_CLR2  ""
+    #define TERM_CLR3  ""
+    #define TERM_CLR4  ""
+    #define TERM_CLR5  ""
+    #define TERM_RED   ""
+    #define TERM_GREEN ""
+  #else
+    #define TERM_CLR1  TERM_CLR_YELLOW_H
+    #define TERM_CLR2  TERM_CLR_WHITE_H
+    #define TERM_CLR3  TERM_CLR_BLUE_H
+    #define TERM_CLR4  TERM_CLR_CYAN_H
+    #define TERM_CLR5  TERM_CLR_MAGENTA_H
+    #define TERM_RED   TERM_CLR_RED_H
+    #define TERM_GREEN TERM_CLR_GREEN_H
+  #endif
+#endif
 
 class String : public std::string
 {

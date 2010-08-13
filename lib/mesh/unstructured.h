@@ -41,7 +41,6 @@
 #include <sstream>  // for ostringstream
 #include <fstream>  // for ofstream
 #include <cfloat>   // for DBL_EPSILON
-#include <ctime>    // for clock
 #include <map>
 
 // Jonathan R Shewchuk' Triangle
@@ -65,6 +64,7 @@ extern "C"
 // MechSys
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
+#include <mechsys/util/stopwatch.h>
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/draw.h>
 
@@ -441,7 +441,7 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
     if (!IsSet()) throw new Fatal("Unstructured::Generate: Please, set the input data (regions,points,segments/facets) first.");
 
     // info
-    double start = std::clock();
+    Util::Stopwatch stopwatch;
 
     // parameters
     double min_angle = -1;
@@ -594,15 +594,10 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
     // info
     if (WithInfo)
     {
-        double total = std::clock() - start;
-        if (NDim==2) std::cout << "[1;33m\n--- Unstructured Mesh Generation --- (2D) ----------------------[0m\n";
-        else         std::cout << "[1;33m\n--- Unstructured Mesh Generation --- (3D) ----------------------[0m\n";
-        if (O2) std::cout << "[1;36m    Time elapsed (o2)     = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-        else    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-        if (NDim==2) std::cout <<         "    JRS' triangle command = " << prms                    << std::endl;
-        else         std::cout <<         "    HSI's tetgen command  = " << prms                    << std::endl;
-        std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
-        std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
+        printf("\n%s--- Unstructured Mesh Generation --- %dD --- O%d ----------------------------------%s\n",TERM_CLR1,NDim,(O2?2:1),TERM_RST);
+        printf("%s  %s    = %s%s\n",TERM_CLR4,(NDim==2?"Triangle command":"Tetgen command "),prms.CStr(),TERM_RST);
+        printf("%s  Num of cells       = %d%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+        printf("%s  Num of vertices    = %d%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
     }
 }
 

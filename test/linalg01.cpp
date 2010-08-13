@@ -24,6 +24,7 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
+#include <mechsys/util/stopwatch.h>
 
 using std::cout;
 using std::endl;
@@ -72,6 +73,8 @@ double CheckDet (char const * Key, Mat_t const & M, double CorrectDet, double To
 
 int main(int argc, char **argv) try
 {
+    Util::Stopwatch stopwatch;
+
     ///// SVD correct values //////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     Mat_t corInvA(2,2);

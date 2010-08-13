@@ -21,7 +21,7 @@
 #define MECHSYS_MUMPS_H
 
 // MUMPS
-#ifdef USE_MPI
+#ifdef HAS_MPI
  extern "C" {
    #include "dmumps_c.h"
  }
@@ -45,7 +45,7 @@ namespace MUMPS
  */
 inline void Solve (Sparse::Triplet<double,int> & A, Vec_t const & B, Vec_t & X, bool Prod=false)
 {
-#ifdef USE_MPI
+#ifdef HAS_MPI
     // collect B from all processors into X==RHS in processor # 0
     int neq = A.Rows();
     if (Prod)
@@ -107,7 +107,7 @@ inline void Solve (Sparse::Triplet<double,int> & A, Vec_t const & B, Vec_t & X, 
     MPI::COMM_WORLD.Bcast (X.data, neq, MPI::DOUBLE, /*from*/0);
 
 #else
-    throw new Fatal("MUMPS::Solve: This method requires the flag USE_MPI");
+    throw new Fatal("MUMPS::Solve: This method requires the flag HAS_MPI");
 #endif
 }
 

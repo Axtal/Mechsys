@@ -45,13 +45,13 @@ int main(int argc, char **argv) try
     int nprocs = 1;
     if (parallel)
     {
-#ifdef USE_MPI
+#ifdef HAS_MPI
         MPI::Init (argc, argv);
         my_id  = MPI::COMM_WORLD.Get_rank();
         nprocs = MPI::COMM_WORLD.Get_size();
         cout << "\n========================= parallel =========================" << endl;
 #else
-        throw new Fatal("main.cpp: this code wasn't compiled with USE_MPI ==> parallel version is not available");
+        throw new Fatal("main.cpp: this code wasn't compiled with HAS_MPI ==> parallel version is not available");
 #endif
     }
     else cout << "\n========================= serial ===========================" << endl;
@@ -121,7 +121,7 @@ int main(int argc, char **argv) try
     dom.PrintResults ("%12.6g", /*with_elems*/false);
 
     // end
-#ifdef USE_MPI
+#ifdef HAS_MPI
     if (parallel) MPI::Finalize();
 #endif
     return 0;

@@ -25,7 +25,6 @@
 #include <stdlib.h> // for M_PI
 #include <iostream>
 #include <fstream>
-#include <ctime>    // for std::clock
 #include <set>
 
 // Hdf5
@@ -42,6 +41,7 @@
 #include <mechsys/util/numstreams.h>
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/util/maps.h>
+#include <mechsys/util/stopwatch.h>
 
 namespace DEM
 {
@@ -198,8 +198,8 @@ inline Domain::~Domain ()
 inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char const * Type, size_t Randomseed, double fraction, double RminFraction)
 {
     // find radius from the edge's length
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Generating packing of spheres -------------[0m\n";
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Generating packing of spheres -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     srand(Randomseed);
     double R = L/(2.0*N);
     if (strcmp(Type,"Normal")==0)
@@ -238,15 +238,13 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
 
     }
     else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::GenRice (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction)
 {
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Generating packing of rices -------------[0m\n";
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Generating packing of 'rices' -----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     srand(Randomseed);
     double dL = L/N;
     for (size_t n=0; n<N*N*N; ++n) 
@@ -258,9 +256,7 @@ inline void Domain::GenRice (int Tag, double L, size_t N, double R, double rho, 
         pos += Vec3_t(2.0*i*dL, 2.0*j*dL, 2.0*k*dL);
         if (rand()<fraction*RAND_MAX) AddRice (Tag, pos, R, dL-2*R, rho);
     }
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf)
@@ -310,8 +306,8 @@ inline void Domain::GenBoundingBox (int InitialTag, double R, double Cf)
 inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool Cohesion, bool MC, double thickness)
 {
     // info
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Generating particles from mesh -----------------------------[0m\n";
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Generating particles from mesh ----------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     size_t IIndex = Particles.Size();
 
@@ -454,16 +450,14 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
     }
 
     // info
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, double fraction, char const *Type)
 {
     // info
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Generating particles from Voronoi tessellation -------------[0m\n";
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Generating particles from Voronoi tessellaton -------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     fpoint x,y,z,px,py,pz;
     container *cp = & VC;
@@ -494,13 +488,15 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, 
     } while((s=l1.inc(px,py,pz))!=-1);
 
     // info
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed, double fraction, double qin)
 {
+    // info
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Adding Voronoi particles packing --------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+
     srand(Randomseed);
     const double x_min=-Lx/2.0, x_max=Lx/2.0;
     const double y_min=-Ly/2.0, y_max=Ly/2.0;
@@ -521,10 +517,6 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
             }
         }
     }
-
-    // info
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Generating particles from Voronoi tessellation -------------[0m\n";
 
     fpoint x,y,z,px,py,pz;
     container *cp = & con;
@@ -557,10 +549,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     } while((s=l1.inc(px,py,pz))!=-1);
 
     // info
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
-
+    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 // Single particle addition
@@ -966,19 +955,17 @@ inline void Domain::Initialize (double dt)
         // initialize
         ResetInteractons();
         // info
-        double start = std::clock();
-        std::cout << "[1;33m\n--- Initializing particles -------------------------------------[0m\n";
+        Util::Stopwatch stopwatch;
+        printf("\n%s--- Initializing particles ------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
         // set flag
         Initialized = true;
 
         // info
         double Ekin, Epot, Etot;
         Etot = CalcEnergy (Ekin, Epot);
-        double total = std::clock() - start;
-        std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-        std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
-        std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
-        std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
+        printf("%s  Kinematic energy   = %g%s\n",TERM_CLR4, Ekin, TERM_RST);
+        printf("%s  Potential energy   = %g%s\n",TERM_CLR4, Epot, TERM_RST);
+        printf("%s  Total energy       = %g%s\n",TERM_CLR2, Etot, TERM_RST);
     }
     else
     {
@@ -1021,8 +1008,8 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     }
 
     // info
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Solving ----------------------------------------------------[0m\n";
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     // solve
     double t0   = Time;     // initial time
@@ -1155,11 +1142,9 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
     // info
     double Ekin, Epot, Etot;
     Etot = CalcEnergy (Ekin, Epot);
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;35m    Kinematic energy      = " << Ekin << "[0m\n";
-    std::cout << "[1;35m    Potential energy      = " << Epot << "[0m\n";
-    std::cout << "[1;35m    Total energy          = " << Etot << "[0m\n";
+    printf("%s  Kinematic energy   = %g%s\n",TERM_CLR4, Ekin, TERM_RST);
+    printf("%s  Potential energy   = %g%s\n",TERM_CLR4, Epot, TERM_RST);
+    printf("%s  Total energy       = %g%s\n",TERM_CLR2, Etot, TERM_RST);
 }
 
 inline void Domain::WritePOV (char const * FileKey)

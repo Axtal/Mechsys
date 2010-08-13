@@ -23,6 +23,7 @@
 // Mechsys
 #include <mechsys/sph/interacton.h>
 #include <mechsys/dem/graph.h>
+#include <mechsys/util/stopwatch.h>
 
 class SPHDomain
 {
@@ -101,9 +102,9 @@ inline void SPHDomain::AddBox(Vec3_t const & V, size_t nx, size_t ny, size_t nz,
 }
 
 inline void SPHDomain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho0, double R, size_t RandomSeed)
-{ 
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Generating random packing of spheres -------------[0m\n";
+{
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Generating random packing of spheres ----------------------------------------%s\n",TERM_CLR1,TERM_RST);
     const double x_min=-Lx/2.0+V(0), x_max=Lx/2.0+V(0);
     const double y_min=-Ly/2.0+V(1), y_max=Ly/2.0+V(1);
     const double z_min=-Lz/2.0+V(2), z_max=Lz/2.0+V(2);
@@ -122,9 +123,7 @@ inline void SPHDomain::AddRandomBox(Vec3_t const & V, double Lx, double Ly, doub
             }
         }
     }
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    std::cout << "[1;32m    Number of particles   = " << Particles.Size() << "[0m\n";
+    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void SPHDomain::StartAcceleration (Vec3_t const & a)
@@ -299,8 +298,8 @@ inline double SPHDomain::MaxDisplacement()
 
 inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * TheFileKey, bool RenderVideo)
 {
-    double start = std::clock();
-    std::cout << "[1;33m\n--- Solving  --------------------------------------[0m\n";
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Solving ---------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     idx_out = 0;
     double tout = Time;
 
@@ -346,8 +345,6 @@ inline void SPHDomain::Solve (double tf, double dt, double dtOut, char const * T
         }
         
     }
-    double total = std::clock() - start;
-    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 }
 
 #endif // MECHSYS_SPH_DOMAIN_H

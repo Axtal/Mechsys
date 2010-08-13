@@ -62,8 +62,7 @@
 #include <sstream>
 #include <cfloat>   // for DBL_EPSILON
 #include <cstdarg>  // for va_list, va_start, va_end
-#include <ctime>    // for std::clock
-#include <map>      // for std::clock
+#include <map>      // for std::map
 
 // MechSys
 #include <mechsys/mesh/mesh.h>
@@ -71,6 +70,7 @@
 #include <mechsys/util/array.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
+#include <mechsys/util/stopwatch.h>
 #include <mechsys/util/maps.h>
 
 namespace Mesh
@@ -574,7 +574,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
     Array<Vertex*> verts_m3;  // Z O2 Vertices (with duplicates)
 
     // info
-    double start = std::clock();
+    Util::Stopwatch stopwatch;
 
     // check
     if (Blks.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",Blks.Size());
@@ -916,15 +916,12 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
     // info
     if (WithInfo)
     {
-        double total = std::clock() - start;
-        std::cout << "[1;33m\n--- Structured Mesh Generation ---------------------------------[0m\n";
-        if (O2) std::cout << "[1;36m    Time elapsed (o2)     = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-        else    std::cout << "[1;36m    Time elapsed          = [1;31m" <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-        std::cout << "[1;35m    Number of comparisons = " << ncomp         << "[0m\n";
-        std::cout << "[1;35m    Number of duplicates  = " << ndupl         << "[0m\n";
-        std::cout << "[1;35m    Minimum diagonal      = " << min_diagonal  << "[0m\n";
-        std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
-        std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
+        printf("\n%s--- Structured Mesh Generation --- %dD --- O%d ------------------------------------%s\n",TERM_CLR1,NDim,(O2?2:1),TERM_RST);
+        printf("%s  Num of comparisons = %d%s\n", TERM_CLR5, (int)ncomp,        TERM_RST);
+        printf("%s  Num of duplicates  = %d%s\n", TERM_CLR5, (int)ndupl,        TERM_RST);
+        printf("%s  Min diagonal       = %g%s\n", TERM_CLR4, min_diagonal,      TERM_RST);
+        printf("%s  Num of cells       = %d%s\n", TERM_CLR2, (int)Cells.Size(), TERM_RST);
+        printf("%s  Num of vertices    = %d%s\n", TERM_CLR2, (int)Verts.Size(), TERM_RST);
     }
 }
 

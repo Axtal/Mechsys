@@ -22,14 +22,13 @@
 
 // Std Lib
 #include <cstring>  // for strcmp
-#include <ctime>    // for clock
 #include <iostream> // for cout
 
 // Blitz++
 #include <blitz/tinyvec-et.h>
 
 // MPI
-#ifdef USE_MPI
+#ifdef HAS_MPI
   #include <mpi.h>
 #endif
 
@@ -41,6 +40,7 @@
 #include <mechsys/linalg/sparse_matrix.h>
 #include <mechsys/linalg/umfpack.h>
 #include <mechsys/linalg/mumps.h>
+#include <mechsys/util/stopwatch.h>
 
 namespace FEM
 {
@@ -190,7 +190,7 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
 inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * Weights, bool NonLinWei)
 {
     // info
-    double start = std::clock();
+    Util::Stopwatch stopwatch;
 
     // initialize global matrices and vectors
     Initialize ();
@@ -199,7 +199,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
     bool show = false;
     if (FEM::Domain::PARA)
     {
-#if USE_MPI
+#if HAS_MPI
         if (MPI::COMM_WORLD.Get_rank()==0) show = true;
 #endif
     }
@@ -210,7 +210,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
         if      (Scheme==FE_t) str.Printf("FE");
         else if (Scheme==ME_t) str.Printf("ME");
         else if (Scheme==NR_t) str.Printf("NR");
-        std::cout << "\n[1;37m--- Stage solution --- (steady) --- (" << str << ") -------------------------------------------\n";
+        printf("\n%s--- Stage solution --- (steady) --- (%s) -------------------------------------------\n",TERM_CLR1,str.CStr());
         std::cout << Util::_10_6 << "Time" <<                                      Util::_8s <<"Norm(R)"        << Util::_4<<"NSS" << Util::_4<<"NIT" << "[0m" << std::endl;
         std::cout << Util::_10_6 <<  Time  << (ResidOK()?"[1;32m":"[1;31m") << Util::_8s << NormR <<"[0m" << Util::_4<<"---" << Util::_4<<"---" << std::endl;
     }
@@ -313,13 +313,6 @@ inline void Solver::Solve (size_t NInc, char const * FileKey, Array<double> * We
         tout = Time + dt;
     }
 
-    // info
-    if (show)
-    {
-        double total = std::clock() - start;
-        std::cout << Util::_reset << "[1;36m Time elapsed = " <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
-    }
-
     // clean up
     if (del_weights) delete Weights;
 }
@@ -331,7 +324,7 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut, char const *
 inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * FileKey)
 {
     // info
-    double start = std::clock();
+    Util::Stopwatch stopwatch;
 
     // initialize global matrices and vectors
     Initialize (/*Transient*/true);
@@ -384,10 +377,6 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
         // next tout
         tout = Time + dtOut;
     }
-
-    // info
-    double total = std::clock() - start;
-    std::cout << Util::_reset << "[1;36m Time elapsed = " <<static_cast<double>(total)/CLOCKS_PER_SEC<<" seconds[0m\n";
 }
 
 inline void Solver::AssembleKA ()
@@ -563,7 +552,7 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
     Sparse::AddMult (K22, dU, dF); // dF2 += K22*dU2
 
-#ifdef USE_MPI
+#ifdef HAS_MPI
     if (FEM::Domain::PARA)
     {
         // join dF
@@ -582,7 +571,7 @@ inline void Solver::UpdateElements (Vec_t const & dU, bool CalcFint)
     {
         if (FEM::Domain::PARA)
         {
-#ifdef USE_MPI
+#ifdef HAS_MPI
             Vec_t dFint(NEq), dFint_tmp(NEq);
             set_to_zero (dFint);
             for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->UpdateState (dU, &dFint);
@@ -605,7 +594,7 @@ inline void Solver::Initialize (bool Transient)
 {
     if (FEM::Domain::PARA)
     {
-#ifdef USE_MPI
+#ifdef HAS_MPI
         int my_id  = MPI::COMM_WORLD.Get_rank();
         int nprocs = MPI::COMM_WORLD.Get_size();
 
@@ -1012,7 +1001,7 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
 
         if (FEM::Domain::PARA)
         {
-#ifdef USE_MPI
+#ifdef HAS_MPI
             // set workspace: R
             set_to_zero (dF);
             for (size_t i=0; i<pEQ.Size(); ++i)

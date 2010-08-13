@@ -302,7 +302,7 @@ inline void Lattice::Solve(double tIni, double tFin, double dtOut)
 		if (t>=tout)
 		{
 			String buf;
-			buf.Printf("[1;34mMechSys[0m::LBM::Lattice::Solve: [1;31mt = %g   TotalMass = %g[0m\n", t, TotalMass());
+			buf.Printf("LBM::Lattice::Solve: mt = %g   TotalMass = %g\n", t, TotalMass());
 			std::cout << buf;
 			_T++;
 			tout += dtOut;

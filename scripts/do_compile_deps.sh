@@ -61,6 +61,8 @@ MTL4=mtl4
 SCALAPACK=scalapack_installer
 SCALAPACK_DIR=scalapack_installer_0.96
 MUMPS=MUMPS_4.9.2
+PROC_VER=3.2.8
+PROC=procps-$PROC_VER
 
 compile_scalapack() {
     LDIR=$MECHSYS_ROOT/pkg/$SCALAPACK_DIR/lib
@@ -73,6 +75,11 @@ compile_scalapack() {
 compile_mumps() {
     cp $MECHSYS_ROOT/mechsys/patches/mumps/Makefile.inc .
     make
+}
+
+proc_links() {
+    LDIR=$MECHSYS_ROOT/pkg/$PROC/proc
+    ln -s $LDIR/libproc-$PROC_VER.so $LDIR/libproc.so
 }
 
 download_and_compile() {
@@ -122,6 +129,13 @@ download_and_compile() {
             DO_PATCH=0
             DO_MAKE=0
             CMD=compile_mumps
+            ;;
+        proc)
+            PKG=$PROC
+            PKG_DIR=$PROC
+            LOCATION=http://procps.sourceforge.net/$PKG.tar.gz
+            DO_PATCH=0
+            CMD=proc_links
             ;;
         *)
             echo
@@ -214,6 +228,7 @@ download_and_compile voro
 download_and_compile mtl4
 download_and_compile scalapack
 download_and_compile mumps
+download_and_compile proc
 
 echo
 echo "Finished ###################################################################"

@@ -1531,9 +1531,9 @@ inline void Generic::Quad8ToTri6 ()
     for (size_t i=0; i<old_cells.Size(); ++i) delete old_cells[i];
 
     // info
-    std::cout <<         "    ----- After Quad8ToTri6 -----" << std::endl;
-    std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
-    std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
+    printf("%s  ------- After Quad8ToTri6 -------%s\n", TERM_GREEN, TERM_RST);
+    printf("%s  Num of cells       = %d%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+    printf("%s  Num of vertices    = %d%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
 }
 
 inline void Generic::Tri6ToTri15 ()
@@ -1626,9 +1626,9 @@ inline void Generic::Tri6ToTri15 ()
     }
 
     // info
-    std::cout <<         "    ----- After Tri6ToTri15 -----" << std::endl;
-    std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
-    std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
+    printf("%s  ------- After Tri6ToTri15 -------%s\n", TERM_GREEN, TERM_RST);
+    printf("%s  Num of cells       = %d%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+    printf("%s  Num of vertices    = %d%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
 }
 
 inline void Generic::Tri3ToTri6 ()
@@ -1686,9 +1686,9 @@ inline void Generic::Tri3ToTri6 ()
     }
 
     // info
-    std::cout <<         "    ----- After Tri3ToTri6 ------" << std::endl;
-    std::cout << "[1;32m    Number of cells       = " << Cells.Size() << "[0m" << std::endl;
-    std::cout << "[1;32m    Number of vertices    = " << Verts.Size() << "[0m" << std::endl;
+    printf("%s  ------- After Tri3ToTri6 --------%s\n", TERM_GREEN, TERM_RST);
+    printf("%s  Num of cells       = %d%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+    printf("%s  Num of vertices    = %d%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
 }
 
 inline void Generic::Tri6Shape (double r, double s, Vec_t & N) const

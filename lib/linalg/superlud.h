@@ -121,9 +121,9 @@ inline void Solve(int MyMinEq, int MyMaxEq, int MyNumEqs, int nProcs, int nDOFs,
 	int rank = MPI::COMM_WORLD.Get_rank();
 	//LinAlg::Matrix<double> D; AugLocalA.GetDense(D);
 	std::ostringstream oss;
-	//oss << "[1;32mProcessor #" << rank << "[0m LocalA=\n" << D << endl;
-	//oss << "[1;32mProcessor #" << rank << "[0m LocalA=\n" << AugLocalA << endl;
-	oss<<"[1;32mProcessor #" << rank << "[0m ";
+	//oss << "Processor #" << rank << " LocalA=\n" << D << endl;
+	//oss << "Processor #" << rank << " LocalA=\n" << AugLocalA << endl;
+	oss<<"Processor #" << rank << " ";
 	oss<<"Aq={"; for (int i=0; i<m_loc+1; ++i) { oss<<Aq[i];                 if (i!=m_loc)    oss<<","; }; oss<<"} ";
 	oss<<"Aj={"; for (int i=0; i<nz_loc;  ++i) { oss<<AugLocalA.Aj(start+i); if (i!=nz_loc-1) oss<<","; }; oss<<"} ";
 	oss<<"Ay={"; for (int i=0; i<nz_loc;  ++i) { oss<<AugLocalA.Ay(start+i); if (i!=nz_loc-1) oss<<","; }; oss<<"} ";

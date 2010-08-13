@@ -21,15 +21,17 @@
 #include <cmath>
 
 // MechSys
-#include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
+#include <mechsys/util/stopwatch.h>
 
 using std::cout;
 using std::endl;
 
 int main(int argc, char **argv) try
 {
+    Util::Stopwatch stopwatch;
+
     cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
 
     int a,b,c,d;
