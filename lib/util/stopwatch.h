@@ -20,6 +20,11 @@
 // mechsys
 #include <mechsys/util/string.h>
 
+#define CONVERT_TO_HMS(seconds,H,M,S)                         \
+    H  = (unsigned int) ((unsigned int)seconds / 3600);       \
+    M  = (unsigned int)(((unsigned int)seconds % 3600) / 60); \
+    S  = seconds-(unsigned int)(H*3600)-(unsigned int)(M*60);
+
 namespace Util
 {
 
@@ -48,11 +53,13 @@ private:
 inline Stopwatch::Stopwatch (bool OnlyRoot, bool MemUsage)
     : _only_root(OnlyRoot), _mem_usage(MemUsage)
 {
+    // initial time
     gettimeofday (&_start, NULL);
 }
 
 inline Stopwatch::~Stopwatch ()
 {
+    // skip if not root
     if (_only_root)
     {
 #ifdef HAS_MPI
@@ -60,23 +67,37 @@ inline Stopwatch::~Stopwatch ()
 #endif
     }
 
+    // final time
     timeval end;
     gettimeofday (&end, NULL);
 
-    double d_sta = _start.tv_sec + (_start.tv_usec/1000000.0);
-    double d_end =    end.tv_sec +    (end.tv_usec/1000000.0);
+    // interval
+    double dif = end.tv_sec + (end.tv_usec/1000000.0) - _start.tv_sec - (_start.tv_usec/1000000.0);
+    double cpu = CPUTime();
 
-    // This is the only way to get different values from local time. TODO: improve this
-    tm * t = localtime (&_start.tv_sec);
-    char t1[32];
-    sprintf (t1, "%d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
+    // time H:M:S
+    tm   t1 = (*(localtime (&_start.tv_sec)));
+    tm * t2 =    localtime (&   end.tv_sec);
 
-    t = localtime (&end.tv_sec);
-    char t2[32];
-    sprintf (t2, "%d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
+    // output time
+    if (dif>60)
+    {
+        int h,m,H,M;
+        double s,S;
+        CONVERT_TO_HMS (dif,h,m,s)
+        CONVERT_TO_HMS (cpu,H,M,S)
+        printf("%s  Elapsed time       = %dh%dm%gs  CPU %dh%dm%gs  (%d:%02d:%02d => %d:%02d:%02d)%s\n", TERM_CLR3, h,m,s, H,M,S,
+                t1. tm_hour, t1. tm_min, t1. tm_sec,
+                t2->tm_hour, t2->tm_min, t2->tm_sec, TERM_RST);
+    }
+    else
+    {
+        printf("%s  Elapsed time       = %.6lfs  CPU %.6lfs  (%d:%02d:%02d => %d:%02d:%02d)%s\n", TERM_CLR3, dif, cpu,
+                t1. tm_hour, t1. tm_min, t1. tm_sec,
+                t2->tm_hour, t2->tm_min, t2->tm_sec, TERM_RST);
+    }
 
-    printf("%s  Elapsed time       = %.6lf s  CPU %.6lf s  (%s => %s)%s\n", TERM_CLR3, d_end-d_sta, CPUTime(), t1, t2, TERM_RST);
-
+    // memory usage
     if (_mem_usage)
     {
 #ifdef HAS_PROC
