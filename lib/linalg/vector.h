@@ -150,13 +150,20 @@ inline Vector<Value_T>::Vector(int Size)
 }
 
 template<typename Value_T>
-inline Vector<Value_T>::Vector(Vector<Value_T> const & Other)
+inline Vector<Value_T>::Vector(Vector<Value_T> const & R)
+    : _size(R.Size()), _values(NULL), data(_values)
 {
-    _size = Other.Size();
-    _values = new Value_T [_size];
-    for (int i=0; i<_size; ++i)
-        _values[i] = Other._values[i];
-    data = _values;
+    if (_size>0)
+    {
+        // allocate memory
+        _values = new Value_T [_size];
+        data    = _values;
+
+        // copy
+        int i = 1;
+        int j = 1;
+        dcopy_ (&_size, R.GetPtr(), &i, _values, &j);
+    }
 }
 
 // Access methods
@@ -171,7 +178,7 @@ template<typename Value_T>
 inline const Value_T * Vector<Value_T>::GetPtr() const
 {
 #ifndef DNDEBUG
-    //if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized prior to get the pointer to its values.");
+    //if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized before getting the pointer to its values.");
 #endif
     return _values;
 }
@@ -180,7 +187,7 @@ template<typename Value_T>
 inline Value_T * Vector<Value_T>::GetPtr()
 {
 #ifndef DNDEBUG
-    //if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized prior to get the pointer to its values.");
+    //if (_values==NULL) throw new Fatal("Vector::Size: (_values==NULL). The vector must be resized before getting the pointer to its values.");
 #endif
     return _values;
 }
@@ -212,7 +219,7 @@ template<typename Value_T>
 inline void Vector<Value_T>::SetValues(Value_T Value)
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Vector::SetValues: (_values==NULL). The vector must be resized prior to set its values.");
+    if (_values==NULL) throw new Fatal("Vector::SetValues: (_values==NULL). The vector must be resized before setting its values.");
 #endif
     for (int i=0; i<_size; ++i)
         _values[i] = Value; 
@@ -246,7 +253,7 @@ template<typename Value_T>
 inline void Vector<Value_T>::operator+= (Vector<Value_T> const & R)
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Vector::operator+= (_values==NULL). The vector must be resized before calling this method.");
+    if (_values==NULL  ) return;//throw new Fatal("Vector::operator+= (_values==NULL). The vector must be resized before calling this method.");
     if (R.Size()!=_size) throw new Fatal("Vector::operator+= (R.Size()!=_size). The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d).",R.Size(),_size);
 #endif
     Value_T a = 1.0;
@@ -259,7 +266,7 @@ template<typename Value_T>
 inline void Vector<Value_T>::operator-= (Vector<Value_T> const & R)
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Vector::operator-= (_values==NULL). The vector must be resized before calling this method.");
+    if (_values==NULL  ) return;//throw new Fatal("Vector::operator-= (_values==NULL). The vector must be resized before calling this method.");
     if (R.Size()!=_size) throw new Fatal("Vector::operator-= (R.Size()!=_size). The number of components of the LHS (%d) must be equal to the number of components of the RHS (%d).",R.Size(),_size);
 #endif
     Value_T a = -1.0;
@@ -272,7 +279,7 @@ template<typename Value_T>
 inline void Vector<Value_T>::operator/= (Value_T const & Scalar)
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Vector::operator/= (_values==NULL). The vector must be resized before calling this method.");
+    if (_values==NULL) return;//throw new Fatal("Vector::operator/= (_values==NULL). The vector must be resized before calling this method.");
 #endif
     Value_T a = 1.0/Scalar;
     int     d = 1;
@@ -283,7 +290,7 @@ template<typename Value_T>
 inline void Vector<Value_T>::operator*= (Value_T const & Scalar)
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Vector::operator*= (_values==NULL). The vector must be resized before calling this method.");
+    if (_values==NULL) return;//throw new Fatal("Vector::operator*= (_values==NULL). The vector must be resized before calling this method.");
 #endif
     Value_T a = Scalar;
     int     d = 1;

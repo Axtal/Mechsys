@@ -163,14 +163,21 @@ inline Matrix<Value_T>::Matrix(int Rows, int Cols)
 }
 
 template<typename Value_T>
-inline Matrix<Value_T>::Matrix(Matrix<Value_T> const & Other)
+inline Matrix<Value_T>::Matrix(Matrix<Value_T> const & R)
+    : _rows(R.Rows()), _cols(R.Cols()), _values(NULL), data(_values)
 {
-    _rows   = Other.Rows();
-    _cols   = Other.Cols();
-    _values = new Value_T [_rows*_cols];
-    for (int i=0; i<_rows*_cols; ++i)
-        _values[i] = Other._values[i];
-    data = _values;
+    if (_rows>0 && _cols>0)
+    {
+        // allocate memory
+        _values = new Value_T [_rows*_cols];
+        data    = _values;
+
+        // copy
+        int n = _rows*_cols;
+        int i = 1;
+        int j = 1;
+        dcopy_ (&n, R.GetPtr(), &i, _values, &j);
+    }
 }
 
 // Access methods
@@ -270,7 +277,7 @@ template<typename Value_T>
 inline void Matrix<Value_T>::operator+= (Matrix<Value_T> const & R)
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Matrix::operator+= (_values==NULL). The matrix must be resized prior to use this method.");
+    if (_values==NULL  ) return;//throw new Fatal("Matrix::operator+= (_values==NULL). The matrix must be resized prior to use this method.");
     if (R.Rows()!=_rows) throw new Fatal("Matrix::operator+= (R.Rows()!=_rows). The number of Rows of the LHS (%d) must be equal to the number of rows of the RHS (%d).",R.Rows(),_rows);
     if (R.Cols()!=_cols) throw new Fatal("Matrix::operator+= (R.Rows()!=_cols). The number of Cols of the LHS (%d) must be equal to the number of cols of the RHS (%d).",R.Cols(),_cols);
 #endif
@@ -285,7 +292,7 @@ template<typename Value_T>
 inline void Matrix<Value_T>::operator-= (Matrix<Value_T> const & R)
 {
 #ifndef DNDEBUG
-    if (_values==NULL  ) throw new Fatal("Matrix::operator-= (_values==NULL). The matrix must be resized prior to use this method.");
+    if (_values==NULL  ) return;//throw new Fatal("Matrix::operator-= (_values==NULL). The matrix must be resized prior to use this method.");
     if (R.Rows()!=_rows) throw new Fatal("Matrix::operator-= (R.Rows()!=_rows). The number of Rows of the LHS (%d) must be equal to the number of rows of the RHS (%d).",R.Rows(),_rows);
     if (R.Cols()!=_cols) throw new Fatal("Matrix::operator-= (R.Rows()!=_cols). The number of Cols of the LHS (%d) must be equal to the number of cols of the RHS (%d).",R.Cols(),_cols);
 #endif
@@ -300,7 +307,7 @@ template<typename Value_T>
 inline void Matrix<Value_T>::operator/= (Value_T const & Scalar)
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Matrix::operator/= (_values==NULL). The matrix must be resized before calling this method.");
+    if (_values==NULL) return;//throw new Fatal("Matrix::operator/= (_values==NULL). The matrix must be resized before calling this method.");
 #endif
     int     n = _rows*_cols;
     Value_T a = 1.0/Scalar;
@@ -312,7 +319,7 @@ template<typename Value_T>
 inline void Matrix<Value_T>::operator*= (Value_T const & Scalar)
 {
 #ifndef DNDEBUG
-    if (_values==NULL) throw new Fatal("Matrix::operator*= (_values==NULL). The matrix must be resized before calling this method.");
+    if (_values==NULL) return;//throw new Fatal("Matrix::operator*= (_values==NULL). The matrix must be resized before calling this method.");
 #endif
     int     n = _rows*_cols;
     Value_T a = Scalar;
