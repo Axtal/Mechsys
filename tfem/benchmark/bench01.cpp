@@ -32,7 +32,11 @@ int main(int argc, char **argv) try
 {
     // time mpirun -np 4 ./bench01 1 0 1 0 10
     // time ./bench01 0 0 1 0 10
-    
+    // time ./bench01 0 0 1 0 17/18            => UMFPACK out of memory
+    // time mpirun -np 4 ./bench01 1 0 1 0 19  => Error with Array (own implementation gives wrong residual. Sometimes UMFPACK fails)
+    // time mpirun -np 4 ./bench01 1 0 1 0 20  => Error with Array (own implementation fails eventually, std::vector gives wrong residual)
+    // time mpirun -np 4 ./bench01 1 0 1 0 15  => Segfault (with std::vector)
+
     // input
     bool parallel  = false;
     bool mixed     = false;
@@ -89,7 +93,7 @@ int main(int argc, char **argv) try
                   ,'  |            ,'  |
                 ,'    | -60   -10,'    |
               ,'      |        ,'      |
-            5'===============6'        |
+            5'===============6(-7)     |
             |         |      |    -40  |
             |    -30  |      |         |
             |         0- - - | -  - - -3
@@ -107,12 +111,13 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain::PARA = parallel;
+    Array<int> out_verts(-7,true);
     Dict prps, mdls, inis;
     double prob = (mixed ? (usigeps ? PROB("USigEps") : PROB("USig")) : PROB("Equilib"));
     prps.Set (-1, "prob geom d3d", prob, GEOM("Hex20"), 1.);
     if (nonlin) mdls.Set (-1, "name K0 G0 alp bet d3d", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
     else        mdls.Set (-1, "name E nu d3d", MODEL("LinElastic"), 1000.0, 0.2, 1.);
-    FEM::Domain dom(mesh, prps, mdls, inis);
+    FEM::Domain dom(mesh, prps, mdls, inis, fkey.CStr(), &out_verts);
 
     // solver
     FEM::Solver sol(dom);

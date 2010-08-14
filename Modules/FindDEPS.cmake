@@ -25,7 +25,7 @@ OPTION(A_MAKE_OPTIMIZED     "Make optimized (-O3)"                              
 OPTION(A_MAKE_WXW_MONO      "Use wxWidgets monolithic libraries ?"                 ON)
 OPTION(A_MAKE_TERM_WHITEBG  "Select colors for terminal with white background ?"   OFF)
 OPTION(A_MAKE_TERM_NOCOLORS "Don't use colors when printing to terminal ?"         OFF)
-OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     OFF)
+OPTION(A_MAKE_STDVECTOR     "Use std::vector instead of own implemenatation ?"     ON)
                                                                                    
 # Options                                                                          
 OPTION(A_USE_MPI            "Use OpenMPI ? "                                       OFF)

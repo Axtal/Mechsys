@@ -70,20 +70,20 @@ public:
     // Methods
     void SetBCs       (Dict const & BCs);
     void ClrBCs       ();
-    void Gravity      ();                                                    ///< Apply gravity
-    void Deactivate   (int EleTag);                                          ///< Deactivate all elements with EleTag
-    void SetUVals     (SDPair const & UVals);                                ///< Set U values
-    void OutResults   (double Time, Vec_t const & F_int) const;              ///< Do output results
-    void PrintResults (char const * NF="%15.6g", bool WithElems=true) const; ///< Print results
-    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;   ///< At nodes
+    void Gravity      ();                                                        ///< Apply gravity
+    void Deactivate   (int EleTag);                                              ///< Deactivate all elements with EleTag
+    void SetUVals     (SDPair const & UVals);                                    ///< Set U values
+    void OutResults   (double Time, Vec_t const & F_int) const;                  ///< Do output results
+    void PrintResults (char const * NF="%15.6g", bool WithElems=true) const;     ///< Print results
+    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;       ///< At nodes
     bool CheckError   (Table const & NodSol, Table const & EleSol, 
-                       SDPair const & NodTol, SDPair const & EleTol) const;  ///< At nodes and centroid
-    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;   ///< At integration points
+                       SDPair const & NodTol, SDPair const & EleTol) const;      ///< At nodes and centroid
+    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;       ///< At integration points
     void WriteMPY     (char const * FileKey, double SFCoef=1.0, bool PNG=false,
-                       char const * Extra=NULL) const;                       ///< SFCoef: Scale-factor coefficient
-    void AvailableData();                                                    ///< Check available data and resize results matrices
-    void NodalResults () const;                                              ///< Extrapolate results from element to nodes
-    void WriteVTU     (char const * FileKey) const;                          ///< Write file for ParaView
+                       char const * Extra=NULL) const;                           ///< SFCoef: Scale-factor coefficient
+    void AvailableData();                                                        ///< Check available data and resize results matrices
+    void NodalResults () const;                                                  ///< Extrapolate results from element to nodes
+    void WriteVTU     (char const * FileKey) const;                              ///< Write file for ParaView
 
     // Data
     Dict          const & Prps;        ///< Element properties
@@ -253,18 +253,6 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
                 std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
                 OutNods.Push (Nods.Last());
                 FilNods.Push (of);
-                (*of) << Util::_8s << "Time";
-                (*of) << Util::_8s << "x";
-                (*of) << Util::_8s << "y";  if (NDim==3)
-                (*of) << Util::_8s << "z";
-                for (size_t k=0; k<Nods.Last()->nDOF(); ++k) (*of) << Util::_8s << Nods.Last()->UMap.Keys[k];
-                for (size_t k=0; k<Nods.Last()->nDOF(); ++k) (*of) << Util::_8s << Nods.Last()->FMap.Keys[k];
-                for (size_t k=0; k<Nods.Last()->nDOF(); ++k)
-                {
-                    buf.Printf ("%s_int", Nods.Last()->FMap.Keys[k].CStr());
-                    (*of) << Util::_8s << buf;
-                }
-                (*of) << "\n";
             }
         }
     }
@@ -315,14 +303,6 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
                     std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
                     OutEles.Push (Eles.Last());
                     FilEles.Push (of);
-                    Array<String> keys;
-                    Eles.Last()->StateKeys (keys);
-                    (*of) << Util::_8s << "Time";
-                    (*of) << Util::_8s << "x";
-                    (*of) << Util::_8s << "y";  if (NDim==3)
-                    (*of) << Util::_8s << "z";
-                    for (size_t j=0; j<keys.Size(); ++j) (*of) << Util::_8s << keys[j];
-                    (*of) << "\n";
                 }
             }
         }
@@ -552,6 +532,9 @@ inline void Domain::SetBCs (Dict const & BCs)
 
     // check available data
     AvailableData ();
+
+    // write header to output files
+    // TODO: this should be done at each stage, since new data may become available
 }
 
 inline void Domain::ClrBCs ()
@@ -616,6 +599,22 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     // nodes
     for (size_t i=0; i<OutNods.Size(); ++i)
     {
+        if (Time<1.0e-14)
+        {
+            String buf;
+            (*FilNods[i]) << Util::_8s << "Time";
+            (*FilNods[i]) << Util::_8s << "x";
+            (*FilNods[i]) << Util::_8s << "y";  if (NDim==3)
+            (*FilNods[i]) << Util::_8s << "z";
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->UMap.Keys[j];
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->FMap.Keys[j];
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j)
+            {
+                buf.Printf ("%s_int", OutNods[i]->FMap.Keys[j].CStr());
+                (*FilNods[i]) << Util::_8s << buf;
+            }
+            (*FilNods[i]) << "\n";
+        }
         (*FilNods[i]) << Util::_8s << Time;
         (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(0);
         (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(1);  if (NDim==3)
@@ -629,6 +628,17 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     // elements
     for (size_t i=0; i<OutEles.Size(); ++i)
     {
+        if (Time<1.0e-14)
+        {
+            Array<String> keys;
+            OutEles[i]->StateKeys (keys);
+            (*FilEles[i]) << Util::_8s << "Time";
+            (*FilEles[i]) << Util::_8s << "x";
+            (*FilEles[i]) << Util::_8s << "y";  if (NDim==3)
+            (*FilEles[i]) << Util::_8s << "z";
+            for (size_t j=0; j<keys.Size(); ++j) (*FilEles[i]) << Util::_8s << keys[j];
+            (*FilEles[i]) << "\n";
+        }
         (*FilEles[i]) << Util::_8s << Time;
         SDPair dat;
         Vec_t  Xct;
