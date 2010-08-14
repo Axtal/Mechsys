@@ -17,17 +17,10 @@
 ########################################################################
 
 SET(TESTS
-  arch
-  beam01
-  beam02
-  labtest
-  oneelem
-  shapefun)
+    bench01)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)
-
-SUBDIRS (benchmark bhatti nonlinear sloan smith_griffiths transient mixed parallel)

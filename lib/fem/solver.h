@@ -1264,7 +1264,7 @@ inline void Solver::_time_print (char const * Comment)
         printf("\n%s--- Stage solution --- %s -----------------------------------------%s\n",TERM_CLR1,Comment,TERM_RST);
         printf("%s%10s  %12s  %4s  %4s%s\n",TERM_CLR2,"Time","Norm(R)","NSS","NIT",TERM_RST);
     }
-    printf("%10.6f  %s%8e%s  %4d  %4d\n",Time,(ResidOK()?TERM_GREEN:TERM_RED),NormR,TERM_RST,Stp,It);
+    printf("%10.6f  %s%8e%s  %4zd  %4zd\n",Time,(ResidOK()?TERM_GREEN:TERM_RED),NormR,TERM_RST,Stp,It);
 }
 
 }; // namespace FEM

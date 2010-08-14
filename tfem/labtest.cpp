@@ -167,7 +167,7 @@ int main(int argc, char **argv) try
         //bcs.Set(-40, "qn",  0.0); // delta pressure on the y-side (keep it constant)
         bcs.Set(-60, "uz", -0.07);
         dom.SetBCs (bcs);
-        sol.Solve  (/*NDiv*/20, NULL,NULL,true);
+        sol.Solve  (/*NDiv*/20);
     }
     else
     {
@@ -186,7 +186,7 @@ int main(int argc, char **argv) try
             bcs.Set(-60, "qn", -dqn);
         }
         dom.SetBCs (bcs);
-        sol.Solve  (/*NDiv*/20, NULL,NULL,true);
+        sol.Solve  (/*NDiv*/20);
 
         // TODO: crazy behaviour
         //bcs.Set(-60, "uz", -uz);

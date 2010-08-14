@@ -44,6 +44,10 @@
 #define TERM_CLR_MAGENTA_H "[1;35m"
 #define TERM_CLR_CYAN      "[36m"
 #define TERM_CLR_CYAN_H    "[1;36m"
+#define TERM_WHITE_BLUE    "[1;37;44m"
+#define TERM_YELLOW_BLUE   "[1;33;44m"
+#define TERM_YELLOW_BLACK  "[1;33;40m"
+#define TERM_BLACK_WHITE   "[1;30;47m"
 
 #ifdef TERM_WHITEBG
   #define TERM_CLR1  TERM_CLR_BLACK_H
