@@ -216,7 +216,7 @@ public:
     void SetFac (size_t iFac, int FTag, Array<int> const & Polygon1, Array<int> const & Polygon2);
 
     // Methods
-    void Generate (bool O2=false, double GlobalMaxArea=-1, bool WithInfo=true, bool Quiet=true); ///< Generate
+    void Generate (bool O2=false, double GlobalMaxArea=-1, bool Quiet=true);    ///< Generate
     void WritePLY (char const * FileKey, bool Blender=true);                    ///< (.ply)
     void GenBox   (bool O2=false, double MaxVolume=-1.0,
                    double Lx=1.0, double Ly=1.0, double Lz=1.0);                ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
@@ -435,13 +435,13 @@ inline void Unstructured::SetFac (size_t iFac, int FTag, Array<int> const & Poly
     if ((int)iFac==Pin.numberoffacets-1) _lst_fac_set = true;
 }
 
-inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo, bool Quiet)
+inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool Quiet)
 {
     // check
     if (!IsSet()) throw new Fatal("Unstructured::Generate: Please, set the input data (regions,points,segments/facets) first.");
 
     // info
-    Util::Stopwatch stopwatch;
+    Util::Stopwatch stopwatch(/*only_root*/!WithInfo);
 
     // parameters
     double min_angle = -1;

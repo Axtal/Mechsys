@@ -193,7 +193,7 @@ class Generic
 {
 public:
     // Constructor
-    Generic (int TheNDim) : NDim(TheNDim), IsShell(false) {}
+    Generic (int TheNDim) : NDim(TheNDim), IsShell(false), WithInfo(true) {}
 
     // Destructor
     virtual ~Generic () { Erase(); }
@@ -251,6 +251,7 @@ public:
     Array<Cell*>   TgdCells;  ///< Tagged Cells
     BryCell_t      Bry2Cells; ///< map: bry (edge/face ids) => neighbours cells
     Pin_t          Pins;      ///< Pins
+    bool           WithInfo;  ///< Output information ?
 
 #ifdef USE_BOOST_PYTHON
     void PySetCell       (int iCell, int Tag, BPy::list const Con) { SetCell (iCell, Tag, Array<int>(Con)); }

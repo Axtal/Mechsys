@@ -23,6 +23,7 @@
 // MechSys
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
+#include <mechsys/util/array.h>
 #include <mechsys/util/stopwatch.h>
 
 using std::cout;
@@ -52,6 +53,23 @@ int main(int argc, char **argv) try
     cout << "Is 'Fx' in Keys ? => " << (Util::HasKey(keys,"Fx") ? " YES " : " NO ") << endl;
     cout << "Is 'fX' in Keys ? => " << (Util::HasKey(keys,"fX") ? " YES " : " NO ") << endl;
     cout << "Is 'uy' in Keys ? => " << (Util::HasKey(keys,"uy") ? " YES " : " NO ") << endl;
+
+    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+
+    Array<int> A(7); A = 1, 4, 2, 6, 0, 3, -3;
+    long pos = A.Find(8);
+    cout << "A         = " << A << endl;
+    cout << "Is 8 in A = " << (pos<0 ? "false" : "true: pos = ");
+    if (pos>=0) cout << pos << endl;
+    else cout << endl;
+    pos = A.Find(6);
+    cout << "Is 6 in A = " << (pos<0 ? "false" : "true: pos = ");
+    if (pos>=0) cout << pos << endl;
+    else cout << endl;
+    cout << "min(A)    = " << A[A.Min()] << endl;
+    cout << "First(A)  = " << (*A.GetPtr()) << endl;
+    cout << "Last(A)   = " << A.Last() << endl;
+    cout << endl;
 
     return 0;
 }

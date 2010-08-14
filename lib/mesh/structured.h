@@ -181,15 +181,15 @@ public:
     ~Structured () { Erase(); }
 
     // Methods
-    void Generate  (Array<Block> const & Blks, bool O2=false, bool WithInfo=true); ///< Boundary marks are set first for Faces, then Edges, then Vertices (if any)
+    void Generate  (Array<Block> const & Blks, bool O2=false);                      ///< Boundary marks are set first for Faces, then Edges, then Vertices (if any)
     void GenBox    (bool O2=true, int Nx=2,      int Ny=2,      int Nz=2,
-                               double Lx=1.0, double Ly=1.0, double Lz=1.0);       ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
+                               double Lx=1.0, double Ly=1.0, double Lz=1.0);        ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
     void GenQRing  (bool O2=true, int Nx=2, int Ny=2, double r=1.0, double R=2.0,
                     size_t Nb=2, double Ax=1.0, bool NonLin=false,
-                    char const * WeightsX=NULL);                                   ///< Generate a quarter of a ring
+                    char const * WeightsX=NULL);                                    ///< Generate a quarter of a ring
     void GenQRing  (bool O2, int Nx, int Ny, int Nz, double r, double R, double t); ///< Generate a quarter of a 3D ring (t=thickness)
     void GenQDisk  (bool O2, int Nx1, int Nx2, int Ny, double r, double R);         ///< Generate a quarter of a disk
-    void ShapeFunc (double r, double s, double t);                                 ///< Calculate shape function. Return results on N
+    void ShapeFunc (double r, double s, double t);                                  ///< Calculate shape function. Return results on N
 
     // Data
     Vec_t N; ///< Shape functions
@@ -564,7 +564,7 @@ inline void Block::PySet (BPy::dict const & Dat)
 //////////////////////////////////////////////////////////////////////////////////// Structured: Implementation /////////
 
 
-inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithInfo)
+inline void Structured::Generate (Array<Block> const & Blks, bool O2)
 {
     // data
     Array<Vertex*> verts;     // Vertices (with duplicates)
@@ -574,7 +574,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
     Array<Vertex*> verts_m3;  // Z O2 Vertices (with duplicates)
 
     // info
-    Util::Stopwatch stopwatch;
+    Util::Stopwatch stopwatch(/*only_root*/!WithInfo);
 
     // check
     if (Blks.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",Blks.Size());

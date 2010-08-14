@@ -189,8 +189,12 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
 {
     // info
-    Util::Stopwatch stopwatch;
-    printf("\n%s--- Domain --- allocating nodes and elements ---------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    Util::Stopwatch stopwatch(/*only_root*/PARA);
+    bool root = true;
+#ifdef HAS_MPI
+    if (PARA && MPI::COMM_WORLD.Get_rank()!=0) root = false;
+#endif
+    if (root) printf("\n%s--- Domain --- allocating nodes and elements ---------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     // allocate models
     for (size_t i=0; i<TheMdls.Keys.Size(); ++i)

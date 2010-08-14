@@ -713,7 +713,7 @@ inline void Solver::Initialize (bool Transient)
 
     // number of extra non-zero values due to Lagrange multipliers
     size_t nzlag = nlag_pins*2*Dom.NDim + nlag_insu*2*Dom.NDim;
-    
+
     // find total number of non-zero entries, including duplicates, and assign active elements
     size_t K11_size = 0;
     size_t K12_size = 0;

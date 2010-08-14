@@ -30,6 +30,9 @@ using FEM::GEOM;
 
 int main(int argc, char **argv) try
 {
+    // time mpirun -np 4 ./bench01 1 0 1 0 10
+    // time ./bench01 0 0 1 0 10
+    
     // input
     bool parallel  = false;
     bool mixed     = false;
@@ -52,15 +55,17 @@ int main(int argc, char **argv) try
     MECHSYS_CATCH_PARALLEL = parallel;
 
     // mpi
-    int my_id  = -1;
-    int nprocs = 1;
+    int  my_id  = -1;
+    int  nprocs = 1;
+    bool root   = true;
     if (parallel)
     {
 #ifdef HAS_MPI
         MECHSYS_MPI_INIT
         my_id  = MPI::COMM_WORLD.Get_rank();
         nprocs = MPI::COMM_WORLD.Get_size();
-        printf("\n%s===================================== Parallel =====================================%s\n",TERM_YELLOW_BLUE,TERM_RST);
+        if (my_id!=0) root = false;
+        if (root) printf("\n%s===================================== Parallel =====================================%s\n",TERM_YELLOW_BLUE,TERM_RST);
 #else
         throw new Fatal("main.cpp: this code wasn't compiled with HAS_MPI ==> parallel version is not available");
 #endif
@@ -72,10 +77,10 @@ int main(int argc, char **argv) try
     fkey.Printf ("bench01_%d", my_id);
 
 #ifdef USE_MTL4
-    printf("\n%s--------------------------------------- MTL4 ---------------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
+    if (root) printf("\n%s--------------------------------------- MTL4 ---------------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
     fkey.append("MTL4");
 #else
-    printf("\n%s---------------------------------- Raul's LaExpr -----------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
+    if (root) printf("\n%s---------------------------------- Raul's LaExpr -----------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
 #endif
 
     // mesh
@@ -94,6 +99,7 @@ int main(int argc, char **argv) try
             | ,'             | ,'
             1----------------2'                   */
     Mesh::Structured mesh(/*NDim*/3);
+    mesh.WithInfo = root;
     mesh.GenBox (/*O2*/true, nxyz,nxyz,nxyz, 1.0,1.0,1.0);
     if (parallel) mesh.PartDomain (nprocs, part_full);
     buf = fkey + "_mesh";
