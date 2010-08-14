@@ -31,6 +31,7 @@
 #include <mechsys/util/maps.h>
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/numstreams.h>
+#include <mechsys/util/stopwatch.h>
 #include <mechsys/models/model.h>
 #include <mechsys/fem/element.h>
 #include <mechsys/mesh/mesh.h>
@@ -187,6 +188,10 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FKey, Array<int> const * OutV, Array<int> const * OutC)
     : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
 {
+    // info
+    Util::Stopwatch stopwatch;
+    printf("\n%s--- Domain --- allocating nodes and elements ---------------------------------------%s\n",TERM_CLR1,TERM_RST);
+
     // allocate models
     for (size_t i=0; i<TheMdls.Keys.Size(); ++i)
     {

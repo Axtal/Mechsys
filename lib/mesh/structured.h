@@ -916,12 +916,12 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2, bool WithI
     // info
     if (WithInfo)
     {
-        printf("\n%s--- Structured Mesh Generation --- %dD --- O%d ------------------------------------%s\n",TERM_CLR1,NDim,(O2?2:1),TERM_RST);
-        printf("%s  Num of comparisons = %d%s\n", TERM_CLR5, (int)ncomp,        TERM_RST);
-        printf("%s  Num of duplicates  = %d%s\n", TERM_CLR5, (int)ndupl,        TERM_RST);
-        printf("%s  Min diagonal       = %g%s\n", TERM_CLR4, min_diagonal,      TERM_RST);
-        printf("%s  Num of cells       = %d%s\n", TERM_CLR2, (int)Cells.Size(), TERM_RST);
-        printf("%s  Num of vertices    = %d%s\n", TERM_CLR2, (int)Verts.Size(), TERM_RST);
+        printf("\n%s--- Structured Mesh Generation --- %dD --- O%d ---------------------------------------%s\n",TERM_CLR1,NDim,(O2?2:1),TERM_RST);
+        printf("%s  Num of comparisons = %ld%s\n", TERM_CLR5, ncomp,        TERM_RST);
+        printf("%s  Num of duplicates  = %ld%s\n", TERM_CLR5, ndupl,        TERM_RST);
+        printf("%s  Min diagonal       = %g%s\n",  TERM_CLR4, min_diagonal, TERM_RST);
+        printf("%s  Num of cells       = %zd%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+        printf("%s  Num of vertices    = %zd%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
     }
 }
 

@@ -540,6 +540,10 @@ inline void Solver::UpdateElements (Vec_t const & dU, bool CalcFint)
 
 inline void Solver::Initialize (bool Transient)
 {
+    // info
+    Util::Stopwatch stopwatch(/*only_root*/FEM::Domain::PARA);
+    if (Root) printf("\n%s--- Solver --- initializing --------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+
     if (FEM::Domain::PARA)
     {
 #ifdef HAS_MPI
@@ -786,6 +790,13 @@ inline void Solver::Initialize (bool Transient)
 
     // calc residual
     _cal_resid ();
+
+    // info
+    if (Root)
+    {
+        printf("%s  Num of DOFs (NEq)  = %d%s\n", TERM_CLR2, NEq, TERM_RST);
+        printf("%s  Num of non-zeros   = %d%s\n", TERM_CLR2, K11_size+pEQ.Size()+nzlag, TERM_RST);
+    }
 }
 
 inline void Solver::SetScheme (char const * StrScheme)

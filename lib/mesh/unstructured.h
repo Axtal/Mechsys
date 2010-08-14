@@ -594,10 +594,10 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool WithInfo
     // info
     if (WithInfo)
     {
-        printf("\n%s--- Unstructured Mesh Generation --- %dD --- O%d ----------------------------------%s\n",TERM_CLR1,NDim,(O2?2:1),TERM_RST);
+        printf("\n%s--- Unstructured Mesh Generation --- %dD --- O%d -------------------------------------%s\n",TERM_CLR1,NDim,(O2?2:1),TERM_RST);
         printf("%s  %s    = %s%s\n",TERM_CLR4,(NDim==2?"Triangle command":"Tetgen command "),prms.CStr(),TERM_RST);
-        printf("%s  Num of cells       = %d%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
-        printf("%s  Num of vertices    = %d%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
+        printf("%s  Num of cells       = %zd%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+        printf("%s  Num of vertices    = %zd%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
     }
 }
 

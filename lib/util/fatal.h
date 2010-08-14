@@ -25,47 +25,41 @@
 #include <cstdarg>  // for va_list, va_start, va_end
 #include <exception>
 
-// Boost::Python
-#ifdef USE_BOOST_PYTHON
-  #include <boost/errors.hpp>
-  namespace BPy = boost::python;
-#endif
+// MechSys
+#include <mechsys/util/string.h>
+
+// Global variable to tell 'catch' that parallel code is activated
+bool MECHSYS_CATCH_PARALLEL = false;
 
 // MPI
 #ifdef HAS_MPI
   #include <mpi.h>
+  #define MECHSYS_FINALIZE  if (MECHSYS_CATCH_PARALLEL) MPI::COMM_WORLD.Abort(666); return 1;
+  #define MECHSYS_MPI_CATCH catch (MPI::Exception e) { printf("%sFatal: MPI Error # %d : %s%s\n",TERM_RED,e.Get_error_code(),e.Get_error_string(),TERM_RST); MECHSYS_FINALIZE }
+  #define MECHSYS_MPI_INIT  MPI::Init(argc, argv); \
+                            MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
+#else
+  #define MECHSYS_FINALIZE  return 1;
+  #define MECHSYS_MPI_CATCH
+  #define MECHSYS_MPI_INIT
 #endif
 
-// MechSys
-#include <mechsys/util/string.h>
-
-
+// Boost::Python
 #ifdef USE_BOOST_PYTHON
-  #define MECHSYS_BPY_CATCH     catch (BPy::error_already_set) { printf("%sFatal: ",TERM_RED); PyErr_Print(); printf("%s\n",TERM_RST); return 1; }
-  #define MECHSYS_BPY_MPI_CATCH catch (BPy::error_already_set) { printf("%sFatal: ",TERM_RED); PyErr_Print(); printf("%s\n",TERM_RST); MPI::COMM_WORLD.Abort(666); }
+  #include <boost/errors.hpp>
+  namespace BPy = boost::python;
+  #define MECHSYS_BPY_CATCH catch (BPy::error_already_set) { printf("%sFatal: ",TERM_RED); PyErr_Print(); printf("%s\n",TERM_RST); MECHSYS_FINALIZE }
 #else
   #define MECHSYS_BPY_CATCH
-  #define MECHSYS_BPY_MPI_CATCH
 #endif
 
-
-#define MECHSYS_MPI_INIT MPI::Init(argc, argv); \
-                         MPI::COMM_WORLD.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
-
-
-#define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                                   return 1; } \
-                      catch (char const * m)     { printf("%sFatal: %s%s\n",TERM_RED,m       ,TERM_RST);                   return 1; } \
-                      catch (std::exception & e) { printf("%sFatal: %s%s\n",TERM_RED,e.what(),TERM_RST);                   return 1; } \
-                      MECHSYS_BPY_CATCH                                                                                                \
-                      catch (...)                { printf("%sFatal: Some exception (...) occurred%s\n",TERM_RED,TERM_RST); return 1; }
-
-
-#define MECHSYS_MPI_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                                                                 MPI::COMM_WORLD.Abort(666); } \
-                          catch (char const * m)     { printf("%sFatal: %s%s\n",                 TERM_RED,m,       TERM_RST);                                MPI::COMM_WORLD.Abort(666); } \
-                          catch (std::exception & e) { printf("%sFatal: %s%s\n",                 TERM_RED,e.what(),TERM_RST);                                MPI::COMM_WORLD.Abort(666); } \
-                          catch (MPI::Exception e)   { printf("%sFatal: MPI Error # %d : %s%s\n",TERM_RED,e.Get_error_code(),e.Get_error_string(),TERM_RST); MPI::COMM_WORLD.Abort(666); } \
-                          MECHSYS_BPY_MPI_CATCH                                                                                                                                            \
-                          catch (...)                { printf("%sFatal: Some exception (...) occurred%s\n",TERM_RED,TERM_RST);                               MPI::COMM_WORLD.Abort(666); }
+// Catch structure
+#define MECHSYS_CATCH catch (Fatal      * e)     { e->Cout();  delete e;                                                   MECHSYS_FINALIZE } \
+                      catch (char const * m)     { printf("%sFatal: %s%s\n",TERM_RED,m       ,TERM_RST);                   MECHSYS_FINALIZE } \
+                      catch (std::exception & e) { printf("%sFatal: %s%s\n",TERM_RED,e.what(),TERM_RST);                   MECHSYS_FINALIZE } \
+                      MECHSYS_MPI_CATCH                                                                                                       \
+                      MECHSYS_BPY_CATCH                                                                                                       \
+                      catch (...)                { printf("%sFatal: Some exception (...) occurred%s\n",TERM_RED,TERM_RST); MECHSYS_FINALIZE }
 
 class Fatal
 {

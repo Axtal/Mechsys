@@ -39,6 +39,7 @@ int main(int argc, char **argv) try
     if (argc>2) nx        = atoi(argv[2]);
     if (argc>3) ny        = atoi(argv[3]);
     if (argc>4) part_full = atoi(argv[4]);
+    MECHSYS_CATCH_PARALLEL = parallel;
 
     // mpi
     int my_id  = -1;
@@ -46,7 +47,7 @@ int main(int argc, char **argv) try
     if (parallel)
     {
 #ifdef HAS_MPI
-        MPI::Init (argc, argv);
+        MECHSYS_MPI_INIT
         my_id  = MPI::COMM_WORLD.Get_rank();
         nprocs = MPI::COMM_WORLD.Get_size();
         cout << "\n========================= parallel =========================" << endl;
@@ -126,4 +127,4 @@ int main(int argc, char **argv) try
 #endif
     return 0;
 }
-MECHSYS_MPI_CATCH
+MECHSYS_CATCH
