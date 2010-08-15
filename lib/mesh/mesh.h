@@ -231,7 +231,7 @@ public:
     void BoundingBox (Vec3_t & Min, Vec3_t & Max)                              const; ///< Limits of mesh
     void ThrowError  (std::istringstream & iss, char const * Message)          const; ///< Used in ReadMesh
     void Adjacency   (Array<int> & Xadj, Array<int> & Adjncy, bool Full=false);       ///< Find list of adjacent elements
-    void PartDomain  (int NParts, bool Full=false);                                   ///< Partition domain
+    void PartDomain  (int NParts, bool Full=false, int * Part=NULL);                  ///< Partition domain
 
     // Other methods
     void GenGroundSG (Array<double> const & X, Array<double> const & Y, double FootingLx=-1); ///< Generate ground square/box according to Smith and Griffiths' numbering
@@ -397,12 +397,22 @@ inline void Generic::Adjacency (Array<int> & Xadj, Array<int> & Adjncy, bool Ful
     }
 }
 
-inline void Generic::PartDomain (int NParts, bool Full)
+inline void Generic::PartDomain (int NParts, bool Full, int * Part)
 {
+    // allocate/set array with partition ids
+    int  n        = Cells.Size();
+    bool del_part = false;
+    int  * part;
+    if (Part==NULL)
+    {
+        part     = new int [n];
+        del_part = true;
+        if (NParts==1) for (int i=0; i<n; ++i) part[i] = 0;
+    }
+    else part = Part;
+
     // partition domain
-    int n      = Cells.Size();
-    int * part = new int [n];
-    if (NParts>1)
+    if (Part==NULL && NParts>1)
     {
 #if defined(HAS_PARMETIS) && defined(HAS_MPI)
         Array<int> Xadj, Adjncy;
@@ -415,17 +425,13 @@ inline void Generic::PartDomain (int NParts, bool Full)
         //else          METIS_PartGraphKway      (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
         METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
 #else
-        throw new Fatal("Generic::PartDomain: This method requires ParMETIS and MPI");
+        throw new Fatal("Generic::PartDomain: This method requires ParMETIS and MPI (if Part array is not provided)");
 #endif
-    }
-    else 
-    {
-        for (int i=0; i<n; ++i) part[i] = 0;
     }
 
     // find domains of elements
     for (int i=0; i<n; ++i) Cells[i]->PartID = part[i];
-    delete [] part;
+    if (del_part) delete [] part;
 
     // find domais of nodes
     for (size_t i=0; i<Verts.Size(); ++i)

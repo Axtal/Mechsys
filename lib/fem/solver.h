@@ -625,7 +625,7 @@ inline void Solver::Initialize (bool Transient)
                 for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
                 {
                     // only the domain with smallest ID will set EQ number
-                    int min_part_id = Dom.Nods[i]->Vert.PartIDs[Dom.Nods[i]->Vert.PartIDs.Min()];
+                    int min_part_id = Dom.Nods[i]->Vert.PartIDs.TheMin();
                     if (min_part_id==my_id) NEq++;
                 }
             }
@@ -659,7 +659,7 @@ inline void Solver::Initialize (bool Transient)
             {
                 for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
                 {
-                    int min_part_id = Dom.Nods[i]->Vert.PartIDs[Dom.Nods[i]->Vert.PartIDs.Min()];
+                    int min_part_id = Dom.Nods[i]->Vert.PartIDs.TheMin();
                     if (min_part_id==my_id) // only the domain with smallest ID will set EQ number
                     {
                         Dom.Nods[i]->EQ[j] = NEq;
@@ -678,7 +678,7 @@ inline void Solver::Initialize (bool Transient)
             Array<int> inter_eq; // equation of interface DOFs
             for (size_t j=0; j<Dom.InterNodes.Size(); ++j)
             {
-                int  min_part_id       =  Dom.InterNodes[j]->Vert.PartIDs[Dom.InterNodes[j]->Vert.PartIDs.Min()]; // the smallest proc is the one supposed to send always
+                int  min_part_id       =  Dom.InterNodes[j]->Vert.PartIDs.TheMin(); // the smallest proc is the one supposed to send always
                 bool do_send_to_proc_i = (Dom.InterNodes[j]->Vert.PartIDs.Find(i)>=0); // found processor on the interface and has higher id than me
                 if (my_id==min_part_id && do_send_to_proc_i)
                 {
@@ -702,7 +702,7 @@ inline void Solver::Initialize (bool Transient)
             int m = 0;
             for (size_t j=0; j<Dom.InterNodes.Size(); ++j)
             {
-                int min_part_id = Dom.InterNodes[j]->Vert.PartIDs[Dom.InterNodes[j]->Vert.PartIDs.Min()]; // the smallest proc is the one supposed to send always
+                int min_part_id = Dom.InterNodes[j]->Vert.PartIDs.TheMin(); // the smallest proc is the one supposed to send always
                 if (source==min_part_id)
                 {
                     for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)

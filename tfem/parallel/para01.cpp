@@ -19,6 +19,7 @@
 // STL
 #include <iostream>
 #include <cmath>
+#include <cstdlib> // for std::rand
 
 // MechSys
 #include <mechsys/fem/fem.h>
@@ -30,8 +31,16 @@ using FEM::GEOM;
 
 int main(int argc, char **argv) try
 {
+    // mpirun -np 3 ./para01 1 1 123 0 30 30  => wrong results
+    // mpirun -np 3 ./para01 1 1 123 0 35 35  => wrong results
+    // mpirun -np 4 ./para01 1 1 123 0 35 35  => wrong results
+    // mpirun -np 5 ./para01 1 1 123 0 35 35  => OK
+
+
     // input
     bool parallel  = true;
+    bool part_rnd  = true;
+    bool seed      = 123;
     bool nonlin    = false;
     int  nx        = 3;
     int  ny        = 3;
@@ -39,14 +48,16 @@ int main(int argc, char **argv) try
     bool NR        = false;
     int  nincs     = 1;
     bool part_full = false;
-    if (argc>1) parallel  = atoi(argv[1]);
-    if (argc>2) nonlin    = atoi(argv[2]);
-    if (argc>3) nx        = atoi(argv[3]);
-    if (argc>4) ny        = atoi(argv[4]);
-    if (argc>5) FE        = atoi(argv[5]);
-    if (argc>6) NR        = atoi(argv[6]);
-    if (argc>7) nincs     = atoi(argv[7]);
-    if (argc>8) part_full = atoi(argv[8]);
+    if (argc> 1) parallel  = atoi(argv[ 1]);
+    if (argc> 2) part_rnd  = atoi(argv[ 2]);
+    if (argc> 3) seed      = atoi(argv[ 3]);
+    if (argc> 4) nonlin    = atoi(argv[ 4]);
+    if (argc> 5) nx        = atoi(argv[ 5]);
+    if (argc> 6) ny        = atoi(argv[ 6]);
+    if (argc> 7) FE        = atoi(argv[ 7]);
+    if (argc> 8) NR        = atoi(argv[ 8]);
+    if (argc> 9) nincs     = atoi(argv[ 9]);
+    if (argc>10) part_full = atoi(argv[10]);
     MECHSYS_CATCH_PARALLEL = parallel;
 
     // mpi
@@ -91,7 +102,21 @@ int main(int argc, char **argv) try
     mesh.WithInfo = root;
     if (parallel) mesh.OnlyRoot = true;
     mesh.Generate (blks,/*O2*/false);
-    if (parallel) mesh.PartDomain (nprocs, part_full);
+    if (parallel)
+    {
+        if (part_rnd)
+        {
+            std::srand(seed);
+            Array<int> part(mesh.Cells.Size());
+            for (size_t i=0; i<part.Size(); ++i)
+            {
+                part[i] = (std::rand() % nprocs);
+                if (part[i]<0 || part[i]>nprocs-1) throw new Fatal("part[i]=%d is wrong",part[i]);
+            }
+            mesh.PartDomain (nprocs, part_full, part.GetPtr());
+        }
+        else mesh.PartDomain (nprocs, part_full);
+    }
     buf = fkey + "_mesh";
     mesh.WriteVTU (buf.CStr());
 
@@ -129,9 +154,14 @@ int main(int argc, char **argv) try
     bcs.Set (-300, "fy",    -10.0);
     bcs.Set (-400, "fy",    -20.0);
     */
+    /*
     bcs.Set (-300, "fy",    -30.0);
     bcs.Set (-400, "ux uy", 0.0, 0.0);
     bcs.Set (-10,  "uy", -0.1);
+    */
+    bcs.Set (-10, "uy", 0.0);
+    bcs.Set (-40, "ux", 0.0);
+    bcs.Set (-30, "uy", -0.2);
     dom.SetBCs (bcs);
 
     // output domain

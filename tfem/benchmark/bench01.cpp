@@ -19,6 +19,7 @@
 // STL
 #include <iostream>
 #include <cmath>
+#include <cstdlib> // for std::rand
 
 // MechSys
 #include <mechsys/fem/fem.h>
@@ -38,8 +39,14 @@ int main(int argc, char **argv) try
     // time mpirun -np 4 ./bench01 1 0 1 0 15  => Segfault (with std::vector)
     // time mpirun -np 4 ./bench01 1 0 1 0 13  => wrong results
 
+    // mpirun -np 7 ./bench01 1 1 123  0 0 0  10 => segfault
+    // mpirun -np 4 ./bench01 1 1 123  0 0 0  6 => wrong results
+    // mpirun -np 3 ./bench01 1 1 123  0 0 0  6 => wrong results
+
     // input
     bool parallel  = false;
+    bool part_rnd  = true;
+    bool seed      = 123;
     bool mixed     = false;
     bool usigeps   = true;
     bool nonlin    = false;
@@ -48,15 +55,17 @@ int main(int argc, char **argv) try
     bool NR        = false;
     int  nincs     = 1;
     bool part_full = false; // use full neighbours during PartDom ?
-    if (argc>1) parallel  = atoi(argv[1]);
-    if (argc>2) mixed     = atoi(argv[2]);
-    if (argc>3) usigeps   = atoi(argv[3]);
-    if (argc>4) nonlin    = atoi(argv[4]);
-    if (argc>5) nxyz      = atoi(argv[5]);
-    if (argc>6) FE        = atoi(argv[6]);
-    if (argc>7) NR        = atoi(argv[7]);
-    if (argc>8) nincs     = atoi(argv[8]);
-    if (argc>9) part_full = atoi(argv[9]);
+    if (argc> 1) parallel  = atoi(argv[ 1]);
+    if (argc> 2) part_rnd  = atoi(argv[ 2]);
+    if (argc> 3) seed      = atoi(argv[ 3]);
+    if (argc> 4) mixed     = atoi(argv[ 4]);
+    if (argc> 5) usigeps   = atoi(argv[ 5]);
+    if (argc> 6) nonlin    = atoi(argv[ 6]);
+    if (argc> 7) nxyz      = atoi(argv[ 7]);
+    if (argc> 8) FE        = atoi(argv[ 8]);
+    if (argc> 9) NR        = atoi(argv[ 9]);
+    if (argc>10) nincs     = atoi(argv[10]);
+    if (argc>11) part_full = atoi(argv[11]);
     MECHSYS_CATCH_PARALLEL = parallel;
 
     // mpi
@@ -107,7 +116,28 @@ int main(int argc, char **argv) try
     mesh.WithInfo = root;
     if (parallel) mesh.OnlyRoot = true;
     mesh.GenBox (/*O2*/true, nxyz,nxyz,nxyz, 1.0,1.0,1.0);
-    if (parallel) mesh.PartDomain (nprocs, part_full);
+    /*
+    Array<int> part(27);
+    part = 0,1,2, 3,2,1, 0,1,2,
+           1,2,3, 2,1,0, 1,2,3,
+           2,3,2, 1,0,1, 2,3,0;
+           */
+    //if (parallel) mesh.PartDomain (nprocs, part_full, part.GetPtr());
+    if (parallel)
+    {
+        if (part_rnd)
+        {
+            std::srand(seed);
+            Array<int> part(mesh.Cells.Size());
+            for (size_t i=0; i<part.Size(); ++i)
+            {
+                part[i] = (std::rand() % nprocs);
+                if (part[i]<0 || part[i]>nprocs-1) throw new Fatal("part[i]=%d is wrong",part[i]);
+            }
+            mesh.PartDomain (nprocs, part_full, part.GetPtr());
+        }
+        else mesh.PartDomain (nprocs, part_full);
+    }
     buf = fkey + "_mesh";
     mesh.WriteVTU (buf.CStr());
 
