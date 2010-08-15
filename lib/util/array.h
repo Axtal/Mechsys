@@ -99,16 +99,16 @@ public:
 #endif
 
     // Methods
-    void    Resize    (size_t Size);                       ///< Resize the array
-    void    Push      (Value_T const & Value);             ///< Add a new entry increasing the size if necessary
-    void    PushN     (Value_T const & Value, size_t Num); ///< Add a new entry increasing the size if necessary
-    long    Find      (Value_T const & Value) const;       ///< Find a value: returns -1 if not found, otherwise, returns the index of the element found
-    long    Min       () const;                            ///< Find the minimum value: returns the index of the minimum element
-    long    Max       () const;                            ///< Find the maximum value: returns the index of the maximum element
-    Value_T Mean      () const;                            ///< Calculate the mean value (Value_T must have addition operators)
-    Value_T Norm      () const;                            ///< Calculate the norm value (Value_T must have addition operators)
-    void    SetValues (Value_T const & V);                 ///< Set all values to be equal to V
-    void    Clear     () { Resize(0); }                    ///< Clear array
+    void            Resize    (size_t Size);                       ///< Resize the array
+    void            Push      (Value_T const & Value);             ///< Add a new entry increasing the size if necessary
+    void            PushN     (Value_T const & Value, size_t Num); ///< Add a new entry increasing the size if necessary
+    long            Find      (Value_T const & Value) const;       ///< Find a value: returns -1 if not found, otherwise, returns the index of the element found
+    Value_T const & TheMin    () const;                            ///< Find the minimum value
+    Value_T const & TheMax    () const;                            ///< Find the maximum value
+    Value_T         Mean      () const;                            ///< Calculate the mean value (Value_T must have addition operators)
+    Value_T         Norm      () const;                            ///< Calculate the norm value (Value_T must have addition operators)
+    void            SetValues (Value_T const & V);                 ///< Set all values to be equal to V
+    void            Clear     () { Resize(0); }                    ///< Clear array
 
     // Assign values separated by commas
     class CommaAssign
@@ -599,6 +599,31 @@ inline long Array<Value_T>::Find (Value_T const & Value) const
 }
 
 template<typename Value_T>
+inline Value_T const & Array<Value_T>::TheMin () const
+{
+#ifdef USE_STDVECTOR
+    typename std::vector<Value_T>::const_iterator it = std::min_element (std::vector<Value_T>::begin(), std::vector<Value_T>::end());
+    return (*it);
+#else
+    Value_T * res = std::min_element(_values, _values+_size);
+    return (*res);
+#endif
+}
+
+template<typename Value_T>
+inline Value_T const & Array<Value_T>::TheMax () const
+{
+#ifdef USE_STDVECTOR
+    typename std::vector<Value_T>::const_iterator it = std::max_element (std::vector<Value_T>::begin(), std::vector<Value_T>::end());
+    return (*it);
+#else
+    Value_T * res = std::max_element(_values, _values+_size);
+    return (*res);
+#endif
+}
+
+/*
+template<typename Value_T>
 inline long Array<Value_T>::Min () const
 {
 #ifdef USE_STDVECTOR
@@ -621,6 +646,7 @@ inline long Array<Value_T>::Max () const
     return res-_values;
 #endif
 }
+*/
 
 template<typename Value_T>
 inline Value_T Array<Value_T>::Mean () const

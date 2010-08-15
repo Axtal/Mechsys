@@ -441,7 +441,7 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool Quiet)
     if (!IsSet()) throw new Fatal("Unstructured::Generate: Please, set the input data (regions,points,segments/facets) first.");
 
     // info
-    Util::Stopwatch stopwatch(/*only_root*/!WithInfo);
+    Util::Stopwatch stopwatch(OnlyRoot);
 
     // parameters
     double min_angle = -1;

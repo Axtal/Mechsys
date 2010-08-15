@@ -193,7 +193,7 @@ class Generic
 {
 public:
     // Constructor
-    Generic (int TheNDim) : NDim(TheNDim), IsShell(false), WithInfo(true) {}
+    Generic (int TheNDim) : NDim(TheNDim), IsShell(false), WithInfo(true), OnlyRoot(false) {}
 
     // Destructor
     virtual ~Generic () { Erase(); }
@@ -252,6 +252,7 @@ public:
     BryCell_t      Bry2Cells; ///< map: bry (edge/face ids) => neighbours cells
     Pin_t          Pins;      ///< Pins
     bool           WithInfo;  ///< Output information ?
+    bool           OnlyRoot;  ///< To be passed to Stopwatch in parallel version
 
 #ifdef USE_BOOST_PYTHON
     void PySetCell       (int iCell, int Tag, BPy::list const Con) { SetCell (iCell, Tag, Array<int>(Con)); }
@@ -410,6 +411,8 @@ inline void Generic::PartDomain (int NParts, bool Full)
         int numflag    = 0; // zero numbering
         int options[5] = {0,0,0,0,0};
         int edgecut;
+        //if (NParts<8) METIS_PartGraphRecursive (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
+        //else          METIS_PartGraphKway      (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
         METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
 #else
         throw new Fatal("Generic::PartDomain: This method requires ParMETIS and MPI");

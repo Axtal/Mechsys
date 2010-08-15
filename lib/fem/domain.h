@@ -798,9 +798,9 @@ inline bool Domain::CheckError (Table const & NodSol, SDPair const & NodTol) con
         }
 
         // summary
-        double max_err = err[err.Max()];
+        double max_err = err.TheMax();
         double tol     = NodTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
         std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
@@ -858,9 +858,9 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
         }
 
         // summary
-        double max_err = err[err.Max()];
+        double max_err = err.TheMax();
         double tol     = NodTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
         std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
@@ -879,9 +879,9 @@ inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPa
         }
 
         // summary
-        double max_err = err[err.Max()];
+        double max_err = err.TheMax();
         double tol     = EleTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
         std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
@@ -918,9 +918,9 @@ inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) c
         }
 
         // summary
-        double max_err = err[err.Max()];
+        double max_err = err.TheMax();
         double tol     = EleTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err[err.Min()] << Util::_8s<<err.Mean();
+        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
         std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
