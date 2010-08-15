@@ -372,6 +372,62 @@ inline void Solver::AssembleKA ()
     std::cout << "\nA =\n" << PrintMatrix(Adense,"%12.2f");
     std::cout << "\ndet(A) = " << UMFPACK::Det(Asp) << "\n\n";
     */
+
+#ifdef HAS_MPI
+#ifdef PARALLEL_DEBUG
+    if (FEM::Domain::PARA)
+    {
+        // compute total number of non-zeros from all processors
+        int my_id  = MPI::COMM_WORLD.Get_rank();
+        int nprocs = MPI::COMM_WORLD.Get_size();
+        int size   = A11.Top();
+        if (my_id==0)
+        {
+            for (int i=1; i<nprocs; ++i)
+            {
+                int top;
+                MPI::COMM_WORLD.Recv (&top, 1, MPI::INT, i, 1001);
+                size += top;
+            }
+            std::cout << "Proc # 0: size = " << size << std::endl;
+        }
+        else MPI::COMM_WORLD.Send (&size, 1, MPI::INT, 0, 1001);
+
+        // build matrix
+        if (my_id==0)
+        {
+            Sparse::Triplet<double,int> AA;
+            AA.AllocSpace (A11.Rows(), A11.Cols(), size);
+            for (int k=0; k<A11.Top(); ++k) AA.PushEntry (A11.Ai(k), A11.Aj(k), A11.Ax(k));
+            for (int i=1; i<nprocs; ++i)
+            {
+                int top;
+                MPI::COMM_WORLD.Recv (&top, 1, MPI::INT, i, 1001);
+                std::cout << "Proc # 0: top of Proc # " << i << " = " << top << std::endl;
+                int    * Ai = new int    [top];
+                int    * Aj = new int    [top];
+                double * Ax = new double [top];
+                MPI::COMM_WORLD.Recv (Ai, top, MPI::INT,    i, 1002);
+                MPI::COMM_WORLD.Recv (Aj, top, MPI::INT,    i, 1003);
+                MPI::COMM_WORLD.Recv (Ax, top, MPI::DOUBLE, i, 1004);
+                for (int k=0; k<top; ++k) AA.PushEntry (Ai[k], Aj[k], Ax[k]);
+                delete [] Ai;
+                delete [] Aj;
+                delete [] Ax;
+                std::cout << "Proc # 0: finished\n";
+            }
+            AA.WriteSMAT ("AAmatrix_proc0");
+        }
+        else
+        {
+            MPI::COMM_WORLD.Send (&size,             1, MPI::INT,    0, 1001);
+            MPI::COMM_WORLD.Send (A11.GetAiPtr(), size, MPI::INT,    0, 1002);
+            MPI::COMM_WORLD.Send (A11.GetAjPtr(), size, MPI::INT,    0, 1003);
+            MPI::COMM_WORLD.Send (A11.GetAxPtr(), size, MPI::DOUBLE, 0, 1004);
+        }
+    }
+#endif
+#endif
 }
 
 inline void Solver::AssembleKMA (double C1, double C2)
@@ -495,6 +551,10 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     // calc dU and dF
     if (FEM::Domain::PARA) MUMPS  ::Solve (A11, W, dU); // dU = inv(A11)*W
     else                   UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
+
+    //for (size_t i=0; i<size(dU); ++i) std::cout << dU(i) << std::endl;
+    //std::cout << "dU = " << PrintVector(dU);
+    std::cout << "Norm(dU) = " << Norm(dU) << std::endl;
 
     // calc dF2
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
@@ -794,8 +854,8 @@ inline void Solver::Initialize (bool Transient)
     // info
     if (Root)
     {
-        printf("%s  Num of DOFs (NEq)  = %d%s\n", TERM_CLR2, NEq, TERM_RST);
-        printf("%s  Num of non-zeros   = %d%s\n", TERM_CLR2, K11_size+pEQ.Size()+nzlag, TERM_RST);
+        printf("%s  Num of DOFs (NEq)  = %zd%s\n", TERM_CLR2, NEq, TERM_RST);
+        printf("%s  Num of non-zeros   = %zd%s\n", TERM_CLR2, K11_size+pEQ.Size()+nzlag, TERM_RST);
     }
 }
 

@@ -67,6 +67,7 @@ PROC=procps-$PROC_VER
 compile_scalapack() {
     LDIR=$MECHSYS_ROOT/pkg/$SCALAPACK_DIR/lib
     python setup.py --notesting --mpiincdir=/usr/lib/openmpi/include/ --lapacklib=/usr/lib/liblapack.so --blaslib=/usr/lib/libblas.so
+    #python setup.py --notesting --mpiincdir=/home/dorival/pkg/openmpi-1.4.2/ompi/include/ --lapacklib=/usr/lib/liblapack.so --blaslib=/usr/lib/libblas.so
     ln -s $LDIR/blacs.a    $LDIR/libblacs.a
     ln -s $LDIR/blacsC.a   $LDIR/libblacsC.a
     ln -s $LDIR/blacsF77.a $LDIR/libblacsF77.a

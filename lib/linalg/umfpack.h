@@ -77,7 +77,7 @@ String ErrorMsg(int info)
  * \param B Right-hand side vector
  * \param X Result
  */
-inline void Solve(Sparse::Matrix<double,int> const & A, Vec_t const & B, Vec_t & X)
+inline void Solve (Sparse::Matrix<double,int> const & A, Vec_t const & B, Vec_t & X)
 {
     if (A.Rows()!=A.Cols())        throw new Fatal("UMFPACK::Solve: A (%d x %d) matrix must be squared.",A.Rows(),A.Cols());
     if (size(B)!=(size_t)A.Cols()) throw new Fatal("UMFPACK::Solve: B (%d x 1) vector must have a size equal to the number of columns of matrix A (%d)",size(B),A.Cols());
@@ -85,26 +85,26 @@ inline void Solve(Sparse::Matrix<double,int> const & A, Vec_t const & B, Vec_t &
     double *null = (double *)NULL;
     void *symbolic, *numeric;
     int info = 0;
-    info = umfpack_di_symbolic      (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);      if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_symbolic failed. %s",ErrorMsg(info).CStr());
-    info = umfpack_di_numeric       (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);                 if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_numeric failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_symbolic      (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);      if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_symbolic failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_numeric       (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);                 if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
            umfpack_di_free_symbolic (&symbolic);
-    info = umfpack_di_solve         (UMFPACK_A, A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), X.data, B.data, numeric, null, null); if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_dl_solve failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_solve         (UMFPACK_A, A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), X.data, B.data, numeric, null, null); if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_solve failed. %s",ErrorMsg(info).CStr());
            umfpack_di_free_numeric  (&numeric);
 }
 // TODO: Check: It seems that the following is not necessary
 //       (A sparse matrix is automatically created from the Triplet)
-inline void Solve(Sparse::Triplet<double,int> const & A, Vec_t const & B, Vec_t & X) { Solve(Sparse::Matrix<double,int>(A), B, X); }
+inline void Solve (Sparse::Triplet<double,int> const & A, Vec_t const & B, Vec_t & X) { Solve(Sparse::Matrix<double,int>(A), B, X); }
 
-inline double Det(Sparse::Matrix<double,int> const & A)
+inline double Det (Sparse::Matrix<double,int> const & A)
 {
     double *null = (double *)NULL;
     void   *symbolic, *numeric;
     int    info = 0;
     double Mx, Ex;
-    info = umfpack_di_symbolic        (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);  if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_symbolic failed. %s",ErrorMsg(info).CStr());
-    info = umfpack_di_numeric         (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);             if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_symbolic        (A.Rows(), A.Rows(), A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), &symbolic, null, null);  if (info<0) throw new Fatal("UMFPACK::Det: umfpack_di_symbolic failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_numeric         (A.GetApPtr(), A.GetAiPtr(), A.GetAxPtr(), symbolic, &numeric, null, null);             if (info<0) throw new Fatal("UMFPACK::Det: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
            umfpack_di_free_symbolic   (&symbolic);
-    info = umfpack_di_get_determinant (&Mx, &Ex, numeric, null);                                                              if (info<0) throw new Fatal("UMFPACK::Solve: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
+    info = umfpack_di_get_determinant (&Mx, &Ex, numeric, null);                                                              if (info<0) throw new Fatal("UMFPACK::Det: umfpack_di_numeric failed. %s",ErrorMsg(info).CStr());
     return Mx * pow (10.0, Ex);
 }
 

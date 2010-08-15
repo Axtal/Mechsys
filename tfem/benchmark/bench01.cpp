@@ -82,7 +82,7 @@ int main(int argc, char **argv) try
 
 #ifdef USE_MTL4
     if (root) printf("\n%s--------------------------------------- MTL4 ---------------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
-    fkey.append("MTL4");
+    fkey.append("_MTL4");
 #else
     if (root) printf("\n%s---------------------------------- Raul's LaExpr -----------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
 #endif
