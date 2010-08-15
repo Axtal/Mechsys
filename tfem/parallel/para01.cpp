@@ -32,34 +32,51 @@ int main(int argc, char **argv) try
 {
     // input
     bool parallel  = true;
+    bool nonlin    = false;
     int  nx        = 3;
     int  ny        = 3;
+    bool FE        = true;
+    bool NR        = false;
+    int  nincs     = 1;
     bool part_full = false;
     if (argc>1) parallel  = atoi(argv[1]);
-    if (argc>2) nx        = atoi(argv[2]);
-    if (argc>3) ny        = atoi(argv[3]);
-    if (argc>4) part_full = atoi(argv[4]);
+    if (argc>2) nonlin    = atoi(argv[2]);
+    if (argc>3) nx        = atoi(argv[3]);
+    if (argc>4) ny        = atoi(argv[4]);
+    if (argc>5) FE        = atoi(argv[5]);
+    if (argc>6) NR        = atoi(argv[6]);
+    if (argc>7) nincs     = atoi(argv[7]);
+    if (argc>8) part_full = atoi(argv[8]);
     MECHSYS_CATCH_PARALLEL = parallel;
 
     // mpi
-    int my_id  = -1;
-    int nprocs = 1;
+    int  my_id  = -1;
+    int  nprocs = 1;
+    bool root   = true;
     if (parallel)
     {
 #ifdef HAS_MPI
         MECHSYS_MPI_INIT
         my_id  = MPI::COMM_WORLD.Get_rank();
         nprocs = MPI::COMM_WORLD.Get_size();
-        cout << "\n========================= parallel =========================" << endl;
+        if (my_id!=0) root = false;
+        if (root) printf("\n%s===================================== Parallel =====================================%s\n",TERM_YELLOW_BLUE,TERM_RST);
 #else
         throw new Fatal("main.cpp: this code wasn't compiled with HAS_MPI ==> parallel version is not available");
 #endif
     }
-    else cout << "\n========================= serial ===========================" << endl;
+    else printf("\n%s====================================== Serial ======================================%s\n",TERM_BLACK_WHITE,TERM_RST);
 
     // fkey
     String fkey, buf;
     fkey.Printf ("para01_%d", my_id);
+
+#ifdef USE_MTL4
+    if (root) printf("\n%s--------------------------------------- MTL4 ---------------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
+    fkey.append("_MTL4");
+#else
+    if (root) printf("\n%s---------------------------------- Raul's LaExpr -----------------------------------%s\n",TERM_BLACK_WHITE,TERM_RST);
+#endif
 
     // mesh
     Array<Mesh::Block> blks(1);
@@ -71,6 +88,8 @@ int main(int argc, char **argv) try
     blks[0].SetNx (nx);
     blks[0].SetNy (ny);
     Mesh::Structured mesh(/*NDim*/2);
+    mesh.WithInfo = root;
+    if (parallel) mesh.OnlyRoot = true;
     mesh.Generate (blks,/*O2*/false);
     if (parallel) mesh.PartDomain (nprocs, part_full);
     buf = fkey + "_mesh";
@@ -78,26 +97,30 @@ int main(int argc, char **argv) try
 
     // domain
     FEM::Domain::PARA = parallel;
+    Array<int> out_verts(-300,true);
     Dict prps, mdls, inis;
     prps.Set (-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.);
-    mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
-    //mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
-    FEM::Domain dom(mesh, prps, mdls, inis);
+    if (nonlin) mdls.Set (-1, "name K0 G0 alp bet psa", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
+    else        mdls.Set (-1, "name E nu psa", MODEL("LinElastic"), 1000.0, 0.2, 1.);
+    FEM::Domain dom(mesh, prps, mdls, inis, fkey.CStr(), &out_verts);
 
+    /*
     buf = fkey + "_dom_before.txt";
     std::ofstream of1(buf.CStr(), std::ios::out);
     of1 << dom << endl;
     of1.close();
+    */
 
-    // output
-
+    // solver
     FEM::Solver sol(dom);
-    //sol.SetScheme("NR");
+    if (FE) sol.SetScheme("FE");
+    if (NR) sol.SetScheme("NR");
     //sol.CorR = false;
     //sol.Initialize ();
     //sol.AssembleKA ();
     //sol.A11.WriteSMAT (fkey.CStr());
 
+    // boundary conditions for stage # 1
     Dict bcs;
     /*
     bcs.Set (-100, "ux uy", 0.0, 0.0);
@@ -111,15 +134,18 @@ int main(int argc, char **argv) try
     bcs.Set (-10,  "uy", -0.1);
     dom.SetBCs (bcs);
 
+    // output domain
+    /*
     buf = fkey + "_dom_after.txt";
     of1.open(buf.CStr(), std::ios::out);
     of1 << dom << endl;
     of1.close();
+    */
 
-    //sol.Solve        (1);
-    sol.Solve        (10);
+    // solve
+    sol.Solve        (nincs);
     dom.WriteVTU     (fkey.CStr());
-    dom.PrintResults ("%12.6g", /*with_elems*/false);
+    //dom.PrintResults ("%12.6g", /*with_elems*/false);
 
     // end
 #ifdef HAS_MPI

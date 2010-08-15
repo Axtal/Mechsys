@@ -36,6 +36,7 @@ int main(int argc, char **argv) try
     // time mpirun -np 4 ./bench01 1 0 1 0 19  => Error with Array (own implementation gives wrong residual. Sometimes UMFPACK fails)
     // time mpirun -np 4 ./bench01 1 0 1 0 20  => Error with Array (own implementation fails eventually, std::vector gives wrong residual)
     // time mpirun -np 4 ./bench01 1 0 1 0 15  => Segfault (with std::vector)
+    // time mpirun -np 4 ./bench01 1 0 1 0 13  => wrong results
 
     // input
     bool parallel  = false;
@@ -104,6 +105,7 @@ int main(int argc, char **argv) try
             1----------------2'                   */
     Mesh::Structured mesh(/*NDim*/3);
     mesh.WithInfo = root;
+    if (parallel) mesh.OnlyRoot = true;
     mesh.GenBox (/*O2*/true, nxyz,nxyz,nxyz, 1.0,1.0,1.0);
     if (parallel) mesh.PartDomain (nprocs, part_full);
     buf = fkey + "_mesh";

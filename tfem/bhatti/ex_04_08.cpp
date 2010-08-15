@@ -160,8 +160,8 @@ int main(int argc, char **argv) try
         ele->CalcRes (r, P,V,M);
         err_M.Push (fabs(Mc-M));
     }
-    double max_err_M = err_M[err_M.Max()];
-    cout << Util::_4<< "M" << Util::_8s<<err_M[err_M.Min()] << Util::_8s<<err_M.Mean();
+    double max_err_M = err_M.TheMax();
+    cout << Util::_4<< "M" << Util::_8s<<err_M.TheMin() << Util::_8s<<err_M.Mean();
     cout << (max_err_M>tol_M ? "[1;31m" : "[1;32m") << Util::_8s<<max_err_M << "[0m" << Util::_8s<<err_M.Norm() << "\n";
     if (max_err_M>tol_M) err_flag = false;
 
