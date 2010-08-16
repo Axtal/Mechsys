@@ -90,11 +90,28 @@ public:
     size_t          NEq;      ///< Total number of equations (DOFs)
     size_t          NLag;     ///< Number of Lagrange multipliers
     Array<long>     pEQ;      ///< prescribed equations
+    Array<long>     pEQproc;  ///< prescribed equations: processor which will handle the equation (in case of shared nodes)
     Array<bool>     pU;       ///< prescribed U
     double          NormR;    ///< Euclidian norm of residual (R)
     double          MaxNormF; ///< Max(Norm(F), Norm(Fint))
     Array<Node*>    ActNods;  ///< Active nodes
     Array<Element*> ActEles;  ///< Active elements
+
+#ifdef PARALLEL_DEBUG
+    size_t          AllNEq;
+    Array<Node*>    AllActNods;  ///< Active nodes
+    std::map<size_t, std::pair<Node*,int> > EQ2NodeIdxDOF; 
+    size_t DistEQ2SerialEQ (size_t eq) const
+    {
+        std::map<size_t, std::pair<Node*,int> >::const_iterator it = EQ2NodeIdxDOF.find(eq);
+        if (it==EQ2NodeIdxDOF.end()) throw new Fatal("PARALLEL_DEBUG::DistEQ2SerialEQ: eq=%d does not exist in map",eq);
+        Node * node = it->second.first;
+        size_t idof = it->second.second;
+        std::map<Node*,size_t>::const_iterator p = Dom.LocNod2IdxAllNods.find(node);
+        if (p==Dom.LocNod2IdxAllNods.end()) throw new Fatal("PARALLEL_DEBUG::DistEQ2SerialEQ: could not find node (distributed) in AllNodes map");
+        return Dom.AllNods[p->second]->EQ[idof];
+    }
+#endif
 
     // Data (read-write)
     Scheme_t      Scheme;   ///< Scheme: FE_t (Forward-Euler), ME_t (Modified-Euler)
@@ -362,7 +379,19 @@ inline void Solver::AssembleKA ()
     */
 
     // augment A11
-    for (size_t i=0; i<pEQ.Size(); ++i) A11.PushEntry (pEQ[i],pEQ[i], 1.0);
+    if (FEM::Domain::PARA)
+    {
+#ifdef HAS_MPI
+        for (size_t i=0; i<pEQ.Size(); ++i)
+        {
+            if (pEQproc[i]==MPI::COMM_WORLD.Get_rank()) A11.PushEntry (pEQ[i],pEQ[i], 1.0);
+        }
+#endif
+    }
+    else
+    {
+        for (size_t i=0; i<pEQ.Size(); ++i) A11.PushEntry (pEQ[i],pEQ[i], 1.0);
+    }
     _set_A_Lag ();
 
     /*
@@ -372,62 +401,6 @@ inline void Solver::AssembleKA ()
     std::cout << "\nA =\n" << PrintMatrix(Adense,"%12.2f");
     std::cout << "\ndet(A) = " << UMFPACK::Det(Asp) << "\n\n";
     */
-
-#ifdef HAS_MPI
-#ifdef PARALLEL_DEBUG
-    if (FEM::Domain::PARA)
-    {
-        // compute total number of non-zeros from all processors
-        int my_id  = MPI::COMM_WORLD.Get_rank();
-        int nprocs = MPI::COMM_WORLD.Get_size();
-        int size   = A11.Top();
-        if (my_id==0)
-        {
-            for (int i=1; i<nprocs; ++i)
-            {
-                int top;
-                MPI::COMM_WORLD.Recv (&top, 1, MPI::INT, i, 1001);
-                size += top;
-            }
-            std::cout << "Proc # 0: size = " << size << std::endl;
-        }
-        else MPI::COMM_WORLD.Send (&size, 1, MPI::INT, 0, 1001);
-
-        // build matrix
-        if (my_id==0)
-        {
-            Sparse::Triplet<double,int> AA;
-            AA.AllocSpace (A11.Rows(), A11.Cols(), size);
-            for (int k=0; k<A11.Top(); ++k) AA.PushEntry (A11.Ai(k), A11.Aj(k), A11.Ax(k));
-            for (int i=1; i<nprocs; ++i)
-            {
-                int top;
-                MPI::COMM_WORLD.Recv (&top, 1, MPI::INT, i, 1001);
-                std::cout << "Proc # 0: top of Proc # " << i << " = " << top << std::endl;
-                int    * Ai = new int    [top];
-                int    * Aj = new int    [top];
-                double * Ax = new double [top];
-                MPI::COMM_WORLD.Recv (Ai, top, MPI::INT,    i, 1002);
-                MPI::COMM_WORLD.Recv (Aj, top, MPI::INT,    i, 1003);
-                MPI::COMM_WORLD.Recv (Ax, top, MPI::DOUBLE, i, 1004);
-                for (int k=0; k<top; ++k) AA.PushEntry (Ai[k], Aj[k], Ax[k]);
-                delete [] Ai;
-                delete [] Aj;
-                delete [] Ax;
-                std::cout << "Proc # 0: finished\n";
-            }
-            AA.WriteSMAT ("AAmatrix_proc0");
-        }
-        else
-        {
-            MPI::COMM_WORLD.Send (&size,             1, MPI::INT,    0, 1001);
-            MPI::COMM_WORLD.Send (A11.GetAiPtr(), size, MPI::INT,    0, 1002);
-            MPI::COMM_WORLD.Send (A11.GetAjPtr(), size, MPI::INT,    0, 1003);
-            MPI::COMM_WORLD.Send (A11.GetAxPtr(), size, MPI::DOUBLE, 0, 1004);
-        }
-    }
-#endif
-#endif
 }
 
 inline void Solver::AssembleKMA (double C1, double C2)
@@ -541,20 +514,107 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
         {
             size_t idof = q->first;
             long   eq   = p->first->EQ[idof];
-            W(eq) = dT*q->second; // set W2 equal to dU2
+            if (FEM::Domain::PARA)
+            {
+#ifdef HAS_MPI
+                if (p->first->Vert.PartIDs.TheMin()==MPI::COMM_WORLD.Get_rank())
+                    W(eq) = dT*q->second; // set W2 equal to dU2
+#endif
+            }
+            else W(eq) = dT*q->second; // set W2 equal to dU2
+            dU(eq) = dT*q->second;
         }
     }
 
     // correct W
-    Sparse::SubMult (K12, W, W); // W1 -= K12*dU2
+    Sparse::SubMult (K12, dU, W); // W1 -= K12*dU2
 
+
+#ifndef PARALLEL_DEBUG
     // calc dU and dF
     if (FEM::Domain::PARA) MUMPS  ::Solve (A11, W, dU); // dU = inv(A11)*W
     else                   UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
+#endif
+
+
+#ifdef PARALLEL_DEBUG
+    if (FEM::Domain::PARA)
+    {
+        // build A11 matrix with the order of the Serial one
+        Sparse::Triplet<double,int> a11;
+        a11.AllocSpace (A11.Rows(),A11.Cols(),A11.Top());
+        for (int k=0; k<A11.Top(); ++k)
+        {
+            //a11.PushEntry (A11.Ai(k), A11.Aj(k), A11.Ax(k));
+            a11.PushEntry (DistEQ2SerialEQ(A11.Ai(k)), DistEQ2SerialEQ(A11.Aj(k)), A11.Ax(k));
+            if (DistEQ2SerialEQ(A11.Ai(k))==1539 && DistEQ2SerialEQ(A11.Aj(k))==1851)
+            {
+                printf("(1539,1851): Ai==%d, Aj==%d  ==>  Ax==%f\n", A11.Ai(k), A11.Aj(k), A11.Ax(k));
+            }
+        }
+
+        // compute total number of non-zeros from all processors
+        int my_id  = MPI::COMM_WORLD.Get_rank();
+        int nprocs = MPI::COMM_WORLD.Get_size();
+        int size   = a11.Top();
+        if (my_id==0)
+        {
+            for (int i=1; i<nprocs; ++i)
+            {
+                int top;
+                MPI::COMM_WORLD.Recv (&top, 1, MPI::INT, i, 1001);
+                size += top;
+                std::cout << "Proc # 0: top of Proc # " << i << " = " << top << "  => size = " << size << std::endl;
+            }
+        }
+        else MPI::COMM_WORLD.Send (&size, 1, MPI::INT, 0, 1001);
+
+        // build matrix
+        if (my_id==0)
+        {
+            Sparse::Triplet<double,int> AA;
+            AA.AllocSpace (a11.Rows(), a11.Cols(), size);
+            for (int k=0; k<a11.Top(); ++k) AA.PushEntry (a11.Ai(k), a11.Aj(k), a11.Ax(k));
+            for (int i=1; i<nprocs; ++i)
+            {
+                int top;
+                MPI::COMM_WORLD.Recv (&top, 1, MPI::INT, i, 1001);
+                int    * Ai = new int    [top];
+                int    * Aj = new int    [top];
+                double * Ax = new double [top];
+                MPI::COMM_WORLD.Recv (Ai, top, MPI::INT,    i, 1002);
+                MPI::COMM_WORLD.Recv (Aj, top, MPI::INT,    i, 1003);
+                MPI::COMM_WORLD.Recv (Ax, top, MPI::DOUBLE, i, 1004);
+                for (int k=0; k<top; ++k) AA.PushEntry (Ai[k], Aj[k], Ax[k]);
+                delete [] Ai;
+                delete [] Aj;
+                delete [] Ax;
+            }
+            AA.WriteSMAT ("AAmatrix_proc0");
+            double trA = 0.0;
+            for (int k=0; k<AA.Top(); ++k)
+            {
+                if (AA.Ai(k)==AA.Aj(k)) trA += AA.Ax(k);
+            }
+            printf("trA = %.8f\n",trA);
+        }
+        else
+        {
+            MPI::COMM_WORLD.Send (&size,             1, MPI::INT,    0, 1001);
+            MPI::COMM_WORLD.Send (a11.GetAiPtr(), size, MPI::INT,    0, 1002);
+            MPI::COMM_WORLD.Send (a11.GetAjPtr(), size, MPI::INT,    0, 1003);
+            MPI::COMM_WORLD.Send (a11.GetAxPtr(), size, MPI::DOUBLE, 0, 1004);
+        }
+
+        MUMPS::Solve (A11, W, dU); // dU = inv(A11)*W
+    }
+    else  UMFPACK::Solve (A11, W, dU); // dU = inv(A11)*W
 
     //for (size_t i=0; i<size(dU); ++i) std::cout << dU(i) << std::endl;
     //std::cout << "dU = " << PrintVector(dU);
     std::cout << "Norm(dU) = " << Norm(dU) << std::endl;
+#endif
+
 
     // calc dF2
     Sparse::AddMult (K21, dU, dF); // dF2 += K21*dU1
@@ -750,10 +810,57 @@ inline void Solver::Initialize (bool Transient)
         }
     }
 
+
+#ifdef PARALLEL_DEBUG
+    // map equation to node/index of DOF
+    for (size_t i=0; i<ActNods.Size(); ++i)
+    {
+        for (size_t j=0; j<ActNods[i]->nDOF(); ++j)
+        {
+            long eq = ActNods[i]->EQ[j];
+            std::map<size_t, std::pair<Node*,int> >::const_iterator it = EQ2NodeIdxDOF.find(eq);
+            if (it==EQ2NodeIdxDOF.end())
+            {
+                EQ2NodeIdxDOF[eq] = std::make_pair(ActNods[i],j);
+                //if (eq==1189) printf("%sNode # %zd, iDOF==%zd  ==>  EQ==1189%s\n",TERM_RED,ActNods[i]->Vert.ID,j,TERM_RST);
+                //if (eq==1235) printf("%sNode # %zd, iDOF==%zd  ==>  EQ==1235%s\n",TERM_RED,ActNods[i]->Vert.ID,j,TERM_RST);
+            }
+            else
+            {
+                throw new Fatal("Solver::Initialize: Assignment of eq==%ld to Node # %zd/iDOF==%zd failed\n Equation number == %ld was already assigned to Node # %d/iDOF==%d",eq,ActNods[i]->Vert.ID,j, eq,it->second.first->Vert.ID,it->second.second);
+            }
+        }
+    }
+
+    // assign equation numbers corresponding to local DOFs of elements
+    AllNEq = 0;
+    for (size_t i=0; i<Dom.AllEles.Size(); ++i)
+    {
+        if (Dom.AllEles[i]->Active) Dom.AllEles[i]->IncNLocDOF (NEq);
+    }
+
+    // assign equation numbers and set active nodes
+    AllActNods.Resize(0);
+    for (size_t i=0; i<Dom.AllNods.Size(); ++i)
+    {
+        if (Dom.AllNods[i]->NShares>0)
+        {
+            for (size_t j=0; j<Dom.AllNods[i]->nDOF(); ++j)
+            {
+                Dom.AllNods[i]->EQ[j] = AllNEq;
+                AllNEq++;
+            }
+            AllActNods.Push (Dom.AllNods[i]);
+        }
+    }
+#endif // PARALLEL_DEBUG
+
+
     // prescribed equations and prescribed U
     pEQ.Resize    (0);
     pU .Resize    (NEq);
     pU .SetValues (false);
+    pEQproc.Resize(0);
     for (NodBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
     {
         for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
@@ -762,6 +869,10 @@ inline void Solver::Initialize (bool Transient)
             long   eq   = p->first->EQ[idof];
             pU[eq] = true;
             pEQ.Push (eq);
+#ifdef HAS_MPI
+            if (FEM::Domain::PARA) pEQproc.Push (p->first->Vert.PartIDs.TheMin());
+#endif
+
         }
     }
 

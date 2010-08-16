@@ -108,6 +108,11 @@ public:
 #ifdef HAS_MPI
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions
 #endif
+#ifdef PARALLEL_DEBUG
+    Array<Node*>           AllNods;
+    Array<Element*>        AllEles;
+    std::map<Node*,size_t> LocNod2IdxAllNods;
+#endif
 
     // Nodal results
     size_t        NActNods;    ///< Number of active nodes
@@ -212,11 +217,40 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 
     // set nodes from mesh
     std::map<int,Node*> VertID2Node;
+
+
+#ifdef PARALLEL_DEBUG
+    std::map<int,Node*> VertID2AllNode;
+#endif
+
+
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
 #ifdef HAS_MPI
         if (PARA)
         {
+
+
+#ifdef PARALLEL_DEBUG
+            // new node
+            AllNods.Push (new Node((*Msh.Verts[i])));
+            if (Msh.Verts[i]->Tag<0) TgdNods.Push (AllNods.Last());
+            VertID2AllNode[Msh.Verts[i]->ID] = AllNods.Last();
+
+            // add DOFs to node
+            for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
+            {
+                int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
+                String prob_name_ND;
+                PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
+                prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
+                ElementVarKeys_t::const_iterator it = ElementVarKeys.find(prob_name_ND);
+                if (it==ElementVarKeys.end()) throw new Fatal("Domain::Domain:: __internal_error__: ElementVarKeys map doesn't have DOF keys for problem==%s",prob_name_ND.CStr());
+                AllNods.Last()->AddDOF (it->second.first.CStr(), it->second.second.CStr());
+            }
+#endif // PARALLEL_DEBUG
+
+
             // skip vertices that aren't in this partition
             if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
         }
@@ -226,22 +260,29 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         if (Msh.Verts[i]->Tag<0) TgdNods.Push (Nods.Last());
         VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
+
+#ifdef PARALLEL_DEBUG
+        LocNod2IdxAllNods[Nods.Last()] = AllNods.Size()-1;
+#endif // PARALLEL_DEBUG
+
+
+        // add DOFs to node
+        for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
+        {
+            int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
+            String prob_name_ND;
+            PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
+            prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
+            ElementVarKeys_t::const_iterator it = ElementVarKeys.find(prob_name_ND);
+            if (it==ElementVarKeys.end()) throw new Fatal("Domain::Domain:: __internal_error__: ElementVarKeys map doesn't have DOF keys for problem==%s",prob_name_ND.CStr());
+            Nods.Last()->AddDOF (it->second.first.CStr(), it->second.second.CStr());
+        }
+
 #ifdef HAS_MPI
         if (PARA)
         {
-            // add DOFs to interface nodes (between partitions)
-            if (Msh.Verts[i]->PartIDs.Size()>1) // this is a shared node (between partitions)
-            {
-                InterNodes.Push (Nods.Last());
-                for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
-                {
-                    int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
-                    String prob_name_ND;
-                    PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
-                    prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
-                    Nods.Last()->AddDOF (ElementVarKeys[prob_name_ND].first.CStr(), ElementVarKeys[prob_name_ND].second.CStr());
-                }
-            }
+            // set subset of shared nodes (between partitions)
+            if (Msh.Verts[i]->PartIDs.Size()>1) InterNodes.Push (Nods.Last());
         }
 #endif
         // set list of nodes for output
@@ -263,6 +304,33 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 #ifdef HAS_MPI
         if (PARA)
         {
+
+
+#ifdef PARALLEL_DEBUG
+            int tag = Msh.Cells[i]->Tag;
+            if (!Prps.HasKey(tag)) throw new Fatal("Domain::SetMesh: Dictionary of element properties does not have tag=%d",tag);
+            if (Prps(tag).HasKey("prob"))
+            {
+                // problem name
+                String prob_name;
+                PROB.Val2Key (Prps(tag)("prob"), prob_name);
+
+                // model
+                Model const * mdl = NULL;
+                Models_t::const_iterator m = Mdls.find(tag);
+                if (m!=Mdls.end()) mdl = m->second;
+
+                // connectivity
+                Array<Node*> nodes(Msh.Cells[i]->V.Size());
+                for (size_t k=0; k<nodes.Size(); ++k) nodes[k] = VertID2AllNode[Msh.Cells[i]->V[k]->ID];
+
+                // allocate element
+                if (Inis.HasKey(tag)) AllEles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), nodes));
+                else                  AllEles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , nodes));
+            }
+#endif // PARALLEL_DEBUG
+
+
             // skip elements that aren't in this partition
             if (Msh.Cells[i]->PartID!=MPI::COMM_WORLD.Get_rank()) continue;
         }

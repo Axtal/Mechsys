@@ -133,18 +133,16 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
         }
     }
 
-    // set UKeys in parent element and initialize DOFs
+    // set UKeys in parent element
     if (NDim==2)
     {
         UKeys.Resize (NDim);
         UKeys = "ux", "uy";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy", "fx fy");
     }
     else // 3D
     {
         UKeys.Resize (NDim);
         UKeys = "ux", "uy", "uz";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
     }
 
     // set F in nodes due to initial stresses

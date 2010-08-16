@@ -22,6 +22,7 @@
 #include <cstdlib> // for std::rand
 
 // MechSys
+#define PARALLEL_DEBUG
 #include <mechsys/fem/fem.h>
 
 using std::cout;
