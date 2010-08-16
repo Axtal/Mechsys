@@ -89,8 +89,8 @@ public:
     size_t          It;       ///< Current iteration
     size_t          NEq;      ///< Total number of equations (DOFs)
     size_t          NLag;     ///< Number of Lagrange multipliers
-    Array<long>     pEQ;      ///< prescribed equations
-    Array<long>     pEQproc;  ///< prescribed equations: processor which will handle the equation (in case of shared nodes)
+    Array<int>      pEQ;      ///< prescribed equations
+    Array<int>      pEQproc;  ///< prescribed equations: processor which will handle the equation (in case of shared nodes)
     Array<bool>     pU;       ///< prescribed U
     double          NormR;    ///< Euclidian norm of residual (R)
     double          MaxNormF; ///< Max(Norm(F), Norm(Fint))
@@ -763,31 +763,58 @@ inline void Solver::Initialize (bool Transient)
                 if (my_id==min_part_id && do_send_to_proc_i)
                 {
                     for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
+                    {
+                        if (inter_eq.Find(Dom.InterNodes[j]->EQ[k])>=0) throw new Fatal("Proc # %d is trying to send eq==%zd twice to proc # %d",my_id,Dom.InterNodes[j]->EQ[k],i);
                         inter_eq.Push (Dom.InterNodes[j]->EQ[k]);
+                    }
                 }
             }
-            MPI::Request req_send = MPI::COMM_WORLD.Isend (inter_eq.GetPtr(), inter_eq.Size(), MPI::INT, i, TAG_SENT_EQ);
-            req_send.Wait ();
+            MPI::Request req_send = MPI::COMM_WORLD.Isend (inter_eq.GetPtr(), inter_eq.Size(), MPI::INT, i, my_id);
+            buf.Printf("proc%d_is_sending_to%d.txt",my_id,i);
+            of.open(buf.CStr(),std::ios::out);
+            of<<"count = "<<inter_eq.Size()<<std::endl;
+            for (size_t k=0; k<inter_eq.Size(); ++k) of<<inter_eq[k]<<" "; of<<std::endl;
+            of.close();
+            //req_send.Wait(); // TODO: problem is here: this line is needed
         }
 
         // receive messages
         MPI::Status status;
 #ifdef PARALLEL_DEBUG
         Array<int> assigned_equations;
+        Array<int> from_proc;
 #endif
         for (int i=0; i<my_id; ++i)
         {
-            MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, TAG_SENT_EQ, status);
+            MPI::COMM_WORLD.Probe (i, i, status);
             int source = status.Get_source();
             int count  = status.Get_count(MPI::INT);
             Array<int> inter_eq(count); // equation of interface DOFs
-            MPI::COMM_WORLD.Recv (inter_eq.GetPtr(), count, MPI::INT, source, TAG_SENT_EQ);
+            if (source!=i) throw new Fatal("problem with source==%d (should be == %d)",source,i);
+            MPI::COMM_WORLD.Recv (inter_eq.GetPtr(), count, MPI::INT, i, i);
 
+
+            buf.Printf("proc%d_received_from%d.txt",my_id,i);
+            of.open(buf.CStr(),std::ios::out);
+            of<<"count = "<<count<<std::endl;
+            for (size_t k=0; k<inter_eq.Size(); ++k) of<<inter_eq[k]<<" "; of<<std::endl;
+            of.close();
 
 #ifdef PARALLEL_DEBUG
             buf.Printf("intereq_from%d_to%d.txt",i,MPI::COMM_WORLD.Get_rank());
             of.open(buf.CStr(),std::ios::out);
-            for (size_t k=0; k<inter_eq.Size(); ++k) of<<inter_eq[k]<<" "; of<<std::endl;
+            for (size_t k=0; k<inter_eq.Size(); ++k)
+            {
+                of<<inter_eq[k]<<" "; of<<std::endl;
+                for (size_t l=0; l<inter_eq.Size(); ++l)
+                {
+                    if (l!=k)
+                    {
+                        if (inter_eq[k]==inter_eq[l]) throw new Fatal("Proc # %d got repeated values in inter_eq from proc # %d",my_id,source);
+                    }
+                }
+            }
+
 #endif
 
 
@@ -800,15 +827,16 @@ inline void Solver::Initialize (bool Transient)
                     for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
                     {
 #ifdef PARALLEL_DEBUG
-                        if (assigned_equations.Find(inter_eq[m])>=0) throw new Fatal("problem during assignment: Node # %d, iDOF=%zd, eq=%d. Proc # %d got message from proc # %d",Dom.InterNodes[j]->Vert.ID,k,inter_eq[m],my_id,source);
+                        long pos = assigned_equations.Find(inter_eq[m]);
+                        if (pos>=0) throw new Fatal("Proc # %d got message from proc # %d\nProblem during assignment: Node # %d, iDOF=%zd, eq=%d has already been assigned by proc # %d",my_id,source,Dom.InterNodes[j]->Vert.ID,k,inter_eq[m],from_proc[pos]);
                         assigned_equations.Push(inter_eq[m]);
+                        from_proc.Push(source);
                         of << inter_eq[m] << "=>" << Dom.InterNodes[j]->Vert.ID << "/" << k << "  ";
 #endif
                         Dom.InterNodes[j]->EQ[k] = inter_eq[m];
                         m++;
                     }
                 }
-                else std::cout << source << " is not the min==" << min_part_id << std::endl;
             }
 
 
