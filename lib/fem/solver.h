@@ -691,6 +691,8 @@ inline void Solver::Initialize (bool Transient)
             }
         }
 
+        printf("Before: Proc # %d, NEq = %zd\n",my_id,NEq);
+
         // communicate the number of DOFs numbered
         Array<int> send_alloc_dofs(nprocs); // number of dofs just allocated in this processor
         Array<int> recv_alloc_dofs(nprocs); // number of dofs just allocated in this processor
@@ -704,6 +706,8 @@ inline void Solver::Initialize (bool Transient)
         {
             for (int i=0; i<my_id; ++i) NEq += recv_alloc_dofs[i];
         }
+
+        printf("After: Proc # %d, NEq = %zd\n",my_id,NEq);
 
         // assign equation numbers corresponding to local DOFs of elements
         for (size_t i=0; i<Dom.Eles.Size(); ++i)
@@ -731,6 +735,22 @@ inline void Solver::Initialize (bool Transient)
             }
         }
 
+
+#ifdef PARALLEL_DEBUG
+        String buf;
+        buf.Printf("nodes_%d.txt",MPI::COMM_WORLD.Get_rank());
+        std::ofstream of(buf.CStr(),std::ios::out);
+        for (size_t i=0; i<Dom.Nods.Size(); ++i) of<<Dom.Nods[i]->Vert.ID<<" "; of<<std::endl;
+        for (size_t i=0; i<Dom.Nods.Size(); ++i) { for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j) of<<Dom.Nods[i]->EQ[j]<<","; of<<" "; } of<<std::endl;
+        of.close();
+        buf.Printf("internodes_%d_before.txt",MPI::COMM_WORLD.Get_rank());
+        of.open(buf.CStr(),std::ios::out);
+        for (size_t i=0; i<Dom.InterNodes.Size(); ++i) of<<Dom.InterNodes[i]->Vert.ID<<" "; of<<std::endl;
+        for (size_t i=0; i<Dom.InterNodes.Size(); ++i) { for (size_t j=0; j<Dom.InterNodes[i]->nDOF(); ++j) of<<Dom.InterNodes[i]->EQ[j]<<","; of<<" "; } of<<std::endl;
+        of.close();
+#endif
+
+
         // post messages
         const int TAG_SENT_EQ = 1000;
         for (int i=my_id+1; i<nprocs; ++i)
@@ -751,6 +771,9 @@ inline void Solver::Initialize (bool Transient)
 
         // receive messages
         MPI::Status status;
+#ifdef PARALLEL_DEBUG
+        Array<int> assigned_equations;
+#endif
         for (int i=0; i<my_id; ++i)
         {
             MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, TAG_SENT_EQ, status);
@@ -758,6 +781,14 @@ inline void Solver::Initialize (bool Transient)
             int count  = status.Get_count(MPI::INT);
             Array<int> inter_eq(count); // equation of interface DOFs
             MPI::COMM_WORLD.Recv (inter_eq.GetPtr(), count, MPI::INT, source, TAG_SENT_EQ);
+
+
+#ifdef PARALLEL_DEBUG
+            buf.Printf("intereq_from%d_to%d.txt",i,MPI::COMM_WORLD.Get_rank());
+            of.open(buf.CStr(),std::ios::out);
+            for (size_t k=0; k<inter_eq.Size(); ++k) of<<inter_eq[k]<<" "; of<<std::endl;
+#endif
+
 
             int m = 0;
             for (size_t j=0; j<Dom.InterNodes.Size(); ++j)
@@ -767,13 +798,37 @@ inline void Solver::Initialize (bool Transient)
                 {
                     for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
                     {
+#ifdef PARALLEL_DEBUG
+                        if (assigned_equations.Find(inter_eq[m])>=0) throw new Fatal("problem during assignment: Node # %d, iDOF=%zd, eq=%d. Proc # %d got message from proc # %d",Dom.InterNodes[j]->Vert.ID,k,inter_eq[m],my_id,source);
+                        assigned_equations.Push(inter_eq[m]);
+                        of << inter_eq[m] << "=>" << Dom.InterNodes[j]->Vert.ID << "/" << k << "  ";
+#endif
                         Dom.InterNodes[j]->EQ[k] = inter_eq[m];
                         m++;
                     }
                 }
+                else std::cout << source << " is not the min==" << min_part_id << std::endl;
             }
+
+
+#ifdef PARALLEL_DEBUG
+            of<<"\n";
+            of.close();
+#endif
+
+
         }
+
+
+#ifdef PARALLEL_DEBUG
+        buf.Printf("internodes_%d_after.txt",MPI::COMM_WORLD.Get_rank());
+        of.open(buf.CStr(),std::ios::out);
+        for (size_t i=0; i<Dom.InterNodes.Size(); ++i) of<<Dom.InterNodes[i]->Vert.ID<<" "; of<<std::endl;
+        for (size_t i=0; i<Dom.InterNodes.Size(); ++i) { for (size_t j=0; j<Dom.InterNodes[i]->nDOF(); ++j) of<<Dom.InterNodes[i]->EQ[j]<<","; of<<" "; } of<<std::endl;
+        of.close();
+#endif
         
+
         // set NEq in all procs  
         if (my_id==nprocs-1) // I'm the last processor and the only one who knows the total num equations
         {
