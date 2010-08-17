@@ -44,6 +44,7 @@ public:
     // Methods
     void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
                        NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM);         ///< IdxEdgeOrFace is ignored
+    void GetLoc       (Array<size_t> & Loc)                          const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                                    const; ///< Stiffness matrix
     void CalcM        (Mat_t & M)                                    const; ///< Mass matrix
     void CalcT        (Mat_t & T, double & l)                        const; ///< Transformation matrix
@@ -80,14 +81,6 @@ inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
     A   = Prp("A");
     Izz = Prp("Izz");
     rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
-
-    // set UKeys in parent element
-    if (NDim==2) { UKeys.Resize(3);  UKeys = "ux", "uy", "wz"; }
-    else throw new Fatal("Beam::Beam: 3D Beam is not available yet");
-
-    // initialize DOFs
-    if (NDim==2) for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy wz", "fx fy mz");
-    else {}
 }
 
 inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
@@ -135,6 +128,17 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
         std::ostringstream oss;
         oss << BCs;
         throw new Fatal("Beam::SetBCs: This method does not work yet with BCs=%s",oss.str().c_str());
+    }
+}
+
+inline void Beam::GetLoc (Array<size_t> & Loc) const
+{
+    Loc.Resize (6);
+    for (size_t i=0; i<2; ++i)
+    {
+        Loc[i*3+0] = Con[i]->EQ[Con[i]->UMap("ux")];
+        Loc[i*3+1] = Con[i]->EQ[Con[i]->UMap("uy")];
+        Loc[i*3+2] = Con[i]->EQ[Con[i]->UMap("wz")];
     }
 }
 
@@ -391,7 +395,8 @@ Element * BeamMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair
 // Register element
 int BeamRegister()
 {
-    ElementFactory["Beam"] = BeamMaker;
+    ElementFactory["Beam"]   = BeamMaker;
+    ElementVarKeys["Beam2D"] = std::make_pair ("ux uy wz", "fx fy mz");
     PROB.Set ("Beam", (double)PROB.Keys.Size());
     return 0;
 }

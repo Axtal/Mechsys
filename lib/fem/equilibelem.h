@@ -49,6 +49,7 @@ public:
     void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel); ///< Apply gravity
     void Deactivate   (NodBCs_t & pF, pCalcM CalcM, double gAccel,
                        NodBCs_t & pU);                              ///< Deactivate element
+    void GetLoc       (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM        (Mat_t & M)                            const; ///< Mass matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
@@ -131,18 +132,6 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
                 sig(5) = 0.0;       // szx*sq2
             }
         }
-    }
-
-    // set UKeys in parent element
-    if (NDim==2)
-    {
-        UKeys.Resize (NDim);
-        UKeys = "ux", "uy";
-    }
-    else // 3D
-    {
-        UKeys.Resize (NDim);
-        UKeys = "ux", "uy", "uz";
     }
 
     // set F in nodes due to initial stresses
@@ -457,6 +446,17 @@ inline void EquilibElem::Deactivate (NodBCs_t & pF, pCalcM CalcM, double gAccel,
 
     // deactivate element
     Active = false;
+}
+
+inline void EquilibElem::GetLoc (Array<size_t> & Loc) const
+{
+    Loc.Resize (NDu);
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        Loc[i*NDim+0] = Con[i]->EQ[Con[i]->UMap("ux")];
+        Loc[i*NDim+1] = Con[i]->EQ[Con[i]->UMap("uy")];  if (NDim==3)
+        Loc[i*NDim+2] = Con[i]->EQ[Con[i]->UMap("uz")];
+    }
 }
 
 inline void EquilibElem::CalcK (Mat_t & K) const

@@ -46,6 +46,7 @@ public:
     void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM);     ///< If setting body forces, IdxEdgeOrFace is ignored
     void ClrBCs      ();                                               ///< Clear BCs
+    void GetLoc      (Array<size_t> & Loc)                      const; ///< Get location vector for mounting K/M matrices
     void CalcK       (Mat_t & K)                                const; ///< Stiffness matrix
     void CalcM       (Mat_t & M)                                const; ///< Mass matrix
 	void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)     const; ///< Update state at IPs
@@ -85,13 +86,6 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
         Sta.Push (new FlowState(NDim));
         Mdl->InitIvs (Ini, Sta[i]);
     }
-
-    // set UKeys in parent element
-    UKeys.Resize (1);
-    UKeys = "H"; // total head, temperature, voltage, etc.
-
-    // initialize DOFs
-    for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("H", "Q");
 }
 
 inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
@@ -182,6 +176,12 @@ inline void FlowElem::ClrBCs ()
 {
     HasConv = false;
     Bry2h.clear();
+}
+
+inline void FlowElem::GetLoc (Array<size_t> & Loc) const
+{
+    Loc.Resize (GE->NN);
+    for (size_t i=0; i<GE->NN; ++i) Loc[i] = Con[i]->EQ[Con[i]->UMap("H")];
 }
 
 inline void FlowElem::CalcK (Mat_t & K) const
@@ -389,7 +389,9 @@ Element * FlowElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SD
 // Register element
 int FlowElemRegister()
 {
-    ElementFactory["Flow"] = FlowElemMaker;
+    ElementFactory["Flow"]   = FlowElemMaker;
+    ElementVarKeys["Flow2D"] = std::make_pair ("H", "Q");
+    ElementVarKeys["Flow3D"] = std::make_pair ("H", "Q");
     PROB.Set ("Flow", (double)PROB.Keys.Size());
     return 0;
 }

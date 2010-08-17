@@ -105,14 +105,7 @@ public:
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
     InclSupport_t         InclSupport; ///< Inclined support
-#ifdef HAS_MPI
-    Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions
-#endif
-#ifdef PARALLEL_DEBUG
-    Array<Node*>           AllNods;
-    Array<Element*>        AllEles;
-    std::map<Node*,size_t> LocNod2IdxAllNods;
-#endif
+    Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions (if PARA==true)
 
     // Nodal results
     size_t        NActNods;    ///< Number of active nodes
@@ -217,40 +210,11 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 
     // set nodes from mesh
     std::map<int,Node*> VertID2Node;
-
-
-#ifdef PARALLEL_DEBUG
-    std::map<int,Node*> VertID2AllNode;
-#endif
-
-
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
 #ifdef HAS_MPI
         if (PARA)
         {
-
-
-#ifdef PARALLEL_DEBUG
-            // new node
-            AllNods.Push (new Node((*Msh.Verts[i])));
-            if (Msh.Verts[i]->Tag<0) TgdNods.Push (AllNods.Last());
-            VertID2AllNode[Msh.Verts[i]->ID] = AllNods.Last();
-
-            // add DOFs to node
-            for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
-            {
-                int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
-                String prob_name_ND;
-                PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
-                prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
-                ElementVarKeys_t::const_iterator it = ElementVarKeys.find(prob_name_ND);
-                if (it==ElementVarKeys.end()) throw new Fatal("Domain::Domain:: __internal_error__: ElementVarKeys map doesn't have DOF keys for problem==%s",prob_name_ND.CStr());
-                AllNods.Last()->AddDOF (it->second.first.CStr(), it->second.second.CStr());
-            }
-#endif // PARALLEL_DEBUG
-
-
             // skip vertices that aren't in this partition
             if (Msh.Verts[i]->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
         }
@@ -260,22 +224,11 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         if (Msh.Verts[i]->Tag<0) TgdNods.Push (Nods.Last());
         VertID2Node[Msh.Verts[i]->ID] = Nods.Last();
 
-
-#ifdef PARALLEL_DEBUG
-        LocNod2IdxAllNods[Nods.Last()] = AllNods.Size()-1;
-#endif // PARALLEL_DEBUG
-
-
         // add DOFs to node
         for (size_t k=0; k<Msh.Verts[i]->Shares.Size(); ++k)
         {
-            int elem_tag = Msh.Verts[i]->Shares[k].C->Tag;
-            String prob_name_ND;
-            PROB.Val2Key (Prps(elem_tag)("prob"), prob_name_ND);
-            prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
-            ElementVarKeys_t::const_iterator it = ElementVarKeys.find(prob_name_ND);
-            if (it==ElementVarKeys.end()) throw new Fatal("Domain::Domain:: __internal_error__: ElementVarKeys map doesn't have DOF keys for problem==%s",prob_name_ND.CStr());
-            Nods.Last()->AddDOF (it->second.first.CStr(), it->second.second.CStr());
+            std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, Msh.Verts[i]->Shares[k].C->Tag);
+            Nods.Last()->AddDOF (varkeys.first.CStr(), varkeys.second.CStr());
         }
 
 #ifdef HAS_MPI
@@ -304,33 +257,6 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 #ifdef HAS_MPI
         if (PARA)
         {
-
-
-#ifdef PARALLEL_DEBUG
-            int tag = Msh.Cells[i]->Tag;
-            if (!Prps.HasKey(tag)) throw new Fatal("Domain::SetMesh: Dictionary of element properties does not have tag=%d",tag);
-            if (Prps(tag).HasKey("prob"))
-            {
-                // problem name
-                String prob_name;
-                PROB.Val2Key (Prps(tag)("prob"), prob_name);
-
-                // model
-                Model const * mdl = NULL;
-                Models_t::const_iterator m = Mdls.find(tag);
-                if (m!=Mdls.end()) mdl = m->second;
-
-                // connectivity
-                Array<Node*> nodes(Msh.Cells[i]->V.Size());
-                for (size_t k=0; k<nodes.Size(); ++k) nodes[k] = VertID2AllNode[Msh.Cells[i]->V[k]->ID];
-
-                // allocate element
-                if (Inis.HasKey(tag)) AllEles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), nodes));
-                else                  AllEles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , nodes));
-            }
-#endif // PARALLEL_DEBUG
-
-
             // skip elements that aren't in this partition
             if (Msh.Cells[i]->PartID!=MPI::COMM_WORLD.Get_rank()) continue;
         }
@@ -431,7 +357,8 @@ inline void Domain::SetBCs (Dict const & BCs)
         {
             if (TgdEles[j]->Active)
             {
-                Mesh::BryTag_t const & eftags = TgdEles[j]->Cell.BryTags;
+                Mesh::BryTag_t           const & eftags  = TgdEles[j]->Cell.BryTags;
+                std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, TgdEles[j]->Cell.Tag);
                 for (Mesh::BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
                 {
                     int idx_side = p->first;
@@ -442,7 +369,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                         eleside_t es(TgdEles[j],idx_side);
                         for (size_t k=0; k<bcs.Keys.Size(); ++k) // we have to split Ubcs from Fbcs
                         {
-                            if (TgdEles[j]->UKeys.Find(bcs.Keys[k])>=0)
+                            if (Util::HasKey(varkeys.first, bcs.Keys[k])) // is Ukey
                             {
                                 eleside2tag_to_ubc[es].first = bc_tag;
                                 eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
@@ -501,16 +428,12 @@ inline void Domain::SetBCs (Dict const & BCs)
                 {
                     if (Eles[j]->Cell.Tag==bc_tag) // found
                     {
-                        // problem name
-                        String prob_name_ND;
-                        PROB.Val2Key (Prps(Eles[j]->Cell.Tag)("prob"), prob_name_ND);
-                        prob_name_ND.Printf("%s%dD", prob_name_ND.CStr(), NDim);
-
-                        // check if bc key is not U or F
+                        // check if bc key is not U and is not F
+                        std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, Eles[j]->Cell.Tag);
                         for (size_t k=0; k<bcs.Keys.Size(); ++k)
                         {
-                            if (Util::HasKey(ElementVarKeys[prob_name_ND].first, bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
-                            if (Util::HasKey(ElementVarKeys[prob_name_ND].second,bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
+                            if (Util::HasKey(varkeys.first, bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
+                            if (Util::HasKey(varkeys.second,bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
                         }
 
                         // map bcs

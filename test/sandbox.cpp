@@ -47,12 +47,15 @@ int main(int argc, char **argv) try
     cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
 
     String keys("ux uy uz  fx fy fz");
+    Array<String> array;
+    Util::Keys2Array (keys,array);
     cout << "Keys: " << keys << endl;
     cout << "Is 'fx' in Keys ? => " << (Util::HasKey(keys,"fx") ? " YES " : " NO ") << endl;
     cout << "Is 'FX' in Keys ? => " << (Util::HasKey(keys,"FX") ? " YES " : " NO ") << endl;
     cout << "Is 'Fx' in Keys ? => " << (Util::HasKey(keys,"Fx") ? " YES " : " NO ") << endl;
     cout << "Is 'fX' in Keys ? => " << (Util::HasKey(keys,"fX") ? " YES " : " NO ") << endl;
     cout << "Is 'uy' in Keys ? => " << (Util::HasKey(keys,"uy") ? " YES " : " NO ") << endl;
+    cout << "Array of keys = " << array << endl;
 
     cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
 
@@ -66,7 +69,7 @@ int main(int argc, char **argv) try
     cout << "Is 6 in A = " << (pos<0 ? "false" : "true: pos = ");
     if (pos>=0) cout << pos << endl;
     else cout << endl;
-    cout << "min(A)    = " << A[A.Min()] << endl;
+    cout << "min(A)    = " << A.TheMin() << endl;
     cout << "First(A)  = " << (*A.GetPtr()) << endl;
     cout << "Last(A)   = " << A.Last() << endl;
     cout << endl;

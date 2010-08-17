@@ -105,19 +105,6 @@ inline USigElem2::USigElem2 (int NDim, Mesh::Cell const & Cell, Model const * Md
         Mdl->InitIvs (Ini, Sta[i]); // initialize with effective stresses
     }
 
-    // set UKeys in parent element and initialize DOFs
-    UKeys.Resize (NDim);
-    if (NDim==2)
-    {
-        UKeys = "ux", "uy";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy", "fx fy");
-    }
-    else // 3D
-    {
-        UKeys = "ux", "uy", "uz";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
-    }
-
     // set F in nodes due to Fint
     CalcFint ();
 }
@@ -306,14 +293,14 @@ inline void USigElem2::GetLoc (Array<size_t> & Loc) const
   Loc.Resize (NDu);
   
   // U DOFs
-  for (size_t i=0; i<GE->NN; ++i)
-    {
-      for (size_t j=0; j<UKeys.Size(); ++j)
-        {
-	  size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
-	  Loc[i*NDim+j] = Con[i]->EQ[idx];
-        }
-    }
+  //for (size_t i=0; i<GE->NN; ++i)
+    //{
+      //for (size_t j=0; j<UKeys.Size(); ++j)
+        //{
+	  //size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
+	  //Loc[i*NDim+j] = Con[i]->EQ[idx];
+        //}
+    //}
 }
 
 inline void USigElem2::Matrices (Mat_t & Ai, Mat_t & Q) const
@@ -500,7 +487,9 @@ Element * USigElem2Maker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, S
 // Register element
 int USigElem2Register()
 {
-    ElementFactory["USigCond"] = USigElem2Maker;
+    ElementFactory["USigCond"]   = USigElem2Maker;
+    ElementVarKeys["USigCond2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys["USigCond3D"] = std::make_pair ("ux uy uz", "fx fy fz");
     PROB.Set ("USigCond", (double)PROB.Keys.Size());
     return 0;
 }    

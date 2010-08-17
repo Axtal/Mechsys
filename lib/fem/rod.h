@@ -38,6 +38,7 @@ public:
          Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
+    void GetLoc       (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcT        (Mat_t & T, double & l)                const; ///< Transformation matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const;
@@ -65,15 +66,17 @@ inline Rod::Rod (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair co
     // parameters/properties
     E = Prp("E");
     A = Prp("A");
+}
 
-    // set UKeys in parent element
-    UKeys.Resize (NDim);
-    if (NDim==2) UKeys = "ux", "uy";
-    else         UKeys = "ux", "uy", "uz";
-
-    // initialize DOFs
-    if (NDim==2) for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy",    "fx fy");
-    else         for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
+inline void Rod::GetLoc (Array<size_t> & Loc) const
+{
+    Loc.Resize (2*NDim);
+    for (size_t i=0; i<2; ++i)
+    {
+        Loc[i*NDim+0] = Con[i]->EQ[Con[i]->UMap("ux")];
+        Loc[i*NDim+1] = Con[i]->EQ[Con[i]->UMap("uy")];  if (NDim==3)
+        Loc[i*NDim+2] = Con[i]->EQ[Con[i]->UMap("uz")];
+    }
 }
 
 inline void Rod::CalcK (Mat_t & K) const
@@ -232,7 +235,9 @@ Element * RodMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
 // Register element
 int RodRegister()
 {
-    ElementFactory["Rod"] = RodMaker;
+    ElementFactory["Rod"]   = RodMaker;
+    ElementVarKeys["Rod2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys["Rod3D"] = std::make_pair ("ux uy uz", "fx fy fz");
     PROB.Set ("Rod", (double)PROB.Keys.Size());
     return 0;
 }

@@ -568,6 +568,7 @@ template<typename Value_T>
 inline void Array<Value_T>::PushN (Value_T const & Value, size_t Num)
 {
 #ifdef USE_STDVECTOR
+    std::vector<Value_T>::reserve (Num);
     for (size_t i=0; i<Num; ++i) std::vector<Value_T>::push_back (Value);
 #else
     if (_size+Num>=_space)

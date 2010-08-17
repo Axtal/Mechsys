@@ -105,19 +105,6 @@ inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
         Mdl->InitIvs (Ini, Sta[i]);
     }
 
-    // set UKeys in parent element and initialize DOFs
-    UKeys.Resize (NDim);
-    if (NDim==2)
-    {
-        UKeys = "ux", "uy";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy", "fx fy");
-    }
-    else // 3D
-    {
-        UKeys = "ux", "uy", "uz";
-        for (size_t i=0; i<GE->NN; ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
-    }
-
     // set F in nodes due to initial stresses
     double detJ, coef;
     Mat_t C, B, N, Ns;
@@ -324,14 +311,14 @@ inline void USigElem::GetLoc (Array<size_t> & Loc) const
     for (size_t i=0; i<NDs; ++i) Loc[i] = FirstEQ + i;
 
     // U DOFs
-    for (size_t i=0; i<GE->NN; ++i)
-    {
-        for (size_t j=0; j<UKeys.Size(); ++j)
-        {
-            size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
-            Loc[NDs + i*NDim+j] = Con[i]->EQ[idx];
-        }
-    }
+    //for (size_t i=0; i<GE->NN; ++i)
+    //{
+        //for (size_t j=0; j<UKeys.Size(); ++j)
+        //{
+            //size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
+            //Loc[NDs + i*NDim+j] = Con[i]->EQ[idx];
+        //}
+    //}
 }
 
 inline void USigElem::Matrices (Mat_t & A, Mat_t & Q) const
@@ -505,12 +492,12 @@ inline void USigElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
     // displacement increment
     Vec_t dUe(NDu);
-    for (size_t i=0; i<GE->NN; ++i)
-    for (int    j=0; j<NDim;   ++j)
-    {
-        size_t idx = Con[i]->UMap(UKeys[j]);
-        dUe(i*NDim+j) = dU(Con[i]->EQ[idx]);
-    }
+    //for (size_t i=0; i<GE->NN; ++i)
+    //for (int    j=0; j<NDim;   ++j)
+    //{
+        //size_t idx = Con[i]->UMap(UKeys[j]);
+        //dUe(i*NDim+j) = dU(Con[i]->EQ[idx]);
+    //}
 
     // update F_int
     if (F_int!=NULL)
@@ -561,8 +548,8 @@ inline void USigElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         for (size_t i=0; i<GE->NN; ++i)
         for (int    j=0; j<NDim;   ++j)
         {
-            size_t idx = Con[i]->UMap(UKeys[j]);
-            (*F_int)(Con[i]->EQ[idx]) += dF2(i*NDim+j);
+            //size_t idx = Con[i]->UMap(UKeys[j]);
+            //(*F_int)(Con[i]->EQ[idx]) += dF2(i*NDim+j);
         }
     }
 }
@@ -606,7 +593,9 @@ Element * USigElemMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SD
 // Register element
 int USigElemRegister()
 {
-    ElementFactory["USig"] = USigElemMaker;
+    ElementFactory["USig"]   = USigElemMaker;
+    ElementVarKeys["USig2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys["USig3D"] = std::make_pair ("ux uy uz", "fx fy fz");
     PROB.Set ("USig", (double)PROB.Keys.Size());
     return 0;
 }

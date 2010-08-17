@@ -28,6 +28,7 @@
 
 // MechSys
 #include <mechsys/util/string.h>
+#include <mechsys/util/array.h>
 
 namespace Util
 {
@@ -159,6 +160,13 @@ inline bool HasKey (String const & KeysSepBySpace, String const & Key)
     bool has_key = false;
     while (iss>>key && !has_key) has_key = (key==Key);
     return has_key;
+}
+
+inline void Keys2Array (String const & KeysSepBySpace, Array<String> & Keys)
+{
+    std::istringstream iss(KeysSepBySpace);
+    String key;
+    while (iss>>key) Keys.Push (key);
 }
 
 }; // namespace Util

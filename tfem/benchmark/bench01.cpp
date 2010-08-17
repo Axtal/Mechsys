@@ -176,6 +176,7 @@ int main(int argc, char **argv) try
     // solve
     sol.Solve    (nincs);
     dom.WriteVTU (fkey.CStr());
+    printf("Norm(dU) = %.8f\n",Norm(sol.dU));
 
     // end
 #ifdef HAS_MPI

@@ -37,7 +37,6 @@ typedef double (*pCalcM) (double t);              ///< M(ultiplier) callback
 typedef std::pair<IntDbl_t,pCalcM>      BCData_t; ///< Bry conds data (idxDOF,valueBCs,multiplier)
 typedef std::map<Node const *,BCData_t> NodBCs_t; ///< Map Node => bry conds. (idxDOF,valueBCS)
 
-
 class Element
 {
 public:
@@ -54,7 +53,6 @@ public:
 
     // Methods
     virtual void IncNLocDOF   (size_t & NEq)                             const {} ///< Increment the number of local DOFs
-    virtual void GetLoc       (Array<size_t> & Loc)                      const;   ///< Get location vector for mounting K/M matrices
     virtual void BackupState  ()                                         const;   ///< Backup element state
     virtual void RestoreState ()                                         const;   ///< Restore element state
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
@@ -63,11 +61,12 @@ public:
     virtual void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel) {}     ///< Apply gravity (body forces)
     virtual void Deactivate   (NodBCs_t & pF, pCalcM CalcM, double gAccel,
                                NodBCs_t & pU)                              {}     ///< Deactivate element
-    virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implement for this element"); }
-    virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implement for this element"); }
+    virtual void GetLoc       (Array<size_t> & Loc)                      const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
+    virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implemented for this element"); }
+    virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implemented for this element"); }
     virtual void CalcC        (Mat_t & C)                                const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
-    virtual void CalcK        (Vec_t const & U, double Alpha, double dt, Mat_t & KK, Vec_t & dF) const { throw new Fatal("Element::CalcK (with U, Alpha, Dt => HydroMech): Method not implement for this element"); }
-    virtual void CalcKCM      (Mat_t & KK, Mat_t & CC, Mat_t & MM)       const { throw new Fatal("Element::CalcKCM: Method not implement for this element"); }
+    virtual void CalcK        (Vec_t const & U, double Alpha, double dt, Mat_t & KK, Vec_t & dF) const { throw new Fatal("Element::CalcK (with U, Alpha, Dt => HydroMech): Method not implemented for this element"); }
+    virtual void CalcKCM      (Mat_t & KK, Mat_t & CC, Mat_t & MM)       const { throw new Fatal("Element::CalcKCM: Method not implemented for this element"); }
     virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)     const {}
     virtual void StateKeys    (Array<String> & Keys)                     const {} ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
     virtual void StateAtIP    (SDPair & KeysVals, int IdxIP)             const {} ///< Get state at IP
@@ -94,7 +93,6 @@ public:
     GeomType           GTy;    ///< Geometry type
     Array<Node*>       Con;    ///< Connectivity
     Array<State*>      Sta;    ///< State at the centre of the element or at each IP
-    Array<String>      UKeys;  ///< DOF keys such as 'ux', 'uy', 'uz'
 };
 
 
@@ -135,21 +133,6 @@ inline Element::~Element ()
 {
     if (GE!=NULL) delete GE;
     for (size_t i=0; i<Sta.Size(); ++i) { if (Sta[i]!=NULL) delete Sta[i]; }
-}
-
-inline void Element::GetLoc (Array<size_t> & Loc) const
-{
-    size_t nnods = Con.Size();
-    size_t ndofs = UKeys.Size();
-    Loc.Resize (nnods*ndofs);
-    for (size_t i=0; i<nnods; ++i)
-    {
-        for (size_t j=0; j<ndofs; ++j)
-        {
-            size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
-            Loc[i*ndofs+j] = Con[i]->EQ[idx];
-        }
-    }
 }
 
 inline void Element::BackupState () const
@@ -393,13 +376,6 @@ inline void Element::Draw (std::ostream & os, double MaxDist) const
 std::ostream & operator<< (std::ostream & os, Element const & E)
 {
     os << Util::_4 << E.Cell.ID << " ";
-    os << "[";
-    for (size_t i=0; i<E.UKeys.Size(); ++i)
-    {
-        os << E.UKeys[i];
-        if (i==E.UKeys.Size()-1) os << "]";
-        else                     os << ",";
-    }
     os << (E.Active?" active":" inactive") << " ";
     os << GTypeToStr(E.GTy) << " ";
     if (E.GE!=NULL)  os << E.GE->Name  << " " << "NIP=" << E.GE->NIP << " ";
@@ -421,8 +397,6 @@ std::ostream & operator<< (std::ostream & os, Element const & E)
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
 
-SDPair PROB;
-
 typedef Element * (*ElementMakerPtr)(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes);
 
 typedef std::map<String, ElementMakerPtr> ElementFactory_t;
@@ -439,9 +413,31 @@ Element * AllocElement(String const & Name, int NDim, Mesh::Cell const & Cell, M
     return ptr;
 }
 
-typedef std::map<String, std::pair<String,String> > ElementVarKeys_t;
 
-ElementVarKeys_t ElementVarKeys;
+/////////////////////////////////////////////////////////////////////////////////////// DOFs and variables /////
+
+
+SDPair PROB; ///< Structure mapping the problem name to a unique double value. Ex.: "Equilib" => 1.0
+
+typedef std::map<String, std::pair<String,String> > ElementVarKeys_t; ///< ProbNameNumDim => (UvarKeys,FvarKeys) map
+
+ElementVarKeys_t ElementVarKeys; ///< Maps ProbNameNumDim to (UvarKeys,FvarKeys) Ex.: "Equilib2D" => ("ux uy","fx fy")
+
+inline std::pair<String,String> const & ProbND2VarKeys (char const * ProbName, int NumDim) ///< Returns a reference to the var keys
+{
+    String prob_nd;
+    prob_nd.Printf ("%s%dD", ProbName, NumDim);
+    ElementVarKeys_t::const_iterator it = ElementVarKeys.find (prob_nd);
+    if (it==ElementVarKeys.end()) throw new Fatal("element.h::ProbND2VarKeys: Could not find ProblemNumDim=%s in ElementVarKeys map",prob_nd.CStr());
+    return it->second;
+}
+
+inline std::pair<String,String> const & CellTag2VarKeys (Dict const & Prps, int NumDim, int CellTag) ///< Returns a reference to the var keys connected to CellTag
+{
+    String prob_name;
+    PROB.Val2Key (Prps(CellTag)("prob"), prob_name);
+    return ProbND2VarKeys (prob_name.CStr(), NumDim);
+}
 
 }; // namespace FEM
 
