@@ -240,6 +240,7 @@ public:
     void Quad8ToTri6 ();                                    ///< Convert Quad8 mesh to Tri6 mesh
     void Tri6ToTri15 ();                                    ///< Convert Tri6 mesh to Tri15 mesh
     void Tri3ToTri6  ();                                    ///< Convert Tri3 mesh to Tri6 mesh
+    void Refine      ();                                    ///< Refine frames: split Lin2 cells into two
     void Tri6Shape   (double r, double s, Vec_t & N) const; ///< Tri6 Shape functions (used in Tri6ToTri15). N(6) needs to be pre-resized
 
     // Data
@@ -1696,6 +1697,34 @@ inline void Generic::Tri3ToTri6 ()
 
     // info
     printf("%s  ------- After Tri3ToTri6 --------%s\n", TERM_GREEN, TERM_RST);
+    printf("%s  Num of cells       = %zd%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
+    printf("%s  Num of vertices    = %zd%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
+}
+
+inline void Generic::Refine ()
+{
+    size_t old_sz = Cells.Size();
+    for (size_t i=0; i<old_sz; ++i)
+    {
+        if (Cells[i]->V.Size()!=2) throw new Fatal("Mesh::Refine: This method only works for Lin2 cells (NVerts=%d is invalid)",Cells[i]->V.Size());
+
+        // new vertex
+        size_t va = Cells[i]->V[0]->ID;
+        size_t vb = Cells[i]->V[1]->ID;
+        double xm =            (Verts[va]->C(0)+Verts[vb]->C(0))/2.0;
+        double ym =            (Verts[va]->C(1)+Verts[vb]->C(1))/2.0;
+        double zm = (NDim==3 ? (Verts[va]->C(2)+Verts[vb]->C(2))/2.0 : 0.0);
+        int    iv = PushVert (0, xm, ym, zm);
+
+        // new cell
+        PushCell (Cells[i]->Tag, Array<int>(va, iv));
+
+        // set old cell
+        Cells[i]->V[0] = Verts[iv];
+    }
+
+    // info
+    printf("%s  ------- After Refine ------------%s\n", TERM_GREEN, TERM_RST);
     printf("%s  Num of cells       = %zd%s\n", TERM_CLR2, Cells.Size(), TERM_RST);
     printf("%s  Num of vertices    = %zd%s\n", TERM_CLR2, Verts.Size(), TERM_RST);
 }

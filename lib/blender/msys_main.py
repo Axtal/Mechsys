@@ -73,6 +73,7 @@ EVT_MESH_DELALLVTAGS = 33 # delete all vertex tags
 EVT_MESH_DELALLETAGS = 34 # delete all edge tags
 EVT_MESH_DELALLFTAGS = 35 # delete all face tags
 EVT_MESH_DELMESH     = 36 # delete mesh object
+EVT_MESH_GENFRAS     = 37 # script for frame mesh generation
 # Mesh -- structured
 EVT_MESH_ADDBLK      = 40 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
 EVT_MESH_DELALLBLKS  = 41 # set block 2D: 4 or 8 edges, 3D: 8 or 20 edges
@@ -252,6 +253,10 @@ def button_event(evt):
         if res>0:
             delete_mesh()
             Blender.Window.QRedrawAll()
+
+    # -------------------------------------------------------------------- Mesh -- frames
+
+    elif evt==EVT_MESH_GENFRAS: me.gen_frame_mesh (True,None,di.key('fmsh_cpp'))
 
     # -------------------------------------------------------------------- Mesh -- structured
 
@@ -433,6 +438,8 @@ def cb_vtag  (evt,val): di.set_key      ('newvtag', val)
 def cb_etag  (evt,val): di.set_key      ('newetag', val)
 @try_catch
 def cb_ftag  (evt,val): di.set_key      ('newftag', val)
+@try_catch
+def cb_fmsh_cpp (evt,val): di.set_key('fmsh_cpp', val)
 @try_catch
 def cb_smsh_cpp (evt,val): di.set_key('smsh_cpp', val)
 @try_catch
@@ -786,13 +793,14 @@ def gui():
     h_set           = 6*rh+2*srg+2*rg
     h_cad           = 4*rh+2*rg
     h_msh_stru_blks = rh+srg+2*rh*len(blks) if len(blks)>0 else 0
+    h_msh_fra       = rh+2*rg
     h_msh_stru      = 2*rh+srg+h_msh_stru_blks+2*rg
     h_msh_unst_regs = rh+srg+rh*len(regs) if len(regs)>0 else 0
     h_msh_unst_hols = rh+srg+rh*len(hols) if len(hols)>0 else 0
     h_msh_unst      = 4*rh+3*srg+h_msh_unst_regs+h_msh_unst_hols+2*rg
     h_msh_ext_lins  = rh+srg+rh*len(lins) if len(lins)>0 else 0
     h_msh_ext       = rh+2*rg+h_msh_ext_lins
-    h_msh           = 11*rh+srg+h_msh_stru+h_msh_unst+2*rg+h_msh_ext
+    h_msh           = 13*rh+srg+h_msh_fra+h_msh_stru+h_msh_unst+3*rg+h_msh_ext
     h_mat_mats      = rg+(srg+rh)*len(mats)+rh*mat_extra_rows if len(mats)>0 else 0
     h_mat           = rh+h_mat_mats+2*rg
     h_fem_nbrys     = rh+srg+rh*len(nbrys)                  if len(nbrys)>0 else 0
@@ -894,6 +902,15 @@ def gui():
         Draw.Toggle      ('Hide mesh',   EVT_NONE,         c,     r, 160, rh, d['hide_mesh'], 'Hide mesh', cb_hide_mesh)
         Draw.PushButton  ('Delete mesh', EVT_MESH_DELMESH, c+160, r, 160, rh, 'Delete current mesh')
         r -= rh
+        r -= rh
+
+        # ----------------------- Mesh -- frame
+
+        gu.caption2(c,r,w,rh,'Frames')
+        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_msh_fra)
+        Draw.Toggle     ('C++',          EVT_NONE,         c,    r,  40, rh, d['fmsh_cpp'], 'Generate C++ script', cb_fmsh_cpp)
+        Draw.PushButton ('Write Script', EVT_MESH_GENFRAS, c+40, r,  80, rh, 'Create script for frame mesh')
+        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
         r -= rh
 
         # ----------------------- Mesh -- structured

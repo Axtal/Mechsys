@@ -64,6 +64,7 @@ def load_dict():
         dict['newetag']       = -10
         dict['newftag']       = -10
         dict['hide_mesh']     = False
+        dict['fmsh_cpp']      = True  # frame mesh: generate C++ script
         dict['smsh_cpp']      = False # structured mesh: generate C++ script
         dict['umsh_cpp']      = False # unstructured mesh: generate C++ script
         # FEM

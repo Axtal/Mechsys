@@ -47,7 +47,7 @@ public:
     void GetLoc       (Array<size_t> & Loc)                          const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                                    const; ///< Stiffness matrix
     void CalcM        (Mat_t & M)                                    const; ///< Mass matrix
-    void CalcT        (Mat_t & T, double & l)                        const; ///< Transformation matrix
+    void CalcT        (Mat_t & T, double & l, Vec_t * normal=NULL)   const; ///< Transformation matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)         const;
     void StateKeys    (Array<String> & Keys)                         const; ///< Get state keys
     void StateAtCt    (SDPair & KeysVals)                            const; ///< State at centroid
@@ -85,31 +85,85 @@ inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
 
 inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
+    if (NDim==3) throw new Fatal("Beam::SetBCs: Method not available for 3D yet");
+
     // length and T matrix
     double l;
     Mat_t  T;
-    CalcT (T, l);
+    Vec_t  normal;
+    CalcT (T, l, &normal);
 
-    if (BCs.HasKey("qn") || BCs.HasKey("qnl") || BCs.HasKey("qnr"))
+    // boundary conditions
+    bool has_qx  = BCs.HasKey("qx");  // x component of distributed loading
+    bool has_qy  = BCs.HasKey("qy");  // y component of distributed loading
+    bool has_qn  = BCs.HasKey("qn");  // normal distributed loading
+    bool has_qnl = BCs.HasKey("qnl"); // normal distributed loading (left)
+    bool has_qnr = BCs.HasKey("qnr"); // normal distributed loading (right)
+    bool has_qt  = BCs.HasKey("qt");  // tangential distributed loading (2D only)
+
+    // loads
+    HasQn = false;
+    qnl   = 0.0;
+    qnr   = 0.0;
+    double qt = 0.0;
+    if (BCs.HasKey("gravity"))
     {
-        if (NDim==3) throw new Fatal("Beam::SetBCs: Method not available for 3D yet (with 'qn' or 'qnl' or 'qnr')");
-
-        // loading
-        qnl = (BCs.HasKey("qn") ? BCs("qn") : BCs("qnl")); // qn at left
-        qnr = (BCs.HasKey("qn") ? BCs("qn") : BCs("qnr")); // qn at right
+        double g   = BCs("gravity");
+        double gam = rho*g;
+        double qy  = -gam*A;
+        double qn  =  normal(1)*qy;
+        qt    = -normal(0)*qy;
+        qnl   = qn;
+        qnr   = qn;
         HasQn = true;
+    }
+    else if (has_qx || has_qy)
+    {
+        double qx = (has_qx ? BCs("qx") : 0.0);
+        double qy = (has_qy ? BCs("qy") : 0.0);
+        double qn = normal(0)*qx + normal(1)*qy;
+        qt    = normal(1)*qx - normal(0)*qy;
+        qnl   = qn;
+        qnr   = qn;
+        HasQn = true;
+    }
+    else if (has_qn || has_qnl || has_qnr || has_qt)
+    {
+        if (has_qnl || has_qnr)
+        {
+            qnl = (has_qnl ? BCs("qnl") : 0.0);
+            qnr = (has_qnr ? BCs("qnr") : 0.0);
+        }
+        else
+        {
+            double qn = (has_qn ? BCs("qn") : 0.0);
+            qnl = qn;
+            qnr = qn;
+        }
+        qt    = (has_qt ? BCs("qt") : 0.0);
+        HasQn = true;
+    }
 
+    // set equivalent forces at nodes
+    if (HasQn)
+    {
         // is node 0 leftmost ?
         bool n0_is_left = true;
         if (fabs(Con[1]->Vert.C[0]-Con[0]->Vert.C[0])<1.0e-7) { // vertical segment
              if (Con[1]->Vert.C[1]<Con[0]->Vert.C[1]) n0_is_left = false; }
         else if (Con[1]->Vert.C[0]<Con[0]->Vert.C[0]) n0_is_left = false;
-        if (!n0_is_left) { Util::Swap(qnl,qnr);  qnl *= -1.;  qnr *= -1.; }
+        if (!n0_is_left)
+        {
+            Util::Swap(qnl,qnr);
+            qnl *= -1.;
+            qnr *= -1.; 
+            qt  *= -1.;
+        }
 
         // local and global forces
         Vec_t Fe(6);
-        Fe = 0.0, l*(7.0*qnl+3.0*qnr)/20.0,  l*l*(3.0*qnl+2.0*qnr)/60.0,
-             0.0, l*(3.0*qnl+7.0*qnr)/20.0, -l*l*(2.0*qnl+3.0*qnr)/60.0;
+        Fe = qt, l*(7.0*qnl+3.0*qnr)/20.0,  l*l*(3.0*qnl+2.0*qnr)/60.0,
+             qt, l*(3.0*qnl+7.0*qnr)/20.0, -l*l*(2.0*qnl+3.0*qnr)/60.0;
         Vec_t F(trans(T)*Fe);
 
         // add to nodes
@@ -122,12 +176,6 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
 
         // set CalcM
         for (size_t j=0; j<2; ++j) pF[Con[j]].second = CalcM;
-    }
-    else
-    {
-        std::ostringstream oss;
-        oss << BCs;
-        throw new Fatal("Beam::SetBCs: This method does not work yet with BCs=%s",oss.str().c_str());
     }
 }
 
@@ -189,7 +237,7 @@ inline void Beam::CalcM (Mat_t & M) const
     M = trans(T)*Ml*T;
 }
 
-inline void Beam::CalcT (Mat_t & T, double & l) const
+inline void Beam::CalcT (Mat_t & T, double & l, Vec_t * normal) const
 {
     // coordinates
     double x0 = Con[0]->Vert.C[0];
@@ -212,6 +260,13 @@ inline void Beam::CalcT (Mat_t & T, double & l) const
              0., 0.,  0.,   c,   s,  0.,
              0., 0.,  0.,  -s,   c,  0.,
              0., 0.,  0.,  0.,  0.,  1.;
+
+        // normal
+        if (normal!=NULL)
+        {
+            normal->change_dim (2);
+            (*normal) = -s, c;
+        }
     }
     else throw new Fatal("Beam::CalcT: 3D Beam is not available yet");
 }

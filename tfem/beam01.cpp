@@ -45,8 +45,16 @@ int main(int argc, char **argv) try
     if (argc>2) L   = atof(argv[2]);
 
     // elements properties
+    double gra = 9.81;  // m/s2
+    double wid = 1.0;   // m
+    double hei = 0.3;   // m
+    double rho = 2.5;   // g/m3
+    double E   = 38e+6; // kN/m2
+    double A   = 0.3;   // m2
+    double Izz = wid*pow(hei,3.0)/12.0; // m4
+    cout << "Izz = " << Izz << endl;
     Dict prps;
-    prps.Set (-1, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
+    prps.Set (-1, "prob fra  rho E A Izz", PROB("Beam"), 1.,  rho, E, A, Izz);
 
     // boundary conditions
     Dict bcs;
@@ -63,7 +71,8 @@ int main(int argc, char **argv) try
 
             bcs.Set(-100, "ux uy", 0.0, 0.0);
             bcs.Set(-200, "uy",    0.0);
-            bcs.Set(  -1, "qn",   -1.0);
+            //bcs.Set(  -1, "qn",   -1.0);
+            bcs.Set(  -1, "gravity", gra);
             break;
         }
         case 2:
@@ -104,13 +113,16 @@ int main(int argc, char **argv) try
             mesh.SetCell (2,   -1, Array<int>(3,2));
             mesh.SetCell (3,   -2, Array<int>(3,5));
             mesh.SetCell (4,   -2, Array<int>(5,4));
+            //mesh.Refine  ();
+            //mesh.Refine  ();
 
             bcs.Set (-100, "ux uy", 0.0, 0.0);
-            bcs.Set (-200, "mz",   12.5);
+            //bcs.Set (-200, "mz",   12.5);
             bcs.Set (  -2, "qn",   -9.2);
 
-            prps.Set (-2, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
-            prps.Set (-3, "prob fra E A",         PROB("Rod"),  1.0, 1.0, 1.0);
+            prps.Set (-2, "prob fra  rho E A Izz", PROB("Beam"), 1.,  rho, E, A, Izz);
+            prps.Set (-3, "prob fra  rho E A Izz", PROB("Beam"), 1.,  rho, E, A, Izz);
+            //prps.Set (-3, "prob fra E A",         PROB("Rod"),  1.0, 1.0, 1.0);
 
             sf = 0.005;
             break;
@@ -138,7 +150,7 @@ int main(int argc, char **argv) try
             bcs.Set (-100, "ux uy wz", 0.0, 0.0, 0.0);
             bcs.Set (  -2, "qn",      -1.0);
 
-            prps.Set (-2, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
+            prps.Set (-2, "prob fra  rho E A Izz", PROB("Beam"), 1.,  rho, E, A, Izz);
 
             sf = 0.5;
             break;
@@ -168,17 +180,59 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    //sol.Scheme = FEM::Solver::FE_t;
-    //sol.Scheme = FEM::Solver::NR_t;
+    sol.SetScheme ("FE");
 
     // run
     dom.SetBCs (bcs);
     //cout << dom << endl;
-    sol.Solve  (/*NDiv*/10);
+    sol.Solve  (/*NDiv*/1);
 
     // output
     dom.WriteMPY ("beam01_res", sf);
+    dom.WriteVTU ("beam01_res");
 
-    return 0;
+    // check
+    cout << endl;
+    double error = 0.0;
+    switch (tst)
+    {
+        case 1:
+        {
+            double N,V,M;
+            static_cast<FEM::Beam*>(dom.Eles[0])->CalcRes (0.5, N,V,M);
+            //double Mcor = 1.0/8.0;
+            double Mcor = rho*gra*A/8.;
+            cout << "M(max) = " << M << "  => " << Mcor << endl;
+            error += fabs(M-Mcor);
+            break;
+        }
+        case 2:
+        {
+            double N,V,M;
+            static_cast<FEM::Beam*>(dom.Eles[0])->CalcRes (0.0, N,V,M);
+            double Mcor = -1.0/2.0;
+            cout << "M(max) = " << M << "  => " << Mcor << endl;
+            error += fabs(M-Mcor);
+            break;
+        }
+        case 3:
+        {
+            break;
+        }
+        case 4:
+        {
+            break;
+        }
+        case 5:
+        {
+            break;
+        }
+        case 6:
+        {
+            break;
+        }
+    }
+
+    return (error>1.0e-15);
 }
 MECHSYS_CATCH
