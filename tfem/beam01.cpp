@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
             mesh.SetVert (1, -200,   L, 0.0);
             mesh.SetCell (0,    -1, Array<int>(0,1));
 
-            bcs.Set(-100, "ux uy", 0.0);
+            bcs.Set(-100, "ux uy", 0.0, 0.0);
             bcs.Set(-200, "uy",    0.0);
             bcs.Set(  -1, "qn",   -1.0);
             break;
@@ -73,7 +73,7 @@ int main(int argc, char **argv) try
             mesh.SetVert (1, -200,   L, 0.0);
             mesh.SetCell (0,    -1, Array<int>(0,1));
 
-            bcs.Set(-100, "ux uy wz", 0.0);
+            bcs.Set(-100, "ux uy wz", 0.0, 0.0, 0.0);
             bcs.Set(  -1, "qn",      -1.0);
             break;
         }
@@ -86,7 +86,7 @@ int main(int argc, char **argv) try
             mesh.SetCell (0,   -1, Array<int>(0,1));
             mesh.SetCell (1,   -1, Array<int>(1,2));
 
-            bcs.Set(-100, "ux uy wz", 0.0);
+            bcs.Set(-100, "ux uy wz", 0.0, 0.0, 0.0);
             bcs.Set(  -1, "qn",      -1.0);
             break;
         }
@@ -105,7 +105,7 @@ int main(int argc, char **argv) try
             mesh.SetCell (3,   -2, Array<int>(3,5));
             mesh.SetCell (4,   -2, Array<int>(5,4));
 
-            bcs.Set (-100, "ux uy", 0.0);
+            bcs.Set (-100, "ux uy", 0.0, 0.0);
             bcs.Set (-200, "mz",   12.5);
             bcs.Set (  -2, "qn",   -9.2);
 
@@ -135,7 +135,7 @@ int main(int argc, char **argv) try
             //mesh.SetCell  (3,   -1, Array<int>(3,4));
             //mesh.SetCell  (4,   -1, Array<int>(5,4));
             
-            bcs.Set (-100, "ux uy wz", 0.0);
+            bcs.Set (-100, "ux uy wz", 0.0, 0.0, 0.0);
             bcs.Set (  -2, "qn",      -1.0);
 
             prps.Set (-2, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 1.0, 1.0, 1.0);
@@ -155,8 +155,8 @@ int main(int argc, char **argv) try
             mesh.AddPin (-300);
 
             bcs.Set(-100, "ux uy wz", 0.0, 0.0, 0.0);
-            bcs.Set(-200, "ux uy", 0.0, 0.0, 0.0);
-            bcs.Set(  -1, "qn",   -1.0);
+            bcs.Set(-200, "ux uy",    0.0, 0.0);
+            bcs.Set(  -1, "qn",      -1.0);
             break;
         }
         default: throw new Fatal("main: Test = %d is not available",tst);
