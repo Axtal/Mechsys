@@ -421,9 +421,8 @@ inline void Generic::PartDomain (int NParts, bool Full, int * Part)
         int numflag    = 0; // zero numbering
         int options[5] = {0,0,0,0,0};
         int edgecut;
-        //if (NParts<8) METIS_PartGraphRecursive (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
-        //else          METIS_PartGraphKway      (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
-        METIS_PartGraphKway (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
+        if (NParts<8) METIS_PartGraphRecursive (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
+        else          METIS_PartGraphKway      (&n, Xadj.GetPtr(), Adjncy.GetPtr(), NULL, NULL, &wgtflag, &numflag, &NParts, options, &edgecut, part);
 #else
         throw new Fatal("Generic::PartDomain: This method requires ParMETIS and MPI (if Part array is not provided)");
 #endif

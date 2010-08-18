@@ -171,110 +171,49 @@ class MeshData:
 # =========================================================================== Linear mesh
 
 @print_timing
-def gen_frame_mesh(txt=None,cpp=False):
-    # get selected object and mesh
-    edm, obj, msh = di.get_msh()
+def gen_frame_mesh(gen_script=False,txt=None,cpp=False,with_headers=True):
+    m = MeshData()
+    if gen_script:
+        key = '.cpp' if cpp else '.py'
+        if txt==None: txt = Blender.Text.New(m.obj.name+'_frame'+key)
+        if cpp: # C++ script
 
-    # 3D mesh?
-    is3d = obj.properties['is3d'] if obj.properties.has_key('is3d') else False
+            # header
+            if with_headers:
+                txt.write ('// MechSys\n')
+                txt.write ('#include <mechsys/fem/fem.h>\n')
+                txt.write ('\nint main(int argc, char **argv) try\n')
+                txt.write ('{\n')
 
-    # transform vertices coordinates
-    ori = [v for v in msh.verts] # create a copy in local coordinates
-    msh.transform (obj.matrix)   # transform mesh to global coordinates
-
-    # MechSys mesh
-    mesh = ms.mesh_generic(is3d)
-
-    # etags
-    etags = {}
-    if obj.properties.has_key('etags'):
-        for k, v in obj.properties['etags'].iteritems():
-            eid = int(k)
-            etags[(msh.edges[eid].v1.index, msh.edges[eid].v2.index)] = v
-
-    if txt!=None: # generate script
-
-        if cpp:
-            if is3d: txt.write ('Mesh::Generic mesh(true); // true=>3D\n')
-            else:    txt.write ('Mesh::Generic mesh(false); // false=>2D\n')
+            # set
+            txt.write ('    Mesh::Generic mesh(/*NDim*/%d);\n' % (m.ndim))
+            txt.write ('    mesh.SetSize (%d/*vertices*/, %d/*cells*/);\n' % (m.nverts, m.nedges))
 
             # vertices
-            info = '// VertIdx, OnBry==True, X, Y, Z'
-            txt.write('mesh.SetNVerts    (%d); // set number of vertices\n'%len(msh.verts))
-            for i, v in enumerate(msh.verts):
-                if is3d: txt.write ('mesh.SetVert      (%d, true, %s,%s,%s); %s\n' % (i, str(v.co[0]), str(v.co[1]), str(v.co[2]), info))
-                else:    txt.write ('mesh.SetVert      (%d, true, %s,%s); %s\n'    % (i, str(v.co[0]), str(v.co[1]),               info))
-                info = ''
+            for v in m.msh.verts:
+                tag = 0
+                if v.index in m.vtags: tag = m.vtags[v.index]
+                if m.is3d: txt.write ('    mesh.SetVert (%4d,  %4d,  %6e, %6e, %6e);\n' % (v.index, tag, v.co[0], v.co[1], v.co[2]))
+                else:      txt.write ('    mesh.SetVert (%4d,  %4d,  %6e, %6e);\n'      % (v.index, tag, v.co[0], v.co[1]))
 
-            # elements
-            inf1 = '// ElemIdx, ETag, OnBry==True, VTK_LINE==3'
-            inf2 = '// ElemIdx, Vert1, Vert2'
-            inf3 = '// ElemIdx, LocalEdgeID==0, Tag'
-            txt.write('mesh.SetNElems    (%d); // set number of elements\n'%len(msh.edges))
-            for i, e in enumerate(msh.edges):
+            # cells
+            for e in m.msh.edges:
                 key = (e.v1.index, e.v2.index)
-                if not key in etags: raise Exception('All edges must have a edge tag')
-                etag = etags[key]
-                txt.write ('mesh.SetElem     (%d,%d,true,VTK_LINE); %s\n' % (i, etag,       inf1)) # 3 == VTK_LINE
-                txt.write ('mesh.SetElemCon  (%d,0,%d); %s\n'             % (i, e.v1.index, inf2)) # 0 == local node index
-                txt.write ('mesh.SetElemCon  (%d,1,%d); %s\n'             % (i, e.v2.index, inf2)) # 1 == local node index
-                txt.write ('mesh.SetElemEtag (%d,0,%d); %s\n'             % (i, etags[key], inf3)) # 0 == local edge index
-                inf1 = inf2 = inf3 = ''
+                tag = 0
+                if key in m.etags: tag = m.etags[key]
+                else: raise Exception('For frames, all edges==cells must have an edge tag')
+                txt.write ('    mesh.SetCell (%4d, %4d, Array<int>(%4d, %4d));\n' % (e.index, tag, e.v1.index, e.v2.index))
 
-        else:
-            if is3d: txt.write ('mesh = ms.mesh_generic(True) # True=>3D\n')
-            else:    txt.write ('mesh = ms.mesh_generic(False) # False=>2D\n')
+            # bottom
+            if with_headers:
+                txt.write ('}\n')
+                txt.write ('MECHSYS_CATCH\n')
 
-            # vertices
-            info = '# VertIdx, OnBry==True, X, Y, Z'
-            txt.write ('mesh.set_nverts    (%d) # set number of vertices\n' % len(msh.verts))
-            for i, v in enumerate(msh.verts):
-                if is3d: txt.write ('mesh.set_vert      (%d, True, %s,%s,%s) %s\n' % (i, str(v.co[0]), str(v.co[1]), str(v.co[2]), info))
-                else:    txt.write ('mesh.set_vert      (%d, True, %s,%s) %s\n'    % (i, str(v.co[0]), str(v.co[1]),               info))
-                info = ''
-
-            # elements
-            inf1 = '# ElemIdx, ETag, OnBry==True, VTK_LINE==3'
-            inf2 = '# ElemIdx, Vert1, Vert2'
-            inf3 = '# ElemIdx, LocalEdgeID==0, Tag'
-            txt.write('mesh.set_nelems    (%d) # set number of elements\n'%len(msh.edges))
-            for i, e in enumerate(msh.edges):
-                key = (e.v1.index, e.v2.index)
-                if not key in etags: raise Exception('All edges must have a edge tag')
-                etag = etags[key]
-                txt.write ('mesh.set_elem      (%d,%d,True,3) %s\n' % (i, etag,       inf1)) # 3 == VTK_LINE
-                txt.write ('mesh.set_elem_con  (%d,0,%d) %s\n'      % (i, e.v1.index, inf2)) # 0 == local node index
-                txt.write ('mesh.set_elem_con  (%d,1,%d) %s\n'      % (i, e.v2.index, inf2)) # 1 == local node index
-                txt.write ('mesh.set_elem_etag (%d,0,%d) %s\n'      % (i, etags[key], inf3)) # 0 == local edge index
-                inf1 = inf2 = inf3 = ''
+        else: # Python script
+            raise Exception('Frames: python script is not implemented yet')
 
     else: # run
-
-        mesh = ms.mesh_generic(is3d)
-
-        # vertices
-        mesh.set_nverts (len(msh.verts))
-        for i, v in enumerate(msh.verts):
-            if is3d: mesh.set_vert (i, True, v.co[0], v.co[1], v.co[2])
-            else:    mesh.set_vert (i, True, v.co[0], v.co[1])
-
-        # elements
-        mesh.set_nelems (len(msh.edges))
-        for i, e in enumerate(msh.edges):
-            key = (e.v1.index, e.v2.index)
-            if not key in etags: raise Exception('All edges must have a edge tag')
-            etag = etags[key]
-            mesh.set_elem      (i,etag,True,3)    # 3 == VTK_LINE
-            mesh.set_elem_con  (i, 0, e.v1.index) # 0 == local node index
-            mesh.set_elem_con  (i, 1, e.v2.index) # 1 == local node index
-            mesh.set_elem_etag (i, 0, etags[key]) # 0 == local edge index
-
-    # Restore local coordinates
-    msh.verts = ori
-    if edm: Blender.Window.EditMode(1)
-
-    # generate mesh
-    if txt==None: return mesh
+        raise Exception('Frames: running of simulation through Blender is not implemented yet')
 
 
 # =========================================================================== Structured mesh

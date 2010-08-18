@@ -167,7 +167,7 @@ inline Array<Value_T>::Array (BPy::list const & Dat)
     size_t size = BPy::len(Dat);
     Resize (size);
     for (size_t i=0; i<size; ++i)
-        _values[i] = BPy::extract<Value_T>(Dat[i])();
+        (*this)[i] = BPy::extract<Value_T>(Dat[i])();
 }
 
 #endif

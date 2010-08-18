@@ -44,7 +44,6 @@ import msys_cad  as ca
 import msys_mesh as me
 import msys_dict as di
 import msys_fem  as fem
-import msys_dem  as dem
 import msys_gui  as gu
 
 #import rpdb2; rpdb2.start_embedded_debugger('msys')
@@ -114,15 +113,6 @@ EVT_FEM_DPARAVIEW    = 95 # view in ParaView (dynamics)
 EVT_FEM_CLEAR        = 96 # clear error message
 EVT_FEM_PLOTRESN     = 97 # plot results at node
 EVT_FEM_PLOTRESE     = 98 # plot results at element
-# DEM
-EVT_DEM_GEN_PKG      = 100 # generate packing
-EVT_DEM_GEN_TTT      = 101 # generate true triaxial packing
-EVT_DEM_GEN_SCR      = 102 # generate script
-EVT_DEM_RUN          = 103 # run simulation
-EVT_DEM_STOP         = 104 # stop simulation
-EVT_DEM_CLEAR        = 105 # clear error message
-EVT_DEM_GSD          = 106 # generate GSD
-EVT_DEM_LOAD_HDF     = 107 # read HDF5 file
 
 
 # ==================================================================================== Events
@@ -132,7 +122,6 @@ def hide_all():
     di.set_key('gui_show_mesh', False)
     di.set_key('gui_show_mat',  False)
     di.set_key('gui_show_fem',  False)
-    di.set_key('gui_show_dem',  False)
     di.set_key('gui_show_res',  False)
     di.set_key('gui_inirow',    0)
     Blender.Window.QRedrawAll()
@@ -327,19 +316,6 @@ def button_event(evt):
     elif evt==EVT_FEM_PLOTRESN: fem.plot_res (False)
     elif evt==EVT_FEM_PLOTRESE: fem.plot_res (True)
 
-    # ----------------------------------------------------------------------------------- DEM 
-
-    elif evt==EVT_DEM_GEN_PKG: dem.gen_pkg    (False)
-    elif evt==EVT_DEM_GEN_TTT: dem.gen_pkg    (True)
-    elif evt==EVT_DEM_GEN_SCR: dem.gen_script ()
-    elif evt==EVT_DEM_RUN:     dem.run        ()
-    elif evt==EVT_DEM_STOP:    dem.stop       ()
-    elif evt==EVT_DEM_CLEAR:
-        di.key('dem_fatal').value = 0
-        Blender.Window.QRedrawAll()
-    elif evt==EVT_DEM_GSD:      dem.gen_GSD  (False) # is_ttt
-    elif evt==EVT_DEM_LOAD_HDF: Blender.Window.FileSelector(cb_dem_hdf, 'Load HDF')
-
 # ================================================================================= Callbacks
 
 # ---------------------------------- Show/Hide
@@ -360,10 +336,6 @@ def cb_gui_show_mat(evt,val):
 def cb_gui_show_fem(evt,val):
     di.set_key ('gui_show_fem', val)
     show_only  ('gui_show_fem')
-@try_catch
-def cb_gui_show_dem(evt,val):
-    di.set_key ('gui_show_dem', val)
-    show_only  ('gui_show_dem')
 
 # ---------------------------------- Settings
 
@@ -699,120 +671,6 @@ def cb_fem_nout_plt (evt,val): di.set_key ('fem_nout_plt', val-1)
 @try_catch
 def cb_fem_eout_plt (evt,val): di.set_key ('fem_eout_plt', val-1)
 
-# ---------------------------------- DEM
-
-@try_catch
-def cb_dem_Lx(evt,val): di.set_key ('dem_Lx', float(val))
-@try_catch
-def cb_dem_Ly(evt,val): di.set_key ('dem_Ly', float(val))
-@try_catch
-def cb_dem_Lz(evt,val): di.set_key ('dem_Lz', float(val))
-@try_catch
-def cb_dem_Nx(evt,val): di.set_key ('dem_Nx', val)
-@try_catch
-def cb_dem_Ny(evt,val): di.set_key ('dem_Ny', val)
-@try_catch
-def cb_dem_Nz(evt,val): di.set_key ('dem_Nz', val)
-@try_catch
-def cb_dem_R(evt,val): di.set_key ('dem_R', float(val))
-@try_catch
-def cb_dem_rho(evt,val): di.set_key ('dem_rho', float(val))
-@try_catch
-def cb_dem_seed(evt,val): di.set_key ('dem_seed', val)
-@try_catch
-def cb_dem_prob(evt,val): di.set_key ('dem_prob', float(val))
-@try_catch
-def cb_dem_pkg(evt,val): di.set_key ('dem_pkg', val-1)
-@try_catch
-def cb_dem_res(evt,val): di.set_key ('dem_res', val)
-@try_catch
-def cb_dem_draw_verts(evt,val): di.set_key ('dem_draw_verts', val)
-@try_catch
-def cb_dem_draw_edges(evt,val): di.set_key ('dem_draw_edges', val)
-
-@try_catch
-def cb_dem_Kn (evt,val): di.set_key ('dem_Kn', float(val))
-@try_catch
-def cb_dem_mu (evt,val): di.set_key ('dem_mu', float(val))
-@try_catch
-def cb_dem_Kt (evt,val): di.set_key ('dem_Kt', float(val))
-@try_catch
-def cb_dem_beta (evt,val): di.set_key ('dem_beta', float(val))
-@try_catch
-def cb_dem_Gn (evt,val): di.set_key ('dem_Gn', float(val))
-@try_catch
-def cb_dem_eta (evt,val): di.set_key ('dem_eta', float(val))
-@try_catch
-def cb_dem_Gt (evt,val): di.set_key ('dem_Gt', float(val))
-
-@try_catch
-def cb_dem_iso_pf (evt,val): di.set_key ('dem_iso_pf', float(val))
-@try_catch
-def cb_dem_iso_timef (evt,val): di.set_key ('dem_iso_timef', float(val))
-@try_catch
-def cb_dem_iso_dt (evt,val): di.set_key ('dem_iso_dt', float(val))
-@try_catch
-def cb_dem_iso_dtout (evt,val): di.set_key ('dem_iso_dtout', float(val))
-@try_catch
-def cb_dem_iso_render (evt,val): di.set_key ('dem_iso_render', val)
-
-@try_catch
-def cb_dem_ttt_comp (evt,val):
-    di.set_key ('dem_ttt_comp', 1)
-    di.set_key ('dem_ttt_ext',  0)
-    di.set_key ('dem_ttt_pcte', 0)
-    di.set_key ('dem_ttt_ezf', -abs(di.key('dem_ttt_ezf')))
-    di.set_key ('dem_ttt_thf', 30.0)
-@try_catch
-def cb_dem_ttt_ext  (evt,val):
-    di.set_key ('dem_ttt_comp', 0)
-    di.set_key ('dem_ttt_ext',  1)
-    di.set_key ('dem_ttt_pcte', 0)
-    di.set_key ('dem_ttt_ezf', abs(di.key('dem_ttt_ezf')))
-    di.set_key ('dem_ttt_thf', -30.0)
-@try_catch
-def cb_dem_ttt_pcte (evt,val):
-    di.set_key ('dem_ttt_comp', 0)
-    di.set_key ('dem_ttt_ext',  0)
-    di.set_key ('dem_ttt_pcte', 1)
-    di.set_key ('dem_ttt_ezf', -abs(di.key('dem_ttt_ezf')))
-@try_catch
-def cb_dem_ttt_pf (evt,val): di.set_key ('dem_ttt_pf', float(val))
-@try_catch
-def cb_dem_ttt_qf (evt,val): di.set_key ('dem_ttt_qf', float(val))
-@try_catch
-def cb_dem_ttt_thf (evt,val): di.set_key ('dem_ttt_thf', float(val))
-@try_catch
-def cb_dem_ttt_pex (evt,val): di.set_key ('dem_ttt_pex', val)
-@try_catch
-def cb_dem_ttt_pey (evt,val): di.set_key ('dem_ttt_pey', val)
-@try_catch
-def cb_dem_ttt_pez (evt,val): di.set_key ('dem_ttt_pez', val)
-@try_catch
-def cb_dem_ttt_exf (evt,val): di.set_key ('dem_ttt_exf', float(val))
-@try_catch
-def cb_dem_ttt_eyf (evt,val): di.set_key ('dem_ttt_eyf', float(val))
-@try_catch
-def cb_dem_ttt_ezf (evt,val):
-    if   di.key('dem_ttt_comp'): di.set_key ('dem_ttt_ezf', -abs(float(val)))
-    elif di.key('dem_ttt_ext'):  di.set_key ('dem_ttt_ezf', abs(float(val)))
-    else:                        di.set_key ('dem_ttt_ezf', -abs(float(val)))
-@try_catch
-def cb_dem_ttt_timef (evt,val): di.set_key ('dem_ttt_timef', float(val))
-@try_catch
-def cb_dem_ttt_dt (evt,val): di.set_key ('dem_ttt_dt', float(val))
-@try_catch
-def cb_dem_ttt_dtout (evt,val): di.set_key ('dem_ttt_dtout', float(val))
-@try_catch
-def cb_dem_ttt_render (evt,val): di.set_key ('dem_ttt_render', val)
-
-@try_catch
-def cb_dem_cpp_script (evt,val): di.set_key ('dem_cpp_script', val)
-@try_catch
-def cb_dem_hdf(fn):
-    if os.path.exists(fn): dem.load_hdf(fn);
-    else: raise Exception("File does not exist")
-
 # ======================================================================================= GUI
 
 # Draw GUI
@@ -943,13 +801,6 @@ def gui():
     h_fem_eatts     = rg+srg+rh*len(eatts)*2+srg*len(eatts) if len(eatts)>0 else 0
     h_fem_stage     = 13*rh+srg+h_fem_nbrys+h_fem_ebrys+h_fem_fbrys+h_fem_eatts+rh*stg_extra_rows if len(stages)>0 else 0
     h_fem           = 8*rh+h_fem_stage+3*rg + (rh if (d['fem_running'].value or d['fem_fatal'].value) else 0)
-    h_dem_pkg       = 9*rh+3*rg
-    h_dem_hdf       = rh+2*rg
-    h_dem_cte       = 5*rh+srg
-    h_dem_ttt_iso   = 3*rh+2*srg
-    h_dem_ttt_she   = 4*rh+3*srg
-    h_dem_ttt       = 6*rh+2*srg+h_dem_ttt_iso+h_dem_ttt_she + (rh if (d['dem_running'].value or d['dem_fatal'].value) else 0)
-    h_dem           = h_dem_pkg+h_dem_hdf+h_dem_cte+srg+8*rh+h_dem_ttt
 
     # clear background
     gu.background()
@@ -1232,7 +1083,7 @@ def gui():
 
     # ======================================================== FEM
 
-    gu.caption1(c,r0-rh,w,rh,'FEM',c,d['gui_show_fem'],cb_gui_show_fem)
+    gu.caption1(c,r0,w,rh,'FEM',c+240,d['gui_show_fem'],cb_gui_show_fem)
     if d['gui_show_fem']:
         r = r0-rh
         r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_fem)
@@ -1431,166 +1282,8 @@ def gui():
         r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
     r -= rg
 
-    # ======================================================== DEM
+    # ============================================================
 
-    gu.caption1(c,r0-rh,w,rh,'DEM',c+80,d['gui_show_dem'],cb_gui_show_dem)
-    if d['gui_show_dem']:
-        r = r0-rh
-        r, c, w = gu.box1_in(W,cg,rh,rg, c,r,w,h_dem)
-
-        # ----------------------- DEM -- particle generation
-
-        gu.caption2(c,r,w,rh,'Particle generation')
-        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_pkg)
-
-        gu.text(c,    r,'Lx:'); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Lx']), 128, 'Length of box', cb_dem_Lx)
-        gu.text(c+120,r,'R:');  Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_R']),  128, 'Radius',        cb_dem_R)
-        r -= rh
-        gu.text(c,    r,'Ly:');  Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Ly']),  128, 'Length of box', cb_dem_Ly)
-        gu.text(c+120,r,'rho:'); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_rho']), 128, 'Density',       cb_dem_rho)
-        r -= rh
-        gu.text(c,    r,'Lz:');   Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Lz']),  128,   'Length of box', cb_dem_Lz)
-        gu.text(c+120,r,'Seed:'); Draw.Number('', EVT_NONE, c+160, r, 60, rh, int(d['dem_seed']),1,1000,'Seed',          cb_dem_seed)
-        r -= rh
-        gu.text(c,    r,'Nx:');   Draw.Number('', EVT_NONE, c+40,  r, 60, rh, int(d['dem_Nx']),1,1000,'Number of x divisions', cb_dem_Nx)
-        gu.text(c+120,r,'Prob:'); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_prob']), 128,'Probability/fraction',  cb_dem_prob)
-        r -= rh
-        gu.text(c,r,'Ny:'); Draw.Number('', EVT_NONE,  c+40,  r, 60,  rh, int(d['dem_Ny']),1,1000,'Number of y divisions', cb_dem_Ny)
-        Draw.Menu (d['dem_pkgs_mnu'],       EVT_NONE,  c+120, r, 100, rh, int(d['dem_pkg'])+1,    'Packing type',          cb_dem_pkg)
-        r -= rh
-        gu.text(c,r,'Nz:'); Draw.Number('', EVT_NONE,  c+40, r, 60, rh, int(d['dem_Nz']),1,1000,'Number of z divisions', cb_dem_Nz)
-        r -= rh+rg
-        gu.text(c,r,'Resolution:'); Draw.Number('', EVT_NONE, c+80,  r, 60, rh, int(d['dem_res']),3,128,'Resolution',    cb_dem_res)
-        Draw.Toggle     ('Draw Verts',              EVT_NONE, c+140, r, 80, rh, d['dem_draw_verts'],    'Draw Vertices', cb_dem_draw_verts)
-        Draw.Toggle     ('Draw Edges',              EVT_NONE, c+220, r, 80, rh, d['dem_draw_edges'],    'Draw Edges',    cb_dem_draw_edges)
-        r -= rh
-        Draw.PushButton ('Generate Particles',      EVT_DEM_GEN_PKG,  c,     r, 150, rh, 'Generate particles')
-        Draw.PushButton ('Generate TTT Packing',    EVT_DEM_GEN_TTT,  c+150, r, 150, rh, 'Generate true triaxial (TTT) packing')
-        r -= rh
-        Draw.PushButton ('Grain Size Distribution', EVT_DEM_GSD,      c,     r, 150, rh, 'Generate Grain Size Distribution (GSD)')
-
-        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
-
-        # ----------------------- DEM -- read HDF5
-
-        r -= rh
-        gu.caption2(c,r,w,rh,'Read HDF5')
-        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_hdf)
-
-        Draw.PushButton ('Read HDF5', EVT_DEM_LOAD_HDF, c, r, 100, rh, 'Read HDF5')
-
-        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
-
-        # ----------------------- DEM -- constants
-
-        r -= rh
-        gu.caption2(c,r,w,rh,'Internal constants')
-        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_cte)
-
-        gu.text(c,     r,'Kn:'  ); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Kn']),   128, 'Normal stiffness between particles',                   cb_dem_Kn)
-        gu.text(c+120, r,'mu:'  ); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_mu']),   128, 'Microscopic friction coefficient',                     cb_dem_mu)
-        r -= rh
-        gu.text(c,     r,'Kt:'  ); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Kt']),   128, 'Tangential stiffness between particles',               cb_dem_Kt)
-        gu.text(c+120, r,'beta:'); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_beta']), 128, 'Spheres only: rolling stiffness coefficient',          cb_dem_beta)
-        r -= rh
-        gu.text(c,     r,'Gn:'  ); Draw.String('', EVT_NONE, c+40,  r, 60, rh, str(d['dem_Gn']),   128, 'Normal dissipative coefficient between particles',     cb_dem_Gn)
-        gu.text(c+120, r,'eta:' ); Draw.String('', EVT_NONE, c+160, r, 60, rh, str(d['dem_eta']),  128, 'Spheres only: plastic moment coefficient (0 indicates that the rolling resistance will not be used)', cb_dem_eta)
-        r -= rh
-        gu.text(c,     r,'Gt:'  ); Draw.String('', EVT_NONE, c+40, r, 60, rh, str(d['dem_Gt']),   128, 'Tangential dissipative coefficient between particles', cb_dem_Gt)
-        r -= rh
-
-        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
-
-        # ----------------------- DEM -- True Triaxial Test
-
-        gu.caption2(c,r,w,rh,'True Triaxial Test (TTT)')
-        r, c, w = gu.box2_in(W,cg,rh,rg, c,r,w,h_dem_ttt)
-
-        # ----------------------- DEM -- True Triaxial Test --- Stage 1
-
-        gu.caption3_(c,r,w,rh, 'Stage 1: Isotropic Compression')
-        r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_dem_ttt_iso)
-        r -= srg
-
-        gu.text(c, r,'pf:'); Draw.String('', EVT_NONE, c+30, r, 60, rh, str(d['dem_iso_pf']), 128, 'p at the and of isotropic compression', cb_dem_iso_pf)
-        r -= rh
-        gu.text(c,    r,'timef');
-        gu.text(c+60, r,'dt');
-        gu.text(c+120,r,'dtout');
-        r -= rh
-        Draw.String('', EVT_NONE, c,    r, 60, rh,     str(d['dem_iso_timef']), 128, 'final time',                cb_dem_iso_timef)
-        Draw.String('', EVT_NONE, c+60, r, 60, rh,     str(d['dem_iso_dt']),    128, 'time increment',            cb_dem_iso_dt)
-        Draw.String('', EVT_NONE, c+120,r, 60, rh,     str(d['dem_iso_dtout']), 128, 'time increment for output', cb_dem_iso_dtout)
-        Draw.Toggle ('Render', EVT_NONE, c+180, r, 60, rh, d['dem_iso_render'],      'Render video ?',            cb_dem_iso_render)
-        r -= srg
-        r, c, w = gu.box3_out(W,cg,rh, c,r)
-
-        # ----------------------- DEM -- True Triaxial Test --- Stage 2
-
-        r -= rh
-        gu.caption3_(c,r,w,rh, 'Stage 2: Shear Loading')
-        r, c, w = gu.box3_in(W,cg,rh, c,r,w,h_dem_ttt_she)
-        r -= srg
-
-        Draw.Toggle ('Compression', EVT_NONE, c,     r, 80, rh, d['dem_ttt_comp'], 'Compression',  cb_dem_ttt_comp)
-        Draw.Toggle ('Extension',   EVT_NONE, c+80,  r, 80, rh, d['dem_ttt_ext'],  'Extension ',   cb_dem_ttt_ext)
-        Draw.Toggle ('p-Cte',       EVT_NONE, c+160, r, 80, rh, d['dem_ttt_pcte'], 'p constant ?', cb_dem_ttt_pcte)
-        r -= rh
-        r -= srg
-
-
-        if d['dem_ttt_comp'] or d['dem_ttt_ext']: # compression or extension
-            gu.text(c,     r,'Ezf:'); Draw.String('', EVT_NONE, c+30, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)', cb_dem_ttt_ezf)
-        else:
-            gu.text(c,     r,'Ezf:'); Draw.String('', EVT_NONE, c+30, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)',         cb_dem_ttt_ezf)
-            gu.text(c+110, r,'Thf:'); Draw.String('', EVT_NONE, c+150,r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
-
-        #gu.text(c, r,'pf:');
-        #if d['dem_ttt_pcte']: gu.label (str(d['dem_ttt_pf']), c+30,  r, 60, rh)
-        #else:                 Draw.String('', EVT_NONE,       c+30,  r, 60, rh, str(d['dem_ttt_pf']),  128, 'p at the and of shearing',  cb_dem_ttt_pf)
-
-        #gu.text(c+110, r,'Exf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_exf']), 128, 'Final Ex (strain)',         cb_dem_ttt_exf)
-        #Draw.Toggle     ('pEx',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pex'],       'Prescribed Ex (strain)',    cb_dem_ttt_pex)
-        #r -= rh
-        #gu.text(c,     r,'qf:');  Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_qf']),  128, 'q at the and of shearing',  cb_dem_ttt_qf)
-        #gu.text(c+110, r,'Eyf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_eyf']), 128, 'Final Ey (strain)',         cb_dem_ttt_eyf)
-        #Draw.Toggle     ('pEy',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pey'],       'Prescribed Ey (strain)',    cb_dem_ttt_pey)
-        #r -= rh
-        #gu.text(c,     r,'thf:'); Draw.String('', EVT_NONE, c+30,  r, 60, rh, str(d['dem_ttt_thf']), 128, 'th at the and of shearing', cb_dem_ttt_thf)
-        #gu.text(c+110, r,'Ezf:'); Draw.String('', EVT_NONE, c+150, r, 60, rh, str(d['dem_ttt_ezf']), 128, 'Final Ez (strain)',         cb_dem_ttt_ezf)
-        #Draw.Toggle     ('pEz',                   EVT_NONE, c+210, r, 60, rh,     d['dem_ttt_pez'],       'Prescribed Ez (strain)',    cb_dem_ttt_pez)
-        r -= rh
-        gu.text(c,    r,'timef');
-        gu.text(c+60, r,'dt');
-        gu.text(c+120,r,'dtout');
-        r -= rh
-        Draw.String('', EVT_NONE, c,    r, 60, rh,     str(d['dem_ttt_timef']), 128, 'final time',                cb_dem_ttt_timef)
-        Draw.String('', EVT_NONE, c+60, r, 60, rh,     str(d['dem_ttt_dt']),    128, 'time increment',            cb_dem_ttt_dt)
-        Draw.String('', EVT_NONE, c+120,r, 60, rh,     str(d['dem_ttt_dtout']), 128, 'time increment for output', cb_dem_ttt_dtout)
-        Draw.Toggle ('Render', EVT_NONE, c+180, r, 60, rh, d['dem_ttt_render'],      'Render video ?',            cb_dem_ttt_render)
-        r -= rh
-
-        r -= srg
-        r, c, w = gu.box3_out(W,cg,rh, c,r)
-
-        # ----------------------- DEM -- True Triaxial Test --- Stage 2 -- END
-
-        Draw.Toggle     ('C++',             EVT_NONE,        c,     r, 60,  rh, d['dem_cpp_script'], 'Generate C++ script instead of Python ?', cb_dem_cpp_script)
-        Draw.PushButton ('Generate Script', EVT_DEM_GEN_SCR, c+60,  r, 120, rh, 'Generate Script')
-        Draw.PushButton ('Run',             EVT_DEM_RUN,     c+180, r, 60,  rh, 'Run simulation')
-        Draw.PushButton ('Stop',            EVT_DEM_STOP,    c+240, r, 60,  rh, 'Stop simulation')
-        if d['dem_running'].value:
-            r -= rh
-            gu.text (c, r, 'Simulation running ....................................................')
-        if d['dem_fatal'].value:
-            r -= rh
-            gu.text (c, r, 'Simulation FAILED (check terminal)')
-            Draw.PushButton ('clr', EVT_DEM_CLEAR, c+240, r, 60,  rh, 'Clear error message')
-
-        r, c, w = gu.box2_out(W,cg,rh,rg, c,r)
-        r, c, w = gu.box1_out(W,cg,rh,rg, c,r)
-    r -= rh
-    r -= rg
 
 
 # Register GUI

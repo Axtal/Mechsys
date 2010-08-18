@@ -17,15 +17,7 @@
  ************************************************************************/
 
 // Boost-Python
-#include <boost/python/module.hpp>
-#include <boost/python/class.hpp>
-#include <boost/python/module_init.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/call_method.hpp>
-#include <boost/ref.hpp>
-#include <boost/utility.hpp>
-#include <boost/python/list.hpp>
-#include <boost/python/dict.hpp>
+#include <boost/python.hpp> // this includes everything
 
 #define USE_BOOST_PYTHON
 
@@ -33,10 +25,6 @@ namespace BPy = boost::python;
 
 // MechSys -- FEM
 #include <mechsys/fem/fem.h>
-
-// MechSys -- DEM
-#include <mechsys/dem/domain.h>
-#include <mechsys/dem/particle.h>
 
 // functions overloadings
 BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_PHI2M, Phi2M, 1, 2)
@@ -46,20 +34,16 @@ BOOST_PYTHON_FUNCTION_OVERLOADS (FUN_M2PHI, M2Phi, 1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_ReadMesh,     ReadMesh,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_SetVert,      SetVert,      4, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteVTU,     WriteVTU,     1, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY,     WriteMPY,     1, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MG_WriteMPY,     WriteMPY,     1, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_Generate,     PyGenerate,   1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,       GenBox,       0, 7)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,     Generate,     0, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,     Generate,     0, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,       GenBox,       0, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 1)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_DynSolve,     DynSolve,     3, 4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_GenSpheres,   GenSpheres,   7, 8)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_GenFromMesh,  GenFromMesh,  3, 6)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_AddVoroPack,  AddVoroPack,  12,13)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DE_GetGSD,       PyGetGSD,     3, 4)
 
 // module
 BOOST_PYTHON_MODULE (mechsys)
@@ -145,8 +129,6 @@ BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic con
     .def("Gravity",      &FEM::Domain::Gravity)
     .def("Deactivate",   &FEM::Domain::Deactivate)
     .def("SetUVals",     &FEM::Domain::SetUVals)
-    .def("SetOutNods",   &FEM::Domain::PySetOutNods)
-    .def("SetOutEles",   &FEM::Domain::PySetOutEles)
     .def("PrintResults", &FEM::Domain::PrintResults, DO_PrintResults())
     .def("WriteMPY",     &FEM::Domain::WriteMPY,     DO_WriteMPY())
     .def("WriteVTU",     &FEM::Domain::WriteVTU)
@@ -160,29 +142,6 @@ BPy::class_<FEM::Solver>("FEM_Solver", "FEM solver", BPy::init<FEM::Domain const
     .def("SetScheme", &FEM::Solver::SetScheme)
     .def_readwrite("MaxIt", &FEM::Solver::MaxIt)
     .def_readwrite("TolR",  &FEM::Solver::TolR)
-    ;
-
-///////////////////////////////////////////////////////////////////////////////////// dem /////
-
-BPy::class_<DEM::Domain>("DEM_Domain")
-    .def("GenSpheres",     &DEM::Domain::GenSpheres,  DE_GenSpheres())
-    .def("GenFromMesh",    &DEM::Domain::GenFromMesh, DE_GenFromMesh())
-    .def("GenBox",         &DEM::Domain::GenBox)
-    .def("AddVoroPack",    &DEM::Domain::AddVoroPack, DE_AddVoroPack())
-    .def("AddSphere",      &DEM::Domain::PyAddSphere)
-    .def("AddCube",        &DEM::Domain::PyAddCube)
-    .def("AddTetra",       &DEM::Domain::PyAddTetra)
-    .def("AddRice",        &DEM::Domain::PyAddRice)
-    .def("AddPlane",       &DEM::Domain::PyAddPlane)
-    .def("GetGSD",         &DEM::Domain::PyGetGSD,    DE_GetGSD())
-    .def("WritePOV",       &DEM::Domain::WritePOV)
-    .def("WriteBPY",       &DEM::Domain::WriteBPY)
-    .def("SetCamPos",      &DEM::Domain::PySetCamPos)
-    .def("GetParticles",   &DEM::Domain::PyGetParticles)
-    .def("GenBoundingBox", &DEM::Domain::GenBoundingBox)
-    .def("SetProps",       &DEM::Domain::SetProps)
-    .def("Save",           &DEM::Domain::Save)
-    .def("Load",           &DEM::Domain::Load)
     ;
 
 } // BOOST_PYTHON_MODULE

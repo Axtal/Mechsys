@@ -211,7 +211,7 @@ def gen_script():
         txt.write ('    // mesh\n')
         if   dat.msh_type=='struct':   me.gen_struct_mesh   (True, txt, True, False) # gen_script, txt, cpp, with_headers
         elif dat.msh_type=='unstruct': me.gen_unstruct_mesh (True, txt, True, False) # gen_script, txt, cpp, with_headers
-        elif dat.msh_type=='frame':    me.gen_frame_mesh    (      txt, True, False) # gen_script, txt, cpp, with_headers
+        elif dat.msh_type=='frame':    me.gen_frame_mesh    (True, txt, True, False) # gen_script, txt, cpp, with_headers
 
         # elements properties
         txt.write ('\n    // elements properties\n')

@@ -46,7 +46,8 @@ bool MECHSYS_CATCH_PARALLEL = false;
 
 // Boost::Python
 #ifdef USE_BOOST_PYTHON
-  #include <boost/errors.hpp>
+  #include <boost/python/errors.hpp>
+  #include <boost/python/str.hpp>
   namespace BPy = boost::python;
   #define MECHSYS_BPY_CATCH catch (BPy::error_already_set) { printf("%sFatal: ",TERM_RED); PyErr_Print(); printf("%s\n",TERM_RST); MECHSYS_FINALIZE }
 #else

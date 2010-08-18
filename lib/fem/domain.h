@@ -116,11 +116,6 @@ public:
     Array<String> EleKeys;     ///< All element keys (sx, sy, vx, vy, ...)
     mutable Res_t NodResults;  ///< Extrapolated nodal results
     mutable Res_t NodResCount; ///< Count how many times a variable (key) was added to a node
-
-#ifdef USE_BOOST_PYTHON
-    void PySetOutNods (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutNods (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
-    void PySetOutEles (BPy::str const & FileKey, BPy::list const & IDsOrTags) { SetOutEles (BPy::extract<char const *>(FileKey)(), Array<int>(IDsOrTags)); }
-#endif
 };
 
 bool Domain::PARA = false;
