@@ -33,6 +33,10 @@ namespace FEM
 class Beam : public Element
 {
 public:
+    // static
+    static size_t DrwNDiv; ///< Number of division for drawing moment diagram
+    static bool   DrwMtxt; ///< Show text with min/max bending moment ?
+
     // Constructor
     Beam (int                  NDim,   ///< Space dimension
           Mesh::Cell   const & Cell,   ///< Geometric information: ID, Tag, connectivity
@@ -65,6 +69,9 @@ public:
     double qnr;   ///< Normal load (right)
     bool   HasQn; ///< Has normal load ?
 };
+
+size_t Beam::DrwNDiv = 10;
+bool   Beam::DrwMtxt = true;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -377,9 +384,6 @@ inline void Beam::CalcRes (double r, double & N, double & V, double & M) const
 
 inline void Beam::Draw (std::ostream & os, double SF) const
 {
-    // constants
-    size_t ndiv = 10;
-
     // coordinates
     double x0 = Con[0]->Vert.C[0];
     double y0 = Con[0]->Vert.C[1];
@@ -410,9 +414,9 @@ inline void Beam::Draw (std::ostream & os, double SF) const
         CalcRes (rMmax, N, V, Mmax);
         CalcRes (rMmin, N, V, Mmin);
         os << "dat_beam = []\n";
-        for (size_t i=0; i<ndiv+1; ++i)
+        for (size_t i=0; i<DrwNDiv+1; ++i)
         {
-            r = static_cast<double>(i)/static_cast<double>(ndiv);
+            r = static_cast<double>(i)/static_cast<double>(DrwNDiv);
             CalcRes (r, N, V, M);
             x  = x0 + r*(x1-x0);
             y  = y0 + r*(y1-y0);
@@ -432,33 +436,36 @@ inline void Beam::Draw (std::ostream & os, double SF) const
         os << "ax.add_patch  (pc_beam)\n\n";
 
         // max M
-        if (fabs(Mmax)>1.0e-13)
+        if (DrwMtxt)
         {
-            x  = x0 + rMmax*(x1-x0);
-            y  = y0 + rMmax*(y1-y0);
-            sf = SF*Mmax;
-            xf = x - sf*xn;
-            yf = y - sf*yn;
-            String buf;
-            buf.Printf ("%g",Mmax);
-            os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
-            os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
-            os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
-        }
-        
-        // min M
-        if (fabs(Mmin)>1.0e-13)
-        {
-            x  = x0 + rMmin*(x1-x0);
-            y  = y0 + rMmin*(y1-y0);
-            sf = SF*Mmin;
-            xf = x - sf*xn;
-            yf = y - sf*yn;
-            String buf;
-            buf.Printf ("%g",Mmin);
-            os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
-            os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
-            os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+            if (fabs(Mmax)>1.0e-13)
+            {
+                x  = x0 + rMmax*(x1-x0);
+                y  = y0 + rMmax*(y1-y0);
+                sf = SF*Mmax;
+                xf = x - sf*xn;
+                yf = y - sf*yn;
+                String buf;
+                buf.Printf ("%g",Mmax);
+                os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+                os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
+                os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+            }
+            
+            // min M
+            if (fabs(Mmin)>1.0e-13)
+            {
+                x  = x0 + rMmin*(x1-x0);
+                y  = y0 + rMmin*(y1-y0);
+                sf = SF*Mmin;
+                xf = x - sf*xn;
+                yf = y - sf*yn;
+                String buf;
+                buf.Printf ("%g",Mmin);
+                os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+                os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
+                os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+            }
         }
     }
     else throw new Fatal("Beam::GetState: 3D Beam is not available yet");
