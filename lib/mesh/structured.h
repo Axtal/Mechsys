@@ -574,7 +574,7 @@ inline void Structured::Generate (Array<Block> const & Blks, bool O2)
     Array<Vertex*> verts_m3;  // Z O2 Vertices (with duplicates)
 
     // info
-    Util::Stopwatch stopwatch(OnlyRoot);
+    Util::Stopwatch stopwatch(/*activated*/WithInfo);
 
     // check
     if (Blks.Size()<1) throw new Fatal("Structured::Generate: Number of blocks must be greater than 0 (%d is invalid)",Blks.Size());

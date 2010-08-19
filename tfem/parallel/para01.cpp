@@ -101,7 +101,6 @@ int main(int argc, char **argv) try
     blks[0].SetNy (ny);
     Mesh::Structured mesh(/*NDim*/2);
     mesh.WithInfo = root;
-    if (parallel) mesh.OnlyRoot = true;
     mesh.Generate (blks,/*O2*/false);
     if (parallel)
     {

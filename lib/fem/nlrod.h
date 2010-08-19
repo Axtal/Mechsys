@@ -50,6 +50,7 @@ public:
            Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
+    void GetLoc      (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
     void CalcK       (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcT       (Mat_t & T, double & l)                const; ///< Transformation matrix
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
@@ -80,15 +81,17 @@ inline NLRod::NLRod (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPai
     // allocate and initialize state (constant along element)
     Sta.Push (new NLRodState(NDim));
     Sta[0]->Init (Ini);
+}
 
-    // set UKeys in parent element
-    UKeys.Resize (NDim);
-    if (NDim==2) UKeys = "ux", "uy";
-    else         UKeys = "ux", "uy", "uz";
-
-    // initialize DOFs
-    if (NDim==2) for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy",    "fx fy");
-    else         for (size_t i=0; i<Con.Size(); ++i) Con[i]->AddDOF("ux uy uz", "fx fy fz");
+inline void NLRod::GetLoc (Array<size_t> & Loc) const
+{
+    Loc.Resize (2*NDim);
+    for (size_t i=0; i<2; ++i)
+    {
+        Loc[i*NDim+0] = Con[i]->EQ[Con[i]->UMap("ux")];
+        Loc[i*NDim+1] = Con[i]->EQ[Con[i]->UMap("uy")];  if (NDim==3)
+        Loc[i*NDim+2] = Con[i]->EQ[Con[i]->UMap("uz")];
+    }
 }
 
 inline void NLRod::CalcK (Mat_t & K) const

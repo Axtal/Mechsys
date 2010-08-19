@@ -81,7 +81,6 @@ public:
     void          * OutDat;   ///< Debug data (to be used with either OutFun or DbgFun)
     pOutFun         DbgFun;   ///< Debug function (called everytime for some internal (update) methods)
     void          * DbgDat;   ///< Debug data (to be used with either OutFun or DbgFun)
-    bool            Root;     ///< Root processor ?
     double          Time;     ///< Current time (t)
     size_t          Inc;      ///< Current increment
     size_t          IdxOut;   ///< Counter for generating VTU files in DynSolve
@@ -122,6 +121,7 @@ public:
     double        DynTh1;   ///< Dynamic coefficient Theta 1
     double        DynTh2;   ///< Dynamic coefficient Theta 2
     Array<double> IncsW;    ///< Increments weights used in Solve
+    bool          WithInfo; ///< Print information ?
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -160,7 +160,6 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       OutDat  (TheOutDat),
       DbgFun  (TheDbgFun),
       DbgDat  (TheDbgDat),
-      Root    (true),
       Time    (0.0),
       Inc     (0),
       IdxOut  (0),
@@ -188,23 +187,24 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       DampAm  (0.005),
       DampAk  (0.5),
       DynTh1  (0.5),
-      DynTh2  (0.5)
+      DynTh2  (0.5),
+      WithInfo(true)
 {
 #if HAS_MPI
-    if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) Root = false;
+    if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;
 #endif
 }
 
 inline void Solver::Solve (size_t NInc, char const * FileKey)
 {
     // info
-    Util::Stopwatch stopwatch(/*only_root*/FEM::Domain::PARA);
+    Util::Stopwatch stopwatch(/*activated*/WithInfo);
 
     // initialize global matrices and vectors
     Initialize ();
 
     // output initial state
-    if (Root)
+    if (WithInfo)
     {
         if      (Scheme==FE_t) _time_print ("Quasi-static --- FE");
         else if (Scheme==ME_t) _time_print ("Quasi-static --- ME");
@@ -249,7 +249,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
 
         // output
         IdxOut++;
-        if (Root) _time_print ();
+        if (WithInfo) _time_print ();
         if (Scheme!=ME_t) Dom.OutResults (Time, F_int);
         else if (!SSOut)  Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
@@ -274,13 +274,13 @@ inline void Solver::TransSolve (double tf, double dt, double dtOut, char const *
 inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * FileKey)
 {
     // info
-    Util::Stopwatch stopwatch(/*only_root*/FEM::Domain::PARA);
+    Util::Stopwatch stopwatch(/*activated*/WithInfo);
 
     // initialize global matrices and vectors
     Initialize (/*Transient*/true);
 
     // output initial state
-    if (Root)
+    if (WithInfo)
     {
         if (DScheme==GN22_t) _time_print ("Dynamic ------ GN22");
     }
@@ -311,7 +311,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
 
         // output
         IdxOut++;
-        if (Root) _time_print ();
+        if (WithInfo) _time_print ();
         Dom.OutResults (Time, F_int);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
 
@@ -531,8 +531,8 @@ inline void Solver::UpdateElements (Vec_t const & dU, bool CalcFint)
 inline void Solver::Initialize (bool Transient)
 {
     // info
-    Util::Stopwatch stopwatch(/*only_root*/FEM::Domain::PARA);
-    if (Root) printf("\n%s--- Solver --- initializing --------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    Util::Stopwatch stopwatch(/*activated*/WithInfo);
+    if (WithInfo) printf("\n%s--- Solver --- initializing --------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     if (FEM::Domain::PARA)
     {
@@ -796,7 +796,7 @@ inline void Solver::Initialize (bool Transient)
     _cal_resid ();
 
     // info
-    if (Root)
+    if (WithInfo)
     {
         printf("%s  Num of DOFs (NEq)  = %zd%s\n", TERM_CLR2, NEq, TERM_RST);
         printf("%s  Num of non-zeros   = %zd%s\n", TERM_CLR2, K11_size+pEQ.Size()+nzlag, TERM_RST);

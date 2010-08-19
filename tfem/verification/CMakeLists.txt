@@ -16,21 +16,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-SET(PROGS
-  arch
-  beam02
-  labtest
-  oneelem
-  shapefun)
-
 SET(TESTS
-  beam01)
-
-FOREACH(var ${PROGS})
-    ADD_EXECUTABLE        (${var} "${var}.cpp")
-    TARGET_LINK_LIBRARIES (${var} ${LIBS})
-    SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
-ENDFOREACH(var)
+  sap1-001)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
@@ -38,5 +25,3 @@ FOREACH(var ${TESTS})
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)
-
-SUBDIRS (benchmark bhatti nonlinear sloan smith_griffiths transient mixed parallel verification)

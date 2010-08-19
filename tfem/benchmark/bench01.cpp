@@ -115,7 +115,6 @@ int main(int argc, char **argv) try
             1----------------2'                   */
     Mesh::Structured mesh(/*NDim*/3);
     mesh.WithInfo = root;
-    if (parallel) mesh.OnlyRoot = true;
     mesh.GenBox (/*O2*/true, nxyz,nxyz,nxyz, 1.0,1.0,1.0);
     /*
     Array<int> part(27);

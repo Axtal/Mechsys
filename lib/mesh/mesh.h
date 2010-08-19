@@ -193,7 +193,7 @@ class Generic
 {
 public:
     // Constructor
-    Generic (int TheNDim) : NDim(TheNDim), IsShell(false), WithInfo(true), OnlyRoot(false) {}
+    Generic (int TheNDim) : NDim(TheNDim), IsShell(false), WithInfo(true) {}
 
     // Destructor
     virtual ~Generic () { Erase(); }
@@ -253,7 +253,6 @@ public:
     BryCell_t      Bry2Cells; ///< map: bry (edge/face ids) => neighbours cells
     Pin_t          Pins;      ///< Pins
     bool           WithInfo;  ///< Output information ?
-    bool           OnlyRoot;  ///< To be passed to Stopwatch in parallel version
 
 #ifdef USE_BOOST_PYTHON
     void PySetCell       (int iCell, int Tag, BPy::list const Con) { SetCell (iCell, Tag, Array<int>(Con)); }

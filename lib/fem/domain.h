@@ -49,7 +49,8 @@ class Domain
 {
 public:
     // static
-    static bool PARA; ///< Parallel code ?
+    static bool PARA;     ///< Parallel code ?
+    static bool WithInfo; ///< Print information ?
 
     // typedefs
     typedef std::map<int,pCalcM> MDatabase_t; ///< Map tag to M function pointer
@@ -68,22 +69,20 @@ public:
     ~Domain ();
 
     // Methods
-    void SetBCs       (Dict const & BCs);
-    void ClrBCs       ();
-    void Gravity      ();                                                        ///< Apply gravity
-    void Deactivate   (int EleTag);                                              ///< Deactivate all elements with EleTag
-    void SetUVals     (SDPair const & UVals);                                    ///< Set U values
-    void OutResults   (double Time, Vec_t const & F_int) const;                  ///< Do output results
-    void PrintResults (char const * NF="%15.6g", bool WithElems=true) const;     ///< Print results
-    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;       ///< At nodes
-    bool CheckError   (Table const & NodSol, Table const & EleSol, 
-                       SDPair const & NodTol, SDPair const & EleTol) const;      ///< At nodes and centroid
-    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;       ///< At integration points
-    void WriteMPY     (char const * FileKey, double SFCoef=1.0, bool PNG=false,
-                       char const * Extra=NULL) const;                           ///< SFCoef: Scale-factor coefficient
-    void AvailableData();                                                        ///< Check available data and resize results matrices
-    void NodalResults () const;                                                  ///< Extrapolate results from element to nodes
-    void WriteVTU     (char const * FileKey) const;                              ///< Write file for ParaView
+    void SetBCs       (Dict const & BCs);                                                                               ///< Set boundary conditions
+    void ClrBCs       ();                                                                                               ///< Clear boundary conditions
+    void Gravity      ();                                                                                               ///< Apply gravity
+    void Deactivate   (int EleTag);                                                                                     ///< Deactivate all elements with EleTag
+    void SetUVals     (SDPair const & UVals);                                                                           ///< Set U values
+    void OutResults   (double Time, Vec_t const & F_int) const;                                                         ///< Do output results
+    void PrintResults (char const * NF="%10.5g", bool WithElems=true, double Tol=1.0e-10) const;                        ///< Print results (Tol:tolerance to ignore zeros)
+    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;                                              ///< At nodes
+    bool CheckError   (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const; ///< At nodes and centroid
+    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;                                              ///< At integration points
+    void WriteMPY     (char const * FileKey, double SFCoef=1.0, bool PNG=false, char const * Extra=NULL) const;         ///< SFCoef: Scale-factor coefficient
+    void AvailableData();                                                                                               ///< Check available data and resize results matrices
+    void NodalResults () const;                                                                                         ///< Extrapolate results from element to nodes
+    void WriteVTU     (char const * FileKey) const;                                                                     ///< Write file for ParaView
 
     // Data
     Dict          const & Prps;        ///< Element properties
@@ -118,7 +117,8 @@ public:
     mutable Res_t NodResCount; ///< Count how many times a variable (key) was added to a node
 };
 
-bool Domain::PARA = false;
+bool Domain::PARA     = false;
+bool Domain::WithInfo = true;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -182,12 +182,11 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
 {
     // info
-    Util::Stopwatch stopwatch(/*only_root*/PARA);
-    bool root = true;
 #ifdef HAS_MPI
-    if (PARA && MPI::COMM_WORLD.Get_rank()!=0) root = false;
+    if (PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;
 #endif
-    if (root) printf("\n%s--- Domain --- allocating nodes and elements ---------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    Util::Stopwatch stopwatch(/*activated*/WithInfo);
+    if (WithInfo) printf("\n%s--- Domain --- allocating nodes and elements ---------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     // allocate models
     for (size_t i=0; i<TheMdls.Keys.Size(); ++i)
@@ -638,7 +637,7 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
     }
 }
 
-inline void Domain::PrintResults (char const * NF, bool WithElems) const
+inline void Domain::PrintResults (char const * NF, bool WithElems, double Tol) const
 {
     printf("\n%s--- Results ------------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
@@ -679,6 +678,10 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
     printf("%s\n",TERM_RST);
 
     // nodes: data
+    Array<double> sumF(fkeys.Size());
+    Array<double> sumR(ukeys.Size());
+    sumF.SetValues(0.0);
+    sumR.SetValues(0.0);
     for (size_t i=0; i<Nods.Size(); ++i)
     {
         std::cout << Util::_6 << Nods[i]->Vert.ID;
@@ -689,7 +692,7 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
                 size_t idx = Nods[i]->UMap(ukeys[j]); // idx of DOF
                 buf.Printf(NF, Nods[i]->U[idx]);
             }
-            else buf.Printf(nf, "---");
+            else buf.Printf(nf, "   ");
             std::cout << buf;
         }
         for (size_t j=0; j<fkeys.Size(); ++j)
@@ -698,24 +701,42 @@ inline void Domain::PrintResults (char const * NF, bool WithElems) const
             {
                 size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
                 buf.Printf(NF, Nods[i]->F[idx]);
+                sumF[j] += Nods[i]->F[idx];
             }
-            else buf.Printf(nf, "---");
+            else buf.Printf(nf, "   ");
             std::cout << buf;
         }
-        for (size_t j=0; j<fkeys.Size(); ++j)
+        for (size_t j=0; j<ukeys.Size(); ++j)
         {
-            //if (Nods[i]->FMap.HasKey(fkeys[j]))
-            //{
-                //size_t idx = Nods[i]->FMap(fkeys[j]); // idx of DOF
-                //buf.Printf(NF, Nods[i]->F[idx] - Nods[i]->Fa(idx,1.0));
-            //}
-            //else
-                buf.Printf(nf, "---");
+            if (Nods[i]->UMap.HasKey(ukeys[j]))
+            {
+                size_t idx = Nods[i]->UMap(ukeys[j]); // idx of DOF
+                NodBCs_t::const_iterator p = pU.find(Nods[i]);
+                if (p==pU.end()) buf.Printf(nf, "   ");
+                else // has reaction
+                {
+                    double reac = Nods[i]->F[idx];
+                    NodBCs_t::const_iterator q = pF.find(Nods[i]);
+                    if (q!=pF.end()) // has prescribed F
+                    {
+                        IntDbl_t::const_iterator it = q->second.first.find(idx);
+                        if (it!=q->second.first.end()) reac -= it->second; // substract prescribed F
+                    }
+                    sumR[j] += reac;
+                    buf.Printf(NF, reac);
+                }
+            }
+            else buf.Printf(nf, "   ");
             std::cout << buf;
         }
         std::cout << "\n";
     }
-    std::cout << "\n";
+    std::cout << "   ----------------------------------------------------------------------------------------------" << std::endl;
+    std::cout << Util::_6 << "Sum";
+    for (size_t i=0; i<ukeys.Size(); ++i) { buf.Printf(nf, "   "); std::cout<<buf; }
+    for (size_t i=0; i<fkeys.Size(); ++i) { buf.Printf(NF,(fabs(sumF[i])>Tol?sumF[i]:0.0)); std::cout<<buf; }
+    for (size_t i=0; i<ukeys.Size(); ++i) { buf.Printf(NF,(fabs(sumR[i])>Tol?sumR[i]:0.0)); std::cout<<buf; }
+    std::cout << "\n\n";
 
     // elems: keys
     if (WithElems)

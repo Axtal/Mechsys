@@ -119,6 +119,9 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
     }
     else if (has_qx || has_qy)
     {
+        throw new Fatal("Beam::SetBCs: Setting up of boundary conditions with 'qx' and 'qy' is not available");
+        // TODO: this need check (seems OK, though)
+        /*
         double qx = (has_qx ? BCs("qx") : 0.0);
         double qy = (has_qy ? BCs("qy") : 0.0);
         double qn = normal(0)*qx + normal(1)*qy;
@@ -126,6 +129,7 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
         qnl   = qn;
         qnr   = qn;
         HasQn = true;
+        */
     }
     else if (has_qn || has_qnl || has_qnr || has_qt)
     {
@@ -142,11 +146,7 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
         }
         qt    = (has_qt ? BCs("qt") : 0.0);
         HasQn = true;
-    }
 
-    // set equivalent forces at nodes
-    if (HasQn)
-    {
         // is node 0 leftmost ?
         bool n0_is_left = true;
         if (fabs(Con[1]->Vert.C[0]-Con[0]->Vert.C[0])<1.0e-7) { // vertical segment
@@ -159,11 +159,15 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
             qnr *= -1.; 
             qt  *= -1.;
         }
+    }
 
+    // set equivalent forces at nodes
+    if (HasQn)
+    {
         // local and global forces
         Vec_t Fe(6);
-        Fe = qt, l*(7.0*qnl+3.0*qnr)/20.0,  l*l*(3.0*qnl+2.0*qnr)/60.0,
-             qt, l*(3.0*qnl+7.0*qnr)/20.0, -l*l*(2.0*qnl+3.0*qnr)/60.0;
+        Fe = qt*l/2.0, l*(7.0*qnl+3.0*qnr)/20.0,  l*l*(3.0*qnl+2.0*qnr)/60.0,
+             qt*l/2.0, l*(3.0*qnl+7.0*qnr)/20.0, -l*l*(2.0*qnl+3.0*qnr)/60.0;
         Vec_t F(trans(T)*Fe);
 
         // add to nodes
@@ -398,11 +402,13 @@ inline void Beam::Draw (std::ostream & os, double SF) const
         double yn =  c;
 
         // results
-        double N, V, M, Mmax;
-        double r, x, y, rMmax;
+        double N, V, M,  Mmax,  Mmin;
+        double r, x, y, rMmax, rMmin;
         double sf, xf, yf;
         rMmax = 0.0;
+        rMmin = 0.0;
         CalcRes (rMmax, N, V, Mmax);
+        CalcRes (rMmin, N, V, Mmin);
         os << "dat_beam = []\n";
         for (size_t i=0; i<ndiv+1; ++i)
         {
@@ -417,7 +423,8 @@ inline void Beam::Draw (std::ostream & os, double SF) const
             os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='blue', lw=1))\n";
             if (i>0) os << "dat_beam.append((PH.LINETO, (" << xf << "," << yf << ")))\n";
             else     os << "dat_beam.append((PH.MOVETO, (" << xf << "," << yf << ")))\n";
-            if (fabs(M)>fabs(Mmax)) { rMmax = r;  Mmax = M; }
+            if (M>Mmax) { rMmax = r;  Mmax = M; }
+            if (M<Mmin) { rMmin = r;  Mmin = M; }
         }
         os << "cmd_beam,vert_beam = zip(*dat_beam)\n";
         os << "ph_beam       = PH (vert_beam, cmd_beam)\n";
@@ -425,17 +432,34 @@ inline void Beam::Draw (std::ostream & os, double SF) const
         os << "ax.add_patch  (pc_beam)\n\n";
 
         // max M
-        x  = x0 + rMmax*(x1-x0);
-        y  = y0 + rMmax*(y1-y0);
-        sf = SF*Mmax;
-        xf = x - sf*xn;
-        yf = y - sf*yn;
-        String buf;
-        buf.Printf ("%g",Mmax);
-        os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
-        os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
-        os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
-        //std::cout << "r(MaxM) = " << rMmax << "    MaxM = " << Mmax << std::endl;
+        if (fabs(Mmax)>1.0e-13)
+        {
+            x  = x0 + rMmax*(x1-x0);
+            y  = y0 + rMmax*(y1-y0);
+            sf = SF*Mmax;
+            xf = x - sf*xn;
+            yf = y - sf*yn;
+            String buf;
+            buf.Printf ("%g",Mmax);
+            os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+            os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
+            os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+        }
+        
+        // min M
+        if (fabs(Mmin)>1.0e-13)
+        {
+            x  = x0 + rMmin*(x1-x0);
+            y  = y0 + rMmin*(y1-y0);
+            sf = SF*Mmin;
+            xf = x - sf*xn;
+            yf = y - sf*yn;
+            String buf;
+            buf.Printf ("%g",Mmin);
+            os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+            os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
+            os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+        }
     }
     else throw new Fatal("Beam::GetState: 3D Beam is not available yet");
 }

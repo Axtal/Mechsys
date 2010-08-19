@@ -7,11 +7,6 @@
 #include <sys/resource.h> // for getrusage
 #include <time.h>         // for localtime
 
-// MPI
-#ifdef HAS_MPI
-  #include <mpi.h>
-#endif
-
 // proc
 #ifdef HAS_PROC
   #include <proc/readproc.h>
@@ -32,7 +27,7 @@ class Stopwatch
 {
 public:
     // Constructor
-     Stopwatch (bool OnlyRoot=false, bool MemUsage=true);
+     Stopwatch (bool Activated=true, bool MemUsage=true);
 
     // Destructor
     ~Stopwatch (); ///< Will output time during destruction
@@ -41,7 +36,7 @@ public:
     double CPUTime () const; ///< Returns the total CPU time consumed by the current process
 
 private:
-    bool    _only_root; ///< Only root prints timing (if MPI is activated)
+    bool    _activated; ///< Only root prints timing (if MPI is activated)
     bool    _mem_usage; ///< Show memory usage as well ?
     timeval _start;     ///< Start time
 };
@@ -50,22 +45,17 @@ private:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline Stopwatch::Stopwatch (bool OnlyRoot, bool MemUsage)
-    : _only_root(OnlyRoot), _mem_usage(MemUsage)
+inline Stopwatch::Stopwatch (bool Activated, bool MemUsage)
+    : _activated(Activated), _mem_usage(MemUsage)
 {
     // initial time
-    gettimeofday (&_start, NULL);
+    if (_activated) gettimeofday (&_start, NULL);
 }
 
 inline Stopwatch::~Stopwatch ()
 {
-    // skip if not root
-    if (_only_root)
-    {
-#ifdef HAS_MPI
-        if (MPI::COMM_WORLD.Get_rank()!=0) return;
-#endif
-    }
+    // skip if not activated
+    if (!_activated) return;
 
     // final time
     timeval end;
