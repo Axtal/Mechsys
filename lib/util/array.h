@@ -101,8 +101,10 @@ public:
     // Methods
     void            Resize    (size_t Size);                       ///< Resize the array
     void            Push      (Value_T const & Value);             ///< Add a new entry increasing the size if necessary
+    void            XPush     (Value_T const & Value);             ///< Exclusive Push: push only if Value is not already in array (not fast since it calls the Has method)
     void            PushN     (Value_T const & Value, size_t Num); ///< Add a new entry increasing the size if necessary
     long            Find      (Value_T const & Value) const;       ///< Find a value: returns -1 if not found, otherwise, returns the index of the element found
+    bool            Has       (Value_T const & Value) const;       ///< Has Value ~ Find(Value)>=0 ?
     Value_T const & TheMin    () const;                            ///< Find the minimum value
     Value_T const & TheMax    () const;                            ///< Find the maximum value
     Value_T         Mean      () const;                            ///< Calculate the mean value (Value_T must have addition operators)
@@ -565,6 +567,12 @@ inline void Array<Value_T>::Push (Value_T const & Value)
 }
 
 template<typename Value_T>
+inline void Array<Value_T>::XPush (Value_T const & Value)
+{
+    if (!Has(Value)) Push (Value);
+}
+
+template<typename Value_T>
 inline void Array<Value_T>::PushN (Value_T const & Value, size_t Num)
 {
 #ifdef USE_STDVECTOR
@@ -596,6 +604,20 @@ inline long Array<Value_T>::Find (Value_T const & Value) const
     Value_T * res = std::find(_values, _values+_size, Value);
     if (res==_values+_size) return -1;
     else return res-_values;
+#endif
+}
+
+template<typename Value_T>
+inline bool Array<Value_T>::Has (Value_T const & Value) const
+{
+#ifdef USE_STDVECTOR
+    typename std::vector<Value_T>::const_iterator it = std::find (std::vector<Value_T>::begin(), std::vector<Value_T>::end(), Value);
+    if (it==std::vector<Value_T>::end()) return false;
+    else return true;
+#else
+    Value_T * res = std::find(_values, _values+_size, Value);
+    if (res==_values+_size) return false;
+    else return true;
 #endif
 }
 
