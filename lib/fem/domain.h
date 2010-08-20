@@ -98,7 +98,7 @@ public:
     Array<Element*>       OutEles;     ///< Elements for which output (results) is generated
     Array<std::ofstream*> FilNods;     ///< Files with results at selected nodes (OutNods)
     Array<std::ofstream*> FilEles;     ///< Files with results at selected elements (OutEles)
-    Array<size_t>         Beams;       ///< Subset of elements of type Beam
+    Array<Element*>       Beams;       ///< Subset of elements of type Beam
     NodBCs_t              pU;          ///< Nodes with prescribed U. The values are the Delta over the previous stage
     NodBCs_t              pF;          ///< Nodes with prescribed F. The values are the Delta over the previous stage
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
@@ -277,7 +277,7 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , nodes));
 
             // set array of Beams
-            if (prob_name=="Beam") Beams.Push (Eles.Size()-1);
+            if (prob_name=="Beam") Beams.Push (Eles.Last());
 
             // tagged elements
             if (Msh.Cells[i]->BryTags.size()>0 || prob_name=="Beam") TgdEles.Push (Eles.Last());
