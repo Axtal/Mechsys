@@ -84,6 +84,33 @@ def add_points_from_file(filename):
     Blender.Window.WaitCursor(0)
 
 
+def add_profile_from_file(filename):
+    Blender.Window.WaitCursor(1)
+    edm  = Blender.Window.EditMode()
+    if edm: Blender.Window.EditMode(0) # exit edm
+    key  = Blender.sys.basename(Blender.sys.splitext(filename)[0])
+    file = open(filename, 'r')
+    msh  = bpy.data.meshes.new('profile')
+    scn  = bpy.data.scenes.active
+    obj  = scn.objects.new(msh,key)
+    first = True
+    for line in file.readlines():
+        words = line.split()
+        if len(words)==0 or words[0].startswith('#'): pass
+        elif words[0]=='x' or words[0]=='X': pass
+        else:
+            if len(words)>2: x, y, z = float(words[0]), float(words[1]), float(words[2])
+            else:            x, y, z = float(words[0]), float(words[1]), 0
+            msh.verts.extend(x,y,z)
+            if first: first = False
+            else:
+                lst = len(msh.verts)-1
+                msh.edges.extend([lst-1,lst])
+    if edm: Blender.Window.EditMode(1) # enter edm
+    Blender.Window.RedrawAll()
+    Blender.Window.WaitCursor(0)
+
+
 def add_spline_from_file(filename):
     Blender.Window.WaitCursor(1)
     edm  = Blender.Window.EditMode()
