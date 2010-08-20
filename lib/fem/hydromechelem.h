@@ -94,7 +94,8 @@ inline HydroMechElem::HydroMechElem (int NDim, Mesh::Cell const & Cell, Model co
     : Element(NDim,Cell,Mdl,Prp,Ini,Nodes)
 {
     // check GE
-    if (GE==NULL) throw new Fatal("HydroMechElem::HydroMechElem: GE (geometry element) must be defined");
+    if (GE==NULL)  throw new Fatal("HydroMechElem::HydroMechElem: GE (geometry element) must be defined");
+    if (Mdl==NULL) throw new Fatal("HydroMechElem::HydroMechElem: Model must be defined");
 
     // allocate GEp
     if (GE->Name=="Quad8") GEp = AllocGeomElem ("Quad4", NDim);

@@ -82,6 +82,7 @@ inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     // check GE
     if (GE==NULL)   throw new Fatal("USigElem::USigElem: GE (geometry element) must be defined");
     if (GTy==pse_t) throw new Fatal("USigElem::USigElem: This element does not work for plane-stress (pse)");
+    if (Mdl==NULL)  throw new Fatal("USigElem::USigElem: Model must be defined");
 
     // properties
     if (Prp.HasKey("strain_resid")) StrainResid = true;

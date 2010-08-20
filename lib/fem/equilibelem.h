@@ -75,8 +75,9 @@ size_t EquilibElem::NDu = 0;
 inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
     : Element(NDim,Cell,Mdl,Prp,Ini,Nodes)
 {
-    // check GE
-    if (GE==NULL) throw new Fatal("EquilibElem::EquilibElem: GE (geometry element) must be defined");
+    // check
+    if (GE==NULL)  throw new Fatal("EquilibElem::EquilibElem: GE (geometry element) must be defined");
+    if (Mdl==NULL) throw new Fatal("EquilibElem::EquilibElem: Model must be defined");
 
     // set constants of this class (just once)
     if (NDu==0)

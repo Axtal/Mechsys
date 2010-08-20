@@ -69,8 +69,9 @@ public:
 inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair const & Prp, SDPair const & Ini, Array<Node*> const & Nodes)
     : Element(NDim,Cell,Mdl,Prp,Ini,Nodes), HasConv(false)
 {
-    // check GE
-    if (GE==NULL) throw new Fatal("FlowElem::FlowElem: GE (geometry element) must be defined");
+    // check
+    if (GE==NULL)  throw new Fatal("FlowElem::FlowElem: GE (geometry element) must be defined");
+    if (Mdl==NULL) throw new Fatal("FlowElem::FlowElem: Model must be defined");
 
     // check GTy
          if (NDim==2 && GTy==d2d_t) { /*OK*/ }

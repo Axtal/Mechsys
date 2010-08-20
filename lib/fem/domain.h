@@ -415,9 +415,36 @@ inline void Domain::SetBCs (Dict const & BCs)
             }
         }
 
+        // Special cases: beams
+        for (size_t j=0; j<Beams.Size(); ++j)
+        {
+            if (Beams[j]->Active)
+            {
+                // find beams with tags equal to this bc_tag
+                if (Beams[j]->Cell.Tag==bc_tag) // found
+                {
+                    // check if bc key is not U and is not F
+                    std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, Beams[j]->Cell.Tag);
+                    for (size_t k=0; k<bcs.Keys.Size(); ++k)
+                    {
+                        if (Util::HasKey(varkeys.first, bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the beam (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Beams[j]->Cell.ID, Beams[j]->Cell.Tag);
+                        if (Util::HasKey(varkeys.second,bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the beam (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Beams[j]->Cell.ID, Beams[j]->Cell.Tag);
+                    }
+
+                    // map bcs
+                    found = true;
+                    int idx_side = 0; // irrelevant
+                    eleside_t es(Beams[j],idx_side);
+                    eleside2tag_to_fbc[es].first  = bc_tag;
+                    eleside2tag_to_fbc[es].second = bcs;
+                }
+            }
+        }
+
+        // Special cases: s (source term), cbx (cetrifugal body force), ...
         if (!found) 
         {
-            // find elements with tags equal to this bc_tag. Special cases: qn of beams, s (source term), cbx (cetrifugal body force), ...
+            // find elements with tags equal to this bc_tag
             for (size_t j=0; j<Eles.Size(); ++j)
             {
                 if (Eles[j]->Active)
@@ -1166,7 +1193,11 @@ inline void Domain::WriteVTU (char const * FNKey) const
             k = 0; oss << "        ";
             for (size_t j=0; j<nn; ++j)
             {
-                double val = (Nods[j]->NShares>0 ? Nods[j]->U[Nods[j]->UMap(AllUKeys[i])] : 0.0);
+                double val = 0.0;
+                if (Nods[j]->NShares>0 && Nods[j]->UMap.HasKey(AllUKeys[i]))
+                {
+                    val = Nods[j]->U[Nods[j]->UMap(AllUKeys[i])];
+                }
                 oss << (k==0?"  ":" ") << val;
                 k++;
                 VTU_NEWLINE (j,k,nn,6-1,oss);

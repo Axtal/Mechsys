@@ -85,6 +85,7 @@ inline USigElem2::USigElem2 (int NDim, Mesh::Cell const & Cell, Model const * Md
     // check GE
     if (GE==NULL)   throw new Fatal("USigElem2::USigElem2: GE (geometry element) must be defined");
     if (GTy==pse_t) throw new Fatal("USigElem2::USigElem2: This element does not work for plane-stress (pse)");
+    if (Mdl==NULL)  throw new Fatal("USigElem2::USigElem2: Model must be defined");
 
     // local nodes
     if (strcmp(GE->Name.CStr(),"Quad8")==0) GEs = AllocGeomElem ("Quad4", NDim);

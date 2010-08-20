@@ -80,6 +80,7 @@ inline USigEpsElem::USigEpsElem (int NDim, Mesh::Cell const & Cell, Model const 
     // check GE
     if (GE==NULL)   throw new Fatal("USigEpsElem::USigEpsElem: GE (geometry element) must be defined");
     if (GTy==pse_t) throw new Fatal("USigEpsElem::USigEpsElem: This element does not work for plane-stress (pse)");
+    if (Mdl==NULL)  throw new Fatal("USigEpsElem::USigEpsElem: Model must be defined");
 
     // local nodes
     if (Prp.HasKey("geom_sig"))

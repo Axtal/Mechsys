@@ -92,6 +92,7 @@ inline HMupElem::HMupElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     // check GE
     if (GE==NULL)   throw new Fatal("HMupElem::HMupElem: GE (geometry element) must be defined");
     if (GTy==pse_t) throw new Fatal("HMupElem::HMupElem: This element does not work for plane-stress (pse)");
+    if (Mdl==NULL)  throw new Fatal("HMupElem::HMupElem: Model must be defined");
 
     // parameters/properties
     alp  = (Prp.HasKey("alp") ? Prp("alp") : 1.0);
