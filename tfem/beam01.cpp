@@ -38,7 +38,7 @@ using FEM::GEOM;
 int main(int argc, char **argv) try
 {
     // data
-    int    tst = 4;
+    int    tst = 5;
     double L   = 1.0;
     double sf  = 1.0;
     if (argc>1) tst = atoi(argv[1]);
@@ -72,11 +72,26 @@ int main(int argc, char **argv) try
 
             bcs.Set(-100, "ux uy", 0.0, 0.0);
             bcs.Set(-200, "uy",    0.0);
-            //bcs.Set(  -1, "qn",   -1.0);
-            bcs.Set(  -1, "gravity", gra);
+            bcs.Set(  -1, "qn",   -1.0);
+            dead_load = false;
+            //bcs.Set(  -1, "gravity", gra);
             break;
         }
         case 2:
+        {
+            mesh.SetSize (2, 1);
+            mesh.SetVert (0, -100, 0.0, 0.0);
+            mesh.SetVert (1, -200,   L, 0.0);
+            mesh.SetCell (0,    -1, Array<int>(1,0));
+
+            bcs.Set(-100, "ux uy", 0.0, 0.0);
+            bcs.Set(-200, "uy",    0.0);
+            bcs.Set(  -1, "qn",   -1.0);
+            dead_load = false;
+            //bcs.Set(  -1, "gravity", gra);
+            break;
+        }
+        case 3:
         {
             mesh.SetSize (2, 1);
             mesh.SetVert (0, -100, 0.0, 0.0);
@@ -87,7 +102,7 @@ int main(int argc, char **argv) try
             bcs.Set(  -1, "qn",      -1.0);
             break;
         }
-        case 3:
+        case 4:
         {
             mesh.SetSize (3, 2);
             mesh.SetVert (0, -100,  0.0, 0.0);
@@ -100,7 +115,7 @@ int main(int argc, char **argv) try
             bcs.Set(  -1, "qn",      -1.0);
             break;
         }
-        case 4:
+        case 5:
         {
             mesh.SetSize (6, 5);
             mesh.SetVert (0, -100,  0.0, 2.5);
@@ -110,14 +125,14 @@ int main(int argc, char **argv) try
             mesh.SetVert (4,    0,  2.5, 2.5);
             mesh.SetVert (5, -200,  5.0, 2.5);
             mesh.SetCell (0,   -3, Array<int>(0,4));
-            mesh.SetCell (1,   -1, Array<int>(1,4));
+            mesh.SetCell (1,   -1, Array<int>(4,1));
             mesh.SetCell (2,   -1, Array<int>(3,2));
             mesh.SetCell (3,   -2, Array<int>(3,5));
             mesh.SetCell (4,   -2, Array<int>(5,4));
             //mesh.Refine  ();
             //mesh.Refine  ();
 
-            dead_load = true;
+            dead_load = false;
             bcs.Set (-100, "ux uy", 0.0, 0.0);
             if (dead_load)
             {
@@ -138,7 +153,7 @@ int main(int argc, char **argv) try
             sf = 0.005;
             break;
         }
-        case 5:
+        case 6:
         {
             mesh.SetSize  (6, 5);
             mesh.SetVert  (0, -100, 0.0, 0.0);
@@ -166,7 +181,7 @@ int main(int argc, char **argv) try
             sf = 0.5;
             break;
         }
-        case 6:
+        case 7:
         {
             mesh.SetSize (3, 2);
             mesh.SetVert (0, -100,  0.0, 0.0);
@@ -187,6 +202,8 @@ int main(int argc, char **argv) try
     mesh.WriteMPY ("beam01_mesh");
 
     // domain
+    FEM::Beam::DrwAxial = false;
+    FEM::Beam::DrwShear = false;
     FEM::Domain dom(mesh, prps, Dict(), Dict());
 
     // solver
@@ -214,13 +231,24 @@ int main(int argc, char **argv) try
         case 1:
         {
             static_cast<FEM::Beam*>(dom.Eles[0])->CalcRes (0.5, N,V,M);
-            //double Mcor = 1.0/8.0;
-            double Mcor = rho*gra*A/8.;
+            double Mcor;
+            if (dead_load) Mcor = rho*gra*A/8.;
+            else           Mcor = 1.0/8.0;
             cout << "M(max) = " << M << "  => " << Mcor << endl;
             errors += fabs(M-Mcor);
             break;
         }
         case 2:
+        {
+            static_cast<FEM::Beam*>(dom.Eles[0])->CalcRes (0.5, N,V,M);
+            double Mcor;
+            if (dead_load) Mcor = rho*gra*A/8.;
+            else           Mcor = 1.0/8.0;
+            cout << "M(max) = " << M << "  => " << Mcor << endl;
+            errors += fabs(M-Mcor);
+            break;
+        }
+        case 3:
         {
             static_cast<FEM::Beam*>(dom.Eles[0])->CalcRes (0.0, N,V,M);
             double Mcor = -1.0/2.0;
@@ -228,11 +256,11 @@ int main(int argc, char **argv) try
             errors += fabs(M-Mcor);
             break;
         }
-        case 3:
+        case 4:
         {
             break;
         }
-        case 4:
+        case 5:
         {
             FEM::Beam const * e0 = static_cast<FEM::Beam const*>(dom.Eles[0]);
             FEM::Beam const * e1 = static_cast<FEM::Beam const*>(dom.Eles[1]);
@@ -244,14 +272,14 @@ int main(int argc, char **argv) try
             {
                 e0->CalcRes(0.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
                 e0->CalcRes(1.0,N,V,M);  errors += fabs(M - (-10.3336));  printf("M: %g  =>  %g\n",M,-10.3336);
-                e1->CalcRes(0.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
-                e1->CalcRes(1.0,N,V,M);  errors += fabs(M - ( -4.6232));  printf("M: %g  =>  %g\n",M, -4.6232);
+                e1->CalcRes(0.0,N,V,M);  errors += fabs(M - (  4.6232));  printf("M: %g  =>  %g\n",M,  4.6232);
+                e1->CalcRes(1.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
                 e2->CalcRes(0.0,N,V,M);  errors += fabs(M - (-11.8340));  printf("M: %g  =>  %g\n",M,-11.8340);
                 e2->CalcRes(1.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
-                e3->CalcRes(0.0,N,V,M);  errors += fabs(M - ( 11.8340));  printf("M: %g  =>  %g\n",M, 11.8340);
-                e3->CalcRes(1.0,N,V,M);  errors += fabs(M - ( -9.5987));  printf("M: %g  =>  %g\n",M, -9.5987);
-                e4->CalcRes(0.0,N,V,M);  errors += fabs(M - ( -9.5968));  printf("M: %g  =>  %g\n",M, -9.5968);
-                e4->CalcRes(1.0,N,V,M);  errors += fabs(M - ( 14.9567));  printf("M: %g  =>  %g\n",M, 14.9567);
+                e3->CalcRes(0.0,N,V,M);  errors += fabs(M - (-11.8340));  printf("M: %g  =>  %g\n",M,-11.8340);
+                e3->CalcRes(1.0,N,V,M);  errors += fabs(M - (  9.5987));  printf("M: %g  =>  %g\n",M,  9.5987);
+                e4->CalcRes(0.0,N,V,M);  errors += fabs(M - (  9.5968));  printf("M: %g  =>  %g\n",M,  9.5968);
+                e4->CalcRes(1.0,N,V,M);  errors += fabs(M - (-14.9567));  printf("M: %g  =>  %g\n",M,-14.9567);
                 tol = 1.0e-1;
 
                 double ux = dom.Nods[4]->U[dom.Nods[4]->UMap("ux")]*1000.0;
@@ -274,14 +302,14 @@ int main(int argc, char **argv) try
             {
                 e0->CalcRes(0.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
                 e0->CalcRes(1.0,N,V,M);  errors += fabs(M - ( -9.3832));  printf("M: %g  =>  %g\n",M, -9.3832);
-                e1->CalcRes(0.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
-                e1->CalcRes(1.0,N,V,M);  errors += fabs(M - ( -9.3724));  printf("M: %g  =>  %g\n",M, -9.3724);
+                e1->CalcRes(0.0,N,V,M);  errors += fabs(M - (  9.3724));  printf("M: %g  =>  %g\n",M,  9.3724);
+                e1->CalcRes(1.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
                 e2->CalcRes(0.0,N,V,M);  errors += fabs(M - (-10.8887));  printf("M: %g  =>  %g\n",M,-10.8887);
                 e2->CalcRes(1.0,N,V,M);  errors += fabs(M - (  0.0000));  printf("M: %g  =>  %g\n",M,  0.0000);
-                e3->CalcRes(0.0,N,V,M);  errors += fabs(M - ( 10.8887));  printf("M: %g  =>  %g\n",M, 10.8887);
-                e3->CalcRes(1.0,N,V,M);  errors += fabs(M - (-13.9279));  printf("M: %g  =>  %g\n",M,-13.9279);
-                e4->CalcRes(0.0,N,V,M);  errors += fabs(M - (-13.9279));  printf("M: %g  =>  %g\n",M,-13.9279);
-                e4->CalcRes(1.0,N,V,M);  errors += fabs(M - ( 18.7555));  printf("M: %g  =>  %g\n",M, 18.7555);
+                e3->CalcRes(0.0,N,V,M);  errors += fabs(M - (-10.8887));  printf("M: %g  =>  %g\n",M,-10.8887);
+                e3->CalcRes(1.0,N,V,M);  errors += fabs(M - ( 13.9279));  printf("M: %g  =>  %g\n",M, 13.9279);
+                e4->CalcRes(0.0,N,V,M);  errors += fabs(M - ( 13.9279));  printf("M: %g  =>  %g\n",M, 13.9279);
+                e4->CalcRes(1.0,N,V,M);  errors += fabs(M - (-18.7555));  printf("M: %g  =>  %g\n",M,-18.7555);
                 tol = 1.0e-3;
 
                 double ux = dom.Nods[4]->U[dom.Nods[4]->UMap("ux")]*1000.0;
@@ -303,11 +331,11 @@ int main(int argc, char **argv) try
 
             break;
         }
-        case 5:
+        case 6:
         {
             break;
         }
-        case 6:
+        case 7:
         {
             break;
         }

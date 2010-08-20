@@ -34,8 +34,10 @@ class Beam : public Element
 {
 public:
     // static
-    static size_t DrwNDiv; ///< Number of division for drawing moment diagram
-    static bool   DrwMtxt; ///< Show text with min/max bending moment ?
+    static size_t DrwNDiv;  ///< Number of division for drawing moment diagram
+    static bool   DrwMtxt;  ///< Show text with min/max bending moment ?
+    static bool   DrwShear; ///< Draw shear force diagram instead of bending moment ?
+    static bool   DrwAxial; ///< Draw axial force diagram ?
 
     // Constructor
     Beam (int                  NDim,   ///< Space dimension
@@ -51,7 +53,7 @@ public:
     void GetLoc       (Array<size_t> & Loc)                          const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                                    const; ///< Stiffness matrix
     void CalcM        (Mat_t & M)                                    const; ///< Mass matrix
-    void CalcT        (Mat_t & T, double & l, Vec_t * normal=NULL)   const; ///< Transformation matrix
+    void CalcT        (Mat_t & T, double & l, Vec3_t * normal=NULL)  const; ///< Transformation matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)         const;
     void StateKeys    (Array<String> & Keys)                         const; ///< Get state keys
     void StateAtCt    (SDPair & KeysVals)                            const; ///< State at centroid
@@ -70,8 +72,10 @@ public:
     bool   HasQn; ///< Has normal load ?
 };
 
-size_t Beam::DrwNDiv = 10;
-bool   Beam::DrwMtxt = true;
+size_t Beam::DrwNDiv  = 10;
+bool   Beam::DrwMtxt  = true;
+bool   Beam::DrwShear = false;
+bool   Beam::DrwAxial = false;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -97,7 +101,7 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
     // length and T matrix
     double l;
     Mat_t  T;
-    Vec_t  normal;
+    Vec3_t normal;
     CalcT (T, l, &normal);
 
     // boundary conditions
@@ -144,6 +148,7 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
         {
             qnl = (has_qnl ? BCs("qnl") : 0.0);
             qnr = (has_qnr ? BCs("qnr") : 0.0);
+            if (qnl*qnr<0.0) throw new Fatal("Beam::SetBCs: qnl=%g and qnr=%g must have the same sign",qnl,qnr);
         }
         else
         {
@@ -248,7 +253,7 @@ inline void Beam::CalcM (Mat_t & M) const
     M = trans(T)*Ml*T;
 }
 
-inline void Beam::CalcT (Mat_t & T, double & l, Vec_t * normal) const
+inline void Beam::CalcT (Mat_t & T, double & l, Vec3_t * normal) const
 {
     // coordinates
     double x0 = Con[0]->Vert.C[0];
@@ -273,11 +278,7 @@ inline void Beam::CalcT (Mat_t & T, double & l, Vec_t * normal) const
              0., 0.,  0.,  0.,  0.,  1.;
 
         // normal
-        if (normal!=NULL)
-        {
-            normal->change_dim (2);
-            (*normal) = -s, c;
-        }
+        if (normal!=NULL) (*normal) = -s, c, 0.0;
     }
     else throw new Fatal("Beam::CalcT: 3D Beam is not available yet");
 }
@@ -342,7 +343,8 @@ inline void Beam::CalcRes (double r, double & N, double & V, double & M) const
     // rod length and T matrix
     double l;
     Mat_t  T;
-    CalcT (T, l);
+    Vec3_t normal;
+    CalcT (T, l, &normal);
 
     if (NDim==2)
     {
@@ -379,6 +381,9 @@ inline void Beam::CalcRes (double r, double & N, double & V, double & M) const
             V += -(3.*qnr*ll +7.*qnl*ll-20.*qnl*s*l -10.*qnr*ss  +10.*qnl*ss)/(20.*l);
             M +=  (2.*qnr*lll+3.*qnl*lll-9.*qnr*s*ll-21.*qnl*s*ll+30.*qnl*ss*l+10.*qnr*sss-10.*qnl*sss)/(60.*l);
         }
+
+        // correct the sign of M
+        if (qnl>0.0) M = -M;
     }
 }
 
@@ -408,63 +413,139 @@ inline void Beam::Draw (std::ostream & os, double SF) const
         // results
         double N, V, M,  Mmax,  Mmin;
         double r, x, y, rMmax, rMmin;
-        double sf, xf, yf;
+        double sf, xf, yf, val;
         rMmax = 0.0;
         rMmin = 0.0;
         CalcRes (rMmax, N, V, Mmax);
         CalcRes (rMmin, N, V, Mmin);
         os << "dat_beam = []\n";
+        if (DrwAxial) os << "dat_beam_ax = []\n";
         for (size_t i=0; i<DrwNDiv+1; ++i)
         {
             r = static_cast<double>(i)/static_cast<double>(DrwNDiv);
             CalcRes (r, N, V, M);
-            x  = x0 + r*(x1-x0);
-            y  = y0 + r*(y1-y0);
-            sf = SF*M;
-            xf = x - sf*xn;
-            yf = y - sf*yn;
+            if (DrwAxial)
+            {
+                val = N;
+                sf  = fabs(SF*N)/2.0;
+                x   = x0 + r*(x1-x0);
+                y   = y0 + r*(y1-y0);
+                xf  = x - sf*xn;
+                yf  = y - sf*yn;
+                x   = x + sf*xn;
+                y   = y + sf*yn;
+            }
+            else
+            {
+                if (DrwShear)
+                {
+                    val = V;
+                    sf  = SF*V;
+                }
+                else
+                {
+                    val = M;
+                    if (qnl>0.0) sf = -SF*M;
+                    else         sf =  SF*M;
+                    if (M>Mmax) { rMmax = r;  Mmax = M; }
+                    if (M<Mmin) { rMmin = r;  Mmin = M; }
+                }
+                x  = x0 + r*(x1-x0);
+                y  = y0 + r*(y1-y0);
+                xf = x - sf*xn;
+                yf = y - sf*yn;
+            }
             os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
-            os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor='blue', lw=1))\n";
+            os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(val<0.0?"dpink":"dblue")<<", lw=1))\n";
             if (i>0) os << "dat_beam.append((PH.LINETO, (" << xf << "," << yf << ")))\n";
             else     os << "dat_beam.append((PH.MOVETO, (" << xf << "," << yf << ")))\n";
-            if (M>Mmax) { rMmax = r;  Mmax = M; }
-            if (M<Mmin) { rMmin = r;  Mmin = M; }
+            if (DrwAxial)
+            {
+                if (i>0) os << "dat_beam_ax.append((PH.LINETO, (" << x << "," << y << ")))\n";
+                else     os << "dat_beam_ax.append((PH.MOVETO, (" << x << "," << y << ")))\n";
+            }
         }
         os << "cmd_beam,vert_beam = zip(*dat_beam)\n";
         os << "ph_beam       = PH (vert_beam, cmd_beam)\n";
         os << "pc_beam       = PC (ph_beam, facecolor='none', edgecolor=dblue, linewidth=1)\n";
         os << "ax.add_patch  (pc_beam)\n\n";
-
-        // max M
-        if (DrwMtxt)
+        if (DrwAxial)
         {
-            if (fabs(Mmax)>1.0e-13)
+            os << "cmd_beam_ax,vert_beam_ax = zip(*dat_beam_ax)\n";
+            os << "ph_beam_ax       = PH (vert_beam_ax, cmd_beam_ax)\n";
+            os << "pc_beam_ax       = PC (ph_beam_ax, facecolor='none', edgecolor=dblue, linewidth=1)\n";
+            os << "ax.add_patch    (pc_beam_ax)\n\n";
+        }
+
+        if (DrwAxial)
+        {
+            CalcRes (0.5, N, V, M);
+            if (fabs(N)>1.0e-13)
             {
-                x  = x0 + rMmax*(x1-x0);
-                y  = y0 + rMmax*(y1-y0);
-                sf = SF*Mmax;
-                xf = x - sf*xn;
-                yf = y - sf*yn;
+                sf = fabs(SF*N)/2.0;
+                x  = x0 + 0.5*(x1-x0);
+                y  = y0 + 0.5*(y1-y0);
                 String buf;
-                buf.Printf ("%g",Mmax);
-                os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
-                os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
-                os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+                buf.Printf ("%g",N);
+                os << "ax.text ("<<x<<","<<y<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
             }
-            
-            // min M
-            if (fabs(Mmin)>1.0e-13)
+        }
+        else if (DrwShear)
+        {
+            for (size_t i=0; i<2; ++i)
             {
-                x  = x0 + rMmin*(x1-x0);
-                y  = y0 + rMmin*(y1-y0);
-                sf = SF*Mmin;
-                xf = x - sf*xn;
-                yf = y - sf*yn;
-                String buf;
-                buf.Printf ("%g",Mmin);
-                os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
-                os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor=dblue, lw=4))\n";
-                os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=12)\n";
+                r = static_cast<double>(i);
+                CalcRes (r, N, V, M);
+                if (fabs(V)>1.0e-13)
+                {
+                    x  = x0 + r*(x1-x0);
+                    y  = y0 + r*(y1-y0);
+                    sf = SF*V;
+                    xf = x - sf*xn;
+                    yf = y - sf*yn;
+                    String buf;
+                    buf.Printf ("%g",V);
+                    os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+                    os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(V<0.0?"dpink":"dblue")<<", lw=4))\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
+                }
+            }
+        }
+        else
+        {
+            // max M
+            if (DrwMtxt)
+            {
+                if (fabs(Mmax)>1.0e-13)
+                {
+                    x  = x0 + rMmax*(x1-x0);
+                    y  = y0 + rMmax*(y1-y0);
+                    if (qnl>0.0) sf = -SF*Mmax;
+                    else         sf =  SF*Mmax;
+                    xf = x - sf*xn;
+                    yf = y - sf*yn;
+                    String buf;
+                    buf.Printf ("%g",Mmax);
+                    os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+                    os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(Mmax<0.0?"dpink":"dblue")<<", lw=4))\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
+                }
+                
+                // min M
+                if (fabs(Mmin)>1.0e-13)
+                {
+                    x  = x0 + rMmin*(x1-x0);
+                    y  = y0 + rMmin*(y1-y0);
+                    if (qnl>0.0) sf = -SF*Mmin;
+                    else         sf =  SF*Mmin;
+                    xf = x - sf*xn;
+                    yf = y - sf*yn;
+                    String buf;
+                    buf.Printf ("%g",Mmin);
+                    os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+                    os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(Mmin<0.0?"dpink":"dblue")<<", lw=4))\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
+                }
             }
         }
     }
