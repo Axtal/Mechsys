@@ -40,8 +40,9 @@
 namespace FEM
 {
 
-typedef std::map<Node*,double> InclSupport_t; ///< Inclined support type. Maps Node ==> alpha
-typedef std::map<Node*,Array<double> > Res_t;
+typedef std::map<Node*,double>          InclSupport_t; ///< Inclined support type. Maps Node ==> alpha
+typedef std::map<Node*,Array<double> >  Res_t;         ///< Maps node to results at nodes
+typedef std::map<int, Array<Element*> > Tag2Eles_t;    ///< Maps tag to elements
 
 inline double Multiplier (double t) { return 1.0; }
 
@@ -51,6 +52,9 @@ public:
     // static
     static bool PARA;     ///< Parallel code ?
     static bool WithInfo; ///< Print information ?
+
+    // enum
+    enum BryTagType_t { None_t, Element_t, Border_t, Node_t }; ///< type of boundary condition tag
 
     // typedefs
     typedef std::map<int,pCalcM> MDatabase_t; ///< Map tag to M function pointer
@@ -69,21 +73,21 @@ public:
     ~Domain ();
 
     // Methods
-    void SetBCs        (Dict const & BCs);                                                                                ///< Set boundary conditions
-    void ClrBCs        ();                                                                                                ///< Clear boundary conditions
-    void Gravity       ();                                                                                                ///< Apply gravity
-    void Deactivate    (int EleTag);                                                                                      ///< Deactivate all elements with EleTag
-    void SetUVals      (SDPair const & UVals);                                                                            ///< Set U values
-    void OutResults    (double Time, Vec_t const & F_int) const;                                                          ///< Do output results
-    void PrintResults  (char const * NF="%10.5g", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
-    void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const;                                             ///< Calculate reactions
-    bool CheckError    (Table const & NodSol, SDPair const & NodTol) const;                                               ///< At nodes
-    bool CheckError    (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const;  ///< At nodes and centroid
-    bool CheckErrorIP  (Table const & EleSol, SDPair const & EleTol) const;                                               ///< At integration points
-    void WriteMPY      (char const * FileKey, double SFCoef=1.0, bool PNG=false, char const * Extra=NULL) const;          ///< SFCoef: Scale-factor coefficient
-    void AvailableData ();                                                                                                ///< Check available data and resize results matrices
-    void NodalResults  () const;                                                                                          ///< Extrapolate results from element to nodes
-    void WriteVTU      (char const * FileKey) const;                                                                      ///< Write file for ParaView
+    void SetBCs       (Dict const & BCs);                                                                                ///< Set boundary conditions
+    void Deactivate   (int EleTag);                                                                                      ///< Deactivate all elements with EleTag
+    void SetUVals     (SDPair const & UVals);                                                                            ///< Set U values
+    void PrintResults (char const * NF="%10.5g", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
+    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;                                               ///< At nodes
+    bool CheckError   (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const;  ///< At nodes and centroid
+    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;                                               ///< At integration points
+    void WriteMPY     (char const * FileKey, double SFCoef=1.0, bool PNG=false, char const * Extra=NULL) const;          ///< SFCoef: Scale-factor coefficient
+    void WriteVTU     (char const * FileKey) const;                                                                      ///< Write file for ParaView
+
+    // Internal methods
+    void OutResults    (double Time, Vec_t const & F_int) const;              ///< Do output results
+    void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const; ///< Calculate reactions
+    void AvailableData ();                                                    ///< Check available data and resize results matrices
+    void NodalResults  () const;                                              ///< Extrapolate results from element to nodes
 
     // Data
     Dict          const & Prps;        ///< Element properties
@@ -94,7 +98,7 @@ public:
     Array<Node*>          Nods;        ///< (Allocated memory) Nodes
     Array<Element*>       Eles;        ///< (Allocated memory) Elements
     Array<Node*>          TgdNods;     ///< Tagged Nodes (at boundaries)
-    Array<Element*>       TgdEles;     ///< Tagged Elements (at boundaries)
+    Array<Element*>       TgdEles;     ///< Tagged edges or faces of Elements (at boundaries)
     Array<Node*>          OutNods;     ///< Nodes for which output (results) is generated
     Array<Element*>       OutEles;     ///< Elements for which output (results) is generated
     Array<std::ofstream*> FilNods;     ///< Files with results at selected nodes (OutNods)
@@ -102,10 +106,12 @@ public:
     Array<Element*>       Beams;       ///< Subset of elements of type Beam
     NodBCs_t              pU;          ///< Nodes with prescribed U. The values are the Delta over the previous stage
     NodBCs_t              pF;          ///< Nodes with prescribed F. The values are the Delta over the previous stage
+    NodBCs_t              pFaccum;     ///< Accumulated pF (used to calculated reactions)
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
     InclSupport_t         InclSupport; ///< Inclined support
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions (if PARA==true)
+    Tag2Eles_t            Tag2Eles;    ///< Map tag to elements. Useful to activate/deactivate layers
 
     // Nodal results
     size_t        NActNods;    ///< Number of active nodes
@@ -150,6 +156,15 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
     os << buf;
     for (size_t i=0; i<D.Eles.Size(); ++i) os << (*D.Eles[i]) << "\n";
 
+    buf.Printf("\n%s--- Elements by tags ---------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
+    os << buf;
+    for (Tag2Eles_t::const_iterator it=D.Tag2Eles.begin(); it!=D.Tag2Eles.end(); ++it)
+    {
+        os << "  Tag = " << it->first << " : Elements = ";
+        for (size_t i=0; i<it->second.Size(); ++i) os << it->second[i]->Cell.ID << " ";
+        os << "\n";
+    }
+
     buf.Printf("\n%s--- Boundary Conditions ------------------------------------------------------%s\n",TERM_CLR3,TERM_RST);
     os << buf;
     os << "  Nodes with prescribed F:\n";
@@ -173,6 +188,18 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
             size_t idof = q->first;
             if (q!=p->second.first.begin()) os << ", ";
             os << "D" << p->first->UMap.Keys[idof] << "=" << Util::_10_6 << q->second;
+        }
+        os << "\n";
+    }
+    os << "\n  Accumulated prescribed F at nodes:\n";
+    for (NodBCs_t::const_iterator p=D.pFaccum.begin(); p!=D.pFaccum.end(); ++p)
+    {
+        os << Util::_6 << p->first->Vert.ID << "  ";
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        {
+            size_t idof = q->first;
+            if (q!=p->second.first.begin()) os << "   ";
+            os << "D" << p->first->FMap.Keys[idof] << "=" << Util::_10_4 << q->second;
         }
         os << "\n";
     }
@@ -289,8 +316,11 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             // set array of Beams
             if (prob_name=="Beam") Beams.Push (Eles.Last());
 
-            // tagged elements
+            // elements with tagged borders (edges/faces)
             if (Msh.Cells[i]->BryTags.size()>0 || prob_name=="Beam") TgdEles.Push (Eles.Last());
+
+            // map tag to element
+            Tag2Eles[tag].Push (Eles.Last());
 
             // set list of elements for output
             if (FKey!=NULL && OutC!=NULL)
@@ -343,26 +373,83 @@ inline Domain::~Domain()
 
 inline void Domain::SetBCs (Dict const & BCs)
 {
+    // info
+#ifdef HAS_MPI
+    if (PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;
+#endif
+    Util::Stopwatch stopwatch(/*activated*/WithInfo);
+    if (WithInfo) printf("\n%s--- Domain --- setting BCs and activating/deactivating elements --------------------%s\n",TERM_CLR1,TERM_RST);
+
     // clear previous BCs
-    ClrBCs ();
+    for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
+    pF.clear();
+    pU.clear();
+    InclSupport.clear();
 
-    // set maps with bry info
-    typedef std::pair<Element*,int> eleside_t;       // (element,side) pair
-    typedef std::pair<int,SDPair>   tagbcs_t;        // (tag,bcs data) pair
-    std::map<eleside_t,tagbcs_t> eleside2tag_to_ubc; // map: (ele,side) ==> U bry cond
-    std::map<eleside_t,tagbcs_t> eleside2tag_to_fbc; // map: (ele,side) ==> F bry cond
-    std::map<Node*,tagbcs_t>     nod2tag_to_ubc;     // map: node ==> U bry cond
-    std::map<Node*,tagbcs_t>     nod2tag_to_fbc;     // map: node ==> F bry cond
-    for (size_t i=0; i<BCs.Keys.Size(); ++i)
+    // map used to track whether BC was already set or not
+    std::map<int,BryTagType_t> bc_set; // maps: btag => type of BC: none, element, border, node
+    for (Dict_t::const_iterator it=BCs.begin(); it!=BCs.end(); ++it) bc_set[it->first] = None_t;
+
+    // 'BCs' at the element itself (ex: 'activate', 's':source, 'qn' at beams, etc.).
+    // This must come before the setting up of 'real' boundary conditions, since, for example,
+    // some nodes may become activated or deactivated
+    for (Dict_t::const_iterator dict_it=BCs.begin(); dict_it!=BCs.end(); ++dict_it)
     {
-        int bc_tag = BCs.Keys[i];
-        SDPair const & bcs = BCs(bc_tag);
-        bool found = false;
+        // auxiliar variables
+        int            btag = dict_it->first;  // the element/boundary tag
+        SDPair const & bcs  = dict_it->second; // the boundary conditions
 
-        // find elements with edges set with this bc_tag
-        for (size_t j=0; j<TgdEles.Size(); ++j)
+        // check if tag corresponds to element tag (and not boundary tag)
+        Tag2Eles_t::const_iterator it = Tag2Eles.find(btag);
+        if (it!=Tag2Eles.end()) // found elements with this btag
         {
-            if (TgdEles[j]->Active)
+            // flag BC set
+            bc_set[btag] = Element_t;
+
+            // multiplier
+            pCalcM calcm = &Multiplier;
+            if (bcs.HasKey("mfunc")) // callback specified
+            {
+                MDatabase_t::const_iterator q = MFuncs.find(btag);
+                if (q!=MFuncs.end()) calcm = q->second;
+                else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",btag);
+            }
+
+            // set BCs: ex: 'activate', 's', 'qn', etc.
+            for (size_t i=0; i<it->second.Size(); ++i) // for each element
+            {
+                // check if bc key is not U and is not F (it cannot be, for example: 'ux', 'fx', etc., since these are applied to the edges/faces of the elements only)
+                Element * ele = it->second[i];
+                std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, ele->Cell.Tag);
+                for (size_t k=0; k<bcs.Keys.Size(); ++k)
+                {
+                    if (Util::HasKey(varkeys.first, bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), btag, ele->Cell.ID, ele->Cell.Tag);
+                    if (Util::HasKey(varkeys.second,bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), btag, ele->Cell.ID, ele->Cell.Tag);
+                }
+
+                // set BCs
+                ele->SetBCs (/*idx_side(ignored)*/0, bcs, pF, pU, calcm);
+            }
+        }
+    }
+
+    // BCs at the edges/faces of elements or at nodes
+    typedef std::pair<Element*,int> eleside_t;          // (element,side) pair
+    typedef std::pair<int,SDPair>   tagbcs_t;           // (tag,bcs data) pair
+    std::map<eleside_t,tagbcs_t>    eleside2tag_to_ubc; // maps: (ele,side) ==> U bry cond: (tag,Ubcs)
+    std::map<eleside_t,tagbcs_t>    eleside2tag_to_fbc; // maps: (ele,side) ==> F bry cond: (tag,Fbcs)
+    std::map<Node*,tagbcs_t>        nod2tag_to_ubc;     // map: node ==> U bry cond: (tag,Ubcs)
+    std::map<Node*,tagbcs_t>        nod2tag_to_fbc;     // map: node ==> F bry cond: (tag,Fbcs)
+    for (Dict_t::const_iterator dict_it=BCs.begin(); dict_it!=BCs.end(); ++dict_it)
+    {
+        // auxiliar variables
+        int            btag  = dict_it->first;  // the element/boundary tag
+        SDPair const & bcs   = dict_it->second; // the boundary conditions
+
+        // find elements with edges equal to this btag
+        for (size_t j=0; j<TgdEles.Size(); ++j) // for each element with tagged border
+        {
+            if (TgdEles[j]->Active) // active element
             {
                 Mesh::BryTag_t           const & eftags  = TgdEles[j]->Cell.BryTags;
                 std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, TgdEles[j]->Cell.Tag);
@@ -370,20 +457,25 @@ inline void Domain::SetBCs (Dict const & BCs)
                 {
                     int idx_side = p->first;
                     int side_tag = p->second;
-                    if (side_tag==bc_tag) // found
+                    if (side_tag==btag) // found
                     {
-                        found = true;
-                        eleside_t es(TgdEles[j],idx_side);
-                        for (size_t k=0; k<bcs.Keys.Size(); ++k) // we have to split Ubcs from Fbcs
+                        // flag BC set
+                        std::map<int,BryTagType_t>::const_iterator it = bc_set.find(btag);
+                        if (it->second==None_t) bc_set[btag] = Border_t;
+                        else if (it->second!=Border_t) throw new Fatal("FEM::Domain::SetBCs: Boundary tag==%d cannot be applied to %s and borders (edges/faces) at the same time",btag,(it->second==Element_t?"elements":"nodes"));
+
+                        // split Ubcs from Fbcs
+                        eleside_t es(TgdEles[j],idx_side); // (edge/face,side) pair
+                        for (size_t k=0; k<bcs.Keys.Size(); ++k)
                         {
-                            if (Util::HasKey(varkeys.first, bcs.Keys[k])) // is Ukey
+                            if (Util::HasKey(varkeys.first, bcs.Keys[k])) // is U key
                             {
-                                eleside2tag_to_ubc[es].first = bc_tag;
+                                eleside2tag_to_ubc[es].first = btag;
                                 eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
                             }
-                            else
+                            else // is F key or 'qn', 'qt', etc.
                             {
-                                eleside2tag_to_fbc[es].first = bc_tag;
+                                eleside2tag_to_fbc[es].first = btag;
                                 eleside2tag_to_fbc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
                             }
                         }
@@ -392,98 +484,57 @@ inline void Domain::SetBCs (Dict const & BCs)
             }
         }
 
-        // find nodes with tags equal to this bc_tag
+        // find nodes with tags equal to this btag
         for (size_t j=0; j<TgdNods.Size(); ++j)
         {
-            if (TgdNods[j]->NShares>0) // active
+            if (TgdNods[j]->NShares>0) // active node
             {
-                if (TgdNods[j]->Vert.Tag==bc_tag) // found
+                if (TgdNods[j]->Vert.Tag==btag) // found
                 {
-                    found = true;
-                    for (size_t k=0; k<bcs.Keys.Size(); ++k) // we have to split Ubcs from Fbcs
+                    // flag BC set
+                    std::map<int,BryTagType_t>::const_iterator it = bc_set.find(btag);
+                    if (it->second==None_t) bc_set[btag] = Node_t;
+                    else if (it->second!=Node_t) throw new Fatal("FEM::Domain::SetBCs: Boundary tag==%d cannot be applied to %s and nodes at the same time",btag,(it->second==Element_t?"elements":"borders (edges/faces)"));
+
+                    // split U bcs from F bcs
+                    for (size_t k=0; k<bcs.Keys.Size(); ++k)
                     {
-                        if (bcs.Keys[k]=="inclsupport")
+                        if (bcs.Keys[k]=="inclsupport") // inclined support
                         {
-                            nod2tag_to_ubc[TgdNods[j]].first  = bc_tag;
+                            nod2tag_to_ubc[TgdNods[j]].first  = btag;
                             nod2tag_to_ubc[TgdNods[j]].second = bcs;
                             break;
                         }
                         else
                         {
-                            if (TgdNods[j]->UMap.HasKey(bcs.Keys[k]))
+                            if (TgdNods[j]->UMap.HasKey(bcs.Keys[k])) // is U key
                             {
-                                nod2tag_to_ubc[TgdNods[j]].first = bc_tag;
+                                nod2tag_to_ubc[TgdNods[j]].first = btag;
                                 nod2tag_to_ubc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
                             }
-                            else
+                            else if (TgdNods[j]->FMap.HasKey(bcs.Keys[k])) // is F key
                             {
-                                nod2tag_to_fbc[TgdNods[j]].first = bc_tag;
+                                nod2tag_to_fbc[TgdNods[j]].first = btag;
                                 nod2tag_to_fbc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
                             }
+                            else throw new Fatal("FEM::Domain::SetBCs: BC==%s with tag==%d cannot be specified to Node # %d", bcs.Keys[k].CStr(), btag, TgdNods[j]->Vert.ID);
                         }
                     }
                 }
             }
-        }
-
-        // Special cases: beams
-        for (size_t j=0; j<Beams.Size(); ++j)
-        {
-            if (Beams[j]->Active)
-            {
-                // find beams with tags equal to this bc_tag
-                if (Beams[j]->Cell.Tag==bc_tag) // found
-                {
-                    // check if bc key is not U and is not F
-                    std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, Beams[j]->Cell.Tag);
-                    for (size_t k=0; k<bcs.Keys.Size(); ++k)
-                    {
-                        if (Util::HasKey(varkeys.first, bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the beam (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Beams[j]->Cell.ID, Beams[j]->Cell.Tag);
-                        if (Util::HasKey(varkeys.second,bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the beam (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Beams[j]->Cell.ID, Beams[j]->Cell.Tag);
-                    }
-
-                    // map bcs
-                    found = true;
-                    int idx_side = 0; // irrelevant
-                    eleside_t es(Beams[j],idx_side);
-                    eleside2tag_to_fbc[es].first  = bc_tag;
-                    eleside2tag_to_fbc[es].second = bcs;
-                }
-            }
-        }
-
-        // Special cases: s (source term), cbx (cetrifugal body force), ...
-        if (!found) 
-        {
-            // find elements with tags equal to this bc_tag
-            for (size_t j=0; j<Eles.Size(); ++j)
-            {
-                if (Eles[j]->Active)
-                {
-                    if (Eles[j]->Cell.Tag==bc_tag) // found
-                    {
-                        // check if bc key is not U and is not F
-                        std::pair<String,String> const & varkeys = CellTag2VarKeys (Prps, NDim, Eles[j]->Cell.Tag);
-                        for (size_t k=0; k<bcs.Keys.Size(); ++k)
-                        {
-                            if (Util::HasKey(varkeys.first, bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
-                            if (Util::HasKey(varkeys.second,bcs.Keys[k])) throw new Fatal("FEM::Domain::SetBCs: Boundary condition '%s' with tag==%d cannot be applied to the element (%d,%d) itself", bcs.Keys[k].CStr(), bc_tag, Eles[j]->Cell.ID, Eles[j]->Cell.Tag);
-                        }
-
-                        // map bcs
-                        found = true;
-                        int idx_side = 0; // irrelevant
-                        eleside_t es(Eles[j],idx_side);
-                        eleside2tag_to_fbc[es].first  = bc_tag;
-                        eleside2tag_to_fbc[es].second = bcs;
-                    }
-                }
-            }
-            if (!PARA && !found) throw new Fatal("FEM::Domain::SetBCs: Could not find any edge/face of element or node (or line element) with boundary Tag=%d",bc_tag);
         }
     }
 
-    // set F bcs at sides (edges/faces) of elements (or at the element itself => Line elements/beams)
+    // check if all tags were set
+    if (!PARA) // only in serial problems, since this processor may not know the tags of other elements/nodes in other processors
+    {
+        for (std::map<int,BryTagType_t>::const_iterator it=bc_set.begin(); it!=bc_set.end(); ++it)
+        {
+            if (it->second==None_t) throw new Fatal("FEM::Domain::SetBCs: Could not find any element, edge/face, or node with boundary tag == %d",it->first);
+        }
+    }
+
+    // set F bcs at sides (edges/faces) of elements
     for (std::map<eleside_t,tagbcs_t>::iterator p=eleside2tag_to_fbc.begin(); p!=eleside2tag_to_fbc.end(); ++p)
     {
         Element      * ele      = p->first.first;
@@ -555,38 +606,22 @@ inline void Domain::SetBCs (Dict const & BCs)
         }
     }
 
+    // add pF to pFaccum
+    for (NodBCs_t::const_iterator p=pF.begin(); p!=pF.end(); ++p) // for each node with prescribed F
+    {
+        Node const * nod = p->first;
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        {
+            size_t idof = q->first;
+            pFaccum[nod].first[idof] += q->second;
+        }
+    }
+
     // check available data
     AvailableData ();
 
     // write header to output files
     // TODO: this should be done at each stage, since new data may become available
-}
-
-inline void Domain::ClrBCs ()
-{
-    for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->ClrBCs ();
-    pF.clear();
-    pU.clear();
-    InclSupport.clear();
-}
-
-inline void Domain::Gravity ()
-{
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        if (Eles[i]->Active)
-        {
-            int tag = Eles[i]->Cell.Tag;
-            pCalcM calcm = &Multiplier;
-            if (Prps(tag).HasKey("mfunc"))
-            {
-                MDatabase_t::const_iterator p = MFuncs.find(tag);
-                if (p!=MFuncs.end()) calcm = p->second;
-                else throw new Fatal("Domain::Gravity: Multiplier function with tag=%d was not found in MFuncs database",tag);
-            }
-            Eles[i]->Gravity (pF, calcm, gAccel);
-        }
-    }
 }
 
 inline void Domain::Deactivate (int EleTag)
@@ -700,28 +735,31 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
         // nodes: data
         for (size_t i=0; i<Nods.Size(); ++i)
         {
-            std::cout << Util::_6 << Nods[i]->Vert.ID;
-            for (size_t j=0; j<AllUKeys.Size(); ++j)
+            if (Nods[i]->NShares>0)
             {
-                if (Nods[i]->UMap.HasKey(AllUKeys[j]))
+                std::cout << Util::_6 << Nods[i]->Vert.ID;
+                for (size_t j=0; j<AllUKeys.Size(); ++j)
                 {
-                    size_t idx = Nods[i]->UMap(AllUKeys[j]); // idx of DOF
-                    buf.Printf(NF, Nods[i]->U[idx]);
+                    if (Nods[i]->UMap.HasKey(AllUKeys[j]))
+                    {
+                        size_t idx = Nods[i]->UMap(AllUKeys[j]); // idx of DOF
+                        buf.Printf(NF, Nods[i]->U[idx]);
+                    }
+                    else buf.Printf(nf, "   ");
+                    std::cout << buf;
                 }
-                else buf.Printf(nf, "   ");
-                std::cout << buf;
-            }
-            for (size_t j=0; j<AllFKeys.Size(); ++j)
-            {
-                if (Nods[i]->FMap.HasKey(AllFKeys[j]))
+                for (size_t j=0; j<AllFKeys.Size(); ++j)
                 {
-                    size_t idx = Nods[i]->FMap(AllFKeys[j]); // idx of DOF
-                    buf.Printf(NF, Nods[i]->F[idx]);
+                    if (Nods[i]->FMap.HasKey(AllFKeys[j]))
+                    {
+                        size_t idx = Nods[i]->FMap(AllFKeys[j]); // idx of DOF
+                        buf.Printf(NF, Nods[i]->F[idx]);
+                    }
+                    else buf.Printf(nf, "   ");
+                    std::cout << buf;
                 }
-                else buf.Printf(nf, "   ");
-                std::cout << buf;
+                printf("\n");
             }
-            printf("\n");
         }
         printf("\n");
     }
@@ -786,7 +824,7 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
     printf("%s\n",TERM_RST);
     for (size_t i=0; i<reac.NRows; ++i)
     {
-        std::cout << Util::_6 << reac("Node",i);
+        printf(" %6d",static_cast<int>(reac("Node",i)));
         for (size_t j=1; j<reac.Keys.Size(); ++j) printf(NF,reac(reac.Keys[j],i));
         printf("\n");
     }
@@ -816,16 +854,16 @@ inline void Domain::CalcReactions (Table & NodesReactions, SDPair & SumReactions
     for (NodBCs_t::const_iterator p=pU.begin(); p!=pU.end(); ++p) // for each node with prescribed U
     {
         Node const *             nod  = p->first;
-        NodBCs_t::const_iterator itpf = pF.find(nod);
+        NodBCs_t::const_iterator itpf = pFaccum.find(nod);
         NodesReactions.SetVal ("Node", k, nod->Vert.ID);
         for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
         {
             size_t idof = q->first;
             double reac = nod->F[idof];
-            if (itpf!=pF.end()) // has prescribed F
+            if (itpf!=pFaccum.end()) // has prescribed F
             {
                 IntDbl_t::const_iterator it = itpf->second.first.find(idof);
-                if (it!=itpf->second.first.end()) reac -= it->second; // substract prescribed F
+                if (it!=itpf->second.first.end()) reac -= it->second; // subtract prescribed F
             }
             NodesReactions.SetVal (nod->UMap.Keys[idof], k, reac);
             SumReactions[nod->UMap.Keys[idof]] += reac;

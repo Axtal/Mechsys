@@ -376,7 +376,7 @@ inline void Element::Draw (std::ostream & os, double MaxDist) const
 std::ostream & operator<< (std::ostream & os, Element const & E)
 {
     os << Util::_4 << E.Cell.ID << " ";
-    os << (E.Active?" active":" inactive") << " ";
+    os << (E.Active?TERM_GREEN:TERM_RED) << (E.Active?" active":" inactive") << TERM_RST << " ";
     os << GTypeToStr(E.GTy) << " ";
     if (E.GE!=NULL)  os << E.GE->Name  << " " << "NIP=" << E.GE->NIP << " ";
     else             os << "GE=NULL"   << " ";

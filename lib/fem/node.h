@@ -100,6 +100,7 @@ std::ostream & operator<< (std::ostream & os, Node const & N)
         os << N.FMap.Keys[i] << " ";
         if (i!=N.nDOF()-1) os << " ";
     }
+    os << " NShares=" << (N.NShares>0?TERM_GREEN:TERM_RED) << N.NShares << TERM_RST;
     os << " EQ=[";
     for (size_t i=0; i<N.EQ.Size(); ++i)
     {

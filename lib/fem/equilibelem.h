@@ -157,6 +157,13 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
 
 inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
+    // activate
+    if (BCs.HasKey("activate"))
+    {
+        for (size_t i=0; i<GE->NN; ++i) Con[i]->NShares++;
+        Active = true;
+    }
+
     // check
     if (!Active) throw new Fatal("EquilibElem::SetBCs: Element %d is inactive",Cell.ID);
 
@@ -172,13 +179,14 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
     bool has_ux  = BCs.HasKey("ux");  // x displacement
     bool has_uy  = BCs.HasKey("uy");  // y displacement
     bool has_uz  = BCs.HasKey("uz");  // z displacement
+    bool has_gra = BCs.HasKey("gravity"); // gravity
 
     // force components specified
-    if (has_bx || has_by || has_bz || has_cbx ||
+    if (has_bx || has_by || has_bz || has_cbx || has_gra ||
         has_qx || has_qy || has_qz || has_qn  || has_qt)
     {
         // body forces
-        if (has_bx || has_by || has_bz || has_cbx) // prescribed body forces
+        if (has_bx || has_by || has_bz || has_cbx || has_gra) // prescribed body forces
         {
             // matrix of coordinates of nodes
             Mat_t C;
@@ -189,6 +197,11 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
             double by = (has_by  ? BCs("by")  : 0.0);
             double bz = (has_bz  ? BCs("bz")  : 0.0);
                    bx = (has_cbx ? BCs("cbx") : bx );
+            if (has_gra)
+            {
+                if (NDim==2) by = -rho*BCs("gravity");
+                else         bz = -rho*BCs("gravity");
+            }
 
             // set
             for (size_t i=0; i<GE->NIP; ++i)
@@ -217,9 +230,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
                 // add to dF
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    if (has_bx || has_cbx) pF[Con[j]].first[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
-                    if (has_by           ) pF[Con[j]].first[Con[j]->FMap("fy")] += coef*GE->N(j)*by;
-                    if (has_bz           ) pF[Con[j]].first[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+                    pF[Con[j]].first[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
+                    pF[Con[j]].first[Con[j]->FMap("fy")] += coef*GE->N(j)*by;  if (NDim==3)
+                    pF[Con[j]].first[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
                 }
             }
 
