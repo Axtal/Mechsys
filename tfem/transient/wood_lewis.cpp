@@ -106,6 +106,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("gx gy", 1.0e-11, 1.0e-11);
 
     // return error flag
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return 1;
 }
 MECHSYS_CATCH

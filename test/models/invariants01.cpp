@@ -94,7 +94,7 @@ int main(int argc, char **argv) try
     buf.Printf("ERROR(sk-skb)      = %g, %g, %g        \n",err[5], err[6], err[7]);                      cout<<buf;
     buf.Printf("ERROR(Ik)          = %g, %g, %g        \n",err[8], err[9], err[10]);                     cout<<buf;
 
-    if (err[err.Max()]>1.0e-8) return 1;
-    else                       return 0;
+    if (err.TheMax()>1.0e-8) return 1;
+    else                     return 0;
 }
 MECHSYS_CATCH

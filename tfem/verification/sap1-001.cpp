@@ -133,7 +133,7 @@ int main(int argc, char **argv) try
         sol.SetScheme ("FE");
         dom.SetBCs    (BC[lcase]);
         sol.Solve     (1);
-        printf("\n%s===================================== Load case # %d =====================================%s\n",TERM_YELLOW_BLUE,lcase,TERM_RST);
+        printf("\n%s===================================== Load case # %zd =====================================%s\n",TERM_YELLOW_BLUE,lcase,TERM_RST);
 
         // output
         String buf;
