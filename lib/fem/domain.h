@@ -247,6 +247,9 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         }
     }
 
+    // check size of Nods
+    if (Nods.Size()==0) throw new Fatal("FEM::Domain::Domain: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   The array of Nodes is empty.");
+
     // set elements from mesh
     for (size_t i=0; i<Msh.Cells.Size(); ++i)
     {
@@ -272,7 +275,12 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
 
             // connectivity
             Array<Node*> nodes(Msh.Cells[i]->V.Size());
-            for (size_t k=0; k<nodes.Size(); ++k) nodes[k] = VertID2Node[Msh.Cells[i]->V[k]->ID];
+            for (size_t k=0; k<nodes.Size(); ++k)
+            {
+                std::map<int,Node*>::const_iterator it = VertID2Node.find(Msh.Cells[i]->V[k]->ID);
+                if (it==VertID2Node.end()) throw new Fatal("FEM::Domain::Domain:: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   Could not find Node # %d necessary for the definition of Element # %d.",Msh.Cells[i]->V[k]->ID,Msh.Cells[i]->ID);
+                nodes[k] = it->second;
+            }
 
             // allocate element
             if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), nodes));
@@ -298,6 +306,9 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
     }
+
+    // check size of Eles
+    if (Eles.Size()==0) throw new Fatal("FEM::Domain::Domain: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   The array of Elements is empty.");
 
     // divide U values in nodes by the number of times elements added to a U var
     for (size_t i=0; i<Nods.Size(); ++i)
