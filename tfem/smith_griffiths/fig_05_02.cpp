@@ -161,8 +161,8 @@ int main(int argc, char **argv) try
     ele_tol.Set("sx sy sxy ", 1.0e-15, 1.0e-14, 1.0e-15);
 
     // return error flag
-    bool err_nods = dom.CheckError   (nod_sol, nod_tol);
-    bool err_eles = dom.CheckErrorIP (ele_sol, ele_tol);
+    bool err_nods = dom.CheckErrorNods (nod_sol, nod_tol);
+    bool err_eles = dom.CheckErrorIP   (ele_sol, ele_tol);
     return (err_nods || err_eles);
 }
 MECHSYS_CATCH

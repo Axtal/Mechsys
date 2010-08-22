@@ -93,8 +93,6 @@ int main(int argc, char **argv) try
     nod_tol.Set("ux uy wz",1.0e-15,1.0e-14,1.0e-14);
 
     // return error flag
-    Table ele_sol;
-    SDPair ele_tol;
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckErrorNods (nod_sol, nod_tol);
 }
 MECHSYS_CATCH

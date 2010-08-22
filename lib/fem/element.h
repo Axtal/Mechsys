@@ -58,9 +58,6 @@ public:
     virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
                                NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM) {}     ///< Set boundary conditions
     virtual void ClrBCs       ()                                           {}     ///< Clear boundary conditions
-    virtual void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel) {}     ///< Apply gravity (body forces)
-    virtual void Deactivate   (NodBCs_t & pF, pCalcM CalcM, double gAccel,
-                               NodBCs_t & pU)                              {}     ///< Deactivate element
     virtual void GetLoc       (Array<size_t> & Loc)                      const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
     virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implemented for this element"); }
     virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implemented for this element"); }

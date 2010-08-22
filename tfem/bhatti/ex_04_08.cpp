@@ -129,10 +129,9 @@ int main(int argc, char **argv) try
                  0.0,   0.000000000000000e+00,   2.689909297052154e-04,   0.0,  1.739285714285714e+01,  0.000000000000000e+00);
 
     // error tolerance
-    Table ele_sol;
-    SDPair nod_tol, ele_tol;
+    SDPair nod_tol;
     nod_tol.Set("ux uy wz  Rux Ruy Rwz", 1.0e-15,1.0e-15,1.0e-15, 1.0e-15,1.0e-13,1.0e-14);
-    err_flag = err_flag || dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    err_flag = err_flag || dom.CheckErrorNods (nod_sol, nod_tol);
 
     // bending moment
     Mat_t Mmat(7,2);

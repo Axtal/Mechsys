@@ -50,8 +50,9 @@ int main(int argc, char **argv) try
     /////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
     // elements properties
-    double gam = 20.0;     // kN/m3
-    double rho = gam/9.81; // Mg/m3
+    double gra = 9.81;    // m/s2
+    double gam = 20.0;    // kN/m3
+    double rho = gam/gra; // Mg/m3
     double K0  = 1.0;
     Dict prps;
     prps.Set(-1, "prob geom psa  rho", PROB("Equilib"),GEOM("Quad8"),1.0, rho);
@@ -79,25 +80,26 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    //sol.Scheme = FEM::Solver::FE_t;
+    sol.SetScheme ("FE");
 
     // stage # 1 ==============================================================
     Dict bcs;
-    bcs.Set (-10, "ux",     0.0);
-    bcs.Set (-20, "ux",     0.0);
-    bcs.Set (-30, "ux uy",  0.0, 0.0);
+    bcs.Set        (-10, "ux",     0.0);
+    bcs.Set        (-20, "ux",     0.0);
+    bcs.Set        (-30, "ux uy",  0.0, 0.0);
+    bcs.Set        (-2,  "deactivate", gra);
     dom.SetBCs     (bcs);
-    dom.Deactivate (-2);
-    sol.Solve      (10);
+    sol.Solve      (1);
     dom.WriteVTU   ("fig_06_38_stg_1");
 
     // stage # 2 ==============================================================
-    bcs.Set (-10, "ux",     0.0);
-    bcs.Set (-20, "ux",     0.0);
-    bcs.Set (-30, "ux uy",  0.0, 0.0);
+    bcs.clear();
+    bcs.Set        (-10, "ux",     0.0);
+    bcs.Set        (-20, "ux",     0.0);
+    bcs.Set        (-30, "ux uy",  0.0, 0.0);
+    bcs.Set        (-3,  "deactivate", gra);
     dom.SetBCs     (bcs);
-    dom.Deactivate (-3);
-    sol.Solve      (10);
+    sol.Solve      (1);
     dom.WriteVTU   ("fig_06_38_stg_2");
 }
 MECHSYS_CATCH

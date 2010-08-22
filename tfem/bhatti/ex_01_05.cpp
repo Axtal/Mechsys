@@ -126,12 +126,12 @@ int main(int argc, char **argv) try
 
     // correct solution
     Table nod_sol;
-    nod_sol.Set("H", dom.Nods.Size(),
-                3.000000000000000e+02,
-                9.354661202985511e+01,
-                2.384369969266794e+01,
-                3.000000000000000e+02,
-                1.828327235474901e+02);
+    nod_sol.Set("                   H                     RH", dom.Nods.Size(),
+                3.000000000000000e+02, 8.201709351675694e+01,
+                9.354661202985511e+01, 0.0,
+                2.384369969266794e+01, 0.0,
+                3.000000000000000e+02, 2.314136689594616e+02,
+                1.828327235474901e+02, 0.0);
 
     Table ele_sol;
     ele_sol.Set("gx  gy", dom.Eles.Size(),
@@ -142,10 +142,10 @@ int main(int argc, char **argv) try
 
     // error tolerance
     SDPair nod_tol, ele_tol;
-    nod_tol.Set("H", 1.0e-13);
+    nod_tol.Set("H RH",  1.0e-13,1.0e-13);
     ele_tol.Set("gx gy", 1.0e-12,1.0e-12);
 
     // return error flag
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return (dom.CheckErrorNods(nod_sol, nod_tol) || dom.CheckErrorEles(ele_sol, ele_tol));
 }
 MECHSYS_CATCH

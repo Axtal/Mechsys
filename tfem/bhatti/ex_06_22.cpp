@@ -157,6 +157,6 @@ int main(int argc, char **argv) try
     nod_tol.Set("H", 1.0e-12);
 
     // return error flag
-    return dom.CheckError (nod_sol, nod_tol);
+    return dom.CheckErrorNods (nod_sol, nod_tol);
 }
 MECHSYS_CATCH

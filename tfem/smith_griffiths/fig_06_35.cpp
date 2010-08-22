@@ -48,8 +48,9 @@ int main(int argc, char **argv) try
     /////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
     // elements properties
-    double gam = 20.0;     // kN/m3
-    double rho = gam/9.81; // Mg/m3
+    double gra = 9.81;    // m/s2
+    double gam = 20.0;    // kN/m3
+    double rho = gam/gra; // Mg/m3
     double K0  = 0.5;
     Dict prps;
     prps.Set(-1, "prob geom psa  rho", PROB("Equilib"),GEOM("Quad8"),1.0, rho);
@@ -72,22 +73,17 @@ int main(int argc, char **argv) try
 
     // solver
     FEM::Solver sol(dom);
-    //sol.Scheme = FEM::Solver::FE_t;
+    sol.SetScheme ("FE");
 
     // stage # 1 ==============================================================
-
-    // boundary conditions
     Dict bcs;
-    bcs.Set(-10, "ux",     0.0);
-    bcs.Set(-20, "ux",     0.0);
-    bcs.Set(-30, "ux uy",  0.0, 0.0);
+    bcs.Set    (-10, "ux",     0.0);
+    bcs.Set    (-20, "ux",     0.0);
+    bcs.Set    (-30, "ux uy",  0.0, 0.0);
+    bcs.Set    (-2,  "deactivate", gra);
+    bcs.Set    (-3,  "deactivate", gra);
     dom.SetBCs (bcs);
-    dom.Deactivate(-2);
-    cout << endl;
-    dom.Deactivate(-3);
-
-    // solve
-    sol.Solve (1);
+    sol.Solve  (1);
 
     // output
     dom.WriteVTU ("fig_06_35_stg_1");

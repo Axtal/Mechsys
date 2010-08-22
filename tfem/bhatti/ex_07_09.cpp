@@ -256,7 +256,7 @@ int main(int argc, char **argv) try
     }
 
     // solution
-    Table nod_sol, ele_sol, elem_sol;
+    Table ele_sol, elem_sol;
     ele_sol .SetZero("sx sy sxy", dom.Eles.Size());
     elem_sol.SetZero("sx sy sxy", dom.Eles.Size()*dom.Eles[0]->GE->NIP);
     for (size_t i=0; i<dom.Eles.Size(); ++i)
@@ -266,11 +266,11 @@ int main(int argc, char **argv) try
     }
 
     // error tolerance
-    SDPair nod_tol, ele_tol;
+    SDPair ele_tol;
     ele_tol.Set("sx sy sxy", 2.0e-1,2.0e-1,1.0e-1);
 
     // return error flag
     dom.CheckErrorIP (elem_sol, ele_tol);
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return dom.CheckErrorEles (ele_sol, ele_tol);
 }
 MECHSYS_CATCH

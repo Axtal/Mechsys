@@ -85,7 +85,7 @@ int main(int argc, char **argv) try
     bcs.Set( -10, "conv h Tinf", 1.0, 200.0, 50.0);
     bcs.Set( -20, "flux",        0.0);
     dom.SetBCs     (bcs);
-    dom.SetUVals   (uvs);
+    //dom.SetUVals   (uvs);
     sol.TransSolve (/*tf*/300.0, /*dt*/1.0, /*dtOut*/10.0);
 
     // check matrices
@@ -139,6 +139,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("gx gy", 1.0e-11, 1.0e-11);
 
     // return error flag
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return 1; //dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
 }
 MECHSYS_CATCH

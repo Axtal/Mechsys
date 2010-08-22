@@ -122,6 +122,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("N  V  M",  1.0e-14,1.0e-14,1.0e-15);
 
     // return error flag
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return (dom.CheckErrorNods(nod_sol, nod_tol) || dom.CheckErrorEles(ele_sol, ele_tol));
 }
 MECHSYS_CATCH

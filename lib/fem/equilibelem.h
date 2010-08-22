@@ -46,9 +46,6 @@ public:
     // Methods
     void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, 
                        NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
-    void Gravity      (NodBCs_t & pF, pCalcM CalcM, double gAccel); ///< Apply gravity
-    void Deactivate   (NodBCs_t & pF, pCalcM CalcM, double gAccel,
-                       NodBCs_t & pU);                              ///< Deactivate element
     void GetLoc       (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
     void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
     void CalcM        (Mat_t & M)                            const; ///< Mass matrix
@@ -157,11 +154,90 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
 
 inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
 {
-    // activate
-    if (BCs.HasKey("activate"))
+    // deactivate/activate commands
+    if (BCs.HasKey("deactivate"))
     {
+        // check
+        if (!Active) throw new Fatal("EquilibElem::SetBCs: 'deactivate' command failed: Element # %d is already inactive",Cell.ID);
+
+        // calc force to be applied after removal of element
+        double gra = (BCs.HasKey("gravity") ? BCs("gravity") : 0.0);
+        double detJ, coef;
+        Mat_t  C, B;
+        Vec_t  Fi(NDu), Fb(NDu);
+        set_to_zero (Fi);
+        set_to_zero (Fb);
+        CoordMatrix (C);
+        size_t idx_grav = (NDim==2 ? 1 : 2);
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            // internal forces
+            GE->Shape (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+            CalcB     (C, GE->IPs[i], B, detJ, coef);
+            Vec_t const & sig = static_cast<EquilibState const *>(Sta[i])->Sig;
+            Fi += (coef) * trans(B)*sig;
+
+            // body forces
+            for (size_t j=0; j<GE->NN; ++j)
+                Fb(idx_grav+j*NDim) += coef*GE->N(j)*rho*gra;
+        }
+
+        /*
+        for (size_t j=0; j<GE->NN; ++j) // debug
+        {
+            std::cout << Util::_4 << Con[j]->Vert.ID << ": ";
+            for (size_t k=0; k<NDim; ++k) std::cout << Util::_6_3 << Fi(k+j*NDim);
+            std::cout << "  :   ";
+            for (size_t k=0; k<NDim; ++k) std::cout << Util::_6_3 << Fb(k+j*NDim);
+            std::cout << std::endl;
+        }
+        */
+
+        // set nodes
+        for (size_t i=0; i<GE->NN; ++i)
+        {
+            // remove internal force contribution from external forces vector
+            Con[i]->F[Con[i]->FMap("fx")] -= Fi(0+i*NDim);
+            Con[i]->F[Con[i]->FMap("fy")] -= Fi(1+i*NDim);  if (NDim==3)
+            Con[i]->F[Con[i]->FMap("fz")] -= Fi(2+i*NDim);
+
+            // remove sharing information
+            Con[i]->NShares--;
+            if (Con[i]->NShares<0) throw new Fatal("EquilibElem::SetBCs: __internal_error__: 'deactivate' command failed: NShares==%d must be positive",Con[i]->NShares<0);
+
+            // delete node from pF and pU in case node becomes inactive
+            if (Con[i]->NShares==0)
+            {
+                pF.erase (Con[i]);
+                pU.erase (Con[i]);
+            }
+            else // set boundary conditions (prescribed F: pF)
+            {
+                // add to F
+                pF[Con[i]].first[Con[i]->FMap("fx")] += Fi(0+i*NDim) + Fb(0+i*NDim);
+                pF[Con[i]].first[Con[i]->FMap("fy")] += Fi(1+i*NDim) + Fb(1+i*NDim);  if (NDim==3)
+                pF[Con[i]].first[Con[i]->FMap("fz")] += Fi(2+i*NDim) + Fb(2+i*NDim);
+
+                // set CalcM (multiplier callback)
+                pF[Con[i]].second = CalcM;
+            }
+        }
+
+        // deactivate element
+        Active = false;
+        return; // must return otherwise 'gravity' may be set in the following code
+    }
+    else if (BCs.HasKey("activate"))
+    {
+        // check
+        if (Active) throw new Fatal("EquilibElem::SetBCs: 'activate' command failed: Element # %d is already active",Cell.ID);
+
+        // add information to shares array in nodes
         for (size_t i=0; i<GE->NN; ++i) Con[i]->NShares++;
+
+        // activate
         Active = true;
+        // continue to set gravity
     }
 
     // check
@@ -345,121 +421,6 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
             if (has_uz) pU[Con[k]].first[Con[k]->UMap("uz")] = uz;
         }
     }
-}
-
-inline void EquilibElem::Gravity (NodBCs_t & pF, pCalcM CalcM, double gAccel)
-{
-    // check
-    if (!Active) throw new Fatal("EquilibElem::Gravity: Element %d is inactive",Cell.ID);
-
-    // matrix of coordinates of nodes
-    Mat_t C;
-    CoordMatrix (C);
-    
-    // set
-    for (size_t i=0; i<GE->NIP; ++i)
-    {
-        // geometric data
-        GE->Shape  (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
-        GE->Derivs (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
-
-        // Jacobian and its determinant
-        Mat_t J(GE->dNdR * C); // J = dNdR * C
-        double detJ = Det(J);
-
-        // coefficient used during integration
-        double coef = h*detJ*GE->IPs[i].w;
-        if (GTy==axs_t)
-        {
-            // calculate radius=x at this IP
-            double radius = 0.0;
-            for (size_t j=0; j<GE->NN; ++j) radius += GE->N(j)*Con[j]->Vert.C[0];
-
-            // correct coef
-            coef *= radius;
-        }
-
-        // add to dF
-        for (size_t j=0; j<GE->NN; ++j)
-        {
-            if (NDim==2) pF[Con[j]].first[Con[j]->FMap("fy")] += -coef*GE->N(j)*rho*gAccel;
-            else         pF[Con[j]].first[Con[j]->FMap("fz")] += -coef*GE->N(j)*rho*gAccel;
-        }
-    }
-
-    // set CalcM
-    for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
-}
-
-inline void EquilibElem::Deactivate (NodBCs_t & pF, pCalcM CalcM, double gAccel, NodBCs_t & pU)
-{
-    // check
-    if (!Active) throw new Fatal("EquilibElem::Deactivate: Element %d is already inactive",Cell.ID);
-
-    // calc force to be applied after removal of element
-    double detJ, coef;
-    Mat_t  C, B;
-    Vec_t  Fi(NDu), Fb(NDu);
-    set_to_zero (Fi);
-    set_to_zero (Fb);
-    CoordMatrix (C);
-    size_t idx_grav = (NDim==2 ? 1 : 2);
-    for (size_t i=0; i<GE->NIP; ++i)
-    {
-        // internal forces
-        GE->Shape (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
-        CalcB     (C, GE->IPs[i], B, detJ, coef);
-        Vec_t const & sig = static_cast<EquilibState const *>(Sta[i])->Sig;
-        Fi += (coef) * trans(B)*sig;
-
-        // body forces
-        for (size_t j=0; j<GE->NN; ++j)
-            Fb(idx_grav+j*NDim) += coef*GE->N(j)*rho*gAccel;
-    }
-
-    /*
-    for (size_t j=0; j<GE->NN; ++j) // debug
-    {
-        std::cout << Util::_4 << Con[j]->Vert.ID << ": ";
-        for (size_t k=0; k<NDim; ++k) std::cout << Util::_6_3 << Fi(k+j*NDim);
-        std::cout << "  :   ";
-        for (size_t k=0; k<NDim; ++k) std::cout << Util::_6_3 << Fb(k+j*NDim);
-        std::cout << std::endl;
-    }
-    */
-
-    // set nodes
-    for (size_t i=0; i<GE->NN; ++i)
-    {
-        // remove internal force contribution from external forces vector
-        Con[i]->F[Con[i]->FMap("fx")] -= Fi(0+i*NDim);
-        Con[i]->F[Con[i]->FMap("fy")] -= Fi(1+i*NDim);  if (NDim==3)
-        Con[i]->F[Con[i]->FMap("fz")] -= Fi(2+i*NDim);
-
-        // remove sharing information
-        Con[i]->NShares--;
-        if (Con[i]->NShares<0) throw new Fatal("EquilibElem::Deactivate: __internal_error__: NShares==%d must be positive",Con[i]->NShares<0);
-
-        // delete node from pF and pU in case node becomes inactive
-        if (Con[i]->NShares==0)
-        {
-            pF.erase (Con[i]);
-            pU.erase (Con[i]);
-        }
-        else // set boundary conditions (prescribed F: pF)
-        {
-            // add to F
-            pF[Con[i]].first[Con[i]->FMap("fx")] += Fi(0+i*NDim) + Fb(0+i*NDim);
-            pF[Con[i]].first[Con[i]->FMap("fy")] += Fi(1+i*NDim) + Fb(1+i*NDim);  if (NDim==3)
-            pF[Con[i]].first[Con[i]->FMap("fz")] += Fi(2+i*NDim) + Fb(2+i*NDim);
-
-            // set CalcM (multiplier callback)
-            pF[Con[i]].second = CalcM;
-        }
-    }
-
-    // deactivate element
-    Active = false;
 }
 
 inline void EquilibElem::GetLoc (Array<size_t> & Loc) const

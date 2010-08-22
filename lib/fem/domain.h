@@ -73,15 +73,13 @@ public:
     ~Domain ();
 
     // Methods
-    void SetBCs       (Dict const & BCs);                                                                                ///< Set boundary conditions
-    void Deactivate   (int EleTag);                                                                                      ///< Deactivate all elements with EleTag
-    void SetUVals     (SDPair const & UVals);                                                                            ///< Set U values
-    void PrintResults (char const * NF="%10.5g", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
-    bool CheckError   (Table const & NodSol, SDPair const & NodTol) const;                                               ///< At nodes
-    bool CheckError   (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const;  ///< At nodes and centroid
-    bool CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const;                                               ///< At integration points
-    void WriteMPY     (char const * FileKey, double SFCoef=1.0, bool PNG=false, char const * Extra=NULL) const;          ///< SFCoef: Scale-factor coefficient
-    void WriteVTU     (char const * FileKey) const;                                                                      ///< Write file for ParaView
+    void SetBCs         (Dict const & BCs);                                                                                ///< Set boundary conditions
+    void PrintResults   (char const * NF="%15.6e", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
+    void WriteMPY       (char const * FileKey, double SFCoef=1.0, bool PNG=false, char const * Extra=NULL) const;          ///< SFCoef: Scale-factor coefficient
+    void WriteVTU       (char const * FileKey) const;                                                                      ///< Write file for ParaView
+    bool CheckErrorNods (Table const & NodSol, SDPair const & NodTol) const;                                               ///< Check error at nodes
+    bool CheckErrorEles (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at the centre of elements
+    bool CheckErrorIP   (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at integration points of elements
 
     // Internal methods
     void OutResults    (double Time, Vec_t const & F_int) const;              ///< Do output results
@@ -93,7 +91,6 @@ public:
     Dict          const & Prps;        ///< Element properties
     Dict          const & Inis;        ///< Initial values
     int                   NDim;        ///< Space dimension
-    double                gAccel;      ///< Gravity acceleration
     Models_t              Mdls;        ///< Models
     Array<Node*>          Nods;        ///< (Allocated memory) Nodes
     Array<Element*>       Eles;        ///< (Allocated memory) Elements
@@ -207,8 +204,10 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
     return os;
 }
 
+// Constructor and destructor
+
 inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FKey, Array<int> const * OutV, Array<int> const * OutC)
-    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), gAccel(9.81)
+    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim)
 {
     // info
 #ifdef HAS_MPI
@@ -370,6 +369,8 @@ inline Domain::~Domain()
     for (size_t i=0; i<FilNods.Size(); ++i) if (FilNods[i]!=NULL) { FilNods[i]->close(); delete FilNods[i]; }
     for (size_t i=0; i<FilEles.Size(); ++i) if (FilEles[i]!=NULL) { FilEles[i]->close(); delete FilEles[i]; }
 }
+
+// Methods
 
 inline void Domain::SetBCs (Dict const & BCs)
 {
@@ -624,94 +625,6 @@ inline void Domain::SetBCs (Dict const & BCs)
     // TODO: this should be done at each stage, since new data may become available
 }
 
-inline void Domain::Deactivate (int EleTag)
-{
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        int tag = Eles[i]->Cell.Tag;
-        if (tag==EleTag)
-        {
-            pCalcM calcm = &Multiplier;
-            if (Prps(tag).HasKey("mfunc"))
-            {
-                MDatabase_t::const_iterator p = MFuncs.find(tag);
-                if (p!=MFuncs.end()) calcm = p->second;
-                else throw new Fatal("Domain::Deactivate: Multiplier function with tag=%d was not found in MFuncs database",tag);
-            }
-            Eles[i]->Deactivate (pF, calcm, gAccel, pU);
-        }
-    }
-}
-
-inline void Domain::SetUVals (SDPair const & UVals)
-{
-    for (size_t i=0; i<Nods.Size(); ++i)
-    {
-        for (StrDbl_t::const_iterator p=UVals.begin(); p!=UVals.end(); ++p)
-        {
-            Nods[i]->U[Nods[i]->UMap(p->first)] = p->second;
-        }
-    }
-}
-
-inline void Domain::OutResults (double Time, Vec_t const & F_int) const
-{
-    // nodes
-    for (size_t i=0; i<OutNods.Size(); ++i)
-    {
-        if (Time<1.0e-14)
-        {
-            String buf;
-            (*FilNods[i]) << Util::_8s << "Time";
-            (*FilNods[i]) << Util::_8s << "x";
-            (*FilNods[i]) << Util::_8s << "y";  if (NDim==3)
-            (*FilNods[i]) << Util::_8s << "z";
-            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->UMap.Keys[j];
-            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->FMap.Keys[j];
-            for (size_t j=0; j<OutNods[i]->nDOF(); ++j)
-            {
-                buf.Printf ("%s_int", OutNods[i]->FMap.Keys[j].CStr());
-                (*FilNods[i]) << Util::_8s << buf;
-            }
-            (*FilNods[i]) << "\n";
-        }
-        (*FilNods[i]) << Util::_8s << Time;
-        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(0);
-        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(1);  if (NDim==3)
-        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(2);
-        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->U[j];
-        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->F[j];
-        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(OutNods[i]->EQ[j]);
-        (*FilNods[i]) << "\n";
-    }
-
-    // elements
-    for (size_t i=0; i<OutEles.Size(); ++i)
-    {
-        if (Time<1.0e-14)
-        {
-            Array<String> keys;
-            OutEles[i]->StateKeys (keys);
-            (*FilEles[i]) << Util::_8s << "Time";
-            (*FilEles[i]) << Util::_8s << "x";
-            (*FilEles[i]) << Util::_8s << "y";  if (NDim==3)
-            (*FilEles[i]) << Util::_8s << "z";
-            for (size_t j=0; j<keys.Size(); ++j) (*FilEles[i]) << Util::_8s << keys[j];
-            (*FilEles[i]) << "\n";
-        }
-        (*FilEles[i]) << Util::_8s << Time;
-        SDPair dat;
-        Vec_t  Xct;
-        OutEles[i]->StateAtCt (dat);
-        OutEles[i]->Centroid  (Xct);
-        (*FilEles[i]) << Util::_8s << Xct(0);
-        (*FilEles[i]) << Util::_8s << Xct(1);  if (NDim==3)
-        (*FilEles[i]) << Util::_8s << Xct(2);
-        for (size_t j=0; j<dat.Keys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(dat.Keys[j]);
-        (*FilEles[i]) << "\n";
-    }
-}
-
 inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithElems, double Tol) const
 {
     printf("\n%s--- Results ------------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
@@ -838,195 +751,6 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
     printf("\n");
 }
 
-inline void Domain::CalcReactions (Table & NodesReactions, SDPair & SumReactions) const
-{
-    // resize tables
-    String buf("Node");
-    for (size_t i=0; i<AllUKeys.Size(); ++i)
-    {
-        buf.Printf ("%s %s",buf.CStr(),AllUKeys[i].CStr());
-        SumReactions.Set (AllUKeys[i].CStr(), 0.0);
-    }
-    NodesReactions.SetZero (buf.CStr(), pU.size());
-
-    // find reactions
-    size_t k = 0;
-    for (NodBCs_t::const_iterator p=pU.begin(); p!=pU.end(); ++p) // for each node with prescribed U
-    {
-        Node const *             nod  = p->first;
-        NodBCs_t::const_iterator itpf = pFaccum.find(nod);
-        NodesReactions.SetVal ("Node", k, nod->Vert.ID);
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
-        {
-            size_t idof = q->first;
-            double reac = nod->F[idof];
-            if (itpf!=pFaccum.end()) // has prescribed F
-            {
-                IntDbl_t::const_iterator it = itpf->second.first.find(idof);
-                if (it!=itpf->second.first.end()) reac -= it->second; // subtract prescribed F
-            }
-            NodesReactions.SetVal (nod->UMap.Keys[idof], k, reac);
-            SumReactions[nod->UMap.Keys[idof]] += reac;
-        }
-        k++;
-    }
-}
-
-inline bool Domain::CheckError (Table const & NodSol, SDPair const & NodTol) const
-{
-    // header
-    printf("\n%s--- Error Summary --- nodes --------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
-    printf("%s\n",TERM_RST);
-
-    // results
-    bool error = false;
-
-    // nodes
-    for (size_t i=0; i<NodSol.Keys.Size(); ++i)
-    {
-        // calc error
-        String key = NodSol.Keys[i];
-        Array<double> err(NodSol.NRows);
-        for (size_t j=0; j<Nods.Size(); ++j)
-        {
-            if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
-            else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
-        }
-
-        // summary
-        double max_err = err.TheMax();
-        double tol     = NodTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
-        if (max_err>tol) error = true;
-    }
-
-    return error;
-}
-
-inline bool Domain::CheckError (Table const & NodSol, Table const & EleSol, SDPair const & NodTol, SDPair const & EleTol) const
-{
-    /*
-        NodBCs_t::const_iterator p = pF.find(Nods[nod]);
-        if (p==pF.end()) { for (size_t j=0; j<Nods[nod]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << 0.0; }
-        else
-        {
-            for (size_t j=0; j<Nods[nod]->nDOF(); ++j)
-            {
-                IntDbl_t::const_iterator q = p->second.find(j);
-                if (q==p->second.end()) (*FilNods[i]) << Util::_8s << 0.0;
-                else                    (*FilNods[i]) << Util::_8s << Nods[nod]->F[j] - Nods[nod]->Fa(j,Time);
-            }
-        }
-    */
-
-    // header
-    printf("\n%s--- Error Summary --- nodes and centroid -------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
-    printf("%s\n",TERM_RST);
-
-    // results
-    bool error = false;
-
-    // nodes
-    for (size_t i=0; i<NodSol.Keys.Size(); ++i)
-    {
-        // calc error
-        String key = NodSol.Keys[i];
-        Array<double> err(NodSol.NRows);
-        if (key[0]=='R') // reaction
-        {
-            String ukey;
-            for (size_t j=1; j<key.size(); ++j) ukey.Printf("%s%c",ukey.CStr(),key[j]);
-            //for (size_t j=0; j<Nods.Size(); ++j)
-            //{
-                //size_t idx = Nods[j]->UMap(ukey); // idx of DOF
-                //err[j] = fabs(Nods[j]->F[idx] - Nods[j]->Fa(idx,1.0) - NodSol(key,j));
-            //}
-        }
-        else
-        {
-            for (size_t j=0; j<Nods.Size(); ++j)
-            {
-                if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
-                else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
-            }
-        }
-
-        // summary
-        double max_err = err.TheMax();
-        double tol     = NodTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
-        if (max_err>tol) error = true;
-    }
-
-    // elements
-    for (size_t i=0; i<EleSol.Keys.Size(); ++i)
-    {
-        // calc error
-        String key = EleSol.Keys[i];
-        Array<double> err(EleSol.NRows);
-        for (size_t j=0; j<Eles.Size(); ++j)
-        {
-            SDPair dat;
-            Eles[j]->StateAtCt (dat);
-            err [j] = fabs(dat(key) - EleSol(key,j));
-        }
-
-        // summary
-        double max_err = err.TheMax();
-        double tol     = EleTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
-        if (max_err>tol) error = true;
-    }
-
-    return error;
-}
-
-inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const
-{
-    // header
-    printf("\n%s--- Error Summary --- integration points -------------------------------------------%s\n",TERM_CLR1,TERM_RST);
-    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
-    printf("%s\n",TERM_RST);
-
-    // results
-    bool error = false;
-
-    // elements
-    for (size_t i=0; i<EleSol.Keys.Size(); ++i)
-    {
-        // calc error
-        String key = EleSol.Keys[i];
-        Array<double> err(EleSol.NRows);
-        for (size_t j=0; j<Eles.Size(); ++j)
-        {
-            if (Eles[j]->GE==NULL) throw new Fatal("Domain::CheckError: This method works only when GE (geometry element) is not NULL");
-            Array<SDPair> res;
-            Eles[j]->StateAtIPs (res);
-            for (size_t k=0; k<Eles[j]->GE->NIP; ++k)
-            {
-                size_t row = k + j*Eles[j]->GE->NIP;
-                err [row] = fabs(res[k](key) - EleSol(key,row));
-            }
-        }
-
-        // summary
-        double max_err = err.TheMax();
-        double tol     = EleTol(key);
-        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
-        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
-        if (max_err>tol) error = true;
-    }
-
-    std::cout << "\n";
-
-    return error;
-}
-
 inline void Domain::WriteMPY (char const * FNKey, double SFCoef, bool PNG, char const * Extra) const
 {
     // bounding box
@@ -1077,80 +801,6 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, bool PNG, char 
     if (PNG) MPL::SaveFig (FNKey, of);
     else     MPL::Show    (of);
     of.close ();
-}
-
-inline void Domain::AvailableData ()
-{
-    // check available nodal data
-    NActNods = 0;
-    HasDisps = false;
-    AllUKeys.Resize (0);
-    AllFKeys.Resize (0);
-    for (size_t i=0; i<Nods.Size(); ++i)
-    {
-        if (Nods[i]->NShares>0) // active node
-        {
-            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
-            {
-                if (Nods[i]->UMap.Keys[j]=="ux") HasDisps = true;
-                AllUKeys.XPush (Nods[i]->UMap.Keys[j]);
-            }
-            for (size_t j=0; j<Nods[i]->FMap.Keys.Size(); ++j)
-            {
-                AllFKeys.XPush (Nods[i]->FMap.Keys[j]);
-            }
-            NActNods++;
-        }
-    }
-
-    // check available element data
-    NActEles = 0;
-    HasVeloc = false;
-    Array<String> keys;
-    EleKeys.Resize (0);
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        if (Eles[i]->Active) // active element
-        {
-            Eles[i]->StateKeys (keys);
-            for (size_t j=0; j<keys.Size(); ++j)
-            {
-                if (keys[j]=="vx") HasVeloc = true;
-                EleKeys.XPush (keys[j]);
-            }
-            NActEles++;
-        }
-    }
-
-    // resize matrices
-    //NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
-    //NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
-}
-
-inline void Domain::NodalResults () const
-{
-    // extrapolate data
-    for (Res_t::iterator p=NodResults .begin(); p!=NodResults .end(); ++p) p->second.SetValues(0.0);
-    for (Res_t::iterator p=NodResCount.begin(); p!=NodResCount.end(); ++p) p->second.SetValues(0.0);
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        if (Eles[i]->Active) // active element
-        {
-            Array<SDPair> loc_res; // local results: size==number of nodes in element
-            Eles[i]->StateAtNodes (loc_res);
-            for (size_t j=0; j<EleKeys.Size(); ++j)
-            {
-                if (loc_res[0].HasKey(EleKeys[j]))
-                {
-                    for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
-                    {
-                        NodResults [Eles[i]->Con[k]][j] += loc_res[k](EleKeys[j]);
-                        NodResCount[Eles[i]->Con[k]][j] += 1.0;
-                    }
-                }
-            }
-        }
-    }
 }
 
 inline void Domain::WriteVTU (char const * FNKey) const
@@ -1346,6 +996,304 @@ inline void Domain::WriteVTU (char const * FNKey) const
     std::ofstream of(fn.CStr(), std::ios::out);
     of << oss.str();
     of.close();
+}
+
+inline bool Domain::CheckErrorNods (Table const & NodSol, SDPair const & NodTol) const
+{
+    // header
+    printf("\n%s--- Error Summary --- nodes --------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("%s\n",TERM_RST);
+
+    // results
+    bool error = false;
+
+    // nodes
+    Table  reac; // reactions
+    SDPair sumR; // sum of reactions
+    bool reactions_calculated = false;
+    for (size_t i=0; i<NodSol.Keys.Size(); ++i)
+    {
+        // calc error
+        String key = NodSol.Keys[i];
+        Array<double> err(NodSol.NRows);
+        if (key[0]=='R') // reaction
+        {
+            if (!reactions_calculated)
+            {
+                CalcReactions (reac, sumR);
+                reactions_calculated = true;
+            }
+            String ukey;
+            for (size_t j=1; j<key.size(); ++j) ukey.Printf("%s%c",ukey.CStr(),key[j]);
+            for (size_t j=0; j<Nods.Size(); ++j)
+            {
+                long pos = reac("Node").Find (Nods[j]->Vert.ID);
+                if (pos<0) err[j] = 0.0;
+                else       err[j] = fabs(reac(ukey,pos) - NodSol(key,j));
+            }
+        }
+        else
+        {
+            for (size_t j=0; j<Nods.Size(); ++j)
+            {
+                if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
+                else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
+            }
+        }
+
+        // summary
+        double max_err = err.TheMax();
+        double tol     = NodTol(key);
+        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
+        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
+        if (max_err>tol) error = true;
+    }
+
+    return error;
+}
+
+inline bool Domain::CheckErrorEles (Table const & EleSol, SDPair const & EleTol) const
+{
+    // header
+    printf("\n%s--- Error Summary --- centre of elements -------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("%s\n",TERM_RST);
+
+    // results
+    bool error = false;
+
+    // elements
+    for (size_t i=0; i<EleSol.Keys.Size(); ++i)
+    {
+        // calc error
+        String key = EleSol.Keys[i];
+        Array<double> err(EleSol.NRows);
+        for (size_t j=0; j<Eles.Size(); ++j)
+        {
+            SDPair dat;
+            Eles[j]->StateAtCt (dat);
+            err [j] = fabs(dat(key) - EleSol(key,j));
+        }
+
+        // summary
+        double max_err = err.TheMax();
+        double tol     = EleTol(key);
+        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
+        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
+        if (max_err>tol) error = true;
+    }
+
+    return error;
+}
+
+inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) const
+{
+    // header
+    printf("\n%s--- Error Summary --- integration points -------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
+    printf("%s\n",TERM_RST);
+
+    // results
+    bool error = false;
+
+    // elements
+    for (size_t i=0; i<EleSol.Keys.Size(); ++i)
+    {
+        // calc error
+        String key = EleSol.Keys[i];
+        Array<double> err(EleSol.NRows);
+        for (size_t j=0; j<Eles.Size(); ++j)
+        {
+            if (Eles[j]->GE==NULL) throw new Fatal("Domain::CheckError: This method works only when GE (geometry element) is not NULL");
+            Array<SDPair> res;
+            Eles[j]->StateAtIPs (res);
+            for (size_t k=0; k<Eles[j]->GE->NIP; ++k)
+            {
+                size_t row = k + j*Eles[j]->GE->NIP;
+                err [row] = fabs(res[k](key) - EleSol(key,row));
+            }
+        }
+
+        // summary
+        double max_err = err.TheMax();
+        double tol     = EleTol(key);
+        std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
+        std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
+        if (max_err>tol) error = true;
+    }
+
+    std::cout << "\n";
+
+    return error;
+}
+
+// Internal methods
+
+inline void Domain::OutResults (double Time, Vec_t const & F_int) const
+{
+    // nodes
+    for (size_t i=0; i<OutNods.Size(); ++i)
+    {
+        if (Time<1.0e-14)
+        {
+            String buf;
+            (*FilNods[i]) << Util::_8s << "Time";
+            (*FilNods[i]) << Util::_8s << "x";
+            (*FilNods[i]) << Util::_8s << "y";  if (NDim==3)
+            (*FilNods[i]) << Util::_8s << "z";
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->UMap.Keys[j];
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->FMap.Keys[j];
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j)
+            {
+                buf.Printf ("%s_int", OutNods[i]->FMap.Keys[j].CStr());
+                (*FilNods[i]) << Util::_8s << buf;
+            }
+            (*FilNods[i]) << "\n";
+        }
+        (*FilNods[i]) << Util::_8s << Time;
+        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(0);
+        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(1);  if (NDim==3)
+        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(2);
+        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->U[j];
+        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->F[j];
+        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(OutNods[i]->EQ[j]);
+        (*FilNods[i]) << "\n";
+    }
+
+    // elements
+    for (size_t i=0; i<OutEles.Size(); ++i)
+    {
+        if (Time<1.0e-14)
+        {
+            Array<String> keys;
+            OutEles[i]->StateKeys (keys);
+            (*FilEles[i]) << Util::_8s << "Time";
+            (*FilEles[i]) << Util::_8s << "x";
+            (*FilEles[i]) << Util::_8s << "y";  if (NDim==3)
+            (*FilEles[i]) << Util::_8s << "z";
+            for (size_t j=0; j<keys.Size(); ++j) (*FilEles[i]) << Util::_8s << keys[j];
+            (*FilEles[i]) << "\n";
+        }
+        (*FilEles[i]) << Util::_8s << Time;
+        SDPair dat;
+        Vec_t  Xct;
+        OutEles[i]->StateAtCt (dat);
+        OutEles[i]->Centroid  (Xct);
+        (*FilEles[i]) << Util::_8s << Xct(0);
+        (*FilEles[i]) << Util::_8s << Xct(1);  if (NDim==3)
+        (*FilEles[i]) << Util::_8s << Xct(2);
+        for (size_t j=0; j<dat.Keys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(dat.Keys[j]);
+        (*FilEles[i]) << "\n";
+    }
+}
+
+inline void Domain::CalcReactions (Table & NodesReactions, SDPair & SumReactions) const
+{
+    // resize tables
+    String buf("Node");
+    for (size_t i=0; i<AllUKeys.Size(); ++i)
+    {
+        buf.Printf ("%s %s",buf.CStr(),AllUKeys[i].CStr());
+        SumReactions.Set (AllUKeys[i].CStr(), 0.0);
+    }
+    NodesReactions.SetZero (buf.CStr(), pU.size());
+
+    // find reactions
+    size_t k = 0;
+    for (NodBCs_t::const_iterator p=pU.begin(); p!=pU.end(); ++p) // for each node with prescribed U
+    {
+        Node const *             nod  = p->first;
+        NodBCs_t::const_iterator itpf = pFaccum.find(nod);
+        NodesReactions.SetVal ("Node", k, nod->Vert.ID);
+        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        {
+            size_t idof = q->first;
+            double reac = nod->F[idof];
+            if (itpf!=pFaccum.end()) // has prescribed F
+            {
+                IntDbl_t::const_iterator it = itpf->second.first.find(idof);
+                if (it!=itpf->second.first.end()) reac -= it->second; // subtract prescribed F
+            }
+            NodesReactions.SetVal (nod->UMap.Keys[idof], k, reac);
+            SumReactions[nod->UMap.Keys[idof]] += reac;
+        }
+        k++;
+    }
+}
+
+inline void Domain::AvailableData ()
+{
+    // check available nodal data
+    NActNods = 0;
+    HasDisps = false;
+    AllUKeys.Resize (0);
+    AllFKeys.Resize (0);
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        if (Nods[i]->NShares>0) // active node
+        {
+            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
+            {
+                if (Nods[i]->UMap.Keys[j]=="ux") HasDisps = true;
+                AllUKeys.XPush (Nods[i]->UMap.Keys[j]);
+            }
+            for (size_t j=0; j<Nods[i]->FMap.Keys.Size(); ++j)
+            {
+                AllFKeys.XPush (Nods[i]->FMap.Keys[j]);
+            }
+            NActNods++;
+        }
+    }
+
+    // check available element data
+    NActEles = 0;
+    HasVeloc = false;
+    Array<String> keys;
+    EleKeys.Resize (0);
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        if (Eles[i]->Active) // active element
+        {
+            Eles[i]->StateKeys (keys);
+            for (size_t j=0; j<keys.Size(); ++j)
+            {
+                if (keys[j]=="vx") HasVeloc = true;
+                EleKeys.XPush (keys[j]);
+            }
+            NActEles++;
+        }
+    }
+
+    // resize matrices
+    //NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
+    //NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
+}
+
+inline void Domain::NodalResults () const
+{
+    // extrapolate data
+    for (Res_t::iterator p=NodResults .begin(); p!=NodResults .end(); ++p) p->second.SetValues(0.0);
+    for (Res_t::iterator p=NodResCount.begin(); p!=NodResCount.end(); ++p) p->second.SetValues(0.0);
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        if (Eles[i]->Active) // active element
+        {
+            Array<SDPair> loc_res; // local results: size==number of nodes in element
+            Eles[i]->StateAtNodes (loc_res);
+            for (size_t j=0; j<EleKeys.Size(); ++j)
+            {
+                if (loc_res[0].HasKey(EleKeys[j]))
+                {
+                    for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
+                    {
+                        NodResults [Eles[i]->Con[k]][j] += loc_res[k](EleKeys[j]);
+                        NodResCount[Eles[i]->Con[k]][j] += 1.0;
+                    }
+                }
+            }
+        }
+    }
 }
 
 }; // namespace FEM

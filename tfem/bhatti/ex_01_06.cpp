@@ -151,13 +151,13 @@ int main(int argc, char **argv) try
 
     // correct solution
     Table nod_sol;
-    nod_sol.Set("                   ux                       uy", /*NRows*/ 6,
-                 0.000000000000000e+00,   0.000000000000000e+00,
-                 0.000000000000000e+00,   0.000000000000000e+00,
-                -1.035527877607004e-02,  -2.552969847657423e-02,
-                 4.727650463081949e-03,  -2.473565538172127e-02,
-                -1.313941349422282e-02,  -5.549310752960183e-02,
-                 8.389015766816341e-05,  -5.556637423271112e-02);
+    nod_sol.Set("                   ux                       uy         Rux                     Ruy", /*NRows*/ 6,
+                 0.000000000000000e+00,   0.000000000000000e+00,  2.1250e+1,  4.106475641754178e+00,
+                 0.000000000000000e+00,   0.000000000000000e+00, -1.6250e+1,  1.589352435824581e+01,
+                -1.035527877607004e-02,  -2.552969847657423e-02,  0.0,        0.0,
+                 4.727650463081949e-03,  -2.473565538172127e-02,  0.0,        0.0,
+                -1.313941349422282e-02,  -5.549310752960183e-02,  0.0,        0.0,
+                 8.389015766816341e-05,  -5.556637423271112e-02,  0.0,        0.0);
 
     Table ele_sol;
     ele_sol.Set("sx  sy  sz  sxy   ex  ey  ez  exy", /*NRows*/4,
@@ -168,10 +168,10 @@ int main(int argc, char **argv) try
 
     // error tolerance
     SDPair nod_tol, ele_tol;
-    nod_tol.Set("ux uy", 1.0e-15, 1.0e-15);
+    nod_tol.Set("ux uy Rux Ruy", 1.0e-15,1.0e-15,1.0e-12,1.0e-13);
     ele_tol.Set("sx sy sz sxy  ex ey ez exy", 1.0e-12,1.0e-12,1.0e-15,1.0e-12, 1.0e-15,1.0e-15,1.0e-15,1.0e-15);
 
     // return error flag
-    return dom.CheckError (nod_sol, ele_sol, nod_tol, ele_tol);
+    return (dom.CheckErrorNods(nod_sol, nod_tol) || dom.CheckErrorEles(ele_sol, ele_tol));
 }
 MECHSYS_CATCH
