@@ -197,9 +197,9 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
         for (size_t i=0; i<GE->NN; ++i)
         {
             // remove internal force contribution from external forces vector
-            Con[i]->F[Con[i]->FMap("fx")] -= Fi(0+i*NDim);
-            Con[i]->F[Con[i]->FMap("fy")] -= Fi(1+i*NDim);  if (NDim==3)
-            Con[i]->F[Con[i]->FMap("fz")] -= Fi(2+i*NDim);
+            //Con[i]->F[Con[i]->FMap("fx")] -= Fi(0+i*NDim);
+            //Con[i]->F[Con[i]->FMap("fy")] -= Fi(1+i*NDim);  if (NDim==3)
+            //Con[i]->F[Con[i]->FMap("fz")] -= Fi(2+i*NDim);
 
             // remove sharing information
             Con[i]->NShares--;
