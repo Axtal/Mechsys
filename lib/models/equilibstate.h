@@ -117,6 +117,18 @@ inline void EquilibState::Init (SDPair const & Ini, size_t NIvs)
         IvsBkp.change_dim (NIvs);
         IvsBkp = Ivs;
     }
+    if (Ini.HasKey("zero"))
+    {
+        set_to_zero (Sig   );
+        set_to_zero (Eps   );
+        set_to_zero (SigBkp);
+        set_to_zero (EpsBkp);
+        if (NIvs>0)
+        {
+            set_to_zero (Ivs   );
+            set_to_zero (IvsBkp);
+        }
+    }
 }
 
 inline void EquilibState::operator= (EquilibState const & A)

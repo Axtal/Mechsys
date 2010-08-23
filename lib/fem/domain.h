@@ -82,10 +82,8 @@ public:
     bool CheckErrorIP   (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at integration points of elements
 
     // Internal methods
-    void OutResults    (double Time, Vec_t const & F_int) const;              ///< Do output results
-    void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const; ///< Calculate reactions
-    void AvailableData ();                                                    ///< Check available data and resize results matrices
-    void NodalResults  () const;                                              ///< Extrapolate results from element to nodes
+    void OutResults    (double Time, Vec_t const & F_int, bool HeaderOnly=false) const; ///< Do output results
+    void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const;           ///< Calculate reactions
 
     // Data
     Dict          const & Prps;        ///< Element properties
@@ -109,10 +107,10 @@ public:
     InclSupport_t         InclSupport; ///< Inclined support
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions (if PARA==true)
     Tag2Eles_t            Tag2Eles;    ///< Map tag to elements. Useful to activate/deactivate layers
+    Array<Node*>          ActNods;     ///< Subset of active nodes (set once per call to SetBCs)
+    Array<Element*>       ActEles;     ///< Subset of active elements (set once per call to SetBCs)
 
     // Nodal results
-    size_t        NActNods;    ///< Number of active nodes
-    size_t        NActEles;    ///< Number of active elements
     bool          HasDisps;    ///< Has displacements (ux, ...) ?
     bool          HasVeloc;    ///< Has velocities (vx, ...) ?
     Array<String> AllUKeys;    ///< All U node keys (ux, uy, H, ...)
@@ -339,26 +337,53 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     // check size of Eles
     if (Eles.Size()==0) throw new Fatal("FEM::Domain::Domain: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   The array of Elements is empty.");
 
-    // divide U values in nodes by the number of times elements added to a U var
-    for (size_t i=0; i<Nods.Size(); ++i)
-    {
-        if (Nods[i]->NShares>0) // active
-        {
-            for (size_t j=0; j<Nods[i]->U.Size(); ++j)
-            {
-                if (Nods[i]->NaddU[j]>0.0) Nods[i]->U[j] /= Nods[i]->NaddU[j];
-            }
-        }
-    }
-
     // displacement keys
     DisplKeys.Resize (NDim);
     DisplKeys[0] = "ux";
     DisplKeys[1] = "uy";  if (NDim==3)
     DisplKeys[2] = "uz";
 
-    // check available data
-    AvailableData ();
+    // check all available nodal data
+    HasDisps = false;
+    AllUKeys.Resize (0);
+    AllFKeys.Resize (0);
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
+        {
+            if (Nods[i]->UMap.Keys[j]=="ux") HasDisps = true;
+            AllUKeys.XPush (Nods[i]->UMap.Keys[j]); // push only if item is not in array yet
+        }
+        for (size_t j=0; j<Nods[i]->FMap.Keys.Size(); ++j)
+        {
+            AllFKeys.XPush (Nods[i]->FMap.Keys[j]); // push only if item is not in array yet
+        }
+    }
+
+    // check all available element data
+    HasVeloc = false;
+    Array<String> keys;
+    EleKeys.Resize (0);
+    for (size_t i=0; i<Eles.Size(); ++i)
+    {
+        Eles[i]->StateKeys (keys);
+        for (size_t j=0; j<keys.Size(); ++j)
+        {
+            if (keys[j]=="vx") HasVeloc = true;
+            EleKeys.XPush (keys[j]); // push only if item is not in array yet
+        }
+    }
+
+    // set maps of results
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        NodResults [Nods[i]].Resize (EleKeys.Size()); // results at nodes
+        NodResCount[Nods[i]].Resize (EleKeys.Size()); // count how many times a varable was added to a node
+    }
+
+    // print header of output files
+    Vec_t fint;
+    OutResults (0,fint,/*headeronly*/true);
 }
 
 inline Domain::~Domain()
@@ -618,11 +643,11 @@ inline void Domain::SetBCs (Dict const & BCs)
         }
     }
 
-    // check available data
-    AvailableData ();
-
-    // write header to output files
-    // TODO: this should be done at each stage, since new data may become available
+    // set arrays of active nodes and elements
+    ActNods.Resize (0);
+    ActEles.Resize (0);
+    for (size_t i=0; i<Nods.Size(); ++i) { if (Nods[i]->NShares>0) ActNods.Push (Nods[i]); }
+    for (size_t i=0; i<Eles.Size(); ++i) { if (Eles[i]->Active)    ActEles.Push (Eles[i]); }
 }
 
 inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithElems, double Tol) const
@@ -646,33 +671,30 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
         printf("%s\n",TERM_RST);
 
         // nodes: data
-        for (size_t i=0; i<Nods.Size(); ++i)
+        for (size_t i=0; i<ActNods.Size(); ++i)
         {
-            if (Nods[i]->NShares>0)
+            std::cout << Util::_6 << ActNods[i]->Vert.ID;
+            for (size_t j=0; j<AllUKeys.Size(); ++j)
             {
-                std::cout << Util::_6 << Nods[i]->Vert.ID;
-                for (size_t j=0; j<AllUKeys.Size(); ++j)
+                if (ActNods[i]->UMap.HasKey(AllUKeys[j]))
                 {
-                    if (Nods[i]->UMap.HasKey(AllUKeys[j]))
-                    {
-                        size_t idx = Nods[i]->UMap(AllUKeys[j]); // idx of DOF
-                        buf.Printf(NF, Nods[i]->U[idx]);
-                    }
-                    else buf.Printf(nf, "   ");
-                    std::cout << buf;
+                    size_t idx = ActNods[i]->UMap(AllUKeys[j]); // idx of DOF
+                    buf.Printf(NF, ActNods[i]->U[idx]);
                 }
-                for (size_t j=0; j<AllFKeys.Size(); ++j)
-                {
-                    if (Nods[i]->FMap.HasKey(AllFKeys[j]))
-                    {
-                        size_t idx = Nods[i]->FMap(AllFKeys[j]); // idx of DOF
-                        buf.Printf(NF, Nods[i]->F[idx]);
-                    }
-                    else buf.Printf(nf, "   ");
-                    std::cout << buf;
-                }
-                printf("\n");
+                else buf.Printf(nf, "   ");
+                std::cout << buf;
             }
+            for (size_t j=0; j<AllFKeys.Size(); ++j)
+            {
+                if (ActNods[i]->FMap.HasKey(AllFKeys[j]))
+                {
+                    size_t idx = ActNods[i]->FMap(AllFKeys[j]); // idx of DOF
+                    buf.Printf(NF, ActNods[i]->F[idx]);
+                }
+                else buf.Printf(nf, "   ");
+                std::cout << buf;
+            }
+            printf("\n");
         }
         printf("\n");
     }
@@ -681,10 +703,10 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
     if (WithElems && !OnlySummary)
     {
         Array<String> keys;
-        for (size_t i=0; i<Eles.Size(); ++i)
+        for (size_t i=0; i<ActEles.Size(); ++i)
         {
             SDPair dat;
-            Eles[i]->StateAtCt (dat);
+            ActEles[i]->StateAtCt (dat);
             for (size_t j=0; j<dat.Keys.Size(); ++j)
             {
                 if (keys.Find(dat.Keys[j])<0) keys.Push (dat.Keys[j]);
@@ -701,13 +723,13 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
         std::cout << TERM_RST << std::endl;
 
         // elems: data
-        for (size_t i=0; i<Eles.Size(); ++i)
+        for (size_t i=0; i<ActEles.Size(); ++i)
         {
-            std::cout << Util::_6 << Eles[i]->Cell.ID;
+            std::cout << Util::_6 << ActEles[i]->Cell.ID;
             Vec_t  X;
             SDPair dat;
-            Eles[i]->StateAtCt (dat);
-            Eles[i]->Centroid  (X);
+            ActEles[i]->StateAtCt (dat);
+            ActEles[i]->Centroid  (X);
             buf.Printf(NF, X(0)); std::cout << buf;
             buf.Printf(NF, X(1)); std::cout << buf;  if (NDim==3) {
             buf.Printf(NF, X(2)); std::cout << buf; }
@@ -755,42 +777,19 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, bool PNG, char 
 {
     // bounding box
     Vec3_t min, max, del;
-    min = Nods[0]->Vert.C(0), Nods[0]->Vert.C(1), Nods[0]->Vert.C(2);
+    min = ActNods[0]->Vert.C(0), ActNods[0]->Vert.C(1), ActNods[0]->Vert.C(2);
     max = min;
-    for (size_t i=0; i<Nods.Size(); ++i)
+    for (size_t i=0; i<ActNods.Size(); ++i)
     {
-        if (Nods[i]->Vert.C(0)<min(0)) min(0) = Nods[i]->Vert.C(0);
-        if (Nods[i]->Vert.C(1)<min(1)) min(1) = Nods[i]->Vert.C(1);
-        if (Nods[i]->Vert.C(2)<min(2)) min(2) = Nods[i]->Vert.C(2);
-        if (Nods[i]->Vert.C(0)>max(0)) max(0) = Nods[i]->Vert.C(0);
-        if (Nods[i]->Vert.C(1)>max(1)) max(1) = Nods[i]->Vert.C(1);
-        if (Nods[i]->Vert.C(2)>max(2)) max(2) = Nods[i]->Vert.C(2);
+        if (ActNods[i]->Vert.C(0)<min(0)) min(0) = ActNods[i]->Vert.C(0);
+        if (ActNods[i]->Vert.C(1)<min(1)) min(1) = ActNods[i]->Vert.C(1);
+        if (ActNods[i]->Vert.C(2)<min(2)) min(2) = ActNods[i]->Vert.C(2);
+        if (ActNods[i]->Vert.C(0)>max(0)) max(0) = ActNods[i]->Vert.C(0);
+        if (ActNods[i]->Vert.C(1)>max(1)) max(1) = ActNods[i]->Vert.C(1);
+        if (ActNods[i]->Vert.C(2)>max(2)) max(2) = ActNods[i]->Vert.C(2);
     }
     del  = max - min;
     double max_dist = Norm(del);
-
-    /*
-    // max element diagonal
-    Vec3_t min, max, del;
-    double diag, max_diag = 0.0;
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        min = Eles[i]->Con[0]->Vert.C(0), Eles[i]->Con[0]->Vert.C(1), Eles[i]->Con[0]->Vert.C(2);
-        max = min;
-        for (size_t j=0; j<Eles[i]->Con.Size(); ++j)
-        {
-            if (Eles[i]->Con[j]->Vert.C(0)<min(0)) min(0) = Eles[i]->Con[j]->Vert.C(0);
-            if (Eles[i]->Con[j]->Vert.C(1)<min(1)) min(1) = Eles[i]->Con[j]->Vert.C(1);
-            if (Eles[i]->Con[j]->Vert.C(2)<min(2)) min(2) = Eles[i]->Con[j]->Vert.C(2);
-            if (Eles[i]->Con[j]->Vert.C(0)>max(0)) max(0) = Eles[i]->Con[j]->Vert.C(0);
-            if (Eles[i]->Con[j]->Vert.C(1)>max(1)) max(1) = Eles[i]->Con[j]->Vert.C(1);
-            if (Eles[i]->Con[j]->Vert.C(2)>max(2)) max(2) = Eles[i]->Con[j]->Vert.C(2);
-        }
-        del  = max - min;
-        diag = Norm(del);
-        if (diag>max_diag) max_diag = diag;
-    }
-    */
 
     String fn(FNKey);  fn.append(".mpy");
     std::ofstream of(fn.CStr(), std::ios::out);
@@ -806,18 +805,37 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, bool PNG, char 
 inline void Domain::WriteVTU (char const * FNKey) const
 {
     // extrapolate results
-    //NodalResults ();
+    for (Res_t::iterator p=NodResults .begin(); p!=NodResults .end(); ++p) p->second.SetValues(0.0);
+    for (Res_t::iterator p=NodResCount.begin(); p!=NodResCount.end(); ++p) p->second.SetValues(0.0);
+    for (size_t i=0; i<ActEles.Size(); ++i)
+    {
+        Array<SDPair> loc_res; // local results: size==number of nodes in element
+        ActEles[i]->StateAtNodes (loc_res);
+        for (size_t j=0; j<EleKeys.Size(); ++j)
+        {
+            if (loc_res[0].HasKey(EleKeys[j]))
+            {
+                for (size_t k=0; k<ActEles[i]->Con.Size(); ++k)
+                {
+                    NodResults [ActEles[i]->Con[k]][j] += loc_res[k](EleKeys[j]);
+                    NodResCount[ActEles[i]->Con[k]][j] += 1.0;
+                }
+            }
+        }
+    }
 
     // data
-    size_t nn = Nods.Size(); // number of nodes
-    size_t ne = Eles.Size(); // number of elements
+    size_t nn = ActNods.Size(); // number of active nodes
+    size_t ne = ActEles.Size(); // number of active elements
+
+    printf("fn = %s    nactives = %zd\n",FNKey,ne);
 
     // header
     std::ostringstream oss;
     oss << "<?xml version=\"1.0\"?>\n";
     oss << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     oss << "  <UnstructuredGrid>\n";
-    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << NActEles << "\">\n";
+    oss << "    <Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\"" << ne << "\">\n";
 
     // nodes: coordinates
     oss << "      <Points>\n";
@@ -826,10 +844,10 @@ inline void Domain::WriteVTU (char const * FNKey) const
     std::map<int,int> VertID2LocID;
     for (size_t i=0; i<nn; ++i)
     {
-        VertID2LocID[Nods[i]->Vert.ID] = i;
-        oss << "  " << Util::_8s <<          Nods[i]->Vert.C(0) << " ";
-        oss <<         Util::_8s <<          Nods[i]->Vert.C(1) << " ";
-        oss <<         Util::_8s << (NDim==3?Nods[i]->Vert.C(2):0.0);
+        VertID2LocID[ActNods[i]->Vert.ID] = i;
+        oss << "  " << Util::_8s <<          ActNods[i]->Vert.C(0) << " ";
+        oss <<         Util::_8s <<          ActNods[i]->Vert.C(1) << " ";
+        oss <<         Util::_8s << (NDim==3?ActNods[i]->Vert.C(2):0.0);
         k++;
         VTU_NEWLINE (i,k,nn,6/3-1,oss);
     }
@@ -842,14 +860,11 @@ inline void Domain::WriteVTU (char const * FNKey) const
     k = 0; oss << "        ";
     for (size_t i=0; i<ne; ++i)
     {
-        if (Eles[i]->Active)
-        {
-            size_t nne = (NDim==2 ? NVertsToVTKNVerts2D[Eles[i]->Con.Size()] : NVertsToVTKNVerts3D[Eles[i]->Con.Size()]);
-            oss << "  ";
-            for (size_t j=0; j<nne; ++j) oss << VertID2LocID[Eles[i]->Con[j]->Vert.ID] << " ";
-            k++;
-            VTU_NEWLINE (i,k,ne,40/Eles[i]->Con.Size(),oss);
-        }
+        size_t nne = (NDim==2 ? NVertsToVTKNVerts2D[ActEles[i]->Con.Size()] : NVertsToVTKNVerts3D[ActEles[i]->Con.Size()]);
+        oss << "  ";
+        for (size_t j=0; j<nne; ++j) oss << VertID2LocID[ActEles[i]->Con[j]->Vert.ID] << " ";
+        k++;
+        VTU_NEWLINE (i,k,ne,40/ActEles[i]->Con.Size(),oss);
     }
     oss << "        </DataArray>\n";
     oss << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
@@ -857,27 +872,21 @@ inline void Domain::WriteVTU (char const * FNKey) const
     size_t offset = 0;
     for (size_t i=0; i<ne; ++i)
     {
-        if (Eles[i]->Active)
-        {
-            size_t nne = (NDim==2 ? NVertsToVTKNVerts2D[Eles[i]->Con.Size()] : NVertsToVTKNVerts3D[Eles[i]->Con.Size()]);
-            offset += nne;
-            oss << (k==0?"  ":" ") << offset;
-            k++;
-            VTU_NEWLINE (i,k,ne,40,oss);
-        }
+        size_t nne = (NDim==2 ? NVertsToVTKNVerts2D[ActEles[i]->Con.Size()] : NVertsToVTKNVerts3D[ActEles[i]->Con.Size()]);
+        offset += nne;
+        oss << (k==0?"  ":" ") << offset;
+        k++;
+        VTU_NEWLINE (i,k,ne,40,oss);
     }
     oss << "        </DataArray>\n";
     oss << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
     k = 0; oss << "        ";
     for (size_t i=0; i<ne; ++i)
     {
-        if (Eles[i]->Active)
-        {
-            if (NDim==2) oss << (k==0?"  ":" ") << NVertsToVTKCell2D[Eles[i]->Con.Size()];
-            else         oss << (k==0?"  ":" ") << NVertsToVTKCell3D[Eles[i]->Con.Size()];
-            k++;
-            VTU_NEWLINE (i,k,ne,40,oss);
-        }
+        if (NDim==2) oss << (k==0?"  ":" ") << NVertsToVTKCell2D[ActEles[i]->Con.Size()];
+        else         oss << (k==0?"  ":" ") << NVertsToVTKCell3D[ActEles[i]->Con.Size()];
+        k++;
+        VTU_NEWLINE (i,k,ne,40,oss);
     }
     oss << "        </DataArray>\n";
     oss << "      </Cells>\n";
@@ -893,10 +902,7 @@ inline void Domain::WriteVTU (char const * FNKey) const
             for (size_t j=0; j<nn; ++j)
             {
                 double val = 0.0;
-                if (Nods[j]->NShares>0 && Nods[j]->UMap.HasKey(AllUKeys[i]))
-                {
-                    val = Nods[j]->U[Nods[j]->UMap(AllUKeys[i])];
-                }
+                if (ActNods[j]->UMap.HasKey(AllUKeys[i])) val = ActNods[j]->U[ActNods[j]->UMap(AllUKeys[i])];
                 oss << (k==0?"  ":" ") << val;
                 k++;
                 VTU_NEWLINE (j,k,nn,6-1,oss);
@@ -912,18 +918,9 @@ inline void Domain::WriteVTU (char const * FNKey) const
         k = 0; oss << "        ";
         for (size_t i=0; i<nn; ++i)
         {
-            if (Nods[i]->NShares>0)
-            {
-                oss << "  " << Util::_8s <<          Nods[i]->U[Nods[i]->UMap("ux")] << " ";
-                oss <<         Util::_8s <<          Nods[i]->U[Nods[i]->UMap("uy")] << " ";
-                oss <<         Util::_8s << (NDim==3?Nods[i]->U[Nods[i]->UMap("uz")]:0.0);
-            }
-            else
-            {
-                oss << "  " << Util::_8s << 0.0 << " ";
-                oss <<         Util::_8s << 0.0 << " ";
-                oss <<         Util::_8s << 0.0;
-            }
+            oss << "  " << Util::_8s <<          ActNods[i]->U[ActNods[i]->UMap("ux")] << " ";
+            oss <<         Util::_8s <<          ActNods[i]->U[ActNods[i]->UMap("uy")] << " ";
+            oss <<         Util::_8s << (NDim==3?ActNods[i]->U[ActNods[i]->UMap("uz")]:0.0);
             k++;
             VTU_NEWLINE (i,k,nn,6/3-1,oss);
         }
@@ -931,7 +928,6 @@ inline void Domain::WriteVTU (char const * FNKey) const
     }
 
     // data -- nodes -- extrapolated values
-    /*
     for (size_t i=0; i<EleKeys.Size(); ++i)
     {
         if (!(EleKeys[i]=="vx" || EleKeys[i]=="vy" || EleKeys[i]=="vz"))
@@ -940,16 +936,14 @@ inline void Domain::WriteVTU (char const * FNKey) const
             k = 0; oss << "        ";
             for (size_t j=0; j<nn; ++j)
             {
-                //Nods[j]
-                //double den = (NodResCount(j,i)>0.0 ? NodResCount(j,i) : 1.0);
-                //oss << (k==0?"  ":" ") << NodResults(j,i)/den;
+                double cnt = NodResCount[ActNods[j]][i];
+                oss << (k==0?"  ":" ") << NodResults[ActNods[j]][i] / (cnt>0.0 ? cnt : 1.0);
                 k++;
                 VTU_NEWLINE (j,k,nn,6-1,oss);
             }
             oss << "        </DataArray>\n";
         }
     }
-    */
 
     // data -- nodes -- velocities
     if (HasVeloc)
@@ -965,18 +959,12 @@ inline void Domain::WriteVTU (char const * FNKey) const
         k = 0; oss << "        ";
         for (size_t j=0; j<nn; ++j)
         {
-            if (Nods[j]->NShares>0)
-            {
-                //oss << "  " << Util::_8s <<            NodResults(j,idx_vx) / (NodResCount(j,idx_vx)>0.0 ? NodResCount(j,idx_vx) : 1.0) << " ";
-                //oss <<         Util::_8s <<            NodResults(j,idx_vy) / (NodResCount(j,idx_vy)>0.0 ? NodResCount(j,idx_vy) : 1.0) << " ";
-                //oss <<         Util::_8s << (NDim==3 ? NodResults(j,idx_vz) / (NodResCount(j,idx_vz)>0.0 ? NodResCount(j,idx_vz) : 1.0) : 0.0);
-            }
-            else
-            {
-                oss << "  " << Util::_8s << 0.0 << " ";
-                oss <<         Util::_8s << 0.0 << " ";
-                oss <<         Util::_8s << 0.0;
-            }
+            double cnt_x =            NodResCount[ActNods[j]][idx_vx];
+            double cnt_y =            NodResCount[ActNods[j]][idx_vy];
+            double cnt_z = (NDim==3 ? NodResCount[ActNods[j]][idx_vz] : 0.0);
+            oss << "  " << Util::_8s <<            NodResults[ActNods[j]][idx_vx] / (cnt_x>0.0 ? cnt_x : 1.0) << " ";
+            oss <<         Util::_8s <<            NodResults[ActNods[j]][idx_vy] / (cnt_y>0.0 ? cnt_y : 1.0) << " ";
+            oss <<         Util::_8s << (NDim==3 ? NodResults[ActNods[j]][idx_vz] / (cnt_z>0.0 ? cnt_z : 1.0) : 0.0);
             k++;
             VTU_NEWLINE (j,k,nn,6/3-1,oss);
         }
@@ -1140,12 +1128,12 @@ inline bool Domain::CheckErrorIP (Table const & EleSol, SDPair const & EleTol) c
 
 // Internal methods
 
-inline void Domain::OutResults (double Time, Vec_t const & F_int) const
+inline void Domain::OutResults (double Time, Vec_t const & F_int, bool HeaderOnly) const
 {
     // nodes
     for (size_t i=0; i<OutNods.Size(); ++i)
     {
-        if (Time<1.0e-14)
+        if (HeaderOnly)
         {
             String buf;
             (*FilNods[i]) << Util::_8s << "Time";
@@ -1161,20 +1149,23 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
             }
             (*FilNods[i]) << "\n";
         }
-        (*FilNods[i]) << Util::_8s << Time;
-        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(0);
-        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(1);  if (NDim==3)
-        (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(2);
-        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->U[j];
-        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->F[j];
-        for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(OutNods[i]->EQ[j]);
-        (*FilNods[i]) << "\n";
+        else
+        {
+            (*FilNods[i]) << Util::_8s << Time;
+            (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(0);
+            (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(1);  if (NDim==3)
+            (*FilNods[i]) << Util::_8s << OutNods[i]->Vert.C(2);
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->U[j];
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << OutNods[i]->F[j];
+            for (size_t j=0; j<OutNods[i]->nDOF(); ++j) (*FilNods[i]) << Util::_8s << F_int(OutNods[i]->EQ[j]);
+            (*FilNods[i]) << "\n";
+        }
     }
 
     // elements
     for (size_t i=0; i<OutEles.Size(); ++i)
     {
-        if (Time<1.0e-14)
+        if (HeaderOnly)
         {
             Array<String> keys;
             OutEles[i]->StateKeys (keys);
@@ -1185,16 +1176,19 @@ inline void Domain::OutResults (double Time, Vec_t const & F_int) const
             for (size_t j=0; j<keys.Size(); ++j) (*FilEles[i]) << Util::_8s << keys[j];
             (*FilEles[i]) << "\n";
         }
-        (*FilEles[i]) << Util::_8s << Time;
-        SDPair dat;
-        Vec_t  Xct;
-        OutEles[i]->StateAtCt (dat);
-        OutEles[i]->Centroid  (Xct);
-        (*FilEles[i]) << Util::_8s << Xct(0);
-        (*FilEles[i]) << Util::_8s << Xct(1);  if (NDim==3)
-        (*FilEles[i]) << Util::_8s << Xct(2);
-        for (size_t j=0; j<dat.Keys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(dat.Keys[j]);
-        (*FilEles[i]) << "\n";
+        else
+        {
+            (*FilEles[i]) << Util::_8s << Time;
+            SDPair dat;
+            Vec_t  Xct;
+            OutEles[i]->StateAtCt (dat);
+            OutEles[i]->Centroid  (Xct);
+            (*FilEles[i]) << Util::_8s << Xct(0);
+            (*FilEles[i]) << Util::_8s << Xct(1);  if (NDim==3)
+            (*FilEles[i]) << Util::_8s << Xct(2);
+            for (size_t j=0; j<dat.Keys.Size(); ++j) (*FilEles[i]) << Util::_8s << dat(dat.Keys[j]);
+            (*FilEles[i]) << "\n";
+        }
     }
 }
 
@@ -1229,80 +1223,6 @@ inline void Domain::CalcReactions (Table & NodesReactions, SDPair & SumReactions
             SumReactions[nod->UMap.Keys[idof]] += reac;
         }
         k++;
-    }
-}
-
-inline void Domain::AvailableData ()
-{
-    // check available nodal data
-    NActNods = 0;
-    HasDisps = false;
-    AllUKeys.Resize (0);
-    AllFKeys.Resize (0);
-    for (size_t i=0; i<Nods.Size(); ++i)
-    {
-        if (Nods[i]->NShares>0) // active node
-        {
-            for (size_t j=0; j<Nods[i]->UMap.Keys.Size(); ++j)
-            {
-                if (Nods[i]->UMap.Keys[j]=="ux") HasDisps = true;
-                AllUKeys.XPush (Nods[i]->UMap.Keys[j]);
-            }
-            for (size_t j=0; j<Nods[i]->FMap.Keys.Size(); ++j)
-            {
-                AllFKeys.XPush (Nods[i]->FMap.Keys[j]);
-            }
-            NActNods++;
-        }
-    }
-
-    // check available element data
-    NActEles = 0;
-    HasVeloc = false;
-    Array<String> keys;
-    EleKeys.Resize (0);
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        if (Eles[i]->Active) // active element
-        {
-            Eles[i]->StateKeys (keys);
-            for (size_t j=0; j<keys.Size(); ++j)
-            {
-                if (keys[j]=="vx") HasVeloc = true;
-                EleKeys.XPush (keys[j]);
-            }
-            NActEles++;
-        }
-    }
-
-    // resize matrices
-    //NodResults .change_dim (Nods.Size(), EleKeys.Size()); // results at nodes
-    //NodResCount.change_dim (Nods.Size(), EleKeys.Size()); // times a var was added to a node
-}
-
-inline void Domain::NodalResults () const
-{
-    // extrapolate data
-    for (Res_t::iterator p=NodResults .begin(); p!=NodResults .end(); ++p) p->second.SetValues(0.0);
-    for (Res_t::iterator p=NodResCount.begin(); p!=NodResCount.end(); ++p) p->second.SetValues(0.0);
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        if (Eles[i]->Active) // active element
-        {
-            Array<SDPair> loc_res; // local results: size==number of nodes in element
-            Eles[i]->StateAtNodes (loc_res);
-            for (size_t j=0; j<EleKeys.Size(); ++j)
-            {
-                if (loc_res[0].HasKey(EleKeys[j]))
-                {
-                    for (size_t k=0; k<Eles[i]->Con.Size(); ++k)
-                    {
-                        NodResults [Eles[i]->Con[k]][j] += loc_res[k](EleKeys[j]);
-                        NodResCount[Eles[i]->Con[k]][j] += 1.0;
-                    }
-                }
-            }
-        }
     }
 }
 

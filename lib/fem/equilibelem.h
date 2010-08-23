@@ -178,29 +178,12 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
             Fi += (coef) * trans(B)*sig;
 
             // body forces
-            for (size_t j=0; j<GE->NN; ++j)
-                Fb(idx_grav+j*NDim) += coef*GE->N(j)*rho*gra;
+            for (size_t j=0; j<GE->NN; ++j) Fb(idx_grav+j*NDim) += -coef*GE->N(j)*rho*gra;
         }
-
-        /*
-        for (size_t j=0; j<GE->NN; ++j) // debug
-        {
-            std::cout << Util::_4 << Con[j]->Vert.ID << ": ";
-            for (size_t k=0; k<NDim; ++k) std::cout << Util::_6_3 << Fi(k+j*NDim);
-            std::cout << "  :   ";
-            for (size_t k=0; k<NDim; ++k) std::cout << Util::_6_3 << Fb(k+j*NDim);
-            std::cout << std::endl;
-        }
-        */
 
         // set nodes
         for (size_t i=0; i<GE->NN; ++i)
         {
-            // remove internal force contribution from external forces vector
-            //Con[i]->F[Con[i]->FMap("fx")] -= Fi(0+i*NDim);
-            //Con[i]->F[Con[i]->FMap("fy")] -= Fi(1+i*NDim);  if (NDim==3)
-            //Con[i]->F[Con[i]->FMap("fz")] -= Fi(2+i*NDim);
-
             // remove sharing information
             Con[i]->NShares--;
             if (Con[i]->NShares<0) throw new Fatal("EquilibElem::SetBCs: __internal_error__: 'deactivate' command failed: NShares==%d must be positive",Con[i]->NShares<0);
@@ -210,18 +193,30 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
             {
                 pF.erase (Con[i]);
                 pU.erase (Con[i]);
+
+                // clear arrays U and F in node
+                for (size_t j=0; j<Con[i]->nDOF(); ++j)
+                {
+                    Con[i]->U[j] = 0.0;
+                    Con[i]->F[j] = 0.0;
+                }
             }
             else // set boundary conditions (prescribed F: pF)
             {
                 // add to F
-                pF[Con[i]].first[Con[i]->FMap("fx")] += Fi(0+i*NDim) + Fb(0+i*NDim);
-                pF[Con[i]].first[Con[i]->FMap("fy")] += Fi(1+i*NDim) + Fb(1+i*NDim);  if (NDim==3)
-                pF[Con[i]].first[Con[i]->FMap("fz")] += Fi(2+i*NDim) + Fb(2+i*NDim);
+                pF[Con[i]].first[Con[i]->FMap("fx")] += Fi(0+i*NDim) - Fb(0+i*NDim);
+                pF[Con[i]].first[Con[i]->FMap("fy")] += Fi(1+i*NDim) - Fb(1+i*NDim);  if (NDim==3)
+                pF[Con[i]].first[Con[i]->FMap("fz")] += Fi(2+i*NDim) - Fb(2+i*NDim);
 
                 // set CalcM (multiplier callback)
                 pF[Con[i]].second = CalcM;
             }
         }
+
+        // clear state at IPs
+        SDPair inis;
+        inis.Set("zero",1.);
+        for (size_t i=0; i<GE->NIP; ++i) Sta[i]->Init (inis, size(static_cast<EquilibState const *>(Sta[i])->Ivs));
 
         // deactivate element
         Active = false;
@@ -234,6 +229,11 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
 
         // add information to shares array in nodes
         for (size_t i=0; i<GE->NN; ++i) Con[i]->NShares++;
+
+        // clear state at IPs
+        SDPair inis;
+        inis.Set("zero",1.);
+        for (size_t i=0; i<GE->NIP; ++i) Sta[i]->Init (inis, size(static_cast<EquilibState const *>(Sta[i])->Ivs));
 
         // activate
         Active = true;

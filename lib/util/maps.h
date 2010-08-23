@@ -751,6 +751,7 @@ inline void Dict::PySet (int Key, BPy::dict const & Pairs)
 inline void Table::Set (const char * StrKeys, size_t NumRows, ...)
 {
     NRows = NumRows;
+    Keys.Resize(0);
 
     // retrieve keys and initialize table
     String             key;
@@ -777,6 +778,7 @@ inline void Table::Set (const char * StrKeys, size_t NumRows, ...)
 inline void Table::SetZero (const char * StrKeys, size_t NumRows)
 {
     NRows = NumRows;
+    Keys.Resize(0);
 
     // retrieve keys and initialize table
     String             key;
