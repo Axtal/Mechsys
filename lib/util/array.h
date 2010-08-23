@@ -78,6 +78,12 @@ public:
     Value_T       & Last   ()       { return  std::vector<Value_T>::back();  } ///< Return the last element
     Value_T const & Last   () const { return  std::vector<Value_T>::back();  } ///< Return the last element
 
+    // NOTE:
+    //  std::vector operators [] do not properly check for wrong indices when accessing the values.
+    //  This sometimes causes segmentation fault.
+    //  To solve this we could wrap operator[] and check the range of indices, but this does not work,
+    //  since it fails to return a reference when using std::vector<bool> 
+
 #else
     // Constructors and destructor
      Array ()            { INIT_VALUES Resize(0); }     ///< Default constructor
