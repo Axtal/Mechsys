@@ -1000,6 +1000,9 @@ inline void Domain::WriteVTU (char const * FNKey) const
 
 inline bool Domain::CheckErrorNods (Table const & NodSol, SDPair const & NodTol) const
 {
+    // check
+    if (NodSol.NRows!=Nods.Size()) throw new Fatal("Domain::CheckErrorNods: Number of rows (%d) in table NodSol with the nodes solution must be equal to the number of nodes (%d)",NodSol.NRows,Nods.Size());
+
     // header
     printf("\n%s--- Error Summary --- nodes --------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
@@ -1037,8 +1040,12 @@ inline bool Domain::CheckErrorNods (Table const & NodSol, SDPair const & NodTol)
         {
             for (size_t j=0; j<Nods.Size(); ++j)
             {
-                if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
-                else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
+                if (Nods[j]->NShares>0)
+                {
+                    if (Nods[j]->UMap.HasKey(key)) err[j] = fabs(Nods[j]->U[Nods[j]->UMap(key)] - NodSol(key,j));
+                    else                           err[j] = fabs(Nods[j]->F[Nods[j]->FMap(key)] - NodSol(key,j));
+                }
+                else err[j] = 0.0;
             }
         }
 
@@ -1055,6 +1062,9 @@ inline bool Domain::CheckErrorNods (Table const & NodSol, SDPair const & NodTol)
 
 inline bool Domain::CheckErrorEles (Table const & EleSol, SDPair const & EleTol) const
 {
+    // check
+    if (EleSol.NRows!=Eles.Size()) throw new Fatal("Domain::CheckErrorEles: Number of rows (%d) in table EleSol with the elements solution must be equal to the number of elements (%d)",EleSol.NRows,Eles.Size());
+
     // header
     printf("\n%s--- Error Summary --- centre of elements -------------------------------------------%s\n",TERM_CLR1,TERM_RST);
     std::cout << TERM_CLR2 << Util::_4<< "Key" << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm";
