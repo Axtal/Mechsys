@@ -138,6 +138,8 @@ int main(int argc, char **argv) try
     ele_tol.Set("gx gy", 1.0e-11, 1.0e-11);
 
     // return error flag
-    return (dom.CheckErrorNods(nod_sol, nod_tol) || dom.CheckErrorEles(ele_sol, ele_tol));
+    bool err1 = dom.CheckErrorNods(nod_sol, nod_tol);
+    bool err2 = dom.CheckErrorEles(ele_sol, ele_tol);
+    return (err1 || err2);
 }
 MECHSYS_CATCH

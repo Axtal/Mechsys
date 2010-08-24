@@ -55,7 +55,6 @@ public:
     void CalcT       (Mat_t & T, double & l)                const; ///< Transformation matrix
     void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const;
     void GetState    (SDPair & KeysVals, int none=-1)       const;
-    void Centroid    (Vec_t & X)                            const; ///< Centroid of element
 
     // Constants
     double E0;  ///< Initial Young modulus
@@ -88,9 +87,9 @@ inline void NLRod::GetLoc (Array<size_t> & Loc) const
     Loc.Resize (2*NDim);
     for (size_t i=0; i<2; ++i)
     {
-        Loc[i*NDim+0] = Con[i]->EQ[Con[i]->UMap("ux")];
-        Loc[i*NDim+1] = Con[i]->EQ[Con[i]->UMap("uy")];  if (NDim==3)
-        Loc[i*NDim+2] = Con[i]->EQ[Con[i]->UMap("uz")];
+        Loc[i*NDim+0] = Con[i]->Eq("ux");
+        Loc[i*NDim+1] = Con[i]->Eq("uy");  if (NDim==3)
+        Loc[i*NDim+2] = Con[i]->Eq("uz");
     }
 }
 
@@ -200,13 +199,6 @@ inline void NLRod::GetState (SDPair & KeysVals, int none) const
     KeysVals.Set("fa sa ea",fa,sa,ea);
 }
 
-inline void NLRod::Centroid (Vec_t & X) const
-{
-    X.change_dim (NDim);
-    X(0) = (Con[0]->Vert.C[0] + Con[1]->Vert.C[0])/2.0;
-    X(1) = (Con[0]->Vert.C[1] + Con[1]->Vert.C[1])/2.0;  if (NDim==3)
-    X(2) = (Con[0]->Vert.C[2] + Con[1]->Vert.C[2])/2.0;
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// Factory /////
 
@@ -217,7 +209,9 @@ Element * NLRodMaker(int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPai
 // Register element
 int NLRodRegister()
 {
-    ElementFactory["NLRod"] = NLRodMaker;
+    ElementFactory["NLRod"]   = NLRodMaker;
+    ElementVarKeys["NLRod2D"] = std::make_pair ("ux uy",    "fx fy");
+    ElementVarKeys["NLRod2D"] = std::make_pair ("ux uy uz", "fx fy fz");
     PROB.Set ("NLRod", (double)PROB.Keys.Size());
     return 0;
 }

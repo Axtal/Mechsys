@@ -131,7 +131,8 @@ int main(int argc, char **argv) try
     // error tolerance
     SDPair nod_tol;
     nod_tol.Set("ux uy wz  Rux Ruy Rwz", 1.0e-15,1.0e-15,1.0e-15, 1.0e-15,1.0e-13,1.0e-14);
-    err_flag = err_flag || dom.CheckErrorNods (nod_sol, nod_tol);
+    err_flag = err_flag;
+    bool err_nod = dom.CheckErrorNods (nod_sol, nod_tol);
 
     // bending moment
     Mat_t Mmat(7,2);
@@ -165,6 +166,6 @@ int main(int argc, char **argv) try
     if (max_err_M>tol_M) err_flag = false;
 
     // return error flag
-    return err_flag;
+    return (err_flag || err_nod);
 }
 MECHSYS_CATCH

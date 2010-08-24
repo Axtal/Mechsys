@@ -30,60 +30,6 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
-void CentroidSolution (double Pressure, double radius, double Radius, FEM::Element const & E, Table & Sol, bool Silent=true)
-{
-    // results
-    Vec_t  ct;
-    SDPair res;
-    E.Centroid  (ct);
-    E.StateAtCt (res);
-    double x = ct(0);
-    double y = ct(1);
-
-    // solution in polar coordinates
-    double p      = Pressure;
-    double ri     = radius;
-    double ro     = Radius;
-    double r      = sqrt(x*x+y*y);
-    double coef   = p*ri*ri/(ro*ro-ri*ri);
-    double sig_r  = coef*(1.0-ro*ro/(r*r));
-    double sig_t  = coef*(1.0+ro*ro/(r*r));
-    double sig_rt = 0.0;
-    
-    // rotation to x-y coordinates
-    double c      = x/r;
-    double s      = y/r;
-    double cc     = c*c;
-    double ss     = s*s;
-    double cs     = c*s;
-    double sig_x  = cc*sig_r + ss*sig_t -  2.0*cs*sig_rt;
-    double sig_y  = ss*sig_r + cc*sig_t +  2.0*cs*sig_rt;
-    double sig_xy = cs*sig_r - cs*sig_t + (cc-ss)*sig_rt;
-
-    if (!Silent)
-    {
-        // rotation to r-t coordinates
-        double sx  = res("sx");
-        double sy  = res("sy");
-        double sxy = res("sxy");
-        double sr  =  cc*sx + ss*sy +  2.0*cs*sxy;
-        double st  =  ss*sx + cc*sy -  2.0*cs*sxy;
-        double srt = -cs*sx + cs*sy + (cc-ss)*sxy;
-
-        // output
-        cout << Util::_4 << E.Cell.ID;
-        cout << Util::_6_3  << x      << Util::_6_3  << y   << Util::_6_3 << r << "  ";
-        cout << Util::_10_6 << sig_r  << Util::_10_6 << sr  << "  ";
-        cout << Util::_10_6 << sig_t  << Util::_10_6 << st  << "  ";
-        cout << Util::_10_6 << sig_rt << Util::_10_6 << srt << endl;
-    }
-
-    // error
-    Sol.SetVal ("sx",  E.Cell.ID, sig_x);
-    Sol.SetVal ("sy",  E.Cell.ID, sig_y);
-    Sol.SetVal ("sxy", E.Cell.ID, sig_xy);
-}
-
 void ElemSolution (double Pressure, double radius, double Radius, FEM::Element const & E, Table & Sol, bool Silent=true)
 {
     Array<SDPair> res(E.GE->NIP);
@@ -136,9 +82,9 @@ void ElemSolution (double Pressure, double radius, double Radius, FEM::Element c
         }
 
         // error
-        Sol.SetVal ("sx",  i + E.Cell.ID*E.GE->NIP, sig_x);
-        Sol.SetVal ("sy",  i + E.Cell.ID*E.GE->NIP, sig_y);
-        Sol.SetVal ("sxy", i + E.Cell.ID*E.GE->NIP, sig_xy);
+        Sol("sx",  i + E.Cell.ID*E.GE->NIP) =  sig_x;
+        Sol("sy",  i + E.Cell.ID*E.GE->NIP) =  sig_y;
+        Sol("sxy", i + E.Cell.ID*E.GE->NIP) =  sig_xy;
     }
 }
 
@@ -261,8 +207,7 @@ int main(int argc, char **argv) try
     elem_sol.SetZero("sx sy sxy", dom.Eles.Size()*dom.Eles[0]->GE->NIP);
     for (size_t i=0; i<dom.Eles.Size(); ++i)
     {
-        CentroidSolution (p, r, R, (*dom.Eles[i]), ele_sol,  silent);
-        ElemSolution     (p, r, R, (*dom.Eles[i]), elem_sol, silent);
+        ElemSolution (p, r, R, (*dom.Eles[i]), elem_sol, silent);
     }
 
     // error tolerance
@@ -270,7 +215,6 @@ int main(int argc, char **argv) try
     ele_tol.Set("sx sy sxy", 2.0e-1,2.0e-1,1.0e-1);
 
     // return error flag
-    dom.CheckErrorIP (elem_sol, ele_tol);
-    return dom.CheckErrorEles (ele_sol, ele_tol);
+    return dom.CheckErrorIPs (elem_sol, ele_tol);
 }
 MECHSYS_CATCH

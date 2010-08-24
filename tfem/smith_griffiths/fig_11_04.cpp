@@ -44,10 +44,8 @@ using FEM::GEOM;
 void OutFun (FEM::Solver const & Sol, void * Dat)
 {
     size_t idx_nod = 17;
-    size_t idx_ux  = Sol.Dom.Nods[idx_nod]->UMap("ux");
-    size_t idx_uy  = Sol.Dom.Nods[idx_nod]->UMap("uy");
-    long   eq_ux   = Sol.Dom.Nods[idx_nod]->EQ[idx_ux];
-    long   eq_uy   = Sol.Dom.Nods[idx_nod]->EQ[idx_uy];
+    int    eq_ux   = Sol.Dom.Nods[idx_nod]->Eq("ux");
+    int    eq_uy   = Sol.Dom.Nods[idx_nod]->Eq("uy");
     double ux      = Sol.U(eq_ux);
     double uy      = Sol.U(eq_uy);
     double vx      = Sol.V(eq_ux);

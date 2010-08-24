@@ -169,9 +169,9 @@ int main(int argc, char **argv) try
                       -1.9712E-02,   1.2333E-03,  -3.0179E-05);
             for (size_t i=0; i<4; ++i)
             {
-                err_u += fabs(dom.Nods[i]->U[dom.Nods[i]->UMap("ux")]*12.0 - disp("ux",i));
-                err_u += fabs(dom.Nods[i]->U[dom.Nods[i]->UMap("uy")]*12.0 - disp("uy",i));
-                err_u += fabs(dom.Nods[i]->U[dom.Nods[i]->UMap("wz")]      - disp("wz",i));
+                err_u += fabs(dom.Nods[i]->U("ux")*12.0 - disp("ux",i));
+                err_u += fabs(dom.Nods[i]->U("uy")*12.0 - disp("uy",i));
+                err_u += fabs(dom.Nods[i]->U("wz")      - disp("wz",i));
                 //printf("Displacements: %g/%g,  %g/%g,  %g/%g\n", dom.Nods[i]->U[dom.Nods[i]->UMap("ux")]*12.0, disp("ux",i), dom.Nods[i]->U[dom.Nods[i]->UMap("uy")]*12.0, disp("uy",i), dom.Nods[i]->U[dom.Nods[i]->UMap("wz")], disp("wz",i));
             }
             printf("Errors                 = %s%.8e%s\n", (errors>tol  ?TERM_RED:TERM_GREEN), errors, TERM_RST);
@@ -232,9 +232,9 @@ int main(int argc, char **argv) try
                        1.1583E-01,  -2.6431E-02,   5.4343E-04);
             for (size_t i=0; i<4; ++i)
             {
-                err_u += fabs(dom.Nods[i]->U[dom.Nods[i]->UMap("ux")]*12.0 - disp("ux",i));
-                err_u += fabs(dom.Nods[i]->U[dom.Nods[i]->UMap("uy")]*12.0 - disp("uy",i));
-                err_u += fabs(dom.Nods[i]->U[dom.Nods[i]->UMap("wz")]      - disp("wz",i));
+                err_u += fabs(dom.Nods[i]->U("ux")*12.0 - disp("ux",i));
+                err_u += fabs(dom.Nods[i]->U("uy")*12.0 - disp("uy",i));
+                err_u += fabs(dom.Nods[i]->U("wz")      - disp("wz",i));
                 //printf("Displacements: %g/%g,  %g/%g,  %g/%g\n", dom.Nods[i]->U[dom.Nods[i]->UMap("ux")]*12.0, disp("ux",i), dom.Nods[i]->U[dom.Nods[i]->UMap("uy")]*12.0, disp("uy",i), dom.Nods[i]->U[dom.Nods[i]->UMap("wz")], disp("wz",i));
             }
             printf("Errors                 = %s%.8e%s\n", (errors>tol  ?TERM_RED:TERM_GREEN), errors, TERM_RST);

@@ -126,8 +126,9 @@ int main(int argc, char **argv) try
     if (NR) sol.SetScheme("NR");
 
     // stage # 1 -------------------------------------
+    size_t stg = 1;
     printf("\n%s====================================== Stage # 1 ===================================%s\n",TERM_YELLOW_BLUE,TERM_RST);
-    buf.Printf("%s_stage_%d",fkey.CStr(),1);
+    buf.Printf("%s_stage_%d",fkey.CStr(),stg);
     Dict bcs;
     bcs.Set      (-10, "uy", 0.0);
     bcs.Set      (-40, "ux", 0.0);
@@ -135,7 +136,7 @@ int main(int argc, char **argv) try
     dom.SetBCs   (bcs);
     sol.Solve    (nincs);
     dom.WriteVTU (buf.CStr());
-    //dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
+    dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
 
     // check
     Table  nod_sol;
@@ -172,11 +173,12 @@ int main(int argc, char **argv) try
     }
     errors.Push (dom.CheckErrorNods (nod_sol, nod_tol));
 
-    for (size_t i=0; i<5; ++i)
+    for (size_t i=0; i<0; ++i)
     {
-        // stage # 2+i -------------------------------------
-        printf("\n%s====================================== Stage # %zd === (activate) ====================%s\n",TERM_YELLOW_BLUE,2+i,TERM_RST);
-        buf.Printf("%s_stage_%d",fkey.CStr(),2+i);
+        // stage # stg -------------------------------------
+        stg++;
+        printf("\n%s====================================== Stage # %zd === (activate) ====================%s\n",TERM_YELLOW_BLUE,stg,TERM_RST);
+        buf.Printf("%s_stage_%d",fkey.CStr(),stg);
         bcs.clear();
         bcs.Set      (-10, "uy", 0.0);
         bcs.Set      (-40, "ux", 0.0);
@@ -217,9 +219,10 @@ int main(int argc, char **argv) try
         }
         errors.Push (dom.CheckErrorNods (nod_sol, nod_tol));
 
-        // stage # 3+i -------------------------------------
-        printf("\n%s====================================== Stage # %zd === (deactivate) ==================%s\n",TERM_YELLOW_BLUE,3+i,TERM_RST);
-        buf.Printf("%s_stage_%d",fkey.CStr(),3+i);
+        // stage # stg -------------------------------------
+        stg++;
+        printf("\n%s====================================== Stage # %zd === (deactivate) ==================%s\n",TERM_YELLOW_BLUE,stg,TERM_RST);
+        buf.Printf("%s_stage_%d",fkey.CStr(),stg);
         bcs.clear();
         bcs.Set      (-10, "uy", 0.0);
         bcs.Set      (-40, "ux", 0.0);

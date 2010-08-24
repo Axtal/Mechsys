@@ -143,15 +143,15 @@ int main(int argc, char **argv) try
     // results
     std::ostringstream disp, stress;
     size_t idx_sx=-1, idx_sy=-1;
-    for (size_t i=0; i<dom.EleKeys.Size(); ++i)
+    for (size_t i=0; i<dom.AllEKeys.Size(); ++i)
     {
-        if (dom.EleKeys[i]=="sx") idx_sx = i;
-        if (dom.EleKeys[i]=="sy") idx_sy = i;
+        if (dom.AllEKeys[i]=="sx") idx_sx = i;
+        if (dom.AllEKeys[i]=="sy") idx_sy = i;
     }
     for (size_t i=0; i<dom.Nods.Size(); ++i)
     {
-        disp   << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("ux")] << " ";
-        disp   << Util::_20_15 << dom.Nods[i]->U[dom.Nods[i]->UMap("uy")] << std::endl;
+        disp   << Util::_20_15 << dom.Nods[i]->U("ux") << " ";
+        disp   << Util::_20_15 << dom.Nods[i]->U("uy") << std::endl;
         //stress << Util::_20_15 << dom.NodResults(i,idx_sx)                << " ";
         //stress << Util::_20_15 << dom.NodResults(i,idx_sy)                << std::endl;
     }
@@ -175,8 +175,8 @@ int main(int argc, char **argv) try
         std::ifstream fs((quad8 ? "abbo_sloan_01_quad8_1000000.stress" : "abbo_sloan_01_tri15_1000000.stress"), std::ios::in);
         for (size_t i=0; i<dom.Nods.Size(); ++i)
         {
-            u(0+i*2) = dom.Nods[i]->U[dom.Nods[i]->UMap("ux")];
-            u(1+i*2) = dom.Nods[i]->U[dom.Nods[i]->UMap("uy")];
+            u(0+i*2) = dom.Nods[i]->U("ux");
+            u(1+i*2) = dom.Nods[i]->U("uy");
             //s(0+i*2) = dom.NodResults(i,idx_sx);
             //s(1+i*2) = dom.NodResults(i,idx_sy);
             fu >> u_ref(0+i*2) >> u_ref(1+i*2);

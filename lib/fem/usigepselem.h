@@ -48,14 +48,13 @@ public:
     ~USigEpsElem () { if (GEs!=NULL) delete GEs; }
 
     // Methods
-    void IncNLocDOF  (size_t & NEq)                         const { FirstEQ = NEq;   NEq += 2*NDs; }
-    void GetLoc      (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
-                      NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
-    void CalcK       (Mat_t & K)                            const; ///< Stiffness
-    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
-    void StateKeys   (Array<String> & Keys)                 const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
-    void StateAtIP   (SDPair & KeysVals, int IdxIP)         const; ///< Get state at IP
+    void IncNLocDOF  (size_t & NEq)                                      const { FirstEQ = NEq;   NEq += 2*NDs; }
+    void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void CalcK       (Mat_t & K)                                         const; ///< Stiffness
+    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
+    void StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
+    void StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< Get state at IP
 
     // Internal methods
     void Matrices (Mat_t & A, Mat_t & E, Mat_t & Q) const;
@@ -64,6 +63,8 @@ public:
     // Constants
     GeomElem   * GEs;      ///< Local nodes
     mutable long FirstEQ;  ///< First equation of sig DOF
+    double       h;        ///< Thickness of the element
+    double       rho;      ///< Density
 };
 
 size_t USigEpsElem::NCo = 0;
@@ -98,6 +99,9 @@ inline USigEpsElem::USigEpsElem (int NDim, Mesh::Cell const & Cell, Model const 
         NDs = NCo*GEs->NN;
         NDu = NDim*GE->NN;
     }
+
+    // parameters/properties
+    rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
 
     // allocate and initialize state at each IP
     for (size_t i=0; i<GE->NIP; ++i)
@@ -156,14 +160,18 @@ inline USigEpsElem::USigEpsElem (int NDim, Mesh::Cell const & Cell, Model const 
     }
     for (size_t i=0; i<GE->NN; ++i)
     {
-        Con[i]->F[Con[i]->FMap("fx")] += Fe(0+i*NDim);
-        Con[i]->F[Con[i]->FMap("fy")] += Fe(1+i*NDim);  if (NDim==3)
-        Con[i]->F[Con[i]->FMap("fz")] += Fe(2+i*NDim);
+        Con[i]->F("fx") += Fe(0+i*NDim);
+        Con[i]->F("fy") += Fe(1+i*NDim);  if (NDim==3)
+        Con[i]->F("fz") += Fe(2+i*NDim);
     }
 }
 
-inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
+inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
 {
+    // deactivate/activate commands
+    if (BCs.HasKey("deactivate")) throw new Fatal("USigEpsElem::SetBCs: 'deactivate' command failed: method not implemented yet");
+    if (BCs.HasKey("activate"))   throw new Fatal("USigEpsElem::SetBCs: 'activate' command failed: method not implemented yet");
+
     // check
     if (!Active) throw new Fatal("USigEpsElem::SetBCs: Element %d is inactive",Cell.ID);
 
@@ -179,13 +187,14 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
     bool has_ux  = BCs.HasKey("ux");  // x displacement
     bool has_uy  = BCs.HasKey("uy");  // y displacement
     bool has_uz  = BCs.HasKey("uz");  // z displacement
+    bool has_gra = BCs.HasKey("gravity"); // gravity
 
     // force components specified
-    if (has_bx || has_by || has_bz || has_cbx ||
+    if (has_bx || has_by || has_bz || has_cbx || has_gra ||
         has_qx || has_qy || has_qz || has_qn  || has_qt)
     {
         // body forces
-        if (has_bx || has_by || has_bz || has_cbx) // prescribed body forces
+        if (has_bx || has_by || has_bz || has_cbx || has_gra) // prescribed body forces
         {
             // matrix of coordinates of nodes
             Mat_t C;
@@ -196,6 +205,11 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
             double by = (has_by  ? BCs("by")  : 0.0);
             double bz = (has_bz  ? BCs("bz")  : 0.0);
                    bx = (has_cbx ? BCs("cbx") : bx );
+            if (has_gra)
+            {
+                if (NDim==2) by = -rho*BCs("gravity");
+                else         bz = -rho*BCs("gravity");
+            }
 
             // set
             for (size_t i=0; i<GE->NIP; ++i)
@@ -209,7 +223,7 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
                 double detJ = Det(J);
 
                 // coefficient used during integration
-                double coef = detJ*GE->IPs[i].w;
+                double coef = h*detJ*GE->IPs[i].w;
                 if (GTy==axs_t)
                 {
                     // calculate radius=x at this IP
@@ -221,17 +235,14 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
                     else         coef *= radius;
                 }
 
-                // add to dF
+                // set boundary conditions
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    if (has_bx || has_cbx) pF[Con[j]].first[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
-                    if (has_by           ) pF[Con[j]].first[Con[j]->FMap("fy")] += coef*GE->N(j)*by;
-                    if (has_bz           ) pF[Con[j]].first[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+                    Con[j]->AddToPF("fx", coef*GE->N(j)*bx, MFun);
+                    Con[j]->AddToPF("fy", coef*GE->N(j)*by, MFun);  if (NDim==3)
+                    Con[j]->AddToPF("fz", coef*GE->N(j)*bz, MFun);
                 }
             }
-
-            // set CalcM
-            for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
         }
 
         // surface loading
@@ -259,7 +270,7 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
                 Mat_t J(GE->FdNdR * Cf);
 
                 // coefficient used during integration
-                double coef = GE->FIPs[i].w; // *detJ is not necessary since qx,qy,qz are already multiplied by detJ (due to normal)
+                double coef = h*GE->FIPs[i].w; // *detJ is not necessary since qx,qy,qz are already multiplied by detJ (due to normal)
 
                 if (GTy==axs_t)
                 {
@@ -299,18 +310,15 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
                     }
                 }
 
-                // add to dF
+                // set boundary conditions
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]].first[Con[k]->FMap("fx")] += coef*GE->FN(j)*qx;
-                    pF[Con[k]].first[Con[k]->FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
-                    pF[Con[k]].first[Con[k]->FMap("fz")] += coef*GE->FN(j)*qz;
+                    Con[k]->AddToPF("fx", coef*GE->FN(j)*qx, MFun);
+                    Con[k]->AddToPF("fy", coef*GE->FN(j)*qy, MFun);  if (NDim==3)
+                    Con[k]->AddToPF("fz", coef*GE->FN(j)*qz, MFun);
                 }
             }
-
-            // set CalcM
-            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
         }
     }
 
@@ -323,9 +331,9 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBC
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            if (has_ux) pU[Con[k]].first[Con[k]->UMap("ux")] = ux;
-            if (has_uy) pU[Con[k]].first[Con[k]->UMap("uy")] = uy;
-            if (has_uz) pU[Con[k]].first[Con[k]->UMap("uz")] = uz;
+            if (has_ux) Con[k]->SetPU("ux", ux, MFun);
+            if (has_uy) Con[k]->SetPU("uy", uy, MFun);
+            if (has_uz) Con[k]->SetPU("uz", uz, MFun);
         }
     }
 }

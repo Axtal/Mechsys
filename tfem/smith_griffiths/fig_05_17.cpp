@@ -182,7 +182,7 @@ int main(int argc, char **argv) try
 
     // return error flag
     bool err_nods = dom.CheckErrorNods (nod_sol, nod_tol);
-    bool err_eles = dom.CheckErrorIP   (ele_sol, ele_tol);
+    bool err_eles = dom.CheckErrorIPs  (ele_sol, ele_tol);
     return (err_nods || err_eles);
 }
 MECHSYS_CATCH

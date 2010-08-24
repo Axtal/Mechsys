@@ -51,14 +51,22 @@ public:
     void Set (const char * Str, va_list ArgList);
 
     // Operators
-    double operator() (char   const * Key) const;
-    double operator() (String const & Key) const;
+    double       & operator() (char   const * Key);
+    double const & operator() (char   const * Key) const;
+    double       & operator() (String const & Key)       { return operator()(Key.CStr()); }
+    double const & operator() (String const & Key) const { return operator()(Key.CStr()); }
+    void           operator=  (SDPair const & R); ///< Assignment operator
 
     // Methods
-    bool HasKey  (char const   * Key) const;
-    bool HasKey  (String const & Key) const;
-    void Val2Key (double Val, String & Key, double Tol=1.0e-15) const;
-    void clear   () { Keys.Clear(); StrDbl_t::clear(); }
+    size_t ReSet     (const char * Key, double Val); ///< Re-set value (creates if it doesn't exist). Return position in Keys of changed/set value 
+    size_t AddVal    (const char * Key, double Val); ///< Add value to existent one (creates if it doesn't exist). Return position in Keys of changed/set value 
+    void   SetValues (double Val);                   ///< Set all values equal to Val
+    double ValOrZero (char const   * Key) const;     ///< Returns value for Key if Key exists, otherwise returns zero
+    double ValOrZero (String const & Key) const { return ValOrZero(Key.CStr()); }
+    bool   HasKey    (char const   * Key) const;
+    bool   HasKey    (String const & Key) const;
+    void   Val2Key   (double Val, String & Key, double Tol=1.0e-15) const;
+    void   clear     () { Keys.Clear(); StrDbl_t::clear(); }
 
     // Data
     Array<String> Keys;
@@ -84,8 +92,10 @@ public:
     void Set (const char * Str, ...);
 
     // Operators
-    double operator() (char const   * Key) const;
-    double operator() (String const & Key) const;
+    int       & operator() (char const   * Key);
+    int const & operator() (char const   * Key) const;
+    int       & operator() (String const & Key)        { return operator()(Key.CStr()); }
+    int const & operator() (String const & Key) const  { return operator()(Key.CStr()); }
 
     // Methods
     bool HasKey (char const   * Key) const;
@@ -94,56 +104,6 @@ public:
 
     // Data
     Array<String> Keys;
-};
-
-
-/////////////////////////////////////////////////////////////////////////////////////////// ISPair
-
-
-typedef std::map<int,char const *> IntStr_t;
-
-/** Int-String Pair. */
-class ISPair : public IntStr_t
-{
-public:
-    /** Ex:  pair("-1 -2", "alpha","beta")    OR   Case-A
-     *       pair("{-1:'alpha', -2:'beta'}")       Case-B  (Python-Dict) */
-    void Set (const char * Str, ...);
-
-    // Operators
-    char const * operator() (int Key) const;
-
-    // Methods
-    bool HasKey (int Key) const;
-    void clear  () { Keys.Clear(); IntStr_t::clear(); }
-
-    // Data
-    Array<int> Keys;
-};
-
-
-/////////////////////////////////////////////////////////////////////////////////////////// IDPair
-
-
-typedef std::map<int,double> IntDbl_t;
-
-/** Int-Double Pair. */
-class IDPair : public IntDbl_t
-{
-public:
-    /** Ex:  pair("-1 -2", 0.0,0.1)    OR   Case-A
-     *       pair("{-1:0.0, -2:0.1}")       Case-B  (Python-Dict) */
-    void Set (const char * Str, ...);
-
-    // Operators
-    double operator() (int Key) const;
-
-    // Methods
-    bool HasKey (int Key) const;
-    void clear  () { Keys.Clear(); IntDbl_t::clear(); }
-
-    // Data
-    Array<int> Keys;
 };
 
 
@@ -197,8 +157,8 @@ public:
 
     // Operators
     Array<double> const & operator() (String const & Key) const;
-    double                operator() (String const & Key, size_t iRow) const;
-    void                  SetVal     (String const & Key, size_t iRow, double Value);
+    double              & operator() (String const & Key, size_t iRow);
+    double        const & operator() (String const & Key, size_t iRow) const;
 
     // Data
     size_t        NRows;
@@ -250,40 +210,6 @@ std::ostream & operator<< (std::ostream & os, SIPair const & P)
         String key = P.Keys[i];
         String val;  val.Printf("%d",P(key));
         os << "'" << key << "':" << val;
-        if (k<nkeys-1) os << ", ";
-        k++;
-    }
-    os << "}";
-    return os;
-}
-
-std::ostream & operator<< (std::ostream & os, ISPair const & P)
-{
-    int nkeys = P.size();
-    int k     = 0;
-    os << "{";
-    for (size_t i=0; i<P.Keys.Size(); ++i)
-    {
-        int    key = P.Keys[i];
-        String val = P(key);
-        os << "" << key << ":" << "'" << val << "'";
-        if (k<nkeys-1) os << ", ";
-        k++;
-    }
-    os << "}";
-    return os;
-}
-
-std::ostream & operator<< (std::ostream & os, IDPair const & P)
-{
-    int nkeys = P.size();
-    int k     = 0;
-    os << "{";
-    for (size_t i=0; i<P.Keys.Size(); ++i)
-    {
-        int    key = P.Keys[i];
-        double val = P(key);
-        os << "" << key << ":" << val;
         if (k<nkeys-1) os << ", ";
         k++;
     }
@@ -398,7 +324,19 @@ inline void SDPair::Set(const char * Str, va_list ArgList)
     }
 }
 
-inline double SDPair::operator() (char const * Key) const
+inline double & SDPair::operator() (char const * Key)
+{
+    StrDbl_t::iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        std::ostringstream oss;
+        oss << (*this);
+        throw new Fatal("SDPair::operator(): String-Double pair: %s does not have a key = '%s'",oss.str().c_str(),Key);
+    }
+    return p->second;
+}
+
+inline double const & SDPair::operator() (char const * Key) const
 {
     StrDbl_t::const_iterator p = this->find(Key);
     if (p==this->end())
@@ -410,16 +348,62 @@ inline double SDPair::operator() (char const * Key) const
     return p->second;
 }
 
-inline double SDPair::operator() (String const & Key) const
+inline void SDPair::operator= (SDPair const & R)
 {
-    StrDbl_t::const_iterator p = this->find(Key);
+    this->clear();
+    Keys.Resize (R.Keys.Size());
+    for (size_t i=0; i<R.Keys.Size(); ++i)
+    {
+        Keys[i]          = R.Keys[i];
+        (*this)[Keys[i]] = R(Keys[i]);
+    }
+}
+
+inline size_t SDPair::ReSet (const char * Key, double Val)
+{
+    StrDbl_t::iterator p = this->find(Key);
     if (p==this->end())
     {
-        std::ostringstream oss;
-        oss << (*this);
-        throw new Fatal("SDPair::operator(): String-Double pair: %s does not have a key = '%s'",oss.str().c_str(),Key.CStr());
+        (*this)[Key] = Val;
+        Keys.Push (Key);
+        return Keys.Size()-1;
     }
-    return p->second;
+    else
+    {
+        p->second = Val;
+        long pos = Keys.Find(Key);
+        return static_cast<size_t>(pos);
+    }
+}
+
+inline size_t SDPair::AddVal (const char * Key, double Val)
+{
+    StrDbl_t::iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        (*this)[Key] = Val;
+        Keys.Push (Key);
+        return Keys.Size()-1;
+    }
+    else
+    {
+        p->second += Val;
+        long pos = Keys.Find(Key);
+        return static_cast<size_t>(pos);
+    }
+}
+
+inline void SDPair::SetValues (double Val)
+{
+    for (StrDbl_t::iterator p=this->begin(); p!=this->end(); ++p)
+        p->second = Val;
+}
+
+inline double SDPair::ValOrZero (char const * Key) const
+{
+    StrDbl_t::const_iterator p = this->find(Key);
+    if (p==this->end()) return 0.0;
+    else                return p->second;
 }
 
 inline bool SDPair::HasKey (char const * Key) const
@@ -532,9 +516,9 @@ inline void SIPair::Set(const char * Str, ...)
     }
 }
 
-inline double SIPair::operator() (char const * Key) const
+inline int & SIPair::operator() (char const * Key)
 {
-    StrInt_t::const_iterator p = this->find(Key);
+    StrInt_t::iterator p = this->find(Key);
     if (p==this->end())
     {
         std::ostringstream oss;
@@ -544,14 +528,14 @@ inline double SIPair::operator() (char const * Key) const
     return p->second;
 }
 
-inline double SIPair::operator() (String const & Key) const
+inline int const & SIPair::operator() (char const * Key) const
 {
     StrInt_t::const_iterator p = this->find(Key);
     if (p==this->end())
     {
         std::ostringstream oss;
         oss << (*this);
-        throw new Fatal("SIPair::operator(): String-Int pair: %s does not have a key = '%s'",oss.str().c_str(),Key.CStr());
+        throw new Fatal("SIPair::operator(): String-Int pair: %s does not have a key = '%s'",oss.str().c_str(),Key);
     }
     return p->second;
 }
@@ -566,128 +550,6 @@ inline bool SIPair::HasKey (String const & Key) const
 {
     StrInt_t::const_iterator p = this->find(Key);
     return (p!=this->end());
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////// ISPair: Implementation /////
-
-
-inline void ISPair::Set(const char * Str, ...)
-{
-    String str(Str);
-    if (str.find(":")!=String::npos) // Case-B
-    {
-        // replace ":',{}" with spaces
-        size_t pos = str.find_first_of(":',{}");
-        while (pos!=String::npos)
-        {
-            str[pos] = ' ';
-            pos      = str.find_first_of(":',{}",pos+1);
-        }
-
-        // fill map
-        std::istringstream iss(str);
-        int    key;
-        String val;
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            if (iss>>val) (*this)[key] = val.CStr();
-            else break;
-        }
-    }
-    else // Case-A
-    {
-        std::istringstream iss(Str);
-        int       key;
-        va_list   arg_list;
-        va_start (arg_list, Str);
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            (*this)[key] = va_arg(arg_list,char const *);
-        }
-        va_end (arg_list);
-    }
-}
-
-inline char const * ISPair::operator() (int Key) const
-{
-    IntStr_t::const_iterator p = this->find(Key);
-    if (p==this->end())
-    {
-        std::ostringstream oss;
-        oss << (*this);
-        throw new Fatal("ISPair::operator(): Int-String pair: %s does not have a key = %d",oss.str().c_str(),Key);
-    }
-    return p->second;
-}
-
-inline bool ISPair::HasKey (int Key) const
-{
-    if (Keys.Find(Key)<0) return false;
-    else                  return true;
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////// IDPair: Implementation /////
-
-
-inline void IDPair::Set(const char * Str, ...)
-{
-    String str(Str);
-    if (str.find(":")!=String::npos) // Case-B
-    {
-        // replace ":',{}" with spaces
-        size_t pos = str.find_first_of(":',{}");
-        while (pos!=String::npos)
-        {
-            str[pos] = ' ';
-            pos      = str.find_first_of(":',{}",pos+1);
-        }
-
-        // fill map
-        std::istringstream iss(str);
-        int    key;
-        double val;
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            if (iss>>val) (*this)[key] = val;
-            else break;
-        }
-    }
-    else // Case-A
-    {
-        std::istringstream iss(Str);
-        int       key;
-        va_list   arg_list;
-        va_start (arg_list, Str);
-        while (iss>>key)
-        {
-            if (Keys.Find(key)<0) Keys.Push(key);
-            (*this)[key] = va_arg(arg_list,double);
-        }
-        va_end (arg_list);
-    }
-}
-
-inline double IDPair::operator() (int Key) const
-{
-    IntDbl_t::const_iterator p = this->find(Key);
-    if (p==this->end())
-    {
-        std::ostringstream oss;
-        oss << (*this);
-        throw new Fatal("IDPair::operator(): Int-Double pair: %s does not have a key = %d",oss.str().c_str(),Key);
-    }
-    return p->second;
-}
-
-inline bool IDPair::HasKey (int Key) const
-{
-    if (Keys.Find(Key)<0) return false;
-    else                  return true;
 }
 
 
@@ -847,9 +709,9 @@ inline Array<double> const & Table::operator() (String const & Key) const
     return p->second;
 }
 
-inline double Table::operator() (String const & Key, size_t iRow) const
+inline double & Table::operator() (String const & Key, size_t iRow)
 {
-    Table_t::const_iterator p = this->find(Key);
+    Table_t::iterator p = this->find(Key);
     if (p==this->end())
     {
         std::ostringstream oss;
@@ -859,16 +721,16 @@ inline double Table::operator() (String const & Key, size_t iRow) const
     return p->second[iRow];
 }
 
-inline void Table::SetVal (String const & Key, size_t iRow, double Value)
+inline double const & Table::operator() (String const & Key, size_t iRow) const
 {
-    Table_t::iterator p = this->find(Key);
+    Table_t::const_iterator p = this->find(Key);
     if (p==this->end())
     {
         std::ostringstream oss;
         oss << (*this);
         throw new Fatal("Table::operator(): Table: %s does not have a key = '%s'",oss.str().c_str(),Key.CStr());
     }
-    p->second[iRow] = Value;
+    return p->second[iRow];
 }
 
 #ifdef USE_BOOST_PYTHON

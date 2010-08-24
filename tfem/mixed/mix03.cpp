@@ -21,7 +21,7 @@
 
 // MechSys
 #include <mechsys/fem/fem.h>
-#include <mechsys/fem/usigelem2.h>
+#include <mechsys/fem/usigcondelem.h>
 
 using std::cout;
 using std::endl;
@@ -86,7 +86,7 @@ int main(int argc, char **argv) try
     //dom.WriteVTU ("mix01");
  
     cout << endl;
-    cout << "Node # 5: U = " << dom.Nods[5]->U << endl;
+    cout << "Node # 5: U = " << dom.Nods[5]->U("ux") << endl;
     cout << endl;
     
 

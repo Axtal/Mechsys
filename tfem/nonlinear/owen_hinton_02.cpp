@@ -68,8 +68,8 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
     {
         size_t inod = 41;
         FEM::Node const & nod = (*Sol.Dom.Nods[inod]);
-        long   eqx    = nod.EQ[nod.FMap("fx")];
-        long   eqy    = nod.EQ[nod.FMap("fy")];
+        int    eqx    = nod.Eq("fx");
+        int    eqy    = nod.Eq("fy");
         double ux     = Sol.U    (eqx),   uy     = Sol.U    (eqy);
         double fx     = Sol.F    (eqx),   fy     = Sol.F    (eqy);
         double fx_int = Sol.F_int(eqx),   fy_int = Sol.F_int(eqy);

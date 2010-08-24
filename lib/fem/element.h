@@ -33,10 +33,6 @@
 namespace FEM
 {
 
-typedef double (*pCalcM) (double t);              ///< M(ultiplier) callback
-typedef std::pair<IntDbl_t,pCalcM>      BCData_t; ///< Bry conds data (idxDOF,valueBCs,multiplier)
-typedef std::map<Node const *,BCData_t> NodBCs_t; ///< Map Node => bry conds. (idxDOF,valueBCS)
-
 class Element
 {
 public:
@@ -52,26 +48,23 @@ public:
     ~Element ();
 
     // Methods
-    virtual void IncNLocDOF   (size_t & NEq)                             const {} ///< Increment the number of local DOFs
-    virtual void BackupState  ()                                         const;   ///< Backup element state
-    virtual void RestoreState ()                                         const;   ///< Restore element state
-    virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
-                               NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM) {}     ///< Set boundary conditions
-    virtual void ClrBCs       ()                                           {}     ///< Clear boundary conditions
-    virtual void GetLoc       (Array<size_t> & Loc)                      const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
-    virtual void CalcK        (Mat_t & K)                                const { throw new Fatal("Element::CalcK: Method not implemented for this element"); }
-    virtual void CalcM        (Mat_t & M)                                const { throw new Fatal("Element::CalcM: Method not implemented for this element"); }
-    virtual void CalcC        (Mat_t & C)                                const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
+    virtual void IncNLocDOF   (size_t & NEq)                                      const {} ///< Increment the number of local DOFs
+    virtual void BackupState  ()                                                  const;   ///< Backup element state
+    virtual void RestoreState ()                                                  const;   ///< Restore element state
+    virtual void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun) {} ///< Set boundary conditions
+    virtual void ClrBCs       ()                                                        {} ///< Clear boundary conditions
+    virtual void GetLoc       (Array<size_t> & Loc)                               const { throw new Fatal("Element::GetLoc: Method not implemented for this element"); } ///< Get location vector for mounting K/M matrices
+    virtual void CalcK        (Mat_t & K)                                         const { throw new Fatal("Element::CalcK: Method not implemented for this element"); }
+    virtual void CalcM        (Mat_t & M)                                         const { throw new Fatal("Element::CalcM: Method not implemented for this element"); }
+    virtual void CalcC        (Mat_t & C)                                         const { throw new Fatal("Element::CalcC: Method not implement for this element"); }
     virtual void CalcK        (Vec_t const & U, double Alpha, double dt, Mat_t & KK, Vec_t & dF) const { throw new Fatal("Element::CalcK (with U, Alpha, Dt => HydroMech): Method not implemented for this element"); }
-    virtual void CalcKCM      (Mat_t & KK, Mat_t & CC, Mat_t & MM)       const { throw new Fatal("Element::CalcKCM: Method not implemented for this element"); }
-    virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)     const {}
-    virtual void StateKeys    (Array<String> & Keys)                     const {} ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
-    virtual void StateAtIP    (SDPair & KeysVals, int IdxIP)             const {} ///< Get state at IP
-    virtual void StateAtIPs   (Array<SDPair> & Results)                  const;   ///< Get state (internal values: sig, eps) at all integration points
-    virtual void StateAtCt    (SDPair & Results)                         const;   ///< Get state at centroid
-    virtual void StateAtNodes (Array<SDPair> & Results)                  const;   ///< Get state (internal values: sig, eps) at all nodes (applies extrapolation)
-    virtual void Centroid     (Vec_t & X)                                const;   ///< Centroid of element
-    virtual void Draw         (std::ostream & os, double MaxDist)        const;   ///< Draw element with MatPlotLib
+    virtual void CalcKCM      (Mat_t & KK, Mat_t & CC, Mat_t & MM)                const { throw new Fatal("Element::CalcKCM: Method not implemented for this element"); }
+    virtual void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)              const {}
+    virtual void StateKeys    (Array<String> & Keys)                              const {} ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
+    virtual void StateAtIP    (SDPair & KeysVals, int IdxIP)                      const {} ///< Get state at IP
+    virtual void StateAtIPs   (Array<SDPair> & Results)                           const;   ///< Get state (internal values: sig, eps) at all integration points
+    virtual void StateAtNodes (Array<SDPair> & Results)                           const;   ///< Get state (internal values: sig, eps) at all nodes (applies extrapolation)
+    virtual void Draw         (std::ostream & os, double MaxDist)                 const;   ///< Draw element with MatPlotLib
 
     // Methods that depend on GE
     void CoordMatrix   (Mat_t & C)                 const; ///< Matrix with coordinates of nodes
@@ -223,32 +216,6 @@ inline void Element::StateAtIPs (Array<SDPair> & Results) const
     for (size_t i=0; i<GE->NIP; ++i) StateAtIP (Results[i], i);
 }
 
-inline void Element::StateAtCt (SDPair & Results) const
-{
-    if (GE==NULL) throw new Fatal("Element::StateAtCt: This method works only when GE (geometry element) is not NULL");
-
-    // keys
-    Array<String> keys;
-    StateKeys (keys);
-
-    // state at IPs
-    Array<SDPair> state_at_IPs;
-    StateAtIPs (state_at_IPs);
-
-    // average
-    Results.clear();
-    for (size_t k=0; k<keys.Size(); ++k)
-    {
-        // average values at IPs
-        double val = 0.0;
-        for (size_t i=0; i<GE->NIP; ++i) val += state_at_IPs[i](keys[k]);
-        val /= GE->NIP;
-
-        // set results
-        Results.Set (keys[k].CStr(), val);
-    }
-}
-
 inline void Element::StateAtNodes (Array<SDPair> & Results) const
 {
     if (GE==NULL) throw new Fatal("Element::StateAtNodes: This method works only when GE (geometry element) is not NULL");
@@ -283,18 +250,6 @@ inline void Element::StateAtNodes (Array<SDPair> & Results) const
         // scatter values to nodes
         for (size_t i=0; i<GE->NN; ++i) Results[i].Set (keys[k].CStr(), val_at_Nods(i));
     }
-}
-
-inline void Element::Centroid (Vec_t & X) const
-{
-    if (GE==NULL) throw new Fatal("Element::Centroid: This method works only when GE (geometry element) is not NULL");
-
-    GE->Shape (GE->Rct.r, GE->Rct.s, GE->Rct.t);
-    X.change_dim (NDim);
-    set_to_zero  (X);
-    for (size_t i=0; i<GE->NN; ++i)
-    for (int    j=0; j<NDim;   ++j)
-        X(j) += GE->N(i)*Con[i]->Vert.C[j];
 }
 
 inline void Element::CoordsOfIP (size_t IdxIP, Vec_t & X) const
@@ -372,7 +327,7 @@ inline void Element::Draw (std::ostream & os, double MaxDist) const
 
 std::ostream & operator<< (std::ostream & os, Element const & E)
 {
-    os << Util::_4 << E.Cell.ID << " ";
+    os << Util::_4 << E.Cell.ID << " " << Util::_4 << E.Cell.Tag << " ";
     os << (E.Active?TERM_GREEN:TERM_RED) << (E.Active?" active":" inactive") << TERM_RST << " ";
     os << GTypeToStr(E.GTy) << " ";
     if (E.GE!=NULL)  os << E.GE->Name  << " " << "NIP=" << E.GE->NIP << " ";
@@ -386,7 +341,6 @@ std::ostream & operator<< (std::ostream & os, Element const & E)
         if (i==E.Con.Size()-1) os << ") ";
         else                   os << ",";
     }
-    os << E.Cell.Tag;
     return os;
 }
 

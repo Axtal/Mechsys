@@ -49,14 +49,13 @@ public:
     ~USigElem () { if (GEs!=NULL) delete GEs; }
 
     // Methods
-    void IncNLocDOF  (size_t & NEq)                         const { FirstEQ = NEq;   NEq += NDs; }
-    void GetLoc      (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
-                      NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM); ///< If setting body forces, IdxEdgeOrFace is ignored
-    void CalcK       (Mat_t & K)                            const; ///< Stiffness
-    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL) const; ///< Update state at IPs
-    void StateKeys   (Array<String> & Keys)                 const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
-    void StateAtIP   (SDPair & KeysVals, int IdxIP)         const; ///< Get state at IP
+    void IncNLocDOF  (size_t & NEq)                                      const { FirstEQ = NEq;   NEq += NDs; }
+    void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void CalcK       (Mat_t & K)                                         const; ///< Stiffness
+    void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
+    void StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: sx, sy, sxy, ex, ey, exy
+    void StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< Get state at IP
 
     // Internal methods
     void Matrices (Mat_t & A, Mat_t & Q) const;
@@ -120,14 +119,18 @@ inline USigElem::USigElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     }
     for (size_t i=0; i<GE->NN; ++i)
     {
-        Con[i]->F[Con[i]->FMap("fx")] += Fe(0+i*NDim);
-        Con[i]->F[Con[i]->FMap("fy")] += Fe(1+i*NDim);  if (NDim==3)
-        Con[i]->F[Con[i]->FMap("fz")] += Fe(2+i*NDim);
+        Con[i]->F("fx") += Fe(0+i*NDim);
+        Con[i]->F("fy") += Fe(1+i*NDim);  if (NDim==3)
+        Con[i]->F("fz") += Fe(2+i*NDim);
     }
 }
 
-inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
+inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
 {
+    // deactivate/activate commands
+    if (BCs.HasKey("deactivate")) throw new Fatal("USigElem::SetBCs: 'deactivate' command failed: method not implemented yet");
+    if (BCs.HasKey("activate"))   throw new Fatal("USigElem::SetBCs: 'activate' command failed: method not implemented yet");
+
     // check
     if (!Active) throw new Fatal("USigElem::SetBCs: Element %d is inactive",Cell.ID);
 
@@ -145,7 +148,7 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
     bool has_uz  = BCs.HasKey("uz");  // z displacement
 
     // force components specified
-    if (has_bx || has_by || has_bz || has_cbx ||
+    if (has_bx || has_by || has_bz || has_cbx || 
         has_qx || has_qy || has_qz || has_qn  || has_qt)
     {
         // body forces
@@ -185,17 +188,14 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
                     else         coef *= radius;
                 }
 
-                // add to dF
+                // set boundary conditions
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    if (has_bx || has_cbx) pF[Con[j]].first[Con[j]->FMap("fx")] += coef*GE->N(j)*bx;
-                    if (has_by           ) pF[Con[j]].first[Con[j]->FMap("fy")] += coef*GE->N(j)*by;
-                    if (has_bz           ) pF[Con[j]].first[Con[j]->FMap("fz")] += coef*GE->N(j)*bz;
+                    Con[j]->AddToPF("fx", coef*GE->N(j)*bx, MFun);
+                    Con[j]->AddToPF("fy", coef*GE->N(j)*by, MFun);  if (NDim==3)
+                    Con[j]->AddToPF("fz", coef*GE->N(j)*bz, MFun);
                 }
             }
-
-            // set CalcM
-            for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
         }
 
         // surface loading
@@ -249,8 +249,6 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
                             a(0)*b(1) - a(1)*b(0);
                     }
 
-                    //std::cout << "n = " << PrintVector(n);
-
                     // loading
                     if (NDim==2)
                     {
@@ -265,27 +263,15 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
                     }
                 }
 
-                // add to dF
+                // set boundary conditions
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]].first[Con[k]->FMap("fx")] += coef*GE->FN(j)*qx;
-                    pF[Con[k]].first[Con[k]->FMap("fy")] += coef*GE->FN(j)*qy;  if (NDim==3)
-                    pF[Con[k]].first[Con[k]->FMap("fz")] += coef*GE->FN(j)*qz;
+                    Con[k]->AddToPF("fx", coef*GE->FN(j)*qx, MFun);
+                    Con[k]->AddToPF("fy", coef*GE->FN(j)*qy, MFun);  if (NDim==3)
+                    Con[k]->AddToPF("fz", coef*GE->FN(j)*qz, MFun);
                 }
             }
-
-            // set CalcM
-            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
-
-            /*
-            for (size_t j=0; j<GE->NFN; ++j)
-            {
-                size_t k = GE->FNode(IdxEdgeOrFace,j);
-                std::cout << pF[Con[GE->FNode(IdxEdgeOrFace,j)]].first[Con[k]->FMap("fx")] << "  ";
-                std::cout << pF[Con[GE->FNode(IdxEdgeOrFace,j)]].first[Con[k]->FMap("fy")] << std::endl;
-            }
-            */
         }
     }
 
@@ -298,9 +284,9 @@ inline void USigElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            if (has_ux) pU[Con[k]].first[Con[k]->UMap("ux")] = ux;
-            if (has_uy) pU[Con[k]].first[Con[k]->UMap("uy")] = uy;
-            if (has_uz) pU[Con[k]].first[Con[k]->UMap("uz")] = uz;
+            if (has_ux) Con[k]->SetPU("ux", ux, MFun);
+            if (has_uy) Con[k]->SetPU("uy", uy, MFun);
+            if (has_uz) Con[k]->SetPU("uz", uz, MFun);
         }
     }
 }
@@ -312,14 +298,12 @@ inline void USigElem::GetLoc (Array<size_t> & Loc) const
     for (size_t i=0; i<NDs; ++i) Loc[i] = FirstEQ + i;
 
     // U DOFs
-    //for (size_t i=0; i<GE->NN; ++i)
-    //{
-        //for (size_t j=0; j<UKeys.Size(); ++j)
-        //{
-            //size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
-            //Loc[NDs + i*NDim+j] = Con[i]->EQ[idx];
-        //}
-    //}
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        Loc[NDs+i*NDim+0] = Con[i]->Eq("ux");
+        Loc[NDs+i*NDim+1] = Con[i]->Eq("uy");  if (NDim==3)
+        Loc[NDs+i*NDim+2] = Con[i]->Eq("uz");
+    }
 }
 
 inline void USigElem::Matrices (Mat_t & A, Mat_t & Q) const
@@ -355,11 +339,6 @@ inline void USigElem::Matrices (Mat_t & A, Mat_t & Q) const
             A += (-coef) * trans(B)*D*B;
         }
     }
-
-    //cout << "A    = \n" << PrintMatrix(A, "%14.3e");
-    //cout << "detA = "   << Det(A) << endl;
-    //cout << "Q    = \n" << PrintMatrix(Q, "%14.3e");
-    //cout << "detQ = "   << Det(Q) << endl;
 }
 
 inline void USigElem::CalcK (Mat_t & K) const
@@ -391,17 +370,6 @@ inline void USigElem::CalcK (Mat_t & K) const
             }
             for (size_t j=0; j<NDu; ++j) K(i,NDs+j) = A(i,j);
         }
-        /*
-        for (size_t i=0; i<NDu; ++i)
-        {
-            for (size_t j=0; j<NDu; ++j) K(NDs+i,NDs+j) = A(i,j);
-            for (size_t j=0; j<NDs; ++j)
-            {
-                K(j,NDs+i) = Q(j,i);
-                K(NDs+i,j) = Q(j,i);
-            }
-        }
-        */
     }
 }
 
@@ -493,12 +461,12 @@ inline void USigElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
 
     // displacement increment
     Vec_t dUe(NDu);
-    //for (size_t i=0; i<GE->NN; ++i)
-    //for (int    j=0; j<NDim;   ++j)
-    //{
-        //size_t idx = Con[i]->UMap(UKeys[j]);
-        //dUe(i*NDim+j) = dU(Con[i]->EQ[idx]);
-    //}
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        dUe(i*NDim+0) = dU(Con[i]->Eq("ux"));
+        dUe(i*NDim+1) = dU(Con[i]->Eq("uy"));  if (NDim==3)
+        dUe(i*NDim+2) = dU(Con[i]->Eq("uz"));
+    }
 
     // update F_int
     if (F_int!=NULL)
@@ -547,10 +515,10 @@ inline void USigElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         // add to F_int
         for (size_t i=0; i<NDs; ++i) (*F_int)(FirstEQ+i) += dF1(i);
         for (size_t i=0; i<GE->NN; ++i)
-        for (int    j=0; j<NDim;   ++j)
         {
-            //size_t idx = Con[i]->UMap(UKeys[j]);
-            //(*F_int)(Con[i]->EQ[idx]) += dF2(i*NDim+j);
+            (*F_int)(Con[i]->Eq("ux")) += dF2(i*NDim+0);
+            (*F_int)(Con[i]->Eq("uy")) += dF2(i*NDim+1);  if (NDim==3)
+            (*F_int)(Con[i]->Eq("uz")) += dF2(i*NDim+2);
         }
     }
 }

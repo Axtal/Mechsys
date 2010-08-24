@@ -48,19 +48,17 @@ public:
           Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
-    void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs,
-                       NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM);         ///< IdxEdgeOrFace is ignored
-    void GetLoc       (Array<size_t> & Loc)                          const; ///< Get location vector for mounting K/M matrices
-    void CalcK        (Mat_t & K)                                    const; ///< Stiffness matrix
-    void CalcM        (Mat_t & M)                                    const; ///< Mass matrix
-    void CalcT        (Mat_t & T, double & l, Vec3_t * normal=NULL)  const; ///< Transformation matrix
-    void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)         const;
-    void StateKeys    (Array<String> & Keys)                         const; ///< Get state keys
-    void StateAtCt    (SDPair & KeysVals)                            const; ///< State at centroid
-    void StateAtNodes (Array<SDPair> & Results)                      const; ///< State at nodes
-    void Centroid     (Vec_t & X)                                    const; ///< Centroid of element
-    void CalcRes      (double r, double & N, double & V, double & M) const; ///< Resultants: Axial force N, Shear force V, Bending moment M
-    void Draw         (std::ostream & os, double SF)                 const;
+    void SetBCs       (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< IdxEdgeOrFace is ignored
+    void ClrBCs       ();                                                        ///< Clear boundary conditions
+    void GetLoc       (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
+    void CalcK        (Mat_t & K)                                         const; ///< Stiffness matrix
+    void CalcM        (Mat_t & M)                                         const; ///< Mass matrix
+    void CalcT        (Mat_t & T, double & l, Vec3_t * normal=NULL)       const; ///< Transformation matrix
+    void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)              const;
+    void StateKeys    (Array<String> & Keys)                              const; ///< Get state keys
+    void StateAtNodes (Array<SDPair> & Results)                           const; ///< State at nodes
+    void CalcRes      (double r, double & N, double & V, double & M)      const; ///< Resultants: Axial force N, Shear force V, Bending moment M
+    void Draw         (std::ostream & os, double SF)                      const;
 
     // Constants
     double E;     ///< Young modulus
@@ -94,7 +92,7 @@ inline Beam::Beam (int NDim, Mesh::Cell const & Cell, Model const * Mdl, SDPair 
     rho = (Prp.HasKey("rho") ? Prp("rho") : 1.0);
 }
 
-inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
+inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
 {
     if (NDim==3) throw new Fatal("Beam::SetBCs: Method not available for 3D yet");
 
@@ -185,14 +183,18 @@ inline void Beam::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & p
         // add to nodes
         for (size_t j=0; j<2; ++j)
         {
-            pF[Con[j]].first[Con[j]->FMap("fx")] += F(0+j*3);
-            pF[Con[j]].first[Con[j]->FMap("fy")] += F(1+j*3);
-            pF[Con[j]].first[Con[j]->FMap("mz")] += F(2+j*3);
+            Con[j]->AddToPF("fx", F(0+j*3), MFun);
+            Con[j]->AddToPF("fy", F(1+j*3), MFun);
+            Con[j]->AddToPF("mz", F(2+j*3), MFun);
         }
-
-        // set CalcM
-        for (size_t j=0; j<2; ++j) pF[Con[j]].second = CalcM;
     }
+}
+
+inline void Beam::ClrBCs ()
+{
+    qnl   = 0.0;
+    qnr   = 0.0;
+    HasQn = false;
 }
 
 inline void Beam::GetLoc (Array<size_t> & Loc) const
@@ -200,9 +202,9 @@ inline void Beam::GetLoc (Array<size_t> & Loc) const
     Loc.Resize (6);
     for (size_t i=0; i<2; ++i)
     {
-        Loc[i*3+0] = Con[i]->EQ[Con[i]->UMap("ux")];
-        Loc[i*3+1] = Con[i]->EQ[Con[i]->UMap("uy")];
-        Loc[i*3+2] = Con[i]->EQ[Con[i]->UMap("wz")];
+        Loc[i*3+0] = Con[i]->Eq("ux");
+        Loc[i*3+1] = Con[i]->Eq("uy");
+        Loc[i*3+2] = Con[i]->Eq("wz");
     }
 }
 
@@ -314,28 +316,14 @@ inline void Beam::StateKeys (Array<String> & Keys) const
     Keys = "N", "V", "M";
 }
 
-inline void Beam::StateAtCt (SDPair & KeysVals) const
-{
-    double N, V, M;
-    CalcRes (/*rct*/0.5, N, V, M);
-    KeysVals.Set ("N V M",N,V,M);
-}
-
 inline void Beam::StateAtNodes (Array<SDPair> & Results) const
 {
-    SDPair res;
-    StateAtCt (res);
     Results.Resize (2);
-    Results[0] = res;
-    Results[1] = res;
-}
-
-inline void Beam::Centroid (Vec_t & X) const
-{
-    X.change_dim (NDim);
-    X(0) = (Con[0]->Vert.C[0] + Con[1]->Vert.C[0])/2.0;
-    X(1) = (Con[0]->Vert.C[1] + Con[1]->Vert.C[1])/2.0;  if (NDim==3)
-    X(2) = (Con[0]->Vert.C[2] + Con[1]->Vert.C[2])/2.0;
+    double N, V, M;
+    CalcRes (0.0, N, V, M);
+    Results[0].Set ("N V M",N,V,M);
+    CalcRes (1.0, N, V, M);
+    Results[1].Set ("N V M",N,V,M);
 }
 
 inline void Beam::CalcRes (double r, double & N, double & V, double & M) const
@@ -352,9 +340,9 @@ inline void Beam::CalcRes (double r, double & N, double & V, double & M) const
         Vec_t U(6);
         for (size_t j=0; j<2; ++j)
         {
-            U(0+j*3) = Con[j]->U[Con[j]->UMap("ux")];
-            U(1+j*3) = Con[j]->U[Con[j]->UMap("uy")];
-            U(2+j*3) = Con[j]->U[Con[j]->UMap("wz")];
+            U(0+j*3) = Con[j]->U("ux");
+            U(1+j*3) = Con[j]->U("uy");
+            U(2+j*3) = Con[j]->U("wz");
         }
 
         // displacements in local coordinates

@@ -43,9 +43,7 @@ public:
     void CalcT        (Mat_t & T, double & l)                const; ///< Transformation matrix
     void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const;
     void StateKeys    (Array<String> & Keys)                 const; ///< Get state keys
-    void StateAtCt    (SDPair & KeysVals)                    const; ///< State at centroid
     void StateAtNodes (Array<SDPair> & Results)              const; ///< State at nodes
-    void Centroid     (Vec_t & X)                            const; ///< Centroid of element
     void Draw         (std::ostream & os, double SF)         const;
 
     // Constants
@@ -73,9 +71,9 @@ inline void Rod::GetLoc (Array<size_t> & Loc) const
     Loc.Resize (2*NDim);
     for (size_t i=0; i<2; ++i)
     {
-        Loc[i*NDim+0] = Con[i]->EQ[Con[i]->UMap("ux")];
-        Loc[i*NDim+1] = Con[i]->EQ[Con[i]->UMap("uy")];  if (NDim==3)
-        Loc[i*NDim+2] = Con[i]->EQ[Con[i]->UMap("uz")];
+        Loc[i*NDim+0] = Con[i]->Eq("ux");
+        Loc[i*NDim+1] = Con[i]->Eq("uy");  if (NDim==3)
+        Loc[i*NDim+2] = Con[i]->Eq("uz");
     }
 }
 
@@ -167,7 +165,7 @@ inline void Rod::StateKeys (Array<String> & Keys) const
     Keys[0] = "N";
 }
 
-inline void Rod::StateAtCt (SDPair & KeysVals) const
+inline void Rod::StateAtNodes (Array<SDPair> & Results) const
 {
     // rod length and T matrix
     double l;
@@ -178,9 +176,9 @@ inline void Rod::StateAtCt (SDPair & KeysVals) const
     Vec_t U(2*NDim);
     for (size_t j=0; j<2; ++j)
     {
-        U(0+j*NDim) = Con[j]->U[Con[j]->UMap("ux")];
-        U(1+j*NDim) = Con[j]->U[Con[j]->UMap("uy")];  if (NDim==3)
-        U(2+j*NDim) = Con[j]->U[Con[j]->UMap("uz")];
+        U(0+j*NDim) = Con[j]->U("ux");
+        U(1+j*NDim) = Con[j]->U("uy");  if (NDim==3)
+        U(2+j*NDim) = Con[j]->U("uz");
     }
 
     // displacements in local coordinates
@@ -188,24 +186,9 @@ inline void Rod::StateAtCt (SDPair & KeysVals) const
 
     // axial force
     double N = E*A*(Ul(1)-Ul(0))/l;
-    KeysVals.Set ("N", N);
-}
-
-inline void Rod::StateAtNodes (Array<SDPair> & Results) const
-{
-    SDPair res;
-    StateAtCt (res);
     Results.Resize (2);
-    Results[0] = res;
-    Results[1] = res;
-}
-
-inline void Rod::Centroid (Vec_t & X) const
-{
-    X.change_dim (NDim);
-    X(0) = (Con[0]->Vert.C[0] + Con[1]->Vert.C[0])/2.0;
-    X(1) = (Con[0]->Vert.C[1] + Con[1]->Vert.C[1])/2.0;  if (NDim==3)
-    X(2) = (Con[0]->Vert.C[2] + Con[1]->Vert.C[2])/2.0;
+    Results[0].Set ("N", N);
+    Results[1].Set ("N", N);
 }
 
 inline void Rod::Draw (std::ostream & os, double SF) const

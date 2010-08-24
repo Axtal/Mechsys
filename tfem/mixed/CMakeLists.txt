@@ -19,7 +19,7 @@
 SET(TESTS
     mix01
     mix02
-    test-usigelem2)
+    mix03)
 
 FOREACH(var ${TESTS})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

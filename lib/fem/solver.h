@@ -69,6 +69,7 @@ public:
     void AssembleKMA    (double Coef1, double Coef2);                                    ///< A = Coef1*M + Coef2*K
     void AssembleKCMA   (double Coef1, double Coef2, double Coef3);                      ///< A = Coef1*M + Coef2*C + Coef3*K
     void TgIncs         (double dT, Vec_t & dU, Vec_t & dF);                             ///< Tangent increments: dU = inv(K)*dF
+    void UpdateNodes    ();                                                              ///< Copy U and F values into Nodes' U and F structures
     void UpdateElements (Vec_t const & dU, bool CalcFint);                               ///< Update elements
     void Initialize     (bool Transient=false);                                          ///< Initialize global matrices and vectors
     void SetScheme      (char const * StrScheme);                                        ///< Set solution scheme: 'FE', 'ME', 'NR'
@@ -153,40 +154,40 @@ private:
 
 
 inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDat, pOutFun TheDbgFun, void * TheDbgDat)
-    : Dom     (TheDom),
-      OutFun  (TheOutFun),
-      OutDat  (TheOutDat),
-      DbgFun  (TheDbgFun),
-      DbgDat  (TheDbgDat),
-      Time    (0.0),
-      Inc     (0),
-      IdxOut  (0),
-      Stp     (0),
-      It      (0),
-      Scheme  (ME_t),
-      CalcWork(false),
-      nSS     (1),
-      STOL    (1.0e-5),
-      dTini   (1.0),
-      dTlast  (-1.0),
-      mMin    (0.1),
-      mMax    (10.0),
-      MaxSS   (2000),
-      SSOut   (false),
-      CteTg   (false),
-      ModNR   (false),
-      TolR    (1.0e-7),
-      CorR    (true),
-      MaxIt   (20),
-      TScheme (SS11_t),
-      Theta   (2./3.),
-      DScheme (GN22_t),
-      DampTy  (None_t),
-      DampAm  (0.005),
-      DampAk  (0.5),
-      DynTh1  (0.5),
-      DynTh2  (0.5),
-      WithInfo(true)
+    : Dom      (TheDom),
+      OutFun   (TheOutFun),
+      OutDat   (TheOutDat),
+      DbgFun   (TheDbgFun),
+      DbgDat   (TheDbgDat),
+      Time     (0.0),
+      Inc      (0),
+      IdxOut   (0),
+      Stp      (0),
+      It       (0),
+      Scheme   (ME_t),
+      CalcWork (false),
+      nSS      (1),
+      STOL     (1.0e-5),
+      dTini    (1.0),
+      dTlast   (-1.0),
+      mMin     (0.1),
+      mMax     (10.0),
+      MaxSS    (2000),
+      SSOut    (false),
+      CteTg    (false),
+      ModNR    (false),
+      TolR     (1.0e-7),
+      CorR     (true),
+      MaxIt    (20),
+      TScheme  (SS11_t),
+      Theta    (2./3.),
+      DScheme  (GN22_t),
+      DampTy   (None_t),
+      DampAm   (0.005),
+      DampAk   (0.5),
+      DynTh1   (0.5),
+      DynTh2   (0.5),
+      WithInfo (true)
 {
 #if HAS_MPI
     if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;
@@ -210,7 +211,7 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
     }
     if (IdxOut==0)
     {
-        Dom.OutResults (Time, F_int);
+        Dom.OutResults (IdxOut, Time, FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
@@ -235,30 +236,14 @@ inline void Solver::Solve (size_t NInc, char const * FileKey)
         else if (Scheme==NR_t) _NR_update (tout);
 
         // update nodes to tout
-        for (size_t i=0; i<Dom.ActNods.Size(); ++i)
-        {
-            for (size_t j=0; j<Dom.ActNods[i]->nDOF(); ++j)
-            {
-                long eq = Dom.ActNods[i]->EQ[j];
-                Dom.ActNods[i]->U[j] = U(eq);
-                Dom.ActNods[i]->F[j] = F(eq);
-            }
-        }
+        UpdateNodes ();
 
         // output
         IdxOut++;
         if (WithInfo) _time_print ();
-        if (Scheme!=ME_t) Dom.OutResults (Time, F_int);
-        else if (!SSOut)  Dom.OutResults (Time, F_int);
+        if (Scheme!=ME_t) Dom.OutResults (IdxOut, Time, FileKey);
+        else if (!SSOut)  Dom.OutResults (IdxOut, Time, FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
-
-        // write VTU
-        if (FileKey!=NULL)
-        {
-            String fkey;
-            fkey.Printf  ("%s_%08d", FileKey, IdxOut);
-            Dom.WriteVTU (fkey.CStr());
-        }
 
         // next tout
         tout = Time + dt;
@@ -284,7 +269,7 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
     }
     if (IdxOut==0)
     {
-        Dom.OutResults (Time, F_int);
+        Dom.OutResults (IdxOut, Time, FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
         if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
     }
@@ -297,29 +282,13 @@ inline void Solver::DynSolve (double tf, double dt, double dtOut, char const * F
         if (DScheme==GN22_t) _GN22_update (tout,dt);
 
         // update nodes to tout
-        for (size_t i=0; i<Dom.ActNods.Size(); ++i)
-        {
-            for (size_t j=0; j<Dom.ActNods[i]->nDOF(); ++j)
-            {
-                long eq = Dom.ActNods[i]->EQ[j];
-                Dom.ActNods[i]->U[j] = U(eq);
-                Dom.ActNods[i]->F[j] = F(eq);
-            }
-        }
+        UpdateNodes ();
 
         // output
         IdxOut++;
         if (WithInfo) _time_print ();
-        Dom.OutResults (Time, F_int);
+        Dom.OutResults (IdxOut, Time, FileKey);
         if (OutFun!=NULL) (*OutFun) ((*this), OutDat);
-
-        // write VTU
-        if (FileKey!=NULL)
-        {
-            String fkey;
-            fkey.Printf  ("%s_%08d", FileKey, IdxOut);
-            Dom.WriteVTU (fkey.CStr());
-        }
 
         // next tout
         tout = Time + dtOut;
@@ -446,37 +415,37 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
     // set prescribed dF
     set_to_zero (dF);
     set_to_zero (W);
-    for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
+    for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
     {
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        Node * const nod = Dom.NodsWithPF[i];
+        for (size_t j=0; j<nod->NPF(); ++j)
         {
-            size_t idof = q->first;
-            long   eq   = p->first->EQ[idof];
+            int eq = nod->EqPF(j);
             if (!pU[eq]) // set dF for unknown variables only
             {
-                dF(eq) = dT*q->second;
-                W (eq) = dT*q->second; // set W1 equal to dF1
+                dF(eq) = dT*nod->PF(j, /*time*/0);
+                W (eq) = dF(eq); // set W1 equal to dF1
             }
         }
     }
 
     // set prescribed dU
     set_to_zero (dU);
-    for (NodBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
+    for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
     {
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        Node * const nod = Dom.NodsWithPU[i];
+        for (size_t j=0; j<nod->NPU(); ++j)
         {
-            size_t idof = q->first;
-            long   eq   = p->first->EQ[idof];
+            int eq = nod->EqPU(j);
             if (FEM::Domain::PARA)
             {
 #ifdef HAS_MPI
-                if (p->first->Vert.PartIDs.TheMin()==MPI::COMM_WORLD.Get_rank())
-                    W(eq) = dT*q->second; // set W2 equal to dU2
+                if (nod->Vert.PartIDs.TheMin()==MPI::COMM_WORLD.Get_rank())
+                    W(eq) = dT*nod->PU(j, /*time*/0); // set W2 equal to dU2
 #endif
             }
-            else W(eq) = dT*q->second; // set W2 equal to dU2
-            dU(eq) = dT*q->second;
+            else W(eq) = dT*nod->PU(j, /*time*/0);
+            dU(eq) = W(eq);
         }
     }
 
@@ -499,6 +468,11 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
         dF = TmpVec;
     }
 #endif
+}
+
+inline void Solver::UpdateNodes ()
+{
+    for (size_t i=0; i<Dom.ActNods.Size(); ++i) Dom.ActNods[i]->SetUF (U,F);
 }
 
 inline void Solver::UpdateElements (Vec_t const & dU, bool CalcFint)
@@ -540,22 +514,16 @@ inline void Solver::Initialize (bool Transient)
 
         // compute equation numbers corresponding to local DOFs of elements
         NEq = 0;
-        for (size_t i=0; i<Dom.Eles.Size(); ++i)
-        {
-            if (Dom.Eles[i]->Active) Dom.Eles[i]->IncNLocDOF (NEq);
-        }
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->IncNLocDOF (NEq);
 
         // compute equation numbers
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        for (size_t i=0; i<Dom.ActNods.Size(); ++i)
         {
-            if (Dom.Nods[i]->NShares>0)
+            for (size_t j=0; j<Dom.ActNods[i]->nDOF(); ++j)
             {
-                for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
-                {
-                    // only the domain with smallest ID will set EQ number
-                    int min_part_id = Dom.Nods[i]->Vert.PartIDs.TheMin();
-                    if (min_part_id==my_id) NEq++;
-                }
+                // only the domain with smallest ID will set EQ number
+                int min_part_id = Dom.ActNods[i]->Vert.PartIDs.TheMin();
+                if (min_part_id==my_id) NEq++;
             }
         }
 
@@ -574,25 +542,18 @@ inline void Solver::Initialize (bool Transient)
         }
 
         // assign equation numbers corresponding to local DOFs of elements
-        for (size_t i=0; i<Dom.Eles.Size(); ++i)
-        {
-            if (Dom.Eles[i]->Active) Dom.Eles[i]->IncNLocDOF (NEq);
-        }
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->IncNLocDOF (NEq);
 
         // assign equation numbers
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        for (size_t i=0; i<Dom.ActNods.Size(); ++i)
         {
-            if (Dom.Nods[i]->NShares>0)
+            for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
             {
-                for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
+                int min_part_id = Dom.ActNods[i]->Vert.PartIDs.TheMin();
+                if (min_part_id==my_id) // only the domain with smallest ID will set EQ number
                 {
-                    int min_part_id = Dom.Nods[i]->Vert.PartIDs.TheMin();
-                    if (min_part_id==my_id) // only the domain with smallest ID will set EQ number
-                    {
-                        Dom.Nods[i]->EQ[j] = NEq;
-                        NEq++;
-                    }
-                    else Dom.Nods[i]->EQ[j] = -1;
+                    Dom.ActNods[i]->Eq(j) = NEq;
+                    NEq++;
                 }
             }
         }
@@ -608,8 +569,8 @@ inline void Solver::Initialize (bool Transient)
                 bool do_send_to_proc_i = (Dom.InterNodes[j]->Vert.PartIDs.Find(i)>=0); // found processor on the interface and has higher id than me
                 if (my_id==min_part_id && do_send_to_proc_i)
                 {
-                    for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
-                        inter_eq.Push (Dom.InterNodes[j]->EQ[k]);
+                    for (size_t k=0; k<Dom.InterNodes[j]->NDOF(); ++k)
+                        inter_eq.Push (Dom.InterNodes[j]->Eq(k));
                 }
             }
             MPI::Request req_send = MPI::COMM_WORLD.Isend (inter_eq.GetPtr(), inter_eq.Size(), MPI::INT, i, TAG_SENT_EQ);
@@ -635,18 +596,17 @@ inline void Solver::Initialize (bool Transient)
                 int min_part_id = Dom.InterNodes[j]->Vert.PartIDs.TheMin(); // the smallest proc is the one supposed to send always
                 if (source==min_part_id)
                 {
-                    for (size_t k=0; k<Dom.InterNodes[j]->nDOF(); ++k)
+                    for (size_t k=0; k<Dom.InterNodes[j]->NDOF(); ++k)
                     {
 #ifdef PARALLEL_DEBUG
                         if (assigned_equations.Find(inter_eq[m])>=0) throw new Fatal("problem during assignment: Node # %d, iDOF=%zd, eq=%d. Proc # %d got message from proc # %d",Dom.InterNodes[j]->Vert.ID,k,inter_eq[m],my_id,source);
                         assigned_equations.Push(inter_eq[m]);
 #endif
-                        Dom.InterNodes[j]->EQ[k] = inter_eq[m];
+                        Dom.InterNodes[j]->Eq(k) = inter_eq[m];
                         m++;
                     }
                 }
             }
-
         }
 
         // set NEq in all procs  
@@ -664,42 +624,35 @@ inline void Solver::Initialize (bool Transient)
     {
         // assign equation numbers corresponding to local DOFs of elements
         NEq = 0;
-        for (size_t i=0; i<Dom.Eles.Size(); ++i)
-        {
-            if (Dom.Eles[i]->Active) Dom.Eles[i]->IncNLocDOF (NEq);
-        }
+        for (size_t i=0; i<Dom.ActEles.Size(); ++i) Dom.ActEles[i]->IncNLocDOF (NEq);
 
         // assign equation numbers
-        for (size_t i=0; i<Dom.Nods.Size(); ++i)
+        for (size_t i=0; i<Dom.ActNods.Size(); ++i)
         {
-            if (Dom.Nods[i]->NShares>0)
+            for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
             {
-                for (size_t j=0; j<Dom.Nods[i]->nDOF(); ++j)
-                {
-                    Dom.Nods[i]->EQ[j] = NEq;
-                    NEq++;
-                }
+                Dom.ActNods[i]->Eq(j) = NEq;
+                NEq++;
             }
         }
     }
 
     // prescribed equations and prescribed U
-    pEQ.Resize    (0);
-    pU .Resize    (NEq);
-    pU .SetValues (false);
-    pEQproc.Resize(0);
-    for (NodBCs_t::const_iterator p=Dom.pU.begin(); p!=Dom.pU.end(); ++p)
+    pEQ    .Resize    (0);
+    pU     .Resize    (NEq);
+    pU     .SetValues (false);
+    pEQproc.Resize    (0);
+    for (size_t i=0; i<Dom.NodsWithPU.Size(); ++i)
     {
-        for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+        Node const * nod = Dom.NodsWithPU[i];
+        for (size_t j=0; j<nod->NPU(); ++j)
         {
-            size_t idof = q->first;
-            long   eq   = p->first->EQ[idof];
+            int eq = nod->EqPU(j);
             pU[eq] = true;
             pEQ.Push (eq);
 #ifdef HAS_MPI
-            if (FEM::Domain::PARA) pEQproc.Push (p->first->Vert.PartIDs.TheMin());
+            if (FEM::Domain::PARA) pEQproc.Push (nod->Vert.PartIDs.TheMin());
 #endif
-
         }
     }
 
@@ -717,20 +670,17 @@ inline void Solver::Initialize (bool Transient)
     size_t K12_size = 0;
     size_t K21_size = 0;
     size_t K22_size = 0;
-    for (size_t k=0; k<Dom.Eles.Size(); ++k)
+    for (size_t k=0; k<Dom.ActEles.Size(); ++k)
     {
-        if (Dom.Eles[k]->Active)
+        Array<size_t> loc; // location array
+        Dom.ActEles[k]->GetLoc (loc);
+        for (size_t i=0; i<loc.Size(); ++i)
+        for (size_t j=0; j<loc.Size(); ++j)
         {
-            Array<size_t> loc; // location array
-            Dom.Eles[k]->GetLoc (loc);
-            for (size_t i=0; i<loc.Size(); ++i)
-            for (size_t j=0; j<loc.Size(); ++j)
-            {
-                     if (!pU[loc[i]] && !pU[loc[j]]) K11_size++;
-                else if (!pU[loc[i]] &&  pU[loc[j]]) K12_size++;
-                else if ( pU[loc[i]] && !pU[loc[j]]) K21_size++;
-                else if ( pU[loc[i]] &&  pU[loc[j]]) K22_size++;
-            }
+                 if (!pU[loc[i]] && !pU[loc[j]]) K11_size++;
+            else if (!pU[loc[i]] &&  pU[loc[j]]) K12_size++;
+            else if ( pU[loc[i]] && !pU[loc[j]]) K21_size++;
+            else if ( pU[loc[i]] &&  pU[loc[j]]) K22_size++;
         }
     }
 
@@ -773,16 +723,8 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // set variables
-    for (size_t i=0; i<Dom.ActNods.Size(); ++i)
-    {
-        for (size_t j=0; j<Dom.ActNods[i]->nDOF(); ++j)
-        {
-            long  eq  = Dom.ActNods[i]->EQ[j];
-            U    (eq) = Dom.ActNods[i]->U [j];
-            F    (eq) = Dom.ActNods[i]->F [j];
-            F_int(eq) = Dom.ActNods[i]->F [j];
-        }
-    }
+    for (size_t i=0; i<Dom.ActNods.Size(); ++i) Dom.ActNods[i]->GetUF (U,F);
+    F_int = F;
 
     // calc residual
     _cal_resid ();
@@ -884,8 +826,8 @@ inline void Solver::_aug_and_set_A ()
             Node const & nod = (*p->first);
             double s = sin(p->second); // sin(alpha)
             double c = cos(p->second); // cos(alpha)
-            long eq0 = nod.EQ[nod.UMap(Dom.DisplKeys[0])]; // ~ ux
-            long eq1 = nod.EQ[nod.UMap(Dom.DisplKeys[1])]; // ~ uy
+            long eq0 = nod.Eq(Dom.DisplKeys[0]); // ~ ux
+            long eq1 = nod.Eq(Dom.DisplKeys[1]); // ~ uy
             A11.PushEntry (eqlag, eq0,  s);
             A11.PushEntry (eqlag, eq1, -c);
             A11.PushEntry (eq0, eqlag,  s);
@@ -941,8 +883,8 @@ inline void Solver::_cal_resid (bool WithAccel)
             Node const & nod = (*p->first);
             //double s = sin(p->second); // sin(alpha)
             //double c = cos(p->second); // cos(alpha)
-            long eq0 = nod.EQ[nod.UMap(Dom.DisplKeys[0])]; // ~ ux
-            long eq1 = nod.EQ[nod.UMap(Dom.DisplKeys[1])]; // ~ uy
+            long eq0 = nod.Eq(Dom.DisplKeys[0]); // ~ ux
+            long eq1 = nod.Eq(Dom.DisplKeys[1]); // ~ uy
             //F(eq0) += -U(eqlag)*s;
             //F(eq1) +=  U(eqlag)*c;
             R(eq0) = 0.0;
@@ -1145,21 +1087,9 @@ inline void Solver::_ME_update (double tf)
             F     = F_me;
             Time += dt;
             if (m>mMax) m = mMax;
-            if (SSOut || (DbgFun!=NULL))
-            {
-                // update nodes
-                for (size_t i=0; i<Dom.ActNods.Size(); ++i)
-                {
-                    for (size_t j=0; j<Dom.ActNods[i]->nDOF(); ++j)
-                    {
-                        long eq = Dom.ActNods[i]->EQ[j];
-                        Dom.ActNods[i]->U[j] = U(eq);
-                        Dom.ActNods[i]->F[j] = F(eq);
-                    }
-                }
-            }
+            if (SSOut || (DbgFun!=NULL)) UpdateNodes ();
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);
-            if (SSOut) Dom.OutResults (Time, F_int);
+            if (SSOut) Dom.OutResults (IdxOut, Time, NULL);
         }
         else if (m<mMin) m = mMin;
 
@@ -1220,17 +1150,15 @@ inline void Solver::_GN22_update (double tf, double dt)
         V  = Vs + (DynTh1*dt)*A;
 
         // new F
-        for (NodBCs_t::const_iterator p=Dom.pF.begin(); p!=Dom.pF.end(); ++p)
+        for (size_t i=0; i<Dom.NodsWithPF.Size(); ++i)
         {
-            for (IntDbl_t::const_iterator q=p->second.first.begin(); q!=p->second.first.end(); ++q)
+            Node * const nod = Dom.NodsWithPF[i];
+            for (size_t j=0; j<nod->NPF(); ++j)
             {
-                size_t idof = q->first;
-                long   eq   = p->first->EQ[idof];
+                int eq = nod->EqPF(j);
                 if (!pU[eq]) // set dF for unknown variables only
                 {
-                    double dFdt = (*p->second.second)(Time+DynTh1*dt);
-                    F(eq) += dFdt*dt;
-                    //F(eq) = (*p->second.second)(Time+DynTh1*dt);
+                    F(eq) = nod->PF(j, Time+DynTh1*dt);
                 }
             }
         }

@@ -43,15 +43,14 @@ public:
               Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
-    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs,
-                      NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM);     ///< If setting body forces, IdxEdgeOrFace is ignored
-    void ClrBCs      ();                                               ///< Clear BCs
-    void GetLoc      (Array<size_t> & Loc)                      const; ///< Get location vector for mounting K/M matrices
-    void CalcK       (Mat_t & K)                                const; ///< Stiffness matrix
-    void CalcM       (Mat_t & M)                                const; ///< Mass matrix
-	void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)     const; ///< Update state at IPs
-    void StateKeys   (Array<String> & Keys)                     const; ///< Get state keys, ex: vx, vy, gx, gy
-    void StateAtIP   (SDPair & KeysVals, int IdxIP)             const; ///< State at IP
+    void SetBCs      (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun); ///< If setting body forces, IdxEdgeOrFace is ignored
+    void ClrBCs      ();                                                        ///< Clear BCs
+    void GetLoc      (Array<size_t> & Loc)                               const; ///< Get location vector for mounting K/M matrices
+    void CalcK       (Mat_t & K)                                         const; ///< Stiffness matrix
+    void CalcM       (Mat_t & M)                                         const; ///< Mass matrix
+	void UpdateState (Vec_t const & dU, Vec_t * F_int=NULL)              const; ///< Update state at IPs
+    void StateKeys   (Array<String> & Keys)                              const; ///< Get state keys, ex: vx, vy, gx, gy
+    void StateAtIP   (SDPair & KeysVals, int IdxIP)                      const; ///< State at IP
 
     // Internal methods
     void CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, double & detJ, double & Coef) const; ///< Strain-displacement matrix. Coef: coefficient used during integration
@@ -89,7 +88,7 @@ inline FlowElem::FlowElem (int NDim, Mesh::Cell const & Cell, Model const * Mdl,
     }
 }
 
-inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t & pF, NodBCs_t & pU, pCalcM CalcM)
+inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCMult MFun)
 {
     bool has_s    = BCs.HasKey("s");    // source term
     bool has_H    = BCs.HasKey("H");    // potential
@@ -110,10 +109,9 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
                 CalcShape (C, GE->IPs[i], detJ, coef);
                 for (size_t j=0; j<GE->NN; ++j)
                 {
-                    pF[Con[j]].first[Con[j]->FMap("Q")] += s*coef*GE->N(j);
+                    Con[j]->AddToPF("Q", s*coef*GE->N(j), MFun);
                 }
             }
-            for (size_t j=0; j<GE->NN; ++j) pF[Con[j]].second = CalcM;
         }
 
         // flux
@@ -129,10 +127,9 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]].first[Con[k]->FMap("Q")] += coef*GE->FN(j)*qn;
+                    Con[k]->AddToPF("Q", coef*GE->FN(j)*qn, MFun);
                 }
             }
-            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
         }
 
         // convection
@@ -154,10 +151,9 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
                 for (size_t j=0; j<GE->NFN; ++j)
                 {
                     size_t k = GE->FNode(IdxEdgeOrFace,j);
-                    pF[Con[k]].first[Con[k]->FMap("Q")] += coef*GE->FN(j)*h*Tinf;
+                    Con[k]->AddToPF("Q", coef*GE->FN(j)*h*Tinf, MFun);
                 }
             }
-            for (size_t j=0; j<GE->NFN; ++j) pF[Con[GE->FNode(IdxEdgeOrFace,j)]].second = CalcM;
         }
     }
 
@@ -168,7 +164,7 @@ inline void FlowElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, NodBCs_t
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
-            pU[Con[k]].first[Con[k]->UMap("H")] = H;
+            Con[k]->SetPU("H", H, MFun);
         }
     }
 }
@@ -182,7 +178,7 @@ inline void FlowElem::ClrBCs ()
 inline void FlowElem::GetLoc (Array<size_t> & Loc) const
 {
     Loc.Resize (GE->NN);
-    for (size_t i=0; i<GE->NN; ++i) Loc[i] = Con[i]->EQ[Con[i]->UMap("H")];
+    for (size_t i=0; i<GE->NN; ++i) Loc[i] = Con[i]->Eq("H");
 }
 
 inline void FlowElem::CalcK (Mat_t & K) const
@@ -221,16 +217,12 @@ inline void FlowElem::CalcK (Mat_t & K) const
                     {
                         int col = GE->FNode(idx_bry,k);
                         K(row,col) += h*coef * GE->FN(j)*GE->FN(k);
-                        //Kh(row,col) += h*coef * GE->FN(j)*GE->FN(k);
                     }
                 }
             }
-            //std::cout << "Kh = \n" << PrintMatrix(Kh);
         }
         
     }
-    //std::cout << "D = \n" << PrintMatrix(D);
-    //std::cout << "K = \n" << PrintMatrix(K);
 }
 
 inline void FlowElem::CalcM (Mat_t & M) const
@@ -262,9 +254,6 @@ inline void FlowElem::CalcB (Mat_t const & C, IntegPoint const & IP, Mat_t & B, 
     // Jacobian and its determinant
     Mat_t J(GE->dNdR * C); // J = dNdR * C
     detJ = Det(J);
-
-    //std::cout << "J = \n" << PrintMatrix(J);
-    //std::cout << "detJ = " << detJ << "\n";
 
     // deriv of shape func w.r.t real coordinates
     Mat_t Ji;

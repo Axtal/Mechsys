@@ -43,10 +43,9 @@ using Util::_8s;
 struct DbgDat
 {
     size_t node_id;
-    size_t dof_idx;
     std::ofstream of;
     ~DbgDat () { of.close (); }
-     DbgDat () : node_id(0), dof_idx(0)
+     DbgDat () : node_id(0)
     {
          of.open ("labtest_uf.res",std::ios::out);
          of<<_6_3<<"Time"<<_8s<<"u"<< _8s<<"f_int"<<_8s<<"f_ext\n";
@@ -56,7 +55,7 @@ struct DbgDat
 void DbgFun (FEM::Solver const & Sol, void * Dat)
 {
     DbgDat * dat = static_cast<DbgDat*>(Dat);
-    long eq = Sol.Dom.Nods[dat->node_id]->EQ[dat->dof_idx];
+    long eq = Sol.Dom.Nods[dat->node_id]->Eq("fz");
     dat->of << _6_3 << Sol.Time << _8s << Sol.U(eq) << _8s << Sol.F_int(eq) << _8s << Sol.F(eq) << endl;
 }
 
@@ -145,7 +144,6 @@ int main(int argc, char **argv) try
     // debug data
     DbgDat dat;
     dat.node_id = 7;
-    dat.dof_idx = dom.Nods[dat.node_id]->FMap("fz");
  
     // solver
     FEM::Solver sol(dom, &DbgFun, &dat);

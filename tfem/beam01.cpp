@@ -282,16 +282,16 @@ int main(int argc, char **argv) try
                 e4->CalcRes(1.0,N,V,M);  errors += fabs(M - (-14.9567));  printf("M: %g  =>  %g\n",M,-14.9567);
                 tol = 1.0e-1;
 
-                double ux = dom.Nods[4]->U[dom.Nods[4]->UMap("ux")]*1000.0;
-                double uy = dom.Nods[4]->U[dom.Nods[4]->UMap("uy")]*1000.0;
-                double wz = dom.Nods[4]->U[dom.Nods[4]->UMap("wz")];
+                double ux = dom.Nods[4]->U("ux")*1000.0;
+                double uy = dom.Nods[4]->U("uy")*1000.0;
+                double wz = dom.Nods[4]->U("wz");
                 printf("ux, uy, uz: %g => %g,  %g => %g,  %g => %g  [mm, mm,  ]\n", ux,8.193e-3, uy,-9.111e-3, wz,4.834e-5);
                 err_u += fabs(ux-( 8.193e-3));
                 err_u += fabs(uy-(-9.111e-3));
                 err_u += fabs(wz-( 4.834e-2));
-                ux = dom.Nods[3]->U[dom.Nods[3]->UMap("ux")]*1000.0;
-                uy = dom.Nods[3]->U[dom.Nods[3]->UMap("uy")]*1000.0;
-                wz = dom.Nods[3]->U[dom.Nods[3]->UMap("wz")];
+                ux = dom.Nods[3]->U("ux")*1000.0;
+                uy = dom.Nods[3]->U("uy")*1000.0;
+                wz = dom.Nods[3]->U("wz");
                 printf("ux, uy, uz: %g => %g,  %g => %g,  %g => %g  [mm, mm,  ]\n", ux,2.377e-2, uy,-4.432e-2, wz,-6.469e-5);
                 err_u += fabs(ux-( 2.377e-2));
                 err_u += fabs(uy-(-4.432e-2));
@@ -312,16 +312,16 @@ int main(int argc, char **argv) try
                 e4->CalcRes(1.0,N,V,M);  errors += fabs(M - (-18.7555));  printf("M: %g  =>  %g\n",M,-18.7555);
                 tol = 1.0e-3;
 
-                double ux = dom.Nods[4]->U[dom.Nods[4]->UMap("ux")]*1000.0;
-                double uy = dom.Nods[4]->U[dom.Nods[4]->UMap("uy")]*1000.0;
-                double wz = dom.Nods[4]->U[dom.Nods[4]->UMap("wz")];
+                double ux = dom.Nods[4]->U("ux")*1000.0;
+                double uy = dom.Nods[4]->U("uy")*1000.0;
+                double wz = dom.Nods[4]->U("wz");
                 printf("ux, uy, uz: %g => %g,  %g => %g,  %g => %g  [mm, mm,  ]\n", ux,6.476e-3, uy,-6.212e-3, wz,9.394e-5);
                 err_u += fabs(ux-( 6.476e-3));
                 err_u += fabs(uy-(-6.212e-3));
                 err_u += fabs(wz-( 9.394e-5));
-                ux = dom.Nods[3]->U[dom.Nods[3]->UMap("ux")]*1000.0;
-                uy = dom.Nods[3]->U[dom.Nods[3]->UMap("uy")]*1000.0;
-                wz = dom.Nods[3]->U[dom.Nods[3]->UMap("wz")];
+                ux = dom.Nods[3]->U("ux")*1000.0;
+                uy = dom.Nods[3]->U("uy")*1000.0;
+                wz = dom.Nods[3]->U("wz");
                 printf("ux, uy, uz: %g => %g,  %g => %g,  %g => %g  [mm, mm,  ]\n", ux,1.778e-2, uy,-3.243e-2, wz,-1.601e-4);
                 err_u += fabs(ux-( 1.778e-2));
                 err_u += fabs(uy-(-3.243e-2));
