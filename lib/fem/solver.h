@@ -445,7 +445,7 @@ inline void Solver::TgIncs (double dT, Vec_t & dU, Vec_t & dF)
 #endif
             }
             else W(eq) = dT*nod->PU(j, /*time*/0);
-            dU(eq) = W(eq);
+            dU(eq) = dT*nod->PU(j, /*time*/0);
         }
     }
 
@@ -519,7 +519,7 @@ inline void Solver::Initialize (bool Transient)
         // compute equation numbers
         for (size_t i=0; i<Dom.ActNods.Size(); ++i)
         {
-            for (size_t j=0; j<Dom.ActNods[i]->nDOF(); ++j)
+            for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
             {
                 // only the domain with smallest ID will set EQ number
                 int min_part_id = Dom.ActNods[i]->Vert.PartIDs.TheMin();
@@ -952,9 +952,9 @@ inline void Solver::_cor_resid (Vec_t & dU, Vec_t & dF)
 
             for (size_t i=0; i<Dom.InterNodes.Size(); ++i)
             {
-                for (size_t j=0; j<Dom.InterNodes[i]->nDOF(); ++j)
+                for (size_t j=0; j<Dom.InterNodes[i]->NDOF(); ++j)
                 {
-                    long   eq   = Dom.InterNodes[i]->EQ[j];
+                    long   eq   = Dom.InterNodes[i]->Eq(j);
                     size_t nint = Dom.InterNodes[i]->Vert.PartIDs.Size();
                     dF(eq) /= static_cast<double>(nint);
                 }

@@ -173,7 +173,7 @@ int main(int argc, char **argv) try
     }
     errors.Push (dom.CheckErrorNods (nod_sol, nod_tol));
 
-    for (size_t i=0; i<0; ++i)
+    for (size_t i=0; i<2; ++i)
     {
         // stage # stg -------------------------------------
         stg++;
@@ -186,7 +186,7 @@ int main(int argc, char **argv) try
         dom.SetBCs   (bcs);
         sol.Solve    (nincs);
         dom.WriteVTU (buf.CStr());
-        //dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
+        dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
 
         // check
         {
@@ -230,7 +230,7 @@ int main(int argc, char **argv) try
         dom.SetBCs   (bcs);
         sol.Solve    (nincs);
         dom.WriteVTU (buf.CStr());
-        //dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
+        dom.PrintResults ("%15.6e", /*onlysummary*/false, /*withelems*/false);
 
         // check
         {
