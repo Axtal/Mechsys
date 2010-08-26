@@ -79,30 +79,15 @@ public:
     int    EqPF      (size_t IdxPF)              const { return _eq[_F2IDOF(_PF.Keys[IdxPF])]; } ///< Get Eq number corresponding to prescribed F
     void   DelPFs    ()                                { _PF.clear(); _MPF.Resize(0); }          ///< Delete PF structure
     double PF        (size_t IdxPF, double Time) const;                                          ///< Get prescribed F value given index to PF
+    void   AccumPF   ();                                                                         ///< Accumulate prescribed F (to calculate Reactions later). Copy from _PF into _aPF.
     void   Reactions (std::map<String,double> & R) const;                                        ///< Calculate reactions
 
     // Inclined supports: 2D
     void SetIncSup    (double Alpha) { _incsup_alpha=Alpha;  _has_incsup=true; } ///< Set inclined support
     void DelIncSup    ()             { _has_incsup=false; }                      ///< Delete inclined support
     bool HasIncSup    () const       { return _has_incsup; }                     ///< Has inclined support ?
-    void SetLagIncSup (int EqLag, Sparse::Triplet<double,int> & A)               ///< Set A matrix with the equations for the Lagrangian multipliers corresponding to inclined supports
-    {
-        double s = sin(_incsup_alpha);
-        double c = cos(_incsup_alpha);
-        long eq0 = Eq("ux");
-        long eq1 = Eq("uy");
-        A.PushEntry (EqLag, eq0,  s);
-        A.PushEntry (EqLag, eq1, -c);
-        A.PushEntry (eq0, EqLag,  s);
-        A.PushEntry (eq1, EqLag, -c);
-    }
-    void ClrRIncSup (int EqLag, Vec_t & R) ///< Clear R components corresponding to inclined supports
-    {
-        long eq0 = Eq("ux");
-        long eq1 = Eq("uy");
-        R(eq0) = 0.0;
-        R(eq1) = 0.0;
-    }
+    void SetLagIncSup (int EqLag, Sparse::Triplet<double,int> & A);              ///< Set A matrix with the equations for the Lagrangian multipliers corresponding to inclined supports
+    void ClrRIncSup   (int EqLag, Vec_t & R);                                    ///< Clear R components corresponding to inclined supports
 
     // Data
     Mesh::Vertex const & Vert;    ///< Geometric information: ID, Tag, coordinates
@@ -119,6 +104,7 @@ private:
     // Data at nodes with prescribed values
     SDPair          _PU;  ///< Prescribed U
     SDPair          _PF;  ///< Prescribed F
+    SDPair          _aPF; ///< Accumulated prescribed F (not erased in DelPFs)
     Array<PtBCMult> _MPU; ///< Multipliers of PU
     Array<PtBCMult> _MPF; ///< Multipliers of PF
 
@@ -206,6 +192,12 @@ inline double Node::PF (size_t IdxPF, double Time) const
     return _PF(_PF.Keys[IdxPF]) * (*_MPF[IdxPF])(Time);
 }
 
+inline void Node::AccumPF ()
+{
+    for (StrDbl_t::iterator it=_PF.begin(); it!=_PF.end(); ++it)
+        _aPF.AddVal (it->first.CStr(), it->second);
+}
+
 inline void Node::Reactions (std::map<String,double> & R) const
 {
     for (size_t i=0; i<_PU.Keys.Size(); ++i)
@@ -214,9 +206,28 @@ inline void Node::Reactions (std::map<String,double> & R) const
         int            idof = _U2IDOF(ukey);
         String const & fkey = _F.Keys[idof];
         double         reac = _F(fkey);
-        if (_PF.HasKey(fkey)) reac -= _PF(fkey);
+        if (_aPF.HasKey(fkey)) reac -= _aPF(fkey);
         R[ukey] = reac;
     }
+}
+
+inline void Node::SetLagIncSup (int EqLag, Sparse::Triplet<double,int> & A)
+{
+    double s = sin(_incsup_alpha);
+    double c = cos(_incsup_alpha);
+    long eq0 = Eq("ux");
+    long eq1 = Eq("uy");
+    A.PushEntry (EqLag, eq0,  s);
+    A.PushEntry (EqLag, eq1, -c);
+    A.PushEntry (eq0, EqLag,  s);
+    A.PushEntry (eq1, EqLag, -c);
+}
+inline void Node::ClrRIncSup (int EqLag, Vec_t & R)
+{
+    long eq0 = Eq("ux");
+    long eq1 = Eq("uy");
+    R(eq0) = 0.0;
+    R(eq1) = 0.0;
 }
 
 std::ostream & operator<< (std::ostream & os, Node const & N)

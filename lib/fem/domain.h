@@ -586,8 +586,12 @@ inline void Domain::SetBCs (Dict const & BCs)
     {
         if (Nods[i]->NShares>0)   ActNods   .Push (Nods[i]); 
         if (Nods[i]->NPU()>0)     NodsWithPU.Push (Nods[i]);
-        if (Nods[i]->NPF()>0)     NodsWithPF.Push (Nods[i]);
         if (Nods[i]->HasIncSup()) NodsIncSup.Push (Nods[i]);
+        if (Nods[i]->NPF()>0)
+        {
+            NodsWithPF.Push  (Nods[i]);
+            Nods[i]->AccumPF (); // accumulate PF inside Node (to calculate Reactions later)
+        }
     }
 
     // set subsets of active elements
