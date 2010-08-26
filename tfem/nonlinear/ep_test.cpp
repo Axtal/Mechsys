@@ -69,12 +69,11 @@ int main(int argc, char **argv) try
 
     // props, domain, and solver
     Array<int> out_verts(1,2,3);
-    Array<int> out_cells(0,true);
     Dict prps, mdls;
     prps.Set(-1, "prob geom psa", PROB("Equilib"), GEOM("Quad4"), 1.0);
     mdls.Set(-1, "name E nu fc sY Hp psa", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
-    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "ep_test", &out_verts, &out_cells);
+    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "ep_test", &out_verts);
 
     // debug data
     DbgDat dat;

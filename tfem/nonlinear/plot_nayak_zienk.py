@@ -2,7 +2,7 @@ from numpy import *
 from pylab import *
 from msys_readdata import *
 
-plt = 0
+plt = 1
 
 if plt==0:
     dat = read_table("nayak_zienk_01.res")
@@ -46,5 +46,7 @@ elif plt==1:
     plot (u_b2, p_y4, 'k-', marker='.',      label='MechSys')
 
     legend(loc='lower right')
+    xlabel('ux')
+    ylabel('p')
     grid()
     show()

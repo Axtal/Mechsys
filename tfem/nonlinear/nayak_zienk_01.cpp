@@ -78,12 +78,11 @@ int main(int argc, char **argv) try
 
     // props, domain, and solver
     Array<int> out_verts(0,1,2,17);
-    Array<int> out_cells(0,1,2);
     Dict prps, mdls;
     prps.Set(-1, "prob geom axs", PROB("Equilib"), GEOM("Quad8"), 1.0);
     mdls.Set(-1, "name E nu fc sY Hp axs", MODEL("ElastoPlastic"), E, nu, FAILCRIT("VM"), sY, Hp, 1.0);
     //mdls.Set(-1, "name E nu axs", MODEL("LinElastic"), E, nu, 1.0);
-    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "nayak_zienk_01", &out_verts, &out_cells);
+    FEM::Domain dom(mesh, prps, mdls, /*inis*/Dict(), "nayak_zienk_01", &out_verts);
 
     // debug data
     DbgDat dat;
@@ -93,14 +92,15 @@ int main(int argc, char **argv) try
     FEM::Solver sol(dom, NULL, NULL, &DbgFun, &dat);
     //sol.SetScheme ("NR");
     sol.SSOut = true;
-    sol.SetIncsW (40, /*NonLinWei*/true);
+    //sol.SetIncsW (40, /*NonLinWei*/true);
 
     // solve
     Dict bcs;
-    bcs.Set      (-100, "inclsupport alpha", 1.0, th);
+    bcs.Set      (-100, "incsup alpha", 1.0, th);
     bcs.Set      (-30,  "uy", 0.0);
-    bcs.Set      (-10,  "qn", -13930.0);
+    bcs.Set      (-10,  "qn", -13920.0);
     dom.SetBCs   (bcs);
+    cout << dom << endl;
     sol.Solve    (40);
     //sol.Solve    (40, "nayak_zienk_01");
     dom.WriteVTU ("nayak_zienk_01");

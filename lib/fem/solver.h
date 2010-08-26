@@ -658,7 +658,7 @@ inline void Solver::Initialize (bool Transient)
 
     // number of Lagrange multipliers
     size_t nlag_pins = 0;//Dom.Msh.Pins.size()*Dom.NDim; // number of Lag mult due to pins
-    size_t nlag_insu = Dom.InclSupport.size();       // number of Lag mult due to inclined supports
+    size_t nlag_insu = Dom.NodsIncSup.Size();        // number of Lag mult due to inclined supports
     NLag = nlag_pins + nlag_insu;                    // total number of Lagrange multipliers
     NEq += NLag;
 
@@ -819,21 +819,10 @@ inline void Solver::_aug_and_set_A ()
     */
 
     // inclined supports
-    if (Dom.InclSupport.size()>0)
+    for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i)
     {
-        for (InclSupport_t::const_iterator p=Dom.InclSupport.begin(); p!=Dom.InclSupport.end(); ++p)
-        {
-            Node const & nod = (*p->first);
-            double s = sin(p->second); // sin(alpha)
-            double c = cos(p->second); // cos(alpha)
-            long eq0 = nod.Eq(Dom.DisplKeys[0]); // ~ ux
-            long eq1 = nod.Eq(Dom.DisplKeys[1]); // ~ uy
-            A11.PushEntry (eqlag, eq0,  s);
-            A11.PushEntry (eqlag, eq1, -c);
-            A11.PushEntry (eq0, eqlag,  s);
-            A11.PushEntry (eq1, eqlag, -c);
-            eqlag++;
-        }
+        Dom.NodsIncSup[i]->SetLagIncSup (eqlag, A11);
+        eqlag++; // each inclined support adds one equation
     }
 }
 
@@ -876,24 +865,10 @@ inline void Solver::_cal_resid (bool WithAccel)
     */
 
     // clear forces due to inclined supports
-    if (Dom.InclSupport.size()>0)
+    for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i)
     {
-        for (InclSupport_t::const_iterator p=Dom.InclSupport.begin(); p!=Dom.InclSupport.end(); ++p)
-        {
-            Node const & nod = (*p->first);
-            //double s = sin(p->second); // sin(alpha)
-            //double c = cos(p->second); // cos(alpha)
-            long eq0 = nod.Eq(Dom.DisplKeys[0]); // ~ ux
-            long eq1 = nod.Eq(Dom.DisplKeys[1]); // ~ uy
-            //F(eq0) += -U(eqlag)*s;
-            //F(eq1) +=  U(eqlag)*c;
-            R(eq0) = 0.0;
-            R(eq1) = 0.0;
-
-            //std::cout << Util::_12_4<< -U(eqlag)*s << "  " << Util::_12_4<< U(eqlag)*c << std::endl;
-
-            eqlag++;
-        }
+        Dom.NodsIncSup[i]->ClrRIncSup (eqlag, R);
+        eqlag++; // each inclined support adds one equation
     }
 
     // clear forces due to supports
@@ -1086,6 +1061,8 @@ inline void Solver::_ME_update (double tf)
             U     = U_me;
             F     = F_me;
             Time += dt;
+            //_cal_resid ();
+            //_cor_resid (dU_me, dF_me);
             if (m>mMax) m = mMax;
             if (SSOut || (DbgFun!=NULL)) UpdateNodes ();
             if (DbgFun!=NULL) (*DbgFun) ((*this), DbgDat);

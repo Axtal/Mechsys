@@ -138,8 +138,7 @@ int main(int argc, char **argv) try
 
     // domain
     Array<int> out_verts((nd==3 ?  7 : 7), /*JustOne*/true);
-    Array<int> out_cells((nd==3 ? 13 : 0), /*JustOne*/true);
-    FEM::Domain dom(mesh, prps, mdls, inis, "labtest", &out_verts, &out_cells);
+    FEM::Domain dom(mesh, prps, mdls, inis, "labtest", &out_verts);
 
     // debug data
     DbgDat dat;

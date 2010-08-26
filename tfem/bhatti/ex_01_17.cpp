@@ -65,7 +65,7 @@ int main(int argc, char **argv) try
     // stage # 1 -----------------------------------------------------------
     double alpha = 150.0*Util::PI/180.0;
     Dict bcs;
-    bcs.Set(-100, "inclsupport alpha", 1.0, alpha);
+    bcs.Set(-100, "incsup alpha", 1.0, alpha);
     bcs.Set(-200, "ux uy", 0.0, 0.0);
     bcs.Set(-300, "fx", 20000.0);
     dom.SetBCs (bcs);

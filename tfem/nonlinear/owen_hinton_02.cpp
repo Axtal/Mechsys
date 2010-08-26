@@ -160,8 +160,7 @@ plot(dat['x'],dat['y'],'ro',lw=3)\n");
 
     // domain
     Array<int> out_verts(41, /*JustOne*/true);
-    Array<int> out_cells(4,  /*JustOne*/true);
-    FEM::Domain dom(mesh, prps, mdls, inis, "owen_hinton_02", &out_verts, &out_cells);
+    FEM::Domain dom(mesh, prps, mdls, inis, "owen_hinton_02", &out_verts);
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;

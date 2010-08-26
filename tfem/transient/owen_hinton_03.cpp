@@ -188,8 +188,7 @@ int main(int argc, char **argv) try
 
     // domain
     Array<int> out_verts(-200, /*JustOne*/true);
-    Array<int> out_cells(nc-1, /*JustOne*/true);
-    FEM::Domain dom(mesh, prps, mdls, inis, "owen_hinton_03", &out_verts, &out_cells);
+    FEM::Domain dom(mesh, prps, mdls, inis, "owen_hinton_03", &out_verts);
 
     // stage # 1 -----------------------------------------------------------
     double Qn = -600.0;

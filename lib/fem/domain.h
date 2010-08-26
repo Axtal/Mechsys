@@ -40,9 +40,8 @@
 namespace FEM
 {
 
-typedef std::map<Node*,double>          InclSupport_t; ///< Inclined support type. Maps Node ==> alpha
-typedef std::map<Node*,Array<double> >  Res_t;         ///< Maps node to results at nodes
-typedef std::map<int, Array<Element*> > Tag2Eles_t;    ///< Maps tag to elements
+typedef std::map<Node*,Array<double> >  Res_t;      ///< Maps node to results at nodes
+typedef std::map<int, Array<Element*> > Tag2Eles_t; ///< Maps tag to elements
 
 class Domain
 {
@@ -64,8 +63,7 @@ public:
             Dict const          & Mdls,       ///< Model names and parameters
             Dict const          & Inis,       ///< Initial values
             char const          * FNKey=NULL, ///< Filename key to be used during the output of results
-            Array<int>    const * OutV=NULL,  ///< IDs or Tags of vertices to generate output
-            Array<int>    const * OutC=NULL); ///< IDs or Tags of cells to generate output
+            Array<int>    const * OutV=NULL); ///< IDs or Tags of vertices to generate output
 
     // Destructor
     ~Domain ();
@@ -80,7 +78,7 @@ public:
     bool CheckErrorIPs  (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at integration points of elements
 
     // Internal methods
-    void NodalResults  () const;                                                                              ///< Calculate extrapolated values at elments IPs' to nodes
+    void NodalResults  (bool OnlyOutNods=false) const;                                                        ///< Calculate extrapolated values at elments IPs' to nodes
     void OutResults    (size_t IdxOut, double Time, char const * VTUFName=NULL, bool HeaderOnly=false) const; ///< Do output results
     void CalcReactions (Table & NodesReactions, SDPair & SumReactions) const;                                 ///< Calculate reactions
 
@@ -94,13 +92,11 @@ public:
     Array<Node*>          TgdNods;     ///< Tagged Nodes (at boundaries)
     Array<Element*>       TgdEles;     ///< Tagged edges or faces of Elements (at boundaries)
     Array<Node*>          OutNods;     ///< Nodes for which output (results) is generated
-    Array<Element*>       OutEles;     ///< Elements for which output (results) is generated
+    Array<Element*>       OutEles;     ///< Elements corresponding to Nodes for which output is to be generated (needed during extrapolation)
     Array<std::ofstream*> FilNods;     ///< Files with results at selected nodes (OutNods)
-    Array<std::ofstream*> FilEles;     ///< Files with results at selected elements (OutEles)
     Array<Element*>       Beams;       ///< Subset of elements of type Beam
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
     Array<String>         DisplKeys;   ///< Displacement keys
-    InclSupport_t         InclSupport; ///< Inclined support
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions (if PARA==true)
     Tag2Eles_t            Tag2Eles;    ///< Map tag to elements. Useful to activate/deactivate layers
     Array<Node*>          ActNods;     ///< Subset of active nodes (set once per call to SetBCs)
@@ -108,6 +104,7 @@ public:
     Array<Node*>          NodsWithPF;  ///< Subset of nodes with prescribed F
     Array<Node*>          NodsWithPU;  ///< Subset of nodes with prescribed U
     Array<Element*>       ElesWithBC;  ///< Subset of elements with prescribed boundary conditions (ex.: beams, flowelem with convection, etc.)
+    Array<Node*>          NodsIncSup;  ///< Subset of nodes with inclined supports
 
     // Nodal results
     bool          HasDisps;    ///< Has displacements (ux, ...) ?
@@ -163,8 +160,8 @@ std::ostream & operator<< (std::ostream & os, Domain const & D)
 
 // Constructor and destructor
 
-inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FNKey, Array<int> const * OutV, Array<int> const * OutC)
-    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim)
+inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict const & TheMdls, Dict const & TheInis, char const * FNKey, Array<int> const * OutV)
+    : Prps(ThePrps), Inis(TheInis), NDim(Msh.NDim), HasDisps(false), HasVeloc(false)
 {
     // info
 #ifdef HAS_MPI
@@ -220,13 +217,22 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         // set list of nodes for output
         if (FNKey!=NULL && OutV!=NULL)
         {
-            if (OutV->Find(Msh.Verts[i]->ID)>=0 || OutV->Find(Msh.Verts[i]->Tag)>=0)
+            bool has_tag = (Msh.Verts[i]->Tag<0 ? OutV->Has(Msh.Verts[i]->Tag) : false);
+            if (OutV->Has(Msh.Verts[i]->ID) || has_tag)
             {
                 String buf; buf.Printf("%s_nod_%d_%d.res", FNKey, Msh.Verts[i]->ID, Msh.Verts[i]->Tag);
                 std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
                 OutNods.Push (Nods.Last());
                 FilNods.Push (of);
             }
+        }
+
+        // collect all node keys
+        for (size_t j=0; j<Nods.Last()->NDOF(); ++j)
+        {
+            if (Nods.Last()->UKey(j)=="ux") HasDisps = true;
+            AllUKeys.XPush (Nods.Last()->UKey(j)); // push only if item is not in array yet
+            AllFKeys.XPush (Nods.Last()->FKey(j)); // push only if item is not in array yet
         }
     }
 
@@ -257,12 +263,16 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             if (m!=Mdls.end()) mdl = m->second;
 
             // connectivity
+            bool has_outnode = false; // does this new element have any node belonging to the output array ?
             Array<Node*> nodes(Msh.Cells[i]->V.Size());
             for (size_t k=0; k<nodes.Size(); ++k)
             {
                 std::map<int,Node*>::const_iterator it = VertID2Node.find(Msh.Cells[i]->V[k]->ID);
                 if (it==VertID2Node.end()) throw new Fatal("FEM::Domain::Domain:: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   Could not find Node # %d necessary for the definition of Element # %d.",Msh.Cells[i]->V[k]->ID,Msh.Cells[i]->ID);
                 nodes[k] = it->second;
+
+                // check if node of element belongs to output array
+                if (OutNods.Size()>0) { if (OutNods.Has(nodes[k])) has_outnode = true; }
             }
 
             // allocate element
@@ -278,16 +288,16 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             // map tag to element
             Tag2Eles[tag].Push (Eles.Last());
 
-            // set list of elements for output
-            if (FNKey!=NULL && OutC!=NULL)
+            // element belongs to output array
+            if (has_outnode) OutEles.Push (Eles.Last());
+
+            // collect all element keys
+            Array<String> keys;
+            Eles.Last()->StateKeys (keys);
+            for (size_t j=0; j<keys.Size(); ++j)
             {
-                if (OutC->Find(Msh.Cells[i]->ID)>=0 || OutC->Find(Msh.Cells[i]->Tag)>=0)
-                {
-                    String buf; buf.Printf("%s_ele_%d_%d.res", FNKey, Msh.Cells[i]->ID, Msh.Cells[i]->Tag);
-                    std::ofstream * of = new std::ofstream (buf.CStr(),std::ios::out);
-                    OutEles.Push (Eles.Last());
-                    FilEles.Push (of);
-                }
+                if (keys[j]=="vx") HasVeloc = true;
+                AllEKeys.XPush (keys[j]); // push only if item is not in array yet
             }
         }
         else throw new Fatal("Domain::SetMesh: Dictionary of properties must have keyword 'prob' defining the type of element corresponding to a specific problem");
@@ -302,41 +312,6 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     DisplKeys[1] = "uy";  if (NDim==3)
     DisplKeys[2] = "uz";
 
-    // check all available nodal data
-    HasDisps = false;
-    AllUKeys.Resize (0);
-    AllFKeys.Resize (0);
-    for (size_t i=0; i<Nods.Size(); ++i)
-    {
-        for (size_t j=0; j<Nods[i]->NDOF(); ++j)
-        {
-            if (Nods[i]->UKey(j)=="ux") HasDisps = true;
-            AllUKeys.XPush (Nods[i]->UKey(j)); // push only if item is not in array yet
-            AllFKeys.XPush (Nods[i]->FKey(j)); // push only if item is not in array yet
-        }
-    }
-
-    // check all available element data
-    HasVeloc = false;
-    Array<String> keys;
-    AllEKeys.Resize (0);
-    for (size_t i=0; i<Eles.Size(); ++i)
-    {
-        Eles[i]->StateKeys (keys);
-        for (size_t j=0; j<keys.Size(); ++j)
-        {
-            if (keys[j]=="vx") HasVeloc = true;
-            AllEKeys.XPush (keys[j]); // push only if item is not in array yet
-        }
-    }
-
-    // set maps of results
-    for (size_t i=0; i<Nods.Size(); ++i)
-    {
-        NodResults [Nods[i]].Resize (AllEKeys.Size()); // results at nodes
-        NodResCount[Nods[i]].Resize (AllEKeys.Size()); // count how many times a varable was added to a node
-    }
-
     // print header of output files
     OutResults (/*idxout*/0, /*time*/0, /*vtufname*/NULL, /*headeronly*/true);
 }
@@ -347,7 +322,6 @@ inline Domain::~Domain()
     for (size_t i=0; i<Nods   .Size(); ++i) if (Nods   [i]!=NULL) delete Nods   [i];
     for (size_t i=0; i<Eles   .Size(); ++i) if (Eles   [i]!=NULL) delete Eles   [i];
     for (size_t i=0; i<FilNods.Size(); ++i) if (FilNods[i]!=NULL) { FilNods[i]->close(); delete FilNods[i]; }
-    for (size_t i=0; i<FilEles.Size(); ++i) if (FilEles[i]!=NULL) { FilEles[i]->close(); delete FilEles[i]; }
 }
 
 // Methods
@@ -364,11 +338,8 @@ inline void Domain::SetBCs (Dict const & BCs)
     // clear previous BCs
     for (size_t i=0; i<NodsWithPU.Size(); ++i) NodsWithPU[i]->DelPUs ();
     for (size_t i=0; i<NodsWithPF.Size(); ++i) NodsWithPF[i]->DelPFs ();
+    for (size_t i=0; i<NodsIncSup.Size(); ++i) NodsIncSup[i]->DelIncSup ();
     for (size_t i=0; i<ElesWithBC.Size(); ++i) ElesWithBC[i]->ClrBCs ();
-    NodsWithPU.Resize (0);
-    NodsWithPF.Resize (0);
-    ElesWithBC.Resize (0);
-    InclSupport.clear ();
 
     // map used to track whether BC was already set or not
     std::map<int,BryTagType_t> bc_set; // maps: btag => type of BC: none, element, border, node
@@ -377,6 +348,7 @@ inline void Domain::SetBCs (Dict const & BCs)
     // 'BCs' at the element itself (ex: 'activate', 's':source, 'qn' at beams, etc.).
     // This must come before the setting up of 'real' boundary conditions, since, for example,
     // some nodes may become activated or deactivated
+    ElesWithBC.Resize (0);
     for (Dict_t::const_iterator dict_it=BCs.begin(); dict_it!=BCs.end(); ++dict_it)
     {
         // auxiliar variables
@@ -412,6 +384,7 @@ inline void Domain::SetBCs (Dict const & BCs)
 
                 // set BCs
                 ele->SetBCs (/*idx_side(ignored)*/0, bcs, calcm);
+                ElesWithBC.Push (ele);
             }
         }
     }
@@ -481,7 +454,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                     // split U bcs from F bcs
                     for (size_t k=0; k<bcs.Keys.Size(); ++k)
                     {
-                        if (bcs.Keys[k]=="inclsupport") // inclined support
+                        if (bcs.Keys[k]=="incsup") // inclined support
                         {
                             nod2tag_to_ubc[TgdNods[j]].first  = btag;
                             nod2tag_to_ubc[TgdNods[j]].second = bcs;
@@ -590,10 +563,10 @@ inline void Domain::SetBCs (Dict const & BCs)
             else throw new Fatal("FEM::Domain::SetBCs: Multiplier function with boundary Tag=%d was not found in MFuncs database",bc_tag);
         }
 
-        if (bcs.HasKey("inclsupport"))
+        if (bcs.HasKey("incsup"))
         {
             if (NDim!=2) throw new Fatal("FEM::Domain::SetBCs: Inclined support is not implemented for 3D problems yet");
-            InclSupport[nod] = bcs("alpha");
+            nod->SetIncSup (bcs("alpha"));
         }
         else
         {
@@ -604,15 +577,21 @@ inline void Domain::SetBCs (Dict const & BCs)
         }
     }
 
-    // set subsets of active nodes and nodes with prescribed U and/or F
-    ActNods.Resize (0);
-    ActEles.Resize (0);
+    // set subsets of active nodes, nodes with prescribed U and/or F, and nodes with inclined supports
+    ActNods   .Resize (0);
+    NodsWithPU.Resize (0);
+    NodsWithPF.Resize (0);
+    NodsIncSup.Resize (0);
     for (size_t i=0; i<Nods.Size(); ++i)
     {
-        if (Nods[i]->NShares>0) ActNods   .Push (Nods[i]); 
-        if (Nods[i]->NPU()>0)   NodsWithPU.Push (Nods[i]);
-        if (Nods[i]->NPF()>0)   NodsWithPF.Push (Nods[i]);
+        if (Nods[i]->NShares>0)   ActNods   .Push (Nods[i]); 
+        if (Nods[i]->NPU()>0)     NodsWithPU.Push (Nods[i]);
+        if (Nods[i]->NPF()>0)     NodsWithPF.Push (Nods[i]);
+        if (Nods[i]->HasIncSup()) NodsIncSup.Push (Nods[i]);
     }
+
+    // set subsets of active elements
+    ActEles.Resize (0);
     for (size_t i=0; i<Eles.Size(); ++i) { if (Eles[i]->Active) ActEles.Push (Eles[i]); }
 }
 
@@ -1025,23 +1004,49 @@ inline bool Domain::CheckErrorIPs (Table const & EleSol, SDPair const & EleTol) 
 
 // Internal methods
 
-inline void Domain::NodalResults () const
+inline void Domain::NodalResults (bool OnlyOutNods) const
 {
     // extrapolate from elements' IPs to nodes
-    for (Res_t::iterator p=NodResults .begin(); p!=NodResults .end(); ++p) p->second.SetValues(0.0);
-    for (Res_t::iterator p=NodResCount.begin(); p!=NodResCount.end(); ++p) p->second.SetValues(0.0);
-    for (size_t i=0; i<ActEles.Size(); ++i)
+    Array<Node*>    const * nods;
+    Array<Element*> const * eles;
+    if (OnlyOutNods)
+    {
+        nods = &OutNods;
+        eles = &OutEles;
+    }
+    else
+    {
+        nods = &ActNods;
+        eles = &ActEles;
+    }
+    for (size_t i=0; i<nods->Size(); ++i)
+    {
+        NodResults [(*nods)[i]].Resize    (AllEKeys.Size()); // results at nodes
+        NodResCount[(*nods)[i]].Resize    (AllEKeys.Size()); // count how many times a varable was added to a node
+        NodResults [(*nods)[i]].SetValues (0.0);
+        NodResCount[(*nods)[i]].SetValues (0.0);
+    }
+    for (size_t i=0; i<eles->Size(); ++i)
     {
         Array<SDPair> loc_res; // local results: size==number of nodes in element
-        ActEles[i]->StateAtNodes (loc_res);
+        (*eles)[i]->StateAtNodes (loc_res);
         for (size_t j=0; j<AllEKeys.Size(); ++j)
         {
             if (loc_res[0].HasKey(AllEKeys[j]))
             {
-                for (size_t k=0; k<ActEles[i]->Con.Size(); ++k)
+                bool do_output = true;
+                for (size_t k=0; k<(*eles)[i]->Con.Size(); ++k)
                 {
-                    NodResults [ActEles[i]->Con[k]][j] += loc_res[k](AllEKeys[j]);
-                    NodResCount[ActEles[i]->Con[k]][j] += 1.0;
+                    if (OnlyOutNods)
+                    { 
+                        if (!nods->Has((*eles)[i]->Con[k])) 
+                            do_output = false; 
+                    }
+                    if (do_output)
+                    {
+                        NodResults [(*eles)[i]->Con[k]][j] += loc_res[k](AllEKeys[j]);
+                        NodResCount[(*eles)[i]->Con[k]][j] += 1.0;
+                    }
                 }
             }
         }
@@ -1050,9 +1055,23 @@ inline void Domain::NodalResults () const
 
 inline void Domain::OutResults (size_t IdxOut, double Time, char const * VTUFName, bool HeaderOnly) const
 {
-    // extrapolate values to nodes
-    NodalResults ();
-    
+    // VTU
+    if (VTUFName!=NULL)
+    {
+        // extrapolate values to (all) nodes
+        NodalResults ();
+
+        // write file
+        String fkey;
+        fkey.Printf ("%s_%08d", VTUFName, IdxOut);
+        WriteVTU    (fkey.CStr(), /*do_extrapolation*/false);
+    }
+    else if (OutNods.Size()>0)
+    {
+        // extrapolate values to (some) nodes
+        NodalResults (/*only_outnods*/true);
+    }
+
     // nodes
     for (size_t i=0; i<OutNods.Size(); ++i)
     {
@@ -1076,14 +1095,6 @@ inline void Domain::OutResults (size_t IdxOut, double Time, char const * VTUFNam
             }
             (*FilNods[i]) << "\n";
         }
-    }
-
-    // VTU
-    if (VTUFName!=NULL)
-    {
-        String fkey;
-        fkey.Printf ("%s_%08d", VTUFName, IdxOut);
-        WriteVTU    (fkey.CStr(), /*do_extrapolation*/false);
     }
 }
 

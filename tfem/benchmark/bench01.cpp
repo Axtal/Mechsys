@@ -22,7 +22,7 @@
 #include <cstdlib> // for std::rand
 
 // MechSys
-#define PARALLEL_DEBUG
+//#define PARALLEL_DEBUG
 #include <mechsys/fem/fem.h>
 
 using std::cout;
@@ -139,7 +139,7 @@ int main(int argc, char **argv) try
         else mesh.PartDomain (nprocs, part_full);
     }
     buf = fkey + "_mesh";
-    mesh.WriteVTU (buf.CStr());
+    //mesh.WriteVTU (buf.CStr());
 
     // domain
     FEM::Domain::PARA = parallel;
@@ -149,7 +149,7 @@ int main(int argc, char **argv) try
     prps.Set (-1, "prob geom d3d", prob, GEOM("Hex20"), 1.);
     if (nonlin) mdls.Set (-1, "name K0 G0 alp bet d3d", MODEL("NLElastic"), 4000.0, 4000.0, 0.4, 0.4, 1.);
     else        mdls.Set (-1, "name E nu d3d", MODEL("LinElastic"), 1000.0, 0.2, 1.);
-    FEM::Domain dom(mesh, prps, mdls, inis, fkey.CStr(), &out_verts);
+    FEM::Domain dom(mesh, prps, mdls, inis);//, fkey.CStr(), &out_verts);
 
     // solver
     FEM::Solver sol(dom);
@@ -174,7 +174,7 @@ int main(int argc, char **argv) try
 
     // solve
     sol.Solve    (nincs);
-    dom.WriteVTU (fkey.CStr());
+    //dom.WriteVTU (fkey.CStr());
     printf("Norm(dU) = %.8f\n",Norm(sol.dU));
 
     // end

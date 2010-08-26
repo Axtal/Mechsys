@@ -30,6 +30,7 @@
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/numstreams.h>
 #include <mechsys/linalg/matvec.h>
+#include <mechsys/linalg/sparse_triplet.h>
 
 namespace FEM
 {
@@ -42,7 +43,7 @@ class Node
 {
 public:
     // Constructor
-    Node (Mesh::Vertex const & TheVert) : Vert(TheVert), NShares(0) {}
+    Node (Mesh::Vertex const & TheVert) : Vert(TheVert), NShares(0), _has_incsup(false) {}
 
     // Methods
     void           AddDOF  (char const * StrU, char const * StrF);                      ///< Add DOF if it doesn't exist. Ex.: StrU="ux uy", StrF="fx fy"
@@ -80,6 +81,29 @@ public:
     double PF        (size_t IdxPF, double Time) const;                                          ///< Get prescribed F value given index to PF
     void   Reactions (std::map<String,double> & R) const;                                        ///< Calculate reactions
 
+    // Inclined supports: 2D
+    void SetIncSup    (double Alpha) { _incsup_alpha=Alpha;  _has_incsup=true; } ///< Set inclined support
+    void DelIncSup    ()             { _has_incsup=false; }                      ///< Delete inclined support
+    bool HasIncSup    () const       { return _has_incsup; }                     ///< Has inclined support ?
+    void SetLagIncSup (int EqLag, Sparse::Triplet<double,int> & A)               ///< Set A matrix with the equations for the Lagrangian multipliers corresponding to inclined supports
+    {
+        double s = sin(_incsup_alpha);
+        double c = cos(_incsup_alpha);
+        long eq0 = Eq("ux");
+        long eq1 = Eq("uy");
+        A.PushEntry (EqLag, eq0,  s);
+        A.PushEntry (EqLag, eq1, -c);
+        A.PushEntry (eq0, EqLag,  s);
+        A.PushEntry (eq1, EqLag, -c);
+    }
+    void ClrRIncSup (int EqLag, Vec_t & R) ///< Clear R components corresponding to inclined supports
+    {
+        long eq0 = Eq("ux");
+        long eq1 = Eq("uy");
+        R(eq0) = 0.0;
+        R(eq1) = 0.0;
+    }
+
     // Data
     Mesh::Vertex const & Vert;    ///< Geometric information: ID, Tag, coordinates
     long                 NShares; ///< Number of active elements sharing this node
@@ -97,6 +121,10 @@ private:
     SDPair          _PF;  ///< Prescribed F
     Array<PtBCMult> _MPU; ///< Multipliers of PU
     Array<PtBCMult> _MPF; ///< Multipliers of PF
+
+    // Data at nodes with inclined supports
+    double _incsup_alpha; ///< Inclined support alpha's
+    bool   _has_incsup;   ///< Has inclined support ?
 
 friend std::ostream & operator<< (std::ostream & os, Node const & N);
 };

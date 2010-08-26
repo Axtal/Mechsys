@@ -73,9 +73,7 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    Array<int> out_verts(-100, 5);
-    Array<int> out_cells(0, /*JustOne*/true);
-    FEM::Domain dom(mesh, prps, mdls, inis, "ex16", &out_verts, &out_cells); 
+    FEM::Domain dom(mesh, prps, mdls, inis);
 
     // check matrices
     if (false)

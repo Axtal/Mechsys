@@ -99,8 +99,7 @@ int main(int argc, char **argv) try
 
     // domain
     Array<int> out_verts(4,7,12);
-    Array<int> out_cells(0,1);
-    Domain dom(mesh, prps, mdls, inis, "mix02", &out_verts, &out_cells);
+    Domain dom(mesh, prps, mdls, inis, "mix02", &out_verts);
 
     // solver
     Solver sol(dom);
