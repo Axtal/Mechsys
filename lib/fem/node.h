@@ -65,22 +65,24 @@ public:
     void           Clear   ();                                                          ///< Clear all values but keep structure of DOFs
 
     // Methods to set/access prescribed U values
-    void   SetPU     (String const & UKey, double Val, PtBCMult MFunc);                          ///< Set prescribed U
-    void   SetMPU    (size_t IdxPU, PtBCMult MultPU)   { _MPU[IdxPU] = MultPU;   }               ///< Set multiplier to PU
-    size_t NPU       ()                          const { return _PU.Keys.Size(); }               ///< Get number of prescribed U
-    int    EqPU      (size_t IdxPU)              const { return _eq[_U2IDOF(_PU.Keys[IdxPU])]; } ///< Get Eq number corresponding to prescribed U
-    void   DelPUs    ()                                { _PU.clear(); _MPU.Resize(0); }          ///< Delete PU structure
-    double PU        (size_t IdxPU, double Time) const;                                          ///< Get prescribed U value given index to PF
+    void           SetPU     (String const & UKey, double Val, PtBCMult MFunc);                          ///< Set prescribed U
+    void           SetMPU    (size_t IdxPU, PtBCMult MultPU)   { _MPU[IdxPU] = MultPU;   }               ///< Set multiplier to PU
+    size_t         NPU       ()                          const { return _PU.Keys.Size(); }               ///< Get number of prescribed U
+    int            EqPU      (size_t IdxPU)              const { return _eq[_U2IDOF(_PU.Keys[IdxPU])]; } ///< Get Eq number corresponding to prescribed U
+    void           DelPUs    ()                                { _PU.clear(); _MPU.Resize(0); }          ///< Delete PU structure
+    String const & PUKey     (size_t IdxPU)              const { return _PU.Keys[IdxPU]; }               ///< Get PU key
+    double         PU        (size_t IdxPU, double Time) const;                                          ///< Get prescribed U value given index to PF
 
     // Methods to set/access prescribed F values
-    void   AddToPF   (String const & FKey, double Val, PtBCMult MFunc);                          ///< Add value to prescribed F
-    void   SetMPF    (size_t IdxPF, PtBCMult MultPF)   { _MPF[IdxPF] = MultPF;   }               ///< Set multiplier to PF
-    size_t NPF       ()                          const { return _PF.Keys.Size(); }               ///< Get number of prescribed F
-    int    EqPF      (size_t IdxPF)              const { return _eq[_F2IDOF(_PF.Keys[IdxPF])]; } ///< Get Eq number corresponding to prescribed F
-    void   DelPFs    ()                                { _PF.clear(); _MPF.Resize(0); }          ///< Delete PF structure
-    double PF        (size_t IdxPF, double Time) const;                                          ///< Get prescribed F value given index to PF
-    void   AccumPF   ();                                                                         ///< Accumulate prescribed F (to calculate Reactions later). Copy from _PF into _aPF.
-    void   Reactions (std::map<String,double> & R) const;                                        ///< Calculate reactions
+    void           AddToPF   (String const & FKey, double Val, PtBCMult MFunc);                          ///< Add value to prescribed F
+    void           SetMPF    (size_t IdxPF, PtBCMult MultPF)   { _MPF[IdxPF] = MultPF;   }               ///< Set multiplier to PF
+    size_t         NPF       ()                          const { return _PF.Keys.Size(); }               ///< Get number of prescribed F
+    int            EqPF      (size_t IdxPF)              const { return _eq[_F2IDOF(_PF.Keys[IdxPF])]; } ///< Get Eq number corresponding to prescribed F
+    void           DelPFs    ()                                { _PF.clear(); _MPF.Resize(0); }          ///< Delete PF structure
+    String const & PFKey     (size_t IdxPF)              const { return _PF.Keys[IdxPF]; }               ///< Get PF key
+    double         PF        (size_t IdxPF, double Time) const;                                          ///< Get prescribed F value given index to PF
+    void           AccumPF   ();                                                                         ///< Accumulate prescribed F (to calculate Reactions later). Copy from _PF into _aPF.
+    void           Reactions (std::map<String,double> & R) const;                                        ///< Calculate reactions
 
     // Inclined supports: 2D
     void SetIncSup    (double Alpha) { _incsup_alpha=Alpha;  _has_incsup=true; } ///< Set inclined support
