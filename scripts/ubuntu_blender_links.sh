@@ -1,8 +1,12 @@
 #!/bin/bash
 
-echo 'Considering that MechSys is in ~/mechsys'
+if [ ! -n "$MECHSYS_ROOT" ]; then
+  MECHSYS_ROOT=$HOME  
+fi
+
+echo Considering that MechSys is in $MECHSYS_ROOT
 
 MODULES="3dlink cad dict fem dem gui main mesh shandler mexpt mex3dlink"
 for m in $MODULES; do
-	ln -s $HOME/mechsys/lib/blender/msys_$m.py $HOME/.blender/scripts
+	ln -s $MECHSYS_ROOT/mechsys/lib/blender/msys_$m.py $HOME/.blender/scripts
 done

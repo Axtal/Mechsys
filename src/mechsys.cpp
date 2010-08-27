@@ -40,8 +40,9 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MS_GenBox,       GenBox,       0, 7)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_Generate,     Generate,     0, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_GenBox,       GenBox,       0, 5)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (MU_WritePLY,     WritePLY,     1, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 2)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_PrintResults, PrintResults, 0, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteMPY,     WriteMPY,     1, 4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (DO_WriteVTU,     WriteVTU,     1, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_Solve,        Solve,        0, 1)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS (SO_DynSolve,     DynSolve,     3, 4)
 
@@ -126,12 +127,9 @@ BPy::def("MODEL", PyMODEL);
 // Domain
 BPy::class_<FEM::Domain>("FEM_Domain", "FEM domain", BPy::init<Mesh::Generic const &, Dict const &, Dict const &, Dict const &>())
     .def("SetBCs",       &FEM::Domain::SetBCs)
-    .def("Gravity",      &FEM::Domain::Gravity)
-    .def("Deactivate",   &FEM::Domain::Deactivate)
-    .def("SetUVals",     &FEM::Domain::SetUVals)
     .def("PrintResults", &FEM::Domain::PrintResults, DO_PrintResults())
     .def("WriteMPY",     &FEM::Domain::WriteMPY,     DO_WriteMPY())
-    .def("WriteVTU",     &FEM::Domain::WriteVTU)
+    .def("WriteVTU",     &FEM::Domain::WriteVTU,     DO_WriteVTU())
     .def(BPy::self_ns::str(BPy::self))
     ;
 

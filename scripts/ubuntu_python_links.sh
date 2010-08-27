@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ ! -n "$MECHSYS_ROOT" ]; then
-  $MECHSYS_ROOT = $HOME
+  MECHSYS_ROOT=$HOME  
 fi
 
 echo Considering that MechSys is in $MECHSYS_ROOT
