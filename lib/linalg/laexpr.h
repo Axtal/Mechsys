@@ -42,54 +42,14 @@ extern "C"
     void dgemm_(char   const *TransA  , char   const *TransB , int    const *M    , int    const *N   ,
                 int    const *K       , double const *alpha  , double const *A    , int    const *lda ,
                 double const *B       , int    const *ldb    , double const *beta , double       *C   , int const *ldc);
-
-    // DGETRF - compute an LU factorization of a general M-by-N matrix A using partial pivoting with row interchanges
-    void dgetrf_(const int* m, const int* n, double* a, const int* lda, int* ipiv, int* info);
-
-    // DGETRI - compute the inverse of a matrix using the LU factorization computed by DGETRF
-    void dgetri_(const int* n, double* a, const int* lda, int* ipiv, double* work, const int* lwork, int* info);
 }
 
 namespace LinAlg
 {
 
-/// GE Inverse
-inline int Geinv(Matrix<double> & A)
-{
-#ifndef DNDEBUG
-    if (A.Rows()!=A.Cols()) throw new Fatal("LinAlg::Geinv: The number of rows (%d) of matrix A must be equal to the number of columns (%d) of matrix A",A.Rows(),A.Cols());
-#endif
-    int   info = 0;
-    int   N    = A.Rows(); // == A.Cols
-    int * ipiv = new int [N];
 
-    // Factorization
-    dgetrf_(&N,         // M
-            &N,         // N
-            A.GetPtr(), // double * A
-            &N,         // LDA
-            ipiv,       // Pivot indices
-            &info);
-    if (info!=0) throw new Fatal ("LinAlg::Geinv: Matrix LU factorization did not work");
+// LAPACK wrapper //////////////////////////////////////////////////////////////////////////////////////////////
 
-    int      NB    = 2;                  // Optimal blocksize: TODO: Use ILAENV to find best block size
-    int      lwork = N*NB;               // Dimension of work >= max(1,N), optimal=N*NB
-    double * work  = new double [lwork]; // Work
-
-    // Inversion
-    dgetri_(&N,         // N
-            A.GetPtr(), // double * A
-            &N,         // LDA
-            ipiv,       // Pivot indices
-            work,       // work
-            &lwork,     // dimension of work
-            &info);
-    if (info!=0) throw new Fatal ("LinAlg::Geinv: Matrix inversion did not work");
-
-    delete [] ipiv;
-    delete [] work;
-    return info;
-}
 
 /// internal product:  \f$ s \gets \{X\} \bullet \{Y\} \f$
 inline double Dot(Vector<double> const & X, Vector<double> const & Y)
@@ -261,11 +221,8 @@ inline void Gemtmt(double const a, Matrix<double> const & A, Matrix<double> cons
 }
 
 
+// Implementation of basic operations //////////////////////////////////////////////////////////////////////////
 
-
-
-
-// Implementation of basic operations
 
 // returns:  Y <- a*X
 template <typename type>
@@ -307,7 +264,9 @@ void _scale(size_t       n,
     }
 }
 
-// Scale for Vector and Matrix
+
+// Scale function for Vector and Matrix ////////////////////////////////////////////////////////////////////////
+
 
 // returns:  Y <- a*X
 template <typename type>
@@ -373,19 +332,6 @@ void scale(type                a,
     _scale(n, a, ptrX, b, ptrW, ptrY);
 }
 
-// returns:  A <- idn(n);
-template <typename type>
-inline
-void identity(size_t         n,
-              Matrix<type> & A)
-{
-    A.Resize(n, n);
-    type * ptrA = A.GetPtr();
-    for (size_t i=0; i<n; ++i)    
-        for (size_t j=0; j<n; ++j)    
-            (i==j)? ptrA[i+n*j]=1:0;
-}
-
 // returns:  B <- a*trn(A);
 template <typename type>
 inline
@@ -425,45 +371,9 @@ void scalet(type                 a,
     }
 }
 
-// returns: B <- det(A)
-template<typename type>
-inline 
-type determinat(Matrix<type> const & A)
-{
-    type   R;
-    size_t m = A.Rows();
-    size_t n = A.Cols();
-    if (m==1)
-    {
-        R = 0;
-        for (size_t i=0; i<n; i++) R += pow(A(0,i),2);
-        R = pow(R, 0.5);
-    } 
-    else if (m==3 && n==3)
-    {
-        R =   A(0,0)*(A(1,1)*A(2,2) - A(1,2)*A(2,1)) \
-               - A(0,1)*(A(1,0)*A(2,2) - A(1,2)*A(2,0)) \
-               + A(0,2)*(A(1,0)*A(2,1) - A(1,1)*A(2,0));
-    }
-    else if (m==2 && n==2)
-    {
-        R =   A(0,0)*A(1,1) - A(1,0)*A(0,1);
-    }
-    else if (m==2 && n==3)
-    {
-        type d1 = A(0,0)*A(1,1) - A(0,1)*A(1,0);
-        type d2 = A(0,1)*A(1,2) - A(0,2)*A(1,1);
-        type d3 = A(0,2)*A(1,0) - A(0,0)*A(1,2);
-        R = sqrt(d1*d1 + d2*d2 + d3*d3);
-    }
-    else
-    {
-        throw new Fatal("Matrix::Det: Determinant for a (%d x %d) matrix is not available.",m,n); // TODO: ??? << check error
-    }
-    return R;
-}
 
-// function operations
+// Function operations /////////////////////////////////////////////////////////////////////////////////////////
+
 
 // Vector function operators
 
@@ -583,17 +493,6 @@ Matrix<type> & _trn(Matrix<type> const & A, Matrix<type> & R)
     return R;
 }
 
-// inv(Matrix)
-template <typename type>
-inline
-Matrix<type> & _inv(Matrix<type> const & A, Matrix<type> & R)
-{
-    if (A.Rows()!=A.Cols()) throw new Fatal("Internal Error: laexpr.h::_inv: A(%d,%d) matrix must be square",A.Rows(),A.Cols());
-    R = A;
-    LinAlg::Geinv(R);
-    return R;
-}
-
 // trn(Matrix) * Matrix
 template <class type>
 inline
@@ -651,7 +550,9 @@ Matrix<type> & _prodtt(Matrix<type> const & A, Matrix<type> const & B, Matrix<ty
     return R;
 }
 
-// expression classes
+
+// Expression classes //////////////////////////////////////////////////////////////////////////////////////////
+
 
 // Base expression class
 template <class t_exp, class t_res>
@@ -760,7 +661,9 @@ private:
     exp_ter() { };
 };
 
-// identification of expression result type (nice)
+
+// Identification of expression result type ////////////////////////////////////////////////////////////////////
+
 
 // for simple objects
 template<class t_exp, class t_exp_again = t_exp>
@@ -776,14 +679,16 @@ struct res_type<t_exp, exp_un< typename t_exp::T_exp1, typename t_exp::T_op, typ
     typedef typename t_exp::T_res T_res;
 };
 
-// for bynary expressions
+// for binary expressions
 template<class t_exp>
 struct res_type<t_exp, exp_bin< typename t_exp::T_exp1, typename t_exp::T_exp2, typename t_exp::T_op, typename t_exp::T_res> >
 {
     typedef typename t_exp::T_res T_res;
 };
 
-// operator classes
+
+// Operator classes ////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // class operator for addition
 class op_add
@@ -903,18 +808,6 @@ public:
     }
 };
 
-// class operator for inverse
-class op_inv
-{
-public:
-    template <class t_exp1, class t_res>
-    static t_res & Apply(t_exp1 const & A, t_res & R) 
-    { 
-        typedef typename res_type<t_exp1>::T_res t_res1;
-        return _inv(static_cast<t_res1 const &>(A), R); 
-    }
-};
-
 class op_oto // object transposed by object
 {
 public:
@@ -954,21 +847,9 @@ public:
     }
 };
 
-/*
-class op_koto // operator ternary product
-{
-public:
-    template <class t_exp1, class t_exp2, class t_exp3, class t_res>
-    static t_res & Apply(t_exp1 const & A, t_exp2 const & B, t_exp3 const & C, t_res & R) 
-    { 
-            typedef typename res_type<t_exp1>::T_res t_res1;
-            typedef typename res_type<t_exp2>::T_res t_res2;
-            typedef typename res_type<t_exp3>::T_res t_res3;
-            prodtt(A, B, C, 0,R);
-            return R;
-    }
-};
-*/
+
+// Expression & object operations //////////////////////////////////////////////////////////////////////////////
+
 
 // macro for scalar operations
 #define DECLARE_OP_WITH_SCALAR(MACRO) \
@@ -979,8 +860,6 @@ MACRO(size_t); \
 MACRO(float); \
 MACRO(double); \
 MACRO(long double); 
-
-// expression & object operations
 
 // - expression (unary)
 template <class t_exp, class t_res> 
@@ -1082,7 +961,9 @@ operator/(expression<t_exp1, t_obj > const & A, T const & B)                    
 
 DECLARE_OP_WITH_SCALAR(EXPR_DIV_SCALAR);
 
-// Vector operations
+
+// Vector operations ///////////////////////////////////////////////////////////////////////////////////////////
+
 
 // - Vector
 template <class type> 
@@ -1169,7 +1050,9 @@ operator / (Vector<type> const & A, T const & B)                        \
 
 DECLARE_OP_WITH_SCALAR(VECTOR_DIV_SCALAR);
 
-// Matrix operations
+
+// Matrix operations ///////////////////////////////////////////////////////////////////////////////////////////
+
 
 // - Matrix
 template <class type> 
@@ -1280,85 +1163,9 @@ operator / (Matrix <type> const & A, T const & B)                       \
 
 DECLARE_OP_WITH_SCALAR(MATRIX_DIV_SCALAR);
 
-// inv(Matrix)
-template <typename type>
-inline
-exp_un<Matrix<type>, op_inv, Matrix<type> >
-inv (Matrix<type> const & A)
-{
-    return exp_un<Matrix<type>, op_inv, Matrix<type> >(A);
-}
 
-// inv(exp)
-template <class type, class t_exp1>
-inline 
-exp_un< t_exp1, op_inv, Matrix<type> > 
-inv (expression<t_exp1, Matrix<type> > const & A)
-{
-    return exp_un<t_exp1, op_inv, Matrix<type> >(static_cast<t_exp1 const &>(A));
-}
+// Matrix & Vector operations //////////////////////////////////////////////////////////////////////////////////
 
-// det(Matrix)
-template <typename type>
-inline
-type
-det (Matrix<type> const & A)
-{
-    return determinat(A);
-}
-
-// det(exp)
-template <class type, class t_exp1>
-inline 
-type
-det (expression<t_exp1, Matrix<type> > const & A)
-{
-    return determinat(static_cast<typename t_exp1::T_res const &>(static_cast<t_exp1 const &>(A)));
-}
-
-
-
-// norm(Vector)
-template <typename type>
-inline
-type
-norm(Vector<type> const & A)
-{
-    return sqrt(LinAlg::Dot(A,A));
-}
-
-// norm(exp)
-template <class type, class t_exp1>
-inline 
-type
-norm(expression<t_exp1, Vector<type> > const & A)
-{
-    return norm_vector(static_cast<typename t_exp1::T_res const &>(static_cast<t_exp1 const &>(A)));
-}
-
-// invg(Matrix)
-template <class type>
-inline
-Matrix<type>
-invg(Matrix<type> const & A) // difficult to do pure expression
-{
-    int m = A.Rows();
-    int n = A.Cols();
-    if (m==n)     return inv(A);
-    else if (m>n) return inv(trn(A)*A)*trn(A);
-    else          return trn(A)*inv(A*trn(A));
-}
-
-template <class type, class t_exp1>
-inline
-Matrix<type>
-invg(expression<t_exp1, Matrix<type> > const & A)
-{
-    return invg(static_cast<Matrix<type> const & >(A));
-}
-
-
-// Matrix & Vector operations
 
 // Vector * Matrix
 template <class type>
@@ -1432,7 +1239,9 @@ operator*(expression<t_exp1, Vector<type> > const & A, expression<t_exp2, Matrix
     return exp_bin< t_exp1, t_exp2, op_prod, Matrix<type> >(static_cast<t_exp1 const &>(A),static_cast<t_exp2 const &>(B));
 }
 
-// Matrix, Vector combinations with transposition
+
+// Matrix, Vector combinations with transposition //////////////////////////////////////////////////////////////
+
 
 // trn(Vector) * Vector
 template <class type>
@@ -1479,6 +1288,6 @@ operator * (exp_un<Matrix<type>, op_trn, Matrix<type> > const & A, exp_un<Matrix
     return exp_bin<Matrix<type>, Matrix<type>, op_otot, Matrix<type> >(A.Arg, B.Arg);
 }
 
-}
+}; // namespace LinAlg
 
 #endif // MECHSYS_LINALG_LAEXPR_H

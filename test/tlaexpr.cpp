@@ -27,7 +27,7 @@
 #include <iostream>
 
 // MechSys
-#include <mechsys/linalg/laexpr.h>
+#include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
 
 using namespace std;
@@ -255,7 +255,7 @@ int main(int argc, char **argv) try
             0, 2, 0,
             0, 0, 2;
         double R;
-        R = det(A);
+        R = Det(A);
         if (R != 8) passed = false;
         if (passed) cout << "ok. " << endl << endl;
         else
@@ -274,7 +274,7 @@ int main(int argc, char **argv) try
             0, 0, 2, 0,
             0, 0, 0, 2;
         Matrix<double> R;
-        R = inv(A);
+        Inv(A, R);
         if (R(0,0) != 0.5 || R(1,1) != 0.5 || R(2,2) != 0.5) passed = false;
         if (passed) cout << "ok. " << endl << endl;
         else
@@ -440,17 +440,18 @@ int main(int argc, char **argv) try
         }
     }
 
-    cout << "Matrix expression ( R = det(A)*trn(inv(B)) - trn(det(A)*inv(B)) ) evaluation... " << endl;
+    cout << "Matrix expression ( R = Det(A)*trn(inv(B)) - trn(Det(A)*inv(B)) ) evaluation... " << endl;
     {
         bool         passed = true;
         Matrix<double> A(3,3); 
-        Matrix<double> B(3,3); 
+        Matrix<double> B(3,3), Bi; 
         A = 2, 2, 3, 
             4, 5, 6, 
             7, 8, 9; 
         B = A;
+        Inv (B, Bi);
         Matrix<double> R(3,3);
-        R = det(A)*trn(inv(B)) - trn(det(A)*inv(B));
+        R = Det(A)*trn(Bi) - trn(Det(A)*Bi);
         //std::cout << "Result  = " << R << std::endl;
         if (R(0,0) != 0 || R(1,0) != 0 || R(2,2) != 0) passed = false;
         if (passed) cout << "ok. " << endl << endl;
@@ -482,7 +483,7 @@ int main(int argc, char **argv) try
         }
     }
 
-    cout << "Matrix expression ( R += trn(B)*D*B*det(J)/c  - trn(trn(D*B)*B)*det(J)/c evaluation... " << endl;
+    cout << "Matrix expression ( R += trn(B)*D*B*Det(J)/c  - trn(trn(D*B)*B)*Det(J)/c evaluation... " << endl;
     {                                      
         bool         passed = true;
         Matrix<double> B(2,3); 
@@ -498,7 +499,7 @@ int main(int argc, char **argv) try
         double c = 1;
         Matrix<double> R(3,3);
         R.SetValues(1);
-        R+= trn(B)*D*B*det(J)/c - trn(trn(D*B)*B)*det(J)/c;
+        R+= trn(B)*D*B*Det(J)/c - trn(trn(D*B)*B)*Det(J)/c;
         if (R(0,0) != 1 || R(1,0) != 1 || R(2,2) != 1) passed = false;
         if (passed) cout << "ok. " << endl << endl;
         else

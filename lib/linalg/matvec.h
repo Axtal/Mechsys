@@ -79,12 +79,12 @@ typedef mtl::dense_vector<double> Vec_t;
 typedef LinAlg::Vector<double> Vec_t;
 typedef LinAlg::Matrix<double> Mat_t;
 
-double dot         (Vec_t const & V, Vec_t const & W) { return LinAlg::Dot(V,W); }
-size_t size        (Vec_t const & V) { return V.Size(); }
-void   set_to_zero (Vec_t       & V) { V.SetValues(0.0); }
-void   set_to_zero (Mat_t       & M) { M.SetValues(0.0); }
-size_t num_rows    (Vec_t const & V) { return V.Size(); }
-size_t num_rows    (Mat_t const & M) { return M.Rows(); }
+inline double dot         (Vec_t const & V, Vec_t const & W) { return LinAlg::Dot(V,W); }
+inline size_t size        (Vec_t const & V) { return V.Size(); }
+inline void   set_to_zero (Vec_t       & V) { V.SetValues(0.0); }
+inline void   set_to_zero (Mat_t       & M) { M.SetValues(0.0); }
+inline size_t num_rows    (Vec_t const & V) { return V.Size(); }
+inline size_t num_rows    (Mat_t const & M) { return M.Rows(); }
 
 #endif
 
