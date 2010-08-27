@@ -657,7 +657,7 @@ inline void Solver::Initialize (bool Transient)
     }
 
     // number of Lagrange multipliers
-    size_t nlag_pins = 0;//Dom.Msh.Pins.size()*Dom.NDim; // number of Lag mult due to pins
+    size_t nlag_pins = Dom.NodsPins.Size()*Dom.NDim; // number of Lag mult due to pins
     size_t nlag_insu = Dom.NodsIncSup.Size();        // number of Lag mult due to inclined supports
     NLag = nlag_pins + nlag_insu;                    // total number of Lagrange multipliers
     NEq += NLag;
@@ -793,37 +793,11 @@ inline void Solver::_aug_and_set_A ()
     }
 
     // set equations corresponding to Lagrange multipliers
-    long eqlag = NEq - NLag;
+    int eqlag = NEq - NLag;
 
-    // pins
-    /*
-    if (Dom.Msh.Pins.size()>0)
-    {
-        for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
-        {
-            Node const & nod0 = (*Dom.ActNods[p->first->ID]);
-            for (size_t i=0; i<p->second.Size(); ++i)
-            {
-                Node const & nod1 = (*Dom.ActNods[p->second[i]->ID]);
-                for (int j=0; j<Dom.NDim; ++j)
-                {
-                    long eq0 = nod0.EQ[nod0.UMap(Dom.DisplKeys[j])];
-                    long eq1 = nod1.EQ[nod1.UMap(Dom.DisplKeys[j])];
-                    A11.PushEntry (eq0,eqlag,1.0);   A11.PushEntry (eq1,eqlag,-1.0);
-                    A11.PushEntry (eqlag,eq0,1.0);   A11.PushEntry (eqlag,eq1,-1.0);
-                    eqlag++;
-                }
-            }
-        }
-    }
-    */
-
-    // inclined supports
-    for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i)
-    {
-        Dom.NodsIncSup[i]->SetLagIncSup (eqlag, A11);
-        eqlag++; // each inclined support adds one equation
-    }
+    // pins and inclined supports
+    for (size_t i=0; i<Dom.NodsPins  .Size(); ++i) Dom.NodsPins  [i]->SetLagPin    (eqlag, A11);
+    for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i) Dom.NodsIncSup[i]->SetLagIncSup (eqlag, A11);
 }
 
 inline void Solver::_cal_resid (bool WithAccel)
@@ -837,39 +811,11 @@ inline void Solver::_cal_resid (bool WithAccel)
     //std::cout << "R     = " << PrintVector(R,     "%10.3f");
     
     // number of the first equation corresponding to Lagrange multipliers
-    long eqlag = NEq - NLag;
+    int eqlag = NEq - NLag;
 
-    // clear forces due to pins
-    /*
-    if (Dom.Msh.Pins.size()>0)
-    {
-        for (Mesh::Pin_t::const_iterator p=Dom.Msh.Pins.begin(); p!=Dom.Msh.Pins.end(); ++p)
-        {
-            Node const & nod0 = (*Dom.ActNods[p->first->ID]);
-            for (size_t i=0; i<p->second.Size(); ++i)
-            {
-                Node const & nod1 = (*Dom.ActNods[p->second[i]->ID]);
-                for (int j=0; j<Dom.NDim; ++j)
-                {
-                    long eq0 = nod0.EQ[nod0.UMap(Dom.DisplKeys[j])];
-                    long eq1 = nod1.EQ[nod1.UMap(Dom.DisplKeys[j])];
-                    //F(eq0) += -U(eqlag);
-                    //F(eq1) +=  U(eqlag);
-                    R(eq0) = 0.0;
-                    R(eq1) = 0.0;
-                    eqlag++;
-                }
-            }
-        }
-    }
-    */
-
-    // clear forces due to inclined supports
-    for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i)
-    {
-        Dom.NodsIncSup[i]->ClrRIncSup (eqlag, R);
-        eqlag++; // each inclined support adds one equation
-    }
+    // clear forces due to pins and inclined supports
+    for (size_t i=0; i<Dom.NodsPins  .Size(); ++i) Dom.NodsPins  [i]->ClrRPin    (eqlag, R);
+    for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i) Dom.NodsIncSup[i]->ClrRIncSup (eqlag, R);
 
     // clear forces due to supports
     //for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;

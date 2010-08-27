@@ -50,7 +50,7 @@ int main(int argc, char **argv) try
     mesh.SetCell  (1,   -1, Array<int>(1, 2));
     mesh.SetCell  (2,   -2, Array<int>(2, 3));
     mesh.AddPin   (-300);
-    //mesh.WriteMPY ("ex46");
+    mesh.WriteMPY ("ex46");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -62,6 +62,7 @@ int main(int argc, char **argv) try
     // domain and solver
     FEM::Domain dom(mesh, prps, /*mdls*/Dict(), /*inis*/Dict());
     FEM::Solver sol(dom);
+    //cout << dom << endl;
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
@@ -73,8 +74,9 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
+    FEM::Beam::DrwTxtSz = 10;
     dom.PrintResults ("%11.6g");
-    //dom.WriteMPY     ("ex46_res", /*sf*/0.01);
+    dom.WriteMPY     ("ex46_res", /*sf*/10.);
 
     int i = sol.NEq-sol.NLag;
     cout << "\n[1;31mlambda0 = " << sol.U(i) << ",    lambda1 = " << sol.U(i+1) << endl << "[0m\n";
@@ -83,14 +85,14 @@ int main(int argc, char **argv) try
 
     // correct solution
     Table nod_sol;
-    nod_sol.Set("ux uy wz", /*NRows*/5,
-            0.0,  0.0,       0.0,
-            0.0,  0.0,      -1.0/90.0,
-            0.0, -70.0/9.0, -1.0/30.0,
-            0.0, -10.0,      0.0,
-            0.0, -70.0/9.0, -1.0/90.0);
+    nod_sol.Set(" ux    uy         wz         M", /*NRows*/5,
+                 0.0,  0.0,       0.0,        1.0/75.,
+                 0.0,  0.0,      -1.0/90.0,  -2.0/75.,
+                 0.0, -70.0/9.0, -1.0/30.0,   0.0,
+                 0.0, -10.0,      0.0,        2.0/75.,
+                 0.0, -70.0/9.0, -1.0/90.0,   0.0);
     SDPair nod_tol;
-    nod_tol.Set("ux uy wz",1.0e-15,1.0e-14,1.0e-14);
+    nod_tol.Set("ux uy wz M",1.0e-15,1.0e-14,1.0e-15,1.0e-15);
 
     // return error flag
     return dom.CheckErrorNods (nod_sol, nod_tol);

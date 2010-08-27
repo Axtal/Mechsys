@@ -97,7 +97,6 @@ public:
     Array<std::ofstream*> FilNods;     ///< Files with results at selected nodes (OutNods)
     Array<Element*>       Beams;       ///< Subset of elements of type Beam
     MDatabase_t           MFuncs;      ///< Database of pointers to M functions
-    Array<String>         DisplKeys;   ///< Displacement keys
     Array<Node*>          InterNodes;  ///< Nodes on the inferface between partitions (if PARA==true)
     Tag2Eles_t            Tag2Eles;    ///< Map tag to elements. Useful to activate/deactivate layers
     Array<Node*>          ActNods;     ///< Subset of active nodes (set once per call to SetBCs)
@@ -105,6 +104,7 @@ public:
     Array<Node*>          NodsWithPF;  ///< Subset of nodes with prescribed F
     Array<Node*>          NodsWithPU;  ///< Subset of nodes with prescribed U
     Array<Element*>       ElesWithBC;  ///< Subset of elements with prescribed boundary conditions (ex.: beams, flowelem with convection, etc.)
+    Array<Node*>          NodsPins;    ///< Subset of nodes that are pins
     Array<Node*>          NodsIncSup;  ///< Subset of nodes with inclined supports
 
     // Nodal results
@@ -308,11 +308,31 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     // check size of Eles
     if (Eles.Size()==0) throw new Fatal("FEM::Domain::Domain: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   The array of Elements is empty.");
 
-    // displacement keys
-    DisplKeys.Resize (NDim);
-    DisplKeys[0] = "ux";
-    DisplKeys[1] = "uy";  if (NDim==3)
-    DisplKeys[2] = "uz";
+    // set pin nodes
+    if (Msh.Pins.size()>0)
+    {
+        for (Mesh::Pin_t::const_iterator p=Msh.Pins.begin(); p!=Msh.Pins.end(); ++p)
+        {
+            std::map<int,Node*>::const_iterator it0 = VertID2Node.find (p->first->ID);
+            if (it0==VertID2Node.end()) throw new Fatal("FEM::Domain::Domain:: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   Could not find Node # %d corresponding to a Pin.",p->first->ID);
+#ifdef HAS_MPI
+            if (PARA)
+            {
+                // skip pins that aren't in this partition
+                if (p->first->PartIDs.Find(MPI::COMM_WORLD.Get_rank())<0) continue;
+            }
+#endif
+            Array<Node*> con_nods; // connected nodes to this pin
+            for (size_t i=0; i<p->second.Size(); ++i)
+            {
+                std::map<int,Node*>::const_iterator it1 = VertID2Node.find (p->second[i]->ID);
+                if (it1==VertID2Node.end()) throw new Fatal("FEM::Domain::Domain:: There is a problem with the Msh structure (probably the domain decomposition has failed).\n   Could not find Node # %d connected to Pin # %d. Both pins must be in the same partition.",p->second[i]->ID,p->first->ID);
+                con_nods.Push (it1->second);
+            }
+            it0->second->SetPin (con_nods);
+            NodsPins.Push (it0->second);
+        }
+    }
 
     // print header of output files
     OutResults (/*idxout*/0, /*time*/0, /*vtufname*/NULL, /*headeronly*/true);
@@ -888,7 +908,8 @@ inline bool Domain::CheckErrorNods (Table const & NodSol, SDPair const & NodTol)
     // nodes
     Table  reac; // reactions
     SDPair sumR; // sum of reactions
-    bool reactions_calculated = false;
+    bool reactions_calculated  = false;
+    bool nodresults_calculated = false;
     for (size_t i=0; i<NodSol.Keys.Size(); ++i)
     {
         // calc error
@@ -916,14 +937,27 @@ inline bool Domain::CheckErrorNods (Table const & NodSol, SDPair const & NodTol)
             {
                 if (Nods[j]->NShares>0)
                 {
-                    if (AllUKeys.Has(key)) err[j] = fabs(Nods[j]->U(key.CStr()) - NodSol(key,j));
-                    else                   err[j] = fabs(Nods[j]->F(key.CStr()) - NodSol(key,j));
+                    if      (AllUKeys.Has(key)) err[j] = fabs(Nods[j]->U(key.CStr()) - NodSol(key,j));
+                    else if (AllFKeys.Has(key)) err[j] = fabs(Nods[j]->F(key.CStr()) - NodSol(key,j));
+                    else
+                    {
+                        if (!nodresults_calculated)
+                        {
+                            NodalResults ();
+                            nodresults_calculated = true;
+                        }
+                        long pos = AllEKeys.Find(key);
+                        if (pos<0) throw new Fatal("Domain::CheckErrorNods: Could not find key=%s in AllEKeys (extrapolated variables) array",key.CStr());
+                        double cnt = NodResCount[Nods[j]][pos];
+                        err[j] = fabs(NodResults[Nods[j]][pos]/(cnt>0.0?cnt:1.0) - NodSol(key,j));
+                    }
                 }
                 else err[j] = 0.0;
             }
         }
 
         // summary
+        if (!NodTol.HasKey(key)) throw new Fatal("Domain::CheckErrorNods: NodTol structure with the tolerances must have key=%s",key.CStr());
         double max_err = err.TheMax();
         double tol     = NodTol(key);
         std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
@@ -967,6 +1001,7 @@ inline bool Domain::CheckErrorEles (Table const & EleSol, SDPair const & EleTol)
         }
 
         // summary
+        if (!EleTol.HasKey(key)) throw new Fatal("Domain::CheckErrorEles: EleTol structure with the tolerances must have key=%s",key.CStr());
         double max_err = err.TheMax();
         double tol     = EleTol(key);
         std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
@@ -995,7 +1030,7 @@ inline bool Domain::CheckErrorIPs (Table const & EleSol, SDPair const & EleTol) 
         Array<double> err(EleSol.NRows);
         for (size_t j=0; j<Eles.Size(); ++j)
         {
-            if (Eles[j]->GE==NULL) throw new Fatal("Domain::CheckError: This method works only when GE (geometry element) is not NULL");
+            if (Eles[j]->GE==NULL) throw new Fatal("Domain::CheckErrorIPs: This method works only when GE (geometry element) is not NULL");
             Array<SDPair> res;
             Eles[j]->StateAtIPs (res);
             for (size_t k=0; k<Eles[j]->GE->NIP; ++k)
@@ -1006,13 +1041,13 @@ inline bool Domain::CheckErrorIPs (Table const & EleSol, SDPair const & EleTol) 
         }
 
         // summary
+        if (!EleTol.HasKey(key)) throw new Fatal("Domain::CheckErrorIPs: EleTol structure with the tolerances must have key=%s",key.CStr());
         double max_err = err.TheMax();
         double tol     = EleTol(key);
         std::cout << Util::_4<< key << Util::_8s<<err.TheMin() << Util::_8s<<err.Mean();
         std::cout << (max_err>tol ? TERM_RED : TERM_GREEN) << Util::_8s<<max_err << TERM_RST << Util::_8s<<err.Norm() << "\n";
         if (max_err>tol) error = true;
     }
-
     std::cout << "\n";
 
     return error;

@@ -96,7 +96,6 @@ ENABLE_LANGUAGE (Fortran)
 FIND_PACKAGE (wxWidgets COMPONENTS ${WXW_COMPONENTS})       #  1
 INCLUDE (FindMPI)                                           #  2
 INCLUDE (FindVTK)                                           #  3
-INCLUDE (FindHDF5)                                          #  4
 INCLUDE (FindBoost)                                         #  5
 INCLUDE (FindLAPACK)                                        #  6
 INCLUDE (${MECHSYS_SOURCE_DIR}/Modules/FindBLITZ.cmake    ) #  7

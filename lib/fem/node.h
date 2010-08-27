@@ -84,12 +84,17 @@ public:
     void           AccumPF   ();                                                                         ///< Accumulate prescribed F (to calculate Reactions later). Copy from _PF into _aPF.
     void           Reactions (std::map<String,double> & R) const;                                        ///< Calculate reactions
 
+    // Pins
+    void SetPin    (Array<Node*> const & ConnectedNodes) { _pin_nodes=ConnectedNodes; } ///< Set Pin
+    void SetLagPin (int & EqLag, Sparse::Triplet<double,int> & A) const;                ///< Set A matrix with the equations for the Lagrangian multipliers corresponding to pins. Will increment EqLag
+    void ClrRPin   (int & EqLag, Vec_t & R)                       const;                ///< Clear R components corresponding pins. Will inclined EqLag
+
     // Inclined supports: 2D
     void SetIncSup    (double Alpha) { _incsup_alpha=Alpha;  _has_incsup=true; } ///< Set inclined support
     void DelIncSup    ()             { _has_incsup=false; }                      ///< Delete inclined support
     bool HasIncSup    () const       { return _has_incsup; }                     ///< Has inclined support ?
-    void SetLagIncSup (int EqLag, Sparse::Triplet<double,int> & A);              ///< Set A matrix with the equations for the Lagrangian multipliers corresponding to inclined supports
-    void ClrRIncSup   (int EqLag, Vec_t & R);                                    ///< Clear R components corresponding to inclined supports
+    void SetLagIncSup (int & EqLag, Sparse::Triplet<double,int> & A) const;      ///< Set A matrix with the equations for the Lagrangian multipliers corresponding to inclined supports. Will increment EqLag
+    void ClrRIncSup   (int & EqLag, Vec_t & R)                       const;      ///< Clear R components corresponding to inclined supports. Will inclined EqLag
 
     // Data
     Mesh::Vertex const & Vert;    ///< Geometric information: ID, Tag, coordinates
@@ -109,6 +114,9 @@ private:
     SDPair          _aPF; ///< Accumulated prescribed F (not erased in DelPFs)
     Array<PtBCMult> _MPU; ///< Multipliers of PU
     Array<PtBCMult> _MPF; ///< Multipliers of PF
+
+    // Data for pins
+    Array<Node*> _pin_nodes; ///< Other nodes connected to this pin
 
     // Data at nodes with inclined supports
     double _incsup_alpha; ///< Inclined support alpha's
@@ -213,23 +221,63 @@ inline void Node::Reactions (std::map<String,double> & R) const
     }
 }
 
-inline void Node::SetLagIncSup (int EqLag, Sparse::Triplet<double,int> & A)
+inline void Node::SetLagPin (int & EqLag, Sparse::Triplet<double,int> & A) const
 {
-    double s = sin(_incsup_alpha);
-    double c = cos(_incsup_alpha);
-    long eq0 = Eq("ux");
-    long eq1 = Eq("uy");
+    for (size_t i=0; i<_pin_nodes.Size(); ++i)
+    {
+        for (size_t j=0; j<_U.Keys.Size(); ++j)
+        {
+            if (_U.Keys[j]=="ux" || _U.Keys[j]=="uy" || _U.Keys[j]=="uz")
+            {
+                int eq0 =                Eq(_U.Keys[j]);
+                int eq1 = _pin_nodes[i]->Eq(_U.Keys[j]);
+                A.PushEntry (eq0,EqLag,1.0);   A.PushEntry (eq1,EqLag,-1.0);
+                A.PushEntry (EqLag,eq0,1.0);   A.PushEntry (EqLag,eq1,-1.0);
+                EqLag++; // each pin adds one equation per DOF
+            }
+        }
+    }
+}
+
+inline void Node::ClrRPin (int & EqLag, Vec_t & R) const
+{
+    for (size_t i=0; i<_pin_nodes.Size(); ++i)
+    {
+        for (size_t j=0; j<_U.Keys.Size(); ++j)
+        {
+            if (_U.Keys[j]=="ux" || _U.Keys[j]=="uy" || _U.Keys[j]=="uz")
+            {
+                int eq0 =                Eq(_U.Keys[j]);
+                int eq1 = _pin_nodes[i]->Eq(_U.Keys[j]);
+                R(eq0) = 0.0;
+                R(eq1) = 0.0;
+                EqLag++; // each pin adds one equation per DOF
+            }
+        }
+    }
+}
+
+
+inline void Node::SetLagIncSup (int & EqLag, Sparse::Triplet<double,int> & A) const
+{
+    double s   = sin(_incsup_alpha);
+    double c   = cos(_incsup_alpha);
+    int    eq0 = Eq("ux");
+    int    eq1 = Eq("uy");
     A.PushEntry (EqLag, eq0,  s);
     A.PushEntry (EqLag, eq1, -c);
     A.PushEntry (eq0, EqLag,  s);
     A.PushEntry (eq1, EqLag, -c);
+    EqLag++; // each inclined support adds one equation
 }
-inline void Node::ClrRIncSup (int EqLag, Vec_t & R)
+
+inline void Node::ClrRIncSup (int & EqLag, Vec_t & R) const
 {
-    long eq0 = Eq("ux");
-    long eq1 = Eq("uy");
+    int eq0 = Eq("ux");
+    int eq1 = Eq("uy");
     R(eq0) = 0.0;
     R(eq1) = 0.0;
+    EqLag++; // each inclined support adds one equation
 }
 
 std::ostream & operator<< (std::ostream & os, Node const & N)
@@ -256,6 +304,13 @@ std::ostream & operator<< (std::ostream & os, Node const & N)
         if (j==2) os << ")";
         else      os << ", ";
     }
+    if (N._pin_nodes.Size()>0)
+    {
+        os << TERM_GREEN <<" PIN:[";
+        for (size_t i=0; i<N._pin_nodes.Size(); ++i) os << N._pin_nodes[i]->Vert.ID << (i==N._pin_nodes.Size()-1?"]":",");
+        os << TERM_RST;
+    }
+    if (N._has_incsup)         os << " INCSUP";
     os << TERM_CLR4 << Util::_reset << " PU=[";
     for (size_t i=0; i<N.NPU(); ++i)
     {
