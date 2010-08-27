@@ -38,6 +38,7 @@ public:
     static bool   DrwMtxt;  ///< Show text with min/max bending moment ?
     static bool   DrwShear; ///< Draw shear force diagram instead of bending moment ?
     static bool   DrwAxial; ///< Draw axial force diagram ?
+    static size_t DrwTxtSz; ///< Size of text in diagram
 
     // Constructor
     Beam (int                  NDim,   ///< Space dimension
@@ -74,6 +75,7 @@ size_t Beam::DrwNDiv  = 10;
 bool   Beam::DrwMtxt  = true;
 bool   Beam::DrwShear = false;
 bool   Beam::DrwAxial = false;
+size_t Beam::DrwTxtSz = 6;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -475,7 +477,7 @@ inline void Beam::Draw (std::ostream & os, double SF) const
                 y  = y0 + 0.5*(y1-y0);
                 String buf;
                 buf.Printf ("%g",N);
-                os << "ax.text ("<<x<<","<<y<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
+                os << "ax.text ("<<x<<","<<y<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize="<<DrwTxtSz<<")\n";
             }
         }
         else if (DrwShear)
@@ -495,7 +497,7 @@ inline void Beam::Draw (std::ostream & os, double SF) const
                     buf.Printf ("%g",V);
                     os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
                     os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(V<0.0?"dpink":"dblue")<<", lw=4))\n";
-                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize="<<DrwTxtSz<<")\n";
                 }
             }
         }
@@ -516,7 +518,7 @@ inline void Beam::Draw (std::ostream & os, double SF) const
                     buf.Printf ("%g",Mmax);
                     os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
                     os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(Mmax<0.0?"dpink":"dblue")<<", lw=4))\n";
-                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize="<<DrwTxtSz<<")\n";
                 }
                 
                 // min M
@@ -532,7 +534,7 @@ inline void Beam::Draw (std::ostream & os, double SF) const
                     buf.Printf ("%g",Mmin);
                     os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
                     os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(Mmin<0.0?"dpink":"dblue")<<", lw=4))\n";
-                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize=8)\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize="<<DrwTxtSz<<")\n";
                 }
             }
         }

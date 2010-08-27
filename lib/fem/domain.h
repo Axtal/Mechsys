@@ -47,8 +47,9 @@ class Domain
 {
 public:
     // static
-    static bool PARA;     ///< Parallel code ?
-    static bool WithInfo; ///< Print information ?
+    static bool PARA;         ///< Parallel code ?
+    static bool WithInfo;     ///< Print information ?
+    static bool DrwOnlyBeams; ///< Draw only beams in WriteMPY ?
 
     // enum
     enum BryTagType_t { None_t, Element_t, Border_t, Node_t }; ///< type of boundary condition tag
@@ -116,8 +117,9 @@ public:
     mutable Res_t NodResCount; ///< Count how many times a variable (key) was added to a node
 };
 
-bool Domain::PARA     = false;
-bool Domain::WithInfo = true;
+bool Domain::PARA         = false;
+bool Domain::WithInfo     = true;
+bool Domain::DrwOnlyBeams = false;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -689,7 +691,17 @@ inline void Domain::WriteMPY (char const * FNKey, double SFCoef, bool PNG, char 
     String fn(FNKey);  fn.append(".mpy");
     std::ofstream of(fn.CStr(), std::ios::out);
     MPL::Header   (of);
-    for (size_t i=0; i<Eles.Size(); ++i) Eles[i]->Draw (of, SFCoef*max_dist);
+    if (DrwOnlyBeams)
+    {
+        for (size_t i=0; i<Beams.Size(); ++i)
+        {
+            if (Beams[i]->Active) Beams[i]->Draw (of, SFCoef*max_dist);
+        }
+    }
+    else
+    {
+        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->Draw (of, SFCoef*max_dist);
+    }
     MPL::AddPatch (of);
     if (Extra!=NULL) of << Extra;
     if (PNG) MPL::SaveFig (FNKey, of);
