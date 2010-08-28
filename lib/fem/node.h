@@ -63,6 +63,7 @@ public:
     void           SetUF   (Vec_t const & UVec, Vec_t const & FVec);                    ///< Set internal U and F values given global vectors
     void           GetUF   (Vec_t       & UVec, Vec_t       & FVec);                    ///< Get U and F values and store into UVec and FVec vectors
     void           Clear   ();                                                          ///< Clear all values but keep structure of DOFs
+    void           ClearU  () { _U.SetValues (0.0); }                                   ///< Clear U values only
 
     // Methods to set/access prescribed U values
     void           SetPU     (String const & UKey, double Val, PtBCMult MFunc);                          ///< Set prescribed U

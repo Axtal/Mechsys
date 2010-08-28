@@ -812,7 +812,7 @@ inline void Solver::_wrn_resid (double Tol)
             for (size_t i=0; i<Dom.ActNods.Size();     ++i)
             for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
                 if (Dom.ActNods[i]->Eq(j)==static_cast<int>(eq))
-                    printf("%sWarning: Problem with residual: Vert # %4ld, eq=%6zd, F=%15.6e, F_int=%15.6e, R=%15.6e\n%s", TERM_RED, Dom.ActNods[i]->Vert.ID, eq, F(eq), F_int(eq), R(eq),TERM_RST);
+                    printf("%sWarning: Problem with residual: Vert # %4zd, eq=%6zd, F=%15.6e, F_int=%15.6e, R=%15.6e\n%s", TERM_RED, Dom.ActNods[i]->Vert.ID, eq, F(eq), F_int(eq), R(eq),TERM_RST);
                     //throw new Fatal("%sWarning: Problem with residual: Vert # %4ld, eq=%6zd, F=%15.6e, F_int=%15.6e, R=%15.6e\n%s", TERM_RED, Dom.ActNods[i]->Vert.ID, eq, F(eq), F_int(eq), R(eq),TERM_RST);
         }
     }

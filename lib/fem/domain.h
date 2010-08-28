@@ -70,7 +70,7 @@ public:
     ~Domain ();
 
     // Methods
-    void SetBCs         (Dict const & BCs);                                                                                ///< Set boundary conditions
+    void SetBCs         (Dict const & BCs, bool ClearU=false);                                                             ///< Set boundary conditions
     void PrintResults   (char const * NF="%15.6e", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
     void WriteMPY       (char const * FileKey, double SFCoef=1.0, bool PNG=false, char const * Extra=NULL) const;          ///< SFCoef: Scale-factor coefficient
     void WriteVTU       (char const * FileKey, bool DoExtrapolation=true) const;                                           ///< Write file for ParaView
@@ -348,7 +348,7 @@ inline Domain::~Domain()
 
 // Methods
 
-inline void Domain::SetBCs (Dict const & BCs)
+inline void Domain::SetBCs (Dict const & BCs, bool ClearU)
 {
     // info
 #ifdef HAS_MPI
@@ -606,7 +606,11 @@ inline void Domain::SetBCs (Dict const & BCs)
     NodsIncSup.Resize (0);
     for (size_t i=0; i<Nods.Size(); ++i)
     {
-        if (Nods[i]->NShares>0)   ActNods   .Push (Nods[i]); 
+        if (Nods[i]->NShares>0)
+        {
+            ActNods.Push (Nods[i]); 
+            if (ClearU) Nods[i]->ClearU ();
+        }
         if (Nods[i]->NPU()>0)     NodsWithPU.Push (Nods[i]);
         if (Nods[i]->HasIncSup()) NodsIncSup.Push (Nods[i]);
         if (Nods[i]->NPF()>0)
