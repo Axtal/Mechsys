@@ -121,6 +121,7 @@ public:
     double        DynTh2;   ///< Dynamic coefficient Theta 2
     Array<double> IncsW;    ///< Increments weights used in Solve
     bool          WithInfo; ///< Print information ?
+    bool          WarnRes;  ///< Warning if residual exceeds limit ?
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -188,7 +189,8 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       DampAk   (0.5),
       DynTh1   (0.5),
       DynTh2   (0.5),
-      WithInfo (true)
+      WithInfo (true),
+      WarnRes  (false)
 {
 #if HAS_MPI
     if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;
@@ -835,7 +837,7 @@ inline void Solver::_cal_resid (bool WithAccel)
     //for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
 
     //printf("\n######################################   After   #####################################\n");
-    //_wrn_resid (1.0e-7);
+    if (WarnRes) _wrn_resid ();
 
     if (WithAccel)
     {
