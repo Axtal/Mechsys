@@ -307,6 +307,29 @@ inline void Beam::UpdateState (Vec_t const & dU, Vec_t * F_int) const
         Vec_t dFe(6);
         dFe = K * dUe;
 
+        /*
+        // length and T matrix
+        double l;
+        Mat_t  T;
+        CalcT (T, l);
+
+        // increment of displacements in local coordinates
+        Vec_t dUl(T * dUe);
+
+        // axial and shear forces
+        double ll  = l*l;
+        double lll = ll*l;
+        double dN  = E*A*(dUl(3)-dUl(0))/l;
+        double dV  = E*Izz*((12.*dUl(1))/lll + (6.*dUl(2))/ll - (12.*dUl(4))/lll + (6.*dUl(5))/ll);
+        double dM0 = E*Izz*(dUl(1)*(           -6./ll) + dUl(2)*(         -4./l) + dUl(4)*(6./ll            ) + dUl(5)*(         -2./l));
+        double dM1 = E*Izz*(dUl(1)*((12.*l)/lll-6./ll) + dUl(2)*((6.*l)/ll-4./l) + dUl(4)*(6./ll-(12.*l)/lll) + dUl(5)*((6.*l)/ll-2./l));
+
+        // element nodal forces in global coordinates
+        Vec_t dFl(6);
+        dFl = -dN, dV, -dM0,  dN, -dV, dM1;
+        Vec_t dFe(trans(T) * dFl);
+        */
+
         // add results to Fint (internal forces)
         for (size_t i=0; i<loc.Size(); ++i) (*F_int)(loc[i]) += dFe(i);
     }

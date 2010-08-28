@@ -811,6 +811,7 @@ inline void Solver::_wrn_resid (double Tol)
             for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
                 if (Dom.ActNods[i]->Eq(j)==static_cast<int>(eq))
                     printf("%sWarning: Problem with residual: Vert # %4ld, eq=%6zd, F=%15.6e, F_int=%15.6e, R=%15.6e\n%s", TERM_RED, Dom.ActNods[i]->Vert.ID, eq, F(eq), F_int(eq), R(eq),TERM_RST);
+                    //throw new Fatal("%sWarning: Problem with residual: Vert # %4ld, eq=%6zd, F=%15.6e, F_int=%15.6e, R=%15.6e\n%s", TERM_RED, Dom.ActNods[i]->Vert.ID, eq, F(eq), F_int(eq), R(eq),TERM_RST);
         }
     }
 }
@@ -821,7 +822,7 @@ inline void Solver::_cal_resid (bool WithAccel)
     R = F - F_int;
 
     //printf("\n######################################   Before   ####################################\n");
-    //_wrn_resid ();
+    //_wrn_resid (1.0e-10);
     
     // number of the first equation corresponding to Lagrange multipliers
     int eqlag = NEq - NLag;
@@ -834,7 +835,7 @@ inline void Solver::_cal_resid (bool WithAccel)
     //for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
 
     //printf("\n######################################   After   #####################################\n");
-    //_wrn_resid ();
+    //_wrn_resid (1.0e-7);
 
     if (WithAccel)
     {

@@ -177,10 +177,6 @@ inline void NLRod::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     sta->sa  = E0*(sta->ea - alp*pow(sta->ea,2.0));
     dsa      = sta->sa - dsa;
 
-    // K matrix
-    Mat_t K;
-    CalcK (K);
-
     // element nodal forces
     Vec_t dFl(2); // local
     dFl = -A*(dsa), A*(dsa);
@@ -211,7 +207,7 @@ int NLRodRegister()
 {
     ElementFactory["NLRod"]   = NLRodMaker;
     ElementVarKeys["NLRod2D"] = std::make_pair ("ux uy",    "fx fy");
-    ElementVarKeys["NLRod2D"] = std::make_pair ("ux uy uz", "fx fy fz");
+    ElementVarKeys["NLRod3D"] = std::make_pair ("ux uy uz", "fx fy fz");
     PROB.Set ("NLRod", (double)PROB.Keys.Size());
     return 0;
 }
