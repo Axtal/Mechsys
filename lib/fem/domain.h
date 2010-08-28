@@ -817,6 +817,20 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
         }
     }
 
+    // data -- nodes -- IDs
+    if (ActNods.Size()!=Nods.Size())
+    {
+        oss << "        <DataArray type=\"Float32\" Name=\"" << "ID" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        for (size_t j=0; j<nn; ++j)
+        {
+            oss << (k==0?"  ":" ") << ActNods[j]->Vert.ID;
+            k++;
+            VTU_NEWLINE (j,k,nn,6-1,oss);
+        }
+        oss << "        </DataArray>\n";
+    }
+
     // data -- nodes -- displacements
     if (HasDisps)
     {

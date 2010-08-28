@@ -139,6 +139,7 @@ public:
 
 private:
     void _aug_and_set_A ();                          ///< Augment A matrix and set Lagrange multipliers if any
+    void _wrn_resid     (double Tol=1.0e-7);         ///< Warning message for large residuals (debugging)
     void _cal_resid     (bool WithAccel=false);      ///< Calculate residual
     void _cor_resid     (Vec_t & dU, Vec_t & dF);    ///< Correct residual
     void _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
@@ -800,15 +801,27 @@ inline void Solver::_aug_and_set_A ()
     for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i) Dom.NodsIncSup[i]->SetLagIncSup (eqlag, A11);
 }
 
+inline void Solver::_wrn_resid (double Tol)
+{
+    for (size_t eq=0; eq<NEq; ++eq)
+    {
+        if (fabs(R(eq))>Tol)
+        {
+            for (size_t i=0; i<Dom.ActNods.Size();     ++i)
+            for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
+                if (Dom.ActNods[i]->Eq(j)==static_cast<int>(eq))
+                    printf("%sWarning: Problem with residual: Vert # %4ld, eq=%6zd, F=%15.6e, F_int=%15.6e, R=%15.6e\n%s", TERM_RED, Dom.ActNods[i]->Vert.ID, eq, F(eq), F_int(eq), R(eq),TERM_RST);
+        }
+    }
+}
+
 inline void Solver::_cal_resid (bool WithAccel)
 {
     // calculate residual
     R = F - F_int;
 
-    //std::cout << "\n######################################   Before\n";
-    //std::cout << "F     = " << PrintVector(F,     "%10.3f");
-    //std::cout << "F_int = " << PrintVector(F_int, "%10.3f");
-    //std::cout << "R     = " << PrintVector(R,     "%10.3f");
+    //printf("\n######################################   Before   ####################################\n");
+    //_wrn_resid ();
     
     // number of the first equation corresponding to Lagrange multipliers
     int eqlag = NEq - NLag;
@@ -820,12 +833,8 @@ inline void Solver::_cal_resid (bool WithAccel)
     // clear forces due to supports
     //for (size_t i=0; i<pEQ.Size(); ++i) R(pEQ[i]) = 0.0;
 
-    /*
-    std::cout << "\n######################################   After\n";
-    std::cout << "F     = " << PrintVector(F,     "%10.3f");
-    std::cout << "F_int = " << PrintVector(F_int, "%10.3f");
-    std::cout << std::endl;
-    */
+    //printf("\n######################################   After   #####################################\n");
+    //_wrn_resid ();
 
     if (WithAccel)
     {
