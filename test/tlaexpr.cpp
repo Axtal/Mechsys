@@ -31,10 +31,15 @@
 #include <mechsys/util/fatal.h>
 
 using namespace std;
-using namespace LinAlg;
+#ifndef USE_MTL4
+  using namespace LinAlg;
+#endif
 
 int main(int argc, char **argv) try
 {
+#ifdef USE_MTL4
+    cout << "This test only works with Raul's expression template library. Not with MTL4\n";
+#else
     cout << "Matrix-Vector expression template library check" << endl;
     cout << endl;
     bool chk_success = true;
@@ -512,6 +517,7 @@ int main(int argc, char **argv) try
     if (chk_success) cout << "Check result: ok. "          << endl << endl;
     else             cout << "Check result: not passsed. " << endl << endl;
 
+#endif
     return 0;
 }
 MECHSYS_CATCH

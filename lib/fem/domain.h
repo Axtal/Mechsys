@@ -630,19 +630,16 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
     printf("\n%s--- Results ------------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
 
     // number format for text
-    String nf(NF);
-    size_t pos;
-    pos=nf.find("g"); while (pos!=String::npos) { nf.replace(pos,1,"s"); pos=nf.find("g",pos+1); }
-    pos=nf.find("f"); while (pos!=String::npos) { nf.replace(pos,1,"s"); pos=nf.find("f",pos+1); }
-    pos=nf.find("e"); while (pos!=String::npos) { nf.replace(pos,1,"s"); pos=nf.find("e",pos+1); }
+    String fmt;
+    fmt.TextFmt (NF);
 
     if (!OnlySummary)
     {
         // nodes: header
         String buf;
         std::cout << TERM_CLR2 << Util::_6 << "Node";
-        for (size_t i=0; i<AllUKeys.Size(); ++i) { buf.Printf(nf, AllUKeys[i].CStr());  std::cout<<buf; }
-        for (size_t i=0; i<AllFKeys.Size(); ++i) { buf.Printf(nf, AllFKeys[i].CStr());  std::cout<<buf; }
+        for (size_t i=0; i<AllUKeys.Size(); ++i) { buf.Printf(fmt, AllUKeys[i].CStr());  std::cout<<buf; }
+        for (size_t i=0; i<AllFKeys.Size(); ++i) { buf.Printf(fmt, AllFKeys[i].CStr());  std::cout<<buf; }
         printf("%s\n",TERM_RST);
 
         // nodes: data
@@ -674,7 +671,7 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
     {
         String tmp("R");
         tmp.append (reac.Keys[i]);
-        buf.Printf (nf, tmp.CStr());
+        buf.Printf (fmt, tmp.CStr());
         std::cout<<buf; 
     }
     printf("%s\n",TERM_RST);

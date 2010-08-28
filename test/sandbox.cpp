@@ -24,6 +24,7 @@
 #include <mechsys/util/fatal.h>
 #include <mechsys/util/util.h>
 #include <mechsys/util/array.h>
+#include <mechsys/util/maps.h>
 #include <mechsys/util/stopwatch.h>
 
 using std::cout;
@@ -72,8 +73,31 @@ int main(int argc, char **argv) try
     cout << "min(A)    = " << A.TheMin() << endl;
     cout << "First(A)  = " << (*A.GetPtr()) << endl;
     cout << "Last(A)   = " << A.Last() << endl;
-    cout << endl;
 
+    cout << "\n/////////////////////////////////////////////////////////////////////////////////\n" << endl;
+
+    Table tab;
+    tab.SetZero ("A B C D", /*nrows*/4);
+    tab("A") = 0.0, 0.1, 0.2, 0.3;
+    tab("B") = 1.0, 1.1, 1.2, 1.3;
+    tab("C") = 2.0, 2.1, 2.2, 2.3;
+    tab("D") = 3.0, 3.1, 3.2, 3.3;
+    tab.Write ("table_sandbox.dat", /*NF*/"%4.1f");
+    cout << "File <table_sandbox.dat> written" << endl;
+    Table tab2;
+    tab2.Read ("table_sandbox.dat");
+    cout << "Reading back Table from file:\n" << tab2 << endl;
+    double error = 0.0;
+    for (size_t i=0; i<4; ++i)
+    {
+        error += fabs(tab2("A",i) - tab("A",i));
+        error += fabs(tab2("B",i) - tab("B",i));
+        error += fabs(tab2("C",i) - tab("C",i));
+        error += fabs(tab2("D",i) - tab("D",i));
+    }
+    if (error>1.0e-15) throw new Fatal("Table read/write failed");
+
+    cout << endl;
     return 0;
 }
 MECHSYS_CATCH

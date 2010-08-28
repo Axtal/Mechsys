@@ -80,61 +80,60 @@
 class String : public std::string
 {
 public:
-	String(){}
-	String(std::string const & Other)
-	{
-		this->clear();
-		this->append(Other);
-	}
-	String(const char * Msg)
-	{
-		this->clear();
-		this->append(Msg);
-	}
-	template<int nChars>
-	String(size_t NumElements, char const Elements[][nChars], bool WithComma=false)
-	{
-		/* Ex:  Elements[2][8] = {"gam", "gw"};   ==>   NumElements=2
-		 *
-		 *      Output: "gam, gw"
-		 */
-		char const * sep = (WithComma ? ", " : " ");
-		for (size_t i=0; i<NumElements; ++i)
-		{
-			if (i==0) Printf("%s",               Elements[i]);
-			else      Printf("%s%s%s",CStr(),sep,Elements[i]);
-		}
-	}
-	int Printf(String const & Fmt, ...)
-	{
-		int len;
-		va_list       arg_list;
-		va_start     (arg_list, Fmt);
-		len=_set_msg (Fmt.c_str(), arg_list);
-		va_end       (arg_list);
-		return len;
-	}
-	int PrintfV(String const & Fmt, va_list ArgList)
-	{
-		return _set_msg (Fmt.c_str(), ArgList);
-	}
-	char const * CStr() const { return this->c_str(); }
+    // Constructors
+    String () {}
+    String (std::string const & Other) : std::string(Other) {}
+    String (char        const * Other) : std::string(Other) {}
+
+    // Methods
+    int          Printf  (String const & Fmt, ...);                                                        ///< Print with format
+    int          PrintfV (String const & Fmt, va_list ArgList) { return _set_msg (Fmt.c_str(), ArgList); } ///< Print with format and ArgList
+    char const * CStr    ()                              const { return this->c_str(); }                   ///< Get C-string
+    void         TextFmt (char const * NF);                                                                ///< Convert NF (ex: "%10g") to text Format (ex: "%10s")
+
 private:
-	int _set_msg(char const * Fmt, va_list ArgList)
-	{
-		const int size = 4048; // TODO: remove this limitation by using a loop and reallocating space
-		char      buffer[size];
-		int       len = std::vsnprintf(buffer, size, Fmt, ArgList);
-		this->clear();
-		if (len<0) this->append("String::_set_msg: INTERNAL ERROR: std::vsnprintf FAILED");
-		else
-		{
-			buffer[len]='\0';
-			if (len>size) this->append("String::_set_msg: INTERNAL ERROR: std::vsnprintf MESSAGE TRUNCATED: ");
-			this->append(buffer);
-		}
-		return len;
-	}
-}; // class String
+    int _set_msg (char const * Fmt, va_list ArgList);
+};
+
+
+/////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
+
+
+inline int String::Printf (String const & Fmt, ...)
+{
+    int len;
+    va_list       arg_list;
+    va_start     (arg_list, Fmt);
+    len=_set_msg (Fmt.c_str(), arg_list);
+    va_end       (arg_list);
+    return len;
+}
+
+inline void String::TextFmt (char const * NF)
+{
+    // number format for text
+    this->clear();
+    this->append(NF);
+    size_t pos;
+    pos=this->find("g"); while (pos!=String::npos) { this->replace(pos,1,"s"); pos=this->find("g",pos+1); }
+    pos=this->find("f"); while (pos!=String::npos) { this->replace(pos,1,"s"); pos=this->find("f",pos+1); }
+    pos=this->find("e"); while (pos!=String::npos) { this->replace(pos,1,"s"); pos=this->find("e",pos+1); }
+}
+
+inline int String::_set_msg (char const * Fmt, va_list ArgList)
+{
+    const int size = 4048; // TODO: remove this limitation by using a loop and reallocating space
+    char      buffer[size];
+    int       len = std::vsnprintf(buffer, size, Fmt, ArgList);
+    this->clear();
+    if (len<0) this->append("String::_set_msg: INTERNAL ERROR: std::vsnprintf FAILED");
+    else
+    {
+        buffer[len]='\0';
+        if (len>size) this->append("String::_set_msg: INTERNAL ERROR: std::vsnprintf MESSAGE TRUNCATED: ");
+        this->append(buffer);
+    }
+    return len;
+}
 
 #endif // MECHSYS_STRING_H

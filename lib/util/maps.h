@@ -154,8 +154,10 @@ public:
     void Set     (const char * StrKeys, size_t NumRows, ...);
     void SetZero (const char * StrKeys, size_t NumRows);
     void Read    (const char * FileName);
+    void Write   (const char * FileName, char const * NF="%15.8e");
 
     // Operators
+    Array<double>       & operator() (String const & Key);
     Array<double> const & operator() (String const & Key) const;
     double              & operator() (String const & Key, size_t iRow);
     double        const & operator() (String const & Key, size_t iRow) const;
@@ -242,7 +244,7 @@ std::ostream & operator<< (std::ostream & os, Table const & T)
     // values
     for (size_t i=0; i<T.NRows; ++i)
     {
-        for (size_t j=0; j<T.Keys.Size(); ++j) os << Util::_6_3 << T(T.Keys[j],i);
+        for (size_t j=0; j<T.Keys.Size(); ++j) os << Util::_8s << T(T.Keys[j],i);
         os << "\n";
     }
 
@@ -697,14 +699,56 @@ inline void Table::Read (const char * FileName)
     }
 }
 
+inline void Table::Write (const char * FileName, char const * NF)
+{
+    // keys
+    String fmt, buf;
+    fmt.TextFmt (NF);
+    std::ostringstream oss;
+    for (size_t i=0; i<Keys.Size(); ++i)
+    {
+        buf.Printf (fmt.CStr(), Keys[i].CStr());
+        oss << buf << " ";
+    }
+    oss << "\n";
+
+    // values
+    for (size_t i=0; i<NRows; ++i)
+    {
+        for (size_t j=0; j<Keys.Size(); ++j)
+        {
+            buf.Printf (NF, operator()(Keys[j],i));
+            oss << buf << " ";
+        }
+        oss << "\n";
+    }
+
+    // open file and save data
+    std::ofstream of(FileName, std::ios::out);
+    of << oss.str();
+    of.close();
+}
+
+inline Array<double> & Table::operator() (String const & Key)
+{
+    Table_t::iterator p = this->find(Key);
+    if (p==this->end())
+    {
+        std::ostringstream oss;
+        oss << Keys;
+        throw new Fatal("Table::operator(): Table with Keys=[%s] does not have a key = '%s'",oss.str().c_str(),Key.CStr());
+    }
+    return p->second;
+}
+
 inline Array<double> const & Table::operator() (String const & Key) const
 {
     Table_t::const_iterator p = this->find(Key);
     if (p==this->end())
     {
         std::ostringstream oss;
-        oss << (*this);
-        throw new Fatal("Table::operator(): Table: %s does not have a key = '%s'",oss.str().c_str(),Key.CStr());
+        oss << Keys;
+        throw new Fatal("Table::operator(): Table with Keys=[%s] does not have a key = '%s'",oss.str().c_str(),Key.CStr());
     }
     return p->second;
 }
@@ -715,8 +759,8 @@ inline double & Table::operator() (String const & Key, size_t iRow)
     if (p==this->end())
     {
         std::ostringstream oss;
-        oss << (*this);
-        throw new Fatal("Table::operator(): Table: %s does not have a key = '%s'",oss.str().c_str(),Key.CStr());
+        oss << Keys;
+        throw new Fatal("Table::operator(): Table with Keys=[%s] does not have a key = '%s'",oss.str().c_str(),Key.CStr());
     }
     return p->second[iRow];
 }
@@ -727,8 +771,8 @@ inline double const & Table::operator() (String const & Key, size_t iRow) const
     if (p==this->end())
     {
         std::ostringstream oss;
-        oss << (*this);
-        throw new Fatal("Table::operator(): Table: %s does not have a key = '%s'",oss.str().c_str(),Key.CStr());
+        oss << Keys;
+        throw new Fatal("Table::operator(): Table with Keys=[%s] does not have a key = '%s'",oss.str().c_str(),Key.CStr());
     }
     return p->second[iRow];
 }
