@@ -73,7 +73,7 @@ class DrawMesh:
 
     # Draw mesh
     #==========
-    def draw(self, with_tags=True, with_ids=True, with_shares=True):
+    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=True):
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)
@@ -86,52 +86,53 @@ class DrawMesh:
 
         # draw solid cells
         dat = []
-        for c in self.C:
-            con  = c[2] # connectivity
-            nnod = len(con)
-            if nnod>2:
-                x0 = self.V[con[0]][2]
-                y0 = self.V[con[0]][3]
-                dat.append((self.PH.MOVETO, (x0,y0)))
-                # edges for 3,4
-                if nnod<=4:
-                    for j in range(1,nnod):
-                        xj = self.V[con[j]][2]
-                        yj = self.V[con[j]][3]
-                        dat.append((self.PH.LINETO, (xj,yj)))
-                # edges for 6,8
-                if nnod==6:
-                    dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
-                if nnod==8:
-                    dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[6]][2], self.V[con[6]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[7]][2], self.V[con[7]][3])))
-                if nnod==15:
-                    dat.append((self.PH.LINETO, (self.V[con[ 6]][2], self.V[con[ 6]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 3]][2], self.V[con[ 3]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 7]][2], self.V[con[ 7]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 1]][2], self.V[con[ 1]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 8]][2], self.V[con[ 8]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 4]][2], self.V[con[ 4]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 9]][2], self.V[con[ 9]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 2]][2], self.V[con[ 2]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[10]][2], self.V[con[10]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[ 5]][2], self.V[con[ 5]][3])))
-                    dat.append((self.PH.LINETO, (self.V[con[11]][2], self.V[con[11]][3])))
-                dat.append((self.PH.CLOSEPOLY, (0,0)))
-        if len(dat)>0:
-            cmd,vert = zip(*dat)
-            ph0 = self.PH (vert, cmd)
-            pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.dblue, linewidth=2)
-            ax.add_patch  (pc0)
+        if not only_lin_cells:
+            for c in self.C:
+                con  = c[2] # connectivity
+                nnod = len(con)
+                if nnod>2:
+                    x0 = self.V[con[0]][2]
+                    y0 = self.V[con[0]][3]
+                    dat.append((self.PH.MOVETO, (x0,y0)))
+                    # edges for 3,4
+                    if nnod<=4:
+                        for j in range(1,nnod):
+                            xj = self.V[con[j]][2]
+                            yj = self.V[con[j]][3]
+                            dat.append((self.PH.LINETO, (xj,yj)))
+                    # edges for 6,8
+                    if nnod==6:
+                        dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
+                    if nnod==8:
+                        dat.append((self.PH.LINETO, (self.V[con[4]][2], self.V[con[4]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[1]][2], self.V[con[1]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[5]][2], self.V[con[5]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[2]][2], self.V[con[2]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[6]][2], self.V[con[6]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[3]][2], self.V[con[3]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[7]][2], self.V[con[7]][3])))
+                    if nnod==15:
+                        dat.append((self.PH.LINETO, (self.V[con[ 6]][2], self.V[con[ 6]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 3]][2], self.V[con[ 3]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 7]][2], self.V[con[ 7]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 1]][2], self.V[con[ 1]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 8]][2], self.V[con[ 8]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 4]][2], self.V[con[ 4]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 9]][2], self.V[con[ 9]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 2]][2], self.V[con[ 2]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[10]][2], self.V[con[10]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[ 5]][2], self.V[con[ 5]][3])))
+                        dat.append((self.PH.LINETO, (self.V[con[11]][2], self.V[con[11]][3])))
+                    dat.append((self.PH.CLOSEPOLY, (0,0)))
+            if len(dat)>0:
+                cmd,vert = zip(*dat)
+                ph0 = self.PH (vert, cmd)
+                pc0 = self.PC (ph0, facecolor=self.lblue, edgecolor=self.dblue, linewidth=2)
+                ax.add_patch  (pc0)
 
         # draw linear cells
         for c in self.C:
@@ -150,6 +151,7 @@ class DrawMesh:
                 # centre
                 con = c[2] # connectivity
                 nnod = len(con)
+                if only_lin_cells and nnod>2: continue
                 if nnod==2:
                     x0 = self.V[con[0]][2]
                     y0 = self.V[con[0]][3]
@@ -238,8 +240,20 @@ class DrawMesh:
         #self.circle(0,0,15.0,pi/2.0,ax)
 
         # draw nodes
+
+        #prob = [ 455, 464, 468, 471, 478, 480, 483, 492, 494, 498, 2446, 2461, 2568, 2610, 2954, 3368, 3371, 3381, 3384]
+
         if with_ids:
             for v in self.V:
+
+                #if not v[0] in prob: continue
+
+                # skip if not connected to lin cell
+                if only_lin_cells:
+                    con_lin_cell = False # connected to lin cell ?
+                    for e in self.Shares[v[0]]:
+                        if len(self.C[e][2])==2: con_lin_cell = True
+                    if not con_lin_cell: continue
                 # shares
                 if v[0] in self.Shares and with_shares:
                     s    = '('
