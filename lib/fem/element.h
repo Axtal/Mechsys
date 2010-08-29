@@ -47,6 +47,8 @@ public:
     bool                    OnlyBeams;   ///< Draw only beams ?
     mutable Element const * EleMmin;     ///< Element with min bending moment (found when FindMLimits is on)
     mutable Element const * EleMmax;     ///< Element with max bending moment (found when FindMLimits is on)
+    mutable double          Mmin;        ///< The min value of M (in EleMmin)
+    mutable double          Mmax;        ///< The max value of M (in EleMmax)
     mutable double          rMmin;       ///< Natural coordinate of min bending moment (found when FindMLimits is on)
     mutable double          rMmax;       ///< Natural coordinate of max bending moment (found when FindMLimits is on)
     bool                    DrawIPs;     ///< Draw integration points ? (with stars)
@@ -68,6 +70,8 @@ public:
         OnlyBeams   = false;
         EleMmin     = NULL;
         EleMmax     = NULL;
+        Mmin        = 0.0;
+        Mmax        = 0.0;
         rMmin       = 0.0;
         rMmax       = 0.0;
         DrawIPs     = true;
@@ -77,7 +81,7 @@ public:
         OnlyTxtLim  = false;
         DrawN       = false;
         DrawV       = false;
-        TxtSz       = 6;
+        TxtSz       = 8;
     }
 };
 

@@ -703,10 +703,10 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
         FEM::Beam const * e0 = static_cast<FEM::Beam const *>(Beams[0]);
         double N,V,M;
         e0->CalcRes (0.0, N,V,M);
-        double Mmin  = M;
-        double Mmax  = M;
         Prms.EleMmin = e0;
         Prms.EleMmax = e0;
+        Prms.Mmin    = M;
+        Prms.Mmax    = M;
         Prms.rMmin   = 0.0;
         Prms.rMmax   = 0.0;
         for (size_t i=0; i<Beams.Size(); ++i)
@@ -716,8 +716,8 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
             {
                 double r = static_cast<double>(j)/static_cast<double>(Prms.NDiv);
                 e->CalcRes (r, N,V,M);
-                if (M<Mmin) { Mmin=M;  Prms.EleMmin=e;  Prms.rMmin=r; }
-                if (M>Mmax) { Mmax=M;  Prms.EleMmax=e;  Prms.rMmax=r; }
+                if (M<Prms.Mmin) { Prms.Mmin=M;  Prms.EleMmin=e;  Prms.rMmin=r; }
+                if (M>Prms.Mmax) { Prms.Mmax=M;  Prms.EleMmax=e;  Prms.rMmax=r; }
             }
         }
     }
