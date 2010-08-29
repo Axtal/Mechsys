@@ -93,7 +93,12 @@ int main(int argc, char **argv) try
 
     FEM::MPyPrms mpy_prms;
     dom.WriteVTU ("beam02_res");
-    dom.WriteMPY ("beam02_res", mpy_prms);
+    dom.WriteMPY ("beam02_M", mpy_prms);
+    mpy_prms.DrawN = true;
+    dom.WriteMPY ("beam02_N", mpy_prms);
+    mpy_prms.DrawN = false;
+    mpy_prms.DrawV = true;
+    dom.WriteMPY ("beam02_V", mpy_prms);
 
     return 0;
 }

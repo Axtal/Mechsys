@@ -47,12 +47,20 @@ public:
     bool                    OnlyBeams;   ///< Draw only beams ?
     mutable Element const * EleMmin;     ///< Element with min bending moment (found when FindMLimits is on)
     mutable Element const * EleMmax;     ///< Element with max bending moment (found when FindMLimits is on)
+    mutable Element const * EleNmin;     ///< Element with min axial force (found when FindMLimits is on)
+    mutable Element const * EleNmax;     ///< Element with max axial found (found when FindMLimits is on)
+    mutable Element const * EleVmin;     ///< Element with min shear force (found when FindMLimits is on)
+    mutable Element const * EleVmax;     ///< Element with max shear found (found when FindMLimits is on)
     mutable double          Mmin;        ///< The min value of M (in EleMmin)
     mutable double          Mmax;        ///< The max value of M (in EleMmax)
+    mutable double          Nmin;        ///< The min value of N (in EleNmin)
+    mutable double          Nmax;        ///< The max value of N (in EleNmax)
+    mutable double          Vmin;        ///< The min value of V (in EleVmin)
+    mutable double          Vmax;        ///< The max value of V (in EleVmax)
     mutable double          rMmin;       ///< Natural coordinate of min bending moment (found when FindMLimits is on)
     mutable double          rMmax;       ///< Natural coordinate of max bending moment (found when FindMLimits is on)
     bool                    DrawIPs;     ///< Draw integration points ? (with stars)
-    bool                    FindMLimits; ///< Find IdxEleMmin, IdxEleMmax, rMmin, and rMmax ?
+    bool                    FindMLimits; ///< Find EleMmin, EleMmax, EleNmin, EleNmax, rMmin, and rMmax ?
     size_t                  NDiv;        ///< Number of divisions for diagram
     bool                    WithTxt;     ///< Write text in diagram ?
     bool                    OnlyTxtLim;  ///< Write only text for EleMmin and EleMmax (limits of M) ?
@@ -70,8 +78,16 @@ public:
         OnlyBeams   = false;
         EleMmin     = NULL;
         EleMmax     = NULL;
+        EleNmin     = NULL;
+        EleNmax     = NULL;
+        EleVmin     = NULL;
+        EleVmax     = NULL;
         Mmin        = 0.0;
         Mmax        = 0.0;
+        Nmin        = 0.0;
+        Nmax        = 0.0;
+        Vmin        = 0.0;
+        Vmax        = 0.0;
         rMmin       = 0.0;
         rMmax       = 0.0;
         DrawIPs     = true;

@@ -411,13 +411,15 @@ inline void Beam::Draw (std::ostream & os, MPyPrms const & Prms) const
         double yn =  c;
 
         // results
-        double N, V, M,  Mmax,  Mmin;
-        double r, x, y, rMmax, rMmin;
+        double N, V, M,  Mmax,  Mmin,  Vmax,  Vmin;
+        double r, x, y, rMmax, rMmin, rVmax, rVmin;
         double sf, xf, yf, val;
         rMmax = 0.0;
         rMmin = 0.0;
-        CalcRes (rMmax, N, V, Mmax);
-        CalcRes (rMmin, N, V, Mmin);
+        rVmax = 0.0;
+        rVmin = 0.0;
+        CalcRes (rMmax, N, Vmax, Mmax);
+        CalcRes (rMmin, N, Vmin, Mmin);
         os << "dat_beam = []\n";
         if (Prms.DrawN) os << "dat_beam_ax = []\n";
         for (size_t i=0; i<Prms.NDiv+1; ++i)
@@ -441,6 +443,8 @@ inline void Beam::Draw (std::ostream & os, MPyPrms const & Prms) const
                 {
                     val = V;
                     sf  = Prms.SF*V;
+                    if (V>Vmax) { rVmax = r;  Vmax = V; }
+                    if (V<Vmin) { rVmin = r;  Vmin = V; }
                 }
                 else
                 {
@@ -482,8 +486,11 @@ inline void Beam::Draw (std::ostream & os, MPyPrms const & Prms) const
         {
             if (Prms.DrawN)
             {
+                // max or min N
+                bool is_max_or_min = (this==Prms.EleNmax || this==Prms.EleNmin);
+                bool skip = (Prms.OnlyTxtLim && !is_max_or_min);
                 CalcRes (0.5, N, V, M);
-                if (fabs(N)>1.0e-13)
+                if (fabs(N)>1.0e-13 && !skip)
                 {
                     sf = fabs(Prms.SF*N)/2.0;
                     x  = x0 + 0.5*(x1-x0);
@@ -495,23 +502,36 @@ inline void Beam::Draw (std::ostream & os, MPyPrms const & Prms) const
             }
             else if (Prms.DrawV)
             {
-                for (size_t i=0; i<2; ++i)
+                // max V
+                bool skip = (Prms.OnlyTxtLim && Prms.EleVmax!=this);
+                if (fabs(Vmax)>1.0e-13 && !skip)
                 {
-                    r = static_cast<double>(i);
-                    CalcRes (r, N, V, M);
-                    if (fabs(V)>1.0e-13)
-                    {
-                        x  = x0 + r*(x1-x0);
-                        y  = y0 + r*(y1-y0);
-                        sf = Prms.SF*V;
-                        xf = x - sf*xn;
-                        yf = y - sf*yn;
-                        String buf;
-                        buf.Printf ("%g",V);
-                        os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
-                        os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(V<0.0?"dpink":"dblue")<<", lw=4))\n";
-                        os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize="<<Prms.TxtSz<<")\n";
-                    }
+                    x  = x0 + rVmax*(x1-x0);
+                    y  = y0 + rVmax*(y1-y0);
+                    sf = Prms.SF*Vmax;
+                    xf = x - sf*xn;
+                    yf = y - sf*yn;
+                    String buf;
+                    buf.Printf ("%g",Vmax);
+                    os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+                    os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(Vmax<0.0?"dpink":"dblue")<<", lw=4))\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize="<<Prms.TxtSz<<")\n";
+                }
+
+                // min V
+                skip = (Prms.OnlyTxtLim && Prms.EleVmin!=this);
+                if (fabs(Vmin)>1.0e-13 && !skip)
+                {
+                    x  = x0 + rVmin*(x1-x0);
+                    y  = y0 + rVmin*(y1-y0);
+                    sf = Prms.SF*Vmin;
+                    xf = x - sf*xn;
+                    yf = y - sf*yn;
+                    String buf;
+                    buf.Printf ("%g",Vmin);
+                    os << "XY = array([["<<x<<","<<y<<"],["<<xf<<","<<yf<<"]])\n";
+                    os << "ax.add_patch (MPL.patches.Polygon(XY, closed=False, edgecolor="<<(Vmin<0.0?"dpink":"dblue")<<", lw=4))\n";
+                    os << "ax.text ("<<(x+xf)/2.<<","<<(y+yf)/2.<<", " << buf << ", backgroundcolor=pink, va='top', ha='center', fontsize="<<Prms.TxtSz<<")\n";
                 }
             }
             else // DrawM

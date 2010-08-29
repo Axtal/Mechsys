@@ -216,11 +216,23 @@ int main(int argc, char **argv) try
         sol.Solve  (/*NDiv*/1);
         //dom.PrintResults ("%15.6e",false);
 
-        // output
+        // output M
         String buf;
-        buf.Printf ("beam01_res_%d", tst);
+        buf.Printf ("beam01_res_M_%d", tst);
         FEM::MPyPrms mpy_prms;
         dom.WriteMPY (buf.CStr(), mpy_prms);
+
+        // output N
+        buf.Printf ("beam01_res_N_%d", tst);
+        mpy_prms.DrawN = true;
+        dom.WriteMPY (buf.CStr(), mpy_prms);
+
+        // output V
+        buf.Printf ("beam01_res_V_%d", tst);
+        mpy_prms.DrawN = false;
+        mpy_prms.DrawV = true;
+        dom.WriteMPY (buf.CStr(), mpy_prms);
+
         //dom.WriteVTU (buf.CStr());
 
         // check

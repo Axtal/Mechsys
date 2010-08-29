@@ -697,7 +697,7 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
     // pointer to array of elements
     Array<Element*> const * eles = (Prms.OnlyBeams ? &Beams : &ActEles);
 
-    // find min and max M
+    // find min and max M and N
     if (Prms.FindMLimits && Beams.Size()>0)
     {
         FEM::Beam const * e0 = static_cast<FEM::Beam const *>(Beams[0]);
@@ -705,8 +705,16 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
         e0->CalcRes (0.0, N,V,M);
         Prms.EleMmin = e0;
         Prms.EleMmax = e0;
+        Prms.EleNmin = e0;
+        Prms.EleNmax = e0;
+        Prms.EleVmin = e0;
+        Prms.EleVmax = e0;
         Prms.Mmin    = M;
         Prms.Mmax    = M;
+        Prms.Nmin    = N;
+        Prms.Nmax    = N;
+        Prms.Vmin    = V;
+        Prms.Vmax    = V;
         Prms.rMmin   = 0.0;
         Prms.rMmax   = 0.0;
         for (size_t i=0; i<Beams.Size(); ++i)
@@ -718,6 +726,10 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
                 e->CalcRes (r, N,V,M);
                 if (M<Prms.Mmin) { Prms.Mmin=M;  Prms.EleMmin=e;  Prms.rMmin=r; }
                 if (M>Prms.Mmax) { Prms.Mmax=M;  Prms.EleMmax=e;  Prms.rMmax=r; }
+                if (N<Prms.Nmin) { Prms.Nmin=N;  Prms.EleNmin=e; }
+                if (N>Prms.Nmax) { Prms.Nmax=N;  Prms.EleNmax=e; }
+                if (V<Prms.Vmin) { Prms.Vmin=V;  Prms.EleVmin=e; }
+                if (V>Prms.Vmax) { Prms.Vmax=V;  Prms.EleVmax=e; }
             }
         }
     }
@@ -747,21 +759,48 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
         Prms.MaxDist = Norm(del);
 
         // scale factor
-        double max_absM = 0;
-        if (Prms.EleMmin!=NULL)
+        double max_abs = 0;
+        double N,V,M;
+        if (Prms.DrawN)
         {
-            double N,V,M;
-            static_cast<FEM::Beam const *>(Prms.EleMmin)->CalcRes (Prms.rMmin, N,V,M);
-            if (fabs(M)>max_absM) max_absM = fabs(M);
+            if (Prms.EleNmin!=NULL)
+            {
+                static_cast<FEM::Beam const *>(Prms.EleNmin)->CalcRes (0.0, N,V,M);
+                if (fabs(N)>max_abs) max_abs = fabs(N);
+            }
+            if (Prms.EleNmax!=NULL)
+            {
+                static_cast<FEM::Beam const *>(Prms.EleNmax)->CalcRes (0.0, N,V,M);
+                if (fabs(N)>max_abs) max_abs = fabs(N);
+            }
         }
-        if (Prms.EleMmax!=NULL)
+        else if (Prms.DrawV)
         {
-            double N,V,M;
-            static_cast<FEM::Beam const *>(Prms.EleMmax)->CalcRes (Prms.rMmax, N,V,M);
-            if (fabs(M)>max_absM) max_absM = fabs(M);
+            if (Prms.EleVmin!=NULL)
+            {
+                static_cast<FEM::Beam const *>(Prms.EleVmin)->CalcRes (0.0, N,V,M);
+                if (fabs(V)>max_abs) max_abs = fabs(V);
+            }
+            if (Prms.EleVmax!=NULL)
+            {
+                static_cast<FEM::Beam const *>(Prms.EleVmax)->CalcRes (0.0, N,V,M);
+                if (fabs(V)>max_abs) max_abs = fabs(V);
+            }
         }
-        Prms.SF = (Prms.PctMaxDist * Prms.MaxDist) / (max_absM>0.0 ? max_absM : 1.0);
-        //printf("max_dist = %g,  max_absM = %g,  SF = %g\n",Prms.MaxDist, max_absM, Prms.SF);
+        else
+        {
+            if (Prms.EleMmin!=NULL)
+            {
+                static_cast<FEM::Beam const *>(Prms.EleMmin)->CalcRes (Prms.rMmin, N,V,M);
+                if (fabs(M)>max_abs) max_abs = fabs(M);
+            }
+            if (Prms.EleMmax!=NULL)
+            {
+                static_cast<FEM::Beam const *>(Prms.EleMmax)->CalcRes (Prms.rMmax, N,V,M);
+                if (fabs(M)>max_abs) max_abs = fabs(M);
+            }
+        }
+        Prms.SF = (Prms.PctMaxDist * Prms.MaxDist) / (max_abs>0.0 ? max_abs : 1.0);
     }
 
     // output string
