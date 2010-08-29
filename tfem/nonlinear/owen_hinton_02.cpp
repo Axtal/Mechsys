@@ -68,8 +68,8 @@ void OutFun (FEM::Solver const & Sol, void * Dat)
     {
         size_t inod = 41;
         FEM::Node const & nod = (*Sol.Dom.Nods[inod]);
-        int    eqx    = nod.Eq("fx");
-        int    eqy    = nod.Eq("fy");
+        int    eqx    = nod.Eq("ux");
+        int    eqy    = nod.Eq("uy");
         double ux     = Sol.U    (eqx),   uy     = Sol.U    (eqy);
         double fx     = Sol.F    (eqx),   fy     = Sol.F    (eqy);
         double fx_int = Sol.F_int(eqx),   fy_int = Sol.F_int(eqy);
@@ -192,7 +192,9 @@ plot(X,Y,'r-',lw=2)\n\
 X = 200.0*cos(A)\n\
 Y = 200.0*sin(A)\n\
 plot(X,Y,'r-',lw=2)\n");
-    dom.WriteMPY ("owen_hinton_02_elems", /*SFCoef*/1.0, ext.CStr());
+    FEM::MPyPrms mpy_prms;
+    mpy_prms.Extra = ext.CStr();
+    dom.WriteMPY ("owen_hinton_02_elems", mpy_prms);
 
     return 0;
 }

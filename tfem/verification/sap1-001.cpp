@@ -139,7 +139,8 @@ int main(int argc, char **argv) try
         String buf;
         buf.Printf("sap1-001_lcase%d",lcase);
         //dom.PrintResults ("%10.5f", /*with_elems*/false);
-        dom.WriteMPY     (buf.CStr(), /*scalefac*/0.02);
+        FEM::MPyPrms mpy_prms;
+        dom.WriteMPY     (buf.CStr(), mpy_prms);
         dom.WriteVTU     (buf.CStr());
         printf("\nNorm(R)                = %s%8e%s\n",(sol.ResidOK()?TERM_GREEN:TERM_RED),sol.NormR,TERM_RST);
 

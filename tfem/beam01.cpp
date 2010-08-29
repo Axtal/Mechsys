@@ -204,8 +204,6 @@ int main(int argc, char **argv) try
         //mesh.WriteMPY ("beam01_mesh");
 
         // domain
-        FEM::Beam::DrwAxial = false;
-        FEM::Beam::DrwShear = false;
         FEM::Domain dom(mesh, prps, Dict(), Dict());
 
         // solver
@@ -219,8 +217,11 @@ int main(int argc, char **argv) try
         //dom.PrintResults ("%15.6e",false);
 
         // output
-        //dom.WriteMPY ("beam01_res", sf);
-        //dom.WriteVTU ("beam01_res");
+        String buf;
+        buf.Printf ("beam01_res_%d", tst);
+        FEM::MPyPrms mpy_prms;
+        dom.WriteMPY (buf.CStr(), mpy_prms);
+        //dom.WriteVTU (buf.CStr());
 
         // check
         cout << endl;

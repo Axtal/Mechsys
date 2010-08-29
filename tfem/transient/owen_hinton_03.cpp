@@ -220,7 +220,7 @@ int main(int argc, char **argv) try
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
     // draw elements with IPs
-    dom.WriteMPY ("owen_hinton_03_elems");
+    //dom.WriteMPY ("owen_hinton_03_elems");
 
     return 0;
 }

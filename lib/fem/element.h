@@ -33,6 +33,55 @@
 namespace FEM
 {
 
+class Element; ///< Forward declaration of Element since MPyPrms needs Element and Element needs MPyPrms
+
+class MPyPrms ///< MeshPython drawing parameters: TODO: Move this to a Python script
+{
+public:
+    mutable double          SF;          ///< Scale factor for diagrams (calculated when AutoLimits is on)
+    mutable double          MaxDist;     ///< Max distance in mesh == diagonal of the bounding cube (calculated when AutoLimits is on)
+    double                  PctMaxDist;  ///< Percentage of MaxDist to calculate SF: SF = PctMaxDist*MaxDist
+    bool                    AutoLimits;  ///< Scale drawing using automatic limits ?
+    bool                    PNG;         ///< Generate PNG ?
+    char const            * Extra;       ///< Extra commands to Pylab
+    bool                    OnlyBeams;   ///< Draw only beams ?
+    mutable Element const * EleMmin;     ///< Element with min bending moment (found when FindMLimits is on)
+    mutable Element const * EleMmax;     ///< Element with max bending moment (found when FindMLimits is on)
+    mutable double          rMmin;       ///< Natural coordinate of min bending moment (found when FindMLimits is on)
+    mutable double          rMmax;       ///< Natural coordinate of max bending moment (found when FindMLimits is on)
+    bool                    DrawIPs;     ///< Draw integration points ? (with stars)
+    bool                    FindMLimits; ///< Find IdxEleMmin, IdxEleMmax, rMmin, and rMmax ?
+    size_t                  NDiv;        ///< Number of divisions for diagram
+    bool                    WithTxt;     ///< Write text in diagram ?
+    bool                    OnlyTxtLim;  ///< Write only text for EleMmin and EleMmax (limits of M) ?
+    bool                    DrawN;       ///< Draw N (axial force) diagram instead of M (bending moment) ?
+    bool                    DrawV;       ///< Draw V (shear force) diagram instead of M (bending moment) ?
+    size_t                  TxtSz;       ///< Size of text in diagram
+    MPyPrms ()                           ///< Constructor
+    {
+        SF          = 1.0;
+        MaxDist     = 1.0;
+        PctMaxDist  = 0.1;
+        AutoLimits  = true;
+        PNG         = false;
+        Extra       = NULL;
+        OnlyBeams   = false;
+        EleMmin     = NULL;
+        EleMmax     = NULL;
+        rMmin       = 0.0;
+        rMmax       = 0.0;
+        DrawIPs     = true;
+        FindMLimits = true;
+        NDiv        = 10;
+        WithTxt     = true;
+        OnlyTxtLim  = false;
+        DrawN       = false;
+        DrawV       = false;
+        TxtSz       = 6;
+    }
+};
+
+
 class Element
 {
 public:
@@ -64,7 +113,7 @@ public:
     virtual void StateAtIP    (SDPair & KeysVals, int IdxIP)                      const {} ///< Get state at IP
     virtual void StateAtIPs   (Array<SDPair> & Results)                           const;   ///< Get state (internal values: sig, eps) at all integration points
     virtual void StateAtNodes (Array<SDPair> & Results)                           const;   ///< Get state (internal values: sig, eps) at all nodes (applies extrapolation)
-    virtual void Draw         (std::ostream & os, double MaxDist)                 const;   ///< Draw element with MatPlotLib
+    virtual void Draw         (std::ostream & os, MPyPrms const & Prms)           const;   ///< TODO: Move this to a Python script. Draw element with MatPlotLib
 
     // Methods that depend on GE
     void CoordMatrix   (Mat_t & C)                 const; ///< Matrix with coordinates of nodes
@@ -265,7 +314,7 @@ inline void Element::CoordsOfIP (size_t IdxIP, Vec_t & X) const
         X(j) += GE->N(i)*Con[i]->Vert.C[j];
 }
 
-inline void Element::Draw (std::ostream & os, double MaxDist) const
+inline void Element::Draw (std::ostream & os, MPyPrms const & Prms) const
 {
     if (GE==NULL) throw new Fatal("Element::CoordsIP: This method works only when GE (geometry element) is not NULL");
 
@@ -302,26 +351,29 @@ inline void Element::Draw (std::ostream & os, double MaxDist) const
     if (Mdl->IvNames.Find("edp")>=0) has_edp = true;
 
     // draw IPs
-    os << "x_ips, y_ips = [], []\n";
-    os << "x_edp, y_edp = [], []\n";
-    for (size_t i=0; i<GE->NIP; ++i)
+    if (Prms.DrawIPs)
     {
-        Vec_t X;
-        CoordsOfIP (i,X);
-        os << "x_ips.append(" << X(0) << ")\n";
-        os << "y_ips.append(" << X(1) << ")\n";
-        if (has_edp)
+        os << "x_ips, y_ips = [], []\n";
+        os << "x_edp, y_edp = [], []\n";
+        for (size_t i=0; i<GE->NIP; ++i)
         {
-            SDPair res;
-            StateAtIP (res, i);
-            if (res("edp")>0.0)
+            Vec_t X;
+            CoordsOfIP (i,X);
+            os << "x_ips.append(" << X(0) << ")\n";
+            os << "y_ips.append(" << X(1) << ")\n";
+            if (has_edp)
             {
-                os << "x_edp.append(" << X(0) << ")\n";
-                os << "y_edp.append(" << X(1) << ")\n";
+                SDPair res;
+                StateAtIP (res, i);
+                if (res("edp")>0.0)
+                {
+                    os << "x_edp.append(" << X(0) << ")\n";
+                    os << "y_edp.append(" << X(1) << ")\n";
+                }
             }
         }
+        os << "plot(x_ips,y_ips,'r*',zorder=1)\n";
     }
-    os << "plot(x_ips,y_ips,'r*',zorder=1)\n";
     if (has_edp) os << "plot(x_edp,y_edp,'ko',ms=9,zorder=2)\n";
 }
 

@@ -37,19 +37,21 @@
 #include <mechsys/mesh/mesh.h>
 #include <mechsys/draw.h>
 
+#include <mechsys/fem/beam.h> ///< Needed by WriteMPY: TODO: move WriteMPY to a Python script, then remove this.
+
 namespace FEM
 {
 
 typedef std::map<Node*,Array<double> >  Res_t;      ///< Maps node to results at nodes
 typedef std::map<int, Array<Element*> > Tag2Eles_t; ///< Maps tag to elements
 
+
 class Domain
 {
 public:
     // static
-    static bool PARA;         ///< Parallel code ?
-    static bool WithInfo;     ///< Print information ?
-    static bool DrwOnlyBeams; ///< Draw only beams in WriteMPY ?
+    static bool PARA;     ///< Parallel code ?
+    static bool WithInfo; ///< Print information ?
 
     // enum
     enum BryTagType_t { None_t, Element_t, Border_t, Node_t }; ///< type of boundary condition tag
@@ -72,8 +74,8 @@ public:
     // Methods
     void SetBCs         (Dict const & BCs, bool ClearU=false);                                                             ///< Set boundary conditions
     void PrintResults   (char const * NF="%15.6e", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
-    void WriteMPY       (char const * FileKey, double SFCoef=1.0, bool PNG=false, char const * Extra=NULL) const;          ///< SFCoef: Scale-factor coefficient
-    void WriteVTU       (char const * FileKey, bool DoExtrapolation=true) const;                                           ///< Write file for ParaView
+    void WriteMPY       (char const * FileKey, MPyPrms const & Prms) const;      // TODO: WriteHDF5 file with results and then create a post-processing script (in Python?) to generate .mpy files ///< Write MeshPython file .mpy (run with: python FileKey.mpy, needs PyLab)
+    void WriteVTU       (char const * FileKey, bool DoExtrapolation=true) const; // TODO: WriteHDF5 file with results and then create a post-processing script (in Python?) to generate .vtu files ///< Write file for ParaView
     bool CheckErrorNods (Table const & NodSol, SDPair const & NodTol) const;                                               ///< Check error at nodes
     bool CheckErrorEles (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at the centre of elements
     bool CheckErrorIPs  (Table const & EleSol, SDPair const & EleTol) const;                                               ///< Check error at integration points of elements
@@ -117,9 +119,8 @@ public:
     mutable Res_t NodResCount; ///< Count how many times a variable (key) was added to a node
 };
 
-bool Domain::PARA         = false;
-bool Domain::WithInfo     = true;
-bool Domain::DrwOnlyBeams = false;
+bool Domain::PARA     = false;
+bool Domain::WithInfo = true;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
@@ -691,42 +692,91 @@ inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithEl
     printf("\n");
 }
 
-inline void Domain::WriteMPY (char const * FNKey, double SFCoef, bool PNG, char const * Extra) const
+inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) const
 {
-    // bounding box
-    Vec3_t min, max, del;
-    min = ActNods[0]->Vert.C(0), ActNods[0]->Vert.C(1), ActNods[0]->Vert.C(2);
-    max = min;
-    for (size_t i=0; i<ActNods.Size(); ++i)
-    {
-        if (ActNods[i]->Vert.C(0)<min(0)) min(0) = ActNods[i]->Vert.C(0);
-        if (ActNods[i]->Vert.C(1)<min(1)) min(1) = ActNods[i]->Vert.C(1);
-        if (ActNods[i]->Vert.C(2)<min(2)) min(2) = ActNods[i]->Vert.C(2);
-        if (ActNods[i]->Vert.C(0)>max(0)) max(0) = ActNods[i]->Vert.C(0);
-        if (ActNods[i]->Vert.C(1)>max(1)) max(1) = ActNods[i]->Vert.C(1);
-        if (ActNods[i]->Vert.C(2)>max(2)) max(2) = ActNods[i]->Vert.C(2);
-    }
-    del  = max - min;
-    double max_dist = Norm(del);
+    // pointer to array of elements
+    Array<Element*> const * eles = (Prms.OnlyBeams ? &Beams : &ActEles);
 
-    String fn(FNKey);  fn.append(".mpy");
-    std::ofstream of(fn.CStr(), std::ios::out);
-    MPL::Header   (of);
-    if (DrwOnlyBeams)
+    // find min and max M
+    if (Prms.FindMLimits && Beams.Size()>0)
     {
+        FEM::Beam const * e0 = static_cast<FEM::Beam const *>(Beams[0]);
+        double N,V,M;
+        e0->CalcRes (0.0, N,V,M);
+        double Mmin  = M;
+        double Mmax  = M;
+        Prms.EleMmin = e0;
+        Prms.EleMmax = e0;
+        Prms.rMmin   = 0.0;
+        Prms.rMmax   = 0.0;
         for (size_t i=0; i<Beams.Size(); ++i)
         {
-            if (Beams[i]->Active) Beams[i]->Draw (of, SFCoef*max_dist);
+            FEM::Beam const * e = static_cast<FEM::Beam const *>(Beams[i]);
+            for (size_t j=0; j<=Prms.NDiv; ++j)
+            {
+                double r = static_cast<double>(j)/static_cast<double>(Prms.NDiv);
+                e->CalcRes (r, N,V,M);
+                if (M<Mmin) { Mmin=M;  Prms.EleMmin=e;  Prms.rMmin=r; }
+                if (M>Mmax) { Mmax=M;  Prms.EleMmax=e;  Prms.rMmax=r; }
+            }
         }
     }
-    else
+
+    // calculate scale factor for diagrams
+    if (Prms.AutoLimits)
     {
-        for (size_t i=0; i<ActEles.Size(); ++i) ActEles[i]->Draw (of, SFCoef*max_dist);
+        // bounding box
+        Vec3_t min, max, del;
+        min = (*eles)[0]->Con[0]->Vert.C(0), (*eles)[0]->Con[0]->Vert.C(1), (*eles)[0]->Con[0]->Vert.C(2);
+        max = (*eles)[0]->Con[1]->Vert.C(0), (*eles)[0]->Con[1]->Vert.C(1), (*eles)[0]->Con[1]->Vert.C(2);
+        for (size_t i=1; i<eles->Size(); ++i)
+        {
+            for (size_t j=0; j<(*eles)[i]->Con.Size(); ++j)
+            {
+                if ((*eles)[i]->Con[j]->Vert.C(0)<min(0)) min(0) = (*eles)[i]->Con[j]->Vert.C(0);
+                if ((*eles)[i]->Con[j]->Vert.C(1)<min(1)) min(1) = (*eles)[i]->Con[j]->Vert.C(1);
+                if ((*eles)[i]->Con[j]->Vert.C(2)<min(2)) min(2) = (*eles)[i]->Con[j]->Vert.C(2);
+                if ((*eles)[i]->Con[j]->Vert.C(0)>max(0)) max(0) = (*eles)[i]->Con[j]->Vert.C(0);
+                if ((*eles)[i]->Con[j]->Vert.C(1)>max(1)) max(1) = (*eles)[i]->Con[j]->Vert.C(1);
+                if ((*eles)[i]->Con[j]->Vert.C(2)>max(2)) max(2) = (*eles)[i]->Con[j]->Vert.C(2);
+            }
+        }
+
+        // max distance in mesh
+        del = max - min;
+        Prms.MaxDist = Norm(del);
+
+        // scale factor
+        double max_absM = 0;
+        if (Prms.EleMmin!=NULL)
+        {
+            double N,V,M;
+            static_cast<FEM::Beam const *>(Prms.EleMmin)->CalcRes (Prms.rMmin, N,V,M);
+            if (fabs(M)>max_absM) max_absM = fabs(M);
+        }
+        if (Prms.EleMmax!=NULL)
+        {
+            double N,V,M;
+            static_cast<FEM::Beam const *>(Prms.EleMmax)->CalcRes (Prms.rMmax, N,V,M);
+            if (fabs(M)>max_absM) max_absM = fabs(M);
+        }
+        Prms.SF = (Prms.PctMaxDist * Prms.MaxDist) / (max_absM>0.0 ? max_absM : 1.0);
+        //printf("max_dist = %g,  max_absM = %g,  SF = %g\n",Prms.MaxDist, max_absM, Prms.SF);
     }
-    MPL::AddPatch (of);
-    if (Extra!=NULL) of << Extra;
-    if (PNG) MPL::SaveFig (FNKey, of);
-    else     MPL::Show    (of);
+
+    // output string
+    std::ostringstream oss;
+    MPL::Header (oss);
+    for (size_t i=0; i<eles->Size(); ++i) (*eles)[i]->Draw (oss, Prms);
+    MPL::AddPatch (oss);
+    if (Prms.Extra!=NULL) oss << Prms.Extra;
+    if (Prms.PNG)         MPL::SaveFig (FNKey, oss);
+    else                  MPL::Show    (oss);
+
+    // write file
+    String fn(FNKey);  fn.append(".mpy");
+    std::ofstream of(fn.CStr(), std::ios::out);
+    of << oss.str();
     of.close ();
 }
 

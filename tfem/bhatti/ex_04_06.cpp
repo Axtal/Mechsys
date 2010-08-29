@@ -50,7 +50,6 @@ int main(int argc, char **argv) try
     mesh.SetCell  (1,   -1, Array<int>(1, 2));
     mesh.SetCell  (2,   -2, Array<int>(2, 3));
     mesh.AddPin   (-300);
-    mesh.WriteMPY ("ex46");
 
     ////////////////////////////////////////////////////////////////////////////////////////// FEM /////
 
@@ -74,9 +73,8 @@ int main(int argc, char **argv) try
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
-    FEM::Beam::DrwTxtSz = 10;
     dom.PrintResults ("%11.6g");
-    dom.WriteMPY     ("ex46_res", /*sf*/10.);
+    //dom.WriteMPY     ("ex_04_06_res");
 
     int i = sol.NEq-sol.NLag;
     cout << "\n[1;31mlambda0 = " << sol.U(i) << ",    lambda1 = " << sol.U(i+1) << endl << "[0m\n";

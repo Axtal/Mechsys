@@ -43,10 +43,10 @@ int main(int argc, char **argv) try
     bool o2 = false;
     Array<Mesh::Block> blks(1);
     blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
-                 -1.0,   0.0, 0.0,
-                 -2.0,  10.0, 0.0,
-                 -3.0,  10.0, 1.0,
-                 -4.0, 0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
+                 -100.0,   0.0, 0.0,
+                 -200.0,  10.0, 0.0,
+                 -300.0,  10.0, 1.0,
+                 -400.0, 0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
     blks[0].SetNx (10);
     blks[0].SetNy (1);
     Mesh::Structured mesh(/*NDim*/2);
@@ -83,16 +83,17 @@ int main(int argc, char **argv) try
     ////////////////////////////////////////////////////////////////////////////////////////// Run /////
     
     Dict bcs;
-    bcs.Set(-1,  "ux uy", 0.0);
-    bcs.Set(-2,  "uy",    0.0);
-    bcs.Set(-30, "qn",   -1.0);
+    bcs.Set(-100, "ux uy", 0.0);
+    bcs.Set(-200, "uy",    0.0);
+    bcs.Set(-30,  "qn",   -1.0);
     dom.SetBCs (bcs);
     sol.Solve  (/*NDiv*/1);
 
     //////////////////////////////////////////////////////////////////////////////////////// Output ////
 
+    FEM::MPyPrms mpy_prms;
     dom.WriteVTU ("beam02_res");
-    dom.WriteMPY ("beam02_res", /*sf*/0.03);
+    dom.WriteMPY ("beam02_res", mpy_prms);
 
     return 0;
 }
