@@ -908,18 +908,15 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
     }
 
     // data -- nodes -- IDs
-    if (ActNods.Size()!=Nods.Size())
+    oss << "        <DataArray type=\"Float32\" Name=\"" << "tag,id" << "\" NumberOfComponents=\"2\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    for (size_t j=0; j<nn; ++j)
     {
-        oss << "        <DataArray type=\"Float32\" Name=\"" << "ID" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
-        k = 0; oss << "        ";
-        for (size_t j=0; j<nn; ++j)
-        {
-            oss << (k==0?"  ":" ") << ActNods[j]->Vert.ID;
-            k++;
-            VTU_NEWLINE (j,k,nn,6-1,oss);
-        }
-        oss << "        </DataArray>\n";
+        oss << "  " << ActNods[j]->Vert.Tag << " " << ActNods[j]->Vert.ID << " ";
+        k++;
+        VTU_NEWLINE (j,k,nn,40/2-1,oss);
     }
+    oss << "        </DataArray>\n";
 
     // data -- nodes -- displacements
     if (HasDisps)
@@ -983,6 +980,19 @@ inline void Domain::WriteVTU (char const * FNKey, bool DoExtrapolation) const
 
     // data -- nodes -- end
     oss << "      </PointData>\n";
+
+    // data -- elements
+    oss << "      <CellData Scalars=\"cell_scalars\">\n";
+    oss << "        <DataArray type=\"Float32\" Name=\"" << "Tag,ID" << "\" NumberOfComponents=\"2\" format=\"ascii\">\n";
+    k = 0; oss << "        ";
+    for (size_t j=0; j<ne; ++j)
+    {
+        oss << "  " << ActEles[j]->Cell.Tag << " " << ActEles[j]->Cell.ID << " ";
+        k++;
+        VTU_NEWLINE (j,k,ne,40/2-1,oss);
+    }
+    oss << "        </DataArray>\n";
+    oss << "      </CellData>\n";
 
     // bottom
     oss << "    </Piece>\n";
