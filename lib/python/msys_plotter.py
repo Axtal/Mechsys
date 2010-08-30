@@ -481,7 +481,7 @@ class Plotter:
                       'legend.fontsize': 8,
                       'xtick.labelsize': 6,
                       'ytick.labelsize': 6,
-                      'text.usetex':     True,
+                      'text.usetex':     False,
                       'figure.figsize': fig_size}
         else:
             params = {'backend':         'ps',
@@ -490,7 +490,7 @@ class Plotter:
                       'legend.fontsize': 10,
                       'xtick.labelsize': 8,
                       'ytick.labelsize': 8,
-                      'text.usetex':     True,
+                      'text.usetex':     False,
                       'figure.figsize': fig_size}
         rcParams.update(params)
 
@@ -679,10 +679,11 @@ class Plotter:
         savefig (filekey+'.eps', bbox_inches='tight')
 
         # crop
-        subprocess.check_call (['ps2eps', '-q', '-l', '-f', '%s.eps'%filekey])
+        #subprocess.check_call (['ps2eps', '-q', '-l', '-f', '%s.eps'%filekey])
+        #subprocess.check_call (['ps2eps', '-q', '-l', '-f', '%s.eps'%filekey])
 
         # rename
-        os.rename ('%s.eps.eps'%filekey, '%s.eps'%filekey)
+        #os.rename ('%s.eps.eps'%filekey, '%s.eps'%filekey)
 
         print "<[1;34m%s.eps[0m> created"%filekey
 
@@ -692,8 +693,8 @@ class Plotter:
         dat = read_table(filename)
 
         # constants
-        rc('text', usetex=True)               # set LaTeX
-        rc('font', family='serif')            # set font
+        #rc('text', usetex=True)               # set LaTeX
+        #rc('font', family='serif')            # set font
         lwd   = 2                             # linewidth
         nhplt = 1                             # number of horizontal plots
         nvplt = 3 if dat.has_key('fz') else 2 # number of vertical plots
