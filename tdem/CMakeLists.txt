@@ -16,6 +16,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
+if (NOT A_USE_HDF5)
+    message ("tfem tests need HDF5. Please set A_USE_HDF5 on")
+endif (NOT A_USE_HDF5)
+
 SET(EXES
   nonconvex
   ttt

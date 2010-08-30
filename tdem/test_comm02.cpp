@@ -35,6 +35,8 @@ using std::endl;
 int main(int argc, char **argv) try
 {
 #ifdef USE_MPI
+    MECHSYS_CATCH_PARALLEL = true;
+
     // init
     MPI::Init (argc, argv);
     int my_id  = MPI::COMM_WORLD.Get_rank(); // processor ID
@@ -57,7 +59,9 @@ int main(int argc, char **argv) try
 
     // end
     MPI::Finalize();
-    return 0;
+#else
+    throw new Fatal("This program needs MPI");
 #endif
+    return 0;
 }
-MECHSYS_MPI_CATCH
+MECHSYS_CATCH

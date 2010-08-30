@@ -1813,8 +1813,8 @@ inline void Domain::GetGSD (Array<double> & X, Array<double> & Y, Array<double> 
         Vg.Push(Particles[i]->Props.V);
         D.Push(Diam);
     }
-    double Dmin  = D[D.Min()]; // minimum diameter
-    double Dmax  = D[D.Max()]; // maximum diameter
+    double Dmin  = D.TheMin(); // minimum diameter
+    double Dmax  = D.TheMax(); // maximum diameter
     double Dspan = (Dmax-Dmin)/NDiv;
     for (size_t i=0; i<=NDiv; i++)
     {
