@@ -112,16 +112,16 @@ inline EquilibElem::EquilibElem (int NDim, Mesh::Cell const & Cell, Model const 
             Vec_t & sig = static_cast<EquilibState *>(Sta[i])->Sig;
             if (NDim==2)
             {
-                double h = fabs(surf-X(1));
-                sig(1) = -gam*h;    // sy
+                double hei = fabs(surf-X(1));
+                sig(1) = -gam*hei;  // sy
                 sig(0) = K0*sig(1); // sx
                 sig(2) = K0*sig(1); // sz
                 sig(3) = 0.0;       // sxy*sq2
             }
             else // 3D
             {
-                double h = fabs(surf-X(2));
-                sig(2) = -gam*h;    // sz
+                double hei = fabs(surf-X(2));
+                sig(2) = -gam*hei;  // sz
                 sig(0) = K0*sig(2); // sx
                 sig(1) = K0*sig(2); // sy
                 sig(3) = 0.0;       // sxy*sq2

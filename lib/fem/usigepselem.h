@@ -63,7 +63,6 @@ public:
     // Constants
     GeomElem   * GEs;      ///< Local nodes
     mutable long FirstEQ;  ///< First equation of sig DOF
-    double       h;        ///< Thickness of the element
     double       rho;      ///< Density
 };
 
@@ -127,16 +126,16 @@ inline USigEpsElem::USigEpsElem (int NDim, Mesh::Cell const & Cell, Model const 
             Vec_t & sig = static_cast<EquilibState *>(Sta[i])->Sig;
             if (NDim==2)
             {
-                double h = fabs(surf-X(1));
-                sig(1) = -gam*h;    // sy
+                double hei = fabs(surf-X(1));
+                sig(1) = -gam*hei;  // sy
                 sig(0) = K0*sig(1); // sx
                 sig(2) = K0*sig(1); // sz
                 sig(3) = 0.0;       // sxy*sq2
             }
             else // 3D
             {
-                double h = fabs(surf-X(2));
-                sig(2) = -gam*h;    // sz
+                double hei = fabs(surf-X(2));
+                sig(2) = -gam*hei;  // sz
                 sig(0) = K0*sig(2); // sx
                 sig(1) = K0*sig(2); // sy
                 sig(3) = 0.0;       // sxy*sq2
@@ -223,7 +222,7 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
                 double detJ = Det(J);
 
                 // coefficient used during integration
-                double coef = h*detJ*GE->IPs[i].w;
+                double coef = detJ*GE->IPs[i].w;
                 if (GTy==axs_t)
                 {
                     // calculate radius=x at this IP
@@ -270,7 +269,7 @@ inline void USigEpsElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
                 Mat_t J(GE->FdNdR * Cf);
 
                 // coefficient used during integration
-                double coef = h*GE->FIPs[i].w; // *detJ is not necessary since qx,qy,qz are already multiplied by detJ (due to normal)
+                double coef = GE->FIPs[i].w; // *detJ is not necessary since qx,qy,qz are already multiplied by detJ (due to normal)
 
                 if (GTy==axs_t)
                 {
@@ -345,14 +344,12 @@ inline void USigEpsElem::GetLoc (Array<size_t> & Loc) const
     for (size_t i=0; i<2*NDs; ++i) Loc[i] = FirstEQ + i;
 
     // U DOFs
-    //for (size_t i=0; i<GE->NN; ++i)
-    //{
-        //for (size_t j=0; j<UKeys.Size(); ++j)
-        //{
-            //size_t idx = Con[i]->UMap(UKeys[j]); // index in Node corresponding to each DOF
-            //Loc[2*NDs + i*NDim+j] = Con[i]->EQ[idx];
-        //}
-    //}
+    for (size_t i=0; i<GE->NN; ++i)
+    {
+        Loc[2*NDs+i*NDim+0] = Con[i]->Eq("ux");
+        Loc[2*NDs+i*NDim+1] = Con[i]->Eq("uy");  if (NDim==3)
+        Loc[2*NDs+i*NDim+2] = Con[i]->Eq("uz");
+    }
 }
 
 inline void USigEpsElem::Matrices (Mat_t & A, Mat_t & E, Mat_t & Q) const
@@ -501,10 +498,10 @@ inline void USigEpsElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
     // displacement increment
     Vec_t dUe(NDu);
     for (size_t i=0; i<GE->NN; ++i)
-    for (int    j=0; j<NDim;   ++j)
     {
-        //size_t idx = Con[i]->UMap(UKeys[j]);
-        //dUe(i*NDim+j) = dU(Con[i]->EQ[idx]);
+        dUe(i*NDim+0) = dU(Con[i]->Eq("ux"));
+        dUe(i*NDim+1) = dU(Con[i]->Eq("uy"));  if (NDim==3)
+        dUe(i*NDim+2) = dU(Con[i]->Eq("uz"));
     }
 
     // update F_int
@@ -545,10 +542,10 @@ inline void USigEpsElem::UpdateState (Vec_t const & dU, Vec_t * F_int) const
             (*F_int)(FirstEQ+NDs+i) += dF2(i);
         }
         for (size_t i=0; i<GE->NN; ++i)
-        for (int    j=0; j<NDim;   ++j)
         {
-            //size_t idx = Con[i]->UMap(UKeys[j]);
-            //(*F_int)(Con[i]->EQ[idx]) += dF3(i*NDim+j);
+            (*F_int)(Con[i]->Eq("ux")) += dF3(i*NDim+0);
+            (*F_int)(Con[i]->Eq("uy")) += dF3(i*NDim+1);  if (NDim==3)
+            (*F_int)(Con[i]->Eq("uz")) += dF3(i*NDim+2);
         }
     }
 }

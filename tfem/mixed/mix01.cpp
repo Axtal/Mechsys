@@ -55,10 +55,10 @@ int main(int argc, char **argv) try
     // mesh
     Array<Mesh::Block> blks(1);
     blks[0].Set (/*NDim*/2, /*Tag*/-1, /*NVert*/4,
-                 -1.0,  0.0, 0.0,
-                 -2.0,  2.0, 0.0,
-                 -3.0,  2.0, 1.0,
-                 -4.0,  0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
+                 -100.,  0.0, 0.0,
+                 -200.,  2.0, 0.0,
+                 -300.,  2.0, 1.0,
+                 -400.,  0.0, 1.0,  -10.0,-20.0,-30.0,-40.0);
     blks[0].SetNx (2);
     blks[0].SetNy (1);
     Mesh::Structured mesh(/*NDim*/2);
@@ -104,12 +104,14 @@ int main(int argc, char **argv) try
 
     // solve stage # 1
     Dict bcs;
-    bcs.Set      (-1,  "ux uy", 0.0, 0.0);
-    bcs.Set      (-40, "ux",    0.0);
-    bcs.Set      (-20, "qn",    10.0);
+    bcs.Set      (-100, "ux uy", 0.0, 0.0);
+    bcs.Set      (-40,  "ux",    0.0);
+    bcs.Set      (-20,  "qn",    10.0);
     dom.SetBCs   (bcs);
+    cout << dom << endl;
     sol.Solve    (ninc);
     dom.WriteVTU ("mix01");
+    dom.PrintResults ();
 
     // end
     return 0;
