@@ -19,7 +19,7 @@ if d['show']:
         view_buffer = BGL.Buffer(BGL.GL_FLOAT, 16, view_buffer)
         BGL.glLoadIdentity ()
         BGL.glMatrixMode   (BGL.GL_PROJECTION)
-        BGL.glPushMatrix   ()
+        #BGL.glPushMatrix   ()
         BGL.glLoadMatrixf  (view_buffer)
 
         # get mesh and transform to global coordinates

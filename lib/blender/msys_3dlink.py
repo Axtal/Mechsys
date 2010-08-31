@@ -77,7 +77,7 @@ if di.key('show_props'):
     # Initialize
     BGL.glLoadIdentity ()
     BGL.glMatrixMode   (Blender.BGL.GL_PROJECTION)
-    BGL.glPushMatrix   ()
+    #BGL.glPushMatrix   ()
     BGL.glLoadMatrixf  (view_buffer)
 
 

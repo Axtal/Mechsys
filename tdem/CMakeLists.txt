@@ -17,7 +17,7 @@
 ########################################################################
 
 if (NOT A_USE_HDF5)
-    message ("tfem tests need HDF5. Please set A_USE_HDF5 on")
+    message ("tdem tests need HDF5. Please set A_USE_HDF5 on")
 endif (NOT A_USE_HDF5)
 
 SET(EXES
