@@ -21,36 +21,11 @@ if (NOT A_USE_HDF5)
 endif (NOT A_USE_HDF5)
 
 SET(EXES
-  nonconvex
-  ttt
-  test_distances
-  test_domain
-  test_dynamics
-  test_read
-  test_write
-  test_beam
-  cylinder_test
-  brazil_test
-  figure
-  test_01
-  test_02
-  test_comm01
-  test_comm02
-  generate_hdf5)
-
-SET(TESTS
-  test_distances)
-  #test_domain
-  #test_dynamics)
+  dem_test1
+  dem_test2)
 
 FOREACH(var ${EXES})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
     TARGET_LINK_LIBRARIES (${var} ${LIBS})
     SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
 ENDFOREACH(var)
-
-FOREACH(var ${TESTS})
-    ADD_TEST (${var} ${var})
-ENDFOREACH(var)
-
-SUBDIRS(newtests)
