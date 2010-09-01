@@ -63,6 +63,7 @@ SCALAPACK_DIR=scalapack_installer_0.96
 MUMPS=MUMPS_4.9.2
 PROC_VER=3.2.8
 PROC=procps-$PROC_VER
+SPHASH=sparsehash-1.8.1
 
 compile_scalapack() {
     LDIR=$MECHSYS_ROOT/pkg/$SCALAPACK_DIR/lib
@@ -137,6 +138,15 @@ download_and_compile() {
             LOCATION=http://procps.sourceforge.net/$PKG.tar.gz
             DO_PATCH=0
             CMD=proc_links
+            ;;
+        sphash)
+            PKG=$SPHASH
+            PKG_DIR=$PKG
+            LOCATION=http://google-sparsehash.googlecode.com/files/$PKG.tar.gz
+            DO_PATCH=0
+            DO_MAKE=0
+            DO_CONF=1
+            DO_MAKE=1
             ;;
         *)
             echo
@@ -230,6 +240,7 @@ download_and_compile mtl4
 download_and_compile scalapack
 download_and_compile mumps
 download_and_compile proc
+download_and_compile sphash
 
 echo
 echo "Finished ###################################################################"
