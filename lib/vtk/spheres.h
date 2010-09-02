@@ -66,6 +66,8 @@ public:
     void SetNumSpheres (int Num)                                        { _points->SetNumberOfPoints(Num);          _scalars->SetNumberOfTuples(Num); }
     void InsertSphere  (int Id, double x, double y, double z, double r) { _points->InsertPoint(Id,x,y,z);           _scalars->InsertTuple1(Id,2.0*r); }
     void InsertSphere  (int Id, Vec3_t const & X, double r)             { _points->InsertPoint(Id,X(0),X(1),X(2));  _scalars->InsertTuple1(Id,2.0*r); }
+    void SetSphere     (int Id, Vec3_t const & X, double r)             { _points->SetPoint(Id,X(0),X(1),X(2));     _scalars->SetTuple1(Id,2.0*r);    }
+    void Modified      ()                                               { _spheres->Modified(); }
 
     // Methods
     void ShowIds (double OriX=90, double OriY=90, double OriZ=45, double Scale=0.003, int SizePt=14, bool Shadow=true, char const * Color="black");

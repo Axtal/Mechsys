@@ -18,7 +18,8 @@
 
 SET(EXES
   dem_test1
-  dem_test2)
+  dem_test2
+  view_res)
 
 FOREACH(var ${EXES})
     ADD_EXECUTABLE        (${var} "${var}.cpp")
