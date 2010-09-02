@@ -27,6 +27,7 @@
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/maps.h>
 #include <mechsys/mesh/structured.h>
+#include "paragrid3d.h"
 
 #define MACH_EPS 1.0e-16
 
@@ -53,73 +54,13 @@ public:
         }
     }
 
-    bool       Active;   ///< Is particle Active, or deleted from simulation ?
-    bool       Dummy;    ///< Is particle on the border ?
     int        Id;       ///< Global Id of particle
     Vec3_t     X,V,F,Xp; ///< Position, velocity, force, previous position (Verlet)
     double     m,R;      ///< Mass and radius
-    int        Box;      ///< Box to which this particle belongs
-    Array<int> Boxes;    ///< Boxes that this particle touches
+    bool       Active;   ///< Is particle Active, or deleted from simulation ?
+    int        CellTag;  ///< Tag of the cell with this particle
+    Array<int> Cells;    ///< Cells touched by this particle
 };
-
-inline void FindBoxNumbers (Array<int> const & N, Array<double> const & L, Vec3_t const & X, double R, Array<int> & Nums)
-{
-    // coordinates of corners
-    double xa=X(0)-R;   double xb=X(0)+R;
-    double ya=X(1)-R;   double yb=X(1)+R;
-    double za=X(2)-R;   double zb=X(2)+R;
-
-    // check
-    if (xa<L[0] || xb>L[1] ||
-        ya<L[2] || yb>L[3] ||
-        za<L[4] || zb>L[5]) throw new Fatal("FindBoxNumbers: Corner of cube centered at (%g,%g,%g) with inner radius=%g is outside limits of domain (N=(%d,%d,%d), L=[x:(%g,%g) y:(%g,%g) z:(%g,%g)])", X(0),X(1),X(2),R, N[0],N[1],N[2], L[0],L[1],L[2],L[3],L[4],L[5]);
-
-    // corners
-    double C[8][3] = {{xa,  ya,  za},
-                      {xb,  ya,  za},
-                      {xa,  yb,  za},
-                      {xb,  yb,  za},
-                      {xa,  ya,  zb},
-                      {xb,  ya,  zb},
-                      {xa,  yb,  zb},
-                      {xb,  yb,  zb}};
-
-    // box sizes
-    double D[3] = {(L[1]-L[0])/static_cast<double>(N[0]),
-                   (L[3]-L[2])/static_cast<double>(N[1]),
-                   (L[5]-L[4])/static_cast<double>(N[2])};
-
-    // find box numbers
-    for (size_t i=0; i<8; ++i)
-    {
-        // box number touched by corner
-        int I = static_cast<int>((C[i][0]-L[0])/D[0]);
-        int J = static_cast<int>((C[i][1]-L[2])/D[1]);
-        int K = static_cast<int>((C[i][2]-L[4])/D[2]);
-        Nums[i] = I + J*(N[0]+1) + K*(N[0]+1)*(N[1]+1);
-
-        // check
-        if (Nums[i]<0) throw new Fatal("Particle::Boxes:: __internal_error: box id (%d) cannot be negative",Nums[i]);
-    }
-}
-
-inline int FindBoxNumber (Array<int> const & N, Array<double> const & L, Vec3_t const & X, double R)
-{
-    // box sizes
-    double D[3] = {(L[1]-L[0])/static_cast<double>(N[0]),
-                   (L[3]-L[2])/static_cast<double>(N[1]),
-                   (L[5]-L[4])/static_cast<double>(N[2])};
-
-    // box touched by (X,R)
-    int I = static_cast<int>((X[0]-L[0])/D[0]);
-    int J = static_cast<int>((X[1]-L[2])/D[1]);
-    int K = static_cast<int>((X[2]-L[4])/D[2]);
-    int n = I + J*(N[0]+1) + K*(N[0]+1)*(N[1]+1);
-
-    // check
-    if (n<0) throw new Fatal("FindBoxNumber:: __internal_error: box id (%d) cannot be negative",n);
-    return n;
-}
 
 inline void CalcForce (Particle & a, Particle & b)
 {
@@ -158,13 +99,13 @@ inline void Output (String const & FKey, Array<Particle*> const & Parts, int Stp
     tab.Write(buf.CStr());
 }
 
-//typedef google::dense_hash_map<int,Array<Particle*> > Box2Part_t;
-//typedef google::dense_hash_map<Particle*,Particle*>   Neighbours_t;
-typedef std::map<int,Array<Particle*> > Box2Part_t;
+typedef std::map<int,Array<Particle*> > Cell2Part_t;
+typedef std::map<Particle*,Array<int> > Part2Cells_t;
 typedef std::map<Particle*,Particle*>   Neighbours_t;
 
 inline void Allocate (Array<double> const & data, Array<Particle*> & parts)
 {
+    /*
     // push particle into parts
     for (size_t i=0; i<data.Size(); i+=8)
     {
@@ -200,10 +141,12 @@ inline void Allocate (Array<double> const & data, Array<Particle*> & parts)
             parts.Last()->Boxes.Push (nums[j]);
         }
     }
+    */
 }
 
 inline void Transmission ()
 {
+    /*
     // pack data to send
     Array<double> data; // id,xc,yc,zc,ra,vx,vy,vz
     for (size_t i=0; i<bry_cells.Size(); ++i)
@@ -253,6 +196,7 @@ inline void Transmission ()
 
         }
     }
+    */
 }
 
 int main(int argc, char **argv) try
@@ -284,54 +228,8 @@ int main(int argc, char **argv) try
     //   xmi  xma    ymi  yma    zmi  zma
     L =  -2.,  2.,   -2.,  2.,    0., 0.1;
 
-    // generate grid
-    Array<Mesh::Block> blks(1);
-    blks[0].Set (3, -1, 8,
-            0., L[0],L[2],L[4],
-            0., L[1],L[2],L[4],
-            0., L[1],L[3],L[4],
-            0., L[0],L[3],L[4],
-            0., L[0],L[2],L[5],
-            0., L[1],L[2],L[5],
-            0., L[1],L[3],L[5],
-            0., L[0],L[3],L[5], 0.,0.,0.,0.,0.,0.);
-    blks[0].SetNx (N[0]);
-    blks[0].SetNy (N[1]);
-    blks[0].SetNz (N[2]);
-    Mesh::Structured mesh(3);
-    mesh.Generate   (blks);
-    mesh.PartDomain (nprocs);
-    mesh.WriteVTU   (fkey.CStr());
-
-    // find what cells are at the boundaries of this domain
-    Array<Mesh::Cell*> bry_cells_out;
-    //std::map<int, Array<int> > cell2bryprocs;
-    for (size_t i=0; i<mesh.Cells.Size(); ++i)
-    {
-        mesh.Cells[i]->Tag = -1; // outside cell
-        if (mesh.Cells[i]->PartID==my_id)
-        {
-            for (size_t j=0; j<mesh.Cells[i]->V.Size(); ++j)
-            {
-                if (mesh.Cells[i]->V[j]->PartIDs.Size()>1) // is a boundary cell
-                {
-                    mesh.Cells[i]->Tag = -2; // inside boundary cell
-                    Array<Share> const & sha = mesh.Cells[i]->V[j]->Shares;
-                    for (size_t k=0; k<sha.Size(); ++k)
-                    {
-                        if (sha[k].C!=mesh.Cells[i] && sha[k].C->PartID!=my_id) bry_cells_out.XPush (sha[k].C);
-                    }
-                    bry_cells_in.XPush(i);
-                }
-                else mesh.Cells[i]->Tag = -3; // inner cell
-            }
-        }
-    }
-    for (size_t i=0; i<bry_cells_out.Size(); ++i) bry_cells_out[i]->Tag = -4;
-    // -1 => outside cell
-    // -2 => inside boundary cell
-    // -3 => inner cell
-    // -4 => outside boundary cell
+    // grid
+    ParaGrid3D grid(N, L, fkey.CStr());
     
     // read data
     Table tab;
@@ -353,22 +251,23 @@ int main(int argc, char **argv) try
     for (size_t id=0; id<xc.Size(); ++id)
     {
         Vec3_t x(xc[id],yc[id],zc[id]);
-        int box = FindBoxNumber (N, L, x, ra[id]);
-        if (mesh.Cells[box]->Tag!=-1) // if it's not outside
+        int key = grid.FindCellKey (x, ra[id]);
+        int tag = grid.Key2Tag     (key);
+        if (tag!=ParaGrid3D::Outer_t) // if it's not outside
         {
             Vec3_t v(vx[id],vy[id],vz[id]);
             Vec3_t xp = x - dt*v;
             parts.Push (new Particle());
             Particle & p = (*parts.Last());
-            p.Box    = box;
-            p.Active = true;
-            p.Id     = id;
-            p.X      = x;
-            p.Xp     = xp;
-            p.V      = v;
-            p.m      = mass;
-            p.R      = ra[id];
-            Ekin0   += 0.5*mass*dot(p.V,p.V);
+            p.Active  = true;
+            p.CellTag = tag;
+            p.Id      = id;
+            p.X       = x;
+            p.Xp      = xp;
+            p.V       = v;
+            p.m       = mass;
+            p.R       = ra[id];
+            Ekin0    += 0.5*mass*dot(p.V,p.V);
             //Id2Part[id] = &p;
         }
         //else Id2Part[id] = NULL;
@@ -389,20 +288,18 @@ int main(int argc, char **argv) try
     double tout  = 0.1;
     for (double t=0.0; t<tf; t+=dt)
     {
-        // map: box => particles in/crossed box
-        Box2Part_t box2part;
+        // initialize particles and find map: cell => particles in/crossed cell
+        Cell2Part_t cell2part;
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            int box = FindBoxNumber (N, L, parts[i]->X, parts[i]->R);
             parts[i]->Start       ();
-            parts[i]->Boxes.Clear ();
-
-            Array<int> nums(8); // this array needs to be resized externally
-            FindBoxNumbers (N, L, parts[i]->X, parts[i]->R, nums);
+            parts[i]->Cells.Clear ();
+            int keys[8];
+            grid.FindCellsKeys (parts[i]->X, parts[i]->R, keys);
             for (size_t j=0; j<8; ++j)
             {
-                box2part[nums[j]].XPush (parts[i]);
-                parts[i]->Boxes.XPush   (nums[j]);
+                cell2part[keys[j]].XPush (parts[i]);
+                parts[i]->Cells.XPush    (keys[j]);
             }
         }
 
@@ -420,32 +317,31 @@ int main(int argc, char **argv) try
         Neighbours_t neighs;
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            // particle
-            Particle & pa = (*parts[i]);
+            // particle and cells touched by particle
+            Particle         & pa    = (*parts[i]);
+            Array<int> const & cells = parts[i]->Cells;
 
-            // loop particle's boxes
-            for (size_t k=0; k<pa.Boxes.Size(); ++k)
+            // loop over the cells touched by this particle
+            for (size_t k=0; k<cells.Size(); ++k)
             {
-                // box => particles map
-                Box2Part_t::const_iterator it = box2part.find(pa.Boxes[k]);
+                // cell key => particles
+                Cell2Part_t::const_iterator it = cell2part.find(cells[k]);
 
-                // if there are particles in particle's box
-                if (it!=box2part.end())
+                // if there are particles touching cell touched by particle
+                if (it!=cell2part.end())
                 {
-                    // particles in particle's box
-                    Array<Particle*> const & parts_in_box = it->second;
+                    // all particles touching particle's cells
+                    Array<Particle*> const & cell_parts = it->second;
 
-                    // if there are more than one particle (itself) in this box
-                    if (parts_in_box.Size()<1) throw new Fatal("__internal_error__: All boxes should have at least one particle");
-                    if (parts_in_box.Size()>1)
+                    // if there are more than one particle (itself) touching this cell
+                    if (cell_parts.Size()<1) throw new Fatal("__internal_error__: All cells should have at least one particle");
+                    if (cell_parts.Size()>1)
                     {
-                        // loop particles in particle's box
-                        for (size_t j=0; j<parts_in_box.Size(); ++j)
+                        // loop over particles touching cell touched by particle
+                        for (size_t j=0; j<cell_parts.Size(); ++j)
                         {
                             // neighbour particle
-                            Particle & pb = (*parts_in_box[j]);
-
-                            //cout << "Comparing: " << pa.Id << " with " << pb.Id << "  boxid =" << (*boxid) << endl;
+                            Particle & pb = (*cell_parts[j]);
 
                             // if pb is not pa
                             if (pb.Id != pa.Id)
@@ -456,21 +352,14 @@ int main(int argc, char **argv) try
                                 // there is overlapping
                                 if (del>MACH_EPS)
                                 {
-                                    //cout << "Neighbours: " << pa.Id << " => " << pb.Id << ", del = " << del << endl;
-                                    if (pa.Id < pb.Id)
-                                    {
-                                        neighs[&pa] = &pb;
-                                    }
-                                    else
-                                    {
-                                        neighs[&pb] = &pa;
-                                    }
+                                    if (pa.Id < pb.Id) neighs[&pa] = &pb;
+                                    else               neighs[&pb] = &pa;
                                 }
                             }
                         }
                     }
                 }
-                else throw new Fatal("__internal_error__: There should be at least one particle in particle's box: the particle itself");
+                else throw new Fatal("__internal_error__: There should be at least one particle in cell touched by particle; the particle itself");
             }
         }
 
@@ -483,14 +372,10 @@ int main(int argc, char **argv) try
         }
 
         // move particles
-        // -1 => outside cell
-        // -2 => inside boundary cell
-        // -3 => inner cell
-        // -4 => outside boundary cell
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            int tag = mesh.Cells[parts[i]->Box]->Tag;
-            if (tag==-2 || tag==-3) parts[i]->Move(dt);
+            if (parts[i]->CellTag==ParaGrid3D::Inner_t || 
+                parts[i]->CellTag==ParaGrid3D::BryIn_t) parts[i]->Move(dt);
         }
 
         // output
