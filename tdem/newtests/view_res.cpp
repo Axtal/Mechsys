@@ -103,7 +103,7 @@ int main(int argc, char **argv) try
         for (size_t i=0; i<N.Size(); ++i) N[i]++;
         VTK::SGrid grd(N.GetPtr(), L.GetPtr());
         grd.SetColor ("black", 0.2);
-        //grd.ShowIds  (90,90,45,0.003,8,false);
+        grd.ShowIds  (90,90,45,0.003,8,false);
         grd.AddTo    (win);
     }
 

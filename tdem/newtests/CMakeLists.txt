@@ -19,6 +19,7 @@
 SET(EXES
   dem_test1
   dem_test2
+  dem_test3
   view_res)
 
 FOREACH(var ${EXES})

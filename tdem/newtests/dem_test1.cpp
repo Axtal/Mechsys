@@ -89,10 +89,16 @@ int main(int argc, char **argv) try
     prps.Set (-1,"Kn Kt Gn Gt Mu Beta Eta", 1000.0, 0., 0., 0., 0. ,0.,0.);
     dom.SetProps (prps);
 
+    // first output
+    Report (dom, &idx_out);
+
     // solve
     double tf    = 1.0;
     double dtout = 0.1;
     dom.Solve (tf, dt, dtout, NULL, &Report);
+
+    // last output
+    Report (dom, &idx_out);
 
     // energy
     double Ekin1 = 0.0;
