@@ -25,6 +25,7 @@
 #include <mechsys/vtk/axes.h>
 #include <mechsys/vtk/sgrid.h>
 #include <mechsys/vtk/spheres.h>
+#include <mechsys/vtk/cube.h>
 #include <mechsys/util/colors.h>
 
 using std::cout;
@@ -34,11 +35,13 @@ int main(int argc, char **argv) try
 {
     // input
     String filename;
-    bool   show_ids     = false;
+    bool   show_ids     = true;
     bool   with_control = true;
+    bool   shadow       = true;
     if (argc>1) filename     =      argv[1];
     if (argc>2) with_control = atoi(argv[2]);
     if (argc>3) show_ids     = atoi(argv[3]);
+    if (argc>4) shadow       = atoi(argv[4]);
     if (argc<2) throw new Fatal("filename is needed as argument");
 
     // file key
@@ -51,9 +54,11 @@ int main(int argc, char **argv) try
     }
 
     // parse file
-    int           nout = 1; // number of time output
-    Array<int>    N(3);     // number of cells along each axis
-    Array<double> L(6);     // limits
+    int            nout = 1; // number of time output
+    Array<int>     N(3);     // number of cells along each axis
+    Array<double>  L(6);     // limits
+    Array<int>     proc;     // processor ID of each cell
+    Array<String>  clrs;     // colors of each processor
     String buf;
     if (with_control)
     {
@@ -66,19 +71,35 @@ int main(int argc, char **argv) try
         {
             std::getline (fi,line);
             std::istringstream iss(line);
-            iss >> key >> val;
-            if      (key=="fkey") {}
-            else if (key=="nout") nout = val;
-            else if (key=="nx")   N[0] = val;
-            else if (key=="ny")   N[1] = val;
-            else if (key=="nz")   N[2] = val;
-            else if (key=="lxmi") L[0] = val;
-            else if (key=="lxma") L[1] = val;
-            else if (key=="lymi") L[2] = val;
-            else if (key=="lyma") L[3] = val;
-            else if (key=="lzmi") L[4] = val;
-            else if (key=="lzma") L[5] = val;
-            else throw new Fatal("Key %s is wrong",key.CStr());
+            if (iss >> key >> val)
+            {
+                if      (key=="fkey") {}
+                else if (key=="nout") nout = val;
+                else if (key=="nx")   N[0] = val;
+                else if (key=="ny")   N[1] = val;
+                else if (key=="nz")   N[2] = val;
+                else if (key=="lxmi") L[0] = val;
+                else if (key=="lxma") L[1] = val;
+                else if (key=="lymi") L[2] = val;
+                else if (key=="lyma") L[3] = val;
+                else if (key=="lzmi") L[4] = val;
+                else if (key=="lzma") L[5] = val;
+                else if (key=="proc")
+                {
+                    if (proc.Size()>0) throw new Fatal("Error with input file");
+                    int ncells = val;
+                    proc.Resize (ncells);
+                    int max_proc = 0;
+                    for (int i=0; i<ncells; ++i)
+                    {
+                        iss >> proc[i];
+                        if (proc[i]>max_proc) max_proc = proc[i];
+                    }
+                    int nprocs = max_proc+1;
+                    Colors::GetRandom (nprocs, clrs);
+                }
+                else throw new Fatal("Key %s is wrong",key.CStr());
+            }
         }
         fi.close();
     }
@@ -100,14 +121,42 @@ int main(int argc, char **argv) try
     // grid
     if (with_control)
     {
-        for (size_t i=0; i<N.Size(); ++i) N[i]++;
-        VTK::SGrid grd(N.GetPtr(), L.GetPtr());
+        Array<int> Nlines(3);
+        for (size_t i=0; i<3; ++i) Nlines[i] = N[i]+1;
+        VTK::SGrid grd(Nlines.GetPtr(), L.GetPtr());
         grd.SetColor ("black", 0.2);
-        grd.ShowIds  (90,90,45,0.003,8,false);
+        //grd.ShowIds  (90,90,45,0.003,8,false);
         grd.AddTo    (win);
+        if (true)
+        {
+            double dx = (L[1]-L[0])/static_cast<double>(N[0]);
+            double dy = (L[3]-L[2])/static_cast<double>(N[1]);
+            double dz = (L[5]-L[4])/static_cast<double>(N[2]);
+            int    nx = N[0];
+            int    ny = N[1];
+            int    nc = N[0]*N[1]*N[2];
+            for (int n=0; n<nc; ++n)
+            {
+                int    K    =  n / (nx*ny);
+                int    J    = (n % (nx*ny)) / nx;
+                int    I    = (n % (nx*ny)) % nx;
+                double xmin = L[0] +  I   *dx;
+                double xmax = L[0] + (I+1)*dx;
+                double ymin = L[2] +  J   *dy;
+                double ymax = L[2] + (J+1)*dy;
+                double zmin = L[4] +  K   *dz;
+                double zmax = L[4] + (K+1)*dz;
+                Vec3_t cen((xmin+xmax)/2.0, (ymin+ymax)/2.0, (zmin+zmax)/2.0);
+                VTK::Cube cube(cen, xmax-xmin, ymax-ymin, zmax-zmin);
+                //printf("n=%d, proc[n]=%d, clrs[proc[n]]=%s\n",n,proc[n],clrs[proc[n]].CStr());
+                cube.SetColor (clrs[proc[n]].CStr(), 0.1);
+                cube.AddTo    (win);
+            }
+        }
     }
 
     // spheres
+    Array<VTK::Spheres*> sph;
     for (int stp_out=0; stp_out<nout; ++stp_out)
     {
         // read data
@@ -130,13 +179,23 @@ int main(int argc, char **argv) try
         // spheres
         Array<Vec3_t> X(xc.Size());
         for (size_t i=0; i<xc.Size(); ++i) X[i] = xc[i], yc[i], zc[i];
-        VTK::Spheres spheres(X, ra);
-        spheres.Ids = ids.GetPtr();
-        if (show_ids) spheres.ShowIds  (0,0,0,0.003,10,false);
-        else          spheres.SetColor ("red",1.0);
-        spheres.AddTo (win);
+        if (shadow)
+        {
+            if (sph.Size()>0) sph.Last()->SetColor ("black",0.1);
+            sph.Push (new VTK::Spheres(X,ra));
+        }
+        else
+        {
+            if (sph.Size()>0) sph.Last()->DelFrom (win);
+            sph.Push (new VTK::Spheres(X,ra));
+        }
+        sph.Last()->Ids = ids.GetPtr();
+        if (show_ids) sph.Last()->ShowIds  (0,0,0,0.003,10,false);
+        else          sph.Last()->SetColor ("red",1.0);
+        sph.Last()->AddTo (win, /*rstcam*/(stp_out==0));
         win.Show();
     }
+    for (size_t i=0; i<sph.Size(); ++i) delete sph[i];
 
     // end
     return 0;

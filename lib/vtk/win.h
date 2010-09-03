@@ -47,7 +47,7 @@ public:
     ~Win ();
 
     // Methods
-    void AddActor (vtkActor * TheActor);
+    void AddActor (vtkActor * TheActor, bool RstCam=true);
     void DelActor (vtkActor * TheActor) { _renderer -> RemoveActor(TheActor); }
     void AddLight (vtkLight * Light)    { _renderer -> AddLight(Light);       }
     void Render   ();
@@ -123,11 +123,14 @@ inline Win::~Win ()
     _int_switch -> Delete();
 }
 
-inline void Win::AddActor (vtkActor * TheActor)
+inline void Win::AddActor (vtkActor * TheActor, bool RstCam)
 {
-    _renderer -> AddActor        (TheActor);
-    _renderer -> SetActiveCamera (_camera);
-    _renderer -> ResetCamera     ();
+    _renderer -> AddActor (TheActor);
+    if (RstCam)
+    {
+        _renderer -> SetActiveCamera (_camera);
+        _renderer -> ResetCamera     ();
+    }
 }
 
 inline void Win::Render ()

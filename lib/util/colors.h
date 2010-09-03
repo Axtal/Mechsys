@@ -21,6 +21,7 @@
 
 // Std Lib
 #include <map>
+#include <cstdlib> // for rand
 
 // MechSys
 #include <mechsys/util/string.h>
@@ -47,8 +48,39 @@ Vec3_t const & Get (char const * Name)
     return p->second;
 }
 
+void GetRandom (size_t Num, Array<String> & Clrs)
+{
+    size_t num   = (Num<CLR.size() ? Num : CLR.size());
+    size_t maxit = 10*CLR.size();
+    size_t iter  = 0;
+    while (iter<maxit)
+    {
+        int count = 0;
+        int score = (rand()%(int)CLR.size());
+        for (CLR_t::const_iterator it=CLR.begin(); it!=CLR.end(); ++it)
+        {
+            if (count>=score)
+            {
+                Clrs.XPush (it->first);
+                break;
+            }
+            count++;
+        }
+        if (Clrs.Size()==num) break;
+        iter++;
+    }
+    if (Clrs.Size()!=num) throw new Fatal("Colors::GetRandom: failed with %d iterations",iter);
+    size_t j = 0;
+    for (size_t i=0; i<Num-num; ++i)
+    {
+        Clrs.Push (Clrs[j]);
+        j++;
+    }
+}
+
 int __init_colors__()
 {
+    // 191 colors
     Vec3_t c;
     c = 0.0, 0.0, 0.0;
 

@@ -37,6 +37,7 @@ public:
     int      FindCell  (Vec3_t const & X) const;
     void     FindCells (Vec3_t const & X, double R, int Ids[8]) const;
     CellType Cell2Type (int Id) const { return _id2type[Id]; }
+    int      Partition (int Id) const { return _part[Id];    }
 
     // Data
     Array<int>    N; ///< number of cells along each axis
@@ -183,9 +184,9 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
             int K =  n / (nx*ny);
             int J = (n % (nx*ny)) / nx;
             int I = (n % (nx*ny)) % nx;
-            oss << "  " << nsflo << I*D[0] << " ";
-            oss <<         nsflo << J*D[1] << " ";
-            oss <<         nsflo << K*D[2];
+            oss << "  " << nsflo << L[0] + I*D[0] << " ";
+            oss <<         nsflo << L[2] + J*D[1] << " ";
+            oss <<         nsflo << L[4] + K*D[2];
             k++;
             VTU_NEWLINE (n,k,nn,nfmax/3-1,oss);
         }

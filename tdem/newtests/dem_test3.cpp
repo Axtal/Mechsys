@@ -80,26 +80,34 @@ inline void CalcForce (Particle & a, Particle & b)
 
 inline void Output (String const & FKey, Array<Particle*> const & Parts, int StpOut)
 {
-    Table tab;
-    tab.SetZero ("id xc yc zc ra vx vy vz",Parts.Size());
+    // header
+    Array<String> keys("id", "xc", "yc", "zc", "ra", "vx", "vy", "vz");
+    std::ostringstream oss;
+    oss << Util::_6 << keys[0];
+    for (size_t i=1; i<keys.Size(); ++i) { oss << Util::_8s << keys[i]; } oss << "\n";
+
+    // values
     for (size_t i=0; i<Parts.Size(); ++i)
     {
-        //if (Parts[i]->CType!=Outer_t)
         if (Parts[i]->CType==Inner_t || Parts[i]->CType==BryIn_t)
         {
-            tab("id",i) = Parts[i]->Id;
-            tab("xc",i) = Parts[i]->X(0);
-            tab("yc",i) = Parts[i]->X(1);
-            tab("zc",i) = Parts[i]->X(2);
-            tab("ra",i) = Parts[i]->R;
-            tab("vx",i) = Parts[i]->V(0);
-            tab("vy",i) = Parts[i]->V(1);
-            tab("vz",i) = Parts[i]->V(2);
+            oss << Util::_6  << Parts[i]->Id;
+            oss << Util::_8s << Parts[i]->X(0);
+            oss << Util::_8s << Parts[i]->X(1);
+            oss << Util::_8s << Parts[i]->X(2);
+            oss << Util::_8s << Parts[i]->R;
+            oss << Util::_8s << Parts[i]->V(0);
+            oss << Util::_8s << Parts[i]->V(1);
+            oss << Util::_8s << Parts[i]->V(2);
+            oss << "\n";
         }
     }
-    String buf;
-    buf.Printf("%s_%08d.res",FKey.CStr(),StpOut);
-    tab.Write(buf.CStr());
+
+    // open file and save data
+    String buf;   buf.Printf("%s_%08d.res",FKey.CStr(),StpOut);
+    std::ofstream of(buf.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 }
 
 inline void PackToData (Particle const * P, Array<double> & Data)
@@ -120,6 +128,9 @@ inline void PackToData (Particle const * P, Array<double> & Data)
 
 int main(int argc, char **argv) try
 {
+    // mpirun -np 3 ./dem_test3 10 10 1 -1 1 -1 2
+    // mpirun -np 5 ./dem_test3 10 10 1 -0.2 1.2 -0.2 1.2 
+    
     // initialize MPI
     MECHSYS_CATCH_PARALLEL = true;
     MECHSYS_MPI_INIT
@@ -141,12 +152,12 @@ int main(int argc, char **argv) try
     if (argc> 1) N[0]  = atoi(argv[ 1]);
     if (argc> 2) N[1]  = atoi(argv[ 2]);
     if (argc> 3) N[2]  = atoi(argv[ 3]);
-    if (argc> 4) L[0]  = atoi(argv[ 4]);
-    if (argc> 5) L[1]  = atoi(argv[ 5]);
-    if (argc> 6) L[2]  = atoi(argv[ 6]);
-    if (argc> 7) L[3]  = atoi(argv[ 7]);
-    if (argc> 8) L[4]  = atoi(argv[ 8]);
-    if (argc> 9) L[5]  = atoi(argv[ 9]);
+    if (argc> 4) L[0]  = atof(argv[ 4]);
+    if (argc> 5) L[1]  = atof(argv[ 5]);
+    if (argc> 6) L[2]  = atof(argv[ 6]);
+    if (argc> 7) L[3]  = atof(argv[ 7]);
+    if (argc> 8) L[4]  = atof(argv[ 8]);
+    if (argc> 9) L[5]  = atof(argv[ 9]);
     if (argc>10) dt    = atof(argv[10]);
     if (N[0]<1) throw new Fatal("nx must be greater than 0");
     if (N[1]<1) throw new Fatal("ny must be greater than 0");
@@ -171,13 +182,14 @@ int main(int argc, char **argv) try
     Id2Part_t        id2part; // global Id to particle
     double Ekin0 = 0.0;
     double mass  = 1.0;
-    for (size_t id=0; id<xc.Size(); ++id)
+    for (int id=0; id<static_cast<int>(xc.Size()); ++id)
     {
         Vec3_t x(xc[id],yc[id],zc[id]);
         int      cell = grid.FindCell  (x);
         CellType type = grid.Cell2Type (cell);
         if (type!=Outer_t) // if it's not outside
         {
+            //if (my_id==0) printf("Proc # 0 is adding particle # %d\n",id);
             Vec3_t v(vx[id],vy[id],vz[id]);
             Vec3_t xp = x - dt*v;
             parts.Push (new Particle());
@@ -193,6 +205,7 @@ int main(int argc, char **argv) try
             id2part[id] = &p;
         }
     }
+    //printf("Proc # %d has %zd particles\n",my_id,parts.Size());
 
     // first output
     int stp_out = 0;
@@ -336,7 +349,9 @@ int main(int argc, char **argv) try
                             p = new Particle();
                             parts.Push (p);
                             id2part[id] = p;
+                            //printf("Proc # %d got a new particle Id=%d from %d\n",my_id,id,source);
                         }
+                        p->CType = type; // the CType of existent particle may be changed after movement in another processor => needs to be updated as well
                         p->Id = id;
                         p->X  = x;
                         p->V  = data[j+4], data[j+5], data[j+6];
@@ -344,6 +359,7 @@ int main(int argc, char **argv) try
                         p->m  = data[j+10];
                         p->R  = data[j+11];
                     }
+                    //else printf("Proc # %d doesn't want particle Id=%d sent by Proc # %d\n",my_id,id,source);
                 }
             }
         }
@@ -385,6 +401,8 @@ int main(int argc, char **argv) try
     of << "lyma  " << L[3]      << "\n";
     of << "lzmi  " << L[4]      << "\n";
     of << "lzma  " << L[5]      << "\n";
+    of << "proc  " << N[0]*N[1]*N[2] << "   ";
+    for (int i=0; i<N[0]*N[1]*N[2]; ++i) { of<<grid.Partition(i)<<" "; } of<<"\n";
     of.close();
 
     // end

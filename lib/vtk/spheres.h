@@ -71,7 +71,8 @@ public:
 
     // Methods
     void ShowIds (double OriX=90, double OriY=90, double OriZ=45, double Scale=0.003, int SizePt=14, bool Shadow=true, char const * Color="black");
-    void AddTo   (VTK::Win & win);
+    void AddTo   (VTK::Win & win, bool RstCam=true);
+    void DelFrom (VTK::Win & win);
 
     int const * Ids; // to be set externally: size = num points/spheres
 
@@ -215,10 +216,16 @@ inline void Spheres::ShowIds (double OriX, double OriY, double OriZ, double Scal
     }
 }
 
-inline void Spheres::AddTo (VTK::Win & win)
+inline void Spheres::AddTo (VTK::Win & win, bool RstCam)
 {
-    win.AddActor (_spheres_actor); 
-    for (size_t i=0; i<_text.Size(); ++i) win.AddActor (reinterpret_cast<vtkActor*>(_text[i]));
+    win.AddActor (_spheres_actor, RstCam); 
+    for (size_t i=0; i<_text.Size(); ++i) win.AddActor (reinterpret_cast<vtkActor*>(_text[i]), RstCam);
+}
+
+inline void Spheres::DelFrom (VTK::Win & win)
+{
+    win.DelActor (_spheres_actor); 
+    for (size_t i=0; i<_text.Size(); ++i) win.DelActor (reinterpret_cast<vtkActor*>(_text[i]));
 }
 
 inline void Spheres::_create ()

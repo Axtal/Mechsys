@@ -34,7 +34,8 @@ SET(PROGS_D # other tests
  linalg03
  tlaexpr
  linsolver
- sandbox
+ test_maps
+ test_colors
  serialize)
 
 SET(PROGS_F # mesh
