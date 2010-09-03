@@ -21,6 +21,7 @@ SET(EXES
   dem_test2
   dem_test3
   view_res
+  join_res
   test_paragrid)
 
 FOREACH(var ${EXES})

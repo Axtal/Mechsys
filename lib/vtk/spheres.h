@@ -45,7 +45,7 @@ class Spheres
 {
 public:
     // Constructor & Destructor
-     Spheres () { _create();  SetResolution (); }
+     Spheres () : Ids(NULL) { _create();  SetResolution (); }
     ~Spheres ();
 
     // Alternative constructor
@@ -73,6 +73,8 @@ public:
     void ShowIds (double OriX=90, double OriY=90, double OriZ=45, double Scale=0.003, int SizePt=14, bool Shadow=true, char const * Color="black");
     void AddTo   (VTK::Win & win);
 
+    int const * Ids; // to be set externally: size = num points/spheres
+
 private:
     vtkPoints              * _points;
     vtkDoubleArray         * _scalars;
@@ -90,6 +92,7 @@ private:
 
 
 inline Spheres::Spheres (Array<Vec3_t> const & X, Array<double> const & R, int ThetaRes, int PhiRes)
+    : Ids(NULL)
 {
     _create       ();
     SetSpheres    (X, &R);
@@ -97,6 +100,7 @@ inline Spheres::Spheres (Array<Vec3_t> const & X, Array<double> const & R, int T
 }
 
 inline Spheres::Spheres (Table const & XYZR, int ThetaRes, int PhiRes)
+    : Ids(NULL)
 {
     _create       ();
     SetSpheres    (XYZR);
@@ -104,6 +108,7 @@ inline Spheres::Spheres (Table const & XYZR, int ThetaRes, int PhiRes)
 }
 
 inline Spheres::Spheres (Array<double> const & X, Array<double> const & Y, Array<double> const & Z, Array<double> const & R, int ThetaRes, int PhiRes)
+    : Ids(NULL)
 {
     _create       ();
     SetSpheres    (X, Y, Z, &R);
@@ -197,7 +202,8 @@ inline void Spheres::ShowIds (double OriX, double OriY, double OriZ, double Scal
     _text.Resize (_points->GetNumberOfPoints());
     for (int i=0; i<_points->GetNumberOfPoints(); ++i)
     {
-        buf.Printf ("%d",i);
+        if (Ids==NULL) buf.Printf ("%d",i);
+        else           buf.Printf ("%d",Ids[i]);
         _text[i] = vtkTextActor3D                   ::New();
         _text[i] -> SetInput                        (buf.CStr());
         _text[i] -> SetPosition                     (_points->GetPoint(i));

@@ -84,7 +84,8 @@ inline void Output (String const & FKey, Array<Particle*> const & Parts, int Stp
     tab.SetZero ("id xc yc zc ra vx vy vz",Parts.Size());
     for (size_t i=0; i<Parts.Size(); ++i)
     {
-        if (Parts[i]->CType!=Outer_t)
+        //if (Parts[i]->CType!=Outer_t)
+        if (Parts[i]->CType==Inner_t || Parts[i]->CType==BryIn_t)
         {
             tab("id",i) = Parts[i]->Id;
             tab("xc",i) = Parts[i]->X(0);
@@ -128,22 +129,28 @@ int main(int argc, char **argv) try
     String fkey;
     fkey.Printf("dem_test3_proc_%d",my_id);
 
-    // input
-    Array<int> N(10, 10, 1); // number of cells/boxes along each side of grid
-    double dt = 0.001;       // timestep
-    if (argc>1) N[0]  = atoi(argv[1]);
-    if (argc>2) N[1]  = atoi(argv[2]);
-    if (argc>3) N[2]  = atoi(argv[3]);
-    if (argc>4) dt    = atof(argv[4]);
-    if (N[0]<1) throw new Fatal("nx must be greater than 0");
-    if (N[1]<1) throw new Fatal("ny must be greater than 0");
-    if (N[2]<1) throw new Fatal("nz must be greater than 0");
-
     // limits of grid
     Array<double> L(6);
     //     0    1      2    3      4    5
     //   xmi  xma    ymi  yma    zmi  zma
     L =  -2.,  2.,   -2.,  2.,    0., 0.1;
+
+    // input
+    Array<int> N(10, 10, 1); // number of cells/boxes along each side of grid
+    double dt = 0.001;       // timestep
+    if (argc> 1) N[0]  = atoi(argv[ 1]);
+    if (argc> 2) N[1]  = atoi(argv[ 2]);
+    if (argc> 3) N[2]  = atoi(argv[ 3]);
+    if (argc> 4) L[0]  = atoi(argv[ 4]);
+    if (argc> 5) L[1]  = atoi(argv[ 5]);
+    if (argc> 6) L[2]  = atoi(argv[ 6]);
+    if (argc> 7) L[3]  = atoi(argv[ 7]);
+    if (argc> 8) L[4]  = atoi(argv[ 8]);
+    if (argc> 9) L[5]  = atoi(argv[ 9]);
+    if (argc>10) dt    = atof(argv[10]);
+    if (N[0]<1) throw new Fatal("nx must be greater than 0");
+    if (N[1]<1) throw new Fatal("ny must be greater than 0");
+    if (N[2]<1) throw new Fatal("nz must be greater than 0");
 
     // grid
     ParaGrid3D grid(N, L, fkey.CStr());

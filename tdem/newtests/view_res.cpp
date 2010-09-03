@@ -115,7 +115,7 @@ int main(int argc, char **argv) try
         else              buf = filename;
         Table tab;
         tab.Read (buf.CStr());
-        //Array<int>    const & id = tab("id");
+        Array<double> const & id = tab("id");
         Array<double> const & xc = tab("xc");
         Array<double> const & yc = tab("yc");
         Array<double> const & zc = tab("zc");
@@ -124,10 +124,14 @@ int main(int argc, char **argv) try
         //Array<double> const & vy = tab("vy");
         //Array<double> const & vz = tab("vz");
 
+        Array<int> ids(id.Size());
+        for (size_t i=0; i<ids.Size(); ++i) ids[i] = static_cast<int>(id[i]);
+
         // spheres
         Array<Vec3_t> X(xc.Size());
         for (size_t i=0; i<xc.Size(); ++i) X[i] = xc[i], yc[i], zc[i];
         VTK::Spheres spheres(X, ra);
+        spheres.Ids = ids.GetPtr();
         if (show_ids) spheres.ShowIds  (0,0,0,0.003,10,false);
         else          spheres.SetColor ("red",1.0);
         spheres.AddTo (win);
