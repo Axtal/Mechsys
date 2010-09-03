@@ -20,7 +20,8 @@ SET(EXES
   dem_test1
   dem_test2
   dem_test3
-  view_res)
+  view_res
+  test_paragrid)
 
 FOREACH(var ${EXES})
     ADD_EXECUTABLE        (${var} "${var}.cpp")

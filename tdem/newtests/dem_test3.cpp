@@ -58,7 +58,7 @@ public:
     Vec3_t     X,V,F,Xp; ///< Position, velocity, force, previous position (Verlet)
     double     m,R;      ///< Mass and radius
     bool       Active;   ///< Is particle Active, or deleted from simulation ?
-    int        CellTag;  ///< Tag of the cell with this particle
+    int        Cell;     ///< The number of the cell in which this particle is located
     Array<int> Cells;    ///< Cells touched by this particle
 };
 
@@ -100,7 +100,6 @@ inline void Output (String const & FKey, Array<Particle*> const & Parts, int Stp
 }
 
 typedef std::map<int,Array<Particle*> > Cell2Part_t;
-typedef std::map<Particle*,Array<int> > Part2Cells_t;
 typedef std::map<Particle*,Particle*>   Neighbours_t;
 
 inline void Allocate (Array<double> const & data, Array<Particle*> & parts)
@@ -251,23 +250,23 @@ int main(int argc, char **argv) try
     for (size_t id=0; id<xc.Size(); ++id)
     {
         Vec3_t x(xc[id],yc[id],zc[id]);
-        int key = grid.FindCellKey (x, ra[id]);
-        int tag = grid.Key2Tag     (key);
-        if (tag!=ParaGrid3D::Outer_t) // if it's not outside
+        int      cell = grid.FindCell  (x, ra[id]);
+        CellType type = grid.Cell2Type (cell);
+        if (type!=ParaGrid3D::Outer_t) // if it's not outside
         {
             Vec3_t v(vx[id],vy[id],vz[id]);
             Vec3_t xp = x - dt*v;
             parts.Push (new Particle());
             Particle & p = (*parts.Last());
-            p.Active  = true;
-            p.CellTag = tag;
-            p.Id      = id;
-            p.X       = x;
-            p.Xp      = xp;
-            p.V       = v;
-            p.m       = mass;
-            p.R       = ra[id];
-            Ekin0    += 0.5*mass*dot(p.V,p.V);
+            p.Active = true;
+            p.Cell   = cell;
+            p.Id     = id;
+            p.X      = x;
+            p.Xp     = xp;
+            p.V      = v;
+            p.m      = mass;
+            p.R      = ra[id];
+            Ekin0   += 0.5*mass*dot(p.V,p.V);
             //Id2Part[id] = &p;
         }
         //else Id2Part[id] = NULL;
@@ -279,7 +278,7 @@ int main(int argc, char **argv) try
     stp_out++;
 
     
-    Array<double> new_parts; // id,xc,yc,zc,ra,vx,vy,vz
+    //Array<double> new_parts; // id,xc,yc,zc,ra,vx,vy,vz
 
 
     // solve
@@ -294,24 +293,14 @@ int main(int argc, char **argv) try
         {
             parts[i]->Start       ();
             parts[i]->Cells.Clear ();
-            int keys[8];
-            grid.FindCellsKeys (parts[i]->X, parts[i]->R, keys);
+            int cells[8];
+            grid.FindCells (parts[i]->X, parts[i]->R, cells);
             for (size_t j=0; j<8; ++j)
             {
-                cell2part[keys[j]].XPush (parts[i]);
-                parts[i]->Cells.XPush    (keys[j]);
+                cell2part[cells[j]].XPush (parts[i]);
+                parts[i]->Cells.XPush     (cells[j]);
             }
         }
-
-        /*
-        for (Box2Part_t::const_iterator it=box2part.begin(); it!=box2part.end(); ++it)
-        {
-            cout << it->first << ": ";
-            for (size_t k=0; k<it->second.Size(); ++k) cout << it->second[k]->Id << " ";
-            cout << endl;
-        }
-        cout << endl;
-        */
 
         // find possible contacts
         Neighbours_t neighs;
@@ -372,11 +361,29 @@ int main(int argc, char **argv) try
         }
 
         // move particles
+        Array<double> data;
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            if (parts[i]->CellTag==ParaGrid3D::Inner_t || 
-                parts[i]->CellTag==ParaGrid3D::BryIn_t) parts[i]->Move(dt);
+            CellType type = grid.Cell2Type(parts[i]->Cell);
+            if (type==Inner_t || type==BryIn_t) parts[i]->Move(dt);
+            if (type==BryIn_t) PackToData (parts[i], data);
         }
+
+        // transmission
+        Transmit (data);
+        Receive  (data);
+
+        // process received data
+        for (size_t i=0; i<data.Size(); ++i)
+        {
+            int    id;
+            Vec3_t x;
+            double r;
+            int      cell = grid.FindCells (x, r);
+            CellType type = grid.Cell2Type (cell);
+            
+        }
+
 
         // output
         if (t>=tout)

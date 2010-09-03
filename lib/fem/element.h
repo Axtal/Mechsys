@@ -292,6 +292,30 @@ inline void Element::StateAtNodes (Array<SDPair> & Results) const
     // resize results array (one set of results per node)
     Results.Resize (GE->NN);
 
+    /*
+    // rauls' method
+    Mat_t N(GE->NIP, GE->NN);  // matrix of all IP shape functions
+    Mat_t E(GE->NN, GE->NIP);  // Extrapolator matrix
+    
+    // filling N matrix
+    for (size_t i_ip=0; i_ip<GE->NIP; i_ip++)
+    {
+        double r = GE->IPs[i_ip].r;
+        double s = GE->IPs[i_ip].s;
+        double t = GE->IPs[i_ip].t;
+        GE->Shape(r, s, t);
+        for (size_t j_node=0; j_node<GE->NN; j_node++)
+            N(i_ip, j_node) = GE->N(j_node);
+    }
+
+    // calculate extrapolator matrix
+    Mat_t NNt;
+    Mat_t invNNt;
+    NNt = N*trans(N);
+    Inv (NNt, invNNt);
+    E = trans(N)*invNNt;
+    */
+
     // shape func matrix
     Mat_t M, Mi;
     ShapeMatrix (M);
@@ -314,6 +338,7 @@ inline void Element::StateAtNodes (Array<SDPair> & Results) const
         for (size_t i=0; i<GE->NIP; ++i) val_at_IPs(i) = state_at_IPs[i](keys[k]);
 
         // extrapolate to nodes
+        //val_at_Nods = E * val_at_IPs;
         val_at_Nods = Mi * val_at_IPs;
 
         // scatter values to nodes

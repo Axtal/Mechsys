@@ -73,7 +73,7 @@ class DrawMesh:
 
     # Draw mesh
     #==========
-    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=True):
+    def draw(self, with_tags=True, with_ids=True, with_shares=True, only_lin_cells=False):
         # create figure
         fig = figure()
         ax  = fig.add_subplot(111)
