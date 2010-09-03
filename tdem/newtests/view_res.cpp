@@ -108,7 +108,6 @@ int main(int argc, char **argv) try
     }
 
     // spheres
-    VTK::Spheres spheres;
     for (int stp_out=0; stp_out<nout; ++stp_out)
     {
         // read data
@@ -126,29 +125,13 @@ int main(int argc, char **argv) try
         //Array<double> const & vz = tab("vz");
 
         // spheres
-        if (stp_out==0)
-        {
-            Array<Vec3_t> X(xc.Size());
-            for (size_t i=0; i<xc.Size(); ++i) X[i] = xc[i], yc[i], zc[i];
-            spheres.SetSpheres (X, &ra);
-            if (show_ids) spheres.ShowIds  (0,0,0,0.003,10,false);
-            else          spheres.SetColor ("red",1.0);
-            spheres.AddTo (win);
-            win.Show();
-            if (show_ids) break;
-        }
-        else
-        {
-            for (size_t i=0; i<xc.Size(); ++i)
-            {
-                Vec3_t x(xc[i], yc[i], zc[i]);
-                spheres.SetSphere (i,x,ra[i]);
-            }
-            spheres.Modified();
-            win.Render();
-            //win.Render();
-            win.Show();
-        }
+        Array<Vec3_t> X(xc.Size());
+        for (size_t i=0; i<xc.Size(); ++i) X[i] = xc[i], yc[i], zc[i];
+        VTK::Spheres spheres(X, ra);
+        if (show_ids) spheres.ShowIds  (0,0,0,0.003,10,false);
+        else          spheres.SetColor ("red",1.0);
+        spheres.AddTo (win);
+        win.Show();
     }
 
     // end

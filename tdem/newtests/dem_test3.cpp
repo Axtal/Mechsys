@@ -26,8 +26,7 @@
 // MechSys
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/maps.h>
-#include <mechsys/mesh/structured.h>
-#include "paragrid3d.h"
+#include <mechsys/mesh/paragrid3d.h>
 
 #define MACH_EPS 1.0e-16
 
@@ -57,10 +56,13 @@ public:
     int        Id;       ///< Global Id of particle
     Vec3_t     X,V,F,Xp; ///< Position, velocity, force, previous position (Verlet)
     double     m,R;      ///< Mass and radius
-    bool       Active;   ///< Is particle Active, or deleted from simulation ?
-    int        Cell;     ///< The number of the cell in which this particle is located
+    CellType   CType;    ///< The type of the cell in which this particle is located
     Array<int> Cells;    ///< Cells touched by this particle
 };
+
+typedef std::map<int,Particle*>         Id2Part_t;
+typedef std::map<int,Array<Particle*> > Cell2Part_t;
+typedef std::map<Particle*,Particle*>   Neighbours_t;
 
 inline void CalcForce (Particle & a, Particle & b)
 {
@@ -82,7 +84,7 @@ inline void Output (String const & FKey, Array<Particle*> const & Parts, int Stp
     tab.SetZero ("id xc yc zc ra vx vy vz",Parts.Size());
     for (size_t i=0; i<Parts.Size(); ++i)
     {
-        if (Parts[i]->Active)
+        if (Parts[i]->CType!=Outer_t)
         {
             tab("id",i) = Parts[i]->Id;
             tab("xc",i) = Parts[i]->X(0);
@@ -99,103 +101,20 @@ inline void Output (String const & FKey, Array<Particle*> const & Parts, int Stp
     tab.Write(buf.CStr());
 }
 
-typedef std::map<int,Array<Particle*> > Cell2Part_t;
-typedef std::map<Particle*,Particle*>   Neighbours_t;
-
-inline void Allocate (Array<double> const & data, Array<Particle*> & parts)
+inline void PackToData (Particle const * P, Array<double> & Data)
 {
-    /*
-    // push particle into parts
-    for (size_t i=0; i<data.Size(); i+=8)
-    {
-        // check if particle belongs to any box in this processor
-        Vec3_t x(data[i+1],data[i+2],data[i+3]);
-        double r(data[i+4]);
-        //int n = FindBoxNumber (N, L, x, r); // need to allocate particle
-        //if (mesh.Cells[n]->PartID!=my_id) continue;
-
-        // allocate particle
-        int id = static_cast<int>(data[i]);
-        Vec3_t v(data[i+5],data[i+6],data[i+7]);
-        Vec3_t xp = x - dt*v; // need to receive xp as well ?
-        parts.Push (new Particle());
-        parts.Last()->Active = true;
-        parts.Last()->Dummy  = (mesh.Cells[n]->PartID!=my_id);
-        parts.Last()->Id     = id;
-        parts.Last()->X      = x;
-        parts.Last()->Xp     = xp;
-        parts.Last()->V      = v;
-        parts.Last()->m      = mass;
-        parts.Last()->R      = r;
-
-        printf("Proc # %d: particle Id = %d arrived and is Dummy = %d\n",my_id,id,parts.Last()->Dummy);
-
-        // update maps
-        Array<int> nums(8); // this array needs to be resized externally
-        FindBoxNumbers (N, L, parts.Last()->X, parts.Last()->R, nums);
-        for (size_t j=0; j<8; ++j)
-        {
-            Box2Part_t::iterator it = box2part.find(nums[j]);
-            if (it==box2part.end()) box2part[nums[j]].Push (parts.Last());
-            parts.Last()->Boxes.Push (nums[j]);
-        }
-    }
-    */
-}
-
-inline void Transmission ()
-{
-    /*
-    // pack data to send
-    Array<double> data; // id,xc,yc,zc,ra,vx,vy,vz
-    for (size_t i=0; i<bry_cells.Size(); ++i)
-    {
-        int n = bry_cells[i];
-        Box2Part_t::const_iterator it = box2part.find(n);
-        if (it!=box2part.end()) // box has particles
-        {
-            Array<Particle*> const & parts = it->second; // particles in the cell
-            for (size_t j=0; j<parts.Size(); ++j)
-            {
-                data.Push (parts[j]->Id);
-                data.Push (parts[j]->X(0));
-                data.Push (parts[j]->X(1));
-                data.Push (parts[j]->X(2));
-                data.Push (parts[j]->R);
-                data.Push (parts[j]->V(0));
-                data.Push (parts[j]->V(1));
-                data.Push (parts[j]->V(2));
-                //printf("Proc # %d, part Id = %d\n",my_id,parts[j]->Id);
-            }
-        }
-    }
-
-    // broadcast
-    for (int i=0; i<nprocs; ++i)
-    {
-        if (i!=my_id)
-        {
-            MPI::Request req_send = MPI::COMM_WORLD.Isend (data.GetPtr(), data.Size(), MPI::DOUBLE, i, 1000);
-            req_send.Wait ();
-        }
-    }
-
-    // receive messages from everyone
-    MPI::Status status;
-    for (int i=0; i<nprocs; ++i)
-    {
-        if (i!=my_id)
-        {
-            // get message
-            MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, 1000, status);
-            int source = status.Get_source();
-            int count  = status.Get_count(MPI::DOUBLE);
-            data.Resize (count);
-            MPI::COMM_WORLD.Recv (data.GetPtr(), count, MPI::DOUBLE, source, 1000);
-
-        }
-    }
-    */
+    Data.Push (P->Id+0.1);
+    Data.Push (P->X(0));
+    Data.Push (P->X(1));
+    Data.Push (P->X(2));
+    Data.Push (P->V(0));
+    Data.Push (P->V(1));
+    Data.Push (P->V(2));
+    Data.Push (P->Xp(0));
+    Data.Push (P->Xp(1));
+    Data.Push (P->Xp(2));
+    Data.Push (P->m);
+    Data.Push (P->R);
 }
 
 int main(int argc, char **argv) try
@@ -204,11 +123,10 @@ int main(int argc, char **argv) try
     MECHSYS_CATCH_PARALLEL = true;
     MECHSYS_MPI_INIT
     int my_id  = MPI::COMM_WORLD.Get_rank();
-    int nprocs = MPI::COMM_WORLD.Get_size();
 
     // filekey
     String fkey;
-    fkey.Printf("dem_test2_proc_%d",my_id);
+    fkey.Printf("dem_test3_proc_%d",my_id);
 
     // input
     Array<int> N(10, 10, 1); // number of cells/boxes along each side of grid
@@ -241,25 +159,23 @@ int main(int argc, char **argv) try
     Array<double> const & vy = tab("vy");
     Array<double> const & vz = tab("vz");
 
-    //std::map<int,Particle*> Id2Part; // global Id to particle
-
     // allocate particles
-    Array<Particle*> parts;
+    Array<Particle*> parts;   // particles in this processor
+    Id2Part_t        id2part; // global Id to particle
     double Ekin0 = 0.0;
     double mass  = 1.0;
     for (size_t id=0; id<xc.Size(); ++id)
     {
         Vec3_t x(xc[id],yc[id],zc[id]);
-        int      cell = grid.FindCell  (x, ra[id]);
+        int      cell = grid.FindCell  (x);
         CellType type = grid.Cell2Type (cell);
-        if (type!=ParaGrid3D::Outer_t) // if it's not outside
+        if (type!=Outer_t) // if it's not outside
         {
             Vec3_t v(vx[id],vy[id],vz[id]);
             Vec3_t xp = x - dt*v;
             parts.Push (new Particle());
             Particle & p = (*parts.Last());
-            p.Active = true;
-            p.Cell   = cell;
+            p.CType  = type;
             p.Id     = id;
             p.X      = x;
             p.Xp     = xp;
@@ -267,19 +183,14 @@ int main(int argc, char **argv) try
             p.m      = mass;
             p.R      = ra[id];
             Ekin0   += 0.5*mass*dot(p.V,p.V);
-            //Id2Part[id] = &p;
+            id2part[id] = &p;
         }
-        //else Id2Part[id] = NULL;
     }
 
     // first output
     int stp_out = 0;
     Output (fkey, parts, stp_out);
     stp_out++;
-
-    
-    //Array<double> new_parts; // id,xc,yc,zc,ra,vx,vy,vz
-
 
     // solve
     double tf    = 1.0;
@@ -291,6 +202,7 @@ int main(int argc, char **argv) try
         Cell2Part_t cell2part;
         for (size_t i=0; i<parts.Size(); ++i)
         {
+            if (parts[i]->CType==Outer_t) continue;
             parts[i]->Start       ();
             parts[i]->Cells.Clear ();
             int cells[8];
@@ -306,6 +218,9 @@ int main(int argc, char **argv) try
         Neighbours_t neighs;
         for (size_t i=0; i<parts.Size(); ++i)
         {
+            // skip outer particles
+            if (parts[i]->CType==Outer_t) continue;
+
             // particle and cells touched by particle
             Particle         & pa    = (*parts[i]);
             Array<int> const & cells = parts[i]->Cells;
@@ -364,26 +279,67 @@ int main(int argc, char **argv) try
         Array<double> data;
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            CellType type = grid.Cell2Type(parts[i]->Cell);
+            CellType type = parts[i]->CType;
+            if (type==Outer_t) continue;
             if (type==Inner_t || type==BryIn_t) parts[i]->Move(dt);
             if (type==BryIn_t) PackToData (parts[i], data);
+            parts[i]->CType = grid.Cell2Type (grid.FindCell(parts[i]->X));
         }
 
-        // transmission
-        Transmit (data);
-        Receive  (data);
-
-        // process received data
-        for (size_t i=0; i<data.Size(); ++i)
+        // broadcast
+        int my_id  = MPI::COMM_WORLD.Get_rank();
+        int nprocs = MPI::COMM_WORLD.Get_size();
+        for (int i=0; i<nprocs; ++i)
         {
-            int    id;
-            Vec3_t x;
-            double r;
-            int      cell = grid.FindCells (x, r);
-            CellType type = grid.Cell2Type (cell);
-            
+            if (i!=my_id)
+            {
+                MPI::Request req_send = MPI::COMM_WORLD.Isend (data.GetPtr(), data.Size(), MPI::DOUBLE, i, 1000);
+                req_send.Wait ();
+            }
         }
 
+        // receive messages from everyone
+        MPI::Status status;
+        for (int i=0; i<nprocs; ++i)
+        {
+            if (i!=my_id)
+            {
+                // get message
+                MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, 1000, status);
+                int source = status.Get_source();
+                int count  = status.Get_count(MPI::DOUBLE);
+                data.Resize (count);
+                MPI::COMM_WORLD.Recv (data.GetPtr(), count, MPI::DOUBLE, source, 1000);
+
+                // unpack data
+                for (size_t j=0; j<data.Size(); j+=12)
+                {
+                    // id and position
+                    Vec3_t x(data[j+1],data[j+2],data[j+3]);
+                    int      id   = static_cast<int>(data[j]);
+                    int      cell = grid.FindCell  (x);
+                    CellType type = grid.Cell2Type (cell);
+                    if (type!=Outer_t)
+                    {
+                        bool has_part = id2part.count(id);
+                        Particle * p;
+                        if (has_part) p = id2part[id];
+                        else
+                        {
+                            p = new Particle();
+                            parts.Push (p);
+                            id2part[id] = p;
+                        }
+                        p->Id = id;
+                        p->X  = x;
+                        p->V  = data[j+4], data[j+5], data[j+6];
+                        p->Xp = data[j+7], data[j+8], data[j+9];
+                        p->m  = data[j+10];
+                        p->R  = data[j+11];
+                    }
+                }
+            }
+        }
 
         // output
         if (t>=tout)

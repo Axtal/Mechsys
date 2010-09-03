@@ -34,7 +34,7 @@ public:
     ParaGrid3D (Array<int> const & N, Array<double> & L, char const * FileKey=NULL);
 
     // Methods
-    int      FindCell  (Vec3_t const & X, double R) const;
+    int      FindCell  (Vec3_t const & X) const;
     void     FindCells (Vec3_t const & X, double R, int Ids[8]) const;
     CellType Cell2Type (int Id) const { return _id2type[Id]; }
 
@@ -275,9 +275,9 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
     }
 }
 
-inline int ParaGrid3D::FindCell (Vec3_t const & X, double R) const
+inline int ParaGrid3D::FindCell (Vec3_t const & X) const
 {
-    // cell touched by (X,R)
+    // cell
     int I = static_cast<int>((X(0)-L[0])/D(0));
     int J = static_cast<int>((X(1)-L[2])/D(1));
     int K = static_cast<int>((X(2)-L[4])/D(2));
