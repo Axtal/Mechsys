@@ -43,6 +43,7 @@ public:
     void   Derivs     (double r, double s, double t)    const;
     void   FaceShape  (double r, double s)              const;
     void   FaceDerivs (double r, double s)              const;
+    void   NatCoords  (Mat_t & C)                       const;
 };
 
 
@@ -68,7 +69,7 @@ const int Tri3::Face2Node[3][2] = {{ 0, 1 },
 
 
 inline Tri3::Tri3 (int NDim)
-    : GeomElem(NDim, /*NN*/3, /*NFN*/2, /*rCt*/1.0/3.0, /*sCt*/1.0/3.0, /*tCt*/0.0, "Tri3")
+    : GeomElem(NDim, /*NN*/3, /*NFN*/2, "Tri3")
 {
     SetIPs (3);
 }
@@ -149,6 +150,14 @@ inline void Tri3::FaceDerivs (double r, double s) const
      */
     FdNdR(0,0) = -0.5;
     FdNdR(0,1) =  0.5;
+}
+
+inline void Tri3::NatCoords (Mat_t & C) const
+{
+    C.change_dim(3,3);
+    C = 0.0, 0.0, 1.0,
+        1.0, 0.0, 1.0,
+        0.0, 1.0, 1.0;
 }
 
 

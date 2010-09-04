@@ -43,6 +43,7 @@ public:
     void   Derivs     (double r, double s, double t)    const;
     void   FaceShape  (double r, double s)              const;
     void   FaceDerivs (double r, double s)              const;
+    void   NatCoords  (Mat_t & C)                       const;
 };
 
 
@@ -78,7 +79,7 @@ const int Hex8::Face2Node[6][4] = {{ 0, 4, 7, 3 },
 
 
 inline Hex8::Hex8 (int NDim)
-    : GeomElem(NDim, /*NN*/8, /*NFN*/4, /*rCt*/0.0, /*sCt*/0.0, /*tCt*/0.0, "Hex8")
+    : GeomElem(NDim, /*NN*/8, /*NFN*/4, "Hex8")
 {
     SetIPs (8);
 }
@@ -186,6 +187,19 @@ inline void Hex8::FaceDerivs (double r, double s) const
     FdNdR(0,1) = 0.25*(+1.0-s);   FdNdR(1,1) = 0.25*(-1.0-r);
     FdNdR(0,2) = 0.25*(+1.0+s);   FdNdR(1,2) = 0.25*(+1.0+r);
     FdNdR(0,3) = 0.25*(-1.0-s);   FdNdR(1,3) = 0.25*(+1.0-r);
+}
+
+inline void Hex8::NatCoords (Mat_t & C) const
+{
+    C.change_dim(8,4);
+    C = -1.0, -1.0, -1.0, 1.0,
+        +1.0, -1.0, -1.0, 1.0,
+        +1.0, +1.0, -1.0, 1.0,
+        -1.0, +1.0, -1.0, 1.0,
+        -1.0, -1.0, +1.0, 1.0,
+        +1.0, -1.0, +1.0, 1.0,
+        +1.0, +1.0, +1.0, 1.0,
+        -1.0, +1.0, +1.0, 1.0;
 }
 
 

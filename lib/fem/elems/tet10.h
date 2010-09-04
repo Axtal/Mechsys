@@ -43,6 +43,7 @@ public:
     void   Derivs     (double r, double s, double t)    const;
     void   FaceShape  (double r, double s)              const;
     void   FaceDerivs (double r, double s)              const;
+    void   NatCoords  (Mat_t & C)                       const;
 };
 
 const int Tet10::Face2Node[4][6] = {{ 0, 4, 7, 3 },
@@ -54,7 +55,7 @@ const int Tet10::Face2Node[4][6] = {{ 0, 4, 7, 3 },
 
 
 inline Tet10::Tet10 (int NDim)
-    : GeomElem(NDim, /*NN*/10, /*NFN*/6, /*rCt*/1.0/3.0, /*sCt*/1.0/3.0, /*tCt*/1.0/3.0, "Tet10")
+    : GeomElem(NDim, /*NN*/10, /*NFN*/6, "Tet10")
 {
     SetIPs (4);
 }
@@ -79,14 +80,14 @@ inline void  Tet10::Shape(double r, double s, double t) const
      *                        /|`                                          
      *                        ||  `,                                       
      *                       / |    ',                                     
-     *                       | |      \                                    
+     *                       | |      \
      *                      /  |       `.                                  
      *                      |  |         `,  9                             
      *                     /   @ 7         `@                              
-     *                     |   |             \                             
+     *                     |   |             \
      *                    /    |              `.                           
      *                    |    |                ',                         
-     *                 8 @     |                  \                        
+     *                 8 @     |                  \
      *                   |     @.,,_       6       `.                      
      *                  |     / 0   ``'-.,,@_        `.                    
      *                  |    /              ``''-.,,_  ', 2                
@@ -204,6 +205,11 @@ inline void Tet10::FaceDerivs(double r, double s) const
     FdNdR(0,3) =  4.0 - 8.0 * r - 4.0 * s;   FdNdR(1,3) = -4.0 * r;
     FdNdR(0,4) =  4.0 * s;                   FdNdR(1,4) =  4.0 * r;
     FdNdR(0,5) = -4.0 * s;                   FdNdR(1,5) =  4.0 - 4.0 * r - 8.0*s;
+}
+
+inline void Tet10::NatCoords (Mat_t & C) const
+{
+    throw new Fatal("Tet10::NatCoords: method is not available yet");
 }
 
 

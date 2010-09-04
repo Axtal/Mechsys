@@ -43,6 +43,7 @@ public:
     void   Derivs     (double r, double s, double t)    const;
     void   FaceShape  (double r, double s)              const;
     void   FaceDerivs (double r, double s)              const;
+    void   NatCoords  (Mat_t & C)                       const;
 };
 
 
@@ -69,7 +70,7 @@ const int Quad4::Face2Node[4][2] = {{ 0, 1 },
 
 
 inline Quad4::Quad4 (int NDim)
-    : GeomElem(NDim, /*NN*/4, /*NFN*/2, /*rCt*/0.0, /*sCt*/0.0, /*tCt*/0.0, "Quad4")
+    : GeomElem(NDim, /*NN*/4, /*NFN*/2, "Quad4")
 {
     SetIPs (4);
 }
@@ -146,6 +147,15 @@ inline void Quad4::FaceDerivs (double r, double s) const
      */
     FdNdR(0,0) = -0.5;
     FdNdR(0,1) =  0.5;
+}
+
+inline void Quad4::NatCoords (Mat_t & C) const
+{
+    C.change_dim(4,3);
+    C = -1.0, -1.0, 1.0,
+         1.0, -1.0, 1.0,
+         1.0,  1.0, 1.0,
+        -1.0,  1.0, 1.0;
 }
 
 

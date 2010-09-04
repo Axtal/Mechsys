@@ -43,6 +43,7 @@ public:
     void   Derivs     (double r, double s, double t)    const;
     void   FaceShape  (double r, double s)              const;
     void   FaceDerivs (double r, double s)              const;
+    void   NatCoords  (Mat_t & C)                       const;
 };
 
 
@@ -78,7 +79,7 @@ const int Hex20::Face2Node[6][8] = {{ 0, 4, 7, 3, 16, 15, 19, 11 },
 
 
 inline Hex20::Hex20 (int NDim)
-    : GeomElem(NDim, /*NN*/20, /*NFN*/8, /*rCt*/0.0, /*sCt*/0.0, /*tCt*/0.0, "Hex20")
+    : GeomElem(NDim, /*NN*/20, /*NFN*/8, "Hex20")
 {
     SetIPs (27);
 }
@@ -262,6 +263,34 @@ inline void Hex20::FaceDerivs(double r, double s) const
     FdNdR(1,5) = - s * rp1;
     FdNdR(1,6) =   0.50 * (1.0 - r * r);
     FdNdR(1,7) = - s * rm1;
+}
+
+inline void Hex20::NatCoords (Mat_t & C) const
+{
+    C.change_dim(20,4);
+    C = -1.0, -1.0, -1.0, 1.0, // nodes 0 to 7
+         1.0, -1.0, -1.0, 1.0,
+         1.0,  1.0, -1.0, 1.0,
+        -1.0,  1.0, -1.0, 1.0,
+        -1.0, -1.0,  1.0, 1.0,
+         1.0, -1.0,  1.0, 1.0,
+         1.0,  1.0,  1.0, 1.0,
+        -1.0,  1.0,  1.0, 1.0,
+
+         0.0, -1.0, -1.0, 1.0, // nodes 8 to 11
+         1.0,  0.0, -1.0, 1.0,
+         0.0,  1.0, -1.0, 1.0,
+        -1.0,  0.0, -1.0, 1.0,
+
+         0.0, -1.0,  1.0, 1.0, // nodes 12 to 15
+         1.0,  0.0,  1.0, 1.0,
+         0.0,  1.0,  1.0, 1.0,
+        -1.0,  0.0,  1.0, 1.0,
+
+        -1.0, -1.0,  0.0, 1.0, // nodes 16 to 19
+         1.0, -1.0,  0.0, 1.0,
+         1.0,  1.0,  0.0, 1.0,
+        -1.0,  1.0,  0.0, 1.0;
 }
 
 

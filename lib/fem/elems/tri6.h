@@ -43,6 +43,7 @@ public:
     void   Derivs     (double r, double s, double t)    const;
     void   FaceShape  (double r, double s)              const;
     void   FaceDerivs (double r, double s)              const;
+    void   NatCoords  (Mat_t & C)                       const;
 };
 
 
@@ -68,7 +69,7 @@ const int Tri6::Face2Node[3][3]= {{ 0, 1, 3 },
 
 
 inline Tri6::Tri6 (int NDim)
-    : GeomElem(NDim, /*NN*/6, /*NFN*/3, /*rCt*/1.0/3.0, /*sCt*/1.0/3.0, /*tCt*/0.0, "Tri6")
+    : GeomElem(NDim, /*NN*/6, /*NFN*/3, "Tri6")
 {
     SetIPs (6);
 }
@@ -157,6 +158,17 @@ inline void Tri6::FaceDerivs (double r, double s) const
     FdNdR(0,0) =  r  - 0.5;
     FdNdR(0,1) =  r  + 0.5;
     FdNdR(0,2) = -2.0* r;
+}
+
+inline void Tri6::NatCoords (Mat_t & C) const
+{
+    C.change_dim(6,3);
+    C =  0.0,  0.0, 1.0,
+         1.0,  0.0, 1.0,
+         0.0,  1.0, 1.0,
+         0.5,  0.0, 1.0,
+         0.5,  0.5, 1.0,
+         0.0,  0.5, 1.0;
 }
 
 

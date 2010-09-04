@@ -37,18 +37,16 @@ public:
     GeomElem (int          NDim,                         ///< Space dimension
               size_t       NN,                           ///< Number of nodes
               size_t       NFN,                          ///< Number of nodes on face/edge
-              double       rCt,                          ///< Natural r coordinate of centroid
-              double       sCt,                          ///< Natural s coordinate of centroid
-              double       tCt,                          ///< Natural t coordinate of centroid
               char const * Name="__unnamed_geomelem__"); ///< Name. Ex: Tri3, Quad4, ...
 
     // Methods to be overloaded
-    virtual void   SetIPs     (int TotNIP)                            =0;
-    virtual size_t FNode      (size_t IdxFace, size_t IdxFNode) const =0;
-    virtual void   Shape      (double r, double s, double t)    const =0;
-    virtual void   Derivs     (double r, double s, double t)    const =0;
-    virtual void   FaceShape  (double r, double s)              const =0;
-    virtual void   FaceDerivs (double r, double s)              const =0;
+    virtual void   SetIPs     (int TotNIP)                            =0; ///< Set the total number of integration points in this element
+    virtual size_t FNode      (size_t IdxFace, size_t IdxFNode) const =0; ///< Get node of face, given index of face and index of node of face
+    virtual void   Shape      (double r, double s, double t)    const =0; ///< Shape functions
+    virtual void   Derivs     (double r, double s, double t)    const =0; ///< Derivatives of shape functions
+    virtual void   FaceShape  (double r, double s)              const =0; ///< Shape functions of face/edge
+    virtual void   FaceDerivs (double r, double s)              const =0; ///< Derivatives of shape functions of face/edge
+    virtual void   NatCoords  (Mat_t & C)                       const =0; ///< Matrix with natural coordinates of all nodes (ex.: -1, 0, 1)
 
     // Constants
     size_t             NN;   ///< Number of nodes
@@ -57,7 +55,6 @@ public:
     size_t             NFIP; ///< Number of integration points of face
     IntegPoint const * IPs;  ///< Integration points
     IntegPoint const * FIPs; ///< Integration points of Faces/Edges
-    IntegPoint         Rct;  ///< r,s,t coordinates of centroid
     String             Name; ///< Name. Ex: Tri3, Quad4, ...
 
     // Mutable data
@@ -71,12 +68,9 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline GeomElem::GeomElem (int NDim, size_t TheNN, size_t TheNFN, double rCt, double sCt, double tCt, char const * TheName)
+inline GeomElem::GeomElem (int NDim, size_t TheNN, size_t TheNFN, char const * TheName)
     : NN(TheNN), NFN(TheNFN), Name(TheName)
 {
-    Rct.r = rCt;
-    Rct.s = sCt;
-    Rct.t = tCt;
     N    .change_dim (NN);
     dNdR .change_dim (NDim,NN);
     FN   .change_dim (NFN);

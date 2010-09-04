@@ -43,6 +43,7 @@ public:
     void   Derivs     (double r, double s, double t)    const;
     void   FaceShape  (double r, double s)              const;
     void   FaceDerivs (double r, double s)              const;
+    void   NatCoords  (Mat_t & C)                       const;
 };
 
 
@@ -74,7 +75,7 @@ const int Tri15::Face2Node[3][5]= {{ 0, 1, 3,  6,  7 },
 
 
 inline Tri15::Tri15 (int NDim)
-    : GeomElem(NDim, /*NN*/15, /*NFN*/5, /*rCt*/1.0/3.0, /*sCt*/1.0/3.0, /*tCt*/0.0, "Tri15")
+    : GeomElem(NDim, /*NN*/15, /*NFN*/5, "Tri15")
 {
     SetIPs (16);
 }
@@ -224,6 +225,11 @@ inline void Tri15::FaceDerivs (double r, double s) const
     FdNdR(0,2) = -2.*(1.-2.*r)*(-r-1.)*(1.-r)-2.*(-2.*r-1.)*(-r-1.)*(1.-r)-(-2.*r-1.)*(1.-2.*r)*(1.-r)-(-2.*r-1.)*(1.-2.*r)*(-r-1.);
     FdNdR(0,3) = -(8.*(-r-1.)*(1.-r)*r)/3.-(4.*(1.-2.*r)*(1.-r)*r)/3.-(4.*(1.-2.*r)*(-r-1.)*r)/3.+(4.*(1.-2.*r)*(-r-1.)*(1.-r))/3.;
     FdNdR(0,4) = -(8.*(-r-1.)*(1.-r)*r)/3.-(4.*(-2.*r-1.)*(1.-r)*r)/3.-(4.*(-2.*r-1.)*(-r-1.)*r)/3.+(4.*(-2.*r-1.)*(-r-1.)*(1.-r))/3.;
+}
+
+inline void Tri15::NatCoords (Mat_t & C) const
+{
+    throw new Fatal("Tri15::NatCoords: method is not available yet");
 }
 
 

@@ -240,6 +240,18 @@ inline double Det (Mat_t const & M)
     else throw new Fatal("matvec.h:Det: Method is not implemented for (%d x %d) matrices yet",m,n);
 }
 
+/** Identity. */
+inline void Identity (size_t NRows, Mat_t & I)
+{
+    I.change_dim (NRows,NRows);
+    for (size_t i=0; i<NRows; ++i)
+    for (size_t j=0; j<NRows; ++j)
+    {
+        if (i==j) I(i,j) = 1.0;
+        else      I(i,j) = 0.0;
+    }
+}
+
 /** Singular value decomposition. M = U_mxm * D_mxn * Vt_nxn   */
 inline void Svd (Mat_t const & M, Mat_t & U, Vec_t & S, Mat_t & Vt)
 {

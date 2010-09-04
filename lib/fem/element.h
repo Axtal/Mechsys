@@ -292,34 +292,46 @@ inline void Element::StateAtNodes (Array<SDPair> & Results) const
     // resize results array (one set of results per node)
     Results.Resize (GE->NN);
 
-    /*
-    // rauls' method
-    Mat_t N(GE->NIP, GE->NN);  // matrix of all IP shape functions
-    Mat_t E(GE->NN, GE->NIP);  // Extrapolator matrix
-    
-    // filling N matrix
-    for (size_t i_ip=0; i_ip<GE->NIP; i_ip++)
+    // matrix of extrapolation
+    Mat_t E;
+    if (GE->NIP < GE->NN)
     {
-        double r = GE->IPs[i_ip].r;
-        double s = GE->IPs[i_ip].s;
-        double t = GE->IPs[i_ip].t;
-        GE->Shape(r, s, t);
-        for (size_t j_node=0; j_node<GE->NN; j_node++)
-            N(i_ip, j_node) = GE->N(j_node);
+        // matrix with natural coordinates of nodes
+        Mat_t Cnat;
+        GE->NatCoords (Cnat); // size = GE->NN x NDim+1
+
+        // auxiliar matrices
+        Mat_t M(GE->NIP, GE->NN); // shape func matrix
+        Mat_t C(GE->NIP, NDim+1); // matrix with coordinates of IPs
+        for (size_t i=0; i<GE->NIP; ++i)
+        {
+            GE->Shape (GE->IPs[i].r, GE->IPs[i].s, GE->IPs[i].t);
+            for (size_t j=0; j<GE->NN; ++j) M(i,j) = GE->N(j);
+            C(i,0) = GE->IPs[i].r;
+            C(i,1) = GE->IPs[i].s;
+            if (NDim==2) C(i,2) = 1.0;
+            else
+            {
+                C(i,2) = GE->IPs[i].t;
+                C(i,3) = 1.0;
+            }
+        }
+
+        // matrix of extrapolation
+        Mat_t I, Mi, Ci;
+        Identity (GE->NIP, I);
+        Inv (M, Mi);
+        Inv (C, Ci);
+        Mat_t tmp(I - C*Ci);
+        E = Mi*tmp + Cnat*Ci;
     }
-
-    // calculate extrapolator matrix
-    Mat_t NNt;
-    Mat_t invNNt;
-    NNt = N*trans(N);
-    Inv (NNt, invNNt);
-    E = trans(N)*invNNt;
-    */
-
-    // shape func matrix
-    Mat_t M, Mi;
-    ShapeMatrix (M);
-    Inv (M, Mi);
+    else
+    {
+        // shape func matrix
+        Mat_t M;
+        ShapeMatrix (M);
+        Inv (M, E);
+    }
 
     // keys
     Array<String> keys;
@@ -338,8 +350,7 @@ inline void Element::StateAtNodes (Array<SDPair> & Results) const
         for (size_t i=0; i<GE->NIP; ++i) val_at_IPs(i) = state_at_IPs[i](keys[k]);
 
         // extrapolate to nodes
-        //val_at_Nods = E * val_at_IPs;
-        val_at_Nods = Mi * val_at_IPs;
+        val_at_Nods = E * val_at_IPs;
 
         // scatter values to nodes
         for (size_t i=0; i<GE->NN; ++i) Results[i].Set (keys[k].CStr(), val_at_Nods(i));
