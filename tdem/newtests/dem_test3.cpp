@@ -81,26 +81,24 @@ inline void CalcForce (Particle & a, Particle & b)
 inline void Output (String const & FKey, Array<Particle*> const & Parts, int StpOut)
 {
     // header
-    Array<String> keys("id", "xc", "yc", "zc", "ra", "vx", "vy", "vz");
+    Array<String> keys("id", "ctype", "xc", "yc", "zc", "ra", "vx", "vy", "vz");
     std::ostringstream oss;
-    oss << Util::_6 << keys[0];
-    for (size_t i=1; i<keys.Size(); ++i) { oss << Util::_8s << keys[i]; } oss << "\n";
+    oss << Util::_6 << keys[0] << Util::_6 << keys[1];
+    for (size_t i=2; i<keys.Size(); ++i) { oss << Util::_8s << keys[i]; } oss << "\n";
 
     // values
     for (size_t i=0; i<Parts.Size(); ++i)
     {
-        if (Parts[i]->CType==Inner_t || Parts[i]->CType==BryIn_t)
-        {
-            oss << Util::_6  << Parts[i]->Id;
-            oss << Util::_8s << Parts[i]->X(0);
-            oss << Util::_8s << Parts[i]->X(1);
-            oss << Util::_8s << Parts[i]->X(2);
-            oss << Util::_8s << Parts[i]->R;
-            oss << Util::_8s << Parts[i]->V(0);
-            oss << Util::_8s << Parts[i]->V(1);
-            oss << Util::_8s << Parts[i]->V(2);
-            oss << "\n";
-        }
+        oss << Util::_6  << Parts[i]->Id;
+        oss << Util::_6  << Parts[i]->CType;
+        oss << Util::_8s << Parts[i]->X(0);
+        oss << Util::_8s << Parts[i]->X(1);
+        oss << Util::_8s << Parts[i]->X(2);
+        oss << Util::_8s << Parts[i]->R;
+        oss << Util::_8s << Parts[i]->V(0);
+        oss << Util::_8s << Parts[i]->V(1);
+        oss << Util::_8s << Parts[i]->V(2);
+        oss << "\n";
     }
 
     // open file and save data
@@ -267,8 +265,8 @@ int main(int argc, char **argv) try
                             // neighbour particle
                             Particle & pb = (*cell_parts[j]);
 
-                            // if pb is not pa
-                            if (pb.Id != pa.Id)
+                            // if pb is not pa and these two particles are not in my outer boundary (the other processor will calculate this force for me)
+                            if ((pb.Id!=pa.Id) && (!(pa.CType==BryOut_t && pb.CType==BryOut_t)))
                             {
                                 // halo overlapping
                                 double del = pa.R + pb.R - norm(pb.X-pa.X);
@@ -339,9 +337,15 @@ int main(int argc, char **argv) try
                     int      id   = static_cast<int>(data[j]);
                     int      cell = grid.FindCell  (x);
                     CellType type = grid.Cell2Type (cell);
-                    if (type!=Outer_t)
+                    bool has_part = id2part.count(id);
+                    if (type==Outer_t)
+                    { 
+                        // particle moved outside, flag this
+                        if (has_part) id2part[id]->CType = type;
+                        continue;
+                    }
+                    else
                     {
-                        bool has_part = id2part.count(id);
                         Particle * p;
                         if (has_part) p = id2part[id];
                         else
@@ -358,8 +362,8 @@ int main(int argc, char **argv) try
                         p->Xp = data[j+7], data[j+8], data[j+9];
                         p->m  = data[j+10];
                         p->R  = data[j+11];
+                        //printf("Proc # %d, stp=%d, t=%g: just set particle Id=%d sent by Proc # %d\n",my_id,stp_out,t,id,source);
                     }
-                    //else printf("Proc # %d doesn't want particle Id=%d sent by Proc # %d\n",my_id,id,source);
                 }
             }
         }

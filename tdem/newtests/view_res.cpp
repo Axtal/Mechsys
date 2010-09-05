@@ -26,6 +26,7 @@
 #include <mechsys/vtk/sgrid.h>
 #include <mechsys/vtk/spheres.h>
 #include <mechsys/vtk/cube.h>
+#include <mechsys/vtk/text2d.h>
 #include <mechsys/util/colors.h>
 
 using std::cout;
@@ -155,6 +156,10 @@ int main(int argc, char **argv) try
         }
     }
 
+    // text
+    VTK::Text2D txt(0.,0.,"");
+    txt.AddTo (win);
+
     // spheres
     Array<VTK::Spheres*> sph;
     for (int stp_out=0; stp_out<nout; ++stp_out)
@@ -164,17 +169,18 @@ int main(int argc, char **argv) try
         else              buf = filename;
         Table tab;
         tab.Read (buf.CStr());
-        Array<double> const & id = tab("id");
-        Array<double> const & xc = tab("xc");
-        Array<double> const & yc = tab("yc");
-        Array<double> const & zc = tab("zc");
-        Array<double> const & ra = tab("ra");
-        //Array<double> const & vx = tab("vx");
-        //Array<double> const & vy = tab("vy");
-        //Array<double> const & vz = tab("vz");
+        Array<double> const & idd = tab("id");
+        Array<double> const & ctd = tab("ctype");
+        Array<double> const & xc  = tab("xc");
+        Array<double> const & yc  = tab("yc");
+        Array<double> const & zc  = tab("zc");
+        Array<double> const & ra  = tab("ra");
+        Array<int> id(idd.Size());
+        Array<int> ct(ctd.Size());
+        for (size_t i=0; i<idd.Size(); ++i) { id[i]=static_cast<int>(idd[i]);  ct[i]=static_cast<int>(ctd[i]); }
 
-        Array<int> ids(id.Size());
-        for (size_t i=0; i<ids.Size(); ++i) ids[i] = static_cast<int>(id[i]);
+        // text
+        txt.SetText (buf.CStr());
 
         // spheres
         Array<Vec3_t> X(xc.Size());
@@ -189,10 +195,11 @@ int main(int argc, char **argv) try
             if (sph.Size()>0) sph.Last()->DelFrom (win);
             sph.Push (new VTK::Spheres(X,ra));
         }
-        sph.Last()->Ids = ids.GetPtr();
-        if (show_ids) sph.Last()->ShowIds  (0,0,0,0.003,10,false);
-        else          sph.Last()->SetColor ("red",1.0);
-        sph.Last()->AddTo (win, /*rstcam*/(stp_out==0));
+        sph.Last()->Ids = id.GetPtr();
+        double opac = 1.0;
+        if (show_ids) { sph.Last()->ShowIds(0,0,0,0.003,12,false);  opac=0.9; }
+        sph.Last()->SetColor ("red",opac);
+        sph.Last()->AddTo    (win, /*rstcam*/(stp_out==0));
         win.Show();
     }
     for (size_t i=0; i<sph.Size(); ++i) delete sph[i];
