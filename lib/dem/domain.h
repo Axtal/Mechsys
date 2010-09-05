@@ -1076,6 +1076,13 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
         CommunicateForce();
 #endif
 
+        // move particles
+        for (size_t i=0; i<Particles.Size(); i++)
+        {
+            Particles[i]->Rotate    (dt);
+            Particles[i]->Translate (dt);
+        }
+
         // output
         if (Time>=tout)
         {
@@ -1089,13 +1096,6 @@ inline void Domain::Solve (double tf, double dt, double dtOut, ptFun_t ptSetup, 
                 EnergyOutput (idx_out, oss_energy);
             }
             tout += dtOut;
-        }
-
-        // move particles
-        for (size_t i=0; i<Particles.Size(); i++)
-        {
-            Particles[i]->Rotate    (dt);
-            Particles[i]->Translate (dt);
         }
 
 #ifdef USE_MPI

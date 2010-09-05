@@ -35,35 +35,54 @@ using std::endl;
 int main(int argc, char **argv) try
 {
     // input
-    String filename;
+    String filekey;
+    int    proc_ini     = 0;
+    int    proc_fin     = 0;
     bool   show_ids     = true;
     bool   with_control = true;
     bool   shadow       = true;
-    if (argc>1) filename     =      argv[1];
-    if (argc>2) with_control = atoi(argv[2]);
-    if (argc>3) show_ids     = atoi(argv[3]);
-    if (argc>4) shadow       = atoi(argv[4]);
+    if (argc>1) filekey      =      argv[1];
+    if (argc>2) proc_ini     = atoi(argv[2]);
+    if (argc>3) proc_fin     = atoi(argv[3]);
+    if (argc>4) with_control = atoi(argv[4]);
+    if (argc>5) show_ids     = atoi(argv[5]);
+    if (argc>6) shadow       = atoi(argv[6]);
     if (argc<2) throw new Fatal("filename is needed as argument");
 
-    // file key
-    String fkey;
-    if (with_control) fkey = filename;
-    else
+    // filekey or filename
+    bool with_proc = true;
+    bool with_stp  = true;
+    String ext(".res");
+    String buf;  buf.Printf("%s_proc_%d_%08d.res", filekey.CStr(), proc_ini, 0);
+    if (!Util::FileExists(buf))
     {
-        fkey.resize(filename.size()-4);
-        for (size_t i=0; i<fkey.size(); ++i) fkey[i] = filename[i];
+        with_proc = false;
+        buf.Printf("%s_%08d.res", filekey.CStr(), 0);
+        if (!Util::FileExists(buf))
+        {
+            with_stp = false;
+            if (Util::FileExists(filekey))
+            {
+                buf = filekey;
+                filekey.resize(buf.size()-4);
+                for (size_t i=0; i<filekey.size(); ++i) filekey[i] = buf[i];
+                for (size_t i=0; i<4;              ++i) ext    [i] = buf[filekey.size()+i];
+                cout << "Using file <" << filekey << ext << ">\n";
+            }
+            else throw new Fatal("Could not find any file named '%s_proc_%d_%08d.res', '%s_%08d.res', or '%s'",filekey.CStr(),proc_ini,0, filekey.CStr(),0, filekey.CStr());
+        }
     }
 
-    // parse file
+    // parse control file
     int            nout = 1; // number of time output
     Array<int>     N(3);     // number of cells along each axis
     Array<double>  L(6);     // limits
     Array<int>     proc;     // processor ID of each cell
     Array<String>  clrs;     // colors of each processor
-    String buf;
+    buf.Printf("%s_control%s", filekey.CStr(), ext.CStr());
+    if (!Util::FileExists(buf)) with_control = false;
     if (with_control)
     {
-        buf.Printf("%s_control.res",fkey.CStr());
         std::fstream fi(buf.CStr(), std::ios::in);
         if (!fi.is_open()) throw new Fatal("Could not open file <%s>",buf.CStr());
         String line,key;
@@ -124,11 +143,7 @@ int main(int argc, char **argv) try
     {
         Array<int> Nlines(3);
         for (size_t i=0; i<3; ++i) Nlines[i] = N[i]+1;
-        VTK::SGrid grd(Nlines.GetPtr(), L.GetPtr());
-        grd.SetColor ("black", 0.2);
-        //grd.ShowIds  (90,90,45,0.003,8,false);
-        grd.AddTo    (win);
-        if (true)
+        if (with_proc)
         {
             double dx = (L[1]-L[0])/static_cast<double>(N[0]);
             double dy = (L[3]-L[2])/static_cast<double>(N[1]);
@@ -154,6 +169,13 @@ int main(int argc, char **argv) try
                 cube.AddTo    (win);
             }
         }
+        else
+        {
+            VTK::SGrid grd(Nlines.GetPtr(), L.GetPtr());
+            grd.SetColor ("black", 0.2);
+            //grd.ShowIds  (90,90,45,0.003,8,false);
+            grd.AddTo    (win);
+        }
     }
 
     // text
@@ -161,48 +183,72 @@ int main(int argc, char **argv) try
     txt.AddTo (win);
 
     // spheres
-    Array<VTK::Spheres*> sph;
-    for (int stp_out=0; stp_out<nout; ++stp_out)
+    int nproc = (with_proc ? proc_fin-proc_ini+1 : 1);
+    Array<String> clr;
+    Colors::GetRandom (nproc, clr);
+    Array<Array<VTK::Spheres*> > sph(nproc);
+    for (int stp=0; stp<nout; ++stp)
     {
-        // read data
-        if (with_control) buf.Printf("%s_%08d.res", fkey.CStr(), stp_out);
-        else              buf = filename;
-        Table tab;
-        tab.Read (buf.CStr());
-        Array<double> const & idd = tab("id");
-        Array<double> const & ctd = tab("ctype");
-        Array<double> const & xc  = tab("xc");
-        Array<double> const & yc  = tab("yc");
-        Array<double> const & zc  = tab("zc");
-        Array<double> const & ra  = tab("ra");
-        Array<int> id(idd.Size());
-        Array<int> ct(ctd.Size());
-        for (size_t i=0; i<idd.Size(); ++i) { id[i]=static_cast<int>(idd[i]);  ct[i]=static_cast<int>(ctd[i]); }
+        int idx_proc = 0;
+        String buf2;
+        if (with_control) buf2.Printf("%s_proc{",filekey.CStr());
+        else              buf2 = filekey;
+        for (int proc=proc_ini; proc<=proc_fin; ++proc)
+        {
+            // filename
+            if (with_proc) buf.Printf("%s_proc_%d_%08d.res", filekey.CStr(), proc, stp);
+            else
+            {
+                if (with_stp) buf.Printf("%s_%08d.res", filekey.CStr(), stp);
+                else          buf.Printf("%s%s", filekey.CStr(), ext.CStr());
+            }
+            if (proc==proc_fin) buf2.Printf("%s%d",  buf2.CStr(), proc);
+            else                buf2.Printf("%s%d,", buf2.CStr(), proc);
+            if (!Util::FileExists(buf)) cout << "Could not find file <" << buf << ">\n";
+
+            // read data
+            Table tab;
+            tab.Read (buf.CStr());
+            Array<double> const & idd = tab("id");
+            Array<double> const & xc  = tab("xc");
+            Array<double> const & yc  = tab("yc");
+            Array<double> const & zc  = tab("zc");
+            Array<double> const & ra  = tab("ra");
+            Array<int> id(idd.Size());
+            for (size_t i=0; i<idd.Size(); ++i) id[i]=static_cast<int>(idd[i]);
+
+            // spheres
+            Array<Vec3_t> X(xc.Size());
+            for (size_t i=0; i<xc.Size(); ++i) X[i] = xc[i], yc[i], zc[i];
+            if (shadow)
+            {
+                if (sph[idx_proc].Size()>0) sph[idx_proc].Last()->SetColor ("black",0.03);
+                sph[idx_proc].Push (new VTK::Spheres(X,ra));
+            }
+            else
+            {
+                if (sph[idx_proc].Size()>0) sph[idx_proc].Last()->DelFrom (win);
+                sph[idx_proc].Push (new VTK::Spheres(X,ra));
+            }
+            sph[idx_proc].Last()->Ids = id.GetPtr();
+            double opac = 1.0;
+            if (show_ids) { sph[idx_proc].Last()->ShowIds(0,0,0,0.003,12,false);  opac=0.9; }
+            sph[idx_proc].Last()->SetColor (clr[idx_proc].CStr(),opac);
+            sph[idx_proc].Last()->AddTo    (win, /*rstcam*/(stp==0));
+            idx_proc++;
+        }
 
         // text
-        txt.SetText (buf.CStr());
+        buf2.Printf ("%s}:stp=%d (stp_fin=%d)",buf2.CStr(),stp,nout-1);
+        txt.SetText (buf2.CStr());
 
-        // spheres
-        Array<Vec3_t> X(xc.Size());
-        for (size_t i=0; i<xc.Size(); ++i) X[i] = xc[i], yc[i], zc[i];
-        if (shadow)
-        {
-            if (sph.Size()>0) sph.Last()->SetColor ("black",0.1);
-            sph.Push (new VTK::Spheres(X,ra));
-        }
-        else
-        {
-            if (sph.Size()>0) sph.Last()->DelFrom (win);
-            sph.Push (new VTK::Spheres(X,ra));
-        }
-        sph.Last()->Ids = id.GetPtr();
-        double opac = 1.0;
-        if (show_ids) { sph.Last()->ShowIds(0,0,0,0.003,12,false);  opac=0.9; }
-        sph.Last()->SetColor ("red",opac);
-        sph.Last()->AddTo    (win, /*rstcam*/(stp_out==0));
+        // window
         win.Show();
     }
-    for (size_t i=0; i<sph.Size(); ++i) delete sph[i];
+
+    // clean up
+    for (int    i=0; i<nproc;         ++i)
+    for (size_t j=0; j<sph[i].Size(); ++j) delete sph[i][j];
 
     // end
     return 0;

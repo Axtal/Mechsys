@@ -61,7 +61,7 @@ int main(int argc, char **argv) try
 
             // auxiliar variables
             Array<double> const & idd = tab("id");
-            Array<double> const & ctd = tab("ctype");
+            Array<double> const & ctd = tab("ct");
             Array<int> id(idd.Size());
             Array<int> ct(ctd.Size());
             for (size_t k=0; k<idd.Size(); ++k) { id[k]=static_cast<int>(idd[k]);  ct[k]=static_cast<int>(ctd[k]); }
@@ -78,13 +78,13 @@ int main(int argc, char **argv) try
             for (int i=0; i<static_cast<int>(id.Size()); ++i)
             {
                 if (ct[i]==-4) continue; // ignore particles not in proc
-                if (id2xc.count(id[i])>0) { if (fabs(id2xc[id[i]]-xc[i])>1.0e-15) throw new Fatal("\nId=%d, ctype=%d: xc=%g in %s should be equal to %g",id[i],ct[i],xc[i],buf.CStr(),id2xc[id[i]]); }
-                if (id2yc.count(id[i])>0) { if (fabs(id2yc[id[i]]-yc[i])>1.0e-15) throw new Fatal("\nId=%d, ctype=%d: yc=%g in %s should be equal to %g",id[i],ct[i],yc[i],buf.CStr(),id2yc[id[i]]); }
-                if (id2zc.count(id[i])>0) { if (fabs(id2zc[id[i]]-zc[i])>1.0e-15) throw new Fatal("\nId=%d, ctype=%d: zc=%g in %s should be equal to %g",id[i],ct[i],zc[i],buf.CStr(),id2zc[id[i]]); }
-                if (id2ra.count(id[i])>0) { if (fabs(id2ra[id[i]]-ra[i])>1.0e-15) throw new Fatal("\nId=%d, ctype=%d: ra=%g in %s should be equal to %g",id[i],ct[i],ra[i],buf.CStr(),id2ra[id[i]]); }
-                if (id2vx.count(id[i])>0) { if (fabs(id2vx[id[i]]-vx[i])>1.0e-15) throw new Fatal("\nId=%d, ctype=%d: vx=%g in %s should be equal to %g",id[i],ct[i],vx[i],buf.CStr(),id2vx[id[i]]); }
-                if (id2vy.count(id[i])>0) { if (fabs(id2vy[id[i]]-vy[i])>1.0e-15) throw new Fatal("\nId=%d, ctype=%d: vy=%g in %s should be equal to %g",id[i],ct[i],vy[i],buf.CStr(),id2vy[id[i]]); }
-                if (id2vz.count(id[i])>0) { if (fabs(id2vz[id[i]]-vz[i])>1.0e-15) throw new Fatal("\nId=%d, ctype=%d: vz=%g in %s should be equal to %g",id[i],ct[i],vz[i],buf.CStr(),id2vz[id[i]]); }
+                if (id2xc.count(id[i])>0) { if (fabs(id2xc[id[i]]-xc[i])>1.0e-15) throw new Fatal("\nId=%d, ct=%d: xc=%g in %s should be equal to %g",id[i],ct[i],xc[i],buf.CStr(),id2xc[id[i]]); }
+                if (id2yc.count(id[i])>0) { if (fabs(id2yc[id[i]]-yc[i])>1.0e-15) throw new Fatal("\nId=%d, ct=%d: yc=%g in %s should be equal to %g",id[i],ct[i],yc[i],buf.CStr(),id2yc[id[i]]); }
+                if (id2zc.count(id[i])>0) { if (fabs(id2zc[id[i]]-zc[i])>1.0e-15) throw new Fatal("\nId=%d, ct=%d: zc=%g in %s should be equal to %g",id[i],ct[i],zc[i],buf.CStr(),id2zc[id[i]]); }
+                if (id2ra.count(id[i])>0) { if (fabs(id2ra[id[i]]-ra[i])>1.0e-15) throw new Fatal("\nId=%d, ct=%d: ra=%g in %s should be equal to %g",id[i],ct[i],ra[i],buf.CStr(),id2ra[id[i]]); }
+                if (id2vx.count(id[i])>0) { if (fabs(id2vx[id[i]]-vx[i])>1.0e-15) throw new Fatal("\nId=%d, ct=%d: vx=%g in %s should be equal to %g",id[i],ct[i],vx[i],buf.CStr(),id2vx[id[i]]); }
+                if (id2vy.count(id[i])>0) { if (fabs(id2vy[id[i]]-vy[i])>1.0e-15) throw new Fatal("\nId=%d, ct=%d: vy=%g in %s should be equal to %g",id[i],ct[i],vy[i],buf.CStr(),id2vy[id[i]]); }
+                if (id2vz.count(id[i])>0) { if (fabs(id2vz[id[i]]-vz[i])>1.0e-15) throw new Fatal("\nId=%d, ct=%d: vz=%g in %s should be equal to %g",id[i],ct[i],vz[i],buf.CStr(),id2vz[id[i]]); }
                 id2xc[id[i]] = xc[i];
                 id2yc[id[i]] = yc[i];
                 id2zc[id[i]] = zc[i];
@@ -98,10 +98,11 @@ int main(int argc, char **argv) try
         printf("\n");
 
         // header
-        Array<String> keys("id", "xc", "yc", "zc", "ra", "vx", "vy", "vz");
+        Array<String> keys("id", "xc", "yc", "zc", "ra", "vx", "vy", "vz", "ct");
         std::ostringstream oss;
         oss << Util::_6 << keys[0];
-        for (size_t i=1; i<keys.Size(); ++i) { oss << Util::_8s << keys[i]; } oss << "\n";
+        for (size_t i=1; i<keys.Size()-1; ++i) { oss << Util::_8s << keys[i]; }
+        oss << Util::_6 << keys.Last() << "\n";
 
         // values
         for (int the_id=0; the_id<=max_id; ++the_id)
@@ -114,6 +115,7 @@ int main(int argc, char **argv) try
             oss << Util::_8s << id2vx[the_id];
             oss << Util::_8s << id2vy[the_id];
             oss << Util::_8s << id2vz[the_id];
+            oss << Util::_6  << -1;
             oss << "\n";
         }
 

@@ -32,22 +32,35 @@ using Util::PI;
 void Report (DEM::Domain & Dom, void * UserData)
 {
     int * idx_out = static_cast<int*>(UserData);
-    Table tab;
-    tab.SetZero ("id xc yc zc ra vx vy vz",Dom.Particles.Size());
+
+    // header
+    Array<String> keys("id", "xc", "yc", "zc", "ra", "vx", "vy", "vz", "ct");
+    std::ostringstream oss;
+    oss << Util::_6 << keys[0];
+    for (size_t i=1; i<keys.Size()-1; ++i) { oss << Util::_8s << keys[i]; }
+    oss << Util::_6 << keys.Last() << "\n";
+
+    // values
     for (size_t i=0; i<Dom.Particles.Size(); ++i)
     {
-        tab("id",i) = i;
-        tab("xc",i) = Dom.Particles[i]->x(0);
-        tab("yc",i) = Dom.Particles[i]->x(1);
-        tab("zc",i) = Dom.Particles[i]->x(2);
-        tab("ra",i) = Dom.Particles[i]->Props.R;
-        tab("vx",i) = Dom.Particles[i]->v(0);
-        tab("vy",i) = Dom.Particles[i]->v(1);
-        tab("vz",i) = Dom.Particles[i]->v(2);
+        oss << Util::_6  << i;
+        oss << Util::_8s << Dom.Particles[i]->x(0);
+        oss << Util::_8s << Dom.Particles[i]->x(1);
+        oss << Util::_8s << Dom.Particles[i]->x(2);
+        oss << Util::_8s << Dom.Particles[i]->Props.R;
+        oss << Util::_8s << Dom.Particles[i]->v(0);
+        oss << Util::_8s << Dom.Particles[i]->v(1);
+        oss << Util::_8s << Dom.Particles[i]->v(2);
+        oss << Util::_6  << -1;
+        oss << "\n";
     }
-    String buf;
-    buf.Printf("dem_test1_%08d.res",(*idx_out));
-    tab.Write(buf.CStr());
+
+    // open file and save data
+    String buf;   buf.Printf("dem_test1_%08d.res",(*idx_out));
+    std::ofstream of(buf.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
+
     (*idx_out) += 1;
 }
 
@@ -89,16 +102,10 @@ int main(int argc, char **argv) try
     prps.Set (-1,"Kn Kt Gn Gt Mu Beta Eta", 1000.0, 0., 0., 0., 0. ,0.,0.);
     dom.SetProps (prps);
 
-    // first output
-    Report (dom, &idx_out);
-
     // solve
-    double tf    = 1.0;
+    double tf    = 5.0;
     double dtout = 0.1;
     dom.Solve (tf, dt, dtout, NULL, &Report);
-
-    // last output
-    Report (dom, &idx_out);
 
     // energy
     double Ekin1 = 0.0;
@@ -113,7 +120,7 @@ int main(int argc, char **argv) try
     // write control file
     std::ofstream of("dem_test1_control.res", std::ios::out);
     of << "fkey  " << "dem_test1" << "\n";
-    of << "nout  " << idx_out-1   << "\n";
+    of << "nout  " << idx_out     << "\n";
     of << "nx    " << 1           << "\n";
     of << "ny    " << 1           << "\n";
     of << "nz    " << 1           << "\n";

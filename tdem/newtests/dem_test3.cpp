@@ -81,16 +81,16 @@ inline void CalcForce (Particle & a, Particle & b)
 inline void Output (String const & FKey, Array<Particle*> const & Parts, int StpOut)
 {
     // header
-    Array<String> keys("id", "ctype", "xc", "yc", "zc", "ra", "vx", "vy", "vz");
+    Array<String> keys("id", "xc", "yc", "zc", "ra", "vx", "vy", "vz", "ct");
     std::ostringstream oss;
-    oss << Util::_6 << keys[0] << Util::_6 << keys[1];
-    for (size_t i=2; i<keys.Size(); ++i) { oss << Util::_8s << keys[i]; } oss << "\n";
+    oss << Util::_6 << keys[0];
+    for (size_t i=1; i<keys.Size()-1; ++i) { oss << Util::_8s << keys[i]; }
+    oss << Util::_6 << keys.Last() << "\n";
 
     // values
     for (size_t i=0; i<Parts.Size(); ++i)
     {
         oss << Util::_6  << Parts[i]->Id;
-        oss << Util::_6  << Parts[i]->CType;
         oss << Util::_8s << Parts[i]->X(0);
         oss << Util::_8s << Parts[i]->X(1);
         oss << Util::_8s << Parts[i]->X(2);
@@ -98,6 +98,7 @@ inline void Output (String const & FKey, Array<Particle*> const & Parts, int Stp
         oss << Util::_8s << Parts[i]->V(0);
         oss << Util::_8s << Parts[i]->V(1);
         oss << Util::_8s << Parts[i]->V(2);
+        oss << Util::_6  << Parts[i]->CType;
         oss << "\n";
     }
 
@@ -182,6 +183,8 @@ int main(int argc, char **argv) try
     double mass  = 1.0;
     for (int id=0; id<static_cast<int>(xc.Size()); ++id)
     {
+        double d = 2.0*ra[id];
+        if (d>grid.D[0] || d>grid.D[1] || d>grid.D[2]) throw new Fatal("Particles must have diameter smaller than the smallest cell in grid. diam=%g is greater than %g, %g, or %g",d,grid.D[0],grid.D[1],grid.D[2]);
         Vec3_t x(xc[id],yc[id],zc[id]);
         int      cell = grid.FindCell  (x);
         CellType type = grid.Cell2Type (cell);
@@ -211,7 +214,7 @@ int main(int argc, char **argv) try
     stp_out++;
 
     // solve
-    double tf    = 1.0;
+    double tf    = 5.0;
     double dtout = 0.1;
     double tout  = 0.1;
     for (double t=0.0; t<tf; t+=dt)
@@ -391,23 +394,27 @@ int main(int argc, char **argv) try
     printf("Proc # %d, Ekin (after ) = %16.8e\n\n", my_id, Ekin1);
 
     // write control file
-    String buf;
-    buf.Printf("%s_control.res",fkey.CStr());
-    std::ofstream of(buf.CStr(), std::ios::out);
-    of << "fkey  " << fkey      << "\n";
-    of << "nout  " << stp_out-1 << "\n";
-    of << "nx    " << N[0]      << "\n";
-    of << "ny    " << N[1]      << "\n";
-    of << "nz    " << N[2]      << "\n";
-    of << "lxmi  " << L[0]      << "\n";
-    of << "lxma  " << L[1]      << "\n";
-    of << "lymi  " << L[2]      << "\n";
-    of << "lyma  " << L[3]      << "\n";
-    of << "lzmi  " << L[4]      << "\n";
-    of << "lzma  " << L[5]      << "\n";
-    of << "proc  " << N[0]*N[1]*N[2] << "   ";
-    for (int i=0; i<N[0]*N[1]*N[2]; ++i) { of<<grid.Partition(i)<<" "; } of<<"\n";
-    of.close();
+    if (my_id==0)
+    {
+        String buf;
+        buf.Printf("dem_test3_control.res");
+        std::ofstream of(buf.CStr(), std::ios::out);
+        of << "fkey  " << "dem_test3" << "\n";
+        of << "nout  " << stp_out+1   << "\n";
+        of << "nx    " << N[0]        << "\n";
+        of << "ny    " << N[1]        << "\n";
+        of << "nz    " << N[2]        << "\n";
+        of << "lxmi  " << L[0]        << "\n";
+        of << "lxma  " << L[1]        << "\n";
+        of << "lymi  " << L[2]        << "\n";
+        of << "lyma  " << L[3]        << "\n";
+        of << "lzmi  " << L[4]        << "\n";
+        of << "lzma  " << L[5]        << "\n";
+        of << "proc  " << N[0]*N[1]*N[2] << "   ";
+        for (int i=0; i<N[0]*N[1]*N[2]; ++i) { of<<grid.Partition(i)<<" "; } of<<"\n";
+        of.close();
+        cout << "File <" << buf << "> written" << endl;
+    }
 
     // end
     MPI::Finalize();
