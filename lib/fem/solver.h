@@ -122,6 +122,7 @@ public:
     Array<double> IncsW;    ///< Increments weights used in Solve
     bool          WithInfo; ///< Print information ?
     bool          WarnRes;  ///< Warning if residual exceeds limit ?
+    double        WrnTol;   ///< Warning tolerance
 
     // Triplets and sparse matrices
     Sparse::Triplet<double,int> K11,K12,K21,K22; ///< Stiffness matrices
@@ -140,7 +141,7 @@ public:
 
 private:
     void _aug_and_set_A ();                          ///< Augment A matrix and set Lagrange multipliers if any
-    void _wrn_resid     (double Tol=1.0e-7);         ///< Warning message for large residuals (debugging)
+    void _wrn_resid     ();                          ///< Warning message for large residuals (debugging)
     void _cal_resid     (bool WithAccel=false);      ///< Calculate residual
     void _cor_resid     (Vec_t & dU, Vec_t & dF);    ///< Correct residual
     void _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
@@ -189,7 +190,8 @@ inline Solver::Solver (Domain const & TheDom, pOutFun TheOutFun, void * TheOutDa
       DynTh1   (0.5),
       DynTh2   (0.5),
       WithInfo (true),
-      WarnRes  (false)
+      WarnRes  (false),
+      WrnTol   (1.0e-7)
 {
 #if HAS_MPI
     if (FEM::Domain::PARA && MPI::COMM_WORLD.Get_rank()!=0) WithInfo = false;
@@ -802,11 +804,11 @@ inline void Solver::_aug_and_set_A ()
     for (size_t i=0; i<Dom.NodsIncSup.Size(); ++i) Dom.NodsIncSup[i]->SetLagIncSup (eqlag, A11);
 }
 
-inline void Solver::_wrn_resid (double Tol)
+inline void Solver::_wrn_resid ()
 {
     for (size_t eq=0; eq<NEq; ++eq)
     {
-        if (fabs(R(eq))>Tol)
+        if (fabs(R(eq))>WrnTol)
         {
             for (size_t i=0; i<Dom.ActNods.Size();     ++i)
             for (size_t j=0; j<Dom.ActNods[i]->NDOF(); ++j)
@@ -823,7 +825,7 @@ inline void Solver::_cal_resid (bool WithAccel)
     R = F - F_int;
 
     //printf("\n######################################   Before   ####################################\n");
-    //_wrn_resid (1.0e-10);
+    //_wrn_resid ();
     
     // number of the first equation corresponding to Lagrange multipliers
     int eqlag = NEq - NLag;
