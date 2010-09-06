@@ -72,7 +72,8 @@ public:
     ~Domain ();
 
     // Methods
-    void SetBCs         (Dict const & BCs, bool ClearU=false);                                                             ///< Set boundary conditions
+    void SetBCs         (Dict const & BCs);                                                                                ///< Set boundary conditions
+    void NewNodsClearU  ();                                                                                                ///< Clear U values of StgNewNods (new nodes just activated by SetBCs)
     void PrintResults   (char const * NF="%15.6e", bool OnlySummary=false, bool WithElems=true, double Tol=1.0e-10) const; ///< Print results (Tol:tolerance to ignore zeros)
     void WriteMPY       (char const * FileKey, MPyPrms const & Prms) const;      // TODO: WriteHDF5 file with results and then create a post-processing script (in Python?) to generate .mpy files ///< Write MeshPython file .mpy (run with: python FileKey.mpy, needs PyLab)
     void WriteVTU       (char const * FileKey, bool DoExtrapolation=true) const; // TODO: WriteHDF5 file with results and then create a post-processing script (in Python?) to generate .vtu files ///< Write file for ParaView
@@ -108,6 +109,7 @@ public:
     Array<Element*>       ElesWithBC;  ///< Subset of elements with prescribed boundary conditions (ex.: beams, flowelem with convection, etc.)
     Array<Node*>          NodsPins;    ///< Subset of nodes that are pins
     Array<Node*>          NodsIncSup;  ///< Subset of nodes with inclined supports
+    Array<Node*>          StgNewNods;  ///< Nodes just activated in the new stage set by SetBCs
 
     // Nodal results
     bool          HasDisps;    ///< Has displacements (ux, ...) ?
@@ -282,6 +284,9 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
             if (Inis.HasKey(tag)) Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), Inis(tag), nodes));
             else                  Eles.Push (AllocElement(prob_name, NDim, (*Msh.Cells[i]), mdl, Prps(tag), SDPair() , nodes));
 
+            // set subset of active elements
+            if (Eles.Last()->Active) ActEles.Push (Eles.Last());
+
             // set array of Beams
             if (prob_name=="Beam") Beams.Push (Eles.Last());
 
@@ -335,6 +340,12 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
         }
     }
 
+    // set subset of active nodes (must be after the creation of elements)
+    for (size_t i=0; i<Nods.Size(); ++i)
+    {
+        if (Nods[i]->NShares>0) ActNods.Push (Nods[i]);
+    }
+
     // print header of output files
     OutResults (/*idxout*/0, /*time*/0, /*vtufname*/NULL, /*headeronly*/true);
 }
@@ -349,7 +360,7 @@ inline Domain::~Domain()
 
 // Methods
 
-inline void Domain::SetBCs (Dict const & BCs, bool ClearU)
+inline void Domain::SetBCs (Dict const & BCs)
 {
     // info
 #ifdef HAS_MPI
@@ -601,6 +612,8 @@ inline void Domain::SetBCs (Dict const & BCs, bool ClearU)
     }
 
     // set subsets of active nodes, nodes with prescribed U and/or F, and nodes with inclined supports
+    Array<Node*> prev_act_nods(ActNods); // previous active nodes
+    StgNewNods.Resize (0);               // new nodes activated here
     ActNods   .Resize (0);
     NodsWithPU.Resize (0);
     NodsWithPF.Resize (0);
@@ -610,7 +623,7 @@ inline void Domain::SetBCs (Dict const & BCs, bool ClearU)
         if (Nods[i]->NShares>0)
         {
             ActNods.Push (Nods[i]); 
-            if (ClearU) Nods[i]->ClearU ();
+            if (!prev_act_nods.Has(Nods[i])) StgNewNods.Push (Nods[i]); // node was just activated
         }
         if (Nods[i]->NPU()>0)     NodsWithPU.Push (Nods[i]);
         if (Nods[i]->HasIncSup()) NodsIncSup.Push (Nods[i]);
@@ -621,9 +634,17 @@ inline void Domain::SetBCs (Dict const & BCs, bool ClearU)
         }
     }
 
+    //std::cout << "prev_act_nods = "; for (size_t i=0; i<prev_act_nods.Size(); ++i) std::cout << prev_act_nods[i]->Vert.ID << " "; std::cout << std::endl;
+    //std::cout << "StgNewNods    = "; for (size_t i=0; i<StgNewNods   .Size(); ++i) std::cout << StgNewNods   [i]->Vert.ID << " "; std::cout << std::endl;
+
     // set subsets of active elements
     ActEles.Resize (0);
     for (size_t i=0; i<Eles.Size(); ++i) { if (Eles[i]->Active) ActEles.Push (Eles[i]); }
+}
+
+inline void Domain::NewNodsClearU ()
+{
+    for (size_t i=0; i<StgNewNods.Size(); ++i) StgNewNods[i]->ClearU ();
 }
 
 inline void Domain::PrintResults (char const * NF, bool OnlySummary, bool WithElems, double Tol) const
