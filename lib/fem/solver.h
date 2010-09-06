@@ -146,7 +146,6 @@ private:
     void _FE_update     (double tf);                 ///< (Forward-Euler)  Update Time and elements to tf
     void _ME_update     (double tf);                 ///< (Modified-Euler) Update Time and elements to tf
     void _NR_update     (double tf);                 ///< (Newton-Rhapson) Update Time and elements to tf
-    void _presc_F       (double t);                  ///< Calculate prescribed F(t=Time)
     void _GN22_update   (double tf, double dt);      ///< (Generalized-Newmark) Update Time and elements to tf
     void _time_print    (char const * Comment=NULL); ///< Print timestep data
 };

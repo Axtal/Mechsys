@@ -457,15 +457,16 @@ inline void Domain::SetBCs (Dict const & BCs)
                         eleside_t es(TgdEles[j],idx_side); // (edge/face,side) pair
                         for (size_t k=0; k<bcs.Keys.Size(); ++k)
                         {
+                            if (bcs.Keys[k]=="mfunc") continue; // multiplier function (will be set together with another key)
                             if (AllUKeys.Has(bcs.Keys[k])) // is U key
                             {
                                 eleside2tag_to_ubc[es].first = btag;
-                                eleside2tag_to_ubc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                                eleside2tag_to_ubc[es].second = bcs;
                             }
                             else // is F key or 'qn', 'qt', etc.
                             {
                                 eleside2tag_to_fbc[es].first = btag;
-                                eleside2tag_to_fbc[es].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                                eleside2tag_to_fbc[es].second = bcs;
                             }
                         }
                     }
@@ -488,6 +489,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                     // split U bcs from F bcs
                     for (size_t k=0; k<bcs.Keys.Size(); ++k)
                     {
+                        if (bcs.Keys[k]=="mfunc") continue; // multiplier function (will be set together with another key)
                         if (bcs.Keys[k]=="incsup") // inclined support
                         {
                             nod2tag_to_ubc[TgdNods[j]].first  = btag;
@@ -499,12 +501,12 @@ inline void Domain::SetBCs (Dict const & BCs)
                             if (AllUKeys.Has(bcs.Keys[k])) // is U key
                             {
                                 nod2tag_to_ubc[TgdNods[j]].first = btag;
-                                nod2tag_to_ubc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                                nod2tag_to_ubc[TgdNods[j]].second = bcs;
                             }
                             else if (AllFKeys.Has(bcs.Keys[k])) // is F key
                             {
                                 nod2tag_to_fbc[TgdNods[j]].first = btag;
-                                nod2tag_to_fbc[TgdNods[j]].second.Set (bcs.Keys[k].CStr(), bcs(bcs.Keys[k]));
+                                nod2tag_to_fbc[TgdNods[j]].second = bcs;
                             }
                             else throw new Fatal("FEM::Domain::SetBCs: BC==%s with tag==%d cannot be specified to Node # %d", bcs.Keys[k].CStr(), btag, TgdNods[j]->Vert.ID);
                         }

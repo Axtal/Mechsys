@@ -40,11 +40,11 @@ using FEM::GEOM;
 
 double Multiplier (double t)
 {
-    //if (t>1.0) return 0.0;
-    //else       return 3.194*sin(Util::PI*t);
-
     if (t>1.0) return 0.0;
-    else       return 3.194*Util::PI*cos(Util::PI*t);
+    else       return 3.194*sin(Util::PI*t);
+
+    //if (t>1.0) return 0.0;
+    //else       return 3.194*Util::PI*cos(Util::PI*t);
 }
 
 int main(int argc, char **argv) try
@@ -65,7 +65,8 @@ int main(int argc, char **argv) try
     prps.Set(-1, "prob fra rho E A Izz", PROB("Beam"), 1.0, 1.0, 3.194, 1.0, 1.0);
 
     // domain
-    FEM::Domain dom(mesh, prps, Dict(), Dict());
+    Array<int> out_nods(1, /*justone*/true);
+    FEM::Domain dom(mesh, prps, Dict(), Dict(), "fig_11_01", &out_nods);
     dom.MFuncs[-200] = &Multiplier; // set database of callbacks
 
     // solver

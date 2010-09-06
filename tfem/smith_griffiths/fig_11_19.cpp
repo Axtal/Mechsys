@@ -42,12 +42,6 @@ using std::endl;
 using FEM::PROB;
 using FEM::GEOM;
 
-double Multiplier (double t)
-{
-    if (t<1.0e-4) return -180.0/1.0e-4;
-    else          return 0.0;
-}
-
 int main(int argc, char **argv) try
 {
     ///////////////////////////////////////////////////////////////////////////////////////// Mesh /////
@@ -96,8 +90,8 @@ int main(int argc, char **argv) try
     inis.Set(-1, "sx sy sz sxy", 0.0,0.0,0.0,0.0);
 
     // domain
-    FEM::Domain dom(mesh, prps, mdls, inis);
-    dom.MFuncs[-10] = &Multiplier; // set database of callbacks
+    Array<int> out_nods(30, /*justone*/true);
+    FEM::Domain dom(mesh, prps, mdls, inis, "fig_11_19", &out_nods);
 
     // solver
     FEM::Solver sol(dom);
@@ -106,7 +100,7 @@ int main(int argc, char **argv) try
 
     // stage # 1 -----------------------------------------------------------
     Dict bcs;
-    bcs.Set( -10, "qn mfunc", -180.0, 0.);
+    bcs.Set( -10, "qn",   -180.0);
     bcs.Set(-100, "ux uy", 0.0,0.0);
     bcs.Set(-200, "ux",    0.0);
     dom.SetBCs (bcs);
