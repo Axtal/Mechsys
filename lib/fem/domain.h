@@ -1220,19 +1220,15 @@ inline void Domain::NodalResults (bool OnlyOutNods) const
         {
             if (loc_res[0].HasKey(AllEKeys[j]))
             {
-                bool do_output = true;
                 for (size_t k=0; k<(*eles)[i]->Con.Size(); ++k)
                 {
                     if (OnlyOutNods)
                     { 
-                        if (!nods->Has((*eles)[i]->Con[k])) 
-                            do_output = false; 
+                        // skip nodes that are not in array OutNods
+                        if (!nods->Has((*eles)[i]->Con[k])) continue;
                     }
-                    if (do_output)
-                    {
-                        NodResults [(*eles)[i]->Con[k]][j] += loc_res[k](AllEKeys[j]);
-                        NodResCount[(*eles)[i]->Con[k]][j] += 1.0;
-                    }
+                    NodResults [(*eles)[i]->Con[k]][j] += loc_res[k](AllEKeys[j]);
+                    NodResCount[(*eles)[i]->Con[k]][j] += 1.0;
                 }
             }
         }
@@ -1255,7 +1251,7 @@ inline void Domain::OutResults (size_t IdxOut, double Time, char const * VTUFNam
     else if (OutNods.Size()>0)
     {
         // extrapolate values to (some) nodes
-        NodalResults (/*only_outnods*/true);
+        if (!HeaderOnly) NodalResults (/*only_outnods*/true);
     }
 
     // nodes
