@@ -216,11 +216,10 @@ public:
     void SetFac (size_t iFac, int FTag, Array<int> const & Polygon1, Array<int> const & Polygon2);
 
     // Methods
-    void Generate (bool O2=false, double GlobalMaxArea=-1, bool Quiet=true);    ///< Generate
-    void WritePLY (char const * FileKey, bool Blender=true);                    ///< (.ply)
-    void GenBox   (bool O2=false, double MaxVolume=-1.0,
-                   double Lx=1.0, double Ly=1.0, double Lz=1.0);                ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
-    bool IsSet    () const;                                                     ///< Check if points/edges/faces were already set
+    void Generate (bool O2=false, double GlobalMaxArea=-1, bool Quiet=true, double MinAngle=-1);       ///< Generate
+    void WritePLY (char const * FileKey, bool Blender=true);                                           ///< (.ply)
+    void GenBox   (bool O2=false, double MaxVolume=-1.0, double Lx=1.0, double Ly=1.0, double Lz=1.0); ///< Generate a cube with dimensions Lx,Ly,Lz and with tags on faces
+    bool IsSet    () const;                                                                            ///< Check if points/edges/faces were already set
 
     // Alternative methods
     void Delaunay (Array<double> const & X, Array<double> const & Y, int Tag=-1); ///< Find Delaunay triangulation of a set of points
@@ -435,7 +434,7 @@ inline void Unstructured::SetFac (size_t iFac, int FTag, Array<int> const & Poly
     if ((int)iFac==Pin.numberoffacets-1) _lst_fac_set = true;
 }
 
-inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool Quiet)
+inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool Quiet, double MinAngle)
 {
     // check
     if (!IsSet()) throw new Fatal("Unstructured::Generate: Please, set the input data (regions,points,segments/facets) first.");
@@ -444,11 +443,10 @@ inline void Unstructured::Generate (bool O2, double GlobalMaxArea, bool Quiet)
     Util::Stopwatch stopwatch(/*activated*/WithInfo);
 
     // parameters
-    double min_angle = -1;
     String prms("pzA"); // Q=quiet, p=poly, q=quality, z=zero
     if (Quiet)           prms.Printf("Q%s",   prms.CStr());
     if (GlobalMaxArea>0) prms.Printf("%sa%f", prms.CStr(), GlobalMaxArea);
-    if (min_angle>0)     prms.Printf("%sq%f", prms.CStr(), min_angle);
+    if (MinAngle>0)      prms.Printf("%sq%f", prms.CStr(), MinAngle);
     else                 prms.Printf("%sq",   prms.CStr());
     if (O2)              prms.Printf("%so2",  prms.CStr());
     prms.Printf("%sa", prms.CStr());

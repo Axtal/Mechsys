@@ -690,8 +690,8 @@ inline void Generic::AddLinCells (Array<int> const & IDsOrTags)
             bool found = false;
             for (size_t j=0; j<TgdCells.Size(); ++j)
             {
-                BryTag_t const & eftags = TgdCells[j]->BryTags;
-                for (BryTag_t::const_iterator p=eftags.begin(); p!=eftags.end(); ++p)
+                BryTag_t & eftags = TgdCells[j]->BryTags;
+                for (BryTag_t::iterator p=eftags.begin(); p!=eftags.end(); ++p)
                 {
                     if (etag==p->second)
                     {
@@ -712,6 +712,7 @@ inline void Generic::AddLinCells (Array<int> const & IDsOrTags)
                             Cells.Push (NULL);  SetCell (Cells.Size()-1, etag, Array<int>(ivert2,ivert1));
                         }
                         found  = true;
+                        TgdCells[j]->BryTags.erase(p); // delete edge tag from element
                         break;
                     }
                 }

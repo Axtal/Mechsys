@@ -53,8 +53,9 @@ class MeshData:
             for v in self.msh.verts:
                 if abs(v.co[2])>1.0e-7: raise Exception('In 2D meshes, the z coordinate of all points must be zero (z=%g is invalid)'%v.co[2])
 
-        # max area
-        self.maxA = self.obj.properties['maxarea'] if self.obj.properties.has_key('maxarea') else -1.0
+        # max area and min angle
+        self.maxA   = self.obj.properties['maxarea'] if self.obj.properties.has_key('maxarea') else -1.0
+        self.minAng = self.obj.properties['minang']  if self.obj.properties.has_key('minang')  else -1.0
 
         # number of regions and holes
         self.nregs = len(self.obj.properties['regs']) if self.obj.properties.has_key('regs') else 0
@@ -305,13 +306,17 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
             txt.write ('    mesh.Set (%d/*points*/, %d/*%s*/, %d/*regions*/, %d/*holes*/);\n' % (m.nverts, num_eorf, txt_eorf, m.nregs, m.nhols))
             lin = ''
             if m.nregs>0:
+                idx = 0
                 for k, v in m.obj.properties['regs'].iteritems():
-                    if m.is3d: lin += '    mesh.SetReg (%4d, %4d,  %8e,  %6e, %6e, %6e);\n' % (int(k), v[0], v[1], v[2], v[3], v[4])
-                    else:      lin += '    mesh.SetReg (%4d, %4d,  %8e,  %6e, %6e);\n'      % (int(k), v[0], v[1], v[2], v[3])
+                    if m.is3d: lin += '    mesh.SetReg (%4d, %4d,  %8e,  %6e, %6e, %6e);\n' % (idx, v[0], v[1], v[2], v[3], v[4])
+                    else:      lin += '    mesh.SetReg (%4d, %4d,  %8e,  %6e, %6e);\n'      % (idx, v[0], v[1], v[2], v[3])
+                    idx += 1
             if m.nhols>0:
+                idx = 0
                 for k, v in m.obj.properties['hols'].iteritems():
-                    if m.is3d: lin += '    mesh.SetHol (%4d, %6e, %6e, %6e,\n' % (int(k), v[0], v[1], v[2])
-                    else:      lin += '    mesh.SetHol (%4d, %6e, %6e,\n'      % (int(k), v[0], v[1])
+                    if m.is3d: lin += '    mesh.SetHol (%4d, %6e, %6e, %6e,\n' % (idx, v[0], v[1], v[2])
+                    else:      lin += '    mesh.SetHol (%4d, %6e, %6e,\n'      % (idx, v[0], v[1])
+                    idx += 1
             for v in m.msh.verts:
                 tag = 0
                 if v.index in m.vtags: tag = m.vtags[v.index]
@@ -335,7 +340,7 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
                     if key in m.etags: tag = m.etags[key]
                     txt.write ('    mesh.SetSeg (%4d, %4d, %4d, %4d);\n' % (e.index, tag, e.v1.index, e.v2.index))
             str_o2 = 'true' if m.iso2 else 'false'
-            txt.write ('    mesh.Generate (/*O2*/%s, /*GlobalMaxArea*/%s);\n' % (str_o2,str(m.maxA)))
+            txt.write ('    mesh.Generate (/*O2*/%s, /*GlobalMaxArea*/%s, /*Quiet*/true, /*MinAng*/%s);\n' % (str_o2,str(m.maxA),str(m.minAng)))
             if m.is3d: txt.write ('    mesh.WriteVTU (\"%s\");\n' % (m.obj.name+'_umesh'))
             else:      txt.write ('    mesh.WriteMPY (\"%s\", /*WithTags*/true);\n' % (m.obj.name+'_umesh'))
 
@@ -399,7 +404,7 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
                     idx += 1
             str_o2 = 'True' if m.iso2 else 'False'
             txt.write (lin)
-            txt.write ('mesh.Generate (%s, %s) # O2, GlobalMaxArea\n' % (str_o2,str(m.maxA)))
+            txt.write ('mesh.Generate (%s, %s, True, %s) # O2, GlobalMaxArea\n' % (str_o2,str(m.maxA),str(m.minAng)))
             if m.is3d: txt.write ('mesh.WriteVTU (\"%s\") # FileKey\n' % (m.obj.name+'_umesh'))
             else:      txt.write ('mesh.WriteMPY (\"%s\", True) # FileKey, WithTags\n' % (m.obj.name+'_umesh'))
 
@@ -430,7 +435,7 @@ def gen_unstruct_mesh (gen_script=False,txt=None,cpp=False,with_headers=True):
                 dat['con'].append ([tag, e.v1.index, e.v2.index])
         mesh = ms.Unstructured (m.ndim)
         mesh.Set      (dat)
-        mesh.Generate (m.iso2, m.maxA)
+        mesh.Generate (m.iso2, m.maxA, True, m.minAng)
         if m.is3d: mesh.WriteVTU (m.obj.name+'_umesh')
         else:      mesh.WriteMPY (m.obj.name+'_umesh', True) # FileKey, WithTags
         add_mesh (m.obj, mesh, 'unstruct')
