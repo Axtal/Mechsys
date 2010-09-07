@@ -96,7 +96,7 @@ int main(int argc, char **argv) try
 
     // solve
     Dict bcs;
-    bcs.Set      (-100, "incsup alpha", 1.0, th);
+    bcs.Set      (-100, "incsup alpha", 1.0, 4.0);
     bcs.Set      (-30,  "uy", 0.0);
     bcs.Set      (-10,  "qn", -13920.0);
     dom.SetBCs   (bcs);
