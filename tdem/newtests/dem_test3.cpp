@@ -166,15 +166,61 @@ int main(int argc, char **argv) try
     ParaGrid3D grid(N, L, fkey.CStr());
     
     // read data
-    Table tab;
-    tab.Read ("parts1.dat");
-    Array<double> const & xc = tab("xc");
-    Array<double> const & yc = tab("yc");
-    Array<double> const & zc = tab("zc");
-    Array<double> const & ra = tab("ra");
-    Array<double> const & vx = tab("vx");
-    Array<double> const & vy = tab("vy");
-    Array<double> const & vz = tab("vz");
+    //Table tab;
+    //tab.Read ("parts1.dat");
+    //Array<double> const & xc = tab("xc");
+    //Array<double> const & yc = tab("yc");
+    //Array<double> const & zc = tab("zc");
+    //Array<double> const & ra = tab("ra");
+    //Array<double> const & vx = tab("vx");
+    //Array<double> const & vy = tab("vy");
+    //Array<double> const & vz = tab("vz");
+
+    Array<double> xc;
+    Array<double> yc;
+    Array<double> zc;
+    Array<double> ra;
+    Array<double> vx;
+    Array<double> vy;
+    Array<double> vz;
+    // Generating random packing of large number of particles
+    size_t Np  = 100; // Number of particles
+    size_t i   = 0;
+    double rad = 0.05;
+    double v0  = 0.05;
+    while (i<Np)
+    {
+        double xmi = L[0];
+        double xma = L[1];
+        double ymi = L[2];
+        double yma = L[3];
+        double zmi = L[4];
+        double zma = L[5];
+        Vec3_t x(xmi+(xma-xmi)/N[0] + (1.0*rand())/RAND_MAX*(xma-(xma-xmi)/N[0]-xmi-(xma-xmi)/N[0]),
+                 ymi+(yma-ymi)/N[1] + (1.0*rand())/RAND_MAX*(yma-(yma-ymi)/N[1]-ymi-(yma-ymi)/N[1]),
+                 0.05);
+        bool valid = true;
+        for (size_t j=0;j<xc.Size();j++)
+        {
+            Vec3_t xp(xc[j],yc[j],zc[j]);
+            if (norm(x-xp)<2*rad)
+            {
+                valid = false;
+                break;
+            }
+        }
+        if (valid)
+        {
+            xc.Push(x(0));
+            yc.Push(x(1));
+            zc.Push(x(2));
+            ra.Push(0.05);
+            vx.Push(v0*((1.0*rand())/RAND_MAX-0.5));
+            vy.Push(v0*((1.0*rand())/RAND_MAX-0.5));
+            vz.Push(0.0);
+            i++;
+        }
+    }
 
     // allocate particles
     Array<Particle*> parts;   // particles in this processor

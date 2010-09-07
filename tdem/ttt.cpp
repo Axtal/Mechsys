@@ -302,26 +302,37 @@ void Report (DEM::Domain & dom, void *UD)
             std::ofstream OF(fn.CStr());
             OF <<  Util::_10_6 << "Fn" << Util::_8s << "Ft" << Util::_8s << "NContacts" << Util::_8s << "Issliding" << "\n";
 
-            for (size_t i=0; i<dom.CInteractons.Size(); i++)
-            {
-                if (norm(dom.CInteractons[i]->Fnet)>0.0)
-                {
-                    OF << Util::_10_6 << norm(dom.CInteractons[i]->Fnet) << Util::_8s << norm(dom.CInteractons[i]->Ftnet) << Util::_8s <<  dom.CInteractons[i]->Nc << Util::_8s <<  dom.CInteractons[i]->Nsc << "\n";
-                }
-            }
-            OF.close();
-
             String f;
             f.Printf("%s_stress.res",dom.FileKey.CStr());
             std::ofstream SF(f.CStr());
-            Mat3_t S;
+            Mat3_t S,B;
             for (size_t m=0;m<3;m++)
             {
                 for (size_t n=0;n<3;n++)
                 {
                     S(m,n)=0.0;
+                    B(m,n)=0.0;
                 }
             }
+            size_t Ncontacts = 0;
+            for (size_t i=0; i<dom.CInteractons.Size(); i++)
+            {
+                if (norm(dom.CInteractons[i]->Fnet)>0.0&&dom.CInteractons[i]->P1->IsFree()&&dom.CInteractons[i]->P2->IsFree())
+                {
+                    //OF << Util::_10_6 << norm(dom.CInteractons[i]->Fnet) << Util::_8s << norm(dom.CInteractons[i]->Ftnet) << Util::_8s <<  dom.CInteractons[i]->Nc << Util::_8s <<  dom.CInteractons[i]->Nsc << "\n";
+                    OF << Util::_10_6 << dom.CInteractons[i]->Fnet(0) << Util::_8s << dom.CInteractons[i]->Fnet(1) << Util::_8s << dom.CInteractons[i]->Fnet(2) << Util::_8s <<  "\n";
+                    for (size_t m=0;m<3;m++)
+                    {
+                        for (size_t n=0;n<3;n++)
+                        {
+                            B(m,n)+=dom.CInteractons[i]->B(m,n);
+                        }
+                    }
+                    Ncontacts+=dom.CInteractons[i]->Nc;
+                }
+            }
+            OF.close();
+
             double volumecontainer = (dom.Particles[dat.InitialIndex  ]->x(0)-dom.Particles[dat.InitialIndex+1]->x(0)-dom.Particles[dat.InitialIndex  ]->Props.R+dom.Particles[dat.InitialIndex+1]->Props.R)*
                                      (dom.Particles[dat.InitialIndex+2]->x(1)-dom.Particles[dat.InitialIndex+3]->x(1)-dom.Particles[dat.InitialIndex+2]->Props.R+dom.Particles[dat.InitialIndex+3]->Props.R)*
                                      (dom.Particles[dat.InitialIndex+4]->x(2)-dom.Particles[dat.InitialIndex+5]->x(2)-dom.Particles[dat.InitialIndex+4]->Props.R+dom.Particles[dat.InitialIndex+5]->Props.R);
@@ -336,11 +347,21 @@ void Report (DEM::Domain & dom, void *UD)
                     }
                 }
             }
+
+
             for (size_t m=0;m<3;m++)
             {
                 for (size_t n=0;n<3;n++)
                 {
                     SF << Util::_10_6 << S(m,n) << Util::_8s;
+                }
+                SF << std::endl;
+            }
+            for (size_t m=0;m<3;m++)
+            {
+                for (size_t n=0;n<3;n++)
+                {
+                    SF << Util::_10_6 << B(m,n)/Ncontacts << Util::_8s;
                 }
                 SF << std::endl;
             }
@@ -442,7 +463,7 @@ int main(int argc, char **argv) try
     dat.dt = dt;
 
     // particle
-    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction,0.5);
+    if      (ptype=="sphere")  dom.GenSpheres  (-1, Lx, nx, rho, "HCP", seed, fraction);
     else if (ptype=="voronoi") dom.AddVoroPack (-1, R, Lx,Ly,Lz, nx,ny,nz, rho, true, seed, fraction);
     else if (ptype=="tetra")
     {

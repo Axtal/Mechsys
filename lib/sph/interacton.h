@@ -66,9 +66,9 @@ inline void SPHInteracton::CalcForce(double dt)
     double muij = h*dot(vij,rij)/(dot(rij,rij)+0.01*h*h);
     double cij = (SoundSpeed(di)+SoundSpeed(dj));
     double piij;
-    //if (dot(vij,rij)<0) piij = (-alpha*cij*muij+beta*muij*muij)/(di+dj);
-    //else                piij = 0.0;
-    piij = -alpha*muij*cij/(di+dj);
+    if (dot(vij,rij)<0) piij = (-alpha*cij*muij+beta*muij*muij)/(di+dj);
+    else                piij = 0.0;
+    //piij = -alpha*muij*cij/(di+dj);
     P1->a += d0j*(Pressure(di)/(di*di)+Pressure(dj)/(dj*dj)+piij)*rij*GradSPHKernel(norm(rij),h)/norm(rij);
     P2->a -= d0i*(Pressure(di)/(di*di)+Pressure(dj)/(dj*dj)+piij)*rij*GradSPHKernel(norm(rij),h)/norm(rij);
     P1->dDensity += d0j*dot(vij,rij)*GradSPHKernel(norm(rij),h)/norm(rij);

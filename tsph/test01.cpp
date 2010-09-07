@@ -38,7 +38,7 @@ int main(int argc, char **argv) try
     dom.AddBox(Vec3_t (-20.5, 0.0, 0.0), 1,40,1,0.5,0.5,15.0,true);
     dom.AddBox(Vec3_t ( 20.5, 0.0, 0.0), 1,40,1,0.5,0.5,15.0,true);
     dom.AddBox(Vec3_t ( 0.0,-20.5,0.0), 42,1,1,0.5,0.5, 15.0,true);
-    dom.AddRandomBox(Vec3_t(-10.0,0.0,0.0),20,40,0,20,40,1,10.0,1.5);
+    dom.AddRandomBox(Vec3_t(-10.0,0.0,0.0),20,40,0,20,40,1,10.0,1.0);
 
     dom.Solve(/*tf*/400.0,/*dt*/0.001,/*dtOut*/4,"test01");
     return 0;

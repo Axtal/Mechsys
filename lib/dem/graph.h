@@ -36,17 +36,18 @@ inline void POVHeader (std::ostream & os)
     os << "#include \"colors.inc\" \n";
     os << "#include \"glass.inc\" \n";
     os << "background {color White} \n";
-    os << "light_source{<10,0,0> color White shadowless}  \n";
-    os << "light_source{<-10,0,0> color White shadowless}  \n";
-    os << "light_source{<0,10,0> color White shadowless}  \n";
-    os << "light_source{<0,-10,0> color White shadowless}  \n";
-    os << "light_source{<0,0,10> color White shadowless}  \n";
-    os << "light_source{<0,0,-10> color White shadowless}  \n";
+    //os << "light_source{<10,0,0> color White shadowless}  \n";
+    //os << "light_source{<-10,0,0> color White shadowless}  \n";
+    //os << "light_source{<0,10,0> color White shadowless}  \n";
+    //os << "light_source{<0,-10,0> color White shadowless}  \n";
+    //os << "light_source{<0,0,10> color White shadowless}  \n";
+    //os << "light_source{<0,0,-10> color White shadowless}  \n";
 }   
 
 inline void POVSetCam (std::ostream & os, const Vec3_t & X, const Vec3_t & F)
 {
     os << "camera { location <"<<X(0)<<","<<X(1)<<","<<X(2)<<"> sky <0,0,-1> look_at <"<<F(0)<<","<<F(1)<<","<<F(2)<<"> }\n";
+    os << "light_source {<"<<X(0)<<","<<X(1)<<","<<X(2)<<"> color White }\n";
 }
 
 inline void POVDrawVert (Vec3_t const & V, std::ostream & os, double Radius=1.0, char const * Color="Blue")

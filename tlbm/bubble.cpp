@@ -55,7 +55,7 @@ int main(int argc, char **argv) try
 	for (size_t j=0; j<l.Ny(); ++j)
 	{
 		
-		double rho0 = (550.0 +(1.0*rand())/RAND_MAX)*h*h;
+		double rho0 = (200.0 +(1.0*rand())/RAND_MAX)*h*h;
 		Vec3_t v0;  v0 = 0.0, 0.0, 0.0;
 		l.GetCell(i,j)->Initialize (rho0, v0,l.Cs());
 

@@ -78,6 +78,7 @@ public:
     Vec3_t         Fn;        ///< Normal force between elements
     Vec3_t         Fnet;      ///< Net normal force
     Vec3_t         Ftnet;     ///< Net tangential force
+    Mat3_t         B;         ///< Branch tensor for the study of isotropy
     ListContacts_t Lee;       ///< List of edge-edge contacts 
     ListContacts_t Lvf;       ///< List of vertex-face contacts 
     ListContacts_t Lfv;       ///< List of face-vertex contacts
@@ -266,14 +267,16 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             Rotation  (Tt,q,T);
             P2->T += T;
             //Transfering the branch vector information
+            Vec3_t nor = n;
             for (size_t m=0;m<3;m++)
             {
                 for (size_t n=0;n<3;n++)
                 {
                     P1->M(m,n)-=F(m)*x1(n);
                     P2->M(m,n)+=F(m)*x2(n);
-                    P1->B(m,n)+=x1(m)*x1(n);
-                    P2->B(m,n)+=x2(m)*x2(n);
+                    P1->B(m,n)+=nor(m)*nor(n);
+                    P2->B(m,n)+=nor(m)*nor(n);
+                    this->B(m,n)     =nor(m)*nor(n);
                 }
             }
 

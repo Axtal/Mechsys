@@ -149,7 +149,7 @@ public:
     Vec3_t          I;               ///< Vector containing the principal components of the inertia tensor
     Quaternion_t    Q;               ///< The quaternion representing the rotation
     Mat3_t          M;               ///< Momment tensor for the calculation of stress
-    Mat3_t          B;               ///< Fabric tnesor for the study of structure
+    Mat3_t          B;               ///< Branch tensor for the study of isotropy
     double          Erot;            ///< Rotational energy of the particle
     double          Ekin;            ///< Kinetical energy of the particle
     double          Dmax;            ///< Maximal distance from the center of mass to the surface of the body

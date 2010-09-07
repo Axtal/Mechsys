@@ -86,7 +86,7 @@ int main(int argc, char **argv) try
 		           1);      
 
 	// Set walls (top and bottom)
-	l.SetG(-6.0)->SetGSolid(-3.5);
+	l.SetG(-200.0)->SetGSolid(-500.0);
 	//for (size_t i=0; i<l.Top()   .Size(); ++i) l   .Top()[i]->SetSolid();
 	//for (size_t i=0; i<l.Bottom().Size(); ++i) l.Bottom()[i]->SetSolid();
 
@@ -103,16 +103,16 @@ int main(int argc, char **argv) try
 	for (size_t j=0; j<l.Ny(); j++)
 	{
 		//double rho0  = 1.0;
-		size_t radio = 100;
+		size_t radio = 20;
 		Vec3_t V;  V = 0.0, 0.0, 0.0;
 		//if (pow((int)(i)-nx/2,2.0) + pow((int)(j)-20,2.0) <= pow(radio,2.0)) // circle equation
 		if (pow((int)(i)-nx/2.0,2.0) + pow((int)(j)-ny/2.0,2.0) <= pow(radio,2.0)) // circle equation
 		{
-			l.GetCell(i,j)->Initialize (1.5, V,l.Cs());
+			l.GetCell(i,j)->Initialize (1600.0, V,l.Cs());
 		}
 		else
 		{
-			l.GetCell(i,j)->Initialize (0.7, V,l.Cs());
+			l.GetCell(i,j)->Initialize (0.001, V,l.Cs());
 		}
 		//double rho0 = (1.4 +(.01*rand())/RAND_MAX);
 	    //l.GetCell(i,j)->Initialize (rho0, V,l.Cs());

@@ -247,12 +247,12 @@ inline double Lattice::Pstate(double Rho,double T)
 
 inline double Lattice::Psi(double Rho)
 {
-    double a = 0.0015;
-    double b = 1.0/2300.0;
-    double RT = (1.0/3.0);
+    //double a = 0.0015;
+    //double b = 1.0/2300.0;
+    //double RT = (1.0/3.0);
     //if (2*Rho*(RT/(1-b*Rho)-a*Rho-(1/3))/_G<0) _G = -_G;
-    return 2*Rho*(RT/(1-b*Rho)-a*Rho-(1/3))/fabs(_G);
-	//return pow(fabs(Rho)*_psi_ref*(1.0-exp(-fabs(Rho)/_rho_ref))/Rho,2);
+    //return 2*Rho*(RT/(1-b*Rho)-a*Rho-(1/3))/fabs(_G);
+	return -pow(fabs(Rho)*_psi_ref*(1.0-exp(-fabs(Rho)/_rho_ref))/Rho,2);
     //return _psi_ref*exp(-_rho_ref/Rho);
 }
 
@@ -494,9 +494,11 @@ inline void Lattice::ApplyForce()
 		for (size_t k=1; k<_nneigh; ++k)
 		{
 			LBM::Cell * nb = _cells[c->Neigh(k)];
-			double  nb_psi = (nb->IsSolid() ? 1.0      : Psi(nb->Density()));
-			double       G = (nb->IsSolid() ? nb->_G_solid : _G);
-            double       A = -0.152;
+			double  nb_psi = (nb->IsSolid() ? -1.0      : Psi(nb->Density()));
+			//double       G = (nb->IsSolid() ? nb->_G_solid : _G);
+			double       G = (nb->IsSolid() ? _G_solid : _G);
+            //double       A = -0.152;
+            double       A = 0.0;
             //if (nb_psi>0||psi>0)
             //{
 			    //F(0) -= -G*sqrt(fabs(psi))*c->W(k)*sqrt(fabs(nb_psi))*c->C(k,0);
