@@ -833,21 +833,27 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
     MPL::AddPatch (oss);
 
     // reactions
-    Table  reac;
-    SDPair sum;
-    CalcReactions (reac, sum);
-    for (size_t i=0; i<reac.NRows; ++i)
+    if (Prms.WithReac)
     {
-        int id = static_cast<int>(reac("Node",i));
-        std::map<int,Node*>::const_iterator it = VertID2Node.find(id);
-        if (it!=VertID2Node.end())
+        Table  reac;
+        SDPair sum;
+        CalcReactions (reac, sum);
+        for (size_t i=0; i<reac.NRows; ++i)
         {
-            FEM::Node const * nod = const_cast<FEM::Node const *>(it->second);
-            String buf;
-            buf.Printf ("text(%g,%g, 'Rx=%g, Ry=%g', fontsize=9, color='blue', ha='center', va='top', backgroundcolor='white')\n",
-                        nod->Vert.C(0), nod->Vert.C(1), (reac.Keys.Has("ux") ? reac("ux",i) : 0),
-                                                        (reac.Keys.Has("uy") ? reac("uy",i) : 0));
-            oss << buf;
+            int id = static_cast<int>(reac("Node",i));
+            if (Prms.ReacNodes.Has(id))
+            {
+                std::map<int,Node*>::const_iterator it = VertID2Node.find(id);
+                if (it!=VertID2Node.end())
+                {
+                    FEM::Node const * nod = const_cast<FEM::Node const *>(it->second);
+                    String buf;
+                    buf.Printf ("text(%g,%g, 'Rx=%g, Ry=%g', fontsize=9, color='blue', ha='center', va='top', backgroundcolor='white')\n",
+                                nod->Vert.C(0), nod->Vert.C(1), (reac.Keys.Has("ux") ? reac("ux",i) : 0),
+                                                                (reac.Keys.Has("uy") ? reac("uy",i) : 0));
+                    oss << buf;
+                }
+            }
         }
     }
 

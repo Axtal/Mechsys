@@ -67,6 +67,8 @@ public:
     bool                    DrawN;       ///< Draw N (axial force) diagram instead of M (bending moment) ?
     bool                    DrawV;       ///< Draw V (shear force) diagram instead of M (bending moment) ?
     size_t                  TxtSz;       ///< Size of text in diagram
+    bool                    WithReac;    ///< With reactions ?
+    Array<int>              ReacNodes;   ///< Nodes to output reactions
     MPyPrms ()                           ///< Constructor
     {
         SF          = 1.0;
@@ -98,6 +100,7 @@ public:
         DrawN       = false;
         DrawV       = false;
         TxtSz       = 8;
+        WithReac    = true;
     }
 };
 
