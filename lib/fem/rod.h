@@ -38,13 +38,13 @@ public:
          Array<Node*> const & Nodes); ///< Connectivity
 
     // Methods
-    void GetLoc       (Array<size_t> & Loc)                  const; ///< Get location vector for mounting K/M matrices
-    void CalcK        (Mat_t & K)                            const; ///< Stiffness matrix
-    void CalcT        (Mat_t & T, double & l)                const; ///< Transformation matrix
-    void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL) const;
-    void StateKeys    (Array<String> & Keys)                 const; ///< Get state keys
-    void StateAtNodes (Array<SDPair> & Results)              const; ///< State at nodes
-    void Draw         (std::ostream & os, double SF)         const;
+    void GetLoc       (Array<size_t> & Loc)                     const; ///< Get location vector for mounting K/M matrices
+    void CalcK        (Mat_t & K)                               const; ///< Stiffness matrix
+    void CalcT        (Mat_t & T, double & l)                   const; ///< Transformation matrix
+    void UpdateState  (Vec_t const & dU, Vec_t * F_int=NULL)    const;
+    void StateKeys    (Array<String> & Keys)                    const; ///< Get state keys
+    void StateAtNodes (Array<SDPair> & Results)                 const; ///< State at nodes
+    void Draw         (std::ostream & os, MPyPrms const & Prms) const;
 
     // Constants
     double E; ///< Young modulus
@@ -191,7 +191,7 @@ inline void Rod::StateAtNodes (Array<SDPair> & Results) const
     Results[1].Set ("N", N);
 }
 
-inline void Rod::Draw (std::ostream & os, double SF) const
+inline void Rod::Draw (std::ostream & os, MPyPrms const & Prms) const
 {
     // coordinates
     double x0 = Con[0]->Vert.C[0];

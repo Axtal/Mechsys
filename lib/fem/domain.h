@@ -91,6 +91,7 @@ public:
     Dict          const & Inis;        ///< Initial values
     int                   NDim;        ///< Space dimension
     Models_t              Mdls;        ///< Models
+    std::map<int,Node*>   VertID2Node; ///< Map vertex ID to Node
     Array<Node*>          Nods;        ///< (Allocated memory) Nodes
     Array<Element*>       Eles;        ///< (Allocated memory) Elements
     Array<Node*>          TgdNods;     ///< Tagged Nodes (at boundaries)
@@ -190,7 +191,6 @@ inline Domain::Domain (Mesh::Generic const & Msh, Dict const & ThePrps, Dict con
     }
 
     // set nodes from mesh
-    std::map<int,Node*> VertID2Node;
     for (size_t i=0; i<Msh.Verts.Size(); ++i)
     {
 #ifdef HAS_MPI
@@ -826,11 +826,32 @@ inline void Domain::WriteMPY (char const * FNKey, FEM::MPyPrms const & Prms) con
         Prms.SF = (Prms.PctMaxDist * Prms.MaxDist) / (max_abs>0.0 ? max_abs : 1.0);
     }
 
-    // output string
+    // elements and diagrams
     std::ostringstream oss;
     MPL::Header (oss);
     for (size_t i=0; i<eles->Size(); ++i) (*eles)[i]->Draw (oss, Prms);
     MPL::AddPatch (oss);
+
+    // reactions
+    Table  reac;
+    SDPair sum;
+    CalcReactions (reac, sum);
+    for (size_t i=0; i<reac.NRows; ++i)
+    {
+        int id = static_cast<int>(reac("Node",i));
+        std::map<int,Node*>::const_iterator it = VertID2Node.find(id);
+        if (it!=VertID2Node.end())
+        {
+            FEM::Node const * nod = const_cast<FEM::Node const *>(it->second);
+            String buf;
+            buf.Printf ("text(%g,%g, 'Rx=%g, Ry=%g', fontsize=9, color='blue', ha='center', va='top', backgroundcolor='white')\n",
+                        nod->Vert.C(0), nod->Vert.C(1), (reac.Keys.Has("ux") ? reac("ux",i) : 0),
+                                                        (reac.Keys.Has("uy") ? reac("uy",i) : 0));
+            oss << buf;
+        }
+    }
+
+    // output string
     if (Prms.Extra!=NULL) oss << Prms.Extra;
     if (Prms.PNG)         MPL::SaveFig (FNKey, oss);
     else                  MPL::Show    (oss);
