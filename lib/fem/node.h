@@ -91,7 +91,7 @@ public:
     void ClrRPin   (int & EqLag, Vec_t & R)                       const;                ///< Clear R components corresponding pins. Will inclined EqLag
 
     // Inclined supports: 2D
-    void SetIncSup    (double Alpha) { _incsup_alpha=Alpha;  _has_incsup=true; } ///< Set inclined support
+    void SetIncSup    (double Alpha);                                            ///< Set inclined support
     void DelIncSup    ()             { _has_incsup=false; }                      ///< Delete inclined support
     bool HasIncSup    () const       { return _has_incsup; }                     ///< Has inclined support ?
     void SetLagIncSup (int & EqLag, Sparse::Triplet<double,int> & A) const;      ///< Set A matrix with the equations for the Lagrangian multipliers corresponding to inclined supports. Will increment EqLag
@@ -159,6 +159,7 @@ inline void Node::Clear ()
     _eq.SetValues (-1);
     DelPUs ();
     DelPFs ();
+    _has_incsup = false;
 }
 
 inline void Node::SetUF (Vec_t const & UVec, Vec_t const & FVec)
@@ -185,6 +186,7 @@ inline void Node::SetPU (String const & UKey, double Val, PtBCMult MFunc)
 {
     size_t idx_pu = _PU.ReSet (UKey.CStr(), Val);
     if (idx_pu==_MPU.Size()) _MPU.Push (MFunc);
+    _has_incsup = false;
 }
 
 inline void Node::AddToPF (String const & FKey, double Val, PtBCMult MFunc)
@@ -258,6 +260,12 @@ inline void Node::ClrRPin (int & EqLag, Vec_t & R) const
     }
 }
 
+inline void Node::SetIncSup (double Alpha)
+{
+    if (NPU()>0) return; // skip if this node has prescribed U already
+    _incsup_alpha = Alpha*Util::PI/180.0;
+    _has_incsup   = true; 
+}
 
 inline void Node::SetLagIncSup (int & EqLag, Sparse::Triplet<double,int> & A) const
 {

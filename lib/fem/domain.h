@@ -458,7 +458,7 @@ inline void Domain::SetBCs (Dict const & BCs)
                         for (size_t k=0; k<bcs.Keys.Size(); ++k)
                         {
                             if (bcs.Keys[k]=="mfunc") continue; // multiplier function (will be set together with another key)
-                            if (AllUKeys.Has(bcs.Keys[k])) // is U key
+                            if (AllUKeys.Has(bcs.Keys[k]) || bcs.Keys[k]=="incsup") // is U key or is inclined support
                             {
                                 eleside2tag_to_ubc[es].first = btag;
                                 eleside2tag_to_ubc[es].second = bcs;

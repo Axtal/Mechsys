@@ -240,6 +240,7 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
     bool has_ux  = BCs.HasKey("ux");  // x displacement
     bool has_uy  = BCs.HasKey("uy");  // y displacement
     bool has_uz  = BCs.HasKey("uz");  // z displacement
+    bool has_sup = BCs.HasKey("incsup");  // inclined support
     bool has_gra = BCs.HasKey("gravity"); // gravity
 
     // force components specified
@@ -376,17 +377,19 @@ inline void EquilibElem::SetBCs (size_t IdxEdgeOrFace, SDPair const & BCs, PtBCM
     }
 
     // prescribed displacements
-    else if (has_ux || has_uy || has_uz)
+    else if (has_ux || has_uy || has_uz || has_sup)
     {
         double ux = (has_ux ? BCs("ux") : 0.0);
         double uy = (has_uy ? BCs("uy") : 0.0);
         double uz = (has_uz ? BCs("uz") : 0.0);
+        double alpha = (has_sup ? BCs("alpha") : 0.0);
         for (size_t j=0; j<GE->NFN; ++j)
         {
             size_t k = GE->FNode(IdxEdgeOrFace,j);
             if (has_ux) Con[k]->SetPU("ux", ux, MFun);
             if (has_uy) Con[k]->SetPU("uy", uy, MFun);
             if (has_uz) Con[k]->SetPU("uz", uz, MFun);
+            if (has_sup) Con[k]->SetIncSup (alpha);
         }
     }
 }
