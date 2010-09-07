@@ -63,7 +63,7 @@ int main(int argc, char **argv) try
     FEM::Solver sol(dom);
 
     // stage # 1 -----------------------------------------------------------
-    double alpha = 150.0*Util::PI/180.0;
+    double alpha = 150.0;
     Dict bcs;
     bcs.Set(-100, "incsup alpha", 1.0, alpha);
     bcs.Set(-200, "ux uy", 0.0, 0.0);
