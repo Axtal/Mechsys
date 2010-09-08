@@ -72,7 +72,7 @@ int main(int argc, char **argv) try
 
     // read data
     Table tab;
-    tab.Read ("parts1.dat");
+    tab.Read ("parts3.dat");
     Array<double> const & xc = tab("xc");
     Array<double> const & yc = tab("yc");
     Array<double> const & zc = tab("zc");
@@ -130,6 +130,7 @@ int main(int argc, char **argv) try
     of << "lyma  " <<  2.0        << "\n";
     of << "lzmi  " <<  0.0        << "\n";
     of << "lzma  " <<  0.1        << "\n";
+    of << "dt    " <<  dt         << "\n";
     of.close();
 
     // end

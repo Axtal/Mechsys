@@ -34,7 +34,7 @@ int main(int argc, char **argv) try
     MECHSYS_MPI_INIT
     int my_id  = MPI::COMM_WORLD.Get_rank();
 
-    Array<int> N(2, 3, 1); // number of cells/boxes along each side of grid
+    Array<int> N(20, 30, 1); // number of cells/boxes along each side of grid
     if (argc>1) N[0]  = atoi(argv[1]);
     if (argc>2) N[1]  = atoi(argv[2]);
     if (argc>3) N[2]  = atoi(argv[3]);
@@ -53,6 +53,11 @@ int main(int argc, char **argv) try
     buf.Printf("test_paragrid_proc_%d",my_id);
     ParaGrid3D grid(N, L, buf.CStr());
     cout << "File <" << buf << ".vtu> written" << endl;
+
+    // neighbour partitions
+    cout << "Proc # " << my_id << ": neighbours = ";
+    for (size_t i=0; i<grid.NeighProcs.Size(); ++i) cout << grid.NeighProcs[i] << " ";
+    cout << endl;
 
     // end
     MPI::Finalize();

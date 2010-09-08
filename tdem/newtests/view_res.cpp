@@ -94,6 +94,7 @@ int main(int argc, char **argv) try
             if (iss >> key >> val)
             {
                 if      (key=="fkey") {}
+                else if (key=="dt")   {}
                 else if (key=="nout") nout = val;
                 else if (key=="nx")   N[0] = val;
                 else if (key=="ny")   N[1] = val;

@@ -164,18 +164,26 @@ int main(int argc, char **argv) try
 
     // grid
     ParaGrid3D grid(N, L, fkey.CStr());
+
+    /*
+    // neighbour partitions
+    cout << "Proc # " << my_id << ": neighbours = ";
+    for (size_t i=0; i<grid.NNeighParts(); ++i) cout << grid.NeighPart(i) << " ";
+    cout << endl;
+    */
     
     // read data
-    //Table tab;
-    //tab.Read ("parts1.dat");
-    //Array<double> const & xc = tab("xc");
-    //Array<double> const & yc = tab("yc");
-    //Array<double> const & zc = tab("zc");
-    //Array<double> const & ra = tab("ra");
-    //Array<double> const & vx = tab("vx");
-    //Array<double> const & vy = tab("vy");
-    //Array<double> const & vz = tab("vz");
+    Table tab;
+    tab.Read ("parts3.dat");
+    Array<double> const & xc = tab("xc");
+    Array<double> const & yc = tab("yc");
+    Array<double> const & zc = tab("zc");
+    Array<double> const & ra = tab("ra");
+    Array<double> const & vx = tab("vx");
+    Array<double> const & vy = tab("vy");
+    Array<double> const & vz = tab("vz");
 
+    /*
     Array<double> xc;
     Array<double> yc;
     Array<double> zc;
@@ -221,6 +229,7 @@ int main(int argc, char **argv) try
             i++;
         }
     }
+    */
 
     // allocate particles
     Array<Particle*> parts;   // particles in this processor
@@ -232,8 +241,8 @@ int main(int argc, char **argv) try
         double d = 2.0*ra[id];
         if (d>grid.D[0] || d>grid.D[1] || d>grid.D[2]) throw new Fatal("Particles must have diameter smaller than the smallest cell in grid. diam=%g is greater than %g, %g, or %g",d,grid.D[0],grid.D[1],grid.D[2]);
         Vec3_t x(xc[id],yc[id],zc[id]);
-        int      cell = grid.FindCell  (x);
-        CellType type = grid.Cell2Type (cell);
+        int      cell = grid.FindCell (x);
+        CellType type = grid.Id2Type[cell];
         if (type!=Outer_t) // if it's not outside
         {
             //if (my_id==0) printf("Proc # 0 is adding particle # %d\n",id);
@@ -343,86 +352,90 @@ int main(int argc, char **argv) try
         }
 
         // move particles
-        Array<double> sent_data;
+        std::map<int,Array<double> > proc2data; // map: proc # => packed data to be sent
         for (size_t i=0; i<parts.Size(); ++i)
         {
+            int      cell = grid.FindCell (parts[i]->X);
             CellType type = parts[i]->CType;
             if (type==Outer_t) continue;
             if (type==Inner_t || type==BryIn_t) parts[i]->Move(dt);
-            if (type==BryIn_t) PackToData (parts[i], sent_data);
-            parts[i]->CType = grid.Cell2Type (grid.FindCell(parts[i]->X));
+            if (type==BryIn_t)
+            {
+                for (size_t j=0; j<grid.Id2NeighProcs[cell].Size(); ++j)
+                {
+                    Array<double> & data_snd = proc2data[grid.Id2NeighProcs[cell][j]];
+                    //printf("Proc # %d will send particle # %d to processor to # %d\n",my_id,parts[i]->Id,grid.Id2NeighProcs[cell][j]);
+                    PackToData (parts[i], data_snd);
+                }
+            }
+            parts[i]->CType = grid.Id2Type[grid.FindCell(parts[i]->X)];
         }
 
+        // synchronize
+        MPI::COMM_WORLD.Barrier(); // TODO: check if this is really needed
+
         // post messages with data_sent
-        int my_id  = MPI::COMM_WORLD.Get_rank();
-        int nprocs = MPI::COMM_WORLD.Get_size();
-        Array<MPI::Request> req(nprocs);
-        for (int i=0; i<nprocs; ++i)
+        Array<MPI::Request> req(grid.NeighProcs.Size());
+        for (size_t i=0; i<grid.NeighProcs.Size(); ++i)
         {
-            if (i!=my_id)
-            {
-                req[i] = MPI::COMM_WORLD.Isend (sent_data.GetPtr(), sent_data.Size(), MPI::DOUBLE, i, 1000);
-            }
+            //printf("Proc # %d is sending to # %d\n",my_id,grid.NeighProcs[i]);
+            Array<double> const & data_snd = proc2data[grid.NeighProcs[i]];
+            req[i] = MPI::COMM_WORLD.Isend (data_snd.GetPtr(), data_snd.Size(), MPI::DOUBLE, grid.NeighProcs[i], 1000);
         }
 
         // receive messages
         Array<double> data;
-        for (int i=0; i<nprocs; ++i)
+        for (size_t i=0; i<grid.NeighProcs.Size(); ++i)
         {
-            if (i!=my_id)
-            {
-                // get size of message
-                MPI::Status status;
-                MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, 1000, status);
-                int source = status.Get_source();
-                int count  = status.Get_count(MPI::DOUBLE);
-                data.Resize (count);
-                MPI::COMM_WORLD.Recv (data.GetPtr(), count, MPI::DOUBLE, source, 1000);
+            // get size of message
+            MPI::Status status;
+            MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, 1000, status);
+            int source = status.Get_source();
+            int count  = status.Get_count(MPI::DOUBLE);
+            //printf("Proc # %d is receiving from # %d\n",my_id,source);
+            data.Resize (count);
+            MPI::COMM_WORLD.Recv (data.GetPtr(), count, MPI::DOUBLE, source, 1000);
 
-                // unpack data
-                for (size_t j=0; j<data.Size(); j+=12)
+            // unpack data
+            for (size_t j=0; j<data.Size(); j+=12)
+            {
+                // id and position
+                Vec3_t x(data[j+1],data[j+2],data[j+3]);
+                int      id   = static_cast<int>(data[j]);
+                int      cell = grid.FindCell (x);
+                CellType type = grid.Id2Type[cell];
+                bool has_part = id2part.count(id);
+                if (type==Outer_t)
+                { 
+                    // particle moved outside, flag this
+                    if (has_part) id2part[id]->CType = type;
+                    continue;
+                }
+                else
                 {
-                    // id and position
-                    Vec3_t x(data[j+1],data[j+2],data[j+3]);
-                    int      id   = static_cast<int>(data[j]);
-                    int      cell = grid.FindCell  (x);
-                    CellType type = grid.Cell2Type (cell);
-                    bool has_part = id2part.count(id);
-                    if (type==Outer_t)
-                    { 
-                        // particle moved outside, flag this
-                        if (has_part) id2part[id]->CType = type;
-                        continue;
-                    }
+                    Particle * p;
+                    if (has_part) p = id2part[id];
                     else
                     {
-                        Particle * p;
-                        if (has_part) p = id2part[id];
-                        else
-                        {
-                            p = new Particle();
-                            parts.Push (p);
-                            id2part[id] = p;
-                            //printf("Proc # %d got a new particle Id=%d from %d\n",my_id,id,source);
-                        }
-                        p->CType = type; // the CType of existent particle may be changed after movement in another processor => needs to be updated as well
-                        p->Id = id;
-                        p->X  = x;
-                        p->V  = data[j+4], data[j+5], data[j+6];
-                        p->Xp = data[j+7], data[j+8], data[j+9];
-                        p->m  = data[j+10];
-                        p->R  = data[j+11];
-                        //printf("Proc # %d, stp=%d, t=%g: just set particle Id=%d sent by Proc # %d\n",my_id,stp_out,t,id,source);
+                        p = new Particle();
+                        parts.Push (p);
+                        id2part[id] = p;
+                        //printf("Proc # %d got a new particle Id=%d from %d\n",my_id,id,source);
                     }
+                    p->CType = type; // the CType of existent particle may be changed after movement in another processor => needs to be updated as well
+                    p->Id = id;
+                    p->X  = x;
+                    p->V  = data[j+4], data[j+5], data[j+6];
+                    p->Xp = data[j+7], data[j+8], data[j+9];
+                    p->m  = data[j+10];
+                    p->R  = data[j+11];
+                    //printf("Proc # %d, stp=%d, t=%g: just set particle Id=%d sent by Proc # %d\n",my_id,stp_out,t,id,source);
                 }
             }
         }
 
         // wait for all sent messages to arrive at their destinations. Needs to be after Recv
-        for (int i=0; i<nprocs; ++i)
-        {
-            if (i!=my_id) req[i].Wait();
-        }
+        for (size_t i=0; i<req.Size(); ++i) req[i].Wait();
 
         // output
         if (t>=tout)
@@ -463,8 +476,9 @@ int main(int argc, char **argv) try
         of << "lyma  " << L[3]        << "\n";
         of << "lzmi  " << L[4]        << "\n";
         of << "lzma  " << L[5]        << "\n";
+        of << "dt    " << dt          << "\n";
         of << "proc  " << N[0]*N[1]*N[2] << "   ";
-        for (int i=0; i<N[0]*N[1]*N[2]; ++i) { of<<grid.Partition(i)<<" "; } of<<"\n";
+        for (int i=0; i<N[0]*N[1]*N[2]; ++i) { of<<grid.Id2Proc[i]<<" "; } of<<"\n";
         of.close();
         cout << "File <" << buf << "> written" << endl;
     }

@@ -34,19 +34,18 @@ public:
     ParaGrid3D (Array<int> const & N, Array<double> & L, char const * FileKey=NULL);
 
     // Methods
-    int      FindCell  (Vec3_t const & X) const;
-    void     FindCells (Vec3_t const & X, double R, int Ids[8]) const;
-    CellType Cell2Type (int Id) const { return _id2type[Id]; }
-    int      Partition (int Id) const { return _part[Id];    }
+    int  FindCell  (Vec3_t const & X) const;                       ///< Get the Id of the cell containing the point with coordinates equal to X
+    void FindCells (Vec3_t const & X, double R, int Ids[8]) const; ///< Get the Ids of the cells crossed by the cube centered at X
 
-    // Data
-    Array<int>    N; ///< number of cells along each axis
-    Array<double> L;
-    Vec3_t        D;
-
-private:
-    Array<CellType> _id2type; ///< size==num cells
-    Array<int>      _part;    ///< size==num cells
+    // Data (read-only)
+    Array<int>          N;             ///< Number of cells along each axis
+    Array<double>       L;             ///< Size of the grid (xmin,xmax, ymin,ymax, zmin,zmax)
+    Vec3_t              D;             ///< Dimension of each cell (dx,dy,dz)
+    Array<int>          NeighProcs;    ///< Neighbour processors/partitions of this processor
+    Array<CellType>     Id2Type;       ///< Id of cell to type: size==num cells
+    Array<int>          Id2Proc;       ///< Id of cell to partition/processor number: size==num cells
+    Array< Array<int> > Id2NeighProcs; ///< Id of cell to neighbour processors/partitions of cell: size == num cells. 
+                                       ///<   Only valid for those cells belonging to this processor.
 };
 
 
@@ -61,14 +60,10 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
         (L[3]-L[2])/static_cast<double>(N[1]),
         (L[5]-L[4])/static_cast<double>(N[2]);
 
-    // proc id
+    // proc id and number of cells
     int my_id  = MPI::COMM_WORLD.Get_rank();
     int nprocs = MPI::COMM_WORLD.Get_size();
-
-    // number of cells
     int ncells = N[0]*N[1]*N[2];
-    _id2type.Resize (ncells);
-    _part   .Resize (ncells);
 
     // find neighbours for METIS
     Array<int> Xadj(0, /*justone*/true);
@@ -83,7 +78,7 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
         int right  =  i    + (j+1)*N[0] +  k   *N[0]*N[1];
         int bottom =  i    +  j   *N[0] + (k-1)*N[0]*N[1];
         int top    =  i    +  j   *N[0] + (k+1)*N[0]*N[1];
-        Array<int> neighs;
+        Array<int> neighs; // not including the opposite-diagonal ones (for better quality domain decomposition)
         if (i>0)      neighs.Push (back);
         if (i<N[0]-1) neighs.Push (front);
         if (j>0)      neighs.Push (left);
@@ -94,65 +89,64 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
         for (size_t p=0; p<neighs.Size(); ++p) Adjn.Push (neighs[p]);
     }
 
-    // partition domain
+    // domain decomposition
+    Id2Proc.Resize    (ncells);
+    Id2Proc.SetValues (0);
 #if defined(HAS_PARMETIS) && defined(HAS_MPI)
     int wgtflag    = 0; // No weights
     int numflag    = 0; // zero numbering
     int options[5] = {0,0,0,0,0};
     int edgecut;
-    _part.Resize    (ncells);
-    _part.SetValues (0);
     if (nprocs>1)
     {
-        if (nprocs<8) METIS_PartGraphRecursive (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, _part.GetPtr());
-        else          METIS_PartGraphKway      (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, _part.GetPtr());
+        METIS_PartGraphRecursive (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, Id2Proc.GetPtr());
+        //METIS_PartGraphVKway     (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, Id2Proc.GetPtr());
 #else
         throw new Fatal("ParaGrid3D::ParaGrid3D: This method requires ParMETIS and MPI (if Part array is not provided)");
 #endif
     }
 
-    // find types
-    _id2type.Resize (ncells);
-    Array<int> bryouts;
+    // find types and neighbour processors of all cells
+    Id2Type      .Resize (ncells);
+    Id2NeighProcs.Resize (ncells);
+    Array<int> bryouts; // boundary cells outside this processor
     for (int k=0; k<N[2]; ++k)
     for (int j=0; j<N[1]; ++j)
     for (int i=0; i<N[0]; ++i)
     {
         int n = i + j*N[0] + k*N[0]*N[1];
-        _id2type[n] = Outer_t;
-        if (_part[n]==my_id)
+        Id2Type[n] = Outer_t;
+        if (Id2Proc[n]==my_id) // cell is in this processor
         {
-            _id2type[n] = Inner_t;
-            /*
-            int back   = (i-1) +  j   *N[0] +  k   *N[0]*N[1];
-            int front  = (i+1) +  j   *N[0] +  k   *N[0]*N[1];
-            int left   =  i    + (j-1)*N[0] +  k   *N[0]*N[1];
-            int right  =  i    + (j+1)*N[0] +  k   *N[0]*N[1];
-            int bottom =  i    +  j   *N[0] + (k-1)*N[0]*N[1];
-            int top    =  i    +  j   *N[0] + (k+1)*N[0]*N[1];
-            if (i>0)      { if (_part[back]  !=my_id) { _id2type[n]=BryIn_t; bryouts.XPush(back);   } }
-            if (i<N[0]-1) { if (_part[front] !=my_id) { _id2type[n]=BryIn_t; bryouts.XPush(front);  } }
-            if (j>0)      { if (_part[left]  !=my_id) { _id2type[n]=BryIn_t; bryouts.XPush(left);   } }
-            if (j<N[1]-1) { if (_part[right] !=my_id) { _id2type[n]=BryIn_t; bryouts.XPush(right);  } }
-            if (k>0)      { if (_part[bottom]!=my_id) { _id2type[n]=BryIn_t; bryouts.XPush(bottom); } }
-            if (k<N[2]-1) { if (_part[top]   !=my_id) { _id2type[n]=BryIn_t; bryouts.XPush(top);    } }
-            */
+            Id2Type[n] = Inner_t;
             for (int r=i-1; r<i+2; ++r)
             for (int s=j-1; s<j+2; ++s)
-            for (int t=k-1; t<k+2; ++t)
+            for (int t=k-1; t<k+2; ++t) // look for all 26 neighbours of cell # n
             {
                 if (!(r==i && s==j && t==k))
                 {
                     int m = r + s*N[0] + t*N[0]*N[1];
                     if (r>=0 && r<N[0] &&
                         s>=0 && s<N[1] &&
-                        t>=0 && t<N[2])
-                    { if (_part[m]!=my_id) { _id2type[n]=BryIn_t; bryouts.XPush(m); } }
+                        t>=0 && t<N[2]) // cell # m is inside limits
+                    {
+                        if (Id2Proc[m]!=my_id) // cell # m is in another processor
+                        {
+                            Id2Type[n] = BryIn_t;
+                            bryouts.XPush (m);
+                            Id2NeighProcs[n].XPush (Id2Proc[m]);
+                        }
+                    }
                 }
             }
         }
     }
-    for (size_t i=0; i<bryouts.Size(); ++i) _id2type[bryouts[i]] = BryOut_t;
+    for (size_t i=0; i<bryouts.Size(); ++i)
+    {
+        int     m  = bryouts[i];
+        Id2Type[m] = BryOut_t;
+        NeighProcs.XPush (Id2Proc[m]);
+    }
 
     // write VTU
     if (FileKey!=NULL)
@@ -247,16 +241,32 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
         k = 0; oss << "        ";
         for (size_t i=0; i<nc; ++i)
         {
-            oss << (k==0?"  ":" ") << _id2type[i];
+            oss << (k==0?"  ":" ") << Id2Type[i];
             k++;
             VTU_NEWLINE (i,k,nc,nimax,oss);
         }
         oss << "        </DataArray>\n";
-        oss << "        <DataArray type=\"Int32\" Name=\"" << "part" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        oss << "        <DataArray type=\"Int32\" Name=\"" << "proc" << "\" NumberOfComponents=\"1\" format=\"ascii\">\n";
+        k = 0; oss << "        ";
+        int max_neigh_procs = 0;
+        for (size_t i=0; i<nc; ++i)
+        {
+            if (Id2NeighProcs[i].Size()>(size_t)max_neigh_procs) max_neigh_procs = Id2NeighProcs[i].Size();
+            oss << (k==0?"  ":" ") << Id2Proc[i];
+            k++;
+            VTU_NEWLINE (i,k,nc,nimax,oss);
+        }
+        oss << "        </DataArray>\n";
+        oss << "        <DataArray type=\"Int32\" Name=\"" << "neighproc" << "\" NumberOfComponents=\""<<max_neigh_procs<<"\" format=\"ascii\">\n";
         k = 0; oss << "        ";
         for (size_t i=0; i<nc; ++i)
         {
-            oss << (k==0?"  ":" ") << _part[i];
+            oss << (k==0?"  ":" ");
+            for (int j=0; j<max_neigh_procs; ++j)
+            {
+                if (j>static_cast<int>(Id2NeighProcs[i].Size()-1)) oss << -1 << " ";
+                else oss << Id2NeighProcs[i][j] << " ";
+            }
             k++;
             VTU_NEWLINE (i,k,nc,nimax,oss);
         }
