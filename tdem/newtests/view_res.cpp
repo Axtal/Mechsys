@@ -38,8 +38,8 @@ int main(int argc, char **argv) try
     String filekey;
     int    proc_ini     = 0;
     int    proc_fin     = 0;
-    bool   show_ids     = true;
     bool   with_control = true;
+    bool   show_ids     = true;
     bool   shadow       = true;
     if (argc>1) filekey      =      argv[1];
     if (argc>2) proc_ini     = atoi(argv[2]);

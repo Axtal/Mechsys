@@ -72,7 +72,7 @@ int main(int argc, char **argv) try
 
     // read data
     Table tab;
-    tab.Read ("parts3.dat");
+    tab.Read ("parts4.dat");
     Array<double> const & xc = tab("xc");
     Array<double> const & yc = tab("yc");
     Array<double> const & zc = tab("zc");

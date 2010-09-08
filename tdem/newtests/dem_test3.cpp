@@ -158,23 +158,14 @@ int main(int argc, char **argv) try
     if (argc> 8) L[4]  = atof(argv[ 8]);
     if (argc> 9) L[5]  = atof(argv[ 9]);
     if (argc>10) dt    = atof(argv[10]);
-    if (N[0]<1) throw new Fatal("nx must be greater than 0");
-    if (N[1]<1) throw new Fatal("ny must be greater than 0");
-    if (N[2]<1) throw new Fatal("nz must be greater than 0");
-
-    // grid
-    ParaGrid3D grid(N, L, fkey.CStr());
-
-    /*
-    // neighbour partitions
-    cout << "Proc # " << my_id << ": neighbours = ";
-    for (size_t i=0; i<grid.NNeighParts(); ++i) cout << grid.NeighPart(i) << " ";
-    cout << endl;
-    */
+    bool calc_N = false;
+    if (N[0]<1) calc_N = true;
+    if (N[1]<1) calc_N = true;
+    if (N[2]<1) calc_N = true;
     
     // read data
     Table tab;
-    tab.Read ("parts3.dat");
+    tab.Read ("parts4.dat");
     Array<double> const & xc = tab("xc");
     Array<double> const & yc = tab("yc");
     Array<double> const & zc = tab("zc");
@@ -192,20 +183,18 @@ int main(int argc, char **argv) try
     Array<double> vy;
     Array<double> vz;
     // Generating random packing of large number of particles
-    size_t Np  = 100; // Number of particles
+    size_t Np  = 400; // Number of particles
     size_t i   = 0;
-    double rad = 0.05;
+    double rad = 0.0494;
     double v0  = 0.05;
     while (i<Np)
     {
-        double xmi = L[0];
-        double xma = L[1];
-        double ymi = L[2];
-        double yma = L[3];
-        double zmi = L[4];
-        double zma = L[5];
-        Vec3_t x(xmi+(xma-xmi)/N[0] + (1.0*rand())/RAND_MAX*(xma-(xma-xmi)/N[0]-xmi-(xma-xmi)/N[0]),
-                 ymi+(yma-ymi)/N[1] + (1.0*rand())/RAND_MAX*(yma-(yma-ymi)/N[1]-ymi-(yma-ymi)/N[1]),
+        double xmi = -1.5;
+        double xma =  1.5;
+        double ymi = -1.5;
+        double yma =  1.5;
+        Vec3_t x(xmi+(xma-xmi)/10 + (1.0*rand())/RAND_MAX*(xma-(xma-xmi)/10-xmi-(xma-xmi)/10),
+                 ymi+(yma-ymi)/10 + (1.0*rand())/RAND_MAX*(yma-(yma-ymi)/10-ymi-(yma-ymi)/10),
                  0.05);
         bool valid = true;
         for (size_t j=0;j<xc.Size();j++)
@@ -222,13 +211,37 @@ int main(int argc, char **argv) try
             xc.Push(x(0));
             yc.Push(x(1));
             zc.Push(x(2));
-            ra.Push(0.05);
+            ra.Push(rad);
             vx.Push(v0*((1.0*rand())/RAND_MAX-0.5));
             vy.Push(v0*((1.0*rand())/RAND_MAX-0.5));
             vz.Push(0.0);
             i++;
         }
     }
+    */
+
+    // find N
+    if (calc_N)
+    {
+        double maxR = 0.0;
+        for (size_t i=0; i<ra.Size(); ++i) if (ra[i]>maxR) maxR = ra[i];
+        N[0] = static_cast<int>((L[1]-L[0])/(1.01*2.0*maxR));
+        N[1] = static_cast<int>((L[3]-L[2])/(1.01*2.0*maxR));
+        N[2] = static_cast<int>((L[5]-L[4])/(1.01*2.0*maxR));
+        if (N[0]==0) N[0] = 1;
+        if (N[1]==0) N[1] = 1;
+        if (N[2]==0) N[2] = 1;
+        if (my_id==0) printf("maxR = %g, nx,ny,nz = %d,%d,%d\n",maxR,N[0],N[1],N[2]);
+    }
+
+    // grid
+    ParaGrid3D grid(N, L, fkey.CStr());
+
+    /*
+    // neighbour partitions
+    cout << "Proc # " << my_id << ": neighbours = ";
+    for (size_t i=0; i<grid.NNeighParts(); ++i) cout << grid.NeighPart(i) << " ";
+    cout << endl;
     */
 
     // allocate particles
@@ -261,7 +274,7 @@ int main(int argc, char **argv) try
             id2part[id] = &p;
         }
     }
-    //printf("Proc # %d has %zd particles\n",my_id,parts.Size());
+    printf("Proc # %d has %zd particles\n",my_id,parts.Size());
 
     // first output
     int stp_out = 0;

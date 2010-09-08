@@ -295,7 +295,7 @@ inline int ParaGrid3D::FindCell (Vec3_t const & X) const
     int n = I + J*N[0] + K*N[0]*N[1];
 
     // check
-    if (n<0) throw new Fatal("ParaGrid3D::FindCellId:: __internal_error: cell id (%d) cannot be negative",n);
+    if (n<0) throw new Fatal("ParaGrid3D::FindCellId:: Point X=(%g,%g,%g) is outside grid: N=(%d,%d,%d), L=[x:(%g,%g) y:(%g,%g) z:(%g,%g)]", X(0),X(1),X(2), N[0],N[1],N[2], L[0],L[1],L[2],L[3],L[4],L[5]);
     return n;
 }
 
