@@ -343,35 +343,36 @@ int main(int argc, char **argv) try
         }
 
         // move particles
-        Array<double> data;
+        Array<double> sent_data;
         for (size_t i=0; i<parts.Size(); ++i)
         {
             CellType type = parts[i]->CType;
             if (type==Outer_t) continue;
             if (type==Inner_t || type==BryIn_t) parts[i]->Move(dt);
-            if (type==BryIn_t) PackToData (parts[i], data);
+            if (type==BryIn_t) PackToData (parts[i], sent_data);
             parts[i]->CType = grid.Cell2Type (grid.FindCell(parts[i]->X));
         }
 
-        // broadcast
+        // post messages with data_sent
         int my_id  = MPI::COMM_WORLD.Get_rank();
         int nprocs = MPI::COMM_WORLD.Get_size();
+        Array<MPI::Request> req(nprocs);
         for (int i=0; i<nprocs; ++i)
         {
             if (i!=my_id)
             {
-                MPI::Request req_send = MPI::COMM_WORLD.Isend (data.GetPtr(), data.Size(), MPI::DOUBLE, i, 1000);
-                req_send.Wait ();
+                req[i] = MPI::COMM_WORLD.Isend (sent_data.GetPtr(), sent_data.Size(), MPI::DOUBLE, i, 1000);
             }
         }
 
-        // receive messages from everyone
-        MPI::Status status;
+        // receive messages
+        Array<double> data;
         for (int i=0; i<nprocs; ++i)
         {
             if (i!=my_id)
             {
-                // get message
+                // get size of message
+                MPI::Status status;
                 MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, 1000, status);
                 int source = status.Get_source();
                 int count  = status.Get_count(MPI::DOUBLE);
@@ -415,6 +416,12 @@ int main(int argc, char **argv) try
                     }
                 }
             }
+        }
+
+        // wait for all sent messages to arrive at their destinations. Needs to be after Recv
+        for (int i=0; i<nprocs; ++i)
+        {
+            if (i!=my_id) req[i].Wait();
         }
 
         // output
