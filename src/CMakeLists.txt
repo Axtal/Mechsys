@@ -16,15 +16,30 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>  #
 ########################################################################
 
-ADD_LIBRARY           (mechsys SHARED mechsys.cpp)
-TARGET_LINK_LIBRARIES (mechsys ${LIBS})
-SET_TARGET_PROPERTIES (mechsys PROPERTIES COMPILE_FLAGS "${FLAGS}")
-IF(APPLE)
-    INSTALL (FILES libmechsys.dylib DESTINATION "${INSTALL_ROOT}${PYTHON_SITE_PACKAGES}" RENAME mechsys.so)
-ELSE(APPLE)
-    IF(WIN32)
-        INSTALL (FILES libmechsys.dll DESTINATION "${INSTALL_ROOT}${PYTHON_SITE_PACKAGES}" RENAME mechsys.dll)
-    ELSE(WIN32)
-        INSTALL (FILES libmechsys.so DESTINATION "${INSTALL_ROOT}${PYTHON_SITE_PACKAGES}" RENAME mechsys.so)
-    ENDIF(WIN32)
-ENDIF(APPLE)
+IF(A_WITH_PYTHON_MODULE)
+    ADD_LIBRARY           (mechsys SHARED mechsys.cpp)
+    TARGET_LINK_LIBRARIES (mechsys ${LIBS})
+    SET_TARGET_PROPERTIES (mechsys PROPERTIES COMPILE_FLAGS "${FLAGS}")
+    IF(APPLE)
+        INSTALL (FILES libmechsys.dylib DESTINATION "${INSTALL_ROOT}${PYTHON_SITE_PACKAGES}" RENAME mechsys.so)
+    ELSE(APPLE)
+        IF(WIN32)
+            INSTALL (FILES libmechsys.dll DESTINATION "${INSTALL_ROOT}${PYTHON_SITE_PACKAGES}" RENAME mechsys.dll)
+        ELSE(WIN32)
+            INSTALL (FILES libmechsys.so DESTINATION "${INSTALL_ROOT}${PYTHON_SITE_PACKAGES}" RENAME mechsys.so)
+        ENDIF(WIN32)
+    ENDIF(APPLE)
+ENDIF(A_WITH_PYTHON_MODULE)
+
+IF(A_WITH_TDEM)
+    SET(EXES
+      dem_genpack
+      dem_viewres
+      dem_joinres)
+
+    FOREACH(var ${EXES})
+        ADD_EXECUTABLE        (${var} "${var}.cpp")
+        TARGET_LINK_LIBRARIES (${var} ${LIBS})
+        SET_TARGET_PROPERTIES (${var} PROPERTIES COMPILE_FLAGS "${FLAGS}" LINK_FLAGS "${LFLAGS}")
+    ENDFOREACH(var)
+ENDIF(A_WITH_TDEM)

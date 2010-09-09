@@ -549,7 +549,7 @@ inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double
     } while((s=l1.inc(px,py,pz))!=-1);
 
     // info
-    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 // Single particle addition

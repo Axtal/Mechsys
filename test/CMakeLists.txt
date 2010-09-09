@@ -36,7 +36,8 @@ SET(PROGS_D # other tests
  linsolver
  test_maps
  test_colors
- serialize)
+ serialize
+ test_paragrid)
 
 SET(PROGS_F # mesh
   mesh01

@@ -37,11 +37,7 @@ INCLUDE_DIRECTORIES (${MECHSYS_SOURCE_DIR})
 
 ### FEATURES ############################################################################################
 
-SET(ALLDIRS) # sub-directories
-
-IF(A_WITH_PYTHON_MODULE)
-	SET(ALLDIRS ${ALLDIRS} src)
-ENDIF(A_WITH_PYTHON_MODULE)
+SET(ALLDIRS src) # sub-directories
 
 IF(A_WITH_TEST)
 	SET(ALLDIRS ${ALLDIRS} test)

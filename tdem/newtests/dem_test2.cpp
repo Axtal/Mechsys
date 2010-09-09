@@ -165,7 +165,7 @@ int main(int argc, char **argv) try
     
     // read data
     Table tab;
-    tab.Read ("parts3.dat");
+    tab.Read ("np10129.dat");
     Array<double> const & xc = tab("xc");
     Array<double> const & yc = tab("yc");
     Array<double> const & zc = tab("zc");
@@ -174,6 +174,7 @@ int main(int argc, char **argv) try
     Array<double>       & vy = tab("vy");
     Array<double>       & vz = tab("vz");
 
+    /*
     double v0  = 0.05;
     for (size_t i=0; i<vx.Size(); ++i)
     {
@@ -181,6 +182,7 @@ int main(int argc, char **argv) try
         vy[i] = (v0*((1.0*rand())/RAND_MAX-0.5));
         vz[i] = (v0*((1.0*rand())/RAND_MAX-0.5));
     }
+    */
 
     /*
     Array<double> xc;
