@@ -62,7 +62,7 @@ public:
 
 typedef std::map<int,Particle*>         Id2Part_t;
 typedef std::map<int,Array<Particle*> > Cell2Part_t;
-typedef std::map<Particle*,Particle*>   Neighbours_t;
+typedef std::map<std::pair<Particle*,Particle*>,double> NeighDist_t;
 
 inline void CalcForce (Particle & a, Particle & b)
 {
@@ -70,7 +70,7 @@ inline void CalcForce (Particle & a, Particle & b)
     Vec3_t nor   = b.X - a.X;
     double dist  = norm(nor);
     double delta = a.R + b.R - dist;
-    if (delta > 0.0)
+    if (delta > MACH_EPS)
     {
         Vec3_t F = Kn*delta*nor/dist;
         a.F -= F;
@@ -274,7 +274,7 @@ int main(int argc, char **argv) try
             id2part[id] = &p;
         }
     }
-    printf("Proc # %d has %zd particles\n",my_id,parts.Size());
+    //printf("Proc # %d has %zd particles\n",my_id,parts.Size());
 
     // first output
     int stp_out = 0;
@@ -304,7 +304,7 @@ int main(int argc, char **argv) try
         }
 
         // find possible contacts
-        Neighbours_t neighs;
+        NeighDist_t neighs;
         for (size_t i=0; i<parts.Size(); ++i)
         {
             // skip outer particles
@@ -345,8 +345,8 @@ int main(int argc, char **argv) try
                                 // there is overlapping
                                 if (del>MACH_EPS)
                                 {
-                                    if (pa.Id < pb.Id) neighs[&pa] = &pb;
-                                    else               neighs[&pb] = &pa;
+                                    if (pa.Id < pb.Id) neighs[std::make_pair(&pa,&pb)] = del;
+                                    else               neighs[std::make_pair(&pb,&pa)] = del;
                                 }
                             }
                         }
@@ -357,10 +357,14 @@ int main(int argc, char **argv) try
         }
 
         // update forces
-        for (Neighbours_t::const_iterator r=neighs.begin(); r!=neighs.end(); ++r)
+        for (NeighDist_t::const_iterator r=neighs.begin(); r!=neighs.end(); ++r)
+        //for (size_t i=0;   i<parts.Size()-1; ++i)
+        //for (size_t j=i+1; j<parts.Size();   ++j)
         {
-            Particle & pa = (*r->first);
-            Particle & pb = (*r->second);
+            //Particle & pa = *parts[i];
+            //Particle & pb = *parts[j];
+            Particle & pa = (*r->first.first);
+            Particle & pb = (*r->first.second);
             CalcForce (pa,pb);
         }
 
@@ -453,6 +457,8 @@ int main(int argc, char **argv) try
         // output
         if (t>=tout)
         {
+
+
             Output (fkey, parts, stp_out);
             tout += dtout;
             stp_out++;
@@ -469,8 +475,8 @@ int main(int argc, char **argv) try
         Particle & p = (*parts[i]);
         Ekin1 += 0.5*mass*dot(p.V,p.V);
     }
-    printf("\nProc # %d, Ekin (before) = %16.8e\n", my_id, Ekin0);
-    printf("Proc # %d, Ekin (after ) = %16.8e\n\n", my_id, Ekin1);
+    //printf("\nProc # %d, Ekin (before) = %16.8e\n", my_id, Ekin0);
+    //printf("Proc # %d, Ekin (after ) = %16.8e\n\n", my_id, Ekin1);
 
     // write control file
     if (my_id==0)

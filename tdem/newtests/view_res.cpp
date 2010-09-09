@@ -24,6 +24,7 @@
 #include <mechsys/vtk/win.h>
 #include <mechsys/vtk/axes.h>
 #include <mechsys/vtk/sgrid.h>
+#include <mechsys/vtk/sphere.h>
 #include <mechsys/vtk/spheres.h>
 #include <mechsys/vtk/cube.h>
 #include <mechsys/vtk/text2d.h>
@@ -237,6 +238,18 @@ int main(int argc, char **argv) try
             sph[idx_proc].Last()->SetColor (clr[idx_proc].CStr(),opac);
             sph[idx_proc].Last()->AddTo    (win, /*rstcam*/(stp==0));
             idx_proc++;
+
+            for (size_t i=0; i<id.Size(); ++i)
+            {
+                if (id[i]==316 || id[i]==333 || id[i]==125 || id[i]==200 || id[i]==273 || id[i]==154 || id[i]==13 || id[i]==84 || id[i]==152 || id[i]==186)
+                {
+                    Vec3_t x(xc[i],yc[i],zc[i]);
+                    VTK::Sphere s(x,ra[i]*1.1);
+                    s.SetColor ("yellow",0.4);
+                    s.AddTo(win, /*rstcam*/false);
+                }
+            }
+
         }
 
         // text

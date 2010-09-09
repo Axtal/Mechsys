@@ -50,7 +50,7 @@ public:
     Sphere & SetColor      (char const * Name="brown", double Opacity=0.8);
 
     // Methods
-    void AddTo (VTK::Win & win) { win.AddActor(_sphere_actor); }
+    void AddTo (VTK::Win & win, bool RstCam=true) { win.AddActor(_sphere_actor, RstCam); }
 
 private:
     vtkSphereSource   * _sphere;

@@ -26,7 +26,7 @@
 // MechSys
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/maps.h>
-#include <mechsys/mesh/structured.h>
+#include <mechsys/mesh/paragrid3d.h>
 
 #define MACH_EPS 1.0e-16
 
@@ -53,72 +53,16 @@ public:
         }
     }
 
-    bool       Active;   ///< Is particle Active, or deleted from simulation ?
-    bool       Dummy;    ///< Is particle on the border ?
     int        Id;       ///< Global Id of particle
     Vec3_t     X,V,F,Xp; ///< Position, velocity, force, previous position (Verlet)
     double     m,R;      ///< Mass and radius
-    Array<int> Boxes;    ///< Boxes that this particle touches
+    CellType   CType;    ///< The type of the cell in which this particle is located
+    Array<int> Cells;    ///< Cells touched by this particle
 };
 
-inline void FindBoxNumbers (Array<int> const & N, Array<double> const & L, Vec3_t const & X, double R, Array<int> & Nums)
-{
-    // coordinates of corners
-    double xa=X(0)-R;   double xb=X(0)+R;
-    double ya=X(1)-R;   double yb=X(1)+R;
-    double za=X(2)-R;   double zb=X(2)+R;
-
-    // check
-    if (xa<L[0] || xb>L[1] ||
-        ya<L[2] || yb>L[3] ||
-        za<L[4] || zb>L[5]) throw new Fatal("FindBoxNumbers: Corner of cube centered at (%g,%g,%g) with inner radius=%g is outside limits of domain (N=(%d,%d,%d), L=[x:(%g,%g) y:(%g,%g) z:(%g,%g)])", X(0),X(1),X(2),R, N[0],N[1],N[2], L[0],L[1],L[2],L[3],L[4],L[5]);
-
-    // corners
-    double C[8][3] = {{xa,  ya,  za},
-                      {xb,  ya,  za},
-                      {xa,  yb,  za},
-                      {xb,  yb,  za},
-                      {xa,  ya,  zb},
-                      {xb,  ya,  zb},
-                      {xa,  yb,  zb},
-                      {xb,  yb,  zb}};
-
-    // box sizes
-    double D[3] = {(L[1]-L[0])/static_cast<double>(N[0]),
-                   (L[3]-L[2])/static_cast<double>(N[1]),
-                   (L[5]-L[4])/static_cast<double>(N[2])};
-
-    // find box numbers
-    for (size_t i=0; i<8; ++i)
-    {
-        // box number touched by corner
-        int I = static_cast<int>((C[i][0]-L[0])/D[0]);
-        int J = static_cast<int>((C[i][1]-L[2])/D[1]);
-        int K = static_cast<int>((C[i][2]-L[4])/D[2]);
-        Nums[i] = I + J*(N[0]+1) + K*(N[0]+1)*(N[1]+1);
-
-        // check
-        if (Nums[i]<0) throw new Fatal("Particle::Boxes:: __internal_error: box id (%d) cannot be negative",Nums[i]);
-    }
-}
-
-inline int FindBoxNumber (Array<int> const & N, Array<double> const & L, Vec3_t const & X, double R)
-{
-    // box sizes
-    double D[3] = {(L[1]-L[0])/static_cast<double>(N[0]),
-                   (L[3]-L[2])/static_cast<double>(N[1]),
-                   (L[5]-L[4])/static_cast<double>(N[2])};
-
-    // box touched by (X,R)
-    int I = static_cast<int>((X[0]-L[0])/D[0]);
-    int J = static_cast<int>((X[1]-L[2])/D[1]);
-    int K = static_cast<int>((X[2]-L[4])/D[2]);
-    int n = I + J*(N[0]+1) + K*(N[0]+1)*(N[1]+1);
-
-    // check
-    if (n<0) throw new Fatal("FindBoxNumber:: __internal_error: box id (%d) cannot be negative",n);
-    return n;
-}
+typedef std::map<int,Particle*>         Id2Part_t;
+typedef std::map<int,Array<Particle*> > Cell2Part_t;
+typedef std::map<std::pair<Particle*,Particle*>,double> NeighDist_t;
 
 inline void CalcForce (Particle & a, Particle & b)
 {
@@ -126,7 +70,7 @@ inline void CalcForce (Particle & a, Particle & b)
     Vec3_t nor   = b.X - a.X;
     double dist  = norm(nor);
     double delta = a.R + b.R - dist;
-    if (delta > 0.0)
+    if (delta > MACH_EPS)
     {
         Vec3_t F = Kn*delta*nor/dist;
         a.F -= F;
@@ -136,128 +80,198 @@ inline void CalcForce (Particle & a, Particle & b)
 
 inline void Output (String const & FKey, Array<Particle*> const & Parts, int StpOut)
 {
-    Table tab;
-    tab.SetZero ("id xc yc zc ra vx vy vz",Parts.Size());
+    // header
+    Array<String> keys("id", "xc", "yc", "zc", "ra", "vx", "vy", "vz", "ct");
+    std::ostringstream oss;
+    oss << Util::_6 << keys[0];
+    for (size_t i=1; i<keys.Size()-1; ++i) { oss << Util::_8s << keys[i]; }
+    oss << Util::_6 << keys.Last() << "\n";
+
+    // values
     for (size_t i=0; i<Parts.Size(); ++i)
     {
-        if (Parts[i]->Active)
-        {
-            tab("id",i) = Parts[i]->Id;
-            tab("xc",i) = Parts[i]->X(0);
-            tab("yc",i) = Parts[i]->X(1);
-            tab("zc",i) = Parts[i]->X(2);
-            tab("ra",i) = Parts[i]->R;
-            tab("vx",i) = Parts[i]->V(0);
-            tab("vy",i) = Parts[i]->V(1);
-            tab("vz",i) = Parts[i]->V(2);
-        }
+        oss << Util::_6  << Parts[i]->Id;
+        oss << Util::_8s << Parts[i]->X(0);
+        oss << Util::_8s << Parts[i]->X(1);
+        oss << Util::_8s << Parts[i]->X(2);
+        oss << Util::_8s << Parts[i]->R;
+        oss << Util::_8s << Parts[i]->V(0);
+        oss << Util::_8s << Parts[i]->V(1);
+        oss << Util::_8s << Parts[i]->V(2);
+        oss << Util::_6  << Parts[i]->CType;
+        oss << "\n";
     }
-    String buf;
-    buf.Printf("%s_%08d.res",FKey.CStr(),StpOut);
-    tab.Write(buf.CStr());
+
+    // open file and save data
+    String buf;   buf.Printf("%s_%08d.res",FKey.CStr(),StpOut);
+    std::ofstream of(buf.CStr(), std::ios::out);
+    of << oss.str();
+    of.close();
 }
 
-//typedef google::dense_hash_map<int,Array<Particle*> > Box2Part_t;
-//typedef google::dense_hash_map<Particle*,Particle*>   Neighbours_t;
-typedef std::map<int,Array<Particle*> > Box2Part_t;
-typedef std::map<Particle*,Particle*>   Neighbours_t;
+inline void PackToData (Particle const * P, Array<double> & Data)
+{
+    Data.Push (P->Id+0.1);
+    Data.Push (P->X(0));
+    Data.Push (P->X(1));
+    Data.Push (P->X(2));
+    Data.Push (P->V(0));
+    Data.Push (P->V(1));
+    Data.Push (P->V(2));
+    Data.Push (P->Xp(0));
+    Data.Push (P->Xp(1));
+    Data.Push (P->Xp(2));
+    Data.Push (P->m);
+    Data.Push (P->R);
+}
 
 int main(int argc, char **argv) try
 {
+    // mpirun -np 3 ./dem_test3 10 10 1 -1 1 -1 2
+    // mpirun -np 5 ./dem_test3 10 10 1 -0.2 1.2 -0.2 1.2 
+    
     // initialize MPI
     MECHSYS_CATCH_PARALLEL = true;
     MECHSYS_MPI_INIT
     int my_id  = MPI::COMM_WORLD.Get_rank();
-    int nprocs = MPI::COMM_WORLD.Get_size();
 
     // filekey
     String fkey;
-    fkey.Printf("dem_test2_proc_%d",my_id);
-
-    // input
-    Array<int> N(10, 10, 1); // number of cells/boxes along each side of grid
-    double dt = 0.001;       // timestep
-    if (argc>1) N[0]  = atoi(argv[1]);
-    if (argc>2) N[1]  = atoi(argv[2]);
-    if (argc>3) N[2]  = atoi(argv[3]);
-    if (argc>4) dt    = atof(argv[4]);
-    if (N[0]<1) throw new Fatal("nx must be greater than 0");
-    if (N[1]<1) throw new Fatal("ny must be greater than 0");
-    if (N[2]<1) throw new Fatal("nz must be greater than 0");
+    fkey.Printf("dem_test3_proc_%d",my_id);
 
     // limits of grid
     Array<double> L(6);
     //     0    1      2    3      4    5
     //   xmi  xma    ymi  yma    zmi  zma
-    L =  -2.,  2.,   -2.,  2.,    0., 0.1;
+    L =  -2.,  2.,   -2.,  2.,   -2.,  2.;
 
-    // generate grid
-    Array<Mesh::Block> blks(1);
-    blks[0].Set (3, -1, 8,
-            0., L[0],L[2],L[4],
-            0., L[1],L[2],L[4],
-            0., L[1],L[3],L[4],
-            0., L[0],L[3],L[4],
-            0., L[0],L[2],L[5],
-            0., L[1],L[2],L[5],
-            0., L[1],L[3],L[5],
-            0., L[0],L[3],L[5], 0.,0.,0.,0.,0.,0.);
-    blks[0].SetNx (N[0]);
-    blks[0].SetNy (N[1]);
-    blks[0].SetNz (N[2]);
-    Mesh::Structured mesh(3);
-    mesh.Generate   (blks);
-    mesh.PartDomain (nprocs);
-    mesh.WriteVTU   (fkey.CStr());
-
-    // find what cells are at the boundaries of this domain
-    Array<int> bry_cells;
-    //std::map<int, Array<int> > cell2bryprocs;
-    for (size_t i=0; i<mesh.Cells.Size(); ++i)
-    {
-        if (mesh.Cells[i]->PartID==my_id)
-        {
-            bool is_bry = false;
-            for (size_t j=0; j<mesh.Cells[i]->V.Size(); ++j)
-            {
-                if (mesh.Cells[i]->V[j]->PartIDs.Size()>1)
-                {
-                    is_bry = true;
-                    break;
-                }
-            }
-            if (is_bry) bry_cells.Push(i);
-        }
-    }
+    // input
+    Array<int> N(10, 10, 1); // number of cells/boxes along each side of grid
+    double dt = 0.001;       // timestep
+    if (argc> 1) N[0]  = atoi(argv[ 1]);
+    if (argc> 2) N[1]  = atoi(argv[ 2]);
+    if (argc> 3) N[2]  = atoi(argv[ 3]);
+    if (argc> 4) L[0]  = atof(argv[ 4]);
+    if (argc> 5) L[1]  = atof(argv[ 5]);
+    if (argc> 6) L[2]  = atof(argv[ 6]);
+    if (argc> 7) L[3]  = atof(argv[ 7]);
+    if (argc> 8) L[4]  = atof(argv[ 8]);
+    if (argc> 9) L[5]  = atof(argv[ 9]);
+    if (argc>10) dt    = atof(argv[10]);
+    bool calc_N = false;
+    if (N[0]<1) calc_N = true;
+    if (N[1]<1) calc_N = true;
+    if (N[2]<1) calc_N = true;
     
     // read data
     Table tab;
-    tab.Read ("parts1.dat");
+    tab.Read ("parts3.dat");
     Array<double> const & xc = tab("xc");
     Array<double> const & yc = tab("yc");
     Array<double> const & zc = tab("zc");
     Array<double> const & ra = tab("ra");
-    Array<double> const & vx = tab("vx");
-    Array<double> const & vy = tab("vy");
-    Array<double> const & vz = tab("vz");
+    Array<double>       & vx = tab("vx");
+    Array<double>       & vy = tab("vy");
+    Array<double>       & vz = tab("vz");
 
-    //std::map<int,Particle*> Id2Part; // global Id to particle
+    double v0  = 0.05;
+    for (size_t i=0; i<vx.Size(); ++i)
+    {
+        vx[i] = (v0*((1.0*rand())/RAND_MAX-0.5));
+        vy[i] = (v0*((1.0*rand())/RAND_MAX-0.5));
+        vz[i] = (v0*((1.0*rand())/RAND_MAX-0.5));
+    }
+
+    /*
+    Array<double> xc;
+    Array<double> yc;
+    Array<double> zc;
+    Array<double> ra;
+    Array<double> vx;
+    Array<double> vy;
+    Array<double> vz;
+    // Generating random packing of large number of particles
+    size_t Np  = 400; // Number of particles
+    size_t i   = 0;
+    double rad = 0.0494;
+    double v0  = 0.05;
+    while (i<Np)
+    {
+        double xmi = -1.5;
+        double xma =  1.5;
+        double ymi = -1.5;
+        double yma =  1.5;
+        Vec3_t x(xmi+(xma-xmi)/10 + (1.0*rand())/RAND_MAX*(xma-(xma-xmi)/10-xmi-(xma-xmi)/10),
+                 ymi+(yma-ymi)/10 + (1.0*rand())/RAND_MAX*(yma-(yma-ymi)/10-ymi-(yma-ymi)/10),
+                 0.05);
+        bool valid = true;
+        for (size_t j=0;j<xc.Size();j++)
+        {
+            Vec3_t xp(xc[j],yc[j],zc[j]);
+            if (norm(x-xp)<2*rad)
+            {
+                valid = false;
+                break;
+            }
+        }
+        if (valid)
+        {
+            xc.Push(x(0));
+            yc.Push(x(1));
+            zc.Push(x(2));
+            ra.Push(rad);
+            vx.Push(v0*((1.0*rand())/RAND_MAX-0.5));
+            vy.Push(v0*((1.0*rand())/RAND_MAX-0.5));
+            vz.Push(0.0);
+            i++;
+        }
+    }
+    */
+
+    // find N
+    if (calc_N)
+    {
+        double maxR = 0.0;
+        for (size_t i=0; i<ra.Size(); ++i) if (ra[i]>maxR) maxR = ra[i];
+        N[0] = static_cast<int>((L[1]-L[0])/(1.01*2.0*maxR));
+        N[1] = static_cast<int>((L[3]-L[2])/(1.01*2.0*maxR));
+        N[2] = static_cast<int>((L[5]-L[4])/(1.01*2.0*maxR));
+        if (N[0]==0) N[0] = 1;
+        if (N[1]==0) N[1] = 1;
+        if (N[2]==0) N[2] = 1;
+        if (my_id==0) printf("maxR = %g, nx,ny,nz = %d,%d,%d\n",maxR,N[0],N[1],N[2]);
+    }
+
+    // grid
+    ParaGrid3D grid(N, L, fkey.CStr());
+
+    /*
+    // neighbour partitions
+    cout << "Proc # " << my_id << ": neighbours = ";
+    for (size_t i=0; i<grid.NNeighParts(); ++i) cout << grid.NeighPart(i) << " ";
+    cout << endl;
+    */
 
     // allocate particles
-    Array<Particle*> parts;
+    Array<Particle*> parts;   // particles in this processor
+    Id2Part_t        id2part; // global Id to particle
     double Ekin0 = 0.0;
     double mass  = 1.0;
-    for (size_t id=0; id<xc.Size(); ++id)
+    for (int id=0; id<static_cast<int>(xc.Size()); ++id)
     {
+        double d = 2.0*ra[id];
+        if (d>grid.D[0] || d>grid.D[1] || d>grid.D[2]) throw new Fatal("Particles must have diameter smaller than the smallest cell in grid. diam=%g is greater than %g, %g, or %g",d,grid.D[0],grid.D[1],grid.D[2]);
         Vec3_t x(xc[id],yc[id],zc[id]);
-        int n = FindBoxNumber (N, L, x, ra[id]);
-        if (mesh.Cells[n]->PartID==my_id)
+        int      cell = grid.FindCell (x);
+        CellType type = grid.Id2Type[cell];
+        if (type!=Outer_t) // if it's not outside
         {
+            //if (my_id==0) printf("Proc # 0 is adding particle # %d\n",id);
             Vec3_t v(vx[id],vy[id],vz[id]);
             Vec3_t xp = x - dt*v;
             parts.Push (new Particle());
             Particle & p = (*parts.Last());
-            p.Active = true;
+            p.CType  = type;
             p.Id     = id;
             p.X      = x;
             p.Xp     = xp;
@@ -265,10 +279,10 @@ int main(int argc, char **argv) try
             p.m      = mass;
             p.R      = ra[id];
             Ekin0   += 0.5*mass*dot(p.V,p.V);
-            //Id2Part[id] = &p;
+            id2part[id] = &p;
         }
-        //else Id2Part[id] = NULL;
     }
+    //printf("Proc # %d has %zd particles\n",my_id,parts.Size());
 
     // first output
     int stp_out = 0;
@@ -276,168 +290,62 @@ int main(int argc, char **argv) try
     stp_out++;
 
     // solve
-    double tf    = 1.0;
+    double tf    = 5.0;
     double dtout = 0.1;
     double tout  = 0.1;
     for (double t=0.0; t<tf; t+=dt)
     {
-        // maps: box2part, part2box
-        Box2Part_t box2part;          // map: box => particles in/crossed box
-        //box2part.set_empty_key (-1);
-        //std::map<Particle*,Array<int> > part2box;
+        // initialize particles and find map: cell => particles in/crossed cell
+        Cell2Part_t cell2part;
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            if (!parts[i]->Active) continue; // skip non-active particles
-
-            int n = FindBoxNumber (N, L, parts[i]->X, parts[i]->R);
-            if (mesh.Cells[n]->PartID==my_id)
+            if (parts[i]->CType==Outer_t) continue;
+            parts[i]->Start       ();
+            parts[i]->Cells.Clear ();
+            int cells[8];
+            grid.FindCells (parts[i]->X, parts[i]->R, cells);
+            for (size_t j=0; j<8; ++j)
             {
-                parts[i]->Start       ();
-                parts[i]->Boxes.Clear ();
-
-                Array<int> nums(8); // this array needs to be resized externally
-                FindBoxNumbers (N, L, parts[i]->X, parts[i]->R, nums);
-                //bool found = false; // TODO: use nums instead of n to find whether this particle belongs to this processor or no
-                for (size_t j=0; j<8; ++j)
-                {
-                    box2part[nums[j]].XPush (parts[i]);
-                    parts[i]->Boxes.XPush   (nums[j]);
-                }
-            }
-            else parts[i]->Active = false; // remove this particle from this processor
-        }
-
-        /*
-        for (Box2Part_t::const_iterator it=box2part.begin(); it!=box2part.end(); ++it)
-        {
-            cout << it->first << ": ";
-            for (size_t k=0; k<it->second.Size(); ++k) cout << it->second[k]->Id << " ";
-            cout << endl;
-        }
-        cout << endl;
-        */
-
-        // pack data to send
-        Array<double> data; // id,xc,yc,zc,ra,vx,vy,vz
-        for (size_t i=0; i<bry_cells.Size(); ++i)
-        {
-            int n = bry_cells[i];
-            Box2Part_t::const_iterator it = box2part.find(n);
-            if (it!=box2part.end()) // box has particles
-            {
-                Array<Particle*> const & parts = it->second; // particles in the cell
-                for (size_t j=0; j<parts.Size(); ++j)
-                {
-                    data.Push (parts[j]->Id);
-                    data.Push (parts[j]->X(0));
-                    data.Push (parts[j]->X(1));
-                    data.Push (parts[j]->X(2));
-                    data.Push (parts[j]->R);
-                    data.Push (parts[j]->V(0));
-                    data.Push (parts[j]->V(1));
-                    data.Push (parts[j]->V(2));
-                    //printf("Proc # %d, part Id = %d\n",my_id,parts[j]->Id);
-                }
-            }
-        }
-
-        // broadcast
-        for (int i=0; i<nprocs; ++i)
-        {
-            if (i!=my_id)
-            {
-                MPI::Request req_send = MPI::COMM_WORLD.Isend (data.GetPtr(), data.Size(), MPI::DOUBLE, i, 1000);
-                req_send.Wait ();
-            }
-        }
-
-        // receive messages from everyone
-        MPI::Status status;
-        for (int i=0; i<nprocs; ++i)
-        {
-            if (i!=my_id)
-            {
-                // get message
-                MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, 1000, status);
-                int source = status.Get_source();
-                int count  = status.Get_count(MPI::DOUBLE);
-                data.Resize (count);
-                MPI::COMM_WORLD.Recv (data.GetPtr(), count, MPI::DOUBLE, source, 1000);
-
-                // push particle into parts
-                for (size_t i=0; i<data.Size(); i+=8)
-                {
-                    // check if particle belongs to any box in this processor
-                    Vec3_t x(data[i+1],data[i+2],data[i+3]);
-                    double r(data[i+4]);
-                    int n = FindBoxNumber (N, L, x, r); // need to allocate particle
-                    //if (mesh.Cells[n]->PartID!=my_id) continue;
-
-                    // allocate particle
-                    int id = static_cast<int>(data[i]);
-                    Vec3_t v(data[i+5],data[i+6],data[i+7]);
-                    Vec3_t xp = x - dt*v; // need to receive xp as well ?
-                    parts.Push (new Particle());
-                    parts.Last()->Active = true;
-                    parts.Last()->Dummy  = (mesh.Cells[n]->PartID!=my_id);
-                    parts.Last()->Id     = id;
-                    parts.Last()->X      = x;
-                    parts.Last()->Xp     = xp;
-                    parts.Last()->V      = v;
-                    parts.Last()->m      = mass;
-                    parts.Last()->R      = r;
-
-                    printf("Proc # %d: particle Id = %d arrived and is Dummy = %d\n",my_id,id,parts.Last()->Dummy);
-
-                    // update maps
-                    Array<int> nums(8); // this array needs to be resized externally
-                    FindBoxNumbers (N, L, parts.Last()->X, parts.Last()->R, nums);
-                    for (size_t j=0; j<8; ++j)
-                    {
-                        Box2Part_t::iterator it = box2part.find(nums[j]);
-                        if (it==box2part.end()) box2part[nums[j]].Push (parts.Last());
-                        parts.Last()->Boxes.Push (nums[j]);
-                    }
-                }
+                cell2part[cells[j]].XPush (parts[i]);
+                parts[i]->Cells.XPush     (cells[j]);
             }
         }
 
         // find possible contacts
-        Neighbours_t neighs;
-        //neighs.set_empty_key(NULL);
+        NeighDist_t neighs;
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            if (!parts[i]->Active) continue; // skip the non-active particles
+            // skip outer particles
+            if (parts[i]->CType==Outer_t) continue;
 
-            // particle
-            Particle & pa = (*parts[i]);
+            // particle and cells touched by particle
+            Particle         & pa    = (*parts[i]);
+            Array<int> const & cells = parts[i]->Cells;
 
-            // loop particle's boxes
-            for (size_t k=0; k<pa.Boxes.Size(); ++k)
+            // loop over the cells touched by this particle
+            for (size_t k=0; k<cells.Size(); ++k)
             {
-                // box => particles map
-                Box2Part_t::const_iterator it = box2part.find(pa.Boxes[k]);
+                // cell key => particles
+                Cell2Part_t::const_iterator it = cell2part.find(cells[k]);
 
-                // if there are particles in particle's box
-                if (it!=box2part.end())
+                // if there are particles touching cell touched by particle
+                if (it!=cell2part.end())
                 {
-                    // particles in particle's box
-                    Array<Particle*> const & parts_in_box = it->second;
+                    // all particles touching particle's cells
+                    Array<Particle*> const & cell_parts = it->second;
 
-                    // if there are more than one particle (itself) in this box
-                    if (parts_in_box.Size()<1) throw new Fatal("__internal_error__: All boxes should have at least one particle");
-                    if (parts_in_box.Size()>1)
+                    // if there are more than one particle (itself) touching this cell
+                    if (cell_parts.Size()<1) throw new Fatal("__internal_error__: All cells should have at least one particle");
+                    if (cell_parts.Size()>1)
                     {
-                        // loop particles in particle's box
-                        for (size_t j=0; j<parts_in_box.Size(); ++j)
+                        // loop over particles touching cell touched by particle
+                        for (size_t j=0; j<cell_parts.Size(); ++j)
                         {
                             // neighbour particle
-                            Particle & pb = (*parts_in_box[j]);
+                            Particle & pb = (*cell_parts[j]);
 
-                            //cout << "Comparing: " << pa.Id << " with " << pb.Id << "  boxid =" << (*boxid) << endl;
-
-                            // if pb is not pa
-                            if (pb.Id != pa.Id)
+                            // if pb is not pa and these two particles are not in my outer boundary (the other processor will calculate this force for me)
+                            if ((pb.Id!=pa.Id) && (!(pa.CType==BryOut_t && pb.CType==BryOut_t)))
                             {
                                 // halo overlapping
                                 double del = pa.R + pb.R - norm(pb.X-pa.X);
@@ -445,42 +353,120 @@ int main(int argc, char **argv) try
                                 // there is overlapping
                                 if (del>MACH_EPS)
                                 {
-                                    //cout << "Neighbours: " << pa.Id << " => " << pb.Id << ", del = " << del << endl;
-                                    if (pa.Id < pb.Id)
-                                    {
-                                        neighs[&pa] = &pb;
-                                    }
-                                    else
-                                    {
-                                        neighs[&pb] = &pa;
-                                    }
+                                    if (pa.Id < pb.Id) neighs[std::make_pair(&pa,&pb)] = del;
+                                    else               neighs[std::make_pair(&pb,&pa)] = del;
                                 }
                             }
                         }
                     }
                 }
-                else throw new Fatal("__internal_error__: There should be at least one particle in particle's box: the particle itself");
+                else throw new Fatal("__internal_error__: There should be at least one particle in cell touched by particle; the particle itself");
             }
         }
 
         // update forces
-        for (Neighbours_t::const_iterator r=neighs.begin(); r!=neighs.end(); ++r)
+        for (NeighDist_t::const_iterator r=neighs.begin(); r!=neighs.end(); ++r)
+        //for (size_t i=0;   i<parts.Size()-1; ++i)
+        //for (size_t j=i+1; j<parts.Size();   ++j)
         {
-            Particle & pa = (*r->first);
-            Particle & pb = (*r->second);
+            //Particle & pa = *parts[i];
+            //Particle & pb = *parts[j];
+            Particle & pa = (*r->first.first);
+            Particle & pb = (*r->first.second);
             CalcForce (pa,pb);
         }
 
         // move particles
+        std::map<int,Array<double> > proc2data; // map: proc # => packed data to be sent
         for (size_t i=0; i<parts.Size(); ++i)
         {
-            if (parts[i]->Dummy)  parts[i]->Active = false;
-            if (parts[i]->Active) parts[i]->Move(dt);
+            int      cell = grid.FindCell (parts[i]->X);
+            CellType type = parts[i]->CType;
+            if (type==Outer_t) continue;
+            if (type==Inner_t || type==BryIn_t) parts[i]->Move(dt);
+            if (type==BryIn_t)
+            {
+                for (size_t j=0; j<grid.Id2NeighProcs[cell].Size(); ++j)
+                {
+                    Array<double> & data_snd = proc2data[grid.Id2NeighProcs[cell][j]];
+                    //printf("Proc # %d will send particle # %d to processor to # %d\n",my_id,parts[i]->Id,grid.Id2NeighProcs[cell][j]);
+                    PackToData (parts[i], data_snd);
+                }
+            }
+            parts[i]->CType = grid.Id2Type[grid.FindCell(parts[i]->X)];
         }
+
+        // synchronize
+        MPI::COMM_WORLD.Barrier(); // TODO: check if this is really needed
+
+        // post messages with data_sent
+        Array<MPI::Request> req(grid.NeighProcs.Size());
+        for (size_t i=0; i<grid.NeighProcs.Size(); ++i)
+        {
+            //printf("Proc # %d is sending to # %d\n",my_id,grid.NeighProcs[i]);
+            Array<double> const & data_snd = proc2data[grid.NeighProcs[i]];
+            req[i] = MPI::COMM_WORLD.Isend (data_snd.GetPtr(), data_snd.Size(), MPI::DOUBLE, grid.NeighProcs[i], 1000);
+        }
+
+        // receive messages
+        Array<double> data;
+        for (size_t i=0; i<grid.NeighProcs.Size(); ++i)
+        {
+            // get size of message
+            MPI::Status status;
+            MPI::COMM_WORLD.Probe (MPI::ANY_SOURCE, 1000, status);
+            int source = status.Get_source();
+            int count  = status.Get_count(MPI::DOUBLE);
+            //printf("Proc # %d is receiving from # %d\n",my_id,source);
+            data.Resize (count);
+            MPI::COMM_WORLD.Recv (data.GetPtr(), count, MPI::DOUBLE, source, 1000);
+
+            // unpack data
+            for (size_t j=0; j<data.Size(); j+=12)
+            {
+                // id and position
+                Vec3_t x(data[j+1],data[j+2],data[j+3]);
+                int      id   = static_cast<int>(data[j]);
+                int      cell = grid.FindCell (x);
+                CellType type = grid.Id2Type[cell];
+                bool has_part = id2part.count(id);
+                if (type==Outer_t)
+                { 
+                    // particle moved outside, flag this
+                    if (has_part) id2part[id]->CType = type;
+                    continue;
+                }
+                else
+                {
+                    Particle * p;
+                    if (has_part) p = id2part[id];
+                    else
+                    {
+                        p = new Particle();
+                        parts.Push (p);
+                        id2part[id] = p;
+                        //printf("Proc # %d got a new particle Id=%d from %d\n",my_id,id,source);
+                    }
+                    p->CType = type; // the CType of existent particle may be changed after movement in another processor => needs to be updated as well
+                    p->Id = id;
+                    p->X  = x;
+                    p->V  = data[j+4], data[j+5], data[j+6];
+                    p->Xp = data[j+7], data[j+8], data[j+9];
+                    p->m  = data[j+10];
+                    p->R  = data[j+11];
+                    //printf("Proc # %d, stp=%d, t=%g: just set particle Id=%d sent by Proc # %d\n",my_id,stp_out,t,id,source);
+                }
+            }
+        }
+
+        // wait for all sent messages to arrive at their destinations. Needs to be after Recv
+        for (size_t i=0; i<req.Size(); ++i) req[i].Wait();
 
         // output
         if (t>=tout)
         {
+
+
             Output (fkey, parts, stp_out);
             tout += dtout;
             stp_out++;
@@ -497,25 +483,32 @@ int main(int argc, char **argv) try
         Particle & p = (*parts[i]);
         Ekin1 += 0.5*mass*dot(p.V,p.V);
     }
-    printf("\nProc # %d, Ekin (before) = %16.8e\n", my_id, Ekin0);
-    printf("Proc # %d, Ekin (after ) = %16.8e\n\n", my_id, Ekin1);
+    //printf("\nProc # %d, Ekin (before) = %16.8e\n", my_id, Ekin0);
+    //printf("Proc # %d, Ekin (after ) = %16.8e\n\n", my_id, Ekin1);
 
     // write control file
-    String buf;
-    buf.Printf("%s_control.res",fkey.CStr());
-    std::ofstream of(buf.CStr(), std::ios::out);
-    of << "fkey  " << fkey      << "\n";
-    of << "nout  " << stp_out-1 << "\n";
-    of << "nx    " << N[0]      << "\n";
-    of << "ny    " << N[1]      << "\n";
-    of << "nz    " << N[2]      << "\n";
-    of << "lxmi  " << L[0]      << "\n";
-    of << "lxma  " << L[1]      << "\n";
-    of << "lymi  " << L[2]      << "\n";
-    of << "lyma  " << L[3]      << "\n";
-    of << "lzmi  " << L[4]      << "\n";
-    of << "lzma  " << L[5]      << "\n";
-    of.close();
+    if (my_id==0)
+    {
+        String buf;
+        buf.Printf("dem_test3_control.res");
+        std::ofstream of(buf.CStr(), std::ios::out);
+        of << "fkey  " << "dem_test3" << "\n";
+        of << "nout  " << stp_out+1   << "\n";
+        of << "nx    " << N[0]        << "\n";
+        of << "ny    " << N[1]        << "\n";
+        of << "nz    " << N[2]        << "\n";
+        of << "lxmi  " << L[0]        << "\n";
+        of << "lxma  " << L[1]        << "\n";
+        of << "lymi  " << L[2]        << "\n";
+        of << "lyma  " << L[3]        << "\n";
+        of << "lzmi  " << L[4]        << "\n";
+        of << "lzma  " << L[5]        << "\n";
+        of << "dt    " << dt          << "\n";
+        of << "proc  " << N[0]*N[1]*N[2] << "   ";
+        for (int i=0; i<N[0]*N[1]*N[2]; ++i) { of<<grid.Id2Proc[i]<<" "; } of<<"\n";
+        of.close();
+        cout << "File <" << buf << "> written" << endl;
+    }
 
     // end
     MPI::Finalize();

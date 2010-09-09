@@ -30,8 +30,11 @@ enum CellType { Inner_t=-1, BryIn_t=-2, BryOut_t=-3, Outer_t=-4 };
 class ParaGrid3D
 {
 public:
+    // enums
+    enum MetisAlgo { Recursive_t=0, Kway_t=1, VKway_t=2 };
+
     // Constructor & Destructor
-    ParaGrid3D (Array<int> const & N, Array<double> & L, char const * FileKey=NULL);
+    ParaGrid3D (Array<int> const & N, Array<double> & L, char const * FileKey=NULL, MetisAlgo Algo=Recursive_t);
 
     // Methods
     int  FindCell  (Vec3_t const & X) const;                       ///< Get the Id of the cell containing the point with coordinates equal to X
@@ -52,7 +55,7 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////// Implementation /////
 
 
-inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, char const * FileKey)
+inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, char const * FileKey, MetisAlgo Algo)
     : N(TheN), L(TheL)
 {
     // cell size
@@ -93,14 +96,30 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
     Id2Proc.Resize    (ncells);
     Id2Proc.SetValues (0);
 #if defined(HAS_PARMETIS) && defined(HAS_MPI)
-    int wgtflag    = 0; // No weights
-    int numflag    = 0; // zero numbering
-    int options[5] = {0,0,0,0,0};
-    int edgecut;
     if (nprocs>1)
     {
-        METIS_PartGraphRecursive (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, Id2Proc.GetPtr());
-        //METIS_PartGraphVKway     (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, Id2Proc.GetPtr());
+        int wgtflag    = 0; // No weights
+        int numflag    = 0; // zero numbering
+        int options[5] = {0,0,0,0,0};
+        if (Algo==Recursive_t)
+        {
+            int edgecut;
+            METIS_PartGraphRecursive (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, Id2Proc.GetPtr());
+            if (my_id==0) printf("METIS: Recursive: Edgecut = %d\n",edgecut);
+        }
+        else if (Algo==Kway_t)
+        {
+            int edgecut;
+            METIS_PartGraphKway (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &edgecut, Id2Proc.GetPtr());
+            if (my_id==0) printf("METIS: Kway: Edgecut = %d\n",edgecut);
+        }
+        else if (Algo==VKway_t)
+        {
+            int volume;
+            METIS_PartGraphVKway (&ncells, Xadj.GetPtr(), Adjn.GetPtr(), NULL, NULL, &wgtflag, &numflag, &nprocs, options, &volume, Id2Proc.GetPtr());
+            if (my_id==0) printf("METIS: VKway: Volume = %d\n",volume);
+        }
+        else throw new Fatal("ParaGrid3D::ParaGrid3D: MetisAlgo==%d is invalid",Algo);
 #else
         throw new Fatal("ParaGrid3D::ParaGrid3D: This method requires ParMETIS and MPI (if Part array is not provided)");
 #endif
@@ -257,20 +276,23 @@ inline ParaGrid3D::ParaGrid3D (Array<int> const & TheN, Array<double> & TheL, ch
             VTU_NEWLINE (i,k,nc,nimax,oss);
         }
         oss << "        </DataArray>\n";
-        oss << "        <DataArray type=\"Int32\" Name=\"" << "neighproc" << "\" NumberOfComponents=\""<<max_neigh_procs<<"\" format=\"ascii\">\n";
-        k = 0; oss << "        ";
-        for (size_t i=0; i<nc; ++i)
+        if (max_neigh_procs>0)
         {
-            oss << (k==0?"  ":" ");
-            for (int j=0; j<max_neigh_procs; ++j)
+            oss << "        <DataArray type=\"Int32\" Name=\"" << "neighproc" << "\" NumberOfComponents=\""<<max_neigh_procs<<"\" format=\"ascii\">\n";
+            k = 0; oss << "        ";
+            for (size_t i=0; i<nc; ++i)
             {
-                if (j>static_cast<int>(Id2NeighProcs[i].Size()-1)) oss << -1 << " ";
-                else oss << Id2NeighProcs[i][j] << " ";
+                oss << (k==0?"  ":" ");
+                for (int j=0; j<max_neigh_procs; ++j)
+                {
+                    if (j>static_cast<int>(Id2NeighProcs[i].Size()-1)) oss << -1 << " ";
+                    else oss << Id2NeighProcs[i][j] << " ";
+                }
+                k++;
+                VTU_NEWLINE (i,k,nc,nimax,oss);
             }
-            k++;
-            VTU_NEWLINE (i,k,nc,nimax,oss);
+            oss << "        </DataArray>\n";
         }
-        oss << "        </DataArray>\n";
         oss << "      </CellData>\n";
 
         // Bottom

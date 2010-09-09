@@ -238,7 +238,7 @@ inline void Domain::GenSpheres (int Tag, double L, size_t N, double rho,char con
 
     }
     else throw new Fatal ("Right now there are only two possible packings available the Normal and the HCP, packing %s is not implemented yet",Type);
-    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::GenRice (int Tag, double L, size_t N, double R, double rho, size_t Randomseed, double fraction)
@@ -256,7 +256,7 @@ inline void Domain::GenRice (int Tag, double L, size_t N, double R, double rho, 
         pos += Vec3_t(2.0*i*dL, 2.0*j*dL, 2.0*k*dL);
         if (rand()<fraction*RAND_MAX) AddRice (Tag, pos, R, dL-2*R, rho);
     }
-    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::GenBox (int InitialTag, double Lx, double Ly, double Lz, double R, double Cf)
@@ -450,7 +450,7 @@ inline void Domain::GenFromMesh (Mesh::Generic & M, double R, double rho, bool C
     }
 
     // info
-    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, double fraction, char const *Type)
@@ -488,7 +488,7 @@ inline void Domain::GenFromVoro (int Tag, container & VC, double R, double rho, 
     } while((s=l1.inc(px,py,pz))!=-1);
 
     // info
-    printf("%s  Num of particles   = %d%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
+    printf("%s  Num of particles   = %zd%s\n",TERM_CLR2,Particles.Size(),TERM_RST);
 }
 
 inline void Domain::AddVoroPack (int Tag, double R, double Lx, double Ly, double Lz, size_t nx, size_t ny, size_t nz, double rho, bool Periodic,size_t Randomseed, double fraction, double qin)

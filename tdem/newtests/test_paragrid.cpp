@@ -35,9 +35,11 @@ int main(int argc, char **argv) try
     int my_id  = MPI::COMM_WORLD.Get_rank();
 
     Array<int> N(20, 30, 1); // number of cells/boxes along each side of grid
+    int algo = ParaGrid3D::Recursive_t; // == 0
     if (argc>1) N[0]  = atoi(argv[1]);
     if (argc>2) N[1]  = atoi(argv[2]);
     if (argc>3) N[2]  = atoi(argv[3]);
+    if (argc>4) algo  = atoi(argv[4]);
     if (N[0]<1) throw new Fatal("nx must be greater than 0");
     if (N[1]<1) throw new Fatal("ny must be greater than 0");
     if (N[2]<1) throw new Fatal("nz must be greater than 0");
@@ -51,7 +53,7 @@ int main(int argc, char **argv) try
     // grid
     String buf;
     buf.Printf("test_paragrid_proc_%d",my_id);
-    ParaGrid3D grid(N, L, buf.CStr());
+    ParaGrid3D grid(N, L, buf.CStr(), static_cast<ParaGrid3D::MetisAlgo>(algo));
     cout << "File <" << buf << ".vtu> written" << endl;
 
     // neighbour partitions
