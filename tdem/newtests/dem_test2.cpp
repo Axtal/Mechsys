@@ -36,7 +36,43 @@ using std::endl;
 class Particle
 {
 public:
-    void Start () { F = 0.0,0.0,0.0; }
+    void Start () {F = 0.0,0.0,0.0;}
+    void Start (Vec3_t & minX, Vec3_t & maxX) 
+    {
+        F = 0.0,0.0,0.0;
+        double Kn    = 1000.0;
+        double delta;
+        delta = X(0)-R-minX(0);
+        if (delta<0)
+        {
+            F+=Vec3_t(-Kn*delta,0.0,0.0);
+        }
+        delta = X(0)+R-maxX(0);
+        if (delta>0)
+        {
+            F+=Vec3_t(-Kn*delta,0.0,0.0);
+        }
+        delta = X(1)-R-minX(1);
+        if (delta<0)
+        {
+            F+=Vec3_t(0.0,-Kn*delta,0.0);
+        }
+        delta = X(1)+R-maxX(1);
+        if (delta>0)
+        {
+            F+=Vec3_t(0.0,-Kn*delta,0.0);
+        }
+        delta = X(2)-R-minX(2);
+        if (delta<0)
+        {
+            F+=Vec3_t(0.0,0.0,-Kn*delta);
+        }
+        delta = X(2)+R-maxX(2);
+        if (delta>0)
+        {
+            F+=Vec3_t(0.0,0.0,-Kn*delta);
+        }
+    }
     void Move  (double dt, bool Verlet=true)
     {
         if (Verlet)
@@ -63,6 +99,22 @@ public:
 typedef std::map<int,Particle*>         Id2Part_t;
 typedef std::map<int,Array<Particle*> > Cell2Part_t;
 typedef std::map<std::pair<Particle*,Particle*>,double> NeighDist_t;
+
+
+inline void BoundingBox(Array<Particle*> const & Particles, Vec3_t & minX, Vec3_t & maxX)
+{
+    minX = Vec3_t(Particles[0]->X(0)-Particles[0]->R, Particles[0]->X(1)-Particles[0]->R, Particles[0]->X(2)-Particles[0]->R);
+    maxX = Vec3_t(Particles[0]->X(0)+Particles[0]->R, Particles[0]->X(1)+Particles[0]->R, Particles[0]->X(2)+Particles[0]->R);
+    for (size_t i = 1;i<Particles.Size();i++)
+    {
+        if (minX(0)>Particles[i]->X(0)-Particles[i]->R) minX(0) = Particles[i]->X(0)-Particles[i]->R;
+        if (minX(1)>Particles[i]->X(1)-Particles[i]->R) minX(1) = Particles[i]->X(1)-Particles[i]->R;
+        if (minX(2)>Particles[i]->X(2)-Particles[i]->R) minX(2) = Particles[i]->X(2)-Particles[i]->R;
+        if (maxX(0)<Particles[i]->X(0)+Particles[i]->R) maxX(0) = Particles[i]->X(0)+Particles[i]->R;
+        if (maxX(1)<Particles[i]->X(1)+Particles[i]->R) maxX(1) = Particles[i]->X(1)+Particles[i]->R;
+        if (maxX(2)<Particles[i]->X(2)+Particles[i]->R) maxX(2) = Particles[i]->X(2)+Particles[i]->R;
+    }
+}
 
 inline void CalcForce (Particle & a, Particle & b)
 {
@@ -141,9 +193,12 @@ int main(int argc, char **argv) try
 
     // limits of grid
     Array<double> L(6);
+    Vec3_t Xmin,Xmax;
     //     0    1      2    3      4    5
     //   xmi  xma    ymi  yma    zmi  zma
-    L =  -2.,  2.,   -2.,  2.,   -2.,  2.;
+    L =  -0.61,  0.61,   -0.61,  0.61,   -0.61,  0.61;
+    Xmin = Vec3_t(L[0]+0.01,L[2]+0.01,L[4]+0.01);
+    Xmax = Vec3_t(L[1]-0.01,L[3]-0.01,L[5]-0.01);
 
     // input
     Array<int> N(10, 10, 1); // number of cells/boxes along each side of grid
@@ -284,6 +339,9 @@ int main(int argc, char **argv) try
             id2part[id] = &p;
         }
     }
+    //Vec3_t Xmin,Xmax;
+    //BoundingBox(parts,Xmin,Xmax);
+    //cout << Xmin << Xmax << endl;
     //printf("Proc # %d has %zd particles\n",my_id,parts.Size());
 
     // first output
@@ -295,6 +353,7 @@ int main(int argc, char **argv) try
     double tf    = 5.0;
     double dtout = 0.1;
     double tout  = 0.1;
+    printf("Hi i am proc = %d and i have %d particles \n",my_id,parts.Size());
     for (double t=0.0; t<tf; t+=dt)
     {
         // initialize particles and find map: cell => particles in/crossed cell
@@ -302,7 +361,7 @@ int main(int argc, char **argv) try
         for (size_t i=0; i<parts.Size(); ++i)
         {
             if (parts[i]->CType==Outer_t) continue;
-            parts[i]->Start       ();
+            parts[i]->Start       (Xmin,Xmax);
             parts[i]->Cells.Clear ();
             int cells[8];
             grid.FindCells (parts[i]->X, parts[i]->R, cells);
@@ -399,7 +458,7 @@ int main(int argc, char **argv) try
         }
 
         // synchronize
-        MPI::COMM_WORLD.Barrier(); // TODO: check if this is really needed
+        //MPI::COMM_WORLD.Barrier(); // TODO: check if this is really needed
 
         // post messages with data_sent
         Array<MPI::Request> req(grid.NeighProcs.Size());
@@ -409,6 +468,7 @@ int main(int argc, char **argv) try
             Array<double> const & data_snd = proc2data[grid.NeighProcs[i]];
             req[i] = MPI::COMM_WORLD.Isend (data_snd.GetPtr(), data_snd.Size(), MPI::DOUBLE, grid.NeighProcs[i], 1000);
         }
+
 
         // receive messages
         Array<double> data;
