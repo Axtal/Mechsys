@@ -85,6 +85,7 @@ inline void   set_to_zero (Vec_t       & V) { V.SetValues(0.0); }
 inline void   set_to_zero (Mat_t       & M) { M.SetValues(0.0); }
 inline size_t num_rows    (Vec_t const & V) { return V.Size(); }
 inline size_t num_rows    (Mat_t const & M) { return M.Rows(); }
+inline size_t num_cols    (Mat_t const & M) { return M.Cols(); }
 
 #endif
 
