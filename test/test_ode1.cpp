@@ -30,9 +30,12 @@
 #include <mechsys/numerical/odesolver.h>
 #include <mechsys/linalg/matvec.h>
 #include <mechsys/util/fatal.h>
+#include <mechsys/util/numstreams.h>
 
 using std::cout;
 using std::endl;
+using Util::_8s;
+using Util::PI;
 
 /* Solving:
  *             x''(t) + \mu x'(t) (x(t)^2 - 1) + x(t) = 0
@@ -75,75 +78,82 @@ public:
         dYdt[1] = -Y[0] - mu*Y[1]*(Y[0]*Y[0] - 1);
         return GSL_SUCCESS;
     }
+    int TgIncs (double t, double const Y[], double dt, double dY[]) const
+    {
+        double dYdt0 =  Y[1];
+        double dYdt1 = -Y[0] - mu*Y[1]*(Y[0]*Y[0] - 1);
+        dY[0] = dYdt0*dt;
+        dY[1] = dYdt1*dt;
+        return GSL_SUCCESS;
+    }
     double mu;
 };
 
 int main(int argc, char **argv) try
 {
-    // directly calling GSL
-    int nincs = 50;
-    Vec_t GSL_T(nincs+1);
-    Mat_t GSL_Y(nincs+1, 2);
-    {
-        gsl_odeiv_step_type const * T = gsl_odeiv_step_rk8pd;
-        gsl_odeiv_step            * s = gsl_odeiv_step_alloc    (T, /*neq*/2);
-        gsl_odeiv_control         * c = gsl_odeiv_control_y_new (/*stol*/1e-6, /*eps*/0.0);
-        gsl_odeiv_evolve          * e = gsl_odeiv_evolve_alloc  (/*neq*/2);
+    // number of output increments
+    int    nincs = 100;
+    double mu    = 2.0;
+    double tf    = 10.209022;
+    double y0ini = 0.0;
+    double y1ini = 3.0;
 
-        //printf ("step method is '%s'\n",    gsl_odeiv_step_name    (s));
-        //printf ("control method is '%s'\n", gsl_odeiv_control_name (c));
-
-        double mu = 10;
-        gsl_odeiv_system sys = {func, jac, /*neq*/2, &mu};
-
-        double t = 0.0, t1 = 100.0;
-        double h = 1e-6; /*initial step-size*/
-        double y[2] = { 1.0, 0.0 };
-        GSL_T(0) = t;
-        GSL_Y(0, 0) = 1.0;
-        GSL_Y(0, 1) = 0.0;
-
-        for (int i=1; i<=nincs; i++)
-        {
-            double ti = i * t1 / (double)nincs;
-            while (t < ti)
-            {
-               int status = gsl_odeiv_evolve_apply (e, c, s, &sys, &t, ti, &h, y);
-               if (status!=GSL_SUCCESS) throw new Fatal("gsl_odeiv_evolve_apply failed. status=%d",status);
-               //if (h<hmin) { h = hmin; }
-            }
-            GSL_T(i)   = t;
-            GSL_Y(i,0) = y[0];
-            GSL_Y(i,1) = y[1];
-        }
-
-        gsl_odeiv_evolve_free  (e);
-        gsl_odeiv_control_free (c);
-        gsl_odeiv_step_free    (s);
-    }
-
-    // wrapper
+    // GSL
     Vec_t T(nincs+1);
     Mat_t Y(nincs+1, 2);
     {
-        ODE ode(/*mu*/10.0);
-        Numerical::ODESolver<ODE> Solver(&ode);
-        //Solver.Scheme = "RKF45";
+        ODE ode(mu);
+        Numerical::ODESolver<ODE> sol(&ode);
+        //sol.Scheme = "RKF45";
         T(0)    = 0.0;
-        Y(0, 0) = 1.0;
-        Y(0, 1) = 0.0;
-        Solver.Evolve (&ODE::Fun, T, Y, /*tf*/100.0);
+        Y(0, 0) = y0ini;
+        Y(0, 1) = y1ini;
+        sol.Evolve (&ODE::Fun, T, Y, tf);
+    }
+
+    // ME
+    Vec_t Tme(nincs+1);
+    Mat_t Yme(nincs+1, 2);
+    {
+        ODE ode(mu);
+        Numerical::ODESolver<ODE> sol(&ode);
+        //sol.STOL  = 1.0e-8;
+        //sol.MaxSS = 100000;
+        Tme(0)    = 0.0;
+        Yme(0, 0) = y0ini;
+        Yme(0, 1) = y1ini;
+        sol.Evolve (&ODE::TgIncs, Tme, Yme, tf);
     }
 
     // check
+    Array<double> err_t (nincs+1);
+    Array<double> err_y0(nincs+1);
+    Array<double> err_y1(nincs+1);
     for (int i=0; i<nincs+1; ++i)
     {
-        printf("t=%5.2e, %5.2e, d=%5.2e    y0=% 10.4e, % 10.4e, d=% 10.4e    y1=% 10.4e, % 10.4e, d=% 10.4e\n", 
-                T(i),   GSL_T(i),   T(i)  -GSL_T(i),
-                Y(i,0), GSL_Y(i,0), Y(i,0)-GSL_Y(i,0),
-                Y(i,1), GSL_Y(i,1), Y(i,1)-GSL_Y(i,1));
+        err_t [i] = fabs(T(i)  -Tme(i));
+        err_y0[i] = fabs(Y(i,0)-Yme(i,0));
+        err_y1[i] = fabs(Y(i,1)-Yme(i,1));
     }
+    double tol_t  = 1.0e-13;
+    double tol_y0 = 1.0e-5;
+    double tol_y1 = 1.0e-4;
+    printf("\n%s--- Error ------------------------------------------------------------------------%s\n",TERM_CLR1,TERM_RST);
+    cout << TERM_CLR2 << Util::_4<< "   " << Util::_8s<<"Min" << Util::_8s<<"Mean" << Util::_8s<<"Max" << Util::_8s<<"Norm" << TERM_RST << endl;
+    cout << Util::_4<< "t"  << Util::_8s<<err_t .TheMin() << Util::_8s<<err_t .Mean() << (err_t .TheMax()>tol_t  ? TERM_RED : TERM_GREEN) << Util::_8s<<err_t .TheMax() << TERM_RST << Util::_8s<<err_t .Norm() << "\n";
+    cout << Util::_4<< "y0" << Util::_8s<<err_y0.TheMin() << Util::_8s<<err_y0.Mean() << (err_y0.TheMax()>tol_y0 ? TERM_RED : TERM_GREEN) << Util::_8s<<err_y0.TheMax() << TERM_RST << Util::_8s<<err_y0.Norm() << "\n";
+    cout << Util::_4<< "y1" << Util::_8s<<err_y1.TheMin() << Util::_8s<<err_y1.Mean() << (err_y1.TheMax()>tol_y1 ? TERM_RED : TERM_GREEN) << Util::_8s<<err_y1.TheMax() << TERM_RST << Util::_8s<<err_y1.Norm() << "\n";
+    cout << endl;
 
+    // output file
+    std::ofstream of("test_ode1.dat", std::ios::out);
+    of << _8s<<"t" << _8s<<"y0" << _8s<<"y1" << _8s<<"y0me" << _8s<<"y1me" << endl;
+    for (int i=0; i<nincs+1; ++i) of << _8s<<T(i) << _8s<<Y(i,0) << _8s<<Y(i,1) << _8s<<Yme(i,0) << _8s<<Yme(i,1) << endl;
+    of.close();
+    cout << "File <" << TERM_CLR_BLUE << "test_ode1.dat" << TERM_RST << "> written" << endl;
+    cout << endl;
+
+    // end
     return 0;
 }
 MECHSYS_CATCH

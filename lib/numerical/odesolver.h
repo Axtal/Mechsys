@@ -38,25 +38,20 @@
 namespace Numerical
 {
 
-enum ODEScheme
-{
-    RK23_t,  
-    RKF45_t, 
-    RKDP89_t,
-};
-
 template<typename Instance>
 class ODESolver
 {
 public:
     // Typedefs
     typedef int (Instance::*pFun) (double t, double const Y[], double dYdt[]) const; ///< Callback function
+    typedef int (Instance::*pTgIncs) (double t, double const Y[], double dt, double dY[]) const; ///< Callback function
 
     // Constructor
     ODESolver (Instance const * p2Inst);
 
     // Methods
     void Evolve (pFun p2Fun, Vec_t & T, Mat_t & Y, double tf); ///< Evolve from T[0] to tf
+    void Evolve (pTgIncs p2Incs, Vec_t & T, Mat_t & Y, double tf); ///< Evolve from T[0] to tf
 
     // Internal methods
     int CallFun (double t, double const Y[], double dYdt[]) { return (_p2inst->*_p2fun)(t, Y, dYdt); }
@@ -66,10 +61,15 @@ public:
     double STOL;   ///< Local error estimate
     double EPSREL; ///< Relative error
     double DtIni;  ///< Initial step-size
+    double dTini;  ///< Initial pseudo time step-size
+    size_t MaxSS;  ///< Max number of sub-steps
+    double mMin;   ///< Minimum change of substep size
+    double mMax;   ///< Maximum change of substep size
 
 private:
     Instance const * _p2inst;  ///< Pointer to an instance
     pFun             _p2fun;   ///< Pointer to instance function
+    pTgIncs          _p2incs;  ///< Pointer to instance function
 };
 
 /** Trick to pass pointers to member functions to GSL.
@@ -91,8 +91,13 @@ inline ODESolver<Instance>::ODESolver (Instance const * p2Inst)
       STOL    (1.0e-6),
       EPSREL  (DBL_EPSILON),
       DtIni   (1.0e-6),
+      dTini   (1.0e-3),
+      MaxSS   (2000),
+      mMin    (0.1),
+      mMax    (10.0),
       _p2inst (p2Inst),
-      _p2fun  (NULL)
+      _p2fun  (NULL),
+      _p2incs (NULL)
 {}
 
 template<typename Instance>
@@ -131,10 +136,11 @@ inline void ODESolver<Instance>::Evolve (pFun p2Fun, Vec_t & T, Mat_t & Y, doubl
     for (int j=0; j<neq; ++j) y[j] = Y(0, j);
 
     // solve
+    double Dt = (tf - T(0)) / static_cast<double>(nincs);
     for (int i=1; i<=nincs; i++)
     {
         // evolve
-        double ti = i * tf / static_cast<double>(nincs);
+        double ti = T(0) + i*Dt;
         while (t < ti)
         {
            int status = gsl_odeiv_evolve_apply (e, c, s, &sys, &t, ti, &h, y);
@@ -152,6 +158,102 @@ inline void ODESolver<Instance>::Evolve (pFun p2Fun, Vec_t & T, Mat_t & Y, doubl
     gsl_odeiv_evolve_free  (e);
     gsl_odeiv_control_free (c);
     gsl_odeiv_step_free    (s);
+}
+
+template<typename Instance>
+inline void ODESolver<Instance>::Evolve (pTgIncs p2Incs, Vec_t & tVec, Mat_t & Y, double tf)
+{
+    // check
+    if (size(tVec)<2)             throw new Fatal("ODESolver::Evolve: The size of vector T must be at least equal to 2. The first item corresponds to the initial time.");
+    if (Y.num_rows()<2)           throw new Fatal("ODESolver::Evolve: The number of rows in matrix Y must be at least equal to 2. The first row corresponds to the initial values.");
+    if (Y.num_cols()<1)           throw new Fatal("ODESolver::Evolve: The number of columns in matrix Y must be at least equal to 1, corresponding to the number of equations.");
+    if (size(tVec)!=Y.num_rows()) throw new Fatal("ODESolver::Evolve: The size of vector T must be equal to the number of rows in matrix Y");
+
+    // data
+    int nincs = size(tVec)-1;
+    int neq   = Y.num_cols();
+
+    // set pointer to function
+    _p2incs = p2Incs;
+
+    // initial values
+    double   t   = tVec(0);
+    double * y   = new double [neq];
+    double * yFE = new double [neq];
+    double * yME = new double [neq];
+    double * dy1 = new double [neq];
+    double * dy2 = new double [neq];
+    for (int j=0; j<neq; ++j) y[j] = Y(0, j);
+
+    // solve
+    double Dt = (tf - tVec(0)) / static_cast<double>(nincs);
+    for (int i=1; i<=nincs; i++)
+    {
+        // for each pseudo time T
+        double ti  = tVec(0) + i*Dt;
+        double Dti = ti - t;
+        double T   = 0.0;
+        double dT  = dTini;
+        size_t k   = 0;
+        for (k=0; k<MaxSS; ++k)
+        {
+            // exit point
+            if (T>=1.0) break;
+
+            // FE increments
+            double dt = dT*Dti;
+            (_p2inst->*_p2incs) (t, y, dt, dy1);
+            for (int j=0; j<neq; ++j) yFE[j] = y[j] + dy1[j];
+
+            // ME increments and local error
+            (_p2inst->*_p2incs) (t+dt, yFE, dt, dy2);
+            double norm_yME = 0.0;
+            double norm_err = 0.0;
+            for (int j=0; j<neq; ++j)
+            {
+                yME[j]    = y[j] + 0.5*(dy1[j]+dy2[j]);
+                norm_yME += yME[j]*yME[j];
+                norm_err += (yME[j]-yFE[j])*(yME[j]-yFE[j]);
+            }
+
+            // local error estimate
+            double err = sqrt(norm_err)/(1.0+sqrt(norm_yME));
+
+            // step multiplier
+            double m = (err>0.0 ? 0.9*sqrt(STOL/err) : mMax);
+
+            // update
+            if (err<STOL)
+            {
+                // update state
+                T += dT;
+                t += dt;
+                for (int j=0; j<neq; ++j) y[j] = yME[j];
+
+                // limit change on stepsize
+                if (m>mMax) m = mMax;
+            }
+            else if (m<mMin) m = mMin;
+
+            // change next step size
+            dT = m * dT;
+
+            // check for last increment
+            if (dT>1.0-T) dT = 1.0-T;
+        }
+        if (k>=MaxSS) throw new Fatal("ODESolver::Evolve: Modified-Euler did not converge after %d substeps",k);
+
+        // results
+        tVec(i) = t;
+        for (int j=0; j<neq; ++j) Y(i, j) = y[j];
+    }
+
+    // clean up
+    delete [] y;
+    delete [] yFE;
+    delete [] yME;
+    delete [] dy1;
+    delete [] dy2;
 }
 
 }; // namespace Numerical
