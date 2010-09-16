@@ -353,7 +353,7 @@ int main(int argc, char **argv) try
     double tf    = 5.0;
     double dtout = 0.1;
     double tout  = 0.1;
-    printf("Hi i am proc = %d and i have %d particles \n",my_id,parts.Size());
+    printf("Hi i am proc = %d and i have %zd particles \n",my_id,parts.Size());
     for (double t=0.0; t<tf; t+=dt)
     {
         // initialize particles and find map: cell => particles in/crossed cell

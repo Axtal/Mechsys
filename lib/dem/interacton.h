@@ -252,6 +252,7 @@ inline void CInteracton::_update_disp_calc_force (FeatureA_T & A, FeatureB_T & B
             }
             Ftnet += Kt*FMap[p];
             Vec3_t F = Fn + Kt*FMap[p] + Gn*dot(n,vrel)*n + Gt*vt;
+            if (dot(F,n)<0) F-=dot(F,n)*n;
             P1->F += -F;
             P2->F +=  F;
             dEvis += (Gn*dot(vrel-vt,vrel-vt)+Gt*dot(vt,vt))*dt;

@@ -60,7 +60,7 @@ void SetTxTest (Vec3_t const & Sigf, bVec3_t const & pEps, Vec3_t const & dEpsdt
     if (TheStrainCtrl) UD.Sig0 = UD.Sig;
 
     // initialize particles
-    for (size_t i=0; i<D.Particles.Size(); i++) D.Particles[i]->Initialize();
+    for (size_t i=0; i<D.Particles.Size(); i++) D.Particles[i]->Initialize(i);
 
     // total stress increment
     UD.DSig = Sigf - UD.Sig;
