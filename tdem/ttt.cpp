@@ -469,7 +469,7 @@ int main(int argc, char **argv) try
     {
         Mesh::Unstructured mesh(/*NDim*/3);
         mesh.GenBox  (/*O2*/false,/*V*/Lx*Ly*Lz/(0.5*nx*ny*nz),Lx,Ly,Lz);
-        dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,true,false);
+        dom.GenFromMesh (mesh,/*R*/R,/*rho*/rho,false,false);
     }
     else if (ptype=="rice") dom.GenRice(-1,Lx,nx,R,rho,seed,fraction);
     else throw new Fatal("Packing for particle type not implemented yet");

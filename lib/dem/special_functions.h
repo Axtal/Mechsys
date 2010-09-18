@@ -109,6 +109,29 @@ inline void PolyhedraMP(Array<Vec3_t> & V, Array<Array <int> > & F, double & vol
 
 }
 
+inline void CheckDestroGiro(Vec3_t & xp, Vec3_t & yp, Vec3_t & zp) // Check if the coordinate system is destrogiro and modify the system accordingly for the quaternion calculation
+{
+    bool destrogiro = dot(cross(xp,yp),zp)>0;
+    if (!destrogiro)
+    {
+        xp = -xp;
+        if (1+xp(0)+yp(1)+zp(2)>=0) return;
+        else 
+        {
+            xp = -xp;
+            yp = -yp;
+            if (1+xp(0)+yp(1)+zp(2)>=0) return;
+            else
+            {
+                yp = -yp;
+                zp = -zp;
+                if (1+xp(0)+yp(1)+zp(2)>=0) return;
+                else throw new Fatal("specialfunctions.h::CheckDestroGiro: The system cannot be transformed by a quaternion operation");
+            }
+        }
+    }
+}
+
 inline void Erosion(Array<Vec3_t> & V, Array<Array<int> > & E, Array<Array <int> > & F, double R) // Mathematical morphology erosion
 {
     if (V.Size()<=3) throw new Fatal("There are no enough vertices to work with");

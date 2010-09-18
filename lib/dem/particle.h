@@ -762,6 +762,7 @@ inline void Particle::CalcProps (size_t NCalls)
 
         Vec3_t xp,yp,zp;
         Eig(It,I,xp,yp,zp);
+        CheckDestroGiro(xp,yp,zp);
         I *= Props.rho;
         Q(0) = 0.5*sqrt(1+xp(0)+yp(1)+zp(2));
         Q(1) = (yp(2)-zp(1))/(4*Q(0));
